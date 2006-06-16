@@ -31,8 +31,8 @@
 	(parse-error place (parse-error-msg msg args)))
       (let* ((nt (cadr (member :nt keys)))
 	     (fn (if nt
-		     (makesym #+(version>= 6) "xt-~(~a~)"
-			      #-(version>= 6) "XT-~a"
+		     (makesym #+(and allegro (version>= 6)) "xt-~(~a~)"
+			      #-(and allegro (version>= 6)) "XT-~a"
 			      (sim-term-op term))
 		     #'xt-adt-or-modules))
 	     (*parsing-or-unparsing* t)
@@ -130,8 +130,8 @@
   (let* ((subtypes-term (term-arg0 datatype))
 	 (subtypes (mapcar #'(lambda (st)
 			       (make-instance 'type-name
-				 'id (ds-vid st)
-				 'place (term-place st)))
+				 :id (ds-vid st)
+				 :place (term-place st)))
 			   (term-args subtypes-term)))
 	 (assuming-term (term-arg1 datatype))
 	 (assuming (unless (is-sop 'DATATYPE-NULL-2 assuming-term)
@@ -151,19 +151,19 @@
 	(make-instance (if (eq class 'DATATYPES)
 			   'inline-datatype-with-subtypes
 			   'inline-codatatype-with-subtypes)
-	  'subtypes subtypes
-	  'assuming assuming
-	  'importings importings
-	  'constructors adtcases
-	  'place (term-place datatype))
+	  :subtypes subtypes
+	  :assuming assuming
+	  :importings importings
+	  :constructors adtcases
+	  :place (term-place datatype))
 	(make-instance (if (eq class 'DATATYPES)
 			   'datatype-with-subtypes
 			   'codatatype-with-subtypes)
-	  'subtypes subtypes
-	  'assuming assuming
-	  'importings importings
-	  'constructors adtcases
-	  'place (term-place datatype)))))
+	  :subtypes subtypes
+	  :assuming assuming
+	  :importings importings
+	  :constructors adtcases
+	  :place (term-place datatype)))))
 
 (defun check-subtypes-constructors-consistency (id subtypes adtcases)
   (let ((badsubtype (find id subtypes :key #'id)))
@@ -222,12 +222,12 @@
 		       (if (eq class 'DATATYPE)
 			   'datatype
 			   'codatatype))
-      'assuming (unless (is-sop 'DATATYPE-NULL-2 assuming)
+      :assuming (unless (is-sop 'DATATYPE-NULL-2 assuming)
 		  (xt-assumings assuming))
-      'importings (unless (is-sop 'DATATYPE-NULL-1 importing)
+      :importings (unless (is-sop 'DATATYPE-NULL-1 importing)
 		   (xt-importing-elt importing))
-      'constructors (xt-adtcases adtcases)
-      'place (term-place datatype))))
+      :constructors (xt-adtcases adtcases)
+      :place (term-place datatype))))
 
 (defun xt-adtcases (adtcases)
   (mapcar #'xt-adtcase (term-args adtcases)))
@@ -238,8 +238,8 @@
 	 (constr (xt-constructor constructor))
 	 (subtype (when (is-sop 'ADTCASE-SUBTYPE adtcase)
 		    (make-instance 'type-name
-		      'id (ds-id (term-arg2 adtcase))
-		      'place (term-place (term-arg2 adtcase))))))
+		      :id (ds-id (term-arg2 adtcase))
+		      :place (term-place (term-arg2 adtcase))))))
     (when subtype
       (change-class constr 'constructor-with-subtype)
       (setf (subtype constr) subtype))
@@ -251,10 +251,10 @@
   (let ((idop (term-arg0 constructor))
 	(adtdecls (term-arg1 constructor)))
     (make-instance 'simple-constructor
-      'id (xt-idop idop)
-      'arguments (unless (is-sop 'CONSTRUCTOR-NULL-1 adtdecls)
+      :id (xt-idop idop)
+      :arguments (unless (is-sop 'CONSTRUCTOR-NULL-1 adtdecls)
 		   (xt-adtdecls adtdecls))
-      'place (term-place constructor))))
+      :place (term-place constructor))))
 
 (defun xt-adtdecls (decls)
   (mapcan #'xt-adtdecl (term-args decls)))
@@ -267,15 +267,15 @@
 		      type
 		      nil
 		      (make-instance 'adtdecl
-			'declared-type dtype
-			'place (term-place type))
+			:declared-type dtype
+			:place (term-place type))
 		      adtdecl)))
 
 (defun xt-module (theory &optional id)
   (let* ((exp-t (term-arg0 theory))
 	 (exp (if (is-sop 'NOEXP exp-t)
 		  (make-instance 'exporting
-		    'kind 'default)
+		    :kind 'default)
 		  (xt-exporting exp-t)))
 	 (assum-t (term-arg1 theory))
 	 (assum (unless (is-sop 'NOASS assum-t)
@@ -291,45 +291,45 @@
 ;    (assert (every #'place assum))
 ;    (assert (every #'place tpart))
     (make-instance 'module
-      'exporting exp
-      'assuming assum
-      'theory tpart
-      'place (term-place theory))))
+      :exporting exp
+      :assuming assum
+      :theory tpart
+      :place (term-place theory))))
 
 (defun xt-exporting (exporting)
   (let ((names (term-arg0 exporting))
 	(modnames (term-arg1 exporting)))
     (make-instance 'exporting
-      'names (case (sim-term-op names)
+      :names (case (sim-term-op names)
 	       (EXPORTING-ALL 'all)
 	       (EXPNAMES (mapcar #'xt-expname (term-args names)))
 	       (t (break "Something's wrong with the parser")))
-      'but-names (when (and (is-sop 'EXPORTING-ALL names)
+      :but-names (when (and (is-sop 'EXPORTING-ALL names)
 			    (not (is-sop 'NOEXPBUTS (term-arg0 names))))
 		   (mapcar #'xt-expname
 			   (term-args (term-arg0 names))))
-      'kind (case (sim-term-op modnames)
+      :kind (case (sim-term-op modnames)
 	      (EXPMODALL 'all)
 	      (EXPMODCLOSURE 'closure)
 	      (t nil))
-      'modules (case (sim-term-op modnames)
+      :modules (case (sim-term-op modnames)
 		 (NOEXPORTINGMODS nil)
 		 (EXPMODALL nil)
 		 (EXPMODCLOSURE nil)
 		 (t (mapcar #'xt-modname (term-args modnames))))
-      'place (term-place exporting))))
+      :place (term-place exporting))))
 
 (defun xt-expname (expname)
   (let ((id (xt-idop (term-arg0 expname)))
 	(kind (term-arg1 expname)))
     (make-instance 'expname
-      'id id
-      'kind (case (sim-term-op kind)
+      :id id
+      :kind (case (sim-term-op kind)
 	      (NOEXPKIND nil)
 	      (EXPTYPE 'type)
 	      (EXPFORMULA 'formula)
 	      (t (xt-not-enum-type-expr kind)))
-      'place (term-place expname))))
+      :place (term-place expname))))
 
 (defun xt-assuming-part (assumings)
   (mapcan #'(lambda (ass)
@@ -409,6 +409,10 @@
 					      pformals
 					      pdecl
 					      tdecl)))
+		 (assert (every #'(lambda (d)
+				    (or (not (const-decl? d))
+					(id d)))
+				decls))
 		 (setf (semi pdecl) (when (is-sop 'SEMIC semi) t))
 		 decls))))))
 
@@ -459,18 +463,18 @@
 					   (ending-col it-place))))
 		       (if (is-sop 'THEORY-ABBREVIATION-DECL item)
 			   (make-instance 'theory-abbreviation-decl
-			     'id (ds-id (term-arg1 item))
-			     'theory-name (xt-modname (term-arg0 item))
-			     'place place
-			     'semi (when (is-sop 'SEMIC (term-arg1 importing))
+			     :id (ds-id (term-arg1 item))
+			     :theory-name (xt-modname (term-arg0 item))
+			     :place place
+			     :semi (when (is-sop 'SEMIC (term-arg1 importing))
 				     t)
-			     'chain? t)
+			     :chain? t)
 			   (make-instance 'importing
-			     'theory-name (xt-modname item)
-			     'place place
-			     'semi (when (is-sop 'SEMIC (term-arg1 importing))
+			     :theory-name (xt-modname item)
+			     :place place
+			     :semi (when (is-sop 'SEMIC (term-arg1 importing))
 				     t)
-			     'chain? t))))
+			     :chain? t))))
 	   (term-args (term-arg0 importing)))))
     (setf (chain? (car (last importings))) nil)
     importings))
@@ -488,12 +492,12 @@
 					   (ending-col it-place))))
 		       (if (is-sop 'THEORY-ABBREVIATION-DECL item)
 			   (make-instance 'theory-abbreviation-decl
-			     'id (ds-id (term-arg1 item))
-			     'theory-name (xt-modname (term-arg0 item))
-			     'place place)
+			     :id (ds-id (term-arg1 item))
+			     :theory-name (xt-modname (term-arg0 item))
+			     :place place)
 			   (make-instance 'importing
-			     'theory-name (xt-modname item)
-			     'place place))))
+			     :theory-name (xt-modname item)
+			     :place place))))
 	   (term-args (term-arg1 importing)))))
     (if lib-decl
 	(cons lib-decl importings)
@@ -545,37 +549,37 @@
   (cond ((is-sop 'JSUBTYPEDECL jdecl)
 	 (let ((type (xt-not-enum-type-expr (term-arg0 jdecl))))
 	   (make-instance 'subtype-judgement
-	     'declared-subtype type
-	     'declared-type dtype
-	     'chain? t
-	     'place place)))
+	     :declared-subtype type
+	     :declared-type dtype
+	     :chain? t
+	     :place place)))
 	((is-sop 'JNAMEDECL jdecl)
 	 (let ((name (xt-name (term-arg0 jdecl) nil)))
 	   (make-instance 'subtype-judgement
-	     'declared-subtype (change-class name 'type-name)
-	     'declared-type dtype
-	     'chain? t
-	     'place place)))
+	     :declared-subtype (change-class name 'type-name)
+	     :declared-type dtype
+	     :chain? t
+	     :place place)))
 	((is-sop 'JAPPLDECL jdecl)
 	 (let ((name (xt-name (term-arg0 jdecl) nil))
 	       (formals (xt-pdf (term-arg1 jdecl))))
 	   (when (cdr formals)
 	     (parse-error formals "Type applications may not be Curried"))
 	   (make-instance 'subtype-judgement
-	     'declared-subtype (make-instance 'type-application
-				 'type (change-class name 'type-name)
-				 'parameters (car formals)
-				 'place (place name))
-	     'declared-type dtype
-	     'chain? t
-	     'place place)))
+	     :declared-subtype (make-instance 'type-application
+				 :type (change-class name 'type-name)
+				 :parameters (car formals)
+				 :place (place name))
+	     :declared-type dtype
+	     :chain? t
+	     :place place)))
 	((is-number jdecl)
 	 (parse-error jdecl "type expression expected here"))
 	(t (make-instance 'subtype-judgement
-	     'declared-subtype (xt-not-enum-type-expr jdecl)
-	     'declared-type dtype
-	     'chain? t
-	     'place place))))
+	     :declared-subtype (xt-not-enum-type-expr jdecl)
+	     :declared-type dtype
+	     :chain? t
+	     :place place))))
 
 (defun xt-const-judgement (jdecls dtype place)
   (let ((decls (mapcar #'(lambda (jdecl)
@@ -590,21 +594,21 @@
      (let ((ex (xt-name (term-arg0 jdecl) nil)))
        (if (number-expr? ex)
 	   (make-instance 'number-judgement
-	     'number-expr ex
-	     'declared-type dtype
-	     'chain? t
-	     'place place)
+	     :number-expr ex
+	     :declared-type dtype
+	     :chain? t
+	     :place place)
 	   (make-instance 'name-judgement
-	     'name (change-class ex 'name-expr)
-	     'declared-type dtype
-	     'chain? t
-	     'place place))))
+	     :name (change-class ex 'name-expr)
+	     :declared-type dtype
+	     :chain? t
+	     :place place))))
     (JAPPLDECL (make-instance 'application-judgement
-		 'name (change-class (xt-name (term-arg0 jdecl) nil) 'name-expr)
-		 'formals (xt-pdf (term-arg1 jdecl))
-		 'declared-type dtype
-		 'chain? t
-		 'place place))
+		 :name (change-class (xt-name (term-arg0 jdecl) nil) 'name-expr)
+		 :formals (xt-pdf (term-arg1 jdecl))
+		 :declared-type dtype
+		 :chain? t
+		 :place place))
     (t (parse-error jdecl "Types may not have HAS_TYPE judgements."))))
 
 (defun xt-rec-judgement (jdecls dtype place)
@@ -618,11 +622,11 @@
 (defun xt-rec-judgement* (jdecl dtype place)
   (if (eq (sim-term-op jdecl) 'JAPPLDECL)
       (make-instance 'rec-application-judgement
-	'name (change-class (xt-name (term-arg0 jdecl) nil) 'name-expr)
-	'formals (xt-pdf (term-arg1 jdecl))
-	'declared-type dtype
-	'chain? t
-	'place place)
+	:name (change-class (xt-name (term-arg0 jdecl) nil) 'name-expr)
+	:formals (xt-pdf (term-arg1 jdecl))
+	:declared-type dtype
+	:chain? t
+	:place place)
       (parse-error jdecl "Recursive judgements are only for applications")))
 
 ;;; Conversions
@@ -651,22 +655,22 @@
     (case convkey
       (CONVERSIONPLUS
        (make-instance 'conversionplus-decl
-	 'id (when (name-expr? expr) (id expr))
-	 'expr expr
-	 'chain? (not last?)
-	 'place (term-place texpr)))
+	 :id (when (name-expr? expr) (id expr))
+	 :expr expr
+	 :chain? (not last?)
+	 :place (term-place texpr)))
       (CONVERSIONMINUS
        (make-instance 'conversionminus-decl
-	 'id (when (name-expr? expr) (id expr))
-	 'expr expr
-	 'chain? (not last?)
-	 'place (term-place texpr)))
+	 :id (when (name-expr? expr) (id expr))
+	 :expr expr
+	 :chain? (not last?)
+	 :place (term-place texpr)))
       (t
        (make-instance 'conversion-decl
-	 'id (when (name-expr? expr) (id expr))
-	 'expr expr
-	 'chain? (not last?)
-	 'place (term-place texpr))))))
+	 :id (when (name-expr? expr) (id expr))
+	 :expr expr
+	 :chain? (not last?)
+	 :place (term-place texpr))))))
 
 
 ;;; auto-rewrites
@@ -681,11 +685,11 @@
   (let ((rnames (xt-rewrite-names (term-args decl))))
     (case (sim-term-op decl)
       (AUTO-REWRITE (make-instance 'auto-rewrite-decl
-		      'rewrite-names rnames))
+		      :rewrite-names rnames))
       (AUTO-REWRITEPLUS (make-instance 'auto-rewrite-plus-decl
-			  'rewrite-names rnames))
+			  :rewrite-names rnames))
       (AUTO-REWRITEMINUS (make-instance 'auto-rewrite-minus-decl
-			   'rewrite-names rnames)))))
+			   :rewrite-names rnames)))))
 
 (defun xt-rewrite-names (rnames)
   (mapcar #'xt-rewrite-name rnames))
@@ -697,24 +701,24 @@
     (case (sim-term-op kind)
       (LAZY (case (sim-term-op qual)
 	      (TYPE (change-class name 'lazy-constant-rewrite-name
-				  'declared-type (xt-not-enum-type-expr
+				  :declared-type (xt-not-enum-type-expr
 						  (term-arg0 qual))))
 	      (FORMULA (change-class name 'lazy-formula-rewrite-name
-				     'spelling (sim-term-op (term-arg0 qual))))
+				     :spelling (sim-term-op (term-arg0 qual))))
 	      (t (change-class name 'lazy-rewrite-name))))
       (EAGER (case (sim-term-op qual)
 	       (TYPE (change-class name 'eager-constant-rewrite-name
-		       'declared-type (xt-not-enum-type-expr
+		       :declared-type (xt-not-enum-type-expr
 				       (term-arg0 qual))))
 	       (FORMULA (change-class name 'eager-formula-rewrite-name
-			  'spelling (sim-term-op (term-arg0 qual))))
+			  :spelling (sim-term-op (term-arg0 qual))))
 	       (t (change-class name 'eager-rewrite-name))))
       (MACRO (case (sim-term-op qual)
 	       (TYPE (change-class name 'macro-constant-rewrite-name
-		       'declared-type (xt-not-enum-type-expr
+		       :declared-type (xt-not-enum-type-expr
 				       (term-arg0 qual))))
 	       (FORMULA (change-class name 'macro-formula-rewrite-name
-			  'spelling (sim-term-op (term-arg0 qual))))
+			  :spelling (sim-term-op (term-arg0 qual))))
 	       (t (change-class name 'macro-rewrite-name)))))))
 
 (defun xt-rewrite-fnum (fnum)
@@ -724,11 +728,11 @@
 		   (+ num))))
     (case (sim-term-op (term-arg1 fnum))
       (LAZY (make-instance 'lazy-fnum-rewrite
-	      'fnum number))
+	      :fnum number))
       (EAGER (make-instance 'eager-fnum-rewrite
-	       'fnum number))
+	       :fnum number))
       (MACRO (make-instance 'macro-fnum-rewrite
-	       'fnum number)))))
+	       :fnum number)))))
 
 (defun xt-chained-decls (idops dtype formals decl absyn &optional result)
   (if (null idops)
@@ -739,28 +743,29 @@
 			  (let ((tid (xt-idop (term-arg0 (car idops))))
 				(types (term-args (term-arg1 (car idops)))))
 			    (change-class (copy decl) 'formal-type-appl-decl
-			      'id tid
-			      'parameters (mapcar #'xt-type-expr types))))
+			      :id tid
+			      :parameters (mapcar #'xt-type-expr types))))
 			 (t
 			  (copy decl
-			    'id (if (is-id (car idops))
+			    :id (if (is-id (car idops))
 				    (ds-vid (car idops))
 				    (xt-idop (car idops)))
-			    'chain? t)))
+			    :chain? t)))
 		       (progn (case (sim-term-op (car idops))
 				(IDOPAPPL
 				 (let ((tid (xt-idop (term-arg0 (car idops))))
 				       (types (term-args (term-arg1 (car idops)))))
 				   (change-class decl 'formal-type-appl-decl
-				     'id tid
-				     'parameters (mapcar #'xt-type-expr types))))
+				     :id tid
+				     :parameters (mapcar #'xt-type-expr types))))
 				(t
 				 (setf (id decl)
 				       (if (is-id (car idops))
 					   (ds-vid (car idops))
 					   (xt-idop (car idops))))))
 			      decl))))
-	(when (and (slot-exists-p ndecl 'declared-type)
+	(assert (id ndecl))
+	(when (and (slot-exists-p ndecl :declared-type)
 		   (declared-type ndecl)
 		   (not (eq (sim-term-op dtype) 'NO-TYPE-EXPR))
 		   (not (typep decl 'pred-bind-decl)))
@@ -842,13 +847,13 @@
 		(place (term-place (term-arg0 (car (term-args idops)))))
 		(formals (xt-typed-id-bind-decl id type place))
 		(dtype (make-instance (if type 'setsubtype 'nsetsubtype)
-			 'supertype type
-			 'formals formals
-			 'formula (xt-expr expr)
-			 'place (term-place type-expr))))
+			 :supertype type
+			 :formals formals
+			 :formula (xt-expr expr)
+			 :place (term-place type-expr))))
 	   (make-instance 'pred-bind-decl
-	     'declared-type dtype
-	     'place (term-place typed-ids))))
+	     :declared-type dtype
+	     :place (term-place typed-ids))))
      typed-ids)))
 
 (defun xt-typed-id (typed-id)
@@ -864,24 +869,24 @@
 	       (place (term-place idop))
 	       (formals (xt-typed-id-bind-decl id type place))
 	       (dtype (make-instance (if type 'setsubtype 'nsetsubtype)
-			'supertype type
-			'formals formals
-			'formula (xt-expr expr)
-			'place (term-place type-expr))))
+			:supertype type
+			:formals formals
+			:formula (xt-expr expr)
+			:place (term-place type-expr))))
 	  (make-instance 'pred-bind-decl
-	    'id (xt-idop idop)
-	    'declared-type dtype
-	    'place (term-place typed-id))))))
+	    :id (xt-idop idop)
+	    :declared-type dtype
+	    :place (term-place typed-id))))))
 
 (defun xt-typed-id-bind-decl (id type place)
   (if type
       (make-instance 'bind-decl
-	'id id
-	'declared-type type
-	'place place)
+	:id id
+	:declared-type type
+	:place place)
       (make-instance 'untyped-bind-decl
-	'id id
-	'place place)))
+	:id id
+	:place place)))
 
 ;;; Declarations
 
@@ -913,38 +918,38 @@
     (if (eq tkey 'TYPE)
 	(case (sim-term-op type-expr)
 	  (NOTYPE (make-instance 'formal-type-decl
-		    'place (term-place ftype-decl)))
+		    :place (term-place ftype-decl)))
 	  (STRUCT-SUBTYPE (make-instance 'formal-struct-subtype-decl
-			    'type-expr (xt-not-enum-type-expr type-expr)
-			    'place (term-place ftype-decl)))
+			    :type-expr (xt-not-enum-type-expr type-expr)
+			    :place (term-place ftype-decl)))
 	  (t (make-instance 'formal-subtype-decl
-	       'type-expr (xt-not-enum-type-expr type-expr)
-	       'place (term-place ftype-decl))))
+	       :type-expr (xt-not-enum-type-expr type-expr)
+	       :place (term-place ftype-decl))))
 	(case (sim-term-op type-expr)
 	  (NOTYPE (make-instance 'formal-nonempty-type-decl
-		    'keyword tkey
-		    'place (term-place ftype-decl)))
+		    :keyword tkey
+		    :place (term-place ftype-decl)))
 	  (STRUCT-SUBTYPE (make-instance 'formal-nonempty-struct-subtype-decl
-			    'type-expr (xt-not-enum-type-expr type-expr)
-			    'keyword tkey
-			    'place (term-place ftype-decl)))
+			    :type-expr (xt-not-enum-type-expr type-expr)
+			    :keyword tkey
+			    :place (term-place ftype-decl)))
 	  (t (make-instance 'formal-nonempty-subtype-decl
-	       'type-expr (xt-not-enum-type-expr type-expr)
-	       'keyword tkey
-	       'place (term-place ftype-decl)))))))
+	       :type-expr (xt-not-enum-type-expr type-expr)
+	       :keyword tkey
+	       :place (term-place ftype-decl)))))))
 
 (defun xt-fconst-decl (fconst-decl)
   (let ((dtype (term-arg0 fconst-decl)))
     (values (make-instance 'formal-const-decl
-	      'declared-type (xt-not-enum-type-expr dtype)
-	      'place (term-place fconst-decl))
+	      :declared-type (xt-not-enum-type-expr dtype)
+	      :place (term-place fconst-decl))
 	    dtype)))
 
 (defun xt-ftheory-decl (ftheory-decl)
   (let ((dmodname (term-arg0 ftheory-decl)))
     (values (make-instance 'formal-theory-decl
-	      'theory-name (xt-modname dmodname)
-	      'place (term-place ftheory-decl))
+	      :theory-name (xt-modname dmodname)
+	      :place (term-place ftheory-decl))
 	    dmodname)))
 
 (defun xt-lib-decl (lib-decl)
@@ -952,23 +957,23 @@
     (make-instance (if (is-sop 'NOEQ (term-arg0 lib-decl))
 		       'lib-decl
 		       'lib-eq-decl)
-      'lib-string libstr
-      'place (term-place lib-decl))))
+      :lib-string libstr
+      :place (term-place lib-decl))))
 
 (defun xt-theory-decl (theory-decl)
   (make-instance 'mod-decl
-    'modname (xt-modname (term-arg0 theory-decl))
-    'place (term-place theory-decl)))
+    :modname (xt-modname (term-arg0 theory-decl))
+    :place (term-place theory-decl)))
 
 (defun xt-uninterp-type-decl (utd)
   (let ((tkey (sim-term-op (term-arg0 utd)))
 	(place (term-place utd)))
     (if (eq tkey 'TYPE)
 	(make-instance 'type-decl
-	  'place place)
+	  :place place)
 	(make-instance 'nonempty-type-decl
-	  'keyword tkey
-	  'place place))))
+	  :keyword tkey
+	  :place place))))
 
 (defun xt-type-decl (type-decl)
   (let* ((tkey (sim-term-op (term-arg0 type-decl)))
@@ -990,40 +995,40 @@
 	  ((eq tkey 'TYPE)
 	   (case (sim-term-op (term-arg0 tdef))
 	     (EQUAL (make-instance 'type-eq-decl
-		      'type-expr texpr
-		      'contains contains
-		      'place place))
+		      :type-expr texpr
+		      :contains contains
+		      :place place))
 	     (FROM (make-instance 'type-from-decl
-		     'type-expr texpr
-		     'contains contains
-		     'place place))
+		     :type-expr texpr
+		     :contains contains
+		     :place place))
 	     (t (make-instance 'struct-subtype-decl
-		  'type-expr texpr
-		  'contains contains
-		  'place place))))
+		  :type-expr texpr
+		  :contains contains
+		  :place place))))
 	  (t
 	   (case (sim-term-op (term-arg0 tdef))
 	     (EQUAL (make-instance 'nonempty-type-eq-decl
-		      'keyword tkey
-		      'type-expr texpr
-		      'contains contains
-		      'place place))
+		      :keyword tkey
+		      :type-expr texpr
+		      :contains contains
+		      :place place))
 	     (FROM (make-instance 'nonempty-type-from-decl
-		     'keyword tkey
-		     'type-expr texpr
-		     'contains contains
-		     'place place))
+		     :keyword tkey
+		     :type-expr texpr
+		     :contains contains
+		     :place place))
 	     (t (make-instance 'nonempty-struct-subtype-decl
-		  'keyword tkey
-		  'type-expr texpr
-		  'contains contains
-		  'place place)))))))
+		  :keyword tkey
+		  :type-expr texpr
+		  :contains contains
+		  :place place)))))))
 
 (defun xt-var-decl (var-decl)
   (let ((dtype (term-arg0 var-decl)))
     (values (make-instance 'var-decl
-	      'declared-type (xt-not-enum-type-expr dtype)
-	      'place (term-place var-decl))
+	      :declared-type (xt-not-enum-type-expr dtype)
+	      :place (term-place var-decl))
 	    dtype)))
 
 (defun xt-const-decl (const-decl)
@@ -1031,9 +1036,9 @@
 	 (type-expr (xt-not-enum-type-expr dtype))
 	 (value (cadr (term-args const-decl))))
     (values (make-instance 'const-decl
-	      'declared-type type-expr
-	      'definition (when value (xt-expr value))
-	      'place (term-place const-decl))
+	      :declared-type type-expr
+	      :definition (when value (xt-expr value))
+	      :place (term-place const-decl))
 	    dtype)))
 
 (defun xt-macro-decl (macro-decl)
@@ -1041,9 +1046,9 @@
 	 (type-expr (xt-not-enum-type-expr dtype))
 	 (value (term-arg1 macro-decl)))
     (values (make-instance 'macro-decl
-	      'declared-type type-expr
-	      'definition (xt-expr value)
-	      'place (term-place macro-decl))
+	      :declared-type type-expr
+	      :definition (xt-expr value)
+	      :place (term-place macro-decl))
 	    dtype)))
 
 (defun xt-def-decl (def-decl)
@@ -1052,46 +1057,46 @@
 	(meas (term-arg2 def-decl))
 	(ordering (term-arg3 def-decl)))
     (values (make-instance 'def-decl
-	      'declared-type (xt-not-enum-type-expr type-expr)
-	      'definition (xt-expr def)
-	      'declared-measure (xt-expr meas)
-	      'ordering (unless (is-sop 'NOEXPR ordering)
+	      :declared-type (xt-not-enum-type-expr type-expr)
+	      :definition (xt-expr def)
+	      :declared-measure (xt-expr meas)
+	      :ordering (unless (is-sop 'NOEXPR ordering)
 			  (xt-expr ordering))
-	      'place (term-place def-decl))
+	      :place (term-place def-decl))
 	    type-expr)))
 
 (defun xt-ind-decl (ind-decl)
   (let ((type-expr (term-arg0 ind-decl))
 	(def (term-arg1 ind-decl)))
     (values (make-instance 'inductive-decl
-	      'declared-type (xt-not-enum-type-expr type-expr)
-	      'definition (xt-expr def)
-	      'place (term-place ind-decl))
+	      :declared-type (xt-not-enum-type-expr type-expr)
+	      :definition (xt-expr def)
+	      :place (term-place ind-decl))
 	    type-expr)))
 
 (defun xt-corec-decl (corec-decl)
   (let ((type-expr (term-arg0 corec-decl))
 	(def (term-arg1 corec-decl)))
     (values (make-instance 'corecursive-decl
-	      'declared-type (xt-not-enum-type-expr type-expr)
-	      'definition (xt-expr def)
-	      'place (term-place corec-decl))
+	      :declared-type (xt-not-enum-type-expr type-expr)
+	      :definition (xt-expr def)
+	      :place (term-place corec-decl))
 	    type-expr)))
 
 (defun xt-coind-decl (ind-decl)
   (let ((type-expr (term-arg0 ind-decl))
 	(def (term-arg1 ind-decl)))
     (values (make-instance 'coinductive-decl
-	      'declared-type (xt-not-enum-type-expr type-expr)
-	      'definition (xt-expr def)
-	      'place (term-place ind-decl))
+	      :declared-type (xt-not-enum-type-expr type-expr)
+	      :definition (xt-expr def)
+	      :place (term-place ind-decl))
 	    type-expr)))
 
 (defun xt-assumption (assumption)
   (make-instance 'formula-decl
-    'spelling 'ASSUMPTION
-    'definition (xt-expr (term-arg0 assumption))
-    'place (term-place assumption)))
+    :spelling 'ASSUMPTION
+    :definition (xt-expr (term-arg0 assumption))
+    :place (term-place assumption)))
 
 (defun xt-formula-decl (formula-decl)
   (let ((fname (term-arg0 formula-decl))
@@ -1101,9 +1106,9 @@
       (parse-error fname
 	"The OBLIGATION keyword is not allowed here"))
     (make-instance 'formula-decl
-      'spelling (sim-term-op fname)
-      'definition (xt-expr expr)
-      'place (term-place formula-decl))))
+      :spelling (sim-term-op fname)
+      :definition (xt-expr expr)
+      :place (term-place formula-decl))))
 
 
 ;;; Type Expressions
@@ -1147,17 +1152,17 @@
   (let ((name (xt-type-name type-expr))
 	(extension (xt-type-extension (term-arg1 type-expr))))
     (make-instance 'type-extension
-      'type name
-      'extension extension
-      'place (term-place type-expr))))
+      :type name
+      :extension extension
+      :place (term-place type-expr))))
 
 (defun xt-extended-type (type-expr)
   (let ((type (xt-type-expr (term-arg0 type-expr)))
 	(extension (xt-type-extension (term-arg1 type-expr))))
     (make-instance 'type-extension
-      'type type
-      'extension extension
-      'place (term-place type-expr))))
+      :type type
+      :extension extension
+      :place (term-place type-expr))))
 
 (defun xt-struct-subtype (type-expr)
   (xt-type-expr (term-arg0 type-expr)))
@@ -1175,9 +1180,9 @@
   (let ((type (term-arg0 type-expr))
 	(args (term-arg1 type-expr)))
     (make-instance 'type-application
-      'type (change-class (xt-name type nil) 'type-name)
-      'parameters (mapcar #'xt-expr (term-args args))
-      'place (term-place type-expr))))
+      :type (change-class (xt-name type nil) 'type-name)
+      :parameters (mapcar #'xt-expr (term-args args))
+      :place (term-place type-expr))))
 
 (defun xt-enumtype (type-expr)
   (let ((args (xt-enumtype-args (term-arg0 type-expr))))
@@ -1188,8 +1193,8 @@
 	 (mapcar #'(lambda (e)
 		     (let* ((id (xt-idop e))
 			    (constr (make-instance 'simple-constructor
-				     'id id
-				     'recognizer
+				     :id id
+				     :recognizer
 				     (makesym "~a?" (if (memq id '(O |o|))
 							'O
 							(op-to-id id))))))
@@ -1198,8 +1203,8 @@
 		       constr))
 		 args)))
     (make-instance 'enumtype
-      'constructors constrs
-      'place (term-place enum))))
+      :constructors constrs
+      :place (term-place enum))))
 
 (defun xt-enumtype-args (args &optional result)
   (if (is-sop 'SET-FORMALS args)
@@ -1224,13 +1229,13 @@
 	 (pred (make-xt-bind-expr 'set-expr set-expr set-expr)))
     (setf (place pred) (term-place type-expr))
     (make-instance 'subtype
-      'predicate pred
-      'place (term-place type-expr))))
+      :predicate pred
+      :place (term-place type-expr))))
 	  
 (defun xt-expr-as-type (expr-as-type)
   (make-instance 'expr-as-type
-    'expr (xt-expr (term-arg0 expr-as-type))
-    'place (term-place expr-as-type)))
+    :expr (xt-expr (term-arg0 expr-as-type))
+    :place (term-place expr-as-type)))
 
 (defun xt-idops (idops)
   (mapcar #'xt-idop (term-args idops)))
@@ -1248,15 +1253,15 @@
 		      (parse-error dep-type-exprs
 			"Dependent types not allowed in cotuple types")
 		      (make-instance 'cotupletype
-			'types dep-types
-			'place (term-place funtype)))
+			:types dep-types
+			:place (term-place funtype)))
 		  (if (singleton? dep-types)
 		      (progn
 			(incf (parens (car dep-types)))
 			(car dep-types))
 		      (make-instance 'tupletype
-			'types dep-types
-			'place (term-place funtype)))))
+			:types dep-types
+			:place (term-place funtype)))))
 	    (parse-error funtype "Function type must have a range"))
 	(let* ((ran (xt-not-enum-type-expr range))
 	       (dom (xt-dep-type-exprs dep-type-exprs))
@@ -1266,9 +1271,9 @@
 			   (COMP-TYPE-EXPR-NULL-1 'funtype)
 			   (FUNCTION 'functiontype)
 			   (ARRAY 'arraytype))
-	    'domain domain
-	    'range (xt-subst-new-domain-dep domain ran)
-	    'place (term-place funtype))))))
+	    :domain domain
+	    :range (xt-subst-new-domain-dep domain ran)
+	    :place (term-place funtype))))))
 
 (defmethod xt-subst-new-domain-dep (domain range)
   (declare (ignore domain))
@@ -1282,9 +1287,9 @@
 	  #'(lambda (ex)
 	      (let ((index (cdr (assq (id ex) bindings))))
 		(make-instance 'projappl
-		  'id (makesym "PROJ_~d" index)
-		  'index index
-		  'argument (make-instance 'name-expr 'id tvar))))
+		  :id (makesym "PROJ_~d" index)
+		  :index index
+		  :argument (make-instance 'name-expr :id tvar))))
 	  #'(lambda (ex)
 	      (and (typep ex 'name-expr)
 		   (assq (id ex) bindings)))))
@@ -1299,7 +1304,7 @@
 				 type-exprs)))
 	    (xt-funtype-dep-domain type-exprs tvar need-dep?))
 	  (make-instance 'domain-tupletype
-	    'types type-exprs))
+	    :types type-exprs))
       (car type-exprs)))
 
 (defun xt-funtype-dep-domain (type-exprs tvar need-dep? &optional (index 0)
@@ -1307,12 +1312,12 @@
   (if (null type-exprs)
       (if need-dep?
 	  (make-instance 'dep-binding
-	    'id tvar
-	    'declared-type (make-instance 'dep-domain-tupletype
-			     'types (nreverse types)
-			     'var-bindings (nreverse var-bindings)))
+	    :id tvar
+	    :declared-type (make-instance 'dep-domain-tupletype
+			     :types (nreverse types)
+			     :var-bindings (nreverse var-bindings)))
 	  (make-instance 'domain-tupletype
-	    'types (nreverse types)))
+	    :types (nreverse types)))
       (if (typep (car type-exprs) 'dep-binding)
 	  (let* ((id (id (car type-exprs)))
 		 (var-binding (cons id (1+ index)))
@@ -1343,14 +1348,14 @@
   (let ((idop (term-arg0 dep-binding))
 	(type (term-arg1 dep-binding)))
     (make-instance 'dep-binding
-      'id (xt-idop idop)
-      'declared-type (xt-not-enum-type-expr type)
-      'place (term-place dep-binding))))
+      :id (xt-idop idop)
+      :declared-type (xt-not-enum-type-expr type)
+      :place (term-place dep-binding))))
 
 (defun xt-recordtype (recordtype)
   (make-instance 'recordtype
-    'fields (xt-fields (term-arg0 recordtype))
-    'place (term-place recordtype)))
+    :fields (xt-fields (term-arg0 recordtype))
+    :place (term-place recordtype)))
 
 (defun xt-fields (fields)
   (mapcan #'xt-field-decls (term-args fields)))
@@ -1362,8 +1367,8 @@
 		      type-expr
 		      nil
 		      (make-instance 'field-decl
-			'declared-type (xt-not-enum-type-expr type-expr)
-			'place (term-place field-decls))
+			:declared-type (xt-not-enum-type-expr type-expr)
+			:place (term-place field-decls))
 		      field-decls)))
 
 ;; <quant-type({forall()|exists()},lambda-formals, type-expr)>
@@ -1374,13 +1379,13 @@
 	 (texpr (xt-type-expr (term-arg2 te))))
     (case (sim-term-op quant)
       (FORALL (make-instance 'forall-type
-		'bindings (caar bindings)
-		'type texpr
-		'place (term-place te)))
+		:bindings (caar bindings)
+		:type texpr
+		:place (term-place te)))
       (EXISTS (make-instance 'exists-type
-		'bindings (caar bindings)
-		'type texpr
-		'place (term-place te))))))
+		:bindings (caar bindings)
+		:type texpr
+		:place (term-place te))))))
 
 
 ;;; Expressions
@@ -1426,16 +1431,16 @@
   (let ((num (ds-number (term-arg0 expr))))
     (assert (integerp num))
     (make-instance 'number-expr
-      'number num
-      'place (term-place expr))))
+      :number num
+      :place (term-place expr))))
 
 (defun xt-string-expr (expr)
   (let ((string (ds-string (term-arg0 expr)))
 	(ne (mk-name-expr '|char|)))
     (make-instance 'string-expr
-      'string-value string
-      'operator (mk-name-expr '|list2finseq| (list (mk-actual ne)))
-      'argument (xt-string-to-charlist string (term-place expr)))))
+      :string-value string
+      :operator (mk-name-expr '|list2finseq| (list (mk-actual ne)))
+      :argument (xt-string-to-charlist string (term-place expr)))))
 
 (defun xt-string-to-charlist (string place)
   (let ((codes (xt-string-to-codes string 0 (length string) place nil)))
@@ -1456,11 +1461,11 @@
 		    cplace))
 	     (scdr (xt-string-to-charlist* (cdr codes) place)))
 	 (make-instance 'application
-	   'operator (add-place (mk-name-expr '|cons|) cplace)
-	   'argument (make-instance 'arg-tuple-expr
-		       'exprs (list scar scdr)
-		       'place aplace)
-	   'place aplace))))
+	   :operator (add-place (mk-name-expr '|cons|) cplace)
+	   :argument (make-instance 'arg-tuple-expr
+		       :exprs (list scar scdr)
+		       :place aplace)
+	   :place aplace))))
 
 (defun xt-string-to-codes (string pos len place codes)
   (if (>= pos len)
@@ -1564,62 +1569,62 @@
       (let* ((ex (xt-expr (car exprs)))
 	     (list (xt-list-expr* (cdr exprs) last-place)))
 	(make-instance 'list-expr
-	  'operator (make-instance 'name-expr
-		      'id '|cons|
-		      'place (place ex))
-	  'argument (make-instance 'arg-tuple-expr
-		      'exprs (list ex list)
-		      'place (place ex))
-	  'place (place ex)))
+	  :operator (make-instance 'name-expr
+		      :id '|cons|
+		      :place (place ex))
+	  :argument (make-instance 'arg-tuple-expr
+		      :exprs (list ex list)
+		      :place (place ex))
+	  :place (place ex)))
       (make-instance 'null-expr
-	'id '|null|
-	'place last-place)))
+	:id '|null|
+	:place last-place)))
 
 (defun xt-brack-expr (expr)
   (let ((args (term-args expr)))
     (if args
 	(make-instance 'bracket-expr
-	  'operator (make-instance 'name-expr
-		      'id '[\|\|]
-		      'place (term-place expr))
-	  'argument (xt-arg-expr args)
-	  'place (term-place expr))
+	  :operator (make-instance 'name-expr
+		      :id '[\|\|]
+		      :place (term-place expr))
+	  :argument (xt-arg-expr args)
+	  :place (term-place expr))
 	(make-instance 'name-expr
-	  'id '[\|\|]
-	  'place (term-place expr)))))
+	  :id '[\|\|]
+	  :place (term-place expr)))))
 
 (defun xt-paren-vbar-expr (expr)
   (let ((args (term-args expr)))
     (if args
 	(make-instance 'paren-vbar-expr
-	  'operator (make-instance 'name-expr
-		      'id '\(\|\|\)
-		      'place (term-place expr))
-	  'argument (xt-arg-expr args)
-	  'place (term-place expr))
+	  :operator (make-instance 'name-expr
+		      :id '\(\|\|\)
+		      :place (term-place expr))
+	  :argument (xt-arg-expr args)
+	  :place (term-place expr))
 	(make-instance 'name-expr
-	  'id '\(\|\|\)
-	  'place (term-place expr)))))
+	  :id '\(\|\|\)
+	  :place (term-place expr)))))
 
 (defun xt-brace-vbar-expr (expr)
   (let ((args (term-args expr)))
     (if args
 	(make-instance 'brace-vbar-expr
-	  'operator (make-instance 'name-expr
-		      'id '{\|\|}
-		      'place (term-place expr))
-	  'argument (xt-arg-expr args)
-	  'place (term-place expr))
+	  :operator (make-instance 'name-expr
+		      :id '{\|\|}
+		      :place (term-place expr))
+	  :argument (xt-arg-expr args)
+	  :place (term-place expr))
 	(make-instance 'name-expr
-	  'id '{\|\|}
-	  'place (term-place expr)))))
+	  :id '{\|\|}
+	  :place (term-place expr)))))
 
 (defun xt-arg-expr (args)
   (if (cdr args)
       (let ((exprs (mapcar #'xt-expr args)))
 	(make-instance 'arg-tuple-expr
-	  'exprs exprs
-	  'place (merge-places (place (car exprs))
+	  :exprs exprs
+	  :place (merge-places (place (car exprs))
 			       (place (car (last exprs))))))
       (xt-expr (car args))))
 
@@ -1641,25 +1646,25 @@
 		       (parse-error expr "Projection index may not be zero"))
 		      (t (case prkind
 			   (proj (make-instance 'projection-expr
-				   'id upid
-				   'actuals (actuals name)
-				   'index prindex
-				   'place (term-place expr)))
+				   :id upid
+				   :actuals (actuals name)
+				   :index prindex
+				   :place (term-place expr)))
 			   (in (make-instance 'injection-expr
-				 'id upid
-				 'actuals (actuals name)
-				 'index prindex
-				 'place (term-place expr)))
+				 :id upid
+				 :actuals (actuals name)
+				 :index prindex
+				 :place (term-place expr)))
 			   (in? (make-instance 'injection?-expr
-				  'id upid
-				  'actuals (actuals name)
-				  'index prindex
-				  'place (term-place expr)))
+				  :id upid
+				  :actuals (actuals name)
+				  :index prindex
+				  :place (term-place expr)))
 			   (out (make-instance 'extraction-expr
-				  'id upid
-				  'actuals (actuals name)
-				  'index prindex
-				  'place (term-place expr)))
+				  :id upid
+				  :actuals (actuals name)
+				  :index prindex
+				  :place (term-place expr)))
 			   (t (error "problem in xt-name-expr")))))
 		(progn (change-class name 'name-expr)
 		       (setf (place name) (term-place expr))
@@ -1687,9 +1692,9 @@
 
 (defun xt-rec-expr (rec-expr)
   (make-instance 'record-expr
-    'assignments (mapcar #'xt-assignment
+    :assignments (mapcar #'xt-assignment
 			 (term-args (term-arg0 rec-expr)))
-    'place (term-place rec-expr)))
+    :place (term-place rec-expr)))
 
 (defun xt-tuple-expr (expr)
   (let ((exprs (mapcar #'xt-expr (term-args expr))))
@@ -1697,28 +1702,28 @@
 	   (parse-error expr "Expression expected here"))
 	  ((cdr exprs)
 	   (make-instance 'tuple-expr
-	     'exprs exprs
-	     'place (term-place expr)))
+	     :exprs exprs
+	     :place (term-place expr)))
 	  (t (incf (parens (car exprs)))
 	     (car exprs)))))
 
 (defun xt-fieldex (expr)
   (make-instance 'fieldex
-    'id (ds-id (term-arg0 expr))
-    'actuals (unless (is-sop 'NOACTUALS (term-arg1 expr))
+    :id (ds-id (term-arg0 expr))
+    :actuals (unless (is-sop 'NOACTUALS (term-arg1 expr))
 	       (xt-actuals (term-arg1 expr)))
-    'place (term-place expr)))
+    :place (term-place expr)))
 
 (defun xt-fieldappl (expr)
   (make-instance 'fieldappl
-    'id (ds-id (term-arg1 expr))
-    'argument (xt-expr (term-arg0 expr))
-    'place (term-place expr)))
+    :id (ds-id (term-arg1 expr))
+    :argument (xt-expr (term-arg0 expr))
+    :place (term-place expr)))
 
 (defun xt-projex (expr)
   (make-instance 'projex
-    'index (ds-number (term-arg0 expr))
-    'actuals (unless (is-sop 'NOACTUALS (term-arg1 expr))
+    :index (ds-number (term-arg0 expr))
+    :actuals (unless (is-sop 'NOACTUALS (term-arg1 expr))
 	       (xt-actuals (term-arg1 expr)))))
 
 (defun xt-projappl (expr)
@@ -1726,27 +1731,27 @@
     (if (zerop index)
 	(parse-error (term-arg1 expr) "Projection index may not be zero")
 	(make-instance 'projappl
-	  'index index
-	  'argument (xt-expr (term-arg0 expr))
-	  'place (term-place expr)))))
+	  :index index
+	  :argument (xt-expr (term-arg0 expr))
+	  :place (term-place expr)))))
 
 (defun xt-term-expr (expr)
   (let* ((op (term-arg0 expr))
 	 (opid (sim-term-op op))
 	 (args (term-args (term-arg1 expr)))
 	 (ne (make-instance 'name-expr
-	       'id opid
-	       'place (term-place op))))
+	       :id opid
+	       :place (term-place op))))
     (make-instance 'infix-application
-      'operator ne
-      'argument (if (cdr args)
+      :operator ne
+      :argument (if (cdr args)
 		    (let ((exprs (mapcar #'xt-expr args)))
 		      (make-instance 'arg-tuple-expr
-			'exprs exprs
-			'place (merge-places (place (car exprs))
+			:exprs exprs
+			:place (merge-places (place (car exprs))
 					     (place (car (last exprs))))))
 		    (xt-expr (car args)))
-      'place (term-place expr))))
+      :place (term-place expr))))
 
 (defun xt-unary-term-expr (uexpr)
   (let* ((op (term-arg0 uexpr))
@@ -1754,9 +1759,9 @@
 	 (opex (mk-name-expr (sim-term-op op))))
     (setf (place opex) (term-place op))
     (make-instance 'unary-application
-      'operator opex
-      'argument (xt-expr expr)
-      'place (term-place uexpr))))
+      :operator opex
+      :argument (xt-expr expr)
+      :place (term-place uexpr))))
 
 (defvar *coercion-var-counter* (let ((x 0)) #'(lambda ()  (incf x))))
 
@@ -1765,10 +1770,10 @@
 	 (type (term-arg0 (term-arg1 coercion)))
 	 (var (makesym "x%~a" (funcall *coercion-var-counter*))))
     (make-instance 'coercion
-      'operator (mk-lambda-expr (list (mk-bind-decl var (xt-type-expr type)))
+      :operator (mk-lambda-expr (list (mk-bind-decl var (xt-type-expr type)))
 		  (mk-name-expr var))
-      'argument (xt-expr expr)
-      'place (term-place coercion))))
+      :argument (xt-expr expr)
+      :place (term-place coercion))))
 
 (defun xt-if-expr (expr)
   (let* ((cond (term-arg0 expr))
@@ -1780,17 +1785,17 @@
 		     (vector (starting-row place) (starting-col place)
 			     (starting-row place) (+ (starting-col place) 2))))
 	 (if-name (make-instance 'name-expr
-		    'id 'IF
-		    'place if-place)))
+		    :id 'IF
+		    :place if-place)))
     (make-instance 'if-expr
-      'operator if-name
-      'argument (make-instance 'arg-tuple-expr
-		  'exprs (list (xt-expr cond)
+      :operator if-name
+      :argument (make-instance 'arg-tuple-expr
+		  :exprs (list (xt-expr cond)
 			       (xt-expr then)
 			       (xt-elsif-expr (term-args elsif) else))
-		  'place (merge-places (term-place cond)
+		  :place (merge-places (term-place cond)
 				       (term-place else)))
-      'place (term-place expr))))
+      :place (term-place expr))))
 
 (defun xt-elsif-expr (elsifs else)
   (if (null elsifs)
@@ -1800,11 +1805,11 @@
 		      (vector (starting-row tplace) (starting-col tplace)
 			      (starting-row tplace) (+ (starting-col tplace) 5)))))
 	(make-instance 'chained-if-expr
-	  'operator (make-instance 'name-expr
-		      'id 'IF
-		      'place place)
-	  'argument (make-instance 'arg-tuple-expr
-		      'exprs (list (xt-expr (term-arg0 (car elsifs)))
+	  :operator (make-instance 'name-expr
+		      :id 'IF
+		      :place place)
+	  :argument (make-instance 'arg-tuple-expr
+		      :exprs (list (xt-expr (term-arg0 (car elsifs)))
 				   (xt-expr (term-arg1 (car elsifs)))
 				   (xt-elsif-expr (cdr elsifs) else)))))))
 
@@ -1815,63 +1820,63 @@
       (parse-error (term-arg1 expr) "argument expected here"))
     (cond ((typep op 'projection-expr)
 	   (make-instance 'projection-application
-	     'id (id op)
-	     'actuals (actuals op)
-	     'index (index op)
-	     'argument (xt-arg-expr args)
-	     'place (term-place expr)))
+	     :id (id op)
+	     :actuals (actuals op)
+	     :index (index op)
+	     :argument (xt-arg-expr args)
+	     :place (term-place expr)))
 	  ((typep op 'injection-expr)
 	   (make-instance 'injection-application
-	     'id (id op)
-	     'actuals (actuals op)
-	     'index (index op)
-	     'argument (xt-arg-expr args)
-	     'place (term-place expr)))
+	     :id (id op)
+	     :actuals (actuals op)
+	     :index (index op)
+	     :argument (xt-arg-expr args)
+	     :place (term-place expr)))
 	  ((typep op 'injection?-expr)
 	   (make-instance 'injection?-application
-	     'id (id op)
-	     'actuals (actuals op)
-	     'index (index op)
-	     'argument (xt-arg-expr args)
-	     'place (term-place expr)))
+	     :id (id op)
+	     :actuals (actuals op)
+	     :index (index op)
+	     :argument (xt-arg-expr args)
+	     :place (term-place expr)))
 	  ((typep op 'extraction-expr)
 	   (make-instance 'extraction-application
-	     'id (id op)
-	     'actuals (actuals op)
-	     'index (index op)
-	     'argument (xt-arg-expr args)
-	     'place (term-place expr)))
+	     :id (id op)
+	     :actuals (actuals op)
+	     :index (index op)
+	     :argument (xt-arg-expr args)
+	     :place (term-place expr)))
 	  (t (make-instance 'application
-	       'operator op
-	       'argument (xt-arg-expr args)
-	       'place (term-place expr))))))
+	       :operator op
+	       :argument (xt-arg-expr args)
+	       :place (term-place expr))))))
 
 
 (defun xt-bind-expr (bexpr)
   (let ((op (term-arg0 bexpr))
 	(body (term-arg1 bexpr)))
     (make-xt-bind-expr
-     #+(version>= 6)
+     #+(and allegro (version>= 6))
      (intern (string-downcase (symbol-name (sim-term-op op))) :pvs)
-     #-(version>= 6) (sim-term-op op)
+     #-(and allegro (version>= 6)) (sim-term-op op)
      body bexpr)))
 
 (defun xt-name-bind-expr (bexpr)
   (let ((op (term-arg0 bexpr))
 	(body (term-arg1 bexpr)))
     (make-instance 'binding-application
-      'operator (make-instance 'name-expr
-		  'id (ds-id op)
-		  'place (term-place op))
-      'argument (make-xt-bind-expr 'lambda-expr body nil)
-      'place (term-place bexpr))))
+      :operator (make-instance 'name-expr
+		  :id (ds-id op)
+		  :place (term-place op))
+      :argument (make-xt-bind-expr 'lambda-expr body nil)
+      :place (term-place bexpr))))
 
 (defun xt-skovar (expr)
   (make-instance 'name-expr
-    'id (makesym "~a!~d"
+    :id (makesym "~a!~d"
 		 (ds-id (term-arg0 expr))
 		 (ds-number (term-arg1 expr)))
-    'place (term-place expr)))
+    :place (term-place expr)))
 
 (defun make-xt-bind-expr (class body save-as)
   (let* ((set-expr? (is-sop 'SET-EXPR body))
@@ -1879,10 +1884,10 @@
 	 (bindings (xt-lambda-formals (term-arg0 body) commas?))
 	 (expr (xt-expr (term-arg1 body))))
     (make-instance class
-      'bindings (xt-flatten-bindings (car bindings) (if set-expr? 1 0))
-      'expression (make-xt-bind-expr* (cdr bindings) class expr)
-      'commas? commas?
-      'place (term-place save-as))))
+      :bindings (xt-flatten-bindings (car bindings) (if set-expr? 1 0))
+      :expression (make-xt-bind-expr* (cdr bindings) class expr)
+      :commas? commas?
+      :place (term-place save-as))))
 
 
 ;;; Checks whether the formals all make sense, and returns whether the
@@ -1997,17 +2002,17 @@
 (defun xt-lambda-formal (formal)
   (cond ((is-sop 'IDOP formal)
 	 (make-instance 'bind-decl
-	   'id (xt-idop formal)
-	   'place (term-place formal)))
+	   :id (xt-idop formal)
+	   :place (term-place formal)))
 	((is-sop 'SET-ID formal)
 	 (if (is-sop 'NOTYPE (term-arg1 formal))
 	     (make-instance 'untyped-bind-decl
-	       'id (xt-idop (term-arg0 formal))
-	       'place (term-place formal))
+	       :id (xt-idop (term-arg0 formal))
+	       :place (term-place formal))
 	     (make-instance 'bind-decl
-	       'id (xt-idop (term-arg0 formal))
-	       'declared-type (xt-type-expr (term-arg1 formal))
-	       'place (term-place formal))))
+	       :id (xt-idop (term-arg0 formal))
+	       :declared-type (xt-type-expr (term-arg1 formal))
+	       :place (term-place formal))))
 	(t (xt-lpdformals (term-args formal)))))
 
 (defun xt-lpdformals (adformals)
@@ -2074,9 +2079,9 @@
 (defun make-xt-bind-expr* (bindings class expr)
   (if bindings
       (make-instance class
-	'bindings (xt-flatten-bindings (car bindings) 0)
-	'expression (make-xt-bind-expr* (cdr bindings) class expr)
-	'chain? t)
+	:bindings (xt-flatten-bindings (car bindings) 0)
+	:expression (make-xt-bind-expr* (cdr bindings) class expr)
+	:chain? t)
       expr))
 
 (defun xt-set-expr (set-expr)
@@ -2086,7 +2091,7 @@
   (let* ((exprs (mapcar #'xt-expr (term-args exs)))
 	 (tvar (make-new-variable 'x exprs)))
     (make-instance 'set-list-expr
-      'exprs exprs)))
+      :exprs exprs)))
 
 (defun xt-let-expr (lexpr)
   (let* ((let-bindings (term-arg0 lexpr))
@@ -2100,16 +2105,16 @@
   (if (null bindings)
       expr
       (make-instance (if first? 'let-expr 'chained-let-expr)
-	'operator (make-instance 'lambda-expr
-		    'bindings (if (listp (car bindings))
+	:operator (make-instance 'lambda-expr
+		    :bindings (if (listp (car bindings))
 				  (car bindings)
 				  (list (car bindings)))
-		    'expression (xt-let-expr*
+		    :expression (xt-let-expr*
 				 expr (cdr bindings) (cdr bformals) (cdr args)
 				 lexpr)
-		    'place (term-place lexpr))
-	'argument (xt-let-expr-argument (reverse (car bformals)) (car args))
-	'place (term-place lexpr))))
+		    :place (term-place lexpr))
+	:argument (xt-let-expr-argument (reverse (car bformals)) (car args))
+	:place (term-place lexpr))))
 
 (defun xt-let-expr-argument (formals arg)
   (if (null formals)
@@ -2117,8 +2122,8 @@
       (xt-let-expr-argument
        (cdr formals)
        (make-instance 'let-lambda-expr
-	 'bindings (car formals)
-	 'expression arg))))
+	 :bindings (car formals)
+	 :expression arg))))
 
 (defun xt-where-expr (lexpr)
   (let* ((let-bindings (term-arg0 lexpr))
@@ -2132,15 +2137,15 @@
   (if (null bindings)
       expr
       (make-instance (if lexpr 'where-expr 'chained-where-expr)
-	'operator (make-instance 'lambda-expr
-		    'bindings (if (listp (car bindings))
+	:operator (make-instance 'lambda-expr
+		    :bindings (if (listp (car bindings))
 				  (car bindings)
 				  (list (car bindings)))
-		    'expression (xt-where-expr*
+		    :expression (xt-where-expr*
 				 expr (cdr bindings) (cdr bformals) (cdr args))
-		    'place (term-place lexpr))
-	'argument (xt-let-expr-argument (reverse (car bformals)) (car args))
-	'place (term-place lexpr))))
+		    :place (term-place lexpr))
+	:argument (xt-let-expr-argument (reverse (car bformals)) (car args))
+	:place (term-place lexpr))))
 
 (defun xt-let-bindings (let-bindings)
   (mapcar #'xt-let-bind (term-args let-bindings)))
@@ -2160,16 +2165,16 @@
 			    fmls))
 		  formals))
 	(make-instance 'untyped-bind-decl
-	  'id (xt-idop (term-arg0 bind))
-	  'place (term-place bind))
+	  :id (xt-idop (term-arg0 bind))
+	  :place (term-place bind))
 	(make-instance 'arg-bind-decl
-	  'id (xt-idop (term-arg0 bind))
-	  'declared-type (if formals
+	  :id (xt-idop (term-arg0 bind))
+	  :declared-type (if formals
 			     (xt-simplebind-funtype
 			      (reverse formals)
 			      (xt-type-expr (term-arg2 bind)))
 			     (xt-type-expr (term-arg2 bind)))
-	  'place (term-place bind)))))
+	  :place (term-place bind)))))
 
 (defun xt-simplebind-funtype (formals range)
   (if (null formals)
@@ -2182,8 +2187,8 @@
 	      (tvar (make-new-variable '|t| (cons range dom)))
 	      (domain (xt-funtype-domain dom range tvar)))
 	 (make-instance 'funtype
-	   'domain domain
-	   'range (xt-subst-new-domain-dep domain range))))))
+	   :domain domain
+	   :range (xt-subst-new-domain-dep domain range))))))
 
 (defun xt-simplebind-domain-type (fmls range)
   (if (or (id-occurs-in (id (car fmls)) (cdr fmls))
@@ -2215,15 +2220,15 @@
   (let ((expr (term-arg0 uexpr))
 	(assignments (term-arg1 uexpr)))
     (make-instance 'update-expr
-      'expression (xt-expr expr)
-      'assignments (mapcar #'xt-assignment (term-args assignments))
-      'place (term-place uexpr))))
+      :expression (xt-expr expr)
+      :assignments (mapcar #'xt-assignment (term-args assignments))
+      :place (term-place uexpr))))
 
 (defun xt-override-expr (oexpr)
   (make-instance 'override-expr
-    'left (xt-expr (term-arg0 oexpr))
-    'right (xt-expr (term-arg1 oexpr))
-    'place (term-place oexpr)))
+    :left (xt-expr (term-arg0 oexpr))
+    :right (xt-expr (term-arg1 oexpr))
+    :place (term-place oexpr)))
 
 (defun xt-cases-expr (cexpr)
   (let ((expr (term-arg0 cexpr))
@@ -2232,19 +2237,19 @@
     (if (some #'in-selection? selections)
 	(if (every #'in-selection? selections)
 	    (make-instance 'unpack-expr
-	      'expression (xt-expr expr)
-	      'selections selections
-	      'else-part (unless (is-sop 'EXPR-NULL-1 else)
+	      :expression (xt-expr expr)
+	      :selections selections
+	      :else-part (unless (is-sop 'EXPR-NULL-1 else)
 			   (xt-expr else))
-	      'place (term-place cexpr))
+	      :place (term-place cexpr))
 	    (parse-error cexpr
 	      "Can't mix constructors and IN selections"))
 	(make-instance 'cases-expr
-	  'expression (xt-expr expr)
-	  'selections selections
-	  'else-part (unless (is-sop 'EXPR-NULL-1 else)
+	  :expression (xt-expr expr)
+	  :selections selections
+	  :else-part (unless (is-sop 'EXPR-NULL-1 else)
 		       (xt-expr else))
-	  'place (term-place cexpr)))))
+	  :place (term-place cexpr)))))
 
 (defun xt-selections (sels)
   (mapcar #'xt-selection (term-args sels)))
@@ -2258,33 +2263,33 @@
 	(projection? id)
       (let ((constr (case kind
 		      (in (make-instance 'injection-expr
-			       'id (intern (string-upcase id))
-			       'index index
-			       'place (term-place expr)))
+			       :id (intern (string-upcase id))
+			       :index index
+			       :place (term-place expr)))
 		      (proj (parse-error sel "Projection illegal here"))
 		      (t (mk-name-expr id)))))
 	(setf (place constr) (term-place selector))
 	(if (eq kind 'in)
 	    (make-instance 'in-selection
-	      'constructor constr
-	      'args (if (is-sop 'SELECTION-NULL-1 args)
+	      :constructor constr
+	      :args (if (is-sop 'SELECTION-NULL-1 args)
 			(parse-error constr "Must provide an argument")
 			(mapcar #'(lambda (a) (make-instance 'bind-decl
-						'id (xt-idop a)
-						'place (term-place a)))
+						:id (xt-idop a)
+						:place (term-place a)))
 			  (term-args args)))
-	      'index index
-	      'expression (xt-expr expr)
-	      'place (term-place sel))
+	      :index index
+	      :expression (xt-expr expr)
+	      :place (term-place sel))
 	    (make-instance 'selection
-	      'constructor constr
-	      'args (unless (is-sop 'SELECTION-NULL-1 args)
+	      :constructor constr
+	      :args (unless (is-sop 'SELECTION-NULL-1 args)
 		      (mapcar #'(lambda (a) (make-instance 'bind-decl
-					      'id (xt-idop a)
-					      'place (term-place a)))
+					      :id (xt-idop a)
+					      :place (term-place a)))
 			(term-args args)))
-	      'expression (xt-expr expr)
-	      'place (term-place sel)))))))
+	      :expression (xt-expr expr)
+	      :place (term-place sel)))))))
 
 (defun xt-cond-expr (expr)
   (let* ((cases (term-args (term-arg0 expr)))
@@ -2307,29 +2312,29 @@
 	(setf (place ifname) (term-place (car cases)))
 	(if else-part
 	    (make-instance 'cond-expr
-	      'operator ifname
-	      'argument (make-instance 'arg-tuple-expr
-			  'exprs (list condition
+	      :operator ifname
+	      :argument (make-instance 'arg-tuple-expr
+			  :exprs (list condition
 				       then-part
 				       else-part)
-			  'place (place condition))
-	      'place (term-place (car cases)))
+			  :place (place condition))
+	      :place (term-place (car cases)))
 	    (make-instance 'last-cond-expr
-	      'operator ifname
-	      'argument (make-instance 'arg-tuple-expr
-			  'exprs (list condition
+	      :operator ifname
+	      :argument (make-instance 'arg-tuple-expr
+			  :exprs (list condition
 				       then-part
 				       then-part)
-			  'place (place condition))
-	      'place (term-place (car cases)))))
+			  :place (place condition))
+	      :place (term-place (car cases)))))
       (when else
 	(make-instance 'last-cond-expr
-	  'operator (mk-name-expr 'IF)
-	  'argument (make-instance 'arg-tuple-expr
-		      'exprs (list (mk-else-condition nil conditions)
+	  :operator (mk-name-expr 'IF)
+	  :argument (make-instance 'arg-tuple-expr
+		      :exprs (list (mk-else-condition nil conditions)
 				   else
 				   else)
-		      'place (place else))))))
+		      :place (place else))))))
 
 (defun xt-table-expr (expr)
   (let ((row-expr (unless (is-sop 'NOROWVAR (term-arg0 expr))
@@ -2348,12 +2353,12 @@
 		  row-headings)
 	(parse-error (term-arg0 expr) "Row headings must be given"))
       (make-instance 'table-expr
-	'row-expr row-expr
-	'col-expr col-expr
-	'row-headings row-headings
-	'col-headings col-headings
-	'table-entries rows
-	'place (term-place expr)))))
+	:row-expr row-expr
+	:col-expr col-expr
+	:row-headings row-headings
+	:col-headings col-headings
+	:table-entries rows
+	:place (term-place expr)))))
 
 (defun xt-col-headings (col-heading)
   (let ((expr (xt-expr (term-arg0 col-heading)))
@@ -2448,22 +2453,22 @@
 		   '(ASSIGN-ID ASSIGN-SKONAME ASSIGN-NUM)))
 	(if (eq sep 'CEQ)
 	    (make-instance 'uni-assignment
-	      'arguments (xt-assign assign)
-	      'expression (xt-expr expr)
-	      'place (term-place ass))
+	      :arguments (xt-assign assign)
+	      :expression (xt-expr expr)
+	      :place (term-place ass))
 	    (make-instance 'uni-maplet
-	      'arguments (xt-assign assign)
-	      'expression (xt-expr expr)
-	      'place (term-place ass)))
+	      :arguments (xt-assign assign)
+	      :expression (xt-expr expr)
+	      :place (term-place ass)))
 	(if (eq sep 'CEQ)
 	    (make-instance 'assignment
-	      'arguments (xt-assign assign)
-	      'expression (xt-expr expr)
-	      'place (term-place ass))
+	      :arguments (xt-assign assign)
+	      :expression (xt-expr expr)
+	      :place (term-place ass))
 	    (make-instance 'maplet
-	      'arguments (xt-assign assign)
-	      'expression (xt-expr expr)
-	      'place (term-place ass))))))
+	      :arguments (xt-assign assign)
+	      :expression (xt-expr expr)
+	      :place (term-place ass))))))
 
 (defun xt-assign (ass-args)
   (mapcar #'xt-assign* (term-args ass-args)))
@@ -2473,30 +2478,30 @@
     (ID-ASSIGN (let ((id (ds-id (term-arg0 ass-arg))))
 		 (if (every #'digit-char-p (string id))
 		     (list (make-instance 'proj-assign
-			 'number (parse-integer (string id))
-			 'place (term-place ass-arg)))
+			 :number (parse-integer (string id))
+			 :place (term-place ass-arg)))
 		     (list (make-instance 'id-assign
-			     'id id
-			     'place (term-place ass-arg))))))
+			     :id id
+			     :place (term-place ass-arg))))))
     (PROJ-ASSIGN (list (make-instance 'proj-assign
-			 'number (ds-number (term-arg0 ass-arg))
-			 'place (term-place ass-arg))))
+			 :number (ds-number (term-arg0 ass-arg))
+			 :place (term-place ass-arg))))
     (ASSIGN-ID (let ((id (ds-id (term-arg0 ass-arg))))
 		 (if (every #'digit-char-p (string id))
 		     (list (make-instance 'number-expr
-			     'number (parse-integer (string id))
-			     'place (term-place ass-arg)))
+			     :number (parse-integer (string id))
+			     :place (term-place ass-arg)))
 		     (list (make-instance 'name-expr
-			     'id id
-			     'place (term-place ass-arg))))))
+			     :id id
+			     :place (term-place ass-arg))))))
     (ASSIGN-SKONAME (list (make-instance 'name-expr
-			    'id (makesym "~a!~d"
+			    :id (makesym "~a!~d"
 					 (ds-id (term-arg0 ass-arg))
 					 (ds-number (term-arg1 ass-arg)))
-			    'place (term-place ass-arg))))
+			    :place (term-place ass-arg))))
     (ASSIGN-NUM (list (make-instance 'number-expr
-			'number (ds-number (term-arg0 ass-arg))
-			'place (term-place ass-arg))))
+			:number (ds-number (term-arg0 ass-arg))
+			:place (term-place ass-arg))))
     (ASSIGN-TUPLE (mapcar #'xt-expr (term-args ass-arg)))))
 
 (defun xt-assign-application (ass &optional args)
@@ -2525,16 +2530,16 @@
 	 (target (term-arg4 modname)))
     (make-instance (if (is-sop 'NOACTUALS actuals)
 		       'modname 'full-modname)
-      'id (ds-vid id)
-      'library (unless (is-sop 'NOLIB lib)
+      :id (ds-vid id)
+      :library (unless (is-sop 'NOLIB lib)
 		 (ds-vid lib))
-      'actuals (unless (is-sop 'NOACTUALS actuals)
+      :actuals (unless (is-sop 'NOACTUALS actuals)
 		 (xt-actuals actuals))
-      'mappings (unless (is-sop 'NOMAP mappings)
+      :mappings (unless (is-sop 'NOMAP mappings)
 		  (xt-mappings mappings))
-      'target (unless (is-sop 'NOTGT target)
+      :target (unless (is-sop 'NOTGT target)
 		(xt-modname target))
-      'place (term-place modname))))
+      :place (term-place modname))))
 
 ;;; name! means create a name no matter what; otherwise numbers create
 ;;; number-exprs
@@ -2561,8 +2566,8 @@
 			   (parse-integer (string (ds-id (term-arg0 idop)))))))
 	      (assert (integerp num))
 	      (make-instance 'number-expr
-		'number num
-		'place (term-place name)))
+		:number num
+		:place (term-place name)))
 	    (let* ((int-part (if (is-number (term-arg0 idop))
 				 (ds-number (term-arg0 idop))
 				 (parse-integer
@@ -2578,27 +2583,27 @@
 			       frac-part
 			       (parse-integer (string frac-part))))))
 	      (make-instance 'decimal
-		'operator (mk-name-expr '/)
-		'argument (mk-arg-tuple-expr
+		:operator (mk-name-expr '/)
+		:argument (mk-arg-tuple-expr
 			   (make-instance 'number-expr
-			     'number num)
+			     :number num)
 			   (make-instance 'number-expr
-			     'number denom)))))
+			     :number denom)))))
 	(make-instance 'name
-	  'id (if (is-sop 'NOMOD idop2)
+	  :id (if (is-sop 'NOMOD idop2)
 		  (xt-idop idop)
 		  (xt-idop idop2))
-	  'library (unless (is-sop 'NOLIB lib)
+	  :library (unless (is-sop 'NOLIB lib)
 		     (ds-vid lib))
-	  'actuals (unless (is-sop 'NOACTS actuals)
+	  :actuals (unless (is-sop 'NOACTS actuals)
 		     (xt-actuals actuals))
-	  'mappings (unless (is-sop 'NOMAP mappings)
+	  :mappings (unless (is-sop 'NOMAP mappings)
 		      (xt-mappings mappings))
-	  'mod-id (unless (is-sop 'NOMOD idop2)
+	  :mod-id (unless (is-sop 'NOMOD idop2)
 		    (xt-idop idop))
-	  'target (unless (is-sop 'NOTGT target)
+	  :target (unless (is-sop 'NOTGT target)
 		    (xt-modname target))
-	  'place (term-place name)))))
+	  :place (term-place name)))))
 
 (defun xt-actuals (actuals)
   (mapcar #'xt-actual (term-args actuals)))
@@ -2607,13 +2612,13 @@
   (if (eq (sim-term-op act) 'MAPPINGS)
       (parse-error act "Mappings must be preceded by a theory name")
       (make-instance 'actual
-	'expr (if (member (sim-term-op act)
+	:expr (if (member (sim-term-op act)
 			  '(SUBTYPE EXPR-AS-TYPE ENUM-OR-SUBTYPE
 				    FUNTYPE ;; PREDTYPE
 				    RECORDTYPE))
 		  (xt-not-enum-type-expr act)
 		  (xt-expr act))
-	'place (term-place act))))
+	:place (term-place act))))
 
 (defun xt-mappings (mappings)
   (mapcar #'xt-mapping (term-args mappings)))
@@ -2641,8 +2646,8 @@
 				   ex))
 			       ((number-expr? ex)
 				(make-instance 'name-expr
-				  'id (number ex)
-				  'place (place ex)))
+				  :id (number ex)
+				  :place (place ex)))
 			       (t (parse-error rhs
 				    "RHS must be an id or number")))))
 		     ((memq (sim-term-op rhs)
@@ -2655,54 +2660,54 @@
 	(case (sim-term-op mapping)
 	  (MAPPING-DEF
 	   (make-instance 'mapping-def
-	     'lhs (xt-mapping-lhs (term-arg0 mapping))
-	     'rhs (make-instance 'mapping-rhs 'expr expr 'place (place expr))
-	     'kind kind
-	     'declared-type dtype))
+	     :lhs (xt-mapping-lhs (term-arg0 mapping))
+	     :rhs (make-instance 'mapping-rhs :expr expr :place (place expr))
+	     :kind kind
+	     :declared-type dtype))
 	  (MAPPING-SUBST
 	   (make-instance 'mapping-subst
-	     'lhs (xt-mapping-lhs (term-arg0 mapping))
-	     'rhs (make-instance 'mapping-rhs 'expr expr 'place (place expr))
-	     'kind kind
-	     'declared-type dtype))
+	     :lhs (xt-mapping-lhs (term-arg0 mapping))
+	     :rhs (make-instance 'mapping-rhs :expr expr :place (place expr))
+	     :kind kind
+	     :declared-type dtype))
 	  (MAPPING-RENAME
 	   (make-instance 'mapping-rename
-	     'lhs (xt-mapping-lhs (term-arg0 mapping))
-	     'rhs (make-instance 'mapping-rhs-rename
-		    'expr expr 'place (place expr))
-	     'kind kind
-	     'declared-type dtype)))
+	     :lhs (xt-mapping-lhs (term-arg0 mapping))
+	     :rhs (make-instance 'mapping-rhs-rename
+		    :expr expr :place (place expr))
+	     :kind kind
+	     :declared-type dtype)))
 	(let ((formals (xt-pdf (term-arg1 lhs))))
 	  (case (sim-term-op mapping)
 	  (MAPPING-DEF
 	   (make-instance 'mapping-def-with-formals
-	     'lhs (xt-mapping-lhs (term-arg0 mapping))
-	     'rhs (make-instance 'mapping-rhs
-		    'expr (mk-lambda-exprs formals expr))
-	     'formals formals
-	     'kind kind
-	     'declared-type dtype))
+	     :lhs (xt-mapping-lhs (term-arg0 mapping))
+	     :rhs (make-instance 'mapping-rhs
+		    :expr (mk-lambda-exprs formals expr))
+	     :formals formals
+	     :kind kind
+	     :declared-type dtype))
 	  (MAPPING-SUBST
 	   (make-instance 'mapping-subst-with-formals
-	     'lhs (xt-mapping-lhs (term-arg0 mapping))
-	     'rhs (make-instance 'mapping-rhs
-		    'expr (mk-lambda-exprs formals expr))
-	     'formals formals
-	     'kind kind
-	     'declared-type dtype))
+	     :lhs (xt-mapping-lhs (term-arg0 mapping))
+	     :rhs (make-instance 'mapping-rhs
+		    :expr (mk-lambda-exprs formals expr))
+	     :formals formals
+	     :kind kind
+	     :declared-type dtype))
 	  (MAPPING-RENAME
 	   (make-instance 'mapping-rename-with-formals
-	     'lhs (xt-mapping-lhs (term-arg0 mapping))
-	     'rhs (make-instance 'mapping-rhs-rename
-		    'expr (mk-lambda-exprs formals expr))
-	     'formals formals
-	     'kind kind
-	     'declared-type dtype)))))))
+	     :lhs (xt-mapping-lhs (term-arg0 mapping))
+	     :rhs (make-instance 'mapping-rhs-rename
+		    :expr (mk-lambda-exprs formals expr))
+	     :formals formals
+	     :kind kind
+	     :declared-type dtype)))))))
 
 (defun xt-mapping-lhs (lhs)
   (make-instance 'name
-    'id (xt-idop (term-arg0 lhs))
-    'place (term-place lhs)))
+    :id (xt-idop (term-arg0 lhs))
+    :place (term-place lhs)))
 
 (defun xt-unique-name (name)
   (let ((uname (xt-name (term-arg0 name) t))
@@ -2725,7 +2730,7 @@
 	      (actuals name))
       (parse-error name "~a!~d is not a valid name" name number))
     (make-instance 'name
-      'id (makesym "~a!~d" (id name) number))))
+      :id (makesym "~a!~d" (id name) number))))
 
 (defun ds-vid (term)
   (let* ((tid (ds-id term))

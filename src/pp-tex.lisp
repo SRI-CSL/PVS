@@ -1110,7 +1110,7 @@
 		     #'(lambda (ex)
 			 (let ((var (car (rassoc (index ex) bindings))))
 			   (make-instance 'name-expr
-			     'id var)))
+			     :id var)))
 		     #'(lambda (ex)
 			 (and (typep ex 'projection-application)
 			      (typep (argument ex) 'name-expr)
