@@ -82,7 +82,8 @@
 (defun valid-url? (string)
   ;; It would be nice to actually check if the URI is real, instead of a
   ;; simple syntax check.
-  (ignore-errors (net.uri:parse-uri string)))
+  #+allegro (ignore-errors (net.uri:parse-uri string))
+  #-allegro t)
 
 (defun check-pvs-url-mappings (mappings basedir)
   (when mappings
@@ -591,7 +592,8 @@
 		   (prog1 ans
 		     (when (eq ans :auto)
 		       (setq *force-dirs* t)))))
-	     (excl:make-directory dir)
+	     #+allegro (excl:make-directory dir)
+	     #+cmu (unix:unix-mkdir dir #o777)
 	     (pvs-message "Directory ~a created" dir))
 	    (t (html-pvs-error "Directory ~a not created" dir))))))
 
