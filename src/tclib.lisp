@@ -320,7 +320,7 @@
   ;; Set up *default-pathname-defaults* and sys:*load-search-list*
   ;; so that simple loads from the pvs-lib.lisp file work.
   (let* ((*default-pathname-defaults* lib-path)
-	 (sys:*load-search-list* *pvs-library-path*)
+	 #+allegro (sys:*load-search-list* *pvs-library-path*)
 	 (lfile (format nil "~apvs-lib.lisp" lib-path))
 	 (*suppress-printing* t))
     (when (file-exists-p lfile)
@@ -385,7 +385,7 @@
 	     libloads))
 	  (t (pvs-message "Loading file ~a" file)
 	     (unwind-protect
-		 (progn (excl:set-case-mode :case-insensitive-lower)
+		 (progn #+allegro (excl:set-case-mode :case-insensitive-lower)
 			(multiple-value-bind (ignore error)
 			    (ignore-errors (load filename))
 			  (declare (ignore ignore))
@@ -394,7 +394,7 @@
 				   filestr error))
 				(t (pvs-message "~a loaded" filestr)
 				   (push file *libloads*)))))
-	       (excl:set-case-mode :case-sensitive-lower)
+	       #+allegro (excl:set-case-mode :case-sensitive-lower)
 	       (add-lowercase-prover-ids))))))
 
 
