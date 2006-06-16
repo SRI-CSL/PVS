@@ -154,6 +154,10 @@
       (write-array f *store-object-store* 0 (object-store 1))))
   t)
 
+#-allegro
+(defun write-array (stream array start end)
+  (write-sequence array stream :start start :end end))
+
 (defun store-obj (obj)
   (or (gethash obj *store-object-hash*)
       (prog1
@@ -266,7 +270,7 @@
 	   (update-fetched (svref *fetch-object-update-obj*
 				  *fetch-object-update-end*))))))))
 
-#+allegro
+#+(or allegro cmu)
 (defun fetch-object-from-file (file)
   (with-open-file (f file :direction :input :element-type '(unsigned-byte 32))
     (setf (object-store 0) (read-byte f))
@@ -371,13 +375,14 @@
     ;; int-char isn't standard Common Lisp any more, but it works in
     ;; Lucid and Allegro
     (dotimes (i len)
-      (setf (aref *temp-string* i) (int-char (stored-word (+ offset 1 i)))))
+      (setf (aref *temp-string* i) (code-char (stored-word (+ offset 1 i)))))
     *temp-string*))
 
 #+allegro
 (defun int-char (int)
   (code-char int))
 
+#+allegro
 (defun fetch-symbol ()
   (let ((str (fetch-temp-string 1)))
     (unless *fetch-object-case-ok?*
@@ -391,6 +396,20 @@
 	(intern (convert-fetched-string-to-lowercase str))
 	(intern str))))
 
+#-allegro
+(defun fetch-symbol ()
+  (let ((str (fetch-temp-string 1)))
+    (unless *fetch-object-case-ok?*
+      (if (every #'(lambda (ch)
+		     (or (not (alpha-char-p ch))
+			 (lower-case-p ch)))
+		 str)
+	  (setq *fetch-object-case-ok?* :upper)
+	  (setq *fetch-object-case-ok?* t)))
+    (if (eq *fetch-object-case-ok?* :upper)
+	(intern (convert-fetched-string-to-uppercase str))
+	(intern str))))
+
 (defun convert-fetched-string-to-lowercase (str)
   (let ((in-vertbars nil))
     (dotimes (i (length str))
@@ -400,6 +419,17 @@
 	      (in-vertbars nil)
 	      ((upper-case-p ch)
 	       (setf (char str i) (char-downcase ch)))))))
+  str)
+
+(defun convert-fetched-string-to-uppercase (str)
+  (let ((in-vertbars nil))
+    (dotimes (i (length str))
+      (let ((ch (char str i)))
+	(cond ((char= ch #\|)
+	       (setf in-vertbars (not in-vertbars)))
+	      (in-vertbars nil)
+	      ((lower-case-p ch)
+	       (setf (char str i) (char-upcase ch)))))))
   str)
 	
     
@@ -434,7 +464,7 @@
   (let* ((len (stored-word 1))
 	 (str (make-string len)))
     (dotimes (i len)
-      (setf (char str i) (int-char (stored-word (+ 2 i)))))
+      (setf (char str i) (code-char (stored-word (+ 2 i)))))
     str))
 
 ;; (defmethod store-object* ((obj pathname))
