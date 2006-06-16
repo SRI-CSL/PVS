@@ -14,18 +14,30 @@
 			   lhash-next))
 
 (defstruct (linked-hash-table (:conc-name lhash-))
-  table
-  next)
+  (table nil :type hash-table)
+  (next nil :type (or symbol linked-hash-table)))
 
 (defun make-lhash-table (&key (test 'eql) (size 67)
 				 (rehash-size 1.2) (rehash-threshold 0.6407767)
 				 (hash-function nil) (values t)
 				 (weak-keys nil))
   (make-linked-hash-table
-   :table (make-hash-table :test test :size size :rehash-size rehash-size
-			   :rehash-threshold rehash-threshold
-			   :hash-function hash-function :values values
-			   :weak-keys weak-keys)))
+   :table
+   #+allegro
+   (make-hash-table :test test :size size :rehash-size rehash-size
+		    :rehash-threshold rehash-threshold
+		    :hash-function hash-function :values values
+		    :weak-keys weak-keys)
+   #+cmu
+   (if (memq test '(eq eql equal equalp))
+       (make-hash-table :test test :size size :rehash-size rehash-size
+			:rehash-threshold rehash-threshold
+			:weak-p weak-keys)
+       (make-pvs-hash-table
+	:strong-eq? (eq test 'strong-tc-eq)
+	:weak-p weak-keys
+	:size size :rehash-size rehash-size
+	:rehash-threshold rehash-threshold))))
 
 (defun copy-lhash-table (lht &key (size 67) (rehash-size 1.2)
 			     (rehash-threshold 0.6407767))
@@ -34,14 +46,36 @@
 		lht)))
     (assert (hash-table-p ht))
     (make-linked-hash-table
-     :table (make-hash-table
-	     :test (hash-table-test ht)
-	     :size size
-	     :rehash-size rehash-size
-	     :rehash-threshold rehash-threshold
-	     :hash-function (excl:hash-table-hash-function ht)
-	     :values (excl:hash-table-values ht)
-	     :weak-keys (excl:hash-table-weak-keys ht))
+     :table
+     #+allegro
+     (make-hash-table
+      :test (hash-table-test ht)
+      :size size
+      :rehash-size rehash-size
+      :rehash-threshold rehash-threshold
+      :hash-function (excl:hash-table-hash-function ht)
+      :values (excl:hash-table-values ht)
+      :weak-keys (excl:hash-table-weak-keys ht))
+     #-allegro
+     (let* ((test (hash-table-test ht))
+	    (newht
+	     (if (memq test '(eq eql equal equalp))
+		 (make-hash-table
+		  :test test
+		  :size size
+		  :rehash-size rehash-size
+		  :rehash-threshold rehash-threshold
+		  :weak-p (lisp::hash-table-weak-p ht))
+		 (make-pvs-hash-table :strong-eq? (eq test 'strong-tc-eq)
+				      :weak-keys? (lisp::hash-table-weak-p ht)
+				      :size size
+				      :rehash-size rehash-size
+				      :rehash-threshold rehash-threshold
+				      :table (lisp::hash-table-table ht)))))
+       (declare (inline maphash))
+       (maphash #'(lambda (x y) (setf (gethash x newht) y))
+		ht)
+       newht)
      :next (if (linked-hash-table-p lht)
 	       lht
 	       (make-linked-hash-table
