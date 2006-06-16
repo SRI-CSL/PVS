@@ -86,11 +86,14 @@ intervenes."
 
 ;;; defdialect is defined in ilisp.el
 
-(defvar *pvs-initialized* nil)
+(defvar pvs-initialized nil)
 
 (defun pvs-init ()
   (setq ilisp-prefix-match t)
-  (pvsallegro "pvs" nil)
+  (case (intern (getenv "PVSLISP"))
+    (allegro (pvsallegro "pvs" nil))
+    (cmulisp (pvscmulisp "pvs" nil))
+    (t (error "Unknown lisp - %s" (getenv "PVSLISP"))))
   (save-excursion
     (set-buffer (ilisp-buffer))
     (setq ilisp-package-command "(pvs::lisp (let ((*package* *package*)) %s (package-name *package*)))"
@@ -109,7 +112,8 @@ intervenes."
   (add-hook 'kill-emacs-hook
     '(lambda () (when (and (funcall ilisp-buffer-function) (ilisp-process))
 		  (kill-process (ilisp-process)))))
-  ;;(setq *pvs-initialized* t)
+  ;; Set in pvs-init from the lisp image
+  ;;(setq pvs-initialized t)
   )
 
 (defun pvs-program ()
@@ -135,6 +139,22 @@ intervenes."
 	"^\\(Error:[^\n]*\\)\\|\\(Break:[^\n]*\\)")
   (setq pvs-gc-end-regexp ";;; Finished GC"))
 
+(defdialect pvscmulisp "pvs-cmulisp"
+  cmulisp
+  (pvs-comint-init)
+  ;;(setq comint-send-newline nil)
+  (setq ilisp-binary-extension (pvs-cmulisp-binary-extension))
+  (setq ilisp-init-binary-extension ilisp-binary-extension)
+  (setq ilisp-load-inits nil)
+  (setq ilisp-program (format "%s -qq" (pvs-program)))
+  (setq comint-prompt-regexp
+	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|(Y or N)\\|(Yes or No)\\|Please enter")
+  (setq comint-interrupt-regexp  "^Interrupted at")
+  (setq ilisp-error-regexp "^Restarts:$")
+  (setq pvs-top-regexp
+	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) ")
+  (setq pvs-gc-end-regexp ";;; Finished GC"))
+
 (defun pvs-allegro-binary-extension ()
   (let ((machine (getenv "PVSARCH")))
     (cond ((string-equal machine "sun4") ; Sun/Solaris
@@ -143,6 +163,16 @@ intervenes."
 	   "lfasl")
 	  ((string-equal machine "powerpc") ; Mac
 	   "mfasl")
+	  (t (error "Machine architecture %s not recognized" machine)))))
+
+(defun pvs-cmulisp-binary-extension ()
+  (let ((machine (getenv "PVSARCH")))
+    (cond ((string-equal machine "sun4") ; Sun/Solaris
+	   "sparcf")
+	  ((string-equal machine "ix86") ; Intel/Linux
+	   "x86f")
+	  ((string-equal machine "powerpc") ; Mac
+	   "ppcf")
 	  (t (error "Machine architecture %s not recognized" machine)))))
 
 (defun pvs-comint-init ()
@@ -651,7 +681,7 @@ window."
 			(y-or-n-p msg)))
 		(comint-simple-send (ilisp-process) "t")
 		(comint-simple-send (ilisp-process) "nil"))
-	  (quit (if (not *pvs-initialized*)
+	  (quit (if (not pvs-initialized)
 		    (comint-simple-send (ilisp-process) "nil")
 		    (comint-simple-send (ilisp-process) ":abort")
 		    (when (boundp 'pvs-error)
