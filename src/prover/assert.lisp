@@ -68,8 +68,7 @@
 			     (copy (rewrite-hash ps))
 			     (rewrite-hash ps)))
 	 (*subtype-hash* (if flush?
-			     (make-hash-table :hash-function 'pvs-sxhash
-					      :test 'tc-eq)
+			     (make-pvs-hash-table)
 			     (copy (subtype-hash ps))))
 	 (*assert-typepreds-off* (not type-constraints?))
 	 (*dp-state* (dp-state ps)))
@@ -4025,10 +4024,10 @@ e LHS free variables in ~a" hyp lhs)
 	;;assuming TCCS.  
 	(pushnew
 	 (make-instance 'rewrite
-	   'lhs lhs
-	   'rhs rhs
-	   'hyp hyp
-	   'res res)
+	   :lhs lhs
+	   :rhs rhs
+	   :hyp hyp
+	   :res res)
 	 (gethash decl
 		  *auto-rewrites*)
 	 :test #'(lambda (x y)(tc-eq (res x)(res y))))
@@ -4534,8 +4533,8 @@ e LHS free variables in ~a" hyp lhs)
 				    (+ (length (string (car res))) 2)
 				    :string t))
 		 (let* ((name (make-instance 'name
-			       'id (id (declaration res))
-			       'actuals (actuals (module-instance res))))
+			       :id (id (declaration res))
+			       :actuals (actuals (module-instance res))))
 		       (name-string (unparse name :string t)))
 		   (format t "~a: ~:[ ~;~%    ~]~a~2%"
 		     name-string
@@ -4559,8 +4558,8 @@ in reverse chronological order: ~3%")
 				    (+ (length (string (car res))) 2)
 				    :string t))
 		 (let* ((name (make-instance 'name
-			       'id (id (declaration res))
-			       'actuals (actuals (module-instance res))))
+			       :id (id (declaration res))
+			       :actuals (actuals (module-instance res))))
 		       (name-string (unparse name :string t)))
 		   (format t "~a: ~:[ ~;~%    ~]~a~2%"
 		     name-string
@@ -4584,8 +4583,8 @@ chronological order are:~3%")
 				   (+ (length (string (car res))) 2)
 				   :string t))
 		(let* ((name (make-instance 'name
-			       'id (id (declaration res))
-			       'actuals (actuals (module-instance res))))
+			       :id (id (declaration res))
+			       :actuals (actuals (module-instance res))))
 		       (name-string (unparse name :string t)))
 		  (format t "~a: ~:[ ~;~%    ~]~a~2%"
 		     name-string
