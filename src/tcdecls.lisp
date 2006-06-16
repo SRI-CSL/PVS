@@ -237,8 +237,8 @@
                               ~%  ~a"
 			    (id decl)
 			    (unparse (make-instance 'theory-abbreviation-decl
-				       'id (id decl)
-				       'theory-name theory-name)
+				       :id (id decl)
+				       :theory-name theory-name)
 			      :string t)))))
       (unless (interpretable? theory)
 	(pvs-info
@@ -252,8 +252,8 @@
 	  (typecheck-using (target theory-name)))
 	(typecheck-named-theory* theory
 				 (lcopy theory-name
-				   'mappings mappings
-				   'target nil)
+				   :mappings mappings
+				   :target nil)
 				 decl
 				 tgt-theory
 				 tgt-name)))))
@@ -412,7 +412,7 @@
 (defmethod typecheck-named-theory* ((theory datatype) theory-name decl
 				    tgt-theory tgt-name)
   (typecheck-named-theory* (adt-theory theory)
-			   (copy theory-name 'id (id (adt-theory theory)))
+			   (copy theory-name :id (id (adt-theory theory)))
 			   decl
 			   tgt-theory tgt-name))
 
@@ -507,11 +507,11 @@
     (if thinstances
 	(let ((imps (mapcar #'(lambda (thinst)
 				(make-instance 'importing
-				  'theory-name thinst))
+				  :theory-name thinst))
 		      thinstances)))
 	  (if (assuming stheory)
 	      (copy stheory
-		'assuming
+		:assuming
 		(append imps
 			(remove-if #'(lambda (x)
 				       (and (importing? x)
@@ -519,7 +519,7 @@
 						    :test #'tc-eq)))
 			  (assuming stheory))))
 	      (copy stheory
-		'theory
+		:theory
 		(append imps
 			(remove-if #'(lambda (x)
 				       (and (importing? x)
@@ -761,8 +761,8 @@
 	   (*tcc-conditions* (add-formals-to-tcc-conditions (formals decl)))
 	   (ptype (if (formals decl)
 		      (make-instance 'type-application
-			'type tn
-			'parameters (mapcar #'mk-name-expr
+			:type tn
+			:parameters (mapcar #'mk-name-expr
 				      (car (formals decl))))
 		      tn))
 	   (tval (type-def-decl-value decl ptype)))
@@ -795,7 +795,7 @@
     (set-formals-types (apply #'append (formals decl)))))
 
 (defmethod check-nonempty-type-of ((decl nonempty-type-def-decl))
-  (let ((ctype (copy (type-value decl) 'print-type nil)))
+  (let ((ctype (copy (type-value decl) :print-type nil)))
     (check-nonempty-type ctype decl)
     (setf (nonempty? (type-value decl)) (nonempty? ctype))))
 
@@ -831,13 +831,13 @@
 	   utype))
 	((enumtype? (type-expr decl))
 	 (change-class tn 'adt-type-name
-	   'adt (type-expr decl)
-	   'single-constructor? (singleton? (constructors (type-expr decl))))
+	   :adt (type-expr decl)
+	   :single-constructor? (singleton? (constructors (type-expr decl))))
 	 (set-nonempty-type tn)
 	 tn)
 	(t (let ((tval (typecheck* (type-expr decl) nil nil nil)))
 	     (set-type (type-expr decl) nil)
-	     (copy tval 'print-type tn)))))
+	     (copy tval :print-type tn)))))
 
 
 ;;; Var-decl
@@ -2296,8 +2296,8 @@
 		(make-tupletype-from-bindings bindings))))
     (setf (predicate type)
 	  (let ((expr (make-instance 'lambda-expr
-			'bindings bindings
-			'expression (formula type)))
+			:bindings bindings
+			:expression (formula type)))
 		(*bound-variables* (append bindings *bound-variables*)))
 	    (typecheck* expr (mk-funtype (mapcar #'type (bindings expr))
 					 (copy *boolean*))
@@ -2365,17 +2365,17 @@
 
 (defmethod generate-struct-subtype ((te recordtype) type)
   (make-instance 'struct-sub-recordtype
-    'type type
-    'print-type type
-    'fields (fields te)
-    'dependent? (dependent? te)))
+    :type type
+    :print-type type
+    :fields (fields te)
+    :dependent? (dependent? te)))
 
 (defmethod generate-struct-subtype ((te tupletype) type)
   (make-instance 'struct-sub-tupletype
-    'type type
-    'print-type type
-    'types (types te)
-    'dependent? (dependent? te)))
+    :type type
+    :print-type type
+    :types (types te)
+    :dependent? (dependent? te)))
 
 
 ;;; Tuple Types - in the following, the f_i are optional; any that are
@@ -2564,7 +2564,7 @@
 	     "Type ~a is a tupletype, ~a is not" (type te) (extension te)))
 	 (let* ((extended-type
 		 (typecheck* (copy slhstype
-			       'types (append (types slhstype)
+			       :types (append (types slhstype)
 					      (types srhstype)))
 			     nil nil nil)))
 	   (setf (print-type extended-type) te)
@@ -2578,10 +2578,10 @@
     (typecheck* (if (or (struct-sub-recordtype? rt1)
 			(struct-sub-recordtype? rt2))
 		    (make-instance 'struct-sub-recordtype
-		      'generated-by te
-		      'fields nfields)
+		      :generated-by te
+		      :fields nfields)
 		    (make-instance 'recordtype
-		      'fields nfields))
+		      :fields nfields))
 		nil nil nil)))
 
 (defun recordtype-union* (flds1 flds2 te &optional bindings nfields)
@@ -2661,7 +2661,7 @@
 
 (defmethod copy-judgement-subtype-without-types ((te type-application))
   (lcopy te
-    'parameters (mapcar #'(lambda (p)
+    :parameters (mapcar #'(lambda (p)
 			    (if (and (bind-decl? p)
 				     (not (untyped-bind-decl? p)))
 				(change-class (copy p) 'untyped-bind-decl)
@@ -2770,42 +2770,93 @@
 (defun typecheck-rec-judgement (decl expr)
   (change-class decl 'rec-application-judgement)
   (let* ((recdecl (declaration (operator* expr)))
-	 (def (definition recdecl))
+	 (def (rec-judgement-definition decl recdecl))
 	 (vid (make-new-variable 'v (list expr def)))
 	 (jtype	;;(rec-judgement-signature decl recdecl)
 	  ;;(recursive-signature recdecl)
 	  (type recdecl))
-	 (alist (pairlis-rec-formals (formals recdecl) (formals decl)))
-	 (sjtype (gensubst jtype
-		   #'(lambda (x) (declare (ignore x))
-		       (mk-name-expr (cdr (assq (declaration x) alist))))
-		   #'(lambda (x) (and (name-expr? x)
-				      (assq (declaration x) alist)))))
-	 ;;(vbd (make-bind-decl vid sjtype))
+;; 	 (sjtype (gensubst jtype
+;; 		   #'(lambda (x) (declare (ignore x))
+;; 		       (mk-name-expr (cdr (assq (declaration x) alist))))
+;; 		   #'(lambda (x) (and (name-expr? x)
+;; 				      (assq (declaration x) alist)))))
+	 (vbd (make-bind-decl vid jtype))
+	 (vname (mk-name-expr vbd))
+	 (arg-bds1 (mapcar #'(lambda (x) (mapcar #'copy x)) (formals decl)))
+	 (vterm (make!-applications vname
+				    (mapcar #'(lambda (x)
+						(mapcar #'mk-name-expr x))
+				      arg-bds1)))
+	 (precond (make!-forall-expr (mapcan #'copy-list arg-bds1)
+		    (make!-conjunction*
+		     (compatible-predicates (judgement-types+ vterm)
+					    (type decl) vterm))))
+	 (arg-bds2 (mapcar #'(lambda (x) (mapcar #'copy x)) (formals decl)))
+	 (*bound-variables* (cons vbd *bound-variables*))
+	 (alist (acons recdecl vname
+		       (pairlis-rec-formals (formals recdecl) arg-bds2)))
 	 ;;(nalist (acons recdecl vbd alist))
 	 (sdef (gensubst def
 		 #'(lambda (x) (declare (ignore x))
 		     (mk-name-expr (cdr (assq (declaration x) alist))))
 		 #'(lambda (x) (and (name-expr? x)
 				    (assq (declaration x) alist)))))
-	 (nexpr (gensubst expr
-		  #'(lambda (x) (declare (ignore x))
-		      (mk-name-expr (cdr (assq (declaration x) alist))))
-		  #'(lambda (x) (and (name-expr? x)
-				     (assq (declaration x) alist)))))
-	 (precond (make!-conjunction*
-		   (compatible-predicates (judgement-types+ nexpr)
-					  (type decl) nexpr)))
+;; 	 (nexpr (gensubst expr
+;; 		  #'(lambda (x) (declare (ignore x))
+;; 		      (mk-name-expr (cdr (assq (declaration x) alist))))
+;; 		  #'(lambda (x) (and (name-expr? x)
+;; 				     (assq (declaration x) alist)))))
+;; 	 (precond (make!-conjunction*
+;; 		   (compatible-predicates (judgement-types+ nexpr)
+;; 					  (type decl) nexpr)))
 	 (jsig (rec-judgement-signature decl recdecl))
-	 (nrange (if (dep-binding? (domain jsig))
-		     (substit (range jsig)
-		       (acons (domain jsig) sdef nil))
-		     (range jsig)))
-	 (*tcc-conditions* (cons precond *tcc-conditions*))
+	 (nrange (rec-judgement-range jsig decl))
+	 (*tcc-conditions* (append (mapcan #'copy-list arg-bds2)
+				   (cons precond
+					 (cons vbd *tcc-conditions*))))
 	 (*compatible-pred-reason*
 	  (acons (name decl) "recursive-judgement"
 		 *compatible-pred-reason*)))
-    (set-type sdef nrange)))
+    ;;(set-type sdef nrange)
+    (typecheck* (copy-untyped sdef) nrange nil nil)))
+
+(defun rec-judgement-range (jsig jdecl)
+  (rec-judgement-range* jsig (formals jdecl)))
+
+(defun rec-judgement-range* (jsig formals)
+  (if (null formals)
+      jsig
+      (rec-judgement-range*
+       (if (dep-binding? (domain jsig))
+	   (substit (range jsig) (acons (domain jsig)
+					(if (singleton? (car formals))
+					    (caar formals)
+					    (break))
+					nil))
+	   (range jsig))
+       (cdr formals))))
+
+(defun rec-judgement-definition (jdecl rdecl)
+  (rec-judgement-definition*
+   (formals jdecl)
+   (formals rdecl)
+   (definition rdecl)))
+
+(defun rec-judgement-definition* (jformals rformals def)
+  (if (null jformals)
+      (if (null rformals)
+	  def
+	  (make!-lambda-exprs rformals def))
+      (if (null rformals)
+	  (rec-judgement-definition*
+	   (cdr jformals)
+	   nil
+	   (let ((names (mapcar #'make-variable-expr (car jformals))))
+	     (make!-application* def names)))
+	  (rec-judgement-definition*
+	   (cdr jformals)
+	   (cdr rformals)
+	   def))))
 
 (defun pairlis-rec-formals (oldformals newformals &optional alist)
   (if (or (null oldformals)
@@ -2828,13 +2879,54 @@
 		   alist)
 	  (pairlis oldformals newformals alist))))
 
+
+;;; Given a recursive judgement decl jdecl and the associated recursive
+;;; function declaration recdecl, this function computes the judgement
+;;; signature.  The original recursive function is provided to take the
+;;; intersection types of the domain and range types, thus yielding more
+;;; accurate TCCs.  The tricky parts here are currying and dependent types,
+;;; in that the curry depth may not match, and either the original recursive
+;;; function type or the judgement type (or both) may be dependent types.
+
 (defun rec-judgement-signature (jdecl recdecl)
-  (let* ((rectype (type recdecl))
-	 (jtype (make-formals-funtype (formals jdecl) (type jdecl)))
-	 (ndom (mapcar #'intersection-type
-		 (domain* jtype) (domain* rectype)))
-	 (nrng (intersection-type (range jtype) (range rectype))))
-    (mk-funtype* ndom nrng)))
+  (rec-judgement-signature* (make-formals-funtype (formals jdecl) (type jdecl))
+			    (type recdecl)
+			    jdecl))
+
+(defmethod rec-judgement-signature* ((jtype funtype) (rtype funtype)
+				     jdecl &optional domtypes)
+  (let* ((jdom (domain jtype))
+	 (rdom (domain rtype))
+	 (idom (intersection-type jdom rdom))
+	 ;; idom is never a dep-binding, ndom is one if either jdom or rdom is
+	 (ndom (if (dep-binding? jdom)
+		   (if (tc-eq idom (type jdom))
+		       jdom
+		       (mk-dep-binding (id jdom) idom))
+		   (if (dep-binding? rdom)
+		       (mk-dep-binding (id rdom) idom)
+		       idom))))
+    (rec-judgement-signature*
+     (if (or (eq ndom jdom)
+	     (not (dep-binding? jdom)))
+	 (range jtype)
+	 (substit (range jtype) (acons jdom ndom nil)))
+     (if (and (dep-binding? ndom)
+	      (dep-binding? rdom))
+	 (substit (range rtype) (acons rdom ndom nil))
+	 (range rtype))
+     jdecl
+     (cons ndom domtypes))))
+
+(defmethod rec-judgement-signature* ((jtype funtype) rtype jdecl
+				     &optional domtypes)
+  (type-error jdecl "Recursive judgement has too many arguments"))
+
+(defmethod rec-judgement-signature* (jtype rtype jdecl &optional domtypes)
+  (let ((nrng (intersection-type jtype rtype)))
+    (mk-funtype* domtypes nrng)))
+
+
 
 (defun rec-judgement-type (recdom jdom recrng jrng &optional dom)
   (if (null recdom)
@@ -3034,9 +3126,9 @@
 		       (get-declarations (id disabled)))))
 	  (or edecl
 	      (let ((ndisabled (copy disabled
-				 'rewrite-names diff
-				 'module (current-theory)
-				 'generated-by disabled)))
+				 :rewrite-names diff
+				 :module (current-theory)
+				 :generated-by disabled)))
 		(assert (not (member ndisabled
 				     (remove-if-not #'(lambda (d)
 							(eq (module d) (current-theory)))
