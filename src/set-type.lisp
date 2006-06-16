@@ -106,13 +106,20 @@ required a context.")
 		 ((and (not *no-conversions-allowed*)
 		       (look-for-conversion ex expected)))
 		 (t (call-next-method)
-		    (unless (type ex)
-		      (type-incompatible ex (types ex) expected))))
-	   (setf (types ex) nil)))
+		    (check-type-incompatible ex)))
+	   (reset-types ex)))
   #+pvsdebug (assert (fully-typed? ex))
   #+pvsdebug (assert (fully-instantiated? ex))
   (unless (typep ex '(or branch lambda-expr update-expr cases-expr))
     (check-for-subtype-tcc ex expected)))
+
+(defun check-type-incompatible (ex)
+  (unless (type ex)
+    (type-incompatible ex (types ex) expected)))
+  
+
+(defun reset-types (ex)
+  (setf (types ex) nil))
 
 
 ;;; expand1 expands the top-level constant or application; it either
@@ -212,11 +219,16 @@ required a context.")
       (type-error ex "Bound variable ~a outside of context" ex))
     (unless (compatible? (type res) expected)
       (if (integerp (id ex))
-	  (change-class ex 'number-expr 'number (id ex)
-			'type (or *real* *number_field*))
+	  (change-class ex 'number-expr :number (id ex)
+			:type (or *real* *number_field*))
 	  (type-incompatible ex (list (type res)) expected)))
-    (unless (number-expr? ex)
-      (setf (type ex) (type res)))))
+    (set-type-name-expr* ex res)))
+
+(defmethod set-type-name-expr* ((ex name-expr) res)
+  (setf (type ex) (type res)))
+
+(defmethod set-type-name-expr* ((ex number-expr) res)
+  nil)
 
 (defmethod set-type* ((ex fieldex) expected)
   (assert (singleton? (types ex)))
@@ -240,9 +252,9 @@ required a context.")
 	 (var (make-variable-expr bd))
 	 (expr (make!-field-application (id ex) var)))
     (change-class ex 'fieldex-lambda-expr
-      'bindings (list bd)
-      'expression expr
-      'type (make-formals-funtype (list (list bd)) (type expr)))))
+      :bindings (list bd)
+      :expression expr
+      :type (make-formals-funtype (list (list bd)) (type expr)))))
 
 (defmethod set-type* ((ex projection-expr) expected)
   (assert (types ex))
@@ -267,9 +279,9 @@ required a context.")
 		    (compatible-type expected (car (types ex)))))
 	 (cotuptype (range (find-supertype etype)))
 	 (inrec (make-instance 'injection?-expr
-		    'id (makesym "IN?_~d" (index ex))
-		    'index (index ex)
-		    'type (mk-funtype cotuptype *boolean*)))
+		    :id (makesym "IN?_~d" (index ex))
+		    :index (index ex)
+		    :type (mk-funtype cotuptype *boolean*)))
 	 (insubtype (make!-expr-as-type inrec)))
     (setf (type ex) (mk-funtype (domain (find-supertype etype)) insubtype))))
 
@@ -291,9 +303,9 @@ required a context.")
 		    (compatible-type expected (car (types ex)))))
 	 (cotuptype (range (find-supertype etype)))
 	 (inrec (make-instance 'injection?-expr
-		    'id (makesym "IN?_~d" (index ex))
-		    'index (index ex)
-		    'type (mk-funtype cotuptype *boolean*)))
+		    :id (makesym "IN?_~d" (index ex))
+		    :index (index ex)
+		    :type (mk-funtype cotuptype *boolean*)))
 	 (insubtype (make!-expr-as-type inrec)))
     (setf (type ex) (mk-funtype insubtype (domain (find-supertype etype))))))
 
@@ -355,7 +367,13 @@ required a context.")
 (defmethod set-type* :around ((ex name-expr) expected)
   (declare (ignore expected))
   (call-next-method)
-  (when (and (name-expr? ex)
+  ;; Note that call-next-method can cause a conversion, so ex may no longer
+  ;; be a name-expr
+  (set-type-around-name-expr ex))
+
+(defmethod set-type-around-name-expr ((ex name-expr))
+  (when (and ;; Shouldn't be necessary - bug in CMU Lisp?
+	     #+cmu (name-expr? ex)
 	     (macro-decl? (declaration ex))
 	     (not (eq (declaration ex) (current-declaration)))
 	     (not (memq ex *applied-operators*)))
@@ -367,6 +385,9 @@ required a context.")
       (change-class ex (class-of def))
       (copy-slots ex def)
       (setf (from-macro ex) orig))))
+
+(defmethod set-type-around-name-expr (ex)
+  nil)
 
 (defmethod set-type* :around ((ex cases-expr) expected)
   (declare (ignore expected))
@@ -732,7 +753,7 @@ required a context.")
 
 (defun set-type-mappings (thinst theory)
   (when (mappings thinst)
-    (let ((cthinst (copy thinst 'mappings nil)))
+    (let ((cthinst (copy thinst :mappings nil)))
       (unless (fully-instantiated? cthinst)
 	(type-error thinst
 	  "Actual parameters must be provided to include mappings"))
@@ -940,30 +961,30 @@ required a context.")
 	       (list (mk-resolution decl (current-theory-name) tn)))
 	 (setf (type-value (rhs map)) tn)
 	 (setf (mapped-decl map)
-	       (copy decl 'id id 'module (current-theory) 'type-value tn))))
+	       (copy decl :id id :module (current-theory) :type-value tn))))
       (const-decl
        (let ((subst-type (subst-mod-params
 			  (type (declaration lhs))
-			  (lcopy thinst 'mappings previous-mappings)
+			  (lcopy thinst :mappings previous-mappings)
 			  (module (declaration lhs)))))
 	 (setf (mapped-decl map)
 	       (copy decl
-		 'id (id (expr rhs))
-		 'module (current-theory)
-		 'declared-type (or (print-type subst-type) subst-type)
-		 'type subst-type))
+		 :id (id (expr rhs))
+		 :module (current-theory)
+		 :declared-type (or (print-type subst-type) subst-type)
+		 :type subst-type))
 	 (setf (resolutions (expr rhs))
 	       (list (mk-resolution decl (current-theory-name) subst-type)))
 	 (setf (type (expr rhs)) subst-type)))
       (t (let* ((theory (from-theory (generated-theory decl)))
 		(ntheory (pc-parse (unparse (copy (generated-theory decl)
-					      'id (id (expr rhs)))
+					      :id (id (expr rhs)))
 				     :string t) 'adt-or-theory))
 		(*generate-tccs* 'none)
 		(*current-context* (make-new-context ntheory)))
 	   (change-class ntheory 'theory-interpretation
-		  'from-theory (from-theory (generated-theory decl))
-		  'from-theory-name (from-theory-name (generated-theory decl)))
+		  :from-theory (from-theory (generated-theory decl))
+		  :from-theory-name (from-theory-name (generated-theory decl)))
 	   (push ntheory (named-theories *current-context*))
 	   (typecheck* ntheory nil nil nil)
 	   (setf (generated-by ntheory) (id theory))
@@ -972,9 +993,9 @@ required a context.")
 		 (get-interpreted-mapping theory ntheory thinst))
 	   (setf (mapped-decl map)
 		 (copy decl
-		   'id (id (expr rhs))
-		   'generated-theory ntheory
-		   'saved-context (saved-context ntheory)))
+		   :id (id (expr rhs))
+		   :generated-theory ntheory
+		   :saved-context (saved-context ntheory)))
 	   (setf (resolutions (expr rhs))
 		 (list (mk-resolution ntheory
 			 (mk-modname (id ntheory)) nil))) )))))
@@ -1018,7 +1039,7 @@ required a context.")
 		  (set-type-mappings (name-to-modname (expr rhs))
 				     (declaration (expr rhs))))))))
     (t (let* ((mapthinst (lcopy thinst
-			    'mappings (append mappings (mappings thinst))))
+			    :mappings (append mappings (mappings thinst))))
 	      (stype (subst-mod-params (type (declaration lhs))
 				       mapthinst
 				       (if (eq (id mapthinst)
@@ -1109,7 +1130,7 @@ required a context.")
       (let ((nactuals (simplify-actuals (actuals modinst))))
 	(if (equal nactuals (actuals modinst))
 	    modinst
-	    (copy modinst 'actuals nactuals)))
+	    (copy modinst :actuals nactuals)))
       modinst))
 
 (defun simplify-actuals (actuals &optional result)
@@ -1127,7 +1148,7 @@ required a context.")
 		   (if (tc-eq nexpr (expr (car actuals)))
 		       (car actuals)
 		       (lcopy (car actuals)
-			 'expr nexpr))))
+			 :expr nexpr))))
 	     result))))
   
 
@@ -1146,8 +1167,9 @@ required a context.")
 	     (amappings (typecase mdecl
 			  (theory-abbreviation-decl (mapping mdecl))
 			  (mod-decl (theory-mapping (generated-theory mdecl)))
-			  (t (make-subst-mod-params-map-bindings
-			      (expr act) (mappings (expr act)) nil))))
+			  (t (let ((*subst-mod-params-map-bindings* nil))
+			       (make-subst-mod-params-map-bindings
+				(expr act) (mappings (expr act)) nil)))))
 	     (nalist (compose-formal-to-actual-mapping
 		      (compose-formal-to-actual-mapping tmappings fmappings)
 		      amappings)))
@@ -1241,7 +1263,7 @@ required a context.")
 (defun generate-actuals-tccs (acts macts)
   (when acts
     (let ((act (lcopy (car acts)
-		 'expr (if (type-value (car acts))
+		 :expr (if (type-value (car acts))
 			   (expr (car acts))
 			   (pseudo-normalize (expr (car acts)))))))
       (unless (tc-eq act (car macts))
@@ -1380,11 +1402,11 @@ required a context.")
    (typecheck* (if (args sel)
 		   (if (injection-expr? (constructor sel))
 		       (make-instance 'injection-application
-			 'id (id (constructor sel))
-			 'index (index (constructor sel))
-			 'argument (if (cdr (args sel))
+			 :id (id (constructor sel))
+			 :index (index (constructor sel))
+			 :argument (if (cdr (args sel))
 				       (make-instance 'arg-tuple-expr
-					 'exprs (mapcar #'mk-name-expr
+					 :exprs (mapcar #'mk-name-expr
 						  (args sel)))
 				       (mk-name-expr (car (args sel)))))
 		       (mk-application* (copy (constructor sel))
@@ -1600,9 +1622,9 @@ required a context.")
     (let ((intype (nth (1- (index ex)) (types cotuptype))))
       (set-type* (argument ex) intype))
     (let* ((inrec (make-instance 'injection?-expr
-		    'id (makesym "IN?_~d" (index ex))
-		    'index (index ex)
-		    'type (mk-funtype cotuptype *boolean*)))
+		    :id (makesym "IN?_~d" (index ex))
+		    :index (index ex)
+		    :type (mk-funtype cotuptype *boolean*)))
 	   (insubtype (make!-expr-as-type inrec)))
       (setf (type ex) insubtype))))
 
@@ -1623,9 +1645,9 @@ required a context.")
   (let ((cotuptype (find-supertype (car (ptypes (argument ex))))))
     (assert (cotupletype? cotuptype))
     (let* ((inrec (make-instance 'injection?-expr
-		    'id (makesym "IN?_~d" (index ex))
-		    'index (index ex)
-		    'type (mk-funtype cotuptype *boolean*)))
+		    :id (makesym "IN?_~d" (index ex))
+		    :index (index ex)
+		    :type (mk-funtype cotuptype *boolean*)))
 	   (insubtype (make!-expr-as-type inrec)))
       (set-type* (argument ex) insubtype))
     (let ((intype (nth (1- (index ex)) (types cotuptype))))
@@ -1707,8 +1729,8 @@ required a context.")
 				(actuals (module-instance operator))
 				(some #'judgement-types (arguments ex)))
 		       (let ((res (resolve (copy (operator ex)
-					     'resolutions nil
-					     'type nil)
+					     :resolutions nil
+					     :type nil)
 					   'expr
 					   (arguments ex))))
 			 (cond ((and (singleton? res)
@@ -1732,12 +1754,12 @@ required a context.")
 						     (find-supertype
 						      expected)))))
 				(let ((res (resolve (copy operator
-						      'resolutions nil
-						      'actuals
+						      :resolutions nil
+						      :actuals
 						      (actuals (module-instance
 								(find-supertype
 								 expected)))
-						      'type nil)
+						      :type nil)
 						    'expr
 						    (arguments ex))))
 				  (when (and (singleton? res)
@@ -1874,12 +1896,12 @@ required a context.")
 		    (make-projections (argument ex))))))
 	  ((typep operator 'injection-expr)
 	   (change-class ex 'injection-application
-			 'index (index operator)
-			 'id (id operator)))
+			 :index (index operator)
+			 :id (id operator)))
 	  ((typep operator 'injection?-expr)
 	   (change-class ex 'injection?-application
-			 'index (index operator)
-			 'id (id operator))))))
+			 :index (index operator)
+			 :id (id operator))))))
 
 (defmethod change-to-propositional-class ((ex propositional-application))
   nil)
@@ -1898,14 +1920,17 @@ required a context.")
     ((NOT) (change-class ex 'unary-negation))))
 
 (defmethod change-to-propositional-class ((ex infix-application))
+  (change-to-infix-propositional-class ex))
+
+(defun change-to-infix-propositional-class (ex)
   (case (id (operator ex))
     ((AND &) (change-class ex 'infix-conjunction))
     ((OR) (change-class ex 'infix-disjunction))
     ((IMPLIES =>) (change-class ex 'infix-implication))
     ((IFF <=>) (change-class ex 'infix-iff))
     (WHEN (let ((op (operator ex)))
-	    (change-class ex 'infix-when-expr)
-	    (setf (operator ex) (mk-implies-operator))
+	    (change-class ex 'infix-when-expr
+	      'operator (mk-implies-operator))
 	    (setf (place (operator ex)) (place op))
 	    (setf (exprs (argument ex)) (reverse (exprs (argument ex))))))
     (= (if (compatible? (type (args1 ex)) *boolean*)
@@ -1917,6 +1942,9 @@ required a context.")
 	  (make!-projected-arg-tuple-expr* (make-projections (argument ex))))))
 
 (defmethod change-to-propositional-class ((ex application))
+  (change-to-appl-propositional-class ex))
+
+(defun change-to-appl-propositional-class (ex)
   (case (id (operator ex))
     ((NOT) (change-class ex 'negation))
     ((AND &) (change-class ex 'conjunction))
@@ -2632,8 +2660,8 @@ required a context.")
 	(bindings-to-modinsts
 	 (nthcdr (length (formals-sans-usings theory)) bindings)
 	 (cons (make-instance 'modname
-		 'id (id theory)
-		 'actuals (mapcar #'(lambda (a)
+		 :id (id theory)
+		 :actuals (mapcar #'(lambda (a)
 				      (mk-res-actual (cdr a) theory))
 				  bindings))
 	       modinsts)
@@ -2767,8 +2795,8 @@ required a context.")
 	      ;;(set-type* op (mk-funtype (list *boolean* iftype iftype)
 	      ;;			iftype))
 	      (let ((res (resolve (copy (operator ex)
-				    'resolutions nil
-				    'type nil)
+				    :resolutions nil
+				    :type nil)
 				  'expr (arguments ex))))
 		(cond ((and (singleton? res)
 			    (not (tc-eq (car res)
@@ -3695,7 +3723,7 @@ required a context.")
       ;; Remove those fields added by maplets, and replace fields changed
       ;; by maplets.
       (lcopy expected
-	'fields (mapcar #'(lambda (fld)
+	:fields (mapcar #'(lambda (fld)
 			    (if (memq (id fld) new-ids)
 				(car (member (id fld) fields :key #'id))
 				fld))
@@ -3744,7 +3772,7 @@ required a context.")
       ;; Remove those types added by maplets, and replace types changed
       ;; by maplets.
       (lcopy expected
-	'types (let ((index 0))
+	:types (let ((index 0))
 		 (mapcar #'(lambda (ty ety)
 			     (if (member (incf index) new-indices :test #'=)
 				 ty
@@ -3834,8 +3862,8 @@ required a context.")
 			  (module-instance (resolution accessor))
 			  atype)))
 	      (values (copy accessor
-			'type atype
-			'resolutions (list res))
+			:type atype
+			:resolutions (list res))
 		      nbindings))))
       (values accessor bindings)))
   
@@ -3969,7 +3997,7 @@ required a context.")
 	 (if pos
 	     cargs
 	     (cons (list (list (make-instance 'field-assign
-				 'id (id (car fields)))))
+				 :id (id (car fields)))))
 		   cargs))
 	 (if pos
 	     cvalues
@@ -3977,7 +4005,7 @@ required a context.")
 
 (defun make-rec-assignment (field expr)
   (mk-assignment 'uni
-    (list (list (make-instance 'field-assign 'id (id field))))
+    (list (list (make-instance 'field-assign :id (id field))))
     (make!-field-application field expr)))
 
 (defmethod complete-assignments (args-list values ex (type tupletype))
@@ -4005,12 +4033,12 @@ required a context.")
 (defun make-tup-assignment (expr num)
   (let ((type (nth (1- num) (types (find-supertype (type expr))))))
     (make-instance 'uni-assignment
-      'arguments (list (list (make-number-expr num)))
-      'expression (make-instance 'projection-application
-		    'id (makesym "PROJ_~d" num)
-		    'index num
-		    'argument expr
-		    'type type))))
+      :arguments (list (list (make-number-expr num)))
+      :expression (make-instance 'projection-application
+		    :id (makesym "PROJ_~d" num)
+		    :index num
+		    :argument expr
+		    :type type))))
 
 (defun complete-constructor-assignments (args-list values ex accessors
 						   &optional cargs cvalues)
@@ -4100,8 +4128,8 @@ required a context.")
 	     (adt (type (resolution te))))
     (let ((adt (adt (type (resolution te)))))
       (change-class te 'adt-type-name
-	'adt adt
-	'single-constructor? (singleton? (constructors adt)))))
+	:adt adt
+	:single-constructor? (singleton? (constructors adt)))))
   (unless (or *dont-worry-about-full-instantiations*
 	      (fully-instantiated? te))
     (type-error te
@@ -4297,7 +4325,7 @@ required a context.")
 (defmethod subst-for-formals! ((ex modname) alist)
   (let ((mod (get-theory ex)))
     (copy ex
-      'actuals (mapcar #'(lambda (fm)
+      :actuals (mapcar #'(lambda (fm)
 			   (let ((exp (cdr (assq fm alist))))
 			     (mk-actual exp)))
 		       (formals-sans-usings mod)))))
