@@ -296,7 +296,7 @@
 	   (setq nmodinst (set-type-actuals inst mod))
 	   (unless (if (actuals inst)
 		       (fully-instantiated? (actuals inst))
-		       (fully-instantiated? (copy inst 'mappings nil)))
+		       (fully-instantiated? (copy inst :mappings nil)))
 	     (type-error inst "Importing actuals must be fully instantiated"))
 	   (check-compatible-params (formals-sans-usings mod)
 				    (actuals inst) nil))
@@ -354,9 +354,9 @@
   (let* ((th1 (adt-theory adt))
 	 (th2 (adt-map-theory adt))
 	 (th3 (adt-reduce-theory adt))
-	 (use1 (copy inst 'id (id th1)))
-	 (use2 (when th2 (copy inst 'id (id th2) 'actuals nil 'mappings nil)))
-	 (use3 (copy inst 'id (id th3) 'actuals nil 'mappings nil))
+	 (use1 (copy inst :id (id th1)))
+	 (use2 (when th2 (copy inst :id (id th2) :actuals nil :mappings nil)))
+	 (use3 (copy inst :id (id th3) :actuals nil :mappings nil))
 	 (*typecheck-using* inst))
     (typecheck-using use1)
     (let ((*ignore-exportings* t)
@@ -383,7 +383,7 @@
 	     (ename (if (and (library-datatype-or-theory? (cdr entry))
 			     (null (library (car entry))))
 			(copy (car entry)
-			  'library (libref-to-libid (lib-ref (cdr entry))))
+			  :library (libref-to-libid (lib-ref (cdr entry))))
 			(car entry)))
 	     (iname (if (or (actuals inst)
 			    (mappings inst))
@@ -619,9 +619,9 @@
 					    (eq (library theoryname)
 						(library thinst))
 					    (fully-instantiated?
-					     (lcopy thinst 'mappings nil)))
+					     (lcopy thinst :mappings nil)))
 				       (copy thinst
-					 'mappings (mappings theoryname))
+					 :mappings (mappings theoryname))
 				       thinst))
 			 thinsts)
 		       thinsts))
@@ -633,10 +633,10 @@
 				   (if (library thinst)
 				       thinst
 				       (copy thinst
-					 'library (library theoryname))))
+					 :library (library theoryname))))
 			 mthinsts)
 		       mthinsts)))
-    (if (fully-instantiated? (lcopy theoryname 'mappings nil))
+    (if (fully-instantiated? (lcopy theoryname :mappings nil))
 	(mapcar #'(lambda (thinst)
 		    (subst-theory-importing thinst theoryname theory))
 	  lthinsts)
@@ -834,7 +834,7 @@
 ;; 			   (actuals modinst)))
 	       ))
       (let ((nc (lcopy c
-		  'expr (subst-mod-params (expr c) modinst theory))))
+		  :expr (subst-mod-params (expr c) modinst theory))))
 	(unless (eq c nc)
 	  (setf (module nc)
 		(if (fully-instantiated? modinst)
@@ -858,7 +858,7 @@
   (if (or (null (actuals theoryname))
 	  (fully-instantiated? (actuals theoryname)))
       theoryname
-      (copy theoryname 'actuals nil 'mappings nil)))
+      (copy theoryname :actuals nil :mappings nil)))
 
 (defun check-compatible-params (formals actuals assoc)
   (or (null formals)
@@ -874,10 +874,11 @@
 				    (theory-abbreviation-decl (mapping mdecl))
 				    (mod-decl
 				     (theory-mapping (generated-theory mdecl)))
-				    (t (make-subst-mod-params-map-bindings
-					(expr (car actuals))
-					(mappings (expr (car actuals)))
-					nil))))
+				    (t (let ((*subst-mod-params-map-bindings* nil))
+					 (make-subst-mod-params-map-bindings
+					  (expr (car actuals))
+					  (mappings (expr (car actuals)))
+					  nil)))))
 		       (nalist (compose-formal-to-actual-mapping
 				(compose-formal-to-actual-mapping tmappings fmappings)
 				amappings)))
@@ -1014,10 +1015,10 @@
 			   (when (and (integerp (id (lhs mapping)))
 				      (or (null (mod-id (lhs mapping)))
 					  (eq (mod-id (lhs mapping))
-					      'numbers)))
+					      '|numbers|)))
 			     (list (mk-resolution
 				       (number-declaration (id (lhs mapping)))
-				     (mk-modname 'numbers) *number*)))))
+				     (mk-modname '|numbers|) *number*)))))
 		   (thres (unless (and (kind mapping)
 				       (not (eq (kind mapping) 'theory)))
 			    (with-no-type-errors
@@ -1038,8 +1039,8 @@
 		    (type-ambiguity (lhs mapping))
 		    (check-duplication (copy (declaration
 					      (car (resolutions (lhs mapping))))
-					 'id (id (expr (rhs mapping)))
-					 'module 'unbound)))))
+					 :id (id (expr (rhs mapping)))
+					 :module 'unbound)))))
 	    (unless (mapping-rename? mapping)
 	      (typecheck-mapping-rhs mapping))
 	    ;;(assert (ptypes (expr (rhs mapping))))
@@ -1124,7 +1125,7 @@
 				    (tc-eq (range sty) *boolean*))))
 			 (ptypes ex)))
 	  (setf (type-value rhs)
-		(typecheck* (make-instance 'expr-as-type 'expr (copy-untyped ex))
+		(typecheck* (make-instance 'expr-as-type :expr (copy-untyped ex))
 			    nil nil nil))))
       (when tres
 	(if (type-value rhs)
@@ -1325,7 +1326,7 @@
 					  (string= (lib-ref (cdr entry))
 						   (lib-ref theory)))
 				     (cons (copy (car entry)
-					     'library (library thinst))
+					     :library (library thinst))
 					   (cdr entry))
 				     entry))
 		       (closure (exporting theory)))
