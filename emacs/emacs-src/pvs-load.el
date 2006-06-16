@@ -258,13 +258,13 @@ get to the same state."
 	      (setenv "PVSPATCHLEVEL" num)
 	      (message "Illegal patchlevel number - %s" num)))
 	(setq current-prefix-arg nil))
-      (unless noninteractive
-	(message "Initializing PVS: please wait..."))
       (save-excursion
 	(set-buffer (get-buffer-create "PVS Log"))
 	(pvs-view-mode))
+      (unless noninteractive
+	(message "Initializing PVS: please wait..."))
       (save-excursion
-	(setq *pvs-initialized* nil)
+	(setq pvs-initialized nil)
 	(pvs-init)
 	(while (and (not (equal (simple-status-pvs) "Done"))
 		    (equal (process-status (ilisp-process)) 'run))
