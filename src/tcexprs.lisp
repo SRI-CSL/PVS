@@ -85,9 +85,9 @@
 		     (list (mk-funtype rtype (type field)))))))
 	(t (setf (types expr)
 		 (list (mk-funtype (make-instance 'rec-type-variable
-				     'id (make-new-variable 'recT expr))
+				     :id (make-new-variable 'recT expr))
 				   (make-instance 'type-variable
-				     'id (make-new-variable 'T expr))))))))
+				     :id (make-new-variable 'T expr))))))))
 
 ;;; Projection-exprs are created by the parser, and those that appear as
 ;;; operators to an application are then converted to
@@ -117,9 +117,9 @@
 		 (list (make-projection-type expr ttype)))))
 	(t (setf (types expr)
 		 (list (mk-funtype (make-instance 'tup-type-variable
-				     'id (make-new-variable 'tupT expr))
+				     :id (make-new-variable 'tupT expr))
 				   (make-instance 'type-variable
-				     'id (make-new-variable 'T expr))))))))
+				     :id (make-new-variable 'T expr))))))))
 
 (defun make-projection-type (projection-expr &optional type)
   (let* ((ttype (or type (type projection-expr)))
@@ -160,9 +160,9 @@
 		      (find-supertype (type-value (car (actuals expr))))))))
 	(t (setf (types expr)
 		 (list (mk-funtype (make-instance 'type-variable
-				     'id (make-new-variable 'T expr))
+				     :id (make-new-variable 'T expr))
 				   (make-instance 'cotup-type-variable
-				     'id (make-new-variable 'coT expr))))))))
+				     :id (make-new-variable 'coT expr))))))))
 
 (defmethod typecheck* ((expr extraction-expr) expected kind argument)
   (declare (ignore kind expected argument))
@@ -186,9 +186,9 @@
 				   (type-value (car (actuals expr))))))))))
 	(t (setf (types expr)
 		 (list (mk-funtype (make-instance 'cotup-type-variable
-				     'id (make-new-variable 'coT expr))
+				     :id (make-new-variable 'coT expr))
 				   (make-instance 'type-variable
-				     'id (make-new-variable 'T expr))))))))
+				     :id (make-new-variable 'T expr))))))))
 
 (defmethod typecheck* ((expr injection?-expr) expected kind argument)
   (declare (ignore kind expected argument))
@@ -210,7 +210,7 @@
 		      *boolean*))))
 	(t (setf (types expr)
 		 (list (mk-funtype (make-instance 'cotup-type-variable
-				     'id (make-new-variable 'coT expr))
+				     :id (make-new-variable '|coT| expr))
 				   *boolean*))))))
 
 (defmethod typecheck* ((expr projection-application) expected kind argument)
@@ -270,7 +270,7 @@
 		(list (find-supertype (type-value (car (actuals expr)))))))
 	(setf (types expr)
 	      (list (make-instance 'cotup-type-variable
-		      'id (make-new-variable 'coT expr))))))
+		      :id (make-new-variable '|coT| expr))))))
 
 (defmethod typecheck* ((expr extraction-application) expected kind argument)
   (declare (ignore kind expected argument))
@@ -868,7 +868,7 @@
 	(make-new-row-bindings rows new-rvars)
 	(mapcar #'(lambda (r)
 		    (make-instance 'untyped-bind-decl
-		      'id r))
+		      :id r))
 		new-rvars))))
 			       
 
@@ -900,16 +900,16 @@
 				 (when te
 				   (if (typep ch 'name-expr)
 				       (make-instance 'selection
-					 'constructor ch
-					 'expression te)
+					 :constructor ch
+					 :expression te)
 				       (make-instance 'selection
-					 'constructor (operator ch)
-					 'args (mapcar #'(lambda (a)
+					 :constructor (operator ch)
+					 :args (mapcar #'(lambda (a)
 							   (change-class
 							    (copy a)
 							    'bind-decl))
 						       (arguments ch))
-					 'expression te))))
+					 :expression te))))
 			     (if else?
 				 (butlast headings)
 				 headings)
@@ -924,9 +924,9 @@
 	     (setf (else-part table-expr) (car (last table-entries))))
 	   table-expr)
 	  (t (make-instance 'cases-expr
-	       'expression expr
-	       'selections selections
-	       'else-part (when else? (car (last table-entries))))))))
+	       :expression expr
+	       :selections selections
+	       :else-part (when else? (car (last table-entries))))))))
 
 (defun make-cond-table-expr (table-expr expr headings table-entries)
   (let* ((condition (if (and expr
@@ -951,14 +951,14 @@
 		  (setf (operator table-expr) (mk-name-expr 'IF))
 		  (setf (argument table-expr)
 			(make-instance 'arg-tuple-expr
-			  'exprs (list condition then-part else-part))))
+			  :exprs (list condition then-part else-part))))
 		 (t (setf (operator table-expr) (operator else-part))
 		    (setf (argument table-expr) (argument else-part))))
 	   table-expr)
 	  (t (make-instance 'first-cond-expr
-	       'operator (mk-name-expr 'IF)
-	       'argument (make-instance 'arg-tuple-expr
-			   'exprs (list condition then-part else-part)))))))
+	       :operator (mk-name-expr 'IF)
+	       :argument (make-instance 'arg-tuple-expr
+			   :exprs (list condition then-part else-part)))))))
 
 (defun make-cond-table-expr* (expr headings table-entries)
   (when headings
@@ -972,20 +972,20 @@
 					    (cdr table-entries))))
       (cond ((and then-part else-part)
 	     (make-instance 'cond-expr
-	       'operator (mk-name-expr 'IF)
-	       'argument (make-instance 'arg-tuple-expr
-			   'exprs (list condition
+	       :operator (mk-name-expr 'IF)
+	       :argument (make-instance 'arg-tuple-expr
+			   :exprs (list condition
 					then-part
 					else-part)
-			   'place (place condition))))
+			   :place (place condition))))
 	    (then-part
 	     (make-instance 'last-cond-expr
-	       'operator (mk-name-expr 'IF)
-	       'argument (make-instance 'arg-tuple-expr
-			   'exprs (list condition
+	       :operator (mk-name-expr 'IF)
+	       :argument (make-instance 'arg-tuple-expr
+			   :exprs (list condition
 					then-part
 					then-part)
-			   'place (place condition))))
+			   :place (place condition))))
 	    (else-part else-part)))))
 
 (defun make-cases-row-exprs (expr headings table-entries &optional result)
@@ -997,12 +997,12 @@
 	      (mapcar #'(lambda (ch te)
 			  (if (typep ch 'name-expr)
 			      (make-instance 'selection
-				'constructor ch
-				'expression te)
+				:constructor ch
+				:expression te)
 			      (make-instance 'selection
-				'constructor (operator ch)
-				'args (arguments ch)
-				'expression te)))
+				:constructor (operator ch)
+				:args (arguments ch)
+				:expression te)))
 		      (if else?
 			  (butlast headings)
 			  headings)
@@ -1012,9 +1012,9 @@
 	(make-cases-row-exprs
 	 expr headings (cdr table-entries)
 	 (cons (make-instance 'cases-expr
-		 'expression expr
-		 'selections selections
-		 'else-part (when else?
+		 :expression expr
+		 :selections selections
+		 :else-part (when else?
 			      (car (last row))))
 	       result)))))
 
@@ -1537,7 +1537,7 @@
 	   (setf (types expr)
 		 (mapcar #'(lambda (ty) (mk-funtype ty *boolean*)) types))))
 	(t (let ((tvar (make-instance 'type-variable
-			 'id (make-new-variable 'T expr))))
+			 :id (make-new-variable 'T expr))))
 	     (setf (types expr) (list tvar))))))
 
 (defun get-possible-set-list-types (exprs)
@@ -1664,9 +1664,9 @@
 	 (ptype (if (dep-binding? dtype) (type dtype) dtype))
 	 (pappl (when ptype
 		  (make-instance 'projappl
-		    'id (makesym "PROJ_~d" index)
-		    'index index
-		    'argument expr)))
+		    :id (makesym "PROJ_~d" index)
+		    :index index
+		    :argument expr)))
 	 (tpappl (when ptype
 		   (typecheck* (copy-untyped pappl) ptype nil nil)))
 	 (ttype (when ptype
@@ -1707,8 +1707,8 @@
 				 (car (ptypes value)))))
 	 (fappl (when fdecl
 		  (make-instance 'fieldappl
-		    'id (id fdecl)
-		    'argument expr)))
+		    :id (id fdecl)
+		    :argument expr)))
 	 (tfappl (when fdecl
 		   (typecheck* (copy-untyped fappl) (type fdecl) nil nil)))
 	 (ftype (when fdecl
