@@ -50,11 +50,11 @@
 (defun get-working-theory ()
   (or *working-theory*
       (let ((exp (make-instance 'exporting
-		   'kind 'default)))
+		   :kind 'default)))
 	(setq *working-theory*
 	      (make-instance 'module
-		   'id 'working-theory
-		   'exporting exp)))))
+		   :id 'working-theory
+		   :exporting exp)))))
 
 (defun clear-working-theory ()
   (setf *working-theory* nil

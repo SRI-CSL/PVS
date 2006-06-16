@@ -310,9 +310,9 @@
 	       (mapping (find (id name) (mappings name)
 			      :key #'(lambda (m) (id (lhs m))))))
 	  (list (make-instance 'mapping-resolution
-		  'declaration mapping
-		  'module-instance name
-		  'type (or (type-value (rhs mapping))
+		  :declaration mapping
+		  :module-instance name
+		  :type (or (type-value (rhs mapping))
 			    (type (expr (rhs mapping)))))))
 	(let* ((theory (get-theory (mod-id name)))
 	       (aliases (get-theory-aliases name))
@@ -324,9 +324,9 @@
 					    :key #'id)))
 			 (when mapping
 			   (list (make-instance 'mapping-resolution
-				   'declaration mapping
-				   'module-instance alias
-				   'type (or (type-value (rhs mapping))
+				   :declaration mapping
+				   :module-instance alias
+				   :type (or (type-value (rhs mapping))
 					     (type (expr (rhs mapping)))))))))
 	     names)))))
 
@@ -386,7 +386,7 @@
 			       nil (when usings (library (car usings))))))
 		(when (theory-interpretation? dth)
 		  (change-class thname 'interpreted-modname
-				'interpretation dth))
+				'interp-theory dth))
 		(when (visible-to-mapped-tcc? decl thname dth)
 		  #+pvsdebug
 		  (assert (or (not (library-datatype-or-theory? dth))
@@ -628,7 +628,7 @@
 				(ptypes (expr act))))
 		 (setf (type-value act)
 		       (typecheck* (make-instance 'expr-as-type
-				     'expr (copy-untyped (expr act)))
+				     :expr (copy-untyped (expr act)))
 				   nil nil nil))))
 	   (when tres
 	     (if (type-value act)
@@ -667,8 +667,8 @@
 			(*typechecking-actual* t)
 			(tval (typecheck*
 			       (make-instance 'type-application
-				 'type tn
-				 'parameters args)
+				 :type tn
+				 :parameters args)
 			       nil nil nil)))
 		   (setf (type-value act) tval))))
 	       ((and (plusp (parens (expr act)))
@@ -680,7 +680,7 @@
 			   (ptypes (expr act))))
 		(setf (type-value act)
 		      (typecheck* (make-instance 'expr-as-type
-				    'expr (expr act))
+				    :expr (expr act))
 				  nil nil nil))))
 	 (unless (or (ptypes (expr act))
 		     (type-value act))
@@ -697,7 +697,7 @@
 			     (ptypes (expr act))))
 	      (setf (type-value act)
 		    (typecheck* (make-instance 'expr-as-type
-				  'expr (expr act))
+				  :expr (expr act))
 				nil nil nil))))
       ;; Must be a type-expr
       (t (unless (type-value act)
@@ -709,9 +709,9 @@
   (let ((suptype (declared-type (car (bindings expr)))))
     (assert (typep (car (bindings expr)) 'bind-decl))
     (make-instance 'setsubtype
-      'supertype suptype
-      'formals (car (bindings expr))
-      'formula (expression expr))))
+      :supertype suptype
+      :formals (car (bindings expr))
+      :formula (expression expr))))
 
 (defun eq-id (x y)
   (eq x (id y)))
