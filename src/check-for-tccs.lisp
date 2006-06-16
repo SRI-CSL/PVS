@@ -136,7 +136,9 @@
 (defun check-for-tcc-selection (s expr expected)
   (let* ((equality (make-selection-equality s expr))
 	 (*bound-variables* (append (args s) *bound-variables*))
-	 (*tcc-conditions* (push-tcc-condition equality *tcc-conditions*)))
+	 (*tcc-conditions* (push-tcc-condition equality
+					       (append (reverse (args s))
+						       *tcc-conditions*))))
     (check-for-tccs* (expression s) expected)))
 
 (defmethod check-for-tccs* ((expr projection-expr) expected)
@@ -524,7 +526,7 @@
       (let* ((dtcc (make!-disjunction* (nreverse tccs)))
 	     (type (make!-expr-as-type
 		    (if (cdr recs)
-			(let* ((id (make-new-variable 'x recs))
+			(let* ((id (make-new-variable '|x| recs))
 			       (bd (make-bind-decl id (type ex)))
 			       (var (make-variable-expr bd)))
 			  (make!-set-expr (list bd)
