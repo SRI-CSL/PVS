@@ -51,17 +51,18 @@
 	new-ht)
       (error "copy called for unknown type: ~a" (type-of obj))))
 
-#+allegro
 (defmethod copy ((ht hash-table) &rest args)
   (let* ((test (hash-table-test ht))
 	 (size (hash-table-count ht))
-	 (weak? (excl:hash-table-weak-keys ht))
+	 (weak? #+allegro (excl:hash-table-weak-keys ht)
+		#+cmu (lisp::hash-table-weak-p ht))
 	 (new-ht (if (memq test '(eq eql equal equalp))
-		     (make-hash-table :test test :size size
-				      :weak-keys weak?)
-		     (make-hash-table :test test :size size
-				      :hash-function 'pvs-sxhash
-				      :weak-keys weak?))))
+		     (make-hash-table
+		      :test test :size size
+		      #+allegro :weak-keys #+cmu :weak-p weak?)
+		     (make-pvs-hash-table :strong-eq? (eq test 'strong-tc-eq)
+					  :size size
+					  :weak-keys? weak?))))
     (maphash #'(lambda (id data)
 		 (setf (gethash id (the hash-table new-ht)) data))
 	     (the hash-table ht))
@@ -74,9 +75,9 @@
 	 (new-ht (if (memq test '(eq eql equal equalp))
 		     (make-hash-table :test test :size size
 				      :rehash-threshold 1.0)
-		     (make-hash-table :test test :size size
-				      :hash-function 'pvs-sxhash
-				      :rehash-threshold 1.0))))
+		     (make-pvs-hash-table :strong-eq? (eq test 'strong-tc-eq)
+					  :size size
+					  :rehash-threshold 1.0))))
     (maphash #'(lambda (id data)
 		 (setf (gethash id (the hash-table new-ht)) data))
 	     (the hash-table ht))
@@ -128,7 +129,7 @@
 
 (defun make-file (file &optional force)
   (let* ((source (make-file-name file))
-	 (bin (make-pathname :type user::*pvs-binary-type*
+	 (bin (make-pathname :type cl-user::*pvs-binary-type*
 			     :defaults source)))
     (unless (file-exists-p source)
       (error "~%File ~a does not exist~%" source))
@@ -195,9 +196,11 @@
        #+(and allegro (version>= 6) (not (version>= 7)))
        (excl::variable-special-p obj nil)
        #+(and allegro (not (version>= 6))) (clos::variable-special-p obj nil)
+       #+cmu (eq (extensions:info variable kind obj) :special)
        #+harlequin-common-lisp (system:declared-special-p obj)
-       #-(or lucid kcl allegro harlequin-common-lisp)
-       (error "Need to handle special variables for this version of lisp")))
+       #-(or lucid kcl allegro harlequin-common-lisp cmu)
+       (error "Need to handle special variables for this version of lisp")
+       t))
 
 
 #+allegro
@@ -248,6 +251,10 @@
 (defun environment-variable (string)
   (sys:getenv string))
 
+#+cmu
+(defun environment-variable (string)
+  (tools:getenv string))
+
 #+harlequin-common-lisp
 (defun environment-variable (string)
   ;; This didn't work before
@@ -280,6 +287,13 @@
    :show-cmd nil
    :output-stream (open "/dev/null" :direction :output
 			  :if-exists :append)))
+#+cmu
+(defun chmod (prot file)
+  (let ((mode (cond ((string= prot "a+w") #o666)
+		    ((string= prot "a-w") #o444)
+		    ((string= prot "g+w") #o664)
+		    (t (error "Protection ~a not known" prot)))))
+    (unix:unix-chmod (namestring file) mode)))
 
 #+gcl
 (defun chmod (prot file)
@@ -389,8 +403,6 @@
 (defmethod get-lib-id ((th datatype-or-module))
   nil)
 
-
-
 ;;; Useful methods - can almost be used as accessors.
 
 (defmethod condition ((expr if-expr))
@@ -469,7 +481,7 @@
 ;  (make-specpath (id mod)))
 
 (defmethod make-specpath ((name symbol) &optional (ext "pvs"))
-  (make-pathname :defaults *pvs-context-path* :name name :type ext))
+  (make-pathname :defaults *pvs-context-path* :name (string name) :type ext))
 
 (defmethod make-specpath ((name string) &optional (ext "pvs"))
   (make-pathname :defaults *pvs-context-path* :name name :type ext))
@@ -508,8 +520,9 @@
   (or (gethash directory *shortpath-directories*)
       (let* ((dirlist (pathname-directory
 		       (directory-p
-			(excl:pathname-resolve-symbolic-links
-			 (truename directory)))))
+			(#+allegro excl:pathname-resolve-symbolic-links
+				   #+cmu unix:unix-resolve-links
+			 (namestring (truename directory))))))
 	     (file-info (get-file-info directory))
 	     (result (if (eq (car dirlist) :absolute)
 			 (shortpath* (reverse (cdr dirlist)) file-info)
@@ -544,7 +557,9 @@
 		(make-pathname :directory
 			       (cons :relative
 				     (nconc (make-list (length reldirlist)
-						       :initial-element :back)
+						       :initial-element
+						       #+allegro :back
+						       #+cmu :up)
 					    dirlist))))))
 	  (if (and dirlist (null reldirlist))
 	      (concatenate 'string "./" reldir)
@@ -553,7 +568,7 @@
 ;;; Checks if the dir is in fact a directory; returns the expanded
 ;;; pathname ending with a slash.
 
-#-allegro
+#-(or allegro cmu)
 (defun directory-p (dir)
   (let* ((dirstr (namestring dir))
 	 (dirslash (merge-pathnames
@@ -1032,20 +1047,20 @@
     (if pctx
 	(let ((*current-context*
 	       (make-instance 'context
-		 'theory theory
-		 'theory-name (mk-modname (id theory))
-		 'using-hash (if *loading-prelude*
+		 :theory theory
+		 :theory-name (mk-modname (id theory))
+		 :using-hash (if *loading-prelude*
 				 (copy (using-hash pctx))
 				 (copy-lhash-table (using-hash pctx)))
-		 'declarations-hash (if *loading-prelude*
+		 :declarations-hash (if *loading-prelude*
 					(copy (declarations-hash pctx))
 					(copy-lhash-table
 					 (declarations-hash pctx)))
-		 'known-subtypes (known-subtypes pctx)
-		 'conversions (conversions pctx)
-		 'disabled-conversions (copy-list (disabled-conversions pctx))
-		 'auto-rewrites (copy-list (auto-rewrites pctx))
-		 'disabled-auto-rewrites (copy-list
+		 :known-subtypes (known-subtypes pctx)
+		 :conversions (conversions pctx)
+		 :disabled-conversions (copy-list (disabled-conversions pctx))
+		 :auto-rewrites (copy-list (auto-rewrites pctx))
+		 :disabled-auto-rewrites (copy-list
 					  (disabled-auto-rewrites pctx)))))
 	  
 	  (setf (judgements *current-context*)
@@ -1054,10 +1069,10 @@
 		    (copy-judgements (judgements pctx))))
 	  *current-context*)
 	(make-instance 'context
-	  'theory theory
-	  'theory-name (mk-modname (id theory))
-	  'using-hash (make-lhash-table :test 'eq)
-	  'declarations-hash (make-lhash-table :test 'eq)))))
+	  :theory theory
+	  :theory-name (mk-modname (id theory))
+	  :using-hash (make-lhash-table :test 'eq)
+	  :declarations-hash (make-lhash-table :test 'eq)))))
 
 (defun copy-using-hash (ht)
   (let* ((size (floor (hash-table-size ht) 1.5384616))
@@ -1072,22 +1087,22 @@
   (let ((*current-theory* (or theory (theory context)))
 	(*current-context*
 	 (make-instance 'context
-	   'theory (or theory (theory context))
-	   'theory-name (if theory
+	   :theory (or theory (theory context))
+	   :theory-name (if theory
 			    (mk-modname (id theory))
 			    (theory-name context))
-	   'declaration (or (car (last decls))
+	   :declaration (or (car (last decls))
 			    current-decl
 			    (declaration context))
-	   'declarations-hash (copy (declarations-hash context))
-	   'using-hash (copy (using-hash context))
-	   'library-alist (library-alist context)
-	   'named-theories (copy-list (named-theories context))
-	   'conversions (conversions context)
-	   'disabled-conversions (copy-list (disabled-conversions context))
-	   'known-subtypes (known-subtypes context)
-	   'auto-rewrites (copy-list (auto-rewrites context))
-	   'disabled-auto-rewrites (copy-list (disabled-auto-rewrites context)))))
+	   :declarations-hash (copy (declarations-hash context))
+	   :using-hash (copy (using-hash context))
+	   :library-alist (library-alist context)
+	   :named-theories (copy-list (named-theories context))
+	   :conversions (conversions context)
+	   :disabled-conversions (copy-list (disabled-conversions context))
+	   :known-subtypes (known-subtypes context)
+	   :auto-rewrites (copy-list (auto-rewrites context))
+	   :disabled-auto-rewrites (copy-list (disabled-auto-rewrites context)))))
     (setf (judgements *current-context*)
 	  (if (from-prelude? *current-theory*)
 	      (set-prelude-context-judgements (judgements context))
@@ -1395,8 +1410,8 @@
 	     (let* ((qform (make-instance (if exist?
 					      'exists-expr
 					      'forall-expr)
-			     'bindings newbindings
-			     'expression (if new?
+			     :bindings newbindings
+			     :expression (if new?
 					     (freevar-substit form
 							      freevars-form
 							      newbindings)
@@ -1716,9 +1731,9 @@
 (defmethod recognizer ((fn injection-expr))
   (let ((cotuptype (find-supertype (range (type fn)))))
     (make-instance 'injection?-expr
-      'id (makesym "IN?_~d" (index fn))
-      'index (index fn)
-      'type (mk-funtype cotuptype *boolean*))))
+      :id (makesym "IN?_~d" (index fn))
+      :index (index fn)
+      :type (mk-funtype cotuptype *boolean*))))
 
 (defmethod accessors ((fn name-expr))
   (when (constructor? fn)
@@ -1744,15 +1759,15 @@
 (defmethod accessors ((fn injection-expr))
   (let* ((cotuptype (find-supertype (range (type fn))))
 	 (inrec (make-instance 'injection?-expr
-		  'id (makesym "IN?_~d" (index fn))
-		  'index (index fn)
-		  'type (mk-funtype cotuptype *boolean*)))
+		  :id (makesym "IN?_~d" (index fn))
+		  :index (index fn)
+		  :type (mk-funtype cotuptype *boolean*)))
 	 (insubtype (make!-expr-as-type inrec))
 	 (intype (nth (1- (index fn)) (types cotuptype))))
     (list (make-instance 'extraction-expr
-	    'id (makesym "OUT_~d" (index fn))
-	    'index (index fn)
-	    'type (mk-funtype insubtype intype)))))
+	    :id (makesym "OUT_~d" (index fn))
+	    :index (index fn)
+	    :type (mk-funtype insubtype intype)))))
 
 (defmethod constructor ((fn recognizer-name-expr))
   (or (constructor-name fn)
@@ -1764,9 +1779,9 @@
 	    (let* ((cotupletype (find-supertype (domain (type fn))))
 		   (intype (nth (1- (index fn)) (types cotupletype))))
 	      (make-instance 'injection-expr
-		'index (index fn)
-		'id (makesym "IN_~d" (index fn))
-		'type (mk-funtype intype cotupletype))))))
+		:index (index fn)
+		:id (makesym "IN_~d" (index fn))
+		:type (mk-funtype intype cotupletype))))))
 
 (defmethod constructor ((fn accessor-name-expr))
   (let* ((constrs (remove-if-not #'(lambda (c) (part-of-constructor fn c))
@@ -1813,9 +1828,9 @@
     (mapcar #'(lambda (rec)
 		(incf index)
 		(make-instance 'injection-expr
-		  'id (makesym "IN_~d" index)
-		  'index index
-		  'type (mk-funtype te (make!-expr-as-type rec))))
+		  :id (makesym "IN_~d" index)
+		  :index index
+		  :type (mk-funtype te (make!-expr-as-type rec))))
       (recognizers te))))
 
 (defmethod constructors ((te subtype))
@@ -1840,9 +1855,9 @@
 		(declare (ignore ty))
 		(incf index)
 		(make-instance 'injection?-expr
-		  'id (makesym "IN?_~d" index)
-		  'index index
-		  'type (mk-funtype te *boolean*)))
+		  :id (makesym "IN?_~d" index)
+		  :index index
+		  :type (mk-funtype te *boolean*)))
       (types te))))
 		
 
@@ -2215,10 +2230,10 @@
 			   (if thinst
 			       (make!-application acc expr)
 			       (make-instance 'extraction-application
-				 'id (id acc)
-				 'index (index acc)
-				 'argument expr
-				 'type (range (type acc)))))
+				 :id (id acc)
+				 :index (index acc)
+				 :argument expr
+				 :type (range (type acc)))))
 		       accs)))))
 
 ;;; Translate update applications to if expressions, e.g.
@@ -2429,7 +2444,7 @@
 		   (matching-update-args-and-exprs fld args exprs)
 		 (mk-assignment 'uni
 		   (list (list (make-instance 'field-assignment-arg
-				 'id (id fld))))
+				 :id (id fld))))
 		   (if fargs
 		       (if (some #'cdr args)
 			   (translate-update-to-if!*
@@ -2618,22 +2633,25 @@ space")
 
 (defvar *pseudo-normalizing* nil)
 
-(defvar *pseudo-normalize-subtype-hash*
-  (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+(defvar *pseudo-normalize-subtype-hash* nil)
 
 (defun reset-pseudo-normalize-caches ()
   (if *pseudo-normalize-hash*
       (clrhash *pseudo-normalize-hash*)
       (setq *pseudo-normalize-hash*
-	    (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq)))
+	    (make-pvs-hash-table)))
   (if *pseudo-normalize-translate-to-prove-hash*
       (clrhash *pseudo-normalize-translate-to-prove-hash*)
       (setq *pseudo-normalize-translate-to-prove-hash*
-	    (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq)))
+	    (make-pvs-hash-table)))
   (if *pseudo-normalize-translate-id-hash*
       (clrhash *pseudo-normalize-translate-id-hash*)
       (setq *pseudo-normalize-translate-id-hash*
-	    (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))))
+	    (make-pvs-hash-table)))
+  (if *pseudo-normalize-subtype-hash*
+      (clrhash *pseudo-normalize-subtype-hash*)
+      (setq *pseudo-normalize-subtype-hash*
+	    (make-pvs-hash-table))))
 
 (defun remove-pseudo-normalize-freevar-entries ()
   (maphash #'(lambda (x y)
@@ -2713,13 +2731,17 @@ space")
 ;;   (lcopy 
 
 
-#-gcl
+#-(or gcl cmu)
 (defun direct-superclasses (class)
   (slot-value class 'clos::direct-superclasses))
 
 #+gcl
 (defun direct-superclasses (class)
   (slot-value class 'pcl:class-direct-superclasses))
+
+#+cmu
+(defun direct-superclasses (class)
+  (class-direct-superclasses class))
 
 (defun types-of (obj)
   (let ((types nil))
@@ -2882,12 +2904,21 @@ space")
 ;;;   simply returns the singleton list of the expression.
 ;;;   (argument-list e) ==> (f(1,2)(x)(a,b,c))
 
+#-cmu
 (defmethod operator* ((expr application))
   (with-slots (operator) expr
     (operator* operator)))
 
+#-cmu
 (defmethod operator* ((expr expr))
   expr)
+
+#+cmu
+(defun operator* (expr)
+  (if (application? expr)
+      (operator* (operator expr))
+      expr))
+  
 
 (defmethod argument* ((expr application) &optional args)
   (with-slots (operator argument) expr
@@ -3082,6 +3113,10 @@ space")
   (when (compiled-function-p #'pvs-gc-after-hook)
     (setf excl:*gc-after-hook* #'pvs-gc-after-hook)))
 
+#+cmu
+(eval-when (load)
+  (setf extensions:*gc-verbose* nil))
+
 (defun reset-print-equal-cache ()
   (if *term-print-strings*
       (clrhash *term-print-strings*)
@@ -3167,17 +3202,22 @@ space")
 (defconstant millisecond-factor
   (/ 1000 internal-time-units-per-second))
 
+#+allegro
 (defun get-run-time ()
   (multiple-value-bind (rtuser rtsys gcuser gcsys)
       (excl::get-internal-run-times)
     (declare (ignore rtsys gcsys))
     (- rtuser gcuser)))
 
+#-allegro
+(defun get-run-time ()
+  (get-internal-run-time))
+
 (defun runtime-since (time)
-  (floor (- (get-run-time) time) millisecond-factor))
+  (floor (* (- (get-run-time) time) millisecond-factor)))
 
 (defun realtime-since (time)
-  (floor (- (get-internal-real-time) time) millisecond-factor))
+  (floor (* (- (get-internal-real-time) time) millisecond-factor)))
   
 
 (defmethod change-application-class-if-necessary (expr new-expr)
@@ -3235,9 +3275,9 @@ space")
 
 ;(defstruct (pvs-tables (:conc-name nil))
 ;  ;;(judgement-types-cache
-;  ;; (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+;  ;; (make-pvs-hash-table))
 ;  (subst-mod-params-cache
-;   (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+;   (make-pvs-hash-table))
 ;  )
 ;
 ;(defun reset-pvs-tables (table)
@@ -3275,25 +3315,25 @@ space")
 ;	      (push (cons obj new)
 ;		    (funcall table (car *pvs-global-tables*))))))))
 
-(defvar *dependent-type-substitutions*
-  (make-hash-table :test 'tc-eq :hash-function 'pvs-sxhash))
+;; (defvar *dependent-type-substitutions*
+;;   (make-pvs-hash-table))
 
-(defmethod dep-substit ((list list) alist)
-  (let ((elt (cons list alist)))
-    (or (gethash elt *dependent-type-substitutions*)
-	(let ((nlist (substit list alist)))
-	  (mapc #'(lambda (e ne) (cache-dep-substitutions e ne alist))
-		list nlist)
-	  (setf (gethash elt *dependent-type-substitutions*) nlist)))))
+;; (defmethod dep-substit ((list list) alist)
+;;   (let ((elt (cons list alist)))
+;;     (or (gethash elt *dependent-type-substitutions*)
+;; 	(let ((nlist (substit list alist)))
+;; 	  (mapc #'(lambda (e ne) (cache-dep-substitutions e ne alist))
+;; 		list nlist)
+;; 	  (setf (gethash elt *dependent-type-substitutions*) nlist)))))
 
-(defun cache-dep-substitutions (old new alist)
-  (setf (gethash (cons old alist) *dependent-type-substitutions*) new))
+;; (defun cache-dep-substitutions (old new alist)
+;;   (setf (gethash (cons old alist) *dependent-type-substitutions*) new))
 
-(defmethod dep-substit (obj alist)
-  (let ((elt (cons obj alist)))
-    (or (gethash elt *dependent-type-substitutions*)
-	(setf (gethash elt *dependent-type-substitutions*)
-	      (substit obj alist)))))
+;; (defmethod dep-substit (obj alist)
+;;   (let ((elt (cons obj alist)))
+;;     (or (gethash elt *dependent-type-substitutions*)
+;; 	(setf (gethash elt *dependent-type-substitutions*)
+;; 	      (substit obj alist)))))
 
 (defmethod lift-predicates-in-quantifier ((ex forall-expr) &optional exclude)
   (multiple-value-bind (nbindings preds)
@@ -3820,7 +3860,7 @@ space")
 	(number (and (numberp y) (= x y)))
 	(character (and (characterp y) (char= x y)))
 	(string (if (stringp y)
-		    (excl::simple-string= x y)
+		    (#+allegro excl::simple-string= #-allegro string= x y)
 		    (and (arrayp y)
 			 (equals-arrays x y))))
 	(cons (and (consp y)
@@ -3868,7 +3908,8 @@ space")
 (defun equals-structs (x y)
   (let ((slots (class-slots (class-of x))))
     (every #'(lambda (slot)
-	       (let ((name (slot-value slot 'excl::name)))
+	       (let ((name (slot-value slot
+				       '#+allegro excl::name #+cmu pcl::name)))
 		 (equals (slot-value x name) (slot-value y name))))
 	   slots)))
 
@@ -3885,3 +3926,28 @@ space")
 
 (defmethod dep-binding-type ((te type-expr))
   te)
+
+;; This is the function for making hash tables
+(defun make-pvs-hash-table (&rest other-keys &key strong-eq? weak-keys?
+				  &allow-other-keys)
+  #+allegro
+  (apply #'make-hash-table
+    :hash-function 'pvs-sxhash
+    :test (if strong-eq? 'strong-tc-eq 'tc-eq)
+    :weak-keys weak-keys?
+    :allow-other-keys t
+    other-keys)
+  #+cmu
+  (apply #'make-hash-table
+    :test (if strong-eq? 'strong-tc-eq-test 'tc-eq-test)
+    :weak-p weak-keys?
+    :allow-other-keys t
+    other-keys)
+  #-(or allegro cmu)
+  (error "Need a hash-table for tc-eq for this lisp"))
+
+#+cmu
+(extensions:define-hash-table-test 'tc-eq-test #'tc-eq #'pvs-sxhash)
+#+cmu
+(extensions:define-hash-table-test 'strong-tc-eq-test
+				   #'strong-tc-eq #'pvs-sxhash)
