@@ -71,14 +71,23 @@
 ;******
 
 (defun pvs-init (&optional dont-load-patches dont-load-user-lisp)
-  (setq excl:*enclose-printer-errors* nil)
+  #+allegro (setq excl:*enclose-printer-errors* nil)
   (setq *print-pretty* t)
   (setf (symbol-function 'ilisp::ilisp-restore) #'pvs-ilisp-restore)
   #+allegro (setq top-level::*print-length* nil
 		  top-level::*print-level* nil)
-  (setq *pvs-path* (environment-variable "PVSPATH"))
+  (unless *pvs-path*
+    (setq *pvs-path* (environment-variable "PVSPATH")))
   (unless *pvs-path*
     (error "PVSPATH environment variable should be set to the PVS directory"))
+  #+cmu
+  (let ((exepath (car (make::split-string
+		       (environment-variable "LD_LIBRARY_PATH") :item #\:))))
+    (pushnew exepath *pvs-directories*)
+    (ext:load-foreign (format nil "~a/mu.so" exepath))
+    (lf "bdd-cmu-load")
+    (lf "mu-cmu-load")
+    (bdd_init))
   (setq *started-with-minus-q*
 	(or dont-load-user-lisp
 	    (let ((mq (environment-variable "PVSMINUSQ")))
@@ -122,9 +131,13 @@
   (clrnumhash)
   (setq *pvs-context-writable* (write-permission? (working-directory)))
   (setq *pvs-library-path* (get-pvs-library-path))
+  ;; Prover hash tables
+  (setq *translate-to-prove-hash* (make-pvs-hash-table))
+  (setq *translate-id-hash* (make-pvs-hash-table))
+  (setq *create-formulas-cache* (make-pvs-hash-table))
   (setq *pvs-initialized* t)
-  (when *to-emacs*
-    (pvs-emacs-eval "(setq *pvs-initialized* t)")))
+  (when *pvs-emacs-interface*
+    (pvs-emacs-eval "(setq pvs-initialized t)")))
 
 (defun reset-typecheck-caches ()
   (dolist (fn *untypecheck-hook*)
@@ -133,7 +146,7 @@
   (clrhash *subtype-of-hash*)
   (reset-subst-mod-params-cache)
   (reset-pseudo-normalize-caches)
-  (clrhash *assert-if-arith-hash*)
+  ;;(clrhash *assert-if-arith-hash*)
   ;;(reset-fully-instantiated-cache)
   (reset-beta-cache) ;;; PDL added Nov23 1994
   (reset-type-canon-cache)
@@ -164,7 +177,8 @@
     (clrhash *loaded-libraries*)
     (clrhash *prelude-libraries*)
     (clrhash *imported-libraries*)
-    (setf (cadr *pvs-context*) nil)
+    (when *pvs-context*
+      (setf (cadr *pvs-context*) nil))
     (setq *pvs-library-ref-paths* nil)
     (setq *prelude-libraries-uselist* nil)
     (setq *prelude-library-context* nil)
@@ -175,7 +189,8 @@
   (let ((libs nil)
 	(pathenv (environment-variable "PVS_LIBRARY_PATH")))
     (when pathenv
-      (let ((dirs (excl:split-regexp ":" pathenv)))
+      (let ((dirs #+allegro (excl:split-regexp ":" pathenv)
+		  #-allegro (make::split-string pathenv :item #\:)))
 	(dolist (dir dirs)
 	  (unless (char= (char dir (1- (length dir))) #\/)
 	    (setq dir (concatenate 'string dir "/")))
@@ -188,21 +203,6 @@
     (setq *pvs-library-path* (nreverse libs))))
 
 (defvar *pvs-patches-loaded* nil)
-
-(defvar *pvs-binary-type*
-    #+(and allegro sparc) "fasl"	; Sun4
-    #+(and allegro rios) "rfasl"	; PowerPC/RS6000
-    #+(and allegro hpux) "hfasl"	; HP 9000
-    #+(and allegro x86) "lfasl"         ; Intel x86
-    #+(and lucid lcl4.1 sparc) "sbin"	; Sun4 new Lucid
-    #+(and lucid (not lcl4.1) sparc) "obin" ; Sun4 old Lucid
-    #+(and lucid rios) "rbin"		; PowerPC/RS6000
-    #+(and lucid mips) "mbin"		; DEC
-    ;;; These are experimental
-    #+gcl "o"
-    #+cmu "sparcf"
-    #+harlequin-common-lisp "wfasl"
-    )
 
 (defun load-pvs-patches ()
   (dolist (pfile (append (collect-pvs-patch-files)
@@ -1531,7 +1531,7 @@
                        ~%%  Note: actual TCC formula names may not match,~
                        ~%%        and not all AXIOMs get translated"))
 	      (format out
-		  "~2%  % ~a TCC~%  ~a: OBLIGATION~%    ~a"
+		  "~2%  % ~@(~a~) TCC~%  ~a: OBLIGATION~%    ~a"
 		(tccinfo-kind tcc)
 		(make-tccinfo-tcc-name tcc context-theory
 				       (incf mapped-tccs-ctr))
@@ -1678,7 +1678,8 @@
 
 (defun declname-to-decl (declname theory)
   (let ((decl-and-pos
-	 (excl:split-regexp "-" declname)))
+	 #+allegro (excl:split-regexp "-" declname)
+	 #-allegro (make::split-string declname :item #\-)))
     (if (string= (car decl-and-pos) "IMPORTING")
 	(let ((pos (parse-integer (cdr decl-and-pos)))
 	      (imps (remove-if (complement #'importing?) (all-decls theory))))
@@ -1989,17 +1990,22 @@
   (if unproved?
       '(or unproved-formula-decl
 	   (and judgement
-		(satisfies (lambda (jd)
-			     (and (not (generated-by jd))
-				  (some #'(lambda (d)
-					    (and (judgement-tcc? d)
-						 (unproved? d)))
-					(generated jd)))))))
+		(satisfies some-unproved-generated-judgement-tcc?)))
       '(or formula-decl
 	   (and judgement
-		(satisfies (lambda (jd)
-			     (and (not (generated-by jd))
-				  (some #'judgement-tcc? (generated jd)))))))))
+		(satisfies some-generated-judgement-tcc?)))))
+
+(defun some-generated-judgement-tcc? (jd)
+  (and (not (generated-by jd))
+       (some #'judgement-tcc? (generated jd))))
+
+(defun some-unproved-generated-judgement-tcc? (jd)
+  (and (not (generated-by jd))
+       (some #'(lambda (d)
+		 (and (judgement-tcc? d)
+		      (unproved? d)))
+	     (generated jd))))
+  
 
 
 ;;; This function is invoked from Emacs by pvs-prove-formula.  It provides
@@ -2565,22 +2571,9 @@
 
 ;;; Exit Pvs
 
-#+lucid
-(unless (fboundp 'bye)
-  (setf (symbol-function 'bye) (symbol-function 'quit)))
-
-#+excl
-(defun bye ()
-  (excl:exit))
-
-#+harlequin-common-lisp
-(defun bye ()
-  (system::bye))
-
-(defun quit (&optional status)
-  (declare (ignore status))
+(defun quit (&optional (status 0))
   (when (y-or-n-p "Do you really want to kill the PVS process? ")
-    (bye)))
+    (cl-user:bye status)))
 
 (defun exit-pvs ()
   (multiple-value-bind (ignore condition)
@@ -2592,7 +2585,7 @@
 			       condition)
 	      (bye)
 	      (error "Exit aborted")))
-	(bye))))
+	(cl-user:bye))))
 
 ;;; PVS Version
 
@@ -2603,7 +2596,10 @@
 ;;; help-prover
 
 (defun help-prover (&optional name)
-  (let ((rule (if (stringp name) (intern (string-downcase name)) '*))
+  (let ((rule (if (stringp name)
+		  (intern #+allegro (string-downcase name)
+			  #-allegro (string-upcase name))
+		  '*))
 	(*disable-gc-printout* t))
     (pvs-buffer "Prover Help"
       (with-output-to-string (*standard-output*)
