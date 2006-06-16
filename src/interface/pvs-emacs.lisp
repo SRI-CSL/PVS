@@ -71,7 +71,7 @@
 ;;; This replaces ilisp-restore in pvs-init
 (defun pvs-ilisp-restore ()
   "Restore the old result history."
-  (declare (special / // /// + ++ +++ * ** - ilisp::*ilisp-old-result*))
+  (declare (special / // + ++ * ** - ilisp::*ilisp-old-result*))
   (setq // (pop ilisp::*ilisp-old-result*)
 	** (first //)
 	/  (pop ilisp::*ilisp-old-result*)
@@ -79,7 +79,9 @@
 	++  (pop ilisp::*ilisp-old-result*)
 	+   (pop ilisp::*ilisp-old-result*)
 	-   (pop ilisp::*ilisp-old-result*))
-  (pop ilisp::*ilisp-old-result*)
+  ;; CMU CL compiler does not like this
+  ;;(pop ilisp::*ilisp-old-result*)
+  (setq ilisp::*ilisp-old-result* (cdr ilisp::*ilisp-old-result*))
   nil)
 
 ;;; Writes out a message.  The message should fit on one line, and
@@ -519,6 +521,8 @@
 	 (t   (cons (char string pos) result))))
       (coerce (nreverse result) 'string)))
 
+(#+cmu ext:without-package-locks
+ #-cmu progn
 (defun parse-error (obj message &rest args)
   ;;(assert (or *in-checker* *current-file*))
   (cond (*parse-error-catch*
@@ -570,12 +574,15 @@
 		       (col-begin (place obj)))
 		     "")))
 	   (error "Parse error"))))
+)
 
 
 (defvar *type-error* nil)
 (defvar *type-error-argument* nil)
 (defvar *skip-all-conversion-checks* nil)
 
+(#+cmu ext:without-package-locks
+ #-cmu progn
 (defun type-error (obj message &rest args)
   (let ((errmsg (type-error-for-conversion obj message args)))
     (cond (*type-error-catch*
@@ -607,6 +614,7 @@
 	   (throw 'tcerror t))
 	  (t (format t "~%~a" errmsg)
 	     (error "Typecheck error")))))
+)
 
 (defun plain-type-error (obj message &rest args)
   (let ((*skip-all-conversion-checks* t))
@@ -671,10 +679,10 @@
        (not (some #'k-combinator? (conversions *current-context*)))
        (let ((*type-error-catch* 'type-error)
 	     (cdecl (make-instance 'conversion-decl
-		      'id '|K_conversion|
-		      'module (get-theory "K_conversion")
-		      'k-combinator? t
-		      'expr (mk-name-expr '|K_conversion|))))
+		      :id '|K_conversion|
+		      :module (get-theory "K_conversion")
+		      :k-combinator? t
+		      :expr (mk-name-expr '|K_conversion|))))
 	 (typecheck* cdecl nil nil nil)
 	 (unwind-protect
 	     (progn
