@@ -52,12 +52,9 @@
   (proof-dependent-decls :initform nil);;collects decls seen so far
   (dependent-decls :initform nil)
   (current-auto-rewrites :initform nil)
-  (tcc-hash :initform
-	    (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
-  (subtype-hash :initform (make-hash-table :hash-function 'pvs-sxhash
-					   :test 'tc-eq))
-  (rewrite-hash :initform (make-hash-table :hash-function 'pvs-sxhash
-					      :test 'tc-eq))
+  (tcc-hash :initform (make-pvs-hash-table))
+  (subtype-hash :initform (make-pvs-hash-table))
+  (rewrite-hash :initform (make-pvs-hash-table))
   (current-xrule :initform nil))
 
 (defcl apply-proofstate (proofstate)
