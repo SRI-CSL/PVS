@@ -83,9 +83,9 @@
 		    expr
 		    (let* ((ftype (mk-funtype (type expr) *boolean*))
 			   (skdecl (make-instance 'skolem-const-decl
-				     'id sk-id
-				     'type ftype
-				     'module *current-theory*))
+				     :id sk-id
+				     :type ftype
+				     :module *current-theory*))
 			   (*in-checker* t))
 		      (copy-prover-context)
 		      (setf (declarations-hash *current-context*)
@@ -96,11 +96,11 @@
 					 expr))))
 	 (cexpr (universal-closure bexpr))
 	 (expr-decl (make-instance 'formula-decl
-		      'id (ref-to-id id)
-		      'module *current-theory*
-		      'spelling 'formula
-		      'definition cexpr
-		      'closed-definition cexpr))
+		      :id (ref-to-id id)
+		      :module *current-theory*
+		      :spelling 'formula
+		      :definition cexpr
+		      :closed-definition cexpr))
 	 (*start-proof-display* display?)
 	 ;; The next section needed for translate-to-prove, which is used
 	 ;; by arith-order, make-prod, and arith-ord-translate.  This will
@@ -156,10 +156,10 @@
 		 :expected *boolean*))
 	 (closed-expr (universal-closure expr))
 	 (expr-decl (make-instance 'formula-decl
-		      'id (ref-to-id id)
-		      'module *current-theory*
-		      'spelling 'formula
-		      'definition closed-expr))
+		      :id (ref-to-id id)
+		      :module *current-theory*
+		      :spelling 'formula
+		      :definition closed-expr))
 	 (*start-proof-display* display?))
     (prove-decl expr-decl :strategy `(then (then ,strategy (postpone)) (quit))
 		:context *current-context*)
@@ -227,7 +227,7 @@
 	 (*ruletrace* nil)
 	 (*ruletracedepth* 0)
 	 ;; Hash tables
-	 (*assert-if-arith-hash* (init-if-rec *assert-if-arith-hash*))
+	 (*assert-if-arith-hash* (make-hash-table :test #'eq))
 	 (*auto-rewrites* (init-if-rec *auto-rewrites*))
 	 (*auto-rewrites-ops* (init-if-rec *auto-rewrites-ops*))
 	 (*beta-cache* (init-if-rec *beta-cache*))
@@ -260,23 +260,23 @@
     (newcounter *skofun-counter*)
     (newcounter *bind-counter*)
     (let* ((top-formula (closed-definition decl))
-	   (s-form (make-instance 's-formula 'formula top-formula))
-	   (sequent (make-instance 'sequent 's-forms (list s-form)))
+	   (s-form (make-instance 's-formula :formula top-formula))
+	   (sequent (make-instance 'sequent :s-forms (list s-form)))
 	   (*init-dp-state* (dpi-empty-state))
 	   (*dp-state* (dpi-push-state *init-dp-state*))
 	   (*top-dp-state* (dpi-push-state *init-dp-state*))
 	   (*top-proofstate*
 	    (make-instance 'top-proofstate
-	      'current-goal sequent
-	      'label (string (id decl))
-	      'strategy (if strategy
+	      :current-goal sequent
+	      :label (string (id decl))
+	      :strategy (if strategy
 			    strategy
 			    (query*-step))
-	      'context *current-context*
-	      'dp-state *dp-state*
-	      'justification (justification decl)
-	      'declaration decl
-	      'current-auto-rewrites auto-rewrites-info)))
+	      :context *current-context*
+	      :dp-state *dp-state*
+	      :justification (justification decl)
+	      :declaration decl
+	      :current-auto-rewrites auto-rewrites-info)))
       (before-prove*)
       (unwind-protect
 	   (dpi-start #'prove-decl-body)
@@ -327,11 +327,11 @@
     (catch 'abort
       (auto-rewrite rewrites *top-proofstate*)))
   (make-instance 'auto-rewrites-info
-    'rewrites *auto-rewrites*
-    'auto-rewrites-names *auto-rewrites-names*
-    'auto-rewrites!-names *auto-rewrites!-names*
-    'macro-names *macro-names*
-    'all-rewrites-names *all-rewrites-names*))
+    :rewrites *auto-rewrites*
+    :auto-rewrites-names *auto-rewrites-names*
+    :auto-rewrites!-names *auto-rewrites!-names*
+    :macro-names *macro-names*
+    :all-rewrites-names *all-rewrites-names*))
 
 (defun prove-decl-body ()
   (unwind-protect
@@ -682,8 +682,8 @@
 			 (format nil "~%which is trivially true.")
 			 (justification proofstate)
 			 (make-instance 'justification
-			   'label (label-suffix (label proofstate))
-			   'rule '(propax)))
+			   :label (label-suffix (label proofstate))
+			   :rule '(propax)))
 		   proofstate)  ;;else display goal, 
 		               ;;eval strategy, invoke rule-apply
 		  (t (catch-restore  ;;in case of restore/enable interrupts
@@ -914,9 +914,9 @@
 	     (strat-eval (cadddr strat))))
 	((try-form? strat)
 	 (make-instance 'strategy
-	   'topstep (strat-eval (cond-expr strat))
-	   'subgoal-strategy (then-expr strat)
-	   'failure-strategy (else-expr strat)))
+	   :topstep (strat-eval (cond-expr strat))
+	   :subgoal-strategy (then-expr strat)
+	   :failure-strategy (else-expr strat)))
 	((let-form? strat)
 	 (let ((let-value (let-eval (let-bindings strat))))
 	   (strat-eval (subst-stratexpr
@@ -1164,16 +1164,19 @@
 	   )))
 
 (defun expr-eval (expr)
-  (cond ((consp expr)
-	 (if (or (gethash (car expr) *rulebase*)
-		 (step-or-rule-defn (car expr))
-		 (not (isfun? (car expr))))
-	     expr
-	     (eval expr)))
-	(t (if (or (numberp expr)
-		   (special-variable-p expr))
-	       (eval expr)
-	       expr))))
+  (handler-bind ((warning #'(lambda (c)
+			      (declare (ignore c))
+			      (muffle-warning))))
+      (cond ((consp expr)
+	     (if (or (gethash (car expr) *rulebase*)
+		     (step-or-rule-defn (car expr))
+		     (not (isfun? (car expr))))
+		 expr
+		 (eval expr)))
+	    (t (if (or (numberp expr)
+		       (special-variable-p expr))
+		   (eval expr)
+		   expr)))))
 
 (defun label-suffix (label)
   (let ((pos (position #\. label :from-end t)))
@@ -1196,11 +1199,11 @@
 	(cond ((current-rule proofstate)
 
 	       (make-instance 'justification
-		 'label (label-suffix (label proofstate))
-		 'rule  (sexp-unparse (current-rule proofstate))
-		 'xrule (current-xrule proofstate)
-		 'comment (new-comment proofstate)
-		 'subgoals (mapcar #'(lambda (x) (justification x))
+		 :label (label-suffix (label proofstate))
+		 :rule  (sexp-unparse (current-rule proofstate))
+		 :xrule (current-xrule proofstate)
+		 :comment (new-comment proofstate)
+		 :subgoals (mapcar #'(lambda (x) (justification x))
 			     (done-subgoals proofstate))))
 	      (t (justification (car (done-subgoals proofstate)))))
 	)
@@ -1366,17 +1369,17 @@
 			 (collect-justification (current-subgoal
 						 proofstate))
 			 (make-instance 'justification
-			   'label (label-suffix (label proofstate))
-			   'comment (new-comment proofstate)
-			   'rule '(postpone)))))))
+			   :label (label-suffix (label proofstate))
+			   :comment (new-comment proofstate)
+			   :rule '(postpone)))))))
 	((eq (status-flag proofstate) '!)
 	 (or (justification proofstate)
 	     (make-instance 'justification
-	       'label (label-suffix (label proofstate))
-	       'rule (sexp-unparse (current-rule proofstate))
-	       'xrule (current-xrule proofstate)
-	       'comment (new-comment proofstate)
-	       'subgoals
+	       :label (label-suffix (label proofstate))
+	       :rule (sexp-unparse (current-rule proofstate))
+	       :xrule (current-xrule proofstate)
+	       :comment (new-comment proofstate)
+	       :subgoals
 	       (sort 
 		(mapcar #'collect-justification
 		  (done-subgoals proofstate))
@@ -1384,11 +1387,11 @@
 		:key #'(lambda (x)(safe-parse-integer (label x)))))))
 	((memq (status-flag proofstate) '(? *))
 	 (make-instance 'justification
-	   'label (label-suffix (label proofstate))
-	   'rule (sexp-unparse (current-rule proofstate))
-	   'xrule (current-xrule proofstate)
-	   'comment (new-comment proofstate)
-	   'subgoals
+	   :label (label-suffix (label proofstate))
+	   :rule (sexp-unparse (current-rule proofstate))
+	   :xrule (current-xrule proofstate)
+	   :comment (new-comment proofstate)
+	   :subgoals
 	   (let* ((current (when (current-subgoal proofstate)
 			     (collect-justification (current-subgoal proofstate))))
 		  (done (mapcar #'collect-justification
@@ -1407,9 +1410,9 @@
 			   all-but-current)))
 	     (sort all #'< :key #'(lambda (x) (safe-parse-integer (label x)))))))
 	(t (make-instance 'justification
-	     'label (label-suffix (label proofstate))
-	     'rule '(postpone)
-	     'comment (new-comment proofstate)))))
+	     :label (label-suffix (label proofstate))
+	     :rule '(postpone)
+	     :comment (new-comment proofstate)))))
 
 
 
@@ -1661,10 +1664,10 @@
 		     (collect-prover-input-strings rule-args
 						   *rule-args-alist*))
 	       (make-instance 'rule-instance
-		 'rule (apply (rule-function entry)
+		 :rule (apply (rule-function entry)
 			 args)
-		 'rule-input rule
-		 'rule-format (when (format-string entry)
+		 :rule-input rule
+		 :rule-format (when (format-string entry)
 				(cons (format-string entry)
 				      args))))))))
 
@@ -1684,12 +1687,12 @@
 ;				    ps))
 ;	   (strategy-entry (make-instance
 ;			    'strategy-instance
-;			    'strategy-fun
+;			    :strategy-fun
 ;			    (funcall (apply
 ;				      (strategy-fun strategy-entry)
 ;				      rule-args)
 ;				     ps)
-;			    'strategy-input rule))
+;			    :strategy-input rule))
 ;	   (t )
 
 (defun assert-tccforms (tccforms ps)
@@ -1746,7 +1749,7 @@
     (cond ((typep step 'rule-instance);;if step is a rule, then
 	   ;;reinvoke rule-apply with corresponding strategy. 
 	   (rule-apply (make-instance 'strategy
-			 'topstep step)
+			 :topstep step)
 		       ps));;else step is a strategy
 	  ((typep (topstep step) 'rule-instance)
 	   (let* ((*tccforms* nil)
@@ -1786,9 +1789,9 @@
 						    :key #'cdr)
 						  (rule-format topstep))
 			    (justification ps) (make-instance 'justification
-						 'label (label-suffix (label ps))
-						 'rule (rule-input topstep)
-						 'comment (new-comment ps)))
+						 :label (label-suffix (label ps))
+						 :rule (rule-input topstep)
+						 :comment (new-comment ps)))
 		      (make-updates updates ps)
 		      ps)
 		     ((eq signal '?);;subgoals generated
@@ -1839,7 +1842,7 @@
 						      (cons
 						       (make-instance
 							   's-formula
-							 'formula
+							 :formula
 							 (tccinfo-formula x))
 						       (s-forms
 							(current-goal ps))))
@@ -2133,7 +2136,7 @@
 				   (not tcc-to-sequent?))
 			      'tcc-proofstate
 			      'proofstate))
-		    'current-goal
+		    :current-goal
 		    (let* (
 			   (sequent
 			    (if tcc-to-sequent? ;;NSH(10.3.95)
@@ -2142,25 +2145,25 @@
 				(change-class (copy sequent) 'sequent)
 				sequent)))
 		      (clean-goal sequent))
-		    'context (copy-prover-context (context proofstate))
-		    'strategy  strategy
-		    'label
+		    :context (copy-prover-context (context proofstate))
+		    :strategy  strategy
+		    :label
 		    (if (= (length allsubgoals) 1)
 			(label proofstate)
 			(format nil "~a.~a" (label proofstate)
 				goalnum))
-		    'subgoalnum (1- goalnum)
-		    'proof-dependent-decls proof-dependent-decls
-		    'dependent-decls (dependent-decls proofstate)
+		    :subgoalnum (1- goalnum)
+		    :proof-dependent-decls proof-dependent-decls
+		    :dependent-decls (dependent-decls proofstate)
 		    ;;d-d can be nil but inheriting from parent is okay.
-		    'dp-state (dpi-copy-state (dp-state proofstate))
-		    'current-auto-rewrites
+		    :dp-state (dpi-copy-state (dp-state proofstate))
+		    :current-auto-rewrites
 		    (current-auto-rewrites proofstate)
-		    'rewrite-hash (rewrite-hash proofstate)
-		    'subtype-hash (subtype-hash proofstate)
-		    'tcc-hash (tcc-hash proofstate) ;;NSH(10.30.01)
-		    'parent-proofstate proofstate
-		    'comment (comment proofstate))))
+		    :rewrite-hash (rewrite-hash proofstate)
+		    :subtype-hash (subtype-hash proofstate)
+		    :tcc-hash (tcc-hash proofstate) ;;NSH(10.30.01)
+		    :parent-proofstate proofstate
+		    :comment (comment proofstate))))
 	    (if (consp goal)
 		(make-updates (cdr goal)
 			      goalstate)
@@ -2318,18 +2321,18 @@
 ;		(strategy-entry (gethash rule-name *strategies*)))
 ;	   (if rule-entry
 ;	       (make-instance 'strategy
-;		 'top-rule-function
+;		 :top-rule-function
 ;		 #'(lambda (ps)
 ;		     (declare (ignore ps))
 ;		     (format-if "~%~a~%" (rule justif))
 ;		     (retypecheck-sexp (rule justif) ps))
-;		 'subgoal-strategy-function
+;		 :subgoal-strategy-function
 ;		 #'(lambda (goal)
 ;		     (rerun-step (find (label goal)
 ;				       (subgoals justif)
 ;				       :test #'(lambda (x y)
 ;						 (equal x (label y))))))
-;		 'strat-if-a-subgoal-fails
+;		 :strat-if-a-subgoal-fails
 ;		 (postpone-strat)
 ;		 )
 ;	       (rerun-step (car (subgoals justif))))))
@@ -2684,8 +2687,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 					;(defun simp-rule () (make-instance 'rule
-					;		      'rule-part #'simp
-					;		      'rule-input '(simp)))
+					;		      :rule-part #'simp
+					;		      :rule-input '(simp)))
 
 
 ;(addrule 'simp nil nil (simp-rule)
@@ -3068,7 +3071,9 @@
 		     (and (label (car sforms))
 			  (or (symbolp sformnum)
 			      (stringp sformnum))
-			  (memq (intern sformnum)
+			  (memq (if (symbolp sformnum)
+				    sformnum
+				    (intern sformnum))
 				(label (car sforms)))))
 		 (funcall pred (car sforms)))
 	    neg
@@ -3078,7 +3083,9 @@
 		     (and (label (car sforms))
 			  (or (symbolp sformnum)
 			      (stringp sformnum))
-			  (memq (intern sformnum)
+			  (memq (if (symbolp sformnum)
+				    sformnum
+				    (intern sformnum))
 				(label (car sforms)))))
 		 (funcall pred (car sforms)))
 	    pos
@@ -3275,7 +3282,7 @@
 		(format t "The hidden formulas in the current sequent are:")
 		(let ((*print-ancestor* nil))
 		  (format t "~a" (make-instance 'sequent
-				   's-forms hforms))))
+				   :s-forms hforms))))
 	      t t)))
       (pvs-message "No current proof")))
 	
@@ -3474,8 +3481,8 @@
   (progn (setq *context-modified* t)
 	 (values '! nil (list 'justification
 			      (make-instance 'justification
-				'label (label-suffix (label ps))
-				'rule `(rerun ,proof))))))
+				:label (label-suffix (label ps))
+				:rule `(rerun ,proof))))))
 
 (defun nth-or-last (n list)
   (if (< n (length list))
