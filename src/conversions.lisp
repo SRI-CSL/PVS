@@ -330,8 +330,8 @@
 			    (disabled-conversions *current-context*)
 			    :key #'expr :test #'tc-eq)))
       (make-instance 'conversion-result
-	'expr (copy (expr nconv))
-	'conversion nconv))))
+	:expr (copy (expr nconv))
+	:conversion nconv))))
 
 (defun compatible-resolution-conversion-args (bindings ctype arguments)
   (let* ((cran (find-supertype (range ctype)))
@@ -376,10 +376,10 @@
       (change-name-expr-class-if-needed (declaration (expr conv))
 					(expr conv)))
     (make-instance 'conversion-resolution
-      'module-instance (module-instance res)
-      'declaration (declaration res)
-      'type (copy rtype 'from-conversion conv)
-      'conversion conv)))
+      :module-instance (module-instance res)
+      :declaration (declaration res)
+      :type (copy rtype 'from-conversion conv)
+      :conversion conv)))
 
 (defun get-conversion-range-type (conv expr)
   (let* ((ctype (find-supertype (type conv)))
@@ -502,7 +502,7 @@
 	   (kres (find-if #'(lambda (r)
 			      (typep r 'lambda-conversion-resolution))
 		   (resolutions (operator expr))))
-	   (kid (make-new-variable 's expr))
+	   (kid (make-new-variable '|s| expr))
 	   (kbd (make-bind-decl kid (k-conv-type kres)))
 	   (*bound-variables* (cons kbd *bound-variables*))
 	   (kvar (make-variable-expr kbd))
@@ -513,10 +513,10 @@
 	    (types op) nil
 	    (resolutions op) nil
 	    (expression expr) (make-instance (class-of orig-expr)
-				'operator op
-				'argument (if (cdr args)
+				:operator op
+				:argument (if (cdr args)
 					      (make-instance 'arg-tuple-expr
-						'exprs args)
+						:exprs args)
 					      (car args))))
       (add-conversion-info "LAMBDA conversion" orig-expr expr)
       (typecheck* expr nil nil nil))))
@@ -529,8 +529,8 @@
 		      (setf (types ex) nil)
 		      (when (name-expr? ex) (setf (resolutions ex) nil))
 		      (let ((ac (make-instance 'argument-conversion
-				  'operator ex
-				  'argument kvar)))
+				  :operator ex
+				  :argument kvar)))
 			(typecheck* ac nil nil nil)))
 		  #'(lambda (ex)
 		      (and (expr? ex)
@@ -554,8 +554,8 @@
 		       (compatible? (domain (find-supertype ty)) (type var1))))
 	      (ptypes arg))
 	(let ((ac (make-instance 'argument-conversion
-		    'operator arg
-		    'argument var1)))
+		    :operator arg
+		    :argument var1)))
 	  (typecheck* ac nil nil nil))
 	arg)))
 
@@ -577,8 +577,8 @@
 		vars)))
     (if var1
 	(let ((ac (make-instance 'argument-conversion
-		    'operator arg
-		    'argument var1)))
+		    :operator arg
+		    :argument var1)))
 	  (typecheck* ac nil nil nil))
 	arg))
   ;;arg
@@ -733,10 +733,10 @@
       (when (name-expr? op)
 	(setf (resolutions op) nil))
       (setf (expression expr) (make-instance (class-of orig-expr)
-				'operator op
-				'argument (if (cdr args)
+				:operator op
+				:argument (if (cdr args)
 					      (make-instance 'arg-tuple-expr
-						'exprs args)
+						:exprs args)
 					      (car args))))
       (add-conversion-info "LAMBDA conversion" orig-expr expr) 
       (typecheck* expr nil nil nil))))
@@ -925,7 +925,7 @@
 
 (defun find-record-assignment-conversion (afld efld avar adep? edep?)
   (let* ((arg (list (list (make-instance 'field-assignment-arg
-			    'id (id afld)))))
+			    :id (id afld)))))
 	 (fappl (make!-field-application efld avar))
 	 (conv (unless (tc-eq (type afld) (type efld))
 		 (find-most-recent-conversion
@@ -1164,12 +1164,12 @@
 		     (when (and (compatible? (type sconv) type)
 				(check-conversion sconv))
 		       (make-instance 'conversion-result
-			 'expr (copy sconv)
-			 'conversion conversion)))))))
+			 :expr (copy sconv)
+			 :conversion conversion)))))))
 	(when (compatible? ctype type)
 	  (make-instance 'conversion-result
-	    'expr (copy (expr conversion))
-	    'conversion conversion)))))
+	    :expr (copy (expr conversion))
+	    :conversion conversion)))))
 
 (defmethod type ((conv-res conversion-result))
   (type (expr conv-res)))
