@@ -62,12 +62,10 @@
 (defvar *ruletrace* nil)
 (defvar *ruletracedepth* 0)
 (defvar *template-num* 0)
-(defvar *translate-to-prove-hash*
-  (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+(defvar *translate-to-prove-hash*)
 (defvar *prover-print-depth* nil)
 (defvar *prover-print-length* nil)
-(defvar *translate-id-hash*
-  (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+(defvar *translate-id-hash*)
 (defvar *translate-id-counter* nil)
 (defvar *process-output* nil)
 (defvar *top-rewrite-hash* nil)
@@ -101,9 +99,8 @@
 (defvar *mu-subtype-list* nil)
 (defvar *remaining-actuals-matches* nil)
 (defvar *all-boundvars* nil)
-(defvar *assert-if-arith-hash* (make-hash-table :test #'eq))
-(defvar *create-formulas-cache*
-  (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+(defvar *assert-if-arith-hash*)
+(defvar *create-formulas-cache*)
 (defvar *replace-in-actuals?* nil)
 (defvar *top-assert-flag* nil)
 (defvar *constant-names* nil)
@@ -134,7 +131,7 @@
 (defvar - '-)
 (defvar *macro-names* nil)
 (defvar *subst-type-hash* ;;used in assert-sformnums
-  ;;(make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq)
+  ;;(make-pvs-hash-table)
   nil) ;; Make this nil till we can analyze this further.
 (defvar *checkpointed-branches* nil)
 (defvar *dp-print-incompatible-warning* t)
@@ -162,6 +159,15 @@
 #+allegro
 (defmacro with-interrupts-deferred (&body form)
   `(let ((excl::*without-interrupts* t)) ,@form))
+
+#+cmu
+(defmacro with-interrupts-allowed (&body form)
+  `(system:with-interrupts ,@form))
+
+#+cmu
+(defmacro with-interrupts-deferred (&body form)
+  `(system:without-interrupts ,@form))
+
 
 
 ;;; KCL does not really have the equivalent to the following - punt for now.
@@ -210,7 +216,7 @@
 	   (let ((test (hash-table-test ,val)))
 	     (if (memq test '(eq eql equal equalp))
 		 (make-hash-table :test test)
-		 (make-hash-table :test test :hash-function 'pvs-sxhash)))
+		 (make-pvs-hash-table)))
 	   (clrhash ,val)))))
 
 ;;The rulebase is represented as a hash-table.
@@ -561,9 +567,7 @@
 
 (defmacro translate-with-new-hash (&rest body)
   `(let ((*translate-to-prove-hash*
-	  (make-hash-table;;NSH(2.5.95)
-	   :hash-function 'pvs-sxhash;;hash to pvs-hash
-	   :test 'tc-eq)))
+	  (make-pvs-hash-table)))
      ,@body))
 
 (defmacro inc-rewrite-depth (res)
