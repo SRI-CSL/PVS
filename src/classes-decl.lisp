@@ -122,6 +122,12 @@
 	  tuple-expr tupletype type type-decl type-def-decl type-expr
 	  type-name type-name? type-value types update-expr using-hash
 	  var-decl visible?))
+#+cmu
+(ext:without-package-locks
+ (defgeneric class (x))
+ (defgeneric (setf class) (x y))
+ (defgeneric keyword (x))
+ (defgeneric (setf keyword) (x y)))
 
 ;;; So we can unparse a list of modules into a single file.
 
@@ -253,7 +259,7 @@
 
 (defcl module (datatype-or-module)
   (theory :type list :parse t) ; The declarations of the theory-part
-  (exporting :type list :parse t)  ; A list of exportings
+  (exporting :type exporting :parse t)  ; A list of exportings
   nonempty-types  ; Keep track of types marked nonempty during typechecking
   all-usings ; The transitive closure of the usings of the theory
   (immediate-usings :initform 'unbound) ; immediate usings of the theory
@@ -316,7 +322,7 @@
 
 (defcl declaration (syntax)
   (newline-comment :restore-as nil)
-  (id :type symbol :parse t :restore-as nil)
+  (id :type (or symbol number) :parse t :restore-as nil)
   (formals :type list :parse t)
   (module :restore-as nil)
   (refers-to :type list :restore-as nil)
