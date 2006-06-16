@@ -16,6 +16,20 @@
 	  equation iff iff-or-boolean-equation implication index negation
 	  propositional-application))
 
+#+cmu
+(ext:without-package-locks
+ (defgeneric type (x))
+ (defgeneric (setf type) (x y))
+ (defgeneric number (x))
+ (defgeneric (setf number) (x y))
+ (defgeneric declaration (x))
+ (defgeneric (setf declaration) (x y)))
+
+#+cmu
+;; This is actually defined in utils, but convenient to add here
+(ext:without-package-locks
+ (defgeneric condition (x)))
+
 ;;; Provide a class on which to hang syntactic information
 
 (defcl syntax ()
@@ -139,7 +153,6 @@
 
 ;; When an extraction-expr is used as a conversion
 (defcl extraction-conversion (extraction-application))
-
 
 (defcl number-expr (expr)
   (number :parse t :restore-as nil))
@@ -542,8 +555,7 @@
 
 (defcl judgements ()
   (judgement-types-hash
-   :initform (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq
-			      :weak-keys t)
+   :initform (make-pvs-hash-table :weak-keys? t)
    :fetch-as nil)
   judgement-declarations ;;keeps track of all the judgement declarations
   number-judgements-alist
