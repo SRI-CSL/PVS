@@ -10,44 +10,18 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package :user)
-
-#+allegro
-(eval-when (eval load)
-  (setq *ignore-package-name-case* t))
+(in-package :cl-user)
 
 (eval-when (eval load)
-  (defvar *pvs-binary-type*
-    #+(and allegro sparc) "fasl"	; Sun4
-    #+(and allegro rios) "rfasl"	; PowerPC/RS6000
-    #+(and allegro hpux) "hfasl"	; HP 9000
-    #+(and allegro x86) "lfasl"         ; Intel x86
-    #+(and allegro macosx) "mfasl"      ; Mac OS X
-    #+(and lucid lcl4.1 sparc) "sbin"	; Sun4 new Lucid
-    #+(and lucid (not lcl4.1) sparc) "obin" ; Sun4 old Lucid
-    #+(and lucid rios) "rbin"		; PowerPC/RS6000
-    #+(and lucid mips) "mbin"		; DEC
-    ;;; These are experimental
-    #+gcl "o"
-    #+cmu "sparcf"
-    #+harlequin-common-lisp "wfasl"
-    ))
+  ;; This sets *pvs-path* and sets *pvs-binary-type*
+  (load "pvs-config.lisp"))
 
-#+allegro
-(eval-when (eval load)
-  (setq excl:*fasl-default-type* *pvs-binary-type*)
-  (setq system:*load-search-list*
-	(list #p"" (make-pathname :type *pvs-binary-type*)
-	      #p(:type "cl") #p(:type "lisp"))))
+(defpackage pvs (:use #+lucid :lucid-common-lisp :lisp
+		      #-(or gcl cmu) :clos #+(or gcl cmu) :pcl))
 
-(defpackage pvs (:use #+lucid "LUCID-COMMON-LISP" "LISP"
-		      #-gcl "CLOS" #+gcl "PCL"))
-
-(setq *cltl1-in-package-compatibility-p* t)
-
-(in-package "PVS")
-(import '(user::*pvs-path*))
-(let ((excl:*enable-package-locked-errors* nil))
+(in-package :pvs)
+(import '(cl-user:*pvs-path*))
+(let (#+allegro (excl:*enable-package-locked-errors* nil))
   (load "src/defcl.lisp")
   (load "src/store-object.lisp")
   (load "src/classes-expr.lisp")
@@ -55,4 +29,5 @@
   (load "src/prover/estructures.lisp"))
 
 (write-deferred-methods-to-file t)
-(excl:exit)
+
+(cl-user:bye)
