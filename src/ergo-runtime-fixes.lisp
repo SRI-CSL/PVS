@@ -132,7 +132,8 @@
 	 (oplace (find-if #'(lambda (oplace)
 			      (and (eq (car oplace) op)
 				   (place< arg1-place (cdr oplace))
-				   (place< (cdr oplace) arg2-place)))
+				   (or (null arg2-place)
+				       (place< (cdr oplace) arg2-place))))
 		   *operator-places*)))
     (assert oplace)
     (setq *operator-places* (delete oplace *operator-places*))
@@ -153,8 +154,8 @@
 (defun reader ()
   (multiple-value-bind (token place comment)
       (lexical-read *lexical-stream* :eof)
-    ;; (format t "~%reader: token = ~s, place = ~s, comment = ~s"
-    ;;   token place comment)
+    ;;(format t "~%reader: token = ~s, place = ~s, comment = ~s"
+    ;;  token place comment)
     (cond ((consp token)
 	   (case (car token)
 	     (:literal
@@ -243,11 +244,11 @@ with the comment so as to put it in the proper place")
 	     (values (prog1 *hold-a1* (setf *hold-a1* nil))
 		     *hold-a2* *hold-a3* *hold-a4*))
 	    (t (funcall *reader-fun*)))
-    ;; (format t "~%gettoken: type = ~s, token = ~s, place = ~s, comment = ~s"
-    ;;   type token place comment)
+    ;;(format t "~%gettoken: type = ~s, token = ~s, place = ~s, comment = ~s"
+    ;;  type token place comment)
     (setq *end-place* (list type token place))
     (setq *last-newline-comment* (nconc *last-newline-comment* comment))
-    ;; (format t "~%gettoken comment = ~s" comment)
+    ;;(format t "~%gettoken comment = ~s" comment)
     (cond (;; This branch of the COND is completely meaningless because
 	   ;; there is currently no way to cause a generated parser to return
 	   ;; a lex'ed keyword (e.g., 'begin', 'then', ':=').  Parsers merely
@@ -274,7 +275,7 @@ with the comment so as to put it in the proper place")
 	       (values (prog1 *hold-a1* (setq *hold-a1* nil))
 		       *hold-a2* *hold-a3* *hold-a4*))
 	      (t (funcall *reader-fun*)))
-      ;; (format t "~%gobble-token: type = ~s, token = ~s, place = ~s, comment = ~s"
+      ;;(format t "~%gobble-token: type = ~s, token = ~s, place = ~s, comment = ~s"
       ;;   v1 v2 v3 v4)
       (when (eq v1 'sbst::ELSIF)
 	(push v3 pvs::*elsif-places*))
@@ -348,7 +349,7 @@ with the comment so as to put it in the proper place")
 	       (incf *num-keywords-skipped*))
 	   (setq *last-syntax* lterm)
 	   ;;(setq *last-newline-comment*
-		;; (append *last-newline-comment* *hold-comments*))
+	   ;;	 (append *last-newline-comment* *hold-comments*))
 	   (setq *hold-comments* nil)
 	   ;;(format t "~%Found ~a, resetting num-comments" token)
 	   ;;(when *last-newline-comment*
@@ -486,7 +487,7 @@ with the comment so as to put it in the proper place")
   (set-term-place term splace (or eplace *end-of-last-token*))
   (when (and *last-newline-comment* 
 	     (is-leaf-term lterm))
-    ;; (format t "~%~a gets comment ~s" lterm comment)
+    ;;(format t "~%~a gets comment ~s" lterm comment)
     (setf (getf (term:term-attr term) :comment)
 	  *last-newline-comment*)
     (setq *last-newline-comment* nil))
@@ -513,21 +514,23 @@ with the comment so as to put it in the proper place")
    as they are created")
 
 (defun lex-newline-comment (stream open-comment)
-  (if (eq *abs-syn-package* (find-package 'pvs))
+  (if (eq *abs-syn-package* (find-package :pvs))
       (let ((newline? (check-for-newline stream))
 	    (comment (collect-newline-comment-chars stream nil)))
+	;;(format t "~%lex-newline-comment: *collect-comments* = ~a, comment = ~s"
+	;;  *collect-comments* comment)
 	(when *collect-comments*
 	  (setq *newline-comments*
 		(append *newline-comments*
 			(list (list comment *num-keywords-skipped*
 				    newline?)))))
-; 	(if *collect-comments*
-; 	    (setq *hold-comments*
-; 		  (append *hold-comments* (list (list comment 0 newline?))))
-; 	    (setq *last-newline-comment*
-; 		  (append *last-newline-comment*
-; 			  (list (list comment *num-keywords-skipped*
-; 				      newline?)))))
+;; 	(if *collect-comments*
+;; 	    (setq *hold-comments*
+;; 		  (append *hold-comments* (list (list comment 0 newline?))))
+;; 	    (setq *last-newline-comment*
+;; 		  (append *last-newline-comment*
+;; 			  (list (list comment *num-keywords-skipped*
+;; 				      newline?)))))
 	(values))
       (let ((*close-comment-char* #\newline))
 	(lex-comment stream open-comment))))
@@ -580,440 +583,6 @@ with the comment so as to put it in the proper place")
     (lexical-make-escape lexstream escape-char)))
 
 
-;;; UNPARSE: The rest of the functions in this file are for unparsing
-
-;;; Replaces a function in rt-format.lisp, which does printing of output
-;;; according to formatting that has been done earlier.  Whenever an pvs
-;;; comment is seen it is stored on a list, and output when a whitespace
-;;; including a cr is printed.  %-style comments are printed before the
-;;; first cr.
-
-(defvar *newline-comments-to-output* nil "list of %-style pvs comments
-  that haven't been printed yet")
-
-(defvar *white-space-up-to-last-newline* (make-string-output-stream)
-"keep whitespace that has been output, so comments can be inserted therein")
-
-(defvar *white-space-since-last-newline* (make-string-output-stream)
-  "keep whitespace on current line, in case a comment needs to be inserted")
-
-(defvar *newline-printed* nil)
-
-(defun compute-octs-and-string (aw)
-  (let ((*print-pretty* nil)		; To avoid weirdness.
-	(*indent* '(0))
-	(*s* (make-string-output-stream)))
-    ;; Initialise buffers used for outputting comments in good places:
-    (get-output-stream-string *white-space-up-to-last-newline*)
-    (get-output-stream-string *white-space-since-last-newline*)
-    (setq *newline-comments-to-output* nil)
-    (setq *num-keywords-skipped* -1)
-    (setq *last-syntax* nil)
-    (compute-octs-and-string-aux aw 0 0 0 nil nil)
-    (setf (aw-outstring aw) (get-output-stream-string *s*))))
-
-(defun print-buffered-whitespace-and-comments ()
-  (when *newline-comments-to-output*
-    (unless pvs::*no-comments*
-      ;;(format t "~%skipping ~d, comments = ~s"
-	;;*num-keywords-skipped* *newline-comments-to-output*)
-      (let ((first? t))
-	(dolist (cmt *newline-comments-to-output*)
-	  (when (= (second cmt) *num-keywords-skipped*)
-	    ;;(let ((indent (floor (car *indent*))))
-	      (format *s* "~V%~V,0@T~a~%~V,0@T"
-		(if (or (third cmt) (not first?)) 0 0)
-		(if (= (second cmt) -1) 0 2)
-		(first cmt)
-		0)
-	      ;;) ;was indent
-	    ;;(setq *newline-printed* t)
-	    (setq *newline-comments-to-output*
-		  (remove cmt *newline-comments-to-output*))))))
-    ;;(setq *newline-comments-to-output* nil)
-    )
-  (let ((out (get-output-stream-string *white-space-up-to-last-newline*)))
-    (unless (string= out "")
-      (princ out *s*)))
-  (let ((out (get-output-stream-string *white-space-since-last-newline*)))
-    (unless (string= out "")
-      (princ out *s*))))
-
-;;; In the following, ;++ indicates added code, ;-- indicates changed code.
-
-(defun compute-octs-and-string-aux (aw leftx topy topdent
-				    more-on-topline? more-on-botline?)
-  (declare (ignore leftx))
-  ;;(assert (>= topdent leftx))
-  (let ((x topdent)  
-	(y topy)
-	;;(s (make-string-output-stream))
-	(minx topdent)
-	(maxx 0)
-	(height 1)
-	(term (aw-term aw)))					   ;++
-    (when (getf (term:term-attr term) :comment)		   ;++
-      (let ((cmt (getf (term:term-attr term) :comment)))    ;++
-	(setq *newline-comments-to-output*			   ;++
-	      cmt
-	      ;;(append *newline-comments-to-output* cmt)
-	      )))	   ;++
-    (dolist (son (aw-sons-form aw))				   ;++
-      (when (and (token-p son)					   ;++
-		 (memq (token-kind son) '(:keyword :lt))	   ;++
-		 (memq (token-subkind son) '(:id :identifier)))  ;++
-	(collect-comments term)
-	))				   ;++
-    (print-buffered-whitespace-and-comments)			   ;++
-
-    (do ((sons (aw-sons-form aw) (cdr sons))
-	 (rev-sons nil (cons (car sons) rev-sons)))
-	((null sons) aw)
-      (if (token-p (car sons))
-	  (let ((token (car sons)))
-	    ;;(assert (token-p token))
-	    ;;(format t " ~A ~A ~A ~%" (token-kind token)
-	    ;;      (token-subkind token) *indent*)
-	    (ecase (token-kind token)
-	      ((:keyword :lt)
-	       (print-buffered-whitespace-and-comments)
-	       (setf x (+ x (token-width token)))
-	       ;;(when (member (token-subkind token) '(:id :identifier)) ;++
-	       ;;  (collect-comments term))			   ;++
-	       (ecase (token-subkind token)
-		 ((:id :identifier nil)	; nil for keyword
-		  (let ((str (if (token-str-value token)
-				  (token-str-value token)
-				  (symbol-name (token-value token)))))
-		    (cond ((memq (token-subkind token) '(:id :identifier))
-			   (let ((*num-keywords-skipped* -1))
-			     (print-buffered-whitespace-and-comments))
-			   (setq *num-keywords-skipped* 0))
-			  (t (incf *num-keywords-skipped*)))
-		    (princ (if (string-equal str "O")
-			       "o"
-			       (if *case-sensitive* ;--
-				   str	;--
-				   (case *print-case* ;--
-				     (:downcase (string-downcase str)) ;--
-				     (:upcase (string-upcase str)) ;--
-				     (:capitalize (string-capitalize str)) ;--
-				     (t str)))) ;--
-			   *s*)
-		    (print-buffered-whitespace-and-comments)	   ;++
-		    ))
-		 ((:string :number)
-		  (print-buffered-whitespace-and-comments)	   ;++
-		  (princ (if (token-str-value token)
-			     (token-str-value token)
-			     (token-value token))
-			 *s*))
-		 (:jux ())))
-
-	      (:whitespace
-	       (print-buffered-whitespace-and-comments)		   ;++
-	       (ecase (token-subkind token)
-		 (:sp (let* ((spaces (sb-pixels-to-chars (token-value token)))
-			     (space (sb-chars-to-pixels spaces))) ; exact
-			(setf x (+ x space))
-			(do ((i spaces (1- i)))
-			    ((<= i 0))
-			  (write-char #\space			   ;--
-				      *white-space-since-last-newline*)))) ;--
-		 (:cr (let ((act-indent (sb-chars-to-pixels
-					 (sb-pixels-to-chars (car *indent*)))))
-			(setf maxx (max maxx x))
-			(setf y (+ y (sb-lines-to-pixels 1)))
-			(setf x act-indent)
-			(setf minx (min minx x))
-			(incf height)
-			(if *newline-printed*
-			    (setq *newline-printed* nil)
-			    (terpri *white-space-since-last-newline*))  ;++
-			(let ((out (get-output-stream-string
-				    *white-space-since-last-newline*)))
-			  (unless (string= out "")
-			    (princ out
-				   *white-space-up-to-last-newline*)))
-			(do ((i (sb-pixels-to-chars act-indent) (1- i)))
-			    ((<= i 0))
-			  (write-char #\space			   ;--
-				      *white-space-since-last-newline*)))) ;++
-		 (:indent ;;(format t " indenting ~A ~A - ~A ~%"
-			  ;;  token (indent-width (token-value token)) *indent*)
-			  (push (+ (car *indent*)
-				   (indent-width (token-value token)))
-				*indent*))
-		 (:unindent (if (cdr *indent*)
-				(pop *indent*)))
-		 (:tab-left (push x *indent*))
-		 (:tab-right (push x *indent*))	; already ordered properly
-					; with whitespace
-		 (:untab (if (cdr *indent*)
-			     (pop *indent*)))))))
-	    
-	  ;;  (aw-p (car sons))
-	  (let ((aw (car sons))
-		(new-leftx (car *indent*)))
-	    (compute-octs-and-string-aux aw (min x new-leftx) y x
-					 (is-more-on-line? more-on-topline?
-							   rev-sons)
-					 (is-more-on-line? more-on-botline?
-							   (cdr sons)))
-	    (setf maxx (max maxx
-			    (rightx (aw-oct aw))))
-	    ;;(write-string (aw-outstring aw) s)  ; for old 1 string per aw
-	    (setf y (- (boty (aw-oct aw))
-		       (sb-lines-to-pixels 1)))
-	    (setf x (botdent (aw-oct aw))))))
-
-    (setf maxx (max maxx x))
-    ;;(setf (aw-outstring aw) (get-output-stream-string s))
-
-    (setf (aw-oct aw)
-	  (make-oct :leftx 	 minx
-		    :topy 	 topy
-		    :rightx	 maxx
-		    :boty	 (+ y (sb-lines-to-pixels 1))
-		    :topdent     (if (not more-on-topline?) minx topdent)
-		    :botdent     (if (not more-on-botline?) maxx x)
-		    ))))
-
-(defun collect-comments (term)
-  (dolist (sterm (term-args term))
-    (let ((cmt (getf (term:term-attr sterm) :comment)))
-      (when cmt
-	(setq *newline-comments-to-output*
-	      (append *newline-comments-to-output* cmt))))
-    (collect-comments sterm)))
-
-(defun show-comments (term)
-  (let ((cmt (getf (term:term-attr term) :comment)))
-    (when cmt
-      (format t "~%~s - ~s" term cmt))
-    (mapc #'show-comments (term-args term))
-    nil))
-
-;;; These two macros come from rt-unparse.lisp.  I have taken out the
-;;; flattening feature.  This feature essentially removes single
-;;; productions from the intermediate abstract syntax, by leaving out
-;;; uterms with only one child.  This causes problems if the left out
-;;; uterm contained a comment. 
-;;; A more elegant solution would put the comment into the as or uterm
-;;; above, so that the formatter would catch it again.
-;;; This change should be evaluated for efficiency effects.
-;;; 2/8/91: flattening only avoided when lower term is a syntactic object.
-
-;(defvar *flatten-uterms* nil)		; Check texify macro if this changes
-;(defvar *flatten-new-uterms* nil)	; Check texify macro if this changes
-
-(defmacro unp-rept (as body each-iter-slot bp-ws)
-  `(let ((*pat-nesting* (1+ *pat-nesting*))
-	 (*current-print-length* 1))
-     (setf (uterm-kind *uterm*) :rept)
-     (do ((rest (get-term-args ,as)
-		(cdr rest)))
-	 ((or (null rest)
-	      (and *sb-print-length*
-		   (>= *current-print-length* *sb-print-length*)))
-	  (if rest
-	      (queue-uterm-son length-ellipsis-token)))
-       (setf ,each-iter-slot (car rest))
-       ,@body
-       (queue-uterm-bp (make-spec-bp ,bp-ws))
-       (incf *current-print-length*))))
-
-(defmacro unp-double-rept (as body key-body each-iter-slot
-			      bp1-ws bp2-ws &optional (junk nil))
-  (declare (ignore junk))		; kept for upward compatibility.
-  `(let ((*pat-nesting* (1+ *pat-nesting*))
-	 (*current-print-length* 1))
-     (setf (uterm-kind *uterm*) :rept)
-     (do ((rest (get-term-args ,as)
-		(cdr rest)))
-	 ((or (null rest)
-	      (and *sb-print-length*
-		   (>= *current-print-length* *sb-print-length*)))
-	  (if rest
-	      (queue-uterm-son length-ellipsis-token)))
-       (setf ,each-iter-slot (car rest))
-       ,@body
-       (queue-uterm-bp (make-spec-bp ,bp1-ws))
-       (cond ((cdr rest)
-	      ,@key-body
-	      (queue-uterm-bp (make-spec-bp ,bp2-ws))))
-       (incf *current-print-length*))))
-
-(defmacro nt-unp (nt-name as body)
-  `(let* ((*uterm-nt-name* ,nt-name)
-	  (*as-stack* (init-as-stack))
-	  (*uterm* (init-uterm *uterm-nt-name* ,as))
-	  (*uterm-son-count* 0)
-	  (*uterm-bp-count* 0)
-	  (*pat-nesting* nesting-constant))
-     ;; The above is just our starting value for *pat-nesting*,
-     ;; since we don't want any real negative values for user's
-     ;; relative prefernces. (nesting-constant is from rt-format).
-     (setf (uterm-kind *uterm*) :nt)
-     (cond ((and *sb-print-depth*
-		 (>= *current-print-depth* *sb-print-depth*))
-	    (queue-uterm-son depth-ellipsis-token)
-	    *uterm*)
-	   (t
-	    (incf *current-print-depth*)
-	    ,@body
-	    (decf *current-print-depth*)
-	    (bracket-uterm *uterm*)
-	    ;; cache UTERM in argument AS.  (or this occurs at another level).
-	    (cond ((and (= (length (uterm-sons *uterm*)) 1)	
-					; flatten uterm structure.
-			(uterm-p (car (uterm-sons *uterm*)))
-			(not (typep (uterm-term (car (uterm-sons *uterm*)))
-				    'pvs::syntax))
-			(not (eq (uterm-kind *uterm*) :rept)))
-		   (setf (uterm-name (car (uterm-sons *uterm*)))
-			 ,nt-name)
-		   (setf (uterm-term (car (uterm-sons *uterm*)))
-			 ,as)
-		   (car (uterm-sons *uterm*)))
-		  (t
-		   *uterm*))))))
-
-(defmacro unp-uterm (as body)
-  `(let ((new-uterm (init-uterm *uterm-nt-name* ,as)))
-     (let ((*uterm* new-uterm)
-	   (*uterm-son-count* 0)
-	   (*uterm-bp-count* 0)
-	   (*pat-nesting* nesting-constant))
-       ;; The above is just our starting value for *pat-nesting*, since we
-       ;; don't want any real negative values for user's relative prefernces.
-       ;; (nesting-constant is from rt-format).
-       ,@body
-       (bracket-uterm *uterm*))
-     ;; cache UTERM in argument AS.  (or this occurs at another level).
-     (queue-uterm-son 
-      (cond ((and (= (length (uterm-sons new-uterm)) 1) 
-					; flatten uterm structure.
-		  (uterm-p (car (uterm-sons new-uterm)))
-		  (not (typep (uterm-term (car (uterm-sons new-uterm)))
-			      'pvs::syntax))
-		  (not (eq (uterm-kind new-uterm) :rept)))
-	     (setf (uterm-term (car (uterm-sons new-uterm)))
-		   ,as)
-	     (car (uterm-sons new-uterm)))
-	    (t
-	     new-uterm)))))
-
-
-(defun memo-uterm (term unp-function top-level?)
-  (if (or *disable-caching*
-	  (and *disable-nested-caching*
-	       (null top-level?)))
-      (funcall unp-function term)
-      (newattr::get-gsyn theuterm
-			 term
-			 (list unp-function
-			       *unparse-style*
-			       *no-escapes*
-			       *sb-print-depth*
-			       *sb-print-length*
-			       *formatting-off*))))
-
-(defun should-break-intv? (start end)
-  (let ((tend (tinfo-width (aref *tinfo* end)))
-	(tstart (if (plusp start)
-		    (tinfo-width (aref *tinfo* (1- start)))
-		    0))
-	(tindent (if (plusp start)
-		     (or (car (tinfo-indent-stack (aref *tinfo* (1- start))))
-			 0)
-		     0))
-	(slop 20))
-;    (format t "~%tend = ~d, tstart = ~d, diff = ~d, tindent = ~d, break? = ~a"
-;      tend tstart (- tend tstart) tindent
-;      (and (> (- tend tstart) slop)
-;	   (> (+ (- tend tstart) tindent) *allowed-width*)))
-    (and (> (- tend tstart) slop);; SO - added this for slop
-	 (> (+ (- tend tstart) tindent) *allowed-width*))))
-
-(defun assign-between-token-whitespace ()
-  (do ((i 0 (1+ i)))
-      ((= i (1- (fill-pointer *tinfo*))))
-    (let* ((tinfo (aref *tinfo* i))
-	   (son (tinfo-son tinfo))
-	   (bp (tinfo-bp tinfo))
-	   (next-tinfo (aref *tinfo* (1+ i)))
-	   (next-son (tinfo-son next-tinfo)))
-      (assert (and (token-p son)
-		   (token-p next-son)))
-      (if (null (bp-spaces bp))
-	  (let ((spaces (determine-between-token-spaces
-			 son
-			 next-son
-			 (uterm-name (tinfo-uterm tinfo))
-			 (uterm-name (tinfo-uterm next-tinfo)))))
-	    (cond ((= spaces 0)
-		   (setf (bp-spaces bp) 0))
-		  ((< spaces 0)		     ; represent cr's from
-		   (setf (bp-spaces bp) 0)   ; lang-special-spaces
-		   (setf (bp-crs bp) (abs spaces))
-		   (setf (bp-value bp) most-negative-fixnum))
-		  ((> spaces 0)
-		   (setf (bp-spaces bp) spaces))))
-	  (setf (bp-spaces bp) (sb-chars-to-pixels (bp-spaces bp)))) 
-					; Up till now, has been char spaces.
-
-      (if (zerop (bp-spaces bp))
-	  (setf (bp-value bp)
-		(+ (bp-value bp) 
-		   (* *zero-space-bp* nesting-constant))))
-					; above is experiment, don't want to
-					; break where no white space is
-					; required . 
-
-      (if (null (bp-crs bp))
-	  ;;; Owre 9/12/92 - test before setting it to 1
-	  (setf (bp-crs bp) (or (pvs-special-default-spaces son next-son) 1)))
-      (insert-default-ws tinfo)))
-
-  (let* ((tinfo (aref *tinfo* (1- (fill-pointer *tinfo*))))
-	 (bp (tinfo-bp tinfo)))
-    (if (null (bp-spaces bp))
-	(setf (bp-spaces bp) 0))
-    (if (null (bp-crs bp))
-	(setf (bp-crs bp) 0))
-    (insert-default-ws tinfo)))
-
-(defun pvs-special-default-spaces (token1 token2)
-  (cond ((and (eq (token-kind token2) :keyword)
-	      (memq (token-value token2) *unparser-op-list*)
-	      (memq (token-value token2)
-		    '( SBST::|,|
-		      SBST::|;|
-		      SBST::|:|
-		      SBST::|.|
-		      SBST::|)|
-		      SBST::|]|
-		      SBST::|}| )))
-	 0)
-	((and (eq (token-kind token1) :keyword)
-	      (memq (token-value token1) *unparser-op-list*)
-	      (memq (token-value token1)
-		    '(SBST::|(|
-		      SBST::|[|
-		      SBST::|{| )))
-	 0)
-        ((eq (get-token-space-kind token1) :jux)
-	 0)
-	((and (not (eq (token-kind token1) :keyword))
-	      (eq (token-kind token2) :keyword)
-	      (memq (token-value token2) *unparser-op-list*)
-	      (memq (token-value token2)
-		    '(SBST::|(| 
-		      SBST::|[| )))
-	 0)))
-
-
 ;;; Adding *hold-a4* and *hold-b4* to contain comments, so they don't get
 ;;; out of sync.
 
@@ -1034,6 +603,8 @@ with the comment so as to put it in the proper place")
 	     (funcall *reader-fun*))
 	   (values-a))))
 
+;;; Look ahead to the second token which is (or will be) in values-a; the
+;;; first token is in values-b.
 (defun peek-second ()
   (cond (*hold-b1* (values-a))
 	(*hold-a1*
@@ -1053,7 +624,7 @@ with the comment so as to put it in the proper place")
 (defun initial-error (fs-list &aux (formatstr
 				    "~&Initial error.~%~
 				    Found ~A when looking for ~A here:~%~A"))
-  (clet* (((first IGNORE place) (peek-first))
+  (clet* (((first ignore place) (peek-first))
 	  (temp (assoc first fs-list)))
 	 (if (null temp)
 	     (do-syntax-error formatstr
@@ -1100,3 +671,26 @@ with the comment so as to put it in the proper place")
 			     (unops?
 			      (cons '|unaryop| nlist))
 			     (t nlist))))))
+
+(defun string-lexer (stream char &aux (buffer (lexical-stream-stringbuffer
+					       stream))
+			    newchar)
+  (setf (fill-pointer buffer) 0)
+  (let ((place (curplace (lexical-stream-stream stream))))
+    (loop
+     (setq newchar (lexical-read-char stream :eof))
+     (cond ((equal newchar :eof)
+	    (return))
+	   ((is-lexical-escape? stream newchar)
+	    (setq newchar (lexical-read-char stream :eof)))
+	   ((or (equal newchar :eof)
+		(equal newchar char))
+	    (return)))
+     (vector-push-extend newchar buffer))
+    (when (equal newchar :eof)
+      (decf (place-charnumber place))
+      (do-syntax-error
+       "There is no ending quote for this string"
+       place))
+    #+lucid (coerce (copy-seq buffer) 'simple-string)
+    #-lucid (copy-seq buffer)))
