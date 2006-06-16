@@ -95,7 +95,7 @@ useful if more than one specification is to be included in one document")
 
 (defun latex-print-theory (theory &optional gen-subst next)
   (let ((file (make-pathname :defaults (working-directory)
-			     :name (id theory) :type "tex"))
+			     :name (string (id theory)) :type "tex"))
 	(*latex-id-length-list* *latex-id-length-list*)
 	(*latex-id-macro-list* *latex-id-macro-list*)
 	(*latex-fun-sym-length-list* *latex-fun-sym-length-list*)
