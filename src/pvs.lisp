@@ -146,7 +146,7 @@
   (clrhash *subtype-of-hash*)
   (reset-subst-mod-params-cache)
   (reset-pseudo-normalize-caches)
-  ;;(clrhash *assert-if-arith-hash*)
+  (clrhash *assert-if-arith-hash*)
   ;;(reset-fully-instantiated-cache)
   (reset-beta-cache) ;;; PDL added Nov23 1994
   (reset-type-canon-cache)
