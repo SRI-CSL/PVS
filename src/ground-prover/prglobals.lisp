@@ -88,7 +88,6 @@
 (defvar  prappendtrace nil)    ; t if trace is to append to file, not overwrite
 (defvar  justskolemize nil)    ; t if main prover is NOT to be invoked
 (defvar  +vc-mode+ nil)        ; t if generating vc's (HSP only) - 10/86 added
-(defvar  modname)
 (defvar  proofname nil)
 (defvar  sigalist nil)
 (defvar  findalist nil)
