@@ -1068,7 +1068,7 @@
 			(beta-reduce tform)))
 	     (uform (raise-actuals (expose-binding-types
 				    (universal-closure xform))
-				   t t))
+				   t))
 	     (id (make-tcc-name nil (id axiom))))
 	(unless (tc-eq uform *true*)
 	  (when (and *false-tcc-error-flag*
