@@ -246,9 +246,9 @@ to be used for discharging the abstraction proof obligations."
 ;;builds abstraction for each sform using abstract-formula
 (defun abstract-sforms (sforms cstate astate amap feasible)
   (let ((*abs-cache+*
-	 (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+	 (make-pvs-hash-table))
 	(*abs-cache-*
-	 (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+	 (make-pvs-hash-table))
 	(*skolem-states* nil))
     (loop for sf in sforms
 	  collect

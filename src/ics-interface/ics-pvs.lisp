@@ -14,13 +14,13 @@
 ;; Global variables
 
 (defvar *pvs-to-ics-term-hash* 
-  (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+  (make-pvs-hash-table))
 
 (defvar *pvs-to-ics-posexpr-hash* 
-  (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+  (make-pvs-hash-table))
 
 (defvar *pvs-to-ics-negexpr-hash* 
-  (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+  (make-pvs-hash-table))
 
 (defvar *ics-to-pvs-translation* nil)
 
@@ -28,7 +28,7 @@
   (make-hash-table :test 'eql))
 
 (defvar *pvs-to-ics-symtab* 
-  (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+  (make-pvs-hash-table))
 
 (defvar *unique-name-ics-counter* 0)
 
