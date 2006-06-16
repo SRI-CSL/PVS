@@ -330,7 +330,7 @@ pvs-strategies files.")
       (when (and ce (not (listp (ce-object-date ce))))
 	(setf (ce-object-date ce) nil))
       (let* ((te (get-context-theory-entry gtheory ce))
-	     (te-date (assq (id theory) (ce-object-date ce))))
+	     (te-date (when ce (assq (id theory) (ce-object-date ce)))))
 	(when (and te specdate)
 	  (unless (or (and (not force?)
 			   bindate
@@ -380,7 +380,8 @@ pvs-strategies files.")
                           subdirectory for .bin files unless it is moved."
 	      subdir))
 	(multiple-value-bind (result error)
-	    (ignore-errors (excl:make-directory subdir))
+	    (ignore-errors #+allegro (excl:make-directory subdir)
+			   #+cmu (unix:unix-mkdir subdir #o777))
 	  (declare (ignore result))
 	  (cond (error
 		 (pvs-message "Error creating ~a: ~a" subdir error))
@@ -486,7 +487,7 @@ pvs-strategies files.")
 	 (prf-file (make-prf-pathname filename))
 	 (proofs-write-date (file-write-time prf-file))
 	 (fdeps (file-dependencies filename))
-	 (md5sum (excl:md5-file (make-specpath filename))))
+	 (md5sum (md5-file (make-specpath filename))))
     (assert (cdr theories))
     (assert (plusp md5sum))
     (make-context-entry
@@ -502,6 +503,19 @@ pvs-strategies files.")
 		 (assert tes)
 		 tes)
      :md5sum md5sum)))
+
+#+allegro
+(defun md5-file (file)
+  (excl:md5-file file))
+
+#+cmu
+(defun md5-file (file)
+  (let ((digest (md5:md5sum-file file))
+	(sum 0))
+    (loop for x across digest
+	  do (setq sum (+ (* sum 256) x)))
+    sum))
+  
 
 (defun create-theory-entry (theory file-entry)
   (let* ((valid? (when file-entry (valid-context-entry file-entry)))
@@ -877,7 +891,8 @@ pvs-strategies files.")
 ;;; .pvscontext
 
 (defun restore-context ()
-  (let ((ctx-file *context-name*))
+  (let ((ctx-file (merge-pathnames *context-name*
+				   *default-pathname-defaults*)))
     (if (file-exists-p ctx-file)
 	(multiple-value-bind (context error)
 	    (if (with-open-file (in ctx-file)
@@ -964,6 +979,8 @@ pvs-strategies files.")
 	    (push file files))))
       (dolist (file files)
 	(restore-theories file)))
+    (when (some #'null (gethash filename *pvs-files*))
+      (remhash filename *pvs-files*))
     (get-theories (make-specpath filename))))
 
 (defun restore-theories* (libref theories)
@@ -1270,7 +1287,7 @@ pvs-strategies files.")
 	       (eq theory-id 'reals))
 	  ;; Needed for backward compatibility after introduction of
 	  ;; number_field
-	  (let* ((theory (get-theory (mk-modname 'number_fields)))
+	  (let* ((theory (get-theory (mk-modname '|number_fields|)))
 		 (decls (remove-if-not
 			    #'(lambda (d)
 				(and (typep d 'declaration)
@@ -1602,8 +1619,10 @@ pvs-strategies files.")
     (let ((prf-entry (find-associated-proof-entry decl proofs)))
       (cond ((integerp (cadr prf-entry))
 	     ;; Already in multiple-proof form, but may need to be lower-cased
-	     (let ((wrong-case? (memq (nth 9 (car (cddr prf-entry)))
-				      '(NIL T))))
+	     (let ((wrong-case? #+allegro
+				(memq (nth 9 (car (cddr prf-entry)))
+				      '(NIL T))
+				#-allegro nil))
 	       (setf (proofs decl)
 		     (mapcar #'(lambda (p)
 				 (apply #'mk-proof-info
@@ -1628,9 +1647,11 @@ pvs-strategies files.")
 	       (unless (some #'(lambda (prinfo)
 				 (equal (script prinfo) proof))
 			   (proofs decl))
-		 (let ((prinfo (make-proof-info (convert-proof-form-to-lowercase
-						 proof)
-						(next-proof-id decl)))
+		 (let ((prinfo (make-proof-info
+				#+allegro (convert-proof-form-to-lowercase
+					   proof)
+				#-allegro proof
+				(next-proof-id decl)))
 		       (fe (get-context-formula-entry decl)))
 		   (when fe
 		     (dolist (dref (fe-proof-refers-to fe))
@@ -1738,7 +1759,7 @@ pvs-strategies files.")
 	  (ignore-lisp-errors
 	    (with-open-file (input prf-file :direction :input)
 	      (labels ((reader (proofs)
-			       (let ((nproof (read input nil 'eof)))
+			       (let ((nproof (read-proof input 'eof)))
 				 (if (eq nproof 'eof)
 				     (nreverse proofs)
 				     (let ((cproof
@@ -1756,7 +1777,155 @@ pvs-strategies files.")
 	       nil)
 	      (t proofs))))))
 
+#+allegro
+(defun read-proof (stream eof-value)
+  (read stream nil eof-value))
+
+;;; This allows proof files to be read when they were produced by
+;;; case-sensitive lisp (i.e., Allegro).  It does this by selectively
+;;; using different readtables, according to the depth of the parentheses.
+
+;;; A proof file (extension .prf) has the following form:
+;;; proof-file := {'(' theoryid  {'(' declid proof+ ')'} + ')'} +
+;;; proof := '(' proofid      % symbol
+;;;              description  % string
+;;;              create-date  % integer
+;;;              run-date     % integer
+;;;              script       % sexpr
+;;;              status       % symbol
+;;;              refers-to    % list of declaration references
+;;;              real-time    % integer
+;;;              run-time     % integer
+;;;              interactive? % symbol
+;;;              decision-procedure-used % symbol
+;;;          ')'
+
+;;; The theoryid, declid, proofid, and refers-to should be read in a case
+;;; sensitive way, but the status, interactive? and decision-procedure-used
+;;; should be read in a case-insensitive mode.  The script is a bit tricky,
+;;; but for now we will read it case-insensitively.
+
+;;; read-proof simply reads the next proof in the stream, up un
+;;; The way we do this is to use read-char to read the first \#(, then keep
+;;; track of what we should be reading, and read using the proper readtable
+
+#+cmu
+(defun read-proof (stream eof-value)
+  ;; For now, we ignore possible comments - since the proof file should be
+  ;; generated by PVS, this is reasonably safe.  So we just look for the
+  ;; first #\(, and return eof-value if we run off the end.
+  (let ((tag (gensym)))
+    (block tag
+      (handler-bind ((end-of-file #'(lambda (c)
+				      (declare (ignore c))
+				      (return-from tag eof-value))))
+	(read-to-left-paren stream)
+	(let ((theoryid (read-case-sensitive stream))
+	      (decls-proofs (read-proof-decls stream)))
+	  ;;(read-to-right-paren stream)
+	  (cons theoryid decls-proofs))))))
+
+#+cmu
+(defun read-proof-decls (stream &optional proofs)
+  (let ((paren (read-to-paren stream)))
+    (if (char= paren #\()
+	(let ((declid (read-case-sensitive stream))
+	      (default (read stream)))
+	  (if (integerp default)
+	      (let ((decl-proofs (read-proofs-of-decls stream)))
+		;; no need to (read-to-right-paren stream)
+		(read-proof-decls stream
+				  (cons (cons declid (cons default decl-proofs))
+					proofs)))
+	      ;; Old-style proof
+	      (let ((proof (read-delimited-list #\) stream)))
+		(read-proof-decls stream
+				  (cons (cons declid (cons default proof))
+					proofs)))))
+	(nreverse proofs))))
+
+#+cmu
+(defun read-proofs-of-decls (stream &optional proofs)
+  (let ((char (read-to-paren stream)))
+    (if (char= char #\()
+	(let ((proofid (read-case-sensitive stream))
+	      (description (read stream nil))
+	      (create-date (read stream nil))
+	      (run-date (read stream nil))
+	      (script (read stream nil))
+	      (status (read stream))
+	      (refers-to (read-proofs-refers-to stream))
+	      (real-time (read stream nil))
+	      (run-time (read stream nil))
+	      (interactive? (read stream))
+	      (dp (read stream)))
+	  (read-to-right-paren stream)
+	  (read-proofs-of-decls
+	   stream
+	   (cons (list proofid description create-date run-date script status
+		       refers-to real-time run-time interactive? dp)
+		 proofs)))
+	(nreverse proofs))))
+
+#+cmu
+(defun read-proofs-refers-to (stream)
+  ;; list of form (id class type theory-id library-id)
+  ;; The class should be up-cased, and any |nil|s should be upcased
+  (let ((refers-to (read-case-sensitive stream)))
+    (unless (eq refers-to '|nil|)
+      (mapcar #'(lambda (ref)
+		  (unless (eq ref '|nil|)
+		    (list (first ref)
+			  (intern (string-upcase (second ref)))
+			  (if (eq (third ref) '|nil|) nil (third ref))
+			  (fourth ref)
+			  (if (eq (fifth ref) '|nil|) nil (fifth ref)))))
+	refers-to))))
+      
+#+cmu
+(defun read-to-paren-or-quote (stream)
+  (let ((ch (read-char stream)))
+    (if (member ch '(#\( #\) #\") :test #'char=)
+	ch
+	(read-to-paren stream))))
+
+#+cmu
+(defun read-to-paren (stream)
+  (let ((ch (read-char stream)))
+    (if (member ch '(#\( #\)) :test #'char=)
+	ch
+	(read-to-paren stream))))
+
+#+cmu
+(defun read-to-left-paren (stream)
+  (let ((ch (read-char stream)))
+    (unless (char= ch #\()
+      (read-to-left-paren stream))))
+
+#+cmu
+(defun read-to-right-paren (stream)
+  (let ((ch (read-char stream)))
+    (unless (char= ch #\))
+      (read-to-left-paren stream))))
+
+#+cmu
+(defvar *case-sensitive-readtable* nil)
+
+#+cmu
+(defun read-case-sensitive (stream)
+  (unless *case-sensitive-readtable*
+    (setq *case-sensitive-readtable* (copy-readtable nil))
+    (setf (readtable-case *case-sensitive-readtable*) :preserve))
+  (let ((*readtable* *case-sensitive-readtable*))
+    (read stream)))
+
+
+#-allegro
+(defun convert-proof-case-if-needed (theory-proofs)
+  theory-proofs)
+
 ;;; proofs is the proofs for a theory
+#+allegro
 (defun convert-proof-case-if-needed (theory-proofs)
   (if (integerp (cadr (car (cdr theory-proofs))))
       theory-proofs
@@ -1890,7 +2059,7 @@ pvs-strategies files.")
 
 (defun read-strategies-files ()
   (let ((pvs-strat-file (merge-pathnames
-			 (directory-p (environment-variable "PVSPATH"))
+			 (directory-p *pvs-path*)
 			 "pvs-strategies"))
 	(home-strat-file (merge-pathnames "~/" "pvs-strategies"))
 	(ctx-strat-file (merge-pathnames *pvs-context-path*
@@ -1907,8 +2076,9 @@ pvs-strategies files.")
     (load-library-strategy-file lib)))
 
 (defun load-library-strategy-file (lib)
-  (let* ((sys:*load-search-list* *pvs-library-path*)
-	 (*default-pathname-defaults* lib)
+  (let* (#+allegro
+	 (sys:*load-search-list* *pvs-library-path*)
+	 (*default-pathname-defaults* (pathname lib))
 	 (file (merge-pathnames lib "pvs-strategies")))
     (when (file-exists-p file)
       (let ((fwd (file-write-time file))
@@ -1918,7 +2088,7 @@ pvs-strategies files.")
 	  (if entry
 	      (setf (cdr entry) fwd)
 	      (push (cons lib fwd) *library-strategy-file-dates*))
-	  (unless (ignore-errors (load file :verbose nil))
+	  (unless (ignore-lisp-errors (load file :verbose nil))
 	    (with-open-file (str file :direction :input)
 	      (if *testing-restore*
 		  (load str :verbose t)
@@ -1930,7 +2100,7 @@ pvs-strategies files.")
     (let ((fwd (file-write-time file)))
       (unless (= fwd (car dates))
 	(setf (car dates) fwd)
-	#+(version>= 6)
+	#+(and allegro (version>= 6))
 	(unwind-protect
 	    (progn (excl:set-case-mode :case-insensitive-lower)
 		   (multiple-value-bind (v err)
@@ -1940,10 +2110,10 @@ pvs-strategies files.")
 		       (pvs-message "Error in loading ~a:~%  ~a" file err))))
 	  (excl:set-case-mode :case-sensitive-lower)
 	  (add-lowercase-prover-ids))
-	#-(version>= 6)
+	#-(and allegro (version>= 6))
 	(with-open-file (str file :direction :input)
 	  (multiple-value-bind (v err)
-	      (ignore-errors (load str))
+	      (ignore-lisp-errors (load str))
 	    (declare (ignore v))
 	    (when err
 	      (pvs-message "Error in loading ~a:~%  ~a" file err))))))))
