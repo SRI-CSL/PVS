@@ -245,7 +245,7 @@
 							     (type jd)))
 					  (minimal-judgements (cdr entry)))))
 				(make-instance 'name-judgements
-				  'minimal-judgements (list jdecl)))
+				  :minimal-judgements (list jdecl)))
 			    (remove* entry
 				     (name-judgements-alist
 				      (current-judgements))))))))))
@@ -267,11 +267,11 @@
 	   (new-ventry (if ventry
 			   (add-judgement-decl-to-graph jdecl ventry quiet?)
 			   (make-instance 'application-judgements
-			     'judgements-graph (list (list jdecl))))))
+			     :judgements-graph (list (list jdecl))))))
       (unless (or (null new-ventry)
 		  (eq ventry new-ventry))
 	(let* ((new-length (max (length vector) currynum))
-	       (new-vector (make-array new-length)))
+	       (new-vector (make-array new-length :initial-element nil)))
 	  (dotimes (i new-length)
 	    (if (= i (1- currynum))
 		(setf (aref new-vector i) new-ventry)
@@ -963,10 +963,10 @@
 			 exprs)))
     (unless (every #'(lambda (jt&d) (null (car jt&d))) jtypes&decls)
       (let* ((len (length exprs))
-	     (tvec (make-array len))
+	     (tvec (make-array len :initial-element nil))
 	     (jvec (unless (every #'(lambda (jt&d) (null (cadr jt&d)))
 				  jtypes&decls)
-		     (make-array len))))
+		     (make-array len :initial-element nil))))
 	(dotimes (i len)
 	  (setf (aref tvec i)
 		(or (car (nth i jtypes&decls))
@@ -989,8 +989,8 @@
 			 exprs)))
     (unless (every #'(lambda (jt&d) (null (car jt&d))) jtypes&decls)
       (let* ((len (length exprs))
-	     (tvec (make-array len))
-	     (jvec (make-array len)))
+	     (tvec (make-array len :initial-element nil))
+	     (jvec (make-array len :initial-element nil)))
 	(dotimes (i len)
 	  (setf (aref tvec i)
 		(cons (id (caar (nth i args)))
@@ -1397,12 +1397,12 @@
 
 (defun set-prelude-context-judgements (judgements)
   (make-instance 'judgements
-    'judgement-declarations (judgement-declarations judgements)
-    'number-judgements-alist
+    :judgement-declarations (judgement-declarations judgements)
+    :number-judgements-alist
     (set-prelude-number-judgements (number-judgements-alist judgements))
-    'name-judgements-alist
+    :name-judgements-alist
     (set-prelude-name-judgements (name-judgements-alist judgements))
-    'application-judgements-alist
+    :application-judgements-alist
     (set-prelude-application-judgements (application-judgements-alist
 					 judgements))))
 
@@ -1428,8 +1428,8 @@
       elt
       (cons (car elt)
 	    (make-instance 'name-judgements
-	      'minimal-judgements nil
-	      'generic-judgements (append (minimal-judgements (cdr elt))
+	      :minimal-judgements nil
+	      :generic-judgements (append (minimal-judgements (cdr elt))
 					  (generic-judgements (cdr elt)))))))
     
 (defun set-prelude-application-judgements (alist)
@@ -1454,7 +1454,7 @@
 	(cons (car elt) nvect))))
 
 (defun set-prelude-application-judgements-vector (vect)
-  (let ((nvect (make-array (length vect))))
+  (let ((nvect (make-array (length vect) :initial-element nil)))
     (dotimes (i (length vect))
       (let ((ajs (svref vect i)))
 	(when ajs
@@ -1465,8 +1465,8 @@
 				      (judgements-graph ajs)
 				      (generic-judgements ajs))))
 		      (make-instance 'application-judgements
-			'generic-judgements ngenerics
-			'judgements-graph nil)))))))
+			:generic-judgements ngenerics
+			:judgements-graph nil)))))))
     (if (every #'eq vect nvect)
 	vect
 	nvect)))
@@ -1578,8 +1578,8 @@
 	    (setq to-alist
 		  (acons decl
 			 (make-instance 'name-judgements
-			   'minimal-judgements new-min
-			   'generic-judgements new-gen)
+			   :minimal-judgements new-min
+			   :generic-judgements new-gen)
 			 (if (memq to-entry to-alist)
 			     (remove* to-entry to-alist)
 			     to-alist))))))))
@@ -1687,7 +1687,8 @@
 				     (eq (aref from-vector (car ee)) (cdr ee)))
 				 exp-elts))))
 	(when exp-elts
-	  (let ((new-vector (make-array (length from-vector))))
+	  (let ((new-vector (make-array (length from-vector)
+					:initial-element nil)))
 	    (dotimes (i (length from-vector))
 	      (setf (aref new-vector i)
 		    (cdr (assoc i exp-elts :test #'=))))
@@ -1709,8 +1710,8 @@
 		  (judgements-graph from-entry) theory)))
       (when (or gens graph)
 	(make-instance 'application-judgements
-	  'generic-judgements gens
-	  'judgements-graph graph)))))
+	  :generic-judgements gens
+	  :judgements-graph graph)))))
 
 (defun subst-appl-judgements-vector (vector theory theoryname)
   (let ((new-elts nil))
@@ -1721,7 +1722,7 @@
 	    (unless (eq sj elt)
 	      (push (cons i sj) new-elts))))))
     (if new-elts
-	(let ((new-vector (make-array (length vector))))
+	(let ((new-vector (make-array (length vector) :initial-element nil)))
 	  (dotimes (i (length vector))
 	    (setf (aref new-vector i)
 		  (or (cdr (assoc i new-elts :test #'=))
@@ -1772,7 +1773,8 @@
 		  new-elts))))
     (if new-elts
 	(let ((new-vector (make-array (max (length from-vector)
-					   (length to-vector)))))
+					   (length to-vector))
+				      :initial-element nil)))
 	  (dotimes (i (length from-vector))
 	    (setf (aref new-vector i)
 		  (or (cdr (assoc i new-elts :test #'=))
@@ -1947,10 +1949,10 @@
 
 (defmethod copy-judgements ((from judgements))
   (make-instance 'judgements
-    'judgement-declarations (judgement-declarations from)
-    'number-judgements-alist (number-judgements-alist from)
-    'name-judgements-alist (name-judgements-alist from)
-    'application-judgements-alist (application-judgements-alist from)))
+    :judgement-declarations (judgement-declarations from)
+    :number-judgements-alist (number-judgements-alist from)
+    :name-judgements-alist (name-judgements-alist from)
+    :application-judgements-alist (application-judgements-alist from)))
 
 (defmethod copy-number-judgements-alist (number-alist)
   number-alist)
@@ -1971,8 +1973,8 @@
 (defun copy-application-judgements (decl appl-judgement)
   (let ((nappl-judgement
 	 (make-instance 'application-judgements
-;	   'argtype-hash (copy (argtype-hash appl-judgement))
-	   'generic-judgements (copy-list
+;	   :argtype-hash (copy (argtype-hash appl-judgement))
+	   :generic-judgements (copy-list
 				(generic-judgements appl-judgement)))))
     (if (formals-sans-usings (module decl))
 	(copy-judgements-graph (reverse (judgements-graph appl-judgement))
