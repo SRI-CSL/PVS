@@ -526,9 +526,10 @@
 
 (defmethod pvs-sxhash* ((e1 injection-application) bindings)
   (with-slots (index argument) e1
-    (ash (pvs-sxhash-+ (the positive-fixnum index)
-		       (pvs-sxhash* argument bindings))
-	 2)))
+    (ldb pvs-sxhash-byte
+	 (ash (pvs-sxhash-+ (the positive-fixnum index)
+			    (pvs-sxhash* argument bindings))
+	      2))))
 
 ;(defmethod tc-eq* ((e1 field-application) (e2 field-application)
 ;		   bindings)
@@ -552,7 +553,7 @@
 (defmethod pvs-sxhash* ((e1 number-expr) bindings)
   (declare (ignore bindings))
   (with-slots ((n1 number)) e1
-    (sxhash (the positive-fixnum n1))))
+    (sxhash n1)))
 
 ;(defmethod tc-eq* ((e1 record-expr) (e2 record-expr) bindings)
 ;  (or (eq e1 e2)
