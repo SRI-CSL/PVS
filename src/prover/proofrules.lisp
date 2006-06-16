@@ -222,8 +222,8 @@
 
 ;(defun lift-if-rule (sformnums)
 ;  (make-instance 'rule
-;		 'rule-part (liftif-step sformnums)
-;		 'rule-input `(lift-if ,sformnums)))
+;		 :rule-part (liftif-step sformnums)
+;		 :rule-input `(lift-if ,sformnums)))
 
 
 
@@ -730,8 +730,8 @@
 
 ;(defun lemma-rule (name substs)
 ;  (make-instance 'rule
-;		 'rule-part (lemma-rule-fun name substs)
-;		 'rule-input `(lemma ,name ,substs)))
+;		 :rule-part (lemma-rule-fun name substs)
+;		 :rule-input `(lemma ,name ,substs)))
 
 
   
@@ -1072,7 +1072,7 @@ or supply more substitutions."
 			       (let ((*substit-dont-simplify* t)) ;;NSH(11.27.02)
 				 (substit intermediate-form bindalist)))
 			      (sform (make-instance 's-formula
-				       'formula (negate subform)))
+				       :formula (negate subform)))
 			      (newsequent (lcopy (current-goal ps)
 					    's-forms (cons sform
 							   (s-forms
@@ -1100,8 +1100,8 @@ or supply more substitutions."
 
 ;(defun typepred-rule (expr)
 ;  (make-instance 'rule
-;		 'rule-part (typepred-fun expr)
-;		 'rule-input `(lemma ,expr)))
+;		 :rule-part (typepred-fun expr)
+;		 :rule-input `(lemma ,expr)))
 
 (defun typepred-fun (exprs all? &optional implicit?)
   #'(lambda (ps)
@@ -1119,8 +1119,7 @@ or supply more substitutions."
 	(let* ((new-sforms
 		(mapcar #'(lambda (fmla)
 			    (make-instance 's-formula
-			      'formula
-			      (negate fmla)))
+			      :formula (negate fmla)))
 		  preds))
 	       (references nil))
 	  (push-references-list
@@ -1239,8 +1238,8 @@ or supply more substitutions."
   (cond ((null fmlas) (values (cons goal accum)
 			     references))
 	(t (let* ((neg-fmla (negate (car fmlas)))
-		  (pos-sform (make-instance 's-formula 'formula (car fmlas)))
-		  (neg-sform (make-instance 's-formula 'formula neg-fmla))
+		  (pos-sform (make-instance 's-formula :formula (car fmlas)))
+		  (neg-sform (make-instance 's-formula :formula neg-fmla))
 		  (references references)
 		  
 		  (neg-goal (copy goal 's-forms
@@ -1261,8 +1260,8 @@ or supply more substitutions."
 ;  (cond ((null fmlas) (list goal))
 ;	(t (let* ((result (make-cases goal (cdr fmlas)))
 ;		  (neg-fmla (negate (car fmlas)))
-;		  (pos-sform (make-instance 's-formula 'formula (car fmlas)))
-;		  (neg-sform (make-instance 's-formula 'formula neg-fmla))
+;		  (pos-sform (make-instance 's-formula :formula (car fmlas)))
+;		  (neg-sform (make-instance 's-formula :formula neg-fmla))
 ;		  (neg-cases (loop for x in result
 ;				   collect
 ;				   (copy x 's-forms
@@ -1418,7 +1417,7 @@ which should be fully instantiated. Please supply actual parameters.")
 	      (copy (current-goal ps)
 		's-forms
 		(cons (make-instance 's-formula
-			'formula
+			:formula
 			(negate
 			 (function-extensionality
 			  texpr given
@@ -1434,7 +1433,7 @@ which should be fully instantiated. Please supply actual parameters.")
 	     (list (copy (current-goal ps)
 		     's-forms
 		     (cons (make-instance 's-formula
-			     'formula
+			     :formula
 			     (negate
 			      (tuple-extensionality
 			       texpr given 
@@ -1450,7 +1449,7 @@ which should be fully instantiated. Please supply actual parameters.")
 	   (list (copy (current-goal ps)
 		   's-forms
 		   (cons (make-instance 's-formula
-			   'formula
+			   :formula
 			   (negate
 			    (record-extensionality
 			     texpr given 
@@ -1502,7 +1501,7 @@ which should be fully instantiated. Please supply actual parameters.")
 		     (list (copy (current-goal ps)
 			     's-forms
 			     (cons (make-instance 's-formula
-				     'formula
+				     :formula
 				     (negate new-fmla))
 				   (s-forms (current-goal ps)))))
 		     (list 'dependent-decls
@@ -1516,7 +1515,7 @@ which should be fully instantiated. Please supply actual parameters.")
 	    (list (copy (current-goal ps)
 		    's-forms
 		    (cons (make-instance 's-formula
-			    'formula
+			    :formula
 			    (negate fmla))
 			  (s-forms (current-goal ps))))))))
 
@@ -1580,12 +1579,11 @@ which should be fully instantiated. Please supply actual parameters.")
 	   (values 'X nil nil))
 	  (t (setf (declarations-hash context)
 		   (copy (declarations-hash context)))
-	     (let ((decl (make-instance
-			     'skolem-const-decl
-			   'definition tc-expr
-			   'id name
-			   'type (car (judgement-types+ tc-expr))
-			   'module (module context))))
+	     (let ((decl (make-instance 'skolem-const-decl
+			   :definition tc-expr
+			   :id name
+			   :type (car (judgement-types+ tc-expr))
+			   :module (module context))))
 	       (make-def-axiom decl)
 	       (put-decl decl (declarations-hash context)))
 	     (let* ((name (typecheck (pc-parse name 'expr)
@@ -1598,14 +1596,14 @@ which should be fully instantiated. Please supply actual parameters.")
 	       (push-references-list formula references)
 	       (setf (disabled-auto-rewrites context)
 		     (push (make-instance 'auto-rewrite-minus-decl
-			     'rewrite-names (list name))
+			     :rewrite-names (list name))
 			   (disabled-auto-rewrites context)))
 	       (values '?
 		       (list
 			(cons (copy (current-goal ps)
 				's-forms
 				(cons (make-instance 's-formula
-					'formula
+					:formula
 					(negate formula))
 				      (s-forms (current-goal ps))))
 			      (list 'context context)))

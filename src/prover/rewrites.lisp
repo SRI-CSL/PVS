@@ -157,9 +157,9 @@
 					       (assoc fml modsubst))
 				     formals)))
 			     (make-instance 'modname
-			       'id mod-id
-			       'library (get-lib-id module)
-			       'actuals (mapcar #'(lambda (x)
+			       :id mod-id
+			       :library (get-lib-id module)
+			       :actuals (mapcar #'(lambda (x)
 						    (mk-actual (cdr x)))
 					  alist)))))
 			(newres
