@@ -2575,20 +2575,25 @@
 		   (frac-part (if (is-number (term-arg0 idop2))
 				  (ds-number (term-arg0 idop2))
 				  (ds-id (term-arg0 idop2))))
-		   (denom (expt 10 (if (integerp frac-part)
-				       (length (format nil "~d" frac-part))
-				       (length (string frac-part)))))
-		   (num (+ (* denom int-part)
-			   (if (integerp frac-part)
-			       frac-part
-			       (parse-integer (string frac-part))))))
-	      (make-instance 'decimal
-		:operator (mk-name-expr '/)
-		:argument (mk-arg-tuple-expr
-			   (make-instance 'number-expr
-			     :number num)
-			   (make-instance 'number-expr
-			     :number denom)))))
+		   (frac-value (if (integerp frac-part)
+				   frac-part
+				   (parse-integer (string frac-part))))
+		   (frac-length (if (integerp frac-part)
+				    (length (format nil "~d" frac-part))
+				    (length (string frac-part)))))
+	      (if (zerop frac-value)
+		  (make-instance 'decimal-integer
+		    :number int-part
+		    :fractional-length frac-length)
+		  (let* ((denom (expt 10 frac-length))
+			 (num (+ (* denom int-part) frac-value)))
+		    (make-instance 'decimal
+		      :operator (mk-name-expr '/)
+		      :argument (mk-arg-tuple-expr
+				 (make-instance 'number-expr
+				   :number num)
+				 (make-instance 'number-expr
+				   :number denom)))))))
 	(make-instance 'name
 	  :id (if (is-sop 'NOMOD idop2)
 		  (xt-idop idop)
