@@ -1196,6 +1196,20 @@
 	      (format nil "\\(~d\\)" number))
 	(write str))))
 
+(defmethod pp-tex* ((ex decimal-integer))
+  (cond (*in-tex-math-mode*
+	 (write (number ex))
+	 (write-char #\.)
+	 (dotimes (i (fractional-length ex))
+	   (write-char #\0)))
+	(t (let* ((len (length (format nil "~,vf"
+				 (fractional-length ex) (number ex))))
+		  (str (make-new-tex-string len)))
+	     (setf (gethash str *pvs-tex-substitution-hash*)
+		   (format nil "\\(~,vf\\)"
+		     (fractional-length ex) (number ex)))
+	     (write str)))))
+
 (defmethod pp-tex* ((ex string-expr))
   (unless (string-value ex)
     (setf (string-value ex) (pp-string-expr (argument ex))))
