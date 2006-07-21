@@ -1188,7 +1188,7 @@ The set-rewrite-length command controls the amount of output produced in
 rewrite commentaries by setting the length of expressions displayed.
 Normally, both the rule name and the expression being rewritten are
 displayed in the proof commentary when an auto-rewrite is triggered.
-Set-rewrite-depth controls how long the expression may get.  LENGTH
+Set-rewrite-length controls how long the expression may get.  LENGTH
 should be a whole number or nil.  If it is a positive number, then any
 subexpression at that length will be replaced by three periods (...).  If
 it is 0 (zero), then only the rule name is displayed.  If it is nil, then
