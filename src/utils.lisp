@@ -26,7 +26,7 @@
     (when place
       (setf (place obj) place))))
 
-#-allegro
+#-(or allegro cmu)
 (defun file-exists-p (file)
   (probe-file file))
 
@@ -2691,8 +2691,8 @@ space")
 		   (*assert-flag* 'simplify)
 		   (*process-output* nil)
 		   (*assert-if-arith-hash*
-		    (if *assert-if-arith-hash* ;;NSH(11.30.95) 
-			*assert-if-arith-hash* ;;not real shadowing
+		    (or (and (boundp '*assert-if-arith-hash*) ;;NSH(11.30.95) 
+			     *assert-if-arith-hash*) ;;not real shadowing
 			(make-hash-table :test #'eq)))
 		   (*current-decision-procedure* 'shostak))
 	      (nprotecting-cong-state
