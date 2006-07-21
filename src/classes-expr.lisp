@@ -105,7 +105,7 @@
 (defcl field-conversion (fieldappl))
 
 (defcl projection-expr (name-expr)
-  (index :parse t :restore-as nil))
+  (index :type fixnum :parse t :restore-as nil))
 
 ;; For stand-alone projections, e.g., `2[T]
 (defcl projex (projection-expr))
@@ -113,7 +113,7 @@
 (defcl projection-application (expr)
   (id :restore-as nil)
   actuals
-  (index :restore-as nil)
+  (index :type fixnum :restore-as nil)
   argument)
 
 (defcl projappl (projection-application))
@@ -122,18 +122,18 @@
 (defcl projection-conversion (projappl))
 
 (defcl injection-expr (constructor-name-expr)
-  (index :parse t :restore-as nil))
+  (index :type fixnum :parse t :restore-as nil))
 
 (defcl injection?-expr (recognizer-name-expr)
-  (index :parse t :restore-as nil))
+  (index :type fixnum :parse t :restore-as nil))
 
 (defcl extraction-expr (accessor-name-expr)
-  (index :parse t :restore-as nil))
+  (index :type fixnum :parse t :restore-as nil))
 
 (defcl injection-application (expr)
   (id :restore-as nil)
   actuals
-  (index :restore-as nil)
+  (index :type fixnum :restore-as nil)
   argument)
 
 ;; When an injection-expr is used as a conversion
@@ -142,20 +142,26 @@
 (defcl injection?-application (expr)
   (id :restore-as nil)
   actuals
-  (index :restore-as nil)
+  (index :type fixnum :restore-as nil)
   argument)
 
 (defcl extraction-application (expr)
   (id :restore-as nil)
   actuals
-  (index :restore-as nil)
+  (index :type fixnum :restore-as nil)
   argument)
 
 ;; When an extraction-expr is used as a conversion
 (defcl extraction-conversion (extraction-application))
 
 (defcl number-expr (expr)
-  (number :parse t :restore-as nil))
+  (number :type integer :parse t :restore-as nil))
+
+;; This is for integers of the form xxx.000, where the fractional part is
+;; all zeros.  We keep it as a number expr, but store the number of zeros so
+;; the printer can restore it.
+(defcl decimal-integer (number-expr)
+  (fractional-length :type fixnum :restore-as nil))
 
 ;(defcl function-expr (expr)
 ;  assignments)
@@ -176,18 +182,18 @@
 
 (defcl cases-expr (expr)
   (expression :parse t)
-  (selections :parse t)
+  (selections :type list :parse t)
   (else-part :parse t))
 
 (defcl selection (syntax)
   (constructor :parse t)
-  (args :parse t)
+  (args :type list :parse t)
   (expression :parse t))
 
 (defcl unpack-expr (cases-expr))
 
 (defcl in-selection (selection)
-  (index :restore-as nil))
+  (index :type fixnum :restore-as nil))
 
 (defcl application (expr)
   (operator :parse t)
