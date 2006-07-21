@@ -30,6 +30,8 @@ where options include:
 "  
 }
 
+PVSLISP=allegro
+
 while [ $# -gt 0 ]
 do
    case $1 in
@@ -37,6 +39,13 @@ do
                  shift;;
    -h|-help)     usage
                  exit 0;;
+   -lisp)        case $2 in
+ 	           allegro) PVSLISP=allegro;;
+	           cmulisp) PVSLISP=cmulisp;;
+	           *) echo "Only allegro and cmulisp are currently available"
+	              exit 1;;
+                 esac
+                 shift;;
    -p|-packages) PACK="$PACK,$2"
                  shift;;
    -tccs)        TCCS=t;;
@@ -54,7 +63,7 @@ done
 
 PACK=`echo "(\"$PACK\")" | sed -e "s/,/\" \"/g"`
 
-if [ -z $ARG ] 
+if [ -z "$ARG" ] 
 then
   echo "pvsio__ : THEORY BEGIN END pvsio__" > /tmp/pvsio__.pvs
   ARG="/tmp/pvsio__"
@@ -80,24 +89,24 @@ case $THMA in
   *)   THEORY=$THMA
 esac
 
-if [ -z $FILE ]
+if [ -z "$FILE" ]
 then
   echo Error: Invalid theory name $ARG
   exit 0
 fi
 
-if [ -z $THEORY ]
+if [ -z "$THEORY" ]
 then
   echo Error: Invalid theory name $ARG
   exit 0
 fi
 
-if [ -z $EXPR ]
+if [ -z "$EXPR" ]
 then EXPR=nil
 else EXPR="\"$EXPR\""
 fi
 
-if [ -z $MAIN ]
+if [ -z "$MAIN" ]
 then MAIN=nil
 else MAIN="\"$MAIN;\""
 fi
@@ -128,16 +137,16 @@ case $opsys in
 	    then echo "PVS 3.3 only runs under Mac OS X, Linux, FreeBSD, or Solaris"; exit 1
 	 fi
 	 PVSARCH=sun4;;
-  Linux) # If Linux, we need to determine the Redhat version to use.
-	 opsys=redhat
-	 majvers=5
-	 othervers=4 
+  Linux) opsys=Linux
+	 majvers=
 	 PVSARCH=ix86
 	 # Allegro does not work with Linux's New Posix Thread Library (NPTL)
 	 # used in newer Red Hat kernels and 2.6 kernels.  This will force
 	 # the old thread-implementation.
-	 LD_ASSUME_KERNEL=2.4.19
-	 export LD_ASSUME_KERNEL
+	 export LD_ASSUME_KERNEL=2.4.19;
+	 # See if setting this leads to problems - if it does, then
+	 # uname exits with an error and we unset it.
+	 uname -a > /dev/null 2>&1 || unset LD_ASSUME_KERNEL
 	 ;;
   FreeBSD) opsys=redhat
 	   majvers=5
@@ -157,9 +166,6 @@ case $opsys in
 esac
 
 binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
-
-PVSALLE=`find $binpath/runtime -name pvs-allegro*.? -print`
-PVSLISP=`basename $PVSALLE`
 
 if [ -d $binpath/full -a -x $binpath/full/$PVSIMAGE -a ! "$pvsruntime" ]
    then PATH=$binpath/full:$binpath:$PVSPATH/bin:$PATH
@@ -205,6 +211,7 @@ $PVSIMAGE -qq -e "(in-package :pvs)" -e "
         (pvs::pvs-init)
         (pvs::change-context (directory-namestring \"$FILE\"))
         (dolist (pack '$PACK) (pvs::load-prelude-library pack))
+	(pvs::load-pvs-attachments)
         (when (null $VERB)
           (unwind-protect
             (pvs::typecheck-file (file-namestring\"$FILE\") nil nil nil t)
