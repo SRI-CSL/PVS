@@ -636,7 +636,7 @@
   (multiple-value-bind (ref msg)
       (get-lib-decl-lib-ref (lib-string decl))
     (when msg
-      (type-error decl msg (lib-string decl)))
+      (type-error decl msg))
     (setf (lib-ref decl) ref)
     (pushnew (cons (id decl) ref) (library-alist *current-context*)
 	     :test #'equal)
@@ -2760,6 +2760,15 @@
 		   (def-decl? (declaration (operator* expr))))
 	(type-error expr "~a does not resolve to a recursive function"
 		    (operator* expr)))
+      (let ((*collecting-tccs* t)
+	    (*tccforms* nil)
+	    (*compatible-pred-reason*
+	     (acons expr "judgement" *compatible-pred-reason*)))
+	(set-type expr (type decl))
+	(let ((tcc (find-if #'(lambda (tcc)
+				(equalp (tccinfo-reason tcc) "judgement"))
+		     *tccforms*)))
+	  (setf (rewrite-formula decl) (tccinfo-formula tcc))))
       (typecheck-rec-judgement decl expr)))
   (setf (judgement-type decl)
 	(make-formals-funtype (formals decl) (type decl)))
