@@ -1379,7 +1379,7 @@ underlying Lisp in the minibuffer."
 
 (defun pvs-version-string ()
   (let ((vers (get-pvs-version-information)))
-    (format "PVS Version %s%s"
+    (format "PVS Version %s%s - %s %s"
 	(car vers)
       (if (and (member (cadr vers) '(nil NIL))
 	       (member (caddr vers) '(nil NIL))
@@ -1394,7 +1394,8 @@ underlying Lisp in the minibuffer."
 		  (format ", %s" (caddr vers)))
 	      (if (member (cadddr vers) '(nil NIL))
 		  ""
-		  (format ", %s" (cadddr vers))))))))
+		  (format ", %s" (cadddr vers)))))
+      (car (cddddr vers)) (cadr (cddddr vers)))))
 
 (defvar *pvs-version-information* nil)
 
