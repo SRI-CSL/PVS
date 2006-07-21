@@ -168,7 +168,13 @@
     (when bindings
       (if (tc-eq arg farg)
 	  bindings
-	  (let ((nbindings (call-next-method)))
+	  (let ((nbindings (if (or (free-params farg)
+				   (free-params arg))
+			       (call-next-method)
+			       (when (and farg
+					  (compatible? (find-supertype arg)
+						       (find-supertype farg)))
+				 bindings))))
 	    (when nbindings
 	      (tc-match-print-type print-type farg nbindings)))))))
 
@@ -294,6 +300,7 @@
     (tc-match-acts1 acts formals bindings)))
 
 (defun tc-match-acts1 (acts formals bindings)
+  (declare (list acts formals))
   (when (length= acts formals)
     (tc-match-acts* acts formals bindings)))
 
@@ -384,25 +391,25 @@
 (defmethod tc-match* ((arg subtype) (farg subtype) bindings)
   ;; This will only check for the predicates being tc-eq, not provably equal
   (unless (null bindings)
-    (let ((binding (assoc farg bindings
-			  :test #'(lambda (x y)
-				    (and (typep y 'formal-subtype-decl)
-					 (tc-eq x (type-value y)))))))
-      (if binding
-	  (cond ((null (cdr binding))
-		 (when *tc-match-strictly*
-		   (push arg *tc-strict-matches*))
-		 (setf (cdr binding) arg)
-		 bindings)
-		(t (set-tc-match-binding binding arg bindings nil)))
-	  (or (let ((nbind (tc-match* (supertype arg) (supertype farg)
-				      (tc-match* (predicate arg)
-						 (predicate farg)
-						 bindings))))
-		(completed-tc-match-bindings nbind))
-	      (let ((nbind (tc-match* arg (supertype farg) bindings)))
-		(completed-tc-match-bindings nbind))
-	      (tc-match* (supertype arg) farg bindings))))))
+    (flet ((atest (x y)
+	     (and (typep y 'formal-subtype-decl)
+		  (tc-eq x (type-value y)))))
+      (let ((binding (assoc farg bindings :test #'atest)))
+	(if binding
+	    (cond ((null (cdr binding))
+		   (when *tc-match-strictly*
+		     (push arg *tc-strict-matches*))
+		   (setf (cdr binding) arg)
+		   bindings)
+		  (t (set-tc-match-binding binding arg bindings nil)))
+	    (or (let ((nbind (tc-match* (supertype arg) (supertype farg)
+					(tc-match* (predicate arg)
+						   (predicate farg)
+						   bindings))))
+		  (completed-tc-match-bindings nbind))
+		(let ((nbind (tc-match* arg (supertype farg) bindings)))
+		  (completed-tc-match-bindings nbind))
+		(tc-match* (supertype arg) farg bindings)))))))
 
 (defun completed-tc-match-bindings (nbind)
   (when (every #'cdr nbind)
@@ -492,8 +499,10 @@
 ;;; Expressions
 
 (defmethod tc-match* ((arg number-expr) (farg number-expr) bindings)
-  (when (= (number arg) (number farg))
-    bindings))
+  (with-slots ((anum number)) arg
+    (with-slots ((fnum number)) farg
+      (when (= anum fnum)
+	bindings))))
 
 (defmethod tc-match* ((A coercion) (B expr) bindings)
   (tc-match* (args1 A) B bindings))
@@ -549,8 +558,10 @@
 ;	 (tc-match* (type arg) (type farg) bindings)))
 
 (defmethod tc-match* ((arg projection-expr) (farg projection-expr) bindings)
-  (when (= (index arg) (index farg))
-    bindings))
+  (with-slots ((i1 index)) arg
+    (with-slots ((i2 index)) farg
+      (when (= i1 i2)
+	bindings))))
 
 (defmethod tc-match* ((arg projection-expr) (farg name-expr) bindings)
   (declare (ignore bindings))
@@ -561,8 +572,10 @@
   nil)
 
 (defmethod tc-match* ((arg injection-expr) (farg injection-expr) bindings)
-  (when (= (index arg) (index farg))
-    bindings))
+  (with-slots ((i1 index)) arg
+    (with-slots ((i2 index)) farg
+      (when (= i1 i2)
+	bindings))))
 
 (defmethod tc-match* ((arg injection-expr) (farg name-expr) bindings)
   (declare (ignore bindings))
@@ -573,8 +586,10 @@
   nil)
 
 (defmethod tc-match* ((arg injection?-expr) (farg injection?-expr) bindings)
-  (when (= (index arg) (index farg))
-    bindings))
+  (with-slots ((i1 index)) arg
+    (with-slots ((i2 index)) farg
+      (when (= i1 i2)
+	bindings))))
 
 (defmethod tc-match* ((arg injection?-expr) (farg name-expr) bindings)
   (declare (ignore bindings))
@@ -585,8 +600,10 @@
   nil)
 
 (defmethod tc-match* ((arg extraction-expr) (farg extraction-expr) bindings)
-  (when (= (index arg) (index farg))
-    bindings))
+  (with-slots ((i1 index)) arg
+    (with-slots ((i2 index)) farg
+      (when (= i1 i2)
+	bindings))))
 
 (defmethod tc-match* ((arg extraction-expr) (farg name-expr) bindings)
   (declare (ignore bindings))
@@ -598,23 +615,31 @@
 
 (defmethod tc-match* ((arg projection-application)
 		      (farg projection-application) bindings)
-  (when (= (index arg) (index farg))
-    (tc-match* (argument arg) (argument farg) bindings)))
+  (with-slots ((i1 index) (a1 argument)) arg
+    (with-slots ((i2 index) (a2 argument)) farg
+      (when (= i1 i2)
+	(tc-match* a1 a2 bindings)))))
 
 (defmethod tc-match* ((arg injection-application)
 		      (farg injection-application) bindings)
-  (when (= (index arg) (index farg))
-    (tc-match* (argument arg) (argument farg) bindings)))
+  (with-slots ((i1 index) (a1 argument)) arg
+    (with-slots ((i2 index) (a2 argument)) farg
+      (when (= i1 i2)
+	(tc-match* a1 a2 bindings)))))
 
 (defmethod tc-match* ((arg injection?-application)
 		      (farg injection?-application) bindings)
-  (when (= (index arg) (index farg))
-    (tc-match* (argument arg) (argument farg) bindings)))
+  (with-slots ((i1 index) (a1 argument)) arg
+    (with-slots ((i2 index) (a2 argument)) farg
+      (when (= i1 i2)
+	(tc-match* a1 a2 bindings)))))
 
 (defmethod tc-match* ((arg extraction-application)
 		      (farg extraction-application) bindings)
-  (when (= (index arg) (index farg))
-    (tc-match* (argument arg) (argument farg) bindings)))
+  (with-slots ((i1 index) (a1 argument)) arg
+    (with-slots ((i2 index) (a2 argument)) farg
+      (when (= i1 i2)
+	(tc-match* a1 a2 bindings)))))
 
 (defmethod tc-match* ((arg field-application)
 		      (farg field-application) bindings)
@@ -686,6 +711,7 @@
 	  (t (call-next-method))))))
 
 (defun tc-match-actuals (actuals formals bindings)
+  (declare (list actuals formals))
   (when (length= actuals formals)
     (tc-match-actuals* actuals formals bindings)))
 
