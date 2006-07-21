@@ -169,6 +169,7 @@
   (let ((op (operator* application)))
     (when (typep op 'name-expr)
       (let ((currynum (argument-application-number application)))
+	(declare (fixnum currynum))
 	(aref (cdr (assq (declaration op)
 			 (application-judgements-alist (current-judgements))))
 	      (1- currynum))))))
@@ -347,6 +348,26 @@
 ;;   (assert (judgements-all-visible? *current-context*) ()
 ;; 	  "After merge")
   )
+
+;;; judgement-rewrites
+
+;;; Returns a list of formulas corresponding to the judgements for the given
+;;; expression.  This is generally just the judgement-tcc, except for
+;;; recursive judgements, where it is the TCC that would have been generated
+;;; if it was a plain judgement.
+
+(defun judgement-rewrites (expr)
+  (multiple-value-bind (jtypes jdecls)
+      (judgement-types-expr expr)
+    (mapcar #'judgement-tcc-formula jdecls)))
+
+(defmethod judgement-tcc-formula (jdecl)
+  (let ((tcc (find-if #'judgement-tcc? (generated jdecl))))
+    (assert tcc)
+    (closed-definition tcc)))
+  
+(defmethod judgement-tcc-formula ((jdecl rec-application-judgement))
+  (rewrite-formula jdecl))
 
 ;;; judgement-types
 
@@ -820,7 +841,8 @@
 (defun judgement-list-arguments-match*? (argtypes rdomain jdomain)
   (when argtypes
     (or (subtype-wrt? (car argtypes) jdomain rdomain)
-	(judgement-list-arguments-match*? (cdr argtypes) rdomain jdomain))))
+	(judgement-list-arguments-match*? (cdr argtypes)
+					  rdomain jdomain))))
 
 (defun judgement-record-arguments-match? (argflds rfields jfields)
   (or (null rfields)
@@ -1368,24 +1390,166 @@
     (type-predicates* (cdr list) (nconc car-preds preds) all?)))
 
 (defmethod type-predicates* ((te subtype) preds all?)
-  (unless (or (member te *subtypes-seen* :test #'tc-eq)
-	      (and (null all?)
-		   preds
-		   (ignored-type-constraint te)))
-    (push te *subtypes-seen*)
-    (let ((pred (predicate te)))
-      (type-predicates* (supertype te)
-			(if (and (consp all?)
-				 (member pred all? :test #'tc-eq))
-			    preds
-			    (cons pred preds))
-			all?))))
+  (if (or (member te *subtypes-seen* :test #'tc-eq)
+	  (and (null all?)
+	       ;;preds
+	       (ignored-type-constraint te)))
+      preds
+      (let ((pred (predicate te)))
+	(push te *subtypes-seen*)
+	(type-predicates* (supertype te)
+			  (if (and (consp all?)
+				   (member pred all? :test #'tc-eq))
+			      preds
+			      (cons pred preds))
+			  all?))))
 
 (defmethod type-predicates* ((te dep-binding) preds all?)
   (type-predicates* (type te) preds all?))
 
+(defmethod type-predicates* ((te funtype) preds all?)
+  (let ((rpreds (type-predicates* (range te) nil all?)))
+    (if rpreds
+	(let* ((fid (make-new-variable 'F te))
+	       (fbd (make-bind-decl fid
+		      (mk-funtype (domain te) (find-supertype* (range te) all?))))
+	       (fvar (make-variable-expr fbd))
+	       (opred (type-predicates-funtype* rpreds te fvar)))
+	  (cons opred preds))
+	preds)))
+
+(defun find-supertype* (te all?)
+  (if all?
+      (find-supertype te)
+      (if (or (not (subtype? te))
+	      (ignored-type-constraint te))
+	  te
+	  (find-supertype* (supertype te) all?))))
+
+(defun type-predicates-funtype* (rpreds te fvar)
+  (let* ((vid (make-new-variable 'x te))
+	 (bd (make-bind-decl vid (domain te)))
+	 (var (make-variable-expr bd))
+	 (appl (make!-application fvar var)))
+    (make!-lambda-expr (list (declaration fvar))
+      (make!-forall-expr (list bd)
+	(make!-conjunction*
+	 (mapcar #'(lambda (rpred)
+		     (if (dep-binding? (domain te))
+			 (make!-application (substit rpred
+					      (acons (domain te) appl nil))
+			   var)
+			 (make!-application rpred var)))
+	   rpreds))))))
+
+(defmethod type-predicates* ((te tupletype) preds all?)
+  (let ((cpreds (mapcar #'(lambda (ct) (type-predicates* ct nil all?))
+		  (types te))))
+    (if (every #'null cpreds)
+	preds
+	(type-predicates-tupletype cpreds (types te) te preds all?))))
+
+(defun type-predicates-tupletype (cpreds types te preds all?)
+  (let* ((vid (make-new-variable 'T te))
+	 (bd (make-bind-decl vid (mk-tupletype
+				  (mapcar #'(lambda (ty)
+					      (find-supertype* ty all?))
+				    (types te)))))
+	 (var (make-variable-expr bd))
+	 (opred (type-predicates-tupletype* cpreds types te var)))
+    (cons opred preds)))
+
+(defun type-predicates-tupletype* (cpreds types te var
+					  &optional (index 1) opreds)
+  (if (null cpreds)
+      (make!-lambda-expr (list (declaration var))
+	(make!-conjunction* (nreverse opreds)))
+      (let ((projappl (make!-projection-application index var)))
+	(type-predicates-tupletype*
+	 (cdr cpreds)
+	 (if (dep-binding? (car types))
+	     (substit (cdr types)
+	       (acons (car types) var nil))
+	     (cdr types))
+	 te var (1+ index)
+	 (if (null (car cpreds))
+	     opreds
+	     (cons (make!-conjunction*
+		    (mapcar #'(lambda (cpred)
+				(make!-application cpred projappl))
+		      (car cpreds)))
+		   opreds))))))
+
+(defmethod type-predicates* ((te recordtype) preds all?)
+  (let ((cpreds (mapcar #'(lambda (ct) (type-predicates* ct nil all?))
+		  (fields te))))
+    (if (every #'null cpreds)
+	preds
+	(type-predicates-recordtype cpreds (fields te) te preds all?))))
+
+(defun type-predicates-recordtype (cpreds fields te preds all?)
+  (let* ((vid (make-new-variable 'R te))
+	 (lrectype (lift-recordtype-field-types te all?))
+	 (bd (make-bind-decl vid te))
+	 (var (make-variable-expr bd))
+	 (lbd (make-bind-decl vid lrectype))
+	 (lvar (make-variable-expr lbd))
+	 (opred (type-predicates-recordtype* cpreds fields te var lvar)))
+    (cons opred preds)))
+
+(defun lift-recordtype-field-types (te all?)
+  (lift-recordtype-field-types* (fields te) te all?))
+
+(defun lift-recordtype-field-types* (fields te all? &optional nfields)
+  (if (null fields)
+      (let ((rfields (nreverse nfields)))
+	(mk-recordtype  rfields (dependent-fields? rfields)))
+      (let* ((nftype (find-supertype* (type (car fields)) all?))
+	     (nfield (if (eq nftype (type (car fields)))
+			 (car fields)
+			 (mk-field-decl (id (car fields)) nftype))))
+	(lift-recordtype-field-types*
+	 (if (eq nftype (type (car fields)))
+	     (cdr fields)
+	     (let ((nvar (mk-field-name-expr
+			  (id nfield)
+			  (make-resolution nfield
+					   (current-theory-name)
+					   nftype))))
+	       (substit (cdr fields) (acons (car fields) nvar nil))))
+	 te
+	 all?
+	 (cons nfield nfields)))))
+
+(defun type-predicates-recordtype* (cpreds fields te var lvar &optional opreds)
+  (if (null cpreds)
+      (make!-lambda-expr (list (declaration lvar))
+	(make!-conjunction* (substit (nreverse opreds)
+			      (acons (declaration var) lvar nil))))
+      (let ((fldappl (make!-field-application (car fields) var)))
+	(type-predicates-recordtype*
+	 (if (dependent? te)
+	     (substit (cdr cpreds) (acons (car fields) fldappl nil))
+	     (cdr cpreds))
+	 (cdr fields)
+	 te var lvar
+	 (if (null (car cpreds))
+	     opreds
+	     (cons (make!-conjunction*
+		    (mapcar #'(lambda (cpred)
+				(make!-application cpred fldappl))
+		      (car cpreds)))
+		   opreds))))))
+
+(defmethod type-predicates* ((te field-decl) preds all?)
+  (type-predicates* (type te) preds all?))
+
+(defmethod type-predicates* ((te type-name) preds all?)
+  (nreverse preds))
+
 (defmethod type-predicates* (te preds all?)
   (declare (ignore te all?))
+  (break "Should not get here")
   (nreverse preds))
 
 (defmethod argument-application-number ((ex application) &optional (num 0))
@@ -2103,13 +2267,21 @@
        (pushnew (car new-elts) elts :test #'tc-eq))))
 
 (defun known-subtype-of? (t1 t2)
-  (unless (and (null (free-params t1))
-	       (null (free-params t2))
-	       (not (strict-compatible? t1 t2)))
+  (unless (or (simple-subtype-of? t2 t1)
+	      (and (null (free-params t1))
+		   (null (free-params t2))
+		   (not (strict-compatible? t1 t2))))
     (let ((it (cons t1 t2)))
       (unless (member it *subtypes-seen* :test #'tc-eq)
 	(let ((*subtypes-seen* (cons it *subtypes-seen*)))
 	  (check-known-subtypes t1 t2))))))
+
+(defmethod simple-subtype-of? ((t1 subtype) t2)
+  (or (tc-eq t1 t2)
+      (simple-subtype-of? (supertype t1) t2)))
+
+(defmethod simple-subtype-of? (t1 t2)
+  nil)
 
 (defun check-known-subtypes (t1 t2)
   (check-known-subtypes* t1 t2 (known-subtypes *current-context*)))
@@ -2128,12 +2300,13 @@
 ;;; T.  If it does match, then for each Ti the same substitution is done,
 ;;; and it is checked if this is a subtype-of*? tt2.
 (defun subtype-of-test (tt1 tt2 ksubtypes)
-  (when (compatible? tt1 (car ksubtypes))
+  (when (and (or (subtype? tt1) (not (subtype? (car ksubtypes))))
+	     (compatible? tt1 (car ksubtypes)))
     (let* ((frees (when (fully-instantiated? tt1)
-		    (mapcar #'list
-		      (remove-if #'(lambda (x)
-				     (eq (module x) (current-theory)))
-			(free-params (car ksubtypes))))))
+		    (mapcan #'(lambda (x)
+				(unless (eq (module x) (current-theory))
+				  (list (list x))))
+		      (free-params (car ksubtypes)))))
 	   (bindings (when frees (tc-match tt1 (car ksubtypes) frees))))
       (multiple-value-bind (thinst theory)
 	  (subst-theory-inst-from-free-params bindings)
@@ -2146,19 +2319,19 @@
 	      (when (if subst
 			(not (eq subst 'fail))
 			(tc-eq tt1 kt))
-		(some #'(lambda (ks)
-			  (let* ((subst2 (when (freevars ks)
-					   (simple-match ks tt2)))
-				 (kss (unless (eq subst2 'fail)
-					(substit ks subst2))))
-			    (when kss
-			      (subtype-of*?
-			       (substit (if thinst
-					    (subst-mod-params ks thinst theory)
-					    kss)
-				 subst)
-			       tt2))))
-		      (cdr ksubtypes))))))))))
+		(flet ((findone (ks)
+			 (let* ((subst2 (when (freevars ks)
+					  (simple-match ks tt2)))
+				(kss (unless (eq subst2 'fail)
+				       (substit ks subst2))))
+			   (when kss
+			     (subtype-of*?
+			      (substit (if thinst
+					   (subst-mod-params ks thinst theory)
+					   kss)
+				subst)
+			      tt2)))))
+		  (some #'findone (cdr ksubtypes)))))))))))
 
 (defun subst-theory-inst-from-free-params (bindings)
   (when (and bindings
