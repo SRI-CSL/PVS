@@ -3919,6 +3919,48 @@ extend_set_props[T: TYPE, S: TYPE FROM T]: THEORY
   card_extend: LEMMA
     FORALL (a: finite_set[S]): card(extend[T, S, bool, FALSE](a)) = card(a)
 
+  empty?_extend: LEMMA
+    FORALL (a: set[S]): 
+      empty?(extend[T, S, bool, FALSE](a)) IFF empty?(a)
+
+  nonempty?_extend: LEMMA
+    FORALL (a: set[S]): 
+      nonempty?(extend[T, S, bool, FALSE](a)) IFF nonempty?(a)
+
+  singleton?_extend: LEMMA
+    FORALL (a: set[S]): 
+      singleton?(extend[T, S, bool, FALSE](a)) IFF singleton?(a)
+
+  subset_extend: LEMMA
+    FORALL (a, b: set[S]): 
+      subset?(extend[T, S, bool, FALSE](a), extend[T, S, bool, FALSE](b)) IFF
+         subset?(a, b)
+
+  union_extend: LEMMA
+    FORALL (a, b: set[S]): 
+      union(extend[T, S, bool, FALSE](a), extend[T, S, bool, FALSE](b))
+        = extend[T, S, bool, FALSE](union(a, b))
+
+  intersection_extend: LEMMA
+    FORALL (a, b: set[S]): 
+      intersection(extend[T, S, bool, FALSE](a), extend[T, S, bool, FALSE](b))
+        = extend[T, S, bool, FALSE](intersection(a, b))
+
+  difference_extend: LEMMA
+    FORALL (a, b: set[S]): 
+      difference(extend[T, S, bool, FALSE](a), extend[T, S, bool, FALSE](b))
+        = extend[T, S, bool, FALSE](difference(a, b))
+
+  add_extend: LEMMA
+    FORALL (x: S, a: set[S]): 
+      add(x, extend[T, S, bool, FALSE](a))
+        = extend[T, S, bool, FALSE](add(x, a))
+
+  remove_extend: LEMMA
+    FORALL (x: S, a: set[S]): 
+      remove(x, extend[T, S, bool, FALSE](a))
+        = extend[T, S, bool, FALSE](remove(x, a))
+
  END extend_set_props
 
 
