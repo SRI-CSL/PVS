@@ -710,11 +710,11 @@
 (defcl arraytype (funtype))
 
 (defcl tupletype (type-expr)
-  (types :parse t)
+  (types :type list :parse t)
   (generated? :restore-as nil))
 
 (defcl cotupletype (type-expr)
-  (types :parse t)
+  (types :type list :parse t)
   (generated? :restore-as nil))
 
 
@@ -732,7 +732,7 @@
   (var-bindings :parse t))
 
 (defcl recordtype (type-expr)
-  (fields :parse t)
+  (fields :type list :parse t)
   (dependent? :restore-as nil))
 
 (defcl struct-subtype (type-expr)
