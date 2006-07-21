@@ -1315,7 +1315,11 @@
 (defun make-equality-between-predicates (t1 p1 p2 precond)
   (when (or p1 p2)
     (let* ((vid (make-new-variable '|x| (append p1 p2)))
-	   (bd (make-bind-decl vid t1))
+	   (type (or t1
+		     (reduce #'compatible-type (or p1 p2)
+			     :key #'(lambda (p)
+				      (domain (find-supertype (type p)))))))
+	   (bd (make-bind-decl vid type))
 	   (var (make-variable-expr bd))
 	   (iff (make!-iff
 		 (make!-conjunction*
@@ -1454,7 +1458,7 @@
   (if (type-value a1)
       (equality-predicates* (type-value a1) (type-value a2) p1 p2 precond
 			    bindings)
-      (let ((npred (equality-predicates* p1 p2 nil nil precond bindings)))
+      (let ((npred (make-equality-between-predicates nil p1 p2 precond)))
 	(if npred
 	    (make!-conjunction npred (make-equation (expr a1) (expr a2)))
 	    (make-equation (expr a1) (expr a2))))))
