@@ -319,7 +319,7 @@
 (defun load-pvs-lib-lisp-file (lib-path)
   ;; Set up *default-pathname-defaults* and sys:*load-search-list*
   ;; so that simple loads from the pvs-lib.lisp file work.
-  (let* ((*default-pathname-defaults* lib-path)
+  (let* ((*default-pathname-defaults* (merge-pathnames lib-path))
 	 #+allegro (sys:*load-search-list* *pvs-library-path*)
 	 (lfile (format nil "~apvs-lib.lisp" lib-path))
 	 (*suppress-printing* t))
