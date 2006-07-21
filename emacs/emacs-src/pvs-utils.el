@@ -770,7 +770,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 (defun pvs-library-path-subdirs (dirs)
   (let ((dirname-paths nil))
-    (dolist (dir dirs)
+    (dolist (dir (cons (format "%s/lib" pvs-path) dirs))
       (when (file-directory-p dir)
 	(dolist (subdir (directory-files dir))
 	  (unless (member subdir '("." ".."))
