@@ -1244,6 +1244,12 @@ bind tighter.")
 (defmethod pp* ((ex number-expr))
   (write (number ex)))
 
+(defmethod pp* ((ex decimal-integer))
+  (write (number ex))
+  (write-char #\.)
+  (dotimes (i (fractional-length ex))
+    (write-char #\0)))
+
 (defmethod pp* ((ex string-expr))
   (unless (string-value ex)
     (setf (string-value ex) (pp-string-expr (argument ex))))
