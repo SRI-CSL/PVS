@@ -285,15 +285,17 @@ where db is to replace db1 and db2")
 				     (acons fld1 fld2 bindings)))))))
 
 (defun tc-eq-fields (flds1 flds2 bindings)
+  (declare (list flds1 flds2))
   (cond ((null flds1) (null flds2))
 	((null flds2) nil)
-	(t (let ((fld2 (find (car flds1) flds2
-			     :test #'(lambda (x y)
-				       (same-id (caar (arguments x))
-						(caar (arguments y)))))))
-	     (and fld2
-		  (tc-eq* (expression (car flds1)) (expression fld2) bindings)
-		  (tc-eq-fields (cdr flds1) (remove fld2 flds2) bindings))))))
+	(t (flet ((ftest (x y)
+		    (same-id (caar (arguments x)) (caar (arguments y)))))
+	     (let ((fld2 (find (car flds1) flds2 :test #'ftest)))
+	       (and fld2
+		    (tc-eq* (expression (car flds1)) (expression fld2)
+			    bindings)
+		    (tc-eq-fields (cdr flds1) (remove fld2 flds2)
+				  bindings)))))))
 
 (defmethod tc-eq* ((f1 field-decl) (f2 field-decl) bindings)
   (declare (ignore bindings))
@@ -434,7 +436,7 @@ where db is to replace db1 and db2")
   (declare (ignore bindings))
   (with-slots ((n1 number)) e1
     (with-slots ((n2 number)) e2
-      (= (the integer n1) (the integer n2)))))
+      (= n1 n2))))
 
 (defmethod tc-eq* ((e1 record-expr) (e2 record-expr) bindings)
   (or (eq e1 e2)
@@ -466,6 +468,7 @@ where db is to replace db1 and db2")
 	   (tc-eq* else1 else2 bindings)))))
 
 (defun tc-eq-selections (sel1 sel2 bindings)
+  (declare (list sel1 sel2))
   (cond ((null sel1) (null sel2))
 	((null sel2) nil)
 	(t (let ((s2 (find (constructor (car sel1)) sel2
@@ -670,13 +673,12 @@ where db is to replace db1 and db2")
 
 (defun tc-eq-adt-actuals (acts1 acts2 bindings formals postypes)
   (or (null acts1)
-      (and (if (member (car formals) postypes
-		       :test #'same-id
-		       :key #'(lambda (x) (or (print-type x) x)))
-	       (compatible? (type-value (car acts1)) (type-value (car acts2)))
-	       (tc-eq* (car acts1) (car acts2) bindings))
-	   (tc-eq-adt-actuals (cdr acts1) (cdr acts2) bindings
-			      (cdr formals) postypes))))
+      (flet ((lkey (x) (or (print-type x) x)))
+	(and (if (member (car formals) postypes :test #'same-id :key #'lkey)
+		 (compatible? (type-value (car acts1)) (type-value (car acts2)))
+		 (tc-eq* (car acts1) (car acts2) bindings))
+	     (tc-eq-adt-actuals (cdr acts1) (cdr acts2) bindings
+				(cdr formals) postypes)))))
 
 ;;; Should consider whether all binding-exprs are over a single bound
 ;;; variable; i.e., the canonical form of FORALL (x:t1), (y:t2): p(x,y) is
@@ -722,10 +724,12 @@ where db is to replace db1 and db2")
 			     (cons (type (car bindings)) result)))))
 
 (defun make-compatible-bindings (b1 b2 bindings)
+  (declare (list b1 b2))
   (if (and (singleton? b1)
 	   (typep (type (car b1)) 'tupletype))
       (let ((types1 (types (type (car b1)))))
-	(when (and (length= (the list types1) b2)
+	(declare (list types1))
+	(when (and (length= types1 b2)
 		   (tc-eq* (if (dep-binding? (car types1))
 			       (type (car types1))
 			       (car types1))
@@ -2674,7 +2678,7 @@ where db is to replace db1 and db2")
 			  #'(lambda (ex) (tc-eq ex (car predicates))))))))
 
 ;;; intersection-type returns the largest type contained in the given types,
-;;; whihc must be compatible.  It can return the empty type.  Note that this
+;;; which must be compatible.  It can return the empty type.  Note that this
 ;;; never returns a dep-binding.
 
 (defun intersection-type (t1 t2)
@@ -2695,83 +2699,3 @@ where db is to replace db1 and db2")
 	(let* ((bd (make-new-bind-decl ty))
 	       (var (make-variable-expr bd)))
 	  (make!-set-expr (list bd) (make!-application (car preds) var))))))
-
-
-;; lifts dependent subtype predicates to the top, e.g.,
-;; [x: int, {y:int | y < x}] ==> {z: [int, int] | z`2 < z`1}
-;; [# x: int, y: {y:int | y < x} #] ==> {r: [# x, y: int #] | r`y < r`x}
-;;   recursive-types?
-;; We cannot lift function types, nor dependencies involving the domain of a
-;; function type, e.g., [x: int, [below(x) -> int]].
-;; In these cases we return the type lifted as much as possible, e.g.,
-;; [x: int, {y:int | y < x}, [below(x) -> int]] ==>
-;;     {z: [x: int, int, [below(x) -> int]] | z`2 < z`1}
-;; Returns two values: the lifted type, and a flag indicating whether the
-;; lifting was complete (no dependencies left in the result).
-
-;; (defvar *dependencies-removed*)
-
-;; (defun lift-dependent-subtype-predicates (type)
-;;   (let ((*dependencies-removed* t))
-;;     (multiple-value-bind (lifted-type pred)
-;; 	(lift-dependent-subtype-predicates* type)
-;;       (values (mk-subtype lifted-type pred)
-;; 	      *dependencies-removed*))))
-
-;; (defmethod lift-dependent-subtype-predicates* :around (te)
-;;   (if (some #'(lambda (x) (dep-binding? (declaration x))) (freevars te))
-;;       (call-next-method)
-;;       (values te nil)))
-
-;; ;;; [{x: T1 | p1(x)}, ... , {x: Tn | pn(x)} ==>
-;; ;;;   {z: [T1, ..., Tn] | p1(z`1) & ... & pn(z`n)}
-;; (defmethod lift-dependent-subtype-predicates* ((te tupletype))
-;;   (lift-dependent-subtype-predicates-tuptype (types te)))
-
-;; (defun lift-dependent-subtype-predicates-tuptype (types &optional stypes preds)
-;;   (if (null types)
-;;       (if (null preds)
-;; 	  (mk-tupletype (nreverse stypes))
-;; 	  (let* ((tuptype (mk-tuptype (nreverse stypes)))
-;; 		 (vid (make-new-variable '|z| preds))
-;; 		 (vb (make-bind-decl vid tuptype))
-;; 		 (var (make-variable-expr vb))
-;; 		 (tpred (foo preds)))
-;; 	    (values tuptype tpred)))
-;;       (multiple-value-bind (ltype pred)
-;; 	  (lift-dependent-subtype-predicates* (car types))
-;; 	(lift-dependent-subtype-predicates-tuptype
-;; 	 (cdr types)
-;; 	 (cons ltype stypes)
-;; 	 (cons pred preds)))))
-
-;; (defmethod lift-dependent-subtype-predicates* ((te recordtype))
-;;   (lift-dependent-subtype-predicates-tuptype (fields te)))
-
-;; (defun lift-dependent-subtype-predicates-tuptype (fields &optional sfields preds)
-;;   (if (null types)
-;;       (if (null preds)
-;; 	  (mk-recordtype (nreverse sfields))
-;; 	  (let* ((rectype (mk-recordtype (nreverse sfields)))
-;; 		 (vid (make-new-variable '|r| preds))
-;; 		 (vb (make-bind-decl vid rectype))
-;; 		 (var (make-variable-expr vb))
-;; 		 (rpred (foo preds)))
-;; 	    (values rectype rpred)))
-;;       (multiple-value-bind (l pred)
-;; 	  (lift-dependent-subtype-predicates* (car types))
-;; 	(lift-dependent-subtype-predicates-tuptype
-;; 	 (cdr types)
-;; 	 (cons ltype stypes)
-;; 	 (cons pred preds)))))
-
-;; (defmethod lift-dependent-subtype-predicates* ((te subtype))
-;;   (cond ((some #'(lambda (x) (dep-binding? (declaration x)))
-;; 	       (freevars (supertype te)))
-;; 	 (multiple-value-bind (ltype pred)
-;; 	     (lift-dependent-subtype-predicates* (supertype te))
-;; 	   (values ltype (conjoin-predicates pred (predicate te)))))
-;; 	((some #'(lambda (x) (dep-binding? (declaration x)))
-;; 	       (freevars (predicate te)))
-;; 	 (values (supertype te) (predicate te)))
-;; 	(t (values te nil))))
