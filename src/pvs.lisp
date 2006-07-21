@@ -84,7 +84,9 @@
   (let ((exepath (car (make::split-string
 		       (environment-variable "LD_LIBRARY_PATH") :item #\:))))
     (pushnew exepath *pvs-directories*)
-    (ext:load-foreign (format nil "~a/mu.so" exepath))
+    (ext:load-foreign (format nil "~a/mu.~a" exepath
+			      #+darwin "dylib"
+			      #-darwin "so"))
     (lf "bdd-cmu-load")
     (lf "mu-cmu-load")
     (bdd_init))
@@ -1915,7 +1917,8 @@
   (if (and (member origin '("ppe" "tccs") :test #'string=)
 	   (not (get-theory name)))
       (pvs-message "~a is not typechecked" name)
-      (case (intern (string-downcase origin))
+      (case (intern #+allegro (string-downcase origin)
+		    #-allegro (string-upcase origin))
 	(ppe (let* ((theories (ppe-form (get-theory name)))
 		    (typespec (formula-typespec unproved?))
 		    (decl (get-decl-at line typespec theories)))
