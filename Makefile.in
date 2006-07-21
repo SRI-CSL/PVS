@@ -1,6 +1,6 @@
 ########################### -*- Mode: Makefile -*- ###########################
 ## Makefile -- Main Makefile for PVS; requires GNU Make
-## Author          : Sam Owre
+## Author          : Sam Owre, Joseph Kiniry
 ## Created On      : Wed Dec 30 19:29:47 1998
 ## Last Modified By: Sam Owre
 ## Last Modified On: Thu May 20 22:26:02 2004
@@ -8,6 +8,8 @@
 ## Status          : Stable
 ###############################################################################
 ##   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
+##   Copyright (C) 2004 Joseph Kiniry, SoS Group, Computing Sciences Department,
+##                      University of Nijmegen
 ifneq (,)
 This makefile requires GNU Make.
 endif
@@ -27,21 +29,61 @@ export PLATFORM
 
 SYSTEM ?= pvs
 
-LISP=@LISP@
-ALLEGRODIR= @ALLEGRODIR@
-PVSLISP= @ALLEGRODIR@/@LISPEXE@
-LD_LIBRARY_PATH = @ALLEGRODIR@:$LD_LIBRARY_PATH
+
+ifeq ($(LISP),)
+  LISP = allegro
+endif
+
+# The extension should match that of pvs.system, src/pvs.lisp,
+# ess/sys/tools/rel/box-system.lisp, and emacs/emacs-src/pvs-ilisp.el
+ifeq ($(LISP),allegro)
+  LISPEXE = @ALLEGRODIR@/mlisp8
+  LD_LIBRARY_PATH = @ALLEGRODIR@:$LD_LIBRARY_PATH
+  ifeq ($(PLATFORM),sun4-SunOS5)
+    LISPEXT=fasl
+  else
+  ifeq ($(PLATFORM),ix86-Linux)
+    LISPEXT=lfasl
+  else
+  ifeq ($(PLATFORM),powerpc-MacOSX7)
+    LISPEXT=mfasl
+  endif
+  endif
+  endif
+endif
+ifeq ($(LISP),cmulisp)
+  ifeq ($(PLATFORM),sun4-SunOS5)
+    LISPEXE = @SUNCMULISPDIR@/lisp
+    LISPEXT=sparcf
+  else
+  ifeq ($(PLATFORM),ix86-Linux)
+    LISPEXE = @LINUXCMULISPDIR@/lisp
+    LISPEXT=x86f
+  else
+  ifeq ($(PLATFORM),powerpc-MacOSX7)
+    LISPEXE = @MACPPCCMULISPDIR@/lisp
+    LISPEXT=ppcf
+  endif
+  endif
+  endif
+endif
+
 LOAD-FOREIGN-EXTENSION=so
 export LD_LIBRARY_PATH
 ifeq ($(PLATFORM),sun4-SunOS5)
 	LISPEXT=fasl
 else
-ifeq ($(PLATFORM),ix86-redhat5)
+ifeq ($(PLATFORM),ix86-Linux)
 	LISPEXT=lfasl
 else
 ifeq ($(PLATFORM),powerpc-MacOSX7)
 	LISPEXT=mfasl
 	LOAD-FOREIGN-EXTENSION=dylib
+else
+ifeq ($(PLATFORM),ix86-MacOSX8)
+        LISPEXT=nfasl
+        LOAD-FOREIGN-EXTENSION=dylib
+endif
 endif
 endif
 endif
@@ -132,23 +174,10 @@ pvs-make-files = pvs.system src/defsystem.lisp src/make-pvs.lisp \
 
 
 ff-files = src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
-           BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) \
-           src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION)
+           BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION)
 
-ifneq (@ICSPATH@,)
-ff-files = $(ff-files) \
-           src/ics-interface/$(PLATFORM)/ics_lisp.$(LOAD-FOREIGN-EXTENSION)
-
-libics-file = @ICSLIB@/libics.$(LOAD-FOREIGN-EXTENSION)
-
-ics-lisp = src/ics-interface/ics-pvs.lisp \
-           src/ics-interface/ics-strategies.lisp
-
-ics-lisp-file = @ICSOBJ@/ics.lisp
-
-ics-c = src/ics-interface/ics_lisp_error.c
-ics-lisp := $(patsubst %,$(PVSPATH)%,$(ics-lisp))
-ics-c := $(patsubst %,$(PVSPATH)%,$(ics-c))
+ifeq ($(LISP),allegro)
+  ff-files += src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION)
 endif
 
 ess = ess/dist-ess.lisp \
@@ -266,7 +295,6 @@ pvs-src = src/closopt.lisp \
           src/prover/estructures.lisp \
           src/pvs-methods.lisp \
           src/utils/hashfn.lisp \
-          src/utils/file-utils.lisp \
           src/macros.lisp \
           src/linked-hash-table.lisp \
           src/globals.lisp \
@@ -309,6 +337,13 @@ pvs-src = src/closopt.lisp \
 	  src/tex-support.lisp \
           src/raw-api.lisp
 
+ifeq ($(LISP),allegro)
+   pvs-src += src/utils/file-utils.lisp
+endif
+ifeq ($(LISP),cmulisp)
+   pvs-src += src/utils/file-utils-cmu.lisp
+endif
+
 emacs-interface = src/interface/pvs-emacs.lisp \
 		  src/interface/emacs-calls.lisp \
 		  src/interface/cl-ilisp.lisp \
@@ -332,7 +367,12 @@ pvs-prover = src/prover/checker-macros.lisp \
          src/prover/strategies.lisp \
          src/prover/wish.lisp
 
-bddlisp = BDD/bdd.lisp BDD/mu.lisp
+ifeq ($(LISP),allegro)
+  bddlisp = BDD/bdd.lisp BDD/mu.lisp
+endif
+ifeq ($(LISP),cmulisp)
+  bddlisp = BDD/bdd-cmu.lisp BDD/mu-cmu.lisp
+endif
 
 PVSiolisp = src/PVSio/pvs-lib.lisp src/PVSio/defattach.lisp \
             src/PVSio/eval.lisp src/PVSio/pvsio.lisp
@@ -363,11 +403,6 @@ lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${emacs-interface} ${pvs-prover} ${bddlisp} \
 	     ${PVSiolisp} ${ws1slisp} ${groundevallisp} \
              ${abstractionlisp}
-
-ifneq (@ICSPATH@,)
-lisp-files = ${lisp-files} \
-	     ${ics-lisp} ${ics-lisp-file}
-endif
 
 templatedeps = pvs src/make-allegro-pvs.lisp pvs.system \
                ess/dist-ess.lisp ess/allegro-runtime.lisp
@@ -431,70 +466,108 @@ endif
 
 all : ${templatedeps} full
 
-full : makefileutils makebdd makews1s ${pvsfull} ${emacs}
+image-deps = makefileutils makebdd $(pvsfull)
 
-runtime : makefileutils makebdd makews1s ${pvsrt} ${emacs}
+ifeq ($(LISP),allegro)
+  image-deps += makews1s
+endif
 
-${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${libics-file} ${lisp-files} \
-             $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
-	rm -rf ${bindir}/full
-	umask 002; \
-	$(PVSLISP) -e '(load "$(PVSPATH)pvs.system")' \
-		-e "(let ((code 1)) \
-                      (unwind-protect \
-                          (multiple-value-bind (v err) \
-                            (ignore-errors (operate-on-system :pvs :compile)) \
-                               (if err \
-                                   (let ((*print-readably* nil)) \
-                                     (format t \"~a\" err)) \
-                                   (setq code 0)))) \
-                        (excl:exit code)))"
-	umask 002; $(ETAGS) ${lisp-files} ${pvs-emacs-src}
-	touch $(PVSPATH)src/pvs-lexer.${LISPEXT}
-	umask 002; \
-	$(PVSLISP) -e '(defvar *runtime* nil)' \
-		-L $(PVSPATH)src/make-pvs.lisp
-	touch ${pvsfull}
+image-deps += ${emacs}
 
-${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${libics-file} ${lisp-files} \
-           $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
-	rm -rf ${bindir}/runtime
-	umask 002; \
-	$(PVSLISP) -e '(load "$(PVSPATH)pvs.system")' \
-		-e "(let ((code 1)) \
-                      (unwind-protect \
-                          (multiple-value-bind (v err) \
-                            (ignore-errors (operate-on-system :pvs :compile)) \
-                               (if err \
-                                   (let ((*print-readably* nil)) \
-                                     (format t \"~a\" err)) \
-                                   (setq code 0)))) \
-                        (excl:exit code)))"
-	umask 002; $(ETAGS) ${lisp-files} ${pvs-emacs-src}
-	touch $(PVSPATH)src/pvs-lexer.${LISPEXT}
-	umask 002; \
-	$(PVSLISP) -e '(defvar *runtime* t)' \
-		-L $(PVSPATH)src/make-pvs.lisp
-	touch ${pvsrt}
+full : $(image-deps)
 
-parser : $(PVSPATH)src/pvs-lexer.lisp
-.PHONY : parser
+runtime : $(image-deps)
 
-$(PVSPATH)src/pvs-lexer.lisp : ${pvs-parser-in}
+ifeq ($(LISP),cmulisp)
+$(pvsfull) : $(pvs-make-files) $(ess) $(ff-files) $(lisp-files) \
+	  lib/prelude.pvs lib/prelude.prf
+	mkdirhier $(bindir)/full
+	$(LISPEXE) -eval '(load "pvs.system" :verbose t) \
+                          (unwind-protect \
+                              (pvs::operate-on-system :pvs :compile) \
+                            (save-lisp "$(pvsfull).core" \
+                                :init-function (function startup-pvs) \
+                               ))'
+	/bin/echo "#!/bin/sh" > $(pvsfull)
+	/bin/echo "$(LISPEXE) -core \`dirname \$$0\`/\`basename \$$0\`.core" >> $(pvsfull)
+	chmod a+x $(pvsfull)
+
+$(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
 	umask 002; \
-	$(PVSLISP) -L $(PVSPATH)src/make-pvs-parser
+	$(LISPEXE) -load src/make-pvs-parser
+
 
 $(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
                        $(PVSPATH)src/defcl.lisp \
                        $(PVSPATH)src/classes-expr.lisp \
                        $(PVSPATH)src/classes-decl.lisp
 	umask 002; \
-	$(PVSLISP) -e '(defvar *pvs-path* "@PVSPATH@")' \
+	$(LISPEXE) -eval '(defvar *pvs-path* "/homes/owre/pvs3.3")' \
+		   -load src/make-pvs-methods.lisp
+endif
+
+ifeq ($(LISP),allegro)
+${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${libics-file} ${lisp-files} \
+             $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
+	rm -rf /tmp/pvs-allegro-build
+	umask 002; \
+	$(LISPEXE) -e '(load "$(PVSPATH)pvs.system")' \
+		-e "(let ((code 1)) \
+                      (unwind-protect \
+                          (multiple-value-bind (v err) \
+                            (ignore-errors (operate-on-system :pvs :compile)) \
+                               (if err \
+                                   (let ((*print-readably* nil)) \
+                                     (format t \"~a\" err)) \
+                                   (setq code 0)))) \
+                        (excl:exit code)))"
+	umask 002; $(ETAGS) ${lisp-files} ${pvs-emacs-src}
+	touch $(PVSPATH)src/pvs-lexer.${LISPEXT}
+	umask 002; \
+	$(LISPEXE) -e '(defvar *runtime* nil)' \
+		-L $(PVSPATH)src/make-pvs.lisp
+	touch ${pvsfull}
+
+${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${libics-file} ${lisp-files} \
+           $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
+	rm -rf /tmp/pvs-allegro-build
+	umask 002; \
+	$(LISPEXE) -e '(load "$(PVSPATH)pvs.system")' \
+		-e "(let ((code 1)) \
+                      (unwind-protect \
+                          (multiple-value-bind (v err) \
+                            (ignore-errors (operate-on-system :pvs :compile)) \
+                               (if err \
+                                   (let ((*print-readably* nil)) \
+                                     (format t \"~a\" err)) \
+                                   (setq code 0)))) \
+                        (excl:exit code)))"
+	umask 002; $(ETAGS) ${lisp-files} ${pvs-emacs-src}
+	touch $(PVSPATH)src/pvs-lexer.${LISPEXT}
+	umask 002; \
+	$(LISPEXE) -e '(defvar *runtime* t)' \
+		-L $(PVSPATH)src/make-pvs.lisp
+	touch ${pvsrt}
+
+$(PVSPATH)src/pvs-lexer.lisp : ${pvs-parser-in}
+	umask 002; \
+	$(LISPEXE) -L $(PVSPATH)src/make-pvs-parser
+
+$(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
+                       $(PVSPATH)src/defcl.lisp \
+                       $(PVSPATH)src/classes-expr.lisp \
+                       $(PVSPATH)src/classes-decl.lisp
+	umask 002; \
+	$(LISPEXE) -e '(defvar *pvs-path* "@PVSPATH@")' \
 		-L $(PVSPATH)src/make-pvs-methods.lisp
+endif
+
+parser : $(PVSPATH)src/pvs-lexer.lisp
+.PHONY : parser
 
 ${LISP} :
 	@echo "Need to set the LISP variable in Makefile to a valid"
-	@echo "allegro 6.0 lisp executable for this platform"
+	@echo "Common Lisp executable for this platform."
 
 .PHONY: all makefileutils makebdd makews1s make-release-notes clean
 makefileutils :
@@ -508,20 +581,12 @@ makews1s :
 	(cd $(PVSPATH)src/WS1S ; rm -rf mona ; ln -s mona-1.4 mona);\
 	$(MAKE) -C $(PVSPATH)src/WS1S/$(PLATFORM)
 
-ifneq (@ICSPATH@,)
-$(PVSPATH)src/ics-interface/$(PLATFORM)/ics_lisp.$(LOAD-FOREIGN-EXTENSION) : $(PVSPATH)src/ics-interface/$(PLATFORM)/ics_lisp_error.o @ICSLIB@/libics.a
-	umask 002; \
-	$(LD) -G -o $@ $< -L@ALLEGRODIR@ -l@ALLEGROLIB@ \
-	      --whole-archive @ICSLIB@/libics.a --no-whole-archive
-
-$(PVSPATH)src/ics-interface/$(PLATFORM)/ics_lisp_error.o : $(PVSPATH)src/ics-interface/ics_lisp_error.c
-	umask 002; \
-	mkdir -p $(PVSPATH)src/ics-interface/$(PLATFORM); \
-	$(CC) $(CFLAGS) -o $@ -c $<
-endif
-
 make-release-notes : 
 	$(MAKE) -C $(PVSPATH)doc/release-notes
+
+#
+# Release files.
+#
 
 runtime-image-tar = pvs-$(PLATFORM).tgz
 
@@ -533,8 +598,10 @@ emacs19-tar = pvs-emacs19.tgz
 
 source-tar = pvs-source.tgz
 
+libraries-tar = pvs-libraries.tgz
+
 tarfiles : ${release-notes} ${runtime-image-tar} ${full-image-tar} \
-           ${system-tar} ${emacs19-tar} ${source-tar}
+           ${system-tar} ${emacs19-tar} ${source-tar} ${libraries-tar}
 
 runtime-image-files = $(wildcard ${bindir}/runtime/*)
 
@@ -545,8 +612,8 @@ release-notes = doc/release-notes/pvs-release-notes.info \
                 doc/release-notes/pvs-release-notes.ps \
                 doc/release-notes/pvs-release-notes.pdf
 
-system-files = README pvs pvs-tex.sub pvs.sty bin/relocate bin/pvs-platform \
-	       bin/tarmail bin/untarmail Examples \
+system-files = README pvs pvsio pvs-tex.sub pvs.sty bin/relocate \
+               bin/pvs-platform bin/tarmail bin/untarmail Examples \
                lib/prelude.pvs lib/prelude.prf lib/list_adt.pvs \
                lib/ordstruct_adt.pvs lib/character_adt.pvs \
 	       lib/union_adt.pvs lib/lift_adt.pvs \
@@ -564,12 +631,12 @@ configure-files = Makefile.in README README.configure configure.in \
 
 bdd-sources = BDD/bdd-ld-table BDD/mu-ld-table \
               BDD/bdd_interface.c BDD/mu_interface.c \
-              BDD/ix86-redhat5/Makefile BDD/sun4-SunOS5/Makefile \
+              BDD/ix86-Linux/Makefile BDD/sun4-SunOS5/Makefile \
               BDD/bdd BDD/mu
 
 ws1s-sources = src/WS1S/README src/WS1S/ws1s-ld-table \
                src/WS1S/ws1s_extended_interface.c src/WS1S/mona-1.4 \
-               src/WS1S/ix86-redhat5/Makefile src/WS1S/sun4-SunOS5/Makefile
+               src/WS1S/ix86-Linux/Makefile src/WS1S/sun4-SunOS5/Makefile
 
 emacs19-files = emacs/emacs19
 
@@ -598,8 +665,11 @@ ${source-tar} : ${pvs-make-files} ${configure-files} \
                 ${bdd-sources} ${ws1s-sources}
 	$(TAR) $(TARFLAGS) -f $@ $^ --exclude CVS
 
+${libraries-tar} : lib/finite_sets lib/bitvectors lib/PVSio
+	$(TAR) $(TARFLAGS) -f $@ $^ --exclude CVS
+
 tar : ${full-image-tar} ${runtime-image-tar} ${system-tar} \
-      ${emacs19-tar} ${source-tar}
+      ${emacs19-tar} ${source-tar} ${libraries-tar}
 
 install:
 	@echo "target install is deprecated - read README.configure"
