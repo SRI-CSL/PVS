@@ -29,7 +29,6 @@ export PLATFORM
 
 SYSTEM ?= pvs
 
-
 ifeq ($(LISP),)
   LISP = allegro
 endif
@@ -71,18 +70,18 @@ endif
 LOAD-FOREIGN-EXTENSION=so
 export LD_LIBRARY_PATH
 ifeq ($(PLATFORM),sun4-SunOS5)
-	LISPEXT=fasl
+  LISPEXT=fasl
 else
 ifeq ($(PLATFORM),ix86-Linux)
-	LISPEXT=lfasl
+  LISPEXT=lfasl
 else
 ifeq ($(PLATFORM),powerpc-MacOSX7)
-	LISPEXT=mfasl
-	LOAD-FOREIGN-EXTENSION=dylib
+  LISPEXT=mfasl
+  LOAD-FOREIGN-EXTENSION=dylib
 else
 ifeq ($(PLATFORM),ix86-MacOSX8)
-        LISPEXT=nfasl
-        LOAD-FOREIGN-EXTENSION=dylib
+  LISPEXT=nfasl
+  LOAD-FOREIGN-EXTENSION=dylib
 endif
 endif
 endif
