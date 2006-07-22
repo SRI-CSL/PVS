@@ -54,12 +54,12 @@
       (TUPSEL-bool . bool)
      )) ;NSH from prglobals.lisp
 
-(defvar   interpsyms
+(defvar interpsyms
      '(PLUS MINUS DIFFERENCE TIMES DIVIDE
        lessp lesseqp greaterp greatereqp
        tupcons TUPSEL
        update arrayrest arraysel
-       IF*
+       if*
       )); NSH from prglobals.lisp
 
 (defvar  pr-infile "prx-.m"    " input file - a dummy used to fool maclisp " )

@@ -40,7 +40,7 @@
 
 (defconstant *eqarithrels* '(greatereqp lesseqp))
 
-(defconstant *ifops* '(IF IF*))
+(defconstant *ifops* '(if if*))
 
 (defconstant *boolconstants* '(false true))
 
@@ -48,7 +48,7 @@
 
 (defconstant *arithops* '(PLUS TIMES DIFFERENCE MINUS))
 
-(defconstant *boolops* '(and or implies not IF iff))
+(defconstant *boolops* '(and or implies not if iff))
 
 (defmacro singleton? (obj)
   `(and (consp ,obj) (null (cdr ,obj))))

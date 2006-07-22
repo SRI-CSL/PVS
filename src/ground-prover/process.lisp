@@ -875,8 +875,8 @@
 (defun adduse(u v)
   (unless (and (consp u)
 	       (or (equal (car u) 'equal)
-		   (equal (car u) 'IF)
-		   (equal (car u) 'IF*)))
+		   (equal (car u) 'if)
+		   (equal (car u) 'if*)))
     (let ((ul (use v)))
       (cond ((member u ul :test #'equal))
 	     (t (push (cons v (cons u ul)) usealist)
@@ -937,7 +937,7 @@
    ((symbolp term) (getq term typealist))
    ((integerp term) 'integer)
    ((atom term) nil)
-   ((eq (funsym term) 'IF*) (or (prtype (arg2 term)) (prtype (arg3 term))))
+   ((eq (funsym term) 'if*) (or (prtype (arg2 term)) (prtype (arg3 term))))
    ((memq (funsym term) *arithops*)
     (if (loop for arg in (argsof term) always (eq (prtype arg) 'integer))
 	'integer
@@ -969,7 +969,7 @@
 
 (defun pushf (term)
   (cond ( (consp term)
-	  (cond ( (eq (funsym term) 'IF*)  term)
+	  (cond ( (eq (funsym term) 'if*)  term)
 		( t
 		  (pushf1 term)
 		)
@@ -997,9 +997,9 @@
 	  (setq newterm term) ; Exit the prog. No arg has if*.
 	)
       (setq firstif (pop rem))
-      (cond ( (and (consp firstif) (eq (funsym firstif) 'IF*))
+      (cond ( (and (consp firstif) (eq (funsym firstif) 'if*))
 	      (setq newterm (list
-			      'IF*
+			      'if*
 			      (arg1 firstif)
 			      (pushf1 (unwind rev (cons (arg2 firstif) rem)))
 			      (pushf1 (unwind rev (cons (arg3 firstif) rem)))
@@ -1057,15 +1057,15 @@
 
 ; 1-AUG-90 dac: added check to not lift condidtionals of bound
 ; lambda variables.
-; also checked for IF as well as IF*
+; also checked for if as well as if*
 
 ; 13-AUG-90 dac: added flag in-prover so that when liftif* is called
-; internal to the prover IF's and IF*`s become IF*'s,
+; internal to the prover if's and if*`s become if*'s,
 ; but when liftif* is called in makeimplication (in place of the old expandbools)
-; IF's remain IF's
+; if's remain if's
 ; 14-AUG-90, It seems that above flag may not be necessary.
 ; I am leaving it in, but calling it from makeimplication without setting it to nil
-; to see if it still works correctly when IFs become IF*'s there.
+; to see if it still works correctly when ifs become if*'s there.
 
 (defun liftif* (exp &optional (in-prover t))
   (make-if*-exp exp (collect-conditionals exp nil t) nil in-prover))
@@ -1089,7 +1089,7 @@
   (if (eq flg t)
       (if (consp exp)
 	  (case (funsym exp)
-	    ((IF* IF)
+	    ((if* if)
 	     (collect-conditionals
 	      (arg3 exp)
 	      (collect-conditionals (arg2 exp)
@@ -1108,8 +1108,8 @@
 (defun make-if*-exp (exp conds alist in-prover)
   (if (consp conds)
       `(,(if in-prover
-	     'IF*
-	   'IF)
+	     'if*
+	   'if)
 	,(liftif* (car conds)) ;; 6-Dec-90: DAC added lifitif* to lift ifs from conditional.
 	,(make-if*-exp exp (cdr conds)
 		       (cons (cons (car conds) 'true) alist) in-prover)
@@ -1117,7 +1117,7 @@
 		       (cons (cons (car conds) 'false) alist) in-prover))
     (if (consp exp)
 	(case (funsym exp)
-	  ((IF* IF)
+	  ((if* if)
 	   (cond
 	    ((eq (cdr (assoc (arg1 exp) alist :test #'equal))
 		 'true)
@@ -1133,7 +1133,7 @@
 			 (make-if*-exp e nil alist in-prover)))))
       exp)))
 
-;;NSH(12/17):  newexpandbools only lifts IFs up to the top-level 
+;;NSH(12/17):  newexpandbools only lifts ifs up to the top-level 
 ;;propositional connective.
 
 ;(defun newexpandbools (exp)
@@ -1214,7 +1214,7 @@
    ((= bool-level *max-lift-bools*) f)
    ((symbolp f) f)
    (t (case (funsym f)
-	((and or implies not IF iff)  ; recurse into top-level prop structure
+	((and or implies not if iff)  ; recurse into top-level prop structure
 	 (cons (funsym f)
 	       (loop for arg in (argsof f)
 		     collect (lift-bools arg (1+ bool-level)))))
@@ -1245,16 +1245,16 @@
    ((eq (prtype f) 'bool)
     (throw 'lift-embedded  
       (lift-bools
-       `(IF ,f ,
+       `(if ,f ,
 	    (subst-expr 'true f embeddedf)
 	    ,(subst-expr 'false f embeddedf))
        bool-level)))
    ((qnumberp f) f)
    ((symbolp f) f)
-   ((eq (funsym f) 'IF)
+   ((eq (funsym f) 'if)
     (throw 'lift-embedded
       (lift-bools
-      `(IF ,(arg1 f)
+      `(if ,(arg1 f)
 	   ,(subst-expr (arg2 f) f embeddedf)
 	   ,(subst-expr (arg3 f) f embeddedf))
       bool-level)))
