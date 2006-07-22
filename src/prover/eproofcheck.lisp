@@ -3510,7 +3510,7 @@
 	       (values '? (list (list (current-goal ps)
 				      'comment
 				      (semi-colonize string))))))
-	    (t (error-format-if "~%Input ~a is not a string.")
+	    (t (error-format-if "~%Input ~a is not a string." string)
 	       (values 'X nil nil)))))
 
 (defun new-comment (proofstate)
