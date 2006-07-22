@@ -350,21 +350,24 @@
 (defmethod replace-expr* (lhs rhs (expr binding-expr) lastopinfix?)
   (if (replace-eq lhs expr)
       (parenthesize rhs lastopinfix?)
-      (let* ((new-bindings (make-new-bindings
+      (let* ((nexpr (let ((*bound-variables* (append (bindings expr)
+						     *bound-variables*)))
+		      (replace-expr* lhs rhs (expression expr) nil)))
+	     (new-bindings (make-new-bindings
 			    (bindings expr)
 			    (acons (mk-bind-decl (gensym) *boolean*)
 				   (make!-tuple-expr* (list lhs rhs)) nil)
-			    (expression expr)))
+			    nexpr))
 	     (nalist (unless (equal new-bindings (bindings expr))
 		       (substit-pairlis (bindings expr) new-bindings nil)))
-	     (nexpr (when nalist (substit (expression expr) nalist)))
+	     ;;(nexpr (when nalist (substit (expression expr) nalist)))
 	     (*bound-variables* (append new-bindings *bound-variables*)))
 	(if nalist
 	    (lcopy expr
 	      'bindings new-bindings
-	      'expression (replace-expr* lhs rhs nexpr nil))
+	      'expression (substit nexpr nalist))
 	    (lcopy expr
-	      'expression (replace-expr* lhs rhs (expression expr) nil))))))
+	      'expression nexpr)))))
 
 (defmethod replace-expr* (lhs rhs (expr cases-expr) lastopinfix?)
   (if (replace-eq expr lhs)
