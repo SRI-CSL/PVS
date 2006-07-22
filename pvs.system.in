@@ -177,7 +177,7 @@
 		    ;; hack, because load-object-file isn't exported.
 		    ;; but .. it's the only way to load a *shared* object file!
 		    ;; (with cmucl1.8e, anyway)
-		    		    
+		    
 		    ;; SO - If we load here, the resulting image will create
 		    ;; a segmentation fault, even if we reload at startup.
 		    ;; So instead, we only load at startup (see pvs-init
