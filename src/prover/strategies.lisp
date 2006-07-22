@@ -698,24 +698,26 @@ and if-lifting")
 
 (defstep install-rewrites (&optional defs theories rewrites
 				     exclude-theories exclude)
-  (then 
-   (if (eq defs '!!)
-       (auto-rewrite-defs :always? !!)
-       (if (eq defs '!)
-	   (auto-rewrite-defs :always? t)
-	   (if (eq defs 'explicit)
-	       (auto-rewrite-defs :explicit? t)
-	       (if (eq defs 'explicit!!)
-		   (auto-rewrite-defs :always? !! :explicit? t)
-		   (if (eq defs 'explicit!)
-		       (auto-rewrite-defs :always? t :explicit? t)
-		       (if defs (auto-rewrite-defs) (skip)))))))
-   (auto-rewrite-theories :theories theories)
-   (auto-rewrite :names rewrites)
-   (if exclude-theories
-       (stop-rewrite-theory :theories exclude-theories)
-       (skip))
-   (if exclude (stop-rewrite :names exclude)(skip)))
+  (if (or defs theories rewrites exclude-theories exclude)
+      (then 
+       (if (eq defs '!!)
+	   (auto-rewrite-defs :always? !!)
+	   (if (eq defs '!)
+	       (auto-rewrite-defs :always? t)
+	       (if (eq defs 'explicit)
+		   (auto-rewrite-defs :explicit? t)
+		   (if (eq defs 'explicit!!)
+		       (auto-rewrite-defs :always? !! :explicit? t)
+		       (if (eq defs 'explicit!)
+			   (auto-rewrite-defs :always? t :explicit? t)
+			   (if defs (auto-rewrite-defs) (skip)))))))
+       (auto-rewrite-theories :theories theories)
+       (auto-rewrite :names rewrites)
+       (if exclude-theories
+	   (stop-rewrite-theory :theories exclude-theories)
+	   (skip))
+       (if exclude (stop-rewrite :names exclude)(skip)))
+      (skip-msg "No rewrites installed - please provide arguments."))
   "Sets up auto-rewrites from definitions of operators in the statement,
 THEORIES and REWRITES, and stops rewriting on EXCLUDE-THEORIES
 and EXCLUDE.   DEFS is either
