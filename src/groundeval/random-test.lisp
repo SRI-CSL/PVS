@@ -171,7 +171,7 @@
 	  (setf (symbol-function (id (car ex.i.d)))
 		#'(lambda (e)
 		    (or (gethash e ht)
-			(let ((val (eval (pvs2cl (funcall gen (cdr ex.i.d))))))
+			(let ((val (eval (pvs2cl (apply gen (cdr ex.i.d))))))
 			  (setf (gethash e ht) val)))))
 	  (setf (symbol-value (id (car ex.i.d))) ht)
 	  (id expr)))))
