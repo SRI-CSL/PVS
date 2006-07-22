@@ -17,82 +17,91 @@
 (defvar *runtime* nil)
 
 (defun build-pvs (builddir runtime?)
-  (excl:generate-application
-	     (format nil "~a-~a"
-	       (or (sys:getenv "SYSTEM") "pvs")
-	       (or (sys:getenv "LISP") "allegro8.0"))
-	     builddir	     
-	     (list :list2 "@PVSPATH@/src/make-allegro-pvs.lisp")
-	     :additional-arguments nil
-	     :additional-forms nil
-	     :additional-plus-arguments nil
-	     :allow-existing-directory (not runtime?)
-	     :autoload-warning t
-	     #+(version>= 6) :build-debug #+(version>= 6) t
-	     #-macosx :c-heap-start #-macosx "2752512K" ;; (/ #xa8000000 1024)
-	     #+(version>= 6) :case-mode #+(version>= 6) :case-sensitive-lower
-	     #-(version>= 6) :debug-on-error #-(version>= 6) t
-	     :discard-arglists nil
-	     :discard-compiler nil
-	     :discard-local-name-info nil
-	     :discard-source-file-info runtime?
-	     :discard-xref-info runtime?
-	     :dst t
-	     #-(version>= 6) :exit-after-image-build #-(version>= 6) t
-	     :generate-fonts nil
-	     :image-only (not runtime?)
-	     :include-clim nil
-	     :include-compiler t
-	     :include-composer nil
-	     :include-debugger (not runtime?)
-	     :include-devel-env (not runtime?)
-	     :include-tpl t
-	     :include-xcw nil
-	     :internal-debug nil
-	     :lisp-heap-size 20000000
-	     #-macosx :lisp-heap-start #-macosx #x20000000
-	     :load-local-names-info nil
-	     :load-source-file-info (not runtime?)
-	     :load-xref-info (not runtime?)
-	     :newspace 4000000
-	     :oldspace 512000
-	     :opt-debug 1
-	     :opt-safety 1
-	     :opt-space 1
-	     :opt-speed 3
-	     :post-load-form (unless runtime?
-				'(excl::translate-shlib-filenames t))
-	     :pre-dump-form nil
-	     :pre-load-form nil
-	     :preserve-documentation-strings t
-	     :presto nil
-	     :presto-flush-to-code-file nil
-	     :read-init-files nil
-	     :record-source-file-info (not runtime?)
-	     :record-xref-info (not runtime?)
-	     :restart-app-function nil
-	     :restart-init-function 'startup-pvs
-	     :runtime (when runtime? :dynamic)
-	     :runtime-bundle runtime?
-	     :server-name nil
-	     :temporary-directory "/tmp/"
-	     :us-government nil
-	     :verbose t ))
+  (let ((tmpdir "/tmp/pvs-allegro-build/"))
+    (setq *pvs-path* nil)
+    (excl:generate-application
+     (format nil "~a-~a"
+       (or (sys:getenv "SYSTEM") "pvs")
+       (or (sys:getenv "LISP") "allegro"))
+     tmpdir
+     (list :list2 "@PVSPATH@/src/make-allegro-pvs.lisp")
+     :additional-arguments nil
+     :additional-forms nil
+     :additional-plus-arguments nil
+     :allow-existing-directory (not runtime?)
+     :autoload-warning t
+     #+(version>= 6) :build-debug #+(version>= 6) t
+     #-macosx :c-heap-start #-macosx "2752512K"	;; (/ #xa8000000 1024)
+     #+(version>= 6) :case-mode #+(version>= 6) :case-sensitive-lower
+     #-(version>= 6) :debug-on-error #-(version>= 6) t
+     :discard-arglists nil
+     :discard-compiler nil
+     :discard-local-name-info nil
+     :discard-source-file-info runtime?
+     :discard-xref-info runtime?
+     :dst t
+     #-(version>= 6) :exit-after-image-build #-(version>= 6) t
+     :generate-fonts nil
+     :image-only (not runtime?)
+     :include-clim nil
+     :include-compiler t
+     :include-composer nil
+     :include-debugger (not runtime?)
+     :include-devel-env (not runtime?)
+     :include-tpl t
+     :include-xcw nil
+     :internal-debug nil
+     :lisp-heap-size 20000000
+     #-macosx :lisp-heap-start #-macosx #x20000000
+     :load-local-names-info nil
+     :load-source-file-info (not runtime?)
+     :load-xref-info (not runtime?)
+     :newspace 4000000
+     :oldspace 512000
+     :opt-debug 1
+     :opt-safety 1
+     :opt-space 1
+     :opt-speed 3
+     :post-load-form (unless runtime?
+		       '(excl::translate-shlib-filenames t))
+     :pre-dump-form nil
+     :pre-load-form nil
+     :preserve-documentation-strings t
+     :presto nil
+     :presto-flush-to-code-file nil
+     :read-init-files nil
+     :record-source-file-info (not runtime?)
+     :record-xref-info (not runtime?)
+     :restart-app-function nil
+     :restart-init-function 'startup-pvs
+     :runtime (when runtime? :dynamic)
+     :runtime-bundle runtime?
+     :server-name nil
+     :temporary-directory "/tmp/"
+     :us-government nil
+     :verbose t)
+    (dolist (file (directory (format nil "~a*" tmpdir)))
+      (let ((dest (format nil "~a/~a" builddir (file-namestring file))))
+	(ignore-errors (delete-file dest))
+	(sys:copy-file file dest :overwrite t)))
+    (ignore-errors (excl:shell (format nil "rm -f ~a/*" tmpdir)))
+    ))
 
 (defun copy-devel-license (targetdir)
   (sys:copy-file (format nil "~adevel.lic" (translate-logical-pathname "sys:"))
-		 (format nil "~adevel.lic" targetdir)))
+		 (format nil "~adevel.lic" targetdir)
+		 :overwrite t))
   
 
 (let* ((exitcode 1)
-       (platform (or (sys:getenv "PLATFORM") "ix86-redhat5"))
+       (platform (or (sys:getenv "PLATFORM") "ix86-Linux"))
        (runtimedir (format nil "~a/bin/~a/runtime/"
 		     (or (sys:getenv "TARGETPATH") ".") platform))
        (fulldir (format nil "~a/bin/~a/full/"
 		  (or (sys:getenv "TARGETPATH") ".") platform)))
- (unwind-protect
+ (progn ;;unwind-protect
      (multiple-value-bind (v err)
-	 (ignore-errors
+	 (progn ;;ignore-errors
 	   (if *runtime*
 	       (build-pvs runtimedir t)
 	       (progn
