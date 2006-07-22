@@ -76,8 +76,7 @@
   (setf (symbol-function 'ilisp::ilisp-restore) #'pvs-ilisp-restore)
   #+allegro (setq top-level::*print-length* nil
 		  top-level::*print-level* nil)
-  (unless *pvs-path*
-    (setq *pvs-path* (environment-variable "PVSPATH")))
+  (setq *pvs-path* (environment-variable "PVSPATH"))
   (unless *pvs-path*
     (error "PVSPATH environment variable should be set to the PVS directory"))
   #+cmu
