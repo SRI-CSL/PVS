@@ -48,29 +48,30 @@ by Cesar Munoz at the National Institute of Aerospace.
 (defun evaluation-mode-pvsio (theoryname 
 			      &optional input (tccs? t) 
 			      append? (banner? t))
-  (let ((theory (get-theory theoryname)))
-    (format t "~%Generating ~a.log" theoryname)
+  (load-pvsio-library-if-needed)
+  (let ((theory (get-typechecked-theory theoryname)))
+    (format t "~%Generating ~a.log~%" theoryname)
     (with-open-file 
-     (*error-output*
-      (format nil "~a.log" theoryname)
-      :direction :output 
-      :if-exists (if append? :append :supersede))
-     (unwind-protect
-	 (if theory
-	     (let ((*current-theory* theory)
-		   (*generate-tccs* (if tccs? 'all 'none))
-		   (*current-context* (or (saved-context theory)
-					  (context nil)))
-		   (*suppress-msg* t)
-		   (*in-evaluator* t)
-		   (*destructive?* t)
-		   (*eval-verbose* nil)
-		   (*compile-verbose* nil)
-		   (*convert-back-to-pvs* t)
-		   (input-stream (when input 
-				   (make-string-input-stream input))))
-	       (when banner?
-		 (format t "
+	(*error-output*
+	 (format nil "~a.log" theoryname)
+	 :direction :output 
+	 :if-exists (if append? :append :supersede))
+      (unwind-protect
+	  (if theory
+	      (let ((*current-theory* theory)
+		    (*generate-tccs* (if tccs? 'all 'none))
+		    (*current-context* (or (saved-context theory)
+					   (context nil)))
+		    (*suppress-msg* t)
+		    (*in-evaluator* t)
+		    (*destructive?* t)
+		    (*eval-verbose* nil)
+		    (*compile-verbose* nil)
+		    (*convert-back-to-pvs* t)
+		    (input-stream (when input 
+				    (make-string-input-stream input))))
+		(when banner?
+		  (format t "
 +---- 
 | ~a
 |
@@ -84,9 +85,9 @@ by Cesar Munoz at the National Institute of Aerospace.
 | stack, or worse. If you crash into lisp, type (restore) to resume.
 |
 +----~%" *pvsio-version*))
-	       (evaluate-pvsio input-stream))
-	   (pvs-message "Theory ~a is not typechecked" theoryname))
-       (pvs-emacs-eval "(pvs-evaluator-ready)")))))
+		(evaluate-pvsio input-stream))
+	      (pvs-message "Theory ~a is not typechecked" theoryname))
+	(pvs-emacs-eval "(pvs-evaluator-ready)")))))
 
 (defun read-expr (input-stream)
   (catch 'pvsio-command
@@ -219,8 +220,9 @@ by Cesar Munoz at the National Institute of Aerospace.
 	     (fresh-line)
 	     (read-pvsio input-stream)))))
 
-
-  
-
-  
-
+(defun load-pvsio-library-if-needed ()
+  (unless (assoc "PVSio/" *prelude-libraries-files* :test #'string=)
+    (if (pvs-y-or-n-p
+	 "The PVSio library should be loaded first - do that now? ")
+	(load-prelude-library "PVSio")
+	(error "PVSio library not loaded"))))
