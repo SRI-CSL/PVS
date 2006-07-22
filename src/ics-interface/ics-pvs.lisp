@@ -478,11 +478,6 @@
   (let ((exprs (mapcar #'expression (sort-assignments (assignments expr)))))
     (translate-term-list-to-term exprs)))
 
-(defun sort-assignments (assignments)
-  (sort (copy-list assignments)
-	#'string-lessp
-	:key #'(lambda (assignment) (id (caar (arguments assignment))))))
-
 (defmethod translate-term-to-ics* ((expr tuple-expr))
   (translate-term-list-to-term (exprs expr)))
 	
