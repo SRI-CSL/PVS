@@ -43,10 +43,13 @@
 	(let ((*to-emacs* t))
 	  (setq *print-length* nil)
 	  (setq *print-level* nil)
-	  (if (and *noninteractive*
+	  (if (and #-(or multiprocessing mp) nil
+		   *noninteractive*
 		   *noninteractive-timeout*
 		   ,(not (and (listp form)
 			      (memq (car form) *prover-invoking-commands*))))
+	      #-(or multiprocessing mp) nil
+	      #+(or multiprocessing mp)
 	      (mp:with-timeout (*noninteractive-timeout*
 				(format t "Timed out!"))
 			       ,form)
