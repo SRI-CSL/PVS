@@ -71,8 +71,14 @@ do
    case $1 in
      -emacs) PVSEMACS="$2"
              shift;;
-     -lisp)  PVSLISP="$2"
-             shift;;
+     -lisp)
+       case $2 in
+	 allegro) PVSLISP=allegro;;
+	 cmulisp) PVSLISP=cmulisp;;
+	 *) echo "Only allegro and cmulisp are currently available"
+	    exit 1;;
+       esac
+       shift;;
      -load-after) loadafter=$loadafter" -load $2"
                   shift;;
      -runtime) pvsruntime=1;;
@@ -166,9 +172,8 @@ case $opsys in
 	 fi
 	 PVSARCH=sun4;;
   Linux) # If Linux, we need to determine the Redhat version to use.
-	 opsys=redhat
-	 majvers=5
-	 othervers=4 
+	 opsys=Linux
+	 majvers=
 	 PVSARCH=ix86
 	 # Allegro does not work with Linux's New Posix Thread Library (NPTL)
 	 # used in newer Red Hat kernels and 2.6 kernels.  This will force
@@ -178,9 +183,8 @@ case $opsys in
 	 # uname exits with an error and we unset it.
 	 uname -a > /dev/null 2>&1 || unset LD_ASSUME_KERNEL
 	 ;;
-  FreeBSD) opsys=redhat
-	   majvers=5
-	   othervers=4 
+  FreeBSD) opsys=Linux
+	   majvers=
 	   PVSARCH=ix86
 	   # Allegro does not work with Linux's New Posix Thread Library (NPTL)
 	   # used in newer Red Hat kernels and 2.6 kernels.  This will force
@@ -191,15 +195,16 @@ case $opsys in
 	   uname -a > /dev/null 2>&1 || unset LD_ASSUME_KERNEL
            ;;
   Darwin) opsys=MacOSX
-          majvers=7
-	  PVSARCH=powerpc
+          majvers=`uname -r | cut -d"." -f1`
+	  PVSARCH=`uname -p`
 	  ;;
   *) echo "PVS 3.3 only runs under Solaris, Linux, FreeBSD (linux-enabled), or Mac (Darwin 7.4)"; exit 1
 esac
 
 if [ ! "$PVSLISP" ]
-   then PVSLISP=pvs-@LISP@
+   then PVSLISP=allegro
 fi
+PVSIMAGE=pvs-$PVSLISP
 
 binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
 
@@ -233,7 +238,6 @@ if [ "$PVSTIMEOUT" -a ! "$batch" ]
 fi
 
 PVSVERBOSE=${PVSVERBOSE:-0}
-PVSIMAGE="$PVSLISP"
 
 export ALLEGRO_CL_HOME DISPLAY LD_LIBRARY_PATH
 export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE PVSTIMEOUT
