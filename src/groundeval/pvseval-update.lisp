@@ -1880,3 +1880,8 @@
 (defmethod pvs2cl-lisp-type* ((type t))
   (cond ((tc-eq (find-supertype type) *boolean*) 'boolean)
 	(t nil)));;was T, but need to distinguish proper types.
+
+(defun sort-assignments (assignments)
+  (sort (copy-list assignments)
+	#'string-lessp
+	:key #'(lambda (assignment) (id (caar (arguments assignment))))))
