@@ -204,7 +204,8 @@
 
 (defmacro newcounter (name)
    `(setq ,name (let ((x 0))
-		 #'(lambda () (incf x)))))
+		  (declare (fixnum x))
+		  #'(lambda () (incf x)))))
 
 ;;; Used in prove-decl to decide whether to simply use the existing hash
 ;;; table or to create a new one if this is a recursive call.
