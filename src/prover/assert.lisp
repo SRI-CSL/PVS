@@ -4139,11 +4139,11 @@ e LHS free variables in ~a" hyp lhs)
 	       (unless (memq decl all-decls)
 		 (push decl all-decls)
 		 (when (and (not (memq decl decls))
-			    (not (member decl exclude-names
-					 :key #'declaration))
 			    (not (arithop-decl? decl))
-			    (not (memq (module decl)
-				       exclude-theories)))
+			    (not (memq (module decl) exclude-theories))
+			    (not (member decl exclude-names
+					 :key #'resolutions
+					 :test #'some-declaration-matches?)))
 		   (when (and (or (and (const-decl? decl)
 				       (not (def-decl? decl)));;NSH(4.3.95)
 				  (and (not explicit)
@@ -4155,6 +4155,10 @@ e LHS free variables in ~a" hyp lhs)
       (collect decl)
       (loop for x in (proof-dependent-decls ps) do (collect x))
       decls)))
+
+(defun some-declaration-matches? (decl reses)
+  (member decl reses :key #'declaration))
+
 
 ;;NSH(12.21.93) moved auto-rewrite-defs, auto-rewrite-explicit to strategies.lisp.
 
