@@ -236,7 +236,7 @@
 
 (defun mk-key-op (key)
   "Make a keyword operator."
-  (declare (type symbol key))
+  ;;(declare (type symbol key))
   (mk-oper :key key))
 (defun is-key-op (x)
   "Is the argument a keyword operator?"
