@@ -201,12 +201,22 @@ case $opsys in
   *) echo "PVS 3.3 only runs under Solaris, Linux, FreeBSD (linux-enabled), or Mac (Darwin 7.4)"; exit 1
 esac
 
+binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
+
 if [ ! "$PVSLISP" ]
-   then PVSLISP=allegro
+   then if   [ -e $binpath/full/pvs-allegro ]
+        then PVSLISP=allegro
+        elif [ -e $binpath/runtime/pvs-allegro ]
+        then PVSLISP=allegro
+        elif [ -e $binpath/full/pvs-cmulisp ]
+        then PVSLISP=cmulisp
+        elif [ -e $binpath/runtime/pvs-cmulisp ]
+        then PVSLISP=cmulisp
+        else echo "No executable available in $binpath"
+             exit 1
+        fi
 fi
 PVSIMAGE=pvs-$PVSLISP
-
-binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
 
 if [ -d $binpath/full -a -x $binpath/full/$PVSIMAGE -a ! "$pvsruntime" ]
    then PATH=$binpath/full:$binpath:$PVSPATH/bin:$PATH

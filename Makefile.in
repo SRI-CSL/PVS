@@ -22,6 +22,7 @@ SHELL=/bin/sh
 
 ETAGS = @ETAGS@
 TAR = @TAR@
+MKDIRHIER = @MKDIRHIER@
 TARFLAGS = -cvohz --mode="u+rw" --atime-preserve --exclude=CVS
 
 PLATFORM := $(shell $(PVSPATH)bin/pvs-platform)
@@ -30,14 +31,36 @@ export PLATFORM
 SYSTEM ?= pvs
 
 ifeq ($(LISP),)
-  LISP = allegro
+  # Default to cmulisp, since everyone has access to it
+  LISP = cmulisp
 endif
+
+ifeq ($(LISP),cmulisp)
+ifeq ($(CMULISP_HOME),)
+$(error "CMULISP_HOME must be set to build cmulisp version")
+endif
+# Now check that the given CMULISP_HOME works
+LISPEXE = $(CMULISP_HOME)/bin/lisp
+ifeq ($(shell if [ -x "$(LISPEXE)" ]; then echo OK; fi),OK)
+CMUVERSION = $(shell $(CMULISP_HOME)/bin/lisp -batch -eval '(progn (format t "~a" (lisp-implementation-version)) (terpri) (quit))')
+$(warning "CMU Version $(CMUVERSION)")
+else
+$(error "$(LISPEXE) is not executable")
+endif
+endif
+
+ifeq ($(LISP),allegro)
+ifeq ($(ALLEGRO_HOME),)
+$(error "ALLEGRO_HOME must be set to build allegro version")
+endif
+endif
+
 
 # The extension should match that of pvs.system, src/pvs.lisp,
 # ess/sys/tools/rel/box-system.lisp, and emacs/emacs-src/pvs-ilisp.el
 ifeq ($(LISP),allegro)
-  LISPEXE = @ALLEGRODIR@/mlisp8
-  LD_LIBRARY_PATH = @ALLEGRODIR@:$LD_LIBRARY_PATH
+  LISPEXE = @ALLEGRO_HOME@/mlisp8
+  LD_LIBRARY_PATH = @ALLEGRO_HOME@:$LD_LIBRARY_PATH
   ifeq ($(PLATFORM),sun4-SunOS5)
     LISPEXT=fasl
   else
@@ -51,16 +74,14 @@ ifeq ($(LISP),allegro)
   endif
 endif
 ifeq ($(LISP),cmulisp)
+  LISPEXE = $(CMULISP_HOME)/bin/lisp
   ifeq ($(PLATFORM),sun4-SunOS5)
-    LISPEXE = @SUNCMULISPDIR@/lisp
     LISPEXT=sparcf
   else
   ifeq ($(PLATFORM),ix86-Linux)
-    LISPEXE = @LINUXCMULISPDIR@/lisp
     LISPEXT=x86f
   else
   ifeq ($(PLATFORM),powerpc-MacOSX7)
-    LISPEXE = @MACPPCCMULISPDIR@/lisp
     LISPEXT=ppcf
   endif
   endif
@@ -344,10 +365,10 @@ ifeq ($(LISP),cmulisp)
 endif
 
 emacs-interface = src/interface/pvs-emacs.lisp \
-		  src/interface/emacs-calls.lisp \
-		  src/interface/cl-ilisp.lisp \
-		  src/interface/allegro.lisp \
-		  src/interface/ilisp-pkg.lisp
+		  src/interface/emacs-calls.lisp #\
+		  #src/interface/cl-ilisp.lisp \
+		  #src/interface/allegro.lisp \
+		  #src/interface/ilisp-pkg.lisp
 
 pvs-prover = src/prover/checker-macros.lisp \
          src/prover/decision-procedure-interface.lisp \
@@ -461,11 +482,11 @@ xemacs19-elc = $(pvs-xemacs19-src:.el=.elc) $(ilisp-xemacs19-src:.el=.elc)
 emacs += $(PVSPATH)emacs/xemacs19/pvs-load.elc
 endif
 
-.PHONY : all full runtime
+.PHONY : all full runtime 
 
 all : ${templatedeps} full
 
-image-deps = makefileutils makebdd $(pvsfull)
+image-deps = makefileutils makebdd makews1s $(pvsfull)
 
 ifeq ($(LISP),allegro)
   image-deps += makews1s
@@ -480,13 +501,15 @@ runtime : $(image-deps)
 ifeq ($(LISP),cmulisp)
 $(pvsfull) : $(pvs-make-files) $(ess) $(ff-files) $(lisp-files) \
 	  lib/prelude.pvs lib/prelude.prf
-	mkdirhier $(bindir)/full
+	$(MKDIRHIER) $(bindir)/full
 	$(LISPEXE) -eval '(load "pvs.system" :verbose t) \
                           (unwind-protect \
                               (pvs::operate-on-system :pvs :compile) \
                             (save-lisp "$(pvsfull).core" \
                                 :init-function (function startup-pvs) \
                                ))'
+	cp $(PVSPATH)BDD/$(PLATFORM)/mu.so $(bindir)/full
+	cp $(PVSPATH)BDD/bdd-cmu-load.lisp $(PVSPATH)BDD/mu-cmu-load.lisp $(bindir)/full
 	/bin/echo "#!/bin/sh" > $(pvsfull)
 	/bin/echo "$(LISPEXE) -core \`dirname \$$0\`/\`basename \$$0\`.core" >> $(pvsfull)
 	chmod a+x $(pvsfull)
@@ -501,13 +524,14 @@ $(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
                        $(PVSPATH)src/classes-expr.lisp \
                        $(PVSPATH)src/classes-decl.lisp
 	umask 002; \
-	$(LISPEXE) -eval '(defvar *pvs-path* "/homes/owre/pvs3.3")' \
+	$(LISPEXE) -eval '(defvar *pvs-path* "@PVSPATH@")' \
 		   -load src/make-pvs-methods.lisp
 endif
 
 ifeq ($(LISP),allegro)
 ${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${libics-file} ${lisp-files} \
              $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
+	$(MKDIRHIER) $(bindir)/full
 	rm -rf /tmp/pvs-allegro-build
 	umask 002; \
 	$(LISPEXE) -e '(load "$(PVSPATH)pvs.system")' \
