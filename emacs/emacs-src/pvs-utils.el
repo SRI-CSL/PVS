@@ -143,7 +143,7 @@ beginning of the previous one."
       (error (error "Can't determine theory boundaries: %s" (cadr err))))
     (theory-regions*)))
 
-(defun theory-regions* ()
+(defun theory-regions* (&optional verbose)
   (let ((case-fold-search t))
     (save-excursion
       (goto-char (point-min))
@@ -158,8 +158,10 @@ beginning of the previous one."
 	    (goto-char tpoint)
 	    (looking-at "\\w+")
 	    (setq pname (buffer-substring (match-beginning 0) (match-end 0)))
+	    (when verbose (pvs-message "Found theory %s" pname))
 	    (find-theory-or-datatype-forward)))
 	(when pname
+	  (when verbose (pvs-message "Found region for %s" pname))
 	  (push (list pname opoint (point-max)) tregs))
 	(nreverse tregs)))))
 
