@@ -99,10 +99,10 @@ intervenes."
     (setq ilisp-package-command "(pvs::lisp (let ((*package* *package*)) %s (package-name *package*)))"
 	  ilisp-package-name-command "(pvs::lisp (package-name *package*))"
 	  ilisp-in-package-command "(pvs::lisp (in-package \"%s\"))"
-	  ilisp-save-command "(pvs::lisp (progn (ILISP:ilisp-save) %s\n))"
-	  ilisp-restore-command "(pvs::lisp (ILISP:ilisp-restore))"
+	  ilisp-save-command "(pvs::lisp (progn (pvs::pvs-ilisp-save) %s\n))"
+	  ilisp-restore-command "(pvs::lisp (pvs::pvs-ilisp-restore))"
 	  ilisp-block-command "(pvs::lisp (progn %s\n))"
-	  ilisp-eval-command "(pvs::lisp (ILISP:ilisp-eval \"%s\" \"%s\" \"%s\"))"
+	  ;;ilisp-eval-command "(pvs::lisp (ILISP:ilisp-eval \"%s\" \"%s\" \"%s\"))"
 	  ilisp-display-output-function 'ilisp-display-output-adaptively))
   (set-process-filter (ilisp-process) 'pvs-process-filter) 
   (define-key ilisp-mode-map "\C-c\C-c" 'pvs-interrupt-subjob)
