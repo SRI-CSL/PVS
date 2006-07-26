@@ -71,21 +71,25 @@
 (defmacro lisp (form)
   `,form)
 
+(defvar *old-result* nil)
+
 ;;; This replaces ilisp-restore in pvs-init
 (defun pvs-ilisp-restore ()
   "Restore the old result history."
-  (declare (special / // + ++ * ** - ilisp::*ilisp-old-result*))
-  (setq // (pop ilisp::*ilisp-old-result*)
+  (declare (special / // + ++ * **))
+  (setq // (pop *old-result*)
 	** (first //)
-	/  (pop ilisp::*ilisp-old-result*)
+	/  (pop *old-result*)
 	*  (first /)
-	++  (pop ilisp::*ilisp-old-result*)
-	+   (pop ilisp::*ilisp-old-result*)
-	-   (pop ilisp::*ilisp-old-result*))
-  ;; CMU CL compiler does not like this
-  ;;(pop ilisp::*ilisp-old-result*)
-  (setq ilisp::*ilisp-old-result* (cdr ilisp::*ilisp-old-result*))
+	++  (pop *old-result*)
+	+   (pop *old-result*))
+  (setq *old-result* nil)
   nil)
+
+(defun pvs-ilisp-save ()
+  (declare (special / // /// + ++ +++))
+  (unless *old-result*
+    (setq *old-result* (list /// // +++ ++))))
 
 ;;; Writes out a message.  The message should fit on one line, and
 ;;; should contain no newlines.  For Emacs, it is intended to write to
