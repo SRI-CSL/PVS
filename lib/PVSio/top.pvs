@@ -1,0 +1,23 @@
+%% top.pvs
+%% PVS library for ground-evaluation
+%% Release PVSio-2.d (11/09/05)
+
+top : THEORY
+BEGIN
+  IMPORTING
+    stdlang,       %% Basic language definitions
+    stdexc,        %% Exceptions
+    stdcatch,      %% Catch and throw
+    stdprog,       %% Imperative programming features
+    stdglobal,     %% Global variables
+    stdpvs,        %% PVS parsing and printing
+    stdstr,        %% Functions for string manipulation
+    stdio,         %% Functions for I/O
+    stdmath,       %% Functions for math 
+    stdfmap,       %% Iterations on files and format printing
+    stdindent,     %% Indentations
+    stdtokenizer,  %% Tokenizers
+    stdpvsio,      %% PVSio interface
+    stdsys         %% System functions 
+END top
+

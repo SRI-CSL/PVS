@@ -1,0 +1,7 @@
+(stdcatch
+ (catch_list_lift_TCC1 0
+  (catch_list_lift_TCC1-1 nil 3301659730 3301659730
+   ("" (termination-tcc) nil nil) proved
+   ((<< adt-def-decl "(well_founded?[list])" list_adt nil)) 98 80 nil
+   shostak)))
+

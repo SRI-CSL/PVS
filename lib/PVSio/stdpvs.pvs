@@ -1,0 +1,21 @@
+%% stdpvs.pvs
+%% PVS printing and parsing
+%% Release PVSio-2.d (11/09/05)
+
+stdpvs[T:TYPE+] : THEORY
+BEGIN
+
+  IMPORTING stdprog
+
+  typeof(t:T) : string
+
+  str2pvs(s:string):T 
+
+  pvs2str_lisp(t:T) : string
+
+  pvs2str(t:T) : MACRO string =
+    catch("cant-translate",	
+	  pvs2str_lisp(t),
+          LAMBDA(e:Exception[void]):"<?>")
+
+END stdpvs

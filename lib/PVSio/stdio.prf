@@ -1,0 +1,55 @@
+(stdio
+ (repeat_lift_TCC1 0
+  (repeat_lift_TCC1-1 nil 3300882738 3300882739
+   ("" (subtype-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil))
+   485 360 nil shostak))
+ (repeat_lift_TCC2 0
+  (repeat_lift_TCC2-1 nil 3300882739 3300882739
+   ("" (termination-tcc) nil nil) proved nil 27 30 nil shostak))
+ (fmap_TCC1 0
+  (fmap_TCC1-1 nil 3300621398 3300621398 ("" (subtype-tcc) nil nil)
+   proved-complete
+   ((eof? const-decl "bool" stdio nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (Stream nonempty-type-decl nil stdio nil)
+    (IStream_pred const-decl "[Stream -> boolean]" stdio nil)
+    (IStream nonempty-type-from-decl nil stdio nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil))
+   138 80 nil shostak))
+ (fmap_TCC2 0
+  (fmap_TCC2-1 nil 3300621398 3300621398 ("" (termination-tcc) nil nil)
+   proved-complete
+   ((length def-decl "nat" list_props nil)
+    (list2finseq const-decl "finseq[T]" list2finseq nil)
+    (ClosedStream const-decl "Exception" stdio nil)
+    (eof? const-decl "bool" stdio nil))
+   10 20 nil shostak)))
+

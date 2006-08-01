@@ -1,0 +1,114 @@
+%% stdstr.pvs
+%% String operations
+%% Release PVSio-2.d (11/09/05)
+
+stdstr: THEORY
+BEGIN
+
+  IMPORTING stdlang,stdexc
+
+  NotARealNumber : ExceptionTag[string] = "NotARealNumber"
+  NotAnInteger   : ExceptionTag[string] = "NotAnInteger"
+
+% Char from code n
+  charcode(n:nat) : string
+
+% Prints standard table of characters
+  chartable       : void 
+
+  emptystr      : string = ""
+  space         : string = " "
+  newline       : string 
+  tab           : string 
+  doublequote   : string = charcode(34)
+  singlequote   : string = "'"
+  backquote     : string = "`"
+  spaces(n:nat) : string 
+
+  upcase(s:string):string
+  downcase(s:string):string
+  capitalize(s:string):string
+  
+  %% Index of leftmost occurrence of s1 in s2, 2, starting from 0, or -1 if none
+  strfind(s1,s2:string):int
+
+  %% Substring S[i..j] if i <= j, S[j..i] if j <= i, empty if indices are out of range
+  substr(s:string,i,j:nat):string
+
+  %% Real to string
+  real2str(r:real): string
+
+  %% Bool to string
+  bool2str(b:bool): string =
+    IF b THEN "TRUE" ELSE "FALSE" ENDIF
+
+  tostr(r:real): MACRO string = real2str(r)
+  tostr(b:bool): MACRO string = bool2str(b)
+
+  %% String to real
+  str2real(s:string): rat
+  str2int(s:string) : int 
+  str2bool(s,answer:string):bool = downcase(s) = downcase(answer)
+
+  %% String is a number
+  number?(s:string):bool
+
+  %% String is an integer
+  int?(s:string):bool
+
+ %% String concatenation
+  concat(s1:string,s2:string):string
+  ;+(s1:string,s2:string): MACRO string = concat(s1,s2)
+  ;+(r:real,s:string): MACRO string = concat(tostr(r),s)
+  ;+(s:string,r:real): MACRO string = concat(s,tostr(r))
+  ;+(b:bool,s:string): MACRO string = concat(tostr(b),s)
+  ;+(s:string,b:bool): MACRO string = concat(s,tostr(b))
+
+  %% Concatenates n-times string s
+  pad(n:nat,s:string): RECURSIVE string = 
+    IF n=0 THEN emptystr
+    ELSE s+pad(n-1,s)
+    ENDIF
+    MEASURE n
+
+  %% String comparison
+  %% = 0 if s1 = s2
+  %% < 0 if s1 < s2
+  %% > 0 if s1 > s2
+
+  strcmp(s1,s2:string,sensitive:bool):int
+
+  strcmp(s1,s2:string): MACRO int = 
+    strcmp(s1,s2,true)
+
+  %% A substring of s2, with all the characters in s1 stripped of 
+  %% the beginning and end
+  strtrim(s1,s2:string):string
+
+  %% Returns a substring of s2, with all the characters in s1 stripped of 
+  %% the beginning 
+  strtrim_left(s1,s2:string):string
+
+  %% Returns a substring of s2, with all the characters in s1 stripped of 
+  %% the end
+  strtrim_right(s1,s2:string):string
+
+  %% Returns a substring of s, with all the space characters stripped of 
+  %% the beginning and end
+  trim(s:string):string
+
+  %% Returns a substring of s, with all the space characters stripped of 
+  %% the beginning 
+  trim_left(s:string):string
+
+  %% Returns a substring of s, with all the space characters stripped of 
+  %% the end
+  trim_right(s:string):string
+
+  %% Returns the name part of a file name
+  filename(s:string):string
+
+  %% Returns the directory part of a file name
+  directory(s:string):string
+
+END stdstr

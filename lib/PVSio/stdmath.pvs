@@ -1,0 +1,72 @@
+%% stdmath.pvs
+%% PVSio math library 
+%% Release PVSio-2.d (11/09/05)
+
+stdmath : THEORY
+BEGIN
+
+  IMPORTING stdstr,stdprog
+
+  %% sq is available in the theory reals@sq
+  %% div and mod are available through the theories
+  %% ints@div_nat, ints@mod_nat
+
+%% Math Exceptions
+  MathExceptions : list[ExceptionTag[string]] = 
+   (: NotARealNumber, NotAnInteger :)
+
+  PI                : posreal 
+  SIN(x:real)       : {x:real| -1 <= x and x <= 1}
+  COS(y:real)       : {x:real| -1 <= x and x <= 1}
+  EXP(x:real)       : posreal
+  RANDOM            : {y:nnreal | 0 <= y AND y <= 1} 
+  NRANDOM(n:posnat) : {y:nat | 0 <= y AND y < n} 
+
+  sqrt_lisp(x:nnreal) : nnreal
+  log_lisp(x:posreal) : real
+  atan_lisp(x,y:real) : real
+  asin_lisp(x:real)   : real    
+  acos_lisp(x:real)   : real    
+
+  SQRT(x:real):nnreal =
+    IF x < 0 THEN 
+      throw[nnreal,string](NotARealNumber,"SQRT("+x+")")
+    ELSE sqrt_lisp(x)
+    ENDIF
+
+  LOG(x:real):real =
+    IF x <= 0 THEN 
+      throw[real,string](NotARealNumber,"LOG("+x+")")
+    ELSE log_lisp(x)
+    ENDIF
+
+  TAN(x:real):real =
+    LET d = COS(x) IN
+    IF d = 0 THEN 
+      throw[real,string](NotARealNumber,"TAN("+x+"0)")
+    ELSE
+      SIN(x)/COS(x)
+    ENDIF
+
+  ATAN(y,x:real):real = 
+    IF x=0 AND y= 0 THEN 
+      throw[real,string](NotARealNumber,"ATAN(0,0)")
+    ELSE atan_lisp(y,x)
+    ENDIF
+
+  ASIN(x:real) : real =
+    IF x < -1 OR x > 1 THEN
+      throw[real,string](NotARealNumber,"ASIN("+x+")")
+    ELSE asin_lisp(x)
+    ENDIF
+ 
+  ACOS(x:real) : real =
+    IF x < -1 OR x > 1 THEN
+      throw[real,string](NotARealNumber,"ACOS("+x+")")
+    ELSE acos_lisp(x)
+    ENDIF
+
+  BRANDOM: bool =
+    (NRANDOM(2) = 0)
+
+END stdmath

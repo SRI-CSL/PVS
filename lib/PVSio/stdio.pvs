@@ -1,0 +1,235 @@
+%% stdio.pvs
+%% Input/output operations
+%% Release PVSio-2.d (11/09/05)
+
+stdio : THEORY
+BEGIN
+
+  IMPORTING stdlang, stdstr, stdprog
+
+%% I/O Exceptions
+  FileNotFound          : ExceptionTag[string] = "FileNotFound"
+  FileAlreadyExists     : ExceptionTag[string] = "FileAlreadyExists"
+  WrongInputStreamMode  : ExceptionTag[string] = "WrongInputStreamMode"
+  WrongOutputStreamMode : ExceptionTag[string] = "WrongOutputStreamMode"
+  ClosedStream          : ExceptionTag[string] = "ClosedStream"
+  EndOfFile             : ExceptionTag[string] = "EndOfFile"
+  
+  IOExceptionTags : list[ExceptionTag[string]] = 
+    (: NotARealNumber, NotAnInteger, FileNotFound,
+       FileAlreadyExists, WrongInputStreamMode, WrongOutputStreamMode,
+       ClosedStream, EndOfFile :)
+
+%% Assert
+  assert(b:bool,str:string):void =
+    try(b,error[void]("[Assertion Failure] "+str) & fail)
+
+%% While loops
+  break : MACRO void = return(skip)
+
+  while(b:bool,s:void) : MACRO void =
+    loop(if b then s else break endif)
+
+  for(si:void,b:bool,sinc,s:void): MACRO void =
+    si & while(b,s&sinc)
+
+%% Print, Println 
+
+  %% Prints lisp format of string s
+  printstr(s:string):void = skip
+
+  print(s:string)   : MACRO void = printstr(s)
+  print(r:real)     : MACRO void = print(r+emptystr)
+  print(b:bool)     : MACRO void = print(b+emptystr)
+  println(s:string) : MACRO void = print(s+newline)
+  println(r:real)   : MACRO void = print(r+newline)
+  println(b:bool)   : MACRO void = print(b+newline)
+
+%% Reading
+
+  % Querying from stdin with prompt message
+  query_token(mssg,s:string): string
+  query_word(mssg:string)   : MACRO string = query_token(mssg,emptystr) 
+  query_line(mssg:string)   : string
+  query_real(mssg:string)   : rat
+  query_int(mssg:string)    : int
+  query_bool(mssg,answer:string):bool = str2bool(query_word(mssg),answer)
+
+  % Reads from stdin
+  read_token(s:string): MACRO string = query_token(emptystr,s) 
+  read_word : MACRO string = query_word(emptystr)
+  read_line : MACRO string = query_line(emptystr)
+  read_real : MACRO rat    = query_real(emptystr)
+  read_int  : MACRO int    = query_int(emptystr)
+  read_bool(answer:string): MACRO bool   = query_bool(emptystr,answer)
+
+%% Character Streams
+  Stream   : TYPE+ 
+  IStream  : TYPE+ FROM Stream
+  OStream  : TYPE+ FROM Stream
+
+  fclose(f:Stream)     :void =   %% Close an stream
+    skip
+  fexists(s:string)    :bool     %% true IFF file s exists
+  fopen?(f:Stream)     :bool     %% Open stream?
+  strstream?(f:Stream) :bool     %% String stream?
+  filestream?(f:Stream):bool     %% File stream?
+  sdtstream?(f:Stream) :bool =   %% Standard stream?
+    NOT (filestream?(f) OR strstream?(f))
+  finput?(f:Stream)    :bool     %% Input stream?
+  foutput?(f:Stream)   :bool     %% Output stream?
+
+%% Standard I/O Steams
+  stdin    : IStream 
+  stdout   : OStream 
+  stderr   : OStream
+
+  Mode   : TYPE = {input,output,create,append,overwrite,rename,str}
+
+  mode2str(m:Mode) : string = CASES m OF
+    input     : "input",
+    output    : "output",
+    create    : "create",
+    append    : "append",
+    overwrite : "overwrite",
+    rename    : "rename",
+    str       : "str"
+  ENDCASES
+
+  tostr(m:Mode) : MACRO string = mode2str(m) 
+
+  fopenin_lisp(s:string)        : IStream 
+  fopenout_lisp(s:string,n:nat) : OStream 
+  sopenin(s:string)             : IStream
+  sopenout(s:string)            : OStream
+
+  % Opens a file as an input stream
+  fopenin(m:Mode,s:string) : IStream = 
+    IF    m = input AND length(s)=0 THEN stdin 
+    ELSIF m = input THEN fopenin_lisp(s)
+    ELSIF m = str   THEN sopenin(s)
+    ELSE throw(WrongInputStreamMode,tostr(m))
+    ENDIF
+
+  fopenin(s:string) : IStream = 
+    fopenin_lisp(s)
+
+  % Opens a file as an oput stream
+  fopenout(m:Mode,s:string): OStream =
+    IF    m = output AND length(s)=0 THEN stdout
+    ELSIF m = output    THEN fopenout_lisp(s,0) 
+    ELSIF m = create    THEN fopenout_lisp(s,1)
+    ELSIF m = append    THEN fopenout_lisp(s,2)
+    ELSIF m = overwrite THEN fopenout_lisp(s,3)
+    ELSIF m = rename    THEN fopenout_lisp(s,4)
+    ELSIF m = str       THEN sopenout(s)
+    ELSE throw(WrongOutputStreamMode,tostr(m))
+    ENDIF
+
+  fopenout(s:string) : OStream =
+    fopenout(output,s)
+
+  fname_lisp(f:Stream)           :string
+  fgetstr_lisp(f:OStream)        :string
+  eof_lisp(f:IStream)            :bool           
+  flength_lisp(f:Stream)         :nat          
+  fgetpos_lisp(f:Stream)         :nat         
+  fsetpos_lisp(f:Stream,n:nat)   :void   
+  fprint_lisp(f:OStream,s:string):void = skip
+
+  % Gets the full name of a file string
+  fname(f:Stream):string =
+    if filestream?(f) then 
+      fname_lisp(f)
+    else
+      emptystr
+    endif
+
+  % Gets string from an *output string* stream 
+  fgetstr(f:OStream):string =
+    if fopen?(f) then fgetstr_lisp(f)
+    else throw(ClosedStream,fname(f))
+    endif
+
+  %% true IFF f has reached EOF
+  eof?(f:IStream):bool =
+    if fopen?(f) then eof_lisp(f)
+    else throw(ClosedStream,fname(f))
+    endif
+
+  %% Length of stream 
+  flength(f:Stream):nat =
+    if fopen?(f) then flength_lisp(f)
+    else throw(ClosedStream,fname(f))
+    endif
+
+  %% Gets current position 
+  fgetpos(f:Stream):nat = 
+    if fopen?(f) then fgetpos_lisp(f)
+    else throw(ClosedStream,fname(f))
+    endif
+
+  % Prints to a stream
+  fprint(f:OStream,s:string):void = 
+    if fopen?(f) then fprint_lisp(f,s)
+    else throw(ClosedStream,fname(f))
+    endif
+  fprint(f:OStream,r:real)    : MACRO void = fprint(f,r+emptystr)
+  fprint(f:OStream,b:bool)    : MACRO void = fprint(f,b+emptystr)
+  
+  %% Sets current positions
+  fsetpos(f:Stream,n:nat):void =
+    if fopen?(f) then fsetpos_lisp(f,n)
+    else throw(ClosedStream,fname(f))
+    endif
+
+  % Printlns to a stream
+  fprintln(f:OStream,s:string): MACRO void = fprint(f,s+newline)
+  fprintln(f:OStream,r:real)  : MACRO void = fprint(f,r+newline)
+  fprintln(f:OStream,b:bool)  : MACRO void = fprint(f,b+newline)
+
+  % Prints to a stream and echoes to stdout
+  echo(f:OStream,s:string): MACRO void = print(s) & fprint(f,s) 
+  echo(f:OStream,r:real)  : MACRO void = print(r) & fprint(f,r) 
+  echo(f:OStream,b:bool)  : MACRO void = print(b) & fprint(f,b) 
+
+  % Printlns to a stream and echo to stdout
+  echoln(f:OStream,s:string): MACRO void = println(s) & fprintln(f,s)
+  echoln(f:OStream,r:real)  : MACRO void = println(r) & fprintln(f,r) 
+  echoln(f:OStream,b:bool)  : MACRO void = println(b) & fprintln(f,b) 
+
+%% Input functions
+  fread_token_lisp(f:IStream,s:string) : string
+  fread_line_lisp(f:IStream) : string
+  fread_real_lisp(f:IStream) : rat
+  fread_int_lisp(f:IStream)  : int
+
+  fcheck(f:IStream): bool = 
+    (fopen?(f)   OR throw(ClosedStream,fname(f))) AND
+    (NOT eof?(f) OR throw(EndOfFile,fname(f)))
+
+  % Reads a token from f separated by characters in s from a stream
+  fread_token(f:IStream,s:string) : string =
+    prog(fcheck(f),fread_token_lisp(f,s))
+
+  % Reads a word from f
+  fread_word(f:IStream) : MACRO string =
+    fread_token(f,emptystr)
+
+  % Reads a line from f
+  fread_line(f:IStream) : string =
+    prog(fcheck(f),fread_line_lisp(f))
+
+  % Reads a real number from f
+  fread_real(f:IStream) : rat =
+    prog(fcheck(f),fread_real_lisp(f))
+
+  % Reads an integer from f
+  fread_int(f:IStream)  : int =
+    prog(fcheck(f),fread_int_lisp(f))
+
+  % Reads a boolean from f
+  fread_bool(f:IStream,answer:string): MACRO bool=
+    str2bool(fread_word(f),answer)
+
+END stdio

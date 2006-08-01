@@ -1,0 +1,66 @@
+%% stdprog.pvs
+%% Imperative aspects such as errors, exceptions, mutables and loops
+%% Release PVSio-2.d (11/09/05)
+
+stdprog[T:TYPE+] : THEORY
+BEGIN
+
+  IMPORTING stdlang,stdcatch
+
+  prog(s:void,t:T): T = t
+
+  % Errors and Exceptions
+  error(mssg:string):T 
+
+  % Exists the current evaluation and returns to the Ground Evaluator
+  exit : T
+
+  catch(tag:ExceptionTag[void],t1,t2:T): MACRO T =
+    catch_lift[T,void](tag,LAMBDA(d:Dummy):t1,LAMBDA(e:Exception[void]):t2)
+
+  throw(tag:ExceptionTag[void]): MACRO T = throw[T,void](tag,fail)
+
+  catch(l:list[ExceptionTag[void]],t1,t2:T) : MACRO T =
+    catch_list_lift[T,void](l,LAMBDA(d:Dummy):t1,LAMBDA(e:Exception[void]):t2)
+
+  % Mutable data
+  UndefinedMutableVariable : ExceptionTag[void] = "UndefinedMutableVariable"
+
+  Mutable : TYPE+
+
+  ref(t:T) : Mutable
+
+  new      : Mutable 
+
+  undef(v:Mutable)    : bool
+
+  val_lisp(v:Mutable) : T
+
+  val(v:Mutable): T = 
+    if undef(v) then 
+      throw(UndefinedMutableVariable)
+    else val_lisp(v)
+    endif
+
+  def(v:Mutable,t:T) : T = t
+
+  set(v:Mutable,t:T) : void = 
+    let nt = def(v,t) in
+    skip
+
+  CONVERSION val
+
+  % Global uninitilized variables
+  Global : TYPE+ = Mutable
+
+  % Loops
+  loop_lift(f:[Dummy->void]): T
+
+  loop(s:void): MACRO T = loop_lift(LAMBDA(d:Dummy):s)
+
+  return(t:T):void = fail
+
+  % Formatting text
+  format(s:string,t:T):string
+
+END stdprog

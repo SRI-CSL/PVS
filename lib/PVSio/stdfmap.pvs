@@ -1,0 +1,43 @@
+%% stdfmap.pvs
+%% Iterations on files and format printing
+%% Release PVSio-2.d (11/09/05)
+
+stdfmap[T:TYPE+] : THEORY
+BEGIN
+
+  IMPORTING stdio
+
+  % Iterates a function on a file n times
+  fmap(f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T],n:nat) : 
+    RECURSIVE T =
+    IF fopen?(f) THEN
+      IF n=0 or eof?(f) THEN t
+      ELSE
+        LET s  = fread(f) IN
+        LET nt = st(s,t) IN
+          fmap(f,fread,nt,st,n-1)
+      ENDIF
+    ELSE throw(ClosedStream,fname(f))
+    ENDIF
+    MEASURE n
+
+  % Iterates a function on a file n times until the end
+  fmap(f:IStream,fread:[IStream->string],t:T,st:[[string,T]->T]) : T =
+    let l  = flength(f) in
+    let nt = fmap(f,fread,t,st,l) in  
+    prog(fclose(f),nt)
+
+  % Iterates a function on a file line by line until the end
+  fmap_line(f:IStream,t:T,st:[[string,T]->T]):T =
+    let l  = flength(f) in
+    let nt = fmap(f,fread_line,t,st,l) in  
+    prog(fclose(f),nt)
+
+  % Formatting text to a file
+  printf(s:string,t:T): MACRO void =
+    print(format(s,t))
+
+  fprintf(f:OStream,s:string,t:T): MACRO void =
+    fprint(f,format(s,t))
+
+END stdfmap

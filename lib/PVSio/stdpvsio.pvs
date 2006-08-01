@@ -1,0 +1,16 @@
+%% stdpvsio.pvs
+%% PVSio interface
+%% Release PVSio-2.d (11/09/05)
+
+stdpvsio : THEORY
+BEGIN
+
+  IMPORTING stdio
+
+  help_pvs_attachment(s:string) : void 
+
+  help_pvs_theory_attachments(s:string) : void 
+
+  pvsio_version : string
+
+END stdpvsio
