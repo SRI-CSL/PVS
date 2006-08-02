@@ -53,8 +53,9 @@ by Cesar Munoz at the National Institute of Aerospace.
     (format t "~%Generating ~a.log~%" theoryname)
     (with-open-file 
 	(*error-output*
-	 (format nil "~a.log" theoryname)
+	 (merge-pathnames (format nil "~a.log" theoryname))
 	 :direction :output 
+	 :if-does-not-exist :create
 	 :if-exists (if append? :append :supersede))
       (unwind-protect
 	  (if theory
