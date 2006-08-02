@@ -28,7 +28,7 @@
 		    :rehash-threshold rehash-threshold
 		    :hash-function hash-function :values values
 		    :weak-keys weak-keys)
-   #+cmu
+   #+(or cmu sbcl)
    (if (memq test '(eq eql equal equalp))
        (make-hash-table :test test :size size :rehash-size rehash-size
 			:rehash-threshold rehash-threshold

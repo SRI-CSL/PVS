@@ -26,7 +26,7 @@
     (when place
       (setf (place obj) place))))
 
-#-(or allegro cmu)
+#-(or allegro cmu sbcl)
 (defun file-exists-p (file)
   (probe-file file))
 
@@ -55,11 +55,11 @@
   (let* ((test (hash-table-test ht))
 	 (size (hash-table-count ht))
 	 (weak? #+allegro (excl:hash-table-weak-keys ht)
-		#+cmu (lisp::hash-table-weak-p ht))
+		#+(or cmu sbcl) (lisp::hash-table-weak-p ht))
 	 (new-ht (if (memq test '(eq eql equal equalp))
 		     (make-hash-table
 		      :test test :size size
-		      #+allegro :weak-keys #+cmu :weak-p weak?)
+		      #+allegro :weak-keys #+(or cmu sbcl) :weak-p weak?)
 		     (make-pvs-hash-table :strong-eq? (eq test 'strong-tc-eq)
 					  :size size
 					  :weak-keys? weak?))))
@@ -196,9 +196,9 @@
        #+(and allegro (version>= 6) (not (version>= 7)))
        (excl::variable-special-p obj nil)
        #+(and allegro (not (version>= 6))) (clos::variable-special-p obj nil)
-       #+cmu (eq (extensions:info variable kind obj) :special)
+       #+(or cmu sbcl) (eq (extensions:info variable kind obj) :special)
        #+harlequin-common-lisp (system:declared-special-p obj)
-       #-(or lucid kcl allegro harlequin-common-lisp cmu)
+       #-(or lucid kcl allegro harlequin-common-lisp cmu sbcl)
        (error "Need to handle special variables for this version of lisp")
        t))
 
@@ -227,11 +227,11 @@
 			 (namestring (working-directory))))
   nil)
 
-#+(or gcl cmu)
+#+(or gcl cmu sbcl)
 (defun working-directory ()
   *default-pathname-defaults*)
 
-#+(or gcl cmu)
+#+(or gcl cmu sbcl)
 (defun set-working-directory (dir)
   (setq *default-pathname-defaults* (pathname dir)))
 
@@ -251,7 +251,7 @@
 (defun environment-variable (string)
   (sys:getenv string))
 
-#+cmu
+#+(or cmu sbcl)
 (defun environment-variable (string)
   (tools:getenv string))
 
@@ -287,7 +287,7 @@
    :show-cmd nil
    :output-stream (open "/dev/null" :direction :output
 			  :if-exists :append)))
-#+cmu
+#+(or cmu sbcl)
 (defun chmod (prot file)
   (let ((mode (cond ((string= prot "a+w") #o666)
 		    ((string= prot "a-w") #o444)
@@ -335,12 +335,12 @@
 (defmethod get-theory ((dt recursive-type))
   dt)
 
-#+(or gcl cmu)
+#+(or gcl cmu sbcl)
 (defmethod get-theory (pathname)
   (when (pathnamep pathname)
     (get-theory (pathname-name pathname))))
 
-#-(or gcl cmu)
+#-(or gcl cmu sbcl)
 (defmethod get-theory ((path pathname))
   (get-theory (pathname-name path)))
 
@@ -521,7 +521,7 @@
       (let* ((dirlist (pathname-directory
 		       (directory-p
 			(#+allegro excl:pathname-resolve-symbolic-links
-				   #+cmu unix:unix-resolve-links
+				   #+(or cmu sbcl) unix:unix-resolve-links
 			 (namestring (truename directory))))))
 	     (file-info (get-file-info directory))
 	     (result (if (eq (car dirlist) :absolute)
@@ -559,7 +559,7 @@
 				     (nconc (make-list (length reldirlist)
 						       :initial-element
 						       #+allegro :back
-						       #+cmu :up)
+						       #+(or cmu sbcl) :up)
 					    dirlist))))))
 	  (if (and dirlist (null reldirlist))
 	      (concatenate 'string "./" reldir)
@@ -568,7 +568,7 @@
 ;;; Checks if the dir is in fact a directory; returns the expanded
 ;;; pathname ending with a slash.
 
-#-(or allegro cmu)
+#-(or allegro cmu sbcl)
 (defun directory-p (dir)
   (let* ((dirstr (namestring dir))
 	 (dirslash (merge-pathnames
@@ -2731,7 +2731,7 @@ space")
 ;;   (lcopy 
 
 
-#-(or gcl cmu)
+#-(or gcl cmu sbcl)
 (defun direct-superclasses (class)
   (slot-value class 'clos::direct-superclasses))
 
@@ -2739,7 +2739,7 @@ space")
 (defun direct-superclasses (class)
   (slot-value class 'pcl:class-direct-superclasses))
 
-#+cmu
+#+(or cmu sbcl)
 (defun direct-superclasses (class)
   (class-direct-superclasses class))
 
@@ -2904,16 +2904,16 @@ space")
 ;;;   simply returns the singleton list of the expression.
 ;;;   (argument-list e) ==> (f(1,2)(x)(a,b,c))
 
-#-cmu
+#-(or cmu sbcl)
 (defmethod operator* ((expr application))
   (with-slots (operator) expr
     (operator* operator)))
 
-#-cmu
+#-(or cmu sbcl)
 (defmethod operator* ((expr expr))
   expr)
 
-#+cmu
+#+(or cmu sbcl)
 (defun operator* (expr)
   (if (application? expr)
       (operator* (operator expr))
@@ -3113,7 +3113,7 @@ space")
   (when (compiled-function-p #'pvs-gc-after-hook)
     (setf excl:*gc-after-hook* #'pvs-gc-after-hook)))
 
-#+cmu
+#+(or cmu sbcl)
 (eval-when (load)
   (setf extensions:*gc-verbose* nil))
 
@@ -3909,7 +3909,8 @@ space")
   (let ((slots (class-slots (class-of x))))
     (every #'(lambda (slot)
 	       (let ((name (slot-value slot
-				       '#+allegro excl::name #+cmu pcl::name)))
+				       '#+allegro excl::name
+				       #+(or cmu sbcl) pcl::name)))
 		 (equals (slot-value x name) (slot-value y name))))
 	   slots)))
 
@@ -3937,17 +3938,17 @@ space")
     :weak-keys weak-keys?
     :allow-other-keys t
     other-keys)
-  #+cmu
+  #+(or cmu sbcl)
   (apply #'make-hash-table
     :test (if strong-eq? 'strong-tc-eq-test 'tc-eq-test)
     :weak-p weak-keys?
     :allow-other-keys t
     other-keys)
-  #-(or allegro cmu)
+  #-(or allegro cmu sbcl)
   (error "Need a hash-table for tc-eq for this lisp"))
 
-#+cmu
+#+(or cmu sbcl)
 (extensions:define-hash-table-test 'tc-eq-test #'tc-eq #'pvs-sxhash)
-#+cmu
+#+(or cmu sbcl)
 (extensions:define-hash-table-test 'strong-tc-eq-test
 				   #'strong-tc-eq #'pvs-sxhash)

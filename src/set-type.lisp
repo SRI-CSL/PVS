@@ -373,7 +373,7 @@ required a context.")
 
 (defmethod set-type-around-name-expr ((ex name-expr))
   (when (and ;; Shouldn't be necessary - bug in CMU Lisp?
-	     #+cmu (name-expr? ex)
+	     #+(or cmu sbcl) (name-expr? ex)
 	     (macro-decl? (declaration ex))
 	     (not (eq (declaration ex) (current-declaration)))
 	     (not (memq ex *applied-operators*)))

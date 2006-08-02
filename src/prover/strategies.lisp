@@ -136,7 +136,7 @@
 				      (memq a '(&optional &rest)))
 			 args))))
 	  ;; the defun |(DEFRULE) name| is only there for cross referencing
-	  `(progn #-cmu
+	  `(progn #-(or cmu sbcl)
 		  (defun ,(makesym "(DEFRULE) ~a" name) ,largs
 		    ,@lbody
 		    (list ,@largs))
@@ -158,7 +158,7 @@
 		       (remove-if #'(lambda (a)
 				      (memq a '(&optional &rest)))
 			 args))))
-	  `(progn #-cmu
+	  `(progn #-(or cmu sbcl)
 		  (defun ,(makesym "(defstrat) ~a" name) ,largs
 		    ,@lbody
 		    (list ,@largs))
@@ -180,7 +180,7 @@
 		       (remove-if #'(lambda (a)
 				      (memq a '(&optional &rest)))
 			 args))))
-	  `(progn #-cmu
+	  `(progn #-(or cmu sbcl)
 		  (defun ,(makesym "(defstep) ~a" name) ,largs
 		    ,@lbody
 		    (list ,@largs))
@@ -204,7 +204,7 @@
 		       (remove-if #'(lambda (a)
 				      (memq a '(&optional &rest)))
 			 args))))
-	  `(progn #-cmu
+	  `(progn #-(or cmu sbcl)
 		  (defun ,(makesym "(DEFHELPER) ~a" name) ,largs
 		    ,@lbody
 		    (list ,@largs))

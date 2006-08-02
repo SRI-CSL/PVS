@@ -528,8 +528,8 @@
 	 (t   (cons (char string pos) result))))
       (coerce (nreverse result) 'string)))
 
-(#+cmu ext:without-package-locks
- #-cmu progn
+(#+(or cmu sbcl) ext:without-package-locks
+ #-(or cmu sbcl) progn
 (defun parse-error (obj message &rest args)
   ;;(assert (or *in-checker* *current-file*))
   (cond (*parse-error-catch*
@@ -588,8 +588,8 @@
 (defvar *type-error-argument* nil)
 (defvar *skip-all-conversion-checks* nil)
 
-(#+cmu ext:without-package-locks
- #-cmu progn
+(#+(or cmu sbcl) ext:without-package-locks
+ #-(or cmu sbcl) progn
 (defun type-error (obj message &rest args)
   (let ((errmsg (type-error-for-conversion obj message args)))
     (cond (*type-error-catch*

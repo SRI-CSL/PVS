@@ -73,13 +73,13 @@
 (defun pvs-init (&optional dont-load-patches dont-load-user-lisp)
   #+allegro (setq excl:*enclose-printer-errors* nil)
   (setq *print-pretty* t)
-  (setf (symbol-function 'ilisp::ilisp-restore) #'pvs-ilisp-restore)
+  ;;(setf (symbol-function 'ilisp::ilisp-restore) #'pvs-ilisp-restore)
   #+allegro (setq top-level::*print-length* nil
 		  top-level::*print-level* nil)
   (setq *pvs-path* (environment-variable "PVSPATH"))
   (unless *pvs-path*
     (error "PVSPATH environment variable should be set to the PVS directory"))
-  #+cmu
+  #+(or cmu sbcl)
   (let ((exepath (car (make::split-string
 		       (environment-variable "LD_LIBRARY_PATH") :item #\:))))
     (pushnew exepath *pvs-directories*)
@@ -868,11 +868,11 @@
   (pvs-buffer (format nil "~a.ppe" theoryid) nil))
 
 
-#-(or akcl cmu)
+#-(or akcl cmu sbcl)
 (defmethod parse-file ((filename pathname) &optional forced? no-message?)
   (parse-file (pathname-name filename) forced? no-message?))
 
-#+(or akcl cmu)
+#+(or akcl cmu sbcl)
 (defmethod parse-file (filename &optional forced? no-message?)
   (assert (pathnamep pathname))
   (parse-file (pathname-name filename) forced? no-message?))

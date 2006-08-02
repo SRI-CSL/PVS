@@ -270,7 +270,7 @@
 	   (update-fetched (svref *fetch-object-update-obj*
 				  *fetch-object-update-end*))))))))
 
-#+(or allegro cmu)
+#+(or allegro cmu sbcl)
 (defun fetch-object-from-file (file)
   (with-open-file (f file :direction :input :element-type '(unsigned-byte 32))
     (setf (object-store 0) (read-byte f))

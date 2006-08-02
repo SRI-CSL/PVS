@@ -593,7 +593,7 @@
 		     (when (eq ans :auto)
 		       (setq *force-dirs* t)))))
 	     #+allegro (excl:make-directory dir)
-	     #+cmu (unix:unix-mkdir dir #o777)
+	     #+(or cmu sbcl) (unix:unix-mkdir dir #o777)
 	     (pvs-message "Directory ~a created" dir))
 	    (t (html-pvs-error "Directory ~a not created" dir))))))
 

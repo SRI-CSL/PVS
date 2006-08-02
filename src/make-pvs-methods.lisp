@@ -17,7 +17,7 @@
   (load "pvs-config.lisp"))
 
 (defpackage pvs (:use #+lucid :lucid-common-lisp :lisp
-		      #-(or gcl cmu) :clos #+(or gcl cmu) :pcl))
+		      #-(or gcl cmu sbcl) :clos #+(or gcl cmu sbcl) :pcl))
 
 (in-package :pvs)
 (import '(cl-user:*pvs-path*))

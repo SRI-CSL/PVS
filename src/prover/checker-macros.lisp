@@ -160,11 +160,11 @@
 (defmacro with-interrupts-deferred (&body form)
   `(let ((excl::*without-interrupts* t)) ,@form))
 
-#+cmu
+#+(or cmu sbcl)
 (defmacro with-interrupts-allowed (&body form)
   `(system:with-interrupts ,@form))
 
-#+cmu
+#+(or cmu sbcl)
 (defmacro with-interrupts-deferred (&body form)
   `(system:without-interrupts ,@form))
 

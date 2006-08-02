@@ -40,7 +40,7 @@
       (generate-xref (tccinfo-formula ti))
       (error "~a not handled" obj)))
 
-#-(or akcl cmu)
+#-(or akcl cmu sbcl)
 (defmethod generate-xref ((h hash-table))
   (maphash #'(lambda (id obj)
 	       (declare (ignore id))
