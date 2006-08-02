@@ -69,11 +69,6 @@ fi
 
 AC_PROG_RANLIB	
 
-AC_CHECK_PROG(MKDIRHIER,mkdirhier,mkdirhier,no)
-if test "$MKDIRHIER" = no; then
-	AC_MSG_ERROR(Cannot find mkdirhier)
-fi
-
 AC_CHECK_PROG(EMACS,emacs,emacs,no)
 AC_CHECK_PROG(XEMACS,xemacs,xemacs,no)
 if test \( "$EMACS" = no \) -a \( "$XEMACS" = no \); then
@@ -95,6 +90,11 @@ dnl Don't need to check the xemacs version
 AC_CHECK_PROG(ETAGS,etags,etags,no)
 if test "$ETAGS" = no ; then
 	AC_MSG_ERROR(Cannot find etags)
+fi
+
+AC_CHECK_PROG(MKDIR,mkdir,mkdir,no)
+if test "$MKDIR" = no ; then
+	AC_MSG_ERROR(Cannot find mkdir)
 fi
 
 AC_CHECK_PROG(TAR,tar,tar,no)
