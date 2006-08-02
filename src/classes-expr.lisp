@@ -16,7 +16,7 @@
 	  equation iff iff-or-boolean-equation implication index negation
 	  propositional-application))
 
-#+cmu
+#+(or cmu sbcl)
 (ext:without-package-locks
  (defgeneric type (x))
  (defgeneric (setf type) (x y))
@@ -25,7 +25,7 @@
  (defgeneric declaration (x))
  (defgeneric (setf declaration) (x y)))
 
-#+cmu
+#+(or cmu sbcl)
 ;; This is actually defined in utils, but convenient to add here
 (ext:without-package-locks
  (defgeneric condition (x)))

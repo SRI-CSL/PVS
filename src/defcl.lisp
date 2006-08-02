@@ -14,7 +14,7 @@
 
 (export '(defcl copy write-deferred-methods))
 
-#+cmu
+#+(or cmu sbcl)
 (defmethod slot-exists-p-using-class (c o s)
   (declare (ignore c o s))
   nil)
