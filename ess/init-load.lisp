@@ -7,15 +7,21 @@
 
 ;;; Bug work around.  See also below.
 #+(and lucid lcl3.0)
-(unless (find-package :constr) (make-package :constr))
+(unless (find-package :constr)
+  #-sbcl (make-package :constr)
+  #+sbcl (make-package :constr :use '(:common-lisp)))
 
 (unless *lisp-initialized*
   ;;; Another bug workaround, this for LUCID 2.1.
   #+(and lucid (not lcl3.0))
   (progn
-    (unless (find-package :tools) (make-package :tools))
+    (unless (find-package :tools)
+      #-sbcl (make-package :tools)
+      #+sbcl (make-package :tools :use '(:common-lisp)))
     (import '(system::cd) :tools)
-    (unless (find-package :ergolisp) (make-package :ergolisp))
+    (unless (find-package :ergolisp)
+      #-sbcl (make-package :ergolisp)
+      #+sbcl (make-package :ergolisp :use '(:common-lisp)))
     (import '(system::memq) :ergolisp))
 
   #+(and lucid lcl3.0)
@@ -32,21 +38,28 @@
 ;;#+allegro (unintern 'excl::retry :excl) ; take out when retry is moved to el.
   #+allegro
   (progn
-    (unless (find-package :ergolisp) (make-package :ergolisp))
+    (unless (find-package :ergolisp)
+      #-sbcl (make-package :ergolisp)
+      #+sbcl (make-package :ergolisp :use '(:common-lisp)))
     (import '(excl::memq) :ergolisp))
   #+cmu
   (progn
-    (unless (find-package :ergolisp) (make-package :ergolisp))
+    (unless (find-package :ergolisp)
+      #-sbcl (make-package :ergolisp)
+      #+sbcl (make-package :ergolisp :use '(:common-lisp)))
     (import '(extensions::memq) :ergolisp)
     (export '(extensions::memq) :ergolisp)
     )
+  #+sbcl
+  (unless (find-package :ergolisp) (make-package :ergolisp :use '(:common-lisp)))
   (load (format nil "~a/sys/ergolisp/rel/ergolisp.lisp" *ess-path*))
   (load (format nil "~a/sys/ergolisp/rel/ergolisp-exports.lisp" *ess-path*))
   (load (format nil "~a/sys/ergolisp/rel/ergo-system.lisp" *ess-path*))
   (load (format nil "~a/sys/tools/rel/retry.lisp" *ess-path*))
-  #+(or clisp cmu)
-  (progn
-    (unless (find-package :tools) (make-package :tools)))
+  #+(or clisp cmu sbcl)
+  (unless (find-package :tools)
+    #-sbcl (make-package :tools)
+    #+sbcl (make-package :tools :use '(:common-lisp :ergolisp)))
   (load (format nil "~a/sys/tools/rel/box-system.lisp" *ess-path*))
   (load (format nil "~a/sys/tools/rel/box" *ess-path*))
   (load (format nil "~a/box-defs" *ess-path*))

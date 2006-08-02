@@ -31,7 +31,9 @@
 
 ;;; Why are these constants put into the tools package??
 
-(in-package "TOOLS")
+#+sbcl (defpackage :ergolisp (:use :common-lisp))
+#+sbcl (defpackage :toolw (:use :common-lisp :ergolisp))
+(in-package :tools)
 
 (export '(*ess-version* *ess-version-date*))
 (export '(*ess-feature-alist*))
@@ -176,22 +178,22 @@ checking in the listed compiler options if compilation-speed is 0.")
   (format t "~&;;; Switching compiler to development mode.~%")
   (proclaim '(optimize (speed 1) (safety 1))))
 
-#+(or cmu gcl)
+#+(or cmu sbcl gcl)
 (defun use-production-compiler ()
   (format t "~&;;; Switching compiler to production mode.~%")
   (proclaim '(optimize (speed 3) (safety 1) (space 2) (compilation-speed 0))))
 
-#+(or cmu gcl)
+#+(or cmu sbcl gcl)
 (defun use-development-compiler ()
   (format t "~&;;; Switching compiler to development mode.~%")
   (warn "Development mode for CMU Common Lisp not yet defined."))
 
-#-(or allegro lucid cmu gcl)
+#-(or allegro lucid cmu sbcl gcl)
 (warn "Production compilation declarations undefined for this Common Lisp
 implementation.  You may add them by defining USE-PRODUCTION-COMPILER
 in the file dist-ess.lisp.")
 
-#-(or allegro lucid cmu gcl)
+#-(or allegro lucid cmu sbcl gcl)
 (warn "Development compilation declarations undefined for this Common Lisp
 implementation.  You may add them by defining USE-DEVELOPMENT-COMPILER
 in the file dist-ess.lisp.")

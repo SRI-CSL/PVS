@@ -14,10 +14,10 @@
 ;;; Scott Dietzen, Thu May 21 12:49:21 1987
 
 #-gcl
-(defpackage "SORT")
-(in-package "SORT")  (use-package :ergolisp)
+(defpackage :sort #+sbcl (:use :common-lisp :ergolisp :oper))
+(in-package :sort) #-sbcl (use-package :ergolisp)
 
-(use-package '("OPER"))
+#-sbcl (use-package '(:oper))
 
 
 
@@ -83,7 +83,7 @@
 (defmethod make-load-form ((obj ttype-struct))
   (make-load-form-saving-slots obj))
 
-#+(or allegro cmu)
+#+(or allegro cmu sbcl)
 (defmethod make-load-form ((obj ttype-struct) &optional environment)
   (make-load-form-saving-slots obj))
   
@@ -109,7 +109,7 @@
 (defmethod make-load-form ((obj opsig-struct))
   (make-load-form-saving-slots obj))
 
-#+(or allegro cmu)
+#+(or allegro cmu sbcl)
 (defmethod make-load-form ((obj opsig-struct) &optional environment)
   (make-load-form-saving-slots obj))
 

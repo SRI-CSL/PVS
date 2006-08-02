@@ -13,8 +13,8 @@
 ;;; ******************************************************************* ;;;
 
 #-gcl
-(defpackage :retry)
-(in-package :retry) (use-package :ergolisp)
+(defpackage :retry #+sbcl (:use :common-lisp :ergolisp))
+(in-package :retry) #-sbcl (use-package :ergolisp)
 
 ;;; The next three forms should be replaced by eexport, once this is moved
 ;;; to the ergolisp box.
@@ -25,6 +25,7 @@
   (dolist (s '("*catchers*" "retry" "retry-catch" "reinit-retry-catch"))
     (export (list (intern s :lisp)) :lisp)))
 
+#-sbcl
 (export '(lisp::*catchers* #-allegro lisp::retry
 			   lisp::retry-catch lisp::reinit-retry-catch)
 	:lisp)

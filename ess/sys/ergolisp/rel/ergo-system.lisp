@@ -17,17 +17,18 @@
 
 
 #-gcl
-(defpackage :ergo-system)
-(in-package :ergo-system) (use-package :ergolisp)
+(defpackage :ergo-system #+sbcl (:use :common-lisp :ergolisp))
+(in-package :ergo-system)
+#-sbcl (use-package :ergolisp)
 
-#-(or allegro lucid cmu)
+#-(or allegro lucid cmu sbcl)
 (eexport '(memq))
 #+harlequin-common-lisp
 (eexport '(assq))
 (eexport '(ergo-disksave def-disksave-hook mover))
 (eexport '(ergo-ignore-if-unused))
 
-#-(or allegro lucid cmu)
+#-(or allegro lucid cmu sbcl)
 (defun memq (item list) (member item list :test #'eq))
 
 #+harlequin-common-lisp
@@ -48,7 +49,7 @@
 (defmacro def-disksave-hook (&body body)
   `(pushnew #'(lambda () . ,body) *disksave-hooks* :test #'equal))
 
-#-(or lucid allegro cmu ibcl kcl harlequin-common-lisp)
+#-(or lucid allegro cmu sbcl ibcl kcl harlequin-common-lisp)
 (warn "You may need to redefine DEF-DISKSAVE-HOOK for this implementation
 of Lisp in file sys/ergolisp/rel/ergo-system.lisp.")
 #+(or ibcl kcl)
@@ -118,7 +119,7 @@ segmentation violation in this implementation of Common Lisp.")
 Ignoring DISKSAVE-HOOKS.")
   (lisp:save filename))
 
-#-(or clisp lucid allegro cmu ibcl kcl harlequin-common-lisp)
+#-(or clisp lucid allegro cmu sbcl ibcl kcl harlequin-common-lisp)
 (error "Please define ERGO-DISKSAVE for this implementation of Lisp
 in the file sys/ergolisp/rel/ergo-system.lisp.")
 
@@ -127,17 +128,14 @@ in the file sys/ergolisp/rel/ergo-system.lisp.")
     (when (probe-file file-name)
       (rename-file file-name next-file-name))))
 
-
-
 (eval-when (compile eval load)
   (defmacro ergo-ignore-if-unused (&rest vars)
     #+excl				; for allegro
     nil ;;`(declare (excl:ignore-if-unused ,@vars))
+    #+(or cmu sbcl)
+    nil
     #+lucid
     `(declare (ignore ,@vars))		; lucid inconsistency
-    #+cmu
-    nil
-    #-(or excl lucid cmu)
+    #-(or excl lucid cmu sbcl)
     `(declare))
   )
-

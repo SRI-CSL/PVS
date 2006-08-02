@@ -133,7 +133,7 @@
 	 (*print-level* nil)
 	 (*print-length* nil)
 	 (*print-circle* nil)
-	 (*print-case* :upcase))	; Accomodates a LISP compilation bug in
+	 (*print-case* :downcase))	; Accomodates a LISP compilation bug in
 					; version 2.1.1 (remove when fixed.)
      ,@write-calls)))
 

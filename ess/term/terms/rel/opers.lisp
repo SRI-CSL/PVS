@@ -14,8 +14,8 @@
 ;;; Scott Dietzen, Thu Apr 23 00:16:13 1987
 
 #-gcl
-(defpackage "OPER")
-(in-package "OPER")  (use-package :ergolisp)
+(defpackage :oper #+sbcl (:use :common-lisp :ergolisp))
+(in-package :oper) #-sbcl (use-package :ergolisp)
 
 
 ;;; Static Exported Macros -- This code is subject to the policy restriction
@@ -65,7 +65,7 @@
 (defmethod make-load-form ((obj oper-struct))
   (make-load-form-saving-slots obj))
 
-#+(or allegro cmu)
+#+(or allegro cmu sbcl)
 (defmethod make-load-form ((obj oper-struct) &optional environment)
   (make-load-form-saving-slots obj))
 

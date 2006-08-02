@@ -5,8 +5,8 @@
 ;;; Author: Conal
 
 #-gcl
-(defpackage "PRINT-UTILS")
-(in-package "PRINT-UTILS") (use-package :ergolisp)
+(defpackage :print-utils #+sbcl (:use :common-lisp :ergolisp))
+(in-package :print-utils) #-sbcl (use-package :ergolisp)
 
 (export '(lisp::print-struct lisp::writing-readably)
 	:lisp)

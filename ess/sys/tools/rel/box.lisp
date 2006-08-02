@@ -305,8 +305,8 @@ warning.  T means the current value of *error-output*.")
   (when *box-warn*
     (if ; break-on-warnings seems to be obsolete, and unimplemented 
         ; in cmu lisp 18d
-        #+cmu *break-on-signals*
-	#-cmu *break-on-warnings*
+        #+(or cmu sbcl) *break-on-signals*
+	#-(or cmu sbcl) *break-on-warnings*
 	(break "~&[WARNING: ~?]~%" format-string args)
 	(format (if (eq *box-warn* t) *error-output* *box-warn*)
 		"~&[WARNING: ~?]~%" format-string args))))

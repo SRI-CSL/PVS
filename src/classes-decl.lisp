@@ -122,7 +122,7 @@
 	  tuple-expr tupletype type type-decl type-def-decl type-expr
 	  type-name type-name? type-value types update-expr using-hash
 	  var-decl visible?))
-#+cmu
+#+(or cmu sbcl)
 (ext:without-package-locks
  (defgeneric class (x))
  (defgeneric (setf class) (x y))

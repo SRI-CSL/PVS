@@ -14,7 +14,7 @@
 ;;; ******************************************************************* ;;;
 
 
-(in-package :tools) (use-package :ergolisp)
+(in-package :tools) (use-package #+sbcl :common-lisp :ergolisp)
 ;; For some reason the next line does NOT work in compiled code in Lucid.
 ;; It is therefore repeated in the init-load file.
 #+lucid (import '(system::cd) :tools)
@@ -37,15 +37,17 @@
 (defun getenv (varname)
   "Gets an environment variable.  
 Returns a string if defined or nil if undefined."
-  #+cmu (cdr (assoc (intern varname "KEYWORD") extensions::*environment-list*))
+  #+sbcl (sb-ext:posix-getenv varname)
+  #+cmu
+  (cdr (assoc (intern varname "KEYWORD") extensions::*environment-list*))
   #+(and lucid lcl3.0) (lucid-common-lisp:environment-variable varname)
   #+(and lucid (not lcl3.0))  (system:environment-variable varname)
   #+allegro (system:getenv varname)
   #+gcl (si:getenv varname)
-  #-(or allegro lucid cmu gcl) nil
+  #-(or allegro lucid cmu sbcl gcl) nil
   )
 
-#-(or cmu allegro lucid)
+#-(or cmu sbcl allegro lucid)
 (warn "The function GETENV which is used to determine if you are running
 a version of the X Window system is undefined for this Common Lisp
 implementation.  This means that a number of features that require the
@@ -70,14 +72,21 @@ Looks at the DISPLAY environment variable."
 #+cmu
 (defun cd (&optional (pathname (user-homedir-pathname)))
   (unix::unix-chdir pathname))
+#+sbcl
+(defun cd (&optional (pathname (user-homedir-pathname)))
+  (assert (pathnamep pathname))
+  (setq *default-pathname-defaults* pathname))
 #+allegro
 (defun wdir ()
   (excl:current-directory))
 #+cmu
 (defun wdir ()
   (nth-value 1 (UNIX:UNIX-CURRENT-DIRECTORY)))
+#+sbcl
+(defun wdir ()
+  *default-pathname-defaults*)
 
-#-(or lucid allegro cmu)
+#-(or lucid allegro cmu sbcl)
 (warn "Functions CD and WDIR not defined for this implementation of Lisp.
 These functions are not essential.")
 
@@ -104,7 +113,7 @@ first cd fails."
   "Returns T, is the given pathname has a directory component, NIL otherwise."
   (not (string= (directory-namestring pathname) "")))
 
-#-(or lucid allegro cmu ibcl kcl)
+#-(or lucid allegro cmu sbcl ibcl kcl)
 (warn "The function HAS-DIRECTORY-COMPONENT assumes that the namestring
 of a file with no directory component is \"\".  This is not specified
 in the standard and may be different in you implementation of Common
@@ -185,11 +194,11 @@ Other keys are allowed, but will be ignored."
 	(let ((*readtable* readtable))
 	  (compile-file source-file :output-file compiled-file
 	     #+(or lucid allegro) :messages #+(or lucid allegro) messages
-	     #+cmu :progress #+cmu messages
+	     #+(or cmu sbcl) :progress #+(or cmu sbcl) messages
 	     ))
 	(compile-file source-file :output-file compiled-file
 	     #+(or lucid allegro) :messages #+(or lucid allegro) messages
-	     #+cmu :progress #+cmu messages
+	     #+(or cmu sbcl) :progress #+(or cmu sbcl) messages
 	     ))
     )
   ;;  #+kcl (rename-file (merge-pathnames ".o" source-file) compiled-file)
@@ -398,12 +407,16 @@ Currently only #'get-universal-time is supported.")
   #+(and cmu linux) "x86f"
   #+(and cmu darwin) "ppcf"
   #+(and cmu solaris) "sparcf"
+  #+(and sbcl x86-64 linux) "x8664s"
+  #+(and sbcl (not x86-64) linux) "x86s"
+  #+(and sbcl darwin) "ppcs"
+  #+(and sbcl solaris) "sparcs"
   #+(and clisp pc386) "clfasl"
   #+harlequin-common-lisp "wfasl"
   #+clisp "fas"
   )
 
-#-(or lucid allegro cmu ibcl kcl harlequin-common-lisp)
+#-(or lucid allegro cmu sbcl ibcl kcl harlequin-common-lisp)
 (warn "You may need to redefine the constant tools:*lisp-compiled-extension*
 for this implementation of Lisp in the file sys/tools/rel/box-system.lisp.
 Right now it is assumed to be \"bin\".")

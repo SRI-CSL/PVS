@@ -14,7 +14,7 @@
 ;;; ******************************************************************* ;;;
 
 #-gcl
-(defpackage :ergolisp)
+(defpackage :ergolisp #+sbcl (:use :common-lisp))
 (in-package :ergolisp)
 
 (export '(eexport))

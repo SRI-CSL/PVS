@@ -34,7 +34,7 @@
 #+allegro-v4.2
 (import '(excl:memq) :ergolisp)
 
-#-cmu
+#-(or cmu sbcl)
 (export '(memq))
 #+harlequin-common-lisp
 (export '(assq))

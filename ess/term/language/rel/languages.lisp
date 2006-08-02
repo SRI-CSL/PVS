@@ -15,9 +15,9 @@
 
 
 #-gcl
-(defpackage "LANG")
-(in-package "LANG")
-(use-package :ergolisp)
+(defpackage :lang #+sbcl (:use :common-lisp :ergolisp))
+(in-package :lang)
+#-sbcl (use-package :ergolisp)
 
 
 (export '(lang langp ck-lang-type

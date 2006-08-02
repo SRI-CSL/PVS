@@ -1,7 +1,7 @@
 ;;; -*- package: ergo-lisp -*-
 #-gcl
-(defpackage "ERGO-LISP")
-(in-package "ERGO-LISP")
+(defpackage :ergo-lisp #+sbcl (:use :common-lisp))
+(in-package :ergo-lisp)
 (export '(regression-test regression-test-only regression-test-opt
 			  next-key next-value *regression-testing-p*
 			  move-script regressible-error regressible-warn))
@@ -11,10 +11,10 @@
 ;;; automatically run the test cases commented out below at load time
 ;;; and automatically verify that they generate the correct output.
 
-(use-package '("ERGO-LISP") "LISP")
-(export '(regression-test regression-test-only regression-test-opt regressible-error
-			  regressible-warn)
-	(find-package "LISP"))
+#-sbcl (use-package '(:ergo-lisp) :lisp)
+#-sbcl (export '(regression-test regression-test-only regression-test-opt
+				 regressible-error regressible-warn)
+	       (find-package :lisp))
 
 (defvar *regression-testing-p* nil)
 

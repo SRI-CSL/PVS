@@ -15,8 +15,8 @@
 ;;; ******************************************************************* ;;;
 
 #-gcl
-(defpackage :tdefun)
-(in-package :tdefun) (use-package :ergolisp)
+(defpackage :tdefun #+sbcl (:use :common-lisp :ergolisp))
+(in-package :tdefun) #-sbcl (use-package :ergolisp)
 
 (eexport '(tdefun tdefvar defstype))
 

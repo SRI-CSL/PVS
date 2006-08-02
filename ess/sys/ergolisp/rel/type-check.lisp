@@ -30,8 +30,8 @@
 ;;; ******************************************************************* ;;;
 
 #-gcl
-(defpackage "TYPE-CHECK")
-(in-package :TYPE-CHECK) (use-package '(:ergolisp))
+(defpackage :type-check #+sbcl (:use :common-lisp :ergolisp))
+(in-package :type-check) #-sbcl (use-package '(:ergolisp))
 
 ;;; Programming support
 (eexport '(declare-ftype proclaim-ftype))

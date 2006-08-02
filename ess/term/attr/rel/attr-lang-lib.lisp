@@ -14,8 +14,8 @@
 ;;; Interface to Language, Sort, Operator Packages.
 
 #-gcl
-(defpackage "LANGUAGE")
-(in-package "LANGUAGE")  (use-package :ergolisp)
+(defpackage :language #+sbcl (:use :common-lisp :ergolisp))
+(in-package :language) #-sbcl (use-package :ergolisp)
 
 (export '(op-sort check-op))
 

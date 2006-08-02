@@ -14,8 +14,8 @@
 ;;; Scott Dietzen, Tue May 26 14:30:09 1987
 
 #-gcl
-(defpackage "OCC")
-(in-package "OCC")  (use-package :ergolisp)
+(defpackage :occ #+sbcl (:use :common-lisp :ergolisp))
+(in-package :occ) #-sbcl (use-package :ergolisp)
 
 
 ;;; Static Exported Macros -- This code is subject to the policy restriction

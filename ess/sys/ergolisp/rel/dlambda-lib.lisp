@@ -14,8 +14,8 @@
 ;;; ******************************************************************* ;;;
 
 #-gcl
-(defpackage "DLAMBDA-LIB")
-(in-package :DLAMBDA-LIB) (use-package :ergolisp)
+(defpackage :dlambda-lib #+sbcl (:use :common-lisp :ergolisp))
+(in-package :dlambda-lib) #-sbcl (use-package :ergolisp)
 
 (eexport '(re-cons re-acons re-mapcar))
 

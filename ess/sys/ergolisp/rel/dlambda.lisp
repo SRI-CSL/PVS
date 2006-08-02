@@ -8,8 +8,8 @@
 ;;;
 
 #-gcl
-(defpackage "DLAMBDA")
-(in-package "DLAMBDA") (use-package :ergolisp)
+(defpackage :dlambda #+sbcl (:use :common-lisp :ergolisp))
+(in-package :dlambda) #-sbcl (use-package :ergolisp)
 
 (eexport '(dlambda fdlambda ddefun dlet dlet* dcase))
 

@@ -13,8 +13,8 @@
 ;;; Author: fp
 
 #-gcl
-(defpackage "NEWATTR")
-(in-package "NEWATTR")   (use-package :ergolisp)
+(defpackage :newattr #+sbcl (:use :common-lisp :ergolisp))
+(in-package :newattr) #-sbcl(use-package :ergolisp)
 
 (export '(defconfam defsynfam defattrfam))
 (export '(defconfam-deltafun defsynfam-compfun defattrfam-attrfun))

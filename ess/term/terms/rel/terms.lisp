@@ -32,8 +32,8 @@
 ;;;   use-package.
 
 #-gcl
-(defpackage "TERM")
-(in-package "TERM") (use-package :ergolisp)
+(defpackage :term #+sbcl (:use :common-lisp :ergolisp))
+(in-package :term) #-sbcl (use-package :ergolisp)
 
 ;;; (use-package '("OPER" "OCC"))  ; take out. fp Mon Jan  2 10:04:59 1989.
 ;;; In this files uses of the above packages are still prefixed for

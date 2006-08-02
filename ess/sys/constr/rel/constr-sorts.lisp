@@ -1,9 +1,11 @@
 ;;; -*- Mode: Lisp; Package: CONSTRG -*-
-(in-package :constr-term-rep)  ;; creates package for abstract syntax. 
-#+cmu
-(defpackage :constrg)
+#-sbcl (in-package :constr-term-rep)  ;; creates package for abstract syntax. 
+(defpackage :constrg
+  #+sbcl (:use :common-lisp :ergolisp :newattr :lang :sb-runtime
+	       :sort :term :occ :oper))
 (in-package :constrg)  ;; enters package for generated code.  
 
+#-sbcl
 (use-package '(:newattr :lang :sb-runtime :sort :term :occ :oper :ergolisp))
 
 

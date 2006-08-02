@@ -14,8 +14,8 @@
 ;;; ******************************************************************* ;;;
 
 #-gcl
-(defpackage "DEFSCONSTR")
-(in-package :DEFSCONSTR) (use-package :ergolisp)
+(defpackage :defsconstr #+sbcl (:use :common-lisp :ergolisp))
+(in-package :defsconstr) #-sbcl (use-package :ergolisp)
 
 (eexport '(defsconstr))
 

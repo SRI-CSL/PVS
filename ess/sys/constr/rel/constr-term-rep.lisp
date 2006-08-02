@@ -14,8 +14,9 @@
 ;;; ******************************************************************* ;;;
 
 #-gcl
-(defpackage "CONSTR-TERM-REP")
-(in-package :CONSTR-TERM-REP) (use-package :ergolisp)
+(defpackage :constr-term-rep #+sbcl (:use :common-lisp :ergolisp))
+(in-package :constr-term-rep)
+#-sbcl (use-package :ergolisp)
 
 (ddefun mk-items (_ items)
   `(progn ,@items))

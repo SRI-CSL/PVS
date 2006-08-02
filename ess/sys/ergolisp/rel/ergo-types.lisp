@@ -14,8 +14,8 @@
 ;;; ******************************************************************* ;;;
 
 #-gcl
-(defpackage "ERGO-TYPES")
-(in-package :ERGO-TYPES) (use-package :ergolisp)
+(defpackage :ergo-types #+sbcl (:use :common-lisp :ergolisp))
+(in-package :ergo-types) #-sbcl (use-package :ergolisp)
 
 (eexport '(Nat Optional Ref
 	       ;;Boolean
