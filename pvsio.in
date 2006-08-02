@@ -30,8 +30,6 @@ where options include:
 "  
 }
 
-PVSLISP=allegro
-
 while [ $# -gt 0 ]
 do
    case $1 in
@@ -167,6 +165,21 @@ esac
 
 binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
 
+if [ ! "$PVSLISP" ]
+   then if   [ -e $binpath/full/pvs-allegro ]
+        then PVSLISP=allegro
+        elif [ -e $binpath/runtime/pvs-allegro ]
+        then PVSLISP=allegro
+        elif [ -e $binpath/full/pvs-cmulisp ]
+        then PVSLISP=cmulisp
+        elif [ -e $binpath/runtime/pvs-cmulisp ]
+        then PVSLISP=cmulisp
+        else echo "No executable available in $binpath"
+             exit 1
+        fi
+fi
+PVSIMAGE=pvs-$PVSLISP
+
 if [ -d $binpath/full -a -x $binpath/full/$PVSIMAGE -a ! "$pvsruntime" ]
    then PATH=$binpath/full:$binpath:$PVSPATH/bin:$PATH
     LD_LIBRARY_PATH=$binpath/full:$LD_LIBRARY_PATH
@@ -189,40 +202,23 @@ case $PVSPATCHLEVEL in
 esac
 
 PVSVERBOSE=${PVSVERBOSE:-0}
-PVSIMAGE="$PVSLISP"
 
 export ALLEGRO_CL_HOME DISPLAY LD_LIBRARY_PATH
 export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE PVSTIMEOUT
 export PVSPATCHLEVEL PVSMINUSQ PVSFORCEDP PVSDEFAULTDP
 
-$PVSIMAGE -qq -e "(in-package :pvs)" -e "
-(progn 
-  (when (not (probe-file \"$FILE.pvs\"))
-    (format t \"File not found: $FILE.pvs~%\")
-    (excl:exit 0 :no-unwind t :quiet t))
-  (when $TIME (setq pvs::*pvs-eval-do-timing* t))
-  (multiple-value-bind (val err)
-    (ignore-errors
-      (with-open-file 
-        (*standard-output*
-         (format nil \"~a$THEORY.log\" (directory-namestring \"$FILE\")) 
-         :direction :output 
-         :if-exists :supersede)
-        (pvs::pvs-init)
-        (pvs::change-context (directory-namestring \"$FILE\"))
-        (dolist (pack '$PACK) (pvs::load-prelude-library pack))
-	(pvs::load-pvs-attachments)
-        (when (null $VERB)
-          (unwind-protect
-            (pvs::typecheck-file (file-namestring\"$FILE\") nil nil nil t)
-            (fresh-line)
-            (finish-output))))
-      (when $VERB
-        (pvs::typecheck-file (file-namestring\"$FILE\") nil nil nil t))
-      (when $EXPR (pvs::evaluation-mode-pvsio \"$THEORY\" $EXPR $TCCS t nil))
-      (pvs::evaluation-mode-pvsio \"$THEORY\" $MAIN $TCCS t (null $MAIN))
-      t)
-    (when err (format t \"~%~a ($FILE.pvs). See $THEORY.log~%\" err)))
-  (fresh-line)
-  (excl:exit 0 :no-unwind t :quiet t))"
+export PVSIOFILE=$FILE
+export PVSIOTIME=$TIME
+export PVSIOTHEORY=$THEORY
+export PVSIOPACK=$PACK
+export PVSIOVERB=$VERB
+export PVSIOEXPR=$EXPR
+export PVSIOTCCS=$TCCS
+export PVSIOMAIN=$MAIN
 
+if [ "$PVSLISP" = "allegro" ]
+  then
+  $PVSIMAGE -qq -L $PVSPATH/lib/PVSio/pvsio-init.lisp
+  else
+  $PVSIMAGE -noinit -load $PVSPATH/lib/PVSio/pvsio-init.lisp
+fi
