@@ -22,7 +22,7 @@ SHELL=/bin/sh
 
 ETAGS = @ETAGS@
 TAR = @TAR@
-MKDIRHIER = @MKDIRHIER@
+MKDIR = @MKDIR@
 TARFLAGS = -cvohz --mode="u+rw" --atime-preserve --exclude=CVS
 
 PLATFORM := $(shell $(PVSPATH)bin/pvs-platform)
@@ -49,6 +49,20 @@ $(error "$(LISPEXE) is not executable")
 endif
 endif
 
+ifeq ($(LISP),sbcl)
+ifeq ($(SBCL_HOME),)
+$(error "SBCL_HOME must be set to build sbcl version")
+endif
+# Now check that the given SBCL_HOME works
+LISPEXE = $(SBCL_HOME)/bin/lisp
+ifeq ($(shell if [ -x "$(LISPEXE)" ]; then echo OK; fi),OK)
+CMUVERSION = $(shell $(CMULISP_HOME)/bin/lisp -batch -eval '(progn (format t "~a" (lisp-implementation-version)) (terpri) (quit))')
+$(warning "CMU Version $(CMUVERSION)")
+else
+$(error "$(LISPEXE) is not executable")
+endif
+endif
+
 ifeq ($(LISP),allegro)
 ifeq ($(ALLEGRO_HOME),)
 $(error "ALLEGRO_HOME must be set to build allegro version")
@@ -59,8 +73,8 @@ endif
 # The extension should match that of pvs.system, src/pvs.lisp,
 # ess/sys/tools/rel/box-system.lisp, and emacs/emacs-src/pvs-ilisp.el
 ifeq ($(LISP),allegro)
-  LISPEXE = @ALLEGRO_HOME@/mlisp8
-  LD_LIBRARY_PATH = @ALLEGRO_HOME@:$LD_LIBRARY_PATH
+  LISPEXE = $(ALLEGRO_HOME)/mlisp8
+  LD_LIBRARY_PATH = $(ALLEGRO_HOME):$LD_LIBRARY_PATH
   ifeq ($(PLATFORM),sun4-SunOS5)
     LISPEXT=fasl
   else
@@ -501,17 +515,17 @@ runtime : $(image-deps)
 ifeq ($(LISP),cmulisp)
 $(pvsfull) : $(pvs-make-files) $(ess) $(ff-files) $(lisp-files) \
 	  lib/prelude.pvs lib/prelude.prf
-	$(MKDIRHIER) $(bindir)/full
+	$(MKDIR) -p $(bindir)/full
 	$(LISPEXE) -eval '(load "pvs.system" :verbose t) \
                           (unwind-protect \
                               (pvs::operate-on-system :pvs :compile) \
                             (save-lisp "$(pvsfull).core" \
                                 :init-function (function startup-pvs) \
                                ))'
-	cp $(PVSPATH)BDD/$(PLATFORM)/mu.so $(bindir)/full
+	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(bindir)/full
 	cp $(PVSPATH)BDD/bdd-cmu-load.lisp $(PVSPATH)BDD/mu-cmu-load.lisp $(bindir)/full
 	/bin/echo "#!/bin/sh" > $(pvsfull)
-	/bin/echo "$(LISPEXE) -core \`dirname \$$0\`/\`basename \$$0\`.core" >> $(pvsfull)
+	/bin/echo "$(LISPEXE) -core \`dirname \$$0\`/\`basename \$$0\`.core \$*" >> $(pvsfull)
 	chmod a+x $(pvsfull)
 
 $(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
@@ -531,9 +545,10 @@ endif
 ifeq ($(LISP),allegro)
 ${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${libics-file} ${lisp-files} \
              $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
-	$(MKDIRHIER) $(bindir)/full
+	$(MKDIR) -p $(bindir)/full
 	rm -rf /tmp/pvs-allegro-build
 	umask 002; \
+	touch $(PVSPATH)src/pvs-gr.txt; \
 	$(LISPEXE) -e '(load "$(PVSPATH)pvs.system")' \
 		-e "(let ((code 1)) \
                       (unwind-protect \
@@ -724,43 +739,43 @@ $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el : lib/prelude.pvs ${p
                         -f set-prelude-files-and-regions
 
 $(PVSPATH)emacs/emacs20/%.el : emacs/emacs-src/%.el
-	mkdir -p emacs/emacs20
+	$(MKDIR) -p emacs/emacs20
 	(cd emacs/emacs20; ln -sf ../emacs-src/$(@F) .)
 
 $(PVSPATH)emacs/emacs19/%.el : emacs/emacs-src/%.el
-	mkdir -p emacs/emacs19
+	$(MKDIR) -p emacs/emacs19
 	(cd emacs/emacs19; ln -sf ../emacs-src/$(@F) .)
 
 $(PVSPATH)emacs/xemacs21/%.el : emacs/emacs-src/%.el
-	mkdir -p emacs/xemacs21
+	$(MKDIR) -p emacs/xemacs21
 	(cd emacs/xemacs21; ln -sf ../emacs-src/$(@F) .)
 
 $(PVSPATH)emacs/xemacs20/%.el : emacs/emacs-src/%.el
-	mkdir -p emacs/xemacs20
+	$(MKDIR) -p emacs/xemacs20
 	(cd emacs/xemacs20; ln -sf ../emacs-src/$(@F) .)
 
 $(PVSPATH)emacs/xemacs19/%.el : emacs/emacs-src/%.el
-	mkdir -p emacs/xemacs19
+	$(MKDIR) -p emacs/xemacs19
 	(cd emacs/xemacs19; ln -sf ../emacs-src/$(@F) .)
 
 $(PVSPATH)emacs/emacs20/%.el : emacs/emacs-src/ilisp/%.el
-	mkdir -p emacs/emacs20
+	$(MKDIR) -p emacs/emacs20
 	(cd emacs/emacs20; ln -sf ../emacs-src/ilisp/$(@F) .)
 
 $(PVSPATH)emacs/emacs19/%.el : emacs/emacs-src/ilisp/%.el
-	mkdir -p emacs/emacs19
+	$(MKDIR) -p emacs/emacs19
 	(cd emacs/emacs19; ln -sf ../emacs-src/ilisp/$(@F) .)
 
 $(PVSPATH)emacs/xemacs21/%.el : emacs/emacs-src/ilisp/%.el
-	mkdir -p emacs/xemacs21
+	$(MKDIR) -p emacs/xemacs21
 	(cd emacs/xemacs21; ln -sf ../emacs-src/ilisp/$(@F) .)
 
 $(PVSPATH)emacs/xemacs20/%.el : emacs/emacs-src/ilisp/%.el
-	mkdir -p emacs/xemacs20
+	$(MKDIR) -p emacs/xemacs20
 	(cd emacs/xemacs20; ln -sf ../emacs-src/ilisp/$(@F) .)
 
 $(PVSPATH)emacs/xemacs19/%.el : emacs/emacs-src/ilisp/%.el
-	mkdir -p emacs/xemacs19
+	$(MKDIR) -p emacs/xemacs19
 	(cd emacs/xemacs19; ln -sf ../emacs-src/ilisp/$(@F) .)
 
 ifeq ($(shell if [ -x ${emacs20} ] ; then echo OK ; fi), OK)
