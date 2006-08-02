@@ -751,7 +751,7 @@
 ;;; ********************************
 ;;; Let's be smart about CLtL2 compatible Lisps:
 (eval-when (compile load eval)
-  #+(or (and allegro-version>= (version>= 4 0)) :mcl :cmu)
+  #+(or (and allegro-version>= (version>= 4 0)) :mcl :cmu :sbcl)
   (pushnew :cltl2 *features*))
 
 ;;; ********************************
@@ -781,7 +781,7 @@
       (and allegro-version>= (version>= 4 1)))
 (eval-when #-(or :lucid :cmu) (:compile-toplevel :load-toplevel :execute)
 	   #+(or :lucid :cmu) (compile load eval)
-  (unless (or (fboundp 'lisp::require) (fboundp 'cl-user::require)
+  (unless (or #-sbcl (fboundp 'lisp::require) (fboundp 'cl::require)
 	      #+(and :excl (and allegro-version>= (version>= 4 0)))
 	      (fboundp 'cltl1::require)
 	      #+lispworks (fboundp 'system::require))
@@ -977,13 +977,13 @@
 ;;; We import these symbols into the USER package to make them
 ;;; easier to use. Since some lisps have already defined defsystem
 ;;; in the user package, we may have to shadowing-import it.
-#-(or :cmu :ccl :allegro :excl :lispworks :symbolics)
+#-(or :cmu :sbcl :ccl :allegro :excl :lispworks :symbolics)
 (eval-when (compile load eval)
   (import *exports* #-(or :cltl2 :lispworks) :user
 	            #+(or :cltl2 :lispworks) :common-lisp-user)
   (import *special-exports* #-(or :cltl2 :lispworks) :user 
 	                    #+(or :cltl2 :lispworks) :common-lisp-user))
-#+(or :cmu :ccl :allegro :excl :lispworks :symbolics)
+#+(or :cmu :sbcl :ccl :allegro :excl :lispworks :symbolics)
 (eval-when (compile load eval)
   (import *exports* #-(or :cltl2 :lispworks) :user 
 	            #+(or :cltl2 :lispworks) :common-lisp-user)
@@ -1050,7 +1050,8 @@
     "./"
     #+:lucid                (working-directory)
     #+(or allegro aclpc)   (excl:current-directory)
-    #+:cmu                  (nth-value 1 (unix:unix-current-directory))
+    #+:cmu      (nth-value 1 (unix:unix-current-directory))
+    #+:sbcl *default-pathname-defaults* ;; Owre - Any other options?
     #+:lispworks 
     ,(multiple-value-bind (major minor) (system::lispworks-version)
        (if (or (> major 3) 
@@ -1160,8 +1161,8 @@
 	 ;; PA is Precision Architecture, HP's 9000/800 RISC cpu
 	 #+(and Lucid PA)                    ("lisp" . "hbin")   
          #+excl                               ("cl"   . "fasl")
-         #+cmu           ("lisp" . ,(or (c:backend-fasl-file-type c:*backend*)
-					"fasl"))
+         #+cmu ("lisp" . ,(or (c:backend-fasl-file-type c:*backend*) "fasl"))
+         #+sbcl ("lisp" . ,sb-fasl:+backend-fasl-file-implementation+)
 ;	 #+(and :CMU (not (or :sgi :sparc)))  ("lisp" . "fasl")
 ;        #+(and :CMU :sgi)                    ("lisp" . "sgif")
 ;        #+(and :CMU :sparc)                  ("lisp" . "sparcf")
@@ -1279,7 +1280,7 @@ s/^[^M]*IRIX Execution Environment 1, *[a-zA-Z]* *\\([^ ]*\\)/\\1/p\\
 			       (1+ blank-pos)))
     (concatenate 'string
       os " " os-version))      ; " " version-rest
-  #+(and :sgi :cmu)
+  #+(and :sgi (or :cmu :sbcl))
   (concatenate 'string
     (software-type)
     (software-version))
@@ -1297,7 +1298,7 @@ s/^[^M]*IRIX Execution Environment 1, *[a-zA-Z]* *\\([^ ]*\\)/\\1/p\\
                           (format nil "IRIX ~S"
 				  (read s))))
       soft-type))
-  #-(or (and :excl :sgi) (and :cmu :sgi) (and :lispworks :irix))
+  #-(or (and :excl :sgi) (and (or :cmu :sbcl) :sgi) (and :lispworks :irix))
   (software-type))
 
 (defun compiler-version ()
@@ -1305,8 +1306,10 @@ s/^[^M]*IRIX Execution Environment 1, *[a-zA-Z]* *\\([^ ]*\\)/\\1/p\\
 		"lispworks" " " (lisp-implementation-version))
   #+excl      (concatenate 'string 
 		"excl" " " excl::*common-lisp-version-number*)
-  #+cmu       (concatenate 'string 
-		"cmu" " " (lisp-implementation-version))
+  #+cmu (concatenate 'string 
+		    "cmu" " " (lisp-implementation-version))
+  #+sbcl (concatenate 'string 
+		    "sbcl" " " (lisp-implementation-version))
   #+kcl       "kcl"
   #+akcl      "akcl"
   #+gcl       "gcl"
@@ -1333,10 +1336,10 @@ s/^[^M]*IRIX Execution Environment 1, *[a-zA-Z]* *\\([^ ]*\\)/\\1/p\\
 		  #+(and :sgi :allegro-version>= (version>= 4 2))
 		  (machine-version)))
 	(software (software-type-translation 
-		   #-(and :sgi (or :cmu
+		   #-(and :sgi (or :cmu :sbcl
 				   (and :allegro-version>= (version>= 4 2))))  
 		   (software-type)
-		   #+(and :sgi (or :cmu
+		   #+(and :sgi (or :cmu :sbcl
 				   (and :allegro-version>= (version>= 4 2))))
 		   (operating-system-version)))
 	(lisp (compiler-type-translation (compiler-version))))
@@ -1559,7 +1562,8 @@ s/^[^M]*IRIX Execution Environment 1, *[a-zA-Z]* *\\([^ ]*\\)/\\1/p\\
 	 (rel-directory (directory-to-list (pathname-directory rel-dir)))
 	 (rel-keyword (when (keywordp (car rel-directory))
 			(pop rel-directory)))
-	 (rel-file (file-namestring rel-dir))
+	 (relf (file-namestring rel-dir))
+	 (rel-file (unless (null-string relf) relf))
 	 (directory nil))
     ;; TI Common Lisp pathnames can return garbage for file names because
     ;; of bizarreness in the merging of defaults.  The following code makes
@@ -2828,7 +2832,7 @@ D
 		(*load-source-instead-of-binary* load-source-instead-of-binary)
 		(*minimal-load* minimal-load)
 		(system (find-system name :load)))
-	    #-CMU
+	    #-(or cmu sbcl)
 	    (declare (special *compile-verbose* #-MCL *compile-file-verbose*)
 		     (ignore *compile-verbose* #-MCL *compile-file-verbose*))
 	    (unless (component-operation operation)
@@ -3128,8 +3132,8 @@ D
 				default-action (version *version*))
   ;; If the pathname is present, this behaves like the old require.
   (unless (and module-name 
-	       (find #-CMU (string module-name)
-		     #+CMU (string-downcase (string module-name))
+	       (find #-(or cmu sbcl) (string module-name)
+		     #+(or cmu sbcl) (string-downcase (string module-name))
 		     *modules* :test #'string=)) 
     (cond (pathname
 	   (funcall *old-require* module-name pathname))
@@ -3204,7 +3208,8 @@ D
 (unless *old-require*
   (setf *old-require* 
 	(symbol-function 
-	 #-(or (and :excl :allegro-v4.0) :mcl :lispworks) 'lisp:require
+	 #-(or (and :excl :allegro-v4.0) :mcl :lispworks :sbcl) 'lisp:require
+	 #+sbcl 'common-lisp:require
 	 #+(and :excl :allegro-v4.0) 'cltl1:require
 	 #+lispworks3.1 'common-lisp::require
 	 #+(and :lispworks (not :lispworks3.1)) 'system::require
@@ -3213,9 +3218,10 @@ D
   (unless *dont-redefine-require*
     (let (#+(or :mcl (and :CCL (not lispworks)))
 	  (ccl:*warn-if-redefine-kernel* nil))
-      #-(or (and allegro-version>= (version>= 4 1)) :lispworks)
+      #-(or (and allegro-version>= (version>= 4 1)) :lispworks :sbcl)
       (setf (symbol-function 
 	     #-(or (and :excl :allegro-v4.0) :mcl :lispworks) 'lisp:require
+	     #+sbcl 'common-lisp:require
 	     #+(and :excl :allegro-v4.0) 'cltl1:require
 	     #+lispworks3.1 'common-lisp::require
 	     #+(and :lispworks (not :lispworks3.1)) 'system::require
@@ -3349,6 +3355,7 @@ D
 					     program arguments))
   #+KCL (system (format nil "~A~@[ ~A~]" program arguments))
   #+:cmu (extensions:run-program program arguments)
+  #+:sbcl (sb-ext:run-program program arguments)
   #+:lispworks (foreign:call-system-showing-output 
 		(format nil "~A~@[ ~A~]" program arguments))
   )
@@ -3445,17 +3452,18 @@ D
 								  :binary))
 			  #-:lucid
 			  (component-full-pathname component :binary)
-			  #+CMU :error-file 
-			  #+CMU (and *cmu-errors-to-file* 
-				     (component-full-pathname component
-							      :error))
-			  #+cmu
+			  #+(or cmu sbcl) :error-file 
+			  #+(or cmu sbcl)
+			  (and *cmu-errors-to-file* 
+			       (component-full-pathname component
+							:error))
+			  #+(or cmu sbcl)
 			  :error-output
-			  #+cmu
+			  #+(or cmu sbcl)
 			  *cmu-errors-to-terminal*
-			  #+cmu
+			  #+(or cmu sbcl)
 			  :print
-			  #+cmu
+			  #+(or cmu sbcl)
 			  nil
 			  )))
 	   must-compile)
