@@ -25,6 +25,10 @@
   #+(and cmu linux) "x86f"
   #+(and cmu darwin) "ppcf"
   #+(and cmu solaris) "sparcf"
+  #+(and sbcl x86-64 linux) "x8664s"
+  #+(and sbcl (not x86-64) linux) "x86s"
+  #+(and sbcl darwin) "ppcs"
+  #+(and sbcl solaris) "sparcs"
   #+(and clisp pc386) "clfasl"
   #+harlequin-common-lisp "wfasl"
   )
@@ -45,6 +49,10 @@
   (setq extensions:*load-object-types*
 	(remove "fasl" extensions:*load-object-types* :test #'string=)))
 
+#+sbcl
+(eval-when (eval load)
+  (setq sb-c::*fasl-file-type* *pvs-binary-type*))
+
 #+allegro
 (setq *cltl1-in-package-compatibility-p* t)
 
@@ -64,3 +72,7 @@
 #+cmu
 (defun bye (&optional (exit-status 0))
   (unix:unix-exit exit-status))
+
+#+sbcl
+(defun bye (&optional (exit-status 0))
+  (sb-unix:unix-exit exit-status))

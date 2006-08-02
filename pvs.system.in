@@ -26,6 +26,13 @@
   (apply (find-symbol (string :pvs-init) :pvs) nil)
   (lisp::%top-level))
 
+#+sbcl
+(defun startup-pvs ()
+  (in-package :pvs)
+  ;; Can't directly call (pvs::pvs-init)
+  (apply (find-symbol (string :pvs-init) :pvs) nil)
+  )
+
 #+allegro
 (eval-when (eval load)
   (setq *record-source-file-info* t
@@ -74,12 +81,16 @@
   #+(and lcl4.0 (not lcl4.1)) (load "/usr/subsys/lisp/clos")
   #+lcl4.1 (load "/usr/global/lisp/lucid/dbcs/clos"))
 
-#-(or gcl cmu)
-(defpackage pvs (:use #+lucid :lucid-common-lisp :lisp :clos :make))
+#-(or gcl cmu sbcl)
+(defpackage pvs (:use #+lucid :lucid-common-lisp :cl-user :lisp :clos :make))
 
 #+(or gcl cmu)
 (unless (find-package :pvs)
-  (make-package :pvs :use '(:lisp :pcl :make)))
+  (make-package :pvs :use '(:cl-user :lisp :pcl :make)))
+
+#+sbcl
+(unless (find-package :pvs)
+  (make-package :pvs :use '(:cl-user :common-lisp :sb-pcl :make)))
 
 #+gcl
 (eval-when (eval compile load)
@@ -101,7 +112,7 @@
 ;; in the defsystem below, an error funcalling macro's
 ;; occur when evalling (generate-ess :ergolisp).
 ;; bug in cmulisp??
-#+cmu
+#+(or cmu sbcl)
 (load (format nil "~a/ess/dist-ess.lisp" *pvs-path*))
 
 #+cmu
@@ -122,17 +133,17 @@
 		    (load-patches :directory
 				  "/usr/global/lisp/lucid/dbcs/patches")
 		    (load "/usr/global/lisp/lucid/dbcs/patches/bug-7186.sbin"))
-		  #-(or gcl cmu)
+		  #-(or gcl cmu sbcl)
 		  (proclaim '(optimize (compilation-speed 0) (space 1)
 				       (safety 1) (speed 3)
 				       #+allegro (debug 1)))
 		  #+gcl
 		  (proclaim '(optimize (compilation-speed 0) (space 1)
 				       (safety 3) (speed 0)))
-		  #+cmu
+		  #+(or cmu sbcl)
 		  (proclaim '(optimize (compilation-speed 0) (space 1)
 				       (safety 1) (speed 3) (debug 1)))
-		  #+cmu-devel
+		  #+(or cmu-devel sbcl-devel)
 		  (proclaim '(optimize (compilation-speed 0) (space 1)
 				       (safety 3) (speed 1) (debug 3)))
 		  #+lucid
@@ -152,7 +163,7 @@
 		    #+gcl
 		    (load (format nil "~a/src/xp-code" *pvs-path*))
 		    (apply (find-symbol :install :xp) :package :pvs nil))
-		  #-cmu
+		  #-(or cmu sbcl)
 		  (load (format nil "~a/ess/dist-ess.lisp" *pvs-path*))
 		  #-gcl
 		  (generate-ess ergolisp)
@@ -166,12 +177,8 @@
 				 :sb-runtime :lang :newattr))
 		  #+gcl (defmacro ignore-errors (&body forms)
 			  `(progn ,@forms))
-		  #+cmu
+		  #+(or cmu sbcl)
 		  (let* ((platform "ix86-Linux")
-;; 			((platform #+(and sun4 sunos4) "sun4-SunOS4"
-;; 				   #+(and sun4 (not sunos4)) "sun4-SunOS5"
-;; 				   #+(and x86 (not redhat4)) "ix86-redhat5"
-;; 				   #+(and x86 redhat4) "ix86-redhat4")
 			 (bddpath (concatenate 'string
 					       *pvs-path* "/BDD/" platform)))
 		    ;; hack, because load-object-file isn't exported.
@@ -188,8 +195,7 @@
 		  #+(and allegro dynload)
 		  (let* ((platform #+(and sun4 sunos4) "sun4-SunOS4"
 				   #+(and sun4 (not sunos4)) "sun4-SunOS5"
-				   #+(and x86 (not macosx) (not redhat4)) "ix86-redhat5"
-				   #+(and x86 redhat4) "ix86-redhat4"
+				   #+(and x86 (not macosx)) "ix86-Linux"
 				   #+(and macosx powerpc) "powerpc-MacOSX7"
 				   #+(and macosx x86) "ix86-MacOSX8")
 			 (utilpath (concatenate 'string
@@ -217,7 +223,7 @@
   :finally-do (progn
 		#+lucid (precompile-generic-functions)
 		#+lcl4.1 (clos::flush-pv-caches)
-		#-cmu
+		#-(or cmu sbcl)
 		(pvs::bdd_init)
 		(pvs::load-prelude)
 		#+allegro
@@ -263,7 +269,7 @@
      :components ((:file "hashfn")
 		  #+allegro
 		  (:file "file-utils")
-		  #+cmu
+		  #+(or cmu sbcl)
 		  (:file "file-utils-cmu")))
    (:module language
      :source-pathname "src/"
@@ -286,7 +292,7 @@
 		  (:file "optimize")
 		  (:file "makes" :depends-on ("macros"))
 		  (:file "parse" :depends-on ("macros"))
-		  #-allegro
+		  #-(or allegro sbcl)
 		  (:file "md5")
 		  (:file "context")
 		  (:file "pp")
@@ -361,16 +367,16 @@
      :depends-on (typechecker))
    (:module bdd
      :source-pathname "BDD"
-     :components (#-cmu
+     :components (#-(or cmu sbcl)
 		  (:file "bdd")
-		  #+cmu
+		  #+(or cmu sbcl)
 		  (:file "bdd-cmu"))
      :depends-on (proof-checker))
    (:module mu-simplifier
      :source-pathname "BDD"
-     :components (#-cmu
+     :components (#-(or cmu sbcl)
 		  (:file "mu")
-		  #+cmu
+		  #+(or cmu sbcl)
 		  (:file "mu-cmu")
 		  ;;(:file "strategies")
 		  )
@@ -391,7 +397,7 @@
 		  (:file "defattach")
 		  (:file "eval")
 		  (:file "pvsio")))
-   #-cmu
+   #-(or cmu sbcl)
    (:module ws1s
 	    :source-pathname "src/WS1S/lisp"
 	    :components ((:file "dfa-foreign")
