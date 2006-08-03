@@ -1,6 +1,24 @@
 dnl PVS autoconf input
 dnl davesc Feb 2001
-dnl   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
+dnl --------------------------------------------------------------------
+dnl PVS
+dnl Copyright (C) 2006, SRI International.  All Rights Reserved.
+
+dnl This program is free software; you can redistribute it and/or
+dnl modify it under the terms of the GNU General Public License
+dnl as published by the Free Software Foundation; either version 2
+dnl of the License, or (at your option) any later version.
+
+dnl This program is distributed in the hope that it will be useful,
+dnl but WITHOUT ANY WARRANTY; without even the implied warranty of
+dnl MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+dnl GNU General Public License for more details.
+
+dnl You should have received a copy of the GNU General Public License
+dnl along with this program; if not, write to the Free Software
+dnl Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+dnl --------------------------------------------------------------------
+
 
 dnl make sure we are using a recent autoconf version
 AC_PREREQ(2.52)
