@@ -1,3 +1,7 @@
+ifneq (,)
+This makefile requires GNU Make.
+endif
+
 BDD = ../mona/BDD
 DFA = ../mona/DFA
 UTILS = ../mona/Mem
@@ -9,6 +13,11 @@ CFLAGS += -D_POSIX_SOURCE -DSYSV $(INCLUDES)
 XCFLAGS = -O
 SHELL = /bin/sh
 VPATH = ..:../mona/BDD:../mona/DFA:../mona/Mem
+
+CCVERSION = $(shell $(CC) -dumpversion | cut -b 1)
+ifeq ($(shell if [ "$(CCVERSION)" != "3" ]; then echo OK; fi),OK)
+$(error "gcc must be version 3 to compile Mona")
+endif
 
 obj  = analyze.o prefix.o product.o \
        quotient.o basic.o external.o \
