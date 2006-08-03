@@ -219,10 +219,6 @@
 				     *pvs-path* "/src/utils/" platform))
 			 (bddpath (concatenate 'string
 				    *pvs-path* "/BDD/" platform))
-			 (icspath (concatenate 'string
-				     *pvs-path*
-				     "/src/ics-interface/"
-				     platform))
 			 #-macosx
 			 (ws1spath (concatenate 'string
 				     *pvs-path* "/src/WS1S/" platform)))
@@ -232,10 +228,7 @@
 			    bddpath *load-foreign-extension*))
 		    #-macosx
 		    (load (format nil "~a/ws1s.~a"
-			    ws1spath *load-foreign-extension*))
-		    (ignore-errors
-		      (load (format nil "~a/ics_lisp.~a"
-			      icspath *load-foreign-extension*))))
+			    ws1spath *load-foreign-extension*)))
 		  (setq *pvs-system-loaded* t))
   :finally-do (progn
 		#+lucid (precompile-generic-functions)
