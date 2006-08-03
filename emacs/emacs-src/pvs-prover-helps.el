@@ -5,49 +5,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Sun May 28 22:20:17 1995
 ;; Update Count    : 127
-;; Status          : Beta Testing 
-;; 
-;; HISTORY
-;; 3-May-1995		Sam Owre	
-;;    Last Modified: Sun Apr 30 13:38:17 1995 #117 (Sam Owre)
-;;    Modified to take out the cmh- prefix, added highlighting for Emacs19,
-;;    modified key bindings somewhat, and added a couple of functions.
-;; 8-Aug-1994           Carl Witty
-;;    Made it fetch the current list of prover commands from Lisp,
-;;    to allow for user-defined strategies, etc.  Made various commands
-;;    that read tokens from the buffer work from the middle of the token,
-;;    as well as from the beginning.  Misc. bug fixes.  Made proof
-;;    single-stepping work better.
-;;    Version 2.4.
-;; 8-Oct-1993		C. Michael Holloway	
-;;    Last Modified: Fri Oct  8 14:09:28 1993 #113 (C. Michael Holloway)
-;;    Added commands for do-rewrite and inst?
-;; 28-Jul-1993		C. Michael Holloway	
-;;    Last Modified: Fri Jul  9 13:21:51 1993 #103 (C. Michael Holloway)
-;;    Improved minibuffer prompts for some commands
-;; 9-Jul-1993		C. Michael Holloway	
-;;    Last Modified: Fri Jul  9 08:18:24 1993 #98 (C. Michael Holloway)
-;;    Fixed bug in pvs-typepred.  Modified pvs-expand to handle
-;;    infix operators.  Version 2.3.1
-;; 7-Jul-1993		C. Michael Holloway	
-;;    Last Modified: Wed Jul  7 12:31:35 1993 #90 (C. Michael Holloway)
-;;    Started experimenting with commands to step through an Edit Proof
-;;    buffer.  Version 2.3.x.
-;; 6-Jul-1993		C. Michael Holloway	
-;;    Last Modified: Tue Jul  6 14:11:36 1993 #88 (C. Michael Holloway)
-;;    Added lots of new commands, rearranged key bindings, eliminated
-;;    short names, reordered function definitions.
-;;    Version 2.2.   Sent to SRI.
-;; 2-Jul-1993		C. Michael Holloway	
-;;    Last Modified: Fri Jul  2 11:56:35 1993 #44 (C. Michael Holloway)
-;;    Added command for skosimp. 
-;; 1-Jul-1993		C. Michael Holloway	
-;;    Last Modified: Thu Jul  1 10:29:57 1993 #37 (C. Michael Holloway)
-;;    Added commands for postpone, lift-if, split, auto-rewrite-theory,
-;;    typered, undo, lemma.  Version 2.1.x
-;; 25-Jun-1993		C. Michael Holloway	
-;;    Last Modified: Fri Jun 25 08:47:20 1993 #25 (C. Michael Holloway)
-;;    Initial release to PVS mailing list.  Version 2.0
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;
