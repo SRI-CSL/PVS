@@ -1637,6 +1637,7 @@
 	(find-update-commontypes expr))))
 
 (defun find-update-commontypes (expr)
+  (assert (singleton? (ptypes (expression expr))))
   (mapcar #'(lambda (ptype)
 	      (find-update-commontype
 	       ptype (expression expr) (assignments expr)))
@@ -2085,7 +2086,7 @@
 
 (defun typecheck-assignments (assigns type)
   (when assigns
-     (let ((assign (car assigns)))
+    (let ((assign (car assigns)))
       (when (and (maplet? assign)
 		 (cdr (arguments assign)))
 	(type-error assign "Maplet assignment may not be nested"))
@@ -2139,8 +2140,24 @@
 ;    (mapc #'(lambda (a d) (typecheck* a d nil nil))
 ;	  args (domain ftype))
     (mapc #'(lambda (a) (typecheck* a nil nil nil)) (car args))
-    (when (cdr args)
-      (typecheck-ass-args (cdr args) (range ftype) maplet?))))
+    (let ((dtypes (if (singleton? (car args))
+		      (list (domain ftype))
+		      (domain-types ftype))))
+      (unless (= (length (car args)) (length dtypes))
+	(type-error (car args) "Wrong number of arguments"))
+      (check-compatible-funtype-ass-args (car args) dtypes)
+      (when (cdr args)
+	(typecheck-ass-args (cdr args) (range ftype) maplet?)))))
+
+(defun check-compatible-funtype-ass-args (args dtypes)
+  (when args
+    (let* ((dty (dep-binding-type (car dtypes)))
+	   (ctypes (remove-if (complement
+			       #'(lambda (pty) (compatible? pty dty)))
+		     (ptypes (car args)))))
+      (unless ctypes
+	(type-incompatible (car args) (ptypes (car args)) dty))
+      (check-compatible-funtype-ass-args (cdr args) (cdr dtypes)))))
 
 (defmethod typecheck-ass-args (args (type datatype-subtype) maplet?)
   (let ((accs (collect-datatype-assign-arg-accessors type (caar args))))
