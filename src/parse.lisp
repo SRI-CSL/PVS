@@ -427,6 +427,7 @@
 					      pformals
 					      pdecl
 					      tdecl)))
+		 #+pvsdebug ; Careful! nil is a valid PVS id
 		 (assert (every #'(lambda (d)
 				    (or (not (const-decl? d))
 					(id d)))
@@ -782,7 +783,7 @@
 					   (ds-vid (car idops))
 					   (xt-idop (car idops))))))
 			      decl))))
-	(assert (id ndecl))
+	;;(assert (id ndecl))
 	(when (and (slot-exists-p ndecl :declared-type)
 		   (declared-type ndecl)
 		   (not (eq (sim-term-op dtype) 'NO-TYPE-EXPR))
