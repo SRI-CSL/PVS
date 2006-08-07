@@ -539,6 +539,7 @@ $(pvsfull) : $(pvs-make-files) $(ess) $(ff-files) $(lisp-files) \
                                ))'
 	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(bindir)/full
 	cp $(PVSPATH)BDD/bdd-cmu-load.lisp $(PVSPATH)BDD/mu-cmu-load.lisp $(bindir)/full
+	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)/full
 	/bin/echo "#!/bin/sh" > $(pvsfull)
 	/bin/echo "$(LISPEXE) -core \`dirname \$$0\`/\`basename \$$0\`.core \$*" >> $(pvsfull)
 	chmod a+x $(pvsfull)
@@ -574,6 +575,7 @@ ${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${libics-file} ${lisp-files} \
                                      (format t \"~a\" err)) \
                                    (setq code 0)))) \
                         (excl:exit code)))"
+	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)/full
 	umask 002; $(ETAGS) ${lisp-files} ${pvs-emacs-src}
 	touch $(PVSPATH)src/pvs-lexer.${LISPEXT}
 	umask 002; \
@@ -595,6 +597,7 @@ ${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${libics-file} ${lisp-files} \
                                      (format t \"~a\" err)) \
                                    (setq code 0)))) \
                         (excl:exit code)))"
+	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)/runtime
 	umask 002; $(ETAGS) ${lisp-files} ${pvs-emacs-src}
 	touch $(PVSPATH)src/pvs-lexer.${LISPEXT}
 	umask 002; \
@@ -711,7 +714,7 @@ ${emacs19-tar} : $(emacs19-files)
 ${source-tar} : ${pvs-make-files} ${configure-files} \
                 src/make-allegro-pvs.lisp.in src/make-pvs.lisp.in \
                 src/metering.lisp src/utils/utils-ld-table \
-                src/utils/file_utils.c wish \
+                src/utils/file_utils.c src/utils/b64.c wish \
                 ${ff-files} ${ess} ess/README ess/allegro-runtime.lisp.in \
                 ess/dist-ess.lisp.in ess/term/terms/rel/*.txt \
                 ${pvs-parser-in} ${lisp-files} \
