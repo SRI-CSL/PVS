@@ -2274,6 +2274,9 @@
 		      (cons new-elt
 			    (remove cur-elt (current-known-subtypes))))))))))))
 
+(defmethod dependent-known-subtypes ((dt recursive-type))
+  nil)
+
 (defun merge-known-subtypes-elts (cur-elt new-elt)
   (merge-known-subtypes-elts* (reverse new-elt) (cdr cur-elt)))
 
