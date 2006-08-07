@@ -291,7 +291,9 @@ pvs-strategies files.")
 
 
 (defun write-context ()
-  (when *pvs-context-changed*
+  (when (or *pvs-context-changed*
+	    (and (pvs-context-entries)
+		 (not (file-exists-p (context-pathname)))))
     (if *pvs-context-writable*
 	(let ((context (make-pvs-context)))
 	  (multiple-value-bind (value condition)
@@ -918,7 +920,7 @@ pvs-strategies files.")
 		  (and (char= (read-char in) #\()
 		       (char= (read-char in) #\")))
 		(ignore-lisp-errors (with-open-file (in ctx-file) (read in)))
-		(fetch-object-from-file ctx-file))
+		(ignore-lisp-errors (fetch-object-from-file ctx-file)))
 	  (cond (error
 		 (pvs-message "PVS context unreadable - resetting")
 		 (pvs-log "  ~a" error)
@@ -928,7 +930,9 @@ pvs-strategies files.")
 		 (pvs-message "PVS context has duplicate entries - resetting")
 		 (setq *pvs-context* (list *pvs-version*))
 		 (write-context))
-		((same-major-version-number (car context) *pvs-version*)
+		(t ;;(same-major-version-number (car context) *pvs-version*)
+		 ;; Hopefully we are backward compatible between versions
+		 ;; 3 and 4.
 		 (setq *pvs-context* context)
 		 (cond ((listp (cadr context))
 			(load-prelude-libraries (cadr context))
@@ -948,15 +952,7 @@ pvs-strategies files.")
 		       (t (pvs-message "PVS context was not written correctly ~
                                       - resetting")
 			  (pvs-log "  ~a" error)
-			  (setq *pvs-context* (list *pvs-version*)))))
-		((make-new-context-from-old context)
-		 (load-prelude-libraries (cadr *pvs-context*)))
-		(t (if (pvs-y-or-n-p "Context is unrecognizable - rename it? ")
-		       (unless (ignore-errors
-				 (rename-file *context-name* ".pvscontext-old"))
-			 (pvs-message "Cannot rename .pvscontext")
-			 (change-context nil))
-		       (change-context nil)))))
+			  (setq *pvs-context* (list *pvs-version*)))))))
 	(setq *pvs-context* (list *pvs-version*))))
   nil)
 
