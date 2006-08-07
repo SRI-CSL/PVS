@@ -447,17 +447,33 @@
 		     (dolist (ce (pvs-context-entries))
 		       (typecheck-file (ce-file ce) nil nil nil t))
 		     (save-context)
+		     ;; We have to do the generated-by theories first, or
+		     ;; the typechecked? test fails (Bug # 894)
 		     (maphash
 		      #'(lambda (id th)
-			  (cond ((typechecked? th)
-				 (change-to-library-class th lib-ref)
-				 (update-prelude-library-context th)
-				 (when (filename th)
-				   (pushnew (filename th) loaded-files
-					    :test #'string=)))
-				(t (type-error id
+			  (when (generated-by th)
+			    (cond ((typechecked? th)
+				   (change-to-library-class th lib-ref)
+				   (update-prelude-library-context th)
+				   (when (filename th)
+				     (pushnew (filename th) loaded-files
+					      :test #'string=)))
+				  (t (type-error id
 				       "Error in loading prelude file ~a~a"
-				       lib-path (filename th)))))
+				       lib-path (filename th))))))
+		      *pvs-modules*)
+		     (maphash
+		      #'(lambda (id th)
+			  (unless (generated-by th)
+			    (cond ((typechecked? th)
+				   (change-to-library-class th lib-ref)
+				   (update-prelude-library-context th)
+				   (when (filename th)
+				     (pushnew (filename th) loaded-files
+					      :test #'string=)))
+				  (t (type-error id
+				       "Error in loading prelude file ~a~a"
+				       lib-path (filename th))))))
 		      *pvs-modules*)
 		     (setf (gethash lib-ref *prelude-libraries*)
 			   (list *pvs-files* *pvs-modules*)))
