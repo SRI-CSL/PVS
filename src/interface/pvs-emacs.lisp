@@ -913,3 +913,9 @@
 (defun write-to-temp-file (contents &optional escape)
   (with-output-to-temp-file
     (write contents :escape escape :pretty nil :level nil :length nil)))
+
+(in-package :ilisp)
+(export '(ilisp-eval))
+(defun ilisp-eval (form package filename)
+  (let ((*package* (find-package package)))
+    (eval (read-from-string form))))
