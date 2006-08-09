@@ -744,33 +744,26 @@ exiting PVS, buffers not saved will be deleted."
 
 (defvar pvs-last-email-address "pvs-bugs@csl.sri.com")
 (defvar pvs-email-info-string
-  "\n\nType your message and C-c C-c to send.\nThe PVS files will be sent separately.")
+  "\n\nType your message and C-c C-c to send.\nThe specified PVS files will be included as a (base64, tar) MIME attachment.")
 
 (defpvs rmail-pvs-files mail-files (file)
-  "Unpack files mailed with smail-pvs-files.
-
-To use this, first create a new directory in which to install the files,
-and using your favorite mailer, copy the files to the new directory with
-extensions corresponding to the message order, e.g., mail.01, mail.02,
-etc.  If there is just one file, leave the extension off.  Then invoke
-M-x rmail-pvs-files and give the root file name when prompted (e.g., mail)."
-  (interactive "FRoot name of PVS mail files: ")
-  (let ((default-directory (pathname-directory file)))
-    (shell-command (format "untarmail %s*"
-		       (file-name-nondirectory file)))))
+  "No longer used."
+  (interactive)
+  (message "This command is no longer used - just use your own mail program"))
 
 (defpvs smail-pvs-files mail-files (pvs-file libraries-p to cc subject)
-  "Dump files in transitive closure of import lists to a tar file, uuencode
-it, and mail it using tarmail.
+  "Dump files in transitive closure of import lists to a tar file, base64
+it, and mail it along with a message as a MIME attachment.
 
-The smail-pvs-files command prompts for a PVS file name, an email address,
-a CC address, and a subject.  It then creates a tar file containing all
-the files needed to recreate the context of a given file.  It then
-uuencodes the file and mails it using tarmail.  Included in the tar
-file are the specification files, the associated proof files, the
-.pvscontext, pvs-strategies, and pvs-tex.sub files, and a newly created
-subdirectory named PVSHOME that contains the .pvsemacs, pvs-strategies,
-and pvs-tex.sub files from your home directory."
+The smail-pvs-files command prompts for a PVS file name, an email address, a
+CC address, and a subject.  It then opens up a simple mail buffer, where you
+maty write a message.  When finished, type C-c C-c to send it, along with a
+MIME-attached tar file containing all the files needed to recreate the context
+of a given file, including library files, if desired.  Included in the tar
+file are the specification files, the associated proof files, the .pvscontext,
+pvs-strategies, and pvs-tex.sub files, and a newly created subdirectory named
+PVSHOME that contains the .pvs.lisp, .pvsemacs, pvs-strategies, and
+pvs-tex.sub files from your home directory."
   (interactive (append (complete-pvs-file-name
 			"Name of root file (CR for this one): ")
 		       (list (y-or-n-p "Include libraries? "))
@@ -792,25 +785,28 @@ and pvs-tex.sub files from your home directory."
   (save-excursion
     (insert pvs-email-info-string))
   (let* ((lkeymap (copy-keymap (current-local-map)))
-	 (file-string (pvs-dump-files-string pvs-file libraries-p))
-	 (cmd (format "tarmail -b 100000 %s \"%s\" %s"
-		  to subject file-string)))
+	 (file-string (pvs-dump-files-string pvs-file libraries-p)))
     (define-key lkeymap "\C-c\C-c"
       (` (lambda ()
 	   (interactive)
-	   (pvs-mail-send-and-exit (, cmd)))))
+	   (pvs-mail-send-and-exit (, to) (, subject) (, file-string)))))
     (use-local-map lkeymap)))
 
-(defun pvs-mail-send-and-exit (cmd)
+(defun pvs-mail-send-and-exit (to subject file-string)
   (let ((homedir (or (pvs-copy-home-directory-files) "")))
     (goto-char (point-min))
     (when (search-forward pvs-email-info-string nil t)
       (delete-region (match-beginning 0) (match-end 0)))
-    (goto-char (point-max))
-    (insert (format "\n\n Patch version: %s" (get-pvs-version-information)))
-    (mail-send-and-exit nil)
-    (let ((default-directory *pvs-current-directory*))
-      (shell-command (format "%s %s" cmd homedir)))))
+    (goto-char (point-min))
+    (search-forward (concat "\n" mail-header-separator "\n"))
+    (let* ((body (buffer-substring-no-properties (point) (point-max)))
+	   (info (format "\n\n Patch version: %s"
+		     (get-pvs-version-information)))
+	   (message (concat body info)))
+      (let ((default-directory *pvs-current-directory*))
+	(shell-command (format "tar-b64-mail %s \"%s\" \"%s\" %s %s"
+			   to subject message file-string homedir))))
+    (mail-bury nil)))
 
 
 ;;; Returns a string that expands to the files to be dumped, for example
