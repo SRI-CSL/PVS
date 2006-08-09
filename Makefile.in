@@ -539,7 +539,7 @@ $(pvsfull) : $(pvs-make-files) $(ess) $(ff-files) $(lisp-files) \
                                ))'
 	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(bindir)/full
 	cp $(PVSPATH)BDD/bdd-cmu-load.lisp $(PVSPATH)BDD/mu-cmu-load.lisp $(bindir)/full
-	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)/full
+	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
 	/bin/echo "#!/bin/sh" > $(pvsfull)
 	/bin/echo "$(LISPEXE) -core \`dirname \$$0\`/\`basename \$$0\`.core \$\*" >> $(pvsfull)
 	chmod a+x $(pvsfull)
@@ -575,7 +575,7 @@ ${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${libics-file} ${lisp-files} \
                                      (format t \"~a\" err)) \
                                    (setq code 0)))) \
                         (excl:exit code)))"
-	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)/full
+	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
 	umask 002; $(ETAGS) ${lisp-files} ${pvs-emacs-src}
 	touch $(PVSPATH)src/pvs-lexer.${LISPEXT}
 	umask 002; \
@@ -597,7 +597,7 @@ ${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${libics-file} ${lisp-files} \
                                      (format t \"~a\" err)) \
                                    (setq code 0)))) \
                         (excl:exit code)))"
-	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)/runtime
+	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
 	umask 002; $(ETAGS) ${lisp-files} ${pvs-emacs-src}
 	touch $(PVSPATH)src/pvs-lexer.${LISPEXT}
 	umask 002; \
@@ -669,7 +669,7 @@ release-notes = doc/release-notes/pvs-release-notes.info \
                 doc/release-notes/pvs-release-notes.pdf
 
 system-files = README pvs pvsio pvs-tex.sub pvs.sty bin/relocate \
-               bin/pvs-platform bin/tarmail bin/untarmail Examples \
+               bin/pvs-platform bin/tar-b64-mail Examples \
                lib/prelude.pvs lib/prelude.prf lib/list_adt.pvs \
                lib/ordstruct_adt.pvs lib/character_adt.pvs \
 	       lib/union_adt.pvs lib/lift_adt.pvs \
@@ -699,11 +699,11 @@ emacs19-files = emacs/emacs19
 lib/strategies.lisp : src/prover/strategies.lisp
 	(cd lib; ln -sf ../src/prover/strategies.lisp strategies.lisp)
 
-${runtime-image-tar} : ${pvsrt}
-	$(TAR) $(TARFLAGS) -f ${runtime-image-tar} ${runtime-image-files}
+${runtime-image-tar} : ${pvsrt} ${bindir}/b64
+	$(TAR) $(TARFLAGS) -f ${runtime-image-tar} ${runtime-image-files} ${bindir}/b64
 
-${full-image-tar} : ${pvsfull}
-	$(TAR) $(TARFLAGS) -f ${full-image-tar} ${full-image-files}
+${full-image-tar} : ${pvsfull} ${bindir}/b64
+	$(TAR) $(TARFLAGS) -f ${full-image-tar} ${full-image-files} ${bindir}/b64
 
 ${system-tar} : ${system-files}
 	$(TAR) $(TARFLAGS) -f ${system-tar} ${system-files}
