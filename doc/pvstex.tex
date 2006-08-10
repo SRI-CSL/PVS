@@ -1,0 +1,205 @@
+%\input{/project/pvs/doc/prelude}
+\def\labelitemii{$\circ$}
+\def\labelitemiii{$\star$}
+\def\labelitemiv{$\diamond$}
+\newcommand{\tcc}{{\small\small TCC}}
+\newcommand{\tccs}{\tcc s}
+
+%\renewcommand{\memo}[1]{\mbox{}\par\vspace{0.25in}\noindent\fbox{\parbox{.95\linewidth}{{\bf Memo: }#1}}\vspace{0.25in}}
+
+\newcommand{\eg}{{\em e.g.\/},}
+\newcommand{\ie}{{\em i.e.\/},}
+
+\newcommand{\pvs}{PVS}
+
+\newcommand{\ch}{\choice}
+\newcommand{\rsv}[1]{{\rm\tt #1}}
+
+\newcommand{\lpvstheory}[3]{\figurehead{\hozline\smaller\smaller\begin{alltt}}%
+                           \figuretail{\end{alltt}\vspace{-0in}\hozline}%
+                           \figurelabel{#3}\figurecap{#2}%
+                           \begin{longfigure}\input{#1}\end{longfigure}}
+
+\newcommand{\pvstheory}[3]
+  {\begin{figure}[htb]\begin{boxedminipage}{\textwidth}%
+   {\smaller\smaller\begin{alltt} \input{#1}\end{alltt}}\end{boxedminipage}%
+   \caption{#2}\label{#3}\end{figure}}
+
+\newcommand{\bpvstheory}[3]
+  {\begin{figure}[b]\begin{boxedminipage}{\textwidth}%
+   {\smaller\smaller\begin{alltt} \input{#1}\end{alltt}}\end{boxedminipage}%
+   \caption{#2}\label{#3}\end{figure}}
+
+\newcommand{\spvstheory}[1]
+  {\vspace{0.1in}\par\noindent\begin{boxedminipage}{\textwidth}%
+   {\smaller\smaller\begin{alltt} \input{#1}\end{alltt}}\end{boxedminipage}\vspace{0.1in}%
+   }
+%\newenvironment{spvstext}%
+%  {\vspace{0.1in}\par\noindent\begin{boxedminipage}{\textwidth}%
+%   \smaller\smaller\begin{alltt}}%
+%  {\end{alltt}\end{boxedminipage}\vspace{0.1in}%
+%   }
+
+
+%  {\begin{boxedminipage}{\textwidth}{\smaller\smaller\begin{alltt}#1\end{alltt}}\end{boxedminipage}}
+%\newenvironment{spvstheory}{\par\noindent\begin{boxedminipage}{\textwidth}\smaller\smaller\begin{alltt}}{\end{alltt}\end{boxedminipage}}
+
+\newenvironment{pvsex}%
+  {\setlength{\topsep}{0in}\smaller\begin{alltt}}%
+  {\end{alltt}}
+
+\newcommand{\pvsbnf}[2]
+  {\begin{figure}[htb]\begin{boxedminipage}{\textwidth}%
+   \input{#1}\end{boxedminipage}\caption{#2}\label{#1}\end{figure}}
+
+\newcommand{\spvsbnf}[1]
+  {\begin{boxedminipage}{\textwidth}\input{#1}\end{boxedminipage}}
+
+\newcommand{\pidx}[1]{{\rm #1}} % primary index entry
+\newcommand{\sidx}[1]{{\rm #1}} % secondary index entry
+\newcommand{\cmdindex}[1]{\index{#1@\cmd{#1}}}
+\newcommand{\icmd}[1]{\cmd{#1}\cmdindex{#1}}
+\newcommand{\iecmd}[1]{\ecmd{#1}\cmdindex{#1}}
+\newcommand{\buf}[1]{\texttt{#1}}
+\newcommand{\ibuf}[1]{\buf{#1}\index{#1 buffer@\buf{#1} buffer}\index{buffers!\buf{#1}}}
+
+\newenvironment{pvscmds}%
+  {\par\noindent\smaller%
+   \begin{tabular*}{\textwidth}{|l@{\extracolsep{\fill}}l@{\extracolsep{\fill}}l|}\hline%
+     {\it Command} & {\it Aliases} & {\it Function}\\ \hline}%
+  {\hline\end{tabular*}\vspace{0.1in}}
+
+\newenvironment{pvscmdsna}%
+  {\par\noindent\smaller%
+   \begin{tabular*}{\textwidth}{|l@{\extracolsep{\fill}}l|}\hline%
+     {\it Command} & {\it \,\,Function}\\ \hline}%
+  {\hline\end{tabular*}\vspace{0.1in}}
+
+\newcommand{\cmd}[1]{{\tt #1}}
+\newcommand{\ecmd}[1]{{\tt M-x #1}}
+
+\newcommand{\latex}{\LaTeX}                  %  LaTeX
+\newcommand{\sun}{{S{\smaller\smaller UN}}}                 %  Sun
+\newcommand{\sparc}{{S{\smaller\smaller PARC}}}             %  Sparc
+\newcommand{\sunos}{{S{\smaller\smaller UN}OS}}             %  SunOS
+\newcommand{\solaris}{{\em Solaris\/}}        %  Solaris
+\newcommand{\sunview}{{S{\smaller\smaller UN}V{\smaller\smaller IEW}}} %SunView
+\newcommand{\unix}{{U{\smaller\smaller NIX}}}               %  Unix
+\newcommand{\lisp} {{\sc Lisp}}              %  Lisp
+\newcommand{\gnu}{{Gnu Emacs}}           %  Gnu Emacs
+\newcommand{\gnuemacs}{{Gnu Emacs}}      %  Gnu Emacs
+\newcommand{\emacsl}{{Emacs-Lisp}}       %  Emacs Lisp
+\newcommand{\shell}{{\sc Csh}}               %  C-shell
+
+\newcommand{\update}[3]{#1\{#2\leftarrow #3\}}
+\newcommand{\interp}[3]{\cal{M}\dlb {\tt #1 : #2 }\drb #3}
+\newcommand{\myforall}[2]{(\forall{#1 .}\ #2)}
+\newcommand{\myexists}[2]{(\exists{#1 .}\ #2)}
+\newcommand{\mth}[1]{$ #1 $}
+\newcommand{\labst}[2]{(\lambda{#1}.\ #2)}
+\newcommand{\app}[2]{(#1\ #2)}
+\newcommand{\problem}[1]{{\bf Exercise: } {\em #1}}
+\newcommand{\rectype}[1]{[\# 1 \#]}
+\newcommand{\recttype}[1]{{\tt [\# 1 \#]}}
+\newcommand{\dlb}{\lbrack\!\lbrack}
+\newcommand{\drb}{\rbrack\!\rbrack}
+\newcommand{\cross}{\times}
+\newcommand{\key}[1]{{\tt #1}}
+\newcommand{\keyindex}[1]{\index{#1@\key{#1}}}
+\newcommand{\ikey}[1]{\key{#1}\keyindex{#1}}
+\newcommand{\keyword}[1]{{\smaller\texttt{#1}}}
+
+\newenvironment{keybindings}%
+  {\begin{center}\begin{tabular}{|l|l|}\hline Key & Function\\ \hline}%
+  {\hline\end{tabular}\end{center}}
+\def\rmif{\mbox{\bf if\ }}
+\def\rmiff{\mbox{\bf \ iff \ }}
+\def\rmthen{\mbox{\bf \ then }}
+\def\rmelse{\mbox{\bf \ else }}
+\def\rmend{\mbox{\bf end}}
+\def\rmendif{\mbox{\bf \ endif}}
+\def\rmotherwise{\mbox{\bf otherwise}}
+\def\rmwith{\mbox{\bf \ with\ }}
+\def\mapb{\char"7B\char"7B}
+\def\mape{\char"7D\char"7D}
+\def\setb{\char"7B}
+\def\sete{\char"7D}
+
+% ---------------------------------------------------------------------
+% Macros for little PVS sessions displayed in boxes.
+%
+% Usage: (1) \setcounter{sessioncount}{1} resets the session counter
+%
+%        (2) \begin{session*}\label{thissession}
+%             .
+%              < lines from PVS session >
+%             .
+%            \end{session*}
+%
+%            typesets the session in a numbered box in ALLTT mode.
+%
+%  session instead of session* produces unnumbered boxes
+%
+%  Author: John Rushby
+% ---------------------------------------------------------------------
+\newlength{\hsbw}
+\newenvironment{session}{\begin{flushleft}
+ \setlength{\hsbw}{\linewidth}
+ \addtolength{\hsbw}{-\arrayrulewidth}
+ \addtolength{\hsbw}{-\tabcolsep}
+ \begin{tabular}{@{}|c@{}|@{}}\hline 
+ \begin{minipage}[b]{\hsbw}
+% \begingroup\small\mbox{ }\\[-1.8\baselineskip]\begin{alltt}}{\end{alltt}\endgroup\end{minipage}\\ \hline
+ \begingroup\sessionsize\vspace*{1.2ex}\begin{alltt}}{\end{alltt}\endgroup\end{minipage}\\ \hline
+ \end{tabular}
+ \end{flushleft}}
+\newcounter{sessioncount}
+\setcounter{sessioncount}{0}
+\newenvironment{session*}{\begin{flushleft}
+ \refstepcounter{sessioncount}
+ \setlength{\hsbw}{\linewidth}
+ \addtolength{\hsbw}{-\arrayrulewidth}
+ \addtolength{\hsbw}{-\tabcolsep}
+ \begin{tabular}{@{}|c@{}|@{}}\hline 
+ \begin{minipage}[b]{\hsbw}
+ \vspace*{-.5pt}
+ \begin{flushright}
+ \rule{0.01in}{.15in}\rule{0.3in}{0.01in}\hspace{-0.35in}
+ \raisebox{0.04in}{\makebox[0.3in][c]{\footnotesize \thesessioncount}}
+ \end{flushright}
+ \vspace*{-.57in}
+ \begingroup\small\vspace*{1.0ex}\begin{alltt}}{\end{alltt}\endgroup\end{minipage}\\ \hline 
+ \end{tabular}
+ \end{flushleft}}
+\def\sessionsize{\footnotesize}
+\def\smallsessionsize{\small}
+\newenvironment{smallsession}{\begin{flushleft}
+ \setlength{\hsbw}{\linewidth}
+ \addtolength{\hsbw}{-\arrayrulewidth}
+ \addtolength{\hsbw}{-\tabcolsep}
+ \begin{tabular}{@{}|c@{}|@{}}\hline 
+ \begin{minipage}[b]{\hsbw}
+ \begingroup\smallsessionsize\mbox{ }\\[-1.8\baselineskip]\begin{alltt}}{\end{alltt}\endgroup\end{minipage}\\ \hline 
+ \end{tabular}
+ \end{flushleft}}
+\newenvironment{spec}{\begin{flushleft}
+ \setlength{\hsbw}{\textwidth}
+ \addtolength{\hsbw}{-\arrayrulewidth}
+ \addtolength{\hsbw}{-\tabcolsep}
+ \begin{tabular}{@{}|c@{}|@{}}\hline 
+ \begin{minipage}[b]{\hsbw}
+ \begingroup\small\mbox{
+}\\[-0.2\baselineskip]}{\endgroup\end{minipage}\\ \hline 
+ \end{tabular}
+ \end{flushleft}}
+\newcommand{\memo}[1]{\mbox{}\par\vspace{0.25in}%
+\setlength{\hsbw}{\linewidth}%
+\addtolength{\hsbw}{-2\fboxsep}%
+\addtolength{\hsbw}{-2\fboxrule}%
+\noindent\fbox{\parbox{\hsbw}{{\bf Memo: }#1}}\vspace{0.25in}}
+\newcommand{\nb}[1]{\mbox{}\par\vspace{0.25in}\setlength{\hsbw}{\linewidth}\addtolength{\hsbw}{-1.5ex}\noindent\fbox{\parbox{\hsbw}{{\bf Note: }#1}}\vspace{0.25in}}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 

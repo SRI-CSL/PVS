@@ -1,0 +1,153 @@
+%
+% dave_sc - bnf style for pvs grammar
+%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%% \bnf: An environment for expressing Baukus-Naar syntax descriptions. %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%
+%%%% bnf: LaTeX environment for Baukus-Naar syntax descriptions
+%%%%
+
+%\newenvironment{bnf}{\renewcommand{\arraystretch}{1.5}\begin{center}\it\begin{tabular}{lcl}}{\end{tabular}\rm\end{center}\renewcommand{\arraystretch}{1}}
+
+\newenvironment{bnf}%
+{\renewcommand{\arraystretch}{1.5}\small\it\begin{tabular}{lcl}}%
+{\end{tabular}\rm\renewcommand{\arraystretch}{1}}
+
+\def\sbnf{\@bsphack
+          \@ifundefined{mbnf}
+              {\begingroup\def\production##1##2{}}
+              {\begingroup\def\production##1##2{
+                                 \@bsphack
+                                 \begingroup
+                                    \@sanitize
+                                    \@wrprod\@bnffile{##1}{##2}}}}
+\def\endsbnf{\endgroup\@esphack}
+
+
+%%%%
+%%%% makebnf: should be included in the preamble if an section or appendix is
+%%%%    to be included containing the set of all productions.  Including this
+%%%%    command will cause a file jobname.syn to be written containing all bnf
+%%%%    productions listed in the document.
+%%%%
+\def\makebnf{\if@filesw \newwrite\@bnffile
+  \immediate\openout\@bnffile=\jobname.syn
+  \xdef\mbnf{1} 
+  \def\production##1##2{\begingroup
+               \@sanitize
+               \@wrprod\@bnffile{##1}{##2}
+               \@production{##1}{##2}}
+  \typeout{Writing bnf file \jobname.syn }\fi}
+
+
+%%%%
+%%%% @preamblecmds is redefined to protect the user from accidentially placing
+%%%%    makebnf anywhere except the preamble.
+%%%%
+\def\@preamblecmds{\do\document \do\documentstyle \do\@documentstyle
+   \do\@options \do\@preamblecmds \do\@optionlist \do\@optionfiles
+   \do\nofiles \do\includeonly \do\makeindex \do\makeglossary
+   \do\makebnf}
+
+%%%%
+%%%% unexpandedwrite: writes to file #1 the exact image of #2 without expansion.
+%%%%
+\long\def\unexpandedwrite#1#2{\def\finwrite{\write#1}%
+  {\aftergroup\finwrite\aftergroup{\sanitize#2\endsanity}}}
+\def\sanitize{\futurelet\next\sanswitch}
+\def\\{\let\stoken= } \\
+\def\sanswitch{\ifx\next\endsanity
+  \else\ifcat\noexpand\next\stoken\aftergroup\space\let\next=\eat
+   \else\ifcat\noexpand\next\bgroup\aftergroup{\let\next=\eat
+    \else\ifcat\noexpand\next\egroup\aftergroup}\let\next=\eat
+     \else\let\next=\copytoken\fi\fi\fi\fi \next}
+\def\eat{\afterassignment\sanitize \let\next= }
+\long\def\copytoken#1{\ifcat\noexpand#1\relax\aftergroup\noexpand
+  \else\ifcat\noexpand#1\noexpand~\aftergroup\noexpand\fi\fi
+  \aftergroup#1\sanitize}
+\def\endsanity\endsanity{}
+
+%%%%
+%%%% @wrprod: actually writes the production to the given file.
+%%%%
+\def\@wrprod#1#2#3{
+        \endgroup\unexpandedwrite#1{#2 & \is & #3 \\}
+        \if@nobreak \ifvmode\nobreak\fi\fi}
+    
+%%%%
+%%%% production and @production: format a production to be an array entry
+%%%%    with the proper array separators and line-terminators.
+%%%%
+\def\hlink #1{\hyperlink{#1}{#1}}
+\def\htarget #1{\hypertarget{#1}{#1}}
+\def\production#1#2{\htarget{#1} & \is & #2 \\}
+\def\@production#1#2{\htarget{#1} & \is & #2 \\}
+
+%%%%
+%%%% printbnf: to be placed in the document (after the final occurance of
+%%%%    a bnf production entry) where the total bnf productions are to be
+%%%%    included.
+%%%%
+\def\printbnf{
+            \begingroup
+%               \@ifundefined{mbnf}{}{\immediate\closeout\@bnffile}
+                \begin{bnf}
+                   \@input{\jobname.bnf}
+                \end{bnf}
+              \endgroup}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%           New Commands for use with the BNF environment           %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%
+%%%%\is: the production symbol (normally `::=')
+%%%%
+\newcommand {\is} {$::=$}
+
+%%%%
+%%%% \choice: inserts the BNF "or" symbol into the text
+%%%%
+\newcommand {\choice} {$\ \mid\ $}
+
+%%%%
+%%%% \opt: encloses its argument in square brackets (optional)
+%%%%
+\newcommand {\opt}[1]{{$\,[\,$#1$\,]\,$}}
+
+%%%%
+%%%% \brc: encloses its argument in curly braces (BNF grouping)
+%%%%
+\newcommand {\brc}[1]{{$\,\{\,$#1$\,\}\,$}}
+
+%%%%
+%%%% \rep: argument followed by a asterix (0 or more repetitions)
+%%%%
+\newcommand {\rep}[1]{{{#1}\,$^{*}$}}
+
+%%%%
+%%%% \reps: like rep, but second argument to desingate separator
+%%%%
+\newcommand {\reps}[2]{{\,{#1}\,$^{*}_{\,\lit{#2}}$}}
+
+
+%%%%
+%%%% \ite: argument followed by a plus
+%%%%
+\newcommand {\ite}[1]{{{#1}\,$^{+}$}}
+
+%%%%
+%%%% \ites: like ite except a comma as separator is included
+%%%%
+\newcommand {\ites}[2]{{{#1}\,$^{+}_{\,\lit{\textstyle #2}}$}}
+
+%%%%
+%%%% \lit: inserts a literal character into a bnf description
+%%%%
+\newcommand {\lit}[1]{{\tt #1}}
+
