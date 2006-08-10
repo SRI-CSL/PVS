@@ -137,86 +137,48 @@ endif
 endif
 endif
 
-# Determine which versions of Emacs are available
+ifeq ($(CMULISP_HOME),)
+$(error "CMULISP_HOME must be set to build cmulisp version")
+endif
+
+ifndef EMACS
 EMACS = "$(shell which emacs)"
-XEMACS = "$(shell which xemacs)"
+endif
+ifndef EMACS
+EMACS = "$(shell which xemacs)"
+endif
+ifndef EMACS
+$(error "No Emacs or Xemacs found")
+endif
 
-emacsversion = $(shell expr "`emacs --version 2> /dev/null`" \
+emacsversion = $(shell expr "`$(EMACS) --version 2> /dev/null`" \
                             : '[^X]*\(X\?Emacs [0-9]\+\)')
-xemacsversion = $(shell expr "`xemacs --version 2> /dev/null`" \
-                            : '[^X]*\(X\?Emacs [0-9]\+\)')
 
-ifeq ("$(emacsversion)", "Emacs 21")
-EMACS20 = "$(shell which emacs)"
+ifeq ($(emacsversion),Emacs 21)
+EMACSSUBDIR = emacs20
 else
-emacs21version = $(shell expr "`emacs-21.2 --version 2> /dev/null`" \
-                              : '[^X]*\(X\?Emacs [0-9]\+\)')
-ifeq ("$(emacsversion)", "Emacs 20")
-EMACS20 = "$(shell which emacs)"
+ifeq ($(emacsversion),XEmacs 21)
+EMACSSUBDIR = xemacs21
 else
-emacs20version = $(shell expr "`emacs-20.3 --version 2> /dev/null`" \
-                              : '[^X]*\(X\?Emacs [0-9]\+\)')
-ifeq ("$(emacs20version)", "Emacs 20")
-EMACS20 = "$(shell which emacs-20.3)"
-endif
-endif
-endif
-
-ifeq ("$(emacsversion)", "Emacs 19")
-EMACS19 = "$(shell which emacs)"
+ifeq ($(emacsversion),Emacs 20)
+EMACSSUBDIR = emacs20
 else
-emacs19version = $(shell expr "`emacs-19.34 --version 2> /dev/null`" \
-                              : '[^X]*\(X\?Emacs [0-9]\+\)')
-ifeq ("$(emacs19version)", "Emacs 19")
-EMACS19 = "$(shell which emacs-19.34)"
-endif
-endif
-
-ifeq ("$(emacsversion)", "XEmacs 21")
-XEMACS21 = "$(shell which emacs)"
+ifeq ($(emacsversion),XEmacs 20)
+EMACSSUBDIR = xemacs20
 else
-ifeq ("$(xemacsversion)", "XEmacs 21")
-XEMACS21 = "$(shell which xemacs)"
+ifeq ($(emacsversion),Emacs 19)
+EMACSSUBDIR = emacs19
 else
-xemacs21version = $(shell expr "`xemacs-21.1.8 --version 2> /dev/null`" \
-                               : '[^X]*\(X\?Emacs [0-9]\+\)')
-ifeq ("$(xemacs21version)", "XEmacs 21")
-XEMACS21 = "$(shell which xemacs-21.1.8)"
+$(error "Unknown version of (X)Emacs: $(emacsversion)")
 endif
 endif
-endif
-
-ifeq ("$(emacsversion)", "XEmacs 20")
-XEMACS20 = "$(shell which emacs)"
-else
-ifeq ("$(xemacsversion)", "XEmacs 20")
-XEMACS20 = "$(shell which xemacs)"
-else
-xemacs20version = $(shell expr "`xemacs-20.4 --version 2> /dev/null`" \
-                               : '[^X]*\(X\?Emacs [0-9]\+\)')
-ifeq ("$(xemacs20version)", "XEmacs 20")
-XEMACS20 = "$(shell which xemacs-20.4)"
-endif
-endif
-endif
-
-ifeq ("$(emacsversion)", "XEmacs 19")
-XEMACS19 = "$(shell which emacs)"
-else
-ifeq ("$(xemacsversion)", "XEmacs 19")
-XEMACS19 = "$(shell which xemacs)"
-else
-xemacs19version = $(shell expr "`xemacs-19.16 --version 2> /dev/null`" \
-                               : '[^X]*\(X\?Emacs [0-9]\+\)')
-ifeq ("$(xemacs19version)", "XEmacs 19")
-XEMACS19 = "$(shell which xemacs-19.16)"
 endif
 endif
 endif
 
 bindir = $(TARGETPATH)bin/$(PLATFORM)
-pvsfull = ${bindir}/full/$(SYSTEM)-${LISP}
-pvsrt = ${bindir}/runtime/$(SYSTEM)-${LISP}
+pvsfull = $(bindir)/full/$(SYSTEM)-$(LISP)
+pvsrt = $(bindir)/runtime/$(SYSTEM)-$(LISP)
 
 pvs-make-files = pvs.system src/defsystem.lisp src/make-pvs.lisp \
 		 src/make-allegro-pvs.lisp src/closopt.lisp
@@ -414,7 +376,8 @@ pvs-prover = src/prover/checker-macros.lisp \
 	 src/prover/match.lisp \
 	 src/prover/rules.lisp \
          src/prover/strategies.lisp \
-         src/prover/wish.lisp
+         src/prover/wish.lisp \
+	 src/prover/translate-to-yices.lisp
 
 ifeq ($(LISP),allegro)
   bddlisp = BDD/bdd.lisp BDD/mu.lisp
@@ -441,17 +404,18 @@ groundevallisp = src/groundeval/eval-macros.lisp \
 		 src/groundeval/pvseval-update.lisp \
 		 src/groundeval/cl2pvs.lisp \
 		 src/groundeval/generate-lisp-for-theory.lisp \
-                 src/groundeval/random-test.lisp
+                 src/groundeval/random-test.lisp \
+                 src/groundeval/pvs2clean.lisp
 
 inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
                     src/inst-by-unif/herbrandize.lisp \
                     src/inst-by-unif/gensubsts.lisp \
                     src/inst-by-unif/inst-by-unif.lisp
 
-lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
-	     ${emacs-interface} ${pvs-prover} ${bddlisp} \
-	     ${PVSiolisp} ${ws1slisp} ${groundevallisp} \
-             ${abstractionlisp}
+lisp-files = $(pvs-parser-out) $(ground-prover) $(pvs-src) \
+	     $(emacs-interface) $(pvs-prover) $(bddlisp) \
+	     $(PVSiolisp) $(ws1slisp) $(groundevallisp) \
+             $(abstractionlisp)
 
 templatedeps = pvs src/make-allegro-pvs.lisp pvs.system \
                ess/dist-ess.lisp ess/allegro-runtime.lisp
@@ -475,53 +439,27 @@ inst-by-unif-lisp := $(patsubst %,$(PVSPATH)%,$(inst-by-unif-lisp))
 templatedeps := $(patsubst %,$(PVSPATH)%,$(templatedeps))
 endif
 
-all-lisp-files = ${ess} ${pvs-parser-in} ${lisp-files}
+all-lisp-files = $(ess) $(pvs-parser-in) $(lisp-files)
 
 fasl-files = $(lisp-files:.lisp=.$(LISPEXT))
 
 all-fasl-files = $(filter %.$(LISPEXT), $(all-lisp-files:.lisp=.$(LISPEXT)))
 
-ifneq ($(strip $(EMACS21)),)
-emacs20-elc = $(pvs-emacs20-src:.el=.elc) $(ilisp-emacs20-src:.el=.elc)
-emacs += $(PVSPATH)emacs/emacs20/pvs-load.elc
-endif
-
-ifneq ($(strip $(EMACS20)),)
-emacs20-elc = $(pvs-emacs20-src:.el=.elc) $(ilisp-emacs20-src:.el=.elc)
-emacs += $(PVSPATH)emacs/emacs20/pvs-load.elc
-endif
-
-ifneq ($(strip $(EMACS19)),)
-emacs19-elc = $(pvs-emacs19-src:.el=.elc) $(ilisp-emacs19-src:.el=.elc)
-emacs += $(PVSPATH)emacs/emacs19/pvs-load.elc
-endif
-
-ifneq ($(strip $(XEMACS21)),)
-xemacs21-elc = $(pvs-xemacs21-src:.el=.elc) $(ilisp-xemacs21-src:.el=.elc)
-emacs += $(PVSPATH)emacs/xemacs21/pvs-load.elc
-endif
-
-ifneq ($(strip $(XEMACS20)),)
-xemacs20-elc = $(pvs-xemacs20-src:.el=.elc) $(ilisp-xemacs20-src:.el=.elc)
-emacs += $(PVSPATH)emacs/xemacs20/pvs-load.elc
-endif
-
-ifneq ($(strip $(XEMACS19)),)
-xemacs19-elc = $(pvs-xemacs19-src:.el=.elc) $(ilisp-xemacs19-src:.el=.elc)
-emacs += $(PVSPATH)emacs/xemacs19/pvs-load.elc
-endif
-
 .PHONY : all full runtime 
 
-all : ${templatedeps} full
+all : $(templatedeps) full
 
-image-deps = makefileutils makebdd makews1s $(pvsfull)
+image-deps = makefileutils makebdd
 
 ifeq ($(LISP),allegro)
-  image-deps += makews1s
+image-deps += makews1s
 endif
 
-image-deps += ${emacs}
+image-deps += $(pvsfull)
+
+emacs = $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc
+
+image-deps += $(emacs)
 
 full : $(image-deps)
 
@@ -559,7 +497,7 @@ $(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
 endif
 
 ifeq ($(LISP),allegro)
-${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${libics-file} ${lisp-files} \
+$(pvsfull) : $(pvs-make-files) $(ess) $(ff-files) $(libics-file) $(lisp-files) \
              $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
 	$(MKDIR) -p $(bindir)/full
 	rm -rf /tmp/pvs-allegro-build
@@ -576,14 +514,14 @@ ${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${libics-file} ${lisp-files} \
                                    (setq code 0)))) \
                         (excl:exit code)))"
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
-	umask 002; $(ETAGS) ${lisp-files} ${pvs-emacs-src}
-	touch $(PVSPATH)src/pvs-lexer.${LISPEXT}
+	umask 002; $(ETAGS) $(lisp-files) $(pvs-emacs-src)
+	touch $(PVSPATH)src/pvs-lexer.$(LISPEXT)
 	umask 002; \
 	$(LISPEXE) -e '(defvar *runtime* nil)' \
 		-L $(PVSPATH)src/make-pvs.lisp
-	touch ${pvsfull}
+	touch $(pvsfull)
 
-${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${libics-file} ${lisp-files} \
+$(pvsrt) : $(pvs-make-files) $(ess) $(ff-files) $(libics-file) $(lisp-files) \
            $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
 	rm -rf /tmp/pvs-allegro-build
 	umask 002; \
@@ -598,14 +536,14 @@ ${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${libics-file} ${lisp-files} \
                                    (setq code 0)))) \
                         (excl:exit code)))"
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
-	umask 002; $(ETAGS) ${lisp-files} ${pvs-emacs-src}
-	touch $(PVSPATH)src/pvs-lexer.${LISPEXT}
+	umask 002; $(ETAGS) $(lisp-files) $(pvs-emacs-src)
+	touch $(PVSPATH)src/pvs-lexer.$(LISPEXT)
 	umask 002; \
 	$(LISPEXE) -e '(defvar *runtime* t)' \
 		-L $(PVSPATH)src/make-pvs.lisp
-	touch ${pvsrt}
+	touch $(pvsrt)
 
-$(PVSPATH)src/pvs-lexer.lisp : ${pvs-parser-in}
+$(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
 	umask 002; \
 	$(LISPEXE) -L $(PVSPATH)src/make-pvs-parser
 
@@ -621,7 +559,7 @@ endif
 parser : $(PVSPATH)src/pvs-lexer.lisp
 .PHONY : parser
 
-${LISP} :
+$(LISP) :
 	@echo "Need to set the LISP variable in Makefile to a valid"
 	@echo "Common Lisp executable for this platform."
 
@@ -640,6 +578,45 @@ makews1s :
 make-release-notes : 
 	$(MAKE) -C $(PVSPATH)doc/release-notes
 
+# Emacs
+
+# Determine which versions of Emacs are available
+
+ifndef EMACS
+EMACS = "$(shell which emacs)"
+endif
+ifndef EMACS
+EMACS = "$(shell which xemacs)"
+endif
+ifndef EMACS
+$(error "No Emacs or Xemacs found")
+endif
+
+emacsversion = $(shell expr "`$(EMACS) --version 2> /dev/null`" \
+                            : '[^X]*\(X\?Emacs [0-9]\+\)')
+
+ifeq ($(emacsversion),Emacs 21)
+EMACSSUBDIR = emacs20
+else
+ifeq ($(emacsversion),XEmacs 21)
+EMACSSUBDIR = xemacs21
+else
+ifeq ($(emacsversion),Emacs 20)
+EMACSSUBDIR = emacs20
+else
+ifeq ($(emacsversion),XEmacs 20)
+EMACSSUBDIR = xemacs20
+else
+ifeq ($(emacsversion),Emacs 19)
+EMACSSUBDIR = emacs19
+else
+$(error "Unknown version of (X)Emacs: $(emacsversion)")
+endif
+endif
+endif
+endif
+endif
+
 #
 # Release files.
 #
@@ -656,12 +633,12 @@ source-tar = pvs-source.tgz
 
 libraries-tar = pvs-libraries.tgz
 
-tarfiles : ${release-notes} ${runtime-image-tar} ${full-image-tar} \
-           ${system-tar} ${emacs19-tar} ${source-tar} ${libraries-tar}
+tarfiles : $(release-notes) $(runtime-image-tar) $(full-image-tar) \
+           $(system-tar) $(emacs19-tar) $(source-tar) $(libraries-tar)
 
-runtime-image-files = $(wildcard ${bindir}/runtime/*)
+runtime-image-files = $(wildcard $(bindir)/runtime/*)
 
-full-image-files = $(wildcard ${bindir}/full/*)
+full-image-files = $(wildcard $(bindir)/full/*)
 
 release-notes = doc/release-notes/pvs-release-notes.info \
                 doc/release-notes/pvs-release-notes.html \
@@ -699,39 +676,39 @@ emacs19-files = emacs/emacs19
 lib/strategies.lisp : src/prover/strategies.lisp
 	(cd lib; ln -sf ../src/prover/strategies.lisp strategies.lisp)
 
-${runtime-image-tar} : ${pvsrt} ${bindir}/b64
-	$(TAR) $(TARFLAGS) -f ${runtime-image-tar} ${runtime-image-files} ${bindir}/b64
+$(runtime-image-tar) : $(pvsrt) $(bindir)/b64
+	$(TAR) $(TARFLAGS) -f $(runtime-image-tar) $(runtime-image-files) $(bindir)/b64
 
-${full-image-tar} : ${pvsfull} ${bindir}/b64
-	$(TAR) $(TARFLAGS) -f ${full-image-tar} ${full-image-files} ${bindir}/b64
+$(full-image-tar) : $(pvsfull) $(bindir)/b64
+	$(TAR) $(TARFLAGS) -f $(full-image-tar) $(full-image-files) $(bindir)/b64
 
-${system-tar} : ${system-files}
-	$(TAR) $(TARFLAGS) -f ${system-tar} ${system-files}
+$(system-tar) : $(system-files)
+	$(TAR) $(TARFLAGS) -f $(system-tar) $(system-files)
 
-${emacs19-tar} : $(emacs19-files)
-	$(TAR) $(TARFLAGS) -f ${emacs19-tar} ${emacs19-files}
+$(emacs19-tar) : $(emacs19-files)
+	$(TAR) $(TARFLAGS) -f $(emacs19-tar) $(emacs19-files)
 
-${source-tar} : ${pvs-make-files} ${configure-files} \
+$(source-tar) : $(pvs-make-files) $(configure-files) \
                 src/make-allegro-pvs.lisp.in src/make-pvs.lisp.in \
                 src/metering.lisp src/utils/utils-ld-table \
                 src/utils/file_utils.c src/utils/b64.c wish \
-                ${ff-files} ${ess} ess/README ess/allegro-runtime.lisp.in \
+                $(ff-files) $(ess) ess/README ess/allegro-runtime.lisp.in \
                 ess/dist-ess.lisp.in ess/term/terms/rel/*.txt \
-                ${pvs-parser-in} ${lisp-files} \
-                ${bdd-sources} ${ws1s-sources}
+                $(pvs-parser-in) $(lisp-files) \
+                $(bdd-sources) $(ws1s-sources)
 	$(TAR) $(TARFLAGS) -f $@ $^ --exclude CVS
 
-${libraries-tar} : lib/finite_sets lib/bitvectors lib/PVSio
+$(libraries-tar) : lib/finite_sets lib/bitvectors lib/PVSio
 	$(TAR) $(TARFLAGS) -f $@ $^ --exclude CVS
 
-tar : ${full-image-tar} ${runtime-image-tar} ${system-tar} \
-      ${emacs19-tar} ${source-tar} ${libraries-tar}
+tar : $(full-image-tar) $(runtime-image-tar) $(system-tar) \
+      $(emacs19-tar) $(source-tar) $(libraries-tar)
 
 install:
-	@echo "target install is deprecated - read README.configure"
+	@echo "target install is not used for PVS - see INSTALL"
 
 clean : 
-	rm -f ${all-fasl-files}
+	rm -f $(all-fasl-files)
 	$(MAKE) -C src/utils/$(PLATFORM) clean
 	$(MAKE) -C BDD/$(PLATFORM) clean
 	$(MAKE) -C src/WS1S/$(PLATFORM) clean
@@ -740,83 +717,19 @@ pvs-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/*.el) \
                 $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el
 ilisp-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/ilisp/*.el)
 
-pvs-emacs20-src = $(addprefix $(PVSPATH)emacs/emacs20/,$(notdir ${pvs-emacs-src}))
-pvs-emacs19-src = $(addprefix $(PVSPATH)emacs/emacs19/,$(notdir ${pvs-emacs-src}))
-pvs-xemacs21-src = $(addprefix $(PVSPATH)emacs/xemacs21/,$(notdir ${pvs-emacs-src}))
-pvs-xemacs20-src = $(addprefix $(PVSPATH)emacs/xemacs20/,$(notdir ${pvs-emacs-src}))
-pvs-xemacs19-src = $(addprefix $(PVSPATH)emacs/xemacs19/,$(notdir ${pvs-emacs-src}))
+pvs-emacs-sub-src = $(addprefix $(PVSPATH)emacs/$(EMACSSUBDIR)/,$(notdir $(pvs-emacs-src)))
 
-ilisp-emacs20-src = $(addprefix $(PVSPATH)emacs/emacs20/,$(notdir ${ilisp-emacs-src}))
-ilisp-emacs19-src = $(addprefix $(PVSPATH)emacs/emacs19/,$(notdir ${ilisp-emacs-src}))
-ilisp-xemacs21-src = $(addprefix $(PVSPATH)emacs/xemacs21/,$(notdir ${ilisp-emacs-src}))
-ilisp-xemacs20-src = $(addprefix $(PVSPATH)emacs/xemacs20/,$(notdir ${ilisp-emacs-src}))
-ilisp-xemacs19-src = $(addprefix $(PVSPATH)emacs/xemacs19/,$(notdir ${ilisp-emacs-src}))
+ilisp-emacs-sub-src = $(addprefix $(PVSPATH)emacs/emacs20/,$(notdir $(ilisp-emacs-src)))
 
-$(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el : lib/prelude.pvs ${pvsfull}
+emacs-elc = $(pvs-emacs-sub-src:.el=.elc) $(ilisp-emacs-sub-src:.el=.elc)
+
+$(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el : lib/prelude.pvs $(pvsfull)
 	-./pvs -batch -l emacs/emacs-src/pvs-set-prelude-info.el \
                         -f set-prelude-files-and-regions
 
-$(PVSPATH)emacs/emacs20/%.el : emacs/emacs-src/%.el
-	$(MKDIR) -p emacs/emacs20
-	(cd emacs/emacs20; ln -sf ../emacs-src/$(@F) .)
+$(PVSPATH)emacs/$(EMACSSUBDIR)/%.el : emacs/emacs-src/%.el
+	$(MKDIR) -p emacs/$(EMACSSUBDIR)
+	(cd emacs/$(EMACSSUBDIR); ln -sf ../emacs-src/$(@F) .)
 
-$(PVSPATH)emacs/emacs19/%.el : emacs/emacs-src/%.el
-	$(MKDIR) -p emacs/emacs19
-	(cd emacs/emacs19; ln -sf ../emacs-src/$(@F) .)
-
-$(PVSPATH)emacs/xemacs21/%.el : emacs/emacs-src/%.el
-	$(MKDIR) -p emacs/xemacs21
-	(cd emacs/xemacs21; ln -sf ../emacs-src/$(@F) .)
-
-$(PVSPATH)emacs/xemacs20/%.el : emacs/emacs-src/%.el
-	$(MKDIR) -p emacs/xemacs20
-	(cd emacs/xemacs20; ln -sf ../emacs-src/$(@F) .)
-
-$(PVSPATH)emacs/xemacs19/%.el : emacs/emacs-src/%.el
-	$(MKDIR) -p emacs/xemacs19
-	(cd emacs/xemacs19; ln -sf ../emacs-src/$(@F) .)
-
-$(PVSPATH)emacs/emacs20/%.el : emacs/emacs-src/ilisp/%.el
-	$(MKDIR) -p emacs/emacs20
-	(cd emacs/emacs20; ln -sf ../emacs-src/ilisp/$(@F) .)
-
-$(PVSPATH)emacs/emacs19/%.el : emacs/emacs-src/ilisp/%.el
-	$(MKDIR) -p emacs/emacs19
-	(cd emacs/emacs19; ln -sf ../emacs-src/ilisp/$(@F) .)
-
-$(PVSPATH)emacs/xemacs21/%.el : emacs/emacs-src/ilisp/%.el
-	$(MKDIR) -p emacs/xemacs21
-	(cd emacs/xemacs21; ln -sf ../emacs-src/ilisp/$(@F) .)
-
-$(PVSPATH)emacs/xemacs20/%.el : emacs/emacs-src/ilisp/%.el
-	$(MKDIR) -p emacs/xemacs20
-	(cd emacs/xemacs20; ln -sf ../emacs-src/ilisp/$(@F) .)
-
-$(PVSPATH)emacs/xemacs19/%.el : emacs/emacs-src/ilisp/%.el
-	$(MKDIR) -p emacs/xemacs19
-	(cd emacs/xemacs19; ln -sf ../emacs-src/ilisp/$(@F) .)
-
-ifeq ($(shell if [ -x ${emacs20} ] ; then echo OK ; fi), OK)
-$(PVSPATH)emacs/emacs20/pvs-load.elc : ${pvs-emacs20-src} ${ilisp-emacs20-src}
-	(cd emacs/emacs20; $(EMACS20) -batch -l pvs-byte-compile.el)
-endif
-
-ifeq ($(shell if [ -x ${emacs19} ] ; then echo OK ; fi), OK)
-$(PVSPATH)emacs/emacs19/pvs-load.elc : ${pvs-emacs19-src} ${ilisp-emacs19-src}
-	(cd emacs/emacs19; $(EMACS19) -batch -l pvs-byte-compile.el)
-endif
-
-ifeq ($(shell if [ -x ${xemacs21} ] ; then echo OK ; fi), OK)
-$(PVSPATH)emacs/xemacs21/pvs-load.elc : ${pvs-xemacs21-src} ${ilisp-xemacs21-src}
-	(cd emacs/xemacs21; $(XEMACS21) -batch -l pvs-byte-compile.el)
-endif
-
-ifeq ($(shell if [ -x ${xemacs20} ] ; then echo OK ; fi), OK)
-$(PVSPATH)emacs/xemacs20/pvs-load.elc : ${pvs-xemacs20-src} ${ilisp-xemacs20-src}
-	(cd emacs/xemacs20; $(XEMACS20) -batch -l pvs-byte-compile.el)
-endif
-
-ifeq ($(shell if [ -x ${xemacs19} ] ; then echo OK ; fi), OK)
-$(PVSPATH)emacs/xemacs19/pvs-load.elc : ${pvs-xemacs19-src} ${ilisp-xemacs19-src}
-	(cd emacs/xemacs19; $(XEMACS19) -batch -l pvs-byte-compile.el)
-endif
+$(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc : $(pvs-emacs-sub-src) $(ilisp-emacs-sub-src)
+	(cd emacs/$(EMACSSUBDIR); $(EMACS) -batch -l pvs-byte-compile.el)

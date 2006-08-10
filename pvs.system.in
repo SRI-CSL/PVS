@@ -373,7 +373,8 @@
 		  (:file "match")
 		  (:file "rules")
 		  (:file "strategies")
-		  (:file "wish"))
+		  (:file "wish")
+		  (:file "translate-to-yices"))
      :depends-on (typechecker))
    (:module bdd
      :source-pathname "BDD"
@@ -399,7 +400,8 @@
 		  (:file "pvseval-update")
 		  (:file "cl2pvs")
 		  (:file "generate-lisp-for-theory")
-		  (:file "random-test"))
+		  (:file "random-test")
+		  (:file "pvs2clean"))
      :depends-on (basic))
    (:module PVSio
      :source-pathname "src/PVSio"
