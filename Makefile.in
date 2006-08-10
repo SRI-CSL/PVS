@@ -176,6 +176,10 @@ endif
 endif
 endif
 
+pvs-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/*.el) \
+                $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el
+ilisp-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/ilisp/*.el)
+
 bindir = $(TARGETPATH)bin/$(PLATFORM)
 pvsfull = $(bindir)/full/$(SYSTEM)-$(LISP)
 pvsrt = $(bindir)/runtime/$(SYSTEM)-$(LISP)
@@ -183,6 +187,12 @@ pvsrt = $(bindir)/runtime/$(SYSTEM)-$(LISP)
 pvs-make-files = pvs.system src/defsystem.lisp src/make-pvs.lisp \
 		 src/make-allegro-pvs.lisp src/closopt.lisp
 
+
+pvs-emacs-sub-src = $(addprefix $(PVSPATH)emacs/$(EMACSSUBDIR)/,$(notdir $(pvs-emacs-src)))
+
+ilisp-emacs-sub-src = $(addprefix $(PVSPATH)emacs/emacs20/,$(notdir $(ilisp-emacs-src)))
+
+emacs-elc = $(pvs-emacs-sub-src:.el=.elc) $(ilisp-emacs-sub-src:.el=.elc)
 
 ff-files = src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
            BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION)
@@ -712,16 +722,6 @@ clean :
 	$(MAKE) -C src/utils/$(PLATFORM) clean
 	$(MAKE) -C BDD/$(PLATFORM) clean
 	$(MAKE) -C src/WS1S/$(PLATFORM) clean
-
-pvs-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/*.el) \
-                $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el
-ilisp-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/ilisp/*.el)
-
-pvs-emacs-sub-src = $(addprefix $(PVSPATH)emacs/$(EMACSSUBDIR)/,$(notdir $(pvs-emacs-src)))
-
-ilisp-emacs-sub-src = $(addprefix $(PVSPATH)emacs/emacs20/,$(notdir $(ilisp-emacs-src)))
-
-emacs-elc = $(pvs-emacs-sub-src:.el=.elc) $(ilisp-emacs-sub-src:.el=.elc)
 
 $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el : lib/prelude.pvs $(pvsfull)
 	-./pvs -batch -l emacs/emacs-src/pvs-set-prelude-info.el \
