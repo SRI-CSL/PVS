@@ -4,7 +4,7 @@ pvs-grammar-file = ${pvs-path}/src/pvs-gr.txt
 bnf-sources = bnf-adts.tex bnf-decls.tex bnf-expr.tex bnf-expr-aux.tex \
               bnf-theory.tex bnf-exporting.tex bnf-assuming.tex \
               bnf-theory-part.tex bnf-type-expr.tex bnf-names.tex \
-              bnf-lexical.tex bnf-cond-expr.tex
+              bnf-lexical.tex
 
 alltt-sources = stack_adtA-alltt.tex stack_adtB-alltt.tex \
                 stack_adtC-alltt.tex stack_adtD-alltt.tex stack_adtE-alltt.tex 
