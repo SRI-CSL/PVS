@@ -187,11 +187,15 @@ pvs-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/*.el) \
                 $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el
 ilisp-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/ilisp/*.el)
 
+emacs-src = $(pvs-emacs-src) $(ilisp-emacs-src)
+
 pvs-emacs-sub-src = $(addprefix $(PVSPATH)emacs/$(EMACSSUBDIR)/,$(notdir $(pvs-emacs-src)))
 
-ilisp-emacs-sub-src = $(addprefix $(PVSPATH)emacs/emacs20/,$(notdir $(ilisp-emacs-src)))
+ilisp-emacs-sub-src = $(addprefix $(PVSPATH)emacs/$(EMACSSUBDIR)/,$(notdir $(ilisp-emacs-src)))
 
-emacs-elc = $(pvs-emacs-sub-src:.el=.elc) $(ilisp-emacs-sub-src:.el=.elc)
+emacs-sub-src = $(pvs-emacs-sub-src) $(ilisp-emacs-sub-src)
+
+emacs-elc = $(emacs-sub-src:.el=.elc)
 
 ff-files = src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
            BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION)
@@ -726,11 +730,16 @@ $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el : lib/prelude.pvs $(p
 	-./pvs -batch -l emacs/emacs-src/pvs-set-prelude-info.el \
                         -f set-prelude-files-and-regions
 
-$(PVSPATH)emacs/$(EMACSSUBDIR)/%.el : $(PVSPATH)emacs/emacs-src/%.el $(PVSPATH)emacs/emacs-src/ilisp/%.el
+$(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-prelude-files-and-regions.el : $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el
+	(cd emacs/$(EMACSSUBDIR) ; ln -sf ../emacs-src/$(@F) . )
+
+$(PVSPATH)emacs/$(EMACSSUBDIR)/%.el : $(PVSPATH)emacs/emacs-src/%.el
 	$(MKDIR) -p emacs/$(EMACSSUBDIR)
-	(cd emacs/$(EMACSSUBDIR) ; \
-	 ln -sf ../emacs-src/$(@F) . ; \
-         ln -sf ../emacs-src/ilisp/$(@F) . )
+	(cd emacs/$(EMACSSUBDIR) ; ln -sf ../emacs-src/$(@F) .)
+
+$(PVSPATH)emacs/$(EMACSSUBDIR)/%.el : $(PVSPATH)emacs/emacs-src/ilisp/%.el
+	$(MKDIR) -p emacs/$(EMACSSUBDIR)
+	(cd emacs/$(EMACSSUBDIR) ; ln -sf ../emacs-src/ilisp/$(@F) .)
 
 $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc : $(pvs-emacs-sub-src) $(ilisp-emacs-sub-src)
 	(cd emacs/$(EMACSSUBDIR); $(EMACS) -batch -l pvs-byte-compile.el)
