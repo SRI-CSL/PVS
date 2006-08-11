@@ -488,6 +488,7 @@ $(pvsfull) : $(pvs-make-files) $(ess) $(ff-files) $(lisp-files) \
                             (save-lisp "$(pvsfull).core" \
                                 :init-function (function startup-pvs) \
                                ))'
+	rm $(PVSPATH)BDD/$(PLATFORM)/*.$(LISPEXT)
 	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(bindir)/full
 	cp $(PVSPATH)BDD/bdd-cmu-load.lisp $(PVSPATH)BDD/mu-cmu-load.lisp $(bindir)/full
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
