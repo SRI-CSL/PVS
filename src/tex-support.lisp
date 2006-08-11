@@ -655,6 +655,45 @@ useful if more than one specification is to be included in one document")
       (delete-file tmp-file)
       result)))
 
+;; extensions:run-program program args &key :env :wait :pty :input
+;; :if-input-does-not-exist
+;; :output :if-output-exists
+;; :error :if-error-exists
+;; :status-hook :before-execve
+
+#+cmu
+(defun run-latex-viewer (latex-viewer)
+  (if latex-viewer
+      (let ((tmp-file (funcall *pvs-tmp-file*)))
+	(with-open-file (out tmp-file
+			     :direction :output :if-exists :supersede)
+	  (extensions:run-program
+	   latex-viewer
+	   (list "pvs-files")
+	   :output out
+	   :error out
+	   :wait nil))
+	(delete-file tmp-file))
+      (pvs-message "No viewer provided")))
+
+#+cmu
+(defun run-latex (filename)
+  (unless *pvs-tmp-file* (set-pvs-tmp-file))
+  (let ((status nil)
+	(tmp-file (funcall *pvs-tmp-file*)))
+    (with-open-file (out tmp-file
+			 :direction :output :if-exists :supersede)
+      (setq status (extensions:run-program
+		    "latex"
+		    (list filename)
+		    :input "//dev//null"
+		    :output out
+		    :error out)))
+    (let ((result (unless (zerop status)
+		    (file-contents tmp-file))))
+      (delete-file tmp-file)
+      result)))
+
 (defun file-contents (filename)
   (with-output-to-string (out)
     (with-open-file (in filename)
