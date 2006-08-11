@@ -2386,7 +2386,9 @@
 	       (len (or (when thsym
 			  (cdr (assq thsym *latex-id-length-list*)))
 			(cdr (assq symbol *latex-id-length-list*))
-			(length (string symbol))))
+			(length (if (symbolp symbol)
+				    (string symbol)
+				    (format nil "~a" symbol)))))
 	       (str (make-new-tex-string len))
 	       (strans (if needs-math
 			   (format nil "\\(~a\\)" trans)
@@ -2402,7 +2404,9 @@
 ;;; Should do something useful with $ in names.
 
 (defun get-pp-tex-id* (symbol)
-  (let ((str (string symbol)))
+  (let ((str (if (symbolp symbol)
+		 (string symbol)
+		 (format nil "~a" symbol))))
     (cond ((and (alpha-char-p (char str 0))
 		(every #'digit-char-p (subseq str 1)))
 	   (if (= (length str) 1)
