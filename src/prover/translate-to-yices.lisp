@@ -35,7 +35,7 @@
 (defvar *yembeddedf* nil)
 (defvar *ydefns* nil)
 (defvar *yname-hash* (make-pvs-hash-table))
-(defvar *translate-to-yices-hash* (make-pvs-hash-table)
+(defvar *translate-to-yices-hash* (make-pvs-hash-table))
 (defvar *yices-call* "/homes/demoura/project/yices/bin/x86_64-unknown-linux-gnu-release/yices")
 (defvar *yices-id-counter*)  ;;needs to be initialized in eproofcheck
 (newcounter *yices-id-counter*)
