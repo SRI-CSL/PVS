@@ -41,18 +41,18 @@
 (newcounter *yices-id-counter*)
 
 (defparameter *yices-interpreted-names*
-  '((=  (equalities . =))
-    (/=  (notequal . /=))
-    (TRUE (booleans . true))
-    (FALSE (booleans . false))
-    (IMPLIES  (booleans . =>))
-    (AND (booleans . and))
-    (OR  (booleans . or) (bv_bitwise . bv-or))
+  '((=  (|equalities| . =))
+    (/=  (|notequal| . /=))
+    (TRUE (|booleans| . true))
+    (FALSE (|booleans| . false))
+    (IMPLIES  (|booleans| . =>))
+    (AND (|booleans| . and))
+    (OR  (|booleans| . or) (bv_bitwise . bv-or))
     (NOT  (|booleans| . not)(bv_bitwise . bv-not))
     (+  (|number_fields| . +)(bv_arith_nat . bv-add))
-    (- (number_fields . -)(bv_arithmetic . bv-sub))
-    (*   (number_fields . *))
-    (/  (number_fields . /))
+    (- (|number_fields| . -)(bv_arithmetic . bv-sub))
+    (*   (|number_fields| . *))
+    (/  (|number_fields| . /))
     (rem (|modulo_arithmetic| . mod))
     (ndiv (|modulo_arithmetic| . div))
     (< (|reals| . <)(bv_arith_nat . bv-lt))
@@ -698,11 +698,20 @@
 		(tmp-file (funcall *pvs-tmp-file*)))
 	    (with-open-file (out tmp-file
 			 :direction :output :if-exists :supersede)
-	      (setq status (excl:run-shell-command
-			    (format nil "~a ~a" *yices-call* (namestring file))
-			    :input "//dev//null"
-			    :output out
-			    :error-output :output)))
+	      (setq status
+		    #+allegro
+		    (excl:run-shell-command
+		     "yices"
+		     :input "//dev//null"
+		     :output out
+		     :error-output :output)
+		    #+cmu
+		    (extensions:run-program
+		     "yices"
+		     nil
+		     :input "//dev//null"
+		     :output out
+		     :error out)))
 	    (let ((result   (file-contents tmp-file)))
 	      ;;(break "yices result")
 	      (delete-file tmp-file)
