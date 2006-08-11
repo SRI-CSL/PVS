@@ -176,10 +176,6 @@ endif
 endif
 endif
 
-pvs-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/*.el) \
-                $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el
-ilisp-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/ilisp/*.el)
-
 bindir = $(TARGETPATH)bin/$(PLATFORM)
 pvsfull = $(bindir)/full/$(SYSTEM)-$(LISP)
 pvsrt = $(bindir)/runtime/$(SYSTEM)-$(LISP)
@@ -187,6 +183,9 @@ pvsrt = $(bindir)/runtime/$(SYSTEM)-$(LISP)
 pvs-make-files = pvs.system src/defsystem.lisp src/make-pvs.lisp \
 		 src/make-allegro-pvs.lisp src/closopt.lisp
 
+pvs-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/*.el) \
+                $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el
+ilisp-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/ilisp/*.el)
 
 pvs-emacs-sub-src = $(addprefix $(PVSPATH)emacs/$(EMACSSUBDIR)/,$(notdir $(pvs-emacs-src)))
 
@@ -729,7 +728,9 @@ $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el : lib/prelude.pvs $(p
 
 $(PVSPATH)emacs/$(EMACSSUBDIR)/%.el : emacs/emacs-src/%.el
 	$(MKDIR) -p emacs/$(EMACSSUBDIR)
-	(cd emacs/$(EMACSSUBDIR); ln -sf ../emacs-src/$(@F) .)
+	(cd emacs/$(EMACSSUBDIR) ; \
+	 ln -sf ../emacs-src/$(@F) . ; \
+         ln -sf ../emacs-src/ilisp/$(@F) . )
 
 $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc : $(pvs-emacs-sub-src) $(ilisp-emacs-sub-src)
 	(cd emacs/$(EMACSSUBDIR); $(EMACS) -batch -l pvs-byte-compile.el)
