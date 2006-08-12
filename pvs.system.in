@@ -240,7 +240,8 @@
 		(let ((optfile (format nil "~a/src/closopt" *pvs-path*)))
 		  (compile-file optfile)
 		  (load optfile))
-		(pvs::remove-typecheck-caches))
+		(pvs::remove-typecheck-caches)
+		(assert (every #'fboundp pvs::*untypecheck-hook*)))
   :components
   ((:module ground-prover
      :source-pathname "src/ground-prover/"
