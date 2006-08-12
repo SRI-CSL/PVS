@@ -104,6 +104,9 @@
     (ext:load-foreign (format nil "~a/mu.~a" exepath
 			      #+darwin "dylib"
 			      #-darwin "so"))
+    ;; Have no idea what is going on here, but if you leave this out,
+    ;; bdd-cmu-load gives a compile error.
+    (fmakunbound 'bdd_cofactor_neg_)
     (lf "bdd-cmu-load")
     (lf "mu-cmu-load")
     (bdd_init))
