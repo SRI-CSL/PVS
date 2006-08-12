@@ -370,7 +370,7 @@
   (assert (symbolp name) () "NAME should be a symbol")
   (assert (stringp term) () "TERM should be a string")
   (assert (stringp theory) () "THEORY should be a string")
-  (eval-when (eval load)
+  (eval-when (eval load compile)
     (let ((var (gensym))
 	  (reset-name (intern (format nil "%RESET-~a" name)))
 	  (hook (if (gethash (intern theory) *prelude*)
