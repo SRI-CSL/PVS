@@ -483,6 +483,8 @@ $(pvsfull) : $(pvs-make-files) $(ess) $(ff-files) $(lisp-files) \
 	  lib/prelude.pvs lib/prelude.prf
 	$(MKDIR) -p $(bindir)/full
 	$(LISPEXE) -eval '(load "pvs.system" :verbose t) \
+                          (pvs::operate-on-system :pvs :compile)'
+	$(LISPEXE) -eval '(load "pvs.system" :verbose t) \
                           (unwind-protect \
                               (pvs::operate-on-system :pvs :compile) \
                             (save-lisp "$(pvsfull).core" \
