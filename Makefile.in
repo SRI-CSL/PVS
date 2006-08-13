@@ -198,6 +198,7 @@ emacs-sub-src = $(pvs-emacs-sub-src) $(ilisp-emacs-sub-src)
 emacs-elc = $(emacs-sub-src:.el=.elc)
 
 ff-files = src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
+           src/utils/$(PLATFORM)/b64 \
            BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION)
 
 ifeq ($(LISP),allegro)
