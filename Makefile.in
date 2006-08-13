@@ -152,7 +152,7 @@ $(error "No Emacs or Xemacs found")
 endif
 
 emacsversion = $(shell expr "`$(EMACS) --version 2> /dev/null`" \
-                            : '[^X]*\(X\?Emacs [0-9]\+\)')
+                            : '[^X]*\(X*Emacs [0-9][0-9]\)')
 
 ifeq ($(emacsversion),Emacs 21)
 EMACSSUBDIR = emacs20
@@ -483,7 +483,8 @@ $(pvsfull) : $(pvs-make-files) $(ess) $(ff-files) $(lisp-files) \
 	  lib/prelude.pvs lib/prelude.prf
 	$(MKDIR) -p $(bindir)/full
 	$(LISPEXE) -eval '(load "pvs.system" :verbose t) \
-                          (pvs::operate-on-system :pvs :compile)'
+                          (pvs::operate-on-system :pvs :compile) \
+                          (quit)'
 	$(LISPEXE) -eval '(load "pvs.system" :verbose t) \
                           (unwind-protect \
                               (pvs::operate-on-system :pvs :compile) \
@@ -593,45 +594,6 @@ makews1s :
 
 make-release-notes : 
 	$(MAKE) -C $(PVSPATH)doc/release-notes
-
-# Emacs
-
-# Determine which versions of Emacs are available
-
-ifndef EMACS
-EMACS = "$(shell which emacs)"
-endif
-ifndef EMACS
-EMACS = "$(shell which xemacs)"
-endif
-ifndef EMACS
-$(error "No Emacs or Xemacs found")
-endif
-
-emacsversion = $(shell expr "`$(EMACS) --version 2> /dev/null`" \
-                            : '[^X]*\(X\?Emacs [0-9]\+\)')
-
-ifeq ($(emacsversion),Emacs 21)
-EMACSSUBDIR = emacs20
-else
-ifeq ($(emacsversion),XEmacs 21)
-EMACSSUBDIR = xemacs21
-else
-ifeq ($(emacsversion),Emacs 20)
-EMACSSUBDIR = emacs20
-else
-ifeq ($(emacsversion),XEmacs 20)
-EMACSSUBDIR = xemacs20
-else
-ifeq ($(emacsversion),Emacs 19)
-EMACSSUBDIR = emacs19
-else
-$(error "Unknown version of (X)Emacs: $(emacsversion)")
-endif
-endif
-endif
-endif
-endif
 
 #
 # Release files.
