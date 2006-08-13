@@ -222,13 +222,13 @@ esac
 binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
 
 if [ ! "$PVSLISP" ]
-   then if   [ -e $binpath/full/pvs-allegro ]
+   then if   [ -x $binpath/full/pvs-allegro ]
         then PVSLISP=allegro
-        elif [ -e $binpath/runtime/pvs-allegro ]
+        elif [ -x $binpath/runtime/pvs-allegro ]
         then PVSLISP=allegro
-        elif [ -e $binpath/full/pvs-cmulisp ]
+        elif [ -x $binpath/full/pvs-cmulisp ]
         then PVSLISP=cmulisp
-        elif [ -e $binpath/runtime/pvs-cmulisp ]
+        elif [ -x $binpath/runtime/pvs-cmulisp ]
         then PVSLISP=cmulisp
         else echo "No executable available in $binpath"
              exit 1
