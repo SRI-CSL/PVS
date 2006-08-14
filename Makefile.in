@@ -99,6 +99,10 @@ ifeq ($(LISP),allegro)
   ifeq ($(PLATFORM),powerpc-MacOSX7)
     LISPEXT=mfasl
   endif
+  else
+  ifeq ($(PLATFORM),powerpc-MacOSX8)
+    LISPEXT=mfasl
+  endif
   endif
   endif
 endif
@@ -111,6 +115,10 @@ ifeq ($(LISP),cmulisp)
     LISPEXT=x86f
   else
   ifeq ($(PLATFORM),powerpc-MacOSX7)
+    LISPEXT=ppcf
+  endif
+  else
+  ifeq ($(PLATFORM),powerpc-MacOSX8)
     LISPEXT=ppcf
   endif
   endif
@@ -129,9 +137,14 @@ ifeq ($(PLATFORM),powerpc-MacOSX7)
   LISPEXT=mfasl
   LOAD-FOREIGN-EXTENSION=dylib
 else
+ifeq ($(PLATFORM),powerpc-MacOSX8)
+  LISPEXT=mfasl
+  LOAD-FOREIGN-EXTENSION=dylib
+else
 ifeq ($(PLATFORM),ix86-MacOSX8)
   LISPEXT=nfasl
   LOAD-FOREIGN-EXTENSION=dylib
+endif
 endif
 endif
 endif
