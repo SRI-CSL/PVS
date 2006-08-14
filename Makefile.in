@@ -98,10 +98,10 @@ ifeq ($(LISP),allegro)
   else
   ifeq ($(PLATFORM),powerpc-MacOSX7)
     LISPEXT=mfasl
-  endif
   else
   ifeq ($(PLATFORM),powerpc-MacOSX8)
     LISPEXT=mfasl
+  endif
   endif
   endif
   endif
@@ -116,10 +116,10 @@ ifeq ($(LISP),cmulisp)
   else
   ifeq ($(PLATFORM),powerpc-MacOSX7)
     LISPEXT=ppcf
-  endif
   else
   ifeq ($(PLATFORM),powerpc-MacOSX8)
     LISPEXT=ppcf
+  endif
   endif
   endif
   endif
