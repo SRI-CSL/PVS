@@ -36,7 +36,7 @@
 (defvar *ydefns* nil)
 (defvar *yname-hash* (make-pvs-hash-table))
 (defvar *translate-to-yices-hash* (make-pvs-hash-table))
-(defvar *yices-call* "/homes/demoura/project/yices/bin/x86_64-unknown-linux-gnu-release/yices")
+(defvar *yices-call* "yices")
 (defvar *yices-id-counter*)  ;;needs to be initialized in eproofcheck
 (newcounter *yices-id-counter*)
 
@@ -47,22 +47,22 @@
     (FALSE (|booleans| . false))
     (IMPLIES  (|booleans| . =>))
     (AND (|booleans| . and))
-    (OR  (|booleans| . or) (bv_bitwise . bv-or))
-    (NOT  (|booleans| . not)(bv_bitwise . bv-not))
-    (+  (|number_fields| . +)(bv_arith_nat . bv-add))
-    (- (|number_fields| . -)(bv_arithmetic . bv-sub))
+    (OR  (|booleans| . or) (|bv_bitwise| . bv-or))
+    (NOT  (|booleans| . not)(|bv_bitwise| . bv-not))
+    (+  (|number_fields| . +)(|bv_arith_nat| . bv-add))
+    (- (|number_fields| . -)(|bv_arithmetic| . bv-sub))
     (*   (|number_fields| . *))
     (/  (|number_fields| . /))
     (rem (|modulo_arithmetic| . mod))
     (ndiv (|modulo_arithmetic| . div))
-    (< (|reals| . <)(bv_arith_nat . bv-lt))
-    (<=  (|reals| . <=)(bv_arith_nat . bv-le))
-    (> (|reals| . >)(bv_arith_nat . bv-gt))
-    (>=  (|reals| . >=)(bv_arith_nat . bv-ge))
+    (< (|reals| . <)(|bv_arith_nat| . bv-lt))
+    (<=  (|reals| . <=)(|bv_arith_nat| . bv-le))
+    (> (|reals| . >)(|bv_arith_nat| . bv-gt))
+    (>=  (|reals| . >=)(|bv_arith_nat| . bv-ge))
     (o (|bv_concat_def| . bv-concat))
     (& (|bv_bitwise| . bv-and))
     (XOR  (|bv_bitwise| . bv-xor))
-    (|bv^|  (|bv_caret| .  bv-extract))
+    (^ (|bv_caret| .  bv-extract))
     (sign_extend   (|bv_extend| . bv-sign-extend))
     ))
 
@@ -672,60 +672,73 @@
   #'(lambda (ps)
       (let* ((goalsequent (current-goal ps))
 	     (s-forms (s-forms goalsequent))
+	     (selected-sforms (select-seq s-forms sformnums))
 	     (*ydefns* nil))
-	(clear-yices)
-	(let ((yices-forms
-	       (loop for sf in s-forms
-		     collect
-		     (let ((fmla (formula sf)))
-		       (if (negation? fmla)
-			   (format nil "(assert ~a)"
-			     (translate-to-yices* (args1 fmla) nil))
-			   (format nil "(assert (not ~a))"
-			     (translate-to-yices* fmla  nil))))))
-	       (revdefns (nreverse *ydefns*))
-	       (file (make-pathname :defaults (working-directory)
-			     :name (label ps) :type "yices")))
-	  (format t "~%ydefns = ~% ~{~a~%~}" revdefns)
-	  (format t "~%yforms = ~% ~{~a~%~}" yices-forms)
-	  (with-open-file (stream  file :direction :output
-				    :if-exists :supersede)
-	    (format stream "~{~a ~%~}" revdefns)
-	    (format stream "~{~a ~%~}" yices-forms)
-	    (format stream "(check)~%")
-	    (format stream "(status)"))
-	  (let ((status nil)
-		(tmp-file (funcall *pvs-tmp-file*)))
-	    (with-open-file (out tmp-file
-			 :direction :output :if-exists :supersede)
-	      (setq status
-		    #+allegro
-		    (excl:run-shell-command
-		     "yices"
-		     :input "//dev//null"
-		     :output out
-		     :error-output :output)
-		    #+cmu
-		    (extensions:run-program
-		     "yices"
-		     nil
-		     :input "//dev//null"
-		     :output out
-		     :error out)))
-	    (let ((result   (file-contents tmp-file)))
-	      ;;(break "yices result")
-	      (delete-file tmp-file)
-;	      (delete-file file)
-	      (format t "~%Result = ~a" result)
-	      (cond ((search "unsat"  result :from-end t)
-		     (format t "~%Yices translation of negation is unsatisfiable")
-		     (values '! nil nil))
-		    (t (format t "~%Yices translation of negation is not known to be satisfiable or unsatisfiable")
-		       (values 'X nil nil)))))))))
+	(cond ((null selected-sforms)
+	       (values 'X nil nil))
+	      (t (clear-yices)
+		 (let ((yices-forms
+			(loop for sf in selected-forms
+			      collect
+			      (let ((fmla (formula sf)))
+				(if (negation? fmla)
+				    (format nil "(assert ~a)"
+				      (translate-to-yices* (args1 fmla) nil))
+				    (format nil "(assert (not ~a))"
+				      (translate-to-yices* fmla  nil))))))
+		       (revdefns (nreverse *ydefns*))
+		       (file (make-pathname :defaults (working-directory)
+					    :name (label ps) :type "yices")))
+		   (format t "~%ydefns = ~% ~{~a~%~}" revdefns)
+		   (format t "~%yforms = ~% ~{~a~%~}" yices-forms)
+		   (with-open-file (stream  file :direction :output
+					    :if-exists :supersede)
+		     (format stream "~{~a ~%~}" revdefns)
+		     (format stream "~{~a ~%~}" yices-forms)
+		     (format stream "(check)~%")
+		     (format stream "(status)"))
+		   (let ((status nil)
+			 (tmp-file (funcall *pvs-tmp-file*)))
+		     (with-open-file (out tmp-file
+					  :direction :output
+					  :if-exists :supersede)
+		       (setq status
+			     #+allegro
+			     (excl:run-shell-command
+			      *yices-call*
+			      :input "//dev//null"
+			      :output out
+			      :error-output :output)
+			     #+cmu
+			     (extensions:run-program
+			      *yices-call*
+			      nil
+			      :input "//dev//null"
+			      :output out
+			      :error out)))
+		     (cond ((zerop status)
+			    (let ((result (file-contents tmp-file)))
+			      ;;(break "yices result")
+			      (delete-file tmp-file)
+					;	      (delete-file file)
+			      (format t "~%Result = ~a" result)
+			      (cond ((search "unsat"  result :from-end t)
+				     (format t "~%Yices translation of negation is unsatisfiable")
+				     (values '! nil nil))
+				    (t (format t "~%Yices translation of negation is not known to be satisfiable or unsatisfiable")
+				       (values 'X nil nil))))
+			    )
+			   (t (format t
+				  "~%Error running yices - you may need to do one or more of:~
+                                   ~% 1. Download yices from http://yices.csl.sri.com~
+                                   ~% 2. add yices to your path and restart PVS, or~
+                                   ~% 3. run (lisp (setq *yices-call* \"<path-to-yices>\"))~
+                                   ~%The error message is:~% ~a"
+				(file-contents tmp-file))
+			      (values 'X nil))))))))))
 
 	
-(addrule 'yices ()
-	 ((fnums *))
+(addrule 'yices () ((fnums *))
   (yices fnums)
   "Invokes Yices as an endgame SMT solver to prove that the conjunction
 of the negations of the selected formulas is unsatisfiable. "
