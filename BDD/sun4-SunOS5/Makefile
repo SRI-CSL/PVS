@@ -11,6 +11,11 @@ XCFLAGS = -O
 SHELL = /bin/sh
 VPATH = ..:../bdd/utils:../bdd/src:../mu/src
 
+CCVERSION = $(shell $(CC) -dumpversion | cut -b 1)
+ifeq ($(shell if [ "$(CCVERSION)" != "3" ]; then echo OK; fi),OK)
+$(error "gcc must be version 3 to compile bdd objects on SunOS")
+endif
+
 gcclib=$(shell $(CC) -print-libgcc-file-name)
 
 muobj = bdd_interface.o bdd.o bdd_factor.o bdd_quant.o bdd_fns.o bdd_vfns.o \
