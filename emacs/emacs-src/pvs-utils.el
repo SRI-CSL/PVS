@@ -176,7 +176,7 @@ beginning of the previous one."
 	    (goto-char tpoint)
 	    (looking-at "\\w+")
 	    (setq pname (buffer-substring (match-beginning 0) (match-end 0)))
-	    (when verbose (princ pname))
+	    (when verbose (pvs-message pname))
 	    (find-theory-or-datatype-forward)))
 	(when pname
 	  (when verbose (pvs-message "Found region for %s" pname))

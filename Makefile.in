@@ -606,7 +606,7 @@ makews1s :
 	(cd $(PVSPATH)src/WS1S ; rm -rf mona ; ln -s mona-1.4 mona);\
 	$(MAKE) -C $(PVSPATH)src/WS1S/$(PLATFORM)
 
-make-release-notes : 
+make-release-notes : $(PVSPATH)doc/release-notes/pvs-release-notes.info
 	$(MAKE) -C $(PVSPATH)doc/release-notes
 
 #

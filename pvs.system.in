@@ -194,10 +194,10 @@
 				 :sb-runtime :lang :newattr))
 		  #+gcl (defmacro ignore-errors (&body forms)
 			  `(progn ,@forms))
-		  #+(or cmu sbcl)
-		  (let* ((platform "ix86-Linux")
-			 (bddpath (concatenate 'string
-					       *pvs-path* "/BDD/" platform)))
+		  ;;#+(or cmu sbcl)
+		  ;;(let* ((platform "ix86-Linux")
+			;; (bddpath (concatenate 'string
+				;;	       *pvs-path* "/BDD/" platform)))
 		    ;; hack, because load-object-file isn't exported.
 		    ;; but .. it's the only way to load a *shared* object file!
 		    ;; (with cmucl1.8e, anyway)
@@ -208,7 +208,7 @@
 		    ;; in src/pvs.lisp)
 		    
 		    ;;(ext:load-foreign (format nil "~a/mu.so" bddpath))
-		    )
+		    ;;)
 		  #+(and allegro dynload)
 		  (let* ((platform #+(and sun4 sunos4) "sun4-SunOS4"
 				   #+(and sun4 (not sunos4)) "sun4-SunOS5"
