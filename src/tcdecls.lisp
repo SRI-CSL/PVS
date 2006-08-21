@@ -2814,14 +2814,15 @@
 				    (mapcar #'(lambda (x)
 						(mapcar #'mk-name-expr x))
 				      arg-bds1)))
+	 (aalist (pairlis-rec-formals (formals decl) arg-bds1))
+	 (subst-type (substit (type decl) aalist))
 	 (precond (make!-forall-expr (mapcan #'copy-list arg-bds1)
 		    (make!-conjunction*
 		     (compatible-predicates (judgement-types+ vterm)
-					    (type decl) vterm))))
+					    subst-type vterm))))
 	 (arg-bds2 (mapcar #'(lambda (x) (mapcar #'copy x)) (formals decl)))
 	 (*bound-variables* (cons vbd *bound-variables*))
-	 (alist (acons recdecl vname
-		       (pairlis-rec-formals (formals recdecl) arg-bds2)))
+	 (alist (acons recdecl vname aalist))
 	 ;;(nalist (acons recdecl vbd alist))
 	 (sdef (gensubst def
 		 #'(lambda (x) (declare (ignore x))
