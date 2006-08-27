@@ -36,39 +36,42 @@ BEGIN
 
   IMPORTING bv_nat[N], mod
 
+% Definitions have been moved to the prelude theory bv_arith_nat_defs
+% to support Yices
+
 % ----- Definition of inequalities over the bit vectors.
 
-  < (bv1: bvec[N], bv2: bvec[N]): bool = bv2nat(bv1) <  bv2nat(bv2) ;
-  <=(bv1: bvec[N], bv2: bvec[N]): bool = bv2nat(bv1) <= bv2nat(bv2) ;
+%   < (bv1: bvec[N], bv2: bvec[N]): bool = bv2nat(bv1) <  bv2nat(bv2) ;
+%   <=(bv1: bvec[N], bv2: bvec[N]): bool = bv2nat(bv1) <= bv2nat(bv2) ;
 
-  > (bv1: bvec[N], bv2: bvec[N]): bool = bv2nat(bv1) >  bv2nat(bv2) ;
-  >=(bv1: bvec[N], bv2: bvec[N]): bool = bv2nat(bv1) >= bv2nat(bv2) ;
+%   > (bv1: bvec[N], bv2: bvec[N]): bool = bv2nat(bv1) >  bv2nat(bv2) ;
+%   >=(bv1: bvec[N], bv2: bvec[N]): bool = bv2nat(bv1) >= bv2nat(bv2) ;
 
 
 % ----- Increments a bit vector by a integer modulo 2**N 
 
 
-  +(bv: bvec[N], i: int): {bvn: bvec[N] | 
-                             bv2nat(bvn) = mod(bv2nat(bv) + i, exp2(N))}
+%   +(bv: bvec[N], i: int): {bvn: bvec[N] | 
+%                              bv2nat(bvn) = mod(bv2nat(bv) + i, exp2(N))}
 
-  bv_plus : LEMMA (FORALL (bv: bvec[N], i: int):
-                         bv2nat(bv + i) = mod(bv2nat(bv) + i, exp2(N))) ;
+%   bv_plus : LEMMA (FORALL (bv: bvec[N], i: int):
+%                          bv2nat(bv + i) = mod(bv2nat(bv) + i, exp2(N))) ;
 
 % ----- Decrements a bit vector by a integer modulo 2**N.
 
-  -(bv: bvec[N], i: int): bvec[N] = bv + (-i) ;
+%   -(bv: bvec[N], i: int): bvec[N] = bv + (-i) ;
 
-  bv_minus     : LEMMA (FORALL (bv: bvec[N], i: int):
-                    bv2nat(bv - i) = mod(bv2nat(bv) - i, exp2(N))) ;
+%   bv_minus     : LEMMA (FORALL (bv: bvec[N], i: int):
+%                     bv2nat(bv - i) = mod(bv2nat(bv) - i, exp2(N))) ;
 
 
 % ----- Addition of two bit vectors interpreted as natural numbers.
 
-  +(bv1: bvec[N], bv2: bvec[N]): {bv: bvec[N] | bv2nat(bv) = 
-                              IF bv2nat(bv1) + bv2nat(bv2) < exp2(N)
-                              THEN bv2nat(bv1) + bv2nat(bv2)
-                              ELSE bv2nat(bv1) + bv2nat(bv2) - exp2(N) 
-                              ENDIF}
+%   +(bv1: bvec[N], bv2: bvec[N]): {bv: bvec[N] | bv2nat(bv) = 
+%                               IF bv2nat(bv1) + bv2nat(bv2) < exp2(N)
+%                               THEN bv2nat(bv1) + bv2nat(bv2)
+%                               ELSE bv2nat(bv1) + bv2nat(bv2) - exp2(N) 
+%                               ENDIF}
                                            
   bv_add     : LEMMA (FORALL (bv1,bv2: bvec[N]):
                         bv2nat(bv1 + bv2) =
@@ -144,8 +147,8 @@ BEGIN
 
   IMPORTING bv_nat
 
-  *(bv1: bvec[N], bv2: bvec[N]): {bv: bvec[2*N] | bv2nat(bv) = 
-                                          bv2nat(bv1) * bv2nat(bv2)} ;
+%   *(bv1: bvec[N], bv2: bvec[N]): {bv: bvec[2*N] | bv2nat(bv) = 
+%                                           bv2nat(bv1) * bv2nat(bv2)} ;
 
   bv_mult      : LEMMA bv2nat[2*N](bv1 * bv2) = bv2nat(bv1) * bv2nat(bv2) 
 
