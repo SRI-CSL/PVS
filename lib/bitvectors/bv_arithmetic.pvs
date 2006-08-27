@@ -18,22 +18,24 @@ BEGIN
 
   bv, bv1, bv2 : VAR bvec[N]
 
+% The following three definitions are now in the prelude theory
+%   bv_arithmetic_defs - they were moved there to support Yices
 
 % ---------- 2's complement negation of a bit vector ----------
     
-  -(bv: bvec[N]): { bvn: bvec[N] | bv2int(bvn) = 
-                              IF bv2int(bv) = minint THEN bv2int(bv)
-                              ELSE -(bv2int(bv)) ENDIF}
+%   -(bv: bvec[N]): { bvn: bvec[N] | bv2int(bvn) = 
+%                               IF bv2int(bv) = minint THEN bv2int(bv)
+%                               ELSE -(bv2int(bv)) ENDIF}
 
 % ---------- 2's complement subtraction of two bit vectors ----------
     
-  -(bv1, bv2): bvec[N] = (bv1 + (-bv2))
+%   -(bv1, bv2): bvec[N] = (bv1 + (-bv2))
 
 % ---------- Define conditions for 2's complement overflow  ----------
 
     
-  overflow(bv1,bv2): bool = (bv2int(bv1) + bv2int(bv2)) > maxint
-                             OR (bv2int(bv1) + bv2int(bv2)) < minint 
+%   overflow(bv1,bv2): bool = (bv2int(bv1) + bv2int(bv2)) > maxint
+%                              OR (bv2int(bv1) + bv2int(bv2)) < minint 
 
 % === Properties of these additional functions ================================
 
