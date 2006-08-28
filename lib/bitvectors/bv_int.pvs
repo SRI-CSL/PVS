@@ -25,17 +25,20 @@ BEGIN
 
   IMPORTING bv_nat[N]
 
-  minint: int = -exp2(N-1)
-  maxint: int =  exp2(N-1) - 1
+% Definitions have been moved to the prelude theory bv_int_defs
+% to support Yices
 
-  bv_maxint_to_minint:    LEMMA maxint = -minint - 1
-  bv_minint_to_maxint:    LEMMA minint = -maxint - 1
+%   minint: int = -exp2(N-1)
+%   maxint: int =  exp2(N-1) - 1
 
-  in_rng_2s_comp(i: int): bool = (minint <= i AND i <= maxint)
-  rng_2s_comp: TYPE = {i: int | minint <= i AND i <= maxint}
+%   bv_maxint_to_minint:    LEMMA maxint = -minint - 1
+%   bv_minint_to_maxint:    LEMMA minint = -maxint - 1
 
-  bv2int(bv: bvec[N]): rng_2s_comp = IF bv2nat(bv) < exp2(N-1) THEN bv2nat(bv)
-                                     ELSE bv2nat(bv) - exp2(N) ENDIF
+%   in_rng_2s_comp(i: int): bool = (minint <= i AND i <= maxint)
+%   rng_2s_comp: TYPE = {i: int | minint <= i AND i <= maxint}
+
+%   bv2int(bv: bvec[N]): rng_2s_comp = IF bv2nat(bv) < exp2(N-1) THEN bv2nat(bv)
+%                                      ELSE bv2nat(bv) - exp2(N) ENDIF
 
   i           : VAR below(N)
   iv,ii       : VAR rng_2s_comp
@@ -64,7 +67,7 @@ BEGIN
 % ---------- Properties of int2bv ----------------------------
 
 
-  int2bv(iv: rng_2s_comp): {bv | bv2int(bv) = iv}
+%  int2bv(iv: rng_2s_comp): {bv | bv2int(bv) = iv}
 
   int2bv_def : THEOREM int2bv = inverse(bv2int) 
 

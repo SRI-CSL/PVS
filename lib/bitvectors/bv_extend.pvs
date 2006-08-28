@@ -14,15 +14,17 @@ BEGIN
     
   bv: VAR bvec[N]
   k: VAR above(N)
-  
+
+% Definitions have been moved to the prelude theory bv_extend_defs
+% to support Yices
   %------------------------------------------------------------------------
   % zero_extend returns a function that extends a bit vector to length k 
   % such that its interpretation as a natural number remains unchanged.
   % That is, it fills 0's at the most significant positions.
   %------------------------------------------------------------------------
 
-  zero_extend(k: above(N)): [bvec[N] -> bvec[k]] =
-       (LAMBDA bv: fill[k-N](FALSE) o bv )
+%   zero_extend(k: above(N)): [bvec[N] -> bvec[k]] =
+%        (LAMBDA bv: fill[k-N](FALSE) o bv )
 
   %------------------------------------------------------------------------
   % sign_extend returns a function that extends a bit vector to length k
@@ -30,16 +32,16 @@ BEGIN
   % The set above(N) contains nat numbers greater than n.
   %------------------------------------------------------------------------
 
-  sign_extend(k: above(N)): [bvec[N] -> bvec[k]] =
-       (LAMBDA bv:  fill[k-N](bv^(N-1)) o bv )
+%   sign_extend(k: above(N)): [bvec[N] -> bvec[k]] =
+%        (LAMBDA bv:  fill[k-N](bv^(N-1)) o bv )
   %------------------------------------------------------------------------
   % zero_extend_lsend returns a function that extends a bit vector to
   % length k by padding 0's at the least significant end of bvec.
   % That is, the bv2nat interpretation of the argument increases by 2**(k-N)
   %------------------------------------------------------------------------
     
-  zero_extend_lsend(k: above(N)): [bvec[N] -> bvec[k]] =
-        (LAMBDA bv:  bv o fill[k-N](FALSE))
+%   zero_extend_lsend(k: above(N)): [bvec[N] -> bvec[k]] =
+%         (LAMBDA bv:  bv o fill[k-N](FALSE))
   
   %------------------------------------------------------------------------
   % lsb_extend returns a function that extends a bit vector to
@@ -47,8 +49,8 @@ BEGIN
   % least significant end.
   %------------------------------------------------------------------------
     
-  lsb_extend(k: above(N)): [bvec[N] -> bvec[k]] =
-       (LAMBDA bv: bv o fill[k-N](bv^0)) 
+%   lsb_extend(k: above(N)): [bvec[N] -> bvec[k]] =
+%        (LAMBDA bv: bv o fill[k-N](bv^0)) 
 
   zero_extend_def       : LEMMA zero_extend(k)(bv)  = fill[k-N](FALSE) o bv
   
