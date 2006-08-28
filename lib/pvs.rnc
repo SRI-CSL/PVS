@@ -1,0 +1,638 @@
+# RELAX NG compact version of the PVS abstract syntax
+# Check it using
+# java -jar ~/src/jing-20030619/bin/jing.jar -c ~/pvs3.2/lib/pvs.rnc
+
+grammar {
+
+start = file-content | theory-content | recursive-type-content
+
+file-content =
+  element pvs-file {top-level-content+}
+
+top-level-content = theory-content | recursive-type-content
+
+theory-content =
+  element theory
+    {commonattrs,
+     id,
+     formals-content?,
+     assuming-part?,
+     theory-part?,
+     exporting-content?}
+
+recursive-type-content =
+  element datatype
+    {commonattrs,
+     id,
+     formals-content?,
+     importings,
+     constructors}
+
+constructors = constructor-content+
+
+constructor-content =
+  element constructor
+    {commonattrs,
+     ordnumattr,
+     id,
+     accessors-content?,
+     recognizer-content,
+     subtype-id-content?}
+
+ordnumattr =
+  attribute ordnum {xsd:integer}?
+
+recognizer-content =
+  element recognizer {identifier-token}
+
+accessors-content =
+  element accessors {accessor-content+}
+
+subtype-id-content =
+  element subtype-id {id}
+
+accessor-content =
+  element accessor
+    {commonattrs,
+     id,
+     type-expr}
+
+formals-content =
+  element formals {formals}
+
+formals = (importings | formal)*
+
+formal = importing-content
+       | type-decl-content
+       | formal-subtype-decl-content
+       | formal-const-decl-content
+       | formal-theory-decl-content
+
+formal-subtype-decl-content =
+  element formal-subtype-decl {type-def-decl}
+
+formal-const-decl-content =
+  element formal-const-decl {typed-declaration}
+
+formal-theory-decl-content =
+  element formal-theory-decl {theory-name}
+
+theory-name-content =
+  element theory-name {theory-name}
+
+theory-name = id,
+              actuals-content?,
+              library-id-content?,
+              mappings-content?
+
+actuals-content =
+  element actuals {(expr | type-expr | theory-name)+}
+
+actual-content =
+  element actual {expr | type-expr | theory-name}
+
+library-id-content =
+  element library-id {id}
+
+mappings-content =
+  element mappings {mapping+}
+
+mapping = mapping-def-content | mapping-subst-content | mapping-rename-content
+
+mapping-def-content =
+  element mapping-def {mapping-lhs-content, mapping-rhs-content}
+
+mapping-subst-content =
+  element mapping-subst {mapping-lhs-content, mapping-rhs-content}
+
+mapping-rename-content =
+  element mapping-rename {mapping-lhs-content, mapping-rhs-content}
+
+mapping-lhs-content =
+  element mapping-lhs {name}
+
+mapping-rhs-content =
+  element mapping-rhs {expr-content | type-content | theory-name-content}
+
+importings = importing-content*
+
+importing-content =
+  element importing
+    {commonattrs,
+     chainattr,
+     theory-name}
+
+exporting-content =
+  element exporting
+    {commonattrs,
+     exporting-names?,
+     exporting-but-names?,
+     exporting-kind,
+     exporting-theory-names?}
+
+exporting-names =
+  element exporting-names {names}
+
+exporting-but-names =
+  element exporting-but-names {names}
+
+exporting-kind =
+  element exporting-kind {"nil" | "all" | "closure" | "default"}
+
+exporting-theory-names =
+  element exporting-theory-names {theory-names}
+
+theory-names = theory-name-content+
+
+assuming-part =
+  element assuming {assuming-decl+}
+
+assuming-decl = theory-decl | assumption-content
+
+assumption-content =
+  element assumption {formula-decl-attr, declaration, expr}
+
+theory-part = theory-decl+
+
+theory-decl =
+    importing-content
+  | judgement-decl
+  | conversion-content
+  | auto-rewrite-content
+  | lib-decl-content
+  | theory-decl-content
+  | type-decl-content
+  | type-from-decl-content
+  | var-decl-content
+  | const-decl-content
+  | macro-decl-content
+  | def-decl-content
+  | ind-decl-content
+  | corec-decl-content
+  | coind-decl-content
+  | formula-decl-content
+  | axiom-decl-content
+  | tcc-decl-content
+  | inline-datatype-content
+
+judgement-decl = subtype-judgement-content
+               | number-judgement-content
+               | name-judgement-content
+               | application-judgement-content
+
+subtype-judgement-content =
+  element subtype-judgement {commonattrs, id?, type-expr, type-expr}
+
+number-judgement-content =
+  element number-judgement {commonattrs, id?, number-expr-content, type-expr}
+
+name-judgement-content =
+  element name-judgement {commonattrs, id?, name-expr-content, type-expr}
+
+application-judgement-content =
+  element application-judgement {commonattrs, id?, type-expr, name-expr-content, bindings-content}
+
+conversion-content =
+  element conversion-decl {commonattrs, expr}
+
+auto-rewrite-content =
+  element auto-rewrite {typed-declaration}
+
+lib-decl-content =
+  element lib-decl {typed-declaration}
+
+theory-decl-content =
+  element theory-decl {typed-declaration}
+
+type-decl-content =
+  element type-decl
+    {type-decl-attrs, declaration, type-expr?, type-expr?, contains-content?}
+
+type-from-decl-content =
+  element type-from-decl
+    {type-decl-attrs, declaration, type-expr, contains-content?}
+
+var-decl-content =
+  element var-decl {typed-declaration}
+
+const-decl-content =
+  element const-decl {typed-declaration, expr?}
+
+macro-decl-content =
+  element macro-decl {typed-declaration}
+
+def-decl-content =
+  #                                    definition, measure, ordering
+  element def-decl {typed-declaration, expr, expr, expr?}
+
+ind-decl-content =
+  element ind-decl {typed-declaration}
+
+corec-decl-content =
+  element corec-decl {typed-declaration}
+
+coind-decl-content =
+  element coind-decl {typed-declaration}
+
+formula-decl-content =
+  element formula-decl {formula-decl-attr, declaration, expr}
+
+axiom-decl-content =
+  element axiom-decl {formula-decl-attr, declaration, expr}
+
+tcc-decl-content =
+  element tcc-decl {formula-decl-attr, declaration, expr}
+
+formula-decl-attr =
+  attribute kind { "ASSUMPTION" | "AXIOM" | "CHALLENGE" | "CLAIM" |
+                   "CONJECTURE" | "COROLLARY" | "FACT" | "FORMULA" | "LAW" |
+                   "LEMMA" | "OBLIGATION" | "POSTULATE" | "PROPOSITION" |
+                   "SUBLEMMA" | "THEOREM" }
+
+inline-datatype-content =
+  element inline-datatype {typed-declaration}
+
+
+declaration =
+  declarationatts, id, formals?
+
+declarationatts =
+  commonattrs, chainattr?
+
+type-decl =
+  declaration
+
+type-def-decl =
+  type-decl-attrs, type-decl, type-expr, contains-content?
+
+type-decl-attrs =
+  attribute nonempty-type {boolean}?
+
+contains-content =
+  element contains
+    {expr}
+  
+typed-declaration =
+  declaration, type-expr
+
+# Types
+
+type-content =
+  element type {type-expr}
+
+type-expr = type-name-content
+          | type-application-content          
+          | expr-as-type-content
+          | subtype-content
+          | function-type-content
+          | tuple-type-content
+          | cotuple-type-content
+          | record-type-content
+
+type-name-content =
+  element type-name {commonattrs, name}
+
+type-application-content =
+  element type-application {commonattrs,
+                            type-name-content,
+                            (binding-content|expr)+}
+
+type-parameters-content =
+  element type-parameters {expr+}
+
+expr-as-type-content =
+  element expr-as-type {commonattrs, expr, type-expr?}
+
+subtype-content =
+  element subtype {commonattrs, type-expr, expr}
+
+function-type-content =
+  element function-type {commonattrs, domain, type-expr}
+
+domain = type-expr | binding-content
+
+binding-content =
+  element binding {commonattrs, id, type-expr}
+
+tuple-type-content =
+  element tuple-type {domain+}
+
+cotuple-type-content =
+  element cotuple-type {type-expr+}
+
+record-type-content =
+  element record-type {commonattrs, field-decl-content+}
+
+field-decl-content =
+  element field-decl {commonattrs, id, type-expr}
+
+
+# Expressions
+
+expr-content =
+  element expr {exprattrs, expr}
+
+exprattrs =
+  commonattrs,
+  attribute parens {xsd:integer}
+
+expr = name-expr-content
+     | number-expr-content
+     | string-expr-content
+     | list-expr-content
+     | record-expr-content
+     | tuple-expr-content
+     | field-expr-content
+     | proj-expr-content
+     | field-appl-expr-content
+     | proj-appl-expr-content
+     | application-expr-content
+     | coercion-expr-content
+     | if-expr-content
+     | lambda-expr-content
+     | exists-expr-content
+     | forall-expr-content
+     | set-expr-content
+     | let-expr-content
+     | update-expr-content
+     | cases-expr-content
+     | cond-expr-content
+     | table-expr-content
+
+name-expr-content =
+  element name-expr {commonattrs, name, type-expr}
+
+number-expr-content =
+  element number-expr {commonattrs, xsd:integer}
+
+string-expr-content =
+  element string-expr {string}
+
+list-expr-content =
+  element list-expr {expr+}
+
+record-expr-content =
+  element record-expr {commonattrs, assignment-content+}
+
+assignments-content =
+  element assignments {assignment-content+}
+
+assignment-content =
+  element assignment {commonattrs, assignment-args-content, expr}
+
+assignment-args-content =
+  element assignment-args {assignment-arg+}
+
+assignment-arg =
+  expr | field-assign-content | proj-assign-content
+
+field-assign-content =
+  element field-assign {commonattrs, id}
+
+proj-assign-content =
+  element proj-assign {commonattrs, xsd:integer}
+
+tuple-expr-content =
+  element tuple-expr {commonattrs, expr+}
+
+tuple-content =
+  element tuple {expr+}
+
+field-expr-content =
+  element field-expr {id}
+
+proj-expr-content =
+  element proj-expr {xsd:integer}
+
+field-appl-expr-content =
+  element field-appl-expr {commonattrs, expr, id}
+  
+proj-appl-expr-content =
+  element proj-appl-expr {commonattrs, expr, index}
+
+index =
+  element index {xsd:integer}
+
+application-expr-content =
+  element application {commonattrs, applicationattrs, expr, expr}
+
+applicationattrs =
+  attribute infix {boolean}?
+
+coercion-expr-content =
+  element coercion-expr {expr-content, type-content}
+
+if-expr-content =
+  element if-expr {expr-content, expr-content, expr-content}
+
+lambda-expr-content =
+  element lambda-expr {commonattrs, bindings-content, expr}
+
+exists-expr-content =
+  element exists-expr {commonattrs, bindings-content, expr}
+
+forall-expr-content =
+  element forall-expr {commonattrs, bindings-content, expr}
+
+bindings-content =
+  element bindings {binding-content+}
+
+set-expr-content =
+  element set-expr {bindings-content, expr-content}
+
+let-expr-content =
+  element let-expr {let-bindings-content, expr-content}
+
+let-bindings-content =
+  element let-bindings {let-binding-content+}
+
+let-binding-content =
+  element let-binding {binding-content, expr}
+
+update-expr-content =
+  element update-expr {expr-content, assignments-content}
+
+cases-expr-content =
+  element cases-expr {commonattrs, expr, selection-content+}
+
+selections-content =
+  element selections {selection-content+}
+
+# constructor, args, expression
+selection-content =
+  element selection {commonattrs, expr, bindings-content?, expr}
+
+cond-expr-content =
+  element cond-expr {expr-content, conditions-context}
+
+conditions-context =
+  element conditions {cond-content+}
+
+cond-content =
+  element cond {expr, expr}
+
+# row-expr, col-expr, row-headings, col-headings, table-entries
+table-expr-content =
+  element table-expr {expr, expr, headings-content, headings-content,
+                      table-entries-content}
+
+headings-content =
+  element headings {expr+}
+
+table-entries-content =
+  element table-entries {row-entries-content+}
+
+row-entries-content =
+  element row-entries {expr+}
+
+# Names
+
+names = name+
+
+name = id, theory-id?, library-id?, actuals-content?, mappings-content?, target?
+
+theory-id = element theory-id {identifier-token}
+
+library-id = element library-id {identifier-token}
+
+target = theory-name
+
+# Proofs
+
+top-proofstate-content =
+  element top-proofstate
+    {declaration, proofstate}
+
+proofstate-content =
+  element proofstate {proofstate}
+
+proofstate = label-token,
+             current-goal-content,
+             current-rule-content,
+#             dp-state,
+             done-subgoals-content,
+             pending-subgoals-content,
+             current-subgoal-content,
+             remaining-subgoals-content,
+             status-flag-content,
+             subgoalnum-content,
+#             justification-content,
+#             current-input,
+#             parsed-input,
+#             printout,
+             comment-content,
+#             strategy,
+#             context,
+#             parent-proofstate,
+             proof-dependent-decls-content,
+             dependent-decls-content,
+             current-auto-rewrites-content
+#             tcc-hash,
+#             subtype-hash,
+#             rewrite-hash,
+#             current-xrule
+
+current-goal-content =
+  element current-goal {sequent-content}
+
+current-rule-content =
+  element current-rule {strategy}
+
+done-subgoals-content =
+  element done-subgoals {proofstate-content+}
+
+pending-subgoals-content =
+  element pending-subgoals {proofstate-content+}
+
+current-subgoal-content =
+  element current-subgoal {proofstate-content}
+
+remaining-subgoals-content =
+  element remaining-subgoals {proofstate-content+}
+
+status-flag-content =
+  element status-flag {"!" | "X" | "XX" | "*" | "nil" | "?" | "0"}
+
+subgoalnum-content =
+  element subgoalnum {xsd:integer}
+
+comment-content =
+  element comment {string}
+
+proof-dependent-decls-content =
+  element proof-dependent-decls {declaration-ref+}
+
+declaration-ref =
+  element declaration-ref {id, theory-id, kind, type-expr?}
+
+kind = "const" | "type" | "formula"
+
+current-auto-rewrites-content =
+  element current-auto-rewrites {auto-rewrite+}
+
+auto-rewrite = name
+
+dependent-decls-content =
+  element dependent-decls {declaration-ref+}
+
+# Sequents
+
+sequent-content =
+  element sequent {p-sforms-content,
+                   n-sforms-content,
+                   hidden-s-forms-content}
+
+p-sforms-content =
+  element p-sforms {s-formula-content*}
+
+n-sforms-content =
+  element n-sforms {s-formula-content*}
+
+hidden-s-forms-content =
+  element hidden-s-forms {s-formula-content*}
+
+s-formula-content =
+  element s-formula {s-formula-attr, formula-content, label-content}
+
+formula-content =
+  element formula {expr}
+
+label-content =
+  element label {label-token}
+
+s-formula-attr =
+  attribute new-p {boolean},
+  attribute asserted-p {boolean}
+
+label-token =
+  identifier-token, label-suffix
+
+label-suffix = xsd:token {pattern = "(\.\d+)*"}
+
+# Strategies
+
+strategy = string
+
+id = element id {identifier-token}
+
+boolean = "true" | "false"
+
+identifiers-content =
+  element identifiers {commonattrs, identifier-content+}
+
+identifier-content =
+  element identifier {commonattrs, identifier-token}
+
+# \p{L} = letters, \i = letters and '_', \d = digits, \? = '?'
+identifier-token = xsd:token
+  {pattern = "(\p{L}[\i\d\?]*)|([$&@^~=/\+\-\*<>][^\p{L}\d\(\)\[\]\{\}%,\.:;#'!\?_\|\s]*)"}
+
+commonattrs =
+  attribute place {place-string}?
+
+chainattr =
+  attribute chain-p {boolean}
+
+place-string = xsd:string {pattern = "\d+ \d+ \d+ \d+"}
+
+}
