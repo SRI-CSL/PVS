@@ -33,6 +33,9 @@ dnl This file must exist for configure to run
 AC_MSG_CHECKING(for existence of src/pvs.lisp)
 AC_INIT(src/pvs.lisp)
 	
+dnl This sets build, build_cpu, build_vendor, and build_os
+AC_CANONICAL_BUILD
+	
 dnl No longer look for lisp within configure, as it is possible to
 dnl build with several lisps.  Checks have been moved into the Makefile
 	
