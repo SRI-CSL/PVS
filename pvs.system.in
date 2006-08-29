@@ -357,6 +357,7 @@
 		  (:file "pp-tex")
 		  (:file "tex-support")
 		  (:file "pp-html")
+		  (:file "pp-xml")
 		  (:file "raw-api"))
      :depends-on (basic))
    (:module proof-checker
