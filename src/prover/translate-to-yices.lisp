@@ -36,7 +36,7 @@
 (defvar *ydefns* nil)
 (defvar *yname-hash* (make-pvs-hash-table))
 (defvar *translate-to-yices-hash* (make-pvs-hash-table))
-(defvar *yices-call* "yices")
+(defvar *yices-call* "yices -e -st -mi 2000")
 (defvar *yices-id-counter*)  ;;needs to be initialized in eproofcheck
 (newcounter *yices-id-counter*)
 
@@ -117,7 +117,7 @@
     (loop for cnstr in constructors
 	  do (let* ((recognizer (recognizer cnstr))
 		    (yices-recognizer (yices-name recognizer)))
-	       (push (format nil "(define ~a::(-> x::~a bool) (lambda (x::~a) (x = ~a)))" 
+	       (push (format nil "(define ~a::(-> x::~a bool) (lambda (x::~a) (= x ~a)))" 
 		       yices-recognizer
 		       yices-type-name
 		       yices-type-name
@@ -148,6 +148,71 @@
 	       (translate-to-yices-constructors (cdr constructors) bindings)))
 	(t nil)))
 
+(defun translate-to-yices-subdatatype-constructors
+  (constructors superconstructors bindings)
+  (cond ((consp constructors)
+	 (cons (translate-to-yices-subdatatype-constructor (car constructors)
+							   (car superconstructors)
+							   bindings)
+	       (translate-to-yices-subdatatype-constructors (cdr constructors)
+							    (cdr superconstructors)
+							    bindings)))
+	(t nil)))
+
+(defun translate-to-yices-subdatatype-constructor
+  (constructor superconstructor bindings)
+  (let* ((cname (yices-name constructor))
+	 (accessors (accessors constructor))
+	 (ctype (if (> (length accessors) 1)
+		    (format nil "(-> ~{~a ~}~a)"
+			  (translate-to-yices* (types (domain (type constructor)))
+					       bindings)
+			  (translate-to-yices* (range (type constructor))
+					       bindings))
+		    (translate-to-yices* (type constructor) bindings)))
+	 (acc-ids (loop for acc in accessors
+			as i from 1
+			collect (format nil "x~a" i)))
+	 (cdef-arglist (if (> (length accessors) 1)
+			   (loop for acc-id in acc-ids
+			     as ty in (types (domain (type constructor)))
+			     collect (format nil "~a::~a"
+				       acc-id
+				       (translate-to-yices* ty
+							    bindings)))
+			   (if (eql (length accessors) 1)
+			       (format nil "x::~a" (translate-to-yices* (domain (type constructor)) bindings))
+			       nil)))
+	 (cdef (format nil "(lambda (~{~a ~}) (~a~{ ~a~}))" cdef-arglist
+		       (yices-name superconstructor)
+		       acc-ids))
+	 (defn-string (format nil "(define ~a::~a ~a)"
+			cname
+			ctype
+			(if accessors cdef (yices-name superconstructor))))
+	 (recognizer-defn-string (format nil "(define ~a::~a ~a)"
+			(format nil "~a?" cname)
+			(translate-to-yices* (type (recognizer constructor)) bindings)
+			(format nil "~a?" (yices-name superconstructor)))))
+    (push recognizer-defn-string *ydefns*)
+    (push defn-string *ydefns*)
+    (translate-to-yices-subdatatype-accessors accessors
+					      (accessors superconstructor)
+					      bindings)
+    cname)  )
+
+(defun translate-to-yices-subdatatype-accessors (accessors superaccessors bindings)
+  (cond ((consp accessors)
+	 (push (format nil "(define ~a::~a ~a)"
+		 (yices-name (car accessors))
+		 (translate-to-yices* (type (car accessors)) bindings)
+		 (yices-name (car superaccessors)))
+	       *ydefns*)
+	 (translate-to-yices-subdatatype-accessors (cdr accessors)
+						   (cdr superaccessors)
+						   bindings))
+	(t nil)))
+
 (defmethod translate-to-yices* ((ty type-name) bindings)
   (let ((yname-hash (gethash ty *yname-hash*)))
     (or yname-hash 
@@ -166,6 +231,7 @@
 		    yices-name)))
 	      ((tc-eq (find-supertype ty) *boolean*)
 	       (format nil "bool"))
+	      ((tc-eq ty *number*) "real")
 	      (
 		;;else uninterpreted type
 		(let ((yices-name (yices-type-name ty)))
@@ -176,14 +242,16 @@
   (let ((yname-hash (gethash ty *yname-hash*)))
     (or yname-hash 
 	(let* ((supertype (supertype ty))
-	       ;;(id (id supertype))
+	       (ysupertype (translate-to-yices* supertype bindings))
 	       (ytypename (yices-type-name ty))
 	       (constructors (constructors ty))
+	       (superconstructors (constructors supertype))
 	       (defn-string
-		 (format nil "(define-type ~a (datatype ~{~a ~}))"
-		   ytypename
-		   (translate-to-yices-constructors constructors bindings))))
+		 (format nil "(define-type ~a ~a)"
+		   ytypename ysupertype)))
 	  (push defn-string *ydefns*)
+	  (translate-to-yices-subdatatype-constructors
+	   constructors superconstructors bindings)
 	  ytypename))))
     
 
@@ -292,21 +360,26 @@
 
 (defmethod translate-to-yices* ((ty funtype) bindings)
   (with-slots (domain range) ty
-    (if (tupletype? domain)
-	(translate-to-yices-funlist (types domain) nil  1 range
-				    (yices-id-name "domvar")
-				    bindings bindings)
-	(format nil "(-> ~a ~a)" 
-	  (translate-to-yices* domain bindings)
-	  (translate-to-yices* range
-			       (if (dep-binding? domain)
-				   (cons (cons domain
-					       (yices-name domain))
-					 bindings)
-				   bindings))))))
+    (let ((bv-size (simple-below? domain)))
+     (if bv-size (format nil "(bitvector ~a)" (number bv-size))
+	 (if (tupletype? domain)
+	     (translate-to-yices-funlist (types domain) nil  1 range
+					 (yices-id-name "domvar")
+					 bindings bindings)
+	     (format nil "(-> ~a ~a)" 
+	       (translate-to-yices* domain bindings)
+	       (translate-to-yices* range
+				    (if (dep-binding? domain)
+					(cons (cons domain
+						    (yices-name domain))
+					      bindings)
+					bindings))))))))
 
-
-
+;;Not used anywhere.
+;; (defun bv-funtype? (x)
+;;    (let ((y (simple-below? (domain x))))
+;; 	 (and (number-expr? y)
+;; 	      (number y)))))
 		     
 
 ;;name-exprs and binding-exprs are not hashed in binding contexts.
@@ -362,14 +435,18 @@
 	  (or yname-hashentry
 	      (yices-interpretation expr)
 	      (yices-recognizer expr bindings)
-	      (let ((ytype (translate-to-yices* (type expr)
+	      (let* ((ytype (translate-to-yices* (type expr)
 						bindings))
-		    (yname (yices-name expr)))
-		(push (format nil "(define ~a::~a)"
-			yname
-			ytype)
-		      *ydefns*)
-		yname))))))
+		     (yname-hashentry (gethash expr *yname-hash*)))
+		(or yname-hashentry
+		    (let* ((yname (yices-name expr))
+			  (defn (format nil "(define ~a::~a)"
+				  yname
+				  ytype)))
+		      (push defn
+			    *ydefns*)
+		      (format-if "~%Adding definition: ~a" defn)
+		      yname))))))))
 	 
 
 (defmethod translate-to-yices* ((expr constructor-name-expr) bindings)
@@ -438,16 +515,16 @@
 					       bindings)))
 	       `(mod ,numer ,denom)))
 	    ((and (eq op-id 'nat2bv)
-		  (number-expr? (expr (car (actuals op*)))))
+		  (number-expr? (expr (car (actuals (module-instance op*))))))
 	     (let ((size (translate-to-yices*
-			  (expr (car (actuals op*)))
+			  (expr (car (actuals (module-instance op*))))
 			  bindings))
 		   (num (translate-to-yices*
 			 (args1 expr) bindings)))
 	       `(mk-bv ,size ,num)))
 	    ((and (eq op-id '-)
 		  (eq (id (module-instance (resolution op*)))
-		      'bv_arithmetic)
+		      '|bv_arithmetic_defs|)
 		  (not (tupletype? (domain (type op*)))))
 	     (format nil "(bv-neg ~a)"
 	       (translate-to-yices* (argument expr) bindings)))
@@ -611,15 +688,11 @@
 	   (mod-assoc (cdr (assoc (id (module-instance
 				       (resolution name-expr)))
 				  id-assoc))))
-      (if (eq (id name-expr) '-)
-	  (and (tupletype? (find-supertype (domain (type name-expr))))
-	       mod-assoc)
-	  mod-assoc))))
-
-
-	
-
-
+      mod-assoc)))
+;;       (if (eq (id name-expr) '-)
+;; 	  (and (tupletype? (find-supertype (domain (type name-expr))))
+;; 	       mod-assoc)
+;; 	  mod-assoc))))
 
 
 ;; (defparameter *interpreted-alist*
@@ -671,71 +744,66 @@
 (defun yices (sformnums)
   #'(lambda (ps)
       (let* ((goalsequent (current-goal ps))
-	     (s-forms (s-forms goalsequent))
-	     (selected-sforms (select-seq s-forms sformnums))
+	     (s-forms (select-seq (s-forms goalsequent) sformnums))
 	     (*ydefns* nil))
-	(cond ((null selected-sforms)
-	       (values 'X nil nil))
-	      (t (clear-yices)
-		 (let ((yices-forms
-			(loop for sf in selected-forms
-			      collect
-			      (let ((fmla (formula sf)))
-				(if (negation? fmla)
-				    (format nil "(assert ~a)"
-				      (translate-to-yices* (args1 fmla) nil))
-				    (format nil "(assert (not ~a))"
-				      (translate-to-yices* fmla  nil))))))
-		       (revdefns (nreverse *ydefns*))
-		       (file (make-pathname :defaults (working-directory)
-					    :name (label ps) :type "yices")))
-		   (format t "~%ydefns = ~% ~{~a~%~}" revdefns)
-		   (format t "~%yforms = ~% ~{~a~%~}" yices-forms)
-		   (with-open-file (stream  file :direction :output
-					    :if-exists :supersede)
-		     (format stream "~{~a ~%~}" revdefns)
-		     (format stream "~{~a ~%~}" yices-forms)
-		     (format stream "(check)~%")
-		     (format stream "(status)"))
-		   (let ((status nil)
-			 (tmp-file (funcall *pvs-tmp-file*)))
-		     (with-open-file (out tmp-file
-					  :direction :output
-					  :if-exists :supersede)
-		       (setq status
-			     #+allegro
-			     (excl:run-shell-command
-			      *yices-call*
-			      :input "//dev//null"
-			      :output out
-			      :error-output :output)
-			     #+cmu
-			     (extensions:run-program
-			      *yices-call*
-			      nil
-			      :input "//dev//null"
-			      :output out
-			      :error out)))
-		     (cond ((zerop status)
-			    (let ((result (file-contents tmp-file)))
-			      ;;(break "yices result")
-			      (delete-file tmp-file)
-					;	      (delete-file file)
-			      (format t "~%Result = ~a" result)
-			      (cond ((search "unsat"  result :from-end t)
-				     (format t "~%Yices translation of negation is unsatisfiable")
-				     (values '! nil nil))
-				    (t (format t "~%Yices translation of negation is not known to be satisfiable or unsatisfiable")
-				       (values 'X nil nil))))
-			    )
-			   (t (format t
-				  "~%Error running yices - you may need to do one or more of:~
-                                   ~% 1. Download yices from http://yices.csl.sri.com~
-                                   ~% 2. add yices to your path and restart PVS, or~
-                                   ~% 3. run (lisp (setq *yices-call* \"<path-to-yices>\"))~
-                                   ~%The error message is:~% ~a"
-				(file-contents tmp-file))
-			      (values 'X nil))))))))))
+	(clear-yices)
+	(let ((yices-forms
+	       (loop for sf in s-forms
+		     collect
+		     (let ((fmla (formula sf)))
+		       (if (negation? fmla)
+			   (format nil "(assert ~a)"
+			     (translate-to-yices* (args1 fmla) nil))
+			   (format nil "(assert (not ~a))"
+			     (translate-to-yices* fmla  nil))))))
+	      (revdefns (nreverse *ydefns*))
+	      (file (make-pathname :defaults (working-directory)
+				   :name (label ps) :type "yices")))
+	  (format-if "~%ydefns = ~% ~{~a~%~}" revdefns)
+	  (format-if "~%yforms = ~% ~{~a~%~}" yices-forms)
+	  (with-open-file (stream  file :direction :output
+				   :if-exists :supersede)
+	    (format stream "~{~a ~%~}" revdefns)
+	    (format stream "~{~a ~%~}" yices-forms)
+	    (format stream "(check)~%")
+	    (format stream "(status)"))
+	  (let ((status nil)
+		(tmp-file (funcall *pvs-tmp-file*)))
+	    (with-open-file (out tmp-file
+				 :direction :output :if-exists :supersede)
+	      (setq status
+		    #+allegro
+		    (excl:run-shell-command
+		     *yices-call*
+		     :input "//dev//null"
+		     :output out
+		     :error-output :output)
+		    #+cmu
+		    (extensions:run-program
+		     *yices-call*
+		     nil
+		     :input "//dev//null"
+		     :output out
+		     :error out)))
+	    (cond ((zerop status)
+		   (let ((result (file-contents tmp-file)))
+		     ;;(break "yices result")
+		     (delete-file tmp-file)
+		     (delete-file file)
+		     (format-if "~%Result = ~a" result)
+		     (cond ((search "unsat"  result :from-end t)
+			    (format-if "~%Yices translation of negation is unsatisfiable")
+			    (values '! nil nil))
+			   (t (format-if "~%Yices translation of negation is not known to be satisfiable or unsatisfiable")
+			      (values 'X nil nil)))))
+		  (t (format t
+			 "~%Error running yices - you may need to do one or more of:~
+                          ~% 1. Download yices from http://yices.csl.sri.com~
+                          ~% 2. add yices to your path and restart PVS, or~
+                          ~% 3. run (lisp (setq *yices-call* \"<path-to-yices>\"))~
+                          ~%The error message is:~% ~a"
+		       (file-contents tmp-file))
+		     (values 'X nil))))))))
 
 	
 (addrule 'yices () ((fnums *))
@@ -744,3 +812,42 @@
 of the negations of the selected formulas is unsatisfiable. "
   "~%Simplifying with Yices,")
   
+  
+(defstep yices-with-rewrites
+  (&optional (fnums *) defs theories rewrites exclude-theories exclude)
+  (then (simplify-with-rewrites fnums defs theories rewrites exclude-theories exclude)
+	(yices fnums))
+  "Installs rewrites from statement (DEFS is either NIL, T, !, explicit,
+or explicit!), from THEORIES, and REWRITES, then applies (assert fnums) followed
+by (yices fnums), then turns off all the installed rewrites.  Examples:
+ (yices-with-rewrites  + ! (\"real_props\" (\"sets[nat]\"))
+                         (\"assoc\"))
+ (yices-with-rewrites * nil :rewrites (\"assoc\" \"distrib\"))."
+  "Installing rewrites, simplifying, applying Yices, and disabling installed rewrites")
+
+(defstep ygrind (&optional (defs !); nil, t, !, explicit, or explicit!
+			  theories
+			  rewrites
+			  exclude
+			  (if-match t)
+			  (updates? t)
+			  polarity?
+			  (instantiator inst?)
+			  (let-reduce? t)
+			  cases-rewrite?
+			  quant-simp?
+			  no-replace?
+			  implicit-typepreds?)
+  (then (install-rewrites$ :defs defs :theories theories
+		      :rewrites rewrites :exclude exclude)
+	(repeat* (bash$ :if-match if-match :updates? updates?
+			:polarity? polarity? :instantiator instantiator
+			:let-reduce? let-reduce?
+			:quant-simp? quant-simp?
+			:implicit-typepreds? implicit-typepreds?
+			:cases-rewrite? cases-rewrite?))
+	(yices))
+  "Core of GRIND: Installs rewrites, repeatedly applies BASH, and then
+   invokes YICES.  See BASH for more explanation."
+"Repeatedly simplifying with decision procedures, rewriting,
+  propositional reasoning, quantifier instantiation, skolemization, Yices")
