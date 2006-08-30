@@ -799,8 +799,7 @@
 		  (t (format t
 			 "~%Error running yices - you may need to do one or more of:~
                           ~% 1. Download yices from http://yices.csl.sri.com~
-                          ~% 2. add yices to your path and restart PVS, or~
-                          ~% 3. run (lisp (setq *yices-call* \"<path-to-yices>\"))~
+                          ~% 2. add yices to your path and restart PVS.
                           ~%The error message is:~% ~a"
 		       (file-contents tmp-file))
 		     (values 'X nil))))))))
