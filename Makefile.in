@@ -509,8 +509,8 @@ $(pvsfull) : $(pvs-make-files) $(ess) $(ff-files) $(lisp-files) \
 	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(bindir)/full
 	cp $(PVSPATH)BDD/bdd-cmu-load.lisp $(PVSPATH)BDD/mu-cmu-load.lisp $(bindir)/full
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
-	/bin/echo "#!/bin/sh" > $(pvsfull)
-	/bin/echo "$(LISPEXE) -core \`dirname \$$0\`/\`basename \$$0\`.core \$\*" >> $(pvsfull)
+	echo "#!/bin/sh" > $(pvsfull)
+	echo "$(LISPEXE) -core \`dirname \$$0\`/\`basename \$$0\`.core \$\*" >> $(pvsfull)
 	chmod a+x $(pvsfull)
 
 $(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
