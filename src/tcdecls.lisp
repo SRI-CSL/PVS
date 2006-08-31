@@ -2814,7 +2814,7 @@
 				    (mapcar #'(lambda (x)
 						(mapcar #'mk-name-expr x))
 				      arg-bds1)))
-	 (aalist (pairlis-rec-formals (formals decl) arg-bds1))
+	 (aalist (pairlis-rec-formals (formals recdecl) arg-bds1))
 	 (subst-type (substit (type decl) aalist))
 	 (precond (make!-forall-expr (mapcan #'copy-list arg-bds1)
 		    (make!-conjunction*
