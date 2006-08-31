@@ -361,19 +361,21 @@
 (defmethod translate-to-yices* ((ty funtype) bindings)
   (with-slots (domain range) ty
     (let ((bv-size (simple-below? domain)))
-     (if bv-size (format nil "(bitvector ~a)" (number bv-size))
-	 (if (tupletype? domain)
-	     (translate-to-yices-funlist (types domain) nil  1 range
-					 (yices-id-name "domvar")
-					 bindings bindings)
-	     (format nil "(-> ~a ~a)" 
-	       (translate-to-yices* domain bindings)
-	       (translate-to-yices* range
-				    (if (dep-binding? domain)
-					(cons (cons domain
-						    (yices-name domain))
-					      bindings)
-					bindings))))))))
+     (if (and (number-expr? bv-size)
+	      (tc-eq (find-supertype range) *boolean*))
+	 (format nil "(bitvector ~a)" (number bv-size))
+       (if (tupletype? domain)
+	   (translate-to-yices-funlist (types domain) nil  1 range
+				       (yices-id-name "domvar")
+				       bindings bindings)
+	 (format nil "(-> ~a ~a)" 
+	  (translate-to-yices* domain bindings)
+	  (translate-to-yices* range
+			       (if (dep-binding? domain)
+				   (cons (cons domain
+					       (yices-name domain))
+					 bindings)
+				   bindings))))))))
 
 ;;Not used anywhere.
 ;; (defun bv-funtype? (x)
