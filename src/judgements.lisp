@@ -547,10 +547,58 @@
 		      ex (generic-judgements entry) gtypes ijdecls)
 		   (values jtypes jdecls))))))))
       (lambda-expr
-       (let ((bex (beta-reduce ex)))
-	 (or (judgement-types* bex)
-	     (unless (tc-eq (type ex) (type bex))
-	       (list (type bex)))))))))
+;;        (let* ((bindings (bindings op))
+;; 	      (args (if (cdr bindings)
+;; 			(argument-list (argument ex))
+;; 			(list (argument ex))))
+;; 	      (jhash (judgement-types-hash (current-judgements)))
+;; 	      (jbvars nil))
+;; 	 (unwind-protect
+;; 	     (progn
+;; 	       (mapc #'(lambda (bd arg)
+;; 			 (let* ((btype (type bd))
+;; 				(atypes (judgement-types+ arg))
+;; 				(ntypes (remove-if #'(lambda (aty)
+;; 						       (subtype-of? btype aty))
+;; 					  atypes)))
+;; 			   (break)
+;; 			   (when ntypes
+;; 			     (let* ((nm (make-variable-expr bd))
+;; 				    (entry (gethash nm jhash)))
+;; 			       (push (cons nm entry) jbvars)
+;; 			       (setf (gethash nm jhash)
+;; 				     (list (append ntypes (car entry))
+;; 					   (append (make-list (length ntypes)
+;; 							      :initial-element
+;; 							      nil)
+;; 						   (cadr entry))))))))
+;; 		     bindings args)
+;; 	       (break)
+;; 	       (judgement-types* (expression op)))
+;; 	   (dolist (jbvar jbvars)
+;; 	     (setf (gethash (car jbvar) jhash) (cdr jbvar)))))
+       (let* ((bex (beta-reduce ex))
+	      (atypes (or (judgement-types* (argument ex))
+			  (list (type (argument ex)))))
+	      (dtype (domain (type (operator ex))))
+	      (dtype-there? (some #'(lambda (aty) (subtype-of? aty dtype))
+				  atypes)))
+	 (if dtype-there?
+	     (or (judgement-types* bex)
+		 (unless (tc-eq (type ex) (type bex))
+		   (list (type bex))))
+	     (let* ((jhash (judgement-types-hash (current-judgements)))
+		    (jtypes&jdecls (gethash (argument ex) jhash)))
+	       (unwind-protect
+		   (progn
+		     (setf (gethash (argument ex) jhash)
+			   (list (cons dtype (car jtypes&jdecls))
+				 (cons nil (cadr jtypes&jdecls))))
+		     (or (judgement-types* bex)
+			 (unless (tc-eq (type ex) (type bex))
+			   (list (type bex)))))
+		 (setf (gethash (argument ex) jhash) jtypes&jdecls)))))
+       ))))
 
 ;; (defun simple-application-judgement-types (ex)
 ;;   (let ((op (operator* ex)))
@@ -830,22 +878,28 @@
   ;;(assert (every #'fully-instantiated? argtypes))
   (and (compatible? rdomain jdomain)
        (if (null argtypes)
-	   (judgement-arguments-match*? (list (type argument)) rdomain jdomain)
-	   (judgement-arguments-match*? argtypes rdomain jdomain))))
+	   (judgement-arguments-match*?
+	    argument (list (type argument)) rdomain jdomain)
+	   (judgement-arguments-match*?
+	    argument argtypes rdomain jdomain))))
 
 
 ;;; argtypes here is either
 ;;;  1. a vector of types, if the argument is a record or tuple expr.
 ;;;  2. a list of types, otherwise
 
-(defun judgement-arguments-match*? (argtypes rdomain jdomain)
+(defun judgement-arguments-match*? (argument argtypes rdomain jdomain)
   (if (listp argtypes)
+      ;; Need to pass argument to judgement-list-arguments-match?
       (judgement-list-arguments-match? argtypes rdomain jdomain)
       (if (recordtype? (find-supertype rdomain))
 	  (judgement-record-arguments-match?
 	   (delete-duplicates (coerce argtypes 'list) :from-end t :key #'car)
 	   (fields (find-supertype rdomain)) (fields (find-supertype jdomain)))
 	  (judgement-vector-arguments-match?
+	   (if (= (length argtypes) 1)
+	       (list argument)
+	       (argument-list argument))
 	   argtypes (types (find-supertype rdomain))
 	   (types (find-supertype jdomain)) 0))))
 
@@ -872,26 +926,34 @@
 	     (judgement-record-arguments-match?
 	      argflds (cdr rfields) (cdr jfields))))))
 
-(defun judgement-vector-arguments-match? (argtypes rdomain jdomain num
-						   &optional bindings)
+(defun judgement-vector-arguments-match? (args argtypes rdomain jdomain num
+					       &optional bindings)
   (or (>= num (length argtypes))
       (and (or (judgement-vector-arguments-match*?
-		(aref argtypes num) (car rdomain) (car jdomain) bindings)
+		(aref argtypes num) (car args)
+		(car rdomain) (car jdomain) bindings)
 	       (argtype-intersection-in-judgement-type?
 		(aref argtypes num) (car jdomain)))
 	   (judgement-vector-arguments-match?
-	    argtypes (cdr rdomain) (cdr jdomain) (1+ num)
+	    (cdr args) argtypes
+	    (if (dep-binding? (car rdomain))
+		(substit (cdr rdomain) (acons (car rdomain) (car args) nil))
+		(cdr rdomain))
+	    (if (dep-binding? (car jdomain))
+		(substit (cdr jdomain) (acons (car jdomain) (car args) nil))
+		(cdr jdomain))
+	    (1+ num)
 	    (if (and (typep (car rdomain) 'dep-binding)
 		     (typep (car jdomain) 'dep-binding))
 		(acons (car jdomain) (car rdomain) bindings)
 		bindings)))))
 
-(defmethod judgement-vector-arguments-match*? ((argtypes list)
+(defmethod judgement-vector-arguments-match*? ((argtypes list) args
 					       rtype jtype bindings)
   (when argtypes
     (or (subtype-wrt? (car argtypes) jtype rtype bindings)
-	(judgement-vector-arguments-match*? (cdr argtypes) rtype jtype
-					    bindings))))
+	(judgement-vector-arguments-match*? (cdr argtypes) args
+					    rtype jtype bindings))))
 
 (defun argtype-intersection-in-judgement-type? (argtypes jtype)
   (if (listp argtypes)
@@ -941,14 +1003,14 @@
        (nunion (collect-judgement-preds (car types) supertype var) preds
 	       :test #'tc-eq))))
 
-(defmethod judgement-vector-arguments-match*? ((argtypes vector)
+(defmethod judgement-vector-arguments-match*? ((argtypes vector) args
 					       rtype jtype bindings)
   (declare (ignore bindings))
   (let ((stype (find-supertype rtype)))
     (when (and (tupletype? stype)
 	       (length= argtypes (types stype)))
       (judgement-vector-arguments-match?
-       argtypes (types stype) (types (find-supertype jtype)) 0))))
+       args argtypes (types stype) (types (find-supertype jtype)) 0))))
 
 (defmethod judgement-types* ((ex field-application))
   (if (record-expr? (argument ex))
