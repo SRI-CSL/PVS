@@ -128,7 +128,7 @@ required a context.")
 	   (reset-types ex)))
   #+pvsdebug (assert (fully-typed? ex))
   #+pvsdebug (assert (fully-instantiated? ex))
-  (unless (typep ex '(or branch lambda-expr update-expr cases-expr let-expr))
+  (unless (typep ex '(or branch lambda-expr update-expr cases-expr))
     (check-for-subtype-tcc ex expected)))
 
 (defun check-type-incompatible (ex)
