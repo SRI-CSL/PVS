@@ -2586,6 +2586,56 @@
 (defmethod find-supertype ((te type-var))
   te)
 
+
+;; Given a variable name R and a dependent type like
+;; [# size: nat, contents: [below(size)->T]#],
+;; returns [# size: nat, contents: [below(R`size) -> T]#]
+(defmethod remove-dependent-type (ex (te recordtype))
+  (assert *current-context*)
+  (assert (compatible? (type ex) te))
+  (if (dependent? te)
+      (let ((nfields (remove-dependent-fields ex (fields te))))
+	(mk-recordtype nfields nil))
+      te))
+
+(defun remove-dependent-fields (ex fields &optional nfields)
+  (if (null fields)
+      (sort-fields nfields nil)
+      (remove-dependent-fields
+       ex 
+       (let ((fappl (make!-field-application (car fields) ex)))
+	 (substit (cdr fields) (acons (car fields) fappl nil)))
+       (cons (car fields) nfields))))
+
+(defmethod remove-dependent-type (ex (te tupletype))
+  (assert *current-context*)
+  (assert (compatible? (type ex) te))
+  (let ((ntypes (remove-dependent-types ex (types te))))
+    (lcopy te 'types ntypes)))
+
+(defun remove-dependent-types (ex types &optional (index 1) ntypes)
+  (if (null types)
+      (nreverse ntypes)
+      (remove-dependent-types
+       ex
+       (if (dep-binding? (car types))
+	   (let ((nex (make!-projection-application index ex)))
+	     (substit (cdr types) (acons (car types) nex nil)))
+	   (cdr types))
+       (1+ index)
+       (cons (car types) ntypes))))
+
+;; Note that this is different - ex is of the domain type, NOT the
+;; function types
+(defmethod remove-dependent-type (ex (te funtype))
+  (assert *current-context*)
+  (assert (compatible? (type ex) (domain te)))
+  (if (dep-binding? (domain te))
+      (copy te
+	'range (substit (range te) (acons (domain te) ex nil)))
+      te))
+
+
 ;;; copy-all makes copies all the way down the object.  Because it uses
 ;;; gensubst, this function may only be used when the object has been
 ;;; typechecked, and *current-context* must be set.
