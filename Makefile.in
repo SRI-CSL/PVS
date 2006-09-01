@@ -150,10 +150,6 @@ endif
 endif
 endif
 
-ifeq ($(CMULISP_HOME),)
-$(error "CMULISP_HOME must be set to build cmulisp version")
-endif
-
 ifndef EMACS
 EMACS = "$(shell which emacs)"
 endif
