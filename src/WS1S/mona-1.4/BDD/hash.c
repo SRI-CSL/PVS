@@ -97,14 +97,14 @@ char eq2(long d11, long d12, long d21, long d22)
 long hashlong(long p1, long p2)
 {  long res = 0;
 
-   while(*(int *)p1 != -1) res = ((res*100001) + (*((int *)p1)++));
+  while(*(int *)p1 != -1) res = ((res*100001) + ((*((int *)p1))++));
    return(res);
 }   
 
 char eqlong(long p11, long p12, long p21, long p22)
 {
    while((*((int *)p11)!= -1) && (*((int *)p11) == *((int *)p21)))
-      {((int *)p11)++ ; ((int *)p21)++;}
+     {(*((int *)p11))++ ; (*((int *)p21))++;}
    if((*((int *)p11) != -1) || (*((int *)p21) != -1)) return (0); 
    else return (1);
 } 
