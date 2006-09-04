@@ -899,6 +899,11 @@
 			       tfile))))
 		(tmp-file))))))
 
+(defun pvs-tmp-file ()
+  (unless *pvs-tmp-file*
+    (set-pvs-tmp-file))
+  (funcall *pvs-tmp-file*))
+
 (defmacro with-output-to-temp-file (&body body)
   (let ((tmp-file (gensym)))
     `(progn
