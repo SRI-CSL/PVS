@@ -788,12 +788,15 @@ The save-pvs-file command saves the PVS file of the current buffer."
 		      (assoc string pvs-library-path-completions)))
 	     t))))
 
+;; Not that earlier paths shadow later ones, in particular, the pvs-path/lib
+;; directory is first.
 (defun pvs-library-path-subdirs (dirs)
   (let ((dirname-paths nil))
     (dolist (dir (cons (format "%s/lib" pvs-path) dirs))
       (when (file-directory-p dir)
 	(dolist (subdir (directory-files dir))
-	  (unless (member subdir '("." ".."))
+	  (unless (or (member subdir '("." ".."))
+		      (assoc subdir dirname-paths))
 	    (when (and (file-directory-p (concat dir "/" subdir))
 		       (or (file-exists-p
 			    (concat dir "/" subdir "/.pvscontext"))
@@ -801,8 +804,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 			    (concat dir "/" subdir "/pvs-lib.lisp"))
 			   (file-exists-p
 			    (concat dir "/" subdir "/pvs-lib.el"))))
-	      (unless (assoc subdir dirname-paths)
-		(push (cons subdir dir) dirname-paths)))))))
+	      (push (cons subdir dir) dirname-paths))))))
     dirname-paths))
 
 (defun pvs-complete-library-name (prompt &optional distributed-p)
