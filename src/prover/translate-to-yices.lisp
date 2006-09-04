@@ -770,19 +770,19 @@
 	    (format stream "(check)~%")
 	    (format stream "(status)"))
 	  (let ((status nil)
-		(tmp-file (funcall *pvs-tmp-file*)))
+		(tmp-file (pvs-tmp-file)))
 	    (with-open-file (out tmp-file
 				 :direction :output :if-exists :supersede)
 	      (setq status
 		    #+allegro
 		    (excl:run-shell-command
-		     *yices-call*
+		     (format nil "~a ~a" *yices-call* (namestring file))
 		     :input "//dev//null"
 		     :output out
 		     :error-output :output)
 		    #+cmu
 		    (extensions:run-program
-		     *yices-call*
+		     (format nil "~a ~a" *yices-call* (namestring file))
 		     nil
 		     :input "//dev//null"
 		     :output out
