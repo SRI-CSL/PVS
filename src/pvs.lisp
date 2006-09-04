@@ -221,8 +221,13 @@
 		(t (pushnew dir libs :test #'string=)
 		   (pvs-message "Directory ~a in PVS_LIBRARY_PATH does not exist"
 		     dir))))))
-    (pushnew (concatenate 'string *pvs-path* "/lib/") libs :test #'file-equal)
-    (setq *pvs-library-path* (nreverse libs))))
+    (let* ((pvs-path-lib (concatenate 'string *pvs-path* "/lib/"))
+	   (pvs-path-lib-entry (find pvs-path-lib libs :test #'file-equal)))
+      (when pvs-path-lib-entry
+	(pvs-message "~a is automatically included at the beginning of the PVS_LIBRARY_PATH" pvs-path-lib)
+	(pvs-message "You cannot shadow a subdirectory in ~a, you must give it a new name" pvs-path-lib)
+	(setq libs (remove pvs-path-lib-entry libs)))
+    (setq *pvs-library-path* (cons pvs-path-lib (nreverse libs))))))
 
 (defvar *pvs-patches-loaded* nil)
 
