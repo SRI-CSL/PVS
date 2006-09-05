@@ -279,7 +279,9 @@ if [ "$PVS_LIBRARY_PATH" ]
   for path in `echo $PVS_LIBRARY_PATH | tr ':' ' '`
    do for plib in $plibs
        do if [ -d $path/$plib ]
-           then echo "Warning: PVS_LIBRARY_PATH $path/$plib conflicts with $PVSPATH/lib/$plib and will not be used"
+           then echo "Warning: PVS_LIBRARY_PATH $path/$plib"
+	        echo "         conflicts with $PVSPATH/lib/$plib"
+		echo "    $plib will default to the latter path"
 	  fi
        done
    done
