@@ -186,7 +186,7 @@ endif
 endif
 
 bindir = $(TARGETPATH)bin/$(PLATFORM)
-pvsfull = $(bindir)/full/$(SYSTEM)-$(LISP)
+pvsdevel = $(bindir)/devel/$(SYSTEM)-$(LISP)
 pvsrt = $(bindir)/runtime/$(SYSTEM)-$(LISP)
 
 pvs-make-files = pvs.system src/defsystem.lisp src/make-pvs.lisp \
@@ -468,9 +468,9 @@ fasl-files = $(lisp-files:.lisp=.$(LISPEXT))
 
 all-fasl-files = $(filter %.$(LISPEXT), $(all-lisp-files:.lisp=.$(LISPEXT)))
 
-.PHONY : all full runtime 
+.PHONY : all devel runtime 
 
-all : $(templatedeps) full
+all : $(templatedeps) devel
 
 image-deps = makefileutils makebdd
 
@@ -478,36 +478,36 @@ ifeq ($(LISP),allegro)
 image-deps += makews1s
 endif
 
-image-deps += $(pvsfull)
+image-deps += $(pvsdevel)
 
 emacs = $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc
 
 image-deps += $(emacs)
 
-full : $(image-deps)
+devel : $(image-deps)
 
 runtime : $(image-deps)
 
 ifeq ($(LISP),cmulisp)
-$(pvsfull) : $(pvs-make-files) $(ess) $(ff-files) $(lisp-files) \
+$(pvsdevel) $(pvsrt) : $(pvs-make-files) $(ess) $(ff-files) $(lisp-files) \
 	  lib/prelude.pvs lib/prelude.prf
-	$(MKDIR) -p $(bindir)/full
+	$(MKDIR) -p $(subst $(SYSTEM)-$(LISP),,$@)
 	$(LISPEXE) -eval '(load "pvs.system" :verbose t) \
                           (pvs::operate-on-system :pvs :compile) \
                           (quit)'
 	$(LISPEXE) -eval '(load "pvs.system" :verbose t) \
                           (unwind-protect \
                               (pvs::operate-on-system :pvs :compile) \
-                            (save-lisp "$(pvsfull).core" \
+                            (save-lisp "$@.core" \
                                 :init-function (function startup-pvs) \
                                ))'
 	-rm $(PVSPATH)BDD/$(PLATFORM)/*.$(LISPEXT)
-	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(bindir)/full
-	cp $(PVSPATH)BDD/bdd-cmu-load.lisp $(PVSPATH)BDD/mu-cmu-load.lisp $(bindir)/full
+	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-$(LISP),,$@)
+	cp $(PVSPATH)BDD/bdd-cmu-load.lisp $(PVSPATH)BDD/mu-cmu-load.lisp $(subst $(SYSTEM)-$(LISP),,$@)
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
-	echo "#!/bin/sh" > $(pvsfull)
-	echo "$(LISPEXE) -core \`dirname \$$0\`/\`basename \$$0\`.core \$\*" >> $(pvsfull)
-	chmod a+x $(pvsfull)
+	echo "#!/bin/sh" > $@
+	echo "$(LISPEXE) -core \`dirname \$$0\`/\`basename \$$0\`.core \$\*" >> $(pvsdevel)
+	chmod a+x $@
 
 $(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
 	umask 002; \
@@ -524,32 +524,9 @@ $(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
 endif
 
 ifeq ($(LISP),allegro)
-$(pvsfull) : $(pvs-make-files) $(ess) $(ff-files) $(libics-file) $(lisp-files) \
+$(pvsdevel) $(pvsrt) : $(pvs-make-files) $(ess) $(ff-files) $(libics-file) $(lisp-files) \
              $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
-	$(MKDIR) -p $(bindir)/full
-	rm -rf /tmp/pvs-allegro-build
-	umask 002; \
-	touch $(PVSPATH)src/pvs-gr.txt; \
-	$(LISPEXE) -e '(load "$(PVSPATH)pvs.system")' \
-		-e "(let ((code 1)) \
-                      (unwind-protect \
-                          (multiple-value-bind (v err) \
-                            (ignore-errors (operate-on-system :pvs :compile)) \
-                               (if err \
-                                   (let ((*print-readably* nil)) \
-                                     (format t \"~a\" err)) \
-                                   (setq code 0)))) \
-                        (excl:exit code)))"
-	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
-	umask 002; $(ETAGS) $(lisp-files) $(pvs-emacs-src)
-	touch $(PVSPATH)src/pvs-lexer.$(LISPEXT)
-	umask 002; \
-	$(LISPEXE) -e '(defvar *runtime* nil)' \
-		-L $(PVSPATH)src/make-pvs.lisp
-	touch $(pvsfull)
-
-$(pvsrt) : $(pvs-make-files) $(ess) $(ff-files) $(libics-file) $(lisp-files) \
-           $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
+	$(MKDIR) -p $(subst $(SYSTEM)-$(LISP),,$@)
 	rm -rf /tmp/pvs-allegro-build
 	umask 002; \
 	$(LISPEXE) -e '(load "$(PVSPATH)pvs.system")' \
@@ -566,9 +543,9 @@ $(pvsrt) : $(pvs-make-files) $(ess) $(ff-files) $(libics-file) $(lisp-files) \
 	umask 002; $(ETAGS) $(lisp-files) $(pvs-emacs-src)
 	touch $(PVSPATH)src/pvs-lexer.$(LISPEXT)
 	umask 002; \
-	$(LISPEXE) -e '(defvar *runtime* t)' \
+	$(LISPEXE) -e '(defvar *runtime* $(if $(findstring runtime,$@),t,nil))' \
 		-L $(PVSPATH)src/make-pvs.lisp
-	touch $(pvsrt)
+	touch $@
 
 $(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
 	umask 002; \
@@ -611,7 +588,7 @@ make-release-notes : $(PVSPATH)doc/release-notes/pvs-release-notes.info
 
 runtime-image-tar = pvs-$(PLATFORM).tgz
 
-full-image-tar = pvs-full-$(PLATFORM).tgz
+devel-image-tar = pvs-devel-$(PLATFORM).tgz
 
 system-tar = pvs-system.tgz
 
@@ -621,12 +598,12 @@ source-tar = pvs-source.tgz
 
 libraries-tar = pvs-libraries.tgz
 
-tarfiles : $(release-notes) $(runtime-image-tar) $(full-image-tar) \
+tarfiles : $(release-notes) $(runtime-image-tar) $(devel-image-tar) \
            $(system-tar) $(emacs19-tar) $(source-tar) $(libraries-tar)
 
 runtime-image-files = $(wildcard $(bindir)/runtime/*)
 
-full-image-files = $(wildcard $(bindir)/full/*)
+devel-image-files = $(wildcard $(bindir)/devel/*)
 
 release-notes = doc/release-notes/pvs-release-notes.info \
                 doc/release-notes/pvs-release-notes.html \
@@ -667,8 +644,8 @@ lib/strategies.lisp : src/prover/strategies.lisp
 $(runtime-image-tar) : $(pvsrt) $(bindir)/b64
 	$(TAR) $(TARFLAGS) -f $(runtime-image-tar) $(runtime-image-files) $(bindir)/b64
 
-$(full-image-tar) : $(pvsfull) $(bindir)/b64
-	$(TAR) $(TARFLAGS) -f $(full-image-tar) $(full-image-files) $(bindir)/b64
+$(devel-image-tar) : $(pvsdevel) $(bindir)/b64
+	$(TAR) $(TARFLAGS) -f $(devel-image-tar) $(devel-image-files) $(bindir)/b64
 
 $(system-tar) : $(system-files)
 	$(TAR) $(TARFLAGS) -f $(system-tar) $(system-files)
@@ -689,7 +666,7 @@ $(source-tar) : $(pvs-make-files) $(configure-files) \
 $(libraries-tar) : lib/finite_sets lib/bitvectors lib/PVSio
 	$(TAR) $(TARFLAGS) -f $@ $^ --exclude CVS
 
-tar : $(full-image-tar) $(runtime-image-tar) $(system-tar) \
+tar : $(devel-image-tar) $(runtime-image-tar) $(system-tar) \
       $(emacs19-tar) $(source-tar) $(libraries-tar)
 
 install:
@@ -701,7 +678,7 @@ clean :
 	$(MAKE) -C BDD/$(PLATFORM) clean
 	$(MAKE) -C src/WS1S/$(PLATFORM) clean
 
-$(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el : lib/prelude.pvs $(pvsfull)
+$(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el : lib/prelude.pvs $(pvsdevel)
 	-./pvs -batch -l emacs/emacs-src/pvs-set-prelude-info.el \
                         -f set-prelude-files-and-regions
 
