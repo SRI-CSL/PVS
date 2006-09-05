@@ -24,3 +24,6 @@ pvs-release-notes.html: $(src)
 
 pvs-release-notes.pdf: $(src)
 	$(TEXI2PDF) $<
+
+clean:
+	rm *.aux *.cp *.dvi *.fn *.ky *.log *.pg *.ps *.toc *.tp *.vr

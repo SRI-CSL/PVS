@@ -1,5 +1,5 @@
 @node PVS 3.2 Release Notes
-@chapter PVS 3.2 Release Notes
+@centerchap PVS 3.2 Release Notes
 
 PVS 3.2 contains a number of enhancements and bug fixes.
 

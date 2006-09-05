@@ -7,7 +7,7 @@
 @c %**end of header
 
 @ifinfo
-This file contains the release notes for PVS versions 3.0 - 3.3
+This file contains the release notes for PVS versions 3.0 - 4.0
 
 Copyright 2002 SRI International
 @end ifinfo
@@ -29,7 +29,7 @@ Copyright 2002 SRI International
 @end ifinfo
 
 @c @node Introduction
-@chapter Introduction
+@centerchap Introduction
 
 The PVS release notes are given here, for each version, going back to
 version 3.0.
@@ -44,13 +44,13 @@ are available in the @code{doc/release-notes} subdirectory of the PVS
 distribution.
 
 @menu
-* PVS 3.3 Release Notes::
+* PVS 4.0 Release Notes::
 * PVS 3.2 Release Notes::
 * PVS 3.1 Release Notes::
 * PVS 3.0 Release Notes::
 @end menu
 
-@include pvs3.3-release-notes.texi
+@include pvs4.0-release-notes.texi
 @include pvs3.2-release-notes.texi
 @include pvs3.1-release-notes.texi
 @include pvs3.0-release-notes.texi

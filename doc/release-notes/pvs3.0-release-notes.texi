@@ -1,5 +1,5 @@
 @node PVS 3.0 Release Notes
-@chapter PVS 3.0 Release Notes
+@centerchap PVS 3.0 Release Notes
 
 The PVS 3.0 release notes contain the features, bug fixes, and
 incompatibilities of PVS version 3.0 over version 2.4.
