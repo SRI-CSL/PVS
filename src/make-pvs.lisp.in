@@ -114,7 +114,7 @@
        (platform (or (sys:getenv "PLATFORM") "ix86-Linux"))
        (runtimedir (format nil "~a/bin/~a/runtime/"
 		     (or (sys:getenv "TARGETPATH") ".") platform))
-       (fulldir (format nil "~a/bin/~a/full/"
+       (develdir (format nil "~a/bin/~a/devel/"
 		  (or (sys:getenv "TARGETPATH") ".") platform)))
  (progn ;;unwind-protect
      (multiple-value-bind (v err)
@@ -122,9 +122,9 @@
 	   (if *runtime*
 	       (build-pvs runtimedir t)
 	       (progn
-		 (build-pvs fulldir t)
-		 (build-pvs fulldir nil)
-		 #+(version>= 6) (copy-devel-license fulldir))))
+		 (build-pvs develdir t)
+		 (build-pvs develdir nil)
+		 #+(version>= 6) (copy-devel-license develdir))))
        (if err
 	   (let ((*print-readably* nil))
 	     (format t "~a" err))
