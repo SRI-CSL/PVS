@@ -59,10 +59,10 @@
     (<=  (|reals| . <=)(|bv_arith_nat| . bv-le))
     (> (|reals| . >)(|bv_arith_nat| . bv-gt))
     (>=  (|reals| . >=)(|bv_arith_nat| . bv-ge))
-    (o (|bv_concat_def| . bv-concat))
-    (& (|bv_bitwise| . bv-and))
+    (O (|bv_concat_def| . bv-concat))
+    (& (|booleans| . and)(|bv_bitwise| . bv-and))
     (XOR  (|bv_bitwise| . bv-xor))
-    (^ (|bv_caret| .  bv-extract))
+;    (^ (|bv_caret| .  bv-extract))
     (sign_extend   (|bv_extend| . bv-sign-extend))
     ))
 
@@ -88,7 +88,7 @@
 	  name))))
 
 (defun yices-id-name (id)
-  (intern
+  (internn
    (concatenate 'string
      (string (if (integerp id)
 		 (format nil "~r"
@@ -530,6 +530,17 @@
 		  (not (tupletype? (domain (type op*)))))
 	     (format nil "(bv-neg ~a)"
 	       (translate-to-yices* (argument expr) bindings)))
+	    ((and (eq op-id '^)
+		  (eq (id (module-instance (resolution op*)))
+		      '|bv_caret|)
+		  (tuple-expr? argument)
+		  (tuple-expr? (cadr (exprs argument)))
+		  (number-expr? (car (exprs (cadr (exprs argument)))))
+		  (number-expr? (cadr (exprs (cadr (exprs argument))))))
+	     (format nil "(bv-extract ~a ~a ~a)"
+	       (number (car (exprs (cadr (exprs argument)))))
+	       (number (cadr (exprs (cadr (exprs argument)))))
+	       (translate-to-yices* (car (exprs argument)) bindings)))
 	    ((and (enum-adt? (find-supertype (type argument)))
 		  (recognizer? operator))
 	     (format nil "(= ~a ~a)"
