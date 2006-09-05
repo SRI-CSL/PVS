@@ -222,11 +222,11 @@ esac
 binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
 
 if [ ! "$PVSLISP" ]
-   then if   [ -x $binpath/full/pvs-allegro ]
+   then if   [ -x $binpath/devel/pvs-allegro ]
         then PVSLISP=allegro
         elif [ -x $binpath/runtime/pvs-allegro ]
         then PVSLISP=allegro
-        elif [ -x $binpath/full/pvs-cmulisp ]
+        elif [ -x $binpath/devel/pvs-cmulisp ]
         then PVSLISP=cmulisp
         elif [ -x $binpath/runtime/pvs-cmulisp ]
         then PVSLISP=cmulisp
@@ -236,9 +236,9 @@ if [ ! "$PVSLISP" ]
 fi
 PVSIMAGE=pvs-$PVSLISP
 
-if [ -d $binpath/full -a -x $binpath/full/$PVSIMAGE -a ! "$pvsruntime" ]
-   then PATH=$binpath/full:$binpath:$PVSPATH/bin:$PATH
-    LD_LIBRARY_PATH=$binpath/full:$LD_LIBRARY_PATH
+if [ -d $binpath/devel -a -x $binpath/devel/$PVSIMAGE -a ! "$pvsruntime" ]
+   then PATH=$binpath/devel:$binpath:$PVSPATH/bin:$PATH
+    LD_LIBRARY_PATH=$binpath/devel:$LD_LIBRARY_PATH
 elif [ -d $binpath/runtime -a -x $binpath/runtime/$PVSIMAGE ]
    then PATH=$binpath/runtime:$binpath:$PVSPATH/bin:$PATH
     LD_LIBRARY_PATH=$binpath/runtime:$LD_LIBRARY_PATH
@@ -271,6 +271,26 @@ export ALLEGRO_CL_HOME DISPLAY LD_LIBRARY_PATH
 export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE PVSTIMEOUT
 export PVSPATCHLEVEL PVSMINUSQ PVSFORCEDP PVSDEFAULTDP
 export PVSNONINTERACTIVE PVSINEMACS
+
+# Warn about for PVS_LIBRARY_PATH conflicts
+if [ "$PVS_LIBRARY_PATH" ]
+ then
+  plibs=`for plib in ~/pvs4.0/lib/*; do if [ -d $plib -a -e $plib/.pvscontext ]; then basename $plib; fi; done`
+  for path in `echo $PVS_LIBRARY_PATH | tr ':' ' '`
+   do for plib in $plibs
+       do if [ -d $path/$plib ]
+           then echo "Warning: PVS_LIBRARY_PATH $path/$plib conflicts with $PVSPATH/lib/$plib and will not be used"
+	  fi
+       done
+   done
+fi
+
+# Warn if yices is not in the path
+# Note the $SHELL call - without it, aliases (at least for tcsh) won't be found
+if [ ! `$SHELL -c "yices --version" 2> /dev/null` ]
+ then echo "Warning: yices not in your PATH - the yices prover command will not work"
+      echo "Download it from http://yices.csl.sri.com and add to your PATH"
+fi
 
 pvsemacsinit="-load $PVSPATH/emacs/go-pvs.el $loadafter"
 
