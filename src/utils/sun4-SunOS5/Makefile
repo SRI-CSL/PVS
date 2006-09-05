@@ -1,4 +1,4 @@
-# Makke sure ld --version returns >= 2.13.1
+# Make sure ld --version returns >= 2.13.1
 # LD = /homes/owre/sunos/bin/ld
 LD=ld
 LDFLAGS = -Bsymbolic -G -L./
@@ -19,7 +19,7 @@ file_utils.so: ${obj}
 	$(LD) ../utils-ld-table $(LDFLAGS) -o file_utils.so ${obj}
 
 b64: ../b64.c
-	$(CC) -o b64 ../b64.c
+	$(CC) -o ./b64 ../b64.c
 
 clean :
 	rm -f b64 *.o *.a *.so
