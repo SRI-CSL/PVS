@@ -46,7 +46,7 @@
     (TRUE (|booleans| . true))
     (FALSE (|booleans| . false))
     (IMPLIES  (|booleans| . =>))
-    (AND (|booleans| . and))
+    (AND (|booleans| . and) (|bv_bitwise| . bv-and))
     (OR  (|booleans| . or) (|bv_bitwise| . bv-or))
     (NOT  (|booleans| . not)(|bv_bitwise| . bv-not))
     (+  (|number_fields| . +)(|bv_arith_nat| . bv-add))
