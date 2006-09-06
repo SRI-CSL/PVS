@@ -661,7 +661,16 @@
 
 (defmethod subst-mod-params* ((mn modname) modinst bindings)
   (with-slots (id actuals) mn
-    (let ((entry (assoc id bindings :key #'id)))
+    (let ((entry (assoc id bindings
+			:key #'(lambda (y)
+				 (if (typep y
+					    '(or module mod-decl
+						 formal-theory-decl
+						 theory-abbreviation-decl))
+				     (id y)
+				     ;; An id that can't possibly appear
+				     ;; Note that nil won't work here.
+				     '||)))))
       (if entry
 	  (if (modname? (cdr entry))
 	      (cdr entry)
