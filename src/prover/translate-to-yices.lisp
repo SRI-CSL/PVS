@@ -88,7 +88,7 @@
 	  name))))
 
 (defun yices-id-name (id)
-  (internn
+  (intern
    (concatenate 'string
      (string (if (integerp id)
 		 (format nil "~r"
