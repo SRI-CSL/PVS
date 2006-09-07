@@ -46,6 +46,7 @@
     (TRUE (|booleans| . true))
     (FALSE (|booleans| . false))
     (IMPLIES  (|booleans| . =>))
+    (=>  (|booleans| . =>))
     (AND (|booleans| . and) (|bv_bitwise| . bv-and))
     (OR  (|booleans| . or) (|bv_bitwise| . bv-or))
     (NOT  (|booleans| . not)(|bv_bitwise| . bv-not))
