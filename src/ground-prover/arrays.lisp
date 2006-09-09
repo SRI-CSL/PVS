@@ -86,12 +86,13 @@
 						 (cons array1 jlst)) ))
 				 (t
 				  (setq needed-if* t)
-				  `(if* (equal ,i ,(if (consp (cdr jlst))
+  				;;NSH(9-8-06: added liftif*
+				  (liftif* `(if* (equal ,i ,(if (consp (cdr jlst))
 						       (cons 'tupcons jlst)
 						       (car jlst)))
 					,val
 					,(cons (funsym term)
-					       (cons array1 jlst) )))))))
+					       (cons array1 jlst) ))))))))
 	     (t            term) ))
 	 (t term) )))
 	
@@ -130,15 +131,17 @@
 					 ,i ,val)))
 			     ((expr< i j)
 			      (setq needed-if* t)
-			      `(if* (equal ,i ,j)
+   				;;NSH(9-8-06: added liftif*
+			      (liftif* `(if* (equal ,i ,j)
 				    (update ,array1 ,j ,(arg3 term))
 				    (update (update ,array1 ,i ,val)
-					    ,j ,(arg3 term))))
+					    ,j ,(arg3 term)))))
 			     (t (setq needed-if* t)
-				`(if* (equal ,j ,i)
+				;;NSH(9-8-06): added liftif*
+				(liftif* `(if* (equal ,j ,i)
 				      (update ,array1 ,j ,(arg3 term))
 				      (update (update ,array1 ,j ,(arg3 term))
-					    ,i ,val))))))
+					    ,i ,val)))))))
 
 
 	     (t term))))))
