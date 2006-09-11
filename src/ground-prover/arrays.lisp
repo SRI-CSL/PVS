@@ -85,9 +85,9 @@
 				  (sigapply (cons (funsym term)
 						 (cons array1 jlst)) ))
 				 (t
-				  (setq needed-if* t)
+				  ;(setq needed-if* t)
   				;;NSH(9-8-06: added liftif*
-				  (liftif* `(if* (equal ,i ,(if (consp (cdr jlst))
+				  (liftif* `(IF* (equal ,i ,(if (consp (cdr jlst))
 						       (cons 'tupcons jlst)
 						       (car jlst)))
 					,val
@@ -130,15 +130,15 @@
 				`(update ,(sigupdate `(update ,array1 ,j ,(arg3 term)))
 					 ,i ,val)))
 			     ((expr< i j)
-			      (setq needed-if* t)
+			      ;(setq needed-if* t)
    				;;NSH(9-8-06: added liftif*
-			      (liftif* `(if* (equal ,i ,j)
+			      (liftif* `(IF* (equal ,i ,j)
 				    (update ,array1 ,j ,(arg3 term))
 				    (update (update ,array1 ,i ,val)
 					    ,j ,(arg3 term)))))
-			     (t (setq needed-if* t)
+			     (t ;(setq needed-if* t)
 				;;NSH(9-8-06): added liftif*
-				(liftif* `(if* (equal ,j ,i)
+				(liftif* `(IF* (equal ,j ,i)
 				      (update ,array1 ,j ,(arg3 term))
 				      (update (update ,array1 ,j ,(arg3 term))
 					    ,i ,val)))))))
