@@ -198,10 +198,13 @@
 ; The called procedures can insert more atfs at the front of the list "s"
 ; by accessing it non-locally.  See merge and addineq (and others?).
 
+(defun needed-liftif* (exp)
+  (if needed-if* (liftif* exp) exp))
+
 (defun process1(s)
   (prog(bools exp)
     (loop while s do
-	   (setq exp (pop s));; (format t "~%Process1: ~a " exp)
+	   (setq exp (needed-liftif* (pop s)));; (format t "~%Process1: ~a " exp)
 	   (cond
 	    ((eq exp 'true))
 	    ((eq exp 'false) (retfalse))
@@ -1087,7 +1090,7 @@
 ; to see if it still works correctly when ifs become if*'s there.
 
 (defun liftif* (exp &optional (in-prover t))
-  (make-if*-exp exp (collect-conditionals exp nil t) nil in-prover))
+  (make-if*-exp exp (collect-conditionals exp) nil in-prover))
 
 (defun lamvar-in-exp? (exp)
   (cond
@@ -1104,32 +1107,33 @@
     (and (lamvar? exp) (> (lamvar-index exp) arity-sum))))
 
 
-(defun collect-conditionals (exp conds flg)
-  (if (eq flg t)
-      (if (consp exp)
-	  (case (funsym exp)
-	    ((if* if)
-	     (collect-conditionals
-	      (arg3 exp)
-	      (collect-conditionals (arg2 exp)
-				    (if (unbound-lamvar-in-exp? (arg1 exp))
-					conds
-				      (pushnew (arg1 exp) conds :test #'equal))
-				    t)
-	      t))
-	    (t (collect-conditionals (argsof exp) conds nil)))
-	conds)
+(defvar *if*-conditionals* nil)
+(defun collect-conditionals (exp)
+  (let ((*if*-conditionals* nil))
+    (collect-conditionals* exp)
+    (nreverse *if*-conditionals*)))
+
+(defun collect-conditionals* (exp)
     (if (consp exp)
-	(collect-conditionals (cdr exp)
-			      (collect-conditionals (car exp) conds t) nil)
-      conds)))
+	(case (funsym exp)
+	  ((if* if)
+	   (progn ()
+		(collect-conditionals* (arg1 exp))  
+	     (pushnew (arg1 exp) *if*-conditionals* :test #'equal)
+	     (collect-conditionals* (arg2 exp))
+	     (collect-conditionals* (arg3 exp))))
+	  (lambda
+	   nil)
+	  (t (loop for arg in (argsof exp)
+		   do (collect-conditionals* arg))))
+	nil))
 
 (defun make-if*-exp (exp conds alist in-prover)
   (if (consp conds)
       `(,(if in-prover
 	     'if*
 	   'if)
-	,(liftif* (car conds)) ;; 6-Dec-90: DAC added lifitif* to lift ifs from conditional.
+	,(make-if*-exp (car conds) nil alist in-prover) ;; 6-Dec-90: DAC added lifitif* to lift ifs from conditional.
 	,(make-if*-exp exp (cdr conds)
 		       (cons (cons (car conds) 'true) alist) in-prover)
 	,(make-if*-exp exp (cdr conds)
@@ -1143,14 +1147,16 @@
 	     (make-if*-exp (arg2 exp) conds alist in-prover))
 	    ((eq (cdr (assoc (arg1 exp) alist :test #'equal))
 		 'false)
-	     (make-if*-exp (arg3 exp) conds alist in-prover))
-	    (t (cons (funsym exp)
-		     (loop for e in (argsof exp) collect
-			   (make-if*-exp e conds alist in-prover))))))
-	  (t (cons (funsym exp)
-		   (loop for e in (argsof exp) collect
-			 (make-if*-exp e nil alist in-prover)))))
-      exp)))
+	     (make-if*-exp (arg3 exp) conds alist in-prover))))
+	  (lambda exp)
+	  (t (let* ((newargs (loop for e in (argsof exp) collect
+				     (make-if*-exp e conds alist in-prover)))
+		      (check (loop for old in (argsof exp)
+				   as new in newargs
+				   always (eq old new))))
+		 (if check exp
+		     (cons (funsym exp) newargs)))))
+	exp)))
 
 ;;NSH(12/17):  newexpandbools only lifts ifs up to the top-level 
 ;;propositional connective.
@@ -1173,7 +1179,7 @@
 		 ((and or implies not iff)
 		  (cons (funsym exp)
 			(newexpandbools1 (cdr exp)  nil)))
-		 (t (let ((expconds (collect-conditionals exp nil t)))
+		 (t (let ((expconds (collect-conditionals exp)))
 		      (setq *conditionals*
 			    (append expconds *conditionals*))
 		      (make-if*-exp exp expconds nil nil)
