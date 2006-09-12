@@ -330,7 +330,7 @@
     (loop for u in (times-or-use t1)
 	 when ;(or (and (numberp t2) (not (zerop t2)))) ;NSH(6-12-02)
 					; 8-28-91 dac: Don't replace part of
-		  (not (eq (funsym u) 'quo)) do ; quo with a non-number.
+		  (not (eq (funsym u) 'QUO)) do ; quo with a non-number.
       ; This check is necessary since the pr-find of t1 is 1 in some case. (is this ok?)
 		  ;;;NSH(6.12.02)  (format t "~%u = ~a" u)
 	 (setq newsig
