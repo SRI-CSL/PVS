@@ -212,9 +212,13 @@ case $opsys in
 	   # uname exits with an error and we unset it.
 	   uname -a > /dev/null 2>&1 || unset LD_ASSUME_KERNEL
            ;;
-  Darwin) opsys=MacOSX
+  Darwin) case `uname -p` in
+            powerpc) PVSARCH=powerpc;;
+	    i*86) PVSARCH=ix86;;
+	    *) PVSARCH=`uname -p`;;
+	  esac
+          opsys=MacOSX
           majvers=`uname -r | cut -d"." -f1`
-	  PVSARCH=`uname -p`
 	  ;;
   *) echo "PVS 3.3 only runs under Solaris, Linux, FreeBSD (linux-enabled), or Mac (Darwin 7.4)"; exit 1
 esac
