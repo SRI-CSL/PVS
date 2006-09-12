@@ -1715,13 +1715,13 @@ Point will be on the offending delimiter."
 	   (pvs-valid-output-regexps (cdr output-regexps)))))
 
 (defun pvs-validate-handler (error-p wait-p message output prompt)
-;;   (message "pvs-validate-handler called: %s %s %s %s %s"
-;; 	   error-p wait-p message output prompt)
+  ;;(message "pvs-validate-handler called: %s %s %s %s %s"
+ 	;;   error-p wait-p message output prompt)
   (cond ((and (stringp output)
 	      (string-match (ilisp-value 'ilisp-error-regexp) output))
 	 (pvs-message "Lisp ERROR: %s\n" (comint-remove-whitespace output))
 	 ;;(reset-pvs)
-	 )
+	 t)
 	(t t)))
 
 (defmacro pvs-validate-and-die (file directory &rest body)
