@@ -25,6 +25,21 @@
 ## Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ## --------------------------------------------------------------------
 
+# This Makefile consists of several parts
+#  Initialization
+#  External libraries and files
+#  PVS grammar files
+#  PVS methods file
+#  PVS Lisp compilation
+#  PVS Lisp image
+#  PVS Emacs prelude info file
+#  PVS Emacs compilation
+#  PVS tarfiles
+#  Clean
+
+# Initialization
+# Initializes variables and performs some checks before invoking rules
+
 ifneq (,)
 This makefile requires GNU Make.
 endif
@@ -163,6 +178,10 @@ endif
 emacsversion = $(shell expr "`$(EMACS) --version 2> /dev/null`" \
                             : '[^X]*\(X*Emacs [0-9][0-9]\)')
 
+
+ifeq ($(emacsversion),Emacs 22)
+EMACSSUBDIR = emacs22
+else
 ifeq ($(emacsversion),Emacs 21)
 EMACSSUBDIR = emacs20
 else
@@ -179,6 +198,7 @@ ifeq ($(emacsversion),Emacs 19)
 EMACSSUBDIR = emacs19
 else
 $(error "Unknown version of (X)Emacs: $(emacsversion)")
+endif
 endif
 endif
 endif
@@ -468,9 +488,11 @@ fasl-files = $(lisp-files:.lisp=.$(LISPEXT))
 
 all-fasl-files = $(filter %.$(LISPEXT), $(all-lisp-files:.lisp=.$(LISPEXT)))
 
-.PHONY : all devel runtime 
+.PHONY : all devel runtime parser
 
 all : $(templatedeps) devel
+
+parser : pvs-parser-out
 
 image-deps = makefileutils makebdd
 
@@ -484,11 +506,27 @@ emacs = $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc
 
 image-deps += $(emacs)
 
-devel : $(image-deps)
+devel : $(pvsdevel) $(image-deps)
 
-runtime : $(image-deps)
+runtime : $(pvsrt) $(image-deps)
+
+# Here are the rules for building the PVS grammar, pvs-methods file, and
+# devel and runtime images.
 
 ifeq ($(LISP),cmulisp)
+
+$(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
+	umask 002; \
+	$(LISPEXE) -load src/make-pvs-parser
+
+$(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
+                       $(PVSPATH)src/defcl.lisp \
+                       $(PVSPATH)src/classes-expr.lisp \
+                       $(PVSPATH)src/classes-decl.lisp
+	umask 002; \
+	$(LISPEXE) -eval '(defvar *pvs-path* "@PVSPATH@")' \
+		   -load src/make-pvs-methods.lisp
+
 $(pvsdevel) $(pvsrt) : $(pvs-make-files) $(ess) $(ff-files) $(lisp-files) \
 	  lib/prelude.pvs lib/prelude.prf
 	$(MKDIR) -p $(subst $(SYSTEM)-$(LISP),,$@)
@@ -508,19 +546,6 @@ $(pvsdevel) $(pvsrt) : $(pvs-make-files) $(ess) $(ff-files) $(lisp-files) \
 	echo "#!/bin/sh" > $@
 	echo "$(LISPEXE) -core \`dirname \$$0\`/\`basename \$$0\`.core \$\*" >> $(pvsdevel)
 	chmod a+x $@
-
-$(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
-	umask 002; \
-	$(LISPEXE) -load src/make-pvs-parser
-
-
-$(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
-                       $(PVSPATH)src/defcl.lisp \
-                       $(PVSPATH)src/classes-expr.lisp \
-                       $(PVSPATH)src/classes-decl.lisp
-	umask 002; \
-	$(LISPEXE) -eval '(defvar *pvs-path* "@PVSPATH@")' \
-		   -load src/make-pvs-methods.lisp
 endif
 
 ifeq ($(LISP),allegro)
@@ -560,9 +585,6 @@ $(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
 		-L $(PVSPATH)src/make-pvs-methods.lisp
 endif
 
-parser : $(PVSPATH)src/pvs-lexer.lisp
-.PHONY : parser
-
 $(LISP) :
 	@echo "Need to set the LISP variable in Makefile to a valid"
 	@echo "Common Lisp executable for this platform."
@@ -579,7 +601,7 @@ makews1s :
 	(cd $(PVSPATH)src/WS1S ; rm -rf mona ; ln -s mona-1.4 mona);\
 	$(MAKE) -C $(PVSPATH)src/WS1S/$(PLATFORM)
 
-make-release-notes : $(PVSPATH)doc/release-notes/pvs-release-notes.info
+make-release-notes :
 	$(MAKE) -C $(PVSPATH)doc/release-notes
 
 #
@@ -624,8 +646,11 @@ system-files = README pvs pvsio pvs-tex.sub pvs.sty bin/relocate \
                $(ilisp-emacs-src) emacs/emacs20 emacs/xemacs21 \
                lib/PVSio
 
+library-files = lib/PVSio/.pvscontext lib/finite_sets/.pvscontext \
+                lib/bitvectors/.pvscontext
+
 configure-files = Makefile.in README README.configure configure.in \
-                  pvs.in pvs.system.in
+                  pvs.in
 
 bdd-sources = BDD/bdd-ld-table BDD/mu-ld-table \
               BDD/bdd_interface.c BDD/mu_interface.c \
@@ -654,11 +679,11 @@ $(emacs19-tar) : $(emacs19-files)
 	$(TAR) $(TARFLAGS) -f $(emacs19-tar) $(emacs19-files)
 
 $(source-tar) : $(pvs-make-files) $(configure-files) \
-                src/make-allegro-pvs.lisp.in src/make-pvs.lisp.in \
+                src/make-allegro-pvs.lisp src/make-pvs.lisp \
                 src/metering.lisp src/utils/utils-ld-table \
                 src/utils/file_utils.c src/utils/b64.c wish \
-                $(ff-files) $(ess) ess/README ess/allegro-runtime.lisp.in \
-                ess/dist-ess.lisp.in ess/term/terms/rel/*.txt \
+                $(ff-files) $(ess) ess/README ess/allegro-runtime.lisp \
+                ess/dist-ess.lisp ess/term/terms/rel/*.txt \
                 $(pvs-parser-in) $(lisp-files) \
                 $(bdd-sources) $(ws1s-sources)
 	$(TAR) $(TARFLAGS) -f $@ $^ --exclude CVS
@@ -674,9 +699,10 @@ install:
 
 clean : 
 	rm -f $(all-fasl-files)
-	$(MAKE) -C src/utils/$(PLATFORM) clean
-	$(MAKE) -C BDD/$(PLATFORM) clean
-	$(MAKE) -C src/WS1S/$(PLATFORM) clean
+	$(MAKE) -C $(PVSPATH)src/utils/$(PLATFORM) clean
+	$(MAKE) -C $(PVSPATH)BDD/$(PLATFORM) clean
+	$(MAKE) -C $(PVSPATH)src/WS1S/$(PLATFORM) clean
+	$(MAKE) -C $(PVSPATH)doc/release-notest clean
 
 $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el : lib/prelude.pvs $(pvsdevel)
 	-./pvs -batch -l emacs/emacs-src/pvs-set-prelude-info.el \
