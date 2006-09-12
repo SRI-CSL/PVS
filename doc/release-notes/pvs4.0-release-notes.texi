@@ -1,9 +1,11 @@
 @node PVS 4.0 Release Notes
 @centerchap PVS 4.0 Release Notes
 
-Release notes for PVS version 4.0.  @footnote{These started as the release
+Release notes for PVS version 4.0. @footnote{These started as the release
 notes for PVS 3.3, but this was changed to a major release when we
-made PVS open source.}
+made PVS open source.}  The major difference from earlier versions of
+PVS is that this release is under the GPL license.  In addition, there
+is now a PVS WIKI page at @url{http://pvs-wiki.csl.sri.com}.
 
 @ifinfo
 @menu
@@ -17,13 +19,16 @@ made PVS open source.}
 @node    4.0 Installation Notes
 @section Installation Notes
 
-Installation is the same as usual.  However, if you have received
-patches from SRI that you have put into your @code{~/.pvs.lisp} file,
-they should be removed.  If you anticipate wanting to try the newer
-and older versions together, you can do this by using @code{#-pvs4.0}
-in front of the patches.  This is a directive to the Lisp reader, and
-causes the following s-expression to be ignored unless it is an
-earlier version of PVS.
+Generally, installation is the same as usual; but now there are more
+choices.  To start with, the 
+
+ However, if you have
+received patches from SRI that you have put into your
+@code{~/.pvs.lisp} file, they should be removed.  If you anticipate
+wanting to try the newer and older versions together, you can do this
+by using @code{#-pvs4.0} in front of the patches.  This is a directive
+to the Lisp reader, and causes the following s-expression to be
+ignored unless it is an earlier version of PVS.
 
 @node 4.0 New Features
 @section New Features
@@ -36,6 +41,7 @@ earlier version of PVS.
 * Random Testing::
 * Yices::
 * Recursive Judgements TCCs::
+* Prelude Additions::
 * Decimal Representation for Numbers::
 * Unary plus::
 @end menu
@@ -311,6 +317,25 @@ default behavior, but found that it was not backward compatible.
 
 @c @node Dependent Types in Formal Parameters
 @c @subsection Dependent Types in Formal Parameters
+
+@node Prelude Additions
+@subsection Prelude Additions
+
+To support the Yices interface, several operators from the bitvector
+library have been moved to the prelude.  These are in the new theories
+@code{floor_div_props}, @code{mod}, @code{bv_arith_nat_defs},
+@code{bv_int_defs}, @code{bv_arithmetic_defs}, and
+@code{bv_extend_defs}.  The @code{floor_div_props} and @code{mod}
+theories have been moved completely, the rest have only had the
+operators added to the prelude - the rest of the theory, along with
+lemmas and other useful declarations, is still in the bitvector
+library - just drop the @code{_def} for the corresponding theory.
+
+Note that this can have some side effects.  For example, the WIFT
+tutorial @code{adder} example expects conversions to be used in a
+certain way because there were no arithmetic operators on bit
+vectors.  Now that there are such operators, conversions no longer are
+needed, and proofs obviously fail.
 
 @node Decimal Representation for Numbers
 @subsection Decimal Representation for Numbers
