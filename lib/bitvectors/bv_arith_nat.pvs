@@ -34,7 +34,7 @@
 bv_arith_nat[N: nat]: THEORY
 BEGIN
 
-  IMPORTING bv_nat[N], mod
+  IMPORTING bv_nat[N], mod, bv_arith_nat_defs[N]
 
 % Definitions have been moved to the prelude theory bv_arith_nat_defs
 % to support Yices

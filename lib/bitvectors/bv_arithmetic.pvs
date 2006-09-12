@@ -14,7 +14,7 @@
 bv_arithmetic[N: posnat]: THEORY
 BEGIN
 
-  IMPORTING bv_int[N], bv_arith_caret
+  IMPORTING bv_int[N], bv_arith_caret, bv_arithmetic_defs[N]
 
   bv, bv1, bv2 : VAR bvec[N]
 

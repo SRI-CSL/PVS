@@ -10,7 +10,7 @@ bv_extend [N: posnat] : THEORY
 
 BEGIN
 
-  IMPORTING bv_caret, bv_concat
+  IMPORTING bv_caret, bv_concat, bv_extend_defs[N]
     
   bv: VAR bvec[N]
   k: VAR above(N)

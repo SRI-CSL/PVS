@@ -23,7 +23,7 @@
 bv_int[N: posnat]: THEORY
 BEGIN
 
-  IMPORTING bv_nat[N]
+  IMPORTING bv_nat[N], bv_int_defs[N]
 
 % Definitions have been moved to the prelude theory bv_int_defs
 % to support Yices
