@@ -393,7 +393,7 @@
 ;   ((and (eq (car u) 'TIMES)(qnumberp (cadr u)))
 ;    `(times ,(qminus (cadr u)) ,.(cddr u)))
 ;   ((eq (car u) 'PLUS)
-;    (cons 'plus (mapcar #'sigminus1 (cdr u))))
+;    (cons 'PLUS (mapcar #'sigminus1 (cdr u))))
 ;   (t `(times -1 ,u))))
 
 
@@ -697,13 +697,13 @@
 				   (sigplus `(PLUS 1 ,(arg2 ineq2)))
 				   (arg2 ineq2))))
 	    (greatereqp (setq lb (arg2 ineq2))))
-      (let ((dif (sigdifference `(difference ,ub ,lb))))
+      (let ((dif (sigdifference `(DIFFERENCE ,ub ,lb))))
 	;(break)
 	(when (and (qlesseqp dif *jmr-dist*) (eq (prtype lb) 'integer))
 	  (push (make-equals-from-bounds (arg1 ineq1) lb ub dif) ineqpot))))))
 
 (defun make-equals-from-bounds (var lb ub
-				    &optional (dif (sigdifference `(difference ,ub ,lb))))
+				    &optional (dif (sigdifference `(DIFFERENCE ,ub ,lb))))
   (if (qzerop dif)
       `(equal ,var ,lb)
     (cons `or
@@ -1010,7 +1010,7 @@
 (defun normineq2(lit)
   (prog(var coef dif fnsymbol)
        (setq fnsymbol (funsym lit))
-       (setq dif (sigdifference `(difference ,(arg1 lit) ,(arg2 lit))))
+       (setq dif (sigdifference `(DIFFERENCE ,(arg1 lit) ,(arg2 lit))))
        ;(break)
        (return
 	(cond
@@ -1019,16 +1019,16 @@
 	  (list
 	   (cond ((qminusp coef)(antifnsym fnsymbol))(t fnsymbol))
 	   var
-;;;	(canon `(plus ,var (times ,(qnorm (qquotient -1 coef)) ,dif)))
+;;;	(canon `(PLUS ,var (times ,(qnorm (qquotient -1 coef)) ,dif)))
 ;;;   fix to get around the "order bug"  18-Nov-85
 	   (if *use-can*
 	       (arithcan
-	    ;`(plus ,var (times ,(qnorm (qquotient -1 coef)) ,dif))
+	    ;`(PLUS ,var (times ,(qnorm (qquotient -1 coef)) ,dif))
 	    ;; DAC fix to make sure var is cancelled in resulting expression.
 		`(TIMES ,(qnorm (qquotient -1 coef))
 			,(sigplus `(PLUS ,(sigtimes `(TIMES ,(qtimes -1 coef) ,var)) ,dif))))
 	     (sigma
-	    ;`(plus ,var (times ,(qnorm (qquotient -1 coef)) ,dif))
+	    ;`(PLUS ,var (times ,(qnorm (qquotient -1 coef)) ,dif))
 	    ;; DAC fix to make sure var is cancelled in resulting expression.
 	      `(TIMES ,(qnorm (qquotient -1 coef))
 		      ,(sigplus `(PLUS ,(sigtimes `(TIMES ,(qtimes -1 coef) ,var)) ,dif)))))
@@ -1306,7 +1306,7 @@
        ,(sigplus `(PLUS ,(qminus (qplus fract 1)) ,(arg2 ineq)))))
     (t
      `(greatereqp ,(arg1 ineq)
-		  ,(sigdifference `(difference ,(arg2 ineq) ,fract))))))
+		  ,(sigdifference `(DIFFERENCE ,(arg2 ineq) ,fract))))))
 
 ; performs cut for positive fractional part
 
