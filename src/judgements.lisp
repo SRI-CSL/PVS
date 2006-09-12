@@ -581,8 +581,7 @@
 	      (atypes (or (judgement-types* (argument ex))
 			  (list (type (argument ex)))))
 	      (dtype (domain (type (operator ex))))
-	      (dtype-there? (some #'(lambda (aty) (subtype-of? aty dtype))
-				  atypes)))
+	      (dtype-there? (argtypes-subtype-of-domain-type atypes dtype)))
 	 (if dtype-there?
 	     (or (judgement-types* bex)
 		 (unless (tc-eq (type ex) (type bex))
@@ -599,6 +598,26 @@
 			   (list (type bex)))))
 		 (setf (gethash (argument ex) jhash) jtypes&jdecls)))))
        ))))
+
+(defun argtypes-subtype-of-domain-type (atypes dtype)
+  (let ((sdtype (find-supertype dtype)))
+    (if (vectorp atypes)
+	(if (tupletype? sdtype)
+	    (every #'argtypes-subtype-of-domain-type* atypes (types sdtype))
+	    ;; Must be a recordtype
+	    (every #'(lambda (a)
+		       (arg-field-types-subtype-of-domain-type
+			a (fields sdtype)))
+		   atypes))
+	(some #'(lambda (aty) (subtype-of? aty sdtype)) atypes))))
+
+(defun argtypes-subtype-of-domain-type* (atypes type)
+  (some #'(lambda (aty) (subtype-of? aty type)) atypes))
+
+(defun arg-field-types-subtype-of-domain-type (aentry fields)
+  (let* ((id (car aentry))
+	 (fldtype (type (find id fields :key #'id))))
+    (some #'(lambda (aty) (subtype-of? aty fldtype)) (cdr aentry))))
 
 ;; (defun simple-application-judgement-types (ex)
 ;;   (let ((op (operator* ex)))
