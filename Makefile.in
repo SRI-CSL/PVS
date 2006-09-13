@@ -58,109 +58,54 @@ TARFLAGS = -cvohz --mode="u+rw" --atime-preserve --exclude=CVS
 PLATFORM := $(shell $(PVSPATH)bin/pvs-platform)
 export PLATFORM
 
+bindir = $(TARGETPATH)bin/$(PLATFORM)
+
 SYSTEM ?= pvs
 
-ifeq ($(LISP),)
-  # Default to cmulisp, since everyone has access to it
-  LISP = cmulisp
+ifneq ($(ALLEGRO_HOME),)
+ALLEGROEXE = $(ALLEGRO_HOME)/mlisp8
+LD_LIaBRARY_PATH = $(ALLEGRO_HOME):$LD_LIBRARY_PATH
+pvsdevel += $(bindir)/devel/$(SYSTEM)-allegro
+pvsrt += $(bindir)/runtime/$(SYSTEM)-allegro
 endif
 
-ifeq ($(LISP),cmulisp)
-ifeq ($(CMULISP_HOME),)
-$(error "CMULISP_HOME must be set to build cmulisp version")
-endif
-# Now check that the given CMULISP_HOME works
-LISPEXE = $(CMULISP_HOME)/bin/lisp
-ifeq ($(shell if [ -x "$(LISPEXE)" ]; then echo OK; fi),OK)
+ifneq ($(CMULISP_HOME),)
+# Check that CMULISP_HOME looks OK
+CMULISPEXE = $(CMULISP_HOME)/bin/lisp
+ifeq ($(shell if [ -x "$(CMULISPEXE)" ]; then echo OK; fi),OK)
 CMUVERSION = $(shell $(CMULISP_HOME)/bin/lisp -batch -eval '(progn (format t "~a" (lisp-implementation-version)) (terpri) (quit))')
 $(warning "CMU Version $(CMUVERSION)")
+pvsdevel += $(bindir)/devel/$(SYSTEM)-cmulisp
+pvsrt += $(bindir)/runtime/$(SYSTEM)-cmulisp
 else
 $(error "$(LISPEXE) is not executable")
 endif
 endif
 
-ifeq ($(LISP),sbcl)
-ifeq ($(SBCL_HOME),)
-$(error "SBCL_HOME must be set to build sbcl version")
-endif
-# Now check that the given SBCL_HOME works
-LISPEXE = $(SBCL_HOME)/bin/lisp
-ifeq ($(shell if [ -x "$(LISPEXE)" ]; then echo OK; fi),OK)
-CMUVERSION = $(shell $(CMULISP_HOME)/bin/lisp -batch -eval '(progn (format t "~a" (lisp-implementation-version)) (terpri) (quit))')
-$(warning "CMU Version $(CMUVERSION)")
+ifneq ($(SBCL_HOME),)
+# Check that the given SBCL_HOME works
+SBCLISPEXE = $(SBCL_HOME)/bin/lisp
+ifeq ($(shell if [ -x "$(SBCLISPEXE)" ]; then echo OK; fi),OK)
+SBCLVERSION = $(shell $(SBCL_HOME)/bin/lisp -batch -eval '(progn (format t "~a" (lisp-implementation-version)) (terpri) (quit))')
+$(warning "SBCL Version $(SBCLVERSION)")
+pvsdevel += $(bindir)/devel/$(SYSTEM)-sbclisp
+pvsrt += $(bindir)/runtime/$(SYSTEM)-sbclisp
 else
-$(error "$(LISPEXE) is not executable")
+$(error "$(SBCLISPEXE) is not executable")
 endif
 endif
 
-ifeq ($(LISP),allegro)
-ifeq ($(ALLEGRO_HOME),)
-$(error "ALLEGRO_HOME must be set to build allegro version")
-endif
-endif
-
-
-# The extension should match that of pvs.system, src/pvs.lisp,
-# ess/sys/tools/rel/box-system.lisp, and emacs/emacs-src/pvs-ilisp.el
-ifeq ($(LISP),allegro)
-  LISPEXE = $(ALLEGRO_HOME)/mlisp8
-  LD_LIBRARY_PATH = $(ALLEGRO_HOME):$LD_LIBRARY_PATH
-  ifeq ($(PLATFORM),sun4-SunOS5)
-    LISPEXT=fasl
-  else
-  ifeq ($(PLATFORM),ix86-Linux)
-    LISPEXT=lfasl
-  else
-  ifeq ($(PLATFORM),powerpc-MacOSX7)
-    LISPEXT=mfasl
-  else
-  ifeq ($(PLATFORM),powerpc-MacOSX8)
-    LISPEXT=mfasl
-  endif
-  endif
-  endif
-  endif
-endif
-ifeq ($(LISP),cmulisp)
-  LISPEXE = $(CMULISP_HOME)/bin/lisp
-  ifeq ($(PLATFORM),sun4-SunOS5)
-    LISPEXT=sparcf
-  else
-  ifeq ($(PLATFORM),ix86-Linux)
-    LISPEXT=x86f
-  else
-  ifeq ($(PLATFORM),powerpc-MacOSX7)
-    LISPEXT=ppcf
-  else
-  ifeq ($(PLATFORM),powerpc-MacOSX8)
-    LISPEXT=ppcf
-  endif
-  endif
-  endif
-  endif
-endif
 
 LOAD-FOREIGN-EXTENSION=so
 export LD_LIBRARY_PATH
-ifeq ($(PLATFORM),sun4-SunOS5)
-  LISPEXT=fasl
-else
-ifeq ($(PLATFORM),ix86-Linux)
-  LISPEXT=lfasl
-else
 ifeq ($(PLATFORM),powerpc-MacOSX7)
-  LISPEXT=mfasl
   LOAD-FOREIGN-EXTENSION=dylib
 else
 ifeq ($(PLATFORM),powerpc-MacOSX8)
-  LISPEXT=mfasl
   LOAD-FOREIGN-EXTENSION=dylib
 else
 ifeq ($(PLATFORM),ix86-MacOSX8)
-  LISPEXT=nfasl
   LOAD-FOREIGN-EXTENSION=dylib
-endif
-endif
 endif
 endif
 endif
@@ -205,10 +150,6 @@ endif
 endif
 endif
 
-bindir = $(TARGETPATH)bin/$(PLATFORM)
-pvsdevel = $(bindir)/devel/$(SYSTEM)-$(LISP)
-pvsrt = $(bindir)/runtime/$(SYSTEM)-$(LISP)
-
 pvs-make-files = pvs.system src/defsystem.lisp src/make-pvs.lisp \
 		 src/make-allegro-pvs.lisp src/closopt.lisp
 
@@ -230,7 +171,7 @@ ff-files = src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
            src/utils/$(PLATFORM)/b64 \
            BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION)
 
-ifeq ($(LISP),allegro)
+ifneq ($(ALLEGRO_HOME),)
   ff-files += src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION)
 endif
 
@@ -391,7 +332,7 @@ pvs-src = src/closopt.lisp \
 	  src/tex-support.lisp \
           src/raw-api.lisp
 
-ifeq ($(LISP),allegro)
+ifneq ($(ALLEGRO_HOME),)
    pvs-src += src/utils/file-utils.lisp
 endif
 ifeq ($(LISP),cmulisp)
@@ -460,8 +401,8 @@ lisp-files = $(pvs-parser-out) $(ground-prover) $(pvs-src) \
 	     $(PVSiolisp) $(ws1slisp) $(groundevallisp) \
              $(abstractionlisp)
 
-templatedeps = pvs src/make-allegro-pvs.lisp pvs.system \
-               ess/dist-ess.lisp ess/allegro-runtime.lisp
+builddeps = pvs.system src/make-allegro-pvs.lisp \
+            ess/dist-ess.lisp ess/allegro-runtime.lisp
 
 ifneq ($(PVSPATH),)
 pvs-make-files := $(patsubst %,$(PVSPATH)%,$(pvs-make-files))
@@ -479,18 +420,22 @@ ws1slisp := $(patsubst %,$(PVSPATH)%,$(ws1slisp))
 abstractionlisp := $(patsubst %,$(PVSPATH)%,$(abstractionlisp))
 groundevallisp := $(patsubst %,$(PVSPATH)%,$(groundevallisp))
 inst-by-unif-lisp := $(patsubst %,$(PVSPATH)%,$(inst-by-unif-lisp))
-templatedeps := $(patsubst %,$(PVSPATH)%,$(templatedeps))
+builddeps := $(patsubst %,$(PVSPATH)%,$(builddeps))
 endif
 
 all-lisp-files = $(ess) $(pvs-parser-in) $(lisp-files)
 
-fasl-files = $(lisp-files:.lisp=.$(LISPEXT))
-
-all-fasl-files = $(filter %.$(LISPEXT), $(all-lisp-files:.lisp=.$(LISPEXT)))
-
 .PHONY : all devel runtime parser
 
-all : $(templatedeps) devel
+ifeq ($(pvsdevel),)
+$(error "Must set CMULISP_HOME or ALLEGRO_HOME")
+else
+all : devel runtime
+endif
+
+devel : $(image-deps) $(pvsdevel)
+
+runtime : $(image-deps) $(pvsrt)
 
 parser : pvs-parser-out
 
@@ -506,10 +451,6 @@ emacs = $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc
 
 image-deps += $(emacs)
 
-devel : $(image-deps) $(pvsdevel)
-
-runtime : $(image-deps) $(pvsrt)
-
 # Here are the rules for building the PVS grammar, pvs-methods file, and
 # devel and runtime images.
 
@@ -517,7 +458,7 @@ ifeq ($(LISP),cmulisp)
 
 $(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
 	umask 002; \
-	$(LISPEXE) -load src/make-pvs-parser
+	$(CMULISPEXE) -load src/make-pvs-parser
 
 $(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
                        $(PVSPATH)src/defcl.lisp \
@@ -539,7 +480,7 @@ $(pvsdevel) $(pvsrt) : $(pvs-make-files) $(ess) $(ff-files) $(lisp-files) \
                             (save-lisp "$@.core" \
                                 :init-function (function startup-pvs) \
                                ))'
-	-rm $(PVSPATH)BDD/$(PLATFORM)/*.$(LISPEXT)
+	-rm $(PVSPATH)BDD/$(PLATFORM)/bdd-cmu-load.*
 	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-$(LISP),,$@)
 	cp $(PVSPATH)BDD/bdd-cmu-load.lisp $(PVSPATH)BDD/mu-cmu-load.lisp $(subst $(SYSTEM)-$(LISP),,$@)
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
@@ -548,7 +489,7 @@ $(pvsdevel) $(pvsrt) : $(pvs-make-files) $(ess) $(ff-files) $(lisp-files) \
 	chmod a+x $@
 endif
 
-ifeq ($(LISP),allegro)
+ifneq ($(ALLEGRO_HOME),)
 $(pvsdevel) $(pvsrt) : $(pvs-make-files) $(ess) $(ff-files) $(libics-file) $(lisp-files) \
              $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
 	$(MKDIR) -p $(subst $(SYSTEM)-$(LISP),,$@)
@@ -566,7 +507,6 @@ $(pvsdevel) $(pvsrt) : $(pvs-make-files) $(ess) $(ff-files) $(libics-file) $(lis
                         (excl:exit code)))"
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
 	umask 002; $(ETAGS) $(lisp-files) $(pvs-emacs-src)
-	touch $(PVSPATH)src/pvs-lexer.$(LISPEXT)
 	umask 002; \
 	$(LISPEXE) -e '(defvar *runtime* $(if $(findstring runtime,$@),t,nil))' \
 		-L $(PVSPATH)src/make-pvs.lisp
@@ -698,7 +638,8 @@ install:
 	@echo "target install is not used for PVS - see INSTALL"
 
 clean : 
-	rm -f $(all-fasl-files)
+	rm -f *.*fasl *.sbin *.obin *.rbin *.mbin *.x86f *.ppcf *.sparcf \
+              *.x8664s *.x86s *.ppcs *.sparcs *.clfasl
 	$(MAKE) -C $(PVSPATH)src/utils/$(PLATFORM) clean
 	$(MAKE) -C $(PVSPATH)BDD/$(PLATFORM) clean
 	$(MAKE) -C $(PVSPATH)src/WS1S/$(PLATFORM) clean
