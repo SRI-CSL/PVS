@@ -144,6 +144,6 @@ PLATFORM=`./bin/pvs-platform`
 export PLATFORM
 
 # Finally create all the generated files
-AC_OUTPUT(Makefile pvs pvsio pvs-config.lisp doc/user-guide/Makefile doc/language/Makefile doc/language/pvs-doc.el doc/prover/Makefile)
+AC_OUTPUT(Makefile pvs pvsio doc/user-guide/Makefile doc/language/Makefile doc/language/pvs-doc.el doc/prover/Makefile)
 
 chmod a+x pvs
