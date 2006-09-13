@@ -506,9 +506,9 @@ emacs = $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc
 
 image-deps += $(emacs)
 
-devel : $(pvsdevel) $(image-deps)
+devel : $(image-deps) $(pvsdevel)
 
-runtime : $(pvsrt) $(image-deps)
+runtime : $(image-deps) $(pvsrt)
 
 # Here are the rules for building the PVS grammar, pvs-methods file, and
 # devel and runtime images.
