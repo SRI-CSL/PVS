@@ -1029,7 +1029,11 @@
     (when (and (tupletype? stype)
 	       (length= argtypes (types stype)))
       (judgement-vector-arguments-match?
-       args argtypes (types stype) (types (find-supertype jtype)) 0))))
+       (typecase args
+	 (tuple-expr (exprs args))
+	 (list args)
+	 (t (list args)))
+       argtypes (types stype) (types (find-supertype jtype)) 0))))
 
 (defmethod judgement-types* ((ex field-application))
   (if (record-expr? (argument ex))
