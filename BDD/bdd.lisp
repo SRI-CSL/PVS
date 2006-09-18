@@ -851,20 +851,23 @@
 			       (and (consp x) (memq (car x) rec-lits)))
 		  conjuncts))
 	  ;; No pos-lits, see if we cover all but one neg-lit
-	  (let ((neg-lits (remove-if (complement
-				      #'(lambda (x)
-					  (and (consp x)
-					       (memq (car x) rec-lits))))
-			    conjuncts))
-		(constrs (constructors (domain (type (caar (cdr rec-form)))))))
-	    (when (= (length neg-lits) (1- (length constrs)))
+	  (let* ((neg-lits (remove-if (complement
+				       #'(lambda (x)
+					   (and (consp x)
+						(memq (car x) rec-lits))))
+			     conjuncts))
+		 (stype (find-supertype (type (car rec-form))))
+		 (constr-len (if (cotupletype? stype)
+				 (length (types stype))
+				 (length (constructors stype)))))
+	    (when (= (length neg-lits) (1- constr-len))
 	      (let ((pos-lit (find-if #'(lambda (x)
 					  (not (assq x neg-lits)))
 			       rec-lits)))
-		(assert pos-lit)
-		(setq conjuncts
-		      (replace-neg-lits-with-pos-lit
-		       conjuncts neg-lits pos-lit))))))))
+		(when pos-lit
+		  (setq conjuncts
+			(replace-neg-lits-with-pos-lit
+			 conjuncts neg-lits pos-lit)))))))))
   conjuncts)
 
 (defun replace-neg-lits-with-pos-lit (conjuncts neg-lits pos-lit &optional new)
