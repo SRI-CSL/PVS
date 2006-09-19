@@ -397,7 +397,7 @@ specification and typing S-mouse-2 yields a pop-up buffer displaying the
 declaration.  This command is useful to determine the type of a name,
 or the resolution determined by the typechecker for an overloaded name."
   (interactive "e")
-  (cond ((memq pvs-emacs-system '(xemacs21 xemacs20 xemacs19))
+  (cond ((string-match "XEmacs" (emacs-version))
 	 ;; This code is courtesy Jerry James (james@ittc.ku.edu)
 	 (if (and (mouse-event-p event) (event-over-text-area-p event))
 	     (progn

@@ -32,7 +32,7 @@
 (eval-when-compile (require 'pvs-macros))
 
 ;;; FIXME - this may be related to changes in easymenu.el ???
-(when (memq pvs-emacs-system '(xemacs21 xemacs20 xemacs19))
+(when (string-match "XEmacs" (emacs-version))
   (add-hook 'ilisp-mode-hook
     '(lambda ()
        (add-submenu nil pvs-mode-menus ""))))
@@ -372,8 +372,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
 			      (princ-nl (remove-esc out)
 					'external-debugging-output)))
 			   (t (message (remove-esc out))
-			      (if (memq pvs-emacs-system
-					'(xemacs21 xemacs20 xemacs19))
+			      (if (string-match "XEmacs" (emacs-version))
 				  (sit-for (/ pvs-message-delay 1000.0))
 				  (sit-for 0 pvs-message-delay))
 			      (pvs-log-message 'MSG (remove-esc out)))))
@@ -1273,8 +1272,9 @@ is emptied."
 ;;; DSC - I don't know what the bug is, but it can't do any
 ;;; harm to leave this here for the moment.  Was in pvs-ilisp-mods.
 
-(when (and (eq pvs-emacs-system 'emacs19)
-	   (boundp 'emacs-minor-version)
+(when (and (string-match "GNU Emacs" (emacs-version))
+	   (boundp 'emacs-major-version)
+	   (= emacs-major-version 19)
 	   (< emacs-minor-version 31))
 (defun pvs-symbol-under-point ()
   "Returns the symbol that the point is currently on.

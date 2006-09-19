@@ -730,7 +730,7 @@ Prefix arg may be used to give number of steps to undo."
     (insert ")")
     (return-ilisp)))
 
-(if (memq pvs-emacs-system '(xemacs21 xemacs20 xemacs19))
+(if (string-match "XEmacs" (emacs-version))
     (progn
       (defun my-delete-extent (ext dummy)
 	(delete-extent ext))
@@ -962,11 +962,11 @@ anything but a left paren or a \", ignoring whitespace."
     (save-excursion
       (set-buffer editprfbuf)
       (unless (= (buffer-size) 0)
-	(cond ((memq pvs-emacs-system '(emacs20 emacs19))
+	(cond ((string-match "GNU Emacs" (emacs-version))
 	       (let ((beg (point))
 		     (end (save-excursion (forward-sexp 1) (point))))
 		 (hilit-proof-region beg end)))
-	      ((memq pvs-emacs-system '(xemacs21 xemacs20 xemacs19))
+	      ((string-match "XEmacs" (emacs-version))
 	       (let ((beg (point))
 		     (end (save-excursion (forward-sexp 1) (point))))
 		 (map-extents 'my-delete-extent (current-buffer) (point-min)

@@ -98,9 +98,9 @@
     (define-key pvs-mode-map "\e\034"    'prettyprint-region)
     (define-key pvs-mode-map "\e\C-q"    'prettyprint-declaration)
     (define-key pvs-mode-map "\C-c\C-c"  'pvs-interrupt-subjob)
-    (if (memq pvs-emacs-system '(xemacs21 xemacs20 xemacs19))
+    (if (string-match "XEmacs" (emacs-version))
 	(define-key pvs-mode-map [(shift button2)] 'mouse-show-declaration)
-	(if (memq pvs-emacs-system '(emacs20 emacs19))
+	(if (string-match "GNU Emacs" (emacs-version))
 	    (define-key pvs-mode-map [S-mouse-2] 'mouse-show-declaration))))
 
 (defvar pvs-mode-syntax-table nil  "Syntax table used while in pvs mode.")
