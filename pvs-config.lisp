@@ -27,7 +27,8 @@
   (or #+allegro (sys:getenv "PVSPATH")
       #+gcl (si:getenv "PVSPATH")
       #+cmu (cdr (assoc :PVSPATH extensions::*environment-list*))
-      "."))
+      ;; Assume this is loaded while cd'd to the PVS directory 
+      (namestring (truename *default-pathname-defaults*))))
 
 ;;; The *pvs-binary-type* is used to be able to build PVS under several
 ;;; lisps/platforms without rerunning configure each time
