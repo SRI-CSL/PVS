@@ -28,8 +28,8 @@ libutils.a : ${utilobj}
 	ar r libutils.a ${utilobj}
 	ranlib libutils.a
 
-bdd_table.o : bdd_table.c
-mu_table.o : mu_table.c
+bdd_table.o : ../bdd_table.c
+mu_table.o : ../mu_table.c
 
 bdd_interface.o : bdd_interface.c bdd_fns.h
 bdd_factor.o : bdd_factor.c bdd_factor.h
