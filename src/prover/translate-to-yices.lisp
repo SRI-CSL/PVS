@@ -70,7 +70,7 @@
     (|bv_sgt| (|bv_arithmetic_defs| . bv-sgt))
     (|bv_sge| (|bv_arithmetic_defs| . bv-sge))
     (|bv_splus| (|bv_arithmetic_defs| . bv-add))
-    (|bv_stimes| (|bv_arithmetic_defs| . bv-mult))
+    (|bv_stimes| (|bv_arithmetic_defs| . bv-mul))
     ))
 
 (defun clear-yices ()
