@@ -78,7 +78,7 @@ $(warning "CMU Version $(CMUVERSION)")
 pvsdevel += $(bindir)/devel/$(SYSTEM)-cmulisp
 pvsrt += $(bindir)/runtime/$(SYSTEM)-cmulisp
 else
-$(error "$(LISPEXE) is not executable")
+$(error "$(CMULISPEXE) is not executable")
 endif
 endif
 
@@ -335,7 +335,7 @@ pvs-src = src/closopt.lisp \
 ifneq ($(ALLEGRO_HOME),)
    pvs-src += src/utils/file-utils.lisp
 endif
-ifeq ($(LISP),cmulisp)
+ifneq ($(CMULISP_HOME),)
    pvs-src += src/utils/file-utils-cmu.lisp
 endif
 
@@ -363,12 +363,9 @@ pvs-prover = src/prover/checker-macros.lisp \
          src/prover/wish.lisp \
 	 src/prover/translate-to-yices.lisp
 
-ifeq ($(LISP),allegro)
-  bddlisp = BDD/bdd.lisp BDD/mu.lisp
-endif
-ifeq ($(LISP),cmulisp)
-  bddlisp = BDD/bdd-cmu.lisp BDD/mu-cmu.lisp
-endif
+allegrolisp += BDD/bdd.lisp BDD/mu.lisp
+cmulisp += BDD/bdd-cmu.lisp BDD/mu-cmu.lisp
+
 
 PVSiolisp = src/PVSio/pvs-lib.lisp src/PVSio/defattach.lisp \
             src/PVSio/eval.lisp src/PVSio/pvsio.lisp
@@ -397,7 +394,7 @@ inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
                     src/inst-by-unif/inst-by-unif.lisp
 
 lisp-files = $(pvs-parser-out) $(ground-prover) $(pvs-src) \
-	     $(emacs-interface) $(pvs-prover) $(bddlisp) \
+	     $(emacs-interface) $(pvs-prover) \
 	     $(PVSiolisp) $(ws1slisp) $(groundevallisp) \
              $(abstractionlisp)
 
@@ -414,13 +411,14 @@ ground-prover := $(patsubst %,$(PVSPATH)%,$(ground-prover))
 pvs-src := $(patsubst %,$(PVSPATH)%,$(pvs-src))
 emacs-interface := $(patsubst %,$(PVSPATH)%,$(emacs-interface))
 pvs-prover := $(patsubst %,$(PVSPATH)%,$(pvs-prover))
-bddlisp := $(patsubst %,$(PVSPATH)%,$(bddlisp))
 PVSIOlisp := $(patsubst %,$(PVSPATH)%,$(PVSiolisp))
 ws1slisp := $(patsubst %,$(PVSPATH)%,$(ws1slisp))
 abstractionlisp := $(patsubst %,$(PVSPATH)%,$(abstractionlisp))
 groundevallisp := $(patsubst %,$(PVSPATH)%,$(groundevallisp))
 inst-by-unif-lisp := $(patsubst %,$(PVSPATH)%,$(inst-by-unif-lisp))
 builddeps := $(patsubst %,$(PVSPATH)%,$(builddeps))
+allegrolisp := $(patsubst %,$(PVSPATH)%,$(allegrolisp))
+cmulisp := $(patsubst %,$(PVSPATH)%,$(cmulisp))
 endif
 
 all-lisp-files = $(ess) $(pvs-parser-in) $(lisp-files)
@@ -441,7 +439,7 @@ parser : pvs-parser-out
 
 image-deps = makefileutils makebdd
 
-ifeq ($(LISP),allegro)
+ifeq ($(ALLEGRO_HOME),)
 image-deps += makews1s
 endif
 
@@ -454,7 +452,7 @@ image-deps += $(emacs)
 # Here are the rules for building the PVS grammar, pvs-methods file, and
 # devel and runtime images.
 
-ifeq ($(LISP),cmulisp)
+ifeq ($(CMULISP_HOME),)
 
 $(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
 	umask 002; \
@@ -465,37 +463,37 @@ $(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
                        $(PVSPATH)src/classes-expr.lisp \
                        $(PVSPATH)src/classes-decl.lisp
 	umask 002; \
-	$(LISPEXE) -eval '(defvar *pvs-path* "@PVSPATH@")' \
+	$(CMULISPEXE) -eval '(defvar *pvs-path* "@PVSPATH@")' \
 		   -load src/make-pvs-methods.lisp
 
-$(pvsdevel) $(pvsrt) : $(pvs-make-files) $(ess) $(ff-files) $(lisp-files) \
+$(pvsdevel) $(pvsrt) : $(pvs-make-files) $(ess) $(ff-files) $(lisp-files) $(cmulisp)\
 	  lib/prelude.pvs lib/prelude.prf
-	$(MKDIR) -p $(subst $(SYSTEM)-$(LISP),,$@)
-	$(LISPEXE) -eval '(load "pvs.system" :verbose t) \
+	$(MKDIR) -p $(subst $(SYSTEM)-cmulisp,,$@)
+	$(CMULISPEXE) -eval '(load "pvs.system" :verbose t) \
                           (pvs::operate-on-system :pvs :compile) \
                           (quit)'
-	$(LISPEXE) -eval '(load "pvs.system" :verbose t) \
+	$(CMULISPEXE) -eval '(load "pvs.system" :verbose t) \
                           (unwind-protect \
                               (pvs::operate-on-system :pvs :compile) \
                             (save-lisp "$@.core" \
                                 :init-function (function startup-pvs) \
                                ))'
 	-rm $(PVSPATH)BDD/$(PLATFORM)/bdd-cmu-load.*
-	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-$(LISP),,$@)
-	cp $(PVSPATH)BDD/bdd-cmu-load.lisp $(PVSPATH)BDD/mu-cmu-load.lisp $(subst $(SYSTEM)-$(LISP),,$@)
+	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-cmulisp,,$@)
+	cp $(PVSPATH)BDD/bdd-cmu-load.lisp $(PVSPATH)BDD/mu-cmu-load.lisp $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
 	echo "#!/bin/sh" > $@
-	echo "$(LISPEXE) -core \`dirname \$$0\`/\`basename \$$0\`.core \$\*" >> $(pvsdevel)
+	echo "$(CMULISPEXE) -core \`dirname \$$0\`/\`basename \$$0\`.core \$\*" >> $(pvsdevel)
 	chmod a+x $@
 endif
 
 ifneq ($(ALLEGRO_HOME),)
-$(pvsdevel) $(pvsrt) : $(pvs-make-files) $(ess) $(ff-files) $(libics-file) $(lisp-files) \
+$(pvsdevel) $(pvsrt) : $(pvs-make-files) $(ess) $(ff-files) $(libics-file) $(lisp-files) $(allegrolisp) \
              $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
-	$(MKDIR) -p $(subst $(SYSTEM)-$(LISP),,$@)
+	$(MKDIR) -p $(subst $(SYSTEM)-allegro,,$@)
 	rm -rf /tmp/pvs-allegro-build
 	umask 002; \
-	$(LISPEXE) -e '(load "$(PVSPATH)pvs.system")' \
+	$(ALLEGROEXE) -e '(load "$(PVSPATH)pvs.system")' \
 		-e "(let ((code 1)) \
                       (unwind-protect \
                           (multiple-value-bind (v err) \
@@ -506,28 +504,24 @@ $(pvsdevel) $(pvsrt) : $(pvs-make-files) $(ess) $(ff-files) $(libics-file) $(lis
                                    (setq code 0)))) \
                         (excl:exit code)))"
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
-	umask 002; $(ETAGS) $(lisp-files) $(pvs-emacs-src)
+	umask 002; $(ETAGS) $(lisp-files) $(allegrolisp) $(cmulisp) $(pvs-emacs-src)
 	umask 002; \
-	$(LISPEXE) -e '(defvar *runtime* $(if $(findstring runtime,$@),t,nil))' \
+	$(ALLEGROEXE) -e '(defvar *runtime* $(if $(findstring runtime,$@),t,nil))' \
 		-L $(PVSPATH)src/make-pvs.lisp
 	touch $@
 
 $(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
 	umask 002; \
-	$(LISPEXE) -L $(PVSPATH)src/make-pvs-parser
+	$(ALLEGROEXE) -L $(PVSPATH)src/make-pvs-parser
 
 $(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
                        $(PVSPATH)src/defcl.lisp \
                        $(PVSPATH)src/classes-expr.lisp \
                        $(PVSPATH)src/classes-decl.lisp
 	umask 002; \
-	$(LISPEXE) -e '(defvar *pvs-path* "@PVSPATH@")' \
+	$(ALLEGROEXE) -e '(defvar *pvs-path* "@PVSPATH@")' \
 		-L $(PVSPATH)src/make-pvs-methods.lisp
 endif
-
-$(LISP) :
-	@echo "Need to set the LISP variable in Makefile to a valid"
-	@echo "Common Lisp executable for this platform."
 
 .PHONY: all makefileutils makebdd makews1s make-release-notes clean
 makefileutils :
@@ -624,7 +618,7 @@ $(source-tar) : $(pvs-make-files) $(configure-files) \
                 src/utils/file_utils.c src/utils/b64.c wish \
                 $(ff-files) $(ess) ess/README ess/allegro-runtime.lisp \
                 ess/dist-ess.lisp ess/term/terms/rel/*.txt \
-                $(pvs-parser-in) $(lisp-files) \
+                $(pvs-parser-in) $(lisp-files) $(allegrolisp) $(cmulisp) \
                 $(bdd-sources) $(ws1s-sources)
 	$(TAR) $(TARFLAGS) -f $@ $^ --exclude CVS
 
