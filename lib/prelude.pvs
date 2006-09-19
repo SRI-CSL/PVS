@@ -5330,7 +5330,27 @@ BEGIN
   overflow(bv1,bv2): bool = (bv2int(bv1) + bv2int(bv2)) > maxint[N]
                              OR (bv2int(bv1) + bv2int(bv2)) < minint[N]
 
-% === Properties of these additional functions ================================
+% === Properties of these additional functions in lib/bitvectors/bv_arithmetic=
+
+% ---------- Integer <, <=, >, >=, +, * ----------
+% Note that we can't use these operators, as they will always be ambiguous
+
+  bv_slt(bv1, bv2): bool = bv2int(bv1) < bv2int(bv2)
+
+  bv_sle(bv1, bv2): bool = bv2int(bv1) <= bv2int(bv2)
+
+  bv_sgt(bv1, bv2): bool = bv2int(bv1) > bv2int(bv2)
+
+  bv_sge(bv1, bv2): bool = bv2int(bv1) >= bv2int(bv2)
+
+  bv_splus(bv1, (bv2 | NOT overflow(bv1, bv2))): bvec[N] =
+    int2bv(bv2int(bv1) + bv2int(bv2))
+
+  mult_overflow(bv1, bv2): bool = (bv2int(bv1) * bv2int(bv2)) > maxint[N]
+                               OR (bv2int(bv1) * bv2int(bv2)) < minint[N]
+
+  bv_stimes(bv1, (bv2 | NOT mult_overflow(bv1, bv2))): bvec[N] =
+    int2bv(bv2int(bv1) * bv2int(bv2))
 
 END bv_arithmetic_defs
 
@@ -5383,7 +5403,11 @@ BEGIN
   %------------------------------------------------------------------------
     
   lsb_extend(k: above(N)): [bvec[N] -> bvec[k]] =
-       (LAMBDA bv: bv o fill[k-N](bv^0)) 
+       (LAMBDA bv: bv o fill[k-N](bv^0))
+
+  pad_left(k: above(N), b: bit)(bv): bvec[k] = fill[k-N](b) o bv
+
+  pad_right(k: above(N), b: bit)(bv): bvec[k] = bv o fill[k-N](b)
 
 END bv_extend_defs
 
