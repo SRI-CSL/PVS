@@ -781,7 +781,7 @@
       (and allegro-version>= (version>= 4 1)))
 (eval-when #-(or :lucid :cmu) (:compile-toplevel :load-toplevel :execute)
 	   #+(or :lucid :cmu) (compile load eval)
-  (unless (or #-sbcl (fboundp 'lisp::require) (fboundp 'cl::require)
+  (unless (or #-sbcl (fboundp 'lisp::require) (fboundp 'cl-user::require)
 	      #+(and :excl (and allegro-version>= (version>= 4 0)))
 	      (fboundp 'cltl1::require)
 	      #+lispworks (fboundp 'system::require))
@@ -1562,8 +1562,9 @@ s/^[^M]*IRIX Execution Environment 1, *[a-zA-Z]* *\\([^ ]*\\)/\\1/p\\
 	 (rel-directory (directory-to-list (pathname-directory rel-dir)))
 	 (rel-keyword (when (keywordp (car rel-directory))
 			(pop rel-directory)))
-	 (relf (file-namestring rel-dir))
-	 (rel-file (unless (null-string relf) relf))
+	 ;;(relf (file-namestring rel-dir))
+	 ;;(rel-file (unless (null-string relf) relf))
+	 (rel-file (file-namestring rel-dir))
 	 (directory nil))
     ;; TI Common Lisp pathnames can return garbage for file names because
     ;; of bizarreness in the merging of defaults.  The following code makes
@@ -3446,11 +3447,12 @@ D
 	     (or *oos-test*		 
 		 (funcall (compile-function component)
 			  source-pname
+			  #-cmu
 			  :output-file
-			  #+:lucid
+			  #+lucid
 			  (unmunge-lucid (component-full-pathname component
 								  :binary))
-			  #-:lucid
+			  #-(or lucid cmu)
 			  (component-full-pathname component :binary)
 			  #+(or cmu sbcl) :error-file 
 			  #+(or cmu sbcl)
