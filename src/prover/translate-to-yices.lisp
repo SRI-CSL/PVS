@@ -809,8 +809,10 @@
 		     :output out
 		     :error out)))
 	    (when *ydatatype-warning*
-	      (format t "Warning: The Yices datatype theory is not currently trustworthy.
-Please check your results with a proof that does not rely on Yices. ")) 
+	      (format t "~70,,,'*A" "")
+	      (format t "~%Warning: The Yices datatype theory is not currently trustworthy.
+Please check your results with a proof that does not rely on Yices. ~%")
+	      (format t "~70,,,'*A" ""))
 	    (cond ((zerop status)
 		   (let ((result (file-contents tmp-file)))
 		     ;;(break "yices result")
