@@ -141,23 +141,26 @@
 		  (setq *false*
 			(typecheck* (mk-name-expr 'FALSE) *boolean* nil
 				    nil))))))
-	  (format t "~%Done typechecking the prelude; restoring the proofs")
+	  (format t "~%Done typechecking the prelude")
 	  (restore-prelude-proofs))
       (set-working-directory cdir))))
 
 (defun restore-prelude-proofs ()
-  (let ((prfile (merge-pathnames (format nil "~a/lib/" *pvs-path*)
-				 "prelude.prf")))
-    (when (file-exists-p prfile)
-      (let ((proofs (read-pvs-file-proofs prfile)))
-	(maphash #'(lambda (id theory)
-		     (declare (ignore id))
-		     (restore-proofs prfile theory proofs)
-		     (mapc #'(lambda (decl)
-			       (when (justification decl)
-				 (setf (proof-status decl) 'proved)))
-			   (provable-formulas theory)))
-		 *prelude*)))))
+  (format t "~%Restoring the prelude proofs from ~a"
+    (truename "prelude.prf"))
+  (let ((prfile "prelude.prf"))
+    (assert (file-exists-p prfile))
+    (let ((proofs (read-pvs-file-proofs prfile)))
+      (maphash #'(lambda (id theory)
+		   (declare (ignore id))
+		   (restore-proofs prfile theory proofs)
+		   (mapc #'(lambda (decl)
+			     (if (justification decl)
+				 (setf (proof-status decl) 'proved)
+				 ;;(break "No proof for ~a?" (id decl))
+				 ))
+			 (provable-formulas theory)))
+	       *prelude*))))
 
 ;;; This is invoked after adding some theories to the prelude Takes a file
 ;;; name (e.g., "~/widget/foo", and installs all proofs from

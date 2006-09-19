@@ -23,24 +23,6 @@
 
 (defvar start-pvs nil) ; don't need to run pvs, just load the files
 
-(defconst pvs-emacs-system
-  (cond ((string-match "Xemacs 21" (emacs-version))
-	 'xemacs21)
-	((string-match "XEmacs 20" (emacs-version))
-	 'xemacs20)
-	((string-match "XEmacs 19" (emacs-version))
-	 'xemacs19)
-	((string-match "Emacs 20" (emacs-version))
-	 'emacs20)
-	((string-match "Emacs 19" (emacs-version))
-	 'emacs19)
-	(t
-	 (message "Your Emacs version is not known by PVS - assuming Emacs 20")
-         'emacs20))
-  "The version of Emacs in which PVS is running. Set in go-pvs.el.
-   Defined as one of (xemacs21 xemacs20 xemacs19 emacs20 emacs19) and defaults
-   to emacs20 if the current version cannot be determined.")
-
 (if (getenv "PVSPATH")
     (defconst pvs-path (getenv "PVSPATH"))
     (error "PVSPATH must be set"))
