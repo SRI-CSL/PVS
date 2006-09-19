@@ -88,13 +88,14 @@
 ;*
 ;******
 
-(defun pvs-init (&optional dont-load-patches dont-load-user-lisp)
+(defun pvs-init (&optional dont-load-patches dont-load-user-lisp
+			   path)
   #+allegro (setq excl:*enclose-printer-errors* nil)
   (setq *print-pretty* t)
   ;;(setf (symbol-function 'ilisp::ilisp-restore) #'pvs-ilisp-restore)
   #+allegro (setq top-level::*print-length* nil
 		  top-level::*print-level* nil)
-  (setq *pvs-path* (environment-variable "PVSPATH"))
+  (setq *pvs-path* (or (environment-variable "PVSPATH") path))
   (unless *pvs-path*
     (error "PVSPATH environment variable should be set to the PVS directory"))
   #+(or cmu sbcl)
@@ -105,10 +106,10 @@
 			      #+darwin "dylib"
 			      #-darwin "so"))
     ;; Have no idea what is going on here, but if you leave this out,
-    ;; bdd-cmu-load gives a compile error.
+    ;; bdd-cmu gives a compile error.
     (fmakunbound 'bdd_cofactor_neg_)
-    (lf "bdd-cmu-load")
-    (lf "mu-cmu-load")
+    (lf "bdd-cmu")
+    (lf "mu-cmu")
     (bdd_init))
   (setq *started-with-minus-q*
 	(or dont-load-user-lisp
