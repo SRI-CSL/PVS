@@ -380,17 +380,24 @@
      :depends-on (typechecker))
    (:module bdd
      :source-pathname "BDD"
-     :components (#-(or cmu sbcl)
-		  (:file "bdd")
-		  #+(or cmu sbcl)
-		  (:file "bdd-cmu"))
+     :components ((:file "bdd")
+		  #+allegro
+		  (:file "bdd-allegro")
+		  ;; bdd-cmu not loaded here, as the resulting image does not
+		  ;; work.  See pvs-init.
+		  ;;#+(or cmu sbcl)
+		  ;;(:file "bdd-cmu")
+		  )
      :depends-on (proof-checker))
    (:module mu-simplifier
      :source-pathname "BDD"
-     :components (#-(or cmu sbcl)
-		  (:file "mu")
-		  #+(or cmu sbcl)
-		  (:file "mu-cmu")
+     :components ((:file "mu")
+		  #+allegro
+		  (:file "mu-allegro")
+		  ;; mu-cmu not loaded here, as the resulting image does not
+		  ;; work.  See pvs-init.
+		  ;;#+(or cmu sbcl)
+		  ;;(:file "mu-cmu")
 		  ;;(:file "strategies")
 		  )
      :depends-on (proof-checker))
