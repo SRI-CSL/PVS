@@ -34,6 +34,7 @@
 (defvar *ybindings* nil)
 (defvar *yembeddedf* nil)
 (defvar *ydefns* nil)
+(defvar *ydatatype-warning* nil)
 (defvar *yname-hash* (make-pvs-hash-table))
 (defvar *translate-to-yices-hash* (make-pvs-hash-table))
 (defvar *yices-call* "yices -e -st -mi 2000")
@@ -228,6 +229,7 @@
 		     (yices-name (yices-type-name ty)))	;;bindings can be ignored
 		 (translate-to-yices-scalar yices-name constructors) ))
 	      ((adt? ty)
+	       (setq *ydatatype-warning* t)
 	       (let ((constructors (constructors ty))
 		      (yices-name (yices-type-name ty)))
 		  (let ((defn-string
@@ -765,7 +767,8 @@
   #'(lambda (ps)
       (let* ((goalsequent (current-goal ps))
 	     (s-forms (select-seq (s-forms goalsequent) sformnums))
-	     (*ydefns* nil))
+	     (*ydefns* nil)
+	     (*ydatatype-warning* nil))
 	(clear-yices)
 	(let ((yices-forms
 	       (loop for sf in s-forms
@@ -805,6 +808,9 @@
 		     :input "//dev//null"
 		     :output out
 		     :error out)))
+	    (when *ydatatype-warning*
+	      (format t "Warning: The Yices datatype theory is not currently trustworthy.
+Please check your results with a proof that does not rely on Yices. ")) 
 	    (cond ((zerop status)
 		   (let ((result (file-contents tmp-file)))
 		     ;;(break "yices result")
