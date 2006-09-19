@@ -35,6 +35,7 @@
 (defparameter *prelude-filename* "prelude.pvs")
 
 (defun load-prelude ()
+  (assert *pvs-path*)
   (setq sbrt::*disable-caching* t)
   (setq *pvs-context* nil)
   (setq *prelude-theories* nil
@@ -146,10 +147,10 @@
       (set-working-directory cdir))))
 
 (defun restore-prelude-proofs ()
-  (format t "~%Restoring the prelude proofs from ~a"
-    (truename "prelude.prf"))
-  (let ((prfile "prelude.prf"))
+  (let ((prfile (merge-pathnames (format nil "~a/lib/" *pvs-path*)
+				 "prelude.prf")))
     (assert (file-exists-p prfile))
+    (format t "~%Restoring the prelude proofs from ~a" prfile)
     (let ((proofs (read-pvs-file-proofs prfile)))
       (maphash #'(lambda (id theory)
 		   (declare (ignore id))
