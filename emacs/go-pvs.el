@@ -42,9 +42,12 @@
 	(t
 	 (message "Your Emacs version is not known by PVS - assuming Emacs 20")
          'emacs20))
-  "The version of Emacs in which PVS is running. Set in go-pvs.el.
-   Defined as one of (xemacs21 xemacs20 xemacs19 emacs20 emacs19) and defaults
-   to emacs20 if the current version cannot be determined.")
+  "This is deprecated - it's difficult to keep up with version changes.
+Instead use, e.g.,
+      (and (string-match \"GNU Emacs\" (emacs-version))
+	   (boundp 'emacs-major-version)
+	   (>= emacs-major-version 20)
+This is kept in case users reference it.")
 
 (if (getenv "PVSPATH")
     (defconst pvs-path (if (string-match "/$" (getenv "PVSPATH"))
