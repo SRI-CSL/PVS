@@ -13,13 +13,13 @@
 \usepackage{url}
 \usepackage{latexsym}
 \usepackage[chapter]{tocbibind}
-\makeatletter
-\@ifundefined{pdfoutput}%
-{\usepackage[dvips=true,bookmarks=true,hyperindex=true]{hyperref}}%
-{\usepackage[pdftex,dvipsnames,usenames]{color}%
-\usepackage[bookmarks=true,hyperindex=true,colorlinks=true,linkcolor=Brown,citecolor=blue,backref=page,pagebackref=true,plainpages=false,pdfpagelabels]{hyperref}%
-}%
-\makeatother
+\usepackage{ifpdf}
+\ifpdf
+\usepackage[pdftex,dvipsnames,usenames]{color}
+\usepackage[bookmarks=true,hyperindex=true,colorlinks=true,linkcolor=Brown,citecolor=blue,backref=page,pagebackref=true,plainpages=false,pdfpagelabels]{hyperref}
+\else
+\usepackage[bookmarks=true,hyperindex=true]{hyperref}
+\fi
 
 \topmargin -10pt
 \textheight 8.5in
