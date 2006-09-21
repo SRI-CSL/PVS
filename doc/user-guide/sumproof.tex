@@ -1,0 +1,86 @@
+  closed_form :  
+
+    |-------
+  \{1\}   FORALL (n: nat): sum(n) = n * (n + 1) / 2
+
+  Rule? (induct "n")
+  Inducting on n on formula 1,
+  this yields  2 subgoals: 
+  closed_form.1 :  
+
+    |-------
+  \{1\}   sum(0) = 0 * (0 + 1) / 2
+
+  Rule? (postpone)
+  Postponing closed_form.1.
+
+  closed_form.2 :  
+
+    |-------
+  \{1\}   FORALL (j: nat):
+          sum(j) = j * (j + 1) / 2 IMPLIES sum(j + 1) = (j + 1) * (j + 1 + 1) / 2
+
+  Rule? (postpone)
+  Postponing closed_form.2.
+
+  closed_form.1 :  
+
+    |-------
+  \{1\}   sum(0) = 0 * (0 + 1) / 2
+
+  Rule? (expand "sum")
+  Expanding the definition of sum,
+  this simplifies to: 
+  closed_form.1 :  
+
+    |-------
+  \{1\}   0 = 0 / 2
+
+  Rule? (assert)
+  Simplifying, rewriting, and recording with decision procedures,
+
+  This completes the proof of closed_form.1.
+
+  closed_form.2 :  
+
+    |-------
+  \{1\}   FORALL (j: nat):
+          sum(j) = j * (j + 1) / 2 IMPLIES sum(j + 1) = (j + 1) * (j + 1 + 1) / 2
+
+  Rule? (skolem!)
+  Skolemizing,
+  this simplifies to: 
+  closed_form.2 :  
+
+    |-------
+  \{1\}   sum(j!1) = j!1 * (j!1 + 1) / 2 IMPLIES
+         sum(j!1 + 1) = (j!1 + 1) * (j!1 + 1 + 1) / 2
+
+  Rule? (flatten)
+  Applying disjunctive simplification to flatten sequent,
+  this simplifies to: 
+  closed_form.2 :  
+
+  \{-1\}  sum(j!1) = j!1 * (j!1 + 1) / 2
+    |-------
+  \{1\}   sum(j!1 + 1) = (j!1 + 1) * (j!1 + 1 + 1) / 2
+
+  Rule? (expand "sum" +)
+  Expanding the definition of sum,
+  this simplifies to: 
+  closed_form.2 :  
+
+  [-1]  sum(j!1) = j!1 * (j!1 + 1) / 2
+    |-------
+  \{1\}   1 + sum(j!1) + j!1 = (2 + j!1 + (j!1 * j!1 + 2 * j!1)) / 2
+
+  Rule? (assert)
+  Simplifying, rewriting, and recording with decision procedures,
+
+  This completes the proof of closed_form.2.
+
+  Q.E.D.
+
+
+  Run time  = 0.81 secs.
+  Real time = 223.01 secs.

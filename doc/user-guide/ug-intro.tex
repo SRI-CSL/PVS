@@ -1,0 +1,272 @@
+% Document Type: LaTeX
+% Master File: user-guide.tex
+\chapter{Introduction}
+\label{introduction}
+
+The Prototype Verification System (PVS)\index{Prototype Verification
+System (PVS)} provides an integrated environment for the development and
+analysis of formal specifications, and supports a wide range of activities
+involved in creating, analyzing, modifying, managing, and documenting
+theories and proofs.  This manual describes the system, including the
+system commands, the computing environment, how to get and install PVS,
+customization, and a short tutorial on Emacs.  The complete set of manuals
+for the PVS system consists of this manual, the language
+reference~\cite{PVS:language}, and the prover guide~\cite{PVS:prover}.
+There are also several supporting technical reports: the formal semantics
+of PVS~\cite{PVS:semantics}, an advanced
+tutorial~\cite{Rushby&Stringer-Calvert95}, and a description of the
+abstract datatypes mechanism~\cite{PVS-ADT:TR}.  All of these manuals (and
+much more!) are available online at \url{http://pvs.csl.sri.com/}
+
+The rest of this chapter provides a broad overview of PVS; the facilities
+provided by the system are discussed in the order you are likely to
+encounter them.
+
+\section*{The PVS Environment}
+\index{PVS environment@{PVS environment}}
+\index{environment|see{PVS environment}}
+
+PVS runs on \sun\ 4 (\sparc) workstations using Solaris 2 or higher and PC
+systems running Redhat Linux.  PVS is implemented in Common
+Lisp\index{Common Lisp}, but it is not necessary to know Lisp to
+effectively use the system.\footnote{The only exception to this is in
+writing complex prover strategies.}  PVS runs best using the X window
+system, though it is not required.  The Emacs (\gnuemacs\index{Gnu Emacs}
+or XEmacs\index{XEmacs}) editors provide the interface to PVS; familiarity
+with Emacs and access to the GNU Emacs manual~\cite{emacs20} (usually
+available as an info file) are desirable.  A brief introduction to Emacs
+is provided in Appendix~\ref{emacs-intro} on page~\pageref{emacs-intro} of
+this manual.  The \LaTeX\index{Latex@{\LaTeX}} generating facilities
+require a good understanding of the \LaTeX\ document preparation
+system~\cite{latex2e}.  If you have Tcl/Tk available, there are PVS
+interfaces provided that display proof trees, theory hierarchies, and
+proof commands.  Instructions for obtaining\index{obtaining PVS} and
+installing\index{installing PVS} the PVS system as well as Emacs, X
+windows, \LaTeX, and Tcl/Tk may be found at \url{http://pvs.csl.sri.com}.
+
+
+\section*{The PVS Language}
+\index{pvs language@{PVS language}}
+
+The specification language of PVS is built on higher-order logic; \ie\
+functions can take functions as arguments and return them as values, and
+quantification can be applied to function variables.  There is a rich set
+of built-in types and type-constructors, as well as a powerful notion of
+subtype.  Specifications can be constructed using definitions or axioms,
+or a mixture of the two.
+
+Specifications are logically organized into parameterized
+\emph{theories}\index{theories} and \emph{datatypes}\index{datatypes}.
+Theories are linked by \emph{import} and \emph{export} lists.
+Specifications for many foundational and standard theories are preloaded
+into PVS as \emph{prelude}\index{prelude}\index{PVS!prelude} theories that
+are always available and do not need to be explicitly imported.  Details
+on the PVS language may be found in the PVS language
+reference~\cite{PVS:language}.
+
+\section*{Specification Files and the PVS Context}
+\index{specifications}
+
+PVS specifications are ordinary {\sc ascii} text files prepared and
+modified using a text editor---usually the Emacs editor that acts as the
+interface to PVS.  A PVS specification consists of any number of such
+files, each of which contains one or more theories or datatypes.  PVS
+specification files have the \texttt{.pvs} extension.
+
+Each specification file has associated with it a proof file (with the
+\texttt{.prf} extension) that saves the proof scripts generated during
+proof attempts on formulas contained in the associated PVS specification
+file.
+In addition, the system generates binary representations of the
+typechecked specification files (with the \texttt{.bin} extension) that
+speed up retypechecking when a PVS session is resumed in the same
+context.
+
+The set of files and theories constituting a specification, together with
+various items of status information, comprise a PVS
+\emph{context}.\index{PVS context} The PVS context retains information
+about the state of a specification and verification from one PVS session
+to the next.  This information is primarily kept in the
+\texttt{.pvscontext} file that is associated with each PVS context.  It
+keeps track of which formulas have been proved, and which binary files are
+valid by keeping track of the write dates associated with the various
+files.
+
+PVS contexts are closely related to directories, and the term
+\emph{context} is used in this document to refer to either the PVS context
+or its associated directory.  Note that the directory may contain files
+other than those produced by or for PVS, but these are not considered to
+be a part of the context.
+
+During a PVS session, there is always a \emph{current
+context}\index{current context} in which the activities of PVS take
+place.  For example, typechecking of a specification file is allowed only
+if that file is a part of the current context.  There are commands for
+changing the current context during a PVS session, so that it is
+unnecessary to exit PVS just to change contexts.  Because contexts are
+associated with \unix\ directories there can be at most one PVS context
+in a directory, so for most purposes a PVS context and its containing
+directory can be treated synonymously.
+
+\section*{PVS Libraries}
+\index{libraries}\index{PVS!libraries}
+
+PVS has a library facility that allows files and theories from one PVS
+context to be used in another, thus allowing for general reuse, and making
+it easier to standardize theories that are frequently used.  There are two
+ways that the library facility can be used: by explicitly importing a
+theory from a different PVS context within a specification, or by issuing
+a command that effectively extends the prelude.
+
+
+\section*{The PVS User Interface}
+\index{user interface}
+
+You interact with the PVS system through a customized Emacs.  It is expected, though
+not required, that editing of specifications is performed with this editor.
+Using other editors is quite painful, as they cannot directly interact
+with the underlying Lisp image.
+
+Instructions are issued to PVS by means of Emacs commands.  For example,
+in order to perform a proof, the cursor is positioned at a formula
+declaration in the Emacs buffer and the Emacs command \ecmd{prove} or
+the key sequence \key{C-c p} is issued.  PVS returns information to you
+through various display mechanisms provided by Emacs or Tcl/Tk.
+
+The PVS interface allows a certain amount of parallel activity.  For
+example, you can continue editing theories or perform any other activity
+supported by Emacs while PVS is typechecking a series of theories or
+performing a lengthy proof.  Also, you need not wait for one PVS activity
+to finish before issuing another command; most commands are queued for
+execution in the order they were issued, but certain status and other
+short commands preempt any ongoing analyses, perform their function, and
+then return the system to its previous activity.
+
+\section*{Prettyprinting}
+\index{prettyprinter}
+
+The PVS prettyprinter rearranges the layout of PVS specification text into
+a standard, regular format.  The commands allow the prettyprinting of
+files, theories, regions, or individual declarations.  You can choose
+whether to prettyprint specification text, but output from PVS itself is
+always prettyprinted.
+
+\section*{Parsing}
+\index{parser}
+
+The parser checks theories for syntactic consistency and builds an
+internal representation that is used by other components of the system.
+When errors are detected by the parser or other components of PVS, the
+cursor is generally placed at the location where the error was detected
+and an error message is displayed in a pop-up window.
+
+\section*{Typechecking}
+\index{typechecking}\label{typechecking}
+
+The PVS typechecker analyzes theories for semantic consistency and adds
+semantic information to the internal representation built by the parser.
+The type system of PVS is not algorithmically decidable; theorem proving
+may be required to establish the type-consistency of a PVS specification.
+The theorems that need to be proved are called \emph{type-correctness
+conditions}\index{type-correctness condition (\tcc)} (\tccs).  \tccs\ are
+attached to the internal representation of the theory and displayed on
+request.  There are commands available that attempt to prove the \tccs\
+using built-in prover strategies.  You may choose when to prove the \tccs,
+but until they are proved the theory that generated them is not considered
+to be typechecked.
+
+The PVS system automatically tracks the status of theories (whether they
+have been changed, parsed, typechecked etc.) and also takes care of the
+dependencies among theories.  For example, if the specification text of a
+theory is changed and then a command is issued that requires semantic
+information, PVS will parse and typecheck the theory automatically.
+More subtly, if the text of a theory that is used by the current theory is
+changed, both theories will need to be typechecked in order to guarantee
+consistency.  This happens automatically as the need arises.
+
+It is often necessary to make changes in theories on which long chains of
+other theories depend, and frequent reparsing and retypechecking of such
+theory chains can be very time-consuming.  Therefore PVS provides commands
+which allow limited additions and modifications of declarations without
+requiring that the associated theories be retypechecked
+(Section~\ref{add-decl}, page~\pageref{add-decl}).
+
+There is some incremental typechecking that goes on at the theory level.
+When a typecheck command is issued on a PVS file that has been modified,
+the file is first parsed, and the resulting abstract syntax is compared to
+the previous abstract syntax.  If they are the same, the theory is not
+retypechecked.  Otherwise it typechecks as usual.  Comments, added or
+deleted whitespace, and certain kinds of expression transformations (such
+as changing \texttt{a + 1} to \texttt{+(a,1)}) will thus not trigger
+retypechecking.
+
+\section*{Browsing}
+\index{browsing}
+
+Specifications can be quite large and involve many theories and files,
+and it can become difficult to remember all the identifiers declared,
+their locations, definitions, and uses.  PVS provides facilities for
+displaying or visiting the declaration of an identifier indicated by
+the cursor, for displaying all references to an identifier, and for
+producing a cross-reference of all declared identifiers.
+
+\section*{Proving}
+\index{proving}
+
+PVS provides a powerful interactive proof checker with the ability to
+store and replay proofs.  PVS can be instructed to perform a single proof,
+or to rerun all the proofs in a given theory, all the proofs of all the
+lemmas used in a proof, or all the proofs in an entire specification.
+This manual describes how to enter the prover and some of the commands for
+obtaining and editing proof information.  Details on the proof checker
+commands may be found in the prover guide.
+
+\section*{Status and Proof Chain Analysis}
+\index{status}\index{proof chain analysis}
+
+The PVS system provides several commands for determining the status of
+specification elements such as theories and formulas.  You can, for
+example, inquire whether a theory has been typechecked or whether a specific
+formula has been proved.
+
+\emph{Proof chain analysis} is an important form of status report.  An
+individual theorem is considered proved when it is the conclusion of a
+successful proof, but this is a local notion; the result
+is a true theorem only if all the lemmas appearing in its proof have
+themselves been proved or stated as axioms or definitions, and all
+\tccs\ have been discharged.  Proof chain analysis assures that all of
+the aforementioned obligations are discharged.  In addition to recording
+whether or not the proof chain is sound, the output of this analysis
+also identifies the axiomatic foundation of the given theorem.
+
+
+\section*{Generating Output}
+
+When a formal specification and verification is complete, it is usually
+desirable to present it to others in as readable a form as possible.  PVS
+provides commands for generating \LaTeX\ versions of the specifications
+and proofs that can be included in typeset documents.  The output produced
+can be controlled by user-supplied tables so that mathematical notation,
+including infix and mix-fix symbols and subscripts and superscripts, can
+be created easily.  This customized prettyprinting facility makes it
+possible to reproduce the notation standard to some branch of mathematics
+or computer science, thereby assisting peer review of the formal
+specification.  The typeset specifications are also of value during the
+development of a formal specification and verification, as they allow
+direct comparison with existing, informal presentations and analyses.
+
+
+\section*{Display Commands}
+
+There are a few commands available for displaying graphical information
+using an interface to the Tcl/Tk system.  These include the display of
+proof trees, theory hierarchies, and prover commands.  These displays are
+interactive; for example the proof tree display is updated as a proof is
+developed, and clicking on a theory in the theory hierarchy display pops
+up an Emacs buffer containing that theory specification.
+
+\section*{Other Commands}
+
+There are other miscellaneous commands are not easily categorized, such as
+commands for sending bug reports, interrupting PVS, getting help, and some
+commands that help in editing PVS files.

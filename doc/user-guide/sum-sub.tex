@@ -1,0 +1,34 @@
+% The following substitutions are from the file:
+%   /homes/owre/pvs3.0/pvs-tex.sub
+\def\setsotherremovetwofn#1#2{{(#2 \setminus \{#1\})}}% How to print function sets.remove with arity (2)
+\def\setsotheraddtwofn#1#2{{(#2 \cup \{#1\})}}% How to print function sets.add with arity (2)
+\def\setsotherdifferencetwofn#1#2{{(#1 \setminus #2)}}% How to print function sets.difference with arity (2)
+\def\setsothercomplementonefn#1{{\overline{#1}}}% How to print function sets.complement with arity (1)
+\def\setsotherintersectiontwofn#1#2{{(#1 \cap #2)}}% How to print function sets.intersection with arity (2)
+\def\setsotheruniontwofn#1#2{{(#1 \cup #2)}}% How to print function sets.union with arity (2)
+\def\setsotherstrictunderscoresubsetothertwofn#1#2{{(#1 \subset #2)}}% How to print function sets.strict_subset? with arity (2)
+\def\setsothersubsetothertwofn#1#2{{(#1 \subseteq #2)}}% How to print function sets.subset? with arity (2)
+\def\setsothermembertwofn#1#2{{(#1 \in #2)}}% How to print function sets.member with arity (2)
+\def\opohtwofn#1#2{{#1\circ#2}}% How to print function O with arity (2)
+\def\opdividetwofn#1#2{{#1/#2}}% How to print function / with arity (2)
+\def\optimestwofn#1#2{{#1\times#2}}% How to print function * with arity (2)
+\def\opdifferenceonefn#1{{-#1}}% How to print function - with arity (1)
+\def\opdifferencetwofn#1#2{{#1-#2}}% How to print function - with arity (2)
+\def\opplustwofn#1#2{{#1+#2}}% How to print function + with arity (2)
+% The following substitutions are from the file:
+%   /homes/owre/pvs-tex.sub
+% The following substitutions are from the file:
+%   /home/owre/pvs3.0/doc/user-guide/pvs-tex.sub
+\def\sumonefn#1{{\sum_{i = 0}^{#1} i}}% How to print function sum with arity (1)
+\begin{alltt}
+\pvsid{sum}: \({\textbf{\large Theory}}\)
+ \pvskey{BEGIN}
+
+  \(n\): \pvskey{VAR} \pvsid{nat}\vspace*{\pvsdeclspacing}
+
+  \(\sumonefn{n}\): \pvskey{RECURSIVE} \pvsid{nat} \pvskey{=} (\pvskey{if} \(n\) \(=\) \(0\) \pvskey{then} \(0\) \pvskey{else} \(\opplustwofn{n}{\sumonefn{\opdifferencetwofn{n}{1}}}\) \pvskey{endif})
+     \pvskey{MEASURE} \pvsid{id}\vspace*{\pvsdeclspacing}
+
+  \pvsid{closed\_form}: \pvskey{THEOREM} \(\sumonefn{n}\) \(=\) \(\opdividetwofn{(\optimestwofn{n}{(\opplustwofn{n}{1})})}{2}\)\vspace*{\pvsdeclspacing}
+
+ \pvskey{END} \pvsid{sum}\end{alltt}

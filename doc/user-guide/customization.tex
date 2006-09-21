@@ -1,0 +1,313 @@
+% Document Type: LaTeX
+% Master File: user-guide.tex
+\chapter{Customizing PVS}
+\label{customization}
+\index{customization}\index{PVS customization}
+
+PVS is a complex system, and utilizes many subsystems, including Lisp,
+Emacs, the X window system, and Tcl/Tk.  You can control aspects of these
+subsystems by a combination of command-line arguments, environment
+variables, and various files.  In this section we discuss some aspects of
+the customization of these subsystems as they relate to PVS.
+
+\section{Invoking PVS}\label{invoking-pvs}
+\index{invoking PVS}\index{starting PVS}
+
+PVS is invoked from a shell script named \texttt{pvs}\index{PVS shell
+script} in the PVS directory---this is a text file, and may be examined or
+copied and modified to suit your taste.  The script is a Bourne shell
+script, and requires {\tt /bin/sh} to execute correctly.\footnote{On some
+systems, \texttt{/bin/sh} is linked to the \texttt{bash} shell; this works
+as well.}
+
+PVS accepts a number of command-line arguments\index{PVS!command-line
+arguments}\index{command-line arguments}, as well as using environment
+variables.  The command-line arguments specific to PVS are
+\begin{description}
+
+\item[\texttt{-h | -help | --help}]\index{-help@\texttt{-help} command
+line argument} - Print a brief description of the command line options and
+exit.
+
+\item[\texttt{-lisp} \emph{lispname}]\index{-lisp@\texttt{-lisp} command
+line argument} - Specifies which lisp to use. The lisp image used for PVS
+is then \texttt{pvs-\emph{lispname}}, which should be located in a
+directory determined by the machine architecture.  See
+Section~\ref{pvsimage}, page~\pageref{pvsimage} for details.
+
+\label{dash-redhat}
+\item[\texttt{-redhat}
+\emph{redhat-release}]\index{-redhat@\texttt{-redhat} command line
+argument} - Specifies the release of the Redhat Linux operating system you
+are using (different PVS binaries are required for libc5 and glibc C
+libraries).  PVS attempts to discover this for itself, but if the wrong
+binary is chosen you can specify \texttt{4} or \texttt{5} using this
+argument.  Note that Redhat 6 uses the glibc libraries, which corresponds
+to the value \texttt{5}.
+
+\item[\texttt{-runtime}]\index{-runtime@\texttt{-runtime} command line
+argument} - This is only needed at SRI, where the development version of
+the system is used by default.  With this option the runtime image is used
+instead.
+
+\item[\texttt{-emacs} \emph{emacsname}]\index{-emacs@\texttt{-emacs}
+command line argument} - Specifies the Emacs to use; see below for
+details.
+
+\item[\texttt{-decision-procedures}
+\emph{new}\texttt{|}\emph{old}]\index{-decision-procedures@\texttt{-decision-procedures}
+command line argument} - Sets the default decision procedures to be used
+in proofs.  See Section~\ref{decision-procedure-commands},
+page~\pageref{decision-procedure-commands} for details.
+
+\item[\texttt{-force-decision-procedures}
+\emph{new}\texttt{|}\emph{old}]\index{-force-decision-procedures@\texttt{-force-decision-procedures}
+command line argument} - Forces the chosen decision procedure to be used
+regardless of the default decision procedure setting or which decision
+procedures were used in developing a proof.  Note that with this option
+there is no way to switch between the new and old decision procedures.
+
+\item[\texttt{-nw}]\index{-nw@\texttt{-nw} command line argument} - Tells
+Emacs not to use its special interface to X.
+
+\item[\texttt{-batch}]\index{-batch@\texttt{-batch} command line argument}
+- Run PVS in batch mode. See chapter~\ref{batchmode},
+page~\pageref{batchmode} for details.
+
+\item[\texttt{-timeout}:]\index{-timeout@\texttt{-timeout} command line
+argument} In batch mode, this causes typechecking and individual proof
+attempts to be interrupted after the given number of seconds.
+
+\item[\texttt{-nobg}:]\index{-nobg@\texttt{-nobg} command line argument}
+Normally PVS starts in the background (with the \& control operator).
+This starts it in the foreground.
+
+\item[\texttt{-raw}:]\index{-raw@\texttt{-raw} command line argument} This
+runs PVS without Emacs.  This is only useful for front ends, which must do
+the same initialization as done by the Emacs interface.
+
+\item[\texttt{-v} \emph{number}]\index{-v@\texttt{-v} command line
+argument} - Specifies verbosity level for PVS batch mode. See
+Chapter~\ref{batchmode}, page~\pageref{batchmode} for details.
+
+\label{dash-q-option}
+\item[\texttt{-q}]\index{-q@\texttt{-q} command line argument} - A
+standard emacs option to inhibit loading of the users {\tt .emacs} file,
+but extended in PVS to inhibit loading of the users {\tt .pvsemacs}, {\tt
+.pvsxemacs-options} and \texttt{.pvs.lisp} files on startup.
+
+\item[\texttt{-patchlevel}
+\emph{level}]\index{-patchlevel@\texttt{-patchlevel} command line
+argument} - Specifies which patch files to load. Level \texttt{none} loads
+no patch files. Level \texttt{rel} loads the file \texttt{patch2} from
+your PVS directory, which usually contains the release versions of PVS
+patches. Other valid levels are \texttt{test} (loads the files
+\texttt{patch2} and \texttt{patch2-test}) and \texttt{exp} (loads the
+files \texttt{patch2}, \texttt{patch2-test} and \texttt{patch2-exp}).
+This option is mainly used for PVS development.
+
+
+\end{description}
+Any other command-line arguments are passed directly to the underlying
+Emacs, including those for X windows---these are discussed
+below.
+
+In addition, the PVS script uses the environment
+variables\index{PVS!environment variables}\index{environment variables}
+\texttt{PVSLISP}\index{pvslisp@\texttt{PVSLISP}}\index{environment
+variables!pvslisp@\texttt{PVSLISP}},
+\texttt{PVSEMACS}\index{pvsemacs@\texttt{PVSEMACS}}\index{environment
+variables!pvsemacs@\texttt{PVSEMACS}}, and
+\texttt{PVSXINIT}\index{pvsxinit@\texttt{PVSXINIT}}\index{environment
+variables!pvsxinit@\texttt{PVSXINIT}}, which may be set in your
+\texttt{.cshrc} or \texttt{.login} file to specify the defaults you
+prefer.  If both the environment variable and the corresponding
+command-line argument are given, the command-line argument takes
+precedence.  The \texttt{PVSXINIT} variable is described in
+Section~\ref{windows}, page~\pageref{windows}.
+
+
+\section{Emacs}
+\index{Emacs|(}
+
+The PVS system uses Emacs as its user interface, and provides a number of
+files that extend Emacs for use with PVS.  For historical reasons, there
+are currently a number of Emacs editors available.  Because we wanted PVS
+to be freely available, we have chosen to concentrate on just \gnuemacs\
+and XEmacs, which are also freely available.  To find out what version of
+Emacs you are using, start up Emacs and type \iecmd{emacs-version}.  We
+try to keep up with new releases of emacs and if necessary patch files
+will be made available to support the new Emacs.
+
+By default, the system uses \texttt{emacs}, which is assumed to be in your
+path when you start up PVS.  You may specify a different Emacs as
+specified above.  When you start PVS, is assumed (in order to supply X
+resources in the correct format) that if the name of the emacs command
+contains the character ``\texttt{x}'' then you are using XEmacs.
+
+PVS loads your \texttt{\char'176/.emacs}\index{.emacs@\texttt{.emacs}}
+file first (assuming you have not specified the {\tt -q} option as
+described on page \pageref{dash-q-option}), followed by
+\emph{PVSPATH}\texttt{/emacs/go-pvs.el}%
+\index{go-pvs.el@\texttt{go-pvs.el}}, which determines which version of
+emacs you are running and then loads the rest of the PVS emacs files,
+including ILISP\index{ILISP}.  At this point you may receive an error from
+PVS saying that your Emacs version is unknown.  PVS does not support Emacs
+18 (or earlier), but we try to keep up with new Emacs versions as they are released.
+Finally, the
+\texttt{\char'176/.pvsemacs}\index{.pvsemacs@\texttt{.pvsemacs}} is
+loaded.  If you are running XEmacs, the {\tt .pvsemacs} file will load
+XEmacs options from the {\tt .pvsxemacs-options} file instead of the
+standard {\tt .xemacs-options} file, as some are incompatible with
+standard XEmacs.
+
+In loading the files in this order, PVS functions and key
+bindings will overwrite any conflicting ones defined in your
+\texttt{.emacs} file.  \texttt{.pvsemacs} is the file to use to override
+the key bindings and definitions given by PVS.  This approach was taken to
+ensure that the behavior of PVS by default follows the user guide, but can
+be readily modified to suit your taste.
+
+One file that is worth noting is the
+\emph{PVSPATH}\url{/emacs/emacs-src/pvs-abbreviations.el}%
+\index{pvs-abbreviations.el@\texttt{pvs-abbreviations.el}} file, where the
+abbreviations for many of the PVS commands are given.  You may define your
+own abbreviations for commands you use a lot that don't currently have
+abbreviations, by adding the appropriate lines in your \texttt{.pvsemacs}
+file.  For example, adding
+\begin{alltt}
+  (pvs-abbreviate 'show-tccs 'st)
+\end{alltt}
+will make \ecmd{st} an abbreviation for \ecmd{show-tccs} in addition to
+those already defined.  Note that you cannot redefine a name which is
+already in use.
+
+If you would like to byte-compile your Emacs customizations, create a
+separate file, byte-compile it, and load it from your \texttt{.pvsemacs}.
+Generally the kinds of forms provided in a \texttt{.pvsemacs} file are
+simply variable settings and minor function definitions, and are not worth
+byte-compiling.  It is only worthwhile if a function is being (re)defined
+that will be invoked noninteractively and frequently, for example, if you
+want to modify the way the process filter works.
+
+\index{Emacs|)}
+
+
+\section{The PVS Image}
+\label{pvsimage}\index{PVS!lisp image|(}
+
+PVS currently runs under Allegro Common Lisp on a number of different
+platforms.  PVS is provided as a Common Lisp image, meaning that it
+includes both the Lisp runtime system and the PVS programs, so you do not
+need to have Allegro installed on your system.
+
+There is usually just one PVS image available at a given site, and if the
+system is properly installed, nothing further needs to be done.  If more
+than one image is available, and the default one is not the desired one,
+then it can be specified using either command-line arguments or
+environment variables.  Invoking PVS with
+{\smaller
+\begin{alltt}
+  pvs -lisp lucid -image pvs-lucid-sun4
+\end{alltt}}
+\noindent will use the \texttt{pvs-lucid-sun4} image.  Note that \texttt{-lisp
+lucid} must be specified, so that the Emacs interface can be set up
+properly.  For linux, also see the {\tt -redhat} option on page
+\pageref{dash-redhat}.
+
+Alternatively, the environment variables \texttt{PVSLISP} and
+\texttt{PVSIMAGE} may be set to get the same effect.  Note that
+command-line arguments take precedence.
+
+After the PVS lisp image has started, it loads in the patch files as
+specified by the {\tt -patchlevel} argument and then loads the file
+{\tt .pvs.lisp} from your home directory.  This file can be used to
+provide lisp customizations on a per user basis and for overriding
+definitions in the patch file.
+
+\index{PVS!lisp image|)}
+
+
+\section{Window Systems}
+\label{windows}
+
+PVS was built primarily for the X window system\index{X windows}, though
+it can be run from a terminal interface.
+When run under X windows with the 
+supported versions of Emacs, the resource name\index{resource
+name}\index{PVS!resource name} will be set to \texttt{PVS}, and the
+window\index{window name}\index{PVS!window name} and icon names\index{icon
+name}\index{PVS!icon name} will be set to \texttt{PVS@}\textit{host\/},
+where \textit{host\/} is the host name of the system on which PVS was
+invoked.  These may be modified by adding command-line arguments or
+setting the \texttt{PVSXINIT}\index{pvsxinit@\texttt{PVSXINIT}}%
+\index{environment variables!pvsxinit@\texttt{PVSXINIT}} environment
+variable.
+
+You may customize the title and icon names by defining the function
+\texttt{pvs-title-string} in your \texttt{.pvsemacs} file taking no
+arguments and returning a string to be used as the title.  This function
+is invoked at startup, and whenever the context is changed.  For example,
+the following provides the name of the pvs path, the patch level
+(\texttt{N} for none, \texttt{R} for released, \texttt{T} for test, and
+\texttt{E} for experimental), the hostname, and the last two components of
+the current context.
+
+{\smaller
+\begin{alltt}
+    (defun pvs-title-string ()
+      (format "%s%s%s:%s/"
+          (trailing-components pvs-path 1)
+        (cond ((stringp (cadddr *pvs-version-information*)) "E")
+              ((stringp (caddr *pvs-version-information*)) "T")
+              ((stringp (cadr *pvs-version-information*)) "R")
+              (t "N"))
+        (let ((host (car (string-split ?. (getenv "HOSTNAME")))))
+          (format "@%s" host))
+        (trailing-components *pvs-current-directory* 2)))
+\end{alltt}}
+\noindent For example, this might generate \url{pvs2.3N@photon:lib/finite_sets/}.
+
+It is difficult to get a single setting for all of the Emacs versions; the
+following table gives the arguments needed to set the resource, window,
+and icon names for the various versions.
+
+\begin{center}
+\begin{tabular}{|l|l|l|l|} \hline
+Emacs & Resource & Window & Icon \\ \hline\hline
+emacs19 & \texttt{-rn} & \multicolumn{2}{|c|}{\texttt{-name}}\\ \hline
+emacs19.29 (and later, & \multicolumn{3}{|c|}{\texttt{-name}}\\ 
+including emacs20) & \multicolumn{3}{|c|}{ }\\ \hline
+xemacs & \texttt{-name} & \texttt{-wn} & \texttt{-in} \\ \hline
+\end{tabular}
+\end{center}
+\par\noindent Note: in emacs19, if \texttt{-rn} is not given, then
+\texttt{-name} is used for the resource name as well.  Emacs19.29 and
+later will give an error if the \texttt{-rn} argument is given.
+
+The window name is the name used in the title bar of the PVS window, the
+icon name is the name used in the icon, and the resource name is the name
+referred to in the \texttt{.Xdefault} or \texttt{.Xresource} file that
+controls the defaults for X clients.  An example entry for PVS in one of
+these files might be
+\begin{alltt}
+!	PVS defaults
+PVS.geometry: 80x63-0-0
+PVS*pointerColor: Red
+PVS*Font: *courier-medium-r-normal--12*
+\end{alltt}
+See the man pages for \texttt{X} and \texttt{emacs}, as well as the news
+and info pages for the version of Emacs you are using for more details on
+X resources.
+
+The \texttt{PVSXINIT} environment variable may be set\footnote{Generally
+environment variables are set in your shell startup file, \emph{e.g.},
+\texttt{.profile} or \texttt{.cshrc}.} to a string
+of command-line arguments that are then appended to the defaults described
+above.  You can also change the default resource, window, and icon names,
+simply by adding them to this variable (or by including them in the
+command-line arguments).  Note that you should make certain that the
+version of Emacs you are using matches the command-line arguments as shown
+in the footnote.  You can tell that there is a mismatch when you start up
+PVS and find buffers with names matching command-line arguments, \eg\
+\texttt{-in} or \texttt{PVS@acorn}.

@@ -1,0 +1,2 @@
+THEORY key 7 {\textbf{\large Theory}}
+sum 1 2 {\sum_{i = 0}^{#1} i}
