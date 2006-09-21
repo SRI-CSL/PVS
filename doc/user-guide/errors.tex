@@ -1,0 +1,672 @@
+% Document Type: LaTeX
+% Master File: user-guide.tex
+\chapter{Errors}
+\label{errors}
+\index{errors}
+
+This Appendix lists all the possible \pvs\ errors, along with a brief
+explanation of their cause and possible solutions.  The errors are split
+into \emacs\ errors, parser errors and typechecker errors.  For a
+discussion of possible prover errors, see the PVS prover manual.
+
+%\section{\emacs\ Errors}
+
+\memo{Need to systematically check through the source code for
+any new error messages, and to remember to update this document if
+any new error messages are added in the future.}
+
+\memo{Should the error messages occur in the index?}
+
+\section{Parser Errors}
+
+\begin{description}
+
+\item[There is garbage at the end of your file or string:] - the parser
+has parsed the file or string, and found more tokens after scanning a
+complete nonterminal.
+
+\item[End id {\em foo\/} does not match theory id {\em bar\/}] - indicates
+that the identifier at the end of the theory is different from the
+identifier at the beginning.
+
+\item[End id {\em foo\/} does not match datatype id {\em bar\/}] -
+indicates that the identifier at the end of the datatype is different from
+the identifier at the beginning.
+
+\item[Found \emph{foo} when expecting \emph{bar},\ldots] - this error
+indicates that the wrong kind of token was found here, and gives a
+somewhat arcane indication of what was expected.  If the error isn't
+obvious, look at the grammar in the language manual, and keep in mind that
+the position of the cursor may be beyond the actual cause of the error.
+
+\item[\emph{foo} expected here] - this error is usually easy to diagnose
+and fix, since the message indicates what is expected at the cursor
+location.
+
+\item[Inline datatypes may not have parameters] - this error indicates
+that the parameters were provided to an inline datatype.  Note that if an
+attempt is made to provide parameters in square brackets, an ``End
+expected here'' error will result.
+
+\item[Only one id allowed for datatypes] - it is illegal (and usually
+undesirable) to give multiple datatypes in a single declaration.  If you
+really want to do this, simply split the datatype apart---making one copy
+for each identifier.
+
+\item[Datatype identifier must be an id] - you may not use an operator
+such as \texttt{+} as a datatype identifier.  It must be a letter followed
+by any number of letters, digits, underscores, and question marks.
+
+\item[May not have multiple ids with `\texttt{|}'] - expressions such as
+\texttt{FORALL (x,y,z|p):\ foo} are illegal, and should either be written
+as \texttt{FORALL x,y,(z|p):\ foo} or \texttt{FORALL x,y,z:\ p IMPLIES foo}.
+
+\item[Enumeration types are only allowed at the top level] - this is
+because enumeration types are translated into inline datatypes, which
+generate a number of new top-level declarations.
+
+\item[Function type must have a range] - the \texttt{FUNCTION} keyword was
+used, but a range type (preceded by an arrow (\texttt{->}) was not given.
+
+\item[Illegal character name] - this is an illegal name for a character.
+The legal names are displayed in the table below.
+\def\ct{\symbol{'136}}
+\texttt{\begin{center}
+\begin{tabular}{|cccccccc|}\hline
+\ct @ & \ct A & \ct B & \ct C & \ct D & \ct E & \ct F & \ct G \\
+\ct H & \ct I & \ct J & \ct K & \ct L & \ct M & \ct N & \ct O \\
+\ct P & \ct Q & \ct R & \ct S & \ct T & \ct U & \ct V & \ct W \\
+\ct X & \ct Y & \ct Z & \ct [ & \ct\symbol{'134} & \ct ] & \ct\ct & \ct\symbol{'137} \\
+SP & ! & " & \# & \$ & \% & \& & ' \\
+( & ) & * & + & , & - & . & / \\
+@ & A & B & C & D & E & F & G \\
+H & I & J & K & L & M & N & O \\
+P & Q & R & S & T & U & V & W \\
+X & Y & Z & [ & \symbol{'134} & ] & \ct & \symbol{'137} \\
+` & a & b & c & d & e & f & g \\
+h & i & j & k & l & m & n & o \\
+p & q & r & s & t & u & v & w \\
+x & y & z & \{ & | & \} & \symbol{'176} & \ct? \\ \hline
+\end{tabular}\end{center}}
+
+\item[Projection may not have actuals] - you may not include actuals with
+a projection name, since projections do not belong to any theories.
+
+\item[Projection may not have a theory id] - you may not include a theory
+id with a projection name, since projections do not belong to any
+theories.
+
+\item[Projection may not have a library id] - you may not include a
+library id with a projection name, since projections do not belong to any
+libraries.
+
+\item[Invalid id] - PVS identifiers must start with a letter, followed by
+any number of letters, digits, underscores, or question marks.
+
+\end{description}
+
+
+\section{Typechecker Errors}
+
+The typechecker errors are presented in subsections mostly based on
+language constructs.
+
+\subsection{Importing Errors}
+
+\begin{description}
+
+\item[Can't find file for theory \emph{foo}] - this error indicates that
+there is an exporting of a theory that is not known in the context and a
+file with the same name as the theory could not be found.  You must find
+or create the specified theory and typecheck it before typechecking the
+current theory.
+
+\item[Wrong number of parameters] - a theory name was given with the wrong
+number of actual parameters.  Compare the formal parameters of the theory
+with the actual parameters given in the theory name; make sure that you
+are not counting the \texttt{IMPORTING}s in the formal parameters.
+
+\item[Theory {\em foo} is not in the IMPORTINGs] - this error results from
+the use of a name of the form \texttt{\emph{foo}.\emph{bar}}, and the
+theory \emph{foo} is neither a part of the prelude, nor has it been
+previously imported to the theory.
+
+\item[A theory may not import itself] - the current theory appears on an
+importing chain.
+
+\item[Theory {\em foo\/} not found] - this error occurs during the
+typechecking of an importing clause, and indicates that the theory
+\emph{foo} was not found in the current context.
+
+\item[Wrong number of parameters] - in an importing clause, the indicated
+theory has the wrong number of actual parameters given.
+
+\item[Circularity found in importings of theories] - this error indicates
+that there is a circularity in the closure of the importings clauses.  The
+cursor is placed at the beginning of one of the offending theories, and a
+list of theory names involved in the circularity is displayed.
+
+\end{description}
+
+
+\subsection{Exporting Errors}
+
+\begin{description}
+
+\item[May not export formal parameters] - an attempt was made to export a
+formal parameter.  This is not allowed, as formal parameters are not
+visible from outside the module.
+
+\item[Name {\em foo\/} is not declared in this theory] - an attempt was
+made to export an entity that was not declared in the current module.  For
+further details on the use and restrictions of the exporting clause, see
+the language manual.
+
+\item[Name {\em foo\/} is not declared as {\em kind\/} in this theory] -
+when names are overloaded, a kind (or type) may be included in the
+exporting clause to specify which entity is actually exported.  This error
+indicates that there is no entity of the kind (or type) specified.
+
+\item[{\em foo\/} may not be exported] - this error indicates that an
+attempt was made to export a variable or a field declaration.  Variable
+declarations may not be exported, and field declarations are automatically
+exported when the associated record type is, and may not be exported
+otherwise.
+
+\item[{\em foo\/} may not be exported unless the following are also: {\em
+bar$_1$\/},\ldots] - entities may only be exported if all of the
+declarations on which they depend are also exported.
+
+\item[{\em foo\/} refers to {\em name\/}, which must be exported] -
+entities may only be exported if all of the declarations on which they
+depend are also exported.
+
+\item[{\em foo\/} occurs in an EXPORTING WITH but is not in an IMPORTING
+clause] - only theories that are imported may be exported.
+
+\end{description}
+
+
+\subsection{Declaration Errors}
+
+\begin{description}
+
+\item[Coercion must be a constant] - this error is associated with
+coercion declarations, which only apply to constants, recursive
+definitions, and inductive definitions.
+
+\item[Coercion is not a unary function: \emph{foo}] - this error is given
+when the constant to be used as a coercion has a domain with more than one
+component.
+
+\item[The domain and range of this coercion are compatible; the coercion
+will never] \textbf{be used: \emph{foo}} - because coercions only take place when
+there is otherwise a type error, if the domain and range are compatible
+then the coercion would never be automatically applied.  Strictly
+speaking, this does not have to be an error, but it is treated as such
+because it is clearly not what is intended.  See the language manual for
+more discussion.
+
+\item[May not overload projection names] - an attempt has been made to
+redeclare a projections name of the form \texttt{PROJ\_}$n$ (or some
+variant of this with different cases, such as \texttt{Proj\_}$n$).  Because
+of the special status of these names,\footnote{Projections are one of the
+few entities of PVS that may not be declared in PVS, even using
+parameterized theories} they may not be redeclared.
+
+\item[{\em foo\/} is the name of a formal parameter and may not be
+redeclared] - within a theory a formal parameter name may not be reused.
+If you really want ot use the name, change the formal parameter name since
+it will not be used outside the theory anyway.
+
+\item[{\em foo\/} has previously been declared with type {\em type\/}] -
+this error indicates that an entity has already been declared in this
+theory.
+
+\item[{\em foo\/} has previously been declared with type {\em type\/},
+which may lead to ambiguity] - this error indicates that an entity has
+been declared with a compatible type, which may lead to ambiguity.  The
+difficulty here is that in disambiguating names, after the theory, actual
+parameters, and library have all been pinned down, the type should
+uniquely determine the resolution of a reference, and compatible types may
+not allow the typechecker to make the distinction.
+
+\item[Name {\em foo\/} already in use as a {\em kind\/}] - this error
+applies to non-expression declarations such as formulas, theory
+declarations, etc.  It indicates that the same name is being used twice
+for the same kind of declaration in the same theory.
+
+\end{description}
+
+\subsubsection{Recursive Function Errors}
+
+\begin{description}
+
+\item[Recursive definition must be a function type] - the type of a
+recursive declaration must be a function type, or a subtype of a function
+type.
+
+\item[Termination TCC could not be generated] - This error results from a
+recursive call for which arguments have not been provided.
+
+\item[Measure must be a function] - the provided measure must resolve to a
+function.
+
+\item[Wrong number of arguments in measure] - the argument pattern of the
+measure function must match that of the recursive function being declared.
+
+\item[Measure must have range a naturalnumber or an ordinal] - the range
+type of the measure function usually is a natural number, but ordinal
+numbers are also supported.  No other range types are allowed.
+
+\item[Incompatible domain types] - the domain type of the measure is
+incompatible with the corresponding domain type of the recursive function
+being declared.
+
+\end{description}
+
+
+\subsubsection{Inductive Declaration Errors}
+
+\begin{description}
+
+\item[Inductive definition must be a function type] - the type of a
+inductive declaration must be a function type, or a subtype of a function
+type.
+
+\item[Inductive definitions must have (eventual) range type boolean] - see
+the language manual for a discussion of this restriction.
+
+\item[Cannot determine parity of this occurrence of the inductive
+definition] - the recursive occurrences of the inductive definition must
+be positive; the system could not determine the parity of this occurrence.
+
+\item[Negative occurrences of the inductive definition are not allowed] -
+the recursive occurrences of the inductive definition must be positive,
+this occurrence is negative.
+
+\end{description}
+
+
+\subsection{Type Expression Errors}
+
+\begin{description}
+
+\item[Enumtype must be declared at top level] - since enumeration types
+are really just inline datatypes, they must be declared at the top level.
+
+\item[No type found] - this error is displayed when a parenthesized
+expression is used as a type and no type for the expression is found.
+
+\item[Does not resolve to a predicate] - this error occurs when a
+parenthesized expression is used as a type and the expression does not
+resolve to a predicate, \ie, a function with boolean range type.
+
+\item[Uninterpreted subtypes are only allowed at the top level] -
+\memo{Can this error be reached?}
+
+\item[Wrong number of variables] - this error comes from typechecking a
+subtype expression of the form \texttt{\{x1,\ldots,xn:T | p\}}, where
+\texttt{T} is a tuple type with number of component types different from
+\texttt{n}.
+
+\item[Duplicate field names not allowed] - the same field name was used
+twice in the same record type.
+
+\end{description}
+
+
+\subsubsection{Judgement Declaration Errors}
+
+\begin{description}
+
+\item[No declaration of specified type could be found] - this error occurs
+when typechecking a judgement declaration, and indicates that the entity
+being declared as a judgement could not be found matching the specified
+type.
+
+\item[Only constant names or numbers may have HAS\_TYPE judgements] -
+indicates that an expression other than a name or number was provided
+here.
+
+\end{description}
+
+
+\subsubsection{Type Application Errors}
+
+\begin{description}
+
+\item[Uninterpreted types may not have parameters] - although type
+declarations may now have parameters, they are not allowed for
+uninterpreted type declarations.  See the language manual for a discussion
+of this restriction.
+
+\item[Type applications may not be curried] - the parameters to a type
+declaration may not be curried, \eg\
+\begin{alltt}
+  t(x:int)(y:int): TYPE = {z:int | z < x + y}
+\end{alltt}
+is not allowed, for the simple reason that partial type applications are
+not allowed.
+
+\item[\emph{foo} may not be used in a type application] - only type names
+declared to be applications (\ie, with declaration parameters) may be used
+in type applications.
+
+\item[Wrong number of parameters] - a type application was given with the
+wrong number of parameters.
+
+\end{description}
+
+
+\subsection{Expression Errors}
+
+\begin{description}
+
+\item[Wrong arity] - this error occurs with tuple expressions, and
+indicates that a different number of subexpressions was expected.
+
+\item[{\em foo\/} expected here] - this error occurs when a lambda
+expression is provided where a (non-functional) type \emph{foo} is
+expected.
+
+\item[Wrong number of bound variables - $n$ expected] - the given lambda
+expression has a different number of bound variables than expected.
+
+\item[Wrong number of assignments] - the given record expression has a
+different number of assignments than expected.  Recall that each field of
+a record expression must be given exactly once.
+
+\item[No compatible types] - this error occurs for an update expression
+when a function type is expected and the possible types of the update
+expression are not compatible with the expected type.
+
+\item[{\em foo\/} is not a record, function, or array type] - update
+expressions are only allowed for these types.
+
+\item[Field not found] - an assignment made in a record update references
+a field that was not found in the expected type.
+
+\item[TCC for this expression simplifies to false: \emph{foo}] - the
+typechecker has generated a \tcc\ and found that it reduced to
+\texttt{false} when it was simplified.  This is a type error, though the
+expression \emph{foo} may need careful scrutiny to determine the cause of
+the error.
+
+\item[Recursive definition occurrence {\em foo\/} must have arguments] -
+the termination of a recursive function is requires every recursive call
+to have at least as many arguments as the function given in the measure.
+
+\item[Formals are not allowed in {\em foo\/}s] - this error occurs when
+formal declaration arguments are provided where they are not allowed, \eg\
+in \texttt{foo(x:int): FORMULA x = y} it makes no sense to provide a
+formal argument, as there is no way to reference the formula name with a
+parameter.  Formal declaration arguments are only allowed for type,
+constant, recursive, and inductive declarations.
+
+\item[Library \emph{foo} does not exist, or has no .pvscontext file] -
+this error indicates either that a specified library pathname could not be
+found, or that its directory does not contain a .pvscontext file.  Either
+modify the pathname, or create the library directory and files (you will
+need to use the \unix\ \texttt{mkdir} command to create the directory,
+and the \iecmd{change-context} command to move to that directory and
+create the files).
+
+\item[The argument to \texttt{PROJ\_}$n$ must be a tuple with length at
+least $n$] - this error is displayed when a projection function is applied
+to an expression that is ``too short,'' in that the type of the expression
+is a tuple with fewer than $n$ components.
+
+\item[There must be at least $n$ arguments for \texttt{PROJ\_}$n$] - this
+error occurs with expressions such as \texttt{PROJ\_3(1,2)}.
+
+\item[Record expression assignments must not have arguments] - the
+left-hand side of an assignment in a record expression may not have
+arguments, \eg\ the second assignment in the expression \texttt{(\# a := 2,
+(b)(3) := 1 \#)} is illegal.
+
+\item[Record expressions must have named fields] - the left-hand side of
+an assignment in a record expression must be a simple identifier.
+
+\item[Duplicate field assignments are not allowed] - the left-hand sides
+of the assignments of a record expression must all be unique simple
+identifiers.
+
+\item[Expression type must be a datatype] - in a CASES expression of the
+form \texttt{CASES \emph{foo} OF \ldots}, the type of \emph{foo} must be a
+datatype.
+
+\item[Selections must have a unique id] - the indicated selection of the
+CASES expression was seen earlier.
+
+\item[ELSE part will never be evaluated] - the ELSE part of the CASES
+expression was provided, but it will never be evaluated since the
+selections cover all possibilities.
+
+\item[No matching constructor found] - the datatype constructor associated
+with the specified selection of the CASES expression could not be found.
+
+\item[Wrong number of arguments] - the constructor associated with the
+given selection of the CASES expression has a different number of
+arguments than the selection.
+
+\item[Incompatible types in application] - this error indicates that no
+type could be found that is consistent with the operator and the
+arguments.  This error should rarely occur; more specific errors will
+usually be given.
+
+\item[Type mismatch in coercion \emph{foo} Possible expression types:
+\emph{type}, \ldots] - this error indicates that the type given in the
+coercion expression does not match the type found for the expression.  A
+simple example of this is \texttt{3:bool}.
+
+\item[Type mismatch in application \emph{foo} Operator types:
+\emph{type},\ldots Arguments types:] \textbf{\emph{type},\ldots} - This indicates
+that the type of the operator and the arguments are incompatible.
+
+\item[Must resolve to a record, function, or array] - the specified
+expression of the update expression could not be resolved to one of these
+types.
+
+\item[Duplicate assignments not allowed in recordtypes] - an update on an
+expression whose type is a record type was found to have two assignments
+with the same left-hand sides.
+
+\item[Field name expected] - the left-hand side of an assignment of an
+update expression whose type is a record type must be a field name of that
+record type.
+
+\item[May not have partial updates for dependent record types] - a partial
+update is one of the form \texttt{r WITH [(a)(b) := x]}, \ie\ an update of
+a functional at a specific point.  This is not allowed for dependent
+record types, mostly due to the fact that the resulting forms (\eg\
+\tccs)are very difficult to understand.
+
+\item[Wrong number of assignment arguments, $n$ expected] - in an update
+assignment such as the one in \texttt{f WITH [(a$_1$,\ldots,a$_n$) := y]},
+the size of the domain of the type of {\tt f} was different from $n$.
+This can also happen recursively, \eg\ the following is an error:
+{\small
+\begin{alltt}
+  (LAMBDA (x:int): (LAMBDA (y,z:int): x + y * z)) WITH [(0)(1,2,3) := 0]
+\end{alltt}}
+
+\item[The expression type is inconsistent with this set of arguments] -
+this error occurs in an update expression when there are more arguments in
+the left-hand side of an assignment than are allowed by the type of the
+expression being updated.  An example is
+{\small
+\begin{alltt}
+  (LAMBDA (x:int): x + 1) WITH [(0)(1,2,3) := 0]
+\end{alltt}}
+
+\item[Variable \emph{foo} not previously declared] - this error indicates
+that a binding was given without a type and there was no earlier variable
+declaration with that name.  For example, \texttt{(FORALL x: p(x))}, where
+\texttt{x} is not previously declared as a variable (in the current
+theory).
+
+\item[Variable \emph{foo} is ambiguous] - the type of the specified
+variable was not given, and there is more than one variable declaration
+with the same name.
+
+\item[{\em foo\/} does not have a unique type - one of: {\em
+type$_1$\/},\ldots] - this error pertains to expressions that are not
+names that are still ambiguous.  The simplest way to disambiguate these
+expressions is to add a colon followed by the type.  Parentheses may be
+necessary as the colon binds tightly (\eg\ \texttt{x - 1:nat} is parsed as
+\texttt{x - (1:nat)}).
+
+\item[Incompatible types Found: {\em ftype$_1$},\ldots Expected: {\em
+etype\/}] - this message is displayed when there is a type mismatch.  The
+types are displayed in an expanded form, so that differences may be found.
+However, they are not fully expanded, as this can lead to extremely large
+displays and the information is just as useless as if it was unexpanded.
+If the types look identical, then you will need to do a careful analysis
+of the types of the entities involved to figure out where the discrepancy
+lies.  In practice, this is rarely a problem.
+
+\item[Bound variable outside of context] - \memo{Should this still be
+possible?}
+
+\end{description}
+
+
+\subsection{Name Resolution Errors}
+
+\begin{description}
+
+\item[{\em foo\/} does not uniquely resolve - one of: {\em
+fullname$_1$},\ldots] - this error indicates that there is an ambiguity in
+the use of a name.  A name may be made unambiguous by adding one or more
+of the following.
+\begin{itemize}
+\item theory identifier
+\item actual parameters
+\item type
+\item library identifier
+\end{itemize}
+The complete name of an entity is of the form
+\texttt{\emph{lib}@\emph{th}[\emph{act},\ldots].\emph{id}:\emph{type}}.
+See the language manual for more information.
+
+\item[Ambiguous theory instance, could be one of:
+\emph{theoryname},\ldots] - the name expression is ambiguous in that
+multiple instances are available, and the typechecker is not able to
+decide between them.  This usually happens when multiple instances of the
+same theory are imported, and the actual parameters were left off of a
+name reference.  To continue, simply supply the correct actual parameters.
+
+\item[Could not determine the full theory instance] - this error indicates
+that the typechecker was only partially able to resolve the actual parameters
+of the specified name.  This frequently happens when a theory is imported
+generically, and some of the parameters (usually the type parameters)
+could be uniquely determined, while others could not.  To continue, simply
+supply the correct actual parameters.
+
+\item[Expression provided where a type is expected] - this error indicates
+that an actual parameter is an expression, but the corresponding formal
+parameter expects a type expression.
+
+\end{description}
+
+
+\subsection{Datatype Errors}
+
+\begin{description}
+
+\item[Duplicate enumeration names are not allowed] - the names used in an
+enumeration type declaration must all be unique.
+
+\item[Duplicate constructor names are not allowed] - the constructor names
+of a datatype must all be unique.
+
+\item[Duplicate recognizer names are not allowed] - the recognizer names
+of a datatype must all be unique.
+
+\item[{\em foo} is used as both a constructor and recognizer name] - the
+constructor names must be disjoint from the recognizer names.
+
+\item[Datatype name may not be used as a constructor name] - the
+identifier used for the datatype cannot be used as a constructor.
+
+\item[Datatype name may not be used as a recognizer name] - the
+identifier used for the datatype cannot be used as a recognizer.
+
+\item[May not have duplicate accessor names for a single constructor] -
+within a single constructor form, the accessor names must be unique.
+
+\item[Datatype name may not be used as an accessor name] - the
+identifier used for the datatype cannot be used as an accessor.
+
+\item[There must be at least one non-recursive constructor] - at least one
+of the constructor forms must have no reference to the datatype itself;
+see the language manual for more discussion.
+
+\item[Recursive uses of the datatype {\em foo\/} must be (a subtype of)
+one of the forms] \textbf{\emph{foo}, sequence[\emph{foo}], or a
+(positive) parameter to another datatype} - see the language manual for a
+full discussion of this restriction.
+
+\item[Assumings are not allowed for in-line datatypes] - since formal
+parameters are not allowed for in-line datatypes, it makes no sense to
+have an assuming section.
+
+\end{description}
+
+
+\subsection{Modify Declaration Errors}
+\index{modify-declaration@\texttt{modify-declaration}!errors}
+
+These errors arise during the use of the \ecmd{modify-declaration}
+command, which has many restrictions on its use.  One way around many of
+these restrictions is to use \iecmd{add-declaration} instead, and to
+delete the declaration that you wanted to modify later (after finishing
+with any proof in progress).
+
+\begin{description}
+
+\item[Modified declaration must have the same type - \emph{foo}] - the
+type of the declaration edited using the \ecmd{modify-declaration}
+command must not be changed.
+
+\item[Only one declaration is allowed] - you may not add new declarations
+using the \ecmd{modify-declaration} command.  Use \ecmd{add-declaration}
+instead, after modifying the given declaration.
+
+\item[Modified declaration must keep the same id - \emph{foo}] - an
+attempt has been made to change the identifier associated with the
+declaration being modified.  Change it back to what it was and try again.
+
+\item[Modified declaration must be the same kind - \emph{foo}] - you may
+not change the class of a declaration being modified, \eg\ from a formula
+to a variable.  Change it back and try again.
+
+\end{description}
+
+\section{\LaTeX\ Errors}
+
+There are two kinds of \LaTeX\ errors, those that arise in reading the
+\LaTeX\ substitution files (\texttt{pvs-tex.sub}), and those that are
+generated as a result of executing \LaTeX.  We will not go into the latter
+here, see the \LaTeX\ manual~\cite{latex2e} for help in understanding these
+errors.  \memo{Describe the presentation of the errors}
+
+The substitution errors are described below, see
+section~\ref{latex-output}, page~\pageref{latex-output} for a full
+definition of the terms used.
+
+\begin{description}
+
+\item[Incomplete substitution defined for \emph{foo}] - indicates that the
+entry for \emph{foo} is incomplete; there should be four separate fields.
+
+\item[Illegal length \emph{arg} for \emph{foo}] - indicates that the width
+field was illegal for the entry for \emph{foo}; it must either be a
+positive integer or a hyphen.
+
+\item[Illegal kind or arity \emph{foo} for \emph{id}: must be KEY, ID,
+number, or list of numbers] - the kind field was not one of the legal
+values.
+
+\end{description}

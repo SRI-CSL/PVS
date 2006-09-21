@@ -1,0 +1,480 @@
+% Document Type: LaTeX
+% Master File: user-guide.tex
+% Use latex2e to process this file
+\chapter{Running PVS in Batch Mode}
+\label{batchmode}
+
+To support validation runs, PVS supports a \emph{batch mode}, which
+means that specifications and proofs being processed are not displayed.
+In batch mode there is no direct interaction with PVS; it simply processes
+whatever files or functions are provided and terminates after completing
+the last of them.  PVS batch mode is built directly on the underlying
+Emacs batch mode described in Section A.2 of the GNU Emacs
+Manual~\cite{emacs20}.
+
+If PVS is invoked in batch mode from a shell, then it may be interrupted
+(using \texttt{C-c}), suspended (\texttt{C-z}), or run as a background
+job.  The output may be redirected to a file or piped to another
+command.\footnote{The Emacs batch option actually sends its output to
+\texttt{stderr} rather than \texttt{stdout}; the \texttt{pvs} shell script
+redirects this to \texttt{stdout}, as this is generally more useful and
+easier to work with.}
+
+To run PVS in batch mode, simply include the `\texttt{-batch}' option in
+your call to PVS.  In addition, you should include one or more Emacs
+source files and/or a Emacs or PVS function to run, using the `\texttt{-l}' or
+`\texttt{-load}' option to load a file, and the `\texttt{-f}' or
+`\texttt{-funcall}' option for a function.  For example:
+\begin{alltt}
+  pvs -batch -l test.el
+  pvs -batch -f pvs-version
+\end{alltt}
+Note that the function option is severely limited, as it only allows a
+function name.  This means that only functions that take no arguments may
+be provided, for example, \texttt{pvs-version} or \texttt{whereis-pvs}.
+
+Running PVS in batch mode does cause your \texttt{\char'176/.emacs} file
+to be loaded, in contrast to running Emacs in batch mode.  If you want
+to suppress the loading of your \texttt{.emacs}, include the
+`\texttt{-q}' option, for example:
+\begin{alltt}
+  pvs -batch -q -l test.el
+\end{alltt}
+
+In batch mode PVS suppresses messages by default, though you can print
+your own messages.  You can also control the amount of printout using the
+verbose option, `\texttt{-v}', and providing a level number ranging from
+\texttt{0} to \texttt{3}.
+The following table summarizes the levels.
+\begin{center}
+\begin{tabular}{|l|l|}\hline
+\textbf{level} & \textbf{printout} \\ \hline
+0 & User-defined \texttt{pvs-message}s only \\
+1 & Messages normally sent to the echo area and PVS errors\\
+2 & Status buffers \\
+3 & Proof replays \\ \hline
+\end{tabular}
+\end{center}
+
+The \texttt{pvs-message} function is much like the Emacs \texttt{message}
+function, but the message will get printed no matter what the level number
+is.  If you want to print out only when the level is \texttt{1} or higher,
+use \texttt{message} instead.  Both take a control string and an arbitrary
+number of arguments.  An example is shown in Figure~\ref{batch-file}.
+
+The file provided to the load option (`\texttt{-l}' or `\texttt{-load}')
+is an ordinary Emacs file, and usually has an \texttt{.el} extension.
+Inside this file you can invoke any PVS commands you want, though many of
+them only make sense interactively.  For example, the \texttt{prove}
+command expects the cursor to be positioned at a given formula, which is
+difficult (though not impossible) to do in batch mode.  The various Tcl/Tk
+commands available will not run at all because there is no X display
+associated with PVS running in batch mode.  The most useful commands to
+run in batch mode are listed in Table~\ref{batch-commands}.  In that table, a
+\textit{filename} is a PVS file name without the \texttt{.pvs} extension,
+a \textit{theoryname} is the name of a theory in the current context, and
+a \textit{directory} is a Unix pathname.  These must all be given as
+strings (enclosed in double quotes).  The \textit{length} and
+\textit{depth} arguments are integers, and do not need any special
+treatment.  PVS Emacs commands are given in Emacs lisp syntax; for
+example,
+\begin{alltt}
+  (parse "foo")
+  (set-print-depth 3)
+  (save-context)
+\end{alltt}
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|l|}\hline
+\textbf{Command} & \textbf{Arguments} \\ \hline
+\texttt{parse} & \textit{filename} \\
+\texttt{typecheck} & \textit{filename} \\
+\texttt{typecheck-importchain} & \textit{filename} \\
+\texttt{typecheck-prove} & \textit{filename} \\
+\texttt{typecheck-prove-importchain} & \textit{filename} \\
+\texttt{prove-theory} & \textit{theoryname} \\
+\texttt{prove-pvs-file} & \textit{filename} \\
+\texttt{prove-importchain} & \textit{theoryname} \\
+\texttt{set-print-depth} & \textit{depth} \\
+\texttt{set-print-length} & \textit{length} \\
+\texttt{set-rewrite-depth} & \textit{depth} \\
+\texttt{set-rewrite-length} & \textit{length} \\
+\texttt{alltt-theory} & \textit{theoryname} \\
+\texttt{alltt-pvs-file} & \textit{filename} \\
+\texttt{alltt-importchain} & \textit{theoryname} \\
+\texttt{latex-theory} & \textit{theoryname} \\
+\texttt{latex-pvs-file} & \textit{filename} \\
+\texttt{latex-importchain} & \textit{theoryname} \\
+\texttt{latex-set-linelength} & \textit{length} \\
+\texttt{change-context} & \textit{directory} \\
+\texttt{save-context} & \\
+\texttt{pvs-remove-bin-files} & \\
+\texttt{pvs-dont-write-bin-files} & \\
+\texttt{pvs-do-write-bin-files} & \\
+\texttt{status-theory} & \textit{theoryname} \\
+\texttt{status-pvs-file} & \textit{filename} \\
+\texttt{status-importchain} & \textit{theoryname} \\
+\texttt{status-importbychain} & \textit{theoryname} \\
+\texttt{status-proof-theory} & \textit{theoryname} \\
+\texttt{status-proof-pvs-file} & \textit{filename} \\
+\texttt{status-proof-importchain} & \textit{theoryname} \\
+\texttt{status-proofchain-theory} & \textit{theoryname} \\
+\texttt{status-proofchain-pvs-file} & \textit{filename} \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Commands available for validation}\label{batch-commands}
+\end{table}
+
+An example of the contents of a batch file is shown in
+Figure~\ref{batch-file}.  This file consists of three commands.  It prints
+the message ``\texttt{Proving stamps2}'', changes to the
+\texttt{\char'176/pvs/test} context, and then reruns all the proofs of the
+specification file \texttt{stamps2.pvs}.  Note that
+\texttt{current-prefix-arg} is set to \texttt{t} to ensure that the proofs
+are retried.  This is equivalent to using \texttt{C-u} interactively.
+\begin{figure}
+\begin{center}
+\fboxsep=10pt%
+\begin{boxedminipage}{3.2in}
+\begin{alltt}
+(pvs-message "Proving stamps2")
+(change-context "~/pvs/test")
+(let ((current-prefix-arg t))
+  (prove-pvs-file "stamps2"))
+\end{alltt}
+\end{boxedminipage}
+\end{center}
+\caption{Batch File Example}\label{batch-file}
+\end{figure}
+While PVS is running in batch mode, two possible kinds of error may be
+encountered.  An Emacs error comes from badly formed batch files or
+nonexistent functions.  These errors will cause the system to stop
+immediately, and the error will be displayed if the level number is
+nonzero.  A PVS error generates an error message (for a nonzero level
+number) and abandons the current command, but allows the system to go on
+to the next command.
+
+If an emacs error is encountered that reports 'entering debugger' when
+run with verbosity level 3, the full commands of the emacs debugger
+are available\footnote{See the Emacs manual\cite{emacs20} for details.}.
+A useful command to discover where your validation script encountered the error is:
+\begin{alltt}
+e (progn (set-buffer "*Backtrace*")(buffer-string))
+\end{alltt}
+
+Another potential pitfall is that PVS may appear to hang.  If this
+happens, try running with verbosity level 3 as it is likely that PVS
+is awaiting user input (usually a yes/no).  You may respond to such
+prompts from the shell. 
+
+\section{Validation Runs}
+
+A validation run is simply a batch run in which the \texttt{pvs-validate}
+macro is used in the batch file.  Given a \emph{log file} name, a
+directory, and a sequence of PVS Emacs commands, \texttt{pvs-validate}
+will change context to the specified directory and run the commands,
+collecting the output into the log file.  It then compares the new results
+to the previous ones, and reports whether there were any significant
+differences.  An example of the use of \texttt{pvs-validate} is shown in
+Figure~\ref{validate-file}.
+\begin{figure}
+\begin{center}
+\fboxsep=10pt%
+\begin{boxedminipage}{3.3in}
+\begin{alltt}
+(pvs-validate
+  "stamps2.log"
+  "~/pvs/test"
+  (pvs-message "Proving stamps2")
+  (set-rewrite-depth 0)
+  (let ((current-prefix-arg t))
+    (prove-pvs-file "stamps2")))
+\end{alltt}
+\end{boxedminipage}
+\end{center}
+\caption{Example Use of \texttt{pvs-validate}}\label{validate-file}
+\end{figure}
+
+Any number of \texttt{pvs-validate} forms may be used, and they may be
+freely intermixed with other Emacs or PVS commands.  When the sequence of
+commands associated with an invocation of \texttt{pvs-validate} is
+complete, the log file is compared to the previous version, if it exists.
+At this point PVS will report one of three messages:
+\begin{itemize}
+\item \texttt{Nothing to compare \textit{log} to} - the log file has not
+been generated before this run.
+
+\item \texttt{No significant changes in \textit{log}} - the current run
+does not differ significantly from the last one.  A significant difference
+is one that involves more than timing differences.  For example, the
+message \texttt{proved in 27 seconds} is not significantly different from
+\texttt{proved in 31 seconds}.
+
+\item \texttt{Differences found since last run} - differences were
+found.  The following line indicates the two log files that should be
+compared to see where they differ.
+\end{itemize}
+
+This is normally all the output provided by PVS while processing a
+\texttt{pvs-validate} macro, though you can get more information by
+including the `\texttt{-v}' option as described above.
+
+With minor exceptions, the log files contain the same information as
+obtained with the `\texttt{-v 3}' option, but only for the commands of the
+given \texttt{pvs-validate} macro.  In comparing log files, timings are
+ignored.\footnote{In the future we may want to compare timings and report
+those that are significantly different, but in order for this to work
+properly we must get CPU times rather than real times, and make sure that
+we are keeping track of the machine used for the previous validation run
+For now we are only concerned with functional correctness.}
+
+When a difference is reported, you can find out what the differences
+actually are by starting up (an interactive) PVS, and bringing up the two
+files in a split window.\footnote{In detail, start up PVS, use \texttt{C-x
+C-f} to visit the first file, use \texttt{C-x 2} to split the window
+vertically, and then use \texttt{C-x C-f} again to bring in the second
+file.}  Then use \texttt{M-x pvs-compare-validation-windows}, which works
+much like the Emacs \texttt{compare-windows} command, and will position
+the cursor at the point where the two files differ.  Again, differences in
+timing are ignored.  After analyzing the difference, you can move the
+pointer in each buffer to the next position where they are the same, and
+run \texttt{M-x pvs-compare-validation-windows} again to get to the next
+difference.  In this way you can quickly analyze all the differences since
+the last validation run.
+
+The log files are maintained under RCS~\cite{RCS}, using the Emacs
+\emph{Version Control} interface~\cite{emacs20}.  The first time
+a validation run is made from a given directory, an RCS subdirectory is
+created to keep the directory from being cluttered with RCS files.
+If this is the first validation run for a given log file, then the log
+file is created and registered to RCS.  In subsequent runs, the log file
+is compared to the previous version, which will have a name including the
+version number, for example, \texttt{stamps2.log.\char'176 1.8\char'176}.
+If the comparison shows no significant differences, then the file is
+subsequently deleted.
+
+Note that the log files are all kept in the directory from which PVS was
+run, and changing context will not affect that.  This makes it easy to
+maintain a single directory that controls the validation for several
+different contexts.
+
+\section{Example Validation Run}
+Here is an example of a validation run for a very simple specification.
+\subsection{The Specification}
+The specification is in the file \texttt{stamps.pvs}:
+\begin{alltt}
+stamps : THEORY
+ BEGIN
+  i, n3, n5: VAR nat
+  stamps: LEMMA (FORALL i: (EXISTS n3, n5: i+8 = 3*n3 + 5*n5))
+ END stamps
+\end{alltt}
+\subsection{The Validation File} 
+The file \texttt{stamps.el} has the validation commands.  In this case we
+are simply going to reprove the formulas of the specification file (there
+is only one):
+\begin{alltt}
+(pvs-validate
+ "stamps.log"
+ "~/pvs-specs/validation"
+ (pvs-message "Proving stamps")
+ (let ((current-prefix-arg t))
+   (prove-pvs-file "stamps")))
+\end{alltt}
+\subsection{The Validation Run}
+Here is the validation run, with level number 1.  This shows the messages
+that normally appear in the echo area at the bottom of the Emacs window
+(these messages are sent to \texttt{stdout}):
+\begin{alltt}
+% ./pvs -batch -l stamps.el -v 1
+Started initializing ILISP
+Finished initializing pvsallegro
+Loading compiled patch file /project/pvs/patch2.fasl
+Context changed to ~/pvs-specs/validation/
+Checking out ~/pvs-specs/validation/stamps.log...
+Checking out ~/pvs-specs/validation/stamps.log...done
+PVS Version 2.3 (No patches loaded)
+Context changed to ~/pvs-specs/validation/
+Proving stamps
+Parsing stamps
+stamps parsed in 0.02 seconds
+Typechecking stamps
+stamps typechecked in 0.02s: No TCCs generated
+Rerunning proof of stamps
+Using old decision procedures
+Proving stamps.stamps.
+Proving stamps.stamps..
+Proving stamps.stamps...
+Proving stamps.stamps....
+Proving stamps.stamps.....
+Proving stamps.stamps......
+Proving stamps.stamps.......
+stamps proved in 2.20 real, 0.58 cpu seconds
+stamps: 1 proofs attempted, 1 proved in 2.20 real, 0.58 cpu seconds
+Checking out ~/pvs-specs/validation/stamps.log.~1.3~...
+Checking out ~/pvs-specs/validation/stamps.log.~1.3~...done
+No significant changes in stamps.log
+Checking in ~/pvs-specs/validation/stamps.log...
+Checking in ~/pvs-specs/validation/stamps.log...done
+\end{alltt}
+
+\subsection{The Log File}
+The resulting log file \texttt{stamps.log} is shown here.  This will
+be used for comparison to in subsequent validation runs.
+{\small
+\begin{alltt}
+PVS Version 2.3 (No patches loaded)
+Context changed to ~/pvs-specs/validation/
+Proving stamps
+Restoring theories from stamps.bin
+Restored file stamps (stamps) in 0.57 seconds
+Rerunning proof of stamps
+Using old decision procedures
+
+stamps :  
+
+  |-------
+\{1\}    (FORALL i: (EXISTS n3, n5: i + 8 = 3 * n3 + 5 * n5))
+
+Proving stamps.stamps.
+Rerunning step: (INDUCT "i")
+Proving stamps.stamps..
+Inducting on i,
+this yields  2 subgoals: 
+stamps.1 :  
+
+  |-------
+\{1\}    (EXISTS (n3: nat), (n5: nat): 0 + 8 = 3 * n3 + 5 * n5)
+
+Rerunning step: (INST + 1 1)
+Instantiating the top quantifier in + with the terms: 
+ 1, 1,
+this simplifies to: 
+stamps.1 :  
+
+  |-------
+\{1\}    0 + 8 = 3 * 1 + 5 * 1
+
+Rerunning step: (ASSERT)
+Simplifying, rewriting, and recording with decision procedures,
+
+This completes the proof of stamps.1.
+
+stamps.2 :  
+
+  |-------
+\{1\}    (FORALL (j: nat):
+         (EXISTS (n3: nat), (n5: nat): j + 8 = 3 * n3 + 5 * n5)
+             IMPLIES (EXISTS (n3: nat), (n5: nat):
+                         j + 1 + 8 = 3 * n3 + 5 * n5))
+
+Rerunning step: (SKOSIMP*)
+Repeatedly Skolemizing and flattening,
+this simplifies to: 
+stamps.2 :  
+
+\{-1\}    j!1 + 8 = 3 * n3!1 + 5 * n5!1
+  |-------
+\{1\}    (EXISTS (n3: nat), (n5: nat): j!1 + 1 + 8 = 3 * n3 + 5 * n5)
+
+Rerunning step: (CASE "n5!1 = 0")
+Case splitting on 
+Proving stamps.stamps...
+   n5!1 = 0, 
+this yields  2 subgoals: 
+stamps.2.1 :  
+
+\{-1\}    n5!1 = 0
+[-2]    j!1 + 8 = 3 * n3!1 + 5 * n5!1
+  |-------
+[1]    (EXISTS (n3: nat), (n5: nat): j!1 + 1 + 8 = 3 * n3 + 5 * n5)
+
+Proving stamps.stamps....
+Rerunning step: (INST + "n3!1 - 3" 2)
+Instantiating the top quantifier in + with the terms: 
+Proving stamps.stamps.....
+ n3!1 - 3, 2,
+this yields  2 subgoals: 
+stamps.2.1.1 :  
+
+[-1]    n5!1 = 0
+[-2]    j!1 + 8 = 3 * n3!1 + 5 * n5!1
+  |-------
+\{1\}    j!1 + 1 + 8 = 3 * (n3!1 - 3) + 5 * 2
+
+Rerunning step: (ASSERT)
+Simplifying, rewriting, and recording with decision procedures,
+
+This completes the proof of stamps.2.1.1.
+
+stamps.2.1.2 (TCC):   
+
+[-1]    n5!1 = 0
+[-2]    j!1 + 8 = 3 * n3!1 + 5 * n5!1
+  |-------
+\{1\}    n3!1 - 3 >= 0
+
+Rerunning step: (ASSERT)
+Simplifying, rewriting, and recording with decision procedures,
+
+This completes the proof of stamps.2.1.2.
+
+
+This completes the proof of stamps.2.1.
+
+stamps.2.2 :  
+
+[-1]    j!1 + 8 = 3 * n3!1 + 5 * n5!1
+  |-------
+\{1\}    n5!1 = 0
+[2]    (EXISTS (n3: nat), (n5: nat): j!1 + 1 + 8 = 3 * n3 + 5 * n5)
+
+Proving stamps.stamps......
+Rerunning step: (INST + "n3!1 + 2" "n5!1 - 1")
+Instantiating the top quantifier in + with the terms: 
+Proving stamps.stamps.......
+ n3!1 + 2, n5!1 - 1,
+this yields  2 subgoals: 
+stamps.2.2.1 :  
+
+[-1]    j!1 + 8 = 3 * n3!1 + 5 * n5!1
+  |-------
+[1]    n5!1 = 0
+\{2\}    j!1 + 1 + 8 = 3 * (n3!1 + 2) + 5 * (n5!1 - 1)
+
+Rerunning step: (ASSERT)
+Simplifying, rewriting, and recording with decision procedures,
+
+This completes the proof of stamps.2.2.1.
+
+stamps.2.2.2 (TCC):   
+
+[-1]    j!1 + 8 = 3 * n3!1 + 5 * n5!1
+  |-------
+\{1\}    n5!1 - 1 >= 0
+[2]    n5!1 = 0
+
+Rerunning step: (ASSERT)
+Simplifying, rewriting, and recording with decision procedures,
+
+This completes the proof of stamps.2.2.2.
+
+
+This completes the proof of stamps.2.2.
+
+
+This completes the proof of stamps.2.
+
+Q.E.D.
+stamps proved in 19 seconds
+stamps: 1 proofs attempted, 1 proved in 19 seconds
+
+
+ Proof summary for theory stamps
+    stamps..........................................proved - complete
+    Theory totals: 1 formulas, 1 attempted, 1 succeeded.
+
+Grand Totals: 1 proofs, 1 attempted, 1 succeeded.
+\end{alltt}}

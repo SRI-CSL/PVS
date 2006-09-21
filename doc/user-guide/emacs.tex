@@ -1,0 +1,382 @@
+% Document Type: LaTeX
+% Master File: user-guide.tex
+\chapter{Introduction to Emacs}
+\label{emacs-intro}
+
+The PVS system uses the GNU Emacs system as its user interface.  To make
+effective use of PVS, you must become familiar with at least the basic
+Emacs commands.  This section provides an introduction to Emacs that
+should allow you to get started in PVS right away.  This Appendix
+introduces enough of the basic ideas and commands of Emacs to use PVS, but
+to become effective you really should consult the GNU Emacs
+Manual~\cite{emacs20}.  It is also quite helpful to run through the online
+tutorial.  To do this, start up PVS or Emacs, type \key{C-h t}, and follow
+the instructions.
+
+Emacs provides the primary interface to the PVS system.  We chose Emacs
+as our interface for a number of reasons.  First, it is freely available,
+and runs on a large number of different platforms.  It is also quite
+popular; on Unix systems the \texttt{vi} editor is probably the only
+editor that is used more than Emacs, but it is too limited to use as a
+general-purpose interface.  In particular, it has no support for running
+subprocesses.
+
+Emacs is an extremely flexible editor, and includes a built in programming
+language (Emacs Lisp) which makes it easy to increase its functionality.
+There is a cost associated with this.  First, Emacs is rather large, and
+takes longer to start up than smaller editors such as \texttt{vi}.  Emacs
+is also quite complex, with a large number of commands and associated key
+bindings that are not easy to learn.
+
+Emacs is significantly different than other editors.  In most editors, you
+start the editor, get a file, make some changes, save the file, and exit.
+There is a tendency to think in terms of ``leaving'' the current file in
+order to go to the next. To handle multiple files in a single session
+usually requires extra care and some specialized commands.  For example,
+\texttt{vi} can only focus on one file at a time, with one alternate.
+
+In Emacs multiple buffers may be open at once, and as many can be made
+visible as your screen allows.  Unlike other editors, buffers are not all
+associated with files.  It is not unusual to have over a hundred buffers
+associated with a single Emacs session.  It is also quite normal to have
+the same Emacs session up for weeks at a time.\footnote{Some people have
+even been known to use Emacs as their shell.}  When you are done editing
+and saving a given file, you do not exit from that buffer, you simply go
+on to the next one.
+
+Unlike \texttt{vi}, there is no command mode.  By default an Emacs buffer
+is in insert mode, and most keys on the keyboard simply insert themselves.
+Emacs has a large number of interactive commands, any of which may be
+bound to a key or key sequence.\footnote{It turns out that typing a letter
+key actually invokes the command \texttt{self-insert-command}.}  Any
+interactive command may be invoked by typing \texttt{M-x} followed by the
+command.  Recall that \texttt{M-x} is gotten by holding down the
+\texttt{Meta-} key and typing an \texttt{x}.  If you don't have a key
+labeled \texttt{Meta-}, then look for and try the \texttt{Alt} or
+$\Diamond$ keys.  If you really don't have a \texttt{Meta-} key, then the
+\texttt{Esc} key will do, but in this case you must release the
+\texttt{Esc} key before typing the \texttt{x}.
+
+Commands may be bound to key sequences, in order to make typing easier.
+For example, to page down repeatedly by typing \texttt{M-x
+scroll-up} over and over would get quite tedious, so the key sequence
+\texttt{C-v} was bound to this command.  This and most of the key bindings
+of Emacs are not particularly mnemonic, but once learned they are
+extremely effective.  With a little practice you will find that you don't
+think about what key sequence is needed to get a particular effect---your
+hands just do it automatically.
+
+Each buffer in Emacs has an associated major mode, and any number of minor
+modes.  The major mode indicates what kind of a buffer it is, and
+generally defines the key bindings and functions associated with the
+buffer.  This is usually determined from the file extension, so for
+example the file \texttt{foo.pvs} is in \texttt{pvs-mode}, while a file
+\texttt{foo.c} would normally be in \texttt{c-mode}.  Minor modes modify
+the major mode.  Examples include \texttt{auto-fill-mode} and
+\texttt{overwrite-mode}.
+
+When you start up PVS, you will see the \texttt{PVS Welcome} buffer, which
+takes up most of the window.  Toward the bottom of the window you will see
+a line in inverse video; this is the mode line.  The last line of the
+window is the minibuffer.  If you are running Emacs version 19 (or later) under X
+windows, then you will see a menu line at the top of the window, and a
+scroll bar to the right.  If you display more than one buffer in the
+window, then the bottom of each buffer will have a mode line displaying
+information for that buffer.  There will still be only one minibuffer,
+however.\footnote{In Emacs 19 (and later versions), it is possible to have multiple windows,
+called frames, associated with a single Emacs session.  In this case, each
+frame by default has its own copy of the minibuffer.  See the Emacs manual
+for more details.}
+
+The mode line provides information relating to the buffer above it.  The
+first five characters indicate whether the buffer is read-only, and
+whether the buffer has changed relative to the file.  If you see
+\texttt{---\%\%-}, then the file is read-only, and you will not be allowed
+to modify it.  Sometimes this is set when you have copied a file from
+somewhere else, and you think you should be able to make modifications.
+In that case, use the \texttt{toggle-read-only} command, make your
+changes, and save the file.  Emacs may still ask whether it should try to
+save the file anyway, go ahead and answer yes in this case.
+
+If the mode line is 5 dashes (\texttt{-----}), then the file can be
+modified but has not yet been changed.  Once modified, the mode line
+changes to \texttt{--**-}.  If you did not intend to modify the file, then
+use the \texttt{undo} commands described below to undo your change.  If there are a
+few changes, you may need to repeat the \texttt{undo} command until they
+are all backed out.  If there are a lot of changes, then \texttt{M-x
+revert-buffer} may be used to restore the buffer from the original file.
+The other information in the mode line is the buffer name, possibly the
+time, the mode of the buffer in parentheses, and the amount of the buffer
+currently displayed.  Like everything else in Emacs, the mode line is
+customizable; see the Emacs manual for details.
+
+The minibuffer is used to display messages, echo longer commands as they
+are typed in, and prompt for arguments.  Many of these arguments support
+\emph{completion}, which means that you can type the start of an argument
+and type a \texttt{TAB} to have it automatically filled in.  Emacs will
+fill in as much as is unique, and then wait for more input.  If it is
+ambiguous already, Emacs will pop up a buffer with the possible
+completions in it.  You can force it to show all possible completions by
+typing a \texttt{?}.  Not all arguments support completion, but it is
+usually worthwhile to try typing a \texttt{TAB} after typing the start of
+an argument to see if completion is supported; if it is then you will
+either get a pop up buffer or a (partial) completion of what you typed.
+Otherwise you will simply get a \texttt{TAB} inserted.
+
+Each buffer has associated with it a current \emph{region}, which is
+defined by two different locations within the buffer, called \emph{point}
+and \emph{mark}.  Point is normally the cursor position, so any of the
+cursor motion commands automatically move point.  Mark is not directly
+displayed; it is set by command, and does not move until another mark
+setting command is issued.  There are a large number of Emacs commands
+that work on regions, though by far the most common usage is for cutting
+and pasting operations.
+
+%PVS uses \emacs\ as its basic interface, but does not attempt to ``take
+%over'' the system---all the underlying capabilities of \emacs\ are still
+%available.  Thus you can read your email, scan the news bulletins, edit
+%non-PVS files, or execute commands in a shell buffer in the usual way.
+%Many of the PVS commands allow you to do these while waiting for the
+%command to finish.  This is especially useful for typechecking large
+%specifications or while running proofs in the background.
+
+
+\section{Leaving Emacs}
+\begin{pvscmds}
+\icmd{save-buffers-kill-emacs} & \key{C-x C-c} & Kill Emacs \\
+\end{pvscmds}
+
+This command exits Emacs, after first prompting whether to save each
+modified file.
+
+
+\section{Getting Help}
+\begin{pvscmds}
+\icmd{info} & \ikey{C-h i} & Read Emacs documentation\\
+\icmd{help-with-tutorial} & \ikey{C-h t} & Display the Emacs tutorial \\
+\icmd{command-apropos} & \ikey{C-h a} & Show commands matching a string \\
+\icmd{describe-key} & \ikey{C-h k} & Display name and documentation a key
+runs \\
+\icmd{describe-function} & \ikey{C-h f} & Display documentation for
+function \\
+\icmd{describe-bindings} & \ikey{C-h b} & Display a table of key bindings
+\\
+\end{pvscmds}
+
+These commands provide help.  When you type the \key{C-h} prefix key, you
+are prompted for the next key, and can type \texttt{?} to find out all the
+possibilities---only a few are described here.
+
+The \cmd{info} command brings up a buffer containing the Emacs online
+documentation.  Type \texttt{m} followed by a topic name to view the info
+page for that topic, or click mouse button 2 over the highlighted name.
+
+The \cmd{help-with-tutorial} command brings up an Emacs tutorial.  This
+tutorial is interactive, inviting you to try out the commands as it
+describes them.  If you are new to Emacs, you should try to go through
+this at least once.
+
+The \cmd{command-apropos} command displays a list of those commands whose
+names contain a specified substring.  This is helpful if you know only
+part of a command name, or suspect there is some command available for
+performing some task, but do not know what it might be named.  For
+example, you might do an \key{C-h a} on \texttt{mail} to find out what
+mail commands are available.  If you know the beginning of a
+command, it is usually better to simply start typing the command and use
+the completion mechanism.
+
+The \cmd{describe-key} and \cmd{describe-function} commands provide the
+same information, but one prompts for a key and the other for a command
+(with completion).  The key is not necessarily a single
+keystroke, as some keystrokes are defined to be prefix keys.  In this case
+the key typed so far will be displayed in the minibuffer, and the function
+description will not be given until a completed key sequence has been
+typed.
+
+The \cmd{describe-bindings} command displays the key bindings in effect in
+a separate buffer.  Many of these key bindings are specific to
+the buffer mode, so issuing this command from different buffers will
+generally lead to different results.
+
+
+\section{Files}
+\begin{pvscmds}
+\icmd{find-file} & \key{C-x C-f} & Read a file into Emacs \\
+\icmd{save-buffer} & \key{C-x C-s} & Save a file to disk \\
+\end{pvscmds}
+
+The file commands are needed to read a file into Emacs and save the
+changes.  The \cmd{find-file} creates a new buffer with the same name as the
+file and reads the file contents into it.  Completion is available on the
+file name, including the directory.  If the file does not exist, then an
+empty buffer is created.  Note that the buffer is not the same as the
+file, and changes made to the buffer are not reflected in the file until
+the file is saved.
+
+The \cmd{save-buffer} command saves the current buffer to file.  If the
+current buffer is not associated with a file, you are prompted to give a
+file name.
+
+
+\section{Buffers}
+\begin{pvscmds}
+\icmd{switch-to-buffer} & \key{C-x b} & Select another buffer \\
+\icmd{list-buffers} & \key{C-x C-b} & List all buffers \\
+\icmd{kill-buffer} & \key{C-x k} & Kill a buffer \\
+\end{pvscmds}
+
+The \texttt{switch-to-buffer} command is used to switch control from one
+buffer to another.  When you type the command, you will be prompted for a
+new buffer to switch to, and a default will be given.  If the default is
+the right one, simply type the return key.  Otherwise type in the name of
+the buffer you desire.  Completion is available.  If the buffer specified
+does not already exist, then it is created.
+
+The \texttt{kill-buffer} command is used to remove a buffer.  Completion
+is available.  Note that some buffers have processes associated with them,
+and killing that buffer also kills the associated process.  In particular,
+the \texttt{*pvs*} buffer is associated with the PVS process.
+
+The \texttt{list-buffers} command lists all the buffers currently
+available, along with an indication of whether the buffer has changed,
+its size, its major mode, and its associated file, if any.
+
+
+\section{Cursor Motion commands}
+\begin{pvscmds}
+\icmd{forward-char} & \key{C-f} & Move forward one character \\
+\icmd{backward-char} & \key{C-b} & Move backward one character \\
+\icmd{forward-word} & \key{C-f} & Move forward one word \\
+\icmd{backward-word} & \key{C-b} & Move backward one word \\
+\icmd{next-line} & \key{C-n} & Move down one line vertically \\
+\icmd{previous-line} & \key{C-p} & Move up one line vertically \\
+\icmd{beginning-of-line} & \key{C-a} & Move to the beginning of the line \\
+\icmd{end-of-line} & \key{C-e} & Move to the end of the line \\
+\icmd{beginning-of-buffer} & \key{M-<} & Move to the beginning of the
+buffer \\
+\icmd{end-of-buffer} & \key{M-<} & Move to the end of the buffer \\
+\end{pvscmds}
+
+These are largely self explanatory; the best way to get used to what they
+do is to simply try them out.  Note that, depending on your Emacs
+environment, you may have appropriate key bindings for the arrow, Home,
+PageUp, etc. keys.\footnote{As described above, you can find out what
+these are bound to by typing \key{C-h k} followed by the key.}
+
+\section{Error Recovery}
+\begin{pvscmds}
+\icmd{keyboard-quit} & \ikey{C-g} & Abort partially typed or executing
+command \\
+\icmd{undo} & \key{C-x u}, \key{C-\_} & Undo one batch of changes \\
+\icmd{revert-buffer} & & Revert the buffer to the file contents \\
+\icmd{recenter} & \key{C-l} & Redraw garbaged screen \\
+\end{pvscmds}
+
+\key{C-g} is used if you start to type a command and change your mind, or
+a command is running and you want to abort it.  Sometimes it takes two or
+three invocations before it has the desired effect.  For example if you
+started an incremental search, the first \texttt{C-g} erases some of the
+input and the second actually quits the incremental search.
+
+The \cmd{undo} command is the normal way to undo changes made to the
+current buffer.  If you undo twice in a row, then the last two changes are
+undone.  In this manner you can eventually undo all the changes made to a
+buffer.  Once you type something other than an undo, all the previous undo
+commands are treated as changes that themselves can be undone.
+
+If you made a large number of changes to a file buffer and simply want to
+go back to the original file contents, use \ecmd{revert-buffer}.  Note that if you
+have changed the file and saved it, then reverting will bring back the
+saved version, not the earlier one.
+
+
+\section{Search commands}
+\begin{pvscmds}
+\icmd{isearch-forward} & \key{C-s} & Incremental search forward \\
+\icmd{isearch-backward} & \key{C-r} & Incremental search backward \\
+\end{pvscmds}
+
+These search through the text for a specified string.  The search is
+incremental in that it starts searching as soon as a character is typed
+in, finding the first occurrence of the string typed in so far.  If the
+string can't be found, the minibuffer changes its prompt from
+\texttt{I-search:} to \texttt{Failing I-search:}.  If it finds the string,
+but you wish to go on to the next (previous) occurrence, type another
+\key{C-s} (\key{C-r}).  To terminate the search, type the Enter key, or
+any other Emacs command.  Consult the Emacs manual for other useful
+options available for search.
+
+
+\section{Killing and Deleting}
+\begin{pvscmds}
+\icmd{delete-next-character} & \key{C-d} & Delete next character \\
+\icmd{delete-backward-char} & \key{DEL} & Delete previous character \\
+\icmd{kill-word} & \key{M-d} & Kill word \\
+\icmd{backward-kill-word} & \key{M-DEL} & Kill word backwards \\
+\icmd{kill-line} & \key{C-k} & Kill rest of line \\
+\icmd{kill-region} & \key{C-w} & Kill region \\
+\icmd{copy-region-as-kill} & \ikey{M-w} & Save region a killed text
+without killing \\
+\end{pvscmds}
+
+These commands delete or kill the specified entities.  The difference
+between killing and deleting is that a killed entity is copied to the kill
+ring, and can be \emph{yanked} later, while deleted entities are not.  The
+kill ring is a stack of blocks of text that have been killed, with the
+most recent kills at the top.  The kill ring is not associated with any
+specific buffer, and in this respect acts much like a \emph{clipboard}
+found in most window systems.
+
+The \cmd{delete-backward-char} command is frequently mapped onto the
+\ikey{Backspace} key instead; you may need to experiment with this. If
+you want it mapped to the \key{Backspace} key, it is usually easier to map
+it outside of Emacs, for example using the \texttt{xmodmap} command.  This
+is because by default the \key{Backspace} key and the \key{C-h} key are
+indistinguishable by Emacs, and the \key{C-h} key is used for accessing
+various Emacs help functions.
+
+The \cmd{kill-line} command kills from the current cursor location to the
+end of the line, unless it is already at the end of the line, in which
+case it kills the newline, thus merging the current line with the
+following one.
+
+The \cmd{copy-region-as-kill} command is similar to the \cmd{kill-region}
+command, but does not actually kill any text.  This is useful when trying
+to copy text from a file for which you do not have write access, since
+Emacs will not let you modify such a buffer without first changing its
+read-only status.
+
+\section{Yanking}
+\begin{pvscmds}
+\icmd{yank} & \ikey{C-y} & Yank last killed test \\
+\icmd{yank-pop} & \ikey{M-y} & Replace last yank with previous kill \\
+\end{pvscmds}
+
+The \cmd{yank} command puts the text of the most recent kill command into
+the buffer at the current cursor position.  Note that the usual way to
+move text from one place to another in Emacs is to kill it, move the
+cursor to the new location, and yank it.  Because the kill ring is
+globally used, this works across buffers as well.
+
+The \cmd{yank-pop} command may only be used after the \cmd{yank} command,
+and has the effect of replacing the yanked text with earlier killed text
+from the kill ring.
+
+\section{Marking}
+\begin{pvscmds}
+\icmd{set-mark-command} & \ikey{C-\char064}, \ikey{C-SPC} & Set mark here \\
+\icmd{exchange-point-and-mark} & \ikey{C-x C-x} & Exchange point and mark
+\\
+\end{pvscmds}
+
+The \cmd{set-mark} command sets the mark to the current cursor position.
+Since point is also at the current cursor position, this defines an empty
+region initially.  As the cursor is moved away from the mark position, the
+region grows.  Note that the relative positions of mark and point do not
+matter; the region is defined as the text between these two positions.
+
+\key{C-x C-x} is used to exchange the point and mark positions, moving the
+cursor to where mark was last set, and setting mark to the old cursor
+position.  Doing this again puts mark and point back where they started.
+This is useful for checking that the region is as desired, before doing
+any destructive operations.

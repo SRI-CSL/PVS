@@ -1,0 +1,62 @@
+\chapter{PVS Libraries}
+
+The PVS library mechanism provides support for creating library
+\emph{packages}, including, in addition to theories, lisp and Emacs lisp
+functions that add new features.  We describe here the considerations for
+creating and using such packages, in particular, how to structure, 
+distribute, and install a package in portable manner.
+
+Here is a typical scenario.  A set of theories are developed and
+typechecked, some supporting strategies are defined in the
+\texttt{pvs-strategies}\index{pvs-strategies@\texttt{pvs-strategies}}
+file, and some Emacs extensions are created in
+\texttt{pvs-lib.el}\index{pvs-lib.el@\texttt{pvs-lib.el}} to add new key
+bindings to the Emacs prover interface.  These are all in directory
+\texttt{<DIR>/lib/mylib/}.  To use the library package, create the
+environment variable
+\texttt{PVS\_LIBRARY\_PATH}\index{PVS_LIBRARY_PATH@\texttt{PVS\_LIBRARY\_PATH}},
+and set it to \texttt{<DIR>/lib}.  Then \texttt{cd} to a new directory,
+and start up PVS.  After it comes up, run
+\begin{alltt}
+  M-x \icmd{load-prelude-library} mylib <RET>
+\end{alltt}
+and the theories will be loaded as prelude extensions, the pvs-lib.el file
+will be loaded into Emacs, and when the prover is invoked next, the
+\texttt{pvs-strategies} file will be loaded.  When the session is ended,
+the prelude library dependency is stored in the \texttt{.pvscontext}, and
+the next time PVS goes to that context (either by starting it up there, or
+with the \icmd{change-context} command), the files will all be loaded once
+again.
+
+When PVS creates the \texttt{.pvscontext} file, it tries to stay away from
+absolute pathnames as much as it can.  In this case, the dependency that
+it keeps is simply \texttt{mylib/}.  What this means is that the directory
+can be copied to a different site, where the \texttt{mylib} directory is
+found in a different directory, but as long as \texttt{mylib} can be found
+in the \texttt{PVS\_LIBRARY\_PATH} it will be used properly.
+
+Note that for this to work the supporting files must also be free of any
+absolute pathnames.  This includes any library declarations within the
+theory files.  This is possible, as the
+\texttt{PVS\_LIBRARY\_PATH}\index{PVS_LIBRARY_PATH@\texttt{PVS\_LIBRARY\_PATH}}
+may have many paths on it, separated by colons.  Note that a given PVS
+library is a subdirectory of an element of the
+\texttt{PVS\_LIBRARY\_PATH}, not directly on the path.
+
+PVS uses the \texttt{PVS\_LIBRARY\_PATH} variable in many ways:
+\begin{itemize}
+\item On startup, the Emacs variable
+\texttt{pvs-library-path}\index{pvs-library-path@\texttt{pvs-library-path}}
+is set to the corresponding list of pathnames.  These are added to the
+Emacs variable \texttt{load-path}\index{load-path@\texttt{load-path}}, so
+that the Emacs \texttt{load} command can find them.  Thus if library
+\texttt{lib1} contains an Emacs file \texttt{foo.el} that needs the Emacs
+file \texttt{bar.el} of \texttt{lib2}, it simply loads \texttt{lib2/bar}.
+
+\item In the lisp image, the variable \texttt{*pvs-library-path*} is
+similarly set to the list of pathname components of
+\texttt{PVS\_LIBRARY\_PATH}.  
+
+\end{itemize}
+
+
