@@ -1111,7 +1111,7 @@ missing, it is taken to be \texttt{nil}.  A rule with its formal parameter
 list is presented in the form:
 \begin{center}
   \texttt{(\carg{\bkt{rulename} \bkt{required}$^{\textstyle *}$
-        \optl\ \bkt{\cargdflt{optional}{default}}$^{\textstyle *}$
+        \optl\ \bkt{\textrm{\emph{optional}}\default{default}}$^{\textstyle *}$
         \rest\ \bkt{argument}})}
 \end{center}
 The \optl\ and \rest\ are metalanguage keywords used in this reference
@@ -1594,9 +1594,9 @@ rewriting commentary is possible with the Emacs commands
 must be a number or \texttt{nil}.  0 or \texttt{nil} means print the
 entire formula, any other number causes terms below the given depth to be
 elided.  Behaves like a \texttt{skip} otherwise.
-\end{description}
 
 \item[errors:] The label must be a number or \texttt{nil}.
+\end{description}
 
 \prsubsection{set-print-length}{Set the Print Length}
 \begin{description}
