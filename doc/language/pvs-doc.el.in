@@ -111,7 +111,7 @@
 	    (concat listing
 		    (make-listing-row keywords r nrows ncols
 				      colsize div mod notex))))
-    (message listing)))
+    (princ listing)))
 
 (defun pvs-operator-table (ncols &optional notex)
   (pvs-generate-table (get-pvs-operators notex) ncols notex))

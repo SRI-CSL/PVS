@@ -20,13 +20,13 @@ grammar-tables = keywords.tex operator-table.tex opsym-table.tex
 all : language.dvi language.ps language.ps.gz language.pdf
 
 keywords.tex : pvs-doc.el ${pvs-grammar-file}
-	emacs -batch -q -l pvs-doc.el -f pvs-keyword-table-5 > keywords.tex 2>&1 
+	emacs -batch -q -l pvs-doc.el -f pvs-keyword-table-5 > keywords.tex 2> /dev/null 
 
 operator-table.tex : pvs-doc.el ${pvs-grammar-file}
-	emacs -batch -q -l pvs-doc.el -f pvs-operator-table-6 > operator-table.tex 2>&1 
+	emacs -batch -q -l pvs-doc.el -f pvs-operator-table-6 > operator-table.tex 2> /dev/null
 
 opsym-table.tex : pvs-doc.el ${pvs-grammar-file}
-	emacs -batch -q -l pvs-doc.el -f pvs-opsym-table-6 > opsym-table.tex 2>&1 
+	emacs -batch -q -l pvs-doc.el -f pvs-opsym-table-6 > opsym-table.tex 2> /dev/null 
 
 language.dvi : ${sources} ${grammar-tables}
 	latex $<;
