@@ -35,7 +35,7 @@ ws1s.dylib : ${obj} ws1s_table.o
 ws1s_table.c : ws1s-ld-table
 	awk '/^ws1s___/ { print "extern int " $3 " (int);\nint (*" $1 ")(int) = " $3 ";\n\n" }' ../ws1s-ld-table > ws1s_table.c
 
-ws1s_table.o: ws1s_table.c
+ws1s_table.o: ../ws1s_table.c
 
 bdd.o: bdd.c bdd.h bdd_internal.h
 bdd_double.o: bdd_double.c bdd.h bdd_internal.h
