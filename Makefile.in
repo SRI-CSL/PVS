@@ -51,9 +51,8 @@ SHELL=/bin/sh
 # Should test for existence of platform dependent Makefiles
 
 ETAGS = @ETAGS@
-TAR = @TAR@
 MKDIR = @MKDIR@
-TARFLAGS = -cvohz --mode="u+rw" --atime-preserve --exclude=CVS
+
 # Check to see if we are doing something that requires Emacs and Lisp
 # If MAKECMDGOALS is empty, or has something besides clean, tar, etc.
 # then buildcmds will be nonempty
@@ -168,8 +167,7 @@ pvs-make-files = pvs.system src/defsystem.lisp src/closopt.lisp
 
 allegro-make-files =  src/make-pvs.lisp src/make-allegro-pvs.lisp
 
-pvs-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/*.el) \
-                $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el
+pvs-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/*.el)
 ilisp-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/ilisp/*.el)
 
 emacs-src = $(pvs-emacs-src) $(ilisp-emacs-src)
@@ -441,19 +439,25 @@ endif
 
 all : devel runtime
 
-devel : $(image-deps) $(allegro-devel) $(cmulisp-devel)
+devel : $(allegro-devel) $(cmulisp-devel)
 
-runtime : $(image-deps) $(allegro-rt) $(cmulisp-rt)
+runtime : $(allegro-rt) $(cmulisp-rt)
 
 parser : pvs-parser-out
 
-image-deps = makefileutils makebdd
+fileutils = \
+   $(PVSPATH)src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
+   $(PVSPATH)src/utils/$(PLATFORM)/b64
 
-allegro-deps += makews1s
+bddlib = $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION)
+
+ws1slib = $(PVSPATH)src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION)
+
+image-deps = $(fileutils) $(bddlib)
+
+allegro-deps += $(ws1slib)
 
 emacs = $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc
-
-image-deps += $(emacs)
 
 # Here are the rules for building the PVS grammar, pvs-methods file, and
 # devel and runtime images.
@@ -472,7 +476,7 @@ $(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
 		   -load src/make-pvs-methods.lisp
 endif
 
-$(cmulisp-devel) $(cmulisp-rt) : $(pvs-make-files) $(ess) $(ff-files) \
+$(cmulisp-devel) $(cmulisp-rt) : $(image-deps) $(pvs-make-files) $(ess) $(ff-files) \
            $(lisp-files) $(cmulisp) lib/prelude.pvs lib/prelude.prf
 	$(MKDIR) -p $(subst $(SYSTEM)-cmulisp,,$@)
 	$(CMULISPEXE) -eval '(load "pvs.system" :verbose t) \
@@ -494,9 +498,9 @@ $(cmulisp-devel) $(cmulisp-rt) : $(pvs-make-files) $(ess) $(ff-files) \
 endif
 
 ifneq ($(ALLEGRO_HOME),)
-$(allegro-devel) $(allegro-rt) : $(allegro-deps) $(pvs-make-files) \
-             $(allegro-make-files) $(ess) $(ff-files) $(allegro-ff-files) \
-             $(lisp-files) $(allegrolisp) \
+$(allegro-devel) $(allegro-rt) : $(image-deps) $(allegro-deps) \
+             $(pvs-make-files) $(allegro-make-files) $(ess) $(ff-files) \
+             $(allegro-ff-files) $(lisp-files) $(allegrolisp) \
              $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
 	$(MKDIR) -p $(subst $(SYSTEM)-allegro,,$@)
 	rm -rf /tmp/pvs-allegro-build
@@ -528,11 +532,11 @@ $(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
 endif
 
 .PHONY: all makefileutils makebdd makews1s make-release-notes clean
-makefileutils :
+$(fileutils) makefileutils :
 	$(MAKE) -C $(PVSPATH)src/utils/$(PLATFORM)
-makebdd :
+$(bddlib) makebdd :
 	$(MAKE) -C $(PVSPATH)BDD/$(PLATFORM)
-makews1s :
+$(ws1slib) makews1s :
 	(cd $(PVSPATH)src/WS1S ; rm -rf mona ; ln -s mona-1.4 mona);\
 	$(MAKE) -C $(PVSPATH)src/WS1S/$(PLATFORM)
 
@@ -629,18 +633,9 @@ $(libraries-tar) : lib/finite_sets lib/bitvectors lib/PVSio
 tar : $(devel-image-tar) $(runtime-image-tar) $(system-tar) \
       $(emacs19-tar) $(source-tar) $(libraries-tar)
 
-install:
-	@echo "target install is not used for PVS - see INSTALL"
-
-clean : 
-	rm -f *.*fasl *.sbin *.obin *.rbin *.mbin *.x86f *.ppcf *.sparcf \
-              *.x8664s *.x86s *.ppcs *.sparcs *.clfasl
-	$(MAKE) -C $(PVSPATH)src/utils/$(PLATFORM) clean
-	$(MAKE) -C $(PVSPATH)BDD/$(PLATFORM) clean
-	$(MAKE) -C $(PVSPATH)src/WS1S/$(PLATFORM) clean
-	$(MAKE) -C $(PVSPATH)doc/release-notest clean
-
-$(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el : lib/prelude.pvs $(allegro-devel)
+$(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el : \
+                  $(PVSPATH)emacs/emacs-src/pvs-set-prelude-info.el \
+                  lib/prelude.pvs $(allegro-devel)
 	-./pvs -batch -l emacs/emacs-src/pvs-set-prelude-info.el \
                         -f set-prelude-files-and-regions
 
@@ -657,3 +652,31 @@ $(PVSPATH)emacs/$(EMACSSUBDIR)/%.el : $(PVSPATH)emacs/emacs-src/ilisp/%.el
 
 $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc : $(pvs-emacs-sub-src) $(ilisp-emacs-sub-src)
 	(cd emacs/$(EMACSSUBDIR); $(EMACS) -batch -l pvs-byte-compile.el)
+
+install:
+	@echo "target install is not used for PVS - see INSTALL"
+
+faslexts = fasl,rfasl,hfasl,lfasl,mfasl,nfasl,sbin,obin,rbin,mbin,x86f,ppcf,sparcf,x8664s,x86s,ppcs,sparcs,clfasl,wfasl,err
+
+platforms = ix86-Linux,ix86-MacOSX8,powerpc-MacOSX7,powerpc-MacOSX8,sun4-SunOS5
+
+clean : 
+	rm -f *.{$(faslexts)} */*.{$(faslexts)} */*/*.{$(faslexts)} \
+              */*/*/*.{$(faslexts)} */*/*/*/*.{$(faslexts)} \
+              */{$(platforms)}/*.o */*/{$(platforms)}/*.o
+
+distclean :
+	rm -f *.{$(faslexts)} */*.{$(faslexts)} */*/*.{$(faslexts)} \
+              */*/*/*.{$(faslexts)} */*/*/*/*.{$(faslexts)} \
+              */{$(platforms)}/*.o */*/{$(platforms)}/*.o
+	rm -f Makefile TAGS autoloads.out config.log config.status configure \
+              emacs/emacs-src/pvs-prelude-files-and-regions.el lib/*_adt.pvs \
+              pvs pvsio src/WS1S/mona
+	rm -f src/pvs-info.lisp src/pvs-lexer.lisp src/pvs-methods.lisp \
+              src/pvs-parser.lisp src/pvs-sorts.lisp
+	rm -f src/utils/{$(platforms)}/b64
+	rm -rf emacs/emacs19/*.{el,elc} emacs/emacs20 emacs/emacs22 \
+               emacs/xeamcs20 emacs/xemacs21
+	rm -rf */{$(platforms)}/*.{a,so,dylib} */*/{$(platforms)}/*.{a,so,dylib}
+	rm -f doc/langauge/Makefile doc/language/pvs-doc.el doc/prover/Makefile doc/user-guide/Makefile
+	rm -rf autom4te.cache bin/{$(platforms)}
