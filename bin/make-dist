@@ -1,0 +1,182 @@
+#!/bin/sh
+
+# Creates the pvs distribution tar files from the current pvs directory
+# Will create
+#  pvs-source.tgz  - all the sources needed to build PVS
+
+#  pvs-system.tgz  - the system files common to all distributions
+#  pvs-libraries.tgz - the finite_sets and bitvectors libraries
+#  pvs-<ARCH>-<OS>.tgz - the runtime version of pvs, for the given
+#                        architecture and OS
+#  pvs-devel-<ARCH>-<OS>.tgz - the development version of the above
+
+# --------------------------------------------------------------------
+# PVS
+# Copyright (C) 2006, SRI International.  All Rights Reserved.
+
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+# --------------------------------------------------------------------
+
+# pvsname="pvs4.0"
+
+# ### Make sure the subdirectory is available.
+# tempparent="make-dist.tmp.$$"
+# if [ -d ${tempparent} ]; then
+#   echo "${progname}: staging directory \`${tempparent}' already exists.
+# Perhaps a previous invocation of \`${progname}' failed to clean up after
+# itself.  Check that directories whose names are of the form
+# \`make-dist.tmp.NNNNN' don't contain any important information, remove
+# them, and try again." >&2
+#   exit 1
+# fi
+# echo "Creating staging directory: \`${tempparent}'"
+# mkdir ${tempparent}
+# tempdir="${tempparent}/${pvsname}"
+
+# trap "echo 'Interrupted...cleaning up the staging directory'; rm -rf ${temppar
+# ent}; exit 1" 1 2 15
+
+TARFLAGS='-cvohz --mode=u+rw --atime-preserve --exclude=CVS'
+
+# pvs-source.tgz
+tar ${TARFLAGS} -f pvs-source.tgz --exclude pvsbin \
+  pvs.system *.lisp Makefile.in README README.CVS README.configure \
+  configure.in config.guess config.sub install-sh \
+  pvs.in pvsio.in pvs.sty pvs-tex.sub \
+  bin/pvs-platform bin/relocate bin/tarmail bin/untarmail \
+  lib/prelude.* lib/*.help lib/pvs-style.css lib/pvs.bnf lib/pvs.grammar \
+  lib/pvs.rnc \
+  lib/PVSio \
+  lib/finite_sets \
+  lib/bitvectors \
+  src/utils/utils-ld-table src/utils/*.c wish \
+  ess/*.lisp \
+  ess/sys/ergolisp/rel/*.lisp \
+  ess/sys/tools/rel/*.lisp \
+  ess/sys/ergolisp/rel/*.lisp \
+  ess/term/language/rel/*.lisp \
+  ess/term/terms/rel/*.lisp \
+  ess/term/trep/rel/*.lisp \
+  ess/lang/sb-term/rel/*.lisp \
+  ess/term/attr/rel/*.lisp \
+  ess/lang/ab-term/rel/*.lisp \
+  ess/sys/constr/rel/*.lisp \
+  ess/README ess/term/terms/rel/*.txt \
+  src/README \
+  src/*.lisp \
+  src/pvs-gr.txt \
+  src/ground-prover/*.lisp \
+  src/utils/*.lisp \
+  src/interface/*.lisp \
+  src/prover/*.lisp \
+  src/PVSio/*.lisp \
+  src/WS1S/lisp/*.lisp \
+  src/abstraction/*.lisp \
+  src/groundeval/*.lisp \
+  src/utils/*.lisp \
+  src/utils/ix86-Linux/Makefile src/utils/ix86-MacOSX8/Makefile \
+  src/utils/powerpc-MacOSX7/Makefile src/utils/powerpc-MacOSX8/Makefile \
+  src/utils/sun4-SunOS5/Makefile \
+  BDD/bdd-ld-table BDD/mu-ld-table \
+  BDD/*.c \
+  BDD/*.lisp \
+  BDD/ix86-Linux/Makefile BDD/sun4-SunOS5/Makefile \
+  BDD/ix86-MacOSX8/Makefile BDD/powerpc-MacOSX7/Makefile \
+  BDD/powerpc-MacOSX8/Makefile \
+  BDD/bdd BDD/mu \
+  src/WS1S/README src/WS1S/ws1s-ld-table \
+  src/WS1S/*.c src/WS1S/mona-1.4 \
+  src/WS1S/ix86-Linux/Makefile src/WS1S/sun4-SunOS5/Makefile \
+  src/WS1S/ix86-MacOSX8/Makefile src/WS1S/powerpc-MacOSX7/Makefile \
+  src/WS1S/powerpc-MacOSX8/Makefile \
+  doc/pvs.bib doc/makebnf.sty doc/pvstex.tex doc/release-notes.html \
+  doc/language/Makefile.in doc/language/*.tex doc/language/*.pvs \
+  doc/language/pvs-doc.el.in \
+  doc/prover/Makefile.in doc/prover/*.tex \
+  doc/user-guide/Makefile.in doc/user-guide/*.tex \
+  doc/user-guide/pvs-screen1.* doc/user-guide/pvs-tex.sub \
+  doc/user-guide/sum.el doc/user-guide/sum.pvs \
+  doc/release-notes/Makefile doc/release-notes/*.texi \
+  emacs/README \
+  emacs/go-pvs.el \
+  emacs/emacs-src \
+  Examples/README Examples/*.pvs \
+  emacs/emacs19/Makefile
+
+# pvs-system.tgz
+# Check whether we have enough to build the system tar,
+# If we have the most up-to-date (x)emacs, that is enough
+if [ -d emacs/emacs20 -a -d emacs/xemacs21 ]
+then
+tar ${TARFLAGS} -f pvs-system.tgz \
+  README pvs pvsio pvs-tex.sub pvs.sty bin/relocate \
+  bin/pvs-platform bin/tar-b64-mail Examples \
+  lib/prelude.pvs lib/prelude.prf lib/list_adt.pvs \
+  lib/ordstruct_adt.pvs lib/character_adt.pvs \
+  lib/union_adt.pvs lib/lift_adt.pvs \
+  lib/pvs-language.help lib/pvs-prover.help lib/pvs.help \
+  lib/pvs.grammar lib/pvs.bnf wish/pvs-support.tcl \
+  lib/strategies.lisp lib/pvs-style.css \
+  doc/release-notes/pvs-release-notes.{info,html,ps,pdf} \
+  wish/gray.xbm wish/sequent.xbm \
+  emacs lib/PVSio
+else
+echo "Not emacs/emacs20 and emacs/xemacs21 - will not build pvs-system.tgz"
+fi
+
+
+#  pvs-libraries.tgz
+if [ -d lib/finite_sets/pvsbin -a -d lib/bitvectors/pvsbin ]
+then
+tar ${TARFLAGS} -f pvs-libraries.tgz \
+  lib/finite_sets lib/bitvectors
+else
+echo "Need to typecheck finite_sets and bitvectors"
+fi
+
+for platform in ix86-Linux ix86-MacOSX8 powerpc-MacOSX7 powerpc-MacOSX8 \
+                sun4-SunOS5
+  do
+  for kind in runtime devel
+   do
+   if [ -e bin/${platform}/${kind}/pvs-allegro ]
+    then
+     tar ${TARFLAGS} -f pvs-${platform}-allegro.tgz \
+          bin/${platform}/b64 bin/${platform}/relocate \
+	  bin/${platform}/pvs-platform bin/${platform}/tar-b64-mail \
+	  bin/${platform}/${kind}/file_utils.so \
+	  bin/${platform}/${kind}/libacl*.so \
+	  bin/${platform}/${kind}/mu.so \
+	  bin/${platform}/${kind}/file_utils.so \
+	  bin/${platform}/${kind}/ws1s.so \
+	  bin/${platform}/${kind}/pvs-allegro*
+    else
+     echo "Allegro ${kind} not available"
+   fi
+   if [ -e bin/${platform}/${kind}/pvs-cmulisp ]
+    then
+     tar ${TARFLAGS} -f pvs-${platform}-cmulisp.tgz \
+          bin/${platform}/b64 bin/${platform}/relocate \
+	  bin/${platform}/pvs-platform bin/${platform}/tar-b64-mail \
+	  bin/${platform}/${kind}/mu.so \
+	  bin/${platform}/${kind}/file_utils.so \
+	  bin/${platform}/${kind}/ws1s.so \
+	  bin/${platform}/${kind}/*-cmu.* \
+	  bin/${platform}/${kind}/pvs-cmulisp*
+    else
+     echo "CMU Lisp ${kind} not available"
+   fi
+   done
+  done
