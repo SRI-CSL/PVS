@@ -531,7 +531,9 @@ $(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
 		-L $(PVSPATH)src/make-pvs-methods.lisp
 endif
 
-.PHONY: all makefileutils makebdd makews1s make-release-notes clean
+.PHONY: all makefileutils makebdd makews1s make-release-notes \
+        clean distclean tar
+
 $(fileutils) makefileutils :
 	$(MAKE) -C $(PVSPATH)src/utils/$(PLATFORM)
 $(bddlib) makebdd :
@@ -543,95 +545,11 @@ $(ws1slib) makews1s :
 make-release-notes :
 	$(MAKE) -C $(PVSPATH)doc/release-notes
 
-#
-# Release files.
-#
-
-runtime-image-tar = pvs-$(PLATFORM).tgz
-
-devel-image-tar = pvs-devel-$(PLATFORM).tgz
-
-system-tar = pvs-system.tgz
-
-emacs19-tar = pvs-emacs19.tgz
-
-source-tar = pvs-source.tgz
-
-libraries-tar = pvs-libraries.tgz
-
-tarfiles : $(release-notes) $(runtime-image-tar) $(devel-image-tar) \
-           $(system-tar) $(emacs19-tar) $(source-tar) $(libraries-tar)
-
-runtime-image-files = $(wildcard $(bindir)/runtime/*)
-
-devel-image-files = $(wildcard $(bindir)/devel/*)
-
-release-notes = doc/release-notes/pvs-release-notes.info \
-                doc/release-notes/pvs-release-notes.html \
-                doc/release-notes/pvs-release-notes.ps \
-                doc/release-notes/pvs-release-notes.pdf
-
-system-files = README pvs pvsio pvs-tex.sub pvs.sty bin/relocate \
-               bin/pvs-platform bin/tar-b64-mail Examples \
-               lib/prelude.pvs lib/prelude.prf lib/list_adt.pvs \
-               lib/ordstruct_adt.pvs lib/character_adt.pvs \
-	       lib/union_adt.pvs lib/lift_adt.pvs \
-               lib/pvs-language.help lib/pvs-prover.help lib/pvs.help \
-               lib/pvs.grammar lib/pvs.bnf wish/pvs-support.tcl \
-               lib/strategies.lisp lib/pvs-style.css $(release-notes) \
-               wish/gray.xbm wish/sequent.xbm \
-               emacs/README emacs/go-pvs.el $(pvs-emacs-src) \
-               emacs/emacs-src/pvs.xpm \
-               $(ilisp-emacs-src) emacs/emacs20 emacs/xemacs21 \
-               lib/PVSio
-
-library-files = lib/PVSio/.pvscontext lib/finite_sets/.pvscontext \
-                lib/bitvectors/.pvscontext
-
-configure-files = Makefile.in README README.configure configure.in \
-                  pvs.in
-
-bdd-sources = BDD/bdd-ld-table BDD/mu-ld-table \
-              BDD/bdd_interface.c BDD/mu_interface.c \
-              BDD/ix86-Linux/Makefile BDD/sun4-SunOS5/Makefile \
-              BDD/bdd BDD/mu
-
-ws1s-sources = src/WS1S/README src/WS1S/ws1s-ld-table \
-               src/WS1S/ws1s_extended_interface.c src/WS1S/mona-1.4 \
-               src/WS1S/ix86-Linux/Makefile src/WS1S/sun4-SunOS5/Makefile
-
-emacs19-files = emacs/emacs19
+tar :
+	bin/make-dist
 
 lib/strategies.lisp : src/prover/strategies.lisp
 	(cd lib; ln -sf ../src/prover/strategies.lisp strategies.lisp)
-
-$(runtime-image-tar) : $(pvsrt) $(bindir)/b64
-	$(TAR) $(TARFLAGS) -f $(runtime-image-tar) $(runtime-image-files) $(bindir)/b64
-
-$(devel-image-tar) : $(pvsdevel) $(bindir)/b64
-	$(TAR) $(TARFLAGS) -f $(devel-image-tar) $(devel-image-files) $(bindir)/b64
-
-$(system-tar) : $(system-files)
-	$(TAR) $(TARFLAGS) -f $(system-tar) $(system-files)
-
-$(emacs19-tar) : $(emacs19-files)
-	$(TAR) $(TARFLAGS) -f $(emacs19-tar) $(emacs19-files)
-
-$(source-tar) : $(pvs-make-files) $(configure-files) \
-                src/make-allegro-pvs.lisp src/make-pvs.lisp \
-                src/metering.lisp src/utils/utils-ld-table \
-                src/utils/file_utils.c src/utils/b64.c wish \
-                $(ff-files) $(ess) ess/README ess/allegro-runtime.lisp \
-                ess/dist-ess.lisp ess/term/terms/rel/*.txt \
-                $(pvs-parser-in) $(lisp-files) $(allegrolisp) $(cmulisp) \
-                $(bdd-sources) $(ws1s-sources)
-	$(TAR) $(TARFLAGS) -f $@ $^ --exclude CVS
-
-$(libraries-tar) : lib/finite_sets lib/bitvectors lib/PVSio
-	$(TAR) $(TARFLAGS) -f $@ $^ --exclude CVS
-
-tar : $(devel-image-tar) $(runtime-image-tar) $(system-tar) \
-      $(emacs19-tar) $(source-tar) $(libraries-tar)
 
 $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el : \
                   $(PVSPATH)emacs/emacs-src/pvs-set-prelude-info.el \
