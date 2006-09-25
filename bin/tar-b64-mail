@@ -1,0 +1,41 @@
+#!/bin/sh
+# tar-b64-mal takes a file or list of files and creates a compressed tar file,
+# then converts it to base64 form using b64.  This script assumes that b64
+#and sendmail are in the path.
+
+if test $# -lt 3; then
+  echo "Usage: tar-b64-mail mailpath \"subject\" \"message\" dir-or-file(s)"
+  echo
+  echo "tar-b64-mail is a shell script that uses tar and b64"
+  echo "to send arbitrary hierarchies by mail."
+  exit
+else
+  mailpath=$1
+  # echo "mailpath = $mailpath"
+  shift
+  subject="$1"
+  # echo "subject = $subject"
+  shift
+  message="$1"
+  # echo "message = $message"
+  shift
+  files=$*
+  # echo files = $files
+  mailfile=/tmp/tm$$
+  echo "To: $mailpath" > $mailfile
+  echo "Subject: $subject" >> $mailfile
+  echo "MIME-Version: 1.0" >> $mailfile
+  echo "Content-Type: multipart/mixed; boundary=\"=-=-=\"" >> $mailfile
+  echo "" >> $mailfile
+  echo "--=-=-=" >> $mailfile
+  echo "" >> $mailfile
+  echo "$message" >> $mailfile
+  echo "--=-=-=" >> $mailfile
+  echo "Content-Type: application/x-gzip" >> $mailfile
+  echo "Content-Disposition: attachment; filename=files.tgz" >> $mailfile
+  echo "Content-Transfer-Encoding: base64" >> $mailfile
+  tar czf - $files | b64 -e >> $mailfile
+  echo "--=-=-=--" >> $mailfile
+  cat $mailfile | sendmail $mailpath
+  rm $mailfile
+fi
