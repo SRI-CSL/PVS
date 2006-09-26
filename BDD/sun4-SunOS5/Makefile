@@ -7,7 +7,8 @@ LD = ld
 LDFLAGS = -Bsymbolic -G -L./
 CC = gcc
 CFLAGS = -D_POSIX_SOURCE -DSYSV $(INCLUDES)
-XCFLAGS = -O
+#XCFLAGS = -O
+XCFLAGS =
 SHELL = /bin/sh
 VPATH = ..:../bdd/utils:../bdd/src:../mu/src
 

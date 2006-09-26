@@ -6,7 +6,8 @@ LD = ld
 LDFLAGS = -Bsymbolic -shared -L./
 CC = gcc
 CFLAGS += -D_POSIX_SOURCE -DSYSV $(INCLUDES)
-XCFLAGS = -O
+#XCFLAGS = -O
+XCFLAGS =
 SHELL = /bin/sh
 VPATH = ..:../mona/BDD:../mona/DFA:../mona/Mem
 
