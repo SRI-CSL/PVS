@@ -53,7 +53,7 @@ TARFLAGS='-cvohz --mode=u+rw --atime-preserve --exclude=CVS'
 # pvs-source.tgz
 tar ${TARFLAGS} -f pvs-source.tgz --exclude pvsbin \
   pvs.system *.lisp Makefile.in README README.CVS README.configure \
-  configure.in config.guess config.sub install-sh \
+  configure.in config.guess config.sub install-sh bin/make-dist \
   pvs.in pvsio.in pvs.sty pvs-tex.sub \
   bin/pvs-platform bin/relocate bin/tarmail bin/untarmail \
   lib/prelude.* lib/*.help lib/pvs-style.css lib/pvs.bnf lib/pvs.grammar \
@@ -133,7 +133,7 @@ tar ${TARFLAGS} -f pvs-system.tgz \
   wish/gray.xbm wish/sequent.xbm \
   emacs lib/PVSio
 else
-echo "Not emacs/emacs20 and emacs/xemacs21 - will not build pvs-system.tgz"
+echo "pvs-system.tgz not created - need emacs/emacs20 and emacs/xemacs21"
 fi
 
 
@@ -143,7 +143,7 @@ then
 tar ${TARFLAGS} -f pvs-libraries.tgz \
   lib/finite_sets lib/bitvectors
 else
-echo "Need to typecheck finite_sets and bitvectors"
+echo "pvs-libraries.tgz not created - need to typecheck finite_sets and bitvectors"
 fi
 
 for platform in ix86-Linux ix86-MacOSX8 powerpc-MacOSX7 powerpc-MacOSX8 \
@@ -154,8 +154,8 @@ for platform in ix86-Linux ix86-MacOSX8 powerpc-MacOSX7 powerpc-MacOSX8 \
    if [ -e bin/${platform}/${kind}/pvs-allegro ]
     then
      tar ${TARFLAGS} -f pvs-${platform}-allegro.tgz \
-          bin/${platform}/b64 bin/${platform}/relocate \
-	  bin/${platform}/pvs-platform bin/${platform}/tar-b64-mail \
+          bin/${platform}/b64 bin/relocate \
+	  bin/pvs-platform bin/tar-b64-mail \
 	  bin/${platform}/${kind}/file_utils.so \
 	  bin/${platform}/${kind}/libacl*.so \
 	  bin/${platform}/${kind}/mu.so \
@@ -163,20 +163,20 @@ for platform in ix86-Linux ix86-MacOSX8 powerpc-MacOSX7 powerpc-MacOSX8 \
 	  bin/${platform}/${kind}/ws1s.so \
 	  bin/${platform}/${kind}/pvs-allegro*
     else
-     echo "Allegro ${kind} not available"
+     echo "Allegro ${kind} not available for ${platform}"
    fi
    if [ -e bin/${platform}/${kind}/pvs-cmulisp ]
     then
      tar ${TARFLAGS} -f pvs-${platform}-cmulisp.tgz \
-          bin/${platform}/b64 bin/${platform}/relocate \
-	  bin/${platform}/pvs-platform bin/${platform}/tar-b64-mail \
+          bin/${platform}/b64 bin/relocate \
+	  bin/pvs-platform bin/tar-b64-mail \
 	  bin/${platform}/${kind}/mu.so \
 	  bin/${platform}/${kind}/file_utils.so \
 	  bin/${platform}/${kind}/ws1s.so \
 	  bin/${platform}/${kind}/*-cmu.* \
 	  bin/${platform}/${kind}/pvs-cmulisp*
     else
-     echo "CMU Lisp ${kind} not available"
+     echo "CMU Lisp ${kind} not available for ${platform}"
    fi
    done
   done
