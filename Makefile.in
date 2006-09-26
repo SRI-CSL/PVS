@@ -429,6 +429,12 @@ endif
 
 all-lisp-files = $(ess) $(pvs-parser-in) $(lisp-files)
 
+PVSiolib = $(PVSPATH)lib/PVSio/pvsbin/top.bin
+
+bitvectorslib = $(PVSPATH)lib/bitvectors/pvsbin/top.bin
+
+finitesetslib = $(PVSPATH)lib/finite_sets/pvsbin/top.bin
+
 .PHONY : all devel runtime parser
 
 ifneq ($(buildcmds),)
@@ -531,6 +537,8 @@ $(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
 		-L $(PVSPATH)src/make-pvs-methods.lisp
 endif
 
+
+
 .PHONY: all makefileutils makebdd makews1s make-release-notes \
         clean distclean tar
 
@@ -544,6 +552,17 @@ $(ws1slib) makews1s :
 
 make-release-notes :
 	$(MAKE) -C $(PVSPATH)doc/release-notes
+
+$(PVSiolib) : $(PVSPATH)lib/PVSio/top.pvs
+	./pvs -batch -q -l $(PVSPATH)lib/PVSio/tc-pvsio.el 
+
+$(bitvectorslib) : $(PVSPATH)lib/bitvectors/top.pvs
+	./pvs -batch -q -l $(PVSPATH)lib/bitvectors/tc-bitvectors.el 
+
+$(finitesetslib) : $(PVSPATH)lib/finite_sets/top.pvs
+	./pvs -batch -q -l $(PVSPATH)lib/finite_sets/tc-finite_sets.el
+
+libraries : $(PVSiolib) $(bitvectorslib) $(finitesetslib)
 
 tar :
 	bin/make-dist
