@@ -41,12 +41,12 @@
 
 (export '(tc-eq tc-eq* compatible? compatible?*))
 
-(defvar *dep-bindings* nil
-  "An alist of dep-bindings: each elt is of the form (db db1 db2),
-where db is to replace db1 and db2")
-
 ;;; ps-eq is used to determine whether two entities are syntactically
 ;;; equal; the types and resolutions are ignored.
+;;; This is not generally a good test, as the typechecker can modify the
+;;; parse tree by adding conversions and macros, making it difficult to
+;;; compare something that's merely parsed with something that's
+;;; typechecked.  If both terms are tyechecked, use tc-eq instead.
 
 (defun ps-eq (x y)
   (string= (unparse x :string t :char-width most-positive-fixnum)
@@ -1813,12 +1813,6 @@ where db is to replace db1 and db2")
 	 (*bound-variables* (append (when (dep-binding? adom) (list adom))
 				    (when (dep-binding? edom) (list edom))
 				    *bound-variables*))
-	 (*dep-bindings* (if (and (dep-binding? adom)
-				  (dep-binding? edom))
-			     (acons (mk-dep-binding (id adom) (type adom))
-				    (list adom edom)
-				    *dep-bindings*)
-			     *dep-bindings*))
 	 (appl (make!-reduced-application
 		;; Since avar is already declared to be of the given
 		;; subtype, restrict is just the identity.
@@ -1831,7 +1825,12 @@ where db is to replace db1 and db2")
 		    aexpr)
 		avar))
 	 (rpreds (compatible-preds*
-		  (subst-deps arng) (subst-deps erng) appl nil))
+		  arng
+		  (if (and (dep-binding? adom)
+			   (dep-binding? edom))
+		      (substit erng (acons edom adom nil))
+		      erng)
+		  appl nil))
 	 (ran-preds (remove *true* rpreds :test #'tc-eq))
 	 (rpred (when ran-preds
 		  (if (and (singleton? ran-preds)
@@ -2365,41 +2364,6 @@ where db is to replace db1 and db2")
 		     (make!-field-application (id fld) var))))
 	(subtype-record-preds* (cdr cpreds) var fld (cons npred preds)))))
 
-
-(defun subst-deps (obj)
-  (if (null *dep-bindings*)
-      obj
-      (gensubst obj #'subst-deps! #'subst-deps?)))
-
-(defmethod subst-deps! ((te recordtype))
-  te)
-
-(defmethod subst-deps! ((ex name-expr))
-  (let* ((deps (rassoc (declaration ex) *dep-bindings*
-		       :test #'member))
-	 (dep (caddr deps))
-	 (type (if (binding? dep)
-		   (type dep)
-		   dep)))
-    ;;(assert (id *current-theory*))
-    (mk-name-expr (id dep)
-      nil nil (make-resolution dep
-		(if (binding? dep)
-		    (current-theory-name)
-		    (module-instance dep))
-		type))))
-
-(defmethod subst-deps? (ex)
-  (declare (ignore ex))
-  nil)
-
-(defmethod subst-deps? ((ex name-expr))
-  (and (rassoc (declaration ex) *dep-bindings* :test #'member)
-       (or ;;(not (slot-exists-p (declaration ex) 'recordtype))
-	   (not (funtype? (type ex)))
-	   (not (singleton? (domain (type ex))))
-	   ;;(not (eq (car (domain (type ex))) (recordtype (declaration ex))))
-	   )))
 
 ;(defun make-funtype-pred-bindings (vars edom types result)
 ;  (if (null vars)
