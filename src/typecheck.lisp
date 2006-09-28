@@ -156,7 +156,7 @@
   (unless (and (memq 'typechecked (status m))
 	       (typechecked? m))
     (let ((*subtype-of-hash* (make-hash-table :test #'equal))
-	  (*beta-cache* (make-pvs-hash-table))
+	  (*beta-cache* (make-hash-table :test #'eq))
 	  (*assert-if-arith-hash* (make-hash-table :test #'eq))
 	  (*bound-variables* *bound-variables*))
       (reset-pseudo-normalize-caches)
