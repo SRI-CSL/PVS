@@ -41,6 +41,7 @@
   (when decls
     (let ((decl (car decls)))
       (setf (declaration *current-context*) decl)
+      (clrhash *beta-cache*)
       (typecase decl
 	(declaration (typecheck-decl decl))
 	(importing (tcdebug "~%    Processing importing")
