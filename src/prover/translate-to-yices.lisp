@@ -434,8 +434,10 @@
 	(t nil)))
 
 (defun yices-recognizer (name bindings)
-  (and (recognizer? name)
-       (format nil "~a?" (translate-to-yices* (constructor name) bindings) )))
+  (when (recognizer? name)
+       (let ((ytype (translate-to-yices* (type name)
+						bindings)))
+	 (format nil "~a?" (translate-to-yices* (constructor name) bindings) ))))
 
 
 (defmethod translate-to-yices* ((expr name-expr) bindings)
