@@ -198,13 +198,13 @@
 ; The called procedures can insert more atfs at the front of the list "s"
 ; by accessing it non-locally.  See merge and addineq (and others?).
 
-(defun needed-liftif* (exp)
-  (if needed-if* (liftif* exp) exp))
+;; (defun needed-liftif* (exp)
+;;   (if needed-if* (liftif* exp) exp))
 
 (defun process1(s)
   (prog(bools exp)
     (loop while s do
-	   (setq exp (needed-liftif* (pop s)));; (format t "~%Process1: ~a " exp)
+	   (setq exp (pop s)) ;; (format t "~%Process1: ~a " exp)
 	   (cond
 	    ((eq exp 'true))
 	    ((eq exp 'false) (retfalse))
