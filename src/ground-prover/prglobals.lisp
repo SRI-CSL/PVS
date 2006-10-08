@@ -78,7 +78,7 @@
        lessp lesseqp greaterp greatereqp
        tupcons TUPSEL
        update arrayrest arraysel
-       if*
+       ;;if*
       )); NSH from prglobals.lisp
 
 (defvar  pr-infile "prx-.m"    " input file - a dummy used to fool maclisp " )
