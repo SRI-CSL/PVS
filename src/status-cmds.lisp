@@ -288,7 +288,7 @@
 				*decision-procedures*))
 			    2))
 	       (timelength (length (format nil "~,2f" maxtime)))
-	       (idlength (- 79 4 statuslength dplength timelength 4)))
+	       (idlength (- 79 4 statuslength dplength timelength 4 3)))
 	  (dolist (decl fdecls)
 	    (let ((tm (if (run-proof-time decl)
 			  (/ (run-proof-time decl)
@@ -300,7 +300,7 @@
 		    ((justification decl) (incf unfin))
 		    (t (incf untried)))
 	      (incf time tm)
-	      (format t "~%    ~v,1,0,'.a~19a [~a](~a s)"
+	      (format t "~%    ~v,1,0,'.a...~19a [~a](~a s)"
 		idlength
 		(id decl)
 		(proof-status-string decl)
@@ -313,7 +313,7 @@
 	(let ((te (get-context-theory-entry theory-id)))
 	  (mapc #'(lambda (fe)
 		    (let ((status (fe-status fe)))
-		      (format t "~%    ~55,1,0,'.a~(~10a~)"
+		      (format t "~%    ~52,1,0,'.a...~(~10a~)"
 			(fe-id fe)
 			(fe-proof-status-string fe valid?))
 		      (incf tot)
