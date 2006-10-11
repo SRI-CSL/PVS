@@ -94,6 +94,8 @@
 
 (in-package :cl-user)
 
+(defvar *load-pvs-prelude* t)
+
 (unless (or (find-package :clos) (find-package :pcl))
   #+(and lcl4.0 (not lcl4.1)) (load "/usr/subsys/lisp/clos")
   #+lcl4.1 (load "/usr/global/lisp/lucid/dbcs/clos"))
@@ -235,7 +237,8 @@
 		#+lcl4.1 (clos::flush-pv-caches)
 		#-(or cmu sbcl)
 		(pvs::bdd_init)
-		(pvs::load-prelude)
+		(when *load-pvs-prelude*
+		  (pvs::load-prelude))
 		#+allegro
 		(let ((optfile (format nil "~a/src/closopt" *pvs-path*)))
 		  (compile-file optfile)
