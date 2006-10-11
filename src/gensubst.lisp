@@ -856,15 +856,17 @@
 ;  (call-next-method))
 
 (defmethod mapobject* (fn (obj bind-decl))
-  (call-next-method)			; binding
-  (mapobject* fn (actuals obj))
-  ;;(mapobject* fn (resolutions obj))
-  )
+  (with-slots (actuals) obj
+    (call-next-method)			; binding
+    (when actuals (mapobject* fn actuals))
+    ;;(mapobject* fn (resolutions obj))
+    ))
 
 (defmethod mapobject* (fn (obj name))
-  (when (next-method-p) (call-next-method)) ; Handles expr part of name-expr
-  (mapobject* fn (actuals obj))
-  (mapobject* fn (mappings obj)))
+  (with-slots (actuals mappings) obj
+    (when (next-method-p) (call-next-method)) ; Handles expr part of name-expr
+    (when actuals (mapobject* fn actuals))
+    (when mappings (mapobject* fn mappings))))
 
 (defmethod mapobject* (fn (act actual))
   (if (and (not *parsing-or-unparsing*)
