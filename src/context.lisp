@@ -400,14 +400,14 @@ pvs-strategies files.")
 	    (pvs-message "~a is a regular file,~%  and can't be used as a~
                           subdirectory for .bin files unless it is moved."
 	      subdir))
-	(multiple-value-bind (result error)
-	    (ignore-errors #+allegro (excl:make-directory subdir)
-			   #+(or cmu sbcl) (unix:unix-mkdir subdir #o777))
-	  (declare (ignore result))
-	  (cond (error
-		 (pvs-message "Error creating ~a: ~a" subdir error))
-		(t (pvs-message "Created directory ~a" subdir)
-		   t))))))
+	(multiple-value-bind (result err)
+	    (ignore-lisp-errors #+allegro (excl:make-directory subdir)
+			   #+(or cmu sbcl)
+			   (unix:unix-mkdir (namestring subdir) #o777))
+	  (cond (result (pvs-message "Created directory ~a" subdir)
+			t)
+		(t (pvs-message "Error creating ~a: ~a" subdir err)
+		   nil))))))
 			  
 
 (defun context-is-current ()
