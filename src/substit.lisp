@@ -41,8 +41,6 @@
 ;;; directly calls substit.  Keep in mind that pseudo-normalize can make
 ;;; calls to substit.
 
-(defvar *needs-pseudo-normalizing* nil)
-
 (defvar *alist-freevars*)
 (defvar *alist-boundvars*)
 (defvar *substit-hash*)
@@ -154,11 +152,7 @@
 				 (current-theory-name)
 				 (type (cdr binding)))))
 		   nex)))
-	    (t (unless (name-expr? (cdr binding))
-		 ;; It is now possible that pseudo-normalize will actually
-		 ;; change things.
-		 (setq *needs-pseudo-normalizing* t))
-	       (cdr binding))))))
+	    (t (cdr binding))))))
 
 (defmethod substit* ((expr adt-name-expr) alist)
   (let ((nex (call-next-method)))
@@ -264,11 +258,8 @@
 	'expr (cond ((and ntype (eq ntype type-value))
 		     expr)
 		    (type-value ntype)
-		    (t (let* ((*needs-pseudo-normalizing* nil)
-			      (nexpr (substit* expr alist)))
-			 (if t ;*needs-pseudo-normalizing*
-			     (pseudo-normalize nexpr)
-			     nexpr))))
+		    (t (let ((nexpr (substit* expr alist)))
+			 (pseudo-normalize nexpr))))
 	'type-value ntype))))
 
 ;(defmethod substit* ( (expr if-expr) alist) ;;NSH(7-30)get rid
@@ -685,17 +676,19 @@
 	 (cons new-binding nbindings)))))
 
 (defun bindings-subst-clash (bind alist)
-  (let ((found-one nil)) 
-    (mapobject #'(lambda (x) 
-		   (or found-one
-		       (type-expr? x)
-		       (when (name-expr? x)
-			 (when (and (eq (id x) (id bind))
-				    (not (eq (declaration x) bind)))
-			   (setq found-one t))
-			 t)))
-	       (mapcar #'cdr alist))
-    found-one))
+  (var-occurs-in (id bind) (mapcar #'cdr alist)))
+;;   (let ((found-one nil))
+;;     (declare (special found-one))
+;;     (mapobject #'(lambda (x) 
+;; 		   (or found-one
+;; 		       (type-expr? x)
+;; 		       (when (name-expr? x)
+;; 			 (when (and (eq (id x) (id bind))
+;; 				    (not (eq (declaration x) bind)))
+;; 			   (setq found-one t))
+;; 			 t)))
+;; 	       (mapcar #'cdr alist))
+;;     found-one))
 
 
 (defmethod substit* ((expr cases-expr) alist)
@@ -764,13 +757,10 @@
 
 (defmethod substit* ((texpr subtype) alist)
   (with-slots (supertype predicate print-type) texpr
-    (let* ((*needs-pseudo-normalizing* nil) ;; set to t in substit* (name-expr)
-	   (npred (substit* predicate alist)))
+    (let ((npred (substit* predicate alist)))
       (if (eq npred predicate)
 	  texpr
-	  (let* ((spred (if t ;*needs-pseudo-normalizing*
-			    (pseudo-normalize npred)
-			    npred))
+	  (let* ((spred (pseudo-normalize npred))
 		 (stype (domain (find-supertype (type spred)))))
 	    (copy texpr
 	      'supertype stype
@@ -822,7 +812,7 @@
   (lcopy te
     'type (substit* (type te) alist)
     'parameters (let* ((nparms (substit* (parameters te) alist)))
-		  (pseudo-normalize nparms))
+		  (mapcar #'pseudo-normalize nparms))
     'print-type (substit* (print-type te) alist)))
 
 (defmethod substit* ((fd field-decl) alist)
