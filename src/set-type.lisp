@@ -124,14 +124,14 @@ required a context.")
 		 ((and (not *no-conversions-allowed*)
 		       (look-for-conversion ex expected)))
 		 (t (call-next-method)
-		    (check-type-incompatible ex)))
+		    (check-type-incompatible ex expected)))
 	   (reset-types ex)))
   #+pvsdebug (assert (fully-typed? ex))
   #+pvsdebug (assert (fully-instantiated? ex))
   (unless (typep ex '(or branch lambda-expr update-expr cases-expr))
     (check-for-subtype-tcc ex expected)))
 
-(defun check-type-incompatible (ex)
+(defun check-type-incompatible (ex expected)
   (unless (type ex)
     (type-incompatible ex (types ex) expected)))
   
@@ -1800,8 +1800,14 @@ required a context.")
 			    (expression operator) nbindings))))
 		     (setf type (application-range-type argument optype))
 		     (let ((*generate-tccs* 'none))
-		       ;; Conversions may be added here
-		       (set-type* operator optype))
+		       ;; Conversions may be added here and
+		       ;; This could reset actuals, we check this by comparing
+		       ;; the optype to the (type operator)
+		       (set-type* operator optype)
+		       (unless (tc-eq (type operator) optype)
+			 (setf type (application-range-type argument
+							    (type operator))))
+		       )
 		     ;; Now generate TCCs
 		     (set-type* argument (domain optype))
 		     (let ((*appl-tcc-conditions*
