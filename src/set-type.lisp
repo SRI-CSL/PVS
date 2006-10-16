@@ -246,6 +246,7 @@ required a context.")
   (setf (type ex) (type res)))
 
 (defmethod set-type-name-expr* ((ex number-expr) res)
+  (declare (ignore res))
   nil)
 
 (defmethod set-type* ((ex fieldex) expected)
@@ -261,7 +262,7 @@ required a context.")
       "Cannot determine the type associated with ~a:~%  Please provide more ~
        information, i.e., actual parameters or a coercion." ex))
   ;; Now convert to a lambda expression
-  (let* ((cex (copy ex))
+  (let* (;;(cex (copy ex))
 	 (dtype (if (dep-binding? (domain (type ex)))
 		    (type (domain (type ex)))
 		    (domain (type ex))))
@@ -405,6 +406,7 @@ required a context.")
       (setf (from-macro ex) orig))))
 
 (defmethod set-type-around-name-expr (ex)
+  (declare (ignore ex))
   nil)
 
 (defmethod set-type* :around ((ex cases-expr) expected)
