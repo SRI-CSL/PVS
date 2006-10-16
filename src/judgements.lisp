@@ -375,8 +375,7 @@
 ;;; if it was a plain judgement.
 
 (defun judgement-rewrites (expr)
-  (multiple-value-bind (jtypes jdecls)
-      (judgement-types-expr expr)
+  (let ((jdecls (nth-value 1 (judgement-types-expr expr))))
     (mapcar #'judgement-tcc-formula jdecls)))
 
 (defmethod judgement-tcc-formula (jdecl)
@@ -1752,6 +1751,7 @@
   (type-predicates* (type te) preds all?))
 
 (defmethod type-predicates* ((te type-name) preds all?)
+  (declare (ignore all?))
   (nreverse preds))
 
 (defmethod type-predicates* (te preds all?)
@@ -2491,6 +2491,7 @@
       (simple-subtype-of? (supertype t1) t2)))
 
 (defmethod simple-subtype-of? (t1 t2)
+  (declare (ignore t1 t2))
   nil)
 
 (defun check-known-subtypes (t1 t2)

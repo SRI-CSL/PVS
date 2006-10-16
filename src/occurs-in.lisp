@@ -504,6 +504,7 @@
   (eq id y))
 
 (defmethod var-occurs-in (id (te type-expr))
+  (declare (ignore id))
   nil)
 
 (defmethod var-occurs-in (id (l list))
