@@ -2108,9 +2108,16 @@
 
 (defun xt-set-list-expr (exs)
   (let* ((exprs (mapcar #'xt-expr (term-args exs)))
-	 (tvar (make-new-variable 'x exprs)))
+	 ;;(tvar (make-new-variable 'x exprs))
+	 )
     (make-instance 'set-list-expr
       :exprs exprs)))
+
+;; Note that xt-let-expr works as a lisp let* - this is so that later
+;; bindings may refer to earlier ones.  Thus
+;; LET x = e, y = x + 1 IN f(x, y)    becomes
+;; (LAMBDA x: (LAMBDA y: f(x, y))(x + 1))(e)   and *NOT*
+;; (LAMBDA (x, y): f(x, y))(e, x + 1), which will not typecheck.
 
 (defun xt-let-expr (lexpr)
   (let* ((let-bindings (term-arg0 lexpr))
