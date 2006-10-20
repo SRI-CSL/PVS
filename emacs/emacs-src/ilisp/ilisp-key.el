@@ -133,12 +133,12 @@ ilisp-*prefix* is set to the desired prefix."
   (ilisp-bind-ilisp-key-for-map keymap "m" 'macroexpand-1-lisp "\M-1")
   (ilisp-bind-ilisp-key-for-map keymap "M" 'macroexpand-lisp   "\M-0")
 
-  (ilisp-safe-define-key keymap "\M-," 'next-definition-lisp 'no-fsf-key)
-  (ilisp-safe-define-key keymap "\M-." 'edit-definitions-lisp 'no-fsf-key)
-  (ilisp-safe-define-key keymap "\M-?" 'search-lisp 'no-fsf-key)
-  (ilisp-safe-define-key keymap "\M-\"" 'replace-lisp 'no-fsf-key)
-  (ilisp-bind-ilisp-key-for-map keymap "^" 'edit-callers-lisp 'no-fsf-key)
-  (ilisp-safe-define-key keymap "\M-`" 'next-caller-lisp 'no-fsf-key)
+;;   (ilisp-safe-define-key keymap "\M-," 'next-definition-lisp 'no-fsf-key)
+;;   (ilisp-safe-define-key keymap "\M-." 'edit-definitions-lisp 'no-fsf-key)
+;;   (ilisp-safe-define-key keymap "\M-?" 'search-lisp 'no-fsf-key)
+;;   (ilisp-safe-define-key keymap "\M-\"" 'replace-lisp 'no-fsf-key)
+;;   (ilisp-bind-ilisp-key-for-map keymap "^" 'edit-callers-lisp 'no-fsf-key)
+;;   (ilisp-safe-define-key keymap "\M-`" 'next-caller-lisp 'no-fsf-key)
   (define-key keymap "\M-\t" 'complete-lisp)
 
   ;; note: another technical fsf keybinding policy violation.  But
