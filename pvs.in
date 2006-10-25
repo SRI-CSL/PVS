@@ -242,7 +242,6 @@ if [ -z "$PVSLISP" ]
         else echo "No executable available in $binpath"
              exit 1
         fi
-  else echo "PVSLISP is set to $PVSLISP, so it will be used"
 fi
 PVSIMAGE=pvs-$PVSLISP
 
