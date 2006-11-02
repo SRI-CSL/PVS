@@ -45,7 +45,10 @@
 
 (defun mk-dfa (a)
   (let ((p (make-dfa a)))
+    #+allegro
     (excl:schedule-finalization p #'dfa-free!)
+    #+cmu
+    (ext:finalize p #'(lambda () (dfa-free! p)))
     p))
 
 
@@ -300,12 +303,20 @@
 (defun unset?    (ch) (eq ch #\0))
 
 (defun make-example (p num indices &key kind)
-  (let ((char* (mona-make-example (address p) kind num indices)))
-    (if (= 0 char*) :null
-      (let* ((str (ff:char*-to-string char*))
-	     (len (/ (ff:char*-string-length char*) (1+ num))))   ; to do: free string
-	#+dbg(assert (integerp len))
-	(values str len)))))
+  (let ((char* (mona-make-example (address p) kind num
+				  #+allegro indices
+				  #+cmu (sys:vector-sap indices))))
+    (if #+allegro (= 0 char*)
+	#+cmu (or (not (stringp char*))
+		  (string= char* ""))
+	:null
+	(let* ((str #+allegro (ff:char*-to-string char*)
+		    #+cmu char*)
+	       (len (/ #+allegro (ff:char*-string-length char*)
+		       #+cmu (length char*)
+		       (1+ num))))	; to do: free string
+	  #+dbg (assert (integerp len))
+	  (values str len)))))
 		     
 (defun dfa-witness (p num indices)
   (assert (dfa? p))
