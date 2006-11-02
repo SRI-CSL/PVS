@@ -105,12 +105,16 @@
     (ext:load-foreign (format nil "~a/mu.~a" exepath
 			      #+darwin "dylib"
 			      #-darwin "so"))
+    (ext:load-foreign (format nil "~a/ws1s.~a" exepath
+			      #+darwin "dylib"
+			      #-darwin "so"))
     ;; Have no idea what is going on here, but if you leave this out,
     ;; bdd-cmu gives a compile error.
     (fmakunbound 'bdd_cofactor_neg_)
     (lf "bdd-cmu")
     (lf "mu-cmu")
-    (bdd_init))
+    (bdd_init)
+    (lf "dfa-foreign-cmu"))
   (setq *started-with-minus-q*
 	(or dont-load-user-lisp
 	    (let ((mq (environment-variable "PVSMINUSQ")))
