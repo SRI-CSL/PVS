@@ -148,6 +148,9 @@ BDDPTR bdd___bdd_subst_par_list (BDD_LIST f_list, BDD_LIST vars, BDDPTR g)
 void bdd___bdd_free_vec (BDDPTR *f_vec, int size)
   {return bdd_free_vec (f_vec, size);}
 
+const char* bdd___bdd_get_output_string (int idx)
+  {return bdd_get_output_string (idx);}
+
 void bdd___bdd_set_output_string (int idx, const char *str)
   {return bdd_set_output_string (idx, str);}
 
