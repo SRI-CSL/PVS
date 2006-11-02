@@ -421,10 +421,13 @@
 		  (:file "defattach")
 		  (:file "eval")
 		  (:file "pvsio")))
-   #-(or cmu sbcl)
    (:module ws1s
 	    :source-pathname "src/WS1S/lisp"
-	    :components ((:file "dfa-foreign")
+	    :components (#+allegro
+			 (:file "dfa-foreign")
+			 ;; dfa-foreign-cmu not loaded here, as the
+			 ;; resulting image does not work.  See pvs-init.
+			 ;; #+cmu (:file "dfa-foreign-cmu")
 			 (:file "dfa")
 			 (:file "pvs-utils")
 			 (:file "symtab")

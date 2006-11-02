@@ -466,6 +466,8 @@ image-deps = $(fileutils) $(bddlib)
 
 allegro-deps += $(ws1slib)
 
+cmulisp-deps += $(ws1slib)
+
 emacs = $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc
 
 # Here are the rules for building the PVS grammar, pvs-methods file, and
@@ -487,7 +489,8 @@ $(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
 		   -load src/make-pvs-methods.lisp
 endif
 
-$(cmulisp-devel) $(cmulisp-rt) : $(image-deps) $(pvs-make-files) $(ess) $(ff-files) \
+$(cmulisp-devel) $(cmulisp-rt) : $(image-deps) $(cmulisp-deps) \
+           $(pvs-make-files) $(ess) $(ff-files) \
            $(lisp-files) $(cmulisp) lib/prelude.pvs lib/prelude.prf
 	@echo "******* Compiling PVS files in CMU Lisp"
 	$(MKDIR) -p $(subst $(SYSTEM)-cmulisp,,$@)
@@ -505,6 +508,8 @@ $(cmulisp-devel) $(cmulisp-rt) : $(image-deps) $(pvs-make-files) $(ess) $(ff-fil
 	-rm $(PVSPATH)BDD/$(PLATFORM)/bdd-cmu.*
 	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)BDD/bdd-cmu.lisp $(PVSPATH)BDD/mu-cmu.lisp $(subst $(SYSTEM)-cmulisp,,$@)
+	cp $(PVSPATH)src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-cmulisp,,$@)
+	cp $(PVSPATH)src/WS1S/lisp/dfa-foreign-cmu.lisp $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
 	echo "#!/bin/sh" > $@
 	echo "$(CMULISPEXE) -core \`dirname \$$0\`/\`basename \$$0\`.core \$\*" >> $@
@@ -582,8 +587,7 @@ tar :
 lib/strategies.lisp : src/prover/strategies.lisp
 	(cd lib; ln -sf ../src/prover/strategies.lisp strategies.lisp)
 
-$(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el \
-  prelude-files-and-regions : \
+$(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el : \
                   $(PVSPATH)emacs/emacs-src/pvs-set-prelude-info.el \
                   $(PVSPATH)lib/prelude.pvs
 	-./pvs -batch -l emacs/emacs-src/pvs-set-prelude-info.el \
