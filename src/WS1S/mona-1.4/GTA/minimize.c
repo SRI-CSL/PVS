@@ -328,8 +328,8 @@ GTA *gtaMinimize(GTA *g)
 	  BEH(res->ss[s], i, j) = 0;
     }
     else { 
-      int org_size = bdd_size(orig->ss[s].bddm);
-      int new_size = bdd_size(res->ss[s].bddm);
+      int org_size = mona_bdd_size(orig->ss[s].bddm);
+      int new_size = mona_bdd_size(res->ss[s].bddm);
       int new_size_after;
 
       /* make final transition functions for the processed state spaces */
@@ -344,7 +344,7 @@ GTA *gtaMinimize(GTA *g)
 	    BDD_LAST_HANDLE(res->ss[s].bddm);
 	}
 
-      new_size_after = bdd_size(res->ss[s].bddm);
+      new_size_after = mona_bdd_size(res->ss[s].bddm);
       invariant(org_size >= new_size);
       invariant(new_size_after == new_size);
     }

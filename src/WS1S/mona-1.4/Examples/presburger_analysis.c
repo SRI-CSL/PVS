@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
   }
 
   /* initialize the BDD package */
-  bdd_init();
+  mona_bdd_init();
 
   /* import the automaton */
   a = dfaImport(argv[1], &vars, &orders);

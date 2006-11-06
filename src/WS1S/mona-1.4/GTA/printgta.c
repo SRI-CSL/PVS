@@ -150,9 +150,9 @@ void gtaPrintVitals(GTA* a)
     printf("State space %d '%s': %d state%s, %d BDD node%s\n",
 	   d, guide.ssName[d], 
 	   a->ss[d].size, a->ss[d].size>1?"s":"", 
-	   bdd_size(a->ss[d].bddm), bdd_size(a->ss[d].bddm)>1?"s":"");
+	   mona_bdd_size(a->ss[d].bddm), mona_bdd_size(a->ss[d].bddm)>1?"s":"");
     total_statespace_size += a->ss[d].size;
-    total_BDD_size += bdd_size(a->ss[d].bddm);
+    total_BDD_size += mona_bdd_size(a->ss[d].bddm);
   }
   printf("Total: %d state%s, %d BDD node%s\n", 
 	 total_statespace_size, total_statespace_size>1?"s":"", 
@@ -167,7 +167,7 @@ void gtaPrintTotalSize(GTA *a)
 
   for (d = 0; d < guide.numSs; d++) {
     total_statespace_size += a->ss[d].size;
-    total_BDD_size += bdd_size(a->ss[d].bddm);
+    total_BDD_size += mona_bdd_size(a->ss[d].bddm);
   }
   printf("\nAutomaton has %d state%s and %d BDD node%s\n", 
 	 total_statespace_size, total_statespace_size>1?"s":"", 

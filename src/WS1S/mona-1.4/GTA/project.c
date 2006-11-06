@@ -45,12 +45,12 @@ State read0X0(bdd_manager *bddm, bdd_ptr p, unsigned idx, unsigned choice) {
   else 
     if (bdd_ifindex(bddm, p) == idx) {
       if (choice)
-        return read0X0(bddm, bdd_then(bddm, p), idx, choice);
+        return read0X0(bddm, mona_bdd_then(bddm, p), idx, choice);
       else
-        return read0X0(bddm, bdd_else(bddm, p), idx, choice);
+        return read0X0(bddm, mona_bdd_else(bddm, p), idx, choice);
     }
     else
-      return read0X0(bddm, bdd_else(bddm, p), idx, choice);
+      return read0X0(bddm, mona_bdd_else(bddm, p), idx, choice);
 }
 
 void zeroPathStates(SsId d, State i, State j, unsigned idx)
@@ -223,7 +223,7 @@ GTA *gtaQuotientAndProject(GTA *g, unsigned idx, int quotient)
     final[i] = g->final[i];
 
   for (s = 0; s < guide.numSs; s++) {
-    unsigned estimate = 2 * bdd_size(g->ss[s].bddm);
+    unsigned estimate = 2 * mona_bdd_size(g->ss[s].bddm);
 
     res->ss[s].bddm = bdd_new_manager(estimate, estimate/8 + 2);
     bdd_make_cache(res->ss[s].bddm, estimate, estimate/8 + 2);
@@ -252,7 +252,7 @@ GTA *gtaQuotientAndProject(GTA *g, unsigned idx, int quotient)
 
   /* clear BDD cache */
   for (s = 0; s < guide.numSs; s++) {
-    unsigned estimate = 2 * bdd_size(g->ss[s].bddm);
+    unsigned estimate = 2 * mona_bdd_size(g->ss[s].bddm);
 
     bdd_kill_cache(res->ss[s].bddm);
     bdd_make_cache(res->ss[s].bddm, estimate, estimate/8 + 2);

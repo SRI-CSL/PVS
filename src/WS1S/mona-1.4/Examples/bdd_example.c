@@ -47,10 +47,10 @@ void print_bdd(bdd_manager *bddm, bdd_ptr b) {
   else {
     index=bdd_ifindex(bddm,b);
     printf("(node %d, indx %d, high:", b, index);
-    print_bdd(bddm, bdd_then(bddm,b));
+    print_bdd(bddm, mona_bdd_then(bddm,b));
     printf(")");
     printf("(node %d, indx %d, low:", b, index);
-    print_bdd(bddm, bdd_else(bddm,b));
+    print_bdd(bddm, mona_bdd_else(bddm,b));
     printf(")");
   };
 }
@@ -62,7 +62,7 @@ int main() {
   bdd_ptr and_2_7, nand_2_7;
   bdd_handle handle;
 
-  bdd_init(); /* needed since we're using statistics */
+  mona_bdd_init(); /* needed since we're using statistics */
 
   bddm = bdd_new_manager(100,50);
   /* get a BDD pointer to a node that is the leaf with value 0 */
@@ -100,11 +100,11 @@ int main() {
   bdd_update_statistics(bddm, 0); /* update statics group "0" with data from bddm 
 				     before killing the manager */
  
-  printf("Size of bddm: %d\n\n", bdd_size(bddm)); /* let's see the number of nodes created */
+  printf("Size of bddm: %d\n\n", mona_bdd_size(bddm)); /* let's see the number of nodes created */
  
   bdd_kill_manager(bddm);
  
-  printf("Size of bddm1: %d\n\n", bdd_size(bddm1));
+  printf("Size of bddm1: %d\n\n", mona_bdd_size(bddm1));
  
   handle = BDD_LAST_HANDLE(bddm1); 
 
@@ -122,7 +122,7 @@ int main() {
   nand_2_7 = bdd_apply1(bddm1, and_2_7, bddm1, &not);
  
   bdd_update_statistics(bddm1, 1);
-  printf("Size of bddm1: %d\n\n", bdd_size(bddm1));
+  printf("Size of bddm1: %d\n\n", mona_bdd_size(bddm1));
   bdd_kill_manager(bddm);
 
   print_bdd(bddm1, and_2_7);

@@ -91,11 +91,11 @@ extern void bdd_make_cache(bdd_manager *bddm, unsigned size,
 extern void bdd_kill_cache(bdd_manager *bddm);
 
 
-extern unsigned bdd_size(bdd_manager *bbdm);
+extern unsigned mona_bdd_size(bdd_manager *bbdm);
 
 /* STATISTICS */
  
-extern void bdd_init(void);
+extern void mona_bdd_init(void);
 
 extern void bdd_update_statistics(bdd_manager *bddm, unsigned stat_index); 
 
@@ -105,9 +105,9 @@ extern void bdd_print_statistics(unsigned stat_index, char info[]);
 
 extern unsigned bdd_ifindex(bdd_manager *bbdm, bdd_ptr p);
 
-extern bdd_ptr bdd_then (bdd_manager *bbdm, bdd_ptr p);
+extern bdd_ptr mona_bdd_then (bdd_manager *bbdm, bdd_ptr p);
 
-extern bdd_ptr bdd_else(bdd_manager *bbdm, bdd_ptr p) ;
+extern bdd_ptr mona_bdd_else(bdd_manager *bbdm, bdd_ptr p) ;
 
 extern unsigned bdd_is_leaf(bdd_manager *bbdm, bdd_ptr p);
 

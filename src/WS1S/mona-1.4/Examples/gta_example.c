@@ -32,7 +32,7 @@ bdd_manager *global_bddm;
 
 void check_off_index(bdd_record *node_pointer)
      /*this function is written using primitives at a lower level
-       than using the bdd_then and bdd_else; the reason is that 
+       than using the mona_bdd_then and mona_bdd_else; the reason is that 
        bdd_operate_on_nodes requires a C pointer a BDD node, not
        something of the type bdd_ptr */
 {
@@ -124,7 +124,7 @@ int main () {
     printf("State space 1 goes to (%d, %d)\n", 
            guide.muLeft[1], guide.muRight[1]);
     
-    printf("Number of BDD nodes in state space 1: %d\n", bdd_size(G->ss[1].bddm));
+    printf("Number of BDD nodes in state space 1: %d\n", mona_bdd_size(G->ss[1].bddm));
     for (i = 0; i < numvars; i++)
       var_is_used[i] = 0;
     bdd_prepare_apply1(G->ss[1].bddm);
@@ -145,8 +145,8 @@ int main () {
     bdd_ptr my_bdd_ptr = BDD_ROOT(bddm, BEH(G->ss[1], 0, 2));
     while (!bdd_is_leaf(bddm, my_bdd_ptr)) {
       my_bdd_ptr =  (bit_vector[bdd_ifindex(bddm, my_bdd_ptr)])?
-        bdd_then(bddm, my_bdd_ptr):
-        bdd_else(bddm, my_bdd_ptr);
+        mona_bdd_then(bddm, my_bdd_ptr):
+        mona_bdd_else(bddm, my_bdd_ptr);
     }
     printf("State reached from (0,2) on {0, 1, 1, 0, 1, 0} is %d\n", 
            bdd_leaf_value(bddm, my_bdd_ptr));
