@@ -86,8 +86,8 @@ GTA *gtaProduct(GTA *a1, GTA *a2, gtaProductType type)
   for (s = 0; s < guide.numSs; s++) {
     /* prepare bdd managers for sequential access (a1 and a2 must be minimal (?)) */
     unsigned estimate = 4 + 4 *
-      (bdd_size(a1->ss[s].bddm) > bdd_size(a2->ss[s].bddm) ? 
-       bdd_size(a1->ss[s].bddm) : bdd_size(a2->ss[s].bddm)); 
+      (mona_bdd_size(a1->ss[s].bddm) > mona_bdd_size(a2->ss[s].bddm) ? 
+       mona_bdd_size(a1->ss[s].bddm) : mona_bdd_size(a2->ss[s].bddm)); 
     
     res->ss[s].bddm = bdd_new_manager(estimate, 0);
     bdd_make_cache(res->ss[s].bddm, estimate, estimate/8 + 2); /* ??????? */

@@ -26,7 +26,7 @@
 
 void dfaPrintVitals(DFA *a)
 {
-  unsigned i = bdd_size(a->bddm);
+  unsigned i = mona_bdd_size(a->bddm);
   
   printf("\nAutomaton has %d state%s and %d BDD-node%s\n", 
 	 a->ns, a->ns==1 ? "" : "s", 

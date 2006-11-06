@@ -42,7 +42,7 @@ return(j);
 
 
 /* set out statistics data structures */
-void bdd_init(void) {
+void mona_bdd_init(void) {
   struct stat_item *r;
   unsigned i, j;
   for (i = 0; i < BDD_STAT_INDEX_SIZE; i++) {
@@ -223,7 +223,7 @@ void bdd_print_statistics(unsigned stat_index, char info[]) {
 	   total.number_cache_link_followed);
 }
 
-unsigned bdd_size(bdd_manager *bddm) {
+unsigned mona_bdd_size(bdd_manager *bddm) {
 return (bddm->table_elements);}
     
 unsigned *bdd_roots(bdd_manager *bddm) {

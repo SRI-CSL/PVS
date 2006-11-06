@@ -62,12 +62,12 @@ void export(bdd_manager *bddm, unsigned p, Table *table)
     }
     else {
       e->idx = bdd_ifindex(bddm,p);
-      e->lo = bdd_else(bddm,p);
-      e->hi = bdd_then(bddm,p);
+      e->lo = mona_bdd_else(bddm,p);
+      e->hi = mona_bdd_then(bddm,p);
       tableInsert(table, e);
       bdd_set_mark(bddm,p,table->noelems); /* table index+1 put in mark */
-      export(bddm, bdd_then(bddm,p), table);
-      export(bddm, bdd_else(bddm,p), table);
+      export(bddm, mona_bdd_then(bddm,p), table);
+      export(bddm, mona_bdd_else(bddm,p), table);
     }
     mem_free(e);
   }

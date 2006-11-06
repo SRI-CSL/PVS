@@ -45,8 +45,8 @@ void successors(bdd_manager *bddm, bdd_ptr p)
     preds[s][predused[s]++] = current_state;
   }
   else {
-    successors(bddm, bdd_else(bddm, p));
-    successors(bddm, bdd_then(bddm, p));
+    successors(bddm, mona_bdd_else(bddm, p));
+    successors(bddm, mona_bdd_then(bddm, p));
   }
   
 }

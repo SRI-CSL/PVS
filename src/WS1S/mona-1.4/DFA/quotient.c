@@ -140,12 +140,12 @@ int read00(bdd_manager *bddm, bdd_ptr p, unsigned var_index, int choice) {
   else {
     if (bdd_ifindex(bddm,p)==var_index) {
       if (choice)
-        return (read00(bddm, bdd_then(bddm,p), var_index, choice));
+        return (read00(bddm, mona_bdd_then(bddm,p), var_index, choice));
       else
-        return (read00(bddm, bdd_else(bddm,p), var_index, choice));
+        return (read00(bddm, mona_bdd_else(bddm,p), var_index, choice));
     }
     else
-      return (read00(bddm, bdd_else(bddm,p), var_index, choice));
+      return (read00(bddm, mona_bdd_else(bddm,p), var_index, choice));
   }
 }
 

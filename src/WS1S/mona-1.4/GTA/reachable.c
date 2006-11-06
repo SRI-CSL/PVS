@@ -86,8 +86,8 @@ GTA *gtaReachable(GTA *g)
     newNumber[s][orig->ss[s].initial] = 0; /* initial state is reachable, gets number 0 */
     oldNumber[s][0] = orig->ss[s].initial; /* inverse of newNumber */
     
-    res->ss[s].bddm = bdd_new_manager(bdd_size(orig->ss[s].bddm), 
-				      bdd_size(orig->ss[s].bddm)/8+2);
+    res->ss[s].bddm = bdd_new_manager(mona_bdd_size(orig->ss[s].bddm), 
+				      mona_bdd_size(orig->ss[s].bddm)/8+2);
     bdd_prepare_apply1(orig->ss[s].bddm);
 
     initBMtoSize(&resbeh[s], 1, 1);
