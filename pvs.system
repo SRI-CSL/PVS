@@ -221,14 +221,12 @@
 				     *pvs-path* "/src/utils/" platform))
 			 (bddpath (concatenate 'string
 				    *pvs-path* "/BDD/" platform))
-			 #-macosx
 			 (ws1spath (concatenate 'string
 				     *pvs-path* "/src/WS1S/" platform)))
 		    (load (format nil "~a/file_utils.~a"
 			    utilpath *load-foreign-extension*))
 		    (load (format nil "~a/mu.~a"
 			    bddpath *load-foreign-extension*))
-		    #-macosx
 		    (load (format nil "~a/ws1s.~a"
 			    ws1spath *load-foreign-extension*)))
 		  (setq *pvs-system-loaded* t))
