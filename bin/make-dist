@@ -48,10 +48,13 @@
 # trap "echo 'Interrupted...cleaning up the staging directory'; rm -rf ${temppar
 # ent}; exit 1" 1 2 15
 
-TARFLAGS='-cvohz --mode=u+rw --atime-preserve --exclude=CVS'
+TARFLAGS='-cohz --mode=u+rw --atime-preserve --exclude=CVS'
+
+version="4.0"
 
 # pvs-source.tgz
-tar ${TARFLAGS} -f pvs-source.tgz --exclude pvsbin \
+echo Creating pvs-${version}-source.tgz
+tar ${TARFLAGS} -f pvs-${version}-source.tgz --exclude pvsbin \
   pvs.system *.lisp Makefile.in README README.CVS README.configure \
   configure.in config.guess config.sub install-sh bin/make-dist \
   pvs.in pvsio.in pvs.sty pvs-tex.sub \
@@ -114,13 +117,14 @@ tar ${TARFLAGS} -f pvs-source.tgz --exclude pvsbin \
   emacs/emacs-src \
   Examples/README Examples/*.pvs \
   emacs/emacs19/Makefile
+ls -l pvs-${version}-source.tgz
 
 # pvs-system.tgz
 # Check whether we have enough to build the system tar,
 # If we have the most up-to-date (x)emacs, that is enough
-if [ -d emacs/emacs20 -a -d emacs/xemacs21 ]
+if [ -d emacs/emacs20 -a -d emacs/xemacs21 -a -d emacs/emacs22 ]
 then
-tar ${TARFLAGS} -f pvs-system.tgz \
+pvssystemfiles="\
   README pvs pvsio pvs-tex.sub pvs.sty bin/relocate \
   bin/pvs-platform bin/tar-b64-mail Examples \
   lib/prelude.pvs lib/prelude.prf lib/list_adt.pvs \
@@ -128,55 +132,71 @@ tar ${TARFLAGS} -f pvs-system.tgz \
   lib/union_adt.pvs lib/lift_adt.pvs \
   lib/pvs-language.help lib/pvs-prover.help lib/pvs.help \
   lib/pvs.grammar lib/pvs.bnf wish/pvs-support.tcl \
-  lib/strategies.lisp lib/pvs-style.css \
-  doc/release-notes/pvs-release-notes.{info,html,ps,pdf} \
+  lib/pvs-style.css \
+  doc/release-notes/pvs-release-notes.info \
+  doc/release-notes/pvs-release-notes.html \
+  doc/release-notes/pvs-release-notes.ps \
+  doc/release-notes/pvs-release-notes.pdf \
   wish/gray.xbm wish/sequent.xbm \
-  emacs lib/PVSio
+  emacs lib/PVSio lib/finite_sets lib/bitvectors"
 else
-echo "pvs-system.tgz not created - need emacs/emacs20 and emacs/xemacs21"
+echo "tar files not created - need emacs/emacs20 and emacs/xemacs21 and "
+exit 1
 fi
 
 
 #  pvs-libraries.tgz
-if [ -d lib/finite_sets/pvsbin -a -d lib/bitvectors/pvsbin ]
-then
-tar ${TARFLAGS} -f pvs-libraries.tgz \
-  lib/finite_sets lib/bitvectors
-else
-echo "pvs-libraries.tgz not created - need to typecheck finite_sets and bitvectors"
-fi
+# if [ -d lib/finite_sets/pvsbin -a -d lib/bitvectors/pvsbin ]
+# then
+# tar ${TARFLAGS} -f pvs-${version}-libraries.tgz \
+#   lib/finite_sets lib/bitvectors
+# else
+# echo "pvs-libraries.tgz not created - need to typecheck finite_sets and bitvectors"
+# fi
 
 for platform in ix86-Linux ix86-MacOSX8 powerpc-MacOSX7 powerpc-MacOSX8 \
                 sun4-SunOS5
   do
-  for kind in runtime devel
+  for subdir in runtime devel
    do
-   if [ -e bin/${platform}/${kind}/pvs-allegro ]
+   if [ "$subdir" = "runtime" ]
     then
-     tar ${TARFLAGS} -f pvs-${platform}-allegro.tgz \
-          bin/${platform}/b64 bin/relocate \
-	  bin/pvs-platform bin/tar-b64-mail \
-	  bin/${platform}/${kind}/file_utils.so \
-	  bin/${platform}/${kind}/libacl*.so \
-	  bin/${platform}/${kind}/mu.so \
-	  bin/${platform}/${kind}/file_utils.so \
-	  bin/${platform}/${kind}/ws1s.so \
-	  bin/${platform}/${kind}/pvs-allegro*
+     kind=
     else
-     echo "Allegro ${kind} not available for ${platform}"
+     kind="-devel"
    fi
-   if [ -e bin/${platform}/${kind}/pvs-cmulisp ]
+   if [ -e bin/${platform}/${subdir}/pvs-allegro ]
     then
-     tar ${TARFLAGS} -f pvs-${platform}-cmulisp.tgz \
+     echo Creating pvs-${version}-${platform}-allegro${kind}.tgz
+     tar ${TARFLAGS} -f pvs-${version}-${platform}-allegro${kind}.tgz \
+          ${pvssystemfiles} \
           bin/${platform}/b64 bin/relocate \
 	  bin/pvs-platform bin/tar-b64-mail \
-	  bin/${platform}/${kind}/mu.so \
-	  bin/${platform}/${kind}/file_utils.so \
-	  bin/${platform}/${kind}/ws1s.so \
-	  bin/${platform}/${kind}/*-cmu.* \
-	  bin/${platform}/${kind}/pvs-cmulisp*
+	  bin/${platform}/${subdir}/file_utils.* \
+	  bin/${platform}/${subdir}/libacl*.* \
+	  bin/${platform}/${subdir}/mu.* \
+	  bin/${platform}/${subdir}/ws1s.* \
+	  bin/${platform}/${subdir}/pvs-allegro*
+     ls -l pvs-${version}-${platform}-allegro${kind}.tgz
     else
-     echo "CMU Lisp ${kind} not available for ${platform}"
+     echo "Allegro ${subdir} not available for ${platform}"
+   fi
+   if [ -e bin/${platform}/${subdir}/pvs-cmulisp -a "$subdir" = "runtime" ]
+    then
+     echo Creating pvs-${version}-${platform}-cmulisp${kind}.tgz
+     tar ${TARFLAGS} -f pvs-${version}-${platform}-cmulisp${kind}.tgz \
+          ${pvssystemfiles} \
+          bin/${platform}/b64 bin/relocate \
+	  bin/pvs-platform bin/tar-b64-mail \
+	  bin/${platform}/${subdir}/mu.* \
+	  bin/${platform}/${subdir}/file_utils.* \
+	  bin/${platform}/${subdir}/ws1s.* \
+	  bin/${platform}/${subdir}/*-cmu.* \
+	  bin/${platform}/${subdir}/lisp \
+	  bin/${platform}/${subdir}/pvs-cmulisp*
+     ls -l pvs-${version}-${platform}-cmulisp${kind}.tgz
+    else
+     echo "CMU Lisp ${subdir} not available for ${platform}"
    fi
    done
   done
