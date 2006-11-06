@@ -603,6 +603,15 @@
     (type-error expr "Selections have incompatible types"))
   expr)
 
+(defmethod find-adt-supertype ((te subtype))
+  (find-adt-supertype (supertype te)))
+
+(defmethod find-adt-supertype ((te datatype-subtype))
+  te)
+
+(defmethod find-adt-supertype (te)
+  te)
+
 (defmethod find-declared-adt-supertype ((te subtype))
   (find-declared-adt-supertype (supertype te)))
 
