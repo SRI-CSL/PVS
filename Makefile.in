@@ -506,13 +506,14 @@ $(cmulisp-devel) $(cmulisp-rt) : $(image-deps) $(cmulisp-deps) \
                                    :init-function (function startup-pvs) \
                                ))'
 	-rm $(PVSPATH)BDD/$(PLATFORM)/bdd-cmu.*
+	cp $(CMULISPEXE) $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)BDD/bdd-cmu.lisp $(PVSPATH)BDD/mu-cmu.lisp $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)src/WS1S/lisp/dfa-foreign-cmu.lisp $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
 	echo "#!/bin/sh" > $@
-	echo "$(CMULISPEXE) -core \`dirname \$$0\`/\`basename \$$0\`.core \$\*" >> $@
+	echo "lisp -core \`dirname \$$0\`/\`basename \$$0\`.core \$\*" >> $@
 	chmod a+x $@
 endif
 
