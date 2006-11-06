@@ -182,9 +182,8 @@ emacs-elc = $(emacs-sub-src:.el=.elc)
 
 ff-files = src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
            src/utils/$(PLATFORM)/b64 \
-           BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION)
-
-allegro-ff-files += src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION)
+           BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) \
+           src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION)
 
 ess = ess/dist-ess.lisp \
 	ess/init-load.lisp \
@@ -409,7 +408,6 @@ ifneq ($(PVSPATH),)
 pvs-make-files := $(patsubst %,$(PVSPATH)%,$(pvs-make-files))
 allegro-make-files := $(patsubst %,$(PVSPATH)%,$(allegro-make-files))
 ff-files := $(patsubst %,$(PVSPATH)%,$(ff-files))
-allegro-ff-files := $(patsubst %,$(PVSPATH)%,$(allegro-ff-files))
 ess := $(patsubst %,$(PVSPATH)%,$(ess))
 pvs-parser-in := $(patsubst %,$(PVSPATH)%,$(pvs-parser-in))
 pvs-parser-out := $(patsubst %,$(PVSPATH)%,$(pvs-parser-out))
@@ -462,11 +460,7 @@ bddlib = $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION)
 
 ws1slib = $(PVSPATH)src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION)
 
-image-deps = $(fileutils) $(bddlib)
-
-allegro-deps += $(ws1slib)
-
-cmulisp-deps += $(ws1slib)
+image-deps = $(fileutils) $(bddlib) $(ws1slib)
 
 emacs = $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc
 
@@ -489,7 +483,7 @@ $(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
 		   -load src/make-pvs-methods.lisp
 endif
 
-$(cmulisp-devel) $(cmulisp-rt) : $(image-deps) $(cmulisp-deps) \
+$(cmulisp-devel) $(cmulisp-rt) : $(image-deps) \
            $(pvs-make-files) $(ess) $(ff-files) \
            $(lisp-files) $(cmulisp) lib/prelude.pvs lib/prelude.prf
 	@echo "******* Compiling PVS files in CMU Lisp"
@@ -518,9 +512,9 @@ $(cmulisp-devel) $(cmulisp-rt) : $(image-deps) $(cmulisp-deps) \
 endif
 
 ifneq ($(ALLEGRO_HOME),)
-$(allegro-devel) $(allegro-rt) : $(image-deps) $(allegro-deps) \
+$(allegro-devel) $(allegro-rt) : $(image-deps) \
              $(pvs-make-files) $(allegro-make-files) $(ess) $(ff-files) \
-             $(allegro-ff-files) $(lisp-files) $(allegrolisp) \
+             $(lisp-files) $(allegrolisp) \
              $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
 	$(MKDIR) -p $(subst $(SYSTEM)-allegro,,$@)
 	rm -rf /tmp/pvs-allegro-build
