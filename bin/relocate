@@ -5,8 +5,8 @@
 echo Setting PVSPATH in the \"pvs\" and \"pvsio\" shell scripts to $PWD
 echo If this is not the right path, edit the \"pvs\" and \"pvsio\" scripts
 chmod u+w pvs pvsio
-sed -e "s,^PVSPATH=.*$,PVSPATH=$PWD," < pvs > /tmp/tmp.$$
-mv /tmp/tmp.$$ pvs
-sed -e "s,^PVSPATH=.*$,PVSPATH=$PWD," < pvsio > /tmp/tmp.$$
-mv /tmp/tmp.$$ pvsio
+sed -e "s,^PVSPATH=.*$,PVSPATH=$PWD," < pvs > tmp.$$
+mv tmp.$$ pvs
+sed -e "s,^PVSPATH=.*$,PVSPATH=$PWD," < pvsio > tmp.$$
+mv tmp.$$ pvsio
 chmod a+x pvs pvsio
