@@ -1213,7 +1213,7 @@
   ;; SO 2004-09-17: Added implicit-type-predictes
   (if *implicit-typepreds?*
       (implicit-type-predicates ex t (type-constraints ex t))
-      (type-constraints ex t)))
+      (type-constraints ex (not *pseudo-normalizing*))))
 
 
 ;;NSH(7.11.94): old code triggered a loop since collect-type-constraints
@@ -3449,9 +3449,7 @@
 	   (*local-typealist* *local-typealist*);;shadowing
 	   (typepreds (loop for x in bindings
 			    nconc
-			    (let ((y (make!-name-expr
-				      (id x) nil nil
-				      (make-resolution x nil (type x))))
+			    (let ((y (make-variable-expr x))
 				  (*keep-unbound* *bound-variables*))
 			      ;; NSH(12.30.93)not sure if *keep-unbound*
 			      ;; needs to be set.
