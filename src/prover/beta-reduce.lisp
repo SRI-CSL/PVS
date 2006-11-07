@@ -86,9 +86,13 @@
 
 ;;; Beta-reduce methods
 
-(defvar *beta-cache* (make-hash-table :test #'eq :size 1000))
+(defvar *beta-cache* (make-hash-table :test #'eq :size 3250))
 
-(defvar *let-reduce-beta-cache* (make-hash-table :test #'eq :size 1000))
+(defvar *let-reduce-beta-cache* (make-hash-table :test #'eq :size 3250))
+
+(defun reset-beta-cache ()
+  (clrhash *beta-cache*)
+  (clrhash *let-reduce-beta-cache*))
 
 (defun beta-reduce (obj &optional (let-reduce? t))
   (let ((*beta-cache* (if let-reduce?
