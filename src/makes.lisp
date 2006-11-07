@@ -1878,7 +1878,7 @@
   (make-instance 'update-expr
     :expression expression
     :assignments assignments
-    :type (find-adt-supertype (type expression))))
+    :type (find-supertype (type expression))))
 
 (defun make!-recognizer-name-expr (rec-id adt-type-name)
   (let* ((adt (adt adt-type-name))
