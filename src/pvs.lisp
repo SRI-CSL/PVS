@@ -191,7 +191,7 @@
 (defun remove-typecheck-caches ()
   (remove-subst-mod-params-cache)
   (remove-pseudo-normalize-cache)
-  (remove-beta-cache)
+  (reset-beta-cache)
   (remove-store-object-caches)
   (setq *store-object-hash* nil))
 
