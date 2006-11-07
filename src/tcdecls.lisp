@@ -41,7 +41,7 @@
   (when decls
     (let ((decl (car decls)))
       (setf (declaration *current-context*) decl)
-      (clrhash *beta-cache*)
+      (reset-beta-cache)
       (typecase decl
 	(declaration (typecheck-decl decl))
 	(importing (tcdebug "~%    Processing importing")
@@ -2194,7 +2194,7 @@
 			    (car types)))
 		  (alist (when (dep-binding? type)
 			   (list (cons (car formals) type))))
-		  (cdrtypes (substit (cdr types) alist))
+		  (cdrtypes (when (cdr types) (substit (cdr types) alist)))
 		  (ntypeslist (substit typeslist alist)))
 	     (make-formals-type-app* (cdr formals) formalslist
 				     cdrtypes ntypeslist

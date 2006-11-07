@@ -151,15 +151,17 @@
 
 ;;; Typecheck* methods for theories - returns the theory
 
+(defvar *subtype-of-hash*)
+
 (defmethod typecheck* ((m module) expected kind arguments)
   (declare (ignore expected kind arguments))
   (unless (and (memq 'typechecked (status m))
 	       (typechecked? m))
     (let ((*subtype-of-hash* (make-hash-table :test #'equal))
-	  (*beta-cache* (make-hash-table :test #'eq))
 	  (*assert-if-arith-hash* (make-hash-table :test #'eq))
 	  (*bound-variables* *bound-variables*))
       (reset-pseudo-normalize-caches)
+      (reset-beta-cache)
       (tcdebug "~%Typecheck ~a" (id m))
       (setf (formals-sans-usings m)
 	    (remove-if #'(lambda (ff) (typep ff 'importing)) (formals m)))
