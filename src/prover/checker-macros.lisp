@@ -104,7 +104,7 @@
 (defvar *no-bound-variables-in-match* nil)
 (defvar *dynamic-ordering?* nil)
 (defvar *smash?* nil)
-(defvar *beta-cache* (make-hash-table :test #'eq))
+;;(defvar *beta-cache* (make-hash-table :test #'eq))
 (defvar *match-cache* (make-hash-table :test #'eq))
 (defvar *dont-cache-match?* nil)
 (defvar *lift-if-updates* nil)
