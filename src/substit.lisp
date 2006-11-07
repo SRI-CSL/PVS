@@ -43,38 +43,83 @@
 
 (defvar *alist-freevars*)
 (defvar *alist-boundvars*)
-(defvar *substit-hash*)
+;; (defvar *substit-hash-heap* nil)
+
+(defvar *substit-hash-list*)
+
+(defmacro new-substit-hash (&rest forms)
+  `(let* ((*alist-freevars* 'unbound)
+	  (*alist-boundvars* 'unbound)
+	  (next-hash (make-hash-table :test #'eq))
+	  (*substit-hash-list* (cons next-hash nil)))
+     (progn ,@forms)))
+
+(defmacro add-substit-hash (&rest forms)
+  `(let* ((*alist-freevars* 'unbound)
+	  (*alist-boundvars* 'unbound)
+	  (next-hash (make-hash-table :test #'eq))
+	  (*substit-hash-list* (cons next-hash
+				     (if (zerop (hash-table-count
+						 (car *substit-hash-list*)))
+					 (cdr *substit-hash-list*)
+					 *substit-hash-list*))))
+     (progn ,@forms)))
+
+;; (defmacro add-substit-hash (&rest forms)
+;;   `(let* ((next-hash (let ((ht (pop *substit-hash-heap*)))
+;; 		       (if ht
+;; 			   (clrhash ht)
+;; 			   (make-hash-table :test #'eq))))
+;; 	  (*substit-hash-list* (cons next-hash *substit-hash-list*)))
+;;      (unwind-protect
+;; 	 (progn ,@forms)
+;;        (push next-hash *substit-hash-heap*))))
+
+(defun get-substit-hash (obj)
+  (get-substit-hash* obj *substit-hash-list*))
+
+(defun get-substit-hash* (obj hashes)
+  (when hashes
+    (or (gethash obj (car hashes))
+	(get-substit-hash* obj (cdr hashes)))))
+
+(defsetf get-substit-hash (obj) (sobj)
+  `(setf (gethash ,obj (car *substit-hash-list*)) ,sobj))
 
 (defun substit (obj alist)
   ;; At some point, should verify that car of every element of the
   ;; alist is a declaration.
-  #+pvsdebug
-  (assert (every #'(lambda (a)
-		     (and (typep (car a)
-				 '(or simple-decl declaration))
-			  (eq (declaration (car a)) (car a))))
-		 alist))
-  (let* ((*alist-freevars* 'unbound)
-	 (*alist-boundvars* 'unbound)
-	 (*substit-hash* (make-hash-table :test #'eq))
-	 (fvars (freevars obj))
-	 (nalist (remove-if
-		     (complement
-		      #'(lambda (a)
-			  (and (not (eq (car a) (cdr a)))
-			       (member (declaration (car a)) fvars
-				       :key #'declaration :test #'eq))))
-		   alist)))
-    (if (null nalist)
-	obj
-	(substit* obj nalist))))
+  (cond ((or (null obj) (null alist))
+	 obj)
+	(t #+pvsdebug
+	   (assert (every #'(lambda (a)
+			      (and (typep (car a)
+					  '(or simple-decl declaration))
+				   (eq (declaration (car a)) (car a))))
+			  alist))
+	   (let* ((fvars (freevars obj))
+		  (nalist (remove-if
+			      (complement
+			       #'(lambda (a)
+				   (and (not (eq (car a) (cdr a)))
+					;;(not (and (name-expr? (cdr a))
+					;; (eq (declaration (cdr a))
+					;;   (car a))))
+					(member (declaration (car a)) fvars
+						:key #'declaration :test #'eq))))
+			    alist)))
+	     (if (null nalist)
+		 obj
+		 (new-substit-hash
+		  (let ((sobj (substit* obj nalist)))
+		    sobj)))))))
 
 (defmethod substit* :around ((expr expr) alist)
   (declare (ignore alist))
   (if (null (freevars expr))
       expr
-      (or (gethash expr *substit-hash*)
-	  (setf (gethash expr *substit-hash*) (call-next-method)))))
+      (or (get-substit-hash expr)
+	  (setf (get-substit-hash expr) (call-next-method)))))
 
 (defmethod substit* :around ((expr type-expr) alist)
   (if (freevars expr)
@@ -84,8 +129,8 @@
 		(let ((result (call-next-method)))
 		  (install-subst-hash expr alist result *subst-type-hash*)
 		  result)))
-	  (or (gethash expr *substit-hash*)
-	      (setf (gethash expr *substit-hash*) (call-next-method))))
+	  (or (get-substit-hash expr)
+	      (setf (get-substit-hash expr) (call-next-method))))
       expr))
 
 (defun lookup-subst-hash (expr alist hash)
@@ -299,13 +344,10 @@
 			     'operator op
 			     'argument arg
 			     'type (if (typep (domain stype) 'dep-binding)
-				       (let ((*alist-freevars* 'unbound)
-					     (*alist-boundvars* 'unbound)
-					     (*substit-hash*
-					      (make-hash-table :test #'eq)))
-					 (substit* (range stype)
-						   (acons (domain stype)
-							  arg nil)))
+				       (new-substit-hash
+					(substit* (range stype)
+						  (acons (domain stype)
+							 arg nil)))
 				       (range stype)))))
 		 ;; Note: the copy :around (application) method takes care of
 		 ;; changing the class if it is needed.
@@ -315,21 +357,17 @@
 (defmethod make!-reduced-application* ((op lambda-expr) (arg tuple-expr))
   (if (singleton? (bindings op))
       (call-next-method)
-      (let ((*alist-freevars* 'unbound)
-	    (*alist-boundvars* 'unbound)
-	    (*substit-hash* (make-hash-table :test #'eq)))
-	(substit* (expression op)
-		  (pairlis (bindings op) (exprs arg))))))
+      (add-substit-hash
+       (substit* (expression op)
+		 (pairlis (bindings op) (exprs arg))))))
 
 (defmethod make!-reduced-application* ((op lambda-expr) arg)
-  (let ((*alist-freevars* 'unbound)
-	(*alist-boundvars* 'unbound)
-	(*substit-hash* (make-hash-table :test #'eq)))
-    (if (singleton? (bindings op))
-	(substit* (expression op)
-		  (acons (car (bindings op)) arg nil))
-	(substit* (expression op)
-		  (pairlis (bindings op) (make!-projections arg))))))
+  (add-substit-hash
+   (if (singleton? (bindings op))
+       (substit* (expression op)
+		 (acons (car (bindings op)) arg nil))
+       (substit* (expression op)
+		 (pairlis (bindings op) (make!-projections arg))))))
 
 (defmethod substit* ((expr equation) alist)
   (declare (ignore alist))
@@ -524,21 +562,19 @@
 	 (let ((newcar (substit-binding* (car expr) alist)))
 	   (cond ((eq newcar (car expr))
 		  (substit*-list (cdr expr) alist (cons newcar result)))
-		 (t (let ((*alist-freevars* 'unbound)
-			  (*alist-boundvars* 'unbound)
-			  (*substit-hash* (make-hash-table :test #'eq)))
-		      (substit*-list (cdr expr)
-				     (acons (car expr) newcar alist)
-				     (cons newcar result)))))))
+		 ((null (cdr expr))
+		  (nreverse (cons newcar result)))
+		 (t (add-substit-hash
+		     (substit*-list (cdr expr)
+				    (acons (car expr) newcar alist)
+				    (cons newcar result)))))))
 	(t (substit*-list (cdr expr) alist
 			  (cons (substit* (car expr) alist)
 				result)))))
 
 (defun substit-binding (expr alist)
-  (let ((*alist-freevars* 'unbound)
-	(*alist-boundvars* 'unbound)
-	(*substit-hash* (make-hash-table :test #'eq)))
-    (substit-binding* expr alist)))
+  (new-substit-hash
+   (substit-binding* expr alist)))
 
 (defun substit-binding* (expr alist)
   (let* ((newtype (substit* (type expr) alist))
@@ -558,10 +594,8 @@
       (let* ((new-bindings (make-new-bindings-internal
 			    (bindings expr) alist (expression expr)))
 	     (nalist (substit-pairlis (bindings expr) new-bindings alist))
-	     (nexpr (let ((*alist-freevars* 'unbound)
-			  (*alist-boundvars* 'unbound)
-			  (*substit-hash* (make-hash-table :test #'eq)))
-		      (substit* (expression expr) nalist)))
+	     (nexpr (add-substit-hash
+		     (substit* (expression expr) nalist)))
 	     (ntype (if (quant-expr? expr)
 			(type expr)
 			(make-formals-funtype (list new-bindings)
@@ -581,14 +615,12 @@
 			   (acons (car bindings) (car new-bindings) alist)))))
 
 (defun make-new-bindings (old-bindings alist expr)
-  (let* ((*alist-freevars* 'unbound)
-	 (*alist-boundvars* 'unbound)
-	 (*substit-hash* (make-hash-table :test #'eq)))
-    (make-new-bindings* old-bindings
-			(alist-freevars alist)
-			(alist-boundvars alist)
-			alist
-			expr)))
+  (new-substit-hash
+   (make-new-bindings* old-bindings
+		       (alist-freevars alist)
+		       (alist-boundvars alist)
+		       alist
+		       expr)))
 
 (defun make-new-bindings-internal (old-bindings alist expr)
   (make-new-bindings* old-bindings
@@ -710,13 +742,11 @@
     (lcopy expr
       'constructor (substit* (constructor expr) alist)
       'args new-bindings
-      'expression (let ((*alist-freevars* 'unbound)
-			(*alist-boundvars* 'unbound)
-			(*substit-hash* (make-hash-table :test #'eq)))
-		    (substit* (expression expr)
-			      (nconc (pairlis (args expr)
-					      new-bindings)
-				     alist))))))
+      'expression (add-substit-hash
+		   (substit* (expression expr)
+			     (nconc (pairlis (args expr)
+					     new-bindings)
+				    alist))))))
 
 ;(defmethod substit* ((expr coercion) alist)
 ;  (lcopy expr
@@ -743,7 +773,7 @@
 	(let ((nte (copy texpr
 		     'actuals nacts
 		     'print-type ptype)))
-	  (setf (gethash texpr *substit-hash*) nte)
+	  (setf (get-substit-hash texpr) nte)
 	  (setf (resolutions nte)
 		(list
 		 (if (eq texpr (type (resolution texpr)))
