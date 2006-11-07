@@ -1394,8 +1394,8 @@
 ;;; we can recurse on both supertypes at the same time.
 
 (defmethod compatible-type* ((atype subtype) (etype subtype) bindings)
-  (cond ((subtype-of? atype etype) etype)
-	((subtype-of? etype atype) atype)
+  (cond ((simple-subtype-of? atype etype) etype)
+	((simple-subtype-of? etype atype) atype)
 	(t (compatible-type* (supertype atype) (supertype etype) bindings))))
 
 (defun adt-compatible-type (acts1 acts2 formals type postypes compacts
@@ -2056,17 +2056,19 @@
 		   (tc-eq-ops pr1 pr2))
 	      (same-predicate? t1 t2 nil)
 	      (and (compatible? st1 st2)
-		   (predicate-subtype-of? t1 t2 (find-supertype st1))))
+		   (predicate-subtype-of? t1 t2 (compatible-type st1 st2))))
 	  (subtype-of*? st1 st2)
 	  (call-next-method)))))
 
 (defun predicate-subtype-of? (t1 t2 st)
-  (let* ((bid '%)
-	 (bd (make!-bind-decl bid st))
-	 (bvar (make-variable-expr bd))
-	 (preds1 (collect-judgement-preds t1 st bvar))
-	 (preds2 (collect-judgement-preds t2 st bvar)))
-    (subsetp preds2 preds1 :test #'tc-eq)))
+  (or (simple-subtype-of? t1 t2)
+      (and (not (simple-subtype-of? t2 t1))
+	   (let* ((bid '%)
+		  (bd (make!-bind-decl bid st))
+		  (bvar (make-variable-expr bd))
+		  (preds1 (collect-judgement-preds t1 st bvar))
+		  (preds2 (collect-judgement-preds t2 st bvar)))
+	     (subsetp preds2 preds1 :test #'tc-eq)))))
 
 (defmethod subtype-of*? ((t1 adt-type-name) (t2 subtype))
   (and (adt t1)
