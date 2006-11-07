@@ -71,8 +71,6 @@
     (if (s-form-equal? sform new-sform) (values 'X sform)
 	(values '? new-sform))))
 
-(defvar *let-reduce-beta-cache* (make-hash-table :test #'eq))
-
 (defun beta-step (sformnums &optional rewrite-flag (let-reduce? t))
   #'(lambda (ps)
       (multiple-value-bind
@@ -88,21 +86,18 @@
 
 ;;; Beta-reduce methods
 
-;;(defvar *beta-cache* nil) ;;NSH(3.29.95)moved to checker-macros.
+(defvar *beta-cache* (make-hash-table :test #'eq :size 1000))
 
-(defun reset-beta-cache ()
-  (if *beta-cache*
-      (clrhash *beta-cache*)
-      (setq *beta-cache* (make-hash-table :test #'eq))))
-
-(defun remove-beta-cache ()
-  (setq *beta-cache* nil))
+(defvar *let-reduce-beta-cache* (make-hash-table :test #'eq :size 1000))
 
 (defun beta-reduce (obj &optional (let-reduce? t))
   (let ((*beta-cache* (if let-reduce?
 			  *beta-cache*
 			  *let-reduce-beta-cache*))
 	(*let-reduce?* let-reduce?))
+    (when (and *in-checker*
+	       (> (hash-table-count *beta-cache*) 5000))
+      (clrhash *beta-cache*))
     (beta-reduce* obj)))
 
 (defmethod beta-reduce* :around (obj)
@@ -256,15 +251,27 @@
 
 (defun pairlis-args (formals actuals)
   (cond ((eql (length formals)(length actuals))
-	 (pairlis formals actuals))
+	 (pairlis-args* formals actuals))
 	((and (singleton? actuals)
 	      (typep (find-supertype (type (car actuals))) 'tupletype))
-	 (pairlis formals (make!-projections (car actuals))))
+	 (pairlis-args* formals (make!-projections (car actuals))))
 	((and (singleton? formals)
 	      (typep (find-supertype (type (car formals))) 'tupletype))
 	 (list (cons (car formals)
 		     (make!-tuple-expr actuals))))
 	(t (break "~%pairlis-args invoked with unsuitable formals/actuals."))))
+
+(defun pairlis-args* (formals actuals &optional result)
+  (if (null formals)
+      (nreverse result)
+      (pairlis-args* (cdr formals) (cdr actuals)
+		     (if (or (eq (car formals) (car actuals))
+			     (and (name-expr? (car actuals))
+				  (eq (car formals)
+				      (declaration (car actuals)))))
+			 result
+			 (acons (car formals) (car actuals) result)))))
+  
 
 ;;; SO 8/31/94 - added following two methods, extracted from application
 ;;; method
