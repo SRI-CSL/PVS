@@ -357,7 +357,7 @@
 (defmethod make!-reduced-application* ((op lambda-expr) (arg tuple-expr))
   (if (singleton? (bindings op))
       (call-next-method)
-      (add-substit-hash
+      (new-substit-hash
        (substit* (expression op)
 		 (pairlis (bindings op) (exprs arg))))))
 
