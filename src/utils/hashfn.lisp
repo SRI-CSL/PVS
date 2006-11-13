@@ -89,11 +89,14 @@
 ;  (eq x y))
 
 (defmethod pvs-sxhash* :around ((x syntax) (bindings null))
-   (with-slots (pvs-sxhash-value) x
-     (if (null (freevars x))
-	 (or pvs-sxhash-value
-	     (setf pvs-sxhash-value (call-next-method)))
-	 (call-next-method))))
+  (with-slots (pvs-sxhash-value) x
+    (if (null (freevars x))
+	(or pvs-sxhash-value
+	    (let ((val (call-next-method)))
+	      (when (and (lambda-expr? x) (not (set-expr? x)))
+		(break "lambda-expr"))
+	      (setf pvs-sxhash-value val)))
+	(call-next-method))))
 
 (defmethod pvs-sxhash* (x bindings)
   (declare (ignore bindings))
@@ -745,7 +748,9 @@
        (cdr b1)
        bindings
        (pvs-sxhash-1+ bnum)
-       (pvs-sxhash-+ (the positive-fixnum (pvs-sxhash* (type (car b1)) bindings))
+       (pvs-sxhash-+ (the positive-fixnum
+		       (pvs-sxhash* (type (car b1))
+				    (append nbindings bindings)))
 		     (the positive-fixnum hnum))
        (acons (car b1) bnum nbindings))))
 
