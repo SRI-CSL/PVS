@@ -83,7 +83,7 @@
 					 '* sformnums)
 				     (s-forms goalsequent)
 				     1 -1 dont-delete?)))
-		 (if (every #'eql  new-s-forms (s-forms goalsequent))
+		 (if (every #'tc-eq new-s-forms (s-forms goalsequent))
 		     (values 'X nil nil)
 		     (let* ((new-s-forms
 			     (if hide?
