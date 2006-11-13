@@ -591,16 +591,21 @@
 (defmethod substit* ((expr binding-expr) alist)
   (if (not (substit-possible? expr alist))
       expr
-      (let* ((new-bindings (make-new-bindings-internal
-			    (bindings expr) alist (expression expr)))
+      (let* ((new-bindings-i (make-new-bindings-internal
+			      (bindings expr) alist (expression expr)))
+	     (new-bindings (if (equal new-bindings-i (bindings expr))
+			       (bindings expr)
+			       new-bindings-i))
 	     (nalist (substit-pairlis (bindings expr) new-bindings alist))
 	     (nexpr (add-substit-hash
 		     (substit* (expression expr) nalist)))
-	     (ntype (if (quant-expr? expr)
+	     (ntype (if (or (quant-expr? expr)
+			    (and (equal new-bindings (bindings expr))
+				 (eq nexpr (expression expr))))
 			(type expr)
 			(make-formals-funtype (list new-bindings)
 					      (type nexpr)))))
-	(copy expr
+	(lcopy expr
 	  'bindings new-bindings
 	  'type ntype
 	  'expression nexpr
@@ -792,7 +797,7 @@
 	  texpr
 	  (let* ((spred (pseudo-normalize npred))
 		 (stype (domain (find-supertype (type spred)))))
-	    (copy texpr
+	    (lcopy texpr
 	      'supertype stype
 	      'predicate spred
 	      'print-type (substit* print-type alist)))))))
@@ -842,7 +847,9 @@
   (lcopy te
     'type (substit* (type te) alist)
     'parameters (let* ((nparms (substit* (parameters te) alist)))
-		  (mapcar #'pseudo-normalize nparms))
+		  (if (equal nparms (parameters te))
+		      (parameters te)
+		      (mapcar #'pseudo-normalize nparms)))
     'print-type (substit* (print-type te) alist)))
 
 (defmethod substit* ((fd field-decl) alist)
