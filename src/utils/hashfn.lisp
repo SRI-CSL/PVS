@@ -92,10 +92,7 @@
   (with-slots (pvs-sxhash-value) x
     (if (null (freevars x))
 	(or pvs-sxhash-value
-	    (let ((val (call-next-method)))
-	      (when (and (lambda-expr? x) (not (set-expr? x)))
-		(break "lambda-expr"))
-	      (setf pvs-sxhash-value val)))
+	    (setf pvs-sxhash-value (call-next-method)))
 	(call-next-method))))
 
 (defmethod pvs-sxhash* (x bindings)
