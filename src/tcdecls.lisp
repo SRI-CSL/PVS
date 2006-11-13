@@ -41,7 +41,6 @@
   (when decls
     (let ((decl (car decls)))
       (setf (declaration *current-context*) decl)
-      (reset-beta-cache)
       (typecase decl
 	(declaration (typecheck-decl decl))
 	(importing (tcdebug "~%    Processing importing")
@@ -71,6 +70,7 @@
 	      (generated decl))
 	(unwind-protect
 	    (progn
+	      (reset-beta-cache)
 	      (assert (typep (current-theory) '(or module recursive-type)))
 	      (setf (module decl) (current-theory))
 	      (assert (module decl))
