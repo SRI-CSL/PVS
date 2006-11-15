@@ -2180,7 +2180,7 @@
 
 (defmethod ref-to-id ((ref subtype-judgement))
   (or (id ref)
-      'subtype))
+      '|subtype|))
 
 (defmethod ref-to-id ((ref number-judgement))
   (or (id ref)
