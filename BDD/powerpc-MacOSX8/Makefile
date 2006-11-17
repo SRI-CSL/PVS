@@ -2,7 +2,7 @@ BDD = ../bdd/src
 MU = ../mu/src
 UTILS = ../bdd/utils
 
-gccpath = $(shell gcc -print-gcclib-file-name)
+gccpath = $(shell gcc -print-libgcc-file-name)
 gccdir = $(shell dirname ${gccpath})
 
 INCLUDES = -I/usr/include -I$(BDD) -I$(UTILS) -I$(MU)
