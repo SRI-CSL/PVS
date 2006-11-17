@@ -1,9 +1,13 @@
 BDD = ../bdd/src
 MU = ../mu/src
 UTILS = ../bdd/utils
+
+gccpath = $(shell gcc -print-gcclib-file-name)
+gccdir = $(shell dirname ${gccpath})
+
 INCLUDES = -I/usr/include -I$(BDD) -I$(UTILS) -I$(MU)
 LD = ld
-LDFLAGS = -bundle /usr/lib/bundle1.o -flat_namespace -undefined suppress -L./
+LDFLAGS = -bundle /usr/lib/bundle1.o -flat_namespace -undefined suppress -L./ -L${gccdir}
 CC = cc
 CFLAGS = -dynamic -DNDEBUG $(INCLUDES)
 XCFLAGS = -O
