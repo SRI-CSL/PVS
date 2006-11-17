@@ -56,7 +56,7 @@ version="4.0"
 echo Creating pvs-${version}-source.tgz
 tar ${TARFLAGS} -f pvs-${version}-source.tgz --exclude pvsbin \
   pvs.system *.lisp Makefile.in README README.CVS README.configure \
-  configure.in config.guess config.sub install-sh bin/make-dist \
+  configure configure.in config.guess config.sub install-sh bin/make-dist \
   pvs.in pvsio.in pvs.sty pvs-tex.sub \
   bin/pvs-platform bin/relocate bin/tarmail bin/untarmail \
   lib/prelude.* lib/*.help lib/pvs-style.css lib/pvs.bnf lib/pvs.grammar \
