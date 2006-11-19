@@ -1,1 +1,1 @@
-*.lfasl *.fasl *.mfasl *.nfasl *.x86f *.err
+*.lfasl *.fasl *.mfasl *.nfasl *.x86f *.ppcf *.sparcf *.err
