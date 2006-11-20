@@ -1,2 +1,3 @@
-*.lfasl *.fasl pvs-methods.lisp pvs-info.lisp pvs-lexer.lisp pvs-parser.lisp
-pvs-unparser.lisp pvs-sorts.lisp make-allegro-pvs.lisp
+*.lfasl *.fasl *.mfasl *.nfasl *.x86f *.err
+pvs-methods.lisp pvs-info.lisp pvs-lexer.lisp pvs-parser.lisp
+pvs-unparser.lisp pvs-sorts.lisp

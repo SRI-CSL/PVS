@@ -1608,7 +1608,8 @@ s/^[^M]*IRIX Execution Environment 1, *[a-zA-Z]* *\\([^ ]*\\)/\\1/p\\
 		    :directory 
 		    #-(and :cmu (not (or :cmu17 :cmu18 :cmu19))) directory
 		    #+(and :cmu (not (or :cmu17 :cmu18 :cmu19))) (coerce directory 'simple-vector)
-		    :name rel-file))))
+		    :name (when rel-file (pathname-name rel-file))
+		    :type (when rel-file (pathname-type rel-file))))))
 
 (defun directory-to-list (directory)
   ;; The directory should be a list, but nonstandard implementations have
