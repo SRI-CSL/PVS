@@ -1,0 +1,67 @@
+* Installing PVS
+
+Installation is relatively simple:
+Create a new PVS directory (name doesn't matter), cd to it, untar
+the files, run 'bin/relocate', and you should be able to run
+'./pvs'.  Copy this script to a directory in your path, or add the
+PVS directory to your path.
+
+* Building PVS
+
+PVS is now open source. This describes the build process, please feel free
+to contribute your own experiences.
+
+Note: most users do not need to build PVS, prebuilt images are already
+available on the http://pvs.csl.sri.com/download.shtml page. Even
+modified sources can easily be incorporated into a built image, using
+~/.pvs.lisp (or simply using the load function). However, if you wish to
+port to another lisp, or explore different kinds of optimizations, etc., you
+will need to build it yourself. Hopefully it will not be too difficult.
+
+In summary, the steps you need to take are: 
+
+* Obtain and install Common Lisp 
+* Get the PVS sources 
+* Set either the ALLEGRO_HOME or CMULISP_HOME environment variable 
+* Run configure and make Contents [hide]
+
+Obtaining and Installing Common Lisp
+------------------------------------
+
+PVS currently works with Allegro Common Lisp, which is proprietary ($$$),
+and with CMU Common Lisp, which is open source. PVS roughly twice as fast
+with Allegro, so if you already have it, or have extra money, it is
+preferred. In addition, the Intel Mac is not supported by CMU Lisp. You can
+get it from franz.com. It works best with Allegro 8.0, and probably won't
+work at all for versions before 6.0.
+
+CMU Lisp is free. Note that you can build CMU Lisp from source, but it's not
+necessary (and apparently it is not easy). Also note that PVS has only been
+tested with 19c and 19d. Finally, there seems to be a problem with 19d for
+powerpc Macs, in that it gets a hardware error for me. Let me know if you
+find a workaround.
+
+Install as directed by these sites. 
+
+Get the PVS Sources
+-------------------
+
+Get them from the download page, create a directory, cd to it, and untar the
+sources.
+
+Set either the ALLEGRO_HOME or CMULISP_HOME environment variable
+----------------------------------------------------------------
+
+For Allegro, set ALLEGRO_HOME to the directory containing the license file
+(devel.lic). For CMU Lisp, set CMULISP_HOME to the directory containing the
+bin subdirectory.
+
+Note: if you have both lisps, you can set both variables and the make will
+create both images.  [edit] Run configure and make
+
+Configure should be straightforward. Note you generally need to run it only
+once, even if you are building for many platforms.
+
+Make may cause some problems, we had some issues with getting the right GCC
+versions, especially for Mac and Solaris. If you have problems and/or
+solutions, please add them here.
