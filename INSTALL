@@ -65,3 +65,7 @@ once, even if you are building for many platforms.
 Make may cause some problems, we had some issues with getting the right GCC
 versions, especially for Mac and Solaris. If you have problems and/or
 solutions, please add them here.
+
+NOTE: The foreign functions (file_utils, BDD, and WS1S) do not currently
+build in 64 bit Linux - you must build these on a 32 bit machine, or modify
+them.
