@@ -55,7 +55,8 @@ version="4.0"
 # pvs-source.tgz
 echo Creating pvs-${version}-source.tgz
 tar ${TARFLAGS} -f pvs-${version}-source.tgz --exclude pvsbin \
-  pvs.system *.lisp Makefile.in README INSTALL README.CVS README.configure \
+  pvs.system *.lisp Makefile.in README INSTALL LICENSE NOTICES \
+  README.CVS README.configure \
   configure configure.in config.guess config.sub install-sh bin/make-dist \
   pvs.in pvsio.in pvs.sty pvs-tex.sub \
   bin/pvs-platform bin/relocate bin/tarmail bin/untarmail \
@@ -89,21 +90,19 @@ tar ${TARFLAGS} -f pvs-${version}-source.tgz --exclude pvsbin \
   src/abstraction/*.lisp \
   src/groundeval/*.lisp \
   src/utils/*.lisp \
-  src/utils/ix86-Linux/Makefile src/utils/ix86-MacOSX8/Makefile \
-  src/utils/powerpc-MacOSX7/Makefile src/utils/powerpc-MacOSX8/Makefile \
+  src/utils/ix86-Linux/Makefile src/utils/ix86-MacOSX/Makefile \
+  src/utils/powerpc-MacOSX/Makefile \
   src/utils/sun4-SunOS5/Makefile \
   BDD/bdd-ld-table BDD/mu-ld-table \
   BDD/*.c \
   BDD/*.lisp \
   BDD/ix86-Linux/Makefile BDD/sun4-SunOS5/Makefile \
-  BDD/ix86-MacOSX8/Makefile BDD/powerpc-MacOSX7/Makefile \
-  BDD/powerpc-MacOSX8/Makefile \
+  BDD/ix86-MacOSX/Makefile BDD/powerpc-MacOSX/Makefile \
   BDD/bdd BDD/mu \
   src/WS1S/README src/WS1S/ws1s-ld-table \
   src/WS1S/*.c src/WS1S/mona-1.4 \
   src/WS1S/ix86-Linux/Makefile src/WS1S/sun4-SunOS5/Makefile \
-  src/WS1S/ix86-MacOSX8/Makefile src/WS1S/powerpc-MacOSX7/Makefile \
-  src/WS1S/powerpc-MacOSX8/Makefile \
+  src/WS1S/ix86-MacOSX/Makefile src/WS1S/powerpc-MacOSX/Makefile \
   doc/pvs.bib doc/makebnf.sty doc/pvstex.tex doc/release-notes.html \
   doc/language/Makefile.in doc/language/*.tex doc/language/*.pvs \
   doc/language/pvs-doc.el.in \
@@ -125,7 +124,7 @@ ls -l pvs-${version}-source.tgz
 if [ -d emacs/emacs20 -a -d emacs/xemacs21 -a -d emacs/emacs22 ]
 then
 pvssystemfiles="\
-  README pvs pvsio pvs-tex.sub pvs.sty bin/relocate \
+  README INSTALL LICENSE NOTICES pvs pvsio pvs-tex.sub pvs.sty bin/relocate \
   bin/pvs-platform bin/tar-b64-mail Examples \
   lib/prelude.pvs lib/prelude.prf lib/list_adt.pvs \
   lib/ordstruct_adt.pvs lib/character_adt.pvs \
@@ -154,7 +153,7 @@ fi
 # echo "pvs-libraries.tgz not created - need to typecheck finite_sets and bitvectors"
 # fi
 
-for platform in ix86-Linux ix86-MacOSX8 powerpc-MacOSX7 powerpc-MacOSX8 \
+for platform in ix86-Linux ix86-MacOSX powerpc-MacOSX \
                 sun4-SunOS5
   do
   for subdir in runtime devel

@@ -157,8 +157,12 @@ case $opsys in
 	   export LD_ASSUME_KERNEL
            ;;
   Darwin) opsys=MacOSX
-          majvers=7
-	  PVSARCH=powerpc
+	  case `uname -p` in
+            powerpc) arch=powerpc;;
+	    i*86) arch=ix86;;
+	    *) arch=`uname -p`;;
+	  esac
+	  PVSARCH=arch
 	  ;;
   *) echo "PVS 3.3 only runs under Solaris, Linux, FreeBSD (linux-enabled), or Mac (Darwin 7.4)"; exit 1
 esac

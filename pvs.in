@@ -218,7 +218,8 @@ case $opsys in
 	    *) PVSARCH=`uname -p`;;
 	  esac
           opsys=MacOSX
-          majvers=`uname -r | cut -d"." -f1`
+          #majvers=`uname -r | cut -d"." -f1`
+	  majvers=
 	  ;;
   *) echo "PVS 3.3 only runs under Solaris, Linux, FreeBSD (linux-enabled), or Mac (Darwin 7.4)"; exit 1
 esac

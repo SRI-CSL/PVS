@@ -215,8 +215,8 @@
 		  (let* ((platform #+(and sun4 sunos4) "sun4-SunOS4"
 				   #+(and sun4 (not sunos4)) "sun4-SunOS5"
 				   #+(and x86 (not macosx)) "ix86-Linux"
-				   #+(and macosx powerpc) "powerpc-MacOSX7"
-				   #+(and macosx x86) "ix86-MacOSX8")
+				   #+(and macosx powerpc) "powerpc-MacOSX"
+				   #+(and macosx x86) "ix86-MacOSX")
 			 (utilpath (concatenate 'string
 				     *pvs-path* "/src/utils/" platform))
 			 (bddpath (concatenate 'string

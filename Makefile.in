@@ -105,15 +105,11 @@ endif
 
 LOAD-FOREIGN-EXTENSION=so
 export LD_LIBRARY_PATH
-ifeq ($(PLATFORM),powerpc-MacOSX7)
+ifeq ($(PLATFORM),powerpc-MacOSX)
   LOAD-FOREIGN-EXTENSION=dylib
 else
-ifeq ($(PLATFORM),powerpc-MacOSX8)
+ifeq ($(PLATFORM),ix86-MacOSX)
   LOAD-FOREIGN-EXTENSION=dylib
-else
-ifeq ($(PLATFORM),ix86-MacOSX8)
-  LOAD-FOREIGN-EXTENSION=dylib
-endif
 endif
 endif
 
@@ -607,7 +603,7 @@ install:
 
 faslexts = fasl,rfasl,hfasl,lfasl,mfasl,nfasl,sbin,obin,rbin,mbin,x86f,ppcf,sparcf,x8664s,x86s,ppcs,sparcs,clfasl,wfasl,err
 
-platforms = ix86-Linux,ix86-MacOSX8,powerpc-MacOSX7,powerpc-MacOSX8,sun4-SunOS5
+platforms = ix86-Linux,ix86-MacOSX,powerpc-MacOSX,powerpc-MacOSX,sun4-SunOS5
 
 clean : 
 	rm -f *.{$(faslexts)} */*.{$(faslexts)} */*/*.{$(faslexts)} \
