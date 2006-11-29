@@ -222,7 +222,7 @@ export PVSIOMAIN=$MAIN
 
 if [ "$PVSLISP" = "allegro" ]
   then
-  $PVSIMAGE -qq -L $PVSPATH/lib/PVSio/pvsio-init.lisp
+  "$PVSIMAGE" -qq -L $PVSPATH/lib/PVSio/pvsio-init.lisp
   else
-  $PVSIMAGE -noinit -load $PVSPATH/lib/PVSio/pvsio-init.lisp
+  "$PVSIMAGE" -noinit -load $PVSPATH/lib/PVSio/pvsio-init.lisp
 fi

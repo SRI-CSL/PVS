@@ -346,7 +346,7 @@ elif [ $rawmode ]
     $PVSIMAGE -qq $flags
 elif [ $batch ]
   then
-    $PVSEMACS $batch $dotemacs $pvsemacsinit $flags 2>&1
+    "$PVSEMACS" $batch $dotemacs $pvsemacsinit $flags 2>&1
 else
-  $PVSEMACS $pvsemacsinit $flags
+  "$PVSEMACS" $pvsemacsinit $flags
 fi
