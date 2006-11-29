@@ -720,7 +720,7 @@ static void support_as_list_of_vars_aux (BDDPTR f, BDD_ELEM *supF)
       BDD_ELEM new_elem;
 
       new_elem = BDD_ELEM_CALLOC ();
-      BDD_ELEM_SET_CONTENTS (new_elem, BDD_VARID (f));
+      BDD_ELEM_SET_CONTENTS (new_elem, (unsigned) (BDD_VARID (f)));
       BDD_LIST_NEXT (new_elem) = sup_f;
       if (prev)
 	BDD_LIST_NEXT (prev) = new_elem;

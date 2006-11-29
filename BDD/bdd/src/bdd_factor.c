@@ -130,7 +130,7 @@ static int count;		/* counter used in naming the index */
 
 static bdd_factor_interface bdd_default_factor_interface =
 {
-  1, /* stdout, */
+  NULL, /* stdout, 1 */
   print_const,
   print_lit,
   print_or,
@@ -163,6 +163,12 @@ static bdd_factor_interface bdd_default_factor_interface =
   4,2,  /* Last used pair of the matrix A */
   0,0, 0,0  /* Unused array elements */
 };
+
+static void bdd_default_factor_interface_construct (void)
+  __attribute__((constructor));
+static void bdd_default_factor_interface_construct (void) {
+  bdd_default_factor_interface.out = stdout;
+}
 
 /* Init the current interface: */
 static bdd_factor_interface *current_interface = &bdd_default_factor_interface;

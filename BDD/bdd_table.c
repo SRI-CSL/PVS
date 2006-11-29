@@ -10,13 +10,17 @@ int bdd___bdd_equal_p (BDDPTR F, BDDPTR G) {return bdd_equal_p (F, G);}
 
 void bdd___elem_contents (LIST_ELEM_PTR x) {elem_contents (x);}
 
-LIST_ELEM_PTR bdd___list_first (LIST x) {return list_first (x);}
+LIST_ELEM_PTR bdd___list_first (LIST x) {
+  return (LIST_ELEM_PTR) list_first (x);
+}
 
-LIST_ELEM_PTR bdd___list_last (LIST x) {return list_last (x);}
+LIST_ELEM_PTR bdd___list_last (LIST x) {return (LIST_ELEM_PTR) list_last (x);}
 
 void bdd___list_info (LIST x) {list_info (x);}
 
-LIST_ELEM_PTR bdd___list_next (LIST_ELEM_PTR x) {return list_next (x);}
+LIST_ELEM_PTR bdd___list_next (LIST_ELEM_PTR x) {
+  return (LIST_ELEM_PTR) list_next (x);
+}
 
 void bdd___set_bdd_do_gc (int flag) {set_bdd_do_gc (flag);}
 
@@ -47,9 +51,13 @@ int bdd___bdd_term_p (BDDPTR f) {return bdd_term_p (f);}
 
 int bdd___bdd_lit_p (BDDPTR f) {return bdd_lit_p (f);}
 
-BDDPTR bdd___bdd_cofactor_pos_ (BDDPTR f) {return bdd_cofactor_pos_ (f);}
+BDDPTR bdd___bdd_cofactor_pos_ (BDDPTR f) {
+  return (BDDPTR) bdd_cofactor_pos_ (f);
+}
 
-BDDPTR bdd___bdd_cofactor_neg_ (BDDPTR f) {return bdd_cofactor_neg_ (f);}
+BDDPTR bdd___bdd_cofactor_neg_ (BDDPTR f) {
+  return (BDDPTR) bdd_cofactor_neg_ (f);
+}
 
 int bdd___bdd_size (BDDPTR f) {return bdd_size (f);}
 
@@ -143,19 +151,20 @@ BDDPTR bdd___bdd_subst_par (BDDPTR *f_vec, BDD_LIST vars, BDDPTR g)
   {return bdd_subst_par (f_vec, vars, g);}
 
 BDDPTR bdd___bdd_subst_par_list (BDD_LIST f_list, BDD_LIST vars, BDDPTR g)
-  {return bdd_subst_par_list (f_list, vars, g);}
+{return (BDDPTR) bdd_subst_par_list (f_list, vars, g);}
 
 void bdd___bdd_free_vec (BDDPTR *f_vec, int size)
   {return bdd_free_vec (f_vec, size);}
 
-const char* bdd___bdd_get_output_string (int idx)
-  {return bdd_get_output_string (idx);}
+const char* bdd___bdd_get_output_string (int idx) {
+  return (char*) bdd_get_output_string (idx);
+}
 
 void bdd___bdd_set_output_string (int idx, const char *str)
-  {return bdd_set_output_string (idx, str);}
+  {bdd_set_output_string (idx, str);}
 
 void bdd___bdd_print_as_sum_of_cubes (FILE *fp, BDDPTR f, int irredundant)
-  {return bdd_print_as_sum_of_cubes (fp, f, irredundant);}
+  {bdd_print_as_sum_of_cubes (fp, f, irredundant);}
 
 BDDPTR bdd___bdd_diff (BDDPTR f, BDD_LIST vars) {return bdd_diff (f, vars);}
 

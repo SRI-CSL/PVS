@@ -178,7 +178,10 @@ BDDPTR make_definition (int id_index, BDDPTR function)
 }
 
 static char *tvalue[] = { "0", "1", "X" };
-FILE *bdd_output_stream = 1; /* stdout; */
+FILE *bdd_output_stream; /* = stdout; 1; */
+
+static void bdd_output_stream_construct (void) __attribute__((constructor));
+static void bdd_output_stream_construct (void) { bdd_output_stream = stdout; }
 
 static void sat_1 (BDDPTR f, BYTE *pi, int negate_result)
 {
