@@ -29,16 +29,16 @@ Obtaining and Installing Common Lisp
 ------------------------------------
 
 PVS currently works with Allegro Common Lisp, which is proprietary ($$$),
-and with CMU Common Lisp, which is open source. PVS roughly twice as fast
-with Allegro, so if you already have it, or have extra money, it is
+and with CMU Common Lisp, which is open source. PVS is roughly twice as fast
+with Allegro, so if you already have Allegro, or have extra money, it is
 preferred. In addition, the Intel Mac is not supported by CMU Lisp. You can
-get it from franz.com. It works best with Allegro 8.0, and probably won't
-work at all for versions before 6.0.
+get Allegro from franz.com. PVS works best with Allegro 8.0, and probably
+won't work at all for versions before 6.0.
 
 CMU Lisp is free. Note that you can build CMU Lisp from source, but it's not
 necessary (and apparently it is not easy). Also note that PVS has only been
 tested with 19c and 19d. Finally, there seems to be a problem with 19d for
-powerpc Macs, in that it gets a hardware error for me. Let me know if you
+powerpc Macs, in that it runs out of heap space for us.  Let us know if you
 find a workaround.
 
 Install as directed by these sites. 
