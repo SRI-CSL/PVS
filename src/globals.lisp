@@ -74,7 +74,7 @@
 
   ;; Not used in PVS sources, but may be useful for patches, strategies, etc.
   ;;(pushnew (intern (format nil "pvs~a" *pvs-version*) :keyword) *features*)
-  (pushnew :pvs3.3 *features*)
+  (pushnew :pvs4.0 *features*)
   )
 
 (defparameter *binfile-version* 22)
