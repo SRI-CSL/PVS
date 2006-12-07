@@ -1,17 +1,17 @@
 @node PVS 3.0 Release Notes
-@centerchap PVS 3.0 Release Notes
+@unnumbered PVS 3.0 Release Notes
 
 The PVS 3.0 release notes contain the features, bug fixes, and
 incompatibilities of PVS version 3.0 over version 2.4.
 
-@ifinfo
+@ifnottex
 @menu
 * Overview:: Overview
 * New Features:: New Features
 * Bug Fixes:: Bug Fixes
 * Incompatibilities:: Incompatibilities
 @end menu
-@end ifinfo
+@end ifnottex
 
 @node    Overview
 @section Overview
@@ -86,7 +86,7 @@ not support mixed cases in strategy files.
 @subsection Theory Interpretations
 
 Theory interpretations are described fully in
-@uref{http://pvs.csl.sri.com/doc/interpretations.html,Theory Interpretations in PVS}
+@url{http:@///pvs@/.csl@/.sri@/.com/doc@//interpretations.html,Theory Interpretations in PVS}
 
 @strong{NOTES:}
 
@@ -518,7 +518,7 @@ us know.
 @subsection ICS Integration
 
 PVS 3.0 now has an alpha test integration of the
-@uref{http://ics.csl.sri.com",ICS decision procedure}.  Use @code{M-x
+@url{http:@///ics@/.csl@/.sri@/.com,ICS decision procedure}.  Use @code{M-x
 set-decision-procedure ics} to try it out.  Note that this is subject
 to change, so don't count on proofs created using ICS to work in
 future releases.  Please let us know of any bugs encountered.
@@ -582,7 +582,7 @@ The following theories were derived from those provided by Bart Jacobs:
 @code{QuotientSubDefinition},@* @code{QuotientExtensionProperties},@*
 @code{QuotientDistributive}, and@* @code{QuotientIteration}.
 @item Partial Functions
-Bart Jacobs also provided definitions for partial functions:
+Bart Jacobs also provided definitions for partial functions:@*
 @code{PartialFunctionDefinitions} and
 @code{PartialFunctionComposition}.
 @end table
@@ -591,11 +591,18 @@ Bart Jacobs also provided definitions for partial functions:
 @subsubsection New Declarations
 
 The following declarations have been added to the prelude:
-@code{relations.equivalence type}, @code{sets.setofsets},
-@code{sets.powerset}, @code{sets.Union}, @code{sets.Intersection},
-@code{sets_lemmas.subset_powerset}, @code{sets_lemmas.empty_powerset},
-@code{sets_lemmas.nonempty_powerset}, @code{real_props.div_cancel4},
-and @code{rational_props.rational_pred_ax2}.
+@itemize @bullet
+@item @code{relations.equivalence type},
+@item @code{sets.setofsets},
+@item @code{sets.powerset},
+@item @code{sets.Union},
+@item @code{sets.Intersection},
+@item @code{sets_lemmas.subset_powerset},
+@item @code{sets_lemmas.empty_powerset},
+@item @code{sets_lemmas.nonempty_powerset},
+@item @code{real_props.div_cancel4}, and
+@item @code{rational_props.rational_pred_ax2}.
+@end itemize
 
 @node Modified Declarations
 @subsubsection Modified Declarations
@@ -652,20 +659,24 @@ may look quite different.  See the Multiple Proofs section for details.
 
 Bart Jacobs kindly provided some additional theories for the bitvector
 library.  These were used as an aid to Java code verification, but are
-generally useful.  The new files are @code{BitvectorUtil},
-@code{BitvectorMultiplication},
-@code{BitvectorMultiplicationWidenNarrow}, @code{DivisionUtil},
-@code{BitvectorOneComplementDivision},
-@code{BitvectorTwoComplementDivision}, and
-@code{BitvectorTwoComplementDivisionWidenNarrow}, and are included in
-the libraries tar file.
+generally useful.  The new files are
+@itemize @bullet
+@item @code{BitvectorUtil},
+@item @code{BitvectorMultiplication},
+@item @code{BitvectorMultiplicationWidenNarrow},
+@item @code{DivisionUtil},
+@item @code{BitvectorOneComplementDivision},
+@item @code{BitvectorTwoComplementDivision}, and
+@item @code{BitvectorTwoComplementDivisionWidenNarrow}.
+@end itemize
+These are included in the libraries tar file.
 
 @node Bug Fixes
 @section Bug Fixes
 
 Although there are still a number of bugs still outstanding, a large
 number of bugs have been fixed in this release.  All those in the
-@uref{http://pvs.csl.sri.com/cgi-bin/pvs/pvs-bug-list/?bugs=open&bugs=analyzed,
+@url{http@/://pvs@/.csl@/.sri@/.com@//cgi-bin/pvs@//pvs-bug-list@//?bugs=open&bugs=analyzed,
 pvs-bugs list} that are marked as analyzed have been fixed, at least
 for the specific specs that caused the bugs.
 

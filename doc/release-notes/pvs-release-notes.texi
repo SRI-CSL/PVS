@@ -23,19 +23,19 @@ Copyright 2002 SRI International
 @page
 @end titlepage
 
-@ifinfo
+@ifnottex
 @node Top
 @top PVS Release Notes
-@end ifinfo
+@end ifnottex
 
 @c @node Introduction
-@centerchap Introduction
+@c @centerchap Introduction
 
 The PVS release notes are given here, for each version, going back to
 version 3.0.
 
 You can always download the latest version of PVS from@*
-@uref{http://pvs.csl.sri.com/download.html}.
+@uref{http://pvs.csl.sri.com/download.shtml}.
 
 Note that the release notes are now written in texinfo, and are thus
 available in Emacs info, HTML, Postscript, and PDF forms.  @code{M-x

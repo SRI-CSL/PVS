@@ -1,5 +1,5 @@
 @node PVS 3.1 Release Notes
-@centerchap PVS 3.1 Release Notes
+@unnumbered PVS 3.1 Release Notes
 
 PVS 3.1 is primarily a bug fix release, there are no new features,
 although the prelude has been augmented.  Some of the changes do

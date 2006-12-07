@@ -1,16 +1,16 @@
 @node PVS 3.2 Release Notes
-@centerchap PVS 3.2 Release Notes
+@unnumbered PVS 3.2 Release Notes
 
 PVS 3.2 contains a number of enhancements and bug fixes.
 
-@ifinfo
+@ifnottex
 @menu
 * 3.2 Installation Notes::
 * 3.2 New Features::
 * 3.2 Bug Fixes::
 * 3.2 Incompatibilities::
 @end menu
-@end ifinfo
+@end ifnottex
 
 @node    3.2 Installation Notes
 @section Installation Notes
@@ -118,7 +118,8 @@ reflect the new syntax:
 @example
   TheoryName := [Id '@'] Id [Actuals] [Mappings] [':->' TheoryName]
   
-  Name := [Id '@'] IdOp [Actuals] [Mappings] [':->' TheoryName] ['.' IdOp]
+  Name := [Id '@'] IdOp [Actuals] [Mappings]
+                [':->' TheoryName] ['.' IdOp]
 @end example
 The left side of @code{:->} is called the @emph{source}, and the
 right side is called the @emph{target}.  Note that in this case the target
@@ -257,7 +258,7 @@ the actual directory associated with this URL, and is where the
 the list is composed of lists of three elements: a specification
 directory, a (possibly relative) URL, and a (possibly relative) HTML
 directory.  In the above example, the base URL is
-@code{http://www.csl.sri.com/~owre/}, which the server associates with
+@code{http:@///www@/.csl@/.sri@/.com@//~owre/}, which the server associates with
 @code{/homes/owre/public_html}.  The next entry says that specs found
 in (a subdirectory of) @code{/homes/owre/pvs-specs} are to have
 relative URLs corresponding to @code{pvs-specs}, and relative

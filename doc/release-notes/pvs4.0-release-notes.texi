@@ -1,39 +1,45 @@
 @node PVS 4.0 Release Notes
-@centerchap PVS 4.0 Release Notes
+@unnumbered PVS 4.0 Release Notes
 
-Release notes for PVS version 4.0. @footnote{These started as the release
-notes for PVS 3.3, but this was changed to a major release when we
-made PVS open source.}  The major difference from earlier versions of
-PVS is that this release is under the GPL license.  In addition, there
-is now a PVS WIKI page at @url{http://pvs-wiki.csl.sri.com}.
+PVS 4.0 is available at @url{http://pvs.csl.sri.com/download.shtml}.
 
-@ifinfo
+Release notes for PVS version 4.0.@footnote{These started as the
+release notes for PVS 3.3, but this was changed to a major release
+when we made PVS open source.}  The major difference from earlier
+versions of PVS is that this release is open source, under the
+@url{http:@///www@/.gnu@/.org@//copyleft/gpl.html,GPL license}.  In addition,
+there is now a @url{http:@///pvs-wiki@/.csl.sri.com, PVS Wiki page}.
+
+@ifnottex
 @menu
 * 4.0 Installation Notes::
 * 4.0 New Features::
 * 4.0 Bug Fixes::
 * 4.0 Incompatibilities::
 @end menu
-@end ifinfo
+@end ifnottex
 
 @node    4.0 Installation Notes
 @section Installation Notes
 
-Generally, installation is the same as usual; but now there are more
-choices.  To start with, the 
+Installation of binaries is the same as before; the only difference is
+that only one file needs to be downloaded.  This leads to slightly
+more overhead when downloading for multiple platforms, but simplifies
+the overall process.  Simply create a directory, untar the downloaded
+file(s) there, and run @code{bin/relocate}.
 
- However, if you have
-received patches from SRI that you have put into your
-@code{~/.pvs.lisp} file, they should be removed.  If you anticipate
+If you have received patches from SRI that you have put into your
+@code{~/.pvs.lisp} file, they should be (re)moved.  If you anticipate
 wanting to try the newer and older versions together, you can do this
-by using @code{#-pvs4.0} in front of the patches.  This is a directive
-to the Lisp reader, and causes the following s-expression to be
-ignored unless it is an earlier version of PVS.
+by using @code{#-pvs4.0} in front of forms in your patches.  This is a
+directive to the Lisp reader, and causes the following s-expression to
+be ignored unless it is an earlier version of PVS.
 
 @node 4.0 New Features
 @section New Features
 
 @menu
+* Open Source::
 * Record and Tuple Type Extensions::
 * Structural Subtypes::
 * Empty and Singleton Record and Tuple Types::
@@ -46,12 +52,22 @@ ignored unless it is an earlier version of PVS.
 * Unary plus::
 @end menu
 
+@node Open Source
+@subsection Open Source
+
+PVS is now open source, under the under the
+@url{http:@///www@/.gnu@/.org@//copyleft/gpl.html,GPL license}.  It
+currently builds with Allegro and CMU Common Lisps, and we are working
+on porting it to SBCL.  Feel free to join in if your favorite Lisp or
+platform is not yet supported.  See
+@url{http:@///pvs-wiki@/.csl.sri.com, the PVS Wiki page} for details.
+
 @node Record and Tuple Type Extensions
 @subsection Record and Tuple Type Extensions
 
 Record and tuple types may now be extended using the @code{WITH}
 keyword.  Thus, one may create colored points and moving points from
-points as follows.
+simple points as follows.
 @example
   point: TYPE = [@kbd{#} x, y: real @kbd{#}]
   colored_point: TYPE = point WITH [# color: Color #]
@@ -78,11 +94,11 @@ that a type is allowed.
 @subsection Structural Subtypes
 
 PVS now has support for structural subtyping for record and tuple
-types.  A record type @code{S} is a structural subtype of @code{R} if
-every field of @code{R} occurs in @code{S}, and similarly, a tuple
-type @code{T} is a structural subtype of a tuple formed from some
-prefix of @code{T}.  Section @ref{Record and Tuple Type Extensions}
- gives examples, as @code{colored_point} is a structural
+types.  A record type @code{S} is a structural subtype of record type
+@code{R} if every field of @code{R} occurs in @code{S}, and similarly,
+a tuple type @code{T} is a structural subtype of a tuple type forming
+a prefix of @code{T}.  Section @ref{Record and Tuple Type
+Extensions} gives examples, as @code{colored_point} is a structural
 subtype of @code{point}, and @code{R5} is a structural subtype of
 @code{R3}.  Structural subtypes are akin to the class hierarchy of
 object-oriented systems, where the fields of a record can be viewed as
@@ -120,14 +136,21 @@ were treated uniformly, then @code{gpoint} could be instantiated with
 the unit disk; but in that case the @code{move} operator would not
 necessarily return a @code{gpoint}.  The TCC could not be generated
 for the @code{move} declaration, but would have to be generated when
-the @code{move} was referenced.  This both complicates the
-typechecking, and makes TCCs and error messages more inscrutable.  If
-you really want to deal with both, simply include a structural subtype
-followed by a (predicate) subtype, for example:
+the @code{move} was referenced.  This both complicates typechecking,
+and makes TCCs and error messages more inscrutable.  If both are
+desired, simply include a structural subtype followed by a predicate
+subtype, for example:
 @example
 genpoints[(IMPORTING points) gpoint: TYPE <: point,
           spoint: TYPE FROM gpoint]: THEORY
 @end example
+Now @code{move} may be applied to @code{gpoint}s, but if applied to a
+@code{spoint} an unprovable TCC will result.
+
+Structural subtypes are a work in progress.  In particular, structural
+subtyping could be extended to function and datatypes.  And to have
+real object-oriented PVS, we must be able to support a form of method
+invocation.
 
 @node Empty and Singleton Record and Tuple Types
 @subsection Empty and Singleton Record and Tuple Types
@@ -146,8 +169,10 @@ it is taken to be an operator (the box operator).
 @subsection PVSio
 
 C@'esar Mu@~noz has kindly provided lisp code for PVSio, which has
-been incorporated into PVS.  See the PVSio web page
-@url{http://research.nianet.org/~munoz/PVSio/} for more information.
+been fully incorporated into PVS.  Thus for PVS 4.0 there is no need
+to download the package.  See the @code{doc/PVSio-2.d.pdf} manual for
+details, and the PVSio web page
+@url{http://research.nianet.org/~munoz/PVSio/} for updates.
 
 @node Random Testing
 @subsection Random Testing
@@ -165,20 +190,27 @@ Unlike model checking, it is inherently incomplete; on the other hand,
 there is no requirement for all types to be finite, only that all involved
 types and constants have interpretations.
 
-In the ground evaluator, we added the @code{test} command:@footnote{This
-is not a prover command; the optional arguments are as in Lisp, i.e.,
-positional, not keyword arguments.}
-@example
-  (test expr &optional (count 10) (size 100) (dtsize 10)
-               all? verbose? instance)
-@end example
-
-For the prover, there is a similar rule:
+For the prover, random testing is invoked with the @code{random-test} rule:
 @example
   (random-test &optional (fnum *) (count 10) (size 100)
                (dtsize 10) all? verbose? instance
                (subtype-gen-bound 1000))
 @end example
+
+In the ground evaluator, we added the @code{test} command:
+@example
+  (test expr &optional (count 10) (size 100) (dtsize 10)
+               all? verbose? instance)
+@end example
+Note one important difference: the optional arguments in the
+@code{test} command are @strong{not} keywords.  To set the @code{all?}
+flag you would need to invoke @code{test} as
+@example
+  (test "foo" 10 100 10 t)
+@end example
+In general, random testing is most easily used in the prover.  Note
+that you can get an arbitrary expression into the sequent by using the
+@code{case} command.
 
 The @code{count} argument controls how many random tests to try.
 The @code{size} and @code{dtsize} control the possible
@@ -239,18 +271,23 @@ Datatypes are controlled by @code{dtsize}.  For example, with
 generate lists of length between 0 and 10, with integer values between
 -100 and 100.
 
+More details may be found in the paper
+@url{http://fm.csl.sri.com/AFM06/papers/5-Owre.pdf,Random Testing in
+PVS}, which was presented at @url{http://fm.csl.sri.com/AFM06/,AFM
+2006}.
+
 @node Yices
 @subsection Yices
 
 New prover commands are available that invoke the Yices SMT solver.
-See @url{http://yices.csl.sri.com} for details on Yices and its
+See @url{http:@///yices@/.csl@/.sri@/.com} for details on Yices and its
 capabilities.  You must download Yices from there and include it in
 your @code{PATH}, as it is not included with PVS.  You will get a
 warning on starting PVS if Yices is not found in your path, but this
-can be ignored if you will not be using Yices.
+can safely be ignored if you will not be using Yices.
 
-The @code{yices} rule is an endgame solver; if it does not prove the
-(given formulas of) the sequent, it acts as a @code{skip}.  In
+The @code{yices} rule is an endgame solver; if it does not prove (the
+specified formulas of) the sequent, it acts as a @code{skip}.  In
 addition to the primitive @code{yices} rule, the strategies
 @code{yices-with-rewrites} and @code{ygrind} have been added.  Use
 @code{help} (e.g., @code{(help ygrind)}) for details.
@@ -278,7 +315,8 @@ polymorphically in the prelude):
 This yields the TCC
 @example
 append_nat: OBLIGATION
-  FORALL (a, b: list[nat]): every[int](@{i: int | i >= 0@})(append_int(a, b));
+  FORALL (a, b: list[nat]):
+    every[int](@{i: int | i >= 0@})(append_int(a, b));
 @end example
 Which is difficult to prove automatically (or even manually).
 
@@ -296,7 +334,8 @@ With these changes, the TCC becomes
 @example
 append_nat_TCC1: OBLIGATION
   FORALL (a, b: list[nat], x: int, y: list[int]):
-    every(@{i: int | i >= 0@})(append_int(a, b)) AND a = cons(x, y) IMPLIES
+    every(@{i: int | i >= 0@})(append_int(a, b)) AND a = cons(x, y)
+      IMPLIES
      every[int](@{i: int | i >= 0@})(cons[int](x, append_int(y, b)));
 @end example
 and this is easily discharged automatically (e.g., with @code{grind}).
@@ -309,7 +348,8 @@ are only for closure conditions (i.e., arguments must be provided).
 If a non-recursive judgement is given where a recursive judgement
 would apply, then a warning is output.  In general, recursive
 judgements are preferred.  In fact, we considered making it the
-default behavior, but found that it was not backward compatible.
+default behavior for judgements on recursive functions, but this would
+make existing proofs fail.
 
 
 @c @node Quantified Type Expressions
