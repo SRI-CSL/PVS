@@ -103,7 +103,8 @@ tar ${TARFLAGS} -f pvs-${version}-source.tgz --exclude pvsbin \
   src/WS1S/*.c src/WS1S/mona-1.4 \
   src/WS1S/ix86-Linux/Makefile src/WS1S/sun4-SunOS5/Makefile \
   src/WS1S/ix86-MacOSX/Makefile src/WS1S/powerpc-MacOSX/Makefile \
-  doc/pvs.bib doc/makebnf.sty doc/pvstex.tex doc/release-notes.html \
+  doc/pvs.bib doc/makebnf.sty doc/pvstex.tex doc/release-notes \
+  doc/PVSio-2.d.pdf \
   doc/language/Makefile.in doc/language/*.tex doc/language/*.pvs \
   doc/language/pvs-doc.el.in \
   doc/prover/Makefile.in doc/prover/*.tex \
@@ -133,7 +134,7 @@ pvssystemfiles="\
   lib/pvs.grammar lib/pvs.bnf wish/pvs-support.tcl \
   lib/pvs-style.css \
   doc/release-notes/pvs-release-notes.info \
-  doc/release-notes/pvs-release-notes.html \
+  doc/release-notes/pvs-release-notes \
   doc/release-notes/pvs-release-notes.ps \
   doc/release-notes/pvs-release-notes.pdf \
   wish/gray.xbm wish/sequent.xbm \
