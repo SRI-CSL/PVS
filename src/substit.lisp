@@ -362,7 +362,7 @@
 		 (pairlis (bindings op) (exprs arg))))))
 
 (defmethod make!-reduced-application* ((op lambda-expr) arg)
-  (add-substit-hash
+  (new-substit-hash
    (if (singleton? (bindings op))
        (substit* (expression op)
 		 (acons (car (bindings op)) arg nil))
