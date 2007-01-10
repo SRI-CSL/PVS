@@ -503,27 +503,28 @@ pvs-strategies files.")
 	(setq *pvs-context-changed* t))))
 
 (defun create-context-entry (filename)
-  (let* ((theories (gethash filename *pvs-files*))
-	 (file-entry (get-context-file-entry filename))
-	 (prf-file (make-prf-pathname filename))
-	 (proofs-write-date (file-write-time prf-file))
-	 (fdeps (file-dependencies filename))
-	 (md5sum (md5-file (make-specpath filename))))
-    (assert (cdr theories))
-    (assert (plusp md5sum))
-    (make-context-entry
-     :file filename
-     :write-date (car theories)
-     :object-date (when file-entry (ce-object-date file-entry))
-     :extension nil
-     :proofs-date proofs-write-date
-     :dependencies fdeps
-     :theories (let ((tes (mapcar #'(lambda (th)
-				      (create-theory-entry th file-entry))
-			    (cdr theories))))
-		 (assert tes)
-		 tes)
-     :md5sum md5sum)))
+  (when (file-exists-p (make-specpath filename))
+    (let* ((theories (gethash filename *pvs-files*))
+	   (file-entry (get-context-file-entry filename))
+	   (prf-file (make-prf-pathname filename))
+	   (proofs-write-date (file-write-time prf-file))
+	   (fdeps (file-dependencies filename))
+	   (md5sum (md5-file (make-specpath filename))))
+      (assert (cdr theories))
+      (assert (plusp md5sum))
+      (make-context-entry
+       :file filename
+       :write-date (car theories)
+       :object-date (when file-entry (ce-object-date file-entry))
+       :extension nil
+       :proofs-date proofs-write-date
+       :dependencies fdeps
+       :theories (let ((tes (mapcar #'(lambda (th)
+					(create-theory-entry th file-entry))
+			      (cdr theories))))
+		   (assert tes)
+		   tes)
+       :md5sum md5sum))))
 
 #+allegro
 (defun md5-file (file)
