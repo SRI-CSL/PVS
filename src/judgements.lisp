@@ -628,8 +628,8 @@
 	    ;; components of the tupletype.
 	    (let* ((jtypes (judgement-types+ (car argslist)))
 		   (ajtypes-list (collect-component-arg-judgement-types jtypes)))
-	      (assert (and (cdr bindings) (null (cdr args))))
-	      (assert (length= ajtypes-list bindings))
+	      (assert (or (null bindings)
+			  (length= ajtypes-list bindings)))
 	      (mapc #'(lambda (bd ajtypes)
 			(let* ((btype (type bd))
 			       (ntypes (remove-if #'(lambda (aty)
@@ -647,7 +647,7 @@
 						  (cadr entry))))))))
 		    bindings ajtypes-list)))
 	(set-binding-judgements-from-arg-judgements*
-	 (expression op) (cdr argslist) jbvars))))
+	 op (cdr argslist) jbvars))))
 
 (defun collect-component-arg-judgement-types (jtypes &optional ajtypes-list)
   (if (null jtypes)
