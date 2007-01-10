@@ -323,8 +323,11 @@
 
 (defun user-pvs-lisp-file ()
   (unless *started-with-minus-q*
-    (let ((home-lisp-file (make-pathname :defaults "~/" :name ".pvs" :type "lisp"))
-	  (home-fasl-file (make-pathname :defaults "~/" :name ".pvs" :type *pvs-binary-type*)))
+    (let* ((homedir (truename (user-homedir-pathname)))
+	   (home-lisp-file (make-pathname :defaults homedir
+					  :name ".pvs" :type "lisp"))
+	   (home-fasl-file (make-pathname :defaults homedir
+					  :name ".pvs" :type *pvs-binary-type*)))
       (when (or (file-exists-p home-lisp-file)
 		(file-exists-p home-fasl-file))
 	(list home-lisp-file)))))
