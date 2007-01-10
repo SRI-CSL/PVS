@@ -400,8 +400,7 @@
 (defmethod judgement-types ((ex expr))
   (multiple-value-bind (jtypes jdecls)
       (judgement-types-expr ex)
-    (when *in-checker*
-      (assert *ps*)
+    (when (and *in-checker* *ps*)
       (mapcar #'(lambda (jd)
 		  (pushnew jd (dependent-decls *ps*)))
 	(jdecls-list jdecls)))
