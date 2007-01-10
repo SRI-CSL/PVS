@@ -1551,9 +1551,13 @@
       nil
       (let* ((update-args (arguments (car updates)))
 	     ;;(update-expr (expression (car updates)))
-	     (first (check-update-args (car update-args)
-				      args
-				      in-beta-reduce?)))
+	     (first (check-update-args
+		     (if (and (cdr (car update-args))
+			      (null (cdr args)))
+			 (list (make!-tuple-expr* (car update-args)))
+			 (car update-args))
+		     args
+		     in-beta-reduce?)))
 	(if (eq first 'noidea)
 	    'noidea
 	    (if (false-p first)
