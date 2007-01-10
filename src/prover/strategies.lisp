@@ -4083,7 +4083,11 @@ APPLY-EXTENSIONALITY.  See reduce for an explanation of the arguments."
   (let ((sforms (select-seq (s-forms (current-goal *ps*)) fnums))
         (cmd (make-all-typepreds-cmd sforms)))
     cmd)
-  ""
+  "Provides useful typepreds for all subexpressions of specified FNUMS,
+meaning those that are not already dealt with by the ground prover.  Thus a
+typepred is deemed useful if it has an expandable definition or is
+propositional, since these will have been treated as uninterpreted in the
+ground prover until they are exposed."
   "Adding type information on subexpressions")
 
 (defun make-all-typepreds-cmd (sforms)
