@@ -31,80 +31,82 @@
 
 
 (defun replace-rule-fun (sformnum &optional sformnums dir hide? 
-				  actuals? dont-delete?) 
+				  actuals? dont-delete?)
   #'(lambda (ps)(replace-step sformnum sformnums dir hide?
 			      actuals?  dont-delete? ps)))
 
 (defun replace-step (source-sformnum target-sformnums direction hide?
-			      actuals? dont-delete? ps)  
-  (let* ((goalsequent (current-goal ps))
-	 (sformnum (find-sform (s-forms goalsequent) source-sformnum))
-	 (selected-s-forms (select-seq (s-forms goalsequent)
-				       (list sformnum)))
-	 (sformnums (find-all-sformnums (s-forms (current-goal ps)) target-sformnums #'always-true))
-	 ;;(remaining-s-forms (delete-seq (s-forms goalsequent)
-	 ;;(list sformnum)))
-	 (*replace-in-actuals?* actuals?)
-	 (*modsubst* t))
-    (cond ((null selected-s-forms)
-	   (if (memq sformnum '(- + *))
-	       (error-format-if "~%Can only replace single formulae.  Look at (help replace*)~%")
-	       (error-format-if "~%No sequent formula corresponding to ~a,~%" source-sformnum))
-	   (values 'X nil nil))
-	  ((not sformnums)
-	   (error-format-if "~%No sequent formula corresponding to target ~a~%" target-sformnums)
-	   (values 'X nil nil))
-	  (t (let* ((sform (car selected-s-forms))
-		    (fmla (formula sform))
-		    ;;(freevars-fmla (freevars fmla))
-		    (lhs
-		     (if  (negation? fmla)
-			  (if (or (equation? (args1 fmla))
-				  (iff-or-boolean-equation? (args1 fmla)))
-			      (if (eq direction 'rl)
-				  (args2 (args1 fmla))
-				  (args1 (args1 fmla)))
-			      (args1 fmla))
-			  fmla))
-		    (rhs
-		     (if  (negation? fmla)
-			  (if (or (equation? (args1 fmla))
-				  (iff-or-boolean-equation? (args1 fmla)))
-			      (if (eq direction 'rl)
-				  (args1 (args1 fmla))
-				  (args2 (args1 fmla)))
-			      *true*)
-			  *false*)))
-	       ;;	     (format-if "~%Replacing using formula ~a," source-sformnum)
-	       (let* ((*replace-cache* (make-hash-table :test #'eq))
-		      (new-s-forms
-		       (replace-loop lhs rhs sformnum
-				     (if (null sformnums)
-					 '* sformnums)
-				     (s-forms goalsequent)
-				     1 -1 dont-delete?)))
-		 (if (every #'eql new-s-forms (s-forms goalsequent))
-		     (values 'X nil nil)
-		     (let* ((new-s-forms
-			     (if hide?
-				 (remove sform new-s-forms)
-				 new-s-forms))
-			    (hidden-s-forms
-			     (hidden-s-forms (current-goal ps)))
-			    (hidden-s-forms 
-			     (if hide?
-				 (pushnew sform
-					  hidden-s-forms
-					  :test
-					  #'(lambda (x y)
-					      (tc-eq (formula x)(formula y))))
-				 hidden-s-forms)))
-		       (values '?
-			       (list
-				(lcopy goalsequent
-				  's-forms new-s-forms
-				  'hidden-s-forms hidden-s-forms
-				  )))))))))))
+				     actuals? dont-delete? ps)
+  (if (and (symbolp direction)
+	   (member direction '(rl lr nil) :test #'string-equal))
+      (let* ((goalsequent (current-goal ps))
+	     (sformnum (find-sform (s-forms goalsequent) source-sformnum))
+	     (selected-s-forms (select-seq (s-forms goalsequent)
+					   (list sformnum)))
+	     (sformnums (find-all-sformnums (s-forms (current-goal ps))
+					    target-sformnums #'always-true))
+	     ;;(remaining-s-forms (delete-seq (s-forms goalsequent)
+	     ;;(list sformnum)))
+	     (*replace-in-actuals?* actuals?)
+	     (*modsubst* t))
+	(cond ((null selected-s-forms)
+	       (if (memq sformnum '(- + *))
+		   (error-format-if "~%Can only replace single formulae.  Look at (help replace*)~%")
+		   (error-format-if "~%No sequent formula corresponding to ~a,~%" source-sformnum))
+	       (values 'X nil nil))
+	      ((not sformnums)
+	       (error-format-if "~%No sequent formula corresponding to target ~a~%" target-sformnums)
+	       (values 'X nil nil))
+	      (t (let* ((sform (car selected-s-forms))
+			(fmla (formula sform))
+			;;(freevars-fmla (freevars fmla))
+			(lhs
+			 (if  (negation? fmla)
+			      (if (or (equation? (args1 fmla))
+				      (iff-or-boolean-equation? (args1 fmla)))
+				  (if (string-equal direction 'rl)
+				      (args2 (args1 fmla))
+				      (args1 (args1 fmla)))
+				  (args1 fmla))
+			      fmla))
+			(rhs
+			 (if  (negation? fmla)
+			      (if (or (equation? (args1 fmla))
+				      (iff-or-boolean-equation? (args1 fmla)))
+				  (if (string-equal direction 'rl)
+				      (args1 (args1 fmla))
+				      (args2 (args1 fmla)))
+				  *true*)
+			      *false*)))
+		   ;; (format-if "~%Replacing using formula ~a," source-sformnum)
+		   (let* ((*replace-cache* (make-hash-table :test #'eq))
+			  (new-s-forms
+			   (replace-loop lhs rhs sformnum
+					 (if (null sformnums)
+					     '* sformnums)
+					 (s-forms goalsequent)
+					 1 -1 dont-delete?)))
+		     (if (every #'eql new-s-forms (s-forms goalsequent))
+			 (values 'X nil nil)
+			 (let* ((new-s-forms
+				 (if hide?
+				     (remove sform new-s-forms)
+				     new-s-forms))
+				(hidden-s-forms
+				 (hidden-s-forms (current-goal ps)))
+				(hidden-s-forms 
+				 (if hide?
+				     (pushnew sform
+					      hidden-s-forms
+					      :test #'tc-eq :key #'formula)
+				     hidden-s-forms)))
+			   (values '?
+				   (list
+				    (lcopy goalsequent
+				      's-forms new-s-forms
+				      'hidden-s-forms hidden-s-forms
+				      ))))))))))
+      (error-format-if "~%DIR must be 'rl', 'lr', or 'nil'~%")))
 
 ;(defvar *no-match-in-replace* nil)
 ;(defun match-eq (lhs rhs)
