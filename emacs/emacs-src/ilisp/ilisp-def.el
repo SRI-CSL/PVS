@@ -312,7 +312,7 @@ use replace-match to fix the filenames.")
 
 (defvar ilisp-modes '(ilisp-mode) "List of all inferior ilisp modes.")
 
-(defvar lisp-source-modes '(lisp-mode scheme-mode)
+(defvar lisp-source-modes '(lisp-mode scheme-mode tags-table-mode)
   "Used to determine if a buffer contains Lisp source code.
 If it's loaded into a buffer that is in one of these major modes, it's
 considered a lisp source file by find-file-lisp, load-file-lisp and
