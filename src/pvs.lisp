@@ -1826,6 +1826,9 @@
     (and theory
 	 (typechecked? theory))))
 
+(defmethod typechecked? ((imp importing))
+  (saved-context imp))
+
 (defmethod typechecked? (theoryref)
   (let ((theory (get-theory theoryref)))
     (and theory
