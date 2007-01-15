@@ -604,11 +604,21 @@ install:
 faslexts = fasl,rfasl,hfasl,lfasl,mfasl,nfasl,sbin,obin,rbin,mbin,x86f,ppcf,sparcf,x8664s,x86s,ppcs,sparcs,clfasl,wfasl,err
 
 platforms = ix86-Linux,ix86-MacOSX,powerpc-MacOSX,powerpc-MacOSX,sun4-SunOS5
+# HT: Need to put a comma in a variable, because a literal 
+# comma cannot appear in a makefile function argument.
+comma:= ,
 
 clean : 
 	rm -f *.{$(faslexts)} */*.{$(faslexts)} */*/*.{$(faslexts)} \
-              */*/*/*.{$(faslexts)} */*/*/*/*.{$(faslexts)} \
-              */{$(platforms)}/*.o */*/{$(platforms)}/*.o
+              */*/*/*.{$(faslexts)} */*/*/*/*.{$(faslexts)}
+	rm -rf src/WS1S/mona
+	$(MAKE) -C lib clean
+	for p in $(subst $(comma), ,$(platforms)) ; do \
+		rm -rf bin/$$p; \
+		$(MAKE) -C src/utils/$$p clean; \
+		$(MAKE) -C src/WS1S/$$p clean; \
+		$(MAKE) -C BDD/$$p clean; \
+	done
 
 distclean :
 	rm -f *.{$(faslexts)} */*.{$(faslexts)} */*/*.{$(faslexts)} \
