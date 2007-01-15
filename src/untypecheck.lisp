@@ -296,7 +296,8 @@
 (defmethod untypecheck-theory ((decl formal-theory-decl))
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (theory-name decl))
-  (setf (saved-context decl) nil))
+  (setf (saved-context decl) nil)
+  (setf (generated-theory decl) nil))
 
 (defmethod untypecheck-theory ((decl lib-decl))
   (setf (lib-ref decl) nil))
@@ -304,7 +305,8 @@
 (defmethod untypecheck-theory ((decl mod-decl))
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (actuals (modname decl)))
-  (setf (saved-context decl) nil))
+  (setf (saved-context decl) nil)
+  (setf (generated-theory decl) nil))
 
 (defmethod untypecheck-theory ((decl theory-abbreviation-decl))
   (when (next-method-p) (call-next-method))
