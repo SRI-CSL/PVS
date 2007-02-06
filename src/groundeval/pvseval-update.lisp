@@ -1723,14 +1723,7 @@
   (loop for dec in (theory theory)
 	when (and (const-decl? dec)
 		  (eval-info dec))
-	do
-	(progn (my-unintern (in-name dec))
-	       (my-unintern (in-name-m dec))
-	       (my-unintern (in-name-d dec))
-	       (my-unintern (ex-name dec))
-	       (my-unintern (ex-name-m dec))
-	       (my-unintern (ex-name-d dec))
-	       (setf (eval-info dec) nil))))
+	do (remove-eval-info dec)))
 
 (defmethod clear-theory (theory)
   (let ((module (get-theory theory)))
