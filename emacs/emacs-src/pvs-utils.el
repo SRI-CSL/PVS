@@ -555,7 +555,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 		  pdir)))
     (if (and ext (member ext *pvs-file-extensions*))
 	(let ((filename (format "%s%s.%s" dir name ext)))
-	  (find-file-noselect filename))
+	  (find-file-noselect filename noninteractive))
 	(let ((files nil))
 	  (dolist (pext *pvs-file-extensions*)
 	    (let ((filename (if (and ext (not (equal ext "")))
@@ -566,7 +566,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	  (cond ((cdr files)
 		 (error "%s is ambiguous: one of %s" name files))
 		((car files)
-		 (find-file-noselect (car files))))))))
+		 (find-file-noselect (car files) noninteractive)))))))
 
 (defun pvs-file-name (filename &optional ext)
   (format "%s%s.%s" *pvs-current-directory* filename
