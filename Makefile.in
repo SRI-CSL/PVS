@@ -445,7 +445,11 @@ runtime : $(allegro-rt) $(cmulisp-rt)
 
 parser : pvs-parser-out
 
-etags $(PVSPATH)TAGS : $(lisp-files) $(allegrolisp) $(cmulisp) $(pvs-emacs-src)
+prelude-files-and-regions : $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el
+
+etags : $(PVSPATH)TAGS
+
+$(PVSPATH)TAGS : $(lisp-files) $(allegrolisp) $(cmulisp) $(pvs-emacs-src)
 	$(ETAGS) $(lisp-files) $(allegrolisp) $(cmulisp) $(pvs-emacs-src)
 
 fileutils = \
