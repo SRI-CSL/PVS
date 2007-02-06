@@ -333,8 +333,9 @@
   ;;(setf (adt-kind decl) nil)
   )
 
-; in-name etc are macros, defined in eval-macros.lisp
-(defun remove-eval-info (decl)
+;;; in-name etc are macros, defined in eval-macros.lisp
+;;; only recognizer-decls should unintern - all others should undef
+(defmethod remove-eval-info ((decl adt-recognizer-decl))
   (eval-unintern (in-name   decl))
   (eval-unintern (in-name-m decl))
   (eval-unintern (in-name-d decl))
@@ -343,9 +344,22 @@
   (eval-unintern (ex-name-d decl))
   (setf (eval-info decl) nil))
 
+(defmethod remove-eval-info ((decl const-decl))
+  (eval-undef (in-name   decl))
+  (eval-undef (in-name-m decl))
+  (eval-undef (in-name-d decl))
+  (eval-undef (ex-name   decl))
+  (eval-undef (ex-name-m decl))
+  (eval-undef (ex-name-d decl))
+  (setf (eval-info decl) nil))
+
 (defun eval-unintern (name)
   (when (and name (symbolp name))
     (unintern name)))
+
+(defun eval-undef (name)
+  (when (and name (fboundp name))
+    (fmakunbound name)))
    
 (defmethod untypecheck-theory ((decl def-decl))
   (when (next-method-p) (call-next-method))
