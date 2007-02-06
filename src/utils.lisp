@@ -307,11 +307,10 @@
 			  :if-exists :append)))
 #+(or cmu sbcl)
 (defun chmod (prot file)
-  (let ((mode (cond ((string= prot "a+w") #o666)
-		    ((string= prot "a-w") #o444)
-		    ((string= prot "g+w") #o664)
-		    (t (error "Protection ~a not known" prot)))))
-    (unix:unix-chmod (namestring file) mode)))
+  (extensions:run-program
+   "chmod"
+   (list "o-w" "/homes/owre/foo")
+   :output nil :error nil :wait nil))
 
 #+gcl
 (defun chmod (prot file)
