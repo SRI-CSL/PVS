@@ -403,7 +403,7 @@
 	 (lib (directory-namestring filestr))
 	 (filename (file-namestring filestr))
 	 (libpath (unless (string= lib "./") (libref-to-pathname lib)))
-	 (*default-pathname-defaults* (or libpath
+	 (*default-pathname-defaults* (or (pathname libpath)
 					  *default-pathname-defaults*))
 	 (file (namestring
 		(merge-pathnames filename *default-pathname-defaults*))))
@@ -415,7 +415,7 @@
 	     (unwind-protect
 		 (progn #+allegro (excl:set-case-mode :case-insensitive-lower)
 			(multiple-value-bind (ignore error)
-			    (ignore-errors (load filename))
+			    (ignore-errors (load file))
 			  (declare (ignore ignore))
 			  (cond (error
 				 (pvs-message "Error loading ~a:~%  ~a"
@@ -493,8 +493,7 @@
 		   (pvs-message "Error loading prelude library context ~a~
                                      ~%  no pvs files loaded"
 		     lib-path)))
-	      (t (pvs-message lib-path
-		   "~a.pvscontext is empty~%  no PVS files loaded"
+	      (t (pvs-message "~a.pvscontext is empty~%  no PVS files loaded"
 		   lib-path)))))
     (add-to-prelude-libraries lib-ref)
     (when (and loaded-files
