@@ -101,7 +101,10 @@
   nil)
 
 (defun char-type? (type)
-  (eq (id (module-instance (resolution (find-supertype type)))) '|character_adt|))
+  (let ((stype (find-supertype type)))
+    (and (type-name? stype)
+	 (eq (id (module-instance (resolution stype)))
+	     '|character_adt|))))
 
 (defun char-list-type? (type)
   (and (list-type? type)
