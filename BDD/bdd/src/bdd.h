@@ -67,7 +67,7 @@
 /* Maximum ref count value; when reached, node gets frozen. */
 #define BDD_MAXREFCOUNT		(((unsigned int) 1 << BDD_NR_RC_BITS) - 1)
 /* BDD_TERMID is reserved for terminal nodes. */
-#define BDD_TERMID		(((unsigned int) 1 << BDD_NR_ID_BITS) - 1)
+#define BDD_TERMID	  ((int)(((unsigned int) 1 << BDD_NR_ID_BITS) - 1))
 /* BDD_MAXVARID is maximum id number for a user variable. */
 #define BDD_MAXVARID		(BDD_TERMID-1)
 /* BDD_MAXVARS is the maximum number of user variables. */
@@ -311,6 +311,61 @@
 	  : BDD_ELSE (F)))
 
 /* ------------------------------------------------------------------------ */
+/* LOCAL TYPE DEFINITIONS FOR BDD_FACTOR.C                                  */
+/* ------------------------------------------------------------------------ */
+
+/* Nr. bits allocated for inedge counter per BDD node.
+   Counter saturates at MAXINEDGECOUNT value.
+*/
+#define NR_INEDGE_COUNT_BITS     5
+
+/* Nr. bits allocated for left/right sub sizes per node.
+   Counter saturates at MAXFACTORSIZE value.
+*/
+#define NR_SIZE_BITS             ((32-3-NR_INEDGE_COUNT_BITS) >> 1)
+
+/* Nr. bits allocated for sub expression id. */
+#define NR_INDEX_BITS            (32-3)
+
+/* These struct precisely overlay the 32-bit AUX1 field in a BDD node. */
+typedef struct {
+  unsigned int subexpr_inv   :  1;
+  unsigned int root_flag     :  1;
+  unsigned int subexpr_flag  :  1;
+  unsigned int inedge_cnt    :  NR_INEDGE_COUNT_BITS;
+  unsigned int pos_size      :  NR_SIZE_BITS;
+  unsigned int neg_size      :  NR_SIZE_BITS;
+} factor1_aux;
+
+typedef struct {
+  unsigned int subexpr_inv   :  1;
+  unsigned int root_flag     :  1;
+  unsigned int subexpr_flag  :  1;
+  unsigned int subexpr_index :  NR_INDEX_BITS;
+} factor2_aux;
+
+/* ------------------------------------------------------------------------ */
+/* LOCAL TYPE DEFINITIONS FOR BDD_FNS.C                                     */
+/* ------------------------------------------------------------------------ */
+
+/* Struct that overlays AUX1 and AUX2 fields in BDD node.
+   Used to record shortest path information:
+   AUX1 records info about shortest path to a BDD_0 node;
+   AUX2 records info about shortest path to a BDD_1 node.
+   follow_then = 1 means must follow then link to get there,
+   else must follow the else link.
+   In case of ties the then link is preferred.
+   length is length of shortest path counted in number of non-constant
+   BDD nodes along it (>= 0), or BDD_MAXVARS + 1 when no shortest path exists.
+*/
+typedef struct {
+  unsigned int follow_then0 :  1;
+  unsigned int length0      : 31;
+  unsigned int follow_then1 :  1;
+  unsigned int length1      : 31;
+} path_rec;
+
+/* ------------------------------------------------------------------------ */
 /* TYPE DEFINITIONS                                                         */
 /* ------------------------------------------------------------------------ */
 
@@ -340,6 +395,8 @@ typedef union {
   char *str;
   void *ptr;
   float flt;
+  factor1_aux factor1;
+  factor2_aux factor2;
 } bdd_aux_field;
 
 typedef union {
@@ -347,6 +404,7 @@ typedef union {
     bdd_aux_field aux1;
     bdd_aux_field aux2;
   } aux;
+  path_rec path;
 #ifdef BDD_LIGHT
   double d;
 #else

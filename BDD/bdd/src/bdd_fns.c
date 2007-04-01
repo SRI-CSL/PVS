@@ -587,7 +587,7 @@ Double bdd_count_X_terms (BDDPTR f)
 {
   Double count;
 
-  if (BDD_VOID_P (f) || BDD_TERM_P (f) && !BDD_X_P (f))
+  if (BDD_VOID_P (f) || (BDD_TERM_P (f) && !BDD_X_P (f)))
     return Double_0;
 
   global_N = bdd_nr_vars;
@@ -1407,9 +1407,11 @@ BDDPTR bdd_subst_par_list (BDD_LIST f_list, BDD_LIST vars, BDDPTR g)
     return bdd_assign (g);
 
   nr_vars = BDD_LIST_SIZE (vars);
-  if (nr_vars != BDD_LIST_SIZE (f_list)) 
+  if (nr_vars != BDD_LIST_SIZE (f_list)) {
     fprintf (stderr,
 	     "ERROR bdd_subst_par_list arguments are not the same size.\n");
+    return BDD_VOID;
+  }
   else {
     substs  = MALLOC_ARRAY (nr_vars+1, subst_rec);
     nr_substs = 0;
@@ -2109,28 +2111,11 @@ BDDPTR bdd_diff (BDDPTR f, BDD_LIST vars)
   return R;
 }
 
-/* Struct that overlays AUX1 and AUX2 fields in BDD node.
-   Used to record shortest path information:
-   AUX1 records info about shortest path to a BDD_0 node;
-   AUX2 records info about shortest path to a BDD_1 node.
-   follow_then = 1 means must follow then link to get there,
-   else must follow the else link.
-   In case of ties the then link is preferred.
-   length is length of shortest path counted in number of non-constant
-   BDD nodes along it (>= 0), or BDD_MAXVARS + 1 when no shortest path exists.
-*/
-typedef struct {
-  unsigned int follow_then0 :  1;
-  unsigned int length0      : 31;
-  unsigned int follow_then1 :  1;
-  unsigned int length1      : 31;
-} path_rec;
-
-#define PATH_REC_CAST(v)	((path_rec *) &BDD_AUX (v))
-#define FT0(v)			(PATH_REC_CAST(v)->follow_then0)
-#define FT1(v)			(PATH_REC_CAST(v)->follow_then1)
-#define LEN0(v)			(PATH_REC_CAST(v)->length0)
-#define LEN1(v)			(PATH_REC_CAST(v)->length1)
+#define BDD_AUX_PATH(v)         (BDD_AUX(v).path)
+#define FT0(v)			BDD_AUX_PATH(v).follow_then0
+#define FT1(v)			BDD_AUX_PATH(v).follow_then1
+#define LEN0(v)			BDD_AUX_PATH(v).length0
+#define LEN1(v)			BDD_AUX_PATH(v).length1
 #define INF			(BDD_MAXVARS + 1)
 
 /* Determine shortest path to BDD_0 and BDD_1 nodes for each node.
@@ -2551,7 +2536,7 @@ typedef struct sop_cache_entry SOP_CACHE_ENTRY;
 static struct sop_cache_entry {
   BDDPTR f;
   BDD_LIST R;
-} sop_cache[SOP_CACHE_SIZE] = {0};
+} sop_cache[SOP_CACHE_SIZE];
 
 static int nr_hits = 0;
 static int nr_lookups = 0;

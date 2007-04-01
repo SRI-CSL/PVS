@@ -198,11 +198,11 @@
 
 #define GROUP_ORDERABLE(g)	(unique_table.groups[g].orderable)
 
-#define GROUP_FIRST_RANK(g)	((g) ? GROUP_LAST_RANK((g)-1)+1 : 0)
+#define GROUP_FIRST_RANK(g)	((g) ? GROUP_LAST_RANK((g)-1U)+1U : 0U)
 
 #define GROUP_LAST_RANK(g)	(unique_table.groups[g].last_rank)
 
-#define GROUP_NR_RANKS(g)	(GROUP_LAST_RANK(g)-GROUP_FIRST_RANK(g)+1)
+#define GROUP_NR_RANKS(g)	(GROUP_LAST_RANK(g)-GROUP_FIRST_RANK(g)+1U)
 
 /* bdd_apply uses computed_table but entry->F will be some function
    pointer of type BDDPTR (*f)(BDDPTR,BDDPTR).
@@ -307,7 +307,7 @@ static void (*bdd_gc_hook) (void) = NULL;
 
 /* Variables used in managing list of free BDD nodes: */
 static BDDPTR bdd_free_list = BDD_VOID;
-static const struct bdd BDD_NULL = {0};
+static const struct bdd BDD_NULL;
 static BDDPTR bdd_temp;
 
 static int bdd_sizeof;	/* see bdd_init () */
@@ -319,7 +319,7 @@ static BLKPTR block_free_list = NULL;
 /* Initial aux field value: */
 static const bdd_aux_field NULL_AUX_FIELD = {0};
 
-UNIQUE_TABLE unique_table = {0};
+UNIQUE_TABLE unique_table;
 
 static COMPUTED_TABLE_PTR computed_table = NULL;
 
@@ -590,7 +590,7 @@ int bdd_check_valid (BDDPTR f, char *text)
 {
   int reason;
 
-  if (reason = bdd_valid_p (f)) {
+  if ((reason = bdd_valid_p (f)) != 0) {
     fprintf (stderr,
 	     "[bdd_check_valid]: 0x%x, %s%s%s.\n",
 	     (Nat) f, mess[reason],
@@ -1339,7 +1339,7 @@ static void bdd_flush_computed_table (void)
     BDDPTR R = entry->R;
 
     if (   !BDD_VOID_P (R)
-	&& (   !BDD_FUNC_P (entry->F) && BDD_DEAD_P (entry->F)
+	&& (   (!BDD_FUNC_P (entry->F) && BDD_DEAD_P (entry->F))
 	    || BDD_DEAD_P (entry->G)
 	    || BDD_DEAD_P (entry->H)
 	    || BDD_DEAD_P (R))) {
@@ -1434,9 +1434,9 @@ static void print_unique_table_stats (FILE *fp)
 
   for (i = 0; i < unique_table.count; i++) {
     V_HASHTAB tab = unique_table.space[i];
-    int j;
+    unsigned int j;
 
-    for (j = 0; j < BDD_VUT_SIZE(tab); j++) {
+    for (j = 0U; j < BDD_VUT_SIZE(tab); j++) {
       int k = 0;
       BDDPTR chain = BDD_VUT_ENTRIES(tab)[j];
 
@@ -4217,7 +4217,7 @@ unsigned char *bdd_dump_to_chars_vec (BDDPTR *f_vec, int size)
 BDDPTR *bdd_restore_from_chars_vec (unsigned char *b, BDDPTR *f_vec, int *len)
 {
   unsigned char *store = b;
-  int i, n;
+  int i;
   int size;
   int nr_vars;
   int nr_nodes;
@@ -5288,7 +5288,9 @@ int bdd_dynamic_order (void)
     int best_size = unique_table.nr_items;
     int orig_pos  = groups[i];
     int best_pos  = orig_pos;
+#if defined(BDD_DEBUG)
     int v = BDD_VUT_ID(unique_table.space[GROUP_LAST_RANK(orig_pos)]);
+#endif
 
     /* Bound the total `time' spent in dynamic ordering.
        Simply stop after a certain number of groups has been considered.

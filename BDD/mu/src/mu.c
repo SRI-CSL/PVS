@@ -26,6 +26,9 @@
 
 #include "mu.h"
 
+void yyerror (const char *format, ...);
+void yywarning (const char *format, ...);
+
 /* ------------------------------------------------------------------------ */
 /* IMPORTED VARIABLES                                                       */
 /* ------------------------------------------------------------------------ */
@@ -222,6 +225,11 @@ struct _Formula {
   Formula next;
 };
 
+union formulaptr {
+  Formula formulaptr;
+  void *voidptr;
+};
+
 struct _Term {
   TermType type;
   int arity;
@@ -270,10 +278,10 @@ struct _Term {
 
 static char SccsId[] = "%Z%%Y%/%M% %I% %G%";
 
-static _Formula _FALSE_FORMULA = { MU_FALSE, 0 };
-static _Formula _TRUE_FORMULA  = { MU_TRUE , 0 };
-static    _Term _FALSE_TERM    = { MU_T_FALSE, 0 };
-static    _Term _TRUE_TERM     = { MU_T_TRUE , 0 };
+static _Formula _FALSE_FORMULA = { MU_FALSE, { 0 }, NULL, NULL };
+static _Formula _TRUE_FORMULA  = { MU_TRUE , { 0 }, NULL, NULL};
+static _Term _FALSE_TERM = { MU_T_FALSE, 0, {{ 0, NULL, NULL }}, NULL, NULL };
+static _Term _TRUE_TERM  = { MU_T_TRUE , 0, {{ 0, NULL, NULL }}, NULL, NULL };
 
 static const Formula MU_False_Formula = &_FALSE_FORMULA;
 static const Formula MU_True_Formula  = &_TRUE_FORMULA;
@@ -451,7 +459,7 @@ static void print_var (FILE *fp, void *bdd_idx)
 
 static Formula all_formulas = NULL;
 static Formula temp_formula;
-static const _Formula null_formula = {0};
+static const _Formula null_formula;
 
 #define CALLOC_FORMULA() \
 	( \
@@ -472,7 +480,7 @@ static const _Formula null_formula = {0};
 
 static Term all_terms = NULL;
 static Term temp_term;
-static const _Term null_term = {0};
+static const _Term null_term;
 
 #define CALLOC_TERM() \
 	( \
@@ -541,7 +549,7 @@ static BDDPTR mu_fixed_point (Term T, R_Interpret Ip)
   unsigned int k = T_FP_ITER_BOUND (T);
   BDDPTR      Ti = (type == MU_L_FIXED_POINT) ? bdd_0 () : bdd_1 ();
   BDDPTR Tiplus1;
-  int          i;
+  unsigned int i;
 
   if (mu_verbose) {
     fprintf (stdout, "Starting %s fixed-point calculation",
@@ -551,7 +559,7 @@ static BDDPTR mu_fixed_point (Term T, R_Interpret Ip)
 
   create_binding (Z);
 
-  for (i = 0; i < k; i++) {
+  for (i = 0U; i < k; i++) {
     R_VAR_VALUE (Z) = Ti;	/* Z := Ti */
 
     Tiplus1 = mu_interpret_term (term, Ip, /* parent term = */ T);
@@ -560,7 +568,7 @@ static BDDPTR mu_fixed_point (Term T, R_Interpret Ip)
       undo_binding (Z);
       bdd_free (Tiplus1);
       if (mu_verbose) {
-	fprintf (stdout, "\nFixed-point found in %d steps.\n", i);
+	fprintf (stdout, "\nFixed-point found in %u steps.\n", i);
 	fflush (stdout);
       }
       return Ti;
@@ -593,7 +601,7 @@ static BDDPTR mu_fixed_point (Term T, R_Interpret Ip)
 
   undo_binding (Z);
   if (mu_verbose) {
-    fprintf (stdout, "\nFixed-point iteration bound reached after %d steps.\n",
+    fprintf (stdout, "\nFixed-point iteration bound reached after %u steps.\n",
 	     i);
     fflush (stdout);
   }
@@ -1137,8 +1145,9 @@ BDDPTR mu_interpret_term (Term T, R_Interpret Ip, Term FT)
     return mu_reachable (T, Ip, FT);
 
   default:
-    return BDD_VOID;
+    break;
   } /*switch*/
+  return BDD_VOID;
 }
 
 /* Returns BDD representation for: t (args).
@@ -1205,6 +1214,7 @@ static LIST mu_varids_to_bdd_indices_aux (LIST vars)
   return vars;
 }
 
+#ifdef USE_CACHE
 /* Interpret a list of formulas; usually they are the arguments in an
    application.
    The resulting BDDs are recorded in f_bdds, which must have been
@@ -1231,6 +1241,7 @@ static int mu_interpret_formula_list (LIST f_list, BDDPTR *f_bdds,
 
   return all_evaluated;
 }
+#endif
 
 /* Returns BDD representation for: E vars . f & g
    vars is list of BDD indices.
@@ -1428,8 +1439,10 @@ BDDPTR mu_interpret_formula (Formula f, R_Interpret Ip, Term FT)
     {
       int       nr_args = LIST_SIZE (F_APPLY_SUBS (f));
       BDDPTR      *args = MALLOC_ARRAY (nr_args, BDDPTR);
+#ifdef USE_CACHE
       int all_evaluated = mu_interpret_formula_list (F_APPLY_SUBS (f),
 						     args, Ip, FT);
+#endif
 
       tmp1 = mu_interpret_term (F_APPLY_TERM (f), Ip, FT);
 
@@ -1454,8 +1467,10 @@ BDDPTR mu_interpret_formula (Formula f, R_Interpret Ip, Term FT)
     {
       int       nr_args = LIST_SIZE (F_ONE_OF_SUBS (f));
       BDDPTR      *args = MALLOC_ARRAY (nr_args, BDDPTR);
+#ifdef USE_CACHE
       int all_evaluated = mu_interpret_formula_list (F_ONE_OF_SUBS (f),
 						     args, Ip, FT);
+#endif
 
       R = bdd_one_of_vec (args, nr_args);
 
@@ -1474,8 +1489,10 @@ BDDPTR mu_interpret_formula (Formula f, R_Interpret Ip, Term FT)
     {
       int       nr_args = LIST_SIZE (F_NONE_OF_SUBS (f));
       BDDPTR      *args = MALLOC_ARRAY (nr_args, BDDPTR);
+#ifdef USE_CACHE
       int all_evaluated = mu_interpret_formula_list (F_NONE_OF_SUBS (f),
 						     args, Ip, FT);
+#endif
 
       R = bdd_none_of_vec (args, nr_args);
 
@@ -1508,8 +1525,9 @@ BDDPTR mu_interpret_formula (Formula f, R_Interpret Ip, Term FT)
     return R;
 
   default:
-    return BDD_VOID;
+    break;
   } /*switch*/
+  return BDD_VOID;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -1528,11 +1546,11 @@ Formula mu_mk_true_formula (void)
 
 Formula mu_mk_bool_var (char *name)
 {
-  Formula info = NULL;
+  union formulaptr info = { NULL };
 
-  lookup (signature->table, name, strlen (name), (void **) &info, LOOKUP);
+  lookup (signature->table, name, strlen (name), &info.voidptr, LOOKUP);
 
-  return info;
+  return info.formulaptr;
 }
 
 Formula mu_mk_unary_formula (FormulaType type, Formula f1)
@@ -1805,7 +1823,7 @@ Term mu_mk_abstraction (LIST vars, Formula f1)
   /* Check for possible eta-reduction:
      L vars . f (vars) ==> f
   */
-  if (t = try_eta_reduction (vars, f1)) {
+  if ((t = try_eta_reduction (vars, f1)) != NULL) {
     /* Not creating an abstraction type of Term, therefore: */
     free_list (vars, 0);
     /* Avoid freeing the Term t: */
@@ -1979,7 +1997,7 @@ void mu_mk_let (int var, Term T)
   bdd_dynamic_order_exhaustive ();
 
   if (mu_verbose) {
-    fprintf (stdout, "Definition for `%s' took %d msec (%d BDD nodes).\n",
+    fprintf (stdout, "Definition for `%s' took %.2f msec (%d BDD nodes).\n",
 	     name, (clock () - start_t) / CLOCKS_PER_MSEC,
 	     bdd_size (R));
     fflush (stdout);
@@ -2205,7 +2223,7 @@ Formula mu_BDD_2_Formula (BDDPTR f)
   bdd_free (cube);
   cubes_as_formula = cube_as_formula;
 
-  while (cube = (BDDPTR) pop_cont (&cubes)) {
+  while ((cube = (BDDPTR) pop_cont (&cubes)) != NULL) {
     bdd_traverse_cube (cube, mk_formula_cube_action);
     bdd_free (cube);
     cubes_as_formula = mu_mk_binary_formula (MU_OR, cubes_as_formula,
@@ -2238,7 +2256,7 @@ Term mu_BDD_2_Term (BDDPTR f)
   /* Remove all the user variables and collect them in user_vars: */
   user_vars = NULL_LIST;
 
-  if (vars = remove_elements (vars, when_even, 0, 0)) {
+  if ((vars = remove_elements (vars, when_even, 0, 0)) != NULL) {
     /* Here only place-holder variables with id >= 1 left. */
     int max_idx = 0;
     int idx;
@@ -2250,7 +2268,7 @@ Term mu_BDD_2_Term (BDDPTR f)
     LIST bdd_idxs = NULL_LIST;
 
     /* Get maximum place-holder BDD index: */
-    while (idx = (int) pop_cont (&vars))
+    while ((idx = (int) pop_cont (&vars)) != 0)
       if (idx > max_idx) max_idx = idx;
     /* Here: vars == NULL_LIST */
 

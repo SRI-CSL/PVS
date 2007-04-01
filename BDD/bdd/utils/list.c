@@ -17,12 +17,12 @@
 
 /* Globals for list and list element allocation: */
 LIST           all_lists = NULL;
-const LIST_REC null_list = {0};
+const LIST_REC null_list;
 LIST           temp_list;
 int total_lists = 0;
 
 LIST_ELEM_PTR       all_list_elems = NULL;
-const LIST_ELEM     null_list_elem = {0};
+const LIST_ELEM     null_list_elem;
 LIST_ELEM_PTR       temp_list_elem;
 int total_list_elems = 0;
 

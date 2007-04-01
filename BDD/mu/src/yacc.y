@@ -398,7 +398,7 @@ R_Var_Dcl : Var
 
 %%
 
-void yyerror (char *format, ...)
+void yyerror (const char *format, ...)
 {
   va_list ap;
 
@@ -412,7 +412,7 @@ void yyerror (char *format, ...)
   va_end (ap);
 }
 
-void yywarning (char *format, ...)
+void yywarning (const char *format, ...)
 {
   if (warnings) {
     va_list ap;

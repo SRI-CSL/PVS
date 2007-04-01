@@ -30,18 +30,8 @@
 /* LOCAL DEFINES                                                            */
 /* ------------------------------------------------------------------------ */
 
-/* Nr. bits allocated for inedge counter per BDD node.
-   Counter saturates at MAXINEDGECOUNT value.
-*/
-#define NR_INEDGE_COUNT_BITS     5
 #define MAXINEDGECOUNT           (((unsigned int) 1 << NR_INEDGE_COUNT_BITS)-1)
-/* Nr. bits allocated for left/right sub sizes per node.
-   Counter saturates at MAXFACTORSIZE value.
-*/
-#define NR_SIZE_BITS             ((32-3-NR_INEDGE_COUNT_BITS) >> 1)
-#define MAXFACTORSIZE            (((unsigned int) 1 << NR_SIZE_BITS)-1)
-/* Nr. bits allocated for sub expression id. */
-#define NR_INDEX_BITS            (32-3)
+#define MAXFACTORSIZE      ((int)(((unsigned int) 1 << NR_SIZE_BITS)-1))
 
 /*
    The macro BDD_FACTOR_CAST1 is used to interpret BDD_AUX1_L as
@@ -53,21 +43,21 @@
    so that these bits can be accessed uniformly in both structures.
 */
 
-#define BDD_FACTOR_CAST1(F)     ((factor1_aux *) &BDD_AUX1_L (F))
-#define BDD_FACTOR_CAST2(F)     ((factor2_aux *) &BDD_AUX1_L (F))
+#define BDD_AUX1_FACTOR1(F)	(PTR (F)->aux.aux.aux1.factor1)
+#define BDD_AUX1_FACTOR2(F)	(PTR (F)->aux.aux.aux1.factor2)
 
 /* The following 3 macros can be used for both factor1_aux and factor2_aux: */
-#define BDD_SUBEXPR_INV(F)      (BDD_FACTOR_CAST1 (F)->subexpr_inv)
-#define BDD_ROOT_FLAG(F)        (BDD_FACTOR_CAST1 (F)->root_flag)
-#define BDD_SUBEXPR_FLAG(F)     (BDD_FACTOR_CAST1 (F)->subexpr_flag)
+#define BDD_SUBEXPR_INV(F)      (BDD_AUX1_FACTOR1 (F).subexpr_inv)
+#define BDD_ROOT_FLAG(F)        (BDD_AUX1_FACTOR1 (F).root_flag)
+#define BDD_SUBEXPR_FLAG(F)     (BDD_AUX1_FACTOR1 (F).subexpr_flag)
 
 /* The following 3 macros can only be used for factor1_aux: */
-#define BDD_INEDGE_COUNT(F)     (BDD_FACTOR_CAST1 (F)->inedge_cnt)
-#define BDD_POS_SIZE(F)         (BDD_FACTOR_CAST1 (F)->pos_size)
-#define BDD_NEG_SIZE(F)         (BDD_FACTOR_CAST1 (F)->neg_size)
+#define BDD_INEDGE_COUNT(F)     (BDD_AUX1_FACTOR1 (F).inedge_cnt)
+#define BDD_POS_SIZE(F)         (BDD_AUX1_FACTOR1 (F).pos_size)
+#define BDD_NEG_SIZE(F)         (BDD_AUX1_FACTOR1 (F).neg_size)
 
 /* The following macro can only be used for factor2_aux: */
-#define BDD_SUBEXPR_INDEX(F)    (BDD_FACTOR_CAST2 (F)->subexpr_index)
+#define BDD_SUBEXPR_INDEX(F)    (BDD_AUX1_FACTOR2 (F).subexpr_index)
 
 /* Saturating increment of inedge counter: */
 #define BDD_INCR_INCOUNT(F)     do { \
@@ -79,27 +69,6 @@
 #define USE(FUNCTION_NAME)      (current_interface->FUNCTION_NAME)
 
 #define OUT_FP			(current_interface->out)
-
-/* ------------------------------------------------------------------------ */
-/* LOCAL TYPE DEFINITIONS                                                   */
-/* ------------------------------------------------------------------------ */
-
-/* These struct precisely overlay the 32-bit AUX1 field in a BDD node. */
-typedef struct {
-  unsigned int subexpr_inv   :  1;
-  unsigned int root_flag     :  1;
-  unsigned int subexpr_flag  :  1;
-  unsigned int inedge_cnt    :  NR_INEDGE_COUNT_BITS;
-  unsigned int pos_size      :  NR_SIZE_BITS;
-  unsigned int neg_size      :  NR_SIZE_BITS;
-} factor1_aux;
-
-typedef struct {
-  unsigned int subexpr_inv   :  1;
-  unsigned int root_flag     :  1;
-  unsigned int subexpr_flag  :  1;
-  unsigned int subexpr_index :  NR_INDEX_BITS;
-} factor2_aux;
 
 /* ------------------------------------------------------------------------ */
 /* LOCAL FUNCTION PROTOTYPES                                                */
@@ -157,11 +126,12 @@ static bdd_factor_interface bdd_default_factor_interface =
      Pairs are checked in order as given here; (0,0) pair of course
      always succeeds.
   */
-  1,8,
-  2,4,
-  3,3,
-  4,2,  /* Last used pair of the matrix A */
-  0,0, 0,0  /* Unused array elements */
+  { { 1,8 },
+    { 2,4 },
+    { 3,3 },
+    { 4,2 },  /* Last used pair of the matrix A */
+    { 0,0 },  /* Unused array elements */
+    { 0,0 } }
 };
 
 static void bdd_default_factor_interface_construct (void)
@@ -397,7 +367,7 @@ static void bdd_handle_aux (BDDPTR f, int context, int print_flag)
     */
     USE (handle_left) (BDD_OR_OP, context);
     if (   BDD_1_P (E) /* trivial case */
-	|| current_interface->use_impl_check && BDD_IMPLIES_TAUT (T, E))
+	|| (current_interface->use_impl_check && BDD_IMPLIES_TAUT (T, E)))
       bdd_handle_aux (T, BDD_OR_OP, 0);
     else {
       if (!BDD_1_P (T)) {
@@ -412,7 +382,7 @@ static void bdd_handle_aux (BDDPTR f, int context, int print_flag)
     }
     USE (handle_or) ();
     if (   BDD_1_P (T) /* trivial case */
-	|| current_interface->use_impl_check && BDD_IMPLIES_TAUT (E, T))
+	|| (current_interface->use_impl_check && BDD_IMPLIES_TAUT (E, T)))
       bdd_handle_aux (E, BDD_OR_OP, 0);
     else {
       if (!BDD_1_P (E)) {

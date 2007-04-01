@@ -304,7 +304,7 @@ static BDDPTR bdd_quantify_c_aux (int existential, BDDPTR f, BDDPTR vars_cube)
   {
     BDDPTR T = BDD_THEN (f);
     BDDPTR E = BDD_ELSE (f);
-    BDDPTR R;
+    BDDPTR R = BDD_VOID;
 
     if (existential >= 1) {	/* just existential or both */
       if (BDD_VOID_P (BDD_AUX1_BDD (f))) {
@@ -772,7 +772,7 @@ static struct bdd_and_smooth_cache_entry {
   BDDPTR f;
   BDDPTR g;
   BDDPTR R;
-} bdd_and_smooth_cache[pow2(BDD_AND_SMOOTH_CACHE_LOG2SIZE)] = {0};
+} bdd_and_smooth_cache[pow2(BDD_AND_SMOOTH_CACHE_LOG2SIZE)];
 
 /* Using muliplicative method in hashing. Constant A according Knuth:
    A = (PHI - 1) * 2^32, with PHI = golden ratio = (1 + sqrt(5))/2

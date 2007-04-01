@@ -103,16 +103,16 @@ int negate = 0;
 */
 
 /* dummy definitions */
- void yyerror (char *format, ...) { fprintf (stderr, ""); } 
- void yywarning (char *format, ...) { fprintf (stderr, ""); } 
+void yyerror (const char *format, ...) { fputs ("", stderr); } 
+void yywarning (const char *format, ...) { fputs ("", stderr); } 
 HASHTAB *var_table;              /* primary variable names */
 FILE *bdd_output_stream;
 static const char *bdd_output_strings ;
 
 /* setting flags */
-int set_mu_warnings           (int flag) {warnings = flag ;}
-int set_mu_simplify_frontier  (int flag) {mu_simplify_frontier = flag ;}
-int set_mu_verbose            (int flag) {mu_verbose = flag ;}
+int set_mu_warnings           (int flag) {warnings = flag; return 0;}
+int set_mu_simplify_frontier  (int flag) {mu_simplify_frontier = flag; return 0;}
+int set_mu_verbose            (int flag) {mu_verbose = flag; return 0;}
 
 
 
@@ -184,7 +184,7 @@ LIST empty_list ()
 {return NULL_LIST;}
 
 /* returns the name of a boolean variable */
-const char* get_mu_bool_var_name (bdd_idx)
+const char* get_mu_bool_var_name (int bdd_idx)
 {   return (mu_bool_var_name (BDD_IDX_2_VAR_ID (bdd_idx))) ; }
 
 

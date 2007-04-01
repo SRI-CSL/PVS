@@ -10,6 +10,8 @@
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 */
 
+#define _BSD_SOURCE 1  /* Need this to get strncasecmp prototype from glibc */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -58,7 +60,7 @@
 #endif
 
 HASHTAB_ENTRY_PTR all_hashtab_entries = NULL;
-HASHTAB_ENTRY     null_hashtab_entry = {0};
+HASHTAB_ENTRY     null_hashtab_entry;
 HASHTAB_ENTRY_PTR temp_hashtab_entry;
 
 int hash_copy_key = 1;
@@ -93,7 +95,7 @@ static int primes[] =
 /* 18 */ 3276881
 };
 
-#define LAST_PRIMES_INDEX	(sizeof (primes) / sizeof (int) - 1)
+#define LAST_PRIMES_INDEX	((int)(sizeof (primes) / sizeof (int) - 1))
 
 static int nearest_primes_index (int size)
 {
@@ -207,7 +209,7 @@ void reinit_hashtab (HASHTAB *tab)
 
 static void print_symbol_info (FILE *fp, HASHTAB *symtab, int i)
 {
-  fprintf (fp, "%3d   0x%08x (%3d)  %s\n",
+  fprintf (fp, "%3d   %p (%3d)  %s\n",
 	   i,
 	   KEYINFO (symtab, i),
 	   KEYLEN  (symtab, i),

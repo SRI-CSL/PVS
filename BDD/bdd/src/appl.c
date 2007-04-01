@@ -101,15 +101,15 @@ static const char *bdd_var_name (int index)
 BDDPTR var_access (char *s, int len)
 {
   int index;
-  BDDPTR info = BDD_VOID;
+  union bddptr info = { BDD_VOID };
   int flag;
 
   /* LET introduced names come first! */
-  if (lookup (aux_table, s, len, (void **) &info, LOOKUP) != NOT_PRESENT) {
+  if (lookup (aux_table, s, len, &info.voidptr, LOOKUP) != NOT_PRESENT) {
     /* This name is indeed used for a secondary variable. */
-    if (!BDD_VOID_P (info)) {
-      BDD_GC_PROTECT (info);
-      return info;
+    if (!BDD_VOID_P (info.bddptr)) {
+      BDD_GC_PROTECT (info.bddptr);
+      return info.bddptr;
     }
     /* No definition established yet. */
     if (warnings)
