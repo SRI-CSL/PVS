@@ -886,3 +886,18 @@ which eliminates all top-level disjuncts in the indicated FNUMS."
 			 (t (values 'X sform)))))
 	     sformnums)
 	  (values sig (list subgoal))))))
+
+;;; SO - make copy a primitive rule rather than defined.
+;;; Both more efficient and bypasses potential TCC generation.
+(addrule 'copy (fnum) ()
+  #'(lambda (ps)
+      (let ((sforms (select-seq (s-forms (current-goal ps)) fnum)))
+	(if sforms
+	    (values '?
+		    (list (copy (current-goal ps) 's-forms
+				(cons (copy (car sforms))
+				      (s-forms (current-goal ps))))))
+	    (error-format-if "~%Could not find formula number ~a" fnum))))
+  "Introduces a copy of formula number FNUM as the first antecedent
+or succedent formula in the sequent."
+  "Copying formula number: ~a")
