@@ -371,31 +371,26 @@
 (defmethod replace-expr* (lhs rhs (expr binding-expr) lastopinfix?)
   (if (replace-eq lhs expr)
       (parenthesize rhs lastopinfix?)
-      (let ((*bound-variables* (append (bindings expr) *bound-variables*)))
-	(lcopy expr
-	  'expression (replace-expr* lhs rhs (expression expr) nil)))))
+      (let* ((*bound-variables* (append (bindings expr) *bound-variables*))
+	     (nexpr (replace-expr* lhs rhs (expression expr) nil))
+	     (new-bindings (unless (eq nexpr (expression expr))
+			     (make-nonclashing-bindings (bindings expr) rhs)))
+	     (nalist (when new-bindings
+		       (substit-pairlis (bindings expr) new-bindings nil))))
+	(if new-bindings
+	    (lcopy expr
+	      'bindings new-bindings
+	      'expression (substit nexpr nalist))
+	    (lcopy expr 'expression nexpr)))))
 
-;; (defmethod replace-expr* (lhs rhs (expr binding-expr) lastopinfix?)
-;;   (if (replace-eq lhs expr)
-;;       (parenthesize rhs lastopinfix?)
-;;       (let* ((nexpr (let ((*bound-variables* (append (bindings expr)
-;; 						     *bound-variables*)))
-;; 		      (replace-expr* lhs rhs (expression expr) nil)))
-;; 	     (new-bindings (make-new-bindings
-;; 			    (bindings expr)
-;; 			    (acons (mk-bind-decl (gensym) *boolean*)
-;; 				   (make!-tuple-expr* (list lhs rhs)) nil)
-;; 			    nexpr))
-;; 	     (nalist (unless (equal new-bindings (bindings expr))
-;; 		       (substit-pairlis (bindings expr) new-bindings nil)))
-;; 	     ;;(nexpr (when nalist (substit (expression expr) nalist)))
-;; 	     (*bound-variables* (append new-bindings *bound-variables*)))
-;; 	(if nalist
-;; 	    (lcopy expr
-;; 	      'bindings new-bindings
-;; 	      'expression (substit nexpr nalist))
-;; 	    (lcopy expr
-;; 	      'expression nexpr)))))
+(defun make-nonclashing-bindings (bindings expr)
+  (let ((free-ids (collect-free-ids expr)))
+    (when (some #'(lambda (bd) (memq (id bd) free-ids)) bindings)
+      (mapcar #'(lambda (bd)
+		  (if (memq (id bd) free-ids)
+		      (copy bd 'id (new-boundvar-id (id bd) expr))
+		      bd))
+	bindings))))
 
 (defmethod replace-expr* (lhs rhs (expr cases-expr) lastopinfix?)
   (if (replace-eq expr lhs)
