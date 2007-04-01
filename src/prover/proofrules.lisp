@@ -1103,6 +1103,11 @@ or supply more substitutions."
 						 dependent-decls)
 			   (pushnew (declaration res)
 				    dependent-decls)
+			   (when (and (null (actuals name-expr))
+				      (actuals (module-instance res)))
+			     (format t "~%Using instance~%  ~a.~a"
+					(module-instance res)
+					(id (declaration res))))
 			   (values '? (list newsequent)
 					;NSH(4.9.99)
 					;changed d-d to update parent.
