@@ -883,27 +883,39 @@ is not of the form: (<var> <term>...)" subst)
 	 (let* ((sform (car sforms))
 		(formula (formula sform))
 		(sign (not (negation? formula)))
-		(fmla (quant-body* (if sign formula (args1 formula))
-				   sign))
-		(boundvars (quant-bndvars* (if sign formula (args1 formula))
-					   sign))
-		(pre-alist (make-alist subst))
-		(pre-alist (loop for (x . y) in pre-alist
-				 collect (cons (pc-parse x 'name) y)))
+		(fmla (quant-body* (if sign formula (args1 formula)) sign))
+		(qboundvars (quant-bndvars* (if sign formula (args1 formula))
+					    sign))
+		(pre-alist (mapcar #'(lambda (sb)
+				       (cons (pc-parse (car sb) 'name)
+					     (cdr sb)))
+			     (make-alist subst)))
+		(nonsubs (loop for (x . y) in pre-alist
+			       when (or (eq y '_) (equal y "_"))
+			       collect x))
+		(sub-alist (remove-if #'(lambda (sb)
+					  (or (eq (cdr sb) '_)
+					      (equal (cdr sb) "_")))
+			     pre-alist))
 		(bad-subst (loop for (x . nil) in pre-alist
 				 thereis
-				 (unless (member x boundvars
+				 (unless (member x qboundvars
 						 :test #'format-equal)
-				   x))))
+				   x)))
+		(boundvars (remove-if #'(lambda (bv)
+					  (member bv nonsubs :test #'same-id))
+			     qboundvars)))
 	   (cond (bad-subst
 		  (find-quant-terms* (cdr sforms) subst where
 				     if-match polarity? tcc? ps))
 		 (t (let ((sub
-			   (find-quant-subst (car sforms) pre-alist
-					     boundvars sign fmla
+			   (find-quant-subst (car sforms) sub-alist
+					     nonsubs boundvars sign fmla
 					     where if-match
 					     polarity? tcc? ps)))
 		      (if sub
+			  ;; Note that find-quant-subst may have found matches
+			  ;; for variables in nonsubs - we simply remove them
 			  (cons (find-sform (s-forms
 					     (current-goal *ps*))
 					    '*
@@ -916,7 +928,7 @@ is not of the form: (<var> <term>...)" subst)
 	   ))))
 
 
-(defun find-quant-subst (sform pre-alist boundvars sign fmla
+(defun find-quant-subst (sform pre-alist nonsubs boundvars sign fmla
 			       where if-match polarity? tcc? ps)
   (let* ((alist
 	  (loop for (x . y) in pre-alist
@@ -937,18 +949,18 @@ is not of the form: (<var> <term>...)" subst)
 		      where
 		      nil
 		      #'(lambda (x) (not (eq x sform)))
-			  ;;NSH(11.6.94): to allow self-instantiation
-		          ;;of quantified formulas (not (eq x sform))
+		      ;;NSH(11.6.94): to allow self-instantiation
+		      ;;of quantified formulas (not (eq x sform))
 		      ))
 	 (all-sforms (gather-seq (s-forms (current-goal ps))
-		      where
-		      nil))
+				 where
+				 nil))
 	 (all-fmlas
 	  (if (memq sform all-sforms)
 	      (mapcar #'formula (append other-sforms (list sform)))
 	      (mapcar #'formula other-sforms))))
     (find-quant-subst* sform sign fmla
-		       all-fmlas alist rest-boundvars if-match
+		       all-fmlas alist nonsubs rest-boundvars if-match
 		       polarity? tcc?
 		       (length rest-boundvars))))
 
@@ -977,9 +989,9 @@ is not of the form: (<var> <term>...)" subst)
       (let* ((temp (car templates))
 	     (result
 	      (top-find-match-list temp
-				  fmlas
-				  alist
-				  if-match 'positive polarity?)))
+				   fmlas
+				   alist
+				   if-match 'positive polarity?)))
 	(if (all-or-best-or-first*? if-match)
 	    (nconc (mapcar #'(lambda (x) (cons temp x))
 		     result)
@@ -989,13 +1001,13 @@ is not of the form: (<var> <term>...)" subst)
 	    (if result
 		(cons temp result)
 		(top-find-match-list-templates
-		    (cdr templates) fmlas alist if-match
-		    polarity polarity?))))
+		 (cdr templates) fmlas alist if-match
+		 polarity polarity?))))
       nil))
 
 (defun find-quant-subst* (sform sign fmla
-				other-fmlas alist rest-boundvars if-match
-				polarity? tcc? n)
+				other-fmlas alist nonsubs rest-boundvars
+				if-match polarity? tcc? n)
   (let* ((polarity (if sign 'positive 'negative))
 	 (templates (find-templates fmla rest-boundvars n nil polarity
 				    polarity?))
@@ -1004,31 +1016,62 @@ is not of the form: (<var> <term>...)" subst)
 	 (temp-subst (top-find-match-list-templates
 		      templates other-fmlas alist if-match
 		      'positive polarity?))
+	 (pre-subst (if nonsubs
+			(when temp-subst
+			  (if (all-or-best? if-match)
+			      (let ((temp (remove-if
+					      #'(lambda (tmp)
+						  (and (variable? (car tmp))
+						       (member (car tmp)
+							       nonsubs
+							       :test #'same-id)))
+					    temp-subst)))
+				(mapcar #'(lambda (tmp)
+					    (cons (car tmp)
+						  (remove-if
+						      #'(lambda (sb)
+							  (member (car sb)
+								  nonsubs
+								  :test #'same-id))
+						    (cdr tmp))))
+				  temp))
+			      (unless (and (variable? (car temp-subst))
+					   (member (car temp-subst)
+						   nonsubs
+						   :test #'same-id))
+				(cons (car temp-subst)
+				      (remove-if
+					  #'(lambda (sb)
+					      (member (car sb)
+						      nonsubs
+						      :test #'same-id))
+					(cdr temp-subst))))))
+			temp-subst))
 	 (subst (filter-subst (if sign
-				(formula sform)
-				(args1 (formula sform)))
-			    (if temp-subst temp-subst
-				(when alist
-				  (if (all-or-best? if-match)
-				      (list (cons nil alist))
-				      (cons nil alist)))) ;for null template
-			    sign rest-boundvars if-match tcc?))
+				  (formula sform)
+				  (args1 (formula sform)))
+			      (if pre-subst pre-subst
+				  (when alist
+				    (if (all-or-best? if-match)
+					(list (cons nil alist))
+					(cons nil alist)))) ;for null template
+			      sign rest-boundvars if-match tcc?))
 	 (subs (quant-subs* (if sign
 				(formula sform)
 				(args1 (formula sform)))
 			    (if subst subst
 				(when alist (if (all-or-best? if-match)
-				      (list (cons nil alist))
-				      (cons nil alist))))
-			    sign if-match))) 
+						(list (cons nil alist))
+						(cons nil alist))))
+			    sign if-match)))
     (cond ((and (null subst) (or if-match (null alist)(null subs)))
 	   (if  (and (> n 1) ;;NSH(5.23.95) used to be n>2.
 		     (not (eq if-match 'all)))
-	       (find-quant-subst* sform sign fmla other-fmlas
-				   alist rest-boundvars
-				  if-match polarity? tcc? (1- n))
-	   ;(format-if "~%Couldn't find a matching substitution.")
-	   nil))
+		(find-quant-subst* sform sign fmla other-fmlas
+				   alist nonsubs rest-boundvars
+				   if-match polarity? tcc? (1- n))
+					;(format-if "~%Couldn't find a matching substitution.")
+		nil))
 	  ((and (null subst) subs)
 	   (format-if "~%Using supplied substitutions")
 	   subs)
@@ -1036,9 +1079,9 @@ is not of the form: (<var> <term>...)" subst)
 		    (loop for sub in subst as index from 1
 			  do (format-if "~%Found substitution ~a:"
 					index)
-			     (loop for (x . y) in (cdr sub)
-				   do (format-if "~%~a gets ~a," x y))
-			     (format-if "~%Using template: ~a" (car sub))))
+			  (loop for (x . y) in (cdr sub)
+				do (format-if "~%~a gets ~a," x y))
+			  (format-if "~%Using template: ~a" (car sub))))
 		   (t (format-if "~%Found substitution:")
 		      (loop for (x . y) in (cdr subst)
 			    do (format-if "~%~a gets ~a," x y))
