@@ -149,7 +149,7 @@ intervenes."
   (setq ilisp-load-inits nil)
   (setq ilisp-program (format "%s -qq" (pvs-program)))
   (setq comint-prompt-regexp
-	"^[ ]*\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\)?\\(\\(<[-A-Za-z]* ?[0-9]*> \\)\\3?\\|[-A-Za-z0-9]+([0-9]+): \\)\\|Rule\\? \\|(Y or N)\\|(Yes or No)\\|Please enter")
+	"^[ ]*\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\)?\\(\\(<[-A-Za-z]* ?[0-9]*> \\)\\3?\\|[-A-Za-z0-9]+([0-9]+): \\)\\|Rule\\? \\|<PVSio> \\|(Y or N)\\|(Yes or No)\\|Please enter")
   (setq comint-interrupt-regexp  "Error: [^\n]* interrupt\)")
   (setq pvs-top-regexp
 	"^\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\)?\\(<?[-A-Za-z]* ?[0-9]*>\\|[-A-Za-z0-9]+([0-9]+):\\) ")
@@ -166,7 +166,7 @@ intervenes."
   (setq ilisp-load-inits nil)
   (setq ilisp-program (format "%s -qq" (pvs-program)))
   (setq comint-prompt-regexp
-	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|(Y or N)\\|(Yes or No)\\|Please enter")
+	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|(Y or N)\\|(Yes or No)\\|Please enter")
   (setq comint-interrupt-regexp  "^Interrupted at")
   (setq ilisp-error-regexp "^Restarts:$")
   (setq pvs-top-regexp
@@ -1244,6 +1244,7 @@ is emptied."
 	  (set-process-filter (ilisp-process) 'pvs-process-filter)
 	  (comint-simple-send (ilisp-process) (ilisp-value 'ilisp-reset))
 	  (setq pvs-in-checker nil)
+	  (setq pvs-in-evaluator nil)
 	  (message "PVS has been reset"))
       (message "PVS is no longer running - exit and start again")))
   
