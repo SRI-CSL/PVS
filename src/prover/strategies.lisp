@@ -1306,44 +1306,39 @@ See also INDUCT."
 			 nil)))
     (if fmla
 	(try (simple-induct var fmla name)
-	     (if *new-fmla-nums*  ;;NSH(4.25.97) record fnum here
+	     (if *new-fmla-nums* ;;NSH(4.25.97) record fnum here
 		 (let ((fnum (find-sform (s-forms (current-goal *ps*))
 					 '+
 					 #'(lambda (sform)
 					     (eq (formula sform)
 						 fmla)))))
-		   ;(then (beta)
-			 (let ((fmla ;;NSH(4.25.97) record fmla here
-				(let ((sforms (select-seq
-					       (s-forms (current-goal *ps*))
-					       (list fnum))))
-				  (when sforms (formula (car sforms))))))
-			   (then (let ((x (car *new-fmla-nums*)))
-				   (then (beta x) ;;NSH(4/5/04)
-					          ;;moved beta down here
-					 (inst? x)
-					 (split x)))
-				 (let ((num (find-sform
-					     (s-forms (current-goal *ps*))
-					     '+
-					     #'(lambda (sform)
-						 (eq (formula sform)
-						     fmla)))))
-				   (if (eql num fnum)
-				       (then (prop)
-					     (skolem fnum skolem-list)
-					     (inst - new-var-symbol)
-					     (prop))
-				       (if num (delete num)
-					   (let ((newnums
-						  (loop for n
-							in *new-fmla-nums*
-							when (and (> n 0)
-								  (<= n fnum))
-							collect n))
-						 (newfnum (+ fnum
-							     (length newnums))))
-					     (delete newfnum)))))))); )
+		   (let ((fmla ;;NSH(4.25.97) record fmla here
+			  (let ((sforms (select-seq
+					 (s-forms (current-goal *ps*))
+					 (list fnum))))
+			    (when sforms (formula (car sforms))))))
+		     (branch (let ((x (car *new-fmla-nums*)))
+			       (then (beta x)	  ;;NSH(4/5/04)
+				     ;;moved beta down here
+				     (inst? x)
+				     (split x)))
+			     ((let ((num (find-sform
+					  (s-forms (current-goal *ps*))
+					  '+
+					  #'(lambda (sform)
+					      (eq (formula sform)
+						  fmla)))))
+				(then (prop)
+				      (skolem fnum skolem-list)
+				      (inst - new-var-symbol)
+				      (prop)))
+			      (let ((num (find-sform
+					  (s-forms (current-goal *ps*))
+					  '+
+					  #'(lambda (sform)
+					      (eq (formula sform)
+						  fmla)))))
+				(delete num))))))
 		 (skip))
 	     (skip-msg "Could not find suitable induction scheme."))
 	(let ((msg (format nil "No formula corresponding to fnum ~a"
@@ -2974,20 +2969,6 @@ newly chosen name"
 of the form (<name1> <expr1> <name2> <expr2>...).  The command
 replaces each expri in the sequent with the corresponding namei."
   "Letting ~{~%  ~a name ~a~^,~}")
-
-(defstep copy (fnum)
-  (let ((sforms (select-seq (s-forms (current-goal *ps*)) fnum)))
-    (if sforms
-	(let ((fmla (formula (car sforms)))
-	      (negfmla (negate! fmla)))
-	  (then (case negfmla)(skip)))
-	(let ((msg
-	       (format nil "Could not find formula number ~a" fnum)))
-	  (skip-msg msg))))
-  "Introduces a copy of formula number FNUM as the first antecedent
-or succedent formula in the sequent."
-  "Copying formula number: ~a")
-
     
 (defstep trace (&rest names)
   (let ((dummy (loop for name in names do (pushnew name *ruletrace*)))
@@ -3154,24 +3135,35 @@ or succedent formula in the sequent."
 				 )))
 		 (var (when (and term var-decl)
 			(make-variable-expr var-decl)))
+		 (newform1 (when term
+			     (if subterms-only?
+				 (termsubst form
+					    #'(lambda (x)
+						(declare (ignore x))
+						var)
+					    #'(lambda (x) (tc-eq x term)))
+				 (gensubst form
+				   #'(lambda (x) (declare (ignore x)) var)
+				   #'(lambda (x) (tc-eq x term))))))
+		 (nonsubst (when (forall-expr? newform1)
+			     (mapcan #'(lambda (b)
+					 (list (make-variable-expr b) "_"))
+			       (bindings newform1))))
 		 (newform (when term
-			    (if subterms-only?
-				(termsubst form
-					   #'(lambda (x)
-					       (declare (ignore x))
-					       var)
-					   #'(lambda (x) (tc-eq x term)))
-				(gensubst form
-				  #'(lambda (x) (declare (ignore x)) var)
-				  #'(lambda (x) (tc-eq x term))))))
-		 (newform (when term (universal-closure newform)))
-		 (subst (when term (list var term))))
+			    (if (forall-expr? newform1)
+				(copy newform1
+				  'bindings (cons var-decl (bindings newform1)))
+				(make!-forall-expr (list var-decl) newform1))))
+		 (subst (when term
+			  (if (forall-expr? newform1)
+			      (cons term (make-list (length (bindings newform1))
+						    :initial-element "_"))
+			      (list term)))))
 	     (if vtype
 		 (if (valid-pvs-id (id var))
 		     (if term
 			 (spread (case newform)
-				 ((then (inst? -1 :subst subst
-					       :where nil)
+				 ((then (instantiate -1 subst)
 					(prop))
 				  (hide 2)))
 			 (skip-msg "No such generalizable term found in given fnums"))
@@ -3260,54 +3252,54 @@ is needed, the best option is to use CASE."
 	 (cons new-id expr)))))
 
 (defstep generalize-skolem-constants (&optional (fnums *))
-  (try (merge-fnums fnums)
-       (let ((sforms (s-forms (current-goal *ps*))))
-	 (if (or *new-fmla-nums*
-		 (and (singleton? sforms)
-		      (find-sform sforms fnums)))
-	     (let ((fnums (if *new-fmla-nums* *new-fmla-nums* fnums))
-		   (sforms (select-seq sforms fnums))
-		   (sform (car sforms))
-		   (form (formula sform))
-		   (skolem-constants
-		    (collect-subterms form
-				      #'skolem-constant?))
-		   (skolem-constants
-		    (sort skolem-constants
-			  #'(lambda (x y)
-			      (member x (collect-subterms y #'skolem-constant?)))))
-		   (constant-bind-decl-alist
-		    (make-constant-bind-decl-alist skolem-constants nil form))
-		   (constant-variable-alist
-		    (loop for (x . y) in constant-bind-decl-alist
-			  collect (cons x (make-variable-expr y))))
-		   (newform1 (gensubst form
-			       #'(lambda (x)
-				   (cdr (assoc x constant-variable-alist
-					       :test #'tc-eq)))
-			       #'(lambda (x)
-				   (assoc x constant-variable-alist
-					  :test #'tc-eq))))
-		   (newform (universal-closure newform1))
-		   (instantiation-list
-		    (when (forall? newform)
-		      (loop for bd in (bindings newform)
-			    collect
-			    (let ((entry (rassoc bd constant-bind-decl-alist
-						 :test #'tc-eq)))
-			      (if entry (car entry) "_"))))))
-	       (branch
-		(case newform)
-		((then (inst -1 :terms instantiation-list)
-		       (prop))
-		 (let ((hfnums (find-all-sformnums
-				(s-forms (current-goal *ps*))
-				'*
+  (then (merge-fnums fnums)
+	(let ((sforms (s-forms (current-goal *ps*))))
+	  (if (or *new-fmla-nums*
+		  (and (singleton? sforms)
+		       (find-sform sforms fnums)))
+	      (let ((fnums (if *new-fmla-nums* *new-fmla-nums* fnums))
+		    (sforms (select-seq sforms fnums))
+		    (sform (car sforms))
+		    (form (formula sform))
+		    (skolem-constants
+		     (collect-subterms form
+				       #'skolem-constant?))
+		    (skolem-constants
+		     (sort skolem-constants
+			   #'(lambda (x y)
+			       (member x (collect-subterms y #'skolem-constant?)))))
+		    (constant-bind-decl-alist
+		     (make-constant-bind-decl-alist skolem-constants nil form))
+		    (constant-variable-alist
+		     (loop for (x . y) in constant-bind-decl-alist
+			   collect (cons x (make-variable-expr y))))
+		    (newform1 (gensubst form
 				#'(lambda (x)
-				    (member x sforms :key #'formula)))))
-		   (hide hfnums)))))
-	     (skip-msg "Merge-fnums failed.")))
-       (skip-msg "Merge-fnums failed."))
+				    (cdr (assoc x constant-variable-alist
+						:test #'tc-eq)))
+				#'(lambda (x)
+				    (assoc x constant-variable-alist
+					   :test #'tc-eq))))
+		    (newform (universal-closure newform1))
+		    (instantiation-list
+		     (when (forall? newform)
+		       (loop for bd in (bindings newform)
+			     collect
+			     (let ((entry (rassoc bd constant-bind-decl-alist
+						  :test #'tc-eq)))
+			       (if entry (car entry) "_"))))))
+		(branch
+		 (case newform)
+		 ((then (inst -1 :terms instantiation-list)
+			(prop))
+		  (let ((hfnums (find-all-sformnums
+				 (s-forms (current-goal *ps*))
+				 '*
+				 #'(lambda (x)
+				     (member x sforms :key #'formula)))))
+		    (hide hfnums)))))
+	      (skip-msg "Merge-fnums failed.")))
+	(skip-msg "Merge-fnums failed."))
   "Merges the formulas and universally generalizes the skolem constants
 in the given fnums."
   "Merging and generalizing")
