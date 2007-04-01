@@ -67,6 +67,7 @@ char *dfaMakeExample(DFA *a, int polarity, int no_free_vars, unsigned *offsets)
   intlist *state_list, *ip;
   char *example;
   int *dist, *prev;
+  unsigned int k;
 
   dist = (int *) mem_alloc(a->ns * (sizeof(int))); /* distance from start */
   prev = (int *) mem_alloc(a->ns * (sizeof(int))); /* previous in path */
@@ -100,8 +101,8 @@ char *dfaMakeExample(DFA *a, int polarity, int no_free_vars, unsigned *offsets)
   }
   
   example = (char *) mem_alloc((no_free_vars+1) * length * sizeof(char) + 1);
-  for (i = 0; i < (no_free_vars+1) * length * sizeof(char); i++)
-    example[i] = 1;
+  for (k = 0U; k < (no_free_vars+1) * length * sizeof(char); k++)
+    example[k] = 1;
   example[(no_free_vars+1) * length] = 0;
   
   ip = state_list;
@@ -250,7 +251,7 @@ void dfaAnalyze(DFA *dfa, int no_free_vars,
 
 int dfaIsExample(DFA *a, int polarity)
 {
-  int i, j, min_dist = -1, minv;
+  int i, min_dist = -1, minv;
   int *dist, *prev;
 
   dist = (int *) mem_alloc(a->ns * (sizeof(int))); /* distance from start */

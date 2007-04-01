@@ -184,7 +184,7 @@ void bdd_print_statistics(unsigned stat_index, char info[]) {
 
   unsigned i;
   struct stat_item *r;
-  struct stat_item total = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+  struct stat_item total = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
   printf("Statistics: %s.  Collected: %i\n", 
 	 info, stat_record[stat_index].number_insertions);

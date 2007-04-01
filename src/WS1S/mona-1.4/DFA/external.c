@@ -30,6 +30,7 @@ int dfaExport(DFA *a, char *filename, int num, char *vars[], char orders[])
 {
   Table *table = tableInit(); 
   int i;
+  unsigned int j;
   FILE *file;
 
   if (filename) {
@@ -47,10 +48,10 @@ int dfaExport(DFA *a, char *filename, int num, char *vars[], char orders[])
     export(a->bddm, a->q[i], table);
 
   /* renumber lo/hi pointers to new table ordering */
-  for (i = 0; i < table->noelems; i++) {
-    if (table->elms[i].idx != -1) {
-      table->elms[i].lo = bdd_mark(a->bddm, table->elms[i].lo) - 1;
-      table->elms[i].hi = bdd_mark(a->bddm, table->elms[i].hi) - 1;
+  for (j = 0U; j < table->noelems; j++) {
+    if (table->elms[j].idx != -1) {
+      table->elms[j].lo = bdd_mark(a->bddm, table->elms[j].lo) - 1;
+      table->elms[j].hi = bdd_mark(a->bddm, table->elms[j].hi) - 1;
     }
   }
 
@@ -77,9 +78,9 @@ int dfaExport(DFA *a, char *filename, int num, char *vars[], char orders[])
   for (i = 0; i < a->ns; i++)
     fprintf(file, " %u", bdd_mark(a->bddm, a->q[i]) - 1);
   fprintf(file, "\nbdd:\n");
-  for (i = 0; i < table->noelems; i++) 
+  for (j = 0U; j < table->noelems; j++) 
     fprintf(file, " %i %u %u\n", 
-	    table->elms[i].idx, table->elms[i].lo, table->elms[i].hi);
+	    table->elms[j].idx, table->elms[j].lo, table->elms[j].hi);
   fprintf(file, "end\n");
 
   tableFree(table);

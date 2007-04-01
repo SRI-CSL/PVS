@@ -996,7 +996,7 @@ unsigned bdd_project(bdd_manager *bddm_p, unsigned p, unsigned var_index,
 	q = 0; /*we are below var_index, but have converged on same node*/
       else
 	goto start_p_q_diff;
-    } else if (a->index == var_index) { /*split into two calculations*/
+    } else if (a->index == (int) var_index) { /*split into two calculations*/
       LOAD_lr(node_ptr, p, q);
       node_ptr = &p_table[p];
       goto start_p_q_diff;

@@ -52,11 +52,11 @@ void bddDumpNode(bdd_manager *bddm, bdd_ptr p)
 
 void bddDump(bdd_manager *bddm)
 {
-  int i;
+  unsigned int i;
   printf("\nBDD DUMP:\n");
-  for (i = 0; i < bdd_roots_length(bddm); i++)
+  for (i = 0U; i < bdd_roots_length(bddm); i++)
     bddDumpNode(bddm, BDD_ROOT(bddm, i));
   printf("END\n\n");
-  for (i = 0; i < bdd_roots_length(bddm); i++)
+  for (i = 0U; i < bdd_roots_length(bddm); i++)
     bddReverseMarks(bddm, BDD_ROOT(bddm, i));
 }

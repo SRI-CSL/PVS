@@ -1832,7 +1832,7 @@ Void_t* mEMALIGn(alignment, bytes) size_t alignment; size_t bytes;
     */
 
     brk = (char*)mem2chunk(((unsigned long)(m + alignment - 1)) & -((signed) alignment));
-    if ((long)(brk - (char*)(p)) < MINSIZE) brk = brk + alignment;
+    if ((size_t)(brk - (char*)(p)) < MINSIZE) brk = brk + alignment;
 
     newp = (mchunkptr)brk;
     leadsize = brk - (char*)(p);

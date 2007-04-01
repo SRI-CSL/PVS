@@ -53,7 +53,7 @@ void successors(bdd_manager *bddm, bdd_ptr p)
 
 void dfaPrefixClose(DFA *a)
 {
-  unsigned i;
+  int i;
   int *queue = (int *) mem_alloc(sizeof(int) * a->ns);
   int queueused = 0, next = 0;
 

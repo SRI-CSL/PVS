@@ -81,7 +81,7 @@ inline void make_loop (bdd_manager *bddm, unsigned  p, unsigned q) {
   (--res);
   /* make the next entry in bdd_roots(bddm) a leaf with value res;
      thus a loop is created */
-  invariant(bdd_roots_length(bddm) == res);
+  invariant(bdd_roots_length(bddm) == (unsigned int) res);
 #ifdef _AUTOMATON_HASHED_IN_PRODUCT_
   bdd_find_leaf_hashed_add_root(bddm, res);
 #else

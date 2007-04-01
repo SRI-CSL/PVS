@@ -97,7 +97,7 @@ void dfaPrintStatistics()
 
 DFA *dfaCopy(DFA *a)
 {
-  unsigned i;
+  int i;
 
   DFA * result = dfaMake(a->ns);
   result->ns = a->ns;
@@ -116,10 +116,10 @@ DFA *dfaCopy(DFA *a)
 
 void dfaReplaceIndices(DFA *a, int *indices_map)
 {
-  unsigned i;
+  int i;
 
   bdd_prepare_apply1(a->bddm);
 
   for (i = 0; i < a->ns; i++)
-    bdd_replace_indices(a->bddm, a->q[i], indices_map);
+    bdd_replace_indices(a->bddm, a->q[i], (unsigned int *) indices_map);
 }

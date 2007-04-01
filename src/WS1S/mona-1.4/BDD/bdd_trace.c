@@ -170,7 +170,7 @@ void print_bddpaths(unsigned p, unsigned q, bdd_manager *bddm, unsigned b, unsig
 {
   paths state_paths, pp;
   trace_descr tp;
-  int j;
+  unsigned int j;
 
   state_paths = pp = make_paths(bddm, b);
   
