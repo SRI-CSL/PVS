@@ -3145,13 +3145,16 @@
 	(if if-flag
 	    (values 'X expr);;expr is irrelevant
 	    (let ((newexpr (substit expr subst)))
-	      (values '? (if (eq newtest subexpr)
-			     newexpr
-			   (lcopy newexpr
-			     'argument
-			     (lcopy (argument newexpr)
-			       'exprs (cons newtest
-					    (cdr (arguments newexpr)))))))))
+	      (values '?
+		      (cond ((eq newtest subexpr)
+			     newexpr)
+			    ((branch? newexpr)
+			     (lcopy newexpr
+			       'argument
+			       (lcopy (argument newexpr)
+				 'exprs (cons newtest
+					      (cdr (arguments newexpr))))))
+			    (t newexpr)))))
 	(let ((result newtest));;instead of (assert-test newtest)
 	  (cond ((tc-eq result *true*)
 		 (let ((newthen
@@ -3165,14 +3168,16 @@
 		   (values-assert-if  '? newelse expr)))
 		(if-flag (values 'X expr))
 		(t (values '? (let ((newexpr (substit expr subst)))
-				(if (eq newtest subexpr)
-				    newexpr
-				    (lcopy newexpr
-				      'argument
-				      (lcopy (argument newexpr)
-					'exprs (cons newtest
-						     (cdr (arguments
-							     newexpr))))))))))))))
+				(cond ((eq newtest subexpr)
+				       newexpr)
+				      ((branch? newexpr)
+				       (lcopy newexpr
+					 'argument
+					 (lcopy (argument newexpr)
+					   'exprs (cons newtest
+							(cdr (arguments
+							      newexpr))))))
+				      (t newexpr))))))))))
 
 (defmethod lazy-assert-if ((expr branch))
   (let ((newtest (assert-if-simplify (condition expr))))
