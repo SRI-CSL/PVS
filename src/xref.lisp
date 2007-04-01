@@ -147,6 +147,10 @@
 (defmethod generate-xref ((te struct-sub-tupletype))
   (generate-xref (types te)))
 
+(defmethod generate-xref ((te type-extension))
+  (generate-xref (type te))
+  (generate-xref (extension te)))
+
 (defmethod generate-xref ((d field-decl))
   (generate-xref (declared-type d)))
 
