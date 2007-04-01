@@ -596,3 +596,101 @@
 (defmethod var-occurs-in (id (bd bind-decl))
   (or (eq id (id bd))
       (var-occurs-in id (declared-type bd))))
+
+;;; collect-free-ids
+
+(defun collect-free-ids (expr)
+  (let ((*bound-variables* nil))
+    (collect-free-ids* expr nil)))
+
+(defmethod collect-free-ids* ((l list) fids)
+  (if (null l)
+      fids
+      (collect-free-ids*
+       (cdr l)
+       (collect-free-ids* (car l) fids))))
+
+(defmethod collect-free-ids* ((ex name-expr) fids)
+  (unless (memq (declaration ex) *bound-variables*)
+    (pushnew (id ex) fids)))
+
+(defmethod collect-free-ids* ((ex number-expr) fids)
+  fids)
+
+(defmethod collect-free-ids* ((ex record-expr) fids)
+  (collect-free-ids* (assignments ex) fids))
+
+(defmethod collect-free-ids* ((ex tuple-expr) fids)
+  (collect-free-ids* (exprs ex) fids))
+
+(defmethod collect-free-ids* ((ex projection-expr) fids)
+  (collect-free-ids* (actuals ex) fids))
+
+(defmethod collect-free-ids* ((ex injection-expr) fids)
+  (collect-free-ids* (actuals ex) fids))
+
+(defmethod collect-free-ids* ((ex injection?-expr) fids)
+  (collect-free-ids* (actuals ex) fids))
+
+(defmethod collect-free-ids* ((ex extraction-expr) fids)
+  (collect-free-ids* (actuals ex) fids))
+
+(defmethod collect-free-ids* ((ex projection-application) fids)
+  (collect-free-ids*
+   (argument ex)
+   (collect-free-ids* (actuals ex) fids)))
+
+(defmethod collect-free-ids* ((ex injection-application) fids)
+  (collect-free-ids*
+   (argument ex)
+   (collect-free-ids* (actuals ex) fids)))
+
+(defmethod collect-free-ids* ((ex injection?-application) fids)
+  (collect-free-ids*
+   (argument ex)
+   (collect-free-ids* (actuals ex) fids)))
+
+(defmethod collect-free-ids* ((ex extraction-application) fids)
+  (collect-free-ids*
+   (argument ex)
+   (collect-free-ids* (actuals ex) fids)))
+
+(defmethod collect-free-ids* ((ex field-application) fids)
+  (collect-free-ids* (argument ex) fids))
+
+(defmethod collect-free-ids* ((ex application) fids)
+  (collect-free-ids*
+   (operator ex)
+   (collect-free-ids* (argument ex) fids)))
+
+(defmethod collect-free-ids* ((ex binding-expr) fids)
+  (let ((*bound-variables* (append (bindings ex) *bound-variables*)))
+    (collect-free-ids* (expression ex) fids)))
+
+(defmethod collect-free-ids* ((ex cases-expr) fids)
+  (collect-free-ids*
+   (expression ex)
+   (collect-free-ids*
+    (selections ex)
+    (collect-free-ids* (else-part ex) fids))))
+
+(defmethod collect-free-ids* ((ex selection) fids)
+  (let ((*bound-variables* (append (args ex) *bound-variables*)))
+    (collect-free-ids*
+     (constructor ex)
+     (collect-free-ids* (expression ex) fids))))
+
+(defmethod collect-free-ids* ((ex update-expr) fids)
+  (collect-free-ids*
+   (expression ex)
+   (collect-free-ids* (assignments ex) fids)))
+
+(defmethod collect-free-ids* ((ass assignment) fids)
+  (collect-free-ids*
+   (arguments ass)
+   (collect-free-ids* (expression ass) fids)))
+
+(defmethod collect-free-ids* ((act actual) fids)
+  (if (type-value act)
+      fids
+      (collect-free-ids* (expr act) fids)))
