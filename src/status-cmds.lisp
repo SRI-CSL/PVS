@@ -37,6 +37,7 @@
 (defvar *dependings* nil)
 (defvar *depending-chain* nil)
 (defvar *depending-cycles* nil)
+(defvar *possible-judgements* nil)
 
 ;;; Status Commands - these will generally interrupt PVS to report on the
 ;;; status, and tend to use the context information rather than the
@@ -504,10 +505,11 @@
 	 (*depending-cycles* nil)
 	 (*in-checker* nil)
 	 (*current-context* (context decl))
+	 (*possible-judgements* (possible-judgements decl))
 	 (fdecls (union (union (refers-to decl)
 			       (proof-refers-to decl))
 			(assuming-tccs decl)))
-	 (decls (union fdecls (possible-judgements fdecls))))
+	 (decls (union fdecls *possible-judgements*)))
     (pc-analyze* decls)
     (mapc #'(lambda (y)
 	      (cond ((typep y 'formula-decl)
@@ -728,10 +730,11 @@
 	 (*depending-chain* nil)
 	 (*depending-cycles* nil)
 	 (*current-context* (context decl))
+	 (*possible-judgements* (possible-judgements decl))
 	 (fdecls (union (union (refers-to decl)
 			       (proof-refers-to decl))
 			(assuming-tccs decl)))
-	 (decls (union fdecls (possible-judgements fdecls))))
+	 (decls (union fdecls *possible-judgements*)))
     (pc-analyze* decls)
     (mapc #'(lambda (y)
 	      (cond ((typep y 'formula-decl)
@@ -791,6 +794,12 @@
 	(id decl))
       (loop for x in (pc-sort *assumption-dependings*)
 	     do
+	     (format t "~%    ~a.~a" (id (module x)) (id x))))
+    (when *possible-judgements*
+      (format t "~%~%  ~a may depend on the following judgements:"
+	(id decl))
+      (loop for x in (pc-sort *possible-judgements*)
+	     do
 	     (format t "~%    ~a.~a" (id (module x)) (id x))))))
 
 ;; Lexical ordering; th1.id1 < th2.id2 if th1 precedes th2 in the
@@ -833,36 +842,41 @@
     (remove-if-not #'assuming-tcc?
       (ldiff theory-decls (cdr (memq decl theory-decls))))))
 
-(defun possible-judgements (decls)
+(defun possible-judgements (decl)
   ;;; We collect all judgements of the current context that might be
   ;;; involved in the proof of the decl.  This includes all subtype and
   ;;; number judgements, as well as any name or application judgements
   ;;; whose decl is in decls.
   ;;; [owre - 2005-09-11] Now just collect subtype judgements.
   (let ((jtccs nil))
-    (dolist (jdecl (judgement-declarations (current-judgements)))
-      (let ((tcc (get-judgement-tcc jdecl decls)))
+    (dolist (jdecl (if (from-prelude? decl)
+		       (judgement-declarations
+			(judgements (context decl)))
+		       (remove-if #'from-prelude?
+			 (judgement-declarations
+			  (judgements (context decl))))))
+      (let ((tcc (get-judgement-tcc jdecl decl)))
 	(when tcc (push tcc jtccs))))
 ;;     (do-all-declarations #'(lambda (decl)
 ;; 			     (let ((tcc (get-judgement-tcc decl decls)))
 ;; 			       (when tcc (push tcc jtccs)))))
     jtccs))
 
-(defmethod get-judgement-tcc ((jdecl subtype-judgement) &optional decls)
+(defmethod get-judgement-tcc ((jdecl subtype-judgement) decl)
   ;; This one is difficult, since it is not obvious when the judgement comes
   ;; into play.  Just collect them all.
   (if (generated-by jdecl)
-      (get-judgement-tcc (generated-by jdecl) decls)
+      (get-judgement-tcc (generated-by jdecl) decl)
       (find-if #'judgement-tcc? (generated jdecl))))
 
-(defmethod get-judgement-tcc ((jdecl number-judgement) &optional decls)
+(defmethod get-judgement-tcc ((jdecl number-judgement) decl)
   ;; Similarly, don't really know when a number-judgement kicked in.
 ;;   (if (generated-by jdecl)
 ;;       (get-judgement-tcc (generated-by jdecl) decls)
 ;;       (find-if #'judgement-tcc? (generated jdecl)))
   )
 
-(defmethod get-judgement-tcc ((jdecl name-judgement) &optional decls)
+(defmethod get-judgement-tcc ((jdecl name-judgement) decl)
   ;; Ignore it, if the associated declaration is not in decls
 ;;  (when (memq (declaration (name jdecl)) decls)
 ;;     (if (generated-by jdecl)
@@ -871,18 +885,18 @@
 ;; 	  (find-if #'judgement-tcc? (generated jdecl)))))
   )
 
-(defmethod get-judgement-tcc ((jdecl application-judgement) &optional decls)
+(defmethod get-judgement-tcc ((jdecl application-judgement) decl)
 ;;   (when (memq (declaration (name jdecl)) decls)
 ;;     (if (generated-by jdecl)
 ;; 	(get-judgement-tcc (generated-by jdecl) decls)
 ;; 	(find-if #'judgement-tcc? (generated jdecl))))
   )
 
-(defmethod get-judgement-tcc ((jtcc judgement-tcc) &optional decls)
-  (get-judgement-tcc (generated-by jtcc) decls))
+(defmethod get-judgement-tcc ((jtcc judgement-tcc) decl)
+  (get-judgement-tcc (generated-by jtcc) decl))
   
-(defmethod get-judgement-tcc (decl &optional decls)
-  (declare (ignore decl decls))
+(defmethod get-judgement-tcc (decl fdecl)
+  (declare (ignore decl fdecl))
   nil)
   
 (defmethod pc-analyze ((decl t))
@@ -920,12 +934,12 @@
 		    (let ((decls (union (refers-to fdecl)
 					(remove-if-not #'tcc?
 					  (generated fdecl)))))
-		      (pc-analyze* (union decls (possible-judgements decls)))))
+		      (pc-analyze* (union decls (possible-judgements fdecl)))))
 		   (t (let ((decls (union (union (refers-to fdecl)
 						 (proof-refers-to fdecl))
 					  (remove-if-not #'tcc?
 					    (generated fdecl)))))
-			(pc-analyze* (union decls (possible-judgements decls))))))))))
+			(pc-analyze* (union decls (possible-judgements fdecl))))))))))
 
 
 (defmethod pc-analyze* ((decl declaration))
