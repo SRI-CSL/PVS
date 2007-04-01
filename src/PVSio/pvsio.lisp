@@ -92,7 +92,9 @@ by Cesar Munoz at the National Institute of Aerospace.
 
 (defun read-expr (input-stream)
   (catch 'pvsio-command
-    (do ((instr nil)
+    (do ((have-real-char nil)
+	 (have-first-space nil)
+	 (instr nil)
 	 (fstr  (make-string-output-stream))
 	 (c     (read-char input-stream nil nil)
 		(read-char input-stream nil nil)))
@@ -101,23 +103,44 @@ by Cesar Munoz at the National Institute of Aerospace.
 	 (string-trim '(#\Space #\Tab #\Newline)
 		      (get-output-stream-string fstr)))
       (when (null c) (throw 'quit nil))
+      (when (and (not instr)
+		 have-real-char
+		 (not have-first-space)
+		 (member c '(#\Space #\Newline #\Tab) :test #'char=))
+	(let ((pref (get-output-stream-string fstr)))
+	  (cond ((member pref '("(lisp" "(pvs::lisp")
+			 :test #+allegro #'string= #-allegro #'string-equal)
+		 (let ((input (read input-stream nil nil)))
+		   (format t "~%~s~2%<PVSio> " (eval input)))
+		 (loop until (or (null c) (char= c #\)))
+		       do (setq c (read-char-no-hang input-stream nil nil)))
+		 (setq c #\Space)
+		 (setq have-real-char nil
+		       have-first-space nil))
+		(t (loop for ch across pref do (write-char ch fstr))
+		   (setq havespace t)))))
       (when (and (eq c #\!) (not instr))
 	(clear-input)
 	(throw 'pvsio-command 
 	       (read-from-string 
 		(get-output-stream-string fstr))))
-      (write-char c fstr)
+      (if have-real-char
+	  (write-char c fstr)
+	  (unless (member c '(#\Space #\Newline #\Tab) :test #'char=)
+	    (write-char c fstr)
+	    (setq have-real-char t)))
       (when (eq c #\") (setq instr (not instr))))))
 
 (defun evaluate-pvsio (input-stream)
   (let ((result
 	 (multiple-value-bind 
 	  (val err)
-	  (ignore-errors
+	  (progn ;;ignore-errors
 	   (catch 'abort
 	     (catch 'quit
 	       (catch 'tcerror
-		 (let* ((input (ignore-errors (read-pvsio input-stream)))
+		 (let* ((input ;;(ignore-errors (read-pvsio input-stream))
+			       (read-pvsio input-stream))
 			(pr-input (pc-parse input 'expr))
 			(*tccforms* nil)
 			(tc-input (pc-typecheck pr-input))
@@ -183,7 +206,8 @@ by Cesar Munoz at the National Institute of Aerospace.
   (when (not input-stream)
     (format t "~%<PVSio> ")
     (force-output))
-  (let ((input (ignore-errors (read-expr input-stream))))
+  (let ((input ;;(ignore-errors (read-expr input-stream))
+	       (read-expr input-stream)))
     (cond ((member input '(quit (quit) "quit") :test #'equal)
 	   (clear-input)
 	   (when (pvs-y-or-n-p "Do you really want to quit?  ")
