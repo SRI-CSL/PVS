@@ -52,6 +52,7 @@ SHELL=/bin/sh
 
 ETAGS = @ETAGS@
 MKDIR = @MKDIR@
+CFLAGS = @CFLAGS@
 
 # Check to see if we are doing something that requires Emacs and Lisp
 # If MAKECMDGOALS is empty, or has something besides clean, tar, etc.
@@ -305,6 +306,7 @@ pvs-src = src/closopt.lisp \
 	  src/pp.lisp \
           src/pp-tex.lisp \
           src/pp-html.lisp \
+          src/pp-xml.lisp \
           src/print-object.lisp \
 	  src/equalities.lisp \
           src/utils.lisp \
@@ -488,17 +490,17 @@ $(cmulisp-devel) $(cmulisp-rt) : $(image-deps) \
            $(lisp-files) $(cmulisp) lib/prelude.pvs lib/prelude.prf
 	@echo "******* Compiling PVS files in CMU Lisp"
 	$(MKDIR) -p $(subst $(SYSTEM)-cmulisp,,$@)
-	$(CMULISPEXE) -eval '(load "pvs.system" :verbose t) \
+	$(CMULISPEXE) -eval "(load \"pvs.system\" :verbose t) \
                              (let ((*load-pvs-prelude* nil)) \
                                (pvs::operate-on-system :pvs :compile)) \
-                             (quit)'
+                             (quit)"
 	@echo "******* Building PVS image $@"
-	$(CMULISPEXE) -eval '(load "pvs.system" :verbose t) \
+	$(CMULISPEXE) -eval "(load \"pvs.system\" :verbose t) \
                              (unwind-protect \
                                  (pvs::operate-on-system :pvs :compile) \
-                               (save-lisp "$@.core" \
+                               (save-lisp \"$@.core\" \
                                    :init-function (function startup-pvs) \
-                               ))'
+                               ))"
 	-rm $(PVSPATH)BDD/$(PLATFORM)/bdd-cmu.*
 	cp $(CMULISPEXE) $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-cmulisp,,$@)
@@ -555,12 +557,12 @@ endif
         clean distclean tar
 
 $(fileutils) makefileutils :
-	$(MAKE) -C $(PVSPATH)src/utils/$(PLATFORM)
+	$(MAKE) -C $(PVSPATH)src/utils/$(PLATFORM) XCFLAGS="$(CFLAGS)"
 $(bddlib) makebdd :
-	$(MAKE) -C $(PVSPATH)BDD/$(PLATFORM)
+	$(MAKE) -C $(PVSPATH)BDD/$(PLATFORM) XCFLAGS="$(CFLAGS)"
 $(ws1slib) makews1s :
 	(cd $(PVSPATH)src/WS1S ; rm -rf mona ; ln -s mona-1.4 mona);\
-	$(MAKE) -C $(PVSPATH)src/WS1S/$(PLATFORM)
+	$(MAKE) -C $(PVSPATH)src/WS1S/$(PLATFORM) XCFLAGS="$(CFLAGS)"
 
 make-release-notes :
 	$(MAKE) -C $(PVSPATH)doc/release-notes
@@ -616,7 +618,7 @@ clean :
 	rm -f *.{$(faslexts)} */*.{$(faslexts)} */*/*.{$(faslexts)} \
               */*/*/*.{$(faslexts)} */*/*/*/*.{$(faslexts)}
 	rm -rf src/WS1S/mona
-	$(MAKE) -C lib clean
+	rm -f lib/*_adt.pvs
 	for p in $(subst $(comma), ,$(platforms)) ; do \
 		rm -rf bin/$$p; \
 		$(MAKE) -C src/utils/$$p clean; \
