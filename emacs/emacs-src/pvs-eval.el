@@ -75,8 +75,3 @@
 (defun pvs-evaluator-ready ()
   (setq pvs-in-evaluator nil)
   (pvs-ready))
-
-
-
-
-
