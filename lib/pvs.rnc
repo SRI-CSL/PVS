@@ -244,10 +244,10 @@ tcc-decl-content =
   element tcc-decl {formula-decl-attr, declaration, expr}
 
 formula-decl-attr =
-  attribute kind { "ASSUMPTION" | "AXIOM" | "CHALLENGE" | "CLAIM" |
-                   "CONJECTURE" | "COROLLARY" | "FACT" | "FORMULA" | "LAW" |
-                   "LEMMA" | "OBLIGATION" | "POSTULATE" | "PROPOSITION" |
-                   "SUBLEMMA" | "THEOREM" }
+  attribute kind { "assumption" | "axiom" | "challenge" | "claim" |
+                   "conjecture" | "corollary" | "fact" | "formula" | "law" |
+                   "lemma" | "obligation" | "postulate" | "proposition" |
+                   "sublemma" | "theorem" }
 
 inline-datatype-content =
   element inline-datatype {typed-declaration}
@@ -472,12 +472,18 @@ cond-content =
   element cond {expr, expr}
 
 # row-expr, col-expr, row-headings, col-headings, table-entries
+# all but the table-entries may be omitted
 table-expr-content =
-  element table-expr {expr, expr, headings-content, headings-content,
+  element table-expr {commonattrs,
+                      table-heading-expr-content, table-heading-expr-content,
+                      table-headings-content, table-headings-content,
                       table-entries-content}
 
-headings-content =
-  element headings {expr+}
+table-heading-expr-content =
+  element table-heading-expr {expr?}
+
+table-headings-content =
+  element table-headings {expr*}
 
 table-entries-content =
   element table-entries {row-entries-content+}
