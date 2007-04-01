@@ -341,6 +341,10 @@
 	     (acons (caar mapping1) (cdr map2) composition)
 	     composition)))))
 
+;; Only works nicely for dotted pairs
+(defun reverse-alist (alist)
+  (mapcar #'(lambda (elt) (cons (cdr elt) (car elt))) alist))
+
 (defun inverse-mapping (mapping theory &optional inverse)
   (if (null mapping)
       (nreverse inverse)
