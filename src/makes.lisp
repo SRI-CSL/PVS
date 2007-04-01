@@ -1020,7 +1020,7 @@
     (assert *current-context*)
     (if (and (expr? op) (type op))
 	(typecheck expr :expected (car (application-range-types expr)))
-	(error op "Operator must be typechecked"))))
+	(error "Operator must be typechecked"))))
 
 (defmethod make-application ((op field-assignment-arg) &rest arguments)
   (assert (singleton? arguments) ()
@@ -1829,7 +1829,9 @@
       :type (nth (1- index) (types cotuptype)))))
 
 (defun make!-field-application (field-name arg)
-  (assert (and (type arg) (typep (find-supertype (type arg)) 'recordtype)))
+  (assert (and (type arg)
+	       (typep (find-supertype (type arg))
+		      '(or recordtype struct-sub-recordtype))))
   (let ((fid (ref-to-id field-name)))
     (if (record-expr? arg)
 	(let ((ass (find fid (assignments arg)
@@ -1854,7 +1856,7 @@
 
 (defun make!-field-application-type (field-id type arg)
   (let ((rtype (find-supertype type)))
-    (assert (typep rtype 'recordtype))
+    (assert (typep rtype '(or recordtype struct-sub-recordtype)))
     (if (dependent? rtype)
 	(make!-field-application-type* (fields rtype) field-id arg)
 	(type (find field-id (fields rtype) :test #'eq :key #'id)))))
