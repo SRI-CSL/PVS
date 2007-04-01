@@ -110,3 +110,47 @@
 		  (setq sbrt::*holding-char* #\-)
                   'SBST::|:|)))
           (t (lexical-unread-char stream) 'SBST::|:|))))
+
+;;; Need to deal with the situation where '}}' is really two tokens,
+;;; e.g., "{ts1: set[T] | ts1 = {t: T | ts(t)}}"
+
+(defvar *double-braces-counter* 0)
+
+(defun LEX-{ (stream symbol)
+  (declare (ignore symbol))
+  (let (holdchar)
+    (setf holdchar (lexical-read-char stream :eof))
+    (if (and PVS-ESCAPE-CHAR (eql holdchar PVS-ESCAPE-CHAR))
+        (setf holdchar (lexical-read-char stream :eof)))
+    (cond ((eql holdchar #\:) 'SBST::|{:|)
+          ((eql holdchar #\{)
+	   (incf *double-braces-counter*)
+	   'SBST::{{)
+          ((eql holdchar #\|)
+           (setf holdchar (lexical-read-char stream :eof))
+           (if (and PVS-ESCAPE-CHAR (eql holdchar PVS-ESCAPE-CHAR))
+               (setf holdchar (lexical-read-char stream :eof)))
+           (cond ((eql holdchar #\|)
+                  (setf holdchar (lexical-read-char stream :eof))
+                  (if (and PVS-ESCAPE-CHAR
+                           (eql holdchar PVS-ESCAPE-CHAR))
+                      (setf holdchar (lexical-read-char stream :eof)))
+                  (cond ((eql holdchar #\}) 'SBST::{\|\|})
+                        (t
+                         (lexical-unread-char stream)
+                         (illegal-token-error "{||")
+                         :illegal-token)))
+                 (t (lexical-unread-char stream) 'SBST::{\|)))
+          (t (lexical-unread-char stream) 'SBST::{))))
+
+(defun LEX-} (stream symbol)
+  (declare (ignore symbol))
+  (let (holdchar)
+    (setf holdchar (lexical-read-char stream :eof))
+    (if (and PVS-ESCAPE-CHAR (eql holdchar PVS-ESCAPE-CHAR))
+        (setf holdchar (lexical-read-char stream :eof)))
+    (cond ((and (eql holdchar #\})
+		(plusp *double-braces-counter*))
+	   (decf *double-braces-counter*)
+	   'SBST::}})
+          (t (lexical-unread-char stream) 'SBST::}))))
