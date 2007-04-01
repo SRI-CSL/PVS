@@ -17,10 +17,10 @@
        (pprint-indent :block 2 ,strm)
        (pprint-newline :linear ,strm)
        (pprint-logical-block (,strm nil)
-	 (format ,strm "<~A~{ ~A=\"~A\"~}>" ',eltname ,attrs)
+	 (format ,strm "<~(~A~{ ~A=\"~A\"~}~)>" ',eltname ,attrs)
 	 (format ,strm "~{~/pvs:pp-xml*/~}" (list ,@args))
 	 (pprint-indent :block 0 ,strm)
-	 (format ,strm "~_</~A>" ',eltname)))))
+	 (format ,strm "~_</~(~A~)>" ',eltname)))))
 
 ;;; Create structures so that we can get elements associated
 
@@ -48,6 +48,13 @@
 
 (defstruct xml-contains expr)
 
+(defstruct xml-table-heading-expr expr)
+
+(defstruct xml-table-headings headings)
+
+(defstruct xml-table-entries entries)
+
+(defstruct xml-row-entries entries)
 
 (defun print-xml-prelude ()
   (dolist (theory *prelude-theories*)
@@ -186,7 +193,7 @@
 
 (defun pp-xml-exporting-kind (stream kind)
   (xsal-elt stream exporting-kind nil
-	    (format nil "~a" kind)))
+	    (format nil "~(~a~)" kind)))
 
 (defun pp-xml-exporting-modules (stream names)
   (when names
@@ -586,10 +593,30 @@
   (with-slots (row-expr col-expr row-headings col-headings table-entries) ex
     (pp-xml-table-expr stream ex row-expr col-expr row-headings col-headings table-entries)))
 
-(defun pp-xml-table-expr (stream table-expr row-expr col-expr row-headings col-headings
-				 table-entries)
+(defun pp-xml-table-expr (stream table-expr row-expr col-expr
+				 row-headings col-headings table-entries)
   (xsal-elt stream table-expr (xml-attributes table-expr)
-    row-expr col-expr row-headings col-headings table-entries))
+	    (make-xml-table-heading-expr :expr row-expr)
+	    (make-xml-table-heading-expr :expr col-expr)
+	    (make-xml-table-headings :headings row-headings)
+	    (make-xml-table-headings :headings col-headings)
+	    (make-xml-table-entries
+	     :entries (mapcar #'(lambda (re)
+				  (make-xml-row-entries :entries re))
+			table-entries))))
+
+(defmethod pp-xml* (stream (thex xml-table-heading-expr)
+			   &optional colon? atsign?)
+  (xsal-elt stream table-heading-expr nil (xml-table-heading-expr-expr thex)))
+
+(defmethod pp-xml* (stream (th xml-table-headings) &optional colon? atsign?)
+  (xsal-elt stream table-headings nil (xml-table-headings-headings th)))
+
+(defmethod pp-xml* (stream (te xml-table-entries) &optional colon? atsign?)
+  (xsal-elt stream table-entries nil (xml-table-entries-entries te) nil nil))
+
+(defmethod pp-xml* (stream (te xml-row-entries) &optional colon? atsign?)
+  (xsal-elt stream row-entries nil (xml-row-entries-entries te) nil nil))
 
 (defmethod pp-xml* (stream (ex name-expr) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -648,7 +675,7 @@
 (defmethod pp-xml* (stream (ex symbol) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
   (format stream "~2I~_~@<<~A~@[ ~A~]>~A</~A>~:>"
-    'id nil (translate-characters-to-xml-string (string ex)) 'id)
+    "id" nil (translate-characters-to-xml-string (string ex)) "id")
   )
 
 (defmethod pp-xml* (stream (ex number) &optional colon? atsign?)
