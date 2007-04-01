@@ -66,6 +66,7 @@
   (setq sbrt:*last-newline-comment* nil)
   (setq sbrt:*num-keywords-skipped* -1)
   (setq *table-bracket-counter* 0)
+  (setq *double-braces-counter* 0)
   (setq *elsif-places* nil)
   (setq *operator-places* nil))
 
