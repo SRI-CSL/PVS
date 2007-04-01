@@ -21,7 +21,7 @@ dnl --------------------------------------------------------------------
 
 
 dnl make sure we are using a recent autoconf version
-AC_PREREQ(2.52)
+AC_PREREQ(2.59)
 
 dnl If it doesn't look like GNU Make is being used, give a friendly warning
 tem=`make --version -f /dev/null 2>&1 | grep GNU`
@@ -31,7 +31,8 @@ fi
 
 dnl This file must exist for configure to run
 AC_MSG_CHECKING(for existence of src/pvs.lisp)
-AC_INIT(src/pvs.lisp)
+AC_INIT
+AC_CONFIG_SRCDIR([src/pvs.lisp])
 	
 dnl This sets build, build_cpu, build_vendor, and build_os
 AC_CANONICAL_BUILD
@@ -41,7 +42,8 @@ dnl build with several lisps.  Checks have been moved into the Makefile
 	
 dnl Giving pvspath is optional
 AC_MSG_CHECKING(pvspath)
-AC_ARG_WITH(pvspath, [ --with-pvspath=/path/to/pvs ])
+AC_ARG_WITH(pvspath, AS_HELP_STRING([--with-pvspath=path],
+				    [path=current directory if automounted]))
 if test "x$with_pvspath" = "x"; then
   PVSPATH=`pwd`
 else
@@ -144,6 +146,7 @@ PLATFORM=`./bin/pvs-platform`
 export PLATFORM
 
 # Finally create all the generated files
-AC_OUTPUT(Makefile pvs pvsio doc/user-guide/Makefile doc/language/Makefile doc/language/pvs-doc.el doc/prover/Makefile)
+AC_CONFIG_FILES([Makefile pvs pvsio doc/user-guide/Makefile doc/language/Makefile doc/language/pvs-doc.el doc/prover/Makefile])
+AC_OUTPUT
 
 chmod a+x pvs
