@@ -1386,11 +1386,17 @@
 	  (let* ((acts (mapcar #'(lambda (a)
 				   (mk-res-actual (cdr a) theory))
 			 bindings))
-		 (nmi (mk-modname (id theory) acts)))
-	    (when (with-no-type-errors
-		   (check-compatible-params
-		    (formals-sans-usings theory) acts nil))
-	      (subst-params-decl conversion nmi theory) (car types)))
+		 (nmi (mk-modname (id theory) acts))
+		 (cdecl (when (with-no-type-errors
+			       (check-compatible-params
+				(formals-sans-usings theory) acts nil))
+			  (subst-params-decl conversion nmi theory))))
+	    (if cdecl
+		(make-instance 'conversion-result
+		  :expr (expr cdecl)
+		  :conversion cdecl)
+		(compatible-recordtype-conversion*
+		 (cdr types) conversion ex index)))
 	  (compatible-recordtype-conversion*
 	   (cdr types) conversion ex index)))))
 
@@ -1443,24 +1449,24 @@
 			 (ptypes ex))
 	       conversion)))))
 
-(defun compatible-recordtype-conversion* (types conversion ex field-id)
-  (when types
-    (let* ((theory (module conversion))
-	   (ctype (find-supertype (type (expr conversion))))
-	   (fmls (formals-sans-usings theory))
-	   (bindings (tc-match (car types) (domain ctype)
-			       (mapcar #'list fmls))))
-      (if (and bindings (every #'cdr bindings))
-	  (let* ((acts (mapcar #'(lambda (a)
-				   (mk-res-actual (cdr a) theory))
-			 bindings))
-		 (nmi (mk-modname (id theory) acts)))
-	    (when (with-no-type-errors
-		   (check-compatible-params
-		    (formals-sans-usings theory) acts nil))
-	      (subst-params-decl conversion nmi theory) (car types)))
-	  (compatible-recordtype-conversion*
-	   (cdr types) conversion ex field-id)))))
+;; (defun compatible-recordtype-conversion* (types conversion ex field-id)
+;;   (when types
+;;     (let* ((theory (module conversion))
+;; 	   (ctype (find-supertype (type (expr conversion))))
+;; 	   (fmls (formals-sans-usings theory))
+;; 	   (bindings (tc-match (car types) (domain ctype)
+;; 			       (mapcar #'list fmls))))
+;;       (if (and bindings (every #'cdr bindings))
+;; 	  (let* ((acts (mapcar #'(lambda (a)
+;; 				   (mk-res-actual (cdr a) theory))
+;; 			 bindings))
+;; 		 (nmi (mk-modname (id theory) acts)))
+;; 	    (when (with-no-type-errors
+;; 		   (check-compatible-params
+;; 		    (formals-sans-usings theory) acts nil))
+;; 	      (subst-params-decl conversion nmi theory) (car types)))
+;; 	  (compatible-recordtype-conversion*
+;; 	   (cdr types) conversion ex field-id)))))
 
 (defun get-recordtype-conversion-resolutions (name arguments)
   (when (and (null (library name))
