@@ -5,7 +5,8 @@
 ; pvsio
 (defpvs pvsio prove (theory)
   "Invokes PVSio in the context of the given PVS theory"
-  (interactive (complete-theory-name "Use context of theory: "))
+  (interactive (progn (confirm-not-in-checker)
+		      (complete-theory-name "Use context of theory: ")))
   (unless (interactive-p) (pvs-collect-theories))
   (confirm-not-in-checker)
   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" theory)
