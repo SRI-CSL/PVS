@@ -443,7 +443,7 @@
 
 (defun make-subst-mod-params-map-bindings (modinst mappings bindings)
   (if (null mappings)
-      (reverse bindings)
+      (reverse (remove-if #'null bindings :key #'cdr))
       (let* ((decl (declaration (car (resolutions (lhs (car mappings))))))
 	     (bind-rhs (rhs (car mappings)))
 	     (nbindings (make-subst-mod-params-map-bindings*
