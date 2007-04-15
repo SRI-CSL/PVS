@@ -199,7 +199,7 @@
   (when (or (everywhere-true? (predicate t1))
 	    (and (adt-type-name? (supertype t1))
 		 (single-constructor? (supertype t1))
-		 (recognizer (predicate t1))))
+		 (recognizer-name-expr? (predicate t1))))
     (tc-eq* (supertype t1) t2 bindings)))
 
 (defmethod tc-eq* ((t1 type-name) (t2 subtype) bindings)
