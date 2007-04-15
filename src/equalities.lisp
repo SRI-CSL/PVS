@@ -198,13 +198,15 @@
 (defmethod tc-eq* ((t1 subtype) (t2 type-name) bindings)
   (when (or (everywhere-true? (predicate t1))
 	    (and (adt-type-name? (supertype t1))
-		 (single-constructor? (supertype t1))))
+		 (single-constructor? (supertype t1))
+		 (recognizer (predicate t1))))
     (tc-eq* (supertype t1) t2 bindings)))
 
 (defmethod tc-eq* ((t1 type-name) (t2 subtype) bindings)
   (when (or (everywhere-true? (predicate t2))
 	    (and (adt-type-name? (supertype t2))
-		 (single-constructor? (supertype t2))))
+		 (single-constructor? (supertype t2))
+		 (recognizer-name-expr? (predicate t2))))
     (tc-eq* t1 (supertype t2) bindings)))
 
 ;;; This is needed since expr-as-type is used as a print-type, in which
@@ -1626,12 +1628,13 @@
 	(values incs (cons (cons aact preds) pospreds))
 	(values (cons (make-actuals-equality aact eact) incs) pospreds))))
 
+;;; pospreds are of the form ((act p1 .. pn) ...)
 (defun make-compatible-every-pred (pospreds atype aacts aexpr)
   (let ((every (make-every-name atype aacts))
 	(*generate-tccs* 'none))
     (make!-application
 	(make!-application* every
-			    (mapcar #'make-compatible-every-pred* pospreds))
+	  (mapcar #'make-compatible-every-pred* pospreds))
       (copy aexpr))))
 
 (defun make-every-name (atype acts)
