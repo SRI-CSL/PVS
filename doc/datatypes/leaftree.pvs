@@ -1,0 +1,5 @@
+leaftree[T : TYPE] : DATATYPE
+ BEGIN
+  leaf(val : T) : leaf?
+  node(subs : list[leaftree]): node?
+ END leaftree

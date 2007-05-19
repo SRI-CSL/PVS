@@ -1,0 +1,5 @@
+dt[t1, t2: TYPE, c: t1]: DATATYPE
+ BEGIN
+  b: b?
+  c(a1:[t1 -> t2], a2: dt): c?
+ END dt

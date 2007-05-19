@@ -1,0 +1,5 @@
+binary_tree[T : TYPE] : DATATYPE
+BEGIN
+  leaf : leaf?
+  node(val : T, left : binary_tree, right : binary_tree) : node?
+END binary_tree

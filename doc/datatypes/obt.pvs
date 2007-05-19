@@ -1,0 +1,48 @@
+obt [T : TYPE,  <= : (total_order?[T])] : THEORY
+BEGIN
+IMPORTING binary_tree[T]
+
+A, B, C: VAR binary_tree
+x, y, z: VAR T
+pp: VAR pred[T]
+i, j, k: VAR nat
+
+size(A) : nat =
+  reduce_nat(0, (LAMBDA x, i, j: i + j + 1))(A)
+
+ordered?(A) : RECURSIVE bool =
+  (IF node?(A) THEN (every((LAMBDA y: y<=val(A)), left(A)) AND
+                     every((LAMBDA y: val(A)<=y), right(A)) AND
+                     ordered?(left(A)) AND
+                     ordered?(right(A)))
+         ELSE TRUE ENDIF)
+  MEASURE size
+
+insert(x, A): RECURSIVE binary_tree[T] =
+  (CASES A OF
+    leaf: node(x, leaf, leaf),
+    node(y, B, C): (IF x<=y THEN node(y, insert(x, B), C)
+                            ELSE node(y, B, insert(x, C))
+                    ENDIF)
+   ENDCASES)
+  MEASURE size(A)
+
+ordered?_insert_step: LEMMA
+   pp(x) AND every(pp, A) IMPLIES every(pp, insert(x, A))
+
+ordered?_insert: THEOREM
+   ordered?(A) IMPLIES ordered?(insert(x, A))
+
+search(x, A): RECURSIVE bool =
+  (CASES A OF
+    leaf: FALSE,
+    node(y, B, C): (IF x = y THEN TRUE
+                         ELSIF x<=y THEN search(x, B)
+                           ELSE search(x, C)
+                    ENDIF)
+   ENDCASES)
+  MEASURE size(A)
+
+search_insert: THEOREM search(y, insert(x, A)) = (x = y OR search(y, A))
+
+END obt

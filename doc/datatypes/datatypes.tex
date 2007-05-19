@@ -1,0 +1,2809 @@
+% Document Type: LaTeX
+% Master File: datatypes.tex
+\documentclass[11pt,twoside]{book}
+\usepackage{relsize,url,makeidx,alltt}
+\usepackage{fancyheadings}
+\usepackage[chapter]{tocbibind}
+\makeatletter
+\@ifundefined{pdfoutput}%
+{\usepackage[bookmarks=true,hyperindex=true]{hyperref}}%
+{\usepackage[pdftex,dvipsnames,usenames]{color}%
+\usepackage[bookmarks=true,hyperindex=true,colorlinks=true,linkcolor=Brown,citecolor=blue,backref=page,pagebackref=true,plainpages=false,pdfpagelabels]{hyperref}%
+}%
+\makeatother
+\makeindex
+\sloppy
+% full list of sections:
+%\includeonly{title,intro,informal,pspace,undecide,conclu,ack,rules}
+\setlength{\textwidth}{6in}
+\setlength{\evensidemargin}{0in}
+\setlength{\oddsidemargin}{.5in}
+%\pagestyle{myheadings} % page number in upper right corner
+%\markboth{Specification and Verification}{}
+%\makeindex
+%\setcounter{secnumdepth}{4} 
+%\setcounter{tocdepth}{4}
+%\newenvironment{smalltt}{\begin{alltt}\small\tt}{\end{alltt}}
+\newenvironment{stdisplay}{\begin{pagegroup}\begin{smalltt}}{\end{smalltt}\end{pagegroup}}
+\newenvironment{tdisplay}{\hozline\begin{alltt}\footnotesize\tt\vspace{0.3\baselineskip}}{\vspace{0.3\baselineskip}\end{alltt}\hozline}
+%\renewcommand{\baselinestretch}{2}
+\newcommand{\tfuntype}[2]{[#1 -> #2]}
+\newcommand{\mathfuntype}[2]{[#1 \aro #2]}
+%\renewcommand{\baselinestretch}{2}
+\newenvironment{display}{\begin{alltt}\small\tt\vspace{0.3\baselineskip}}{\vspace{0.3\baselineskip}\end{alltt}}
+\newcommand{\choice}{[\!]}  \newcommand{\normtt}[1]{{\obeyspaces \texttt{#1
+}}} \newenvironment{pagegroup}{}{}
+%\newenvironment{smalltt}{\begin{alltt}\small\tt}{\end{alltt}}
+%\newenvironment{tdisplay}{\begin{alltt}\footnotesize\tt\vspace{0.3\baselineskip}}{\vspace{0.3\baselineskip}\end{alltt}}
+%\input{/homes/shankar/linear/lmacros}
+\input{/homes/rushby/tex/prelude}
+%\input{/homes/rushby/tex/jmacros}
+\newcommand{\aro}{\mathord\rightarrow} % see pages 154-155 of TeX manual
+\newcommand{\pvsref}[1]{\fbox{\footnotesize\ref{#1}}} \def\id#1{\hbox{\textt{#1}}} %changing ids from roman to tt.
+\begin{document}
+
+\begin{titlepage}
+\renewcommand{\thepage}{title}
+\vspace*{1in}
+\noindent
+\rule[1pt]{\textwidth}{2pt}
+\begin{center}
+\newfont{\pvstitle}{cmss17 scaled \magstep4}
+\textbf{\pvstitle Abstract Datatypes in PVS}
+\end{center}
+\begin{flushright}
+{\Large Technical Report CSL-93-9R {\smaller$\bullet$} December 1993, Substantially Revised June 1997}
+\end{flushright}
+\rule[1in]{\textwidth}{2pt}
+\vspace*{2in}
+\begin{flushleft}
+S.~Owre\\
+N.~Shankar\\
+{\smaller\url{{Owre,Shankar}@csl.sri.com}}\\
+{\smaller\url{http://pvs.csl.sri.com/}}
+\end{flushleft}
+\vspace*{1in}
+\vbox{\hbox to \textwidth{{\Large SRI International\hfill}}%
+\hbox to \textwidth{{\small\sf%
+Computer Science Laboratory $\bullet$ 333 Ravenswood Avenue $\bullet$ Menlo Park CA 94025\hfil}}}
+\end{titlepage}
+
+\pagestyle{fancy}
+\renewcommand{\chaptermark}[1]{\markboth{{\em #1}}{}\markright{{\em #1}}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection \em \ #1}}
+\lhead[\thepage]{\rightmark}
+%\cfoot{\protect\small\bf \fbox{PVS 2.3 DRAFT}}
+\cfoot{}
+\rhead[\leftmark]{\thepage}
+\thispagestyle{empty}
+
+\newpage
+\renewcommand{\thepage}{ack}
+\vspace*{6in}\noindent
+The development of the
+initial version of PVS was funded by internal research funding from SRI
+International.  More recent versions of PVS have been developed with
+funding from ARPA, AFOSR, NASA, NSF, and NRL.  Support for the preparation
+of this document came from the National Aeronautics and Space
+Administration Langley Research Center under Contract NAS1-18969.  This
+report is a revised and updated version of Technical Report
+SRI-CSL-93-09.
+\newpage
+\pagenumbering{roman}
+\setcounter{page}{1}
+
+\raggedbottom
+%\input{title}
+\vspace{4in}
+\pagenumbering{roman}
+%\maketitle
+%% \begin{abstract}
+%% PVS (Prototype Verification System) is a general-purpose environment for
+%% developing specifications and proofs.  This document deals primarily with
+%% the abstract datatype mechanism in PVS which generates theories containing
+%% axioms and definitions for a class of recursive datatypes.  The concepts
+%% underlying the abstract datatype mechanism are illustrated using ordered
+%% binary trees as an example.  Binary trees are described by a PVS abstract
+%% datatype that is parametric in its value type.  The type of ordered binary
+%% trees is then presented as a subtype of binary trees where the ordering
+%% relation is also taken as a parameter.  We define the operations of
+%% inserting an element into, and searching for an element in an ordered
+%% binary tree; the bulk of the report is devoted to PVS proofs of some
+%% useful properties of these operations.  These proofs illustrate various
+%% approaches to proving properties of abstract datatype operations.  They
+%% also describe the built-in capabilities of the PVS proof checker for
+%% simplifying abstract datatype expressions.
+%% \end{abstract}
+\pagenumbering{roman}
+\tableofcontents
+
+\cleardoublepage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\chapter{Introduction}
+
+PVS is a specification and verification environment developed at SRI
+International.\footnote{PVS is freely available and can be obtained via
+FTP from \texttt{/pub/pvs/} through the Internet host
+\url{ftp.csl.sri.com}.  The URL \texttt{http://www.csl.sri.com/pvs.html}
+provides access to PVS-related information and documents.}  Several
+documents describe the use of PVS~\cite{PVS:manuals}; this document
+explains the PVS mechanisms for defining and using abstract
+datatypes.\footnote{The PVS abstract datatype mechanism is still evolving.
+Some of the contemplated changes could invalidate parts of the description
+in this report.  This report itself updates SRI CSL Technical Report
+CSL-93-9 so that it is accurate with respect to the alpha version of
+PVS~2.1\@.  Future versions of the report will be similarly revised to
+maintain accuracy.}  It describes a PVS specification for the data
+structure of ordered binary trees, defines various operations on this
+structure, and contains PVS proofs of some useful properties of these
+operations.  It also describes various other data structures that can be
+captured by the PVS abstract datatype mechanism, and documents the
+built-in capabilities of the PVS proof checker for simplifying abstract
+datatype expressions.  The exposition does assume some general familiarity
+with formal methods but does not require any specific knowledge of PVS\@.
+
+
+
+PVS provides a mechanism for defining abstract datatypes of a certain
+class.  This class includes all of the ``tree-like'' recursive data
+structures that are \emph{freely generated} by a number of
+\emph{constructor} operations.\footnote{The abstract datatype mechanism of
+PVS is partly inspired by the \emph{shell} principle used in the
+Boyer-Moore theorem prover~\cite{Boyer-Moore79}.  Similar mechanisms exist
+in a number of other specification and programming languages.}  For
+example, the abstract datatype of lists is generated by the constructors
+\texttt{null} and \texttt{cons}\@.  The abstract datatype of stacks is generated
+by the constructors \texttt{empty} and \texttt{push}\@.  An unordered list or a
+\emph{bag} is an example of a data structure that is not freely generated
+since two different sequences of insertions of elements into a bag can
+yield equivalent bags.  The queue datatype is freely generated but is not
+considered recursive in PVS since the accessor \texttt{head} returning the
+first element of the queue is not an inverse of the \texttt{enqueue}
+constructor\@.  This means that the queue datatype must either be
+explicitly axiomatized or implemented using some other datatype such as
+the list or stack datatype.
+
+
+At the semantic level, a recursive datatype introduces a new type
+constructor that is a solution to a recursive type equation of the form $T
+= \tau[T]$\@.  Typically, the recursive occurrences of the type name $T$
+on the right-hand side must occur only \emph{positively} (as defined in
+Section~\ref{positive}) in the type expression $\tau[T]$ and the datatype
+is the least solution to the recursion equation\@.  For example, the
+datatype of lists of element type $A$ is the least solution to the type
+equation $T = \{ \texttt{null}\} + A\times T$, where $+$ is the disjoint
+union operation and the $\times$ operation returns the Cartesian product.
+The minimality of lists datatype yields a structural induction principle
+asserting that any list predicate $P$, if $P$ is closed under the list
+datatype operations, i.e., where $P( \texttt{null})$ and $\forall x, l: P(l)
+\supset P( \texttt{cons}(x, l))$, then $P$ holds of all lists.  The induction
+principle also yields a structural recursion theorem asserting that
+a function that is defined by induction on the structure is total and
+uniquely defined.  By the semantic definition of lists, the equality
+relation on the lists datatype is also the least equality where the
+constructor \texttt{cons} can be regarded as a congruence.  The minimality of
+the equality relation asserts that the constructor \texttt{cons} is an
+injective operation from $A \times \texttt{list}$ to \texttt{list}\@.
+As a consequence of the minimality of equality on the datatype, one can
+define accessor functions such as \texttt{car} and \texttt{cdr} on lists
+constructed using \texttt{cons}, derive extensionality principles, and define
+functions by case analysis on the constructor.   The PVS datatype
+mechanism is used to generate theories introducing the datatype operations
+for constructing, recognizing, and accessing datatype expressions,
+defining structural recursion schemes over datatype expressions, 
+and asserting axioms such as those for extensionality and induction.  
+
+The datatype of lazy lists or streams is also generated by the same
+recursion scheme using the constructors \texttt{null} and \texttt{cons} but it
+is a co-recursive datatype (or a co-datatype) rather than a recursive
+datatype in that it is the greatest solution to the same recursion
+equation corresponding to lists.  PVS does not yet have a similar 
+mechanism for introducing co-datatypes, and this would be a useful
+extension to the language.  Such a theory of sequences has been
+formalized in PVS by Hensel and  Jacobs~\cite{Hensel-Jacobs97}
+(see also the URL: \url{http://www.cs.kun.nl/~bart/sequences.html})\@.
+ 
+ PVS is a specification language with a set-theoretic semantics.  Types
+are therefore interpreted as sets of elements and a function type \texttt{[A
+-> B]} is interpreted as the set of all total maps from the set
+corresponding to \texttt{A} to that for \texttt{B}.  The use of set-theoretic
+semantics leads to some
+important constraints on the form of recursive definitions that can be
+used in PVS datatype declarations.  
+
+In Section~\ref{lists}, we first present the declaration for the \texttt{list} datatype to convey the syntactic restrictions on such datatype
+declarations.   The outcome of such datatype declarations in terms of
+generated theories is explained in detail for the datatype of binary trees
+in Section~\ref{binary-trees}.  In Section~\ref{ordered-binary-trees},
+the binary tree data structure is used to define ordered binary trees.
+Section~\ref{enumtypes} shows how enumerated datatypes can be
+defined as simple forms of PVS datatypes.  Section~\ref{disjoint-union}
+shows the definition for disjoint unions.  Mutually recursive datatypes
+are described in Section~\ref{mutual}\@.  Subtyping on recursive
+datatypes is described in Section~\ref{lifting}\@.  In
+Section~\ref{section:ordinals},  datatypes are
+used to construct effective representations for recursive ordinals
+which are then used as lexicographic termination measures for
+recursive functions.  Section~\ref{OBT-proofs} shows some proofs
+about ordered binary trees which use some of the built-in simplifications
+shown in~\ref{built-in} along with the proof strategies
+described in Section~\ref{proof-strategies}\@.   Some limitations
+of the PVS datatype mechanism are described in Section~\ref{limitations},
+followed by a discussion of related work in Section~\ref{related}\@.
+
+\chapter{Lists:  A Simple Abstract Datatype}\label{lists}
+
+The PVS prelude contains the following declaration of 
+the abstract datatype of lists of a given element type.  
+\begin{session*}
+list[t:TYPE] : DATATYPE 
+ BEGIN
+  null: null?
+  cons (car: t, cdr :list) :cons?
+ END list
+\end{session*}
+Here \texttt{list} is declared as a type that is parametric in the type
+\texttt{t} with two \emph{constructors} \texttt{null} and \texttt{cons}\@.
+The constructor \texttt{null} takes no arguments.  The predicate
+\emph{recognizer} \texttt{null?}  holds for exactly those elements of the
+\texttt{list} datatype that are identical to \texttt{null}.  The
+constructor \texttt{cons} takes two arguments where the first is of the
+type \texttt{t} and the second is a \texttt{list}.  The recognizer
+predicate \texttt{cons?}\ holds for exactly those elements of the
+\texttt{list} type that are constructed using \texttt{cons}, namely, those
+that are not identical to \texttt{null}\@.  There are two \emph{accessors}
+corresponding to the two arguments of \texttt{cons}\@.  The accessors
+\texttt{car} and \texttt{cdr} can be applied only to lists satisfying the
+\texttt{cons?}\ predicate so that \texttt{car(cons(x, l))} is \texttt{x}
+and \texttt{cdr(cons(x, l))} is \texttt{l}\@.  Note that
+\texttt{car(null)} is not a well typed expression in that it generates a
+invalid proof obligation, a \emph{type correctness condition} (TCC), that
+\texttt{cons?(null)} must hold.
+
+The rules on datatype declarations as enforced by the PVS typechecker are:
+\begin{enumerate}
+
+\item The constructors must be pairwise distinct, i.e., there should be no
+duplication among the constructors.
+
+\item The recognizers must be pairwise distinct, and also distinct
+from any of the constructors and the datatype name itself.
+
+%\item The accessors within each constructor must be pairwise
+%distinct and distinct from the datatype name itself.  
+
+\item There must be at least one non-recursive constructor, that is, one
+that has no recursive occurrences of the datatype in its accessor
+types.\footnote{This is a needless restriction which will be removed
+in future versions of PVS.  It was intended to ensure
+that the recursive datatype had a base object.  However, it turns out
+that the restriction does not always guarantee the existence of such a
+base object such as when the base constructor has an accessor of an empty
+type.   Also  datatypes violating this restriction can be well-formed
+such as a datatype \texttt{okay} with one recursive constructor \texttt{mk\_okay}
+that has one accessor \texttt{get} of type \texttt{list[okay]}\@.  The base
+object in this case is \texttt{mk\_okay(null)}\@.  When there is no
+base object, then the datatype is empty.  }
+
+\item The recursive occurrences of the datatype name in its definition
+must be positive as described in Section~\ref{positive}.
+\end{enumerate}
+
+When the \texttt{list} abstract datatype is typechecked, three theories are
+generated in the file \texttt{list\_adt.pvs}\@.    The first theory,
+\texttt{list\_adt},  contains
+the basic declarations and axioms formalizing the datatype, including an
+induction scheme and an extensionality axiom for each constructor.
+The second theory, \texttt{list\_adt\_map}, defines a \texttt{map} operation
+that lifts a function of
+type \texttt{[s -> t]} to a function of type \texttt{[list[s] -> list[t]]}\@.   
+The third theory, \texttt{list\_adt\_reduce}, formalizes a general-purpose
+recursion operator 
+over the abstract datatype.   These theories are  examined in more
+detail below for the case of binary trees.  An important point to note
+about the generated datatype axioms is that apart from the induction and
+extensionality axioms, all the other axioms are automatically applied by
+PVS proof commands such as \texttt{assert} and \texttt{beta} so that the
+relevant axioms need never be explicitly invoked during a proof.
+
+\section{Positive type occurrence. }\label{positive}
+For each recursive datatype defined by means of the PVS \texttt{DATATYPE}
+declaration, the typechecker generates theories, definitions, and axioms
+similar to those shown above for the case of binary trees.  In general,
+such a datatype can take individual and type parameters, and
+is specified in terms of the constructors, and the corresponding
+recognizers and accessors.  The type of the accessor fields can be
+given recursively in terms of the datatype itself as long as this
+recursive occurrence of the type is \emph{positive} in a certain
+restricted sense\@.  A type occurrence
+\texttt{T} is positive in a type expression $\tau$ iff either
+\begin{enumerate}
+\item $\tau\equiv \texttt{T}$.
+
+\item \texttt{T} occurs positively in a supertype $\tau'$  of $\tau$.
+
+\item $\tau\equiv \mathfuntype{\tau_1}{\tau_2}$ where
+$ \texttt{T}$ occurs positively
+in $\tau_2$\@.  For example,  $\texttt{T}$ occurs positively in 
+\texttt{sequence[T]} where \texttt{sequence[T]} is defined in the
+PVS prelude as the function type \texttt{[nat -> T]}\@.
+
+\item $\tau \equiv [\tau_1,\ldots, \tau_n]$ where \texttt{T} occurs
+positively in some $\tau_i$.
+
+
+\item $\tau\equiv [\#\ l_1 : \tau_1, \ldots, l_n : \tau_n\ \#]$ where
+\texttt{T} occurs positively in some $\tau_i$\@. 
+
+\item $\tau\equiv \mbox{\emph{datatype}}[\tau_1,\ldots, \tau_n]$,
+where \emph{datatype} is a previously defined datatype 
+and  \texttt{T} occurs positively in $\tau_i$, where
+$\tau_i$ is a \emph{positive parameter} of  \emph{datatype}\@. 
+\end{enumerate}
+
+
+The recursive occurrences of the datatype name in its definition must be
+positive so that we can assign a set-theoretic interpretation to all
+types.  It is easy to see that violating this condition in the recursion
+leads to contradictions.  For example, a datatype \texttt{T} with an
+accessor of type \texttt{\tfuntype{T}{bool}} would yield a contradiction
+since the cardinality of \texttt{\tfuntype{T}{bool}} is that of the
+power-set of \texttt{T} which by Cantor's theorem must be strictly greater
+than the cardinality of \texttt{T}\@.  However, we have that distinct
+accessor elements lead to distinct datatype elements as well, and hence a
+contradiction.  Similarly, an accessor type of
+\texttt{\tfuntype{\tfuntype{T}{bool}}{bool}} is also easily ruled out by
+cardinality considerations even though the occurrence of \texttt{T} in it
+is positive in terms of its polarity.
+
+A \emph{positive type parameter} \texttt{T} in a datatype declaration 
+is one that only occurs positively in the type of an accessor.
+Positive type parameters in datatypes have a special role.
+As an example of a nested recursive datatype with recursion on the positive
+parameters,  a \emph{search tree} with leaf nodes bearing 
+values of type \texttt{T} can be declared as in~\pvsref{leaftree}\@.
+Note that the recursive occurrence of \texttt{leaftree} is as a (positive)
+parameter to the \texttt{list} datatype.  
+\begin{session*}\label{leaftree}
+leaftree[T : TYPE] : DATATYPE
+ BEGIN
+  leaf(val : T) : leaf?
+  node(subs : list[leaftree]): node?
+ END leaftree
+\end{session*}
+
+ Positive datatype parameters are also used to generate the
+combinators \texttt{every}, \texttt{some}, and \texttt{map} which
+are described in detail for the datatype of binary trees in
+Section~\ref{binary-trees}.  
+
+\chapter{Binary Trees}\label{binary-trees}
+
+A \emph{binary tree} is a recursive data structure that in the base case
+is a \emph{leaf} node, and in the recursive case consists of a \emph{value}
+component, and \emph{left} and \emph{right} subtrees that are themselves
+binary trees.  Binary 
+trees can be formalized in  several ways.  In most imperative
+programming languages, they are defined as record structures
+containing pointers to the subtrees.  They can also be encoded in
+terms of more primitive recursive data structures such as the
+s-expressions of Lisp.  In a declarative specification language, one
+can formalize binary trees by enumerating the relevant axioms.  One
+difficulty with this latter approach is the amount of effort involved
+in correctly identifying all of the relevant axioms.  Another difficulty
+is that it can be tedious to explicitly invoke these axioms during a
+proof.  This is the motivation for providing a concise abstract
+datatype mechanism in PVS that is integrated with the theorem prover.
+With binary trees, the declaration of the 
+datatype is similar to that for lists above.
+\begin{session*}
+binary_tree[T : TYPE] : DATATYPE
+BEGIN
+  leaf : leaf?
+  node(val : T, left : binary_tree, right : binary_tree) : node?
+END binary_tree
+\end{session*}
+The two constructors \texttt{leaf} and \texttt{node} have corresponding
+recognizers \texttt{leaf?}\ and \texttt{node?}\@.  The \texttt{leaf}
+constructor does not have any accessors.  The \texttt{node} constructor
+has three arguments: the value at the node, the left subtree, and the
+right subtree.  The accessor functions corresponding to these three
+arguments are \texttt{val}, \texttt{left}, and \texttt{right},
+respectively.  When the above datatype declaration is typechecked, the
+theories \texttt{binary\_tree\_adt}, \texttt{binary\_tree\_adt\_map}, and
+\texttt{binary\_tree\_adt\_reduce} are generated.  The first of these has
+the form:
+\begin{session*}
+binary_tree_adt[T: TYPE]: THEORY
+  BEGIN
+  
+  binary_tree: TYPE
+  
+  leaf?, node?: [binary_tree -> boolean]
+  
+  leaf: (leaf?)
+  
+  node: [[T, binary_tree, binary_tree] -> (node?)]
+  
+  val: [(node?) -> T]
+  
+  left: [(node?) -> binary_tree]
+  
+  right: [(node?) -> binary_tree]
+  
+  \emph{Various axioms and definitions omitted.}
+
+  END binary_tree_adt
+\end{session*}
+Note that the theory is parametric in the value type \texttt{T}.
+%% \comment{A hidden assumption on this parameter  is generated 
+%% during typechecking as an \emph{assumption} TCC (type correctness
+%% condition).\footnote{The PVS Emacs command \texttt{M-x ppe} displays the
+%% entire theory, including the assumptions and type correctness
+%% conditions.}  
+%% It asserts that the type \texttt{T} must be nonempty.}
+
+The first declaration above declares  \texttt{binary\_tree} as a type.
+The two recognizer predicates on binary trees \texttt{leaf?}\ and \texttt{node?}\  are then declared.  The constructor \texttt{leaf} is declared
+to have type \texttt{(leaf?)} which is the subtype of \texttt{binary\_tree}
+constrained by the \texttt{leaf?} predicate.  The \texttt{node} constructor
+is declared as a function with domain type \texttt{[T, binary\_tree,
+binary\_tree]} and range type \texttt{(node?)} which is again the subtype of
+\texttt{binary\_tree} constrained by the \texttt{node?} predicate.  
+The three accessors on value (nonleaf)
+nodes are then declared.  Each of these accessors takes as its domain
+the subset of binary trees that are constructed by means of the \texttt{node} constructor.  Note that when \texttt{binary\_tree\_adt} is instantiated
+with an empty actual parameter type, the subtype \texttt{(node?)}\ must be
+empty since there is no value component corresponding to an element
+of \texttt{(node?)}\@.
+
+
+The remainder of this section presents the axioms and definitions that are
+generated from the datatype declaration for binary trees.  These axioms
+and definitions are not meant to be minimal and some of them are
+in fact redundant. 
+
+\subsubsection{Definition by cases. }  The primitive \texttt{CASES} construct is
+used for definition by cases on the outermost constructor of a
+a PVS datatype expression.  The syntax of the \texttt{CASES} construct
+is
+\begin{center}
+\texttt{CASES~\textit{expression}~OF~\textit{selections}~ENDCASES}
+\end{center}
+where each \textit{selection} (typically one selection per constructor) is
+of the form \textit{pattern : expression} 
+and a \emph{pattern} is a constructor of arity $n$ applied to
+$n$ distinct variables.  There
+are no explicit axioms characterizing the behavior of \texttt{CASES}\@.  
+In the case of
+the binary tree datatype, when \texttt{w}, \texttt{x}, \texttt{y}, and \texttt{z}
+range over binary trees, 
+\texttt{a} and \texttt{b} range over the parameter type \texttt{T}, \texttt{u}  ranges over
+the range type \texttt{range}, and \texttt{v} ranges over the type
+\texttt{[T, binary\_tree, binary\_tree -> range]},  
+we implicitly assume the two axioms:
+\begin{eqnarray*}
+\texttt{{CASES~leaf~OF~leaf~:~u,~node(a,~y,~z)~:~v(a,~y,~z)}} & = & \texttt{u}\\
+\texttt{{CASES~node(b,~w,~x)~OF~leaf~:~u,~node(a,~y,~z)~:~v(a,~y,~z)}} & = &
+\texttt{v(b,~w,~x)}
+\end{eqnarray*}
+Note that in the above axioms, the left-hand side occurrences of \texttt{a},
+\texttt{y}, and \texttt{z} in \texttt{v(a,~y,~z)} are bound.
+
+\subsubsection{The \texttt{ord} function. }
+The function \texttt{ord} assigns a number to a
+datatype construction, i.e., a datatype term given solely in terms of
+the constructors,  according to its outermost constructor.
+The \texttt{ord} function is mainly used to enumerate the
+elements of an \emph{enumerated type} (see Section~\ref{enumtypes})\@.
+ The \texttt{ord} function is defined using \texttt{CASES} in~\pvsref{ord}\@.  
+\begin{session*}\label{ord}
+  ord(x: binary_tree): upto(1) =
+    CASES x OF leaf: 0, node(node1_var, node2_var, node3_var): 1 ENDCASES
+\end{session*}
+  Thus
+\texttt{ord(leaf)} is \texttt{0}, whereas \texttt{ord(node(x, A, B))} is \texttt{1}\@.
+
+\subsubsection{Extensionality axioms. }
+An extensionality axiom is generated corresponding to each constructor.
+The one for the \texttt{leaf} terms essentially asserts that \texttt{leaf} is
+the unique term of type \texttt{(leaf?)}\@.
+\begin{session*}
+  binary_tree_leaf_extensionality: AXIOM
+        (FORALL (leaf?_var: (leaf?), leaf?_var2: (leaf?)):
+           leaf?_var = leaf?_var2);
+\end{session*}
+For the \texttt{node} constructor, the extensionality axiom is:
+\begin{session*}
+  binary_tree_node_extensionality: AXIOM
+    (FORALL (node?_var: (node?)),
+            (node?_var2: (node?)):
+       val(node?_var) = val(node?_var2)
+         AND left(node?_var) = left(node?_var2)
+           AND right(node?_var) = right(node?_var2)
+         IMPLIES node?_var = node?_var2)
+\end{session*}
+In other words, any two value nodes that agree on all the accessors
+are equal.
+
+\subsubsection{Accessor--constructor axioms. }  Each accessor--constructor pair
+generates an axiom indicating the 
+effect of applying the accessor to an expression constructed using
+the constructor.  For example, the axiom corresponding to \texttt{val}
+and \texttt{node} has the form:
+\begin{session*}
+  binary_tree_val_node: AXIOM
+    (FORALL (node1_var: T), (node2_var: binary_tree),
+            (node3_var: binary_tree):
+       val(node(node1_var, node2_var, node3_var)) = node1_var)
+\end{session*}
+We do not need an explicit axiom asserting that the recognizers \texttt{leaf?}\ and \texttt{node?}\ hold of disjoint subsets of the type of binary trees.  This
+property can be derived from the \texttt{ord} function and the semantics
+of the \texttt{CASES} construct described above.  
+%% \comment{
+%% This axiom can be expensive to generate\footnote{If there are $n$
+%% constructors, there will be $\left(\stackrel{\textstyle n}{2}\right)$ clauses to the axiom.}
+%% so it is not explicitly stated in \texttt{binary\_tree\_adt} theory.  
+%% }
+
+\subsubsection{Eta axiom. } The \texttt{eta} rule is a useful corollary to the
+extensionality axiom above and the accessor--constructor axioms shown
+above.  It is introduced as an axiom in the \texttt{binary\_tree\_adt}
+theory as shown below though it does follow as a lemma from
+extensionality.\footnote{In future versions of PVS,  
+it is intended that these will become lemmas with automatically generated
+proofs.}     
+\begin{session*}
+  binary_tree_node_eta: AXIOM
+    (FORALL (node?_var: (node?)):
+       node(val(node?_var), left(node?_var), right(node?_var)) = node?_var)
+\end{session*}
+
+
+
+\subsubsection{Structural induction. } The theory \texttt{binary\_tree\_adt} also
+contains a structural induction scheme 
+and a few recursion schemes.  The induction scheme for binary trees is
+stated as:
+\begin{session*}
+  binary_tree_induction: AXIOM
+    (FORALL (p: [binary_tree -> boolean]):
+       p(leaf)
+         AND
+         (FORALL (node1_var: T), (node2_var: binary_tree),
+                 (node3_var: binary_tree): p(node2_var) AND p(node3_var)
+              IMPLIES p(node(node1_var, node2_var, node3_var)))
+         IMPLIES (FORALL (binary_tree_var: binary_tree): p(binary_tree_var)))
+\end{session*}
+In other words, to prove a property of all binary trees, it is
+sufficient to prove in the base case that the property holds of the
+binary tree \texttt{leaf}, and that in the induction case, the property holds
+of a binary tree \texttt{node(v, A, B)} assuming (the induction
+hypothesis) that it holds of the subtrees \texttt{A} and \texttt{B}.
+One simple consequence of the induction axiom is the property that
+all binary trees are either leaf nodes or value nodes.  This is
+also introduced as an axiom in the theory \texttt{binary\_tree\_adt}\@.
+\begin{session*}
+  binary_tree_inclusive: AXIOM
+    (FORALL (binary_tree_var: binary_tree):
+       leaf?(binary_tree_var) OR node?(binary_tree_var))
+\end{session*}
+
+\subsubsection{Definition by recursion. } As another consequence of induction,
+we can demonstrate the existence 
+and uniqueness of functions defined by structural recursion over binary
+trees.  It is, however, convenient to have a more direct means   
+for  defining such recursive functions.  
+PVS therefore provides various \emph{recursion combinators}\footnote{A combinator is a
+lambda expression without any free variables, but the term can also be
+applied to an operation that can be used as a building block for other
+operations.} which can be
+used to define recursive functions over datatype elements.  
+One difficulty with
+defining  a fully general recursion combinator is that it has to be
+parametric in the 
+range type of the function being defined.  Since PVS only provides such
+type parametricity at the level of theories, 
+the generic recursion combinators are defined in
+a separate theory \texttt{binary\_tree\_adt\_reduce} which provides the
+additional type parameter.  The recursion combinators for
+the common cases of functions returning natural numbers and
+sub-$\epsilon_0$ ordinals (see 
+Section~\ref{section:ordinals}) are
+defined in the theory \texttt{binary\_tree\_adt}
+itself.
+%% \comment{\footnote{$\epsilon_0$ is 
+%% the smallest ordinal such that $\epsilon_0 = \omega^{\epsilon_0}$.
+%% The sub-$\epsilon_0$ ordinals include all the usual lexicographic
+%% orderings needed to establish the termination of recursive functions.
+%% %
+%% To admit arbitrary recursive definitions involving datatypes, we need to
+%% establish the admissibility 
+%% of such definitions by showing that there is a termination measure
+%% on the arguments that decreases in a well-founded manner with each
+%% recursive call.  In the 
+%% case of abstract datatype arguments, such measures typically involve the
+%% ``size'' of the datatype.  Such size functions are themselves recursive.
+%% Indeed these recursion combinators on natural numbers and ordinals 
+%% provide a way of generating  size functions on these data
+%% structures that can be used as termination measures.}}
+
+The recursion combinator used for defining
+recursive functions over binary trees that return natural number
+values, is shown below.  The idea is that we want to define a function
+$f$ by the following recursion over binary trees:
+\begin{eqnarray*}
+  f(\texttt{leaf}) & = & a \\
+  f(\texttt{node(v, A, B)}) & = & g(\texttt{v}, f(\texttt{A}), f(\texttt{B}))
+\end{eqnarray*}
+We define such an $f$ by taking $a$ and $g$ as arguments to
+the function \texttt{reduce\_nat}\@.  Note the use of the \texttt{CASES} construct to define a pattern-matching case split over a
+datatype value that in this case is a binary tree.  
+\begin{session*}
+  reduce_nat(leaf?_fun: nat, node?_fun: [[T, nat, nat] -> nat]):
+      [binary_tree -> nat] =
+    LAMBDA (binary_tree_adtvar: binary_tree):
+      CASES binary_tree_adtvar OF
+        leaf: leaf?_fun,
+        node(node1_var, node2_var, node3_var):
+            node?_fun(node1_var,
+                      reduce_nat(leaf?_fun,
+                                 node?_fun)
+                        (node2_var),
+                      reduce_nat(leaf?_fun,
+                                 node?_fun)
+                        (node3_var))
+        ENDCASES;
+\end{session*}
+
+The \texttt{reduce\_nat} recursion combinator is useful for defining
+a ``size'' function as shown in~\pvsref{size} but has the weakness that
+\texttt{node?\_fun} 
+only has access to the \texttt{val} field of the node.  The theory
+\texttt{binary\_tree\_adt} also contains a variant \texttt{REDUCE\_nat}
+where the \texttt{leaf?\_fun} is a function and the \texttt{node?\_fun} function
+takes an additional argument.  The definition is omitted here since a more
+generic version of this recursion combinator is described below.
+
+
+A generic version of the structural recursion combinator on binary trees
+is defined  in \texttt{binary\_tree\_adt\_reduce} where the type \texttt{nat}
+in the definition of \texttt{reduce\_nat} has been generalized to an
+arbitrary parameter type \texttt{range}\@.
+\begin{session*}
+binary_tree_adt_reduce[T: TYPE, range: TYPE]: THEORY
+  BEGIN
+  
+  IMPORTING binary_tree_adt[T]
+  
+  reduce(leaf?_fun: range, node?_fun: [[T, range, range] -> range]):
+      [binary_tree[T] -> range] =
+    LAMBDA (binary_tree_var: binary_tree[T]):
+      CASES binary_tree_var OF
+        leaf: leaf?_fun,
+        node(node1_var, node2_var, node3_var):
+            node?_fun(node1_var,
+                      reduce(leaf?_fun,
+                             node?_fun)(node2_var),
+                      reduce(leaf?_fun,
+                             node?_fun)(node3_var))
+        ENDCASES
+
+   \pvsref{bigreduce}
+  
+  END binary_tree_adt_reduce
+\end{session*}
+
+The theory \texttt{binary\_tree\_adt\_reduce} also contains
+the more flexible recursion combinator \texttt{REDUCE} where the \texttt{leaf?\_fun} and \texttt{node?\_fun} functions take \texttt{binary\_tree\_var} as
+an argument. 
+\begin{session*}\label{bigreduce}
+  REDUCE(leaf?_fun: [binary_tree[T] -> range], node?_fun:
+         [[T, range, range, binary_tree[T]] -> range]):
+      [binary_tree[T] -> range] =
+    LAMBDA (binary_tree_var: binary_tree[T]):
+      CASES binary_tree_var OF
+        leaf: leaf?_fun(binary_tree_var),
+        node(node1_var, node2_var, node3_var):
+            node?_fun(node1_var,
+                      REDUCE(leaf?_fun,
+                             node?_fun)(node2_var),
+                      REDUCE(leaf?_fun,
+                             node?_fun)(node3_var),
+                      binary_tree_var)
+        ENDCASES
+\end{session*}
+
+PVS~2 introduced certain extensions to the datatype mechanism
+that were absent in PVS~1\@.  These include a
+primitive subterm relation, the \texttt{some}, \texttt{every}, and
+\texttt{map} combinators, and recursion through parameters of
+previously defined datatypes.  
+
+\subsubsection{Subterm relation. } The primitive subterm relation  is defined
+on datatype objects and checks whether one object occurs as
+a (not necessarily proper) subterm of another object.  This relation
+is defined as \texttt{subterm}.
+\begin{session*}
+  subterm(x: binary_tree, y: binary_tree): boolean =
+    x = y
+      OR CASES y OF
+           leaf: FALSE,
+           node(node1_var, node2_var, node3_var):
+               subterm(x, node2_var) OR subterm(x, node3_var)
+           ENDCASES
+ \end{session*}
+The proper subterm relation is defined by \texttt{<<}.  The proper
+subterm relation is useful as a well-founded termination relation
+that can be given along with the measure for a recursively defined
+function.  
+\begin{session*}\label{propersubterm}
+  <<(x: binary_tree, y: binary_tree): boolean =
+    CASES y OF
+      leaf: FALSE,
+      node(node1_var, node2_var, node3_var):
+          (x = node2_var OR x << node2_var)
+            OR x = node3_var OR x << node3_var
+      ENDCASES
+\end{session*}
+
+\subsubsection{Well-foundedness. } The next axiom asserts that
+datatype objects are well-founded with respect to the proper subterm
+relation.  The induction axiom \texttt{binary\_tree\_induction} can be
+derived as a consequence of the axiom \texttt{binary\_tree\_well\_founded}
+and the well-founded induction lemma \texttt{wf\_induction} in the prelude.
+\begin{session*}
+  binary_tree_well_founded: AXIOM well_founded?[binary_tree](<<);
+\end{session*}
+
+\subsubsection{The \texttt{every} combinator. }
+The PVS typechecker generates the combinators \texttt{every} and \texttt{some}
+corresponding to the positive parameters of a datatype.
+For example, \texttt{every}  checks if all values of this parameter type in
+an instance of the datatype satisfy 
+a given predicate on the parameter type.  Furthermore, if all the type
+parameters of a datatype are positive, then a \texttt{map} combinator is also
+generated.  
+
+The \texttt{every} combinator in the
+theory  
+\texttt{binary\_tree\_adt} takes a predicate  \texttt{p} on
+the positive type parameter \texttt{T}, and checks that every occurrence of an
+object of the type parameter in a binary tree satisfies the predicate.
+The \texttt{binary\_tree\_adt} theory also contains a non-curried variant of
+\texttt{every} that is 
+written as \texttt{every(p, a)} instead of \texttt{every(p)(a)}\@.  
+\begin{session*}
+  every(p: PRED[T])(a: binary_tree): boolean =
+    CASES a OF
+      leaf: TRUE,
+      node(node1_var, node2_var, node3_var):
+          p(node1_var)
+            AND every(p)(node2_var) AND every(p)(node3_var)
+      ENDCASES
+ \end{session*}
+
+\subsubsection{The \texttt{some} combinator. } The \texttt{some} combinator is the
+dual to \texttt{every} and checks that 
+some occurrence of a value of type \texttt{T} in the binary tree
+satisfies the given predicate.\footnote{For operations like \texttt{some} and
+\texttt{every}, PVS allows a notational convenience where
+\texttt{(some!\ x:\ p(x))} is shorthand for \texttt{some(lambda\ x:\ p(x))}\@. }
+\begin{session*}
+  some(p: PRED[T])(a: binary_tree): boolean =
+    CASES a OF
+      leaf: FALSE,
+      node(node1_var, node2_var, node3_var):
+          p(node1_var) OR some(p)(node2_var) OR some(p)(node3_var)
+      ENDCASES
+\end{session*}
+
+\subsubsection{The \texttt{map} combinator. } Finally, when all the type
+parameters of a datatype definition 
+occur positively in the definition, as is the case with \texttt{binary\_tree}, a theory \texttt{binary\_tree\_adt\_map} is generated
+that defines 
+the curried and non-curried versions of the \texttt{map}
+combinator.  In addition to the parameter \texttt{T},
+\texttt{binary\_tree\_adt\_map} takes a range type parameter \texttt{T1}.
+The \texttt{map} combinator applies a function \texttt{f} from \texttt{T} to \texttt{T1} to every value of type \texttt{T} in a given \texttt{binary\_tree[T]} to
+return a result of type \texttt{binary\_tree[T1]}.  
+We omit the definition of the non-curried variant of \texttt{map}\@. 
+\begin{session*}
+binary_tree_adt_map[T: TYPE, T1: TYPE]: THEORY
+  BEGIN
+  
+  IMPORTING binary_tree_adt
+  
+  map(f: [T -> T1])(a: binary_tree[T]): binary_tree[T1] =
+    CASES a OF
+      leaf: leaf[T1],
+      node(node1_var, node2_var, node3_var):
+          node[T1](f(node1_var),
+                   map(f)(node2_var), map(f)(node3_var))
+      ENDCASES
+  
+  END binary_tree_adt_map
+\end{session*}
+
+In summary, the datatype mechanism accepts parametric recursive type
+definitions in terms of constructors, accessors, and recognizers.  The
+recursive occurrences of the datatype must be positive.  The typechecker
+generates recognizer subtypes, accessor-constructor axioms, extensionality
+axioms, a structural induction scheme, a subterm ordering relation, and
+various recursion combinators.  With respect to positively occurring type
+parameters, the typechecker generates the \texttt{some} and \texttt{every}
+combinators.  When all type parameters are positive, the typechecker also
+generates a \texttt{map} combinator.  We next examine the use of the
+above theories formalizing binary trees 
+in the definition of \emph{ordered} binary trees.
+
+\chapter{Ordered Binary Trees}\label{ordered-binary-trees}
+
+In ordered binary trees, the values in the nodes are ordered relative
+to each other: the value at a node is no less than any of the values
+in the left subtree, and no greater than any of the values in the
+right subtree.  Such a data structure has many obvious uses since the
+values are maintained in sorted form and the average time for looking
+up a value or inserting a new value is logarithmic in the number of
+nodes.
+
+The  PVS specification of ordered binary trees is given in the theory
+\texttt{obt} below.  It is worth noting the use of theory parameters in
+this specification.   The body of the theory \texttt{obt} has been elided
+from the specification displayed below.
+\begin{session*}
+obt [T : TYPE,  <= : (total_order?[T])] : THEORY
+BEGIN
+IMPORTING binary_tree[T]
+
+A, B, C: VAR binary_tree
+x, y, z: VAR T
+pp: VAR pred[T]
+i, j, k: VAR nat
+
+\emph{\{definitions and lemmas shown below in~\pvsref{size} to~\pvsref{ordered?_insert}\}}
+
+END obt
+\end{session*}
+The theory \texttt{obt} takes the type \texttt{T} of the values kept in the
+binary tree as its first parameter.   Its  second parameter 
+is the total ordering used to order the binary tree.  This parameter,
+represented as \texttt{<=}, has the type \texttt{(total\_order?[T])} 
+consisting of those binary relations on \texttt{T} that are total
+orderings, that is, those that are reflexive, transitive, antisymmetric, and
+linear.  Note that the type of the second parameter to this theory depends on
+the first parameter \texttt{T}\@.  
+
+%% \comment{
+%% The next few declarations define various recursive functions.
+%% These recursive definitions are given in several distinct styles
+%% to illustrate the various options provided by PVS\@.
+%% The first declaration defines a combinator \texttt{checkall} that
+%% checks if all the values in a given binary tree \texttt{A} satisfy a given
+%% predicate \texttt{pp}.  It uses the recursion combinator defined in \texttt{%% binary\_tree\_rec\_mod} so that there is no explicit recursion used in
+%% the definition.  The value returned in the base case is \texttt{TRUE}
+%% since there are no values in a leaf node.  In the recursive case,
+%% \texttt{checkall} forms the conjunction of the values returned by the
+%% recursive calls with the value of the predicate \texttt{pp} applied to
+%% the value at the root node.   This is not the most convenient way of
+%% defining \texttt{ checkall} since it involves an extra function \texttt{%% binary\_tree\_rec} in its definition that has to be unwound during a
+%% proof.  The recursion combinators are mostly useful for defining
+%% the measure functions that are used to demonstrate the termination of
+%% functions defined by explicit recursion.  
+%% \begin{session*}
+%% checkall((pp : pred[T]), A): bool =
+%%   binary_tree_rec(TRUE,
+%%             (LAMBDA x, (a, b : bool):
+%%                (a AND b AND pp(x))))(A)
+%% \end{session*}
+%% %
+%% The first step is to define a function that measures the size of a binary
+%% tree as the number of nodes in the tree.  The recursion combinator \texttt{%% reduce\_nat} comes in handy for this purpose.
+%% \begin{session*}
+%% \end{session*}
+%% }
+
+We can now use the \texttt{every} combinator to define when 
+a binary tree is ordered relative to the theory parameter \texttt{<=}\@.
+This notion is captured by the predicate \texttt{ordered?}\ on binary trees.
+Since \texttt{ordered?}\ will be defined by a direct recursion, its definition
+will need a measure that demonstrates the termination of the recursion.
+In the definition of \texttt{size} below, the recursion combinator \texttt{reduce\_nat} is used to count the number of value nodes in a
+given binary tree.  This function is defined to return \texttt{0} when
+given a \texttt{leaf}, and to increment the sum of the sizes of the left
+and right subtrees by \texttt{1} when given a \texttt{node}\@.  
+\begin{session*}\label{size}
+size(A) : nat =
+  reduce_nat(0, (LAMBDA x, i, j: i + j + 1))(A)
+\end{session*}
+
+The recursive definition of \texttt{ordered?}\ shown below returns \texttt{TRUE} in the base case since a leaf node is clearly an ordered tree by
+itself.  In the recursive case, the definition ensures that the left
+and right subtrees of the given tree \texttt{A} are themselves ordered.  
+It also uses \texttt{every} to check that all the values in the left
+subtree are no greater than the value \texttt{val(A)} at \texttt{A}, and the
+values in the right subtree are no less than the value at \texttt{A}\@.
+%% \comment{
+%% \footnote{The expression \texttt{every((LAMBDA\ y:\ y<=val(A)), left(A))}
+%% could also be written as \texttt{every(LAMBDA\ y:\ y<=val(A))(left(A))}
+%% or \texttt{(every!\ y:\ y<=val(A))(left(A))}\@.  }}
+
+The measure \texttt{size} is used to demonstrate the termination of the
+recursion displayed by \texttt{ordered?}\@.  The proper subterm relation
+shown in~\pvsref{propersubterm} could also be used as a well-founded
+relation in establishing the termination of \texttt{ordered?} by
+writing \texttt{MEASURE A BY <<} (see~\pvsref{aritheval}) in place of \texttt{MEASURE size}\@.    
+\begin{session*}\label{ordered?}
+ordered?(A) : RECURSIVE bool =
+  (IF node?(A) THEN (every((LAMBDA y: y<=val(A)), left(A)) AND
+                     every((LAMBDA y: val(A)<=y), right(A)) AND
+                     ordered?(left(A)) AND
+                     ordered?(right(A)))
+         ELSE TRUE ENDIF)
+  MEASURE size
+\end{session*}
+When the above definition is typechecked, two proof obligations (TCCs)
+are generated corresponding to the termination requirements for the
+two recursive calls.  The first one requires that the size of the left
+subtree of a binary tree \texttt{A} must be smaller than the size of 
+\texttt{A}\@.   The second proof obligation requires that the size of the
+right subtree of \texttt{A} must be smaller than the size of \texttt{A}\@.  
+Note how the governing \texttt{IF-THEN-ELSE} condition and the preceding
+conjuncts are  included as antecedents in the proof obligations below.
+\begin{session*}
+ordered?_TCC1: OBLIGATION
+      (FORALL (A):
+         node?(A)
+             AND every((LAMBDA y: y <= val(A)), left(A))
+               AND every((LAMBDA y: val(A) <= y), right(A))
+             IMPLIES size(left(A)) < size(A));
+
+ordered?_TCC2: OBLIGATION
+      (FORALL (v: [binary_tree[T] -> bool], A):
+         node?(A)
+             AND every((LAMBDA y: y <= val(A)), left(A))
+               AND every((LAMBDA y: val(A) <= y), right(A)) AND v(left(A))
+             IMPLIES size(right(A)) < size(A));
+\end{session*}
+The PVS~Emacs command \texttt{M-x tc} typechecks a file in PVS\@.  The
+PVS~Emacs command \texttt{M-x tcp} can be used to both typecheck the file
+and attempt to prove the resulting TCCs using the existing proof (if
+there is one) or a built-in strategy according to the source
+of the TCC (subtype, termination, existence, assuming, etc.).  As it turns
+out, the \texttt{termination-tcc} strategy automatically proves both
+\texttt{ordered?\_TCC1} and  \texttt{ordered?\_TCC2}\@.
+
+
+The next definition in the \texttt{obt} theory is that of the \texttt{insert} operation.  The term \texttt{insert(x, A)} returns that binary
+tree obtained by inserting the value \texttt{x} at the
+appropriate position in the binary tree \texttt{A}.  The \texttt{insert} operation is also defined by 
+recursion but employs the \texttt{CASES} construct instead of the
+\texttt{IF-THEN-ELSE} conditional.  In the base case, when the argument \texttt{A}
+matches the term \texttt{leaf}, the binary tree containing the
+single value \texttt{x} is returned as the result.  In the recursion case,
+the argument \texttt{A} has the form \texttt{node(y, B, C)}, and
+if \texttt{x} is at most \texttt{y} according to the given total ordering on
+the type \texttt{T}, then we reconstruct the node with value \texttt{y},
+left subtree \texttt{insert(x, B)}, and right subtree \texttt{C}\@.
+Otherwise, we reconstruct the node with value \texttt{y}, left subtree
+\texttt{B}, and right subtree \texttt{insert(x, C)}\@.
+\begin{session*}
+insert(x, A): RECURSIVE binary_tree[T] =
+  (CASES A OF
+    leaf: node(x, leaf, leaf),
+    node(y, B, C): (IF x<=y THEN node(y, insert(x, B), C)
+                            ELSE node(y, B, insert(x, C))
+                    ENDIF)
+   ENDCASES)
+  MEASURE size(A)
+\end{session*}
+
+When the above definition is typechecked, two termination proof
+obligations are generated corresponding to the two recursive
+invocations of \texttt{insert}.  Both proof obligations \texttt{insert\_TCC1}
+and \texttt{insert\_TCC2} are automatically discharged by the default
+\texttt{termination-tcc} strategy.  
+\begin{session*}
+insert_TCC1: OBLIGATION
+      (FORALL (B: binary_tree[T], C: binary_tree[T], y: T, A, x):
+         A = node(y, B, C) AND x <= y IMPLIES size(B) < size(A));
+
+insert_TCC2: OBLIGATION
+      (FORALL (B: binary_tree[T], C: binary_tree[T], y: T, A, x):
+         A = node(y, B, C) AND NOT x <= y IMPLIES size(C) < size(A))
+\end{session*}
+
+%% \comment{
+%% Following the definition of \texttt{insert}, we have a series of lemmas.
+%% The first two of lemmas state some trivial properties of \texttt{%% checkall}\@.   They are useful because \texttt{checkall} is
+%% defined in terms of \texttt{binary\_tree\_rec}, and these lemmas save the
+%% trouble of unwinding the definitions of \texttt{checkall} and  \texttt{%% binary\_tree\_rec}\@.  These lemmas would not be needed if \texttt{%% checkall} had been defined with an explicit recursion.  
+%% Note that the above  definition of \texttt{checkall} is merely meant
+%% to illustrate the use of \texttt{binary\_tree\_rec}\@.  
+%% %
+%% \begin{session*}
+%% checkall_leaf: LEMMA
+%%   checkall(pp, leaf)
+%% %
+%% checkall_step: LEMMA
+%%   pp(x) IMPLIES
+%%   checkall(pp, node(x, leaf, leaf))
+%% \end{session*}
+%% }
+
+The following lemma states an interesting property of \texttt{insert}\@.
+ Its proof requires the use of induction over binary trees. 
+It asserts that if every value in the tree \texttt{A} has property \texttt{pp},
+and the value \texttt{x} also has property \texttt{pp}, then every value in
+the result of inserting \texttt{x} into \texttt{A} has property \texttt{pp}\@.
+\begin{session*}\label{oistep}
+ordered?_insert_step: LEMMA
+   pp(x) AND every(pp, A) IMPLIES every(pp, insert(x, A))
+\end{session*}
+
+The  theorem \texttt{ordered?\_insert}  asserts the important
+property of \texttt{insert} that it returns an ordered binary tree when
+given an ordered binary tree.
+\begin{session*}\label{ordered?_insert}
+ordered?_insert: THEOREM
+   ordered?(A) IMPLIES ordered?(insert(x, A))
+\end{session*}
+
+We examine some proofs of this theorem in  Section~\ref{OBT-proofs}.  
+
+%% \comment{
+%% and in fact the proof chain
+%% for these proofs is also complete, implying that the proof does not
+%% depend on any unproved facts.  The automatic strategy fails, however, on
+%% the two termination TCCs generated by \texttt{insert}\@.   To see
+%% why the strategy failed, we type \texttt{M-x show-tccs} to bring up a
+%% buffer containing the TCCs.  We then attempt to explicitly prove the
+%% first of the two unproved TCCs by invoking \texttt{M-x pr} with the
+%% cursor on the TCC\@.  We then go through the following script:
+%% \begin{session*}
+%% insert_TCC1 :   
+%% %
+%%   |-------
+%% \{1\}   (FORALL A, (B, C: binary_tree[T]), x,
+%%               (y: T): A = node(y, B, C) AND x <= y IMPLIES size(B) < size(A))
+%% %
+%% Rule? (tcc)
+%% size rewrites size(B) to binary_tree_rec(0, (LAMBDA x, i, j: i + j + 1))(B)
+%% size rewrites size(A) to binary_tree_rec(0, (LAMBDA x, i, j: i + j + 1))(A)
+%% binary_tree_rec rewrites binary_tree_rec(0, (LAMBDA x, i, j: i + j + 1))(A!1) to
+%%  binary_tree_rec(0, (LAMBDA x, i, j: i + j + 1))(left(A!1))
+%%   + binary_tree_rec(0, (LAMBDA x, i, j: i + j + 1))(right(A!1))
+%%   + 1
+%% %
+%% Trying repeated skolemization, instantiation, and if-lifting,
+%% this simplifies to: 
+%% insert_TCC1 :   
+%% %
+%% \{-1\}   A!1 = node(y!1, B!1, C!1)
+%% \{-2\}   x!1 <= y!1
+%%   |-------
+%% \{1\}   binary_tree_rec(0, (LAMBDA x, i, j: i + j + 1))(B!1)
+%%         < binary_tree_rec(0, (LAMBDA x, i, j: i + j + 1))(left(A!1))
+%%           + binary_tree_rec(0, (LAMBDA x, i, j: i + j + 1))(right(A!1))
+%%           + 1
+%% %
+%% Rule? 
+%% \end{session*}
+%% The \texttt{tcc} strategy replaces the universal quantifiers with Skolem
+%% constants, then applies propositional simplification and expands the
+%% definitions in the given sequent to the extent that it can, and then
+%% applies the decision procedures, but this is not enough to completely
+%% prove the TCC\@.  The missing step is that the strategy is not able to
+%% replace \texttt{A!1} with \texttt{node(y!1, B!1, C!1)} using the equality in
+%% the antecedent.  We manually perform this replacement using the \texttt{%% replace} rule.
+%% \begin{session*}
+%% Rule? (replace -1)
+%% Replacing using formula -1,
+%% this simplifies to: 
+%% insert_TCC1 :   
+
+%% [-1]   A!1 = node(y!1, B!1, C!1)
+%% [-2]   x!1 <= y!1
+%%   |-------
+%% \{1\}   binary_tree_rec(0, (LAMBDA x, i, j: i + j + 1))(B!1)
+%%         <
+%%         binary_tree_rec(0,
+%%                         (LAMBDA x, i,
+%%                                 j: i + j + 1))(left(node(y!1, B!1, C!1)))
+%%           +
+%%           binary_tree_rec(0,
+%%                           (LAMBDA x, i,
+%%                                   j: i + j
+%%                                + 1))(right(node(y!1, B!1, C!1)))
+%%           + 1
+
+%% Rule?
+%% \end{session*}
+%% With the term \texttt{A!1} replaced in the consequent of the sequent, we
+%% can now apply the decision procedures and simplifiers as shown below.
+%% \begin{session*}
+%% Rule? (assert)
+%% Invoking decision procedures,
+%% this simplifies to: 
+%% insert_TCC1 :   
+
+%% [-1]   A!1 = node(y!1, B!1, C!1)
+%% [-2]   x!1 <= y!1
+%%   |-------
+%% \{1\}   binary_tree_rec(0, (LAMBDA x, i, j: i + j + 1))(B!1)
+%%         < binary_tree_rec(0, (LAMBDA x, i, j: i + j + 1))(B!1)
+%%           + binary_tree_rec(0, (LAMBDA x, i, j: i + j + 1))(C!1)
+%%           + 1
+
+%% Rule?
+%% \end{session*}
+%% While this invocation of \texttt{assert} did simplify the redexes
+%% \texttt{left(node(y!1, B!1, C!1))} and \texttt{right(node(y!1, B!1, C!1))},
+%% it did not prove the goal that at this point looks to be obviously
+%% true.  The reason for this failure to complete the proof is that the
+%% proof requires the information that the applications of \texttt{%% binary\_tree\_rec}  in the above sequent all return natural number
+%% values.  This information is not available at the above invocation of
+%% \texttt{assert} since the recording of this information is the last step
+%% in the processing carried out by \texttt{assert}\@.  A second application
+%% of \texttt{assert} now easily completes the proof. 
+%% \begin{session*}
+%% Rule? (assert)
+%% Invoking decision procedures,
+%% Q.E.D.
+
+
+%% Run time  = 21.12 secs.
+%% Real time = 34.63 secs.
+%% \end{session*}
+
+%% The proof of \texttt{insert\_TCC2} is identical to the one above.  
+%%  To apply the proof of \texttt{insert\_TCC1} to \texttt{insert\_TCC2},
+%% we can use \texttt{M-x edit-proof} to bring up the proof script for \texttt{%% insert\_TCC1} and attach it to \texttt{insert\_TCC2} by placing the
+%% cursor on the latter declaration and typing \texttt{C-c C-i} at the \texttt{%% Proof} buffer.
+
+
+%% We now explain the definition of the \texttt{tcc} rule shown below.
+%% \begin{session*}
+%% (defstep tcc ()
+%%   '(then*
+%%     (auto-rewrite-defs) 
+%%     (ground)
+%%     (repeat* (try (then* (repeat* (skolem!))
+%%                          (repeat* (inst?))
+%%                          (repeat* (lift-if)))
+%%               (apply (then* (ground)(assert)))
+%%               (skip))))
+%%     "(tcc): The guts of the tcc-strategy.  Does auto-rewrite-explicit,
+%% then applies skolem!, inst?, lift-if, and ground, until
+%% nothing works."
+%%     "~%Trying repeated skolemization, instantiation, and if-lifting")
+%% \end{session*}
+%% The first argument to \texttt{defstep} is the name of the rule being
+%% defined.  The second argument is the list of arguments, which in this
+%% case is empty.  The third argument is the body of the definition.  The
+%% \texttt{tcc} rule is defined to first introduce the definitions of all
+%% functions in the statement of the theorem being proved as rewrite
+%% rules.  It then invokes the \texttt{ground} rule for applying
+%% propositional simplification and decision procedures.  Following this
+%% there is a \texttt{repeat*} loop where it first tries to repeatedly apply
+%% each of \texttt{skolem!}, \texttt{inst?}\ and \texttt{lift-if}.  When each of
+%% these inner \texttt{repeat*} loops has terminated, the \texttt{tcc} rule
+%% applies \texttt{ground} followed by \texttt{assert} to any resulting
+%% subgoals.  The second \texttt{assert} is useful in further simplifying
+%% any subgoals returned by \texttt{ground}.  If the first argument to \texttt{%% try} has no effect, then the third argument, \texttt{(skip)}, is applied.
+%% Since the \texttt{skip} rule has no effect on the current goal, the \texttt{%% repeat*} recursion is terminated.  The fourth argument to \texttt{%% defstep} is the help string, and the final argument is the commentary
+%% printed when the \texttt{tcc} rule is successfully invoked in a proof.
+%% }
+
+\chapter{In-line and Enumeration Types}\label{enumtypes}
+
+ The example of binary trees illustrated how abstract datatypes can be
+declared as theories (that are automatically expanded) within PVS\@.
+Abstract datatypes can be declared within other theories as long
+as they do not employ any parameters.  Note that PVS  has
+type parameterization only at the theory level and not at the declaration
+level.   For example, the type of 
+combinators constructed out of the $K$ and $S$ combinators is captured
+by the following declaration that can occur at the declaration level
+within a theory.   The axioms generated by the \texttt{DATATYPE} declaration
+can be viewed using the PVS Emacs command \texttt{M-x
+ppe}\@.  
+\begin{session*}
+combinators  : THEORY
+  BEGIN
+  combinators: DATATYPE
+       BEGIN
+         K: K?
+         S: S?
+         app(operator, operand: combinators): app?
+       END combinators
+
+  x, y, z: VAR combinators
+
+  reduces_to: PRED[[combinators, combinators]]
+
+  K: AXIOM reduces_to(app(app(K, x), y), x)
+  S: AXIOM reduces_to(app(app(app(S, x), y), z), app(app(x, z), app(y, z)))
+
+  END combinators
+\end{session*}
+
+The most frequently used such \emph{in-line} abstract datatypes are
+enumeration types.  For example, the type of \texttt{colors} consisting of
+\texttt{red}, \texttt{white}, and \texttt{blue} can given by the following
+in-line datatype declaration.
+\begin{session*}
+  colors: DATATYPE
+     BEGIN
+       red: red?
+       white: white?
+       blue: blue?
+     END colors
+\end{session*}
+  The above declaration is a rather verbose way
+of defining the type of \texttt{colors}\@.  PVS provides an
+abbreviation mechanism  that allows the above declaration to be
+expressed more succinctly as shown below.
+\begin{session*}
+  colors: TYPE = \{red, white, blue\}
+\end{session*}
+
+All of the axiomatized properties of such enumeration types are built
+into the PVS proof checker as shown  in the previous section so that
+no axioms about enumeration types need ever be explicitly used.
+
+\chapter{Disjoint Unions}\label{disjoint-union}
+
+The type constructor for the disjoint union of two types is popular
+enough to be included in several languages.  The disjoint union of two
+sets $A$ and $B$ is a set  in which each element is tagged according
+to whether it is from $A$ or from $B$\@. 
+  It is easy to see that the type analogue of the
+disjoint union operation can be defined using the \texttt{DATATYPE}
+mechanism of PVS as shown below:
+\begin{session*}
+disj_union[A, B: TYPE] : DATATYPE
+  BEGIN
+    inl(left : A): inl?
+    inr(right : B): inr?
+  END disj_union
+\end{session*}
+The type \texttt{disj\_union[nat, bool]}  then includes
+values such as \texttt{inl(1)} and \texttt{inr(TRUE)}\@.  
+
+Rushby~\cite{Rushby95:movie} presents a toy compiler verification
+exercise~\cite{Weber-Wulff93} in PVS and presents an extensive
+discussion of the use of disjoint unions in PVS specifications and
+proofs.
+
+\chapter{Mutually Recursive Datatypes}\label{mutual}
+
+Mutually recursive datatypes arise quite frequently in
+programming and specification.  A common example is that of
+a language definition where type expressions contain terms and vice-versa.  
+Mutually recursive type definitions are not directly admissible using
+the PVS datatype mechanism.  But most typical mutual recursive types can,
+in fact, be  
+defined as a single datatype in PVS with subtypes that
+group together classes of constructors.  PVS~2 has been
+extended to admit such datatypes with \emph{sub-datatypes}\@.
+The example below describes the class of arithmetic expressions that
+include numbers, sums, and conditional expressions classified
+by the sub-datatype \texttt{term}, where the test
+component of a conditional expression is a boolean expression
+classified by the subdatatype \texttt{expr}.   Thus sub-datatypes
+are a way of collecting together groups of constructors of a datatype
+that form one part of a mutually recursive datatype definition.  
+In the example below,  boolean expressions are defined as equalities
+between arithmetic expressions, and conditional arithmetic expressions
+contain boolean subexpressions, so that 
+arithmetic and boolean expressions are mutually recursive.  
+\begin{session*}
+arith: DATATYPE WITH SUBTYPES expr, term
+ BEGIN
+  num(n:int): num?              :term
+  sum(t1:term,t2:term):   sum?  :term
+% ...
+  eq(t1: term, t2: term): eq?   :expr
+  ift(e: expr, t1: term, t2: term): ift? :term
+% ...
+ END arith
+\end{session*}
+
+The only restriction on the use of subdatatypes other than those listed in
+Section~\ref{lists} is that the sub-datatypes should be pairwise distinct
+and differ from the datatype itself\@.  In particular, sub-datatypes need
+not actually be used in which case they are empty.  It is possible to
+define mutual recursive types that lead to empty constructor subtypes
+such as if the \texttt{eq} constructor in the \texttt{arith} datatype was
+specified as \texttt{eq(t1:\ expr, t2:\ expr):\ eq?\ :\ expr}\@.  
+
+An evaluator for such arithmetic/boolean expressions can be defined
+as \texttt{eval} whose range type is a disjoint union of \texttt{bool} and \texttt{int} (according to whether the input expression is of type \texttt{expr} or
+\texttt{term}.  The function \texttt{eval} is therefore dependently typed
+to return values of type \texttt{(bool?)} on  inputs of type \texttt{expr}
+and values of type \texttt{(int?)} on inputs of type \texttt{term}\@. 
+\begin{session*}\label{aritheval}
+arith_eval: THEORY
+ BEGIN
+  IMPORTING arith
+
+  value: DATATYPE
+   BEGIN
+    bool(b:bool): bool?
+    int(i:int): int?
+   END value
+
+  eval(a: arith): RECURSIVE
+         \{v: value | IF expr(a) THEN bool?(v) ELSE int?(v) ENDIF\} =
+   CASES a OF
+    num(n):       int(n),
+    sum(n1, n2):  int(i(eval(n1)) + i(eval(n2))),
+    eq(n1, n2):   bool(i(eval(n1)) = i(eval(n2))),
+    ift(e, n1, n2): IF b(eval(e)) THEN eval(n1) ELSE eval(n2) ENDIF    
+   ENDCASES
+   MEASURE a BY <<
+
+ END arith_eval
+\end{session*}
+
+\chapter{Lifting Subtyping on Recursive Datatype Parameters}\label{lifting}
+
+The datatype mechanism in PVS~2.0 had the limitation that though the type
+of \texttt{nat} of natural numbers is a subtype of the type \texttt{int} of
+integers, the type \texttt{list[nat]} of lists over the
+natural numbers is not a subtype of the type \texttt{list[int]} of
+lists over the integers.  The datatype mechanism in PVS~2.1 has
+been modified to lift such subtyping over positive parameters to the
+corresponding abstract datatypes.    In general, given a datatype \texttt{D} with
+a positive type parameter, we have
+\begin{alltt}
+  D[\{x: T | p(x)\}] \(\equiv\) \{d: D[T] | every(p)(d)\}.
+\end{alltt}
+
+While \texttt{cons[nat]} is neither syntactically nor semantically identical
+to \texttt{cons[int]}, constructor \emph{applications} involving \texttt{cons[int]} and \texttt{cons[nat]} such as \texttt{cons[nat](0, null[nat])} and \texttt{cons[int](0, null[int])} are syntactically identical.  Also, constructors
+that are declared to have no accessors (e.g., \texttt{null}) are
+syntactically equal, so \texttt{null[int] \(\equiv\) null[real]}, but \texttt{null[int]} and \texttt{null[bool]} belong to incompatible types. 
+
+In general, when a constructor, accessor, or recognizer occurs as an
+operator of an application, the actual parameter is only used for testing
+compatibility.    Note that the actual parameter is not actually ignored.
+For example, the expression \texttt{cons[nat](-1, null)} is not type correct
+and generates the unprovable proof obligation \texttt{-1 > 0}\@. 
+
+When multiple parameters are involved, only the positive ones satisfy the
+subtyping equivalences given above.  Thus in the datatype declaration
+\begin{alltt}
+dt[t1, t2: TYPE, c: t1]: DATATYPE
+ BEGIN
+  b: b?
+  c(a1:[t1 -> t2], a2: dt): c?
+ END dt
+\end{alltt}
+only \texttt{t2} occurs positively, so \texttt{dt[int, nat, 3]} is a subtype of
+\texttt{dt[int, int, 3]}, but bears no relation to \texttt{dt[nat, nat, 3]} or
+to \texttt{dt[int, nat, 2]}.
+
+
+\chapter{Representations of Recursive Ordinals}\label{section:ordinals}
+
+Ordinals are needed to provide lexicographic termination measures for
+recursive functions.  The Ackermann function provides a well known example
+of a doubly recursive function that requires a lexicographic measure.
+P\'eter's version~\cite{PETER} of the Ackermann function is defined in the
+theory \texttt{ackermann} as \texttt{ack}\@.
+\begin{session*}\label{ackermann}
+ackermann: THEORY
+BEGIN
+i, j, k, m, n: VAR nat
+
+ack(m,n): RECURSIVE nat =
+  (IF m=0 THEN n+1
+          ELSIF n=0 THEN ack(m-1,1)
+                    ELSE ack(m-1, ack(m, n-1))
+        ENDIF)
+  MEASURE lex2(m, n)
+
+  \vdots
+END ackermann
+\end{session*}
+The lexicographic termination measure for \texttt{ack} is computed by
+the function \texttt{lex2} (see~\pvsref{lex2})
+which returns a representation for the
+ordinal in the lexicographic ordering.  The ordinal $\epsilon_0$ is the
+least ordinal $x$ such that $x = \omega^x$, and therefore includes
+$0, 1, \ldots, \omega, \omega+1,\ldots \omega + \omega, \ldots, 3*\omega,
+\ldots, \omega^2,\ldots, \omega^\omega, \ldots, \omega^{.^{.^\omega}}, \ldots.$
+The sub-$\epsilon_0$ ordinals can be represented using the Cantor normal
+form which asserts that to any non-zero ordinal $\alpha$,  there are $n$
+ordinals $\alpha_1, \ldots, \alpha_n$ with $\alpha_1 \leq
+\ldots \leq 
+\alpha_n < \alpha$, such that $\alpha = \omega^{\alpha_1} + \omega^{\alpha_2}
++ \ldots 
++ \omega^{\alpha_n}$\@.  We can make this representation slightly more
+compact by adding natural number coefficients so that to any $\alpha$,
+there are ordinals $\alpha_1,\ldots, \alpha_n$ such that
+$\alpha_1 \leq \ldots \leq \alpha_n < \alpha$,  and
+natural numbers $c_1,\ldots, c_n$ 
+such that $\alpha = c_1 * \omega^{\alpha_1} + c_2 * \omega^{\alpha_2} + \ldots
++ c_n * \omega^{\alpha_n}$\@.  It is easy to see that a lexicographic
+measure can be given by $n * \omega^0 + m * \omega$ which is just $n + m* \omega$\@.  
+
+We now explain how the sub-$\epsilon_0$ ordinals are defined in the PVS
+prelude.   We start by defining an
+\texttt{ordstruct} datatype that represents ordinal-like structures.
+\begin{session*}
+ordstruct: DATATYPE
+ BEGIN
+  zero: zero?
+  add(coef: posnat, exp: ordstruct, rest: ordstruct): nonzero?
+ END ordstruct
+\end{session*}
+
+In intuitive terms, the ordinal represented by \texttt{zero} is
+\texttt{0}, and the ordinal represented by \texttt{add(c, alpha, beta)}
+given by, say $\mbox{\textit{ordinal}}(\texttt{add(c, alpha, beta)})$ is $
+\texttt{c} * \omega^{\mbox{\textit{ordinal}}(\texttt{alpha})} +
+\mbox{\textit{ordinal}}(\texttt{beta})$\@.  We can then define an ordering
+relation on \texttt{ordstruct} terms as given by \texttt{<}
+in~\pvsref{ordlessp}\@.  It compares \texttt{add(i, u, v)} against
+\texttt{add(j, z, w)} by either recursively ensuring \texttt{u < z}, or
+checking that \texttt{u} is syntactically identical to \texttt{z} and
+either \texttt{i < j} or \texttt{i = j} and recursively \texttt{v~<~w}\@.
+\begin{session*}\label{ordlessp}
+ordinals: THEORY
+ BEGIN
+  i, j, k: VAR posnat
+  m, n, o: VAR nat
+  u, v, w, x, y, z: VAR ordstruct
+  size: [ordstruct->nat] = reduce[nat](0, (LAMBDA i, m, n: 1 + m+n));
+
+  <(x, y): RECURSIVE bool =
+     CASES x OF
+        zero: NOT zero?(y),
+        add(i, u, v): CASES y OF
+                        zero: FALSE,
+                        add(j, z, w): (u<z) OR
+                                      (u=z) AND (i<j) OR
+                                      (u=z) AND (i=j) AND (v<w)
+                      ENDCASES
+     ENDCASES
+   MEASURE size(x);
+\end{session*}
+This is not quite the ordering relation we want since it will obviously
+only work for normalized (and therefore, canonical) representations where
+the exponent ordinals appear in sorted (decreasing) order.  In particular,
+note that the use of syntactic identity on \texttt{ordstruct} terms will not
+work unless the terms are in fact canonical representatives.  It is easy
+to define a predicate which identifies an \texttt{ordstruct} term as being
+in the required Cantor normal form by defining a recursive predicate
+\texttt{ordinal?}\ as shown in~\pvsref{ordinal?}\@.  
+\begin{session*}\label{ordinal?}
+  >(x, y): bool = y < x;
+  <=(x, y): bool = x < y OR x = y;
+  >=(x, y): bool = y < x OR y = x
+
+  ordinal?(x): RECURSIVE bool =
+    CASES x OF
+      zero: TRUE,
+      add(i, u, v): (ordinal?(u) AND ordinal?(v) AND 
+                      CASES v OF
+                        zero: TRUE,
+                        add(k, r, s): r < u
+                      ENDCASES)
+    ENDCASES
+   MEASURE size
+
+  ordinal: NONEMPTY_TYPE = (ordinal?)
+\end{session*}
+The definition of \texttt{ordinal?}\ checks \texttt{add(i, u, v)} to
+recursively ensure that \texttt{u} and \texttt{v} are ordinals, and that
+in \texttt{add(i, u, add(k, r, s))}, we have \texttt{r < u}\@.  This latter
+use of the ordering relation is acceptable since we have already
+checked that \texttt{r} and \texttt{u} are proper normal forms.
+The definition of \texttt{lex2} is given in~\pvsref{lex2}.  Note that
+\texttt{add(n, zero, zero)} represents $n$,
+\texttt{add(m, add(1, zero, zero), zero)} represents $m * \omega$,
+and \texttt{add(m, add(1,zero,zero), add(n,zero, zero))} represents
+$n + m * \omega$\@.\footnote{The PVS \texttt{CONVERSION} mechanism can be
+used to gracefully embed the natural numbers into the \texttt{ordinal} type by
+converting \texttt{0} to \texttt{zero}, and a positive number \texttt{n} to
+\texttt{add(n, zero, zero)}\@.  }
+\begin{session*}\label{lex2}
+  lex2(m, n): ordinal = 
+    (IF m=0
+       THEN IF n = 0
+               THEN zero
+               ELSE add(n, zero, zero)
+            ENDIF
+       ELSIF n = 0 THEN add(m, add(1,zero,zero),zero)
+       ELSE add(m, add(1,zero,zero), add(n,zero, zero))
+     ENDIF)
+
+  lex2_lt: LEMMA
+    lex2(i, j) < lex2(m, n) =
+     (i < m OR (i = m AND j < n))
+\end{session*}
+
+Returning to the example of the Ackermann function in~\pvsref{ackermann},
+the measure \texttt{lex2(m, n)} generates three termination TCCs
+corresponding to the three recursive invocations of the function.
+\begin{session*}
+ack_TCC2: OBLIGATION
+      (FORALL (m, n): NOT m = 0 AND n = 0
+        IMPLIES lex2(m - 1, 1) < lex2(m, n));
+
+ack_TCC5: OBLIGATION
+      (FORALL (m, n):
+         NOT m = 0 AND NOT n = 0
+          IMPLIES lex2(m, n - 1) < lex2(m, n));
+
+ack_TCC6: OBLIGATION
+      (FORALL (v: [[nat, naturalnumber] -> nat], m, n):
+         NOT m = 0 AND NOT n = 0
+             IMPLIES lex2(m - 1, v(m, n - 1)) < lex2(m, n));
+\end{session*}
+All three TCCs are proved automatically by the default \texttt{termination-tcc} strategy.   
+
+%% \comment{
+%% \begin{session*}
+%% ackr(n, (f: [nat->nat])): RECURSIVE nat =
+%%   (IF n = 0 THEN f(1) ELSE f(ackr(n - 1, f)) ENDIF)
+%%  MEASURE n
+
+%% ackrmn(m)(n): RECURSIVE nat = 
+%%  (IF m = 0 THEN n + 1 ELSE ackr(n, ackrmn(m - 1)) ENDIF)
+%%  MEASURE m
+
+%% ack_ackrmn: THEOREM
+%%   ack(m, n) = ackrmn(m)(n)
+%% \end{session*}
+%% }
+
+
+\chapter{Some Illustrative Proofs about Ordered Binary Trees}
+\label{OBT-proofs}
+
+We present two proofs of \texttt{ordered?\_insert} shown in~\pvsref{ordered?_insert}\@.  The second proof
+exhibits a greater level of automation than the first proof.  The first
+proof illustrates the various low-level datatype related proof commands
+that are 
+provided by PVS, and the second proof illustrates how these commands
+can be combined to form more powerful and automatic proof strategies.
+Strategies
+are similar to the \textit{tactics} of the LCF~\cite{LCF} family of proof
+checkers.
+
+\section{A Low-level Proof}
+
+When we invoke \texttt{M-x pr} on \texttt{ordered?\_insert}, the theorem to
+be proved is displayed in the \texttt{*pvs*} buffer, and we are prompted
+for an inference rule by the \texttt{Rule?} prompt.  Since the proof is by
+induction, the first 
+step in the proof is the command \texttt{(induct "A")}\@.  This indicates
+that we wish to invoke the \texttt{induct} strategy with \texttt{A} as the
+induction variable.  The induction strategy finds the induction axiom
+corresponding to the datatype of \texttt{A}, instantiates it suitably, and
+simplifies it to generate the base and induction cases.  We are then
+presented the base case of the proof.  (The induction case can be
+displayed with the PVS Emacs command \texttt{M-x~siblings}\@. 
+\begin{session*}
+ ordered?_insert :  
+  |-------
+\{1\}   (FORALL (A: binary_tree[T], x: T):
+         ordered?(A) IMPLIES ordered?(insert(x, A)))
+Rule? \fbox{(induct "A")}
+Inducting on A,
+this yields  2 subgoals: 
+ordered?_insert.1 :  
+  |-------
+\{1\}   (FORALL (x: T): ordered?(leaf) IMPLIES ordered?(insert(x, leaf)))
+\end{session*}
+In the next  step, we replace the universally quantified variable
+with a Skolem constant and flatten the sequent by simplifying all
+top-level propositional connectives that are disjunctive (i.e.,
+negations, positive implications and disjunctions, and negative
+conjunctions).  
+\begin{session*}
+Rule? \fbox{(skosimp)}
+Skolemizing and flattening,
+this simplifies to: 
+ordered?_insert.1 :  
+\{-1\}   ordered?(leaf)
+  |-------
+\{1\}   ordered?(insert(x!1, leaf))
+\end{session*}
+The obvious step now is to open up the definitions of \texttt{insert} and
+\texttt{ordered?}\@.  This is done by two invocations of the
+\texttt{expand} rule.
+\begin{session*}
+Rule? \fbox{(expand "insert")}
+Expanding the definition of insert,
+this simplifies to: 
+ordered?_insert.1 :  
+[-1]   ordered?(leaf)
+  |-------
+\{1\}   ordered?(node(x!1, leaf, leaf))
+
+Rule? \fbox{(expand "ordered?")}
+Expanding the definition of ordered?,
+this simplifies to: 
+ordered?_insert.1 :  
+  |-------
+\{1\}   (every((LAMBDA (y: T): y <= x!1), leaf)
+           AND every((LAMBDA (y: T): x!1 <= y), leaf)
+             AND ordered?(leaf) AND ordered?(leaf))
+\end{session*}
+The problem now is that all the occurrences of \texttt{ordered?}\ are expanded
+so that the antecedent formula \texttt{ordered?(leaf)}
+reduces to \texttt{TRUE} and vanishes from the sequent.  This formula in
+its unexpanded form is actually useful since it occurs in the
+consequent part of the sequent.  We could press on and expand \texttt{ordered?}\ once again or, alternatively, we could undo this step of the
+proof and expand \texttt{ordered?}\ more selectively using the command
+\texttt{(expand "ordered?" +)}\@. 
+\begin{session*}
+Rule? \fbox{(undo)}
+This will undo the proof to: 
+ordered?_insert.1 :  
+[-1]   ordered?(leaf)
+  |-------
+\{1\}   ordered?(node(x!1, leaf, leaf))
+Sure? (Y or N): y
+ordered?_insert.1 :  
+[-1]   ordered?(leaf)
+  |-------
+\{1\}   ordered?(node(x!1, leaf, leaf))
+Rule? \fbox{(expand "ordered?" +)}
+Expanding the definition of ordered?,
+this simplifies to: 
+ordered?_insert.1 :  
+[-1]   ordered?(leaf)
+  |-------
+\{1\}   (every((LAMBDA (y: T): y <= x!1), leaf)
+           AND every((LAMBDA (y: T): x!1 <= y), leaf)
+             AND ordered?(leaf) AND ordered?(leaf))
+\end{session*}
+Now an invocation of \texttt{assert} eliminates the occurrences of the
+subformula \texttt{ordered?(leaf)} in the consequent since it appears in
+the antecedent.  Expanding \texttt{every} then completes the base case of the proof without any further work.
+\begin{session*}
+Rule? \fbox{(assert)}
+Simplifying, rewriting, and recording with decision procedures,
+this simplifies to: 
+ordered?_insert.1 :  
+[-1]   ordered?(leaf)
+  |-------
+\{1\}   (every((LAMBDA (y: T): y <= x!1), leaf)
+           AND every((LAMBDA (y: T): x!1 <= y), leaf))
+Rule? \fbox{(expand "every")}
+Expanding the definition of every,
+this simplifies to: 
+ordered?_insert.1 :  
+[-1]   ordered?(leaf)
+  |-------
+\{1\}   TRUE
+which is trivially true.
+This completes the proof of ordered?_insert.1.
+\end{session*}
+
+Having completed the base case of the proof, we are left  with the
+induction case.  Our first step here is to apply the rule \texttt{skosimp*}\@.  This is a strategy  
+that  repeatedly performs a \texttt{skolem!} followed by a \texttt{flatten} until nothing changes, i.e., it is an iterated form of the
+\texttt{skosimp} command.
+%% \comment{The strategy \texttt{skosimp} illustrates the
+%% difference between a rule and a strategy.  If \texttt{skosimp} were a
+%% rule, it would have performed both  \texttt{skolem!} and \texttt{flatten}
+%% in one atomic step, but since it is a strategy, these two steps
+%% are both visible in the proof.  Note that \texttt{skolem!} is also a
+%% strategy that is defined in terms of the \texttt{skolem}
+%% rule.\footnote{The strategies \texttt{skolem!}, \texttt{skosimp}, and \texttt{%% skosimp*} will soon be made into defined rules rather than strategies.}}
+
+\begin{session*}
+ordered?_insert.2 :  
+  |-------
+\{1\}   (FORALL (node1_var: T, node2_var: binary_tree[T],
+               node3_var: binary_tree[T]):
+         (FORALL (x: T):
+            ordered?(node2_var) IMPLIES ordered?(insert(x, node2_var)))
+             AND
+           (FORALL (x: T):
+              ordered?(node3_var) IMPLIES ordered?(insert(x, node3_var)))
+             IMPLIES
+           (FORALL (x: T):
+              ordered?(node(node1_var, node2_var, node3_var))
+                  IMPLIES
+                ordered?(insert(x, node(node1_var, node2_var, node3_var)))))
+Rule? \fbox{(skosimp*)}
+Repeatedly Skolemizing and flattening,
+this simplifies to: 
+ordered?_insert.2 :  
+\{-1\}   (FORALL (x: T):
+         ordered?(node2_var!1) IMPLIES ordered?(insert(x, node2_var!1)))
+\{-2\}   (FORALL (x: T):
+         ordered?(node3_var!1) IMPLIES ordered?(insert(x, node3_var!1)))
+\{-3\}   ordered?(node(node1_var!1, node2_var!1, node3_var!1))
+  |-------
+\{1\}   ordered?(insert(x!1, node(node1_var!1, node2_var!1, node3_var!1)))
+\end{session*}
+Now we have a subgoal sequent in which the induction hypotheses are
+the formulas number \texttt{-1} and \texttt{-2}, and the induction
+conclusion formulas are numbered \texttt{-3} and \texttt{1}.  We
+clearly need to expand the definitions of \texttt{insert} and \texttt{ordered?}\ in the induction conclusion.  We first expand \texttt{insert}
+and then propositionally simplify the resulting \texttt{IF-THEN-ELSE}
+expression as shown below.
+\begin{session*}
+Rule? \fbox{(expand "insert" +)}
+Expanding the definition of insert,
+this simplifies to: 
+ordered?_insert.2 :  
+[-1]   (FORALL (x: T):
+         ordered?(node2_var!1) IMPLIES ordered?(insert(x, node2_var!1)))
+[-2]   (FORALL (x: T):
+         ordered?(node3_var!1) IMPLIES ordered?(insert(x, node3_var!1)))
+[-3]   ordered?(node(node1_var!1, node2_var!1, node3_var!1))
+  |-------
+\{1\}   IF x!1 <= node1_var!1
+        THEN ordered?(node(node1_var!1, insert(x!1, node2_var!1), node3_var!1))
+      ELSE ordered?(node(node1_var!1, node2_var!1, insert(x!1, node3_var!1)))
+      ENDIF
+
+Rule? \fbox{(prop)}
+Applying propositional simplification,
+this yields  2 subgoals: 
+ordered?_insert.2.1 :  
+\{-1\}   x!1 <= node1_var!1
+[-2]   (FORALL (x: T):
+         ordered?(node2_var!1) IMPLIES ordered?(insert(x, node2_var!1)))
+[-3]   (FORALL (x: T):
+         ordered?(node3_var!1) IMPLIES ordered?(insert(x, node3_var!1)))
+[-4]   ordered?(node(node1_var!1, node2_var!1, node3_var!1))
+  |-------
+\{1\}   ordered?(node(node1_var!1, insert(x!1, node2_var!1), node3_var!1))
+\end{session*}
+The propositional simplification step generates two subgoals according
+to whether the recursive invocation of \texttt{insert} is on the left or
+the right subtree.  We first consider the insertion into the left
+subtree given by subgoal \texttt{ordered?\_insert.2.1}\@.
+We can instantiate the induction hypothesis numbered \texttt{-2}
+by applying the \texttt{inst?}\ command which uses syntactic
+matching to find instantiating terms for the universally quantified
+variable in \texttt{-2}.
+\begin{session*}\label{ordered?_insert.2.1}
+Rule? \fbox{(inst?)}
+Found substitution:
+x gets x!1,
+Instantiating quantified variables,
+this simplifies to: 
+ordered?_insert.2.1 :  
+[-1]   x!1 <= node1_var!1
+\{-2\}   ordered?(node2_var!1) IMPLIES ordered?(insert(x!1, node2_var!1))
+[-3]   (FORALL (x: T):
+         ordered?(node3_var!1) IMPLIES ordered?(insert(x, node3_var!1)))
+[-4]   ordered?(node(node1_var!1, node2_var!1, node3_var!1))
+  |-------
+[1]   ordered?(node(node1_var!1, insert(x!1, node2_var!1), node3_var!1))
+\end{session*}
+The next step is to expand the definition of \texttt{ordered?}
+in the induction conclusion.  Note that the second argument to the \texttt{expand} proof command is a list of the formula numbers where the expansion
+is to be performed.  It makes the proof considerably less robust if it
+explicitly mentions such formula numbers, though this can be unavoidable
+in some cases.\footnote{PVS is currently being enhanced to allow labels
+to be introduced for sequent formulas so that formula selection in the PVS
+proof commands can be done with labels as an alternative to formula
+numbers.} 
+\begin{session*}
+Rule? \fbox{(expand "ordered?" (-4 1))}
+Expanding the definition of ordered?,
+this simplifies to: 
+ordered?_insert.2.1 :  
+[-1]   x!1 <= node1_var!1
+[-2]   ordered?(node2_var!1) IMPLIES ordered?(insert(x!1, node2_var!1))
+[-3]   (FORALL (x: T):
+         ordered?(node3_var!1) IMPLIES ordered?(insert(x, node3_var!1)))
+\{-4\}   (every((LAMBDA (y: T): y <= node1_var!1), node2_var!1)
+           AND every((LAMBDA (y: T): node1_var!1 <= y), node3_var!1)
+             AND ordered?(node2_var!1) AND ordered?(node3_var!1))
+  |-------
+\{1\}   (every((LAMBDA (y: T): y <= node1_var!1), insert(x!1, node2_var!1))
+           AND every((LAMBDA (y: T): node1_var!1 <= y), node3_var!1)
+             AND ordered?(insert(x!1, node2_var!1)) AND ordered?(node3_var!1))
+\end{session*}
+Applying propositional
+simplification \texttt{prop} to the resulting subgoal generates two
+further subgoals.  The first of these is easily proved by rewriting
+using the lemma \texttt{ordered?\_insert\_step}\@.  Note that this is a
+conditional rewrite rule and has the form $A\supset B$, where the
+rewriting given by  $B$ can be applied  to a matching instance $\sigma(B)$
+only when the 
+corresponding $\sigma(A)$ (the condition) is provable.  The \texttt{rewrite} proof strategy attempts to discharge these conditions
+automatically, and any undischarged conditions are 
+generated as subgoals.
+\begin{session*}
+Rule? \fbox{(prop)}
+Applying propositional simplification,
+this simplifies to: 
+ordered?_insert.2.1 :  
+\{-1\}   ordered?(insert(x!1, node2_var!1))
+[-2]   x!1 <= node1_var!1
+[-3]   (FORALL (x: T):
+         ordered?(node3_var!1) IMPLIES ordered?(insert(x, node3_var!1)))
+\{-4\}   every((LAMBDA (y: T): y <= node1_var!1), node2_var!1)
+\{-5\}   every((LAMBDA (y: T): node1_var!1 <= y), node3_var!1)
+\{-6\}   ordered?(node2_var!1)
+\{-7\}   ordered?(node3_var!1)
+  |-------
+\{1\}   every((LAMBDA (y: T): y <= node1_var!1), insert(x!1, node2_var!1))
+Rule? \fbox{(rewrite "ordered?_insert_step")}
+Found matching substitution:
+A gets node2_var!1,
+x gets x!1,
+pp gets (LAMBDA (y: T): y <= node1_var!1),
+Rewriting using ordered?_insert_step,
+This completes the proof of ordered?_insert.2.1.
+\end{session*}
+
+We have now completed the part of the proof corresponding to the
+insertion into the left subtree.   
+Next, we proceed to the case when the \texttt{insert} operation is applied
+to the right subtree.  This case is similar to the proof of
+\texttt{ordered?\_insert.2.1}\@.  
+\begin{session*}
+ordered?_insert.2.2 :  
+[-1]   (FORALL (x: T):
+         ordered?(node2_var!1) IMPLIES ordered?(insert(x, node2_var!1)))
+[-2]   (FORALL (x: T):
+         ordered?(node3_var!1) IMPLIES ordered?(insert(x, node3_var!1)))
+[-3]   ordered?(node(node1_var!1, node2_var!1, node3_var!1))
+  |-------
+\{1\}   x!1 <= node1_var!1
+\{2\}   ordered?(node(node1_var!1, node2_var!1, insert(x!1, node3_var!1)))
+\end{session*}
+As in~\pvsref{ordered?_insert.2.1} earlier, we apply the step \texttt{inst?}\@.
+\begin{session*}
+Rule? \fbox{(inst?)}
+Found substitution:
+x gets x!1,
+Instantiating quantified variables,
+this simplifies to: 
+ordered?_insert.2.2 :  
+\{-1\}   ordered?(node2_var!1) IMPLIES ordered?(insert(x!1, node2_var!1))
+[-2]   (FORALL (x: T):
+         ordered?(node3_var!1) IMPLIES ordered?(insert(x, node3_var!1)))
+[-3]   ordered?(node(node1_var!1, node2_var!1, node3_var!1))
+  |-------
+[1]   x!1 <= node1_var!1
+[2]   ordered?(node(node1_var!1, node2_var!1, insert(x!1, node3_var!1)))
+\end{session*}
+It however  instantiates the formula \texttt{-1} which is not
+the appropriate induction hypothesis for the right branch.  To
+apply the \texttt{inst?}\ step with greater selectivity, we undo the
+last step and supply
+a further argument to \texttt{inst?}\ indicating the number of the quantified
+formula to be instantiated.
+\begin{session*}
+Rule? \fbox{(inst? -2)}
+Found substitution:
+x gets x!1,
+Instantiating quantified variables,
+this simplifies to: 
+ordered?_insert.2.2 :  
+[-1]   (FORALL (x: T):
+         ordered?(node2_var!1) IMPLIES ordered?(insert(x, node2_var!1)))
+\{-2\}   ordered?(node3_var!1) IMPLIES ordered?(insert(x!1, node3_var!1))
+[-3]   ordered?(node(node1_var!1, node2_var!1, node3_var!1))
+  |-------
+[1]   x!1 <= node1_var!1
+[2]   ordered?(node(node1_var!1, node2_var!1, insert(x!1, node3_var!1)))
+\end{session*}
+Now, as before, we expand the definition of \texttt{ordered?}\ in the
+induction conclusion formulas \texttt{-3} and \texttt{2}\@.
+\begin{session*}
+Rule? \fbox{(expand "ordered?" (-3 2))}
+Expanding the definition of ordered?,
+this simplifies to: 
+ordered?_insert.2.2 :  
+[-1]   (FORALL (x: T):
+         ordered?(node2_var!1) IMPLIES ordered?(insert(x, node2_var!1)))
+[-2]   ordered?(node3_var!1) IMPLIES ordered?(insert(x!1, node3_var!1))
+\{-3\}   (every((LAMBDA (y: T): y <= node1_var!1), node2_var!1)
+           AND every((LAMBDA (y: T): node1_var!1 <= y), node3_var!1)
+             AND ordered?(node2_var!1) AND ordered?(node3_var!1))
+  |-------
+[1]   x!1 <= node1_var!1
+\{2\}   (every((LAMBDA (y: T): y <= node1_var!1), node2_var!1)
+           AND
+         every((LAMBDA (y: T): node1_var!1 <= y), insert(x!1, node3_var!1))
+             AND ordered?(node2_var!1) AND ordered?(insert(x!1, node3_var!1)))
+\end{session*}
+Propositional simplification yields a single goal sequent.
+\begin{session*}\label{subgoal2.2}
+Rule? \fbox{(prop)}
+Applying propositional simplification,
+this simplifies to: 
+ordered?_insert.2.2 :  
+\{-1\}   ordered?(insert(x!1, node3_var!1))
+[-2]   (FORALL (x: T):
+         ordered?(node2_var!1) IMPLIES ordered?(insert(x, node2_var!1)))
+\{-3\}   every((LAMBDA (y: T): y <= node1_var!1), node2_var!1)
+\{-4\}   every((LAMBDA (y: T): node1_var!1 <= y), node3_var!1)
+\{-5\}   ordered?(node2_var!1)
+\{-6\}   ordered?(node3_var!1)
+  |-------
+\{1\}   every((LAMBDA (y: T): node1_var!1 <= y), insert(x!1, node3_var!1))
+[2]   x!1 <= node1_var!1
+\end{session*}
+As before, we attempt to rewrite the formula \texttt{1} using the
+lemma \texttt{ordered?\_insert\_step}, but as shown in~\pvsref{2.2.proof.1},
+this does not terminate 
+the current branch of the proof.
+\begin{session*}\label{2.2.proof.1}
+Rule? \fbox{(rewrite "ordered?_insert_step")}
+Found matching substitution:
+A gets node3_var!1,
+x gets x!1,
+pp gets (LAMBDA (y: T): node1_var!1 <= y),
+Rewriting using ordered?_insert_step,
+this simplifies to: 
+ordered?_insert.2.2 :  
+[-1]   ordered?(insert(x!1, node3_var!1))
+[-2]   (FORALL (x: T):
+         ordered?(node2_var!1) IMPLIES ordered?(insert(x, node2_var!1)))
+[-3]   every((LAMBDA (y: T): y <= node1_var!1), node2_var!1)
+[-4]   every((LAMBDA (y: T): node1_var!1 <= y), node3_var!1)
+[-5]   ordered?(node2_var!1)
+[-6]   ordered?(node3_var!1)
+  |-------
+\{1\}   node1_var!1 <= x!1
+[2]   every((LAMBDA (y: T): node1_var!1 <= y), insert(x!1, node3_var!1))
+[3]   x!1 <= node1_var!1
+\end{session*}
+  We are left with having to discharge one of
+the conditions of the rewrite rule, namely \texttt{node1\_var!1 <= x!1}.
+This follows from the other consequent formula \texttt{x!1 <=
+node1\_var!1} and the observation that \texttt{<=} here is a linear
+ordering.
+The proof  now requires that the type information of
+\texttt{<=} be made explicit using the \texttt{typepred} command.
+\begin{session*}
+Rule? \fbox{(typepred "<=")}
+<= does not uniquely resolve - one of:
+  obt.<= : (total_order?[T]),
+  reals.<= : [[real, real] -> bool],
+  ordinals.<= : [[ordstruct, ordstruct] -> bool]
+Restoring the state.
+ordered?_insert.2.2 :  
+[-1]   ordered?(insert(x!1, node3_var!1))
+[-2]   (FORALL (x: T):
+         ordered?(node2_var!1) IMPLIES ordered?(insert(x, node2_var!1)))
+[-3]   every((LAMBDA (y: T): y <= node1_var!1), node2_var!1)
+[-4]   every((LAMBDA (y: T): node1_var!1 <= y), node3_var!1)
+[-5]   ordered?(node2_var!1)
+[-6]   ordered?(node3_var!1)
+  |-------
+\{1\}   node1_var!1 <= x!1
+[2]   every((LAMBDA (y: T): node1_var!1 <= y), insert(x!1, node3_var!1))
+[3]   x!1 <= node1_var!1
+\end{session*}
+However, the command \texttt{(typepred "<=")} does
+not succeed since the typechecker is unable to resolve among
+the many possible references  for \texttt{<=}.  
+The more explicit
+command \texttt{(typepred "obt.<=")} does succeed.\footnote{Note
+that in PVS~2.1, the typechecking of input expressions to proof commands
+automatically resolves such ambiguities in favor of expressions occurring
+in the goal sequent.  Thus, this ambiguity is no longer reported.}
+\begin{session*}\label{2.2.proof.2}
+Rule? \fbox{(typepred "obt.<=")}
+Adding type constraints for  obt.<=,
+this simplifies to: 
+ordered?_insert.2.2 :  
+\{-1\}   total_order?[T](obt.<=)
+[-2]   ordered?(insert(x!1, node3_var!1))
+[-3]   (FORALL (x: T):
+         ordered?(node2_var!1) IMPLIES ordered?(insert(x, node2_var!1)))
+[-4]   every((LAMBDA (y: T): y <= node1_var!1), node2_var!1)
+[-5]   every((LAMBDA (y: T): node1_var!1 <= y), node3_var!1)
+[-6]   ordered?(node2_var!1)
+[-7]   ordered?(node3_var!1)
+  |-------
+[1]   node1_var!1 <= x!1
+[2]   every((LAMBDA (y: T): node1_var!1 <= y), insert(x!1, node3_var!1))
+[3]   x!1 <= node1_var!1
+\end{session*}
+We then expand  the definition of \texttt{total\_order?}.
+\begin{session*}
+Rule? \fbox{(expand "total_order?")}
+Expanding the definition of total_order?,
+this simplifies to: 
+ordered?_insert.2.2 :  
+\{-1\}   partial_order?(obt.<=) & dichotomous?(obt.<=)
+[-2]   ordered?(insert(x!1, node3_var!1))
+[-3]   (FORALL (x: T):
+         ordered?(node2_var!1) IMPLIES ordered?(insert(x, node2_var!1)))
+[-4]   every((LAMBDA (y: T): y <= node1_var!1), node2_var!1)
+[-5]   every((LAMBDA (y: T): node1_var!1 <= y), node3_var!1)
+[-6]   ordered?(node2_var!1)
+[-7]   ordered?(node3_var!1)
+  |-------
+[1]   node1_var!1 <= x!1
+[2]   every((LAMBDA (y: T): node1_var!1 <= y), insert(x!1, node3_var!1))
+[3]   x!1 <= node1_var!1
+\end{session*}
+Applying \texttt{flatten} removes the conjunction in \texttt{-1}\@.
+\begin{session*}
+Rule? \fbox{(flatten)}
+Applying disjunctive simplification to flatten sequent,
+this simplifies to: 
+ordered?_insert.2.2 :  
+\{-1\}   partial_order?(obt.<=)
+\{-2\}   dichotomous?(obt.<=)
+[-3]   ordered?(insert(x!1, node3_var!1))
+[-4]   (FORALL (x: T):
+         ordered?(node2_var!1) IMPLIES ordered?(insert(x, node2_var!1)))
+[-5]   every((LAMBDA (y: T): y <= node1_var!1), node2_var!1)
+[-6]   every((LAMBDA (y: T): node1_var!1 <= y), node3_var!1)
+[-7]   ordered?(node2_var!1)
+[-8]   ordered?(node3_var!1)
+  |-------
+[1]   node1_var!1 <= x!1
+[2]   every((LAMBDA (y: T): node1_var!1 <= y), insert(x!1, node3_var!1))
+[3]   x!1 <= node1_var!1
+\end{session*}
+Expanding the definition of \texttt{dichotomous?}\ yields the needed
+linearity property of the ordering relation.
+\begin{session*}
+Rule? \fbox{(expand "dichotomous?")}
+Expanding the definition of dichotomous?,
+this simplifies to: 
+ordered?_insert.2.2 :  
+[-1]   partial_order?(obt.<=)
+\{-2\}   (FORALL (x: T), (y: T): (obt.<=(x, y) OR obt.<=(y, x)))
+[-3]   ordered?(insert(x!1, node3_var!1))
+[-4]   (FORALL (x: T):
+         ordered?(node2_var!1) IMPLIES ordered?(insert(x, node2_var!1)))
+[-5]   every((LAMBDA (y: T): y <= node1_var!1), node2_var!1)
+[-6]   every((LAMBDA (y: T): node1_var!1 <= y), node3_var!1)
+[-7]   ordered?(node2_var!1)
+[-8]   ordered?(node3_var!1)
+  |-------
+[1]   node1_var!1 <= x!1
+[2]   every((LAMBDA (y: T): node1_var!1 <= y), insert(x!1, node3_var!1))
+[3]   x!1 <= node1_var!1
+\end{session*}
+When this linearity property is heuristically instantiated, we get a
+tautologous subgoal that is polished off with \texttt{prop}, thus completing
+the proof.
+\begin{session*}
+Rule? \fbox{(inst?)}
+Found substitution:
+y gets x!1,
+x gets node1_var!1,
+Instantiating quantified variables,
+this simplifies to: 
+ordered?_insert.2.2 :  
+[-1]   partial_order?(obt.<=)
+\{-2\}   (obt.<=(node1_var!1, x!1) OR obt.<=(x!1, node1_var!1))
+[-3]   ordered?(insert(x!1, node3_var!1))
+[-4]   (FORALL (x: T):
+         ordered?(node2_var!1) IMPLIES ordered?(insert(x, node2_var!1)))
+[-5]   every((LAMBDA (y: T): y <= node1_var!1), node2_var!1)
+[-6]   every((LAMBDA (y: T): node1_var!1 <= y), node3_var!1)
+[-7]   ordered?(node2_var!1)
+[-8]   ordered?(node3_var!1)
+  |-------
+[1]   node1_var!1 <= x!1
+[2]   every((LAMBDA (y: T): node1_var!1 <= y), insert(x!1, node3_var!1))
+[3]   x!1 <= node1_var!1
+Rule? \fbox{(prop)}
+Applying propositional simplification,
+This completes the proof of ordered?_insert.2.2.
+This completes the proof of ordered?_insert.2.
+Q.E.D.
+Run time  = 12.32 secs.
+Real time = 1916.88 secs.
+\end{session*}
+
+The above exercise illustrates several aspects of PVS proofs of
+theorems involving abstract datatypes.  The \texttt{induct} strategy
+automatically employs the datatype induction scheme.  Most of the
+datatype axioms need never be explicitly invoked in a proof ---
+the above proof does not mention any datatype axioms.
+%% \comment{The
+%% automatically generated recursion combinators such as \texttt{reduce\_nat}
+%% can be annoying to use in place of explicitly 
+%% recursive definitions since they require an extra definition expansion
+%% and obscure the recursive structure of the concept being defined.
+%% These combinators are useful for defining size functions.
+%% The \texttt{CASES} and \texttt{IF-THEN-ELSE} forms are more convenient for
+%% recursive definitions, and the PVS proof checker is quite powerful at
+%% simplifying expressions constructed using these constructs.}
+
+ More general lessons about PVS are also illustrated by
+the above exercise.  Primary among these are the use of \texttt{undo} to
+backtrack in a proof, the use of \texttt{expand} and \texttt{rewrite} to
+rewrite using definitions and rewrite rules, \texttt{assert} to simplify
+using the decision procedures and the assertions in the sequent, 
+and \texttt{inst?}\ to heuristically
+instantiate a suitably quantified variable using matching.   
+
+We now examine a more automated proof of the same theorem.
+
+\section{A Semi-automated Proof}
+
+We can now retry the proof of the theorem \texttt{ordered?\_insert}
+using a more high-level strategy defined in PVS\@.  This strategy is
+called \texttt{induct-and-simplify}.  It applies the \texttt{induct} strategy
+and then tries to complete the proof by repeatedly skolemizing and
+instantiating quantifiers, and applying the decision procedures,
+rewrite rules, and propositional simplification.  We employ 
+as rewrite rules, the lemma \texttt{ordered?\_insert\_step} and any 
+definitions used directly or indirectly in the statement of the theorem\@.
+The script shown below has been automatically generated from the \texttt{induct-and-simplify} command up to the subgoal in~\pvsref{subgoal1}\@.  
+The first segment of the proof shows the setting up of the rewrite
+rules mentioned in the \texttt{induct-and-simplify} command.
+\begin{session*}
+ ordered?_insert :  
+  |-------
+\{1\}   (FORALL (A: binary_tree[T], x: T):
+         ordered?(A) IMPLIES ordered?(insert(x, A)))
+Rule? \fbox{(induct-and-simplify "A" :rewrites "ordered?_insert_step")}
+
+\end{session*}
+The internal steps of the strategy are not displayed but any applications
+of rewrite rules are indicated in the proof commentary.  This rewriting
+commentary 
+can be turned off using the proof command \texttt{(rewrite-msg-off)} or
+controlled using the PVS Emacs command \texttt{M-x set-rewrite-depth}\@.
+The rewriting in the base case is shown below in~\pvsref{basecase}.
+\begin{session*}\label{basecase}
+ordered? rewrites ordered?(leaf)
+  to TRUE
+insert rewrites insert(x!1, leaf)
+  to node(x!1, leaf, leaf)
+every rewrites every((LAMBDA (y: T): y <= x!1), leaf)
+  to TRUE
+every rewrites every((LAMBDA (y: T): x!1 <= y), leaf)
+  to TRUE
+ordered? rewrites ordered?(node(x!1, leaf, leaf))
+  to TRUE
+\end{session*}
+The rewriting steps occurring in the induction case are shown
+in~\pvsref{indcase} 
+\begin{session*}\label{indcase}
+ordered? rewrites ordered?(node(node1_var!1, node2_var!1, node3_var!1))
+  to (every((LAMBDA (y: T): y <= node1_var!1), node2_var!1)
+           AND every((LAMBDA (y: T): node1_var!1 <= y), node3_var!1)
+             AND ordered?(node2_var!1) AND ordered?(node3_var!1))
+insert rewrites insert(x!1, node(node1_var!1, node2_var!1, node3_var!1))
+  to (IF x!1 <= node1_var!1
+         THEN node(node1_var!1, insert(x!1, node2_var!1), node3_var!1)
+       ELSE node(node1_var!1, node2_var!1, insert(x!1, node3_var!1))
+       ENDIF)
+ordered? rewrites 
+  ordered?(node(node1_var!1, insert(x!1, node2_var!1), node3_var!1))
+  to (every((LAMBDA (y: T): y <= node1_var!1), insert(x!1, node2_var!1))
+           AND every((LAMBDA (y: T): node1_var!1 <= y), node3_var!1)
+             AND ordered?(insert(x!1, node2_var!1)) AND ordered?(node3_var!1))
+ordered? rewrites 
+  ordered?(node(node1_var!1, node2_var!1, insert(x!1, node3_var!1)))
+  to (every((LAMBDA (y: T): y <= node1_var!1), node2_var!1)
+           AND
+         every((LAMBDA (y: T): node1_var!1 <= y), insert(x!1, node3_var!1))
+             AND ordered?(node2_var!1) AND ordered?(insert(x!1, node3_var!1)))
+ordered?_insert_step rewrites 
+  every((LAMBDA (y: T): y <= node1_var!1), insert(x!1, node2_var!1))
+  to TRUE
+\end{session*}
+One subgoal results from the \texttt{induct-and-simplify} command
+as shown in~\pvsref{subgoal1}.  This subgoal is nearly the same as
+subgoal \texttt{ordered?\_insert.2.2} in~\pvsref{subgoal2.2} from the
+previous proof attempt.  This means that the \texttt{induct-and-simplify}
+strategy completed the base case and most of the induction branch of the
+proof automatically.  The subgoal in~\ref{subgoal1} corresponds to the
+case of insertion into the right subtree.  The strategy failed to complete
+this branch of the proof because it was unable to apply the rewrite rule
+\texttt{ordered?\_insert\_step} automatically.  This application failed
+because one of the conditions of the rewrite rule, \texttt{node1\_var!1 <=
+x!1}, could not be discharged.  This condition follows from formula number
+\texttt{1} in~\ref{subgoal1} and the linearity of the \texttt{<=} relation.
+The latter constraint is, however, buried in the type constraint \texttt{(total\_order?)} of \texttt{<=}\@.  This information has to be made explicit
+before the proof can be successfully completed.  
+\begin{session*}\label{subgoal1}
+By induction on A, and by repeatedly rewriting and simplifying,
+this simplifies to: 
+ordered?_insert :  
+\{-1\}   ordered?(insert(node1_var!1, node2_var!1))
+\{-2\}   ordered?(insert(x!1, node3_var!1))
+\{-3\}   every((LAMBDA (y: T): y <= node1_var!1), node2_var!1)
+\{-4\}   every((LAMBDA (y: T): node1_var!1 <= y), node3_var!1)
+\{-5\}   ordered?(node2_var!1)
+\{-6\}   ordered?(node3_var!1)
+  |-------
+\{1\}   x!1 <= node1_var!1
+\{2\}   every((LAMBDA (y: T): node1_var!1 <= y), insert(x!1, node3_var!1))
+\end{session*}
+
+The rest of proof can be completed interactively as in the previous proof
+attempt but we attempt 
+a slightly different sequence of steps this time.  The first step is identical
+to that in~\pvsref{2.2.proof.1} where the \texttt{ordered?\_insert\_step}
+lemma is manually invoked as a rewrite rule using the \texttt{rewrite}
+strategy.  
+\begin{session*}
+Rule? \fbox{(rewrite "ordered?_insert_step")}
+Found matching substitution:
+A gets node3_var!1,
+x gets x!1,
+pp gets (LAMBDA (y: T): node1_var!1 <= y),
+Rewriting using ordered?_insert_step,
+this simplifies to: 
+ordered?_insert :  
+[-1]   ordered?(insert(node1_var!1, node2_var!1))
+[-2]   ordered?(insert(x!1, node3_var!1))
+[-3]   every((LAMBDA (y: T): y <= node1_var!1), node2_var!1)
+[-4]   every((LAMBDA (y: T): node1_var!1 <= y), node3_var!1)
+[-5]   ordered?(node2_var!1)
+[-6]   ordered?(node3_var!1)
+  |-------
+\{1\}   node1_var!1 <= x!1
+[2]   x!1 <= node1_var!1
+[3]   every((LAMBDA (y: T): node1_var!1 <= y), insert(x!1, node3_var!1))
+\end{session*}
+The next step is also identical to that of~\pvsref{2.2.proof.2}
+where the type constraints for  the \texttt{<=} operator are explicitly
+introduced into the sequent.
+\begin{session*}
+Rule? \fbox{(typepred "obt.<=")}
+Adding type constraints for  obt.<=,
+this simplifies to: 
+ordered?_insert :  
+\{-1\}   total_order?[T](obt.<=)
+[-2]   ordered?(insert(node1_var!1, node2_var!1))
+[-3]   ordered?(insert(x!1, node3_var!1))
+[-4]   every((LAMBDA (y: T): y <= node1_var!1), node2_var!1)
+[-5]   every((LAMBDA (y: T): node1_var!1 <= y), node3_var!1)
+[-6]   ordered?(node2_var!1)
+[-7]   ordered?(node3_var!1)
+  |-------
+[1]   node1_var!1 <= x!1
+[2]   x!1 <= node1_var!1
+[3]   every((LAMBDA (y: T): node1_var!1 <= y), insert(x!1, node3_var!1))
+\end{session*}
+The main difference from the previous proof attempt is that we now invoke
+a somewhat powerful variant of the all-purpose \texttt{grind} strategy where
+the \texttt{:if-match} flag is set to \texttt{all} indicating that all matching
+instances of any quantified formulas are to be used.  If we do not supply
+this option, the heuristic instantiator picks the wrong instance since
+the type constraints for \texttt{ <=} themselves provide matching instances
+for the one relevant type constraint, namely, \texttt{dichotomous?(obt.<=)}.
+\begin{session*}
+Rule? \fbox{(grind :if-match all)}
+reflexive? rewrites reflexive?(obt.<=)
+  to FORALL (x: T): obt.<=(x, x)
+transitive? rewrites transitive?(obt.<=)
+  to FORALL (x: T), (y: T), (z: T): obt.<=(x, y) & obt.<=(y, z) => obt.<=(x, z)
+preorder? rewrites preorder?(obt.<=)
+  to FORALL (x: T): obt.<=(x, x)
+          & FORALL (x: T), (y: T), (z: T):
+          obt.<=(x, y) & obt.<=(y, z) => obt.<=(x, z)
+antisymmetric? rewrites antisymmetric?(obt.<=)
+  to FORALL (x: T), (y: T): obt.<=(x, y) & obt.<=(y, x) => x = y
+partial_order? rewrites partial_order?(obt.<=)
+  to (FORALL (x: T): obt.<=(x, x)
+           & FORALL (x: T), (y: T), (z: T):
+           obt.<=(x, y) & obt.<=(y, z) => obt.<=(x, z))
+          & FORALL (x: T), (y: T): obt.<=(x, y) & obt.<=(y, x) => x = y
+dichotomous? rewrites dichotomous?(obt.<=)
+  to (FORALL (x: T), (y: T): (obt.<=(x, y) OR obt.<=(y, x)))
+total_order? rewrites total_order?[T](obt.<=)
+  to ((FORALL (x: T): obt.<=(x, x)
+            & FORALL (x: T), (y: T), (z: T):
+            obt.<=(x, y) & obt.<=(y, z) => obt.<=(x, z))
+           & FORALL (x: T), (y: T): obt.<=(x, y) & obt.<=(y, x) => x = y)
+          & (FORALL (x: T), (y: T): (obt.<=(x, y) OR obt.<=(y, x)))
+Trying repeated skolemization, instantiation, and if-lifting,
+Q.E.D.
+Run time  = 48.86 secs.
+Real time = 230.49 secs.
+\end{session*}
+
+The above semi-automated proof attempt illustrates the power that is
+gained from combining high-level strategies (e.g., \texttt{induct-and-simplify} and \texttt{grind}) to handle the easy portions of
+a proof with low-level manual interaction to carry out the more delicate
+steps.  Note that the inner workings of these strategies which are hidden
+in the above proof can be observed by invoking them with a \texttt{\$} suffix
+as in \texttt{induct-and-simplify\$} and \texttt{grind\$}\@.  
+
+The proofs of the lemmas \texttt{ordered?\_insert\_step} in~\pvsref{oistep}
+and \texttt{search\_insert} shown in~\pvsref{search} below  
+can be completed automatically by the single command:
+\begin{alltt}
+  \fbox{(induct-and-simplify "A")}
+\end{alltt}
+
+\begin{session*}\label{search}
+search(x, A): RECURSIVE bool =
+  (CASES A OF
+    leaf: FALSE,
+    node(y, B, C): (IF x = y THEN TRUE
+                         ELSIF x<=y THEN search(x, B)
+                           ELSE search(x, C)
+                    ENDIF)
+   ENDCASES)
+  MEASURE size(A)
+
+search_insert: THEOREM search(y, insert(x, A)) = (x = y OR search(y, A))
+\end{session*}
+
+\section{Proof Status}
+
+To conclude the development of binary trees and ordered binary trees,  we
+can apply the PVS~Emacs command \texttt{M-x prt} to recheck all 
+the proofs and print out the proof status.\footnote{The command
+\texttt{M-x status-proof-theory} or \texttt{M-x spt} can be used to get the proof
+status without rechecking the proofs.}  The output of this command is
+shown below.  It indicates that not only have all the theorems been
+proved but so have any non-axioms (lemmas, TCCs, etc.)  used
+in any of these proofs.   
+\begin{session*}
+Proof summary for theory obt
+    ordered?_TCC1..........................................proved - complete
+    ordered?_TCC2..........................................proved - complete
+    insert_TCC1............................................proved - complete
+    insert_TCC2............................................proved - complete
+    ordered?_insert_step...................................proved - complete
+    ordered?_insert........................................proved - complete
+    search_insert..........................................proved - complete
+    Theory totals: 7 formulas, 7 attempted, 7 succeeded.
+\end{session*}
+
+
+\chapter{Built-in Datatype Simplifications}~\label{built-in}
+
+As indicated at the outset, the primary advantage of using abstract
+datatypes in PVS is that a lot of knowledge about such datatypes and
+their operations is built into the system.  To illustrate
+the sort of datatype simplifications that are built into PVS,
+consider the theory \texttt{binary\_props} shown below.
+\begin{session*}
+binary_props[T : TYPE] : THEORY
+
+  BEGIN
+  IMPORTING binary_tree_adt[T]
+  A, B, C, D: VAR binary_tree[T]
+  x, y, z: VAR T
+
+  leaf_leaf : LEMMA leaf?(leaf)
+  node_node : LEMMA node?(node(x, B, C))
+
+  leaf_leaf1: LEMMA A = leaf IMPLIES leaf?(A)
+
+  node_node1: LEMMA A = node(x, B, C) IMPLIES node?(A)
+
+  val_node: LEMMA val(node(x, B, C)) = x
+
+  leaf_node: LEMMA NOT (leaf?(A) AND node?(A))
+
+  node_leaf: LEMMA leaf?(A) OR node?(A)
+
+  leaf_ext: LEMMA (FORALL (A, B: (leaf?)): A = B)
+         
+  node_ext:  LEMMA (FORALL (A : (node?)) : 
+                    node(val(A), left(A), right(A)) = A)
+
+  END binary_props
+\end{session*}
+
+All the lemmas excluding the  last one, \texttt{node\_ext},  are provable
+by the command \texttt{(then (skosimp)(assert))}.  This means that the
+\texttt{assert} rule builds in several simplifications.  In the case of
+\texttt{leaf\_leaf} and \texttt{node\_node}, \texttt{assert} can reduce the
+application of a recognizer to a constructor expression to either \texttt{TRUE} or \texttt{FALSE}.  In the case of \texttt{leaf\_leaf1} and \texttt{node\_node1}, it even can do this simplification across an equality.
+The reason for this simplification is that subtype information
+is asserted to the decision procedures so that when \texttt{A = node(x, B,
+C)} is asserted to the decision procedures, so is \texttt{node?(node(x, B, C))},
+and \texttt{node?(A)} is deduced by congruence closure in the decision
+procedures.  
+The simplifications in \texttt{leaf\_leaf} and \texttt{node\_node}, but not
+\texttt{leaf\_leaf1} and \texttt{node\_node1}, can also be carried out by the
+PVS beta-reduction rule \texttt{beta} since this rule does not make use of
+equality information\@.
+
+The lemma \texttt{val\_node} illustrates that the application of an
+accessor to a constructor expression yields the appropriate field of
+the constructor expression.  This simplification can also be done by
+the \texttt{beta} rule.
+
+The simplification implicit in \texttt{leaf\_node}
+is more subtle and captures the exclusivity property of abstract
+datatypes.  Here, from an antecedent formula \texttt{leaf?(A)},  \texttt{assert} is able to simplify the expression \texttt{node?(A)} to \texttt{FALSE}
+since no datatype expression can satisfy two recognizers.
+The simplification implicit in \texttt{node\_leaf} captures the
+inclusivity property of abstract datatypes.  Here, \texttt{assert} is
+able to determine that a recognizer  holds of an expression  by
+demonstrating that all the other recognizers are false on the expression.
+In general, when confronted with the application of a recognizer $r$ to a
+datatype expression $e$, the simplifier evaluates the truth value of
+each recognizer of that datatype when applied to the given expression
+using the decision procedures.  If $r(e)$ is determined to be \texttt{TRUE}
+by the decision procedures, then $r(e)$ is obviously simplified to \texttt{TRUE} by the simplifier\@.  If for some other recognizer $r'$,
+$r'(e)$ is determined to be \texttt{TRUE} by the decision procedures, 
+then $r(e)$ is simplified to \texttt{FALSE}.  If for all recognizers $r'$
+distinct from $r$, $r'(e)$ is determined to be \texttt{FALSE}, then
+$r(e)$ is simplified to \texttt{TRUE}\@.  
+
+The lemma \texttt{leaf\_ext} essentially illustrates that for
+constructors such as \texttt{leaf} that have no accessors, there is no
+distinction between the forms \texttt{leaf?(A)} and \texttt{A = leaf}\@.
+It also illustrates how the subtype information is used implicitly to
+simplify \texttt{A = B} to \texttt{TRUE}\@.
+
+The lemma \texttt{node\_ext} is the only one that cannot be proved by the
+command \texttt{(then (skosimp)(assert))}\@.  Here, this command simplifies the
+goal sequent to a single subgoal that is then proved by means of the \texttt{(apply-extensionality)} command.  This illustrates that the
+extensionality axiom for datatypes is built into the primitive PVS
+rule \texttt{extensionality} and is also employed by the strategies
+\texttt{replace-extensionality} and \texttt{apply-extensionality}.
+
+
+
+
+\chapter{Some Proof Strategies}\label{proof-strategies}
+We briefly explain the definitions of the proof strategies
+\texttt{induct-and-simplify} and \texttt{grind} that were used in 
+Section~\ref{OBT-proofs}\@.  The PVS manuals~\cite{PVS:manuals} provides
+more details.   These strategies are quite useful for proofs of
+datatype-related theorems.  
+The \texttt{induct-and-simplify} strategy takes an argument list of the form:
+\begin{alltt}
+  (var &optional (fnum 1) name (defs t) (if-match best)
+                 theories rewrites exclude)
+\end{alltt}
+where
+\begin{itemize}
+\item \texttt{var} is the induction variable and is the only required
+argument
+\item \texttt{fnum} is the formula number of the induction formula where the
+induction variable is universally quantified; it defaults to \texttt{1}
+\item \texttt{name}  names the induction scheme to be employed
+\item \texttt{defs} indicates which definitions of constants used in the
+current goal are to be installed as rewrite rules; it defaults to \texttt{t}
+indicating that all relevant definitions must be installed
+\item \texttt{if-match} instructs the heuristic instantiator to use none,
+one, all, or the best matching instantiation for a quantified formula;
+it defaults to \texttt{best}
+\item \texttt{theories} is the list of theories to be installed as rewrite rules
+\item \texttt{rewrites} is the list of formulas or definitions that are to be
+installed as rewrite rules, and
+\item \texttt{exclude} is a list of formulas or definitions that should be
+removed from the rewrite rule base
+\end{itemize}
+
+The body of the definition of the strategy has the form:
+\begin{smalltt}
+  (then
+   (install-rewrites$ :defs defs :theories theories :rewrites rewrites
+    :exclude exclude)
+   (try (induct var fnum name)
+    (then (skosimp*) (assert) (repeat (lift-if))
+     (repeat*
+      (then (assert) (bddsimp) (skosimp*)
+       (if if-match (inst? :if-match if-match) (skip)) (lift-if))))
+    (skip)))
+\end{smalltt}
+
+The \texttt{induct-and-simplify} strategy first installs the rewrites
+using \texttt{install-rewrites\$} on \texttt{defs}, \texttt{theories}, \texttt{rewrites}, and \texttt{exclude}\@.  It then introduces the appropriate
+instance of the induction scheme using \texttt{induct}\@.  Then the strategy
+carries out one round of skolemization (introduction of new constants for
+outermost universally bound variables) using \texttt{skosimp*}, rewriting
+and simplification using \texttt{assert}, and repeated lifting of conditionals
+to the top level using \texttt{lift-if}.  Following this, there are repeated
+rounds of rewriting/simplification, propositional simplification,
+skolemization, heuristic instantiation, and if-lifting until each
+resulting subgoal has stabilized.
+
+The \texttt{grind} strategy is similar.  It takes the following argument
+list:
+\begin{alltt}
+  (&optional (defs !) theories rewrites exclude (if-match t) (updates? t))
+\end{alltt}
+where the only new argument from \texttt{induct-and-simplify} is \texttt{updates?}\ which when set to \texttt{NIL} blocks the if-lifting of
+update applications of the form \texttt{(A~WITH~[(i)~:=~b])(j)} to
+\texttt{(IF~i~=~j~THEN~b~ELSE~A(j)~ENDIF)}\@.
+
+The body of the definition of \texttt{grind} is:
+\begin{smalltt}
+  (then
+   (install-rewrites$ :defs defs :theories theories :rewrites rewrites
+    :exclude exclude)
+   (then (bddsimp) (assert)) (replace*)
+   (reduce$ :if-match if-match :updates? updates?))
+\end{smalltt}
+
+Here the rewrite rules are installed using \texttt{install-rewrites\$},
+and followed by propositional simplification, rewriting and
+simplification,  equality replacement, followed by repeated
+applications of these steps along with heuristic instantiation and
+if-lifting. 
+
+It should be clear from the above definition that it is fairly
+straightforward to write powerful proof strategies using the
+constructs provided by the PVS proof checker.  
+
+%% \comment{
+%% \chapter{A Further Exercise: Searching an Ordered Binary Tree}
+
+%% Following the outline of the definition of \texttt{insert}, we can use
+%% recursion to define an operation that searches for an element in a
+%% given ordered binary tree.  This operation \texttt{search} returns a
+%% Boolean value, and  it is defined as shown below.
+%% \begin{session*}
+%% search(x, A): RECURSIVE bool =
+%%   (CASES A OF
+%%     leaf: FALSE,
+%%     node(y, B, C): (IF x = y THEN TRUE
+%%                          ELSIF x<=y THEN search(x, B)
+%%                            ELSE search(x, C)
+%%                     ENDIF)
+%%    ENDCASES)
+%%   MEASURE (LAMBDA x, A: size(A))
+%% \end{session*}
+%% Typechecking this definition generates TCCs that are subsumed by those
+%% generated by  \texttt{insert}\@.  We can  state the desired
+%% relationship between \texttt{search} and \texttt{insert} as below.
+%% \begin{session*}
+%% search_insert: THEOREM search(y, insert(x, A)) = (x = y OR search(y, A))
+%% \end{session*}
+
+%% We can now try to prove this property based on what we have learned so
+%% far.  As a first step, we apply the rule
+%% \begin{alltt}
+%%   (induct-and-rewrite "A" 1 "search" "insert")
+%% \end{alltt}
+
+%% This succeeds in proving a number of cases in the proof but eventually
+%% stops with the two unproved cases:
+%% \begin{session*}
+%% search_insert.2.1.3 :   
+
+%% \{-1\}   total_order?[T](obt.<=)
+%% [-2]   x!1 <= node1_var!1
+%% [-3]   search(y!1, insert(x!1, node2_var!1))
+%%         = (x!1 = y!1 OR search(y!1, node2_var!1))
+%% [-4]   search(y!1, insert(x!1, node3_var!1))
+%%         = (x!1 = y!1 OR search(y!1, node3_var!1))
+%%   |-------
+%% [1]   y!1 <= node1_var!1
+%% [2]   search(y!1, node3_var!1) = (x!1 = y!1 OR search(y!1, node3_var!1))
+%% [3]   y!1 = node1_var!1
+%% \end{session*}
+%% and
+%% \begin{session*}
+%% search_insert.2.2.2 :   
+
+%% [-1]   y!1 <= node1_var!1
+%% [-2]   search(y!1, insert(x!1, node2_var!1))
+%%         = (x!1 = y!1 OR search(y!1, node2_var!1))
+%% [-3]   search(y!1, insert(x!1, node3_var!1))
+%%         = (x!1 = y!1 OR search(y!1, node3_var!1))
+%%   |-------
+%% [1]   search(y!1, node2_var!1) = (x!1 = y!1 OR search(y!1, node2_var!1))
+%% [2]   y!1 = node1_var!1
+%% [3]   x!1 <= node1_var!1
+%% \end{session*}
+
+%% These two goals are quite similar to one another.  If we focus on the
+%% first of these, the goal is to establish the formula \texttt{1} assuming
+%% the formula \texttt{-1} and the negations of \texttt{2} and \texttt{3}, since
+%% it does not look like the remnants of the induction hypotheses \texttt{%% -2} and \texttt{-3} are relevant here.  On first look, it might appear
+%% that this sequent depends on the properties of the ordering \texttt{%% relation <=} for its proof.  However, if we focus on formula \texttt{1},
+%% we see that it amounts to proving that \texttt{(x!1 = y!1) = FALSE}\@.
+%% This is quite easily proved since if we assume \texttt{x!1 = y!1}, then
+%% this contradicts \texttt{-1} and the negation of \texttt{3}\@.  This
+%% reasoning is captured by the proof shown in the next two boxes.
+%% \begin{session*}
+%% Rule? \fbox{(case "x!1 = y!1")}
+%% Case splitting on 
+%%    x!1 = y!1, 
+%% this yields  2 subgoals: 
+%% search_insert.2.1.3.1 :   
+
+%% \{-1\}   x!1 = y!1
+%% [-2]   x!1 <= node1_var!1
+%% [-3]   search(y!1, insert(x!1, node2_var!1))
+%%         = (x!1 = y!1 OR search(y!1, node2_var!1))
+%% [-4]   search(y!1, insert(x!1, node3_var!1))
+%%         = (x!1 = y!1 OR search(y!1, node3_var!1))
+%%   |-------
+%% [1]   y!1 <= node1_var!1
+%% [2]   search(y!1, node3_var!1) = (x!1 = y!1 OR search(y!1, node3_var!1))
+%% [3]   y!1 = node1_var!1
+
+%% Rule? \fbox{(assert)}
+%% Invoking decision procedures,
+
+%% This completes the proof of search_insert.2.1.3.1.
+%% \end{session*}
+%% \begin{session*}
+%% search_insert.2.1.3.2 :   
+
+%% [-1]   x!1 <= node1_var!1
+%% [-2]   search(y!1, insert(x!1, node2_var!1))
+%%         = (x!1 = y!1 OR search(y!1, node2_var!1))
+%% [-3]   search(y!1, insert(x!1, node3_var!1))
+%%         = (x!1 = y!1 OR search(y!1, node3_var!1))
+%%   |-------
+%% \{1\}   x!1 = y!1
+%% [2]   y!1 <= node1_var!1
+%% [3]   search(y!1, node3_var!1) = (x!1 = y!1 OR search(y!1, node3_var!1))
+%% [4]   y!1 = node1_var!1
+
+%% Rule? \fbox{(assert)}
+%% Invoking decision procedures,
+%% this simplifies to: 
+%% search_insert.2.1.3.2 :   
+
+%% [-1]   x!1 <= node1_var!1
+%% \{-2\}   search(y!1, insert(x!1, node2_var!1)) = search(y!1, node2_var!1)
+%% \{-3\}   search(y!1, insert(x!1, node3_var!1)) = search(y!1, node3_var!1)
+%%   |-------
+%% [1]   x!1 = y!1
+%% [2]   y!1 <= node1_var!1
+%% \{3\}   TRUE
+%% [4]   y!1 = node1_var!1
+
+%% which is trivially true.
+
+%% This completes the proof of search_insert.2.1.3.2.
+
+
+%% This completes the proof of search_insert.2.1.3.
+
+
+%% This completes the proof of search_insert.2.1.
+%% \end{session*}
+
+%% The identical argument works on the sequent \texttt{search\_insert.2.2.2}
+%% as well.  This example clearly illustrates the value of forcing case
+%% splits using the \texttt{case} rule.  Such case splits can often be the
+%% most crucial creative steps in a proof.  In this example, the case
+%% split is not all that creative a step.  The relevant subgoal can also
+%% be proved by  converting the Boolean equality on the formula
+%% \begin{alltt}
+%%     search(y!1, node3_var!1) = (x!1 = y!1 OR search(y!1, node3_var!1))
+%% \end{alltt}
+%% into an if-and-only-if form with the rule \texttt{(iff +)}\@.\footnote{The
+%% \texttt{+} is there to leave the antecedent Boolean equalities untouched.}
+%% The command \texttt{(ground)} then completes the proof.
+%% }
+
+
+
+\chapter{Limitations of the PVS Abstract Datatype
+Mechanism}\label{limitations} 
+
+The abstract datatype mechanism of PVS is intended to capture a fairly
+large class of datatypes whose axioms can be easily and systematically
+generated.  This class contains all the freely generated term algebras
+over an order-sorted signature which includes the various stack and
+tree-like data structures.  It excludes such important datatypes as
+integers (which are built into PVS), bags, sets, and queues.  It also
+excludes various lazy data structures such as lazy lists or streams.
+These latter structures can be introduced by implementing
+a similar mechanism for introducing co-datatypes as for datatypes.
+
+ The \texttt{DATATYPE} mechanism is a primitive construct of PVS and
+is not merely a definitional extension of PVS.  It therefore has
+the disadvantage that it is not possible to prove general
+theorems about all recursive datatypes in the way that one can
+about all inductive definitions given as least fixed points.
+For example, Bird's fusion theorem~\cite{Bird:MPC95} cannot be uniformly
+proved for all recursive datatypes and has to be proved for each datatype
+individually~\cite{Shankar:SCP96}. 
+
+
+%% \comment{\begin{enumerate}
+%%  \item    The recursive occurrences of the datatype can  occur
+%% only as the supertype of a subtype, or within a list or sequence
+%% construction within the type of an accessor.  This can be
+%% significantly generalized by allowing these recursive occurrences
+%% within any covariant position in a type constructor.   For example,
+%% the abstract datatype corresponding to the abstract syntax of a
+%% language may include the possibility that expressions of this language
+%% contain binary trees of expressions.   
+%%   \item
+%% Another  limitation with the PVS \texttt{DATATYPE}
+%% mechanism as described in the current document is that 
+%% though the natural numbers are a subtype of the integers in
+%% PVS,  the type of binary trees over
+%% the natural numbers is not a subtype of the type of binary trees over the
+%% integers.  The datatype mechanism in PVS~2.1 has been modified to 
+%% lift such subtyping over positive parameters to the
+%% corresponding abstract datatypes.  This is done by essentially viewing
+%% the type \texttt{binary\_tree[nat]} as a shorthand for a subtype of
+%% \texttt{binary\_tree[number]} with the constraint
+%% \texttt{every(p)}, where \texttt{p} is the contraint on members of the
+%% subtype \texttt{nat} relative to its maximal supertype \texttt{number}\@.
+%% }
+
+  
+
+\chapter{Related Work}\label{related}
+
+There are a number of algebraic specification languages such as
+Larch~\cite{Larch93}, OBJ~\cite{popl85}, and ACT-ONE~\cite{Ehrig-Mahr}
+that can be used to specify 
+abstract datatypes but these specifications are manually axiomatized
+and  not automatically generated from a succinct description as is the
+case with the PVS \texttt{DATATYPE} construct.  The axioms are used as
+rewrite rules so that there is no built-in automation of the simplification
+of datatype expressions.   
+
+
+The 
+programming language ML~\cite{ML-report} has a similar recursive datatype
+mechanism. 
+Unlike the PVS mechanism, the ML construct allows arbitrary forms of
+recursion.  As noted earlier, such recursive type definitions do not
+always have a proper set-theoretic semantics.  Gunter~\cite{Gunter93}
+explains how certain recursive datatypes that are admissible in ML
+can lead to unsoundnesses if admitted into a higher-order logic.  
+
+The HOL system has a mechanism for defining abstract
+datatypes~\cite{Melham89} that is somewhat more restrictive than that of
+PVS: there are more constraints on recursion and HOL lacks the useful
+notion of subtyping that is available in PVS\@.  However, the HOL
+construct is definitional in that a recursively specified datatype is
+defined in terms of the primitive type constructors available in HOL.  In
+particular, any newly defined recursive datatype is shown to be
+interpretable as a subset of some existing datatype based on finitely
+branching trees.  The axioms generated from the datatype declaration are
+shown to be sound with respect to this interpretation.  Isabelle/ZF and
+Isabelle/HOL both have a similar but more general facility for defining
+datatypes and co-datatypes~\cite{Paulson97:JLC}.  The Isabelle datatype
+mechanism also accomodates infinitely branching trees.  The Coq system has
+a facility for defining recursive and co-recursive datatypes which,
+like PVS and unlike HOL and Isabelle, is  
+a primitive construct of the Coq logic~\cite{Coq:RecTypes}. 
+
+The shell principle used in the Boyer-Moore theorem
+prover~\cite{Boyer-Moore79,boyer-moore88} is quite similar to the PVS \texttt{DATATYPE} mechanism.  It permits recursive datatypes to be specified by
+means of constructors, accessors, and recognizers.  Like PVS, the axioms
+corresponding to a shell datatype are built into the inference mechanisms
+of the theorem prover.  The shell principle, however, has many serious
+limitations.  It is complicated by the lack of types or subtypes in the
+Boyer-Moore logic.  The shell principle only allows one constructor and a
+bottom object thus ruling out a great many useful datatypes where multiple
+constructors are required.
+
+
+\chapter{Conclusions}
+
+We have described the \texttt{DATATYPE} mechanism of PVS and demonstrated
+its use in proof construction.  This mechanism captures a large class
+of commonly used type definitions within a succinct notation.  A
+number of facts about these automatically generated abstract datatypes
+are built into the inference mechanisms of PVS so that it is possible
+to obtain a significant degree of automation when proving theorems
+involving datatypes.  The high level of automation in the low-level
+inference mechanisms in PVS makes it  easy to define
+powerful and flexible high-level proof strategies.  
+
+
+\subsubsection{Acknowledgements. } The design and implementation of PVS
+was directed by John Rushby of the SRI
+Computer Science Laboratory.    He, along with Rick Butler of NASA
+and Mandayam Srivas, suggested several improvements to this document.
+Donald Syme of Cambridge University carefully proofread the document
+and gave numerous helpful suggestions.  We are also grateful to
+Ulrich Hensel of TU Dresden for his as yet unheeded suggestion
+to incorporate corecursive datatypes.  
+
+
+\bibliographystyle{alpha}
+\bibliography{/homes/rushby/jmr,/homes/shankar/tex}
+\end{document}

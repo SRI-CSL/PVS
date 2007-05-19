@@ -1,0 +1,26 @@
+binary_props[T : TYPE] : THEORY
+
+  BEGIN
+  IMPORTING binary_tree_adt[T]
+  A, B, C, D: VAR binary_tree[T]
+  x, y, z: VAR T
+
+  leaf_leaf : LEMMA leaf?(leaf)
+  node_node : LEMMA node?(node(x, B, C))
+
+  leaf_leaf1: LEMMA A = leaf IMPLIES leaf?(A)
+
+  node_node1: LEMMA A = node(x, B, C) IMPLIES node?(A)
+
+  val_node: LEMMA val(node(x, B, C)) = x
+
+  leaf_node: LEMMA NOT (leaf?(A) AND node?(A))
+
+  node_leaf: LEMMA leaf?(A) OR node?(A)
+
+  leaf_ext: LEMMA (FORALL (A, B: (leaf?)): A = B)
+         
+  node_ext:  LEMMA (FORALL (A : (node?)) : 
+                    node(val(A), left(A), right(A)) = A)
+
+  END binary_props

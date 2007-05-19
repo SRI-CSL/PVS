@@ -1,0 +1,17 @@
+combinators  : THEORY
+  BEGIN
+  combinators: DATATYPE
+       BEGIN
+         K: K?
+         S: S?
+         app(operator, operand: combinators): app?
+       END combinators
+
+  x, y, z: VAR combinators
+
+  reduces_to: PRED[[combinators, combinators]]
+
+  K: AXIOM reduces_to(app(app(K, x), y), x)
+  S: AXIOM reduces_to(app(app(app(S, x), y), z), app(app(x, z), app(y, z)))
+
+  END combinators

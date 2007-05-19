@@ -1,0 +1,5 @@
+disj_union[A, B: TYPE] : DATATYPE
+  BEGIN
+    inl(left : A): inl?
+    inr(right : B): inr?
+  END disj_union

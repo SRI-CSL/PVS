@@ -1,0 +1,25 @@
+ackermann: THEORY
+
+BEGIN
+
+i, j, k, m, n: VAR nat
+
+ack(m,n): RECURSIVE nat =
+  (IF m=0 THEN n+1
+          ELSIF n=0 THEN ack(m-1,1)
+                    ELSE ack(m-1, ack(m, n-1))
+        ENDIF)
+  MEASURE lex2(m, n)
+
+ackr(n, (f: [nat->nat])): RECURSIVE nat =
+  (IF n = 0 THEN f(1) ELSE f(ackr(n - 1, f)) ENDIF)
+ MEASURE n
+
+ackrmn(m)(n): RECURSIVE nat = 
+ (IF m = 0 THEN n + 1 ELSE ackr(n, ackrmn(m - 1)) ENDIF)
+ MEASURE m
+
+ack_ackrmn: THEOREM
+  ack(m, n) = ackrmn(m)(n)
+
+END ackermann

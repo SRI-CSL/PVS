@@ -1,0 +1,9 @@
+colors: THEORY
+BEGIN
+  colors: DATATYPE
+     BEGIN
+       red: red?
+       white: white?
+       blue: blue?
+     END colors
+END colors

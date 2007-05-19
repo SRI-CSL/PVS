@@ -1,0 +1,31 @@
+arith: DATATYPE WITH SUBTYPES expr, term
+ BEGIN
+  num(n:int): num?              :term
+  sum(t1:term,t2:term):   sum?  :term
+% ...
+  eq(t1: term, t2: term): eq?   :expr
+  ift(e: expr, t1: term, t2: term): ift? :term
+% ...
+ END arith
+
+arith_eval: THEORY
+ BEGIN
+  IMPORTING arith
+
+  value: DATATYPE
+   BEGIN
+    bool(b:bool): bool?
+    int(i:int): int?
+   END value
+
+  eval(a: arith): RECURSIVE
+         \{v: value | IF expr(a) THEN bool?(v) ELSE int?(v) ENDIF\} =
+   CASES a OF
+    num(n):       int(n),
+    sum(n1, n2):  int(i(eval(n1)) + i(eval(n2))),
+    eq(n1, n2):   bool(i(eval(n1)) = i(eval(n2))),
+    ift(e, n1, n2): IF b(eval(e)) THEN eval(n1) ELSE eval(n2) ENDIF    
+   ENDCASES
+   MEASURE a BY <<
+
+ END arith_eval
