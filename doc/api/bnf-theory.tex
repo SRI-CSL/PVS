@@ -1,0 +1,35 @@
+\begin{bnf}
+
+\hproduction{datatype-or-module}{Specification}
+{\ite{\brc{\hlink{Theory} \choice \hlink{Datatype}}}}
+
+\hproduction{module}{Theory}
+{\hlink{Id} \opt{\hlink{TheoryFormals}} \lit{:} \lit{THEORY}\\[-0.1in]
+&& \opt{\hlink{Exporting}}\\[-0.1in]
+&& \lit{BEGIN}\\[-0.1in]
+&& \opt{\hlink{AssumingPart}}\\[-0.1in]
+&& \opt{\hlink{TheoryPart}}\\[-0.1in]
+&& \lit{END} \hlink{Id}}
+
+\production{TheoryFormals}
+{\lit{[}\ \ites{\hlink{TheoryFormal}}{,} \lit{]}}
+
+\production{TheoryFormal}
+{\opt{\lit{(} \hlink{Importing} \lit{)}} \hlink{TheoryFormalDecl}}
+
+\hproduction{formal-decl}{TheoryFormalDecl}
+{\hlink{TheoryFormalType} \\[-0.1in]
+& \choice & \hlink{TheoryFormalConst} \\[-0.1in]
+& \choice & \hlink{TheoryFormalTheory}}
+
+\hproduction{formal-type-decl}{TheoryFormalType}
+{\hlink{Ids} \lit{:} \brc{\lit{TYPE} \choice \lit{NONEMPTY\_TYPE} \choice \lit{TYPE+}} \\[-0.1in]
+& & \hspace{0.5in}\opt{\lit{FROM} \hlink{TypeExpr}}}
+
+\hproduction{formal-const-decl}{TheoryFormalConst}
+{\hlink{IdOps} \lit{:} \hlink{TypeExpr}}
+
+\hproduction{formal-theory-decl}{TheoryFormalTheory}
+{\hlink{IdOps} \lit{:} \lit{THEORY} \hlink{TheoryDeclName}}
+
+\end{bnf}

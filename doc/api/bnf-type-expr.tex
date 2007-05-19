@@ -1,0 +1,39 @@
+
+\begin{bnf}
+
+\hproduction{type-expr}{TypeExpr}
+{\hlink{Name} \\[-0.1in]
+& \choice & \hlink{EnumerationType} \\[-0.1in]
+& \choice & \hlink{Subtype} \\[-0.1in]
+& \choice & \hlink{TypeApplication} \\[-0.1in]
+& \choice & \hlink{FunctionType} \\[-0.1in]
+& \choice & \hlink{TupleType} \\[-0.1in]
+& \choice & \hlink{CotupleType} \\[-0.1in]
+& \choice & \hlink{RecordType}}
+
+\hproduction{enumtype}{EnumerationType}
+{\lit{\setb} \hlink{IdOps} \lit{\sete}}
+
+\hproduction{subtype}{Subtype}
+{\lit{\setb} \hlink{SetBindings} \lit{|} \hlink{Expr} \lit{\sete} \\[-0.1in]
+& \choice & \lit{(} \hlink{Expr} \lit{)} }
+
+\hproduction{type-application}{TypeApplication}
+{\hlink{Name}\ \hlink{Arguments}}
+
+\hproduction{funtype}{FunctionType}
+{\opt{\lit{FUNCTION} \choice \lit{ARRAY}} \\[-0.1in]
+& & \lit{[} \ites{\setb \opt{\hlink{IdOp} \lit{:}} \hlink{TypeExpr} \sete}{,} \lit{->} \hlink{TypeExpr} \lit{]}}
+
+\hproduction{tupletype}{TupleType}
+{\lit{[} \ites{\setb \opt{\hlink{IdOp} \lit{:}} \hlink{TypeExpr} \sete}{,} \lit{]}}
+
+\hproduction{cotupletype}{CotupleType}
+{\lit{[} \ites{\setb \opt{\hlink{IdOp} \lit{:}} \hlink{TypeExpr} \sete}{+} \lit{]}}
+
+\hproduction{recordtype}{RecordType}
+{\lit{[\#} \ites{\hlink{FieldDecls}}{,} \lit{\#]}}
+
+\hproduction{field-decl}{FieldDecls}
+{\hlink{Ids}\ \lit{:} \hlink{TypeExpr}}
+\end{bnf}

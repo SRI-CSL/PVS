@@ -1,0 +1,234 @@
+%%% ADT file generated from d
+
+prop_adt: THEORY
+ BEGIN
+
+  prop: TYPE
+
+  p?, and?, or?, not?: [prop -> boolean]
+
+  p: (p?)
+
+  AND: [[prop, prop] -> (and?)]
+
+  OR: [[prop, prop] -> (or?)]
+
+  NOT: [prop -> (not?)]
+
+  x1: [{x: prop | and?(x) OR or?(x) OR not?(x)} -> prop]
+
+  JUDGEMENT (and?) SUBTYPE_OF {x: prop | and?(x) OR or?(x) OR not?(x)}
+
+  JUDGEMENT (or?) SUBTYPE_OF {x: prop | and?(x) OR or?(x) OR not?(x)}
+
+  JUDGEMENT (not?) SUBTYPE_OF {x: prop | and?(x) OR or?(x) OR not?(x)}
+
+  x2: [{x: prop | and?(x) OR or?(x)} -> prop]
+
+  JUDGEMENT (and?) SUBTYPE_OF {x: prop | and?(x) OR or?(x)}
+
+  JUDGEMENT (or?) SUBTYPE_OF {x: prop | and?(x) OR or?(x)}
+
+  prop_ord: [prop -> upto(3)]
+
+  prop_ord_defaxiom: AXIOM
+    prop_ord(p) = 0 AND
+     (FORALL (x1: prop, x2: prop): prop_ord(x1 AND x2) = 1) AND
+      (FORALL (x1: prop, x2: prop): prop_ord(x1 OR x2) = 2) AND
+       (FORALL (x1: prop): prop_ord(NOT x1) = 3);
+
+  ord(x: prop): upto(3) =
+      CASES x
+        OF p: 0,
+           AND(AND1_var, AND2_var): 1,
+           OR(OR1_var, OR2_var): 2,
+           NOT(NOT1_var): 3
+        ENDCASES
+
+  prop_p_extensionality: AXIOM
+    FORALL (p?_var: (p?), p?_var2: (p?)): p?_var = p?_var2;
+
+  prop_AND_extensionality: AXIOM
+    FORALL (and?_var: (and?), and?_var2: (and?)):
+      x1(and?_var) = x1(and?_var2) AND x2(and?_var) = x2(and?_var2) IMPLIES
+       and?_var = and?_var2;
+
+  prop_AND_eta: AXIOM
+    FORALL (and?_var: (and?)): (x1(and?_var) AND x2(and?_var)) = and?_var;
+
+  prop_OR_extensionality: AXIOM
+    FORALL (or?_var: (or?), or?_var2: (or?)):
+      x1(or?_var) = x1(or?_var2) AND x2(or?_var) = x2(or?_var2) IMPLIES
+       or?_var = or?_var2;
+
+  prop_OR_eta: AXIOM
+    FORALL (or?_var: (or?)): (x1(or?_var) OR x2(or?_var)) = or?_var;
+
+  prop_NOT_extensionality: AXIOM
+    FORALL (not?_var: (not?), not?_var2: (not?)):
+      x1(not?_var) = x1(not?_var2) IMPLIES not?_var = not?_var2;
+
+  prop_NOT_eta: AXIOM
+    FORALL (not?_var: (not?)): (NOT x1(not?_var)) = not?_var;
+
+  prop_x1_AND: AXIOM
+    FORALL (AND1_var: prop, AND2_var: prop):
+      x1(AND1_var AND AND2_var) = AND1_var;
+
+  prop_x2_AND: AXIOM
+    FORALL (AND1_var: prop, AND2_var: prop):
+      x2(AND1_var AND AND2_var) = AND2_var;
+
+  prop_x1_OR: AXIOM
+    FORALL (OR1_var: prop, OR2_var: prop): x1(OR1_var OR OR2_var) = OR1_var;
+
+  prop_x2_OR: AXIOM
+    FORALL (OR1_var: prop, OR2_var: prop): x2(OR1_var OR OR2_var) = OR2_var;
+
+  prop_x1_NOT: AXIOM FORALL (NOT1_var: prop): x1(NOT NOT1_var) = NOT1_var;
+
+  prop_inclusive: AXIOM
+    FORALL (prop_var: prop):
+      p?(prop_var) OR and?(prop_var) OR or?(prop_var) OR not?(prop_var);
+
+  prop_induction: AXIOM
+    FORALL (p1: [prop -> boolean]):
+      (p1(p) AND
+        (FORALL (AND1_var: prop, AND2_var: prop):
+           p1(AND1_var) AND p1(AND2_var) IMPLIES p1(AND1_var AND AND2_var))
+         AND
+         (FORALL (OR1_var: prop, OR2_var: prop):
+            p1(OR1_var) AND p1(OR2_var) IMPLIES p1(OR1_var OR OR2_var))
+          AND
+          (FORALL (NOT1_var: prop): p1(NOT1_var) IMPLIES p1(NOT NOT1_var)))
+       IMPLIES (FORALL (prop_var: prop): p1(prop_var));
+
+  subterm(x, y: prop):  boolean =
+      x = y OR
+       CASES y
+         OF p: FALSE,
+            AND(AND1_var, AND2_var):
+              subterm(x, AND1_var) OR subterm(x, AND2_var),
+            OR(OR1_var, OR2_var):
+              subterm(x, OR1_var) OR subterm(x, OR2_var),
+            NOT(NOT1_var): subterm(x, NOT1_var)
+         ENDCASES;
+
+  <<:  (well_founded?[prop]) =
+      LAMBDA (x, y: prop):
+        CASES y
+          OF p: FALSE,
+             AND(AND1_var, AND2_var):
+               (x = AND1_var OR x << AND1_var) OR
+                x = AND2_var OR x << AND2_var,
+             OR(OR1_var, OR2_var):
+               (x = OR1_var OR x << OR1_var) OR
+                x = OR2_var OR x << OR2_var,
+             NOT(NOT1_var): x = NOT1_var OR x << NOT1_var
+          ENDCASES;
+
+  prop_well_founded: AXIOM well_founded?[prop](<<);
+
+  reduce_nat(p?_fun: nat, and?_fun, or?_fun: [[nat, nat] -> nat],
+             not?_fun: [nat -> nat]):
+   [prop -> nat] =
+      LAMBDA (prop_adtvar: prop):
+        LET red: [prop -> nat] =
+              reduce_nat(p?_fun, and?_fun, or?_fun, not?_fun)
+          IN
+          CASES prop_adtvar
+            OF p: p?_fun,
+               AND(AND1_var, AND2_var):
+                 and?_fun(red(AND1_var), red(AND2_var)),
+               OR(OR1_var, OR2_var): or?_fun(red(OR1_var), red(OR2_var)),
+               NOT(NOT1_var): not?_fun(red(NOT1_var))
+            ENDCASES;
+
+  REDUCE_nat(p?_fun: [prop -> nat], and?_fun,
+             or?_fun: [[nat, nat, prop] -> nat],
+             not?_fun: [[nat, prop] -> nat]):
+   [prop -> nat] =
+      LAMBDA (prop_adtvar: prop):
+        LET red: [prop -> nat] =
+              REDUCE_nat(p?_fun, and?_fun, or?_fun, not?_fun)
+          IN
+          CASES prop_adtvar
+            OF p: p?_fun(prop_adtvar),
+               AND(AND1_var, AND2_var):
+                 and?_fun(red(AND1_var), red(AND2_var), prop_adtvar),
+               OR(OR1_var, OR2_var):
+                 or?_fun(red(OR1_var), red(OR2_var), prop_adtvar),
+               NOT(NOT1_var): not?_fun(red(NOT1_var), prop_adtvar)
+            ENDCASES;
+
+  reduce_ordinal(p?_fun: ordinal, and?_fun,
+                 or?_fun: [[ordinal, ordinal] -> ordinal],
+                 not?_fun: [ordinal -> ordinal]):
+   [prop -> ordinal] =
+      LAMBDA (prop_adtvar: prop):
+        LET red: [prop -> ordinal] =
+              reduce_ordinal(p?_fun, and?_fun, or?_fun, not?_fun)
+          IN
+          CASES prop_adtvar
+            OF p: p?_fun,
+               AND(AND1_var, AND2_var):
+                 and?_fun(red(AND1_var), red(AND2_var)),
+               OR(OR1_var, OR2_var): or?_fun(red(OR1_var), red(OR2_var)),
+               NOT(NOT1_var): not?_fun(red(NOT1_var))
+            ENDCASES;
+
+  REDUCE_ordinal(p?_fun: [prop -> ordinal], and?_fun,
+                 or?_fun: [[ordinal, ordinal, prop] -> ordinal],
+                 not?_fun: [[ordinal, prop] -> ordinal]):
+   [prop -> ordinal] =
+      LAMBDA (prop_adtvar: prop):
+        LET red: [prop -> ordinal] =
+              REDUCE_ordinal(p?_fun, and?_fun, or?_fun, not?_fun)
+          IN
+          CASES prop_adtvar
+            OF p: p?_fun(prop_adtvar),
+               AND(AND1_var, AND2_var):
+                 and?_fun(red(AND1_var), red(AND2_var), prop_adtvar),
+               OR(OR1_var, OR2_var):
+                 or?_fun(red(OR1_var), red(OR2_var), prop_adtvar),
+               NOT(NOT1_var): not?_fun(red(NOT1_var), prop_adtvar)
+            ENDCASES;
+ END prop_adt
+
+prop_adt_reduce[range: TYPE]: THEORY
+ BEGIN
+
+  IMPORTING prop_adt
+
+  reduce(p?_fun: range, and?_fun, or?_fun: [[range, range] -> range],
+         not?_fun: [range -> range]):
+   [prop -> range] =
+      LAMBDA (prop_adtvar: prop):
+        LET red: [prop -> range] =
+              reduce(p?_fun, and?_fun, or?_fun, not?_fun)
+          IN
+          CASES prop_adtvar
+            OF p: p?_fun,
+               AND(AND1_var, AND2_var):
+                 and?_fun(red(AND1_var), red(AND2_var)),
+               OR(OR1_var, OR2_var): or?_fun(red(OR1_var), red(OR2_var)),
+               NOT(NOT1_var): not?_fun(red(NOT1_var))
+            ENDCASES;
+
+  REDUCE(p?_fun: [prop -> range], and?_fun,
+         or?_fun: [[range, range, prop] -> range],
+         not?_fun: [[range, prop] -> range]):
+   [prop -> range] =
+      LAMBDA (prop_adtvar: prop):
+        LET red: [prop -> range] =
+              REDUCE(p?_fun, and?_fun, or?_fun, not?_fun)
+          IN
+          CASES prop_adtvar
+            OF p: p?_fun(prop_adtvar),
+               AND(AND1_var, AND2_var):
+                 and?_fun(red(AND1_var), red(AND2_var), prop_adtvar),
+               OR(OR1_var, OR2_var):
+                 or?_fun(red(OR1_var), red(OR2_var), prop_adtvar),
+               NOT(NOT1_var): not?_fun(red(NOT1_var), prop_adtvar)
+            ENDCASES;
+ END prop_adt_reduce

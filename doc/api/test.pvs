@@ -1,0 +1,7 @@
+test: THEORY
+ BEGIN
+  T: TYPE+
+  F: [T, int -> bool]
+  17: T
+  FF: FORMULA F(17, 17)
+ END test

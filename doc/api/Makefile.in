@@ -1,0 +1,30 @@
+pvs-path = @PVSPATH@
+pvs-grammar-file = ${pvs-path}/src/pvs-gr.txt
+
+sources = pvs-api.tex
+
+.DELETE_ON_ERROR : pvs-api.dvi
+
+all : pvs-api.dvi pvs-api.ps pvs-api.ps.gz pvs-api.pdf
+
+pvs-api.dvi : ${sources} ${grammar-tables}
+	latex $<;
+	makeindex -c pvs-api.idx;
+	bibtex pvs-api || echo;
+	latex $<;
+	latex $<
+
+pvs-api.ps.gz : pvs-api.ps
+	gzip -c $< > $@
+
+pvs-api.ps : pvs-api.dvi
+	dvips -o $@ $<
+
+pvs-api.pdf : ${sources} ${grammar-tables}
+	pdflatex $<
+
+.PHONY: clean
+clean :
+	rm -f *.dvi *.pdf *.ps *.ps.gz *.log *.bbl *.ind *.ilg *.blg *.bbl \
+              *.aux *.toc *.idx *.brf \
+              keywords.tex operator-table.tex opsym-table.tex

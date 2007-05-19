@@ -1,0 +1,7 @@
+  prop: DATATYPE
+   BEGIN
+    p: p?
+    and(x1, x2: prop): and?
+    or(x1, x2: prop): or?
+    not(x1: prop): not?
+   END prop

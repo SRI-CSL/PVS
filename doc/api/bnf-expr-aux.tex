@@ -1,0 +1,66 @@
+
+%
+% this (bnf-expr-aux.tex) is the latter half of bnf-expr.tex
+%
+
+\begin{bnf}
+\hproduction{if-expr}{IfExpr}
+{\lit{IF} \hlink{Expr} \lit{THEN} \hlink{Expr} \\[-0.1in]
+& & \rep{\brc{\lit{ELSIF} \hlink{Expr} \lit{THEN} \hlink{Expr}}} \lit{ELSE} \hlink{Expr} \lit{ENDIF}}
+
+\hproduction{binding-expr}{BindingExpr}
+{BindingOp\ \hlink{LambdaBindings} \lit{:} \hlink{Expr}}
+
+\production{BindingOp}
+{\lit{LAMBDA} \choice \lit{FORALL} \choice \lit{EXISTS} \choice \{ \hlink{IdOp} \lit{!} \}} 
+
+\production{LambdaBindings}
+{\hlink{LambdaBinding} \opt{\opt{,} \hlink{LambdaBindings}}}
+
+\production{LambdaBinding}
+{\hlink{IdOp} \choice \hlink{Bindings}}
+
+\production{SetBindings}
+{\hlink{SetBinding} \opt{\opt{,} SetBindings}}
+
+\production{SetBinding}
+{\{\hlink{IdOp} \opt{\lit{:} \hlink{TypeExpr}} \} \choice \hlink{Bindings}}
+
+\hproduction{assignment}{Assignment}
+{\hlink{AssignArgs} \brc{\lit{:=} \choice \lit{|->}} \hlink{Expr}}
+
+\production{AssignArgs}
+{\hlink{Id} \opt{\lit{!} \hlink{Number}}\\[-0.1in]
+& \choice & \hlink{Number}\\[-0.1in]
+& \choice & \ite{\hlink{AssignArg}}}
+
+
+\hproduction{field-assignment-arg}{AssignArg}
+{\lit{(} \ites{\hlink{Expr}}{,} \lit{)} \\[-0.1in]
+& \choice & \lit{`} \hlink{Id} \\[-0.1in]
+& \choice & \lit{`} \hlink{Number}}
+
+\hproduction{selection}{Selection}
+{\hlink{IdOp} \opt{\lit{(} \hlink{IdOps} \lit{)}} \lit{:} \hlink{Expr}}
+
+\hproduction{table-expr}{TableExpr}
+{\lit{TABLE} \opt{\hlink{Expr}} \opt{\lit{,} \hlink{Expr}} \\[-0.1in]
+& & \opt{\hlink{ColHeading}}\\[-0.1in]
+& & \ite{\hlink{TableEntry}} \lit{ENDTABLE}}
+
+\production{ColHeading}
+{\lit{|[} \hlink{Expr} \ite{\brc{\lit{|} \brc{\hlink{Expr} \choice \lit{ELSE}}}} \lit{]|}}
+
+\production{TableEntry}
+{\ite{\brc{\lit{|} \opt{\hlink{Expr} \choice \lit{ELSE}}}} \lit{||}}
+
+\production{LetBinding}
+{\brc{\hlink{LetBind} \choice \lit{(} \ites{\hlink{LetBind}}{,} \lit{)}} \lit{=} \hlink{Expr}}
+
+\production{LetBind}
+{\hlink{IdOp}\ \rep{\hlink{Bindings}} \opt{\lit{:} \hlink{TypeExpr}}}
+
+\production{Arguments}
+{\lit{(} \ites{\hlink{Expr}}{,} \lit{)}}
+
+\end{bnf}

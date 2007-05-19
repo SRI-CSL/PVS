@@ -1,0 +1,15 @@
+
+\begin{bnf}
+
+\production{AssumingPart}
+{\lit{ASSUMING} \ite{\{\hlink{AssumingElement} \opt{\lit{;}}\}} \lit{ENDASSUMING}}
+
+\production{AssumingElement}
+{\hlink{Importing} \\[-0.1in]
+& \choice & \hlink{Decl} \\[-0.1in]
+& \choice & \hlink{Assumption}}
+
+\hproduction{assuming-decl}{Assumption}
+{\hlink{Ids}\ \lit{:} \lit{ASSUMPTION} \hlink{Expr}}
+
+\end{bnf}
