@@ -1,0 +1,3898 @@
+% Document Type: LaTeX
+% Master File: semantics.tex
+\documentclass [12pt,twoside]{cslreport} 
+\usepackage{fleqn,alltt,spacecites,relsize,url,amssymb}
+%\usepackage{doublespace}
+%\setlength{\textwidth}{6.5in}
+%\setlength{\textheight}{9in}
+%\setlength{\topmargin}{-.6in}
+%\setlength{\oddsidemargin}{0in}
+%\setlength{\evensidemargin}{0in}
+\setlength{\textwidth}{5.5in}
+\setlength{\textheight}{8in}
+\setlength{\topmargin}{.25in}
+\setlength{\oddsidemargin}{.5in}
+\setlength{\evensidemargin}{0in}
+\setlength{\mathindent}{0.2in}
+%\input amssym.def
+%\input amssym
+%\input commands
+%\includeonly{soundness}
+%\input{/homes/rushby/tex/jmacros}
+\newcommand{\thmbox}
+   {{\ \hfill\hbox{%
+      \vrule width1.0ex height1.0ex
+   }\parfillskip 0pt }}
+\newtheorem{thm}{Theorem}[chapter]
+\newtheorem{prop}[thm]{Proposition}
+\newenvironment{proof}{{\bf Proof. }}{\thmbox}
+\newcommand{\Infrule}[3]{
+{{\displaystyle\strut #1}\over{\displaystyle\strut #2}}\qquad\makebox[0pt][l]{\it #3}
+}
+\newcommand{\tuple}[1]{\langle #1 \rangle}
+\newtheorem{example}[thm]{Example}
+\newcommand{\aro}{\mathord\rightarrow} % see pages 154-155 of TeX manual
+\newcommand{\mean}[1]{\lbrack\!\lbrack #1 \rbrack\!\rbrack}
+\newcommand{\pair}[1]{\langle #1 \rangle}
+\newcommand{\union}{\cup}
+\newcommand{\funtype}[2]{[#1 \aro #2]}
+\newcommand{\tupletype}[1]{[#1]}
+\newcommand{\subtype}[3]{\{#1 : #2 | #3 \}}
+\newcommand{\tauGamma}[1]{\tau(\Gamma)(#1)}
+\newcommand{\Mgamma}[1]{{\mathcal M}(\Gamma\vbar\gamma)(#1)}
+\newcommand{\proj}[1]{\mathtt{p}_{#1}}
+\newcommand{\lis}[2]{#1_{1}, \ldots, #1_{#2}}
+\newcommand{\listwo}[2]{#1_{1}, #1_{2}}
+\newcommand{\ol}[1]{\overline{#1}}
+%\newcommand{\ul}[1]{\underline{#1}}
+\newcommand{\twob}{\mathbf{2}}
+\newcommand{\oneb}{\mathbf{1}}
+\newcommand{\zerob}{\mathbf{0}}
+\newcommand{\reals}{\mathbf{R}}
+\newcommand{\ttbool}{\mathtt{bool}}
+\newcommand{\ttreal}{\mathtt{real}}
+\newcommand{\tttrue}{\mathtt{TRUE}}
+\newcommand{\ttfalse}{\mathtt{FALSE}}
+\newcommand{\tttype}{\mathtt{TYPE}}
+\newcommand{\ttcontext}{\mathtt{CONTEXT}}
+\newcommand{\ttvar}{\mathtt{VAR}}
+\newcommand{\ttconstant}{\mathtt{CONSTANT}}
+\newcommand{\ttvariable}{\mathtt{VARIABLE}}
+\newcommand{\tttheory}{\mathtt{THEORY}}
+\newcommand{\ttif}{\mathtt{IF}}
+\newcommand{\ttint}{\mathtt{int}}
+\newcommand{\ttnat}{\mathtt{nat}}
+\newcommand{\itkind}{\textit{kind}}
+\newcommand{\ittype}{\textit{type}}
+\newcommand{\itdef}{\textit{definition}}
+\newcommand{\itformals}{\textit{formals}}
+\newcommand{\vbar}{\ |\ }
+\newcommand{\sima}{\stackrel{a}{\sim}} %/{\scriptsize{a}}
+\newenvironment{Eg}[1]{\begin{example}[#1]\label{eg:#1}\em }{\thmbox\end{example}}
+\input{/homes/rushby/tex/prelude}
+%\input{/homes/shankar/tex/ch-jmacros}
+
+\newenvironment{Defn}[1]{\begin{definition}[#1]\label{defn:#1}}{
+\thmbox\end{definition}}
+%
+\newenvironment{display}{\begin{alltt}\small\tt\vspace{0.3\baselineskip}}{\vspace{0.3\baselineskip}\end{alltt}}
+%
+%\newcommand{\gets}{\leftarrow}
+\title{The Formal Semantics of PVS\thanks{Funded by National Aeronautics
+and Space Administration Contract NAS1-18969, Task 11 and National Science
+Foundation Grant CCR 9300444. 
+}}
+\author{
+\begin{tabular}{ccc}
+Sam Owre & and & Natarajan Shankar\vspace{-.05in}\\
+{\small\tt owre@csl.sri.com}& & {\small\tt shankar@csl.sri.com}\\
+\end{tabular}\\
+URL: \url{http://www.csl.sri.com/sri-csl-fm.html}\\
+SRI International\\
+Computer Science Laboratory\\
+Menlo Park CA 94025 USA
+}
+\date{Technical Report CSL-97-2R\\August 1997, Revised March 1999}
+%\renewcommand{\today}{}
+%\renewcommand{\is}{::=}
+%\renewcommand{\baselinestretch}{2}
+\begin{document}
+%\bibliographystyle{alpha}
+\pagenumbering{roman}
+\maketitle
+\setcounter{page}{2}
+\mbox{}
+\cleardoublepage
+\begin{abstract}
+\setcounter{page}{3} 
+\thispagestyle{plain}
+
+A specification language is a medium for expressing {\em what\/} is
+computed rather than {\em how\/} it is computed.  Specification languages
+share some features with programming languages but are also different in
+several important ways.  For our purpose, a specification language is a
+logic within which the behavior of computational systems can be
+formalized.  Although a specification can be used to simulate the behavior
+of such systems, we mainly use specifications to state and prove system
+properties with mechanical assistance.
+
+We present the formal semantics of the specification language of SRI's
+Prototype Verification System (PVS)\@.  This specification language is
+based on the simply typed lambda calculus.  The novelty in PVS is that it
+contains very expressive language features whose static analysis (e.g.,
+typechecking) requires the assistance of a theorem prover.  The formal
+semantics illuminates several of the design considerations underlying PVS,
+particularly the interaction between theorem proving and typechecking.
+\end{abstract}
+\cleardoublepage
+\tableofcontents
+%\listwotoffigures
+\cleardoublepage
+\setcounter{page}{0} 
+\pagestyle{headings}
+\pagenumbering{arabic}
+
+\chapter{Introduction} \label{introduction} PVS is a system for specifying
+and verifying properties of digital hardware and software systems.  The
+specification language of PVS is designed to admit succinct, readable, and
+logically meaningful specifications.  The PVS specification language is
+designed for effective proof construction rather than efficient execution.
+The design considerations underlying the language are therefore somewhat
+different from those of a corresponding programming language.  For
+example, the language contains constructs that can be statically
+typechecked only with the assistance of a theorem prover.  This is
+acceptable because the PVS specification language is intended for use in
+conjunction with powerful support for automated theorem proving.  The
+logic of PVS is based on a simply typed higher-order logic with function,
+record, and product types, and recursive type definitions.  This type
+system is extended with subtypes that are analogous to subsets, and with
+dependently typed functions, records, and products.  The resulting type
+system has several advantages.  It is possible, for instance, to
+statically ensure that all array references are within their respective
+array bounds.  PVS specifications are organized into theories that can be
+parametric in types as well as individuals.  While the semantics of the
+simply typed fragment is straightforward, the extensions such as
+subtyping, dependent typing, and (theory-level) parametricity do pose
+significant challenges.  This report presents a concise but idealized
+definition of the PVS specification language and its intended formal
+set-theoretic semantics.  It is neither an overview of the PVS language
+nor a guide to the Prototype Verification System (see the PVS user
+manuals~\cite{PVS:manuals}).
+
+
+The primary purpose of the formal semantics is as a useful reference for
+the developers and users of PVS\@.  The idealized core of the
+specification language as presented here serves as a succinct foundation
+for studying the expressive power of the language.  Pertinent questions
+about PVS are answered directly by the formal semantics presented here:
+\begin{enumerate}
+\item\label{one} What is the semantic core of the language, and what is
+just syntactic sugar?
+
+\item\label{two} What are the rules for determining whether a given PVS
+expression is well typed?
+
+\item\label{three} How is subtyping handled, and in particular, how are
+proof obligations corresponding to subtypes generated?
+
+\item\label{four} What is the meaning, in set-theoretic terms, of a PVS expression or
+assertion?
+
+\item\label{five} Are the type rules sound with respect to the semantics? 
+
+\item\label{six} Are the proof rules sound with respect to the semantics?
+
+\item\label{seven} What is the form of dependent typing used by PVS, and
+what kinds of type dependencies are disallowed by the language?
+
+\item\label{eight} What is the meaning of theory-level parametricity, and
+what, if any, are the semantic limits on such parameterization?
+
+\item\label{nine} What language extensions are incompatible with the reference
+semantics given here?
+\end{enumerate}
+
+Chapter~\ref{conclusion} summarizes the answers to these questions.
+
+
+\section{Real versus Idealized PVS}
+
+The semantic treatment in this report is incomplete in some important ways.
+It does not treat the nonlogical parts of the language.  In particular,
+it ignores arithmetic and recursive definitions.  It also omits
+abstract datatypes~\cite{Shankar:ADT97}.  These will be treated in a future
+expanded version. 
+
+The present semantics also makes several idealizations from the real
+PVS for 
+the purpose of clarity.  While the semantic treatment is not
+comprehensive, the idealization of PVS used here is faithful to the
+implemented form of PVS.   
+
+\begin{enumerate}
+  \item \emph{No name resolution.}  All names must be in fully resolved form
+with their theory name and actual parameters.  We regard name resolution as
+a convenience provided by the PVS type checker and not an operation with any
+semantic relevance.  A technical description of name resolution in PVS will
+be given elsewhere.
+
+
+  \item \emph{No overloading.}   As with name resolution, overloading is
+a syntactic convenience with no semantic import. 
+
+\item \emph{No \texttt{IMPORTING}s.}  The importing of theories is a 
+hint to  name resolution.  The semantic definition assumes that all
+instances of theories declared prior to the present one are visible.   
+  \item \emph{Variable declarations ignored.}  All variables must be 
+locally declared.   Global variable declarations are regarded as a syntactic
+convenience.  
+%  \item TCCs are not kept around to be used as lemmas.
+  \item \emph{No records.}  These are ignored in the semantic treatment
+since product types capture all the semantically essential features of records.
+\end{enumerate}
+
+
+\section{Semantic Preliminaries}
+
+The PVS specification language is based on higher-order logic.  This means
+that variables can range over individuals (such as numbers) as well as
+functions, functions of functions, and so on.  As is well known, some type
+distinction is needed; otherwise, it is easy to obtain a
+contradiction by defining the predicate $N(P)$ as $ \neg(P(P))$ so that
+both $N(N)$ and $\neg N(N)$ hold.  
+In the theory of types~\cite{Church:types}, the universe is stratified
+into distinct types 
+so that a predicate can  be applied only to a \emph{lower} type
+and thus cannot be applied to itself.
+
+Types also serve as a powerful mechanism for detecting syntactic and
+semantic errors through typechecking.  This role of types is best
+exemplified by their use in various programming languages such as Algol,
+Ada, and ML, and is also heavily emphasized in the PVS type
+system.
+
+The desirability for strong typing in a specification
+logic is not widely accepted.  Fraenkel {\em et
+al\/}~\cite{Fraenkel-etal84} express
+the opinion that such 
+typing is repugnant in a mathematical logic since it constrains
+expressiveness by not allowing individuals of differing types to be
+treated uniformly.  Lamport~\cite{TLA:TOPLAS94} argues that type
+correctness is like any other 
+program property and should be established by means of a proof rather than
+by syntactic restraints.  Lamport and Paulson~\cite{Lamport&Paulson97}
+analyze the tradeoffs between typed and untyped specification languages.  
+We claim that
+\begin{enumerate}
+\item Types impose a useful discipline on the specification.
+\item Types lead to easy and early detection of a large class of
+syntactic and  semantic errors.
+\item Type information is useful in mechanized reasoning.
+\end{enumerate}
+
+
+\comment{
+The first typed higher-order logic was the Principia Mathematica (PM) system of
+Russell and Whitehead.  They were the first to propose a stratified
+hierarchy of types as a means avoiding certain paradoxes.  The PM type
+system is quite complicated.  Church proposed his \emph{simple theory of
+types} as a higher-order logic based on a simply typed lambda calculus.
+Church's system forms the basis for most modern higher-order logics
+including that of PVS.  The Automath system of de~Bruijn pioneered the use
+of dependent types (analogous to the variant records of Pascal) as a basis
+for intuitionistic logic.\footnote{Similar ideas were 
+independently proposed by several other researchers.}  Dependent types 
+form an important component of the PVS type system.  
+Girard and Reynolds, independently extended the typed lambda calculus
+to a second-order or \emph{polymorphic} type system so that, for example,
+an identity function for each type could be obtained by specializing a
+generic identity function to the required type.
+}
+
+The semantics of a higher-order logic is given by mapping the well-formed
+types of the logic to {\em sets\/}, and the well-formed terms of the logic to
+{\em elements\/} of the sets representing their type.  The set
+constructions we use can be formalized within Zermelo-Fraenkel set theory
+with the axiom of choice (ZFC).   The intended interpretation
+of a function type in higher-order logic is that it represents the set of
+all functions from the set representing the domain type to the set
+representing the range types.\footnote{It is only in the {\em standard\/}
+model of higher-order logic that the function type is required to
+represent the set of all 
+functions from the domain set to the range set.  Higher-order logic can be
+interpreted in {\em general models\/} where the function type can be
+interpreted in any manner as long as it satisfies the various axioms
+such as application, abstraction, and extensionality~\cite{Andrews:book}.
+Higher-order logic 
+is complete with respect to the general models interpretation so that
+a statement that is valid in all models is provable.  It is, however,
+incomplete with respect to the standard model.}  
+PVS also has predicate subtypes that are to
+be interpreted over the subsets of the set representing the parent type.
+
+The semantics of PVS will be given by considering a sequence of
+increasingly expressive fragments of PVS\@.   
+The semantics of each fragment of PVS will be presented in three steps.
+The first step is to define a set-theoretic universe containing
+enough sets to represent the PVS types.  The second step is to define a
+typechecking operation that determines whether a given PVS expression is
+well typed.  The third step is to define a semantic function that assigns
+a representation in the semantic universe to each well-typed PVS type and
+term. 
+
+
+
+\comment{
+\memo{I am not exactly sure where the axiom of choice is really needed.
+Since PVS builds in a choice operator via parametric theories, it seems
+that this will be needed.}}
+
+
+We first lay out the ZFC set constructions needed for defining the
+semantics of PVS.  The base types in PVS consist of the Booleans
+\texttt{bool} and the real numbers \texttt{real}\@.  The Booleans can be
+modeled by any two-element set, say $\twob$ consisting of the elements
+$\zerob$ and $\oneb$, where $\zerob$ is the empty set and the only element
+of the set $\oneb$\@.  The real numbers can be captured by means of
+Dedekind cuts or Cauchy sequences, and we label this set $\reals$\@.
+
+To define the semantics, we need a universe that contains the sets
+$\twob$ and 
+$\reals$
+and is closed under Cartesian products (written as $X\times Y$)
+and power sets (written as $\wp(X)$)\@.  Note that
+functions are modeled as \emph{graphs}, that is, sets of ordered pairs,
+so that a function type $\funtype{A}{B}$ is represented by a subset of
+the powerset $\wp(\mean{A}\times \mean{B})$
+of the Cartesian product of the sets $\mean{A}$ and $\mean{B}$
+representing $A$ and 
+$B$, respectively\@.  A set $F$ that is a subset of $X \times Y$ is the graph of a
+function with domain $X$ and range $Y$ if for every $x\in X$ there is a $y\in
+Y$ such that $\pair{x, y}\in F$, and whenever $\pair{x, y}\in F$
+and $\pair{x, y'}\in F$, we have $y = y'$\@.  For such a set $F$,
+$ \textit{Function}(F)$ holds and $ \textit{dom}(F) = X$\@.  
+The set of graphs of total functions from a set $Y$ to a set $X$
+is represented as $X^Y$\@.   If $F$ is the graph of a function and $t$ an
+element in its domain, then
+$F(t)$ represents the result of applying the function $F$ to $t$\@.
+At the semantic level,  a function $F$ will never be applied to an argument
+$t$ outside $\textit{dom}(F)$, because in the PVS language,
+a function application is typechecked so that the
+argument expression has the same type as the domain type of the
+function expression.  
+
+We can model the entire type universe of the simply typed fragment of PVS
+by the set $U$, which is defined cumulatively by starting from the base
+sets $\twob$ and $\reals$, and including the Cartesian products, the
+function spaces, and subsets of previously included sets, at each stage.
+Cartesian products are used to model products in PVS, and function spaces
+model function types.  Subsets are needed to model predicate subtypes.
+It is sufficient to iterate these stages up to the ordinal $\omega$\@.
+\begin{Defn}{type universe}
+\begin{eqnarray*}
+  U_0 & = & \{ {\twob}, {\reals}  \} \\
+  U_{i+1} & = & U_i \,\union\, \{X\times Y \vbar X, Y \in U_i\} \,\union\,
+                           \{X^Y \vbar X, Y \in U_i \} \,\union\,
+                           \bigcup_{X\in U_i}\wp(X)\\
+  U_{\omega} & = & \bigcup_{i\in\omega} U_i\\
+  U & = & U_{\omega}
+\end{eqnarray*}
+\end{Defn}
+
+
+We refer to $U$ as the \emph{basic universe}.\footnote{The inclusion of $X^Y$ in $U$ is actually redundant but aids clarity.}   The semantic definitions
+below will assign a set in $U$ to each PVS type and an element
+in $\bigcup U$ to each well-typed term of PVS.  The \emph{rank} of a set
+$X$ in $U$ is the least $i$ such that $X\in U_i$\@.  The notion of rank
+plays an important role in the semantics of dependent types and
+parametric theories.
+
+\section{Related Work}
+
+There is a long history of work in specification languages.
+Many  ideas similar to those underlying the PVS specification language
+also occur in other specification languages.  
+
+The {\em wide-spectrum\/} languages are typically based on set theory or
+higher-order logic.  The language VDM is one of the earliest such
+specification formalisms~\cite{Jones:VDM}.  It is based on a first-order
+logic with partial functions augmented with datatype axioms.  The datatype
+theories in VDM include those for finite sets, maps, sequences, and
+recursive datatypes such as lists and trees.  VDM has a notion of datatype
+invariants that yields a simple form of predicate subtyping.  Operations
+on state are specified in terms of pre-condition/post-condition pairs.
+Specifications are structured into parameterized modules.  In contrast to
+VDM, the PVS language is based on strictly typed higher-order logic with a
+built-in notion of predicate subtyping and dependent typing.  The
+resulting PVS logic is more compact in that many of the datatypes that are
+presented axiomatically in VDM can be defined within PVS.  There is no
+built-in notion of state in PVS since it is possible to use the
+higher-order logic of PVS to define a variety of state-based formalisms,
+including various linear and branching-time temporal logics.  VDM uses a
+3-valued logic for the logical connectives in order to deal
+with partial functions, whereas PVS uses a classical 2-valued logic and
+predicate subtyping to assign a type to a partial function as a total
+function on its domain of definition.  Jones~\cite{Jones:VDM} provides
+only an informal semantics for VDM.  The RAISE system is a comprehensive
+toolset based on the ideas of VDM~\cite{RAISE:book}.
+
+The Z specification language~\cite{Z-understanding} is another
+wide-spectrum language based on a typed first-order set theory.  A Z
+specification is a collection of schemas consisting of declarations of
+types and constants accompanied with invariants.  Z schemas can either
+specify datatype invariants or pre-condition/post-condition constraints.
+A schema calculus is used to combine schemas using logical connectives.
+Spivey~\cite{Z-understanding} presents a formal semantics for Z without
+giving a proof system or a soundness proof.  Spivey's treatment of
+partial functions in the Z semantics employs the commonly used convention
+that $f(a)$ when $a$ is not in the domain of $a$ is some arbitrarily
+chosen value.  This is fine for most purposes but can be confusing when
+dealing with recursively defined partial functions.  For example, the
+definition $\mathit{bad}(x) = 1 + \mathit{bad}(x)$ is everywhere undefined but
+admitting it as an axiom leads to an immediate contradiction.  Z also
+lacks any mechanism for conservative extensions such as definitional
+principles for constants and datatypes so that the consistency of Z
+specification has to be demonstrated by exhibiting a model.
+
+Algebraic specification languages like OBJ~\cite{popl85} and
+Larch~\cite{Larch:book} provide an 
+equational/rewriting framework for specifying datatypes and operations on
+datatypes.   OBJ has many of the same theory parameterization mechanisms
+as PVS.  The subsort mechanism in OBJ is also similar except that
+it is handled by introducing {\em retracts\/} or runtime checks
+rather than proof obligations generated by the type checker.
+The OBJ logic is quite restricted compared to PVS since it is based
+on a first-order, equational framework with an {\em initial\/} semantics
+where two ground terms are distinct unless they can be proved equal.
+OBJ has very limited support for proof development and is primarily
+intended as an executable specification language.
+
+The specification languages that are closer to PVS are those that
+accompany various automated proof checking systems.  The closest of these
+is {\sc Ehdm}~\cite{EHDM:manuals}, which employs a similar higher-order
+logic with subtyping and proof obligation generation.  {\sc Ehdm} lacks
+many of the features of PVS: subtyping is restricted to type declarations
+and there is no dependent typing.
+
+Higher-order logic is used by other systems such as
+HOL~\cite{Gordon&Melham:HOL} and TPS~\cite{andrews84}.
+Both HOL and TPS employ simply typed higher-order logic 
+without features such as subtyping, dependent typing, or parametric
+theories.  
+Andrews~\cite{Andrews:book} gives a thorough account of the semantic
+aspects of higher-order logic.  The formal semantics of the HOL logic are
+carefully outlined (by Pitts) in the book by Gordon and
+Melham~\cite{Gordon&Melham:HOL}.
+
+Systems like Coq~\cite{COQ} and Nuprl~\cite{Nuprl-book} are based on
+intuitionistic higher-order logics.  Coq allows quantification over types,
+whereas Nuprl has quantification over a hierarchy of type universes.  Both
+logics admit dependent typing.  The set-theoretic semantics of dependently
+typed intuitionistic type theories has been studied by
+Dybjer~\cite{DybjerP:indsfm} and Howe~\cite{Howe91,Howe96}.  Not
+surprisingly, their semantic treatment of dependent typing is similar to
+the one given here but they do not delimit the possible dependencies as is
+done with the PVS semantics.  The PVS semantics presented here clearly
+specifies the kind of type dependencies that are disallowed in the logic.
+Dybjer and Howe also do not address subtyping but do describe the
+semantics of language features missing in PVS (type universes in the case
+of Howe, and inductive families in the case of Dybjer).  Dybjer does not
+identify the universe over which terms and types are interpreted.  Howe
+requires an infinite sequence of inaccessible cardinals for his universe
+construction.
+
+
+\section{Outline}
+
+In Chapter~\ref{simple}, we define the syntax and semantics of the simply
+typed fragment of PVS.  Type definitions are also introduced in this
+chapter along with the definition of definitional equivalence on types.
+Chapter~\ref{subtypes} adds subtyping to the simply typed fragment and
+specifies the additional type rules and semantic definitions that are
+needed.  Chapter~\ref{dependent} extends the language with dependent
+function and product types.  Theories and parametric theories are introduced
+into the language in Chapter~\ref{theories}.  The type rules and semantics
+for conditional expressions and the logical connectives defined using
+conditional expressions are introduced in Chapter~\ref{conditionals}.
+Chapter~\ref{proof theory} specifies the axioms and inference rules of
+PVS\@.
+ 
+\chapter{The Simple Type Theory}\label{simple}
+
+\comment{
+The types of expression
+are determined from the types of their subexpressions.  In the base case,
+the types of atomic expressions must be given in a context.  There are
+certain well-formedness constraints on contexts that we now specify.
+A context is a sequence of declarations.  Declarations can either
+be type declarations of the form $T\ :\ \mathtt{TYPE}$ where $T$ is a symbol,
+constant declarations of the form $c\ :\ T$, or variable declarations of
+the form $x\ :\ \mathtt{VAR} T$.  
+The empty context $\{\}$ is a context.  If $\Gamma$ is a context,
+then
+}
+
+PVS is a strongly typed specification language.  The simply typed fragment
+includes types constructed from the base types by the function and product
+type constructions, and expressions constructed from the constants and
+variables by means of application, abstraction, and tupling.  Expressions
+are checked to be well typed under a {\em context\/}, which is a partial
+function that assigns a {\em kind\/} (one of \texttt{TYPE},
+\texttt{CONSTANT}, or \texttt{VARIABLE}) to each symbol, and a type to the
+constant and variable symbols.  We use the metavariables $\Gamma$,
+$\Delta$, and $\Theta$ to range over contexts.  The metavariables $A$,
+$B$, and $T$ range over PVS type expressions, the metavariables $r$ and
+$s$ range 
+over symbols (identifiers), the metavariables $x$ and $y$ range over PVS
+variables, and the metavariables $a$, $b$, $f$, and $g$ range over PVS
+terms.  Given 
+a context $\Gamma$ and a symbol $s$, we say that $\Gamma(s)$ is
+undefined if $s$ is not declared in $\Gamma$\@.
+
+The \emph{pretypes} of the simple type theory include the \emph{base}
+types such as \texttt{bool} and \texttt{real}.  A \emph{function} pretype
+from domain pretype $A$ to range pretype $B$ is constructed as
+$\funtype{A}{B}$\@.  A \emph{product} pretype of ${\listwo{A}{n}}$ is
+constructed as $\tupletype{\listwo{A}{n}}$.  \comment{We make no
+distinction between a type $A$ and the singleton tuple type $[A]$.  We
+also disallow a 0-tuple type.}  A \emph{type} is a pretype that has been
+typechecked in a given context.  Types in the simple type theory are
+simple enough  that the only distinction between pretypes and types is
+that the symbols in a type must be appropriately declared in the given
+context.
+
+\begin{Eg}{pretypes} 
+ \texttt{bool}, \texttt{real},
+ $\tupletype
+{\mathtt{bool}, \mathtt{real}}$,
+ $\funtype{\tupletype{\mathtt{real}, \mathtt{bool}}}{ \mathtt{bool}}$.
+\end{Eg}
+
+The {\em preterms\/} of the language consist of the constants, variables,
+pairs, projections, applications, and abstractions.  The metavariables $c$
+and $d$ range over constants.  Pairs are of the form $(a_1, a_2)$ where
+each $a_i$ is a preterm.  Applications have the form $f\ a$ where $f$ and
+$a$ are preterms.  A pair projection is an expression of the form
+$\proj{i}\ a$, where $i\in\{1, 2\}$\@.  \comment{As with types, we make no
+distinction between the singleton tuple preterm $(a)$ and the preterm
+$a$. }  Lambda abstractions have the form $\lambda (x : T): a$, where $T$
+is a pretype and $a$ is a preterm.  \comment{ $\lambda (x_1 : T_1, \ldots,
+x_n : T_n): a$, where each $T_i$ is a type, each $x_i$ is a symbol so that
+$x_i\not\equiv x_j$ for $i\neq j$, and $a$ is a preterm. }  Parentheses
+are used for disambiguation.  A \emph{term} is a preterm that has been
+typechecked in a given context.
+
+\begin{Eg}{preterms}
+\texttt{TRUE}, $\neg~\mathtt{TRUE}$,
+$\lambda~(x~:~\mathtt{bool}):~\neg(x)$,\hfill\\
+$\proj{2}~(\mathtt{TRUE}, \mathtt{FALSE})$,
+$(\mathtt{TRUE},  \lambda~(x~:~\mathtt{bool})~:~\neg~(\neg~x))$.
+\end{Eg}
+
+\section{Contexts}
+
+A context is 
+ a sequence of
+declarations, where each declaration is either a type declaration
+$s\ :\ \mathtt{TYPE}$, a constant declaration $c\ :\ T$ where $T$ is a type,
+or a variable declaration $x\ :\ \mathtt{VAR}\ T$.
+Preterms and pretypes are typechecked with respect to a given context.  
+The empty context is represented as $\{\}$\@.  
+The well-formedness rules
+for contexts are presented below.
+A context can also be applied as a
+partial function so that for a symbol $s$ with declaration $D$, $(\Gamma, s
+: D)(s) = D$ and 
+$(\Gamma, s : D)(r) = \Gamma(r)$ for $r\neq s$.
+If $s$ is not declared in $\Gamma$, then $\Gamma(s)$ is undefined. 
+If $\Gamma$ is a context, then
+for any symbol $s$, the kind of the symbol $s$ in $\Gamma$ is given by $\textit{kind}(\Gamma(s))$.  If the kind of $s$ in $\Gamma$ is \texttt{CONSTANT} or
+\texttt{VARIABLE}, then the $ \textit{type\/}(\Gamma(s))$ is the type assigned
+to $s$ in $\Gamma$.  
+%\memo{Variable declarations are unrelated to variable declarations in
+%PVS and correspond to binding declarations.}
+\newcommand{\coln}[2]{#1\ : #2}
+
+\begin{Eg}{context}\hfill\\
+$ \mathtt{bool}\ :\  \mathtt{TYPE},\hspace{.2cm} \coln{ \mathtt{TRUE}}{
+\mathtt{bool}},\hspace{.2cm} \coln{ \mathtt{FALSE}}{
+\mathtt{bool}},\hspace{.2cm} \coln{x}{ \mathtt{VAR}\ \funtype{\tupletype{
+\mathtt{bool}, \mathtt{bool}}}{ \mathtt{bool} }}$ 
+\end{Eg}
+
+
+\section{Type Rules}
+
+The type rules for the simple type theory are given by a recursively
+defined partial function
+$\tau$ that assigns
+\begin{enumerate}
+\item  A type $\tau(\Gamma)(a)$ to a preterm $a$ that
+is well typed with
+respect to a context $\Gamma$. 
+\item  The keyword \texttt{TYPE} as the result of $\tauGamma{A}$
+when $A$ is a  well-formed type under context $\Gamma$\@.
+
+\item  The keyword \texttt{CONTEXT} as the result of
+$\tauGamma{\Delta}$ when $\Delta$ is a well-formed context
+under context $\Gamma$\@.  The context $\Gamma$ is empty for the
+simply typed fragment so that typechecking is always invoked as
+$\tau()(\Gamma)$\@. 
+\end{enumerate}
+Otherwise, $\tau$ is undefined in the case of an ill-typed preterm or an
+ill-formed type or context. 
+
+The type rules are given by the recursive definition for $\tau$\@.
+Typechecking in PVS assigns a ``canonical'' type to a preterm.
+Customarily, type rules are presented as inference rules, but
+a functional presentation is more appropriate for PVS since
+\begin{enumerate}
+\item The type assignment is deterministic.  A term can, in
+general, though not in the simply typed fragment,  be assigned
+a number of types but it always has at most one canonical type.  
+
+\item The soundness proof need only show that the meaning of the term
+is an element of the meaning of its canonical type.  Thus, only
+the canonical type derivation for a term has to be shown sound and not
+every valid type derivation. 
+
+\item The meaning of a term is therefore given by recursion on the term
+itself and not on its typing derivation.  There is no need to show
+separately that this meaning is {\em coherent\/}, that is, independent of
+the typing derivation.
+\end{enumerate}
+  A functional presentation of the type rules also
+leads to natural and straightforward soundness arguments.  
+Note that the well-formedness rules for contexts and types are trivial
+in the simply typed situation but become more meaningful when the type
+theory is extended.  Note also that in the type rules for expressions and
+types, the well-formedness of the relevant context is not explicitly
+checked.  These rules do preserve the well-formedness of the context
+in each recursive call so that if the initial context is well formed, then
+so is every intermediate one.    
+\begin{Defn}{type rules}
+\begin{eqnarray*}
+  \tau()(\{\}) & = & \ttcontext \\
+%
+  \tau()(\Gamma, s\ :\ \tttype{}) & = & \ttcontext, \mbox{ if }
+  \Gamma(s) \mbox{ is undefined}\\& &
+  \mbox{and } \tau()(\Gamma) = \ttcontext\\
+%
+  \tau()(\Gamma, c : T) & = & \ttcontext, \mbox{ if }
+   \Gamma(c) \mbox{ is undefined,}\\ & & 
+\tauGamma{T} =
+      \tttype{},\\
+   & & \mbox{and } \tau()(\Gamma) = \ttcontext\\
+%
+  \tau()(\Gamma, x : \ttvar{}\ T) & = & \ttcontext, \mbox{ if }
+  \Gamma(x) \mbox{ is undefined,}\\ & & 
+\tauGamma{T}
+    = \tttype{},\\
+    & & \mbox{and } \tau()(\Gamma) = \ttcontext\\ 
+%
+  \tauGamma{s} & = & \tttype{}, \mbox{ if } \textit{kind\/}(\Gamma(s)) =
+\tttype{}\\
+%
+  \tauGamma{\funtype{A}{B}} & = & \tttype{}, \mbox{ if } \tauGamma{A} =
+     \tauGamma{B} = \tttype{}\\
+%
+  \tauGamma{\tupletype{\listwo{A}{n}}} & = & \tttype{}, \mbox{ if }
+     \tauGamma{A_i} = \tttype{} \mbox{ for } 1\leq i\leq 2 \\
+%
+  \tau(\Gamma)(s) & = &  \textit{type\/}(\Gamma(s)),\\
+                    & &  \mbox{ if } 
+\textit{kind}(\Gamma(s)) \in \{ \ttconstant{}, \ttvariable \} \\
+%
+ \tau(\Gamma)(f\ a) & = & B, \mbox{ if } \tau(\Gamma)(f) = \funtype{A}{B}
+\mbox{ and } \tau(\Gamma)(a) = A \\
+%
+\tauGamma{\lambda (x : T): a} & = & \funtype{T}{\tau(\Gamma, x : \ttvar{}\ T)(a)},
+\mbox{ if } \Gamma(x) \mbox{ is undefined}\\& & 
+  \mbox{and }\tauGamma{T} = \tttype{}\\
+%\tau(\Gamma)(\lambda (x_1 : T_1, \ldots, x_n : T_n): a) & = &
+%         \begin{array}[t]{l}
+%	   [{\tupletype{\listwo{T}{n}}} \aro \\
+%   \tau(\Gamma, x_1 : \ttvar{}\ T_1, \ldots, x_n : \ttvar{}\ T_n)(a)]
+%	 \end{array} \\ & &
+%\mbox{if } 
+%   \tauGamma{T_i} = \tttype{}, \mbox{ for } 1\leq i\leq n,\\
+%& & \mbox{and  } x_i \not\equiv x_j, \Gamma(x_i) \mbox{ is undefined},\\
+% & &  \mbox{ for } 1\leq i, j \leq n, i\neq j \\
+%
+\tau(\Gamma)((a_1, a_2)) & = &
+    [\tau(\Gamma)(a_1),  \tau(\Gamma)(a_2))]\\
+%
+\tau(\Gamma)(\proj{i}\ a) & = & T_i, \mbox{ where }\\ & & 
+ \tau(\Gamma)(a) = [T_1, T_2] %\mbox{ for some } n, n\geq i
+\end{eqnarray*}
+\end{Defn}
+
+ In the type rule for lambda abstraction, the constraint that
+$\Gamma(x)$ must be undefined can be satisfied by suitably renaming the
+bound variable since we treat terms as equivalent modulo the renaming of
+bound variables.  
+
+\comment{
+\memo{The above definition suggests that projection applications should
+not be treated as applications.}}
+
+\begin{Eg}{type rules}  Let $\Omega$ label the context
+$\coln{ \mathtt{bool}}{\tttype{}}$,
+            $\coln{ \mathtt{TRUE}}{\mathtt{bool}}$,
+            $\coln{ \mathtt{FALSE}}{ \mathtt{bool}}$
+\begin{eqnarray*}
+\tau()(\{\}) & = & \ttcontext\\
+\tau()(\Omega)
+   & = & \ttcontext\\
+\tau(\Omega)(\funtype{\tupletype{ \mathtt{bool}, \mathtt{bool}}}{
+\mathtt{bool}}) & = & \tttype{}\\
+\tau(\Omega)(( \mathtt{TRUE}, \mathtt{FALSE})) & = & \tupletype{ \mathtt{bool},
+\mathtt{bool}}\\
+\tau(\Omega)( \proj{2} ( \mathtt{TRUE}, \mathtt{FALSE})) & = & \mathtt{bool}\\
+\tau(\Omega)(\lambda (\coln{x}{ \mathtt{bool}}) : \mathtt{TRUE}) & = &
+\funtype{ \mathtt{bool}}{ \mathtt{bool}}
+\end{eqnarray*}
+\end{Eg}
+
+\section{Semantics}
+
+Recall that a preterm $a$ with a type assigned by $\tau$  under context $\Gamma$
+is said to be a term of type $\tau(\Gamma)(a)$
+in the context $\Gamma$.  If $\gamma$ 
+is an \emph{assignment} for the symbols declared in context $\Gamma$, the
+semantics of the simple type theory of PVS 
+is given by  mapping  a type $T$ to a (possibly empty) set
+$\mathcal{M}(\Gamma\vbar \gamma)(T)$, 
+and a term $a$ with assigned type $T$ to an element of the set $\mathcal{
+M}(\Gamma\vbar \gamma)(T)$ in the basic universe $U$\@. 
+The assignment $\gamma$ is a list of bindings of the form $\{s_1\gets
+t_1\}\ldots \{s_n\gets t_n \}$\@.  The application of an assignment
+$\gamma$ to a symbol $s$ is such that $\gamma \{s \gets t\} (s)$ is $t$,
+whereas $\gamma \{r \gets t\}(s)$ is $\gamma(s)$ when $r\not\equiv s$\@.
+
+The  meaning function $\mathcal{M}$ returns the meaning of
+a well-formed type $A$  
+and a well-formed expression $a$ in the context $\Gamma$ under an
+assignment $\gamma$ as $\mathcal{M}(\Gamma\vbar \gamma)(A)$ 
+and 
+$\mathcal{M}(\Gamma\vbar \gamma)(a)$,respectively. 
+\comment{The base types 
+\texttt{bool} and \texttt{real} are mapped to $\twob$ and $\reals$,
+respectively.}  The meanings of type names, constants, and variables
+declared in $\Gamma$ are obtained from the assignment $\gamma$\@.  A
+function type is mapped to the 
+corresponding function space.  A product type is mapped to the corresponding
+Cartesian product. \comment{an $n$-tuple is represented by an $(n+1)$-fold
+Cartesian product terminated by the sole element $\zerob$ of the set \oneb\@.
+This representation  distinguishes a 3-tuple
+$\tupletype{\ttbool, \ttbool, \ttbool}$ from the 
+2-tuple $\tupletype{\ttbool, \tupletype{\ttbool, \ttbool}}$\@. }
+An application term is interpreted by 
+means of set-theoretic function application.  A lambda abstraction yields the
+graph of the corresponding function.  A pair expression is mapped
+to the corresponding set-theoretic ordered pair.    
+\begin{Defn}{meaning function}
+\begin{eqnarray*}
+\comment{
+  \Mgamma{ \mathtt{bool}} & = & {\twob} \\
+  \Mgamma{ \mathtt{real}} & = & {\reals}\\
+  \Mgamma{ \mathtt{TRUE}} & = & {\oneb}\\
+  \Mgamma{ \mathtt{FALSE}} & = &{\zerob}\\ }
+  \mathcal{M}(\Gamma\vbar \gamma)(s) & = &  \gamma(s),\\
+                    & &  \mbox{ if } 
+\textit{kind}(\Gamma(s)) \in \{ \tttype{}, \ttconstant{}, \ttvariable \}
+\\
+%
+  \mathcal{M}(\Gamma\vbar \gamma)(\funtype{A}{B}) & = & \Mgamma{B}^{\Mgamma{A}}\\
+%
+  \Mgamma{\tupletype{\listwo{T}{n}}} & = &  \Mgamma{T_1} \times %%\ldots\times
+\Mgamma{T_2} %\times {\oneb}
+\\
+%
+\mathcal{M}(\Gamma\vbar \gamma)(f\ a) & = & (\mathcal{M}(\Gamma\vbar \gamma)(f))(\mathcal{M}(\Gamma\vbar \gamma)(a)) \\
+%
+\Mgamma{\lambda (x : T): a} & = & \{\tuple{y, z} \vbar \begin{array}[t]{l}
+						       y\in\Mgamma{T},\\
+                					z = \mathcal{M}(\Gamma, x: \ttvar{}\ T\vbar \gamma\{x\gets y\})(a)\}
+						       \end{array}\\
+%               
+%\mathcal{M}(\Gamma| \gamma)(\lambda (x_1 : T_1, \ldots, x_n : T_n): a) & = &
+%  {\begin{array}[t]{l}\{ \tuple{\tuple{\listwo{y}{n}, {\zerob}}, z} | \\
+%					y_1\in \Mgamma{T_1}\\
+%                                        \vdots\\
+%                                        y_n\in \Mgamma{T_n}\\
+%                                   z = \mathcal{M}\left(
+%        \begin{array}{l}
+%  \Gamma, x_1 : \ttvar{}\ T_1, \ldots, x_n : \ttvar{}\ T_n;\\
+%  \gamma\{x_1 \gets y_1\}\ldots \{x_n\gets y_n\}
+%	\end{array}\right)(a)\} 
+%				      \end{array}}\\
+%
+\Mgamma{(\listwo{a}{n})} & = & \tuple{\Mgamma{a_1},  \Mgamma{a_2}} \\
+%
+\Mgamma{\proj{i}\ a} & = & t_i, \mbox{ where } \Mgamma{a} =
+\tuple{\listwo{t}{n}}
+\end{eqnarray*}
+\end{Defn}
+
+\begin{Eg}{meaning function}
+ Let $\omega$ be an assignment for the context $\Omega$ in
+Example~\ref{eg:type rules}, of the form
+$$\{\ttbool\gets \twob\}\{ \mathtt{TRUE}\gets \oneb\}\{
+\mathtt{FALSE}\gets \zerob\}$$
+then
+\begin{eqnarray*}
+\mathcal{M}(\Omega\vbar \omega)(\tupletype{\ttbool, \ttbool}) & = &
+\twob\times\twob\\
+%
+\mathcal{M}(\Omega\vbar \omega)(( \mathtt{TRUE}, \mathtt{FALSE})) & = &
+\tuple{\oneb, \zerob}\\
+%
+\mathcal{M}(\Omega\vbar \omega)(\lambda (x : \ttbool): \mathtt{TRUE}) & = &
+\{\tuple{\zerob, \oneb}, \tuple{\oneb, \oneb}\}
+\end{eqnarray*}
+\end{Eg}
+
+\begin{Defn}{satisfaction}
+A context assignment $\gamma$ is said to \emph{satisfy} a context $\Gamma$
+(in symbols $\gamma\models \Gamma$) 
+iff
+\begin{enumerate}
+ \item $\gamma(\ttbool) = {\twob},$
+ \item $\gamma(\tttrue) = {\oneb},$
+ \item $\gamma(\ttfalse) = {\zerob},$
+\item $\gamma(s)\in U$ whenever $ \itkind{}(\Gamma(s)) = \tttype$, and
+ \item $\gamma(s) \in \Mgamma{ \ittype{}(\Gamma(s))}$\hfill\\\hspace*{1in}
+whenever $ \itkind{}(\Gamma(s)) \in \{ \ttconstant,
+\ttvariable \}$.
+\end{enumerate}
+\end{Defn}
+\begin{Eg}{satisfaction}\hfill\\\begin{enumerate}
+\item The assignment $\omega$ satisfies context $\Omega$.
+
+\item The assignment $\omega \{ \mathtt{one}~\gets~{\oneb}\}\{
+\mathtt{zero}~\gets~\zerob\}$ satisfies the context
+$\Omega,~\mathtt{one~:~TYPE},~\mathtt{zero~:~one}$\@.  
+\end{enumerate}
+\end{Eg}
+
+We need one useful proposition that asserts that typing judgements are not
+invalidated when the context is extended.
+\begin{prop}\label{context-weakening} %where is this used? NSH(9.6.95)
+If $\tau()(\Gamma) = \tau()(\Gamma') = \ttcontext$ and $\Gamma$ is
+a prefix of $\Gamma'$, then for all pretypes $A$, $\tauGamma{A} = \tttype$
+implies $\tau(\Gamma')(A) = \tttype$, and for all preterms $a$,
+$\tauGamma{a} = A$ implies $\tau(\Gamma')(a) = A$\@.  
+\end{prop}
+
+The following theorems follow from the induction suggested by the
+definitions of $\tau$ and $\mathcal{M}$.  The first of these
+is straightforward and is given without proof.
+\begin{theorem}[type construction]  \label{type construction}
+If $\tau()(\Gamma) = \ttcontext$ and $\tauGamma{a} = A$, then
+$\tauGamma{A} = \tttype$.
+\end{theorem}
+%
+\begin{theorem}[type soundness]\label{simple-type-semantics}
+ If $\tau()(\Gamma) = {\ttcontext}$, 
+   $\gamma$ satisfies $\Gamma$, and
+   $\tauGamma{A} = {\tttype{}} $, then 
+$\Mgamma{A} \in U$\@.
+\end{theorem}
+\begin{proof}
+The proof is by induction on the structure of the pretype $A$.
+Recall that if $X\in U$, then for some $i$, $X \in U_i$\@.  
+This yields three cases:
+\begin{enumerate}
+\item $A \equiv s$: By Definition~\ref{defn:type rules},
+$\Gamma(s)$ is defined and $\itkind(\Gamma(s))$ is $\tttype$\@.
+Then by Definition~\ref{defn:meaning function}, $\Mgamma{s}$
+is $\gamma(s)$, and by Definition~\ref{defn:satisfaction},
+$\gamma(s)\in U$\@.
+
+\item $A\equiv \funtype{B}{C}$: We then have that $\tauGamma{B} =
+\tauGamma{C} = \tttype$\@.  Letting $X$ label $\Mgamma{B}$, and $Y$ label
+$\Mgamma{C}$, we have by the induction hypothesis that $X\in U$ and $Y\in
+U$\@.  Let $j$ be the least rank such that $\Mgamma{B}\in U_j$ and
+$\Mgamma{C}\in U_j$\@.  By Definition~\ref{defn:meaning function},
+$\Mgamma{A} = Y^X$, and hence $\Mgamma{A} \in U_{j+1}$ by
+Definition~\ref{defn:type universe}\@.
+
+\item $A \equiv \tupletype{\listwo{A}{n}}$: Again by
+Definition~\ref{defn:type rules} and the induction hypothesis, we have
+for each $i \in \{1, 2\}$, that $\Mgamma{A_i}\in U$\@.  Let $j$ be the least
+rank such that for $i\in \{1, 2\}$, $\Mgamma{A_i}\in U_j$\@.  Then,
+it is easy to verify from Definition~\ref{defn:type universe} that
+$\Mgamma{A}\in U_{j + 1}$\@.  
+\end{enumerate}
+\end{proof}
+
+\begin{theorem}[term soundness]\label{simple-term-semantics}
+ If $\tau()(\Gamma) = \ttcontext$, 
+   $\gamma$ satisfies $\Gamma$, and
+   $\tauGamma{a}$ is defined and equal to $A$, then 
+$\Mgamma{a} \in \Mgamma{A}$.  
+\end{theorem}
+\begin{proof}
+The proof is by induction on the structure of preterms.
+\begin{enumerate}
+\item $a\equiv s$: By Definition~\ref{defn:type rules},
+we have that $\ittype(\Gamma(s)) = A$\@.  By
+Definitions~\ref{defn:meaning function}
+and~\ref{defn:satisfaction}, we have that $\Mgamma{a} = \gamma(s)$
+and $\gamma(s) \in
+\Mgamma{A}$\@.
+\item $a \equiv (f\ b)$:  By Definition~\ref{defn:type rules},
+$\tauGamma{f} = \funtype{B}{A}$, and $\tauGamma{b} = B$, for some
+$B$ such that $\tauGamma{B} = \tttype$\@.  
+Let $\Mgamma{A}$ be $X$ and $\Mgamma{B}$ be $Y$, then 
+by Definitions~\ref{defn:type rules}
+and~\ref{defn:meaning function}, and the induction hypothesis, we have
+$\Mgamma{f} \in X^Y$ and $\Mgamma{b}\in Y$\@.  It therefore follows
+by Definition~\ref{defn:meaning function} that $\Mgamma{(f\ b)} =
+(\Mgamma{f})(\Mgamma{b})$, and hence $\Mgamma{(f\ b)} \in X$\@.
+
+\item $a \equiv (\lambda (x : C): b)$:  By
+Definition~\ref{defn:type rules}, we have that
+$\tauGamma{a}$ is $\funtype{C}{B}$, where
+$\tau(\Gamma, x : \ttvar~C)(b)$ is $B$\@.  
+Let $X$ be $\Mgamma{C}$, and $Y$ be
+$\mathcal{M}(\Gamma, x: \ttvar~C \vbar \gamma\{x\gets u\}))(B)$\@.  
+By the induction hypothesis, we have that for
+any $u\in Y$, 
+$\mathcal{M}(\Gamma, x: \ttvar~C \vbar \gamma\{x\gets u\})(b)
+\in X$\@.  
+Since $\Mgamma{a}$ is $\{\pair{u, v} \vbar u\in X, v = \mathcal{M}(\Gamma, x:
+\ttvar~C \vbar \gamma\{x\gets u\})(b)\}$,
+we have that $\Mgamma{a} \in X^Y$\@.
+
+\item $a \equiv (a_1, a_2)$: By Definition~\ref{defn:type rules},
+$\tauGamma{a} = \tupletype{\listwo{A}{n}}$, where $\tauGamma{a_i} = A_i$ for
+$i\in \{1, 2\}$\@.   By the induction hypothesis, $\Mgamma{a_i}\in
+\Mgamma{A_i}$ for $i\in \{1, 2\}$\@.  By
+Definition~\ref{defn:meaning function}, $\Mgamma{a} =
+\pair{\Mgamma{a_1},\Mgamma{a_2}}$ and hence $\Mgamma{a}$ is
+an element of $\Mgamma{A}$ which is
+$\Mgamma{A}\times\Mgamma{A_n}$\@.
+
+\item $a\equiv \proj{i}~b$: In this case, we know by
+Definition~\ref{defn:type rules} that $\tauGamma{b} =
+\tupletype{\listwo{A}{n}}$
+with $i\in \{1, 2\}$, and $\tauGamma{a} = A_i$\@.
+By the induction hypothesis, $\Mgamma{b} = \pair{t_1, t_2}$,
+and by Definition~\ref{defn:meaning function}, $\Mgamma{a} = t_i$
+and $\Mgamma{\tauGamma{b}} =
+\Mgamma{A_1}\times\Mgamma{A_2}$,
+hence $\Mgamma{a}\in \Mgamma{A_i}$\@.  
+\end{enumerate}
+%%\memo{What about tuples/projections?}
+\end{proof}
+
+These three theorems (\ref{type construction},
+\ref{simple-type-semantics}, and \ref{simple-term-semantics}) are the key
+invariants that must be satisfied by the semantics when the language is
+extended below with type definitions, subtypes, dependent types, and
+parametric theories.
+
+\section{Some Syntactic Operations}
+
+We first define the operation of collecting the free variables of a
+term $a$ in a given context $\Gamma$ as $FV(\Gamma)(a)$, and then
+define the operation of substitution.
+\begin{Defn}{free variables}
+\begin{eqnarray*}
+  FV(\Gamma)(s) & = & \left\{\begin{array}{l}
+			      \{s \}, \mbox{ if } \textit{kind}(\Gamma(s))
+= \ttvariable\\
+                              \emptyset, \mbox{ otherwise}
+			    \end{array}\right.\\
+%
+  FV(\Gamma)(f\ a) & = & FV(\Gamma)(f) \union FV(\Gamma)(a) \\
+%
+  FV(\Gamma)(\lambda (x : T) : a) & = &
+     FV(\Gamma, x : \ttvar{}\ T)(a)
+- \{x\} \\
+%
+ FV(\Gamma)((\listwo{a}{n})) & = & FV(\Gamma)(a_1)\union
+FV(\Gamma)(a_2)\\
+%
+ FV(\Gamma)( \proj{i}\ a) & = & FV(\Gamma)(a)
+\end{eqnarray*}
+\end{Defn}
+%
+\begin{Defn}{substitution}
+\begin{eqnarray*}
+  s[a_1/x_1,\ldots, a_n/x_n] & = & \left\{\begin{array}{l}
+					    a_i, \mbox{ if for some minimal } i,
+s \equiv x_i\\
+                                            s, \mbox{ otherwise}
+					  \end{array}\right.\\
+%
+  (f\ a)[a_1/x_1,\ldots, a_n/x_n] & = &
+     (f[a_1/x_1,\ldots, a_n/x_n]\\&&
+       \hspace*{.5in} a[a_1/x_1,\ldots, a_n/x_n]) \\
+%
+  (\lambda (y : T): a)[a_1/x_1,\ldots, a_n/x_n] & = &
+    (\lambda (y':T) :
+     \ a[y'/y, a_1/x_1,\ldots, a_n/x_n]), \\ & & 
+%
+\mbox{where  } y' \mbox{ is a fresh variable}\\
+%
+ (\listwo{b}{m})[a_1/x_1,\ldots, a_n/x_n] & = &
+     (b_1[a_1/x_1,\ldots, a_n/x_n],\\&&
+       \hspace*{.5in}b_2[a_1/x_1,\ldots, a_n/x_n])\\
+%
+  ( \proj{i}\ a)[a_1/x_1,\ldots, a_n/x_n] & = &
+   ( \proj{i}\ a[a_1/x_1,\ldots, a_n/x_n])
+\end{eqnarray*}
+\end{Defn}
+
+Recall that terms are treated as syntactically equivalent modulo
+alpha conversion.  
+The above definitions must be extended as more 
+features are added to the language. 
+
+\section{Type Definitions}
+
+%%\memo{See ADT section for recursive datatypes.}
+
+Here we enrich contexts so that type symbols may have definitions.  PVS
+does not allow recursive type definitions\footnote{For the moment, we are
+not considering the PVS \texttt{DATATYPE} mechanism, which is a form of
+recursive type definition~\cite{Shankar:ADT97}.  Recursive datatypes in
+the context of the HOL proof checking system are described by
+Melham~\cite{Melham89}.}  so a type declaration/definition in a context
+may use only the symbols declared in the prior part of the context.  The
+main difference in the extended language is that type names can have
+definitions.  In such cases, the definitions rather than the type names
+are used to determine the actual type of an expression.  In other words,
+two type expressions are treated as the same if they are
+\emph{definitionally equivalent}\@.  Most other specification languages
+tend to employ the weaker notion of \emph{name equivalence} where
+syntactically different types are treated as distinct even when their
+definitions coincide.
+
+To accommodate type definitions, a context can
+contain type declarations of the form $s\ :\ \mathtt{TYPE} = T$, where $T$
+is a type.  If context $\Gamma$ contains such a declaration for $s$, then
+$ \itdef{}(\Gamma(s))$ is $T$\@.  To extend $\tau$ to handle type
+definitions under definitional equivalence, we must ensure that $\tau$
+returns the canonical form of a type where all defined types have been
+replaced by their definitions.  The operation $\delta(\Gamma)(T)$ returns
+the expanded form of a type relative to the context $\Gamma$\@.
+%
+\begin{Defn}{expanded type}
+\begin{eqnarray*}
+  \delta(\Gamma)(s) & = & s, \mbox{ if } \textit{definition\/}(\Gamma(s))
+\mbox{ is empty}\\
+% 
+  \delta(\Gamma)(s) & = & \delta(\Gamma)(
+\textit{definition\/}(\Gamma(s))), 
+\mbox{ if } \textit{definition\/}(\Gamma(s))
+\mbox{ is nonempty} \\
+%
+ \delta(\Gamma)(\funtype{A}{B}) & = &
+      \funtype{\delta(\Gamma)(A)}{\delta(\Gamma)(B)} \\
+%
+ \delta(\Gamma)(\tupletype{\listwo{T}{n}}) & = &
+     \tupletype{\delta(\Gamma)(T_1),  \delta(\Gamma)(T_2)}
+\end{eqnarray*}
+\end{Defn}
+
+
+The typing rules are augmented to return the type in expanded form.
+The main issue here is to determine that the definition part of a type
+declaration in a context is well formed relative to the preceding context.
+We also need to ensure that $\tau$ returns the expanded form of the type
+corresponding to a preterm.
+%
+\begin{Defn}{type rules with type definitions}
+\begin{eqnarray*}
+    \tau()(\Gamma, s\ :\ \tttype{} = T) & = & \ttcontext, \mbox{
+if }  \Gamma(s) \mbox{ is undefined}, \\ & &
+\tau()(\Gamma) = \ttcontext,\\ & & 
+  \mbox{and }     \tauGamma{T} = \tttype{} \\
+%
+%   \tau()(\Gamma, c : T = a) & = & \ttcontext, \mbox{ if } \tauGamma{T} =
+%      \tttype{} \mbox{ and } \tauGamma{a} = \delta(\Gamma)(T)\\
+%
+    \tau(\Gamma)(s) & = &  \delta(\Gamma)(\textit{type\/}(\Gamma(s))),\\
+                    & &  \mbox{ if } 
+\textit{kind}(\Gamma(s)) \in \{ \ttconstant{}, \ttvariable \} 
+\end{eqnarray*}
+\end{Defn}
+
+
+Note that the $\delta$ operator is idempotent, and $\tauGamma{a}$
+for a term $a$ always returns an expanded type, that is, 
+$\delta(\tauGamma{a}) = \tauGamma{a}$\@.  
+
+We do not need to update the definition of ${\mathcal M}$ from
+Definition~\ref{defn:meaning function} since the syntax for terms is
+unchanged, 
+but we do need
+to revise the notion of a satisfying context assignment (from 
+Definition~\ref{defn:satisfaction}) to respect the type
+definitions.
+\begin{Defn}{satisfaction with type definitions}
+An assignment $\gamma$ satisfies a context $\Gamma$ if
+in addition to the conditions in Definition~\ref{defn:satisfaction},
+whenever $ \textit{kind}(\Gamma(s)) = \tttype{}$ and
+$\textit{definition}(\Gamma(s))$ (abbreviated as $T$) is nonempty, then
+$\gamma(s) = \Mgamma{ T}$.
+\end{Defn}
+
+Theorems~\ref{type construction} and~\ref{simple-type-semantics}
+and~\ref{simple-term-semantics} continue to hold under these extensions,
+and the proofs are easily adapted to the modified definitions.  
+
+\begin{Eg}{type definition}
+Let $\Omega'$ be the context\\ $\Omega,
+\mathtt{boolop}:\mathtt{TYPE}=\funtype{\tupletype{\mathtt{bool}, \mathtt{bool}}}{\ttbool},
+\vee:\mathtt{boolop}$\@.  Then
+\begin{eqnarray*}
+\tau()(\Omega') & = & \mathtt{CONTEXT}\\
+%
+ \delta(\Omega')( \mathtt{boolop})  & = & \funtype{\tupletype{ \mathtt{bool},
+\mathtt{bool}}}{\ttbool},\\
+ \tau(\Omega')( \vee) & = & \funtype{\tupletype{ \mathtt{bool}, \mathtt{bool}}}{\ttbool}
+\end{eqnarray*}
+\end{Eg}
+
+\section{Summary}
+
+We have defined the simply typed fragment of PVS by introducing the syntax
+for pretypes and preterms, the type rules and semantics for well-formed
+contexts, types, and terms.  The type rules are presented in a novel
+functional style where each well-formed context is assigned the label {\tt
+CONTEXT}, each well-formed type is assigned the label {\tt TYPE}, and each
+well-formed term is assigned a canonical type.  The semantics takes a
+satisfying assignment for a context and maps a well-formed type to a set
+and a well-formed term to an element of the set corresponding to its
+canonical type.  We then defined the syntactic operations of collecting
+the free variables in an expression and for substituting terms for
+variables in an expression.
+
+The simple type theory is then extended with type definitions.  With this
+extension, two type expressions are treated as equivalent if they are
+identical after all type definitions have been expanded.  The operation
+$\delta$ returns the expanded form of a given type expression.
+
+
+\chapter{Adding Subtypes}\label{subtypes}
+
+Subtyping is one of the main features of the PVS specification
+language.\footnote{The form of subtyping used in PVS is derived from a
+suggestion of Friedrich von~Henke.}  Subtyping in PVS corresponds to the
+set-theoretic notion of a subset.  It raises several delicate issues that
+were absent in the language presented thus far.  In the simply typed
+fragment, each type corresponds to a set of values that is somehow
+structurally different from the set of values for another type so that a
+term has at most one type.  Subtyping makes it possible to introduce the
+natural numbers as a subtype of the reals, and to treat the primes, the
+even numbers, and the odd numbers as subtypes of the natural numbers.
+With subtyping, a term can obviously have several possible types, but the
+type-checking function $\tau$ may return only a single type.  We constrain
+$\tau$ to return a natural canonical type of an expression that is given
+by the declarations of the symbols in the expression.  If the expression
+is used in a context where the expected type is a supertype of its
+canonical type, then the type correctness is straightforward.  If the
+expected type is a subtype that is {\em compatible\/} with the canonical
+type of the expression, then typechecking generates proof obligations
+asserting that the expression satisfies the predicate constraints imposed
+by the expected type.  Two types are compatible if they have equivalent
+maximal supertypes.  Type equivalence in the presence of subtypes is not a
+simple notion.  Subtyping also introduces the possibility of types being
+empty.  Typed lambda calculi with possibly empty types have been studied
+by Meyer, Mitchell, Moggi, and Statman~\cite{MMMS:empty}.  This chapter
+introduces predicate subtypes and defines the notions of compatibility and
+type equivalence prior to presenting the type rules and semantics.
+
+
+We restrict our attention to contexts $\Gamma$ that extend
+the declarations:
+\begin{alltt}
+ bool : TYPE,
+ TRUE : bool,
+ FALSE : bool,
+ boolop : \(\funtype{\tupletype{\ttbool, \ttbool}}{\ttbool}\),
+ \(\neg\) : \(\funtype{\ttbool}{\ttbool}\),
+ \(\vee\) : boolop,
+ \(\wedge\) : boolop,
+ \(\supset\) : boolop
+\end{alltt}
+We will abuse PVS notation to employ the customary infix forms of
+operations like $\vee$, 
+$\wedge$, and $\supset$.    The pretype corresponding to a predicate
+subtype has the form $\{x : T \vbar a\}$ where $x$ is a symbol, $T$ is a
+pretype, and $a$ is a preterm.   
+A \emph{predicate type} in PVS is a function type where the range is the
+primitive type \texttt{bool}.  A predicate is a term that has a predicate
+type.  If $a$ is a term of type \texttt{bool}, then 
+we can define the subtype $\{ x : T \vbar a\}$ consisting of those
+elements $e$ of $T$ satisfying $a[e/x]$ ($e$ substituted for $x$ in $a$).
+Since the elements of the subtype $\{ x : T \vbar a\}$ satisfy the predicate $
+\lambda (x  : T): a$, 
+we call this type a {\em predicate subtype\/} to distinguish it from other
+forms of subtyping.  
+Universal quantification $\forall (x : T): a$ is just an abbreviation
+for the term $(\lambda (x : T): a) = (\lambda (x : T): \mathtt{TRUE})$\@.  
+Although we use the equality  predicate in the definition of universal
+quantification and in the definitions below, the actual introduction of
+equality is deferred to a later section following the introduction of
+parametric theories.  The equality between PVS terms of function type
+is to be interpreted as extensional equality.  Note that the `$=$' symbol is
+used both for the formal equality symbol in the language and for
+metatheoretic equality.   
+\comment{We will also use the notation $\lambda (x_1 : T_1, \ldots, x_n : T_n): a$
+in place of $\lambda (x : \tupletype{\seq{T}{n}}): a[
+\proj{1}(x)/x_1, \ldots, \mathtt{PROJ\_n}(x)/x_n]$\@.}
+
+
+
+Our first step will be to define the notion of a \emph{maximal supertype}
+of a given type as $\mu(T)$.  A \emph{maximal type} $T$ is one such that
+$\mu(T) = T$.  In a given context, we will apply  $\mu$ only to the
+expanded form (given by $\delta$) of a type expression.  
+\begin{Defn}{maximal supertype}
+\begin{eqnarray*}
+  \mu(s) & = & s \\
+   \mu(\{x : T \vbar a\}) & = & \mu(T) \\
+%
+   \mu(\funtype{A}{B}) & = & \funtype{A}{\mu(B)} \\
+  \mu(\tupletype{\listwo{A}{n}}) & = & \tupletype{\mu(A_1), \mu(A_2)}
+\end{eqnarray*}
+\end{Defn}
+Note that since subtypes correspond to subsets, in taking the maximal
+supertype of a function type, the domain type is held fixed.  In most type
+theories with subtypes, the rule for subtyping between function types
+$\funtype{A}{B}$ and $\funtype{A'}{B'}$ requires showing that $A'$ is a
+subtype of $A$, and $B$ is a subtype of $B'$\@.  Subtyping between
+function types is therefore said to be contravariant in the domain type
+and covariant in the range type.  Subtyping on function types in PVS is
+covariant in the range type but is neither covariant nor contravariant in
+the domain type.  This means that the function type
+$\funtype{\ttnat}{\ttnat}$ is not a supertype of the function type
+$\funtype{\ttint}{\ttnat}$\@.  Such a subtyping relation would violate
+{\em extensionality\/}\@.  Two functions on $\ttnat$ are extensionally
+equal when they return equal values when applied to equal arguments in
+$\ttnat$\@.  Consider two functions in $\funtype{\ttnat}{\ttnat}$:
+$\mathit{abs}$ which returns the absolute value, and $\mathit{idnat}$
+which behaves as an identity function on natural numbers and returns $0$
+otherwise.  These two functions will be erroneously identified if they can
+be viewed as being of type $\funtype{\ttnat}{\ttnat}$, and the subset
+interpretation of subtypes would be lost.
+
+We will also employ a weaker supertype $\mu_0(T)$ or the
+{\em direct supertype\/}, that only considers supertypes of
+explicitly given subtypes of the form $\{x : T \vbar a\}$.
+\begin{Defn}{direct supertype}
+\begin{eqnarray*}
+\mu_0(\{x : T \vbar a\}) & = & \mu_0(T)\\
+\mu_0(T) & = & T, \mbox{ otherwise}
+\end{eqnarray*}
+\end{Defn}
+
+\begin{Eg}{maximal supertype}
+Given a context containing the declarations
+$$\begin{array}{l}
+  \ttint : \tttype, \\
+  \mathtt{0} : \ttint,\\
+  \leq : \funtype{\tupletype{\ttint, \ttint}}{\ttbool},\\
+  \ttnat : \tttype = \{ i : \ttint \vbar  0 \leq i\}\\
+  \mathtt{natinjection} : \tttype = \{ f : \funtype{\ttnat}{\ttnat}\ \vbar\ 
+\forall (i, j: \ttnat): f(i) = f(j) \supset i = j \}
+\end{array}$$
+we have
+\begin{eqnarray*}
+  \mu(\mathtt{natinjection}) & = & \mu(\funtype{\ttnat}{\ttnat})\\
+ &=  & \funtype{\ttnat}{\mu(\ttnat)}\\
+ &=  & \funtype{\ttnat}{\ttint}\\
+\mu_0(\mathtt{natinjection}) & = & \funtype{\ttnat}{\ttnat}
+\end{eqnarray*}
+\end{Eg}
+
+Note that   $\mu(\mu(A)) = \mu(A)$.
+Note also that a maximal supertype is never a subtype.  
+We can in fact collect the predicates that constrain a type $A$
+relative to its maximal supertype $\mu(A)$ as $\pi(A)$\@.
+
+\begin{Defn}{subtype constraints}
+\begin{eqnarray*}
+  \pi(s) & = & \lambda (x : s): \tttrue \\
+   \pi(\{y : T \vbar a\}) & = &   \lambda (x : \mu(T)): (\pi(T)(x) \wedge a[x/y])\\
+%
+   \pi(\funtype{A}{B}) & = &   \lambda (x : \funtype{A}{\mu(B)}):
+    (\forall (y: A): \pi(B)(x(y))) \\
+%
+\pi(\tupletype{\listwo{A}{n}}) & = &
+    \lambda (x: \tupletype{\mu(A_1),  \mu(A_2)}): 
+	(\pi(A_1)(\proj{1}~x)\wedge \pi(A_2)(\proj{2}~x))
+\end{eqnarray*}
+\end{Defn}
+Observe that in Definition~\ref{defn:subtype constraints}, if $\tauGamma{A} =
+\tttype$, then 
+$\tauGamma{\pi(A)} = \funtype{\mu(A)}{
+ \mathtt{bool}}$\@.\footnote{This is somewhat tricky in the case of
+$\pi(\{y:T\vbar a\})$ since in $a[x/y]$, $x$ has type $\mu(T)$, whereas
+$y$ has type $T$\@.  As shown in Chapter~\ref{conditionals}, the
+type rules for conjunction are such that $\tau(\Gamma, x :
+\ttvar~\mu(T))(\pi(T)(x) \wedge a)$ reduces to
+$\tau(\Gamma, x : \ttvar~\mu(T))(\pi(T)(x))$ and
+$\tau(\Gamma, x : \ttvar~\mu(T), \pi(T)(x))(a[x/y])$ where the first
+conjunct is added to the context as a contextual assumption.
+One can then show by induction that $\tau(\Gamma, x:\ttvar~\mu(T),
+\pi(T)(x))(a[x/y]) = \tau(\Gamma, y: \ttvar~T)(a)$\@.  }
+
+\begin{Eg}{subtype constraints}
+\begin{eqnarray*}
+\lefteqn{\pi(\ttnat)}\\
+  & = & \lambda (j: \ttint): 0\leq j\\
+\lefteqn{\pi(\funtype{\ttnat}{\ttnat})}\\
+& = & \lambda (g : \funtype{\ttnat}{\ttint}): \forall (i:\ttnat): (\lambda
+(j:\ttint): 0 \leq j)(g(i))\\
+\lefteqn{\pi(\mathtt{natinjection})}\\
+&= & \lambda (f : \funtype{\ttnat}{\ttint}) : 
+\begin{array}[t]{cl}
+& \pi(\funtype{\ttnat}{\ttnat})(f)\\
+\wedge & (\forall (i, j: \ttnat): f(i) = f(j) \supset  i = j)
+\end{array}\\
+& = & 
+\lambda (f : \funtype{\ttnat}{\ttint}) :\\&&\hspace*{.5in}
+\begin{array}[t]{cl}
+& (\lambda (g : \funtype{\ttnat}{\ttint}) : \forall (i: \ttnat):
+(\lambda (j : \ttint): \mathtt{0}\leq j)(g(i)))(f) \\
+\wedge & (\forall (i, j: \ttnat): f(i) = f(j) \supset  i = j)
+\end{array}
+\end{eqnarray*}
+\end{Eg}
+Observe that $\pi(\mu(A))$ is essentially equivalent to $\lambda (x : \mu(A)):
+\mathtt{TRUE}$. 
+
+Since the subtype $\{x : T \vbar p(x) \wedge q(x)\}$ can also be written
+as $\{x : T \vbar q(x) \wedge p(x)\}$, we need a notion of equivalence
+between types.  One way to do this is to make types ``first-class'' and to
+allow explicit theorems to be proved about type equivalence and subtyping.
+Since this would be a fairly drastic extension to the specification
+language, we have designed the PVS type system so as to avoid any
+first-class treatment of types.  It turns out that all the needed
+properties about types (such as equality and subtyping) can be obtained by
+generating ordinary proof obligations rather than by explicitly proving
+theorems about types.
+
+We introduce 
+below a metatheoretic operation that generates the proof obligations
+needed to establish that two (maximal) types are equivalent.  This
+equivalence is denoted by $\simeq$ and is  applied only to maximal types
+and returns a list of the 
+proof obligations that must be proved.  Note the invariant in the
+definition below that the arguments to $\simeq$ are always maximal.  The
+definition of $\simeq$ makes use of the PVS equality predicate that will be
+introduced later.  A list of formulas is represented as $a_1,\ldots, a_n$.
+Given two such lists $\lis{a}{m}$ and $\lis{b}{n}$, the concatenation of
+these two lists is written as $\lis{a}{m}\ ; \ \lis{b}{n}$\@.
+
+\begin{Defn}{type equivalence proof obligations}
+\begin{eqnarray*}
+  (s \simeq s) & = & \tttrue \\
+%
+  (\funtype{A}{B} \simeq \funtype{A'}{B'}) & = & ((\mu(A)\simeq \mu(A'));
+(\pi(A) = \pi(A'));
+ (B \simeq B'))\footnotemark \\
+%
+  (\tupletype{\listwo{A}{n}} \simeq \tupletype{\listwo{B}{n}}) & = &
+    ((A_1\simeq B_1); (A_2\simeq B_2)) \\
+%
+ (A \simeq B) & = & \ttfalse, \mbox{ otherwise}
+\end{eqnarray*}
+\end{Defn}
+\footnotetext{The type correctness of the proof obligation $(\pi(A) =
+\pi(A'))$ depends on the \emph{prior} proof obligations $\mu(A)\simeq
+\mu(A')$.}
+
+\begin{Eg}{type equivalence}  Building on the context given in
+Example~\ref{eg:maximal supertype}, 
+if we have the following variants of $\ttnat{}$ and
+\texttt{natinjection}:
+$$
+\begin{array}{l}
+\mathtt{NAT} :  \tttype = \{ i : \ttint \vbar  i \leq \mathtt{0}\ 
+\supset\ i = 0\}\\
+\mathtt{NATinjection} : \tttype = \{ f : \funtype{ \mathtt{NAT}}{
+\mathtt{NAT}} \vbar 
+\forall (i, j: \mathtt{NAT}): f(i) = f(j)\ \supset\ i = j \}
+\end{array}$$
+we get
+\begin{eqnarray*}
+\mu(\funtype{ \mathtt{natinjection}}{ \mathtt{natinjection}}) =
+ \funtype{ \mathtt{natinjection}}{\funtype{\ttnat}{\ttint}}\\
+%
+\mu(\funtype{ \mathtt{NATinjection}}{ \mathtt{NATinjection}}) =
+ \funtype{ \mathtt{NATinjection}}{\funtype{ \mathtt{NAT}}{ \ttint}}
+\end{eqnarray*}
+\begin{eqnarray*}
+\lefteqn{\mu(\funtype{ \mathtt{natinjection}}{ \mathtt{natinjection}})
+\simeq \mu(\funtype{ \mathtt{NATinjection}}{ \mathtt{NATinjection}})}\\
+& = &  \begin{array}[t]{l}
+       (\mu( \mathtt{natinjection}) \simeq \mu( \mathtt{NATinjection}));\\
+       (\pi( \mathtt{natinjection}) = \pi( \mathtt{NATinjection}));\\
+       (\funtype{\ttnat}{\ttint} \simeq \funtype{ \mathtt{NAT}}{ \mathtt{int}})     
+       \end{array}\\
+ \lefteqn{(\pi( \mathtt{natinjection}) = \pi( \mathtt{NATinjection}))}\\
+& = & \begin{array}[t]{cl}
+(&      \lambda (f : \funtype{\ttnat}{\ttint}) :
+\begin{array}[t]{cl}
+& (\lambda (g : \funtype{\ttnat}{\ttint}) : \forall (i: \ttnat):
+\mathtt{0}\leq  g(i))(f) \\
+\wedge & (\forall (i, j: \ttnat): f(i) = f(j) \ \supset\  i = j)
+ \end{array}\\
+ =  \\&  \lambda (f : \funtype{ \mathtt{NAT}}{\ttint}) :\\&\hspace*{.3in}
+\begin{array}[t]{cl}
+& (\lambda (g : \funtype{ \mathtt{NAT}}{\ttint}) : \forall (i: \mathtt{NAT}):
+g(i) \leq \mathtt{0}\ \supset\ g(i) = 0)(f) \\
+\wedge & (\forall (i, j: \mathtt{NAT}): f(i) = f(j) \ \supset\  i = j)
+      \end{array} )
+ \end{array}\\
+\lefteqn{(\funtype{\ttnat}{\ttint} \simeq \funtype{ \mathtt{NAT}}{
+\mathtt{int}})}\\
+& = & (\ttint \simeq \ttint);\\&& (\lambda (i : \ttint): \mathtt{0} \leq i) =
+                              (\lambda (i : \ttint): 
+i\leq \mathtt{0}\  \supset\ i = 0); (\ttint\simeq\ttint)
+\end{eqnarray*}
+\end{Eg}
+
+A basic question during typechecking is whether two types are
+\emph{compatible}, that is,  have the same maximal supertype.  
+Two types are said to be compatible if the type equivalence proof
+obligations on their respective 
+maximal supertypes are provable.  The provability of a formula $a$
+under context $\Gamma$ is represented as $\vdash_\Gamma a$\@.  
+\begin{Defn}{compatible}
+\emph{Two types $A$ and $B$ are said to be compatible in context $\Gamma$
+(in notation, $(A \sim B)_\Gamma$)
+if $\vdash_\Gamma a$, for each $a$ in $(\mu(A)\simeq \mu(B))$.}\footnotemark
+\end{Defn}
+\footnotetext{ The PVS proof rules are described in 
+Chapter~\ref{proof theory}.}
+
+
+\comment{With subtypes, it is easy to define an empty subtype and then
+declare a constant of such an empty subtype.  The context thus has to be
+checked to disallow such an inconsistency. }
+We now extend the
+definition of $\delta$ to the case of subtypes so that it leaves the
+predicate unchanged but expands the definition of the supertype.
+%
+\begin{Defn}{expanded type with subtypes}
+\begin{eqnarray*}
+  \delta(\Gamma)(\{x : T \vbar a\}) & = & \{x : \delta(\Gamma)(T) \vbar a \}
+\end{eqnarray*}
+\end{Defn}
+
+We now extend the definition $\tau$ to the case of subtypes.  Here we
+could force $\tau$ to always return a maximal supertype but this is not
+done in Definition~\ref{defn:type rules with subtypes}  since it
+would weaken the soundness theorem without significantly simplifying the
+definition of the type rules.  The typechecking of contexts has to be
+modified to generate a {\em nonemptiness\/} proof obligation for the type of
+any constant declaration.  A constant of an empty type would lead to an
+inconsistent context, and this would mean that constant declarations are
+not conservative extensions.  This modification to
+Definition~\ref{defn:type rules} is not needed for soundness since an
+inconsistent context makes soundness trivial.  It is needed to show that
+constant declarations and definitions are conservative extensions.  Note
+that with subtypes, the type rule for an application is modified to check
+that the domain type of the function is compatible with the type of its
+argument, and that the argument satisfies any constraints imposed by the
+domain type of the function.  The case of projection expressions is also
+not straightforward since the argument type can be a subtype of a tuple
+type.  In this case, we use the direct supertype (see
+Definition~\ref{defn:direct supertype}) which must be a tuple type.
+%
+\begin{Defn}{type rules with subtypes}
+\begin{eqnarray*}
+  \tau()(\Gamma, c : T) & = & \ttcontext, \mbox{ if } \Gamma(c)
+\mbox{ is undefined},\\& &
+\tauGamma{T} =   \tttype{},\\& &
+      \tau()(\Gamma) = \ttcontext,  \mbox{ and } \\& & 
+   \vdash_\Gamma (\exists (x: T) : \tttrue)\\
+%
+  \tauGamma{\{x : T \vbar a\}} & = & \tttype{}, \mbox{ if } \Gamma(x)
+\mbox{ is undefined}, \\& & 
+    \tauGamma{T} = \tttype{}, \mbox{ and } \tau(\Gamma, x : \ttvar{}\ T)(a) = \ttbool \\
+%
+  \tauGamma{f\ a} & = &  B, \mbox{ where } \mu_0(\tauGamma{f}) =
+                                                 \funtype{A}{B},\\&  & 
+                   			\tauGamma{a} = A',\\ & &
+					(A \sim A')_\Gamma,\\& & 
+                                        \vdash_\Gamma \pi(A)(a) \\
+ \tauGamma{\proj{i}~a} & = & A_i, \mbox{ where } \mu_0(\tauGamma{a}) =
+\tupletype{A_1, A_2}
+\end{eqnarray*}
+\end{Defn}
+
+\begin{Eg}{typechecking subtypes}
+Let $\Gamma$ contain the above declarations of $\ttint$, $\ttnat$,
+$\mathtt{0}$, 
+$\leq$, and {\tt
+natinjection}.
+\begin{eqnarray*}
+\lefteqn{\tauGamma{\{i : \ttint \vbar 0\leq i\}}}\\
+  & = & \tttype\\
+\lefteqn{\tauGamma{(\lambda (f : \mathtt{ natinjection}) : f(0))(\lambda
+(i: \mathtt{nat}): i)}}\\
+& = &
+\delta(\Gamma)(\ttnat), \mbox{ if}\\& &
+( \mathtt{natinjection} \sim \funtype{\ttnat}{\ttnat})_\Gamma,\\& & 
+\vdash_\Gamma \forall (j, k : \ttnat): (\lambda (i: \ttnat): i)(j) = (\lambda
+(i: \ttnat) : i)(k) \ \supset\  j = k, \\& &
+(\ttint \sim \ttnat)_\Gamma, \mbox{ and}\\& & 
+\vdash_\Gamma \mathtt{0}\leq \mathtt{0}
+\end{eqnarray*}
+
+\end{Eg}
+
+Only one additional clause to Definition~\ref{defn:meaning function} is
+needed to capture the 
+semantics of predicate subtypes.
+\begin{Defn}{meaning function with subtypes}
+\begin{eqnarray*}
+  \lefteqn{\Mgamma{\{x : T \vbar a\}}}\\
+& = & \{ y \in \Mgamma{T} \vbar
+\mathcal{M}(\Gamma, x: \ttvar~T\vbar \gamma\{x
+\gets y\})(a) = {\oneb} \} 
+\end{eqnarray*}
+\end{Defn}
+
+\begin{Eg}{semantics of predicate subtypes}
+If we assign the usual truth table interpretation to the Boolean function
+$\supset$: 
+\begin{eqnarray*}
+\lefteqn{\Mgamma{\{f : \funtype{\ttbool}{\ttbool} \vbar \forall (x: \ttbool): x\ \supset\ f(x)\}}}\\
+& = & \{\{\pair{\zerob, \zerob}, \pair{\oneb, \oneb}\},
+\{\pair{\zerob,\oneb}, \pair{\oneb, \oneb}\}\}.
+\end{eqnarray*}
+\end{Eg}
+
+The following useful propositions are easily proved from the definitions
+given above.   Proposition~\ref{max-type-correct} asserts that the
+maximal supertype of a type is well typed.  Proposition~\ref{maximal-subset}
+asserts that the denotation of a type is a subset of the denotation of its
+maximal supertype.  Proposition~\ref{maximal-equality} asserts that
+if all the proof obligations in $(A\simeq A')$ are valid relative to
+a given assignment $\gamma$ for context $\Gamma$, then
+the denotations of $A$ and $A'$ under $\gamma$ are equal. 
+%
+\begin{prop}\label{max-type-correct}
+  If $\tau()(\Gamma) = \ttcontext$ and
+  $\tauGamma{A} = \tttype{}$, then $\tauGamma{\mu(A)} = \tttype{}$.
+\end{prop}
+\begin{prop}\label{maximal-subset}
+  If $\tau()(\Gamma) = \ttcontext$, 
+    $\tauGamma{A} = \tttype{}$,
+   and $\gamma$ satisfies $\Gamma$, 
+then
+\begin{enumerate}
+\item   $\Mgamma{A} \subseteq \Mgamma{\mu(A)}$ and
+\item   $\Mgamma{A} \subseteq \Mgamma{\mu_0(A)}$.
+\end{enumerate}
+\end{prop}
+\begin{prop}\label{maximal-equality}
+  If $A$ and $A'$ are maximal
+types in context $\Gamma$, i.e.,
+\begin{enumerate}
+\item $\tau()(\Gamma) = \ttcontext$, 
+\item $\tauGamma{A} = \tauGamma{A'} = \tttype{}$,
+\item $\mu(A) = A$ and $\mu(A') = A'$
+\end{enumerate}
+and
+ for each $a$  in $(A \simeq A')$, %%\memo{What about true/false?}
+\begin{enumerate}
+\item $a\equiv \tttrue$, or 
+\item $a\equiv (a_1 = a_2)$ and $\Mgamma{a_1} = \Mgamma{a_2}$
+holds,
+\end{enumerate}
+then $\Mgamma{A} = \Mgamma{A'}$.\footnote{ 
+We remind the reader that the formulas $a$ in $(A\simeq A')$ are equalities,
+but we have not yet formally introduced equality into the language.   } 
+\end{prop}
+\begin{prop}\label{maximal-subtype}
+If $\tau()(\Gamma) = \ttcontext$ and $\tauGamma{T} = \tttype$,
+then $\Mgamma{T} = \Mgamma{\{x : \mu(T) \vbar \pi(T)(x)\}}$.
+\end{prop}
+
+We can now examine the updated forms of the invariants given by
+Theorems~\ref{type construction},
+\ref{simple-type-semantics},
+and~\ref{simple-term-semantics}\@.  
+The proof of Theorem~\ref{type construction} remains straightforward.
+\comment{Theorems~\ref{simple-type-semantics}
+and~\ref{simple-term-semantics} must be proved with a simultaneous
+induction since types now contain terms.}  The statement of
+Theorem~\ref{simple-term-semantics} must now
+be strengthened to include soundness, that is, if $\vdash_\Gamma a$
+and $\gamma$ satisfies $\Gamma$, then 
+$\Mgamma{a} = \oneb$\@.  For now, we assume soundness
+(Theorem~\ref{proof-soundness})  since we
+have not yet presented the proof rules.  
+%
+\begin{theorem}[type soundness]
+\label{subtype-type-semantics}
+If $\tau()(\Gamma) = \ttcontext$, $\gamma$ satisfies $\Gamma$, and
+$\tauGamma{A} = \tttype$ then $\Mgamma{A}\in U$.
+\end{theorem}
+\begin{proof}
+There is only one new case to add to the induction proof of
+Theorem~\ref{simple-type-semantics}, namely, when 
+ $A\equiv \{x : T \vbar a\}$.   In this case, by
+Definition~\ref{defn:type rules with subtypes},
+$\tauGamma{T} = \tttype$, so by the induction hypothesis,
+$\Mgamma{T} \in U$.  Since, by
+Definition~\ref{defn:meaning function with subtypes}, $\Mgamma{A} \subseteq
+\Mgamma{T}$, we have $\Mgamma{A}\in U$ by
+Definition~\ref{defn:type universe}\@.
+\end{proof}
+\begin{theorem}[term soundness]\label{subtype-term-semantics}
+If $\tau()(\Gamma) = \ttcontext$, $\gamma$ satisfies $\Gamma$, and $\tauGamma{a} = A$ then $\Mgamma{a} \in
+\Mgamma{A}$\@.  
+\end{theorem}
+\begin{proof}  There are two affected cases in the proof from that of
+Theorem~\ref{simple-term-semantics}, namely, those of application
+and projection.  The case of projection expressions is straightforward
+given Proposition~\ref{maximal-subset}.
+
+When 
+ $a \equiv (f\ b)$, by Definition~\ref{defn:type rules with subtypes},
+we have that $\tauGamma{f} = \funtype{B}{A}$ and $\tauGamma{b} = B'$.
+Let $X$ be $\Mgamma{B}$, $X'$ be $\Mgamma{B'}$,  and $Y$ be $\Mgamma{A}$.
+Then by Definition~\ref{defn:meaning function}, $\Mgamma{\funtype{B}{A}} =
+Y^X$\@.  By the induction hypotheses, $\Mgamma{f}\in Y^X$ and
+$\Mgamma{b}\in X'$\@.  
+By Definition~\ref{defn:type rules with subtypes},
+soundness of the proof rules (Theorem~\ref{proof-soundness}), and
+Propositions~\ref{maximal-subset} and 
+~\ref{maximal-equality}, there is a 
+maximal supertype $\mu(B)$ of both $B$ and $B'$ such that $X$ and $X'$
+are both subsets of $\Mgamma{\mu(B)}$\@.  Since, by
+Definition~\ref{defn:type rules with subtypes}, $\vdash_\Gamma{}\pi(B)(b)$,
+and by Proposition~\ref{maximal-subtype}, $\Mgamma{B} =
+\Mgamma{\{x : \mu(B)\vbar \pi(B)(x)\}}$, we have $\Mgamma{b}\in
+\Mgamma{B}$, and hence by Definition~\ref{defn:meaning function}, $\Mgamma{(f\
+b)}\in  \Mgamma{A}$\@.  
+\end{proof}
+
+
+
+\section{Summary}
+
+PVS features a form of subtyping where it is possible to form the subtype
+of a type satisfying a given predicate on the type.  This kind of
+subtyping introduces several delicate semantic issues into PVS.  A term
+can now have several types since, for example, the term corresponding to
+the number {\tt 2} can be a prime number, an even number, a natural
+number, an integer, a rational number, or a real number.  When the
+expected type is a subtype, the canonical type of the actual term must be
+compatible with the expected type, that is, the two maximal supertypes
+must be equivalent and the actual term must satisfy any subtype
+constraints imposed by the expected type.  We have defined the notions of
+maximal supertype, subtype constraints, type equivalence, and
+compatibility.  These notions are used to define the type rules and
+semantics of the simply typed fragment of PVS extended with subtypes.
+Note that both type equivalence (and hence, compatibility) and type
+correctness are undecidable.  Proof obligations generated during
+typechecking are the only source of such undecidability.  The
+modularization of the type system into a decidable part consisting of the
+simply typed fragment,  and the proof obligations generated by
+subtyping, is perhaps the most significant design consideration in the PVS
+language.
+
+
+
+
+\chapter{Dependent Types}\label{dependent}
+
+The PVS language fragment described thus far is already quite expressive.
+It employs definitional equivalence between types and contains
+predicate subtypes.  It is undecidable whether an expression in this
+fragment is type-correct because of the proof obligations that arise with
+respect to predicate subtypes and type equivalence.  
+The next step is the addition of type dependencies between the components
+of a type.  This extension considerably
+enhances the utility of this type system.  It is also a natural extension
+given predicate subtyping which already allows types that
+{\em depend\/} on free variables in the predicates.  
+With dependent typing, we can
+make the type of one component of a product depend on the value of another
+component, or the type of the range of a function vary according to its
+argument value.
+
+\comment{Let $V$ be a metavariable that ranges over types or {\em
+type bindings\/} of the form $x : T$.}  A dependent product type is
+written as $\tupletype{x : A, B}$.  A dependent function type is written
+as $\funtype{x : A}{B}$.
+Any product or function type can be transformed into a dependent type by
+inserting dummy type bindings.  Conversely, any dummy type bindings that
+do not actually bind any variable occurrences can be
+removed.  The type rules and semantics below will assume that all product and
+function types are presented as dependent types.
+
+\begin{Eg}{dependent types}
+$$
+\begin{array}{l}
+\tupletype{i : \ttnat, \{j: \ttnat \vbar j\leq i\}}, \\
+\tupletype{i : \ttnat, \funtype{\{j: \ttnat \vbar j\leq i\}}{\ttbool}},\\
+\funtype{i: \ttint}{\{j : \ttint \vbar i\leq j\}}.
+\end{array}$$
+\end{Eg}
+
+
+Before we treat dependent types, we update the definitions of the set
+of free variables and substitution to account for the fact that
+with subtyping and dependent typing, both free and bound variables
+can occur in terms and types.  This is needed for the next step
+where we try to remove type dependencies by substituting a term into
+a dependent type.  
+\begin{Defn}{free variables for types}
+\begin{eqnarray*}
+%%  FV(\Gamma)(s) & = & \emptyset, \mbox{ if } \itkind(\Gamma(s)) \neq
+%%\ttvariable\\
+FV(\Gamma)(\funtype{x : A}{B}) & = & FV(\Gamma)(A)\union
+                   (FV(\Gamma, x: \ttvar~A)(B) - \{x\}) \\
+%
+FV(\Gamma)(\tupletype{x: A, B}) & = &
+  FV(\Gamma)(A)\union (FV(\Gamma,
+x:\ttvar~A)(B) - \{ x\}) \\
+%
+FV(\Gamma)(\{x : A \vbar a\}) & = & FV(\Gamma)(A) \union
+(FV(\Gamma, x:\ttvar~A)(a) - \{x\})
+\end{eqnarray*}
+\end{Defn}
+
+\begin{Defn}{substitution for types}
+\begin{eqnarray*}
+\lefteqn{\funtype{x : A}{B}[a_1/x_1,\ldots, a_n/x_n]}\\ & = & \funtype{y :
+A[a_1/x_1,\ldots,a_n/x_n]}{B[y/x, a_1/x_n, \ldots, a_n/x_n]} \\
+%
+\lefteqn{\tupletype{x: A, B}[a_1/x_1, \ldots, a_n/x_n]}\\ & = &
+\tupletype{y: A[a_1/x_1,\ldots, a_n/x_n], 
+B[y/x, a_1/x_1,\ldots,a_n/x_n]} \\
+%
+\lefteqn{\{x : A\vbar a\}[a_1/x_n,\ldots, a_n/x_n]}\\ & = & \{y : A[a_1/x_1,\ldots,
+a_n/x_n] \vbar  a[y/x, a_1/x_n, \ldots, a_n/x_n] \}
+\end{eqnarray*}
+where y is a fresh variable.
+\end{Defn}
+
+%\memo{Need to extend substitution to types.}
+
+\comment{ To determine whether a given expression is of a given dependent type, we
+must define the notion of a substituting the expression into the type.  If
+$\tauGamma{a}$ is a (possibly dependent) product type and $A$ is a
+(possibly dependent) product type of the form $\tupletype{x : A_1, A_2}$, then
+$a/A$ is the type obtained by ``substituting'' $a$ in $A$: if $a$ is of
+the form $(\listwo{a}{n})$ then $a/A$ is $\tupletype{x : A_1,
+a_2/(A_2[a_1/x])}$,
+else if
+$a$ is not of the form $(\listwo{a}{n})$, then we use $\proj{i}\ a$ in place
+of $a_i$\@.  Similarly, if $\tauGamma{a}$ is a function type of the form
+$\funtype{x : T}{S}$, then if $a$ is of the form $(\lambda (x : T): b)$,
+then $(\lambda (x: T): b)/\funtype{y : A}{B}$ is $\funtype{y :
+A}{b[y/x]/B}$\@.  If $a$ is not a lambda-expression but $\tauGamma{a}$ is
+of the form $\funtype{z:T}{S}$, then $a/\funtype{y : A}{B}$ is just
+$(\lambda (x : T): a(x))/\funtype{y : A}{B}$.  In every other case, $a/A$
+is just $A$\@.
+%%\memo{Need subtype case for substituting.  Put in separate definition.}
+\begin{Eg}{substituting into dependent types}
+\begin{eqnarray*}
+\lefteqn{(5, 3)~/~\tupletype{i : \ttnat, \{j: \ttnat \vbar j\leq i\}}}\\
+  & \equiv &
+\tupletype{i: \ttnat, \{j: \ttnat \vbar j\leq 5\}}\\
+%
+\lefteqn{(3, (\lambda (k: \{j : \ttnat\vbar j < 3\}): k))~/~\tupletype{i : \ttnat,
+\funtype{k : \{j: \ttnat \vbar j< i\}}{\{j: \ttnat \vbar j\leq k\}}}}\\
+&
+\equiv &
+\tupletype{ i : \ttnat, \funtype{k : \{j: \ttnat \vbar j< 3\}}{\{j: \ttnat \vbar j\leq k\}}} 
+\end{eqnarray*}
+\end{Eg}
+}
+
+\newcommand{\constrain}[2]{#1\backslash #2}
+The definition of $\mu$ has to be modified slightly for dependent types.
+The definition is first extended to type bindings, $\mu(x : T) = x :
+\mu(T)$.  The definition for the case of dependent function types
+is unchanged so that $\mu(\funtype{x : A}{B}) = \funtype{x :
+A}{\mu(B)}$\@.   The definition for the product case is more delicate
+since the definition $\mu(\tupletype{x : A, B}) = \tupletype{x : \mu(A),
+\mu(B)}$ results in a loss of type information regarding the occurrences
+of $x$ in $B$\@.\footnote{Doug Howe brought this problem to our attention.}
+To ensure that type information regarding $x$ is
+retained, we define a new operation $\constrain{T}{a}$
+which constrains the subtype assertions in  type $T$ with an additional
+assertion $a$\@.
+\begin{Defn}{Adding subtype constraints}
+\begin{eqnarray*}
+\constrain{s}{a} & = & s \\
+\constrain{\subtype{x}{T}{b}}{a} & = & \subtype{x}{T}{a \wedge b}\\
+\constrain{\funtype{A}{B}}{a} & = &
+\funtype{\constrain{A}{a}}{\constrain{B}{a}} \\
+\constrain{\tupletype{A, B}}{a} & = & \tupletype{\constrain{A}{a}, \constrain{B}{a}}
+\end{eqnarray*}
+\end{Defn}
+
+We can now define the maximal supertype operation for
+dependent tuple types.
+\begin{Defn}{Maximal supertype for dependent product types}
+\begin{eqnarray*}
+\mu(\tupletype{x : A, B}) & = & \tupletype{x : \mu(A), \constrain{B}{\pi(A)(x)}}
+\end{eqnarray*}
+\end{Defn}
+
+The definition of $\pi$ for a dependent function type $\funtype{ y :
+A}{B}$ is slightly different from that of an ordinary function type
+since $\pi(B)$ can contain free occurrences of the variable $y$\@.
+For example, $\pi(\funtype{i : \ttint}{\{j : \ttint \vbar i\leq j\}})$
+must be  $\lambda (f : \funtype{i : \ttint}{\ttint}): (\forall (i:\ttint): i
+\leq f(i))$\@.  The definition for dependent tuples remains essentially
+unchanged from that of ordinary products.  
+\begin{Defn}{constraint predicates for dependent types}
+\begin{eqnarray*}
+   \pi(\funtype{y:A}{B}) & = &  ( \lambda (x : \funtype{y:A}{\mu(B)}):
+    (\forall (y: A): \pi(B)(x(y)))) \\
+%
+  \pi(\tupletype{y:A, B}) & = &
+   ( \lambda (x: \tupletype{y : \mu(A), \constrain{\mu(B)}{\pi(A)(y)}}): \\&&\hspace*{.3in}
+	\pi(A)(\proj{1}~x)\wedge \pi(B)(\proj{2}~x)[(\proj{1}~x)/y])
+\end{eqnarray*}
+\end{Defn}
+
+\newcommand{\depfunexample}{\funtype{i : \ttint}{\{j : \ttint \vbar i\leq
+j\}}}
+\newcommand{\deptupexample}{\tupletype{i : \ttnat, \{j: nat \vbar j\leq i\}}}
+\begin{Eg}{dependent type predicates}
+\begin{eqnarray*}
+\mu(\depfunexample{}) & = & \funtype{i : \ttint}{\ttint}\\
+\pi(\depfunexample{}) & = & \lambda (f : \funtype{i : \ttint}{\ttint}):\\&&\hspace{.3in}
+\forall (i: \ttint): (\lambda (j : \ttint): i\leq j)(f(i))
+\end{eqnarray*}
+\end{Eg}
+
+The definition of $\simeq$ must also be massaged slightly for dependent
+types.  Recall that $\simeq$ checks whether two maximal types are
+equivalent by generating proof obligations as needed.  This is the
+basic operation for checking whether the expected type of an expression
+is compatible with its actual type.  
+The subtlety now is that the expected type might be
+a dependent type where the actual type is not.  Consider the
+case of the pair $\pair{5, (\lambda (x : \{j:\ttnat \vbar j\leq 5\}): x)}$
+whose type would be computed 
+by $\tau$ as $\tupletype{i : \ttnat, \funtype{\{j : \ttnat\vbar j\leq 5\}}{\{j : \ttnat\vbar j\leq 5\}}}$
+where the expected type might be 
+$\tupletype{i : \ttnat, \funtype{\{j : \ttnat \vbar j\leq i\}}{\{j : \ttnat \vbar
+j\leq i\}}}$\@.  To cope with this, 
+we will allow the option of two maximal types, say $A$ and $B$, to be
+compared using $\simeq$
+in the context of an expression $a$\@.  This is indicated by the notation $(A\simeq B)/a$\@.  
+Note that $(A\simeq B)/a$ is sensible only when $A$ and $B$
+are maximal types.   The missing cases in
+Definition~\ref{defn:type equivalence proof obligations}
+are included in
+Definition~\ref{defn:type equivalence for dependent types}.    For a list
+of formulas $a_1, \ldots, a_n$, let 
+$(\forall (x : T): a_1,\ldots, a_n)$ represent the list
+$(\forall (x : T): a_1), \ldots, (\forall (x : T): a_n)$\@.\footnote{Note that the type-correctness of the proof
+obligation $(\pi(A) = \pi(A'))$ in
+Definition~\ref{defn:type equivalence for dependent types}  depends on the
+\emph{prior} proof obligations 
+$\mu(A)\simeq \mu(A')$.}
+\begin{Defn}{type equivalence for dependent types}
+\begin{eqnarray*}
+  (s \simeq s)/a & = & \tttrue \\
+(\funtype{x:A}{B} \simeq \funtype{x':A'}{B'}) & = & (\mu(A)\simeq
+\mu(A'));\\ & & 
+(\pi(A) = \pi(A'));\\ & & 
+ (\forall (x : A): (B \simeq B'[x/x'])) \\
+%
+(\funtype{x:A}{B} \simeq \funtype{x':A'}{B'})/a & = & (\mu(A)\simeq
+\mu(A'));\\ & & 
+(\pi(A) = \pi(A'));\\ & & 
+ (\forall (x : A): (B \simeq B'[x/x'])/a(x)) \\
+%
+(\tupletype{x : A_1, A_2} \simeq \tupletype{y :
+B_1, B_2})
+& = &
+    (A_1\simeq B_1);\\ & & (\forall (x : A_1) : (A_2\simeq
+B_2[x/y]))\\
+%
+(\tupletype{x : A_1, A_2} \simeq \tupletype{y :
+B_1, B_2})/a
+& = &
+    (A_1\simeq B_1)/(\proj{1}~a);\\ & & (A_2[(\proj{1}~a)/x]\simeq
+B_2[(\proj{1}~a)/y])/(\proj{2}~a)\\
+%
+ (A \simeq B)/a & = & \ttfalse, \mbox{ otherwise.}
+\end{eqnarray*}
+\end{Defn}
+As with $(A\sim B)_\Gamma$, the notation $(A \sima 
+B)_\Gamma$ indicates that  all the proof obligations $a'$ in
+$(\mu(A)\simeq \mu(B))/a$ are provable, that is,  $\vdash_\Gamma a'$\@.  
+
+With dependent types, the type rules must be modified so as to augment the
+context suitably to account for any dependencies.  
+We will give the definitions only for dependent type constructions.
+
+%\memo{need to handle type dependencies in expected for application case.}
+\begin{Defn}{type rules with dependent types}
+\begin{eqnarray*}
+\tauGamma{\tupletype{x : A, B}} & = &
+\tttype{}, \mbox{ if } \Gamma(x) \mbox{ is undefined},\\
+& & \tauGamma{A} = \tttype{}, \mbox{ and}\\
+& & \tau(\Gamma, x : \ttvar{}\ A)(B) = \tttype{} \\
+%
+%\tauGamma{\tupletype{T_1, U_2, \ldots, U_n}} & = &
+%\tttype{}, \mbox{ if } \tauGamma{T_1} = \tttype{}, \mbox{ and}\\
+%& & \tauGamma{\tupletype{U_2,\ldots, U_n}} = \tttype{} \\
+%
+\tauGamma{\funtype{x: A}{B}} & = & \tttype{},
+    \mbox{ if } \Gamma(x) \mbox{ is undefined},\\
+& & \tauGamma{A} = \tttype{}, \mbox{ and}\\
+& & \tau(\Gamma, x : \ttvar{}\ A)(B) = \tttype{}\\
+%
+  \tauGamma{f\ a} & = &  B', \mbox{ where } \mu_0(\tauGamma{f}) = \funtype{x :
+A}{B},\\ 
+ & &                   			\tauGamma{a} = A', \\ & & 
+					(A \sima  A')_\Gamma, \\
+& &
+                                        B' \mbox{ is } B[a/x],\\ & & 
+                                        \vdash_\Gamma \pi(A)(a)\\
+%
+ \tau(\Gamma)(\lambda (x : A): a) & = &
+         \funtype{x : A}{B}, \mbox{ where}\\
+%& & A  = \tupletype{x_1 : T_1, \ldots, x_n : T_n}, \\
+& & B = \tau(\Gamma, x : \ttvar{}\ A)(a)\\ 
+%B' = B[(\proj{1}\ x)/x_1, \ldots, (\proj{n}\
+%x)/x_n] \\ & & 
+%\mbox{if } \mbox{ for } 1\leq i\in \{1, 2\},\\& & 
+%\tau(\Gamma, x_1 : \ttvar{}\ T_1,\ldots, x_{i-1} : \ttvar{}\ T_{i-1})(T_i) = \tttype{}, \\
+%& & \mbox{and for } 1\leq i, j \in \{1, 2\}, i\neq j, x_i \not\equiv x_j \\
+%
+\tauGamma{\proj{1}~a} & = & A_1, \mbox{ where } \mu_0(\tauGamma{a}) =
+\tupletype{x: A_1, A_2} \\
+%
+\tauGamma{\proj{2}~a} & = & A_2[(\proj{1}~a)/x], \mbox{ where } \mu_0(\tauGamma{a}) =
+\tupletype{x: A_1, A_2} \\
+\end{eqnarray*}
+\end{Defn}
+%%\memo{Need proj case above.}
+
+\begin{Eg}{dependent typing}
+\begin{eqnarray*}
+\tauGamma{\tupletype{x : \ttbool,  \{ y : \ttbool \vbar x \supset
+y\}}}
+& = & \tttype\\
+\tauGamma{\funtype{x : \ttbool}{\{ y : \ttbool \vbar x \supset 
+y\}}} & = & \tttype
+\end{eqnarray*}
+\end{Eg}
+Before we can assign meanings to dependent types, we must
+augment our definition of the universe $U$ to contain sets corresponding
+to these constructions.  If $F$ is a function with domain set $X$ and
+a range $Y$, which is a set of sets, we can  define $\Sigma{F}$ to be the set 
+$\{ \pair{x, y} \vbar x\in \textit{dom}(F), y\in F(x)\}$ and
+$\Pi{F}$ to be the set $\{f \vbar (\forall x\in \textit{dom}(F): f(x)\in
+F(x))\}$\@.   Note that $\Pi{F} \subseteq \bigcup_{X\in \Sigma{F}}\wp(X)$ but we
+include $\Pi{F}$ in the universe $U$ defined below for simplicity\@.
+We can drop $X\times Y$ and $X^Y$ from the universe definition since
+$X\times Y$ can be obtained from $\Sigma{F}$ by defining an
+$F$ with domain $X$ that always returns $Y$, and similarly,
+$X^Y$ can be obtained by $\Pi{F}$ where $F$ is defined to with domain $Y$
+to always return $X$\@.  The universe $U$ can then be redefined as below.  
+\begin{Defn}{type universe with dependent types}
+\begin{eqnarray*}
+  U_0 & = & \{ {\twob}, {\reals}  \} \\
+  U_{i+1} & = & U_i  \\& &
+               %\union \{X\times Y \vbar X, Y \in U_i\} \\ & & 
+                         %\union  \{X^Y \vbar X, Y \in U_i \} \\ & & 
+                          \union  \bigcup_{X\in U_i}\wp(X)\\& & 
+                           \union\; \{\Sigma{F} \vbar F \in W_i\}\\& &
+                            \union\; \{\Pi{F} \vbar F \in W_i\}\\
+  W_i & = & \bigcup_{X\in U_i} U_i^X \\
+  U_{\omega} & = & \bigcup_{i\in\omega} U_i\\
+  U & = & U_{\omega}
+\end{eqnarray*}
+\end{Defn}
+
+One very important consequence of the above extension of the universe
+is that all type dependencies must be bounded in the sense that
+if $B$ is a type expression with a single free variable $x$ of type $A$,
+then it must be the case that for any set $\mean{A}$ representing $A$,
+there is a bound $n$ such that for any $z$ in $\mean{A}$, the meaning of 
+$B$ under $\{x \gets z\}$ must be in $U_n$\@.  This property is easily
+proved by induction on the structure of a PVS type since the parameter
+$x$ can appear only in the predicate part of a subtype where the
+rank of the meaning of the resulting type cannot vary with the value
+of $x$\@.   In
+particular, there is no way to define a type constructor $T^n$ in PVS that
+returns the $n$-tuple $[\underbrace{T, [\ldots, T]}_n]$ for a given $n$
+since this would entail an unbounded dependency.  
+If unbounded type dependencies were allowed in PVS,
+one can construct a dependent type such as $\funtype{n : nat}{T^n}$
+whose representation is not in $U$ as defined above.    
+  
+
+\comment{ A simpler alternative might be to define a second universe
+U2 which starts from U1 and adds the dependent types.  This will work fine
+in the absence of parametric theories since each type contains only a
+fixed number of type dependencies.  The introduction of parametric
+theories might require a third iteration since they introduce a third
+form of dependency.  }
+
+\comment{ Seeking advice on PVS semantics:  I'd like to know if the following
+universe construction provides a satisfactory model for PVS types.  The
+PVS simple type system consists of the base types bool and real and the
+tuple [A_1,...,A_N] and function [A->B] types.  The flg. universe U1
+(where (U_n)^n is the n-fold Cartesian product and (U_n)^(U_n) is the
+function space) provides a model: 
+ U_0     = {2, R}
+ U_{n+1} = U_n UNION (U_n)^n UNION (U_n)^(U_n)
+ U_{omega} = SUP_n U_n
+ U1      = U_omega
+%
+The next step is to add subtypes {x:A \vbar p(x)}.  The above universe can be
+easily modified to accommodate these by adding the subsets of the finite
+simple types. Here P(X) is the power-set of X.  
+%
+ U_{n+1} = U_n UNION {U_n}^n UNION (U_n)^(U_n) UNION P(U_n)
+%
+The type system is then extended with dependent function [x:A->B(x)]
+and tuple types [x_1: A, B].  The simple way to construct a universe is to
+say that there are only finite length chains of dependencies and these are
+captured by the universe U2 below which is constructed iteratively from
+U1.  Here, if F is a function graph, #F is the set
+{<x, y> \vbar x in domain(F), y in F(x)}. 
+%
+  U2_0 = U1
+  U2_{n+1} = U_n UNION (U_n)^n UNION (U_n)^(U_n) UNION P(U_n)
+             UNION {#F \vbar F in {(U2_n)^X \vbar X in U2_n}}
+  U2_{omega} = SUP_n U2_n
+  U2 = U2_{omega}
+%
+The reason this works is that it is easy to see by induction on the
+type structure that we can assign a degree k to a given type,
+where the degree of a nondependent type is 0, and the degree of
+a type of the form [x: S, T(x)] is max(deg(S), deg(T)) + 1.
+Note that if a type has degree k, then it is introduced in the
+kth iteration of the definition of U2.  Dependent function types
+are ignored here since they are defined as subsets of the corresponding
+tuples so that they are introduced in the next iteration by the power-set
+construction.
+%
+There really is no need for a second universe construction here since the
+above argument would also work if the U2 iteration was rolled into that of
+U1.
+%
+Parametric theories pose a serious difficulty since we now have types and
+constants that can depend on types.  The context provides a
+meaning function to each theory that maps the meanings of the
+actual parameters to the meanings of the symbols declared in the theory.
+We need to constrain the meaning function for a theory so that
+the degree of each type name in the theory depends only on the
+degrees of the type parameters.  This is a basic invariant in PVS that
+the dependency between types and individuals only affects the
+predicate part of the type and not its structure.  One cannot, for
+instance, define a tuple whose first component is n:nat, and whose
+second component is the n-fold tuple T^n.   Note that this
+invariant is preserved by the way in which theories are actually used.
+An interpretation of a theory simply attaches a definition to an
+undefined type and the meaning of this definition will also have the
+boundedness property.  
+}
+
+
+
+
+
+
+
+
+
+The meaning function for dependent types is obtained by adding the
+cases corresponding to 
+dependent product and function types.  All the other cases are unchanged from
+Definition~\ref{defn:meaning function with subtypes}\@.  Note that the
+semantic definition  for dependent types is 
+equivalent to the nondependent one when there are no dependencies.
+\begin{Defn}{meaning function with dependent types}
+\begin{eqnarray*}
+  \Mgamma{\tupletype{x : A, B}} & = &
+    \Sigma{F}, \mbox{ where }\\& &
+     F \mbox{ maps } z \in \Mgamma{A} \mbox{ to }\\& & \mathcal{M}(\Gamma, x : \ttvar{}\
+A\vbar \gamma \{x\gets z \})(B)\\
+%
+  \Mgamma{\funtype{x:A}{B}} & = &  \Pi{F}, \mbox{ where }\\& &
+                        F \mbox{ maps } z \in \Mgamma{A} \mbox{ to }\\& &  \mathcal{M}(\Gamma,
+x : \ttvar{}\  A\vbar \gamma\{x\gets z\})(B)  
+%    
+\end{eqnarray*}
+\end{Defn}
+
+\begin{Eg}{meaning function with dependent types}
+\begin{eqnarray*}
+\Mgamma{\tupletype{x : \ttbool,  \{ y : \ttbool \vbar x \supset 
+y\}}}
+& = & \{\pair{\zerob, \zerob}, \pair{\zerob, \oneb},
+\pair{\oneb, \oneb}\}\\ 
+\Mgamma{\funtype{x : \ttbool}{\{ y : \ttbool \vbar x \supset 
+y\}}} & = & \{\{\pair{\zerob, \zerob}, \pair{\oneb, \oneb}\},\\&&\hspace*{1ex}
+              \{\pair{\zerob, \oneb}, \pair{\oneb, \oneb}\}\}
+\end{eqnarray*}
+\end{Eg}
+
+We now need to show that the extensions corresponding to dependent types
+preserve the properties in Theorems~\ref{subtype-type-semantics}
+and~\ref{subtype-term-semantics}, namely, 
+$\Mgamma{T} \in U$ and $\Mgamma{a}\in \Mgamma{\tauGamma{a}}$\@.
+For the former, we prove a stronger theorem that incorporates the
+rank-boundedness of dependent types.
+\begin{theorem}[rank bounded type semantics]\label{dependent-type-semantics}
+If $B$ is a pretype, $x_1,\ldots, x_n$ is a list of symbols,
+$A_1,\ldots, A_n$ is a list of pretypes such that  
+\begin{enumerate}
+\item $\tau()(\Gamma, x_1:\ttvar~A_1, \ldots, x_n:\ttvar~A_n) = \ttcontext$,
+\item $\tau(\Gamma, x_1:\ttvar~A_1, \ldots, x_n:\ttvar~A_n)(B) = \tttype$,
+and
+\item $\gamma$ is an assignment satisfying $\Gamma$,
+\end{enumerate}
+then
+there is an $i$ such that for any list of values
+$z_1,\ldots, z_n$ where $\gamma\{x_1\gets
+z_1\}\ldots\{x_n\gets z_n\}$ is a satisfying assignment for
+$\Gamma, x_1:\ttvar~A_1, \ldots, x_n:\ttvar~A_n$,  we have
+$$\mathcal{M}(\Gamma, x_1:\ttvar~A_1, \ldots, x_n:\ttvar~A_n\vbar
+\gamma\{x_1\gets z_1\}\ldots\{x_n\gets z_n\})(B) \in U_i.$$
+\end{theorem}
+\begin{proof}
+The proof is by structural induction on the pretype $B$\@.
+Let $\Gamma'$ denote $\Gamma, x_1:\ttvar~A_1, \ldots, x_n:\ttvar~A_n$,
+$\gamma'$ denote $\gamma\{x_1\gets z_1\}\ldots\{x_n\gets z_n\}$, and 
+$\mean{C}$ denote $\mathcal{M}(\Gamma'\vbar
+\gamma')(C)$.  
+\begin{enumerate}
+\item $B\equiv s$: Since $\mean{B}$ is just $\gamma(B)$ by
+Definition~\ref{defn:meaning function}, we have that there is an $i$
+such that $\mean{B}\in U_i$ regardless of the choice of values
+$z_1,\ldots, z_n$\@.  
+
+\item $B\equiv \{y:T\vbar a\}$: By the induction hypothesis, we know that
+for some $j$, it is always the case that $\mean{T}\in U_j$\@.  By
+Definition~\ref{defn:meaning function with subtypes}, we have that
+$\mean{B}\subseteq \mean{T}$ so if we let $i = j+1$, then
+by Definition~\ref{defn:type universe with dependent types},
+it is always the case that $\mean{B}\in U_i$\@.
+
+\item $B \equiv \funtype{y:C}{D}$: By
+Definition~\ref{defn:type rules with dependent types},
+$\Gamma'(y)$ is undefined, $\tau(\Gamma')(C) = \tttype$,
+$\tau()(\Gamma', y:\ttvar~C) = \ttcontext$, and
+$\tau(\Gamma', y:\ttvar~C)(D) = \tttype$.
+By the induction hypothesis, for some $j$,
+it is always the case that $\mathcal{M}(\Gamma'\vbar\gamma')(C)\in U_j$,
+and for some $k$, it is always the case that for any satisfying
+assignment $\gamma'\{y\gets w\}$ for $\Gamma', y:\ttvar~C$,
+we have $\mathcal{M}(\Gamma', y:\ttvar~C\vbar \gamma'\{y\gets
+w\})(D)\in U_k$\@.   Then the function $F$ mapping $w$ in
+$\mathcal{M}(\Gamma')(C)$ to $\mathcal{M}(\Gamma', y:\ttvar~C\vbar
+\gamma'\{y\gets w\})(D)$ is an element of $W_{j+k}$\@.
+Letting $i$ be $j+k+1$, we have by
+Definition~\ref{defn:meaning function with dependent types}
+that $\mathcal{M}(\Gamma'\vbar\gamma')(B)$ is
+$\Pi{F}$ and is hence an element of $U_i$ by
+Definition~\ref{defn:type universe with dependent types}\@.
+
+\item $B\equiv \tupletype{y: C, D}$:  Similar to the
+previous case.  
+\end{enumerate}
+\end{proof}
+
+By choosing $n$ to be $0$, the previous theorem yields the result 
+that when $\tauGamma{B} = \tttype$, $\Mgamma{B}\in U$\@.
+
+We next need to establish that for any preterm $a$,
+if $\tauGamma{a} = A$, then $\Mgamma{a}\in \Mgamma{A}$\@.
+The first step in this direction is the proof of the substitution lemma
+below.
+\begin{prop}\label{context-equivalence}
+If $\tau()(\Gamma) = \tau()(\Gamma') = \ttcontext$ where
+for each $s$, $\Gamma(s)$ is defined if and only if  $\Gamma'(s)$ is defined, and 
+$\gamma$ is an assignment satisfying both $\Gamma$ and $\Gamma'$,
+then
+\begin{enumerate}
+\item If  $\Gamma(s) = \ \Gamma'(s)$ (i.e., they are equal when
+either $\Gamma(s)$ or $\Gamma'(s)$ is defined), then 
+\begin{enumerate}
+\item $\tau(\Gamma)(a) = \tau(\Gamma')(a)$, for any preterm $a$.
+\item $\tau(\Gamma)(A) = \tau(\Gamma')(A)$, for any pretype $A$.
+\end{enumerate}
+
+\item $\Mgamma{A} = \mathcal{M}(\Gamma'\vbar\gamma)(A)$, when $\tauGamma{A} =
+\tttype$.
+
+\item $\Mgamma{a} = \mathcal{M}(\Gamma'\vbar\gamma)(a)$, for any preterm $a$
+such that $\tauGamma{a}$ is defined.
+\end{enumerate}
+\end{prop}
+%
+%%\memo{Needs induction on preterms and pretypes.}
+\begin{lemma}[substitution lemma]\label{substitution-lemma}
+If $\tau()(\Gamma, x:\ttvar~A) = \ttcontext$,
+$\tauGamma{a} = A$, then
+\begin{enumerate}
+\item If $\tau(\Gamma, x: \ttvar~A)(b) = B$, then\\
+$\Mgamma{b[a/x]} = \mathcal{M}(\Gamma, x:\ttvar~A\vbar \gamma\{x\gets
+\Mgamma{a}\})(b)$.
+
+\item If $\tau(\Gamma, x: \ttvar~A)(C) = \tttype$, then\\
+$\Mgamma{C[a/x]} = \mathcal{M}(\Gamma, x:\ttvar~A\vbar \gamma\{x\gets
+\Mgamma{a}\})(C)$\@. 
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+The proof is by simultaneous structural induction on the preterm $b$ and
+the pretype $C$\@.  The following cases deal with the preterm $b$.
+\begin{enumerate}
+\item $b\equiv s$: If $s\equiv x$, then by
+Definition~\ref{defn:meaning function with dependent types}, the left-hand
+side $\Mgamma{b[a/x]}$ is 
+$\Mgamma{a}$, and the right-hand side  $\mathcal{M}(\Gamma, x:\ttvar~A\vbar \gamma\{x\gets
+\Mgamma{a}\})(b)$ is also $\Mgamma{a}$\@. 
+
+If $s\not\equiv x$, then by
+Definition~\ref{defn:meaning function with dependent types},
+the left-hand side and the right-hand side
+are both equal to $\gamma(s)$\@. 
+
+\item $b \equiv (\lambda (y : C): d)$: Since $C$ can contain free
+occurrences of $x$, we have by the induction hypothesis that
+$\Mgamma{C[a/x]} = \mathcal{M}(\Gamma, x:\ttvar~A\vbar \gamma\{x\gets
+\Mgamma{a}\})(C)$\@.  Also, $\Mgamma{(\lambda (y:C): d)[a/x]}$ is equal to
+the set of ordered pairs $\pair{v, z}$ such that $v\in \Mgamma{C[a/x]}$
+and $z = \mathcal{M}(\Gamma, y:\ttvar~C[a/x]\vbar \gamma\{y\gets
+v\})(d[a/x])$\@.
+
+By the induction hypothesis,
+$\mathcal{M}(\Gamma, y:\ttvar~C[a/x]\vbar \gamma\{y\gets v\})(d[a/x])
+= \mathcal{M}(\Gamma, y:\ttvar~C[a/x], x:\ttvar~A\vbar \gamma\{y\gets
+v\}\{x\gets \Mgamma{a}\})(d)$\@.  Since $x$ does not occur free in
+$C[a/x]$, by Proposition~\ref{context-equivalence} we can exchange the
+occurrences of $y$ and $x$ so that 
+$\mathcal{M}(\Gamma, y:\ttvar~C[a/x], x:\ttvar~A\vbar \gamma\{y\gets
+v\}\{x\gets \Mgamma{a}\})(d) =
+\mathcal{M}(\Gamma, x:\ttvar~A, y:\ttvar~C[a/x]\vbar \gamma\{x\gets \Mgamma{a}\}\{y\gets
+v\})(d)$.
+
+By Definition~\ref{defn:meaning function with dependent types},
+the right-hand side is the set of ordered pairs of the form $\pair{v, z}$
+such that $v\in \mathcal{M}(\Gamma, x: \ttvar~A \vbar \gamma\{x\gets
+\Mgamma{a}\})(C)$
+and $z = \mathcal{M}(\Gamma, x: \ttvar~A, y: \ttvar~C\vbar \gamma\{x\gets
+\Mgamma{a}\}\{y\gets v\})(d)$\@.  By Proposition~\ref{context-equivalence}
+and the induction hypothesis, we know that
+$\mathcal{M}(\Gamma, x: \ttvar~A, y: \ttvar~C\vbar \gamma\{x\gets
+\Mgamma{a}\}\{y\gets v\})(d) =
+\mathcal{M}(\Gamma, x:\ttvar~A, y:\ttvar~C[a/x]\vbar \gamma\{x\gets \Mgamma{a}\}\{y\gets
+v\})(d)$, and hence it follows that the two sets of ordered pairs are
+equal.
+
+\item $b\equiv (f\ c)$:  In this case, $b[a/x]\equiv (f[a/x]~c[a/x])$
+and the conclusion follows easily from the induction hypothesis
+and Definition~\ref{defn:meaning function with dependent types}\@.
+
+\item $b\equiv (b_1, b_2)$: 
+The conclusion follows easily from 
+Definitions~\ref{defn:substitution},~\ref{defn:meaning function with
+dependent types}, and the induction hypotheses.
+
+
+\item $b\equiv (\proj{i}~c)$: This case is also straightforward since
+$b[a/x] \equiv (\proj{i}~c[a/x])$,  
+and by the induction hypothesis,
+$\mathcal{M}(\Gamma, x: \ttvar~a \vbar \gamma\{x \gets \Mgamma{a}\})(c) =
+\Mgamma{c[a/x]}$.  
+%
+\end{enumerate}
+
+The remaining cases deal with the pretype $C$\@.
+\begin{enumerate}
+\item $C\equiv s$:  This case is trivial since by
+Definition~\ref{defn:substitution}, $C[a/x]\equiv C$ and
+the left-hand and right-hand sides both reduce to $\gamma(C)$\@.
+
+\item $C\equiv \{y : T \vbar d\}$: The argument here follows along the
+lines of the $b\equiv (\lambda (x : C): D)$ case above.
+By the induction hypotheses, we know that
+\begin{eqnarray*}
+\lefteqn{\mathcal{M}(\Gamma, x : \ttvar~A\vbar \gamma\{x\gets
+\Mgamma{a}\})(T)}\\
+& = & \Mgamma{T[a/x]}\\
+\lefteqn{\mathcal{M}(\Gamma, y : \ttvar~T[a/x], x : \ttvar~A\vbar \gamma\{y\gets
+z\}\{x\gets \Mgamma{a}\})(d)}\\
+& = & \mathcal{M}(\Gamma, y : \ttvar~T[a/x]\vbar \gamma\{y\gets z\})(d[a/x]),\\&&
+\mbox{ for any } z\in \Mgamma{T[a/x]}
+\end{eqnarray*}
+The conclusion follows from Proposition~\ref{context-equivalence}
+and Definition~\ref{defn:meaning function with dependent types}.
+
+\item $C\equiv \funtype{y:C_1}{C_2}$: The argument here is similar
+to that of the previous case.  Essentially, by the induction hypothesis
+and Proposition~\ref{context-equivalence}, the function mapping
+$z\in \mathcal{M}(\Gamma, x : \ttvar~A\vbar \gamma\{x\gets \Mgamma{a})(C_1)$
+to $\mathcal{M}(\Gamma, y:\ttvar~C_1[a/x], x : \ttvar~A\vbar \gamma\{y\gets
+z\}\{x\gets \Mgamma{a}\})(C_2)$ is the same as the function mapping
+$z\in \Mgamma{C_1[a/x]}$ to $\mathcal{M}(\Gamma, y: \ttvar~C_1[a/x]\vbar
+\gamma\{y\gets z\})(C_2[a/x])$\@.  
+
+\item $C\equiv \tupletype{y:C_1, C_2}$:   Similar to the previous case.
+\end{enumerate}
+\end{proof}
+
+Proposition~\ref{substitution-equivalence} is stated below without proof.
+It asserts the semantic equivalence with respect to term $a$
+of types $A$ and $B$ when $(A\sima B)_\Gamma$ holds.   Note that its
+correctness depends on the soundness of the proof rules.  
+
+\begin{prop}\label{substitution-equivalence}
+If $\tau()(\Gamma) = \ttcontext$,  $a$ is a preterm such that
+$\tauGamma{a} = B$, and $(A\sima  B)_\Gamma$,
+then $\Mgamma{a}\in \Mgamma{A}$ iff $\Mgamma{a}\in \Mgamma{B}$\@.  
+\comment{
+\begin{enumerate}
+\item $\Mgamma{a}\in \Mgamma{A}$ iff $\Mgamma{a}\in \Mgamma{a/A}$
+\item $\vdash \pi(a/A)(a)$ iff $\vdash \pi(A)(a)$\@.
+\end{enumerate}}
+\end{prop}
+%
+\begin{theorem}\label{dependent-term-semantics}
+If $\tau()(\Gamma) = \ttcontext$, $\gamma$ is an assignment satisfying
+$\Gamma$, and $a$ is a preterm such that $\tauGamma{a} = A$, then
+$\Mgamma{a}\in \Mgamma{A}$\@.   
+\end{theorem}
+\begin{proof}
+The proof is by  induction on the structure of the preterm
+$a$\@.
+\begin{enumerate}
+\item $a\equiv s$: Then  by
+Definition~\ref{defn:meaning function with dependent types},
+$\Mgamma{a} = \gamma(a)$, and by Definition~\ref{defn:satisfaction},
+we have that $\gamma(a)\in \Mgamma{A}$\@.
+
+\item $a \equiv (\lambda (x : C): b)$:  By
+Definition~\ref{defn:type rules with dependent types}, we
+have $\tauGamma{a} = A = \funtype{x : C}{\tau(\Gamma, x: \ttvar~C)(b)}$\@.
+Let $B$ label $\tau(\Gamma, x: \ttvar~C)(b)$\@.  
+We know that $\Mgamma{A}$ is of the form $\Pi{} F$ where
+$F$ maps $z\in \Mgamma{C}$ to $\mathcal{M}(\Gamma, x : \ttvar~C\vbar \gamma\{x
+\gets z\})(B)$\@.
+
+By the induction hypothesis on $b$, we know that for any $z\in \Mgamma{C}$, 
+$\mathcal{M}(\Gamma, x : \ttvar~C\vbar \gamma\{x \gets z\})(b)\in
+\mathcal{M}(\Gamma, x : \ttvar~C\vbar \gamma\{x
+\gets z\})(B)$\@.  
+Since by Definition~\ref{defn:meaning function with dependent types},
+$\Mgamma{a}$ is a function mapping $z\in \Mgamma{C}$ to
+$\mathcal{M}(\Gamma, x : \ttvar~C\vbar \gamma\{x \gets z\})(b)$, we have
+$\Mgamma{a} \in \Pi F$ by the
+definition of $\Pi$\@.  
+
+\item $a \equiv (f~b)$: By
+Definition~\ref{defn:type rules with dependent types}, we have that
+$\tauGamma{f} = \funtype{x : B}{A'}$, $\tauGamma{b} = B'$,
+$(B \sima  B')_\Gamma$,  $A \equiv A'[a/x]$, and
+$\vdash_\Gamma\pi(B)(b)$\@.  We know by the induction hypothesis
+that $\Mgamma{f}\in \Mgamma{\funtype{x : B}{A'}}$ and
+$\Mgamma{b} \in \Mgamma{B'}$\@.  By
+Propositions~\ref{substitution-equivalence}
+and~\ref{maximal-subtype},
+$\Mgamma{b}\in \Mgamma{\mu(B)}$\@.  
+We therefore have 
+by Proposition~\ref{maximal-subtype} that $\Mgamma{b}\in \Mgamma{B}$\@.
+By Definition~\ref{defn:meaning function with dependent types},
+$\Mgamma{a}\in \mathcal{M}(\Gamma, x: \ttvar~B\vbar \gamma\{x\gets
+\Mgamma{b}\})(A')$,
+and hence  by Lemma~\ref{substitution-lemma} it follows that
+$\Mgamma{a}\in \Mgamma{A'[b/x]}$\@.  
+
+\item $a \equiv (\listwo{a}{n})$:  The conclusion follows easily from
+the induction hypothesis and
+Definition~\ref{defn:type rules with dependent types}\@.
+
+\item $a\equiv (\proj{i}~b)$: The conclusion follows easily from
+Proposition~\ref{maximal-subtype}, the  induction hypothesis,
+and Definition~\ref{defn:type rules with dependent types}\@.
+The $(\proj{2}~b)$ case also employs Lemma~\ref{substitution-lemma}\@.  
+\end{enumerate}
+\end{proof}
+
+\comment{
+\begin{lemma}\label{rank-boundedness}
+If $\tau()(\Gamma) = \ttcontext$,
+$\gamma$ is a satisfying assignment for $\Gamma$, 
+$\tauGamma{A} = \tttype$,
+$\Mgamma{A} \in U$, 
+and $\tau(\Gamma, x: \ttvar~A)(B) = \tttype$, then
+there is an $i$ such that the function $F$ mapping
+$z$ in $\Mgamma{A}$ to 
+$\mathcal{M}(\Gamma, x : \ttvar~A\vbar \gamma\{x\gets z\})(B)$
+is in $W_i$\@.  
+\end{lemma}
+\begin{proof}
+The proof is by induction on the structure of the pretype $B$\@.
+Let the rank of $\Mgamma{A}$ be $j$\@.  
+\begin{enumerate}
+\item $B\equiv s$: Then $\mathcal{M}(\Gamma, x : \ttvar~A\vbar \gamma\{x\gets
+z\})(B)$ is just $\gamma(s)$ and by Definition~ref{defn:satisfaction},
+we have some $k$ such that $\gamma(s)\in U_k$\@.  Let $i$ be the maximum
+of $j$ and $k$, we have $F\in U_i$\@.
+%
+\item $B\equiv \funtype{y:C}{D}$:  We have the induction hypothesis
+%
+\end{enumerate}
+\end{proof}
+%
+\begin{theorem}\label{dependent-type-semantics}
+If $\tau()(\Gamma) = \ttcontext$,  $\gamma$ satisfies $\Gamma$,
+and $\tauGamma{A} = \tttype$, 
+then 
+\begin{enumerate}
+%\item  $\Mgamma{A}\in U$, and
+%%\item if $\tauGamma{b} = B$ then $\Mgamma{b} \in \Mgamma{B}$, and
+\item if for all $n$, for $i$,  $1\leq i\leq n$,  $\mathcal{M}(\gamma,
+x_1:\ttvar~A_1, \ldots x_{i-1}:\ttvar~A_{i-1}\vbar {A_i})\in U$ and 
+$\tau(\Gamma, x_1 : \ttvar~A_1, \ldots, x_n:\ttvar~A_n)(B) = \tttype$,
+then $\mathcal{M}(\Gamma, x_1 : \ttvar~A_1\ldots\vbar \gamma\{x\gets z\})(B)$
+there exists an $i$ such that 
+whenever $F$ maps $z$ in $\Mgamma{A}$ to $\mathcal{M}(\Gamma, x :
+\ttvar~A\vbar \gamma\{x\gets z\})(B)$, there exists an $i$ such
+that $F\in W_i$\@.  
+\end{enumerate}
+\end{theorem}
+\begin{proof}
+The proof is by simultaneous induction on the sizes of pretypes $A$ and
+$B$\@.  We present the structure of the entire proof here but refer to
+the proofs of Theorems~\ref{simple-type-semantics}
+and~\ref{subtype-type-semantics} as needed.
+\begin{enumerate}
+\item $A\equiv s$: Same as in Theorem~\ref{simple-type-semantics}\@.
+%
+\item $A\equiv \funtype{y : C}{D}$: We have by the induction hypothesis
+that $\Mgamma{C}\in U$ and for any $z\in \Mgamma{C}$, $\mathcal{M}(\Gamma,
+y:\ttvar~C\vbar \gamma\{y\gets z\})(D) \in U$\@.  We also have by the
+induction hypothesis with $D$ for $B$ that there is an $i$ such that
+the function $F$ mapping $z\in \Mgamma{C}$ to $\mathcal{M}(\Gamma,
+y:\ttvar~C\vbar \gamma\{y\gets z\})(D)$ is in $W_i$\@.
+Since, by Definition~\ref{defn:meaning function with dependent types},
+$\Mgamma{A} = \Pi{F}$, we have $\Mgamma{A}$ in $U_{i+1}$ and hence $U$\@.
+%
+\item $A\equiv \tupletype{x_1 : T_1,\ldots, x_n : T_n}$:  We have by the
+induction hypothesis that $\Mgamma{T_1}\in U$ and that there is an $i$
+such that 
+the function $F$ mapping $z$ in $\Mgamma{T_1}$ to
+$\mathcal{M}(\Gamma, x: \ttvar~T_1\vbar \gamma\{x\gets z\})(\tupletype{x_2:
+T_2, \ldots x_n: T_n})$  is in $W_i$\@.  Since, by
+Definition~\ref{defn:meaning function with dependent types},
+$\Mgamma{A} = \Sigma{F}$,
+we have by Definition~\ref{defn:type universe with dependent types},
+that $\Mgamma{A}\in U_{i+1}$ and hence $\Mgamma{A}\in U$\@.
+%
+\item $A\equiv \{y : T | a\}$: Same as in
+Theorem~\ref{subtype-type-semantics}\@.
+%
+\item $B \equiv s$:  Let $j$ be the rank of $\Mgamma{A}$\@.  
+Then $\mathcal{M}(\Gamma, x : \ttvar~A\vbar \gamma\{x\gets
+z\})(B)$ is just $\gamma(s)$ and by Definition~ref{defn:satisfaction},
+we have some $k$ such that $\gamma(s)\in U_k$\@.  Let $i$ be the maximum
+of $j$ and $k$, we have $F\in U_i$\@.
+%
+\item $B\equiv \funtype{x: C}{D}$:  
+\end{enumerate}
+\end{proof}
+}
+
+\section{Summary}
+
+Dependent typing is a significant enhancement to PVS since it adds
+an important degree of flexibility and precision to the type system.
+Notions  such as subtype constraints and type equivalence
+that were introduced for subtyping can be extended for the case of
+dependent types.  The semantic universe must be extended to include
+additional sets to accommodate the semantics of dependent types.
+The rank-boundedness of type dependencies is crucial in demonstrating that
+dependent types can be interpreted in this extended semantic universe.
+  
+
+
+
+
+
+
+\chapter{Theories and Parametric Theories}\label{theories}
+
+The next extension of the PVS language introduces theories and parametric
+theories.  
+The theory construct of PVS provides a way of packaging together a related
+collection of declarations.  Theories can be parametric in
+individual or type parameters.  Thus, PVS permits polymorphism or type
+parametricity only at the theory level rather than at the declaration
+level as in HOL~\cite{Gordon&Melham:HOL}.  
+We first consider PVS theories without parameters.  The main change now is
+that contexts are no longer simple and can contain theory declarations as
+well.  A theory declaration has the form $m : \tttheory{} = \Delta$,
+where $\Delta$ is a \emph{simple context} with no variable or theory
+declarations. 
+If $\Gamma(m)$ is the declaration $m : \tttheory{} = \Delta$, then
+$ \itkind{}(\Gamma(m)) = \tttheory{}$, and
+$ \itdef{}(\Gamma(m)) = \Delta$\@.
+Correspondingly, constants and type names are no longer just symbols
+but can be compound names of the form $m.s$ where $m$ is a symbol
+naming a theory and $s$ is a symbol corresponding to the constant or type
+name.
+
+\section{Theories without Parameters}
+
+To define the type rules for theories, we first modify the definition of
+$\tau$ for simple contexts so that the context argument is not always
+empty.  Here $\Delta ; \Gamma$ represents the concatenation of contexts.
+\begin{Defn}{type rules for contexts}
+\begin{eqnarray*}
+  %
+  \tau(\Theta)(\{\}) & = & \ttcontext \\
+%
+  \tau(\Theta)(\Gamma, s\ :\ \tttype{} = T) & = & \ttcontext, \mbox{
+if } \Gamma(s) \mbox{ and } \Theta(s) \mbox{ are undefined,}\\& & 
+  \tau(\Theta)(\Gamma) = \ttcontext, \mbox{and} \\& &
+  \tau(\Theta;\Gamma)(T) = \tttype{}\\
+%
+  \tau(\Theta)(\Gamma, c : T) & = & \ttcontext, \mbox{ if }
+\Gamma(c) \mbox{ and } \Theta(c)  \mbox{ are undefined,}\\ & &
+\tau(\Theta)(\Gamma) = \ttcontext, \mbox{and }\\
+   & &  \tau(\Theta;\Gamma)(T) =
+      \tttype{}\\
+%
+%
+  \tau(\Theta)(\Gamma, x : \ttvar{}\ T) & = & \ttcontext, \mbox{ if }
+\Gamma(x) \mbox{ and } \Theta(x) \mbox{ are undefined,} \\ & &
+\tau(\Theta)(\Gamma) = \ttcontext, \mbox{and }\\
+    & &  \tau(\Theta;\Gamma)(T)
+    = \tttype{}
+%
+\end{eqnarray*}
+\end{Defn}
+\begin{Eg}{type rules for contexts}
+\begin{eqnarray*}
+\tau(\Omega)(\ttreal{} : \tttype{}, \mathtt{0} : \ttreal{},
+\leq : \funtype{\tupletype{\ttreal{}, \ttreal{}}}{\ttbool}) & = & \ttcontext
+\end{eqnarray*}
+\end{Eg}
+
+The following rule handles theory declarations.
+\begin{Defn}{type rule for contexts with theory declarations}
+\begin{eqnarray*}
+  \tau(\Theta)(\Gamma, m : \tttheory{} = \Delta) & = & \ttcontext
+     \mbox{ if } \Theta(m), \Gamma(m) \mbox{ are undefined} \\& &
+     \Delta \mbox{ only has constant and type declarations,}\\ & &
+     \tau(\Theta ; \Gamma)(\Delta)  = \ttcontext,\\& &
+     \tau(\Theta)(\Gamma) = \ttcontext
+\end{eqnarray*}
+\end{Defn}
+\begin{Eg}{contexts with theory declarations}
+\begin{eqnarray*}
+\lefteqn{\tau(\Omega)(
+\mathtt{reals} : \tttheory{} = (\ttreal{} : \tttype{}, \mathtt{0} : \ttreal{},
+\leq : \funtype{\tupletype{\ttreal{},
+\ttreal{}}}{\ttbool})) }\\
+& = & 
+\ttcontext
+\end{eqnarray*}
+
+\end{Eg}
+
+
+\comment{\memo{Perhaps each declaration should be required to introduce a new
+symbol so that there is no confusion between $\Gamma$ and $\gamma$.}}
+
+\comment{Example:
+bool: TYPE,
+integer : THEORY = (integer: TYPE, + :
+\funtype{\tupletype{integer, integer}}{ {\tt integer}}),
+natural : THEORY = (nat : TYPE)
+}
+
+Any reference to a type name or a constant $s$ declared in a theory $m$
+outside of this theory must be prefixed by the theory name, as in $m.s$\@.
+Note that references to a type name or constant that is declared in the
+same theory 
+should not be given a theory prefix.  Before we can give the type rules, we
+must update the definition of the type expansion
+operation $\delta$ to prefix symbols with their theory names.
+Let $\Gamma(m)(s)$  abbreviate $ \itdef{}(\Gamma(m))(s)$, which is
+the declaration of the symbol $s$ in the definition of the theory $m$\@.
+Let $\eta(\Gamma, m)(a)$ be the result of prefixing every unprefixed type or
+constant symbol in $a$ by $m$, where $a$ is either an individual or type
+expression.  We omit the definition of $\eta$ since it is straightforward.
+  
+%The $\delta$ operation is modified so that its first argument is now a
+%pair consisting of a context and the `current' theory name.  The theory
+%name component can be empty, as in Definition~\ref{defn:expanded type}\@.
+We modify the definition of $\delta$ in Definition~\ref{defn:expanded
+type} with the following clauses.  
+\begin{Defn}{expanded type for prefixed symbols}
+\begin{eqnarray*}
+  \delta(\Gamma)(m.s) & = & \delta(\Gamma)(
+\eta(\Gamma, m)(\itdef{}(\Gamma(m)(s)))), 
+                        \mbox{ if }\\& &  \itdef{}(\Gamma(m)(s)) \mbox{ is
+nonempty.}\\
+  \delta(\Gamma)(m.s) & = & m.s
+                        \mbox{ if } \itdef{}(\Gamma(m)(s)) \mbox{ is
+empty.}
+%\\
+% \delta(\Gamma, m)(s) & = & m.s \mbox{ if } 
+%\itdef{}(\Gamma(m)(s)) \mbox{ is
+%empty.  }
+\end{eqnarray*}
+\end{Defn}
+\begin{Eg}{expanded type for prefixed symbols}
+Let $\Omega''$ be the context
+$$\Omega, 
+\mathtt{reals} : \tttheory{} = \begin{array}[t]{l}
+				   (\ttreal{} : \tttype{},\\\
+                                    \mathtt{0} : \ttreal{},\\\ 
+                        \leq : \funtype{\tupletype{\ttreal{},
+              \ttreal{}}}{\ttbool}, \\\ 
+        \mathtt{nonneg\_real} : \tttype{} = \{x : \ttreal{} \vbar
+\leq(0, x)\},\\\  \mathtt{1} : \mathtt{nonneg\_real} )
+				   \end{array}$$
+
+$$\delta(\Omega'')( \mathtt{reals.nonneg\_real}) =
+\{ {x} : \mathtt{reals.real} \vbar
+\mathtt{reals}.\!\leq( \mathtt{reals.0}, {x})\}$$
+\end{Eg}
+
+The type rules for prefixed symbols are given below.
+\begin{Defn}{type rules for prefixed symbols}
+\begin{eqnarray*}
+  \tauGamma{m.s} & = & \tttype{}, \mbox{ if } \itkind{}(\Gamma(m)) =
+\tttheory{} \mbox{ and }\\ & &
+\itkind{}(\Gamma(m)(s)) = \tttype{}\\
+%
+  \tauGamma{m.s} & = & \delta(\Gamma)(\eta(\Gamma, m)(\ittype(\Gamma(m)(s)))), \\ &
+&
+\mbox{ if } \itkind{}(\Gamma(m)) =
+\tttheory{} \mbox{ and }\\ & &
+\itkind{}(\Gamma(m)(s)) = \ttconstant{}
+\end{eqnarray*}
+\end{Defn}
+
+\begin{Eg}{type rules for prefixed symbols}
+\begin{eqnarray*}
+\tau(\Omega'')(\mathtt{reals.nonneg\_real}) & = & \tttype{}\\
+\tau(\Omega'')(\mathtt{reals.1}) & = &
+\{ {x} : \mathtt{reals.real} \vbar
+\mathtt{reals}.\!\leq( \mathtt{reals.0}, {x})\}
+\end{eqnarray*}
+\end{Eg}
+
+\comment{
+\begin{Eg}{contexts with theory declarations}
+\begin{eqnarray*}
+\tau(\Omega)(
+\begin{array}[t]{l}
+\mathtt{reals} : \tttheory{} = (\ttreal{} : \tttype{}, \mathtt{0} : \ttreal{},
+\leq : \funtype{\tupletype{\ttreal{},
+\ttreal{}}}{\ttbool}), \\
+\mathtt{nonneg\_reals}: \tttheory{}  = \\\ \
+   ( \mathtt{nonneg\_real} :
+\tttype{} = \{ {x} : \mathtt{reals.real} \vbar
+\mathtt{reals.\leq}( \mathtt{reals.0}, {x})\},\\\ \  \mathtt{sqrt}: \funtype{
+\mathtt{nonneg_real}}{ \mathtt{nonneg_real}}\} )) 
+\end{array}
+& = & 
+\ttcontext
+\end{eqnarray*}
+%
+\end{Eg}
+}
+
+
+
+
+The operations  $\pi$, and $\mu$ remain unchanged.
+  An assignment $\gamma$ now
+maps a theory name $m$ to an assignment $\gamma(m)$.
+\begin{Defn}{meaning function for prefixed symbols}
+\begin{eqnarray*}
+  \Mgamma{m.s} & = & \gamma(m)(s)
+\end{eqnarray*}
+\end{Defn}
+\begin{Eg}{meaning function for prefixed symbols}
+Let $\omega''$ be a satisfying assignment for $\Omega''$ of the form
+$$\ldots \{ \mathtt{reals}\gets \{\ttreal{}\gets
+\reals\}\{\mathtt{0}\gets \zerob\}\ldots \} \ldots.$$
+
+\begin{eqnarray*}
+\mathcal{M}(\Omega''\vbar\omega'')(\mathtt{reals.real}) & = & \reals\\
+\mathcal{M}(\Omega''\vbar\omega'')(\mathtt{reals.0}) & = & \zerob
+\end{eqnarray*}
+\end{Eg}
+
+
+
+\begin{Defn}{satisfaction for contexts with theories}
+An assignment~$\gamma$ satisfies a context $\Gamma$ if in addition to the 
+constraints stated in
+Definition~\ref{defn:satisfaction with type definitions}, $\gamma$ maps 
+every theory $m$  declared in $\Gamma$ to 
+a satisfying assignment for the body of the theory given by $
+\itdef{}(\Gamma(m))$, that is for each declared symbol $s$ in $m$:
+\begin{enumerate}
+\item If $ \itkind{}(\Gamma(m)(s)) = \tttype{}$, then $\gamma(m)(s)
+\in U$.
+
+
+\item If $\itkind{}(\Gamma(m)(s)) = \ttconstant{}$, then $\gamma(m)(s)
+\in \mathcal{M}(\Gamma\vbar\gamma)(\tau(\Gamma)(m.s))$.
+
+\item  If  $\itdef{}(\Gamma(m)(s))$ is nonempty,
+then $$\gamma(m)(s) = \mathcal{M}(\Gamma| \gamma)(
+\eta(\Gamma, m)(\itdef{}(\Gamma(m)(s)))).$$
+\end{enumerate}
+\end{Defn}
+
+
+\section{Constant Definitions}  We first extend the subset of PVS
+described so far to include 
+constant definitions in a manner similar to type definitions.
+This extension is used in formalizing the semantics of parametric theories.
+The syntax
+for a constant definition is $c : T = a$ where $\itdef{}(\Gamma(c))$ is
+$a$\@.  These definitions are explicit, that is, not recursive.  With this
+extension, the type rule for constant declarations in contexts changes
+from that of Definition~\ref{defn:type rules with subtypes}.
+\begin{Defn}{type rule with constant definitions}
+\begin{eqnarray*}
+\tau(\Theta)(\Gamma, c : T = a) & = & T, \mbox{ if } \Gamma(c) \mbox{ is
+undefined}, \\& & \Theta(c) \mbox{ is undefined}, \\& &
+\tau(\Theta)(\Gamma) = \ttcontext,\\& &
+%\vdash_\Gamma (\exists(x : T) : \tttrue),\\& &
+\tau(\Theta;\Gamma)(a) = T',\\& & 
+(T\sim T')_\Gamma,\\& &
+\vdash_\Gamma \pi(T)(a)
+\end{eqnarray*}
+\end{Defn}
+
+The notion of satisfaction must be extended from that of
+Definition~\ref{defn:satisfaction for contexts with theories} to ensure
+that an 
+assignment 
+for a defined constant satisfies the definition.
+\begin{Defn}{satisfaction with constant definitions}
+An assignment $\gamma$ satisfies a context $\Gamma$ if
+in addition to the conditions in
+Definition~\ref{defn:satisfaction for contexts with theories}, whenever $
+\textit{kind}(\Gamma(s)) = \ttconstant$ and 
+$\textit{definition}(\Gamma(s))$ is nonempty, then
+$\gamma(s) = \Mgamma{ \textit{definition}(\Gamma(s))}$.
+\end{Defn}
+
+
+\section{Parametric Theories}
+
+The extension to parametric theories is obtained by permitting
+theories to be declared as $ m[\Pi] : \tttheory{} = \Delta$,
+where $\Pi$ is a context listing the parameters and $\Delta$ is
+the body of the theory.  If the above declaration of $m$ occurs
+in context $\Gamma$, then $\Pi$ is $ \emph{formals}(\Gamma(m))$, and
+$\Delta$ is $ \itdef{}(\Gamma(m))$.
+For nonparametric theories, $ \mathit{formals}(\Gamma(m))$
+is empty.   
+Types or constants declared in a parametric theory are
+referenced outside the theory as $m[\sigma].s$, where $\sigma$
+is a list of \emph{actual} parameters consisting of types and terms.  
+The type rule from the nonparametric case
+must be modified to check the parameters.
+\begin{Defn}{type rule for contexts with parametric theories}
+\begin{eqnarray*}
+  \lefteqn{\tau(\Theta)(\Gamma, m[\Pi] : \tttheory{} = \Delta)}\\ & = & \ttcontext
+     \mbox{ if } \Gamma(m), \Theta(m), \Pi(m) \mbox{ are undefined}\\& &
+      \tau(\Theta)(\Gamma) = \ttcontext\\& &
+      \tau(\Theta ; \Gamma)(\Pi)  = \ttcontext,  \\ & & 
+      \Pi \mbox{ has only constant and}\\& & \mbox{type declarations
+without definitions,}\\ & &
+      \tau(\Theta ; \Gamma ; \Pi)(\Delta)  = \ttcontext \\& &
+      \mbox{ $\Delta$ only has type and constant declarations}
+\end{eqnarray*}
+\end{Defn}
+
+  The 
+ type  rules for prefixed symbols are given below.
+The notation $\Pi = \sigma$, where $\Pi$ is of the form
+$s_1 : \alpha_1,\ldots, s_n : \alpha_n$, and $\sigma$ is of
+the form $\sigma_1,\ldots, \sigma_n$, is short for
+the context $s_1 : \alpha_1 = \sigma_1, \ldots, s_n : \alpha_n =
+\sigma_n$\@.  The definition of $\eta$ is now extended to substitute
+actual theory parameters for formals, so that $\eta(\Gamma, m[\sigma])(a)$
+prefixes every unprefixed symbol $s$ in $a$ that is declared in
+$\itdef(\Gamma(m))$ by $m[\sigma]$, and replaces any $s_i$ in $a$
+that is declared in $\itformals(\Gamma(m))$ by the corresponding
+$\sigma_i$ in $\sigma$\@.  
+
+\begin{Defn}{type rules for prefixed names with actuals}
+Let $\Pi$ be $\mathit{formals}(\Gamma(m))$\@.  
+\begin{eqnarray*}
+  \tauGamma{m[\sigma].s} & = & \tttype{}, \mbox{ if }\\& & 
+\itkind{}(\Gamma(m)) =  \tttheory{} \\ & &
+\itkind{}(\Gamma(m))(s) = \tttype{} \mbox{ and }\\& &
+\tauGamma{\Pi = \sigma} = \ttcontext\\
+%
+  \tauGamma{m[\sigma].s} & = & \delta(\Gamma)((\eta(\Gamma, m[\sigma])(
+\ittype(\Gamma(m)(s)) )), \\ & &
+\mbox{ if } \itkind{}(\Gamma(m)) = \tttheory{} \\ & &
+\itkind{}(\Gamma(m)(s)) = \ttconstant{} \mbox{ and }\\& &
+\tauGamma{\Pi = \sigma} = \ttcontext
+\end{eqnarray*}
+\end{Defn}
+
+\comment{The definition of $\delta$ has to be modified slightly to carry along the
+parameters.  The notation $a[\Pi]$ represents the result of
+replacing each occurrence of a symbol $s$ in $a$ such that $\Pi(s)$ is
+defined, by $\itdef{}(\Pi(s))$ when it exists.}
+\begin{Defn}{type expansion with parametric theories}
+\begin{eqnarray*}
+  \delta(\Gamma)(m[\sigma].s) & = & \delta(\Gamma)(
+(\eta(\Gamma, m[\sigma])(\itdef{}(\Gamma(m)(s)))) ), 
+                        \mbox{ if }\\ & &  \itdef{}(\Gamma(m)(s)) \mbox{ is
+nonempty.}\\
+  \delta(\Gamma)(m[\sigma].s) & = & m[\sigma].s, 
+                        \mbox{ if } \itdef{}(\Gamma(m)(s)) \mbox{ is
+empty.}
+%\\
+% \delta(\Gamma, m[\sigma])(s) & = & \delta(\Gamma)( \itdef{}((\Pi
+%= \sigma)(s))) \mbox{ if } \\& &
+% \Pi(s) \mbox{ is defined}\\
+% \delta(\Gamma, m[\sigma])(s) & = & m[\sigma].s \mbox{ if } \\& &
+%\itdef{}(\Gamma(m)(s)) \mbox{ is
+%empty.  }
+\end{eqnarray*}
+\end{Defn}
+
+The definition of an assignment for a context with parametric theories is
+a bit complicated.  
+In the nonparametric case, $\gamma(m)$ simply returns an
+assignment of values for the types and constants declared in the theory
+$m$\@.  For the case of parametric theories $m$, $\gamma(m)$  returns a
+function that maps the meaning of the given actuals $\sigma$ to
+an assignment $\gamma(m)(\Mgamma{\sigma})$ for the  types and
+constants declared in the theory $m$\@.   
+There is an important restriction that $\gamma(m)$ must be
+\emph{rank-preserving}, that is,  if $\varpi$  
+and $\varpi'$ are assignments for 
+$\Pi$ so that for each $i$ where $\Pi_i$ is a type parameter, the
+rank of $\varpi(\Pi_i)$ equals the rank of 
+$\varpi'(\Pi_i)$,  then the ranks of $\gamma(m)(\varpi)(s)$
+and $\gamma(m)(\varpi')(s)$ must be the same for each type symbol $s$
+declared in $m$\@.  
+%\memo{This needs to be stated more directly.}
+
+It is also important to observe that the semantics of parametric theories
+makes use of the axiom of choice since the assignment corresponding to a
+theory $\mathtt{m}$ of the form  $\mathtt{m [t:TYPE]: THEORY =
+\{c : t\}}$ is essentially a choice function.  
+
+Let $\gamma\{\Pi \gets \varpi\}$ represent the assignment such that
+$\gamma\{\Pi \gets \varpi\}(s) = \varpi(s)$ for $s$
+in the domain of the context $\Pi$, and $\gamma(s)$, otherwise\@.  
+The meaning of symbols of the form $m[\sigma].s$ can then be defined
+as below.
+\begin{Defn}{meaning function for prefixed symbols with actuals}
+\begin{eqnarray*}
+  \lefteqn{\Mgamma{m[\sigma].s}}\\ & = &
+\mathcal{M}(\Gamma;\Pi;\Delta \vbar
+\gamma\{\Pi\gets\varpi\}\{\Delta\gets\gamma(m)(\varpi)\})(s), \mbox{ where}\\
+ & & \Pi = \mathit{formals}(\Gamma(m)) \\
+& &      \Delta = \mathit{definition}(\Gamma(m)) \\
+& &      \varpi(r) = \Mgamma{(\Pi = \sigma)(r)}, \mbox{ for } r\in \Pi
+\end{eqnarray*}
+\end{Defn}
+
+The definition of a satisfying assignment given in
+Definition~\ref{defn:satisfaction for contexts with theories} 
+also must be strengthened.    
+Let $\Pi$ be the
+formal parameters to theory $m$ in context $\Gamma$; then, an assignment
+$\varpi$ is 
+said to be satisfying {\em parameter assignment} for $\Pi$ under the
+assignment $\gamma$ to $\Gamma$ 
+iff $\gamma\{\Pi\gets \varpi\}$ is a satisfying assignment for $\Pi$\@.  
+\begin{Defn}{satisfaction for contexts with parametric theories}
+An assignment
+$\gamma$ satisfies a context $\Gamma$ if in addition to the 
+constraints stated in
+Definition~\ref{defn:satisfaction for contexts with theories}, $\gamma$ maps 
+every parametric theory $m$  declared in $\Gamma$ with parameters $\Pi$
+and definition $\Delta$, 
+to a function that maps
+any satisfying parameter assignment $\varpi$ for the theory parameters $\Pi$
+(namely, 
+$\itformals(\Gamma(m))$) to a satisfying assignment $\gamma\{\Pi\gets
+\varpi\}\{\Delta \gets \gamma(m)(\varpi)\}$ for 
+$\Delta$ (given by 
+$\itdef{}(\Gamma(m))$).
+\comment{That is, 
+for each declared symbol $s$ in
+$\Delta$: 
+\begin{enumerate}
+\item If $ \itkind{}(\Gamma(m)(s)) = \tttype{}$, then
+$\gamma(m)(\Mgamma{\sigma})(s)
+\in U$
+%
+\item if $\itkind{}(\Gamma(m)(s)) = \ttconstant{}$, then $\gamma(m)(\Mgamma{\sigma})(s)
+\in \mathcal{M}(\Gamma| \gamma;\{\Pi\gets \Mgamma{\sigma}\};\gamma(m)(\Mgamma{\sigma})(\tau(\Gamma)(m[\sigma].s)))$
+%
+\item if $\itdef{}(\Gamma(m)(s))$ is defined,
+then $\gamma(m)(\Mgamma{\sigma})(s) = \mathcal{M}(\Gamma| \gamma;
+\{\Pi\gets \Mgamma{\sigma}\}; \gamma(m)(\Mgamma{\sigma}))(
+\itdef{}(\Gamma(m)(s)))$.
+\end{enumerate}
+}
+\end{Defn}
+
+
+\comment{This map preserves the
+assignments given to the parameters so that if for $s : T$ in $\Pi$,
+$m[\sigma]$ is such that the formal $s$ is matched with the actual $a$,
+then 
+$\gamma(m)(\{\Pi\gets \Mgamma{\sigma}\})(s)$ must be $\Mgamma{a}$\@.
+}
+\comment{
+The delicate point here is that $\gamma(m)$ is not a set but a map (a
+rule) that maps a given assignment (a set) of sets to symbols, to another
+assignment of sets to symbols.  This means that $\gamma$ itself is not a
+set.  There is no reason why $\gamma$ should be a set since all we require
+is that it map a given type name to a set, and a constant to an element
+of the set representing its type.  
+}
+\comment{
+\begin{eqnarray*}
+  \Mgamma{m[\sigma].s} & = & \gamma(m)(\{\Pi\gets \Mgamma(\sigma)\})(s)
+\end{eqnarray*}
+}
+
+\section{Summary}
+
+Theories are used to package related declarations together.  Parametric
+theories can be used to package together declarations that are generic in
+type and individual parameters.  The type rules for contexts must be
+extended to accommodate the theories.  The type rules for simple
+(nonparametric) theories are straightforward given this extension.  The
+operation of expanding a type using type definitions must be enhanced so
+that symbols declared in a theory are prefixed with their theory name when
+referenced outside the theory.  Assignments now have the same nested
+structure as contexts, and the semantic definition is easily extended to
+handle prefixed symbols.  Parametric theories are more complex.  The
+theory prefixes now contain actual parameters that have to be typechecked
+relative to the expected formal parameters.  The assignments corresponding
+to parametric theories are functions that map given assignments for the
+formals to assignments for the declarations within a theory.  Such a
+mapping must be constrained to be rank-preserving.  Parametric theories
+can have subtype parameters, and assumptions on the parameters.  The rules
+for subtype parameters and assumptions are omitted for now but will be
+included in an expanded version of this report.
+
+
+
+\chapter{Conditional Expressions and Logical Connectives}\label{conditionals}
+
+We have, so far, introduced the core of PVS containing types, type
+definitions, constant and variable declarations, subtypes, dependent
+types, and theories.  In extending the language with
+both explicit and recursive constant definitions and formulas,  a crucial
+difference  is that the logical context under which a type-correctness
+condition is generated provides additional assumptions that can be used in
+proving any proof obligations.  Examples of expressions where an
+extended context is needed to establish type correctness by discharging
+proof obligations include
+\begin{enumerate}
+\item $x \neq y \supset  (x + y)/(x - y) \leq 0$.  The type of the
+division operator constrains the denominator to be nonzero,
+that is, $\{x : \ttreal \vbar x \neq 0\}$\@.    
+In the given expression,  the denominator
+can be shown to be nonzero only in the context of the antecedent $x \neq
+y$\@.
+
+\item $\mathtt{IF}(i > 0, i, -i)$ has type $\ttnat$ given integer $i$
+provided the {\em then\/} and {\em else\/} parts are typechecked with the
+assumptions $i > 0$ and $\neg (i > 0)$, respectively.
+\end{enumerate}
+
+PVS has a polymorphic primitive equality predicate:
+\begin{display}
+equality[T : TYPE] : THEORY = \{ =: [[T, T] -> bool] \}
+\end{display}
+Note that an equality of the form $ \mathtt{equality}[T].\mathtt{=}(a, b)$ is
+informally written as $a = b$\@.  When it is relevant to indicate the type
+parameter, we write the equality as $a =_{T} b$\@.  It can be deduced from
+the meaning of equality that if $S$ is a subtype of $T$, then for $a$ and
+$b$ in $S$, it must be the case that $a =_{S} b$ iff $a =_{T} b$\@.  Thus,
+we can assume that equality is always parameterized by a maximal type.  We
+assume that any relevant context $\Gamma$ contains the above declaration
+of the theory {\tt equality}.  Furthermore, any satisfying assignment
+$\gamma$ for such a $\Gamma$ must satisfy
+\begin{eqnarray*}
+\gamma( \mathtt{ equality})(X)(=) &  = & \{\pair{x, x}\vbar x\in X\}.
+\end{eqnarray*}
+
+The negation operation can be defined in terms of equality as shown below.
+We assume that the context contains a declaration of the form
+\begin{alltt}
+   \(\neg : \funtype{\ttbool}{\ttbool} = (\lambda (x : \ttbool): x = \ttfalse)\)
+\end{alltt}
+
+As is clear, a satisfying assignment $\gamma$ for a context $\Gamma$
+containing the above declaration must be such that $\gamma(\neg)$ yields
+the usual truth-table semantics, that is, 
+$\{ \pair{\zerob, \oneb}, \pair{\oneb, \zerob} \}$\@.  
+
+We can then introduce the polymorphic \texttt{IF-THEN-ELSE} operation
+as follows: 
+\begin{display}
+if_def [T: TYPE]: THEORY = \{ IF:[bool,T,T -> T] \}
+\end{display}
+
+In typechecking conditional expressions, the notion of context
+has to be extended to include formulas so that the typechecking
+of the subterm $b$ in $\mathtt{IF}(a, b, c)$ is done in the context of $a$,
+and the typechecking of $c$ is done in the context of $\neg a$\@.
+There is one new typechecking rule for contexts with formulas.
+\begin{eqnarray*}
+\tau()(\Gamma, a) & = & \ttcontext, \mbox{ if}\\
+& & \tau()(\Gamma) = \ttcontext, \mbox{ and} \\
+& & (\tau(\Gamma)(a)   \sim \ttbool)_\Gamma
+\end{eqnarray*}
+Note that the type rule checks that the type of $a$ is compatible with
+$\ttbool$ rather than equivalent to it since it is possible that the  type
+of $a$ might be a subtype of $\ttbool$\@.  
+
+
+\begin{Defn}{satisfaction for contexts with formulas}
+An assignment $\gamma$ satisfies context $\Gamma$ when in 
+addition to the conditions in
+Definition~\ref{defn:satisfaction for contexts with parametric theories},  
+for each prefix $\Gamma', a$ of $\Gamma$, $\mathcal{M}(\Gamma'\vbar \gamma)(a)
+= \oneb$\@.  
+\end{Defn}
+
+The typechecking of conditional expressions is different from that of
+other application expressions since the \emph{test} part of the
+conditional expression is introduced into the context as a contextual
+assumption.
+\begin{Defn}{type rule for conditional expressions}
+   \begin{eqnarray*}
+     \tauGamma{ \mathtt{ if\_def[\mathit{T}].IF}(a, b, c)} & = & T, \mbox{ if }
+(\tauGamma{a} \sim  \mathtt{bool})_\Gamma,\\ & &
+   \tau(\Gamma, a)(b) = B,\\& &  (B \sim T)_{\Gamma, a}, \\& & \vdash_{\Gamma,
+a}\pi(T)(b)\\& & 
+    \tau(\Gamma, \neg a)(c) = C,\\& &  (C \sim T)_{\Gamma, \neg a},\\ & & 
+\vdash_{\Gamma, \neg a} \pi(T)(c)
+\end{eqnarray*}
+\end{Defn}
+
+The meaning of conditional expressions must be treated in a special way
+since the \emph{else} part need not denote when the \emph{test} part is
+true and, correspondingly, the \emph{then} part need not denote if
+the \emph{test} part is false.  We assume that any relevant contexts $\Gamma$
+contain the above declaration of the \texttt{if\_def} theory.
+Conditional expressions can be regarded as a
+new construct in the language rather than a form of application.
+However, it is conservative to regard conditional expressions as
+applications since the latter introduce the additional constraint that all
+the arguments must already denote, that is, applications are
+\emph{strict}.
+\begin{Defn}{meaning function for conditional expressions}
+\begin{eqnarray*}
+\Mgamma{\mathtt{if\_def}[T].\ttif(a, b, c)} & = &
+ \left\{\begin{array}{ll}
+	\Mgamma{b}, & \mbox{ if } \Mgamma{a} = \oneb\\
+        \Mgamma{c}, & \mbox{ otherwise}
+	\end{array}\right.
+\end{eqnarray*}
+\end{Defn}
+
+The semantics for conditional expressions raises an important issue.
+The equality
+$$\mathtt{if\_def}[\mathtt{bool}].\ttif(x, y, \ttfalse) =
+\mathtt{if\_def}[\mathtt{bool}].\ttif(y, x, \ttfalse)$$
+is semantically valid for variables $x$ and $y$ of type $\ttbool$\@.
+An expression like $\mathtt{if\_def}[\ttbool].\ttif(i \neq 0, 1/i
+> 0, \ttfalse)$ can be typechecked to have the type $\ttbool$ since
+it generates a valid proof obligation $i\neq 0 \supset i\neq 0$, but
+the seemingly equivalent expression
+$\mathtt{if\_def}[\ttbool].\ttif( 1/i > 0,i \neq 0, \ttfalse)$
+generates an unverifiable proof obligation $i\neq 0$\@.
+This may seem contradictory since the equality suggests a transformation
+of a type correct conditional expression to a type incorrect expression.  
+The resolution here is that equality cannot be instantiated with
+$i\neq 0$ for $x$ and $1/i > 0$ for $y$ since the expression
+$1/i > 0$  typechecks as having type $\ttbool$ only when $i\neq 0$ is known
+from the context.  The same applies in the case of the other
+propositional connectives, thus ensuring that each expression is type
+correct in the context in which it occurs.  
+
+We can then define the propositional connectives in terms of  conditional
+expressions. 
+\begin{eqnarray*}
+  \wedge : \funtype{\tupletype{\ttbool, \ttbool}}{\ttbool} & = & \lambda (x : \ttbool, y
+: \ttbool) : \mathtt{if\_def[\ttbool].IF}(x, y, \ttfalse)\\
+   \vee : \funtype{\tupletype{\ttbool, \ttbool}}{\ttbool} & = & \lambda (x : \ttbool, y
+: \ttbool) : \mathtt{if\_def[\ttbool].IF}(x, \tttrue, y)\\
+   \supset : \funtype{\tupletype{\ttbool, \ttbool}}{\ttbool} & = & \lambda (x : \ttbool, y
+: \ttbool) : \mathtt{if\_def[\ttbool].IF}(x, y, \tttrue)\\
+%  \neg : \funtype{\ttbool}{\ttbool} & = & \lambda (x : \ttbool) :
+%\mathtt{if\_def[\ttbool].IF}(x, \ttfalse, \tttrue)
+\end{eqnarray*}
+
+In the typechecking of terms of the form $a \wedge b$,
+we follow the corresponding rule for the definition so that 
+the term $a$ is assumed in the context when typechecking term $b$\@.
+Similarly, for $a\vee  b$, the formula $\neg a$ is assumed in
+the context when typechecking $b$, and for $ a \supset b$,
+the formula $ a$ is assumed in the context when typechecking $b$.
+The Boolean equivalence operator {\tt IFF} has no special rules
+for adding formulas to contexts during typechecking.   
+
+\section{Summary}
+
+The use of assumption formulas  enables expressions
+to be typechecked within the narrow context of their use so that
+the governing assumptions can be used in discharging any
+proof obligations.  The type rules for conditional expressions and the
+Boolean connectives $\wedge$, $\vee$, and $\supset$ make use of
+contextual assumptions.  
+
+\comment{
+We will assume that the context $\Gamma$ used below contain the
+theories \mathtt{equality} and \mathtt{if\_def}\@.  
+The typechecking of constant definitions is straightforward when
+the definitions are not recursive.  As we have already seen, the
+form of an explicit definitions is $ s : T = a$, where $s$ is a symbol,
+$T$ is a type, and $a$ is a term.  
+When a constant is defined, no nonemptiness TCCs are generated since
+there is a definition present.
+%
+\begin{eqnarray*}
+  \tauGamma{\Delta, s : T = a} & = & \mathtt{CONTEXT}, \mbox{ if }
+    \tauGamma{\Delta} = \mathtt{CONTEXT} \\ & &
+   \tau(\Gamma, \Delta)(T)  = \mathtt{TYPE}\\ & &
+   \tau(\Gamma, \Delta)(a) = T', \mbox{ and}\\ & &
+   (T\sim_\Gamma T')_{\Gamma, \Delta}\\& &
+   \vdash_{\Gamma, \Delta} \pi(T)(a)
+\end{eqnarray*}
+%
+A recursive constant definition has the syntactic form
+$ s : RECURSIVE\ T = a\ MEASURE\ f RELATION p$\@.
+%
+\memo{This looks slightly complicated. Postpone for now.}
+%
+A formula declaration has the form
+$s : \ \mathtt{FORMULA} a$.
+%
+\memo{Need to formally defined substitution, freevars, and closure
+relative to a context.}  
+}
+
+\comment{
+%
+\memo{Need to highlight the shape of a context: theory declarations
+followed by type/constant declarations followed by variable declarations.}
+%
+Introduce equality, if-then-else, connectives, updates.
+%
+\section{Abstract Datatypes}
+}
+
+
+\chapter{Proof Theory of PVS}\label{proof theory}
+
+The final step in the presentation of the semantics is the presentation of
+the proof rules for the idealized subset of PVS described thus far.
+As already indicated, the proof theory is an integral part of the
+semantics since typechecking and proof checking are closely intertwined.
+Fortunately, the proof rules turn out to be much less complicated than the
+type rules.
+
+\newcommand{\sequent}[3]{#1\vdash_{#2}#3}
+
+The PVS proof theory is presented in terms of  a sequent calculus.  A
+sequent is of the form 
+$\sequent{\Sigma}{\Gamma}{\Lambda}$, where $\Gamma$ is the context,
+$\Sigma$ is a {\em set\/} of {\em antecedent\/} formulas, and $\Lambda$ 
+is a {\em set\/} of {\em consequent\/} formulas.  Such a sequent should
+be read as stating that the conjunction of the formulas in $\Sigma$ implies the
+disjunction of formulas in $\Lambda$\@.
+
+% presumed in math mode #1=top, #2=bottom, #3=side condition
+\renewcommand{\Infrule}[3]{
+{{\displaystyle\strut #1}\over{\displaystyle\strut #2}}~\makebox[0pt][l]{{$\mathbf{ #3}$}}
+}
+
+Inference rules are presented in the form
+\begin{center}
+$\Infrule{\mathit{premise(s)}}{\mathit{conclusion}}{\mathit{name}}\hspace{2cm}
+\mathit{side\ condition}$
+\end{center}
+
+
+\section{PVS Proof Rules} 
+
+\subsection{Structural Rules}
+
+The structural rules permit the sequent to be rearranged or weakened
+via the introduction of new sequent formulas into the conclusion.  
+All the structural rules can be expressed in terms of the single
+powerful weakening rule  shown below.
+It allows a weaker statement to
+be derived from a stronger one by adding either antecedent formulas or
+consequent formulas.  The relation $\Sigma_1\subseteq\Sigma_2$ holds
+between two lists when all the formulas in $\Sigma_1$ occur in the list
+$\Sigma_2$.  
+
+\begin{center}
+$\Infrule{\sequent{\Sigma_1}{\Gamma}{\Lambda_1}}
+         {\sequent{\Sigma_2}{\Gamma}{\Lambda_2}} {W}$
+\hspace{1cm}\mbox{\smaller\smaller if $\Sigma_1\subseteq\Sigma_2$ and $\Lambda_1\subseteq\Lambda_2$}
+\end{center}
+
+Both the Contraction and Exchange rules shown below are absorbed by the
+above  weakening rule {\bf W}\@.     The  {\em Contraction\/} rules
+$\mathbf{C}\vdash$ and $\vdash\mathbf{C}$
+allow multiple occurrences of the same sequent formula
+to be replaced by a single occurrence. 
+\begin{center}
+\begin{tabular}{ccc}
+$\Infrule{\sequent{a,a, \Sigma}{\Gamma}{\Lambda}}%
+         {\sequent{a, \Sigma}{\Gamma}{\Lambda}} {C\vdash}$
+& \hspace{1in} &
+$\Infrule{\sequent{\Sigma}{\Gamma}{ a, a, \Lambda}}%
+         {\sequent{\Sigma}{\Gamma}{ a, \Lambda}} {\vdash C}$
+\end{tabular}
+\end{center}
+
+The {\em Exchange\/} rule asserts that the order of the formulas in the
+antecedent and the consequent parts of the sequent is immaterial.  It can
+be stated as
+
+\begin{center}
+\begin{tabular}{c@{\hspace{1in}}c}
+$\Infrule{\sequent{\Sigma_1, b, a,  \Sigma_2}{\Gamma}{\Lambda}}
+         {\sequent{\Sigma_1, a, b, \Sigma_2}{\Gamma}{\Lambda}} {X\vdash}$
+&
+$\Infrule{\sequent{\Sigma}{\Gamma}{\Lambda_1, b, a, \Lambda_2}}
+         {\sequent{\Sigma}{\Gamma}{\Lambda_1, a, b, \Lambda_2}} {\vdash X}$
+\end{tabular}
+\end{center}
+
+As seen above, 
+{\em inference rules\/} have the general form
+$$\Infrule{\Sigma_1\vdash\Lambda_1\quad\cdots\quad\Sigma_n\vdash\Lambda_n}
+{\Sigma\vdash\Lambda}{R}.$$ This says that if we are given a leaf of a
+proof tree of the form $\Sigma\vdash\Lambda$, then by applying the rule
+named {\bf R}, we may obtain a tree with $n$ new leaves.
+
+\subsection{Cut Rule}
+
+The cut rule {\bf Cut} can be used to introduce a case split on a formula $a$
+into a proof of a sequent $\sequent{\Sigma}{\Gamma}{\Lambda}$ so as to yield the
+subgoals 
+$\sequent{\Sigma, a}{\Gamma}{\Lambda}$ and
+$\sequent{\Sigma}{\Gamma}{a, \Lambda}$, which can be seen  
+as assuming $a$ along one branch and $\neg a$ along the other.
+\begin{center}
+$\Infrule{(\tau(\Gamma)(a) \sim \ttbool)_\Gamma \qquad \sequent{\Sigma,  a}{\Gamma}{\Lambda}\qquad\sequent{\Sigma}{\Gamma}{ a, \Lambda}}
+         {\sequent{\Sigma}{\Gamma}{\Lambda}}{Cut}$
+\end{center}
+
+\subsection{Propositional Axioms}
+
+The axioms rule \textbf{Ax} simply asserts that $a$ follows from $a$\@.  
+%\begin{center}%{(\tauGamma{a}\sim \ttbool)_\Gamma}
+$$\Infrule{}{\sequent{\Sigma, a}{\Gamma}{a,\Lambda}}{Ax}$$  
+
+The next two rules assert that any sequent with either
+an antecedent occurrence of $\ttfalse$ or a consequent
+occurrence of $\tttrue$ is an axiom.
+
+$$
+\begin{array}{c@{\hspace{1in}}c}
+\Infrule{}{\sequent{\Sigma, \mathtt{FALSE}}{\Gamma}{\Lambda}}{
+\ttfalse \vdash} &
+\Infrule{}{\sequent{\Sigma}{\Gamma}{ \mathtt{TRUE}, \Lambda}}{
+ \vdash \tttrue}
+\end{array}
+$$
+
+
+
+\subsection{Context Rules}
+
+Certain formulas hold in a context simply because they are already
+asserted in the context either as a formula or a constant definition.
+$$
+\begin{array}{c}
+\Infrule{}{\sequent{}{\Gamma}{a}}{Context Formula} \hspace{1.5in}\mbox{if
+$a$ is a formula in $\Gamma$}\hspace{.8in}\\
+\Infrule{}{\sequent{}{\Gamma}{s = a}}{Context Definition} \hspace{1.5in}\mbox{if
+$s : T = a$ is a constant definition in $\Gamma$}
+\end{array}
+$$
+
+The context $\Gamma$ can be extended with antecedent formulas or
+negations of consequent formulas using the following two rules.
+$$\begin{array}{c@{\hspace{1in}}c}
+\Infrule{\sequent{\Sigma, a}{\Gamma,
+a}{\Lambda}}{\sequent{\Sigma, a}{\Gamma}{\Lambda}}{Context \vdash} &
+\Infrule{\sequent{\Sigma}{\Gamma,
+\neg a}{a, \Lambda}}{\sequent{\Sigma}{\Gamma}{a, \Lambda}}{\vdash Context}
+\end{array}
+$$
+
+The following context-weakening rule is useful since it shows that
+provability is monotonic with respect to the context.
+$$\begin{array}{c}
+\Infrule{\sequent{\Sigma}{\Gamma}{\Lambda}}{\sequent{\Sigma}{\Gamma'}{\Lambda}}{Context
+W}  \hspace{1in}\mbox{if $\Gamma$ is a prefix of $\Gamma'$}
+\end{array} 
+$$
+
+\comment{
+\subsection{Negation Rules}
+%
+These rules are straightforward since negation is eliminated by moving
+the body of a negated antecedent formula to the consequent, and
+conversely, by moving the body of a negated consequent formula to
+the antecedent.
+$$
+\begin{array}{c}
+\Infrule{\sequent{\Sigma}{\Gamma}{ a, \Lambda}}
+         {\sequent{\Sigma,\neg a }{\Gamma}{\Lambda}} {\neg\vdash}\\[.5cm]
+\Infrule{\sequent{\Sigma, a }{\Gamma}{\Lambda}}
+         {\sequent{\Sigma}{\Gamma}{ \neg a, \Lambda}} {\vdash\neg}
+\end{array}
+$$
+}
+
+\subsection{Conditional Rules}
+
+The rules governing the elimination of \texttt{IF-THEN-ELSE} in a proof
+are unusual since they augment the context with the test part or its
+negation, as in the corresponding type rules.
+$$
+\begin{array}{c}
+\Infrule{\sequent{\Sigma, a, b}{\Gamma, a}{\Lambda}\hspace{1cm}
+        \sequent{\Sigma,  c}{\Gamma, \neg a}{a, \Delta}}
+         {\sequent{\Sigma, \mathtt{IF}(a, b, c)}{\Gamma}{ \Lambda}}
+                  {\mathtt{IF} \vdash}\\[.5cm]
+\Infrule{\sequent{\Sigma, a}{\Gamma,
+a}{b,\Lambda}\hspace{1cm}\sequent{\Sigma}{\Gamma,\neg a}{a, c, \Lambda}}
+         {\sequent{\Sigma}{\Gamma}{{\mathtt{IF}}(a, b, c), \Lambda}}
+                      {\vdash {\mathtt {IF}}}
+\end{array}
+$$
+
+\subsection{Equality Rules}
+
+The rules for equality can be stated as below.  The rules of
+transitivity and symmetry for equality can be derived from these rules.
+The notation $a[e]$ is used to highlight one or more 
+occurrences of $e$ in the formula $a$ such that there are no free variable
+occurrences in $e$\@.\footnote{We enforce an invariant on a sequent that
+it must not contain any free variables.  This invariant is preserved by
+each of the proof rules.}   
+The notation $\Lambda[e]$ similarly highlights
+occurrences of $e$ in $\Lambda$. 
+
+\begin{center}
+\begin{tabular}{c@{\hspace{1in}}c}
+$\Infrule{}{\sequent{\Sigma}{\Gamma}{ a=a,\Lambda}}{Refl}$
+&
+$\Infrule{\sequent{a=b, \Sigma[b]}{\Gamma}{\Lambda[b]}}
+         {\sequent{a=b, \Sigma[a]}{\Gamma}{\Lambda[a]}} {Repl}$
+\end{tabular}
+\end{center}
+
+\subsection{Boolean Equality Rules}
+
+The rule $\mathbf{Repl~\tttrue}$ asserts that an antecedent formula
+$a$
+can be treated as an antecedent equality of the form $a = \tttrue$, and
+correspondingly, 
+a consequent formula $a$ can be treated as an antecedent
+equality of the form $a = \ttfalse$\@.
+
+$$
+\begin{array}{c@{\hspace{1in}}c}
+\Infrule{\sequent{\Sigma[\tttrue], a}{\Gamma}{\Lambda[\tttrue]}}{
+\sequent{\Sigma[a], a}{\Gamma}{\Lambda[a]}}{Repl~\tttrue} &
+\Infrule{\sequent{\Sigma[\ttfalse], a}{\Gamma}{\Lambda[\ttfalse]}}{
+\sequent{\Sigma[a]}{\Gamma}{a, \Lambda[a]}}{Repl~\ttfalse}
+\end{array}
+$$
+
+The rule $\tttrue\mbox{-}\ttfalse$ asserts that $\tttrue$ and $\ttfalse$ are
+distinct Boolean constants.
+$$
+\begin{array}{c}
+\Infrule{}{\sequent{\Sigma, \tttrue = \ttfalse}{\Gamma}{\Lambda}}{\tttrue\mbox{-}\ttfalse}
+\end{array}
+$$
+\comment{
+Four rules exist for simplifying equalities of the form $a =
+\tttrue$ and $a = \ttfalse$ in  a sequent.
+%
+$$
+\begin{array}{c@{\hspace{1in}}c}
+\Infrule{\sequent{\Sigma, a}{\Gamma}{\Lambda}}{\sequent{\Sigma, a =
+\tttrue}{\Gamma}{\Lambda}}{\tttrue\vdash} &
+\Infrule{\sequent{\Sigma}{\Gamma}{a, \Lambda}}{\sequent{\Sigma}{\Gamma}{a =
+\tttrue, \Lambda}}{\vdash\tttrue} \\
+%
+\Infrule{\sequent{\Sigma}{\Gamma}{a, \Lambda}}{\sequent{\Sigma, a =
+\ttfalse}{\Gamma}{\Lambda}}{\ttfalse\vdash} &
+\Infrule{\sequent{a, \Sigma}{\Gamma}{\Lambda}}{\sequent{\Sigma}{\Gamma}{a =
+\ttfalse, \Lambda}}{\vdash\ttfalse} 
+\end{array}
+$$
+}
+
+\subsection{Reduction Rules}
+
+The reduction rules are equality rules (axioms) that provide the obvious
+simplifications for applications involving lambda abstractions and
+product projections.
+
+$$
+\begin{array}{c}
+\Infrule{}{\sequent{}{\Gamma}{(\lambda (x : T):~a)(b) =
+a[b/x]}}{\beta}\\[.5cm]
+%
+\Infrule{}{\sequent{}{\Gamma}{\proj{i}(a_1, a_2) =
+a_i}}{\pi}
+\end{array}
+$$
+
+\subsection{Extensionality Rules}
+
+The extensionality rules are also equality rules for establishing equality
+between two expressions of function or product type.  The extensionality
+rule for functions, \textbf{FunExt}, introduces a Skolem constant $s$
+to determine that two functions $f$ and $g$ are equal when the results of
+applying them to an arbitrary argument $s$ are equal.  
+$$
+\begin{array}{c}
+\Infrule{\sequent{\Sigma}{\Gamma, s : A}{(f~s) =_{B[s/x]} (g~s), \Lambda}}
+{\sequent{\Sigma}{\Gamma}{f =_{\funtype{x:A}{B}} g,
+\Lambda}}{FunExt} \hspace{1in} \Gamma(s) \mbox{ undefined}\\[.5cm]
+\end{array}
+$$
+
+The extensionality rule for products asserts that two products are equal if
+their corresponding projections are equal.  \comment{Note that the type
+$\tupletype{\listwo{T'}{n}}$ is just $a/\tupletype{\listwo{T}{n}}$\@.}
+$$
+\begin{array}{c}
+\Infrule{\sequent{\Sigma}{\Gamma}{\proj{1}(a) =_{T_1} \proj{1}(b),\Lambda}\qquad\sequent{\Sigma}{\Gamma}{\proj{2}(a) =_{T_2[(\proj{1}~a)/x]} \proj{2}(b),\Lambda}
+}{\sequent{\Sigma}{\Gamma}{a =_{\tupletype{x : T_1 T_2}} b, \Lambda}}{TupExt}
+\end{array}
+$$
+
+Recall that the quantifiers can be defined in terms of lambda abstraction
+and equality so that $(\forall (x: T): a)$ is just $(\lambda (x: T): a) =
+(\lambda (x : T): \tttrue)$\@.   Existential quantification $(\exists (x:
+T): a)$  can easily be defined as $\neg (\forall (x: T): \neg a)$\@.
+The proof rules for quantifiers can then be derived from the
+rules $\beta$, $\mathbf{TupExt}$, and the equality rules\@.
+
+\subsection{Type Constraint Rule }
+
+We need a rule to introduce the type constraint on a term as an antecedent
+formula of the given goal sequent.
+
+$$
+\Infrule{\tau(\Gamma)(a) = A\qquad\sequent{\pi(A)(a),\Sigma}{\Gamma}{\Lambda}}
+{\sequent{\Sigma}{\Gamma}{\Lambda}}{Typepred}
+$$
+
+\section{Soundness of the Proof Rules}
+\begin{prop}\label{meaning-preservation}
+If $\Gamma$ is a prefix of $\Gamma'$,
+$\tau()(\Gamma) = \tau()(\Gamma') = \ttcontext$,
+$\gamma'$ is a
+satisfying assignment for $\Gamma'$, and $\gamma = \gamma'\restriction\Gamma$ then
+for any $a$ such that 
+$\tauGamma{a} = \tau(\Gamma')(a)$,  it is the case that $\Mgamma{a} =
+\mathcal{M}(\Gamma'\vbar\gamma')(a)$\@.  
+\end{prop}
+
+\begin{theorem}[soundness]\label{proof-soundness}
+If $\tau()(\Gamma) = \ttcontext$ such that
+%\begin{enumerate}
+%\item $\Gamma$ contains no variable declarations %bogus(1.18.96)
+%\item
+for every formula $a$ in $\Sigma;  \Lambda$, $(\tauGamma{a} \sim
+\ttbool)_\Gamma$,
+%\end{enumerate}
+and $\sequent{\Sigma}{\Gamma}{\Lambda}$ is provable, then
+for any satisfying assignment
+$\gamma$ for $\Gamma$, 
+either there is a formula $b$ in $\Sigma$, such that $\Mgamma{b} = \zerob$
+or a formula $c$ in
+$\Lambda$, such that $\Mgamma{c} = \oneb$\@.      
+\end{theorem}
+\begin{proof}
+The proof is by induction on the structure of the proof of
+$\sequent{\Sigma}{\Gamma}{\Lambda}$.  Recall that this proof is actually
+part of a simultaneous induction that includes the soundness of the type
+rules relative to the semantic function, that is,
+Theorems~\ref{dependent-type-semantics}
+and~\ref{dependent-term-semantics}\@.   Specific invocations of the
+soundness theorem occur in the proofs of
+Theorem~\ref{subtype-term-semantics}
+and Proposition~\ref{substitution-equivalence}\@.  
+\begin{enumerate}
+\item {\em Structural Rules\/}:   Since the subset
+of formulas in the premise and the conclusion of these rules are the same,
+the conclusion follows easily from the induction hypothesis.
+
+\item {\em Cut\/}: By the semantic soundness of the type rules,
+we have $\Mgamma{a} \in \twob$\@.   If $\Mgamma{a} = \zerob$, then
+by the induction hypothesis on the second subgoal of the proof rule,
+there must be some $b$ in $\Sigma$ such that $\Mgamma{b} = \zerob$
+or a $c$ in $\Lambda$ such that $\Mgamma{c} = \oneb$\@.  The case
+when $\Mgamma{a} = \oneb$ is symmetrical.
+
+\item {\em Propositional Axioms\/}:  Obvious.
+
+\item \emph{Context Rules}:
+\begin{description}
+\item[ContextFormula:]  If $\gamma$ satisfies $\Gamma$ and $a\in \Gamma$,
+then $\Mgamma{a} = \oneb$\@.
+
+\item[ContextDefinition:] If $\gamma$ satisfies $\Gamma$ and $s: T = a$
+is a declaration in $\Gamma$, then by the definition of satisfaction,
+$\Mgamma{s} = \Mgamma{a}$\@.
+
+\item [Context $\vdash$: ] The argument is trivial when $\Mgamma{a} =
+\zerob$.  Otherwise, $\gamma$ satisfies the extended context $\Gamma, a$,
+and the conclusion follows from the induction hypothesis.
+
+\item [$\vdash$ Context: ] Similar to $\textbf{Context} \vdash$ above.
+
+\item [ContextW: ]  If $\gamma$ satisfies $\Gamma'$, then it also
+satisfies $\Gamma$, and hence the proof.
+\end{description}
+
+\item \emph{Conditional Rules}: We only consider $ \mathtt{IF} \vdash$
+since the $\vdash \mathtt{IF}$ proof is similar.  If $\Mgamma{
+\mathtt{IF}(a, b, c)} = \zerob$, the conclusion follows  trivially.
+Otherwise, If $\gamma$ satisfies
+$\Gamma$, then $\Mgamma{a}\in \twob$.  If $\Mgamma{a} = \oneb$, then
+$\Mgamma{b} = \oneb$.  The induction hypothesis on the subgoal
+$\sequent{\Sigma, a, b}{\Gamma, a}{\Lambda}$ yields the desired
+conclusion.  Similarly, if $\Mgamma{a} = \zerob$, we have $\Mgamma{c} =
+\oneb$
+and the induction hypothesis on the second subgoal yields the
+desired conclusion.
+
+\item \emph{Equality Rules}: The \textbf{Refl} rule is obvious. 
+For the \textbf{Repl} rule, if $\Mgamma{a = b} = \zerob$, the conclusion
+follows trivially.  Otherwise, $\Mgamma{a} = \Mgamma{b}$.  Hence, $\gamma$
+satisfies the extended context $\Gamma, a = b$.  Then for each
+$c[a]$ in $\Sigma[a]$ or $\Lambda[a]$, $\Mgamma{c[a]} = \Mgamma{c[b]}$\@.
+\comment{\memo{Note: no free variables in a, b.  Need to show that
+replacement preserves meaning when there is no capture.}}
+
+\item \emph{Boolean Equality Rules}: The $\mathbf{Repl}~\tttrue$ and
+$\mathbf{Repl}~\ttfalse$ rules follow easily since when $\Mgamma{a} =
+\oneb$, we have $\Mgamma{c[a]} = \Mgamma{c[\tttrue]}$\@.
+A similar argument applies to $\mathbf{Repl}~\ttfalse$\@.
+
+The soundness of $\tttrue\mbox{-}\ttfalse$ is easy since
+$\Mgamma{\tttrue = \ttfalse} = \zerob$\@.
+
+\item \emph{Reduction Rules}:  The $\beta$-reduction rule follows because
+$\Mgamma{(\lambda (x : T):~a)(b)}$ is
+$\mathcal{M}(\Gamma, x : \ttvar~T\vbar \gamma\{x\gets\Mgamma{b}\})(a)$
+which by the Substitution Lemma~\ref{substitution-lemma} is
+equal to $\Mgamma{a[b/x]}$\@.
+
+The soundness $\pi$-reduction rule is a direct consequent of
+Definition~\ref{defn:meaning function}\@.
+
+\item \emph{Extensionality Rules}:
+\begin{description}
+\item [FunExt:] 
+First consider the case when the domain type $\Mgamma{A}$ is empty.  Then by
+Definition~\ref{defn:meaning function with dependent types},
+$\Mgamma{f} = \Mgamma{g} = \emptyset$\@.  Therefore $\Mgamma{f = g} =
+\oneb$ and hence the conclusion.\footnote{Since
+the  subgoal sequent $\sequent{\Sigma}{\Gamma, s:A}{(f~s) =
+(g~s),\Lambda}$
+is valid when $\Mgamma{A} = \emptyset$ for all assignments $\gamma$,
+it is natural to ask how it is actually proved.  The only
+way a type $A$ can be empty under any assignment $\gamma$ is if
+$\Mgamma{\pi(A)(a) = \zerob}$.  The $\mathbf{Typepred}$ rule can
+therefore be used on the Skolem constant $s$ to complete the proof.}
+
+The case when $\Mgamma{A}$ is nonempty, we have for any $\gamma$
+satisfying $\Gamma$ and $s\in \Mgamma{A}$, that $\gamma'$ given by 
+$\gamma\{s\gets z\}$ is a satisfying assignment for $\Gamma, s: A$\@.
+By the induction hypothesis, there is either an $a$ in $\Sigma$
+such that $\mathcal{M}(\Gamma, s: A\vbar\gamma')(b) = \zerob$ or
+a $c$ in  ${(f~s) = (g~s),\Lambda}$ such that $\mathcal{M}(\Gamma, s:
+A\vbar\gamma')(c) = \oneb$\@.  If we have such a $b$ in $\Sigma$,
+by Proposition~\ref{meaning-preservation}, we also have that
+$\Mgamma{b} = \zerob$.  A similar argument can be used
+if we have such a $c$ in $\Lambda$\@.  If $c$ is $(f~s) = (g~s)$, then
+$\Mgamma{f}(z) = \Mgamma{g}(z)$ for every $z$ in $\Mgamma{A}$\@.
+By set-theoretic extensionality, this means that $\Mgamma{f}$ and
+$\Mgamma{g}$ are identical elements 
+of $\Pi{}F$ where $F$ maps $z$ in $\Mgamma{A}$ to an element of
+$\mathcal{M}(\Gamma, x : \ttvar~A\vbar \gamma\{x \gets z\})(B)$\@.
+Therefore $\Mgamma{f = g} = \oneb$ as desired.
+
+\item [TupExt:]  If there is some $d$ in $\Sigma$ such that by applying the
+induction hypothesis to any of the subgoals $\Mgamma{d} = \zerob$,
+then the same holds for the conclusion sequent.  Similarly,
+if the induction hypothesis on some subgoal yields a $c$ in $\Lambda$
+such that $\Mgamma{c} = \oneb$, then the same holds for the
+conclusion sequent.  So the remaining case is when, by the
+induction hypothesis, 
+$\Mgamma{\proj{i}(a)} = \Mgamma{\proj{i}(b)}$ for each $i\in \{1,2\}$.
+It is therefore easy to conclude by set-theoretic extensionality that
+$\Mgamma{a}$ and $\Mgamma{b}$ are identical elements of
+$\Mgamma{a/\tupletype{\listwo{T}{n}}}$\@.  We can then use
+Proposition~\ref{substitution-equivalence} to conclude
+that $\Mgamma{a}$ and $\Mgamma{b}$ are identical
+elements of $\Mgamma{\tupletype{\listwo{T}{n}}}$\@. 
+
+\end{description}
+
+\item \emph{Type Constraint Rule}: Recall from
+Proposition~\ref{maximal-subtype}
+that when $\tauGamma{a} = A$, then
+$\Mgamma{\pi(A)(a)} = \oneb$.  Given this and the induction hypothesis,
+it must either be the case that we have a $b$ in $\Sigma$ such that
+$\Mgamma{b} = \zerob$ or a $c$ in $\Lambda$ such that $\Mgamma{c} =
+\oneb$\@. 
+\end{enumerate}
+\end{proof}
+
+To tie the development so far into a single simultaneous
+induction as promised, we state the key theorem whose subproofs have been
+given by the theorems presented thus far, namely,
+Theorems~\ref{dependent-type-semantics},~\ref{dependent-term-semantics},
+and~\ref{proof-soundness}\@.  
+\begin{theorem}\label{big-soundness}
+If $\tau()(\Gamma) = \ttcontext$, then 
+\begin{enumerate}
+\item If $\Sigma, \Lambda$ is a list of preterms such that for every $a$
+in $\Sigma; \Lambda$, $(\tauGamma{a} \sim 
+\ttbool)_\Gamma$, and $\sequent{\Sigma}{\Gamma}{\Lambda}$ is provable, then
+for any satisfying assignment
+$\gamma$ for $\Gamma$, 
+either there is a $b$ in $\Sigma$, such that $\Mgamma{b} = \zerob$ or a $c$ in
+$\Lambda$, such that $\Mgamma{c} = \oneb$\@.
+
+\item If $A$ is a pretype such that $\tauGamma{A} = \tttype$, then for any
+assignment $\gamma$ 
+satisfying $\Gamma$, $\Mgamma{A}\in U$\@.
+
+\item If $a$ is a preterm such that $\tauGamma{a} = A$, then for any
+assignment $\gamma$ satisfying $\Gamma$, $\Mgamma{a}\in \Mgamma{A}$\@.
+\end{enumerate}
+\end{theorem}
+
+
+\section{Summary}
+
+The logical inference rules for the PVS logic have been presented in a
+sequent calculus format.  The formal semantics presented in the earlier
+chapters is used to establish the soundness of these proof rules.
+
+
+\chapter{Conclusion}\label{conclusion}
+
+We have presented the syntax and semantics of idealized PVS in several
+stages.  In the first stage we introduced the simply typed fragment,
+which was then extended with type definitions.  The third such fragment
+included subtyping;  the fourth fragment introduced dependent typing.
+Finally, we introduced constant definitions and parametric and nonparametric
+theories.
+
+The semantic definition was given in a novel, functional style where a
+canonical type was assigned to each type correct term.  The interplay between
+types and proofs in PVS introduced subtleties and complexities
+into the semantic definition.  We can now answer some of the questions
+raised in Chapter~\ref{introduction}:
+\begin{itemize}
+\item {\em What is the semantic core of the language, and what is
+just syntactic sugar?}
+
+The semantic core of the language is a typed lambda calculus with
+simple function and tuple types, predicate subtypes, dependent types,
+parametric theories, and conditional expressions.  Many of the other
+features of the PVS language such as records and update expressions
+can be explained in terms of the core language.
+
+\item {\em What are the rules for determining whether a given PVS
+expression is well typed?  }
+
+The typechecking rules have been presented in terms of the definition of
+the $\tau$ operator in Chapters~\ref{simple},  \ref{subtypes},
+\ref{dependent}, \ref{theories}, and~\ref{conditionals}\@. 
+
+\item {\em How is subtyping handled, and in particular, how are
+proof obligations corresponding to subtypes generated?}
+
+Typechecking an expression $a$ with respect to predicate subtype
+constraint $\subtype{x}{T}{p(x)}$
+is done by generating the proof obligation $p(a)$ under the logical
+context in which $a$ is being typechecked.  This is made precise
+in Definitions~\ref{defn:type rules with subtypes} and~\ref{defn:type rule
+for conditional expressions}\@.  
+Proof obligations are generated when typechecking contexts (for
+nonemptiness),  typechecking expressions with respect to expected subtypes, 
+and  comparing two types containing subtype expressions for
+compatibility.
+
+\item  {\em What is the meaning, in set-theoretic terms, of a PVS expression or
+assertion?}
+
+The set-theoretic meaning of well-formed PVS types and expressions
+is given by  a meaning function
+$\mathcal{M}$ that assigns a set $\Mgamma{T}$ from the universe $U$ to each type
+$T$,  and an element $\Mgamma{a}$ of $\Mgamma{T}$ to a given term $a$ of type
+$T$\@.
+
+\item {\em Are the type rules sound with respect to the semantics? }
+
+The typechecking function $\tau$ is defined to check contexts,
+preterms, and pretypes for type correctness.    The type rules are shown
+to be sound with respect to the given semantics in
+Theorem~\ref{big-soundness}\@. 
+
+\item {\em Are the proof rules sound with respect to the semantics?}
+
+The proof rules are given in Chapter~\ref{proof theory} in a sequent
+calculus format and proved to be sound with respect to the semantics in
+Theorem~\ref{big-soundness}\@.  
+
+\item {\em What is the form of dependent typing used by PVS, and
+what kinds of type dependencies are disallowed by the language?}
+
+The semantic analysis of dependent typing in Chapter~\ref{dependent}
+revealed that type dependencies were constrained to be rank-bounded.  This
+is true because the dependencies in dependent typing only constrain the
+predicate part of predicate subtypes. Thus, when there is a dependent type
+$T(n)$ that depends on a parameter $n$, the meaning of $T(n)$ has a fixed
+rank regardless of the meaning assigned to $n$\@.  The PVS language
+features used to define dependent types all preserve the rank-boundedness.
+Language extensions violating rank-boundedness such as a type dependency
+of the form $\funtype{n : nat}{T^n}$ are disallowed.  One can extend the
+language with such dependent types, but the semantics would then be
+considerably more complicated.
+
+\item {\em What is the meaning of theory-level parametricity, and
+what, if any, are the semantic limits on such parameterization?}
+
+The semantics of parametric theories is described in
+Chapter~\ref{theories}\@.  In particular, the semantics for parametric
+theories is given in terms of rank-preserving maps between the meanings of
+the parameters and the meanings of the identifiers declared in the theory.
+These maps must be such that the rank of an assignment to a type in a theory
+depends only on the ranks of the (meanings of the) type parameters.
+
+\item {\em What language extensions are incompatible with the reference
+semantics given here?}
+
+We have already indicated that any language extension, such as an $n$-tuple
+type $T^n$, that violates rank-boundedness would be incompatible with the
+semantics presented here.
+\end{itemize}
+
+This report presents only the core language of PVS.  A more complete
+semantic treatment would include arithmetic, recursive constant
+definitions, inductive definitions, recursive datatypes, assumptions on
+theory parameters, and type judgements.
+
+\paragraph{Acknowledgments. } The advice and encouragement of John Rushby,
+Rick Butler, Paul Miner, Pat Lincoln, and Mandayam Srivas are greatly
+appreciated, as are the useful expert comments of Peter Dybjer, Mike
+Gordon, Doug Howe, and Paul Jackson.  Bruno Dutertre, Paul Miner, and
+Harald Rue{\ss} suggested numerous improvements to earlier drafts.
+
+\comment{
+What is a specification language?  A programming language is meant to
+express an algorithm in such a way that it can be executed on a computing
+machine.  For example, a program implementing a sorting algorithm such as
+quicksort can be written in a programming language like C.  Such a program
+is a recipe for computing the desired outcome but does not directly
+describe this outcome.  In the case of a sorting program, the desired
+result is that 
+the output array must be an ordered permutation of the input array.
+A specification language is the medium for expressing and establishing
+such properties of programs.  A specification language could itself be a
+programming language but non-executable features such as quantifiers and
+temporal operators  add to the expressiveness of a specification language.
+%
+Specification languages need to capture mathematics
+as well as programming.  The use of an expressive type system lends
+considerable mathematical clarity to a specification.  
+ProVeS is an environment for
+specification  and verification based on a typed higher-order logic.
+The type system of ProVeS includes
+{\em predicate subtypes}, i.e.,
+the type consisting of elements of a given type satisfying a specified
+predicate, in addition to the usual constructs for
+function, product, record, and array types.  Automated theorem proving
+procedures are employed in the process of typechecking.
+The design and rules
+for the type system and logic of ProVeS are presented along
+with arguments for their soundness.
+\end{abstract}
+%
+\include{intro}
+\include{rules}
+\include{logic}
+\include{semantics}
+\include{soundness}
+%
+\section{Conclusion}
+%
+We have described a type system and a higher-order logic \ProL\ 
+incorporating predicate subtypes and described its semantics.
+The use of subtypes in general, and predicate subtypes in particular,
+has many advantages from the point of view of specifications.  
+The module system based on the \ProL\  logic will be discussed
+in a forthcoming report.  
+%
+The primary philosophical difficulty in the design of \ProL\ 
+was engendered by the choice between subsumption and coercion.
+The crucial question here seems to be the treatment of equality and
+whether the equality predicate on subtypes is inherited from the
+supertype in the case of subsumption.  If equality is not inherited,
+it is unclear whether the choice between subsumption and coercion
+matters significantly.  If equality is inherited, then subsumption
+entails a careful treatment of extensionality.  In an earlier
+treatment using subsumption, we did not take extensionality
+as axiomatic but instead defined the extensional subtype of each
+type as a predicate subtype using the appropriate $\eta$-rule
+as the predicate.  
+%
+Though we believe that the use of predicate subtypes is eliminable, we
+have not yet arrived at a satisfactory proof that the \ProL\  logic
+can be embedded in a simply typed higher-order logic.
+A proof of completeness for the  \ProL\  logic as presented also
+remains to be done.  A typechecker for a language similar to
+the one described here has been implemented~\cite{EHDM:Tutorial}.  We do
+need  substantially more experience writing specifications with
+predicate subtypes before we can comment more fully on their utility.
+%
+\paragraph{Acknowledgments:}  Friedrich von Henke and John Rushby
+sparked our interest in incorporating predicate subtypes into
+a specification language.  Our work was funded internally by SRI
+International.  
+}
+
+\newpage
+\bibliographystyle{/homes/rushby/tex/modalpha} % or modplain
+\addcontentsline{toc}{chapter}{Bibliography}
+\bibliography{/homes/rushby/nasa,/homes/rushby/jmr,/homes/shankar/tex}
+
+\end{document}

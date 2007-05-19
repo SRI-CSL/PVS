@@ -1,0 +1,20 @@
+% Modifications to the "report" \documentstyle to space out citations
+% in other words, this redefines the citation style to put spaces after
+% the commas: [Furu86, Furu87] instead of [Furu86,Furu87]
+%
+% Richard Furuta
+% Department of Computer Science
+% University of Maryland
+% College Park, MD  20742
+%
+% furuta@mimsy.umd.edu
+% seismo!umcp-cs!furuta
+%
+% October 22, 1986, first release
+%
+\def\@citex[#1]#2{\if@filesw\immediate\write\@auxout{\string\citation{#2}}\fi
+  \def\@citea{}\@cite{\@for\@citeb:=#2\do
+    {\@citea\def\@citea{, }\@ifundefined
+       {b@\@citeb}{{\bf ?}\@warning
+       {Citation `\@citeb' on page \thepage \space undefined}}%
+\hbox{\csname b@\@citeb\endcsname}}}{#1}}
