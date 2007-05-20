@@ -1,0 +1,1204 @@
+% Document Type: LaTeX
+% Master File: interpretations-final.tex
+\documentclass[11pt,twoside,openright,titlepage]{cslreport}
+\usepackage{relsize}
+\usepackage{makebnf}
+\usepackage{alltt}
+%\usepackage{doublespace}
+
+\usepackage{cite}
+\usepackage{/homes/rushby/tex/oz}
+%\usepackage{/homes/rushby/tex/cslrep}
+\usepackage{url}
+\usepackage{psfig}
+\usepackage{times}
+\usepackage{/homes/owre/tex/session}
+\usepackage{boxedminipage}
+\def\mapb{\char"7B\char"7B}
+\def\mape{\char"7D\char"7D}
+\def\setb{\char"7B}
+\def\sete{\char"7D}
+\newcommand{\specware}{{\sc Specware}}
+\textwidth 5.5in
+\oddsidemargin .65in
+\evensidemargin .41in
+\raggedbottom
+\sloppy
+
+
+\begin{document}
+\begin{titlepage}
+\title{\textbf{\larger Theory Interpretations in PVS}}
+\author{Sam Owre \and N. Shankar
+\date{April 2001}
+\cslreportnumber{SRI-CSL-01-01}
+\maketitle
+\noindent
+%\hspace*{-1in}
+\raisebox{-0.8cm}[1cm][1cm]{\srilogo}
+\acknowledge{Funded by NASA Langley Research Center contract numbers
+NAS1-20334 and NAS1-0079 and DARPA/AFRL contract number F33615-00-C-3043.}
+\end{titlepage}
+
+\cleardoublepageblank
+\pagenumbering{roman}
+
+\begin{abstract}
+\thispagestyle{plain}
+
+We describe a mechanism for theory interpretations in PVS.  The
+mechanization makes it possible to show that one collection of theories is
+correctly interpreted by another collection of theories under a
+user-specified interpretation for the uninterpreted types and constants.
+A theory instance is generated and imported, while the axiom instances are
+generated as proof obligations to ensure that the interpretation is valid.
+Interpretations can be used to show that an implementation is a correct
+refinement of a specification, that an axiomatically defined specification
+is consistent, or that a axiomatically defined specification captures its
+intended models.
+
+In addition, the theory parameter mechanism has been extended with a
+notion of \emph{theory as parameter} so that a theory instance can be
+given as an actual parameter to an imported theory.  Theory
+interpretations can thus be used to refine an abstract specification or to
+demonstrate the consistency of an axiomatic theory.  In this report we
+describe the mechanism in detail.  This extension is a part of PVS version
+3.0, which will be publicly released in mid-2001.
+
+\end{abstract}
+
+\tableofcontents
+\cleardoublepage
+\setcounter{page}{0} 
+\pagenumbering{arabic}
+
+\chapter{Introduction}
+
+Theory interpretations have a long history in first-order
+logic~\cite{Shoenfield,Enderton,Monk76}\@.  They are used to show that the
+language of a given source theory $S$ can be interpreted within a target
+theory $T$ such that the corresponding interpretation of axioms of $S$
+become theorems of $T$\@.  This demonstrates the consistency of $S$
+relative to $T$, and also the decidability of $S$ modulo the decidability
+of $T$\@.  Theories and theory interpretations have also become important
+in higher-order logic and type theory with languages such as {\sc
+Ehdm}~\cite{EHDM:manuals}, IMPS~\cite{Farmer:interpretations},
+HOL~\cite{Windley92}, Maude~\cite{Maude}, Extended
+ML~\cite{SannellaDT:essential-concepts97}, and
+\specware~\cite{SrinivasJullig95}\@.  In these languages, theories are
+used as structuring mechanisms for large specifications so that abstract
+theories can be refined into more concrete ones through interpretation.
+In this report, we describe a theory interpretation mechanism for the PVS
+specification language.
+
+Specification languages and programming languages usually have some
+mechanism for packaging groups of definitions into modules.  Lisp and Ada
+have \emph{packages}\@.  Standard ML has a module system consisting of
+signatures, structures corresponding to a signature, and functors that map
+between structures.  Packages can be made generic by allowing certain
+declarations to serve as parameters that can be instantiated when the
+package is imported.  Ada has \emph{generic} packages that allow
+parameters.  SML \emph{functors} can be used to construct parametric
+modules.  C++ allows \emph{templates}.
+
+In specification languages, a \emph{theory} groups together related
+declarations of constants, types, axioms, definitions, and theorems.  One
+way of demonstrating the consistency of such a theory is by providing an
+interpretation for the uninterpreted types and constants under which the
+axioms are valid.  The definitions and theorems corresponding to a valid
+interpretation can then be taken as valid without further proof as long as
+they have been verified in the source theory.  The technique of
+interpreting one axiomatic theory in another has many uses.  It can be
+used to demonstrate the consistency or decidability of the former theory
+with respect to the latter theory.  It can also be used to refine an
+abstract theory down to an executable implementation.
+
+Interpretations are also useful in showing that the axioms capture the
+intended models.  For example, a clock synchronization algorithm was
+developed in \textsc{Ehdm} and was later shown to be consistent using the
+mappings, but it turned out that in one place $<$ was used instead of
+$\leq$, and because of this a set of perfectly synchronized clocks was
+actually disallowed by the model.  Using interpretations in this way is
+similar to testing in allowing for the exploration of the space of models
+for the theory.
+
+Parametric theories in PVS share some of the features of theory
+interpretations.  Such theories can be defined with formal parameters
+ranging over types and individuals, for example,\footnote{This exploits a
+new feature of PVS version 3.0, in which numbers may be overloaded as
+names.}
+{\smaller\begin{alltt}
+group[G: TYPE, + : [G, G -> G], 0: G, -: [G -> G]]: THEORY
+  BEGIN
+    \vdots
+  END group
+\end{alltt}}
+An instance of the theory \texttt{group} can be imported by supplying
+actual parameters, the type \texttt{int} of integers, integer addition
+{\tt +}, zero \texttt{0}, and integer negation {\tt -}, corresponding to
+the formal parameters, as in {\tt group[int, +, 0, -]}\@.  A theory can
+include assumptions about the parameters that have to be discharged when
+the actual parameters are supplied.  For example, the group axioms can
+be given as assumptions in the \texttt{group} theory above.  However,
+there are some crucial differences between parametric theories and theory
+interpretations.  In particular, if axioms are always specified as
+assumptions, then the theory can be imported only by discharging these
+assumptions.  It is necessary to have separate mechanisms for importing a
+theory with the axioms, and for interpreting a theory by supplying a valid
+interpretation, that is, one that satisfies its axioms.
+
+The PVS theory interpretation mechanism is quite similar to that for
+theory parameterization.  The axiomatic specification of groups could
+alternately be given in a theory
+{\smaller\begin{alltt}
+group: THEORY
+ BEGIN
+  G: TYPE+
+  +: [G, G -> G]
+  0: G
+  -: [G -> G]
+   \vdots
+ END group
+\end{alltt}}
+The group axioms are declared in the body of the theory.  Such a theory
+can be interpreted by writing \texttt{\smaller group\mapb{}G := int, + :=
++, 0 := 0, - := -\mape{}}\@.  Here the left-hand sides refer to the
+uninterpreted types and constants of theory \texttt{group}, and the
+right-hand sides are the interpretations.  This notation resembles that of
+theory parameterization and is used in contexts where a theory is
+imported.  The corresponding instances of the group axioms are generated
+as proof obligations at the point where the theory is imported.  The
+result is a theory that consists of the corresponding mapping of the
+remaining declarations in the theory \texttt{group}\@.  This allows the
+theory \texttt{group} to be used in other theories, such as rings and
+fields, and also allows the theory \texttt{group} to be suitably
+instantiated by group structures.
+
+Theory interpretations largely subsume parametric theories in the sense
+that the theory parameters and the corresponding assumings can instead be
+presented as uninterpreted types and constants and axioms so that the
+actual parameters are given by means of an interpretation.  However, a
+parametric theory with both assumings and axioms involving the parameters
+is not equivalent to any interpreted theory, as the parameters may be
+instantiated without the need to prove the axioms.  It is also useful to
+have parametric theories as a convenient way of grouping together all the
+parameters that must be provided whenever the theory is used.  For
+example, typical theory parameters such as the size of an array, or the
+element type of an aggregate datatype such as an array, list, or tree, are
+required as inputs whenever the corresponding theories are used.  While
+this kind of parameterization can be captured by theory interpretations,
+it would not capture the intent that these parameters are \emph{required}
+inputs wherever the theory is used.  Furthermore, when an operation from a
+parametric theory is used, PVS attempts to figure out the actual
+parameters based on the context of its use.  It can do this because the
+formal parameters are precisely delimited.  The corresponding inference is
+harder for theory interpretations since there might be many possible
+interpretations that are compatible with the context of the operations
+use.
+
+In addition to the uninterpreted types and constants in a source theory
+$S$, the PVS theory interpretation mechanism can also be used to interpret
+any theories that are imported into $S$ by means of the \texttt{THEORY}
+declaration.  The interpretation of a theory declaration for $S'$ imported
+within $S$ must itself be a theory interpretation of $S'$\@.  Two distinct
+importations of a theory $S'$ within $S$ can be given distinct
+interpretations.  A typical situation is when two theories $R_1$ and $R_2$
+both import a theory $S$ as $S_1$ and $S_2$, respectively.  A theory $T$
+importing both $R_1$ and $R_2$ might wish to identify $S_1$ and $S_2$
+since, otherwise, these would be regarded as distinct within $T$\@.  This
+can be done by importing an instance $S'$ of $S$ into $T$ and importing
+$R_1$ with $S_1$ interpreted by $S'$ and $R_2$ with $S_2$ interpreted as
+$S'$\@.  With theory interpretations, we have also extended parametric
+theories in PVS to take theories as parameters.  For example, we might
+have a theory \texttt{group\_homomorphism} of group homomorphisms that
+takes two groups \texttt{G1} and \texttt{G2} as parameters as in the
+declaration
+\begin{alltt}
+ group_homomorphism[G1, G2: THEORY group]: THEORY \ldots
+\end{alltt}
+The actual parameters for these theory formals must be
+interpretations \texttt{G1'} and \texttt{G2'}
+of the theory \texttt{group}\@.
+
+Another typical requirement in a theory interpretation mechanism is
+the ability to map a source type to some quotient with respect to
+an equivalence relation over a target type.
+For example, rational numbers can be interpreted by means of
+a pair of integers corresponding to the numerator and denominator,
+but the same rational number can have multiple such representations.
+We show how it is possible to define quotient types in PVS and use
+these types to capture interpretations where the equality over a
+source type is mapped to an equivalence relation over a target type. 
+
+The implementation of theory interpretation in PVS is described in the
+following chapters.  This report assumes the reader is already familiar
+with the PVS language; for details see the PVS Language
+Manual~\cite{PVS:language}.  Chapter 2 deals with mappings, explaining the
+basic concepts and introduces the grammar.  Chapter 3 introduces theory
+declarations and theories as parameters which allow any valid
+interpretation of the formal parameter theory as an actual parameter.
+Chapter 4 describes a new command for viewing theory instances.  Chapter 5
+compares PVS interpretations with other systems, Chapter 6 describes
+future work, and we conclude with Chapter 7.
+
+
+\chapter{Mappings}\label{mappings}
+
+Theory interpretations in PVS provide mappings for uninterpreted types and
+constants of the \emph{source} theory into the current
+(\emph{interpreting}) theory.  Applying a mapping to a source theory
+yields an \emph{interpretation} (or \emph{target}) theory.  A mapping is
+specified by means of the \emph{mapping} construct, which associates
+uninterpreted entities of the source theory with expressions of the target
+theory.  The mapping construct is an extension to the PVS notion of
+``name''.  The changes to the existing grammar are given in
+Figure~\ref{mapping-bnf}.
+
+\begin{figure}
+\setlength{\sessionboxwidth}{\linewidth}
+\addtolength{\sessionboxwidth}{-\arrayrulewidth}
+\addtolength{\sessionboxwidth}{-\tabcolsep}
+\begin{boxedminipage}[b]{\sessionboxwidth}
+\begin{bnf}
+
+\production{TheoryName}
+{\opt{Id \lit{@}} Id \opt{Actuals} \opt{Mappings}}
+
+\production{Name}
+{\opt{Id \lit{@}} IdOp \opt{Actuals} \opt{Mappings} \opt{\lit{.} IdOp}}
+
+\production{Mappings}
+{\lit{\mapb{}} \ites{Mapping}{,} \lit{\mape{}}}
+
+\production{Mapping}
+{MappingLhs MappingRhs}
+
+\production{MappingLhs}
+{IdOp \rep{Bindings} \opt{\lit{:} \brc{\lit{TYPE} \choice \lit{THEORY}
+\choice TypeExpr}}}
+
+\production{MappingRhs}
+{\lit{:=} \brc{Expr \choice TypeExpr}}
+
+\end{bnf}
+\end{boxedminipage}
+\caption{Grammar for Names with Mappings}\label{mapping-bnf}
+\end{figure}
+
+The mapping construct defines the basic translation, but to be a theory
+interpretation the mapping must be consistent: if type \texttt{T} is
+mapped to the type expression \emph{E}, then a constant \texttt{t} of type
+\texttt{T} must be mapped to an expression \emph{e} of type \emph{E}.  In
+addition, all axioms and theorems of the source theory must be shown to
+hold in the target theory under the mapping.  Since the theorems are
+provable from the axioms, it is enough to show that the translation of the
+axioms hold.  Axioms whose translations do not involve any
+uninterpreted types or constants of the source theory are converted to
+proof obligations.  Otherwise they remain axioms.
+
+Theory interpretation may be viewed as an extension of theory
+parameterization.  Given a theory named \texttt{T}, the instance
+\texttt{T[a$_1$,\ldots,a$_n$]\mapb{}c$_1$:= e$_1$,\ldots,c$_m$:=
+e$_m$\mape{}} is the same as the original theory, with the \emph{actuals}
+\texttt{a$_i$} substituted for the corresponding formal parameters, and
+e$_i$ substituted for \texttt{c$_i$}, which must be an uninterpreted type
+or constant declaration.  Declarations that appear in the target of a
+substitution in the mapping are not visible in the importing theory.  Some
+axioms are translated to proof obligations.  The substituted forms of any
+remaining axioms, definitions, and lemmas are available for use, and are
+considered proved if they are proved in the uninterpreted theory.
+
+The following simple example illustrates the
+basic concepts.
+\begin{session}
+th1[T: TYPE, e: T]: THEORY
+ BEGIN
+  t: TYPE+
+  c: t
+  f: [t -> T]
+  ax: AXIOM EXISTS (x, y: t): f(x) /= f(y)
+  lem1: LEMMA EXISTS (x:T): x /= e
+ END th1
+\end{session}
+\begin{session}
+th2: THEORY
+ BEGIN
+  IMPORTING th1[int, 0]
+               \mapb{} t := bool,
+                  c := true,
+                  f(x: bool) := IF x THEN 1 ELSE 0 ENDIF \mape{}
+  lem2: LEMMA EXISTS (x:int): x /= 0
+ END th2
+\end{session}
+\noindent Here theory \texttt{th1} has both actual parameters and
+uninterpreted types and constants, as well as an axiom and
+a lemma.  Theory \texttt{th2} imports \texttt{th1}, making the
+following substitutions:
+\setlength{\jot}{-2pt}
+\setlength{\abovedisplayskip}{0pt}
+\setlength{\belowdisplayskip}{0pt}
+{\smaller\begin{eqnarray*}
+\texttt{T} & \leftarrow & \texttt{int} \\
+\texttt{e} & \leftarrow & \texttt{0} \\
+\texttt{t} & \leftarrow & \texttt{bool} \\
+\texttt{c} & \leftarrow & \texttt{true} \\
+\texttt{f} & \leftarrow & \texttt{LAMBDA (x:\ bool):\ IF x THEN 1 ELSE 0 ENDIF} \\
+\end{eqnarray*}}
+Note that the mapping for \texttt{f} uses an abbreviated form of
+substitution.  Typechecking this leads to the following proof obligation.
+\begin{session}
+IMP_th1_TCC1: OBLIGATION
+  EXISTS (x, y: bool):
+    IF x THEN 1 ELSE 0 ENDIF /= IF y THEN 1 ELSE 0 ENDIF;
+\end{session}
+This is simply the interpretation of the \texttt{ax} axiom and is easily
+proved.  The lemma \texttt{lem1} can be proved from the axiom, and may
+be used directly in proving \texttt{lem2} using the proof command
+\texttt{(LEMMA "lem1")}.
+
+Note that once the TCC has been proved, we know that \texttt{th1} is
+consistent.  If we had left out the mapping for \texttt{f}, then the TCC
+would not be generated, and the translation of theory \texttt{th1} would
+still contain an axiom and not necessarily be consistent.
+
+% Note that we used a lambda form in the axiom,
+% rather than \texttt{f}.  This is because logically the generated proof
+% obligation precedes the importing, which is only meaningful if the
+% obligation is provable.  Hence \texttt{f} is not visible in the proof
+% obligation and should not appear in any axiom of the theory.\footnote{We
+% may allow this in future versions of PVS by automatically expanding
+% non-recursive definitions as a part of substitution, treating them as a
+% kind of macro.}  After the importing, of course, \texttt{f} is visible as
+% seen in \texttt{lem2}.
+
+% Note that mappings make theory parameters optional---they may be
+% eliminated by moving the formal parameters to the theory body and turning
+% assumptions into axioms.  The theory could then be instantiated using
+% mappings instead of actual parameters.  Theory parameters are still
+% useful, however.  First, they may be used to distinguish between the
+% parameters to the system being specified and the entities defined by the
+% system.  For example, in describing a protocol that works for any number
+% of processes, it is more natural to make the number of processes a formal
+% parameter rather than an uninterpreted constant.  Second, the
+% typechecker can frequently infer the values of the actual parameters when
+% a theory is imported generically, but mappings must be explicitly given.
+% Although in principle the typechecker might be extended to infer mappings,
+% it is hard to see how to do this efficiently.
+
+One advantage to using mappings instead of parameters is that not all
+uninterpreted entities need be mapped, whereas for parameters either all
+or none must be given.  For example, consider the following theory.
+\begin{session}
+example1[T: TYPE, c: T]: THEORY
+ BEGIN
+  f(x: T): int = IF x = c THEN 0 ELSE 1 ENDIF
+ END example1
+\end{session}
+\noindent It may be desirable to import this where \texttt{T} is always
+\texttt{real}, and \texttt{c} is left as a parameter, but there is
+currently no mechanism for this.  One could envision partial importings
+such as \texttt{IMPORTING example1[real, \_]}, but it is not clear that
+this is actually practical---in particular, the syntax for providing the
+missing parameters is not obvious.  With mappings, on the other hand, we
+can define \texttt{example1} as follows.
+\begin{session}
+example1: THEORY
+ BEGIN
+  T: TYPE
+  c: T
+  f(x: T): int = IF x = c THEN 0 ELSE 1 ENDIF
+ END example1
+\end{session}
+\noindent Then we can refer to this theory from another theory as in the
+following.
+\begin{session}
+example2: THEORY
+ BEGIN
+  th: THEORY = example1\mapb{}T := real\mape{}
+  frm: FORMULA f\mapb{}c := 3\mape{} = f
+ END example2
+\end{session}
+\noindent The \texttt{th} theory declaration just instantiates \texttt{T},
+leaving \texttt{c} uninterpreted.  The first reference to \texttt{f} maps
+\texttt{c} to \texttt{3}, whereas the second reference leaves it
+uninterpreted though it is still a \texttt{real}.  Note that formula
+\texttt{frm} is unprovable, since the uninterpreted \texttt{c} from the
+second reference may or may not be equal to \texttt{3}.
+
+As described in the introduction, an important aspect of mappings is the
+support for quotient types.  In \textsc{Ehdm} this was done by
+interpreting equality, but in PVS we instead define a theory of
+equivalence classes, and allow the user to map constants to equivalence
+classes under congruences.  For example, the \texttt{stacks} datatype
+might be implemented using an array as follows.
+\begin{session}
+stack[t:TYPE]: DATATYPE
+ BEGIN
+  empty: empty?
+  push(top:t, pop: stack): nonempty?
+ END stack
+\end{session}
+\begin{session}\label{cstack}
+cstack[t: TYPE+]: THEORY
+ BEGIN
+  cstack: TYPE = [# size: nat, elems: [nat -> t] #]
+  cempty?(s: cstack): bool = (s`size = 0)
+  some_t: t = epsilon(LAMBDA (x:t): true)
+  cempty: (cempty?) =
+    (# size := 0,
+       elems := LAMBDA (n: nat): some_t #)
+  cnonempty?(s: cstack): bool = (s`size /= 0)
+  ctop(s: (cnonempty?)): t = s`elems(s`size - 1)
+  cpop(s: (cnonempty?)): cstack = s WITH [`size := s`size - 1]
+  cpush(x: t)(s: cstack): (cnonempty?) =
+    (# size := s`size + 1,
+       elems := s`elems WITH [(s`size) := x] #)
+  ce: equivalence[cstack] =
+    LAMBDA (s1, s2: cstack):
+     s1`size = s2`size AND
+     FORALL (n: below(s1`size)): s1`elems(n) = s2`elems(n)
+
+  estack: TYPE = Quotient(ce)
+  CONVERSION+ EquivClass(ce), rep(ce), lift(ce)
+  \ldots
+\end{session}
+\texttt{Quotient}, \texttt{EquivClass}, and \texttt{rep} are defined in
+the prelude theory \texttt{QuotientDefinition}, shown here in part.
+\begin{session}
+QuotientDefinition[T : TYPE] : THEORY
+BEGIN
+  R : VAR set[[T, T]]
+  S : VAR equivalence[T]
+  x, y, z : VAR T
+
+  EquivClass(R)(x) : set[T] = { z | R(x, z) }
+  \ldots
+  Quotient(S) : TYPE =
+    { P : set[T] | EXISTS x : P = EquivClass(S)(x) }
+  \ldots
+  rep(S)(P: Quotient(S)): T = choose(P)
+  \ldots
+END QuotientDefinition
+\end{session}
+The \texttt{lift} function is defined in the prelude theory
+\texttt{QuotientExtensionProperties} as follows.
+\begin{session}
+QuotientExtensionProperties[X, Y : TYPE] : THEORY
+BEGIN
+  S : VAR equivalence[X]
+
+  lift(S)(g : (PreservesEq[X, Y](S)))(P : Quotient(S)) : Y
+    = g(rep(S)(P))
+  \ldots
+END QuotientExtensionProperties
+\end{session}
+This allows functions on concrete stacks to be lifted to functions on
+equivalence classes, so long they satisfy the \texttt{PreservesEq}
+relation, i.e., they produce the same values on \texttt{S}-equivalent
+elements.
+
+With these conversions in place, we can finish the specification of
+\texttt{cstack} as follows.
+\begin{session}
+  \ldots
+  IMPORTING stack[t]\mapb{} stack := estack,
+                       empty? := cempty?,
+                       nonempty? := cnonempty?,
+                       empty := cempty,
+                       top(s: (cnonempty?)) := ctop(s),
+                       pop(s: (cnonempty?)) := cpop(s),
+                       push(x: t, s: cstack) := cpush(x)(s) \mape{}
+ END cstack
+\end{session}
+\noindent Here the source type \texttt{stack} is mapped to the quotient
+type \texttt{estack} defined by the concrete equality \texttt{ce}.  The
+\texttt{empty?} and \texttt{nonempty?} predicates are mapped to predicates
+on \texttt{estack}s, using the \texttt{rep(ce)} conversion.  The
+\texttt{empty} constructor is then mapped to its equivalence class.
+
+\texttt{top}, \texttt{pop},
+
+The mapping for \texttt{push} is more involved; \texttt{cpush} must first
+be lifted in order to apply it to the abstract stack \texttt{s}.  This is
+applied automatically by the conversion mechanism of PVS.  The application
+of \texttt{lift} generates the proof obligation that \texttt{cpush}
+preserves the equivalences, that is, it is a congruence.  This mapping
+generates a large number of proof obligations, because the \texttt{stack}
+datatype generates a \texttt{stacks\_adt} theory with a large number of
+axioms, for example, extensionality, well-foundedness, and induction.
+
+The PVS interpretations mechanism is much simpler to implement than the
+one in \textsc{Ehdm}---equality is not a special case, but simply an
+aspect of mapping a type to an equivalence class.  The technique of
+mapping types to equivalence classes is quite useful, and captures the
+notion of behavioral equivalence outlined
+in~\cite{SannellaDT:essential-concepts97}.  In fact it is more general, in
+that it works for any equivalence relation, not just those based on
+observable sorts.
+
+
+\chapter{Theory Declarations}
+
+With the mapping mechanism, it is easy to specify a general theory and
+have it stand for any number of instances.  For example, groups, rings,
+and fields are all structures that can be given axiomatically in terms of
+uninterpreted types and constants.  This works well when considering one
+such structure at a time, but it is difficult to specify theories that
+involve more than one structure, for example, group homomorphisms.
+Importing the original theory twice is the same as importing it once, and
+an attempted definition of a homomorphism would turn into an automorphism.
+In this case what is needed is a way to specify multiple different
+``copies'' of the original theory.  This is accomplished with \emph{theory
+declarations}, which may appear in either the theory parameters or the
+body of a theory.  A theory declaration in the formal parameters is
+referred to as a \emph{theory as parameter}.\footnote{The term
+\emph{theory parameter} refers to a parameter of a theory, so we use the
+term \emph{theory as parameter} instead.}  Theory declarations allow
+theories to be encapsulated, and instantiated copies of the implicitly
+imported theory are generated.
+\begin{figure}[!b]
+\setlength{\sessionboxwidth}{\linewidth}
+\addtolength{\sessionboxwidth}{-\arrayrulewidth}
+\addtolength{\sessionboxwidth}{-\tabcolsep}
+\begin{boxedminipage}[b]{\sessionboxwidth}
+\begin{bnf}\smaller
+
+\production{TheoryFormalDecl}
+{TheoryFormalType \choice TheoryFormalConst \choice TheoryDecl}
+
+\production{TheoryDecl}
+{Id \lit{:} \lit{THEORY} TheoryDeclName}
+
+\production{TheoryDeclName}
+{\opt{Id \lit{@}} Id \opt{Actuals} \opt{TheoryDeclMappings}}
+
+\production{TheoryDeclMappings}
+{\lit{\mapb{}} \ites{TheoryDeclMapping}{,} \lit{\mape{}}}
+
+\production{TheoryDeclMapping}
+{MappingLhs TheoryDeclMappingRhs}
+
+\production{TheoryDeclMappingRhs}
+{MappingSubst \choice MappingDef \choice MappingRename}
+
+\production{MappingSubst}
+{\lit{:=} \brc{Expr \choice TypeExpr}}
+
+\production{MappingDef}
+{\lit{=} \brc{Expr \choice TypeExpr}}
+
+\production{MappingRename}
+{\lit{::=} \brc{IdOp \choice Number}}
+
+\end{bnf}
+\end{boxedminipage}
+\caption{Grammar for Theory Declarations}\label{theory-parameter-bnf}
+\end{figure}
+
+For example, an (additive) group is normally thought of as a 4-tuple
+consisting of a set $G$, a binary operator $+$, an identity element $0$,
+and an inverse operator $-$ that satisfies the usual group axioms.  Using
+theory interpretations, we simply define this as follows:
+\begin{session}
+group: THEORY
+ BEGIN
+  G: TYPE+
+  +: [G, G -> G]
+  0: G
+  -: [G -> G]
+  x, y, z: VAR G
+  associative_ax: AXIOM FORALL x, y, z: x + (y + z) = (x + y) + z
+  identity_ax: AXIOM FORALL x: x + 0 = x
+  inverse_ax: AXIOM FORALL x: x + -x = 0 AND -x + x = 0
+  idempotent_is_identity: LEMMA x + x = x => x = 0
+ END group
+\end{session}
+
+As described in Chapter~\ref{mappings}, we can use mappings to create
+specific instances of groups.  For example, {\smaller\begin{alltt}
+group\mapb{}G := int, + := +, 0 := 0, - := -\mape{}
+\end{alltt}}
+\noindent is the additive group of integers, whereas
+{\smaller\begin{alltt}
+group\mapb{}G := nzreal, + := *, 0 := 1, - := LAMBDA (r:nzreal):\ 1/r\mape{}
+\end{alltt}}
+\noindent is the multiplicative group of nonzero reals.
+
+This works nicely, until we try to define the notion of a group
+homomorphism.  At this point we need two groups, both individually
+instantiable.  We could simply duplicate the group specification, but
+this is obviously inelegant and error prone.  Using theories as
+parameters, we may define group homomorphisms as follows.
+\begin{session}
+group_homomorphism[G1, G2: THEORY group]: THEORY
+ BEGIN
+  x, y: VAR G1.G
+  f: VAR [G1.G -> G2.G]
+  homomorphism?(f): bool = FORALL x, y: f(x + y) = f(x) + f(y)
+  hom_exists: LEMMA EXISTS f: homomorphism?(f)
+ END group_homomorphism
+\end{session}
+\noindent Here \texttt{G1} and \texttt{G2} are theories as parameters to a
+generic homomorphism theory that may be instantiated with two different
+groups.  Hence we may import \texttt{group\_homomorphism}, for example, as
+\begin{session}
+IMPORTING group_homomorphism[group\mapb{}G := int, + := +, 0 := 0, - := -\mape{}
+                             group\mapb{}G := nzreal, + := *, 0 := 1,
+                                 - := LAMBDA (x: nzreal): 1/x\mape{}]
+\end{session}
+
+There is a subtlety here that needs emphasizing; \texttt{G1} and
+\texttt{G2} are two \emph{distinct} versions of theory \texttt{group}.
+For example, consider the addition of the following lemma to
+\texttt{group\_homomorphism}.
+\begin{session}
+oops: LEMMA G1.0 = G2.0
+\end{session}
+\noindent If \texttt{G1} and \texttt{G2} are treated as the same
+\texttt{group} theory, this is a provable lemma.  But then after the
+importing given above we would be able to show that \texttt{0 = 1}.  Even
+worse, the two different instances of groups may not even be type
+compatible, so the \texttt{oops} lemma should not even typecheck.
+
+We have solved this in PVS by making new theories \texttt{G1} and
+\texttt{G2} that are copies of the original \texttt{group} theory.
+Declarations within these copies are distinct from each other and from the
+original.  Thus the \texttt{oops} lemma generates a type error, as
+\texttt{G1.G} and \texttt{G2.G} are incompatible types.
+
+This introduces new possibilities.  When creating copies of a theory the
+mappings are substituted and the original declarations disappear.
+However, it may be preferable to create definitions rather than
+substitutions.  In addition, it is sometimes useful to simply rename the
+types or constants of a theory.  For example, consider the following group
+instance
+\begin{session}
+G1: THEORY = group\mapb{}G := int, + := +, 0 := 0, - := -\mape{}
+\end{session}
+\noindent which generates the following theory.
+\label{group-instances-start}
+\begin{session}
+G1: THEORY
+ BEGIN
+  x, y, z: VAR int
+  idempotent_is_identity: LEMMA x + x = x => x = 0
+ END G1
+\end{session}
+To create definitions, use \texttt{=} instead of \texttt{:=}, as
+in the following.
+\begin{session}
+G2: THEORY = group\mapb{}G = int, + = +, 0 = 0, - = -\mape{}
+\end{session}
+\noindent Now we get the following theory.
+\begin{session}
+G2: THEORY
+ BEGIN
+  G: TYPE+ = int
+  +: [G, G -> G] = +
+  0: G = 0
+  -: [G -> G] = -
+  x, y, z: VAR G
+  idempotent_is_identity: LEMMA x + x = x => x = 0
+ END G2
+\end{session}
+Finally, to simply rename the uninterpreted types and constants, use
+\texttt{::=} as in the following.
+\begin{session}
+G3: THEORY = group\mapb{}G ::= MG, + ::= *, 0 ::= 1, - ::= inv\mape{}
+\end{session}
+\noindent The generated theory instance specifies multiplicative groups as
+follows.
+\begin{session}
+G3: THEORY
+ BEGIN
+  MG: TYPE+
+  *: [MG, MG -> MG]
+  1: MG
+  inv: [MG -> MG]
+  x, y, z: VAR MG
+  associative_ax: AXIOM FORALL x, y, z: x * (y * z) = (x * y) * z
+  identity_ax: AXIOM FORALL x: x * 1 = x
+  inverse_ax: AXIOM FORALL x: x * inv(x) = 1 AND inv(x) * x = 1
+  idempotent_is_identity: LEMMA x * x = x => x = 1
+ END G3
+\end{session}
+The right-hand side of a renaming mapping must be an identifier, operator,
+or number, and must not create ambiguities within the generated theory.
+Note that renamed declarations are still uninterpreted, and may themselves
+be given interpretations, as in
+\begin{session}
+G3i: THEORY = G3\mapb{}MG := nzreal, * := *, 1 := 1,
+                  inv := LAMBDA (r: nzreal): 1/r\mape{}
+\end{session}
+
+Finally, we can mix the different forms of mapping, to give a partial
+mapping.
+\begin{session}
+G4: THEORY = group\mapb{}G = nzreal, + := *, 0 ::= one\mape{}
+\end{session}
+\noindent This generates the following theory instance.
+\begin{session}
+G4: THEORY
+ BEGIN
+  G: TYPE+ = nzreal;
+  one: nzreal;
+  -: [nzreal -> nzreal]
+  x, y, z: VAR nzreal
+  identity_ax: AXIOM FORALL (x: nzreal): x * one = x
+  inverse_ax: AXIOM FORALL (x: nzreal):
+                      x * -x = one AND -x * x = one
+  idempotent_is_identity: LEMMA x * x = x => x = one
+ END G4
+\end{session}\label{group-instances-end}
+Note that \texttt{associative\_ax} has disappeared---it has become a TCC
+of the importing theory---whereas the other axioms are not so transformed
+because they still reference uninterpreted types or constants.
+
+With theories as parameters we have another situation in which mappings
+are more convenient than theory parameters.  Many times the same set of
+parameters is passed through an entire theory hierarchy.  If there are
+assumings, then these must be copied.  For example, consider the
+following theory.
+\begin{session}
+th[T: TYPE, a, b: T]: THEORY
+ BEGIN
+  ASSUMING
+   A: ASSUMPTION a /= b
+  ENDASSUMING
+  ...
+ END th
+\end{session}
+\noindent To import this theory, you simply provide a type and two
+different elements of that type.  But suppose you wish to import this
+theory from a theory that has the same parameters.  In this case the
+assumption must also be copied, as there is otherwise no way to prove the
+resulting obligation.  This can (and frequently does) lead to a tower of
+theories, all with the same parameters and copies of the same assumptions,
+as well as proofs of the same obligations.
+
+There are ways around this, of course.  Most assumptions may be turned
+into type constraints, as in the following.
+\begin{session}
+th[T: TYPE, a: T, b: \setb{}x: T | a /= x\sete{}]: THEORY
+ ...
+\end{session}
+\noindent But this introduces an asymmetry in that \texttt{a} and
+\texttt{b} now belong to different types, and the type predicate still
+must be provided up the entire hierarchy.
+
+Using a theory as a parameter, we may instead define \texttt{th} as
+follows.
+\begin{session}
+th: THEORY
+ BEGIN
+  T: TYPE,
+  a, b: T
+  A: AXIOM a /= b
+  ...
+ END th
+\end{session}
+\noindent We then parameterize using this theory (which is implicitly
+imported):
+\begin{session}
+th_1[t: THEORY th]: THEORY ...
+\end{session}
+\noindent We have encapsulated the uninterpreted types and constants into
+a theory, and this is now represented as a single parameter.  Axiom
+\texttt{A} is visible within theory \texttt{th\_1}, and no proof
+obligations are generated since no mapping was given for \texttt{th}.  Now
+we can continue defining new theories as follows.
+\begin{session}
+th_2[t: THEORY th]: THEORY IMPORTING th_1[t] ...
+th_3[t: THEORY th]: THEORY IMPORTING th_2[t] ...
+  \vdots
+\end{session}
+\noindent None of these generate proof obligations, as no mappings are
+provided.
+
+We may now instantiate \texttt{th\_n}, for example, with the following.
+\begin{session}
+IMPORTING th_n[th\mapb{}T := int, a := 0, b := 1\mape{}]
+\end{session}
+\noindent Now the substituted form of the axiom becomes a proof obligation
+which, when proved, provides evidence that the theory \texttt{th} is
+consistent.
+
+% \chapter{Theory Declarations and Theory Abbreviations}
+
+With the introduction of theories as parameters, it is natural to allow
+theory declarations that may be mapped, in the same way that instances may
+be provided for theories as parameters.  Thus the
+\texttt{group\_homomorphism} may be rewritten as follows:
+\begin{session}
+group_homomorphism: THEORY
+ BEGIN
+  G1, G2: THEORY group
+  x, y: VAR G1.G
+  f: VAR [G1.G -> G2.G]
+  homomorphism?(f): bool = FORALL x, y: f(x + y) = f(x) + f(y)
+  hom_exists: LEMMA EXISTS f: homomorphism?(f)
+ END group_homomorphism
+\end{session}
+\noindent Again, the choice between using theories as parameters or theory
+declarations is really a question of taste, as they are largely
+interchangeable.
+
+As with theories as parameters, copies must be made for \texttt{G1} and
+\texttt{G2}.  Note that this means that there is a difference between
+theory abbreviations and theory declarations, as the former do not involve
+any copying.  We decided to use the old form of theory abbreviation to
+define theory declarations, and to extend the \texttt{IMPORTING} expressions to
+allow abbreviations, as shown in Figure~\ref{importing-bnf}.  Thus instead of
+\begin{session}
+funset: THEORY = sets[[int -> int]]
+\end{session}
+\noindent which creates a copy of sets, use
+\begin{session}
+IMPORTING sets[[int -> int]] AS funset
+\end{session}
+\noindent which imports \texttt{sets[[int -> int]]} and abbreviates it as
+\texttt{funset}.
+
+\begin{figure}
+\setlength{\sessionboxwidth}{\linewidth}
+\addtolength{\sessionboxwidth}{-\arrayrulewidth}
+\addtolength{\sessionboxwidth}{-\tabcolsep}
+\begin{boxedminipage}[b]{\sessionboxwidth}
+\begin{bnf}
+
+\production{Importing}
+{\lit{IMPORTING} \ites{ImportingItem}{,}}
+
+\production{ImportingItem}
+{TheoryName \opt{\lit{AS} Id}}
+
+\end{bnf}
+\end{boxedminipage}
+\caption{Grammar for Importings}\label{importing-bnf}
+\end{figure}
+
+\chapter{Prettyprinting Theory Instances}
+
+Mappings can get fairly complex, especially if actual parameters are
+involved, and it may be desirable to see the specified theory instance
+displayed with all the substitutions performed.  To support this, we have
+provided a new PVS command: \texttt{prettyprint-theory-instance}
+(\texttt{M-x ppti}).  This takes two arguments: a theory instance, which
+in general is a theory name with actual parameters and/or mappings, and a
+context theory, in which the theory instance may be typechecked.  The
+simplest way to use this command is to put the cursor on the theory name
+as it appears in a theory as parameter, theory declaration, or
+importing---when the command is issued it then defaults to the theory
+instance under the cursor and the current theory is the default
+context theory.  For example, putting the cursor on
+\texttt{group\_homomorphism} in the following and typing \texttt{M-x ppti}
+followed by two carriage returns\footnote{The first uses the theory name
+instance at the cursor, and the second uses the current theory as the
+context.} generates a buffer named \texttt{group\_homomorphism.ppi}.
+All instances of a given theory generate the same buffer name.
+\begin{session}
+IMPORTING group_homomorphism[\mapb{}G := int, + := +, 0 := 0, - := -\mape{}
+                             \mapb{}G := nzreal, + := *, 0 := 1,
+                               - := LAMBDA (x: nzreal): 1/x\mape{}]
+\end{session}
+\noindent This buffer has the following contents.
+\begin{session}
+% Theory instance for
+  % group_homomorphism[groups\mapb{} G := int, + := +,
+  %                             - := -, 0 := 0 \mape{},
+  %                    groups\mapb{} G := nzreal, + := *,
+  %                             - := (LAMBDA (x: nzreal): 1 / x),
+  %                             0 := 1 \mape{}]
+group_homomorphism_instance: THEORY
+ BEGIN
+
+  IMPORTING groups\mapb{} G := int, + := +, - := -, 0 := 0 \mape{}
+
+  IMPORTING groups\mapb{} G := nzreal, + := *,
+                     - := (LAMBDA (x: nzreal): 1 / x), 0 := 1 \mape{}
+
+  x, y: VAR int
+
+  f: VAR [int -> nzreal]
+
+  homomorphism?(f): bool =
+    FORALL (x: int), (y: int): f(x + y) = f(x) * f(y)
+
+  hom_exists: LEMMA EXISTS (f: [int -> nzreal]): homomorphism?(f)
+ END group_homomorphism_instance
+\end{session}
+The group instances shown on
+pages~\pageref{group-instances-start}--\pageref{group-instances-end}
+provide more examples of the output produced by
+\texttt{prettyprint-theory-instance}.
+
+\chapter{Comparison with Other Systems}
+
+In this chapter we compare PVS theory interpretations to existing
+programming and specification mechanisms of other systems.
+The \textsc{Ehdm} system~\cite{EHDM:Language} has a notion of a mapping
+module that maps a source module to a target module.  When a mapping
+module is typechecked, a new module is automatically created that
+represents the substitution of the interpretations for the body of the
+source theory.  Equality is allowed to be mapped in \textsc{Ehdm}, in
+which case it must be mapped to an equivalence relation.  In PVS, mappings
+are provided as a syntactic component of names, and are essentially an
+extension of theory parameters.  Equality is not treated specially, but is
+handled by mapping a given type to a quotient type.
+
+IMPS~\cite{Farmer:imps-cade,Farmer94} also supports theory
+interpretations.  It is similar to \textsc{Ehdm} in that it has a special
+\texttt{def-translation} form that takes a source theory, target
+theory, sort association list, and constant association list, and generates a
+theory translation.  Obligations may be generated that ensure that every
+axiom of the source theory is a theorem of the target theory.  If these
+are proved the translation is treated as an interpretation.  There is no
+mechanism for mapping equality.  As with both PVS and \textsc{Ehdm},
+defined sorts and constants of the source theory are automatically
+translated.  A more detailed comparison between IMPS and an earlier
+version of PVS appears in an unpublished report by
+Kamm\"{u}ller~\cite{Kammuller:comparison}.
+
+In Maude~\cite{Maude} and its precursor OBJ~\cite{OBJ:intro} it is
+possible to
+define \texttt{modules} that represent transition systems of a rewrite
+theory whose states are equivalence classes of ground terms and whose
+transitions are inference rules in \emph{rewriting logic}.  A given module
+may import another module, either \texttt{protecting} it, which means that
+the importing module adds no \emph{junk} or \emph{confusion}, or
+\texttt{including} it, which imposes no such restrictions.  In addition to
+modules, Maude has \emph{theories}, which are used to declare module
+interfaces.  These may appear as module parameters, as in
+$M[X_{1}::T_{1},\ldots,X_{n}::T_{n}]$, where the $X_{i}$ are \emph{labels}
+and the $T_{i}$ are names of theories.  These theory parameters (source
+theories) may be instantiated by target theories or modules using
+\emph{views}, which indicate how each sort, function, class, and message
+of the source theory is mapped to the target theory.  However, Maude
+currently does not support the generation of proof obligations from source
+theory axioms, so views are simply theory translations, not
+interpretations.
+
+The programming language Standard ML~\cite{ML-report} has a module
+system where modules are given by \emph{structures} with a given
+\emph{signature}, and parametric modules are \emph{functors} mapping
+structures of a given signature to structures.  The PVS mechanism
+of using theories as parameters resembles SML functors but for a
+specification language rather than a programming language. 
+Sannella and Tarlecki~\cite{SannellaDT:essential-concepts97} describe a
+version of the ML module system in which there are \emph{specifications}
+containing \emph{sorts}, \emph{operations}, and \emph{axioms}.  For
+example, the signature of stacks is the following.
+\begin{eqnarray*}
+\emph{STACK} = & \textbf{sorts} & \emph{stack} \\
+               & \textbf{opns} & \emph{empty} : \emph{stack} \\
+               &               & \emph{push} : \texttt{int} \times \emph{stack} \rightarrow \emph{stack} \\
+               &               & \emph{pop} :
+                                 \emph{stack} \rightarrow \emph{stack} \\
+               &               & \emph{top} :
+                                 \emph{stack} \rightarrow \texttt{int} \\
+               &               & \emph{is\_empty} :
+                                 \emph{stack} \rightarrow \texttt{bool} \\
+               & \textbf{axioms} & \emph{is\_empty}(\emph{empty}) =
+                                   \texttt{true} \\
+               &               &
+               \forall\emph{s}:\emph{stack}.\forall\emph{n}:\texttt{int}.
+                 \emph{is\_empty}(\emph{push}(\emph{n},\emph{s}))
+                     = \texttt{false} \\
+               &               &
+               \forall\emph{s}:\emph{stack}.\forall\emph{n}:\texttt{int}.
+                 \emph{top}(\emph{push}(\emph{n},\emph{s})) = \emph{n} \\
+               &               &
+               \forall\emph{s}:\emph{stack}.\forall\emph{n}:\texttt{int}.
+                 \emph{pop}(\emph{push}(\emph{n},\emph{s})) = \emph{s} \\
+\end{eqnarray*}
+The following algebra is a \emph{realization} of the above specification
+that corresponds to that of \texttt{cstack} on page~\pageref{cstack}.
+{\smaller\begin{alltt}
+  structure S2 : STACK =
+      struct
+          type stack = (int -> int) * int
+          val empty = ((fn k => 0), 0)
+          fun push (n, (f, i))
+                = ((fn k => if k = i then n else f k), i+1)
+          fun pop (f, i) = if i = 0 then (f, 0) else (f, i-1)
+          fun top (f, i) = if i = 0 then 0 else f(i-1)
+          fun is_empty (f, i) = (i=0)
+\end{alltt}}
+Note however, that the stacks \emph{empty} and
+\emph{pop}(\emph{push}(\texttt{6},\emph{empty})) are not equal.  Thus they
+distinguish the \emph{observable} sorts, in this case \texttt{int} and
+\texttt{bool}, which are the only data directly visible to the user.  The
+above two terms are not \emph{observable computations}, so it does not
+matter that they are different.  In general, two different algebras are
+\emph{behaviorally equivalent} if all observable computations yield the
+same results. Note that choosing observable values based on sorts is a bit
+coarse: for example, there may be two \texttt{int}-valued variables, one of
+which is observable and one that represents an internal pointer.  Mapping
+to equivalence classes is more general, as it is easy to capture
+behavioral equivalence.
+
+The induction theorem prover Nqthm~\cite{boyer-moore88,BoyerGoldschlag91}
+has a feature called \texttt{FUNCTIONALLY-INSTANTIATE} that can be used to
+derive an instance of a theorem by supplying an interpretation for some of
+the function symbols used in defining the theorem.  The corresponding
+instances of any axioms concerning these function symbols must be
+discharged.  Such axioms can be introduced as conservative extensions as
+definitions with the \texttt{DEFUN} declaration or through witnessed
+constraints using the \texttt{CONSTRAIN} declaration, or they can be
+introduced nonconservatively through an \texttt{ADD-AXIOM}
+declaration.  While the functional instantiation mechanism is similar in
+flavor to PVS theory interpretations, the underlying logic of Nqthm is a
+fragment of first-order logic whose expressive power is more limited
+than the higher-order logic of PVS.  In addition, Nqthm lacks types and
+structuring mechanisms such as parametric theories.
+
+The \specware{} language~\cite{SrinivasJullig95} employs theory
+interpretations as a mechanism for the stepwise refinement of
+specifications into executable code.  \specware{} has constructs for
+composing specifications while identifying the common components, and for
+compositionally refining specifications so that the refinement of a
+specification can be composed from the refinement of its components.
+Unlike PVS, \specware{} has the ability to incorporate multiple logics
+and translate specifications between these logics.  A theory is an
+independent unit of specification in PVS and hence there is no support for
+composing theories from other theories.  However, the operations in
+\specware{} can largely be simulated by means of theories and theory
+interpretations in PVS.
+
+In summary, theory interpretation has been a standard tool in
+specification languages since the early work on HDM~\cite{HDM:Handbook}
+and Clear~\cite{BURSTALL&GOGUEN}.  PVS implements theory interpretations
+as a simple extension of the mechanism for importing parametric theories.
+PVS theory interpretations subsume the corresponding capabilities
+available in other specification frameworks.
+
+
+\chapter{Future Work}
+
+A number of interesting extensions may be contemplated for
+the future.
+
+\paragraph{Mapping of interpreted types and constants---}
+
+There are two aspects: one is simply a convenience where, for
+example, we might have a tuple type declaration \texttt{T: TYPE = [T1, T2,
+T3]} and want to map it to \texttt{position: TYPE = [real, real, real]} by
+simply giving the map \texttt{\mapb{}T := position\mape{}}.
+
+The second aspect is where the mapping is between two different kinds, for
+example mapping a record type to a function type.  This requires
+determining the corresponding components as well as making explicit the
+underlying axioms.  For example, record types satisfy extensionality, and
+if they are mapped to a different type the implicit extensionality axiom
+must be translated to a proof obligation.
+
+\paragraph{Rewriting with congruences---}
+
+In theory substitution, if a type is mapped to a quotient type then
+equality over this type is mapped to equality over the quotient type.
+If $T$ is an uninterpreted type, $\equiv$ an equivalence relation over
+$T'$, and $T'/\equiv$ the quotient type, then \texttt{=[$T$]} is mapped to
+\texttt{=[$T'/\equiv$]}, which is equivalent to $\equiv$.  An equational
+formula thus still has the form of a rewrite.  However, to apply such a
+rewrite one generally needs to do some lifting.  The following is a simple
+example.
+\begin{session}
+th: THEORY
+ BEGIN
+  T: TYPE
+  a, b: T
+  f, g: [T -> T]
+  \ldots \emph{Some axioms involving f, g, a, and b}
+  lem: LEMMA f(a) = g(b)
+ END th
+th2: THEORY
+ BEGIN
+  ==(x, y: int): bool = divides(3, x - y)
+  IMPORTING th\mapb{}T := E(==),
+                a := equiv_class(==)(2),
+                b := equiv_class(==)(1),
+                f := LAMBDA (x: E(==)): equiv_class(rep(x) - 1),
+                g := LAMBDA (x: E(==)): equiv_class(rep(x) - 2)\mape{}
+  \ldots
+ END th2
+\end{session}
+\noindent To rewrite with \texttt{lem}, \texttt{a} must first be lifted to
+its equivalence class, then the rewrite is applied and the result is then
+projected back using \texttt{rep}.  To do this requires some modification
+to the rewriting mechanism of the prover.
+
+\paragraph{Consistency Analysis---}
+
+With a single independent theory such as groups, it is easy to generate a
+mapping in which all axioms become proof obligations, and see directly
+that the theory is consistent.  On the other hand, if many theories are
+involved in which compositions of mappings are involved, this may become
+quite difficult.  What is needed is a tool that analyzes a mapped theory
+to see if it is consistent, and reports on any remaining axioms and
+uninterpreted declarations.  This is similar in spirit to proof chain
+analysis, but works at the theory level rather than for individual
+formulas.
+
+\paragraph{Semantics of Mappings---}
+
+The semantics of theory interpretations needs to be formalized and added
+to the PVS semantics report~\cite{PVS-Semantics:TR}.
+
+\chapter{Conclusion}
+
+Theory interpretations are used to embed an interpretation of an abstract
+theory in a more concrete one.  In this way, they allow an abstract
+development to be reused at the more concrete level.  Theory
+interpretations can be used to refine a specification down to code.
+Theory interpretations can also be used to demonstrate the consistency of
+an axiomatic theory relative to another theory.
+
+Parametric theories in PVS provide some but not all of the functionality
+of theory interpretations.  In particular, they do not allow an abstract
+theory to be imported with only a partial parameterization.  Theory
+interpretations have been implemented in PVS version 3.0, which will be
+released in mid-2001.  The current implementation allows the
+interpretation of uninterpreted types and constants in a theory, as well
+as theory declarations.  PVS has also been extended so that a theory may
+appear as a formal parameter of another theory.  This allows related sets
+of parameters to be packaged as a theory.  Quotient types have been
+defined within PVS and used to admit interpretations of types where the
+equality on a source type is treated as an equivalence relation on a
+target type.
+
+Theory interpretations have been implemented in PVS as an extension of the
+theory parameter mechanism.  This way, theory interpretations are
+an extension of an already familiar concept in PVS and can be used in
+place of theory parameters where there is a need for greater
+flexibility in the instantiation.  The proof obligations generated by
+theory interpretations are similar to those for parametric theories
+with assumptions.  
+
+A number of extensions related to theory interpretations remain to be
+implemented.  First, we plan to extend theory interpretations to the case
+of interpreted types and constants.  This poses some challenges since
+there are implicit operations and axioms associated with certain type
+constructors.  Second, the rewriting mechanisms of the PVS prover need to
+be extended to rewrite relative to a congruence.  This means that if we
+are only interested in $f(a)$ up to some equivalence that is preserved by
+$f$, then we could rewrite $a$ up to equivalence rather than equality.
+Third, the PVS semantics have to be extended to incorporate theory
+interpretations.  Finally, the PVS ground evaluator has to be extended to
+handle theory interpretations.  Currently, the ground evaluator generates
+code corresponding to a parametric theory and this code is reused with the
+actual parameters used as arguments to the operations.  Theory
+interpretations cannot be treated as arguments in this manner since there
+is no fixed set of parameters; parameters can vary according to the
+interpretation.  Also, non-executable operations can become executable as
+a result of the interpretation.
+
+In summary, we believe that theory interpretations are a significant
+extension to the PVS specification language.  Our implementation of this
+in PVS3.0 is simple yet powerful.  We expect theory interpretations to be
+a widely used feature of PVS.
+
+\newpage
+\bibliographystyle{alpha}
+\addcontentsline{toc}{chapter}{Bibliography}
+\bibliography{/homes/rushby/jmr,/homes/owre/tex/sam,/homes/shankar/tex}
+\end{document}
