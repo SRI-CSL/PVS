@@ -3,17 +3,6 @@
 Running PVS without Emacs is done with the \texttt{-raw} flag.  This
 chapter describes how to make effective use of PVS when run in this way.
 
-\section{Initialization}
-
-PVS must be initialized,
-
-(in-package :pvs)
-*pvs-path*
-(pvs-init nil nil)
-*pvs-verbose*
-*force-dp*
-(set-decision-procedure '%s)
-
 \section{Interaction}
 
 When run in standalone mode, PVS acts as a uniz pipe, taking input on

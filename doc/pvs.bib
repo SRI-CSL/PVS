@@ -1,3 +1,4 @@
+@string{acm = {Association for Computing Machinery}}
 @string{csl = {Computer Science Laboratory, SRI International}}
 @string{gtm = {Graduate Texts in Mathematics}}
 @string{jsl = {Journal of Symbolic Logic}}
@@ -5,6 +6,7 @@
 @string{mp = {Menlo Park, CA}}
 @string{ny = {New York, NY}}
 @string{phiscs = {Prentice Hall International Series in Computer Science}}
+@string{popl = { ACM Symposium on Principles of Programming Languages}}
 @string{sv = {Springer-Verlag}}
 @string{svwc = {Springer-Verlag Workshops in Computing}}
 
@@ -444,4 +446,226 @@ the technicalities presented elsewhere.}}
 	MONTH = oct,
 	VOLUME = 1641,
 	SERIES = lncs
+}
+
+@manual{PVS:manuals,
+	TITLE = {User Guide for the {PVS} Specification and
+		Verification System},
+	AUTHOR = {S. Owre and N. Shankar and J. M. Rushby and
+		D. W. J. Stringer-Calvert},
+	ORGANIZATION = csl,
+	ADDRESS = mp,
+	MONTH = sep,
+	YEAR = 1998,
+	NOTE = {Three volumes: Language, System, and Prover Reference Manuals}
+}
+
+@article{Church:types,
+	AUTHOR = {A. Church},
+	TITLE = {A Formulation of the Simple Theory of Types},
+	JOURNAL = {Journal of Symbolic Logic},
+	YEAR = 1940,
+	VOLUME = 5,
+	PAGES = {56--68}
+}
+
+@book{Fraenkel-etal84,
+	AUTHOR = {A. A. Fraenkel and Y. Bar-Hillel and A. Levy},
+	TITLE = {Foundations of Set Theory},
+	PUBLISHER = {North-Holland},
+	YEAR = 1984,
+	VOLUME = 67,
+	SERIES = {Studies in Logic and the Foundations of Mathematics},
+	ADDRESS = {Amsterdam, The Netherlands},
+	EDITION = {second printing, second}
+}
+
+@book{Andrews:book,
+	AUTHOR = {Peter B. Andrews},
+	TITLE = {An Introduction to Logic and Type Theory: To Truth through
+		Proof},
+	PUBLISHER = {Academic Press},
+	ADDRESS = ny,
+	YEAR = 1986
+}
+
+@book{RAISE:book,
+	KEY = {RAISE},
+	AUTHOR = {The {RAISE Language Group}},
+	TITLE = {The {RAISE} Specification Language},
+	PUBLISHER = {Prentice Hall International},
+	YEAR = 1992,
+	SERIES = {{BCS} Practitioner Series},
+	ADDRESS = {Hemel Hempstead, UK}
+}
+
+@book{Z-understanding,
+	AUTHOR = {J. M. Spivey},
+	TITLE = {Understanding {Z}: A Specification Language and its
+		Formal Semantics},
+	PUBLISHER = {Cambridge University Press},
+	YEAR = 1988,
+	SERIES = {Cambridge Tracts in Theoretical Computer Science 3},
+	ADDRESS = {Cambridge, UK}
+}
+
+@inproceedings{popl85,
+	AUTHOR = {Kokichi Futatsugi and Joseph Goguen and Jean-Pierre
+		Jouannaud and Jos\'{e} Meseguer},
+	TITLE = {Principles of {OBJ2}},
+	YEAR = 1985,
+	BOOKTITLE = {12th} # popl,
+	EDITOR = {Brian K. Reid},
+	PUBLISHER = acm,
+	PAGES = {52-66}
+}
+
+@book{Larch:book,
+	KEY = {GH},
+	AUTHOR = {John V. Guttag {and} James J. Horning with S. J. Garland
+		and K. D. Jones and A. Modet and J. M. Wing},
+	TITLE = {Larch: Languages and Tools for Formal Specification},
+	PUBLISHER = sv,
+	YEAR = 1993,
+	SERIES = {Texts and Monographs in Computer Science}
+}
+
+@manual{EHDM:manuals,
+	KEY = {EHDM},
+	TITLE = {User Guide for the {{\sc Ehdm}} Specification Language
+		and Verification System, Version 6.1},
+	ORGANIZATION = csl,
+	ADDRESS = mp,
+	MONTH = feb,
+	YEAR = 1993,
+	NOTE = {Three volumes}
+}
+
+@book{Gordon&Melham:HOL,
+	EDITOR = {M. J. C. Gordon and T. F. Melham},
+	TITLE = {Introduction to {HOL}: A Theorem Proving Environment
+		for Higher-Order Logic},
+	PUBLISHER = {Cambridge University Press},
+	YEAR = 1993,
+	ADDRESS = {Cambridge, UK},
+	NOTE = {HOL home page: \url{http://www.cl.cam.ac.uk/Research/HVG/HOL/}}
+}
+
+@techreport{COQ,
+	AUTHOR = {Gilles Dowek and Amy Felty and Hugo Herbelin and G\'{e}rard
+		Huet and Christine Paulin-Mohring and Benjamin Werner},
+	TITLE = {The {COQ} Proof Assistant User's Guide: Version 5.6},
+	INSTITUTION = {INRIA},
+	YEAR = 1991,
+	TYPE = {Rapports Techniques},
+	NUMBER = 134,
+	ADDRESS = {Rocquencourt, France},
+	MONTH = dec
+}
+
+@inproceedings{Melham89,
+	CROSSREF = {Birtwistle&Subrahmanyam89},
+	AUTHOR = {Thomas F. Melham},
+	TITLE = {Automating Recursive Type Definitions in Higher Order
+		Logic},
+	PAGES = {341--386}
+}
+
+@book{Birtwistle&Subrahmanyam89,
+	TITLE = {Current Trends in Hardware Verification and Theorem
+		Proving},
+	BOOKTITLE = {Current Trends in Hardware Verification and Theorem
+		Proving},
+	EDITOR = {G. Birtwistle and P. A. Subrahmanyam},
+	YEAR = 1989,
+	PUBLISHER = sv,
+	ADDRESS = ny
+}
+
+@techreport{Shankar:ADT97,
+	AUTHOR = {S. Owre and N. Shankar}, 
+	TITLE = {Abstract Datatypes in {PVS}},
+	INSTITUTION = csl,
+	ADDRESS = mp,
+	MONTH = dec,
+	YEAR = 1997,
+	NOTE = {Revised version of {SRI-CSL-93-9}.  To appear as a NASA Contractor Report.} 
+}
+
+@ARTICLE{TLA:TOPLAS94,
+	AUTHOR = {Leslie Lamport},
+	TITLE = {The Temporal Logic of Actions},
+	JOURNAL = {ACM TOPLAS},
+	YEAR = {1994},
+	VOLUME = {16},
+	NUMBER = {3},
+	PAGES = {872--923},
+	MONTH = {May}
+}
+
+@INCOLLECTION{andrews84,
+	AUTHOR = {P.~B.~Andrews and D.~A.~Miller and E.~L.~Cohen and F.~Pfenning},
+	TITLE = {Automating Higher-Order Logic},
+	BOOKTITLE = {Automated Theorem Proving: After 25 Years},
+       Editor="W.~W.~Bledsoe and D.~W.~Loveland",
+	Publisher="American Mathematical Society",
+        Address="Providence, R.I.",
+        Pages="169--192",
+        Year="1984"}
+
+@incollection{DybjerP:indsfm,
+author  = "Peter Dybjer",
+booktitle = "Logical Frameworks",
+title   = "Inductive sets and families in {Martin-L{\"o}f's} Type Theory
+           and their set-theoretic semantics",
+year    = 1991,
+publisher = "Cambridge University Press",
+editors = "Gerard Huet and Gordon Plotkin",
+pages   = "280-306"}
+
+@InProceedings{Howe91,
+author={Douglas J. Howe},
+title={On Computational Open-Endedness in {Martin-L{\"o}f's} Type
+Theory},
+pages={162--172},
+crossref={LICS6},
+source={ftp://theory.lcs.mit.edu/pub/meyer/lics.bib}
+}
+
+@INPROCEEDINGS{Howe96,
+	AUTHOR = {Douglas J. Howe},
+	TITLE = {Semantic Foundations for Embedding {HOL} in {Nuprl}},
+	BOOKTITLE = {Algebraic Methodology and Software Technology, 5th International Conference, AMAST'96},
+	YEAR = {1996},
+	EDITOR = {Martin Wirsing and Maurice Nivat},
+	PAGES = {85--101},
+	PUBLISHER = sv,
+	SERIES = lncs,
+	NUMBER = {1101}
+}
+
+@INCOLLECTION{MMMS:empty,
+	AUTHOR = {Albert R. Meyer and John C. Mitchell and Eugenio Moggi and Richard Statman},
+	TITLE = {Empty Types in Polymorphic Lambda Calculus},
+	BOOKTITLE = {Logical Foundations of Functional Programming},
+	PUBLISHER = {Addison-Wesley},
+	YEAR = {1990},
+	EDITOR = {Gerard Huet},
+	PAGES = {273--284},
+	SERIES = {University of Texas at Austin Year of Programming}
+}
+
+@Proceedings{LICS6,
+title={Proceedings, Sixth Annual IEEE Symposium on Logic in Computer
+Science},
+booktitle={Proceedings, Sixth Annual IEEE Symposium on Logic in
+Computer Science},
+year=1991,
+month={15--18 } # jul,
+address={Amsterdam, The Netherlands},
+organization={IEEE Computer Society Press},
+crossrefonly=1,
+comment={IEEE Computer Society Order Number 2230; Library of Congress
+Number 89-641304; IEEE Catalog Number 91CH3025-4; ISBN 0-8186-2230-X},
+source={ftp://theory.lcs.mit.edu/pub/meyer/lics.bib}
 }

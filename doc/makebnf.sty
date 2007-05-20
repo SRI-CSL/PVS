@@ -86,6 +86,8 @@
 \def\htarget #1{\hypertarget{#1}{#1}}
 \def\production#1#2{\htarget{#1} & \is & #2 \\}
 \def\@production#1#2{\htarget{#1} & \is & #2 \\}
+\def\hproduction#1#2#3{\hyperlink{#1}{\htarget{#2}} & \is & #3 \\}
+\def\@hproduction#1#2#3{\hyperlink{#1}{#2} & \is & #3 \\}
 
 %%%%
 %%%% printbnf: to be placed in the document (after the final occurance of
