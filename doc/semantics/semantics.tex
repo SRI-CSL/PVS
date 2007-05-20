@@ -1,7 +1,7 @@
 % Document Type: LaTeX
 % Master File: semantics.tex
 \documentclass [12pt,twoside]{cslreport} 
-\usepackage{fleqn,alltt,spacecites,relsize,url,amssymb}
+\usepackage{fleqn,alltt,spacecites,relsize,url,amssymb,verbatim}
 %\usepackage{doublespace}
 %\setlength{\textwidth}{6.5in}
 %\setlength{\textheight}{9in}
@@ -69,7 +69,10 @@
 \newcommand{\vbar}{\ |\ }
 \newcommand{\sima}{\stackrel{a}{\sim}} %/{\scriptsize{a}}
 \newenvironment{Eg}[1]{\begin{example}[#1]\label{eg:#1}\em }{\thmbox\end{example}}
-\input{/homes/rushby/tex/prelude}
+\newtheorem{definition}{Definition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{theorem}{Theorem}
+%\input{/homes/rushby/tex/prelude}
 %\input{/homes/shankar/tex/ch-jmacros}
 
 \newenvironment{Defn}[1]{\begin{definition}[#1]\label{defn:#1}}{
@@ -271,7 +274,7 @@ syntactic and  semantic errors.
 \end{enumerate}
 
 
-\comment{
+\begin{comment}
 The first typed higher-order logic was the Principia Mathematica (PM) system of
 Russell and Whitehead.  They were the first to propose a stratified
 hierarchy of types as a means avoiding certain paradoxes.  The PM type
@@ -287,7 +290,7 @@ Girard and Reynolds, independently extended the typed lambda calculus
 to a second-order or \emph{polymorphic} type system so that, for example,
 an identity function for each type could be obtained by specializing a
 generic identity function to the required type.
-}
+\end{comment}
 
 The semantics of a higher-order logic is given by mapping the well-formed
 types of the logic to {\em sets\/}, and the well-formed terms of the logic to
@@ -322,10 +325,11 @@ term.
 
 
 
-\comment{
-\memo{I am not exactly sure where the axiom of choice is really needed.
+\begin{comment}
+I am not exactly sure where the axiom of choice is really needed.
 Since PVS builds in a choice operator via parametric theories, it seems
-that this will be needed.}}
+that this will be needed.
+\end{comment}
 
 
 We first lay out the ZFC set constructions needed for defining the
@@ -499,7 +503,7 @@ PVS\@.
  
 \chapter{The Simple Type Theory}\label{simple}
 
-\comment{
+\begin{comment}
 The types of expression
 are determined from the types of their subexpressions.  In the base case,
 the types of atomic expressions must be given in a context.  There are
@@ -510,7 +514,7 @@ constant declarations of the form $c\ :\ T$, or variable declarations of
 the form $x\ :\ \mathtt{VAR} T$.  
 The empty context $\{\}$ is a context.  If $\Gamma$ is a context,
 then
-}
+\end{comment}
 
 PVS is a strongly typed specification language.  The simply typed fragment
 includes types constructed from the base types by the function and product
@@ -533,9 +537,13 @@ The \emph{pretypes} of the simple type theory include the \emph{base}
 types such as \texttt{bool} and \texttt{real}.  A \emph{function} pretype
 from domain pretype $A$ to range pretype $B$ is constructed as
 $\funtype{A}{B}$\@.  A \emph{product} pretype of ${\listwo{A}{n}}$ is
-constructed as $\tupletype{\listwo{A}{n}}$.  \comment{We make no
+constructed as $\tupletype{\listwo{A}{n}}$.
+\begin{comment}
+We make no
 distinction between a type $A$ and the singleton tuple type $[A]$.  We
-also disallow a 0-tuple type.}  A \emph{type} is a pretype that has been
+also disallow a 0-tuple type.
+\end{comment}
+A \emph{type} is a pretype that has been
 typechecked in a given context.  Types in the simple type theory are
 simple enough  that the only distinction between pretypes and types is
 that the symbols in a type must be appropriately declared in the given
@@ -553,12 +561,20 @@ pairs, projections, applications, and abstractions.  The metavariables $c$
 and $d$ range over constants.  Pairs are of the form $(a_1, a_2)$ where
 each $a_i$ is a preterm.  Applications have the form $f\ a$ where $f$ and
 $a$ are preterms.  A pair projection is an expression of the form
-$\proj{i}\ a$, where $i\in\{1, 2\}$\@.  \comment{As with types, we make no
+$\proj{i}\ a$, where $i\in\{1, 2\}$\@.
+\begin{comment}
+As with types, we make no
 distinction between the singleton tuple preterm $(a)$ and the preterm
-$a$. }  Lambda abstractions have the form $\lambda (x : T): a$, where $T$
-is a pretype and $a$ is a preterm.  \comment{ $\lambda (x_1 : T_1, \ldots,
+$a$.
+\end{comment}
+Lambda abstractions have the form $\lambda (x : T): a$, where $T$
+is a pretype and $a$ is a preterm.
+\begin{comment}
+$\lambda (x_1 : T_1, \ldots,
 x_n : T_n): a$, where each $T_i$ is a type, each $x_i$ is a symbol so that
-$x_i\not\equiv x_j$ for $i\neq j$, and $a$ is a preterm. }  Parentheses
+$x_i\not\equiv x_j$ for $i\neq j$, and $a$ is a preterm.
+\end{comment}
+Parentheses
 are used for disambiguation.  A \emph{term} is a preterm that has been
 typechecked in a given context.
 
@@ -712,9 +728,10 @@ $\Gamma(x)$ must be undefined can be satisfied by suitably renaming the
 bound variable since we treat terms as equivalent modulo the renaming of
 bound variables.  
 
-\comment{
-\memo{The above definition suggests that projection applications should
-not be treated as applications.}}
+\begin{comment}
+The above definition suggests that projection applications should
+not be treated as applications.
+\end{comment}
 
 \begin{Eg}{type rules}  Let $\Omega$ label the context
 $\coln{ \mathtt{bool}}{\tttype{}}$,
@@ -756,28 +773,36 @@ and a well-formed expression $a$ in the context $\Gamma$ under an
 assignment $\gamma$ as $\mathcal{M}(\Gamma\vbar \gamma)(A)$ 
 and 
 $\mathcal{M}(\Gamma\vbar \gamma)(a)$,respectively. 
-\comment{The base types 
+\begin{comment}
+The base types 
 \texttt{bool} and \texttt{real} are mapped to $\twob$ and $\reals$,
-respectively.}  The meanings of type names, constants, and variables
+respectively.
+\end{comment}
+
+The meanings of type names, constants, and variables
 declared in $\Gamma$ are obtained from the assignment $\gamma$\@.  A
 function type is mapped to the 
 corresponding function space.  A product type is mapped to the corresponding
-Cartesian product. \comment{an $n$-tuple is represented by an $(n+1)$-fold
+Cartesian product.
+\begin{comment}
+an $n$-tuple is represented by an $(n+1)$-fold
 Cartesian product terminated by the sole element $\zerob$ of the set \oneb\@.
 This representation  distinguishes a 3-tuple
 $\tupletype{\ttbool, \ttbool, \ttbool}$ from the 
-2-tuple $\tupletype{\ttbool, \tupletype{\ttbool, \ttbool}}$\@. }
+2-tuple $\tupletype{\ttbool, \tupletype{\ttbool, \ttbool}}$\@.
+\end{comment}
 An application term is interpreted by 
 means of set-theoretic function application.  A lambda abstraction yields the
 graph of the corresponding function.  A pair expression is mapped
 to the corresponding set-theoretic ordered pair.    
 \begin{Defn}{meaning function}
 \begin{eqnarray*}
-\comment{
-  \Mgamma{ \mathtt{bool}} & = & {\twob} \\
-  \Mgamma{ \mathtt{real}} & = & {\reals}\\
-  \Mgamma{ \mathtt{TRUE}} & = & {\oneb}\\
-  \Mgamma{ \mathtt{FALSE}} & = &{\zerob}\\ }
+%% \begin{comment}
+%%   \Mgamma{ \mathtt{bool}} & = & {\twob} \\
+%%   \Mgamma{ \mathtt{real}} & = & {\reals}\\
+%%   \Mgamma{ \mathtt{TRUE}} & = & {\oneb}\\
+%%   \Mgamma{ \mathtt{FALSE}} & = &{\zerob}\\
+%% \end{comment}
   \mathcal{M}(\Gamma\vbar \gamma)(s) & = &  \gamma(s),\\
                     & &  \mbox{ if } 
 \textit{kind}(\Gamma(s)) \in \{ \tttype{}, \ttconstant{}, \ttvariable \}
@@ -1224,9 +1249,11 @@ parametric theories.  The equality between PVS terms of function type
 is to be interpreted as extensional equality.  Note that the `$=$' symbol is
 used both for the formal equality symbol in the language and for
 metatheoretic equality.   
-\comment{We will also use the notation $\lambda (x_1 : T_1, \ldots, x_n : T_n): a$
+\begin{comment}
+We will also use the notation $\lambda (x_1 : T_1, \ldots, x_n : T_n): a$
 in place of $\lambda (x : \tupletype{\seq{T}{n}}): a[
-\proj{1}(x)/x_1, \ldots, \mathtt{PROJ\_n}(x)/x_n]$\@.}
+\proj{1}(x)/x_1, \ldots, \mathtt{PROJ\_n}(x)/x_n]$\@.
+\end{comment}
 
 
 
@@ -1456,9 +1483,11 @@ if $\vdash_\Gamma a$, for each $a$ in $(\mu(A)\simeq \mu(B))$.}\footnotemark
 Chapter~\ref{proof theory}.}
 
 
-\comment{With subtypes, it is easy to define an empty subtype and then
+\begin{comment}
+With subtypes, it is easy to define an empty subtype and then
 declare a constant of such an empty subtype.  The context thus has to be
-checked to disallow such an inconsistency. }
+checked to disallow such an inconsistency.
+\end{comment}
 We now extend the
 definition of $\delta$ to the case of subtypes so that it leaves the
 predicate unchanged but expands the definition of the supertype.
@@ -1606,9 +1635,12 @@ Theorems~\ref{type construction},
 \ref{simple-type-semantics},
 and~\ref{simple-term-semantics}\@.  
 The proof of Theorem~\ref{type construction} remains straightforward.
-\comment{Theorems~\ref{simple-type-semantics}
+\begin{comment}
+Theorems~\ref{simple-type-semantics}
 and~\ref{simple-term-semantics} must be proved with a simultaneous
-induction since types now contain terms.}  The statement of
+induction since types now contain terms.
+\end{comment}
+The statement of
 Theorem~\ref{simple-term-semantics} must now
 be strengthened to include soundness, that is, if $\vdash_\Gamma a$
 and $\gamma$ satisfies $\Gamma$, then 
@@ -1706,8 +1738,11 @@ make the type of one component of a product depend on the value of another
 component, or the type of the range of a function vary according to its
 argument value.
 
-\comment{Let $V$ be a metavariable that ranges over types or {\em
-type bindings\/} of the form $x : T$.}  A dependent product type is
+\begin{comment}
+Let $V$ be a metavariable that ranges over types or {\em
+type bindings\/} of the form $x : T$.
+\end{comment}
+A dependent product type is
 written as $\tupletype{x : A, B}$.  A dependent function type is written
 as $\funtype{x : A}{B}$.
 Any product or function type can be transformed into a dependent type by
@@ -1765,7 +1800,8 @@ where y is a fresh variable.
 
 %\memo{Need to extend substitution to types.}
 
-\comment{ To determine whether a given expression is of a given dependent type, we
+\begin{comment}
+To determine whether a given expression is of a given dependent type, we
 must define the notion of a substituting the expression into the type.  If
 $\tauGamma{a}$ is a (possibly dependent) product type and $A$ is a
 (possibly dependent) product type of the form $\tupletype{x : A_1, A_2}$, then
@@ -1795,7 +1831,7 @@ is just $A$\@.
 \tupletype{ i : \ttnat, \funtype{k : \{j: \ttnat \vbar j< 3\}}{\{j: \ttnat \vbar j\leq k\}}} 
 \end{eqnarray*}
 \end{Eg}
-}
+\end{comment}
 
 \newcommand{\constrain}[2]{#1\backslash #2}
 The definition of $\mu$ has to be modified slightly for dependent types.
@@ -2020,14 +2056,17 @@ one can construct a dependent type such as $\funtype{n : nat}{T^n}$
 whose representation is not in $U$ as defined above.    
   
 
-\comment{ A simpler alternative might be to define a second universe
+\begin{comment}
+A simpler alternative might be to define a second universe
 U2 which starts from U1 and adds the dependent types.  This will work fine
 in the absence of parametric theories since each type contains only a
 fixed number of type dependencies.  The introduction of parametric
 theories might require a third iteration since they introduce a third
-form of dependency.  }
+form of dependency.
+\end{comment}
 
-\comment{ Seeking advice on PVS semantics:  I'd like to know if the following
+\begin{comment}
+Seeking advice on PVS semantics:  I'd like to know if the following
 universe construction provides a satisfactory model for PVS types.  The
 PVS simple type system consists of the base types bool and real and the
 tuple [A_1,...,A_N] and function [A->B] types.  The flg. universe U1
@@ -2086,7 +2125,7 @@ invariant is preserved by the way in which theories are actually used.
 An interpretation of a theory simply attaches a definition to an
 undefined type and the meaning of this definition will also have the
 boundedness property.  
-}
+\end{comment}
 
 
 
@@ -2344,11 +2383,12 @@ correctness depends on the soundness of the proof rules.
 If $\tau()(\Gamma) = \ttcontext$,  $a$ is a preterm such that
 $\tauGamma{a} = B$, and $(A\sima  B)_\Gamma$,
 then $\Mgamma{a}\in \Mgamma{A}$ iff $\Mgamma{a}\in \Mgamma{B}$\@.  
-\comment{
+\begin{comment}
 \begin{enumerate}
 \item $\Mgamma{a}\in \Mgamma{A}$ iff $\Mgamma{a}\in \Mgamma{a/A}$
 \item $\vdash \pi(a/A)(a)$ iff $\vdash \pi(A)(a)$\@.
-\end{enumerate}}
+\end{enumerate}
+\end{comment}
 \end{prop}
 %
 \begin{theorem}\label{dependent-term-semantics}
@@ -2412,7 +2452,7 @@ The $(\proj{2}~b)$ case also employs Lemma~\ref{substitution-lemma}\@.
 \end{enumerate}
 \end{proof}
 
-\comment{
+\begin{comment}
 \begin{lemma}\label{rank-boundedness}
 If $\tau()(\Gamma) = \ttcontext$,
 $\gamma$ is a satisfying assignment for $\Gamma$, 
@@ -2495,7 +2535,7 @@ of $j$ and $k$, we have $F\in U_i$\@.
 \item $B\equiv \funtype{x: C}{D}$:  
 \end{enumerate}
 \end{proof}
-}
+\end{comment}
 
 \section{Summary}
 
@@ -2596,15 +2636,18 @@ The following rule handles theory declarations.
 \end{Eg}
 
 
-\comment{\memo{Perhaps each declaration should be required to introduce a new
-symbol so that there is no confusion between $\Gamma$ and $\gamma$.}}
+\begin{comment}
+Perhaps each declaration should be required to introduce a new
+symbol so that there is no confusion between $\Gamma$ and $\gamma$.
+\end{comment}
 
-\comment{Example:
+\begin{comment}
+Example:
 bool: TYPE,
 integer : THEORY = (integer: TYPE, + :
 \funtype{\tupletype{integer, integer}}{ {\tt integer}}),
 natural : THEORY = (nat : TYPE)
-}
+\end{comment}
 
 Any reference to a type name or a constant $s$ declared in a theory $m$
 outside of this theory must be prefixed by the theory name, as in $m.s$\@.
@@ -2680,7 +2723,7 @@ The type rules for prefixed symbols are given below.
 \end{eqnarray*}
 \end{Eg}
 
-\comment{
+\begin{comment}
 \begin{Eg}{contexts with theory declarations}
 \begin{eqnarray*}
 \tau(\Omega)(
@@ -2699,7 +2742,7 @@ The type rules for prefixed symbols are given below.
 \end{eqnarray*}
 %
 \end{Eg}
-}
+\end{comment}
 
 
 
@@ -2840,10 +2883,12 @@ Let $\Pi$ be $\mathit{formals}(\Gamma(m))$\@.
 \end{eqnarray*}
 \end{Defn}
 
-\comment{The definition of $\delta$ has to be modified slightly to carry along the
+\begin{comment}
+The definition of $\delta$ has to be modified slightly to carry along the
 parameters.  The notation $a[\Pi]$ represents the result of
 replacing each occurrence of a symbol $s$ in $a$ such that $\Pi(s)$ is
-defined, by $\itdef{}(\Pi(s))$ when it exists.}
+defined, by $\itdef{}(\Pi(s))$ when it exists.
+\end{comment}
 \begin{Defn}{type expansion with parametric theories}
 \begin{eqnarray*}
   \delta(\Gamma)(m[\sigma].s) & = & \delta(\Gamma)(
@@ -2925,7 +2970,8 @@ $\itformals(\Gamma(m))$) to a satisfying assignment $\gamma\{\Pi\gets
 \varpi\}\{\Delta \gets \gamma(m)(\varpi)\}$ for 
 $\Delta$ (given by 
 $\itdef{}(\Gamma(m))$).
-\comment{That is, 
+\begin{comment}
+That is, 
 for each declared symbol $s$ in
 $\Delta$: 
 \begin{enumerate}
@@ -2941,29 +2987,30 @@ then $\gamma(m)(\Mgamma{\sigma})(s) = \mathcal{M}(\Gamma| \gamma;
 \{\Pi\gets \Mgamma{\sigma}\}; \gamma(m)(\Mgamma{\sigma}))(
 \itdef{}(\Gamma(m)(s)))$.
 \end{enumerate}
-}
+\end{comment}
 \end{Defn}
 
 
-\comment{This map preserves the
+\begin{comment}
+This map preserves the
 assignments given to the parameters so that if for $s : T$ in $\Pi$,
 $m[\sigma]$ is such that the formal $s$ is matched with the actual $a$,
 then 
 $\gamma(m)(\{\Pi\gets \Mgamma{\sigma}\})(s)$ must be $\Mgamma{a}$\@.
-}
-\comment{
+\end{comment}
+\begin{comment}
 The delicate point here is that $\gamma(m)$ is not a set but a map (a
 rule) that maps a given assignment (a set) of sets to symbols, to another
 assignment of sets to symbols.  This means that $\gamma$ itself is not a
 set.  There is no reason why $\gamma$ should be a set since all we require
 is that it map a given type name to a set, and a constant to an element
 of the set representing its type.  
-}
-\comment{
+\end{comment}
+\begin{comment}
 \begin{eqnarray*}
   \Mgamma{m[\sigma].s} & = & \gamma(m)(\{\Pi\gets \Mgamma(\sigma)\})(s)
 \end{eqnarray*}
-}
+\end{comment}
 
 \section{Summary}
 
@@ -3156,7 +3203,7 @@ proof obligations.  The type rules for conditional expressions and the
 Boolean connectives $\wedge$, $\vee$, and $\supset$ make use of
 contextual assumptions.  
 
-\comment{
+\begin{comment}
 We will assume that the context $\Gamma$ used below contain the
 theories \mathtt{equality} and \mathtt{if\_def}\@.  
 The typechecking of constant definitions is straightforward when
@@ -3185,9 +3232,9 @@ $s : \ \mathtt{FORMULA} a$.
 %
 \memo{Need to formally defined substitution, freevars, and closure
 relative to a context.}  
-}
+\end{comment}
 
-\comment{
+\begin{comment}
 %
 \memo{Need to highlight the shape of a context: theory declarations
 followed by type/constant declarations followed by variable declarations.}
@@ -3195,7 +3242,7 @@ followed by type/constant declarations followed by variable declarations.}
 Introduce equality, if-then-else, connectives, updates.
 %
 \section{Abstract Datatypes}
-}
+\end{comment}
 
 
 \chapter{Proof Theory of PVS}\label{proof theory}
@@ -3350,7 +3397,7 @@ W}  \hspace{1in}\mbox{if $\Gamma$ is a prefix of $\Gamma'$}
 \end{array} 
 $$
 
-\comment{
+\begin{comment}
 \subsection{Negation Rules}
 %
 These rules are straightforward since negation is eliminated by moving
@@ -3365,7 +3412,7 @@ $$
          {\sequent{\Sigma}{\Gamma}{ \neg a, \Lambda}} {\vdash\neg}
 \end{array}
 $$
-}
+\end{comment}
 
 \subsection{Conditional Rules}
 
@@ -3431,7 +3478,7 @@ $$
 \Infrule{}{\sequent{\Sigma, \tttrue = \ttfalse}{\Gamma}{\Lambda}}{\tttrue\mbox{-}\ttfalse}
 \end{array}
 $$
-\comment{
+\begin{comment}
 Four rules exist for simplifying equalities of the form $a =
 \tttrue$ and $a = \ttfalse$ in  a sequent.
 %
@@ -3448,7 +3495,7 @@ $$
 \ttfalse, \Lambda}}{\vdash\ttfalse} 
 \end{array}
 $$
-}
+\end{comment}
 
 \subsection{Reduction Rules}
 
@@ -3482,8 +3529,11 @@ $$
 $$
 
 The extensionality rule for products asserts that two products are equal if
-their corresponding projections are equal.  \comment{Note that the type
-$\tupletype{\listwo{T'}{n}}$ is just $a/\tupletype{\listwo{T}{n}}$\@.}
+their corresponding projections are equal.
+\begin{comment}
+Note that the type
+$\tupletype{\listwo{T'}{n}}$ is just $a/\tupletype{\listwo{T}{n}}$\@.
+\end{comment}
 $$
 \begin{array}{c}
 \Infrule{\sequent{\Sigma}{\Gamma}{\proj{1}(a) =_{T_1} \proj{1}(b),\Lambda}\qquad\sequent{\Sigma}{\Gamma}{\proj{2}(a) =_{T_2[(\proj{1}~a)/x]} \proj{2}(b),\Lambda}
@@ -3594,8 +3644,10 @@ For the \textbf{Repl} rule, if $\Mgamma{a = b} = \zerob$, the conclusion
 follows trivially.  Otherwise, $\Mgamma{a} = \Mgamma{b}$.  Hence, $\gamma$
 satisfies the extended context $\Gamma, a = b$.  Then for each
 $c[a]$ in $\Sigma[a]$ or $\Lambda[a]$, $\Mgamma{c[a]} = \Mgamma{c[b]}$\@.
-\comment{\memo{Note: no free variables in a, b.  Need to show that
-replacement preserves meaning when there is no capture.}}
+\begin{comment}
+Note: no free variables in a, b.  Need to show that
+replacement preserves meaning when there is no capture.
+\end{comment}
 
 \item \emph{Boolean Equality Rules}: The $\mathbf{Repl}~\tttrue$ and
 $\mathbf{Repl}~\ttfalse$ rules follow easily since when $\Mgamma{a} =
@@ -3817,7 +3869,7 @@ appreciated, as are the useful expert comments of Peter Dybjer, Mike
 Gordon, Doug Howe, and Paul Jackson.  Bruno Dutertre, Paul Miner, and
 Harald Rue{\ss} suggested numerous improvements to earlier drafts.
 
-\comment{
+\begin{comment}
 What is a specification language?  A programming language is meant to
 express an algorithm in such a way that it can be executed on a computing
 machine.  For example, a program implementing a sorting algorithm such as
@@ -3888,11 +3940,12 @@ predicate subtypes before we can comment more fully on their utility.
 sparked our interest in incorporating predicate subtypes into
 a specification language.  Our work was funded internally by SRI
 International.  
-}
+\end{comment}
 
 \newpage
-\bibliographystyle{/homes/rushby/tex/modalpha} % or modplain
+\bibliographystyle{modalpha} % or modplain
 \addcontentsline{toc}{chapter}{Bibliography}
-\bibliography{/homes/rushby/nasa,/homes/rushby/jmr,/homes/shankar/tex}
+%\bibliography{/homes/rushby/nasa,/homes/rushby/jmr,/homes/shankar/tex}
+\bibliography{../pvs}
 
 \end{document}
