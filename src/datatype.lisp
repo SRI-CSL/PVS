@@ -1192,9 +1192,8 @@ generated")
   (and (same-id (car a&t1) (car a&t2))
        (multiple-value-bind (bindings mismatch?)
 	   (collect-same-arg&type-bindings (caddr a&t1) (caddr a&t2))
-	 (declare (ignore bindings))
 	 (unless mismatch?
-	   (strict-compatible? (cadr a&t1) (cadr a&t2))))))
+	   (strict-compatible?* (cadr a&t1) (cadr a&t2) bindings)))))
 
 (defun same-arg&type (a&t1 a&t2)
   (and (same-id (car a&t1) (car a&t2))
