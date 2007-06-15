@@ -77,7 +77,7 @@
 	    ((typechecked? theory) "typechecked")
 	    ((parsed? theory) "parsed")
 	    (t "not yet parsed"))
-      (when (memq 'modified (status theory))
+      (when (and theory (memq 'modified (status theory)))
 	" (decls added)")
       (when theory
 	(final-proof-summary theory))
