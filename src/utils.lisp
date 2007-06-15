@@ -1420,7 +1420,8 @@
 				 (type (car (bindings nform)))))
 		 (setf (chain? (car (last newbindings))) t))
 	       (copy nform
-		 'bindings (append newbindings (bindings nform))))))
+		 'bindings (append newbindings (bindings nform))
+		 'commas? nil))))
 	  (t
 	   (multiple-value-bind (newbindings new?)
 	       (var-to-binding freevars-form form)
