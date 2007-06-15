@@ -403,7 +403,7 @@
 	 (lib (directory-namestring filestr))
 	 (filename (file-namestring filestr))
 	 (libpath (unless (string= lib "./") (libref-to-pathname lib)))
-	 (*default-pathname-defaults* (or (pathname libpath)
+	 (*default-pathname-defaults* (or (and libpath (pathname libpath))
 					  *default-pathname-defaults*))
 	 (file (namestring
 		(merge-pathnames filename *default-pathname-defaults*))))
