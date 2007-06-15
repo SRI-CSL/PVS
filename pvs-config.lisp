@@ -87,7 +87,7 @@
 
 #+allegro
 (defun bye (&optional (exit-status 0))
-  (excl:exit exit-status))
+  (excl:exit exit-status :quiet t))
 
 #+harlequin-common-lisp
 (defun bye (&optional (exit-status 0))
@@ -100,3 +100,7 @@
 #+sbcl
 (defun bye (&optional (exit-status 0))
   (sb-unix:unix-exit exit-status))
+
+(defun pvs-version-and-quit ()
+  (format t "PVS Version ~a" (eval (find-symbol (string :*pvs-version*) :pvs)))
+  (bye))
