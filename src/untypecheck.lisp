@@ -366,7 +366,9 @@
   (untypecheck-theory (declared-measure decl))
   (setf (measure decl) nil)
   (untypecheck-theory (ordering decl))
-  (setf (measure-depth decl) nil))
+  (setf (measure-depth decl) nil)
+  (setf (recursive-signature decl) nil))
+  
 
 ;;; inductive-decl is a const-decl
 
