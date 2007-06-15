@@ -463,8 +463,31 @@
   (tc-match* (types arg) (types farg) bindings))
 
 (defmethod tc-match* ((arg recordtype) (farg recordtype) bindings)
-  ;;; CHECKME make sure the fields are sorted before this
-  (tc-match* (fields arg) (fields farg) bindings))
+  ;;; Make sure the fields are sorted before this
+  ;;; Only should be needed if one is dependent and the other isn't
+  (if (dependent? arg)
+      (if (dependent? farg)
+	  (tc-match* (fields arg) (fields farg) bindings)
+	  (when (and (length= (fields arg) (fields farg))
+		     (every #'(lambda (afld)
+				(member (id afld) (fields farg) :key #'id))
+			    (fields arg)))
+	    (tc-match* (fields arg)
+		       (mapcar #'(lambda (afld)
+				   (find (id afld) (fields farg) :key #'id))
+			 (fields arg))
+		       bindings)))
+      (if (dependent? farg)
+	  (tc-match* (fields arg) (fields farg) bindings)
+	  (when (and (length= (fields arg) (fields farg))
+		     (every #'(lambda (afld)
+				(member (id afld) (fields farg) :key #'id))
+			    (fields arg)))
+	    (tc-match* (mapcar #'(lambda (afld)
+				   (find (id afld) (fields arg) :key #'id))
+			 (fields farg))
+		       (fields arg)
+		       bindings)))))
 
 (defmethod tc-match* ((fld field-decl) (ffld field-decl) bindings)
   (when (eq (id fld) (id ffld))
