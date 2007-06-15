@@ -47,7 +47,8 @@
       (let ((nobj (if (funcall testfn obj)
 		      (funcall substfn obj)
 		      (call-next-method))))
-	(if *gensubst-cache*
+	(if (and *gensubst-cache*
+		 (not *dont-expand-adt-subtypes*))
 	    (setf (gethash obj *gensubst-cache*) nobj)
 	    nobj))))
 
