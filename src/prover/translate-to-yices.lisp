@@ -89,11 +89,12 @@
 
 (defun yices-name (expr &optional id) ;;expr must have id field,
                                       ;;or be given one
-  (let ((entry (gethash expr *yname-hash*)))
-    (or entry
-	(let ((name (yices-id-name (or id (id expr)))))
-	  (setf (gethash expr *yname-hash*) name)
-	  name))))
+  (if (typep expr '(or dep-binding field-decl)) (or id (id expr))
+      (let ((entry (gethash expr *yname-hash*)))
+	(or entry
+	    (let ((name (yices-id-name (or id (id expr)))))
+	      (setf (gethash expr *yname-hash*) name)
+	      name)))))
 
 (defun yices-id-name (id)
   (intern
@@ -302,37 +303,40 @@
 ;; (defmethod translate-to-yices* ((ty list) bindings)
 ;;   (translate-to-yices-list ty nil nil bindings))
 
-(defun translate-to-yices-funlist (list accum num lastelem domvar
-					bindings funbindings)
+(defun translate-to-yices-funlist (list accum num lastelem 
+					domain bindings)
   (if (consp list)
-      (if (or (bind-decl? (car list))
-	      (dep-binding? (car list)))
+      (if (binding? (car list))
       (translate-to-yices-funlist (cdr list)
 			       (cons (translate-to-yices* (car list)
 							  bindings)
 				     accum)
 			       (1+ num)
-			       lastelem domvar
+			       lastelem
+			       domain
 			       (cons (cons (car list)
 					   (yices-name (car list)))
 				     bindings)
-			       (cons (cons (car list)
-					   (format nil
-					       "(select ~a ~a)"
-					     domvar num))
-				     bindings))
+			       )
       (translate-to-yices-funlist (cdr list)
 				  (cons (translate-to-yices* (car list)
 							  bindings)
 				     accum)
 			       (1+ num)
-			       lastelem domvar
+			       lastelem
+			       domain
 			       bindings
-			       bindings))
+			       ))
       (if lastelem
-	  (format nil "(-> ~a::(tuple ~{ ~a~}) ~a)"
-	    domvar (nreverse accum)
-	    (translate-to-yices* lastelem funbindings))
+	  (format nil "(-> ~{ ~a~} ~a)"
+	    (nreverse accum)
+	    (translate-to-yices* lastelem
+				 (if (dep-binding? domain)
+				     (cons (cons domain
+						 (format nil "(mk-tuple ~{ ~a~})"
+						   accum))
+					   bindings)
+				     bindings)))
 	  (format nil "(tuple ~{ ~a~})" 
 	  (nreverse accum)))))
 
@@ -343,8 +347,7 @@
 							  bindings)
 				     accum)
 			       lastelem
-			       (if (or (bind-decl? (car list))
-				       (dep-binding? (car list)))
+			       (if (binding? (car list))
 				   (cons (cons (car list)
 					       (yices-name (car list)))
 					 bindings)
@@ -369,22 +372,25 @@
 
 (defmethod translate-to-yices* ((ty funtype) bindings)
   (with-slots (domain range) ty
-    (let ((bv-size (simple-below? domain)))
+    (let ((bv-size (simple-below? domain))
+	  )
      (if (and (number-expr? bv-size)
 	      (tc-eq (find-supertype range) *boolean*))
 	 (format nil "(bitvector ~a)" (number bv-size))
-       (if (tupletype? domain)
-	   (translate-to-yices-funlist (types domain) nil  1 range
-				       (yices-id-name "domvar")
-				       bindings bindings)
-	 (format nil "(-> ~a ~a)" 
-	  (translate-to-yices* domain bindings)
-	  (translate-to-yices* range
-			       (if (dep-binding? domain)
-				   (cons (cons domain
-					       (yices-name domain))
-					 bindings)
-				   bindings))))))))
+	 (let ((sdom (find-supertype domain))
+	       )
+	   (if (tupletype? sdom)
+	       (translate-to-yices-funlist (types sdom) nil  1 range 
+					   domain bindings)
+	       (format nil "(-> ~a ~a)" 
+		 (translate-to-yices* domain bindings)
+		 (let ((newbindings (if (dep-binding? domain)
+					(cons (cons domain
+						    (yices-name domain))
+					      bindings)
+					bindings)))
+		   (translate-to-yices* range
+					newbindings)))))))))
 
 ;;Not used anywhere.
 ;; (defun bv-funtype? (x)
@@ -568,10 +574,18 @@
 		   (format nil "(~a ~{ ~a~})"
 		     yices-interpretation
 		     (translate-to-yices* (arguments expr) bindings))
-		   (let ((yices-op (translate-to-yices* operator bindings))
-			 (arg (translate-to-yices* (argument expr)
-						   bindings)))
-		     (format nil "(~a ~a)" yices-op arg)))))))))
+		   (let* ((yices-op (translate-to-yices* operator bindings))
+			  (arg (argument expr))
+			  (args (if (tuple-expr? arg)
+				    (arguments expr)
+				    (let ((stype (find-supertype (type arg))))
+				      (if (tupletype? stype)
+					  (loop for index from 1 to (length (types stype))
+						collect (make-projection-application index arg))
+					  (list arg)))))
+			  (yargs (translate-to-yices* args
+						      bindings)))
+		     (format nil "(~a ~{ ~a~})" yices-op yargs)))))))))
 
 
 (defun translate-yices-bindings (bind-decls bindings prefix-string)
@@ -589,32 +603,85 @@
 
 (defmethod translate-to-yices* ((expr binding-expr) bindings)
   (with-slots ((expr-bindings bindings) expression) expr
-    (multiple-value-bind (newbindings bindstring)
-	(translate-yices-bindings  expr-bindings bindings "")
-      (let ((yexpression (translate-to-yices* expression newbindings)))
-	(cond ((lambda-expr? expr)
-	       (if (singleton? expr-bindings)
-		   (format nil "(lambda (~a) ~a)"
-		     bindstring yexpression)
-		   (let* ((lamvar (yices-id-name "lamvar"))
-			  (let-list
-			  (loop for bnd in expr-bindings
-				as index from 1
-				collect
-				(format nil "(~a (select ~a ~a))"
-				  (cdr (assoc bnd newbindings))
-				  lamvar index))))
-		     (format nil "(lambda (~a::~a)(let ~a ~a)"
-		       lamvar (translate-to-yices* (domain (type expr))
-						   bindings)
-		       let-list (translate-to-yices* expression newbindings)))))
-	      ((forall-expr? expr)
-	       (format nil "(forall (~a) ~a)"
-		 bindstring yexpression))
-	      ((exists-expr? expr)
-	       (format nil "(exists (~a) ~a)"
-		 bindstring yexpression))))))) ;;no else case
+    (let ((stype (find-supertype (type (car expr-bindings)))))
+    (cond ((and (lambda-expr? expr)
+		(singleton? expr-bindings)
+		(tupletype? stype))
+	   (let* ((ytypes (translate-to-yices-list
+			   (types stype) nil nil bindings))
+		  (lamvar (yices-id-name "lamvar"))
+		  (lamlist (loop for i from 1 collect
+				 (format nil "~a_~a" lamvar i)))
+		  (yparams (loop for var in lamlist 
+				 as ty in ytypes
+				 collect (format nil "~a::~a" var  ty))))
+	     (format nil "(lambda (~{ ~a~}) (let ((~a (mk-tuple ~{ ~a~}))) ~a))"
+	       yparams lamvar
+	       lamlist
+	       (translate-to-yices* expression
+				    (cons (cons (car expr-bindings) lamvar)
+					  bindings)))))
+	  (t (multiple-value-bind (newbindings bindstring)
+		 (translate-yices-bindings  expr-bindings bindings "")
+	       (let ((yexpression (translate-to-yices* expression newbindings)))
+		 (cond ((lambda-expr? expr)
+			(format nil "(lambda (~a) ~a)" bindstring yexpression))
+		       ((forall-expr? expr)
+			(format nil "(forall (~a) ~a)"
+			  bindstring yexpression))
+		       ((exists-expr? expr)
+			(format nil "(exists (~a) ~a)"
+			  bindstring yexpression)))))))))) ;;no else case
 
+(defmethod translate-to-yices* ((expr forall-expr) bindings)
+  (if *yqexpand*
+      (with-slots ((expr-bindings bindings) expression) expr
+	(translate-forall-to-yices expr-bindings expression bindings))
+      (call-next-method) ; should call binding-expr
+      ))
+
+
+
+(defun translate-forall-to-yices (expr-bindings expression bindings)
+  (cond ((consp expr-bindings)
+	 (let* ((bind1 (car bindings))
+		(typ1 (type bind1))
+		(styp1 (find-supertype typ1)))
+	   (cond ((enum-adt? (find-supertype typ1))
+		  (format nil "(and ~{ ~a~})"
+		    (multiple-value-bind (nbinding npreds)
+			(collect-bindings-predicates bind1 nil)
+		      (let ((ypreds
+			     (translate-typepreds-to-yices nbindings npreds)))
+			(loop for const in (constructors typ1) collect
+			      (if ypreds
+				  (format nil "(implies ~a ~a)"
+				    (format nil "(and ~{ ~a~})"
+				      (loop for ypred in ypreds
+					    collect (format nil "~a(~a)" ypred
+							    const)))
+				    (translate-forall-to-yices (cdr expr-bindings)
+							       expression
+							       (cons (cons bind1 const)
+								   bindings)))
+				  (translate-forall-to-yices (cdr expr-bindings)
+							       expression
+							       (cons (cons bind1 const)
+								   bindings))))))))
+		 )))))
+				    
+
+;;used to generate subtype predicate applications to expr
+(defun translate-typepreds-to-yices (nbinding npreds)
+  (loop for pred in npreds collect
+	(multiple-value-bind
+	    (newbindings bindstring)
+	    (translate-yices-bindings (list nbinding) bindings "")
+	  (format nil "(lambda (~a) ~a)"
+	    bindstring
+	    (translate-to-yices pred
+				(cons newbindings bindings))))))
+		      
 
 
 ;;; Update expressions
@@ -880,3 +947,98 @@ by (yices fnums), then turns off all the installed rewrites.  Examples:
    invokes YICES.  See BASH for more explanation."
 "Repeatedly simplifying with decision procedures, rewriting,
   propositional reasoning, quantifier instantiation, skolemization, Yices")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; (defun translate-to-yices-deftype (type bindings)
+;;   (let ((stype (find-supertype type)))
+;;     (cond ((funtype? stype)
+;; 	   (if (tupletype? (find-supertype (domain stype)))
+;; 	       (
+
+
+;; (defmethod translate-to-yices* ((expr name-expr) bindings)
+;;   (let ((bpos (assoc expr bindings
+;; 		     :test #'same-declaration)))
+;;     (if bpos (cdr bpos)
+;; 	(let* ((yname-hashentry (gethash expr *yname-hash*)))
+;; 	  (or yname-hashentry
+;; 	      (yices-interpretation expr)
+;; 	      (yices-recognizer expr bindings)
+;; 	      (let* ((ytype (translate-to-yices-deftype (type expr)
+;; 						bindings))
+;; 		     (yname-hashentry (gethash expr *yname-hash*)))
+;; 		(or yname-hashentry
+;; 		    (let* ((yname (yices-name expr))
+;; 			  (defn (format nil "(define ~a::~a)"
+;; 				  yname
+;; 				  ytype)))
+;; 		      (push defn
+;; 			    *ydefns*)
+;; 		      (format-if "~%Adding definition: ~a" defn)
+;; 		      yname))))))))
+	 
+;; (defmethod translate-to-yices* ((expr application) bindings)
+;;   (with-slots (operator argument) expr
+;;     (let* ((op* (operator* expr))
+;; 	   (op-id (when (name-expr? op*) (id op*))))
+;;       (cond ((and (eq op-id 'rem)
+;; 		  (eq (id (module-instance (resolution op*)))
+;; 		      'modulo_arithmetic))
+;; 	     (let ((denom (translate-to-yices* (args1 (operator expr))
+;; 					       bindings))
+;; 		   (numer (translate-to-yices* (args1 expr)
+;; 					       bindings)))
+;; 	       `(mod ,numer ,denom)))
+;; 	    ((and (eq op-id 'nat2bv)
+;; 		  (number-expr? (expr (car (actuals (module-instance op*))))))
+;; 	     (let ((size (translate-to-yices*
+;; 			  (expr (car (actuals (module-instance op*))))
+;; 			  bindings))
+;; 		   (num (translate-to-yices*
+;; 			 (args1 expr) bindings)))
+;; 	       `(mk-bv ,size ,num)))
+;; 	    ((and (eq op-id '-)
+;; 		  (eq (id (module-instance (resolution op*)))
+;; 		      '|bv_arithmetic_defs|)
+;; 		  (not (tupletype? (domain (type op*)))))
+;; 	     (format nil "(bv-neg ~a)"
+;; 	       (translate-to-yices* (argument expr) bindings)))
+;; 	    ((and (eq op-id '^)
+;; 		  (eq (id (module-instance (resolution op*)))
+;; 		      '|bv_caret|)
+;; 		  (tuple-expr? argument)
+;; 		  (tuple-expr? (cadr (exprs argument)))
+;; 		  (number-expr? (car (exprs (cadr (exprs argument)))))
+;; 		  (number-expr? (cadr (exprs (cadr (exprs argument))))))
+;; 	     (format nil "(bv-extract ~a ~a ~a)"
+;; 	       (number (car (exprs (cadr (exprs argument)))))
+;; 	       (number (cadr (exprs (cadr (exprs argument)))))
+;; 	       (translate-to-yices* (car (exprs argument)) bindings)))
+;; 	    ((and (enum-adt? (find-supertype (type argument)))
+;; 		  (recognizer? operator))
+;; 	     (format nil "(= ~a ~a)"
+;; 	       (translate-to-yices* argument bindings)
+;; 	       (translate-to-yices* (constructor operator) bindings)))
+;; 	    ((constructor? operator)
+;; 	     (format nil "(~a ~{ ~a~})"
+;; 		     (translate-to-yices* operator bindings)
+;; 		     (translate-to-yices* (arguments expr) bindings)))
+;; 	    (t
+;; 	     (let ((yices-interpretation
+;; 		    (yices-interpretation operator)))
+;; 	       (if yices-interpretation
+;; 		   (format nil "(~a ~{ ~a~})"
+;; 		     yices-interpretation
+;; 		     (translate-to-yices* (arguments expr) bindings))
+;; 		   (let* ((yices-op (translate-to-yices* operator bindings))
+;; 			  (arg (argument expr))
+;; 			  (args (if (tuple-expr? arg)
+;; 				    (arguments expr)
+;; 				    (let ((stype (find-supertype (type arg))))
+;; 				      (if (tupletype? stype)
+;; 					  (loop for index from 1 to (length (types stype))
+;; 						collect (make-projection-application index arg))
+;; 					  (list arg)))))
+;; 			  (yargs (translate-to-yices* args
+;; 						      bindings)))
+;;		     (format nil "(~a ~{ ~a~})" yices-op yargs)))))))))
