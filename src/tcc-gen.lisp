@@ -222,36 +222,36 @@
     
 
 (defun add-tcc-conditions* (expr conditions substs antes)
-  (if (null conditions)
-      (let ((ex (substit (if antes
-			     (make!-implication
-			      (make!-conjunction* antes) expr)
-			     expr)
-		  substs)))
-	(assert (type ex))
-	ex)
-      (cond ((consp (car conditions))
-	     ;; bindings from a lambda-expr application (e.g., let-expr)
-	     (add-tcc-conditions*
-	      expr
-	      (cdr conditions)
-	      (if *substitute-let-bindings*
-		  (cons (car conditions) substs)
-		  substs)
-	      (if *substitute-let-bindings*
-		  antes
-		  (cons (make!-equation
-			 (mk-name-expr (caar conditions))
-			 (cdar conditions))
-			antes))))
-	    ((typep (car conditions) 'bind-decl)
-	     ;; Binding from a binding-expr
-	     (add-tcc-bindings expr conditions substs antes))
-	    (t ;; We collect antes so we can form (A & B) => C rather than
-	       ;; A => (B => C)
-	     (add-tcc-conditions* expr (cdr conditions)
-				    substs
-				    (cons (car conditions) antes))))))
+  (cond ((null conditions)
+	 (let ((ex (substit (if antes
+				(make!-implication
+				 (make!-conjunction* antes) expr)
+				expr)
+		     substs)))
+	   (assert (type ex))
+	   ex))
+	((consp (car conditions))
+	 ;; bindings from a lambda-expr application (e.g., let-expr)
+	 (add-tcc-conditions*
+	  expr
+	  (cdr conditions)
+	  (if *substitute-let-bindings*
+	      (cons (car conditions) substs)
+	      substs)
+	  (if *substitute-let-bindings*
+	      antes
+	      (cons (make!-equation
+		     (mk-name-expr (caar conditions))
+		     (cdar conditions))
+		    antes))))
+	((typep (car conditions) 'bind-decl)
+	 ;; Binding from a binding-expr
+	 (add-tcc-bindings expr conditions substs antes))
+	(t     ;; We collect antes so we can form (A & B) => C rather than
+	 ;; A => (B => C)
+	 (add-tcc-conditions* expr (cdr conditions)
+			      substs
+			      (cons (car conditions) antes)))))
 
 
 ;;; This creates a substitution from the bindings in *tcc-conditions*
