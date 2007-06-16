@@ -50,7 +50,7 @@
 
 TARFLAGS='-cohz --mode=u+rw --atime-preserve --exclude=CVS'
 
-version="4.0"
+version="4.1"
 
 # pvs-source.tgz
 echo Creating pvs-${version}-source.tgz
