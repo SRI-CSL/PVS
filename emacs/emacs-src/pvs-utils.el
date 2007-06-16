@@ -1701,6 +1701,11 @@ Point will be on the offending delimiter."
   (typecheck filename)
   (run-hooks 'pvs-validate-hooks))
 
+(defun pvs-validate-show-buffer (bufname)
+  (save-excursion
+    (set-buffer bufname)
+    (princ-nl (buffer-string))))
+
 (defun pvs-expected-output-regexps (output-regexps)
   (if (stringp output-regexps)
       (list output-regexps)
