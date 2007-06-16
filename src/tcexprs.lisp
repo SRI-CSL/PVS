@@ -1655,34 +1655,62 @@
 (defun find-update-commontype (te expr assignments)
   (if (null assignments)
       te
-      (let ((args (arguments (car assignments)))
-	    (value (expression (car assignments))))
+      (let* ((assn (car assignments))
+	     (args (arguments assn))
+	     (value (expression assn)))
 	(find-update-commontype
-	 (find-update-commontype* te expr args value)
+	 (find-update-commontype* te expr args value (maplet? assn))
 	 expr
 	 (cdr assignments)))))
 
-(defmethod find-update-commontype* ((te funtype) expr args value)
+(defmethod find-update-commontype* ((te funtype) expr args value maplet?)
   (if (null args)
       (call-next-method)
-      (lcopy te
-	'range (find-update-commontype*
-		(range te)
-		(typecheck* (copy-untyped (mk-application* expr (car args)))
-			    (range te) nil nil)
-		(cdr args) value))))
+      (let* ((dtype (dep-binding-type (domain te)))
+	     (dom (if (and maplet? (null (cdr args)))
+		      (extend-domain-types (car args) dtype expr)
+		      dtype)))
+	(if (or (not (dep-binding? (domain te)))
+		(tc-eq dom dtype))
+	    (let ((ran (find-update-commontype*
+			(range te)
+			(typecheck* (copy-untyped
+				     (mk-application* expr (car args)))
+				    (range te) nil nil)
+			(cdr args) value maplet?)))
+	      (if (and (tc-eq dom dtype) (tc-eq ran (range te)))
+		  te
+		  (mk-funtype (if (tc-eq dom dtype) (domain te) dom) ran)))
+	    ;; We have a dep-binding, and the domain type has changed.
+	    ;; Note that the range may be lifted, and no longer have the
+	    ;; dependency.  This normally happens unless the value is
+	    ;; already in the range type, or the bound variable occurs
+	    ;; in a domain type.
+	    (let* ((*bound-variables* (cons (domain te) *bound-variables*))
+		   (ran (find-update-commontype*
+			 (range te)
+			 (typecheck* (copy-untyped
+				      (mk-application* expr (car args)))
+				     (range te) nil nil)
+			 (cdr args) value maplet?)))
+	      (if (member (domain te) (freevars ran) :key #'declaration)
+		  (let ((ndep (mk-dep-binding (id (domain te)) dom)))
+		    (mk-funtype ndep
+				(substit ran (acons (domain te) ndep nil))))
+		  (mk-funtype dom ran)))))))
 
-(defmethod find-update-commontype* ((te tupletype) expr args value)
+(defmethod find-update-commontype* ((te tupletype) expr args value maplet?)
   (if (null args)
       (call-next-method)
-      (find-update-common-tupletype te expr args value)))
+      (find-update-common-tupletype te expr args value maplet?)))
 
-(defmethod find-update-commontype* ((te struct-sub-tupletype) expr args value)
+(defmethod find-update-commontype* ((te struct-sub-tupletype)
+				    expr args value maplet?)
   (if (null args)
       (call-next-method)
-      (find-update-common-tupletype te expr args value)))
+      (find-update-common-tupletype te expr args value maplet?)))
 
-(defun find-update-common-tupletype (te expr args value)
+(defun find-update-common-tupletype (te expr args value maplet?)
   (let* ((index (number (caar args)))
 	 (dtype (nth (1- index) (types te)))
 	 (mtype (unless dtype
@@ -1698,7 +1726,8 @@
 	 (tpappl (when ptype
 		   (typecheck* (copy-untyped pappl) ptype nil nil)))
 	 (ttype (when ptype
-		  (find-update-commontype* ptype tpappl (cdr args) value)))
+		  (find-update-commontype* ptype tpappl (cdr args)
+					   value maplet?)))
 	 (rtypes (if (some #'dep-binding? (types te))
 		     (let ((texpr (typecheck* (copy-untyped expr)
 					      te nil nil)))
@@ -1718,13 +1747,15 @@
 	te
 	(mk-tupletype etypes))))
 
-(defmethod find-update-commontype* ((te recordtype) expr (args cons) value)
-  (find-update-common-recordtype te expr args value))
+(defmethod find-update-commontype* ((te recordtype) expr (args cons)
+				    value maplet?)
+  (find-update-common-recordtype te expr args value maplet?))
 
-(defmethod find-update-commontype* ((te struct-sub-recordtype) expr (args cons) value)
-  (find-update-common-recordtype te expr args value))
+(defmethod find-update-commontype* ((te struct-sub-recordtype) expr (args cons)
+				    value maplet?)
+  (find-update-common-recordtype te expr args value maplet?))
 
-(defun find-update-common-recordtype (te expr args value)
+(defun find-update-common-recordtype (te expr args value maplet?)
   (let* ((sfields (subst-fields te
 				(typecheck* (copy-untyped expr) te nil nil)))
 	 (fdecl (find (caar args) sfields :test #'same-id))
@@ -1741,7 +1772,7 @@
 		   (typecheck* (copy-untyped fappl) (type fdecl) nil nil)))
 	 (ftype (when fdecl
 		  (find-update-commontype*
-		   (type fdecl) tfappl (cdr args) value)))
+		   (type fdecl) tfappl (cdr args) value maplet?)))
 	 (nfdecl (when (and fdecl
 			    (not (tc-eq ftype (type fdecl))))
 		   (copy fdecl
@@ -1766,11 +1797,13 @@
 	  'dependent? nil
 	  'print-type nil))))
 
-(defmethod find-update-commontype* ((te datatype-subtype) expr (args cons) value)
+(defmethod find-update-commontype* ((te datatype-subtype) expr (args cons)
+				    value maplet?)
   (let* ((acc (caar args))
 	 (cappl (typecheck* (mk-application (id acc) (copy-untyped expr))
 			    (range (type acc)) nil nil))
-	 (ctype (find-update-commontype* (type cappl) cappl (cdr args) value)))
+	 (ctype (find-update-commontype* (type cappl) cappl (cdr args)
+					 value maplet?)))
     (if (tc-eq ctype (range (type acc)))
 	te
 	(let* ((pdecls (mapcar #'declaration (positive-types (adt te))))
@@ -1787,14 +1820,16 @@
 		nte)
 	      te)))))
 
-(defmethod find-update-commontype* ((te adt-type-name) expr (args cons) value)
+(defmethod find-update-commontype* ((te adt-type-name) expr (args cons)
+				    value maplet?)
   (declare (ignore expr value))
   te)
 
-(defmethod find-update-commontype* ((te subtype) expr (args cons) value)
-  (find-update-commontype* (supertype te) expr args value))
+(defmethod find-update-commontype* ((te subtype) expr (args cons) value maplet?)
+  (find-update-commontype* (supertype te) expr args value maplet?))
 
-(defmethod find-update-commontype* ((te type-expr) expr (args null) value)
+(defmethod find-update-commontype* ((te type-expr) expr (args null)
+				    value maplet?)
   (declare (ignore expr))
   (let ((tvalue (typecheck* (copy-untyped value) te nil nil)))
     (assert (and tvalue (type tvalue)))
@@ -2010,29 +2045,37 @@
 	 (cons dtype ntypes)))))
 
 (defmethod extend-domain-type (arg (type subtype) expr)
-  (if (some #'(lambda (ty)
-		(or (subtype-of? ty type)
-		    (and (fully-instantiated? ty)
-			 (let ((*generate-tccs* 'none)
-			       (narg (typecheck* (copy-untyped arg)
-						 ty nil nil)))
-			   (some #'(lambda (jty) (subtype-of? jty type))
-				 (judgement-types+ narg))))))
-	    (types arg))
-      type
-      (let* ((*generate-tccs* 'none)
-	     (stype (supertype type))
-	     (pred (predicate type))
-	     (vid (make-new-variable 'x expr))
-	     (vb (make-bind-decl vid stype))
-	     (var (make-variable-expr vb))
-	     (carg (typecheck* (copy arg) stype nil nil))
-	     (upred (make!-lambda-expr (list vb)
-		      (make!-disjunction
-		       (make!-application pred var)
-		       (make!-equation var carg))))
-	     (tpred (beta-reduce upred)))
-	(mk-subtype stype tpred))))
+  (let ((stype (find-supertype type))
+	(new-arg nil))
+    (flet ((new-arg ()
+	     (or new-arg
+		 (setq new-arg
+		       (let ((*generate-tccs* 'none))       
+			 (typecheck* (copy-untyped arg) stype nil nil))))))
+      (if (or (some #'(lambda (ty) (subtype-of? ty type)) (ptypes arg))
+	      (some #'(lambda (jty) (subtype-of? jty type))
+		    (judgement-types+ (new-arg))))
+	  type
+	  (let* ((carg (new-arg))
+		 (stype (least-compatible-arg-judgement-type type carg))
+		 (pred (subtype-pred type stype))
+		 (vid (make-new-variable 'x expr))
+		 (vb (make-bind-decl vid stype))
+		 (var (make-variable-expr vb))
+		 (upred (make!-lambda-expr (list vb)
+			  (make!-disjunction
+			   (make!-application pred var)
+			   (make!-equation var carg))))
+		 (tpred (beta-reduce upred)))
+	    (mk-subtype stype tpred))))))
+
+(defun least-compatible-arg-judgement-type (type arg)
+  (let ((jtypes (judgement-types+ arg)))
+    (if (some #'(lambda (jty) (subtype-of? jty type)) jtypes)
+	type
+	(let ((jtype (find-if #'(lambda (jty) (subtype-of? type jty)) jtypes)))
+	  (or jtype
+	      (compatible-type type (car jtypes)))))))
 
 (defmethod extend-domain-type (arg (type dep-binding) expr)
   (let ((ntype (extend-domain-type arg (type type) expr)))
