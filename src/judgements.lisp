@@ -626,25 +626,28 @@
 	    ;; get the judgement types for that argument, then collect the
 	    ;; components of the tupletype.
 	    (let* ((jtypes (judgement-types+ (car argslist)))
-		   (ajtypes-list (collect-component-arg-judgement-types jtypes)))
+		   (ajtypes-list
+		    (collect-component-arg-judgement-types jtypes)))
 	      (assert (or (null bindings)
+			  (null ajtypes-list)
 			  (length= ajtypes-list bindings)))
-	      (mapc #'(lambda (bd ajtypes)
-			(let* ((btype (type bd))
-			       (ntypes (remove-if #'(lambda (aty)
-						      (subtype-of? btype aty))
-					 ajtypes)))
-			  (when ntypes
-			    (let* ((nm (make-variable-expr bd))
-				   (entry (gethash nm jhash)))
-			      (push (cons nm entry) jbvars)
-			      (setf (gethash nm jhash)
-				    (list (append ntypes (car entry))
-					  (append (make-list (length ntypes)
-							     :initial-element
-							     nil)
-						  (cadr entry))))))))
-		    bindings ajtypes-list)))
+	      (when ajtypes-list
+		(mapc #'(lambda (bd ajtypes)
+			  (let* ((btype (type bd))
+				 (ntypes (remove-if #'(lambda (aty)
+							(subtype-of? btype aty))
+					   ajtypes)))
+			    (when ntypes
+			      (let* ((nm (make-variable-expr bd))
+				     (entry (gethash nm jhash)))
+				(push (cons nm entry) jbvars)
+				(setf (gethash nm jhash)
+				      (list (append ntypes (car entry))
+					    (append (make-list (length ntypes)
+							       :initial-element
+							       nil)
+						    (cadr entry))))))))
+		      bindings ajtypes-list))))
 	(set-binding-judgements-from-arg-judgements*
 	 op (cdr argslist) jbvars))))
 
@@ -652,16 +655,17 @@
   (if (null jtypes)
       (mapcar #'nreverse ajtypes-list)
       (let ((tuptype (find-supertype (car jtypes))))
-	(assert (tupletype? tuptype))
 	(collect-component-arg-judgement-types
 	 (cdr jtypes)
-	 (if (null ajtypes-list)
-	     (mapcar #'list (types tuptype))
-	     (mapcar #'(lambda (ty ajtypes)
-			 (if (member ty ajtypes :test #'tc-eq)
-			     ajtypes
-			     (cons ty ajtypes)))
-	       (types tuptype) ajtypes-list))))))
+	 (if (tupletype? tuptype)
+	     (if (null ajtypes-list)
+		 (mapcar #'list (types tuptype))
+		 (mapcar #'(lambda (ty ajtypes)
+			     (if (member ty ajtypes :test #'tc-eq)
+				 ajtypes
+				 (cons ty ajtypes)))
+		   (types tuptype) ajtypes-list))
+	     ajtypes-list)))))
 
 (defmethod expression* ((ex lambda-expr))
   (expression* (expression ex)))
@@ -1545,6 +1549,8 @@
   (let* ((jtypes (judgement-types+ ex))
 	 (*subtypes-seen* nil)
 	 (preds (type-constraints* jtypes ex nil all?)))
+    (assert (subsetp (freevars preds) (union (freevars ex) *bound-variables*)
+		     :key #'declaration))
     (delete-duplicates preds :test #'tc-eq)))
 
 (defmethod type-constraints* ((list cons) ex preds all?)
@@ -1567,6 +1573,34 @@
 				    (supertype te))
 				ex
 				(nconc (and+ pred) preds) all?)))))
+
+(defmethod type-constraints* ((te datatype-subtype) ex preds all?)
+  (if all?
+      (let ((acts (actuals (module-instance te)))
+	  (fmls (formals-sans-usings (adt te)))
+	  (ptypes (positive-types (adt te))))
+	(adt-type-constraints acts fmls te ptypes ex preds all?))
+      (call-next-method)))
+
+(defun adt-type-constraints (acts fmls te postypes ex preds all?
+				  &optional pospreds)
+  (cond ((null acts)
+	 (if (some #'cdr pospreds)
+	     (cons (make-compatible-every-pred (reverse pospreds) te acts ex)
+		   preds)
+	     preds))
+	((member (car fmls) postypes
+		 :test #'(lambda (x y)
+			   (let ((ydecl (declaration (or (print-type y) y))))
+			     (and (typep ydecl 'formal-type-decl)
+				  (same-id x ydecl)))))
+	 (let* ((act (car acts))
+		(npreds (type-predicates (type-value act) all?)))
+	   (adt-type-constraints
+	    (cdr acts) (cdr fmls) te postypes ex preds all?
+	    (cons (cons act npreds) pospreds))))
+	(t (adt-type-constraints
+	    (cdr acts) (cdr fmls) postypes te ex preds all? pospreds))))
 
 (defmethod type-constraints* ((te dep-binding) ex preds all?)
   (type-constraints* (type te) ex preds all?))
@@ -1642,9 +1676,9 @@
 	 (mapcar #'(lambda (rpred)
 		     (if (dep-binding? (domain te))
 			 (make!-application (substit rpred
-					      (acons (domain te) appl nil))
-			   var)
-			 (make!-application rpred var)))
+					      (acons (domain te) var nil))
+			   appl)
+			 (make!-application rpred appl)))
 	   rpreds))))))
 
 (defmethod type-predicates* ((te tupletype) preds all?)
@@ -1671,10 +1705,12 @@
 	(make!-conjunction* (nreverse opreds)))
       (let ((projappl (make!-projection-application index var)))
 	(type-predicates-tupletype*
-	 (cdr cpreds)
+	 (if (dep-binding? (car types))
+	     (substit (cdr cpreds) (acons (car types) projappl nil))
+	     (cdr cpreds))
 	 (if (dep-binding? (car types))
 	     (substit (cdr types)
-	       (acons (car types) var nil))
+	       (acons (car types) projappl nil))
 	     (cdr types))
 	 te var (1+ index)
 	 (if (null (car cpreds))
