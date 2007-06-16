@@ -155,8 +155,7 @@
 
 (defmethod typecheck* ((m module) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (unless (and (memq 'typechecked (status m))
-	       (typechecked? m))
+  (unless (and (memq 'typechecked (status m)) (typechecked? m))
     (let ((*subtype-of-hash* (make-hash-table :test #'equal))
 	  (*assert-if-arith-hash* (make-hash-table :test #'eq))
 	  (*bound-variables* *bound-variables*))
@@ -266,31 +265,36 @@
 	  (type-error theory-inst
 	    "Library \"~a\" refers to the current PVS context - it must be external"
 	    lib-id)))))
-  (if (and (null (library theory-inst))
-	   (eq (id theory-inst) (id (current-theory))))
-      (type-error theory-inst "A theory may not import itself")
-      (let* (;; Need to keep track of where we are for untypechecking
-	     ;; Everything after this will be untypechecked if
-	     ;; something changed underneath
-	     (*tc-theories* (acons (current-theory) (current-declaration)
-				   *tc-theories*))
-	     (plib-context *prelude-library-context*)
-	     (mod (get-typechecked-theory theory-inst)))
-	;; If get-typechecked-theory ended up loading a new prelude library,
-	;; we need to update the current context.
-	(assert (saved-context mod))
-	(when (context-difference? plib-context *prelude-library-context*)
-	  (setf (lhash-next (using-hash *current-context*))
-		(using-hash *prelude-library-context*))
-	  (setf (lhash-next (declarations-hash *current-context*))
-		(declarations-hash *prelude-library-context*)))
-	(when (and *tc-add-decl*
-		   ;; Check for circularities
-		   (memq (current-theory) (all-importings mod)))
-	  (type-error theory-inst
-	    "Circularity found in importings of theory ~a" theory-inst))
-	;;(assert (get-theory theory-inst))
-	(typecheck-using* mod theory-inst))))
+  (when (and (null (library theory-inst))
+	     (eq (id theory-inst) (id (current-theory))))
+    (type-error theory-inst "A theory may not import itself"))
+  (when (and (not (theory-abbreviation-decl? (current-declaration)))
+	     (member (cons (current-theory) (current-declaration)) *tc-theories*
+		     :test #'equal))
+    (type-error theory-inst
+      "Circularity found in importings of theory ~a" theory-inst))
+  (let* ( ;; Need to keep track of where we are for untypechecking
+	 ;; Everything after this will be untypechecked if
+	 ;; something changed underneath
+	 (*tc-theories* (acons (current-theory) (current-declaration)
+			       *tc-theories*))
+	 (plib-context *prelude-library-context*)
+	 (mod (get-typechecked-theory theory-inst)))
+    ;; If get-typechecked-theory ended up loading a new prelude library,
+    ;; we need to update the current context.
+    (assert (saved-context mod))
+    (when (context-difference? plib-context *prelude-library-context*)
+      (setf (lhash-next (using-hash *current-context*))
+	    (using-hash *prelude-library-context*))
+      (setf (lhash-next (declarations-hash *current-context*))
+	    (declarations-hash *prelude-library-context*)))
+    (when (and *tc-add-decl*
+	       ;; Check for circularities
+	       (memq (current-theory) (all-importings mod)))
+      (type-error theory-inst
+	"Circularity found in importings of theory ~a" theory-inst))
+    ;;(assert (get-theory theory-inst))
+    (typecheck-using* mod theory-inst)))
 
 (defun context-difference? (old-ctx new-ctx)
   (if (null old-ctx)
@@ -344,8 +348,8 @@
 	     (actuals inst))
     (mapc #'(lambda (fm act)
 	      (when (and (formal-theory-decl? fm)
-			 (not (theory-abbreviation-decl?
-			       (declaration (expr act)))))
+			 (not (typep (declaration (expr act))
+				     '(or theory-abbreviation-decl mod-decl))))
 		(add-to-using (mk-modname (id (expr act))
 				(actuals (expr act))
 				(library (expr act))
@@ -359,7 +363,12 @@
   (mapc #'(lambda (map)
 	    (when (and (not (mapping-rename? map))
 		       (mod-decl? (declaration (lhs map))))
-	      (let ((thname (theory-ref (expr (rhs map)))))
+	      (let* ((thname (theory-ref (expr (rhs map))))
+		     (rth (target-mapped-theory (declaration (expr (rhs map)))))
+		     (mtheory (if (theory-interpretation? rth)
+				  (from-theory rth)
+				  rth)))
+		(assert (same-id thname mtheory))
 		(add-to-using (mk-modname (id thname)
 				(or (actuals (expr (rhs map)))
 				    (actuals thname))
@@ -367,7 +376,7 @@
 				    (library thname))
 				(or (mappings (expr (rhs map)))
 				    (mappings thname)))
-			      (get-theory (expr (rhs map)))))))
+			      mtheory))))
 	(mappings inst)))
 
 (defmethod typecheck-using* ((adt recursive-type) inst)
@@ -377,7 +386,12 @@
 	 (use1 (copy inst :id (id th1)))
 	 (use2 (when th2 (copy inst :id (id th2) :actuals nil :mappings nil)))
 	 (use3 (copy inst :id (id th3) :actuals nil :mappings nil))
-	 (*typecheck-using* inst))
+	 (*typecheck-using* inst)
+	 (*tc-theories* (remove-if #'(lambda (x)
+				       (and (eq (car x) (current-theory))
+					    (importing? (cdr x))
+					    (eq (theory-name (cdr x)) inst)))
+			  *tc-theories*)))
     (typecheck-using use1)
     (let ((*ignore-exportings* t)
 	  (supinst (adt-modinst use1)))
@@ -886,23 +900,9 @@
 	   (check-compatible-params
 	    (cdr formals) (cdr actuals)
 	    (if (formal-theory-decl? (car formals))
-		(let* ((mdecl (declaration (resolution (expr (car actuals)))))
-		       (fmappings (theory-mapping (generated-theory (car formals))))
-		       (tmappings (theory-mapping (generated-theory
-						   (declaration (expr (car actuals))))))
-		       (amappings (typecase mdecl
-				    (theory-abbreviation-decl (mapping mdecl))
-				    (mod-decl
-				     (theory-mapping (generated-theory mdecl)))
-				    (t (let ((*subst-mod-params-map-bindings* nil))
-					 (make-subst-mod-params-map-bindings
-					  (expr (car actuals))
-					  (mappings (expr (car actuals)))
-					  nil)))))
-		       (nalist (compose-formal-to-actual-mapping
-				(compose-formal-to-actual-mapping tmappings fmappings)
-				amappings)))
-		  (append nalist assoc))
+		(let ((formal (car formals))
+		      (act (car actuals)))
+		  (append (make-mapping-alist act formal) assoc))
 		(acons (car formals)
 		       (if (formal-type-decl? (car formals))
 			   (type-value (car actuals))
@@ -988,7 +988,7 @@
 (defun subst-types (type assoc)
   (if assoc
       (gensubst type
-	#'(lambda (te) (cdr (assoc (declaration te) assoc)))
+	#'(lambda (te) (actual-value (cdr (assoc (declaration te) assoc))))
 	#'(lambda (te) (and (name? te)
 			    (assoc (declaration te) assoc))))
       type))
@@ -1041,12 +1041,17 @@
 				     (mk-modname '|numbers|) *number*)))))
 		   (thres (unless (and (kind mapping)
 				       (not (eq (kind mapping) 'theory)))
-			    (with-no-type-errors
-			     (resolve* (lhs mapping) 'module nil)))))
+			    (delete-if-not
+			       #'(lambda (r)
+				   (or (module? (declaration r))
+				       (memq (declaration r) lhs-theory-decls)))
+			      (with-no-type-errors
+			       (resolve* (lhs mapping) 'module nil))))))
 	      (unless (or eres nres tres thres)
 		(type-error (lhs mapping)
-		  "Map lhs ~a does not resolve to an uninterpreted type or constant"
-		  (lhs mapping)))
+		  "Map lhs~%  ~a~%does not resolve to an uninterpreted ~
+                   type, constant, or theory within theory:~%  ~a"
+		  (lhs mapping) (id lhs-theory)))
 	      (if (cdr tres)
 		  (cond ((or eres nres)
 			 (setf (resolutions (lhs mapping)) (nconc eres nres)))
