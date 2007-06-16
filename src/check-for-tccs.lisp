@@ -67,7 +67,8 @@
 	  ex (type ex) expected *checking-implicit-conversion*)
 	(type-incompatible ex (list (type ex)) expected)))
   (call-next-method)
-  (unless (or (typep ex '(or branch lambda-expr update-expr))
+  (unless (or (typep ex '(or branch lambda-expr update-expr
+			     cases-expr let-expr where-expr))
 	      (memq ex *skip-tcc-check-exprs*))
     (check-for-subtype-tcc ex expected)))
 
@@ -210,9 +211,13 @@
     (let ((optype (find-supertype (type operator))))
       (check-for-tccs* (argument expr) (domain optype))
       (let ((*appl-tcc-conditions*
-			    (cons (appl-tcc-conditions operator argument)
-				  *appl-tcc-conditions*)))
-	(check-for-tccs* operator optype))))
+	     (cons (appl-tcc-conditions operator argument)
+		   *appl-tcc-conditions*)))
+	(if (typep expr '(or let-expr where-expr))
+	    (let ((*tcc-conditions* (append (let-tcc-conditions* expr)
+					    *tcc-conditions*)))
+	      (check-for-tccs* (let-expression* expr) expected))
+	    (check-for-tccs* operator optype)))))
   (check-for-recursive-tcc expr))
 
 (defmethod check-for-tccs* ((ex conjunction) expected)
@@ -241,6 +246,16 @@
     (let ((*tcc-conditions* (push-tcc-condition (make!-negation econd)
 					       *tcc-conditions*)))
       (check-for-tccs* eelse expected))))
+
+(defmethod check-for-tccs* ((expr first-cond-expr) expected)
+    (declare (ignore expected))
+  (call-next-method)
+  (generate-cond-tccs expr))
+
+(defmethod check-for-tccs* ((expr single-cond-expr) expected)
+  (declare (ignore expected))
+  (call-next-method)
+  (generate-cond-tccs expr))
 
 (defmethod check-for-tccs* ((ex lambda-expr) expected)
   (let* ((sexpected (find-supertype expected))
@@ -315,7 +330,15 @@
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
       (check-for-tccs* expression (contract-expected expr atype))
-      (check-assignment-arg-types args-list values expression atype))))
+      (check-assignment-arg-types args-list values expression expected))))
+
+(defmethod check-for-tccs* ((expr update-expr) (expected struct-sub-recordtype))
+  (with-slots (expression assignments) expr
+    (let ((atype (find-supertype (type expr)))
+	  (args-list (mapcar #'arguments assignments))
+	  (values (mapcar #'expression assignments)))
+      (check-for-tccs* expression (contract-expected expr atype))
+      (check-assignment-arg-types args-list values expression expected))))
 
 (defmethod check-for-tccs* ((expr update-expr) (expected tupletype))
   (with-slots (expression assignments) expr
@@ -385,6 +408,18 @@
 	      (complete-assignments args-list values ex expected)
 	    (check-assignment-rec-arg-types cargs-list cvalues ex fields))))))
 
+(defmethod check-assignment-arg-types* (args-list values ex (expected struct-sub-recordtype))
+  (with-slots (fields) expected
+    (if (every #'null args-list)
+	(call-next-method)
+ 	(progn
+	  (mapc #'(lambda (a v)
+		    (unless a (check-for-tccs* v expected)))
+		args-list values)
+	  (multiple-value-bind (cargs-list cvalues)
+	      (complete-assignments args-list values ex expected)
+	    (check-assignment-rec-arg-types cargs-list cvalues ex fields))))))
+
 (defmethod check-assignment-arg-types* (args-list values ex (expected tupletype))
   (with-slots (types) expected
     (if (every #'null args-list)
@@ -397,7 +432,7 @@
   (with-slots (domain range) expected
     (if (every #'null args-list)
 	(call-next-method)
-	(check-assignment-fun-arg-types args-list values ex domain range))))
+	(check-assignment-fun-arg-types args-list values ex expected))))
 
 (defmethod check-assignment-arg-types* (args-list values ex
 						(expected datatype-subtype))
@@ -426,6 +461,7 @@
 	   (done-with-field? (not (member (car fields) rem-args
 					  :test #'same-id :key #'caar))))
       (when args
+	(assert (field-assignment-arg? (caar args)))
 	(when done-with-field?
 	  (let ((cdr-args (mapcar #'cdr (nreverse (cons args cargs)))))
 	    (check-assignment-arg-types*
@@ -455,8 +491,9 @@
     (let ((args (car args-list))
 	  (value (car values)))
       (assert (null (cdr args)))
+      (assert (field-assignment-arg? (caar args)))
       (check-for-tccs* value (car (types value))))
-    (set-assignment-rec-arg-maplet-types (cdr args-list) (cdr values) ex)))
+    (check-assignment-rec-arg-maplet-types (cdr args-list) (cdr values) ex)))
 
 (defun check-assignment-tup-arg-types (args-list values ex types index
 					       &optional cargs cvalues)
@@ -495,12 +532,15 @@
        (unless done-with-index?
 	 (cons value cvalues))))))
 
-(defun check-assignment-fun-arg-types (args-list values ex domain range)
+(defun check-assignment-fun-arg-types (args-list values ex funtype)
   (when args-list
     (multiple-value-bind (cargs cvalues rem-args rem-values)
 	(collect-same-first-fun-assignment-args args-list values)
-      (dolist (arg cargs)
-	(check-tup-types (car arg) (domain-types* domain)))
+      (let ((domtypes (domain-types* (domain funtype))))
+	(dolist (arg cargs)
+	  (if (length= domtypes (car arg))
+	      (check-tup-types (car arg) domtypes)
+	      (check-for-tccs* (caar arg) (domain funtype)))))
       (let ((arg (when (caar cargs) (make!-arg-tuple-expr* (caar cargs)))))
 	(check-assignment-arg-types*
 	 (mapcar #'cdr cargs)
@@ -508,11 +548,11 @@
 	 (when (and ex arg)
 	   (make!-application ex arg))
 	 (if arg
-	     (if (dep-binding? domain)
-		 (substit range (acons domain arg nil))
-		 range)
+	     (if (dep-binding? (domain funtype))
+		 (substit (range funtype) (acons (domain funtype) arg nil))
+		 (range funtype))
 	     funtype)))
-      (check-assignment-fun-arg-types rem-args rem-values ex domain range))))
+      (check-assignment-fun-arg-types rem-args rem-values ex funtype))))
 
 (defun check-assignment-update-arg-types (args-list values ex expected)
   (let* ((ass-accs (mapcar #'caar args-list))
@@ -541,20 +581,21 @@
 (defun check-constructors-update-arg-types (constrs args-list values ex
 						  &optional tccs recs)
   (if (null constrs)
-      (let* ((dtcc (make!-disjunction* (nreverse tccs)))
-	     (type (make!-expr-as-type
-		    (if (cdr recs)
-			(let* ((id (make-new-variable '|x| recs))
-			       (bd (make-bind-decl id (type ex)))
-			       (var (make-variable-expr bd)))
-			  (make!-set-expr (list bd)
-			    (make!-disjunction*
-			     (mapcar #'(lambda (r) (make!-application r var))
-			       (nreverse recs)))))
-			(car recs))))
-	     (id (make-tcc-name dtcc))
-	     (ndecl (mk-subtype-tcc id dtcc)))
-	(insert-tcc-decl 'subtype ex type ndecl))
+      (unless (eq *generate-tccs* 'none)
+	(let* ((dtcc (add-tcc-conditions (make!-disjunction* (nreverse tccs))))
+	       (type (make!-expr-as-type
+		      (if (cdr recs)
+			  (let* ((id (make-new-variable '|x| recs))
+				 (bd (make-bind-decl id (type ex)))
+				 (var (make-variable-expr bd)))
+			    (make!-set-expr (list bd)
+			      (make!-disjunction*
+			       (mapcar #'(lambda (r) (make!-application r var))
+				 (nreverse recs)))))
+			  (car recs))))
+	       (id (make-tcc-name dtcc))
+	       (ndecl (mk-subtype-tcc id dtcc)))
+	  (insert-tcc-decl 'subtype ex type ndecl)))
       (let* ((c (car constrs))
 	     (accs (accessors c))
 	     (*tccforms* nil))
