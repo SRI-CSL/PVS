@@ -9,25 +9,29 @@
 # command line arguments:
 #   -h | -help | --help  prints a help line and exits
 #   -version | --version prints the PVS version
-#   -emacs       emacs, xemacs, or pathname
-#   -load-after  emacs file name
-#   -lisp        lisp image name
-#   -runtime             use the runtime image
-#   -decision-procedures  set the default decision procedures
-#                                         (ics, shostak, or cyrluk)
+#   -emacs emacsref        emacs, xemacs, alias, or pathname
+#   -load-after efile      loads emacs file name after PVS emacs files
+#   -lisp name             lisp image name - allegro or cmulisp
+#   -runtime               use the runtime image (devel is default, if there)
+#   -decision-procedures   set the default decision procedures (ics or shostak)
 #   -force-decision-procedures  forces the decision procedures to be used
 #   -patchlevel  indicates the patch level:
 #       0 (none). No patches
-#       1 (rel).  Released patches (patch2.lisp)
-#       2 (test). Test patches (patch2-test.lisp) (the default)
-#       3 (exp).  Experimental patches (patch2-exp.lisp)
+#       1 (rel).  Released patches (patch4.lisp)
+#       2 (test). Test patches (patch4-test.lisp) (the default)
+#       3 (exp).  Experimental patches (patch4-exp.lisp)
 #   -batch       run in batch mode
 #   -timeout     seconds to timeout commands or proofs - only allowed in batch
 #   -nobg        don't run PVS in the background
 #   -raw         run PVS without Emacs
-#   -v           the (verbose) level number - 0-3
-#   any emacs parameters (e.g. -q -batch -l foo)
+#   -v           the (verbose) level number - 0-3 (mostly for batch mode)
+#   -q           do not load ~/.emacs, ~/.pvsemacs, or ~/.pvs.lisp files
+#   -l efile     load the given Emacs file (before PVS emacs files)
+#   -L lfile     load the given Lisp file (after PVS initializes)
+#   any other emacs parameters (e.g. -u or -nw)
 #   any X window parameters (e.g. -geometry 80x60+0-0)
+# Other arguments will simply pass through, but different lisps will likely
+# interpret them differently, and possibly break.
 #
 # If the corresponding command line argument is not given, the following
 # environment variables are used if set:
@@ -76,6 +80,7 @@ batch=
 rawmode=
 PVSINEMACS=t
 getversion=
+lisploadfiles=
 nobg=
 if [ -f $HOME/.emacs ]
   then dotemacs="-l $HOME/.emacs"
@@ -151,26 +156,33 @@ do
      -q|-no-init-file) flags="$flags $1"
                        PVSMINUSQ="-q"
 		       dotemacs= ;;
+     # No need for -l - it takes care of itself
+     -L) lisploadfiles="$lisploadfiles $2"
+         shift;;
      -where|--where) echo $PVSPATH
                      exit 0;;
-     -version|--version) getversion="yes";;
+     -version|--version) unset PVSINEMACS
+                         getversion="yes";;
      -h|-help|--help)  echo "usage:
        pvs [-options ...] [file]
 where options include:
   -h | -help | --help  print out this message
   -version | --version show the PVS version number
-  -emacs emacspath     emacs to use (e.g., emacs, xemacs, /usr/local/bin/emacs)
-  -lisp lispversion  lisp image to use (e.g., allegro6.0)
-  -load-after        emacs file
+  -emacs emacsref    emacs, xemacs, alias, or pathname
+  -load-after efile  loads emacs file after PVS emacs files
+  -lisp name         lisp image name (allegro or cmulisp)
   -runtime           use the runtime image
   -decision-procedures  set default decision procedures (ics or shostak)
   -force-decision-procedures  forces the decision procedures (ics or shostak)
-  -patchlevel level  patchlevel (none, rel, test, exp)
+  -patchlevel level  patchlevel (none, rel, test, exp or 0-3, resp.)
   -batch             run in batch mode
   -timeout number    use a timeout for commands or proofs in batch mode
-  -raw               run PVS without Emacs
   -nobg              don't put PVS in the background
+  -raw               run PVS without Emacs
   -v number          verbosity level for batch mode (0-3)
+  -q           do not load ~/.emacs, ~/.pvsemacs, or ~/.pvs.lisp files
+  -l efile     load the given Emacs file (before PVS emacs files)
+  -L lfile     load the given Lisp file (after PVS initializes)
   and any Emacs or X window options
 To change the title and icon names, use -title and -xrm, for example,
   pvs -title foo -xrm \"pvs*iconName:bar\""
@@ -257,7 +269,31 @@ elif [ -d $binpath/runtime -a -x $binpath/runtime/$PVSIMAGE ]
 	exit 1
 fi
 
-ALLEGRO_CL_HOME=$PVSPATH/bin/$PVSARCH-$opsys${majvers}/home
+# Here is where we handle the different flags for the different lisps
+case $PVSLISP in
+    allegro) 
+	ALLEGRO_CL_HOME=$PVSPATH/bin/$PVSARCH-$opsys${majvers}/home
+	noinit="-qq"
+	evalflag="-e"
+	if [ -n "$lisploadfiles" ]
+	  then
+	    flags="$flags -e (pvs::pvs-init)"
+	    for lf in $lisploadfiles
+	      do flags="$flags -L $lf"; done
+	fi
+	;;
+    cmulisp)
+	noinit="-quiet -noinit"
+	evalflag="-eval"
+	if [ -n "$lisploadfiles" ]
+	  then
+	    flags="$flags -eval (pvs::pvs-init)"
+	    for lf in $lisploadfiles
+	    do flags="$flags -load $lf"; done
+	fi
+	;;
+esac
+
 PVSPATCHLEVEL=${PVSPATCHLEVEL:-2}
 
 case $PVSPATCHLEVEL in
@@ -340,10 +376,12 @@ if [ ! "$getversion" -a ! "$rawmode" -a ! "$batch" -a "$DISPLAY" != "" -a "$nowi
   esac
 elif [ $getversion ]
   then
-    $PVSIMAGE -qq -e "(progn (format t \"PVS version ~a~%\" pvs::*pvs-version*) (excl:exit nil :quiet t))"
+    # Make sure there are no spaces in the eval form - otherwise it goes
+    # through the pvs-cmulisp script and gets mangled.
+    $PVSIMAGE $noinit $evalflag "(progn(pvs::pvs-version)(terpri)(bye))"
 elif [ $rawmode ]
   then
-    $PVSIMAGE -qq $flags
+    $PVSIMAGE $noinit $flags
 elif [ $batch ]
   then
     "$PVSEMACS" $batch $dotemacs $pvsemacsinit $flags 2>&1
