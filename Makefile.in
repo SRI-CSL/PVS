@@ -490,17 +490,17 @@ $(cmulisp-devel) $(cmulisp-rt) : $(image-deps) \
            $(lisp-files) $(cmulisp) lib/prelude.pvs lib/prelude.prf
 	@echo "******* Compiling PVS files in CMU Lisp"
 	$(MKDIR) -p $(subst $(SYSTEM)-cmulisp,,$@)
-	$(CMULISPEXE) -eval "(load \"pvs.system\" :verbose t) \
+	$(CMULISPEXE) -eval '(load "pvs.system" :verbose t) \
                              (let ((*load-pvs-prelude* nil)) \
                                (pvs::operate-on-system :pvs :compile)) \
-                             (quit)"
+                             (quit)'
 	@echo "******* Building PVS image $@"
-	$(CMULISPEXE) -eval "(load \"pvs.system\" :verbose t) \
+	$(CMULISPEXE) -eval '(load "pvs.system" :verbose t) \
                              (unwind-protect \
                                  (pvs::operate-on-system :pvs :compile) \
-                               (save-lisp \"$@.core\" \
+                               (save-lisp "$@.core" \
                                    :init-function (function startup-pvs) \
-                               ))"
+                               ))'
 	-rm $(PVSPATH)BDD/$(PLATFORM)/bdd-cmu.*
 	cp $(CMULISPEXE) $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-cmulisp,,$@)
@@ -509,7 +509,7 @@ $(cmulisp-devel) $(cmulisp-rt) : $(image-deps) \
 	cp $(PVSPATH)src/WS1S/lisp/dfa-foreign-cmu.lisp $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
 	echo "#!/bin/sh" > $@
-	echo "lisp -core \`dirname \$$0\`/\`basename \$$0\`.core \$\*" >> $@
+	echo "lisp -core \`dirname \$$0\`/\`basename \$$0\`.core \$$*" >> $@
 	chmod a+x $@
 endif
 
@@ -616,7 +616,8 @@ comma:= ,
 
 clean : 
 	rm -f *.{$(faslexts)} */*.{$(faslexts)} */*/*.{$(faslexts)} \
-              */*/*/*.{$(faslexts)} */*/*/*/*.{$(faslexts)}
+              */*/*/*.{$(faslexts)} */*/*/*/*.{$(faslexts)} \
+              */{$(platforms)}/*.o */*/{$(platforms)}/*.o
 	rm -rf src/WS1S/mona
 	rm -f lib/*_adt.pvs
 	for p in $(subst $(comma), ,$(platforms)) ; do \
