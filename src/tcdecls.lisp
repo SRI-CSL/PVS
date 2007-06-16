@@ -45,7 +45,10 @@
 	(declaration (typecheck-decl decl))
 	(importing (tcdebug "~%    Processing importing")
 		   (let ((*generating-adt* nil))
-		     (typecheck* decl nil nil nil)))
+		     (unwind-protect
+			 (typecheck* decl nil nil nil)
+		       (unless (saved-context decl)
+			 (cleanup-typecheck-decls decl)))))
 	(recursive-type (unless (typechecked? decl)
 			  (tcdebug "~%    Processing (Co)Datatype ~a"
 				   (id decl))
@@ -64,7 +67,7 @@
 		 (typechecked? (generated-by decl))))
     (if (and (typechecked? decl)
 	     (not (typep decl '(or theory-abbreviation-decl
-				   mod-decl conversion-decl auto-rewrite-decl
+				   conversion-decl auto-rewrite-decl ;;mod-decl
 				   judgement))))
 	(mapc #'(lambda (d) (add-decl d nil))
 	      (generated decl))
@@ -237,6 +240,8 @@
   (setf (saved-context decl) (copy-context *current-context*))
   decl)
 
+;;; typecheck-named-theory is used for mod-decls and formal-theory-decls
+
 (defun typecheck-named-theory (decl)
   (let ((theory-name (theory-name decl)))
     (when (and (null (library (theory-name decl)))
@@ -312,8 +317,9 @@
 					 (eq (kind-of d) (kind-of decl)))))
 		      (all-decls tgt-theory)))
 	 (reses (unless tgt-decls
-		  (resolutions (resolve (id decl) (kind-of decl) nil
-					(context tgt-theory))))))
+		  (let ((name (resolve (id decl) (kind-of decl) nil
+				       (context tgt-theory))))
+		    (when name (resolutions name))))))
     (cond ((and (null tgt-decls)
 		(null reses))
 	   (pvs-info "No implicit mapping found for ~a" (id decl)))
@@ -933,9 +939,6 @@
 	range
 	(let* ((nrange (make-formals-funtype (cdr formals) range))
 	       (ft (make-formals-funtype* (car formals) nrange)))
-;; 	  (when (and (declaration? (current-declaration))
-;; 		     (eq (id (current-declaration)) 'insertM))
-;; 	    (break "make-formals-funtype"))
 	  ft))))
 
 (defun make-formals-funtype* (formals range)
@@ -963,7 +966,7 @@
 (defun subst-formals-funtype* (formals range ndep nvar &optional (index 1))
   (if (null formals)
       range
-      (if (occurs-in (car formals) range)
+      (if (member (car formals) (freevars range) :key #'declaration)
 	  (let* ((nproj (make-projection-application index nvar))
 		 (alist (acons (car formals) nproj nil))
 		 (nrange (substit range alist)))
@@ -1366,8 +1369,8 @@
 
 (defmethod lift-measure-type-for-ordering ((list list) ordering bindings)
   (when list
-    (let ((cartype (lift-measure-type-for-ordering (car list) ordering
-						   bindings)))
+    (let ((cartype (lift-measure-type-for-ordering
+		    (dep-binding-type (car list)) ordering bindings)))
       (cons cartype
 	    (lift-measure-type-for-ordering
 	     (if (dep-binding? cartype)
@@ -2797,12 +2800,13 @@
 
 (defun typecheck-rec-judgement (decl expr)
   (change-class decl 'rec-application-judgement)
-  (let* ((recdecl (declaration (operator* expr)))
+  (let* ((op (operator* expr))
+	 (recdecl (declaration op))
 	 (def (rec-judgement-definition decl recdecl))
 	 (vid (make-new-variable 'v (list expr def)))
 	 (jtype	;;(rec-judgement-signature decl recdecl)
 	  ;;(recursive-signature recdecl)
-	  (type recdecl))
+	  (type op))
 ;; 	 (sjtype (gensubst jtype
 ;; 		   #'(lambda (x) (declare (ignore x))
 ;; 		       (mk-name-expr (cdr (assq (declaration x) alist))))
@@ -2815,21 +2819,22 @@
 				    (mapcar #'(lambda (x)
 						(mapcar #'mk-name-expr x))
 				      arg-bds1)))
-	 (aalist (pairlis-rec-formals (formals recdecl) arg-bds1))
-	 (subst-type (substit (type decl) aalist))
+	 (jdecl-arg-alist (pairlis-rec-formals (formals decl) arg-bds1))
+	 (rdecl-arg-alist (pairlis-rec-formals (formals recdecl) arg-bds1))
+	 (subst-type (substit (type decl) jdecl-arg-alist))
 	 (precond (make!-forall-expr (mapcan #'copy-list arg-bds1)
 		    (make!-conjunction*
 		     (compatible-predicates (judgement-types+ vterm)
 					    subst-type vterm))))
 	 (arg-bds2 (mapcar #'(lambda (x) (mapcar #'copy x)) (formals decl)))
 	 (*bound-variables* (cons vbd *bound-variables*))
-	 (alist (acons recdecl vname aalist))
+	 (rec-alist (acons recdecl vname rdecl-arg-alist))
 	 ;;(nalist (acons recdecl vbd alist))
 	 (sdef (gensubst def
 		 #'(lambda (x) (declare (ignore x))
-		     (mk-name-expr (cdr (assq (declaration x) alist))))
+		     (mk-name-expr (cdr (assq (declaration x) rec-alist))))
 		 #'(lambda (x) (and (name-expr? x)
-				    (assq (declaration x) alist)))))
+				    (assq (declaration x) rec-alist)))))
 ;; 	 (nexpr (gensubst expr
 ;; 		  #'(lambda (x) (declare (ignore x))
 ;; 		      (mk-name-expr (cdr (assq (declaration x) alist))))
@@ -2838,7 +2843,7 @@
 ;; 	 (precond (make!-conjunction*
 ;; 		   (compatible-predicates (judgement-types+ nexpr)
 ;; 					  (type decl) nexpr)))
-	 (jsig (rec-judgement-signature decl recdecl))
+	 (jsig (rec-judgement-signature decl (type op)))
 	 (nrange (rec-judgement-range jsig decl))
 	 (*tcc-conditions* (append (mapcan #'copy-list arg-bds2)
 				   (cons precond
@@ -2860,7 +2865,9 @@
 	   (substit (range jsig) (acons (domain jsig)
 					(if (singleton? (car formals))
 					    (caar formals)
-					    (break))
+					    (make-tuple-expr
+					     (mapcar #'make-variable-expr
+					       (car formals))))
 					nil))
 	   (range jsig))
        (cdr formals))))
@@ -2917,9 +2924,9 @@
 ;;; in that the curry depth may not match, and either the original recursive
 ;;; function type or the judgement type (or both) may be dependent types.
 
-(defun rec-judgement-signature (jdecl recdecl)
+(defun rec-judgement-signature (jdecl optype)
   (rec-judgement-signature* (make-formals-funtype (formals jdecl) (type jdecl))
-			    (type recdecl)
+			    optype
 			    jdecl))
 
 (defmethod rec-judgement-signature* ((jtype funtype) (rtype funtype)
