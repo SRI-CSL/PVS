@@ -5092,7 +5092,7 @@ mod: THEORY
 
   i,k,cc: VAR int
   m: VAR posnat
-  n,a,b,c: VAR nat   
+  n,a,b,c,x: VAR nat   
 
   j: VAR nonzero_integer
 
@@ -5165,9 +5165,31 @@ mod: THEORY
   mod_wrap_around: LEMMA n < m AND (c <= m AND c >= m-n) IMPLIES
                               mod(n+c, m) = n - (m-c)
 
-  mod_wrap_inj   : LEMMA n < m AND a < m AND b < m AND a > 0 AND
+  mod_wrap2:       LEMMA c < m IMPLIES mod(m+c, m) = c
+
+% Injection-like properties for mod for limited ranges
+
+  mod_inj1:        LEMMA x < m AND n < m AND c < m AND
+                       mod(x + n, m) = mod(x + c, m) IMPLIES n = c
+
+  mod_inj2:        LEMMA x < m AND n < m AND c < m AND
+                        mod(x - n, m) = mod(x - c, m) IMPLIES n = c
+
+  mod_wrap_inj: LEMMA n < m AND a < m AND b < m AND a > 0 AND
                             mod(n + a, m) = mod(n - b, m) IMPLIES a + b = m
 
+  mod_wrap_inj_eq: LEMMA
+      x < m AND a < m AND b < m AND a > 0
+        IMPLIES (mod(x + a, m) = mod(x - b, m)) = (a + b = m)
+
+  kk, vv: VAR nat
+  mod_neg_limited: LEMMA 0 <= kk AND  kk < m AND vv < m AND
+                      vv - kk < 0 IMPLIES mod(vv - kk,m) = m + vv - kk
+
+
+  odd_mod: LEMMA even?(m) => (odd?(mod(i, m)) IFF odd?(i))
+
+  even_mod: LEMMA even?(m) => (even?(mod(i, m)) IFF even?(i))
 
   mj: VAR posnat
   mod_mult      : LEMMA mod(mod(i,mj*m),m) = mod(i,m)
