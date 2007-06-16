@@ -1083,7 +1083,8 @@
 	 (pair-formals-args (cdr formals) args t))
 	((null args) (if opt-flag
 			 (collect-default-values formals)
-			 (progn (error-format-if "~%Not enough actuals.")
+			 (progn (error-format-if
+				 "~%Not enough arguments for prover command.")
 				(restore))))
 	((and opt-flag
 	      (keywordp (car args)))
@@ -2061,8 +2062,8 @@
 	 (if (typep ps 'top-proofstate)
 	     ps
 	     (if (strat-proofstate? ps)  ;;NSH(7.12.94) ignores
-					 ;;strat-proofstates in the
-					 ;;counting. 
+		 ;;strat-proofstates in the
+		 ;;counting. 
 		 (findps info (parent-proofstate ps))
 		 (if (<= info 0)
 		     ps
@@ -2077,7 +2078,8 @@
 	 (nonstrat-parent-proofstate ps))
 	((typep ps 'top-proofstate)
 	 nil)
-	(t (findps info (parent-proofstate ps)))))
+	(t (and (parent-proofstate ps)
+		(findps info (parent-proofstate ps))))))
 
 
 ;;find-ps-info returns the undo distance between target and
