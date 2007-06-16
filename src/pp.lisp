@@ -135,6 +135,7 @@ bind tighter.")
 	 (*print-lines* lines)
 	 (*print-pretty* pretty)
 	 (*print-escape* nil)
+	 (*print-readably* nil)
 	 (*print-right-margin* (or char-width *default-char-width*))
 	 (*pp-no-newlines?* no-newlines?))
      (cond (string
