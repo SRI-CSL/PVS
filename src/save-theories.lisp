@@ -103,9 +103,9 @@
 				  'prelude-declarations-hash)))
 		 (postrestore-context *current-context*)
 		 (pvs-message
-		     "Restored theory from ~a.bin in ~,2,-3fs ~
+		     "Restored theory from ~a in ~,2,-3fs ~
                       (load part took ~,2,-3fs)"
-		   filename (realtime-since start-time)
+		   file (realtime-since start-time)
 		   (floor (- load-time start-time) millisecond-factor))
 		 theory))
 	      (fetch-error
