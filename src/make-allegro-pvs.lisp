@@ -37,6 +37,6 @@
   (require 'uri)
   #+(version>= 6)
   (require 'pxml))
-(operate-on-system :pvs :compile)
+(mk:operate-on-system :pvs :compile)
 (when (sys:getenv "PVSMAKELOADAFTER")
   (load (sys:getenv "PVSMAKELOADAFTER")))
