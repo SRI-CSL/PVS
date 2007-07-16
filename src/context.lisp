@@ -1498,7 +1498,10 @@ pvs-strategies files.")
 	       (min (when numbers (apply #'min numbers)))
 	       (max (if numbers (apply #'max numbers) 0)))
 	  (when (= (length files) *number-of-proof-backups*)
-	    (delete-file (format nil "~a.~~~d~~" filestring min)))
+	    (let ((ofile (format nil "~a.~~~d~~" filestring min)))
+	      (when (file-exists-p ofile)
+		(ignore-file-errors
+		 (delete-file ofile)))))
 	  (let ((nfile (format nil "~a.~~~d~~" filestring (1+ max))))
 	    (rename-file filestring nfile)
 	    (pvs-log "Renamed ~a to ~a"
