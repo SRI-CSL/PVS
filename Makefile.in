@@ -492,12 +492,12 @@ $(cmulisp-devel) $(cmulisp-rt) : $(image-deps) \
 	$(MKDIR) -p $(subst $(SYSTEM)-cmulisp,,$@)
 	$(CMULISPEXE) -eval '(load "pvs.system" :verbose t) \
                              (let ((*load-pvs-prelude* nil)) \
-                               (pvs::operate-on-system :pvs :compile)) \
+                               (mk:operate-on-system :pvs :compile)) \
                              (quit)'
 	@echo "******* Building PVS image $@"
 	$(CMULISPEXE) -eval '(load "pvs.system" :verbose t) \
                              (unwind-protect \
-                                 (pvs::operate-on-system :pvs :compile) \
+                                 (mk:operate-on-system :pvs :compile) \
                                (save-lisp "$@.core" \
                                    :init-function (function startup-pvs) \
                                ))'
@@ -526,7 +526,7 @@ $(allegro-devel) $(allegro-rt) : $(image-deps) \
                           (*load-pvs-prelude* nil)) \
                       (unwind-protect \
                           (multiple-value-bind (v err) \
-                            (ignore-errors (operate-on-system :pvs :compile)) \
+                            (ignore-errors (mk:operate-on-system :pvs :compile)) \
                                (if err \
                                    (let ((*print-readably* nil)) \
                                      (format t \"~a\" err)) \
