@@ -139,7 +139,7 @@
   (import '(extensions:memq) :pvs)
   (export 'memq))
 
-(defsystem pvs
+(mk:defsystem pvs
   :source-pathname *pvs-path*
   :source-extension "lisp"
   :binary-extension #.*pvs-binary-type*
