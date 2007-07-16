@@ -136,6 +136,12 @@
   (setf (assuming-instances theory) nil)
   (setf (used-by theory) nil)
   (let ((rem-decls (cdr (memq decl (all-decls theory)))))
+    ;; This doesn't quite work - see store-declref for the problem
+;;     (when (eq theory (current-theory))
+;;       (dolist (d (ldiff (all-decls theory) rem-decls))
+;; 	(unless (or (not (typep d '(or declaration inline-recursive-type)))
+;; 		    (eq (module d) (current-theory)))
+;; 	  (setf (module d) (current-theory)))))
     (setf (warnings theory)
 	  (remove-if #'(lambda (i) (memq (car i) rem-decls))
 	    (warnings theory)))
