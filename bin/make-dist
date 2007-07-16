@@ -139,9 +139,9 @@ pvssystemfiles="\
   doc/release-notes/pvs-release-notes.pdf \
   wish/gray.xbm wish/sequent.xbm \
   emacs lib/PVSio lib/finite_sets lib/bitvectors"
+tar ${TARFLAGS} -f pvs-${version}-system.tgz --exclude pvsbin $pvssystemfiles
 else
-echo "tar files not created - need emacs/emacs20 and emacs/xemacs21 and "
-exit 1
+echo "pvs-${version}-system.tgz not created - need emacs/emacs20 and emacs/xemacs21 and "
 fi
 
 
