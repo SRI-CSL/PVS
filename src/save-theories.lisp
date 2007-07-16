@@ -335,6 +335,13 @@
       (assert (or (not *saving-theory*)
 		  (from-prelude? module)
 		  (assq module (all-usings *saving-theory*))
+		  ;; This shouldn't happen - but I haven't had time to chase
+		  ;; down exactly what is happening in untypecheck-usedbys
+		  ;; See ~owre/pvs-specs/Shankar/2007-06-12/
+		  ;; tpecheck dpll3_2, modify resolution, retypecheck, and sc.
+		  ;; Something is keeping a pointer to an old resolution theory
+		  (assq (get-theory (id module))
+			(all-usings *saving-theory*))
 		  (memq module *store-mapped-theories*))
 	      () "Attempt to store declaration in illegal theory")
       (cond ((number-declaration? obj)
