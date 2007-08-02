@@ -311,7 +311,8 @@
       rtypes
       (let ((stype (find-supertype (car types))))
 	(get-arg-record-types* (cdr types)
-			       (if (typep stype 'recordtype)
+			       (if (typep stype '(or recordtype
+						     struct-sub-recordtype))
 				   (cons stype rtypes)
 				   rtypes)))))
 
