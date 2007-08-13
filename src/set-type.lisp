@@ -3024,7 +3024,7 @@ required a context.")
 	  (when (cdr dj-conds)
 	    (unless (trivial-disjointness dj-conds)
 	      (generate-cond-disjoint-tcc expr dj-conds values))))
-	(unless (trivial-cond-coverage conditions)
+	(unless (or else? (trivial-cond-coverage conditions))
 	  (generate-cond-coverage-tcc expr conditions))))))
 
 (defun trivial-disjointness (dj-conds)
