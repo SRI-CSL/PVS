@@ -486,7 +486,7 @@
 	    (tc-match* (mapcar #'(lambda (afld)
 				   (find (id afld) (fields arg) :key #'id))
 			 (fields farg))
-		       (fields arg)
+		       (fields farg)
 		       bindings)))))
 
 (defmethod tc-match* ((fld field-decl) (ffld field-decl) bindings)
