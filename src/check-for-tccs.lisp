@@ -651,7 +651,16 @@
 
 (defmethod check-for-tccs* ((expr update-expr) (expected subtype))
   (let ((stype (find-supertype expected)))
-    (check-for-tccs* expr stype)))
+    (check-for-tccs* expr stype)
+    (unless (eq *generate-tccs* 'none)
+      (let* ((id (make-new-variable '|x| (list expr expected)))
+	     (bd (make-bind-decl id stype))
+	     (var (make-variable-expr bd))
+	     (cpreds (compatible-predicates (list stype) expected var))
+	     (incs (beta-reduce (substit cpreds
+				  (acons bd (copy expr 'parens 1) nil)))))
+	(when incs
+	  (generate-subtype-tcc expr expected incs))))))
 
 (defmethod check-for-tccs* ((expr update-expr) (expected dep-binding))
   (check-for-tccs* expr (type expected)))
