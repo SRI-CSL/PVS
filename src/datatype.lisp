@@ -2273,6 +2273,9 @@ generated")
 (defmethod acc-predicate-selection* ((te dep-binding) pvars ptypes adt funid)
   (acc-predicate-selection* (type te) pvars ptypes adt funid))
 
+(defmethod acc-predicate-selection* ((te subtype) pvars ptypes adt funid)
+  (acc-predicate-selection* (find-adt-supertype te) pvars ptypes adt funid))
+
 (defmethod acc-predicate-selection* ((te type-expr) pvars ptypes adt funid)
   (declare (ignore pvars ptypes adt))
   (if (eq funid '|every|)
