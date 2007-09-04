@@ -248,7 +248,7 @@ proofchain is still complete, if it was in the full theory."
 			    bufname origin line)
 			"Collecting..." 'unusedby 'list)))
 	(unless pvs-decls
-	  (error "No nuused declarations found for formula"))
+	  (error "No unused declarations found for formula"))
 	(setq *pvs-decls* pvs-decls)
 	(pvs-make-browse-buffer))))
 
