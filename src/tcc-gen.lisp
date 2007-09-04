@@ -240,10 +240,10 @@
 	      substs)
 	  (if *substitute-let-bindings*
 	      antes
-	      (cons (make!-equation
-		     (mk-name-expr (caar conditions))
-		     (cdar conditions))
-		    antes))))
+	      (let ((eqn (make!-equation
+			  (mk-name-expr (caar conditions))
+			  (cdar conditions))))
+		(cons eqn antes)))))
 	((typep (car conditions) 'bind-decl)
 	 ;; Binding from a binding-expr
 	 (add-tcc-bindings expr conditions substs antes))
