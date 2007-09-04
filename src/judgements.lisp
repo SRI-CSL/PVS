@@ -984,7 +984,7 @@
 (defun judgement-arguments-match*? (argument argtypes rdomain jdomain)
   (if (listp argtypes)
       ;; Need to pass argument to judgement-list-arguments-match?
-      (judgement-list-arguments-match? argtypes rdomain jdomain)
+      (judgement-list-arguments-match? argument argtypes rdomain jdomain)
       (if (recordtype? (find-supertype rdomain))
 	  (judgement-record-arguments-match?
 	   (delete-duplicates (coerce argtypes 'list) :from-end t :key #'car)
@@ -999,14 +999,15 @@
 (defmethod types ((te dep-binding))
   (types (type te)))
 
-(defun judgement-list-arguments-match? (argtypes rdomain jdomain)
-  (or (judgement-list-arguments-match*? argtypes rdomain jdomain)
+(defun judgement-list-arguments-match? (argument argtypes rdomain jdomain)
+  (or (judgement-list-arguments-match*? argument argtypes rdomain jdomain)
       (argtype-intersection-in-judgement-type? argtypes jdomain)))
 
-(defun judgement-list-arguments-match*? (argtypes rdomain jdomain)
+(defun judgement-list-arguments-match*? (argument argtypes rdomain jdomain)
   (when argtypes
-    (or (subtype-wrt? (car argtypes) jdomain rdomain)
-	(judgement-list-arguments-match*? (cdr argtypes)
+    (or (subtype-wrt? argument (car argtypes) jdomain rdomain)
+	(judgement-list-arguments-match*? argument
+					  (cdr argtypes)
 					  rdomain jdomain))))
 
 (defun judgement-record-arguments-match? (argflds rfields jfields)
@@ -1044,7 +1045,7 @@
 (defmethod judgement-vector-arguments-match*? ((argtypes list) args
 					       rtype jtype bindings)
   (when argtypes
-    (or (subtype-wrt? (car argtypes) jtype rtype bindings)
+    (or (subtype-wrt? args (car argtypes) jtype rtype bindings)
 	(judgement-vector-arguments-match*? (cdr argtypes) args
 					    rtype jtype bindings))))
 
@@ -1410,16 +1411,6 @@
 			       :test #'eq))
       (free-parameter-theories jdecl)))
 
-(defun compatible-application-judgement-args (judgement-argtypes argtypes
-								 domain-types)
-  (every #'(lambda (j-argtype argtypes domtypes)
-	     (every #'(lambda (jty atypes dty)
-			(some #'(lambda (aty)
-				  (subtype-wrt? aty jty dty))
-			      atypes))
-		    j-argtype argtypes domtypes))
-	 judgement-argtypes argtypes domain-types))
-
 ;; Returns true when type1 is a subtype of type2, given that it must be
 ;; of type reltype, e.g., (subtype-wrt? rat nzrat nzreal) is true.
 ;; Another way to put this is that type1 intersected with reltype is a
@@ -1427,69 +1418,109 @@
 ;; a, b: rat We would like to use the judgement rat_div_nzrat_is_rat,
 ;; and simply get the TCC "b /= 0", rather than disallow all judgements
 ;; and get the TCC "rational_pred(b) AND b /= 0".
-(defun subtype-wrt? (type1 type2 reltype &optional bindings)
-  (subtype-wrt?* type1 type2 reltype bindings))
+(defun subtype-wrt? (arg type1 type2 reltype &optional bindings)
+  (subtype-wrt?* type1 type2 reltype arg bindings))
 
-(defmethod subtype-wrt?* ((te1 type-expr) (te2 type-expr) reltype bindings)
-  (declare (ignore reltype bindings))
+(defmethod subtype-wrt?* ((te1 type-expr) (te2 type-expr) reltype arg bindings)
+  (declare (ignore reltype arg bindings))
   (subtype-of? te1 te2))
 
 (defmethod subtype-wrt?* ((te1 type-expr) (te2 subtype) (reltype subtype)
-			  bindings)
+			  arg bindings)
   (or (subtype-of? te1 te2)
       (and (same-predicate? te2 reltype bindings)
-	   (subtype-wrt?* te1 (supertype te2) (supertype reltype) bindings))))
+	   (subtype-wrt?* te1 (supertype te2) (supertype reltype)
+			  arg bindings))))
 
-(defmethod subtype-wrt?* ((te1 dep-binding) (te2 type-expr) reltype bindings)
-  (subtype-wrt?* (type te1) te2 reltype bindings))
+(defmethod subtype-wrt?* ((te1 dep-binding) (te2 type-expr) reltype
+			  arg bindings)
+  (subtype-wrt?* (type te1) te2 reltype arg bindings))
 
-(defmethod subtype-wrt?* ((te1 type-expr) (te2 dep-binding) reltype bindings)
-  (subtype-wrt?* te1 (type te2) reltype bindings))
+(defmethod subtype-wrt?* ((te1 type-expr) (te2 dep-binding) reltype
+			  arg bindings)
+  (subtype-wrt?* te1 (type te2) reltype arg bindings))
 
-(defmethod subtype-wrt?* ((te1 dep-binding) (te2 dep-binding) reltype bindings)
-  (subtype-wrt?* (type te1) (type te2) reltype bindings))
+(defmethod subtype-wrt?* ((te1 dep-binding) (te2 dep-binding) reltype
+			  arg bindings)
+  (subtype-wrt?* (type te1) (type te2) reltype arg bindings))
 
 (defmethod subtype-wrt?* ((te1 type-expr) (te2 type-expr) (reltype dep-binding)
-			  bindings)
-  (subtype-wrt?* te1 te2 (type reltype) bindings))
+			  arg bindings)
+  (subtype-wrt?* te1 te2 (type reltype) arg bindings))
 
-(defmethod subtype-wrt?* ((te1 funtype) (te2 funtype) reltype bindings)
-  (and (subtype-wrt?* (domain te1) (domain te2) (domain reltype) bindings)
-       (subtype-wrt?* (range te1) (range te2) (range reltype)
-		      (if (and (dep-binding? (domain te2))
-			       (dep-binding? (domain reltype)))
-			  (acons (domain te2) (domain reltype) bindings)
-			  bindings))))
+(defmethod subtype-wrt?* ((te1 funtype) (te2 funtype) reltype arg bindings)
+  (let* ((id (gentemp))
+	 (bd (make-bind-decl id (dep-binding-type (domain te1))))
+	 (var (make-variable-expr bd))
+	 (app (make!-application arg var)))
+    (and (subtype-wrt?* (domain te1) (domain te2) (domain reltype) var bindings)
+	 (subtype-wrt?* (range te1)
+			(if (dep-binding? (domain te2))
+			    (substit (range te2)
+			      (acons (domain te2) app nil))
+			    (range te2))
+			(if (dep-binding? (domain reltype))
+			    (substit (range reltype)
+			      (acons (domain reltype) app nil))
+			    (range reltype))
+			app
+			(if (and (dep-binding? (domain te2))
+				 (dep-binding? (domain reltype)))
+			    (acons (domain te2) (domain reltype) bindings)
+			    bindings)))))
 
-(defmethod subtype-wrt?* ((te1 tupletype) (te2 tupletype) reltype bindings)
-  (subtype-wrt?-list (types te1) (types te2) (types reltype) bindings))
+(defmethod subtype-wrt?* ((te1 tupletype) (te2 tupletype) reltype arg bindings)
+  (subtype-wrt?-list (types te1) (types te2) (types reltype)
+		     (if (typep arg 'tuple-expr)
+			 (exprs arg)
+			 (make-projections arg))
+		     bindings))
 
-(defmethod subtype-wrt?* ((te1 cotupletype) (te2 cotupletype) reltype bindings)
-  (subtype-wrt?-list (types te1) (types te2) (types reltype) bindings))
+(defmethod subtype-wrt?* ((te1 cotupletype) (te2 cotupletype) reltype
+			  arg bindings)
+  (subtype-wrt?-list (types te1) (types te2) (types reltype)
+		     (if (typep arg 'tuple-expr)
+			 (exprs arg)
+			 (make-projections arg))
+		     bindings))
 
-(defun subtype-wrt?-list (types1 types2 reltypes bindings)
+(defun subtype-wrt?-list (types1 types2 reltypes args bindings)
   (or (null types1)
-      (and (subtype-wrt?* (car types1) (car types2) (car reltypes) bindings)
-	   (subtype-wrt?-list (cdr types1) (cdr types2) (cdr reltypes)
+      (and (subtype-wrt?* (car types1) (car types2) (car reltypes) (car args)
+			  bindings)
+	   (subtype-wrt?-list (cdr types1)
+			      (if (dep-binding? (car types2))
+				  (substit (cdr types2)
+				    (acons (car types2) (car args) nil))
+				  (cdr types2))
+			      (if (dep-binding? (car reltypes))
+				  (substit (cdr reltypes)
+				    (acons (car reltypes) (car args) nil))
+				  (cdr reltypes))
+			      (cdr args)
 			      (if (and (dep-binding? (car types2))
 				       (dep-binding? (car reltypes)))
 				  (acons (car types2) (car reltypes) bindings)
 				  bindings)))))
 
-(defmethod subtype-wrt?* ((te1 recordtype) (te2 recordtype) reltype bindings)
-  (subtype-wrt?-fields (fields te1) (fields te2) (fields reltype) bindings))
+(defmethod subtype-wrt?* ((te1 recordtype) (te2 recordtype) reltype
+			  arg bindings)
+  (subtype-wrt?-fields (fields te1) (fields te2) (fields reltype)
+		       (make!-field-applications arg te1)
+		       bindings))
 
 (defmethod subtype-wrt?* ((te1 recordtype) (te2 recordtype)
-			  (reltype dep-binding) bindings)
-  (subtype-wrt?* te1 te2 (type reltype) bindings))
+			  (reltype dep-binding) arg bindings)
+  (subtype-wrt?* te1 te2 (type reltype) arg bindings))
 
-(defun subtype-wrt?-fields (flds1 flds2 relflds bindings)
+(defun subtype-wrt?-fields (flds1 flds2 relflds args bindings)
   (or (null flds1)
       (and (eq (id (car flds1)) (id (car flds2)))
 	   (eq (id (car flds1)) (id (car relflds)))
 	   (subtype-wrt?* (type (car flds1)) (type (car flds2))
-			  (type (car relflds)) bindings)
+			  (type (car relflds)) (car args) bindings)
 	   (subtype-wrt?-fields (cdr flds1) (cdr flds2) (cdr relflds)
+				(cdr args)
 				(acons (car flds2) (car relflds) bindings)))))
 
 (defmethod same-predicate? ((t1 subtype) (t2 subtype) bindings)
