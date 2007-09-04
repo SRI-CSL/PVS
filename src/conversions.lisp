@@ -327,7 +327,7 @@
 
 (defun get-resolution-conversions (res arguments)
   (get-resolution-conversions*
-   (remove-if #'k-combinator? (conversions *current-context*))
+   (remove-if #'k-combinator? (current-conversions))
    res arguments nil))
 
 (defun get-resolution-conversions* (conversions res arguments result)
@@ -454,7 +454,7 @@
 
 (defun find-operator-conversion* (optype args)
   (let ((conversions nil))
-    (dolist (conv (conversions *current-context*))
+    (dolist (conv (current-conversions))
       (let ((nconv (compatible-operator-conversion conv optype args)))
 	(when (and nconv
 		   (not (member nconv (disabled-conversions *current-context*)
@@ -726,7 +726,7 @@
 			(or (null best)
 			    (memq (conversion best)
 				  (memq (conversion conv)
-					(conversions *current-context*)))))))
+					(current-conversions)))))))
 	     (find-best-type-conversion
 	      (cdr types)
 	      expected
@@ -770,9 +770,9 @@
 		       (unparse *in-typechecker* :string t)))
 		 "input")
 	     (format nil "declaration ~a"
-	       (if (typep (declaration *current-context*) 'declaration)
-		   (id (declaration *current-context*))
-		   (unparse (declaration *current-context*) :string t))))))
+	       (if (typep (current-declaration) 'declaration)
+		   (id (current-declaration))
+		   (unparse (current-declaration) :string t))))))
     (if (stringp conversion)
 	(pvs-conversion-msg "In ~a:~
                  ~%  added ~a, converting~
@@ -1084,13 +1084,13 @@
        (if (or (null best)
 	       (memq (conversion best)
 		     (memq (conversion (car conversions))
-			   (conversions *current-context*))))
+			   (current-conversions))))
 	   (car conversions)
 	   best))))
   
 
 (defmethod find-conversions-for (atype etype)
-  (find-conversions* (conversions *current-context*)
+  (find-conversions* (current-conversions)
 		     (mk-funtype atype etype)))
 
 (defmethod expr ((ex tuptype-conversion))
@@ -1129,7 +1129,7 @@
 ;;; conversion-decl as its declaration.
 
 (defmethod get-conversions ((type type-expr))
-  (compatible-conversions (conversions *current-context*)
+  (compatible-conversions (current-conversions)
 			  type
 			  (disabled-conversions *current-context*)))
 
@@ -1241,7 +1241,7 @@
 ;;; than the domain of the conversion type.
 
 (defmethod get-k-conversions ((type type-expr))
-  (compatible-k-conversions (conversions *current-context*) type
+  (compatible-k-conversions (current-conversions) type
 			    (disabled-conversions *current-context*)))
 
 (defun compatible-k-conversions (conversions type disabled-convs
