@@ -40,7 +40,7 @@
 (defun typecheck-decls (decls)
   (when decls
     (let ((decl (car decls)))
-      (setf (declaration *current-context*) decl)
+      (setf (current-declaration) decl)
       (typecase decl
 	(declaration (typecheck-decl decl))
 	(importing (tcdebug "~%    Processing importing")
@@ -2316,14 +2316,18 @@
 	    (if (singleton? bindings)
 		(type (car bindings))
 		(make-tupletype-from-bindings bindings))))
-    (setf (predicate type)
-	  (let ((expr (make-instance 'lambda-expr
-			:bindings bindings
-			:expression (formula type)))
-		(*bound-variables* (append bindings *bound-variables*)))
-	    (typecheck* expr (mk-funtype (mapcar #'type (bindings expr))
-					 (copy *boolean*))
-			nil nil)))
+    (if (predicate type)
+	(typecheck* (predicate type)
+		    (mk-funtype (mapcar #'type bindings) (copy *boolean*))
+		    nil nil)
+	(setf (predicate type)
+	      (let ((expr (make-instance 'lambda-expr
+			    :bindings bindings
+			    :expression (formula type)))
+		    (*bound-variables* (append bindings *bound-variables*)))
+		(typecheck* expr (mk-funtype (mapcar #'type (bindings expr))
+					     (copy *boolean*))
+			    nil nil))))
     (let ((tval (if (and stype
 			 (eq stype (supertype type)))
 		    type
