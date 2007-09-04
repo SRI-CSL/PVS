@@ -132,10 +132,10 @@
 	   *pvs-modules*)
   ;; Now add to the current prover/evaluator context
   (when (and *current-context*
-	     (if (eq theory (theory *current-context*))
-		 (memq (declaration *current-context*)
+	     (if (eq theory (current-theory))
+		 (memq (current-declaration)
 		       (memq pdecl (all-decls theory)))
-		 (get-importings theory (using-hash *current-context*))))
+		 (get-importings theory (current-using-hash))))
     (cond (*in-checker*
 	   (add-new-decls-to-prover-contexts new-decls *top-proofstate*))
 	  (*in-evaluator*
@@ -243,7 +243,7 @@
 
 (defun add-declaration-to-theory (decl assuming?)
   (add-decl decl t nil assuming?)
-  (setf (declaration *current-context*) decl)
+  (setf (current-declaration) decl)
   (when (declaration? decl)
     (set-visibility decl)
     (mapc #'(lambda (d) (add-declaration-to-theory d assuming?))
@@ -463,8 +463,8 @@
 ;		(put-decl d (declarations theory))
 		(when (and *in-checker*
 			   *current-context*
-			   (eq theory (theory *current-context*))
-			   (memq (declaration *current-context*)
+			   (eq theory (current-theory))
+			   (memq (current-declaration)
 				 (memq decl (append (assuming theory)
 						    (theory theory)))))
 		  (put-decl d (current-declarations-hash))))
