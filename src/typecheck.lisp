@@ -648,15 +648,16 @@
 
 (defun subst-theory-importings (th thinsts theoryname theory)
   (let* ((mthinsts (if (mappings theoryname)
-		       (mapcar #'(lambda (thinst)
+		       (mapcan #'(lambda (thinst)
 				   (if (and (eq (id theoryname) (id thinst))
 					    (eq (library theoryname)
 						(library thinst))
 					    (fully-instantiated?
 					     (lcopy thinst :mappings nil)))
-				       (copy thinst
-					 :mappings (mappings theoryname))
-				       thinst))
+				       (list (copy thinst
+					       :mappings (mappings theoryname)))
+				       (unless (get-importings th)
+					 (list thinst))))
 			 thinsts)
 		       thinsts))
 ;; 	 (lib-id (when (library-datatype-or-theory? th)
