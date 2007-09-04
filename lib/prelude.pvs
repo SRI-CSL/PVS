@@ -748,6 +748,8 @@ sets [T: TYPE]: THEORY
 
   nonempty?(a): bool = NOT empty?(a)
 
+  nonempty_set: TYPE = (nonempty?)
+
   full?(a): bool = (FORALL x: member(x, a))
 
   fullset: set = {x | true}
@@ -1050,10 +1052,17 @@ sets_lemmas [T: TYPE]: THEORY
   Union_full: LEMMA
     full?(Union(A)) IFF (FORALL x: EXISTS (a: (A)): member(x, a))
 
+  Union_member: LEMMA member(x,Union(A)) IFF (EXISTS (a:(A)): member(x,a))
+
   Union_subset: LEMMA FORALL (a: (A)): subset?(a, Union(A))
 
   Union_surjective: JUDGEMENT
     Union HAS_TYPE (surjective?[setofsets[T], set[T]])
+
+  Union_emptyset_rew: LEMMA Union(emptyset[set[T]]) = emptyset
+
+  Union_union_rew: LEMMA nonempty?(A) IMPLIES
+                            Union(A) = union(choose(A), Union(rest(A)))
 
   Intersection_empty: LEMMA
     empty?(Intersection(A)) IFF
@@ -1061,12 +1070,19 @@ sets_lemmas [T: TYPE]: THEORY
 
   Intersection_full: LEMMA full?(Intersection(A)) IFF every(full?)(A)
 
+  Intersection_member: LEMMA
+    member(x,Intersection(A)) IFF (FORALL (a:(A)): member(x,a))
+
   %% The Intersection function should only be applied to nonempty sets of
   %% sets.  This is why.
   Intersection_empty_full: COROLLARY full?(Intersection(emptyset[set[T]]))
 
   Intersection_surjective: JUDGEMENT
     Intersection HAS_TYPE (surjective?[setofsets[T], set[T]])
+
+  Intersection_intersection_rew: LEMMA
+    nonempty?(A) IMPLIES
+      Intersection(A) = intersection(choose(A), Intersection(rest(A)))
 
   Complement(A): setofsets[T] = {a | EXISTS (b: (A)): a = complement(b)}
 
@@ -5545,6 +5561,9 @@ finite_sets_of_sets[T: TYPE]: THEORY
 
   Union_finite: THEOREM
     FORALL SS: is_finite(Union(SS)) IFF is_finite(SS) AND every(is_finite)(SS)
+
+  finite_Union_finite: LEMMA is_finite(SS) AND every(is_finite[T])(SS) IMPLIES
+                             is_finite(Union(SS))
 
   Union_infinite: COROLLARY
     FORALL SS:
