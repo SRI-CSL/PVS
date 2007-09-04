@@ -388,13 +388,14 @@
   (check-for-tccs* value expected))
 
 (defmethod check-assignment-arg-types* (args-list values ex (expected subtype))
-  (typecase (find-supertype expected)
-    ((or funtype recordtype tupletype adt-type-name)
-     (check-assignment-arg-types* args-list values ex (supertype expected))
-     (mapc #'(lambda (a v)
-	       (unless a (check-for-subtype-tcc v expected)))
-	   args-list values))
-    (t (call-next-method))))
+  (let ((stype (find-adt-supertype expected)))
+    (typecase stype
+      ((or funtype recordtype tupletype adt-type-name datatype-subtype)
+       (check-assignment-arg-types* args-list values ex stype)
+       (mapc #'(lambda (a v)
+		 (unless a (check-for-subtype-tcc v expected)))
+	     args-list values))
+      (t (call-next-method)))))
 
 (defmethod check-assignment-arg-types* (args-list values ex (expected recordtype))
   (with-slots (fields) expected
@@ -437,7 +438,7 @@
 (defmethod check-assignment-arg-types* (args-list values ex
 						(expected datatype-subtype))
   (if (every #'null args-list)
-      (call-next-method)
+      (check-assignment-arg-type (car args-list) (car values) ex expected)
       (check-assignment-update-arg-types args-list values ex expected)))
 
 (defmethod check-assignment-arg-types* (args-list values ex
