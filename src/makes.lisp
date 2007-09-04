@@ -1852,7 +1852,7 @@
     (make!-field-applications* arg (fields rtype))))
 
 (defun make!-field-applications* (arg fields)
-  (mapcar #'(lambda (fld) (make!-field-application fld arg)) arg))
+  (mapcar #'(lambda (fld) (make!-field-application fld arg)) fields))
 
 (defun make!-field-application-type (field-id type arg)
   (let ((rtype (find-supertype type)))
