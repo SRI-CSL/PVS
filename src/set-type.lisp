@@ -1120,21 +1120,36 @@ required a context.")
 	 (append (mapcar #'(lambda (i) (cons (car theories) i))
 		   (remove-if (complement #'mappings) insts))
 		 thinsts)))))
-	    
-      
 
-;;; Need to deal with type of lhs.  Here is what we mean:
-;;;  T1: THEORY BEGIN t: TYPE END T1
-;;;  T2: THEORY BEGIN IMPORTING T1 c: t END T2
-;;;  T3: THEORY BEGIN IMPORTING T1{{t := int}} END T3
-;;;  T4: THEORY BEGIN IMPORTING T3, T2{{c := 0}} END T4
+;;; theory-ref takes a modname and returns the expanded modname, where the
+;;; modname may refer to a theory-decl, formal-theory-parameter, etc.  These
+;;; have their own library, actuals, and mappings, and need to be taken into
+;;; account.
 
-;;; Now the lhs c has type t, which must be substituted for using the
-;;; mapping for T1.  Of course, the type of c may involve many
-;;; theories, and each of those may have many instances.  We have to
-;;; try all of them, looking for all that match the types of the rhs.
-;;; If there is only one, and it is unique, we are done.  Else give an
-;;; error.
+(defmethod theory-ref ((thname modname))
+  (let ((res (resolve thname 'module nil)))
+    (assert (singleton? res))
+    (let ((th (declaration (car res))))
+      (if (typep th 'theory-interpretation)
+	  (let ((mapped-name (theory-ref (from-theory-name th))))
+	    (merge-mappings mapped-name thname))
+	  thname))))
+
+(defun merge-mappings (mapped-name thname)
+  (if (mappings thname)
+      (progn (when (actuals thname) (break))
+      (merge-mappings* (mappings mapped-name) (mappings thname) mapped-name))
+      mapped-name))
+
+(defun merge-mappings* (maps1 maps2 thname)
+  (if (null maps2)
+      (copy thname :mappings maps1)
+      (merge-mappings*
+       (append (remove (car maps2) maps1
+		       :test #'(lambda (m1 m2) (tc-eq (lhs m1) (lhs m2))))
+	       (list (car maps2)))
+       (cdr maps2)
+       thname)))
 
 (defmethod theory-ref ((d mod-decl))
   (modname d))
@@ -1142,14 +1157,11 @@ required a context.")
 (defmethod theory-ref ((d formal-theory-decl))
   (theory-name d))
 
-(defmethod theory-ref ((d modname))
-  d)
-
 (defmethod theory-ref ((d name-expr))
   (assert (resolution d))
   (let ((decl (declaration (resolution d))))
     (typecase decl
-      (mod-decl (modname decl))
+      (mod-decl (theory-ref (modname decl)))
       (theory-abbreviation-decl (theory-ref (theory-name decl)))
       (t (module-instance (resolution d))))))
 
