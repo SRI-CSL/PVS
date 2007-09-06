@@ -1214,7 +1214,6 @@ static LIST mu_varids_to_bdd_indices_aux (LIST vars)
   return vars;
 }
 
-#ifdef USE_CACHE
 /* Interpret a list of formulas; usually they are the arguments in an
    application.
    The resulting BDDs are recorded in f_bdds, which must have been
@@ -1241,7 +1240,6 @@ static int mu_interpret_formula_list (LIST f_list, BDDPTR *f_bdds,
 
   return all_evaluated;
 }
-#endif
 
 /* Returns BDD representation for: E vars . f & g
    vars is list of BDD indices.
@@ -1439,10 +1437,8 @@ BDDPTR mu_interpret_formula (Formula f, R_Interpret Ip, Term FT)
     {
       int       nr_args = LIST_SIZE (F_APPLY_SUBS (f));
       BDDPTR      *args = MALLOC_ARRAY (nr_args, BDDPTR);
-#ifdef USE_CACHE
       int all_evaluated = mu_interpret_formula_list (F_APPLY_SUBS (f),
 						     args, Ip, FT);
-#endif
 
       tmp1 = mu_interpret_term (F_APPLY_TERM (f), Ip, FT);
 
@@ -1467,10 +1463,8 @@ BDDPTR mu_interpret_formula (Formula f, R_Interpret Ip, Term FT)
     {
       int       nr_args = LIST_SIZE (F_ONE_OF_SUBS (f));
       BDDPTR      *args = MALLOC_ARRAY (nr_args, BDDPTR);
-#ifdef USE_CACHE
       int all_evaluated = mu_interpret_formula_list (F_ONE_OF_SUBS (f),
 						     args, Ip, FT);
-#endif
 
       R = bdd_one_of_vec (args, nr_args);
 
@@ -1489,10 +1483,8 @@ BDDPTR mu_interpret_formula (Formula f, R_Interpret Ip, Term FT)
     {
       int       nr_args = LIST_SIZE (F_NONE_OF_SUBS (f));
       BDDPTR      *args = MALLOC_ARRAY (nr_args, BDDPTR);
-#ifdef USE_CACHE
       int all_evaluated = mu_interpret_formula_list (F_NONE_OF_SUBS (f),
 						     args, Ip, FT);
-#endif
 
       R = bdd_none_of_vec (args, nr_args);
 
