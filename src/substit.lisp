@@ -560,7 +560,10 @@
 	 (nreverse result))
 	((binding? (car expr))
 	 (let ((newcar (substit-binding* (car expr) alist)))
-	   (cond ((eq newcar (car expr))
+	   (cond ((not (listp (cdr expr)))
+		  (assert (null result))
+		  (cons newcar (substit* (cdr expr) alist)))
+		 ((eq newcar (car expr))
 		  (substit*-list (cdr expr) alist (cons newcar result)))
 		 ((null (cdr expr))
 		  (nreverse (cons newcar result)))
@@ -568,9 +571,12 @@
 		     (substit*-list (cdr expr)
 				    (acons (car expr) newcar alist)
 				    (cons newcar result)))))))
-	(t (substit*-list (cdr expr) alist
-			  (cons (substit* (car expr) alist)
-				result)))))
+	((listp (cdr expr))
+	 (substit*-list (cdr expr) alist
+			(cons (substit* (car expr) alist)
+			      result)))
+	(t (assert (null result))
+	   (cons (substit* (car expr) alist) (substit* (cdr expr) alist)))))
 
 (defun substit-binding (expr alist)
   (new-substit-hash
