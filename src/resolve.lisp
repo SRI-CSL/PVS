@@ -606,8 +606,9 @@
 ;;; that the actual parameters must uniquely resolve.
 
 (defun typecheck-actuals (name &optional (kind 'expr))
-  (mapc #'(lambda (a) (typecheck* a nil kind nil))
-	(actuals name)))
+  (let ((*get-all-resolutions* nil))
+    (mapc #'(lambda (a) (typecheck* a nil kind nil))
+	  (actuals name))))
 
 (defmethod typecheck* ((act actual) expected kind arguments)
   (declare (ignore expected kind arguments))
