@@ -1,6 +1,6 @@
 # RELAX NG compact version of the PVS abstract syntax
 # Check it using
-# java -jar ~/src/jing-20030619/bin/jing.jar -c ~/pvs3.2/lib/pvs.rnc
+# java -jar ~/src/jing-20030619/bin/jing.jar -c ~/pvs4.1/lib/pvs.rnc
 
 grammar {
 
@@ -206,6 +206,8 @@ theory-decl-content =
 
 type-decl-content =
   element type-decl
+    # The type-value is the given type, the type-expr is its canonical form
+    #                              type-value  type-expr
     {type-decl-attrs, declaration, type-expr?, type-expr?, contains-content?}
 
 type-from-decl-content =
@@ -216,7 +218,10 @@ var-decl-content =
   element var-decl {typed-declaration}
 
 const-decl-content =
-  element const-decl {typed-declaration, expr?}
+  element const-decl {decl-formals-content?, typed-declaration, expr?}
+
+decl-formals-content =
+  element decl-formals (binding+)
 
 macro-decl-content =
   element macro-decl {typed-declaration}
@@ -290,7 +295,7 @@ type-expr = type-name-content
           | record-type-content
 
 type-name-content =
-  element type-name {commonattrs, name}
+  element type-name {commonattrs, name, resolution?}
 
 type-application-content =
   element type-application {commonattrs,
@@ -312,7 +317,7 @@ function-type-content =
 domain = type-expr | binding-content
 
 binding-content =
-  element binding {commonattrs, id, type-expr}
+  element binding {declarationatts, id, type-expr}
 
 tuple-type-content =
   element tuple-type {domain+}
@@ -359,8 +364,10 @@ expr = name-expr-content
      | cond-expr-content
      | table-expr-content
 
+# Keep the type - it may be derived from the resolution, but requires
+# substitution
 name-expr-content =
-  element name-expr {commonattrs, name, type-expr}
+  element name-expr {commonattrs, name, type-expr?, resolution?}
 
 number-expr-content =
   element number-expr {commonattrs, xsd:integer}
@@ -502,6 +509,11 @@ theory-id = element theory-id {identifier-token}
 library-id = element library-id {identifier-token}
 
 target = theory-name
+
+resolution =
+  element resolution {theory-name-content, declref}
+
+declref = element declref {xsd:anyURI}
 
 # Proofs
 
