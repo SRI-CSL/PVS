@@ -26,6 +26,8 @@
 
 (defstruct xml-formals list)
 
+(defstruct xml-decl-formals list)
+
 (defstruct xml-assuming list)
 
 (defstruct xml-constr-args list)
@@ -87,6 +89,7 @@
 	  (t (pp-xml obj)))))
 
 (defvar *pp-xml-bindings*)
+(defvar *pp-xml-declaration*)
 
 (defun pp-xml (obj &optional (stream *standard-output*))
   (let ((*pp-xml-bindings* nil))
@@ -101,14 +104,22 @@
 (defmethod pp-xml* (stream (mod module) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
   (with-slots (id formals exporting assuming theory) mod
-    (xsal-elt stream theory (xml-attributes mod)
-	      id
-	      (when formals 
-		(make-xml-formals :list formals))
-	      (when assuming
-		(make-xml-assuming :list assuming))
-	      theory
-	      exporting)))
+    (write "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+	   :stream stream :escape nil)
+    (let ((*current-context* (context mod)))
+      (xsal-elt stream theory (xml-attributes mod)
+		id
+		(when formals 
+		  (make-xml-formals :list formals))
+		(when assuming
+		  (make-xml-assuming :list assuming))
+		theory
+		exporting))))
+
+(defmethod pp-xml* :around (stream (rtype inline-recursive-type)
+				   &optional colon? atsign?)
+  (let ((*pp-xml-declaration* rtype))
+    (call-next-method)))
 
 (defmethod pp-xml* (stream (rtype recursive-type) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -155,8 +166,11 @@
 	      id type)))
 
 (defmethod pp-xml* (stream (list list) &optional colon? atsign?)
-  (dolist (elt list)
-    (pp-xml* stream elt colon? atsign?)))
+  (pp-xml* stream (car list) colon? atsign?)
+  (let ((*pp-xml-bindings* (if (binding? (car list))
+			       (cons (car list) *pp-xml-bindings*)
+			       *pp-xml-bindings*)))
+    (pp-xml* stream (cdr list) colon? atsign?)))
 
 (defmethod pp-xml* (stream (list null) &optional colon? atsign?)
   (declare (ignore stream colon? atsign?))
@@ -212,7 +226,12 @@
 (defmethod pp-xml* (stream (imp importing) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
   (with-slots (theory-name) imp
-    (xsal-elt stream importing (xml-attributes imp) theory-name)))
+    (let ((*pp-xml-declaration* imp))
+      (xsal-elt stream importing (xml-attributes imp) theory-name))))
+
+(defmethod pp-xml* :around (stream (decl declaration) &optional colon? atsign?)
+  (let ((*pp-xml-declaration* decl))
+    (call-next-method)))
 
 (defmethod pp-xml* (stream (decl type-decl) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -276,14 +295,19 @@
 
 (defmethod pp-xml* (stream (decl const-decl) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
-  (with-slots (id type definition) decl
-    (xsal-elt stream const-decl (xml-attributes decl) id type definition)))
+  (with-slots (id formals declared-type type definition) decl
+    (let ((*pp-xml-bindings* (apply #'append formals)))
+      (xsal-elt stream const-decl (xml-attributes decl)
+		id (when formals
+		     (make-xml-decl-formals formals))
+		declared-type type definition))))
 
 (defmethod pp-xml* (stream (decl def-decl) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
-  (with-slots (id type definition measure ordering) decl
-    (xsal-elt stream def-decl (xml-attributes decl)
-	      id type definition measure ordering)))
+  (with-slots (id formals declared-type type definition measure ordering) decl
+    (let ((*pp-xml-bindings* (apply #'append formals)))
+      (xsal-elt stream def-decl (xml-attributes decl)
+		id formals declared-type definition measure ordering))))
 
 (defmethod pp-xml* (stream (decl formula-decl) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -297,7 +321,8 @@
 		 id definition))
       (t
        (xsal-elt stream formula-decl (xml-attributes decl)
-		 id definition default-proof)))))
+		 id definition ;;default-proof
+		 )))))
 
 (defmethod pp-xml* (stream (decl tcc-decl) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -306,7 +331,7 @@
 	      id definition)))
 
 (defmethod xml-attributes ((decl formula-decl))
-  (nconc (list 'kind (spelling decl)) (call-next-method)))
+  (nconc (list 'kind (string-downcase (spelling decl))) (call-next-method)))
 
 (defmethod pp-xml* (stream (decl name-judgement) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -519,6 +544,9 @@
 ;; 	    () "Different bindings with same identifier")
     (xsal-elt stream binding (xml-attributes bd) id type)))
 
+(defmethod xml-attributes ((bd bind-decl))
+  (nconc (list '|xlink:id| (xml-declaration-id bd)) (call-next-method)))
+
 (defmethod pp-xml* (stream (ex update-expr) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
   (with-slots (expression assignments) ex
@@ -633,17 +661,80 @@
 ;; 	      () "Different bindings with same identifier")
       (xsal-elt stream name-expr (xml-attributes ex)
 		id
-		(unless binding?
-		  (make-xml-theory-id :id (id mi)))
-		(unless (or binding?
-			    (null (actuals mi)))
-		  (make-xml-actuals :list (actuals mi)))
-		(unless (or binding?
-			    (null (mappings mi)))
-		  (make-xml-mappings :list (mappings mi)))
-		(unless (or binding? (not (library mi)))
-		  (make-xml-library-id (library mi)))
-		type))))
+		(when mod-id
+		  (make-xml-theory-id :id mod-id))
+		(when actuals
+		  (make-xml-actuals :list actuals))
+		(when mappings
+		  (make-xml-mappings :list mappings))
+		(when library
+		  (make-xml-library-id library))
+		type
+		(car resolutions)))))
+
+(defmethod pp-xml* (stream (res resolution) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
+  (with-slots (module-instance declaration) res
+    (xsal-elt stream resolution nil
+	      module-instance (pp-xml-decl-ref stream declaration))))
+
+(defmethod pp-xml-decl-ref (stream decl)
+  (if (eq (module decl) (current-theory))
+      (xsal-elt stream declref
+		(list '|xlink:href|
+		      (format nil "#~a" (xml-declaration-id decl))))
+      (xsal-elt stream declref
+		(list '|xlink:href|
+		      (format nil "~a#~a"
+			(id (module decl))
+			(xml-declaration-id decl))))))
+
+(defmethod pp-xml-decl-ref (stream (bd binding))
+  (xsal-elt stream declref
+	    (list '|xlink:href|
+		  (format nil "#~a" (xml-declaration-id bd)))))
+
+(defmethod xml-declaration-id (decl)
+  (assert (and (module decl) (memq decl (all-decls (module decl)))))
+  (let* ((id (or (id decl) (ref-to-id decl)))
+	 (pos (position decl (remove-if #'(lambda (x)
+					    (or (importing? x)
+						(not (eq (ref-to-id x) id))))
+			       (all-decls (module decl)))))
+	 (optrans (let ((opt (assq id *pvs-operators*)))
+		    (if opt
+			(format nil "~a." (cdr opt))
+			(string id)))))
+    (if (zerop pos)
+	optrans
+	(format nil "~a-~d" optrans pos))))
+
+(defmethod xml-declaration-id ((bd binding))
+  (assert *pp-xml-declaration*)
+  (assert (memq bd *pp-xml-bindings*))
+  (let ((pos (position bd (remove bd *pp-xml-bindings* :test-not #'same-id))))
+    (assert pos)
+    (format nil "~a-~a~@[-~d~]"
+      (xml-declaration-id *pp-xml-declaration*)
+      (id bd) (unless (zerop pos) pos))))
+
+(defmethod xml-declaration-id ((imp importing))
+  (let* ((theory (current-theory))
+	 (tdecls (all-decls theory))
+	 (decls (memq imp tdecls))
+	 (dimp (find-if
+		   #'(lambda (d)
+		       (and (typep d '(or importing
+					  theory-abbreviation-decl))
+			    (not (chain? d))))
+		 decls))
+	 (remimps (remove-if-not
+		      #'(lambda (d)
+			  (and (typep d '(or importing
+					     theory-abbreviation-decl))
+			       (not (chain? d))))
+		    tdecls)))
+    (makesym "IMPORTING~d" (1+ (position dimp remimps)))))
 
 (defmethod pp-xml* (stream (tid xml-theory-id) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -774,6 +865,18 @@
     (if (place ex)
 	(nconc (list 'place (format nil "~{~a~^ ~}" (place-list (place ex))))
 	       attrs)
+	attrs)))
+
+(defmethod xml-attributes :around ((d declaration))
+  (let ((attrs (call-next-method)))
+    (if (chain? d)
+	(nconc (list 'chain-p "true") attrs)
+	attrs)))
+
+(defmethod xml-attributes :around ((b bind-decl))
+  (let ((attrs (call-next-method)))
+    (if (chain? b)
+	(nconc (list 'chain-p "true") attrs)
 	attrs)))
 
 (defmethod xml-attributes :around ((ex infix-application))
