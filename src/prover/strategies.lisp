@@ -2456,7 +2456,12 @@ Useful for generating error messages in strategies."
       (chain-antecedent$ lemma-or-fnum)
       (let ((lemma lemma-or-fnum);;NSH(7.17.98): dummy to preserve previous name
 	    (name (pc-parse lemma 'name))
-	    (resolutions (resolve name 'formula nil *current-context*)))
+	    (reses (resolve name 'formula nil *current-context*))
+	    (resolutions (if (cdr reses)
+			     (or (remove-if (complement #'fully-instantiated?)
+				   reses)
+				 reses)
+			     reses)))
 	(if resolutions
 	    (if (singleton? resolutions)
 		(let ((res (car resolutions))
