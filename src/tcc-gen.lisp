@@ -183,31 +183,25 @@
 (defvar *substitute-let-bindings* nil)
 
 (defun add-tcc-conditions (expr)
-  (multiple-value-bind (conditions vdecl1 ch1?)
-      (subst-var-for-recs (remove-duplicates *tcc-conditions* :test #'equal))
-    (multiple-value-bind (srec-expr vdecl ch?)
-	(subst-var-for-recs expr vdecl1)
-      (let* ((osubsts (get-tcc-binding-substitutions
-		       (reverse (cons srec-expr conditions))))
-	     (substs (if vdecl
-			 (acons vdecl
-				(lcopy vdecl
-				  'type (substit (type vdecl) osubsts)
-				  'declared-type (substit (declared-type vdecl)
-						   osubsts))
-				osubsts)
-			 osubsts)))
-	(universal-closure (add-tcc-conditions*
-			    (raise-actuals srec-expr)
-			    (if (and vdecl
-				     (or ch1?
-					 (and ch?
-					      (member vdecl
-						      (freevars srec-expr)
-						      :test #'same-declaration))))
-				(insert-var-into-conditions vdecl conditions)
-				conditions)
-			    substs nil))))))
+  (multiple-value-bind (conditions srec-expr vdecl ch?)
+      (subst-var-for-recs (remove-duplicates *tcc-conditions* :test #'equal)
+			  expr)
+    (let* ((osubsts (get-tcc-binding-substitutions
+		     (reverse (cons srec-expr conditions))))
+	   (substs (if vdecl
+		       (acons vdecl
+			      (lcopy vdecl
+				'type (substit (type vdecl) osubsts)
+				'declared-type (substit (declared-type vdecl)
+						 osubsts))
+			      osubsts)
+		       osubsts)))
+      (universal-closure (add-tcc-conditions*
+			  (raise-actuals srec-expr)
+			  (if (and vdecl ch?)
+			      (insert-var-into-conditions vdecl conditions)
+			      conditions)
+			  substs nil)))))
 
 (defun insert-var-into-conditions (vdecl conditions)
   (let* ((fvars (freevars vdecl))
@@ -1259,27 +1253,38 @@
   (let ((imp (current-declaration)))
     (makesym "IMP_~a" (id (theory-name imp)))))
 
-(defun subst-var-for-recs (expr &optional vdecl)
+(defun subst-var-for-recs (conditions expr &optional vdecl)
   (let ((recdecl (declaration *current-context*)))
     (if (and (def-decl? recdecl)
 	     (recursive-signature recdecl))
-	(let* ((vid (if vdecl (id vdecl) (make-new-variable '|v| expr)))
+	(let* ((vid (if vdecl (id vdecl) (make-new-variable '|v|
+					   (cons expr conditions))))
 	       (vbd (or vdecl
 			(make-bind-decl vid (recursive-signature recdecl))))
 	       (vname (make-variable-expr vbd))
-	       (sexpr (gensubst expr
-			#'(lambda (x) (declare (ignore x)) (copy vname))
-			#'(lambda (x) (and (name-expr? x)
-					   (eq (declaration x) recdecl))))))
-	  (values (if (and (not (eq sexpr expr))
-			   (forall-expr? sexpr))
-		      (copy sexpr
-			'bindings (append (bindings sexpr)
-					  (list (declaration vname))))
-		      sexpr)
-		  vbd
-		  (not (eq sexpr expr))))
-	expr)))
+	       (slist (subst-var-for-recs* (append (reverse conditions)
+						   (list expr))
+					   recdecl vname))
+	       (sexpr (car (last slist)))
+	       (nexpr (if (and (not (eq sexpr expr))
+			       (forall-expr? sexpr))
+			  (copy sexpr
+			    'bindings (append (bindings sexpr)
+					      (list (declaration vname))))
+			  sexpr))
+	       (sconds (nreverse (nbutlast slist))))
+	  (values sconds nexpr vbd
+		  (or (not (tc-eq sconds conditions))
+		      (and (not (tc-eq nexpr expr))
+			   (member vbd (freevars nexpr)
+				   :test #'same-declaration)))))
+	(values conditions expr))))
+
+(defun subst-var-for-recs* (expr recdecl vname)
+  (gensubst expr
+    #'(lambda (x) (declare (ignore x)) (copy vname))
+    #'(lambda (x) (and (name-expr? x)
+		       (eq (declaration x) recdecl)))))
 
 (defun make-new-variable (base expr &optional num)
   (let ((vid (if num (makesym "~a~d" base num) base)))
