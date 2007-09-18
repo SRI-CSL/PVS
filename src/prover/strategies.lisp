@@ -4005,25 +4005,34 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
   "By skolemization, if-lifting, simplification and instantiation")
 
 (defstep grind-with-lemmas
-  (&optional (lazy-match? t) (if-match t) (polarity? nil) (defs !)
-	     rewrites theories exclude (updates? t) &rest lemmas)
+  (&optional (lazy-match? t) (lazy-inst? nil) (if-match t) (polarity? t)
+	     (defs !) rewrites theories exclude (updates? t) (let-reduce? t)
+	     &rest lemmas)
   (then
    (if lemmas
-       (if lazy-match?
+       (if lazy-inst?
 	   (let ((lemmata (if (listp lemmas) lemmas (list lemmas)))
-		 (x `(then ,@(loop for lemma in lemmata append `((skosimp* t)(lemma ,lemma))))))
+		 (x `(then ,@(loop for lemma in lemmata
+				   append `((skosimp* t)(lemma ,lemma))))))
 	     x)
 	   (let ((lemmata (if (listp lemmas) lemmas (list lemmas)))
-		 (x `(then ,@(loop for lemma in lemmata append 
-				   `((skosimp* t)(use ,lemma :if-match ,if-match :polarity? ,polarity?))))))
+		 (x `(then ,@(loop for lemma in lemmata
+				   append 
+				   `((skosimp* t)
+				     (use ,lemma :if-match ,if-match
+					  :polarity? ,polarity?
+					  :let-reduce? ,let-reduce?))))))
 	     x))
        (skip))
    (if lazy-match? 
        (then (grind :if-match nil :defs defs :rewrites rewrites
-		    :theories theories :exclude exclude :updates? updates?) 
-             (reduce :if-match if-match :polarity? polarity? :updates? updates?))
-       (grind :if-match if-match :polarity? polarity? :defs defs :rewrites rewrites
-	      :theories theories :exclude exclude :updates? updates?)))
+		    :theories theories :exclude exclude :updates? updates?
+		    :let-reduce? let-reduce?) 
+             (reduce :if-match if-match :polarity? polarity? :updates? updates?
+		     :let-reduce? let-reduce?))
+       (grind :if-match if-match :polarity? polarity? :defs defs
+	      :rewrites rewrites :theories theories :exclude exclude
+	      :updates? updates? :let-reduce? let-reduce?)))
   "Does a combination of (lemma) and (grind); if lazy-match? is t,
      postpones instantiations to follow a first round of simplification."
   "~%Grinding away with the supplied lemmas,")
