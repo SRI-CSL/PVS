@@ -939,7 +939,9 @@ pvs-strategies files.")
 		 ;; Hopefully we are backward compatible between versions
 		 ;; 3 and 4.
 		 (setq *pvs-context* context)
-		 (cond ((listp (cadr context))
+		 (cond ((and (listp (cadr context))
+			     (listp (caddr context))
+			     (every #'context-entry-p (cdddr context)))
 			(load-prelude-libraries (cadr context))
 			(setq *default-decision-procedure*
 			      (or (when (listp (caddr context))
@@ -949,12 +951,12 @@ pvs-strategies files.")
 			(dolist (ce (cdddr context))
 			  (unless (listp (ce-object-date ce))
 			    (setf (ce-object-date ce) nil))))
-		       ((typep (cadr context) 'context-entry)
+		       ((every #'context-entry-p (cdr context))
 			(setq *pvs-context*
 			      (cons (car *pvs-context*)
 				    (cons nil
 					  (cons nil (cdr *pvs-context*))))))
-		       (t (pvs-message "PVS context was not written correctly ~
+		       (t (pvs-message "PVS context is not quite right ~
                                       - resetting")
 			  (pvs-log "  ~a" error)
 			  (setq *pvs-context* (list *pvs-version*)))))))
