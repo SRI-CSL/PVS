@@ -96,6 +96,14 @@
 (load "ilcompat" nil noninteractive)                       ; emacs version specific stuff
 (load "comint-ipc" nil noninteractive)                     ; comint IPC extensions
 
+;;; Load the ILISP provided hyperspec if needed.
+
+;; (unless (featurep 'hyperspec)
+;;   (load-library "extra/hyperspec"))
+
+;; (unless (featurep 'cltl2)
+;;   (load-library "extra/cltl2"))
+
 (load "ilisp-def" nil noninteractive)
 ;;(load "ilisp-el" nil noninteractive)
 (load "ilisp-sym" nil noninteractive)
@@ -110,7 +118,8 @@
 (load "ilisp-prn" nil noninteractive)
 (load "ilisp-low" nil noninteractive)
 (load "ilisp-doc" nil noninteractive)
-(load "ilisp-ext" nil noninteractive)	
+(load "ilisp-ext" nil noninteractive)
+
 (load "ilisp-mod" nil noninteractive)
 (load "ilisp-dia" nil noninteractive)
 (load "ilisp-cmt" nil noninteractive)
