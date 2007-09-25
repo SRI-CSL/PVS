@@ -318,12 +318,12 @@
      :source-pathname "src/interface"
      :components ((:file "pvs-emacs")
 		  (:file "emacs-calls")
-		  ;;(:file "ilisp-pkg")
-		  ;;(:file "cl-ilisp")
-		  ;;#+allegro
-		  ;;(:file "allegro")
-		  ;;#+cmu
-		  ;;(:file "cmulisp")
+		  (:file "ilisp-pkg")
+		  (:file "cl-ilisp")
+		  #+allegro
+		  (:file "allegro")
+		  #+cmu
+		  (:file "cmulisp")
 		  ))
    (:module typechecker
      :source-pathname "src/"
