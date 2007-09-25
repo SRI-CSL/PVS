@@ -175,7 +175,9 @@ ilisp-emacs-sub-src = $(addprefix $(PVSPATH)emacs/$(EMACSSUBDIR)/,$(notdir $(ili
 
 emacs-sub-src = $(pvs-emacs-sub-src) $(ilisp-emacs-sub-src)
 
-emacs-elc = $(emacs-sub-src:.el=.elc)
+emacs-elc = $(filter-out %ilfsf18.elc %ilfsf19.elc %ilfsf20.elc \
+                         %illuc19.elc %ilxemacs.elc %ilisp-menu.elc,\
+                         $(emacs-sub-src:.el=.elc))
 
 ff-files = src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
            src/utils/$(PLATFORM)/b64 \
@@ -344,10 +346,11 @@ cmulisp += src/utils/file-utils-cmu.lisp
 allegrolisp += src/utils/file-utils.lisp
 
 emacs-interface = src/interface/pvs-emacs.lisp \
-		  src/interface/emacs-calls.lisp #\
-		  #src/interface/cl-ilisp.lisp \
-		  #src/interface/allegro.lisp \
-		  #src/interface/ilisp-pkg.lisp
+		  src/interface/emacs-calls.lisp \
+		  src/interface/cl-ilisp.lisp \
+		  src/interface/allegro.lisp \
+		  src/interface/cmulisp.lisp \
+		  src/interface/ilisp-pkg.lisp
 
 pvs-prover = src/prover/checker-macros.lisp \
          src/prover/decision-procedure-interface.lisp \
@@ -439,7 +442,7 @@ $(error "Must set CMULISP_HOME or ALLEGRO_HOME")
 endif
 endif
 
-all : devel runtime prelude-files-and-regions etags
+all : devel runtime prelude-files-and-regions $(emacs-elc) etags
 
 devel : $(allegro-devel) $(cmulisp-devel)
 
@@ -590,9 +593,6 @@ $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el : \
 	-./pvs -batch -l emacs/emacs-src/pvs-set-prelude-info.el \
                         -f set-prelude-files-and-regions
 
-$(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-prelude-files-and-regions.el : $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el
-	(cd emacs/$(EMACSSUBDIR) ; ln -sf ../emacs-src/$(@F) . )
-
 $(PVSPATH)emacs/$(EMACSSUBDIR)/%.el : $(PVSPATH)emacs/emacs-src/%.el
 	$(MKDIR) -p emacs/$(EMACSSUBDIR)
 	(cd emacs/$(EMACSSUBDIR) ; ln -sf ../emacs-src/$(@F) .)
@@ -601,7 +601,15 @@ $(PVSPATH)emacs/$(EMACSSUBDIR)/%.el : $(PVSPATH)emacs/emacs-src/ilisp/%.el
 	$(MKDIR) -p emacs/$(EMACSSUBDIR)
 	(cd emacs/$(EMACSSUBDIR) ; ln -sf ../emacs-src/ilisp/$(@F) .)
 
-$(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc emacs : $(pvs-emacs-sub-src) $(ilisp-emacs-sub-src)
+# We need to create the elc files, but this does not work well with make, as
+# we can't simply byte-compile each file separately.  So we create a dummy
+# .readme file.  It will be newer than all of the subdir source files, and
+# the byte compiled files will thne be newer than it.
+
+$(PVSPATH)emacs/$(EMACSSUBDIR)/.readme : $(emacs-sub-src)
+	echo "File exists for make dependency usage" > $@
+
+$(emacs-elc) : $(PVSPATH)emacs/$(EMACSSUBDIR)/.readme
 	(cd emacs/$(EMACSSUBDIR); $(EMACS) -batch -l pvs-byte-compile.el)
 
 install:
