@@ -60,8 +60,8 @@ Set in ilcompat.el.")
        (load "ilfsf19" nil noninteractive))
       ((eq +ilisp-emacs-version-id+ 'fsf-20)
        (load "ilfsf20" nil noninteractive))
-      ((eq +ilisp-emacs-version-id+ 'fsf-21)
-       (load "ilfsf21" nil noninteractive))
+      ;;((eq +ilisp-emacs-version-id+ 'fsf-21)
+      ;; (load "ilfsf21" nil noninteractive))
       (t
        ;; fall through assumption to Emacs 20
        (load "ilfsf20" nil noninteractive))
