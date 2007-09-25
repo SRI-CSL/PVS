@@ -58,16 +58,20 @@
 		  pvs-tcl
 		  pvs-utils
 		  pvs-view
-		  ;;tcl
+		  pvs-pvsio
+		  tcl
+		  
+		  pvs-byte-compile
+		  pvs-prelude-files-and-regions
+		  pvs-set-prelude-info
 		  )))
-      (mapcar 
-	#'(lambda (a) (pvs-compile a))
-	pvsfiles))
+  (mapcar '(lambda (a) (pvs-compile a))
+    pvsfiles))
 
 (message "PVS: byte compilation done")
 
-;;; the rest of this is modified from ilisp-mak.el
 
+;;; the rest of this is modified from ilisp-mak.el
 
 (load "ilcompat.el")		; Need to load this beforehand
 				; to use the +ilisp-emacs-version-id+
@@ -76,26 +80,27 @@
 (message ";;; ILISP Compilation for Emacs Version %s" +ilisp-emacs-version-id+)
 
 ;; Compile compatibility files
-    (progn
-      (cond ((memq +ilisp-emacs-version-id+ '(xemacs-19 xemacs-20))
-	     (byte-compile "ilxemacs.el"))
-	    ((eq +ilisp-emacs-version-id+ 'fsf-19)
-	     (byte-compile "ilfsf19.el"))
-	    ((eq +ilisp-emacs-version-id+ 'fsf-20)
-	     (byte-compile "ilfsf20.el"))
-	    (t (error "ILISP Compilation: unrecogninized Emacs version %s"
-		      +ilisp-emacs-version-id+)))
-      (byte-compile "ilcompat.el"))
+(cond ((memq +ilisp-emacs-version-id+ '(xemacs-19 xemacs-20))
+       (byte-compile-file "ilxemacs.el"))
+      ((eq +ilisp-emacs-version-id+ 'fsf-19)
+       (byte-compile-file "ilfsf19.el"))
+      ((eq +ilisp-emacs-version-id+ 'fsf-20)
+       (byte-compile-file "ilfsf20.el"))
+      (t (error "ILISP Compilation: unrecogninized Emacs version %s"
+		+ilisp-emacs-version-id+)))
+
+(byte-compile-file "ilcompat.el")
 
 ;; Other files in the distribution.
 
     (let ((files '(completer
 		   comint-ipc
+		   ;;bridge
 		   ilisp-def
-		   ;;ilisp-el
 		   ilisp-sym
 		   ilisp-inp
 		   ilisp-ind
+		   
 		   ilisp-prc
 		   ilisp-val
 		   ilisp-out
@@ -117,15 +122,24 @@
 		   ilisp-xfr
 		   ilisp-hi
 		   ilisp-aut
+		   ilisp-mnb
+		   ilisp-src
+		   ilisp-bat
 
 		   ;; Dialects.
 		   ilisp-cl
 		   ilisp-acl
+		   ilisp-cmu
+		   ilisp-xls
+		   ilisp-chs
+		   ilisp-cl-easy-menu
+		   ilisp-imenu
 		   )))
       (while files
 	(byte-compile-file (format "%s.el" (car files)) 0)
 	(load (format "%s" (car files)))
 	(setq files (cdr files))))
+(byte-compile-file "ilisp.el")
 
 (message "ILISP: byte compilation Done")
 
