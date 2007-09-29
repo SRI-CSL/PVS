@@ -539,9 +539,10 @@
 	(collect-same-first-fun-assignment-args args-list values)
       (let ((domtypes (domain-types* (domain funtype))))
 	(dolist (arg cargs)
-	  (if (length= domtypes (car arg))
-	      (check-tup-types (car arg) domtypes)
-	      (check-for-tccs* (caar arg) (domain funtype)))))
+	  (when arg
+	    (if (length= domtypes (car arg))
+		(check-tup-types (car arg) domtypes)
+		(check-for-tccs* (caar arg) (domain funtype))))))
       (let ((arg (when (caar cargs) (make!-arg-tuple-expr* (caar cargs)))))
 	(check-assignment-arg-types*
 	 (mapcar #'cdr cargs)
