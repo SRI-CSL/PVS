@@ -504,7 +504,7 @@
 	 (*depending-chain* nil)
 	 (*depending-cycles* nil)
 	 (*in-checker* nil)
-	 (*current-context* (context decl))
+	 ;;(*current-context* (context decl))
 	 (*possible-judgements* (possible-judgements decl))
 	 (fdecls (union (union (refers-to decl)
 			       (proof-refers-to decl))
@@ -848,19 +848,46 @@
   ;;; number judgements, as well as any name or application judgements
   ;;; whose decl is in decls.
   ;;; [owre - 2005-09-11] Now just collect subtype judgements.
-  (let ((jtccs nil))
-    (dolist (jdecl (if (from-prelude? decl)
-		       (judgement-declarations
-			(judgements (context decl)))
-		       (remove-if #'from-prelude?
-			 (judgement-declarations
-			  (judgements (context decl))))))
+  (let ((ctx-jdecls (if (from-prelude? decl)
+			(judgements-in-context decl)
+			(remove-if #'from-prelude?
+			  (judgements-in-context decl))))
+	(jtccs nil))
+    (dolist (jdecl ctx-jdecls)
       (let ((tcc (get-judgement-tcc jdecl decl)))
 	(when tcc (push tcc jtccs))))
 ;;     (do-all-declarations #'(lambda (decl)
 ;; 			     (let ((tcc (get-judgement-tcc decl decls)))
 ;; 			       (when tcc (push tcc jtccs)))))
     jtccs))
+
+(defun judgements-in-context (decl)
+  ;; Equivalent to (judgements (context decl)), but this is much too slow
+  (let* ((theory (module decl))
+	 (all-decls (reverse (all-decls theory)))
+	 (prev-decls (or (memq decl all-decls) (cons decl all-decls)))
+	 (prev-imp (find-if #'mod-or-using? prev-decls))
+	 (rem-decls (if (and prev-imp (saved-context prev-imp))
+			(ldiff prev-decls (memq prev-imp prev-decls))
+			prev-decls))
+	 (rem-jdecls (remove-if-not #'judgement? rem-decls))
+	 (ctx (cond ((and prev-imp (saved-context prev-imp))
+		     (saved-context prev-imp))
+		    ((from-prelude? decl)
+		     (let ((prevp
+			    (cadr (memq theory
+					(reverse *prelude-theories*)))))
+		       (saved-context
+			(if (datatype? prevp)
+			    (or (adt-reduce-theory prevp)
+				(adt-map-theory prevp)
+				(adt-theory prevp))
+			    prevp))))
+		    (t (or *prelude-library-context*
+			   *prelude-context*))))
+	 (ctx-jdecls (judgement-declarations (judgements ctx))))
+    (append rem-jdecls ctx-jdecls)))
+  
 
 (defmethod get-judgement-tcc ((jdecl subtype-judgement) decl)
   ;; This one is difficult, since it is not obvious when the judgement comes
