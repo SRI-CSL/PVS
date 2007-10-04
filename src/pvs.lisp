@@ -2667,7 +2667,11 @@
       (setq mod nil))
     (cond ((and mod (gethash (id mod) *prelude*))
 	   mod)
-	  ((and mod (parsed? mod))
+	  ((and mod
+		(parsed? mod)
+		(or (not (library-datatype-or-theory? mod))
+		    (and (name? theoryref)
+			 (library theoryref))))
 	   mod)
 	  ((and (name? theoryref)
 		(library theoryref))
