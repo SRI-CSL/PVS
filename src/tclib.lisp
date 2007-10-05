@@ -402,7 +402,8 @@
   (let* ((libloads (if (boundp 'libloads) libloads nil))
 	 (lib (directory-namestring filestr))
 	 (filename (file-namestring filestr))
-	 (libpath (unless (string= lib "./") (libref-to-pathname lib)))
+	 (libpath (unless (or (string= lib "") (string= lib "./"))
+		    (libref-to-pathname lib)))
 	 (*default-pathname-defaults* (or (and libpath (pathname libpath))
 					  *default-pathname-defaults*))
 	 (file (namestring
