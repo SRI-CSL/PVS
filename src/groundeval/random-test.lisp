@@ -123,7 +123,7 @@
 	      (types te)))))
 
 (defmethod random-generator* ((te funtype) i d)
-  (let* ((id (make-new-variable 'x (list te)))
+  (let* ((id (make-new-variable '|x| (list te)))
 	 (bd (make-bind-decl id (domain te)))
 	 (var (make-variable-expr bd))
 	 (ran (range te))
