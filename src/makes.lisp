@@ -2083,7 +2083,7 @@
 
 (defun make!-set-list-expr (exprs type)
   (assert (every #'type exprs))
-  (let* ((id (make-new-variable 'x exprs))
+  (let* ((id (make-new-variable '|x| exprs))
 	 (bd (make-bind-decl id type))
 	 (var (make-variable-expr bd))
 	 (dj (make!-disjunction*
