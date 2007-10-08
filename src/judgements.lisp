@@ -1697,7 +1697,7 @@
 	  (find-supertype* (supertype te) all?))))
 
 (defun type-predicates-funtype* (rpreds te fvar)
-  (let* ((vid (make-new-variable 'x te))
+  (let* ((vid (make-new-variable '|x| te))
 	 (bd (make-bind-decl vid (domain te)))
 	 (var (make-variable-expr bd))
 	 (appl (make!-application fvar var)))
