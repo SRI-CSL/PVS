@@ -2367,7 +2367,7 @@
 	 ;;(pexpr (mk-name-expr pname))
 	 (tname (make-self-resolved-type-name decl))
 	 (struct-subtype (generate-struct-subtype stype tname))
-	 (surjname (mk-name-expr 'surjective?
+	 (surjname (mk-name-expr '|surjective?|
 		     (list (mk-actual struct-subtype) (mk-actual stype))))
 	 (surjtype (typecheck* (mk-expr-as-type surjname) nil nil nil))
 	 (cdecl (declaration *current-context*))
@@ -2807,7 +2807,7 @@
   (let* ((op (operator* expr))
 	 (recdecl (declaration op))
 	 (def (rec-judgement-definition decl recdecl))
-	 (vid (make-new-variable 'v (list expr def)))
+	 (vid (make-new-variable '|v| (list expr def)))
 	 (jtype	;;(rec-judgement-signature decl recdecl)
 	  ;;(recursive-signature recdecl)
 	  (type op))
