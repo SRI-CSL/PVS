@@ -103,7 +103,7 @@
 		     (list (mk-funtype rtype (type field)))))))
 	(t (setf (types expr)
 		 (list (mk-funtype (make-instance 'rec-type-variable
-				     :id (make-new-variable 'recT expr))
+				     :id (make-new-variable '|recT| expr))
 				   (make-instance 'type-variable
 				     :id (make-new-variable 'T expr))))))))
 
@@ -135,7 +135,7 @@
 		 (list (make-projection-type expr ttype)))))
 	(t (setf (types expr)
 		 (list (mk-funtype (make-instance 'tup-type-variable
-				     :id (make-new-variable 'tupT expr))
+				     :id (make-new-variable '|tupT| expr))
 				   (make-instance 'type-variable
 				     :id (make-new-variable 'T expr))))))))
 
@@ -146,7 +146,7 @@
 	 (first-dep-pos (position-if #'dep-binding? (types tuptype)))
 	 (dep? (and first-dep-pos (< first-dep-pos (1- index)))))
     (if dep?
-	(let* ((id (make-new-variable 't ttype))
+	(let* ((id (make-new-variable '|t| ttype))
 	       (db (mk-dep-binding id ttype))
 	       (dvar (make-variable-expr db)))
 	  (mk-funtype db
@@ -180,7 +180,7 @@
 		 (list (mk-funtype (make-instance 'type-variable
 				     :id (make-new-variable 'T expr))
 				   (make-instance 'cotup-type-variable
-				     :id (make-new-variable 'coT expr))))))))
+				     :id (make-new-variable '|coT| expr))))))))
 
 (defmethod typecheck* ((expr extraction-expr) expected kind argument)
   (declare (ignore kind expected argument))
@@ -204,7 +204,7 @@
 				   (type-value (car (actuals expr))))))))))
 	(t (setf (types expr)
 		 (list (mk-funtype (make-instance 'cotup-type-variable
-				     :id (make-new-variable 'coT expr))
+				     :id (make-new-variable '|coT| expr))
 				   (make-instance 'type-variable
 				     :id (make-new-variable 'T expr))))))))
 
@@ -2059,7 +2059,7 @@
 	  (let* ((carg (new-arg))
 		 (stype (least-compatible-arg-judgement-type type carg))
 		 (pred (subtype-pred type stype))
-		 (vid (make-new-variable 'x expr))
+		 (vid (make-new-variable '|x| expr))
 		 (vb (make-bind-decl vid stype))
 		 (var (make-variable-expr vb))
 		 (upred (make!-lambda-expr (list vb)
