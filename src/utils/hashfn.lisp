@@ -64,9 +64,12 @@
 ;(defun tc-eq (x y &optional bindings)
 ;  (tc-eq* x y bindings))
 
-(defconstant pvs-sxhash-byte (byte 29 0))
+(defconstant pvs-sxhash-byte (byte #+allegro 24 #-allegro 29 0))
 
-(deftype positive-fixnum () `(integer 0 ,most-positive-fixnum))
+(defconstant pvs-max-hashnum (1- (expt 2 #+allegro 24 #-allegro 29)))
+
+(deftype positive-fixnum ()
+  `(integer 0 ,(1- (expt 2 #+allegro 24 #-allegro 29))))
 
 (defmacro pvs-sxhash-+ (i j)
   `(ldb pvs-sxhash-byte (+ (the positive-fixnum ,i) (the positive-fixnum ,j))))
@@ -80,7 +83,9 @@
 (proclaim '(ftype (function (t list) positive-fixnum) pvs-sxhash*))
 
 (defun pvs-sxhash (x &optional bindings)
-  (pvs-sxhash* x bindings))
+  (let ((num (pvs-sxhash* x bindings)))
+    #+pvs-debug (assert (<= num pvs-max-hashnum))
+    num))
 
 ;;; If two object aren't tc-eq* by more specific methods, then try eq.
 
