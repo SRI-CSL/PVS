@@ -77,7 +77,7 @@ generated")
     `(let* ((,vtid ,tid)
 	    (,vadt ,adt)
 	    (*generating-adt* ,vadt)
-	    (*current-theory* (make-instance '|rectype-theory|
+	    (*current-theory* (make-instance 'rectype-theory
 				:id ,vtid
 				:exporting (make-instance 'exporting
 					     :kind 'default)))
