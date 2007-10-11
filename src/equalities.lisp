@@ -1337,6 +1337,15 @@
   (declare (ignore bindings))
   atype)
 
+(defmethod compatible-type* ((atype struct-sub-tupletype)
+			     (etype struct-sub-tupletype) bindings)
+  (declare (ignore bindings))
+  atype)
+
+(defmethod compatible-type* ((atype struct-sub-recordtype)
+			     (etype struct-sub-recordtype) bindings)
+  (declare (ignore bindings))
+  atype)
 
 ;;; Note that we return the instantiated type, if there is one.
 
