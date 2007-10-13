@@ -79,7 +79,7 @@
   (let ((file (make-binpath filename))
 	(start-time (get-internal-real-time))
 	(*bin-theories-set* nil)
-	(*fetched-theory-decls* nil))
+	(*fetched-theory-interpretations* nil))
     (multiple-value-bind (vtheory fetch-error)
 	(ignore-lisp-errors (fetch-object-from-file file))
       (let ((load-time (get-internal-real-time)))
