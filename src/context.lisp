@@ -393,7 +393,7 @@ pvs-strategies files.")
 (defun ensure-bin-subdirectory ()
   (let ((subdir (make-pathname
 		 :defaults *pvs-context-path*
-		 :name "pvsbin")))
+		 :name #+case-sensitive "pvsbin" #-case-sensitive "PVSBIN")))
     (if (file-exists-p subdir)
 	(if (directory-p subdir)
 	    t
