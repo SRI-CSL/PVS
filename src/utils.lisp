@@ -512,7 +512,8 @@
 (defmethod make-binpath ((name string))
   (make-pathname :defaults *pvs-context-path*
 		 :directory (append (pathname-directory *pvs-context-path*)
-				    (list "pvsbin"))
+				    (list #+case-sensitive "pvsbin"
+					  #-case-sensitive "PVSBIN"))
 		 :name name
 		 :type "bin"))
 
