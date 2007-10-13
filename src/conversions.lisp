@@ -761,7 +761,8 @@
 
 (defun add-conversion-info (conversion expr &optional new-expr)
   (reset-subst-mod-params-cache)
-  (remhash expr (judgement-types-hash (current-judgements)))
+  (when (type expr)
+    (remhash expr (judgement-types-hash (current-judgements))))
   (let ((origin
 	 (if (or *in-checker* *in-evaluator*)
 	     (if *in-typechecker*
