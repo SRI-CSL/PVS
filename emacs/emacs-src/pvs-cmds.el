@@ -1736,6 +1736,11 @@ context."
 			      (format "%s/pvsbin/" *pvs-current-directory*))
 			 (directory-files
 			  (format "%s/pvsbin/" *pvs-current-directory*)
+			  t "\\.bin$"))
+		       (when (file-directory-p
+			      (format "%s/PVSBIN/" *pvs-current-directory*))
+			 (directory-files
+			  (format "%s/PVSBIN/" *pvs-current-directory*)
 			  t "\\.bin$")))))
     (when noninteractive
       (princ "Removing all .bin files\n")
@@ -1756,6 +1761,9 @@ context."
   (let ((files (append (directory-files dir t "\\.bin$")
 		       (when (file-directory-p (format "%s/pvsbin/" dir))
 			 (directory-files (format "%s/pvsbin/" dir)
+					  t "\\.bin$"))
+		       (when (file-directory-p (format "%s/PVSBIN/" dir))
+			 (directory-files (format "%s/PVSBIN/" dir)
 					  t "\\.bin$")))))
     (when noninteractive
       (princ "Removing all .bin files\n")
