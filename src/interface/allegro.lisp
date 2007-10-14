@@ -19,8 +19,8 @@
 ;;; 20001203 Patch suggested by Larry Hunter <Larry.Hunter@uchsc.edu>
 ;;; EXCL::FN_SYMDEF is no longer available by default.
 
-#+(or allegro-v5.0 (and allegro (version>= 6)))
-(eval-when (compile load) (require :llstructs))
+;; #+(or allegro-v5.0 (and allegro (version>= 6)))
+;; (eval-when (compile load) (require :llstructs))
 
 ;;;
 (defun ilisp-callers (symbol package)
