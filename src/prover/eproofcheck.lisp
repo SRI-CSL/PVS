@@ -3437,36 +3437,37 @@
   #'(lambda (ps)
       (let* ((goalsequent (current-goal ps))
 	     (fnums (if (consp fnums) fnums (list fnums))))
-	(cond ((or (stringp label)(symbolp label))
-	       (cond ((memq (intern label) '(quote nil * + -))
-		      (error-format-if
-		       "~%Label cannot be nil, quote, *, +, or -.")
-		      (values 'X nil nil))
-		     ((and (or (digit-char-p (char (string label) 0))
-			       (char= (char (string label) 0) #\-))
-			   (every #'digit-char-p (subseq (string label) 1)))
-		      (error-format-if
-		       "~%Label cannot be an integer"))
-		     (t
-		      (multiple-value-bind
-			  (signal subgoal)
-			  (sequent-reduce
-			   goalsequent
-			   #'(lambda (sform)
-			       (values
-				'?
-				(if (and push? label)
-				    (lcopy sform
-				      'label (cons (intern label)
-						   (label sform)))
-				    (lcopy sform
-				      'label (when label 
-					       (list (intern label)))))))
-			   fnums)
-			(values signal (list subgoal) ;;(substitution ps)
-				)))))
-	      (t (error-format-if "~%Label ~a is not a string." label)
-		 (values 'X nil nil))))))
+	(cond ((or (stringp label) (symbolp label))
+	       (let ((strlbl (if (stringp label) label (string label)))
+		     (symlbl (if (symbolp label) label (intern label))))
+		 (cond ((memq symlbl '(quote nil * + -))
+			(error-format-if
+			 "~%Label cannot be nil, quote, *, +, or -.")
+			(values 'X nil nil))
+		       ((and (or (digit-char-p (char strlbl 0))
+				 (char= (char strlbl 0) #\-))
+			     (every #'digit-char-p (subseq strlbl) 1))
+			(error-format-if
+			 "~%Label cannot be an integer"))
+		       (t
+			(multiple-value-bind (signal subgoal)
+			    (sequent-reduce
+			     goalsequent
+			     #'(lambda (sform)
+				 (values
+				  '?
+				  (if (and push? label)
+				      (lcopy sform
+					'label (cons symlbl (label sform)))
+				      (lcopy sform
+					'label (when label 
+						 (list symlbl))))))
+			     fnums)
+			  (values signal (list subgoal) ;;(substitution ps)
+				  ))))))
+	      (t
+	       (error-format-if "~%Label ~a is not a string." label)
+	       (values 'X nil nil))))))
 
 (defun unlabel-step (fnums label)
   #'(lambda (ps)
