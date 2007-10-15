@@ -349,42 +349,44 @@
   ;; so that simple loads from the pvs-lib.lisp file work.
   (let* ((*default-pathname-defaults* (merge-pathnames lib-path))
 	 #+allegro (sys:*load-search-list* *pvs-library-path*)
-	 (lfile (format nil "~apvs-lib.lisp" lib-path))
+	 (lfile "pvs-lib.lisp")
 	 (*suppress-printing* t))
-    (when (file-exists-p lfile)
-      (let ((bfile (format nil "~apvs-lib.~a" lib-path *pvs-binary-type*)))
-	(when (or (not (file-exists-p bfile))
-		  (compiled-file-older-than-source? lfile bfile))
-	  (multiple-value-bind (ignore error)
-	      (ignore-errors (compile-file lfile))
-	    (declare (ignore ignore))
-	    (cond (error
-		   (pvs-message "Compilation error - ~a" error)
-		   (pvs-message "Loading lib file ~a interpreted"
-		     (shortname lfile))
-		   (setq bfile nil))
-		  (t
-		   (chmod "ug+w" (namestring bfile))))))
-	(pvs-message "Loading ~a..." (or bfile lfile))
-	(let ((*libloads* nil))
-	  (multiple-value-bind (ignore error)
-	      (ignore-errors (load (or bfile lfile)))
-	    (declare (ignore ignore))
-	    (cond (error
-		   (pvs-message "Error loading ~a:~%  ~a"
-		     (or bfile lfile) error)
-		   (when bfile
-		     (pvs-message "Trying source ~a:" lfile)
-		     (multiple-value-bind (ignore lerror)
-			 (ignore-errors (load lfile))
-		       (declare (ignore ignore))
-		       (cond (lerror
-			      (pvs-message "Error loading ~a:~%  ~a"
-				lfile error))
-			     (t (pvs-message "~a loaded" lfile)
-				(cons lfile *libloads*))))))
-		  (t (pvs-message "~a loaded" (or bfile lfile))
-		     (cons lfile *libloads*)))))))))
+    (if (file-exists-p lfile)
+	(let ((bfile (format nil "pvs-lib.~a" *pvs-binary-type*)))
+	  (when (or (not (file-exists-p bfile))
+		    (compiled-file-older-than-source? lfile bfile))
+	    (multiple-value-bind (ignore error)
+		(ignore-errors (compile-file lfile))
+	      (declare (ignore ignore))
+	      (cond (error
+		     (pvs-message "Compilation error - ~a" error)
+		     (pvs-message "Loading lib file ~a interpreted"
+		       (shortname lfile))
+		     (setq bfile nil))
+		    (t
+		     (chmod "ug+w" (namestring bfile))))))
+	  (pvs-message "Loading ~a..." (or bfile lfile))
+	  (let ((*libloads* nil))
+	    (multiple-value-bind (ignore error)
+		(ignore-errors (load (or bfile lfile)))
+	      (declare (ignore ignore))
+	      (cond (error
+		     (pvs-message "Error loading ~a:~%  ~a"
+		       (or bfile lfile) error)
+		     (when bfile
+		       (pvs-message "Trying source ~a:" lfile)
+		       (multiple-value-bind (ignore lerror)
+			   (ignore-errors (load lfile))
+			 (declare (ignore ignore))
+			 (cond (lerror
+				(pvs-message "Error loading ~a:~%  ~a"
+				  lfile error))
+			       (t (pvs-message "~a loaded" lfile)
+				  (cons lfile *libloads*))))))
+		    (t (pvs-message "~a loaded" (or bfile lfile))
+		       (cons lfile *libloads*))))))
+	(pvs-message "~a not found relative to ~a"
+	  lfile *default-pathname-defaults*))))
 
 (defun list-pvs-libraries ()
   (dolist (path *pvs-library-path*)
@@ -1041,7 +1043,7 @@
 			 ;; Otherwise it's a PVS library ref
 			 ;; (e.g., finite_sets) in the PVS_LIBRARY_PATH
 			 (pvs-library-path-ref lib-ref)))))
-    (if (file-exists-p lib-path)
+    (if (and lib-path (file-exists-p lib-path))
 	lib-path
 	(values nil (format nil "Library ~a does not exist" lib-ref)))))
 
