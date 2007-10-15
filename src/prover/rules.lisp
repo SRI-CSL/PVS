@@ -895,7 +895,7 @@ which eliminates all top-level disjuncts in the indicated FNUMS."
 	(if sforms
 	    (values '?
 		    (list (copy (current-goal ps) 's-forms
-				(cons (copy (car sforms))
+				(cons (copy (car sforms) 'label nil)
 				      (s-forms (current-goal ps))))))
 	    (error-format-if "~%Could not find formula number ~a" fnum))))
   "Introduces a copy of formula number FNUM as the first antecedent
