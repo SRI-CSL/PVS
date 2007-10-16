@@ -1850,6 +1850,7 @@ existence and time differences to be whitespace")
 ;;; ensure that pending commands are complete before checking for the
 ;;; (un)expected regexp.
 (defun pvs-wait-for-it (&optional timeout)
+  (sleep-for 1)
   (while (and (or (null timeout)
 		  (> timeout 0))
 	      (not (save-excursion
