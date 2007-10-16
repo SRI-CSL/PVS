@@ -866,7 +866,7 @@ which eliminates all top-level disjuncts in the indicated FNUMS."
 (addrule 'decide () ((fnums *))
   (invoke-decide fnums)
   "Invokes the decision procedure, without simplification."
-  "Invoking the decision procedure directly")
+  "~%Invoking the decision procedure directly")
 
 (defun invoke-decide (sformnums)
   #'(lambda (ps)
@@ -900,4 +900,4 @@ which eliminates all top-level disjuncts in the indicated FNUMS."
 	    (error-format-if "~%Could not find formula number ~a" fnum))))
   "Introduces a copy of formula number FNUM as the first antecedent
 or succedent formula in the sequent."
-  "Copying formula number: ~a")
+  "~%Copying formula number: ~a")
