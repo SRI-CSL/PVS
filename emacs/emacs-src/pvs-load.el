@@ -135,7 +135,11 @@
 
 (defvar pvs-library-path nil)
 (if (pvs-getenv "PVS_LIBRARY_PATH")
-    (let ((dirs (string-split ?: (pvs-getenv "PVS_LIBRARY_PATH"))))
+    (let ((dirs (mapcar '(lambda (dir)
+			   (if (= (aref dir (1- (length dir))) ?/)
+			       (substring dir (1- (length dir)))
+			       dir))
+		  (string-split ?: (pvs-getenv "PVS_LIBRARY_PATH")))))
       (setq pvs-library-path dirs)
       (setq load-path
 	    (cons (car load-path) (append dirs (cdr load-path))))))
