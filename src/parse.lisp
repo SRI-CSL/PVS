@@ -1460,7 +1460,8 @@
     (make-instance 'string-expr
       :string-value string
       :operator (mk-name-expr '|list2finseq| (list (mk-actual ne)))
-      :argument (xt-string-to-charlist string (term-place expr)))))
+      :argument (xt-string-to-charlist string (term-place expr))
+      :place (term-place expr))))
 
 (defun xt-string-to-charlist (string place)
   (let ((codes (xt-string-to-codes string 0 (length string) place nil)))
