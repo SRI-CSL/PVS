@@ -351,7 +351,7 @@
 	 #+allegro (sys:*load-search-list* *pvs-library-path*)
 	 (lfile "pvs-lib.lisp")
 	 (*suppress-printing* t))
-    (if (file-exists-p lfile)
+    (if (file-exists-p (merge-pathnames *default-pathname-defaults* lfile))
 	(let ((bfile (format nil "pvs-lib.~a" *pvs-binary-type*)))
 	  (when (or (not (file-exists-p bfile))
 		    (compiled-file-older-than-source? lfile bfile))
