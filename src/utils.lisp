@@ -285,13 +285,13 @@
 #+lucid
 (defun chmod (prot file)
   (run-program "chmod"
-	       :arguments (list prot file)
+	       :arguments (list prot (namestring file))
 	       :output "/dev/null"
 	       :if-output-exists nil))
 
 #+allegro
 (defun chmod (prot file)
-  (excl:run-shell-command (format nil "chmod ~a ~a" prot file)
+  (excl:run-shell-command (format nil "chmod ~a ~a" prot (namestring file))
 			  :output "/dev/null"
 			  :if-output-exists :append
 			  :error-output "/dev/null"
@@ -300,7 +300,7 @@
 #+harlequin-common-lisp
 (defun chmod (prot file)
   (foreign:call-system-showing-output
-   (format nil "chmod ~a ~a" prot file)
+   (format nil "chmod ~a ~a" prot (namestring file))
    :prefix nil
    :show-cmd nil
    :output-stream (open "/dev/null" :direction :output
@@ -309,12 +309,12 @@
 (defun chmod (prot file)
   (extensions:run-program
    "chmod"
-   (list prot file)
+   (list prot (namestring file))
    :output nil :error nil :wait nil))
 
 #+gcl
 (defun chmod (prot file)
-  (system (format nil "chmod ~a ~a" prot file)))
+  (system (format nil "chmod ~a ~a" prot (namestring file))))
 
 (defun pvs-current-directory ()
   (if (file-exists-p *pvs-context-path*)
