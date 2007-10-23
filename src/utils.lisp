@@ -309,7 +309,7 @@
 (defun chmod (prot file)
   (extensions:run-program
    "chmod"
-   (list "o-w" "/homes/owre/foo")
+   (list prot file)
    :output nil :error nil :wait nil))
 
 #+gcl
