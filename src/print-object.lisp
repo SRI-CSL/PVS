@@ -118,13 +118,14 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod print-object ((ctx context) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "~@<#<context ~w.~w>~:>"
-	      (when (theory ctx)
-		(id (theory ctx)))
-	      (when (declaration ctx)
-		(if (importing? (declaration ctx))
-		    (declaration ctx)
-		    (id (declaration ctx)))))))
+      (let ((*print-escape* nil))
+	(format stream "~@<#<context ~w.~w>~:>"
+	  (when (theory ctx)
+	    (id (theory ctx)))
+	  (when (declaration ctx)
+	    (if (importing? (declaration ctx))
+		(declaration ctx)
+		(id (declaration ctx))))))))
 
 ;(defmethod print-object ((obj name-expr) stream)
 ;  (if *debugging-print-object*
