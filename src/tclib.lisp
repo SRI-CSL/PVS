@@ -469,14 +469,15 @@
 			      "Error in loading prelude file ~a~a"
 			      lib-path (filename th))))
 		      *pvs-modules*)
-		     (maphash
-		      #'(lambda (id th)
-			  (change-to-library-class th lib-ref)
-			  (update-prelude-library-context th)
-			  (when (filename th)
-			    (pushnew (filename th) loaded-files
-				     :test #'string=)))
-		      *pvs-modules*)
+		     (dolist (ce (pvs-context-entries))
+		       (dolist (te (ce-theories ce))
+			 (let* ((id (te-id te))
+				(th (get-theory id)))
+			   (change-to-library-class th lib-ref)
+			   (update-prelude-library-context th)
+			   (when (filename th)
+			     (pushnew (filename th) loaded-files
+				      :test #'string=)))))
 		     (setf (gethash lib-ref *prelude-libraries*)
 			   (list *pvs-files* *pvs-modules*)))
 		 (maphash #'(lambda (thid theory)
@@ -528,36 +529,45 @@
 
 (defun update-prelude-library-context (th)
   (unless *prelude-library-context*
-    (setq *prelude-library-context* (copy-context (saved-context th))))
-  (unless (eq (theory *prelude-library-context*) th)
-    (setf (theory *prelude-library-context*) th)
-    (setf (theory-name *prelude-library-context*) (mk-modname (id th)))
-    (let* ((*current-theory* th)
-	   (*current-context* *prelude-library-context*)
-	   (judgements (judgements *prelude-library-context*))
-	   (number-judgements-alist (number-judgements-alist judgements))
-	   (name-judgements-alist (name-judgements-alist judgements))
-	   (appl-judgements-alist (application-judgements-alist judgements)))
-      (setf (number-judgements-alist judgements) nil)
-      (setf (name-judgements-alist judgements) nil)
-      (setf (application-judgements-alist judgements) nil)
-      (merge-number-judgements number-judgements-alist
-			       (number-judgements-alist judgements)
-			       th (mk-modname (id th)))
-      (merge-name-judgements name-judgements-alist
-			     (name-judgements-alist judgements)
-			     th (mk-modname (id th)))
-      (merge-application-judgements appl-judgements-alist
-				    (application-judgements-alist judgements)
-				    th (mk-modname (id th)))))
+    (setq *prelude-library-context* (copy-context (saved-context th)))
+    ;; Make sure there is a dummy theory in the prelude context - otherwise
+    ;; a theory that has formal parameters might be taken for the context,
+    ;; and the formals could be visible outside.  In particular, if the
+    ;; chosen theory imports judgement instances of its parameters, those
+    ;; would be viewed as instatiated and appear in the judgements-graph.
+    (let ((nth (make-instance 'module
+		 :id (gentemp "%dtheory")
+		 :exporting (make-instance 'exporting
+			      :kind 'default))))
+      (setf (theory *prelude-library-context*) nth)
+      (setf (declaration *prelude-library-context*) nil)
+      (setf (theory-name *prelude-library-context*) (mk-modname (id nth)))))
   (let* ((*current-theory* th)
 	 (*current-context* *prelude-library-context*)
-	 (thname (mk-modname (id th))))
-    (update-current-context th thname)
-    (dolist (decl (append (assuming th) (theory th)))
-      (when (and (declaration? decl) (visible? decl))
-	(put-decl decl)))
-    (setf (get-importings th) (list thname))))
+	 (judgements (judgements *prelude-library-context*))
+	 (number-judgements-alist (number-judgements-alist judgements))
+	 (name-judgements-alist (name-judgements-alist judgements))
+	 (appl-judgements-alist (application-judgements-alist judgements)))
+    (setf (number-judgements-alist judgements) nil)
+    (setf (name-judgements-alist judgements) nil)
+    (setf (application-judgements-alist judgements) nil)
+    (merge-number-judgements number-judgements-alist
+			     (number-judgements-alist judgements)
+			     th (mk-modname (id th)))
+    (merge-name-judgements name-judgements-alist
+			   (name-judgements-alist judgements)
+			   th (mk-modname (id th)))
+    (merge-application-judgements appl-judgements-alist
+				  (application-judgements-alist judgements)
+				  th (mk-modname (id th)))
+    (let* ((*current-theory* th)
+	   (*current-context* *prelude-library-context*)
+	   (thname (mk-modname (id th))))
+      (update-current-context th thname)
+      (dolist (decl (append (assuming th) (theory th)))
+	(when (and (declaration? decl) (visible? decl))
+	  (put-decl decl)))
+      (setf (get-importings th) (list thname)))))
 
 
 
