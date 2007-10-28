@@ -632,17 +632,20 @@ pvs-strategies files.")
 						      &optional
 						      imp-theories imp-names)
   (cond ((null i-theories)
-	 (dolist (use (all-usings theory))
-	   (when (and (theory-interpretation? (car use))
-		      (not (memq (car use) imp-theories)))
-	     (push (car use) imp-theories)
-	     (if (and (lib-datatype-or-theory? (car use))
-		      (not (library (cadr use))))
-		 (push (copy (cadr use)
-			 'library (get-lib-id (from-theory (car use))))
-		       imp-names)
-		 (push (cadr use) imp-names))))
-	 (values (nreverse imp-theories) (nreverse imp-names)))
+	 (let ((int-ths nil)
+	       (int-nms nil))
+	   (dolist (use (all-usings theory))
+	     (when (and (theory-interpretation? (car use))
+			(not (memq (car use) imp-theories)))
+	       (push (car use) int-ths)
+	       (if (and (lib-datatype-or-theory? (car use))
+			(not (library (cadr use))))
+		   (push (copy (cadr use)
+			   'library (get-lib-id (from-theory (car use))))
+			 int-nms)
+		   (push (cadr use) int-nms))))
+	   (sort-added-interpreted-theories
+	    int-ths int-nms imp-theories imp-names)))
 	(t (multiple-value-bind (int-theories int-names)
 	       (add-generated-interpreted-theories*
 		(car i-theories) (car i-names) imp-theories)
@@ -652,6 +655,52 @@ pvs-strategies files.")
 	      theory
 	      (nconc int-theories imp-theories)
 	      (nconc int-names imp-names))))))
+
+(defun sort-added-interpreted-theories (int-ths int-nms imp-theories imp-names)
+  (if (null int-ths)
+      (values (nreverse imp-theories) (nreverse imp-names))
+      (multiple-value-bind (com-int-ths com-int-nms next-int-ths next-int-nms)
+	  (collect-common-interpreted-theories int-ths int-nms)
+	(sort-added-interpreted-theories
+	 next-int-ths next-int-nms
+	 (nconc int-ths imp-theories)
+	 (nconc int-nms imp-names)))))
+
+(defun collect-common-interpreted-theories (int-ths int-nms)
+  (collect-common-interpreted-theories*
+   (cdr int-ths) (cdr int-nms)
+   (list (car int-ths)) (list (car int-nms))
+   nil nil))
+
+(defun collect-common-interpreted-theories* (int-ths int-nms
+						     com-int-ths com-int-nms
+						     next-int-ths next-int-nms)
+  (if (null int-ths)
+      (multiple-value-bind (srt-int-ths srt-int-nms)
+	  (sort-common-interpreted-theories com-int-ths com-int-nms)
+	(values srt-int-ths srt-int-nms next-int-ths next-int-nms))
+      (if (eq (from-theory (car int-ths)) (from-theory (car com-int-ths)))
+	  (collect-common-interpreted-theories*
+	   (cdr int-ths) (cdr int-nms)
+	   (cons (car int-ths) com-int-ths) (cons (car int-nms) com-int-nms)
+	   next-int-ths next-int-nms)
+	  (collect-common-interpreted-theories*
+	   (cdr int-ths) (cdr int-nms)
+	   com-int-ths com-int-nms
+	   (cons (car int-ths) next-int-ths)
+	   (cons (car int-nms) next-int-nms)))))
+
+(defun sort-common-interpreted-theories (int-ths int-nms)
+  ;; Want reverse order - so later declarations are earlier in the list
+  (let ((srt-ths (sort int-ths #'interpreted-theory-decl-follows
+		       :key #'generated-by-decl)))
+    (values srt-ths
+	    (mapcar #'(lambda (th)
+			(find (id th) int-nms :key #'id))
+	      srt-ths))))
+
+(defun interpreted-theory-decl-follows (d1 d2)
+  (memq d1 (memq d2 (all-decls (module d1)))))
 
 (defun add-generated-interpreted-theories* (theory name imp-theories)
   (let ((int-theories nil)
