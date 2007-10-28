@@ -29,8 +29,6 @@
 
 (in-package :pvs)
 
-(defvar *fetched-theory-interpretations*)
-
 (defvar *restore-objects-seen*)
 
 (defvar *restore-object-hash*)
@@ -74,12 +72,12 @@
 (defmethod get-theories-to-save ((adt datatype))
   (append (adt-generated-theories adt) (list adt)))
 
-
+;;; Called from restore-theory in context.lisp
+;;; Assumes *fetched-theory-interpretations* is bound by the calling chain
 (defun get-theory-from-binfile (filename)
   (let ((file (make-binpath filename))
 	(start-time (get-internal-real-time))
-	(*bin-theories-set* nil)
-	(*fetched-theory-interpretations* nil))
+	(*bin-theories-set* nil))
     (multiple-value-bind (vtheory fetch-error)
 	(ignore-lisp-errors (fetch-object-from-file file))
       (let ((load-time (get-internal-real-time)))
