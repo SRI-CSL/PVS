@@ -417,6 +417,8 @@ Needed to generate the same dummy name for record literals.")
 (defvar *last-proof* nil
   "The last proof attempted - an instance of proofstate")
 
+(defvar *fetched-theory-interpretations*)
+
 
 ;;; Variables used in the X proof display code (wish.lisp)
 
