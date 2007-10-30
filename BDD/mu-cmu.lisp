@@ -111,10 +111,14 @@
 			 (f1 unsigned-int))
 ;;; Term mu_mk_abstraction (LIST vars, Formula f1)
 (alien:def-alien-routine ("mu___mu_mk_l_fixed_point" mu_mk_l_fixed_point)
-			 unsigned-int)
+			 unsigned-int
+			 (relvar unsigned-int)
+			 (fml1 unsigned-int))
 ;;; Term mu_mk_fixed_point 
 (alien:def-alien-routine ("mu___mu_mk_g_fixed_point" mu_mk_g_fixed_point)
-			 unsigned-int)
+			 unsigned-int
+			 (relvar unsigned-int)
+			 (fml1 unsigned-int))
 ;;; Term mu_mk_g_fixed_point 
 (alien:def-alien-routine ("mu___mu_mk_reach" mu_mk_reach)
 			 unsigned-int
@@ -124,11 +128,11 @@
 ;;; Term mu_mk_reach (Term Next, Term S0, Term Inv)
 (alien:def-alien-routine ("mu___mu_mk_rel_var_dcl" mu_mk_rel_var_dcl)
 			 unsigned-int
-			 (char unsigned-int))
+			 (char c-string))
 ;;; Term mu_mk_rel_var_dcl (char *name) 
 (alien:def-alien-routine ("mu___mu_mk_rel_var_" mu_mk_rel_var_)
 			 unsigned-int
-			 (name unsigned-int))
+			 (name c-string))
 ;;; Term  mu_mk_rel_var_ (R_Interpret Ip, char *name)
 (alien:def-alien-routine ("mu___mu_mk_true_term" mu_mk_true_term)
 			 unsigned-int)
