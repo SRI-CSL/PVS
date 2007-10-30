@@ -291,7 +291,7 @@
 ;  (translate-to-prove (expression expr)))
 
 (defmethod translate-to-prove ((expr branch))
-  (list 'if
+  (list '|if|
 	(translate-to-prove (condition expr))
 	(translate-to-prove (then-part expr))
 	(translate-to-prove (else-part expr))))
