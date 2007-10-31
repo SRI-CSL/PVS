@@ -1665,21 +1665,21 @@ Point will be on the offending delimiter."
 ;;; This function provides the most basic form of test, removing bin
 ;;; files, typechecking a file, then running prove-importchain on it.
 ;;; After, it runs any functions in pvs-validate-hooks.
-(defun pvs-validate-typecheck-and-prove (filename &optional show-proof?
-						  importchain? theory formula)
+(defun pvs-validate-typecheck-and-prove (filename &optional show-proofp
+						  importchainp theory formula)
   (pvs-validate-typecheck filename)
   (set-rewrite-depth 0)
   (let ((current-prefix-arg t)
 	(overbose pvs-verbose))
-    (when (and show-proof?
+    (when (and show-proofp
 	       (< pvs-verbose 3))
       (pvs-message
 	  "Resetting verbose level to 3 for the proof of this validation")
       (setq pvs-verbose 3)
       (pvs-send-and-wait "(setq *pvs-verbose* 3)"))
-    (if importchain?
+    (if importchainp
 	(if formula
-	    (pvs-message "Don't set importchain? and include formula")
+	    (pvs-message "Don't set importchainp and include formula")
 	    (if theory
 		(prove-importchain theory)
 		(prove-importchain filename)))
