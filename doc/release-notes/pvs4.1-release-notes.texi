@@ -1,0 +1,117 @@
+@node PVS 4.1 Release Notes
+@unnumbered PVS 4.1 Release Notes
+
+PVS 4.1 is primarily a bug fix release; there are few new features.
+Some of the changes do affect proofs, though our experience is that
+only a few proofs need adjustment, and most of these were quite easy
+to recognize and fix.
+
+@ifnottex
+@menu
+* 4.1 Installation Notes::
+* 4.1 Upgrades::
+* 4.1 Incompatibilities::
+@end menu
+@end ifnottex
+
+@node    4.1 Installation Notes
+@section Installation Notes
+
+The system is installed as usual; see the download pages at
+@example
+@url{http://pvs.csl.sri.com/download.shtml}
+@end example
+We strongly suggest getting a pre-built Allegro version, unless you have
+concerns with the Allegro runtime click-though license, in which case get
+the pre-built CMU Lisp image.
+
+The build process is largely untested outside of SRI.  The process has
+been somewhat improved with this release, but please let us know of your
+experiences, and suggestions for improvement.  Problems and solutions may
+be sent to @email{pvs-bugs@@csl.sri.com}.  If you are more ambitious, feel
+free to expand on the build description in the PVS Wiki
+(@url{pvs-wiki.csl.sri.com}).
+
+PVS was recently moved from CVS to Subversion, and you can now access the
+system using @code{svn}:
+@example
+svn checkout https://spartan.csl.sri.com/svn/public/pvs/trunk pvs
+@end example
+
+For now, this is read-only outside of SRI.  If you wish to contribute
+code to PVS, please send it to @email{pvs-sri@@csl.sri.com}, and we will
+assess and incorporate it.
+
+
+@node    4.1 Upgrades
+@section Upgrades
+
+@itemize @minus
+@item
+PVS Now uses Allegro 8.1.
+
+@item
+ILISP has been updated to version 5.12.0 - we include slightly modified
+sources of the ILISP files in @code{pvs/emacs/emacs-src/ilisp/}.
+
+@item
+The @code{pvs} startup script has been modified to work with both Allegro
+and CMU Lisp.  In particular, the @samp{-L} flag may be used to indicate a
+lisp file to be loaded @emph{after} PVS starts.
+
+@item
+Thanks to Jerry James (@email{jamesj@@acm.org}, the BDD and WS1S source code
+have been brought up to date, and no longer generate warnings.
+
+@item
+We have made minor additions to the prelude: A @code{nonempty_set} type,
+and the following lemmas: @code{Union_member lemma},
+@code{Union_emptyset_rew}, @code{Union_union_rew},
+@code{Intersection_member}, @code{Intersection_intersection_rew},
+@code{mod_wrap2}, @code{mod_inj1}, @code{mod_inj2},
+@code{mod_wrap_inj_eq}, @code{mod_neg_limited}, @code{odd_mod},
+@code{even_mod}, and @code{finite_Union_finite}.
+
+@item
+The prover @code{instantiate} command now allows ``_'' in the same way as
+the @code{skolem} command, allowing partial instantiation.
+
+@item
+The prover @code{copy} command was a derived rule, and is now a primitive
+rule.  This is to keep it from generating spurious TCCs.
+
+@item
+The @code{let-reduce?} flag has been added to various strategies.
+
+@item
+Various improvements have been made to the @code{yices} interface.
+
+@item
+After struggling with making the bin files work with both case sensitive
+and case insensitive Lisps, we decided the simplest solution is to create
+separate bin files for each.  Thus there is now a @code{pvsbin}
+subdirectory created for case sensitive Lisps (Allegro in this case), and
+@code{PVSBIN} for case-insensitive ones (CMU Lisp).
+@end itemize
+
+@node 4.1 Incompatibilities
+@section Incompatibilities
+
+The bugs that have been fixed in 4.1 are mostly those reported since
+December 2002.  Some of these fixes are to the judgement and TCC
+mechanism, so may have an impact on existing proofs.  As usual, if it
+is not obvious why a proof is failing, it is often easiest to run it in
+parallel on an earlier version of PVS to see where it differs.
+
+Some of the differences can be quite subtle, for example, one of the
+proofs that quit working used @code{induct-and-simplify}.  There were two
+possible instantiations found in an underlying @code{inst?} command, and in
+version 3.0 one of these led to a nontrivial TCC, so the other was chosen.
+In version 4.1, a fix to the judgement mechanism meant that the TCC was no
+longer generated, resulting in a different instantiation.  In this case
+the proof was repaired using @code{:if-match all}.
+
+Most of the other incompatibilities are more obvious, and the proofs are
+easily repaired.  If you have difficulties understanding why a proof has
+failed, or want help fixing it, send it to PVS bugs
+@email{pvs-bugs@@csl.sri.com}.
