@@ -972,7 +972,7 @@ generated")
     (unless (subtype-of? tsubtype domain)
       (let ((jdecl (make-instance 'subtype-judgement
 		     :declared-subtype subtype
-		     :declared-type domain)))
+		     :declared-type (dep-binding-type domain))))
 	(typecheck-adt-decl jdecl)
 	(put-decl jdecl)))))
 
