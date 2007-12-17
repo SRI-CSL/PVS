@@ -1505,7 +1505,7 @@
 
 (defmethod subtype-wrt?* ((te1 recordtype) (te2 recordtype) reltype
 			  arg bindings)
-  (subtype-wrt?-fields (fields te1) (fields te2) (fields reltype)
+  (subtype-wrt?-fields (fields te1) (fields te2) (fields (find-supertype reltype))
 		       (make!-field-applications arg te1)
 		       bindings))
 
