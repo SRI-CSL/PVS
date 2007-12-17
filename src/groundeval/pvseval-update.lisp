@@ -587,7 +587,11 @@
 							   ;;(append (updateable-vars expr)
 								;;   livevars)
 					   ,i)))))
-		(t (let ((undef (undefined expr "Hit non-scalar/subrange quantifier in ~% ~a")))
+		(t (let ((undef (undefined
+				 bind1
+				 (format nil
+				     "Hit non-scalar/subrange variable ~a in ~% ~a"
+				   bind1 expr))))
 		   `(funcall ',undef)))))
 	(pvs2cl_up* body bindings livevars))))
 
