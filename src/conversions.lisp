@@ -919,7 +919,7 @@
 		(when assigns
 		  (list (change-class
 			 (make!-lambda-expr (list abd)
-			   (make-record-expr assigns etype))
+			   (make!-record-expr assigns etype))
 			 'rectype-conversion
 			 'conversions convs))))))))
 
