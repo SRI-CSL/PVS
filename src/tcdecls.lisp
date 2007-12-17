@@ -417,15 +417,15 @@
 			   (mk-modname (id int-th)))
 		     (setf (declaration (resolution x))
 			   (find-associated-interpreted-declaration
-			    (declaration x) int-th))
+			    (id x) int-th))
 		     nil))
 	       mapped-tccs)))
 
-(defun find-associated-interpreted-declaration (decl int-theory)
+(defun find-associated-interpreted-declaration (id int-theory)
   (let ((pdecls (remove-if (complement
 			    #'(lambda (d)
 				(and (declaration? d)
-				     (eq (id d) (id decl)))))
+				     (eq (id d) id))))
 		  (all-decls int-theory))))
     (cond ((null pdecls)
 	   (break "Something's wrong, notify pvs-bugs"))
