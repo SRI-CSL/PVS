@@ -788,7 +788,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 		      (assoc string pvs-library-path-completions)))
 	     t))))
 
-;; Not that earlier paths shadow later ones, in particular, the pvs-path/lib
+;; Note that earlier paths shadow later ones, in particular, the pvs-path/lib
 ;; directory is first.
 (defun pvs-library-path-subdirs (dirs)
   (let ((dirname-paths nil))
