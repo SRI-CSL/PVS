@@ -1717,6 +1717,11 @@
     (setf (type tupex) type)
     tupex))
 
+(defun make!-record-expr (assignments expected)
+  (let ((*generate-tccs* 'none))
+    (typecheck (mk-record-expr assignments) :expected expected)))
+    
+
 (defun make!-projections (expr)
   (assert (type expr))
   (let ((tuptype (find-supertype (type expr))))
