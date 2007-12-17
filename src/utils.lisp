@@ -247,11 +247,11 @@
 
 #+(or gcl cmu sbcl)
 (defun working-directory ()
-  *default-pathname-defaults*)
+  (pathname (nth-value 1 (unix:unix-current-directory))))
 
 #+(or gcl cmu sbcl)
 (defun set-working-directory (dir)
-  (setq *default-pathname-defaults* (pathname dir)))
+  (unix:unix-chdir (namestring dir)))
 
 #+allegro
 (defun working-directory ()
@@ -1718,7 +1718,10 @@
 		   (if (typep dtype 'subtype)
 		       (supertype dtype)
 		       dtype))))
-	(setf (adt-type fn) adt))))
+	;; Usually, adt is (a subtype of) an adt-type-name instance
+	;; But if there are mappings, the type could be anything
+	(when (adt-type-name? (find-supertype adt))
+	  (setf (adt-type fn) adt)))))
 
 (defmethod adt ((fn name-expr))
   nil)
@@ -1805,16 +1808,20 @@
 		:type (mk-funtype intype cotupletype))))))
 
 (defmethod constructor ((fn accessor-name-expr))
-  (let* ((constrs (remove-if-not #'(lambda (c) (part-of-constructor fn c))
-		     (constructors (adt (adt fn)))))
-	 (decl (declaration fn))
-	 (cons (remove-if-not #'(lambda (c) (memq decl (acc-decls c)))
-		 constrs)))
-    (mapcar #'(lambda (con)
-		(let* ((cd (con-decl con))
-		       (res (make-resolution cd (module-instance fn))))
-		  (mk-name-expr (id cd) nil nil res)))
-      cons)))
+  ;; An accessor-name-expr has a declaration of class adt-accessor-decl
+  ;; Normally, the adt associated with this is (a subtype of) an instance of
+  ;; adt-type-name, but mappings can change this.
+  (when (adt fn)
+    (let* ((constrs (remove-if-not #'(lambda (c) (part-of-constructor fn c))
+		      (constructors (adt (adt fn)))))
+	   (decl (declaration fn))
+	   (cons (remove-if-not #'(lambda (c) (memq decl (acc-decls c)))
+		   constrs)))
+      (mapcar #'(lambda (con)
+		  (let* ((cd (con-decl con))
+			 (res (make-resolution cd (module-instance fn))))
+		    (mk-name-expr (id cd) nil nil res)))
+	cons))))
 
 (defmethod constructor ((fn name-expr))
   (let* ((constrs (remove-if-not #'(lambda (c) (part-of-constructor fn c))
