@@ -682,7 +682,10 @@
       (nreverse nbindings)
       (let* ((bind (car old-bindings))
 	     (btype (type bind))
-	     (check (or (member (id bind) freevars :key #'id)
+	     (check (or (member bind freevars
+				:test #'(lambda (x y)
+					  (and (not (eq x (declaration y)))
+					       (eq (id x) (id y)))))
 			(member (id bind) boundvars :key #'id)
 			(bindings-subst-clash bind alist)
 ;; 			(some #'(lambda (fv)
