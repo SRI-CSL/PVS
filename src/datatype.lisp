@@ -694,12 +694,14 @@ generated")
   (when importings
     (dolist (imp importings)
       (let* ((cimp (copy-importing imp))
-	     (*adt-decl* imp))
+	     (*adt-decl* nil))
 	(typecheck-adt-decl cimp)))))
 
 (defun copy-importing (imp)
-  (make-instance 'importing
-    :theory-name (pc-parse (unparse (theory-name imp) :string t) 'modname)))
+  (let ((thname (pc-parse (unparse (theory-name imp) :string t) 'modname)))
+    (setf (place thname) (place (theory-name imp)))
+    (make-instance 'importing
+      :theory-name thname)))
 
 (defun generate-adt-type (adt)
   (let ((*adt-decl* adt)
