@@ -334,13 +334,18 @@
   (let ((libstr (if (char= (char lib (- (length lib) 1)) #\/)
 		    lib
 		    (concatenate 'string lib "/"))))
-    (if (file-exists-p libstr)
-	(values (pathname-to-libref libstr) libstr)
-	(let ((lib-path (pvs-library-path-ref libstr)))
-	  (if lib-path
-	      (values libstr lib-path)
-	      (values nil nil
-		      (format nil "Prelude library ~a not found" lib)))))))
+    (cond ((file-exists-p libstr)
+	   (when (char= (char lib 0) #\.)
+	     (let ((path (shortname libstr)))
+	       (assert (file-exists-p path))
+	       (push (cons libstr lib-path) *pvs-library-ref-paths*)))
+	   (values (pathname-to-libref libstr) libstr))
+	  (t (let ((lib-path (pvs-library-path-ref libstr)))
+	       (if lib-path
+		   (values libstr lib-path)
+		   (values nil nil
+			   (format nil "Prelude library ~a not found"
+			     lib))))))))
 
 (defvar *libloads* nil)
 
