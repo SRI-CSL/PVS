@@ -1864,7 +1864,7 @@ bind tighter.")
 
 (defun pp-chained-if-expr (ex print-if?)
   (when print-if?
-    (write "   IF"))
+    (write 'IF))
   (write-char #\space)
   (pp* (condition ex))
   (write-char #\space)
@@ -1881,7 +1881,10 @@ bind tighter.")
 	 (pp-chained-if-expr (else-part ex) nil))
 	(t (write 'ELSE)
 	   (write-char #\space)
-	   (pp* (else-part ex)))))
+	   (pp* (else-part ex))))
+  (when print-if?
+    (write-char #\space)
+    (write 'ENDIF)))
 
 (defmethod condition ((ex argument-conversion))
   (condition (operator ex)))
