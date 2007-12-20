@@ -1414,8 +1414,11 @@
 					   (memq d used))
 				 (pushnew d unused)))))
     (dolist (ar (auto-rewrites *current-context*))
-      (unless (memq ar used-rewrites)
-	(push ar unused)))
+      (let ((th (module ar)))
+	(unless (or (from-prelude? th)
+		    (library-datatype-or-theory? th)
+		    (memq ar used-rewrites))
+	  (push ar unused))))
     (sort unused #'string< :key #'id)))
 
 (defun used-auto-rewrites (fdecl)
