@@ -3809,7 +3809,6 @@
 	      (symbolp form)
 	      (integerp form)
 	      (rewrite-name? form))
-    (break "parse-rewrite-name")
     (error-format-if "~%Illegal rewrite name: ~a" form))
   (let* ((rewrite (pc-parse form 'rewrite-name-or-fnum))
 	 (rewrite-name
@@ -3886,17 +3885,32 @@
 	 (cdr reses)
 	 (if (or (not (formula-decl? (declaration res)))
 		 (check-auto-rewrite res fmla))
-	     (let* ((thinst (module-instance res))
-		    (th (module (declaration res)))
-		    (lres (if (and (library-datatype-or-theory? th)
-				   (null (library thinst)))
-			      (copy res
-				'module-instance
-				(copy thinst
-				  'library (libref-to-libid (lib-ref th))))
-			      res)))
-	       (acons lres fmla res-alist))
+	     (append (collect-auto-rewrite-resolutions res fmla)
+		     res-alist)
 	     res-alist)))))
+
+(defun collect-auto-rewrite-resolutions (res fmla)
+  (let* ((thinst (module-instance res))
+	 (th (module (declaration res)))
+	 (lres (if (and (library-datatype-or-theory? th)
+			(null (library thinst)))
+		   (copy res
+		     'module-instance
+		     (copy thinst
+		       'library (libref-to-libid (lib-ref th))))
+		   res)))
+    (if (or (actuals thinst)
+	    (null (formals-sans-usings th))
+	    (eq th (current-theory)))
+	(acons lres fmla res-alist)
+	;; Create name instances based on the importing instances.
+	(let ((instances (get-importings th)))
+	  (mapcar #'(lambda (inst)
+		       (if (actuals inst)
+			   (cons (copy lres 'module-instance inst)
+				 (subst-mod-params fmla inst th))
+			   (cons lres fmla)))
+	    instances)))))
 
 (defun check-auto-rewrite (res fmla)
   (let* ((mod-inst (module-instance res))
