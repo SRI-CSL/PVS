@@ -2166,7 +2166,8 @@
   (when parameters
     (let ((type (if (fully-instantiated? (car types))
 		    (car types)
-		    (break "set-type-for-application-parameters"))))
+		    (instantiate-type-from-application-parameter
+		     (car types) (car parameters)))))
       (set-type (car parameters) (car types))
       (set-type-for-application-parameters
        (cdr parameters)
@@ -2174,6 +2175,26 @@
 	   (substit (cdr types)
 	     (acons (car types) (car parameters) nil))
 	   (cdr types))))))
+
+(defun instantiate-type-from-application-parameter (type param)
+  (instantiate-type-from-param-types type (ptypes param)))
+
+(defun instantiate-type-from-param-types (type ptypes &optional itypes)
+  (if (null ptypes)
+      (cond ((null itypes)
+	     (type-error param
+	       "Could not determine the theory instance for ~a" param))
+	    ((cdr itypes)
+	     (type-ambiguity param))
+	    (t (car itypes)))
+      (if (fully-instantiated? (car ptypes))
+	  (let ((ity (find-parameter-instantiation type (car ptypes))))
+	    (instantiate-type-from-param-types
+	     type (cdr ptypes)
+	     (if (and (fully-instantiated? ity)
+		      (not (member ity itypes :test #'tc-eq)))
+		 (cons ity itypes)
+		 itypes))))))
 
 (defun make-formals-type-app (formals)
   (let ((typeslist (mapcar #'(lambda (fm)
