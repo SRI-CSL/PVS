@@ -1422,11 +1422,7 @@
 			nil))
 	     (if (not (fully-instantiated? modinst))
 		 (compatible-uninstantiated?
-		  decl
-		  modinst
-		  (mapcar #'(lambda (fd) (find-supertype (type fd)))
-		    (car (formals decl)))
-		  args)
+		  decl modinst (mapcar #'type (car (formals decl))) args)
 		 (when (compatible-args?
 			decl args
 			(mapcar #'(lambda (fa)
