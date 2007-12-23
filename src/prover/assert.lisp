@@ -3902,7 +3902,7 @@
     (if (or (actuals thinst)
 	    (null (formals-sans-usings th))
 	    (eq th (current-theory)))
-	(acons lres fmla res-alist)
+	(list (cons lres fmla))
 	;; Create name instances based on the importing instances.
 	(let ((instances (get-importings th)))
 	  (mapcar #'(lambda (inst)
