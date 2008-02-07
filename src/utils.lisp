@@ -36,6 +36,70 @@
 	  find-supertype get-theory lf make-new-context mapappend operator*
 	  put-decl pvs-current-directory resolution show))
 
+(defun current-theory ()
+  (when *current-context*
+    (theory *current-context*)))
+
+(defsetf current-theory () (theory)
+  (assert *current-context*)
+  `(setf (theory *current-context*) ,theory))
+
+(defun current-theory-name ()
+  (assert *current-context*)
+  (theory-name *current-context*))
+
+(defsetf current-theory-name () (name)
+  `(setf (theory-name *current-context*) ,name))
+
+(defun current-declaration ()
+  (assert *current-context*)
+  (declaration *current-context*))
+
+(defsetf current-declaration () (decl)
+  `(setf (declaration *current-context*) ,decl))
+
+(defun current-declarations-hash ()
+  (assert *current-context*)
+  (declarations-hash *current-context*))
+
+(defsetf current-declarations-hash () (decl-hash)
+  `(setf (declarations-hash *current-context*) ,decl-hash))
+
+(defun current-using-hash ()
+  (assert *current-context*)
+  (using-hash *current-context*))
+
+(defsetf current-using-hash () (using-hash)
+  `(setf (using-hash *current-context*) ,using-hash))
+
+(defun current-library-alist ()
+  (assert *current-context*)
+  (library-alist *current-context*))
+
+(defsetf current-library-alist () (lib-alist)
+  `(setf (library-alist *current-context*) ,lib-alist))
+
+(defun current-known-subtypes ()
+  (assert *current-context*)
+  (known-subtypes *current-context*))
+
+(defsetf current-known-subtypes () (known-subtypes)
+  `(setf (known-subtypes *current-context*) ,known-subtypes))
+
+(defun current-judgements ()
+  (assert *current-context*)
+  (judgements *current-context*))
+
+(defsetf current-judgements () (judgements)
+  `(setf (judgements *current-context*) ,judgements))
+
+(defun current-conversions ()
+  (assert *current-context*)
+  (conversions *current-context*))
+
+(defsetf current-conversions () (conversions)
+  `(setf (conversions *current-context*) ,conversions))
+
 (defmethod initialize-instance :around ((obj syntax) &rest initargs)
   (let ((place (getf initargs 'place)))
     (when place
@@ -201,6 +265,7 @@
   (lf "pvs-parser")
   (lf "pvs-sorts"))
 
+;; Same as describe, but returns the object, rather than nil
 (defun show (obj)
   (describe obj)
   obj)
@@ -3061,70 +3126,6 @@ space")
       (if (funcall pred (car list))
 	  (split-on* pred (cdr list) (cons (car list) match) rest)
 	  (split-on* pred (cdr list) match (cons (car list) rest)))))
-
-(defun current-theory ()
-  (when *current-context*
-    (theory *current-context*)))
-
-(defsetf current-theory () (theory)
-  (assert *current-context*)
-  `(setf (theory *current-context*) ,theory))
-
-(defun current-theory-name ()
-  (assert *current-context*)
-  (theory-name *current-context*))
-
-(defsetf current-theory-name () (name)
-  `(setf (theory-name *current-context*) ,name))
-
-(defun current-declaration ()
-  (assert *current-context*)
-  (declaration *current-context*))
-
-(defsetf current-declaration () (decl)
-  `(setf (declaration *current-context*) ,decl))
-
-(defun current-declarations-hash ()
-  (assert *current-context*)
-  (declarations-hash *current-context*))
-
-(defsetf current-declarations-hash () (decl-hash)
-  `(setf (declarations-hash *current-context*) ,decl-hash))
-
-(defun current-using-hash ()
-  (assert *current-context*)
-  (using-hash *current-context*))
-
-(defsetf current-using-hash () (using-hash)
-  `(setf (using-hash *current-context*) ,using-hash))
-
-(defun current-library-alist ()
-  (assert *current-context*)
-  (library-alist *current-context*))
-
-(defsetf current-library-alist () (lib-alist)
-  `(setf (library-alist *current-context*) ,lib-alist))
-
-(defun current-known-subtypes ()
-  (assert *current-context*)
-  (known-subtypes *current-context*))
-
-(defsetf current-known-subtypes () (known-subtypes)
-  `(setf (known-subtypes *current-context*) ,known-subtypes))
-
-(defun current-judgements ()
-  (assert *current-context*)
-  (judgements *current-context*))
-
-(defsetf current-judgements () (judgements)
-  `(setf (judgements *current-context*) ,judgements))
-
-(defun current-conversions ()
-  (assert *current-context*)
-  (conversions *current-context*))
-
-(defsetf current-conversions () (conversions)
-  `(setf (conversions *current-context*) ,conversions))
 
 (defmethod assuming-instances ((decl declaration))
   (let* ((theory (module decl))
