@@ -48,7 +48,7 @@
 # trap "echo 'Interrupted...cleaning up the staging directory'; rm -rf ${temppar
 # ent}; exit 1" 1 2 15
 
-TARFLAGS='-cohz --mode=u+rw --atime-preserve --exclude=CVS'
+TARFLAGS='-cohz --mode=u+rw --atime-preserve --exclude=CVS --exclude=.svn'
 
 version="4.1"
 
