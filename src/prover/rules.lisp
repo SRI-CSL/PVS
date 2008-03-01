@@ -319,17 +319,15 @@ See also HIDE, REVEAL"
 		      (strat-eval* step ps))))
 	(if (or (typep strat 'strategy)
 		(typep strat 'rule-instance))
-	    (let* ((new-strat
-		    (if (typep strat 'strategy)
-			strat
-			(make-instance 'strategy
-			  'topstep strat)))
+	    (let* ((new-strat (if (typep strat 'strategy)
+				  strat
+				  (make-instance 'strategy
+				    :topstep strat)))
 		   (newps0 (copy ps
 			     'strategy new-strat
 			     'parent-proofstate nil))
 		   (newps (change-class newps0 'apply-proofstate))
-		   (dummy (setf (apply-parent-proofstate newps)
-				ps))
+		   (dummy (setf (apply-parent-proofstate newps) ps))
 		   (*noninteractivemode* t)
 		   (*suppress-printing* t)
 		   (*dependent-decls* nil)
@@ -353,7 +351,6 @@ See also HIDE, REVEAL"
 				     (rerun
 				      ,(editable-justification
 					justif nil t)))))
-		    ;; (format t "~%step= ~a~%decls = ~a" step *dependent-decls*)
 		    (when time?
 		      (format t "~%;;;Used ~,2F seconds in ~s." end-time step))
 		    (if (eq (status-flag newps) 'XX)
