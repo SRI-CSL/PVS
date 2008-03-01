@@ -196,6 +196,8 @@
 						 osubsts))
 			      osubsts)
 		       osubsts)))
+      (when (and vdecl *rec-judgement-extra-conditions*)
+	(break "Need to add extra conditions"))
       (universal-closure (add-tcc-conditions*
 			  (raise-actuals srec-expr)
 			  (if (and vdecl ch?)
@@ -575,8 +577,8 @@
       (let* ((b1 (car bind1))
 	     (b2 (or (find-if #'(lambda (b)
 				  (and (same-id b1 b)
-				       (tc-eq-with-bindings (type b1) (type b)
-							    binds)))
+				       (supertype-with-bindings
+					(type b1) (type b) binds)))
 			      bind2)
 		     (find-if #'(lambda (b)
 				  (tc-eq-with-bindings (type b1) (type b)
@@ -585,6 +587,64 @@
 	(subsumes-bindings (cdr bind1) (remove b2 bind2)
 			   (if b2 (cons (cons b1 b2) binds) binds)
 			   (if b2 leftovers (cons b1 leftovers))))))
+
+(defmethod supertype-with-bindings :around (t1 t2 binds)
+  (or (tc-eq-with-bindings t1 t2 binds)
+      (call-next-method)))
+
+(defmethod supertype-with-bindings ((t1 subtype) (t2 subtype) binds)
+  (or (supertype-with-bindings t1 (supertype t2) binds)
+      ;; Check that predicates subsume under bindings
+      (multiple-value-bind (pred-subsumes? nbinds)
+	  (pred-subsumes (predicate t1) (predicate t2) binds)
+	(and pred-subsumes?
+	     (supertype-with-bindings (supertype t1) (supertype t2) nbinds)))))
+
+;; For now, we simply check if some disjunct of p1 appears among the
+;; conjuncts of p2, as this is the most common (and easiest) case.
+(defmethod pred-subsumes ((p1 lambda-expr) (p2 lambda-expr) binds)
+  (when (= (length (bindings p1)) (length (bindings p2)))
+    (let ((nbinds (pairlis (bindings p1) (bindings p2) binds))
+	  (p2-conjuncts (collect-conjuncts (expression p2))))
+      (values (some #'(lambda (dj)
+			(member dj p2-conjuncts
+				:test #'(lambda (x y)
+					  (tc-eq-with-bindings x y nbinds))))
+		    (collect-disjuncts (expression p1)))
+	      nbinds))))
+
+(defmethod pred-subsumes ((p1 lambda-expr) p2 binds)
+  (let ((p2-conjuncts (collect-conjuncts p2)))
+    (values (some #'(lambda (dj)
+		      (member dj p2-conjuncts
+			      :test #'(lambda (x y)
+					(tc-eq-with-bindings x y binds))))
+		  (collect-disjuncts (expression p1)))
+	    binds)))
+
+(defmethod pred-subsumes (p1 (p2 lambda-expr) binds)
+  (let ((p2-conjuncts (collect-conjuncts (expression p2))))
+    (values (some #'(lambda (dj)
+		      (member dj p2-conjuncts
+			      :test #'(lambda (x y)
+					(tc-eq-with-bindings x y binds))))
+		  (collect-disjuncts p1))
+	    binds)))
+
+(defmethod pred-subsumes (p1 p2 binds)
+  (let ((p2-conjuncts (collect-conjuncts p2)))
+    (values (some #'(lambda (dj)
+		      (member dj p2-conjuncts
+			      :test #'(lambda (x y)
+					(tc-eq-with-bindings x y binds))))
+		  (collect-disjuncts p1))
+	    binds)))
+
+(defmethod supertype-with-bindings (t1 (t2 subtype) binds)
+  (supertype-with-bindings t1 (supertype t2) binds))
+
+(defmethod supertype-with-bindings (t1 t2 binds)
+  nil)
 
 (defun generate-recursive-tcc (name arguments)
   (let* ((*old-tcc-name* nil)
