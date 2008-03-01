@@ -17,7 +17,7 @@
        (pprint-indent :block 2 ,strm)
        (pprint-newline :linear ,strm)
        (pprint-logical-block (,strm nil)
-	 (format ,strm "<~(~A~{ ~A=\"~A\"~}~)>" ',eltname ,attrs)
+	 (format ,strm "<~(~A~)~{ ~A=\"~A\"~}>" ',eltname ,attrs)
 	 (format ,strm "~{~/pvs:pp-xml*/~}" (list ,@args))
 	 (pprint-indent :block 0 ,strm)
 	 (format ,strm "~_</~(~A~)>" ',eltname)))))
@@ -58,20 +58,28 @@
 
 (defstruct xml-row-entries entries)
 
+(defstruct xml-declref ref)
+
 (defun print-xml-prelude ()
   (dolist (theory *prelude-theories*)
     (format t "~%Generating ~a.xml" (id theory))
-    (print-xml theory
-	       :file (concatenate 'string (string (id theory)) ".xml"))))
+    (print-xml-theory theory)))
 
 (defun print-xml-pvs-file (filename)
   (let ((theories (typecheck-file filename nil nil nil t)))
-    (with-open-file (str (format nil "~a.xml" filename)
-			 :direction :output :if-exists :supersede)
-      (dolist (theory theories)
-	(print-xml theory :stream str)
-	(format str "~2%")))))
+    (dolist (theory theories)
+      (print-xml-theory theory))))
 
+(defun print-xml-theory (theory)
+  (print-xml theory :file (concatenate 'string (string (id theory)) ".xml"))
+  (print-xml (xml-collect-proofs theory)
+	     :file (concatenate 'string (string (id theory)) "-proofs.xml")))
+
+(defun xml-collect-proofs (theory)
+  ;;; For now, we simply rerun each proof, and save an intermediate
+  ;;; representation, that can easily generate the XML proof.
+  )
+  
 (defun print-xml (obj &key string stream file char-width
 		      length level lines (pretty t))
   (let ((*print-length* length)
@@ -90,6 +98,7 @@
 
 (defvar *pp-xml-bindings*)
 (defvar *pp-xml-declaration*)
+(defvar *pp-xml-decl-bindings-ctr*)
 
 (defun pp-xml (obj &optional (stream *standard-output*))
   (let ((*pp-xml-bindings* nil))
@@ -106,6 +115,7 @@
   (with-slots (id formals exporting assuming theory) mod
     (write "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
 	   :stream stream :escape nil)
+    (terpri stream)
     (let ((*current-context* (context mod)))
       (xsal-elt stream theory (xml-attributes mod)
 		id
@@ -118,7 +128,9 @@
 
 (defmethod pp-xml* :around (stream (rtype inline-recursive-type)
 				   &optional colon? atsign?)
-  (let ((*pp-xml-declaration* rtype))
+  (declare (ignore stream colon? atsign?))
+  (let ((*pp-xml-declaration* rtype)
+	(*pp-xml-decl-bindings-ctr* nil))
     (call-next-method)))
 
 (defmethod pp-xml* (stream (rtype recursive-type) &optional colon? atsign?)
@@ -170,6 +182,8 @@
   (let ((*pp-xml-bindings* (if (binding? (car list))
 			       (cons (car list) *pp-xml-bindings*)
 			       *pp-xml-bindings*)))
+    (when (binding? (car list))
+      (increment-binding-count (car list)))
     (pp-xml* stream (cdr list) colon? atsign?)))
 
 (defmethod pp-xml* (stream (list null) &optional colon? atsign?)
@@ -178,8 +192,12 @@
 
 (defmethod pp-xml* (stream (formals xml-formals) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
-  (xsal-elt stream formals (xml-attributes formals)
-	    (xml-formals-list formals)))
+  (pp-xml-formals-list stream (xml-formals-list formals)))
+
+(defun pp-xml-formals-list (stream formals)
+  (when formals
+    (xsal-elt stream formals nil
+	      (pp-xml* stream formals nil nil))))
 
 (defmethod pp-xml* (stream (assuming xml-assuming) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -197,7 +215,7 @@
 
 (defun pp-xml-exporting-names (stream names)
   (when names
-    (xsal-elt stream exporting-names
+    (xsal-elt stream exporting-names nil
 	      (pp-xml* stream names nil nil))))
 
 (defun pp-xml-exporting-but-names (stream names)
@@ -226,11 +244,14 @@
 (defmethod pp-xml* (stream (imp importing) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
   (with-slots (theory-name) imp
-    (let ((*pp-xml-declaration* imp))
+    (let ((*pp-xml-declaration* imp)
+	  (*pp-xml-decl-bindings-ctr* nil))
       (xsal-elt stream importing (xml-attributes imp) theory-name))))
 
 (defmethod pp-xml* :around (stream (decl declaration) &optional colon? atsign?)
-  (let ((*pp-xml-declaration* decl))
+  (declare (ignore stream colon? atsign?))
+  (let ((*pp-xml-declaration* decl)
+	(*pp-xml-decl-bindings-ctr* nil))
     (call-next-method)))
 
 (defmethod pp-xml* (stream (decl type-decl) &optional colon? atsign?)
@@ -247,6 +268,8 @@
   (declare (ignore colon? atsign?))
   (with-slots (id formals type-value type-expr contains) decl
     (let ((*pp-xml-bindings* (append (car formals) *pp-xml-bindings*)))
+      (dolist (fml (car formals))
+	(increment-binding-count fml))
       (xsal-elt stream type-decl (xml-attributes decl)
 		id type-value type-expr
 		(when contains
@@ -275,8 +298,9 @@
 
 (defmethod pp-xml* (stream (decl formal-const-decl) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
-  (with-slots (id type) decl
-    (xsal-elt stream formal-const-decl (xml-attributes decl) id type)))
+  (with-slots (id declared-type type) decl
+    (xsal-elt stream formal-const-decl (xml-attributes decl)
+	      id declared-type type)))
 
 (defmethod pp-xml* (stream (decl lib-decl) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -290,24 +314,46 @@
 
 (defmethod pp-xml* (stream (decl var-decl) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
-  (with-slots (id type) decl
-    (xsal-elt stream var-decl (xml-attributes decl) id type)))
+  (with-slots (id declared-type type) decl
+    (xsal-elt stream var-decl (xml-attributes decl) id declared-type type)))
 
 (defmethod pp-xml* (stream (decl const-decl) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
   (with-slots (id formals declared-type type definition) decl
     (let ((*pp-xml-bindings* (apply #'append formals)))
+      (dolist (fmls formals)
+	(dolist (fml fmls)
+	  (increment-binding-count fml)))
       (xsal-elt stream const-decl (xml-attributes decl)
 		id (when formals
-		     (make-xml-decl-formals formals))
+		     (make-xml-decl-formals :list formals))
 		declared-type type definition))))
+
+(defmethod pp-xml* (stream (formals xml-decl-formals) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
+  (xsal-elt stream decl-formals (xml-attributes formals)
+	    (pp-xml-decl-formals-list stream (xml-decl-formals-list formals))))
+
+(defun pp-xml-decl-formals-list (stream formals)
+  (when formals
+    (pp-xml-formal-list stream (car formals))
+    (pp-xml-decl-formals-list stream (cdr formals))))
+
+(defun pp-xml-formal-list (stream formals)
+  (xsal-elt stream formals nil
+	    (pp-xml-formals-list stream formals)))
 
 (defmethod pp-xml* (stream (decl def-decl) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
   (with-slots (id formals declared-type type definition measure ordering) decl
     (let ((*pp-xml-bindings* (apply #'append formals)))
+      (dolist (fmls formals)
+	(dolist (fml fmls)
+	  (increment-binding-count fml)))
       (xsal-elt stream def-decl (xml-attributes decl)
-		id formals declared-type definition measure ordering))))
+		id (when formals
+		     (make-xml-decl-formals :list formals))
+		declared-type type definition measure ordering))))
 
 (defmethod pp-xml* (stream (decl formula-decl) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -321,8 +367,10 @@
 		 id definition))
       (t
        (xsal-elt stream formula-decl (xml-attributes decl)
-		 id definition ;;default-proof
-		 )))))
+		 id definition (xml-proof-reference default-proof))))))
+
+(defun xml-proof-reference (proof)
+  )
 
 (defmethod pp-xml* (stream (decl tcc-decl) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -343,7 +391,10 @@
   (declare (ignore colon? atsign?))
   (with-slots (id name formals type) decl
     (let ((*pp-xml-bindings*
-	   (append (apply #'append (formals decl)) *pp-xml-bindings*)))
+	   (append (apply #'append formals) *pp-xml-bindings*)))
+      (dolist (fmls formals)
+	(dolist (fml fmls)
+	  (increment-binding-count fml)))
       (xsal-elt stream application-judgement (xml-attributes decl)
 		id type name (make-xml-bindings :list formals)))))
 
@@ -358,6 +409,8 @@
     (let* ((bindings (when (type-application? declared-subtype)
 		       (parameters declared-subtype)))
 	   (*pp-xml-bindings* (append bindings *pp-xml-bindings*)))
+      (dolist (binding bindings)
+	(increment-binding-count binding))
       (xsal-elt stream subtype-judgement (xml-attributes decl) id subtype type))))
 
 (defmethod pp-xml* (stream (decl conversion-decl) &optional colon? atsign?)
@@ -368,6 +421,10 @@
 
 ;;; Type expressions
 
+;;; We only keep the print type - not the canonical type.  Thus to do the
+;;; equivalent of tc-eq in XML one must follow reolutions and do something
+;;; similar to subst-mod-params.  This must be kept in mind when reading
+;;; XML into PVS.
 (defmethod pp-xml* :around (stream (te type-expr) &optional colon? atsign?)
   (if (print-type te)
       (pp-xml* stream (print-type te) colon? atsign?)
@@ -419,7 +476,8 @@
 
 (defun pp-xml-fields (stream fields &optional colon? atsign?)
   (when fields
-    (let ((*pp-xml-bindings* (append (car fields) *pp-xml-bindings*)))
+    (let ((*pp-xml-bindings* (cons (car fields) *pp-xml-bindings*)))
+      (increment-binding-count (car fields))
       (pp-xml* stream (car fields) colon? atsign?)
       (pp-xml-fields stream (cdr fields) colon? atsign?))))
 
@@ -434,6 +492,8 @@
     (let ((*pp-xml-bindings*
 	   (append (when (dep-binding? domain) (list domain))
 		   *pp-xml-bindings*)))
+      (when (dep-binding? domain)
+	(increment-binding-count domain))
       (xsal-elt stream function-type (xml-attributes te) domain range))))
 
 (defmethod pp-xml* (stream (te tupletype) &optional colon? atsign?)
@@ -503,12 +563,17 @@
   (declare (ignore colon? atsign?))
   (with-slots (bindings expression) ex
     (let ((*pp-xml-bindings* (append bindings *pp-xml-bindings*)))
-      (xsal-elt stream binding-expr (xml-attributes ex) (operator ex) bindings expression))))
+      (dolist (bd bindings)
+	(increment-binding-count bd))
+      (xsal-elt stream binding-expr (xml-attributes ex) (operator ex)
+		bindings expression))))
 
 (defmethod pp-xml* (stream (ex lambda-expr) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
   (with-slots (bindings expression) ex
     (let ((*pp-xml-bindings* (append bindings *pp-xml-bindings*)))
+      (dolist (bd bindings)
+	(increment-binding-count bd))
       (xsal-elt stream lambda-expr (xml-attributes ex)
 		(make-xml-bindings :list bindings)
 		expression))))
@@ -517,6 +582,8 @@
   (declare (ignore colon? atsign?))
   (with-slots (bindings expression) ex
     (let ((*pp-xml-bindings* (append bindings *pp-xml-bindings*)))
+      (dolist (bd bindings)
+	(increment-binding-count bd))
       (xsal-elt stream forall-expr (xml-attributes ex)
 		(make-xml-bindings :list bindings)
 		expression))))
@@ -525,6 +592,8 @@
   (declare (ignore colon? atsign?))
   (with-slots (bindings expression) ex
     (let ((*pp-xml-bindings* (append bindings *pp-xml-bindings*)))
+      (dolist (bd bindings)
+	(increment-binding-count bd))
       (xsal-elt stream exists-expr (xml-attributes ex)
 		(make-xml-bindings :list bindings)
 		expression))))
@@ -545,7 +614,7 @@
     (xsal-elt stream binding (xml-attributes bd) id type)))
 
 (defmethod xml-attributes ((bd bind-decl))
-  (nconc (list '|xlink:id| (xml-declaration-id bd)) (call-next-method)))
+  (nconc (list '|id| (xml-declaration-id bd)) (call-next-method)))
 
 (defmethod pp-xml* (stream (ex update-expr) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -578,6 +647,8 @@
   (declare (ignore colon? atsign?))
   (with-slots (constructor args expression) sel
     (let ((*pp-xml-bindings* (append args *pp-xml-bindings*)))
+      (dolist (bd args)
+	(increment-binding-count bd))
       (xsal-elt stream selection (xml-attributes sel)
 		constructor
 		(when args
@@ -635,15 +706,19 @@
 
 (defmethod pp-xml* (stream (thex xml-table-heading-expr)
 			   &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
   (xsal-elt stream table-heading-expr nil (xml-table-heading-expr-expr thex)))
 
 (defmethod pp-xml* (stream (th xml-table-headings) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
   (xsal-elt stream table-headings nil (xml-table-headings-headings th)))
 
 (defmethod pp-xml* (stream (te xml-table-entries) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
   (xsal-elt stream table-entries nil (xml-table-entries-entries te) nil nil))
 
 (defmethod pp-xml* (stream (te xml-row-entries) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
   (xsal-elt stream row-entries nil (xml-row-entries-entries te) nil nil))
 
 (defmethod pp-xml* (stream (ex name-expr) &optional colon? atsign?)
@@ -651,7 +726,8 @@
   (with-slots (library mod-id actuals id mappings resolutions type) ex
     (let* ((decl (declaration (car resolutions)))
 	   (binding? (memq decl *pp-xml-bindings*))
-	   (mi (unless binding? (module-instance (car resolutions)))))
+	   ;;(mi (unless binding? (module-instance (car resolutions))))
+	   )
       (assert (or (not binding?) (binding? decl)))
 ;;       (assert (or (not binding?)
 ;; 		  (not (member decl *pp-xml-bindings*
@@ -680,19 +756,21 @@
 
 (defmethod pp-xml-decl-ref (stream decl)
   (if (eq (module decl) (current-theory))
-      (xsal-elt stream declref
-		(list '|xlink:href|
-		      (format nil "#~a" (xml-declaration-id decl))))
-      (xsal-elt stream declref
-		(list '|xlink:href|
-		      (format nil "~a#~a"
-			(id (module decl))
-			(xml-declaration-id decl))))))
+      (make-xml-declref :ref (format nil "#~a" (xml-declaration-id decl)))
+      (make-xml-declref :ref (format nil "~a#~a"
+			       (id (module decl))
+			       (xml-declaration-id decl)))))
 
 (defmethod pp-xml-decl-ref (stream (bd binding))
-  (xsal-elt stream declref
-	    (list '|xlink:href|
-		  (format nil "#~a" (xml-declaration-id bd)))))
+  (make-xml-declref :ref (format nil "#~a" (xml-declaration-id bd))))
+
+(defmethod pp-xml* (stream (dref xml-declref) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
+  (xsal-elt stream declref (xml-attributes dref)))
+
+(defmethod xml-attributes ((dref xml-declref))
+  (list '|xlink:href| (xml-declref-ref dref)))
+
 
 (defmethod xml-declaration-id (decl)
   (assert (and (module decl) (memq decl (all-decls (module decl)))))
@@ -702,21 +780,34 @@
 						(not (eq (ref-to-id x) id))))
 			       (all-decls (module decl)))))
 	 (optrans (let ((opt (assq id *pvs-operators*)))
-		    (if opt
-			(format nil "~a." (cdr opt))
-			(string id)))))
+		    (translate-characters-to-xml-string
+		     (if opt
+			 (format nil "~a." (cdr opt))
+			 (string id))))))
     (if (zerop pos)
 	optrans
 	(format nil "~a-~d" optrans pos))))
 
+(defun increment-binding-count (binding)
+  (assert (binding? binding))
+  (let ((entry (assq (id binding) *pp-xml-decl-bindings-ctr*)))
+    (if entry
+	(incf (cdr entry))
+	(setq *pp-xml-decl-bindings-ctr*
+	      (acons (id binding) 0 *pp-xml-decl-bindings-ctr*)))))
+
 (defmethod xml-declaration-id ((bd binding))
   (assert *pp-xml-declaration*)
   (assert (memq bd *pp-xml-bindings*))
-  (let ((pos (position bd (remove bd *pp-xml-bindings* :test-not #'same-id))))
+  (let ((pos (position bd (remove bd *pp-xml-bindings* :test-not #'same-id)))
+	(cnt (cdr (assq (id bd) *pp-xml-decl-bindings-ctr*))))
     (assert pos)
-    (format nil "~a-~a~@[-~d~]"
-      (xml-declaration-id *pp-xml-declaration*)
-      (id bd) (unless (zerop pos) pos))))
+    (assert cnt)
+    (translate-characters-to-xml-id 
+     (format nil "~a-~a~@[-~d~]~@[-~d~]"
+       (xml-declaration-id *pp-xml-declaration*)
+       (id bd)
+       (unless (zerop pos) pos) (unless (zerop cnt) cnt)))))
 
 (defmethod xml-declaration-id ((imp importing))
   (let* ((theory (current-theory))
@@ -761,7 +852,10 @@
 (defmethod pp-xml* (stream (ex modname) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
   (with-slots (id actuals) ex
-    (xsal-elt stream theory-name (xml-attributes ex) id actuals)))
+    (xsal-elt stream theory-name (xml-attributes ex)
+	      id
+	      (unless (null actuals)
+		(make-xml-actuals :list actuals)))))
 
 (defmethod pp-xml* (stream (ex symbol) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -885,6 +979,10 @@
 (defmethod xml-attributes :around ((ex nonempty-type-decl))
   (nconc (list 'nonempty-type "true") (call-next-method)))
 
+(defmethod xml-attributes :around ((ex module))
+  (nconc (list '|xmlns:xlink| "http://www.w3.org/1999/xlink")
+	 (call-next-method)))
+
 (defmethod xml-attributes (ex)
   (declare (ignore ex))
   nil)
@@ -900,3 +998,62 @@
 	(#\> (push "&gt;" chars))
 	(t   (push (string (char string i)) chars))))
     (apply #'concatenate 'string (nreverse chars))))
+
+;;; xsd:ID characters consist of letters, digits, underscores, hyphens, and
+;;; periods.
+(defun translate-characters-to-xml-id (string)
+  (if (every #'xml-name-char-p string)
+      string
+      (let ((chars nil))
+	(dotimes (i (length string))
+	  (let ((ch (char string i)))
+	    (if (xml-name-char-p ch)
+		(push (string ch) chars)
+		;; The other chars are all below 0, between 9 and A, between Z
+		;; and a, or above z.
+		(push 
+		 (case ch
+		   (#\! "-excl")
+		   (#\# "-shrp")
+		   (#\$ "-dlr")
+		   (#\% "-pct")
+		   (#\& "-amp")
+		   (#\* "-star")
+		   (#\+ "-plus")
+		   (#\/ "-slsh")
+		   (#\< "-lt")
+		   (#\= "-eql")
+		   (#\> "-gt")
+		   (#\? "-p")
+		   (#\@ "-ats")
+		   (#\^ "-crt")
+		   (#\~ "-tlda")
+		   (t (break "something's wrong")))
+		 chars))))
+	(apply #'concatenate 'string (nreverse chars)))))
+
+(defun xml-name-char-p (ch)
+  (or (alpha-char-p ch)
+      (digit-char-p ch)
+      (member ch '(#\_ #\- #\.) :test #'char=)))
+
+;;; Proof collection
+
+;; Derived from write-proof-status in wish.lisp (and uses some functions there)
+(defun xml-collect-proof (ps)
+  (let* ((subs (x-subgoals ps))
+	 (rule (xml-collect-rule ps)))
+    (if (null rule)
+	(xml-collect-proof (car subs))
+	)))
+	
+
+(defun xml-collect-rule (ps)
+  (and (or (children ps)
+	   (eq (status-flag ps) '!))
+       (or (current-rule ps)
+	   (unless
+	       ;; This can happen with checkpoints
+	       (and (consp (current-input ps))
+		    (eq (car (current-input ps)) 'lisp))
+	     (current-input ps)))))
