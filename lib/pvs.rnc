@@ -1,10 +1,37 @@
-# RELAX NG compact version of the PVS abstract syntax
+# RELAX NG compact version of the PVS abstract syntax.
 # Check it using
-# java -jar ~/src/jing-20030619/bin/jing.jar -c ~/pvs4.1/lib/pvs.rnc
+# java -jar ~/src/jing-20030619/bin/jing.jar -c ~/pvs4.1/lib/pvs.rnc foo.xml
 
-grammar {
+# This essentially reflects the classes that define the abstract syntax of
+# PVS in Common Lisp.  The CLOS classes are more expressive, so this is not
+# a trivial mapping.  Relax NG does not actually have a notion of classes.
 
-start = file-content | theory-content | recursive-type-content
+# The grammar generally is broken into the following sections:
+#   Modules
+#   Declarations
+#   Type Expressions
+#   Expressions
+#   Names
+#   Proofs
+
+# Many of the classes and attributes of PVSAS exist solely to be able to
+# maintain the form of expressions given by the user.  For example, the "="
+# in the expression "x = 1" would internally be treated as
+# "equalities[numbers.number].=".  This is handled by having a name with
+# elements for id, theory-id, actuals, and mappings, as well as a resolution
+# that gives the complete form.  Thus the prettyprinter uses the name parts,
+# while, e.g., equality testing is done with the resolutions.
+
+# Another use of slots in the PVS classes is to cache values that are costly
+# to compute.  For the most part, these are not represented in the RNC
+
+namespace a = "http://relaxng.org/ns/compatibility/annotations/1.0"
+namespace xlink = "http://www.w3.org/1999/xlink"
+
+start = [ xlink:type = "simple" ]
+  file-content | theory-content | recursive-type-content
+
+### Modules
 
 file-content =
   element pvs-file {top-level-content+}
@@ -19,6 +46,10 @@ theory-content =
      assuming-part?,
      theory-part?,
      exporting-content?}
+
+# Recursive types can occur at the top level, or as a declaration.  The
+# latter are inline-datatypes, and are the same except that formals are not
+# allowed.
 
 recursive-type-content =
   element datatype
@@ -72,7 +103,7 @@ formal-subtype-decl-content =
   element formal-subtype-decl {type-def-decl}
 
 formal-const-decl-content =
-  element formal-const-decl {typed-declaration}
+  element formal-const-decl {id, typed-declaration}
 
 formal-theory-decl-content =
   element formal-theory-decl {theory-name}
@@ -150,9 +181,11 @@ assuming-part =
 assuming-decl = theory-decl | assumption-content
 
 assumption-content =
-  element assumption {formula-decl-attr, declaration, expr}
+  element assumption {formula-decl-attr, id, declaration, expr}
 
 theory-part = theory-decl+
+
+### Declarations
 
 theory-decl =
     importing-content
@@ -193,60 +226,73 @@ application-judgement-content =
   element application-judgement {commonattrs, id?, type-expr, name-expr-content, bindings-content}
 
 conversion-content =
-  element conversion-decl {commonattrs, expr}
+  element conversion-decl {declaration, expr}
 
 auto-rewrite-content =
-  element auto-rewrite {typed-declaration}
+  element auto-rewrite {id, typed-declaration}
 
 lib-decl-content =
-  element lib-decl {typed-declaration}
+  element lib-decl {id, typed-declaration}
 
 theory-decl-content =
-  element theory-decl {typed-declaration}
+  element theory-decl {id, typed-declaration}
 
 type-decl-content =
   element type-decl
     # The type-value is the given type, the type-expr is its canonical form
     #                              type-value  type-expr
-    {type-decl-attrs, declaration, type-expr?, type-expr?, contains-content?}
+    {type-decl-attrs, id, declaration, type-expr?, type-expr?, contains-content?}
 
 type-from-decl-content =
   element type-from-decl
-    {type-decl-attrs, declaration, type-expr, contains-content?}
+    {type-decl-attrs, id, declaration, type-expr, contains-content?}
 
 var-decl-content =
-  element var-decl {typed-declaration}
+  element var-decl {id, typed-declaration}
 
 const-decl-content =
-  element const-decl {decl-formals-content?, typed-declaration, expr?}
+  element const-decl {id, decl-formals-content?, typed-declaration, expr?}
 
 decl-formals-content =
-  element decl-formals (binding+)
+   element decl-formals {decl-formals1-content+}
+
+decl-formals1-content =
+   element formals {decl-formals2-content+}
+
+decl-formals2-content =
+   element formals {binding-content+}
 
 macro-decl-content =
-  element macro-decl {typed-declaration}
+  element macro-decl {id, typed-declaration}
 
 def-decl-content =
-  #                                    definition, measure, ordering
-  element def-decl {typed-declaration, expr, expr, expr?}
+   element def-decl
+   {id, decl-formals-content?, typed-declaration,
+      def-expr, measure-expr, order-expr?}
+
+def-expr = expr
+
+measure-expr = expr
+
+order-expr = expr
 
 ind-decl-content =
-  element ind-decl {typed-declaration}
+  element ind-decl {id, typed-declaration}
 
 corec-decl-content =
-  element corec-decl {typed-declaration}
+  element corec-decl {id, typed-declaration}
 
 coind-decl-content =
-  element coind-decl {typed-declaration}
+  element coind-decl {id, typed-declaration}
 
 formula-decl-content =
-  element formula-decl {formula-decl-attr, declaration, expr}
+  element formula-decl {formula-decl-attr, id, declaration, expr}
 
 axiom-decl-content =
-  element axiom-decl {formula-decl-attr, declaration, expr}
+  element axiom-decl {formula-decl-attr, id, declaration, expr}
 
 tcc-decl-content =
-  element tcc-decl {formula-decl-attr, declaration, expr}
+  element tcc-decl {formula-decl-attr, id, declaration, expr}
 
 formula-decl-attr =
   attribute kind { "assumption" | "axiom" | "challenge" | "claim" |
@@ -255,17 +301,13 @@ formula-decl-attr =
                    "sublemma" | "theorem" }
 
 inline-datatype-content =
-  element inline-datatype {typed-declaration}
-
+  element inline-datatype {id, typed-declaration}
 
 declaration =
-  declarationatts, id, formals?
-
-declarationatts =
   commonattrs, chainattr?
 
 type-decl =
-  declaration
+  id, declaration
 
 type-def-decl =
   type-decl-attrs, type-decl, type-expr, contains-content?
@@ -278,12 +320,14 @@ contains-content =
     {expr}
   
 typed-declaration =
-  declaration, type-expr
+  declaration, declared-type, type-expr
 
-# Types
+declared-type = type-expr  
+
+### Type Expressions
 
 type-content =
-  element type {type-expr}
+  element type type-expr
 
 type-expr = type-name-content
           | type-application-content          
@@ -317,10 +361,14 @@ function-type-content =
 domain = type-expr | binding-content
 
 binding-content =
-  element binding {declarationatts, id, type-expr}
+  element binding {declaration, binding-attr, id, type-expr}
+
+binding-attr =
+  attribute id { xsd:ID }?
+
 
 tuple-type-content =
-  element tuple-type {domain+}
+  element tuple-type {commonattrs, domain+}
 
 cotuple-type-content =
   element cotuple-type {type-expr+}
@@ -498,7 +546,7 @@ table-entries-content =
 row-entries-content =
   element row-entries {expr+}
 
-# Names
+### Names
 
 names = name+
 
@@ -508,128 +556,36 @@ theory-id = element theory-id {identifier-token}
 
 library-id = element library-id {identifier-token}
 
-target = theory-name
+target = element target {theory-name}
 
 resolution =
   element resolution {theory-name-content, declref}
 
-declref = element declref {xsd:anyURI}
+#declref = element declref {xsd:anyURI}
 
-# Proofs
+### Justifications
 
-top-proofstate-content =
-  element top-proofstate
-    {declaration, proofstate}
+justification = element justification justification-content
 
-proofstate-content =
-  element proofstate {proofstate}
+justification-content =
+   attribute label {text},
+   attribute comment {text},
+   element rule {rule-content},
+   element xrule {rule-content}?,
+   element subgoal {justification-content}*
 
-proofstate = label-token,
-             current-goal-content,
-             current-rule-content,
-#             dp-state,
-             done-subgoals-content,
-             pending-subgoals-content,
-             current-subgoal-content,
-             remaining-subgoals-content,
-             status-flag-content,
-             subgoalnum-content,
-#             justification-content,
-#             current-input,
-#             parsed-input,
-#             printout,
-             comment-content,
-#             strategy,
-#             context,
-#             parent-proofstate,
-             proof-dependent-decls-content,
-             dependent-decls-content,
-             current-auto-rewrites-content
-#             tcc-hash,
-#             subtype-hash,
-#             rewrite-hash,
-#             current-xrule
+rule-content =
+   element name {string},
+   element rule-arg {rule-arg-content}*
 
-current-goal-content =
-  element current-goal {sequent-content}
+rule-arg-content =
+   step | element steps {step}* |
+   expr | element exprs {expr}* |
+   type-expr | element type-exprs {type-expr}* |
+   theory-name | element theory-names {theory-name}* |
+   text
 
-current-rule-content =
-  element current-rule {strategy}
-
-done-subgoals-content =
-  element done-subgoals {proofstate-content+}
-
-pending-subgoals-content =
-  element pending-subgoals {proofstate-content+}
-
-current-subgoal-content =
-  element current-subgoal {proofstate-content}
-
-remaining-subgoals-content =
-  element remaining-subgoals {proofstate-content+}
-
-status-flag-content =
-  element status-flag {"!" | "X" | "XX" | "*" | "nil" | "?" | "0"}
-
-subgoalnum-content =
-  element subgoalnum {xsd:integer}
-
-comment-content =
-  element comment {string}
-
-proof-dependent-decls-content =
-  element proof-dependent-decls {declaration-ref+}
-
-declaration-ref =
-  element declaration-ref {id, theory-id, kind, type-expr?}
-
-kind = "const" | "type" | "formula"
-
-current-auto-rewrites-content =
-  element current-auto-rewrites {auto-rewrite+}
-
-auto-rewrite = name
-
-dependent-decls-content =
-  element dependent-decls {declaration-ref+}
-
-# Sequents
-
-sequent-content =
-  element sequent {p-sforms-content,
-                   n-sforms-content,
-                   hidden-s-forms-content}
-
-p-sforms-content =
-  element p-sforms {s-formula-content*}
-
-n-sforms-content =
-  element n-sforms {s-formula-content*}
-
-hidden-s-forms-content =
-  element hidden-s-forms {s-formula-content*}
-
-s-formula-content =
-  element s-formula {s-formula-attr, formula-content, label-content}
-
-formula-content =
-  element formula {expr}
-
-label-content =
-  element label {label-token}
-
-s-formula-attr =
-  attribute new-p {boolean},
-  attribute asserted-p {boolean}
-
-label-token =
-  identifier-token, label-suffix
-
-label-suffix = xsd:token {pattern = "(\.\d+)*"}
-
-# Strategies
-
-strategy = string
+### Tokens
 
 id = element id {identifier-token}
 
@@ -645,6 +601,8 @@ identifier-content =
 identifier-token = xsd:token
   {pattern = "(\p{L}[\i\d\?]*)|([$&@^~=/\+\-\*<>][^\p{L}\d\(\)\[\]\{\}%,\.:;#'!\?_\|\s]*)"}
 
+### Common Attributes
+
 commonattrs =
   attribute place {place-string}?
 
@@ -653,4 +611,22 @@ chainattr =
 
 place-string = xsd:string {pattern = "\d+ \d+ \d+ \d+"}
 
-}
+## Links
+
+declref = element declref { attlist.declref }
+
+attlist.declref &=
+  [ a:defaultValue = "simple" ] attribute xlink:type { "simple" }?,
+  attribute xlink:href { text }?,
+  attribute xlink:role { text }?,
+  attribute xlink:arcrole { text }?,
+  attribute xlink:title { text }?,
+  attribute xlink:show { "new" | "replace" | "embed" | "other" | "none" }?,
+  attribute xlink:actuate { "onLoad" | "onRequest" | "other" | "none" }?
+
+any =
+  (element * {
+     attribute * { text }*,
+     any
+   }
+   | text)*
