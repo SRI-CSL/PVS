@@ -2821,62 +2821,63 @@
 	(make-formals-funtype (formals decl) (type decl)))
   (when (formals-sans-usings (current-theory))
     (generic-judgement-warning decl))
-  (add-judgement-decl decl))
-
+  (add-judgement-decl decl)
+  (when (id decl)
+    ;; Generate the corresponding formula - this is generally not one of the
+    ;; TCCs, as they are obtained by walking down the recursive declaration
+    ;; body.  Instead, we use the rewrite-formula obtained above
+    (let ((jtcc (mk-recursive-judgement-tcc (id decl) (rewrite-formula decl))))
+      (setf (spelling jtcc) 'AXIOM)
+      (setf (newline-comment jtcc)
+	    (list (format nil
+		      "% Recursive judgement axiom generated for judgement~%% ~a"
+		    (id decl))))
+      (add-decl jtcc))))
+    
 (defun typecheck-rec-judgement (decl expr)
   (change-class decl 'rec-application-judgement)
   (let* ((op (operator* expr))
 	 (recdecl (declaration op))
 	 (def (rec-judgement-definition decl recdecl))
+	 (arg-bds (typecheck* (copy-untyped (formals decl)) nil nil nil))
+	 (*bound-variables* (apply #'append arg-bds))
+	 (rtype (let ((*generate-tccs* 'none))
+		  (typecheck* (declared-type decl) nil nil nil)))
+	 (jtype (make-formals-funtype (formals decl) rtype))
 	 (vid (make-new-variable '|v| (list expr def)))
-	 (jtype	;;(rec-judgement-signature decl recdecl)
-	  ;;(recursive-signature recdecl)
-	  (type op))
-;; 	 (sjtype (gensubst jtype
-;; 		   #'(lambda (x) (declare (ignore x))
-;; 		       (mk-name-expr (cdr (assq (declaration x) alist))))
-;; 		   #'(lambda (x) (and (name-expr? x)
-;; 				      (assq (declaration x) alist)))))
 	 (vbd (make-bind-decl vid jtype))
 	 (vname (mk-name-expr vbd))
-	 (arg-bds1 (mapcar #'(lambda (x) (mapcar #'copy x)) (formals decl)))
 	 (vterm (make!-applications vname
 				    (mapcar #'(lambda (x)
 						(mapcar #'mk-name-expr x))
-				      arg-bds1)))
-	 (jdecl-arg-alist (pairlis-rec-formals (formals decl) arg-bds1))
-	 (rdecl-arg-alist (pairlis-rec-formals (formals recdecl) arg-bds1))
+				      arg-bds)))
+	 (jdecl-arg-alist (pairlis-rec-formals (formals decl) arg-bds))
+	 (rdecl-arg-alist (pairlis-rec-formals (formals recdecl) arg-bds))
 	 (subst-type (substit (type decl) jdecl-arg-alist))
-	 (precond (make!-forall-expr (mapcan #'copy-list arg-bds1)
+	 (precond (make!-forall-expr (mapcan #'copy-list arg-bds)
 		    (make!-conjunction*
 		     (compatible-predicates (judgement-types+ vterm)
 					    subst-type vterm))))
-	 (arg-bds2 (mapcar #'(lambda (x) (mapcar #'copy x)) (formals decl)))
 	 (*bound-variables* (cons vbd *bound-variables*))
 	 (rec-alist (acons recdecl vname rdecl-arg-alist))
-	 ;;(nalist (acons recdecl vbd alist))
+	 ;; Can't use substit here, as the def is also being substituted
 	 (sdef (gensubst def
 		 #'(lambda (x) (declare (ignore x))
 		     (mk-name-expr (cdr (assq (declaration x) rec-alist))))
 		 #'(lambda (x) (and (name-expr? x)
 				    (assq (declaration x) rec-alist)))))
-;; 	 (nexpr (gensubst expr
-;; 		  #'(lambda (x) (declare (ignore x))
-;; 		      (mk-name-expr (cdr (assq (declaration x) alist))))
-;; 		  #'(lambda (x) (and (name-expr? x)
-;; 				     (assq (declaration x) alist)))))
-;; 	 (precond (make!-conjunction*
-;; 		   (compatible-predicates (judgement-types+ nexpr)
-;; 					  (type decl) nexpr)))
 	 (jsig (rec-judgement-signature decl (type op)))
-	 (nrange (rec-judgement-range jsig decl))
-	 (*tcc-conditions* (append (mapcan #'copy-list arg-bds2)
-				   (cons precond
-					 (cons vbd *tcc-conditions*))))
+	 (nrange (typecheck* (copy-untyped (rec-judgement-range jsig decl))
+			     nil nil nil))
+	 (*tcc-conditions* (add-formals-to-tcc-conditions arg-bds))
+	 ;; Don't add directly to *tcc-conditions* as they may not be
+	 ;; needed, and make subsumption impossible (and really ugly TCCs)
+	 ;; See add-tcc-conditions in tcc-gen.lisp
+	 (*rec-judgement-extra-conditions* (list precond vbd))
 	 (*compatible-pred-reason*
 	  (acons (name decl) "recursive-judgement"
 		 *compatible-pred-reason*)))
-    ;;(set-type sdef nrange)
+    (assert (null (freevars (reverse *tcc-conditions*))))
     (typecheck* (copy-untyped sdef) nrange nil nil)))
 
 (defun rec-judgement-range (jsig jdecl)
@@ -2941,13 +2942,14 @@
 	  (pairlis oldformals newformals alist))))
 
 
-;;; Given a recursive judgement decl jdecl and the associated recursive
-;;; function declaration recdecl, this function computes the judgement
-;;; signature.  The original recursive function is provided to take the
-;;; intersection types of the domain and range types, thus yielding more
-;;; accurate TCCs.  The tricky parts here are currying and dependent types,
-;;; in that the curry depth may not match, and either the original recursive
-;;; function type or the judgement type (or both) may be dependent types.
+;;; Given a recursive judgement declaration jdecl and the associated
+;;; recursive function declaration recdecl, this function computes the
+;;; judgement signature.  The original recursive function is provided to
+;;; take the intersection types of the domain and range types, thus yielding
+;;; more accurate TCCs.  The tricky parts here are currying and dependent
+;;; types, in that the curry depth may not match, and either the original
+;;; recursive function type or the judgement type (or both) may be dependent
+;;; types.
 
 (defun rec-judgement-signature (jdecl optype)
   (rec-judgement-signature* (make-formals-funtype (formals jdecl) (type jdecl))
@@ -2984,7 +2986,8 @@
   (type-error jdecl "Recursive judgement has too many arguments"))
 
 (defmethod rec-judgement-signature* (jtype rtype jdecl &optional domtypes)
-  (let ((nrng (intersection-type jtype rtype)))
+  (let ((nrng ;;(intersection-type jtype rtype)
+	 jtype))
     (mk-funtype* domtypes nrng)))
 
 
