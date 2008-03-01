@@ -297,6 +297,13 @@ collected in *tccforms*")
 (defvar *bound-variables* nil)
 (defvar *typecheck-args* nil)
 (defvar *tcc-conditions* nil)
+;;; We need to have extra conditions on the recursive function calls, but
+;;; only if they actually occur.  E.g., in
+;;; f(n: nat): RECURSIVE nat = if n=0 then 0 ELSE f(f(n-1)-1) endif
+;;; the TCC for f(n-1)-1 replaces f with v, and in the recursive judgement,
+;;; v and a precondition on v are added to *rec-judgement-extra-conditions*,
+;;; Whaich are then added to the TCC conditions if needed.
+(defvar *rec-judgement-extra-conditions* nil)
 
 (defvar *generating-mapped-axiom-tcc* nil)
 
