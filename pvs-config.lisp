@@ -87,7 +87,7 @@
 
 #+allegro
 (defun bye (&optional (exit-status 0))
-  (excl:exit exit-status :quiet t))
+  (excl:exit exit-status :no-unwind t :quiet t))
 
 #+harlequin-common-lisp
 (defun bye (&optional (exit-status 0))
