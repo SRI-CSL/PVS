@@ -1346,23 +1346,27 @@ Exit PVS, saving the context."
 	 (confirm-not-in-checker)
 	 (when (or noninteractive
 		   (y-or-n-p "Do you want to exit PVS? "))
-	   (when (and ilisp-buffer (get-buffer ilisp-buffer))
-	     (let ((process (ilisp-process)))
-	       (when (and process (equal (process-status process) 'run))
-		 (save-some-buffers nil t)
-		 (condition-case ()
-		     (progn
-		       (pvs-send "(exit-pvs)")
-		       (while (and (ilisp-process)
-				   (equal (ilisp-value 'comint-status)
-					  " :run"))
-			 (sit-for 1)))
-		   (error
-		    (sleep-for 1)
-		    (when (equal (process-status process) 'run)
-		      (error "PVS not exited")))))))
+	   (exit-pvs-process)
 	   (save-buffers-kill-emacs nil)))
 	(t (save-buffers-kill-emacs nil))))
+
+(defun exit-pvs-process ()
+  (when (and ilisp-buffer (get-buffer ilisp-buffer))
+    (let ((process (ilisp-process)))
+      (when (and process (equal (process-status process) 'run))
+	(save-some-buffers nil t)
+	(condition-case ()
+	    (progn
+	      ;; Currently this causes lisp to save the pvs context file and
+	      ;; exit.
+	      (comint-send (ilisp-process) "(exit-pvs t)")
+	      (while (and (ilisp-process)
+			  (eq (process-status (ilisp-process)) 'run))
+		(sit-for 1)))
+	  (error
+	   (sleep-for 1)
+	   (when (equal (process-status process) 'run)
+	     (error "PVS Lisp process did not exit properly"))))))))
 
 (defpvs pvs-log environment ()
   "Display the PVS Log buffer
