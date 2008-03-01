@@ -2286,6 +2286,8 @@
 	(*use-default-dp?* use-default-dp?))
     (read-strategies-files)
     (dolist (theory theories)
+      ;; Added by C.Munoz
+      (pvs-message "Proving ~a" (id theory))
       (let ((*justifications-changed?* nil))
 	(dolist (d (provable-formulas theory))
 	  (incf total)
@@ -2618,15 +2620,15 @@
   (when (y-or-n-p "Do you really want to kill the PVS process? ")
     (cl-user:bye status)))
 
-(defun exit-pvs ()
+(defun exit-pvs (&optional dont-ask)
   (multiple-value-bind (ignore condition)
       (ignore-errors (save-context))
     (declare (ignore ignore))
-    (if condition
+    (if (and condition (not dont-ask))
 	(progn
 	  (if (pvs-yes-or-no-p "Problem saving context - ~a~%Exit anyway? "
 			       condition)
-	      (bye)
+	      (cl-user:bye)
 	      (error "Exit aborted")))
 	(cl-user:bye))))
 
@@ -3203,9 +3205,11 @@
     
 (defmethod show-strategy* ((strat rule-entry) out)
   (format out "~(~a~) is a primitive rule:" (name strat))
-  (format out "~2%Arguments: ~(~a~)" (append (required-args strat)
-					     '(&optional)
-					     (optional-args strat)))
+  (format out "~2%Arguments: ~(~a~)"
+    (if (optional-args strat)
+	(append (required-args strat)
+		(cons '&optional (optional-args strat)))
+	(required-args strat)))
   (format out "~2%Definition: A compiled lisp function")
   (format out "~2%Format string: ~s" (format-string strat))
   (format out "~2%Documentation: ~%~a" (docstring strat))
