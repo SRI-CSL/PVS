@@ -60,6 +60,13 @@
 ;;(find-file-noselect "~/PVS Log" t)
 (pvs-log-message 'LOG "Started loading Emacs files")
 
+;; Batch mode ignores the kill-emacs-hook, so there's no chance to save the
+;; context using it; but defadvice still seems to work.  No need for this
+;; outside of batch mode (noninteractive is set to 't' in that case).
+(when noninteractive
+  (defadvice kill-emacs (before pvs-batch-control activate protect)
+    (exit-pvs-process)))
+
 (defun pvs-getenv (var)
   (let ((val (getenv var)))
     (if (equal val "") nil val)))
