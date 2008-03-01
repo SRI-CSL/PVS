@@ -800,6 +800,18 @@ sets [T: TYPE]: THEORY
 
   CONVERSION+ singleton_elt
 
+  is_singleton: LEMMA
+    FORALL a: (nonempty?(a) AND FORALL x, y: a(x) AND a(y) IMPLIES (x=y))
+      IMPLIES singleton?(a)
+
+  singleton_elt_lem: LEMMA singleton?(a) and a(x) IMPLIES singleton_elt(a) = x
+
+  singleton_elt_def: LEMMA singleton?(a) IMPLIES singleton_elt(a) = choose(a)
+
+  singleton_rew: LEMMA singleton_elt(singleton(x)) = x
+
+  AUTO_REWRITE+ singleton_rew
+
   rest(a): set = IF empty?(a) THEN a ELSE remove(choose(a), a) ENDIF
 
   setofsets: TYPE = setof[setof[T]]
@@ -4373,6 +4385,9 @@ list_props [T: TYPE]: THEORY
 
   every_member: LEMMA every({c: T | member(c, l)})(l)
 
+  every_nth: LEMMA
+      every(P)(l) IFF FORALL (i:below(length(l))): P(nth(l,i))
+
  END list_props
 
 
@@ -4398,6 +4413,11 @@ more_map_props [T1, T2: TYPE]: THEORY
   l: VAR list[T1]
 
   map_length: LEMMA length(map(f)(l)) = length(l)
+
+  map_nth_rw: LEMMA
+    FORALL (i: below(length(l))):
+      nth(map(f)(l), i) = f(nth(l, i))
+
 END more_map_props
 
 
