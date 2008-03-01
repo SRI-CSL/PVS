@@ -2365,7 +2365,7 @@
 
 (defmethod extract-justification-sexp ((justification justification))
   (list (label justification)
-	(sexp-unparse (rule  justification))
+	(sexp-unparse (rule justification))
 	(extract-justification-sexp (subgoals justification))
 	(comment justification)))
 
