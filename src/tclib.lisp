@@ -265,16 +265,7 @@
 ;;; load-prelude-libraries is called from restore-context
 (defun load-prelude-libraries (lib-refs)
   (dolist (lib-ref lib-refs)
-    (multiple-value-bind (lib-path err-msg)
-	(libref-to-pathname lib-ref)
-      (if lib-path
-	  (load-prelude-library lib-path nil t)
-	  (pvs-error err-msg
-	    (format nil
-		"Library reference ~a not found~
-                 ~%  check the PVS_LIBRARY_PATH environment variable and restart PVS,~
-                 ~%  or run M-x remove-prelude-library and remove this library."
-	      lib-ref))))))
+    (load-prelude-library lib-ref nil t)))
 
 (defvar *loading-libraries* nil)
 
@@ -338,7 +329,7 @@
 	   (when (char= (char lib 0) #\.)
 	     (let ((path (shortname libstr)))
 	       (assert (file-exists-p path))
-	       (push (cons libstr lib-path) *pvs-library-ref-paths*)))
+	       (push (cons libstr path) *pvs-library-ref-paths*)))
 	   (values (pathname-to-libref libstr) libstr))
 	  (t (let ((lib-path (pvs-library-path-ref libstr)))
 	       (if lib-path
@@ -1050,10 +1041,10 @@
   (let ((lib-path (cond ((member (char lib-ref 0) '(#\~ #\/) :test #'char=)
 			 ;; It's already a full pathname
 			 lib-ref)
-			((char= (char lib-ref 0) #\.)
+			((and (char= (char lib-ref 0) #\.)
+			      (file-exists-p lib-ref))
 			 (namestring
-			  (merge-pathnames lib-ref
-					   *pvs-context-path*)))
+			  (merge-pathnames lib-ref *pvs-context-path*)))
 			(t 
 			 ;; Otherwise it's a PVS library ref
 			 ;; (e.g., finite_sets) in the PVS_LIBRARY_PATH
@@ -1152,9 +1143,7 @@
 ;;; pvs-file-path gets the path for the current context.
 (defmethod pvs-file-path ((th library-datatype-or-theory))
   (let* ((lib-ref (lib-ref th))
-	 (lib-path (if (char= (char lib-ref 0) #\.)
-		       (merge-pathnames lib-ref *pvs-context-path*)
-		       (libref-to-pathname lib-ref))))
+	 (lib-path (libref-to-pathname lib-ref)))
     (assert (file-exists-p lib-path))
     (format nil "~a~a.pvs" lib-path (filename th))))
 
