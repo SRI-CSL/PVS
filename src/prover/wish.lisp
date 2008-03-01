@@ -103,10 +103,11 @@
   (and (or (children ps)
 	   (eq (status-flag ps) '!))
        (or (current-rule ps)
-	   (and (current-input ps)
-		;; This can happen with checkpoints
-		(not (and (consp (current-input ps))
-			  (eq (car (current-input ps)) 'lisp)))))))
+	   (unless
+	       ;; This can happen with checkpoints
+	       (and (consp (current-input ps))
+		    (eq (car (current-input ps)) 'lisp))
+	     (current-input ps)))))
 
 (defmethod children ((ps proofstate))
   (append (when (current-subgoal ps)
