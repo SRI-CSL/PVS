@@ -42,6 +42,7 @@
 
 (defun pp-tex (obj stream)
   (let ((*print-pretty* t)
+	(*print-readably* nil)
 	(*print-escape* nil)
 	(*print-right-margin* *latex-linelength*)
 	(*tex-symbol-counters* nil)
