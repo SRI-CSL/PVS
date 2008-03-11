@@ -209,12 +209,19 @@ useful if more than one specification is to be included in one document")
 	 (len (length nstring)))
     (labels ((latex-protect* (string pos result)
 	       (if (< pos len)
-		   (latex-protect* string (1+ pos)
-				   (case (char string pos)
-				     (#\_ (append '(#\_ #\\) result))
-				     (#\$ (append '(#\$ #\\) result))
-				     (t (cons (char string pos)
-					      result))))
+		   (latex-protect*
+		    string (1+ pos)
+		    (let ((ch (char string pos)))
+		      (case ch
+			((#\# #\$ #\% #\& #\_ #\{ #\})
+			 (cons ch (cons #\\ result)))
+			;; \ ==> \char92
+			(#\\ (append '(#\2 #\9 #\r #\a #\h #\c #\\) result))
+			;; ^ ==> \char94
+			(#\^ (append '(#\4 #\9 #\r #\a #\h #\c #\\) result))
+			;; ~ ==> \char126
+			(#\~ (append '(#\6 #\2 #\1 #\r #\a #\h #\c #\\) result))
+			(t (cons ch result)))))
 		   (coerce (nreverse result) 'string))))
       (latex-protect* nstring 0 nil))))
 
