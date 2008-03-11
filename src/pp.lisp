@@ -1540,6 +1540,9 @@ bind tighter.")
 (defmethod get-pp-operator* ((expr application))
   (get-pp-operator* (operator expr)))
 
+(defmethod get-pp-operator* ((expr mixfix-branch))
+  expr)
+
 (defmethod get-pp-operator* ((expr infix-application))
   expr)
 
@@ -1551,6 +1554,9 @@ bind tighter.")
 
 (defmethod get-pp-argument* ((expr application) &optional args)
   (get-pp-argument* (operator expr) (cons (argument expr) args)))
+
+(defmethod get-pp-argument* ((expr mixfix-branch) &optional args)
+  args)
 
 (defmethod get-pp-argument* ((expr infix-application) &optional args)
   args)
