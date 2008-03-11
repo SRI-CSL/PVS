@@ -40,11 +40,11 @@ IF		id	2	{\pvskey{IF}}
 
 /\		id	1	\wedge
 \/		id	1	\vee
-^		id	1	{}^{\scriptscriptstyle\wedge}
+^		id	1	{\char94}
 ==		id	1	\equiv
 []		id	1	\Box
 <>		id	1	\Diamond
-~		id	1	\sim
+~		id	1	{\char126}
 <|		id	1	\lhd
 |>		id	1	\rhd
 |=		id	1	\models
