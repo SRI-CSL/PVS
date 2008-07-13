@@ -854,12 +854,14 @@
   nil)
 
 (defmethod tc-eq* ((n1 name) (n2 modname) bindings)
-  (declare (ignore bindings))
-  nil)
+  (when (and (resolution n1)
+	     (resolution n2))
+    (tc-eq* (resolution n1) (resolution n2) bindings)))
 
 (defmethod tc-eq* ((n1 modname) (n2 name) bindings)
-  (declare (ignore bindings))
-  nil)
+  (when (and (resolution n1)
+	     (resolution n2))
+    (tc-eq* (resolution n1) (resolution n2) bindings)))
 
 (defmethod tc-eq* ((n1 name) (n2 name) bindings)
   (with-slots ((id1 id) (res1 resolutions) (mi1 mod-id) (l1 library)
