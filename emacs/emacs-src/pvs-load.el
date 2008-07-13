@@ -67,6 +67,12 @@
   (defadvice kill-emacs (before pvs-batch-control activate protect)
     (exit-pvs-process)))
 
+(unless (fboundp 'memql)
+  (defun memql (elt list)
+    (and (not (null list))
+	 (or (eql elt (car list))
+	     (memql elt (cdr list))))))
+
 (defun pvs-getenv (var)
   (let ((val (getenv var)))
     (if (equal val "") nil val)))
