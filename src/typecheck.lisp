@@ -163,7 +163,7 @@
       (reset-beta-cache)
       (tcdebug "~%Typecheck ~a" (id m))
       (setf (formals-sans-usings m)
-	    (remove-if #'(lambda (ff) (typep ff 'importing)) (formals m)))
+	    (remove-if #'importing-param? (formals m)))
       (setf (all-imported-theories m) 'unbound)
       (let* ((*current-theory* m)
 	     (*typechecking-module* t)
