@@ -558,37 +558,24 @@
 		 (setf (gethash (car jbvar) (judgement-types-hash
 					     (current-judgements)))
 		       (cdr jbvar)))))
-;; 	 (multiple-value-bind (bjtypes bjdecls)
-;; 	     (let* ((bex (beta-reduce ex))
-;; 		    (atypes (or (judgement-types* (argument ex))
-;; 				(list (type (argument ex)))))
-;; 		    (dtype (domain (type (operator ex))))
-;; 		    (dtype-there? (argtypes-subtype-of-domain-type atypes dtype)))
-;; 	       (if dtype-there?
-;; 		   (or (judgement-types* bex)
-;; 		       (unless (tc-eq (type ex) (type bex))
-;; 			 (list (type bex))))
-;; 		   (let* ((jhash (judgement-types-hash (current-judgements)))
-;; 			  (jtypes&jdecls (gethash (argument ex) jhash)))
-;; 		     (unwind-protect
-;; 			 (progn
-;; 			   (setf (gethash (argument ex) jhash)
-;; 				 (list (cons dtype (car jtypes&jdecls))
-;; 				       (cons nil (cadr jtypes&jdecls))))
-;; 			   (or (judgement-types* bex)
-;; 			       (unless (tc-eq (type ex) (type bex))
-;; 				 (list (type bex)))))
-;; 		       (setf (gethash (argument ex) jhash) jtypes&jdecls)))))
-;; 	   (unless (and (length= ljtypes bjtypes)
-;; 			(<= (length bjdecls) (length ljdecls))
-;; 			(every #'(lambda (ljt)
-;; 				   (find ljt bjtypes :test #'tc-eq))
-;; 			       ljtypes)
-;; 			(every #'(lambda (bjd) (memq bjd ljdecls)) bjdecls))
-;; 	     (break "mismatch"))
-	   (values ljtypes ljdecls)
-	   ;;)
-	   )))))
+	 (let* ((bndlist (bindings* op))
+		(arglist (argument* ex))
+		(sljtypes (subst-judgement-types ljtypes bndlist arglist)))
+	   (values sljtypes ljdecls)))))))
+
+(defun subst-judgement-types (jtypes bndlist arglist)
+  (if (null bndlist)
+      jtypes
+      (subst-judgement-types
+       (substit jtypes
+	 (if (singleton? (car bndlist))
+	     (acons (caar bndlist) (car arglist) nil)
+	     (pairlis (car bndlist)
+		      (if (typep (car arglist) 'tuple-expr)
+			  (exprs (car arglist))
+			  (make-projections (car arglist))))))
+       (cdr bndlist)
+       (cdr arglist))))
 
 (defun set-binding-judgements-from-arg-judgements (ex)
   (let* ((op (operator* ex))
@@ -951,19 +938,32 @@
       range
       (when (judgement-arguments-match?
 	     (car arguments) (car argtypes) (car rdomains) (car domains))
-	(compute-appl-judgement-range-type
-	 (cdr arguments)
-	 (cdr argtypes)
-	 (if (typep (car rdomains) 'dep-binding)
-	     (substit (cdr rdomains)
-	       (acons (car rdomains) (car arguments) nil))
-	     (cdr rdomains))
-	 (if (typep (car domains) 'dep-binding)
-	     (substit (cdr domains) (acons (car domains) (car arguments) nil))
-	     (cdr domains))
-	 (if (typep (car domains) 'dep-binding)
-	     (substit range (acons (car domains) (car arguments) nil))
-	     range)))))
+	(let* ((srdoms (if (typep (car rdomains) 'dep-binding)
+			   (substit (cdr rdomains)
+			     (acons (car rdomains) (car arguments) nil))
+			   (cdr rdomains)))
+	       (sdoms (if (typep (car domains) 'dep-binding)
+			  (substit (cdr domains)
+			    (acons (car domains) (car arguments) nil))
+			  (cdr domains)))
+	       (rbindings (mapcan #'(lambda (odom ndom)
+				      (when (and (dep-binding? odom)
+						 (not (eq odom ndom)))
+					(list (cons odom ndom))))
+			    (cdr rdomains) srdoms))
+	       (bindings (mapcan #'(lambda (odom ndom)
+				     (when (and (dep-binding? odom)
+						(not (eq odom ndom)))
+				       (list (cons odom ndom))))
+			   (cdr domains) sdoms)))
+	  (compute-appl-judgement-range-type
+	   (cdr arguments)
+	   (cdr argtypes)
+	   (substit srdoms rbindings)
+	   (substit sdoms bindings)
+	   (if (typep (car domains) 'dep-binding)
+	       (substit range (acons (car domains) (car arguments) bindings))
+	       (substit range bindings)))))))
 
 (defun judgement-arguments-match? (argument argtypes rdomain jdomain)
   ;;(assert (fully-instantiated? rdomain))
@@ -987,6 +987,7 @@
       (judgement-list-arguments-match? argument argtypes rdomain jdomain)
       (if (recordtype? (find-supertype rdomain))
 	  (judgement-record-arguments-match?
+	   (make!-field-applications argument)
 	   (delete-duplicates (coerce argtypes 'list) :from-end t :key #'car)
 	   (fields (find-supertype rdomain)) (fields (find-supertype jdomain)))
 	  (judgement-vector-arguments-match?
@@ -1010,15 +1011,15 @@
 					  (cdr argtypes)
 					  rdomain jdomain))))
 
-(defun judgement-record-arguments-match? (argflds rfields jfields)
+(defun judgement-record-arguments-match? (args argflds rfields jfields)
   (or (null rfields)
       (let ((atypes (cdr (assq (id (car rfields)) argflds))))
 	(and atypes
 	     (eq (id (car rfields)) (id (car jfields)))
 	     (judgement-arguments-match?
-	      nil atypes (type (car rfields)) (type (car jfields)))
+	      (car args) atypes (type (car rfields)) (type (car jfields)))
 	     (judgement-record-arguments-match?
-	      argflds (cdr rfields) (cdr jfields))))))
+	      (cdr args) argflds (cdr rfields) (cdr jfields))))))
 
 (defun judgement-vector-arguments-match? (args argtypes rdomain jdomain num
 					       &optional bindings)
