@@ -297,6 +297,20 @@
 (defmethod freevars* ((texpr struct-sub-tupletype))
   (freevars* (types texpr)))
 
+(defmethod freevars* ((seq sequence))
+  (freevars-sequence seq (length seq) nil))
+
+(defun freevars-sequence (seq n result)
+  (if (zerop n)
+      result
+      (let* ((elt (elt seq (1- n)))
+	     (frees-nth (freevars* elt))
+	     (ufrees (fv-union frees-nth result)))
+	(freevars-sequence seq (1- n)
+			   (if (binding? elt)
+			       (remove elt ufrees :test #'same-declaration)
+			       ufrees)))))
+
 (defmethod freevars* ((sym symbol))
   nil)
 
