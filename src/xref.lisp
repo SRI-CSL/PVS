@@ -407,6 +407,16 @@
 (defmethod from-prelude? ((use importing))
   nil)
 
+(defmethod from-library? ((decl declaration))
+  (and (module decl)
+       (from-library? (module decl))))
+
+(defmethod from-library? ((theory library-datatype-or-theory))
+  t)
+
+(defmethod from-library? ((theory datatype-or-module))
+  nil)
+
 (defmethod from-prelude-library? ((th datatype-or-module))
   (assoc (id th) (prelude-libraries-uselist)
 	 :test #'(lambda (x y) (eq x (id y)))))
