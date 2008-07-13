@@ -148,6 +148,9 @@
 	(t (add-to-local-typealist (id expr) expr)
 	   (id expr))))
 
+;;; normalize-name-expr-actuals goes down the actuals, pseudo-normalizing
+;;; any exprs found inside the actuals - ignores type-values.
+
 (defmethod normalize-name-expr-actuals ((expr name-expr))
   (with-slots (resolutions) expr
     (lcopy expr
