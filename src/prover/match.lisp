@@ -800,7 +800,8 @@
 	     (if (number-expr? (args1 lhs))
 		 (let ((diff (make-assert-expr
 			      (make-difference instance (args1 lhs)
-					       (type (args2 lhs))))))
+					       (find-supertype-without-freevars
+						(type (args2 lhs)))))))
 		   (if diff
 		       (match* (args2 lhs) diff
 			      bind-alist subst)
