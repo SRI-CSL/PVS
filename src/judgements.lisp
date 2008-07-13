@@ -558,10 +558,11 @@
 		 (setf (gethash (car jbvar) (judgement-types-hash
 					     (current-judgements)))
 		       (cdr jbvar)))))
-	 (let* ((bndlist (bindings* op))
-		(arglist (argument* ex))
-		(sljtypes (subst-judgement-types ljtypes bndlist arglist)))
-	   (values sljtypes ljdecls)))))))
+	 (when ljtypes
+	   (let* ((bndlist (bindings* op))
+		  (arglist (argument* ex))
+		  (sljtypes (subst-judgement-types ljtypes bndlist arglist)))
+	     (values sljtypes ljdecls))))))))
 
 (defun subst-judgement-types (jtypes bndlist arglist)
   (if (null bndlist)
