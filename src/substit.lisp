@@ -119,7 +119,8 @@
   (if (null (freevars expr))
       expr
       (or (get-substit-hash expr)
-	  (setf (get-substit-hash expr) (call-next-method)))))
+	  (let ((nex (call-next-method)))
+	    (setf (get-substit-hash expr) nex)))))
 
 (defmethod substit* :around ((expr type-expr) alist)
   (if (freevars expr)
@@ -273,16 +274,14 @@
 (defmethod substit* ((expr field-application) alist)
   (with-slots (id argument type) expr
     (let ((narg (substit* argument alist)))
-      (cond ((and (not *substit-dont-simplify*)
-		  (record-expr? narg))
-	     (let ((ass (find id (assignments narg)
-			      :key #'(lambda (a) (id (caar (arguments a)))))))
-	       (assert ass)
-	       (expression ass)))
-	    ((eq argument narg)
-	     expr)
-	    (t (let ((ntype (substit* type alist)))
-		 (copy expr 'argument narg 'type ntype)))))))
+      (if (and (not *substit-dont-simplify*)
+	       (record-expr? narg))
+	  (let ((ass (find id (assignments narg)
+			   :key #'(lambda (a) (id (caar (arguments a)))))))
+	    (assert ass)
+	    (expression ass))
+	  (let ((ntype (substit* type alist)))
+	    (lcopy expr 'argument narg 'type ntype))))))
 
 (defmethod substit* ((expr resolution) alist)
   (let ((new-modinst (substit* (module-instance expr) alist)))
@@ -868,7 +867,7 @@
 
 (defmethod substit* ((db dep-binding) alist)
   (let ((ntype (substit* (type db) alist)))
-	(lcopy db 'type ntype)))
+    (lcopy db 'type ntype)))
 
 (defmethod substit* ((sym symbol) alist)
   (declare (ignore alist))
