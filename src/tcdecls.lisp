@@ -2878,7 +2878,7 @@
 	  (acons (name decl) "recursive-judgement"
 		 *compatible-pred-reason*)))
     (assert (null (freevars (reverse *tcc-conditions*))))
-    (typecheck* (copy-untyped sdef) nrange nil nil)))
+    (typecheck* (pc-parse (unparse sdef :string t) 'expr) nrange nil nil)))
 
 (defun rec-judgement-range (jsig jdecl)
   (rec-judgement-range* jsig (formals jdecl)))
