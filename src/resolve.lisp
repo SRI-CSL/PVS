@@ -76,10 +76,12 @@
       ;; argument-conversion may add to the types of args, and if it returns
       ;; a resolution we are done, otherwise try function-conversion.
       (setq res (let ((ares (argument-conversion name args)))
-		  (if ares
-		      (append ares (argument-k-conversion name args))
-		      (or (function-conversion name args)
-			  (argument-k-conversion name args))))))
+		  (remove-duplicates
+		      (if ares
+			  (append ares (argument-k-conversion name args))
+			  (or (function-conversion name args)
+			      (argument-k-conversion name args)))
+		    :test #'tc-eq))))
     (when (memq name *recursive-calls-without-enough-args*)
       (dolist (r res)
 	(when (eq (declaration r) (current-declaration))
@@ -855,11 +857,12 @@
 ;;; fully-typed, which is why tc-eq works in this case.
 
 (defun matching-actual (actual mactual formal)
-  (if (formal-type-decl? formal)
-      (let ((atv (type-value actual)))
-	(and atv
-	     (tc-eq atv (type-value mactual))))
-      (matching-actual-expr (expr actual) mactual)))
+  (typecase formal
+    (formal-type-decl (let ((atv (type-value actual)))
+			(and atv
+			     (tc-eq atv (type-value mactual)))))
+    (formal-theory-decl (tc-eq (expr actual) (expr mactual)))
+    (t (matching-actual-expr (expr actual) mactual))))
 
 (defmethod matching-actual-expr ((aex expr) (maex implicit-conversion))
   (or (call-next-method)
