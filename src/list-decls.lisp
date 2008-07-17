@@ -65,15 +65,17 @@
 	  (get-id-object-at oname origin pos)
 	(let ((decl (get-decl-associated-with object)))
 	  (if decl
-	      (let* ((declstr (format nil "~a~@[ ~a~]"
-				(unparse-decl decl)
-				(when *containing-type*
-				  (let ((kind (typecase decl
-						(field-decl "field")
-						(dep-binding "declaration"))))
-				    (when kind
-				      (format nil "(~a in ~a)" kind
-					      *containing-type*)))))))
+	      (let* ((declstr
+		      (format nil "% From theory ~a:~2%~a~@[ ~a~]"
+			(id (module decl))
+			(unparse-decl decl)
+			(when *containing-type*
+			  (let ((kind (typecase decl
+					(field-decl "field")
+					(dep-binding "declaration"))))
+			    (when kind
+			      (format nil "(~a in ~a)" kind
+				      *containing-type*)))))))
 		(if x?
 		    (pvs-wish-source
 		     (with-output-to-temp-file
