@@ -562,6 +562,9 @@
 				     (member fv (freevars modinst)
 					     :test #'same-declaration)))
 			     (freevars nobj)))
+	      #+pvsdebug
+	      (when (actual? obj)
+		(assert (actual? nobj)))
 	      nobj)))))
 
 (defun no-matching-free-params (obj frees)
@@ -1157,8 +1160,9 @@
 			    (type act)))
 	    (expr act))
 	(let ((nexpr (call-next-method)))
-	  (if (eq nexpr expr)
-	      expr
+	  (if (or (eq nexpr expr)
+		  (modname? nexpr))
+	      nexpr
 	      (let ((ntype (type (resolution nexpr))))
 		(lcopy nexpr :type ntype)))))))
 
@@ -1488,12 +1492,19 @@
     (if (and (typep expr 'name)
 	     (assq (declaration expr) bindings))
 	(let ((nact (cdr (assq (declaration expr) bindings))))
-	  (if (or (and type-value (type-value nact))
-		  (and (null type-value) (null (type-value nact))))
-	      nact
-	      (lcopy nact
-		:expr (lcopy (expr nact) :parens (parens expr))
-		:type-value (subst-mod-params* type-value modinst bindings))))
+	  (typecase nact
+	    (actual (if (or (and type-value (type-value nact))
+			    (and (null type-value) (null (type-value nact))))
+			nact
+			(lcopy nact
+			  :expr (lcopy (expr nact) :parens (parens expr))
+			  :type-value (subst-mod-params*
+				       type-value modinst bindings))))
+	    (type-decl (let ((nres (make-resolution nact
+				     (mk-modname (id (module nact))))))
+			 (mk-res-actual (mk-type-name (id nact) nil nil nres)
+					(module nact))))
+	    (t (break "More needed"))))
 	(let ((ntype (when type-value
 		       (subst-mod-params* type-value modinst bindings))))
 	  (lcopy act
@@ -1541,6 +1552,7 @@
 	     (let ((ntype (subst-mod-params* type modinst bindings)))
 	       (mk-resolution decl modinst ntype)))
 	    (t (let* ((nacts (subst-mod-params* acts modinst bindings)))
+		 (assert (every #'actual? nacts))
 		 (if (and (eq nacts acts)
 			  (not (binding? decl))
 			  (null (mappings modinst)))
