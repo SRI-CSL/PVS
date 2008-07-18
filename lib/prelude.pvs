@@ -794,7 +794,11 @@ sets [T: TYPE]: THEORY
   % A choice function for nonempty sets
   choose(p: (nonempty?)): (p) = epsilon(p)
 
-  the(p: (singleton?)): (p) = epsilon(p)
+  the(p: (singleton?)): (p)
+
+  the_lem: LEMMA FORALL (p: (singleton?)): the(p) = epsilon(p)
+
+  the_prop: LEMMA FORALL (p: (singleton?)): p(the(p))
 
   singleton_elt(a: (singleton?)): T = the! x: member(x, a)
 
