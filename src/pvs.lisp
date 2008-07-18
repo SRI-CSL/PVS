@@ -2223,7 +2223,8 @@
 	   (setf (proof-status decl) 'unproved)
 	   (prog1
 	       (cond ((justification decl)
-		      (pvs-message "Rerunning proof of ~a" (id decl))
+		      (pvs-message "Rerunning proof of ~a.~a"
+			(id (module decl)) (id decl))
 		      (let ((pstat (rerun-prove decl)))
 			(pvs-message
 			    "~a ~aproved in ~,2,-3f real, ~,2,-3f cpu seconds"
