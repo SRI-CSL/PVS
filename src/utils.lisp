@@ -534,6 +534,10 @@
     (when (and res (null (cdr res)))
       (module-instance (car res)))))
 
+(defmethod importing-param? ((x importing)) t)
+(defmethod importing-param? ((x theory-abbreviation-decl)) t)
+(defmethod importing-param? (x) nil)
+
 (defun listify (x) (if (listp x) x (list x)))
 
 (defun duplicates? (list &key (test #'eql) (key #'identity))
@@ -1476,18 +1480,25 @@
 	     ;; CRW 7/27/94: fixed to do the substit before changing the
 	     ;; bindings (when it was using the other order, substit
 	     ;; was alpha-renaming the bindings to avoid capture)
-	     (let ((nform
-		    (if new?
-			(freevar-substit form freevars-form newbindings)
-			form)))
+	     (let* ((nform
+		     (if new?
+			 (freevar-substit form freevars-form newbindings)
+			 form))
+		    (sbindings (minimal-sort-bindings
+				newbindings (bindings nform))))
 	       (when (and (not (eq (car (last newbindings))
 				   (declaration (car (last freevars-form)))))
 			  (tc-eq (type (car (last newbindings)))
 				 (type (car (bindings nform)))))
 		 (setf (chain? (car (last newbindings))) t))
-	       (copy nform
-		 'bindings (append newbindings (bindings nform))
-		 'commas? nil))))
+	       (let ((cform (copy nform
+			      'bindings sbindings
+			      'commas? nil)))
+		 #+pvsdebug
+		 (assert (every #'(lambda (x) (member x freevars-form
+						      :test #'same-declaration))
+				(freevars cform)))
+		 cform))))
 	  (t
 	   (multiple-value-bind (newbindings new?)
 	       (var-to-binding freevars-form form)
@@ -1502,8 +1513,25 @@
 					     form)))
 		    (tform (typecheck* qform (unless *no-expected* *boolean*)
 				       'expr nil)))
-	       ;;(assert (null (freevars tform)))
+	       #+pvsdebug
+	       (assert (every #'(lambda (x) (member x freevars-form
+						    :test #'same-declaration))
+			      (freevars tform)))
 	       tform))))))
+
+;;; Sort as little as possible, to satisfy dependencies
+;;; Needed because the new bindings may actually depend on the bindings
+(defun minimal-sort-bindings (newbindings bindings)
+  (let ((fvars (freevars newbindings)))
+    (cond (fvars
+	   (assert (memq (declaration (car fvars)) bindings))
+	   (minimal-sort-bindings (cons (declaration (car fvars))
+					newbindings)
+				  (remove (declaration (car fvars))
+					  bindings)))
+	  (t (let ((result (append newbindings bindings)))
+	       (assert (null (freevars result)))
+	       result)))))
 
 (defun freevar-substit (form freevars-form newbindings)
   (let ((*bound-variables* (append newbindings *bound-variables*))
@@ -1573,7 +1601,7 @@
 			(setq newvars? new?)
 			bindings)
 		      (multiple-value-bind (newbind bnew?)
-			  (var-to-binding* (car vars) expr)
+			  (var-to-binding* (car vars) expr result)
 			(vtb (cdr vars) (cons newbind result)
 			     (or new? bnew?))))))
       (let ((nbindings (vtb varlist nil nil)))
@@ -1582,9 +1610,9 @@
 		    nbindings)
 		newvars?)))))
 
-(defun var-to-binding* (var expr)
+(defun var-to-binding* (var expr vlist)
   (cond ((needs-naming-apart? var expr)
-	 (let* ((new-id (make-new-variable (id var) expr 1))
+	 (let* ((new-id (make-new-variable (id var) (cons expr vlist) 1))
 		(bind-decl (mk-bind-decl new-id
 			     (get-declared-type var) (type var))))
 	   (values bind-decl t)))
@@ -1594,8 +1622,9 @@
 	(t (let ((bind-decl (mk-bind-decl (id var)
 			      (get-declared-type var) (type var))))
 	     (values bind-decl t)))))
-	       
 
+;;; Checks if there is a variable with the same id in form, but a different
+;;; declaration.
 (defun needs-naming-apart? (var form)
   (let ((foundone nil))
     (mapobject #'(lambda (x)
