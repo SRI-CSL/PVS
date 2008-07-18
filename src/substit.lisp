@@ -869,6 +869,13 @@
   (let ((ntype (substit* (type db) alist)))
     (lcopy db 'type ntype)))
 
+(defmethod substit* ((seq vector) alist)
+  (let* ((list (coerce seq 'list))
+	 (slist (substit* list alist)))
+    (if (equal list slist)
+	seq
+	(coerce slist 'vector))))
+
 (defmethod substit* ((sym symbol) alist)
   (declare (ignore alist))
   sym)
