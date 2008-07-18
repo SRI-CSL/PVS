@@ -2692,7 +2692,7 @@
 			   (not (negation? expr)) ;;NSH(11.27.02)
                             )               ;;this would be wasted work
 		  (assert-test expr))
-		))			;(break "assert-if-ap2")
+		))
 	  (cond ((true-p result) (values '? *true*))
 		((false-p result) (values '? *false*))
 		((and (is-predicate? newop)
@@ -2984,12 +2984,17 @@
 				   (if (null modsubst)
 				       hyp
 				       (subst-mod-params hyp modsubst))))
-			    (rhs (substit rhs nsubst))
+			    ;; defn may have been simplidfed, e.g. p = true
+			    ;; simplifies (in substit) to p.  There is a
+			    ;; flag for controlling this, but then hashing
+			    ;; must be made aware of the flag settings.
+			    ;; Easier just to return *true*.
+			    (rhs (or (substit rhs nsubst) *true*))
 			    (rhs (unless (or (eq subst 'fail)
-					     (eq modsubst 'fail))
-				   (if (null modsubst)
-				       rhs
-				       (subst-mod-params rhs modsubst)))))
+					      (eq modsubst 'fail))
+				    (if (null modsubst)
+					rhs
+					(subst-mod-params rhs modsubst)))))
 		       (cond ((or (eq subst 'fail)(eq modsubst 'fail))
 			      (if lhs ;;then match must've failed.
 				  (track-rewrite-format
