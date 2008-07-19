@@ -87,7 +87,9 @@
 
 #+allegro
 (defun bye (&optional (exit-status 0))
-  (excl:exit exit-status :no-unwind t :quiet t))
+  ;; Don't add :quiet t - keeps --version from working
+  ;; Couldn't get sync/fsync to work
+  (excl:exit exit-status :no-unwind t))
 
 #+harlequin-common-lisp
 (defun bye (&optional (exit-status 0))
