@@ -378,7 +378,7 @@ elif [ $getversion ]
   then
     # Make sure there are no spaces in the eval form - otherwise it goes
     # through the pvs-cmulisp script and gets mangled.
-    $PVSIMAGE $noinit $evalflag "(progn(pvs::pvs-version)(terpri)(bye))"
+    echo `$PVSIMAGE $noinit $evalflag "(progn(pvs::pvs-version)(terpri)(bye))"`
 elif [ $rawmode ]
   then
     $PVSIMAGE $noinit $flags
