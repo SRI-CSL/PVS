@@ -50,7 +50,7 @@
 
 TARFLAGS='-cohz --mode=u+rw --atime-preserve --exclude=CVS --exclude=.svn'
 
-version="4.1"
+version="4.2"
 
 # pvs-source.tgz
 echo Creating pvs-${version}-source.tgz
@@ -137,6 +137,7 @@ pvssystemfiles="\
   doc/release-notes/pvs-release-notes \
   doc/release-notes/pvs-release-notes.ps \
   doc/release-notes/pvs-release-notes.pdf \
+  doc/PVSio-2.d.pdf \
   wish/gray.xbm wish/sequent.xbm \
   emacs lib/PVSio lib/finite_sets lib/bitvectors"
 tar ${TARFLAGS} -f pvs-${version}-system.tgz --exclude pvsbin $pvssystemfiles
