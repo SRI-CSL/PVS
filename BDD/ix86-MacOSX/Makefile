@@ -2,8 +2,11 @@ BDD = ../bdd/src
 MU = ../mu/src
 UTILS = ../bdd/utils
 INCLUDES = -I/usr/include -I$(BDD) -I$(UTILS) -I$(MU)
+# MACOSX_DEPLOYMENT_TARGET and -weak_library are needed so that dylibs work
+# for both leopard and tiger
+MACOSX_DEPLOYMENT_TARGET=10.2
 LD = ld
-LDFLAGS = -bundle /usr/lib/bundle1.o -flat_namespace -undefined suppress -L./
+LDFLAGS = -bundle /usr/lib/bundle1.o -flat_namespace -undefined suppress -L./ -weak_library /usr/lib/libSystem.B.dylib
 CC = cc
 CFLAGS = -dynamic -DNDEBUG $(INCLUDES)
 XCFLAGS = -O

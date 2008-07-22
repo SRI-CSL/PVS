@@ -2,8 +2,11 @@ BDD = ../mona/BDD
 DFA = ../mona/DFA
 UTILS = ../mona/Mem
 INCLUDES = -I$(BDD) -I$(DFA) -I$(UTILS)
+# MACOSX_DEPLOYMENT_TARGET and -weak_library are needed so that dylibs work
+# for both leopard and tiger
+MACOSX_DEPLOYMENT_TARGET=10.2
 LD = ld
-LDFLAGS = -bundle /usr/lib/bundle1.o -flat_namespace -undefined suppress -L./
+LDFLAGS = -bundle /usr/lib/bundle1.o -flat_namespace -undefined suppress -L./ -weak_library /usr/lib/libSystem.B.dylib
 CC = gcc
 CFLAGS += -D_POSIX_SOURCE -DSYSV $(INCLUDES)
 XCFLAGS = -O
