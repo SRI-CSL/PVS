@@ -261,9 +261,11 @@ PVSIMAGE=pvs-$PVSLISP
 if [ -d $binpath/devel -a -x $binpath/devel/$PVSIMAGE -a ! "$pvsruntime" ]
    then PATH=$binpath/devel:$binpath:$PVSPATH/bin:$PATH
     LD_LIBRARY_PATH=$binpath/devel:$LD_LIBRARY_PATH
+    DYLD_LIBRARY_PATH=$binpath/devel:$DYLD_LIBRARY_PATH
 elif [ -d $binpath/runtime -a -x $binpath/runtime/$PVSIMAGE ]
    then PATH=$binpath/runtime:$binpath:$PVSPATH/bin:$PATH
     LD_LIBRARY_PATH=$binpath/runtime:$LD_LIBRARY_PATH
+    DYLD_LIBRARY_PATH=$binpath/runtime:$DYLD_LIBRARY_PATH
    else echo "Cannot find $binpath/runtime/$PVSIMAGE"
         echo "Check the values of PVSPATH and PVSLISP"
 	exit 1

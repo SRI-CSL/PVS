@@ -32,6 +32,7 @@
   (pushnew :runtime *features*)
   #-(or runtime-standard runtime-dynamic)
   (require 'prof)
+  (require 'ffcompat)
   (setq excl:*global-gc-behavior* :auto)
   (load (format nil "~a/pvs.system" *pvs-path*))
   (require 'uri)
