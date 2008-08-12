@@ -850,12 +850,16 @@
 
 (defun compute-application-judgement-types (ex graph)
   (assert (every #'fully-instantiated? (mapcar #'car graph)))
-  (let ((args-list (argument* ex)))
+  (let ((args-list (argument* ex))
+	(cgraph (remove-if (complement
+			    #'(lambda (x)
+				(compatible? (type (car x)) (type ex))))
+		  graph)))
     (compute-appl-judgement-types
      args-list
      (mapcar #'judgement-types* args-list) ;; Not judgement-types+
      (operator-domain ex)
-     graph)))
+     cgraph)))
 
 (defun operator-domain (ex)
   (operator-domain* (type (operator* ex)) (argument* ex) nil))
