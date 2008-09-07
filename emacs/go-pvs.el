@@ -58,6 +58,8 @@ This is kept in case users reference it.")
        which is set by the pvs shell script")
     (error "PVSPATH environment variable must be set"))
 
+(defvar pvs-original-load-path load-path)
+
 (setq load-path
   (append (list pvs-path
 	        (concat pvs-path "/emacs/"
