@@ -324,14 +324,19 @@
   (kind :parse t :restore-as nil)
   type)
 
-(defcl importing (syntax)
+;; A wrapper for entities that import (explicitly or implicitly)
+;; Currently importing, formal-theory-decl, mod-decl, theory-abbreviation-decl
+;; The saved-context is the context including the imported theories.
+(defcl importing-entity (syntax)
+  saved-context)
+
+(defcl importing (importing-entity)
   (theory-name :parse t)
   (semi :parse t :restore-as nil)
   (chain? :parse t :restore-as nil)
   (refers-to :restore-as nil)
   (generated :restore-as nil)
-  (tcc-form :fetch-as nil :ignore t)
-  saved-context)
+  (tcc-form :fetch-as nil :ignore t))
 
 ;;; DECLARATION Classes.  Many of these have both a declared-type and a
 ;;; type slot.  The declared-type is set by the parser and used by the
@@ -422,10 +427,9 @@
 (defcl formal-const-decl (formal-decl typed-declaration)
   (possibly-empty-type? :restore-as nil))
 
-(defcl formal-theory-decl (formal-decl)
+(defcl formal-theory-decl (formal-decl importing-entity)
   theory-name
-  (generated-theory :fetch-as nil)
-  saved-context)
+  (generated-theory :fetch-as nil))
 
 (defcl adtdecl (typed-declaration)
   (bind-decl :documentation "Keeps a corresponding bind-decl"))
@@ -436,14 +440,12 @@
 
 (defcl lib-eq-decl (lib-decl))
 
-(defcl mod-decl (declaration)
+(defcl mod-decl (declaration importing-entity)
   (modname :parse t)
-  (generated-theory :fetch-as nil)
-  saved-context)
+  (generated-theory :fetch-as nil))
 
-(defcl theory-abbreviation-decl (declaration)
-  (theory-name :parse t)
-  saved-context)
+(defcl theory-abbreviation-decl (declaration importing-entity)
+  (theory-name :parse t))
 
 (defcl var-decl (typed-declaration))
 
