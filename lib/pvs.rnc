@@ -29,7 +29,7 @@ namespace a = "http://relaxng.org/ns/compatibility/annotations/1.0"
 namespace xlink = "http://www.w3.org/1999/xlink"
 
 start = [ xlink:type = "simple" ]
-  file-content | theory-content | recursive-type-content
+  file-content | theory-content | recursive-type-content | top-proofstate
 
 ### Modules
 
@@ -327,7 +327,7 @@ declared-type = type-expr
 ### Type Expressions
 
 type-content =
-  element type type-expr
+   element type {type-expr}
 
 type-expr = type-name-content
           | type-application-content          
@@ -563,20 +563,31 @@ resolution =
 
 #declref = element declref {xsd:anyURI}
 
-### Justifications
+### Proofstates
 
-justification = element justification justification-content
+top-proofstate =
+   element top-proofstate {declref, proofstate-content}
 
-justification-content =
-   attribute label {text},
-   attribute comment {text},
-   element rule {rule-content},
+proofstate = element proofstate {proofstate-content}
+
+proofstate-content =
+   attribute label {text}?,
+   attribute comment {text}?,
+   attribute status-flag {text}?,
+   element rule {rule-content}?,
    element xrule {rule-content}?,
-   element subgoal {justification-content}*
+   element sequent {formula}*,
+   element subgoal {proofstate}?,
+   element done-subgoals {proofstate}*,
+   element pending-subgoals {proofstate}*,
+   element remaining-subgoals {proofstate}*
+
+formula =
+   element formula {expr}
 
 rule-content =
-   element name {string},
-   element rule-arg {rule-arg-content}*
+   id,
+   element rule-args {rule-arg-content}*
 
 rule-arg-content =
    step | element steps {step}* |
@@ -584,6 +595,9 @@ rule-arg-content =
    type-expr | element type-exprs {type-expr}* |
    theory-name | element theory-names {theory-name}* |
    text
+
+step =
+   element step {text} | id
 
 ### Tokens
 
