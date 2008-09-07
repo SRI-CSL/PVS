@@ -59,6 +59,7 @@
 		  pvs-utils
 		  pvs-view
 		  pvs-pvsio
+		  newcomment
 		  tcl
 		  
 		  pvs-byte-compile

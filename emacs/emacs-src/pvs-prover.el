@@ -1043,7 +1043,7 @@ declarations will not be installed."
       (if (> indent 0)
 	  (while (and (>= (point) start)
 		      (progn (beginning-of-line)
-			     (insert-string indstr)
+			     (insert indstr)
 			     (= (forward-line -1) 0))))))
     (when crs (insert "\n\n"))))
 
@@ -1084,7 +1084,7 @@ will replace the original when C-c C-c is typed."
   (pvs-bury-output)
   (let ((file (current-pvs-file)))
     (when (buffer-modified-p (get-file-buffer file))
-      (error "~a is not parsed" file))
+      (error "%s is not parsed" file))
     (when (pvs-send-and-wait (format "(lisp (modify-declaration-at \"%s\" %d))"
 				 file (current-line-number))
 			     nil nil 'bool)
@@ -1192,7 +1192,7 @@ then there is no depth bound."
 		    nil)
 		   ((and (stringp depth)
 			 (string-match "^[ \t]*[0-9]+[ \t]*$" depth))
-		    (string-to-int depth))
+		    (string-to-number depth))
 		   (t (error "set-rewrite-depth: %s is not a number or nil"
 			     depth)))))
     (pvs-send (format "(setq *rewrite-print-depth* %s)" dep))))
@@ -1221,7 +1221,7 @@ there is no bound on the length."
 		    nil)
 		   ((and (stringp length)
 			 (string-match "^[ \t]*[0-9]+[ \t]*$" length))
-		    (string-to-int length))
+		    (string-to-number length))
 		   (t (error "set-rewrite-length: %s is not an integer or nil"
 			     length)))))
     (pvs-send (format "(setq *rewrite-print-length* %s)" len))))
@@ -1242,7 +1242,7 @@ If it is 0 (zero), then there is no bound on the depth."
 		    nil)
 		   ((and (stringp depth)
 			 (string-match "^[ \t]*[0-9]+[ \t]*$" depth))
-		    (string-to-int depth))
+		    (string-to-number depth))
 		   (t (error "set-print-depth: %s is not an integer" depth)))))
     (pvs-send (format "(setq *prover-print-depth* %s)"
 		  (when (plusp dep) dep)))))
@@ -1264,7 +1264,7 @@ length."
 		    nil)
 		   ((and (stringp length)
 			 (string-match "^[ \t]*[0-9]+[ \t]*$" length))
-		    (string-to-int length))
+		    (string-to-number length))
 		   (t (error "set-print-length: %s is not an integer"
 			     length)))))
     (pvs-send (format "(setq *prover-print-length* %s)"
@@ -1285,7 +1285,7 @@ If it is 0 (zero), then the whole formula is printed."
 		    nil)
 		   ((and (stringp lines)
 			 (string-match "^[ \t]*[0-9]+[ \t]*$" lines))
-		    (string-to-int lines))
+		    (string-to-number lines))
 		   (t (error "set-print-lines: %s is not an integer" lines)))))
     (pvs-send (format "(setq *prover-print-lines* %s)"
 		  (when (plusp dep) dep)))))
@@ -2153,7 +2153,7 @@ is created, foo.prf.~3~ is removed and foo.prf.~6~ is added."
 		  1)
 		 ((and (stringp num)
 		       (string-match "^[ \t]*[0-9]+[ \t]*$" num))
-		  (string-to-int num))
+		  (string-to-number num))
 		 (t (error "set-proof-backup-number: %s is not an integer"
 			   num)))))
     (pvs-send (format "(setq *number-of-proof-backups* %s)" n))))

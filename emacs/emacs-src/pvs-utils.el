@@ -238,7 +238,7 @@ beginning of the previous one."
 		nil nil 'list)))
     (when fandp
       (cond ((not (file-exists-p (car fandp)))
-	     (error "Theory ~a was in ~a which no longer exists"
+	     (error "Theory %s was in %s which no longer exists"
 		    theoryname (car fandp)))
 	    ((or (null (cdr fandp))
 		 (buffer-modified-p (find-file-noselect (car fandp))))
@@ -884,7 +884,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
   (pvs-current-directory)
   (let ((file-list (append (context-files (or dir *pvs-current-directory*))
 			   (when with-prelude-p
-			     (list (format "prelude" pvs-path))))))
+			     (list (format "%s/prelude" pvs-path))))))
     (if (member file-list '(nil NIL))
 	(error "No files in context")
 	(let* ((default (unless no-default-p (current-pvs-file t)))
@@ -989,13 +989,6 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	  (if (equal theory "")
 	      (error "Must specify a theory name")
 	      (list theory))))))
-
-(defun remove-duplicates (list)
-  (let ((nlist nil))
-    (dolist (e list)
-      (unless (member-equal e nlist)
-	(push e nlist)))
-    (nreverse nlist)))
 
 (defun current-theory ()
   (let ((file (current-pvs-file t)))
@@ -1235,13 +1228,6 @@ The save-pvs-file command saves the PVS file of the current buffer."
   (or (car (get cmd 'abbreviations))
       cmd))
 
-(defun remove-if (pred list)
-  (let ((nlist nil))
-    (dolist (e list)
-      (unless (funcall pred e)
-	(push e nlist)))
-    (nreverse nlist)))
-
 (defun add-final-newline ()
   (save-excursion
     (unless (equal (char-after (1- (point-max))) ?\n)
@@ -1355,9 +1341,14 @@ The save-pvs-file command saves the PVS file of the current buffer."
 (setq pvs-reserved-words-regexp
   "\\bassuming\\b\\|\\baxiom\\b\\|\\baccept\\b\\|\\bchanges\\b\\|\\ball\\b\\|\\band\\b\\|\\barray\\b\\|\\bbegin\\b\\|\\bby\\b\\|\\bcase\\b\\|\\bdeclare\\b\\|\\bdefinition\\b\\|\\belse\\b\\|\\belsif\\b\\|\\bendif\\b\\|\\bendassuming\\b\\|\\bendcase\\b\\|\\bend\\b\\|\\bexists\\b\\|\\bexporting\\b\\|\\bexit\\b\\|\\bforall\\b\\|\\bfunction\\b\\|\\bformula\\b\\|\\bfrom\\b\\|\\bif\\b\\|\\biff\\b\\|\\bimplies\\b\\|\\bimporting\\b\\|\\bin\\b\\|\\bis\\b\\|\\blambda\\b\\|\\blemma\\b\\|\\bloop\\b\\|\\bmapping\\b\\|\\bmeasure\\b\\|\\bmodule\\b\\|\\bnot\\b\\|\\bnothing\\b\\|\\bof\\b\\|\\bonto\\b\\|\\bobligation\\b\\|\\bopspec\\b\\|\\bor\\b\\|\\bproof\\b\\|\\bprove\\b\\|\\brecursive\\b\\|\\bresult\\b\\|\\btheorem\\b\\|\\btheory\\b\\|\\busing\\b\\|\\bvar\\b\\|\\bvariable\\b\\|\\brecord\\b\\|\\bverify\\b\\|\\bwhere\\b\\|\\bthen\\b\\|\\btype\\b\\|\\bwhen\\b\\|\\bwhile\\b\\|\\bwith\\b\\|\\blet\\b\\|\\bsetvariable\\b\\|\\[#\\|#\\]\\|[(]#\\|#[)]")
 
+(defmacro pvs-find-face (name)
+  (if (featurep 'xemacs)
+      `(find-face ,name)
+    `(facep ,name)))
+
 (defun highlight-pvs ()
   (interactive)
-  (unless (internal-find-face 'pvs-keyword)
+  (unless (pvs-find-face 'pvs-keyword)
     (make-face 'pvs-keyword)
     (set-face-foreground 'pvs-keyword "Blue")
     (set-face-font 'pvs-keyword "*courier-bold-r-normal--12*"))
@@ -1575,13 +1566,14 @@ Point will be on the offending delimiter."
 (defvar pvs-unexpected-output nil)
 
 (defmacro pvs-validate (file directory &rest body)
-  (` (let* ((logfile (concat default-directory (, file))))
+  `(let* ((logfile (concat default-directory ,file)))
        (pvs-backup-logfile logfile)
        (let ((logbuf (find-file-noselect logfile t)))
 	 (unwind-protect
 	     (save-excursion
-	       (fset 'pvs-handler-orig 'pvs-handler)
-	       (fset 'pvs-handler 'pvs-validate-handler)
+	       ;;(fset 'pvs-handler-orig 'pvs-handler)
+	       ;;(fset 'pvs-handler 'pvs-validate-handler)
+	       (setq comint-handler 'pvs-validate-handler)
 	       (fset 'ask-user-about-lock-orig 'ask-user-about-lock)
 	       (fset 'ask-user-about-lock 'pvs-log-ignore-lock)
 	       (set-buffer logbuf)
@@ -1592,9 +1584,9 @@ Point will be on the offending delimiter."
 		     (default-directory default-directory))
 		 (pvs-message (pvs-version-string))
 		 (let ((pvs-disable-messages nil))
-		   (change-context (, directory)))
+		   (change-context ,directory))
 		 (condition-case err
-		     (progn (,@ body))
+		     (progn ,@body)
 		   (error (pvs-message "ERROR: Emacs: %s %s"
 			    (car err) (cdr err)))))
 	       (pvs-wait-for-it)
@@ -1658,8 +1650,9 @@ Point will be on the offending delimiter."
 		   (progn
 		     (pvs-message "NO BASELINE - using this run to create baseline.log")
 		     (copy-file (buffer-file-name) "baseline.log"))))
-	   (fset 'pvs-handler 'pvs-handler-orig)
-	   (fset 'ask-user-about-lock 'ask-user-about-lock-orig))))))
+	   ;;(fset 'pvs-handler 'pvs-handler-orig)
+	   (setq comint-handler 'pvs-handler)
+	   (fset 'ask-user-about-lock 'ask-user-about-lock-orig)))))
 
 
 ;;; This function provides the most basic form of test, removing bin
@@ -1687,12 +1680,17 @@ Point will be on the offending delimiter."
 	    (progn (ilisp-send (format "(prove-formula \"%s\" \"%s\" t)"
 			    (or theory filename) formula)
 			nil 'pr t 'pvs-handler)
-		   (pvs-wait-for-it))
+		   (sleep-for 1)
+		   (pvs-wait-for-it)
+		   (pvs-validate-quit-prover)
+		   (when pvs-in-checker
+		     (interrupt-process (ilisp-process))
+		     (comint-send (ilisp-process) ":reset")))
 	    (if theory
 		(prove-theory theory)
 		(prove-pvs-file filename))))
     (setq pvs-verbose overbose)
-    (pvs-send-and-wait (format "(setq *pvs-verbose* %s)" overbose)))
+    (pvs-send (format "(setq *pvs-verbose* %s)" overbose)))
   (run-hooks 'pvs-validate-proof-hooks))
 
 (defun pvs-validate-typecheck (filename)
@@ -1700,6 +1698,39 @@ Point will be on the offending delimiter."
   (find-pvs-file filename)
   (typecheck filename)
   (run-hooks 'pvs-validate-hooks))
+
+(defun pvs-validate-start-proof (&optional rerun filename formula dont-show-proofp)
+  ;; Starts a proof - by default in the current filename at the cursor
+  ;; position, and the proof is displayed.
+  (let* ((name-and-origin (if filename
+			      (list filename "pvs")
+			      (pvs-formula-origin)))
+	 (name (car name-and-origin))
+	 (origin (cadr name-and-origin))
+	 (pvs-error nil))
+    (if formula
+	(ilisp-send (format "(prove-formula \"%s\" \"%s\" %s)"
+			filename formula rerun)
+		    nil 'pr t 'pvs-handler)
+	(ilisp-send
+	 (format "(prove-file-at \"%s\" %s %d %s \"%s\" \"%s\")"
+	     name nil (current-line-number) rerun origin (buffer-name))
+	 nil 'pr))
+    (unless pvs-error
+      (switch-to-lisp t t)
+      (pvs-wait-for-it)
+      (unless pvs-in-checker
+	(pvs-message "ERROR: proof wasn't started for some reason")))))
+
+(defun pvs-validate-send-prover-command (string)
+  (when pvs-in-checker
+    (comint-send (ilisp-process) string)
+    (pvs-wait-for-it)))
+
+(defun pvs-validate-quit-prover ()
+  (when pvs-in-checker
+    (comint-send (ilisp-process) "(quit)y\n")
+    (pvs-wait-for-it)))
 
 (defun pvs-validate-show-buffer (bufname)
   (save-excursion

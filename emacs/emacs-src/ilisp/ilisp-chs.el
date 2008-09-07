@@ -40,7 +40,7 @@
 		      (string-match "Break" old)
 		      (string-match "[0-9]+" old)))
 	 (old-level (if was-in
- 			(string-to-int
+ 			(string-to-number
 			 (substring old (match-beginning 0)
 				    (match-end 0)))
 		      0))
@@ -48,7 +48,7 @@
 		 (string-match "Break" new)
 		 (string-match "[0-9]+" new)))
 	 (new-level (if is-in
- 			(string-to-int
+ 			(string-to-number
 			 (substring new (match-beginning 0)
 				    (match-end 0)))
 		      0)))

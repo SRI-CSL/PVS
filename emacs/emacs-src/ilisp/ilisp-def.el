@@ -43,8 +43,8 @@
 ;;;
 (defmacro deflocal (variable default &optional documentation)
   "Define an ilisp local variable."
-  (` (progn (lisp-deflocal '(, variable))
-	    (defvar (, variable) (, default) (, documentation)))))
+  `(progn (lisp-deflocal ',variable)
+	    (defvar ,variable ,default ,documentation)))
 
 ;;;%%Simple customization
 

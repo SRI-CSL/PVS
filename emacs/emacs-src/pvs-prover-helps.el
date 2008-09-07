@@ -244,7 +244,7 @@ Otherwise, prompts for a formula for which to install an auto-rewrite."
 	  (setq ept (point))
 	  (setq def2arw (buffer-substring bpt ept)))
       (setq def2arw (read-from-minibuffer "Auto-rewrite: ")))
-    (end-of-buffer)
+    (goto-char (point-max))
     (insert "(auto-rewrite " ?\" def2arw ?\" ")")
     (return-ilisp)))
 
@@ -372,7 +372,7 @@ only."
 		    (setq fnum (buffer-substring bpt ept)))
 		  (setq fnum (read-from-minibuffer
 			      "in formula [CR for default]# " ""))))
-	  (end-of-buffer)
+	  (goto-char (point-max))
 	  (insert "(expand " ?\" def2expand ?\" " " fnum ")")
 	  (return-ilisp)))))
 
@@ -701,7 +701,7 @@ even if you give a prefix argument"
       (setq expr (buffer-substring start end))
       (if (not (y-or-n-p (concat "Typepred for " expr)))
 	  (error "typepred aborted.")))
-    (end-of-buffer)
+    (goto-char (point-max))
     (insert "(typepred " ?\" expr ?\" ")")
     (return-ilisp)))
 
@@ -767,7 +767,7 @@ Assumes that a Proof buffer exists."
 	    (if editprfwin
 		(set-window-point editprfwin (point))))
 	  (setq cmd (buffer-substring beg end))))
-      (end-of-buffer)
+      (goto-char (point-max))
       (insert cmd)
       (return-ilisp)
       (hilit-next-prover-command)
@@ -820,10 +820,10 @@ Assumes that an Proof buffer exists."
 	  (pvs-prover-goto-prev-step t))
 	(hilit-next-prover-command)
 	(switch-to-buffer pvsbuf)
-	(end-of-buffer)
+	(goto-char (point-max))
 	(switch-to-buffer editprfbuf)
 	(pop-to-buffer pvsbuf)
-	(end-of-buffer))))
+	(goto-char (point-max)))))
 
 
 ;;; pvs-prover-goto-next-step puts the cursor at the beginning of the next

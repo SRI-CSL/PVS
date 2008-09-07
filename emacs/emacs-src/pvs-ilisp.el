@@ -736,7 +736,7 @@ window."
 
 (defun resize-info-buffer ()
   (unless (one-window-p t)
-    (let* ((maxsize (/ (screen-height) 2))
+    (let* ((maxsize (/ (frame-height) 2))
 	   (cursize (1- (window-height)))
 	   (lines (real-number-of-lines))
 	   (size (min maxsize lines)))
@@ -1107,11 +1107,6 @@ This displays information about the PVS command queue in the minibuffer."
 	     (forward-char 1)
 	     (show-entry))
 	    (t (error "Unknown display type %s" type))))))	   
-
-(defun pvs-locate (out)
-  (apply 'display-file-at-location
-	 (parse-pvs-message out)))
-
 
 (defun pvs-locate (output)
   (let* ((message (parse-pvs-message output))

@@ -181,8 +181,8 @@ Return (point-min) if current buffer is not a mini-buffer."
 	     (not (memq +ilisp-emacs-version-id+
 			'(xemacs lucid-19 lucid-19-new)))
 	     )
-	(setq quit-flag nil
-	      unread-command-char 7))))
+	(setq quit-flag nil)
+	(push 7 unread-command-events))))
 
 ;;;
 (defun completer-deleter (regexp choices &optional keep)

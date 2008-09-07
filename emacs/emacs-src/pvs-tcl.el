@@ -29,8 +29,9 @@
 
 ;; Try to get the default tcl, if it exists
 ;; Otherwise get the one from the PVS path
-(let ((load-path (cons nil load-path)))
-  (require 'tcl))
+(or (let ((load-path pvs-original-load-path))
+      (require 'tcl nil t))
+    (require 'tcl))
 
 (setq tcl-prompt-regexp "^% ")
 
@@ -94,7 +95,7 @@
 		"PVS Error"))
 	      (t (comint-display-output
 		  (format "PVS was developed and tested for %s versions %s,\nbut you are using version %s.\nThis is unlikely to cause problems, as it is a later release."
-		      program-name expected version program-name)
+		      program-name expected version)
 		  "PVS Warning"))))))
 
 (defun pvs-parse-version-numbers (vnum)

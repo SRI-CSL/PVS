@@ -193,7 +193,7 @@ if successful."
 		  (recenter 0)
 		  (if name 
 		      (message "Found %s %s definition" type name)
-		      (message "Found %s"))
+		      (message "Found %s" symbol))
 		  t)
 		(if first 
 		    (goto-char lisp-first-point)

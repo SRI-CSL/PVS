@@ -478,7 +478,7 @@ formula and invoking the prove command."
 		(goto-char (point-min))
 		(pop-to-buffer pbuf)
 		(pvs-mode))
-	      (error "%s is not in the prelude."))))))
+	      (error "%s is not in the prelude." fname))))))
 
 (defun get-prelude-file-and-region (theoryname)
   (let ((freg nil)
@@ -768,7 +768,7 @@ pvs-tex.sub files from your home directory."
 			"Name of root file (CR for this one): ")
 		       (list (y-or-n-p "Include libraries? "))
 		       (list (read-from-minibuffer
-			      (format "Mail to: " pvs-last-email-address)
+			      (format "Mail to: ")
 			      pvs-last-email-address))
 		       (list (read-string "CC: "))
 		       (list (read-string "Subject: "))))
@@ -787,9 +787,9 @@ pvs-tex.sub files from your home directory."
   (let* ((lkeymap (copy-keymap (current-local-map)))
 	 (file-string (pvs-dump-files-string pvs-file libraries-p)))
     (define-key lkeymap "\C-c\C-c"
-      (` (lambda ()
-	   (interactive)
-	   (pvs-mail-send-and-exit (, to) (, subject) (, file-string)))))
+      `(lambda ()
+	 (interactive)
+	 (pvs-mail-send-and-exit ,to ,subject ,file-string)))
     (use-local-map lkeymap)))
 
 (defun pvs-mail-send-and-exit (to subject file-string)
@@ -1435,8 +1435,8 @@ underlying Lisp in the minibuffer."
 
 (defun pvs-major-version-number ()
   (if *pvs-version-information*
-      (string-to-int (car *pvs-version-information*))
-      (string-to-int (pvs-send-and-wait "*pvs-version*" nil nil))))
+      (string-to-number (car *pvs-version-information*))
+      (string-to-number (pvs-send-and-wait "*pvs-version*" nil nil))))
 
 ;;; Replay
 

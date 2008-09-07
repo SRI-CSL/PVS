@@ -22,10 +22,10 @@
 (defun allegro-check-prompt (old new)
   "Compare the break level printed at the beginning of the prompt."
   (let* ((old-level (if (and old (eq 1 (string-match "[0-9]+" old)))
- 			(string-to-int (substring old 1))
+ 			(string-to-number (substring old 1))
  			0))
  	 (new-level (if (eq 1 (string-match "[0-9]+" new))
- 			(string-to-int (substring new 1))
+ 			(string-to-number (substring new 1))
  			0)))
     (<= new-level old-level)))
  

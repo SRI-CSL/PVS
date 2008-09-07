@@ -143,6 +143,9 @@
 (load "pvs-eval" nil noninteractive)
 (load "pvs-pvsio" nil noninteractive)
 
+(or (let ((load-path pvs-original-load-path))
+      (require 'newcomment nil t))
+    (require 'newcomment))
 (put 'comment-region 'pvs-command 'editing)
 (global-set-key "\C-c;" 'comment-region)
 
@@ -238,7 +241,7 @@
     (insert "\n\nPlease check our website periodically for news of later versions")
     (insert "\nat http://pvs.csl.sri.com/")
     (insert "\n\n" (cadr (cdddr vers)) "\n" (cadr (cddddr vers)))
-    (insert-string "
+    (insert "
    ----------
    Bug reports and suggestions for improvement should be sent to
    pvs-bugs@csl.sri.com
