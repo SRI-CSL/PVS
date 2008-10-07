@@ -229,7 +229,18 @@ conversion-content =
   element conversion-decl {declaration, expr}
 
 auto-rewrite-content =
-  element auto-rewrite {id, typed-declaration}
+  element auto-rewrite
+   {auto-rewrite-attr?, declaration, rewrite-name-content+}
+
+rewrite-name-content =
+   element rewrite-name
+   {commonattrs, rewrite-name-attrs?, name, resolution?, rewrite-name-spec?}
+
+rewrite-name-spec =
+   element rewrite-name-spec {type-expr | name | xsd:integer}
+
+rewrite-name-attrs =
+   attribute kind {string "lazy" | string "eager" | string "macro"}
 
 lib-decl-content =
   element lib-decl {id, typed-declaration}
@@ -622,6 +633,9 @@ commonattrs =
 
 chainattr =
   attribute chain-p {boolean}
+
+auto-rewrite-attr =
+   attribute kind {string "plus" | string "minus"}
 
 place-string = xsd:string {pattern = "\d+ \d+ \d+ \d+"}
 
