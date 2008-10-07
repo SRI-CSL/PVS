@@ -96,8 +96,9 @@
 
 (defun print-xml-theory (theory)
   (print-xml theory :file (concatenate 'string (string (id theory)) ".xml"))
-  (print-xml (xml-collect-proofs theory)
-	     :file (concatenate 'string (string (id theory)) "-proofs.xml")))
+  ;;(print-xml (xml-collect-proofs theory)
+  ;;	     :file (concatenate 'string (string (id theory)) "-proofs.xml"))
+  )
 
 (defun xml-collect-proofs (theory)
   ;; For now, we simply rerun each proof, and save an intermediate
@@ -493,6 +494,76 @@
   (declare (ignore colon? atsign?))
   (with-slots (expr) decl
     (xpvs-elt stream conversion-decl (xml-attributes decl) expr)))
+
+(defmethod pp-xml* (stream (decl auto-rewrite-decl) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
+  (with-slots (rewrite-names) decl
+    (xpvs-elt stream auto-rewrite (xml-attributes decl) rewrite-names)))
+
+(defmethod xml-attributes ((decl auto-rewrite-plus-decl))
+  (nconc (list 'kind "plus") (call-next-method)))
+
+(defmethod xml-attributes ((decl auto-rewrite-minus-decl))
+  (nconc (list 'kind "minus") (call-next-method)))
+
+(defmethod pp-xml* (stream (name rewrite-name) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
+  (xpvs-elt stream rewrite-name (xml-attributes name)
+	    (id name)
+	    (when (mod-id name)
+	      (make-xml-theory-id :id (mod-id name)))
+	    (when (actuals name)
+	      (make-xml-actuals :list (actuals name)))
+	    (when (mappings name)
+	      (make-xml-mappings :list (mappings name)))
+	    (when (library name)
+	      (make-xml-library-id (library name)))
+	    (car (resolutions name))))
+
+(defmethod pp-xml* (stream (name formula-rewrite-name) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
+  (xpvs-elt stream rewrite-name (xml-attributes name)
+	    (id name)
+	    (when (mod-id name)
+	      (make-xml-theory-id :id (mod-id name)))
+	    (when (actuals name)
+	      (make-xml-actuals :list (actuals name)))
+	    (when (mappings name)
+	      (make-xml-mappings :list (mappings name)))
+	    (when (library name)
+	      (make-xml-library-id (library name)))
+	    (car (resolutions name))
+	    (string-downcase (spelling name))))
+
+(defmethod pp-xml* (stream (name constant-rewrite-name) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
+  (xpvs-elt stream rewrite-name (xml-attributes name)
+	    (id name)
+	    (when (mod-id name)
+	      (make-xml-theory-id :id (mod-id name)))
+	    (when (actuals name)
+	      (make-xml-actuals :list (actuals name)))
+	    (when (mappings name)
+	      (make-xml-mappings :list (mappings name)))
+	    (when (library name)
+	      (make-xml-library-id (library name)))
+	    (car (resolutions name))
+	    (declared-type name)))
+
+(defmethod pp-xml* (stream (name fnum-rewrite) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
+  (xpvs-elt stream rewrite-name (xml-attributes name)
+	    (id name)
+	    (when (mod-id name)
+	      (make-xml-theory-id :id (mod-id name)))
+	    (when (actuals name)
+	      (make-xml-actuals :list (actuals name)))
+	    (when (mappings name)
+	      (make-xml-mappings :list (mappings name)))
+	    (when (library name)
+	      (make-xml-library-id (library name)))
+	    (car (resolutions name))
+	    (fnum name)))
 
 
 ;;; Type expressions
@@ -987,31 +1058,38 @@
 	   (call-next-method))))
 
 (defmethod pp-xml* (stream (ex xml-rule) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
   (with-slots (rule) ex
     (xpvs-elt stream rule nil
 	      (car rule)
 	      (make-xml-rule-args :args (cdr rule)))))
 
 (defmethod pp-xml* (stream (ex xml-rule-args) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
   (with-slots (args) ex
     (xpvs-elt stream rule-args nil args)))
 
 (defmethod pp-xml* (stream (ex xml-xrule) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
   (with-slots (xrule) ex
     (xpvs-elt stream xrule nil
 	      (car xrule)
 	      (make-xml-rule-args :args (cdr xrule)))))
 
 (defmethod pp-xml* (stream (ex xml-subgoal) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
   (xpvs-elt stream subgoal nil (xml-subgoal-subgoal ex)))
 
 (defmethod pp-xml* (stream (ex xml-done-subgoals) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
   (xpvs-elt stream done-subgoals nil (xml-done-subgoals-goals ex)))
 
 (defmethod pp-xml* (stream (ex xml-pending-subgoals) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
   (xpvs-elt stream pending-subgoals nil (xml-pending-subgoals-goals ex)))
 
 (defmethod pp-xml* (stream (ex xml-remaining-subgoals) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
   (xpvs-elt stream remaining-subgoals nil (xml-remaining-subgoals-goals ex)))
 
 (defun xml-sexp (form stream)
