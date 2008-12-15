@@ -64,7 +64,7 @@ int make_sset(int sz, int *elem,  unsigned sq, int d1, int d2)
   ssets[next_sset].decomp1 = d1;
   ssets[next_sset].decomp2 = d2;
   ssets[next_sset].permanent = -1;
-  insert_in_hash_tab(htbl_set, (long)elem, 0, (void *)(next_sset+1));  
+  insert_in_hash_tab(htbl_set, (long)elem, 0, (void *)(long)(next_sset+1));  
   /* htbl maps to ++id, since 0 = not_found */ 
 
   return(next_sset++);
@@ -120,7 +120,7 @@ unsigned proj_term1(unsigned state1, unsigned  state2)
   }
    
   /* res = 0 or id+1 */
-  if ( (res = (int) lookup_in_hash_tab(htbl_set, (long) s, 0)) ) {
+  if ( (res = (int) (long) lookup_in_hash_tab(htbl_set, (long) s, 0)) ) {
     mem_free(s); /* it was already there */  
     return (--res);
   }
@@ -166,7 +166,7 @@ bdd_ptr proj_term2(unsigned set_index1,  unsigned set_index2)
   *e3 = -1;   /* Terminate the new set */
   
   /* res = 0 or id+1 */
-  if ( (res = (int) lookup_in_hash_tab(htbl_set, (long) s, 0)) ) {
+  if ( (res = (int) (long) lookup_in_hash_tab(htbl_set, (long) s, 0)) ) {
     mem_free(s); /* it was already there */
     return (--res);
   }

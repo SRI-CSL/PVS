@@ -42,12 +42,13 @@ and final; put the result in discrs and return the number of classes*/
   unsigned i;
   
   for (i = 0;  i < length; i++) {
-    unsigned k = (unsigned) lookup_in_hash_tab(htbl, (unsigned)roots[i], final[i]);
+    unsigned k = (unsigned) (long)
+      lookup_in_hash_tab(htbl, (unsigned)roots[i], final[i]);
 
     if (k == 0) {
       insert_in_hash_tab(htbl, 
 			 (unsigned)roots[i], final[i],
-			 (void *) ++next);
+			 (void *) (long) ++next);
       discrs[i] = next - 1;
     }
     else
