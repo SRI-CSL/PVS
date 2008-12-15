@@ -81,7 +81,7 @@
   (let* ((free (symtab-freevars symtab))
 	 (size (length free))
 	 (offsets (make-array size :element-type 'fixnum))
-	 (fvars   (make-array size :element-type 'string))
+	 (fvars   (make-array size :element-type 'string :initial-element ""))
 	 (types   (make-string size))
 	 (i       0))
     (mapc  #'(lambda (bndng)
