@@ -40,7 +40,7 @@ BDDPTR *MakeBDDVec (int size)
     BDDPTR *F;
 
     F = CALLOC_ARRAY (size+1, BDDPTR);
-    F[0] = (BDDPTR) size;
+    F[0] = (BDDPTR) (long) size;
     return F+1;
   }
   return NULL;

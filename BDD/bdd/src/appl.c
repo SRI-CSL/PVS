@@ -105,7 +105,7 @@ BDDPTR var_access (char *s, int len)
   int flag;
 
   /* LET introduced names come first! */
-  if (lookup (aux_table, s, len, &info.voidptr, LOOKUP) != NOT_PRESENT) {
+  if (lookup (aux_table, s, len, &info.voidptr, LOOKUP_PTR) != NOT_PRESENT) {
     /* This name is indeed used for a secondary variable. */
     if (!BDD_VOID_P (info.bddptr)) {
       BDD_GC_PROTECT (info.bddptr);
@@ -118,7 +118,7 @@ BDDPTR var_access (char *s, int len)
   }
 
   /* Here define as primary variable: */
-  flag = (int) INSERT;
+  flag = INSERT;
   index = lookup (var_table, s, len, NULL, &flag);
   if (flag == INDEED_INSERTED) {
     var_count++;
@@ -132,12 +132,12 @@ BDDPTR make_user_var (char *s, int len)
   int index;
   int flag;
 
-  if (lookup (aux_table, s, len, NULL, LOOKUP) != NOT_PRESENT)
+  if (lookup (aux_table, s, len, NULL, LOOKUP_PTR) != NOT_PRESENT)
     if (warnings)
     fprintf (stderr,
      "Warning: secondary variable %s already exists.\n", s);
 
-  flag = (int) INSERT;
+  flag = INSERT;
   index = lookup (var_table, s, len, NULL, &flag);
   if (flag == INDEED_INSERTED) {
     var_count++;
@@ -148,12 +148,12 @@ BDDPTR make_user_var (char *s, int len)
 
 int make_sub_var (char *s, int len)
 {
-  if (lookup (var_table, s, len, NULL, LOOKUP) != NOT_PRESENT)
+  if (lookup (var_table, s, len, NULL, LOOKUP_PTR) != NOT_PRESENT)
     if (warnings)
     fprintf (stderr,
      "Warning: primary variable %s already exists.\n", s);
 
-  return lookup (aux_table, s, len, NULL, INSERT);
+  return lookup (aux_table, s, len, NULL, INSERT_PTR);
 }
 
 BDDPTR make_definition (int id_index, BDDPTR function)

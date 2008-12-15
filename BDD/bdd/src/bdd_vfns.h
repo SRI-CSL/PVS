@@ -10,7 +10,7 @@
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 */
 
-#define BDDVEC_SIZE(F)			((F) ? ((int *) F)[-1] : 0)
+#define BDDVEC_SIZE(F)			((F) ? (int) BITS (F[-1]) : 0)
 
 extern BDDPTR *MakeBDDVec		(int size);
 extern   void  FreeBDDVec		(BDDPTR *F);

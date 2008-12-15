@@ -30,6 +30,13 @@
 /* Number of bits in a Nat: */
 #define NAT_BIT			32
 
+/* Whether we are compiling for a 64-bit machine */
+#if LONG_MAX == 9223372036854775807L
+#define BITS64			1
+#else
+#define BITS64			0
+#endif
+
 /* What's the max unsigned integer value that fits in `n' bits: */
 #define UBITS_MAX(n)		(~(-1 << (n)))
 
@@ -77,15 +84,9 @@
 /* TYPE DEFINITIONS                                                         */
 /* ------------------------------------------------------------------------ */
 
-/* Xlib.h seems to define this! */
-#ifdef Bool
-#undef Bool
-#endif
-
 typedef   signed char		TinyInt;
 typedef    short int		SmallInt;
 typedef          int		Int;
-typedef unsigned char		Bool;
 typedef unsigned char		Byte;
 typedef unsigned char		TinyNat;
 typedef unsigned short int	SmallNat;

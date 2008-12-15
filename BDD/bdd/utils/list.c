@@ -462,8 +462,15 @@ static LIST merge_sorted_lists(LIST list1, LIST list2,
   q = LIST_FIRST(list2);
 
   while (p && q) {
-    int comp = comparison ? (*comparison)(ELEM_CONTENTS(p), ELEM_CONTENTS(q))
-      			  : (int) ELEM_CONTENTS(p) - (int) ELEM_CONTENTS(q);
+    int comp;
+    if (comparison)
+      comp = (*comparison)(ELEM_CONTENTS(p), ELEM_CONTENTS(q));
+    else if (ELEM_CONTENTS(p) > ELEM_CONTENTS(q))
+      comp = 1;
+    else if (ELEM_CONTENTS(p) < ELEM_CONTENTS(q))
+      comp = -1;
+    else
+      comp = 0;
 
     if (!comp) {		/* ==> p = q */
       if (remove_duplicates) {

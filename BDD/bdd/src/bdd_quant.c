@@ -777,14 +777,15 @@ static struct bdd_and_smooth_cache_entry {
 /* Using muliplicative method in hashing. Constant A according Knuth:
    A = (PHI - 1) * 2^32, with PHI = golden ratio = (1 + sqrt(5))/2
    PHI-1 = 0.61803 39887 49894 84820 ...
-   A = 26544357690 = -1640531527 = 0x9E3779B9U
+   A = 2654435769 = -1640531527 = 0x9E3779B9U
+   The nearest prime number is 2654435761 = 0x9E3779B1U
 */
 
 /* Hashes Nat `k' to a value in the range [0..2^log2size-1]. */
-#define BDD_HASH(k,log2size)	div_pow2(0x9E3779B9U*(k), NAT_BIT-(log2size))
+#define BDD_HASH(k,log2size)	div_pow2(0x9E3779B1U*(k), NAT_BIT-(log2size))
 
 #define hash_and_smooth(a, b) \
-    BDD_HASH((((Nat) (a)) ^ ((Nat) (b) << 15)), BDD_AND_SMOOTH_CACHE_LOG2SIZE)
+  BDD_HASH((Nat)((BITS (a)) ^ (BITS (b) << 15)), BDD_AND_SMOOTH_CACHE_LOG2SIZE)
 
 static BDDPTR bdd_lookup_and_smooth_cache (BDDPTR f, BDDPTR g)
 {

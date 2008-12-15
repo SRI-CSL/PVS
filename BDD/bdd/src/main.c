@@ -309,7 +309,7 @@ fprintf (stdout,
 
   var_table = make_hashtab (3);
   /* Let's not use entry nr. 0 for fun: */
-/*  lookup (var_table, "", 0, NULL, INSERT);*/
+/*  lookup (var_table, "", 0, NULL, INSERT_PTR);*/
 
   aux_table = make_hashtab (0);
 

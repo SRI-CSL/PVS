@@ -31,7 +31,7 @@
 /* IMPORTANT NOTICE!!!
 
    This package freely uses the two least significant bits of a pointer
-   value, which by the way is also assumed to be a 32-bit quantity.
+   value, which is assumed to be a 32-bit or 64-bit quantity.
    It therefore is assumed that BDD structs are all aligned on a word
    boundary (for addresses both bits are always 0). Since the package
    does it own BDD nodes allocation in blocks, this is always assured.
@@ -76,12 +76,15 @@
 #define BDD_MAXRANK		BDD_MAXVARID
 
 /* Attributed edges masks: output and input inverters: */
-#define BDD_O_INV_MASK		0x1
-#define BDD_I_INV_MASK		0x2
+#define BDD_O_INV_MASK		0x1L
+#define BDD_I_INV_MASK		0x2L
 #define BDD_INV_MASK		(BDD_O_INV_MASK | BDD_I_INV_MASK)
 
+/* Look at edge as a set of bits: */
+#define BITS(F)			((long) F)
+
 /* Look at edge as a real pointer: */
-#define PTR(F)			((BDDPTR) (((int) (F)) & ~BDD_INV_MASK))
+#define PTR(F)			((BDDPTR) (BITS (F) & ~BDD_INV_MASK))
 
 /* Access to various fields of BDD node: */
 /* Not guarded against BDD_VOID arg! */
@@ -158,23 +161,23 @@
 #define BDD_DEAD_P(F)		(BDD_REFCOUNT (F) == 0)
 
 /* Test whether edge v is postive or negative: */
-#define BDD_NEG_P(F)		(!!(((int) (F)) & BDD_O_INV_MASK))
-#define BDD_POS_P(F)		!BDD_NEG_P (F)
+#define BDD_POS_P(F)		(!(BITS (F) & BDD_O_INV_MASK))
+#define BDD_NEG_P(F)		!BDD_POS_P (F)
 
 #define BDD_O_INV_EDGE_P(F)	BDD_NEG_P (F)
 
 /* Test whether edge v refers to inverted input node: */
-#define BDD_I_INV_EDGE_P(F)	(!!(((int) (F)) & BDD_I_INV_MASK))
+#define BDD_I_INV_EDGE_P(F)	(!!(BITS (F) & BDD_I_INV_MASK))
 
 /* Setting and clearing of edge attribute bits: */
-#define BDD_O_OFF(F)	((BDDPTR) (((int) (F)) & ~BDD_O_INV_MASK))
-#define BDD_O_SET_U(F)  ((BDDPTR) (((int) (F)) | BDD_O_INV_MASK))
+#define BDD_O_OFF(F)	((BDDPTR) (BITS (F) & ~BDD_O_INV_MASK))
+#define BDD_O_SET_U(F)  ((BDDPTR) (BITS (F) | BDD_O_INV_MASK))
 /* Special case for BDD_X and user terminals. Never have O_INV bit set! */
 #define BDD_O_SET(F)	((BDD_TERM_P (F) && !BDD_BOOL_P (F)) ? (F) \
 			 : BDD_O_SET_U (F))
 
-#define BDD_I_OFF(F)	((BDDPTR) (((int) (F)) & ~BDD_I_INV_MASK))
-#define BDD_I_SET_U(F)	((BDDPTR) (((int) (F)) | BDD_I_INV_MASK))
+#define BDD_I_OFF(F)	((BDDPTR) (BITS (F) & ~BDD_I_INV_MASK))
+#define BDD_I_SET_U(F)	((BDDPTR) (BITS (F) | BDD_I_INV_MASK))
 /* Special case for terminals. Never have I_INV bit set! */
 #define BDD_I_SET(F)	(BDD_TERM_P (F) ? (F) : BDD_I_SET_U (F))
 
@@ -244,7 +247,7 @@
 /* Are functions each other's complement:
    (Only correct when bdd_use_neg_edges == 1)
 */
-#define BDD_COMPL_P(F1, F2)	((((int) F1) ^ ((int) F2)) == BDD_O_INV_MASK)
+#define BDD_COMPL_P(F1, F2)	((BITS (F1) ^ BITS (F2)) == BDD_O_INV_MASK)
 
 /* The rank value of variable id; lowest rank is 0. */
 #define BDD_VAR_RANK(v)		(((v) == BDD_TERMID) \
@@ -335,6 +338,9 @@ typedef struct {
   unsigned int inedge_cnt    :  NR_INEDGE_COUNT_BITS;
   unsigned int pos_size      :  NR_SIZE_BITS;
   unsigned int neg_size      :  NR_SIZE_BITS;
+#if BITS64 == 1
+  unsigned int padding;
+#endif
 } factor1_aux;
 
 typedef struct {
@@ -342,6 +348,9 @@ typedef struct {
   unsigned int root_flag     :  1;
   unsigned int subexpr_flag  :  1;
   unsigned int subexpr_index :  NR_INDEX_BITS;
+#if BITS64 == 1
+  unsigned int padding;
+#endif
 } factor2_aux;
 
 /* ------------------------------------------------------------------------ */
@@ -363,6 +372,9 @@ typedef struct {
   unsigned int length0      : 31;
   unsigned int follow_then1 :  1;
   unsigned int length1      : 31;
+#if BITS64 == 1
+  unsigned long padding;
+#endif
 } path_rec;
 
 /* ------------------------------------------------------------------------ */
@@ -418,6 +430,9 @@ struct bdd {
   unsigned flag :1;		/* Left/Right flag used in BDD traversal */
   unsigned mark :1;		/* mark bit used in BDD traversal */
   unsigned refcount:BDD_NR_RC_BITS; /* saturating reference count */
+#if BITS64 == 1
+  unsigned padding;
+#endif
   BDDPTR then_link;		/* child for variable = 1 */
   BDDPTR else_link;		/* child for variable = 0 */
   BDDPTR next;			/* chaining in unique table */

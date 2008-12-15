@@ -39,6 +39,11 @@
 
 ;;; #define NULL_LIST ((LIST) 0)
 
+;;; int null_list_p (LIST x)
+(alien:def-alien-routine ("bdd___null_list_p" null_list_p)
+			 unsigned-int
+  (x unsigned-int))
+    
 ;;; void *elem_contents (LIST_ELEM_PTR x)
 (alien:def-alien-routine ("bdd___elem_contents" elem_contents)
 			 unsigned-int

@@ -99,6 +99,7 @@ extern char *filename;
 extern void action (BDDPTR *F);
 extern void parse_complete (void);
 
+int yylex (void);
 void yyerror (char *format, ...);
 void yywarning (char *format, ...);
 

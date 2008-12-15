@@ -450,7 +450,7 @@ const char *mu_bool_var_name (int var_id)
 /* Used in print_list. */
 static void print_var (FILE *fp, void *bdd_idx)
 {
-  fputs (B_VAR_NAME (BDD_IDX_2_VAR_ID ((int) bdd_idx)), fp);
+  fputs (B_VAR_NAME (BDD_IDX_2_VAR_ID ((int) (long) bdd_idx)), fp);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -667,8 +667,8 @@ static BDDPTR mu_reachable_aux (BDDPTR N, BDDPTR S0, BDDPTR Inv, int n)
     int x = PHV_ID_2_BDD_IDX (  i);
     int y = PHV_ID_2_BDD_IDX (n+i);
 
-    x_list    = append_cont ((void *) x, x_list);
-    y_list    = append_cont ((void *) y, y_list);
+    x_list    = append_cont ((void *) (long) x, x_list);
+    y_list    = append_cont ((void *) (long) y, y_list);
     x_bdds[i] = bdd_create_var (x);
 
     /* For a quick substitute it would be nice to have the x vars close
@@ -961,7 +961,7 @@ static BDDPTR mu_abstract (LIST vars, BDDPTR f)
 
   i = 0;
   FOR_EACH_LIST_ELEM (vars, elem) {
-    int x = (int) ELEM_CONTENTS (elem);
+    int x = (int) (long) ELEM_CONTENTS (elem);
     int d = PHV_ID_2_BDD_IDX (i);
 
     d_bdds[i] = bdd_create_var (d);
@@ -979,7 +979,7 @@ static BDDPTR mu_abstract (LIST vars, BDDPTR f)
   if (mu_debug) {
     i = 0;
     FOR_EACH_LIST_ELEM (vars, elem) {
-      int x = (int) ELEM_CONTENTS (elem);
+      int x = (int) (long) ELEM_CONTENTS (elem);
       int d = PHV_ID_2_BDD_IDX (i);
 
       fprintf (stderr, "/* %s (rank:%d) <- $%d (rank:%d) */\n", 
@@ -1185,12 +1185,12 @@ static BDDPTR mu_apply (BDDPTR t, BDDPTR *args, int nr_args)
       bdd_print_as_sum_of_cubes (stderr, args[i], 0);
       bdd_set_output_string (BDD_END_S, str);
 
-      bdd_idxs = append_cont ((void *) PHV_ID_2_BDD_IDX (i), bdd_idxs);
+      bdd_idxs = append_cont ((void *) (long) PHV_ID_2_BDD_IDX (i), bdd_idxs);
     }
   }
   else
     for (i = 0; i < nr_args; i++)
-      bdd_idxs = append_cont ((void *) PHV_ID_2_BDD_IDX (i), bdd_idxs);
+      bdd_idxs = append_cont ((void *) (long) PHV_ID_2_BDD_IDX (i), bdd_idxs);
 
   R = bdd_subst_par (args, bdd_idxs, t);
   free_list (bdd_idxs, 0);
@@ -1205,10 +1205,10 @@ static BDDPTR mu_apply (BDDPTR t, BDDPTR *args, int nr_args)
 static LIST mu_varids_to_bdd_indices_aux (LIST vars)
 {
   FOR_EACH_LIST_ELEM (vars, elem) {
-    int var_id = (int) ELEM_CONTENTS (elem);
+    int var_id = (int) (long) ELEM_CONTENTS (elem);
     int bdd_idx = VAR_ID_2_BDD_IDX (var_id);
 
-    ELEM_CONTENTS (elem) = (void *) bdd_idx;
+    ELEM_CONTENTS (elem) = (void *) (long) bdd_idx;
   } END_FOR_EACH_LIST_ELEM;
 
   return vars;
@@ -1540,7 +1540,7 @@ Formula mu_mk_bool_var (char *name)
 {
   union formulaptr info = { NULL };
 
-  lookup (signature->table, name, strlen (name), &info.voidptr, LOOKUP);
+  lookup (signature->table, name, strlen (name), &info.voidptr, LOOKUP_PTR);
 
   return info.formulaptr;
 }
@@ -1716,7 +1716,7 @@ int mu_mk_rel_var_dcl (char *name)
   int index;
   int flag;
 
-  flag = (int) INSERT;
+  flag = INSERT;
   index = lookup (Ip->table, name, strlen (name), NULL, &flag);
   if (flag == INDEED_INSERTED) {
     Term  T = CALLOC_STRUCT (_Term);
@@ -1748,7 +1748,7 @@ Term mu_mk_rel_var (R_Interpret Ip, char *name)
     fflush (stdout);
   }
 
-  flag = (int) INSERT;
+  flag = INSERT;
   index = lookup (Ip->table, name, strlen (name), NULL, &flag);
   if (flag == INDEED_INSERTED) {
     Term  T = CALLOC_TERM ();
@@ -1781,7 +1781,7 @@ static Term try_eta_reduction (LIST vars, Formula FT)
 
       FOR_EACH_LIST_ELEM (args, elem) {
 	Formula  argi = (Formula) ELEM_CONTENTS (elem);
-	int     lvari = (int) ELEM_CONTENTS (lvars);
+	int     lvari = (int) (long) ELEM_CONTENTS (lvars);
 
 	if (F_TYPE (argi) != MU_B_VAR || F_VAR (argi) != lvari)
 	  /* vi != argi */
@@ -1849,7 +1849,7 @@ Term mu_mk_curry (Formula FT)
       var_id = mu_check_bool_var (buf);
 
       /* Create list of var id's for L <varid's> . */
-      vars = append_cont ((void *) var_id, vars);
+      vars = append_cont ((void *) (long) var_id, vars);
       /* Add as Formula to args: */
       args = append_cont ((void *) B_VAR_INFO (var_id), args);
     }
@@ -2026,7 +2026,7 @@ void mu_init (void)
   _TRUE_TERM.arity   = MU_ANY_ARITY;
 
   /* We do not use entry nr. 0: */
-  lookup (signature->table, "", 0, NULL, INSERT);
+  lookup (signature->table, "", 0, NULL, INSERT_PTR);
 
   /* Change style of bdd_sum_of_cubes printing: */
   bdd_set_output_string (BDD_BEG_S, "");
@@ -2118,7 +2118,7 @@ void mu_mk_signature (LIST vars)
     int index;
     int flag;
 
-    flag = (int) INSERT;
+    flag = INSERT;
     index = lookup (signature->table, name, strlen (name), NULL, &flag);
     if (flag == INDEED_INSERTED) {
       Formula f = CALLOC_FORMULA ();
@@ -2144,7 +2144,7 @@ int mu_check_bool_var (char *var)
   int index;
   int flag;
 
-  flag = (int) INSERT;
+  flag = INSERT;
   index = lookup (signature->table, var, strlen (var), NULL, &flag);
   if (flag == INDEED_INSERTED) {
     Formula f = CALLOC_FORMULA ();
@@ -2169,7 +2169,7 @@ static LIST user_vars;
 */
 static int when_even (void *p)
 {
-  if (ODD ((int) p))
+  if (ODD ((int) (long) p))
     return 0;
   user_vars = append_cont (p, user_vars);
   return 1;
@@ -2260,7 +2260,7 @@ Term mu_BDD_2_Term (BDDPTR f)
     LIST bdd_idxs = NULL_LIST;
 
     /* Get maximum place-holder BDD index: */
-    while ((idx = (int) pop_cont (&vars)) != 0)
+    while ((idx = (int) (long) pop_cont (&vars)) != 0)
       if (idx > max_idx) max_idx = idx;
     /* Here: vars == NULL_LIST */
 
@@ -2278,11 +2278,11 @@ Term mu_BDD_2_Term (BDDPTR f)
       var_id   = mu_check_bool_var (buf);
 
       /* Create list of var id's for L <varid's> . */
-      vars     = append_cont ((void *) var_id, vars);
+      vars     = append_cont ((void *) (long) var_id, vars);
       /* vars as BDDs: */
       args[i]  = F_BDD (B_VAR_INFO (var_id));
       /* Create list of corresponding BDD indices: */
-      bdd_idxs = append_cont ((void *) PHV_ID_2_BDD_IDX (i), bdd_idxs);
+      bdd_idxs = append_cont ((void *) (long) PHV_ID_2_BDD_IDX (i), bdd_idxs);
     }
 
     /* Substitute lambda vars for place-holder vars in Term's BDD: */

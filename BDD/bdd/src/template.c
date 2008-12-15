@@ -51,7 +51,7 @@ static void my_bdd_print (FILE *fp, BDDPTR f, char *name)
 int main (int argc, char *argv[])
 {
   /* Declare some variables that will hold Boolean functions. */
-  BDDPTR f, g;
+  BDDPTR f;
   BDDPTR a, b, c, d;
   BDDPTR tmp1, tmp2, tmp3;
 
@@ -227,4 +227,5 @@ int main (int argc, char *argv[])
   fprintf (stdout, "Quitting the BDD Package.\n");
   bdd_quit ();
   bdd_print_stats (stdout);
+  return EXIT_SUCCESS;
 }

@@ -214,13 +214,13 @@
    falls apart. This is tested in bdd_alloc().
 */
 #define BDD_F_MASK	0x80000000
-#define BDD_F_SET(F)	((BDDPTR) (((int) (F)) | BDD_F_MASK))
+#define BDD_F_SET(F)	((BDDPTR) (BITS (F) | BDD_F_MASK))
 #define BDD_F_SET_SAVE(F)	\
 	(bdd_ok_to_use_MSB ? BDD_F_SET(F) \
                            : (fputs( \
 "[bdd]: Not allowed to use MSB of BDD pointer.\n", stderr), \
 			      exit(1), BDD_VOID))
-#define BDD_FUNC_P(F)	(bdd_ok_to_use_MSB && (((int) (F)) & BDD_F_MASK))
+#define BDD_FUNC_P(F)	(bdd_ok_to_use_MSB && (BITS (F) & BDD_F_MASK))
 
 /* ------------------------------------------------------------------------ */
 /* LOCAL TYPE DEFINITIONS                                                   */
@@ -592,8 +592,8 @@ int bdd_check_valid (BDDPTR f, char *text)
 
   if ((reason = bdd_valid_p (f)) != 0) {
     fprintf (stderr,
-	     "[bdd_check_valid]: 0x%x, %s%s%s.\n",
-	     (Nat) f, mess[reason],
+	     "[bdd_check_valid]: %p, %s%s%s.\n",
+	     f, mess[reason],
 	     text ? ", " : "", text);
     exit (1);
   }
@@ -967,7 +967,7 @@ static BDDPTR reclaim (BDDPTR f)
 static Nat ceil_log2(Nat n)
 {
   Nat mask = 0x0000FFFF;
-  Bool not2pow = 0;
+  Nat not2pow = 0;
   Nat r =  0;
   Nat d = 16;
 
@@ -991,19 +991,20 @@ static Nat ceil_log2(Nat n)
 /* Using muliplicative method in hashing. Constant A according Knuth:
    A = (PHI - 1) * 2^32, with PHI = golden ratio = (1 + sqrt(5))/2
    PHI-1 = 0.61803 39887 49894 84820 ...
-   A = 26544357690 = -1640531527 = 0x9E3779B9U
+   A = 2654435769 = -1640531527 = 0x9E3779B9U
+   The nearest prime number is 2654435761 = 0x9E3779B1U
 */
 
 /* Hashes Nat `k' to a value in the range [0..2^log2size-1]. */
-#define BDD_HASH(k,log2size)	div_pow2(0x9E3779B9U*(k), NAT_BIT-(log2size))
+#define BDD_HASH(k,log2size)	div_pow2(0x9E3779B1U*(k), NAT_BIT-(log2size))
 
 #define hash_U(T, E, log2size) \
-     BDD_HASH((((Nat) (T) >> 2) ^ ((Nat) (E) << 3)), (log2size))
+     BDD_HASH((Nat)((BITS (T) >> 2) ^ (BITS (E) << 3)), (log2size))
 
 /*  ((((v) ^ ((int) T << 7) ^ ((int) (E) << 9)) & INT_MAX) % size)*/
 
 #define hash_C(F, G, H, log2size) \
-     BDD_HASH((((Nat) F) ^ ((Nat) (G) << 7) ^ ((Nat) (H) << 9)), (log2size))
+     BDD_HASH((Nat)(BITS (F) ^ (BITS (G) << 7) ^ (BITS (H) << 9)), (log2size))
 
 static
 BDDPTR bdd_lookup_computed_table_no_reclaim (BDDPTR F, BDDPTR G, BDDPTR H)
@@ -3100,11 +3101,11 @@ static void bdd_print_node_aux (BDDPTR v)
     fprintf (global_fp, "%3d, [%3d], ", BDD_VARID (v), BDD_RANK (v));
   fprintf (global_fp, "(M:%s), ", BDD_MARK (v) ? "1" : "0");
 
-  fprintf (global_fp, "&v: 0x%08x, Refs: %3d, Then: 0x%08x, Else: 0x%08x\n",
-	   (Nat) v,
+  fprintf (global_fp, "&v: %p, Refs: %3d, Then: %p, Else: %p\n",
+	   v,
 	   BDD_REFCOUNT (v),
-	   (Nat) BDD_THEN (v),
-	   (Nat) BDD_ELSE (v));
+	   BDD_THEN (v),
+	   BDD_ELSE (v));
 }
 
 void bdd_print_node (FILE *fp, BDDPTR v)

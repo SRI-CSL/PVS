@@ -26,7 +26,7 @@ graph.o : graph.c graph.h graph_remap.h graph_build.h unitypes.h
 double.o : double.c double.h
 list.o : list.c list.h alloc.h
 hash.o : hash.c hash.h alloc.h
-alloc.o : alloc.c
+alloc.o : alloc.c alloc.h
 
 dag.o : dag.c dag.h dag_customize.h general.h
 tree.o : tree.c tree.h tree_customize.h general.h

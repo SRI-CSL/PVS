@@ -11,9 +11,9 @@ ARS = $(UTILS)/libutils.a
 # specify appropriate C compiler flags here:
 #CFLAGS=  -Aa -D_POSIX_SOURCE $(INCLUDES)
 #CFLAGS= -D_POSIX_SOURCE $(INCLUDES)
-CFLAGS= -g -O $(INCLUDES)
-XCFLAGS= -O
-XLDFLAGS=-s
+CFLAGS= -march=core2 -g -Wall -O2 -D_FORTIFY_SOURCE=2 -pipe $(INCLUDES)
+XCFLAGS= 
+XLDFLAGS=
 
 obj= bdd_factor.o bdd.o bdd_quant.o bdd_fns.o bdd_vfns.o appl.o y.tab.o \
      lex.yy.o main.o
@@ -26,23 +26,24 @@ template : lib template.o
 
 .c.o : ; $(CC) ${XCFLAGS} ${CFLAGS} -c $*.c
 
-bdd_factor.o : bdd_factor.c bdd_factor.h
-bdd.o : bdd.c bdd.h bdd_extern.h
-bdd_fns.o : bdd_fns.c bdd_fns.h bdd.h bdd_extern.h
-bdd_quant.o : bdd_quant.c bdd_fns.h bdd.h bdd_extern.h
-bdd_vfns.o : bdd_vfns.c bdd_vfns.h bdd_fns.h bdd.h bdd_extern.h
-appl.o : appl.c appl.h bdd_fns.h bdd.h bdd_extern.h
-main.o : main.c appl.h bdd_fns.h bdd.h bdd_extern.h
-y.tab.c : yacc.y bdd_fns.h bdd.h bdd_extern.h
+bdd_factor.o : bdd_factor.c bdd_factor.h bdd.h bdd_extern.h bdd_list.h
+bdd.o : bdd.c bdd.h bdd_extern.h bdd_list.h
+bdd_fns.o : bdd_fns.c bdd_fns.h bdd.h bdd_extern.h bdd_list.h bdd_quant.h
+bdd_quant.o : bdd_quant.c bdd_fns.h bdd.h bdd_extern.h bdd_list.h bdd_quant.h
+bdd_vfns.o : bdd_vfns.c bdd_vfns.h bdd_fns.h bdd.h bdd_extern.h bdd_list.h \
+  bdd_quant.h
+appl.o : appl.c appl.h bdd_fns.h bdd.h bdd_extern.h bdd_list.h bdd_quant.h
+main.o : main.c appl.h bdd.h bdd_extern.h bdd_factor.h bdd_fns.h bdd_list.h \
+  bdd_quant.h bdd_vfns.h
+y.tab.h : y.tab.c
+y.tab.c : yacc.y
 	# Don't worry about the 1 shift/reduce conflicts!
 	yacc -d yacc.y
-y.tab.h : yacc.y
-	yacc -d yacc.y
-	# Don't worry about the 1 shift/reduce conflicts!
-y.tab.o : y.tab.c bdd_fns.h bdd.h bdd_extern.h
+y.tab.o : y.tab.c y.tab.h appl.h bdd.h bdd_extern.h bdd_fns.h bdd_list.h \
+  bdd_quant.h bdd_vfns.h
 lex.yy.c : lex.l
-	lex lex.l
-lex.yy.o : lex.yy.c y.tab.h bdd.h bdd_extern.h
+	lex -l lex.l
+lex.yy.o : lex.yy.c y.tab.h bdd.h bdd_extern.h bdd_list.h
 	$(CC) -c ${CFLAGS} -w lex.yy.c
 
 clean : 

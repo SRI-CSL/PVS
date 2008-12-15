@@ -39,6 +39,13 @@
 
 ;;; #define NULL_LIST ((LIST) 0)
 
+;;; int null_list_p (LIST x)
+(ff:def-foreign-call (null_list_p "bdd___null_list_p")
+    ((x :unsigned-int integer))
+  #+(version>= 6) :strings-convert #+(version>= 6) nil
+  :arg-checking nil
+  :call-direct t
+  :returning :unsigned-int)
 ;;; void *elem_contents (LIST_ELEM_PTR x)
 (ff:def-foreign-call (elem_contents "bdd___elem_contents")
     ((x :unsigned-int integer))

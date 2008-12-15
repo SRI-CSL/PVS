@@ -8,11 +8,11 @@ x equiv y :- y implies x, y equiv a or not a .
 
 (y implies x) and (y equiv a or not a) -> (x equiv y) .
 
-not E :- ((A and W) implies P), /* Superman */
-         (not A implies I),
+not F :- ((B and W) implies P), /* Superman */
+         (not B implies I),
          (not W implies M),
          (not P),
-         (E implies not I and not M) .
+         (F implies not I and not M) .
 
 /* Portrait in the casket */
 G :-

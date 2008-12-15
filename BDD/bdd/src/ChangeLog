@@ -1,3 +1,17 @@
+2008-08-06  Jerry James  <loganjerry@gmail.com>
+
+	* Makefile
+	* appl.c
+	* bdd.c:
+	* bdd.h:
+	* bdd_fns.c:
+	* bdd_list.h:
+	* bdd_quant.c:
+	* bdd_vfns.c:
+	* bdd_vfns.h
+	* template.c:
+	* yacc.y: Support compilation on 64-bit machines.
+
 Thu Apr 16 10:25:56 1998  Geert Janssen  <geert@cobra.ics.ele.tue.nl>
 
 	* bdd_quant.c (bdd_lookup_and_smooth_cache): also using

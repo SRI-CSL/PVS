@@ -19,6 +19,7 @@
 
 (in-package :pvs)
 
+(defmacro null-list? (list) `(= (null_list_p ,list) 1))
 (defmacro bdd-void? (bdd) `(= (bdd_void_p ,bdd) 1))
 (defmacro bdd-1? (bdd) `(= (bdd_1_p ,bdd) 1))
 (defmacro bdd-0? (bdd) `(= (bdd_0_p ,bdd) 1))
@@ -369,12 +370,12 @@
 	    (pushnew (cons op name) (cdr entry) :test #'eql :key #'cdr))))))
 
 (defun translate-from-bdd-list (bddlist)
-  (let ((bdds (unless (zerop bddlist)
+  (let ((bdds (unless (null-list? bddlist)
 		(translate-from-bdd-list* (list_first bddlist)))))
     (mapcar #'translate-bdd-cube bdds)))
 
 (defun translate-from-bdd-list* (bddlist &optional result)
-  (if (zerop bddlist)
+  (if (null-list? bddlist)
       (nreverse result)
       (translate-from-bdd-list*
        (list_next bddlist)

@@ -29,7 +29,7 @@ extern void MA_Free (void *p, long nr_bytes, const char* r,
 		     const char* fn, long ln);
 
 #ifdef HAVE_ALLOCA
-extern void *alloca ();
+#include <alloca.h>
 #endif
 
 /* Allocates n consecutive bytes, returns pointer of type. */

@@ -40,7 +40,7 @@
 */
 #define ALLOW_REHASH
 
-/* Define this to allow for automatically use of a shadow table of indices.
+/* Define this to allow for automatic use of a shadow table of indices.
    This shadow table indirects lookups by always going through it to the
    real hash table.
    This is subordinate to ALLOW_REHASH, i.e. to be effective ALLOW_REHASH
@@ -98,8 +98,10 @@ typedef struct HASHTAB {
 #define HASHTAB_SIZE(tab)	((tab) ? (tab)->size : 0)
 
 /* Useful symbols for values of do_insert in lookup (). */
-#define LOOKUP			((int *)0)
-#define INSERT			((int *)1)
+#define LOOKUP			0
+#define INSERT			1
+#define LOOKUP_PTR		((int *)LOOKUP)
+#define INSERT_PTR		((int *)INSERT)
 
 /* Symbols for values returned by do_insert in lookup (). */
 #define ALREADY_PRESENT		0

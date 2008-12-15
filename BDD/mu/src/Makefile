@@ -1,8 +1,8 @@
 # Copyright (c) 1992-1995 G. Janssen
 
 BIN=$(HOME)/bin
-UTILS=../utils
-BDD=../bdd/src
+UTILS=../../bdd/utils
+BDD=../../bdd/src
 
 INCLUDES   = -I$(BDD) -I$(UTILS)
 
@@ -30,7 +30,7 @@ y.tab.h : yacc.y mu.h
 	yacc -d yacc.y
 y.tab.o : y.tab.c mu.h
 lex.yy.c : lex.l mu.h
-	lex lex.l
+	lex -l lex.l
 lex.yy.o : lex.yy.c y.tab.h mu.h
 	$(CC) ${CFLAGS} -w -c lex.yy.c
 

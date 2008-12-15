@@ -8,6 +8,8 @@ int bdd___bdd_neglit_p (BDDPTR f) {return bdd_neglit_p (f);}
 
 int bdd___bdd_equal_p (BDDPTR F, BDDPTR G) {return bdd_equal_p (F, G);}
 
+int bdd___null_list_p (LIST x) {return null_list_p (x);}
+
 void bdd___elem_contents (LIST_ELEM_PTR x) {elem_contents (x);}
 
 LIST_ELEM_PTR bdd___list_first (LIST x) {

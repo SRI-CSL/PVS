@@ -101,10 +101,7 @@ void *MA_Calloc (long nr_elems, long bytes_per_elem, const char* r,
 {
   long nr_bytes = nr_elems * bytes_per_elem;
   void *p = MA_Malloc (nr_bytes, r, fn, ln);
-  char *q = (char *) p;
-
-  while (nr_bytes-- > 0) *q++ = '\0';
-  return p;
+  return memset(p, 0, nr_bytes);
 }
 
 #if COMMENT

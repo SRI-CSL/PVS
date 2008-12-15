@@ -229,7 +229,7 @@ V					return OR_SYM;
 /* unimportant white space or new_line */	}
 
 .						{
-	lexerr (ill_char_mess (yytchar));	}
+	lexerr (ill_char_mess (yytext[0]));	}
 
 %%
 

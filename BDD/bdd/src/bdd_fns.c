@@ -833,7 +833,7 @@ BDDPTR bdd_support_as_cube (BDDPTR f)
 
 static int rank_less_or_equal (void *a, void *b)
 {
-  return BDD_VAR_RANK ((int) a) - BDD_VAR_RANK ((int) b);
+  return BDD_VAR_RANK ((int) (long) a) - BDD_VAR_RANK ((int) (long) b);
 }
 
 /* Destructively reorders `vars' to obtain all variable elements in
@@ -848,8 +848,9 @@ static BDD_LIST list_of_cube_varids;
 
 static void collect_cube_vars_action (int index, int neg, int first)
 {
-  list_of_cube_varids = bdd_list_append_cont ((void *) (neg ? -index : index),
-					      list_of_cube_varids);
+  list_of_cube_varids =
+    bdd_list_append_cont ((void *) (long) (neg ? -index : index),
+			  list_of_cube_varids);
 }
 
 BDD_LIST bdd_cube_as_list_of_vars (BDDPTR cube)
@@ -2544,7 +2545,7 @@ static int nr_collisions = 0;
 static int occupancy = 0;
 
 #define hash_sop(a) \
-  ((((int) a) & INT_MAX) % SOP_CACHE_SIZE)
+  ((BITS (a) & INT_MAX) % SOP_CACHE_SIZE)
 
 /* Looks up BDD f in sop_cache and when a sum-of-cubes list is present
    for it returns a full copy of the list (list elements are BDD cubes

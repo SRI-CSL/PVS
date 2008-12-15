@@ -290,7 +290,7 @@ static HASHTAB *hashtab_full_handler (HASHTAB *tab)
   for (i = 0; i < /*old*/ old_size; i++, entryp++)
     if (*entryp) {
       /* Entry i is occupied; insert it in new table: */
-      insert_var = (int) INSERT;
+      insert_var = INSERT;
       /* lookup_1 returns index of this entry in tab: */
       newi = lookup_1 (tab, *entryp, &insert_var);
       /* Call user supplied function to account for change: */
@@ -440,9 +440,12 @@ int lookup (HASHTAB *tab, const char *s, int len, void **info, int *do_insert)
   entry.keylen = len;
   entry.info   = info ? *info : NULL;
 
-  if (do_insert == LOOKUP || do_insert == INSERT)
+  if (do_insert == LOOKUP_PTR)
     /* No reporting back possible. */
-    insert_var = (int) do_insert;
+    insert_var = LOOKUP;
+  else if (do_insert == INSERT_PTR)
+    /* No reporting back possible. */
+    insert_var = INSERT;
   else {
     /* Assume do_insert holds address of int variable. */
     insert_var = *do_insert;
@@ -522,7 +525,7 @@ int gen_unique_entry (HASHTAB *tab)
   do {
     sprintf (startp, "%d", gen_counter++);
     len = strlen (buf);
-    inserted = (int) INSERT;
+    inserted = INSERT;
     i = lookup (tab, buf, len, NULL, &inserted);
   } while (inserted == ALREADY_PRESENT);
 
@@ -591,9 +594,9 @@ main (int argc, char* argv[])
   while (gets (s)) {
     lc++;
     if (lc & 1)
-      lookup (hashtab , s, strlen (s), NULL, INSERT);
+      lookup (hashtab , s, strlen (s), NULL, INSERT_PTR);
     else
-      lookup (hashtab2, s, strlen (s), NULL, INSERT);
+      lookup (hashtab2, s, strlen (s), NULL, INSERT_PTR);
   }
   print_hashtab (hashtab);
   print_hashtab (hashtab2);

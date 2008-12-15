@@ -4,6 +4,7 @@ bdd___bdd_top_var = bdd_top_var ;
 bdd___bdd_poslit_p = bdd_poslit_p ;
 bdd___bdd_neglit_p = bdd_neglit_p ;
 bdd___bdd_equal_p = bdd_equal_p ;
+bdd___null_list_p = null_list_p ;
 bdd___elem_contents = elem_contents ;
 bdd___list_first = list_first ;
 bdd___list_last = list_last ;
