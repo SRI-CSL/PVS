@@ -193,7 +193,7 @@
     (loop* 0 (emptyset-operator))))
 
 (defun ws1s-automaton-output (p num fvars offsets)
-  (format t "~2%Free vars:~2%" fvars)
+  (format t "~2%Free vars:~{ ~s~}~2%" fvars)
   (dfa-print p num fvars offsets)
   (format t "~%"))
 
