@@ -23,7 +23,7 @@
 ;;;
 ;;;     07-22-87         rln    Initial development and release.
 
-(in-package 'analysis-facility)
+(in-package :analysis-facility)
 
 ;;; A DP-EVAL structure describes an attribute which is defined by an expression.
 ;;; An expression always defines exactly one attribute.

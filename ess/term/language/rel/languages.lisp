@@ -85,18 +85,18 @@
 
 
 
-(defconstant standard-use-packages
+(defconstant-if-unbound standard-use-packages
   '("ERGOLISP" "OPER" "OCC" "TERM" "SORT" "SB-RUNTIME" "LANG" "NEWATTR")
   "The standard packages used by SB output files.")
 
-(defconstant standard-use-languages
+(defconstant-if-unbound standard-use-languages
   '("LEXICAL-TERMINALS")
   "The standard languages used by SB output files.")
 
 
-(defconstant gen-src-file-ext "lisp")
+(defconstant-if-unbound gen-src-file-ext "lisp")
 
-(defconstant per-gen-src-file-ext
+(defconstant-if-unbound per-gen-src-file-ext
   (concatenate 'string "." gen-src-file-ext))
 
 

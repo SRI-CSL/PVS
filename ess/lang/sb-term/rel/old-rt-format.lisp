@@ -13,7 +13,7 @@
 
 ;;; Scott Dietzen, Wed Aug 26 17:16:29 1987
 
-(in-package 'sb-runtime)  (use-package :ergolisp)
+(in-package :sb-runtime)  (use-package :ergolisp)
 
 (export '(
 	  format-uterm 

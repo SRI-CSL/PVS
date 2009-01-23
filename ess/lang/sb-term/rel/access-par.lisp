@@ -21,7 +21,7 @@
 ;;; Revised Scott Dietzen, Mon Oct 13 15:32:09 1986
 
 
-(in-package 'syntax-box)  (use-package :ergolisp)
+(in-package :syntax-box)  (use-package :ergolisp)
 
 
 

@@ -40,7 +40,7 @@
 	  ))
 
 
-(defconstant possible-single-char-operators
+(defconstant-if-unbound possible-single-char-operators
   '(#\(  #\)  #\[  #\]  #\{  #\}  #\<  #\>  #\,  #\;  #\|  #\^  #\#  #\~  #\/
     #\!  #\@  #\$  #\&  #\_  #\-  #\?  #\%  #\'  #\:  #\*  #\+  #\`  #\=  #\\))
 

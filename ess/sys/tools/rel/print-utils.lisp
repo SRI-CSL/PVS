@@ -8,6 +8,7 @@
 (defpackage :print-utils #+sbcl (:use :common-lisp :ergolisp))
 (in-package :print-utils) #-sbcl (use-package :ergolisp)
 
+#-sbcl
 (export '(lisp::print-struct lisp::writing-readably)
 	:lisp)
 (export '(print-struct writing-readably))

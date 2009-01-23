@@ -16,7 +16,7 @@
 
 ;;;;    Basic Function: Collapse fragments into lisp functions
 
-(in-package 'syntax-box)  (use-package :ergolisp)
+(in-package :syntax-box)  (use-package :ergolisp)
 
 
 ; The purpose of collapse is to take the fragments produced by process-grammar

@@ -29,7 +29,11 @@
 ;;; instead of a real operator.
 ;;; 
 
-(in-package :term :nicknames '(:gterm)) (use-package :ergolisp)
+(eval-when (compile load eval)
+  (unless (find-package "TERM")
+    (make-package "TERM" :nicknames '("GTERM")
+                         :use '(:cl-user :common-lisp :ergolisp))))
+(in-package "TERM")
 
 (export '(term  termp mk-term ds-term term-op term-args
 		term-attr set-term-attr))

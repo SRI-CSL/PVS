@@ -25,7 +25,12 @@
 ;;;     07-22-87	rln	Initial development release.
 ;;;
 
-(in-package "AF-RUNTIME-LIB" :nicknames '(abrt afrt)) 
+(eval-when (compile load eval)
+  (unless (find-package "AF-RUNTIME-LIB")
+    (make-package "AF-RUNTIME-LIB"
+		  :nicknames '("ABRT" "AFRT")
+		  :use '("COMMON-LISP"))))
+(in-package "AF-RUNTIME-LIB") 
 
 (export '(opcase argcase rt-delta-error rt-term-argn rt-term-args
 	  rt-symbol rt-ite rt-opt rt-function rt-ast

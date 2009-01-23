@@ -14,7 +14,7 @@
 ;;; This code modifies unparser generator code.
 ;;; Scott Dietzen, Wed Nov 11 15:38:39 1987
 
-(in-package 'SB)   (use-package :ergolisp)
+(in-package :SB)   (use-package :ergolisp)
 
 
 (defun unp-code-revision (routines)

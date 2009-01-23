@@ -13,7 +13,7 @@
 
 ;;; Scott Dietzen, Tue Oct  6 15:32:22 1987
 
-(in-package 'sb-runtime)  (use-package :ergolisp)
+(in-package "SB-RUNTIME")  (use-package :ergolisp)
 
 
 ;;; The following is a hack to avoid the problems inherent in the circularity
@@ -38,38 +38,6 @@
 (defvar *disable-nested-caching* t
   "Setting nil enables the caching of nested uterms via the attribute
    ADT.  Set non-nil BY DEFAULT.") 
-
-
-
-
-(defun memo-uterm (term unp-function &key (top-level? nil))
-  (if (or *disable-caching*
-	  (and *disable-nested-caching*
-	       (null top-level?)))
-      (funcall unp-function term)
-      (newattr::get-gsyn theuterm
-			 term
-			 (list unp-function
-			       *unparse-style*
-			       *no-escapes*
-			       *sb-print-depth*
-			       *sb-print-length*
-			       *formatting-off*))))
-
-
-(defun memo-aw (uterm width indent-unit-width fontwidth fontheight)
-  (if *disable-caching*
-      (let* ((aw (make-aw :uterm uterm
-			  :indent-unit-width indent-unit-width)))
-	(format-aw uterm aw width))
-      (newattr::get-gsyn theaw
-			 (uterm-term uterm)
-			 (list uterm
-			       width
-			       indent-unit-width
-			       fontwidth
-			       fontheight))))
-
 
 
 
@@ -105,3 +73,33 @@
 			:indent-unit-width indent-unit-width)))
       (format-aw uterm aw width))))
 
+
+
+
+(defun memo-uterm (term unp-function &key (top-level? nil))
+  (if (or *disable-caching*
+	  (and *disable-nested-caching*
+	       (null top-level?)))
+      (funcall unp-function term)
+      (newattr::get-gsyn theuterm
+			 term
+			 (list unp-function
+			       *unparse-style*
+			       *no-escapes*
+			       *sb-print-depth*
+			       *sb-print-length*
+			       *formatting-off*))))
+
+
+(defun memo-aw (uterm width indent-unit-width fontwidth fontheight)
+  (if *disable-caching*
+      (let* ((aw (make-aw :uterm uterm
+			  :indent-unit-width indent-unit-width)))
+	(format-aw uterm aw width))
+      (newattr::get-gsyn theaw
+			 (uterm-term uterm)
+			 (list uterm
+			       width
+			       indent-unit-width
+			       fontwidth
+			       fontheight))))

@@ -117,17 +117,17 @@
 
 ;;; Just so we don't repeatedly cons identical tokens.
 
-(defconstant ellipsis-token
+(defconstant-if-unbound ellipsis-token
   (make-token :kind :lt :subkind :string :value "#"))
-(defconstant cr-token
+(defconstant-if-unbound cr-token
   (make-token :kind :whitespace :subkind :cr))
-(defconstant unindent-token
+(defconstant-if-unbound unindent-token
   (make-token :kind :whitespace :subkind :unindent))
-(defconstant tab-left-token
+(defconstant-if-unbound tab-left-token
   (make-token :kind :whitespace :subkind :tab-left))
-(defconstant tab-right-token
+(defconstant-if-unbound tab-right-token
   (make-token :kind :whitespace :subkind :tab-right))
-(defconstant untab-token
+(defconstant-if-unbound untab-token
   (make-token :kind :whitespace :subkind :untab))
 
 

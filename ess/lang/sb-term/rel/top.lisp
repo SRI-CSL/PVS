@@ -25,7 +25,7 @@
 ;;;    Added calls to preprocessing phase. 
 
 
-(in-package 'syntax-box)  (use-package :ergolisp)
+(in-package :syntax-box)  (use-package :ergolisp)
 
 (export '(sb sb-make))
 

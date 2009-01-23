@@ -13,7 +13,7 @@
 
 ;;; Scott Dietzen, Wed Aug 26 17:16:29 1987
 
-(in-package 'sb-runtime)  (use-package :ergolisp)
+(in-package "SB-RUNTIME")  (use-package :ergolisp)
 
 (export '(token-p make-token token-kind token-subkind 
 	  token-value token-str-value 

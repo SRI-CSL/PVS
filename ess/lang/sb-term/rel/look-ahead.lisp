@@ -9,9 +9,9 @@
 ;;; ******************************************************************* ;;;
 
 
-(in-package 'syntax-box)  (use-package :ergolisp)
+(in-package :syntax-box)  (use-package :ergolisp)
 
-(use-package '(sb-runtime))
+(use-package :sb-runtime)
 
 
 

@@ -31,7 +31,7 @@
 ;;;	   (Routines check-comment-char(s)-with-op(S))
 
 
-(in-package 'syntax-box)   (use-package :ergolisp)
+(in-package :syntax-box)   (use-package :ergolisp)
 
 
 

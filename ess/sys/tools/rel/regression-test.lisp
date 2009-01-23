@@ -19,8 +19,8 @@
 (defvar *regression-testing-p* nil)
 
 (defun regression-test (&key (name "Anonymous test")
-			     form (form-predicate #'identity) script endp)
-  (declare (special name script endp))
+			     form (form-predicate #'identity) script donep)
+  (declare (special name script donep))
   (let ((*regression-testing-p* t))
     (catch 'script-ended
       (let ((formval (if (functionp form) (funcall form) (eval form))))
@@ -43,13 +43,13 @@
   (cadr (car script)))
 
 (defun move-script ()
-  (declare (special name script endp))
+  (declare (special name script donep))
   (when (null script)
-    (if endp
+    (if donep
 	(throw 'script-ended nil)
 	(error "Regression test ~s fell off of end of script." name)))
   (pop script)
-  (when (and (null script) endp) (throw 'script-ended nil))
+  (when (and (null script) donep) (throw 'script-ended nil))
   (values))
 
 (defmacro regression-test-only (key &body body)
@@ -164,7 +164,7 @@
  :name "Regressible-error should succeed."
  :form '(regressible-error :test "Error message ~s." 'foo)
  :script '((:test "Error message FOO."))
- :endp t)
+ :donep t)
 
 #+regression
 (regression-test

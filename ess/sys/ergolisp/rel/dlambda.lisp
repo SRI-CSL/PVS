@@ -26,7 +26,7 @@ name.")
   ;; This is a macro so that setf will work for declare-constructor
   `(gethash ,constr *constructors-table* :no-info))
 
-(defconstant *reserved-constrs* '(:as)
+(defconstant-if-unbound *reserved-constrs* '(:as)
   "List of symbols that may not be used as constructors.")
 
 (defmacro defreconstr (constr argcnt &key equal)

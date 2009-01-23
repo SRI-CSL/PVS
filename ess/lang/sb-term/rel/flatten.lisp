@@ -17,7 +17,7 @@
 
 ;;;;    Basic Function: Flatten Patterns
 
-(in-package 'syntax-box)  (use-package :ergolisp)
+(in-package :syntax-box)  (use-package :ergolisp)
 
 
 

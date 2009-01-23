@@ -190,15 +190,11 @@ Other keys are allowed, but will be ignored."
   (when lisp-compiler
     (when boot
       (load source-file))
-    (if readtable
-	(let ((*readtable* readtable))
-	  (compile-file source-file :output-file compiled-file
-	     #+(or lucid allegro) :messages #+(or lucid allegro) messages
-	     #+(or cmu sbcl) :progress #+(or cmu sbcl) messages
-	     ))
+    (let ((*readtable* (if readtable readtable *readtable*))
+	  #+sbcl (*compiler-progress* messages))
 	(compile-file source-file :output-file compiled-file
 	     #+(or lucid allegro) :messages #+(or lucid allegro) messages
-	     #+(or cmu sbcl) :progress #+(or cmu sbcl) messages
+	     #+cmu :progress #+cmu messages
 	     ))
     )
   ;;  #+kcl (rename-file (merge-pathnames ".o" source-file) compiled-file)
@@ -249,6 +245,8 @@ Other keys are allowed, but will be ignored."
 	    (multiple-value-bind (junk1 junk2 result junk4)
 		(run-program "cc" :arguments arguments)
 	      result)
+	    #+sbcl
+	    (sb-ext:process-exit-code (sb-ext:run-program "cc" arguments))
 	    #+allegro
 	    (excl:run-shell-command
 	     (format nil "cc ~{ ~a~}" arguments))))
@@ -390,8 +388,8 @@ Currently only #'get-universal-time is supported.")
 ;;; all source files are .lisp, so we need only one set.
 ;;; Recommend not changing the source extension. -fp
 
-(defconstant *lisp-source-extension* "lisp")
-(defconstant *lisp-compiled-extension*
+(defconstant-if-unbound *lisp-source-extension* "lisp")
+(defconstant-if-unbound *lisp-compiled-extension*
   #+(and allegro sparc) "fasl"		; Sun4
   #+(and allegro rios) "rfasl"		; PowerPC/RS6000
   #+(and allegro hpux) "hfasl"		; HP 9000
@@ -421,14 +419,14 @@ Currently only #'get-universal-time is supported.")
 for this implementation of Lisp in the file sys/tools/rel/box-system.lisp.
 Right now it is assumed to be \"bin\".")
 
-(defconstant *lisp-source-suffix-string*
+(defconstant-if-unbound *lisp-source-suffix-string*
   (concatenate 'string "." *lisp-source-extension*))
 
-(defconstant *lisp-compiled-suffix-string*
+(defconstant-if-unbound *lisp-compiled-suffix-string*
   (concatenate 'string "." *lisp-compiled-extension*))
 
-(defconstant *lisp-source-extension-pathname*
+(defconstant-if-unbound *lisp-source-extension-pathname*
   (make-pathname :type *lisp-source-extension*))
 
-(defconstant *lisp-compiled-extension-pathname*
+(defconstant-if-unbound *lisp-compiled-extension-pathname*
   (make-pathname :type *lisp-compiled-extension*))

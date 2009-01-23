@@ -29,7 +29,7 @@
 ;;;     07-22-87     rln     Initial development release.
 
 
-(in-package 'analysis-facility :nicknames '(ab af))
+(in-package :analysis-facility)
 
 (export '(ab ab-make help))
 

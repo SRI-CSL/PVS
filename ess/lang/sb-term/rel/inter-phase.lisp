@@ -16,8 +16,8 @@
 
 ;;; Intermediate Phase.
 
-(in-package 'syntax-box)  (use-package :ergolisp)
-(use-package '(sb-runtime))
+(in-package :syntax-box)  (use-package :ergolisp)
+(use-package :sb-runtime)
 
 ;;; Understanding of the internal grammar term structure is essential to
 ;;; understanding this code (see documentation in access.lisp). @@@

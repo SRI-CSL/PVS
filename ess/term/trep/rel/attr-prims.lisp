@@ -19,7 +19,11 @@
 ;;; features from the terms, so it is the default method for storing
 ;;; attributes.
 
-(in-package "TERM" :nicknames '("GTERM")) (use-package :ergolisp)
+(eval-when (compile load eval)
+  (unless (find-package "TERM")
+    (make-package "TERM" :nicknames '("GTERM")
+			 :use '(:cl-user :common-lisp :ergolisp))))
+(in-package "TERM")
 
 (export '(attr-clear-one attr-clear-all))
 
