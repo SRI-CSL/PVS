@@ -1,4 +1,0 @@
-.pvscontext autoloads.out *_adt.pvs orphaned-proofs.prf
-*.lfasl *.fasl *.mfasl *.nfasl *.x86f *.elc *.err
-pvs pvsio *.tgz autom4te.cache
-configure *.log config.status Makefile
