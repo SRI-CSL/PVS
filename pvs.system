@@ -25,6 +25,17 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
+(in-package :common-lisp)
+
+(#-(or cmu sbcl excl) progn
+ #+cmu ext:without-package-locks
+ #+sbcl sb-ext:without-package-locks
+ #+excl excl:without-package-locks
+ (defmacro defconstant-if-unbound (name value &optional doc)
+   `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
+		       ,@(when doc (list doc))))
+ (export 'defconstant-if-unbound))
+
 (in-package :cl-user)
 
 #+allegro
@@ -48,7 +59,7 @@
   (in-package :pvs)
   ;; Can't directly call (pvs::pvs-init)
   (apply (find-symbol (string :pvs-init) :pvs) nil)
-  )
+  (sb-impl::toplevel-init))
 
 #+allegro
 (eval-when (eval load)
@@ -64,7 +75,7 @@
   (load "pvs-config.lisp")
   #+allegro (chdir *pvs-path*))
 
-(defpackage :ilisp)
+(defpackage :ilisp (:nicknames :ILISP) (:use :common-lisp #+:CMU :conditions))
 (defpackage :bvec)
 
 (unless (find-package :make)
@@ -105,7 +116,7 @@
 
 #+(or gcl cmu)
 (unless (find-package :pvs)
-  (make-package :pvs :use '(:cl-user :lisp :pcl :make)))
+  (make-package :pvs :use '(:cl-user :common-lisp :lisp :pcl :make)))
 
 #+sbcl
 (unless (find-package :pvs)
@@ -181,7 +192,11 @@
 		    (load (format nil "~a/src/xp" *pvs-path*))
 		    #+gcl
 		    (load (format nil "~a/src/xp-code" *pvs-path*))
-		    (apply (find-symbol :install :xp) :package :pvs nil))
+		    #-sbcl
+		    (apply (find-symbol :install :xp) :package :pvs nil)
+		    #+sbcl
+		    (apply (find-symbol "INSTALL" (find-package :xp))
+			   :package :pvs nil))
 		  #-(or cmu sbcl)
 		  (load (format nil "~a/ess/dist-ess.lisp" *pvs-path*))
 		  #-gcl
@@ -215,6 +230,7 @@
 		  (let* ((platform #+(and sun4 sunos4) "sun4-SunOS4"
 				   #+(and sun4 (not sunos4)) "sun4-SunOS5"
 				   #+(and x86 (not macosx)) "ix86-Linux"
+				   #+(and x86-64 (not macosx)) "ix86_64-Linux"
 				   #+(and macosx powerpc) "powerpc-MacOSX"
 				   #+(and macosx x86) "ix86-MacOSX")
 			 (utilpath (concatenate 'string
@@ -281,7 +297,9 @@
      :components ((:file "hashfn")
 		  #+allegro
 		  (:file "file-utils")
-		  #+(or cmu sbcl)
+		  #+sbcl
+		  (:file "file-utils-sbcl")
+		  #+cmu
 		  (:file "file-utils-cmu")))
    (:module language
      :source-pathname "src/"
@@ -436,4 +454,29 @@
    (:module abstraction
 	    :source-pathname "src/abstraction"
 	    :components ((:file "abstract")))
+   (:module rahd
+     :source-pathname "src/rahd"
+     :components ((:file "rahd")
+		  (:file "polyalg")
+		  (:file "polyeval")
+		  (:file "polyconv")
+		  (:file "sturm")
+		  (:file "sturmineq")
+		  (:file "strings")
+		  (:file "ineqfert")
+		  (:file "canonizer")
+		  (:file "ideals")
+		  (:file "opencad")
+		  (:file "cocoa")
+		  (:file "cases")
+		  (:file "realnull")
+		  (:file "cauchyeval")
+		  (:file "integrald")
+		  (:file "demodlin")
+		  (:file "cnf")
+		  (:file "division")
+		  (:file "prover")
+		  (:file "regression")
+		  (:file "debug")
+		  (:file "rahd-pvs")))
    ))
