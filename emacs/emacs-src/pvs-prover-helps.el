@@ -850,33 +850,8 @@ anything but a left paren or a \", ignoring whitespace."
 
 
 ;;; Puts the cursor at the beginning of the previous command in the Proof
-;;; buffer.  It has special handling for branches, so that it may be used
-;;; to support undo.
-		    
-(defun pvs-prover-goto-prev-step (&optional undop)
-  "Called from an Edit Proof buffer, goes to prev step in proof.
-The regexp looks for a substring consisting of a left paren followed by
-anything but a left paren or a \", ignoring whitespace."
-  (interactive "p")
-  (if (not (re-search-backward "([ \t\n\r]*[^(\" \t\n\r]" (point-min) t))
-      (progn
-	(goto-char (1+ (point-min)))
-	(pvs-prover-goto-next-step)
-	(message "No earlier proof statements."))
-      (when undop
-	(forward-sexp 1)
-	(if (not (looking-at "[ \n\t\r]*\)"))
-	    (forward-sexp -1)
-	    (progn
-	      (re-search-forward "[ \n\t\)]*")
-	      (forward-sexp -1)
-	      (unless (re-search-backward "([ \t\n\r]*[^(\" \t\n\r]" (point-min) t)
-		(goto-char (1+ (point-min)))
-		(pvs-prover-goto-next-step)
-		(message "No earlier proof statements.")))))
-      (if (looking-at "([ \t\n\r]*[Pp][Rr][Oo][Pp][Ax][Xx][ \t\n\r]*)")
-	  (pvs-prover-goto-prev-step undop))))
-
+;;; buffer.  It does not currently support undo, as the previous version was
+;;; not quite right even for non-undo cases, and undo hasn't yet been fixed.
 (defun pvs-prover-goto-prev-step (&optional undop)
   "Called from an Edit Proof buffer, goes to prev step in proof."
   (interactive "p")

@@ -111,6 +111,7 @@ intervenes."
   (case (intern (getenv "PVSLISP"))
     (allegro (pvsallegro "pvs" nil))
     (cmulisp (pvscmulisp "pvs" nil))
+    (sbclisp (pvssbclisp "pvs" nil))
     (t (error "Unknown lisp - %s" (getenv "PVSLISP"))))
   (save-excursion
     (set-buffer (ilisp-buffer))
@@ -164,7 +165,23 @@ intervenes."
   (setq ilisp-binary-extension (pvs-cmulisp-binary-extension))
   (setq ilisp-init-binary-extension ilisp-binary-extension)
   (setq ilisp-load-inits nil)
-  (setq ilisp-program (format "%s -qq" (pvs-program)))
+  (setq ilisp-program (format "%s -quiet -noinit" (pvs-program)))
+  (setq comint-prompt-regexp
+	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|(Y or N)\\|(Yes or No)\\|Please enter")
+  (setq comint-interrupt-regexp  "^Interrupted at")
+  (setq ilisp-error-regexp "^Restarts:$")
+  (setq pvs-top-regexp
+	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) ")
+  (setq pvs-gc-end-regexp ";;; Finished GC"))
+
+(defdialect pvssbclisp "pvs-sbclisp"
+  cmulisp
+  (pvs-comint-init)
+  ;;(setq comint-send-newline nil)
+  (setq ilisp-binary-extension (pvs-sbclisp-binary-extension))
+  (setq ilisp-init-binary-extension ilisp-binary-extension)
+  (setq ilisp-load-inits nil)
+  (setq ilisp-program (format "%s --noinform --no-userinit" (pvs-program)))
   (setq comint-prompt-regexp
 	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|(Y or N)\\|(Yes or No)\\|Please enter")
   (setq comint-interrupt-regexp  "^Interrupted at")
@@ -179,6 +196,8 @@ intervenes."
 	   "fasl")
 	  ((string-equal machine "ix86") ; Intel/Linux
 	   "lfasl")
+	  ((string-equal machine "ix86_64") ; Intel/Linux
+	   "lfasl")
 	  ((string-equal machine "powerpc") ; Mac
 	   "mfasl")
 	  (t (error "Machine architecture %s not recognized" machine)))))
@@ -189,8 +208,22 @@ intervenes."
 	   "sparcf")
 	  ((string-equal machine "ix86") ; Intel/Linux
 	   "x86f")
+	  ((string-equal machine "ix86_64") ; Intel/Linux
+	   "x86f")
 	  ((string-equal machine "powerpc") ; Mac
 	   "ppcf")
+	  (t (error "Machine architecture %s not recognized" machine)))))
+
+(defun pvs-sbclisp-binary-extension ()
+  (let ((machine (getenv "PVSARCH")))
+    (cond ((string-equal machine "sun4") ; Sun/Solaris
+	   "sparcs")
+	  ((string-equal machine "ix86") ; Intel/Linux
+	   "x86s")
+	  ((string-equal machine "ix86_64") ; Intel/Linux
+	   "x8664s")
+	  ((string-equal machine "powerpc") ; Mac
+	   "ppcs")
 	  (t (error "Machine architecture %s not recognized" machine)))))
 
 (defun pvs-comint-init ()
