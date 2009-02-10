@@ -47,7 +47,7 @@
   (if (special-variable-p id) 
       (let ((lid (gethash id *lisp-id-hash*)))
 	(or lid
-	    (let ((new-lid (intern (gensym (string id)))))
+	    (let ((new-lid (intern (symbol-name (gensym (string id))))))
 	      (setf (gethash id *lisp-id-hash*) new-lid)
 	      new-lid)))
       id))
@@ -1779,7 +1779,7 @@
 			      :if-exists
 			      (if supersede? :supersede :append)
 			      :if-does-not-exist :create)
-	(when supersede? (format output "(in-package 'PVS)~%"))
+	(when supersede? (format output "(in-package :pvs)~%"))
 	(print-lisp-defns-to-output (get-theory theory) output))
       (print-lisp-defns-to-output (get-theory theory) nil)))
 
