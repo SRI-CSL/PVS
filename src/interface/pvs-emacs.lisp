@@ -66,11 +66,15 @@
 		   *noninteractive-timeout*
 		   ,(not (and (listp form)
 			      (memq (car form) *prover-invoking-commands*))))
-	      #-(or multiprocessing mp) nil
+	      #-(or multiprocessing mp sbcl) nil
 	      #+(or multiprocessing mp)
 	      (mp:with-timeout (*noninteractive-timeout*
 				(format t "Timed out!"))
 			       ,form)
+	      #+sbcl
+	      (sb-ext:with-timeout *noninteractive-timeout*
+		(handler-case ,form
+		  (sb-ext:timeout () (format t "Timed out!"))))
 	      ,form))
 	(string (error)
 		(with-output-to-string (string)
@@ -94,7 +98,7 @@
 ;;; This replaces ilisp-restore in pvs-init
 (defun pvs-ilisp-restore ()
   "Restore the old result history."
-  (declare (special / // + ++ * **))
+  #-sbcl (declare (special / // + ++ * **))
   (setq // (pop *old-result*)
 	** (first //)
 	/  (pop *old-result*)
@@ -105,7 +109,7 @@
   nil)
 
 (defun pvs-ilisp-save ()
-  (declare (special / // /// + ++ +++))
+  #-sbcl (declare (special / // /// + ++ +++))
   (unless *old-result*
     (setq *old-result* (list /// // +++ ++))))
 
@@ -546,7 +550,8 @@
 	 (t   (cons (char string pos) result))))
       (coerce (nreverse result) 'string)))
 
-(#+(or cmu sbcl) ext:without-package-locks
+(#+cmu ext:without-package-locks
+ #+sbcl sb-ext:without-package-locks
  #-(or cmu sbcl) progn
 (defun parse-error (obj message &rest args)
   ;;(assert (or *in-checker* *current-file*))
@@ -606,7 +611,8 @@
 (defvar *type-error-argument* nil)
 (defvar *skip-all-conversion-checks* nil)
 
-(#+(or cmu sbcl) ext:without-package-locks
+(#+cmu ext:without-package-locks
+ #+sbcl sb-ext:without-package-locks
  #-(or cmu sbcl) progn
 (defun type-error (obj message &rest args)
   (let ((errmsg (type-error-for-conversion obj message args)))
