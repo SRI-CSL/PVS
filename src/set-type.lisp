@@ -43,18 +43,21 @@
 (defmethod set-type ((ex expr) expected)
   (assert *current-context*)
   (assert *generate-tccs*)
-  (cond ((or (not (type ex))
-	     (eq *generate-tccs* 'all))
-	 (set-type* ex expected))
-	((eq *generate-tccs* 'top)
-	 (check-for-subtype-tcc ex expected))))
+  (let ((*added-recursive-def-conversion* nil))
+    (cond ((or (not (type ex))
+	       (eq *generate-tccs* 'all))
+	   (set-type* ex expected))
+	  ((eq *generate-tccs* 'top)
+	   (check-for-subtype-tcc ex expected)))))
 
 (defmethod set-type ((te type-expr) expected)
   (assert *current-context*)
-  (set-type* te expected))
+  (let ((*added-recursive-def-conversion* nil))
+    (set-type* te expected)))
 
 (defmethod set-type ((te dep-binding) expected)
-  (set-type* te expected))
+  (let ((*added-recursive-def-conversion* nil))
+    (set-type* te expected)))
 
 (defmethod typed? ((expr expr))
   (and (not (memq *generate-tccs* '(all top)))
@@ -130,7 +133,12 @@ required a context.")
   #+pvsdebug (assert (fully-instantiated? ex))
   (unless (typep ex '(or branch lambda-expr update-expr
 			 cases-expr let-expr where-expr))
-    (check-for-subtype-tcc ex expected)))
+    (check-for-subtype-tcc
+     ex
+     (if (and *added-recursive-def-conversion*
+	      (application? ex))
+	 (type ex)
+	 expected))))
 
 (defun check-type-incompatible (ex expected)
   (unless (type ex)
@@ -241,7 +249,25 @@ required a context.")
 	  (change-class ex 'number-expr :number (id ex)
 			:type (or *real* *number_field*))
 	  (type-incompatible ex (list (type res)) expected)))
-    (set-type-name-expr* ex res)))
+    (set-type-name-expr* ex res)
+    (check-set-type-recursive-name ex)))
+
+(defun check-set-type-recursive-name (ex)
+  ;; No need to do anything if not in a recursive decl
+  (when (and (not (eq *generate-tccs* 'none))
+	     (typep (current-declaration) '(and def-decl (not adt-def-decl)))
+	     (eq (declaration ex) (current-declaration))
+	     (not (memq ex *set-type-recursive-operator*)))
+    (let* ((cex (copy ex))
+	   (nex (recursive-def-conversion (current-declaration))))
+      ;; Add conversion
+      (change-class ex 'recursive-defn-conversion)
+      (setf (bindings ex) (bindings nex)
+	    (expression ex) (expression nex)
+	    (type ex) (type nex)
+	    (from-expr ex) cex)
+      (add-conversion-info nex cex ex)
+      (setq *added-recursive-def-conversion* t))))
 
 (defmethod set-type-name-expr* ((ex name-expr) res)
   (setf (type ex) (type res)))
@@ -1060,7 +1086,7 @@ required a context.")
 		  (set-type-mappings (name-to-modname (expr rhs))
 				     (declaration (expr rhs))))))))
     (t (let* ((mapthinst (lcopy thinst
-			    :mappings (append mappings (mappings thinst))))
+			   :mappings (append mappings (mappings thinst))))
 	      (stype (subst-mod-params (type (declaration lhs))
 				       mapthinst
 				       (if (eq (id mapthinst)
@@ -1767,6 +1793,8 @@ required a context.")
     #+pvsdebug (assert (fully-instantiated? ex))
     (check-for-recursive-tcc ex)))
 
+(defvar *set-type-recursive-operator* nil)
+
 ;;; This is one of the more complicated set-type functions, as it involves
 ;;; and intricate interplay between the argument and the operator types,
 ;;; each being used to refine the other.  In addition, there is special
@@ -1798,14 +1826,38 @@ required a context.")
 				optype))
 	(unless (tc-eq (type operator) optype)
 	  (setf (type ex) (application-range-type argument (type operator)))))
-      ;; Now generate TCCs on the argument
-      (set-type* argument (domain optype))
-      (let ((*appl-tcc-conditions*
-	     (cons (appl-tcc-conditions operator argument)
-		   *appl-tcc-conditions*)))
-	(if (let-expr? ex) ;; includes where-expr
-	    (set-type-let-expr-body ex optype expected)
-	    (set-type* operator optype)))
+      ;; Now generate the argument TCCs, unless in a recursove defn
+      (if (def-decl? (current-declaration))
+	  ;; refine the arg type if the optype has changed
+	  ;; Still can't generate TCCs, until after check-set-type-recursive-operator
+	  (unless (eq (domain foptype) (domain optype))
+	    (let ((*generate-tccs* 'none))
+	      (set-type* argument (domain optype))))
+	  (set-type* argument (domain optype)))
+      ;; On to the operator
+      (let* ((*appl-tcc-conditions*
+	      (cons (appl-tcc-conditions operator argument)
+		    *appl-tcc-conditions*))
+	     (*set-type-recursive-operator*
+	      (check-set-type-recursive-operator ex)))
+	(cond ((lambda-expr? ex)
+	       ;; Was changed by the recursion conversion
+	       (set-type* ex (type ex)))
+	      (t (if (let-expr? ex) ;; includes where-expr
+		     (set-type-let-expr-body ex optype expected)
+		     (set-type* (operator ex) (type (operator ex))))
+		 (when (def-decl? (current-declaration))
+		   (set-type* argument (domain (type (operator ex))))))))
+      ;; Deal with recursive functions here.  This is not simple, because we
+      ;; need to recognize when we have enough arguments to deal with the
+      ;; recursion, or to add a conversion if there will never be enough
+      ;; args.  Curried functions make this slightly more tricky, e.g., in
+      ;; f(x)(y,z)(w) where the measure is on y, we want the recursion to
+      ;; kick in at f(x)(y, z), and not at f(x) where a conversion would be
+      ;; applied (which of course, we do want if that is all the args).  So
+      ;; we set/check a global variable that is a stack of the operators we
+      ;; are working on - need a stack for situations like
+      ;; f(x)(f(y),z)(f(w)), where the argument is now being worked on.
       (cond ((and (typep operator 'field-name-expr)
 		  (not (memq (declaration operator) *bound-variables*))
 		  (typep (find-supertype (domain optype)) 'recordtype))
@@ -1813,6 +1865,59 @@ required a context.")
 	     (setf (id ex) (id operator)))
 	    (t (change-application-class-if-needed
 		ex))))))
+
+(defun check-set-type-recursive-operator (ex)
+  ;; No need to do anything if not in a recursive decl
+  (when (and (not (eq *generate-tccs* 'none))
+	     (typep (current-declaration) '(and def-decl (not adt-def-decl))))
+    (let ((op* (operator* ex)))
+      (if (and (name-expr? op*)
+	       (eq (declaration op*) (current-declaration)))
+	  (if (memq op* *set-type-recursive-operator*)
+	      ;; Already there, just return
+	      *set-type-recursive-operator*
+	      (let ((arglen (length (argument* ex)))
+		    (depth (measure-depth (current-declaration))))
+		(if (> arglen depth)
+		    (if (= arglen (1+ depth))
+			(cons op* *set-type-recursive-operator*)
+			*set-type-recursive-operator*)
+		    ;; Don't have enough args - need conversion
+		    (let* ((cex (copy ex))
+			   (recconv (recursive-def-conversion
+				     (current-declaration)))
+			   (nex (make!-applications recconv (arguments* ex))))
+		      ;; Add conversion
+		      (assert (lambda-expr? nex))
+		      (change-class ex 'recursive-defn-conversion)
+		      (setf (bindings ex) (bindings nex)
+			    (expression ex) (expression nex)
+			    (type ex) (type nex)
+			    (from-expr ex) cex)
+		      (add-conversion-info nex cex ex)
+		      (setq *added-recursive-def-conversion* t)
+		      *set-type-recursive-operator*))))
+	  *set-type-recursive-operator*))))
+
+(defun recursive-def-conversion (recdecl)
+  (let* ((res (make-resolution recdecl
+		(current-theory-name) (recursive-signature recdecl)))
+	 (name (make!-name-expr (id recdecl) nil nil res))
+	 (depth (measure-depth recdecl)))
+    (recursive-def-conversion* name (recursive-signature recdecl) depth)))
+
+(defun recursive-def-conversion* (ex recsig depth)
+  (assert (or (= depth -1) (funtype? recsig)))
+  (if (= depth -1)
+      ex
+      (let* ((dtype (dep-binding-type (domain recsig)))
+	     (id (make-new-variable '|x| (cons ex dtype)))
+	     (bd (typecheck* (mk-bind-decl id dtype) nil nil nil))
+	     (var (mk-name-expr id nil nil (make-resolution bd nil dtype))))
+	(make!-lambda-expr (list bd)
+	  (recursive-def-conversion*
+	   (make!-application ex var) (range recsig) (1- depth))))))
+
 
 ;; Here we set the operator type for LET and WHERE expressions.  These
 ;; are actually applications of lambda expressions to arguments, e.g.,
@@ -1877,11 +1982,19 @@ required a context.")
 			ex optype expected)))
 	  (or aoptype
 	      (let ((joptype
-		     (when (some #'judgement-types (arguments ex))
+		     (when (some #'(lambda (a)
+				     (or (judgement-types a)
+					 (recursive-defn-conversion? a)))
+				 (arguments ex))
 		       (adjust-application-operator-from-arg-judgements
 			ex expected))))
 		(or joptype optype))))
-	optype)))
+	(let ((op* (operator* ex)))
+	  (if (and (declaration? (current-declaration))
+		   (name-expr? op*)
+		   (some #'recursive-defn-conversion? (argument* ex)))
+	      (determine-operator-type op arg expected ex)
+	      optype)))))
 
 (defun set-type-boolop-application (ex optype)
   (setf (type ex) optype)
@@ -1968,8 +2081,11 @@ required a context.")
 (defun adjust-application-operator-from-arg-judgements (ex expected)
   (let* ((operator (operator ex))
 	 (argument (argument ex))
-	 (res (resolve (copy operator :resolutions nil :type nil)
-		       'expr (arguments ex))))
+	 (res (remove-if (complement
+			  #'(lambda (r)
+			      (compatible? (range (type r)) expected)))
+		(resolve (copy operator :resolutions nil :type nil)
+			 'expr (arguments ex)))))
     (when (and (singleton? res)
 	       (not (tc-eq (car res)
 			   (resolution operator))))
@@ -1977,6 +2093,9 @@ required a context.")
       ;; proper actuals
       (setf (types operator)
 	    (list (type (car res))))
+      (when (type operator)
+	(setf (type operator)
+	      (type (car res))))
       (setf (resolutions operator) res)
       (determine-operator-type operator argument expected ex))))
 
