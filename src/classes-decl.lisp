@@ -141,7 +141,7 @@
 	  type-name type-name? type-value types update-expr using-hash
 	  var-decl visible?))
 #+(or cmu sbcl)
-(ext:without-package-locks
+(#-sbcl ext:without-package-locks #+sbcl sb-ext:without-package-locks
  (defgeneric class (x))
  (defgeneric (setf class) (x y))
  (defgeneric keyword (x))
@@ -343,6 +343,9 @@
 ;;; unparser.  The type is set by the typechecker to the canonical value
 ;;; of the declared-type.
 
+(
+ #-sbcl progn
+ #+sbcl sb-ext:without-package-locks
 (defcl declaration (syntax)
   (newline-comment :restore-as nil)
   (id :type (or symbol number) :parse t :restore-as nil)
@@ -358,6 +361,7 @@
   (semi :parse t :restore-as nil)
   (tcc-form :fetch-as nil :ignore t)
   (typecheck-time :restore-as nil))
+)
 
 ;;; declared-type-string keeps the string of the declared type for
 ;;; creating the pvs context - see create-declaration-entry
