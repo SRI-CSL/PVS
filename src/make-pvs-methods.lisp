@@ -33,8 +33,11 @@
   ;; This sets *pvs-path* and sets *pvs-binary-type*
   (load "pvs-config.lisp"))
 
-(defpackage pvs (:use #+lucid :lucid-common-lisp :lisp
-		      #-(or gcl cmu sbcl) :clos #+(or gcl cmu sbcl) :pcl))
+(defpackage pvs (:use #+lucid :lucid-common-lisp #-sbcl :lisp #+sbcl :cl
+		      #-(or gcl cmu sbcl) :clos #+(or gcl cmu) :pcl
+		      #+sbcl :sb-pcl)
+	 #+sbcl (:shadowing-import-from :sb-int memq)
+	 #+sbcl (:export memq))
 
 (in-package :pvs)
 (import '(cl-user:*pvs-path*))
