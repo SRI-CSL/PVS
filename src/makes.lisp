@@ -2181,3 +2181,23 @@
     :operator (lesseq-operator)
     :argument (make!-arg-tuple-expr ex1 ex2)
     :type *boolean*))
+
+(defun make!-greater (ex1 ex2)
+  (assert (type ex1))
+  (assert (type ex2))
+  (assert (tc-eq (find-supertype (type ex1)) *number*))
+  (assert (tc-eq (find-supertype (type ex2)) *number*))
+  (make-instance 'infix-application
+    :operator (greater-operator)
+    :argument (make!-arg-tuple-expr ex1 ex2)
+    :type *boolean*))
+
+(defun make!-greatereq (ex1 ex2)
+  (assert (type ex1))
+  (assert (type ex2))
+  (assert (tc-eq (find-supertype (type ex1)) *number*))
+  (assert (tc-eq (find-supertype (type ex2)) *number*))
+  (make-instance 'infix-application
+    :operator (greatereq-operator)
+    :argument (make!-arg-tuple-expr ex1 ex2)
+    :type *boolean*))
