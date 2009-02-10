@@ -90,18 +90,18 @@ $(error "$(CMULISPEXE) is not executable")
 endif
 endif
 
-# ifneq ($(SBCL_HOME),)
-# # Check that the given SBCL_HOME works
-# SBCLISPEXE = $(SBCL_HOME)/bin/lisp
-# ifeq ($(shell if [ -x "$(SBCLISPEXE)" ]; then echo OK; fi),OK)
-# SBCLVERSION = $(shell $(SBCL_HOME)/bin/lisp -batch -eval '(progn (format t "~a" (lisp-implementation-version)) (terpri) (quit))')
-# $(warning "SBCL Version $(SBCLVERSION)")
-# sbcl-devel += $(bindir)/devel/$(SYSTEM)-sbclisp
-# sbcl-rt += $(bindir)/runtime/$(SYSTEM)-sbclisp
-# else
-# $(error "$(SBCLISPEXE) is not executable")
-# endif
-# endif
+ifneq ($(SBCLISP_HOME),)
+# Check that the given SBCLISP_HOME works
+SBCLISPEXE = $(SBCLISP_HOME)/bin/sbcl
+ifeq ($(shell if [ -x "$(SBCLISPEXE)" ]; then echo OK; fi),OK)
+SBCLVERSION = $(shell $(SBCLISPEXE) --version)
+$(warning "$(SBCLVERSION)")
+sbcl-devel += $(bindir)/devel/$(SYSTEM)-sbclisp
+sbcl-rt += $(bindir)/runtime/$(SYSTEM)-sbclisp
+else
+$(error "$(SBCLISPEXE) is not executable")
+endif
+endif
 
 
 LOAD-FOREIGN-EXTENSION=so
@@ -342,6 +342,7 @@ pvs-src = src/closopt.lisp \
 	  src/tex-support.lisp \
           src/raw-api.lisp
 
+sbcllisp += src/utils/file-utils-sbcl.lisp
 cmulisp += src/utils/file-utils-cmu.lisp
 allegrolisp += src/utils/file-utils.lisp
 
@@ -372,6 +373,7 @@ pvs-prover = src/prover/checker-macros.lisp \
 
 bddlisp = BDD/bdd.lisp BDD/mu.lisp
 allegrolisp += BDD/bdd-allegro.lisp BDD/mu-allegro.lisp
+sbcllisp += BDD/bdd-sbcl.lisp BDD/mu-sbcl.lisp
 cmulisp += BDD/bdd-cmu.lisp BDD/mu-cmu.lisp
 
 PVSiolisp = src/PVSio/pvs-lib.lisp src/PVSio/defattach.lisp \
@@ -423,6 +425,7 @@ abstractionlisp := $(patsubst %,$(PVSPATH)%,$(abstractionlisp))
 groundevallisp := $(patsubst %,$(PVSPATH)%,$(groundevallisp))
 inst-by-unif-lisp := $(patsubst %,$(PVSPATH)%,$(inst-by-unif-lisp))
 allegrolisp := $(patsubst %,$(PVSPATH)%,$(allegrolisp))
+sbcllisp := $(patsubst %,$(PVSPATH)%,$(sbcllisp))
 cmulisp := $(patsubst %,$(PVSPATH)%,$(cmulisp))
 endif
 
@@ -437,16 +440,16 @@ finitesetslib = $(PVSPATH)lib/finite_sets/pvsbin/top.bin
 .PHONY : all devel runtime parser emacs prelude-files-and-regions etags
 
 ifneq ($(buildcmds),)
-ifeq ($(CMULISP_HOME)$(ALLEGRO_HOME),)
-$(error "Must set CMULISP_HOME or ALLEGRO_HOME")
+ifeq ($(SBCLISP_HOME)$(CMULISP_HOME)$(ALLEGRO_HOME),)
+$(error "Must set SBCLISP_HOME, CMULISP_HOME, or ALLEGRO_HOME")
 endif
 endif
 
 all : devel runtime prelude-files-and-regions $(emacs-elc) etags
 
-devel : $(allegro-devel) $(cmulisp-devel)
+devel : $(allegro-devel) $(sbcl-devel) $(cmulisp-devel)
 
-runtime : $(allegro-rt) $(cmulisp-rt)
+runtime : $(allegro-rt) $(sbcl-rt) $(cmulisp-rt)
 
 parser : pvs-parser-out
 
@@ -454,8 +457,8 @@ prelude-files-and-regions : $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regi
 
 etags : $(PVSPATH)TAGS
 
-$(PVSPATH)TAGS : $(lisp-files) $(allegrolisp) $(cmulisp) $(pvs-emacs-src)
-	$(ETAGS) $(lisp-files) $(allegrolisp) $(cmulisp) $(pvs-emacs-src)
+$(PVSPATH)TAGS : $(lisp-files) $(allegrolisp) $(sbcllisp) $(cmulisp) $(pvs-emacs-src)
+	$(ETAGS) $(lisp-files) $(allegrolisp) $(sbcllisp) $(cmulisp) $(pvs-emacs-src)
 
 fileutils = \
    $(PVSPATH)src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
@@ -471,6 +474,56 @@ emacs = $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc
 
 # Here are the rules for building the PVS grammar, pvs-methods file, and
 # devel and runtime images.
+
+ifneq ($(SBCLISP_HOME),)
+
+ifeq ($(ALLEGRO_HOME),) # Build these with Allegro, if available
+$(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
+	@echo "******* Creating parser"
+	$(SBCLISPEXE) --load src/make-pvs-parser
+
+$(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
+	$(PVSPATH)src/defcl.lisp \
+	$(PVSPATH)src/classes-expr.lisp \
+	$(PVSPATH)src/classes-decl.lisp
+	@echo "******* Creating pvs-methods.lisp"
+	$(SBCLISPEXE) --eval "(defvar *pvs-path* \"$(PVSPATH)\")" \
+		   --load src/make-pvs-methods.lisp
+endif
+
+$(sbcl-devel) $(sbcl-rt) : $(image-deps) \
+             $(pvs-make-files) $(ess) $(ff-files) \
+             $(lisp-files) $(sbcllisp) \
+             $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
+	$(MKDIR) -p $(subst $(SYSTEM)-sbclisp,,$@)
+	@echo "******* Compiling PVS files in Steel Bank Common Lisp (SBCL)"
+	$(SBCLISPEXE) --eval '(require :sb-posix)' \
+		      --eval '(require :sb-md5)' \
+		      --eval '(load "pvs.system" :verbose t)' \
+		      --eval "(let ((*load-pvs-prelude* nil)) \
+				(mk:operate-on-system :pvs :compile))" \
+		      --eval '(quit)'
+	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
+	@echo "******* Building PVS image $@"
+	$(SBCLISPEXE) --eval '(require :sb-posix)' \
+		      --eval '(require :sb-md5)' \
+		      --eval '(load "pvs.system" :verbose t)' \
+		      --eval "(unwind-protect \
+				  (mk:operate-on-system :pvs :compile) \
+				(save-lisp-and-die \"$@.core\" \
+				    :toplevel (function startup-pvs) \
+			       ))"
+	-rm $(PVSPATH)BDD/$(PLATFORM)/bdd-sbcl.*
+	cp $(SBCLISPEXE) $(subst $(SYSTEM)-sbclisp,,$@)
+	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-sbclisp,,$@)
+	cp $(PVSPATH)BDD/bdd-sbcl.lisp $(PVSPATH)BDD/mu-sbcl.lisp $(subst $(SYSTEM)-sbclisp,,$@)
+	cp $(PVSPATH)src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-sbclisp,,$@)
+	cp $(PVSPATH)src/WS1S/lisp/dfa-foreign-sbcl.lisp $(subst $(SYSTEM)-sbclisp,,$@)
+	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
+	echo "#!/bin/sh" > $@
+	echo "sbcl --core \`dirname \$$0\`/\`basename \$$0\`.core \$$*" >> $@
+	chmod a+x $@
+endif
 
 ifneq ($(CMULISP_HOME),)
 
@@ -617,7 +670,7 @@ install:
 
 faslexts = fasl,rfasl,hfasl,lfasl,mfasl,nfasl,sbin,obin,rbin,mbin,x86f,ppcf,sparcf,x8664s,x86s,ppcs,sparcs,clfasl,wfasl,err
 
-platforms = ix86-Linux,ix86-MacOSX,powerpc-MacOSX,powerpc-MacOSX,sun4-SunOS5
+platforms = ix86-Linux,ix86_64-Linux,ix86-MacOSX,powerpc-MacOSX,powerpc-MacOSX,sun4-SunOS5
 # HT: Need to put a comma in a variable, because a literal 
 # comma cannot appear in a makefile function argument.
 comma:= ,
