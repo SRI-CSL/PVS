@@ -210,9 +210,15 @@
 	  (and *noninteractive*
 	       *noninteractive-timeout*))
       (let ((timeout (or *proof-timeout* *noninteractive-timeout*)))
+	#-sbcl
 	(mp:with-timeout (timeout (pvs-message "Interrupted: ~a sec timeout"
 				    timeout))
-			 (call-next-method)))
+			 (call-next-method))
+	#+sbcl
+	(sb-ext:with-timeout timeout
+	  (handler-case (call-next-method)
+	    (sb-ext:timeout ()
+	      (pvs-message "Interrupted: ~a sec timeout" timeout)))))
       (call-next-method)))
 
 (defmethod prove-decl ((decl formula-decl) &key strategy context)
