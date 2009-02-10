@@ -219,7 +219,9 @@
   (assert (fully-instantiated? (type decl)))
   (if (free-params (type decl))
       (set-nonempty-type (type decl))
-      (check-nonempty-type (type decl) (id decl)))
+      ;; Don't check here
+      ;;(check-nonempty-type (type decl) (id decl))
+      )
   (check-duplication decl)
   decl)
 
@@ -1024,17 +1026,10 @@
     ;;(assert (null (freevars (recursive-signature decl))))
     (set-nonempty-type rtype)
     (put-decl decl)
-    (let ((*recursive-calls-without-enough-args*
-	   (unless (adt-def-decl? decl)
-	     (recursive-calls-without-enough-args decl)))
-	  (*tcc-conditions* (add-formals-to-tcc-conditions (formals decl))))
-      (if *recursive-calls-without-enough-args*
-	  (let ((cdef (copy-all (definition decl))))
-	     (typecheck* (definition decl) rtype nil nil)
-	     (let ((*generate-tccs* 'none))
-	       (setf (definition decl) cdef)
-	       (typecheck* (definition decl) rtype nil nil)))
-	  (typecheck* (definition decl) rtype nil nil)))
+    (let ((*tcc-conditions* (add-formals-to-tcc-conditions (formals decl))))
+      ;; See check-set-type-recursive-operator for how recursive conversions
+      ;; are generated.
+      (typecheck* (definition decl) rtype nil nil))
     (make-def-axiom decl))
   decl)
 
@@ -2786,6 +2781,11 @@
 
 (defmethod typecheck* ((decl rec-application-judgement) expected kind args)
   (declare (ignore expected kind args))
+  (typecheck-rec-application-judgement decl))
+
+;; Split this from the above, as somehow the judgement-type slot is not set
+;; in CMULisp otherwise.  I can't say I understand this - Owre
+(defun typecheck-rec-application-judgement (decl)
   (typecheck* (formals decl) nil nil nil)
   (let ((fmlist (apply #'append (formals decl))))
     (let ((dup (duplicates? fmlist :key #'id)))
@@ -2819,6 +2819,7 @@
       (typecheck-rec-judgement decl expr)))
   (setf (judgement-type decl)
 	(make-formals-funtype (formals decl) (type decl)))
+  (assert (judgement-type decl))
   (when (formals-sans-usings (current-theory))
     (generic-judgement-warning decl))
   (add-judgement-decl decl)
