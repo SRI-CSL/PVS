@@ -56,7 +56,7 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
-(in-package 'pvs)
+(in-package :pvs)
 
 ;(declaim (function pvs-sxhash* (T list) (integer 0 65535)))
 
@@ -64,7 +64,7 @@
 ;(defun tc-eq (x y &optional bindings)
 ;  (tc-eq* x y bindings))
 
-(defconstant pvs-sxhash-byte (byte #+allegro 24 #-allegro 29 0))
+(defconstant-if-unbound pvs-sxhash-byte (byte #+allegro 24 #-allegro 29 0))
 
 (defconstant pvs-max-hashnum (1- (expt 2 #+allegro 24 #-allegro 29)))
 
@@ -104,7 +104,7 @@
   (declare (ignore bindings))
   (the positive-fixnum (sxhash x)))
 
-(defconstant nil-sxhash (sxhash nil))
+(defconstant-if-unbound nil-sxhash (sxhash nil))
 
 (defmethod pvs-sxhash* ((x null) bindings)
   (declare (ignore bindings))
@@ -912,6 +912,43 @@
 (defmethod pvs-sxhash* ((n1 name) bindings)
   (with-slots (resolutions) n1
     (pvs-sxhash* (car resolutions) bindings)))
+
+(defmethod pvs-sxhash* ((n1 constructor-name-expr) bindings)
+  (let* ((stype (find-supertype (type n1))))
+    (if (funtype? stype)
+	(call-next-method)
+	;; Need to lift positive type actuals to their supertype
+	(let* ((adt (adt n1))
+	       (res (resolution (or (print-type adt) adt)))
+	       (mi (module-instance res))
+	       (acts (actuals mi))
+	       (formals (formals-sans-usings (adt adt)))
+	       (postypes (positive-types (adt adt))))
+	  (if (null postypes)
+	      (call-next-method)
+	      (pvs-sxhash-+
+	       (the positive-fixnum (sxhash (id n1)))
+	       (pvs-sxhash-+
+		(the positive-fixnum (sxhash (id mi)))
+		(the positive-fixnum
+		  (pvs-sxhash-adt-actuals
+		   acts bindings formals postypes 0)))))))))
+
+(defun pvs-sxhash-adt-actuals (acts bindings formals postypes num)
+  (if (null acts)
+      num
+      (flet ((lkey (x) (or (print-type x) x)))
+	(pvs-sxhash-adt-actuals
+	 (cdr acts) bindings (cdr formals) postypes
+	 (pvs-sxhash-+
+	  (pvs-sxhash*
+	   (if (member (car formals) postypes :test #'same-id :key #'lkey)
+	       (find-supertype (type-value (car acts)))
+	       (car acts))
+	   bindings)
+	  num)))))
+	     
+			
 
 ;(defun tc-eq-operators (id1 id2 decl1 decl2)
 ;  (let* ((th1 (module decl1))
