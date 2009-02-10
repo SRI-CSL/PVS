@@ -1633,9 +1633,12 @@
 	(type-ambiguity (expression expr))
 	(type-error (expression expr)
 	  "Must resolve to a record, tuple, function, array, or datatype.")))
-  (let ((etype (find-declared-adt-supertype (car (ptypes (expression expr))))))
-    (typecheck-assignments (assignments expr) etype)
-    (setf (types expr) (update-expr-types expr))))
+  (let* ((etype (find-declared-adt-supertype (car (ptypes (expression expr)))))
+	 (found-assns (with-no-type-errors
+		       (typecheck-assignments (assignments expr) etype))))
+    (if found-assns
+	(setf (types expr) (update-expr-types expr))
+	(find-update-conversions expr etype))))
 
 (defun update-expr-types (expr)
   (let ((*generate-tccs* 'none))
@@ -2137,14 +2140,14 @@
 		    (compatible-type (range type) vtype)))))
 
 (defun typecheck-assignments (assigns type)
-  (when assigns
-    (let ((assign (car assigns)))
-      (when (and (maplet? assign)
-		 (cdr (arguments assign)))
-	(type-error assign "Maplet assignment may not be nested"))
-      (typecheck-ass-args (arguments assign) type (typep assign 'maplet))
-      (typecheck* (expression assign) nil nil nil)
-      (typecheck-assignments (cdr assigns) type))))
+  (or (null assigns)
+      (let ((assign (car assigns)))
+	(when (and (maplet? assign)
+		   (cdr (arguments assign)))
+	  (type-error assign "Maplet assignment may not be nested"))
+	(typecheck-ass-args (arguments assign) type (typep assign 'maplet))
+	(typecheck* (expression assign) nil nil nil)
+	(typecheck-assignments (cdr assigns) type))))
 
 (defmethod typecheck-ass-args (args (rtype subtype) maplet?)
   (typecheck-ass-args args (supertype rtype) maplet?))
