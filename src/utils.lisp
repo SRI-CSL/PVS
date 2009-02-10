@@ -137,11 +137,12 @@
   (let* ((test (hash-table-test ht))
 	 (size (hash-table-count ht))
 	 (weak? #+allegro (excl:hash-table-weak-keys ht)
-		#+(or cmu sbcl) (lisp::hash-table-weak-p ht))
+		#+cmu     (lisp::hash-table-weak-p ht)
+		#+sbcl    (sb-ext:hash-table-weakness ht))
 	 (new-ht (if (memq test '(eq eql equal equalp))
 		     (make-hash-table
 		      :test test :size size
-		      #+allegro :weak-keys #+(or cmu sbcl) :weak-p weak?)
+		      #+allegro :weak-keys #+cmu :weak-p #+sbcl :weakness weak?)
 		     (make-pvs-hash-table :strong-eq? (eq test 'strong-tc-eq)
 					  :size size
 					  :weak-keys? weak?))))
@@ -279,7 +280,8 @@
        #+(and allegro (version>= 6) (not (version>= 7)))
        (excl::variable-special-p obj nil)
        #+(and allegro (not (version>= 6))) (clos::variable-special-p obj nil)
-       #+(or cmu sbcl) (eq (extensions:info variable kind obj) :special)
+       #+cmu (eq (extensions:info variable kind obj) :special)
+       #+sbcl (sb-walker:var-globally-special-p obj)
        #+harlequin-common-lisp (system:declared-special-p obj)
        #-(or lucid kcl allegro harlequin-common-lisp cmu sbcl)
        (error "Need to handle special variables for this version of lisp")
@@ -310,13 +312,21 @@
 			 (namestring (working-directory))))
   nil)
 
-#+(or gcl cmu sbcl)
+#+(or gcl cmu)
 (defun working-directory ()
   (pathname (nth-value 1 (unix:unix-current-directory))))
 
-#+(or gcl cmu sbcl)
+#+(or gcl cmu)
 (defun set-working-directory (dir)
   (unix:unix-chdir (namestring dir)))
+
+#+sbcl
+(defun working-directory ()
+  (pathname (sb-posix:getcwd)))
+
+#+sbcl
+(defun set-working-directory (dir)
+  (sb-posix:chdir dir))
 
 #+allegro
 (defun working-directory ()
@@ -334,9 +344,13 @@
 (defun environment-variable (string)
   (sys:getenv string))
 
-#+(or cmu sbcl)
+#+cmu
 (defun environment-variable (string)
   (tools:getenv string))
+
+#+sbcl
+(defun environment-variable (string)
+  (sb-posix:getenv string))
 
 #+harlequin-common-lisp
 (defun environment-variable (string)
@@ -370,9 +384,16 @@
    :show-cmd nil
    :output-stream (open "/dev/null" :direction :output
 			  :if-exists :append)))
-#+(or cmu sbcl)
+#+cmu
 (defun chmod (prot file)
   (extensions:run-program
+   "chmod"
+   (list prot (namestring file))
+   :output nil :error nil :wait nil))
+
+#+sbcl
+(defun chmod (prot file)
+  (sb-ext:run-program
    "chmod"
    (list prot (namestring file))
    :output nil :error nil :wait nil))
@@ -605,11 +626,12 @@
 
 (defun shortpath (directory)
   (or (gethash directory *shortpath-directories*)
-      (let* ((dirlist (pathname-directory
+      (let* ((realdir (namestring (truename directory)))
+	     (dirlist (pathname-directory
 		       (directory-p
-			(#+allegro excl:pathname-resolve-symbolic-links
-				   #+(or cmu sbcl) unix:unix-resolve-links
-			 (namestring (truename directory))))))
+			#+allegro (excl:pathname-resolve-symbolic-links realdir)
+			#+cmu (unix:unix-resolve-links realdir)
+			#-(or allegro cmu) realdir)))
 	     (file-info (get-file-info directory))
 	     (result (if (eq (car dirlist) :absolute)
 			 (shortpath* (reverse (cdr dirlist)) file-info)
@@ -2915,9 +2937,13 @@ space")
 (defun direct-superclasses (class)
   (slot-value class 'pcl:class-direct-superclasses))
 
-#+(or cmu sbcl)
+#+cmu
 (defun direct-superclasses (class)
   (class-direct-superclasses class))
+
+#+sbcl
+(defun direct-superclasses (class)
+  (sb-mop:class-direct-superclasses class))
 
 (defun types-of (obj)
   (let ((types nil))
@@ -3225,7 +3251,7 @@ space")
   (when (compiled-function-p #'pvs-gc-after-hook)
     (setf excl:*gc-after-hook* #'pvs-gc-after-hook)))
 
-#+(or cmu sbcl)
+#+cmu
 (eval-when (load)
   (setf extensions:*gc-verbose* nil))
 
@@ -4022,7 +4048,8 @@ space")
     (every #'(lambda (slot)
 	       (let ((name (slot-value slot
 				       '#+allegro excl::name
-				       #+(or cmu sbcl) pcl::name)))
+				       #+cmu pcl::name
+				       #+sbcl sb-pcl::name)))
 		 (equals (slot-value x name) (slot-value y name))))
 	   slots)))
 
@@ -4059,8 +4086,12 @@ space")
   #-(or allegro cmu sbcl)
   (error "Need a hash-table for tc-eq for this lisp"))
 
-#+(or cmu sbcl)
+#+cmu
 (extensions:define-hash-table-test 'tc-eq-test #'tc-eq #'pvs-sxhash)
-#+(or cmu sbcl)
+#+cmu
 (extensions:define-hash-table-test 'strong-tc-eq-test
 				   #'strong-tc-eq #'pvs-sxhash)
+#+sbcl
+(sb-int:define-hash-table-test 'tc-eq-test #'tc-eq #'pvs-sxhash)
+#+sbcl
+(sb-int:define-hash-table-test 'strong-tc-eq-test #'strong-tc-eq #'pvs-sxhash)
