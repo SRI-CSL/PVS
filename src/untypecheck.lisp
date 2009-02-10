@@ -654,6 +654,12 @@
   (let ((expr (argument ex)))
     (untypecheck-conversion ex expr)))
 
+(defmethod untypecheck-theory ((ex recursive-defn-conversion))
+  (if *dont-untypecheck-recdef-conversions*
+      (call-next-method)
+      (let ((expr (from-expr ex)))
+	(untypecheck-conversion ex expr))))
+
 (defun untypecheck-conversion (ex expr)
   (change-class ex (class-of expr))
   (copy-slots ex expr)
