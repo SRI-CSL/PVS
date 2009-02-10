@@ -143,9 +143,11 @@
 (defvar *module-context*)
 ;;(defvar *current-theory*)
 (defvar *ps* nil)
-(defvar * '*)
-(defvar + '+)
-(defvar - '-)
+(#+sbcl sb-ext:without-package-locks
+ #-sbcl progn
+  (defvar * '*)
+  (defvar + '+)
+  (defvar - '-))
 (defvar *macro-names* nil)
 (defvar *subst-type-hash* ;;used in assert-sformnums
   ;;(make-pvs-hash-table)
@@ -177,13 +179,21 @@
 (defmacro with-interrupts-deferred (&body form)
   `(let ((excl::*without-interrupts* t)) ,@form))
 
-#+(or cmu sbcl)
+#+cmu
 (defmacro with-interrupts-allowed (&body form)
   `(system:with-interrupts ,@form))
 
-#+(or cmu sbcl)
+#+cmu
 (defmacro with-interrupts-deferred (&body form)
   `(system:without-interrupts ,@form))
+
+#+sbcl
+(defmacro with-interrupts-allowed (&body form)
+  `(sb-sys:with-interrupts ,@form))
+
+#+sbcl
+(defmacro with-interrupts-deferred (&body form)
+  `(sb-sys:without-interrupts ,@form))
 
 
 
