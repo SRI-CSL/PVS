@@ -51,7 +51,7 @@
    (if (memq test '(eq eql equal equalp))
        (make-hash-table :test test :size size :rehash-size rehash-size
 			:rehash-threshold rehash-threshold
-			:weak-p weak-keys)
+			#-sbcl :weak-p #+sbcl :weakness weak-keys)
        (make-pvs-hash-table
 	:strong-eq? (eq test 'strong-tc-eq)
 	:weak-p weak-keys
@@ -77,6 +77,8 @@
       :weak-keys (excl:hash-table-weak-keys ht))
      #-allegro
      (let* ((test (hash-table-test ht))
+	    (weakp #+sbcl (sb-ext:hash-table-weakness ht)
+		   #-sbcl (lisp::hash-table-weak-p ht))
 	    (newht
 	     (if (memq test '(eq eql equal equalp))
 		 (make-hash-table
@@ -84,13 +86,14 @@
 		  :size size
 		  :rehash-size rehash-size
 		  :rehash-threshold rehash-threshold
-		  :weak-p (lisp::hash-table-weak-p ht))
+		  #-sbcl :weak-p #+sbcl :weakness weakp)
 		 (make-pvs-hash-table :strong-eq? (eq test 'strong-tc-eq)
-				      :weak-keys? (lisp::hash-table-weak-p ht)
+				      :weak-keys? weakp
 				      :size size
 				      :rehash-size rehash-size
 				      :rehash-threshold rehash-threshold
-				      :table (lisp::hash-table-table ht)))))
+				      :table #-sbcl (lisp::hash-table-table ht)
+					     #+sbcl (sb-impl::hash-table-table ht)))))
        (declare (inline maphash))
        (maphash #'(lambda (x y) (setf (gethash x newht) y))
 		ht)
