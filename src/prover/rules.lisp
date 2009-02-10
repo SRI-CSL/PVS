@@ -334,9 +334,15 @@ See also HIDE, REVEAL"
 		   (init-time (get-internal-run-time))
 		   (result (let ((*in-apply* ps))
 			     (if timeout
+				 #-sbcl
 				 (mp:with-timeout (timeout nil)
 						  (prove* newps)
 						  newps)
+				 #+sbcl
+				 (sb-ext:with-timeout timeout
+				   (handler-case
+				     (progn (prove* newps) newps)
+				     (sb-ext:timeout () nil)))
 				 (prove* newps))))
 		   (end-time (/ (- (get-internal-run-time) init-time)
 				internal-time-units-per-second)))
