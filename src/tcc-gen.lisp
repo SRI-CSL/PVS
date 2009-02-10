@@ -673,7 +673,12 @@
 	   (relterm (beta-reduce
 		     (typecheck* (mk-application ordering appl2 appl1)
 				 *boolean* nil nil)))
-	   (true-conc? (tcc-evaluates-to-true relterm))
+	   (true-conc? (or (member relterm
+				   (let ((*assert-typepreds* nil))
+				     (collect-subexpr-typepreds relterm)
+				     *assert-typepreds*)
+				   :test #'tc-eq)
+			   (tcc-evaluates-to-true relterm)))
 	   (form (unless true-conc? (add-tcc-conditions relterm)))
 	   (uform (cond ((or true-conc? (tcc-evaluates-to-true form))
 			 *true*)
