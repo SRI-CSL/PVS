@@ -55,21 +55,21 @@
 (defun prerr (&rest args)
   (apply #'error args))
 
-(defconstant *truecons* '(true))
+(defconstant-if-unbound *truecons* '(true))
 
-(defconstant *eqarithrels* '(greatereqp lesseqp))
+(defconstant-if-unbound *eqarithrels* '(greatereqp lesseqp))
 
 (defconstant *ifops* nil ;;'(if if*)
   )
 
-(defconstant *boolconstants* '(false true))
+(defconstant-if-unbound *boolconstants* '(false true))
 
-(defconstant *arithrels* '(lessp lesseqp greaterp greatereqp))
+(defconstant-if-unbound *arithrels* '(lessp lesseqp greaterp greatereqp))
 
-(defconstant *arithops* '(PLUS TIMES DIFFERENCE MINUS))
+(defconstant-if-unbound *arithops* '(PLUS TIMES DIFFERENCE MINUS))
 
-(defconstant *boolops* '(and or implies not ;;if
-			     iff))
+(defconstant-if-unbound *boolops* '(and or implies not ;;if
+				    iff))
 
 (defmacro singleton? (obj)
   `(and (consp ,obj) (null (cdr ,obj))))
