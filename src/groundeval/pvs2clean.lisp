@@ -138,7 +138,7 @@
 
 (defmethod pvs2clean* ((expr projection-application) bindings livevars)
   (let* ((ll (length (exprs expr)))
-	 (dummy (gentemp 'ddd))
+	 (dummy (gentemp "DDD"))
 	 (match-list (pvs2clean_tuple (matchlist (index expr) ll dummy)))
 	 (expr-list (pvs2clean* expr bindings livevars)))
     `(let ,match-list = ,expr-list in ,dummy)))
