@@ -46,7 +46,7 @@
 (defconstant  true 'true  )
 (defconstant  false 'false )
 
-(defconstant  primtypealist
+(defconstant-if-unbound  primtypealist
     '((true .  bool)
       (false . bool)
       (and . bool)
@@ -139,16 +139,16 @@
 
 ;;; the following special declarations are rather offensive:
 
-(proclaim '(special const sum u s eq lit var coef product ineqpot  ))
+(proclaim '(special const sum u s #-sbcl eq lit var coef product ineqpot  ))
 
 
 ;;; the following (til end-of-file) are taken from prpp:
 
-(defconstant *infixlist*	;temporary list of infixes	
+(defconstant-if-unbound *infixlist*	;temporary list of infixes	
    '(equal nequal lessp greaterp lesseq lesseqp greatereq greatereqp
 	   PLUS MINUS TIMES DIVIDE DIFFERENCE) )
 
-(defconstant precedence-alist 					
+(defconstant-if-unbound precedence-alist 					
   '((iff 1)
     (implies 2)
     (or 3)
