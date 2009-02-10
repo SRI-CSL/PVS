@@ -799,8 +799,12 @@
 	      (list (id (current-declaration))
 		    (recursive-signature (current-declaration))))
 	    expr
-	    (domain (find-supertype (type conv-expr)))
-	    (range (find-supertype (type conv-expr))))))))
+	    (if (recursive-defn-conversion? new-expr)
+		(type expr)
+		(domain (find-supertype (type conv-expr))))
+	    (if (recursive-defn-conversion? new-expr)
+		(type new-expr)
+		(range (find-supertype (type conv-expr)))))))))
 
 (defun find-funtype-conversion (type expected expr)
   (unless (or *no-conversions-allowed*
@@ -1512,3 +1516,34 @@
     (change-class (make-resolution fdecl (current-theory-name) ftype)
 	'conversion-resolution
       'conversion conv)))
+
+(defmethod find-update-conversions (expr type)
+  (typecheck-assignments (assignments expr) type))
+
+(defmethod find-update-conversions (expr (rtype recordtype))
+  (assert (update-expr? expr))
+  (let* ((conversions (current-conversions))
+	 (assns (assignments expr))
+	 (rfields (fields rtype))
+	 (conv (find-record-update-conversion conversions rtype assns)))
+    (if conv
+	(break "Need to finish this")
+	(typecheck-assignments (assignments expr) rtype))))
+
+(defun find-record-update-conversion (convs rtype assns)
+  (when convs
+    (if (compatible-record-update-conversion (car convs) rtype assns)
+	(car convs)
+	(find-record-update-conversion (cdr convs) rtype assns))))
+
+(defun compatible-record-update-conversion (conv rtype assns)
+  (let* ((theory (module conv))
+	 (ctype (find-supertype (type (expr conv))))
+	 (fmls (formals-sans-usings theory)))
+    (and (typep ctype 'funtype)
+	 (compatible? (domain ctype) rtype)
+	 (recordtype? (find-supertype (range ctype)))
+	 (every #'(lambda (nassn)
+		    (member (caar nassn) (fields rtype) :test #'same-id))
+		assns))))
+  
