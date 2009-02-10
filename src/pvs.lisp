@@ -102,19 +102,21 @@
   (let ((exepath (car (make::split-string
 		       (environment-variable "LD_LIBRARY_PATH") :item #\:))))
     (pushnew exepath *pvs-directories*)
-    (ext:load-foreign (format nil "~a/mu.~a" exepath
+    (#+cmu ext:load-foreign #+sbcl sb-alien:load-shared-object
+		      (format nil "~a/mu.~a" exepath
 			      #+darwin "dylib"
 			      #-darwin "so"))
-    (ext:load-foreign (format nil "~a/ws1s.~a" exepath
+    (#+cmu ext:load-foreign #+sbcl sb-alien:load-shared-object
+		      (format nil "~a/ws1s.~a" exepath
 			      #+darwin "dylib"
 			      #-darwin "so"))
     ;; Have no idea what is going on here, but if you leave this out,
     ;; bdd-cmu gives a compile error.
-    (fmakunbound 'bdd_cofactor_neg_)
-    (lf "bdd-cmu")
-    (lf "mu-cmu")
+    #+cmu (fmakunbound 'bdd_cofactor_neg_)
+    #+cmu (lf "bdd-cmu") #+sbcl (lf "bdd-sbcl")
+    #+cmu (lf "mu-cmu") #+sbcl (lf "mu-sbcl")
     (bdd_init)
-    (lf "dfa-foreign-cmu"))
+    #+cmu (lf "dfa-foreign-cmu") #+sbcl (lf "dfa-foreign-sbcl"))
   (setq *started-with-minus-q*
 	(or dont-load-user-lisp
 	    (let ((mq (environment-variable "PVSMINUSQ")))
