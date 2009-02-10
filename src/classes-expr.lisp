@@ -35,7 +35,7 @@
 	  propositional-application))
 
 #+(or cmu sbcl)
-(ext:without-package-locks
+(#-sbcl ext:without-package-locks #+sbcl sb-ext:without-package-locks
  (defgeneric type (x))
  (defgeneric (setf type) (x y))
  (defgeneric number (x))
@@ -45,7 +45,7 @@
 
 #+(or cmu sbcl)
 ;; This is actually defined in utils, but convenient to add here
-(ext:without-package-locks
+(#-sbcl ext:without-package-locks #+sbcl sb-ext:without-package-locks
  (defgeneric condition (x)))
 
 ;;; Provide a class on which to hang syntactic information
@@ -172,8 +172,13 @@
 ;; When an extraction-expr is used as a conversion
 (defcl extraction-conversion (extraction-application))
 
+#-sbcl
 (defcl number-expr (expr)
   (number :type integer :parse t :restore-as nil))
+#+sbcl
+(sb-ext:without-package-locks
+  (defcl number-expr (expr)
+    (number :type integer :parse t :restore-as nil)))
 
 ;; This is for integers of the form xxx.000, where the fractional part is
 ;; all zeros.  We keep it as a number expr, but store the number of zeros so
@@ -529,15 +534,25 @@
 ;;; resolution.  The inclusions are the predicates which will become
 ;;; TCCs if that particular resolution is chosen.
 
+#-sbcl
 (defcl resolution ()
   (declaration :restore-as nil)
   module-instance
   type)
+#+sbcl
+(sb-ext:without-package-locks
+  (defcl resolution ()
+    (declaration :restore-as nil)
+    module-instance
+    type))
 
 ;(defcl judgement-resolution (resolution)
 ;  judgement-type
 ;  comparison-type
 ;  judgement)
+
+(defcl recursive-defn-conversion (lambda-expr)
+  from-expr)
 
 (defcl conversion-resolution (resolution)
   conversion)
@@ -566,12 +581,12 @@
   (theory :restore-as nil)
   (theory-name :restore-as nil)
   (declaration :restore-as nil)
-  declarations-hash
-  using-hash
-  named-theories
   library-alist
+  (declarations-hash :restore-as nil)
+  (using-hash :restore-as nil)
+  named-theories
   (judgements :initform (make-instance 'judgements) :restore-as nil)
-  (known-subtypes :initform nil)
+  (known-subtypes :initform nil :restore-as nil)
   (conversions :initform nil :restore-as nil)
   (disabled-conversions :initform nil :restore-as nil)
   (auto-rewrites :initform nil)
