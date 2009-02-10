@@ -1097,6 +1097,7 @@ or supply more substitutions."
 							    (current-goal
 							     ps)))))
 			      (dependent-decls nil))
+			   (assert (null (freevars subform)))
 			   (push-references-list
 			    (module-instance res) dependent-decls)
 			   (push-references-list newalist
