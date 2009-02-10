@@ -301,8 +301,8 @@
       (ensure-vector-size *store-object-store* *store-object-store-size* size)
       (with-open-file (f file :direction :input
 			 :element-type '(unsigned-byte 32))
-	(lisp:read-sequence *store-object-store* f
-			    :start 0 :end size))
+	(cl:read-sequence *store-object-store* f
+			  :start 0 :end size))
       (when reverse-endian
 	(dotimes (i size)
 	  (setf (object-store i)
