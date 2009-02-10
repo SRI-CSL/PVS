@@ -62,7 +62,7 @@
   '("" "src" "src/prover" "src/decision-procedures" "src/interface"
     "src/utils" "BDD" "src/interface" "src/ics-interface"
     "src/WS1S/lisp" "src/abstraction" "src/ground-prover" "src/groundeval"
-    "src/PVSio" "src/inst-by-unif" ))
+    "src/PVSio" "src/inst-by-unif" "src/rahd"))
 
 #+allegro
 (defun pvs-build-date ()
@@ -74,7 +74,7 @@
 
   ;; Not used in PVS sources, but may be useful for patches, strategies, etc.
   ;;(pushnew (intern (format nil "pvs~a" *pvs-version*) :keyword) *features*)
-  (pushnew :pvs4.2 *features*)
+  (pushnew :pvs4.3 *features*)
   (pushnew :pvs4 *features*)
   )
 
@@ -130,6 +130,9 @@ parsing or typechecking - used by pvs-error.")
 
 (defvar *untypecheck-hook* nil
   "Functions (with no args) to be called whenever untypecheck is called")
+
+(defvar *dont-untypecheck-recdef-conversions* nil
+  "Flag to control untypechecking of recursive-defn-conversions - see typecheck* (def-decl)")
 
 (defvar *prelude-context* nil
   "Provides the context associated with the prelude")
@@ -202,6 +205,8 @@ prelude libraries")
 (defvar *recursive-calls-without-enough-args* nil)
 
 (defvar *recursive-subtype-term* nil)
+
+(defvar *added-recursive-def-conversion* nil)
 
 (defvar *expression-types* (make-hash-table :test 'eq))
 
@@ -385,6 +390,7 @@ that gensubst does not try to pseudo-normalize inappropriately.")
 
 (defvar *use-default-dp?* nil)
 (defvar *prover-print-lines* nil)
+#-sbcl
 (defvar *print-lines* nil)
 
 (defvar *substit-dont-simplify* nil)
