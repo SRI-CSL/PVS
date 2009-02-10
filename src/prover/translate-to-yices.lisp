@@ -910,6 +910,13 @@
 		     :input "//dev//null"
 		     :output out
 		     :error-output :output)
+		    #+sbcl
+		    (sb-ext:run-program
+		     (format nil "~a ~a" *yices-call* (namestring file))
+		     nil
+		     :input "//dev//null"
+		     :output out
+		     :error out)
 		    #+cmu
 		    (extensions:run-program
 		     (format nil "~a ~a" *yices-call* (namestring file))
