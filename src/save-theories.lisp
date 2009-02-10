@@ -87,12 +87,16 @@
 		      (*restore-objects-seen* nil)
 		      (*assert-if-arith-hash* (make-hash-table :test #'eq))
 		      (*subtype-of-hash* (make-hash-table :test #'equal))
-		      (*current-context* (make-new-context theory)))
+		      (*current-context* (make-new-context
+					  (if (recursive-type? theory)
+					      (adt-theory theory)
+					      theory))))
 		 (assert (current-theory))
+		 (assert (module? (current-theory)))
 		 (assert (judgement-types-hash (current-judgements)))
 		 (restore-object theory)
-		 (assert (eq (current-theory) theory))
-		 (assert (datatype-or-module? theory))
+		 ;;(assert (eq (current-theory) theory))
+		 ;;(assert (datatype-or-module? theory))
 		 (restore-saved-context (saved-context theory))
 		 (pvs-message
 		     "Restored theory from ~a in ~,2,-3fs ~
@@ -436,13 +440,13 @@
       (push-word (store-obj theory))
       (push-word (store-obj theory-name))
       (push-word (store-obj declaration))
+      (push-word (store-obj library-alist))
       (let ((decl-hash (create-store-declarations-hash
 			declarations-hash)))
 	(push-word (store-obj decl-hash)))
       (let ((use-hash (create-store-using-hash using-hash)))
 	(push-word (store-obj use-hash)))
       (push-word (store-obj named-theories))
-      (push-word (store-obj library-alist))
       (let ((sjudgements (create-store-judgements judgements)))
 	(push-word (store-obj sjudgements)))
       (let ((ksubtypes (create-store-known-subtypes known-subtypes)))
@@ -775,22 +779,31 @@
 (defmethod restore-object* :around ((obj importing-entity))
   (call-next-method)
   (when (saved-context obj)
-    (setq *current-context*
-	  (restore-saved-context (saved-context obj)))))
+    (setq *current-context* (saved-context obj))
+    (restore-saved-context *current-context*)
+    (setq *current-context* (copy-context *current-context*))
+    (assert (every #'conversion-decl? (conversions (saved-context obj))))))
 
 (defun restore-saved-context (obj)
   (when obj
-    (setf (declarations-hash obj)
-	  (restore-declarations-hash (declarations-hash obj)))
-    (setf (using-hash obj)
-	  (restore-using-hash (using-hash obj)))
-    (setf (conversions obj)
-	  (restore-context-conversions (conversions obj)))
-    (setf (judgements obj)
-	  (restore-context-judgements (judgements obj)))
-    (setf (known-subtypes obj)
-	  (restore-context-known-subtypes (known-subtypes obj)))
-    obj))
+    (let ((*restoring-declaration* nil))
+      (assert (module? (theory obj)))
+      (assert (module? (current-theory)))
+      (setf (declarations-hash obj)
+	    (restore-declarations-hash (declarations-hash obj)))
+      ;; Restoring known-subtypes requires judgements, and vice-versa
+      ;; So we partially restore the judgements first
+      (prerestore-context-judgements (judgements obj))
+      (setf (known-subtypes obj)
+	    (restore-context-known-subtypes (known-subtypes obj)))
+      (setf (judgements obj)
+	    (restore-context-judgements (judgements obj)))
+      (setf (using-hash obj)
+	    (restore-using-hash (using-hash obj)))
+      (setf (conversions obj)
+	    (restore-context-conversions (conversions obj)))
+      (assert (every #'conversion-decl? (conversions obj)))
+      obj)))
 
 (defun restore-declarations-hash (lhash)
   (cond ((null lhash)
@@ -819,22 +832,69 @@
 
 (defun restore-context-conversions (conversions &optional convs)
   (cond ((null conversions)
+	 (assert (every #'conversion-decl? convs))
 	 (nreverse convs))
 	((eq (car conversions) 'prelude-conversions)
 	 (let ((pconvs (conversions *prelude-context*)))
 	   (assert pconvs)
 	   (push pconvs *restore-objects-seen*)
+	   (assert (every #'conversion-decl? convs))
 	   (nconc (nreverse convs) pconvs)))
 	(t (restore-context-conversions
 	    (cdr conversions)
 	    (cons (if (numberp (car conversions))
 		      (let ((pconv (nth (car conversions)
 					(conversions *prelude-context*))))
-			(assert pconv)
+			(assert (conversion-decl? pconv))
 			(push pconv *restore-objects-seen*)
 			pconv)
-		      (restore-object* (car conversions)))
+		      (progn (restore-object* (car conversions))
+			     (assert (conversion-decl? (car conversions)))
+			     (car conversions)))
 		  convs)))))
+
+(defun prerestore-context-judgements (judgements)
+  (if (eq (current-judgements) 'prelude-judgements)
+      (setf (current-judgements)
+	    (copy (judgements *prelude-context*)
+	      'judgement-types-hash
+	      (make-pvs-hash-table #-cmu :weak-keys? #-cmu t)))
+      (let ((pjudgements (judgements *prelude-context*)))
+	(unless (judgement-types-hash (current-judgements))
+	  (setf (judgement-types-hash (current-judgements))
+		(make-pvs-hash-table #-cmu :weak-keys? #-cmu t)))
+	(unless (eq judgements 'prelude-judgements)
+	  ;;(prerestore-number-judgements-alist
+	  ;; (number-judgements-alist judgements)
+	  ;; (number-judgements-alist pjudgements))
+	  (setf (name-judgements-alist judgements)
+		(prerestore-name-judgements-alist
+		 (name-judgements-alist judgements)
+		 (name-judgements-alist pjudgements)))
+	  ;;(prerestore-application-judgements-alist
+	  ;; (application-judgements-alist judgements)
+	  ;; (application-judgements-alist pjudgements))
+	  ))))
+
+(defun prerestore-name-judgements-alist (name-judgements pname-judgements
+							 &optional namejs)
+  (cond ((null name-judgements)
+	 (nreverse namejs))
+	((eq (car name-judgements) 'prelude-name-judgements)
+	 (assert pname-judgements)
+	 (push pname-judgements *restore-objects-seen*)
+	 (nconc (nreverse namejs) pname-judgements))
+	(t (prerestore-name-judgements-alist
+	    (cdr name-judgements)
+	    pname-judgements
+	    (cons (if (numberp (car name-judgements))
+		      (let ((pnamej (nth (car name-judgements)
+					 pname-judgements)))
+			(assert pnamej)
+			(push pnamej *restore-objects-seen*)
+			pnamej)
+		      (car name-judgements))
+		  namejs)))))
 
 (defun restore-context-judgements (judgements)
   (let ((pjudgements (judgements *prelude-context*)))
@@ -850,9 +910,10 @@
 		 *restore-objects-seen*)
 	   (copy pjudgements
 	     'judgement-types-hash
-	     (make-pvs-hash-table)))
+	     (make-pvs-hash-table #-cmu :weak-keys? #-cmu t)))
 	  (t
-	   (setf (judgement-types-hash judgements) (make-pvs-hash-table))
+	   (setf (judgement-types-hash judgements) (make-pvs-hash-table
+						    #-cmu :weak-keys? #-cmu t))
 	   (setf (number-judgements-alist judgements)
 		 (restore-number-judgements-alist
 		  (number-judgements-alist judgements)
@@ -936,7 +997,16 @@
 	   (nconc (nreverse ksubtypes) pknown-subtypes)))
 	((listp (car known-subtypes))
 	 (restore-object (car known-subtypes))
+	 (mapcar #'(lambda (fv)
+		     (let ((*restore-object-parent* (declaration fv))
+			   (*restore-object-parent-slot* 'type))
+		       (restore-object* (type (declaration fv)))))
+	   (freevars (car known-subtypes)))
 	 (assert (every #'type-expr? (car known-subtypes)))
+	 (assert (every #'type-expr?
+			(mapcar #'(lambda (x)
+				    (type (declaration x)))
+			  (freevars (car known-subtypes)))))
 	 (restore-context-known-subtypes (cdr known-subtypes)
 					 (cons (car known-subtypes) ksubtypes)))
 	(t (restore-context-known-subtypes
@@ -947,7 +1017,20 @@
 			(assert pksub)
 			(push pksub *restore-objects-seen*)
 			pksub)
-		      (restore-object* (car known-subtypes)))
+		      (let ((car-subtypes (restore-object* (car known-subtypes))))
+			(mapcar #'(lambda (fv)
+				    (let ((*restore-object-parent*
+					   (declaration fv))
+					  (*restore-object-parent-slot* 'type))
+				      (restore-object*
+				       (type (declaration fv)))))
+			  (freevars car-subtypes))
+			(assert (every #'type-expr? car-subtypes))
+			(assert (every #'type-expr?
+				       (mapcar #'(lambda (x)
+						   (type (declaration x)))
+					 (freevars car-subtypes))))
+			car-subtypes))
 		  ksubtypes)))))
 
 (defmethod restore-object* :around ((obj declaration))
@@ -962,6 +1045,16 @@
 			 (not (typep obj 'adtdecl)))
 		(put-decl obj))))
 	  (call-next-method))))
+
+(defmethod restore-object* :around ((obj resolution))
+  (call-next-method)
+  (unless (or (not (typed-declaration? (declaration obj)))
+	      (null (type (declaration obj)))
+	      (eq (type (declaration obj)) (type obj)))
+    (let ((*restore-object-parent* (declaration obj))
+	  (*restore-object-parent-slot* 'type))
+      (restore-object* (type (declaration obj)))
+      (assert (type-expr? (type (declaration obj)))))))
 
 (defmethod restore-object* :around ((obj nonempty-type-decl))
   (call-next-method)
@@ -1130,6 +1223,11 @@
 (defmethod setf-restored-object* (nobj (parent array) slot)
   (setf (aref parent slot) nobj))
 
+(defmethod restore-object* :around ((obj recordtype))
+  (prog1 (call-next-method)
+    (unless (memq *restore-object-parent-slot* '(print-type type-expr))
+      (setf (fields obj)
+	    (sort-fields (fields obj) (dependent? obj))))))
 
 ;;;
 
