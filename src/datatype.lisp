@@ -203,7 +203,8 @@ generated")
 	 (checksum-ok? (and adt-ce
 			    file-exists?
 			    (equal #+allegro (excl:md5-file adt-path)
-				   #-allegro (md5:md5sum-file adt-path) 
+				   #+sbcl (sb-md5:md5sum-file adt-path)
+				   #-(or allegro sbcl) (md5:md5sum-file adt-path) 
 				   (ce-md5sum adt-ce)))))
     (unless (and file-exists?
 		 ce
