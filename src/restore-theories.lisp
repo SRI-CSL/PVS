@@ -27,7 +27,7 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
-(in-package 'pvs)
+(in-package :pvs)
 
 ;;; Restores the state of the system from information provided in the
 ;;; context.  The context has the form
