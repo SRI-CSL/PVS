@@ -623,6 +623,7 @@
 			  (and (mapping-subst? m)
 			       (declaration (lhs m))))))))
 
+;;; Create the importings needed to reference the bindings
 (defun create-importings-for-bindings (bindings &optional importings)
   (if (null bindings)
       (nreverse importings)
@@ -640,7 +641,7 @@
     :theory-name theory-name))
 
 (defmethod create-importing-for-binding ((decl mod-decl) theory-name)
-  (unless (mapping-rhs-rename? theory-name)
+  (when (modname? theory-name)
     (make-instance 'importing
       :theory-name theory-name)))
 
@@ -930,7 +931,12 @@
 				type modinst bindings)
   (let ((val (cdr (assq (generated-by-decl th) bindings))))
     (when val
-      (let* ((thinst (expr val))	; val is an actual
+      ;; val is an actual or mapping-rhs
+      (let* ((thinst (if (modname? (expr val))
+			 (expr val)
+			 (progn (assert (and (name-expr? (expr val))
+					     (null (mod-id (expr val)))))
+				(change-class (copy (expr val)) 'modname))))
 	     (ndecl (find (id type) (all-decls (get-theory thinst)) :key #'id))
 	     (res (make-resolution ndecl thinst)))
 	(type res)))))
