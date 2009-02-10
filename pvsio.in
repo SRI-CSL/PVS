@@ -22,7 +22,7 @@ where <option> can be
   -T|--timing              print timing information for each evaluation
   -v|--version             print PVSio version
   -V|--verbose             print typechecking information
-  -l|--lisp                PVS lisp version [allegro,cmulisp]
+  -l|--lisp                PVS lisp version [allegro,cmulisp,sbclisp]
   <file>@<theory>:<main>   load <theory> from <file>.pvs, evaluate <main>, 
                            and exit 
 
@@ -42,7 +42,8 @@ do
 	  case $2 in
 	      allegro) PVSLISP='-lisp allegro';;
 	      cmulisp) PVSLISP='-lisp cmulisp';;
-	      *) echo "Only allegro and cmulisp are currently available"
+	      sbclisp) PVSLISP='-lisp sbclisp';;
+	      *) echo "Only allegro, cmulisp, and sbclisp are currently available"
 		  exit 1;;
 	  esac
 	  shift;;
