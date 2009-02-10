@@ -70,11 +70,20 @@
   (unless (or (typep ex '(or branch lambda-expr update-expr
 			     cases-expr let-expr where-expr))
 	      (memq ex *skip-tcc-check-exprs*))
-    (check-for-subtype-tcc ex expected)))
+    (check-for-subtype-tcc
+     ex
+     (if (and *added-recursive-def-conversion*
+	      (application? ex))
+	 (type ex)
+	 expected))))
 
 (defmethod check-for-tccs* ((ex name-expr) expected)
   (declare (ignore expected))
-  (check-type-actuals ex))
+  (check-set-type-recursive-name ex)
+  ;; ex may have been changed because of above
+  (if (name-expr? ex)
+      (check-type-actuals ex)
+      (check-for-tccs* ex (type ex))))
 
 (defun check-type-actuals (expr)
   (let* ((modinst (module-instance expr))
@@ -210,14 +219,26 @@
   (with-slots (operator argument type) expr
     (let ((optype (find-supertype (type operator))))
       (check-for-tccs* (argument expr) (domain optype))
-      (let ((*appl-tcc-conditions*
-	     (cons (appl-tcc-conditions operator argument)
-		   *appl-tcc-conditions*)))
-	(if (typep expr '(or let-expr where-expr))
-	    (let ((*tcc-conditions* (append (let-tcc-conditions* expr)
-					    *tcc-conditions*)))
-	      (check-for-tccs* (let-expression* expr) expected))
-	    (check-for-tccs* operator optype)))))
+      (when (some #'recursive-defn-conversion? (arguments expr))
+	(let ((noptype
+	       (adjust-application-operator-from-arg-judgements expr expected)))
+	  (when noptype
+	    (setq optype noptype)
+	    (setf (type expr)
+		  (application-range-type (argument expr) noptype)))))
+      (let* ((*appl-tcc-conditions*
+	      (cons (appl-tcc-conditions operator argument)
+		    *appl-tcc-conditions*))
+	     (*set-type-recursive-operator*
+	      (check-set-type-recursive-operator expr)))
+	(if (lambda-expr? expr)
+	    ;; Was changed by the recursion conversion
+	    (check-for-tccs* expr (type expr))
+	    (if (typep expr '(or let-expr where-expr))
+		(let ((*tcc-conditions* (append (let-tcc-conditions* expr)
+						*tcc-conditions*)))
+		  (check-for-tccs* (let-expression* expr) expected))
+		(check-for-tccs* (operator expr) optype))))))
   (check-for-recursive-tcc expr))
 
 (defmethod check-for-tccs* ((ex conjunction) expected)
