@@ -4796,7 +4796,7 @@ output to *trace-output*.  Returns the shell's exit code."
   :loader #+:lucid #'load-foreign-files
           #+:allegro #'load
           #+(or :cmu :scl) #'alien:load-foreign
-          #+:sbcl #'sb-alien:load-foreign
+          #+:sbcl #'sb-alien:load-shared-object
 	  #+(and :lispworks :unix (not :linux) (not :macosx)) #'link-load:read-foreign-modules
 	  #+(and :lispworks :unix (or :linux :macosx)) #'fli:register-module
 	  #+(and :lispworks :win32) #'fli:register-module
