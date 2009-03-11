@@ -22,8 +22,9 @@ In summary, the steps you need to take are:
 
 * Obtain and install Common Lisp 
 * Get the PVS sources 
-* Set either the ALLEGRO_HOME or CMULISP_HOME environment variable 
-* Run configure and make Contents [hide]
+* Set either the ALLEGRO_HOME or CMULISP_HOME environment variable
+* If the configure file is missing, run autoconf
+* Run configure and make
 
 Obtaining and Installing Common Lisp
 ------------------------------------
@@ -57,10 +58,14 @@ For Allegro, set ALLEGRO_HOME to the directory containing the license file
 bin subdirectory.
 
 Note: if you have both lisps, you can set both variables and the make will
-create both images.  [edit] Run configure and make
+create both images.
+
+Run configure and make
+----------------------
 
 Configure should be straightforward. Note you generally need to run it only
-once, even if you are building for many platforms.
+once, even if you are building for many platforms.  If the configure file is
+missing, first run autoconf.
 
 Make may cause some problems, we had some issues with getting the right GCC
 versions, especially for Mac and Solaris. If you have problems and/or
