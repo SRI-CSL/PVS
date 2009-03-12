@@ -32,7 +32,7 @@
 
 (in-package :cl-user)
 
-(export '(*pvs-path* *pvs-binary-type* bye))
+(export '(*pvs-path* *pvs-binary-type* *pvs-platform* bye))
 
 (defparameter *pvs-path*
   (or #+allegro (sys:getenv "PVSPATH")
@@ -40,6 +40,21 @@
       #+cmu (cdr (assoc :PVSPATH extensions::*environment-list*))
       ;; Assume this is loaded while cd'd to the PVS directory 
       (namestring (truename *default-pathname-defaults*))))
+
+(eval-when (eval load)
+  (defvar *pvs-platform*
+    (let ((cmd (format nil "~a/bin/pvs-platform" *pvs-path*)))
+      #+allegro (car (excl.osi:command-output cmd))
+      #+cmu (string-trim
+	     '(#\Newline)
+	     (with-output-to-string (str)
+	       (extensions:run-program
+		cmd nil :output str :pty nil :error nil)))
+      #+sbcl (string-trim
+	     '(#\Newline)
+	     (with-output-to-string (str)
+	       (sb-ext:run-program
+		cmd nil :output str :pty nil :error nil))))))
 
 ;;; The *pvs-binary-type* is used to be able to build PVS under several
 ;;; lisps/platforms without rerunning configure each time
