@@ -74,7 +74,9 @@ ifneq ($(ALLEGRO_HOME),)
 ALLEGROEXE = $(ALLEGRO_HOME)/mlisp8
 LD_LIBRARY_PATH = $(ALLEGRO_HOME):$LD_LIBRARY_PATH
 allegro-devel = $(bindir)/devel/$(SYSTEM)-allegro
+ifeq ($(shell if `grep -q dynamic-runtime $(ALLEGRO_HOME)/devel.lic`; then echo OK; fi),OK)
 allegro-rt = $(bindir)/runtime/$(SYSTEM)-allegro
+endif
 endif
 
 ifneq ($(CMULISP_HOME),)
@@ -291,6 +293,19 @@ ground-prover = src/ground-prover/prmacros.lisp \
 		src/ground-prover/arith.lisp \
 		src/ground-prover/q.lisp
 
+rahd = src/rahd/rahd.lisp src/rahd/polyalg.lisp \
+       src/rahd/polyeval.lisp src/rahd/polyconv.lisp \
+       src/rahd/sturm.lisp src/rahd/sturmineq.lisp \
+       src/rahd/strings.lisp src/rahd/ineqfert.lisp \
+       src/rahd/canonizer.lisp src/rahd/ideals.lisp \
+       src/rahd/opencad.lisp src/rahd/cocoa.lisp \
+       src/rahd/cases.lisp src/rahd/realnull.lisp \
+       src/rahd/cauchyeval.lisp src/rahd/integrald.lisp \
+       src/rahd/demodlin.lisp src/rahd/cnf.lisp \
+       src/rahd/division.lisp src/rahd/prover.lisp \
+       src/rahd/regression.lisp src/rahd/debug.lisp \
+       src/rahd/rahd-pvs.lisp
+
 pvs-src = src/closopt.lisp \
           src/store-object.lisp \
 	  src/defcl.lisp \
@@ -405,7 +420,7 @@ inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
 lisp-files = pvs-config.lisp $(pvs-parser-out) $(ground-prover) $(pvs-src) \
 	     $(emacs-interface) $(pvs-prover) $(bddlisp) \
 	     $(PVSiolisp) $(ws1slisp) $(groundevallisp) \
-             $(abstractionlisp)
+             $(abstractionlisp) $(rahd)
 
 ifneq ($(PVSPATH),)
 pvs-make-files := $(patsubst %,$(PVSPATH)%,$(pvs-make-files))
@@ -422,6 +437,7 @@ bddlisp := $(patsubst %,$(PVSPATH)%,$(bddlisp))
 PVSIOlisp := $(patsubst %,$(PVSPATH)%,$(PVSiolisp))
 ws1slisp := $(patsubst %,$(PVSPATH)%,$(ws1slisp))
 abstractionlisp := $(patsubst %,$(PVSPATH)%,$(abstractionlisp))
+rahd := $(patsubst %,$(PVSPATH)%,$(rahd))
 groundevallisp := $(patsubst %,$(PVSPATH)%,$(groundevallisp))
 inst-by-unif-lisp := $(patsubst %,$(PVSPATH)%,$(inst-by-unif-lisp))
 allegrolisp := $(patsubst %,$(PVSPATH)%,$(allegrolisp))
