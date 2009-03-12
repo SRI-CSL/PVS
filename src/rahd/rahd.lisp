@@ -31,7 +31,12 @@
 (defpackage :RAHD (:use :common-lisp #+allegro :excl))
 (in-package RAHD)
 
-(export '(rahd-reset-state g go! extract-non-refuted-cases))
+(export '(g go! rahd-reset-state extract-non-refuted-cases
+	    canon-tms contra-eqs demod-lin demod-num fert-tsos
+	    gen-ex-cad int-dom-zpb open-ex-inf-cad open-frag-ex-inf-cad
+	    rcr-ineqs rcr-svars residue-class-ring-ineqs simp-arith
+	    simp-gls simp-real-null simp-tvs simp-zrhs triv-ideals
+	    univ-sturm-ineqs))
 
 ;;;
 ;;; Current version of RAHD.

@@ -1,8 +1,38 @@
 (in-package :pvs)
+(use-package :rahd)
 
 (defvar *pvs-rahd-hash*)
 (defvar *rahd-pvs-hash*)
 (defvar *rahd-var-counter*)
+
+(defmacro add-rahd-tactic (tactic docstring)
+  `(addrule ',tactic () ((fnums *))
+     (rahd-tactic ',tactic fnums)
+     ,docstring ,docstring))
+
+(defun rahd-tactic (tactic fnums)
+  #'(lambda (ps) (rahd-tactic-fun ps tactic fnums)))
+
+(defun rahd-tactic-fun (ps tactic fnums)
+  (let* ((sforms (s-forms (current-goal ps)))
+	 (selected-sforms (gather-seq sforms fnums nil #'polynomial-formula?))
+	 (remaining-sforms (delete-seq sforms fnums))
+	 (*pvs-rahd-hash* (make-pvs-hash-table))
+	 (*rahd-pvs-hash* (make-hash-table)))
+    (newcounter *rahd-var-counter*)
+    (if (null selected-sforms)
+	(values 'X nil nil)
+	(let* ((rahd-form (translate-to-rahd selected-sforms nil))
+	       (rahd-result (go-rahd-tactic tactic rahd-form)))
+	  (add-rahd-subgoals
+	   rahd-result sforms selected-sforms remaining-sforms ps)))))
+
+(defun go-rahd-tactic (tactic conj)
+  (rahd:rahd-reset-state)
+  (rahd:g conj)
+  (apply #'rahd:go! :tactic-replay (list (list tactic)))
+  (rahd:extract-non-refuted-cases))
+  
 
 (defstep rahd (&optional (fnums *))
   (then (grind)
@@ -14,6 +44,48 @@
   (rahd-fun fnums rahd-args simplify-division?)
   "Real Algebra in High Dimensions"
   "~%Applying rahd-simp,")
+
+(defun generic-rahd-tactic (fnums case from to)
+  #'(lambda (ps) (run-rahd ps fnums case from to)))
+
+(add-rahd-tactic canon-tms "polynomial canonicalization, arithmetic, and simplification")
+(add-rahd-tactic contra-eqs "simple equality reasoning")
+(add-rahd-tactic demod-lin "partial linear demodulator derivation and application")
+(add-rahd-tactic demod-num "numerical demodulation")
+(add-rahd-tactic fert-tsos "inequality fertilization for trivial sums of squares")
+(add-rahd-tactic gen-ex-cad "generic cylindrical algebraic decomposition via QEPCAD-B")
+(add-rahd-tactic int-dom-zpb
+		 "integral domain zero product branching for explicit zero indeterminate products")
+(add-rahd-tactic open-ex-inf-cad
+		 "cylindrical algebraic decomposition with EX-INF-MANY relaxation for open predicates via QEPCAD-B")
+(add-rahd-tactic open-frag-ex-inf-cad
+		 "fragmented cylindrical algebraic decomposition with EX-INF-MANY relaxation for open predicates via QEPCAD-B")
+(add-rahd-tactic rcr-ineqs
+		 "reduction of terms in inequalities to canonical rep's in residue class ring induced by equational constraints")
+(add-rahd-tactic rcr-svars
+		 "scalar-valued indeterminate fertilization via bounded indeterminate power sequence reduction over residue class ring induced by equational constraints")
+(add-rahd-tactic residue-class-ring-ineqs
+		 "reduction of terms in inequalities to canonical rep's in residue class ring induced by equational constraints")
+(add-rahd-tactic simp-arith "polynomial arithmetic simplification")
+(add-rahd-tactic simp-gls "ground literal simplification")
+(add-rahd-tactic simp-real-null
+		 "extraction of simple real nullstellensatz refutation certificates from equational constraints")
+(add-rahd-tactic simp-tvs "truth value simplification")
+(add-rahd-tactic simp-zrhs "RHS zeroing with polynomial canonicalization")
+(add-rahd-tactic triv-ideals "ideal triviality checking via reduced Groebner bases")
+(add-rahd-tactic univ-sturm-ineqs
+		 "sturm sequence sign-change analysis for univariate open-interval systems")
+
+(defstep rahd-waterfall (&optional (fnums *))
+  (then (simp-zrhs) (contra-eqs) (demod-num) (simp-gls) (simp-tvs) (simp-arith) (simp-gls)
+	(simp-tvs) (simp-real-null) (fert-tsos) (univ-sturm-ineqs) (open-ex-inf-cad)
+	(triv-ideals) (canon-tms) (rcr-ineqs) (simp-gls) (simp-tvs) (contra-eqs)
+	(fert-tsos) (open-frag-ex-inf-cad) (rcr-svars) (simp-gls) (demod-num)
+	(simp-tvs) (simp-arith) (simp-gls) (demod-num) (simp-tvs) (simp-arith)
+	(int-dom-zpb) (gen-ex-cad))
+  "Emulates the RAHD waterfall"
+  "Applying the RAHD waterfall.")
+  
 
 (defun rahd-fun (fnums rahd-args simplify-division?)
   #'(lambda (ps) (run-rahd ps fnums rahd-args simplify-division?)))
