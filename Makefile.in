@@ -167,6 +167,12 @@ pvs-make-files = pvs.system src/defsystem.lisp src/closopt.lisp
 allegro-make-files =  src/make-pvs.lisp src/make-allegro-pvs.lisp
 
 pvs-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/*.el)
+# Wanted to use findstring here, but couldn't get it to work
+#$(findstring pvs-prelude-files-and-regions.el, $(pvs-emacs-src))
+# So instead we simply add it and sort the result, which removes duplicates
+pvs-emacs-src += $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el
+pvs-emacs-src := $(sort $(pvs-emacs-src))
+
 ilisp-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/ilisp/*.el)
 
 emacs-src = $(pvs-emacs-src) $(ilisp-emacs-src)
@@ -175,8 +181,7 @@ pvs-emacs-sub-src = $(addprefix $(PVSPATH)emacs/$(EMACSSUBDIR)/,$(notdir $(pvs-e
 
 ilisp-emacs-sub-src = $(addprefix $(PVSPATH)emacs/$(EMACSSUBDIR)/,$(notdir $(ilisp-emacs-src)))
 
-emacs-sub-src = $(pvs-emacs-sub-src) $(ilisp-emacs-sub-src) \
-                $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-prelude-files-and-regions.el
+emacs-sub-src = $(pvs-emacs-sub-src) $(ilisp-emacs-sub-src)
 
 emacs-elc = $(filter-out %ilfsf18.elc %ilfsf19.elc %ilfsf20.elc \
                          %illuc19.elc %ilxemacs.elc %ilisp-menu.elc,\
