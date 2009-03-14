@@ -175,7 +175,8 @@ pvs-emacs-sub-src = $(addprefix $(PVSPATH)emacs/$(EMACSSUBDIR)/,$(notdir $(pvs-e
 
 ilisp-emacs-sub-src = $(addprefix $(PVSPATH)emacs/$(EMACSSUBDIR)/,$(notdir $(ilisp-emacs-src)))
 
-emacs-sub-src = $(pvs-emacs-sub-src) $(ilisp-emacs-sub-src)
+emacs-sub-src = $(pvs-emacs-sub-src) $(ilisp-emacs-sub-src) \
+                $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-prelude-files-and-regions.el
 
 emacs-elc = $(filter-out %ilfsf18.elc %ilfsf19.elc %ilfsf20.elc \
                          %illuc19.elc %ilxemacs.elc %ilisp-menu.elc,\
