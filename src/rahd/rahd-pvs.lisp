@@ -1,5 +1,5 @@
 (in-package :pvs)
-(use-package :rahd)
+;;(use-package :rahd)
 
 (defvar *pvs-rahd-hash*)
 (defvar *rahd-pvs-hash*)
