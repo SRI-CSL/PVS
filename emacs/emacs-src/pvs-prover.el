@@ -1965,6 +1965,69 @@ Letters do not insert themselves; instead, they are commands:
 		     nil (pvs-get-abbreviation 'display-proofs-pvs-file)
 		     'dont-care))
 
+(defpvs pvs-sizeof-proof proof-status ()
+  "Display the number of steps of the proof at the cursor"
+  (interactive)
+  (pvs-bury-output)
+  (let* ((name-and-origin (pvs-formula-origin))
+	 (oname (car name-and-origin))
+	 (origin (cadr name-and-origin))
+	 (dotpos (position ?. oname))
+	 (filename (if dotpos (substring oname 0 dotpos) oname))
+	 (declname (when dotpos (substring oname (1+ dotpos)))))
+    (save-some-pvs-buffers)
+    (pvs-send (format "(sizeof-proof-at \"%s\" %s %d \"%s\")"
+		  filename (when declname (format "\"%s\"" declname))
+		  (+ (current-line-number)
+		     (if (equal origin "prelude")
+			 pvs-prelude 0))
+		  origin)
+	      nil (pvs-get-abbreviation 'pvs-sizeof-proof))))
+
+(defpvs pvs-sizeof-proofs-theory proof-status (theoryname)
+  "Display the number of steps of the proofs in the given theory"
+  (interactive (complete-theory-name "Proof sizes for theory named: "))
+  (unless (interactive-p) (pvs-collect-theories))
+  (pvs-send-and-wait (format "(sizeof-proofs-theory \"%s\")" theoryname)
+		     nil (pvs-get-abbreviation 'pvs-sizeof-proofs-theory)
+		     'dont-care))
+
+(defpvs pvs-sizeof-proofs-pvs-file proof-status (filename)
+  "Display the number of steps of the proofs in the given PVS file"
+  (interactive (list (current-pvs-file)))
+  (pvs-send-and-wait (format "(sizeof-proofs-pvs-file \"%s\")" filename)
+		     nil (pvs-get-abbreviation 'pvs-sizeof-proofs-pvs-file)
+		     'dont-care))
+
+(defpvs pvs-sizeof-proofs-importchain proof-status (theoryname)
+  "Display the number of steps of the proofs in the import chain."
+  (interactive (complete-theory-name
+		"Proof sizes for import chain of theory named: "))
+  (unless (interactive-p) (pvs-collect-theories))
+  (pvs-send-and-wait (format "(sizeof-proofs-importchain \"%s\")" theoryname)
+		     nil (pvs-get-abbreviation 'pvs-sizeof-proofs-importchain)
+		     'dont-care))
+
+(defpvs pvs-sizeof-proofs-proofchain proof-status ()
+  "Display the number of steps of the proofchain at cursor"
+  (interactive)
+  (pvs-bury-output)
+  (let* ((name-and-origin (pvs-formula-origin))
+	 (oname (car name-and-origin))
+	 (origin (cadr name-and-origin))
+	 (dotpos (position ?. oname))
+	 (filename (if dotpos (substring oname 0 dotpos) oname))
+	 (declname (when dotpos (substring oname (1+ dotpos)))))
+    (save-some-pvs-buffers)
+    (pvs-send (format "(sizeof-proofs-proofchain-at \"%s\" %s %d \"%s\")"
+		  filename (when declname (format "\"%s\"" declname))
+		(+ (current-line-number)
+		   (if (equal origin "prelude")
+		       pvs-prelude 0))
+		origin)
+	       nil (pvs-get-abbreviation 'pvs-sizeof-proofs-proofchain))))
+  
+
 ;;; These are invoked from key bindings from the Proofs buffer
 
 (defun pvs-proofs-set-default ()
