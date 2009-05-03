@@ -445,9 +445,9 @@ and invoking the prove command."
     (if (not (file-exists-p fname))
 	(error "%s does not exist." fname)
 	(find-file fname)
-	(setq pvs-prelude 0)
 	(unless buffer-read-only (toggle-read-only))
-	(pvs-mode))))
+	(pvs-mode)
+	(setq pvs-prelude 0))))
 
 
 (defpvs view-prelude-theory find-files (theoryname)
