@@ -396,6 +396,7 @@ Currently only #'get-universal-time is supported.")
   #+(and allegro macosx powerpc) "mfasl" ; Mac OS X powerpc
   #+(and allegro macosx x86) "nfasl"	; Mac OS X intel
   #+(and allegro x86) "lfasl"		; Intel x86
+  #+(and allegro linux x86-64) "l64fasl" ; Intel x86_64
   #+(and lucid lcl4.1 sparc) "sbin"	; Sun4 new Lucid
   #+(and lucid (not lcl4.1) sparc) "obin" ; Sun4 old Lucid
   #+(and lucid rios) "rbin"		; PowerPC/RS6000
