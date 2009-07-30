@@ -11,7 +11,7 @@
 #   -version | --version prints the PVS version
 #   -emacs emacsref        emacs, xemacs, alias, or pathname
 #   -load-after efile      loads emacs file name after PVS emacs files
-#   -lisp name             lisp image name - allegro or cmulisp
+#   -lisp name             lisp image name - allegro, cmulisp, or sbclisp
 #   -runtime               use the runtime image (devel is default, if there)
 #   -decision-procedures   set the default decision procedures (ics or shostak)
 #   -force-decision-procedures  forces the decision procedures to be used
@@ -42,10 +42,10 @@
 #   PVSVERBOSE    - corresponds to the -v argument
 #
 # The following environment variables are used by PVS, and are set below:
-#   PVSPATH     pvs system path - this should not normally be set by the user  
-#   PVSARCH	sun4 or ix86
+#   PVSPATH     pvs system path - this should not normally be set by the user
+#   PVSARCH	sun4, ix86, ix86_64, or powerpc
 #
-# The PVS binary paths are appended to the front of the PATH variable 
+# The PVS binary paths are appended to the front of the PATH variable
 # --------------------------------------------------------------------
 # PVS
 # Copyright (C) 2006, SRI International.  All Rights Reserved.
@@ -98,7 +98,8 @@ do
        case $2 in
 	 allegro) PVSLISP=allegro;;
 	 cmulisp) PVSLISP=cmulisp;;
-	 *) echo "Only allegro and cmulisp are currently available"
+	 sbclisp) PVSLISP=sbclisp;;
+	 *) echo "Only allegro, cmulisp, and sbclisp are currently available"
 	    exit 1;;
        esac
        shift;;
@@ -170,7 +171,7 @@ where options include:
   -version | --version show the PVS version number
   -emacs emacsref    emacs, xemacs, alias, or pathname
   -load-after efile  loads emacs file after PVS emacs files
-  -lisp name         lisp image name (allegro or cmulisp)
+  -lisp name         lisp image name (allegro, cmulisp, or sbclisp)
   -runtime           use the runtime image
   -decision-procedures  set default decision procedures (ics or shostak)
   -force-decision-procedures  forces the decision procedures (ics or shostak)
@@ -198,13 +199,17 @@ PVSEMACS=${PVSEMACS:-"emacs"}
 case $opsys in
   SunOS) majvers=`uname -r | cut -d"." -f1`
 	 if [ $majvers = 4 ]
-	    then echo "PVS 3.3 only runs under Mac OS X, Linux, FreeBSD, or Solaris"; exit 1
+	    then echo "PVS 4.2 only runs under Mac OS X, Linux, FreeBSD, or Solaris"; exit 1
 	 fi
 	 PVSARCH=sun4;;
   Linux) # If Linux, we need to determine the Redhat version to use.
 	 opsys=Linux
 	 majvers=
-	 PVSARCH=ix86
+	 case `uname -m` in
+	   x86_64) PVSARCH=ix86_64 ;;
+	   *86*)   PVSARCH=ix86 ;;
+	   *) echo "PVS 4.2 only runs on Intel Linux"; exit 1
+	 esac
 	 # Allegro does not work with Linux's New Posix Thread Library (NPTL)
 	 # used in newer Red Hat kernels and 2.6 kernels.  This will force
 	 # the old thread-implementation.
@@ -215,7 +220,11 @@ case $opsys in
 	 ;;
   FreeBSD) opsys=Linux
 	   majvers=
-	   PVSARCH=ix86
+	   case `uname -m` in
+	     x86_64) PVSARCH=ix86_64 ;;
+	     *86*)   PVSARCH=ix86 ;;
+	     *) echo "PVS 4.2 only runs on Intel Linux"; exit 1
+	   esac
 	   # Allegro does not work with Linux's New Posix Thread Library (NPTL)
 	   # used in newer Red Hat kernels and 2.6 kernels.  This will force
 	   # the old thread-implementation.
@@ -233,13 +242,13 @@ case $opsys in
           #majvers=`uname -r | cut -d"." -f1`
 	  majvers=
 	  ;;
-  *) echo "PVS 3.3 only runs under Solaris, Linux, FreeBSD (linux-enabled), or Mac (Darwin 7.4)"; exit 1
+  *) echo "PVS 4.2 only runs under Solaris, Linux, FreeBSD (linux-enabled), or Mac (Darwin 7.4)"; exit 1
 esac
 
 binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
 
-if [ -n "$PVSLISP" -a "$PVSLISP" != "allegro" -a "$PVSLISP" != "cmulisp" ]
-  then echo "ERROR: PVSLISP must be unset, or set to 'allegro' or 'cmulisp'"
+if [ -n "$PVSLISP" -a "$PVSLISP" != "allegro" -a "$PVSLISP" != "cmulisp" -a "$PVSLISP" != "sbclisp" ]
+  then echo "ERROR: PVSLISP must be unset, or set to 'allegro', 'cmulisp', or 'sbclisp'"
        exit 1
 fi
 
@@ -252,6 +261,10 @@ if [ -z "$PVSLISP" ]
         then PVSLISP=cmulisp
         elif [ -x $binpath/runtime/pvs-cmulisp ]
         then PVSLISP=cmulisp
+	elif [ -x $binpath/devel/pvs-sbclisp ]
+	then PVSLISP=sbclisp
+	elif [ -x $binpath/runtime/pvs-sbclisp ]
+	then PVSLISP=sbclisp
         else echo "No executable available in $binpath"
              exit 1
         fi
@@ -292,6 +305,16 @@ case $PVSLISP in
 	    flags="$flags -eval (pvs::pvs-init)"
 	    for lf in $lisploadfiles
 	    do flags="$flags -load $lf"; done
+	fi
+	;;
+    sbclisp)
+	noinit="--noinform --no-userinit"
+	evalflag="--eval"
+	if [ -n "$lisploadfiles" ]
+	  then
+	    flags="$flags --eval (pvs::pvs-init)"
+	    for lf in $lisploadfiles
+	    do flags="$flags --load $lf"; done
 	fi
 	;;
 esac
