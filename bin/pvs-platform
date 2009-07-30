@@ -34,8 +34,8 @@ case `uname -s` in
 	 os=SunOS
          os_version=`uname -r | cut -d"." -f1`;;
   Linux) case `uname -m` in
-           x86_64) arch=ix86_64;;
-	   *) arch=ix86;;
+	   x86_64) arch=ix86_64;;
+	   *86*)   arch=ix86;;
 	 esac
 	 os=Linux;;
   AIX) arch=powerpc-ibm
