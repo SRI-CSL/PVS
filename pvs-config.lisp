@@ -64,6 +64,7 @@
   #+(and allegro rios) "rfasl"		; PowerPC/RS6000
   #+(and allegro hpux) "hfasl"		; HP 9000
   #+(and allegro linux x86) "lfasl"		; Intel x86
+  #+(and allegro linux x86-64) "l64fasl" ; Intel x86_64
   #+(and allegro macosx powerpc) "mfasl" ; Mac OS X powerpc
   #+(and allegro macosx x86) "nfasl"	; Mac OS X intel
   #+(and lucid lcl4.1 sparc) "sbin"	; Sun4 new Lucid
@@ -96,8 +97,9 @@
 
 #+cmu
 (eval-when (eval load)
-  (setq extensions:*load-object-types*
-	(remove "fasl" extensions:*load-object-types* :test #'string=)))
+  (pushnew *pvs-binary-type* extensions:*load-object-types* :test #'string=)
+  ;;(pushnew *pvs-binary-type* lisp:*load-lp-object-types* :test #'string=)
+  )
 
 #+sbcl
 (eval-when (eval load)
