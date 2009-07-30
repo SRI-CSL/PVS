@@ -94,7 +94,7 @@ endif
 
 ifneq ($(SBCLISP_HOME),)
 # Check that the given SBCLISP_HOME works
-SBCLISPEXE = $(SBCLISP_HOME)/bin/sbcl
+SBCLISPEXE = $(SBCLISP_HOME)/run-sbcl.sh
 ifeq ($(shell if [ -x "$(SBCLISPEXE)" ]; then echo OK; fi),OK)
 SBCLVERSION = $(shell $(SBCLISPEXE) --version)
 $(warning "$(SBCLVERSION)")
@@ -104,7 +104,6 @@ else
 $(error "$(SBCLISPEXE) is not executable")
 endif
 endif
-
 
 LOAD-FOREIGN-EXTENSION=so
 export LD_LIBRARY_PATH
@@ -532,8 +531,9 @@ $(sbcl-devel) $(sbcl-rt) : $(image-deps) \
 		      --eval '(load "pvs.system" :verbose t)' \
 		      --eval "(unwind-protect \
 				  (mk:operate-on-system :pvs :compile) \
-				(save-lisp-and-die \"$@.core\" \
+				(save-lisp-and-die \"$@\" \
 				    :toplevel (function startup-pvs) \
+                                    :executable t \
 			       ))"
 	-rm $(PVSPATH)BDD/$(PLATFORM)/bdd-sbcl.*
 	cp $(SBCLISPEXE) $(subst $(SYSTEM)-sbclisp,,$@)
@@ -542,9 +542,6 @@ $(sbcl-devel) $(sbcl-rt) : $(image-deps) \
 	cp $(PVSPATH)src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-sbclisp,,$@)
 	cp $(PVSPATH)src/WS1S/lisp/dfa-foreign-sbcl.lisp $(subst $(SYSTEM)-sbclisp,,$@)
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
-	echo "#!/bin/sh" > $@
-	echo "sbcl --core \`dirname \$$0\`/\`basename \$$0\`.core \$$*" >> $@
-	chmod a+x $@
 endif
 
 ifneq ($(CMULISP_HOME),)
