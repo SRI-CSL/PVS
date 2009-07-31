@@ -19,7 +19,6 @@
 ;; --------------------------------------------------------------------
 
 (in-package :pvs)
-(require :sb-posix)
 (export '(file-exists-p directory-p read-permission? write-permission?
 			file-write-time get-file-info))
 

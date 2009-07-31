@@ -64,12 +64,28 @@
 ;(defun tc-eq (x y &optional bindings)
 ;  (tc-eq* x y bindings))
 
-(defconstant-if-unbound pvs-sxhash-byte (byte #+allegro 24 #-allegro 29 0))
+;; Allegro: The correct range is between
+;;          0 and (1- (expt 2 24)) (inclusive) in 32-bit Lisp
+;;          0 and (1- (expt 2 32)) (inclusive) in 64-bit Lisp
+;; CMUCL: (describe 'sxhash) ==> (UNSIGNED-BYTE 29) in 32-bit Lisp
+;; SBCL:  (describe 'sxhash) ==> (UNSIGNED-BYTE 29) in 32-bit Lisp
+;;        (describe 'sxhash) ==> (UNSIGNED-BYTE 60) in 64-bit Lisp
 
-(defconstant pvs-max-hashnum (1- (expt 2 #+allegro 24 #-allegro 29)))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defconstant-if-unbound pvs-sxhash-bits
+    #+(and allegro (not 64bit)) 24
+    #+(and allegro 64bit) 32
+    #+cmu 29
+    #+(and sbcl (or x86)) 29
+    #+(and sbcl (or x86-64)) 60))
+
+(defconstant-if-unbound pvs-sxhash-byte
+  (byte pvs-sxhash-bits 0))
+
+(defconstant pvs-max-hashnum (1- (expt 2 pvs-sxhash-bits)))
 
 (deftype positive-fixnum ()
-  `(integer 0 ,(1- (expt 2 #+allegro 24 #-allegro 29))))
+  `(integer 0 ,(1- (expt 2 pvs-sxhash-bits))))
 
 (defmacro pvs-sxhash-+ (i j)
   `(ldb pvs-sxhash-byte (+ (the positive-fixnum ,i) (the positive-fixnum ,j))))
