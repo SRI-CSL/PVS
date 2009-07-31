@@ -38,6 +38,9 @@
 
 (in-package :cl-user)
 
+#+sbcl (require :sb-posix)
+#+sbcl (require :sb-md5)
+
 #+allegro
 (defun startup-pvs ()
   (tpl:setq-default *package* (find-package :pvs))
@@ -57,9 +60,11 @@
 #+sbcl
 (defun startup-pvs ()
   (in-package :pvs)
-  ;; Can't directly call (pvs::pvs-init)
-  (apply (find-symbol (string :pvs-init) :pvs) nil)
-  (sb-impl::toplevel-init))
+  ;; Turn off compiler warnings
+  (handler-bind ((sb-ext:compiler-note #'muffle-warning))
+    ;; Can't directly call (pvs::pvs-init)
+    (apply (find-symbol (string :pvs-init) :pvs) nil)
+    (sb-impl::toplevel-init)))
 
 #+allegro
 (eval-when (eval load)
@@ -69,6 +74,11 @@
 	*ignore-package-name-case* t
 	excl:*enclose-printer-errors* nil
 	*print-pretty* t))
+
+#+sbcl
+(eval-when (eval load)
+  (setq *compile-verbose* nil)
+  (setq *compile-print* nil))
 
 (eval-when (eval load)
   ;; This sets *pvs-path* and sets *pvs-binary-type*
@@ -116,7 +126,7 @@
 
 #+(or gcl cmu)
 (unless (find-package :pvs)
-  (make-package :pvs :use '(:cl-user :common-lisp :lisp :pcl :make)))
+  (make-package :pvs :use '(:cl-user :lisp :common-lisp :pcl :make)))
 
 #+sbcl
 (unless (find-package :pvs)
