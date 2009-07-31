@@ -3452,7 +3452,7 @@
 			(values 'X nil nil))
 		       ((and (or (digit-char-p (char strlbl 0))
 				 (char= (char strlbl 0) #\-))
-			     (every #'digit-char-p (subseq strlbl) 1))
+			     (every #'digit-char-p (subseq strlbl 1)))
 			(error-format-if
 			 "~%Label cannot be an integer"))
 		       (t

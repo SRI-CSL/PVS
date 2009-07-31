@@ -55,7 +55,7 @@
 (defvar *printproofstate* nil)
 (defvar *in-checker* nil)
 (defvar *in-apply* nil)
-(defvar *please-interrupt* nil)
+(defvar *please-interrupt* #-sbcl nil #+sbcl t)
 (defvar *assert-bindings* nil)
 (defvar *modsubst* nil)
 (defvar *proving-tcc* nil)
