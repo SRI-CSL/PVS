@@ -532,7 +532,7 @@ useful if more than one specification is to be included in one document")
 	     (when (and *report-mode*
 			(loop for sf in  neg-s-forms
 			      thereis (memq sf par-sforms)))
-	       (format stream "~% & $\\vdots$ \\\\" *prover-indent*)))
+	       (format stream "~%~VT & $\\vdots$ \\\\" *prover-indent*)))
 	    (t (format stream "\\strut\\\\")))
       (format stream "\\hline~%")
       (cond (pos-s-forms

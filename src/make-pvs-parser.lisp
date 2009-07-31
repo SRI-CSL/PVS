@@ -27,6 +27,17 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
+(in-package :common-lisp)
+
+(#-(or cmu sbcl excl) progn
+ #+cmu ext:without-package-locks
+ #+sbcl sb-ext:without-package-locks
+ #+excl excl:without-package-locks
+ (defmacro defconstant-if-unbound (name value &optional doc)
+   `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
+		       ,@(when doc (list doc))))
+ (export 'defconstant-if-unbound))
+
 (in-package :cl-user)
 
 (eval-when (eval load)

@@ -351,7 +351,9 @@ rather than the generated declaration.")
       (pprint-indent :block 0)
       (loop (pprint-exit-if-list-exhausted)
 	    (write (pprint-pop) :stream stream :escape nil :pretty nil
-		   :pprint-dispatch nil)
+		   :pprint-dispatch #-sbcl nil
+		   #+sbcl (sb-pretty::make-pprint-dispatch-table)
+		   )
 	    (pprint-exit-if-list-exhausted)
 	    (pprint-newline :mandatory stream)))))
 

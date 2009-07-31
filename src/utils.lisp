@@ -4077,10 +4077,16 @@ space")
     :weak-keys weak-keys?
     :allow-other-keys t
     other-keys)
-  #+(or cmu sbcl)
+  #+cmu
   (apply #'make-hash-table
     :test (if strong-eq? 'strong-tc-eq-test 'tc-eq-test)
     :weak-p weak-keys?
+    :allow-other-keys t
+    other-keys)
+  #+sbcl
+  (apply #'make-hash-table
+    :test (if strong-eq? 'strong-tc-eq 'tc-eq)
+    :weakness (when weak-keys? :key-and-value)
     :allow-other-keys t
     other-keys)
   #-(or allegro cmu sbcl)
@@ -4092,6 +4098,6 @@ space")
 (extensions:define-hash-table-test 'strong-tc-eq-test
 				   #'strong-tc-eq #'pvs-sxhash)
 #+sbcl
-(sb-int:define-hash-table-test 'tc-eq-test #'tc-eq #'pvs-sxhash)
+(sb-ext:define-hash-table-test tc-eq pvs-sxhash)
 #+sbcl
-(sb-int:define-hash-table-test 'strong-tc-eq-test #'strong-tc-eq #'pvs-sxhash)
+(sb-ext:define-hash-table-test strong-tc-eq pvs-sxhash)

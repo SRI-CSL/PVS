@@ -288,7 +288,7 @@ Estimated total monitoring overhead: 0.88 seconds
 ;;; to seconds.
 
 (progn
-  #-(or cmu allegro)
+  #-(or sbcl cmu allegro)
   (eval-when (compile eval)
     (warn
      "You may want to supply implementation-specific get-time functions."))
@@ -302,6 +302,12 @@ Estimated total monitoring overhead: 0.88 seconds
 ;;; The get-cons macro is called to find the total number of bytes
 ;;; consed since the beginning of time.
 
+#+sbcl
+(defmacro get-cons ()
+  "The get-cons macro is called to find the total number of bytes
+   consed since the beginning of time."
+  '(sb-ext:get-bytes-consed))
+
 #+:cmu
 (defmacro get-cons ()
   "The get-cons macro is called to find the total number of bytes
@@ -312,7 +318,7 @@ Estimated total monitoring overhead: 0.88 seconds
 #+:lcl3.0
 (defmacro get-cons () `(gc-size))
 
-#-(or :cmu :lcl3.0)
+#-(or sbcl :cmu :lcl3.0)
 (progn
   (eval-when (compile eval)
     (warn "No consing will be reported unless a get-cons function is ~
@@ -326,6 +332,12 @@ Estimated total monitoring overhead: 0.88 seconds
 ;;; arguments.  The function Required-Arguments returns two values: the first
 ;;; is the number of required arguments, and the second is T iff there are any
 ;;; non-required arguments (e.g. &optional, &rest, &key).
+#+sbcl
+(defun required-arguments (name)
+  (multiple-value-bind (min max)
+      (sb-kernel:fun-type-nargs (sb-kernel:ctype-of (symbol-function name)))
+    (values (or min 0) (or (null max) (> max min)))))
+
 #+cmu
 (progn
   #-new-compiler
@@ -387,7 +399,7 @@ Estimated total monitoring overhead: 0.88 seconds
 
 
 
-#-(or :cmu :lcl3.0 (and :allegro (not :coral)))
+#-(or sbcl :cmu :lcl3.0 (and :allegro (not :coral)))
 (progn
  (eval-when (compile eval)
    (warn

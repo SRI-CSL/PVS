@@ -255,7 +255,7 @@
 
 (defcl adt-constructor (syntax)
   (recognizer :type symbol :parse t)
-  (ordnum :type fixnum
+  (ordnum :type (or null fixnum)
 	  :restore-as nil))
 
 (defcl constructor-with-subtype (simple-constructor)
