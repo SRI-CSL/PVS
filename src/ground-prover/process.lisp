@@ -729,7 +729,7 @@
 ;	(set     (setsolve atf))
 	(tuple   (tupsolve atf))
 	(array   (arraysolve atf))
-	(t       (error "No solver for type " (prtype (arg1 atf))))
+	(t       (error "No solver for type ~a" (prtype (arg1 atf))))
 	)))))
 
 ; ------------------------------------------------------------------
@@ -808,7 +808,7 @@
 ;	(set     (setnsolve atf))
 	(tuple   (tupnsolve atf))
 	(array   (arraynsolve atf))
-	(t       (error "No nsolve for type "
+	(t       (error "No nsolve for type ~a"
 			(or (prtype (arg1 atf)) (prtype (arg2 atf))) ))
 	)))))
 
