@@ -68,14 +68,14 @@
 (defmethod print-object ((obj eval-info) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "~@<#<eval-info ~2I~_~:0Iinternal: ~W~:@_external: ~W>~:>"
+      (format stream "~@<#<eval-info ~2I~_~0:Iinternal: ~W~:@_external: ~W>~:>"
 	(internal obj) (external obj))))
 
 (defmethod print-object ((obj eval-defn-info) stream)
   (if *debugging-print-object*
       (call-next-method)
       (format stream
-	  "~@<#<eval-defn-info ~2I~_~:0Iunary:       ~W~:@_multiary:    ~W~:@_destructive: ~W>~:>"
+	  "~@<#<eval-defn-info ~2I~_~0:Iunary:       ~W~:@_multiary:    ~W~:@_destructive: ~W>~:>"
 	(unary obj) (multiary obj) (destructive obj))))
 
 (defmethod print-object ((obj eval-defn) stream)

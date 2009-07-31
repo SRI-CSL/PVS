@@ -177,7 +177,7 @@
 				      (updateable-free-formal-vars operator)
 				      livevars))))
 	  (if (clean-updateable? (type operator))
-	      (format nil "(pvsSelect ~a ~a)"
+	      (format nil "(pvsSelect ~a ~a ~a)"
 		clean-op clean-arg
 		(mk-clean-funcall clean-op
 				  (list clean-arg))))))))
@@ -375,6 +375,7 @@
 				     livevars))))))
     (if else-part
 	(format nil "~a ~% _ -> ~a"
+	  selections-clean
 	  (pvs2clean* (expression else-part) bindings livevars))
 	selections-clean)))
 
