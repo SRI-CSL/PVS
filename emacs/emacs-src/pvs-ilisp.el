@@ -182,10 +182,12 @@ intervenes."
   (setq ilisp-init-binary-extension ilisp-binary-extension)
   (setq ilisp-load-inits nil)
   (setq ilisp-program (format "%s --noinform --no-userinit" (pvs-program)))
+  (setq ilisp-reset ":abort")
   (setq comint-prompt-regexp
 	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|(Y or N)\\|(Yes or No)\\|Please enter")
-  (setq comint-interrupt-regexp  "^Interrupted at")
-  (setq ilisp-error-regexp "^Restarts:$")
+  (setq comint-interrupt-regexp  "^  Interactive interrupt at")
+  (setq comint-continue ":continue")
+  (setq ilisp-error-regexp "^restarts (invokable by number or by possibly-abbreviated name):$")
   (setq pvs-top-regexp
 	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) ")
   (setq pvs-gc-end-regexp ";;; Finished GC"))
@@ -197,7 +199,7 @@ intervenes."
 	  ((string-equal machine "ix86") ; Intel/Linux
 	   "lfasl")
 	  ((string-equal machine "ix86_64") ; Intel/Linux
-	   "lfasl")
+	   "l64fasl")
 	  ((string-equal machine "powerpc") ; Mac
 	   "mfasl")
 	  (t (error "Machine architecture %s not recognized" machine)))))
@@ -209,7 +211,7 @@ intervenes."
 	  ((string-equal machine "ix86") ; Intel/Linux
 	   "x86f")
 	  ((string-equal machine "ix86_64") ; Intel/Linux
-	   "x86f")
+	   "x8664s")
 	  ((string-equal machine "powerpc") ; Mac
 	   "ppcf")
 	  (t (error "Machine architecture %s not recognized" machine)))))

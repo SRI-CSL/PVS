@@ -24,6 +24,7 @@
 ;; --------------------------------------------------------------------
 
 (setq debug-on-error t)
+(setq inhibit-startup-screen t)
 
 (defconst pvs-emacs-system
   (cond ((or (string-match "XEmacs 21" (emacs-version))
