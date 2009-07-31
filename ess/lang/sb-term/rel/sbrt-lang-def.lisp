@@ -1,7 +1,8 @@
 ;;; Added the use-package of :ergolisp, since this is the first time
 ;;; package SB-RUNTIME is seen.  fp, Mon Jan  2 11:07:17 1989.
 #-gcl
-(defpackage :sb-runtime (:nicknames "RT-SB" "RTSB" "SB-RT" "SBRT")
+(defpackage :sb-runtime
+  #+sbcl (:nicknames :rt-sb :rtsb :sb-rt :sbrt)
   #+sbcl (:use :common-lisp :ergolisp :oper :occ :term :sort :lang)
   #+sbcl (:shadowing-import-from :sb-int memq))
 (in-package :sb-runtime)

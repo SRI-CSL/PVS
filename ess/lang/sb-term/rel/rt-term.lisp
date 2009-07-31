@@ -19,7 +19,8 @@
 
 
 
-(in-package "SB-RUNTIME" :nicknames '("RT-SB" "RTSB" "SB-RT" "SBRT"))
+#+sbcl (in-package "SB-RUNTIME")
+#-sbcl (in-package "SB-RUNTIME" :nicknames '("RT-SB" "RTSB" "SB-RT" "SBRT"))
 (use-package :ergolisp)
 
 (use-package '("TERM" "OCC" "OPER")) 
