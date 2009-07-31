@@ -91,16 +91,18 @@ tar ${TARFLAGS} -f pvs-${version}-source.tgz --exclude pvsbin \
   src/groundeval/*.lisp \
   src/utils/*.lisp \
   src/utils/ix86-Linux/Makefile src/utils/ix86-MacOSX/Makefile \
+  src/utils/ix86_64-Linux/Makefile \
   src/utils/powerpc-MacOSX/Makefile \
   src/utils/sun4-SunOS5/Makefile \
   BDD/bdd-ld-table BDD/mu-ld-table \
   BDD/*.c \
   BDD/*.lisp \
-  BDD/ix86-Linux/Makefile BDD/sun4-SunOS5/Makefile \
+  BDD/ix86-Linux/Makefile BDD/ix86_64-Linux/Makefile BDD/sun4-SunOS5/Makefile \
   BDD/ix86-MacOSX/Makefile BDD/powerpc-MacOSX/Makefile \
   BDD/bdd BDD/mu \
   src/WS1S/README src/WS1S/ws1s-ld-table \
   src/WS1S/*.c src/WS1S/mona-1.4 \
+  src/WS1S/ix86_64-Linux/Makefile
   src/WS1S/ix86-Linux/Makefile src/WS1S/sun4-SunOS5/Makefile \
   src/WS1S/ix86-MacOSX/Makefile src/WS1S/powerpc-MacOSX/Makefile \
   doc/pvs.bib doc/makebnf.sty doc/pvstex.tex doc/release-notes \
@@ -155,7 +157,7 @@ fi
 # echo "pvs-libraries.tgz not created - need to typecheck finite_sets and bitvectors"
 # fi
 
-for platform in ix86-Linux ix86-MacOSX powerpc-MacOSX \
+for platform in ix86-Linux ix86_64-Linux ix86-MacOSX powerpc-MacOSX \
                 sun4-SunOS5
   do
   for subdir in runtime devel
@@ -198,6 +200,23 @@ for platform in ix86-Linux ix86-MacOSX powerpc-MacOSX \
      ls -l pvs-${version}-${platform}-cmulisp${kind}.tgz
     else
      echo "CMU Lisp ${subdir} not available for ${platform}"
+   fi
+   if [ -e bin/${platform}/${subdir}/pvs-sbclisp -a "$subdir" = "runtime" ]
+    then
+     echo Creating pvs-${version}-${platform}-sbclisp${kind}.tgz
+     tar ${TARFLAGS} -f pvs-${version}-${platform}-sbclisp${kind}.tgz \
+	  ${pvssystemfiles} \
+	  bin/${platform}/b64 bin/relocate \
+	  bin/pvs-platform bin/tar-b64-mail \
+	  bin/${platform}/${subdir}/mu.* \
+	  bin/${platform}/${subdir}/file_utils.* \
+	  bin/${platform}/${subdir}/ws1s.* \
+	  bin/${platform}/${subdir}/*-sbcl.* \
+	  bin/${platform}/${subdir}/lisp \
+	  bin/${platform}/${subdir}/pvs-sbclisp*
+     ls -l pvs-${version}-${platform}-sbclisp${kind}.tgz
+    else
+     echo "SBCL ${subdir} not available for ${platform}"
    fi
    done
   done
