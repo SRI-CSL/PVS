@@ -241,6 +241,10 @@ prelude libraries")
 
 (defvar *disable-gc-printout* nil)
 
+;; Controls when periods are allowed in declaration ids
+;; Essentially allowed anywhere except user-introduced declarations.
+(defvar *xt-periods-allowed* nil)
+
 ;;; An association list of operators and their places.  The problem is
 ;;; that operators are thrown away, and later make-sb-term is called with
 ;;; just an id.  We thus keep all possible places associated with an id,
@@ -289,6 +293,10 @@ collected in *tccforms*")
 ;  "Whether to suppress proved tccs when prettyprinting")
 (defvar *recursive-tcc-names* nil
   "Keeps track of recursive names for which TCCs have been generated.")
+
+;; Used to keep track of which expression have already gone through
+;; check-type-actuals processing
+(defvar *exprs-generating-actual-tccs*)
 
 ;;; Associate old tcc names with new tccs, so that proofs may be restored.
 (defvar *old-tcc-names* nil)
@@ -431,8 +439,6 @@ Needed to generate the same dummy name for record literals.")
 
 (defvar *last-proof* nil
   "The last proof attempted - an instance of proofstate")
-
-(defvar *fetched-theory-interpretations*)
 
 
 ;;; Variables used in the X proof display code (wish.lisp)
