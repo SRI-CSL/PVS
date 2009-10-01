@@ -830,11 +830,9 @@
 (defun complete-importings (th)
   (multiple-value-bind (imps impnames)
       (all-importings th)
-    (multiple-value-call #'add-generated-interpreted-theories
-			 (add-generated-adt-theories
-			  (cons th imps)
-			  (cons (mk-modname (id th)) impnames))
-			 th)))
+    (add-generated-adt-theories
+     (cons th imps)
+     (cons (mk-modname (id th)) impnames))))
     
 
 (defun assuming-tccs (decl)
