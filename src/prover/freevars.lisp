@@ -224,6 +224,12 @@
   (and (no-freevars? (expr expr))
        (no-freevars? (type-value expr))))
 
+(defmethod freevars* ((map mapping))
+  (freevars* (rhs map)))
+
+(defmethod no-freevars? ((map mapping))
+  (no-freevars? (rhs map)))
+
 (defmethod freevars* ((map mapping-rhs))
   (if (type-value map)
       (freevars* (type-value map))
