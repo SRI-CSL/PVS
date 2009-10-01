@@ -821,7 +821,7 @@
 	  (setf (operator expr)
 		(raise-actuals (copy (expr (car conversions))) 1))
 	  (setf (type expr) nil (types expr) nil)
-	  (set-type-actuals (operator expr))
+	  (set-type-actuals-and-maps (operator expr))
 	  (typecheck* expr expected nil nil)
 	  expr)))))
 
