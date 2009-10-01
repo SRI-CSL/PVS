@@ -36,6 +36,7 @@
 (defun build-pvs (builddir runtime?)
   (let ((tmpdir "/tmp/pvs-allegro-build/")
 	(pvspath (or (sys:getenv "PVSPATH") ".")))
+    ;;(delete-directory-and-files tmpdir :if-does-not-exist :ignore)
     (setq *pvs-path* nil)
     (excl:generate-application
      (format nil "~a-~a"
