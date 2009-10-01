@@ -46,7 +46,8 @@
   (unless (compatible? (type expr) expected)
     (type-incompatible expr (list (type expr)) expected))
   (let ((*no-conversions-allowed* (not (memq expr *conversions-allowed*)))
-	(*skip-tcc-check-exprs* skip-exprs))
+	(*skip-tcc-check-exprs* skip-exprs)
+	(*checked-actuals-for-tccs* nil))
     (check-for-tccs* expr expected)))
 
 (defvar *inner-check-for-tccs* nil)
@@ -89,7 +90,9 @@
   (let* ((modinst (module-instance expr))
 	 (theory (module (declaration expr)))
 	 (acts (actuals modinst)))
-    (when acts
+    (when (and acts
+	       (not (memq expr *exprs-generating-actual-tccs*)))
+      (push expr *exprs-generating-actual-tccs*)
       (check-type-actuals* acts (formals-sans-usings theory))
       (generate-assuming-tccs modinst expr theory)
       (generate-actuals-tccs (actuals expr) acts))))
@@ -119,7 +122,7 @@
   (check-for-tccs* (expr act) (type formal)))
 
 (defmethod check-type-actual (act (formal formal-theory-decl))
-  (set-type-actuals (expr act)))
+  (set-type-actuals-and-maps (expr act)))
 
 
 (defmethod check-for-tccs* ((expr number-expr) expected)
@@ -215,7 +218,10 @@
     (call-next-method)))
 
 (defmethod check-for-tccs* ((expr application) expected)
-  (declare (ignore expected))
+  (assert (every #'(lambda (x) (or (not (consp x))
+				   (and (bind-decl? (car x))
+					(memq (car x) *tcc-conditions*))))
+		 *tcc-conditions*))
   (with-slots (operator argument type) expr
     (let ((optype (find-supertype (type operator))))
       (check-for-tccs* (argument expr) (domain optype))
@@ -307,6 +313,10 @@
 	(generate-subtype-tcc ex expected toppreds)))))
 
 (defun check-for-binding-expr-tccs (bindings expected-types)
+  (assert (every #'(lambda (x) (or (not (consp x))
+				   (and (bind-decl? (car x))
+					(memq (car x) *tcc-conditions*))))
+		 *tcc-conditions*))
   (if (cdr bindings)
       (let* ((dep? (typep (car expected-types) 'dep-binding))
 	     (etype (if dep?
@@ -315,6 +325,10 @@
 	(check-for-tccs* (car bindings) etype)
 	(let ((*bound-variables* (cons (car bindings) *bound-variables*))
 	      (*tcc-conditions* (cons (car bindings) *tcc-conditions*)))
+	  (assert (every #'(lambda (x) (or (not (consp x))
+					   (and (bind-decl? (car x))
+						(memq (car x) *tcc-conditions*))))
+			 *tcc-conditions*))
 	  (check-for-binding-expr-tccs
 	   (cdr bindings)
 	   (if dep?
@@ -323,13 +337,16 @@
 	       (cdr expected-types)))))
       (let ((*tcc-conditions*
 	     (append (car *appl-tcc-conditions*) *tcc-conditions*)))
+	(assert (every #'(lambda (x) (or (not (consp x))
+					 (and (bind-decl? (car x))
+					      (memq (car x) *tcc-conditions*))))
+		       *tcc-conditions*))
 	(check-for-tccs* (car bindings) (car expected-types)))))
 
 (defmethod check-for-tccs* ((expr bind-decl) expected)
+  (declare (ignore expected))
   (when (declared-type expr)
-    (check-for-tccs* (declared-type expr) nil))
-  (let ((*tcc-conditions* (cons expr *tcc-conditions*)))
-    (check-for-subtype-tcc expr expected)))
+    (check-for-tccs* (declared-type expr) nil)))
 
 
 (defmethod check-for-tccs* ((expr quant-expr) expected)
