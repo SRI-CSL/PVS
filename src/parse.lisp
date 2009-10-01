@@ -35,6 +35,12 @@
 ;;;	term-args   - returns the list of arguments of a term
 ;;;	ds-id       - returns the symbol of an id term
 
+(defun term-place (absyn)
+  (getf (term:term-attr absyn) :place))
+
+(defsetf term-place (absyn) (place)
+  `(setf (getf (term:term-attr ,absyn) :place) ,place))
+
 
 ;;; Parsing
 
@@ -80,9 +86,14 @@
 	     (values (car args) (cadr args))))
     (if found
 	(format nil "Found '~A' when expecting '~A'~
-                     ~@[~%  Note: '~a' is now a keyword~]"
+                     ~@[~%  Note: '~a' is now a keyword~]~
+                     ~@[~%  Note: '~a' is only allowed in theory declarations (not importings)~]"
 	  found expected
-	  (when (string= found "AS") found))
+	  (when (string= found "AS") found)
+	  (when (and (member found '("::=" "=") :test #'string=)
+		     ;; Check that ':=' is expected
+		     (string= (cadr args) ":=" :end1 2))
+	    found))
 	(format nil "~?" message args))))
 
 (defun initial-error? (message)
@@ -216,7 +227,7 @@
 
 (defun xt-theory-formal (theory-formal)
   (let* ((importing (term-arg0 theory-formal))
-	 (idops (term-arg1 theory-formal))
+	 (idops (xt-check-periods (term-arg1 theory-formal)))
 	 (decl-body (term-arg2 theory-formal)))
     (multiple-value-bind (decl dtype)
 	(xt-declaration-body decl-body)
@@ -339,8 +350,9 @@
       :place (term-place exporting))))
 
 (defun xt-expname (expname)
-  (let ((id (xt-idop (term-arg0 expname)))
-	(kind (term-arg1 expname)))
+  (let* ((pid (xt-pidop (term-arg0 expname)))
+	 (id (xt-idop pid))
+	 (kind (term-arg1 expname)))
     (make-instance 'expname
       :id id
       :kind (case (sim-term-op kind)
@@ -365,7 +377,7 @@
 	  (term-args assumings)))
 
 (defun xt-assuming (assuming)
-  (let* ((idops (term-arg0 assuming))
+  (let* ((idops (xt-check-periods (term-arg0 assuming)))
 	 (formals (unless (is-sop 'NOFORMALS (term-arg1 assuming))
 		    (xt-pdf (term-arg1 assuming))))
 	 (decl (term-arg2 assuming))
@@ -401,7 +413,7 @@
 	  (term-args theory)))
 
 (defun xt-theory (tdecl)
-  (let* ((idops (term-arg0 tdecl))
+  (let* ((idops (xt-check-periods (term-arg0 tdecl)))
 	 (formals (term-arg1 tdecl))
 	 (pformals (unless (is-sop 'NOFORMALS formals)
 		     (xt-pdf formals)))
@@ -435,6 +447,29 @@
 				decls))
 		 (setf (semi pdecl) (when (is-sop 'SEMIC semi) t))
 		 decls))))))
+
+(defun xt-pidop (pidop)
+  (if (cdr (term-args pidop))
+      (mk-ergo-term 'IDOP
+	(list (mk-id (makesym "~{~a~^.~}"
+			      (mapcar #'xt-idop (term-args pidop))))))
+      (term-arg0 pidop)))
+
+(defun xt-check-periods (pidops)
+  (let ((nterm (mk-ergo-term (sim-term-op pidops)
+		 (mapcar
+		     #'(lambda (pidop)
+			 (if (cdr (term-args pidop)) ;; have periods
+			     (if *xt-periods-allowed*
+				 (xt-pidop pidop)
+				 (parse-error pidops
+				   "periods not allowed here"))
+			     (if (is-sop 'PIDOP pidop)
+				 (term-arg0 pidop)
+				 pidop)))
+		   (term-args pidops)))))
+    (setf (term-place nterm) (term-place pidops))
+    nterm))
 
 (defun xt-theory-datatypes (idops formals decl semi)
   (cond ((is-sop 'PDF formals)
@@ -798,7 +833,8 @@
 	  (setf (declared-type ndecl)
 		(xt-not-enum-type-expr dtype)))
 	(let* ((idpos (position-if #'(lambda (tm)
-				       (eq (ds-sim-op (term-op tm)) 'IDOPS))
+				       (memq (ds-sim-op (term-op tm))
+					     '(IDOPS PIDOPS)))
 				   (term-args absyn))))
 	  (when idpos
 	    (setf (place ndecl)
@@ -2289,7 +2325,7 @@
   (let* ((selector (term-arg0 sel))
 	 (args (term-arg1 sel))
 	 (expr (term-arg2 sel))
-	 (id (xt-idop selector)))
+	 (id (xt-idop (xt-pidop selector))))
     (multiple-value-bind (index kind)
 	(projection? id)
       (let ((constr (case kind
@@ -2575,71 +2611,97 @@
 ;;; name! means create a name no matter what; otherwise numbers create
 ;;; number-exprs
 (defun xt-name (name &optional name!)
-  (let ((idop (term-arg0 name))
-	(lib (term-arg1 name))
-	(actuals (term-arg2 name))
-	(idop2 (term-arg3 name))
-	(mappings (term-arg4 name))
-	(target (term-arg5 name)))
-    (if (and (not name!)
-	     (or (is-sop 'NOMOD idop2)
-		 (is-number (term-arg0 idop2))
-		 (every #'digit-char-p (string (ds-id (term-arg0 idop2)))))
-	     (is-sop 'NOLIB lib)
-	     (is-sop 'NOACTS actuals)
-	     (is-sop 'NOMAP mappings)
-	     (is-sop 'NOTGT target)
-	     (or (is-number (term-arg0 idop))
-		 (every #'digit-char-p (string (ds-id (term-arg0 idop))))))
-	(if (is-sop 'NOMOD idop2)
-	    (let ((num (if (is-number (term-arg0 idop))
-			   (ds-number (term-arg0 idop))
-			   (parse-integer (string (ds-id (term-arg0 idop)))))))
-	      (assert (integerp num))
-	      (make-instance 'number-expr
-		:number num
-		:place (term-place name)))
-	    (let* ((int-part (if (is-number (term-arg0 idop))
-				 (ds-number (term-arg0 idop))
-				 (parse-integer
-				  (string (ds-id (term-arg0 idop))))))
-		   (frac-part (if (is-number (term-arg0 idop2))
-				  (ds-number (term-arg0 idop2))
-				  (ds-id (term-arg0 idop2))))
-		   (frac-value (if (integerp frac-part)
-				   frac-part
-				   (parse-integer (string frac-part))))
-		   (frac-length (if (integerp frac-part)
-				    (length (format nil "~d" frac-part))
-				    (length (string frac-part)))))
-	      (if (zerop frac-value)
-		  (make-instance 'decimal-integer
-		    :number int-part
-		    :fractional-length frac-length)
-		  (let* ((denom (expt 10 frac-length))
-			 (num (+ (* denom int-part) frac-value)))
-		    (make-instance 'decimal
-		      :operator (mk-name-expr '/)
-		      :argument (mk-arg-tuple-expr
-				 (make-instance 'number-expr
-				   :number num)
-				 (make-instance 'number-expr
-				   :number denom)))))))
-	(make-instance 'name
-	  :id (if (is-sop 'NOMOD idop2)
-		  (xt-idop idop)
-		  (xt-idop idop2))
-	  :library (unless (is-sop 'NOLIB lib)
-		     (ds-vid lib))
-	  :actuals (unless (is-sop 'NOACTS actuals)
-		     (xt-actuals actuals))
-	  :mappings (unless (is-sop 'NOMAP mappings)
-		      (xt-mappings mappings))
-	  :mod-id (unless (is-sop 'NOMOD idop2)
-		    (xt-idop idop))
-	  :target (unless (is-sop 'NOTGT target)
-		    (xt-modname target))
-	  :place (term-place name)))))
+  (let* ((idop (term-arg0 name))
+	 (lib (term-arg1 name))
+	 (actuals (term-arg2 name))
+	 (mappings (term-arg4 name))
+	 (target (term-arg5 name))
+	 (maybe-num? (and (not name!)
+			  (is-sop 'NOLIB lib)
+			  (is-sop 'NOACTS actuals)
+			  (is-sop 'NOMAP mappings)
+			  (is-sop 'NOTGT target)
+			  (or (is-number (term-arg0 idop))
+			      (every #'digit-char-p
+				     (string (ds-id (term-arg0 idop))))))))
+    (multiple-value-bind (idops length)
+	(xt-name-idops (term-arg3 name) maybe-num?)
+      ;; At this point, idops is a number or a symbol, and length is the length of it.
+      ;; If a number, then we know maybe-num? is true, and we can create a rational.
+      ;; The nil symbol will return a length of either 0 or 3, depending on if whether
+      ;; idops is actually empty.
+      (assert (or (symbolp idops) (integerp idops)))
+      (cond ((integerp idops)
+	     (let* ((int-part (if (is-number (term-arg0 idop))
+				  (ds-number (term-arg0 idop))
+				  (parse-integer (string (ds-id (term-arg0 idop))))))
+		    (frac-value idops)
+		    (frac-length length))
+	       (if (zerop frac-value)
+		   (make-instance 'decimal-integer
+		     :number int-part
+		     :fractional-length frac-length)
+		   (let* ((denom (expt 10 frac-length))
+			  (num (+ (* denom int-part) frac-value)))
+		     (make-instance 'decimal
+		       :operator (mk-name-expr '/)
+		       :argument (mk-arg-tuple-expr
+				  (make-instance 'number-expr
+				    :number num)
+				  (make-instance 'number-expr
+				    :number denom)))))))
+	    ((and maybe-num? (zerop length))
+	     (let ((num (if (is-number (term-arg0 idop))
+			    (ds-number (term-arg0 idop))
+			    (parse-integer (string (ds-id (term-arg0 idop)))))))
+	       (assert (integerp num))
+	       (make-instance 'number-expr
+		 :number num
+		 :place (term-place name))))
+	    (t (make-instance 'name
+		 :id (if (zerop length)
+			 (if (is-number (term-arg0 idop))
+			     (makesym "~d" (ds-number (term-arg0 idop)))
+			     (let ((id (ds-id (term-arg0 idop))))
+			       (when (memq id '(|/\\| |\\/|))
+				 (pushnew id *escaped-operators-used*))
+			       id))
+			 idops)
+		 :library (unless (is-sop 'NOLIB lib)
+			    (ds-vid lib))
+		 :actuals (unless (is-sop 'NOACTS actuals)
+			    (xt-actuals actuals))
+		 :mappings (unless (is-sop 'NOMAP mappings)
+			     (xt-mappings mappings))
+		 :mod-id (unless (zerop length)
+			   (if (is-number (term-arg0 idop))
+			     (makesym "~d" (ds-number (term-arg0 idop)))
+			     (ds-id (term-arg0 idop))))
+		 :target (unless (is-sop 'NOTGT target)
+			   (xt-modname target))
+		 :place (term-place name)))))))
+
+(defun xt-name-idops (term maybe-num?)
+  (cond ((eq (sim-term-op term) 'NOMOD)
+	 (values nil 0))
+	((and maybe-num?
+	      (null (cdr (term-args term)))
+	      (or (is-number (term-arg0 (term-arg0 term)))
+		  (every #'digit-char-p
+			 (string (ds-id (term-arg0 (term-arg0 term)))))))
+	 (if (is-number (term-arg0 (term-arg0 term)))
+	     (values (ds-number (term-arg0 (term-arg0 term)))
+		     (length (format nil "~d"
+			       (ds-number (term-arg0 (term-arg0 term))))))
+	     (values (parse-integer (string (ds-id (term-arg0 (term-arg0 term)))))
+		     (length (string (ds-id (term-arg0 (term-arg0 term))))))))
+	(t (let ((sym (makesym "~{~a~^.~}"
+			       (mapcar #'(lambda (tm)
+					   (if (is-number tm)
+					       (makesym (ds-number (term-arg0 tm)))
+					       (ds-id (term-arg0 tm))))
+				 (term-args term)))))
+	     (values sym (length (string sym)))))))
 
 (defun xt-actuals (actuals)
   (mapcar #'xt-actual (term-args actuals)))
@@ -2742,8 +2804,13 @@
 
 (defun xt-mapping-lhs (lhs)
   (make-instance 'name
-    :id (xt-idop (term-arg0 lhs))
+    :id (xt-lhs-idops (term-arg0 lhs))
     :place (term-place lhs)))
+
+(defun xt-lhs-idops (idops)
+  (makesym "~{~a~^.~}"
+	   (mapcar #'(lambda (idop) (ds-id (term-arg0 idop)))
+			(term-args idops))))
 
 (defun xt-unique-name (name)
   (let ((uname (xt-name (term-arg0 name) t))
@@ -2797,5 +2864,8 @@
 		      (digit-char-p ch)
 		      (and *in-checker*
 			   (char= ch #\!))
-		      (member ch '(#\_ #\?) :test #'char=)))
+		      ;; Note that periods are allowed in identifiers
+		      ;; in general, but not in declarations - see
+		      ;; xt-check-periods
+		      (member ch '(#\_ #\? #\.) :test #'char=)))
 	      (subseq str 1))))
