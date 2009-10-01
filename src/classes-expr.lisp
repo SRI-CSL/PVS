@@ -68,6 +68,7 @@
   ;;from-macro
   )
 
+;; A name of the form 'lib@th[x]{{a:=b}}:->th.id'
 (defcl name (syntax)
   (mod-id :parse t :restore-as nil)
   (library :parse t :restore-as nil)
@@ -77,7 +78,8 @@
   (target :parse t)
   resolutions)
 
-(defcl formula-name (name))
+(defcl formula-name (name)
+  (mod-id :parse t :restore-as nil))
 
 (defcl name-expr (name expr)
   ;;(kind :documentation "Variable, constant, etc.")
