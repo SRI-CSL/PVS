@@ -2477,6 +2477,21 @@
 		     (values "A rule application must be a list."
 			     (car ejustif))))))))
 
+(defun numberof-steps (ejustif &optional count)
+  (cond ((null ejustif)
+	 count)
+	((null count)
+	 (numberof-steps (cdr ejustif) 0))
+	(t
+	 (if (and (consp (car ejustif)) (consp (caar ejustif)))
+	     (reduce #'+ (mapcar #'(lambda (st)
+				     (numberof-steps st))
+			   (car ejustif))
+		     :initial-value count)
+	     (if (consp (car ejustif))
+		 (numberof-steps (cdr ejustif) (1+ count))
+		 (1+ count))))))
+
 (defun valid-comment-string? (string &optional (pos 0) (after-newline? t)
 				     (len (length string)))
   (or (>= pos len)
