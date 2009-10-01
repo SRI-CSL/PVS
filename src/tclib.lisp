@@ -1028,6 +1028,7 @@
 			     (formals theory))
 			   (when (recursive-type? theory)
 			     (importings theory))
+			   (theory-formal-decls theory)
 			   (assuming theory)
 			   (theory theory))))
 	(when (memq 'typechecked (status theory))
