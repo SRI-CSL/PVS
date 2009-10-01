@@ -891,7 +891,9 @@
 				(null (library mi2))
 				(eq (library mi1) (library mi2)))
 			    (tc-eq* (actuals mi1) (actuals mi2) bindings)
-			    (tc-eq* (mappings mi1) (mappings mi2) bindings))
+			    (or (null (mappings mi1))
+				(null (mappings mi2))
+				(tc-eq* (mappings mi1) (mappings mi2) bindings)))
 		       (null mi2))))))))
 
 (defmethod tc-eq* ((n1 modname) (n2 modname) bindings)
