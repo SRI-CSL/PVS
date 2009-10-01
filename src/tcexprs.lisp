@@ -714,11 +714,11 @@
     (let* ((sel (car selections))
 	   (constr (constructor sel))
 	   (c (car (member (constructor sel) (constructors adt)
-			   :test #'same-id))))
+			   :test #'same-last-id))))
       (unless c
 	(type-error-noconv sel
-	    "No matching constructor found for ~a in datatype ~a"
-	    (constructor sel) (id adt)))
+	   "No matching constructor found for ~a in datatype ~a"
+	   (constructor sel) (id adt)))
       ;;(typecheck* constr nil nil nil)
       (unless (length= (args sel) (arguments c))
 	(type-error-noconv sel "Wrong number of arguments"))
