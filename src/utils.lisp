@@ -557,7 +557,7 @@
 
 (defmethod importing-param? ((x importing)) t)
 (defmethod importing-param? ((x theory-abbreviation-decl)) t)
-(defmethod importing-param? (x) nil)
+(defmethod importing-param? (x) (declare (ignore x)) nil)
 
 (defun listify (x) (if (listp x) x (list x)))
 
@@ -570,19 +570,60 @@
   (or (symbolp x)(stringp x)(numberp x)
       (and (syntax? x)(slot-exists-p x 'id))))
 
+;; Returns a symbol or integer
+(defun get-id (x)
+  (typecase x
+    (symbol x)
+    (string (intern x))
+    (number x)
+    (t (id x))))
+
+(defun last-id (x)
+  (let* ((str (string x))
+	 (dotpos (position #\. str :from-end t)))
+    (if dotpos
+	(values (intern (subseq str (1+ dotpos))) t)
+	(values x nil))))
+
+(defun same-last-id (x y)
+  (or (same-id x y)
+      (let ((idx (get-id x))
+	    (idy (get-id y)))
+	(if (integerp idx)
+	    (and (integerp idy)
+		 (= idx idy))
+	    (and (not (integerp idy))
+		 (eq (last-id idx) (last-id idy)))))))
+
 (defun same-id (x y)
-  (let ((idx (typecase x
-	       (symbol x)
-	       (string (intern x))
-	       (number x)
-	       (t (id x))))
-	(idy (typecase y
-	       (symbol y)
-	       (string (intern y))
-	       (number y)
-	       (t (id y)))))
+  (let ((idx (get-id x))
+	(idy (get-id y)))
     (eq idx idy)))
 
+;; True if x is a suffix of y
+(defun id-suffix (x y)
+  (or (same-id x y)
+      (let ((idx (get-id x))
+	    (idy (get-id y)))
+	(when (and (symbolp idx) (symbolp idy))
+	  (let ((strx (string (get-id x)))
+		(stry (string (get-id y))))
+	    ;; Note we can't simply call suffix? here, as (suffix? "a" "th.aa") is true
+	    ;; But we can assume that x is a valid id, so prepending "." will work
+	    (suffix? (concatenate 'string "." strx) stry))))))
+
+(defun prefix? (x y) ;both strings
+  (let ((lx (length x))
+	(ly (length y)))
+    (and (<= lx ly)
+	 (string= x (subseq y 0 lx)))))
+
+(defun suffix? (x y) ;both strings
+  (let ((lx (length x))
+	(ly (length y)))
+    (and (<= lx ly)
+	 (string= x (subseq y (- ly lx) ly)))))
+    
 
 ;(defmethod make-specpath ((mod module-form))
 ;  (make-specpath (id mod)))
@@ -1506,15 +1547,18 @@
 		     (if new?
 			 (freevar-substit form freevars-form newbindings)
 			 form))
-		    (sbindings (minimal-sort-bindings
-				newbindings (bindings nform))))
+		    ;;(sbindings (minimal-sort-bindings
+			;;	(reverse newbindings) (bindings nform)))
+		    (ibindings (insert-bindings (reverse newbindings) (bindings nform))))
+	       ;;(unless (equal sbindings ibindings)
+		 ;;(break "Unequal"))
 	       (when (and (not (eq (car (last newbindings))
 				   (declaration (car (last freevars-form)))))
 			  (tc-eq (type (car (last newbindings)))
 				 (type (car (bindings nform)))))
 		 (setf (chain? (car (last newbindings))) t))
 	       (let ((cform (copy nform
-			      'bindings sbindings
+			      'bindings ibindings
 			      'commas? nil)))
 		 #+pvsdebug
 		 (assert (every #'(lambda (x) (member x freevars-form
@@ -1541,19 +1585,47 @@
 			      (freevars tform)))
 	       tform))))))
 
-;;; Sort as little as possible, to satisfy dependencies
-;;; Needed because the new bindings may actually depend on the bindings
+;;; Put newbindings in bindings after all dependencies
+(defun insert-bindings (newbindings bindings)
+  (if (null newbindings)
+      bindings
+      (insert-bindings (cdr newbindings)
+		       (if (member (car newbindings) bindings
+				   :test #'same-declaration)
+			   bindings
+			   (insert-binding (car newbindings) bindings)))))
+
+(defun insert-binding (nbinding bindings)
+  (let* ((frees (remove-if (complement #'(lambda (fv)
+					  (member fv bindings
+						  :test #'same-declaration)))
+		  (freevars nbinding)))
+	 (ibindings (insert-binding* nbinding bindings frees nil)))
+    ibindings))
+
+(defun insert-binding* (nbinding bindings frees preds)
+  (if (null frees)
+      (nconc (nreverse preds) (cons nbinding bindings))
+      (insert-binding* nbinding
+		       (cdr bindings)
+		       (remove (car bindings) frees :test #'same-declaration)
+		       (cons (car bindings) preds))))
+		       
+  
+
+;;; Naively want to append newbindings in front of bindings, but the
+;;; newbindings may depend on bindings.  So we sort as little as possible,
+;;; but satisfy the dependencies.
 (defun minimal-sort-bindings (newbindings bindings)
   (let ((fvars (freevars newbindings)))
-    (cond (fvars
-	   (assert (memq (declaration (car fvars)) bindings))
-	   (minimal-sort-bindings (cons (declaration (car fvars))
-					newbindings)
-				  (remove (declaration (car fvars))
-					  bindings)))
-	  (t (let ((result (append newbindings bindings)))
-	       (assert (null (freevars result)))
-	       result)))))
+    (if fvars
+	(let ((fvar (smallest-freevar fvars)))
+	  ;;(assert (memq (declaration fvar) bindings))
+	  (minimal-sort-bindings (cons (declaration fvar) newbindings)
+				 (remove (declaration fvar) bindings)))
+	(let ((result (append (reverse newbindings) bindings)))
+	  ;;(assert (null (freevars result)))
+	  result))))
 
 (defun freevar-substit (form freevars-form newbindings)
   (let ((*bound-variables* (append newbindings *bound-variables*))
@@ -1862,7 +1934,7 @@
 (defmethod recognizer ((fn constructor-name-expr))
   (or (recognizer-name fn)
       (let* ((con (car (member fn (constructors (adt (adt fn)))
-			       :test #'same-id)))
+			       :test #'same-last-id)))
 	     (rd (rec-decl con))
 	     (res (make-resolution rd (module-instance fn))))
 	(setf (recognizer-name fn)
@@ -1922,6 +1994,23 @@
 		:index (index fn)
 		:id (makesym "IN_~d" (index fn))
 		:type (mk-funtype intype cotupletype))))))
+
+(defmethod adt ((decl adt-accessor-decl))
+  (let* ((dtype (domain (type decl)))
+	 (adt (find-declared-adt-supertype
+	       (if (typep dtype 'subtype)
+		   (supertype dtype)
+		   dtype))))
+    ;; Usually, adt is (a subtype of) an adt-type-name instance
+    ;; But if there are mappings, the type could be anything
+    (when (adt-type-name? (find-supertype adt))
+      (adt adt))))
+
+(defmethod adt-constructor-decl ((decl adt-accessor-decl))
+  (let* ((adt (adt decl))
+	 (constr (find-if #'(lambda (c) (memq decl (arguments c))) (constructors adt))))
+    (assert (adt-constructor-decl? constr))
+    constr))
 
 (defmethod constructor ((fn accessor-name-expr))
   ;; An accessor-name-expr has a declaration of class adt-accessor-decl
