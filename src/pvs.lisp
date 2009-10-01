@@ -683,6 +683,7 @@
 		   imm-imps)))
     #+pvsdebug (assert (or (null (get-immediate-usings theory)) imps))
     (dolist (ith imps)
+      (assert (modname? ith))
       (let* ((gtheory (get-theory ith))
 	     (lib (or (library ith)
 		      (and (null gtheory)
@@ -692,8 +693,7 @@
 			  (and lib (get-theory* (id ith) lib))))
 	     (iname (lcopy ith 'library lib 'actuals nil 'mappings nil)))
 	(when (and itheory
-		   (generated-by itheory)
-		   (not (theory-interpretation? itheory)))
+		   (generated-by itheory))
 	  (setq iname (lcopy iname 'id (generated-by itheory)))
 	  (setq itheory (get-theory* (generated-by itheory) lib)))
 	(when itheory
@@ -806,8 +806,7 @@
 			       (get-theory* (id ith) lib))))
 	     (iname (lcopy ith 'library lib 'actuals nil 'mappings nil)))
 	(when (and itheory
-		   (generated-by itheory)
-		   (not (theory-interpretation? itheory)))
+		   (generated-by itheory))
 	  (setq iname (lcopy iname 'id (generated-by itheory)))
 	  (setq itheory (get-theory* (generated-by itheory) lib)))
 	(when itheory
@@ -1445,7 +1444,92 @@
   (and (tcc? fdecl)
        (not (proved? fdecl))))
 
+(defun sizeof-proof (fdecl)
+  (numberof-steps (editable-justification (justification fdecl))))
 
+(defun write-theory-sizes (theory out)
+  (let ((total 0))
+    (format out "Proof Sizes for theory ~a~%" (id theory))
+    (format out "~:{ ~a: ~d~%~}"
+      (mapcar #'(lambda (fd)
+		  (let ((psize (sizeof-proof fd)))
+		    (incf total psize)
+		    (list (id fd) psize)))
+	(provable-formulas (all-decls theory))))
+    (format out "Total proof size for theory ~a: ~d~2%"
+      (id theory) total)
+    total))
+
+(defun sizeof-proof-at (filename declname line &optional (origin "pvs"))
+  (let ((fdecl (formula-decl-to-prove filename declname line origin)))
+    (if fdecl
+	(pvs-message "Proof of ~a has ~d steps" (id fdecl) (sizeof-proof fdecl))
+	(pvs-message "Unable to find formula declaration"))))
+
+(defun sizeof-proofs-theory (theoryname)
+  (let ((theory (get-theory theoryname)))
+    (if theory
+	(pvs-buffer "Proof Sizes"
+	  (with-output-to-string (out)
+	    (write-theory-sizes theory out))
+	  t t)
+	(pvs-message "~a has not been typechecked" theoryname))))
+
+(defun sizeof-proofs-pvs-file (filename)
+  (let ((theories (cdr (gethash filename *pvs-files*))))
+    (if theories
+	(pvs-buffer "Proof Sizes"
+	  (with-output-to-string (out)
+	    (let ((total 0))
+	      (dolist (th theories)
+		(incf total (write-theory-sizes th out)))
+	      (when (cdr theories)
+		(format out "Total proof size for PVS File ~a: ~d~2%"
+		  filename total))))
+	  t t)
+	(pvs-message "~a has not been typechecked" filename))))
+
+(defun sizeof-proofs-importchain (theoryname)
+  (let ((theory (get-theory theoryname)))
+    (if theory
+	(let ((imports (remove-if #'(lambda (th)
+				      (or (from-prelude? th)
+					  (typep th '(or library-datatype
+							 library-theory))))
+			 (collect-theory-usings theoryname)))
+	      (total 0))
+	  (pvs-buffer "Proof Sizes"
+	    (with-output-to-string (out)
+	      (format out "Proof sizes for importchain of ~a~2%" theoryname)
+	      (dolist (th imports)
+		(incf total (write-theory-sizes th out)))
+	      (format out "Total proof size for import chain of ~a: ~d~2%"
+		theoryname total))
+	    t t))
+	(pvs-message "~a has not been typechecked" theoryname))))
+
+(defun sizeof-proofs-proofchain-at (filename declname line
+					     &optional (origin "pvs"))
+  (if (or (gethash filename *pvs-files*)
+	  (and (member origin '("ppe" "tccs") :test #'string=)
+	       (get-theory filename)))
+      (let ((fdecl (formula-decl-to-prove filename declname line origin)))
+	(if fdecl
+	    (pvs-buffer "Proof Sizes"
+	      (with-output-to-string (out)
+		(format out "Proof Sizes for proofchain of ~a" (id fdecl))
+		(let ((total 0))
+		  (format out "~:{ ~a: ~d~%~}"
+		    (mapcar #'(lambda (fd)
+				(let ((psize (sizeof-proof fd)))
+				  (incf total psize)
+				  (list (id fd) psize)))
+		      (provable-formulas (get-proofchain fdecl))))
+		  (format out "Total proof size for proofchain of ~a: ~d~2%"
+		    (id fdecl) total)))
+	      t t)
+	    (pvs-message "Unable to find formula declaration")))
+      (pvs-message "~a.pvs has not been typechecked" filename)))
 
 ;;; Prettyprinting
 
@@ -1548,46 +1632,8 @@
 
 (defun prettyprint-theory-instance (theoryname-string
 				    &optional context-theoryname)
-  (let* ((context-theory (when context-theoryname
-			   (get-typechecked-theory context-theoryname)))
-	 (*current-context* (context context-theory))
-	 (theoryname (pc-parse theoryname-string 'theory-decl-modname))
-	 (*collecting-tccs* t)
-	 (*tccforms* nil))
-    (typecheck-using theoryname)
-    (let* ((theory (get-theory theoryname))
-	   (stheory (subst-mod-params theory theoryname theory)))
-      ;; Now print out the theory
-      (pvs-buffer (makesym "~a.ppi" (id theoryname))
-	(with-output-to-string (out)
-	  (format out
-	      "% This is a theory instance buffer, providing information about~
-             ~%% a given theory instance (with substitutions made for given~
-             ~%% actuals and mappings).  There are three parts to this: the~
-             ~%% instance name, the TCCs that would be generated for this~
-             ~%% instance, and the substituted theory.  Note that the~
-             ~%% substituted theory may reference declarations of the context~
-             ~%% theory, so is not a real standalone theory.~2%")
-	  (format out
-	      "% This is the output of the theory instance for~%  %~a~%"
-	    (unpindent theoryname 2 :string t :comment? t))
-	  (let ((mapped-tccs-ctr 0))
-	    (dolist (tcc (reverse *tccforms*))
-	      (when (zerop mapped-tccs-ctr)
-		(format out
-		    "~%% Generates TCCs:~
-                       ~%%  Note: actual TCC formula names may not match,~
-                       ~%%        and not all AXIOMs get translated"))
-	      (format out
-		  "~2%  % ~@(~a~) TCC~%  ~a: OBLIGATION~%    ~a"
-		(tccinfo-kind tcc)
-		(make-tccinfo-tcc-name tcc context-theory
-				       (incf mapped-tccs-ctr))
-		(unpindent (tccinfo-formula tcc) 4 :string t))))
-	  (format out
-	      "~2%% The instantiated theory is:~2%~a"
-	    (unparse stheory :string t :char-width *default-char-width*)))
-	t))))
+  (pvs-message
+      "prettyprint-theory-instance no longer used - use prettyprint-expanded instead"))
 
 (defun make-tccinfo-tcc-name (tccinfo context-theory ctr)
   (makesym "IMP_~a_~@[~a_~]TCC~d"
@@ -1607,7 +1653,8 @@
 
 (defun prettyprint-expanded (theoryref)
   (let ((*no-comments* nil)
-	(*unparse-expanded* t))
+	(*unparse-expanded* t)
+	(*xt-periods-allowed* t))
     (pvs-buffer (format nil "~a.ppe" theoryref)
       (let* ((theory (get-typechecked-theory theoryref))
 	     (thstring (unparse theory
@@ -1626,6 +1673,7 @@
   (let* ((theory (get-typechecked-theory theoryref))
 	 (unproved-only? (and arg (not (minusp arg))))
 	 (include-trivial? (and arg (minusp arg)))
+	 (*xt-periods-allowed* t)
 	 (*no-comments* nil))
     (when theory
       (let* ((*comment-on-proof-status* t)
@@ -1760,9 +1808,6 @@
 
 (defmethod parsed? ((modref modname))
   (parsed?* (get-theory modref)))
-
-(defmethod parsed? ((mod theory-interpretation))
-  t)
 
 (defmethod parsed?* ((mod datatype-or-module))
   (or (from-prelude? mod)
@@ -2250,7 +2295,7 @@
 		     (t (pvs-message "Proving ~a..." (id decl))
 			(prove-tcc decl)))
 	     (unless (eq (proof-status decl) orig-status)
-	       (setq *justifications-changed* t)))))
+	       (setq *justifications-changed?* t)))))
 	((or (justification decl)
 	     (not (unproved? decl)))
 	 (pvs-message "~a is already proved" (id decl))
@@ -2670,7 +2715,7 @@
 ;;; get-parsed-theory gets the parsed theory, but will not save the context
 ;;; (last argument to parse-file)
 
-(defun get-parsed-theory (theoryref)
+(defun get-parsed-theory (theoryref &optional quiet?)
   (let ((mod (get-theory theoryref)))
     (when (and mod
 	       (filename mod)
@@ -2697,14 +2742,14 @@
 	   (get-theory theoryref))
 	  (t (let ((filename (context-file-of theoryref)))
 	       (if (and filename (file-exists-p (make-specpath filename)))
-		   (parse-file filename nil nil)
+		   (parse-file filename nil quiet?)
 		   (if (file-exists-p (make-specpath theoryref))
-		       (parse-file theoryref nil nil)
+		       (parse-file theoryref nil quiet?)
 		       (let ((file
 			      (look-for-theory-in-directory-files theoryref)))
 			 (if file
-			     (parse-file file nil nil)
-			     (parse-file theoryref nil nil)))))
+			     (parse-file file nil quiet?)
+			     (parse-file theoryref nil quiet?)))))
 	       (let ((pmod (get-theory theoryref)))
 		 (or pmod
 		     (type-error theoryref
@@ -2758,14 +2803,14 @@
 	   theory)
 	  (t (pvs-message "~a has not been parsed." theoryref)))))
 
-(defun get-typechecked-theory (theoryref &optional theories)
+(defun get-typechecked-theory (theoryref &optional theories quiet?)
   (let ((theoryname (if (modname? theoryref)
 			theoryref
 			(pc-parse theoryref 'modname))))
     (or (and (or *in-checker*
 		 *generating-adt*)
 	     (get-theory theoryname))
-	(let ((theory (get-parsed-theory theoryname)))
+	(let ((theory (get-parsed-theory theoryname quiet?)))
 	  (when theory
 	    (unless (or *in-checker*
 			(typechecked? theory)
