@@ -318,19 +318,12 @@ pvs-strategies files.")
     (if t ; *testing-restore*
 	(maphash #'(lambda (id theory)
 		     (declare (ignore id))
-		     (dolist (imp (all-usings theory))
-		       (when (and (theory-interpretation? (car imp))
-				  (not (lib-datatype-or-theory? (car imp))))
-			 (write-object-file (car imp))))
 		     (write-object-file theory force?))
 		 *pvs-modules*)
 	(multiple-value-bind (value condition)
 	    (ignore-file-errors
 	     (maphash #'(lambda (id theory)
 			  (declare (ignore id))
-			  (dolist (imp (all-usings theory))
-			    (when (theory-interpretation? (car imp))
-			      (write-object-file (car imp))))
 			  (write-object-file theory force?))
 		      *pvs-modules*))
 	  (declare (ignore value))
@@ -338,8 +331,6 @@ pvs-strategies files.")
 	    (pvs-message "~a" condition))))))
 
 (defun write-object-file (theory &optional force?)
-  ;; If there is no filename, the theory must be a theory-interpretation
-  ;; in which case we use the generating file.
   (when (typechecked? theory)
     (let* ((gtheory (get-theory-with-filename theory))
 	   (file (filename gtheory))
@@ -355,8 +346,7 @@ pvs-strategies files.")
 	(when (and te specdate)
 	  (unless (or (and (not force?)
 			   bindate
-			   (or (theory-interpretation? theory)
-			       (eql bindate (cdr te-date)))
+			   (eql bindate (cdr te-date))
 			   (< specdate bindate)))
 	    (pvs-log "Saving bin file for theory ~a" (binpath-id theory))
 	    (save-theory theory)
@@ -369,21 +359,8 @@ pvs-strategies files.")
   (assert (filename m))
   m)
 
-(defmethod get-theory-with-filename ((th theory-interpretation))
-  (get-theory-with-filename (module (generated-by-decl th))))
-
-(defmethod binpath-id ((th theory-interpretation))
-  (makesym "~a.~a" (binpath-id (module (generated-by-decl th))) (id th)))
-
 (defmethod binpath-id (th)
   (id th))
-
-(defmethod binpath-name ((inm modname) (th theory-interpretation))
-  (let ((gth (module (generated-by-decl th))))
-    (if (theory-interpretation? gth)
-	(binpath-name (copy inm 'id (makesym "~a.~a" (id gth) (id th)))
-		      gth)
-	(copy inm 'mod-id (id gth)))))
 
 (defmethod binpath-name ((inm modname) th)
   (declare (ignore th))
@@ -572,49 +549,46 @@ pvs-strategies files.")
       (let ((*current-context* (context theory)))
 	(multiple-value-bind (i-theories i-names)
 	    (all-importings theory)
-	  (multiple-value-bind (impg-theories impg-names)
+	  (multiple-value-bind (imp-theories imp-names)
 	      (add-generated-adt-theories i-theories i-names)
 	    (when (recursive-type? theory)
 	      (let ((adt-ths (adt-generated-theories theory)))
-		(setf impg-theories
-		      (append impg-theories adt-ths))
-		(setf impg-names
-		      (append impg-names
+		(setf imp-theories
+		      (append imp-theories adt-ths))
+		(setf imp-names
+		      (append imp-names
 			      (mapcar #'(lambda (ath) (mk-modname (id ath)))
 				adt-ths)))))
-	    (multiple-value-bind (imp-theories imp-names)
-		(add-generated-interpreted-theories
-		 impg-theories impg-names theory)
-	      (let ((inames
-		     (loop for ith in imp-theories
-			   as inm in imp-names
-			   unless (from-prelude? ith)
-			   collect
-			   (cons (binpath-name inm ith)
-				 (when (and (lib-datatype-or-theory? ith)
-					    (not (eq (gethash (id ith)
-							      *pvs-modules*)
-						     ith)))
-				   (lib-ref ith)))))
-		    (libalist nil)
-		    (thlist nil)
-		    (*current-context* (saved-context theory)))
-		;; (assert (or (not (memq 'typechecked (status theory)))
-		;;             *current-context*))
-		(loop for (inm . libref) in inames
-		      do (if libref
-			     (let ((libentry (assoc libref libalist
-						    :test #'string=))
-				   (nm (makesym "~a"
-						(lcopy inm 'library nil))))
-			       (if libentry
-				   (nconc libentry (list nm))
-				   (setq libalist
-					 (nconc libalist
-						(list (list libref nm))))))
-			     (push (makesym "~a" (lcopy inm 'library nil))
-				   thlist)))
-		(nconc libalist (list (cons nil (nreverse thlist)))))))))
+	    (let ((inames
+		   (loop for ith in imp-theories
+			 as inm in imp-names
+			 unless (from-prelude? ith)
+			 collect
+			 (cons (binpath-name inm ith)
+			       (when (and (lib-datatype-or-theory? ith)
+					  (not (eq (gethash (id ith)
+							    *pvs-modules*)
+						   ith)))
+				 (lib-ref ith)))))
+		  (libalist nil)
+		  (thlist nil)
+		  (*current-context* (saved-context theory)))
+	      ;; (assert (or (not (memq 'typechecked (status theory)))
+	      ;;             *current-context*))
+	      (loop for (inm . libref) in inames
+		    do (if libref
+			   (let ((libentry (assoc libref libalist
+						  :test #'string=))
+				 (nm (makesym "~a"
+					      (lcopy inm 'library nil))))
+			     (if libentry
+				 (nconc libentry (list nm))
+				 (setq libalist
+				       (nconc libalist
+					      (list (list libref nm))))))
+			   (push (makesym "~a" (lcopy inm 'library nil))
+				 thlist)))
+	      (nconc libalist (list (cons nil (nreverse thlist))))))))
       (let ((te (get-context-theory-entry (id theory))))
 	(when te
 	  (te-dependencies te)))))
@@ -622,104 +596,9 @@ pvs-strategies files.")
 (defmethod lib-datatype-or-theory? ((obj library-datatype-or-theory))
   t)
 
-(defmethod lib-datatype-or-theory? ((obj theory-interpretation))
-  (lib-datatype-or-theory? (module (generated-by-decl obj))))
-
 (defmethod lib-datatype-or-theory? (obj)
+  (declare (ignore obj))
   nil)
-
-(defmethod lib-ref ((obj theory-interpretation))
-  (lib-ref (from-theory obj)))
-
-(defun add-generated-interpreted-theories (i-theories i-names theory
-						      &optional
-						      imp-theories imp-names)
-  (cond ((null i-theories)
-	 (let ((int-ths nil)
-	       (int-nms nil))
-	   (dolist (use (all-usings theory))
-	     (when (and (theory-interpretation? (car use))
-			(not (memq (car use) imp-theories)))
-	       (push (car use) int-ths)
-	       (if (and (lib-datatype-or-theory? (car use))
-			(not (library (cadr use))))
-		   (push (copy (cadr use)
-			   'library (get-lib-id (from-theory (car use))))
-			 int-nms)
-		   (push (cadr use) int-nms))))
-	   (sort-added-interpreted-theories
-	    int-ths int-nms imp-theories imp-names)))
-	(t (multiple-value-bind (int-theories int-names)
-	       (add-generated-interpreted-theories*
-		(car i-theories) (car i-names) imp-theories)
-	     (add-generated-interpreted-theories
-	      (cdr i-theories)
-	      (cdr i-names)
-	      theory
-	      (nconc int-theories imp-theories)
-	      (nconc int-names imp-names))))))
-
-(defun sort-added-interpreted-theories (int-ths int-nms imp-theories imp-names)
-  (if (null int-ths)
-      (values (nreverse imp-theories) (nreverse imp-names))
-      (multiple-value-bind (com-int-ths com-int-nms next-int-ths next-int-nms)
-	  (collect-common-interpreted-theories int-ths int-nms)
-	(sort-added-interpreted-theories
-	 next-int-ths next-int-nms
-	 (nconc int-ths imp-theories)
-	 (nconc int-nms imp-names)))))
-
-(defun collect-common-interpreted-theories (int-ths int-nms)
-  (collect-common-interpreted-theories*
-   (cdr int-ths) (cdr int-nms)
-   (list (car int-ths)) (list (car int-nms))
-   nil nil))
-
-(defun collect-common-interpreted-theories* (int-ths int-nms
-						     com-int-ths com-int-nms
-						     next-int-ths next-int-nms)
-  (if (null int-ths)
-      (multiple-value-bind (srt-int-ths srt-int-nms)
-	  (sort-common-interpreted-theories com-int-ths com-int-nms)
-	(values srt-int-ths srt-int-nms next-int-ths next-int-nms))
-      (if (eq (from-theory (car int-ths)) (from-theory (car com-int-ths)))
-	  (collect-common-interpreted-theories*
-	   (cdr int-ths) (cdr int-nms)
-	   (cons (car int-ths) com-int-ths) (cons (car int-nms) com-int-nms)
-	   next-int-ths next-int-nms)
-	  (collect-common-interpreted-theories*
-	   (cdr int-ths) (cdr int-nms)
-	   com-int-ths com-int-nms
-	   (cons (car int-ths) next-int-ths)
-	   (cons (car int-nms) next-int-nms)))))
-
-(defun sort-common-interpreted-theories (int-ths int-nms)
-  ;; Want reverse order - so later declarations are earlier in the list
-  (let ((srt-ths (sort int-ths #'interpreted-theory-decl-follows
-		       :key #'generated-by-decl)))
-    (values srt-ths
-	    (mapcar #'(lambda (th)
-			(find (id th) int-nms :key #'id))
-	      srt-ths))))
-
-(defun interpreted-theory-decl-follows (d1 d2)
-  (memq d1 (memq d2 (all-decls (module d1)))))
-
-(defun add-generated-interpreted-theories* (theory name imp-theories)
-  (let ((int-theories nil)
-	(int-names nil))
-    (dolist (use (all-usings theory))
-      (when (and (theory-interpretation? (car use))
-		 (not (memq (car use) imp-theories)))
-	(push (car use) int-theories)
-	(if (and (lib-datatype-or-theory? (car use))
-		      (not (library (cadr use))))
-		 (push (copy (cadr use)
-			 'library (get-lib-id (from-theory (car use))))
-		       int-names)
-		 (push (cadr use) int-names))))
-    (values (cons theory (nreverse int-theories))
-	    (cons name (nreverse int-names)))))
 
 (defun add-generated-adt-theories (i-theories i-names
 					      &optional imp-theories imp-names)
@@ -1038,8 +917,7 @@ pvs-strategies files.")
 ;;;                 restore-theory-proofs*
 (defun restore-theories (filename)
   (let* ((*theories-restored* nil)
-	 (*adt-type-name-pending* nil)
-	 (*fetched-theory-interpretations* nil))
+	 (*adt-type-name-pending* nil))
     (dolist (te (ce-theories (get-context-file-entry filename)))
       (loop for (libref . theories) in (te-dependencies te)
 	    do (restore-theories* libref theories))
@@ -1073,7 +951,7 @@ pvs-strategies files.")
 	       (theories (mapcar #'(lambda (te)
 				     (gethash (id te) *pvs-modules*))
 			   tes)))
-	  (assert (or (theory-interpretation? theory) (filename theory)))
+	  (assert (filename theory))
 	  (push theory *theories-restored*)
 	  (when (filename theory)
 	    (setf (gethash (filename theory) *pvs-files*)
