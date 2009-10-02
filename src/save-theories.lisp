@@ -33,33 +33,14 @@
 
 (defvar *restore-object-hash*)
 
-(defvar *store-mapped-theories*)
-
 (defvar *restoring-type-application* nil)
 
 (defvar *bin-theories-set*)
 
 (defun save-theory (theory)
   (format t "~%Saving ~a" (binpath-id theory))
-  (let ((*store-mapped-theories* (accessible-interpreted-theories theory)))
-    (store-object-to-file (cons *binfile-version* theory)
-			  (make-binpath (binpath-id theory)))))
-
-(defun accessible-interpreted-theories (theory)
-  (let ((*store-mapped-theories* nil)
-	(*modules-visited* nil))
-    (accessible-interpreted-theories* (all-usings theory))
-    *store-mapped-theories*))
-
-(defun accessible-interpreted-theories* (usings)
-  (dolist (use usings)
-    (unless (memq (car use) *modules-visited*)
-      (when (theory-interpretation? (car use))
-	(pushnew (car use) *store-mapped-theories*)
-	(pushnew (from-theory (car use)) *store-mapped-theories*))
-      (push (car use) *modules-visited*)
-      (accessible-interpreted-theories* (all-usings (car use))))))
-
+  (store-object-to-file (cons *binfile-version* theory)
+			(make-binpath (binpath-id theory))))
 
 (defmethod get-theories-to-save (file)
   (mapcan #'get-theories-to-save (sort-theories (get-theories file))))
@@ -71,7 +52,6 @@
   (append (adt-generated-theories adt) (list adt)))
 
 ;;; Called from restore-theory in context.lisp
-;;; Assumes *fetched-theory-interpretations* is bound by the calling chain
 (defun get-theory-from-binfile (filename)
   (let ((file (make-binpath filename))
 	(start-time (get-internal-real-time))
@@ -158,30 +138,13 @@
   (if (typep obj '(not (or inline-recursive-type enumtype)))
       (if *saving-theory*
 	  (if (external-library-reference? obj)
-	      (if (theory-interpretation? obj)
-		  (let ((decl (generated-by-decl obj)))
-		    (reserve-space 5
-		      (push-word (store-obj 'inttheorylibref))
-		      (push-word (store-obj (id obj)))
-		      (push-word (store-obj (lib-ref obj)))
-		      (push-word (store-obj (id (module decl))))
-		      (push-word (store-obj
-				  (position decl (all-decls (module decl)))))))
-		  (reserve-space 3
-		    (push-word (store-obj 'modulelibref))
-		    (push-word (store-obj (id obj)))
-		    (push-word (store-obj (lib-ref obj)))))
-	      (if (theory-interpretation? obj)
-		  (let ((decl (generated-by-decl obj)))
-		    (reserve-space 4
-		      (push-word (store-obj 'inttheoryref))
-		      (push-word (store-obj (id obj)))
-		      (push-word (store-obj (id (module decl))))
-		      (push-word (store-obj
-				  (position decl (all-decls (module decl)))))))
-		  (reserve-space 2
-		    (push-word (store-obj 'moduleref))
-		    (push-word (store-obj (id obj))))))
+	      (reserve-space 3
+		(push-word (store-obj 'modulelibref))
+		(push-word (store-obj (id obj)))
+		(push-word (store-obj (lib-ref obj))))
+	      (reserve-space 2
+		(push-word (store-obj 'moduleref))
+		(push-word (store-obj (id obj)))))
 	  (let ((*saving-theory* obj))
 	    (call-next-method)))
       (call-next-method)))
@@ -198,17 +161,9 @@
 (defmethod external-library-reference? ((obj library-datatype-or-theory))
   (not (eq obj (gethash (id obj) *pvs-modules*))))
 
-(defmethod external-library-reference? ((obj theory-interpretation))
-  (external-library-reference? (module (generated-by-decl obj))))
-
 (defmethod external-library-reference? (obj)
   (declare (ignore obj))
   nil)
-
-(defmethod store-object* :around ((obj mod-decl))
-  (let ((*store-mapped-theories* (cons (get-theory (modname obj))
-				       *store-mapped-theories*)))
-    (call-next-method)))
 
 ;; (defmethod store-object* :around ((obj resolution))
 ;;   (assert (not (datatype? (get-theory (module-instance obj)))))
@@ -239,54 +194,10 @@
 	     mod-name lib-ref))
     theory))
 
-(defstruct int-theory-ref
-  mod-name from-theory pos)
-
-(setf (get 'inttheoryref 'fetcher) 'fetch-inttheoryref)
-(defun fetch-inttheoryref ()
-  (let* ((mod-name (fetch-obj (stored-word 1)))
-	 (from-theory (fetch-obj (stored-word 2)))
-	 (pos (fetch-obj (stored-word 3)))
-	 (theory (or (get-theory mod-name)
-		     (find mod-name *fetched-theory-interpretations*
-			   :test #'same-id)
-		     (let ((fth (get-theory from-theory)))
-		       (when fth
-			 (let ((decl (nth pos (all-decls fth))))
-			   (assert decl)
-			   (generated-theory decl)))))))
-    (unless theory
-      (error "Attempt to fetch unknown theory ~s" mod-name))
-    (pushnew theory *fetched-theory-interpretations*)
-    theory))
-
-(setf (get 'inttheorylibref 'fetcher) 'fetch-inttheorylibref)
-(defun fetch-inttheorylibref ()
-  (let* ((mod-name (fetch-obj (stored-word 1)))
-	 (lib-ref (fetch-obj (stored-word 2)))
-	 (from-theory (fetch-obj (stored-word 3)))
-	 (pos (fetch-obj (stored-word 4)))
-	 (theory (or (get-theory* mod-name lib-ref)
-		     (get-theory* mod-name nil)
-		     (find mod-name *fetched-theory-interpretations*
-			   :test #'same-id)
-		     (let ((fth (get-theory* from-theory lib-ref)))
-		       (when fth
-			 (let ((decl (nth pos (all-decls fth))))
-			   (assert decl)
-			   (generated-theory decl)))))))
-    (unless theory
-      (error "Attempt to fetch unknown library theory ~s from ~s"
-	     mod-name lib-ref))
-    (pushnew theory *fetched-theory-interpretations*)
-    theory))
-
 (defmethod update-fetched :around ((obj datatype-or-module))
   (call-next-method)
   (typecase obj
     (inline-recursive-type nil)
-    (theory-interpretation
-     (pushnew obj *fetched-theory-interpretations*))
     (t (assert (filename obj))
        (when (recursive-type? obj)
 	 (let ((atns (assq (id obj) *adt-type-name-pending*)))
@@ -330,15 +241,17 @@
     (reserve-space 3
       (assert (or (not *saving-theory*)
 		  (from-prelude? module)
+		  (memq module (all-imported-theories *saving-theory*))
 		  (assq module (all-usings *saving-theory*))
 		  ;; This shouldn't happen - but I haven't had time to chase
 		  ;; down exactly what is happening in untypecheck-usedbys
 		  ;; See ~owre/pvs-specs/Shankar/2007-06-12/
 		  ;; tpecheck dpll3_2, modify resolution, retypecheck, and sc.
 		  ;; Something is keeping a pointer to an old resolution theory
+		  (memq (get-theory (id module))
+			(all-imported-theories *saving-theory*))
 		  (assq (get-theory (id module))
-			(all-usings *saving-theory*))
-		  (memq module *store-mapped-theories*))
+			(all-usings *saving-theory*)))
 	      () "Attempt to store declaration in illegal theory")
       (cond ((number-declaration? obj)
 	     (push-word (store-obj 'number-declref))
@@ -574,9 +487,7 @@
 (setf (get 'declref 'fetcher) 'fetch-declref)
 (defun fetch-declref ()
   (let* ((mod-name (fetch-obj (stored-word 1)))
-	 (theory (or (get-theory mod-name)
-		     (find mod-name *fetched-theory-interpretations*
-			   :test #'same-id))))
+	 (theory (get-theory mod-name)))
     (unless theory
       (error "Attempt to fetch declaration from unknown theory ~s" mod-name))
     (let* ((decl-pos (stored-word 2))
@@ -590,9 +501,7 @@
   (let* ((lib-ref (fetch-obj (stored-word 1)))
 	 (mod-name (fetch-obj (stored-word 2)))
 	 (theory (or (get-theory* mod-name lib-ref)
-		     (get-theory* mod-name nil)
-		     (find mod-name *fetched-theory-interpretations*
-			   :test #'same-id))))
+		     (get-theory* mod-name nil))))
     (unless theory
       (error "Attempt to fetch declaration from unknown theory ~s" mod-name))
     (let* ((decl-pos (stored-word 3))
@@ -871,6 +780,14 @@
 		(prerestore-name-judgements-alist
 		 (name-judgements-alist judgements)
 		 (name-judgements-alist pjudgements)))
+	  (assert (listp (application-judgements-alist judgements)))
+	  (when (memq 'prelude-application-judgements
+		      (application-judgements-alist judgements))
+	    (assert
+	     (null (cdr (memq 'prelude-application-judgements
+			      (application-judgements-alist judgements)))))
+	    (nconc (nbutlast (application-judgements-alist judgements))
+		   (application-judgements-alist pjudgements)))
 	  ;;(prerestore-application-judgements-alist
 	  ;; (application-judgements-alist judgements)
 	  ;; (application-judgements-alist pjudgements))
