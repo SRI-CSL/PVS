@@ -3837,12 +3837,6 @@
       (typecheck rewrite-name))
     rewrite-name))
 
-(defun prefix? (x y) ;both strings
-  (let ((lx (length x))
-	(ly (length y)))
-    (and (<= lx ly)
-	 (equal x (subseq y 0 lx)))))
-
 (defun auto-rewrite-antecedent (num fmla always?)
   (let* ((string (format nil "~a_~a" (label *top-proofstate*)
 				 (abs num)))
