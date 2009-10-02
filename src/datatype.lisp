@@ -84,7 +84,8 @@ generated")
 	    (*current-context* (make-new-context *current-theory*))
 	    (*typechecking-module* t)
 	    (*tccs* nil)
-	    (*tccdecls* nil))
+	    (*tccdecls* nil)
+	    (*exprs-generating-actual-tccs* nil))
        (setf (gethash ,vtid (if (from-prelude? ,vadt)
 				*prelude*
 				*pvs-modules*))
@@ -778,7 +779,8 @@ generated")
 				  (mk-application p (mk-name-expr var)))
 			      (nreverse preds))))
 	(mk-adt-def-decl (id subtype) (copy *boolean*)
-			 (mk-disjunction appreds) (list bd)))
+			 (mk-disjunction appreds) (list bd) nil
+			 (place subtype)))
       (mk-adt-subtype-pred subtype (cdr constructors)
 			   (if (same-id subtype (subtype (car constructors)))
 			       (cons (recognizer (car constructors)) preds)
@@ -803,7 +805,9 @@ generated")
 				 preds))))
 
 (defun mk-adt-subtype-decl (subtype-name subtype)
-  (mk-type-decl (id subtype-name) 'type-eq-decl subtype))
+  (let ((tdecl (mk-type-decl (id subtype-name) 'type-eq-decl subtype)))
+    (setf (place tdecl) (place subtype-name))
+    tdecl))
 
 
 ;;; Generate the recognizer type declarations
