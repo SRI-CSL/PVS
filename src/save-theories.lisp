@@ -342,10 +342,10 @@
 	  (all-usings (adt-theory obj)))))
 
 (defmethod store-object* :around ((obj context))
-  (reserve-space 14
+  (reserve-space 13
     (with-slots (theory theory-name declaration
 			declarations-hash using-hash
-			named-theories library-alist
+			library-alist
 			judgements known-subtypes
 			conversions disabled-conversions
 			auto-rewrites disabled-auto-rewrites) obj
@@ -359,7 +359,6 @@
 	(push-word (store-obj decl-hash)))
       (let ((use-hash (create-store-using-hash using-hash)))
 	(push-word (store-obj use-hash)))
-      (push-word (store-obj named-theories))
       (let ((sjudgements (create-store-judgements judgements)))
 	(push-word (store-obj sjudgements)))
       (let ((ksubtypes (create-store-known-subtypes known-subtypes)))
