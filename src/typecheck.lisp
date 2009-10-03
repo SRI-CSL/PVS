@@ -170,6 +170,7 @@
 	     (*tccs* nil)
 	     (*tccdecls* nil)
 	     (*tccforms* nil)
+	     (*exprs-generating-actual-tccs* nil)
 	     (*current-context* (if (eq (current-theory) m)
 				    *current-context*
 				    (make-new-context m))))
@@ -210,20 +211,29 @@
       m)))
 
 (defun set-dependent-formals (formals)
-  (mapc #'(lambda (f1)
-	    (typecase f1
-	      (formal-subtype-decl
-	       (when (some #'(lambda (f2)
-			       (occurs-in f2 (type-value f1)))
-			   formals)
-		 (setf (dependent? f1) t)))
-	       
-	      (formal-const-decl
-	       (when (some #'(lambda (f2)
-			       (occurs-in f2 (type f1)))
-			   formals)
-		 (setf (dependent? f1) t)))))
-	formals))
+  (dolist (fm formals)
+    (typecase fm
+      (formal-theory-decl
+       (let ((fparms (free-params (theory-name fm))))
+	 (when (some #'(lambda (fp)
+			 (and (not (eq fp fm))
+			      (memq fp formals)))
+		     fparms)
+	   (setf (dependent? fm) t))))
+      (formal-subtype-decl
+       (let ((fparms (free-params (type-value fm))))
+	 (when (some #'(lambda (fp)
+			 (and (not (eq fp fm))
+			      (memq fp formals)))
+		     fparms)
+	   (setf (dependent? fm) t))))
+      (formal-const-decl
+       (let ((fparms (free-params (type fm))))
+	 (when (some #'(lambda (fp)
+			 (and (not (eq fp fm))
+			      (memq fp formals)))
+		     fparms)
+	   (setf (dependent? fm) t)))))))
 
 ;(defun adt-generating-theory (theory)
 ;  (unless *generating-adt*
@@ -310,34 +320,50 @@
   (type-error inst "Theory ~a not found" (id inst)))
 
 (defmethod typecheck-using* ((mod module) inst)
-  (let ((nmodinst inst)
-	(*typecheck-using* inst))
-    (cond ((actuals inst)
-	   (unless (length= (formals-sans-usings mod) (actuals inst))
-	     (type-error inst "Wrong number of actuals in ~a" inst))
-	   (typecheck-actuals inst)
-	   (typecheck-mappings (mappings inst) inst)
-	   (setq nmodinst (set-type-actuals inst mod))
-	   (unless (if (actuals inst)
-		       (fully-instantiated? (actuals inst))
-		       (fully-instantiated? (copy inst :mappings nil)))
-	     (type-error inst "Importing actuals must be fully instantiated"))
-	   (check-compatible-params (formals-sans-usings mod)
-				    (actuals inst) nil))
-	  ((mappings inst)
-	   (typecheck-mappings (mappings inst) inst)
-	   (setq nmodinst (set-type-actuals inst mod))))
+  (let* ((nmodinst inst)
+	 (*typecheck-using* inst))
+    (when (actuals inst)
+      (unless (length= (formals-sans-usings mod) (actuals inst))
+	(type-error inst "Wrong number of actuals in ~a" inst))
+      (typecheck-actuals inst)
+      ;; typecheck-mappings done by determine-implicit-mappings
+      ;;(typecheck-mappings (mappings inst) inst)
+      (setq nmodinst (set-type-actuals inst mod))
+      (unless (if (actuals inst)
+		  (fully-instantiated? (actuals inst))
+		  (fully-instantiated? (copy inst :mappings nil)))
+	(type-error inst "Importing actuals must be fully instantiated"))
+      ;; set-type-actuals already does this
+      ;;(check-compatible-params (formals-sans-usings mod)
+      ;;		    (actuals inst) nil)
+      )
+    (let* ((tgt-name (target inst))
+	   (tgt-theory (when tgt-name (get-typechecked-theory tgt-name)))
+	   (tgt-mappings (determine-implicit-mappings
+			  mod inst tgt-name tgt-theory)))
+      (when (or tgt-mappings (mappings inst))
+	(if tgt-mappings
+	    ;; Note that tgt-mappings includes the (mappings inst)
+	    (setq nmodinst (set-type-maps (lcopy inst
+					    :mappings tgt-mappings
+					    :target nil)
+					  mod))
+	    (setq nmodinst (set-type-maps inst mod)))))
+    (unless (resolution inst)
+      (setf (resolutions inst) (list (make-resolution mod inst))))
+    (unless (resolution nmodinst)
+      (setf (resolutions nmodinst) (list (make-resolution mod nmodinst))))
     (add-to-using nmodinst mod)
     (unless (eq nmodinst inst)
       (let ((theory (get-theory inst)))
 	(assert (or (not (library-datatype-or-theory? theory))
 		    (library inst)))
 	(put-importing inst theory)))
-    (when (some #'(lambda (m) (mod-decl? (declaration (lhs m))))
-		(mappings nmodinst))
-      (add-theory-mappings-importings mod nmodinst))
-    (when (some #'formal-theory-decl? (formals mod))
-      (add-theory-parameters-importings mod nmodinst))
+    ;;     (when (some #'(lambda (m) (mod-decl? (declaration (lhs m))))
+    ;; 		(mappings nmodinst))
+    ;;       (add-theory-mappings-importings mod nmodinst))
+    ;;     (when (some #'formal-theory-decl? (formals mod))
+    ;;       (add-theory-parameters-importings mod nmodinst))
     (when (mappings nmodinst)
       (generate-mapped-axiom-tccs nmodinst))
     (unless *ignore-exportings*
@@ -365,10 +391,8 @@
 		       (mod-decl? (declaration (lhs map))))
 	      (let* ((thname (theory-ref (expr (rhs map))))
 		     (rth (target-mapped-theory (declaration (expr (rhs map)))))
-		     (mtheory (if (theory-interpretation? rth)
-				  (from-theory rth)
-				  rth)))
-		(assert (same-id thname mtheory))
+		     (mtheory rth))
+		(assert (same-id (get-theory thname) mtheory))
 		(add-to-using (mk-modname (id thname)
 				(or (actuals (expr (rhs map)))
 				    (actuals thname))
@@ -432,8 +456,9 @@
 			       (fully-instantiated? iname)))
 	(unless (and (formals-sans-usings itheory) (null (actuals iname)))
 	  ;; Add this to the assuming-instances list if fully instantiated
-	  (pushnew iname (assuming-instances (current-theory))
-		   :test #'tc-eq))
+	  (pushnew (list iname) (assuming-instances (current-theory))
+		   :test #'(lambda (x y)
+				   (not (eq (simple-match (car y) x) 'fail)))))
 	(unless skip-add-to-using?
 	  (add-to-using iname itheory))))))
 
@@ -587,8 +612,7 @@
   (update-known-subtypes theory theoryname)
   (update-judgements-of-current-context theory theoryname)
   (update-conversions-of-current-context theory theoryname)
-  (update-auto-rewrites-of-current-context theory theoryname)
-  (update-named-theories-of-current-context theory theoryname))
+  (update-auto-rewrites-of-current-context theory theoryname))
 
 (defun update-usings-hash (theory theoryname)
   (let ((thimps (get-importings theory)))
@@ -725,11 +749,7 @@
 	(from-prelude? decl)
 	(from-prelude-library? decl)
 	(unless (or (from-prelude? theory)
-		    (from-prelude-library? theory)
-		    (and (theory-interpretation? th)
-			 (formal-theory-decl? (generated-by-decl th))
-			 (not (memq (generated-by-decl th)
-				    (formals (current-theory))))))
+		    (from-prelude-library? theory))
 	  (let ((exp (exporting theory)))
 	    (if (eq (module decl) theory)
 		(or (eq (kind exp) 'default)
@@ -830,23 +850,8 @@
   (dolist (r (disabled-auto-rewrites (saved-context theory)))
     (pushnew r (disabled-auto-rewrites *current-context*))))
 
-(defun update-named-theories-of-current-context (theory theoryname)
-  (declare (ignore theoryname))
-  (when (saved-context theory)
-    (dolist (nt (named-theories (saved-context theory)))
-      (unless (unimported-mapped-theory? nt theory theoryname)
-	(pushnew nt (named-theories *current-context*))))))
-
-(defmethod unimported-mapped-theory? ((th theory-interpretation)
-				      theory theoryname)
-  (let ((gdecl (generated-by-decl th)))
-    (or (and (formal-theory-decl? gdecl)
-	     (not (memq gdecl (formals-sans-usings (current-theory)))))
-	(and (mod-decl? gdecl)
-	     (find (generated-by-decl th) (mappings theoryname)
-		   :key #'(lambda (map) (declaration (lhs map))))))))
-
 (defmethod unimported-mapped-theory? (th theory theoryname)
+  (declare (ignore th theory theoryname))
   nil)
 
 (defun list-diff (l1 l2 &optional elts)
@@ -903,7 +908,7 @@
 	    (if (formal-theory-decl? (car formals))
 		(let ((formal (car formals))
 		      (act (car actuals)))
-		  (append (make-mapping-alist act formal) assoc))
+		  (append (theory-mappings formal) assoc))
 		(acons (car formals)
 		       (if (formal-type-decl? (car formals))
 			   (type-value (car actuals))
@@ -948,7 +953,7 @@
 		      formal-theory-decl))
     (type-error act "Theory name expected here"))
   (check-compatible-theory-param*
-   (from-theory (generated-theory formal)) (declaration act) act assoc))
+   (get-theory (theory-name formal)) (declaration act) act assoc))
 
 (defmethod check-compatible-theory-param* (ftheory (adecl module) act assoc)
   (declare (ignore assoc))
@@ -965,12 +970,12 @@
 (defmethod check-compatible-theory-param* (ftheory (adecl formal-theory-decl)
 						   act assoc)
   (check-compatible-theory-param* ftheory
-				  (from-theory (generated-theory adecl))
+				  (get-theory (modname adecl))
 				  act assoc))
 
 (defmethod check-compatible-theory-param* (ftheory (adecl mod-decl) act assoc)
   (check-compatible-theory-param* ftheory
-				  (from-theory (generated-theory adecl))
+				  (get-theory (modname adecl))
 				  act assoc))
 
 (defmethod sub-struct-type? ((t1 recordtype) (t2 recordtype))
@@ -997,13 +1002,11 @@
 (defmethod typecheck-mappings (mappings (thinst modname))
   (unless (or (not mappings)
 	      (already-typed? mappings))
-    (let* ((aliases (get-theory-aliases thinst))
-	   (inst (or (car aliases) thinst))
-	   (lhs-theory (get-theory inst)))
-      (unless lhs-theory
-	(type-error inst "Theory ~a not found" inst))
-      (let ((lhs-context (context lhs-theory))
-	    (lhs-theory-decls (interpretable-declarations lhs-theory)))
+    (let ((lhs-context (mapping-lhs-theory-context thinst)))
+      (unless lhs-context
+	(type-error thinst "Theory reference ~a not found" thinst))
+      (let* ((lhs-theory (theory lhs-context))
+	     (lhs-theory-decls (interpretable-declarations lhs-theory)))
 	(dolist (mapping mappings)
 	  (unless (already-typed? mapping)
 	    (let* ((*current-theory* lhs-theory)
@@ -1033,12 +1036,18 @@
 			      (resolve* (lhs mapping) 'expr nil)))))
 		   (nres (unless (and (kind mapping)
 				      (not (eq (kind mapping) 'expr)))
-			   (when (and (integerp (id (lhs mapping)))
+			   (when (and (or (integerp (id (lhs mapping)))
+					  (every #'digit-char-p
+						 (string (id (lhs mapping)))))
 				      (or (null (mod-id (lhs mapping)))
 					  (eq (mod-id (lhs mapping))
 					      '|numbers|)))
 			     (list (mk-resolution
-				       (number-declaration (id (lhs mapping)))
+				       (number-declaration
+					(if (integerp (id (lhs mapping)))
+					    (id (lhs mapping))
+					    (parse-integer
+					     (string (id (lhs mapping))))))
 				     (mk-modname '|numbers|) *number*)))))
 		   (thres (unless (and (kind mapping)
 				       (not (eq (kind mapping) 'theory)))
@@ -1067,10 +1076,40 @@
 					      (car (resolutions (lhs mapping))))
 					 :id (id (expr (rhs mapping)))
 					 :module 'unbound)))))
-	    (unless (mapping-rename? mapping)
-	      (typecheck-mapping-rhs mapping))
-	    ;;(assert (ptypes (expr (rhs mapping))))
+	    (typecheck-mapping-rhs mapping)
+	    (assert (or (type-value (rhs mapping))
+			(name-expr? (expr (rhs mapping)))
+			(ptypes (expr (rhs mapping)))))
 	    ))))))
+
+
+;;; mapping-lhs-decl finds the declaration or theory in which the lhs is defined
+;;; This is used to create a context, which must include all declarations
+;;; given by renamings.
+
+(defmethod mapping-lhs-theory-context ((thname modname))
+  (assert (every #'typed? (actuals thname)))
+  ;;(assert (null (resolutions thname)))
+  (let ((res (resolve* (lcopy thname :mappings nil) 'module nil)))
+    (when res
+      (assert (null (cdr res)))
+      (mapping-lhs-theory-context (declaration (car res))))))
+
+(defmethod mapping-lhs-theory-context ((thdecl theory-abbreviation-decl))
+  (assert (resolution (theory-name thdecl)))
+  (mapping-lhs-theory-context (theory-name thdecl)))
+
+(defmethod mapping-lhs-theory-context ((thdecl mod-decl))
+  (assert (saved-context thdecl))
+  (saved-context thdecl))
+
+(defmethod mapping-lhs-theory-context ((thdecl formal-theory-decl))
+  (assert (saved-context thdecl))
+  (saved-context thdecl))
+
+(defmethod mapping-lhs-theory-context ((th module))
+  (context th))
+  
 
 (defmethod already-typed? ((list list))
   (every #'already-typed? list))
@@ -1107,11 +1146,23 @@
 			  (rhs mapping)))
 
 (defmethod typecheck-mapping-rhs ((mapping mapping-rename))
-  (when (declared-type mapping)
-    (setf (type mapping) (typecheck* (declared-type mapping) nil nil nil)))
-  ;; Just check that the rhs won't clash with any existing names of the
-  ;; source theory.
-  )
+  (with-slots (lhs rhs declared-type type) mapping
+    (unless (or (type-value rhs) (resolutions (expr rhs)))
+      (when declared-type
+	(setf type (typecheck* declared-type nil nil nil)))
+      ;; We know that the rhs won't clash with any existing names of the
+      ;; source theory, because the (unique) theory-decl id will be prepended
+      (let* ((ldecl (declaration lhs))
+	     ;; We create a new declaration and resolution for the RHS, that will be
+	     ;; used for inlining later.
+	     (rdecl (copy ldecl :id (id rhs) :generated-by ldecl))
+	     (res (make-resolution rdecl (current-theory-name) type)))
+	(setf (resolutions (expr rhs)) (list res))
+	(typecase ldecl
+	  (const-decl
+	   (setf (type (expr rhs)) (type res)))
+	  ((or mod-decl theory-formal-decl)
+	   (change-class (expr rhs) 'theory-name-expr)))))))
 
 (defmethod typecheck-mapping-rhs* ((ex name-expr) kind type rhs)
   (assert (or (null (type ex)) (null type) (compatible? (type ex) type)))
@@ -1178,7 +1229,7 @@
   t)
 
 (defmethod interpretable? ((d type-decl))
-  t)
+  (not (adt-type-name? (type-value d))))
 
 (defmethod interpretable? ((d type-def-decl))
   nil)
@@ -1239,7 +1290,8 @@
 (defun collect-all-exportable-decls (theory)
   (remove-if #'(lambda (d)
 		 (typep d '(or importing var-decl field-decl recursive-type)))
-	     (append (assuming theory)
+	     (append (theory-formal-decls theory)
+		     (assuming theory)
 		     (theory theory))))
 
 (defun check-exported-names (expnames decls expdecls)
@@ -1413,34 +1465,33 @@
 	  (collect-exporting-with-theories itheory))))))
 
 (defun check-exported-internal-completeness (expnames expdecls)
-  (mapc #'(lambda (edecl)
-	    (let ((rdecls (remove-if
-			      #'(lambda (d)
-				  (or (not (eq (module d) (current-theory)))
-				      (typep d '(or formal-decl importing
-						    var-decl field-decl
-						    recursive-type module
-						    mapping-subst))
-				      (and (const-decl? d)
-					   (formal-subtype-decl?
-					    (generated-by d)))
-				      (member d expdecls :test #'eq)))
-			    (refers-to edecl))))
-	      (when rdecls
-		(let ((expname (if (consp expnames)
-				   (car (member edecl expnames
-						:test #'same-id))
-				   edecl)))
-		  (type-error expname
-		    "~a may not be exported unless the following are also:~
+  (dolist (edecl expdecls)
+    (let ((rdecls (remove-if
+		      #'(lambda (d)
+			  (or (not (eq (module d) (current-theory)))
+			      (typep d '(or formal-decl importing
+					    var-decl field-decl
+					    recursive-type module
+					    mapping-subst))
+			      (and (const-decl? d)
+				   (formal-subtype-decl?
+				    (generated-by d)))
+			      (member d expdecls :test #'eq)))
+		    (refers-to edecl))))
+      (when rdecls
+	(let ((expname (if (consp expnames)
+			   (car (member edecl expnames
+					:test #'same-id))
+			   edecl)))
+	  (type-error expname
+	    "~a may not be exported unless the following are also:~
                      ~%  ~{~a~^, ~}"
-		    (if (consp expnames)
-			expname
-			(format nil "~a:~a" (id expname) (ptype-of expname)))
-		    (mapcar #'(lambda (d) (format nil "~a:~a"
-					    (id d) (ptype-of d)))
-		      rdecls))))))
-	expdecls))
+	    (if (consp expnames)
+		expname
+		(format nil "~a:~a" (id expname) (ptype-of expname)))
+	    (mapcar #'(lambda (d) (format nil "~a:~a"
+				    (id d) (ptype-of d)))
+	      rdecls)))))))
 
 (defun check-exported-external-completeness (expnames exptheories expdecls)
   (unless (null expdecls)
@@ -1484,7 +1535,7 @@
 	(type-error (car theories) "Theory ~a not found" (car theories)))
       (when (actuals (car theories))
 	(typecheck-actuals (car theories))
-	(set-type-actuals (car theories) theory))
+	(set-type-actuals-and-maps (car theories) theory))
       (unless (member (car theories)
 		      (get-importings theory)
 		      :test #'check-exported-theories-test)
