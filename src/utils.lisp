@@ -473,7 +473,6 @@
 		cth))
 	    (car (assoc id (prelude-libraries-uselist)
 			:test #'eq :key #'id))
-	    (find id (named-theories *current-context*) :key #'id)
 	    (unless have-cc
 	      ;; We only allow this from top-level calls, in effect,
 	      ;; when there is no context.
@@ -1247,7 +1246,6 @@
 	   :declarations-hash (copy (declarations-hash context))
 	   :using-hash (copy (using-hash context))
 	   :library-alist (library-alist context)
-	   :named-theories (copy-list (named-theories context))
 	   :conversions (conversions context)
 	   :disabled-conversions (copy-list (disabled-conversions context))
 	   :known-subtypes (known-subtypes context)
