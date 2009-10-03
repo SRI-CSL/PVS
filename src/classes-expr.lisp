@@ -586,7 +586,6 @@
   library-alist
   (declarations-hash :restore-as nil)
   (using-hash :restore-as nil)
-  named-theories
   (judgements :initform (make-instance 'judgements) :restore-as nil)
   (known-subtypes :initform nil :restore-as nil)
   (conversions :initform nil :restore-as nil)
