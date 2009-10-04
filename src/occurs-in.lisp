@@ -314,11 +314,10 @@
       (occurs-in obj (expr act))))
 
 (defmethod occurs-in ((obj formal-theory-decl) (nm name))
-  (occurs-in (generated-theory obj) nm))
+  (occurs-in (theory-mappings obj) nm))
 
-(defmethod occurs-in ((obj theory-interpretation) (nm name))
-  (and (resolution nm)
-       (eq (module (declaration nm)) obj)))
+(defmethod occurs-in ((obj mod-decl) (nm name))
+  (occurs-in (theory-mappings obj) nm))
 
 ;;; id-occurs-in checks whether the id occurs in the term.  Note that we
 ;;; use string= rather than eq, since string= ignores package names.
@@ -349,6 +348,11 @@
   (unless (null l)
     (or (id-occurs-in id (car l))
 	(id-occurs-in id (cdr l)))))
+
+(defmethod id-occurs-in :around (id (te type-expr))
+  (if (print-type te)
+      (id-occurs-in id (print-type te))
+      (call-next-method)))
 
 ;(defmethod id-occurs-in (id (te type-name))
 ;  (or (tc-eq id te)
@@ -498,104 +502,120 @@
     found))
 
 ;;; var-occurs-in checks whether the variable id occurs in the term y
-;;; Unlike id-occurs-in, it uses eq test and does not go into types.
+;;; Unlike id-occurs-in, it uses eq test and does not go into types and
+;;; ignores lambda bound variables.
 
-(defmethod var-occurs-in (id y)
+(defvar *var-occurs-in-bindings*)
+
+(defun var-occurs-in (id y)
+  (let ((*var-occurs-in-bindings* nil))
+    (var-occurs-in* id y)))
+
+(defmethod var-occurs-in* (id y)
   (eq id y))
 
-(defmethod var-occurs-in (id (te type-expr))
+(defmethod var-occurs-in* (id (te type-expr))
   (declare (ignore id))
   nil)
 
-(defmethod var-occurs-in (id (l list))
+(defmethod var-occurs-in* (id (l list))
   (unless (null l)
-    (or (var-occurs-in id (car l))
-	(var-occurs-in id (cdr l)))))
+    (or (var-occurs-in* id (car l))
+	(var-occurs-in* id (cdr l)))))
 
-(defmethod var-occurs-in (id (ex number-expr))
+(defmethod var-occurs-in* (id (ex number-expr))
   (declare (ignore id))
   nil)
 
-(defmethod var-occurs-in (id (ex record-expr))
-  (var-occurs-in id (assignments ex)))
+(defmethod var-occurs-in* (id (ex record-expr))
+  (var-occurs-in* id (assignments ex)))
 
-(defmethod var-occurs-in (id (ex tuple-expr))
-  (var-occurs-in id (exprs ex)))
+(defmethod var-occurs-in* (id (ex tuple-expr))
+  (var-occurs-in* id (exprs ex)))
 
-(defmethod var-occurs-in (id (ex projection-expr))
+(defmethod var-occurs-in* (id (ex projection-expr))
   (eq id (id ex)))
 
-(defmethod var-occurs-in (id (ex injection-expr))
+(defmethod var-occurs-in* (id (ex injection-expr))
   (eq id (id ex)))
 
-(defmethod var-occurs-in (id (ex injection?-expr))
+(defmethod var-occurs-in* (id (ex injection?-expr))
   (eq id (id ex)))
 
-(defmethod var-occurs-in (id (ex extraction-expr))
+(defmethod var-occurs-in* (id (ex extraction-expr))
   (eq id (id ex)))
 
-(defmethod var-occurs-in (id (ex projection-application))
+(defmethod var-occurs-in* (id (ex projection-application))
   (or (eq id (id ex))
-      (var-occurs-in id (argument ex))))
+      (var-occurs-in* id (argument ex))))
 
-(defmethod var-occurs-in (id (ex injection-application))
+(defmethod var-occurs-in* (id (ex injection-application))
   (or (eq id (id ex))
-      (var-occurs-in id (argument ex))))
+      (var-occurs-in* id (argument ex))))
 
-(defmethod var-occurs-in (id (ex injection?-application))
+(defmethod var-occurs-in* (id (ex injection?-application))
   (or (eq id (id ex))
-      (var-occurs-in id (argument ex))))
+      (var-occurs-in* id (argument ex))))
 
-(defmethod var-occurs-in (id (ex extraction-application))
+(defmethod var-occurs-in* (id (ex extraction-application))
   (or (eq id (id ex))
-      (var-occurs-in id (argument ex))))
+      (var-occurs-in* id (argument ex))))
 
-(defmethod var-occurs-in (id (ex field-application))
+(defmethod var-occurs-in* (id (ex field-application))
   (or (eq id (id ex))
-      (var-occurs-in id (argument ex))))
+      (var-occurs-in* id (argument ex))))
 
-(defmethod var-occurs-in (id (ex application))
-  (or (var-occurs-in id (operator ex))
-      (var-occurs-in id (argument ex))))
+(defmethod var-occurs-in* (id (ex application))
+  (or (var-occurs-in* id (operator ex))
+      (var-occurs-in* id (argument ex))))
 
-(defmethod var-occurs-in (id (ex binding-expr))
-  (or (var-occurs-in id (bindings ex))
-      (var-occurs-in id (expression ex))))
+(defmethod var-occurs-in* (id (ex lambda-expr))
+  (let ((*var-occurs-in-bindings* (append (bindings ex) *var-occurs-in-bindings*)))
+    (var-occurs-in* id (expression ex))))
 
-(defmethod var-occurs-in (id (ex cases-expr))
-  (or (var-occurs-in id (expression ex))
-      (var-occurs-in id (selections ex))
-      (var-occurs-in id (else-part ex))))
+(defmethod var-occurs-in* (id (ex binding-expr))
+  (or (var-occurs-in* id (bindings ex))
+      (var-occurs-in* id (expression ex))))
 
-(defmethod var-occurs-in (id (ex selection))
-  (or (var-occurs-in id (constructor ex))
-      (var-occurs-in id (args ex))
-      (var-occurs-in id (expression ex))))
+(defmethod var-occurs-in* (id (ex cases-expr))
+  (or (var-occurs-in* id (expression ex))
+      (var-occurs-in* id (selections ex))
+      (var-occurs-in* id (else-part ex))))
 
-(defmethod var-occurs-in (id (ex update-expr))
-  (or (var-occurs-in id (expression ex))
-      (var-occurs-in id (assignments ex))))
+(defmethod var-occurs-in* (id (ex selection))
+  (or (var-occurs-in* id (constructor ex))
+      (var-occurs-in* id (args ex))
+      (var-occurs-in* id (expression ex))))
 
-(defmethod var-occurs-in (id (ass assignment))
-  (or (var-occurs-in id (arguments ass))
-      (var-occurs-in id (expression ass))))
+(defmethod var-occurs-in* (id (ex update-expr))
+  (or (var-occurs-in* id (expression ex))
+      (var-occurs-in* id (assignments ex))))
 
-(defmethod var-occurs-in (id (nm name))
+(defmethod var-occurs-in* (id (ass assignment))
+  (or (var-occurs-in* id (arguments ass))
+      (var-occurs-in* id (expression ass))))
+
+(defmethod var-occurs-in* (id (ex name-expr))
+  (declare (ignore id))
+  (unless (memq (declaration ex) *var-occurs-in-bindings*)
+    (call-next-method)))
+
+(defmethod var-occurs-in* (id (nm name))
   (or (if (symbolp id)
 	  (eq id (id nm))
 	  (and (integerp id)
 	       (integerp (id nm))
 	       (= id (id nm))))
-      (var-occurs-in id (actuals nm))))
+      (var-occurs-in* id (actuals nm))))
 
-(defmethod var-occurs-in (id (act actual))
+(defmethod var-occurs-in* (id (act actual))
   (if (type-value act)
-      (var-occurs-in id (type-value act))
-      (var-occurs-in id (expr act))))
+      (var-occurs-in* id (type-value act))
+      (var-occurs-in* id (expr act))))
 
-(defmethod var-occurs-in (id (bd bind-decl))
+(defmethod var-occurs-in* (id (bd bind-decl))
   (or (eq id (id bd))
-      (var-occurs-in id (declared-type bd))))
+      (var-occurs-in* id (declared-type bd))))
 
 ;;; collect-free-ids
 
