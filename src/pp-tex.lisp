@@ -488,6 +488,8 @@
     (when (or *unparse-expanded*
 	      *adt*
 	      (not (generated-by decl)))
+      (when (@decl? semi)
+	(pp-tex-keyword '@DECL))
       (cond ((theory-abbreviation-decl? decl)
 	     (call-next-method))
 	    ((and chain?
@@ -512,7 +514,7 @@
 	       (write-char #\space)
 	       ;;(pprint-newline :fill)
 	       (call-next-method)
-	       (when semi (write-char #\;))
+	       (when (semic? semi) (write-char #\;))
 	       (pprint-indent :block 0)
 	       (unless (typep decl 'formal-decl)
 		 (write "\\vspace*{\\pvsdeclspacing}")))))))
@@ -796,7 +798,7 @@
 	     (write-char #\space)
 	     (pprint-newline :fill)
 	     (pp-tex* declared-type)
-	     (when semi (write-char #\;))
+	     (when (semic? semi) (write-char #\;))
 	     (write "\\vspace*{\\pvsdeclspacing}")
 	     (pprint-indent :block 0)
 	     (setq *pretty-printed-prefix* nil)))))
@@ -828,7 +830,7 @@
 	     (write-char #\space)
 	     (pprint-newline :fill)
 	     (pp-tex* declared-type)
-	     (when semi (write-char #\;))
+	     (when (semic? semi) (write-char #\;))
 	     (write "\\vspace*{\\pvsdeclspacing}")
 	     (pprint-indent :block 0)
 	     (setq *pretty-printed-prefix* nil)))))
@@ -858,7 +860,7 @@
 	     (write-char #\space)
 	     (pprint-newline :fill)
 	     (pp-tex* declared-type)
-	     (when semi (write-char #\;))
+	     (when (semic? semi) (write-char #\;))
 	     (write "\\vspace*{\\pvsdeclspacing}")
 	     (pprint-indent :block 0)
 	     (setq *pretty-printed-prefix* nil)))))
@@ -888,7 +890,7 @@
 	     (write-char #\space)
 	     (pprint-newline :fill)
 	     (pp-tex* declared-type)
-	     (when semi (write-char #\;))
+	     (when (semic? semi) (write-char #\;))
 	     (write "\\vspace*{\\pvsdeclspacing}")
 	     (pprint-indent :block 0)
 	     (setq *pretty-printed-prefix* nil)))))
@@ -925,7 +927,7 @@
       (write-char #\space)
       (pprint-newline :miser))
     (pp-tex-rewrite-names rewrite-names)
-    (when semi
+    (when (semic? semi)
       (write-char #\;))
     (pprint-newline :mandatory)))
 
