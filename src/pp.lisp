@@ -53,6 +53,12 @@
 
 (defvar pvs-prec-info (make-hash-table :test #'eq))
 
+(defmacro semic? (semi)
+  `(memq ,semi '(t both)))
+
+(defmacro @decl? (semi)
+  `(memq ,semi '(@decl both)))
+
 (mapc #'(lambda (nt) (init-prec-info nt pvs-prec-info)) '(type-expr expr))
 (mapc #'(lambda (entry)
 	  ;;             nt-name     oper         table-index   value
@@ -582,6 +588,9 @@ bind tighter.")
     (when (or *unparse-expanded*
 	      *adt*
 	      (not (generated-by decl)))
+      (when (@decl? semi)
+	(write '@DECL)
+	(write-char #\space))
       (cond ((theory-abbreviation-decl? decl)
 	     (call-next-method))
 	    ((and chain?
@@ -606,7 +615,7 @@ bind tighter.")
 	       (write-char #\space)
 	       ;;(pprint-newline :fill)
 	       (call-next-method)
-	       (when semi (write-char #\;))
+	       (when (semic? semi) (write-char #\;))
 	       (pprint-indent :block 0))))))
 
 (defun pp-decl-formals (formals)
@@ -852,7 +861,7 @@ bind tighter.")
 	     (write-char #\space)
 	     (pprint-newline :fill)
 	     (pp* declared-type)
-	     (when semi (write-char #\;))
+	     (when (semic? semi) (write-char #\;))
 	     (pprint-indent :block 0)
 	     (setq *pretty-printed-prefix* nil)))))
 
@@ -883,7 +892,7 @@ bind tighter.")
 	     (write-char #\space)
 	     (pprint-newline :fill)
 	     (pp* declared-type)
-	     (when semi (write-char #\;))
+	     (when (semic? semi) (write-char #\;))
 	     (pprint-indent :block 0)
 	     (setq *pretty-printed-prefix* nil)))))
 
@@ -912,7 +921,7 @@ bind tighter.")
 	     (write-char #\space)
 	     (pprint-newline :fill)
 	     (pp* declared-type)
-	     (when semi (write-char #\;))
+	     (when (semic? semi) (write-char #\;))
 	     (pprint-indent :block 0)
 	     (setq *pretty-printed-prefix* nil)))))
 
@@ -941,7 +950,7 @@ bind tighter.")
 	     (write-char #\space)
 	     (pprint-newline :fill)
 	     (pp* declared-type)
-	     (when semi (write-char #\;))
+	     (when (semic? semi) (write-char #\;))
 	     (pprint-indent :block 0)
 	     (setq *pretty-printed-prefix* nil)))))
 
@@ -978,7 +987,7 @@ bind tighter.")
       (write-char #\space)
       (pprint-newline :miser))
     (pp-rewrite-names rewrite-names)
-    (when semi
+    (when (semic? semi)
       (write-char #\;))
     (unless *pp-no-newlines?*
       (pprint-newline :mandatory))))
@@ -1612,9 +1621,11 @@ bind tighter.")
       (values x exp)))
 
 (defmethod simple-name? ((ex name))
-  (and (not (mod-id ex))
+  (and (not (and (id ex) (mod-id ex)))
        (not (actuals ex))
-       (not (library ex))))
+       (not (library ex))
+       (null (mappings ex))
+       (null (target ex))))
 
 (defmethod simple-name? (ex)
   (declare (ignore ex))
@@ -2347,7 +2358,6 @@ bind tighter.")
 	(pprint-newline :fill)
 	(pp* declared-type)))))
 
-
 (defmethod pp* ((ex name))
   (with-slots (library mod-id actuals id mappings target) ex
     (pprint-logical-block (nil (list ex))
@@ -2420,18 +2430,7 @@ bind tighter.")
       (call-next-method)
       (pprint-logical-block (nil nil)
 	(pp* (lhs map))
-	(pp-decl-formals (if *making-interpreted-theory*
-			     (mapcar
-				 #'(lambda (fmls)
-				     (mapcar
-					 #'(lambda (fml)
-					     (if (declared-type fml)
-						 fml
-						 (copy fml
-						   'declared-type (type fml))))
-				       fmls))
-			       (formals map))
-			     (formals map)))
+	(pp-decl-formals (formals map))
 	(when (kind map)
 	  (write ": ")
 	  (if (eq (kind map) 'expr)
