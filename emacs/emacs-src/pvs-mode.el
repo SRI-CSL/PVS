@@ -200,4 +200,230 @@ PVS are automatically put in the proper mode."
   (ilisp-shrink-wrap-window (selected-window))
   (goto-char (point-min)))
 
+;;; Speedbar - patterned after Info-speedbar
+
+(eval-when-compile (require 'speedbar))
+
+(defvar pvs-speedbar-key-map nil
+  "Keymap used when in the pvs display mode.")
+
+(defun pvs-install-speedbar-variables ()
+  "Install those variables used by speedbar for PVS Library support."
+  
+  ;;; It would be nice if there was a better (i.e., buffer-specific) way to do this
+  ;;; speedbar-special-mode-expansion-list seems to have some possibilities,
+  ;;; but not trivial to understand.
+  (speedbar-disable-update)
+  (if pvs-speedbar-key-map
+      nil
+      (setq pvs-speedbar-key-map (speedbar-make-specialized-keymap))
+
+      ;; Basic tree features
+      (define-key pvs-speedbar-key-map "e" 'speedbar-edit-line)
+      (define-key pvs-speedbar-key-map "\C-m" 'speedbar-edit-line)
+      (define-key pvs-speedbar-key-map "+" 'speedbar-expand-line)
+      (define-key pvs-speedbar-key-map "-" 'speedbar-contract-line)
+      )
+
+  (speedbar-add-expansion-list '("pvs" pvs-speedbar-menu-items
+				 pvs-speedbar-key-map
+				 pvs-speedbar-library-buttons)))
+
+(defvar pvs-speedbar-menu-items
+  '(["Browse Library" speedbar-edit-line t]
+    ["Expand Library" speedbar-expand-line
+     (save-excursion (beginning-of-line)
+		     (looking-at "[0-9]+: *.\\+. "))]
+    ["Contract Library" speedbar-contract-line
+     (save-excursion (beginning-of-line)
+		     (looking-at "[0-9]+: *.-. "))]
+    )
+  "Additional menu-items to add to speedbar frame.")
+
+;; Make sure our special speedbar major mode is loaded
+(if (featurep 'speedbar)
+    (pvs-install-speedbar-variables)
+    (add-hook 'speedbar-load-hook 'pvs-install-speedbar-variables))
+
+;;; pvs library display method
+;;;###autoload
+(defun pvs-speedbar-browser ()
+  "Initialize speedbar to display a pvs library browser.
+This will add a speedbar major display mode."
+  (interactive)
+  (require 'speedbar)
+  ;; Make sure that speedbar is active
+  (speedbar-frame-mode 1)
+  ;; Now, throw us into pvs mode on speedbar.
+  (speedbar-change-initial-expansion-list "pvs")
+  )
+
+(defun pvs-speedbar-library-buttons (directory depth &optional node)
+  "Display a pvs directory hierarchy in speedbar.
+DIRECTORY is the current directory in the attached frame.
+DEPTH is the current indentation depth.
+NODE is an optional argument that is used to represent the
+specific node to expand."
+  (if (and (not node)
+	   (save-excursion (goto-char (point-min))
+			   (let ((case-fold-search t))
+			     (looking-at "PVS Libraries:"))))
+      ;; Update our "current libraries" maybe?
+      nil
+    ;; We cannot use the generic list code, that depends on all leaves
+    ;; being known at creation time.
+    (if (not node)
+	(speedbar-with-writable (insert "PVS Libraries:\n")))
+    (let ((libraries (pvs-speedbar-fetch-library-entries)))
+      (speedbar-select-attached-frame)
+      (select-frame (speedbar-current-frame))
+      (speedbar-with-writable
+	(dolist (dirpair libraries)
+	  (speedbar-make-tag-line 'angle ?+ 'pvs-speedbar-expand-library
+				  dirpair
+				  (car dirpair)
+				  'pvs-speedbar-goto-library
+				  dirpair
+				  'pvs-function-type-face depth))
+	t))))
+
+(defun pvs-speedbar-goto-library (text node indent)
+  "When user clicks on TEXT, go to a PVS Library.
+The INDENT level is ignored."
+  (speedbar-select-attached-frame)
+  (let* ((buff (or (get-buffer "*info*")
+		   (progn (info) (get-buffer "*info*"))))
+	 (bwin (get-buffer-window buff 0)))
+    (if bwin
+	(progn
+	  (select-window bwin)
+	  (raise-frame (window-frame bwin)))
+      (if speedbar-power-click
+	  (let ((pop-up-frames t)) (select-window (display-buffer buff)))
+	(speedbar-select-attached-frame)
+	(switch-to-buffer buff)))
+    (if (not (string-match "^(\\([^)]+\\))\\([^.]+\\)$" node))
+	(error "Invalid node %s" node)
+      (pvs-find-node (match-string 1 node) (match-string 2 node))
+      ;; If we do a find-node, and we were in info mode, restore
+      ;; the old default method.  Once we are in info mode, it makes
+      ;; sense to return to whatever method the user was using before.
+      (if (string= speedbar-initial-expansion-list-name "pvs")
+	  (speedbar-change-initial-expansion-list
+	   speedbar-previously-used-expansion-list-name)))))
+
+;;; E.g., text: "[+]",
+;;;       token: ("while" . "/homes/owre/pvs-validation/libraries/LaRC/lib")
+;;;       indent 1
+(defun pvs-speedbar-expand-library (text token indent)
+  "Expand the node the user clicked on.
+TEXT is the text of the button we clicked on, a + or - item.
+TOKEN is data related to this node (LIBNAME . DIRECTORY).
+INDENT is the current indentation depth."
+  (cond ((string-match "+" text)	;we have to expand this library
+	 (speedbar-change-expand-button-char ?-)
+	 (if (speedbar-with-writable
+	      (save-excursion
+		(end-of-line) (forward-char 1)
+		(pvs-speedbar-library-files token (1+ indent))))
+	     (speedbar-change-expand-button-char ?-)
+	   (speedbar-change-expand-button-char ??)))
+	((string-match "-" text)	;we have to contract this node
+	 (speedbar-change-expand-button-char ?+)
+	 (speedbar-delete-subblock indent))
+	(t (error "Ooops... not sure what to do")))
+  (speedbar-center-buffer-smartly))
+
+(defun pvs-speedbar-library-files (token indent)
+  (let ((filesinfo (pvs-library-subdir-files token)))
+    (speedbar-select-attached-frame)
+    (select-frame (speedbar-current-frame))
+    (speedbar-with-writable
+      (dolist (fileinfo filesinfo)
+	(speedbar-make-tag-line 'bracket ?+ 'pvs-speedbar-expand-declarations
+				fileinfo
+				(car fileinfo)
+				'pvs-speedbar-goto-file
+				fileinfo
+				'pvs-function-type-face indent))
+      t)))
+
+(defun pvs-library-subdir-files (dirname-path)
+  (let ((dir (concat (cdr dirname-path) "/" (car dirname-path))))
+    (assert (file-directory-p dir))
+    (mapcar '(lambda (file) (cons file dir))
+      (directory-files dir nil ".*\.pvs$"))))
+
+(defun pvs-speedbar-goto-file (text fileinfo indent)
+  (let ((fname (concat (cdr fileinfo) "/" (car fileinfo))))
+    (if (not (file-exists-p fname))
+	(error "%s does not exist." fname)
+	(find-file-other-window fname)
+	(unless buffer-read-only (toggle-read-only))
+	(pvs-mode))))
+
+(defun pvs-speedbar-expand-declarations (text token indent)
+  (cond ((string-match "+" text)	;we have to expand this library
+	 (speedbar-change-expand-button-char ?-)
+	 (if (speedbar-with-writable
+	       (save-excursion
+		 (end-of-line) (forward-char 1)
+		 (pvs-speedbar-declarations token (1+ indent))))
+	     (speedbar-change-expand-button-char ?-)
+	     (speedbar-change-expand-button-char ??)))
+	((string-match "-" text)	;we have to contract this node
+	 (speedbar-change-expand-button-char ?+)
+	 (speedbar-delete-subblock indent))
+	(t (error "Ooops... not sure what to do")))
+  (speedbar-center-buffer-smartly))
+
+(defun pvs-speedbar-declarations (token indent)
+  (let ((declsinfo (pvs-library-file-declarations token)))
+    (speedbar-select-attached-frame)
+    (select-frame (speedbar-current-frame))
+    (speedbar-with-writable
+      (dolist (declinfo declsinfo)
+	(speedbar-make-tag-line 'statictag ?? nil nil
+				declinfo
+				(car declinfo)
+				'pvs-speedbar-goto-file
+				declinfo
+				'pvs-function-type-face indent))
+      t)))
+
+(defun pvs-speedbar-fetch-library-entries ()
+  "Fetch the library entries."
+  (reverse (pvs-library-path-subdirs pvs-library-path)))
+
+;;; pvs mode node listing
+;; This is called by `speedbar-add-localized-speedbar-support'
+(defun pvs-speedbar-buttons (buffer)
+  "Create a speedbar display to help navigation in an pvs file.
+BUFFER is the buffer speedbar is requesting buttons for."
+  (if (save-excursion (goto-char (point-min))
+		      (let ((case-fold-search t))
+			(not (looking-at "PVS Libraries:"))))
+      (erase-buffer))
+  (pvs-speedbar-library-buttons nil 0))
+
+;; (dolist (mess '("^First node in file$"
+;; 		"^No `.*' in index$"
+;; 		"^No cross-reference named"
+;; 		"^No cross.references in this node$"
+;; 		"^No current pvs node$"
+;; 		"^No menu in this node$"
+;; 		"^No more items in menu$"
+;; 		"^No more nodes$"
+;; 		"^No pointer \\(?:forward\\|backward\\) from this node$"
+;; 		"^No previous `i' command$"
+;; 		"^No previous items in menu$"
+;; 		"^No previous nodes$"
+;; 		"^No such item in menu$"
+;; 		"^No such node or anchor"
+;; 		"^Node has no"
+;; 		"^Point neither on reference nor in menu item description$"
+;; 		"^This is the \\(?:first\\|last\\) pvs node you looked at$"
+;; 		search-failed))
+;;   (add-to-list 'debug-ignored-errors mess))
+
 (provide 'pvs-mode)
