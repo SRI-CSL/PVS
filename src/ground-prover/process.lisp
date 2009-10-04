@@ -541,44 +541,44 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun canonsig(s &optional (dont-add-use nil))
-   (catch 'found
-     (cond
-      ((symbolp s) (pr-find s))
-      ((integerp s) s)
-      (t
-       (cond
-         ( (interp s)
-           (setq s (or (sigma ;;; 7-24-91: dac Added this sigma so that interpretted
+  (catch 'found
+    (cond
+     ((symbolp s) (pr-find s))
+     ((integerp s) s)
+     (t
+      (cond
+       ( (interp s)
+	 (setq s (or (sigma ;;; 7-24-91: dac Added this sigma so that interpretted
 		          ;;; terms are put in canonical form.
 	                  ;;; bug manifested itself in needing recursive call for sigupdate.
-		    (cons (funsym s)
-			  (loop for arg in (argsof s) collect
-				(canonsig arg dont-add-use)))
-		   )
-		       t
-		   (replace-args-with-canonsig s dont-add-use))
-           )
+		      (cons (funsym s)
+			    (loop for arg in (argsof s) collect
+				  (canonsig arg dont-add-use)))
+		      )
+		     t
+		     (replace-args-with-canonsig s dont-add-use))
+	       )
          )
        )
-       (when (consp s) ;;; 7-26-91: dac sigma might have reduced s to a non list.
-	 (when (eq (funsym s) 'TIMES) 
-	   (loop for arg in (cdr s)
-		 when (not (integerp arg))
-		 do (let* ((smatch (find-times-subset s (use arg)))
+      (when (consp s) ;;; 7-26-91: dac sigma might have reduced s to a non list.
+	(when (eq (funsym s) 'TIMES) 
+	  (loop for arg in (cdr s)
+		when (not (integerp arg))
+		do (let* ((smatch (find-times-subset s (use arg)))
 			  (sdiff (subset-bag-difference (cdr s)
 							(cdr (sig smatch)))))
-		      (when (and smatch sdiff)
-			(throw 'found (canonsig `(TIMES ,(pr-find smatch) ,@sdiff)))))))
-	 (loop for u in (use (arg1 s))
-	       do (and (equal s (sig u)) (throw 'found (pr-find u)))
-	       )
-	 (unless dont-add-use
-	   (loop for arg in (argsof s) do (adduse s arg))))
-       s
+		     (when (and smatch sdiff)
+		       (throw 'found (canonsig `(TIMES ,(pr-find smatch) ,@sdiff)))))))
+	(loop for u in (use (arg1 s))
+	      do (and (or (equal s u)(equal s (sig u))) (throw 'found (pr-find u)))
+	      )
+	(unless dont-add-use
+	  (loop for arg in (argsof s) do (adduse s arg))))
+      s
       )
      )
-   )
-)
+    )
+  )
 
 (defun replace-args-with-canonsig (term &optional (dont-add-use nil))
   (sigma (cons (funsym term)
