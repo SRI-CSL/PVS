@@ -199,7 +199,7 @@ PVSEMACS=${PVSEMACS:-"emacs"}
 case $opsys in
   SunOS) majvers=`uname -r | cut -d"." -f1`
 	 if [ $majvers = 4 ]
-	    then echo "PVS 4.2 only runs under Mac OS X, Linux, FreeBSD, or Solaris"; exit 1
+	    then echo "PVS only runs under Mac OS X, Linux, FreeBSD, or Solaris"; exit 1
 	 fi
 	 PVSARCH=sun4;;
   Linux) # If Linux, we need to determine the Redhat version to use.
@@ -208,7 +208,7 @@ case $opsys in
 	 case `uname -m` in
 	   x86_64) PVSARCH=ix86_64 ;;
 	   *86*)   PVSARCH=ix86 ;;
-	   *) echo "PVS 4.2 only runs on Intel Linux"; exit 1
+	   *) echo "PVS only runs on Intel under Linux"; exit 1
 	 esac
 	 # Allegro does not work with Linux's New Posix Thread Library (NPTL)
 	 # used in newer Red Hat kernels and 2.6 kernels.  This will force
@@ -223,7 +223,7 @@ case $opsys in
 	   case `uname -m` in
 	     x86_64) PVSARCH=ix86_64 ;;
 	     *86*)   PVSARCH=ix86 ;;
-	     *) echo "PVS 4.2 only runs on Intel Linux"; exit 1
+	     *) echo "PVS only runs on Intel under Linux"; exit 1
 	   esac
 	   # Allegro does not work with Linux's New Posix Thread Library (NPTL)
 	   # used in newer Red Hat kernels and 2.6 kernels.  This will force
@@ -242,7 +242,7 @@ case $opsys in
           #majvers=`uname -r | cut -d"." -f1`
 	  majvers=
 	  ;;
-  *) echo "PVS 4.2 only runs under Solaris, Linux, FreeBSD (linux-enabled), or Mac (Darwin 7.4)"; exit 1
+  *) echo "PVS only runs under Solaris, Linux, FreeBSD (linux-enabled), or MacOSX"; exit 1
 esac
 
 binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
