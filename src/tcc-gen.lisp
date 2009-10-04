@@ -228,6 +228,8 @@
 	   ex))
 	((consp (car conditions))
 	 ;; bindings from a lambda-expr application (e.g., let-expr)
+	 (assert (and (bind-decl? (caar conditions))
+		      (memq (caar conditions) (cdr conditions))))
 	 (add-tcc-conditions*
 	  expr
 	  (cdr conditions)
@@ -646,15 +648,12 @@
 (defmethod supertype-with-bindings (t1 t2 binds)
   nil)
 
-(defun generate-recursive-tcc (name arguments)
+(defun generate-recursive-tcc (name arguments ex)
   (let* ((*old-tcc-name* nil)
 	 (ndecl (make-recursive-tcc-decl name arguments)))
     (if ndecl
-	(insert-tcc-decl 'termination
-			 (make!-applications name arguments) nil ndecl)
-	(add-tcc-comment 'termination
-			 (make!-applications name arguments)
-			 nil))))
+	(insert-tcc-decl 'termination ex nil ndecl)
+	(add-tcc-comment 'termination ex nil))))
 
 (defun make-recursive-tcc-decl (name arguments)
     (when (null arguments)
@@ -959,41 +958,48 @@
     (unless (or (eq mod (current-theory))
 		(null (assuming mod))
 		(and (formals-sans-usings mod) (null (actuals modinst))))
-      (let ((cdecl (or (and (or *in-checker* *in-evaluator*)
-			    *top-proofstate*
-			    (declaration *top-proofstate*))
-		       (declaration *current-context*))))
-	(unless (and (member modinst (assuming-instances (current-theory))
-			     :test #'(lambda (x y)
-				       (not (eq (simple-match y x) 'fail))))
-		     (not (existence-tcc? cdecl)))
-	  (let ((assumptions (remove-if-not #'assumption? (assuming mod))))
-	    ;; Don't want to save this module instance unless it does not
-	    ;; depend on any conditions, including implicit ones in the
-	    ;; prover
-	    (unless (or (or *in-checker* *in-evaluator*)
-			(mappings modinst)
-			(some #'(lambda (tcc-cond)
-				  (not (typep tcc-cond '(or bind-decl list))))
-			      *tcc-conditions*))
-	      (push modinst (assuming-instances (current-theory))))
-	    (dolist (ass assumptions)
-	      (if (or (eq (kind ass) 'existence)
-		      (nonempty-formula-type ass))
-		  (let ((atype (subst-mod-params (existence-tcc-type ass)
-						 modinst
-						 mod)))
-		    (if (typep cdecl 'existence-tcc)
-			(let ((dtype (existence-tcc-type cdecl)))
-			  (if (tc-eq atype dtype)
-			      (generate-existence-tcc atype expr)
-			      (check-nonempty-type atype expr)))
-			(check-nonempty-type atype expr)))
-		  (let* ((*old-tcc-name* nil)
-			 (ndecl (make-assuming-tcc-decl ass modinst)))
-		    (if ndecl
-			(insert-tcc-decl 'assuming modinst ass ndecl)
-			(add-tcc-comment 'assuming modinst ass)))))))))))
+      (let* ((cdecl (or (and (or *in-checker* *in-evaluator*)
+			     *top-proofstate*
+			     (declaration *top-proofstate*))
+			(declaration *current-context*)))
+	     (prev (find modinst (assuming-instances (current-theory))
+			 :test #'(lambda (x y)
+				   (not (eq (simple-match (car y) x) 'fail))))))
+	(if prev
+	    (unless (member modinst (get-importings theory) :test #'tc-eq)
+	      (let ((aprev (or (cdr prev) (car prev))))
+		(pvs-info "Assuming TCCs not generated ~@[~a~] for~%  ~w~%~
+                           as they are subsumed by the TCCs generated ~@[~a~] for~%  ~w"
+		  (place-string expr) expr (place-string aprev) aprev)))
+	    (unless (existence-tcc? cdecl)
+	      (let ((assumptions (remove-if-not #'assumption? (assuming mod))))
+		;; Don't want to save this module instance unless it does not
+		;; depend on any conditions, including implicit ones in the
+		;; prover
+		(unless (or (or *in-checker* *in-evaluator*)
+			    (mappings modinst)
+			    (some #'(lambda (tcc-cond)
+				      (not (typep tcc-cond '(or bind-decl list))))
+				  *tcc-conditions*))
+		  (push (cons modinst expr)
+			(assuming-instances (current-theory))))
+		(dolist (ass assumptions)
+		  (if (or (eq (kind ass) 'existence)
+			  (nonempty-formula-type ass))
+		      (let ((atype (subst-mod-params (existence-tcc-type ass)
+						     modinst
+						     mod)))
+			(if (typep cdecl 'existence-tcc)
+			    (let ((dtype (existence-tcc-type cdecl)))
+			      (if (tc-eq atype dtype)
+				  (generate-existence-tcc atype expr)
+				  (check-nonempty-type atype expr)))
+			    (check-nonempty-type atype expr)))
+		      (let* ((*old-tcc-name* nil)
+			     (ndecl (make-assuming-tcc-decl ass modinst)))
+			(if ndecl
+			    (insert-tcc-decl 'assuming modinst ass ndecl)
+			    (add-tcc-comment 'assuming modinst ass))))))))))))
 
 (defmethod existence-tcc-type ((decl existence-tcc))
   (existence-tcc-type (definition decl)))
@@ -1008,8 +1014,14 @@
   (type (car (bindings ex))))
 
 (defun make-assuming-tcc-decl (ass modinst)
+  (unless (closed-definition ass)
+    (let* ((*in-checker* nil)
+	   (*current-context* (context ass)))
+	(setf (closed-definition ass)
+	      (universal-closure (definition ass)))))
+  (assert (closed-definition ass))
   (let* ((*generate-tccs* 'none)
-	 (expr (subst-mod-params (definition ass) modinst (module ass)))
+	 (expr (subst-mod-params (closed-definition ass) modinst (module ass)))
 	 (true-conc? (tcc-evaluates-to-true expr))
 	 (tform (unless true-conc? (add-tcc-conditions expr)))
 	 (uform (cond ((or true-conc? (tcc-evaluates-to-true tform))
@@ -1018,6 +1030,7 @@
 		       (pseudo-normalize tform))
 		      (t (beta-reduce tform))))
 	 (id (make-tcc-name)))
+    (assert (null (freevars uform)))
     (unless (tc-eq uform *true*)
       (when (and *false-tcc-error-flag*
 		 (tc-eq uform *false*))
@@ -1029,44 +1042,50 @@
 (defun generate-mapped-axiom-tccs (modinst)
   (let ((mod (get-theory modinst)))
     (unless (and (not *collecting-tccs*)
-		 (or (eq mod (current-theory))
-		     (member modinst (assuming-instances (current-theory))
-			     :test #'tc-eq)))
-      ;; Don't want to save this module instance unless it does not
-      ;; depend on any conditions, including implicit ones in the
-      ;; prover
-      (unless (or *in-checker* *in-evaluator* *collecting-tccs*
-		  (some #'(lambda (tcc-cond)
-				  (not (typep tcc-cond '(or bind-decl list))))
-			      *tcc-conditions*))
-	(push modinst (assuming-instances (current-theory))))
-      (let* ((*old-tcc-name* nil))
-	(dolist (axiom (collect-mapping-axioms modinst mod))
-	  (multiple-value-bind (ndecl mappings-alist)
-	      (make-mapped-axiom-tcc-decl axiom modinst mod)
-	    (let ((netype (when ndecl (nonempty-formula-type ndecl))))
-	      (if (and ndecl
-		       (or (null netype)
-			   (possibly-empty-type? netype)))
-		  (let ((unint (find-uninterpreted
-				(definition ndecl)
-				modinst mod mappings-alist)))
-		    (if unint
-			(unless *collecting-tccs*
-			  (pvs-warning
-			      "Axiom ~a not translated because '~a' not interpreted"
-			    (id axiom) (id unint)))
-			(insert-tcc-decl 'mapped-axiom modinst axiom ndecl)))
-		  (if ndecl
-		      (add-tcc-comment
-		       'mapped-axiom nil modinst
-		       (cons 'map-to-nonempty 
-			     (format nil
-				 "%~a~%  % was not generated because ~a is non-empty"
-			       (unpindent ndecl 2 :string t :comment? t)
-			       (unpindent netype 2 :string t :comment? t))))
-		      (add-tcc-comment
-		       'mapped-axiom nil modinst))))))))))
+		 (eq mod (current-theory)))
+      (let ((prev (find modinst (assuming-instances (current-theory))
+			:test #'(lambda (x y)
+				  (not (eq (simple-match (car y) x) 'fail))))))
+	(if prev
+	    (let ((aprev (or (cdr prev) (car prev))))
+	      (pvs-info "Mapped axiom TCCs not generated for~%  ~w~%~
+                         as they are subsumed by the TCCs generated for~%  ~w"
+		modinst (place-string aprev) aprev))
+	    (let* ((*old-tcc-name* nil))
+	      ;; Don't want to save this module instance unless it does not
+	      ;; depend on any conditions, including implicit ones in the
+	      ;; prover
+	      (unless (or *in-checker* *in-evaluator* *collecting-tccs*
+			  (some #'(lambda (tcc-cond)
+				    (not (typep tcc-cond '(or bind-decl list))))
+				*tcc-conditions*))
+		(push (list modinst) (assuming-instances (current-theory))))
+	      (dolist (axiom (collect-mapping-axioms modinst mod))
+		(multiple-value-bind (ndecl mappings-alist)
+		    (make-mapped-axiom-tcc-decl axiom modinst mod)
+		  (let ((netype (when ndecl (nonempty-formula-type ndecl))))
+		    (if (and ndecl
+			     (or (null netype)
+				 (possibly-empty-type? netype)))
+			(let ((unint (find-uninterpreted
+				      (definition ndecl)
+				      modinst mod mappings-alist)))
+			  (if unint
+			      (unless *collecting-tccs*
+				(pvs-warning
+				    "Axiom ~a is not a TCC because '~a' is not interpreted"
+				  (id axiom) (id unint)))
+			      (insert-tcc-decl 'mapped-axiom modinst axiom ndecl)))
+			(if ndecl
+			    (add-tcc-comment
+			     'mapped-axiom nil modinst
+			     (cons 'map-to-nonempty 
+				   (format nil
+				       "%~a~%  % was not generated because ~a is non-empty"
+				     (unpindent ndecl 2 :string t :comment? t)
+				     (unpindent netype 2 :string t :comment? t))))
+			    (add-tcc-comment
+			     'mapped-axiom nil modinst))))))))))))
 
 (defmethod collect-mapping-axioms (thinst theory)
   (append (collect-mapping-axioms* (mappings thinst))
@@ -1088,46 +1107,15 @@
   nil)
 
 (defun find-uninterpreted (expr thinst theory mappings-alist)
-  (let (;;(refs (collect-references expr))
-	(theories (interpreted-theories thinst theory))
-	(foundit nil))
+  (let ((foundit nil))
     (mapobject #'(lambda (ex)
 		   (or foundit
 		       (when (and (name? ex)
 				  (declaration? (declaration ex))
-				  (interpretable? (declaration ex))
-				  (not (assq (declaration ex) mappings-alist))
-				  (or (memq (module (declaration ex)) theories)
-				      ;;(mappings (module-instance ex))
-				      ))
+				  (interpretable? (declaration ex)))
 			 (setq foundit ex))))
 	       expr)
     foundit))
-
-(defun interpreted-theories (thinst theory)
-  (cons theory (interpreted-theories* thinst)))
-
-(defmethod interpreted-theories* ((name name))
-  (interpreted-theories* (mappings name)))
-
-(defmethod interpreted-theories* ((list list))
-  (interpreted-theories-list list nil))
-
-(defun interpreted-theories-list (list theories)
-  (if (null list)
-      theories
-      (let ((ths (interpreted-theories* (car list))))
-	(interpreted-theories-list
-	 (cdr list)
-	 (nunion ths theories)))))
-
-(defmethod interpreted-theories* ((map mapping))
-  (when (module? (declaration (lhs map)))
-    (cons (declaration (lhs map))
-	  (interpreted-theories* (rhs map)))))
-
-(defmethod interpreted-theories* ((rhs mapping-rhs))
-  (interpreted-theories* (expr rhs)))
 
 (defmethod nonempty-formula-type ((decl formula-decl))
   (nonempty-formula-type (definition decl)))
