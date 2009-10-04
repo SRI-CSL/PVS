@@ -53,6 +53,11 @@
 (defmethod free-params* ((theory datatype-or-module) frees)
   (union (formals-sans-usings theory) frees :test #'eq))
 
+(defmethod free-params* ((c simple-constructor) frees)
+  (let ((efrees (free-params* (recognizer c)
+		  (free-params* (arguments c) nil))))
+    (union efrees frees :test #'eq)))
+
 (defmethod free-params* ((decl declaration) frees)
   (free-params* (module decl) frees))
 
