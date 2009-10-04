@@ -59,8 +59,7 @@
 
 (defconstant-if-unbound *eqarithrels* '(greatereqp lesseqp))
 
-(defconstant *ifops* nil ;;'(if if*)
-  )
+(defconstant *ifops* '(if if*))
 
 (defconstant-if-unbound *boolconstants* '(false true))
 
