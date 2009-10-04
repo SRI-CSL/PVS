@@ -358,7 +358,8 @@
       (let ((theory (get-theory inst)))
 	(assert (or (not (library-datatype-or-theory? theory))
 		    (library inst)))
-	(put-importing inst theory)))
+	(put-importing inst theory)
+	(setf (resolutions inst) (list (make-resolution mod nmodinst)))))
     ;;     (when (some #'(lambda (m) (mod-decl? (declaration (lhs m))))
     ;; 		(mappings nmodinst))
     ;;       (add-theory-mappings-importings mod nmodinst))
@@ -367,7 +368,8 @@
     (when (mappings nmodinst)
       (generate-mapped-axiom-tccs nmodinst))
     (unless *ignore-exportings*
-      (add-exporting-with-theories mod nmodinst t))))
+      (add-exporting-with-theories mod nmodinst t))
+    (assert (resolution inst))))
 
 (defun add-theory-parameters-importings (theory inst)
   (when (and (formals-sans-usings theory)
@@ -417,6 +419,8 @@
 					    (eq (theory-name (cdr x)) inst)))
 			  *tc-theories*)))
     (typecheck-using use1)
+    (assert (resolution use1))
+    (setf (resolutions inst) (resolutions use1))
     (let ((*ignore-exportings* t)
 	  (supinst (adt-modinst use1)))
       (mapc #'typecheck-using
