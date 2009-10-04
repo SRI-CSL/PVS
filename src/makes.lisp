@@ -165,14 +165,15 @@
 	:id id
 	:declared-type type)))
 
-(defun mk-adt-def-decl (id type &optional definition formals dtype)
+(defun mk-adt-def-decl (id type &optional definition formals dtype place)
   (make-instance 'adt-def-decl
     :id id
     :formals (if (every@ #'consp formals) formals (list formals))
     :declared-type (or dtype type)
     :type type
     :definition definition
-    :semi t))
+    :semi t
+    :place place))
 
 (defun mk-inductive-decl (id type &optional definition formals dtype)
   (make-instance 'inductive-decl
@@ -876,6 +877,13 @@
 		:resolutions (resolutions arg)))
 	(type-value (lcopy arg :from-conversion nil)))
     (make-instance 'actual :expr expr :type-value type-value)))
+
+(defmethod mk-actual ((arg name-expr))
+  (make-instance 'actual
+    :expr arg
+    :type-value (when (and (resolution arg)
+			   (type-decl? (declaration arg)))
+		  (type (resolution arg)))))
 
 (defmethod mk-actual ((arg expr))
   (make-instance 'actual :expr arg))
