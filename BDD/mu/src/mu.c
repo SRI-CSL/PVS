@@ -276,7 +276,7 @@ struct _Term {
 /* LOCAL VARIABLES                                                          */
 /* ------------------------------------------------------------------------ */
 
-static char SccsId[] = "%Z%%Y%/%M% %I% %G%";
+//static char SccsId[] = "%Z%%Y%/%M% %I% %G%";
 
 static _Formula _FALSE_FORMULA = { MU_FALSE, { 0 }, NULL, NULL };
 static _Formula _TRUE_FORMULA  = { MU_TRUE , { 0 }, NULL, NULL};
@@ -2461,6 +2461,7 @@ static void mu_print_formula_infix_1 (Formula f, int win)
   Formula X, Y;
   int wout, type;
 
+
   if (!f) return;
 
   type = F_TYPE (f);
@@ -2507,7 +2508,7 @@ static void mu_print_formula_infix_1 (Formula f, int win)
     if (wout < win) putc (')', mu_output_stream);
     break;
 
-  case MU_ITE:
+  case MU_ITE:    
     if (1 < win) putc ('(', mu_output_stream);
 
     mu_print_formula_infix_1 (F_COND (f), 0);

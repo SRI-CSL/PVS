@@ -86,7 +86,7 @@ time).  Verbose? set to T provides more information."
 	  (make-mu-restriction
 	   mu-uniq-formula
 	   (make-mu-conjunction
-	    (loop for x in  *pvs-bdd-inclusivity-formulas*
+	    (loop for x in *pvs-bdd-inclusivity-formulas*
 		  when (null (freevars (car x)))
 		  collect (cdr x)))))
 	 (mu-output (run-pvsmu mu-formula dynamic-ordering?))
@@ -1307,7 +1307,7 @@ time).  Verbose? set to T provides more information."
  ))
        
 (defun mu-mk-cof (fml1 fml2)
-   (mu_mk_cofactor fml1 fml2)
+  (mu_mk_cofactor fml1 fml2)
 )
 
 

@@ -74,7 +74,7 @@ typedef struct {
 /* ------------------------------------------------------------------------ */
 /* VARIABLES                                                                */
 /* ------------------------------------------------------------------------ */
-static char SccsId_DOUBLE_H[] = "%Z%%Y%/%M% %I% %G%";
+//static char SccsId_DOUBLE_H[] = "%Z%%Y%/%M% %I% %G%";
 
 /* Some useful Double constants: */
 extern const Double Double_0;

@@ -107,7 +107,7 @@ void yyerror (const char *format, ...) { fputs ("", stderr); }
 void yywarning (const char *format, ...) { fputs ("", stderr); } 
 HASHTAB *var_table;              /* primary variable names */
 FILE *bdd_output_stream;
-static const char *bdd_output_strings ;
+//static const char *bdd_output_strings ;
 
 /* setting flags */
 int set_mu_warnings           (int flag) {warnings = flag; return 0;}
@@ -193,12 +193,12 @@ Main function
 */ 
 
   FILE *mu_output_stream ;
-  FILE *bdd_output_stream; 
+//FILE *bdd_output_stream; 
 
   extern char *optarg;
   extern int opterr;
   extern int optind;
-  extern FILE *freopen ();
+//extern FILE *freopen ();
   int option;
   extern int yyparse ();
 /*  extern int yylineno = 0;  */

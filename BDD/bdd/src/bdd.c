@@ -267,7 +267,7 @@ struct computed_table {
 /* ------------------------------------------------------------------------ */
 /* LOCAL VARIABLES                                                          */
 /* ------------------------------------------------------------------------ */
-static char SccsId[] = "%Z%%Y%/%M% %I% %G%";
+//static char SccsId[] = "%Z%%Y%/%M% %I% %G%";
 
 static int BDD_PACKAGE_INITIALIZED = 0;
 

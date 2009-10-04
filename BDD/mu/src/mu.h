@@ -76,7 +76,7 @@ typedef enum {
 /* VARIABLES                                                                */
 /* ------------------------------------------------------------------------ */
 
-static char SccsId_MU_H[] = "%Z%%Y%/%M% %I% %G%";
+//static char SccsId_MU_H[] = "%Z%%Y%/%M% %I% %G%";
 
 extern Signature signature;
 extern R_Interpret      Ip;

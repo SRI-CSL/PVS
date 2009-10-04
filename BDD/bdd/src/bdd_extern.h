@@ -47,7 +47,7 @@ union bddptr {
 /* ------------------------------------------------------------------------ */
 /* VARIABLES                                                                */
 /* ------------------------------------------------------------------------ */
-static char SccsId_BDD_EXTERN_H[] = "%Z%%Y%/%M% %I% %G%";
+//static char SccsId_BDD_EXTERN_H[] = "%Z%%Y%/%M% %I% %G%";
 
 /* The 1-function: */
 extern /*const*/ BDDPTR BDD_1;

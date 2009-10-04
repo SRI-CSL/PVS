@@ -93,7 +93,7 @@ static void print_sub_exprs (int count);
 /* ------------------------------------------------------------------------ */
 /* LOCAL VARIABLES                                                          */
 /* ------------------------------------------------------------------------ */
-static char SccsId[] = "%Z%%Y%/%M% %I% %G%";
+//static char SccsId[] = "%Z%%Y%/%M% %I% %G%";
 
 static int count;		/* counter used in naming the index */
 

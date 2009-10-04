@@ -561,7 +561,7 @@ struct unique_table {
 /* ------------------------------------------------------------------------ */
 /* VARIABLES                                                                */
 /* ------------------------------------------------------------------------ */
-static char SccsId_BDD_H[] = "%Z%%Y%/%M% %I% %G%";
+//static char SccsId_BDD_H[] = "%Z%%Y%/%M% %I% %G%";
 
 extern UNIQUE_TABLE unique_table;
 
