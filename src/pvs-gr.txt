@@ -47,7 +47,7 @@ Operators
         '^' '/\\' '\\/' '[]' '<>' '~' '==' '++' '**' '//' '^^'
 	'<<' '>>' '::' '#' '@' '@@' '##' '[|' '|]' '(|' '|)' '{|' '|}'
         '|[' ']|' '!'
-        '<<=' '>>=' '`' '\''
+        '<<=' '>>=' '`' '\'' '..'
 	'[||]' '(||)' '{||}' '||' '|-' '|=' '<|' '|>' ':->' %'<:'
 
 Lexical Terminals
@@ -160,10 +160,10 @@ exportings ::= {'ALL' ['BUT' {expname ++ ','}]}
 			<expnames(doubleplus)>
 		 ;
 
-expname ::= {idop [':' {type-expr <type-expr> |
+expname ::= {pidop [':' {type-expr <type-expr> |
 			'TYPE' <exptype()> |
 			'FORMULA' <expformula()>}]}
-			<expname(idop,[noexpkind()|alt])>
+			<expname(pidop,[noexpkind()|alt])>
 %		 |  {'|' idop '|'} <absexpname(idop)>
 		 ;
 
@@ -184,8 +184,9 @@ assuming ::= {importing [';']}
 		 <conversion-elt(conversion,[nosemic()|semic()])>
 	   | {auto-rewrite [';']}
 		 <auto-rewrite-elt(auto-rewrite,[nosemic()|semic()])>
-	   | {idops pdformals* ':' assuming-decl [';']}
-		<assuming(idops,pdf(star),assuming-decl,[nosemic()|semic()])>
+	   | {['@DECL']^d pidops pdformals* ':' assuming-decl [';']^s}
+		<assuming(pidops,pdf(star),assuming-decl,
+                          [nosemic()|semic()]^s,[noatdecl()|atdecl()]^d)>
 	   ;
 
 theory-part ::= {theory-elt+} <theory-part(plus)>;
@@ -198,9 +199,9 @@ theory-elt ::= {importing [';']}
 		 <conversion-elt(conversion,[nosemic()|semic()])>
 	     | {auto-rewrite [';']}
 		 <auto-rewrite-elt(auto-rewrite,[nosemic()|semic()])>
-	     | {idops [pdformals+] ':' theory-declaration [';']^s}
-		 <theory(idops,[noformals()|pdf(plus)],
-                         theory-declaration,[nosemic()|semic()]^s)>
+	     | {['@DECL']^d pidops [pdformals+] ':' theory-declaration [';']^s}
+		 <theory(pidops,[noformals()|pdf(plus)],theory-declaration,
+                         [nosemic()|semic()]^s,[noatdecl()|atdecl()]^d)>
 	     ;
 
 importing ::= {'IMPORTING' {importing-item++ ','}}
@@ -484,8 +485,8 @@ set-formals ::= {set-formal [[',']^c set-formals]}
 set-formal ::= {{idop [':' type-expr]} | pdformals}
 	       <{set-id(idop,[notype()|type-expr])|pdformals}>;
 
-selection ::= {idop [{'(' idops ')'} <idops>] ':' expr}
-	      <selection(idop,opt,expr)>;
+selection ::= {pidop [{'(' idops ')'} <idops>] ':' expr}
+	      <selection(pidop,opt,expr)>;
 
 % assignment	::= {expr {':='|'|->'} !+ @> expr^1 @^ !- }
 %			<assignment(expr,expr^1,{ceq()|arr()})>;
@@ -538,6 +539,10 @@ fun-arguments ::= {'(' {expr ** ','} ')'} <fun-arguments(expr*)>;
 
 arguments ::= {'(' {expr ++ ','} ')'} <arguments(expr+)>;
 
+pidops ::= {pidop ++ ','} <pidops(pidop+)>;
+
+pidop ::= {idop ++ '.'} <pidop(idop+)>;
+
 idops ::= {idop ++ ','} <idops(idop+)>;
 
 idop ::=  id  <idop(id)> | opsym <idop(opsym)> | number <idop(number)> ;
@@ -553,8 +558,12 @@ typed-ids ::= {idops [':' type-expr]^t ['|' expr]^e}
 	      <{typed-ids(idops,[no-type-expr()|type-expr]^t,
 				[no-pred()|expr]^e)>;
 
-name ::= {[{id '@'}]^L idop [actuals] [mappings]^m [':->' modname]^t [{'.' idop^1}]^1}
-	 <name(idop,[nolib()|id]^L,[noacts()|actuals],[nomod()|idop^1]^1,
+%% name ::= {[{id '@'}]^L idop [actuals] [mappings]^m [':->' modname]^t [{'.' idop^1}]^1}
+%% 	 <name(idop,[nolib()|id]^L,[noacts()|actuals],[nomod()|idop^1]^1,
+%% 	       [nomap()|mappings]^m, [notgt()|modname]^t, modnames(modname*))>;
+
+name ::= {[{id '@'}]^L idop [actuals] [mappings]^m [':->' modname]^t ['.' pidop]^i}
+	 <name(idop,[nolib()|id]^L,[noacts()|actuals],[nomod()|pidop]^i,
 	       [nomap()|mappings]^m, [notgt()|modname]^t)>;
 
 unique-name ::= {name [':' {'TYPE'|type-expr|formula-name}]}
@@ -602,9 +611,8 @@ theory-decl-mapping ::= {mapping-lhs {'='|':='|'::='} mapping-rhs}
                |mapping-subst(mapping-lhs,mapping-rhs)
                |mapping-rename(mapping-lhs,mapping-rhs)}>;
 
-mapping-lhs ::= {idop [pdformals+]^a [':' {'TYPE'|'THEORY'|type-expr}]^q}
-                  <mapping-lhs(idop,
-                               [noformals()|pdf(plus)]^a,
+mapping-lhs ::= {pidop [pdformals+]^a [':' {'TYPE'|'THEORY'|type-expr}]^q}
+                  <mapping-lhs(pidop, [noformals()|pdf(plus)]^a,
                                [noqual()|{type()|theory()|typed(type-expr)}]^q)>;
 
 mapping-rhs ::= expr | comp-type-expr;
