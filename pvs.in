@@ -382,19 +382,19 @@ if [ ! "$getversion" -a ! "$rawmode" -a ! "$batch" -a "$DISPLAY" != "" -a "$nowi
     *[xl]emacs*) \
       PVSEMACS="LD_ASSUME_KERNEL=${LD_ASSUME_KERNEL} ${PVSEMACS}"
       if [ $nobg ] ; then
-        ($PVSEMACS $flags -name pvs -in PVS@$HOST -wn PVS@$HOST \
+        ("$PVSEMACS" $flags -name pvs -in PVS@$HOST -wn PVS@$HOST \
                    $PVSXINIT $pvsemacsinit )
       else
-        ($PVSEMACS $flags -name pvs -in PVS@$HOST -wn PVS@$HOST \
+        ("$PVSEMACS" $flags -name pvs -in PVS@$HOST -wn PVS@$HOST \
                    $PVSXINIT $pvsemacsinit &)
       fi;;
     *) \
       if [ $nobg ] ; then
-        ($PVSEMACS $flags -name pvs -xrm "pvs*title:PVS@$HOST
+        ("$PVSEMACS" $flags -name pvs -xrm "pvs*title:PVS@$HOST
                                           pvs*iconName:PVS@$HOST" \
 		   $PVSXINIT $pvsemacsinit)
       else
-        ($PVSEMACS $flags -name pvs -xrm "pvs*title:PVS@$HOST
+        ("$PVSEMACS" $flags -name pvs -xrm "pvs*title:PVS@$HOST
                                           pvs*iconName:PVS@$HOST" \
 		   $PVSXINIT $pvsemacsinit &)
       fi;;
