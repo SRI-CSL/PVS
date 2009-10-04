@@ -760,9 +760,6 @@
 (defmethod place ((obj term::default-term))
   (term-place obj))
 
-(defun term-place (absyn)
-  (getf (term:term-attr absyn) :place))
-
 (defmethod place ((obj actual))
   (place (expr obj)))
 
@@ -790,6 +787,12 @@
   (or (place ex)
       (and *place-error-flag*
 	   (break "No place?"))))
+
+(defun place-string (ex)
+  (let ((place (place ex)))
+    (when place
+      (format nil "(at line ~d, column ~d)"
+	(starting-row place) (starting-col place)))))
 
 (defun type-ambiguity (obj)
   (if (and (slot-exists-p obj 'resolutions)
