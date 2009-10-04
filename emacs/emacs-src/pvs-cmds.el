@@ -237,23 +237,14 @@ undo (C-x u or C-_) or M-x revert-buffer to return to the old version."
   "Prettyprints the specified theory instance
 
 The prettyprint-theory-instance command prettyprints the specified theory
-instance."
-  (interactive (append
-		(complete-theory-instance-name "Prettyprint theory instance: ")
-		(complete-theory-name "In context of theory: ")))
-  (unless (interactive-p) (pvs-collect-theories))
-  (pvs-bury-output)
-  (save-some-pvs-buffers t)
-  (pvs-send-and-wait (format "(prettyprint-theory-instance \"%s\" \"%s\")"
-			 theoryname context-theoryname)
-		     "Prettyprinting"
-		     (pvs-get-abbreviation 'prettyprint-theory-instance)
-		     'dont-care))
+instance.  No longer used - use prettyprint-expanded instead"
+  (interactive)
+  (message "prettyprint-theory-instance no longer used - use prettyprint-expanded instead"))
 
 (defun complete-theory-instance-name (prompt)
   "Perform completion on PVS theory names"
   (let ((default (save-excursion
-		   (re-search-backward "[ \t\n]")
+		   (re-search-backward "[ \t\n]" nil t)
 		   (forward-char 1)
 		   (let ((start (point)))
 		     (forward-word 1)
