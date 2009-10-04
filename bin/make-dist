@@ -50,7 +50,7 @@
 
 TARFLAGS='-cohz --mode=u+rw --atime-preserve --exclude=CVS --exclude=.svn'
 
-version="4.2"
+version="4.3-beta"
 
 # pvs-source.tgz
 echo Creating pvs-${version}-source.tgz
@@ -59,7 +59,7 @@ tar ${TARFLAGS} -f pvs-${version}-source.tgz --exclude pvsbin \
   README.CVS README.configure \
   configure configure.in config.guess config.sub install-sh bin/make-dist \
   pvs.in pvsio.in pvs.sty pvs-tex.sub \
-  bin/pvs-platform bin/relocate bin/tarmail bin/untarmail \
+  bin/pvs-platform bin/relocate bin/tarmail bin/untarmail bin/qepcad.bash \
   lib/prelude.* lib/*.help lib/pvs-style.css lib/pvs.bnf lib/pvs.grammar \
   lib/pvs.rnc \
   lib/PVSio \
@@ -128,7 +128,7 @@ if [ -d emacs/emacs20 -a -d emacs/xemacs21 -a -d emacs/emacs22 ]
 then
 pvssystemfiles="\
   README INSTALL LICENSE NOTICES pvs pvsio pvs-tex.sub pvs.sty bin/relocate \
-  bin/pvs-platform bin/tar-b64-mail Examples \
+  bin/pvs-platform bin/tar-b64-mail bin/qepcad.bash Examples \
   lib/prelude.pvs lib/prelude.prf lib/list_adt.pvs \
   lib/ordstruct_adt.pvs lib/character_adt.pvs \
   lib/union_adt.pvs lib/lift_adt.pvs \
@@ -142,7 +142,7 @@ pvssystemfiles="\
   doc/PVSio-2.d.pdf \
   wish/gray.xbm wish/sequent.xbm \
   emacs lib/PVSio lib/finite_sets lib/bitvectors"
-tar ${TARFLAGS} -f pvs-${version}-system.tgz --exclude pvsbin $pvssystemfiles
+tar ${TARFLAGS} -f pvs-${version}-system.tgz $pvssystemfiles
 else
 echo "pvs-${version}-system.tgz not created - need emacs/emacs20 and emacs/xemacs21 and "
 fi
