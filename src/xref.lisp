@@ -48,6 +48,13 @@
 (defmethod collect-references ((ex declaration))
   ex)
 
+(defmethod regenerate-xref ((decl declaration))
+  (let ((*generate-xref-declaration* decl)
+	(*xref-names-seen* nil)
+	(*xref-types-seen* nil))
+    (setf (refers-to decl) nil)
+    (generate-xref decl)))
+
 #-gcl
 (defmethod generate-xref (obj)
   (error "~a not handled" obj))
@@ -319,7 +326,9 @@
     (generate-xref (car resolutions))))
 
 (defmethod generate-xref ((n name-expr))
-  (assert (or (type n) (typep (declaration n) 'theory-abbreviation-decl)))
+  (assert (or (type n)
+	      (typep (declaration n)
+		     '(or module theory-abbreviation-decl))))
   (unless (memq n *xref-names-seen*)
     (push n *xref-names-seen*)
     (unless (typep (declaration n) '(or module mod-decl formal-theory-decl
