@@ -612,6 +612,7 @@
 	    
     ;; Make sure substituted decls are all new.
     (let* ((dalist nil)
+	   (owlist nil)
 	   (theory-part
 	    (mapcar #'(lambda (sd)
 			(if (importing? sd)
@@ -622,24 +623,42 @@
 					  (break "No generated-by?"))))
 			      (setf (id sd) nid)
 			      (setf (module sd) (current-theory))
-			      (when (typep sd '(or type-decl const-decl mod-decl))
-				(let* ((res (make-resolution sd (current-theory-name)))
-				       (nm (mk-name-expr nid nil nil res))
-				       (act (make-instance 'actual :expr nm)))
-				  (when (type-decl? sd)
-				    (setf (type-value act) (type-value sd)))
-				  (push (cons d act) dalist)))
+			      (if (typep sd '(or type-decl const-decl mod-decl))
+				  (let* ((type (subst-new-map-decl-type sd dalist owlist))
+					 (res (make-resolution sd
+						(current-theory-name) type))
+					 (nm (mk-name-expr nid nil nil res))
+					 (act (make-instance 'actual :expr nm)))
+				    (when (type-decl? sd)
+				      (setf (type-value act) (type-value sd)))
+				    (push (cons d act) dalist))
+				  (push (cons d sd) owlist))
 			      sd)))
 	      (theory stheory))))
       (setf (theory stheory) theory-part)
       (setf (theory-mappings decl) dalist)
-      (subst-new-map-decls (theory stheory) dalist)
+      (subst-new-map-decls (theory stheory) dalist owlist)
       (make-inlined-theory-decls stheory decl))))
 
-(defvar *subst-new-map-decls*)
+(defmethod subst-new-map-decl-type ((sd mod-decl) dalist owlist)
+  nil)
 
-(defun subst-new-map-decls (decls dalist)
-  (let ((*subst-new-map-decls* dalist))
+(defmethod subst-new-map-decl-type ((sd type-decl) dalist owlist)
+  (let ((*subst-new-map-decls* dalist)
+	(*subst-new-other-decls* owlist))
+    (subst-new-map-decls* (type-value sd))))
+
+(defmethod subst-new-map-decl-type ((sd const-decl) dalist owlist)
+  (let ((*subst-new-map-decls* dalist)
+	(*subst-new-other-decls* owlist))
+    (subst-new-map-decls* (type sd))))
+
+(defvar *subst-new-map-decls*)
+(defvar *subst-new-other-decls*)
+
+(defun subst-new-map-decls (decls dalist owlist)
+  (let ((*subst-new-map-decls* dalist)
+	(*subst-new-other-decls* owlist))
     (mapcar #'subst-new-map-decl decls)))
 
 (defmethod subst-new-map-decl ((decl type-decl))
@@ -650,8 +669,8 @@
 (defmethod subst-new-map-decl ((decl const-decl))
   (setf (formals decl) (subst-new-map-decls* (formals decl)))
   (setf (definition decl) (subst-new-map-decls* (definition decl)))
-  (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
   (setf (type decl) (subst-new-map-decls* (type decl)))
+  (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
   (when (definition decl) (make-def-axiom decl))
   (setf (generated-by decl) nil)
   (setf (eval-info decl) nil))
@@ -680,8 +699,11 @@
   (setf (generated adt)
 	(mapcar #'(lambda (d)
 		    (let ((nd (cdr (assq d *subst-new-map-decls*))))
-		      (assert nd)
-		      nd))
+		      (if nd
+			  (declaration (expr nd))
+			  (let ((od (assq d *subst-new-other-decls*)))
+			    (assert od)
+			    od))))
 	  (generated adt))))
 
 (defmethod subst-new-map-decl ((decl adtdecl))
@@ -726,10 +748,12 @@
 
 (defmethod subst-new-map-decl-test ((obj name))
   (when (resolution obj)
-    (assq (declaration obj) *subst-new-map-decls*)))
+    (subst-new-map-decl-test (resolution obj))))
 
 (defmethod subst-new-map-decl-test ((obj resolution))
-  (assq (declaration obj) *subst-new-map-decls*))
+  (or (assq (declaration obj) *subst-new-map-decls*)
+      ;;(typed-declaration? (declaration obj))
+      ))
 
 (defmethod subst-new-map-decl-test ((obj simple-constructor))
   (assq (con-decl obj) *subst-new-map-decls*))
@@ -745,36 +769,44 @@
   (mapcar #'subst-new-map-decl obj))
 
 (defmethod subst-new-map-decl* ((obj name))
-  (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*))))
-    (assert (actual? act))
-    (copy obj
-      :id (id (expr act))
-      :resolutions (subst-new-map-decls* (resolutions obj)))))
-
-(defmethod subst-new-map-decl* ((obj name-expr))
   (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*)))
 	(nres (subst-new-map-decls* (resolutions obj))))
-    (assert (actual? act))
+    (assert (or (null act) (actual? act)))
     (copy obj
-      :id (id (expr act))
-      :type (type (car nres))
+      :id (if act (id (expr act)) (id obj))
       :resolutions nres)))
+
+(defmethod subst-new-map-decl* ((obj name-expr))
+  (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*))))
+    (assert (or (null act) (actual? act)))
+    (if act
+	(copy obj
+	  :id (id (expr act))
+	  :type (subst-new-map-decls* (type (expr act))))
+	(let ((nres (subst-new-map-decls* (resolution obj))))
+	  (if (eq nres (resolution obj))
+	      obj
+	      (lcopy obj
+		:resolutions (list nres)
+		:type (type nres)))))))
 
 (defmethod subst-new-map-decl* ((obj adt-type-name))
   (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*))))
-    (assert (actual? act))
-    (copy obj
-      :id (id (expr act))
+    (assert (or (null act) (actual? act)))
+    (lcopy obj
+      :id (if act (id (expr act)) (id obj))
       :resolutions (subst-new-map-decls* (resolutions obj))
       :adt (or (cdr (assq (adt obj) *subst-new-map-decls*))
-	       (adt obj)))))
+	       (cdr (assq (adt obj) *subst-new-other-decls*))
+	       (break "What now?")))))
 
 (defmethod subst-new-map-decl* ((obj constructor-name-expr))
   (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*)))
-	(nres (subst-new-map-decls* (resolutions obj))))
-    (assert (actual? act))
+	(nres (subst-new-map-decls* (resolutions obj)))
+	(adt (adt obj)))
+    (assert (or (null act) (actual? act)))
     (copy obj
-      :id (id (expr act))
+      :id (if act (id (expr act)) (id obj))
       :type (type (car nres))
       :resolutions nres
       :adt-type (subst-new-map-decls* (adt-type obj)))))
@@ -782,8 +814,12 @@
 (defmethod subst-new-map-decl* ((obj resolution))
   (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*)))
 	(modinst (current-theory-name)))
-    (assert (actual? act))
-    (make-resolution (declaration (expr act)) modinst)))
+    (assert (or (null act) (actual? act)))
+    (if (actual? act)
+	(make-resolution (declaration (expr act)) modinst)
+	(let ((nmi (subst-new-map-decls* (module-instance obj)))
+	      (ntype (subst-new-map-decls* (type obj))))
+	  (lcopy obj :module-instance nmi :type ntype)))))
 
 (defmethod subst-new-map-decl* ((obj simple-constructor))
   (let* ((cd (cdr (assq (con-decl obj) *subst-new-map-decls*)))

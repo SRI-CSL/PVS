@@ -479,7 +479,7 @@
 	       ((or formal-theory-decl mod-decl module)
 		(or (and (actual? (cdr bd))
 			 (null (type-value (cdr bd)))
-			 (theory-name-expr? (expr (cdr bd))))
+			 (name-expr? (expr (cdr bd))))
 		    (break "theory")))
 	       (formula-decl
 		(or (formula-decl? (cdr bd))
@@ -557,7 +557,8 @@
       (let ((hobj (gethash obj *subst-mod-params-cache*)))
 	(or hobj
 	    (let ((nobj (if (and (null (mappings modinst))
-				 (not (typep obj '(or module declaration list)))
+				 (not (typep obj '(or module declaration
+						      inline-recursive-type list)))
 				 (not (some #'(lambda (b)
 						(formal-theory-decl? (car b)))
 					    bindings))
@@ -625,17 +626,16 @@
 
 (defmethod subst-mod-params* ((th module) modinst bindings)
   (with-slots (formals assuming theory exporting) th
-    (let* ((*subst-mod-params-module?* t)
+    (let* ((*subst-mod-params-module?* th)
 	   (rformals (subst-mod-params-formals formals modinst bindings))
-	   (rassuming assuming)
-	   (rtheory theory))
+	   (rassuming (subst-mod-params* assuming modinst bindings))
+	   (rtheory (subst-mod-params* theory modinst bindings)))
+      (when (memq nil rtheory) (break))
       (lcopy th
 	:formals rformals ;;(subst-mod-params* rformals modinst bindings)
-	:assuming (remove-if #'null
-		    (subst-mod-params* rassuming modinst bindings))
+	:assuming (remove-if #'null rassuming)
 	:theory (append (create-importings-for-bindings bindings)
-			(remove-if #'null
-			  (subst-mod-params* rtheory modinst bindings)))
+			(remove-if #'null rtheory))
 	:exporting (subst-mod-params* exporting modinst bindings)))))
 
 (defun subst-mod-params-formals (formals modinst bindings &optional rformals)
@@ -748,9 +748,10 @@
 		(lcopy mn :actuals nacts :mappings nmaps)))))))
 
 (defmethod subst-mod-params* ((adt inline-recursive-type) modinst bindings)
-  (lcopy adt
+  (copy adt
     :constructors (subst-mod-params* (constructors adt) modinst bindings)
-    :adt-type-name (subst-mod-params* (adt-type-name adt) modinst bindings)))
+    :adt-type-name (subst-mod-params* (adt-type-name adt) modinst bindings)
+    :generated-by adt))
 
 (defmethod subst-mod-params* ((c simple-constructor) modinst bindings)
   (lcopy c
@@ -896,13 +897,14 @@
 (defmethod subst-mod-params* ((decl formula-decl) modinst bindings)
   (with-slots (definition) decl
     (let ((ndef (subst-mod-params* definition modinst bindings)))
-      (unless (and (axiom? decl)
+      (unless (and nil
+		   (axiom? decl)
 		   (not (find-uninterpreted ndef modinst
 					    *subst-mod-params-theory*
-					    *subst-mod-params-map-bindings*)))
+					    *subst-mod-params-map-bindings*))))
 	(lcopy decl
 	  :definition ndef
-	  :generated-by decl)))))
+	  :generated-by decl))))
 
 (defmethod subst-mod-params* ((decl subtype-judgement) modinst bindings)
   (with-slots (declared-subtype) decl
@@ -956,7 +958,7 @@
 	;; type name was found on the bindings, and the corresponding
         ;; actual is there.  Here we actally do the substitution.
 	(if (and *subst-mod-params-module?*
-		 (eq (module decl) (get-theory modinst)))
+		 (eq (module decl) *subst-mod-params-module?*))
 	    type
 	    (or (mapped-theory-value (module decl) type modinst bindings)
 		(let* ((mi (module-instance res))
