@@ -1209,11 +1209,54 @@
 	     (not (gethash expr *subtype-hash*)))
     (collect-type-constraints* expr)))
 
+;;(NSH:12-20-09): Now uses find-non-false-recognizer to add this
+;;recognizer as a type constraint.  The constraint can be *false*
+;;when there are multiple true recognizers. 
 (defun collect-type-constraints* (ex)
   ;; SO 2004-09-17: Added implicit-type-predictes
   (if *implicit-typepreds?*
       (implicit-type-predicates ex t (type-constraints ex t))
-      (type-constraints ex (not *pseudo-normalizing*))))
+      (if (adt? (find-supertype (type ex)))
+          (let* ((all-recs (check-all-recognizers ex))
+	         (rec (find-non-false-recognizer all-recs)))
+            (if (or (null rec)(eq rec *true*))
+                (type-constraints ex (not *pseudo-normalizing*))
+		(cons (if (eq rec *false*) *false*
+			   (make!-reduced-application rec ex))
+		      (type-constraints ex (not *pseudo-normalizing*)))))
+        (type-constraints ex (not *pseudo-normalizing*)))))
+
+;;computes the only non-false recognizer from the result of
+;;check-all-recognizers.  Returns *true* (one true recognizer),
+;;*false* (more than one true recognizer), rec (the one non-false
+;;recognizer), or nil (more than one non-false recognizer). 
+(defun find-non-false-recognizer (all-recs)
+  (if (consp all-recs)
+      (find-non-false-recognizer* (cdr all-recs)
+				  (if (null (cdar all-recs))
+				      (caar all-recs)
+				      (cdar all-recs)))
+      nil))
+
+;body of find-non-false-recognizer: scans the entries in
+;check-all-recognizers returns *false* if all are false, or
+;recognizer which is the only non-false one that is nil
+;or nil, if there is a true recognizer
+;We have a contradiction if all are false or more than one true
+;Note: non-false-rec is either *true*, *false* or the first recognizer
+(defun find-non-false-recognizer* (all-recs non-false-rec)
+  (if (consp all-recs)
+     (cond ((eq (cdar all-recs) *true*)
+	    (if (eq non-false-rec *true*) ; then two true recognizers
+		*false*
+		(find-non-false-recognizer* (cdr all-recs) *true*)))
+           ((eq (cdar all-recs) *false*);keep looking
+	    (find-non-false-recognizer* (cdr all-recs) non-false-rec))
+	   (t ;(cdar all-recs) is nil
+	     (and (eq non-false-rec *false*)
+	          (find-non-false-recognizer* (cdr all-recs)(caar
+  all-recs)))))
+     non-false-rec))
 
 
 ;;NSH(7.11.94): old code triggered a loop since collect-type-constraints
@@ -2252,7 +2295,42 @@
 		(values '? (nth-value 1 (assert-if disequality)))))
 	  (do-auto-rewrite expr sig)))))
 
-;;NSH(10.21.94)
+;;finds non-false recog in recs1 and recs2 and invokes compare-recognizers*
+(defun compare-recognizers (recs1 recs2)
+  (let ((found-rec1 (find-non-false-recognizer recs1))
+	(found-rec2 (find-non-false-recognizer recs2)))
+    (compare-recognizers* recs1 recs2 found-rec1 found-rec2)))
+
+;;core of compare-recognizers: found-rec1 and 2 track the one
+;;non-false recognizer in each recognizer alist. 
+(defun compare-recognizers* (recs1 recs2 found-rec1 found-rec2)
+  (if (and (consp recs1)(consp recs2))
+      (if (and (not (null (cdar recs1)))
+	       (not (null (cdar recs2))))
+	(if (eq (cdar recs1) *true*)
+	    (if (eq (cdar recs2) *true*)
+`	    (and (null (accessors (constructor (caar recs1))))
+		*true*) ; return nil if this is not a scalar
+	    *false*)
+	    (if (eq (cdar recs2) *true*)
+		*false*
+		(compare-recognizers* (cdr recs1)(cdr recs2)
+				      found-rec1 found-rec2)))
+	(if (eq (caar recs1) found-rec1)
+	    (if (or (eq (caar recs2) found-rec2)
+		    (eq (cdar recs2) *true*))
+		(and (null (accessors (constructor (caar recs1))))
+		*true*) ; return nil if this is not a scalar
+		*false*)
+	    (if (eq (caar recs2) found-rec2)
+		(if (eq (caar recs1) *true*)
+		    (and (null (accessors (constructor (caar recs1))))
+		         *true*) ; return nil if this is not a scalar
+		    *false*)
+		(compare-recognizers* (cdr recs1)(cdr recs2)
+				     found-rec1 found-rec2))))
+    nil))
+
 (defun assert-equality (expr newargs sig)
   (let ((nargs (argument-list newargs)))
     (cond ((tc-eq (car nargs)(cadr nargs))
@@ -2281,13 +2359,17 @@
 			   (do-auto-rewrite expr sig))
 		       (let* ((pred (or p1 p2))
 			      (term (if p1 (args2 expr) (args1 expr)))
-			      (result (when pred
+			      (result (if pred
 					(check-rest-recognizers
 					 pred
-					 (check-all-recognizers term)))))
-			 (cond ((null pred)(do-auto-rewrite expr sig))
-			       ((false-p result)
-				(values '? *false*))
+					 (check-all-recognizers term))
+					(compare-recognizers
+					 (check-all-recognizers (args1 expr))
+					 (check-all-recognizers (args2 expr))))))
+			 ;;(NSH:12-20-09) rearranged the order of COND
+			 (cond ((false-p result) (values '? *false*))
+			       ((true-p result) (values '? *true*))
+			       ((null pred)(do-auto-rewrite expr sig))
 			       ((and (eq result 'restfalse)
 				     (null (accessors (constructor pred))))
 				(values '? *true*))
