@@ -1219,11 +1219,14 @@
       (if (adt? (find-supertype (type ex)))
           (let* ((all-recs (check-all-recognizers ex))
 	         (rec (find-non-false-recognizer all-recs)))
-            (if (or (null rec)(eq rec *true*))
-                (type-constraints ex (not *pseudo-normalizing*))
-		(cons (if (eq rec *false*) *false*
-			   (make!-reduced-application rec ex))
-		      (type-constraints ex (not *pseudo-normalizing*)))))
+            (if (consp rec)
+		(if (eq (cdr rec) *true*)
+		    (type-constraints ex (not *pseudo-normalizing*))
+		    (cons (make!-reduced-application (car rec) ex)
+			  (type-constraints ex (not *pseudo-normalizing*))))
+		(if (eq rec *false*)
+		    (cons *false* (type-constraints ex (not *pseudo-normalizing*)))
+		    (type-constraints ex (not *pseudo-normalizing*)))))
         (type-constraints ex (not *pseudo-normalizing*)))))
 
 ;;computes the only non-false recognizer from the result of
@@ -1232,10 +1235,16 @@
 ;;recognizer), or nil (more than one non-false recognizer). 
 (defun find-non-false-recognizer (all-recs)
   (if (consp all-recs)
-      (find-non-false-recognizer* (cdr all-recs)
-				  (if (null (cdar all-recs))
-				      (caar all-recs)
-				      (cdar all-recs)))
+      (let ((rec 
+	     (find-non-false-recognizer* (cdr all-recs)
+					 (if (eq (cdar all-recs) *false*)
+					     nil
+					     (car all-recs)))))
+	(cond ((and (not *assert-typepreds-off*)
+		 (tc-eq rec *false*))
+	       (pushnew *false* *assert-typepreds* :test #'tc-eq)
+	       rec)
+	    (t rec)))
       nil))
 
 ;body of find-non-false-recognizer: scans the entries in
@@ -1247,17 +1256,16 @@
 (defun find-non-false-recognizer* (all-recs non-false-rec)
   (if (consp all-recs)
      (cond ((eq (cdar all-recs) *true*)
-	    (if (eq non-false-rec *true*) ; then two true recognizers
-		*false*
-		(find-non-false-recognizer* (cdr all-recs) *true*)))
+	    (if (and (consp non-false-rec)
+		     (eq (cdr non-false-rec) *true*)) ; then two true recognizers
+		*false*;;else (cdr non-false-rec) is nil
+		(find-non-false-recognizer* (cdr all-recs) (car all-recs))))
            ((eq (cdar all-recs) *false*);keep looking
 	    (find-non-false-recognizer* (cdr all-recs) non-false-rec))
 	   (t ;(cdar all-recs) is nil
-	     (and (eq non-false-rec *false*)
-	          (find-non-false-recognizer* (cdr all-recs)(caar
-  all-recs)))))
-     non-false-rec))
-
+	     (and (null non-false-rec);;else multiple nils, return nil
+	          (find-non-false-recognizer* (cdr all-recs)(car all-recs)))))
+     (or non-false-rec *false*)))
 
 ;;NSH(7.11.94): old code triggered a loop since collect-type-constraints
 ;;calls substit which calls pseudo-normalize which calls
@@ -2299,37 +2307,12 @@
 (defun compare-recognizers (recs1 recs2)
   (let ((found-rec1 (find-non-false-recognizer recs1))
 	(found-rec2 (find-non-false-recognizer recs2)))
-    (compare-recognizers* recs1 recs2 found-rec1 found-rec2)))
+    (and (consp found-rec1)(consp found-rec2)
+	(if (tc-eq (car found-rec1)(car found-rec2))
+	    (and (null (accessors (constructor (caar recs1))))
+		 *true*)
+	    *false*))))
 
-;;core of compare-recognizers: found-rec1 and 2 track the one
-;;non-false recognizer in each recognizer alist. 
-(defun compare-recognizers* (recs1 recs2 found-rec1 found-rec2)
-  (if (and (consp recs1)(consp recs2))
-      (if (and (not (null (cdar recs1)))
-	       (not (null (cdar recs2))))
-	(if (eq (cdar recs1) *true*)
-	    (if (eq (cdar recs2) *true*)
-`	    (and (null (accessors (constructor (caar recs1))))
-		*true*) ; return nil if this is not a scalar
-	    *false*)
-	    (if (eq (cdar recs2) *true*)
-		*false*
-		(compare-recognizers* (cdr recs1)(cdr recs2)
-				      found-rec1 found-rec2)))
-	(if (eq (caar recs1) found-rec1)
-	    (if (or (eq (caar recs2) found-rec2)
-		    (eq (cdar recs2) *true*))
-		(and (null (accessors (constructor (caar recs1))))
-		*true*) ; return nil if this is not a scalar
-		*false*)
-	    (if (eq (caar recs2) found-rec2)
-		(if (eq (caar recs1) *true*)
-		    (and (null (accessors (constructor (caar recs1))))
-		         *true*) ; return nil if this is not a scalar
-		    *false*)
-		(compare-recognizers* (cdr recs1)(cdr recs2)
-				     found-rec1 found-rec2))))
-    nil))
 
 (defun assert-equality (expr newargs sig)
   (let ((nargs (argument-list newargs)))
@@ -2367,8 +2350,9 @@
 					 (check-all-recognizers (args1 expr))
 					 (check-all-recognizers (args2 expr))))))
 			 ;;(NSH:12-20-09) rearranged the order of COND
-			 (cond ((false-p result) (values '? *false*))
-			       ((true-p result) (values '? *true*))
+			 (cond ((false-p result)
+				(values '? *false*))
+			       ((true-p result)(values '? *true*))
 			       ((null pred)(do-auto-rewrite expr sig))
 			       ((and (eq result 'restfalse)
 				     (null (accessors (constructor pred))))
