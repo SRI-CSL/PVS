@@ -219,7 +219,9 @@
 	     (values (intern upstr 'sbst)
 		     :keyword-internal-flag place comment)))
 	  ((eq token :eof) (values :eof nil place comment))
-	  ((eq token :illegal-token)
+	  ((or (eq token :illegal-token)
+	       (and (not (eq token 'sbst::_))
+		    (char= (char (symbol-name token) 0) #\_)))
 	   (values :illegal-token :illegal-token place))
 	  (t (let ((id (intern (if *case-sensitive*
 				 (symbol-name token)
@@ -403,7 +405,8 @@ with the comment so as to put it in the proper place")
      (setq place (curplace (lexical-stream-stream self))
 	   char (multiple-value-list
 		 (cond ((equal char :eof) eofval)
-		       ((equal (elt readtable (char-code char)) :alphabetic)
+		       ((or (char= char #\_)
+			    (equal (elt readtable (char-code char)) :alphabetic))
 			(let ((a (alpha-lexer self
 					      (lexical-read-char self nil))))
 			  (if (and (symbolp a)
