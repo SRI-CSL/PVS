@@ -1216,7 +1216,7 @@
   ;; SO 2004-09-17: Added implicit-type-predictes
   (if *implicit-typepreds?*
       (implicit-type-predicates ex t (type-constraints ex t))
-      (if (adt? (find-supertype (type ex)))
+      (if (and (type ex)(adt? (find-supertype (type ex))))
           (let* ((all-recs (check-all-recognizers ex))
 	         (rec (find-non-false-recognizer all-recs)))
             (if (consp rec)
