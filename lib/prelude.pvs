@@ -812,6 +812,8 @@ sets [T: TYPE]: THEORY
 
   singleton_elt_def: LEMMA singleton?(a) IMPLIES singleton_elt(a) = choose(a)
 
+  singleton_singleton: LEMMA singleton?(a) IMPLIES (EXISTS x: a = singleton(x))
+
   singleton_rew: LEMMA singleton_elt(singleton(x)) = x
 
   AUTO_REWRITE+ singleton_rew
@@ -3864,6 +3866,8 @@ finite_sets[T: TYPE]: THEORY
 
   card_subset     : THEOREM subset?(A,B) IMPLIES card(A) <= card(B)
 
+  card_strict_subset: THEOREM strict_subset?(A,B) IMPLIES card(A) < card(B)
+
   card_plus       : THEOREM card(A) + card(B) = 
                                 card(union(A, B)) + card(intersection(A,B))  
 
@@ -4189,6 +4193,17 @@ finite_sequences [T: TYPE]: THEORY
         ELSE LET len = min(n - m + 1, fs`length - m)
               IN (# length := len,
                     seq := (LAMBDA (x: below[len]): fs`seq(x + m)) #)
+        ENDIF;
+
+  % This is the same as above, but returns domain [m..n-1] rather than [m..n]
+  % More generally useful, but the above is kept for backward compatibility
+  ^^(fs, p): finseq =
+    LET (m, n) = p
+     IN IF m >= n OR m >= fs`length
+        THEN empty_seq
+        ELSE LET len = min(n - m, fs`length - m)
+              IN (# length := len,
+                    seq := (LAMBDA (x: below[len]): fs`seq(x + m)) #)
         ENDIF
 
   extract1(fs:{fs | fs`length = 1}): T = fs`seq(0)
@@ -4198,6 +4213,28 @@ finite_sequences [T: TYPE]: THEORY
   o_assoc: LEMMA fs1 o (fs2 o fs3) = (fs1 o fs2) o fs3
 
  END finite_sequences
+
+
+more_finseq [T: TYPE]: THEORY
+  BEGIN
+   seq: TYPE = finseq[T]
+
+   rr, ss, tt: VAR seq
+
+   x, y, z: VAR T
+
+   prefix?(rr, ss): bool =
+     rr`length <= ss`length AND
+       (FORALL (i: below(rr`length)): rr`seq(i) = ss`seq(i))
+
+   prefix_closed?(X : set[seq]): bool =
+     FORALL ss: X(ss) IMPLIES (FORALL (rr | prefix?(rr, ss)): X(rr))
+
+   add(x, rr): finseq[T] =
+     rr WITH [`length := rr`length + 1,
+              `seq(rr`length) := x]
+
+  END more_finseq
 
 
 % ordstruct provides the building blocks for defining the
@@ -5472,6 +5509,154 @@ BEGIN
   pad_right(k: above(N), b: bit)(bv): bvec[k] = bv o fill[k-N](b)
 
 END bv_extend_defs
+
+% Alternative definition for bitvectors, treating them as primitive
+% in order to translate properly into SMT solvers.
+
+bitv[n: nat]: THEORY
+BEGIN
+
+  bitv: TYPE+
+
+END bitv
+
+bitvector  : THEORY
+
+  BEGIN
+
+  IMPORTING bitv
+
+  n, m: VAR nat
+
+  getbit(n)(b: bitv[n])(i: below(n)): bool
+
+  extract(n)(j: upto(n), k: upto(j))(b: bitv[n]): bitv[j - k]
+
+  concat(m, n)(a: bitv[m], b: bitv[n]): bitv[m+n]
+
+  shiftl0(n)(b: bitv[n]): bitv[n]
+
+  shiftl1(n)(b: bitv[n]): bitv[n]
+
+  shiftr0(n)(b: bitv[n]): bitv[n]
+
+  shiftr1(n)(b: bitv[n]): bitv[n]
+
+  xbit1(n)(f: [bool -> bool])(b : bitv[n]): bitv[n]
+
+  xbit2(n)(f: [bool , bool -> bool])(a, b: bitv[n]): bitv[n]
+
+  getbit_extract: AXIOM
+   FORALL (j: upto(n)), (k : upto(j)), (b: bitv[n]), (i: below(k - j)): 
+    getbit(j - k)(extract(n)(j, k)(b))(i) = getbit(n)(b)(i + k)
+
+  getbit_concat: AXIOM
+    FORALL (a : bitv[m], b: bitv[n]), (i: below(m + n)):
+     getbit(m+n)(concat(m, n)(a, b))(i) =
+       IF i < n
+        THEN getbit(n)(b)(i)
+        ELSE getbit(m)(a)(i - n)
+       ENDIF
+
+   getbit_shiftl1: AXIOM
+     FORALL (b : bitv[n]), (i : below(n)):
+      getbit(n)(shiftl1(n)(b))(i) =
+        IF i = 0
+         THEN TRUE
+         ELSE getbit(n)(b)(i-1)
+        ENDIF
+
+   getbit_shiftl0: AXIOM
+     FORALL (b : bitv[n]), (i : below(n)):
+      getbit(n)(shiftl1(n)(b))(i) =
+        IF i = 0
+         THEN FALSE
+         ELSE getbit(n)(b)(i-1)
+        ENDIF
+
+   getbit_shiftr1: AXIOM
+     FORALL (b : bitv[n]), (i : below(n)):
+      getbit(n)(shiftl1(n)(b))(i) =
+        IF i = n-1
+         THEN TRUE
+         ELSE getbit(n)(b)(i+1)
+        ENDIF
+
+  getbit_shiftr0: AXIOM
+     FORALL (b : bitv[n]), (i : below(n)):
+      getbit(n)(shiftl1(n)(b))(i) =
+        IF i = n-1
+         THEN FALSE
+         ELSE getbit(n)(b)(i+1)
+        ENDIF
+
+  getbit_xbit1: AXIOM
+     FORALL (b : bitv[n]), (i: below(n)), (f : [bool-> bool]):
+       getbit(n)(xbit1(n)(f)(b))(i) = f(getbit(n)(b)(i))
+
+
+  getbit_xbit2: AXIOM
+     FORALL (a, b : bitv[n]), (i: below(n)), (f : [bool, bool-> bool]):
+       getbit(n)(xbit2(n)(f)(a, b))(i) = f(getbit(n)(a)(i), getbit(n)(b)(i))
+
+  bitvector: TYPE = [# len : nat, bits : bitv[len] #]
+
+  getbit(bb: bitvector)(i: below(bb`len)): bool =
+    getbit(bb`len)(bb`bits)(i)
+
+  extract(bb: bitvector)(j : upto(bb`len), k: upto(j)): bitvector =
+    (# len := j - k,
+       bits := extract(bb`len)(j, k)(bb`bits)
+     #)
+
+  concat(aa, bb: bitvector): bitvector =
+    (# len := aa`len + bb`len,
+       bits := concat(aa`len, bb`len)(aa`bits, bb`bits)
+     #)
+
+  shiftl1(bb: bitvector): bitvector =
+    (# len := bb`len,
+       bits := shiftl1(bb`len)(bb`bits)
+     #)
+
+
+  shiftl0(bb: bitvector): bitvector =
+    (# len := bb`len,
+       bits := shiftl0(bb`len)(bb`bits)
+     #)
+
+  shiftr1(bb: bitvector): bitvector =
+    (# len := bb`len,
+       bits := shiftr1(bb`len)(bb`bits)
+     #)
+
+  shiftr0(bb: bitvector): bitvector =
+    (# len := bb`len,
+       bits := shiftr0(bb`len)(bb`bits)
+     #)
+
+
+  bitv2nat(n)(b: bitv[n], (i : upto(n))): RECURSIVE nat =
+    IF i > 0
+     THEN (exp2(i-1) * getbit(n)(b)(i-1)) + bitv2nat(n)(b, i-1)
+     ELSE 0
+    ENDIF
+    MEASURE i
+
+  bitvec2nat(bb: bitvector):  nat =
+    bitv2nat(bb`len)(bb`bits, bb`len)
+
+  bitv2int(n: posnat)(b: bitv[n]): int =
+    LET i = bitv2nat(n)(b, n)
+     IN IF i > exp2(n-1)
+        THEN i - exp2(n-1)
+        ELSE i
+        ENDIF
+
+  bitvec2int(bb: bitvector | bb`len > 0): int =
+    bitv2int(bb`len)(bb`bits)
+ 
+  END bitvector
 
 
 %-------------------------------------------------------------------------
