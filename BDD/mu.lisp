@@ -789,20 +789,19 @@ time).  Verbose? set to T provides more information."
 	 (oplist
           (nreverse ;;NSH(6.19.98)
 	   (loop for i from 0 to (1- (expt 2 (length args)))
-		collect
-		(convert-pvs-to-mu*
-		 (make-application op
-		   (make-number-expr i))))))
+		 collect
+		 (convert-pvs-to-mu*
+		  (make-application op
+		    (make-number-expr i))))))
 	 (len (if (consp oplist)
 		  (if (consp (car oplist))
 		      (length (car oplist))
 		      1)
 		  0))) ;; could not be 0! Hassen
-     (if (equal 0 len) bindexpr
-           (mu_mk_curry_application  
-                  (mu_mk_abstraction (empty_list) bindexpr)  
-                        (lisp-to-c-list oplist)))
-))
+    (if (equal 0 len) bindexpr
+	(mu_mk_curry_application  
+	 (mu_mk_abstraction (empty_list) bindexpr)  
+	 (lisp-to-c-list oplist)))))
 
 
 					  
@@ -1369,7 +1368,8 @@ time).  Verbose? set to T provides more information."
 	    (mu-make-bool-var bvarname)))))
 
 (defun mu-mk-rel-var (bvarname)
-  (mu_mk_rel_var_ #+allegro (ff:string-to-char* bvarname)
+  (mu_mk_rel_var_ Ip
+		  #+allegro (ff:string-to-char* bvarname)
 		  #-allegro bvarname))
 
 (defun mu-mk-rel-var-dcl (bvarname)
@@ -1382,7 +1382,8 @@ time).  Verbose? set to T provides more information."
 
 (defun mu-make-bool-var (bvarname)
   (if *build-mu-term*
-      (mu_mk_rel_var_ #+allegro (ff:string-to-char* bvarname)
+      (mu_mk_rel_var_ Ip
+		      #+allegro (ff:string-to-char* bvarname)
 		      #-allegro bvarname)
       (mu_check_mk_bool_var #+allegro (ff:string-to-char* bvarname)
 			    #-allegro bvarname)
