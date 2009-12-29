@@ -22,10 +22,11 @@
   ;; (use-package :alien)
   (use-package :c-call))
 
-
 ;;;;;;;;;;;;;;;;;
 ;;;  Formula  ;;;
 ;;;;;;;;;;;;;;;;;
+
+(alien:def-alien-variable Ip unsigned-int)
 
 ;;; Formula mu_mk_false_formula (void)
 (alien:def-alien-routine ("mu___mu_mk_false_formula" mu_mk_false_formula)
@@ -132,6 +133,7 @@
 ;;; Term mu_mk_rel_var_dcl (char *name) 
 (alien:def-alien-routine ("mu___mu_mk_rel_var_" mu_mk_rel_var_)
 			 unsigned-int
+			 (Ip unsigned-int)
 			 (name c-string))
 ;;; Term  mu_mk_rel_var_ (R_Interpret Ip, char *name)
 (alien:def-alien-routine ("mu___mu_mk_true_term" mu_mk_true_term)
