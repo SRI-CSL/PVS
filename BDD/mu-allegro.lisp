@@ -28,6 +28,8 @@
 ;;;  Formula  ;;;
 ;;;;;;;;;;;;;;;;;
 
+(ff:def-foreign-variable Ip)
+
 ;;; Formula mu_mk_false_formula (void)
 (ff:def-foreign-call (mu_mk_false_formula "mu___mu_mk_false_formula")
     (:void)
@@ -72,11 +74,10 @@
   :arg-checking nil
   :call-direct t
   :returning :unsigned-int)
-;;; Formula mu_mk_curry_application (Term R, LIST subs, int curried)
+;;; Formula mu_mk_curry_application (Term fml1, LIST listargs)
 (ff:def-foreign-call (mu_mk_curry_application "mu___mu_mk_curry_application")
-    ((R :unsigned-int integer)
-     (subs :unsigned-int integer)
-     (curried :unsigned-int integer))
+    ((fml1 :unsigned-int integer)
+     (listargs :unsigned-int integer))
   #+(version>= 6) :strings-convert #+(version>= 6) nil
   :arg-checking nil
   :call-direct t
