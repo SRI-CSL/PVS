@@ -3989,7 +3989,7 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
   "Applies (auto-rewrite-theory :always? T) on a given list of theories."
   "Auto-rewriting given theories ~a with :always? T option")
 
-(defstep lazy-grind  (&optional (if-match t) (defs !) rewrites
+(defstep lazy-grind  (&optional (if-match t) polarity? (defs !) rewrites
                                 theories exclude (updates? t) (let-reduce? t)
 				quant-simp? implicit-typepreds?
 				cases-rewrite?)
@@ -3999,7 +3999,7 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
 	   :let-reduce? let-reduce? :quant-simp? quant-simp?
 	   :implicit-typepreds? implicit-typepreds?
 	   :cases-rewrite? cases-rewrite?)
-   (reduce$ :if-match if-match :updates? updates? :let-reduce? let-reduce?
+   (reduce$ :if-match if-match :polarity? polarity? :updates? updates? :let-reduce? let-reduce?
 	    :cases-rewrite? cases-rewrite?))
   "Equiv. to (grind) with the instantiations postponed until after simplification."
   "By skolemization, if-lifting, simplification and instantiation")
