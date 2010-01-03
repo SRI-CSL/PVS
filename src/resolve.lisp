@@ -1971,7 +1971,10 @@
 	    (resolve-theory-abbreviation modname)))))
 
 (defun resolve-theory-abbreviation (theory-name)
-  (let* ((abbrs (remove-if-not #'mod-decl?
+  (let* ((abbrs (remove-if-not #'(lambda (d)
+				   (typep d
+					  '(or mod-decl
+					       theory-abbreviation-decl)))
 		  (get-declarations (id theory-name)))))
     (cond ((null abbrs)
 	   (type-error theory-name
@@ -1979,9 +1982,9 @@
               in the current context"
 	     (id theory-name)))
 	  ((singleton? abbrs)
-	   (assert (fully-instantiated? (modname (car abbrs)))
+	   (assert (fully-instantiated? (theory-name (car abbrs)))
 		   () "resolve-theory-abbreviation not fully-instantiated")
-	   (modname (car abbrs)))
+	   (theory-name (car abbrs)))
 	  (t (error "resolve-theory-abbreviation too many abbreviations")))))
     
 
