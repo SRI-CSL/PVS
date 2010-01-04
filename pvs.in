@@ -352,7 +352,7 @@ if [ -n "$PVS_LIBRARY_PATH" ]
        do if [ -d $path/$plib ]
            then echo "Warning: PVS_LIBRARY_PATH $path/$plib"
 	        echo "         conflicts with $PVSPATH/lib/$plib"
-		echo "    $plib will default to the latter path"
+		echo "    $plib will default to $path/$plib"
 	  fi
        done
    done
