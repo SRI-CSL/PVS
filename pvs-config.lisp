@@ -79,7 +79,7 @@
   #+(and sbcl x86-64 linux) "x8664s"
   #+(and sbcl (not x86-64) linux) "x86s"
   #+(and sbcl darwin) "ppcs"
-  #+(and sbcl solaris) "sparcs"
+  #+(and sbcl sparc) "sparcs"
   #+(and clisp pc386) "clfasl"
   #+harlequin-common-lisp "wfasl"
   )
@@ -97,6 +97,8 @@
 
 #+cmu
 (eval-when (eval load)
+  (setq extensions:*load-object-types*
+	(remove "fasl" extensions:*load-object-types* :test #'string=))
   (pushnew *pvs-binary-type* extensions:*load-object-types* :test #'string=)
   ;;(pushnew *pvs-binary-type* lisp:*load-lp-object-types* :test #'string=)
   )
