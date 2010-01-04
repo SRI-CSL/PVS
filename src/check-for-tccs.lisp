@@ -312,6 +312,20 @@
       (when toppreds
 	(generate-subtype-tcc ex expected toppreds)))))
 
+(defmethod check-for-tccs* ((ex set-list-expr) expected)
+  (let ((est (find-supertype expected)))
+    (cond ((null (exprs ex))
+	   (unless (and (funtype? est)
+			(tc-eq (range est) *boolean*))
+	     (type-error ex "~a expected here" expected))
+	   ;; Nothing really to do here - just check everything OK
+	   (assert (bindings ex))
+	   (assert (expression ex))
+	   (assert (type ex)))
+	  (t (let ((ctype (type ex)))
+	       (dolist (e (exprs ex))
+		 (check-for-tccs* e (domain est))))))))
+
 (defun check-for-binding-expr-tccs (bindings expected-types)
   (assert (every #'(lambda (x) (or (not (consp x))
 				   (and (bind-decl? (car x))
