@@ -175,6 +175,15 @@
 ;; 		     (module (declaration obj))))))
 ;;   (call-next-method))
 
+(defmethod store-object* :around ((obj resolution))
+  (reserve-space 4
+                 (with-slots (declaration module-instance type)
+                   obj
+                   (push-word (store-obj 'resolution))
+                   (push-word (store-obj declaration))
+                   (push-word (store-obj (lcopy module-instance :resolutions nil)))
+                   (push-word (store-obj type)))))
+
 (setf (get 'moduleref 'fetcher) 'fetch-moduleref)
 (defun fetch-moduleref ()
   (let* ((mod-name (fetch-obj (stored-word 1)))
@@ -1266,7 +1275,8 @@
     (restore-object* (actuals thinst))
     (assert (not (store-print-type? tval)))
     (let* ((type-expr (if (actuals thinst)
-			  (subst-mod-params tval thinst (module decl))
+			  (let ((*pseudo-normalizing* t)) ;; disallow pseudo-normalize
+			    (subst-mod-params tval thinst (module decl)))
 			  (copy tval 'print-type te))))
       #+pvsdebug (assert (or (print-type type-expr) (tc-eq te type-expr)))
       #+pvsdebug (assert (true-type-expr? type-expr))
