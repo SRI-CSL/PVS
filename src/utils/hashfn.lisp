@@ -76,8 +76,8 @@
     #+(and allegro (not 64bit)) 24
     #+(and allegro 64bit) 32
     #+cmu 29
-    #+(and sbcl (or x86)) 29
-    #+(and sbcl (or x86-64)) 60))
+    #+(and sbcl (not x86-64)) 29
+    #+(and sbcl x86-64) 60))
 
 (defconstant-if-unbound pvs-sxhash-byte
   (byte pvs-sxhash-bits 0))
