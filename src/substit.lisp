@@ -739,7 +739,8 @@
 (defmethod substit* ((expr cases-expr) alist)
   (let* ((ntype (substit* (type expr) alist))
 	 (nexpr (substit* (expression expr) alist)))
-    (if (or (eq nexpr (expression expr))
+    (if (or *gensubst-subst-types*
+	    (eq nexpr (expression expr))
 	    (compatible? (type nexpr) (type (expression expr))))
 	(lcopy expr
 	  'expression nexpr
