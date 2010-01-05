@@ -37,6 +37,8 @@
 
 (defvar *gensubst-reset-types* nil)
 
+(defvar *gensubst-subst-types* nil)
+
 (defun gensubst (obj substfn testfn)
   (unwind-protect (gensubst* obj substfn testfn)
     (clrhash *gensubst-cache*)))
@@ -303,7 +305,8 @@
   (let ((nex (call-next-method)))
     (if (or *parsing-or-unparsing*
 	    *visible-only*
-	    (eq ex nex))
+	    (and (not *gensubst-reset-types*)
+		 (eq ex nex)))
 	nex
 	(let ((ntype (type (resolution nex))))
 	  (if (eq ntype (type ex))
@@ -444,7 +447,8 @@
 	 (narg (gensubst* (argument ex) substfn testfn))
 	 (ntype (cond ((or *parsing-or-unparsing*
 			   *visible-only*
-			   (and (eq nop (operator ex))
+			   (and (not *gensubst-subst-types*)
+				(eq nop (operator ex))
 				(eq narg (argument ex))))
 		       (type ex))
 		      ((dep-binding? (domain (find-supertype (type nop))))
