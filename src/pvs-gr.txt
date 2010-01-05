@@ -58,6 +58,9 @@ Precedence Information
              '[' initial
              jux medial left
 
+  units-expr  '*' medial left, '/' medial left
+	      '^' medial left
+
   expr  'HAS_TYPE' aggregate,
 	'IN' aggregate % LET
 	'|' medial left
@@ -184,7 +187,7 @@ assuming ::= {importing [';']}
 		 <conversion-elt(conversion,[nosemic()|semic()])>
 	   | {auto-rewrite [';']}
 		 <auto-rewrite-elt(auto-rewrite,[nosemic()|semic()])>
-	   | {['@DECL']^d pidops pdformals* ':' assuming-decl [';']^s}
+	   | {['_DECL']^d pidops pdformals* ':' assuming-decl [';']^s}
 		<assuming(pidops,pdf(star),assuming-decl,
                           [nosemic()|semic()]^s,[noatdecl()|atdecl()]^d)>
 	   ;
@@ -199,7 +202,7 @@ theory-elt ::= {importing [';']}
 		 <conversion-elt(conversion,[nosemic()|semic()])>
 	     | {auto-rewrite [';']}
 		 <auto-rewrite-elt(auto-rewrite,[nosemic()|semic()])>
-	     | {['@DECL']^d pidops [pdformals+] ':' theory-declaration [';']^s}
+	     | {['_DECL']^d pidops [pdformals+] ':' theory-declaration [';']^s}
 		 <theory(pidops,[noformals()|pdf(plus)],theory-declaration,
                          [nosemic()|semic()]^s,[noatdecl()|atdecl()]^d)>
 	     ;
@@ -257,7 +260,7 @@ adformal ::= typed-id
 
 assuming-decl ::= theory-declaration | assumption;
 
-theory-declaration ::= lib-decl | theory-decl | type-decl | var-decl
+theory-declaration ::= lib-decl | theory-decl | type-decl | units-decl | var-decl
               | const-decl | macro-decl | def-decl | ind-decl | corec-decl
               | coind-decl | formula-decl | datatype | judgement;
 
@@ -280,6 +283,19 @@ type-keyword ::= 'TYPE' <type()>
 type-def ::= {{'=' <equal()> | 'FROM' <from()> | {'<' ':'} <`\<\:()>}
               type-expr}
 		<type-def(alt,type-expr)>;
+
+units-decl ::= {'_UNIT' '=' units-expr} <units-decl(units-expr)>;
+
+units-expr ::= name
+             | {units-expr '^' rational} <units-term(`^(),units-expr,rational)>
+             | {units-expr^l '*' units-expr^r}
+                      <units-term(`*(),units-expr^l,units-expr^r)>
+             | {units-expr^l '/' units-expr^r}
+                      <units-term(`\/(),units-expr^l,units-expr^r)>
+             ;
+
+rational ::= {['-']^s number^n ['/' number^d]}
+              <rational([pos()|neg()]^s,number^n,[noden()|number^d])>;
 
 var-decl ::= {'VAR' type-expr} <var-decl(type-expr)>;
 
