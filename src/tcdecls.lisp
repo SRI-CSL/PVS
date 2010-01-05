@@ -623,22 +623,29 @@
 					  (break "No generated-by?"))))
 			      (setf (id sd) nid)
 			      (setf (module sd) (current-theory))
-			      (if (typep sd '(or type-decl const-decl mod-decl))
-				  (let* ((type (subst-new-map-decl-type sd dalist owlist))
-					 (res (make-resolution sd
-						(current-theory-name) type))
-					 (nm (mk-name-expr nid nil nil res))
-					 (act (make-instance 'actual :expr nm)))
-				    (when (type-decl? sd)
-				      (setf (type-value act) (type-value sd)))
-				    (push (cons d act) dalist))
-				  (push (cons d sd) owlist))
+			      (typecase sd
+				((or type-decl const-decl mod-decl)
+				 (let* ((type (subst-new-map-decl-type sd dalist owlist))
+					(res (make-resolution sd
+					       (current-theory-name) type))
+					(nm (mk-name-expr nid nil nil res))
+					(act (make-instance 'actual :expr nm)))
+				   (when (type-decl? sd)
+				     (setf (type-value act) (type-value sd)))
+				   (push (cons d act) dalist)))
+				;;(inline-recursive-type
+				 ;;(subst-new-map-decl-type sd dalist owlist)
+				 ;;(push (cons d sd) owlist))
+				(t (push (cons d sd) owlist)))
 			      sd)))
 	      (theory stheory))))
       (setf (theory stheory) theory-part)
       (setf (theory-mappings decl) dalist)
       (subst-new-map-decls (theory stheory) dalist owlist)
       (make-inlined-theory-decls stheory decl))))
+
+(defvar *subst-new-map-decls*)
+(defvar *subst-new-other-decls*)
 
 (defmethod subst-new-map-decl-type ((sd mod-decl) dalist owlist)
   nil)
@@ -653,8 +660,13 @@
 	(*subst-new-other-decls* owlist))
     (subst-new-map-decls* (type sd))))
 
-(defvar *subst-new-map-decls*)
-(defvar *subst-new-other-decls*)
+(defmethod subst-new-map-decl-type ((adt inline-recursive-type) dalist owlist)
+  (let ((*subst-new-map-decls* dalist)
+	(*subst-new-other-decls* owlist))
+    (break "inline-recursive-type")
+    (setf (adt-type-name adt) (subst-new-map-decls* (adt-type-name adt)))
+    (setf (constructors adt) (subst-new-map-decls* (constructors adt)))
+    (setf (adt-theory adt) (module adt))))
 
 (defun subst-new-map-decls (decls dalist owlist)
   (let ((*subst-new-map-decls* dalist)
@@ -667,9 +679,16 @@
   (setf (type-value decl) (subst-new-map-decls* (type-value decl))))
 
 (defmethod subst-new-map-decl ((decl const-decl))
-  (setf (formals decl) (subst-new-map-decls* (formals decl)))
-  (setf (definition decl) (subst-new-map-decls* (definition decl)))
-  (setf (type decl) (subst-new-map-decls* (type decl)))
+  (let ((nfmls (subst-new-map-decls* (formals decl)))
+	(ntype (subst-new-map-decls* (type decl)))
+	(ndef (subst-new-map-decls* (definition decl))))
+    (assert (or (null ndef)
+		(compatible? ntype
+			     (make-formals-funtype nfmls (type ndef))))
+	    () "incompat")
+    (setf (formals decl) nfmls)
+    (setf (definition decl) ndef)
+    (setf (type decl) ntype))
   (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
   (when (definition decl) (make-def-axiom decl))
   (setf (generated-by decl) nil)
@@ -692,8 +711,8 @@
     (assert (modname? tn))
     (setf (theory-name imp) tn)))
 
-(defmethod subst-new-map-decl ((adt datatype))
-  (setf (constructors adt) (subst-new-map-decls* (constructors adt)))
+(defmethod subst-new-map-decl ((adt inline-recursive-type))
+  ;;(setf (constructors adt) (subst-new-map-decls* (constructors adt)))
   (setf (adt-type-name adt) (subst-new-map-decls* (adt-type-name adt)))
   (setf (adt-theory adt) (module adt))
   (setf (generated adt)
@@ -712,10 +731,10 @@
   (setf (bind-decl decl) (subst-new-map-decls* (bind-decl decl))))
 
 (defmethod subst-new-map-decl ((decl subtype-judgement))
-  (setf (name decl) (subst-new-map-decls* (name decl)))
   (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
   (setf (declared-subtype decl) (subst-new-map-decls* (declared-subtype decl)))
-  (setf (type decl) (subst-new-map-decls* (type decl))))
+  (setf (type decl) (subst-new-map-decls* (type decl)))
+  (setf (subtype decl) (subst-new-map-decls* (subtype decl))))
 
 (defmethod subst-new-map-decl ((decl number-judgement))
   (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
@@ -741,7 +760,9 @@
   (break "Need more methods"))
 
 (defun subst-new-map-decls* (obj)
-  (gensubst obj #'subst-new-map-decl* #'subst-new-map-decl-test))
+  (let ((*pseudo-normalizing* t)
+	(*gensubst-subst-types* t))
+    (gensubst obj #'subst-new-map-decl* #'subst-new-map-decl-test)))
 
 (defmethod subst-new-map-decl-test ((obj declaration))
   (assq obj *subst-new-map-decls*))
@@ -777,18 +798,19 @@
       :resolutions nres)))
 
 (defmethod subst-new-map-decl* ((obj name-expr))
-  (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*))))
+  (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*)))
+	(nres (subst-new-map-decls* (resolution obj))))
     (assert (or (null act) (actual? act)))
     (if act
 	(copy obj
 	  :id (id (expr act))
-	  :type (subst-new-map-decls* (type (expr act))))
-	(let ((nres (subst-new-map-decls* (resolution obj))))
-	  (if (eq nres (resolution obj))
-	      obj
-	      (lcopy obj
-		:resolutions (list nres)
-		:type (type nres)))))))
+	  :resolutions (list nres)
+	  :type (type nres))
+	(if (eq nres (resolution obj))
+	    obj
+	    (lcopy obj
+	      :resolutions (list nres)
+	      :type (type nres))))))
 
 (defmethod subst-new-map-decl* ((obj adt-type-name))
   (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*))))
@@ -1050,6 +1072,88 @@
 	     (set-type (type-expr decl) nil)
 	     (copy tval :print-type tn)))))
 
+;;; Units-decl
+
+(defparameter *fundamental-unit-ids*
+  '(metre kilogram second coulomb candle degree_kelvin radian))
+
+(defmethod typecheck* ((decl units-decl) expected kind arguments)
+  (when (formals decl)
+    (type-error decl
+      "Unit declarations may not have parameters"))
+  (check-duplication decl)
+  (let ((pos (position (id decl) *fundamental-unit-ids*)))
+    (cond (pos
+	   (unless (eq (id (current-theory)) 'units)
+	     (type-error decl "May not redefine fundamental units"))
+	   (setf (scale (declared-units decl)) 1)
+	   (setf (dimensionality (declared-units decl))
+		 (make-array (length *fundamental-unit-ids*) :initial-element 0))
+	   (setf (svref (dimensionality (declared-units decl)) pos) 1))
+	  (t (typecheck* (declared-units decl) nil nil nil))))
+  (setf (type-value decl) *real*))
+
+(defmethod typecheck* ((ue units-appl) expected kind arguments)
+  (case (operator ue)
+    (* (let ((lhs (if (numberp (args1 ue))
+		      (args1 ue)
+		      (typecheck* (args1 ue) nil nil nil)))
+	     (rhs (if (numberp (args2 ue))
+		      (args2 ue)
+		      (typecheck* (args2 ue) nil nil nil))))
+	 (if (numberp lhs)
+	     (if (numberp rhs)
+		 (type-error units-appl "Units must include a name")
+		 (setf (scale ue) (* lhs (scale rhs))
+		       (dimensionality ue) (dimensionality rhs)))
+	     (if (numberp rhs)
+		 (setf (scale ue) (* rhs (scale lhs))
+		       (dimensionality ue) (dimensionality lhs))
+		 (setf (scale ue) (* (scale lhs) (scale rhs))
+		       (dimensionality ue) (map 'vector #'+
+						(dimensionality lhs)
+						(dimensionality rhs)))))
+	 ue))
+    (/ (let ((lhs (if (numberp (args1 ue))
+		      (args1 ue)
+		      (typecheck* (args1 ue) nil nil nil)))
+	     (rhs (if (numberp (args2 ue))
+		      (args2 ue)
+		      (typecheck* (args2 ue) nil nil nil))))
+	 (if (numberp lhs)
+	     (if (numberp rhs)
+		 (type-error units-appl "Units must include a name")
+		 (setf (scale ue) (/ lhs (scale rhs))
+		       (dimensionality ue) (map 'vector #'- (dimensionality rhs))))
+	     (if (numberp rhs)
+		 (setf (scale ue) (/ (scale lhs) rhs)
+		       (dimensionality ue) (dimensionality lhs))
+		 (setf (scale ue) (/ (scale lhs) (scale rhs))
+		       (dimensionality ue) (map 'vector #'-
+						(dimensionality lhs)
+						(dimensionality rhs)))))
+	 ue))
+    (t (break))))
+
+(defmethod args1 ((ue units-appl))
+  (car (arguments ue)))
+
+(defmethod args2 ((ue units-appl))
+  (cadr (arguments ue)))
+
+(defmethod typecheck* ((ue units-name) expected kind arguments)
+  (let ((res (remove-if-not #'(lambda (r)
+				(units-decl? (declaration r)))
+	       (resolve ue 'type nil))))
+    (when (null res)
+      (type-error ue "No resolution for unit name ~a" ue))
+    (when (cdr res)
+      (type-error ue "Ambiguous: "))
+    (setf (resolutions ue) res)
+    (let ((dunits (declared-units (declaration ue))))
+      (setf (scale ue) (scale dunits)
+	    (dimensionality ue) (dimensionality dunits)))
+    ue))
 
 ;;; Var-decl
 
