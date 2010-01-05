@@ -216,11 +216,13 @@
 (defun get-pvs-library-path ()
   (setq *pvs-library-path* nil)
   (let ((libs nil)
-	(pathenv (environment-variable "PVS_LIBRARY_PATH")))
+	(pathenv (environment-variable "PVS_LIBRARY_PATH"))
+	(pvs-path-lib (concatenate 'string *pvs-path* "/lib/")))
     (when pathenv
-      (let ((dirs #+allegro (excl:split-regexp ":" pathenv)
-		  #-allegro (make::split-string pathenv :item #\:)))
+      (let ((dirs (split-path pathenv)))
 	(dolist (dir dirs)
+	  (when (string= dir "")
+	    (setq dir pvs-path-lib))
 	  (unless (char= (char dir (1- (length dir))) #\/)
 	    (setq dir (concatenate 'string dir "/")))
 	  (cond ((file-exists-p dir)
@@ -228,13 +230,25 @@
 		(t (pushnew dir libs :test #'string=)
 		   (pvs-message "Directory ~a in PVS_LIBRARY_PATH does not exist"
 		     dir))))))
-    (let* ((pvs-path-lib (concatenate 'string *pvs-path* "/lib/"))
-	   (pvs-path-lib-entry (find pvs-path-lib libs :test #'file-equal)))
-      (when pvs-path-lib-entry
-	(pvs-message "~a is automatically included at the beginning of the PVS_LIBRARY_PATH" pvs-path-lib)
-	(pvs-message "You cannot shadow a subdirectory in ~a, you must give it a new name" pvs-path-lib)
-	(setq libs (remove pvs-path-lib-entry libs)))
-    (setq *pvs-library-path* (cons pvs-path-lib (nreverse libs))))))
+    (let ((pvs-path-lib-entry (find pvs-path-lib libs :test #'file-equal)))
+      (setq *pvs-library-path*
+	    (if pvs-path-lib-entry
+		(nreverse libs)
+		(nreverse (cons pvs-path-lib libs)))))))
+
+;; Splits the PVS_LIBRARY_PATH, which is a string of paths separated by colons
+;; Note that empty colons return empty strings, i.e.,
+;; (split-path ":bar::foo:") ==> ("" "bar" "" "foo" "")
+(defun split-path (pathstr &optional (spos 0) paths)
+  (let ((pos (position #\: pathstr :start spos)))
+    (if pos
+	(split-path pathstr (1+ pos)
+		    (cons (subseq pathstr spos pos) paths))
+	(if (= spos (length pathstr))
+	    (nreverse (cons "" paths))
+	    (if (= spos 0)
+		(list pathstr)
+		(nreverse paths))))))
 
 (defvar *pvs-patches-loaded* nil)
 
