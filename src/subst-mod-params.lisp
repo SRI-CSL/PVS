@@ -1689,7 +1689,7 @@
 			 (subst-mod-params (type-value decl) modinst theory)))
 		      ((or expname typed-declaration simple-decl)
 		       (subst-mod-params (type decl) modinst theory))))))
-    (mk-resolution decl modinst rtype)))
+    (mk-resolution decl (lcopy modinst :resolutions nil) rtype)))
 
 (defmethod make-resolution ((decl binding) modinst &optional type)
   (assert (or modinst type))
