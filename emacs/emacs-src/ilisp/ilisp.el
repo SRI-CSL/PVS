@@ -136,7 +136,7 @@
 (load "ilisp-cl" nil noninteractive)
 (load "ilisp-acl" nil noninteractive)
 (load "ilisp-cmu" nil noninteractive)
-;; (load "ilisp-sbcl")
+(load "ilisp-sbcl" nil noninteractive)
 ;; (load "ilisp-chs")
 ;; (load "ilisp-hlw")
 ;; (load "ilisp-kcl")
