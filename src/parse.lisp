@@ -452,6 +452,7 @@
 				    (or (not (const-decl? d))
 					(id d)))
 				decls))
+		 (assert (every #'place decls))
 		 (setf (semi pdecl)
 		       (if (is-sop 'SEMIC semi)
 			   (if (is-sop 'ATDECL @decl)
@@ -462,9 +463,11 @@
 
 (defun xt-pidop (pidop)
   (if (cdr (term-args pidop))
-      (mk-ergo-term 'IDOP
-	(list (mk-id (makesym "~{~a~^.~}"
-			      (mapcar #'xt-idop (term-args pidop))))))
+      (let ((idop (mk-ergo-term 'IDOP
+		    (list (mk-id (makesym "~{~a~^.~}"
+					  (mapcar #'xt-idop (term-args pidop))))))))
+	(setf (term-place idop) (term-place pidop))
+	idop)
       (term-arg0 pidop)))
 
 (defun xt-check-periods (pidops)
@@ -970,6 +973,7 @@
     (THEORY-DECL (xt-theory-decl body))
     (UNINTERP-TYPE-DECL (xt-uninterp-type-decl body))
     (TYPE-DECL (xt-type-decl body))
+    (UNITS-DECL (xt-units-decl body))
     (JUDGEMENT (xt-judgement-decl body idops))
     (VAR-DECL (xt-var-decl body))
     (UNINTERP-CONST-DECL (xt-const-decl body))
@@ -1094,6 +1098,44 @@
 		  :type-expr texpr
 		  :contains contains
 		  :place place)))))))
+
+(defun xt-units-decl (units-decl)
+  (let ((units-expr (term-arg0 units-decl)))
+    (values (make-instance 'units-decl
+	      :declared-units (xt-units-term units-expr))
+	    units-expr)))
+
+(defun xt-units-term (units-expr)
+  (case (sim-term-op units-expr)
+    (NAME (let ((nm (xt-name units-expr nil)))
+	    (typecase nm
+	      (decimal (/ (number (args1 nm)) (number (args2 nm))))
+	      (number-expr (number nm))
+	      (t (change-class nm 'units-name)
+		 (setf (place nm) (term-place units-expr))
+		 nm))))
+    (UNITS-TERM (let ((op (sim-term-op (term-arg0 units-expr)))
+		      (lhs (xt-units-term (term-arg1 units-expr)))
+		      (rhs (xt-units-term (term-arg2 units-expr))))
+		  (values (make-instance 'units-appl
+			    :operator op
+			    :arguments (list lhs rhs)
+			    :place (term-place units-expr))
+			  units-expr)))
+    (RATIONAL (xt-rational units-expr))
+    (t (break))))
+
+(defun xt-rational (rat-term)
+  (let ((pos? (is-sop 'POS (term-arg0 rat-term)))
+	(num (ds-number (term-arg1 rat-term))))
+    (when (zerop num)
+      (parse-error ))
+    (if (is-sop 'NODEN (term-arg2 rat-term))
+	(if pos? num (- num))
+	(let ((den (ds-number (term-arg2 rat-term))))
+	  (when (zerop den)
+	    (parse-error ))
+	  (if pos? (/ num den) (- (/ num den)))))))
 
 (defun xt-var-decl (var-decl)
   (let ((dtype (term-arg0 var-decl)))
