@@ -706,6 +706,12 @@ bind tighter.")
     (write-char #\space)
     (pp* theory-name)))
 
+(defmethod pp* ((decl units-decl))
+  (with-slots (declared-units) decl
+    (write '@UNIT)
+    (write-char #\space)
+    (pp* declared-units)))
+
 (defmethod pp* ((decl lib-decl))
   (with-slots (lib-string) decl
     (write 'LIBRARY)
@@ -1244,6 +1250,25 @@ bind tighter.")
     (write ": ")
     (pprint-newline :fill)
     (pp* (type te))))
+
+;;; Units
+
+(defmethod pp* :around ((ue units-expr))
+  (dotimes (p (parens ue))
+    (write-char #\())
+  (call-next-method)
+  (dotimes (p (parens ue))
+    (write-char #\))))
+
+(defmethod pp* ((ue units-appl))
+  (pprint-logical-block (nil nil)
+    (pp* (car (arguments ue)))
+    (write-char #\space)
+    (write (operator ue))
+    (write-char #\space)
+    (if (rationalp (cadr (arguments ue)))
+	(write (cadr (arguments ue)))
+	(pp* (cadr (arguments ue))))))
 
 
 ;;; Expressions
