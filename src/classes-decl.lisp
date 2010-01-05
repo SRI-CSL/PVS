@@ -402,6 +402,24 @@
 (defcl nonempty-struct-subtype-decl (struct-subtype-decl nonempty-type-def-decl))
 
 
+;;; At the moment, units-appls (and hence units-exprs) are not type-exprs
+;;; This may change in the future, but creates parser headaches
+;;; Thus units-appls may only appear in units-decls
+(defcl units-decl (type-decl)
+  declared-units)
+
+(defcl units-expr (syntax)
+  (parens :initform 0 :parse t :restore-as nil)
+  scale
+  dimensionality)
+
+(defcl units-appl (units-expr)
+  operator
+  arguments)
+
+(defcl units-name (type-name units-expr))
+
+
 ;;; Formal theory parameter declarations
 
 (defcl formal-decl (declaration)
