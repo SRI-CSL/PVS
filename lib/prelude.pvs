@@ -792,7 +792,12 @@ sets [T: TYPE]: THEORY
   remove(x, a): set = {y | x /= y AND member(y, a)}
 
   % A choice function for nonempty sets
-  choose(p: (nonempty?)): (p) = epsilon(p)
+  % No longer defined, so that grind will not expand epsilon.
+  % It's generally easier to use typepred on choose than to bring in epsilon_ax
+  % Can always bring in choose_is_epsilon axiom if the expansion is desired.
+  choose(p: (nonempty?)): (p) % = epsilon(p)
+
+  choose_is_epsilon: AXIOM FORALL (p: (nonempty?)): choose(p) = epsilon(p)
 
   the(p: (singleton?)): (p)
 
@@ -907,6 +912,8 @@ sets_lemmas [T: TYPE]: THEORY
 
   union_subset2: LEMMA subset?(a, b) IMPLIES union(a, b) = b
 
+  subset_union: LEMMA subset?(union(a, b), c) = (subset?(a, c) AND subset?(b, c)) 
+
   union_upper_bound : LEMMA
     subset?(a, c) and subset?(b, c) IMPLIES subset?(union(a, b), c)
   
@@ -989,6 +996,8 @@ sets_lemmas [T: TYPE]: THEORY
   nonempty_add: LEMMA NOT empty?(add(x, a))
 
   member_add: LEMMA member(x, a) IMPLIES add(x, a) = a
+
+  member_add_reduce: LEMMA member(x, add(y, a)) = (x = y or member(x, a))
 
   member_remove: LEMMA NOT member(x, a) IMPLIES remove(x, a) = a
 
@@ -1533,11 +1542,11 @@ relation_defs [T1, T2: TYPE]: THEORY
 
   preimage(R)(Y): set[T1] = preimage(R, Y)
 
-  postcondition(R, X): set[T2] = {y: T2 | FORALL (x: (X)): R(x, y)}
+  postcondition(R, X): set[T2] = {y: T2 | EXISTS (x: (X)): R(x, y)}
 
   postcondition(R)(X): set[T2] = postcondition(R, X)
 
-  precondition(R, Y): set[T1] = {x: T1 | FORALL (y: (Y)): R(x, y)}
+  precondition(R, Y): set[T1] = {x: T1 | FORALL (y: T2 | R(x, y)): Y(y)}
 
   precondition(R)(Y): set[T1] = precondition(R, Y)
 
@@ -3866,8 +3875,6 @@ finite_sets[T: TYPE]: THEORY
 
   card_subset     : THEOREM subset?(A,B) IMPLIES card(A) <= card(B)
 
-  card_strict_subset: THEOREM strict_subset?(A,B) IMPLIES card(A) < card(B)
-
   card_plus       : THEOREM card(A) + card(B) = 
                                 card(union(A, B)) + card(intersection(A,B))  
 
@@ -3888,6 +3895,8 @@ finite_sets[T: TYPE]: THEORY
 
   smaller_card_subset : THEOREM subset?(A, B) AND card(A) < card(B) IMPLIES
                                  (EXISTS x : member(x, B) AND NOT member(x, A))
+
+  card_strict_subset: THEOREM strict_subset?(A,B) IMPLIES card(A) < card(B)
 
   card_1_has_1    : THEOREM card(S) >= 1 IMPLIES (EXISTS (x: T): S(x))
 
