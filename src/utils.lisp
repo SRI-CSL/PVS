@@ -264,7 +264,9 @@
   (lf (format nil "~a/ess/term/terms/rel/sorts" *pvs-path*))
   (lf "pvs-lexer")
   (lf "pvs-parser")
-  (lf "pvs-sorts"))
+  (lf "pvs-sorts")
+  (lf "pvs-parse-fixes")
+  (lf "ergo-runtime-fixes"))
 
 ;; Same as describe, but returns the object, rather than nil
 (defun show (obj)
@@ -2183,6 +2185,7 @@
        (or (null (current-theory))
 	   (not (eq (module (declaration (resolution x)))
 		    (current-theory)))
+	   (not (eq (id x) (id (resolution x))))
 	   (actuals (module-instance (resolution x)))
 	   (integerp (id x))
 	   (mappings (module-instance (resolution x))))
@@ -2202,10 +2205,13 @@
        (or (null (current-theory))
 	   (not (eq (id (module-instance (resolution x)))
 		    (id (current-theory))))
+	   (not (type-name? (type (resolution x))))
+	   (not (eq (id (type (resolution x))) (id x)))
 	   (actuals (module-instance (resolution x))))))
 
 (defmethod full-name! ((x name))
   (copy x
+    'id (id (resolution x))
     'mod-id (when (or (null (current-theory))
 		      (integerp (id x))
 		      (not (eq (id (module-instance (resolution x)))
