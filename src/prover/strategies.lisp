@@ -1915,7 +1915,7 @@ See also EXTENSIONALITY."
   (let* ((var (generate-variable (gentemp "u_") type
 				*current-context*))
 	 (bvar (generate-variable (gentemp "x_")
-				  (domain type)
+				  (domtype type)
 				*current-context*))
 	 (lhs (quant-to-lambda
 	       (let ((*no-expected* t)) ;shadowing (NSH:10-29-01)
