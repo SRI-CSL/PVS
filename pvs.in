@@ -246,6 +246,10 @@ case $opsys in
 esac
 
 binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
+# Check if this is a 64-bit platform, but only 32-bit available
+if [ "$PVSARCH" = "ix86_64" -a ! -x "$binpath" ]
+    then binpath=$PVSPATH/bin/ix86-$opsys${majvers}
+fi
 
 if [ -n "$PVSLISP" -a "$PVSLISP" != "allegro" -a "$PVSLISP" != "cmulisp" -a "$PVSLISP" != "sbclisp" ]
   then echo "ERROR: PVSLISP must be unset, or set to 'allegro', 'cmulisp', or 'sbclisp'"
