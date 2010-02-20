@@ -502,6 +502,17 @@
 	  'predicate (pseudo-normalize npred)
 	  'print-type nil))))
 
+(defmethod replace-expr* (lhs rhs (expr type-application) lastopinfix?)
+  (let ((ntype (replace-expr* lhs rhs (type expr) nil))
+	(nparms (replace-expr* lhs rhs (parameters expr) nil)))
+    (if (and (eq ntype (type expr))
+	     (equal nparms (parameters expr)))
+	expr
+	(copy expr
+	  'type ntype
+	  'parameters nparms
+	  'print-type nil))))
+
 (defmethod replace-expr* (lhs rhs (expr funtype) lastopinfix?)
   (let* ((ndom (replace-expr* lhs rhs (domain expr) nil))
 	 (*bound-variables* (if (dep-binding? (domain expr))
