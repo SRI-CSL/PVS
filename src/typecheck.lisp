@@ -1247,6 +1247,15 @@
 (defmethod interpretable? ((d const-decl))
   (null (definition d)))
 
+(defmethod interpretable? ((d adt-constructor-decl))
+  nil)
+
+(defmethod interpretable? ((d adt-recognizer-decl))
+  nil)
+
+(defmethod interpretable? ((d adt-accessor-decl))
+  nil)
+
 (defmethod interpretable? ((imp importing))
   nil)
 
