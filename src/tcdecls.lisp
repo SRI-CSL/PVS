@@ -564,9 +564,10 @@
       (let ((next-thname (theory-name (declaration thname))))
 	(expanded-theory-name
 	 (mk-modname (id next-thname)
-	   (actuals (module-instance thname))
-	   (library (module-instance thname))
-	   (mappings (module-instance thname)))))))
+	   (actuals (module-instance next-thname))
+	   (library (module-instance next-thname))
+	   (append (mappings next-thname)
+		   (mappings (module-instance thname))))))))
 
 ;; (defun get-named-theory (theory-name)
 ;;   (or (get-theory theory-name)
