@@ -1106,10 +1106,31 @@
 (defmethod collect-mapping-axioms* ((decl declaration))
   nil)
 
+;;; Types which are treated as having interpretations
+;;; See mapping-interpreted-types
+(defvar *prelude-interpreted-types* nil)
+
+(defun prelude-interpreted-type (name)
+  (unless *prelude-interpreted-types*
+    (setq *prelude-interpreted-types*
+	  (list *boolean* *number* *number_field* *real* *rational*
+		*integer* *naturalnumber* *posint* *even_int* *odd_int*
+		*ordinal*)))
+  (member name *prelude-interpreted-types*
+	  :test #'tc-eq))
+
+
 (defun find-uninterpreted (expr thinst theory mappings-alist)
   (let ((foundit nil))
     (mapobject #'(lambda (ex)
 		   (or foundit
+		       (prelude-interpreted-type ex)
+		       (and (name-expr? ex)
+			    (resolution ex)
+			    (module (declaration ex))
+			    (memq (id (module (declaration ex)))
+				  '(|booleans| |equalities|
+				    |number_fields| |reals|)))
 		       (when (and (name? ex)
 				  (declaration? (declaration ex))
 				  (interpretable? (declaration ex)))
