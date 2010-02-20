@@ -290,14 +290,19 @@
 
 (defmethod gensubst* :around ((ex expr) substfn testfn)
   (let ((nex (call-next-method)))
-    (if *gensubst-reset-types*
-	(unless (eq ex nex)
-	  (setf (type ex) nil
-		(types ex) nil)
-	  (when (name-expr? ex)
-	    (setf (resolutions ex) nil)))
-	(unless (or (eq ex nex) (type ex))
-	  (setf (types nex) (gensubst* (types ex) substfn testfn))))
+    (cond (*gensubst-reset-types*
+	   (unless (eq ex nex)
+	     (setf (type ex) nil
+		   (types ex) nil)
+	     (when (name-expr? ex)
+	       (setf (resolutions ex) nil))))
+	  (*gensubst-subst-types*
+	   (when (and (eq ex nex) (type ex))
+	     (let ((ntype (gensubst* (type ex) substfn testfn)))
+	       (unless (eq ntype (type ex))
+		 (setq nex (copy ex :type ntype))))))
+	  (t (unless (or (eq ex nex) (type ex))
+	       (setf (types nex) (gensubst* (types ex) substfn testfn)))))
     nex))
 
 (defmethod gensubst* ((ex name-expr) substfn testfn)
@@ -567,8 +572,13 @@
 (defmethod gensubst* ((res resolution) substfn testfn)
   (let ((nmi (gensubst* (module-instance res) substfn testfn)))
     (if (eq nmi (module-instance res))
-	res
-	(make-resolution (declaration res) nmi)))) 
+	(if *gensubst-subst-types*
+	    (let ((ndecl (gensubst* (declaration res) substfn testfn)))
+	      (if (eq ndecl (declaration res))
+		  res
+		  (make-resolution ndecl nmi)))
+	    res)
+	(make-resolution (declaration res) nmi))))
 	       
 
 (defmethod gensubst* ((act actual) substfn testfn)
