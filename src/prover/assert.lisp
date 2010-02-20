@@ -1607,7 +1607,10 @@
 			      (null (cdr args)))
 			 (list (make!-tuple-expr* (car update-args)))
 			 (car update-args))
-		     args
+		     (if (and (null (cdr (car update-args)))
+			      (cdr args))
+			 (list (make!-tuple-expr* (car args)))
+			 args)
 		     in-beta-reduce?)))
 	(if (eq first 'noidea)
 	    'noidea
@@ -2352,7 +2355,8 @@
 			 ;;(NSH:12-20-09) rearranged the order of COND
 			 (cond ((false-p result)
 				(values '? *false*))
-			       ((true-p result)(values '? *true*))
+			       ((and (not pred) (true-p result))
+				(values '? *true*))
 			       ((null pred)(do-auto-rewrite expr sig))
 			       ((and (eq result 'restfalse)
 				     (null (accessors (constructor pred))))
