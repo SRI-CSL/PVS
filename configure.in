@@ -22,6 +22,7 @@ dnl --------------------------------------------------------------------
 
 dnl make sure we are using a recent autoconf version
 AC_PREREQ(2.59)
+AC_INIT
 
 dnl If it doesn't look like GNU Make is being used, give a friendly warning
 tem=`make --version -f /dev/null 2>&1 | grep GNU`
@@ -31,7 +32,6 @@ fi
 
 dnl This file must exist for configure to run
 AC_MSG_CHECKING(for existence of src/pvs.lisp)
-AC_INIT
 AC_CONFIG_SRCDIR([src/pvs.lisp])
 	
 dnl This sets build, build_cpu, build_vendor, and build_os
