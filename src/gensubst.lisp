@@ -572,7 +572,8 @@
 (defmethod gensubst* ((res resolution) substfn testfn)
   (let ((nmi (gensubst* (module-instance res) substfn testfn)))
     (if (eq nmi (module-instance res))
-	(if *gensubst-subst-types*
+	(if (and *gensubst-subst-types*
+		 (funcall testfn (declaration res)))
 	    (let ((ndecl (gensubst* (declaration res) substfn testfn)))
 	      (if (eq ndecl (declaration res))
 		  res
