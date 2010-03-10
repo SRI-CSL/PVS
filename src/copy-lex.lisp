@@ -35,6 +35,27 @@
   (let ((*copy-lex-exact* exact?))
     (copy-lex* otheory ntheory)))
 
+(defmethod copy-lex-upto (diff (oth module) (nth module))
+  (cond ((memq (car diff) (formals oth))
+	 (assert (memq (cdr diff) (formals nth)))
+	 (copy-lex-decls (ldiff (memq (car diff) (formals oth)) (formals oth))
+			 (memq (cdr diff) (formals nth))))
+	((memq (car diff) (assuming oth))
+	 (assert (memq (cdr diff) (assuming nth)))
+	 (copy-lex-decls (formals oth) (formals nth))
+	 (copy-lex-decls (ldiff (memq (car diff) (assuming oth)) (assuming oth))
+			 (memq (cdr diff) (assuming nth))))
+	(t
+	 (assert (memq (car diff) (theory oth))
+	 (assert (memq (cdr diff) (theory nth)))
+	 (copy-lex-decls (formals oth) (formals nth))
+	 (copy-lex-decls (assuming oth) (assuming nth))
+	 (copy-lex-decls (ldiff (memq (car diff) (theory oth)) (theory oth))
+			 (memq (cdr diff) (theory nth)))))))
+
+(defmethod copy-lex-upto (diff (oth recursive-type) (nth recursive-type))
+  (break))
+
 (defmethod copy-lex* :around ((old syntax) (new syntax))
   (call-next-method)
   ;;(setf (newline-comment old) (newline-comment new))
