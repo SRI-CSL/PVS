@@ -59,7 +59,8 @@
   (setf (warnings dorm) nil)
   (setf (conversion-messages dorm) nil)
   (setf (all-declarations dorm) nil)
-  (setf (all-imported-theories dorm) 'unbound))
+  (setf (all-imported-theories dorm) 'unbound)
+  (setf (all-imported-names dorm) 'unbound))
 
 (defmethod untypecheck-theory ((adt recursive-type))
   (let ((*untypechecking-theory* (if (inline-recursive-type? adt)
@@ -451,6 +452,7 @@
 (defmethod untypecheck-theory ((te setsubtype))
   (setf (predicate te) nil)
   (when (next-method-p) (call-next-method))
+  (untypecheck-theory (formals te))
   (untypecheck-theory (formula te)))
 
 (defmethod untypecheck-theory ((te nsetsubtype))
