@@ -20,14 +20,16 @@
    t 
    "~%Enter a Lisp expression followed by a '!' at the <PVSio> prompt~%")
   (format t "~%The following special commands can be followed by either ';' or '!':
-  help : Prints this message
-  quit : Exits the evaluator with confirmation
-  exit : Exits the evaluator without confirmation
-  timing               : Prints timing information for each evaluation
-  notiming             : Turns off printing of timing information
-  load_pvs_attachments : Forces a reload .pvs-attachments and pvs-attachments
-  pvsio_version        : Shows current version of PVSio
-  list_attachments     : Lists semantic attachments loaded in the current 
+  help                 : Print this message
+  quit                 : Exit the evaluator with confirmation
+  exit                 : Exit the evaluator without confirmation
+  timing               : Turn on timing information per evaluation
+  notiming             : Turn off timing information
+  tccs                 : Turn on TCCs generation per evaluation 
+  notccs               : Turn off TCCs generation
+  load_pvs_attachments : Force a reload .pvs-attachments and pvs-attachments
+  pvsio_version        : Show current version of PVSio
+  list_attachments     : List semantic attachments loaded in the current 
                          context
 
 Display help for <attachment>:
@@ -46,7 +48,7 @@ by Cesar Munoz at the National Institute of Aerospace.
 "))
 
 (defun evaluation-mode-pvsio (theoryname 
-			      &optional input (tccs? t) 
+			      &optional input tccs?  
 			      append? (banner? t))
   (load-pvsio-library-if-needed)
   (let ((theory (get-typechecked-theory theoryname)))
@@ -226,7 +228,15 @@ by Cesar Munoz at the National Institute of Aerospace.
 	   (setq *pvs-eval-do-timing* nil)
 	   (format t "Disabled printing of timing information~%")
 	   (read-pvsio input-stream))
-	  ((member input '(pvsio-version pvsio_version "pvsio_version") 
+	  ((member input '(tccs "tccs") :test #'equal)
+	   (setq *generate-tccs* 'all)
+	   (format t "Enabled TCCs generation~%")
+	   (read-pvsio input-stream))
+	  ((member input '(notccs "notccs") :test #'equal)
+	   (setq *generate-tccs* 'none)
+	   (format t "Disabled TCCs generation~%")
+	   (read-pvsio input-stream))
+          ((member input '(pvsio-version pvsio_version "pvsio_version") 
 		   :test #'equal)
 	   (format t "~a~%" *pvsio-version*)
 	   (read-pvsio input-stream))

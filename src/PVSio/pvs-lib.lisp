@@ -4,7 +4,7 @@
 
 (in-package :pvs)
 
-(defparameter *pvsio-version* "PVSio-2.c (09/16/05)")
+(defparameter *pvsio-version* "PVSio-4.a (11/07/07)")
 (defparameter *pvsio-imported* nil)
 (defparameter *pvsio-update-files* (make-hash-table :test #'equal))
 
