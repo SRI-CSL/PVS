@@ -3903,7 +3903,8 @@
 	       (error-format-if
 		"~%Do not mix parens and !'s in rewrite names"))
 	     rewrite))))
-    (unless (fnum-rewrite? rewrite-name)
+    (unless (or (fnum-rewrite? rewrite-name)
+		(resolutions rewrite-name))
       (typecheck rewrite-name))
     rewrite-name))
 
@@ -4151,7 +4152,13 @@ e LHS free variables in ~a" hyp lhs)
 	       (setq *auto-rewrites!-names*
 		     (remove res *auto-rewrites!-names*))
 	       ;;:test #'tc-eq
-	       (format-if "~%Installing macro(!!) ~a" name))
+	       (format-if "~%Installing macro(!!) ~a~@[ ~a~]"
+			  (if (resolution? res)
+			      (resolution-string res)
+			      name)
+			  (and (resolution? res)
+			       (not (fully-instantiated? res))
+			       "(all instances)")))
 	      ((and always? ;;NSH(10.7.95) decl -> (declaration res)
 		    (not (and (resolution? res)	;;NSH(12.1.95)
 			      (def-decl? (declaration res)))))
@@ -4162,7 +4169,13 @@ e LHS free variables in ~a" hyp lhs)
 	       (setq *macro-names*
 		     (remove res *macro-names*))
 	       ;;:test #'tc-eq
-	       (format-if "~%Installing rewrite rule(!) ~a" name))
+	       (format-if "~%Installing rewrite rule(!) ~a~@[ ~a~]"
+			  (if (resolution? res)
+			      (resolution-string res)
+			      name)
+			  (and (resolution? res)
+			       (not (fully-instantiated? res))
+			       "(all instances)")))
 	      (t (pushnew res *auto-rewrites-names*)
 		 ;;:test #'tc-eq
 		 (setq *auto-rewrites!-names*
@@ -4170,7 +4183,13 @@ e LHS free variables in ~a" hyp lhs)
 		 (setq *macro-names*
 		       (remove res *macro-names*))
 		 ;;:test #'tc-eq
-		 (format-if "~%Installing rewrite rule ~a" name)))
+		 (format-if "~%Installing rewrite rule ~a~@[ ~a~]"
+			    (if (resolution? res)
+			      (resolution-string res)
+			      name)
+			    (and (resolution? res)
+			       (not (fully-instantiated? res))
+			       "(all instances)"))))
 	(setf (gethash (rewrite-declaration hashname) *auto-rewrites-ops*) t)
 	;;(format-if "~%Installing rewrite rule ~a" name)
 	)))))
