@@ -200,17 +200,24 @@ print object produces an error, and won't allow inspection of the object.")
       (let ((*no-comments* t))
 	(unparse name :stream stream))))
 
+(defun resolution-string (res)
+  (format nil "~@<~@[~a@~]~a~@[~I~<[~;~@{~W~^, ~:_~}~;]~:>~]~@[~I~<{{~;~@{~W~^, ~:_~}~;}}~:>~]~@[.~a~]~:>"
+    (and (module-instance res) (library (module-instance res)))
+    (and (module-instance res) (id (module-instance res)))
+    (and (module-instance res) (actuals (module-instance res)))
+    (and (module-instance res) (mappings (module-instance res)))
+    (when (declaration res) (id (declaration res)))
+    (when (declaration res)
+      (if (eq (kind-of (declaration res)) 'expr)
+	  (or (type res) (type (declaration res)))
+	  (kind-of (declaration res))))))
+
 (defmethod print-object ((res resolution) stream)
   (if *debugging-print-object*
       (call-next-method)
       (format stream
-	  "#<Resolution ~@<~@[~a@~]~a~@[~I~<[~;~@{~W~^, ~:_~}~;]~:>~]~@[~I~<{{~;~@{~W~^, ~:_~}~;}}~:>~]~@[.~a~]~:_:~a~:>>"
-	(and (module-instance res) (library (module-instance res)))
-	(and (module-instance res) (id (module-instance res)))
-	(and (module-instance res) (actuals (module-instance res)))
-	(and (module-instance res) (mappings (module-instance res)))
-	(when (and (declaration res) (module? (declaration res)))
-	  (id (declaration res)))
+	  "#<Resolution ~@<~a~:_:~a~:>>"
+	(resolution-string res)
 	(when (declaration res)
 	  (if (eq (kind-of (declaration res)) 'expr)
 	      (or (type res) (type (declaration res)))
