@@ -78,7 +78,7 @@
   (pushnew :pvs4 *features*)
   )
 
-(defparameter *binfile-version* 25)
+(defparameter *binfile-version* 26)
 
 (defparameter *context-name* ".pvscontext")
 
