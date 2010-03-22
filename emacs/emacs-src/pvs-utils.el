@@ -1882,7 +1882,8 @@ existence and time differences to be whitespace")
 ;;; (un)expected regexp.
 (defun pvs-wait-for-it (&optional timeout)
   (sleep-for 1)
-  (while (and (or (null timeout)
+  (while (and (ilisp-process)
+	      (or (null timeout)
 		  (> timeout 0))
 	      (not (save-excursion
 		     ;; comint-status is buffer-local
