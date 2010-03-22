@@ -145,7 +145,7 @@
   (call-next-method)
   (put-decl decl)
   (make-nonempty-assumption (type-value decl))
-  (set-nonempty-type (type-value decl))
+  (set-nonempty-type (type-value decl) decl)
   decl)
 
 (defmethod typecheck* ((decl formal-subtype-decl) expected kind arguments)
@@ -162,7 +162,7 @@
   (call-next-method)
   (put-decl decl)
   (make-nonempty-assumption (type-value decl))
-  (set-nonempty-type (type-value decl))
+  (set-nonempty-type (type-value decl) decl)
   decl)
 
 (defmethod typecheck* ((decl formal-struct-subtype-decl) expected kind arguments)
@@ -179,7 +179,7 @@
   (call-next-method)
   (put-decl decl)
   (make-nonempty-assumption (type-value decl))
-  (set-nonempty-type (type-value decl))
+  (set-nonempty-type (type-value decl) decl)
   decl)
 
 (defmethod typecheck* ((decl formal-type-appl-decl) expected kind arguments)
@@ -206,7 +206,7 @@
   (call-next-method)
   (put-decl decl)
   (make-nonempty-assumption (type-value decl))
-  (set-nonempty-type (type-value decl))
+  (set-nonempty-type (type-value decl) decl)
   decl)
 
 
@@ -218,7 +218,7 @@
   (set-type (declared-type decl) nil)
   (assert (fully-instantiated? (type decl)))
   (if (free-params (type decl))
-      (set-nonempty-type (type decl))
+      (set-nonempty-type (type decl) decl)
       ;; Don't check here
       ;;(check-nonempty-type (type decl) (id decl))
       )
@@ -966,7 +966,7 @@
 (defmethod typecheck* ((decl nonempty-type-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (call-next-method)
-  (set-nonempty-type (type-value decl))
+  (set-nonempty-type (type-value decl) decl)
   (unless (eq (id (current-theory)) '|booleans|)
     (put-decl decl)
     (generate-existence-axiom decl))
@@ -1011,8 +1011,8 @@
 	  (check-nonempty-type-of decl)))
       (when (contains decl)
 	(typecheck* (contains decl) tval nil nil)
-	(set-nonempty-type (type-expr decl))
-	(set-nonempty-type tval))))
+	(set-nonempty-type (type-expr decl) decl)
+	(set-nonempty-type tval decl))))
   (when *loading-prelude*
     (set-prelude-types (id decl) (type-value decl)))
   decl)
@@ -1035,7 +1035,7 @@
 
 (defmethod check-nonempty-type-of ((decl nonempty-type-from-decl))
   (check-nonempty-type (supertype (type-value decl)) decl)
-  (set-nonempty-type (type-value decl))
+  (set-nonempty-type (type-value decl) decl)
   (put-decl decl)
   (generate-existence-axiom decl))
 
@@ -1067,7 +1067,7 @@
 	 (change-class tn 'adt-type-name
 	   :adt (type-expr decl)
 	   :single-constructor? (singleton? (constructors (type-expr decl))))
-	 (set-nonempty-type tn)
+	 (set-nonempty-type tn decl)
 	 tn)
 	(t (let ((tval (typecheck* (type-expr decl) nil nil nil)))
 	     (set-type (type-expr decl) nil)
@@ -1191,7 +1191,7 @@
     (assert (null (freevars (type decl))))
     (unless (typep decl 'adt-constructor-decl)
       (if (definition decl)
-	  (set-nonempty-type (type decl))
+	  (set-nonempty-type (type decl) decl)
 	  (check-nonempty-type (type decl) decl)))
     (check-duplication decl)
     (when (definition decl)
@@ -1313,7 +1313,7 @@
       (typecheck-measure decl)
       (setf (recursive-signature decl) (compute-recursive-signature decl)))
     ;;(assert (null (freevars (recursive-signature decl))))
-    (set-nonempty-type rtype)
+    (set-nonempty-type rtype decl)
     (put-decl decl)
     (let ((*tcc-conditions* (add-formals-to-tcc-conditions (formals decl))))
       ;; See check-set-type-recursive-operator for how recursive conversions
@@ -1768,7 +1768,7 @@
     (unless (tc-eq (find-supertype (range* (type decl))) *boolean*)
       (type-error decl
 	"(Co)Inductive definitions must have (eventual) range type boolean"))
-    (set-nonempty-type rtype)
+    (set-nonempty-type rtype decl)
     (put-decl decl)
     (typecheck* (definition decl) rtype nil nil)
     (let* ((all-vars (ind-def-formals decl))
@@ -2349,7 +2349,7 @@
 	     (typep (type (car (bindings (definition decl)))) 'type-name)
 	     (memq (declaration (type (car (bindings (definition decl)))))
 		   (formals *current-theory*)))
-    (set-nonempty-type (type (car (bindings (definition decl)))))))
+    (set-nonempty-type (type (car (bindings (definition decl)))) decl)))
 
 
 ;;;  TYPE EXPRESSIONS  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
