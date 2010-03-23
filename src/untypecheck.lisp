@@ -101,8 +101,8 @@
 	  (t
 	   (tcdebug "~%Untypechecking theory ~a" (id theory))
 	   ;;(setf (declarations theory) (make-hash-table :test #'eq :size 20))
-	   (dolist (ty (nonempty-types theory))
-	     (setf (nonempty? ty) nil))
+	   (dolist (ty-decl (nonempty-types theory))
+	     (setf (nonempty? (car ty-decl)) nil))
 	   (setf (nonempty-types theory) nil)
 	   (untypecheck-theory (exporting theory))
 	   (setf (all-usings theory) nil)
@@ -126,8 +126,8 @@
 
 (defun untypecheck-theory-after-decl (theory decl)
   ;; Need to only untypecheck declarations following the given one
-  (dolist (ty (nonempty-types theory))
-    (setf (nonempty? ty) nil))
+  (dolist (ty-decl (nonempty-types theory))
+    (setf (nonempty? (car ty-decl)) nil))
   (setf (nonempty-types theory) nil)
   (untypecheck-theory (exporting theory))
   (setf (all-usings theory) nil)
