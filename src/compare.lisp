@@ -40,294 +40,228 @@
 
 ;;; compare compares two theories, generally calling compare-decl-lists on the
 ;;; formals, etc.  These set the variable *differences* according to the
-;;; differences found.  Within compare-decl-lists, compare-sig and compare-bod
-;;;; are calle, and if any differences are found either 'signature or 'body is
-;;; pushed onto *decl-diffs*, and is later added to *differences*.
+;;; differences found.
 
 (in-package :pvs)
 
-(defvar *differences* nil)
-(defvar *decl-diffs* nil)
+(defvar *differences*)
 (defvar *needs-retypechecking* nil)
 (defvar *compare-selections* nil)
 
 (defun compare (old new)
   (assert (and (typep old 'datatype-or-module)
 	       (typep new 'datatype-or-module)))
-  (compare* old new))
+  (compare-top old new))
 
+(defmethod compare-top :around ((old datatype-or-module) (new datatype-or-module))
+  (or (compare-decl-lists (formals old) (formals new))
+      (compare-decl-lists (assuming old) (assuming new))
+      (call-next-method)))
 
-;;; No need to check syntax class, everything will be copied over anyway.
-
-(defmethod compare* :around ((old datatype-or-module) (new datatype-or-module))
-  (if (typep old 'inline-datatype)
-      (call-next-method)
-      (let ((*differences* nil))
-	(call-next-method)
-	;; id
-	(compare-decl-lists (formals old) (formals new))
-	(compare-decl-lists (assuming old) (assuming new))
-	;; end-id
-	;; filename
-	;; status
-	;; generated
-	;; generated-by
-	*differences*)))
-
-(defmethod compare* ((old module) (new module))
+(defmethod compare-top ((old module) (new module))
   (assert (and (exporting old) (exporting new)))
-  ;; declarations
-  ;; types
-  ;; implementing
-  (compare* (exporting old) (exporting new))
-  ;; all-usings
-  ;; used-by
-  (compare-decl-lists (theory old) (theory new)))
+  (or (compare-decl-lists (theory old) (theory new))
+      (compare-decl (exporting old) (exporting new))))
 
-(defmethod compare* ((old datatype) (new codatatype))
-  (push (list old new 'changed) *differences*))
+(defmethod compare-top ((old datatype) (new codatatype))
+  (cons old new))
 
-(defmethod compare* ((old codatatype) (new datatype))
-  (push (list old new 'changed) *differences*))
+(defmethod compare-top ((old codatatype) (new datatype))
+  (cons old new))
 
-(defmethod compare* ((old recursive-type) (new recursive-type))
-  (cond ((and (importings old) (importings new))
-	 (compare-decl-lists (importings old) (importings new)))
-	((importings old)
-	 (push (list (importings old) 'del) *differences*))
-	((importings new)
-	 (push (list (importings new) 'add) *differences*)))
+(defmethod compare-top ((old recursive-type) (new recursive-type))
+  (or (if (and (importings old) (importings new))
+	  (when (compare-decl-lists (importings old) (importings new))
+	    (cons old new))
+	  (when (or (importings old) (importings new))
+	    (cons old new)))
+      (unless (compare-constructors (constructors old) (constructors new))
+	(cons old new))))
+
+(defmethod compare-top ((old module) (new recursive-type))
+  old)
+
+(defmethod compare-top ((old recursive-type) (new module))
+  old)
+
+;;; Declarations
+
+;;; compare-decl-lists is called on the top-level declarations lists.  and
+;;; simply returns the first old declaration that is no longer valid -
+;;; because the new one is substantially different, the old one has been
+;;; deleted, or the new one has been inserted before the old one.  Note that
+;;; nil means we ran off the end - there may be new decls after that still
+;;; need typechecking.
+
+(defun compare-decl-lists (olist nlist)
+  ;; First remove generated declarations from consideration
+  (let ((rolist (remove-if #'(lambda (d)
+			       (and (typep d 'declaration)
+				    (generated-by d)))
+		  olist)))
+    (compare-decls rolist nlist)))
+
+;;; Return nil if they compare (still may have whitespace issues).
+;;; Otherwise returns (odecl . ndecl) pair, which corresponds to the firs
+;;; mismatch between old decls and new decls.  Either may be nil, indicating
+;;; addition or deletion at the end.
+(defun compare-decls (olist nlist)
+  (if (null olist)
+      (unless (null nlist) (cons nil (car nlist)))
+      (if (null nlist)
+	  (cons (car olist) nil)
+	  (if (compare-decl (car olist) (car nlist))
+	      (compare-decls (cdr olist) (cdr nlist))
+	      (cons (car olist) (car nlist))))))
+
+;;; Top level declarations
+
+(defmethod compare-decl ((old inline-datatype) (new inline-codatatype))
+  nil)
+
+(defmethod compare-decl ((old inline-codatatype) (new inline-datatype))
+  nil)
+
+(defmethod compare-decl ((old inline-recursive-type) (new inline-recursive-type))
+  (when (eq (id old) (id new))
+    (and (compare-importings (importings old) (importings new))
+	 (compare-constructors (constructors old) (constructors new)))))
+
+(defun compare-importings (oimps nimps)
+  (or (and (null oimps) (null nimps))
+      (and oimps nimps
+	   (compare* (importings old) (importings new)))))
+
+(defun compare-constructors (ocstrs ncstrs)
+  (and (= (length ocstrs) (length ncstrs))
+       (every #'compare* ocstrs ncstrs)))
+
+(defmethod compare-decl :around ((old enumtype) (new enumtype))
   (compare-decl-lists (constructors old) (constructors new)))
 
-(defmethod compare* ((old module) (new datatype))
-  (push (list old new 'changed) *differences*))
-
-(defmethod compare* ((old datatype) (new module))
-  (push (list old new 'changed) *differences*))
-
-(defmethod compare* ((old inline-datatype) (new inline-codatatype))
-  (push (list old new 'changed) *differences*))
-
-(defmethod compare* ((old inline-codatatype) (new inline-datatype))
-  (push (list old new 'changed) *differences*))
-
-(defmethod compare* ((old inline-recursive-type) (new inline-recursive-type))
-  (when (eq (id old) (id new))
-    (cond ((and (importings old) (importings new))
-	   (compare* (importings old) (importings new)))
-	  ((importings old)
-	   (push (list (importings old) 'del) *differences*))
-	  ((importings new)
-	   (push (list (importings new) 'add) *differences*)))
-    (compare-decl-lists (constructors old) (constructors new))
-    (values t *decl-diffs*)))
-
-(defmethod compare* :around ((old enumtype) (new enumtype))
-  (compare-decl-lists (constructors old) (constructors new))
-  (values t *decl-diffs*))
-
-(defmethod compare* ((old simple-constructor) (new simple-constructor))
-  (compare-decl-lists (arguments old) (arguments new))
-  (and (same-id old new)
-       (compare* (recognizer old) (recognizer new))))
-
-(defmethod compare* ((old exporting) (new exporting))
-  (let* (;;(*decl-diffs* nil)
-	 (same? (and (eq (kind old) (kind new))
+(defmethod compare-decl ((old exporting) (new exporting))
+  (let* ((same? (and (eq (kind old) (kind new))
 		     (if (and (listp (names old)) (listp (names new)))
 			 (compare* (names old) (names new))
 			 (eq (names old) (names new)))
 		     (compare* (but-names old) (but-names new))
 		     (compare* (modules old) (modules new)))))
     (unless same?
-      (push (list old new 'changed) *differences*))))
+      (break "Exporting differences"))))
 
-(defmethod compare* ((old importing) (new importing))
-  (let ((*decl-diffs* nil))
-    (compare-sig (theory-name old) (theory-name new))
-    (values t *decl-diffs*)))
-
-
-;;; compare-decl-lists is called on the top-level declarations lists.
-;;; Given declaration lists A = (a1 ... am), B = (b1 ... bn), it returns
-;;; a list of the form 
-;;;
-
-(defvar *compare-saved* nil)
-
-(defun compare-decl-lists (olist nlist)
-  (let* ((rolist (if *compare-saved*
-		     olist
-		     (remove-if #'(lambda (d)
-				    (and (typep d 'declaration)
-					 (generated-by d)))
-		       olist)))
-	 (diffs (compare-decls rolist nlist nil)))
-    ;; Here we order the differences, checking whether the ADDs and DELs
-    ;; affect other declarations
-    (when diffs
-      (push diffs *differences*))))
-
-
-;;; compare-decls returns a list of the form
-;;;  ((odecl ndecl 'BODY) ... (odecl ndecl 'SIG) ... (ndecl 'ADD) (odecl 'DEL))
-
-(defun compare-decls (olist nlist result)
-  (if (null olist)
-      (if (null nlist)
-	  (nreverse result)
-	  (nconc (nreverse result)
-		 (mapcar #'(lambda (ne) (list ne 'ADD)) nlist)))
-      (if (null nlist)
-	  (nconc (nreverse result)
-		 (mapcar #'(lambda (oe) (list oe 'DEL)) olist))
-	  (compare-decls* olist nlist result))))
-
-(defun compare-decls* (olist nlist result)
-  (let ((nelt (car nlist)))
-    (multiple-value-bind (oelt compare)
-	(find-comparison olist nelt)
-      (cond ((eq oelt (car olist))
-	     (compare-decls (cdr olist) (cdr nlist)
-			    (if compare
-				(cons (list oelt nelt compare) result)
-				result)))
-	    ((null oelt)
-	     (compare-decls olist (cdr nlist)
-			    (cons (list 'ADD nelt) result)))
-	    (t (compare-decls (remove oelt olist) (cdr nlist)
-			      (if compare
-				  (cons (list oelt nelt compare) result)
-				  result)))))))
-
-
-(defun find-comparison (olist nelt &optional prevs)
-  (when olist
-    (multiple-value-bind (match? diff)
-	(compare* (car olist) nelt)
-      (cond (match?
-	     (let ((oelt (car olist)))
-	       (dolist (p prevs)
-		 (when (and (typep oelt 'declaration)
-			    (member (id oelt) (refers-to p)
-				    :test #'(lambda (x y) (eq x (id y)))))
-		   (pushnew p *needs-retypechecking* :test #'eq)))
-	       (if (or (member oelt *needs-retypechecking* :test #'eq)
-		       (and prevs
-			    (declaration? oelt)
-			    (intersection prevs (refers-to oelt))))
-		   (values oelt (if (eq diff 'SIGNATURE) diff 'BODY))
-		   (values oelt diff))))
-	    ((and (typep (car olist) 'declaration)
-		  (generated-by (car olist)))
-	     (find-comparison (cdr olist) nelt (cons (car olist) prevs)))))))
-
+(defmethod compare-decl ((old importing) (new importing))
+  (compare* (theory-name old) (theory-name new)))
 
 ;;; Compare* on declarations returns NIL if the ids or classes don't
 ;;; match, otherwise returns a list of the form (odecl ndecl level)
 ;;; where level is BODY or SIGNATURE.  LEXICAL differences will be
 ;;; handled during update, since it simply copies the new stuff over.
 
-;;; Declarations
-
-(defmethod compare* :around ((old declaration) (new declaration))
+(defmethod compare-decl :around ((old declaration) (new declaration))
   (when (and (eq (id old) (id new))
 	     (eq (type-of old) (type-of new)))
-    (let ((*decl-diffs* nil))
-      (compare-sig (formals old) (formals new))
-      (call-next-method)
-      (values t *decl-diffs*))))
+    (and (compare* (formals old) (formals new))
+	 (call-next-method))))
 
-(defmethod compare* ((old typed-declaration) (new typed-declaration))
-  (compare-sig (declared-type old) (declared-type new)))
+(defmethod compare-decl ((old typed-declaration) (new typed-declaration))
+  (compare* (declared-type old) (declared-type new)))
 
-;(defmethod compare* ((old formal-decl) (new formal-decl))
+;(defmethod compare-decl ((old formal-decl) (new formal-decl))
 ;  (call-next-method))
 
-(defmethod compare* ((old mod-decl) (new mod-decl))
+(defmethod compare-decl ((old mod-decl) (new mod-decl))
   (and (call-next-method)
-       (compare-sig (modname old) (modname new))))
+       (compare* (modname old) (modname new))))
 
-(defmethod compare* ((old theory-abbreviation-decl)
-		     (new theory-abbreviation-decl))
+(defmethod compare-decl ((old theory-abbreviation-decl)
+			 (new theory-abbreviation-decl))
   (and (call-next-method)
-       (compare-sig (theory-name old) (theory-name new))))
+       (compare* (theory-name old) (theory-name new))))
 
-;(defmethod compare* ((old type-decl) (new type-decl))
+;(defmethod compare-decl ((old type-decl) (new type-decl))
 ;  (call-next-method))
 
-(defmethod compare* ((old type-def-decl) (new type-def-decl))
-  (and (call-next-method)
-       (compare-bod (contains old) (contains new))
-       (compare-sig (type-expr old) (type-expr new))))
+(defmethod compare-decl ((old type-def-decl) (new type-def-decl))
+  (and ;;(call-next-method)
+       (compare* (contains old) (contains new))
+       (compare* (type-expr old) (type-expr new))))
 
-;(defmethod compare* ((old var-decl) (new var-decl))
+;(defmethod compare-decl ((old var-decl) (new var-decl))
 ;  (call-next-method))
 
-(defmethod compare* ((old const-decl) (new const-decl))
+(defmethod compare-decl ((old const-decl) (new const-decl))
   (and (call-next-method)
-       (compare-bod (definition old) (definition new))))
+       (compare* (definition old) (definition new))))
 
-(defmethod compare* ((old def-decl) (new def-decl))
+(defmethod compare-decl ((old def-decl) (new def-decl))
   (and (call-next-method)
-       (compare-bod (definition old) (definition new))
-       (compare-bod (declared-measure old) (declared-measure new))
-       (compare-bod (ordering old) (ordering new))))
+       (compare* (definition old) (definition new))
+       (compare* (declared-measure old) (declared-measure new))
+       (compare* (ordering old) (ordering new))))
 
-(defmethod compare* ((old formula-decl) (new formula-decl))
-  (and (call-next-method)
+(defmethod compare-decl ((old formula-decl) (new formula-decl))
+  (and ;;(call-next-method)
        (or (eq (spelling old) (spelling new))
-	   (if (and (or (not (memq (spelling old) '(AXIOM POSTULATE)))
-			(not (memq (spelling new) '(AXIOM POSTULATE))))
-		    (or (memq (spelling old) '(ASSUMPTION AXIOM POSTULATE))
-			(memq (spelling new) '(ASSUMPTION AXIOM POSTULATE))))
-	       (setq *decl-diffs* 'SIGNATURE)
-	       (unless *decl-diffs*
-		 (setq *decl-diffs* 'SIGNATURE))))
-       (compare-bod (kind old) (kind new))
-       (compare-bod (definition old) (definition new))))
+	   (and (memq (spelling old) '(AXIOM POSTULATE))
+		(memq (spelling new) '(AXIOM POSTULATE))))
+       (compare* (kind old) (kind new))
+       (compare* (definition old) (definition new))))
 
-(defmethod compare* ((old subtype-judgement) (new subtype-judgement))
-  (and (call-next-method)
-       (compare-sig (declared-subtype old) (declared-subtype new))))
+(defmethod compare-decl ((old subtype-judgement) (new subtype-judgement))
+  (and ;;(call-next-method)
+       (compare* (declared-subtype old) (declared-subtype new))))
 
-(defmethod compare* ((old number-judgement) (new number-judgement))
+(defmethod compare-decl ((old number-judgement) (new number-judgement))
   (and (call-next-method)
-       (compare-sig (number-expr old) (number-expr new))))
+       (compare* (number-expr old) (number-expr new))))
 
-(defmethod compare* ((old name-judgement) (new name-judgement))
+(defmethod compare-decl ((old name-judgement) (new name-judgement))
   (and (call-next-method)
-       (compare-sig (name old) (name new))))
+       (compare* (name old) (name new))))
 
-(defmethod compare* ((old application-judgement) (new application-judgement))
+(defmethod compare-decl ((old application-judgement) (new application-judgement))
   (and (call-next-method)
-       (compare-sig (name old) (name new))
-       (compare-sig (formals old) (formals new))))
+       (compare* (name old) (name new))
+       (compare* (formals old) (formals new))))
 
-(defmethod compare* ((old conversion-decl) (new conversion-decl))
-  (and (call-next-method)
+(defmethod compare-decl ((old conversion-decl) (new conversion-decl))
+  (and ;;(call-next-method)
        (typecase old
 	 (conversionminus-decl (conversionminus-decl? new))
 	 (conversion-decl (not (conversionminus-decl? new))))
-       (compare-sig (expr old) (expr new))))
+       (compare* (expr old) (expr new))))
 
-(defmethod compare* ((old auto-rewrite-decl) (new auto-rewrite-decl))
+(defmethod compare-decl ((old auto-rewrite-decl) (new auto-rewrite-decl))
   (and (call-next-method)
        (typecase old
 	 (auto-rewrite-minus-decl (auto-rewrite-minus-decl? new))
 	 (auto-rewrite-decl (not (or (auto-rewrite-minus-decl? new)))))
-       (compare-sig (rewrite-names old) (rewrite-names new))))
+       (compare* (rewrite-names old) (rewrite-names new))))
 
-(defmethod compare* ((old rewrite-name) (new rewrite-name))
+(defmethod compare-decl ((old rewrite-name) (new rewrite-name))
   (and (call-next-method)
        (eq (class-of old) (class-of new))))
 
-(defmethod compare* ((old field-decl) (new field-decl))
-  (call-next-method))
+(defmethod compare-decl (old new)
+  (equal old new))
 
 
 ;;; Below the declaration level, compare* simply returns t or nil
 ;;; according to whether the entities match
+
+(defmethod compare* ((old simple-constructor) (new simple-constructor))
+  (and (same-id old new)
+       (= (length (arguments old)) (length (arguments new)))
+       (every #'compare* (arguments old) (arguments new))
+       (compare* (recognizer old) (recognizer new))))
+
+(defmethod compare* ((old adtdecl) (new adtdecl))
+  (and (compare* (id old) (id new))
+       (compare* (declared-type old) (declared-type new))))
+
+;; (defmethod compare* ((old field-decl) (new field-decl))
+;;   (call-next-method))
+
 
 ;;; Type expressions
 
@@ -588,19 +522,6 @@
   (and (length= old new)
        (every #'(lambda (oe ne) (compare* oe ne))
 	      old new)))
-
-
-(defmethod compare-sig (old new)
-  (unless (or (eq *decl-diffs* 'SIGNATURE)
-	      (compare* old new))
-    (setq *decl-diffs* 'SIGNATURE))
-  t)
-
-(defmethod compare-bod (old new)
-  (unless (or *decl-diffs*
-	      (compare* old new))
-    (setq *decl-diffs* 'BODY))
-  t)
 
 #-gcl
 (defmethod compare* ((old term::default-term) (new term::default-term))
