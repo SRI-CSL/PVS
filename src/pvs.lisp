@@ -856,43 +856,103 @@
 	      (cond ((null diff)
 		     (setq kept? t)
 		     (copy-lex oth nth))
-		    ((memq (car diff) (all-decls oth))
+		    ((and (consp diff)
+			  (memq (car diff) (all-decls oth)))
 		     (copy-lex-upto diff oth nth)
+		     (let* ((repl1 (if (generated (car diff))
+				       (car (last (generated (car diff))))
+				       (car diff)))
+			    (replaced (memq repl1 (all-decls oth)))
+			    (kept (ldiff (all-decls oth) replaced)))
+		       (setf (all-declarations oth) nil)
+		       (setf (saved-context oth) nil)
+		       ;; formals-sans-usings
+		       (setf (formals-sans-usings oth)
+			     (remove-if #'importing-param? (formals oth)))
+		       ;; tcc-info
+		       (when (tcc-info oth)
+			 (dolist (d replaced)
+			   (when (and (car (tcc-info oth))
+				      (tcc-decl? d))
+			     (decf (car (tcc-info oth))) ; Total
+			     (when (proved? d)
+			       (decf (cadr (tcc-info oth))))))) ; Proved
+		       ;; tcc-comments and subsumed count in tcc-info
+		       (dolist (d replaced)
+			 (let ((dcmts (assq d (tcc-comments oth))))
+			   (when dcmts
+			     (dolist (dcmt (cdr dcmts))
+			       (when (and (consp (fourth dcmt))
+					  (eq (car (fourth dcmt)) 'subsumed))
+				 (when (car (tcc-info oth))
+				   (decf (car (tcc-info oth))))
+				 (when (caddr (tcc-info oth))
+				   (decf (caddr (tcc-info oth))))))
+			     (setf (tcc-comments oth)
+				   (delete dcmts (tcc-comments oth))))))
+		       ;; info
+		       (dolist (dinfo (info oth))
+			 (when (memq (car dinfo) replaced)
+			   (setf (info oth) (delete dinfo (info oth)))))
+		       ;; warnings
+		       (dolist (dwarn (warnings oth))
+			 (when (memq (car dwarn) replaced)
+			   (setf (warnings oth) (delete dwarn (warnings oth)))))
+		       ;; conversion-messages
+		       (dolist (dcnv (conversion-messages oth))
+			 (when (memq (car dcnv) replaced)
+			   (setf (conversion-messages oth)
+				 (delete dcnv (conversion-messages oth)))))
+		       ;; all-imported-theories
+		       (setf (all-imported-theories oth) 'unbound)
+		       ;; all-imported-names
+		       (setf (all-imported-names oth) 'unbound)
+		       ;; nonempty-types
+		       (when (nonempty-types oth)
+			 (setf (nonempty-types oth)
+			       (remove-if #'(lambda (ty-decl)
+					      (when (memq (cdr ty-decl) replaced)
+						(setf (nonempty? (car ty-decl)) nil)
+						t))
+				 (nonempty-types oth))))
+		       ;; all-usings
+		       ;; immediate-usings
+		       (setf (immediate-usings oth) 'unbound)
+		       ;; instances-used
+		       (when (instances-used oth) (break "instances-used"))
+		       ;; assuming-instances
+		       )
 		     (cond ((memq (car diff) (formals oth))
 			    (setf (formals oth)
-				  (append (ldiff (memq (car diff) (formals oth))
-						 (formals oth))
+				  (append (ldiff (formals oth)
+						 (memq (car diff) (formals oth)))
 					  (memq (cdr diff) (formals nth))))
 			    ;; Careful here - some formals cause changes to assuming/theory
 			    (setf (assuming oth) (assuming nth))
 			    (setf (theory oth) (theory nth)))
 			   ((memq (car diff) (assuming oth))
 			    (setf (assuming oth)
-				  (append (ldiff (memq (car diff) (assuming oth))
-						 (assuming oth))
+				  (append (ldiff (assuming oth)
+						 (memq (car diff) (assuming oth)))
 					  (memq (cdr diff) (assuming nth))))
 			    (setf (theory oth) (theory nth)))
 			   (t
 			    (assert (memq (car diff) (theory oth)))
 			    (setf (theory oth)
-				  (append (ldiff (memq (car diff) (theory oth))
-						 (theory oth))
+				  (append (ldiff (theory oth)
+						 (memq (car diff) (theory oth)))
 					  (memq (cdr diff) (theory nth))))))
 		     (reset-typecheck-caches)
-		     (when (module? oth)
-		       (dolist (ty (nonempty-types oth))
-			 ;; Possibly should associate nonempty-types with decls
-			 ;; and only clear those after diff
-			 (setf (nonempty? ty) nil)))
 		     (when (recursive-type? oth)
 		       (break "recursive-type"))
 		     (untypecheck-usedbys oth)
+		     (setf (status oth) '(parsed))
 		     (setq changed? t)
 		     (setq kept? t))
 		    (t (reset-typecheck-caches)
 		       (when (module? oth)
-			 (dolist (ty (nonempty-types oth))
-			   (setf (nonempty? ty) nil)))
+			 (dolist (ty-decl (nonempty-types oth))
+			   (setf (nonempty? (car ty-decl)) nil)))
 		       (when (typep oth 'recursive-type)
 			 (let ((gen (make-specpath (id (adt-theory oth)))))
 			   (when
@@ -904,7 +964,6 @@
 			      (delete-file (namestring gen))))))
 		       (setf (gethash (id nth) *pvs-modules*) nth)
 		       (untypecheck-usedbys oth)
-		       (break "fooo")
 		       (setq changed? t)))))
 	;; Don't need to do anything here, since oth was never typechecked.
 	(unless kept?
@@ -3096,6 +3155,13 @@
 	       (get-name-at* pos nname)
 	       name)))
 	(t name)))
+
+(defun precedes-place (pos place)
+  (assert (vectorp place))
+  (and (<= (car pos) (starting-row place))
+       (if (= (car pos) (starting-row place))
+	   (<= (cadr pos) (starting-col place))
+	   t)))
 
 (defun within-place (pos place)
   (assert (vectorp place))
