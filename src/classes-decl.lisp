@@ -175,7 +175,7 @@
 	  :documentation "A list containing the completed actions"
 	  :restore-as nil)
   (generated-by :documentation "a module id" :restore-as nil)
-  generated-theories
+  ;;generated-theories
   (tcc-comments :documentation
 		"An alist of TCCs and comments that follow."
 		:restore-as nil)
