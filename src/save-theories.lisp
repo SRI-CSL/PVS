@@ -983,7 +983,7 @@
 
 (defmethod restore-object* :around ((obj nonempty-type-decl))
   (call-next-method)
-  (set-nonempty-type (type-value obj)))
+  (set-nonempty-type (type-value obj) obj))
 
 (defmethod restore-object* :around ((obj type-decl))
   (call-next-method)
