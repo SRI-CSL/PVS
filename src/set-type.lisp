@@ -3562,7 +3562,7 @@ required a context.")
 	  (mk-recordtype
 	   (mapcar #'(lambda (a)
 		       (let ((fld (caar (arguments a)))
-			     (ty (type (expression a))))
+			     (ty (car (judgement-types+ (expression a)))))
 			 (mk-field-decl (id fld) ty ty)))
 		   ass)
 	   nil))))
