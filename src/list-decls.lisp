@@ -237,7 +237,8 @@
 (defun find-element-containing-pos (list pos)
   (when list
     (if (and (place (car list))
-	     (within-place pos (place (car list))))
+	     (or (precedes-place pos (place (car list)))
+		 (within-place pos (place (car list)))))
 	(car list)
 	(find-element-containing-pos (cdr list) pos))))
 
