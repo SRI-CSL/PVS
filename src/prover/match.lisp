@@ -504,6 +504,11 @@
 	     binding)
       (same-declaration x binding)))
 
+(defun assert-test-eq (lhs rhs) ;;NSH(2-20-10): for use in match*(name-expr)
+  (when (compatible? (type lhs) (type rhs))
+    (let* ((equality (make!-equation lhs rhs)))
+      (true-p (assert-test equality)))))
+
 (defmethod match* ((lhs name-expr) (instance expr) bind-alist subst)
   (cond					;((eq subst 'fail) 'fail)
    ((variable? lhs)
@@ -548,7 +553,8 @@
 					  (copy-all subst-term))))
 		   (unless (type newsubst-term)
 		     (set-type newsubst-term (type instance)))
-		   (if (tc-eq newsubst-term instance)
+		   (if (or (tc-eq newsubst-term instance)
+			   (assert-test-eq newsubst-term instance));;NSH(2-20-10)
 		       (let* ((subst
 			       (if (type subst-term)
 				   subst
