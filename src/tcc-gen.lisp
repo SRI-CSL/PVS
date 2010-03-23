@@ -768,12 +768,12 @@
   (let ((type (if (dep-binding? te) (type te) te)))
     (unless (or (nonempty? type)
 		(typep (declaration *current-context*) 'adt-accessor-decl)
-		(member type (nonempty-types (current-theory)) :test #'tc-eq))
+		(assoc type (nonempty-types (current-theory)) :test #'tc-eq))
       (when (possibly-empty-type? type)
-	(generate-existence-tcc type expr)
-	(unless (or (or *in-checker* *in-evaluator*)
-		    *tcc-conditions*)
-	  (set-nonempty-type type))))))
+	(let ((etcc (generate-existence-tcc type expr)))
+	  (unless (or (or *in-checker* *in-evaluator*)
+		      *tcc-conditions*)
+	    (set-nonempty-type type etcc)))))))
 
 (defmethod possibly-empty-type? :around ((te type-expr))
   (unless (nonempty? te)
@@ -879,41 +879,41 @@
 ;    (check-nonempty-type (car list) expr dtypes)
 ;    (check-nonempty-type (cdr list) expr dtypes)))
 
-(defmethod set-nonempty-type :around ((te type-expr))
+(defmethod set-nonempty-type :around ((te type-expr) decl)
   (unless (nonempty? te)
-    (push te (nonempty-types (current-theory)))
+    (push (cons te decl) (nonempty-types (current-theory)))
     (setf (nonempty? te) t)
     (call-next-method)))
 
-(defmethod set-nonempty-type ((te type-name))
+(defmethod set-nonempty-type ((te type-name) decl)
   nil)
 
-(defmethod set-nonempty-type ((te type-application))
+(defmethod set-nonempty-type ((te type-application) decl)
   nil)
 
-(defmethod set-nonempty-type ((te subtype))
-  (set-nonempty-type (supertype te)))
+(defmethod set-nonempty-type ((te subtype) decl)
+  (set-nonempty-type (supertype te) decl))
 
-(defmethod set-nonempty-type ((te tupletype))
-  (set-nonempty-type (types te)))
+(defmethod set-nonempty-type ((te tupletype) decl)
+  (set-nonempty-type (types te) decl))
 
-(defmethod set-nonempty-type ((te cotupletype))
+(defmethod set-nonempty-type ((te cotupletype) decl)
   ;; Can't propagate, as [S + T] nonempty implies S or T nonempty
   )
 
-(defmethod set-nonempty-type ((te funtype))
+(defmethod set-nonempty-type ((te funtype) decl)
   )
 
-(defmethod set-nonempty-type ((te recordtype))
-  (set-nonempty-type (mapcar #'type (fields te))))
+(defmethod set-nonempty-type ((te recordtype) decl)
+  (set-nonempty-type (mapcar #'type (fields te)) decl))
 
-(defmethod set-nonempty-type ((te dep-binding))
-  (set-nonempty-type (type te)))
+(defmethod set-nonempty-type ((te dep-binding) decl)
+  (set-nonempty-type (type te) decl))
 
-(defmethod set-nonempty-type ((list list))
+(defmethod set-nonempty-type ((list list) decl)
   (when list
-    (set-nonempty-type (car list))
-    (set-nonempty-type (cdr list))))
+    (set-nonempty-type (car list) decl)
+    (set-nonempty-type (cdr list) decl)))
 
 (defun generate-existence-tcc (type expr &optional (fclass 'OBLIGATION))
   (let* ((*old-tcc-name* nil)
@@ -1133,6 +1133,7 @@
 				    |number_fields| |reals|)))
 		       (when (and (name? ex)
 				  (declaration? (declaration ex))
+				  (not (eq (module (declaration ex)) (current-theory)))
 				  (interpretable? (declaration ex)))
 			 (setq foundit ex))))
 	       expr)
