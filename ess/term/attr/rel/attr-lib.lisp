@@ -22,7 +22,7 @@
 
 (defconstant undefined 'undefined)
 
-(eval-when (compile load eval)
+(eval-when (:compile-toplevel :load-toplevel :execute)
 
 (defun is-underline (form)
   (and (symbolp form) (string-equal (symbol-name form) "_")))

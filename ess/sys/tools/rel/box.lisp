@@ -269,7 +269,7 @@
 (defun \#> ()
   (set-dispatch-macro-character #\# #\> #'box-reader))
 
-(eval-when (load eval)
+(eval-when (:load-toplevel :execute)
   (\#>))
 
 (defun box-cerror (continue-string format-string &rest args)
@@ -327,7 +327,7 @@ warning.  T means the current value of *error-output*.")
 
 (def-disksave-hook (setq *null-output* (make-broadcast-stream)))
 
-(eval-when (load eval)
+(eval-when (:load-toplevel :execute)
   (if (streamp *null-output*)
       *null-output*
       (setq *null-output* (make-broadcast-stream))))

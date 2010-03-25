@@ -31,7 +31,7 @@ proclaimed inline expanding, it can never be changed (in the current Lisp
 image).  This doesn't work.  It always insists on inline expanding.")
 
 (defmacro proclaim-constrs-inline (flag)
-  `(eval-when (compile load eval)
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
      (setq *proclaim-constrs-inline* ,flag)))
 
 

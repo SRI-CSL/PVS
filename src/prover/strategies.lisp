@@ -29,7 +29,7 @@
 
 (in-package :pvs)
 
-(eval-when (eval compile load)
+(eval-when (:execute :compile-toplevel :load-toplevel)
   (defun check-formals (formals &optional opt-flag)
     (or (null formals)
 	(if (eq (car formals) '&optional)

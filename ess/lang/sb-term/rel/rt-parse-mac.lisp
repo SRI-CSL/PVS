@@ -43,7 +43,7 @@
 (export '(rbp))
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 
 ;;; Determine whether this entry in a fs-list allows an epsilon for the second 
 ;;; token. The "rt" in the name is to avoid a name conflict with an SB routine
@@ -73,7 +73,7 @@
 ;;; otherwise error and return nil.  It isn't clear whether the original code
 ;;; always returned nil when an error occurred.
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 
 (defmacro lam (fs-list &body code)
   (if code

@@ -775,7 +775,7 @@ original string."
        nil))))
 
 #-:cormanlisp
-(eval-when (load eval)
+(eval-when (:load-toplevel :execute)
   (when
       #+(and :CMU (or :CMU17 :CMU18))
       (eval:interpreted-function-p #'ilisp-matching-symbols)

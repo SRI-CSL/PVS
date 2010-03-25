@@ -21,7 +21,7 @@
 
 ;;; First a lucid 2.1 bug workaround.
 #+(or (and lucid (not lcl3.0)) harlequin-common-lisp)
-(eval-when (load compile eval)
+(eval-when (:load-toplevel :compile-toplevel :execute)
   (dolist (s '("*catchers*" "retry" "retry-catch" "reinit-retry-catch"))
     (export (list (intern s :lisp)) :lisp)))
 

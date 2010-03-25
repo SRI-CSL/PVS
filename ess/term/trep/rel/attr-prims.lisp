@@ -19,7 +19,7 @@
 ;;; features from the terms, so it is the default method for storing
 ;;; attributes.
 
-(eval-when (compile load eval)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (unless (find-package "TERM")
     (make-package "TERM" :nicknames '("GTERM")
 			 :use '(:cl-user :common-lisp :ergolisp))))

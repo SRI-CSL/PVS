@@ -41,7 +41,7 @@
       ;; Assume this is loaded while cd'd to the PVS directory 
       (namestring (truename *default-pathname-defaults*))))
 
-(eval-when (eval load)
+(eval-when (:execute :load-toplevel)
   (defvar *pvs-platform*
     (let ((cmd (format nil "~a/bin/pvs-platform" *pvs-path*)))
       #+allegro (car (excl.osi:command-output cmd))
@@ -104,7 +104,7 @@
   )
 
 #+sbcl
-(eval-when (eval load)
+(eval-when (:execute :load-toplevel)
   (setq sb-c::*fasl-file-type* *pvs-binary-type*))
 
 #+allegro

@@ -33,7 +33,7 @@
 ;;; the SBST package does not use the LISP package, so we can get repeatable
 ;;; behavior on different machines.
 
-(eval-when (compile load eval)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (defvar *sbst-package* 
     (cond ((find-package "SBST"))
 	  (t

@@ -484,7 +484,7 @@
 (defun ergolisp::\#t ()
   (set-dispatch-macro-character #\# #\t #'read-sexp-to-ttype))
 
-(eval-when (load eval)
+(eval-when (:load-toplevel :execute)
   (ergolisp::\#t))
 
 
@@ -504,7 +504,7 @@
 (defun ergolisp::\#\@ ()
   (set-dispatch-macro-character #\# #\@ #'read-sexp-to-opsig))
 
-(eval-when (load eval)
+(eval-when (:load-toplevel :execute)
   (ergolisp::\#\@))
 
 
@@ -710,7 +710,7 @@
 
 
 
-(eval-when (load)
+(eval-when (:load-toplevel)
   (setq *global-sort-table* (make-sort-table))
   (setq *global-opsig-table* (make-opsig-table)))
 

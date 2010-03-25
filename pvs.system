@@ -76,11 +76,11 @@
 	*print-pretty* t))
 
 #+sbcl
-(eval-when (eval load)
+(eval-when (:execute :load-toplevel)
   (setq *compile-verbose* nil)
   (setq *compile-print* nil))
 
-(eval-when (eval load)
+(eval-when (:execute :load-toplevel)
   ;; This sets *pvs-path* and sets *pvs-binary-type*
   (load "pvs-config.lisp")
   #+allegro (chdir *pvs-path*))

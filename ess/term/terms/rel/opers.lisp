@@ -295,7 +295,7 @@
 (defun ergolisp::\#^ ()
   (set-dispatch-macro-character #\# #\^ #'read-sexp-to-oper))
 
-(eval-when (load eval)
+(eval-when (:load-toplevel :execute)
   (ergolisp::\#^))
 
 

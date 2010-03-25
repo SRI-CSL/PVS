@@ -78,7 +78,7 @@ Returns T if successful."
 ;;;===========================================================================
 ;;; Epilogue
 
-(eval-when (load eval)
+(eval-when (:load-toplevel :execute)
   (unless (compiled-function-p #'ilisp-callers)
     (ilisp-message t "File is not compiled, use M-x ilisp-compile-inits")))
 

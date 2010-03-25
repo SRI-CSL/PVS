@@ -289,7 +289,7 @@ Estimated total monitoring overhead: 0.88 seconds
 
 (progn
   #-(or sbcl cmu allegro)
-  (eval-when (compile eval)
+  (eval-when (:compile-toplevel :execute)
     (warn
      "You may want to supply implementation-specific get-time functions."))
 
@@ -320,7 +320,7 @@ Estimated total monitoring overhead: 0.88 seconds
 
 #-(or sbcl :cmu :lcl3.0)
 (progn
-  (eval-when (compile eval)
+  (eval-when (:compile-toplevel :execute)
     (warn "No consing will be reported unless a get-cons function is ~
            defined."))
 
@@ -401,10 +401,10 @@ Estimated total monitoring overhead: 0.88 seconds
 
 #-(or sbcl :cmu :lcl3.0 (and :allegro (not :coral)))
 (progn
- (eval-when (compile eval)
+ (eval-when (:compile-toplevel :execute)
    (warn
     "You may want to add an implementation-specific Required-Arguments function."))
- (eval-when (load eval)
+ (eval-when (:load-toplevel :execute)
    (defun required-arguments (name)
      (declare (ignore name))
      (values 0 t))))
@@ -547,7 +547,7 @@ adjusted for overhead."
 ;;; ********************************
 ;;; Encapsulate ********************
 ;;; ********************************
-(eval-when (compile load eval)
+(eval-when (:compile-toplevel :load-toplevel :execute)
 ;; Returns a lambda expression for a function that, when called with the
 ;; function name, will set up that function for metering.
 ;;
@@ -642,7 +642,7 @@ adjusted for overhead."
 ;;; along with any new ones we encounter. Since we're now precomputing
 ;;; closure functions for common argument signatures, this eliminates
 ;;; the former need to call COMPILE for each monitored function.  
-(eval-when (compile eval)
+(eval-when (:compile-toplevel :execute)
    (defconstant precomputed-encapsulations 8))
 
 (defvar *existing-encapsulations* (make-hash-table :test #'equal))

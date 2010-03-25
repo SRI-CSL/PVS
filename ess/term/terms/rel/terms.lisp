@@ -80,7 +80,7 @@
 	    "The term ~S does not have a ~dth argument" term n)
     (elt args n)))
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
   (defmacro term-arg0 (term)
     "Get the 0th argument (child) of a term"
     `(term-argn ,term 0))
@@ -122,7 +122,7 @@
   "Number of TERM's arguments (sons)."
   (length (term-args term)))
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
   (defmacro term-arity0? (term)
     "Does TERM have 0 arguments?"
     `(eql (term-arity ,term) 0))
@@ -258,6 +258,6 @@
 (defun ergolisp::\#! ()
   (set-dispatch-macro-character #\# #\! #'read-sexp-to-term))
 
-(eval-when (load eval)
+(eval-when (:load-toplevel :execute)
   (ergolisp::\#!))
 

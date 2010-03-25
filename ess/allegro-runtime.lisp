@@ -1,5 +1,5 @@
 #+allegro
-(eval-when (eval load)
+(eval-when (:execute :load-toplevel)
   (setq system:*load-search-list*
 	(list #p"" #p(:type "lfasl") #p(:type "cl") #p(:type "lisp"))))
 (defvar *ess-path*

@@ -48,7 +48,7 @@
 (defvar *sb-fontheight* sb-deffontheight)
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 
 (defmacro sb-chars-to-pixels (chars)
   `(* *sb-fontwidth* ,chars))
@@ -93,7 +93,7 @@
 					; Changes if original nesting will not
 					; work. 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 (defmacro indent-width (units)
   `(* *indent-unit-width* ,units)))
 
@@ -293,7 +293,7 @@
   )
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 (defmacro tinfo-bp-value (tinfo)
   `(bp-value (tinfo-bp ,tinfo)))
 (defmacro tinfo-bp-united-flag (tinfo)

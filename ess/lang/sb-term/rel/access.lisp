@@ -132,7 +132,7 @@
 		*sb-package*))))
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 
   ;; The following were originally destructive versions of the above, but my
   ;; timing tests show that you don't gain that much and I'm worried about
@@ -197,7 +197,7 @@
 	nil)))
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 
 (defmacro grammar-new-line-comment-char (grammar)
   `(grammar-comment-chars 0 ,grammar))
@@ -357,7 +357,7 @@
 	pat))
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 
 (defmacro get-nt-slot-total (nt-term)
   `(get-sb-attr ,nt-term 'slots))
@@ -436,7 +436,7 @@
 
 	 
 	
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 	
 (defmacro get-nt-left-bracket (nt-name grammar)
   `(get-nt-bracket ,nt-name ,grammar 'left-bracket))
@@ -485,7 +485,7 @@
 
 ;;; Precedence access (con.)
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 (defmacro get-nt-prec-initials (nt-name grammar)
   `(nth 0 (get-nt-prec ,nt-name ,grammar)))
 (defmacro get-nt-prec-medial-lefts (nt-name grammar)
@@ -604,7 +604,7 @@
 
 (defparameter pattern-ops (make-hash-table :test #'eq :size (expt 2 8)))
 
-(eval-when (load eval)
+(eval-when (:load-toplevel :execute)
   (mapcar #'(lambda (x)
 	      (setf (gethash x pattern-ops) t))
 	  pattern-op-list))
@@ -750,7 +750,7 @@
 		    (ds-id (term-arg1 pat))))))))
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 
 (defmacro pattern-tag (pat)    
   `(pattern-name ,pat))
@@ -875,7 +875,7 @@
     pat))
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
   ;; There is a compiler error for mapcan.
   (defun map-pattern (pat funct)
     (if (pattern-p pat)
@@ -927,7 +927,7 @@
 
 (defparameter augment-ops (make-hash-table :test #'eq :size (expt 2 8)))
 
-(eval-when (load eval)
+(eval-when (:load-toplevel :execute)
   (mapcar #'(lambda (x)
 	      (setf (gethash x augment-ops) t))
 	  augment-op-list))
@@ -1005,7 +1005,7 @@
 
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 
 (defmacro augment-args (aug)
   `(augment-sons ,aug))

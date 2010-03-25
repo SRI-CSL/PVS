@@ -137,7 +137,7 @@
 
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
   (defmacro not-empty-str? (s)
     `(not (string= ,s ""))))
 
@@ -176,7 +176,7 @@
 
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 
   (defmacro lang-name (lang)
     `(lang-struct-name ,lang))

@@ -85,7 +85,7 @@
 	   nil))))
 
 
-(eval-when (compile eval)
+(eval-when (:compile-toplevel :execute)
 
 (defmacro ab-read-line ()
   `(string-trim '(#\space #\tab) (read-line)))

@@ -48,7 +48,7 @@
   "Expands to nothing, but saves something on the property list of
 NAME.  This can be used on the top level, or as the first thing in
 a DEFUN."
-  `(eval-when (compile load eval)
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
      (setf (get ',name 'type-info) (cons ',argtypes ',resulttypes))))
 
 (defmacro declare-ftype (name argtypes &rest resulttypes)

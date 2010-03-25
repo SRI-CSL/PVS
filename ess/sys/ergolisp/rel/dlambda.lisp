@@ -117,7 +117,7 @@ mandatory.  EQUAL keyword argument defaults to EQ"
 	  (values selectors (length selectors)))
     `(progn
        (defreconstr ,constr ,arg-cnt :equal ,equal)
-       (eval-when (compile load eval)
+       (eval-when (:compile-toplevel :load-toplevel :execute)
 	 (setf (get-constructor-info ',constr)
 	       (list ',sel-spec
 		     ',discrim))))))

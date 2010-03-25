@@ -133,7 +133,7 @@
 ;;; Generic macros. 
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 
 (defmacro dis-op (op x)
   `(equal ,op
@@ -158,7 +158,7 @@
 ;;; Stack routines for unparsing abstract syntax. 
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 
 (defmacro init-as-stack ()
   nil)
@@ -596,7 +596,7 @@
 
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 
 (defmacro dis-lt (kind as)
   `(funcall *apply-LT-dis-fun*
@@ -827,7 +827,7 @@
 
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 
 (defmacro nt-unp (nt-name as body)
   `(let* ((*uterm-nt-name* ,nt-name)

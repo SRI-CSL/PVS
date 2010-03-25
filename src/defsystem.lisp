@@ -834,7 +834,7 @@
 ;;; Massage CLtL2 onto *features* **
 ;;; ********************************
 ;;; Let's be smart about CLtL2 compatible Lisps:
-(eval-when (compile load eval)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   #+(or (and allegro-version>= (version>= 4 0)) :mcl :sbcl)
   (pushnew :cltl2 *features*))
 
@@ -1027,7 +1027,7 @@
 #+(and :cltl2 (not (or :cmu :clisp :sbcl
 		       (and :excl (or :allegro-v4.0 :allegro-v4.1))
 		       :mcl)))
-(eval-when (compile load eval)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (unless (find-package "MAKE")
     (make-package "MAKE" :nicknames '("MK") :use '("COMMON-LISP"))))
 
@@ -1046,7 +1046,7 @@
   (:nicknames :mk))
 
 #+(or :cltl2 :lispworks :scl)
-(eval-when (compile load eval)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (in-package "MAKE"))
 
 #+ecl
@@ -1106,7 +1106,7 @@
 ;;; the compile form, so that you can't use a defvar with a default value and
 ;;; then a succeeding export as well.
 
-(eval-when (compile load eval)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (defvar *special-exports* nil)
   (defvar *exports* nil)
   (defvar *other-exports* nil)
@@ -1397,7 +1397,7 @@ and up to date.")
 ;;; ********************************
 
 ;;; Massage people's *features* into better shape.
-(eval-when (compile load eval)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (dolist (feature *features*)
     (when (and (symbolp feature)   ; 3600
                (equal (symbol-name feature) "CMU"))
@@ -1522,7 +1522,7 @@ fasl.")
 
 ;;; mc 11-Apr-91: Bashes MCL's point reader, so commented out.
 #-:mcl
-(eval-when (compile load eval)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   ;; Define #@"foo" as a shorthand for (afs-binary-directory "foo").
   ;; For example,
   ;;    <cl> #@"foo"
@@ -5134,7 +5134,7 @@ or does not contain valid compiled code."
 	    (t
 	     nil)))))
 
-(eval-when (load eval)
+(eval-when (:load-toplevel :execute)
 (component-operation :clean    'delete-binaries-operation)
 (component-operation 'clean    'delete-binaries-operation)
 (component-operation :delete-binaries     'delete-binaries-operation)

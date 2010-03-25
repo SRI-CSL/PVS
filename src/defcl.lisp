@@ -38,7 +38,7 @@
   nil)
 
 #+gcl
-(eval-when (eval compile load)
+(eval-when (:execute :compile-toplevel :load-toplevel)
   (defmacro ignore-errors (&body forms)
     `(progn ,@forms)))
 
@@ -84,7 +84,7 @@ unignored slots, saved-slots, and unsaved-slots.")
     (proclaim '(inline ,(intern (format nil "~a?" name))))
     (defun ,(intern (format nil "~a?" name)) (obj)
       (typep obj ',name))
-    (eval-when (eval compile load)
+    (eval-when (:execute :compile-toplevel :load-toplevel)
       (setq *slot-info*
 	    (cons (cons ',name
 			'(,classes ,args))
@@ -164,7 +164,7 @@ unignored slots, saved-slots, and unsaved-slots.")
       obj
       (apply #'copy obj initargs)))
 
-(eval-when (compile load eval)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (defun remove-keyword (key list)
     (let ((tail (member key list)))
       (if tail
@@ -327,7 +327,7 @@ unignored slots, saved-slots, and unsaved-slots.")
 ;(defmethod eequal (obj1 obj2)
 ;  (equal obj1 obj2))
 
-(eval-when (eval compile load)
+(eval-when (:execute :compile-toplevel :load-toplevel)
   (unless (fboundp 'memq)
     (defun memq (elt list)
       (member elt list :test #'eq))))

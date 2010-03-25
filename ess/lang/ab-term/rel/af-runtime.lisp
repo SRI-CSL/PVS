@@ -25,7 +25,7 @@
 ;;;     07-22-87	rln	Initial development release.
 ;;;
 
-(eval-when (compile load eval)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (unless (find-package "AF-RUNTIME-LIB")
     (make-package "AF-RUNTIME-LIB"
 		  :nicknames '("ABRT" "AFRT")

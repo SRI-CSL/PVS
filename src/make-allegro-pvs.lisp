@@ -26,7 +26,7 @@
 
 (in-package :cl-user)
 (defvar *pvs-path* (or (sys:getenv "PVSPATH") "."))
-(eval-when (load eval)
+(eval-when (:load-toplevel :execute)
   (require 'tpl-debug)
   #+(or runtime-standard runtime-dynamic)
   (pushnew :runtime *features*)

@@ -30,7 +30,7 @@
 (defmacro defcon (con-name lang-name &optional (doc-string ""))
   "Predefines a context."
   (let ((deltafun (deltafun-fam-name con-name :global)))
-    `(eval-when (compile load eval)
+    `(eval-when (:compile-toplevel :load-toplevel :execute)
        (setf (gethash ',con-name *context-table*)
 	     (make-context-family
 	      :name ',con-name
@@ -42,7 +42,7 @@
 (defmacro defsyn (syn-name lang-name con-name &optional (doc-string ""))
   "Predefines a syntext depending on a context."
   (let ((compfun (compfun-fam-name syn-name :global)))
-    `(eval-when (compile load eval)
+    `(eval-when (:compile-toplevel :load-toplevel :execute)
        (let* ((con
 	       (sometable-lookup ',con-name *context-table*
 				 ,(format nil "The context ~S on which the syntext ~~S
@@ -63,7 +63,7 @@ for which the context ~S is defined." ',lang-name clang-name ',con-name)
 (defmacro defattr (attr-name lang-name syn-name &optional (doc-string ""))
   "Predefines an attribute by declaring the syntext it depends on."
   (let ((attrfun (attrfun-fam-name attr-name :global)))
-    `(eval-when (compile load eval)
+    `(eval-when (:compile-toplevel :load-toplevel :execute)
        (let* ((syn
 	       (sometable-lookup ',syn-name *syntext-table*
 				 ,(format nil "The syntext ~S on which the attribute ~~S

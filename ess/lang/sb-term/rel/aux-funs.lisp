@@ -127,7 +127,7 @@
 
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 (defmacro sb-write (&rest write-calls)
   `(let ((*package* *sb-package*)
 	 (*print-level* nil)
@@ -331,7 +331,7 @@
   (sb-intern-nupcase (format nil "V~D" x)))
 
 
-(eval-when (load compile eval)
+(eval-when (:load-toplevel :compile-toplevel :execute)
 
 (defmacro get-number (fragment)
   `(car ,fragment))

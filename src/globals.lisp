@@ -69,7 +69,7 @@
   (let ((end (position #\space excl::cl-release-date :from-end t)))
     (subseq excl::cl-release-date 0 end)))
 
-(eval-when (eval compile load)
+(eval-when (:execute :compile-toplevel :load-toplevel)
   (defparameter *pvs-version* "4.3")
 
   ;; Not used in PVS sources, but may be useful for patches, strategies, etc.

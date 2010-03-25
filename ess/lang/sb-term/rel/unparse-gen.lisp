@@ -17,7 +17,7 @@
 (in-package :syntax-box)  (use-package :ergolisp)
 
 
-(eval-when (eval compile load)
+(eval-when (:execute :compile-toplevel :load-toplevel)
 
 (defmacro map-append (function &rest lists)
   `(do ((list-to-append
@@ -68,7 +68,7 @@
 		      string)))))
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 
 (defmacro mk-bracket-table-name ()
   `(mk-conc-var-name "BRACKET-INFO"))
@@ -248,7 +248,7 @@
 
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 (defmacro keyword-intern (x)
   `(let ((x ,x))
      (intern (if (stringp x)
@@ -983,7 +983,7 @@
       t))
 
     ((plus star and)
-     (error "Illegal augment for choose-discriminator:" aug))
+     (error "Illegal augment for choose-discriminator:~%~S~%" aug))
 
     (term-const 
      (cond ((has-elist-arg? aug)	; routines imported from sort-gen.

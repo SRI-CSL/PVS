@@ -128,7 +128,7 @@ in the file sys/ergolisp/rel/ergo-system.lisp.")
     (when (probe-file file-name)
       (rename-file file-name next-file-name))))
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
   (defmacro ergo-ignore-if-unused (&rest vars)
     #+excl				; for allegro
     nil ;;`(declare (excl:ignore-if-unused ,@vars))

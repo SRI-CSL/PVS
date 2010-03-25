@@ -19,12 +19,12 @@
 ;; --------------------------------------------------------------------
 
 (in-package :pvs)
-(eval-when (compile)
+(eval-when (:compile-toplevel)
   (require :foreign))
 (export '(file-exists-p directory-p read-permission? write-permission?
 			file-write-time get-file-info))
 
-(eval-when (eval compile load)
+(eval-when (:execute :compile-toplevel :load-toplevel)
 (ff:def-foreign-call fileutils___file_exists_p
     ((filename (* :char) simple-string))
   #+(version>= 6) :strings-convert #+(version>= 6) t

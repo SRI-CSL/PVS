@@ -118,7 +118,7 @@
 
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 
   (defmacro nil-occ ()
     "Returns the empty occurrence."
@@ -181,7 +181,7 @@
 					; doc. 
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
   (defmacro occ-rest (occ)
     "Synonym for occ-parent."
     `(occ-parent ,occ))
@@ -266,7 +266,7 @@
 (defun ergolisp::\#q ()
   (set-dispatch-macro-character #\# #\q #'read-list-to-occ))
 
-(eval-when (load eval)
+(eval-when (:load-toplevel :execute)
   (ergolisp::\#q))
 
 

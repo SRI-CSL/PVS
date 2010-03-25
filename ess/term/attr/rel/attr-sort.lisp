@@ -116,7 +116,7 @@ generates a name for its attr function."
 	  (mapcar #'(lambda (sort)
 		      (cons sort (deltafun-fam-name confam-name sort)))
 		  sortlist)))
-    `(eval-when (compile load eval)
+    `(eval-when (:compile-toplevel :load-toplevel :execute)
        (setf (gethash ',confam-name *context-table*)
 	     (make-context-family
 	      :name ',confam-name
@@ -143,7 +143,7 @@ which has not yet been defined.")
 (defmacro defsynfam (synfam-name lang-name confam-name
 				 &optional (doc-string ""))
   "Predefines a syntext family depending on a context family."
-  `(eval-when (compile load eval)
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
      (let* ((con-fam
 	     (sometable-lookup ',confam-name *context-table*
 			       ,(format nil "The context family ~S on which the syntext family ~~S
@@ -187,7 +187,7 @@ depends has not yet been declared" (syntext-family-confam-name syn-fam)))))
 (defmacro defattrfam (attrfam-name lang-name synfam-name
 				   &optional (doc-string ""))
   "Predefines an attribute family depending on a syntext family."
-  `(eval-when (compile load eval)
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
      (let* ((syn-fam
 	     (sometable-lookup ',synfam-name *syntext-table*
 			       ,(format nil "The syntext family ~S on which the attribute family ~~S

@@ -49,7 +49,7 @@
 
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 
 (defmacro atomic (pat)
   `(memq (get-kind ,pat)

@@ -107,7 +107,7 @@
       (format stream "#<oct>")))
 
 
-(eval-when (compile load eval)
+(eval-when (:compile-toplevel :load-toplevel :execute)
 
 (defmacro width (oct)
   `(- (rightx ,oct) (leftx ,oct)))
@@ -175,7 +175,7 @@
 					;(format stream "#<aw>")
 
 
-(eval-when (compile eval load)
+(eval-when (:compile-toplevel :execute :load-toplevel)
 
 (defmacro aw-term (aw)
   `(uterm-term (aw-uterm ,aw)))

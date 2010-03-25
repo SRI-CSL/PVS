@@ -40,7 +40,7 @@
 
 (in-package :cl-user)
 
-(eval-when (eval load)
+(eval-when (:execute :load-toplevel)
   ;; This sets *pvs-path* and sets *pvs-binary-type*
   (load "pvs-config.lisp"))
 

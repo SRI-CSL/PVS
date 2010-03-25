@@ -365,7 +365,7 @@
 
 (defun make-and (as-list)
       ; get rid of extra nulls.
-  (delete-if #'null as-list)
+  (setq as-list (delete-if #'null as-list))
   (if (> (length as-list) 1)
       (make-augment :kind 'and :args as-list)
       (car as-list)))
