@@ -57,10 +57,11 @@
 	     (let ((error-code
 		    (#+allegro excl:run-shell-command
 			       #+cmu extensions:run-program
-			       "qepcad.bash")))
+			       #+sbcl sb-ext:run-program
+			       "qepcad.bash" #+sbcl nil)))
 	       (fmt 10 "~% [CAD] :: Sys-call for QEPCAD.BASH successfull with exit code: ~A. ~%" error-code)
 	       (if #+allegro (= error-code 0)
-		 #+cmu t ;; Need to learn how to get CMUCL error code here.
+		 #-allegro t ;; Need to learn how to get CMUCL error code here.
 		 (with-open-file (cad-output "proofobl.out" :direction :input)
 				 (let ((cad-decision (read-line cad-output nil)))
 				   (fmt 10 "~% [CAD] :: CAD decision: ~A ;  Generic? ~A. ~%" cad-decision generic)

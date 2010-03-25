@@ -324,7 +324,7 @@
 
 #+sbcl
 (defun working-directory ()
-  (pathname (sb-posix:getcwd)))
+  (make-pathname :directory (sb-posix:getcwd)))
 
 #+sbcl
 (defun set-working-directory (dir)

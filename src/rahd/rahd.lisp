@@ -66,6 +66,9 @@
 (defun compile-file-and-load (&rest fnames)
   (mapcar #'(lambda (fname) 
 	      (let ((fname-full (format nil "~D.lisp" fname)))
+		#+sbcl
+		(load (compile-file fname-full :verbose t))
+		#-sbcl
 		(compile-file fname-full :load-after-compile t :verbose t)
 		(format t "~%[RAHD-REBOOT]: ~D compiled and loaded successfully." fname-full)))
 	      fnames))
@@ -132,8 +135,7 @@
 			    build-name))
     (fmt 0 "..... DONE.~%")
     (fmt 0 "          Marking executable +x .......")
-    (#+allegro excl:run-shell-command #+cmu extensions:run-program
-	       (format nil "chmod +x ~A.exec" build-name))
+    (pvs::chmod "+x" (format nil "~A.exec" build-name))
     (fmt 0 "..... DONE.~%~% >> [RAHD-BUILD-STAND-ALONE]: Process complete.~%"))
   t)
 

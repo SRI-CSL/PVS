@@ -265,9 +265,9 @@ if [ -z "$PVSLISP" ]
         then PVSLISP=cmulisp
         elif [ -x $binpath/runtime/pvs-cmulisp ]
         then PVSLISP=cmulisp
-	elif [ -x $binpath/devel/pvs-sbclisp ]
+	elif [ -e $binpath/devel/pvs-sbclisp ]
 	then PVSLISP=sbclisp
-	elif [ -x $binpath/runtime/pvs-sbclisp ]
+	elif [ -e $binpath/runtime/pvs-sbclisp ]
 	then PVSLISP=sbclisp
         else echo "No executable available in $binpath"
              exit 1
@@ -275,11 +275,11 @@ if [ -z "$PVSLISP" ]
 fi
 PVSIMAGE=pvs-$PVSLISP
 
-if [ -d $binpath/devel -a -x $binpath/devel/$PVSIMAGE -a ! "$pvsruntime" ]
+if [ -d $binpath/devel -a -e $binpath/devel/$PVSIMAGE -a ! "$pvsruntime" ]
    then PATH=$binpath/devel:$binpath:$PVSPATH/bin:$PATH
     LD_LIBRARY_PATH=$binpath/devel:$LD_LIBRARY_PATH
     DYLD_LIBRARY_PATH=$binpath/devel:$DYLD_LIBRARY_PATH
-elif [ -d $binpath/runtime -a -x $binpath/runtime/$PVSIMAGE ]
+elif [ -d $binpath/runtime -a -e $binpath/runtime/$PVSIMAGE ]
    then PATH=$binpath/runtime:$binpath:$PVSPATH/bin:$PATH
     LD_LIBRARY_PATH=$binpath/runtime:$LD_LIBRARY_PATH
     DYLD_LIBRARY_PATH=$binpath/runtime:$DYLD_LIBRARY_PATH
@@ -319,6 +319,11 @@ case $PVSLISP in
 	    flags="$flags --eval (pvs::pvs-init)"
 	    for lf in $lisploadfiles
 	    do flags="$flags --load $lf"; done
+	fi
+	if [ -d $binpath/devel -a -e $binpath/devel/$PVSIMAGE ]; then
+	  PVSIMAGE="/usr/bin/sbcl --core $binpath/devel/$PVSIMAGE"
+	else
+	  PVSIMAGE="/usr/bin/sbcl --core $binpath/runtime/$PVSIMAGE"
 	fi
 	;;
 esac

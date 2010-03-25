@@ -22,11 +22,16 @@
 
 ;;(in-package "SB" :nicknames '("SYNTAX-BOX"))
 
-(in-package :syntax-box :nicknames '(:sb)) (use-package :ergolisp)
+#+sbcl
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (unless (find-package :syntax-box)
+    (defpackage :syntax-box (:nicknames "SB")
+      (:use :common-lisp :ergolisp :oper :term :sort :sb-runtime :lang)
+      (:shadowing-import-from :sb-int memq))))
+(in-package :syntax-box)
 
-
-(use-package '(:oper :term :sort :sb-runtime :lang))
-
+#-sbcl (use-package :ergolisp)
+#-sbcl (use-package '(:oper :term :sort :sb-runtime :lang))
 
 (defparameter *sb-package* (find-package :sb))
 

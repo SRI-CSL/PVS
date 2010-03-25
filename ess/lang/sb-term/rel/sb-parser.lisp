@@ -8,7 +8,7 @@
 
 (export '( sb-parse ))
 
-(defparameter sb-abs-syn-package (find-package "syntax-box")) 
+(defparameter sb-abs-syn-package (find-package :syntax-box)) 
 
 (defun sb-parse (&key (nt 'meta-grammar) error-threshold ask-about-bad-tokens
   (return-errors nil) (stream nil streamp) string file (exhaust-stream nil))

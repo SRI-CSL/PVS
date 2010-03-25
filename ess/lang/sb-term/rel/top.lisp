@@ -29,9 +29,9 @@
 
 (export '(sb sb-make))
 
-(defconstant sb-version "1 Feb 88")
+(defconstant-if-unbound sb-version "1 Feb 88")
 
-(defconstant gen-src-file-ext "lisp")
+(defconstant-if-unbound gen-src-file-ext "lisp")
 
 
 (defmacro string-empty? (s)

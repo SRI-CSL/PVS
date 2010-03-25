@@ -56,7 +56,8 @@
 			      (format cocoa-gb-in cocoa-gb-str))
 	      (#+allegro excl:run-shell-command
 			 #+cmu extensions:run-program
-			 "./cocoa-gb.bash")
+			 #+sbcl sb-ext:run-program
+			 "./cocoa-gb.bash" #+sbcl nil)
 	      (let ((computed-gbasis-lst nil))
 		(with-open-file (cocoa-gb-out (work-pathify "cocoa-gb.out") :direction :input)
 		   (do ((l (read-line cocoa-gb-out) (read-line cocoa-gb-out nil 'eof)))

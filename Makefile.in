@@ -94,7 +94,7 @@ endif
 
 ifneq ($(SBCLISP_HOME),)
 # Check that the given SBCLISP_HOME works
-SBCLISPEXE = $(SBCLISP_HOME)/run-sbcl.sh
+SBCLISPEXE = $(SBCLISP_HOME)/sbcl
 ifeq ($(shell if [ -x "$(SBCLISPEXE)" ]; then echo OK; fi),OK)
 SBCLVERSION = $(shell $(SBCLISPEXE) --version)
 $(warning "$(SBCLVERSION)")
@@ -536,9 +536,7 @@ $(sbcl-devel) $(sbcl-rt) : $(image-deps) \
 		      --eval "(unwind-protect \
 				  (mk:operate-on-system :pvs :compile) \
 				(save-lisp-and-die \"$@\" \
-				    :toplevel (function startup-pvs) \
-                                    :executable t \
-			       ))"
+				    :toplevel (function startup-pvs)))"
 	-rm $(PVSPATH)BDD/$(PLATFORM)/bdd-sbcl.*
 	cp $(SBCLISPEXE) $(subst $(SYSTEM)-sbclisp,,$@)
 	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-sbclisp,,$@)

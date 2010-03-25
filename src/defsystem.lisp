@@ -1783,6 +1783,10 @@ s/^[^M]*IRIX Execution Environment 1, *[a-zA-Z]* *\\([^ ]*\\)/\\1/p\\
 	(push :case-sensitive common-lisp:*features*)
       (push :case-insensitive common-lisp:*features*))))
 
+#+sbcl
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (push #+:unix :case-sensitive #-:unix :case-insensitive
+	common-lisp:*features*))
 
 #+(and allegro case-sensitive ics)
 (compiler-type-translation "excl 6.1" "excl-m")

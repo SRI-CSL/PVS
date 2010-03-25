@@ -103,7 +103,7 @@
       (pvs-message "~a has not been typechecked" oname)))
 
 (defun typechecked-origin? (name origin)
-  (case (intern (string-downcase origin))
+  (case (intern (#+allegro string-downcase #-allegro string-upcase origin))
     ((ppe tccs) (get-theory name))
     ((prelude prelude-theory) t)
     (t (typechecked-file? name))))
@@ -302,7 +302,7 @@
     (values object containing-type)))
 
 (defun get-syntactic-objects-for (name origin)
-  (case (intern (string-downcase origin))
+  (case (intern (#+allegro string-downcase #-allegro string-upcase origin))
     (ppe (let ((theory (get-theory name)))
 	   (when theory
 	     (values (ppe-form theory) (list theory)))))

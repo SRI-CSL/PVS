@@ -2238,7 +2238,9 @@
 	  (unproved? (pvs-message "No more unproved formulas below"))
 	  (t (pvs-message
 		 "Not at a formula declaration~@[ - ~a buffer may be invalid~]"
-	       (car (member (intern (string-downcase origin)) '(tccs ppe))))))))
+	       (car (member (intern #+allegro (string-downcase origin)
+				    #-allegro (string-upcase origin))
+			    '(tccs ppe))))))))
 
 (defun prove-formula (theoryname formname rerun?)
   (let ((theory (get-typechecked-theory theoryname)))
@@ -3367,7 +3369,8 @@
   
 
 (defun show-strategy (strat-name)
-  (let* ((strat-id (intern (string-downcase strat-name)))
+  (let* ((strat-id (intern #+allegro (string-downcase strat-name)
+			   #-allegro (string-upcase strat-name)))
 	 (strategy (or (gethash strat-id *rulebase*)
 		       (gethash strat-id *steps*)
 		       (gethash strat-id *rules*))))

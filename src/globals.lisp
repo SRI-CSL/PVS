@@ -293,7 +293,7 @@ collected in *tccforms*")
 
 ;; Used to keep track of which expression have already gone through
 ;; check-type-actuals processing
-(defvar *exprs-generating-actual-tccs*)
+(defvar *exprs-generating-actual-tccs* nil)
 
 ;;; Associate old tcc names with new tccs, so that proofs may be restored.
 (defvar *old-tcc-names* nil)

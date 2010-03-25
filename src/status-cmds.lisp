@@ -1007,7 +1007,7 @@
   (if (and (member origin '("ppe" "tccs") :test #'string=)
 	   (not (get-theory bufname)))
       (pvs-message "~a is not typechecked" bufname)
-      (case (intern (string-downcase origin))
+      (case (intern (#+allegro string-downcase #-allegro string-upcase origin))
 	(ppe (let* ((theories (ppe-form (get-theory bufname)))
 		    (decl (get-decl-at line t theories)))
 	       (values (find-if #'(lambda (d) (and (declaration? d)
