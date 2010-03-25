@@ -5,7 +5,7 @@ INCLUDES = -I/usr/include -I$(BDD) -I$(UTILS) -I$(MU)
 #LD = gcc
 #LDFLAGS = -shared -L./
 LD = ld
-LDFLAGS = -Bsymbolic -shared -warn-once -L./
+LDFLAGS = -Xlinker -Bsymbolic -shared -L./
 CC = gcc
 CFLAGS = -D_POSIX_SOURCE -DSYSV $(INCLUDES) -DLINUX -DLINUX_REDHAT5 -DSIGNALS_LINUX -fPIC -Wall -Winline -ggdb
 XCFLAGS = -O
@@ -24,7 +24,7 @@ utilobj = double.o list.o hash.o alloc.o
 all : mu.so
 
 mu.so : ${muobj} libutils.a ../bdd-ld-table ../mu-ld-table 
-	$(LD) ../bdd-ld-table ../mu-ld-table $(LDFLAGS) -o  mu.so  ${muobj} -lutils  -lm -lbsd
+	$(CC) ../bdd-ld-table ../mu-ld-table $(LDFLAGS) -o mu.so ${muobj} -lutils -lm -lbsd
 
 libutils.a : ${utilobj}
 	ar r libutils.a ${utilobj}
