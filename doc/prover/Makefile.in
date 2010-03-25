@@ -17,6 +17,10 @@ prover.ps : prover.dvi
 
 prover.pdf : ${sources}
 	pdflatex $<
+	makeindex -c prover.idx
+	bibtex prover || echo
+	pdflatex $<
+	pdflatex $<
 
 .PHONY: clean
 clean :

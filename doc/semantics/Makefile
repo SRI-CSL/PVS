@@ -17,6 +17,10 @@ semantics.ps : semantics.dvi
 
 semantics.pdf : ${sources}
 	pdflatex $<
+	makeindex -c semantics.idx
+	bibtex semantics || echo
+	pdflatex $<
+	pdflatex $<
 
 .PHONY: clean
 clean :

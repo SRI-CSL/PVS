@@ -20,11 +20,16 @@ user-guide.ps.gz : user-guide.ps
 user-guide.ps : user-guide.dvi
 	dvips -o $@ $<
 
-user-guide.pdf : ${sources} pvs-screen1.pdf
-	pdflatex $<
+user-guide.pdf : $(headers) $(sources) pvs-screen1.pdf \
+		 sum-nosub.tex sum-sub.tex sum-tccs.tex
+	pdflatex user-guide
+	bibtex user-guide || echo
+	makeindex -o user-guide.ind user-guide.idx
+	pdflatex user-guide
+	pdflatex user-guide
 
 sum-nosub.tex sum-sub.tex sum-tccs.tex : sum.pvs sum.el
-	@PVSPATH@/pvs -batch -q -l sum.el -f kill-process
+	$(pvs-path)/pvs -batch -q -l sum.el
 
 .PHONY: clean
 clean :

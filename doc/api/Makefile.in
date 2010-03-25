@@ -22,6 +22,10 @@ pvs-api.ps : pvs-api.dvi
 
 pvs-api.pdf : ${sources} ${grammar-tables}
 	pdflatex $<
+	makeindex -c pvs-api.idx
+	bibtex pvs-api || echo
+	pdflatex $<
+	pdflatex $<
 
 .PHONY: clean
 clean :

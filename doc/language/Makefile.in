@@ -43,6 +43,10 @@ language.ps : language.dvi
 
 language.pdf : ${sources} ${grammar-tables}
 	pdflatex $<
+	makeindex -c language.idx
+	bibtex language || echo
+	pdflatex $<
+	pdflatex $<
 
 .PHONY: clean
 clean :

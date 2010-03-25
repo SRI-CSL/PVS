@@ -17,6 +17,10 @@ datatypes.ps : datatypes.dvi
 
 datatypes.pdf : ${sources}
 	pdflatex $<
+	makeindex -c datatypes.idx
+	bibtex datatypes || echo
+	pdflatex $<
+	pdflatex $<
 
 .PHONY: clean
 clean :
