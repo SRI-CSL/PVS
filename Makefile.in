@@ -161,6 +161,7 @@ endif
 endif
 endif
 endif
+endif
 
 endif # end of buildcmds check
 

@@ -147,8 +147,8 @@ be the ilisp-table."
   "Only allow a paren if ilisp-paren is T."
   (interactive)
   (if ilisp-paren 
-      (if (or (eq last-input-char ?\() (eq (char-after (ilisp-minibuffer-prompt-end)) ?\())
-	  (insert last-input-char)
+      (if (or (eq (ilisp-last-input-char) ?\() (eq (char-after (ilisp-minibuffer-prompt-end)) ?\())
+	  (insert (ilisp-last-input-char))
 	  (beep))
       (beep)))
       

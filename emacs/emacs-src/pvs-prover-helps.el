@@ -730,7 +730,7 @@ Prefix arg may be used to give number of steps to undo."
     (insert ")")
     (return-ilisp)))
 
-(if (string-match "XEmacs" (emacs-version))
+(if (featurep 'xemacs)
     (progn
       (defun my-delete-extent (ext dummy)
 	(delete-extent ext))
@@ -937,11 +937,7 @@ anything but a left paren or a \", ignoring whitespace."
     (save-excursion
       (set-buffer editprfbuf)
       (unless (= (buffer-size) 0)
-	(cond ((string-match "GNU Emacs" (emacs-version))
-	       (let ((beg (point))
-		     (end (save-excursion (forward-sexp 1) (point))))
-		 (hilit-proof-region beg end)))
-	      ((string-match "XEmacs" (emacs-version))
+	(cond ((featurep 'xemacs)
 	       (let ((beg (point))
 		     (end (save-excursion (forward-sexp 1) (point))))
 		 (map-extents 'my-delete-extent (current-buffer) (point-min)
@@ -949,7 +945,11 @@ anything but a left paren or a \", ignoring whitespace."
 		 (set-extent-face (make-extent (point-min) (1- beg))
 				  'completed-proof-steps-face)
 		 (set-extent-face (make-extent beg end)
-				  'current-proof-step-face))))))))
+				  'current-proof-step-face)))
+	      (t
+	       (let ((beg (point))
+		     (end (save-excursion (forward-sexp 1) (point))))
+		 (hilit-proof-region beg end))))))))
 
 (defun hilit-proof-region (start end)
   (delete-hilit-overlays)

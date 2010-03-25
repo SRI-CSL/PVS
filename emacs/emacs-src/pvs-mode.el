@@ -98,10 +98,9 @@
     (define-key pvs-mode-map "\e\034"    'prettyprint-region)
     (define-key pvs-mode-map "\e\C-q"    'prettyprint-declaration)
     (define-key pvs-mode-map "\C-c\C-c"  'pvs-interrupt-subjob)
-    (if (string-match "XEmacs" (emacs-version))
+    (if (featurep 'xemacs)
 	(define-key pvs-mode-map [(shift button2)] 'mouse-show-declaration)
-	(if (string-match "GNU Emacs" (emacs-version))
-	    (define-key pvs-mode-map [S-mouse-2] 'mouse-show-declaration))))
+      (define-key pvs-mode-map [S-mouse-2] 'mouse-show-declaration)))
 
 (defvar pvs-mode-syntax-table nil  "Syntax table used while in pvs mode.")
 (if pvs-mode-syntax-table ()
@@ -383,7 +382,7 @@ INDENT is the current indentation depth."
     (select-frame (speedbar-current-frame))
     (speedbar-with-writable
       (dolist (declinfo declsinfo)
-	(speedbar-make-tag-line 'statictag ?? nil nil
+	(speedbar-make-tag-line 'statictag ?? nil
 				declinfo
 				(car declinfo)
 				'pvs-speedbar-goto-file

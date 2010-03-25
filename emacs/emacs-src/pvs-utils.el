@@ -28,6 +28,7 @@
 ;; --------------------------------------------------------------------
 
 (eval-when-compile (require 'pvs-macros))
+(require 'cl)
 (require 'compare-w)
 
 (defvar *pvs-theories* nil)
@@ -286,23 +287,6 @@ beginning of the previous one."
   (let ((file (current-pvs-file t)))
     (when file
       (mapcar 'car (theory-regions)))))
-
-(defun get-file-buffer (filename)
-  "Modified get-file-buffer for correctly handling automount names"
-  (if (file-exists-p filename)
-      (let ((fbuf nil)
-	    (attr (file-attributes filename))
-	    (nname (file-name-nondirectory filename))
-	    (blist (buffer-list)))
-	(while (and (null fbuf) blist)
-	  (let ((fname (buffer-file-name (car blist))))
-	    (if (and fname
-		     (file-exists-p fname)
-		     (equal (file-name-nondirectory fname) nname)
-		     (equal attr (file-attributes fname)))
-		(setq fbuf (car blist)))
-	    (setq blist (cdr blist))))
-	fbuf)))
 
 (defun in-comment-or-string ()
   (or (in-comment) (in-string)))
@@ -1221,7 +1205,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 		 (if (listp abbrevs)
 		     abbrevs
 		     (list abbrevs)))))
-    (mapcar '(lambda (a) (fset a cmd)) abbrs)
+    (mapc '(lambda (a) (fset a cmd)) abbrs)
     (put cmd 'abbreviations abbrs)))
 
 (defun pvs-get-abbreviation (cmd)
@@ -1448,7 +1432,7 @@ Point will be on the offending delimiter."
     (define-key pvs-query-keymap "!" 'self-insert-and-exit)
     (define-key pvs-query-keymap "q" 'self-insert-and-exit)
     (define-key pvs-query-keymap "n" 'self-insert-and-exit)
-    (unless (string-match "XEmacs" (emacs-version))
+    (unless (featurep 'xemacs)
       (define-key pvs-query-keymap "\e" 'self-insert-and-exit))
     ;;(define-key pvs-query-keymap [help-char] 'self-insert-and-exit)
     ;;(define-key pvs-query-keymap "\C-g" 'keyboard-quit)
@@ -1831,7 +1815,8 @@ existence and time differences to be whitespace")
 	 (end1 (save-excursion (set-buffer log1) (point-max)))
 	 (end2 (save-excursion (set-buffer log2) (point-max)))
 	 (dpos (compare-buffer-substrings log1 pos1 end1 log2 pos2 end2))
-	 (match t))
+	 (match t)
+	 ipos1 ipos2)
     (while (and (/= dpos 0) match)
       (setq pos1 (+ (abs dpos) pos1 -1) ipos1 pos1)
       (setq pos2 (+ (abs dpos) pos2 -1) ipos2 pos2)
@@ -1982,20 +1967,18 @@ existence and time differences to be whitespace")
 (defun pvs-title-string ()
   nil)
 
-(cond ((string-match "GNU Emacs" (emacs-version))
-       (defun pvs-update-window-titles ()
-	 (let ((title (pvs-title-string)))
-	   (when title
-	     (modify-frame-parameters (car (frame-list))
-				      (list (cons 'icon-name title)
-					    (cons 'title title)))))))
-      ((string-match "XEmacs" (emacs-version))
+(cond ((featurep 'xemacs)
        (defun pvs-update-window-titles ()
 	 (let ((title (pvs-title-string)))
 	   (when title
 	     (setq frame-title-format title)
 	     (setq frame-icon-title-format title)))))
-      (t (defun pvs-update-window-titles ()
-	   nil)))
+      (t
+       (defun pvs-update-window-titles ()
+	 (let ((title (pvs-title-string)))
+	   (when title
+	     (modify-frame-parameters (car (frame-list))
+				      (list (cons 'icon-name title)
+					    (cons 'title title))))))))
 
 (add-hook 'change-context-hook 'pvs-update-window-titles)

@@ -37,7 +37,7 @@ a complete sexp, send it.  Otherwise, indent appropriately."
 			   (not (string= (ring-ref (ilisp-get-input-ring) 0)
 					 input))))
 		  (ilisp-ring-insert (ilisp-get-input-ring) input))
-	      (funcall comint-input-sentinel input)
+	      (run-hook-with-args 'comint-input-filter-functions input)
 	      ;; Ugh, comint changing under my feet....
 	      ;; Note: This used to be
 	      ;;        (eq ilisp-emacs-version-id 'gnu-19)
@@ -96,11 +96,11 @@ If 'ilisp-raw-echo' is T then echo it."
   (interactive)
   (when (ilisp-value 'ilisp-raw-echo t)
     (goto-char (point-max))
-    (insert last-input-char)
+    (insert (ilisp-last-input-char))
     (set-marker (process-mark (ilisp-process)) (point))
     (set-marker comint-last-input-end (point)))
   (process-send-string (ilisp-process) 
-		       (make-string 1 last-input-char))
+		       (make-string 1 (ilisp-last-input-char)))
   (message ilisp-raw-message))
 
 ;;;

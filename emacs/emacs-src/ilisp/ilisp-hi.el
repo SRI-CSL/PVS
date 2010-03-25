@@ -11,6 +11,8 @@
 ;;; $Id$
 
 ;;;%Eval/compile
+(require 'cl)
+
 (defun lisp-send-region (start end switch message status format
 			       &optional handler)
   "Sends a region to the lisp buffer and execute a 'command' on it.

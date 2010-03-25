@@ -71,6 +71,7 @@
 ;> 	    (member +ilisp-emacs-version-id+ '(xemacs lucid-19 lucid-19-new)))
 ;> 	   (not (featurep 'ilisp-easy-menu)))
 
+(require 'cl)
 (require 'easymenu)
 
 ;; (eval-when (load compile eval)

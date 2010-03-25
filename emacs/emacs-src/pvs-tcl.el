@@ -35,9 +35,6 @@
 
 (setq tcl-prompt-regexp "^% ")
 
-;; Set this less than 249 to work around a bug in GNU Emacs 19.24/25.
-(setq comint-input-chunk-size 200)
-
 (defvar pvs-wish-cmd "wish"
   "The name of the wish binary for PVS.")
 
@@ -59,7 +56,9 @@
   (make-local-variable 'tcl-application)
   (setq tcl-application pvs-wish-cmd)
   (set-process-filter (get-process "tcl-pvs") 'pvs-tcl-process-filter)
-  (process-kill-without-query (get-process "tcl-pvs"))
+  (if (featurep 'xemacs)
+      (process-kill-without-query (get-process "tcl-pvs"))
+    (set-process-query-on-exit-flag (get-process "tcl-pvs") nil))
   (setq inferior-tcl-buffer "*tcl-pvs*")
   (setq *pvs-tcl-partial-line* "")
   ;;  (comint-setup-ipc)

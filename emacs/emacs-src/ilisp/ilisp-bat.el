@@ -12,6 +12,8 @@
 ;;;
 ;;; $Id$
 
+(require 'cl)
+
 (defun mark-change-lisp (arg)
   "Mark the current defun as being changed.
 This is to make 'lisp-eval-changes' or 'lisp-compile-changes' work on

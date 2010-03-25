@@ -28,11 +28,12 @@
 ;; --------------------------------------------------------------------
 
 (eval-when-compile (require 'comint))
+(require 'cl)
 (require 'ilisp)
 (eval-when-compile (require 'pvs-macros))
 
 ;;; FIXME - this may be related to changes in easymenu.el ???
-(when (string-match "XEmacs" (emacs-version))
+(when (featurep 'xemacs)
   (add-hook 'ilisp-mode-hook
     '(lambda ()
        (add-submenu nil pvs-mode-menus ""))))
@@ -407,7 +408,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
 			      (princ-nl (remove-esc out)
 					'external-debugging-output)))
 			   (t (message (remove-esc out))
-			      (if (string-match "XEmacs" (emacs-version))
+			      (if (featurep 'xemacs)
 				  (sit-for (/ pvs-message-delay 1000.0))
 				  (sit-for 0 pvs-message-delay))
 			      (pvs-log-message 'MSG (remove-esc out)))))
@@ -1205,7 +1206,7 @@ a complete sexp, send it.  Otherwise, indent appropriately."
 			 (or (ring-empty-p input-ring)
 			     (not (string= (ring-ref input-ring 0) input))))
 		    (ring-insert-new input-ring input))
-		(funcall comint-input-sentinel input)
+		(run-hook-with-args 'comint-input-filter-functions input)
 		;; Nuke symbol table
 		(setq ilisp-original nil)
 		(funcall comint-input-sender proc input)
@@ -1303,7 +1304,7 @@ is emptied."
 ;;; DSC - I don't know what the bug is, but it can't do any
 ;;; harm to leave this here for the moment.  Was in pvs-ilisp-mods.
 
-(when (and (string-match "GNU Emacs" (emacs-version))
+(when (and (not (featurep 'xemacs))
 	   (boundp 'emacs-major-version)
 	   (= emacs-major-version 19)
 	   (< emacs-minor-version 31))

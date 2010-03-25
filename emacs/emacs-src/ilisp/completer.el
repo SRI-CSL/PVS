@@ -175,14 +175,10 @@ Return (point-min) if current buffer is not a mini-buffer."
 	(inhibit-quit t))
     (sit-for 2)
     (delete-region point end)
-    (if (and quit-flag 
-	     ;; (not (eq 'lucid-19 ilisp-emacs-version-id))
-	     ;; (not (string-match "Lucid" emacs-version))
-	     (not (memq +ilisp-emacs-version-id+
-			'(xemacs lucid-19 lucid-19-new)))
-	     )
+    (if quit-flag
 	(setq quit-flag nil)
-	(push 7 unread-command-events))))
+      (push (if (featurep 'xemacs) (character-to-event 7) 7)
+	    unread-command-events))))
 
 ;;;
 (defun completer-deleter (regexp choices &optional keep)

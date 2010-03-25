@@ -37,8 +37,8 @@ If not found insert STRING, unless NO-INSERT."
 	    (setq point (point)))
 	  (push-mark point)
 	  (set-ilisp-input-ring-index n)
-	  (setq this-command 'comint-previous-similar-input
-		comint-last-similar-string string)
+	  (setq this-command 'comint-previous-matching-input
+		comint-matching-input-from-input-string string)
 	  t)
 	(if (and string (not no-insert))
 	    (progn (comint-kill-input) (insert string) t)

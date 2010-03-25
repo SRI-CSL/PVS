@@ -169,9 +169,9 @@ inferior LISP.  PARENT is the name of the parent dialect."
   ;; Comint defaults
   (set-ilisp-input-ring-size 200)
   (setq comint-prompt-regexp "^[^<> ]*>+:? *"
-	comint-use-prompt-regexp-instead-of-fields t ; Emacs 21 fields don't seem to work with comint-ipc (?)
+	comint-use-prompt-regexp t ; Emacs 21 fields don't seem to work with comint-ipc (?)
 	comint-get-old-input 'ilisp-get-old-input
-	comint-input-sentinel (function ignore)
+	comint-input-filter-functions nil
 	comint-input-filter 'ilisp-input-filter
 	comint-input-sender 'comint-default-send
 	comint-eol-on-send t)

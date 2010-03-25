@@ -118,19 +118,11 @@
       (string-match "^[2-9][0-9]\\." emacs-version))
   "Non-nil if using Emacs 19-23 or later.")
 
-(defconst tcl-using-xemacs-19 (string-match "XEmacs" emacs-version)
+(defconst tcl-using-xemacs-19 (featurep 'xemacs)
   "Non-nil if using XEmacs.")
 
 (require 'comint)
-
-;; When compiling under Emacs, load imenu during compilation.  If
-;; you have 19.22 or earlier, comment this out, or get imenu.
-(and (fboundp 'eval-when-compile)
-     (eval-when-compile
-       (if (and (not (string< emacs-version "19.23"))
-		(not (string-match "XEmacs" emacs-version)))
-	   (require 'imenu))
-       ()))
+(eval-when-compile (require 'imenu))
 
 (defconst tcl-version "$Revision$")
 (defconst tcl-maintainer "Tom Tromey <tromey@drip.colorado.edu>")
@@ -828,6 +820,10 @@ Commands:
 
   (run-hooks 'tcl-mode-hook))
 
+(defun tcl-last-command-char ()
+  (if (featurep 'xemacs)
+      (event-to-character last-command-event)
+    last-command-event))
 
 
 ;; This is used for braces, brackets, and semi (except for closing
@@ -838,7 +834,7 @@ Commands:
   ;; Indent line first; this looks better if parens blink.
   (tcl-indent-line)
   (self-insert-command arg)
-  (if (and tcl-auto-newline (= last-command-char ?\;))
+  (if (and tcl-auto-newline (= (tcl-last-command-char) ?\;))
       (progn
 	(newline)
 	(tcl-indent-line))))
@@ -862,7 +858,7 @@ Commands:
 	;; In auto-newline case, must insert a newline after each
 	;; brace.  So an explicit loop is needed.
 	(while (> arg 0)
-	  (insert last-command-char)
+	  (insert (tcl-last-command-char))
 	  (tcl-indent-line)
 	  (newline)
 	  (setq arg (1- arg))))
@@ -1970,9 +1966,7 @@ The first line is assumed to look like \"#!.../program ...\"."
 ;; Bug reporting.
 ;;
 
-(and (fboundp 'eval-when-compile)
-     (eval-when-compile
-       (require 'reporter)))
+(eval-when-compile (require 'reporter))
 
 (defun tcl-submit-bug-report ()
   "Submit via mail a bug report on Tcl mode."

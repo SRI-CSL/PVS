@@ -148,7 +148,7 @@ a left paren or ;;; at the left margin unless it is in a string."
 	      (let ((point (point)))
 		(beginning-of-line)
 		(if comment-start (search-forward comment-start point t))))
-	    (progn (next-line 1) (indent-line-ilisp)))
+	    (progn (forward-line 1) (indent-line-ilisp)))
 	(point))))
 
 ;;;

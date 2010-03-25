@@ -53,6 +53,7 @@
 
 ;;;============================================================================
 ;;; Epilogue
+(setq-default confirm-nonexistent-file-or-buffer nil)
 
 (provide 'compat-fsf-20)
 

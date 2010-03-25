@@ -206,7 +206,7 @@
      ["suspend-pvs" suspend-pvs t]
      ["exit-pvs" exit-pvs t])))
 
-(when (string-match "GNU Emacs" (emacs-version))
+(unless (featurep 'xemacs)
 
   (defvar easy-menu-fast-menus nil)
 
@@ -253,7 +253,7 @@
     (easy-menu-define PVS global-map "PVS menus" pvs-mode-menus))
   )
 
-(when (string-match "XEmacs" (emacs-version))
+(when (featurep 'xemacs)
   (add-submenu nil pvs-mode-menus "")
   (add-hook 'pvs-mode-hook
     '(lambda ()
@@ -293,7 +293,7 @@
 	(setq index (+ index 1))))
     (format "\\b%s\\b" regexp)))
 
-(when (string-match "GNU Emacs" (emacs-version))
+(unless (featurep 'xemacs)
   (add-hook 'pvs-mode-hook
     '(lambda ()
        (make-local-variable 'font-lock-defaults)
@@ -306,7 +306,7 @@
 ;;; facep works differently in XEmacs - always returns nil for a symbol
 ;;; find-face is used there instead, but red and blue faces are already
 ;;; defined anyway.
-(when (string-match "GNU Emacs" (emacs-version))
+(unless (featurep 'xemacs)
   (unless (facep 'red)
     (make-face 'red)
     (set-face-foreground 'red "red"))
@@ -384,14 +384,12 @@
 	  1 'font-lock-function-name-face)))
   "Additional expressions to highlight in PVS mode.")
 
-(when (and (string-match "GNU Emacs" (emacs-version))
-	   (not (boundp 'font-lock-maximum-decoration)))
+(unless (or (featurep 'xemacs)
+	    (boundp 'font-lock-maximum-decoration))
   (defvar font-lock-maximum-decoration nil))
 
 (defconst pvs-font-lock-keywords
-  (if (if (string-match "GNU Emacs" (emacs-version))
-	  font-lock-maximum-decoration
-	  font-lock-use-maximal-decoration)
+  (if font-lock-maximum-decoration
       pvs-font-lock-keywords-2
       pvs-font-lock-keywords-1))
 

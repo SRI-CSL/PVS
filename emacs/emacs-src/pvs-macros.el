@@ -47,8 +47,8 @@ define NAME as a PVS command."
 
 
 ;; This is courtesy of Jerry James.
-(when (string-match "XEmacs" (emacs-version))
-    
+(when (featurep 'xemacs)
+
 (defun with-timeout-handler (tag)
   (throw tag 'timeout))
 

@@ -59,6 +59,7 @@
 ;; step-proof           -
 
 (eval-when-compile (require 'pvs-macros))
+(require 'cl)
 
 (defvar pvs-in-checker nil
   "Indicates whether the proof checker is currently running.
@@ -601,14 +602,13 @@ documentation for edit-proof-mode for more information."
 	       (save-excursion
 		 (goto-char (point-min))
 		 (while (search-forward "(checkpoint)" nil t)
-		   (cond ((string-match "GNU Emacs" (emacs-version))
-			  (replace-match "!!!" nil t)
-			  (overlay-put (make-overlay (- (point) 3) (point))
-				       'face 'font-lock-pvs-checkpoint-face))
-			 ((string-match "XEmacs" (emacs-version))
+		   (cond ((featurep 'xemacs)
 			  (delete-region (match-beginning 0) (match-end 0))
 			  (insert-face "!!!" 'font-lock-pvs-checkpoint-face))
-			 (t (replace-match "!!!" nil t)))))
+			 (t
+			  (replace-match "!!!" nil t)
+			  (overlay-put (make-overlay (- (point) 3) (point))
+				       'face 'font-lock-pvs-checkpoint-face)))))
 	       (fix-edit-proof-comments)
 	       (setq buffer-modified-p nil)
 	       (goto-char (point-min))
@@ -2078,7 +2078,7 @@ Letters do not insert themselves; instead, they are commands:
   (if (eq (point) (point-max))
       (error "At end of buffer")
       (let ((start (point)))
-	(cond ((string-match "XEmacs" (emacs-version))
+	(cond ((featurep 'xemacs)
 	       (insert-face "!!!" 'font-lock-pvs-checkpoint-face))
 	      (t (insert "!!!")
 		 (overlay-put (make-overlay start (point))

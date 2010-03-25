@@ -184,7 +184,7 @@
   (save-excursion
     (set-buffer buffer)
     (let ((stdheight (1+ (count-screen-lines (point-min) (point-max)))))
-      (if (string-match "XEmacs" emacs-version)
+      (if (featurep 'xemacs)
 	  (1+ stdheight)
 	  stdheight))))
     
@@ -256,7 +256,7 @@
  window from which enlarge-window would steal lines."
   (unless (window-live-p window)
      (error "the window was not live"))
-  (if (or (not (string-match "XEmacs" emacs-version))
+  (if (or (not (featurep 'xemacs))
 	  (and (= emacs-major-version 19)
 	       (< emacs-minor-version 12)))
       (let* ((bottom (nth 3 (window-edges window)))
@@ -274,7 +274,7 @@
 ;; XEmacs change -- There is now a primitive to do this.
 (defun ilisp-find-top-left-most-window ()
   "Return the leftmost topmost window on the current screen."
-  (if (or (not (string-match "XEmacs" emacs-version))
+  (if (or (not (featurep 'xemacs))
 	  (and (= emacs-major-version 19)
 	       (< emacs-minor-version 12)))
       (let* ((window* (selected-window))

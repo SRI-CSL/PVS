@@ -122,4 +122,9 @@ that the menubar is in a consistent state."
 ;;     (ilisp-update-menu status))
   (comint-update-status status))
 
+(defun ilisp-last-input-char ()
+  (if (featurep 'xemacs)
+      (event-to-character last-input-event)
+    last-input-event))
+
 ;;; end of file -- ilisp-utl.el --

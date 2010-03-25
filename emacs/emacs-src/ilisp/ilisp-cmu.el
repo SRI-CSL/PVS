@@ -46,8 +46,7 @@
       (setq ilisp-source-directory-fixup-alist
 	    (list 
 	     (cons cmulisp-source-directory-regexp
-		   cmulisp-local-source-directory)))
-    (message "cmulisp-local-source-directory not set."))
+		   cmulisp-local-source-directory))))
   (setq comint-prompt-regexp "^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) "
 	ilisp-trace-command "(ILISP:cmulisp-trace \"%s\" \"%s\" \"%s\")"
 	comint-prompt-status 

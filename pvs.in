@@ -389,7 +389,6 @@ if [ ! "$getversion" -a ! "$rawmode" -a ! "$batch" -a "$DISPLAY" != "" -a "$nowi
 
   case $PVSEMACS in
     *[xl]emacs*) \
-      PVSEMACS="LD_ASSUME_KERNEL=${LD_ASSUME_KERNEL} ${PVSEMACS}"
       if [ $nobg ] ; then
         ("$PVSEMACS" $flags -name pvs -in PVS@$HOST -wn PVS@$HOST \
                    $PVSXINIT $pvsemacsinit )

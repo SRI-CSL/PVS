@@ -11,10 +11,7 @@
 ;;; $Id$
 
 
-(cond ((or (string-match "XEmacs" emacs-version)
-	   (string-match "Lucid" emacs-version)))
-      (t
-
+(unless (featurep 'xemacs)
 
        (require 'simple-menu)
        (setplist 'lisp-command-menu nil)

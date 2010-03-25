@@ -11,6 +11,7 @@
 ;;;
 ;;; $Id$
 
+(require 'cl)
 
 (defun ilisp-process ()
   "Return the current ILISP process."

@@ -21,6 +21,8 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
+(require 'cl)
+
 (message "PVS: byte compilation starting")
 
 ; compile in the current directory
@@ -66,7 +68,7 @@
 		  pvs-prelude-files-and-regions
 		  pvs-set-prelude-info
 		  )))
-  (mapcar '(lambda (a) (pvs-compile a))
+  (mapc '(lambda (a) (pvs-compile a))
     pvsfiles))
 
 (message "PVS: byte compilation done")

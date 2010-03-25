@@ -1353,9 +1353,11 @@ Exit PVS, saving the context."
 	      (comint-send (ilisp-process) "(exit-pvs t)")
 	      (while (and (ilisp-process)
 			  (eq (process-status (ilisp-process)) 'run))
-		(sit-for 1)))
+		(if (null (accept-process-output nil 1))
+		    (discard-input))))
 	  (error
-	   (sleep-for 1)
+	   (if (null (accept-process-output nil 1))
+	       (discard-input))
 	   (when (equal (process-status process) 'run)
 	     (error "PVS Lisp process did not exit properly"))))))))
 

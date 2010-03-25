@@ -127,12 +127,12 @@
 (load "pvs-print" nil noninteractive)
 (load "pvs-prover" nil noninteractive)
 (load "pvs-abbreviations" nil noninteractive)
-(if (or (and (string-match "GNU Emacs" (emacs-version))
+(if (or (and (not (featurep 'xemacs))
 	     (boundp 'emacs-major-version)
 	     (or (>= emacs-major-version 20)
 		 (and (= emacs-major-version 19)
 		      (>= emacs-minor-version 29))))
-	(and (string-match "XEmacs" (emacs-version))
+	(and (featurep 'xemacs)
 	     (boundp 'emacs-major-version)
 	     (or (>= emacs-major-version 20)
 		 (and (= emacs-major-version 19)
@@ -169,14 +169,14 @@
 
 ; fancy PVS logo for Emacs startup
 
-(when (and (string-match "GNU Emacs" (emacs-version))
+(when (and (not (featurep 'xemacs))
 	   (boundp 'emacs-major-version)
 	   (>= emacs-major-version 20)
 	   (boundp 'image-types)
 	   (memq 'xpm image-types))
   (setq pvs-logo (create-image (concat pvs-path "/emacs/emacs-src/pvs.xpm"))))
 
-(when (and (string-match "XEmacs" (emacs-version))
+(when (and (featurep 'xemacs)
 	   (boundp 'emacs-major-version)
 	   (>= emacs-major-version 20)
 	   (valid-image-instantiator-format-p 'xpm))
@@ -198,7 +198,7 @@
     (if (boundp 'pvs-logo)
 	(progn
 	  (insert "\n\n")
-	  (cond ((string-match "XEmacs" (emacs-version))
+	  (cond ((featurep 'xemacs)
 		 (indent-to (startup-center-spaces pvs-logo))
 		 (set-extent-begin-glyph (make-extent (point) (point)) pvs-logo))
 		(t (insert "           ")

@@ -10,7 +10,7 @@
 ;;;
 ;;; $Id: ilisp-imenu.el,v 1.5 2002/01/31 14:56:45 mna Exp $
 
-
+(require 'cl)
 (require 'imenu)
 
 ;;; modified for a better display of function+arglist! 
@@ -27,7 +27,9 @@ Returns t for rescan and otherwise a position number."
 	  ((and name (imenu--in-alist name index-alist))
 	   (setq prompt (format "Index item (default %s): " name)))
 	  (t (setq prompt "Index item: ")))
-    (if (eq imenu-always-use-completion-buffer-p 'never)
+    (if (if (featurep 'xemacs)
+	    (eq imenu-always-use-completion-buffer-p 'never)
+	  (null imenu-use-popup-menu))
   	(setq name (completing-read prompt
   				    index-alist
  				    nil t nil 'imenu--history-list name))
