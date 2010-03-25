@@ -780,7 +780,7 @@ void bdd_reinit_aux1_and_aux2_action (BDDPTR v)
    Depending on the use of complemented edges in the BDDs there exist
    either 2 constant nodes or 3.
 */
-int bdd_size (BDDPTR f)
+int BDD_bdd_size (BDDPTR f)
 {
   node_counter = 0;
   if (!BDD_VOID_P (f)) {
@@ -3162,7 +3162,7 @@ void bdd_print_stats (FILE *fp)
   print_computed_table_stats (fp);
 }
 
-void bdd_init (void)
+void BDD_bdd_init (void)
 {
   /* Guard against multiple initialisations: */
   if (BDD_PACKAGE_INITIALIZED) {
@@ -3562,7 +3562,7 @@ int bdd_top_var_rank (BDDPTR f)
   return BDD_VOID_P (f) ? -1 : BDD_RANK (f);
 }
 
-BDDPTR bdd_then (BDDPTR f)
+BDDPTR BDD_bdd_then (BDDPTR f)
 {
   BDDPTR R = BDD_COFACTOR_POS (f);
 
@@ -3570,7 +3570,7 @@ BDDPTR bdd_then (BDDPTR f)
   return R;
 }
 
-BDDPTR bdd_else (BDDPTR f)
+BDDPTR BDD_bdd_else (BDDPTR f)
 {
   BDDPTR R = BDD_COFACTOR_NEG (f);
 

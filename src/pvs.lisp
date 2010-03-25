@@ -115,7 +115,7 @@
     #+cmu (fmakunbound 'bdd_cofactor_neg_)
     #+cmu (lf "bdd-cmu") #+sbcl (lf "bdd-sbcl")
     #+cmu (lf "mu-cmu") #+sbcl (lf "mu-sbcl")
-    (bdd_init)
+    (BDD_bdd_init)
     #+cmu (lf "dfa-foreign-cmu") #+sbcl (lf "dfa-foreign-sbcl"))
   (setq *started-with-minus-q*
 	(or dont-load-user-lisp

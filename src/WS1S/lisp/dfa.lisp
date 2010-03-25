@@ -292,7 +292,7 @@
 
 (defun number-of-states      (a) (mona-dfa-ns (address a)))
 (defun start-state           (a) (mona-dfa-s (address a)))
-(defun number-of-bdd-nodes   (a) (mona-bdd-size (dfa-bddm (address a))))
+(defun number-of-bdd-nodes   (a) (bdd-size (dfa-bddm (address a))))
 (defun number-of-transitions (a) (mona-transition-table-size (address a)))
 
 

@@ -90,7 +90,7 @@ static void print_info (BDDPTR *F)
 
     /* Note: we don't count the dummy 0 variable! */
     fprintf (stdout, "/* Size: %d, (%s minterms, %s X terms, %d vars), Depth: %d, Alive: %d */\n",
-	     bdd_size (f),
+	     BDD_bdd_size (f),
 	     D_sprintf (buf, bdd_count_sat_assignments (f, BDD_0), 0),
 	     D_sprintf (buf2, bdd_count_X_terms (f), 0),
 	     bdd_nr_vars,
@@ -316,7 +316,7 @@ fprintf (stdout,
 /*  if (!_setjmp (Context))*/
   if (1) {
 
-    bdd_init ();
+    BDD_bdd_init ();
 
     current_interface = bdd_get_factor_interface ();
 /*    current_interface->out = stdout;*/
@@ -388,7 +388,7 @@ fprintf (stdout,
 #ifdef COMMENT
 	/* Just for testing purposes: */
 	bdd_quit ();
-	bdd_init ();
+	BDD_bdd_init ();
 	free_hashtab (var_table);
 	var_table = make_hashtab (3);
 	/* Let's not use entry nr. 0 for fun: */

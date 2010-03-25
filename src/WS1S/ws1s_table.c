@@ -182,8 +182,8 @@ extern int dfaPrintVerbose (int);
 int (*ws1s___dfaPrintVerbose)(int) = dfaPrintVerbose;
 
 
-extern int mona_bdd_size (int);
-int (*ws1s___bdd_size)(int) = mona_bdd_size;
+extern int bdd_size (int);
+int (*ws1s___bdd_size)(int) = bdd_size;
 
 
 extern int dfaSetup (int);

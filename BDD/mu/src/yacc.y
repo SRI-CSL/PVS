@@ -166,7 +166,7 @@ Formula_or_Statement : Formula
   R = mu_interpret_formula ($1, Ip, NULL);
   bdd_print_as_sum_of_cubes (stdout, R, 0);
   if (mu_verbose)
-    fprintf (stdout, "Formula amounts to %d BDD nodes.\n", bdd_size (R));
+    fprintf (stdout, "Formula amounts to %d BDD nodes.\n", BDD_bdd_size (R));
   bdd_free (R);
   mu_free_formula ($1);
 }

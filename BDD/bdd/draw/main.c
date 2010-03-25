@@ -292,7 +292,7 @@ fprintf (stdout,
 
   aux_table = make_hashtab (0);
 /*  bdd_sizeof_user_data = sizeof (XYPOS);*/
-  bdd_init ();
+  BDD_bdd_init ();
 
   /* Create the dummy 0 var: */
 /*  bdd_free (bdd_create_var_last ());*/

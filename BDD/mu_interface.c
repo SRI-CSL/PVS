@@ -258,7 +258,7 @@ BDDPTR modelcheck_formula (Formula fml)
    mu_free_formula(fml);
  /*   bdd_print_as_sum_of_cubes (stdout, R,0) ; */
    if (mu_verbose) {
-    fprintf (stdout, "Formula amounts to %d BDD nodes.\n", bdd_size (R));
+    fprintf (stdout, "Formula amounts to %d BDD nodes.\n", BDD_bdd_size (R));
     fflush (stdout);
    }
  return R;

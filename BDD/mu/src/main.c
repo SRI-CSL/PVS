@@ -173,7 +173,7 @@ fprintf (stdout,
       return 1;
     }
 
-  bdd_init ();
+  BDD_bdd_init ();
   mu_init ();
 
   if (optind == argc)

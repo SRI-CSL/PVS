@@ -207,16 +207,16 @@
 ;;; void bdd_traverse_pre (register BDDPTR v, void (*pre_action)(BDDPTR))
 ;;; void bdd_traverse_post (register BDDPTR v, void (*post_action)(BDDPTR))
 
-;;; int bdd_size (BDDPTR f)
-(sb-alien:define-alien-routine ("bdd___bdd_size" bdd_size)
+;;; int BDD_bdd_size (BDDPTR f)
+(sb-alien:define-alien-routine ("bdd___BDD_bdd_size" BDD_bdd_size)
 			       (integer 32)
   (f (* t)))
 
 ;;; int bdd_size_vec (BDDPTR *f_vec, int size)
 ;;; int bdd_size_ceil (BDDPTR f, int ceiling)
 
-;;; void bdd_init (void)
-(sb-alien:define-alien-routine ("bdd___bdd_init" bdd_init)
+;;; void BDD_bdd_init (void)
+(sb-alien:define-alien-routine ("bdd___BDD_bdd_init" BDD_bdd_init)
 			       sb-alien:void)
 
 ;;; void bdd_free (BDDPTR f)
@@ -400,12 +400,12 @@
 ;;; BDDPTR bdd_top_var (BDDPTR f)
 ;;; int bdd_top_var_rank (BDDPTR f)
 ;;; BDDPTR bdd_then (BDDPTR f)
-(sb-alien:define-alien-routine ("bdd___bdd_then" bdd_then)
+(sb-alien:define-alien-routine ("bdd___BDD_bdd_then" BDD_bdd_then)
 			       (* t)
   (f (* t)))
 
 ;;; BDDPTR bdd_else (BDDPTR f)
-(sb-alien:define-alien-routine ("bdd___bdd_else" bdd_else)
+(sb-alien:define-alien-routine ("bdd___BDD_bdd_else" BDD_bdd_else)
 			       (* t)
   (f (* t)))
 
@@ -552,4 +552,4 @@
 (defun bdd-interrupted? ()
   (not (zerop bdd_interrupted)))
 
-(bdd_init)
+(BDD_bdd_init)

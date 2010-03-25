@@ -14,15 +14,7 @@ XCFLAGS = -O
 SHELL = /bin/sh
 VPATH = ..:../mona/BDD:../mona/DFA:../mona/Mem
 
-obj  = analyze.o prefix.o product.o \
-       quotient.o basic.o external.o \
-       makebasic.o minimize.o printdfa.o \
-       project.o dfa.o \
-       bdd.o bdd_double.o bdd_external.o \
-       bdd_manager.o hash.o bdd_dump.o \
-       bdd_trace.o bdd_cache.o \
-       dlmalloc.o mem.o \
-       ws1s_extended_interface.o 
+obj  = ws1s_table.o ws1s_extended_interface.o -lmonadfa
 
 .SUFFIXES:
 .SUFFIXES: .c .o
@@ -34,7 +26,7 @@ ws1s_extended_interface.o : ../ws1s_extended_interface.c
 	$(CC) $(XCFLAGS) ${CFLAGS} -c $< -o $@
 
 ws1s.so : ${obj}
-	$(LD) ../ws1s-ld-table $(LDFLAGS) -o ws1s.so ${obj}
+	$(CC) -shared $(CFLAGS) -o ws1s.so ${obj}
 
 bdd.o: bdd.c bdd.h bdd_internal.h
 bdd_double.o: bdd_double.c bdd.h bdd_internal.h

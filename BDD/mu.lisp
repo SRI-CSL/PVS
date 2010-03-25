@@ -59,7 +59,7 @@ time).  Verbose? set to T provides more information."
 
 
 (defun run-musimp (ps fnums dynamic-ordering? irredundant? verbose?)
-  (bdd_init)
+  (BDD_bdd_init)
   ;; Need to look at this, or somehow it gets a nonzero value
   (bdd-interrupted?)
   (mu_init)

@@ -90,7 +90,7 @@ extern int bdd_peak_nr_nodes_alive;
 /* ------------------------------------------------------------------------ */
 
 /* Package administration related routines: */
-extern   void bdd_init          (void);
+extern   void BDD_bdd_init      (void);
 extern   void bdd_quit          (void);
 extern   void bdd_print_stats   (FILE *fp);
 extern    int bdd_gc            (void);
@@ -155,8 +155,8 @@ extern BDDPTR bdd_implies       (BDDPTR f, BDDPTR g);
 extern    int bdd_implies_taut  (BDDPTR f, BDDPTR g);
 extern BDDPTR bdd_nand          (BDDPTR f, BDDPTR g);
 extern BDDPTR bdd_invert_input_top (BDDPTR f);
-extern BDDPTR bdd_then          (BDDPTR f);
-extern BDDPTR bdd_else          (BDDPTR f);
+extern BDDPTR BDD_bdd_then      (BDDPTR f);
+extern BDDPTR BDD_bdd_else      (BDDPTR f);
 extern BDDPTR bdd_constrain	(BDDPTR f, BDDPTR c);
 extern BDDPTR bdd_restrict	(BDDPTR f, BDDPTR c);
 
@@ -169,7 +169,7 @@ extern   void bdd_free_vec      (BDDPTR *f_vec, int size);
 extern BDDPTR bdd_top_var       (BDDPTR f);
 extern    int bdd_top_var_id    (BDDPTR f);
 extern    int bdd_top_var_rank  (BDDPTR f);
-extern    int bdd_size          (BDDPTR f);
+extern    int BDD_bdd_size      (BDDPTR f);
 extern    int bdd_depth         (BDDPTR f);
 extern    int bdd_size_vec      (BDDPTR *f_vec, int size);
 extern    int bdd_size_ceil     (BDDPTR f, int ceiling);

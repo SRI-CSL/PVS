@@ -61,9 +61,9 @@ BDDPTR bdd___bdd_cofactor_neg_ (BDDPTR f) {
   return (BDDPTR) bdd_cofactor_neg_ (f);
 }
 
-int bdd___bdd_size (BDDPTR f) {return bdd_size (f);}
+int bdd___BDD_bdd_size (BDDPTR f) {return BDD_bdd_size (f);}
 
-void bdd___bdd_init (void) {bdd_init ();}
+void bdd___BDD_bdd_init (void) {BDD_bdd_init ();}
 
 void bdd___bdd_free (BDDPTR f) {bdd_free (f);}
 
@@ -128,9 +128,9 @@ BDDPTR bdd___bdd_X (void) {return bdd_X ();}
 
 BDDPTR bdd___bdd_assign (BDDPTR f) {return bdd_assign (f);}
 
-BDDPTR bdd___bdd_then (BDDPTR f) {return bdd_then (f);}
+BDDPTR bdd___BDD_bdd_then (BDDPTR f) {return BDD_bdd_then (f);}
 
-BDDPTR bdd___bdd_else (BDDPTR f) {return bdd_else (f);}
+BDDPTR bdd___BDD_bdd_else (BDDPTR f) {return BDD_bdd_else (f);}
 
 BDDPTR bdd___bdd_apply (BDDPTR (*f)(BDDPTR,BDDPTR), BDDPTR a, BDDPTR b)
   {return bdd_apply (f, a, b);}

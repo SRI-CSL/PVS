@@ -753,7 +753,7 @@ static BDDPTR mu_reachable_aux (BDDPTR N, BDDPTR S0, BDDPTR Inv, int n)
       int size_Tkplus1;
       int size_Front;
 
-      size_Tkplus1 = bdd_size (Tkplus1);
+      size_Tkplus1 = BDD_bdd_size (Tkplus1);
 
       if (mu_use_restrict)
 	Front = bdd_restrict (Tkplus1, Tknot);
@@ -763,7 +763,7 @@ static BDDPTR mu_reachable_aux (BDDPTR N, BDDPTR S0, BDDPTR Inv, int n)
       else
 	Front = bdd_and (Tkplus1, Tknot);
 
-      size_Front = bdd_size (Front);
+      size_Front = BDD_bdd_size (Front);
 
       bdd_free (Tknot);
 
@@ -928,7 +928,7 @@ static BDDPTR mu_reachable (Term T, R_Interpret Ip, Term FT)
     /*  D_sprintf (buf, bdd_count_sat_assignments (R, Domain), 0); */
     fprintf (stdout, "Reachable took %.2f msec (%u BDD nodes).\n",
 	             (clock () - start_t) / CLOCKS_PER_MSEC, 
-                     bdd_size (R));
+                     BDD_bdd_size (R));
     fflush (stdout);
     bdd_free (Domain);
   }
@@ -1954,7 +1954,7 @@ void mu_mk_let (int var, Term T)
   R_VAR_VALUE (var) = R = mu_interpret_term (T, Ip, NULL);
 
   if (mu_verbose) {
-    fprintf (stdout, "done (%d BDD nodes).\n", bdd_size (R));
+    fprintf (stdout, "done (%d BDD nodes).\n", BDD_bdd_size (R));
     fflush (stdout);
   }
 
@@ -1991,7 +1991,7 @@ void mu_mk_let (int var, Term T)
   if (mu_verbose) {
     fprintf (stdout, "Definition for `%s' took %.2f msec (%d BDD nodes).\n",
 	     name, (clock () - start_t) / CLOCKS_PER_MSEC,
-	     bdd_size (R));
+	     BDD_bdd_size (R));
     fflush (stdout);
   }
 }

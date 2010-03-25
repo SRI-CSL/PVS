@@ -61,7 +61,7 @@ int main (int argc, char *argv[])
   */
 
   /* This is a must! And should also be done prior to any BDD operation. */
-  bdd_init ();
+  BDD_bdd_init ();
   fprintf (stdout, "BDD Package Initialised.\n");
   bdd_print_stats (stdout);
 
