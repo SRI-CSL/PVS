@@ -22,7 +22,7 @@ dnl --------------------------------------------------------------------
 
 dnl make sure we are using a recent autoconf version
 AC_PREREQ(2.59)
-AC_INIT
+AC_INIT([pvs],[4.2],[pvs-bugs@csl.sri.com])
 
 dnl If it doesn't look like GNU Make is being used, give a friendly warning
 tem=`make --version -f /dev/null 2>&1 | grep GNU`
@@ -31,7 +31,6 @@ if test "x$tem" = "x"; then
 fi
 
 dnl This file must exist for configure to run
-AC_MSG_CHECKING(for existence of src/pvs.lisp)
 AC_CONFIG_SRCDIR([src/pvs.lisp])
 	
 dnl This sets build, build_cpu, build_vendor, and build_os
@@ -146,7 +145,7 @@ PLATFORM=`./bin/pvs-platform`
 export PLATFORM
 
 # Finally create all the generated files
-AC_CONFIG_FILES([Makefile pvs pvsio doc/user-guide/Makefile doc/language/Makefile doc/language/pvs-doc.el doc/prover/Makefile])
+AC_CONFIG_FILES([Makefile pvs pvsio doc/api/Makefile doc/user-guide/Makefile doc/language/Makefile doc/language/pvs-doc.el doc/prover/Makefile])
 AC_OUTPUT
 
 chmod a+x pvs
