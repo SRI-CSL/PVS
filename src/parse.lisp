@@ -92,6 +92,7 @@
 	  (when (string= found "AS") found)
 	  (when (and (member found '("::=" "=") :test #'string=)
 		     ;; Check that ':=' is expected
+		     (>= (length (string (cadr args))) 2)
 		     (string= (cadr args) ":=" :end1 2))
 	    found))
 	(format nil "~?" message args))))
