@@ -28,7 +28,8 @@
     (defpackage :syntax-box (:nicknames "SB")
       (:use :common-lisp :ergolisp :oper :term :sort :sb-runtime :lang)
       (:shadowing-import-from :sb-int memq))))
-(in-package :syntax-box)
+#+sbcl (in-package :syntax-box)
+#-sbcl (in-package :syntax-box :nicknames '(:sb))
 
 #-sbcl (use-package :ergolisp)
 #-sbcl (use-package '(:oper :term :sort :sb-runtime :lang))

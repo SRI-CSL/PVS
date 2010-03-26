@@ -89,7 +89,7 @@
 	 (selected-sforms (select-seq sforms fnums)))
     (cond ((null selected-sforms)
 	   (values 'X nil nil))
-	  (t (unless *bdd-initialized* (BDD_bdd_init))
+	  (t (unless *bdd-initialized* #+sbcl (BDD_bdd_init) #-sbcl (bdd_init))
 	     (if dynamic-ordering?
 		 (set_bdd_do_dynamic_ordering 1)
 		 (set_bdd_do_dynamic_ordering 0))
@@ -119,7 +119,7 @@
 (defvar *ignore-boolean-equalities?* nil)
 
 (defun bdd-simplify (expr &optional ignore-boolean-equalities?)
-  (unless *bdd-initialized* (BDD_bdd_init))
+  (unless *bdd-initialized* #+sbcl (BDD_bdd_init) #-sbcl (bdd_init))
   (let* ((*pvs-bdd-hash* (make-pvs-hash-table))
 	 (*bdd-pvs-hash* (make-hash-table))
 	 (*recognizer-forms-alist* nil)
