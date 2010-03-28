@@ -178,11 +178,12 @@
   (and (call-next-method)
        (compare* (theory-name old) (theory-name new))))
 
-;(defmethod compare-decl ((old type-decl) (new type-decl))
-;  (call-next-method))
+(defmethod compare-decl ((old type-decl) (new type-decl))
+  ;;(call-next-method)
+  t)
 
 (defmethod compare-decl ((old type-def-decl) (new type-def-decl))
-  (and ;;(call-next-method)
+  (and (call-next-method)
        (compare* (contains old) (contains new))
        (compare* (type-expr old) (type-expr new))))
 
