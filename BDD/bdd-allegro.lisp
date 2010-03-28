@@ -251,7 +251,7 @@
 ;;; void bdd_traverse_post (register BDDPTR v, void (*post_action)(BDDPTR))
 
 ;;; int bdd_size (BDDPTR f)
-(ff:def-foreign-call (bdd_size "bdd___bdd_size")
+(ff:def-foreign-call (BDD_bdd_size "bdd___BDD_bdd_size")
     ((f :unsigned-int integer))
   #+(version>= 6) :strings-convert #+(version>= 6) nil
   :arg-checking nil
@@ -262,7 +262,7 @@
 ;;; int bdd_size_ceil (BDDPTR f, int ceiling)
 
 ;;; void bdd_init (void)
-(ff:def-foreign-call (bdd_init "bdd___bdd_init")
+(ff:def-foreign-call (BDD_bdd_init "bdd___BDD_bdd_init")
     (:void)
   #+(version>= 6) :strings-convert #+(version>= 6) nil
   :arg-checking nil
@@ -514,14 +514,14 @@
 ;;; BDDPTR bdd_top_var (BDDPTR f)
 ;;; int bdd_top_var_rank (BDDPTR f)
 ;;; BDDPTR bdd_then (BDDPTR f)
-(ff:def-foreign-call (bdd_then "bdd___bdd_then")
+(ff:def-foreign-call (BDD_bdd_then "bdd___BDD_bdd_then")
     ((f :unsigned-int integer))
   #+(version>= 6) :strings-convert #+(version>= 6) nil
   :arg-checking nil
   :call-direct t
   :returning :unsigned-int)
 ;;; BDDPTR bdd_else (BDDPTR f)
-(ff:def-foreign-call (bdd_else "bdd___bdd_else")
+(ff:def-foreign-call (BDD_bdd_else "bdd___BDD_bdd_else")
     ((f :unsigned-int integer))
   #+(version>= 6) :strings-convert #+(version>= 6) nil
   :arg-checking nil
@@ -714,4 +714,4 @@
   (not (zerop (eval 'bdd_interrupted))))
 
 (eval-when (eval load)
-  (bdd_init))
+  (BDD_bdd_init))
