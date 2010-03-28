@@ -49,12 +49,15 @@
 			 (typecheck* decl nil nil nil)
 		       (unless (saved-context decl)
 			 (cleanup-typecheck-decls decl)))))
-	(recursive-type (unless (typechecked? decl)
-			  (tcdebug "~%    Processing (Co)Datatype ~a"
-				   (id decl))
-			  (unwind-protect
-			      (typecheck* decl nil nil nil)
-			    (cleanup-datatype decl)))))
+	(recursive-type (cond ((typechecked? decl)
+			       (mapc #'(lambda (d) (add-decl d nil))
+				     (generated decl)))
+			      (t
+			       (tcdebug "~%    Processing (Co)Datatype ~a"
+					(id decl))
+			       (unwind-protect
+				   (typecheck* decl nil nil nil)
+				 (cleanup-datatype decl))))))
       (typecheck-decls (cdr decls)))))
 
 (defun typecheck-decl (decl)
