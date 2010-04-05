@@ -195,6 +195,7 @@
   (remove-pseudo-normalize-cache)
   (reset-beta-cache)
   (remove-store-object-caches)
+  (setq *exprs-generating-actual-tccs* nil)
   (setq *store-object-hash* nil))
 
 (defun clear-theories (&optional all?)
