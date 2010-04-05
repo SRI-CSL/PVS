@@ -202,7 +202,7 @@
 ;;; void bdd_traverse_post (register BDDPTR v, void (*post_action)(BDDPTR))
 
 ;;; int bdd_size (BDDPTR f)
-(alien:def-alien-routine ("bdd___bdd_size" bdd_size)
+(alien:def-alien-routine ("bdd___BDD_bdd_size" BDD_bdd_size)
 			 unsigned-int
   (f unsigned-int))
 
@@ -210,7 +210,7 @@
 ;;; int bdd_size_ceil (BDDPTR f, int ceiling)
 
 ;;; void bdd_init (void)
-(alien:def-alien-routine ("bdd___bdd_init" bdd_init)
+(alien:def-alien-routine ("bdd___BDD_bdd_init" BDD_bdd_init)
 			 void)
 
 ;;; void bdd_free (BDDPTR f)
@@ -399,12 +399,12 @@
 ;;; BDDPTR bdd_top_var (BDDPTR f)
 ;;; int bdd_top_var_rank (BDDPTR f)
 ;;; BDDPTR bdd_then (BDDPTR f)
-(alien:def-alien-routine ("bdd___bdd_then" bdd_then)
+(alien:def-alien-routine ("bdd___BDD_bdd_then" BDD_bdd_then)
 			 unsigned-int
   (f unsigned-int))
 
 ;;; BDDPTR bdd_else (BDDPTR f)
-(alien:def-alien-routine ("bdd___bdd_else" bdd_else)
+(alien:def-alien-routine ("bdd___BDD_bdd_else" BDD_bdd_else)
 			 unsigned-int
   (f unsigned-int))
 
@@ -547,4 +547,4 @@
   ;; Do the same here just to be on the safe side.
   (not (zerop (eval 'bdd_interrupted))))
 
-(bdd_init)
+(BDD_bdd_init)
