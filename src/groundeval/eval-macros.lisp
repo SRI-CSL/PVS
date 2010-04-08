@@ -121,7 +121,7 @@
 
 ;;multiary macro versions of primitives
 (defmacro |pvs__=| (x y)
-  `(pvs_equalp x y))
+  `(pvs_equalp ,x ,y))
 (defmacro |pvs__/=| (x y) `(not (pvs_equalp ,x ,y)))
 
 (defmacro |pvs__member| (x y) `(not (null (member ,x ,y :test #'pvs_equalp))))
