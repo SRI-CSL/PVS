@@ -167,6 +167,7 @@ TAB 1        Runs next proof step.  Prefix arg is number of steps.
 TAB U        Undoes previous proof step.  Prefix arg is number of steps.
 TAB #        Skips the next step.  Prefix arg is number to skip,
                                    negative skips backwards.
+TAB y        Yanks the next step to the command line.
 
 The following are not directly associated with PVS prover commands:
 
@@ -825,6 +826,32 @@ Assumes that an Proof buffer exists."
 	(pop-to-buffer pvsbuf)
 	(goto-char (point-max)))))
 
+(defun pvs-prover-yank-proof-step ()
+  "Yanks the curent step into the *pvs* buffer for editing, and skips to the
+  next step"
+  (interactive)
+  (goto-pvs-proof-buffer)
+  (let ((pvsbuf (current-buffer))
+	(editprfbuf (get-buffer "Proof"))
+	(cmd nil))
+    (unless editprfbuf
+      (error "Must have a Proof Buffer."))
+    (switch-to-buffer-other-window editprfbuf)
+    (set-buffer editprfbuf)
+    (pvs-prover-goto-next-step)
+    (let ((beg (point))
+	  (end (progn (forward-sexp 1) (point))))
+      (pvs-prover-goto-next-step)
+      (setq cmd (buffer-substring beg end))
+      (pvs-prover-goto-next-step)
+      (let ((editprfwin (get-buffer-window editprfbuf)))
+	(if editprfwin
+	    (set-window-point editprfwin (point))))
+      (hilit-next-prover-command))
+    (switch-to-buffer-other-window pvsbuf)
+    (goto-char (point-max))
+    (insert cmd)))
+
 
 ;;; pvs-prover-goto-next-step puts the cursor at the beginning of the next
 ;;; proof command in the buffer.  The next proof command is determined by
@@ -1022,6 +1049,7 @@ anything but a left paren or a \", ignoring whitespace."
 (define-key pvs-prover-helps-map "1"     'pvs-prover-run-proof-step)
 (define-key pvs-prover-helps-map "U"     'pvs-prover-undo-proof-step)
 (define-key pvs-prover-helps-map "#"     'pvs-prover-skip-proof-step)
+(define-key pvs-prover-helps-map "y"     'pvs-prover-yank-proof-step)
 
 (define-key pvs-prover-helps-map "'"     'pvs-prover-quotes)
 (define-key pvs-prover-helps-map "\C-j"  'pvs-prover-wrap-with-parens)
