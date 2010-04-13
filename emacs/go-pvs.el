@@ -34,6 +34,8 @@
 	 'xemacs20)
 	((string-match "XEmacs 19" (emacs-version))
 	 'xemacs19)
+	((string-match "Emacs 23" (emacs-version))
+	 'emacs23)
 	((string-match "Emacs 22" (emacs-version))
 	 'emacs22)
 	((string-match "Emacs 2" (emacs-version))
