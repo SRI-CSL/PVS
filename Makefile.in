@@ -94,7 +94,7 @@ endif
 
 ifneq ($(SBCLISP_HOME),)
 # Check that the given SBCLISP_HOME works
-SBCLISPEXE = $(SBCLISP_HOME)/sbcl
+SBCLISPEXE = $(SBCLISP_HOME)/run-sbcl.sh
 ifeq ($(shell if [ -x "$(SBCLISPEXE)" ]; then echo OK; fi),OK)
 SBCLVERSION = $(shell $(SBCLISPEXE) --version)
 $(warning "$(SBCLVERSION)")
@@ -133,7 +133,7 @@ emacsversion = $(shell expr "`$(EMACS) --version 2> /dev/null`" \
 
 
 ifeq ($(emacsversion),Emacs 23)
-EMACSSUBDIR = emacs22
+EMACSSUBDIR = emacs23
 else
 ifeq ($(emacsversion),Emacs 22)
 EMACSSUBDIR = emacs22
@@ -154,7 +154,6 @@ ifeq ($(emacsversion),Emacs 19)
 EMACSSUBDIR = emacs19
 else
 $(error "Unknown version of (X)Emacs: $(emacsversion)")
-endif
 endif
 endif
 endif
@@ -537,7 +536,8 @@ $(sbcl-devel) $(sbcl-rt) : $(image-deps) \
 		      --eval "(unwind-protect \
 				  (mk:operate-on-system :pvs :compile) \
 				(save-lisp-and-die \"$@\" \
-				    :toplevel (function startup-pvs)))"
+				    :toplevel (function startup-pvs)
+				    :executable t))"
 	-rm $(PVSPATH)BDD/$(PLATFORM)/bdd-sbcl.*
 	cp $(SBCLISPEXE) $(subst $(SYSTEM)-sbclisp,,$@)
 	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-sbclisp,,$@)
