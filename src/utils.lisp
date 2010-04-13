@@ -613,6 +613,17 @@
 	    ;; But we can assume that x is a valid id, so prepending "." will work
 	    (suffix? (concatenate 'string "." strx) stry))))))
 
+(defun id-suffixes (id)
+  (id-suffixes* (string (get-id id))))
+
+(defun id-suffixes* (string &optional ids)
+  (let ((dotpos (position #\. string)))
+    (if dotpos
+	(id-suffixes* (subseq string (1+ dotpos))
+		      (cons (intern string :pvs) ids))
+	(cons (intern string :pvs) ids))))
+	
+
 (defun prefix? (x y) ;both strings
   (let ((lx (length x))
 	(ly (length y)))
@@ -4190,7 +4201,12 @@ space")
 #+cmu
 (extensions:define-hash-table-test 'strong-tc-eq-test
 				   #'strong-tc-eq #'pvs-sxhash)
-#+sbcl
+#+(and sbcl (not sunos))
 (sb-ext:define-hash-table-test tc-eq pvs-sxhash)
-#+sbcl
+#+(and sbcl (not sunos))
 (sb-ext:define-hash-table-test strong-tc-eq pvs-sxhash)
+
+#+(and sbcl sunos)
+(sb-int:define-hash-table-test 'tc-eq #'tc-eq #'pvs-sxhash)
+#+(and sbcl sunos)
+(sb-int:define-hash-table-test 'strong-tc-eq #'strong-tc-eq #'pvs-sxhash)
