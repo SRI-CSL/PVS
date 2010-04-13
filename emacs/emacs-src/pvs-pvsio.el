@@ -7,8 +7,8 @@
   "Invokes PVSio in the context of the given PVS theory"
   (interactive (progn (confirm-not-in-checker)
 		      (complete-theory-name "Use context of theory: ")))
-  (unless (interactive-p) (pvs-collect-theories))
   (confirm-not-in-checker)
+  (unless (interactive-p) (pvs-collect-theories))
   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" theory)
 			     nil 'tc nil)
     (error "%s is not typechecked" theory)) 
