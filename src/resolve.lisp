@@ -135,25 +135,15 @@
 (defun resolve** (name kind args)
   (let ((reses (filter-preferences name (get-resolutions name kind args) kind args)))
     (or reses
-	(if (mod-id name)
-	    ;; Try again, making the mod-id part of the id
-	    (let* ((nm (copy name :mod-id nil
-			     :id (makesym "~a.~a" (mod-id name) (id name))))
-		   (mreses (resolve** nm kind args)))
-	      (when mreses
-		(setf (mod-id name) nil
-		      (id name) (id nm))
-		mreses))
-	    ;; Need to look for mapped declaration ids which contain the given name
-	    ;; Not that if it had a mod-id before, it will get here the second time
-	    (let ((decls nil))
-	      (map-lhash #'(lambda (id decl)
-			     (when (id-suffix (id name) id)
-			       (setq decls (append decl decls))))
-			 (current-declarations-hash))
-	      (let ((dreses (get-decls-resolutions decls (actuals name) (mappings name)
-						   (or kind 'expr) args)))
-		(filter-preferences name dreses kind args)))))))
+	(when (mod-id name)
+	  ;; Try again, making the mod-id part of the id
+	  (let* ((nm (copy name :mod-id nil
+			   :id (makesym "~a.~a" (mod-id name) (id name))))
+		 (mreses (resolve** nm kind args)))
+	    (when mreses
+	      (setf (mod-id name) nil
+		    (id name) (id nm))
+	      mreses))))))
 
 ;;(type-error name "May not provide actuals for entities defined locally")
 ;;(type-error name "Free variables not allowed here")
