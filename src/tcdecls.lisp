@@ -72,8 +72,9 @@
 	     (not (typep decl '(or theory-abbreviation-decl
 				   conversion-decl auto-rewrite-decl ;;mod-decl
 				   judgement))))
-	(mapc #'(lambda (d) (add-decl d nil))
-	      (generated decl))
+	(let ((*insert-add-decl* nil))
+	  (mapc #'(lambda (d) (add-decl d nil))
+		(generated decl)))
 	(unwind-protect
 	    (progn
 	      (reset-beta-cache)
@@ -907,13 +908,17 @@
   (setf (current-declaration) decl)
   (regenerate-xref decl)
   (setf (generated decl) nil)
-  (put-decl decl))
+  (let ((dhash (current-declarations-hash)))
+    (dolist (id (id-suffixes (id decl)))
+      (pushnew decl (get-lhash id dhash) :test #'eq))))
 
 (defmethod make-inlined-theory-decl ((decl inline-recursive-type))
   (declare (ignore lastdecl))
   (setf (current-declaration) decl)
   (setf (generated decl) nil)
-  (put-decl decl))
+  (let ((dhash (current-declarations-hash)))
+    (dolist (id (id-suffixes (id decl)))
+      (pushnew decl (get-lhash id dhash) :test #'eq))))
   
   
 
