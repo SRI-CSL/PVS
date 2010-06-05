@@ -4602,9 +4602,19 @@ character: DATATYPE
 % strings are input as a sequence of characters between double
 % quotes.  The \ is an escape character, whose value depends on the
 % following character(s).  \" and \\ are used to embed a " and \ in a string.
-% A \ followed by a decimal number (< 256) or a \x or \X followed by a
-% hexidecimal number (< FF) represents that character number.  The other
-% possibilities are:
+% A \0 followed by an octal number (< 0400), a \ followed by 
+% a decimal number (< 256) or a \x or \X followed by a
+% hexidecimal number (< FF) represents that character number. 
+% Decimal numbers must be written without leading zeros, as 
+% otherwise they will get interpreted as octal (for instance 
+% "\065" = "\53" = "\x35"). If the character following such an escape 
+% is a digit one has to use the maximal number of digits in the escape 
+% (for instance "\00530" = "50" while "\0530" is illegal). Therefore, 
+% if one wants to put escape (\27) followed by a 0 into a string one 
+% has to use two escapes ("\27\30") or an octal or hex escape 
+% ("\00330" = "\x1b0") because \270 is illegal (270 > 255) and 
+% \027 is interpreted as octal.
+% The other possibilities are:
 %  \a  - 007 (C-g, Bell)
 %  \b  - 008 (C-h, Backspace)
 %  \t  - 009 (C-i, Tab)
