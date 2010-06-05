@@ -259,5 +259,6 @@ by Cesar Munoz at the National Institute of Aerospace.
   (unless (assoc "PVSio/" *prelude-libraries-files* :test #'string=)
     (if (pvs-y-or-n-p
 	 "The PVSio library should be loaded first - do that now? ")
-	(load-prelude-library "PVSio")
+	(let ((*suppress-msg* t))
+	  (load-prelude-library "PVSio"))
 	(error "PVSio library not loaded"))))
