@@ -485,10 +485,13 @@
 	(t 'untried)))
 
 (defun proof-status-string (decl)
-  (cond ((eq (proof-status decl) 'unchecked) "unchecked")
+  (cond ((and (eq (proof-status decl) 'unchecked))
+	 (not (and (mapped-formula-decl? decl)
+		   (proved? decl)))
+	 "unchecked")
 	((proved? decl)
 	 (if (mapped-formula-decl? decl)
-	     "proved - instance"
+	     "proved - by mapping"
 	     (let ((complete (pc-complete decl)))
 	       (if (string= complete "complete")
 		   "proved - complete"
@@ -942,10 +945,6 @@
 (defun assumption? (x)
   (and (typep x 'formula-decl)
        (eq (spelling x) 'ASSUMPTION)))
-
-(defmethod pc-analyze* ((fdecl mapped-formula-decl))
-  ;; Perhaps we should actually mention the mapping?
-  (pc-analyze* (from-formula fdecl)))
     
 (defmethod pc-analyze* ((fdecl formula-decl))
   (let ((*depending-chain* *depending-chain*))
