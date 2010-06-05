@@ -646,6 +646,7 @@
 	      (theory stheory))))
       (setf (theory stheory) theory-part)
       (setf (theory-mappings decl) dalist)
+      (setf (other-mappings decl) owlist)
       (subst-new-map-decls (theory stheory) dalist owlist)
       (make-inlined-theory-decls stheory decl))))
 
@@ -704,9 +705,24 @@
   (setf (type decl) (subst-new-map-decls* (type decl))))
 
 (defmethod subst-new-map-decl ((decl formula-decl))
+  (change-to-mapped-formula-decl decl)
+  (let ((fdecl (car (rassoc decl *subst-new-other-decls* :test #'eq))))
+    (assert fdecl)
+    (setf (from-formula decl) fdecl))
   (setf (definition decl) (subst-new-map-decls* (definition decl)))
   (setf (closed-definition decl) (subst-new-map-decls* (closed-definition decl)))
+  (setf (default-proof decl) nil)
+  (setf (proofs decl) nil)
   (setf (generated-by decl) nil))
+
+(defmethod change-to-mapped-formula-decl ((decl formula-decl))
+  (change-class decl 'mapped-formula-decl))
+
+(defmethod change-to-mapped-assuming-decl ((decl formula-decl))
+  (change-class decl 'mapped-assuming-decl))
+
+(defmethod change-to-mapped-tcc-decl ((decl formula-decl))
+  (change-class decl 'mapped-tcc-decl))
 
 (defmethod subst-new-map-decl ((decl mod-decl))
   (setf (modname decl) (subst-new-map-decls* (modname decl))))
@@ -761,6 +777,9 @@
   (setf (formals decl) (subst-new-map-decls* (formals decl)))
   (setf (rewrite-names decl) (subst-new-map-decls* (rewrite-names decl))))
 
+(defmethod subst-new-map-decl ((decl conversion-decl))
+  (setf (expr decl) (subst-new-map-decls* (expr decl))))
+
 (defmethod subst-new-map-decl ((decl declaration))
   (break "Need more methods"))
 
@@ -809,8 +828,8 @@
     (if act
 	(copy obj
 	  :id (id (expr act))
-	  :resolutions (list nres)
-	  :type (type nres))
+	  :resolutions (resolutions (expr act))
+	  :type (type (expr act)))
 	(if (eq nres (resolution obj))
 	    obj
 	    (lcopy obj
@@ -3539,6 +3558,7 @@
   (let* ((decls (get-declarations (id decl))))
     (mapc #'(lambda (d) (when (and (not (eq d decl))
 				   (declaration? d)
+				   (eq (id d) (id decl))
 				   (eq (module d) (current-theory)))
 			  (duplicate-decls decl d)))
 	  decls)))
