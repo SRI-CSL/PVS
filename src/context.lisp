@@ -238,11 +238,14 @@ pvs-strategies files.")
     (shortname *pvs-context-path*)))
 
 (defun reset-context ()
+  ;; First reset local context
   (setq *last-proof* nil)
   (clrhash *pvs-files*)
   (clrhash *pvs-modules*)
   (setq *current-context* nil)
-  (reset-typecheck-caches))
+  (reset-typecheck-caches)
+  ;; Now the loaded (non-prelude) libraries
+  (clrhash *imported-libraries*))
 
 (defun get-valid-context-directory (directory prompt)
   (multiple-value-bind (dir reason)
