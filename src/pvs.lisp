@@ -150,7 +150,6 @@
 (defun pvs-init-globals ()
   (setq *pvs-modules* (make-hash-table :test #'eq :size 20 :rehash-size 10))
   (setq *pvs-files* (make-hash-table :test #'equal))
-  (setq *loaded-libraries* (make-hash-table :test #'equal))
   (setq *imported-libraries* (make-hash-table :test #'equal))
   (setq *prelude-libraries* (make-hash-table :test #'equal))
   (setq *prelude-library-context* nil)
@@ -204,7 +203,6 @@
   (clrhash *pvs-files*)
   (setq *circular-file-dependencies* nil)
   (when all?
-    (clrhash *loaded-libraries*)
     (clrhash *prelude-libraries*)
     (clrhash *imported-libraries*)
     (when *pvs-context*
@@ -1262,12 +1260,13 @@
 	(cadr (tcc-info theory)) (length (remove-if-not #'proved? tccs))))
 
 (defun proved? (fdecl)
-  (memq (proof-status fdecl)
-	'(proved proved-complete proved-incomplete)))
+  (or (memq (proof-status fdecl)
+	    '(proved proved-complete proved-incomplete))
+      (when (mapped-formula-decl? fdecl)
+	(proved? (from-formula fdecl)))))
 
-(defun unproved? (formula-decl)
-  (not (memq (proof-status formula-decl)
-	     '(proved proved-complete proved-incomplete))))
+(defun unproved? (fdecl)
+  (not (proved? fdecl)))
 
 (defmethod tccs-tried? ((adt recursive-type))
   t)
