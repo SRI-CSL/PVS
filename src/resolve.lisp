@@ -163,7 +163,8 @@
 		     adecls))
 	 (decls (if (mod-id name)
 		    (remove-if-not
-			#'(lambda (d) (eq (id (module d)) (mod-id name)))
+			#'(lambda (d) (and (declaration? d)
+					   (eq (id (module d)) (mod-id name))))
 		      ldecls)
 		    ldecls))
 	 (theory-aliases (get-theory-aliases name))
@@ -832,7 +833,7 @@
 		    (cdr actuals) (cdr formals)
 		    (cons (copy-all (car actuals)) nacts) nalist)
 		   (compatible-parameters?**
-		    actuals formals type nacts nalist)))))))
+		    actuals (cons nfml (cdr formals)) type nacts nalist)))))))
 
 (defun compatible-parameters?** (actuals formals types nacts alist)
   (when types
@@ -841,7 +842,7 @@
 		    (let ((uact (copy-untyped (car actuals)))
 			  (*generate-tccs* 'none))
 		      (typecheck* uact nil nil nil)
-		      (set-type (expr uact) (car types))
+		      (set-type-actual uact (car formals))
 		      uact))))
       (or (unless (cdr actuals)
 	    (cons nact nacts))
