@@ -317,13 +317,12 @@
   (let ((reses (resolve name 'expr nil))
 	(creses nil))
     (mapc #'(lambda (r)
-	      (let ((conv (car (get-resolution-conversions r arguments))))
-		(when conv
-		  (push (make-conversion-resolution r conv name)
-			creses))))
+	      (dolist (conv (get-resolution-conversions r arguments))
+		(push (make-conversion-resolution r conv name)
+		      creses)))
 	  reses)
     (append (get-recordtype-conversion-resolutions name arguments)
-	    creses)))
+	    (nreverse creses))))
 
 (defun get-resolution-conversions (res arguments)
   (get-resolution-conversions*
