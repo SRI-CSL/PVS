@@ -55,7 +55,6 @@
 	(*pvs-context-path* nil)
 	(*pvs-modules* (make-hash-table :test #'eq :size 20 :rehash-size 10))
 	(*pvs-files* (make-hash-table :test #'equal))
-	(*loaded-libraries* (make-hash-table :test #'equal))
 	(*prelude-libraries* (make-hash-table :test #'equal))
 	(*imported-libraries* (make-hash-table :test #'equal))
 	(*pvs-context* nil)
@@ -255,10 +254,6 @@
 ;;;   *prelude-libraries* - library hashtable of preloaded libraries and
 ;;;                         prelude libraries that have been introduced
 ;;;                         in the current session.
-;;;   *visible-libraries* - a subset of *prelude-libraries*; the
-;;;                         libraries that have been made visible through
-;;;                         the load-prelude-library command.
-;;;   *visible-libraries-uselist* - used to quickly construct contexts
 ;;;   *imported-libraries* - library hashtable of libraries that have been
 ;;;                          explicitly imported.
 
@@ -507,8 +502,6 @@
       loaded-files)))
 
 (defun add-to-prelude-libraries (lib-ref)
-  (setf (gethash lib-ref *loaded-libraries*)
-	(gethash lib-ref *prelude-libraries*))
   (setq *prelude-libraries-uselist*
 	(let ((uselist nil))
 	  (maphash #'(lambda (lref files&theories)
@@ -598,8 +591,9 @@
 				    #'(lambda (thid)
 					(unless (or (gethash thid *pvs-modules*)
 						    (find #\. (string thid)))
-					  (list (get-typechecked-theory
-						 thid))))
+					  (let ((th (with-no-type-errors
+						     (get-typechecked-theory thid))))
+					    (when th (list th)))))
 				  theory-ids)))
 		 (when (and theories
 			    (every #'typechecked? theories))
