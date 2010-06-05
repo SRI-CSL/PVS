@@ -467,7 +467,7 @@
 		 (cdr bpos))
 	(let* ((yname-hashentry (gethash expr *yname-hash*)))
 	  (or yname-hashentry
-	      (yices-interpretation expr)
+	      (eta-expanded-yices-interpretation expr)
 	      (yices-recognizer expr bindings)
 	      (let* ((ytype (translate-to-yices* (type expr)
 						bindings))
@@ -481,7 +481,24 @@
 			    *ydefns*)
 		      (format-if "~%Adding definition: ~a" defn)
 		      yname))))))))
-	 
+
+(defun eta-expanded-yices-interpretation (name-expr)
+  (let ((yy (yices-interpretation name-expr)))
+    (when yy
+      (if (funtype? (type name-expr))
+	  (let* ((ftype (type name-expr))
+		 (dtypes (types (domain ftype)))
+		 (etavars (loop for dt in dtypes
+			       as i from 1
+			       collect
+			       (format nil "etavar_~a" i)))
+		 (etabindings (loop for dt in dtypes
+			       as ev in etavars
+			       collect (format nil "~a::~a"
+					       ev (translate-to-yices* dt nil)))))
+	    (format nil "(lambda (~{ ~a~})(~a ~{ ~a~}))"
+		    etabindings yy etavars))
+	yy))))
 
 (defmethod translate-to-yices* ((expr constructor-name-expr) bindings)
   (call-next-method (lift-adt expr) bindings))
@@ -560,6 +577,11 @@
 		   (numer (translate-to-yices* (args1 expr)
 					       bindings)))
 	       `(mod ,numer ,denom)))
+	    ((and (eq op-id '-)  ;;NSH(4-19-10)
+		  (unary-application? expr)
+		  (eq (id (module-instance (resolution op*)))
+		      '|number_fields|))
+	     (format nil "(- 0 ~a)" (translate-to-yices* (argument expr) bindings)))
 	    ((and (eq op-id 'nat2bv)
 		  (number-expr? (expr (car (actuals (module-instance op*))))))
 	     (let ((size (translate-to-yices*
