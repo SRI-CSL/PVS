@@ -460,7 +460,8 @@
 
 (defcl mod-decl (declaration importing-entity)
   (modname :parse t)
-  theory-mappings)
+  theory-mappings
+  other-mappings)
 
 (defcl theory-abbreviation-decl (declaration importing-entity)
   (theory-name :parse t))
@@ -535,6 +536,13 @@
    :documentation "The disjuncts of the definition used for TCCs"
    :restore-as nil)
   importing-instance)
+
+(defcl mapped-formula-decl (formula-decl)
+  from-formula)
+
+(defcl mapped-assuming-decl (assuming-decl mapped-formula-decl))
+
+(defcl mapped-tcc-decl (tcc-decl mapped-formula-decl))
 
 (defcl subtype-tcc (tcc-decl))
 
