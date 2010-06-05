@@ -146,23 +146,13 @@ order is important")
 
 (defvar *prelude-libraries* nil
   "The pathnames of the prelude libraries that have been loaded.
-Given a pathname, returns a hash-table which can then be put into
-*visible-libraries*")
+Given a pathname, returns a hash-table")
 
 (defvar *imported-libraries* nil)
-
-(defvar *visible-libraries* nil
-  "Those libraries that are visible - PVS context dependent")
 
 (defvar *prelude-libraries-uselist* nil)
 
 (defvar *prelude-libraries-files* nil)
-
-(defvar *visible-libraries-uselist* nil
-  "Used to be able to quickly build a context - keeps track of the visible
-prelude libraries")
-
-(defvar *loaded-libraries* nil)
 
 (defvar *pvs-library-ref-paths* nil)
 
