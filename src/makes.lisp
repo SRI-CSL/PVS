@@ -2209,3 +2209,26 @@
     :operator (greatereq-operator)
     :argument (make!-arg-tuple-expr ex1 ex2)
     :type *boolean*))
+
+(defun make!-eta-equivalent (ex &optional (detuple? t))
+  (make!-eta-equivalent* ex (find-supertype (type ex)) detuple?))
+
+(defmethod make!-eta-equivalent* ((ex application) (type funtype) detuple?)
+  (if (lambda-expr? (operator ex))
+      ;; Already in eta form
+      ex
+      (call-next-method)))
+
+(defmethod make!-eta-equivalent* (ex (type funtype) detuple?)
+  (let* ((bid (make-new-variable '|x| (cons ex (domain type))))
+	 (bd (make-bind-decl bid (domain type)))
+	 (bvar (make-variable-expr bd))
+	 (eta-ex (make!-lambda-expr (list bd)
+		   (make!-application ex bvar))))
+    (if detuple?
+	(let ((*detuple-singletons?* t))
+	  (detuple* eta-ex))
+	eta-ex)))
+
+(defmethod make!-eta-equivalent* (ex type detuple?)
+  ex)
