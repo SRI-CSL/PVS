@@ -814,10 +814,11 @@
 	      (let ((rdecl (declaration (expr adecl))))
 		(assert (generated-by rdecl))
 		rdecl)
-	      (make-instance 'importing
-		:theory-name (if (modname? (expr adecl))
-				 (expr adecl)
-				 (change-class (copy (expr adecl)) 'modname)))
+	      (lcopy decl
+		:modname (if (modname? (expr adecl))
+			     (expr adecl)
+			     (change-class (copy (expr adecl)) 'modname))
+		:generated-by decl)
 ;; 	      (lcopy decl
 ;; 		:modname (module-instance (expr adecl))
 ;; 		:generated-by decl)
