@@ -1609,7 +1609,7 @@
 			 (car update-args))
 		     (if (and (null (cdr (car update-args)))
 			      (cdr args))
-			 (list (make!-tuple-expr* (car args)))
+			 (list (make!-tuple-expr* args))
 			 args)
 		     in-beta-reduce?)))
 	(if (eq first 'noidea)
