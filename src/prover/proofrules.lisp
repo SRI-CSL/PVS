@@ -605,6 +605,8 @@
 ; 	 (eq (id op) 'if)
 ; 	 (eq (id (module-instance (resolution op))) '|if_def|)))))
 
+;;NSH(9-10-10): Turns conditions into a if-then-else structure similar
+;;to one returned by collect-conds. 
 (defun add-if-conditions (conditions result)
   (if (consp conditions)
       (if (consp (car conditions)) ;;negated condition
@@ -614,6 +616,8 @@
 			   (list (car conditions) result nil)))
     result))
 
+;;NSH(9-10-10): added conditions argument to top-collect-conds to collect
+;;top-level conditions
 (defmethod top-collect-conds ((expr branch) conditions)
   (let ((if-conds (collect-conds (condition expr))))
     (if (null if-conds)
@@ -1140,7 +1144,6 @@ or supply more substitutions."
 							    (current-goal
 							     ps)))))
 			      (dependent-decls nil))
-			   (assert (null (freevars subform)))
 			   (push-references-list
 			    (module-instance res) dependent-decls)
 			   (push-references-list newalist
