@@ -1209,12 +1209,64 @@
 	     (not (gethash expr *subtype-hash*)))
     (collect-type-constraints* expr)))
 
+
+;;(NSH:12-20-09): Now uses find-non-false-recognizer to add this
+;;recognizer as a type constraint.  The constraint can be *false*
+;;when there are multiple true recognizers. 
 (defun collect-type-constraints* (ex)
   ;; SO 2004-09-17: Added implicit-type-predictes
   (if *implicit-typepreds?*
       (implicit-type-predicates ex t (type-constraints ex t))
-      (type-constraints ex (not *pseudo-normalizing*))))
+      (if (and (type ex)(adt? (find-supertype (type ex))))
+          (let* ((all-recs (check-all-recognizers ex))
+	         (rec (find-non-false-recognizer all-recs)))
+            (if (consp rec)
+		(if (eq (cdr rec) *true*)
+		    (type-constraints ex (not *pseudo-normalizing*))
+		    (cons (make!-reduced-application (car rec) ex)
+			  (type-constraints ex (not *pseudo-normalizing*))))
+		(if (eq rec *false*)
+		    (cons *false* (type-constraints ex (not *pseudo-normalizing*)))
+		    (type-constraints ex (not *pseudo-normalizing*)))))
+        (type-constraints ex (not *pseudo-normalizing*)))))
 
+;;computes the only non-false recognizer from the result of
+;;check-all-recognizers.  Returns *true* (one true recognizer),
+;;*false* (more than one true recognizer), rec (the one non-false
+;;recognizer), or nil (more than one non-false recognizer). 
+(defun find-non-false-recognizer (all-recs)
+  (if (consp all-recs)
+      (let ((rec 
+	     (find-non-false-recognizer* (cdr all-recs)
+					 (if (eq (cdar all-recs) *false*)
+					     nil
+					     (car all-recs)))))
+	(cond ((and (not *assert-typepreds-off*)
+		 (tc-eq rec *false*))
+	       (pushnew *false* *assert-typepreds* :test #'tc-eq)
+	       rec)
+	    (t rec)))
+      nil))
+
+;body of find-non-false-recognizer: scans the entries in
+;check-all-recognizers returns *false* if all are false, or
+;recognizer which is the only non-false one that is nil
+;or nil, if there is a true recognizer
+;We have a contradiction if all are false or more than one true
+;Note: non-false-rec is either *true*, *false* or the first recognizer
+(defun find-non-false-recognizer* (all-recs non-false-rec)
+  (if (consp all-recs)
+     (cond ((eq (cdar all-recs) *true*)
+	    (if (and (consp non-false-rec)
+		     (eq (cdr non-false-rec) *true*)) ; then two true recognizers
+		*false*;;else (cdr non-false-rec) is nil
+		(find-non-false-recognizer* (cdr all-recs) (car all-recs))))
+           ((eq (cdar all-recs) *false*);keep looking
+	    (find-non-false-recognizer* (cdr all-recs) non-false-rec))
+	   (t ;(cdar all-recs) is nil
+	     (and (null non-false-rec);;else multiple nils, return nil
+	          (find-non-false-recognizer* (cdr all-recs)(car all-recs)))))
+     (or non-false-rec *false*)))
 
 ;;NSH(7.11.94): old code triggered a loop since collect-type-constraints
 ;;calls substit which calls pseudo-normalize which calls
@@ -1556,7 +1608,10 @@
 			      (null (cdr args)))
 			 (list (make!-tuple-expr* (car update-args)))
 			 (car update-args))
-		     args
+		     (if (and (null (cdr (car update-args)))
+			      (cdr args))
+			 (list (make!-tuple-expr* args))
+			 args)
 		     in-beta-reduce?)))
 	(if (eq first 'noidea)
 	    'noidea
@@ -2252,7 +2307,17 @@
 		(values '? (nth-value 1 (assert-if disequality)))))
 	  (do-auto-rewrite expr sig)))))
 
-;;NSH(10.21.94)
+;;finds non-false recog in recs1 and recs2 and invokes compare-recognizers*
+(defun compare-recognizers (recs1 recs2)
+  (let ((found-rec1 (find-non-false-recognizer recs1))
+	(found-rec2 (find-non-false-recognizer recs2)))
+    (and (consp found-rec1)(consp found-rec2)
+	(if (tc-eq (car found-rec1)(car found-rec2))
+	    (and (null (accessors (constructor (caar recs1))))
+		 *true*)
+	    *false*))))
+
+
 (defun assert-equality (expr newargs sig)
   (let ((nargs (argument-list newargs)))
     (cond ((tc-eq (car nargs)(cadr nargs))
@@ -2281,13 +2346,19 @@
 			   (do-auto-rewrite expr sig))
 		       (let* ((pred (or p1 p2))
 			      (term (if p1 (args2 expr) (args1 expr)))
-			      (result (when pred
-					(check-rest-recognizers
-					 pred
-					 (check-all-recognizers term)))))
-			 (cond ((null pred)(do-auto-rewrite expr sig))
-			       ((false-p result)
+			      (result (if pred
+					  (check-rest-recognizers
+					   pred
+					   (check-all-recognizers term))
+					  (compare-recognizers
+					   (check-all-recognizers (args1 expr))
+					   (check-all-recognizers (args2 expr))))))
+			 ;;(NSH:12-20-09) rearranged the order of COND
+			 (cond ((false-p result)
 				(values '? *false*))
+			       ((and (not pred) (true-p result))
+				(values '? *true*))
+			       ((null pred)(do-auto-rewrite expr sig))
 			       ((and (eq result 'restfalse)
 				     (null (accessors (constructor pred))))
 				(values '? *true*))
@@ -3835,7 +3906,8 @@
 	       (error-format-if
 		"~%Do not mix parens and !'s in rewrite names"))
 	     rewrite))))
-    (unless (fnum-rewrite? rewrite-name)
+    (unless (or (fnum-rewrite? rewrite-name)
+		(resolutions rewrite-name))
       (typecheck rewrite-name))
     rewrite-name))
 
@@ -4089,7 +4161,13 @@ e LHS free variables in ~a" hyp lhs)
 	       (setq *auto-rewrites!-names*
 		     (remove res *auto-rewrites!-names*))
 	       ;;:test #'tc-eq
-	       (format-if "~%Installing macro(!!) ~a" name))
+	       (format-if "~%Installing macro(!!) ~a~@[ ~a~]"
+			  (if (resolution? res)
+			      (resolution-string res)
+			      name)
+			  (and (resolution? res)
+			       (not (fully-instantiated? res))
+			       "(all instances)")))
 	      ((and always? ;;NSH(10.7.95) decl -> (declaration res)
 		    (not (and (resolution? res)	;;NSH(12.1.95)
 			      (def-decl? (declaration res)))))
@@ -4100,7 +4178,13 @@ e LHS free variables in ~a" hyp lhs)
 	       (setq *macro-names*
 		     (remove res *macro-names*))
 	       ;;:test #'tc-eq
-	       (format-if "~%Installing rewrite rule(!) ~a" name))
+	       (format-if "~%Installing rewrite rule(!) ~a~@[ ~a~]"
+			  (if (resolution? res)
+			      (resolution-string res)
+			      name)
+			  (and (resolution? res)
+			       (not (fully-instantiated? res))
+			       "(all instances)")))
 	      (t (pushnew res *auto-rewrites-names*)
 		 ;;:test #'tc-eq
 		 (setq *auto-rewrites!-names*
@@ -4108,7 +4192,13 @@ e LHS free variables in ~a" hyp lhs)
 		 (setq *macro-names*
 		       (remove res *macro-names*))
 		 ;;:test #'tc-eq
-		 (format-if "~%Installing rewrite rule ~a" name)))
+		 (format-if "~%Installing rewrite rule ~a~@[ ~a~]"
+			    (if (resolution? res)
+			      (resolution-string res)
+			      name)
+			    (and (resolution? res)
+			       (not (fully-instantiated? res))
+			       "(all instances)"))))
 	(setf (gethash (rewrite-declaration hashname) *auto-rewrites-ops*) t)
 	;;(format-if "~%Installing rewrite rule ~a" name)
 	)))))
