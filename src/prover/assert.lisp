@@ -2366,22 +2366,24 @@
 (defmethod assert-if-application* (expr newop (newargs branch) sig)
   (if  (negation? expr)
        (do-auto-rewrite expr sig)
-       (let ((thenval (nth-value 1
-			(assert-if-application*
-			 (make!-application newop (then-part newargs))
-			 newop (then-part newargs) '?)))
-	     (elseval (nth-value 1
-			(assert-if-application*
-			 (make!-application newop (else-part newargs))
-			 newop (else-part newargs) '?))))
+       (let ((*assert-typepreds-off* t));;NSH(9-10-10)
+	 (let ((thenval (nth-value 1
+				   (assert-if-application*
+				    (make!-application newop (then-part newargs))
+				    newop (then-part newargs) '?)))
+	       (elseval (nth-value 1
+				   (assert-if-application*
+				    (make!-application newop (else-part newargs))
+				    newop (else-part newargs) '?))))
 	 (values-assert-if
 	  '?
 	  (make!-if-expr (condition newargs) thenval elseval)
-	  expr))))
+	  expr)))))
 
 (defmethod assert-if-application* (expr (newop branch) newargs sig)
   (declare (ignore sig))
-  (let ((thenval (nth-value 1
+  (let ((*assert-typepreds-off* t));;NSH(9-10-10)
+    (let ((thenval (nth-value 1
 		   (assert-if-application*
 		    (make!-application (then-part newop) newargs)
 		    (then-part newop) newargs '?)))
@@ -2392,7 +2394,7 @@
     (values-assert-if
      '?
      (make!-if-expr (condition newop) thenval elseval)
-     expr)))
+     expr))))
 
 (defmethod assert-if-application* (expr (newop lambda-expr) newargs sig)
   (declare (ignore sig))

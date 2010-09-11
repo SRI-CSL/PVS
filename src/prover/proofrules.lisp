@@ -277,7 +277,7 @@
 (defun lift-if (ps sform)
   (declare (ignore ps))
   (let* ((formula (formula sform))
-	 (conds (top-collect-conds formula))
+	 (conds (top-collect-conds formula nil))
 	 (body (if (negation? formula) (args1 formula) formula))
 	 (*top-simplify-ifs-hash*
 	  (make-hash-table :test #'eq));;faster than pvs-hash.(NSH:10.19.94)
@@ -605,35 +605,64 @@
 ; 	 (eq (id op) 'if)
 ; 	 (eq (id (module-instance (resolution op))) '|if_def|)))))
 
-(defmethod top-collect-conds ((expr branch))
+(defun add-if-conditions (conditions result)
+  (if (consp conditions)
+      (if (consp (car conditions)) ;;negated condition
+	  (add-if-conditions (cdr conditions)
+			     (list (caar conditions) nil result))
+	(add-if-conditions (cdr conditions)
+			   (list (car conditions) result nil)))
+    result))
+
+(defmethod top-collect-conds ((expr branch) conditions)
   (let ((if-conds (collect-conds (condition expr))))
     (if (null if-conds)
-	(let ((then-conds (top-collect-conds (then-part expr))))
-	  (if (null then-conds)
-	      (top-collect-conds (else-part expr))
+	(let ((then-conds (top-collect-conds (then-part expr)
+					     (cons (condition expr) conditions))))
+	  (if (null then-conds);;NSH(9-10-10): added (condition expr)
+	      (top-collect-conds (else-part expr) (cons (list (condition expr))
+							conditions))
 	      then-conds))
-	if-conds)))
+	(add-if-conditions conditions if-conds))))
 
-(defmethod top-collect-conds ((expr cases-expr))
+(defmethod top-collect-conds ((expr cases-expr) conditions)
   (with-slots (expression selections else-part) expr
       (let ((expr-conds (collect-conds expression)))
-	(or expr-conds
+	(if expr-conds
+	    (add-if-conditions conditions expr-conds)
 	    (let ((selection-conds (collect-conds selections)))
-	      (or selection-conds
-		  (collect-conds else-part)))))))
+	      (if selection-conds
+		  (add-if-conditions conditions selection-conds)
+		(let ((else-conds (collect-conds else-part)))
+		  (when else-conds (add-if-conditions conditions else-conds)))))))))
 
-(defmethod top-collect-conds ((expr application))
+(defmethod top-collect-conds ((expr application) conditions)
   (let ((nexpr (if *lift-if-updates*
 		   (translate-update-to-if expr)
 		   expr)))
     (if (eq nexpr expr)
 	(call-next-method)
-	(collect-conds nexpr))))
+	(let ((conds (collect-conds nexpr)))
+	  (when conds (add-if-conditions conditions conds))))))
 
-(defmethod top-collect-conds ((expr expr))
+;;NSH(9-10-10): Added methods for conjunction, disjunction, implication.
+(defmethod top-collect-conds ((expr conjunction) conditions)
+  (top-collect-conds (args1 expr) conditions))
+
+(defmethod top-collect-conds ((expr disjunction) conditions)
+  (top-collect-conds (args1 expr) conditions))
+
+(defmethod top-collect-conds ((expr implication) conditions)
+  (top-collect-conds (args1 expr) conditions))
+
+(defmethod top-collect-conds ((expr expr) conditions)
   (if (negation? expr)
-      (top-collect-conds (args1 expr))
-      (collect-conds expr)))
+      (top-collect-conds (args1 expr) conditions)
+    (let ((conds (collect-conds expr)))
+      (when conds (add-if-conditions conditions conds)))))
+
+;;NSH(9-10-10): boundvars argument is no longer useful because of
+;;the change to binding-exprs
 
 (defmethod collect-conds ((expr branch) &optional boundvars)
   (if (branch? expr)
@@ -650,8 +679,11 @@
       (collect-conds (arguments expr) boundvars)))
 
 (defmethod collect-conds ((expr binding-expr) &optional  boundvars)
-  (collect-conds (expression expr) 
-			(append (bindings expr) boundvars)))
+  nil);;NSH(9-10-10): Conditions collected within binding exprs might depend
+      ;;on governing conditions from the bindings for type correctness
+
+;; (collect-conds (expression expr) 
+;; 			(append (bindings expr) boundvars)))
 
 ;;; SO 9/5/94 - Added methods for projection-application and field-application
 (defmethod collect-conds ((expr projection-application) &optional boundvars)
@@ -668,6 +700,17 @@
 
 (defmethod collect-conds ((expr field-application) &optional boundvars)
   (collect-conds (argument expr) boundvars))
+
+;;NSH(9-10-10): Added methods for conjunction, disjunction, implication.
+(defmethod collect-conds ((expr conjunction) &optional boundvars)
+  (collect-conds (args1 expr) boundvars))
+
+(defmethod collect-conds ((expr disjunction) &optional boundvars)
+  (collect-conds (args1 expr) boundvars))
+
+(defmethod collect-conds ((expr implication) &optional boundvars)
+  (collect-conds (args1 expr) boundvars))
+
 
 (defmethod collect-conds ((expr application)  &optional  boundvars)
   (if (and *lift-if-updates*
