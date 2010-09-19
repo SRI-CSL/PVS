@@ -751,6 +751,7 @@
   (copy adt
     :constructors (subst-mod-params* (constructors adt) modinst bindings)
     :adt-type-name (subst-mod-params* (adt-type-name adt) modinst bindings)
+    :generated (subst-mod-params* (generated adt) modinst bindings)
     :generated-by adt))
 
 (defmethod subst-mod-params* ((c simple-constructor) modinst bindings)
