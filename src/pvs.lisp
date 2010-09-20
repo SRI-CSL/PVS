@@ -197,7 +197,7 @@
   (setq *exprs-generating-actual-tccs* nil)
   (setq *store-object-hash* nil))
 
-(defun clear-theories (&optional all?)
+(defun clear-theories (&optional all? cc?)
   (reset-typecheck-caches)
   (clrhash *pvs-modules*)
   (clrhash *pvs-files*)
@@ -205,12 +205,14 @@
   (when all?
     (clrhash *prelude-libraries*)
     (clrhash *imported-libraries*)
-    (when *pvs-context*
-      (setf (cadr *pvs-context*) nil))
     (setq *pvs-library-ref-paths* nil)
     (setq *prelude-libraries-uselist* nil)
     (setq *prelude-library-context* nil)
-    (setq *prelude-libraries-files* nil)))
+    (setq *prelude-libraries-files* nil)
+    (when (and (not cc?)
+	       *pvs-context*
+	       (cadr *pvs-context*))
+      (load-prelude-libraries (cadr *pvs-context*)))))
 
 (defun get-pvs-library-path ()
   (setq *pvs-library-path* nil)
@@ -858,7 +860,8 @@
 		    ((and (consp diff)
 			  (memq (car diff) (all-decls oth)))
 		     (copy-lex-upto diff oth nth)
-		     (let* ((repl1 (if (generated (car diff))
+		     (let* ((repl1 (if (and (not (mod-decl? (car diff)))
+					    (generated (car diff)))
 				       (car (last (generated (car diff))))
 				       (car diff)))
 			    (replaced (memq repl1 (all-decls oth)))
