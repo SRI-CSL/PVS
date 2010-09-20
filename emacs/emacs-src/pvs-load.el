@@ -153,7 +153,7 @@
 (if (pvs-getenv "PVS_LIBRARY_PATH")
     (let ((dirs (mapcar '(lambda (dir)
 			   (if (= (aref dir (1- (length dir))) ?/)
-			       (substring dir (1- (length dir)))
+			       (substring dir 0 (1- (length dir)))
 			       dir))
 		  (string-split ?: (pvs-getenv "PVS_LIBRARY_PATH")))))
       (setq pvs-library-path dirs)
