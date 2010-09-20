@@ -172,7 +172,7 @@
 		  (xt-importing-elt importing-term)))
 	 (adtcases-term (term-arg3 datatype))
 	 (adtcases (xt-adtcases adtcases-term))
-	 (endid (ds-vid (term-arg4 datatype))))
+	 (endid (xt-idop (xt-pidop (term-arg4 datatype)))))
     (check-subtypes-constructors-consistency id subtypes adtcases)
     (unless (or (null id)
 		(eq id endid))
@@ -241,7 +241,7 @@
   (let ((assuming (term-arg0 datatype))
 	(importing (term-arg1 datatype))
 	(adtcases (term-arg2 datatype))
-	(endid (ds-vid (term-arg3 datatype))))
+	(endid (xt-idop (xt-pidop (term-arg3 datatype)))))
     (unless (or (null id)
 		(eq id endid))
       (parse-error (term-arg3 datatype)
@@ -2909,10 +2909,15 @@
       (or (assq symbol *pvs-operators*)
 	  (valid-pvs-id* (string symbol)))))
 
-(defmethod valid-pvs-id* ((sym symbol))
-  (valid-pvs-id* (string sym)))
-  
-(defmethod valid-pvs-id* ((str string))
+(defun valid-pvs-id* (sym)
+  (let* ((idstr (string sym))
+	 (dpos (position #\. idstr :from-end t)))
+    (and (valid-pvs-id** idstr dpos)
+	 (or (null dpos)
+	     (valid-pvs-id** (subseq idstr (1+ dpos)) nil)
+	     (assq (intern (subseq idstr (1+ dpos)) :pvs) *pvs-operators*)))))
+
+(defmethod valid-pvs-id** (str upto)
   (and (alpha-char-p (char str 0))
        (every #'(lambda (ch)
 		  (or (alpha-char-p ch)
@@ -2923,4 +2928,4 @@
 		      ;; in general, but not in declarations - see
 		      ;; xt-check-periods
 		      (member ch '(#\_ #\? #\.) :test #'char=)))
-	      (subseq str 1))))
+	      (subseq str 1 upto))))
