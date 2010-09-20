@@ -1550,7 +1550,8 @@ Point will be on the offending delimiter."
 (defvar pvs-unexpected-output nil)
 
 (defmacro pvs-validate (file directory &rest body)
-  `(let* ((logfile (concat default-directory ,file)))
+  `(let* ((start-time (current-time))
+	  (logfile (concat default-directory ,file)))
        (pvs-backup-logfile logfile)
        (let ((logbuf (find-file-noselect logfile t)))
 	 (unwind-protect
@@ -1574,6 +1575,8 @@ Point will be on the offending delimiter."
 		   (error (pvs-message "ERROR: Emacs: %s %s"
 			    (car err) (cdr err)))))
 	       (pvs-wait-for-it)
+	       (pvs-message "Finished in %d seconds"
+		 (round (time-to-seconds (time-since start-time))))
 	       ;;(save-buffer 0) ;writes a message-use the following 3 lines
 	       (set-buffer logbuf)	; body may have changed active buffer
 	       (when pvs-expected-output
@@ -1597,7 +1600,7 @@ Point will be on the offending delimiter."
 			 (when foundit (setq last-point foundit)))
 		       (if foundit
 			   (pvs-message "Found expected output")
-			   (pvs-message "ERROR: expected output not found - check %s"
+			   (pvs-message "ERROR: %s: expected output not found"
 			     logfile))))))
 	       (when pvs-unexpected-output
 		 (let ((standard-output logbuf)
@@ -1620,7 +1623,7 @@ Point will be on the offending delimiter."
 			       (re-search-forward exp nil t))
 			 (when foundit (setq last-point foundit)))
 		       (if foundit
-			   (pvs-message "ERROR: unexpected output found - check %s"
+			   (pvs-message "ERROR: %s: unexpected output found"
 			     logfile)
 			   (pvs-message "Did not find unexpected output"))))))
 	       (write-region (point-min) (point-max) (buffer-file-name) nil 'nomsg)
