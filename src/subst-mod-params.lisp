@@ -1651,13 +1651,15 @@
 				      (module decl))))
 			   res
 			   (let* ((rhs (cdr (assq (module decl) bindings)))
-				  (nmappings (when rhs (mappings (expr rhs)))))
+				  (nmappings (when rhs (mappings (expr rhs))))
+				  (eqtype (when (memq (id mi)
+						      '(|equalities| |notequal|))
+					    (find-supertype
+					     (type-value (car nacts))))))
 			     (mk-resolution decl
 			       (mk-modname (id mi)
-				 (if (memq (id mi) '(|equalities| |notequal|))
-				     (list (mk-actual
-					    (find-supertype
-					     (type-value (car nacts)))))
+				 (if eqtype
+				     (list (mk-actual eqtype))
 				     nacts)
 				 (when (library-datatype-or-theory?
 					(module decl))
@@ -1668,7 +1670,9 @@
 					     (not (eq (library mi)
 						      (library modinst))))
 				       (mappings modinst))))
-			       ntype)))))))))))
+			       (if eqtype
+				   (mk-funtype (list eqtype eqtype) *boolean*)
+				   ntype))))))))))))
 
 (defmethod make-resolution (decl modinst &optional type)
   (assert (modname? modinst))
