@@ -465,6 +465,9 @@ and SUFFIX (without the file type)."
     (initialize-file s :sorts)
     (sb-write
      (let ((*package* (lang:lang-code-package *language*)))
+       (format s "#+(and allegro-version>= (version>= 8 2))~
+                    (eval-when (:execute :compile-toplevel :load-toplevel)~
+                      (setq *readtable* cl::*pvs-readtable*))")
        (pprint (construct-opsig-table-function) s)
        (format s "~%~%")
        (pprint (construct-sort-table-function) s)
