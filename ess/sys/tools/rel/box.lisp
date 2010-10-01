@@ -54,6 +54,10 @@
 (eexport '(\#>))
 (eexport '(push2 pop2))
 
+#+(and allegro-version>= (version>= 8 2))
+(eval-when (:execute :compile-toplevel :load-toplevel)
+  (setq *readtable* cl::*pvs-readtable*))
+
 ;;;
 ;;; Structure and variable definitions.
 ;;;
@@ -269,7 +273,9 @@
 (defun \#> ()
   (set-dispatch-macro-character #\# #\> #'box-reader))
 
-(eval-when (:load-toplevel :execute)
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (format t "~%*readtable* is now ~s,~%*package* is ~s~%"
+    *readtable* *package*)
   (\#>))
 
 (defun box-cerror (continue-string format-string &rest args)
