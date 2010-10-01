@@ -50,7 +50,7 @@ by Cesar Munoz at the National Institute of Aerospace.
 (defun evaluation-mode-pvsio (theoryname 
 			      &optional input tccs?  
 			      append? (banner? t))
-  (load-pvsio-library-if-needed)
+  ;;(load-pvsio-library-if-needed)
   (let ((theory (get-typechecked-theory theoryname)))
     (format t "~%Generating ~a.log~%" theoryname)
     (with-open-file 
