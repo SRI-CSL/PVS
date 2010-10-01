@@ -22,6 +22,10 @@
 
 (import '(cl-user::*ess-path*))
 
+#+(and allegro-version>= (version>= 8 2))
+(eval-when (:execute :compile-toplevel :load-toplevel)
+  (setq *readtable* cl::*pvs-readtable*))
+
 (defparameter *plain-readtable* (copy-readtable nil))
 
 (defbox *default-box*
