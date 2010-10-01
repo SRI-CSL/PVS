@@ -991,27 +991,27 @@
 ;;; MK is my initials.
 
 #+(or clisp cormanlisp ecl (and gcl defpackage) sbcl)
-(defpackage "MAKE" (:use "COMMON-LISP") (:nicknames "MK"))
+(defpackage :make (:use :common-lisp) (:nicknames :mk))
 
 #-(or :sbcl :cltl2 :lispworks :ecl :scl)
-(in-package "MAKE" :nicknames '("MK"))
+(in-package :make :nicknames '(:mk))
 
 ;;; For CLtL2 compatible lisps...
 #+(and :excl :allegro-v4.0 :cltl2)
-(defpackage "MAKE" (:nicknames "MK" "make" "mk") (:use :common-lisp)
+(defpackage :make (:nicknames :mk) (:use :common-lisp)
 	    (:import-from cltl1 *modules* provide require))
 
 ;;; *** Marco Antoniotti <marcoxa@icsi.berkeley.edu> 19970105
 ;;; In Allegro 4.1, 'provide' and 'require' are not external in
 ;;; 'CLTL1'.  However they are in 'COMMON-LISP'.  Hence the change.
 #+(and :excl :allegro-v4.1 :cltl2)
-(defpackage "MAKE" (:nicknames "MK" "make" "mk") (:use :common-lisp) )
+(defpackage :make (:nicknames :mk) (:use :common-lisp))
 
 #+(and :excl :allegro-version>= (version>= 4 2))
-(defpackage "MAKE" (:nicknames "MK" "make" "mk") (:use :common-lisp))
+(defpackage :make (:nicknames :mk) (:use :common-lisp))
 
 #+:lispworks
-(defpackage "MAKE" (:nicknames "MK") (:use "COMMON-LISP")
+(defpackage :make (:nicknames :mk) (:use :common-lisp)
 	    (:import-from system *modules* provide require)
 	    (:export "DEFSYSTEM" "COMPILE-SYSTEM" "LOAD-SYSTEM"
 		     "DEFINE-LANGUAGE" "*MULTIPLE-LISP-SUPPORT*"))
@@ -1028,8 +1028,8 @@
 		       (and :excl (or :allegro-v4.0 :allegro-v4.1))
 		       :mcl)))
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (unless (find-package "MAKE")
-    (make-package "MAKE" :nicknames '("MK") :use '("COMMON-LISP"))))
+  (unless (find-package :make)
+    (make-package :make :nicknames '(:mk) :use '(:common-lisp))))
 
 ;;; *** Marco Antoniotti <marcoxa@icsi.berkeley.edu> 19951012
 ;;; Here I add the proper defpackage for CMU
@@ -1521,7 +1521,7 @@ fasl.")
 ;;; ********************************
 
 ;;; mc 11-Apr-91: Bashes MCL's point reader, so commented out.
-#-:mcl
+#-mcl
 (eval-when (:compile-toplevel :load-toplevel :execute)
   ;; Define #@"foo" as a shorthand for (afs-binary-directory "foo").
   ;; For example,
