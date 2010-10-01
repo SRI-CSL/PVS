@@ -25,4 +25,4 @@ b64: ../b64.c
 	$(CC) -o ./b64 ../b64.c
 
 clean :
-	rm -f *.o *.a *.so
+	rm -f *.o *.a *.dylib
