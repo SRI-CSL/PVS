@@ -176,7 +176,8 @@
 
 (defmethod gensubst* ((decl def-decl) substfn testfn)
   (lcopy (call-next-method)
-    'measure (gensubst* (measure decl) substfn testfn)))
+    'measure (gensubst* (measure decl) substfn testfn)
+    'ordering (gensubst* (ordering decl) substfn testfn)))
 
 (defmethod gensubst* ((type dep-binding) substfn testfn)
   (let ((ntype (if *visible-only*
