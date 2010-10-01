@@ -58,8 +58,8 @@ update_largest(DFA *a)
 {
   if (a->ns > largest_states)
     largest_states = a->ns;
-  if ((int) bdd_size(a->bddm) > largest_bdd)
-    largest_bdd = bdd_size(a->bddm);
+  if ((int) mona_bdd_size(a->bddm) > largest_bdd)
+    largest_bdd = mona_bdd_size(a->bddm);
 }
 
 DFA* 
@@ -165,8 +165,8 @@ st_dfa_product(DFA *a1, DFA *a2, dfaProductType ff, Pos &p)
       break;
     }
     p.printsource();
-    cout << "\n  (" << a1_ns << "," << bdd_size(a1->bddm) << ")x("
-	 << a2_ns << "," << bdd_size(a2->bddm) << ") -> ";
+    cout << "\n  (" << a1_ns << "," << mona_bdd_size(a1->bddm) << ")x("
+	 << a2_ns << "," << mona_bdd_size(a2->bddm) << ") -> ";
     cout.flush();
   }
 
@@ -176,7 +176,7 @@ st_dfa_product(DFA *a1, DFA *a2, dfaProductType ff, Pos &p)
   num_products++;
 
   if (options.statistics)
-    cout << "(" << result->ns << "," << bdd_size(result->bddm) << ")\n";
+    cout << "(" << result->ns << "," << mona_bdd_size(result->bddm) << ")\n";
 
   if (options.time) {
     timer_product.stop();
@@ -235,7 +235,7 @@ st_dfa_project(DFA *a, Ident i, Pos &p, bool quotient)
   if (options.statistics) {
     cout << "Projecting #" << i;
     p.printsource();
-    cout << "\n  (" << a_ns << "," << bdd_size(a->bddm) << ") -> ";
+    cout << "\n  (" << a_ns << "," << mona_bdd_size(a->bddm) << ") -> ";
     cout.flush();
   }
 
@@ -245,7 +245,7 @@ st_dfa_project(DFA *a, Ident i, Pos &p, bool quotient)
   num_projections++;
 
   if (options.statistics)
-    cout << "("  << result->ns << "," << bdd_size(result->bddm) << ")\n";
+    cout << "("  << result->ns << "," << mona_bdd_size(result->bddm) << ")\n";
 
   if (options.time) {
     timer_project.stop();
@@ -268,7 +268,7 @@ st_dfa_minimization(DFA *a)
   Timer temp;
 
   int a_ns = a->ns;
-  int a_sz = bdd_size(a->bddm);
+  int a_sz = mona_bdd_size(a->bddm);
   
   if (options.time) {
     timer_minimization.start();
@@ -287,7 +287,7 @@ st_dfa_minimization(DFA *a)
   num_minimizations++;
 
   if (options.statistics)
-    cout << "("  << result->ns << "," << bdd_size(result->bddm) << ")\n";
+    cout << "("  << result->ns << "," << mona_bdd_size(result->bddm) << ")\n";
 
   if (options.time) {
     timer_minimization.stop();
@@ -319,7 +319,7 @@ st_dfa_copy(DFA *a)
   }
 
   if (options.statistics) 
-    cout << "Copying (" << a->ns << "," << bdd_size(a->bddm) << ")\n";
+    cout << "Copying (" << a->ns << "," << mona_bdd_size(a->bddm) << ")\n";
     
   DFA *result = dfaCopy(a);
   num_copies++;
