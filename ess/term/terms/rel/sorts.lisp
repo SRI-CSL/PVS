@@ -67,6 +67,10 @@
 	  ))
 
 
+#+(and allegro-version>= (version>= 8 2))
+(eval-when (:execute :compile-toplevel :load-toplevel)
+  (setq *readtable* cl::*pvs-readtable*))
+
 ;;; The two types defined here each have a macro character and sexp printed
 ;;; representation:   #t is used for ttypes (term types) and #@ is used for
 ;;; opsig's (operator signatures).
