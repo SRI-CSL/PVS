@@ -4,6 +4,10 @@
 (use-package '("OPER" "OCC" "TERM" "SORT" "LANG"))
 
 
+#+(and allegro-version>= (version>= 8 2))
+(eval-when (:execute :compile-toplevel :load-toplevel)
+  (setq *readtable* cl::*pvs-readtable*))
+
 
 (defparameter *sbrt-sort-table*
               (make-sort-table
