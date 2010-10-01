@@ -76,6 +76,6 @@
 (use-package :ergolisp)
 (use-package :ergolisp :tools)
 
-;; Workaround in Allegro / Dec3100 compiler bug before version 3.1
-#+(and allegro dec3100 allegro-v3.0)
-(push2 :source t (tools::efile-local-opts '#>e"lp-special.lisp"))
+;; ;; Workaround in Allegro / Dec3100 compiler bug before version 3.1
+;; #+(and allegro dec3100 allegro-v3.0)
+;; (push2 :source t (tools::efile-local-opts '#>e"lp-special.lisp"))
