@@ -1543,6 +1543,7 @@
 	 (compatible? (domain ctype) rtype)
 	 (recordtype? (find-supertype (range ctype)))
 	 (every #'(lambda (nassn)
-		    (member (caar nassn) (fields rtype) :test #'same-id))
+		    (member (caar (arguments nassn))
+			    (fields rtype) :test #'same-id))
 		assns))))
   
