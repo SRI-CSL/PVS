@@ -2205,6 +2205,22 @@
 	   (integerp (id x))
 	   (mappings (module-instance (resolution x))))))
 
+(defmethod full-name? ((x adt-name-expr))
+  (and (adt x)
+       (resolution (adt x))
+       (module-instance (resolution (adt x)))
+       (or (null (current-theory))
+	   (not (eq (module (declaration (resolution (adt x))))
+		    (current-theory)))
+	   (not (eq (id x) (id (resolution (adt x)))))
+	   (actuals (module-instance (resolution (adt x))))
+	   (integerp (id x))
+	   (mappings (module-instance (resolution (adt x)))))
+       (or (not *exclude-prelude-names*)
+	   (not (from-prelude? (declaration x)))
+	   (integerp (id x))
+	   (mappings (module-instance (resolution (adt x)))))))
+
 (defmethod full-name? ((x type-expr))
   (if (print-type x)
       (full-name? (print-type x))
@@ -2238,6 +2254,25 @@
 			(when *full-name-depth*
 			  (1- *full-name-depth*)))
     'mappings (mappings (module-instance (resolution x)))))
+
+(defmethod full-name! ((x adt-name-expr))
+  (copy x
+    'id (id (resolution x))
+    'mod-id (when (or (null (current-theory))
+		      (integerp (id x))
+		      (not (eq (id (module-instance (resolution (adt x))))
+			       (id (current-theory)))))
+	      (id (module-instance (resolution (adt x)))))
+    'library (or (library x)
+		 (library (module-instance (resolution (adt x))))
+		 (when (and (declaration x)
+			    (library-datatype-or-theory?
+			     (module (declaration (adt x)))))
+		   (libref-to-libid (lib-ref (module (declaration x))))))
+    'actuals (full-name (actuals (module-instance (resolution (adt x))))
+			(when *full-name-depth*
+			  (1- *full-name-depth*)))
+    'mappings (mappings (module-instance (resolution (adt x))))))
 
 (defmethod full-name! ((te type-expr))
   (assert (print-type te))
