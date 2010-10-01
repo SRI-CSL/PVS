@@ -604,7 +604,7 @@
 	       (sub (simple-subrange? typ1))
 	       (bind-rest (cdr binds))
 	       (expr-rest (if bind-rest
-			      (mk-forall-expr
+			      (make!-forall-expr
 				  bind-rest
 				body)
 			      body)))
