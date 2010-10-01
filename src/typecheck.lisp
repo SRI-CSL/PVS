@@ -722,21 +722,21 @@
 
 
 (defun update-declarations-hash (theory theoryname)
-  (maphash #'(lambda (id decls)
-	       (declare (ignore id))
-	       (dolist (decl decls)
-		 (when (and (declaration? decl)
-			    (visible? decl)
-			    (exportable? decl theory)
-			    (not (unimported-mapped-theory?
-				  (module decl) theory theoryname)))
-		   (let ((map (find decl (mappings theoryname)
-				    :key #'(lambda (m)
-					     (declaration (lhs m))))))
-		     (unless (mapping-subst? map)
-		       (check-for-importing-conflicts decl)
-		       (put-decl decl))))))
-	   (lhash-table (declarations-hash (saved-context theory)))))
+  (let ((dhash (current-declarations-hash)))
+    (maphash #'(lambda (id decls)
+		 (dolist (decl decls)
+		   (when (and (declaration? decl)
+			      (visible? decl)
+			      (exportable? decl theory)
+			      (not (unimported-mapped-theory?
+				    (module decl) theory theoryname)))
+		     (let ((map (find decl (mappings theoryname)
+				      :key #'(lambda (m)
+					       (declaration (lhs m))))))
+		       (unless (mapping-subst? map)
+			 (check-for-importing-conflicts decl)
+			 (pushnew decl (get-lhash id dhash) :test #'eq))))))
+	     (lhash-table (declarations-hash (saved-context theory))))))
 
 ;;; Checks whether the given declaration is exportable from the given theory.
 ;;; to the current theory.
