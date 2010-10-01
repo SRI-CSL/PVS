@@ -172,7 +172,7 @@
 		  (xt-importing-elt importing-term)))
 	 (adtcases-term (term-arg3 datatype))
 	 (adtcases (xt-adtcases adtcases-term))
-	 (endid (xt-idop (xt-pidop (term-arg4 datatype)))))
+	 (endid (ds-vid (term-arg4 datatype))))
     (check-subtypes-constructors-consistency id subtypes adtcases)
     (unless (or (null id)
 		(eq id endid))
@@ -241,7 +241,7 @@
   (let ((assuming (term-arg0 datatype))
 	(importing (term-arg1 datatype))
 	(adtcases (term-arg2 datatype))
-	(endid (xt-idop (xt-pidop (term-arg3 datatype)))))
+	(endid (ds-vid (term-arg3 datatype))))
     (unless (or (null id)
 		(eq id endid))
       (parse-error (term-arg3 datatype)
@@ -2916,7 +2916,7 @@
 	 (or (null dpos)
 	     (valid-pvs-id** (subseq idstr (1+ dpos)) nil)
 	     (assq (intern (subseq idstr (1+ dpos)) :pvs) *pvs-operators*)))))
-
+  
 (defmethod valid-pvs-id** (str upto)
   (and (alpha-char-p (char str 0))
        (every #'(lambda (ch)
