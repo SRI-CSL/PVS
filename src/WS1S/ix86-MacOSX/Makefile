@@ -65,4 +65,4 @@ dlmalloc.o: dlmalloc.c dlmalloc.h
 mem.o: mem.c dlmalloc.h
 
 clean : 
-	rm -f *.o *.a *.so
+	rm -f *.o *.a *.dylib
