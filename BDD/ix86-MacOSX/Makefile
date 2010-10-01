@@ -50,5 +50,5 @@ hash.o : hash.c hash.h alloc.h
 alloc.o : alloc.c
 
 clean : 
-	rm -f *.o *.a *.so
+	rm -f *.o *.a *.dylib
 
