@@ -280,9 +280,9 @@
 	      (push-word (store-obj (id theory)))
 	      (push-word (position obj (all-decls theory))))
 	    (reserve-space 3
-	      (assert (or (from-prelude? theory)
-			  (assq theory (all-usings *saving-theory*)))
-		      () "Storing inline-recursive-type from unimported theory")
+	      ;; (assert (or (from-prelude? theory)
+	      ;; 		  (assq theory (all-usings *saving-theory*)))
+	      ;; 	      () "Storing inline-recursive-type from unimported theory")
 	      (push-word (store-obj 'declref))
 	      (push-word (store-obj (id theory)))
 	      (push-word (position obj (all-decls theory)))))
