@@ -507,26 +507,30 @@
     (when (and (null (library (theory-name thdecl)))
 	       (eq (id (theory-name thdecl)) (id (current-theory))))
       (type-error (theory-name thdecl)
-	"Formal theory declarations may not refer to the containing theory"))	
-    (let* ((th (get-typechecked-theory theory-name))
-	   (thname (expanded-theory-name theory-name))
-	   (theory (declaration thname))
-	   (tgt-name (target thname))
-	   (tgt-theory (when tgt-name (get-typechecked-theory tgt-name))))
-      (inlined-theory-info thdecl theory thname)
+	"Formal theory declarations may not refer to the containing theory"))
+    (let ((th (get-typechecked-theory theory-name)))
       (when (actuals theory-name)
-	(unless (length= (formals-sans-usings theory) (actuals theory-name))
+	(unless (length= (formals-sans-usings th) (actuals theory-name))
 	  (type-error theory-name "Wrong number of actuals in ~a"
 		      theory-name))
 	(typecheck-actuals theory-name)
 	;; Is check-compatible-params needed?
 	)
-      (let* ((mappings (determine-implicit-mappings theory thname tgt-name tgt-theory))
-	     (full-thname (lcopy thname :mappings mappings :target nil)))
-	(when tgt-theory
-	  (typecheck-using tgt-name))
-	(set-type-actuals-and-maps full-thname)
-	(typecheck-inlined-theory* theory full-thname thdecl)))))
+      (let* ((thname (expanded-theory-name theory-name))
+	     (theory (declaration thname))
+	     (tgt-name (target thname))
+	     (tgt-theory (when tgt-name (get-typechecked-theory tgt-name))))
+	(inlined-theory-info thdecl theory thname)
+	(let* ((mappings (determine-implicit-mappings
+			  theory thname tgt-name tgt-theory))
+	       (full-thname (lcopy thname :mappings mappings :target nil)))
+	  (when tgt-theory
+	    (typecheck-using tgt-name))
+	  (set-type-actuals-and-maps full-thname)
+	  (unless (fully-instantiated? full-thname)
+	    (type-error theory-name
+	      "Theory name ~a must be fully instantiated" theory-name))
+	  (typecheck-inlined-theory* theory full-thname thdecl))))))
 
 (defun inlined-theory-info (thdecl theory thname)
   (let ((abbr-info
@@ -631,9 +635,9 @@
 			      (setf (module sd) (current-theory))
 			      (typecase sd
 				((or type-def-decl const-decl mod-decl)
-				 (let* ((type (subst-new-map-decl-type sd dalist owlist))
-					(res (make-resolution sd
-					       (current-theory-name) type))
+				 (subst-new-map-decl-type sd dalist owlist)
+				 (let* ((res (make-resolution sd
+					       (current-theory-name)))
 					(nm (mk-name-expr nid nil nil res))
 					(act (make-instance 'actual :expr nm)))
 				   (when (type-decl? sd)
@@ -661,6 +665,7 @@
 							    :type-value (type-value sd))))
 				   (push (cons d act) dalist)))
 				(inline-recursive-type
+				 ;;(break "inline-recursive-type")
 				 (subst-new-map-decl-type sd dalist owlist)
 				 (push (cons d sd) owlist))
 				(var-decl nil)
@@ -672,8 +677,6 @@
       (setf (theory-mappings decl) dalist)
       (setf (other-mappings decl) owlist)
       (subst-new-map-decls (theory stheory) dalist owlist)
-      (mapc #'(lambda (x) (subst-new-map-decls (cdr x) dalist owlist)) dalist)
-      (mapc #'(lambda (x) (subst-new-map-decls (cdr x) dalist owlist)) owlist)
       ;; (break "make-inlined-theory")
       (make-inlined-theory-decls stheory decl))))
 
@@ -681,6 +684,7 @@
 (defvar *subst-new-other-decls*)
 
 (defmethod subst-new-map-decl-type ((sd mod-decl) dalist owlist)
+  (declare (ignore dalist owlist))
   nil)
 
 (defmethod subst-new-map-decl-type ((sd type-decl) dalist owlist)
@@ -699,33 +703,38 @@
 (defmethod subst-new-map-decl-type ((sd const-decl) dalist owlist)
   (let ((*subst-new-map-decls* dalist)
 	(*subst-new-other-decls* owlist))
-    (subst-new-map-decls* (type sd))))
+    (setf (type sd) (subst-new-map-decls* (type sd)))))
 
 (defmethod subst-new-map-decl-type ((adt inline-recursive-type) dalist owlist)
   (let ((*subst-new-map-decls* dalist)
 	(*subst-new-other-decls* owlist)
 	(tdecl (find-if #'type-decl? (generated adt) :from-end t)))
+    ;;(break "subst-new-map-decl-type (inline-recursive-type)")
     (setf (adt-type-name adt)
 	  (mk-adt-type-name (id adt) nil nil nil adt))
     (setf (resolutions (adt-type-name adt))
-	  (list (mk-resolution tdecl (current-theory-name) (adt-type-name adt))))
-    (mapc #'subst-new-map-decl (constructors adt))
+	  (list (mk-resolution tdecl (current-theory-name)
+			       (adt-type-name adt))))
+    (setf (constructors adt)
+	  (mapcar #'subst-new-map-decls* (constructors adt)))
     (setf (adt-theory adt) (module adt))))
 
 (defun subst-new-map-decls (decls dalist owlist)
   (let ((*subst-new-map-decls* dalist)
 	(*subst-new-other-decls* owlist))
-    (mapcar #'subst-new-map-decl decls)))
+    (mapc #'subst-new-map-decl decls)))
 
 (defmethod subst-new-map-decl ((decl type-decl))
-  (subst-new-map-decls* (formals decl))
+  (setf (formals decl) (subst-new-map-decls* (formals decl)))
   (setf (generated-by decl) nil)
-  (subst-new-map-decls* (type-value decl)))
+  (setf (type-value decl) (subst-new-map-decls* (type-value decl))))
 
 (defmethod subst-new-map-decl ((decl const-decl))
   (let* ((nfmls (subst-new-map-decls* (formals decl)))
-	 (odecl (car (rassoc decl *subst-new-map-decls* :test #'eq :key #'declaration)))
-	 (bindings (pairlis (apply #'append (formals odecl)) (apply #'append nfmls)))
+	 (odecl (car (rassoc decl *subst-new-map-decls*
+			     :test #'eq :key #'declaration)))
+	 (bindings (pairlis (apply #'append (formals odecl))
+			    (apply #'append nfmls)))
 	 (ntype (subst-new-map-decls* (substit (type decl) bindings)))
 	 (ndef (subst-new-map-decls* (substit (definition decl) bindings))))
     (assert (or (null ndef)
@@ -735,11 +744,11 @@
     (setf (formals decl) nfmls)
     (setf (definition decl) ndef)
     (setf (type decl) ntype)
-    (setf (declared-type decl) (subst-new-map-decls* (substit (declared-type decl) bindings)))
+    (setf (declared-type decl)
+	  (subst-new-map-decls* (substit (declared-type decl) bindings)))
     (when (definition decl)
       (setf (def-axiom decl) nil)
       (make-def-axiom decl))
-    (when (eq (id decl) 'wfCT3.lang1.expOK) (break "wfCT3.lang1.expOK"))
     (setf (generated-by decl) nil)
     (setf (eval-info decl) nil)
     (when (def-decl? decl)
@@ -783,12 +792,31 @@
     (setf (theory-name imp) tn)))
 
 (defmethod subst-new-map-decl ((constr simple-constructor))
-  (mapc #'subst-new-map-decl (arguments constr))
-  ;;(setf (constructors adt) (subst-new-map-decls* (constructors adt)))
-  
+  (break "subst-new-map-decl (simple-constructor)")
+  (copy constr
+    :arguments (mapcar #'subst-new-map-decls* (copy-all (arguments constr)))
+    :con-decl (subst-new-map-decls* (copy-all (con-decl constr)))
+    :rec-decl (subst-new-map-decls* (copy-all (con-decl constr)))
+    :acc-decls (mapcar #'subst-new-map-decls* (copy-all (acc-decls constr))))
   )
 
+(defmethod subst-new-map-decl ((c adt-constructor-decl))
+  ;;(break "subst-new-map-decl (adt-constructor-decl)")
+  (copy c
+    :declared-type (subst-new-map-decls* (copy-all (declared-type c)))
+    :type (subst-new-map-decls* (copy-all (type c)))))
+
+(defmethod subst-new-map-decl ((a adt-accessor-decl))
+  ;;(break "subst-new-map-decl (adt-accessor-decl)")
+  (copy a
+    :refers-to nil
+    :module nil
+    :declared-type (subst-new-map-decls* (copy-all (declared-type a)))
+    :type (subst-new-map-decls* (copy-all (type a)))))
+    
+
 (defmethod subst-new-map-decl ((decl adtdecl))
+  (when (eq (id decl) 'n) (break "subst-new-map-decl adtdecl"))
   (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
   (setf (type decl) (subst-new-map-decls* (type decl)))
   (setf (bind-decl decl) (subst-new-map-decls* (bind-decl decl))))
@@ -821,6 +849,22 @@
 
 (defmethod subst-new-map-decl ((decl conversion-decl))
   (setf (expr decl) (subst-new-map-decls* (expr decl))))
+
+(defmethod subst-new-map-decl ((adt inline-recursive-type))
+  ;;(break "subst-new-map-decl (inline-recursive-type)")
+  (setf (constructors adt) (subst-new-map-decls* (constructors adt)))
+  (setf (adt-type-name adt) (subst-new-map-decls* (adt-type-name adt)))
+  (setf (adt-theory adt) (module adt))
+  ;; (setf (generated adt)
+  ;; 	(mapcar #'(lambda (d)
+  ;; 		    (let ((nd (cdr (assq d *subst-new-map-decls*))))
+  ;; 		      (if nd
+  ;; 			  (declaration (expr nd))
+  ;; 			  (let ((od (assq d *subst-new-other-decls*)))
+  ;; 			    (assert od)
+  ;; 			    od))))
+  ;; 	  (generated adt)))
+  )
 
 (defmethod subst-new-map-decl ((decl declaration))
   (break "Need more methods"))
@@ -904,6 +948,7 @@
   (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*)))
 	(nres (subst-new-map-decls* (resolutions obj)))
 	(adt (adt obj)))
+    ;;(break "subst-new-map-decl* (constructor-name-expr)")
     (assert (or (null act) (actual? act)))
     (copy obj
       :id (if act (id (expr act)) (id obj))
@@ -1160,6 +1205,7 @@
   '(metre kilogram second coulomb candle degree_kelvin radian))
 
 (defmethod typecheck* ((decl units-decl) expected kind arguments)
+  (declare (ignore expected kind arguments))
   (when (formals decl)
     (type-error decl
       "Unit declarations may not have parameters"))
@@ -1176,6 +1222,7 @@
   (setf (type-value decl) *real*))
 
 (defmethod typecheck* ((ue units-appl) expected kind arguments)
+  (declare (ignore expected kind arguments))
   (case (operator ue)
     (* (let ((lhs (if (numberp (args1 ue))
 		      (args1 ue)
@@ -1185,7 +1232,7 @@
 		      (typecheck* (args2 ue) nil nil nil))))
 	 (if (numberp lhs)
 	     (if (numberp rhs)
-		 (type-error units-appl "Units must include a name")
+		 (type-error ue "Units must include a name")
 		 (setf (scale ue) (* lhs (scale rhs))
 		       (dimensionality ue) (dimensionality rhs)))
 	     (if (numberp rhs)
@@ -1204,7 +1251,7 @@
 		      (typecheck* (args2 ue) nil nil nil))))
 	 (if (numberp lhs)
 	     (if (numberp rhs)
-		 (type-error units-appl "Units must include a name")
+		 (type-error ue "Units must include a name")
 		 (setf (scale ue) (/ lhs (scale rhs))
 		       (dimensionality ue) (map 'vector #'- (dimensionality rhs))))
 	     (if (numberp rhs)
@@ -1224,6 +1271,7 @@
   (cadr (arguments ue)))
 
 (defmethod typecheck* ((ue units-name) expected kind arguments)
+  (declare (ignore expected kind arguments))
   (let ((res (remove-if-not #'(lambda (r)
 				(units-decl? (declaration r)))
 	       (resolve ue 'type nil))))
