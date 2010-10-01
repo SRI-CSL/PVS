@@ -445,6 +445,16 @@
 	    (replace-expr* lhs rhs (resolutions expr) nil))
 	  expr)))
 
+(defmethod replace-expr* (lhs rhs (expr adt-name-expr) lastopinfix?)
+  (if (replace-eq lhs expr)
+      (parenthesize rhs lastopinfix?)
+      (if *replace-in-actuals?*
+	  (lcopy expr
+	    'actuals (replace-expr* lhs rhs (actuals expr) nil)
+	    'resolutions (replace-expr* lhs rhs (resolutions expr) nil)
+	    'adt-type (replace-expr* lhs rhs (adt expr) nil))
+	  expr)))
+
 ;;NSH(2.26.95): replace no longer goes inside actuals in response
 ;;to Paul Miner's complaint.  
 
