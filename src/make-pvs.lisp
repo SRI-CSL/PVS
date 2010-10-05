@@ -67,6 +67,7 @@
      :include-composer nil
      :include-debugger (not runtime?)
      :include-devel-env (not runtime?)
+     :include-locales nil
      :include-tpl t
      :include-xcw nil
      :internal-debug nil

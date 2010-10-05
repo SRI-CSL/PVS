@@ -838,6 +838,12 @@
   #+(or (and allegro-version>= (version>= 4 0)) :mcl :sbcl)
   (pushnew :cltl2 *features*))
 
+
+#+(and allegro-version>= (version>= 8 2))
+(eval-when (:execute :compile-toplevel :load-toplevel)
+  (setq *readtable* cl::*pvs-readtable*))
+
+
 ;;; ********************************
 ;;; Provide/Require/*modules* ******
 ;;; ********************************
