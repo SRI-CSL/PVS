@@ -8,6 +8,10 @@
 
 (export '())
 
+#+(and allegro-version>= (version>= 8 2))
+(eval-when (:execute :compile-toplevel :load-toplevel)
+  (setq *readtable* cl::*pvs-readtable*))
+
 (defparameter *sb-opsig-table*
               (make-opsig-table
                '((#^string-aug .

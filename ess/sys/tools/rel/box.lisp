@@ -274,8 +274,6 @@
   (set-dispatch-macro-character #\# #\> #'box-reader))
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
-  (format t "~%*readtable* is now ~s,~%*package* is ~s~%"
-    *readtable* *package*)
   (\#>))
 
 (defun box-cerror (continue-string format-string &rest args)
