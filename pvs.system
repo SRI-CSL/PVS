@@ -27,14 +27,6 @@
 
 (in-package :common-lisp)
 
-#+(and allegro-version>= (version>= 8 2))
-(eval-when (:execute :compile-toplevel :load-toplevel)
-  ;; Allegro 8.2 does not allow 'the' readtable to be modified
-  (defvar *pvs-readtable* (copy-readtable nil))
-  (setq *readtable* *pvs-readtable*)
-  (setf (third (assoc '*readtable* excl:*cl-default-special-bindings*))
-	'*pvs-readtable*))
-
 (#-(or cmu sbcl excl) progn
  #+cmu ext:without-package-locks
  #+sbcl sb-ext:without-package-locks
@@ -250,7 +242,7 @@
 				   #+(and x86 (not macosx)) "ix86-Linux"
 				   #+(and x86-64 (not macosx)) "ix86_64-Linux"
 				   #+(and macosx powerpc) "powerpc-MacOSX"
-				   #+(and macosx x86) "ix86-MacOSX")
+				   #+(and macosx (or x86 x86-64)) "ix86-MacOSX")
 			 (utilpath (concatenate 'string
 				     *pvs-path* "/src/utils/" platform))
 			 (bddpath (concatenate 'string
