@@ -21,6 +21,14 @@
 
 (in-package :common-lisp)
 
+#+(and allegro-version>= (version>= 8 2))
+(eval-when (:execute :compile-toplevel :load-toplevel)
+  ;; Allegro 8.2 does not allow 'the' readtable to be modified
+  (defvar *pvs-readtable* (copy-readtable nil))
+  (setq *readtable* *pvs-readtable*)
+  (setf (third (assoc '*readtable* excl:*cl-default-special-bindings*))
+	'*pvs-readtable*))
+
 (#-(or cmu sbcl excl) progn
  #+cmu ext:without-package-locks
  #+sbcl sb-ext:without-package-locks
@@ -67,6 +75,7 @@
   #+(and allegro linux x86-64) "l64fasl" ; Intel x86_64
   #+(and allegro macosx powerpc) "mfasl" ; Mac OS X powerpc
   #+(and allegro macosx x86) "nfasl"	; Mac OS X intel
+  #+(and allegro macosx x86-64) "n64fasl"	; Mac OS X intel x86_64
   #+(and lucid lcl4.1 sparc) "sbin"	; Sun4 new Lucid
   #+(and lucid (not lcl4.1) sparc) "obin" ; Sun4 old Lucid
   #+(and lucid rios) "rbin"		; PowerPC/RS6000
