@@ -3164,6 +3164,7 @@ void bdd_print_stats (FILE *fp)
 
 void BDD_bdd_init (void)
 {
+  
   /* Guard against multiple initialisations: */
   if (BDD_PACKAGE_INITIALIZED) {
     if (bdd_verbose)

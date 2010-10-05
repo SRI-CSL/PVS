@@ -79,6 +79,7 @@ extern   BDDPTR *bdd_subst_vec  (BDDPTR *F, int i, int j, int var, BDDPTR g);
 extern   BDDPTR bdd_subst2                     (BDDPTR h, BDDPTR g, BDDPTR f);
 */
 extern   BDDPTR bdd_subst_par (BDDPTR *f_vec, BDD_LIST vars, BDDPTR g);
+extern   BDDPTR bdd_subst_par_list (BDD_LIST f_list, BDD_LIST vars, BDDPTR g);
 extern   BDDPTR bdd_compose                    (BDDPTR f, BDDPTR g, BDDPTR h);
 extern      int bdd_cube_p                     (BDDPTR f);
 extern      int bdd_size_cube                  (BDDPTR cube);

@@ -8,8 +8,10 @@ MACOSX_DEPLOYMENT_TARGET=10.2
 LD = ld
 LDFLAGS = -bundle /usr/lib/bundle1.o -flat_namespace -undefined suppress -L./ -weak_library /usr/lib/libSystem.B.dylib
 CC = cc
-CFLAGS = -dynamic -DNDEBUG $(INCLUDES)
-XCFLAGS = -O
+CFLAGS = -dynamic -DNDEBUG -arch x86_64 $(INCLUDES)
+#CFLAGS = -dynamic -g -Wall -arch x86_64 $(INCLUDES)
+# XCFLAGS = -O
+XCFLAGS = 
 SHELL = /bin/sh
 VPATH = ..:../bdd/utils:../bdd/src:../mu/src
 

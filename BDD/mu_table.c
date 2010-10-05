@@ -1,5 +1,5 @@
-#include "bdd_fns.h" 
-#include "mu.h"
+#include "bdd_fns.h"
+#include "mu_interface.h"
 
 Formula mu___mu_mk_false_formula (void) {return mu_mk_false_formula ();}
 

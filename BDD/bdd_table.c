@@ -1,4 +1,7 @@
 #include "bdd_fns.h"
+#include "hash.h"
+#include "appl.h"
+#include "bdd_interface.h"
 
 BDDPTR bdd___bdd_top_var (BDDPTR f) {return bdd_top_var (f);}
 
@@ -13,15 +16,20 @@ int bdd___null_list_p (LIST x) {return null_list_p (x);}
 void bdd___elem_contents (LIST_ELEM_PTR x) {elem_contents (x);}
 
 LIST_ELEM_PTR bdd___list_first (LIST x) {
-  return (LIST_ELEM_PTR) list_first (x);
+  //  return (LIST_ELEM_PTR) list_first (x);
+  return LIST_FIRST (x);
 }
 
-LIST_ELEM_PTR bdd___list_last (LIST x) {return (LIST_ELEM_PTR) list_last (x);}
+LIST_ELEM_PTR bdd___list_last (LIST x) {
+  //return (LIST_ELEM_PTR) list_last (x);
+  return LIST_LAST (x);
+}
 
 void bdd___list_info (LIST x) {list_info (x);}
 
 LIST_ELEM_PTR bdd___list_next (LIST_ELEM_PTR x) {
-  return (LIST_ELEM_PTR) list_next (x);
+  //return (LIST_ELEM_PTR) list_next (x);
+  return LIST_NEXT (x);
 }
 
 void bdd___set_bdd_do_gc (int flag) {set_bdd_do_gc (flag);}
@@ -37,7 +45,7 @@ void bdd___set_bdd_use_neg_edges (int flag)
 void bdd___set_bdd_use_inv_edges (int flag)
   {set_bdd_use_inv_edges (flag);}
 
-int bdd___bdd_varid (BDDPTR f) {bdd_varid (f);}
+int bdd___bdd_varid (BDDPTR f) {return bdd_varid (f);}
 
 int bdd___bdd_void_p (BDDPTR f) {return bdd_void_p (f);}
 
@@ -54,11 +62,13 @@ int bdd___bdd_term_p (BDDPTR f) {return bdd_term_p (f);}
 int bdd___bdd_lit_p (BDDPTR f) {return bdd_lit_p (f);}
 
 BDDPTR bdd___bdd_cofactor_pos_ (BDDPTR f) {
-  return (BDDPTR) bdd_cofactor_pos_ (f);
+  // return (BDDPTR) bdd_cofactor_pos_ (f);
+  return BDD_COFACTOR_POS (f);
 }
 
 BDDPTR bdd___bdd_cofactor_neg_ (BDDPTR f) {
-  return (BDDPTR) bdd_cofactor_neg_ (f);
+  // return (BDDPTR) bdd_cofactor_neg_ (f);
+  return BDD_COFACTOR_NEG (f);
 }
 
 int bdd___BDD_bdd_size (BDDPTR f) {return BDD_bdd_size (f);}

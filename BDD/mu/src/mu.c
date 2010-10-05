@@ -1437,8 +1437,12 @@ BDDPTR mu_interpret_formula (Formula f, R_Interpret Ip, Term FT)
     {
       int       nr_args = LIST_SIZE (F_APPLY_SUBS (f));
       BDDPTR      *args = MALLOC_ARRAY (nr_args, BDDPTR);
+#ifdef USE_CACHE      
       int all_evaluated = mu_interpret_formula_list (F_APPLY_SUBS (f),
 						     args, Ip, FT);
+#else
+      mu_interpret_formula_list (F_APPLY_SUBS (f), args, Ip, FT);
+#endif      
 
       tmp1 = mu_interpret_term (F_APPLY_TERM (f), Ip, FT);
 
@@ -1463,8 +1467,12 @@ BDDPTR mu_interpret_formula (Formula f, R_Interpret Ip, Term FT)
     {
       int       nr_args = LIST_SIZE (F_ONE_OF_SUBS (f));
       BDDPTR      *args = MALLOC_ARRAY (nr_args, BDDPTR);
+#ifdef USE_CACHE
       int all_evaluated = mu_interpret_formula_list (F_ONE_OF_SUBS (f),
 						     args, Ip, FT);
+#else
+      mu_interpret_formula_list (F_ONE_OF_SUBS (f), args, Ip, FT);
+#endif      
 
       R = bdd_one_of_vec (args, nr_args);
 
@@ -1483,8 +1491,12 @@ BDDPTR mu_interpret_formula (Formula f, R_Interpret Ip, Term FT)
     {
       int       nr_args = LIST_SIZE (F_NONE_OF_SUBS (f));
       BDDPTR      *args = MALLOC_ARRAY (nr_args, BDDPTR);
+#ifdef USE_CACHE
       int all_evaluated = mu_interpret_formula_list (F_NONE_OF_SUBS (f),
 						     args, Ip, FT);
+#else
+      mu_interpret_formula_list (F_NONE_OF_SUBS (f), args, Ip, FT);
+#endif      
 
       R = bdd_none_of_vec (args, nr_args);
 
