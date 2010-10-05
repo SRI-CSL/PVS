@@ -56,7 +56,7 @@ version="4.3-beta"
 echo Creating pvs-${version}-source.tgz
 tar ${TARFLAGS} -f pvs-${version}-source.tgz --exclude pvsbin \
   pvs.system *.lisp Makefile.in README INSTALL LICENSE NOTICES \
-  README.CVS README.configure \
+  README.CVS \
   configure configure.in config.guess config.sub install-sh bin/make-dist \
   pvs.in pvsio.in pvs.sty pvs-tex.sub \
   bin/pvs-platform bin/relocate bin/tarmail bin/untarmail bin/qepcad.bash \
@@ -124,7 +124,7 @@ ls -l pvs-${version}-source.tgz
 # pvs-system.tgz
 # Check whether we have enough to build the system tar,
 # If we have the most up-to-date (x)emacs, that is enough
-if [ -d emacs/emacs20 -a -d emacs/xemacs21 -a -d emacs/emacs22 ]
+if [ -d emacs/emacs20 -o -d emacs/xemacs21 -o -d emacs/emacs22 ]
 then
 pvssystemfiles="\
   README INSTALL LICENSE NOTICES pvs pvsio pvs-tex.sub pvs.sty bin/relocate \
