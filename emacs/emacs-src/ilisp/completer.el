@@ -86,11 +86,11 @@
 (defvar completer-load-hook nil
   "Hook called when minibuffer partial completion is loaded.")
 
-(defvar completer-disable nil
+(defvar completer-disable t
   "*If T, turn off partial completion.  Use the command
 \\[completer-toggle] to set this.")
 
-(defvar completer-complete-filenames t
+(defvar completer-complete-filenames nil
   "*If T, then each component of a filename will be completed,
 otherwise just the final component will be completed.")
 
