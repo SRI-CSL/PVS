@@ -536,8 +536,9 @@ $(sbcl-devel) $(sbcl-rt) : $(image-deps) \
 		      --eval "(unwind-protect \
 				  (mk:operate-on-system :pvs :compile) \
 				(save-lisp-and-die \"$@\" \
-				    :toplevel (function startup-pvs)
-				    :executable t))"
+				    :toplevel (function startup-pvs) \
+				    :executable t \
+                               ))"
 	-rm $(PVSPATH)BDD/$(PLATFORM)/bdd-sbcl.*
 	cp $(SBCLISPEXE) $(subst $(SYSTEM)-sbclisp,,$@)
 	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-sbclisp,,$@)
