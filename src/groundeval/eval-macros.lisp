@@ -243,7 +243,7 @@
 	     (if (pvs-array-closure-p funval)
 		 (funcall (pvs-array-closure-closure funval) ,@args)
 		 (if (pvs-closure-hash-p funval)
-		     (pvs-closure-hash-lookup funval ,args)
+		     (pvs-closure-hash-lookup funval ,@args)
 		     (funcall funval ,@args)))))))
 
 (defmacro trap-undefined (expr)
