@@ -240,10 +240,58 @@
 	 (svref funval ,@args)
 	 (if (pvs-outer-array-p funval)
 	     (pvs-outer-array-lookup funval ,@args) 
-	     (funcall funval ,@args)))))
+	     (if (pvs-array-closure-p funval)
+		 (funcall (pvs-array-closure-closure funval) ,@args)
+		 (if (pvs-closure-hash-p funval)
+		     (pvs-closure-hash-lookup funval ,args)
+		     (funcall funval ,@args)))))))
 
 (defmacro trap-undefined (expr)
   `(catch 'undefined ,expr))
+
+(defstruct pvs-array-closure
+  size closure)
+
+(defmacro mk-pvs-array-closure (size closure)
+  `(make-pvs-array-closure :size ,size
+			  :closure ,closure))
+
+(defmacro pvs-array-closure-lookup (array index)
+  `(funcall (pvs-array-closure-closure ,array) ,index))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;pvs-closure-hash is used to destructively evaluate non-array
+;;functions.  It consists of a pair of a hash-table and a closure.
+;;All updates are applied to the hash-table, and lookup goes through
+;;the hash-table first and then the closure. 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defstruct pvs-closure-hash
+  hash closure)
+
+(defmacro mk-pvs-closure-hash (hash closure)
+  `(make-pvs-closure-hash :hash ,hash
+			  :closure ,closure))
+
+(defmacro pvs-closure-hash-lookup (function argument)
+  `(let ((funval ,function)
+	 (argval ,argument))
+     (multiple-value-bind (val found)
+	 (gethash argval (pvs-closure-hash-hash funval))
+       (if found val
+	   (apply funval argval)))))
+
+(defmacro pvs-function-update (function argument value)
+    `(let ((funval ,function)
+	   (argval ,argument)
+	   (val ,value))
+       (if (pvs-closure-hash-p funval)
+	   (setf (gethash argval (pvs-closure-hash-hash funval))
+		 val)
+	   (let ((hash (make-hash-table :test #'pvs_equalp)))
+	     (setf (gethash argval hash) val)
+	     (mk-pvs-closure-hash hash funval)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defstruct pvs-array
   contents diffs size)
@@ -374,6 +422,23 @@
 	    rest-assoc))
       nil))
 
+;;The nondestructive array data structure works as follows: pvs-outer-array
+;;contains an alist (misleadingly called diffs), an offset, and an
+;;inner-array, and the latter contains a size, diffs alist, and a
+;;the contents array.  In the primary branch, the outer-array is empty,
+;;the inner-array contents are looked up.  Otherwise, you look up the 
+;;outer diffs.  If it doesn't appear in the outer diffs, then you look
+;;at the earliest displaced value following the offset.  Since the offset
+;;essentially timestamps the inner-diffs, this would be the value in the
+;;array when the outer array was activated.  If none of these diffs
+;;contains the entry, then the contents array has the valid value.
+;;The inner array is shared by the different references but not the
+;;outer one.  The outer offset and inner size match on the main branch,
+;;but diverge on the secondary ones.  When there are enough accumulated
+;;diffs, a new array with a fresh inner array is constructed by
+;;restoring old values in the inner diffs and carrying out the updates
+;;in the outer diffs.  This structure now becomes the main branch.   
+
 (defun pvs-outer-array-lookup (outer-array index)
   (let* ((arr outer-array)
 	  (ind index)
@@ -413,4 +478,134 @@
 	(newrec  (copy-seq ,rec)))
     (setf (svref newrec ,fieldnum) val)
     newrec))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;Defining Lisp representations for the types so that we can then
+;;pass type parameters in the Lisp code.  These type parameters are
+;;used for enumeration and destructive updates.  The main type structures
+;;we need are:  subrange, scalar, subtype, and tuple/record.
+
+(defstruct pvs-lisp-subrange  ;;represents [low, high)
+  low high)
+
+(defstruct pvs-lisp-scalar
+  constructors)
+
+(defstruct pvs-lisp-subtype
+  supertype predicate)
+
+(defstruct pvs-lisp-tuple
+  elemtypes)
+
+(defstruct pvs-lisp-array
+  bound offset rangetype)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defparameter *pvs-lisp-types-alist*
+  (list (cons *boolean* 'boolean)
+	(cons *naturalnumber*  'natural)
+	(cons *integer* 'integer)
+	(cons *rational* 'rational)
+	(cons *real* 'real)
+	(cons *number* 'number)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;converts PVS types into a Lisp representation that can be used
+;;by late-binding functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defmethod pvs-lisp-type ((type type-name) bindings)
+  (if (tc-eq type *number*)
+      'number
+      (when (formal-type-decl? (declaration type)) ;;must be in bindings
+	(cdr (assoc (declaration type) bindings :key #'declaration)))))
+
+(defun get-pvs-lisp-subrange (type bindings)
+  (let ((range (subrange? type)))
+    (if range
+	(make-pvs-lisp-subrange
+	 :low (pvs2cl_up* (car range) bindings nil)
+	 :high `(1+ ,(pvs2cl_up* (cdr range) bindings nil)))
+	(let ((below (below? type)))
+	  (if below
+	      (make-pvs-lisp-subrange
+	       :low 0
+	       :high (pvs2cl_up* below bindings nil))
+	      (let ((upto (upto? type)))
+		(if upto
+		    (make-pvs-lisp-subrange
+		     :low 0
+		     :high (1+ (pvs2cl_up* upto bindings nil)))
+		    nil)))))))
+					    
+
+(defmethod pvs-lisp-type ((type subtype) bindings)
+  (with-slots (supertype predicate) type
+    (let ((bind (assoc type *pvs-lisp-types-alist*
+			:test #'tc-eq)))
+      (if bind
+	  (cdr bind)
+	  (let ((subrange (get-pvs-lisp-subrange type bindings)))
+	    (or subrange
+		(make-pvs-lisp-subtype
+		 :supertype (pvs-lisp-type supertype bindings)
+		 :predicate (pvs2cl_up* predicate bindings nil)))))))) ;;livevars?
+
+(defmethod pvs-lisp-type ((type enumtype) bindings)
+  (declare (ignore bindings))
+  (with-slots (constructors) type
+    (make-pvs-lisp-scalar
+     :constructors (pvs2cl-constructors constructors (adt type)))))
+
+(defmethod pvs-lisp-type ((type tupletype) bindings)
+  (make-pvs-lisp-type 
+   :elemtypes (pvs-lisp-type (types type) bindings)))
+
+(defmethod pvs-lisp-type ((type recordtype) bindings)
+  (make-pvs-lisp-tuple 
+   :elemtypes (pvs-lisp-type (fields type) bindings)))
+
+
+(defmethod pvs-lisp-type ((type list) bindings)
+  (cond ((null type) nil)
+	(t (if (binding? (car type))
+	       (let* ((ty1 (car type))
+		      (car-binding (if (rassoc ty1 bindings)
+				       (pvs2cl-newid (id ty1) bindings)
+				       (lisp-id (id ty1)))))
+		 (cons (pvs-lisp-type ty1 bindings)
+		       (pvs-lisp-type (cdr type)
+				      (acons ty1
+					     car-binding
+					     bindings))))
+	       (cons (pvs-lisp-type (car type) bindings)
+		     (pvs-lisp-type (cdr type) bindings))))))
+
+(defmethod pvs-lisp-type ((type field-decl) bindings)
+  (pvs-lisp-type (type type) bindings))
+
+(defmethod pvs-lisp-type ((type dep-binding) bindings)
+  (pvs-lisp-type (type type) bindings))
+
+(defmethod pvs-lisp-type ((type funtype) bindings)
+  (with-slots (domain range) type
+    (let ((subrange (get-pvs-lisp-subrange (if (binding? domain)
+					       (type domain)
+					       domain)
+					   bindings)))
+      (if subrange
+	  (make-pvs-lisp-array
+	   :size `(- ,(pvs-lisp-subrange-low subrange)
+		     ,(pvs-lisp-subrange-high subrange))
+	   :offset (pvs-lisp-subrange-low subrange)
+	   :range (if (binding? domain)
+		      (pvs-lisp-type range (acons domain
+						  (pvs2cl-newid (id domain)
+								bindings)
+						  bindings))
+		      (pvs-lisp-type range bindings)))
+	  nil))))
+
+(defmethod pvs-lisp-type ((type t) bindings)
+  (declare (ignore bindings))
+  nil)
 
