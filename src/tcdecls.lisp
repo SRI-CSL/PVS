@@ -1904,34 +1904,42 @@
 	   (fixed-vars (fixed-inductive-variables decl all-vars))
 	   (rem-vars (remove-if #'(lambda (avar) (memq avar fixed-vars))
 		       all-vars))
-	   (pred-type (inductive-pred-type rem-vars rtype)))
+	   (pred-type (inductive-pred-type decl fixed-vars)))
       (check-inductive-occurrences decl pred-type fixed-vars rem-vars)
       (make-def-axiom decl)
       (make-inductive-def-inductions decl pred-type fixed-vars rem-vars)))
   decl)
 
-(defun inductive-pred-type (vars rtype)
-  (if (null vars)
-      rtype
-      (inductive-pred-type* vars rtype)))
+(defun inductive-pred-type (decl fixed-vars)
+  (inductive-pred-type* (formals decl)
+			(beta-reduce (definition decl))
+			fixed-vars))
 
-(defun inductive-pred-type* (vars rtype &optional types)
-  (if (null vars)
-      (typecheck* (mk-funtype (nreverse types) rtype) nil nil nil)
-      (let* ((var (car vars))
-	     (vtype (or (declared-type var)
-			(print-type (type var))
-			(type var)))
-	     (dep? (or (member var (freevars (cdr vars)) :key #'declaration)
-		       (member var (freevars rtype) :key #'declaration))))
-	(if dep?
-	    (let* ((dep-type (mk-dep-binding (id var) (type var) vtype))
-		   (alist (acons var dep-type nil)))
-	      (inductive-pred-type*
-	       (substit (cdr vars) alist)
-	       (substit rtype alist)
-	       (cons dep-type types)))
-	    (inductive-pred-type* (cdr vars) rtype (cons vtype types))))))
+(defmethod inductive-pred-type* ((formals cons) ex fixed-vars)
+  (let ((rtype (inductive-pred-type* (cdr formals) ex fixed-vars)))
+    (ind-pred-type (car formals) fixed-vars rtype)))
+
+;; (defun ind-pred-types (formals fixed-vars rtype)
+;;   (if (null formals)
+;;       rtype
+;;       (let ((nrtype (ind-pred-types (cdr formals) fixed-vars rtype)))
+;; 	(ind-pred-type (car formals) fixed-vars nrtype))))
+
+(defun ind-pred-type (formals fixed-vars rtype)
+  (let ((bds (remove-if #'(lambda (fm) (memq fm fixed-vars))
+	       formals)))
+    (if bds
+	(make-formals-funtype (list bds) rtype)
+	rtype)))
+
+(defmethod inductive-pred-type* ((formals null) (ex lambda-expr) fixed-vars)
+  (let ((rtype (inductive-pred-type* nil (expression ex) fixed-vars)))
+    (ind-pred-type (bindings ex) fixed-vars rtype)))
+
+(defmethod inductive-pred-type* ((formals null) ex fixed-vars)
+  (assert (tc-eq (range* (type ex)) *boolean*))
+  (type ex))
+
 
 (defun check-inductive-occurrences (decl pred-type fixed-vars rem-vars)
   (unless (check-inductive-occurrences* (definition-body decl) decl 1)
@@ -1974,25 +1982,37 @@
 			    (make-implication
 			     (beta-reduce (make-application lbody var1))
 			     (beta-reduce (make-application lbody var2)))))
-	(let* ((xid1 (make-new-variable '|x| lbody))
-	       (xid2 (make-new-variable '|x| lbody))
-	       (xbd1 (make-bind-decl xid1 (domain ptype)))
-	       (xbd2 (make-bind-decl xid2 (domain ptype)))
-	       (xvar1 (make-variable-expr xbd1))
-	       (xvar2 (make-variable-expr xbd2))
-	       (ante (make-forall-expr (list xbd1)
-		       (make-implication (make-application var1 xvar1)
-					 (make-application var2 xvar1))))
-	       (succ (make-forall-expr (list xbd2)
-		       (make-implication
-			(beta-reduce (make-application
-					 (make-application lbody var1)
-				       xvar2))
-			(beta-reduce (make-application
-					 (make-application lbody var2)
-				       xvar2))))))
+	(let* ((ante (make-monotonic-ante ptype var1 var2 lbody))
+	       (succ (make-monotonic-succ
+		      (beta-reduce (make-application lbody var1))
+		      (beta-reduce (make-application lbody var2)))))
 	  (make-forall-expr (list bd1 bd2)
 	    (make-implication ante succ))))))
+
+(defun make-monotonic-ante (ptype var1 var2 lbody &optional bds)
+  (if (tc-eq (find-supertype ptype) *boolean*)
+      (make-forall-expr (nreverse bds)
+	(make-implication var1 var2))
+      (let* ((xid (make-new-variable '|x| (cons lbody bds)))
+	     (xbd (make-bind-decl xid (domain ptype)))
+	     (xvar (make-variable-expr xbd))
+	     (app1 (make-application var1 xvar))
+	     (app2 (make-application var2 xvar)))
+	(make-monotonic-ante
+	 (range ptype) app1 app2 lbody (cons xbd bds)))))
+
+(defmethod make-monotonic-succ ((body1 expr) (body2 expr) &optional bds)
+  (make-forall-expr bds
+    (make-ind-implication body1 body2)))
+
+(defmethod make-monotonic-succ ((body1 lambda-expr) (body2 lambda-expr)
+				&optional bds)
+  (let* ((xbds (mapcar #'(lambda (bd) (make-bind-decl (id bd) (type bd)))
+		 (bindings body1)))
+	 (xvars (mapcar #'make-variable-expr xbds))
+	 (app1 (beta-reduce (make-application* body1 xvars)))
+	 (app2 (beta-reduce (make-application* body2 xvars))))
+    (make-monotonic-succ app1 app2 (append bds xbds))))
 
 ;;; parity is 1 for positive context, -1 for negative, and 0 for unknown
 ;;; Returns T if all occurrences are known to be positive.
@@ -2116,6 +2136,24 @@
 (defmethod definition-body ((ex expr))
   ex)
 
+(defmethod ind-def-pred-type (pred-type (decl const-decl))
+  (ind-def-pred-type pred-type (beta-reduce (definition decl))))
+
+(defmethod ind-def-pred-type (pred-type (ex lambda-expr))
+  (ind-def-pred-type (range pred-type) (expression ex)))
+
+(defmethod ind-def-pred-type (pred-type (ex expr))
+  pred-type)
+
+;;; Walks down the body of the inductive definition looking for variables
+;;; that never change, e.g., the R in
+;;;   TC(R)(x, y): INDUCTIVE bool
+;;;     = R(x,y) OR (EXISTS z: TC(R)(x,z) AND TC(R)(z,y))
+;;; The inductive predicate P then replaces TC(R), rather than TC.
+;;; This function copies the list of all variables, then with each recursive
+;;; occurrence of the inductive defn, removes those whose arguments are not
+;;; the same as the corresponding var.
+
 (defun fixed-inductive-variables (decl vars)
   (let ((fvars (copy-list vars)))
     (mapobject #'(lambda (ex)
@@ -2162,10 +2200,33 @@
 	(if (inductive-decl? decl)
 	    (make-ind-implication
 	     (subst-pred-for-ind nvar fixed-vars expr decl)
-	     (make-application* nvar (mapcar #'make-variable-expr rem-vars)))
+	     (make-ind-appl nvar rem-vars))
 	    (make-ind-implication
-	     (make-application* nvar (mapcar #'make-variable-expr rem-vars))
+	     (make-ind-appl nvar rem-vars)
 	     (subst-pred-for-ind nvar fixed-vars expr decl))))))
+
+(defun make-ind-appl (pvar avars)
+  (make-ind-appl* (type pvar) pvar
+		  (if (binding? (car avars))
+		      (mapcar #'make-variable-expr avars)
+		      avars)))
+
+(defun make-ind-appl* (ptype pappl avars)
+  (if (null avars)
+      pappl
+      (cond ((compatible? (domain ptype) (type (car avars)))
+	     (make-ind-appl* (range ptype)
+			     (make-application pappl (car avars))
+			     (cdr avars)))
+	    ((tupletype? (domain ptype))
+	     (let ((dtypes (types (domain ptype)))
+		   (dvars (subseq avars 0 (length (types (domain ptype))))))
+	       (assert (every #'(lambda (ty a) (compatible? ty (type a)))
+			      (types (domain ptype)) dvars))
+	       (make-ind-appl* (range ptype)
+			       (make-application* pappl dvars)
+			       (subseq avars (length (types (domain ptype)))))))
+	    (t (error "Somthing's wrong - please send your spec to pvs-bugs@csl.sri.com")))))
 
 (defun make-ind-implication (x y)
   (make-ind-implication* (type x) x y))
@@ -2227,9 +2288,9 @@
 	  (if (inductive-decl? decl)
 	      (make-ind-implication
 	       (subst-strong-pred-for-ind nvar fixed-vars expr decl)
-	       (make-application* nvar (mapcar #'make-variable-expr rem-vars)))
+	       (make-ind-appl nvar rem-vars))
 	      (make-ind-implication
-	       (make-application* nvar (mapcar #'make-variable-expr rem-vars))
+	       (make-ind-appl nvar rem-vars)
 	       (subst-strong-pred-for-ind nvar fixed-vars expr decl)))))))
 
 (defun subst-strong-pred-for-ind (nvar fixed-vars expr decl)
@@ -2379,11 +2440,11 @@
 		      (make-appl dname dargs)
 		      (if (null pargs)
 			  (copy var)
-			  (make-application* (copy var) pargs)))
+			  (make-ind-appl (copy var) pargs)))
 		     (make-ind-implication
 		      (if (null pargs)
 			  (copy var)
-			  (make-application* (copy var) pargs))
+			  (make-ind-appl (copy var) pargs))
 		      (make-appl dname dargs))))))
     (if (null rem-vars)
 	impl
