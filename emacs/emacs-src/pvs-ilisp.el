@@ -152,7 +152,7 @@ intervenes."
   (setq ilisp-program (format "%s -qq" (pvs-program)))
   (setq comint-prompt-regexp
 	"^[ ]*\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\)?\\(\\(<[-A-Za-z]* ?[0-9]*>
-  \\)\\3?\\|[-A-Za-z0-9]+([0-9]+): \\)\\|Rule\\? \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter")
+  \\)\\3?\\|[-A-Za-z0-9]+([0-9]+): \\)\\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter")
   (setq comint-interrupt-regexp  "Error: [^\n]* interrupt\)")
   (setq pvs-top-regexp
 	"^\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\)?\\(<?[-A-Za-z]* ?[0-9]*>\\|[-A-Za-z0-9]+([0-9]+):\\) ")
