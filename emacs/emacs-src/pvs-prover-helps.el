@@ -155,6 +155,7 @@ tcc                   T
 then                  C-t      Prompts for strategies
 typepred              t        Uses expression of region, or prompts
 undo                  u        Prefix arg is number of steps to undo
+undo-branch           C-u      
 
 
 The following commands provide a proof stepping facility, and require that
@@ -720,6 +721,25 @@ Prefix arg may be used to give number of steps to undo."
   (insert (format "(undo %d)y" num))
   (return-ilisp))
 
+;; From Ben Di Vito
+(defun pvs-prover-undo-branch ()
+  "Undo all the proof steps back to, but not including, the previous
+branching proof step.  Key binding: TAB C-u."
+  (interactive)
+  (let* ((num-steps (pvs-send-and-wait
+		     "(do ((ps *ps* (parent-proofstate ps))
+                           (label (label *ps*))
+                           (count 0 (1+ count)))
+                          ((not (and ps (equal label (label ps)))) (- count 1))
+                          nil)")))
+    (if (> num-steps 0)
+	(progn (goto-pvs-proof-buffer)
+	       (goto-char (point-max))
+	       (insert (format "(undo %s)" num-steps))
+	       (return-ilisp)
+	       (message (format "%s steps will be undone." num-steps)))
+	(message "No steps need to be undone."))))
+
 (defun pvs-prover-wrap-with-parens ()
   "Puts parentheses around the current line and sends a return."
   (interactive)
@@ -1045,6 +1065,7 @@ anything but a left paren or a \", ignoring whitespace."
 (define-key pvs-prover-helps-map "\C-t"  'pvs-prover-then)
 (define-key pvs-prover-helps-map "t"     'pvs-prover-typepred)
 (define-key pvs-prover-helps-map "u"     'pvs-prover-undo)
+(define-key pvs-prover-helps-map "\C-u"  'pvs-prover-undo-branch)
 
 (define-key pvs-prover-helps-map "1"     'pvs-prover-run-proof-step)
 (define-key pvs-prover-helps-map "U"     'pvs-prover-undo-proof-step)
