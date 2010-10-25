@@ -649,21 +649,14 @@
 	(let ((conds (collect-conds nexpr)))
 	  (when conds (add-if-conditions conditions conds))))))
 
-;;NSH(9-10-10): Added methods for conjunction, disjunction, implication.
-(defmethod top-collect-conds ((expr conjunction) conditions)
-  (top-collect-conds (args1 expr) conditions))
-
-(defmethod top-collect-conds ((expr disjunction) conditions)
-  (top-collect-conds (args1 expr) conditions))
-
-(defmethod top-collect-conds ((expr implication) conditions)
-  (top-collect-conds (args1 expr) conditions))
-
 (defmethod top-collect-conds ((expr expr) conditions)
-  (if (negation? expr)
-      (top-collect-conds (args1 expr) conditions)
-    (let ((conds (collect-conds expr)))
-      (when conds (add-if-conditions conditions conds)))))
+  (let ((conds (collect-conds expr)))
+    (when conds (add-if-conditions conditions conds))))
+
+;;NSF(10-24-10): Added method for negation, moving functionality from default
+;;expr case. 
+(defmethod top-collect-conds ((expr negation) conditions)
+  (top-collect-conds (args1 expr) conditions))
 
 ;;NSH(9-10-10): boundvars argument is no longer useful because of
 ;;the change to binding-exprs

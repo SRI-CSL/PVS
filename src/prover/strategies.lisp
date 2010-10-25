@@ -4607,3 +4607,175 @@ See name-replace."
 (defstep inst! (&optional (fnums *) copy? (relativize? t))
   (skip-msg "inst! does not work for now.")
   "" "")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defstep case-if (cases)
+  (if (consp cases)
+      (let ((top-case (car cases))
+	    (then-case (cadr cases))
+	    (else-case (caddr cases)))
+	(branch (case top-case)
+		((case-if then-case)
+		 (case-if else-case))))
+    (skip))
+  "Creates a case split according to a given structure so that
+   (cases '(A (B (C nil nil) (D nil nil)) (E nil nil))) yields
+   sequents with A, B, C |-...,
+              A, -B, D |- ...,
+              -A, E  |- ..."
+   "Case-splitting on ~a")
+
+(defstep case-if* (cases-list)
+  (if (consp cases-list)
+      (let ((fst (car cases-list))
+	    (rst (cdr cases-list)))
+	(then (case-if fst)
+	      (case-if* rst)))
+    (skip))
+  "Iterative version that applies case-if successively to each element of the
+conditions given in cases-list."
+  "Applying case-if iteratively")
+
+(defstep case-old-lift-if (fnums &optional (updates? t))
+  (let ((*lift-if-updates* updates?)
+	(sforms (select-seq  (s-forms *goal*) fnums))
+	(all-conds (loop for sf
+			 in sforms
+			 collect (top-collect-conds-old (formula sf)))))
+    (case-if* all-conds))
+  "Simulates the case-splits in PVS4.2."
+  "Case-splitting on lift-if conditions in PVS4.2")
+
+(defmethod top-collect-conds-old ((expr branch))
+  (let ((if-conds (collect-conds-old (condition expr))))
+    (if (null if-conds)
+	(let ((then-conds (top-collect-conds-old (then-part expr))))
+	  (if (null then-conds)
+	      (top-collect-conds-old (else-part expr))
+	      then-conds))
+	if-conds)))
+
+(defmethod top-collect-conds-old ((expr cases-expr))
+  (with-slots (expression selections else-part) expr
+      (let ((expr-conds (collect-conds-old expression)))
+	(or expr-conds
+	    (let ((selection-conds (collect-conds-old selections)))
+	      (or selection-conds
+		  (collect-conds-old else-part)))))))
+
+(defmethod top-collect-conds-old ((expr application))
+  (let ((nexpr (if *lift-if-updates*
+		   (translate-update-to-if expr)
+		   expr)))
+    (if (eq nexpr expr)
+	(call-next-method)
+	(collect-conds-old nexpr))))
+
+(defmethod top-collect-conds-old ((expr expr))
+  (if (negation? expr)
+      (top-collect-conds-old (args1 expr))
+      (collect-conds-old expr)))
+
+(defmethod collect-conds-old ((expr branch) &optional boundvars)
+  (if (branch? expr)
+      (let ((condn (condition expr)))
+	(unless (intersection (freevars condn) boundvars
+			      :test #'same-declaration)
+	  ;;no bound variables in the conditional
+	  (let ((conds (collect-conds-old condn boundvars)))
+	    (if (null conds)
+		(list condn
+		      (collect-conds-old (then-part expr) boundvars)
+		      (collect-conds-old (else-part expr) boundvars))
+		conds))))
+      (collect-conds-old (arguments expr) boundvars)))
+
+(defmethod collect-conds-old ((expr binding-expr) &optional  boundvars)
+  (collect-conds-old (expression expr) 
+			(append (bindings expr) boundvars)))
+
+;;; SO 9/5/94 - Added methods for projection-application and field-application
+(defmethod collect-conds-old ((expr projection-application) &optional boundvars)
+  (collect-conds-old (argument expr) boundvars))
+
+(defmethod collect-conds-old ((expr injection-application) &optional boundvars)
+  (collect-conds-old (argument expr) boundvars))
+
+(defmethod collect-conds-old ((expr injection?-application) &optional boundvars)
+  (collect-conds-old (argument expr) boundvars))
+
+(defmethod collect-conds-old ((expr extraction-application) &optional boundvars)
+  (collect-conds-old (argument expr) boundvars))
+
+(defmethod collect-conds-old ((expr field-application) &optional boundvars)
+  (collect-conds-old (argument expr) boundvars))
+
+(defmethod collect-conds-old ((expr application)  &optional  boundvars)
+  (if (and *lift-if-updates*
+	   (update-expr? (operator* expr))
+	   (null (intersection (freevars (update-application* expr))
+			       boundvars
+			       :test #'same-declaration)))
+      (let ((nexpr (translate-update-to-if expr)))
+	(if (eq nexpr expr)
+	    (let ((opconds (collect-conds-old (operator expr) boundvars)))
+	      (if (null opconds)
+		  (collect-conds-old (arguments expr)
+				 boundvars)
+		  opconds))
+	    (collect-conds-old nexpr)))
+      (let ((opconds (collect-conds-old (operator expr) boundvars)))
+	(if (null opconds)
+	    (collect-conds-old (arguments expr)
+			   boundvars)
+	    opconds))))
+
+(defun update-application* (expr)
+  (if (typep (operator expr) 'update-expr)
+      expr
+      (update-application* (operator expr))))
+
+(defmethod collect-conds-old ((expr record-expr) &optional boundvars)
+  (collect-conds-old (assignments expr) boundvars))
+
+(defmethod collect-conds-old ((expr tuple-expr) &optional boundvars)
+  (collect-conds-old (exprs expr) boundvars))
+
+(defmethod collect-conds-old ((expr update-expr) &optional boundvars)
+  (let ((expr-conds (collect-conds-old (expression expr) boundvars)))
+    (if (null expr-conds)
+	(collect-conds-old (assignments expr) boundvars)
+	expr-conds)))
+
+(defmethod collect-conds-old ((expr assignment) &optional boundvars)
+  (or  (collect-conds-old (arguments expr) boundvars)
+       (collect-conds-old (expression expr) boundvars)))
+
+(defmethod collect-conds-old ((expr cases-expr) &optional boundvars)
+  (unless (intersection (freevars (expression expr)) boundvars
+			:test #'same-declaration)
+    (collect-conds-old (translate-cases-to-if expr) boundvars)))
+
+(defmethod collect-conds-old ((expr selection) &optional boundvars)
+  (collect-conds-old (expression expr)
+		 (append (args expr) boundvars)))
+
+(defmethod collect-conds-old ((list list)  &optional  boundvars)
+  (if (null list)
+      nil
+      (or (collect-conds-old (car list) boundvars)
+	  (collect-conds-old (cdr list) boundvars))))
+
+			  
+			  
+
+(defmethod collect-conds-old ((expr name-expr)  &optional  boundvars)
+  (declare (ignore boundvars))
+  nil)
+
+(defmethod collect-conds-old ((expr number-expr)  &optional  boundvars)
+  (declare (ignore boundvars))
+  nil)
