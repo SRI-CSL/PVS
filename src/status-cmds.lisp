@@ -1389,7 +1389,10 @@
 					   (library-datatype-or-theory? th)
 					   (memq d used))
 				 (pushnew d unused)))))
-    (sort unused #'string< :key #'id)))
+    (sort unused #'(lambda (x y)
+		     (if (string= (id (module x)) (id (module y)))
+			 (string< (id x) (id y))
+			 (string< (id (module x)) (id (module y))))))))
 
 
 (defun unusedby-proof-of-formula (bufname origin line)
@@ -1422,7 +1425,11 @@
 		    (library-datatype-or-theory? th)
 		    (memq ar used-rewrites))
 	  (push ar unused))))
-    (sort unused #'string< :key #'id)))
+    (sort unused #'(lambda (x y)
+		     (if (string= (id (module x)) (id (module y)))
+			 (string< (id x) (id y))
+			 (string< (id (module x)) (id (module y))))))))
+						  
 
 (defun used-auto-rewrites (fdecl)
   (let* ((rewrites+ (mapappend #'rewrite-names
