@@ -119,7 +119,7 @@
 		     (typecheck-actuals name))
 		   (when (mappings name)
 		     (typecheck-mappings (mappings name) name))
-		   (unless (member name (get-importings theory))
+		   (unless (member name (get-importings theory) :test #'tc-eq)
 		     (set-type-actuals-and-maps name))
 		   name))))))
 
