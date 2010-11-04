@@ -887,17 +887,45 @@
 	     (mod-inst (module-instance resolution))
 	     (res-params (external-free-params resolution))
 	     (forms (reverse (create-formulas resolution context)))
+	     (nsubalist (renamed-subalist subalist resolution (car forms)))
 	     ;;(form (check-with-subst* forms subalist mod-inst res-params))
 	     (rest (check-with-subst (cdr resolutions) subalist context)))
 	(multiple-value-bind (form thinst)
-	    (check-with-subst* forms subalist mod-inst res-params)
+	    (check-with-subst* forms nsubalist mod-inst res-params)
 	  (if (and form
 		   (not (assoc form rest :test #'tc-eq)))
-	      (acons form
-		     (subst-mod-params resolution thinst
-				       (module (declaration resolution)))
-		     rest)
+	      (cons (list form
+			  (subst-mod-params resolution thinst
+					    (module (declaration resolution)))
+			  nsubalist)
+		    rest)
 	      rest)))))
+
+;; The form may have variables named apart, but the user is
+;; instantiating from the definition.  Thus the subalist may also
+;; need to be renamed
+(defun renamed-subalist (subalist resolution form)
+  (renamed-subalist* subalist
+		     (bindings
+		      (if (const-decl? (declaration resolution))
+			  (car (def-axiom (declaration resolution)))
+			  (closed-definition (declaration resolution))))
+		     (bindings form)))
+
+(defun renamed-subalist* (subalist dbindings fbindings &optional nsubalist)
+  (if (null subalist)
+      (nreverse nsubalist)
+      (let ((nsub (if (member (caar subalist) fbindings
+			      :test #'string= :key #'id)
+		      (car subalist)
+		      (let ((pos (position (caar subalist) dbindings
+					   :test #'string= :key #'id)))
+			(if (or (null pos) (null (nth pos fbindings)))
+			    (car subalist)
+			    (cons (string (id (nth pos fbindings)))
+				  (cdar subalist)))))))
+	(renamed-subalist* (cdr subalist)
+			   dbindings fbindings (cons nsub nsubalist)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;check-with-subst* checks if every substituted variable in subalist is a
@@ -1072,22 +1100,24 @@ The following are not possible variables: ~{~a,~}" badnames)
 					*current-context*))
 		     (possibilities
 		      (or (remove-if-not #'(lambda (poss)
-					     (typep (declaration (cdr poss))
+					     (typep (declaration (cadr poss))
 						    'formula-decl))
 			    all-possibilities)
 			  all-possibilities))
 		     (form (when (singleton? possibilities)
 			     (caar possibilities)))
 		     (res  (when (singleton? possibilities)
-			     (cdar possibilities)))
+			     (cadar possibilities)))
+		     (nsubalist (when (singleton? possibilities)
+				  (caddar possibilities)))
 		     (newalist
 		      (when form
 			(loop for x in
 			      (substitutable-vars form)
-			      when (assoc x subalist :test #'same-id)
+			      when (assoc x nsubalist :test #'same-id)
 			      collect
 			      (cons x
-				    (cdr (assoc x subalist
+				    (cdr (assoc x nsubalist
 						:test #'same-id)))))))
 		(when form ;;NSH(10.20.94)(let ((*generate-tccs* 'all)))
 		  (typecheck (module-instance res)
@@ -1114,7 +1144,7 @@ or supply more substitutions."
 			     ((subvars (substitutable-vars form))
 			      (remaining-vars
 			       (delete-first-occurrence
-				(mapcar #'car subalist)
+				(mapcar #'car nsubalist)
 				subvars :test #'same-id))
 			      (bindalist newalist)
 			      ;; (make-bindalist subvars subalist ps)
