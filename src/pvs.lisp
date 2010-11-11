@@ -2111,7 +2111,8 @@
 		    (remove-auto-save-proof-file)
 		    (let ((*to-emacs* t))
 		      (pvs-locate buffer fdecl
-				  (if prelude-offset
+				  (if (and prelude-offset
+					   (not (zerop prelude-offset)))
 				      (vector (- (line-begin place) prelude-offset)
 					      (col-begin place)
 					      (- (line-end place) prelude-offset)
@@ -2168,6 +2169,13 @@
 				    jtcc)
 				  decl-at)))
 		   (values decl (place decl))))
+	(proof-status
+	 (let* ((theory (get-theory name))
+		(fdecl (find-if #'(lambda (d)
+				    (and (formula-decl? d)
+					 (string= (id d) declname)))
+			 (all-decls theory))))
+	   (values fdecl (vector line 0 line 0))))
 	(t (if (pathname-directory name)
 	       (let* ((lpath (get-library-reference
 			      (namestring (make-pathname
@@ -2632,7 +2640,8 @@
 	   (buffer (third *edit-proof-info*))
 	   (prelude-offset (fourth *edit-proof-info*)))
       (pvs-locate buffer fdecl
-		  (if prelude-offset
+		  (if (and prelude-offset
+			   (> prelude-offset 0))
 		      (vector (- (line-begin place) prelude-offset)
 			      (col-begin place)
 			      (- (line-end place) prelude-offset)
