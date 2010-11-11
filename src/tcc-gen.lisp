@@ -1129,7 +1129,7 @@
 			    (resolution ex)
 			    (module (declaration ex))
 			    (memq (id (module (declaration ex)))
-				  '(|booleans| |equalities|
+				  '(|booleans| |equalities| |if_def|
 				    |number_fields| |reals|)))
 		       (when (and (name? ex)
 				  (declaration? (declaration ex))
