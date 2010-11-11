@@ -456,19 +456,21 @@ formula and invoking the prove command."
 	(let* ((buf (find-file-noselect fname))
 	       (region (cdr freg)))
 	  (if region
-	      (let ((pbuf (get-buffer-create theoryname)))
+	      (let ((pbuf (get-buffer-create theoryname))
+		    (poff nil))
 		(set-buffer pbuf)
-		(setq pvs-prelude (save-excursion
-				    (set-buffer buf)
-				    (goto-char (car region))
-				    (- (current-line-number) 1)))
+		(setq poff (save-excursion
+			     (set-buffer buf)
+			     (goto-char (car region))
+			     (- (current-line-number) 1)))
 		(when buffer-read-only (toggle-read-only))
 		(erase-buffer)
 		(insert-buffer-substring buf (car region) (cadr region))
 		(unless buffer-read-only (toggle-read-only))
 		(goto-char (point-min))
 		(pop-to-buffer pbuf)
-		(pvs-mode))
+		(pvs-mode)
+		(setq pvs-prelude poff))
 	      (error "%s is not in the prelude." fname))))))
 
 (defun get-prelude-file-and-region (theoryname)
