@@ -77,7 +77,16 @@ be detected."
 	with-timeout-value))))
 )
 
+(defstruct (pvs-formula-reference (:conc-name pvs-fref-))
+  "Created by pvs-formula-origin"
+  kind    ; symbol: pvs, prelude, prelude-theory, proof-status, tccs, ppe
+  formula ; string: name of formula
+  theory  ; string: name of theory
+  file    ; string: pvs file name (no extension)
+  buffer  ; buffer name
+  line    ; current line number in buffer
+  (prelude-offset 0) ; line offset within the prelude
+                     ; (0 unless kind is prelude-theory)
+  )
+
 (provide 'pvs-macros)
-
-
-
