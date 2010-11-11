@@ -82,22 +82,23 @@ prover to overwrite it at the end of the proof session."
   (interactive)
   (confirm-not-in-checker)
   (pvs-bury-output)
-  (multiple-value-bind (name declname origin)
-      (pvs-complete-formula-origin)
-    (let ((pvs-error nil))
-      (cond ((equal origin "pvs")
-	     (save-some-pvs-buffers)
-	     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-				    name)
-				nil 'tc 'dont-care))
-	    ((member origin '("ppe" "tccs"))
-	     (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" name)
-					nil 'tc nil)
-	       (error "%s is not typechecked" name))))
+  (let* ((fref (pvs-formula-origin))
+	 (fname (pvs-fref-file fref))
+	 (kind (pvs-fref-kind fref))
+	 (pvs-error nil))
+    (cond ((eq kind 'pvs)
+	   (save-some-pvs-buffers)
+	   (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
+				  fname)
+			      nil 'tc 'dont-care))
+	  ((member kind '(ppe tccs))
+	   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" fname)
+				      nil 'tc nil)
+	     (error "%s is not typechecked" fname))))
+    (unless pvs-error
+      (pvs-prove-formula fref rerun nil pvs-x-show-proofs)
       (unless pvs-error
-	(pvs-prove-formula name declname origin rerun nil pvs-x-show-proofs)
-	(unless pvs-error
-	  (switch-to-lisp t t))))))
+	(switch-to-lisp t t)))))
 
 (defpvs x-prove prove (&optional rerun)
   "Invokes the prover, with display, on the formula closest to the cursor
@@ -124,21 +125,22 @@ the formula.  With an argument, runs the proof in the background."
   (interactive)
   (confirm-not-in-checker)
   (pvs-bury-output)
-  (multiple-value-bind (name declname origin)
-      (pvs-complete-formula-origin)
-    (let ((pvs-error nil))
-      (cond ((equal origin "pvs")
-	     (save-some-pvs-buffers)
-	     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-				    name)
-				nil 'tc 'dont-care))
-	    ((member origin '("ppe" "tccs"))
-	     (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" name)
-					nil 'tc nil)
-	       (error "%s is not typechecked" name))))
-      (unless pvs-error
-	(pvs-prove-formula name declname origin 't (and current-prefix-arg t)
-			   pvs-x-show-proofs)))))
+  (let* ((fref (pvs-formula-origin))
+	 (kind (pvs-fref-kind fref))
+	 (fname (pvs-fref-file fref))
+	 (pvs-error nil))
+    (cond ((eq kind 'pvs)
+	   (save-some-pvs-buffers)
+	   (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
+				  fname)
+			      nil 'tc 'dont-care))
+	  ((member kind '(ppe tccs))
+	   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" fname)
+				      nil 'tc nil)
+	     (error "%s is not typechecked" fname))))
+    (unless pvs-error
+      (pvs-prove-formula fref 't (and current-prefix-arg t)
+			 pvs-x-show-proofs))))
 
 
 ;;; This is the function that proves the formula at the cursor.  The
@@ -148,24 +150,25 @@ the formula.  With an argument, runs the proof in the background."
 ;;; will attempt to get back to the beginning of the formula that was
 ;;; attempted.
 
-(defun pvs-prove-formula (name declname origin &optional rerun-proof background display
+(defun pvs-prove-formula (fref &optional rerun-proof background display
 			       unproved)
-  (let* ((prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
-	 (line (+ (current-line-number) prelude-offset))
+  (let* ((kind (pvs-fref-kind fref))
+	 (fname (pvs-fref-file fref))
+	 (buf (pvs-fref-buffer fref))
+	 (line (pvs-fref-line fref))
+	 (poff (pvs-fref-prelude-offset fref))
+	 (theory (pvs-fref-theory fref))
+	 (fmla (pvs-fref-formula fref))
+	 (fmlastr (when fmla (format "\"%s\"" fmla)))
 	 (rerun (pvs-send-and-wait
 		 (format "(rerun-proof-at? \"%s\" %s %d \"%s\" %s %s)"
-		     name (when declname (format "\"%s\"" declname))
-		     line origin rerun-proof unproved)
-		 nil nil "t\\|T\\|nil\\|NIL")))
-    (if rerun
-	(ilisp-send
-	 (format "(prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s %s)"
-	     name (when declname (format "\"%s\"" declname))
-	     line (when (member rerun '(t T)) t) origin (buffer-name)
-	     prelude-offset background display unproved)
-	 nil 'pr (not background))
-	(when (boundp 'pvs-error)
-	  (setq pvs-error t)))))
+		     (or fname theory) fmlastr line kind rerun-proof unproved)
+		 nil nil "t\\|T\\|no\\|NO")))
+    (ilisp-send
+     (format "(prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s %s)"
+	 (or fname theory) fmlastr line (if (memq rerun '(t T)) t) kind buf
+	 poff background display unproved)
+     nil 'pr (not background))))
 
 (defpvs prove-next-unproved-formula prove ()
   "Invokes the prover on the next unproved formula.
@@ -178,22 +181,21 @@ prover to overwrite it at the end of the proof session."
   (interactive)
   (confirm-not-in-checker)
   (pvs-bury-output)
-  (multiple-value-bind (name declname origin)
-      (pvs-complete-formula-origin)
-    (let* ((prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
-	   (line (+ (current-line-number) prelude-offset))
-	   (pvs-error nil))
-      (cond ((equal origin "pvs")
-	     (save-some-pvs-buffers)
-	     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-				    name)
-				nil 'tc 'dont-care))
-	    ((member origin '("ppe" "tccs"))
-	     (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" name)
-					nil 'tc nil)
-	       (error "%s is not typechecked" name))))
-	(unless pvs-error
-	  (pvs-prove-formula name declname origin nil nil pvs-x-show-proofs t)))))
+  (let* ((fref (pvs-formula-origin))
+	 (kind (pvs-fref-kind fref))
+	 (fname (pvs-fref-file fref))
+	 (pvs-error nil))
+    (cond ((eq kind 'pvs)
+	   (save-some-pvs-buffers)
+	   (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
+				  fname)
+			      nil 'tc 'dont-care))
+	  ((memq kind '(ppe tccs))
+	   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" fname)
+				      nil 'tc nil)
+	     (error "%s is not typechecked" fname))))
+    (unless pvs-error
+      (pvs-prove-formula fref nil nil pvs-x-show-proofs t))))
 
 (defpvs prove-theory prove (theory)
   "Attempt to prove all the formulas of a theory.
@@ -284,14 +286,14 @@ proof scripts, including those already proved."
   (interactive)
   (confirm-not-in-checker)
   (pvs-bury-output)
-  (multiple-value-bind (name declname origin)
-      (pvs-complete-formula-origin)
+  (let* ((fref (pvs-formula-origin))
+	 (fname (pvs-fref-file fref))
+	 (kind (pvs-fref-kind fref))
+	 (fmla (pvs-fref-formula fref))
+	 (fmlastr (when fmla (format "\"%s\"" fmla)))
+	 (line (pvs-fref-line fref)))
     (pvs-send (format "(prove-proofchain \"%s\" %s %d '%s %s)"
-		  name (when declname (format "\"%s\"" declname))
-		(+ (current-line-number)
-			  (if (equal origin "prelude")
-			      (or pvs-prelude 0) 0))
-		  origin (and current-prefix-arg t))
+		  fname fmlastr line kind (and current-prefix-arg t))
 	      nil (pvs-get-abbreviation 'prove-proofchain))))
 
 (defpvs prove-theory-using-default-dp prove (theory)
@@ -383,48 +385,69 @@ proof scripts, including those already proved."
   (interactive)
   (confirm-not-in-checker)
   (pvs-bury-output)
-  (multiple-value-bind (name declname origin)
-      (pvs-complete-formula-origin)
+  (let* ((fref (pvs-formula-origin))
+	 (fname (pvs-fref-file fref))
+	 (kind (pvs-fref-kind fref))
+	 (fmla (pvs-fref-formula fref))
+	 (fmlastr (when fmla (format "\"%s\"" fmla)))
+	 (line (pvs-fref-line fref)))
     (pvs-send (format "(prove-proofchain \"%s\" %s %d '%s %s t)"
-		  name (when declname (format "\"%s\"" declname))
-		(+ (current-line-number)
-			  (if (equal origin "prelude")
-			      (or pvs-prelude 0) 0))
-		  origin (and current-prefix-arg t))
+		  fname fmlastr line kind (and current-prefix-arg t))
 	      nil (pvs-get-abbreviation 'prove-proofchain))))
-
-;; Returns the theory name, declaration, and origin
-(defun pvs-complete-formula-origin ()
-  (multiple-value-bind (name origin)
-      (pvs-formula-origin)
-    ;; Check whether this came from a declaration tccs buffer
-    (let ((dotpos (when (equal origin "tccs") (position ?. name))))
-      (if dotpos
-	  (values (substring name 0 dotpos)
-		  (substring name (1+ dotpos))
-		  origin)
-	  (values name nil origin)))))
 	     
 
-;;; pvs-formula-origin returns a list containing a name and the kind of
-;;; buffer involved.  The name is the buffer file name (without the
-;;; extension), and the kind is one of prelude-theory, prelude, pvs, ppe,
-;;; or tccs.
+;;; pvs-formula-origin returns a pvs-formula-reference structure, which
+;;; includes a kind, formula, theory, file, buffer, and point.  The kind,
+;;; buffer, and point are always set, the others depend on the buffer and/or
+;;; contents.  The kind is one of prelude-theory, prelude, pvs, ppe,
+;;; tccs, or proof-status.
 (defun pvs-formula-origin ()
-  (let ((file (current-pvs-file t))
-	(ext (pathname-type (buffer-name))))
+  (let* ((file (current-pvs-file t))
+	 (buf (buffer-name))
+	 (fname (or file (pathname-name buf)))
+	 (ext (pathname-type buf))
+	 (point (point))
+	 (line (current-line-number))
+	 (fref (make-pvs-formula-reference
+		:buffer buf :file fname :line line)))
     (cond ((file-equal (format "%s/lib/prelude.pvs" pvs-path)
 		       (buffer-file-name))
-	   (list (pathname-name (buffer-name)) "prelude"))
+	   (setf (pvs-fref-kind fref) 'prelude))
 	  (pvs-prelude
-	   (list (pathname-name (buffer-name)) "prelude-theory"))
-	  (file
-	   (list file "pvs"))
-	  ((member-equal ext '("ppe" "tccs"))
-	   (list (pathname-name (buffer-name)) ext))
+	   (setf (pvs-fref-kind fref) 'prelude-theory
+		 (pvs-fref-prelude-offset fref) pvs-prelude))
+	  (file (setf (pvs-fref-kind fref) 'pvs))
+	  ((equal (buffer-name) "PVS Status")
+	   (let ((theory 
+		  (save-excursion
+		    (when (re-search-backward
+			   "^ *Proof summary for theory \\(.*\\)$"
+			   nil t)
+		      (buffer-substring-no-properties
+		       (match-beginning 1) (match-end 1))))))
+	     (if theory
+		 (save-excursion
+		   (beginning-of-line)
+		   (if (looking-at "^ *\\([^\.]+\\)\.\.+")
+		       (let ((formula (buffer-substring-no-properties
+				       (match-beginning 1) (match-end 1))))
+			 (setf (pvs-fref-file fref) nil
+			       (pvs-fref-kind fref) 'proof-status
+			       (pvs-fref-theory fref) theory
+			       (pvs-fref-formula fref) formula))
+		       (error "Not at a formula line")))
+		 (error "Not in a Proof summary - run one of the status-proof- commands"))))
+	  ((equal ext "tccs")
+	   (setf (pvs-fref-kind fref) 'tccs)
+	   (let ((dotpos (position ?. fname)))
+	     (when dotpos
+	       (setf (pvs-fref-theory fref) (substring name 0 dotpos)
+		     (pvs-fref-formula fref) (substring name (1+ dotpos))))))
+	  ((equal ext "ppe") (setf (pvs-fref-kind fref) 'ppe))
 	  ((equal ext "pvs")
 	   (error "File is not in the current context"))
-	  (t (error "Buffer must end in .pvs, .ppe, or .tccs, or come from the prelude")))))
+	  (t (error "Cannot determine formula from this buffer")))
+    fref))
 
 
 (defvar pvs-valid-formula-buffer 'unbound)
@@ -573,28 +596,32 @@ buffer, a ppe buffer, or a prelude (file or theory) buffer.  See the
 documentation for edit-proof-mode for more information."
   (interactive)
   (pvs-bury-output)
-  (multiple-value-bind (name declname origin)
-      (pvs-complete-formula-origin)
-    (let* ((pvs-error nil)
-	   (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
-	   (line (+ (current-line-number) prelude-offset)))
-      (cond ((equal origin "pvs")
-	     (save-some-pvs-buffers)
-	     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-				    name)
-				nil 'tc 'dont-care))
-	    ((member origin '("ppe" "tccs"))
-	     (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" name)
-					nil 'tc nil)
-	       (error "%s is not typechecked" name))))
+  (let* ((fref (pvs-formula-origin))
+	 (fname (pvs-fref-file fref))
+	 (kind (pvs-fref-kind fref))
+	 (buffer (pvs-fref-buffer fref))
+	 (theory (pvs-fref-theory fref))
+	 (fmla (pvs-fref-formula fref))
+	 (fmlastr (when fmla (format "\"%s\"" fmla)))
+	 (line (pvs-fref-line fref))
+	 (poff (pvs-fref-prelude-offset fref))
+	 (pvs-error nil))
+    (cond ((eq kind 'pvs)
+	   (save-some-pvs-buffers)
+	   (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
+				  fname)
+			      nil 'tc 'dont-care))
+	  ((member kind '(ppe tccs))
+	   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" fname)
+				      nil 'tc nil)
+	     (error "%s is not typechecked" fname))))
       (unless pvs-error
 	(when (get-buffer "Proof")
 	  (kill-buffer "Proof"))
 	(set-proof-script-font-lock-keywords)
 	(pvs-send-and-wait
 	 (format "(edit-proof-at \"%s\" %s %d \"%s\" \"%s\" %d %s)"
-	     name (when declname (format "\"%s\"" declname))
-	     line origin (buffer-name) prelude-offset
+	     (or fname theory) fmlastr (+ line poff) kind buffer poff
 	     (and current-prefix-arg t))
 	 nil 'EditProof 'dont-care)
 	(cond ((get-buffer "Proof")
@@ -618,7 +645,7 @@ documentation for edit-proof-mode for more information."
 					nil nil "t\\|T\\|nil\\|NIL")
 		 (other-window 1)
 		 (switch-to-buffer (ilisp-buffer))))
-	      (t (pop-to-buffer (get-buffer-create "Proof"))))))))
+	      (t (pop-to-buffer (get-buffer-create "Proof")))))))
 
 (defun fix-edit-proof-comments ()
   (when (eq (current-buffer) (get-buffer "Proof"))
@@ -668,9 +695,11 @@ buffer."
 	  (set-buffer buf)
 	  (if (equal (buffer-name) "Proof")
 	      (install-proof* nil nil step)
-	      (multiple-value-bind (name declname origin)
-		  (pvs-complete-formula-origin)
-		(install-proof* name declname origin step)))))))
+	      (let* ((fref (pvs-formula-origin))
+		     (fname (pvs-fref-file fref))
+		     (fmla (pvs-fref-formula fref))
+		     (kind (pvs-fref-kind fref)))
+		(install-proof* fname fmla kind step)))))))
 
 (defpvs install-and-step-proof edit-proof ()
   (interactive)
@@ -735,13 +764,15 @@ formula.  There is usually no need to do this, as multiple proofs may be
  associated with a formula.  See the display-proofs commands for alternative
 approaches to managing proofs."
   (interactive)
-  (multiple-value-bind (name declname origin)
-      (pvs-complete-formula-origin)
-    (let* ((prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
-	   (line (+ (current-line-number) prelude-offset)))
-      (pvs-send
-       (format "(remove-proof-at \"%s\" %s %d \"%s\")"
-	   name (when declname (format "\"%s\"" declname)) line origin)))))
+  (let* ((fref (pvs-formula-origin))
+	 (kind (pvs-fref-kind fref))
+	 (fname (pvs-fref-file fref))
+	 (line (pvs-fref-line fref))
+	 (poff (pvs-fref-prelude-offset fref))
+	 (fmla (pvs-fref-formula fref))
+	 (fmlastr (when fmla (format "\"%s\"" fmla))))
+    (pvs-send (format "(remove-proof-at \"%s\" %s %d \"%s\")"
+		  fname fmlastr (+ line poff) kind))))
 
 (defpvs install-pvs-proof-file edit-proof (filename)
   "Installs the specified proof file
@@ -1276,19 +1307,20 @@ debugging."
   (interactive)
   (confirm-not-in-checker)
   (pvs-bury-output)
-  (multiple-value-bind (name declname origin)
-      (pvs-complete-formula-origin)
-    (let ((input (format "(prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s)"
-		     name (when declname (format "\"%s\"" declname))
-		   (+ (current-line-number)
-		      (if (equal origin "prelude")
-			  (or pvs-prelude 0) 0))
-		     't origin
-		     (buffer-name) (if (equal origin "prelude")
-				       (or pvs-prelude 0) 0)
-		     nil)))
-      (switch-to-lisp t t)
-      (insert input))))
+  (let* ((fref (pvs-formula-origin))
+	 (kind (pvs-fref-kind fref))
+	 (fname (pvs-fref-file fref))
+	 (buf (pvs-fref-buffer fref))
+	 (line (pvs-fref-line fref))
+	 (poff (pvs-fref-prelude-offset fref))
+	 (theory (pvs-fref-theory fref))
+	 (fmla (pvs-fref-formula fref))
+	 (fmlastr (when fmla (format "\"%s\"" fmla)))
+	 (input (format "(prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s)"
+		    (or fname theory) fmlastr (+ line poff) 't
+		    kind buf poff nil)))
+    (switch-to-lisp t t)
+    (insert input)))
 
 (defpvs step-proof prove ()
   "Sets up a proof for using the proof stepper
@@ -1298,51 +1330,47 @@ through using the edit-proof command."
   (interactive)
   (confirm-not-in-checker)
   (delete-other-windows)
-  (multiple-value-bind (name declname origin)
-      (pvs-complete-formula-origin)
-    (let* ((line (current-line-number))
-	   (bname (buffer-name))
-	   (pvs-error nil))
-      (cond ((equal origin "pvs")
-	     (save-some-pvs-buffers)
-	     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-				    name)
-				nil 'tc 'dont-care))
-	    ((member origin '("ppe" "tccs"))
-	     (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" name)
-					nil 'tc nil)
-	       (error "%s is not typechecked" name))))
-      (unless pvs-error
-	(let* ((prelude-offset (if (equal origin "prelude-theory")
-				   pvs-prelude 0))
-	       (line (+ (current-line-number) prelude-offset)))
-	  (when (get-buffer "Proof")
-	    (kill-buffer "Proof"))
-	  (set-proof-script-font-lock-keywords)
-	  (pvs-send-and-wait
-	   (format "(edit-proof-at \"%s\" %s %d \"%s\" \"%s\" %d %s)"
-	       name (when declname (format "\"%s\"" declname))
-	       line origin (buffer-name) prelude-offset
-	       (and current-prefix-arg t))
-	   nil 'EditProof 'dont-care))
-	(when (get-buffer "Proof")
-	  (pop-to-buffer (get-buffer "Proof"))
-	  (fix-edit-proof-comments)
-	  (setq buffer-modified-p nil)
-	  (goto-char (point-min))
-	  (pvs-prover-goto-next-step)
-	  (hilit-next-prover-command))
-	(ilisp-send
-	 (format "(lisp (prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s))"
-	     name (when declname (format "\"%s\"" declname))
-	     (+ line
-		(if (equal origin "prelude")
-		    (or pvs-prelude 0) 0))
-	     nil origin bname
-	     (if (equal origin "prelude")
-		 (or pvs-prelude 0) 0)
-	     nil pvs-x-show-proofs)
-	 nil 'pr t)))))
+  (let* ((fref (pvs-formula-origin))
+	 (kind (pvs-fref-kind fref))
+	 (fname (pvs-fref-file fref))
+	 (buf (pvs-fref-buffer fref))
+	 (line (pvs-fref-line fref))
+	 (poff (pvs-fref-prelude-offset fref))
+	 (theory (pvs-fref-theory fref))
+	 (fmla (pvs-fref-formula fref))
+	 (fmlastr (when fmla (format "\"%s\"" fmla)))
+	 (pvs-error nil))
+    (cond ((eq kind 'pvs)
+	   (save-some-pvs-buffers)
+	   (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
+				  fname)
+			      nil 'tc 'dont-care))
+	  ((member kind '(ppe tccs))
+	   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" fname)
+				      nil 'tc nil)
+	     (error "%s is not typechecked" fname))))
+    (unless pvs-error
+      (when (get-buffer "Proof")
+	(kill-buffer "Proof"))
+      (set-proof-script-font-lock-keywords)
+      (setq xxx (or fname theory))
+      (pvs-send-and-wait
+       (format "(edit-proof-at \"%s\" %s %d \"%s\" \"%s\" %d %s)"
+	   (or fname theory) fmlastr (+ line poff) kind buf poff
+	   (and current-prefix-arg t))
+       nil 'EditProof 'dont-care))
+    (when (get-buffer "Proof")
+      (pop-to-buffer (get-buffer "Proof"))
+      (fix-edit-proof-comments)
+      (setq buffer-modified-p nil)
+      (goto-char (point-min))
+      (pvs-prover-goto-next-step)
+      (hilit-next-prover-command))
+    (ilisp-send
+     (format "(lisp (prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s))"
+	 (or fname theory) fmlastr (+ line poff) nil kind buf poff nil
+	 pvs-x-show-proofs)
+     nil 'pr t)))
 
 (defpvs x-step-proof prove ()
   "Starts the prover, the proof-stepper and the proof display
@@ -1384,7 +1412,7 @@ command."
   (pvs-bury-output)
   (save-some-pvs-buffers)
   (pvs-send (format "(prove-untried-importchain \"%s\" '%s %s nil)"
-		file strategy (and current-prefix-arg t))
+		theory strategy (and current-prefix-arg t))
 	    nil))
 
 (defpvs prove-untried-importchain-subtree prove (theory &optional strategy
@@ -1414,7 +1442,7 @@ invocation of a prove-untried- command."
   (pvs-bury-output)
   (save-some-pvs-buffers)
   (pvs-send (format "(prove-untried-importchain \"%s\" '%s %s %s)"
-		file strategy (and current-prefix-arg t)
+		theory strategy (and current-prefix-arg t)
 		(mapcar '(lambda (x) (format "\"%s\"" x)) exclude))
 	    nil))
 
@@ -1746,14 +1774,16 @@ The x-show-proof command displays the proof of the formula at or beyond
 the current cursor position using the Tcl/Tk proof display facility."
   (interactive)
   (if (wish-possible-p)
-      (multiple-value-bind (name declname origin)
-	  (pvs-complete-formula-origin)
+      (let* ((fref (pvs-formula-origin))
+	     (kind (pvs-fref-kind fref))
+	     (fname (pvs-fref-file fref))
+	     (buf (pvs-fref-buffer fref))
+	     (line (pvs-fref-line fref))
+	     (poff (pvs-fref-prelude-offset fref))
+	     (fmla (pvs-fref-formula fref))
+	     (fmlastr (when fmla (format "\"%s\"" fmla))))
 	(pvs-send (format "(call-x-show-proof-at \"%s\" %s %d \"%s\")"
-		      name (when declname (format "\"%s\"" declname))
-		      (+ (current-line-number)
-			 (if (equal origin "prelude")
-			     (or pvs-prelude 0) 0))
-		      origin)))
+		      fname fmlastr (+ line poff) kind)))
       (message "DISPLAY variable not set, cannot popup proof display")))
 
 (defpvs show-hidden-formulas proof-display ()
@@ -1940,14 +1970,18 @@ Letters do not insert themselves; instead, they are commands:
 (defpvs display-proofs-formula browse ()
   (interactive)
   (pvs-bury-output)
-  (multiple-value-bind (name declname origin)
-      (pvs-complete-formula-origin)
-    (let* ((prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
-	   (line (+ (current-line-number) prelude-offset)))
-      (pvs-send-and-wait
-       (format "(display-proofs-formula-at \"%s\" %s \"%s\" %d)"
-	   name (when declname (format "\"%s\"" declname)) origin line)
-       nil 'proofs 'dont-care))))
+  (let* ((fref (pvs-formula-origin))
+	 (kind (pvs-fref-kind fref))
+	 (fname (pvs-fref-file fref))
+	 (buf (pvs-fref-buffer fref))
+	 (line (pvs-fref-line fref))
+	 (poff (pvs-fref-prelude-offset fref))
+	 (fmla (pvs-fref-formula fref))
+	 (fmlastr (when fmla (format "\"%s\"" fmla))))
+    (pvs-send-and-wait
+     (format "(display-proofs-formula-at \"%s\" %s \"%s\" %d)"
+	 fname fmlastr kind (+ line poff))
+     nil 'proofs 'dont-care)))
 
 (defpvs display-proofs-theory browse (theoryname)
   "Show the proofs for all formulas of the specified theory"
@@ -1969,19 +2003,15 @@ Letters do not insert themselves; instead, they are commands:
   "Display the number of steps of the proof at the cursor"
   (interactive)
   (pvs-bury-output)
-  (let* ((name-and-origin (pvs-formula-origin))
-	 (oname (car name-and-origin))
-	 (origin (cadr name-and-origin))
-	 (dotpos (position ?. oname))
-	 (filename (if dotpos (substring oname 0 dotpos) oname))
-	 (declname (when dotpos (substring oname (1+ dotpos)))))
+  (let* ((fref (pvs-formula-origin))
+	 (fname (pvs-fref-file fref))
+	 (kind (pvs-fref-kind fref))
+	 (fmla (pvs-fref-formula fref))
+	 (fmlastr (when fmla (format "\"%s\"" fmla)))
+	 (line (pvs-fref-line fref)))
     (save-some-pvs-buffers)
     (pvs-send (format "(sizeof-proof-at \"%s\" %s %d \"%s\")"
-		  filename (when declname (format "\"%s\"" declname))
-		  (+ (current-line-number)
-		     (if (equal origin "prelude")
-			 pvs-prelude 0))
-		  origin)
+		  fname fmlastr line kind)
 	      nil (pvs-get-abbreviation 'pvs-sizeof-proof))))
 
 (defpvs pvs-sizeof-proofs-theory proof-status (theoryname)
@@ -2012,19 +2042,15 @@ Letters do not insert themselves; instead, they are commands:
   "Display the number of steps of the proofchain at cursor"
   (interactive)
   (pvs-bury-output)
-  (let* ((name-and-origin (pvs-formula-origin))
-	 (oname (car name-and-origin))
-	 (origin (cadr name-and-origin))
-	 (dotpos (position ?. oname))
-	 (filename (if dotpos (substring oname 0 dotpos) oname))
-	 (declname (when dotpos (substring oname (1+ dotpos)))))
+  (let* ((fref (pvs-formula-origin))
+	 (fname (pvs-fref-file fref))
+	 (kind (pvs-fref-kind fref))
+	 (fmla (pvs-fref-formula fref))
+	 (fmlastr (when fmla (format "\"%s\"" fmla)))
+	 (line (pvs-fref-line fref)))
     (save-some-pvs-buffers)
     (pvs-send (format "(sizeof-proofs-proofchain-at \"%s\" %s %d \"%s\")"
-		  filename (when declname (format "\"%s\"" declname))
-		(+ (current-line-number)
-		   (if (equal origin "prelude")
-		       pvs-prelude 0))
-		origin)
+		  fname fmlastr line kind)
 	       nil (pvs-get-abbreviation 'pvs-sizeof-proofs-proofchain))))
   
 
