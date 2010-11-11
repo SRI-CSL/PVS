@@ -71,7 +71,9 @@
 
 
 (defun undefined (expr &optional message)
-  (let* ((th    (string (id (module expr))))
+  (let* ((th    (string (if (declaration? expr)
+			    (id (module expr))
+			    (id (current-theory)))))
 	 (nm    (when (const-decl? expr)
 		  (string (id expr))))
 	 (ptype (when nm (print-type (type expr))))
@@ -615,8 +617,8 @@
 		     `(some ,(pvs2cl-lambda (list bind1)
 					    expr-rest
 					    bindings)
-					    ;;(append (updateable-vars expr)
-						;;    livevars)
+			    ;;(append (updateable-vars expr)
+			    ;;    livevars)
 			    (list ,@(pvs2cl_up* (constructors typ1)
 						bindings livevars)))))
 		(sub
@@ -642,8 +644,8 @@
 			      (pvs-funcall ,(pvs2cl-lambda (list bind1)
 							   expr-rest
 							   bindings)
-							   ;;(append (updateable-vars expr)
-								;;   livevars)
+					   ;;(append (updateable-vars expr)
+					   ;;   livevars)
 					   ,i)))))
 		(t
 		 (let ((undef (undefined expr "Hit non-scalar/subrange quantifier in ~% ~a")))
