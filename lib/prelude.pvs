@@ -2489,8 +2489,6 @@ real_props: THEORY
 
   div_cancel3: LEMMA x/n0z = y IFF x = y * n0z
 
-  div_cancel4: LEMMA y = x/n0z IFF y * n0z = x
-
   cross_mult: LEMMA (x/n0x = y/n0y) IFF (x * n0y = y * n0x)
 
   add_div: LEMMA (x/n0x) + (y/n0y) = (x * n0y + y * n0x)/(n0x * n0y)
@@ -2712,15 +2710,6 @@ real_props: THEORY
 
   neg_div_gt: LEMMA 0 > x/n0y IFF (0 > x AND n0y > 0) OR (x > 0 AND 0 > n0y)
 
-  div_mult_pos_gt1: LEMMA x > z/py IFF x * py > z
-
-  div_mult_pos_gt2: LEMMA z/py > x IFF z > x * py
-
-  div_mult_neg_gt1: LEMMA x > z/ny IFF z > x * ny
-
-  div_mult_neg_gt2: LEMMA z/ny > x IFF x * ny > z
-
-
   % Cancellation laws for >
 
   both_sides_plus_gt1: LEMMA x + z > y + z IFF x > y
@@ -2921,6 +2910,339 @@ real_props: THEORY
   real_ge_is_total_order: JUDGEMENT >= HAS_TYPE (total_order?[real])
 
  END real_props
+
+%% Contains extra properties about reals needed by the formula
+%% manipulation strategies in package Manip.  Can be seen as an
+%% extension of the real_props theory in the prelude.
+
+extra_real_props: THEORY
+BEGIN
+
+%% Same variable declarations as real_props in the prelude:
+
+  w, x, y, z: VAR real
+  n0w, n0x, n0y, n0z: VAR nonzero_real
+  nnw, nnx, nny, nnz: VAR nonneg_real
+  pw, px, py, pz: VAR posreal
+  npw, npx, npy, npz: VAR nonpos_real
+  nw, nx, ny, nz: VAR negreal
+
+
+%% Lemmas used to handle cases where a multiplier or divisor can be
+%% either positive or negative.
+
+pos_neg_split: LEMMA  EXISTS px, nx: n0x = px or n0x = nx
+
+
+div_mult_pos_neg_lt1: LEMMA
+    z/n0y < x IFF IF n0y > 0 THEN z < x * n0y ELSE x * n0y < z ENDIF
+
+div_mult_pos_neg_lt2: LEMMA
+    x < z/n0y IFF IF n0y > 0 THEN x * n0y < z ELSE z < x * n0y ENDIF
+
+div_mult_pos_neg_le1: LEMMA
+    z/n0y <= x IFF IF n0y > 0 THEN z <= x * n0y ELSE x * n0y <= z ENDIF
+
+div_mult_pos_neg_le2: LEMMA
+    x <= z/n0y IFF IF n0y > 0 THEN x * n0y <= z ELSE z <= x * n0y ENDIF
+
+div_mult_pos_neg_gt1: LEMMA
+    z/n0y > x IFF IF n0y > 0 THEN z > x * n0y ELSE x * n0y > z ENDIF
+
+div_mult_pos_neg_gt2: LEMMA
+    x > z/n0y IFF IF n0y > 0 THEN x * n0y > z ELSE z > x * n0y ENDIF
+
+div_mult_pos_neg_ge1: LEMMA
+    z/n0y >= x IFF IF n0y > 0 THEN z >= x * n0y ELSE x * n0y >= z ENDIF
+
+div_mult_pos_neg_ge2: LEMMA
+    x >= z/n0y IFF IF n0y > 0 THEN x * n0y >= z ELSE z >= x * n0y ENDIF
+
+
+both_sides_times_pos_neg_lt1: LEMMA
+  IF n0z > 0 THEN x * n0z < y * n0z ELSE y * n0z < x * n0z ENDIF IFF x < y
+
+both_sides_times_pos_neg_lt2: LEMMA
+  IF n0z > 0 THEN n0z * x < n0z * y ELSE n0z * y < n0z * x ENDIF IFF x < y
+
+both_sides_times_pos_neg_le1: LEMMA
+  IF n0z > 0 THEN x * n0z <= y * n0z ELSE y * n0z <= x * n0z ENDIF IFF x <= y
+
+both_sides_times_pos_neg_le2: LEMMA
+  IF n0z > 0 THEN n0z * x <= n0z * y ELSE n0z * y <= n0z * x ENDIF IFF x <= y
+
+both_sides_times_pos_neg_gt1: LEMMA
+  IF n0z > 0 THEN x * n0z > y * n0z ELSE y * n0z > x * n0z ENDIF IFF x > y
+
+both_sides_times_pos_neg_gt2: LEMMA
+  IF n0z > 0 THEN n0z * x > n0z * y ELSE n0z * y > n0z * x ENDIF IFF x > y
+
+both_sides_times_pos_neg_ge1: LEMMA
+  IF n0z > 0 THEN x * n0z >= y * n0z ELSE y * n0z >= x * n0z ENDIF IFF x >= y
+
+both_sides_times_pos_neg_ge2: LEMMA
+  IF n0z > 0 THEN n0z * x >= n0z * y ELSE n0z * y >= n0z * x ENDIF IFF x >= y
+
+
+%% The naming scheme below follows that of the both_sides_div_+/-_R1/2/3
+%% series in real_props as consistently as possible.
+
+both_sides_div_pos_neg_lt1: LEMMA
+  IF n0z > 0 THEN x/n0z < y/n0z ELSE y/n0z < x/n0z ENDIF IFF x < y
+
+both_sides_div_pos_neg_lt2: LEMMA
+  IF n0z > 0 THEN n0z/px < n0z/py ELSE n0z/py < n0z/px ENDIF IFF py < px
+
+both_sides_div_pos_neg_lt3: LEMMA
+  IF n0z > 0 THEN n0z/nx < n0z/ny ELSE n0z/ny < n0z/nx ENDIF IFF ny < nx
+
+both_sides_div_pos_neg_le1: LEMMA
+  IF n0z > 0 THEN x/n0z <= y/n0z ELSE y/n0z <= x/n0z ENDIF IFF x <= y
+
+both_sides_div_pos_neg_le2: LEMMA
+  IF n0z > 0 THEN n0z/px <= n0z/py ELSE n0z/py <= n0z/px ENDIF IFF py <= px
+
+both_sides_div_pos_neg_le3: LEMMA
+  IF n0z > 0 THEN n0z/nx <= n0z/ny ELSE n0z/ny <= n0z/nx ENDIF IFF ny <= nx
+
+both_sides_div_pos_neg_gt1: LEMMA
+  IF n0z > 0 THEN x/n0z > y/n0z ELSE y/n0z > x/n0z ENDIF IFF x > y
+
+both_sides_div_pos_neg_gt2: LEMMA
+  IF n0z > 0 THEN n0z/px > n0z/py ELSE n0z/py > n0z/px ENDIF IFF py > px
+
+both_sides_div_pos_neg_gt3: LEMMA
+  IF n0z > 0 THEN n0z/nx > n0z/ny ELSE n0z/ny > n0z/nx ENDIF IFF ny > nx
+
+both_sides_div_pos_neg_ge1: LEMMA
+  IF n0z > 0 THEN x/n0z >= y/n0z ELSE y/n0z >= x/n0z ENDIF IFF x >= y
+
+both_sides_div_pos_neg_ge2: LEMMA
+  IF n0z > 0 THEN n0z/px >= n0z/py ELSE n0z/py >= n0z/px ENDIF IFF py >= px
+
+both_sides_div_pos_neg_ge3: LEMMA
+  IF n0z > 0 THEN n0z/nx >= n0z/ny ELSE n0z/ny >= n0z/nx ENDIF IFF ny >= nx
+
+
+%% Less restrictive lemmas used by strategy MULT-BY than the 
+%% both_sides_times series in real_props.  Allows multiplier to be
+%% zero in some cases.  Variable z changed to w so it would
+%% precede x,y during INST and make all lemmas consistent.
+
+  both_sides_times1_imp: LEMMA x = y IMPLIES x * w = y * w
+
+  both_sides_times2_imp: LEMMA x = y IMPLIES w * x = w * y
+
+  both_sides_times_pos_le1_imp: LEMMA x <= y IMPLIES x * nnw <= y * nnw
+
+  both_sides_times_pos_le2_imp: LEMMA x <= y IMPLIES nnw * x <= nnw * y
+
+  both_sides_times_neg_le1_imp: LEMMA y <= x IMPLIES x * npw <= y * npw
+
+  both_sides_times_neg_le2_imp: LEMMA y <= x IMPLIES npw * x <= npw * y
+
+  both_sides_times_pos_ge1_imp: LEMMA x >= y IMPLIES x * nnw >= y * nnw
+
+  both_sides_times_pos_ge2_imp: LEMMA x >= y IMPLIES nnw * x >= nnw * y
+
+  both_sides_times_neg_ge1_imp: LEMMA y >= x IMPLIES x * npw >= y * npw
+
+  both_sides_times_neg_ge2_imp: LEMMA y >= x IMPLIES npw * x >= npw * y
+
+
+  both_sides_times_pos_neg_le1_imp: LEMMA
+    x <= y IMPLIES IF w >= 0 THEN x * w <= y * w ELSE y * w <= x * w ENDIF
+
+  both_sides_times_pos_neg_le2_imp: LEMMA
+    x <= y IMPLIES IF w >= 0 THEN w * x <= w * y ELSE w * y <= w * x ENDIF
+
+  both_sides_times_pos_neg_ge1_imp: LEMMA
+    x >= y IMPLIES IF w >= 0 THEN x * w >= y * w ELSE y * w >= x * w ENDIF
+
+  both_sides_times_pos_neg_ge2_imp: LEMMA
+    x >= y IMPLIES IF w >= 0 THEN w * x >= w * y ELSE w * y >= w * x ENDIF
+
+
+%% Additional lemmas needed to fill in gaps left by real_props.
+
+  div_cancel4: LEMMA x = y/n0z IFF x * n0z = y
+
+  zero_times4: LEMMA 0 = x * y IFF x = 0 OR y = 0
+
+  times_div_cancel1: LEMMA (n0z * x) / n0z = x
+
+  times_div_cancel2: LEMMA (x * n0z) / n0z = x
+
+%% Replacements for real_props lemmas to correct inconsistent naming.
+
+  div_mult_pos_gt1: LEMMA z/py > x IFF z > x * py
+
+  div_mult_pos_gt2: LEMMA x > z/py IFF x * py > z
+
+  div_mult_neg_gt1: LEMMA z/ny > x IFF x * ny > z
+
+  div_mult_neg_gt2: LEMMA x > z/ny IFF z > x * ny
+
+
+%% Transitivity lemmas for inequality reasoning.  Normally unnecessary
+%% but sometimes helpful for forcing case splits.
+
+lt_cut: LEMMA x < y AND y < z IMPLIES x < z
+le_cut: LEMMA x <= y AND y <= z IMPLIES x <= z
+gt_cut: LEMMA x > y AND y > z IMPLIES x > z
+ge_cut: LEMMA x >= y AND y >= z IMPLIES x >= z
+
+
+%% Rules used to deduce inequalities on products of reals.  These rules
+%% stipulate only sufficient conditions for the inequalities to hold.
+%% The most common and useful cases are included, although additional
+%% cases might be desirable later.
+
+le_times_le_any1: LEMMA
+	IF w >= 0 IFF x >= 0
+	   THEN IF y >= 0 IFF z >= 0
+		   THEN abs(w) <= abs(y) AND abs(x) <= abs(z)
+		   ELSE (w = 0 OR x = 0) AND (y = 0 OR z = 0)
+	        ENDIF
+	   ELSE IF y >= 0 IFF z >= 0
+		   THEN true
+		   ELSE abs(w) >= abs(y) AND abs(x) >= abs(z)
+	        ENDIF
+        ENDIF
+	  IMPLIES w * x <= y * z
+
+ge_times_ge_any1: LEMMA
+	IF y >= 0 IFF z >= 0
+	   THEN IF w >= 0 IFF x >= 0
+		   THEN abs(w) >= abs(y) AND abs(x) >= abs(z)
+		   ELSE (w = 0 OR x = 0) AND (y = 0 OR z = 0)
+	        ENDIF
+	   ELSE IF w >= 0 IFF x >= 0
+		   THEN true
+		   ELSE abs(w) <= abs(y) AND abs(x) <= abs(z)
+	        ENDIF
+        ENDIF
+	  IMPLIES w * x >= y * z
+
+lt_times_lt_any1: LEMMA
+	IF w = 0 OR x = 0
+	   THEN 0 < y AND 0 < z OR y < 0 AND z < 0
+	ELSIF w > 0 IFF x > 0
+	   THEN (y > 0 IFF z > 0) AND
+                (abs(w) <= abs(y) AND abs(x) <  abs(z) OR
+                 abs(w) <  abs(y) AND abs(x) <= abs(z))
+	ELSIF y > 0 IFF z > 0
+           THEN true
+	   ELSE abs(w) >= abs(y) AND abs(x) >  abs(z) OR
+                abs(w) >  abs(y) AND abs(x) >= abs(z)
+        ENDIF
+	  IMPLIES w * x < y * z
+
+gt_times_gt_any1: LEMMA
+	IF y = 0 OR z = 0
+	   THEN 0 < w AND 0 < x OR w < 0 AND x < 0
+	ELSIF y > 0 IFF z > 0
+	   THEN (w > 0 IFF x > 0) AND
+                (abs(w) >= abs(y) AND abs(x) >  abs(z) OR
+                 abs(w) >  abs(y) AND abs(x) >= abs(z))
+	ELSIF w > 0 IFF x > 0
+           THEN true
+	   ELSE abs(w) <= abs(y) AND abs(x) <  abs(z) OR
+                abs(w) <  abs(y) AND abs(x) <= abs(z)
+        ENDIF
+	  IMPLIES w * x > y * z
+
+
+%% Contrapositive forms of series R_times_R_any1.  They stipulate
+%% necessary conditions for the inequalities to hold.
+
+le_times_le_any2: LEMMA
+	w * x <= y * z IMPLIES
+	IF y = 0 OR z = 0
+	   THEN (0 >= w OR 0 >= x) AND (w >= 0 OR x >= 0)
+	ELSIF y > 0 IFF z > 0
+	   THEN (w > 0 IFF x > 0) IMPLIES
+                (abs(w) <  abs(y) OR abs(x) <= abs(z)) AND
+                (abs(w) <= abs(y) OR abs(x) <  abs(z))
+	ELSE NOT (w > 0 IFF x > 0) AND
+	     (abs(w) >  abs(y) OR abs(x) >= abs(z)) AND
+             (abs(w) >= abs(y) OR abs(x) >  abs(z))
+        ENDIF
+
+ge_times_ge_any2: LEMMA
+	w * x >= y * z IMPLIES
+	IF w = 0 OR x = 0
+	   THEN (0 >= y OR 0 >= z) AND (y >= 0 OR z >= 0)
+	ELSIF w > 0 IFF x > 0
+	   THEN (y > 0 IFF z > 0) IMPLIES
+                (abs(w) >  abs(y) OR abs(x) >= abs(z)) AND
+                (abs(w) >= abs(y) OR abs(x) > abs(z))
+	ELSE NOT (y > 0 IFF z > 0) AND
+             (abs(w) <  abs(y) OR abs(x) <= abs(z)) AND
+             (abs(w) <= abs(y) OR abs(x) <  abs(z))
+        ENDIF
+
+lt_times_lt_any2: LEMMA
+	w * x < y * z IMPLIES
+	IF y >= 0 IFF z >= 0
+	   THEN IF w >= 0 IFF x >= 0
+		   THEN abs(w) < abs(y) OR abs(x) < abs(z)
+		   ELSE (w /= 0 AND x /= 0) OR (y /= 0 AND z /= 0)
+	        ENDIF
+	   ELSE NOT (w >= 0 IFF x >= 0) AND
+		(abs(w) > abs(y) OR abs(x) > abs(z))
+        ENDIF
+
+gt_times_gt_any2: LEMMA
+	w * x > y * z IMPLIES
+	IF w >= 0 IFF x >= 0
+	   THEN IF y >= 0 IFF z >= 0
+		   THEN abs(w) > abs(y) OR abs(x) > abs(z)
+		   ELSE (w /= 0 AND x /= 0) OR (y /= 0 AND z /= 0)
+	        ENDIF
+	   ELSE NOT (y >= 0 IFF z >= 0) AND
+		(abs(w) < abs(y) OR abs(x) < abs(z))
+        ENDIF
+
+
+END extra_real_props
+
+%%% This file contains some simplification rules missing in real_props.
+%%% Part of the Field package of Cesar Munoz
+extra_tegies : THEORY
+BEGIN
+  x,y : VAR real
+  n0z : VAR nzreal
+
+  neg_mult : LEMMA
+    -x*y =  -(x*y)
+
+  mult_neg : LEMMA
+    x*-y =  -(x*y)
+
+  neg_add : LEMMA
+    -x + y =  y - x
+
+  add_neg : LEMMA
+    x + -y =  x - y
+
+  neg_div : LEMMA
+    -x/n0z = -(x/n0z)
+
+  div_neg : LEMMA
+    x/-n0z = -(x/n0z)
+
+  one_times: LEMMA
+    1*x = x
+
+  zero_div: LEMMA
+    0/n0z = 0
+
+  neg_neg: LEMMA
+    --x = x
+
+END extra_tegies
+
 
 
 % rational_props contains the properties of rational numbers.  This mostly
@@ -5167,27 +5489,6 @@ BEGIN
                                bv ^ (i, j) ^ k = bv^(j+k))
 
 END bv_caret 
-
-
-floor_div_props: THEORY
-BEGIN
-
-  i,k: VAR int
-  j: VAR nonzero_integer
-  x: VAR real
-
-  %sgn(x): int = IF x >= 0 THEN 1 ELSE -1 ENDIF
-
-  floor_val:   LEMMA i >= k*j AND i < (k+1)*j IMPLIES floor(i/j) = k 
-
-  floor_small: LEMMA  abs(i) < abs(j) IMPLIES
-                         floor(i/j) = IF i/j >= 0 THEN 0 ELSE -1 ENDIF
-
-  floor_eq_0:  LEMMA floor(x) = 0 IMPLIES x >= 0 AND x < 1
-
-  is_multiple: LEMMA integer_pred(i/j) = (EXISTS k: i = k*j)
-	
-END floor_div_props
 
 
 mod: THEORY
