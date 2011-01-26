@@ -97,9 +97,9 @@ ifneq ($(SBCLISP_HOME),)
 SBCLISPEXE = $(SBCLISP_HOME)/run-sbcl.sh
 ifeq ($(shell if [ -x "$(SBCLISPEXE)" ]; then echo OK; fi),OK)
 SBCLVERSION = $(shell $(SBCLISPEXE) --version)
-$(warning "$(SBCLVERSION)")
-sbcl-devel += $(bindir)/devel/$(SYSTEM)-sbclisp
-sbcl-rt += $(bindir)/runtime/$(SYSTEM)-sbclisp
+# $(warning "$(SBCLVERSION)")
+# sbcl-devel += $(bindir)/devel/$(SYSTEM)-sbclisp
+sbcl-rt = $(bindir)/runtime/$(SYSTEM)-sbclisp
 else
 $(error "$(SBCLISPEXE) is not executable")
 endif
@@ -309,11 +309,15 @@ rahd = src/rahd/rahd.lisp src/rahd/polyalg.lisp \
        src/rahd/canonizer.lisp src/rahd/ideals.lisp \
        src/rahd/opencad.lisp src/rahd/cocoa.lisp \
        src/rahd/cases.lisp src/rahd/realnull.lisp \
-       src/rahd/cauchyeval.lisp src/rahd/integrald.lisp \
-       src/rahd/demodlin.lisp src/rahd/cnf.lisp \
-       src/rahd/division.lisp src/rahd/prover.lisp \
+       src/rahd/cauchyeval.lisp src/rahd/intgrldom.lisp \
+       src/rahd/demodlin.lisp src/rahd/demodnl.lisp \
+       src/rahd/plinsolver.lisp src/rahd/intsplit.lisp \
+       src/rahd/interval.lisp src/rahd/intvlcp.lisp \
+       src/rahd/gbrnull.lisp src/rahd/cnf.lisp \
+       src/rahd/division.lisp src/rahd/quicksat.lisp \
+       src/rahd/prover.lisp src/rahd/abbrevs.lisp \
        src/rahd/regression.lisp src/rahd/debug.lisp \
-       src/rahd/rahd-pvs.lisp
+       src/rahd/prfanal.lisp src/rahd/rahd-pvs.lisp
 
 pvs-src = src/closopt.lisp \
           src/store-object.lisp \
@@ -403,6 +407,14 @@ cmulisp += BDD/bdd-cmu.lisp BDD/mu-cmu.lisp
 PVSiolisp = src/PVSio/pvs-lib.lisp src/PVSio/defattach.lisp \
             src/PVSio/eval.lisp src/PVSio/pvsio.lisp
 
+Maniplisp = src/Manip/pregexp.lisp src/Manip/manip-utilities.lisp \
+            src/Manip/extended-expr.lisp src/Manip/syntax-matching.lisp \
+            src/Manip/manip-strategies.lisp
+
+Fieldlisp = src/Field/extra-tegies.lisp src/Field/field-strategies.lisp
+
+ProofLitelisp = src/ProofLite/prooflite.lisp
+
 ws1slisp = src/WS1S/lisp/dfa-foreign.lisp src/WS1S/lisp/dfa.lisp \
            src/WS1S/lisp/pvs-utils.lisp src/WS1S/lisp/symtab.lisp \
            src/WS1S/lisp/signature.lisp src/WS1S/lisp/pvs2dfa.lisp \
@@ -428,8 +440,8 @@ inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
 
 lisp-files = pvs-config.lisp $(pvs-parser-out) $(ground-prover) $(pvs-src) \
 	     $(emacs-interface) $(pvs-prover) $(bddlisp) \
-	     $(PVSiolisp) $(ws1slisp) $(groundevallisp) \
-             $(abstractionlisp) $(rahd)
+	     $(PVSiolisp) $(Maniplisp) $(Fieldlisp) $(ProofLitelisp) \
+             $(ws1slisp) $(groundevallisp) $(abstractionlisp) $(rahd)
 
 ifneq ($(PVSPATH),)
 pvs-make-files := $(patsubst %,$(PVSPATH)%,$(pvs-make-files))
@@ -443,7 +455,10 @@ pvs-src := $(patsubst %,$(PVSPATH)%,$(pvs-src))
 emacs-interface := $(patsubst %,$(PVSPATH)%,$(emacs-interface))
 pvs-prover := $(patsubst %,$(PVSPATH)%,$(pvs-prover))
 bddlisp := $(patsubst %,$(PVSPATH)%,$(bddlisp))
-PVSIOlisp := $(patsubst %,$(PVSPATH)%,$(PVSiolisp))
+PVSiolisp := $(patsubst %,$(PVSPATH)%,$(PVSiolisp))
+Maniplisp := $(patsubst %,$(PVSPATH)%,$(Maniplisp))
+Fieldlisp := $(patsubst %,$(PVSPATH)%,$(Fieldlisp))
+ProofLitelisp := $(patsubst %,$(PVSPATH)%,$(ProofLitelisp))
 ws1slisp := $(patsubst %,$(PVSPATH)%,$(ws1slisp))
 abstractionlisp := $(patsubst %,$(PVSPATH)%,$(abstractionlisp))
 rahd := $(patsubst %,$(PVSPATH)%,$(rahd))
@@ -472,7 +487,7 @@ endif
 
 all : devel runtime prelude-files-and-regions $(emacs-elc) etags
 
-devel : $(allegro-devel) $(sbcl-devel) $(cmulisp-devel)
+devel : $(allegro-devel) # $(sbcl-devel) $(cmulisp-devel)
 
 runtime : $(allegro-rt) $(sbcl-rt) $(cmulisp-rt)
 
@@ -493,7 +508,9 @@ bddlib = $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION)
 
 ws1slib = $(PVSPATH)src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION)
 
-image-deps = $(fileutils) $(bddlib) $(ws1slib)
+image-deps = $(fileutils) $(bddlib) $(ws1slib) $(pvs-make-files) \
+             $(ess) $(ff-files) $(lisp-files) \
+             $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
 
 emacs = $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc
 
@@ -502,7 +519,7 @@ emacs = $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc
 
 ifneq ($(SBCLISP_HOME),)
 
-ifeq ($(ALLEGRO_HOME),) # Build these with Allegro, if available
+ifeq ($(ALLEGRO_HOME),) # Build these only if Allegro is not available
 $(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
 	@echo "******* Creating parser"
 	$(SBCLISPEXE) --load src/make-pvs-parser
@@ -516,10 +533,8 @@ $(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
 		   --load src/make-pvs-methods.lisp
 endif
 
-$(sbcl-devel) $(sbcl-rt) : $(image-deps) \
-             $(pvs-make-files) $(ess) $(ff-files) \
-             $(lisp-files) $(sbcllisp) \
-             $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
+# $(sbcl-devel)
+$(sbcl-rt) : $(image-deps) $(sbcllisp)
 	$(MKDIR) -p $(subst $(SYSTEM)-sbclisp,,$@)
 	@echo "******* Compiling PVS files in Steel Bank Common Lisp (SBCL)"
 	$(SBCLISPEXE) --eval '(require :sb-posix)' \
@@ -537,8 +552,7 @@ $(sbcl-devel) $(sbcl-rt) : $(image-deps) \
 				  (mk:operate-on-system :pvs :compile) \
 				(save-lisp-and-die \"$@\" \
 				    :toplevel (function startup-pvs) \
-				    :executable t \
-                               ))"
+				    :executable t))"
 	-rm $(PVSPATH)BDD/$(PLATFORM)/bdd-sbcl.*
 	cp $(SBCLISPEXE) $(subst $(SYSTEM)-sbclisp,,$@)
 	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-sbclisp,,$@)
@@ -550,7 +564,7 @@ endif
 
 ifneq ($(CMULISP_HOME),)
 
-ifeq ($(ALLEGRO_HOME),) # Build these with Allegro, if available
+ifeq ($(ALLEGRO_HOME),) # Build these only if Allegro is not available
 $(PVSPATH)src/pvs-lexer.lisp : $(pvs-parser-in)
 	@echo "******* Creating parser"
 	$(CMULISPEXE) -load src/make-pvs-parser
@@ -564,39 +578,23 @@ $(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
 		   -load src/make-pvs-methods.lisp
 endif
 
-$(cmulisp-devel) $(cmulisp-rt) : $(image-deps) \
-           $(pvs-make-files) $(ess) $(ff-files) \
-           $(lisp-files) $(cmulisp) lib/prelude.pvs lib/prelude.prf
+# $(cmulisp-devel)
+$(cmulisp-rt) : $(image-deps) $(cmulisp)
 	@echo "******* Compiling PVS files in CMU Lisp"
 	$(MKDIR) -p $(subst $(SYSTEM)-cmulisp,,$@)
-	$(CMULISPEXE) -eval '(load "pvs.system" :verbose t) \
-                             (let ((*load-pvs-prelude* nil)) \
-                               (mk:operate-on-system :pvs :compile)) \
-                             (quit)'
+	$(CMULISPEXE) -eval '(load "pvs.system" :verbose t) (let ((*load-pvs-prelude* nil)) (mk:operate-on-system :pvs :compile)) (quit)'
 	@echo "******* Building PVS image $@"
-	$(CMULISPEXE) -eval '(load "pvs.system" :verbose t) \
-                             (unwind-protect \
-                                 (mk:operate-on-system :pvs :compile) \
-                               (save-lisp "$@.core" \
-                                   :init-function (function startup-pvs) \
-                               ))'
+	$(CMULISPEXE) -eval '(load "pvs.system" :verbose t) (unwind-protect (mk:operate-on-system :pvs :compile) (save-lisp "$@" :executable t :init-function (function startup-pvs)))'
 	-rm $(PVSPATH)BDD/$(PLATFORM)/bdd-cmu.*
-	cp $(CMULISPEXE) $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)BDD/bdd-cmu.lisp $(PVSPATH)BDD/mu-cmu.lisp $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION) $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)src/WS1S/lisp/dfa-foreign-cmu.lisp $(subst $(SYSTEM)-cmulisp,,$@)
 	cp $(PVSPATH)src/utils/$(PLATFORM)/b64 $(bindir)
-	echo "#!/bin/sh" > $@
-	echo "lisp -core \`dirname \$$0\`/\`basename \$$0\`.core \$$*" >> $@
-	chmod a+x $@
 endif
 
 ifneq ($(ALLEGRO_HOME),)
-$(allegro-devel) $(allegro-rt) : $(image-deps) \
-             $(pvs-make-files) $(allegro-make-files) $(ess) $(ff-files) \
-             $(lisp-files) $(allegrolisp) \
-             $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
+$(allegro-devel) $(allegro-rt) : $(image-deps) $(allegro-make-files) $(allegrolisp)
 	$(MKDIR) -p $(subst $(SYSTEM)-allegro,,$@)
 	rm -rf /tmp/pvs-allegro-build
 	@echo "******* Compiling PVS files in Allegro Lisp"
