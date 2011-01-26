@@ -10,7 +10,6 @@
 #   -h | -help | --help  prints a help line and exits
 #   -version | --version prints the PVS version
 #   -emacs emacsref        emacs, xemacs, alias, or pathname
-#   -load-after efile      loads emacs file name after PVS emacs files
 #   -lisp name             lisp image name - allegro, cmulisp, or sbclisp
 #   -runtime               use the runtime image (devel is default, if there)
 #   -decision-procedures   set the default decision procedures (ics or shostak)
@@ -26,12 +25,15 @@
 #   -raw         run PVS without Emacs
 #   -v           the (verbose) level number - 0-3 (mostly for batch mode)
 #   -q           do not load ~/.emacs, ~/.pvsemacs, or ~/.pvs.lisp files
-#   -l efile     load the given Emacs file (before PVS emacs files)
+#   -e expr      evaluate the given Emacs file
+#   -l efile     load the given Emacs file before PVS emacs files
+#   -load-after efile      loads Emacs file after PVS emacs files
+#   -E expr
 #   -L lfile     load the given Lisp file (after PVS initializes)
 #   any other emacs parameters (e.g. -u or -nw)
 #   any X window parameters (e.g. -geometry 80x60+0-0)
-# Other arguments will simply pass through, but different lisps will likely
-# interpret them differently, and possibly break.
+# Other arguments will simply pass through, but they are likely not to work
+# with different Emacs/Lisp combinations
 #
 # If the corresponding command line argument is not given, the following
 # environment variables are used if set:
@@ -79,8 +81,8 @@ flags=
 batch=
 rawmode=
 PVSINEMACS=t
+PVSEVALLOAD=
 getversion=
-lisploadfiles=
 nobg=
 if [ -f $HOME/.emacs ]
   then dotemacs="-l $HOME/.emacs"
@@ -157,9 +159,16 @@ do
      -q|-no-init-file) flags="$flags $1"
                        PVSMINUSQ="-q"
 		       dotemacs= ;;
-     # No need for -l - it takes care of itself
-     -L) lisploadfiles="$lisploadfiles $2"
-         shift;;
+     -E) PVSEVALLOAD="$PVSEVALLOAD $2"
+                     shift;;
+     -L) PVSEVALLOAD="$PVSEVALLOAD (load \"$2\")"
+                     shift;;
+     -ee|-eval|--eval)
+        echo "Use -E, not $1, for lisp evaluation argument to PVS"
+        exit 1;;
+     -load)
+        echo "Use -L, not $1, for loading lisp files in PVS"
+        exit 1;;
      -where|--where) echo $PVSPATH
                      exit 0;;
      -version|--version) unset PVSINEMACS
@@ -182,7 +191,9 @@ where options include:
   -raw               run PVS without Emacs
   -v number          verbosity level for batch mode (0-3)
   -q           do not load ~/.emacs, ~/.pvsemacs, or ~/.pvs.lisp files
+  -e expr      evaluate the Emacs expression
   -l efile     load the given Emacs file (before PVS emacs files)
+  -E expr      evaluate the Lisp expression
   -L lfile     load the given Lisp file (after PVS initializes)
   and any Emacs or X window options
 To change the title and icon names, use -title and -xrm, for example,
@@ -192,6 +203,10 @@ To change the title and icon names, use -title and -xrm, for example,
    esac
    shift
 done
+
+if [ -n PVSEVALLOAD ]
+    then PVSEVALLOAD="(progn $PVSEVALLOAD)"
+fi
 
 PVSEMACS=${PVSEMACS:-"emacs"}
 
@@ -293,40 +308,18 @@ case $PVSLISP in
     allegro) 
 	ALLEGRO_CL_HOME=$PVSPATH/bin/$PVSARCH-$opsys${majvers}/home
 	noinit="-qq"
-	evalflag="-e"
-	if [ -n "$lisploadfiles" ]
-	  then
-	    flags="$flags -e (pvs::pvs-init)"
-	    for lf in $lisploadfiles
-	      do flags="$flags -L $lf"; done
-	fi
 	;;
     cmulisp)
 	noinit="-quiet -noinit"
-	evalflag="-eval"
-	if [ -n "$lisploadfiles" ]
-	  then
-	    flags="$flags -eval (pvs::pvs-init)"
-	    for lf in $lisploadfiles
-	    do flags="$flags -load $lf"; done
-	fi
 	;;
     sbclisp)
 	noinit="--noinform --no-userinit"
-	evalflag="--eval"
-	if [ -n "$lisploadfiles" ]
-	  then
-	    flags="$flags --eval (pvs::pvs-init)"
-	    for lf in $lisploadfiles
-	    do flags="$flags --load $lf"; done
-	fi
-	if [ -d $binpath/devel -a -e $binpath/devel/$PVSIMAGE ]; then
-	  PVSIMAGE="/usr/bin/sbcl --core $binpath/devel/$PVSIMAGE"
-	else
-	  PVSIMAGE="/usr/bin/sbcl --core $binpath/runtime/$PVSIMAGE"
-	fi
 	;;
 esac
+
+if [ "$rawmode" ]
+then flags="-E (pvs::pvs-init) $flags"
+fi
 
 PVSPATCHLEVEL=${PVSPATCHLEVEL:-2}
 
@@ -350,7 +343,7 @@ PVSVERBOSE=${PVSVERBOSE:-0}
 export ALLEGRO_CL_HOME DISPLAY LD_LIBRARY_PATH
 export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE PVSTIMEOUT
 export PVSPATCHLEVEL PVSMINUSQ PVSFORCEDP PVSDEFAULTDP
-export PVSNONINTERACTIVE PVSINEMACS
+export PVSNONINTERACTIVE PVSINEMACS PVSEVALLOAD
 
 # Warn about for PVS_LIBRARY_PATH conflicts
 if [ -n "$PVS_LIBRARY_PATH" ]
