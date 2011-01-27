@@ -36,6 +36,8 @@
 	  find-supertype get-theory lf make-new-context mapappend operator*
 	  put-decl pvs-current-directory resolution show))
 
+(declaim (notinline current-theory))
+
 (defun current-theory ()
   (when *current-context*
     (theory *current-context*)))
@@ -2193,7 +2195,7 @@
   (and (resolution x)
        (not (variable? x))
        (module-instance (resolution x))
-       (or (null (current-theory))
+       (or (not (current-theory))
 	   (not (eq (module (declaration (resolution x)))
 		    (current-theory)))
 	   (not (eq (id x) (id (resolution x))))
@@ -2209,7 +2211,7 @@
   (and (adt x)
        (resolution (adt x))
        (module-instance (resolution (adt x)))
-       (or (null (current-theory))
+       (or (not (current-theory))
 	   (not (eq (module (declaration (resolution (adt x))))
 		    (current-theory)))
 	   (not (eq (id x) (id (resolution (adt x)))))
@@ -2229,17 +2231,17 @@
 (defmethod full-name? ((x type-name))
   (and (resolution x)
        (module-instance (resolution x))
-       (or (null (current-theory))
-	   (not (eq (id (module-instance (resolution x)))
-		    (id (current-theory))))
-	   (not (type-name? (type (resolution x))))
-	   (not (eq (id (type (resolution x))) (id x)))
-	   (actuals (module-instance (resolution x))))))
+       (let ((cth (current-theory)))
+	 (or (not cth)
+	     (not (eq (id (module-instance (resolution x))) (id cth)))
+	     (not (type-name? (type (resolution x))))
+	     (not (eq (id (type (resolution x))) (id x)))
+	     (actuals (module-instance (resolution x)))))))
 
 (defmethod full-name! ((x name))
   (copy x
     'id (id (resolution x))
-    'mod-id (when (or (null (current-theory))
+    'mod-id (when (or (not (current-theory))
 		      (integerp (id x))
 		      (not (eq (id (module-instance (resolution x)))
 			       (id (current-theory)))))
@@ -2258,7 +2260,7 @@
 (defmethod full-name! ((x adt-name-expr))
   (copy x
     'id (id (resolution x))
-    'mod-id (when (or (null (current-theory))
+    'mod-id (when (or (not (current-theory))
 		      (integerp (id x))
 		      (not (eq (id (module-instance (resolution (adt x))))
 			       (id (current-theory)))))
@@ -2284,7 +2286,7 @@
     (copy x
       'mod-id (when (and (or (not *exclude-prelude-names*)
 			     (not (gethash modid *prelude*)))
-			 (or (null (current-theory))
+			 (or (not (current-theory))
 			     (not (eq modid (id (current-theory))))))
 		modid)
       'library (or (library x)
