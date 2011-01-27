@@ -1029,6 +1029,16 @@
 	  (setf (all-declarations theory) decls))
 	decls)))
 
+(defun all-decls-but-theory-formals (theory)
+  (append (formals theory)
+	  (mapcan #'(lambda (d)
+		      (when (typep d 'formal-subtype-decl)
+			(remove-if #'tcc? (generated d))))
+	    (formals theory))
+	  (when (recursive-type? theory)
+	    (importings theory))
+	  (assuming theory)
+	  (theory theory)))
 
 ;;; lib-ref in this case is always relative to the pvs-context-path
 (defun libref-to-pathname (lib-ref)
