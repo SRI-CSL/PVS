@@ -1070,7 +1070,7 @@ anything but a left paren or a \", ignoring whitespace."
 (define-key pvs-prover-helps-map "1"     'pvs-prover-run-proof-step)
 (define-key pvs-prover-helps-map "U"     'pvs-prover-undo-proof-step)
 (define-key pvs-prover-helps-map "#"     'pvs-prover-skip-proof-step)
-(define-key pvs-prover-helps-map "y"     'pvs-prover-yank-proof-step)
+(define-key pvs-prover-helps-map "\C-y"     'pvs-prover-yank-proof-step)
 
 (define-key pvs-prover-helps-map "'"     'pvs-prover-quotes)
 (define-key pvs-prover-helps-map "\C-j"  'pvs-prover-wrap-with-parens)
