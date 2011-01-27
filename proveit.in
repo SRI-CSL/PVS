@@ -1,0 +1,626 @@
+#!/bin/sh
+# Script for batch proving in PVS 
+# Release: ProofLite-4.2 (01/10/10)
+
+PVSPATH=@PVSPATH@
+VERSION="ProofLite-4.2 (01/10/10)"
+
+export PROVEITVERSION="proveit - $VERSION"
+
+#-------------------------------------------------
+# Nothing below this line should need modification
+#
+
+# Extension for proof status summary file
+EXT=.summary
+
+# PVS directory of binary files
+PVSBIN=pvsbin
+
+LISPFORCE=nil
+LISPIMPORT=nil
+LISPSCRIPTS=t
+LISPTRACES=nil
+LISPTXTPROOFS=nil
+LISPTEXPROOFS=nil
+PACKS=
+CLEAN=
+LOG=
+QUIET=
+DEBUG=
+OUTDIR=
+TOP=top
+NOFILE=true
+
+reset_vars() {
+  ARG=
+  OPTS=  
+  OUTFILE=
+  LOGFILE=
+  PVSCONTEXT=
+  PVSFILE=
+  THFS=
+  THEORIES=  
+}
+
+all_opt() {
+  CLEAN=yes
+  LISPIMPORT=t
+  QUIET=yes
+  PACKS=`append Field $PACKS`
+  LISPSCRIPTS=nil
+}
+
+
+# $ARG has the general form
+# <dir> | <file>[.pvs] | [<dir>@]<thf1>,..,<thfn>, where 
+# <thfi> has the form <th>[.<f1>:..:<fm>]
+
+compile_infile_name() {
+  # If <dir>, set context to <dir> and pvsfile to top.pvs
+  if [ -d $ARG ]; then
+    if [ ! -f $ARG/$TOP.pvs ]; then
+	echo "Error: File $ARG/$TOP.pvs not found"
+        exit 1
+    fi
+    PVSCONTEXT=$ARG
+    if [ -z "$OUTFILE" ]; then
+      OUTFILE=$ARG$EXT
+    fi
+    PVSFILE=$TOP
+    all_opt
+  # If  <file>, set context to its dirname and pvsfile to its base name
+  else 
+    if [ -f $ARG -o -f $ARG.pvs ]; then
+      PVSCONTEXT=`dirname $ARG`
+      PVSFILE=`basename $ARG .pvs`
+      if [ ! -f $PVSCONTEXT/$PVSFILE.pvs ]; then
+        echo "Error: $ARG is not a PVS file"
+        exit 1
+      fi
+    else
+      case $ARG in
+        *@*) predir=`echo $ARG | sed -e "s/\([^@]*\)@.*/\1/"`
+             THFS=`echo $ARG | sed -e "s/[^@]*@//"`
+	     if [ -z "$predir" ]; then
+               PVSCONTEXT="."
+             else 
+               if [ -d "$predir" ]; then
+	         PVSCONTEXT=$predir
+               else
+                 echo "Error: $predir is not a directory"
+		 exit 1
+	       fi
+	     fi
+	     if [ "$THFS" ]; then
+		 PVSFILE=$THFS
+		 THEORIES=`echo $THFS | sed -e "s/\..*,/,/g" -e "s/\..*//"`
+	     else
+		 echo "Error: At least one theory has to be specified in $ARG"
+		 exit 1
+	     fi;;
+        *)  echo "Error: File $ARG not found"
+            exit 1;;
+      esac
+    fi
+  fi
+}
+
+strip_ext() {
+  echo "$1" | sed -e "s/\..*//g" 
+}
+
+abs_dir() {
+  case $1 in
+    */*) echo "YES";;
+    *) echo "";;
+  esac
+}
+
+# If necessary, set the name of the output file
+#
+compile_outfile_names() {
+    if [ -z "$OUTFILE" ]; then
+	if [ -z "$OUTDIR" ]; then
+	    OUTDIR=$PVSCONTEXT
+	fi
+	OUTFILE=$PVSFILE$EXT
+    fi
+    dir=`dirname $OUTFILE`
+    base=`basename $OUTFILE`
+    noext=`strip_ext $base`
+    if [ "$noext" = $base ]; then
+	base=$noext$EXT
+    fi
+    if [ "$OUTDIR" -a -z `abs_dir $OUTFILE` ]; then
+	dir="$OUTDIR"
+    fi
+    OUTFILE=$dir/$base
+    LOGFILE=$dir/$noext.log
+    echo Processing $ARG. Writing output to file $OUTFILE
+}
+
+# Translate a list l1,...,ln into (l1 .. ln)
+list_to_lisp() {
+  if [ -z "$1" ]
+  then 
+      echo nil
+  else
+      echo "(\"$1\")" | sed -e "s/,/\" \"/g"
+  fi
+}
+
+# append e l = e,le. Check for the special case when l is empty
+append() {
+    if [ -z "$2" ]; then
+	echo "$1"
+    else
+	echo "$2,$1"
+    fi
+}
+
+# Take care of the optional cleaning
+#
+cleanup() {
+  if [ "$CLEAN" ]
+  then 
+    if [ -z "$THEORIES" ] 
+    then 
+      if [ -z "$QUIET" ]
+      then
+	  echo "Removing $PVSCONTEXT/.pvscontext $PVSCONTEXT/$PVSBIN/ $OUTFILE $LOGFILE"
+      fi
+      rm -r -f $PVSCONTEXT/.pvscontext $PVSCONTEXT/$PVSBIN/*.bin $OUTFILE $LOGFILE
+    else
+      theobin=`echo "$PVSCONTEXT/$PVSBIN/$THEORIES.bin" | sed -e "s+,+.bin $PVSCONTEXT/$PVSBIN/+g"`
+      if [ -z "$QUIET" ]
+      then
+	  echo "Removing $PVSCONTEXT/.pvscontext $theobin $OUTFILE $LOGFILE"
+      fi
+      rm -r -f $PVSCONTEXT/.pvscontext $theobin
+    fi
+  fi
+}
+
+# Help print command
+#
+usage() {
+    echo "NAME
+  $PROVEITVERSION -- runs PVS in batch mode
+
+SYNOPSIS
+
+  proveit <options> ... <dir | file[.pvs] | [ctxt]@thf1,..,thfn> ...
+     where <thfi> has the form  <th[.f1:..:fm]>
+
+DESCRIPTION
+  If directory <dir> is provided, prove all theories imported in 
+  <dir>/top.pvs. If a PVS <file> is provided, prove all theories 
+  defined in it. In the first case, the proof status is saved in 
+  <dir>$EXT in the local directory. Otherwise, the proof status is
+  saved in <file>$EXT in the PVS working directory.
+ 
+TYPICAL USE
+  * If <dir> is a library, e.g., there is a file <dir>/top.pvs that 
+    imports all other theories in <dir>, then type: \$proveit <dir>
+  * If <file>.pvs is a regular PVS file, then type: \$proveit <file>
+  * If <file>.pvs is a regular PVS file and wanted to check that all
+    formulas are proven, including those in imported files, then type:
+    \$proveit -a <file>
+
+ADVANCED USE
+  In the more general form, a context,  a list of theories, and a list of 
+  formulas are specified using the syntax <[ctxt]@thf1,..,thfn>,  where <ctxt> 
+  is a directory and each <thfi> has the form <th[.f1:..:fm]> with <th> being a 
+  theory and <f1:..:fn> a list of formulas in <th>. Only formulas specified
+  this way are proven by PVS. In this case, the proof status is saved
+  in <th.f1:..:fm>$EXT in <ctxt>. For example, to prove formulas <f1> and 
+  <f2> in theory <theory> in the current context, type: 
+  \$proveit @<theory>.<f1>:<f2>
+
+
+OPTIONS
+  Options are processed in the order they appear. One letter options can be 
+  combined.
+
+   -a|--all            equivalent to -ciq -p Field
+   -c|--clean          remove bin files and .pvscontext
+   -C|--Clean          clean but do not typecheck or prove the theory
+   -d|--dir <dir>      use <dir> as default directory of summary files
+   .<ext>              use <ext> as default extension of summary files
+   -f|--force          force proof reruns 
+   ~f|--no-force       don't force proof reruns (default)
+   -h|--help           print this message
+   -i|--importchain    prove chain of imported theories (set --no-scripts)
+   ~i|--no-importchain don't prove chain of imported theories (default)
+   --lisp <lisp>       specify lisp version; <lisp> is one of allegro,cmulisp
+   -l|--log            log all information generated by PVS in <file>.log
+   ~l|--no-log         don't log PVS information (default)
+   -o|--output <file>  save the proof status summary to <file> 
+   -p|--packages <p1,..,pn> load a list of packages
+   ~p|--no-packages    don't load any packages
+   -q|--quiet          print only untried and unfinished proofs per theory,
+                       and grand total  
+   -s|--scripts        install ProofLite scripts (default)
+   ~s|--no-scripts     don't install ProofLite scripts
+   -t|--text-proof     generate an ASCII file <fi>.txt that contains <fi>'s 
+                       default proof 
+   ~t|--no-text-proof  don't generate ASCII proof files (default)
+   --top <th>          use <th>.pvs instead of top.pvs when a library is 
+                       provided 
+   --traces            include proof traces in log file (set --log).
+                       This option may generate an extremely large log file, 
+                       specially when combined with --importchain
+   --no-traces         don't include proof traces in log file (default)
+   -v|--verbose        print proof status information per theory and grand 
+                       total (default)
+   --version           print version information and exit
+   -x|--latex-proof    generate a directory <fi> that contains LaTeX 
+                       source files of <fi>'s default proof
+   ~x|--no-latex-proof don't generate LaTeX proof files (default)
+
+SEE ALSO
+  provethem -- for iterating proveit on a list of libraries  
+"
+
+
+}
+
+# Print error output
+error_output() {
+    sed -i.bak -n -e '/^<pvserror/,/^<\/pvserror/p'\
+	-e '/^Restored .*/d'\
+	-e '/^\*\*\* /p'\
+	-e '/^Typechecking/h'\
+	-e '/^Typechecking/ !{
+                 /^Typecheck error/ {
+                   p;g;p
+                 }
+                 /^Typecheck error/! {
+                   /^PVS file .* is not/h
+                   /^PVS file .* is not/!H
+                 }
+              }'\
+	-e '/Proof summary/,/Grand Totals/p' $OUTFILE 
+    if [ -z "$QUIET" ]; then
+	cat $OUTFILE | \
+	    sed -e "s+^<pvsmmmerror msg=\"\(.*\)\">+\1 ($ARG)+" \
+            -e 's/"//g' -e '/^<\/pvserror>/d' \
+	    -e '/^\*\*\*.*/d' 
+    else
+	cat $OUTFILE | \
+	    sed -n -e "s+^<pvserror msg=\"\(.*\)\">+\1 ($ARG)+p" \
+	           -e "/^Typecheck error/p"
+    fi
+    if [ "$LOG" ]; then
+	mv -f $OUTFILE.bak $LOGFILE
+    else
+	rm $OUTFILE.bak
+    fi
+}
+
+# Pretty print PVS output
+pvs_output() {
+    sed -i.bak -n -e '/^\*\*\* /p'\
+        -e '/Proof summary/,/Grand Totals/p' $OUTFILE
+    cat $OUTFILE | quiet_output
+    if [ "$LOG" ]; then
+	mv -f $OUTFILE.bak $LOGFILE
+    else
+	rm $OUTFILE.bak
+    fi
+}
+
+# quiet output
+quiet_output() {
+    if [ -z "$QUIET" ]
+    then
+	sed -n -e '/Proof summary/h'\
+               -e '/Proof summary/ !{
+                    /unfinished/H
+                    /untried/H
+                   }'\
+               -e '/Theory totals/ { 
+                    i\
+
+                    x;p;g;p
+                  }' \
+               -e '/^Grand Totals:/ {
+                    i\
+
+                    p
+                  }'
+    else
+	sed -n -e '/Proof summary/h'\
+               -e '/Proof summary/ !{
+                    /unfinished/H
+                    /untried/H
+                   }'\
+               -e '/Theory totals/ {
+                   H;g
+                   /\.\.\.\./p
+                  }'\
+               -e '/^Grand Totals:/p' 
+    fi
+}
+
+process_opts() {
+  while [ $# -gt 0 ]
+  do
+    case $1 in
+	-a|all|--all)  
+	    all_opt;;
+	-c|-clean|--clean)   
+	    CLEAN=yes;;
+	-C|-Clean|--Clean)
+	    QUIET=
+	    CLEAN=only;;
+        ~c|-no-clean|--no-clean)
+	    CLEAN=;;
+	-f|-force|--force)   
+	    LISPFORCE=t;;
+	~f|-no-force|--no-force)   
+	    LISPFORCE=nil;;
+	-i|-importchain|--importchain) 
+	    LISPSCRIPTS=nil
+	    LISPIMPORT=t;;
+        ~i|-no-importchain|--no-importchain)
+	    LISPIMPORT=nil;;
+	-s|-scripts|--scripts)
+	    LISPSCRIPTS=t;;
+	~s|-no-scripts|--no-scripts)
+	    LISPSCRIPTS=nil;;
+	-traces|--traces) 
+	    LOG=yes
+	    LISPTRACES=t;;
+	-no-traces|--no-traces) 
+	    LISPTRACES=nil;;
+	-t|-text-proof|--text-proof)
+	    LISPTXTPROOFS=t;;
+	~t|-no-text-proof|--no-text-proof)
+	    LISPTXTPROOFS=nil;;
+	-x|-latex-proof|--latex-proof)
+	    LISPTEXPROOFS=t;;
+	~x|-no-tex-proof|--no-tex-proof)
+	    LISPTEXPROOFS=nil;;
+	-l|-log|--log)
+	    LOG=yes;;
+	~l|-no-log|--no-log)
+	    LOG=;;
+	~p|-no-packages|--no-packages)
+	    PACKS=;;
+	-q|-quiet|--quiet)
+	    QUIET=yes;;
+	-v|-verbose|--verbose)
+	    QUIET=;;
+	--*)           
+	    usage
+	    echo "Error: $1 is not a valid option"
+	    exit 1;;
+	-*)
+	    opts=`echo "$1" | sed -e s/-//g -e "s/\(.\)/\1 /g"`
+	    for opt in $opts; do
+	      case $opt in
+		  a)     
+		      all_opt;;
+		  c)   
+		      CLEAN=yes;;
+		  C)
+		      QUIET=
+		      CLEAN=only;;
+		  f)   
+		      LISPFORCE=t;;
+		  s)
+		      LISPSCRIPTS=t;;
+		  v)  
+		      QUIET=;;
+		  i) 
+		      LISPSCRIPTS=nil
+		      LISPIMPORT=t;;
+		  l)
+		      LOG=yes;;
+		  q)
+		      QUIET=yes;;
+		  t)
+		      LISPTXTPROOFS=t;;
+		  x)
+		      LISPTEXPROOFS=t;;
+		  *) 
+		      usage
+		      echo "Error: -$opt is not a valid option"
+		      exit 1;;
+	      esac
+	    done;;
+	~*)
+	    opts=`echo "$1" | sed -e s/~//g -e "s/\(.\)/\1 /g"`
+	    for opt in $opts; do
+	      case $opt in
+		  c)
+		      CLEAN=;;
+		  f)   
+		      LISPFORCE=nil;;
+		  i)
+		      LISPIMPORT=nil;;
+		  s)
+		      LISPSCRIPTS=nil;;
+		  l) 
+		      LOG=;;
+		  p)  
+		      PACKS=;;
+		  t)
+		      LISPTXTPROOFS=nil;;
+		  x)
+		      LISPTEXPROOFS=nil;;
+		  *) 
+		      usage
+		      echo "Error: ~$opt is not a valid option"
+		      exit 1;;
+	      esac
+	    done
+    esac
+    shift
+  done
+}
+
+# Main Function
+proveit() {
+  compile_infile_name
+  process_opts $OPTS
+  if [ "$DEBUG" ]; then
+      QUIET=
+      LOG=y
+  fi
+  compile_outfile_names
+  cleanup
+
+  if [ "$CLEAN" != "only" ]
+  then
+      if [ -z "$QUIET" ]
+      then
+	  if [ "$PACKS" ]
+	  then
+	      echo "Loading packages: $PACKS"
+	  fi
+	  if [ "$LISPIMPORT" = "t" ]
+	  then
+	      echo "Proving chain of imported theories"
+	  fi 
+	  if [ "$LISPSCRIPTS" != "t" ]
+	  then
+	      echo "ProofLite scripts won't be installed"
+	  fi 
+	  if [ "$LISPFORCE" = "t" ]
+	  then
+	      echo "Forcing all proofs"
+	  fi
+	  if [ "$LOG" ]
+	  then
+	      echo "Logging PVS information in $LOGFILE"
+	  fi
+	  if [ "$LISPTRACES" = "t" ]
+	  then
+	      echo "Including proof traces in output file"
+	  fi
+	  if [ "$TEXTFORMULAS" ]
+	  then
+	      echo "Generating ASCII proofs of formulas: $TEXTFORMULAS"
+	  fi
+	  if [ "$TEXFORMULAS" ]
+	  then
+	      echo "Generating TeX proofs of formulas: $TEXFORMULAS"
+	  fi
+      fi
+      
+      export PROVEITPVSCONTEXT="$PVSCONTEXT"
+      export PROVEITPVSFILE="$PVSFILE"
+      export PROVEITLISPIMPORT="$LISPIMPORT"
+      export PROVEITLISPSCRIPTS="$LISPSCRIPTS"
+      export PROVEITLISPTRACES="$LISPTRACES"
+      export PROVEITLISPFORCE="$LISPFORCE"
+      export PROVEITLISPTXTPROOFS="$LISPTXTPROOFS"
+      export PROVEITLISPTEXPROOFS="$LISPTEXPROOFS"
+      export PROVEITLISPPACKS="`list_to_lisp $PACKS`"
+      export PROVEITLISPTHFS="`list_to_lisp $THFS`"
+      export PROVEITLISPTHEORIES="`list_to_lisp $THEORIES`"
+      
+      if [ "$DEBUG" ]; then
+	  echo "PROVEITVERSION: $PROVEITVERSION"
+	  echo "OUTFILE: $OUTFILE"
+	  echo "LOGFILE: $LOGFILE"
+	  echo "PROVEITPVSCONTEXT: $PROVEITPVSCONTEXT"
+	  echo "PROVEITPVSFILE: $PROVEITPVSFILE"
+	  echo "PROVEITLISPIMPORT: $PROVEITLISPIMPORT"
+	  echo "PROVEITLISPSCRIPTS: $PROVEITLISPSCRIPTS"
+	  echo "PROVEITLISPTRACES: $PROVEITLISPTRACES"
+	  echo "PROVEITLISPFORCE: $PROVEITLISPFORCE" 
+	  echo "PROVEITLISPTXTPROOFS: $PROVEITLISPTXTPROOFS"
+	  echo "PROVEITLISPTEXPROOFS: $PROVEITLISPTEXPROOFS"
+	  echo "PROVEITLISPPACKS: $PROVEITLISPPACKS"
+	  echo "PROVEITLISPTHFS: $PROVEITLISPTHFS"
+	  echo "PROVEITLISPTHEORIES: $PROVEITLISPTHEORIES"
+      fi
+
+      case $PVSLISP in
+	  allegro) evalflag="-e" ;;
+	  cmulisp) evalflag="-eval" ;;
+	  sbclisp) evalflag="--eval" ;;
+      esac
+      
+      $PVSPATH/pvs -raw $PVSLISP $evalflag "(proveit)" > $OUTFILE
+      
+      if [ $? = 0 ]; then
+	  error_output
+	  exit 1
+      fi
+      pvs_output
+  fi
+  reset_vars
+}
+
+# ... and go!
+#
+
+reset_vars
+while [ $# -gt 0 ]
+do
+  case $1 in
+    --debug)
+      DEBUG=yes;;
+    -h|-help|--help)    
+	  usage
+	  exit 0;;
+    -version|--version)     
+	  echo $PROVEITVERSION
+	  exit 0;;
+    .*) 
+      EXT=$1;;
+    -lisp|--lisp)    
+	  case $2 in
+	      allegro) 
+		  LISP='allegro';;
+	      cmulisp) 
+		  LISP='cmulisp'
+		  PVSBIN='PVSBIN';;
+	      *) 
+		  echo "Error: Only allegro and cmulisp are currently available"
+		  exit 1;;
+	  esac
+	  if [ "$LISP" ]; then
+	      PVSLISP="-lisp $LISP"
+	  fi
+	  shift;;
+    -d|-dir|--dir)           
+	  if [ -d "$2" ]; then
+	      OUTDIR=$2
+          else
+ 	      echo "Error: $2 is not a directory"
+	      exit 1
+	  fi
+	  shift;;
+    -top|--top)           
+	  TOP=$2
+	  shift;;
+    -o|-output|--output)           
+	  if [ -d "$2" ]; then
+	      echo "Error: $2 is a directory"
+	      exit 1
+          else
+ 	      OUTFILE=$2
+	  fi
+	  shift;;
+    -p|-packages|--packages) 
+	  PACKS=`append $2 $PACKS`
+	  shift;;
+    -*|~*) OPTS="$OPTS $1";;
+    *)     ARG=$1
+ 	   NOFILE=
+           proveit
+  esac
+  shift 
+done 
+if [ "$NOFILE" ]; then
+    ARG=$TOP
+    proveit
+fi
+
+exit 0
