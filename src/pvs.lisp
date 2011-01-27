@@ -144,9 +144,17 @@
   (pvs-init-globals)
   (initialize-decision-procedures)
   (initialize-prelude-attachments)
+  (register-manip-type *number_field* 'pvs-type-real)
   (unless *pvs-context-path*
     ;; Need to make sure this is set to something
-    (setq *pvs-context-path* (shortpath (working-directory)))))
+    (setq *pvs-context-path* (shortpath (working-directory))))
+  (let ((evalload (environment-variable "PVSEVALLOAD")))
+    (when evalload
+      (multiple-value-bind (ignore error)
+	  (ignore-errors (eval (read-from-string evalload)))
+	(declare (ignore ignore))
+	(when error
+	  (pvs-message "Error executing ~a:~% ~a" evalload error))))))
 
 (defun pvs-init-globals ()
   (setq *pvs-modules* (make-hash-table :test #'eq :size 20 :rehash-size 10))
@@ -865,7 +873,7 @@
 					    (generated (car diff)))
 				       (car (last (generated (car diff))))
 				       (car diff)))
-			    (replaced (memq repl1 (all-decls oth)))
+			    (replaced (memq repl1 (all-decls-but-theory-formals oth)))
 			    (kept (ldiff (all-decls oth) replaced)))
 		       (setf (all-declarations oth) nil)
 		       (setf (saved-context oth) nil)
@@ -929,6 +937,14 @@
 				    (append (ldiff (formals oth)
 						   (memq repl1 (formals oth)))
 					    (memq (cdr diff) (formals nth))))
+			      ;; Careful here - some formals cause changes to assuming/theory
+			      (setf (assuming oth) (assuming nth))
+			      (setf (theory oth) (theory nth)))
+			     ((memq repl1 (theory-formal-decls oth))
+			      (setf (theory-formal-decls oth)
+				    (append (ldiff (theory-formal-decls oth)
+						   (memq repl1 (theory-formal-decls oth)))
+					    (memq (cdr diff) (theory-formal-decls nth))))
 			      ;; Careful here - some formals cause changes to assuming/theory
 			      (setf (assuming oth) (assuming nth))
 			      (setf (theory oth) (theory nth)))
@@ -2408,8 +2424,8 @@
 			(id (module decl)) (id decl))
 		      (let ((pstat (rerun-prove decl)))
 			(pvs-message
-			    "~a ~aproved in ~,2,-3f real, ~,2,-3f cpu seconds"
-			  (id decl) (if (unproved? decl) "un" "")
+			    "~a.~a ~aproved in ~,2,-3f real, ~,2,-3f cpu seconds"
+			  (id (module decl)) (id decl) (if (unproved? decl) "un" "")
 			  (real-proof-time decl) (run-proof-time decl))
 			(when (eq (proof-status decl) 'unproved)
 			  (setf (proof-status decl) 'unfinished))
