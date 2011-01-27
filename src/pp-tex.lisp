@@ -2078,7 +2078,6 @@
     (write-char #\space)
     (pprint-newline :fill)
     (typecase map
-      (mapping-def (write "="))
       (mapping-subst (write ":="))
       (mapping-rename (write "::=")))
     (write-char #\space)
@@ -2099,7 +2098,6 @@
     (write-char #\space)
     (pprint-newline :fill)
     (typecase map
-      (mapping-def (write "="))
       (mapping-subst (write ":="))
       (mapping-rename (write "::=")))
     (write-char #\space)
