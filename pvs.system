@@ -67,7 +67,7 @@
     (sb-impl::toplevel-init)))
 
 #+allegro
-(eval-when (eval load)
+(eval-when (:execute :load-toplevel)
   (setq *record-source-file-info* t
 	*load-source-file-info* t
 	*record-xref-info* t
@@ -89,10 +89,13 @@
 (defpackage :bvec)
 
 (unless (find-package :make)
-  (let ((*enable-package-locked-errors* nil))
-    #+clisp
-    (defpackage :make)
-    (load (format nil "~a/src/defsystem" *pvs-path*))))
+  (#-(or cmu sbcl excl) progn
+   #+cmu ext:without-package-locks
+   #+sbcl sb-ext:without-package-locks
+   #+excl excl:without-package-locks
+   #+clisp
+   (defpackage :make)
+   (load (format nil "~a/src/defsystem" *pvs-path*))))
 
 (in-package :make)
 
@@ -125,15 +128,27 @@
 (defpackage pvs (:use #+lucid :lucid-common-lisp :cl-user :lisp :clos :make))
 
 #+(or gcl cmu)
-(unless (find-package :pvs)
-  (make-package :pvs :use '(:cl-user :lisp :common-lisp :pcl :make)))
+(defpackage :pvs (:use :cl-user :lisp :common-lisp :pcl :make))
 
 #+sbcl
-(unless (find-package :pvs)
-  (make-package :pvs :use '(:cl-user :common-lisp :sb-pcl :make)))
+(defpackage :pvs (:use :cl-user :common-lisp :sb-pcl :make))
+
+#-(or gcl cmu sbcl)
+(defpackage :rahd (:use :common-lisp #+allgro :excl))
+
+#+(or gcl cmu sbcl)
+(defpackage :rahd (:use :common-lisp))
+
+#+sbcl
+(eval-when (:execute :compile-toplevel :load-toplevel)
+  (sb-ext:unlock-package :common-lisp))
+
+#+cmu
+(eval-when (:execute :compile-toplevel :load-toplevel)
+  (unlock-all-packages))
 
 #+gcl
-(eval-when (eval compile load)
+(eval-when (:execute :compile-toplevel :load-toplevel)
   (unless (fboundp 'pcl::structure-slotd-reader-function)
     (defun pcl::structure-slotd-reader-function (slotd)
       (second slotd))))
@@ -173,19 +188,8 @@
 		    (load-patches :directory
 				  "/usr/global/lisp/lucid/dbcs/patches")
 		    (load "/usr/global/lisp/lucid/dbcs/patches/bug-7186.sbin"))
-		  #-(or gcl cmu sbcl)
-		  (proclaim '(optimize (compilation-speed 0) (space 1)
-				       (safety 1) (speed 3)
-				       #+allegro (debug 1)))
-		  #+gcl
-		  (proclaim '(optimize (compilation-speed 0) (space 1)
-				       (safety 3) (speed 0)))
-		  #+(or cmu sbcl)
 		  (proclaim '(optimize (compilation-speed 0) (space 1)
 				       (safety 1) (speed 3) (debug 1)))
-		  #+(or cmu-devel sbcl-devel)
-		  (proclaim '(optimize (compilation-speed 0) (space 1)
-				       (safety 3) (speed 1) (debug 3)))
 		  #+lucid
 		  (change-memory-management
 		   :expand 128
@@ -262,7 +266,9 @@
 		#-(or cmu sbcl)
 		(pvs::BDD_bdd_init)
 		(when *load-pvs-prelude*
-		  (pvs::load-prelude))
+		  (pvs::load-prelude)
+		  (load (format nil "~a/src/PVSio/prelude-attachments"
+			  *pvs-path*)))
 		#+allegro
 		(let ((optfile (format nil "~a/src/closopt" *pvs-path*)))
 		  (compile-file optfile)
@@ -447,7 +453,27 @@
 		  (:file "defattach")
 		  (:file "eval")
 		  (:file "pvsio")
-		  (:file "prelude-attachments")))
+		  ;; Loaded after prelude is loaded
+		  ;(:file "prelude-attachments")
+		  ))
+   (:module Manip
+     :source-pathname "src/Manip"
+     :components ((:file "pregexp")
+		  (:file "manip-utilities")
+		  (:file "extended-expr")
+		  (:file "syntax-matching")
+		  (:file "manip-strategies")
+		  ;(:file "debug-utils")
+		  ))
+   (:module Field
+     :source-pathname "src/Field"
+     :components ((:file "extra-tegies")
+		  (:file "field-strategies")))
+   (:module ProofLite
+     :source-pathname "src/ProofLite"
+     :components (;(:file "pregexp")
+		  (:file "prooflite")
+		  (:file "proveit-init")))
    (:module ws1s
 	    :source-pathname "src/WS1S/lisp"
 	    :components (#+allegro
@@ -482,12 +508,21 @@
 		  (:file "cases")
 		  (:file "realnull")
 		  (:file "cauchyeval")
-		  (:file "integrald")
+		  (:file "intgrldom")
 		  (:file "demodlin")
+		  (:file "demodnl")
+		  (:file "plinsolver")
+		  (:file "intsplit")
+		  (:file "interval")
+		  (:file "intvlcp")
+		  (:file "gbrnull")
 		  (:file "cnf")
 		  (:file "division")
+		  (:file "quicksat")
 		  (:file "prover")
+		  (:file "abbrevs")
 		  (:file "regression")
 		  (:file "debug")
+		  (:file "prfanal")
 		  (:file "rahd-pvs")))
    ))
