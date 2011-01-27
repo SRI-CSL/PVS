@@ -873,6 +873,10 @@ pvs-strategies files.")
 		 ;; Hopefully we are backward compatible between versions
 		 ;; 3 and 4.
 		 (setq *pvs-context* context)
+		 (setf (cadr *pvs-context*)
+		       (delete "Manip/"
+			       (delete "Field/" (cadr *pvs-context*) :test #'string=)
+			       :test #'string=))
 		 (cond ((and (listp (cadr context))
 			     (listp (caddr context))
 			     (every #'context-entry-p (cdddr context)))
