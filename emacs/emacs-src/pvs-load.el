@@ -29,33 +29,7 @@
 ;; --------------------------------------------------------------------
 
 (eval-and-compile (require 'pvs-macros))
-
-;;; Define this first, so we can start logging right away.
-
-(defun pvs-log-message (kind msg)
-  (let ((buf (current-buffer)))
-    (unwind-protect
-	 (let* ((cpoint (point))
-		(at-end (= cpoint (point-max))))
-	   (set-buffer (get-buffer-create "PVS Log"))
-	   (goto-char (point-max))
-	   (insert (format "%s(%s): %s\n"
-		       kind
-		     (substring (current-time-string) 4 19)
-		     msg))
-	   (unless at-end
-	     (goto-char cpoint)))
-      (set-buffer buf))))
-
-(defun pvs-msg (msg &rest args)
-  (let ((m (apply 'format msg args)))
-    (cond (noninteractive
-	   (princ m)
-	   (princ m 'external-debugging-output)
-	   (terpri))
-	  (t
-	   (pvs-log-message 'MSG m)
-	   (message "%s" m)))))
+(require 'pvs-utils)
 
 ;;(find-file-noselect "~/PVS Log" t)
 (pvs-log-message 'LOG "Started loading Emacs files")
@@ -67,48 +41,15 @@
   (defadvice kill-emacs (before pvs-batch-control activate protect)
     (exit-pvs-process)))
 
-(unless (fboundp 'memql)
-  (defun memql (elt list)
-    (and (not (null list))
-	 (or (eql elt (car list))
-	     (memql elt (cdr list))))))
-
-(defun pvs-getenv (var)
-  (let ((val (getenv var)))
-    (if (equal val "") nil val)))
-
 (if (pvs-getenv "PVSIMAGE")
     (defconst pvs-image (pvs-getenv "PVSIMAGE")
       "The name of the pvs binary image.  Set in pvs-load.el to reflect
        the environment variable PVSIMAGE, set by the pvs shell script")
     (error "PVSIMAGE environment variable must be set"))
 
-(defvar pvs-verbose
-  (condition-case ()
-      (car (read-from-string (pvs-getenv "PVSVERBOSE")))
-    (error 0)))
-
-(defvar pvs-validating nil
-  "non-nil if PVS is running in batch mode")
-
-(defvar *pvs-current-directory* default-directory
-  "Pathname of the current PVS context.")
-
-(defvar start-pvs t)
-
 (require 'cl)
 (require 'comint)
 (setq comint-log t)
-
-;;; This function is not defined in all Emacs
-
-(unless (fboundp 'full-copy-sparse-keymap)
-  (defun full-copy-sparse-keymap (km)
-    "Recursively copy the sparse keymap KM."
-    (cond ((consp km)
-	   (cons (full-copy-sparse-keymap (car km))
-		 (full-copy-sparse-keymap (cdr km))))
-	  (t km))))
 
 (unless (fboundp 'comint-mem)
   (fset 'comint-mem 'member))
@@ -142,6 +83,10 @@
 (load "pvs-prover-helps" nil noninteractive)
 (load "pvs-eval" nil noninteractive)
 (load "pvs-pvsio" nil noninteractive)
+(load "pvs-prover-manip" nil noninteractive) ; Manip
+(load "manip-debug-utils" nil noninteractive) ; Manip
+;; No Field Emacs extensions
+(load "prooflite" nil noninteractive) ; ProofLite
 
 (or (let ((load-path pvs-original-load-path))
       (require 'newcomment nil t))
@@ -188,7 +133,7 @@
 (defun pvs-welcome (&optional display)
   (let ((cbuf (current-buffer))
 	(buf (get-buffer-create "PVS Welcome"))
-	(cdir *pvs-current-directory*)
+	(cdir pvs-current-directory)
 	(vers (get-pvs-version-information))
 	(cpoint (point-min)))
     (set-buffer buf)
@@ -318,13 +263,18 @@ get to the same state."
 	(set-buffer (get-buffer "*pvs*"))
 	(make-local-variable 'kill-buffer-hook)
 	(setq kill-buffer-hook (list 'dont-kill-pvs-buffer))
-	(set-syntax-table pvs-mode-syntax-table))
+	(set-syntax-table pvs-mode-syntax-table)
+	(goto-char (point-min))
+	(let ((errst (re-search-forward "^Error executing \\(.*\\):$" nil t)))
+	  (when errst
+	    (switch-to-buffer "*pvs*")
+	    (message "Problem in loading user lisp files or evaluating forms"))))
       (load (format "patch%d" (pvs-major-version-number)) t t)
       (setq debug-on-error nil)
       (setq *pvs-version-information* nil)
-      ;; sets *pvs-current-directory* and pops up the welcome buffer
+      ;; sets pvs-current-directory and pops up the welcome buffer
       (condition-case ()
-	  (init-change-context *pvs-current-directory*)
+	  (init-change-context pvs-current-directory)
 	(quit nil))
       (setq pvs-in-checker nil)
       (setq pvs-in-evaluator nil)
