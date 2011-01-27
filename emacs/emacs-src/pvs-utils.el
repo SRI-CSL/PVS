@@ -31,12 +31,71 @@
 (require 'cl)
 (require 'compare-w)
 
-(defvar *pvs-theories* nil)
-(defvar *pvs-current-directory* nil)
+(defvar comint-status)
+(defvar ilisp-complete)
+(defvar ilisp-buffer)
+
+(defvar pvs-theories nil)
 (defvar *pvs-file-extensions* '("pvs"))
 (defvar pvs-default-timeout 10)
+(defvar pvs-path) ; Set in pvs-go.el
+(defvar *prelude-files-and-regions*)
+(defvar pvs-library-path)
+(defvar pvs-prelude)
+(defvar pvs-in-checker)
+(defvar pvs-reserved-words-regexp)
 
 (defvar pvs-string-positions nil)
+
+;;; Define this first, so we can start logging right away.
+
+(defun pvs-log-message (kind msg)
+  (let ((buf (current-buffer)))
+    (unwind-protect
+	 (let* ((cpoint (point))
+		(at-end (= cpoint (point-max))))
+	   (set-buffer (get-buffer-create "PVS Log"))
+	   (goto-char (point-max))
+	   (insert (format "%s(%s): %s\n"
+		       kind
+		     (substring (current-time-string) 4 19)
+		     msg))
+	   (unless at-end
+	     (goto-char cpoint)))
+      (set-buffer buf))))
+
+(defun pvs-msg (msg &rest args)
+  (let ((m (apply 'format msg args)))
+    (cond (noninteractive
+	   (princ m)
+	   (princ m 'external-debugging-output)
+	   (terpri))
+	  (t
+	   (pvs-log-message 'MSG m)
+	   (message "%s" m)))))
+
+(unless (fboundp 'memql)
+  (defun memql (elt list)
+    (and (not (null list))
+	 (or (eql elt (car list))
+	     (memql elt (cdr list))))))
+
+(defun pvs-getenv (var)
+  (let ((val (getenv var)))
+    (if (equal val "") nil val)))
+
+(defvar pvs-verbose
+  (condition-case ()
+      (car (read-from-string (pvs-getenv "PVSVERBOSE")))
+    (error 0)))
+
+(defvar pvs-validating nil
+  "non-nil if PVS is running in batch mode")
+
+(defvar pvs-current-directory default-directory
+  "Pathname of the current PVS context.")
+
+(defvar start-pvs t)
 
 ;;; Misc functions 
 
@@ -527,7 +586,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
       (kill-buffer buff))))
 
 (defun get-theory-buffer (theoryname)
-  (let ((filename (cadr (assoc theoryname *pvs-theories*))))
+  (let ((filename (cadr (assoc theoryname pvs-theories))))
     (when filename (get-pvs-file-buffer filename))))
 
 (defun get-pvs-file-buffer (fname)
@@ -535,7 +594,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	 (ext (pathname-type fname))
 	 (pdir (pathname-directory name))
 	 (dir (if (equal pdir "")
-		  *pvs-current-directory*
+		  pvs-current-directory
 		  pdir)))
     (if (and ext (member ext *pvs-file-extensions*))
 	(let ((filename (format "%s%s.%s" dir name ext)))
@@ -553,7 +612,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 		 (find-file-noselect (car files) noninteractive)))))))
 
 (defun pvs-file-name (filename &optional ext)
-  (format "%s%s.%s" *pvs-current-directory* filename
+  (format "%s%s.%s" pvs-current-directory filename
 	  (if (and ext
 		   (not (equal ext "")))
 	      ext
@@ -582,7 +641,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	     (setq current-pvs-file (pathname-name (buffer-file-name))))
 	    ((file-equal (buffer-file-name)
 			 (format "%s%s"
-			     *pvs-current-directory*
+			     pvs-current-directory
 			   (file-name-nondirectory (buffer-file-name))))
 	     (setq current-pvs-file (pathname-name (buffer-file-name))))
 	    ((pvs-library-file (buffer-file-name)))
@@ -601,7 +660,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 (defun file-equal (file1 file2)
   (and file1 file2
-       (let* ((default-directory *pvs-current-directory*)
+       (let* ((default-directory pvs-current-directory)
 	      (attr1 (file-attributes* (expand-file-name file1)))
 	      (attr2 (file-attributes* (expand-file-name file2))))
 	 (equal attr1 attr2))))
@@ -658,7 +717,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	str)))
 
 (defun new-pvs-file-name (prompt &optional initial exists-noerror)
-  ;;(setq *pvs-current-directory* (pvs-current-directory))
+  ;;(setq pvs-current-directory (pvs-current-directory))
   (let* ((filename (read-from-minibuffer prompt initial))
 	 (theoryname (pathname-name filename))
 	 (ext (pathname-type filename)))
@@ -677,7 +736,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 (defun new-theory-name (prompt &optional initial)
   (pvs-collect-theories)
   (let ((theoryname (read-from-minibuffer prompt initial)))
-    (if (assoc theoryname *pvs-theories*)
+    (if (assoc theoryname pvs-theories)
 	(error "Theory %s already exists." theoryname)
 	(if (valid-theory-name theoryname)
 	    (list theoryname)
@@ -849,8 +908,8 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 (defun pvs-current-directory (&optional reset)
   (unless (and (null reset)
-	       (stringp *pvs-current-directory*)
-	       (file-exists-p *pvs-current-directory*))
+	       (stringp pvs-current-directory)
+	       (file-exists-p pvs-current-directory))
     (let ((ndir (pvs-send-and-wait "(pvs-current-directory)"
 				   nil nil 'string)))
       (while (not (and (stringp ndir)
@@ -858,15 +917,15 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	(setq ndir (pvs-send-and-wait "(pvs-current-directory)"
 				      nil nil 'string)))
       (unless (string-equal ndir "/dev/null")
-	(setq *pvs-current-directory* ndir))))
-  *pvs-current-directory*)
+	(setq pvs-current-directory ndir))))
+  pvs-current-directory)
 
 (defun complete-pvs-file-name (prompt &optional no-default-p dir no-timeout
 				      with-prelude-p)
   "Perform completion on PVS file names"
   (pvs-bury-output)
   (pvs-current-directory)
-  (let ((file-list (append (context-files (or dir *pvs-current-directory*))
+  (let ((file-list (append (context-files (or dir pvs-current-directory))
 			   (when with-prelude-p
 			     (list (format "%s/prelude" pvs-path))))))
     (if (member file-list '(nil NIL))
@@ -925,7 +984,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 ;;; Returns a theory name, allowing completion on the theories known to
 ;;; the context and those in the current buffer.  Has the side effect of
-;;; setting *pvs-current-directory* and *pvs-theories*, to cut down on
+;;; setting pvs-current-directory and pvs-theories, to cut down on
 ;;; the number of calls to Lisp.
 
 (defun complete-theory-name (prompt &optional no-timeout with-prelude-p)
@@ -1005,8 +1064,8 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	 (current-theories (pvs-current-theories)))
     ;;    (when (not (consp dir-and-theories))
     ;;      (error "collect-theories did not return a list"))
-    (setq *pvs-current-directory* (car dir-and-theories))
-    (setq *pvs-theories*
+    (setq pvs-current-directory (car dir-and-theories))
+    (setq pvs-theories
 	  (append current-theories
 		  (remove-if '(lambda (x)
 				(assoc (car x) current-theories))
@@ -1078,7 +1137,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
   (let ((dir (file-name-directory fname))
 	(file (file-name-nondirectory fname)))
     (if (or (null dir)
-	    (file-equal dir *pvs-current-directory*))
+	    (file-equal dir pvs-current-directory))
 	file
 	(let ((reldir (cdr (assoc dir pvs-relativized-directories))))
 	  (if reldir
@@ -1113,7 +1172,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	(member-pvs-file-equal file (cdr file-list)))))
 
 (defun pvs-directory-chain (&optional dir)
-  (let ((fdir (short-file-name (or dir *pvs-current-directory*)))
+  (let ((fdir (short-file-name (or dir pvs-current-directory)))
 	(dchain nil))
     (while fdir
       (if (file-equal fdir pvs-path)
@@ -1310,7 +1369,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 ;;; end of window config
 
-(setq *demo-font*
+(defvar *demo-font*
   "-adobe-courier-medium-r-normal--24-240-75-75-m-150-iso8859-1")
 
 (defvar *demo-mode* nil)
@@ -1985,3 +2044,5 @@ existence and time differences to be whitespace")
 					    (cons 'title title))))))))
 
 (add-hook 'change-context-hook 'pvs-update-window-titles)
+
+(provide 'pvs-utils)
