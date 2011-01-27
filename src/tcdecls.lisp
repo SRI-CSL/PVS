@@ -946,8 +946,7 @@
 
 (defmethod subst-new-map-decl* ((obj constructor-name-expr))
   (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*)))
-	(nres (subst-new-map-decls* (resolutions obj)))
-	(adt (adt obj)))
+	(nres (subst-new-map-decls* (resolutions obj))))
     ;;(break "subst-new-map-decl* (constructor-name-expr)")
     (assert (or (null act) (actual? act)))
     (copy obj
@@ -1006,7 +1005,8 @@
 
 (defun add-new-inlined-decl (decl lastdecl part)
   (case part
-    (formals (setf (theory-formal-decls (current-theory))
+    (formals (setf (visible? decl) nil)
+	     (setf (theory-formal-decls (current-theory))
 		   (let* ((fml-part (theory-formal-decls (current-theory)))
 			  (rest (cdr (memq lastdecl fml-part))))
 		     (nconc (ldiff fml-part rest) (cons decl rest)))))
@@ -1937,6 +1937,7 @@
     (ind-pred-type (bindings ex) fixed-vars rtype)))
 
 (defmethod inductive-pred-type* ((formals null) ex fixed-vars)
+  (declare (ignore fixed-vars))
   (assert (tc-eq (range* (type ex)) *boolean*))
   (type ex))
 
@@ -2219,8 +2220,7 @@
 			     (make-application pappl (car avars))
 			     (cdr avars)))
 	    ((tupletype? (domain ptype))
-	     (let ((dtypes (types (domain ptype)))
-		   (dvars (subseq avars 0 (length (types (domain ptype))))))
+	     (let ((dvars (subseq avars 0 (length (types (domain ptype))))))
 	       (assert (every #'(lambda (ty a) (compatible? ty (type a)))
 			      (types (domain ptype)) dvars))
 	       (make-ind-appl* (range ptype)
