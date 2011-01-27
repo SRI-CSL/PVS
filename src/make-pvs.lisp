@@ -50,7 +50,7 @@
      :allow-existing-directory (not runtime?)
      :autoload-warning t
      #+(version>= 6) :build-debug #+(version>= 6) t
-     #-(or macosx x86-64) :c-heap-start #-(or macosx x86-64) "2752512K"	;; (/ #xa8000000 1024)
+     ;;#-(or macosx x86-64) :aclmalloc-heap-start #-(or macosx x86-64) "2752512K"	;; (/ #xa8000000 1024)
      #+(version>= 6) :case-mode #+(version>= 6) :case-sensitive-lower
      #-(version>= 6) :debug-on-error #-(version>= 6) t
      :discard-arglists nil
@@ -71,13 +71,13 @@
      :include-tpl t
      :include-xcw nil
      :internal-debug nil
-     #-x86-64 :lisp-heap-size #-x86-64 20000000
-     #-(or macosx x86-64) :lisp-heap-start #-(or macosx x86-64) #x20000000
+;;     #-x86-64 :lisp-heap-size #-x86-64 30000000
+;;     #-(or macosx x86-64) :lisp-heap-start #-(or macosx x86-64) #x20000000
      :load-local-names-info nil
      :load-source-file-info (not runtime?)
      :load-xref-info (not runtime?)
-     :newspace 4000000
-     :oldspace 512000
+;;     :newspace 4000000
+;;     :oldspace 512000
      :opt-debug 1
      :opt-safety 1
      :opt-space 1
