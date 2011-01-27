@@ -718,10 +718,6 @@
   (untypecheck-theory (lhs map))
   (untypecheck-theory (rhs map)))
 
-(defmethod untypecheck-theory ((map mapping-def))
-  (when (next-method-p) (call-next-method))
-  (setf (mapped-decl map) nil))
-
 (defmethod untypecheck-theory ((map mapping-rename))
   (when (next-method-p) (call-next-method))
   (setf (mapped-decl map) nil))
