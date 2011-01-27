@@ -134,7 +134,7 @@ theory from the list of theories will import the associated file."
    nil nil 'list))
 
 (defun context-files (context)
-  (let ((default-directory *pvs-current-directory*))
+  (let ((default-directory pvs-current-directory))
     (mapcar
 	(function
 	 (lambda (fname)
