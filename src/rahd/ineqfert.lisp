@@ -5,7 +5,7 @@
 ;;;
 ;;;     RAHD: Real Algebra in High Dimensions
 ;;;   
-;;;   v0.0,
+;;;   v0.5,
 ;;;
 ;;; A feasible decision method for the existential theory of real closed fields.
 ;;; Written by Grant Olney Passmore
@@ -17,7 +17,7 @@
 ;;;            last updated on  22-Sept-2008.
 ;;;
 
-(in-package RAHD)
+(in-package :rahd)
 
 ;;;
 ;;; FERTILIZE-TRIVIAL-SQUARES (c): Given a conjunction, return the result of conjoining

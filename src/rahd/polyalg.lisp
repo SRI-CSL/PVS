@@ -23,7 +23,7 @@
 ;;;            is itself parameterized by the active variable ordering.  
 ;;;            * See SET-ACTIVE-MONOMIAL-ORDERING and *VARS-TABLE* for more.
 ;;;
-;;;      To do:
+;;;      Recently completed (June 2009; Buchberger-0):
 ;;;              a priori 0-reduction of S-polynomials for pairwise relative prime polynomials
 ;;;               (a.k.a. Buchberger's Criterion I from ``A Criterion for Detecting Unnecessary 
 ;;;                 Reductions in Polynomial Ideal Theory,'' in Recent Trends in Multidimensional 
@@ -34,7 +34,7 @@
 ;;;
 ;;;     RAHD: Real Algebra in High Dimensions
 ;;;   
-;;;   v0.0,
+;;;   v0.5,
 ;;;
 ;;; A feasible decision method for the existential theory of real closed fields.
 ;;; Written by Grant Olney Passmore
@@ -43,10 +43,10 @@
 ;;; Contact: (g.passmore@ed.ac.uk . http://homepages.inf.ed.ac.uk/s0793114/)
 ;;;
 ;;; This file: began on         16-June-2008,
-;;;            last updated on  25-Sept-2008.
+;;;            last updated on  11-Nov-2009.
 ;;;
 
-(in-package RAHD)
+(in-package :rahd)
 
 ;;;
 ;;; Format of monomials: '(c . ((v_{n-1} . p_{n-1}) (v_{n-2} . p_{n-2}) ... (v_0 . p_0)))
@@ -83,6 +83,8 @@
 
 (defparameter *vars-table*
   '(x y z u v w a b c d e f g h i j k l m n o p q r s t))
+
+(defparameter *gb-max-steps* 1000)
 
 ;;; MCOEF: Given a monomial, return its leading coefficient.
 
@@ -672,6 +674,26 @@
 	     (mpoly* g-ratio g)))))
 
 ;;;
+;;; BUCH-CRIT-0: Buchberger's first criterion for detecting unnecessary
+;;; S-polynomials (and hence avoiding their reduction to zero).
+;;;
+;;; BUCH-CRIT-0(p,q) should hold iff
+;;;
+;;;    LCM(LPP(p),LPP(q)) = LPP(p)*LPP(q).
+;;;
+;;; That is, LPP(p), LPP(q) are relatively prime.
+;;;
+
+(defun buch-crit-0 (p q)
+  (let ((p-head (poly-lp p))
+	(q-head (poly-lp q)))
+    (equal (pp-lcm p-head q-head)
+	   (mmult-pp p-head q-head))))
+
+(defun ignore-s-poly (p q)
+  (buch-crit-0 p q))
+
+;;;
 ;;; S-PAIRS: Given a sequence of polynomials, return a sequence of all nontrivial
 ;;; S-polynomials obtained from them.  This omits S-Poly(f_i, f_i) and 
 ;;; S-Poly(f_i, f_j) when S-Poly(f_j, f_i) is already present.
@@ -683,10 +705,32 @@
 (defun s-pairs* (F i j ub)
   (cond ((= i ub) nil)
 	((= i j) (s-pairs* F i (1+ j) ub))
-	(t (cons (cons (cons i j) (s-poly (nth i F) (nth j F)))
-		 (s-pairs* F
-			   (if (= j ub) (1+ i) i)
-			   (if (= j ub) (+ i 2) (1+ j)) ub)))))
+	(t (let ((f_i (nth i F)) (f_j (nth j F)))
+	     (if (ignore-s-poly f_i f_j)
+		 (progn
+		   (fmt 2 "~% Superfluous critical pair (S-poly) ignored in GBasis construction! ~%")
+		   (s-pairs* F
+			     (if (= j ub) (1+ i) i)
+			     (if (= j ub) (+ i 2) (1+ j)) ub))
+	       (cons (s-poly f_i f_j)
+		     (s-pairs* F
+			       (if (= j ub) (1+ i) i)
+			       (if (= j ub) (+ i 2) (1+ j)) ub)))))))
+
+;;;
+;;; NEW-SPOLYS: Given a polynomial P and a list of S-polys, return the
+;;;  list of S-polys amended with (spoly P S[i]) for each S[i], but
+;;;  throwing away those S-polys that are deemed superfluous by 
+;;;  the Buchberger criteria via ignore-s-poly.
+;;;
+
+(defun new-spolys (p G s-polys)
+  (let ((out s-polys))
+    (dolist (g G)
+      (if (ignore-s-poly p g)
+	  (fmt 2 "~% Superfluous critical pair (S-poly) ignored in GBasis construction! ~%")
+	(setq out (cons (s-poly p g) out))))
+    out))
 
 ;;;
 ;;; GBASIS: Given an (possibly multivariate) ideal I over Q[*vars-table*], 
@@ -701,19 +745,18 @@
 
 (defun gbasis (I)
   (let ((I* (remove-duplicates I)))
-    (gbasis* I* (s-pairs I*))))
+    (gbasis* I* (s-pairs I*) 0)))
 
-(defun gbasis* (G s-polys)
-  (cond ((endp s-polys) G)
-	(t (let ((cur-s-poly (cdar s-polys)))
+(defun gbasis* (G s-polys count)
+  (cond ((or (endp s-polys)
+	     (> count *gb-max-steps*)) G)
+	(t (let ((cur-s-poly (car s-polys)))
 	     (let ((s-reduct-via-G (cdr (poly-multiv-/ cur-s-poly G))))
 	       (cond ((eq s-reduct-via-G nil)
-		      (gbasis* G (cdr s-polys)))
+		      (gbasis* G (cdr s-polys) (1+ count)))
 		     (t (gbasis* (cons s-reduct-via-G G)
-				 (append (mapcar 
-					  #'(lambda (f) 
-					      (cons 'gb (s-poly f s-reduct-via-G))) G)
-					 s-polys)))))))))
+				 (new-spolys s-reduct-via-G G (cdr s-polys))
+				 (1+ count)))))))))
 
 ;;;
 ;;; MINIMIZE-GBASIS: Given a Groebner basis G for an ideal I, computed w.r.t. the

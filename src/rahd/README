@@ -1,0 +1,73 @@
+RAHD: Real Algebra in High Dimensions
+ v0.5
+  written by Grant Olney Passmore
+
+                   ~ 25-November-2009
+
+
+[Installation]
+ RAHD is distributed with both an x86 linux binary,
+  and its ANSI Common Lisp source code.
+
+
+ To run RAHD without building, you may execute
+  `./rahd-v0.5-lx32.'
+
+
+ To build RAHD v0.5, please do the following:
+
+   (i) obtain SBCL (`Steel Bank Common Lisp'),
+  (ii) modify `maker' to point to your SBCL binary,
+ (iii) run `./maker' to compile RAHD.
+  (iv) run `./rahd-v0.5-lx32.' 
+
+
+
+
+[Running RAHD]
+ This version of RAHD has only a very primitive
+  input language.  To run RAHD upon an implicitly
+  existentially quantified formula, you must
+  provide the formula in LISP S-expression 
+  conjunctive normal form as a command-line 
+  argument to RAHD.  Most shells will require
+  this argument be placed in double-quotes.
+
+ The formula must be preceded by the argument
+  `-formula.'  This tells the Lisp kernel to
+  hand the command line over to RAHD.
+
+ If you run RAHD without any arguments, a list
+  of possible command-line options will be 
+  displayed.
+
+ Example:
+
+    ./rahd-v0.5-lx32 -formula "(((NOT (> (+ (* A D) (+ (* C B) (* B D))) 0)))
+                                ((>= B 0))
+                                ((>= C 0))
+                                ((>= D 1))
+                                ((>= (+ (* A A) (- (* A B) (* B B))) 1))
+                                ((>= (+ (* 2 A) B) 1))
+                                ((<= (+ (* C C) (+ (- (* C D) (* D D)) 1))
+                                  0)))"
+
+
+    * A few more examples can be found in the file `EXAMPLES.'
+   
+
+
+
+[Caveats]
+
+ This version of RAHD is very preliminary, and is
+  missing many important features whose production-
+  worthy implementations are nearing completion.
+ 
+ Future versions will be much more powerful! ;-) 
+
+
+
+[Contact]
+ g.o.passmore@sms.ed.ac.uk
+ http://homepages.inf.ed.ac.uk/s0793114/rahd/

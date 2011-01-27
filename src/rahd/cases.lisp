@@ -1,5 +1,5 @@
 ;;;
-;;; RAHD: Real Algebra in High Dimensions v0.0
+;;; RAHD: Real Algebra in High Dimensions v0.5
 ;;; A feasible decision method for the existential theory of real closed fields.
 ;;;
 ;;; ** Case-splitting routines, and some simple case manipulation functions **
@@ -21,10 +21,10 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         22-July-2008,
-;;;            last updated on  27-Oct-2008.
+;;;            last updated on  22-Nov-2009.
 ;;;
 
-(in-package RAHD)
+(in-package :rahd)
 
 ;;;
 ;;; WATERFALL-DISJ-TO-CNF: Convert a waterfall disjunction to an actual CNF 
@@ -42,9 +42,26 @@
     (reverse adj-c)))
 
 ;;; Before drill down, we need to fire away NOT's and soft inequalities (<=, =>).
+;;; Updated drill-down to be more optimized for dealing with unit clauses (01-March-2009).
 
 (defun drill-down (o)
-  (drill-down* o nil (length o)))
+  (let ((unit-clauses (remove-if #'(lambda (x) (> (length x) 1)) o))
+	(non-unit-clauses (remove-if #'(lambda (x) (= (length x) 1)) o)))
+
+    (let ((unit-clauses-conjoined nil))
+      (dolist (c unit-clauses)
+	(setq unit-clauses-conjoined (cons (car c) unit-clauses-conjoined)))
+
+      (if (= (length o) (length unit-clauses))
+	  (list unit-clauses-conjoined)
+	
+
+	(let ((split-cases (drill-down* non-unit-clauses nil (length non-unit-clauses))))
+	  (let ((final-o nil))
+	    (dolist (c split-cases)
+	      (setq final-o
+		    (cons (append unit-clauses-conjoined c) final-o)))
+	    (mapcar #'remove-duplicates final-o)))))))
 
 (defun drill-down* (o a n)
   (cond ((not (consp o)) (if (= n (length a)) (list a) nil))
@@ -99,6 +116,43 @@
 		       (otherwise (break "Bad symbol in goal.")))))))))
 
 
+;;;
+;;; NEG-LIT?: Is a literal negative (e.g., preceded by a NOT?).
+;;;
+
+(defun neg-lit? (l)
+  (equal (caar l) 'not))
+
+;;;
+;;; Check that our top-level formulas are in our special CNF input format.
+;;;
+
+(defun top-level-syntax-check (cs)
+  (let ((form-ok (and (consp cs) (> (length cs) 0))))
+    (when form-ok
+      (dolist (c cs)
+	(let ((clause-ok (and (consp c) (> (length c) 0))))
+	  (when clause-ok 
+	    (dolist (l c)
+	      (cond ((not (consp l)) (setq clause-ok nil))
+		    ((consp l)
+		     (let ((lit-in-question
+			    (if (equal (car l) 'NOT)
+				(cadr l)
+			      l)))
+		       (if (not (= (length lit-in-question) 3))
+			   (setq clause-ok nil)
+			 (let ((op (car lit-in-question))
+			       (x  (cadr lit-in-question))
+			       (y  (caddr lit-in-question)))
+			   (declare (ignore x y))
+			   (if (not (member op '(= < > <= >=)))
+			       (setq clause-ok nil)))))))))
+	  (setq form-ok (and form-ok clause-ok)))))
+    form-ok))
+
+	  
+
 (defun expand-divs (x) x)
 
 ;;;
@@ -112,6 +166,7 @@
 ;;; Note that our check right now is not symmetric (but this is intentional -- 
 ;;;  SIMP-ZRHS takes this into account, as we want to rewrite from right
 ;;;  to left.)
+;;;
 
 (defun simply-incons (c eqs)
   (cond ((endp c) nil)
@@ -259,10 +314,12 @@
   (cond ((endp eqs) (remove-duplicates c :test 'equal))
 	(t (let ((cur-eq (car eqs)))
 	     (if (funcall pred cur-eq)
-		 (subst-eqs 
-		  (subst (caddr cur-eq) (cadr cur-eq) c)
-		  (cdr eqs)
-		  pred)
+		 (progn
+		   (add-vt-binding (cadr cur-eq) (caddr cur-eq))
+		   (subst-eqs 
+		    (subst (caddr cur-eq) (cadr cur-eq) c)
+		    (cdr eqs)
+		    pred))
 	       (subst-eqs c (cdr eqs) pred))))))
 
 ;;;
@@ -294,7 +351,7 @@
 ;;;
 ;;; Simplify ground literals in a conjunction.
 ;;; Note: We also simplify ground terms in non-ground literals.
-;;;
+;;;       * We also simplify (= X X) to T.
 
 (defun simplify-ground-lits (c)
   (mapcar #'(lambda (l)
@@ -303,13 +360,16 @@
 		(let ((cur-op (car l))
 		      (cur-x  (cadr l))
 		      (cur-y  (caddr l)))
-		  `(,cur-op
-		    ,(if (term-ground? cur-x)
-			 (eval cur-x)
-		       cur-x)
-		    ,(if (term-ground? cur-y)
-			 (eval cur-y)
-		       cur-y)))))		
+		  (if (and (equal cur-op '=)
+			   (equal cur-x cur-y))
+		      T
+		      `(,cur-op
+			,(if (term-ground? cur-x)
+			     (eval cur-x)
+			     cur-x)
+			,(if (term-ground? cur-y)
+			     (eval cur-y)
+			     cur-y))))))
 	  c))
 
 ;;;
@@ -427,6 +487,27 @@
 (defun arith-simplify-case (c)
   (mapcar #'arith-simplify-lit c))
     
+
+;;;
+;;; TOP-LEVEL-FORMULA-TO-BIN-OPS:
+;;;
+
+(defun tlf-to-bin-ops (f)
+  (let ((out nil))
+    (let ((out-clause nil))
+      (dolist (c f)
+	(setq out-clause nil)
+	(let ((out-lit nil))
+	  (dolist (l c)
+	    (setq out-lit
+		  (list (car l)
+			(term-to-bin-ops (cadr l))
+			(term-to-bin-ops (caddr l))))
+	    (setq out-clause
+		  (cons out-lit out-clause))))
+	(setq out (cons out-clause out))))
+    out))
+
 
 
 

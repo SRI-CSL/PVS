@@ -1,5 +1,5 @@
 ;;;
-;;; RAHD: Real Algebra in High Dimensions v0.0
+;;; RAHD: Real Algebra in High Dimensions v0.5
 ;;; A feasible decision method for the existential theory of real closed fields.
 ;;;
 ;;; ** Regression suite for RAHD testing and benchmarking **
@@ -12,7 +12,7 @@
 ;;; This file: began on         07-Oct-2008,
 ;;;            last updated on  23-Oct-2008.
 
-(in-package RAHD)
+(in-package :rahd)
 
 ;;;
 ;;; *REGRESSION-SUITE*: A list of problems for RAHD testing and benchmarking.
@@ -45,11 +45,11 @@
        ((< (+ (* 3 X) (* 7 A)) 4))) 
       :UNSAT)
 
-     ((((= (+ (* A (* X X)) (+ (* B X) C)) 0))
-       ((< (* B B) (* 4 (* A C))))) 
+     ((((= (+ (* A (* X X)) (+ (* B X) C)) 0)) ; am going to need to implement Kronecker's algorithm to prove this one,
+       ((< (* B B) (* 4 (* A C)))))            ; and likely many other problems with sums of squares (15-Sept-2009).
       :UNSAT)
 
-     ((((NOT (>= (* B B) (* 4 (* A C)))))
+     ((((NOT (>= (* B B) (* 4 (* A C)))))      ; likewise, we need multivariate factorization for this one.
        ((= (+ (* A (* X X)) (+ (* B X) C)) 0))) 
       :UNSAT)
 
@@ -133,29 +133,35 @@
        ((<= 0 Z)))
       :UNSAT)
 
-     ((((NOT (>= (+ (* (- 1 (* (* A A) (* B B)))
-		       (* (- 1 (* C D))
-			  (* (- (* A D) (* B C))
-			     (- (* A D) (* B C)))))
-		    (+ (* 2
-			  (* A
-			     (* B
-				(* (- (* C D) (* A B))
-				   (* (- 1 (* A B))
-				      (* (- C D) (- C D)))))))
-		       (* (- (* (* A A) (* B B))
-			     (* (* C C) (* D D)))
-			  (* (- 1 (* C D)) (* (- A B) (- A B))))))
-		 0)))
-       ((<= A 1))
-       ((<= B 1))
-       ((<= C 1))
-       ((<= D 1))
-       ((<= 0 A))
-       ((<= 0 B))
-       ((<= 0 C))
-       ((<= 0 D)))
-      :UNSAT)
+;;
+;; After removing QEPCAD-B usage, this one is now too hard for us,
+;;  so I remove it from RRS.
+;;
+
+;;      ((((NOT (>= (+ (* (- 1 (* (* A A) (* B B)))
+;; 		       (* (- 1 (* C D))
+;; 			  (* (- (* A D) (* B C))
+;; 			     (- (* A D) (* B C)))))
+;; 		    (+ (* 2
+;; 			  (* A
+;; 			     (* B
+;; 				(* (- (* C D) (* A B))
+;; 				   (* (- 1 (* A B))
+;; 				      (* (- C D) (- C D)))))))
+;; 		       (* (- (* (* A A) (* B B))
+;; 			     (* (* C C) (* D D)))
+;; 			  (* (- 1 (* C D)) (* (- A B) (- A B))))))
+;; 		 0)))
+;;        ((<= A 1))
+;;        ((<= B 1))
+;;        ((<= C 1))
+;;        ((<= D 1))
+;;        ((<= 0 A))
+;;        ((<= 0 B))
+;;        ((<= 0 C))
+;;        ((<= 0 D)))
+;;       :UNSAT)
+
 
      ((((NOT (>= X 0)))
        ((> A 0))
@@ -273,15 +279,20 @@
        ((> (* y y y y y y y y y y) (* x x x x x x x x x x x x x x x x))))
       :UNSAT)
 
-     ((((>= a 0)) ((>= b 0)) ((>= c 0))
-       ((>= d 0)) ((<= a 1)) ((<= b 1))
-       ((<= c 1)) ((<= d 1))
-       ((< (+ (* (- 1 (* a a b b)) (- 1 (* c d)) (- (* a d) (* b c))
-		 (- (* a d) (* b c)))
-	      (* (* 2 a b) (- (* c d) (* a b)) (- 1 (* a b)) (- c d) (- c d))
-	      (* (- (* a a b b) (* c c d d)) (- 1 (* c d)) (- a b) (- a b)))
-	   0)))
-      :UNSAT)
+;;
+;; This is now too hard after removing QEPCAD-B.
+;;
+
+;;      ((((>= a 0)) ((>= b 0)) ((>= c 0))
+;;        ((>= d 0)) ((<= a 1)) ((<= b 1))
+;;        ((<= c 1)) ((<= d 1))
+;;        ((< (+ (* (- 1 (* a a b b)) (- 1 (* c d)) (- (* a d) (* b c))
+;; 		 (- (* a d) (* b c)))
+;; 	      (* (* 2 a b) (- (* c d) (* a b)) (- 1 (* a b)) (- c d) (- c d))
+;; 	      (* (- (* a a b b) (* c c d d)) (- 1 (* c d)) (- a b) (- a b)))
+;; 	   0)))
+;;       :UNSAT)
+
 
      ((((< (+ (* (* b (* b (* b b))) (* z (* z (* z z))))
 	      (+ (* -8 (* c (* (* b b) (* a (* z (* z (* z z)))))))
@@ -349,6 +360,50 @@
        ((>= A2 0)))
       :UNSAT)
 
+     ;; A nice division example from John Rushby.  Note that we assume denominators
+     ;; are non-null in RAHD.  This particular problem has non-nullity assumptions
+     ;; adjoined because the formula is satisfiable if they are not.
+
+     ((((= (- (* X (/ YN ZN)) (* R (/ YN ZN))) 0)) ((NOT (= R X)))
+       ((NOT (= YN 0))) ((NOT (= ZN 0))))
+      :UNSAT)
+
+     ;; Another nice division example from John Rushby.
+     ;; This one was intractible before I implemented subset subsumption reduction
+     ;; in the pre-processor (28-Feb-2009).
+     ;;
+     ;; 1 /n0x * x = x/n0x  (n0x : NonZeroReal)
+
+     ((((not (= n0x 0)))
+       ((not (= (* (/ 1 n0x) x)
+		(/ x n0x)))))
+      :UNSAT)
+
+     ;; From John Rushby
+     ;; x/pa > y AND y/pb > pc AND pa*pc > r 
+     ;;    IMPLIES x > pb*r
+
+     ((((> (/ x pa) y))
+       ((> (/ y pb) pc))
+       ((> (* pa pc) r))
+       ((> pa 0))
+       ((> pb 0))
+       ((> pc 0))
+       ((not (> x (* pb r)))))
+      :UNSAT)
+
+     ;; Again, subset subsumption a huge gain here! 28-Feb-09.
+     ;; From John Rushby:    t5: LEMMA x^4 - y^4 = 0 AND x+y = a AND a > 0
+     ;;                          IMPLIES x = a/2 AND y = a/2
+
+     ((((= (- (* x x x x) (* y y y y)) 0))
+       ((= (+ x y) a))
+       ((> a 0))
+       ((not (= x (/ a 2)))
+	(not (= y (/ a 2)))))
+      :UNSAT)
+
+
      ))
 
 ;;;
@@ -359,35 +414,46 @@
 ;;;  store hints in the regression suite for those goals which need them.
 ;;;
 
-(defun rahd-regression-suite (&optional &key no-pervasive-gbasis-cache gbasis-use-cocoa 
-					use-cpc pervasive-cpc)
+(defun rahd-regression-suite (&key no-pervasive-gbasis-cache use-cpc pervasive-cpc skip union-case)
   (let ((i 0) 
 	(report-str "")
 	(start-time 0))
     (when use-cpc (setq *canon-poly-use-cache* t))
-    (dolist (r *regression-suite*)
-      (let ((r-cnf (car r))
-	    (r-decision (cadr r))
-	    (r-params (if (consp (cddr r)) (caddr r) nil)))
-	(rahd-reset-state)
-	(when no-pervasive-gbasis-cache (setq *gbasis-cache* (make-hash-table :test 'equal)))
-	(if (or gbasis-use-cocoa
-		(eql r-params ':GBASIS-USE-COCOA))
-		(setq *gbasis-use-cocoa* t)
-	  (setq *gbasis-use-cocoa* nil))
-	(g r-cnf)
-	(setq start-time (get-internal-real-time))
-	(let ((live-decision (go! :do-not-reset-cpc pervasive-cpc)))
-	  (setq report-str 
-		(format nil "~A ~A" 
-			report-str
-			(if (and live-decision
-				 (eq r-decision ':UNSAT))
+    (dolist (r *regression-suite*) 
+      (if (not (and skip (member i skip)))
+	(let ((r-cnf (car r))
+	      (r-decision (cadr r))
+	      (r-params (if (consp (cddr r)) (caddr r) nil)))
+	  (declare (ignore r-params))
+	  (rahd-reset-state)
+	  (when no-pervasive-gbasis-cache (setq *gbasis-cache* (make-hash-table :test 'equal)))
+	  (fmt 1 "~% :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::~%  Working on regression suite entry #~A ~%" i)
+	  (fmt 1 " :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::~%~%")
+	  (g r-cnf)
+	  (setq start-time (get-internal-real-time))
+	  (let ((live-decision (go! :do-not-reset-cpc pervasive-cpc :union-case union-case)))
+	    (setq report-str 
+		  (format nil "~A ~A" 
+			  report-str
+			  (if (and live-decision
+				   (eq r-decision ':UNSAT))
+			      (progn
+				(when *enable-proof-analysis* (print-proof-analysis))
+				(format nil
+					"~%    ++ rs(~A) proved (~D s)." 
+					i (float (/ (- (get-internal-real-time) start-time) internal-time-units-per-second))))
 			    (format nil
-				    "~% >> [RAHD-REGRESSION-SUITE]: *SUCCESS* :: Regression suite entry ~A successfully proved in approximately ~D seconds." 
-				    i (float (/ (- (get-internal-real-time) start-time) internal-time-units-per-second)))
-			  (format nil
-				  "~% >> [RAHD-REGRESSION-SUITE]: *FAILURE* :: Regression suite entry ~A FAILED." i)))))
-      (setq i (1+ i))))
-    (format *standard-output* report-str))
+				    "~%    -- rs(~A) failed." i))))))
+	(setq report-str (format nil "~A ~A" report-str 
+				 (format nil "~%    ## rs(~A) skipped." i)))) 
+      (setq i (1+ i)))
+    (format t 
+"
+ /:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\ 
+ ;::  RAHD Regression Suite Report  :::::::::::::::::::::::::::::::::;
+ \:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::/
+~A~%" report-str))
   t)
+
+
+

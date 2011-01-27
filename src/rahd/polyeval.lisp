@@ -9,7 +9,7 @@
 ;;; 
 ;;;     RAHD: Real Algebra in High Dimensions 
 ;;;
-;;;   v0.0,
+;;;   v0.5,
 ;;;
 ;;; A feasible decision method for the existential theory of real closed fields.
 ;;; Written by Grant Olney Passmore
@@ -22,7 +22,7 @@
 ;;; Began on 17-June-2008
 ;;;
 
-(in-package RAHD)
+(in-package :rahd)
 
 ;;;
 ;;; POLY-UNIV-EVAL: Given a univariate polynomial p, return the result of evaluating

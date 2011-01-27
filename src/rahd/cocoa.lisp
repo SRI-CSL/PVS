@@ -1,5 +1,5 @@
 ;;;
-;;; RAHD: Real Algebra in High Dimensions v0.0
+;;; RAHD: Real Algebra in High Dimensions v0.5
 ;;; A feasible decision method for the existential theory of real closed fields.
 ;;;
 ;;; * Fast GB interface to the CoCoA Commutative Algebra System *
@@ -13,7 +13,7 @@
 ;;;            last updated on  14-Nov-2008.
 ;;;
 
-(in-package RAHD)
+(in-package :rahd)
 
 ;;;
 ;;; COCOA-VARS-MAP: A global snapshot of the last used variable mapping connecting the
@@ -29,6 +29,9 @@
 ;;; If any of this fails, we return NIL.
 ;;;
 
+#+ccl (defun exec-cocoa-gb-for-case (c) (declare (ignore c)) nil)
+
+#+allegro
 (defun exec-cocoa-gb-for-case (c)
   (let ((eqs (gather-eqs c)))
     (if (not eqs) nil
@@ -56,8 +59,7 @@
 			      (format cocoa-gb-in cocoa-gb-str))
 	      (#+allegro excl:run-shell-command
 			 #+cmu extensions:run-program
-			 #+sbcl sb-ext:run-program
-			 "./cocoa-gb.bash" #+sbcl nil)
+			 "./cocoa-gb.bash")
 	      (let ((computed-gbasis-lst nil))
 		(with-open-file (cocoa-gb-out (work-pathify "cocoa-gb.out") :direction :input)
 		   (do ((l (read-line cocoa-gb-out) (read-line cocoa-gb-out nil 'eof)))

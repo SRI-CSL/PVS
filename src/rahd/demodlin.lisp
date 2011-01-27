@@ -1,5 +1,5 @@
 ;;;
-;;; RAHD: Real Algebra in High Dimensions v0.0
+;;; RAHD: Real Algebra in High Dimensions v0.5
 ;;; A feasible decision method for the existential theory of real closed fields.
 ;;;
 ;;; ** Linear demodulation routines with rewriting directed by the governing
@@ -11,10 +11,10 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         23-Oct-2008,
-;;;            last updated on  25-Oct-2008.
+;;;            last updated on  18-Nov-2009.
 ;;;
 
-(in-package RAHD)
+(in-package :rahd)
 
 ;;;
 ;;; ORIENT-PARTIAL-LINEQ: Given an equation E containing a linear variable, orient it s.t.
@@ -47,9 +47,11 @@
       (break "Form ~A is not an equation." e))
     (when (not (all-vars-in-conj (list e)))
       (break "Form ~A contains no indeterminates." e))
-    (let* ((e-zrhs-oriented-alg-rep
-	    (reverse (poly-prover-rep-to-alg-rep 
-		      `(- ,x ,y))))
+    (let* ((e-zrhs-alg-rep
+	    (poly-prover-rep-to-alg-rep 
+		      `(- ,x ,y)))
+	   (e-zrhs-oriented-alg-rep
+	    (reverse e-zrhs-alg-rep))
 	   (e-zrhs-smallest-monomial
 	    (car e-zrhs-oriented-alg-rep))
 	   (e-target-monomial
@@ -71,7 +73,7 @@
 	    
 	    ;; Let's get e-target-monomial on the LHS and build the corresponding RHS.
 	    
-	    (let* ((e-target-rhs (poly-mult '((-1)) (poly- e-zrhs-oriented-alg-rep (list e-target-monomial))))
+	    (let* ((e-target-rhs (poly-mult '((-1)) (poly- e-zrhs-alg-rep (list e-target-monomial))))
 		   
 		   ;; And let's divide through by 1/coeff(e-target-monomial) on the RHS.
 		   
@@ -89,9 +91,9 @@
 		    (e-rhs-vars (all-vars-in-conj `((= ,(poly-alg-rep-to-prover-rep e-final-rhs) 0)))))
 		(if (not (member (car e-target-var) e-rhs-vars))
 		    (progn 
-		      (fmt 1/2 "~% >> Orienting a partially linear equation for inducing dimensional-reduction via demodulation.  ~%     Eq: ~A~%     Target monomial: ~A.~%" 
+		      (fmt 2 "~% >> Orienting a partially linear equation for inducing dimensional-reduction via demodulation.  ~%     Eq: ~A~%     Target monomial: ~A.~%" 
 			   e (mprint e-target-monomial))
-		      (fmt 1/2 "     Final directed demodulator: ~A --> ~A.~%     Representative RAHD eq: ~A.~%~%"
+		      (fmt 2 "     Final directed demodulator: ~A --> ~A.~%     Representative RAHD eq: ~A.~%~%"
 			   (poly-print e-final-lhs) (if e-final-rhs (poly-print e-final-rhs) 0) e-final-directed-eq)
 	      
 		      e-final-directed-eq)
@@ -119,8 +121,8 @@
     ;; be terminating, so we can just use SUBST-EQS with (TERM -> T) upon the c.
 
     (if derived-demods 
-	(let ((demod-out (subst-eqs c derived-demods #'(lambda (x) t))))
-	  (fmt 1/2 "~% >> Applying derived demodulators (listed above) to case.  ~%     Case before demodulation: ~A. ~%     Case after demodulation: ~A.~%"
+	(let ((demod-out (subst-eqs c derived-demods #'(lambda (x) (declare (ignore x)) t))))
+	  (fmt 2 "~% >> Applying derived demodulators (listed above) to case.  ~%     Case before demodulation: ~A. ~%     Case after demodulation: ~A.~%"
 	       c demod-out)
 	  demod-out)
       c)))

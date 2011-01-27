@@ -1,5 +1,5 @@
 ;;;
-;;; RAHD: Real Algebra in High Dimensions v0.0
+;;; RAHD: Real Algebra in High Dimensions v0.5
 ;;; A feasible decision method for the existential theory of real closed fields.
 ;;;
 ;;; High-level canonizer for goals.
@@ -13,7 +13,7 @@
 ;;;            last updated on  12-Sept-2008.
 ;;;
 
-(in-package RAHD)
+(in-package :rahd)
 
 ;;;
 ;;; Given a list of atoms, return the result of canonicalizing all terms within

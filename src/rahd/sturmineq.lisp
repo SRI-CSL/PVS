@@ -10,7 +10,7 @@
 ;;; 
 ;;;     RAHD: Real Algebra in High Dimensions
 ;;;   
-;;;   v0.0,
+;;;   v0.5,
 ;;;
 ;;; A feasible decision method for the existential theory of real closed fields.
 ;;; Written by Grant Olney Passmore
@@ -25,7 +25,7 @@
 ;;;            last updated on  25-Sept-2008.
 ;;;
 
-(in-package RAHD)
+(in-package :rahd)
 
 ;;;
 ;;; OPEN-INTERVAL-UNIV-INEQ (c): Given a conjunction of the form:
@@ -69,8 +69,9 @@
 				      (let ((num-real-roots-in-open-interval
 					     (- (poly-univ-interval-real-root-count poly-alg-rep lower upper)
 						num-boundary-roots)))
-					(fmt 9 "~% >> Sturm sequence inequality trace: ~%    Polynomial: ~A~%    Interval: ]~A, ~A[~%    Number of real roots in interval: ~A.~%~%"
-					     (poly-print poly-alg-rep) lower upper num-real-roots-in-open-interval)
+					(fmt 9 "~% >> Sturm sequence inequality trace: ~%    Polynomial: ~A~%    Interval: ]~A, ~A[~%    Number of real roots in interval: ~A~%    Number of real roots on boundary (not included, as interval is open): ~A.~%~%"
+					     (poly-print poly-alg-rep) lower upper 
+					     (max 0 num-real-roots-in-open-interval) num-boundary-roots)
 					(cond ((<= num-real-roots-in-open-interval 0)
 					       (let ((sample-pt (/ (+ lower upper) 2)))
 						 (let ((sign-sample-pt
@@ -78,7 +79,7 @@
 							    -1 1)))
 						   (if (= sign-sample-pt sign-condition) 
 						       ;; Now, we must make sure *every* conjunct in this univariate system is satisfied.
-						       (if (eval (append '(and) (subst sample-pt v c)))
+						       (if (eval (append '(AND) (subst sample-pt v c)))
 							   `(:SAT :ASSIGNMENT (,v ,sample-pt))
 							 c)
 						     `(:UNSAT :STURM-SEQUENCE (:NO-SIGN-CHANGE-IN-OPEN-INTERVAL 
@@ -157,7 +158,9 @@
 	((and (symbolp p) 
 	      (not (equal p '+))
 	      (not (equal p '-))
-	      (not (equal p '*))) `(,p))
+	      (not (equal p '*))
+	      (not (equal p '/)))
+	      `(,p))
 	((not (consp p)) nil)
 	(t (union (gather-vars (car p))
 		  (gather-vars (cdr p))))))

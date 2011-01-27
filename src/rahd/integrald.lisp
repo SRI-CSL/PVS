@@ -1,3 +1,8 @@
+
+
+
+;;; *** DEPRECATED: REPLACED WITH INTGRLDOM.LISP -- should delete from RAHD distribution.
+
 ;;;
 ;;; RAHD: Real Algebra in High Dimensions v0.0
 ;;; A feasible decision method for the existential theory of real closed fields.
@@ -13,7 +18,7 @@
 ;;;            last updated on  25-Sept-2008.
 ;;;
 
-(in-package RAHD)
+(in-package :rahd)
 
 ;;;
 ;;; INTEGRAL-DOMAIN-ZERO-PRODUCT-BRANCH: Given a case, if it contains (= (* A B) 0) for

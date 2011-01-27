@@ -34,19 +34,21 @@
   (rahd:extract-non-refuted-cases))
   
 
-(defstep rahd (&optional (fnums *))
+(defstep rahd (&optional (fnums *) (simplify-division? t)
+			 verbosity search-model print-model)
   (then (grind)
-	(rahd-simp fnums))
+	(rahd-simp fnums simplify-division? verbosity search-model print-model))
   "Real Algebra in High Dimensions"
   "~%Applying rahd")
 
-(addrule 'rahd-simp () ((fnums *) rahd-args (simplify-division? t))
-  (rahd-fun fnums rahd-args simplify-division?)
+(addrule 'rahd-simp () ((fnums *) (simplify-division? t)
+			verbosity search-model print-model)
+  (rahd-fun fnums simplify-division? verbosity search-model print-model)
   "Real Algebra in High Dimensions"
   "~%Applying rahd-simp,")
 
-(defun generic-rahd-tactic (fnums case from to)
-  #'(lambda (ps) (run-rahd ps fnums case from to)))
+;; (defun generic-rahd-tactic (fnums case from to)
+;;   #'(lambda (ps) (run-rahd ps fnums case from to)))
 
 (add-rahd-tactic canon-tms "polynomial canonicalization, arithmetic, and simplification")
 (add-rahd-tactic contra-eqs "simple equality reasoning")
@@ -87,10 +89,11 @@
   "Applying the RAHD waterfall.")
   
 
-(defun rahd-fun (fnums rahd-args simplify-division?)
-  #'(lambda (ps) (run-rahd ps fnums rahd-args simplify-division?)))
+(defun rahd-fun (fnums simplify-division? verbosity search-model print-model)
+  #'(lambda (ps) (run-rahd ps fnums simplify-division?
+			   verbosity search-model print-model)))
 
-(defun run-rahd (ps fnums rahd-args simplify-division?)
+(defun run-rahd (ps fnums simplify-division? verbosity search-model print-model)
   (let* ((sforms (s-forms (current-goal ps)))
 	 (selected-sforms (gather-seq sforms fnums nil #'polynomial-formula?))
 	 (remaining-sforms (delete-seq sforms fnums))
@@ -100,14 +103,16 @@
     (if (null selected-sforms)
 	(values 'X nil nil)
 	(let* ((rahd-form (translate-to-rahd selected-sforms simplify-division?))
-	       (rahd-result (go-rahd rahd-form rahd-args)))
+	       (rahd-result (go-rahd rahd-form
+				     verbosity search-model print-model)))
 	  (add-rahd-subgoals
 	   rahd-result sforms selected-sforms remaining-sforms ps)))))
 
-(defun go-rahd (conj rahd-args)
+(defun go-rahd (conj verbosity search-model print-model)
   (rahd:rahd-reset-state)
+  (break)
   (rahd:g conj)
-  (apply #'rahd:go! rahd-args)
+  (funcall #'rahd:go! :verbosity verbosity :search-model search-model)
   (rahd:extract-non-refuted-cases))
 
 (defun add-rahd-subgoals (rahd-result sforms selected-sforms remaining-sforms ps)

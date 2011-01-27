@@ -15,7 +15,7 @@
 ;;; 
 ;;;     RAHD: Real Algebra in High Dimensions
 ;;;   
-;;;   v0.0,
+;;;   v0.5,
 ;;;
 ;;; A feasible decision method for the existential theory of real closed fields.
 ;;; Written by Grant Olney Passmore
@@ -30,7 +30,7 @@
 ;;;            last updated on  16-July-2008.
 ;;;
 
-(in-package RAHD)
+(in-package :rahd)
 
 ;;;
 ;;; DP/DV: Given a polynomial p and a variable ID v (w.r.t. *VARS-TABLE*),

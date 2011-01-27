@@ -1,5 +1,5 @@
 ;;;
-;;; RAHD: Real Algebra in High Dimensions v0.0
+;;; RAHD: Real Algebra in High Dimensions v0.5
 ;;; A feasible decision method for the existential theory of real closed fields.
 ;;;
 ;;; ** Routines to help debug RAHD proof sessions **
@@ -13,7 +13,7 @@
 ;;;            last updated on  23-Oct-2008.
 ;;;
 
-(in-package RAHD)
+(in-package :rahd)
 
 ;;;
 ;;; WITH-RAHD-DEBUGGING: Dynamically bind the RAHD verbosity level to 9 

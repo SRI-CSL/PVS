@@ -1,5 +1,5 @@
 ;;;
-;;; RAHD: Real Algebra in High Dimensions v0.0
+;;; RAHD: Real Algebra in High Dimensions v0.5
 ;;; A feasible decision method for the existential theory of real closed fields.
 ;;;
 ;;; ** Ideal triviality checking,
@@ -20,10 +20,10 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         18-Sept-2008,
-;;;            last updated on  18-Nov-2008.
+;;;            last updated on  21-Nov-2009.
 ;;;
 
-(in-package RAHD)
+(in-package :rahd)
 
 ;;;
 ;;; TRIVIAL-IDEAL:
@@ -58,7 +58,7 @@
 
 (defun ineqs-over-quotient-ring (c)
   (let ((eqs (gather-eqs c))
-	(ineqs (gather-ineqs c)))
+	(ineqs (gather-strict-ineqs c)))
     (if (and eqs ineqs) 
 	(let ((c-reduced-gbasis
 	       (reduced-gbasis-for-case c)))
@@ -79,16 +79,18 @@
 ;;;
 
 (defun lit-over-quotient-ring (l rgbasis)
-  (let ((op (car l))
-	(x  (cadr l))
-	(y  (caddr l)))
-    ;(assert (and (numberp y) (= y 0)))
-    (let ((residue-x (poly-alg-rep-to-prover-rep 
-		      (cdr (poly-multiv-/ (poly-prover-rep-to-alg-rep x) rgbasis))))
-	  (residue-y (if (equal y 0) 0 
-		       (poly-alg-rep-to-prover-rep
-			(cdr (poly-multiv-/ (poly-prover-rep-to-alg-rep y) rgbasis))))))
-      `(,op ,residue-x ,residue-y))))
+  (if (void-gbasis rgbasis) 
+      l
+    (let ((op (car l))
+	  (x  (cadr l))
+	  (y  (caddr l)))
+					;(assert (and (numberp y) (= y 0)))
+      (let ((residue-x (poly-alg-rep-to-prover-rep 
+			(cdr (poly-multiv-/ (poly-prover-rep-to-alg-rep x) rgbasis))))
+	    (residue-y (if (equal y 0) 0 
+			 (poly-alg-rep-to-prover-rep
+			  (cdr (poly-multiv-/ (poly-prover-rep-to-alg-rep y) rgbasis))))))
+	`(,op ,residue-x ,residue-y)))))
 
 
 ;;;
@@ -122,64 +124,67 @@
       (let ((c-reduced-gbasis (reduced-gbasis-for-case c))
 	    (c-new-eqs nil)
 	    (c-waterfall-disjunction? nil))
-	(let ((expt-bound (* (1+ expt-scalar) (eval (append '(max) (mapcar #'poly-deg c-reduced-gbasis))))))
-	  (dotimes (var-id (length *vars-table*))
-	    (let ((cur-vp `((1 (,var-id . 1)))))
-	      (loop for p from 1 to expt-bound do
-		    (let ((vp-over-quotient-ring (cdr (poly-multiv-/ cur-vp c-reduced-gbasis))))
-		      (let ((vp-over-quotient-ring-prover-rep (poly-alg-rep-to-prover-rep vp-over-quotient-ring)))
-			(fmt 9 "~% ~D --> ~D~%" 
-			     (write-to-string (poly-alg-rep-to-prover-rep cur-vp))
-			     vp-over-quotient-ring-prover-rep)
-			(if (or (equal vp-over-quotient-ring nil)
-				(equal vp-over-quotient-ring 0))
-			    (return (setq c-new-eqs (append `((= ,(nth var-id *vars-table*) 0)) c-new-eqs)))		    
-			  (if (and (numberp vp-over-quotient-ring-prover-rep)
-				   (not (< vp-over-quotient-ring-prover-rep 0))
-				   (nth-root-rational? (poly-alg-rep-to-prover-rep vp-over-quotient-ring) p))
+	(if c-reduced-gbasis
+	    (progn
+	      (let ((expt-bound (* (1+ expt-scalar) (eval (append '(max) (mapcar #'poly-deg c-reduced-gbasis))))))
+		(dotimes (var-id (length *vars-table*))
+		  (let ((cur-vp `((1 (,var-id . 1)))))
+		    (loop for p from 1 to expt-bound do
+			  (let ((vp-over-quotient-ring (cdr (poly-multiv-/ cur-vp c-reduced-gbasis))))
+			    (let ((vp-over-quotient-ring-prover-rep (poly-alg-rep-to-prover-rep vp-over-quotient-ring)))
+			      (fmt 9 "~% ~D --> ~D~%" 
+				   (write-to-string (poly-alg-rep-to-prover-rep cur-vp))
+				   vp-over-quotient-ring-prover-rep)
+			      (if (or (equal vp-over-quotient-ring nil)
+				      (equal vp-over-quotient-ring 0))
+				  (return (setq c-new-eqs (append `((= ,(nth var-id *vars-table*) 0)) c-new-eqs)))		    
+				(if (and (numberp vp-over-quotient-ring-prover-rep)
+					 (not (< vp-over-quotient-ring-prover-rep 0))
+					 (nth-root-rational? (poly-alg-rep-to-prover-rep vp-over-quotient-ring) p))
 			      
-			      ;;
-			      ;; We've derived that v = q^k, with v>0, where 
-			      ;;  v = (nth var-id *vars-table*),
-			      ;;  q = (poly-alg-rep-to-prover-rep vp-over-quotient-ring)
-			      ;;  k = p
-			      ;;
-			      ;; So, if k is even, then we return a waterfall disjunction of the following form:
-			      ;;
-			      ;;   (:OR (= v (expt q 1/k) 
-			      ;;        (= v (- 0 (expt q 1/k)))), where expt is our special :EXACT-REAL-EXPT algebraic
-			      ;;    number exponential.
-			      ;;
-			      ;; If k is odd, we return only the positive case.
-			      ;;
-			      ;; Note: Right now, we will only do this if (expt q 1/k) is rational.
-			      ;;
+				    ;;
+				    ;; We've derived that v = q^k, with v>0, where 
+				    ;;  v = (nth var-id *vars-table*),
+				    ;;  q = (poly-alg-rep-to-prover-rep vp-over-quotient-ring)
+				    ;;  k = p
+				    ;;
+				    ;; So, if k is even, then we return a waterfall disjunction of the following form:
+				    ;;
+				    ;;   (:OR (= v (expt q 1/k) 
+				    ;;        (= v (- 0 (expt q 1/k)))), where expt is our special :EXACT-REAL-EXPT algebraic
+				    ;;    number exponential.
+				    ;;
+				    ;; If k is odd, we return only the positive case.
+				    ;;
+				    ;; Note: Right now, we will only do this if (expt q 1/k) is rational.
+				    ;;
 
-			      (cond ((oddp p) (return (setq c-new-eqs
-							    (append `((= ,(nth var-id *vars-table*)
-									 (EXACT-REAL-EXPT
-									  ,(poly-alg-rep-to-prover-rep vp-over-quotient-ring)
-									  ,(/ 1 p))))
-								    c-new-eqs))))
-				    (t (setq c-waterfall-disjunction? t)
-				       (return (setq c-new-eqs 
-						     (append `((:OR (= ,(nth var-id *vars-table*)
-								       (EXACT-REAL-EXPT
-									,(poly-alg-rep-to-prover-rep vp-over-quotient-ring) 
-									,(/ 1 p)))
-								    (= ,(nth var-id *vars-table*)
-								       (- 0 (EXACT-REAL-EXPT
-									     ,(poly-alg-rep-to-prover-rep vp-over-quotient-ring) 
-									     ,(/ 1 p))))))
-							     c-new-eqs)))))))))
-		    (setq cur-vp `((1 (,var-id . ,(+ p 1)))))))))
+				    (cond ((oddp p) (return (setq c-new-eqs
+								  (append `((= ,(nth var-id *vars-table*)
+									       ,(EXACT-REAL-EXPT
+										 (poly-alg-rep-to-prover-rep vp-over-quotient-ring)
+										 (/ 1 p))))
+									  c-new-eqs))))
+					  (t (setq c-waterfall-disjunction? t)
+					     (return (setq c-new-eqs 
+							   (append `((:OR (= ,(nth var-id *vars-table*)
+									     ,(EXACT-REAL-EXPT
+									       (poly-alg-rep-to-prover-rep vp-over-quotient-ring) 
+									       (/ 1 p)))
+									  (= ,(nth var-id *vars-table*)
+									     (- 0 ,(EXACT-REAL-EXPT
+										    (poly-alg-rep-to-prover-rep vp-over-quotient-ring) 
+										    (/ 1 p))))))
+								   c-new-eqs)))))))))
+			  (setq cur-vp `((1 (,var-id . ,(+ p 1)))))))))
 	
 	;; Did we introduce a waterfall disjunction?  If so, we flag this fact for GENERIC-TACTIC.
 	
 	(let ((adj-case (append c-new-eqs c)))
 	  (if (not c-waterfall-disjunction?) 
 	      adj-case
-	    (cons ':DISJ adj-case)))))))
+	    (cons ':DISJ adj-case))))
+	c)))))
 
 ;;;
 ;;; Given a conjunctive case, return the reduced GBasis of all equations in the case.
@@ -221,6 +226,7 @@
 							`(- ,cur-x ,cur-y))
 						     (poly-prover-rep-to-alg-rep cur-x))))
 					     eqs))))
+
 		     (if prepd-raw-generators 
 			 (reduce-gbasis (gbasis prepd-raw-generators)) 
 		       '(((0))))))))
@@ -234,6 +240,14 @@
 		gbasis-for-case))))))
 
 ;;;
+;;; Is a GBasis `void'?  That is, does it give us no information?
+;;;  Example: Computing a GB from equational constraint (= x x).
+;;;
+
+(defun void-gbasis (gbasis)
+  (equal gbasis '(((0)))))
+
+;;;
 ;;; Given a conjunctive case, return the subset of (in)equalities in the case.
 ;;; Note: We assume SIMP-ZRHS has already been run on the case, so that
 ;;;  the RHS of every equation is 0.
@@ -242,5 +256,18 @@
 (defun gather-eqs (c)
   (remove-if-not #'(lambda (l) (equal (car l) '=)) c))
 
-(defun gather-ineqs (c)
+(defun gather-strict-ineqs (c)
   (remove-if-not #'(lambda (l) (or (equal (car l) '<) (equal (car l) '>))) c))
+
+(defun gather-soft-ineqs (c)
+  (remove-if-not #'(lambda (l) (or (equal (car l) '<=) (equal (car l) '>=))) c))
+
+(defun gather-all-ineqs (c)
+  (remove-if-not 
+   #'(lambda (l)
+       (let ((op (car l)))
+	 (or (equal op '<)
+	     (equal op '<=)
+	     (equal op '>)
+	     (equal op '>=))))
+   c))

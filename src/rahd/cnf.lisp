@@ -1,5 +1,5 @@
 ;;;
-;;; RAHD: Real Algebra in High Dimensions v0.0
+;;; RAHD: Real Algebra in High Dimensions v0.5
 ;;; A feasible decision method for the existential theory of real closed fields.
 ;;;
 ;;; * Intermediate Division CNF form --> RAHD CNF processor.
@@ -17,10 +17,10 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         09-Dec-2008,
-;;;            last updated on  10-Dec-2008.
+;;;            last updated on  11-Dec-2008.
 ;;;
 
-(in-package RAHD)
+(in-package :rahd)
 
 ;;;
 ;;; F-TO-F-THRU-CNF: Given a formula, partially explicit CNF, convert it to 

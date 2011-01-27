@@ -1,5 +1,5 @@
 ;;;
-;;; RAHD: Real Algebra in High Dimensions v0.0
+;;; RAHD: Real Algebra in High Dimensions v0.5
 ;;; A feasible decision method for the existential theory of real closed fields.
 ;;;
 ;;; Goal pre-processing and side-condition generation / checking for goals
@@ -11,17 +11,74 @@
 ;;; Contact: g.passmore@ed.ac.uk, http://homepages.inf.ed.ac.uk/s0793114/
 ;;; 
 ;;; This file: began on         22-Nov-2008,
-;;;            last updated on  19-Jan-2009.
+;;;            last updated on  28-Feb-2009.
 ;;;
 
-(in-package RAHD)
+(in-package :rahd)
 
 ;;;
 ;;; F-TO-DIV-FREE-CNF: 
 ;;;
 
 (defun f-to-div-free-cnf (f)
-  (ef-to-cnf (f-to-div-free-explicit-fof f)))
+  (subset-subsumption
+   (mapcar #'(lambda (x) 
+	       (remove-duplicates x :test 'equal)) 
+	   (ef-to-cnf (f-to-div-free-explicit-fof f)))))
+
+;;;
+;;; F-TO-DIV-FREE-CNF-DUC: As above but include unit clause derived 
+;;;  demodulation for heuristically selected formulas.
+;;;
+
+(defun f-to-div-free-cnf-duc (f)
+  (let ((out-f f))
+    (if (and (equal *current-goal-key* 0) 
+	     (div-formula?* out-f) (>= (processed-goal-dim out-f) 3))
+	(f-to-div-free-cnf (demod-nl-unit-clauses out-f))
+      (f-to-div-free-cnf out-f))))
+
+;;;
+;;; SUBSET-SUBSUMPTION:
+;;; A simple subsumption check that removes clauses that properly
+;;; contain other clauses.  This helps a lot in reducing the ultimate
+;;; goal-set size of division problems.
+;;; 
+
+(defun subset-subsumption (f)
+  (subset-subsumption* f "clauses"))
+
+(defun subset-subsumption-gs (f)
+  (subset-subsumption* f "cases"))
+
+(defun subset-subsumption* (f obj-str)
+  (let* ((f-original-length (length f))
+	 (out (sort f #'length-<))
+	 (top nil)
+	 (kept nil))
+    (loop while (> (length out) 1) do
+	  (setq top (car out))	  
+	  (setq out (remove-if #'(lambda (x) (subseteq top x)) out))
+	  (setq kept (cons top kept))
+	  (fmt 9 "~% *** Subset subsumption: Top = ~A, Out = ~A, Kept = ~A ***~%~%" top out kept))
+    (when out (setq kept (cons (car out) kept)))
+    (if (< (length kept) f-original-length)
+	(fmt 2 "~% *** RAHD Pre-processor: Successful formula subsumption reduction from ~A ~A to ~A ~A ***~%~%"
+	     f-original-length obj-str (length kept) obj-str)
+      (fmt 9 "~% *** RAHD Pre-processor: Subsumption checks performed no formula reductions (F:~A, K:~A). ***~%~%"
+	   f-original-length (length kept)))
+    kept))
+	
+
+(defun length-< (x y)
+  (and (consp x) (consp y) (< (length x) (length y))))
+
+(defun subseteq (x y)
+  (and (consp x) (consp y)
+       (let ((out t))
+	 (dolist (i x)
+	   (setq out (and out (member i y :test 'equal))))
+	 out)))
 
 ;;;
 ;;; F-TO-DIV-FREE-EXPLICIT-FOF: Given a normal RAHD CNF f that may contain
@@ -64,6 +121,14 @@
 
       (let ((new-LHS) (new-RHS) (new-MULTIPLICAND))
 
+	;;
+	;; Mark the term denominators as non-zero.
+	;;
+
+	(setq *nz-terms* (union *nz-terms* (cond ((and dx dy) (list (cdr dx) (cdr dy)))
+						 (dx (list (cdr dx)))
+						 (dy (list (cdr dy))))))
+	
 	(cond ((and dx dy)
 
 	       ;;
@@ -226,7 +291,9 @@
 	       ((+ -) (or (rule-B-l rec-result)
 			  (rule-B-r rec-result)
 			  rec-result))
-	       (otherwise (break "Bad symbol")))))))
+	       (otherwise (break "bubble-divs-up-bu*: Bad symbol: ~a"
+				 rr-op)
+			  ))))))
 
 ;;;
 ;;; Paul Jackson's ``bubble-up'' rules (A,B,C).
@@ -357,91 +424,8 @@
 		
 	 
 		       
-;;;
-;;; *** OLD: This is kept only for historical purposes and is no longer true.
-;;;
-;;; Essay on how we handle division in RAHD:
-;;;
-;;; Let G be an existentially quantified goal given in CNF.  If some literal L
-;;; in some clause C in G contains the division symbol, we must reduce G to
-;;; some G' s.t. G' does not contain the division symbol and G' ==> G.
-;;; 
-;;; In doing so, we need to be careful about 
-;;;   (i) swapping directions of inequality symbols when we multiply through by
-;;;       negative definite polynomials (including negative rational constants),
-;;;  (ii) checking side-conditions to guarantee that under the assumption of the 
-;;;       other conjuncts in G, the polynomials appearing as denominators in G
-;;;       are always non-zero.
-;;;
-;;;  Let p(\vec{x}) in Q[*vars-table*] be some polynomial appearing as a 
-;;;   denominator in L in G, with L1 ... Ln division-free.  
-;;;
-;;;  WLOG, Let G be equivalent to (exists vec{x} (L1 /\ ... /\ Ln /\ L)),
-;;;   where L is (op (/ p(\vec{x}) q(\vec{x})) r(\vec{x})) and op in {>,=}.
-;;;  
-;;;  [Case I]: If q(\vec{x}) is a rational constant, then we can multiply
-;;;            through by q(\vec{x}) and adjust op as needed in the following
-;;;            way (writing `q' for q(\vec{x}) in Q):
-;;;
-;;;                 If (q = 0), then we report an error to the user.
-;;;
-;;;                 If (op = `=') and q != 0, then 
-;;;                  let L' := (= p(\vec{x}) (* 1/q r(\vec{x}))),
-;;;                 
-;;;                 If (op = `>') and q > 0, then
-;;;                  let L' := (> p(\vec{x}) (* 1/q r(\vec{x}))),
-;;;
-;;;                 If (op = `>') and q < 0, then
-;;;                  let L' := (< p(\vec{x}) (* 1/q r(\vec{x}))).
-;;;
-;;;  [Case II]: If q(\vec{x}) is a non-constant polynomial, then we have more work
-;;;             to do.  We must first establish that the universal-duals of L1, ..., Ln
-;;;             (w. univ-dual(Li) written as Li') imply that q(\vec{x}) is always non-zero: 
-;;;
-;;;             (a) (forall \vec{x} (L1' /\ ... /\ Ln' ==> (q(\vec{x}) != 0))).
-;;;
-;;;                  By the Intermediate Value Theorem coupled with the fact that
-;;;                  q(\vec{x}) is a continuous function from R^n -> R, 
-;;;                  condition (a) is equivalent to:
-;;;
-;;;                    (a') (OR (forall \vec{x} (L1' /\ ... /\ Ln' ==> (q(\vec{x}) < 0)))
-;;;                             (forall \vec{x} (L1' /\ ... /\ Ln' ==> (q(\vec{x}) > 0))).
-;;;
-;;;                  Perhaps surprisingly, we must in general explicitly prove one of these two 
-;;;                  disjuncts in (a') (e.g. just working with the (a) form is not sufficient) 
-;;;                  for the following reason: 
-;;;
-;;;                   (*) If op in L is an inequality symbol, say `<', if we wish to eliminate
-;;;                       the division sign by multiplying through by q(\vec{x}), we must know 
-;;;                       to swap `<' to `>' if
-;;;
-;;;                          (forall \vec{x} (L1' /\ ... /\ Ln' ==> (q(\vec{x}) < 0)) holds.
-;;;
-;;;              So, we do the following:
-;;;
-;;;               (i) Ask RAHD to prove (forall \vec{x} (L1' /\ ... /\ Ln' ==> (q(\vec{x}) > 0)), in
-;;;                   RAHD's existential form:
-;;;                   
-;;;                     ?RAHD |= (L1 /\ ... /\ Ln /\ q(vec{x}) <= 0) ==> (0=1).
-;;;
-;;;                   If this fails (either by RAHD not being clever enough or by it being false), we
-;;;                   then:
-;;;
-;;;              (ii) Ask RAHD to prove (forall \vec{x} (L1' /\ ... /\ Ln' ==> (q(\vec{x}) < 0)), in
-;;;                   RAHD's existential form:
-;;;
-;;;                     ?RAHD |= (L1 /\ ... /\ Ln /\ q(vec{x}) >= 0) ==> (0=1).
-;;;
-;;;                   If this fails, then we report to the user that we were unable to establish 
-;;;                   sign conditions upon q(\vec{x}) that would allow us to soundly reduce G to a 
-;;;                   purely RCF problem (e.g., division-free).  Thus, RAHD cannot soundly proceed on
-;;;                   this goal (unless the user verifies these conditions manually; we should think
-;;;                   on ways to ease the use of manually verified division conditions in proof efforts
-;;;                   with top-level divisions).
-;;;
-;;;              If either (i) or (ii) succeeds, then we can treat q(\vec{x}) abstractly as a rational
-;;;              constant (either one that is positive or negative, based upon whether (i) or (ii)
-;;;              succeeded, respectively) and then revert to [Case I] above.
-;;;
-;;;  Last updated: Nov 22, 2008.
-;;;                     
+
+
+
+	  
+

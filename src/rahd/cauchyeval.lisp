@@ -1,5 +1,5 @@
 ;;;
-;;; RAHD: Real Algebra in High Dimensions v0.0
+;;; RAHD: Real Algebra in High Dimensions v0.5
 ;;; A feasible decision method for the existential theory of real closed fields.
 ;;;
 ;;; ** Eventually: An evaluator for ground literals involving real algebraic numbers, using
@@ -15,7 +15,7 @@
 ;;;            last updated on  14-Nov-2008.
 ;;;
 
-(in-package RAHD)
+(in-package :rahd)
 
 ;;;
 ;;; Given a rational x, is its nth root a rational?  If so, we return it.
