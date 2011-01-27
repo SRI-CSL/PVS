@@ -509,13 +509,17 @@
   bound offset rangetype)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defparameter *pvs-lisp-types-alist*
-  (list (cons *boolean* 'boolean)
-	(cons *naturalnumber*  'natural)
-	(cons *integer* 'integer)
-	(cons *rational* 'rational)
-	(cons *real* 'real)
-	(cons *number* 'number)))
+(defvar *pvs-lisp-types-alist*)
+(defun pvs-lisp-types-alist ()
+  (if (boundp '*pvs-lisp-types-alist*)
+      *pvs-lisp-types-alist*
+      (setq *pvs-lisp-types-alist*
+	    (list (cons *boolean* 'boolean)
+		  (cons *naturalnumber*  'natural)
+		  (cons *integer* 'integer)
+		  (cons *rational* 'rational)
+		  (cons *real* 'real)
+		  (cons *number* 'number)))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;converts PVS types into a Lisp representation that can be used
 ;;by late-binding functions
@@ -547,7 +551,7 @@
 
 (defmethod pvs-lisp-type ((type subtype) bindings)
   (with-slots (supertype predicate) type
-    (let ((bind (assoc type *pvs-lisp-types-alist*
+    (let ((bind (assoc type (pvs-lisp-types-alist)
 			:test #'tc-eq)))
       (if bind
 	  (cdr bind)
