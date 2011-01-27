@@ -34,8 +34,10 @@
 	  equation iff iff-or-boolean-equation implication index negation
 	  propositional-application))
 
-#+(or cmu sbcl)
-(#-sbcl ext:without-package-locks #+sbcl sb-ext:without-package-locks
+;; SBCL changed things so this no longer works - pvs.system
+;; simply unlocks the :common-lisp package
+#+cmu
+(ext:without-package-locks
  (defgeneric type (x))
  (defgeneric (setf type) (x y))
  (defgeneric number (x))
@@ -43,9 +45,9 @@
  (defgeneric declaration (x))
  (defgeneric (setf declaration) (x y)))
 
-#+(or cmu sbcl)
-;; This is actually defined in utils, but convenient to add here
-(#-sbcl ext:without-package-locks #+sbcl sb-ext:without-package-locks
+  ;; This is actually defined in utils, but convenient to add here
+#+cmu
+(ext:without-package-locks
  (defgeneric condition (x)))
 
 ;;; Provide a class on which to hang syntactic information
@@ -56,7 +58,6 @@
   (pvs-sxhash-value :fetch-as nil :ignore t))
 
 ;;; Expressions
-
 (defcl expr (syntax)
   (parens :initform 0 :parse t :restore-as nil)
   type
@@ -174,13 +175,8 @@
 ;; When an extraction-expr is used as a conversion
 (defcl extraction-conversion (extraction-application))
 
-#-sbcl
 (defcl number-expr (expr)
   (number :type integer :parse t :restore-as nil))
-#+sbcl
-(sb-ext:without-package-locks
-  (defcl number-expr (expr)
-    (number :type integer :parse t :restore-as nil)))
 
 ;; This is for integers of the form xxx.000, where the fractional part is
 ;; all zeros.  We keep it as a number expr, but store the number of zeros so
@@ -511,8 +507,6 @@
   (declared-type :parse t)
   type)
 
-(defcl mapping-def (mapping)
-  mapped-decl)
 (defcl mapping-subst (mapping))
 (defcl mapping-rename (mapping)
   mapped-decl)
@@ -524,7 +518,6 @@
 (defcl mapping-with-formals (mapping)
   (formals :parse t))
 
-(defcl mapping-def-with-formals (mapping-with-formals mapping-def))
 (defcl mapping-subst-with-formals (mapping-with-formals mapping-subst))
 (defcl mapping-rename-with-formals (mapping-with-formals mapping-rename))
 
@@ -536,17 +529,10 @@
 ;;; resolution.  The inclusions are the predicates which will become
 ;;; TCCs if that particular resolution is chosen.
 
-#-sbcl
 (defcl resolution ()
   (declaration :restore-as nil)
   module-instance
   type)
-#+sbcl
-(sb-ext:without-package-locks
-  (defcl resolution ()
-    (declaration :restore-as nil)
-    module-instance
-    type))
 
 ;(defcl judgement-resolution (resolution)
 ;  judgement-type
