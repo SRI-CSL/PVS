@@ -417,7 +417,9 @@ proof scripts, including those already proved."
 	   (setf (pvs-fref-kind fref) 'prelude-theory
 		 (pvs-fref-prelude-offset fref) pvs-prelude))
 	  (file (setf (pvs-fref-kind fref) 'pvs))
-	  ((equal (buffer-name) "PVS Status")
+	  ((equal buf "Declaration")
+	   (setf (pvs-fref-kind fref) 'declaration))
+	  ((equal buf "PVS Status")
 	   (let ((theory 
 		  (save-excursion
 		    (when (re-search-backward
