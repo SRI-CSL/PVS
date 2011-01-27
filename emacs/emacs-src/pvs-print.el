@@ -135,7 +135,7 @@ The print-theory command prints the specified theory using the
 pvs-print-region command."
   (interactive (complete-theory-name "Print theory named: " nil t))
   (unless (interactive-p) (pvs-collect-theories))
-  (let* ((filename (cadr (assoc theoryname *pvs-theories*))))
+  (let* ((filename (cadr (assoc theoryname pvs-theories))))
     (cond (filename
 	   (save-excursion
 	     (set-buffer (get-theory-buffer theoryname))
@@ -237,7 +237,7 @@ file is foo-alltt.tex."
   (unless (interactive-p) (pvs-collect-theories))
   (let* ((buf (get-theory-buffer theoryname))
 	 (reg (save-excursion (set-buffer buf) (theory-region theoryname)))
-	 (file (format "%s%s-alltt.tex" *pvs-current-directory* theoryname))
+	 (file (format "%s%s-alltt.tex" pvs-current-directory theoryname))
 	 (nbuf (find-file-noselect file)))
     (save-excursion
       (set-buffer nbuf)
@@ -276,7 +276,7 @@ the corresponding generated file is foo-alltt.tex."
   (save-excursion
     (set-buffer (get-pvs-file-buffer filename))
     (let ((tregs (theory-regions)))
-      (setq *pvs-theories*
+      (setq pvs-theories
 	    (mapcar '(lambda (treg)
 			(list (car treg) filename))
 		    tregs))
@@ -295,7 +295,7 @@ the corresponding generated file is foo-alltt.tex."
   (dolist (freg *prelude-files-and-regions*)
     (let ((buf (find-file-noselect (car freg))))
       (dolist (treg (cdr freg))
-	(let* ((file (format "%s%s-alltt.tex" *pvs-current-directory*
+	(let* ((file (format "%s%s-alltt.tex" pvs-current-directory
 		       (car treg)))
 	       (nbuf (find-file-noselect file)))
 	  (save-excursion
@@ -354,7 +354,7 @@ C-u), will provide a brief output, hiding many of the details."
 		   (list (if (equal spec "")
 			     (format "%s-alltt" fname)
 			     spec)))))
-  (let* ((default-directory *pvs-current-directory*)
+  (let* ((default-directory pvs-current-directory)
 	 (texfile (if (equal (pathname-type filename) "tex")
 		     filename
 		     (concat filename ".tex"))))
