@@ -543,14 +543,14 @@
     (lcopy expr
       'types ntypes
       'print-type (when (eq ntypes (types expr))
-		    (replace-expr-types lhs rhs (print-type expr))))))
+		    (replace-expr-types lhs rhs (list (print-type expr)))))))
 
 (defmethod replace-expr* (lhs rhs (expr cotupletype) lastopinfix?)
   (let ((ntypes (replace-expr-types lhs rhs (types expr))))
     (lcopy expr
       'types ntypes
       'print-type (when (eq ntypes (types expr))
-		    (replace-expr-types lhs rhs (print-type expr))))))
+		    (replace-expr-types lhs rhs (list (print-type expr)))))))
 
 (defun replace-expr-types (lhs rhs types)
   (let ((ntypes (replace-expr-types* lhs rhs types)))
@@ -578,7 +578,7 @@
     (lcopy expr
       'fields nfields
       'print-type (when (eq nfields (fields expr))
-		    (replace-expr-types lhs rhs (print-type expr))))))
+		    (replace-expr-types lhs rhs (list (print-type expr)))))))
 
 (defmethod replace-expr* (lhs rhs (expr dep-binding) lastopinfix?)
   (let ((ntype (replace-expr* lhs rhs (type expr) nil)))
