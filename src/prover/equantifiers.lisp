@@ -315,13 +315,14 @@ Please provide substitutions for these variables." overlap)
 			 when (not (and (typep y 'name-expr)
 					(eq (id y) '_)))
 			 collect y))
-	 (check (loop for  y in subterms
-		      when  (or (not (typep y 'name-expr))
-				(declared? (id y) context)
-				(not (every #'(lambda (r)
-						(typep (declaration r)
-						       'var-decl))
-					    (resolve y 'expr nil context))))
+	 (check (loop for y in subterms
+		      as x in sub-boundvars
+		      when (or (not (typep y 'name-expr))
+			       (declared? (id y) context)
+			       (not (every #'(lambda (r)
+					       (or (typep (declaration r) 'var-decl)
+						   (not (compatible? (type r) (type x)))))
+					   (resolve y 'expr nil context))))
 		      collect y))
 	 (*current-context* context))
     (cond (check
