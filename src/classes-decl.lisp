@@ -279,7 +279,7 @@
 
 (defcl module (datatype-or-module)
   (theory :type list :parse t) ; The declarations of the theory-part
-  (exporting :type exporting :parse t)  ; A list of exportings
+  (exporting :parse t)  ; A list of exportings
   nonempty-types  ; Keep track of types marked nonempty during typechecking
   all-usings ; The transitive closure of the usings of the theory
   (immediate-usings :initform 'unbound) ; immediate usings of the theory
@@ -378,8 +378,10 @@
 (defcl type-decl (declaration)
   (type-value :store-as ignore-self-reference-type-values))
 
+(#-sbcl progn #+sbcl sb-ext:without-package-locks
 (defcl nonempty-type-decl (type-decl)
   (keyword :restore-as nil))
+)
 
 ;;; A mixin
 (defcl type-def-decl (type-decl)
@@ -406,7 +408,8 @@
 ;;; This may change in the future, but creates parser headaches
 ;;; Thus units-appls may only appear in units-decls
 (defcl units-decl (type-decl)
-  declared-units)
+  declared-units
+  offset)
 
 (defcl units-expr (syntax)
   (parens :initform 0 :parse t :restore-as nil)
@@ -447,7 +450,8 @@
 
 (defcl formal-theory-decl (formal-decl importing-entity)
   (theory-name :parse t)
-  theory-mappings)
+  theory-mappings
+  other-mappings)
 
 (defcl adtdecl (typed-declaration)
   (bind-decl :documentation "Keeps a corresponding bind-decl"))
@@ -865,9 +869,13 @@
   interactive?
   decision-procedure-used)
 
+(
+ #-sbcl progn
+ #+sbcl sb-ext:without-package-locks
 (defcl decl-reference ()
   id
   class
   type
   theory-id
   library)
+)
