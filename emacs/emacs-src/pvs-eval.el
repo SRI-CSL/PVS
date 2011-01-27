@@ -39,7 +39,7 @@
   (let ((buf (get-buffer (format "%s.lisp" theoryname))))
     (when buf
       (kill-buffer buf)))
-  (let ((lisp-file (format "%s%s.lisp" *pvs-current-directory* theoryname)))
+  (let ((lisp-file (format "%s%s.lisp" pvs-current-directory theoryname)))
     (when (file-exists-p lisp-file)
       (find-file-read-only-other-window lisp-file))))
 
