@@ -19,7 +19,7 @@
 
 (in-package :pvs)
 
-(shadow 'INT :pvs)
+(shadow '(INT VOID UNSIGNED-INT))
 
 ;; (use-package :alien)
 (use-package :c-call)
