@@ -62,7 +62,8 @@
   '("" "src" "src/prover" "src/decision-procedures" "src/interface"
     "src/utils" "BDD" "src/interface" "src/ics-interface"
     "src/WS1S/lisp" "src/abstraction" "src/ground-prover" "src/groundeval"
-    "src/PVSio" "src/inst-by-unif" "src/rahd"))
+    "src/PVSio" "src/inst-by-unif" "src/Field" "src/Manip" "src/ProofLite"
+    "src/rahd"))
 
 #+allegro
 (defun pvs-build-date ()
@@ -70,12 +71,13 @@
     (subseq excl::cl-release-date 0 end)))
 
 (eval-when (:execute :compile-toplevel :load-toplevel)
-  (defparameter *pvs-version* "4.3")
+  (defparameter *pvs-version* "5.0")
 
   ;; Not used in PVS sources, but may be useful for patches, strategies, etc.
   ;;(pushnew (intern (format nil "pvs~a" *pvs-version*) :keyword) *features*)
-  (pushnew :pvs4.3 *features*)
-  (pushnew :pvs4 *features*)
+  (pushnew :pvs5.0 *features*)
+  (pushnew :pvs5 *features*)
+  (pushnew :pvs *features*)
   )
 
 (defparameter *binfile-version* 26)
