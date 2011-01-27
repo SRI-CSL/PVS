@@ -1101,9 +1101,11 @@
 		  :place place)))))))
 
 (defun xt-units-decl (units-decl)
-  (let ((units-expr (term-arg0 units-decl)))
+  (let ((units-expr (term-arg0 units-decl))
+	(offset (term-arg1 units-decl)))
     (values (make-instance 'units-decl
-	      :declared-units (xt-units-term units-expr))
+	      :declared-units (xt-units-term units-expr)
+	      :offset (xt-rational offset))
 	    units-expr)))
 
 (defun xt-units-term (units-expr)
@@ -2811,12 +2813,6 @@
     (assert (place expr))
     (if (is-sop 'NOFORMALS (term-arg1 lhs))
 	(case (sim-term-op mapping)
-	  (MAPPING-DEF
-	   (make-instance 'mapping-def
-	     :lhs (xt-mapping-lhs (term-arg0 mapping))
-	     :rhs (make-instance 'mapping-rhs :expr expr :place (place expr))
-	     :kind kind
-	     :declared-type dtype))
 	  (MAPPING-SUBST
 	   (make-instance 'mapping-subst
 	     :lhs (xt-mapping-lhs (term-arg0 mapping))
@@ -2832,14 +2828,6 @@
 	     :declared-type dtype)))
 	(let ((formals (xt-pdf (term-arg1 lhs))))
 	  (case (sim-term-op mapping)
-	  (MAPPING-DEF
-	   (make-instance 'mapping-def-with-formals
-	     :lhs (xt-mapping-lhs (term-arg0 mapping))
-	     :rhs (make-instance 'mapping-rhs
-		    :expr (mk-lambda-exprs formals expr))
-	     :formals formals
-	     :kind kind
-	     :declared-type dtype))
 	  (MAPPING-SUBST
 	   (make-instance 'mapping-subst-with-formals
 	     :lhs (xt-mapping-lhs (term-arg0 mapping))
@@ -2863,9 +2851,11 @@
     :place (term-place lhs)))
 
 (defun xt-lhs-idops (idops)
-  (makesym "~{~a~^.~}"
-	   (mapcar #'(lambda (idop) (ds-id (term-arg0 idop)))
-			(term-args idops))))
+  (if (cdr (term-args idops))
+      (makesym "~{~a~^.~}"
+	       (mapcar #'(lambda (idop) (ds-id (term-arg0 idop)))
+		 (term-args idops)))
+      (xt-idop (term-arg0 idops))))
 
 (defun xt-unique-name (name)
   (let ((uname (xt-name (term-arg0 name) t))
@@ -2909,23 +2899,26 @@
       (or (assq symbol *pvs-operators*)
 	  (valid-pvs-id* (string symbol)))))
 
-(defun valid-pvs-id* (sym)
+(defun valid-pvs-id* (sym &optional (start 0))
   (let* ((idstr (string sym))
-	 (dpos (position #\. idstr :from-end t)))
-    (and (valid-pvs-id** idstr dpos)
-	 (or (null dpos)
-	     (valid-pvs-id** (subseq idstr (1+ dpos)) nil)
-	     (assq (intern (subseq idstr (1+ dpos)) :pvs) *pvs-operators*)))))
+	 (dpos (position #\. idstr :start start)))
+    (or (and (valid-pvs-id** idstr start dpos)
+	     (or (null dpos)
+		 (valid-pvs-id* sym (1+ dpos))))
+	(break "not valid?"))))
   
-(defmethod valid-pvs-id** (str upto)
-  (and (alpha-char-p (char str 0))
-       (every #'(lambda (ch)
-		  (or (alpha-char-p ch)
-		      (digit-char-p ch)
-		      (and *in-checker*
-			   (char= ch #\!))
-		      ;; Note that periods are allowed in identifiers
-		      ;; in general, but not in declarations - see
-		      ;; xt-check-periods
-		      (member ch '(#\_ #\? #\.) :test #'char=)))
-	      (subseq str 1 upto))))
+(defun valid-pvs-id** (idstr start end)
+  (or (and (alpha-char-p (char idstr start))
+	   (every #'(lambda (ch)
+		      (or (alpha-char-p ch)
+			  (digit-char-p ch)
+			  (and *in-checker*
+			       (char= ch #\!))
+			  ;; Note that periods are allowed in identifiers
+			  ;; in general, but not in declarations - see
+			  ;; xt-check-periods
+			  (member ch '(#\_ #\?) :test #'char=)))
+		  (subseq idstr (1+ start) end)))
+      (and (null end)
+	   (or (assq (intern (subseq idstr start) :pvs) *pvs-operators*)
+	       (every #'digit-char-p (subseq idstr start))))))
