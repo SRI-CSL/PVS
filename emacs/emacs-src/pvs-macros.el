@@ -80,7 +80,7 @@ be detected."
 (defstruct (pvs-formula-reference (:conc-name pvs-fref-))
   "Created by pvs-formula-origin"
   kind    ; symbol: pvs, prelude, prelude-theory, proof-status, tccs, ppe
-  formula ; string: name of formula
+  formula ; string: name of formula (or decl)
   theory  ; string: name of theory
   file    ; string: pvs file name (no extension)
   buffer  ; buffer name
