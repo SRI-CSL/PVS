@@ -806,7 +806,7 @@ window."
   ;; If there are two windows, display file in non-current one.
   (let ((buf (if (member dir '("nil" "NIL"))
 		 (get-buffer file)
-		 (if (file-equal dir *pvs-current-directory*)
+		 (if (file-equal dir pvs-current-directory)
 		     (get-pvs-file-buffer file)
 		     (find-file-noselect
 		      (format "%s%s.pvs" dir (pathname-name file)))))))
@@ -1176,9 +1176,6 @@ for the interactive function."
   (unless (= (frame-width frame)
 	     *default-char-width*)
     (pvs-set-linelength (frame-width frame))))
-
-(defun full-copy-sparse-keymap (keymap)
-  (copy-keymap keymap))
 
 
 ;;; This is return-ilisp modified to put an extra backslash in front of any
