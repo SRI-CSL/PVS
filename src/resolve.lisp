@@ -177,6 +177,7 @@
 	   (when (and (eq kind 'module)
 		      (null dreses)
 		      (null args)
+		      (symbolp (id name))
 		      (or (null *typechecking-actual*)
 			  (some #'(lambda (th)
 				    (some #'formal-theory-decl?
@@ -429,7 +430,7 @@
 			      (and (mappings mi)
 				   (find decl (mappings mi)
 					 :key #'(lambda (m)
-						  (and (mapping-def? m)
+						  (and (mapping-subst? m)
 						       (declaration (lhs m)))))))
 			modinsts))
 		     (thinsts (remove-if
@@ -2083,7 +2084,7 @@
 					  (member (id name) (mappings thinst)
 						  :key #'(lambda (m)
 							   (unless
-							       (mapping-def? m)
+							       (mapping-subst? m)
 							     (id (lhs m))))))
 			       thinsts))))
 	       (lhash-table (current-using-hash)))
