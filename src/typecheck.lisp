@@ -1157,16 +1157,23 @@
       ;; We know that the rhs won't clash with any existing names of the
       ;; source theory, because the (unique) theory-decl id will be prepended
       (let* ((ldecl (declaration lhs))
-	     ;; We create a new declaration and resolution for the RHS, that will be
-	     ;; used for inlining later.
-	     (rdecl (copy ldecl :id (id rhs) :generated-by ldecl))
-	     (res (make-resolution rdecl (current-theory-name) type)))
-	(setf (resolutions (expr rhs)) (list res))
+	     ;; We create a new declaration and resolution for the RHS, that
+	     ;; will be used for inlining later.
+	     (rdecl (copy ldecl :id (id rhs) :generated-by ldecl)))
 	(typecase ldecl
+	  (type-decl
+	   (let ((tn (make-self-resolved-type-name rdecl)))
+	     (setf (type-value rdecl) tn)
+	     (setf (type-value rhs) tn)
+	     (setf (resolutions (expr rhs)) (resolutions tn))))
 	  (const-decl
-	   (setf (type (expr rhs)) (type res)))
-	  ((or mod-decl theory-formal-decl)
-	   (change-class (expr rhs) 'theory-name-expr)))))))
+	   (let ((res (make-resolution rdecl (current-theory-name) type)))
+	     (setf (resolutions (expr rhs)) (list res))
+	     (setf (type (expr rhs)) (type res))))
+	  ((or mod-decl formal-theory-decl)
+	   (let ((res (make-resolution rdecl (current-theory-name) type)))
+	     (setf (resolutions (expr rhs)) (list res))
+	     (change-class (expr rhs) 'theory-name-expr))))))))
 
 (defmethod typecheck-mapping-rhs* ((ex name-expr) kind type rhs)
   (assert (or (null (type ex)) (null type) (compatible? (type ex) type)))
@@ -1233,7 +1240,8 @@
   t)
 
 (defmethod interpretable? ((d type-decl))
-  (not (adt-type-name? (type-value d))))
+  ;;(not (adt-type-name? (type-value d)))
+  t)
 
 (defmethod interpretable? ((d type-def-decl))
   nil)
@@ -1248,13 +1256,16 @@
   (null (definition d)))
 
 (defmethod interpretable? ((d adt-constructor-decl))
-  nil)
+  ;;nil
+  t)
 
 (defmethod interpretable? ((d adt-recognizer-decl))
-  nil)
+  ;;nil
+  t)
 
 (defmethod interpretable? ((d adt-accessor-decl))
-  nil)
+  ;;nil
+  t)
 
 (defmethod interpretable? ((imp importing))
   nil)
@@ -1303,7 +1314,7 @@
 (defun collect-all-exportable-decls (theory)
   (remove-if #'(lambda (d)
 		 (typep d '(or importing var-decl field-decl recursive-type)))
-	     (append (theory-formal-decls theory)
+	     (append ;;(theory-formal-decls theory)
 		     (assuming theory)
 		     (theory theory))))
 
@@ -1482,6 +1493,7 @@
     (let ((rdecls (remove-if
 		      #'(lambda (d)
 			  (or (not (eq (module d) (current-theory)))
+			      (memq d (theory-formal-decls (current-theory)))
 			      (typep d '(or formal-decl importing
 					    var-decl field-decl
 					    recursive-type module
