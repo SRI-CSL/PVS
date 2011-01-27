@@ -166,12 +166,11 @@
 (defmethod compare-decl ((old typed-declaration) (new typed-declaration))
   (compare* (declared-type old) (declared-type new)))
 
-;(defmethod compare-decl ((old formal-decl) (new formal-decl))
-;  (call-next-method))
+(defmethod compare-decl ((old formal-theory-decl) (new formal-theory-decl))
+  (compare* (theory-name old) (theory-name new)))
 
 (defmethod compare-decl ((old mod-decl) (new mod-decl))
-  (and (call-next-method)
-       (compare* (modname old) (modname new))))
+  (compare* (modname old) (modname new)))
 
 (defmethod compare-decl ((old theory-abbreviation-decl)
 			 (new theory-abbreviation-decl))
@@ -273,15 +272,18 @@
 ;;; the class hierarchy.
 
 (defmethod compare* ((old type-name) (new type-name))
-  (and (compare* (mod-id old) (mod-id new))
-       (compare* (library old) (library new))
+  (and (or (and (compare* (mod-id old) (mod-id new))
+		(compare* (id old) (id new)))
+	   (and (null (mod-id old))
+		(mod-id new)
+		(string= (id old) (format nil "~a.~a" (mod-id new) (id new)))))
        (and (or (and (null (actuals old)) (null (actuals new)))
 		(and (actuals old) (actuals new)))
 	    (compare* (actuals old) (actuals new)))
        (and (or (and (null (mappings old)) (null (mappings new)))
 		(and (mappings old) (mappings new)))
 	    (compare* (mappings old) (mappings new)))
-       (compare* (id old) (id new))))
+       (compare* (library old) (library new))))
 
 (defmethod compare* ((old type-application) (new type-application))
   (and (compare* (type old) (type new))
@@ -481,8 +483,11 @@
 ;       (compare (renamings old) (renamings new))))
 
 (defmethod compare* ((old name) (new name))
-  (and (compare* (mod-id old) (mod-id new))
-       (compare* (library old) (library new))
+  (and (or (and (compare* (mod-id old) (mod-id new))
+		(compare* (id old) (id new)))
+	   (and (null (mod-id old))
+		(mod-id new)
+		(string= (id old) (format nil "~a.~a" (mod-id new) (id new)))))
        (and (or (and (null (actuals old)) (null (actuals new)))
 		(and (actuals old) (actuals new)))
 	    (compare* (actuals old) (actuals new)))
@@ -492,7 +497,7 @@
        (and (or (and (null (target old)) (null (target new)))
 		(and (target old) (target new)))
 	    (compare* (target old) (target new)))
-       (compare* (id old) (id new))))
+       (compare* (library old) (library new))))
 
 (defmethod compare* ((old expr) (new expr))
   nil)
