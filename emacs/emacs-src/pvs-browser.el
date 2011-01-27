@@ -79,7 +79,7 @@ The complete set of bindings is:
 ;;; show-declaration, find-declaration, whereis-declaration-used, and
 ;;; list-declarations are the interface to this mode
 
-(defpvs show-declaration browse (bufname origin line column)
+(defpvs show-declaration browse ()
   "Show declaration of symbol at cursor
 
 The show-declaration command is used to determine the declaration
@@ -87,45 +87,41 @@ associated with a name.  Positioning the cursor on a name in the
 specification and typing M-. yields a pop-up buffer displaying the
 declaration.  This command is useful to determine the type of a name,
 or the resolution determined by the typechecker for an overloaded name."
-  (interactive
-   (let* ((name-and-origin (if (string-equal (buffer-name) "Declaration")
-			       (list nil "Declaration")
-			     (pvs-formula-origin)))
-	  (bufname (car name-and-origin))
-	  (origin (cadr name-and-origin))
-	  (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
-	  (line (+ (current-line-number) prelude-offset)))
-     (list bufname origin line (real-current-column))))
-  (save-some-pvs-files)
-  (pvs-bury-output)
-  (if (member-equal origin '("tccs" "ppe"))
-      (message
-       "The show-declaration command is not available in this buffer.")
-      (pvs-send-and-wait (format "(show-declaration \"%s\" \"%s\" '(%d %d))"
-			     bufname origin line (real-current-column))
-			 nil 'declaration 'dont-care)))
+  (interactive)
+  (let* ((fref (pvs-formula-origin))
+	 (kind (pvs-fref-kind fref))
+	 (file (pvs-fref-file fref))
+	 (buf (or file (pvs-fref-buffer fref)))
+	 (poff (pvs-fref-prelude-offset fref))
+	 (line (+ (pvs-fref-line fref) poff)))
+    (save-some-pvs-files)
+    (pvs-bury-output)
+    (if (memq kind '(tccs ppe))
+	(message
+	 "The show-declaration command is not available in this buffer.")
+	(pvs-send-and-wait (format "(show-declaration \"%s\" \"%s\" '(%d %d))"
+			       buf kind line (real-current-column))
+			   nil 'declaration 'dont-care))))
      
-(defpvs goto-declaration browse (bufname origin line column)
+(defpvs goto-declaration browse ()
   "Go to declaration of symbol at cursor
 
 The goto-declaration command goes to the declaration associated with
 the symbol or name at the cursor.  It pops up a buffer containing the
 theory associated with the declaration, and positions the cursor at the
 declaration."
-  (interactive
-   (let* ((name-and-origin (if (string-equal (buffer-name) "Declaration")
-			       (list nil "Declaration")
-			     (pvs-formula-origin)))
-	  (bufname (car name-and-origin))
-	  (origin (cadr name-and-origin))
-	  (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
-	  (line (+ (current-line-number) prelude-offset)))
-     (list bufname origin line (real-current-column))))
-  (pvs-bury-output)
-  (save-some-pvs-files)
-  (pvs-send-and-wait (format "(goto-declaration \"%s\" \"%s\" '(%d %d))"
-			     bufname origin line (real-current-column))
-		     nil 'declaration 'dont-care))
+  (interactive)
+  (let* ((fref (pvs-formula-origin))
+	 (kind (pvs-fref-kind fref))
+	 (file (pvs-fref-file fref))
+	 (buf (or file (pvs-fref-buffer fref)))
+	 (poff (pvs-fref-prelude-offset fref))
+	 (line (+ (pvs-fref-line fref) poff)))
+    (pvs-bury-output)
+    (save-some-pvs-files)
+    (pvs-send-and-wait (format "(goto-declaration \"%s\" \"%s\" '(%d %d))"
+			   buf kind line (real-current-column))
+		       'declaration 'dont-care)))
 
 (defpvs find-declaration browse (symbol)
   "Search for declarations of given symbol
@@ -147,7 +143,7 @@ declaration.  A `q' quits and removes the declaration buffer."
     (setq *pvs-decls* pvs-decls)
     (pvs-make-browse-buffer)))
 
-(defpvs whereis-declaration-used browse (bufname origin line column)
+(defpvs whereis-declaration-used browse ()
   "Search for declarations which reference the declaration at point
 
 The whereis-declaration-used command generates a list of declarations
@@ -157,29 +153,27 @@ belongs.  Declarations in this list may be viewed by placing the cursor on
 the row of interest and typing `v'.  Typing `s' will read in the
 associated file and position the cursor at the declaration.  A `q' quits
 and removes the declaration buffer."
-  (interactive
-   (let* ((name-and-origin (if (string-equal (buffer-name) "Declaration")
-			       (list nil "Declaration")
-			       (pvs-formula-origin)))
-	  (bufname (car name-and-origin))
-	  (origin (cadr name-and-origin))
-	  (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
-	  (line (+ (current-line-number) prelude-offset)))
-     (list bufname origin line (real-current-column))))
-  (save-some-pvs-files)
-  (pvs-bury-output)
-  (if (member-equal origin '("tccs" "ppe"))
-      (message
-       "The show-declaration command is not available in this buffer.")
-      (let ((pvs-decls
-	     (pvs-file-send-and-wait
-	      (format "(whereis-declaration-used \"%s\" \"%s\" '(%d %d))"
-		  bufname origin line (real-current-column))
-	      "Listing..." 'listing 'list)))
-	(unless pvs-decls
-	  (error "No declarations using were found"))
-	(setq *pvs-decls* pvs-decls)
-	(pvs-make-browse-buffer))))
+  (interactive)
+  (let* ((fref (pvs-formula-origin))
+	 (kind (pvs-fref-kind fref))
+	 (file (pvs-fref-file fref))
+	 (buf (or file (pvs-fref-buffer fref)))
+	 (poff (pvs-fref-prelude-offset fref))
+	 (line (+ (pvs-fref-line fref) poff)))
+    (save-some-pvs-files)
+    (pvs-bury-output)
+    (if (memq kind '(tccs ppe))
+	(message
+	 "The show-declaration command is not available in this buffer.")
+	(let ((pvs-decls
+	       (pvs-file-send-and-wait
+		(format "(whereis-declaration-used \"%s\" \"%s\" '(%d %d))"
+		    buf kind line (real-current-column))
+		"Listing..." 'listing 'list)))
+	  (unless pvs-decls
+	    (error "No declarations using were found"))
+	  (setq *pvs-decls* pvs-decls)
+	  (pvs-make-browse-buffer)))))
 
 (defpvs whereis-identifier-used browse (symbol)
   "Search for declarations which reference symbol
@@ -223,7 +217,7 @@ and removes the declaration buffer."
     (setq *pvs-decls* pvs-decls)
     (pvs-make-browse-buffer)))
 
-(defpvs unusedby-proof-of-formula browse (bufname origin line column)
+(defpvs unusedby-proof-of-formula browse ()
   "Produce list of declarations unused by the proof of the formula at point
 
 The unusedby-proof-of-formula command creates a 'Browse' buffer
@@ -231,26 +225,23 @@ listing all the declarations that are unused in the proof of the given
 formula.  Removing all these declarations and those that follow the
 given formula should give a theory that typechecks and for which the
 proofchain is still complete, if it was in the full theory."
-  (interactive
-   (let* ((name-and-origin (if (string-equal (buffer-name) "Declaration")
-			       (list nil "Declaration")
-			       (pvs-formula-origin)))
-	  (bufname (car name-and-origin))
-	  (origin (cadr name-and-origin))
-	  (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
-	  (line (+ (current-line-number) prelude-offset)))
-     (list bufname origin line (real-current-column))))
-  (if (member-equal origin '("tccs" "ppe"))
-      (message
-       "The unusedby-proof-of-formula command is not available in this buffer.")
-      (let ((pvs-decls (pvs-file-send-and-wait
-			(format "(unusedby-proof-of-formula \"%s\" \"%s\" %d)"
-			    bufname origin line)
-			"Collecting..." 'unusedby 'list)))
-	(unless pvs-decls
-	  (error "No unused declarations found for formula"))
-	(setq *pvs-decls* pvs-decls)
-	(pvs-make-browse-buffer))))
+  (interactive)
+  (let* ((fref (pvs-formula-origin))
+	 (kind (pvs-fref-kind fref))
+	 (buf (pvs-fref-buffer fref))
+	 (poff (pvs-fref-prelude-offset fref))
+	 (line (+ (pvs-fref-line fref) poff)))
+    (if (memq origin '(tccs ppe))
+	(message
+	 "The unusedby-proof-of-formula command is not available in this buffer.")
+	(let ((pvs-decls (pvs-file-send-and-wait
+			  (format "(unusedby-proof-of-formula \"%s\" \"%s\" %d)"
+			      buf kind line)
+			  "Collecting..." 'unusedby 'list)))
+	  (unless pvs-decls
+	    (error "No unused declarations found for formula"))
+	  (setq *pvs-decls* pvs-decls)
+	  (pvs-make-browse-buffer)))))
 
 (defpvs unusedby-proofs-of-formulas browse (formulas theory)
   "Produce list of declarations unused by the proofs of the given formulas
@@ -418,74 +409,67 @@ or the resolution determined by the typechecker for an overloaded name."
 		   (goto-char (posn-point posn))
 		   (call-interactively 'show-declaration)))))))
 
-(defpvs usedby-proofs browse (bufname origin line column)
+(defpvs usedby-proofs browse ()
   "Show a list of formulas whose proofs refer to the declaration at point"
-  (interactive
-   (let* ((name-and-origin (if (string-equal (buffer-name) "Declaration")
-			       (list nil "Declaration")
-			       (pvs-formula-origin)))
-	  (bufname (car name-and-origin))
-	  (origin (cadr name-and-origin))
-	  (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
-	  (line (+ (current-line-number) prelude-offset)))
-     (list bufname origin line (real-current-column))))
-  (save-some-pvs-files)
-  (pvs-bury-output)
-  (if (member-equal origin '("tccs" "ppe"))
-      (message
-       "The usedby-proofs command is not available in this buffer.")
-      (let ((pvs-decls (pvs-file-send-and-wait
-			(format "(usedby-proofs \"%s\" \"%s\" %d)"
-			    bufname origin line)
-			"Listing..." 'listing 'list)))
-	(when pvs-decls
-	  (setq *pvs-decls* pvs-decls)
-	  (pvs-make-browse-buffer)))))
+  (interactive)
+  (let* ((fref (pvs-formula-origin))
+	 (kind (pvs-fref-kind fref))
+	 (buf (pvs-fref-buffer fref))
+	 (poff (pvs-fref-prelude-offset fref))
+	 (line (+ (pvs-fref-line fref) poff)))
+    (save-some-pvs-files)
+    (pvs-bury-output)
+    (if (memq kind '(tccs ppe))
+	(message
+	 "The usedby-proofs command is not available in this buffer.")
+	(let ((pvs-decls (pvs-file-send-and-wait
+			  (format "(usedby-proofs \"%s\" \"%s\" %d)"
+			      buf kind line)
+			  "Listing..." 'listing 'list)))
+	  (when pvs-decls
+	    (setq *pvs-decls* pvs-decls)
+	    (pvs-make-browse-buffer))))))
 
 (defvar expanded-form-face 'expanded-form-face)
 (make-face 'expanded-form-face)
 (set-face-background 'expanded-form-face "violet")
 (defvar expanded-form-overlay nil)
 
-(defpvs show-expanded-form browse (bufname origin beg end)
+(defpvs show-expanded-form browse ()
   "Shows the expanded form of the specified region
 
 The show-expanded-form command displays the expanded form of the given
 region.  By default, names from the prelude are not expanded, but with an
 argument they are expanded as well."
-  (interactive
-   (let* ((name-and-origin (if (string-equal (buffer-name) "Declaration")
-			       (list nil "Declaration")
-			       (pvs-formula-origin)))
-	  (bufname (car name-and-origin))
-	  (origin (cadr name-and-origin)))
-     (list bufname origin
-	   (if (mark t) (region-beginning) (point))
-	   (if (mark t) (region-end) (point)))))
-  (let* ((prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
+  (interactive)
+  (let* ((fref (pvs-formula-origin))
+	 (kind (pvs-fref-kind fref))
+	 (buf (pvs-fref-buffer fref))
+	 (poff (pvs-fref-prelude-offset fref))
+	 (beg (if (mark t) (region-beginning) (point)))
+	 (end (if (mark t) (region-end) (point)))
 	 (pos1 (save-excursion
 		 (goto-char beg)
-		 (list (+ (current-line-number) prelude-offset)
+		 (list (+ (current-line-number) poff)
 		       (real-current-column))))
 	 (pos2 (save-excursion
 		 (goto-char end)
-		 (list (+ (current-line-number) prelude-offset)
+		 (list (+ (current-line-number) poff)
 		       (real-current-column)))))
     (save-some-pvs-files)
     (pvs-bury-output)
     (let ((place (pvs-send-and-wait
 		  (format "(show-expanded-form \"%s\" \"%s\" '%s '%s %s)"
-		      bufname origin pos1 pos2
-		      (and current-prefix-arg t))
+		      buf kind pos1 pos2 (and current-prefix-arg t))
 		  nil 'expanded-form 'list)))
       (unless noninteractive
 	(when place
 	  (let ((tbeg (save-excursion
-			(goto-line (- (car place) prelude-offset))
+			(goto-line (- (car place) poff))
 			(forward-char (cadr place))
 			(point)))
 		(tend (save-excursion
-			(goto-line (- (caddr place) prelude-offset))
+			(goto-line (- (caddr place) poff))
 			(forward-char (cadddr place))
 			(point))))
 	    (setq expanded-form-overlay (make-overlay tbeg tend))
