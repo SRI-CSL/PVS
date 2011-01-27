@@ -341,24 +341,24 @@ declaration.  Proofs of any displayed TCCs may be initiated in the usual
 way, simply by moving the cursor to the formula to be proved and invoking
 the prove command."
   (interactive)
-  (let* ((name-and-origin (pvs-formula-origin))
-	 (name (car name-and-origin))
-	 (origin (cadr name-and-origin))
-	 (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
-	 (line (+ (current-line-number) prelude-offset)))
+  (let* ((fref (pvs-formula-origin))
+	 (kind (pvs-fref-kind fref))
+	 (buf (pvs-fref-buffer fref))
+	 (poff (pvs-fref-prelude-offset fref))
+	 (line (+ (pvs-fref-line fref) poff)))
   (message "Creating the tccs buffer...")
   (let ((theory-decl
 	 (pvs-send-and-wait (format
 				"(show-declaration-tccs \"%s\" \"%s\" %d %s)"
-				name origin line
+				buf kind line
 				(and current-prefix-arg t))
 			    nil (pvs-get-abbreviation 'show-declaration-tccs)
 			    nil)))
-    (let ((buf (get-buffer (format "%s.tccs" theory-decl))))
-      (when buf
+    (let ((tbuf (get-buffer (format "%s.tccs" theory-decl))))
+      (when tbuf
 	(save-excursion
 	  (message "")
-	  (set-buffer buf)
+	  (set-buffer tbuf)
 	  (setq pvs-context-sensitive t)
 	  (pvs-view-mode)
 	  (use-local-map pvs-show-formulas-map)))))))
@@ -506,7 +506,7 @@ an argument, includes the distributed libraries even if they are not
 imported."
   (interactive (list (pvs-complete-library-name "View library file: "
 						current-prefix-arg)))
-  (let ((default-directory *pvs-current-directory*))
+  (let ((default-directory pvs-current-directory))
     (switch-to-buffer (find-file-noselect (concat library-file ".pvs")))
     (set-buffer-modified-p nil)
     (setq buffer-read-only t)))
@@ -518,7 +518,7 @@ The view-library-theory command displays a library file with the cursor at
 the beginning of the specified theory."
   (interactive
    (list (pvs-complete-library-theory-name "View library theory: ")))
-  (let ((default-directory *pvs-current-directory*))
+  (let ((default-directory pvs-current-directory))
     (switch-to-buffer (find-file-noselect
 		       (concat (car library-file-and-place) ".pvs")))
     (set-buffer-modified-p nil)
@@ -796,7 +796,7 @@ pvs-tex.sub files from your home directory."
 	   (info (format "\n\n Patch version: %s"
 		     (get-pvs-version-information)))
 	   (message (concat body info)))
-      (let ((default-directory *pvs-current-directory*))
+      (let ((default-directory pvs-current-directory))
 	(shell-command (format "tar-b64-mail %s \"%s\" \"%s\" %s %s"
 			   to subject message file-string homedir))))
     (mail-bury nil)))
@@ -807,7 +807,7 @@ pvs-tex.sub files from your home directory."
 
 (defun pvs-dump-files-string (pvs-file libraries-p)
   (let ((filenames (get-pvs-file-dependencies pvs-file libraries-p))
-	(default-directory *pvs-current-directory*))
+	(default-directory pvs-current-directory))
     (concat (if (file-exists-p "pvs-strategies")
 		"pvs-strategies " "")
 	    (if (file-exists-p ".pvscontext")
@@ -825,7 +825,7 @@ pvs-tex.sub files from your home directory."
 
 (defun pvs-copy-home-directory-files ()
   (let ((files (pvs-home-directory-files))
-	(default-directory *pvs-current-directory*))
+	(default-directory pvs-current-directory))
     (when files
       (let ((dname (pvs-create-local-home-directory-name)))
 	(dolist (ff files)
@@ -862,7 +862,7 @@ PVS file.  If given an argument, includes library files as well."
 		       (list (y-or-n-p "Include libraries? "))
 		       (list (read-file-name
 			      "Dump theories into file name: "))))
-  (let* ((default-directory *pvs-current-directory*)
+  (let* ((default-directory pvs-current-directory)
 	 (dump-file (expand-file-name dmp-file)))
     (when (or (not (file-exists-p dump-file))
 	      (yes-or-no-p (format "File %s exists - overwrite? " dump-file)))
@@ -890,7 +890,7 @@ making use of outline mode."
 
 (defun dump-pvs-files-to-current-buffer (pvs-file libraries-p)
   (insert-pvs-patch-information)
-  (let ((default-directory *pvs-current-directory*))
+  (let ((default-directory pvs-current-directory))
     (when (file-exists-p "pvs-strategies")
       (insert (format "\n$$$pvs-strategies\n"))
       (insert-file-contents "pvs-strategies")
@@ -1101,14 +1101,14 @@ for any reason, then the current PVS context is not changed."
     (setq dir (expand-file-name dir))
     (unless (string-match "/$" dir)
       (setq dir (concat dir "/")))
-    (if (string= dir *pvs-current-directory*)
+    (if (string= dir pvs-current-directory)
 	(message "Already in context %s" dir)
 	(let ((ndir (pvs-send-and-wait
 		     (format "(change-context \"%s\")" dir) nil 'cc 'string)))
 	  (pvs-remove-old-context-buffers)
 	  (if (and (stringp ndir)
 		   (file-exists-p ndir))
-	      (setq *pvs-current-directory* ndir)
+	      (setq pvs-current-directory ndir)
 	      (pvs-current-directory t))
 	  ;; Update the PVS Welcome buffer (and force the display)
 	  (unless noninteractive
@@ -1133,7 +1133,7 @@ for any reason, then the current PVS context is not changed."
 				 nil nil 'dont-care)))
     (if (and (stringp ndir)
 	     (file-exists-p ndir))
-	(setq *pvs-current-directory* ndir)
+	(setq pvs-current-directory ndir)
 	(pvs-current-directory t))))
 
 
@@ -1194,7 +1194,7 @@ automatically be extended (by typechecking the libraries if necessary)."
     (save-some-pvs-files)
     (unless (string-match "/$" dir)
       (setq dir (concat dir "/")))
-    (if (file-equal dir *pvs-current-directory*)
+    (if (file-equal dir pvs-current-directory)
 	(message "Cannot use current context as a prelude")
 	(pvs-send (format "(load-prelude-library \"%s\" %s)"
 		      dir (and current-prefix-arg t))))))
@@ -1518,20 +1518,16 @@ complete.  Unchecked means that the proof was successful at one point, but
 that some changes have been made that may invalidate the proof."
   (interactive)
   (pvs-bury-output)
-  (let* ((name-and-origin (pvs-formula-origin))
-	 (oname (car name-and-origin))
-	 (origin (cadr name-and-origin))
-	 (dotpos (position ?. oname))
-	 (filename (if dotpos (substring oname 0 dotpos) oname))
-	 (declname (when dotpos (substring oname (1+ dotpos)))))
+  (let* ((fref (pvs-formula-origin))
+	 (kind (pvs-fref-kind fref))
+	 (file (pvs-fref-file fref))
+	 (decl (pvs-fref-formula fref))
+	 (poff (pvs-fref-prelude-offset fref))
+	 (line (+ (pvs-fref-line fref) poff)))
     (save-some-pvs-buffers)
     (pvs-send (format "(proof-status-at \"%s\" %s %d \"%s\")"
-		  filename (when declname (format "\"%s\"" declname))
-		(+ (current-line-number)
-		   (if (equal origin "prelude")
-		       pvs-prelude 0))
-		origin)
-	       nil (pvs-get-abbreviation 'status-proof))))
+		  file (when decl (format "\"%s\"" decl)) line kind)
+	      nil (pvs-get-abbreviation 'status-proof))))
 
 
 (defpvs status-proof-theory proof-status (theoryname)
@@ -1581,19 +1577,18 @@ complete; lemmas used in the proof are proved, and sound, i.e. there are
 no circularities."
   (interactive)
   (pvs-bury-output)
-  (let* ((name-and-origin (pvs-formula-origin))
-	 (oname (car name-and-origin))
-	 (origin (cadr name-and-origin))
-	 (dotpos (position ?. oname))
-	 (filename (if dotpos (substring oname 0 dotpos) oname))
-	 (declname (when dotpos (substring oname (1+ dotpos)))))
+  (let* ((fref (pvs-formula-origin))
+	 (kind (pvs-fref-kind fref))
+	 (fname (pvs-fref-file fref))
+	 (buf (pvs-fref-buffer fref))
+	 (line (pvs-fref-line fref))
+	 (poff (pvs-fref-prelude-offset fref))
+	 (theory (pvs-fref-theory fref))
+	 (fmla (pvs-fref-formula fref))
+	 (fmlastr (when fmla (format "\"%s\"" fmla))))
     (save-some-pvs-buffers)
     (pvs-send-and-wait (format "(proofchain-status-at \"%s\" %s %d \"%s\")"
-			   filename (when declname (format "\"%s\"" declname))
-			 (+ (current-line-number)
-			    (if (equal origin "prelude")
-				pvs-prelude 0))
-			 origin)
+			   (or fname theory) fmlastr line kind)
 		nil (pvs-get-abbreviation 'status-proofchain)
 		'dont-care)))
 
@@ -1734,11 +1729,11 @@ was issued, either directly or through the ~/.pvsemacs or ~/.emacs files."
 The pvs-remove-bin-files command removes all the .bin files of the current
 context."
   (interactive)
-  (let ((files (append (directory-files *pvs-current-directory* t "\\.bin$")
+  (let ((files (append (directory-files pvs-current-directory t "\\.bin$")
 		       (when (file-directory-p
-			      (format "%s/pvsbin/" *pvs-current-directory*))
+			      (format "%s/pvsbin/" pvs-current-directory))
 			 (directory-files
-			  (format "%s/pvsbin/" *pvs-current-directory*)
+			  (format "%s/pvsbin/" pvs-current-directory)
 			  t "\\.bin$")))))
     (when noninteractive
       (princ "Removing all .bin files\n")
