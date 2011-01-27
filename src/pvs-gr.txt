@@ -284,7 +284,8 @@ type-def ::= {{'=' <equal()> | 'FROM' <from()> | {'<' ':'} <`\<\:()>}
               type-expr}
 		<type-def(alt,type-expr)>;
 
-units-decl ::= {'_UNIT' '=' units-expr} <units-decl(units-expr)>;
+units-decl ::= {'_UNIT' '=' units-expr ['+' rational]}
+                   <units-decl(units-expr,[no-offset()|rational])>;
 
 units-expr ::= name
              | {units-expr '^' rational} <units-term(`^(),units-expr,rational)>
@@ -622,9 +623,8 @@ mapping ::= {mapping-lhs ':=' mapping-rhs}
 theory-decl-mappings ::= {'{{' theory-decl-mapping++ ',' '}}'}
                            <mappings(theory-decl-mapping+)>;
 
-theory-decl-mapping ::= {mapping-lhs {'='|':='|'::='} mapping-rhs}
-              <{mapping-def(mapping-lhs,mapping-rhs)
-               |mapping-subst(mapping-lhs,mapping-rhs)
+theory-decl-mapping ::= {mapping-lhs {':='|'::='} mapping-rhs}
+              <{mapping-subst(mapping-lhs,mapping-rhs)
                |mapping-rename(mapping-lhs,mapping-rhs)}>;
 
 mapping-lhs ::= {pidop [pdformals+]^a [':' {'TYPE'|'THEORY'|type-expr}]^q}
