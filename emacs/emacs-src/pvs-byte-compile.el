@@ -44,18 +44,21 @@
 ;	(set-buffer "*Call-Tree*")
 ;	(write-file call-file nil)))))
 
-(let ((pvsfiles '(pvs-abbreviations
+(let ((pvsfiles '(pvs-macros
+		  pvs-utils
+		  pvs-load
+		  pvs-abbreviations
 		  pvs-browser
 		  pvs-cmds
 		  pvs-eval
 		  pvs-file-list
 		  pvs-ilisp
-		  pvs-load
-		  pvs-macros
 		  pvs-menu
 		  pvs-mode
 		  pvs-print
 		  pvs-prover-helps
+		  pvs-prover-manip
+		  manip-debug-utils
 		  pvs-prover
 		  pvs-tcl
 		  pvs-utils
@@ -63,6 +66,7 @@
 		  pvs-pvsio
 		  newcomment
 		  tcl
+		  prooflite
 		  
 		  pvs-byte-compile
 		  pvs-prelude-files-and-regions
