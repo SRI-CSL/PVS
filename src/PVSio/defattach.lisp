@@ -188,7 +188,7 @@ It cannot be evaluated in a formal proof.
 
 (defun reattach (theory macros)
   (mapcar #'(lambda (x) 
-	      (if (and (consp x) (equal (car x) '|defattach|))
+	      (if (and (consp x) (eq (car x) 'defattach))
 		  (cons 'defattach-th-nm (cons theory (cdr x)))
 		x)) 
 	  macros))
