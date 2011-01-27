@@ -299,7 +299,7 @@
 			       (formals-sans-usings theory)
 			       (actuals thname)
 			       nil
-			       (extended-mappings thname theory)))
+			       (extended-mappings thname theory nil)))
 		(inv-mappings
 		 (mapcar #'(lambda (da)
 			     (cons (declaration (expr (cdr da))) (car da)))
@@ -342,26 +342,36 @@
 ;;; E.g.,  th[th1]{{th' := th2, ...}} needs to include, besides the given bindings,
 ;;;       any bindings coming (recursively) from th1 and th2
 
-(defun extended-mappings (thname lhs-theory)
+(defun extended-mappings (thname lhs-theory decl)
   (let* ((rhs-theory (declaration thname))
-	 (all-mappings (extended-basic-mappings (mappings thname)
-						(when (and rhs-theory
-							   (not (module? rhs-theory)))
-						  (theory-mappings rhs-theory))
-						nil ;(theory-mappings lhs-theory)
-						)))
+	 (bmappings (extended-basic-mappings (mappings thname)
+					     (when (and rhs-theory
+							(not (module? rhs-theory)))
+					       (theory-mappings rhs-theory))
+					     nil ;(theory-mappings lhs-theory)
+					     ))
+	 (all-mappings (extended-mappings* bmappings decl)))
     (dolist (amap all-mappings)
       (typecase (car amap)
 	(module
 	 (setq all-mappings
-	       (append (extended-mappings (expr (cdr amap)) (car amap))
+	       (append (extended-mappings (expr (cdr amap)) (car amap) decl)
 		       all-mappings)))
 	(mod-decl
 	 (when (mapping-rhs? (cdr amap))
 	   (setq all-mappings
-		 (append (extended-mappings (expr (cdr amap)) (car amap))
+		 (append (extended-mappings (expr (cdr amap)) (car amap) decl)
 			 all-mappings))))))
     all-mappings))
+
+(defmethod extended-mappings* (mappings (decl mod-decl))
+  (mapcan #'(lambda (tmap)
+	      (let ((mdecl (declaration (cdr tmap)))
+		    (nmap (assq (car tmap) mappings)))
+		(when nmap
+		  (list (cons mdecl (cdr nmap))))))
+    (theory-mappings decl)))
+		    
 
 (defun extended-basic-mappings (mappings rthmappings lthmappings
 					 &optional bmappings)
@@ -494,7 +504,7 @@
 			(when (actuals thname) (formals-sans-usings theory))
 			(actuals thname)
 			nil
-			(extended-mappings thname theory))))
+			(extended-mappings thname theory nil))))
     #+pvsdebug (assert (every #'(lambda (d)
 				  (typep (car d) '(or declaration module)))
 			      pre-bindings))
@@ -516,7 +526,7 @@
 			thname (formals-sans-usings theory)
 			(actuals thname)
 			nil
-			(extended-mappings thname theory)))
+			(extended-mappings thname theory decl)))
 	 (inv-mappings
 	  (mapcar #'(lambda (da)
 		      (cons (declaration (expr (cdr da))) (car da)))
@@ -838,19 +848,9 @@
   (with-slots (formals declared-type type definition def-axiom) decl
     (let ((map (find decl *smp-mappings*
 		     :key #'(lambda (m)
-			      (and (or (mapping-rename? m)
-				       ;;(mapping-def? m)
-				       )
+			      (and (mapping-rename? m)
 				   (declaration (lhs m)))))))
-      (cond ((mapping-def? map)
-	     (copy decl
-	       :formals (subst-mod-params* formals modinst bindings)
-	       :definition (subst-mod-params* (expr (rhs map)) modinst bindings)
-	       :type (subst-mod-params* type modinst bindings)
-	       :declared-type (subst-mod-params* declared-type modinst bindings)
-	       :generated-by decl
-	       :semi t))
-	    ((mapping-rename? map)
+      (cond ((mapping-rename? map)
 	     ;; Reuse the declaration created in the rhs
 	     (assert (resolution (expr (rhs map))))
 	     (let ((decl (declaration (expr (rhs map)))))
@@ -1227,11 +1227,18 @@
 			    (type act)))
 	    (expr act))
 	(let ((nexpr (call-next-method)))
-	  (if (or (eq nexpr expr)
-		  (modname? nexpr))
+	  (if (or (modname? nexpr)
+		  (and (eq nexpr expr)
+		       (every #'(lambda (fp) (not (assq fp bindings)))
+			      (free-params nexpr))))
 	      nexpr
-	      (let ((ntype (type (resolution nexpr))))
-		(lcopy nexpr :type ntype)))))))
+	      (let ((ntype (subst-mod-params* (type nexpr) modinst bindings)))
+		(if (tc-eq ntype (type (resolution nexpr)))
+		    (lcopy nexpr :type (type (resolution nexpr)))
+		    (lcopy nexpr
+		      :type ntype
+		      :resolutions (list (copy (resolution nexpr)
+					   :type ntype))))))))))
 
 (defmethod subst-mod-params* ((expr adt-name-expr) modinst bindings)
   (let ((nexpr (call-next-method)))
@@ -1496,16 +1503,21 @@
 	:expression nexpr
 	:type ntype))))
 
-(defun subst-mod-params-bindings (ebindings modinst bindings
-					    &optional nbindings)
+(defun subst-mod-params-bindings (ebindings modinst bindings)
+  (subst-mod-params-bindings* ebindings ebindings modinst bindings nil))
+
+(defun subst-mod-params-bindings* (ebindings obindings modinst bindings
+					     nbindings)
   (if ebindings
       (let ((nbinding (subst-mod-params* (car ebindings) modinst bindings)))
-	(subst-mod-params-bindings
+	(subst-mod-params-bindings*
 	 (if (or (eq (car ebindings) nbinding)
 		 (not (binding? (car ebindings))))
 	     (cdr ebindings)
-	     (substit (cdr ebindings) (acons (car ebindings) nbinding nil)))
-	 modinst bindings (cons nbinding nbindings)))
+	     (substit (cdr ebindings)
+	       (acons (car ebindings) nbinding
+		      (acons (car obindings) nbinding nil))))
+	 (cdr obindings) modinst bindings (cons nbinding nbindings)))
       (nreverse nbindings)))
 
 (defmethod subst-mod-params* ((expr update-expr) modinst bindings)
