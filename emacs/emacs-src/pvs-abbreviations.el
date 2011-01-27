@@ -30,6 +30,8 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
+(require 'pvs-utils)
+
 (global-set-key "\C-x\C-z" 'suspend-pvs)
 (global-set-key "\C-x\C-c" 'exit-pvs)
 (global-set-key "\C-c\C-f" 'find-pvs-file)
