@@ -141,6 +141,7 @@
 		   ilisp-chs
 		   ilisp-cl-easy-menu
 		   ilisp-imenu
+		   ilisp-sbcl
 		   )))
       (while files
 	(byte-compile-file (format "%s.el" (car files)) 0)
