@@ -724,3 +724,9 @@ distclean :
 	rm -rf */{$(platforms)}/*.{a,so,dylib} */*/{$(platforms)}/*.{a,so,dylib}
 	rm -f doc/langauge/Makefile doc/language/pvs-doc.el doc/prover/Makefile doc/user-guide/Makefile
 	rm -rf autom4te.cache bin/{$(platforms)}
+
+# Cute hack for printing variables, e.g.,
+#  make print-emacs-elc
+# will print the value of emacs-elc
+print-%:
+	@echo '$*=$($*)'
