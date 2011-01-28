@@ -42,8 +42,7 @@
 ;; Account for differences between Emacs and XEmacs functions.
 
 (eval-when-compile
-  (defvar *running-xemacs* (featurep 'xemacs))
-  (if *running-xemacs*
+  (if (featurep 'xemacs)
       (defun buffer-substring-text (beg end)
 	(buffer-substring beg end))
       (defun buffer-substring-text (beg end)
@@ -124,7 +123,7 @@ expressions from current proof buffer."
 
 (defvar manip-fg-face-names nil)
 
-(when *running-xemacs*
+(when (featurep 'xemacs)
   (dotimes (i (length manip-fg-colors))
     (let ((expr-face (make-symbol (format "manip-expr-face%s" i))))
       (setf manip-fg-face-names 
@@ -139,18 +138,18 @@ expressions from current proof buffer."
 ;; from the byte compiler.
 
 (eval-when-compile
-  (if *running-xemacs*
+  (if (featurep 'xemacs)
       (progn (defvar set-extent-face-fn #'set-extent-face)
 	     (defvar make-extent-fn #'make-extent))
       (progn (defvar set-extent-face-fn nil)
 	     (defvar make-extent-fn nil))))
 
-;(when *running-xemacs*
+;(when (featurep 'xemacs)
 ;  (defvar set-extent-face-fn #'set-extent-face)
 ;  (defvar make-extent-fn #'make-extent))
 
 (eval-when-compile
-  (if *running-xemacs*
+  (if (featurep 'xemacs)
       (defun highlight-text-region (index beg end)
 	(let ((face-index (min index (- (length manip-fg-face-names) 1))))
 	  (funcall set-extent-face-fn
@@ -161,7 +160,7 @@ expressions from current proof buffer."
 		     'face (cons 'foreground-color (car manip-fg-colors))))))
 
 (defvar deactivate-region-fn
-  (if *running-xemacs* #'zmacs-deactivate-region #'deactivate-mark))
+  (if (featurep 'xemacs) #'zmacs-deactivate-region #'deactivate-mark))
 
 (defun collapse-active-region ()
   (funcall deactivate-region-fn))
