@@ -42,8 +42,7 @@
 ;; Account for differences between Emacs and XEmacs functions.
 
 (eval-when-compile
-  (defvar *running-xemacs*
-    (equal (substring (symbol-name pvs-emacs-system) 0 6) "xemacs"))
+  (defvar *running-xemacs* (featurep 'xemacs))
   (if *running-xemacs*
       (defun buffer-substring-text (beg end)
 	(buffer-substring beg end))
