@@ -1700,10 +1700,9 @@ Point will be on the offending delimiter."
 	   (setq comint-handler 'pvs-handler)
 	   (fset 'ask-user-about-lock 'ask-user-about-lock-orig)))))
 
-(defvar pvs-platform (car (process-lines "pvs-platform")))
-
 (defun validation-log-file ()
-  (concat "validation-" pvs-platform ".log"))
+  (let ((pvs-platform (car (process-lines "pvs-platform"))))
+    (concat "validation-" pvs-platform ".log")))
 
 
 ;;; This function provides the most basic form of test, removing bin
