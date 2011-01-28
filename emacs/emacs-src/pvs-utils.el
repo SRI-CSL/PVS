@@ -1700,6 +1700,11 @@ Point will be on the offending delimiter."
 	   (setq comint-handler 'pvs-handler)
 	   (fset 'ask-user-about-lock 'ask-user-about-lock-orig)))))
 
+(defvar pvs-platform (car (process-lines "pvs-platform")))
+
+(defun validation-log-file ()
+  (concat "validation-" pvs-platform ".log"))
+
 
 ;;; This function provides the most basic form of test, removing bin
 ;;; files, typechecking a file, then running prove-importchain on it.
@@ -1748,11 +1753,15 @@ Point will be on the offending delimiter."
 (defun pvs-validate-start-proof (&optional rerun filename formula dont-show-proofp)
   ;; Starts a proof - by default in the current filename at the cursor
   ;; position, and the proof is displayed.
-  (let* ((name-and-origin (if filename
-			      (list filename "pvs")
-			      (pvs-formula-origin)))
-	 (name (car name-and-origin))
-	 (origin (cadr name-and-origin))
+  (let* ((fref (pvs-formula-origin))
+	 (kind (pvs-fref-kind fref))
+	 (fname (pvs-fref-file fref))
+	 (buf (pvs-fref-buffer fref))
+	 (line (pvs-fref-line fref))
+	 (poff (pvs-fref-prelude-offset fref))
+	 (theory (pvs-fref-theory fref))
+	 (fmla (pvs-fref-formula fref))
+	 (fmlastr (when fmla (format "\"%s\"" fmla)))
 	 (pvs-error nil))
     (if formula
 	(ilisp-send (format "(prove-formula \"%s\" \"%s\" %s)"
@@ -1760,7 +1769,7 @@ Point will be on the offending delimiter."
 		    nil 'pr t 'pvs-handler)
 	(ilisp-send
 	 (format "(prove-file-at \"%s\" %s %d %s \"%s\" \"%s\")"
-	     name nil (current-line-number) rerun origin (buffer-name))
+	     (or fname theory) fmlastr line rerun kind buf)
 	 nil 'pr))
     (unless pvs-error
       (switch-to-lisp t t)
