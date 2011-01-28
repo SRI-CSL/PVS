@@ -565,10 +565,11 @@ buffer.  Bypasses checks for unbalanced PVS strings."
 	  (set-buffer buf)
 	  (if (equal (buffer-name) "Proof")
 	      (install-proof* nil nil step)
-	      (let* ((name-and-origin (pvs-formula-origin))
-		     (name (car name-and-origin))
-		     (origin (cadr name-and-origin)))
-		(install-proof* name origin step)))))))
+	      (let* ((fref (pvs-formula-origin))
+		     (fname (pvs-fref-file fref))
+		     (fmla (pvs-fref-formula fref))
+		     (kind (pvs-fref-kind fref)))
+		(install-proof* fname fmla kind step)))))))
 
 
 ;; ---------- Misc. utility functions ----------
