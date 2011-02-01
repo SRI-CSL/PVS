@@ -1407,8 +1407,9 @@
 	      (write-declaration-info flist))
 	    (pvs-message "No unused declarations found for ~a" (id udecl)))))))
 
-(defun unused-by-proof-of (fdecl)
-  (let* ((*current-context* (context fdecl))
+(defun unused-by-proof-of (decl)
+  (let* ((fdecl (if (judgement? decl) (car (generated decl)) decl))
+	 (*current-context* (context decl))
 	 (used-rewrites (used-auto-rewrites fdecl))
 	 (used (collect-proof-used-declarations fdecl))
 	 (unused nil))
