@@ -8,8 +8,6 @@ BEGIN
   n,k: VAR nat
   m: VAR posnat
 
-  IMPORTING floor_div_props
-
   div(i,m): integer = IF i >= 0 THEN floor(i/m) ELSE ceiling(i/m) ENDIF
 
   div_def: LEMMA div(i,m) = sgn(i)*floor(abs(i)/m)
