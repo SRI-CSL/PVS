@@ -194,7 +194,6 @@ for platform in ix86-Linux ix86_64-Linux ix86-MacOSX powerpc-MacOSX \
 	  bin/${platform}/${subdir}/file_utils.* \
 	  bin/${platform}/${subdir}/ws1s.* \
 	  bin/${platform}/${subdir}/*-cmu.* \
-	  bin/${platform}/${subdir}/lisp \
 	  bin/${platform}/${subdir}/pvs-cmulisp*
      ls -l pvs-${version}-${platform}-cmulisp${kind}.tgz
     else
