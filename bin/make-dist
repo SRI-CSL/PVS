@@ -50,7 +50,7 @@
 
 TARFLAGS='-cohz --mode=u+rw --atime-preserve --exclude=CVS --exclude=.svn'
 
-version="4.3-beta"
+version="5.0-beta"
 
 # pvs-source.tgz
 echo Creating pvs-${version}-source.tgz
@@ -59,10 +59,9 @@ tar ${TARFLAGS} -f pvs-${version}-source.tgz --exclude pvsbin \
   README.CVS \
   configure configure.in config.guess config.sub install-sh bin/make-dist \
   pvs.in pvsio.in pvs.sty pvs-tex.sub \
-  bin/pvs-platform bin/relocate bin/tarmail bin/untarmail bin/qepcad.bash \
+  bin/pvs-platform bin/relocate bin/tarmail bin/untarmail \
   lib/prelude.* lib/*.help lib/pvs-style.css lib/pvs.bnf lib/pvs.grammar \
   lib/pvs.rnc \
-  lib/PVSio \
   lib/finite_sets \
   lib/bitvectors \
   src/utils/utils-ld-table src/utils/*.c wish \
@@ -102,7 +101,7 @@ tar ${TARFLAGS} -f pvs-${version}-source.tgz --exclude pvsbin \
   BDD/bdd BDD/mu \
   src/WS1S/README src/WS1S/ws1s-ld-table \
   src/WS1S/*.c src/WS1S/mona-1.4 \
-  src/WS1S/ix86_64-Linux/Makefile
+  src/WS1S/ix86_64-Linux/Makefile \
   src/WS1S/ix86-Linux/Makefile src/WS1S/sun4-SunOS5/Makefile \
   src/WS1S/ix86-MacOSX/Makefile src/WS1S/powerpc-MacOSX/Makefile \
   doc/pvs.bib doc/makebnf.sty doc/pvstex.tex doc/release-notes \
@@ -128,7 +127,7 @@ if [ -d emacs/emacs20 -o -d emacs/xemacs21 -o -d emacs/emacs22 ]
 then
 pvssystemfiles="\
   README INSTALL LICENSE NOTICES pvs pvsio pvs-tex.sub pvs.sty bin/relocate \
-  bin/pvs-platform bin/tar-b64-mail bin/qepcad.bash Examples \
+  bin/pvs-platform bin/tar-b64-mail Examples \
   lib/prelude.pvs lib/prelude.prf lib/list_adt.pvs \
   lib/ordstruct_adt.pvs lib/character_adt.pvs \
   lib/union_adt.pvs lib/lift_adt.pvs \
@@ -136,12 +135,12 @@ pvssystemfiles="\
   lib/pvs.grammar lib/pvs.bnf wish/pvs-support.tcl \
   lib/pvs-style.css \
   doc/release-notes/pvs-release-notes.info \
-  doc/release-notes/pvs-release-notes \
+  doc/release-notes/pvs-release-notes*.html \
   doc/release-notes/pvs-release-notes.ps \
   doc/release-notes/pvs-release-notes.pdf \
   doc/PVSio-2.d.pdf \
   wish/gray.xbm wish/sequent.xbm \
-  emacs lib/PVSio lib/finite_sets lib/bitvectors"
+  emacs lib/finite_sets lib/bitvectors"
 tar ${TARFLAGS} -f pvs-${version}-system.tgz $pvssystemfiles
 else
 echo "pvs-${version}-system.tgz not created - need emacs/emacs20 and emacs/xemacs21 and "
@@ -212,7 +211,6 @@ for platform in ix86-Linux ix86_64-Linux ix86-MacOSX powerpc-MacOSX \
 	  bin/${platform}/${subdir}/file_utils.* \
 	  bin/${platform}/${subdir}/ws1s.* \
 	  bin/${platform}/${subdir}/*-sbcl.* \
-	  bin/${platform}/${subdir}/lisp \
 	  bin/${platform}/${subdir}/pvs-sbclisp*
      ls -l pvs-${version}-${platform}-sbclisp${kind}.tgz
     else
