@@ -286,10 +286,14 @@
 (defmethod make-subst-mod-params-binding ((formal formal-theory-decl) actual
 					  bindings)
   (acons formal actual
-	 (let* ((thname (if (theory-abbreviation-decl?
-			     (declaration (expr actual)))
+	 (let* ((thname (if (typep (declaration (expr actual))
+				   '(or theory-abbreviation-decl mod-decl
+					formal-theory-decl))
 			    (get-theory-alias (expr actual))
 			    (expr actual)))
+		(amappings (when (typep (declaration (expr actual))
+					'(or mod-decl formal-theory-decl))
+			     (theory-mappings (declaration (expr actual)))))
 		(decl (declaration (expr actual)))
 		(theory (if (module? decl)
 			    decl
@@ -299,7 +303,7 @@
 			       (formals-sans-usings theory)
 			       (actuals thname)
 			       nil
-			       (extended-mappings thname theory nil)))
+			       (extended-mappings thname theory decl)))
 		(inv-mappings
 		 (mapcar #'(lambda (da)
 			     (cons (declaration (expr (cdr da))) (car da)))
@@ -307,6 +311,7 @@
 	   ;; Now we compose the inverses of the mappings of the interpreted
 	   ;; theory and the source
 	   (append (compose-mappings inv-mappings pre-bindings)
+		   (compose-mappings inv-mappings amappings)
 		   pre-bindings
 		   bindings))))
 
@@ -371,7 +376,17 @@
 		(when nmap
 		  (list (cons mdecl (cdr nmap))))))
     (theory-mappings decl)))
-		    
+
+(defmethod extended-mappings* (mappings (decl formal-theory-decl))
+  (mapcan #'(lambda (tmap)
+	      (let ((mdecl (declaration (cdr tmap)))
+		    (nmap (assq (car tmap) mappings)))
+		(when nmap
+		  (list (cons mdecl (cdr nmap))))))
+    (theory-mappings decl)))
+
+(defmethod extended-mappings* (mappings (decl theory-abbreviation-decl))
+  mappings)
 
 (defun extended-basic-mappings (mappings rthmappings lthmappings
 					 &optional bmappings)
