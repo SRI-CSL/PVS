@@ -1361,7 +1361,7 @@
 			 (exportable? nj theory))
 		     (setf (gethash j smphash) nj)
 		     (cond ((judgement-eq j nj)
-			    (break "judgement-eq")
+			    ;;(break "judgement-eq")
 			    j)
 			   (t (add-decl nj t t nil t)
 			      (setf (place nj) nil)
