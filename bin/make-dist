@@ -58,7 +58,7 @@ tar ${TARFLAGS} -f pvs-${version}-source.tgz --exclude pvsbin \
   pvs.system *.lisp Makefile.in README INSTALL LICENSE NOTICES \
   README.CVS \
   configure configure.in config.guess config.sub install-sh bin/make-dist \
-  pvs.in pvsio.in pvs.sty pvs-tex.sub \
+  pvs.in pvsio.in proveit.in provethem.in pvs.sty pvs-tex.sub \
   bin/pvs-platform bin/relocate bin/tarmail bin/untarmail \
   lib/prelude.* lib/*.help lib/pvs-style.css lib/pvs.bnf lib/pvs.grammar \
   lib/pvs.rnc \
@@ -126,7 +126,7 @@ ls -l pvs-${version}-source.tgz
 if [ -d emacs/emacs20 -o -d emacs/xemacs21 -o -d emacs/emacs22 ]
 then
 pvssystemfiles="\
-  README INSTALL LICENSE NOTICES pvs pvsio pvs-tex.sub pvs.sty bin/relocate \
+  README INSTALL LICENSE NOTICES pvs pvsio proveit provethem pvs-tex.sub pvs.sty bin/relocate \
   bin/pvs-platform bin/tar-b64-mail Examples \
   lib/prelude.pvs lib/prelude.prf lib/list_adt.pvs \
   lib/ordstruct_adt.pvs lib/character_adt.pvs \
