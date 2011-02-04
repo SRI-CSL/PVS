@@ -267,8 +267,10 @@
 		(pvs::BDD_bdd_init)
 		(when *load-pvs-prelude*
 		  (pvs::load-prelude)
-		  (load (format nil "~a/src/PVSio/prelude-attachments"
-			  *pvs-path*)))
+		  ;;(load (format nil "~a/src/PVSio/prelude-attachments" *pvs-path*))
+		  (pvs::initialize-prelude-attachments)
+		  (pvs::register-manip-type pvs::*number_field* 'pvs::pvs-type-real)
+		  )
 		#+allegro
 		(let ((optfile (format nil "~a/src/closopt" *pvs-path*)))
 		  (compile-file optfile)
@@ -453,8 +455,7 @@
 		  (:file "defattach")
 		  (:file "eval")
 		  (:file "pvsio")
-		  ;; Loaded after prelude is loaded
-		  ;(:file "prelude-attachments")
+		  (:file "prelude-attachments")
 		  ))
    (:module Manip
      :source-pathname "src/Manip"
