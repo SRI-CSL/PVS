@@ -388,6 +388,9 @@
 (defmethod extended-mappings* (mappings (decl theory-abbreviation-decl))
   mappings)
 
+(defmethod extended-mappings* (mappings (decl module))
+  mappings)
+
 (defun extended-basic-mappings (mappings rthmappings lthmappings
 					 &optional bmappings)
   (if (null mappings)
@@ -519,7 +522,7 @@
 			(when (actuals thname) (formals-sans-usings theory))
 			(actuals thname)
 			nil
-			(extended-mappings thname theory nil))))
+			(extended-mappings thname theory theory))))
     #+pvsdebug (assert (every #'(lambda (d)
 				  (typep (car d) '(or declaration module)))
 			      pre-bindings))
