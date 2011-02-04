@@ -114,13 +114,17 @@
 	      ((null res)
 	       (resolution-error name 'module argument))
 	      (t (let ((theory (declaration (car res))))
-		   (setf (resolutions name) res)
+		   (when (actuals name)
+		     (unless (length= (formals-sans-usings theory)
+				      (actuals name))
+		       (type-error name "Wrong number of actuals in ~a" name)))
 		   (unless (every #'typed? (actuals name))
 		     (typecheck-actuals name))
 		   (when (mappings name)
 		     (typecheck-mappings (mappings name) name))
 		   (unless (member name (get-importings theory) :test #'tc-eq)
 		     (set-type-actuals-and-maps name))
+		   (setf (resolutions name) res)
 		   name))))))
 
 
