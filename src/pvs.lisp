@@ -143,8 +143,8 @@
     (load-pvs-patches))
   (pvs-init-globals)
   (initialize-decision-procedures)
-  (initialize-prelude-attachments)
-  (register-manip-type *number_field* 'pvs-type-real)
+  ;;(initialize-prelude-attachments)
+  ;;(register-manip-type *number_field* 'pvs-type-real)
   (unless *pvs-context-path*
     ;; Need to make sure this is set to something
     (setq *pvs-context-path* (shortpath (working-directory))))
