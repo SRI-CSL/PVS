@@ -874,8 +874,11 @@ pvs-strategies files.")
 		 ;; 3 and 4.
 		 (setq *pvs-context* context)
 		 (setf (cadr *pvs-context*)
-		       (delete "Manip/"
-			       (delete "Field/" (cadr *pvs-context*) :test #'string=)
+		       (delete "PVSio/"
+			       (delete "Manip/"
+				       (delete "Field/" (cadr *pvs-context*)
+					       :test #'string=)
+				       :test #'string=)
 			       :test #'string=))
 		 (cond ((and (listp (cadr context))
 			     (listp (caddr context))
