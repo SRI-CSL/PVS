@@ -508,17 +508,9 @@
 	       (eq (id (theory-name thdecl)) (id (current-theory))))
       (type-error (theory-name thdecl)
 	"Formal theory declarations may not refer to the containing theory"))
-    (let ((th (get-typechecked-theory theory-name)))
-      (when (actuals theory-name)
-	(unless (length= (formals-sans-usings th) (actuals theory-name))
-	  (type-error theory-name "Wrong number of actuals in ~a"
-		      theory-name))
-	(typecheck-actuals theory-name)
-	;; Is check-compatible-params needed?
-	)
-      (let* ((thname (expanded-theory-name theory-name))
-	     (theory (declaration thname))
-	     (tgt-name (target thname))
+    (multiple-value-bind (thname theory)
+	(expanded-theory-name theory-name)
+      (let* ((tgt-name (target thname))
 	     (tgt-theory (when tgt-name (get-typechecked-theory tgt-name))))
 	(inlined-theory-info thdecl theory thname)
 	(let* ((mappings (determine-implicit-mappings
@@ -569,7 +561,7 @@
   ;; In the above, it would be B[int].A1[int]{{assn2}}
   (assert (resolution thname))
   (if (module? (declaration thname))
-      thname
+      (values thname (declaration thname))
       (let ((next-thname (theory-name (declaration thname))))
 	(expanded-theory-name
 	 (mk-modname (id next-thname)
