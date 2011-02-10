@@ -25,7 +25,7 @@
 #   -raw         run PVS without Emacs
 #   -v           the (verbose) level number - 0-3 (mostly for batch mode)
 #   -q           do not load ~/.emacs, ~/.pvsemacs, or ~/.pvs.lisp files
-#   -e expr      evaluate the given Emacs file
+#   -e expr      evaluate the given Emacs expression
 #   -l efile     load the given Emacs file before PVS emacs files
 #   -load-after efile      loads Emacs file after PVS emacs files
 #   -E expr
@@ -81,7 +81,6 @@ flags=
 batch=
 rawmode=
 PVSINEMACS=t
-PVSEVALLOAD=
 getversion=
 nobg=
 if [ -f $HOME/.emacs ]
@@ -163,9 +162,16 @@ do
                      shift;;
      -L) PVSEVALLOAD="$PVSEVALLOAD (load \"$2\")"
                      shift;;
-     -ee|-eval|--eval)
+    -e) emacsargs="$emacsargs --eval $2"
+        shift;;
+    -l) emacsargs="$emacsargs --load $2"
+        shift;;
+     -ee|-eval)
         echo "Use -E, not $1, for lisp evaluation argument to PVS"
         exit 1;;
+    --eval)
+      echo "Use -E/-e, not $1, for lisp/emacs evaluation argument to PVS"
+      exit 1;;
      -load)
         echo "Use -L, not $1, for loading lisp files in PVS"
         exit 1;;
@@ -204,7 +210,7 @@ To change the title and icon names, use -title and -xrm, for example,
    shift
 done
 
-if [ -n PVSEVALLOAD ]
+if [ -n "$PVSEVALLOAD" ]
     then PVSEVALLOAD="(progn $PVSEVALLOAD)"
 fi
 
@@ -291,16 +297,21 @@ fi
 PVSIMAGE=pvs-$PVSLISP
 
 if [ -d $binpath/devel -a -e $binpath/devel/$PVSIMAGE -a ! "$pvsruntime" ]
-   then PATH=$binpath/devel:$binpath:$PVSPATH/bin:$PATH
-    LD_LIBRARY_PATH=$binpath/devel:$LD_LIBRARY_PATH
-    DYLD_LIBRARY_PATH=$binpath/devel:$DYLD_LIBRARY_PATH
+then
+  PATH=$binpath/devel:$binpath:$PVSPATH/bin:$PATH
+  LD_LIBRARY_PATH=$binpath/devel:$LD_LIBRARY_PATH
+  DYLD_LIBRARY_PATH=$binpath/devel:$DYLD_LIBRARY_PATH
+  pvsimagepath=$binpath/devel/$PVSIMAGE
 elif [ -d $binpath/runtime -a -e $binpath/runtime/$PVSIMAGE ]
-   then PATH=$binpath/runtime:$binpath:$PVSPATH/bin:$PATH
-    LD_LIBRARY_PATH=$binpath/runtime:$LD_LIBRARY_PATH
-    DYLD_LIBRARY_PATH=$binpath/runtime:$DYLD_LIBRARY_PATH
-   else echo "Cannot find $binpath/runtime/$PVSIMAGE"
-        echo "Check the values of PVSPATH and PVSLISP"
-	exit 1
+then
+  PATH=$binpath/runtime:$binpath:$PVSPATH/bin:$PATH
+  LD_LIBRARY_PATH=$binpath/runtime:$LD_LIBRARY_PATH
+  DYLD_LIBRARY_PATH=$binpath/runtime:$DYLD_LIBRARY_PATH
+  pvsimagepath=$binpath/runtime/$PVSIMAGE
+else
+  echo "Cannot find $binpath/runtime/$PVSIMAGE"
+  echo "Check the values of PVSPATH and PVSLISP"
+  exit 1
 fi
 
 # Here is where we handle the different flags for the different lisps
@@ -308,18 +319,17 @@ case $PVSLISP in
     allegro) 
 	ALLEGRO_CL_HOME=$PVSPATH/bin/$PVSARCH-$opsys${majvers}/home
 	noinit="-qq"
+	evalflag="-e"
 	;;
     cmulisp)
 	noinit="-quiet -noinit"
+	evalflag="-eval"
 	;;
     sbclisp)
 	noinit="--noinform --no-userinit"
+	evalflag="--eval"
 	;;
 esac
-
-if [ "$rawmode" ]
-then flags="-E (pvs::pvs-init) $flags"
-fi
 
 PVSPATCHLEVEL=${PVSPATCHLEVEL:-2}
 
@@ -346,7 +356,7 @@ export PVSPATCHLEVEL PVSMINUSQ PVSFORCEDP PVSDEFAULTDP
 export PVSNONINTERACTIVE PVSINEMACS PVSEVALLOAD
 
 # Warn about for PVS_LIBRARY_PATH conflicts
-if [ -n "$PVS_LIBRARY_PATH" ]
+if [ "$PVS_LIBRARY_PATH" -a ! "$getversion" -a ! "$rawmode" ]
  then
   plibs=`for plib in ${PVSPATH}/lib/*; do if [ -d $plib -a -f $plib/.pvscontext ]; then basename $plib; fi; done`
   for path in `echo $PVS_LIBRARY_PATH | tr ':' ' '`
@@ -371,7 +381,7 @@ if [ -z "yicesv" ]
       echo "  add to your PATH, and restart PVS."
 fi
 
-pvsemacsinit="-load $PVSPATH/emacs/go-pvs.el $loadafter"
+pvsemacsinit="-load $PVSPATH/emacs/go-pvs.el $emacsargs $loadafter"
 
 if [ ! "$getversion" -a ! "$rawmode" -a ! "$batch" -a "$DISPLAY" != "" -a "$nowin" != 1 ]
  then
@@ -404,10 +414,13 @@ elif [ $getversion ]
   then
     # Make sure there are no spaces in the eval form - otherwise it goes
     # through the pvs-cmulisp script and gets mangled.
-    echo `$PVSIMAGE $noinit $evalflag "(progn(pvs::pvs-version)(terpri)(bye))"`
+    echo `$pvsimagepath $noinit $evalflag "(progn(pvs::pvs-version)(terpri)(bye))"`
 elif [ $rawmode ]
   then
-    $PVSIMAGE $noinit $flags
+    if [ -n "$emacsargs" ]
+      then echo "Emacs flags '$emacsargs' will be ignored in raw mode"
+    fi
+    $pvsimagepath $noinit $flags
 elif [ $batch ]
   then
     "$PVSEMACS" $batch $dotemacs $pvsemacsinit $flags 2>&1
