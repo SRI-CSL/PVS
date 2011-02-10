@@ -539,14 +539,8 @@ proveit() {
 	  echo "PROVEITLISPTHFS: $PROVEITLISPTHFS"
 	  echo "PROVEITLISPTHEORIES: $PROVEITLISPTHEORIES"
       fi
-
-      case $PVSLISP in
-	  allegro) evalflag="-e" ;;
-	  cmulisp) evalflag="-eval" ;;
-	  sbclisp) evalflag="--eval" ;;
-      esac
       
-      $PVSPATH/pvs -raw $PVSLISP $evalflag "(proveit)" > $OUTFILE
+      $PVSPATH/pvs -raw $PVSLISP -E "(proveit)" > $OUTFILE
       
       if [ $? = 0 ]; then
 	  error_output
@@ -581,8 +575,11 @@ do
 	      cmulisp) 
 		  LISP='cmulisp'
 		  PVSBIN='PVSBIN';;
+	      sbclisp)
+		  LISP='sbclisp'
+		  PVSBIN='PVSBIN';;
 	      *) 
-		  echo "Error: Only allegro and cmulisp are currently available"
+		  echo "Error: Only allegro, cmulisp, and sbcl are currently available"
 		  exit 1;;
 	  esac
 	  if [ "$LISP" ]; then
