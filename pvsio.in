@@ -129,4 +129,4 @@ export PVSIOTHEORY=$THEORY
 export PVSIOPACK=$PACK
 export PVSIOMAIN=$MAIN
 
-$PVSPATH/pvs -raw $PVSLISP -L $PVSPATH/lib/PVSio/pvsio-init.lisp
+$PVSPATH/pvs -raw $PVSLISP -E "(run-pvsio)"
