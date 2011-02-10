@@ -5,7 +5,7 @@
 echo Setting PVSPATH in the \"pvs\", \"pvsio\", \"proveit\", and \"provethem\"
 echo shell scripts to $PWD
 echo If this is not the right path, edit the scripts before using them.
-chmod u+w pvs pvsio
+chmod u+w pvs pvsio proveit provethem
 sed -e "s,^PVSPATH=.*$,PVSPATH=$PWD," < pvs > tmp.$$
 mv tmp.$$ pvs
 sed -e "s,^PVSPATH=.*$,PVSPATH=$PWD," < pvsio > tmp.$$
@@ -14,4 +14,4 @@ sed -e "s,^PVSPATH=.*$,PVSPATH=$PWD," < proveit > tmp.$$
 mv tmp.$$ proveit
 sed -e "s,^PVSPATH=.*$,PVSPATH=$PWD," < provethem > tmp.$$
 mv tmp.$$ provethem
-chmod a+x pvs pvsio
+chmod a+x pvs pvsio proveit provethem
