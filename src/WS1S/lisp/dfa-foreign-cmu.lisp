@@ -19,10 +19,10 @@
 
 (in-package :pvs)
 
-(shadow 'INT :pvs)
+;;(shadow 'INT :pvs)
 
 ;;(use-package :alien)
-(use-package :c-call)
+;;(use-package :c-call)
 
 ;; Structure of a DFA in foreign space
 (alien:def-alien-type nil
@@ -139,19 +139,19 @@
 ;; Automaton operations
 
 (alien:def-alien-routine ("ws1s___dfaFree" mona-free!)
-  void
+  c-call:void
   (i alien:integer))
 
 (alien:def-alien-routine ("ws1s___dfaNegation" mona-negation!)
-  void
+  c-call:void
   (i alien:integer))
 
 (alien:def-alien-routine ("ws1s___dfaRestrict" mona-restrict!)
-  void
+  c-call:void
   (i alien:integer))
 
 (alien:def-alien-routine ("ws1s___dfaUnrestrict" mona-unrestrict!)
-  void
+  c-call:void
   (i alien:integer))
 
 (alien:def-alien-routine ("ws1s___dfaCopy" mona-copy)
@@ -164,7 +164,7 @@
   )
 
 (alien:def-alien-routine ("ws1s___dfaPrefixClose" mona-prefix-close!) ; Prefix Close
-  void
+  c-call:void
   (i alien:integer))
 
 (alien:def-alien-routine ("ws1s___dfaConjunction" mona-conjunction)
@@ -202,7 +202,7 @@
   )
 
 (alien:def-alien-routine ("ws1s___dfaRightQuotient" mona-right-quotient!)
-  void
+  c-call:void
   (a alien:integer) (var_index alien:integer) ; (automaton * a, alien:unsigned var_index)
   )
 
@@ -216,7 +216,7 @@
 ;; Analysis and printing
 
 (alien:def-alien-routine ("ws1s___dfaMakeExample" mona-make-example)
-  c-string
+  c-call:c-string
   (a alien:integer)    ; DFA * a, 
   (kind alien:integer) ; int kind
   (num alien:integer)  ; int num
@@ -225,36 +225,36 @@
 					
 
 (alien:def-alien-routine ("ws1s___dfaAnalyze" mona-analyze)
-  void
+  c-call:void
   (a alien:integer)				; DFA * a_impl
   (a_conj alien:integer)			; DFA * a_conj
   (num alien:integer)				; int num
-  (names c-string) ; char **names
-  (orders c-string)			; char * orders
+  (names c-call:c-string) ; char **names
+  (orders c-call:c-string)			; char * orders
   (treestyle alien:integer)			; int treestyle
   )
 
 (alien:def-alien-routine ("ws1s___dfaPrintVitals" mona-print-vitals)
-  void
+  c-call:void
   (i alien:integer))
 
 (alien:def-alien-routine ("ws1s___dfaPrint" mona-print)
-  void
+  c-call:void
   (a alien:integer)				; DFA * a
   (num alien:integer)				; int num
-  (names c-string) ; char * names[]
+  (names c-call:c-string) ; char * names[]
   (indices (array alien:unsigned))	; alien:unsigned indices()
   )
 
 (alien:def-alien-routine ("ws1s___dfaPrintGraphviz" mona-print-graphviz)
-  void
+  c-call:void
   (a alien:integer)				; DFA * a
   (num alien:integer)				; int num
   (indices (array alien:unsigned))	; alien:unsigned indices()
   )
 					
 (alien:def-alien-routine ("ws1s___dfaPrintVerbose" mona-print-verbose)
-  void
+  c-call:void
   (i alien:integer))
 
 (alien:def-alien-routine ("ws1s___bdd_size" bdd-size)
@@ -269,30 +269,30 @@
 ;; Constructing Automata Explicitly
 
 (alien:def-alien-routine ("ws1s___dfaSetup" mona-setup)
-  void
+  c-call:void
   (n alien:integer)				; int n
   (len alien:integer)				; int len
   (indices (array alien:unsigned))	; int * indices
   )
 
 (alien:def-alien-routine ("ws1s___dfaAllocExceptions" mona-alloc-exceptions)
-  void
+  c-call:void
   (n alien:integer)                ; int n
   )
 
 (alien:def-alien-routine ("ws1s___dfaStoreException" mona-store-exception)
-  void
-  (s alien:integer) (path c-string)        ; int s, char * path
+  c-call:void
+  (s alien:integer) (path c-call:c-string)        ; int s, char * path
   )
 
 (alien:def-alien-routine ("ws1s___dfaStoreState" mona-store-state)
-  void
+  c-call:void
   (s alien:integer)        ; int s
   )
 
 (alien:def-alien-routine ("ws1s___dfaBuild" mona-build)
   alien:integer
-  (statuses c-string)  ; char * statuses
+  (statuses c-call:c-string)  ; char * statuses
   )
 
 ;; Exporting
@@ -300,7 +300,7 @@
 (alien:def-alien-routine ("ws1s___dfaExport" mona-export)
   alien:integer
   (a alien:integer)				; DFA  *a
-  (filename c-string)			; char *filename
-  (names (array c-string)) ; char *names()
+  (filename c-call:c-string)			; char *filename
+  (names (array c-call:c-string)) ; char *names()
   (orders (array alien:unsigned))	; int orders()
   )
