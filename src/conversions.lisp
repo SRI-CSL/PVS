@@ -331,7 +331,7 @@
 
 (defun get-resolution-conversions* (conversions res arguments result)
   (if (null conversions)
-      (nreverse result)
+      result
       (let ((conv (compatible-resolution-conversion (car conversions)
 						    res arguments)))
 	(get-resolution-conversions* (cdr conversions) res arguments
@@ -340,15 +340,16 @@
 					 result)))))
 
 (defun compatible-resolution-conversion (conversion res arguments)
-  (let ((nconv (compatible-operator-conversion
-		conversion (type res) arguments)))
-    (when (and nconv
-	       (not (member (expr nconv)
-			    (disabled-conversions *current-context*)
-			    :key #'expr :test #'tc-eq)))
-      (make-instance 'conversion-result
-	:expr (copy (expr nconv))
-	:conversion nconv))))
+  (unless (memq conversion (disabled-conversions *current-context*))
+    (let ((nconv (compatible-operator-conversion
+		  conversion (type res) arguments)))
+      (when (and nconv
+		 (not (member (expr nconv)
+			      (disabled-conversions *current-context*)
+			      :key #'expr :test #'tc-eq)))
+	(make-instance 'conversion-result
+	  :expr (copy (expr nconv))
+	  :conversion nconv)))))
 
 (defun compatible-resolution-conversion-args (bindings ctype arguments)
   (let* ((cran (find-supertype (range ctype)))
