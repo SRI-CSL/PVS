@@ -3590,42 +3590,47 @@
   decl)
 
 (defun disable-conversion (decl)
-  (let ((new-convs (remove-if #'(lambda (cd)
-				  (tc-eq (expr decl) (expr cd)))
-		     (conversions *current-context*))))
-    (if (equal new-convs (conversions *current-context*))
-	;; Three possibilities in this case
-	(let ((similar-convs
-	       (remove-if-not #'(lambda (cd)
-				  (same-declaration (expr decl)
-						    (expr cd)))
-		 (conversions *current-context*))))
-	  ;; Don't need to do anything if the conversion doesn't
-	  ;; appear.  Won't even complain since it may have been
-	  ;; removed earlier by a similar declaration in a
-	  ;; different theory.
-	  (when similar-convs
-	    ;; If we are removing the generic version, and
-	    ;; instances are in the conversions list, simply
-	    ;; remove them.
-	    (if (not (fully-instantiated? (expr decl)))
-		(setf (conversions *current-context*)
-		      (remove-if #'(lambda (cd)
-				     (memq cd similar-convs))
-			(conversions *current-context*)))
-		;; Otherwise, add it to the disabled-conversions list
-		(pushnew decl (disabled-conversions *current-context*)
-			 :test #'tc-eq :key #'expr))))
-	(if (fully-instantiated? (expr decl))
-	    (setf (conversions *current-context*) new-convs)
-	    (setf (conversions *current-context*)
-		  (if (name-expr? (expr decl))
-		      (remove-if #'(lambda (cd)
-				     (and (name-expr? (expr cd))
-					  (same-declaration (expr decl)
-							    (expr cd))))
-			(conversions *current-context*))
-		      (break "Finish disabling conversions for non-names")))))))
+  (multiple-value-bind (dconvs new-convs)
+      (split-on #'(lambda (cd) (tc-eq (expr decl) (expr cd)))
+		(conversions *current-context*))
+    (cond ((equal new-convs (conversions *current-context*))
+	   ;; Three possibilities in this case
+	   (let ((similar-convs
+		  (remove-if-not #'(lambda (cd)
+				     (same-declaration (expr decl)
+						       (expr cd)))
+		    (conversions *current-context*))))
+	     ;; Don't need to do anything if the conversion doesn't
+	     ;; appear.  Won't even complain since it may have been
+	     ;; removed earlier by a similar declaration in a
+	     ;; different theory.
+	     (when similar-convs
+	       ;; If we are removing the generic version, and
+	       ;; instances are in the conversions list, simply
+	       ;; remove them.
+	       (if (not (fully-instantiated? (expr decl)))
+		   (setf (conversions *current-context*)
+			 (remove-if #'(lambda (cd)
+					(memq cd similar-convs))
+			   (conversions *current-context*)))
+		   ;; Otherwise, add it to the disabled-conversions list
+		   (pushnew decl (disabled-conversions *current-context*)
+			    :test #'tc-eq :key #'expr)))))
+	  (t (setf (disabled-conversions *current-context*)
+		   (cons decl
+			 (append dconvs
+				 (disabled-conversions *current-context*))))
+	     (if (fully-instantiated? (expr decl))
+		 (setf (conversions *current-context*) new-convs)
+		 (setf (conversions *current-context*)
+		       (if (name-expr? (expr decl))
+			   (remove-if #'(lambda (cd)
+					  (and (name-expr? (expr cd))
+					       (same-declaration (expr decl)
+								 (expr cd))))
+			     (conversions *current-context*))
+			   (break "Finish disabling conversions for non-names")
+			   )))))))
     
 
 ;;; auto-rewrite-decls
