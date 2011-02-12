@@ -840,6 +840,25 @@
 (defmethod translate-yices-assign-args (args value trbasis (type t) bindings)
   (translate-to-yices* value bindings))
 
+(defun eta-expanded-yices-interpretation (name-expr)
+  (let ((yy (yices-interpretation name-expr)))
+    (when yy
+      (if (funtype? (type name-expr))
+	  (let* ((ftype (type name-expr))
+		 (dtypes (types (domain ftype)))
+		 (etavars (loop for dt in dtypes
+			       as i from 1
+			       collect
+			       (format nil "etavar_~a" i)))
+		 (etabindings (loop for dt in dtypes
+			       as ev in etavars
+			       collect (format nil "~a::~a"
+					       ev (translate-to-yices* dt nil)))))
+	    (format nil "(lambda (~{ ~a~})(~a ~{ ~a~}))"
+		    etabindings yy etavars))
+	yy))))
+
+
 (defun yices-interpretation (name-expr)
   (when (name-expr? name-expr)
     (let* ((id-assoc (cdr (assoc (id name-expr) *yices-interpreted-names*)))
@@ -899,8 +918,9 @@
 ;;     ( . bv-sgt)
 ;;     ( . bv-sge)))
 
-(defun yices (sformnums)
-  #'(lambda (ps)
+(defun yices (sformnums nonlinear?);;NSH(8-25-10) Added nonlinear? flag to use nlyices
+  #'(lambda (ps)                   ;;this handles only arithmetic and uninterpreted
+                                   ;;functions
       (let* ((goalsequent (current-goal ps))
 	     (s-forms (select-seq (s-forms goalsequent) sformnums))
 	     (*ydefns* nil)
@@ -925,32 +945,33 @@
 	    (format stream "~{~a ~%~}" revdefns)
 	    (format stream "~{~a ~%~}" yices-forms)
 	    (format stream "(check)~%")
-	    (format stream "(status)"))
+	    (unless nonlinear? (format stream "(status)")))
 	  (let ((status nil)
 		(tmp-file (pvs-tmp-file)))
 	    (with-open-file (out tmp-file
 				 :direction :output :if-exists :supersede)
-	      (setq status
-		    #+allegro
-		    (excl:run-shell-command
-		     (format nil "~a ~a" *yices-call* (namestring file))
-		     :input "//dev//null"
-		     :output out
-		     :error-output :output)
-		    #+sbcl
-		    (sb-ext:run-program
-		     (format nil "~a ~a" *yices-call* (namestring file))
-		     nil
-		     :input "//dev//null"
-		     :output out
-		     :error out)
-		    #+cmu
-		    (extensions:run-program
-		     (format nil "~a ~a" *yices-call* (namestring file))
-		     nil
-		     :input "//dev//null"
-		     :output out
-		     :error out)))
+	      (cond (nonlinear? (format out (check-with-yices (namestring file))) (setq status 0))
+		    (t (setq status
+			     #+allegro
+			     (excl:run-shell-command
+			      (format nil "~a ~a" *yices-call* (namestring file))
+			      :input "//dev//null"
+			      :output out
+			      :error-output :output)
+			     #+sbcl
+			     (sb-ext:run-program
+			      (format nil "~a ~a" *yices-call* (namestring file))
+			      nil
+			      :input "//dev//null"
+			      :output out
+			      :error out)
+			     #+cmu
+			     (extensions:run-program
+			      (format nil "~a ~a" *yices-call* (namestring file))
+			      nil
+			      :input "//dev//null"
+			      :output out
+			      :error out)))))
 	    (when *ydatatype-warning*
 	      (format t "~70,,,'*A" "")
 	      (format t "~%Warning: The Yices datatype theory is not currently trustworthy.
@@ -958,7 +979,7 @@ Please check your results with a proof that does not rely on Yices. ~%")
 	      (format t "~70,,,'*A" ""))
 	    (cond ((zerop status)
 		   (let ((result (file-contents tmp-file)))
-		     ;;(break "yices result")
+		     (break "yices result")
 		     (delete-file tmp-file)
 		     (delete-file file)
 		     (format-if "~%Result = ~a" result)
@@ -976,8 +997,8 @@ Please check your results with a proof that does not rely on Yices. ~%")
 		     (values 'X nil))))))))
 
 	
-(addrule 'yices () ((fnums *))
-  (yices fnums)
+(addrule 'yices () ((fnums *) nonlinear?)
+  (yices fnums nonlinear?)
   "Invokes Yices as an endgame SMT solver to prove that the conjunction
 of the negations of the selected formulas is unsatisfiable. "
   "~%Simplifying with Yices,")
