@@ -380,7 +380,7 @@
 	       (let ((hashed-value (gethash obj *translate-to-yices2-hash*)))
 		 (or hashed-value
 		     (let* ((result (call-next-method))
-			    (type-constraints (type-constraints obj nil))
+			    (type-constraints (type-constraints obj :none))
 			    (rtype-constraints (loop for fmla in type-constraints
 						     nconc (and+ fmla))))
 		       (setf (gethash obj *translate-to-yices2-hash*)
@@ -611,7 +611,7 @@
   (let ((entry (gethash expr *y2name-hash*)))
     (or entry 
 	(let* ((yname (yices2-id-name "y2id"))
-	       (ytype (translate-to-yices2 (type expr) bindings))
+	       (ytype (translate-to-yices2* (type expr) bindings))
 	       (defn (format nil "(define ~a::~a)" yname ytype)))
 	  (push defn
 		*y2defns*)
@@ -806,7 +806,7 @@
 	  (with-open-file (stream  file :direction :output
 				   :if-exists :supersede)
 	    (format stream "~{~a ~%~}" revdefns)
-	    (format stream "~{~a ~%~}" *yices2-subtype-constraints*)
+	    (unless nonlinear? (format stream "~{~a ~%~}" *yices2-subtype-constraints*))
 	    (format stream "~{~a ~%~}" yices-forms)
 	    (format stream "(check)~%")
 	    (unless nonlinear? (format stream "(status)")))
@@ -843,7 +843,7 @@ Please check your results with a proof that does not rely on Yices. ~%")
 	      (format t "~70,,,'*A" ""))
 	    (cond ((zerop status)
 		   (let ((result (file-contents tmp-file)))
-		     (break "yices result")
+;;		     (break "yices result")
 		     (delete-file tmp-file)
 		     (delete-file file)
 		     (format-if "~%Result = ~a" result)
