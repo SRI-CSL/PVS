@@ -918,9 +918,8 @@
 ;;     ( . bv-sgt)
 ;;     ( . bv-sge)))
 
-(defun yices (sformnums nonlinear?);;NSH(8-25-10) Added nonlinear? flag to use nlyices
-  #'(lambda (ps)                   ;;this handles only arithmetic and uninterpreted
-                                   ;;functions
+(defun yices (sformnums)
+  #'(lambda (ps)
       (let* ((goalsequent (current-goal ps))
 	     (s-forms (select-seq (s-forms goalsequent) sformnums))
 	     (*ydefns* nil)
@@ -944,34 +943,32 @@
 				   :if-exists :supersede)
 	    (format stream "~{~a ~%~}" revdefns)
 	    (format stream "~{~a ~%~}" yices-forms)
-	    (format stream "(check)~%")
-	    (unless nonlinear? (format stream "(status)")))
+	    (format stream "(check)~%"))
 	  (let ((status nil)
 		(tmp-file (pvs-tmp-file)))
 	    (with-open-file (out tmp-file
 				 :direction :output :if-exists :supersede)
-	      (cond (nonlinear? (format out (check-with-yices (namestring file))) (setq status 0))
-		    (t (setq status
-			     #+allegro
-			     (excl:run-shell-command
-			      (format nil "~a ~a" *yices-call* (namestring file))
-			      :input "//dev//null"
-			      :output out
-			      :error-output :output)
-			     #+sbcl
-			     (sb-ext:run-program
-			      (format nil "~a ~a" *yices-call* (namestring file))
-			      nil
-			      :input "//dev//null"
-			      :output out
-			      :error out)
-			     #+cmu
-			     (extensions:run-program
-			      (format nil "~a ~a" *yices-call* (namestring file))
-			      nil
-			      :input "//dev//null"
-			      :output out
-			      :error out)))))
+	      (setq status
+		    #+allegro
+		    (excl:run-shell-command
+		     (format nil "~a ~a" *yices-call* (namestring file))
+		     :input "//dev//null"
+		     :output out
+		     :error-output :output)
+		    #+sbcl
+		    (sb-ext:run-program
+		     (format nil "~a ~a" *yices-call* (namestring file))
+		     nil
+		     :input "//dev//null"
+		     :output out
+		     :error out)
+		    #+cmu
+		    (extensions:run-program
+		     (format nil "~a ~a" *yices-call* (namestring file))
+		     nil
+		     :input "//dev//null"
+		     :output out
+		     :error out)))
 	    (when *ydatatype-warning*
 	      (format t "~70,,,'*A" "")
 	      (format t "~%Warning: The Yices datatype theory is not currently trustworthy.

@@ -814,7 +814,7 @@
 		(tmp-file (pvs-tmp-file)))
 	    (with-open-file (out tmp-file
 				 :direction :output :if-exists :supersede)
-	      (cond (nonlinear? (format out (check-with-yices (namestring file))) (setq status 0))
+	      (cond (nonlinear? (format out (check-with-yices (namestring file) t)) (setq status 0))
 		    (t (setq status
 			     #+allegro
 			     (excl:run-shell-command
@@ -880,6 +880,12 @@ by (yices fnums), then turns off all the installed rewrites.  Examples:
  (yices-with-rewrites * nil :rewrites (\"assoc\" \"distrib\"))."
   "Installing rewrites, simplifying, applying Yices, and disabling installed rewrites")
 
+(defstep y2simp (&optional (fnums *) nonlinear?)
+  (then (skosimp*)(yices2 :fnums fnums :nonlinear? nonlinear?))
+  "Repeatedly skolemizes and flattens, and then applies the Yices2 SMT solver"
+  "Repeatedly skolemizing and flattening, and then invoking Yices2")
+  
+
 (defstep y2grind (&optional (defs !); nil, t, !, explicit, or explicit!
 			  theories
 			  rewrites
@@ -892,7 +898,8 @@ by (yices fnums), then turns off all the installed rewrites.  Examples:
 			  cases-rewrite?
 			  quant-simp?
 			  no-replace?
-			  implicit-typepreds?)
+			  implicit-typepreds?
+			  nonlinear?)
   (then (install-rewrites$ :defs defs :theories theories
 		      :rewrites rewrites :exclude exclude)
 	(repeat* (bash$ :if-match if-match :updates? updates?
@@ -901,7 +908,7 @@ by (yices fnums), then turns off all the installed rewrites.  Examples:
 			:quant-simp? quant-simp?
 			:implicit-typepreds? implicit-typepreds?
 			:cases-rewrite? cases-rewrite?))
-	(yices2))
+	(yices2 :nonlinear? nonlinear?))
   "Core of GRIND: Installs rewrites, repeatedly applies BASH, and then
    invokes YICES.  See BASH for more explanation."
 "Repeatedly simplifying with decision procedures, rewriting,

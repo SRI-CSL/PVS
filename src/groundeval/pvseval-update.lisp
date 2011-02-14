@@ -317,7 +317,7 @@
 	      (set-list-expr? (args2 expr)))
 	 (let ((set1 (pvs2cl_up* (exprs (args1 expr)) bindings livevars))
 	       (set2 (pvs2cl_up* (exprs (args2 expr)) bindings livevars)))
-	   `(and (subsetp ',set1 ',set2 :test #'equalp)
+	   `(and (subsetp ',set1 ',set2 :test #'equalp)  ;;roll into pvs_equalp
 		 (subsetp ',set2 ',set1 :test #'equalp))))
 	(t (call-next-method))))
 
@@ -326,7 +326,7 @@
 	      (set-list-expr? (args2 expr)))
 	 (let ((set1 (pvs2cl_up* (exprs (args1 expr)) bindings livevars))
 	       (set2 (pvs2cl_up* (exprs (args2 expr)) bindings livevars)))
-	   `(not (and (subsetp ',set1 ',set2 :test #'equalp)
+	   `(not (and (subsetp ',set1 ',set2 :test #'equalp) ;;roll into pvs_equalp
 		      (subsetp ',set2 ',set1 :test #'equalp)))))
 	(t (call-next-method))))
 
@@ -385,7 +385,7 @@
 			    collect (list bnd clarg))))
 	  (if declaration
 	  `(let ,let-pairs ,declaration ,cl-expression)
-	  `(let ,let-pairs ,cl-expression)))
+	  `(let ,let-pairs ,cl-expression)))  ;;use ,@declaration
 	(if (= (length let-bindings) 1)
 	    (let ((let-pairs
 		   (list (list (car let-bindings)
@@ -494,9 +494,9 @@
 	    (pvs2cl-make-bindings  let-bindings bindings))
 	   (let-binding-pairs (pairlis let-bindings let-variables))
 	   (let-vars-args-pairs
-	    (if (= (length let-bindings)(length args))
+	    (if (= (length let-bindings)(length args));;shouldn't the lengths be equal
 		(pairlis let-bindings args)
-		(loop for x in let-bindings
+		(loop for x in let-bindings  ;;can this case occur?
 		      collect (cons x arg))))
 	   (declaration (pvs2cl-declare-vars-types
 			 let-variables
