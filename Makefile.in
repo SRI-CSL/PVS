@@ -397,7 +397,8 @@ pvs-prover = src/prover/checker-macros.lisp \
 	 src/prover/rules.lisp \
          src/prover/strategies.lisp \
          src/prover/wish.lisp \
-	 src/prover/translate-to-yices.lisp
+	 src/prover/translate-to-yices.lisp \
+	 src/prover/translate-to-yices2.lisp
 
 bddlisp = BDD/bdd.lisp BDD/mu.lisp
 allegrolisp += BDD/bdd-allegro.lisp BDD/mu-allegro.lisp

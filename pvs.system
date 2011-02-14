@@ -413,7 +413,8 @@
 		  (:file "rules")
 		  (:file "strategies")
 		  (:file "wish")
-		  (:file "translate-to-yices"))
+		  (:file "translate-to-yices")
+		  (:file "translate-to-yices2"))
      :depends-on (typechecker))
    (:module bdd
      :source-pathname "BDD"
