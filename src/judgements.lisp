@@ -1609,8 +1609,8 @@
   (cond ((everywhere-true? (predicate te))
 	 (type-constraints* (supertype te) ex preds all?))
 	((or (member te *subtypes-seen* :test #'tc-eq)
-	     (and (not all?)
-		  preds
+	     (and (not (eq all? t))
+		  (or preds (eq all? :none))
 		  (ignored-type-constraint te)))
 	 (nreverse preds))
 	(t (push te *subtypes-seen*)
