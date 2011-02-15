@@ -110,7 +110,6 @@
 
 (defun go-rahd (conj verbosity search-model print-model)
   (rahd:rahd-reset-state)
-  (break)
   (rahd:g conj)
   (funcall #'rahd:go! :verbosity verbosity :search-model search-model)
   (rahd:extract-non-refuted-cases))

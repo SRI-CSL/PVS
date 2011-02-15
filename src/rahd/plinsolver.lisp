@@ -162,5 +162,4 @@
 	(when orientations
 	  (setq derived-atoms
 		(append orientations derived-atoms)))))
-    (break "saturate-case-with-linear-orientations")
     (union c derived-atoms :test 'equal)))
