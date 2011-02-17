@@ -1609,14 +1609,47 @@
 		      dreses)))
 	(if (eq kind 'expr)
 	    (if (cdr res)
-		(filter-equality-resolutions
-		 (filter-nonlocal-module-instances
-		  (filter-local-expr-resolutions
-		   (filter-bindings res args))))
+		(filter-constructor-subtypes
+		 (filter-equality-resolutions
+		  (filter-nonlocal-module-instances
+		   (filter-local-expr-resolutions
+		    (filter-bindings res args))))
+		 args nil)
 		res)
 	    (remove-mapping-resolutions
 	     (remove-outsiders (remove-generics res)))))
       reses))
+
+(defun filter-constructor-subtypes (reses args result)
+  (cond ((null reses)
+	 (nreverse result))
+	((and args (constructor-resolution? (car reses)))
+	 (multiple-value-bind (match-reses rest-reses)
+	     (split-on #'(lambda (r) (same-declaration r (car reses)))
+		       (cdr reses))
+	   (if match-reses
+	       (filter-constructor-subtypes
+		rest-reses args
+		(append (maximal-constructor-subtypes
+			 (cons (car reses) match-reses) nil)
+			result))
+	       (filter-constructor-subtypes rest-reses args
+					    (cons (car reses) result)))))
+	(t (filter-constructor-subtypes (cdr reses) args
+					(cons (car reses) result)))))
+
+(defun maximal-constructor-subtypes (mreses result)
+  (if (null mreses)
+      (nreverse result)
+      (maximal-constructor-subtypes
+       (cdr mreses)
+       (if (some #'(lambda (r)
+		     (subtype-of? (range (type (car mreses)))
+				  (range (type r))))
+		 (cdr mreses))
+	   result
+	   (cons (car mreses) result)))))
+
 
 ;;; If both the generic and several (2 or more) instantiated resolutions
 ;;; are available, throw away the instantiated ones.
