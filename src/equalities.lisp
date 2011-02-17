@@ -2072,9 +2072,16 @@
 		   (tc-eq-ops pr1 pr2))
 	      (same-predicate? t1 t2 nil)
 	      (and (compatible? st1 st2)
+		   (same-free-parameters? t1 t2)
 		   (predicate-subtype-of? t1 t2 (compatible-type st1 st2))))
 	  (subtype-of*? st1 st2)
 	  (call-next-method)))))
+
+(defmethod same-free-parameters? ((t1 type-expr) (t2 type-expr))
+  (let ((frees1 (free-params t1))
+	(frees2 (free-params t2)))
+    (and (length= frees1 frees2)
+	 (every #'(lambda (f1) (memq f1 frees2)) frees1))))
 
 (defun predicate-subtype-of? (t1 t2 st)
   (or (simple-subtype-of? t1 t2)
