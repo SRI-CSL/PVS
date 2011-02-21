@@ -1115,7 +1115,7 @@
     (setq *prelude-interpreted-types*
 	  (list *boolean* *number* *number_field* *real* *rational*
 		*integer* *naturalnumber* *posint* *even_int* *odd_int*
-		*ordinal*)))
+		*ordinal* *character*)))
   (member name *prelude-interpreted-types*
 	  :test #'tc-eq))
 
@@ -1130,7 +1130,8 @@
 			    (module (declaration ex))
 			    (memq (id (module (declaration ex)))
 				  '(|booleans| |equalities| |if_def|
-				    |number_fields| |reals|)))
+				    |number_fields| |reals|
+				    |character_adt|)))
 		       (when (and (name? ex)
 				  (declaration? (declaration ex))
 				  (not (eq (module (declaration ex)) (current-theory)))
