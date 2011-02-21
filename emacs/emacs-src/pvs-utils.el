@@ -1701,8 +1701,9 @@ Point will be on the offending delimiter."
 	   (fset 'ask-user-about-lock 'ask-user-about-lock-orig)))))
 
 (defun validation-log-file ()
-  (let ((pvs-platform (car (process-lines "pvs-platform"))))
-    (concat "validation-" pvs-platform ".log")))
+  (let ((pvs-platform (car (process-lines "pvs-platform")))
+	(pvs-lisp (getenv "PVSLISP")))
+    (format "validation-%s-%s.log" pvs-platform pvs-lisp)))
 
 
 ;;; This function provides the most basic form of test, removing bin
