@@ -723,6 +723,18 @@
 
 (defun update-declarations-hash (theory theoryname)
   (let ((dhash (current-declarations-hash)))
+    (dolist (decl (theory-formal-decls theory))
+      (when (and (declaration? decl)
+		 (visible? decl)
+		 (exportable? decl theory)
+		 (not (unimported-mapped-theory?
+		       (module decl) theory theoryname)))
+	(let ((map (find decl (mappings theoryname)
+			 :key #'(lambda (m)
+				  (declaration (lhs m))))))
+	  (unless (mapping-subst? map)
+	    (check-for-importing-conflicts decl)
+	    (pushnew decl (get-lhash (id decl) dhash) :test #'eq)))))
     (maphash #'(lambda (id decls)
 		 (dolist (decl decls)
 		   (when (and (declaration? decl)
@@ -1311,6 +1323,7 @@
 					      (all-decls theory)
 					      nil))
 		       (t (error "Something's wrong with EXPORTINGs")))))
+    (mapc #'set-visibility (theory-formal-decls theory))
     (mapc #'set-visibility edecls)
     (check-exported-completeness (exporting theory) edecls)))
 
