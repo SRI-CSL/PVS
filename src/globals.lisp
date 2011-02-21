@@ -257,6 +257,7 @@ Given a pathname, returns a hash-table")
 (defvar *even_int* nil)
 (defvar *odd_int* nil)
 (defvar *ordinal* nil)
+(defvar *character* nil)
 
 (defvar *tcdebug* nil)
 (defvar *evaluator-debug* nil)
