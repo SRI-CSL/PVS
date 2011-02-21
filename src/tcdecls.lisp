@@ -3772,4 +3772,5 @@
     (|posint| (setq *posint* type))
     (|even_int| (setq *even_int* type))
     (|odd_int| (setq *odd_int* type))
-    (|ordinal| (setq *ordinal* type))))
+    (|ordinal| (setq *ordinal* type))
+    (|character| (setq *character* type))))
