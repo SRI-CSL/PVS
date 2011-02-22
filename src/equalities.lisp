@@ -1234,7 +1234,7 @@
     (and recs1
 	 (let ((recs2 (collect-recognizer-preds t2)))
 	   (and recs2
-		(null (intersection recs1 recs2 :test #'tc-eq)))))))
+		(null (intersection recs1 recs2 :test #'same-id)))))))
 
 (defmethod disjoint-types?* (t1 t2)
   (declare (ignore t1 t2))
