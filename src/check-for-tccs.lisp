@@ -71,12 +71,10 @@
   (unless (or (typep ex '(or branch lambda-expr update-expr
 			     cases-expr let-expr where-expr))
 	      (memq ex *skip-tcc-check-exprs*))
-    (check-for-subtype-tcc
-     ex
-     (if (and *added-recursive-def-conversion*
-	      (application? ex))
-	 (type ex)
-	 expected))))
+    (if *added-recursive-def-conversion*
+	(let ((*added-recursive-def-conversion* nil))
+	  (check-for-tccs ex (if (application? ex) (type ex) expected)))
+	(check-for-subtype-tcc ex expected))))
 
 (defmethod check-for-tccs* ((ex name-expr) expected)
   (declare (ignore expected))
@@ -126,6 +124,10 @@
 
 
 (defmethod check-for-tccs* ((expr number-expr) expected)
+  (declare (ignore expected))
+  nil)
+
+(defmethod check-for-tccs* ((expr rational-expr) expected)
   (declare (ignore expected))
   nil)
 
