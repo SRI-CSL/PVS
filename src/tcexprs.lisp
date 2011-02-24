@@ -434,9 +434,13 @@
 	  (cons (or *real* *number_field*) (mapcar #'type reses)))))
 
 (defun available-numeric-type (num)
-  (or (unless (zerop num) *posint*)
-      *naturalnumber* *integer* *rational* *real* *number*
-      (error "No type available for numerals")))
+  (if (integerp num)
+      (or (unless (zerop num) *posint*)
+	  *naturalnumber* *integer* *rational* *real* *number*
+	  (error "No type available for numerals"))
+      ;; else must be rational
+      (or *rational* *real* *number*
+	  (error "No type available for numerals"))))
 
 ;;; Record-expr typechecking involves typechecking the assignments and
 ;;; setting the type to a new recordtype created based on the types of
