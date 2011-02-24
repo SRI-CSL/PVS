@@ -109,6 +109,31 @@
 
 ;;; Using Status
 
+(defun show-importchain (theory)
+  (let ((te (get-context-theory-entry theory)))
+    (if te
+	(let ((*modules-visited* nil)
+	      (*disable-gc-printout* t))
+	  (pvs-buffer "PVS Status"
+	    (with-output-to-string (*standard-output*)
+	      (show-importchain* (id te)))
+	    t))
+	(pvs-message "~a is not in the current context" theory))))
+
+(defun show-importchain* (tid &optional (indent 0))
+  (let* ((th (get-theory tid)))
+    (cond ((null th)
+	   (format t "~a is not parsed" tid))
+	  ((member tid *modules-visited*)
+	   (format t "~vT... ~a already described~%" indent tid))
+	  (t (let ((usings (when th (get-immediate-usings th))))
+	       (when th (push tid *modules-visited*))
+	       (format t "~vTTheory ~a~%~vT  It uses ~?~%"
+		 indent (theory-status-string (id th))
+		 indent *andusingctl* usings)
+	       (mapc #'(lambda (m) (show-importchain* m (+ indent 2)))
+		     usings))))))
+
 (defun status-importchain (theory &optional brief?)
   (let ((te (get-context-theory-entry theory)))
     (if te
