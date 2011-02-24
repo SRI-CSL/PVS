@@ -231,7 +231,7 @@
     (setf (free-parameters expr) nfrees)
     (union nfrees frees :test #'eq)))
 
-(defmethod free-params* ((expr number-expr) frees)
+(defmethod free-params* ((expr rational-expr) frees)
   (setf (free-parameters expr) nil)
   frees)
 
