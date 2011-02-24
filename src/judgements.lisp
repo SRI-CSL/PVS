@@ -485,6 +485,17 @@
 				     *even_int* *odd_int*)))))))
      jdecls)))
 
+(defmethod judgement-types* ((ex rational-expr))
+  (let ((jdecls (cdr (assoc (number ex)
+			    (number-judgements-alist (current-judgements))
+			    :test #'=))))
+    (values
+     (append (mapcar #'type jdecls)
+	     (let ((antype (available-numeric-type (number ex))))
+	       (if (tc-eq antype (type ex))
+		   (list antype))))
+     jdecls)))
+
 (defmethod judgement-types* ((ex name-expr))
   (let ((entry (name-judgements ex)))
     (when entry
