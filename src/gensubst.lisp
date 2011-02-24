@@ -332,6 +332,10 @@
   (declare (ignore substfn testfn))
   ex)
 
+(defmethod gensubst* ((ex rational-expr) substfn testfn)
+  (declare (ignore substfn testfn))
+  ex)
+
 (defmethod gensubst* ((ex record-expr) substfn testfn)
   (let ((ass (gensubst* (assignments ex) substfn testfn))
 	(ntype (if (or *parsing-or-unparsing*
