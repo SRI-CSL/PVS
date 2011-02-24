@@ -250,6 +250,9 @@
 (defmethod translate-to-prove ((expr number-expr))
   (number expr))
 
+(defmethod translate-to-prove ((expr rational-expr))
+  `(DIVIDE ,(numerator (number expr)) ,(denominator (number expr))))
+
 (defmethod translate-to-prove ((ex string-expr))
   (string->int (string-value ex)))
 
