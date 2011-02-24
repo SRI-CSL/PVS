@@ -136,12 +136,10 @@ required a context.")
   #+pvsdebug (assert (fully-instantiated? ex))
   (unless (typep ex '(or branch lambda-expr update-expr
 			 cases-expr let-expr where-expr))
-    (check-for-subtype-tcc
-     ex
-     (if (and *added-recursive-def-conversion*
-	      (application? ex))
-	 (type ex)
-	 expected))))
+    (if *added-recursive-def-conversion*
+	(let ((*added-recursive-def-conversion* nil))
+	  (check-for-tccs ex (if (application? ex) (type ex) expected)))
+	(check-for-subtype-tcc ex expected))))
 
 (defun check-type-incompatible (ex expected)
   (unless (type ex)
@@ -2220,6 +2218,15 @@ required a context.")
 	     (setf (argument ex)
 		   (make!-projected-arg-tuple-expr*
 		    (make-projections (argument ex))))))
+	  ((and (typep operator 'name-expr)
+		(eq (id operator) '/)
+		(eq (id (module-instance operator)) '|number_fields|)
+		(number-expr? (args1 ex))
+		(number-expr? (args2 ex))
+		(not (zerop (number (args2 ex)))))
+	   (let ((rat (/ (number (args1 ex)) (number (args2 ex)))))
+	     (change-class ex (if (integerp rat) 'number-expr 'rational-expr))
+	     (setf (number ex) rat)))
 	  ((typep operator 'injection-expr)
 	   (change-class ex 'injection-application
 			 :index (index operator)
