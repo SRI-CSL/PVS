@@ -236,8 +236,8 @@
 
 #+lucid
 (defun fetch-monitoring ()
-  (monitor fetch-object fetch-obj fetch-symbol fetch-integer fetch-string
-	   fetch-temp-string fetch-packaged-symbol fetch-moduleref
+  (monitor fetch-object fetch-obj fetch-symbol fetch-integer fetch-rational
+	   fetch-string fetch-temp-string fetch-packaged-symbol fetch-moduleref
 	   fetch-declref update-fetched fast-make-instance fill)
   (monitor-methods 'update-fetched))
 
@@ -499,6 +499,20 @@
 (defun fetch-integer ()
   (let ((str (fetch-temp-string 1)))
     (parse-integer str)))
+
+(defmethod store-object* ((obj rational))
+  (let* ((str (format nil "~d" obj))
+	 (len (push-string-length str)))
+    (reserve-space (1+ len)
+      (push-word (store-obj 'rational))
+      (push-string str))))
+
+(setf (get 'rational 'fetcher) 'fetch-rational)
+(defun fetch-rational ()
+  (let ((str (fetch-temp-string 1)))
+    (multiple-value-bind (num pos)
+	(parse-integer str :junk-allowed t)
+      (/ num (parse-integer str :start (1+ pos))))))
 
 (defmethod store-object* ((obj cons))
   (if (true-listp obj)
