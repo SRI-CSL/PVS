@@ -175,7 +175,10 @@
 ;; When an extraction-expr is used as a conversion
 (defcl extraction-conversion (extraction-application))
 
-(defcl number-expr (expr)
+(defcl rational-expr (expr)
+  (number :type rational))
+  
+(defcl number-expr (rational-expr)
   (number :type integer :parse t :restore-as nil))
 
 ;; This is for integers of the form xxx.000, where the fractional part is
