@@ -1209,13 +1209,18 @@
 (defmethod pp-tex* ((ex number-expr))
   (pp-tex-number (number ex)))
 
+(defmethod pp-tex* ((ex rational-expr))
+  (pp-tex-number (exact-fp (number ex))))
+
 (defun pp-tex-number (number)
   (if *in-tex-math-mode*
       (write number)
-      (let* ((len (length (format nil "~d" number)))
+      (let* ((len (length (if (stringp number) number (format nil "~d" number))))
 	     (str (make-new-tex-string len)))
 	(setf (gethash str *pvs-tex-substitution-hash*)
-	      (format nil "\\(~d\\)" number))
+	      (if (stringp number)
+		  (format nil "\\(~a\\)" number)
+		  (format nil "\\(~d\\)" number)))
 	(write str))))
 
 (defmethod pp-tex* ((ex decimal-integer))
