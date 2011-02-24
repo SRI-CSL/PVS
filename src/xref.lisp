@@ -213,6 +213,9 @@
 (defmethod generate-xref ((e number-expr))
   (assert (type e)))
 
+(defmethod generate-xref ((e rational-expr))
+  (assert (type e)))
+
 (defmethod generate-xref ((e record-expr))
   (assert (type e))
   (generate-xref (assignments e)))
