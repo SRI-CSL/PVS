@@ -2218,7 +2218,8 @@ required a context.")
 	     (setf (argument ex)
 		   (make!-projected-arg-tuple-expr*
 		    (make-projections (argument ex))))))
-	  ((and (typep operator 'name-expr)
+	  ((and *use-rationals*
+		(typep operator 'name-expr)
 		(eq (id operator) '/)
 		(eq (id (module-instance operator)) '|number_fields|)
 		(number-expr? (args1 ex))
