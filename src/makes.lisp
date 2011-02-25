@@ -1529,9 +1529,17 @@
 		    (make-instance 'number-expr
 		      :number num
 		      :type *real*)
-		    (make-instance 'rational-expr
-		      :number num
-		      :type *real*))))
+		    (if *use-rationals*
+			(make-instance 'rational-expr
+			  :number num
+			  :type *real*)
+			(make!-application (divides-operator)
+			  (make-instance 'number-expr
+			    :number (numerator num)
+			    :type *real*)
+			  (make-instance 'number-expr
+			    :number (denominator num)
+			    :type *real*))))))
     (if (minusp number)
 	(make!-minus nexpr)
 	nexpr)))
