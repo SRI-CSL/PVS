@@ -2207,14 +2207,12 @@
 			  (lhs (car nargs))
 			  (rhs (cadr nargs))
 			  (type (compatible-type (type lhs)(type rhs))))
-		     (if (or (is-division? lhs)
-			     (is-addition? lhs)
-			     (is-subtraction? lhs)
-			     (loop for x in (multiplicands rhs)
-				   thereis (or (is-addition? x)
-					       (is-subtraction? x)
-					       (typep x 'rational-expr))))
-			 (merge-products lhs rhs type)
+		     (if (and (typep rhs 'rational-expr)
+			      (or (is-division? lhs)
+				  (is-multiplication? lhs)
+				  (is-addition? lhs)
+				  (is-subtraction? lhs)))
+			 (merge-division lhs rhs type)
 			 expr)))))
 ;    (when hashvalue (format t "~%arith"))
     (unless hashvalue
@@ -2225,8 +2223,21 @@
 	(do-auto-rewrite expr sig)
 	(do-auto-rewrite prod '?))))
 
+(defun merge-division (l r type)
+  (if (or (is-addition? l)
+	  (is-subtraction? l))
+      (let ((list (loop for x in (addends l)
+			collect
+			(merge-division x r type))))
+	(make-sum list type))
+      (make-div l r type)))
 
-
+(defun make-div (l r type)
+  (cond ((and (rational-expr? l)
+	      (rational-expr? r)
+	      (not (zerop (number r))))
+	 (make!-number-expr (/ l r)))
+	(t (make!-divides l r))))
 
 ;(defmethod compare-expr ((L number-expr) (R number-expr))
 ;  (if (< (number L)(number R)) '<
@@ -2513,7 +2524,8 @@
 	 (assert-if-addition  expr newargs sig))
 	((is-multiplication? expr)
 	 (assert-if-multiplication expr newargs sig))
-	((is-division? expr)
+	((and *use-rationals*
+	      (is-division? expr))
 	 (assert-if-division expr newargs sig))
 	((and (typep newop 'name-expr)
 	      (accessor? newop)
