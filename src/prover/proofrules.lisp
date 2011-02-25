@@ -590,7 +590,7 @@
   (declare (ignore trueconds falseconds))
   expr)
 
-(defmethod simplify-ifs ((expr number-expr) trueconds falseconds)
+(defmethod simplify-ifs ((expr rational-expr) trueconds falseconds)
   (declare (ignore trueconds falseconds))
   expr
 )
@@ -772,7 +772,7 @@
   (declare (ignore boundvars))
   nil)
 
-(defmethod collect-conds ((expr number-expr)  &optional  boundvars)
+(defmethod collect-conds ((expr rational-expr)  &optional  boundvars)
   (declare (ignore boundvars))
   nil)
 
