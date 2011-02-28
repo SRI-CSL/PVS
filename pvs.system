@@ -268,8 +268,8 @@
 		(when *load-pvs-prelude*
 		  (pvs::load-prelude)
 		  ;;(load (format nil "~a/src/PVSio/prelude-attachments" *pvs-path*))
-		  (pvs::initialize-prelude-attachments)
-		  (pvs::register-manip-type pvs::*number_field* 'pvs::pvs-type-real)
+		  ;;(pvs::initialize-prelude-attachments)
+		  ;;(pvs::register-manip-type pvs::*number_field* 'pvs::pvs-type-real)
 		  )
 		#+allegro
 		(let ((optfile (format nil "~a/src/closopt" *pvs-path*)))

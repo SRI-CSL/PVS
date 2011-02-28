@@ -148,7 +148,9 @@
 			(typecheck* (mk-name-expr 'FALSE) *boolean* nil
 				    nil))))))
 	  (format t "~%Done typechecking the prelude")
-	  (restore-prelude-proofs))
+	  (restore-prelude-proofs)
+	  (initialize-prelude-attachments)
+	  (register-manip-type *number_field* 'pvs-type-real))
       (set-working-directory cdir))))
 
 (defun restore-prelude-proofs ()

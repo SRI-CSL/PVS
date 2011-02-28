@@ -5,7 +5,7 @@
 
 (defun stdstr-attachments ()
 
-(attachments |stdstr|
+(eval '(attachments |stdstr|
 
 (defattach |charcode| (n)
   "Char whose code is N"
@@ -135,7 +135,7 @@
   "Returns the directory part of a file name"
   (directory-namestring s))
 
-))
+)))
 
 (defun prompt (s)
   (when (string/= s "")
@@ -166,7 +166,7 @@
 
 (defun stdio-attachments ()
 
-(attachments stdio  
+(eval '(attachments stdio  
 
 (defattach |printstr| (s) 
   "Prints lisp format of string S"
@@ -336,11 +336,11 @@
 	(throw '|NotAnInteger|
 	       (pvs2cl_record (the string "NotAnInteger")
 			      (the string (format nil "~a" i))))))))
-))
+)))
 
 (defun stdmath-attachments ()
 
-(attachments stdmath
+(eval '(attachments stdmath
 	     
 (defattach |PI| () 
   "Number Pi"
@@ -386,13 +386,13 @@
   "Arccosine of X"
   (acos x))
 
-))
+)))
 
 (defstruct indent stack n prefix)
 
 (defun stdindent-attachments ()
 
-(attachments stdindent  
+(eval '(attachments stdindent  
 
 (defattach |create_indent| (n s) 
   "Creates an ident structure with indentation N and prefix S"
@@ -428,11 +428,11 @@
   "Sets prefix S to indent I"
   (setf (indent-prefix i) s))
 
-))
+)))
 
 (defun stdprog-attachments ()
 
-(attachments stdprog  
+(eval '(attachments stdprog  
 
 (defattach |exit| ()
   "Exits the current evaluation and returns to the ground evaluator"
@@ -479,11 +479,11 @@
 	 (apply #'format (append (list nil s)
 				 (reduce #'cons e :initial-value nil :from-end t))))
 	(t (format nil s e))))
-))
+)))
 
 (defun stdcatch-attachments ()
 
-(attachments stdcatch  
+(eval '(attachments stdcatch  
 	     
 (defattach |catch_lift| (tag f1 f2)
   "If F1 throws the exception e tagged tag, then evaluates F2(e). Otherwise, returns F1"
@@ -495,11 +495,11 @@
 (defattach |throw| (tag e)
   "Throws the exception E"
   (throw (makesym tag) e))
-))
+)))
 
 (defun stdpvs-attachments ()
 
-(attachments stdpvs  
+(eval '(attachments stdpvs  
 
 (defattach |typeof| (e)
   "Returns the string value of the type of E"
@@ -516,11 +516,11 @@
   (let* ((the-type (pc-parse *the-pvs-type* 'type-expr))
 	 (domain   (domain the-type)))
     (format nil "~a" (cl2pvs e (pc-typecheck domain)))))
-))
+)))
 
 (defun stdpvsio-attachments ()
  
-(attachments stdpvsio 
+(eval '(attachments stdpvsio 
 
 (defattach |help_pvs_attachment| (s)
   "Displays help for semantic attachment S"
@@ -534,11 +534,11 @@
   "Shows current version of PVSio"
   *pvsio-version*)
 
-))
+)))
 
 (defun stdsys-attachments ()
 
-(attachments stdsys  
+(eval '(attachments stdsys  
 
 (defattach |get_time| ()
   "Gets current system time"
@@ -553,7 +553,7 @@
   "Gets environment variable NAME. Returns DEFAULT if undefined"
   (or (environment-variable (string name)) default))
 
-))
+)))
 
 (defun initialize-prelude-attachments ()
   (stdstr-attachments)
