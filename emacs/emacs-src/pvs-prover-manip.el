@@ -9,8 +9,9 @@
 ;; Last Modified On: 27 Jan 2003 (v1.1)
 ;; Last Modified On: 29 Nov 2005 (v1.2-beta)
 ;; Last Modified On: 17 Nov 2007 (v1.2)
+;; Last Modified On: 25 Feb 2011 (v1.3)
 ;; Status          : Stable
-;; Version         : 1.2
+;; Version         : 1.3
 ;; 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -37,16 +38,16 @@
 
 ;; ================ Start-up actions ================
 
-(defvar pvs-prover-manip-version "1.2")
+(defvar pvs-prover-manip-version "1.3")
 
 ;; Account for differences between Emacs and XEmacs functions.
 
-(eval-when-compile
+;(eval-when-compile
   (if (featurep 'xemacs)
       (defun buffer-substring-text (beg end)
 	(buffer-substring beg end))
       (defun buffer-substring-text (beg end)
-	(buffer-substring-no-properties beg end))))
+	(buffer-substring-no-properties beg end))) ; )
 
 
 ;; ================ Prover command entry shortcuts  ================
@@ -137,18 +138,18 @@ expressions from current proof buffer."
 ;; function variables are introduced to silence some annoying warnings
 ;; from the byte compiler.
 
-(eval-when-compile
+;(eval-when-compile
   (if (featurep 'xemacs)
       (progn (defvar set-extent-face-fn #'set-extent-face)
 	     (defvar make-extent-fn #'make-extent))
       (progn (defvar set-extent-face-fn nil)
-	     (defvar make-extent-fn nil))))
+	     (defvar make-extent-fn nil))) ; )
 
 ;(when (featurep 'xemacs)
 ;  (defvar set-extent-face-fn #'set-extent-face)
 ;  (defvar make-extent-fn #'make-extent))
 
-(eval-when-compile
+;(eval-when-compile
   (if (featurep 'xemacs)
       (defun highlight-text-region (index beg end)
 	(let ((face-index (min index (- (length manip-fg-face-names) 1))))
@@ -157,7 +158,7 @@ expressions from current proof buffer."
 		   (nth face-index manip-fg-face-names))))
       (defun highlight-text-region (index beg end)
 	(overlay-put (make-overlay beg end)
-		     'face (cons 'foreground-color (car manip-fg-colors))))))
+		     'face (cons 'foreground-color (car manip-fg-colors))))) ; )
 
 (defvar deactivate-region-fn
   (if (featurep 'xemacs) #'zmacs-deactivate-region #'deactivate-mark))

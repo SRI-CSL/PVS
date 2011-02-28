@@ -9,7 +9,7 @@
 ;; Last Modified On: 27 Jan 2003 (v1.1)
 ;; Last Modified On: 28 Nov 2005 (v1.2-beta)
 ;; Last Modified On: 17 Nov 2007 (v1.2)
-;; Last Modified On:  8 Oct 2008 (v1.3)
+;; Last Modified On: 25 Feb 2011 (v1.3)
 ;; Status          : Development
 ;; Version         : 1.3
 ;;
@@ -46,10 +46,16 @@
 ;; can be used to display information about the sequent or invoke proof
 ;; rule templates after substituting matched text.
 ;;
-;; This version of the package has been tested on PVS version 4.2.
-;; It should work with PVS 3.2, 4.0 or any later versions.  It is not
-;; backward compatible with earlier PVS versions, however.  Use Manip
-;; version 1.0 for 2.3/2.4, version 1.1 for 3.0/3.1.
+;; A method based on object orientation was introduced in version 1.3 to
+;; allow manipulation of expressions for non-real types such as vectors.
+;; Extensions were introduced here along with a corresponding set of
+;; functions in the file manip-vectors.lisp, which resides in the NASA
+;; PVS library called vectors.  Similar extensions for other types can
+;; make use of this same machinery.
+;;
+;; This version of the Manip package has been tested on PVS versions 4.2
+;; and 5.0.  It should work with PVS 4.0 or 4.1, although it is not
+;; recommended for any earlier versions of PVS.
 ;;
 ;; =========================== End of preamble ================================
 
@@ -83,6 +89,10 @@
 ;              &opt (term-nums *))
 ;  (permute-terms fnum side                ; Permute additive terms on one side
 ;              &opt (term-nums 1) (end r))
+;  (permute-terms! expr-loc                ; Permute terms within an expression
+;              &opt (term-nums 1) (end r))
+;  (elim-unary fnum &opt (side *))         ; Converts x +/- -y to x -/+ y
+;  (elim-unary! expr-loc)                  ;   and -x + y to y - x
 ;  (isolate fnum side term-num)            ; Move all but one term
 ;  (isolate-replace fnum side term-num     ; Isolate then replace with equation
 ;         &opt (targets *))
@@ -90,12 +100,14 @@
 ;  (cancel-terms &opt (fnums *) (end l)    ; Cancel speculatively & defer proof
 ;          (sign nil) (try-just nil))
 ;  (cancel-add &opt (fnums *))             ; Cancel additive terms in formulas
+;  (cancel-add! expr-loc)                  ;
 ;  (op-ident fnum &opt                     ; Apply operator identity to
 ;            (side l) (operation *1))      ;   rewrite expression
 ;  (op-ident! expr-loc                     ;
 ;             &opt (operation *1))
 ;  (cross-mult &opt (fnums *))             ; Multiply both sides by denom
 ;  (cross-add &opt (fnums *))              ; Add subtrahend to both sides
+;  (cross-add! expr-loc)                   ;
 ;  (factor fnums &opt (side *)             ; Factor common multiplicative terms
 ;          (term-nums *) (id? nil))        ;   from additive terms given
 ;  (factor! expr-loc &opt                  ;
@@ -152,23 +164,28 @@
 
 ;;; ==================== Library Extension Framework =====================
 
-;; Some of the Manip strategies have been generalized to allow their
-;; use with types other than real.  Those types that support overloading
-;; of the arithmetic operators can be used in certain manipulations
-;; as long as strategy extensions are provided in the relevant libraries.
-;; These extensions take the form of Lisp code residing in a file named
-;; "pvs-strategies" found in the library's directory.
+;; Some of the Manip strategies have been generalized to allow their use
+;; with types other than real.  Those types that support overloading of
+;; the arithmetic operators can be used in certain manipulations as long
+;; as strategy extensions are provided in the relevant libraries.  These
+;; extensions take the form of Lisp code residing in the library's
+;; directory.  A file named "pvs-strategies" in this directory will be
+;; loaded when the first relevant proof is invoked, which in turn will
+;; load additional Lisp files as needed.
 ;;
 ;; CLOS classes are used to dispatch methods according to operand types.
-;; The methods for type real are built in to the manip-strategies file.
+;; The methods for reals are built in to this manip-strategies file.
 ;; Those for library-specific types such as vectors are declared within
 ;; Lisp files in the library's directory.  These files will register the
 ;; library extensions available to Manip users.  This happens when the
-;; extension files are loaded, which in turn occurs when the first proof
-;; using the library is started.
+;; extension files are loaded, which occurs when the first proof using
+;; the library is started.
 
+(defclass pvs-type-base ()
+  ((param-types :accessor param-types :initform nil)
+   (is-subtype :accessor is-subtype :initform nil)))
 
-(defclass pvs-type-real () () )
+(defclass pvs-type-real (pvs-type-base) () )
 
 ;; Following a-list has entries (name update-fn doc-string).
 
@@ -221,14 +238,18 @@
       (setf (cdr last) (list (list pvs-type (make-instance class-symb)))))))
 
 
-;;(register-manip-type *number_field* 'pvs-type-real)    ;; needed for some exprs
+;;(register-manip-type *number_field* 'pvs-type-real)  ;; needed for some exprs
 
 ;; Find the first manip-class whose type is a supertype of the argument.
+;; Testing for subtypes can involve module parameters, which is handled
+;; by using a predicate stored in the manip-class object.
 
 (defun find-manip-class (pvs-type)
-  (loop for pair in (manip-supported-types)
-	when (subtype-of? pvs-type (car pair))
-	  return (cadr pair)))
+  (loop for descriptor in (manip-supported-types)
+	when (or (subtype-of? pvs-type (car descriptor))
+		 (let ((pred (is-subtype (cadr descriptor))))
+		   (and pred (funcall pred pvs-type))))
+	  return (cadr descriptor)))
 
 ;; Some Manip strategies use the following function to look up the
 ;; class of a PVS type, which is used to dispatch the appropriate
@@ -255,6 +276,7 @@
     (or (manip-class (car jtypes))
 	(manip-class-ex* (cdr jtypes)))))
 
+
 ;;; =============== Simple arithmetic strategies ===============
 
 (defstep swap (lhs operator rhs &optional (infix? t))
@@ -266,7 +288,7 @@
 		    (old-expr (commute-expr op lhs-expr rhs-expr infix?))
 		    (new-expr (commute-expr op rhs-expr lhs-expr infix?))
 		    (expr-class (manip-class-tc lhs-expr)))
-	       (swap-equate-step old-expr new-expr expr-class))
+	       (swap-equate-step op infix? old-expr new-expr expr-class))
 	   (error (condition)
 	     (gen-manip-response 'swap "Invalid expression.")))))
     eq-step)
@@ -291,7 +313,7 @@ be tried automatically."
 	 `(then (expand ,op 1) (smash)))
 	(t nil)))
 
-(defun swap-equate-step (old-expr new-expr expr-class)
+(defun swap-equate-step (op infix? old-expr new-expr expr-class)
   (let* ((comm-lemmas (manip-commutativity-lemmas expr-class))
 	 (just-step (if comm-lemmas
 			`(then (hide-all-but 1) (assert)
@@ -309,14 +331,14 @@ be tried automatically."
 	     (let* ((descriptor (car (eval-ext-expr expr-loc)))
 		    (expr (ee-pvs-obj descriptor))
 		    (fnum (ee-fnum descriptor))
-		    (op (operator expr))
+		    (op (textify (operator expr)))
 		    (lhs-expr (args1 expr))
 		    (rhs-expr (args2 expr))
 		    (infix? (typep expr 'infix-application))
 		    (old-expr (commute-expr op lhs-expr rhs-expr infix?))
 		    (new-expr (commute-expr op rhs-expr lhs-expr infix?))
 		    (expr-class (manip-class-ex (args1 expr))))
-	       (swap-equate-step old-expr new-expr expr-class))
+	       (swap-equate-step op infix? old-expr new-expr expr-class))
 	   (error (condition)
 	     (gen-manip-response 'swap! "Invalid expression.")))))
     eq-step)
@@ -329,7 +351,7 @@ be tried automatically."
   nil)
 
 (defmethod manip-commutativity-lemmas ((term-class pvs-type-real))
-  '("commutative_mult" "commutative_add"))
+  nil)    ;; force the use of function-prop-just-step for reals
 
 
 ;;;;;;;;;;
@@ -345,7 +367,7 @@ be tried automatically."
 	(old-expr (assoc-expr op term1-expr term2-expr term3-expr 
 			      old-side infix?))
 	(new-expr (assoc-expr op term1-expr term2-expr term3-expr side infix?))
-	(eq-step (group-equate-step old-expr new-expr classes)))
+	(eq-step (group-equate-step op infix? old-expr new-expr classes)))
     eq-step)
   "[Manip] Try associatively regrouping three terms toward SIDE (L or R)
 and replacing.  Set INFIX? to nil for prefix applications.  Associativity
@@ -373,11 +395,11 @@ function applications found at EXPR-LOC toward SIDE (L or R).  Associativity
 proof for operator will be tried automatically."
   "~%Regrouping terms in an associative expression and replacing")
 
-(defun group-equate-step (old-expr new-expr expr-classes)
+(defun group-equate-step (op infix? old-expr new-expr expr-classes)
   (let* ((assoc-lemmas (apply #'manip-associativity-lemmas expr-classes))
 	 (just-step (if assoc-lemmas
 			`(then (hide-all-but 1) (assert)
-			       ,@(mapcar #'(lambda (lem) `(rewrite ,lem)) ;;;;;
+			       ,@(mapcar #'(lambda (lem) `(rewrite ,lem))
 					 assoc-lemmas)
 			       (assert))
 			(function-prop-just-step op infix?))))
@@ -390,7 +412,7 @@ proof for operator will be tried automatically."
 
 (defmethod manip-associativity-lemmas
     ((cl-x pvs-type-real) (cl-y pvs-type-real) (cl-z pvs-type-real))
-  '("associative_mult" "associative_add"))
+  nil)    ;; force the use of function-prop-just-step for reals
 
 
 ;;; Construct grouped expression by associating L or R.
@@ -422,9 +444,8 @@ proof for operator will be tried automatically."
 				  assoc-side infix?)
 		      (assoc-expr op term1-expr term3-expr term2-expr
 				  assoc-side infix?)))
-	(eq-step (swap-group-equate-step old-expr new-expr classes assoc-side)))
-;;	(just-step (function-prop-just-step op infix?))
-;;	(eq-step `(equate$ ,old-expr ,new-expr :try-just ,just-step)))
+	(eq-step (swap-group-equate-step op infix? old-expr new-expr
+					 classes assoc-side)))
     eq-step)
   "[Manip] Try associatively regrouping and swapping three terms according
 to the scheme indicated by SIDE: 
@@ -458,13 +479,12 @@ so as to lift and move center term to the left or right.  Justification
 proof for operator will be tried automatically."
   "~%Regrouping and swapping terms in an associative expression and replacing")
 
-(defun swap-group-equate-step (old-expr new-expr expr-classes side)
+(defun swap-group-equate-step (op infix? old-expr new-expr expr-classes side)
   (let* ((assoc-lemmas (apply #'manip-comm-assoc-lemmas
 			      (append expr-classes (list side))))
 	 (just-step (if assoc-lemmas
 			`(then (hide-all-but 1) (assert)
-			       ,@(mapcar #'(lambda (lem) `(rewrite ,lem)) ;;;;;;
-					 ;;; repeat these???
+			       ,@(mapcar #'(lambda (lem) `(rewrite ,lem))
 					 (append assoc-lemmas assoc-lemmas))
 			       (assert)
 			       (swap!$ 1 l 2))
@@ -479,7 +499,7 @@ proof for operator will be tried automatically."
 
 (defmethod manip-comm-assoc-lemmas
     ((cl-x pvs-type-real) (cl-y pvs-type-real) (cl-z pvs-type-real) dir)
-  '("associative_mult" "associative_add"))
+  nil)    ;; force the use of function-prop-just-step for reals
 
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -631,7 +651,7 @@ to handle the two cases."
 			`(inst -1 ,term ,rhs-text ,lhs-text)
 			`(inst -1 ,term ,lhs-text ,rhs-text)))
 	 (target (if (< fnum 0) (- fnum 1) fnum))
-	 (cancel-steps (targeted-rewrites fnum '("div_cancel2")))  ;; useful still?
+	 (cancel-steps (targeted-rewrites fnum '("div_cancel2")))
 	 (simplify-step
 	  `(branch (split -1 1)
 		   ((then (hide ,target)
@@ -841,7 +861,7 @@ from SIDE (L or R) to the other side, adding or substracting as needed."
 	(to-list   (if (eq side 'l) right left)) 
 	(tnums (map-term-nums-arg term-nums (length from-list)))
 	(value-class (manip-class-ex (args1 formula)))
-	(zero (manip-additive-zero value-class))
+	(zero (manip-additive-zero value-class (type (args1 formula))))
 	(move-step (if (and tnums zero)  ;; zero = NIL if unsupported
 		       `(move-terms-two$ 
 			 ,@(list rel fnum formula side from-list to-list tnums
@@ -873,7 +893,7 @@ from SIDE (L or R) to the other side, adding or substracting as needed."
 	(old-formula (textify formula))
 	(new-formula (format nil "~A ~A ~A" new-left rel new-right))
 	(just-step (move-terms-just-step
-		    value-class side from-list to-list tnums))
+		    value-class side fnum from-list to-list tnums))
 	(move-step `(case ,(format nil "~A IFF ~A"
 				   old-formula new-formula)))
 	(step-list `((replace -1 ,(if (< fnum 0) (- fnum 1) fnum) :hide? t)
@@ -884,12 +904,13 @@ from SIDE (L or R) to the other side, adding or substracting as needed."
 
 ;;;;;;;;;;;;;
 
-(defmethod manip-additive-zero (any) nil)   ;; default for unsupported type
+(defmethod manip-additive-zero (any expr-type)
+  nil)                          ;; default for unsupported type
 
-(defmethod manip-additive-zero ((num pvs-type-real)) "0")
+(defmethod manip-additive-zero ((num pvs-type-real) expr-type) "0")
 
 (defmethod move-terms-just-step ((num pvs-type-real)
-				 side from-list to-list tnums)
+				 side fnum from-list to-list tnums)
   '(smash))
 
 
@@ -929,7 +950,7 @@ remaining factors will be placed at the other END in their original order."
 	(terms (collect-additive-terms '+ expr-obj))
 	(tnums (map-term-nums-arg term-nums (length terms)))
 	(value-class (manip-class-ex expr-obj))
-	(zero (manip-additive-zero value-class))
+	(zero (manip-additive-zero value-class (type expr-obj)))
 	(permute-step (if (and tnums zero)  ;; zero = NIL if unsupported type
 			  (permute-terms-step fnum expr-obj terms tnums end
 					      value-class zero)
@@ -949,7 +970,7 @@ remaining factors will be placed at the other END in their original order."
 			(append in-terms out-terms)
 		        (append out-terms in-terms)))
 	 (new-expr (make-new-addition new-terms t t zero))
-	 (just-step (permute-terms-just-step value-class terms tnums))
+	 (just-step (permute-terms-just-step value-class fnum terms tnums))
 	 (permute-step `(case ,(format nil "~A = ~A" expr-obj new-expr)))
 	 (step-list `((replace -1 ,(if (< fnum 0) (- fnum 1) fnum) :hide? t)
 		      ,just-step)))
@@ -957,9 +978,93 @@ remaining factors will be placed at the other END in their original order."
 
 ;; Base generic function not needed for following:
 
-(defmethod permute-terms-just-step ((num pvs-type-real) terms tnums)
+(defmethod permute-terms-just-step ((num pvs-type-real) fnum terms tnums)
   '(smash))
 
+
+(defstep elim-unary (fnum &optional (side *))
+  (let ((formula (manip-get-formula fnum))
+	(steps (if formula
+		   (append (when (memq side '(l *))
+			     `((elim-unary-one$ ,fnum ,(args1 formula))))
+			   (when (memq side '(r *))
+			     `((elim-unary-one$ ,fnum ,(args2 formula)))))
+		   nil))
+	(elim-step
+	 (if formula
+	     `(then ,@steps)
+	     (gen-manip-response 'elim-unary "No suitable formulas."))))
+    elim-step)
+  "[Manip] Eliminate unary minus functions where possible in additive
+expressions.  Convert expressions of the form x +/- -y to the form
+x -/+ y.  Also convert -x + y to y - x."
+  "~%Eliminating unary minus functions from formula ~A")
+
+(defstep elim-unary! (expr-loc)
+  (let ((descriptors (eval-ext-expr expr-loc))
+	(elim-step
+	   (if descriptors
+	       `(try (then@ ,@(mapcar #'(lambda (d)
+					  `(elim-unary-one$ ,(ee-fnum d)
+							    ,(ee-pvs-obj d)))
+				      descriptors))
+		     (skip)
+		     ,(gen-manip-response 'elim-unary!
+					  "No suitable expressions."))
+	       (gen-manip-response 'elim-unary!
+				   "No suitable formulas or expressions."))))
+    elim-step)
+  "[Manip] Eliminate unary minus functions where possible in additive
+expressions.  Convert expressions of the form x +/- -y to the form
+x -/+ y.  Also convert -x + y to y - x."
+  "~%Eliminating unary minus functions from selected expression")
+
+(defhelper elim-unary-one (fnum expr)
+  (let ((value-class (manip-class-ex expr))
+	(zero (manip-additive-zero value-class (type expr)))
+	(new-terms (elim-unary-terms (collect-additive-terms '+ expr)))
+	(new-expr (make-new-addition new-terms t t zero))
+	(eq-step `(case ,(format nil "~A = ~A" expr new-expr)))
+	(replace-step `(replace -1 ,(if (< fnum 0) (- fnum 1) fnum) :hide? t))
+	(elim-steps
+	 (if new-terms
+	     `(spread ,eq-step (,replace-step
+				,(elim-unary-just-step value-class)))
+	     (gen-manip-response
+	      'elim-unary
+	      "No unary minus operators can be eliminated."))))
+    elim-steps)
+  "[Manip] Eliminate unary minus functions where possible in additive
+expressions."
+  "~%Eliminating unary minus functions from formula ~A")
+
+;; Rearrange the terms if possible to eliminate all unary negations.
+;; Lift the unary operators up and flip the binary operators that
+;; join the terms.  If the resulting terms are all negative, return nil
+;; to indicate that elimination isn't possible, even if some cases are.
+
+(defun elim-unary-terms (terms)
+  (labels ((elim-nested-neg (sign expr)
+	     (if (and (typep expr 'unary-application)
+		      (eq (id (operator expr)) '-))
+		 (elim-nested-neg (if (eq sign '+) '- '+) (argument expr))
+		 (list sign expr))))
+    (let* ((lifted-terms
+	    (loop with lift-count = 0
+		  for term in terms
+		  collect (elim-nested-neg (car term) (cadr term))))
+	   (pos-terms (loop for term in lifted-terms
+			    when (eq (car term) '+) collect term))
+	   (neg-terms (loop for term in lifted-terms
+			    when (eq (car term) '-) collect term)))
+      (append pos-terms neg-terms))))
+
+
+(defmethod elim-unary-just-step (expr)
+  (gen-manip-response 'elim-unary "Unsupported type."))
+
+(defmethod elim-unary-just-step ((expr pvs-type-real))
+  '(smash))
 
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -1252,66 +1357,116 @@ containing expressions.  Also works for a term and its negation on the
 same side of a relation."
   "~%Canceling additive terms from selected formulas")
 
-;;; could introduce (cancel-add! expr-loc), but not clear how useful it would be
-
 (defhelper cancel-add-one (fnum)
   (let ((formula (manip-get-formula fnum))
 	(value-class (manip-class-ex (args1 formula)))
+	(zero (manip-additive-zero value-class (type (args1 formula))))
+	(rel (id (operator formula)))
 	(left-terms  (collect-additive-terms '+ (args1 formula)))
 	(right-terms (collect-additive-terms '+ (args2 formula)))
+	(new-terms (collect-nonmatching-terms-all left-terms right-terms))
+	(cancel-steps
+	 (if new-terms
+	     (cancel-add-steps fnum formula value-class zero rel new-terms)
+	     (gen-manip-response
+	      'cancel-add
+	      "No terms can be canceled in selected formula."))))
+    cancel-steps)
+  "[Manip] Try canceling additive terms in a relational formula."
+  "~%Canceling additive terms in formula ~A")
+
+(defun cancel-add-steps (fnum formula value-class zero rel new-terms)
+  (let* ((final-sides
+	  (mapcar #'(lambda (term) (make-new-addition term t t zero))
+		  new-terms))
+	 (old-formula (textify formula))
+	 (new-formula
+	  (format nil "~A ~A ~A" (car final-sides) rel (cadr final-sides)))
+	 (just-step (cancel-add-just-step
+		     value-class fnum (car new-terms) (cadr new-terms)))
+	 (equiv-step `(case ,(format nil "~A IFF ~A"
+				     old-formula new-formula)))
+	 (step-list `((replace -1 ,(if (< fnum 0) (- fnum 1) fnum) :hide? t)
+		      ,just-step)))
+    `(spread ,equiv-step ,step-list)))
+
+(defstep cancel-add! (expr-loc)
+  (let ((descriptors (eval-ext-expr expr-loc))
 	(cancel-step
-	 `(then (cancel-add-across$ ,fnum ,left-terms ,right-terms)
-		;; look up left/right side terms again after moves:
-		(cancel-add-same-side$ ,fnum l ,value-class)
-		(cancel-add-same-side$ ,fnum r ,value-class))))
+	   (if descriptors
+	       `(try (then@ ,@(mapappend
+			       #'(lambda (d)
+				   (cancel-add-two (ee-fnum d) (ee-pvs-obj d)))
+			       descriptors))
+		     (skip)
+		     ,(gen-manip-response 'cancel-add!
+					  "No suitable expressions."))
+	       (gen-manip-response 'cancel-add!
+				   "No suitable formulas or expressions."))))
     cancel-step)
-  "[Manip] Try canceling additive terms in a relational formula."
-  "~%Canceling additive terms in formula ~A")
+  "[Manip] Cancel additive terms from selected expressions.  The matching terms
+can appear in any relative position within their containing expressions."
+  "~%Canceling additive terms from selected expressions")
 
-(defhelper cancel-add-across (fnum left-terms right-terms)
-  (let ((matches (find-matching-terms left-terms right-terms t))
-	(cancel-step
-	 (if (every #'null matches)
-	     '(skip)
-;	     (gen-manip-response 'cancel-add
-;				 "No canceling terms found (across).")
- 	     (let* ((moves (loop for m in matches when m collect m)))
-	       `(move-terms$ ,fnum r ,moves)))))
-    cancel-step)
-  "[Manip] Try canceling additive terms in a relational formula."
-  "~%Canceling additive terms in formula ~A")
-
-(defhelper cancel-add-same-side (fnum side value-class)
-  (let ((cancel-step (cancel-add-same-side-step value-class fnum side)))
-    cancel-step)
-  "[Manip] Try canceling additive terms in a relational formula."
-  "~%Canceling additive terms in formula ~A")
-
+(defun cancel-add-two (fnum expr)
+  (let* ((name-step `(name-replace ,(name-gensym "cancel_add")
+				   ,(textify expr) nil))  ;; don't hide
+	 (target-fnum (if (< fnum 0) (- fnum 1) fnum)))
+     `(,name-step (cancel-add -1)
+       (replace -1 ,target-fnum :dir rl :hide? t))))
 
 ;; Look for matching additive terms from a formula that are subject to
-;; cancellation.  Argument same? is used to indicate matches have the
-;; same polarity (from opposite sides of an equality).  Returns a list
-;; (M1 ... Mk) where Mi is nil if the ith term has no match; otherwise,
-;; Mi is a (1-based) index of the first match in other-list.
+;; cancellation, then form the complements of term lists.  Argument across?
+;; is used to indicate when matches should have the same polarity (from
+;; opposite sides of an equality).  Returns a list (KT KO), where KT is
+;; a list of primary terms to keep and KO is a list of other terms to keep.
+;; When a term can match multiple targets, the first match is chosen and
+;; it becomes ineligible for later matches.
 
-(defun find-matching-terms (term-list &optional (other-list term-list) same?)
-  (loop for term in term-list
-        for n from 1 to (length term-list)
-	collect (loop for other in (if same? other-list (nthcdr n other-list))
-		      for index from (if same? 1 (+ n 1))
-		                to (length other-list)
-		      when (and (if same?
-				    (eq (car term) (car other))
-				    (not (eq (car term) (car other))))
-				(tc-eq (cadr term) (cadr other)))
-		        return index)))
+(defun collect-nonmatching-terms (term-list
+				  &optional (other-list term-list) across?)
+  (loop with num-others = (length other-list)
+	with others = (apply #'vector other-list)
+	with matches = 0
+	for term in term-list
+        for n from 0 below (length term-list)
+	for drop = (loop 
+		    for index from (if across? 0 n) below num-others
+		    for other = (aref others index)
+		    when (and other
+			      (if across?
+				  (eq (car term) (car other))
+				(not (eq (car term) (car other))))
+			      (tc-eq (cadr term) (cadr other)))
+		      do (progn (incf matches 1)
+				(setf (aref others index) nil)
+				(unless across? (setf (aref others n) nil)))
+		      and return t)
+	unless drop
+	  collect term into keep-terms
+	finally (let ((keep-others (loop for other in
+					 (map 'list #'(lambda (x) x) others)
+					 when other collect other)))
+		  (return (if across?
+			      (list matches keep-terms keep-others)
+			      (list matches keep-others))))))
+
+(defun collect-nonmatching-terms-all (left-terms right-terms)
+  (let* ((across (collect-nonmatching-terms left-terms right-terms t))
+	 (left   (collect-nonmatching-terms (cadr across)))
+	 (right  (collect-nonmatching-terms (caddr across))))
+    (if (zerop (+ (car across) (car left) (car right)))
+	nil
+        (list (cadr left) (cadr right)))))
 
 
-(defmethod cancel-add-same-side-step (any fnum side)
-  '(skip))                           ;; default for unsupported type
+(defmethod cancel-add-just-step (any fnum left-terms right-terms)
+  '(skip))                      ;; default for unsupported type
 
-(defmethod cancel-add-same-side-step ((num pvs-type-real) fnum side)
+(defmethod cancel-add-just-step ((num pvs-type-real) fnum
+				 left-terms right-terms)
   '(assert))
+
 
 ;;;;;;;;;;;;;;;;;;;;
 
@@ -1403,7 +1558,7 @@ operations using these designated symbols:
 			append (mapcar #'(lambda (s) `(repeat ,s)) steps)))
 	(mult-step
 	 `(then@ ,@(mapcar #'(lambda (n rew) `(cross-mult-one$ ,n ,rew))
-		     f-nums rewrite-steps)))
+			   f-nums rewrite-steps)))
 	(cross-step (if f-nums
 			`(then ,@rewrites ,mult-step (assert ,f-nums))
 		        (gen-manip-response 'cross-mult
@@ -1506,11 +1661,9 @@ operators are gone."
 	  (cond ((= depth-limit 0)
 		 (gen-manip-response 'cross-add "Depth limit exceeded."))
 		((is-term-operator (args1 formula) '-)      ;; LHS
-;		 `(then (cross-add-lr$ ,fnum l)
 		 `(then (move-terms$ ,fnum l 2)
 			(cross-add-one$ ,fnum ,(- depth-limit 1))))
 		((is-term-operator (args2 formula) '-)  ;; RHS
-;		 `(then (cross-add-lr$ ,fnum r)
 		 `(then (move-terms$ ,fnum r 2)
 			(cross-add-one$ ,fnum ,(- depth-limit 1))))
 		(t '(skip)))))
@@ -1518,27 +1671,6 @@ operators are gone."
   "[Manip] Add LHS/RHS subtrahend(s) to both sides of a relation."
   "~%Adding LHS/RHS subtrahend(s) to both sides of formula ~A")
 
-(defhelper cross-add-lr (fnum side)
-  (let ((formula (manip-get-formula fnum))
-	(relation (operator formula))
-	(lhs-obj (args1 formula))
-	(rhs-obj (args2 formula))
-	(is-left (eq side 'l))
-	(side-obj  (if is-left lhs-obj rhs-obj))
-	(other-obj (if is-left rhs-obj lhs-obj))
-	(new-expr (if is-left
-		      (format nil "~A ~A ~A + ~A" (args1 side-obj) relation
-			      (args2 side-obj) other-obj)
-		      (format nil "~A + ~A ~A ~A" (args2 side-obj) other-obj
-			      relation (args1 side-obj))))
-	(replace-expr (format nil "~A IFF ~A" formula new-expr))
-	(case-step `(case ,replace-expr))
-	(main-branch '(replace -1 :hide? t))
-	(just-step '(assert))
-	(steplist (list main-branch just-step)))
-    (spread case-step steplist))
-  "[Manip] Add LHS/RHS subtrahend(s) to both sides of a relation."
-  "~%Adding LHS/RHS subtrahend(s) to both sides of ~A")
 
 ;;;;;;;;;;;;;;;;;;;;
 
@@ -1599,13 +1731,13 @@ a call to the identity function to prevent later distribution."
 			    term-mask full-terms))
 	 ;; returns (left-factors right-factors):
 	 (in-objs (apply #'mapcar #'list
-			   (collect-factor-terms value-class in-terms)))
+			 (collect-factor-terms value-class in-terms)))
 	 (in-terms-str
 	  (mapcar #'(lambda (lr)
 		      (mapcar #'(lambda (a)
 				  (mapcar #'(lambda (m) (safety-parens m)) a))
 			      lr))
-	    (mapcar #'extract-gcds in-objs)))
+		  (mapcar #'extract-gcds in-objs)))
 	 (common (mapcar #'find-common-factors in-terms-str))
 	 (lf-comm-expr (when (car common) (make-new-product (car common) nil)))
 	 (rt-comm-expr
@@ -1646,7 +1778,7 @@ a call to the identity function to prevent later distribution."
 
 
 (defmethod factor-steps (val-cl   ;; default for unsupported types
-			 fnum id?) 
+			 fnum id?)
   (gen-manip-response 'factor! "No suitable terms."))
 
 (defmethod factor-steps ((val-cl pvs-type-real)
@@ -1662,7 +1794,21 @@ a call to the identity function to prevent later distribution."
 ;;;;;;;;;;;;;;;;;;;;
 
 (defstep distrib (fnums &optional (side *) (term-nums *))
-  (let ((distrib-step `(distrib!$ (! ,fnums ,side ,term-nums))))
+  (let ((descriptors (eval-ext-expr `(! ,fnums ,side)))
+	(sides (if (eq side '*) '(1 2) (list side)))
+	(additive (loop for s in sides
+			for d in descriptors
+			for obj = (ee-pvs-obj d)
+			collect (and (typep obj 'infix-application)
+				     (memq (id (operator obj)) '(+ -)))))
+	(locs (loop for p in additive
+		    for s in sides
+		    collect (if p `(! ,fnums ,s ,term-nums) `(! ,fnums ,s))))
+	(distrib-step
+	 (if locs
+	     `(then ,@(loop for loc in locs collect `(distrib!$ ,loc)))
+	     (gen-manip-response 'distrib
+				 "No suitable formulas."))))
     distrib-step)
   "[Manip] Distribute multiplication operators over factors having the form
 of additive subexpressions.  Apply this action to the top-level additive
@@ -1885,7 +2031,6 @@ that results from EXPR-LOC."
   (let ((full-expr (ee-pvs-obj expr-desc))
 	(value-class (manip-class-ex full-expr))
 	(orig-terms (collect-mult-factors value-class full-expr))
-;	(orig-terms (collect-multiplicative-terms full-expr))
 	(tnums (map-term-nums-arg term-nums (length (car orig-terms))))
 	(permute-step `(permute-mult!$ ,expr-loc ,tnums))
 	(continue-step `(name-mult-rest$ ,name ,expr-loc ,tnums))
@@ -2256,8 +2401,6 @@ and any common factors are identified and canceled."
 	 (handler-case
 	     (let* ((expr-descriptor (car (eval-ext-expr expr-loc)))
 		    (expr (ee-pvs-obj expr-descriptor))
-		    (value-class (manip-class-ex expr-obj))
-;		    (fnumber (ee-fnum expr-descriptor))
 		    (full-terms (collect-additive-terms '+ expr))
 		    (term-numbers (map-term-nums-arg term-nums
 						     (length full-terms))))
@@ -2580,32 +2723,6 @@ description of all features."
 	try-step))
   "[Manip] Try rewriting LEMMAS in sequence within FNUMS until first one succeeds."
   "~%Trying lemma rewrites in sequence")
-
-;; (defstep apply-expr (rule expr-loc)
-;;   (let ((descriptors (eval-ext-expr expr-loc))
-;; 	(apply-step 
-;; 	 (if descriptors
-;; 	     `(then@ ,@(mapcar #'(lambda (d) `(apply-expr-one$ ,rule ,d))
-;; 			       descriptors))
-;; 	     (gen-manip-response 'apply-expr
-;; 				 "No suitable formulas or expressions."))))
-;;     apply-step)
-;;   "[Manip] Apply RULE to the expressions located by EXPR-LOC.  Only these
-;; expressions will be involved in the application of RULE (typically used for
-;; rewriting)."
-;;   "~%Applying ~A to selected expressions")
-
-;; (defhelper apply-expr-one (rule descriptor)
-;;   (let ((expr-obj (ee-pvs-obj descriptor))
-;; 	(fnum (ee-fnum descriptor))
-;; 	(adj-fnum (if (< fnum 0) (- fnum 1) fnum))
-;; 	(name-step `(name ,(name-gensym "apply") ,expr-obj))
-;; 	(replace-1 `(replace -1 ,adj-fnum))
-;; 	(replace-2 `(replace -1 ,adj-fnum :dir rl :hide? t))
-;; 	(apply-step `(then ,name-step ,replace-1 ,rule ,replace-2)))
-;;     apply-step)
-;;   "[Manip] Apply RULE to selected expressions."
-;;   "~%Applying ~A to selected expressions")
 
 (defstep rewrite-expr (lemmas expr-loc)
   (let ((descriptors (eval-ext-expr expr-loc))

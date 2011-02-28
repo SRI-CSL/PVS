@@ -401,7 +401,8 @@
 ;;; Match formulas against syntax patterns.
 ;;; Input is of the form ((f1 p1 i1) ...), where f is an fnum spec,
 ;;; p is a pattern, and i is the instance/occurrence number(s) to match.
-;;; Identifiers with leading '_' or '?_?' are template/pattern variables.
+;;;;; Identifiers with leading '_' or '?_?' are template/pattern variables. ;;;
+;;; Identifiers with leading '??' or '?_?' are template/pattern variables.
 ;;; Allow a choice of which syntactic expr categories to match (t = all).
 ;;; Returns list (vars instances fnums),
 ;;; where vars, instances and fnums have the same length.
@@ -578,16 +579,20 @@
 ;;; Returns 'prev-mismatch if expr fails to match previous instance
 ;;; in global-subs; otherwise, returns same values as match-subexpr.
 ;;; Variables will have been preprocessed as follows:
-;;;   % -> _   %v -> _v   %% -> __   %%v -> __v
+;;;   % -> ??   %v -> ??v   %% -> ????   %%v -> ????v
+;;;;;   % -> _   %v -> _v   %% -> __   %%v -> __v
 ;;;   %{class} -> ?_??_?class      %v{class} -> ?_?v?_?class
 
 (defun match-pattern-var (expr patt global-subs)
   (let* ((list-expr-patt-var
 	  (if (consp patt)
 	      (and (consp expr) (null (cdr patt))
-		   (expr-patt-var-symb (car patt) 2 "__"))
-	      (expr-patt-var-symb patt 2 "__")))
-	 (expr-patt-var (expr-patt-var-symb patt 1 "_"))
+		   (expr-patt-var-symb (car patt) 4 "????"))
+;		   (expr-patt-var-symb (car patt) 2 "__"))
+	      (expr-patt-var-symb patt 4 "????")))
+;	      (expr-patt-var-symb patt 2 "__")))
+	 (expr-patt-var (expr-patt-var-symb patt 2 "??"))
+;	 (expr-patt-var (expr-patt-var-symb patt 1 "_"))
 	 (class-patt-var
 	  (let ((syn-var (expr-patt-var-symb patt 3 "?_?")))
 	    (when syn-var
@@ -597,8 +602,10 @@
 		 (and (typep expr (cdr (assoc (intern class-str)
 					      *pvs-syntax-name-alist*)))
 		      (if (string= (subseq patt-str 0 class-posn) "")
-			  '_
-		          (intern (format nil "_~A"
+			  '??
+;			  '_
+		          (intern (format nil "??~A"
+;		          (intern (format nil "_~A"
 					  (subseq patt-str
 						  0 class-posn)))))))))
 	 (patt-var (or list-expr-patt-var
@@ -608,11 +615,13 @@
     (unless patt-var
       (return-from match-pattern-var nil))
     ;; found a pattern variable that matches any expr [list]
-    (cond ((memq patt-var '(_ __))
+;    (cond ((memq patt-var '(_ __))
+    (cond ((memq patt-var '(?? ????))
 	   (list global-subs))    ; nonbinding match -- no additional subs
 	  (patt-var
 	   (let* ((prefix (if list-expr-patt-var "%%" "%"))
-		  (offset (if list-expr-patt-var 2 1))
+		  (offset (if list-expr-patt-var 4 2))
+;		  (offset (if list-expr-patt-var 2 1))
 		  (var-name (subseq (string patt-var) offset)))
 	     (when (upper-case-p (elt var-name 0))  ;; coordinated match
 	       ;; note: (elt "" 0) => #\null
@@ -627,7 +636,8 @@
 	     (list global-subs
 		   (list (format nil "~A~A" prefix var-name) expr)))))))
 
-;;; Determine if pattern variable has the form '_' or '__' or '?_?'.
+;;;;; Determine if pattern variable has the form '_' or '__' or '?_?'.
+;;; Determine if pattern variable has the form '??' or '????' or '?_?'.
 
 (defun expr-patt-var-symb (patt prefix-len prefix-chars)
   (flet ((extract-prefix (str)
@@ -931,7 +941,8 @@
 	     (setf anchored t
 		   pattern-str (subseq pattern-str 1)))
 	   (setf pattern-str
-		 (replace-substrings "_" "%"
+;		 (replace-substrings "_" "%"
+		 (replace-substrings "??" "%"
 				     (replace-syn-class-syms pattern-str)))
 	   (when (eq which-expr t) (setf which-expr '(expr type-expr)))
 	   (cons anchored
