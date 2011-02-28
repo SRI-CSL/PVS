@@ -114,7 +114,7 @@ if (!$out && !$cleanbin && !$execute && !$test) {
   my ($base,$path,$type) = fileparse($file,qr{\..*});  
   $out  = "$path$base";
   my $dol = join('_',@dolist);
-  $out .= "-do_$dol" if $dol;
+  $out .= "-$dol" if $dol;
   my $butl = join('_',@butlist);
   $out .= "-but_$butl" if $butl;
   $out .= "-from_$from" if $from;
