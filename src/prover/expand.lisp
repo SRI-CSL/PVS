@@ -400,6 +400,9 @@ list of positive numbers" occurrence)
     'arguments (expand-defn name (arguments expr) occurrence)
     'expression (expand-defn name (expression expr) occurrence)))
 
+(defmethod expand-defn (name (expr field-assignment-arg) occurrence)
+  expr)
+
 (defmethod expand-defn (name (expr list) occurrence)
   (let ((newlist (mapcar #'(lambda (x) (expand-defn name x
 						    occurrence))
