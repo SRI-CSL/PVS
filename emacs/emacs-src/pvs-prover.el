@@ -2150,7 +2150,11 @@ Letters do not insert themselves; instead, they are commands:
     (goto-char (point-min))
     (while (search-forward "!!!" nil t)
       (replace-match "(checkpoint)" nil t))
-    (write-region (point-min) (point-max) *pvs-tmp-file* nil 'notnil)
+    (save-excursion
+      (goto-char (point-min))
+      (re-search-forward "^(" nil t)
+      (forward-char -1)
+      (write-region (point) (point-max) *pvs-tmp-file* nil 'notnil))
     (goto-char (point-min))
     (while (search-forward "(checkpoint)" nil t)
       (replace-match "!!!" nil t)))
