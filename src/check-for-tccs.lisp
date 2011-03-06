@@ -250,20 +250,20 @@
   (check-for-recursive-tcc expr))
 
 (defmethod check-for-tccs* ((ex conjunction) expected)
-  (check-for-tccs* (args1 ex) expected)
+  (check-for-tccs* (args1 ex) *boolean*)
   (let ((*tcc-conditions* (push-tcc-condition (args1 ex) *tcc-conditions*)))
-    (check-for-tccs* (args2 ex) expected)))
+    (check-for-tccs* (args2 ex) *boolean*)))
 
 (defmethod check-for-tccs* ((ex disjunction) expected)
-  (check-for-tccs* (args1 ex) expected)
+  (check-for-tccs* (args1 ex) *boolean*)
   (let ((*tcc-conditions* (push-tcc-condition (make!-negation (args1 ex))
 					     *tcc-conditions*)))
-    (check-for-tccs* (args2 ex) expected)))
+    (check-for-tccs* (args2 ex) *boolean*)))
 
 (defmethod check-for-tccs* ((ex implication) expected)
-  (check-for-tccs* (args1 ex) expected)
+  (check-for-tccs* (args1 ex) *boolean*)
   (let ((*tcc-conditions* (push-tcc-condition (args1 ex) *tcc-conditions*)))
-    (check-for-tccs* (args2 ex) expected)))
+    (check-for-tccs* (args2 ex) *boolean*)))
 
 (defmethod check-for-tccs* ((expr branch) expected)
   (let ((econd (condition expr))
