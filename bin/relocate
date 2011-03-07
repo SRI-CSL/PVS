@@ -12,6 +12,6 @@ sed -e "s,^PVSPATH=.*$,PVSPATH=$PWD," < pvsio > tmp.$$
 mv tmp.$$ pvsio
 sed -e "s,^PVSPATH=.*$,PVSPATH=$PWD," < proveit > tmp.$$
 mv tmp.$$ proveit
-sed -e "s,^PVSPATH=.*$,PVSPATH=$PWD," < provethem > tmp.$$
+sed -e "s,^\$PVSPATH=.*$,\$PVSPATH=\"$PWD\";," < provethem > tmp.$$
 mv tmp.$$ provethem
 chmod a+x pvs pvsio proveit provethem
