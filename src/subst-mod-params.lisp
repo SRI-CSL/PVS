@@ -1122,14 +1122,16 @@
     (if act
 	(type-value act)
 	(let ((stype (subst-mod-params* (supertype type) modinst bindings))
-	      (spred (subst-mod-params* (predicate type) modinst bindings)))
+	      (spred (beta-reduce (subst-mod-params* (predicate type)
+						     modinst bindings))))
 	  (if (everywhere-true? spred)
 	      stype
-	      (lcopy type
-		:supertype stype
-		:predicate (if (eq spred (predicate type))
-			       spred
-			       (pseudo-normalize spred))))))))
+	      (let ((pred (if (eq spred (predicate type))
+			      spred
+			      (pseudo-normalize spred))))
+		(lcopy type
+		  :supertype stype
+		  :predicate pred)))))))
 
 (defmethod formal-subtype-binding-match (subtype (formal formal-subtype-decl))
   (tc-eq subtype (type-value formal)))
