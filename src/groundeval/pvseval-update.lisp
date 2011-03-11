@@ -1,4 +1,3 @@
-
 ;; --------------------------------------------------------------------
 ;; PVS
 ;; Copyright (C) 2006, SRI International.  All Rights Reserved.
@@ -1881,7 +1880,8 @@
 (defmethod pvs2cl-lisp-type* ((type subtype))
   (cond ((tc-eq type *naturalnumber*) '(integer 0))
 	((tc-eq type *integer*) 'integer)
-	(t (let ((sub (subrange-index type)))
+	((subtype-of? type *integer*)
+	 (let ((sub (subrange-index type)))
 	     (if sub
 		 (if (and (integerp (car sub))
 			  (integerp (cadr sub))
@@ -1891,7 +1891,8 @@
 			      most-positive-fixnum))
 		     'fixnum
 		     `(integer ,@sub))
-		 (pvs2cl-lisp-type* (supertype type)))))))
+		 (pvs2cl-lisp-type* (supertype type)))))
+	(t (pvs2cl-lisp-type* (supertype type)))))
 
 (defmethod pvs2cl-lisp-type* ((type adt-type-name))
   (cond ((eq (id type) '|list|)
