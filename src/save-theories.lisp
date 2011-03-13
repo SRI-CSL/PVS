@@ -1040,6 +1040,7 @@
 	   (let ((*restore-object-parent* res)
 		 (*restore-object-parent-slot* 'declaration))
 	     (restore-object* (declaration res)))
+	   (setf (type res) type)
 	   obj)
 	  (t (call-next-method)))))
 
