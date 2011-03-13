@@ -2489,6 +2489,8 @@ real_props: THEORY
 
   div_cancel3: LEMMA x/n0z = y IFF x = y * n0z
 
+  div_cancel4: LEMMA x = y/n0z IFF x * n0z = y
+
   cross_mult: LEMMA (x/n0x = y/n0y) IFF (x * n0y = y * n0x)
 
   add_div: LEMMA (x/n0x) + (y/n0y) = (x * n0y + y * n0x)/(n0x * n0y)
@@ -3064,8 +3066,6 @@ both_sides_div_pos_neg_ge3: LEMMA
 
 
 %% Additional lemmas needed to fill in gaps left by real_props.
-
-  div_cancel4: LEMMA x = y/n0z IFF x * n0z = y
 
   zero_times4: LEMMA 0 = x * y IFF x = 0 OR y = 0
 
