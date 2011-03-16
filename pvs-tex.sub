@@ -40,7 +40,6 @@ IF		id	2	{\pvskey{IF}}
 
 /\		id	1	\wedge
 \/		id	1	\vee
-^		id	1	{\char94}
 ==		id	1	\equiv
 []		id	1	\Box
 <>		id	1	\Diamond
@@ -96,11 +95,11 @@ OMEGA		id	1	\Omega
 -		2	1	{#1-#2}
 -		1	1	{-#1}
 *		2	1	{#1\times#2}
-/		2	1	{#1/#2}
+/		2	1	{\frac{#1}{#2}}
 O		2	1	{#1\circ#2}
 sets.member		2	1	{(#1 \in #2)}
 sets.member		0	4	{(\star1 \in \star2)}
-sets.emptyset		0       1       {\emptyset}
+emptyset		id      1       {\emptyset}
 sets.subset?		2       1       {(#1 \subseteq #2)}
 sets.strict_subset?	2       1       {(#1 \subset #2)}
 sets.union		2       1       {(#1 \cup #2)}
@@ -109,6 +108,10 @@ sets.complement		1       1       {\overline{#1}}
 sets.difference		2       1       {(#1 \setminus #2)}
 sets.add		2	2	{(#2 \cup \{#1\})}
 sets.remove		2	2	{(#2 \setminus \{#1\})}
+sets.Union		1       1       {\bigcup #1}
+sets.Intersection	1       1       {\bigcap #1}
+indexed_sets.IUnion		1       1       {\bigcup #1}
+indexed_sets.IIntersection	1       1       {\bigcap #1}
 [       id      1       {\pvsbracketl}
 ]       id      1       {\pvsbracketr}
 [#      id      2       {\pvsrectypel}
@@ -125,3 +128,151 @@ sets.remove		2	2	{(#2 \setminus \{#1\})}
 :\)      id      1       {\pvslistr}
 \(#      id      2       {\pvsrecexprl}
 #\)      id      2       {\pvsrecexprr}
+
+cal_A		id	1	{\cal{A}}
+cal_B		id	1	{\cal{B}}
+cal_C		id	1	{\cal{C}}
+cal_D		id	1	{\cal{D}}
+cal_E		id	1	{\cal{E}}
+cal_F		id	1	{\cal{F}}
+cal_G		id	1	{\cal{G}}
+cal_H		id	1	{\cal{H}}
+cal_I		id	1	{\cal{I}}
+cal_J		id	1	{\cal{J}}
+cal_K		id	1	{\cal{K}}
+cal_L		id	1	{\cal{L}}
+cal_M		id	1	{\cal{M}}
+cal_N		id	1	{\cal{N}}
+cal_O		id	1	{\cal{O}}
+cal_P		id	1	{\cal{P}}
+cal_Q		id	1	{\cal{Q}}
+cal_R		id	1	{\cal{R}}
+cal_S		id	1	{\cal{S}}
+cal_T		id	1	{\cal{T}}
+cal_U		id	1	{\cal{U}}
+cal_V		id	1	{\cal{V}}
+cal_W		id	1	{\cal{W}}
+cal_X		id	1	{\cal{X}}
+cal_Y		id	1	{\cal{Y}}
+cal_Z		id	1	{\cal{Z}}
+
+^		2	1	{\pvssuperscript{#1}{#2}}
+expt		2	1	{\pvssuperscript{#1}{#2}}
+sq		1	1	{\pvssuperscript{#1}{2}}
+sqrt		1	1	{\sqrt{#1}}
+root		2	1	{\sqrt[#2]{#1}}
+abs		1	1	{\left|{#1}\right|}
+floor		1	1	{\lfloor{#1}\rfloor}
+ceiling		1	1	{\lceil{#1}\rceil}
+sigma		2	1	{\sum_{#1} {#2}}
+sigma		3	1	{\sum_{#1}^{#2} #3}
+open		2	1	(#1,~#2)
+closed		2	1	{\left[#1,~#2\right]}
+open_inf	1	1	(#1,~\infty)
+inf_open	1	1	(-\infty,~#1)
+closed_inf	1	1	{\left[#1,~\infty\right)}
+inf_closed	1	1	{\left(-\infty,~#1\right]}
+phi		1	1	{\pvssubscript{\phi}{#1}}
+lambda_		id	1	{\lambda}
+norm            1       1       {\left||{#1}\right||}
+integral	1	1	{\int#1}
+integral	2	1	{\int_{#1} #2}
+integral	3	1	{\int_{#1}^{#2} #3}
+integral	id	1	{\int}
+dot		2	1	{#1\bullet#2}
+ast             1       1       {{#1}^{\ast}}
+plus            1       1       {{#1}^{+}}
+minus           1       1       {{#1}^{-}}
+ast             2       1       {#1\ast#2}
+x               2       1       {#1\times#2}
+
+P		1	1	{\mathbb{P}(#1)}
+P		2	1	{\mathbb{P}(#1~|~#2)}
+E		1	1	{\mathbb{E}(#1)}
+E		2	1	{\mathbb{E}(#1~|~#2)}
+
+complex		id	1	\mathbb{C}
+nonzero_complex	id	1	{\pvssubscript{\mathbb{C}}{{\not=}0}}
+nzcomplex	id	1	{\pvssubscript{\mathbb{C}}{{\not=}0}}
+complex_i	id	1	{\imath}
+Re		1	1	{\Re(#1)}
+Im		1	1	{\Im(#1)}
+c_add		2	1	{#1+#2}
+c_neg		1	1	{-#1}
+c_sub		2	1	{#1-#2}
+c_mul		2	1	{#1\times#2}
+c_div		2	1	{#1/#2}
+conjugate	1	1	{\overline{#1}}
+real		id	1	\mathbb{R}
+nonzero_real	id	1	{\pvssubscript{\mathbb{R}}{{\not=}0}}
+nzreal		id	1	{\pvssubscript{\mathbb{R}}{{\not=}0}}
+nonneg_real	id	1	{\pvssubscript{\mathbb{R}}{{\geq}0}}
+nnreal		id	1	{\pvssubscript{\mathbb{R}}{{\geq}0}}
+nonpos_real	id	1	{\pvssubscript{\mathbb{R}}{{\leq}0}}
+npreal		id	1	{\pvssubscript{\mathbb{R}}{{\leq}0}}
+posreal		id	1	{\pvssubscript{\mathbb{R}}{{>}0}}
+negreal		id	1	{\pvssubscript{\mathbb{R}}{{<}0}}
+rational	id	1	\mathbb{Q}
+rat		id	1	\mathbb{Q}
+nonzero_rational	id	1	{\pvssubscript{\mathbb{Q}}{{\not=}0}}
+nzrat		id	1	{\pvssubscript{\mathbb{Q}}{{\not=}0}}
+nonneg_rat	id	1	{\pvssubscript{\mathbb{Q}}{{\geq}0}}
+nnrat		id	1	{\pvssubscript{\mathbb{Q}}{{\geq}0}}
+nonpos_rat	id	1	{\pvssubscript{\mathbb{Q}}{{\leq}0}}
+nprat		id	1	{\pvssubscript{\mathbb{Q}}{{\leq}0}}
+posrat		id	1	{\pvssubscript{\mathbb{Q}}{{>}0}}
+negrat		id	1	{\pvssubscript{\mathbb{Q}}{{<}0}}
+int		id	1	\mathbb{Z}
+integer		id	1	\mathbb{Z}
+nonzero_int	id	1	{\pvssubscript{\mathbb{Z}}{{\not=}0}}
+nzint		id	1	{\pvssubscript{\mathbb{Z}}{{\not=}0}}
+nonneg_int	id	1	\mathbb{N}
+nonpos_int	id	1	{\pvssubscript{\mathbb{Z}}{{\not=}0}}
+posint		id	1	{\pvssubscript{\mathbb{N}}{{>}0}}
+negint		id	1	{\pvssubscript{\mathbb{Z}}{{<}0}}
+nat		id	1	\mathbb{N}
+naturalnumber	id	1	\mathbb{N}
+posnat		id	1	{\pvssubscript{\mathbb{N}}{{>}0}}
+
+posreals	id	1	{\pvssubscript{\mathbb{R}}{{>}0}}
+negreals	id	1	{\pvssubscript{\mathbb{R}}{{<}0}}
+nnreals		id	1	{\pvssubscript{\mathbb{R}}{{\geq}0}}
+npreals		id	1	{\pvssubscript{\mathbb{R}}{{\leq}0}}
+
+cross_product	2	1	{#1 \times #2}
+convergence	2	2	{#1 \longrightarrow #2}
+convergence?	2	2	{#1 \longrightarrow #2}
+converges_upto?	2	2	{#1 \nearrow #2}
+converges_downto?	2	2	{#1 \searrow #2}
+pointwise_convergence?	2	2	{#1 \longrightarrow #2}
+pointwise_converges_upto?	2	2	{#1 \nearrow #2}
+pointwise_converges_downto?	2	2	{#1 \searrow #2}
+
+extended_nnreal	id	1	{\pvssubscript{\overline{\mathbb{R}}}{{\geq}0}}
+x_inf		1	1	{\pvsid{inf}(#1)}
+x_sup		1	1	{\pvsid{sup}(#1)}
+x_sigma		3	1	{\sum_{#1}^{#2} #3}
+x_sum		1	1	{\sum #1}
+x_limit		1	1	{\pvsid{limit}(#1)}
+x_add		2	1	{#1 + #2}
+x_times		2	1	{#1 \times #2}
+x_eq		2	1	{#1 = #2}
+x_le		2	1	{#1 \leq #2}
+x_lt		2	1	{#1 < #2}
+
+ae_0?		1	3	{#1 = 0~\mbox{\it a.e.}}
+ae_nonneg?	1	3	{#1 \geq 0~\mbox{\it a.e.}}
+ae_pos?		1	3	{#1> 0~\mbox{\it a.e.}}
+ae_le?		2	3	{#1 \leq #2~\mbox{\it a.e.}}
+ae_eq?		2	3	{#1 = #2~\mbox{\it a.e.}}
+
+ae_convergence?	2	3	{#1 \longrightarrow #2~\mbox{\it a.e.}}
+ae_increasing?	1	3	{\pvsid{increasing?}(#1)~\mbox{\it a.e.}}
+ae_decreasing?	1	3	{\pvsid{decreasing?}(#1)~\mbox{\it a.e.}}
+
+generated_sigma_algebra		1	1	{{\cal S}(#1)}
+generated_subset_algebra	1	1	{{\cal A}(#1)}
+
+sigma_times	2	1	{#1 \times #2}
+fm_times	2	1	{#1 \times #2}
+m_times		2	1	{#1 \times #2}
