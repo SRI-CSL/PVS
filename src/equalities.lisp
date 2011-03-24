@@ -2047,6 +2047,16 @@
    (declared-type t1)
    (positive-types (adt t1))))
 
+(defmethod subtype-of*? ((t1 adt-type-name) (t2 adt-type-name))
+  (or (call-next-method)
+      (and (eq (adt t1) (adt t2))
+	   (adt-subtype-of?
+	    (actuals (module-instance t1))
+	    (actuals (module-instance t2))
+	    (formals-sans-usings (adt t1))
+	    t1
+	    (positive-types (adt t1))))))
+
 (defun adt-subtype-of? (acts1 acts2 formals type postypes)
   (cond ((null acts1) t)
 	((null acts2) nil)
