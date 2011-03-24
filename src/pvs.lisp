@@ -258,7 +258,7 @@
 	    (nreverse (cons "" paths))
 	    (if (= spos 0)
 		(list pathstr)
-		(nreverse paths))))))
+		(nreverse (cons (subseq pathstr spos) paths)))))))
 
 (defvar *pvs-patches-loaded* nil)
 
