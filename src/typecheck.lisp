@@ -1564,7 +1564,8 @@
        (not (from-prelude? (declaration ex)))))
 
 (defun set-visibility (decl)
-  (unless (or (typep decl '(or var-decl field-decl inline-recursive-type))
+  (unless (or (typep decl '(or importing var-decl field-decl
+			       inline-recursive-type))
 	      (and (type-def-decl? decl)
 		   (enumtype? (type-expr decl))))
     (setf (visible? decl) t)))
