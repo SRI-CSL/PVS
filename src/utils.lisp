@@ -3842,11 +3842,15 @@ space")
 ;;; sexp converts a given object to a list; 
 
 (defmethod sexp ((prinfo proof-info))
-  (with-slots (id description create-date run-date script status refers-to
-		  real-time run-time interactive? decision-procedure-used)
+  (with-slots (id description create-date ;;run-date
+		  script ;;status
+		  refers-to ;;real-time run-time interactive?
+		  decision-procedure-used)
       prinfo
-    (list id description create-date run-date script status (sexp refers-to)
-	  real-time run-time interactive? decision-procedure-used)))
+    (list id description create-date ;;run-date
+	  script ;;status
+	  (sexp refers-to) ;;real-time run-time interactive?
+	  decision-procedure-used)))
 
 (defmethod sexp ((list list))
   (mapcar #'sexp list))
