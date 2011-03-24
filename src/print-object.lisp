@@ -257,8 +257,8 @@ print object produces an error, and won't allow inspection of the object.")
   (if *debugging-print-object*
       (call-next-method)
       (format stream "<#PROOF-INFO~@[ ~a:~] ~a>"
-	(id prinfo) (if (run-date prinfo)
-			(date-string (run-date prinfo))))))
+	(id prinfo) (if (description prinfo)
+			(description prinfo)))))
 
 (defmethod print-object ((pt store-print-type) stream)
   (if *debugging-print-object*
