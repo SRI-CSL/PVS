@@ -145,6 +145,21 @@
 (defmethod beta-reduce* ((te dep-binding))
   (lcopy te 'type (beta-reduce* (type te))))
 
+(defmethod beta-reduce* ((te struct-sub-recordtype))
+  (let ((btype (beta-reduce* (type te)))
+	(fields (beta-reduce* (fields te))))
+    (if (eq fields (fields te))
+	(lcopy te 'type btype)
+	(copy te
+	  'type btype
+	  'fields (sort-fields fields
+			       (dependent-fields? fields))))))
+
+(defmethod beta-reduce* ((te struct-sub-tupletype))
+  (lcopy te
+    'type (beta-reduce* (type te))
+    'types (beta-reduce* (types te))))
+
 (defmethod beta-reduce* :around ((expr expr))
   (let ((nexpr (call-next-method)))
     (if (typep expr '(or bind-decl number-expr))
