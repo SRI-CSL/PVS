@@ -554,7 +554,8 @@
 		   (unless (type newsubst-term)
 		     (set-type newsubst-term (type instance)))
 		   (if (or (tc-eq newsubst-term instance)
-			   (assert-test-eq newsubst-term instance));;NSH(2-20-10)
+			   (and (null *no-match-assert-test*)
+				(assert-test-eq newsubst-term instance)));;NSH(2-20-10)
 		       (let* ((subst
 			       (if (type subst-term)
 				   subst
