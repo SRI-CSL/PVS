@@ -150,7 +150,8 @@
       (multiple-value-bind
 	  (subst modsubst)
 	  (if (not check) 'fail
-	      (let ((lhs (split-rewrite (car forms) subvars dir)))
+	      (let ((lhs (split-rewrite (car forms) subvars dir))
+		    (*no-match-assert-test* t))
 		(find-match lhs
 			    (formula (car sforms)) nil
 			    in-subst order)));;NSH(10.10.94)
