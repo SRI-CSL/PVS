@@ -997,7 +997,8 @@
 
 (defun add-new-inlined-decl (decl lastdecl part)
   (case part
-    (formals (setf (visible? decl) nil)
+    (formals (when (declaration? decl)
+	       (setf (visible? decl) nil))
 	     (setf (theory-formal-decls (current-theory))
 		   (let* ((fml-part (theory-formal-decls (current-theory)))
 			  (rest (cdr (memq lastdecl fml-part))))
