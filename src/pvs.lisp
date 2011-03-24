@@ -1207,9 +1207,9 @@
   (setf (proofs tcc-decl)
 	(list (mk-proof-info
 	       (makesym "~a-1" (id tcc-decl))
-	       nil (get-universal-time) nil
+	       nil (get-universal-time)
 	       (list "" (list (default-tcc-proof tcc-decl)) nil nil)
-	       nil nil nil nil nil)))
+	       nil)))
   (setf (default-proof tcc-decl) (car (proofs tcc-decl))))
 
 (defmethod default-tcc-proof (tcc-decl)
