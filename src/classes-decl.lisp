@@ -860,14 +860,14 @@
   id
   description
   create-date
-  run-date
+  run-date ;; Not saved
   script
-  status
   refers-to
-  real-time
-  run-time
-  interactive?
-  decision-procedure-used)
+  real-time ;; Not saved
+  run-time ;; Not saved
+  interactive? ;; Not saved
+  decision-procedure-used
+  status) ;; Not saved in the proof file, but in the .pvscontext
 
 (
  #-sbcl progn
