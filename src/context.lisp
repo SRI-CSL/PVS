@@ -1589,17 +1589,19 @@ pvs-strategies files.")
       (cond ((integerp (cadr prf-entry))
 	     ;; Already in multiple-proof form, but may need to be lower-cased
 	     (let ((wrong-case? #+allegro
-				(memq (nth 9 (car (cddr prf-entry)))
-				      '(NIL T))
+				(let ((ent1 (car (cddr prf-entry))))
+				  (memq (nth (if (> (length ent1) 6) 9 5) ent1)
+					'(T SHOSTAK NIL)))
 				#-allegro nil))
 	       (setf (proofs decl)
-		     (mapcar #'(lambda (p)
-				 (apply #'mk-proof-info
-				   (if wrong-case?
-				       (cons (car p)
-					     (convert-proof-form-to-lowercase
-					      (cdr p)))
-				       p)))
+		     (mapcar #'(lambda (pr)
+				 (let ((p (get-smaller-proof-info pr)))
+				   (apply #'mk-proof-info
+				     (if wrong-case?
+					 (cons (car p)
+					       (convert-proof-form-to-lowercase
+						(cdr p)))
+					 p))))
 		       (cddr prf-entry))))
 	     (setf (default-proof decl)
 		   (nth (cadr prf-entry) (proofs decl)))
@@ -1630,6 +1632,11 @@ pvs-strategies files.")
 		   (push prinfo (proofs decl))
 		   (setf (default-proof decl) prinfo))))))
       prf-entry)))
+
+(defun get-smaller-proof-info (pr)
+  (if (> (length pr) 6)
+      (list (nth 0 pr) (nth 1 pr) (nth 2 pr) (nth 4 pr) (nth 6 pr) (nth 10 pr))
+      pr))
 
 (defun convert-proof-form-to-lowercase (proof-form)
   (cond ((symbolp proof-form)
