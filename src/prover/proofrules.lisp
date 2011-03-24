@@ -273,6 +273,39 @@
 ;;NSH:typecheck needed since mk-if-expr used below.
 
 
+(defun make-top-level-if-expr (expr conds)
+  (make-top-level-if-expr* expr conds nil nil))
+
+(defmethod make-top-level-if-expr* ((expr branch) conds trueconds falseconds)
+  (if (consp conds)
+      (if (consp (cdr conds))	    ;;top-level conditions remain
+	  (if (consp (car conds))   ;;negated condition
+	      (if (tc-eq (caar conds) (condition expr))
+		  (make!-if-expr (condition expr)
+				 (then-part expr)
+				 (make-top-level-if-expr* (else-part expr)
+							  (cdr conds)
+							  trueconds
+							  (cons (condition expr) falseconds)))
+		  ;;shouldn't happen
+		  expr)
+	      (if (tc-eq (car conds) (condition expr))
+		  (make!-if-expr (condition expr)
+				 (make-top-level-if-expr* (then-part expr) (cdr conds)
+							  (cons (condition expr) trueconds)
+							  falseconds)
+				 (else-part expr))
+		  expr))
+	  (make-top-if-expr expr (car conds) trueconds falseconds))
+      expr))
+
+(defmethod make-top-level-if-expr* ((expr expr) conds trueconds falseconds)
+  (if (and (consp conds)(consp (cdr conds)))
+      expr ;;expr should be a branch here
+      (if (consp conds)
+	  (make-top-if-expr expr (car conds) trueconds falseconds)
+	  expr)))
+
 
 (defun lift-if (ps sform)
   (declare (ignore ps))
@@ -283,7 +316,7 @@
 	  (make-hash-table :test #'eq));;faster than pvs-hash.(NSH:10.19.94)
 ;	  (make-pvs-hash-table :hashfn #'pvs-sxhash
 ;			       :test #'tc-eq)
-	 (if-expr (make-top-if-expr body conds )))
+	 (if-expr (make-top-level-if-expr body conds )))
     (if (null conds)
 	(if (typep body 'cases-expr)
 	    (values '? (lcopy sform 'formula
@@ -608,13 +641,7 @@
 ;;NSH(9-10-10): Turns conditions into a if-then-else structure similar
 ;;to one returned by collect-conds. 
 (defun add-if-conditions (conditions result)
-  (if (consp conditions)
-      (if (consp (car conditions)) ;;negated condition
-	  (add-if-conditions (cdr conditions)
-			     (list (caar conditions) nil result))
-	(add-if-conditions (cdr conditions)
-			   (list (car conditions) result nil)))
-    result))
+  (nreverse (cons result conditions)))
 
 ;;NSH(9-10-10): added conditions argument to top-collect-conds to collect
 ;;top-level conditions
@@ -1663,8 +1690,11 @@ which should be fully instantiated. Please supply actual parameters.")
     (cond ((not (valid-pvs-id* name))
 	   (error-format-if "~%Error: ~a is not a valid symbol." name)
 	   (values 'X nil nil))
-	  ((resolve pc-name 'expr nil)
-	   (error-format-if "~%Error: ~a is already declared." name)
+	  ((some #'(lambda (res)
+		     (compatible? (type res) (type tc-expr)))
+		 (resolve pc-name 'expr nil))
+	   (error-format-if
+	    "~%Error: ~a is already declared with the same signature." name)
 	   (values 'X nil nil))
 	  ((freevars tc-expr)
 	   (error-format-if "~%Free variables ~a in expr = name"
