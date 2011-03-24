@@ -72,6 +72,7 @@
 (defvar *rewrite-hits* 0)
 (defvar *rewrite-misses* 0)
 (defvar *rewrite-hash* nil)
+(defvar *no-match-assert-test* nil)
 (defvar *pvs-voss-hash* nil)
 (defvar *voss-pvs-hash* nil)
 (defvar *subtype-hash* nil)
