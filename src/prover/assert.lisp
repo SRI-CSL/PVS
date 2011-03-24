@@ -3061,7 +3061,8 @@
 			    t)
 			   (if lhs
 			       (let ((*modsubst* modsubst) ;;no tccs in match
-				     (*generate-tccs* 'none))
+				     (*generate-tccs* 'none)
+				     (*no-match-assert-test* t))
 				 (values (match lhs expr nil nil)
 					 *modsubst*))
 			       'fail))
