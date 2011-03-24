@@ -185,10 +185,12 @@
   (assert (modname? modinst))
   (assert (or (null theory) (null (actuals modinst)) (eq (id theory) (id modinst))))
   (let* ((*subst-mod-params-theory* (or theory (get-theory modinst)))
-	 (formals (formals-sans-usings *subst-mod-params-theory*))
+	 (formals (unless (eq (current-theory) *subst-mod-params-theory*)
+		    (formals-sans-usings *subst-mod-params-theory*)))
 	 (*subst-mod-free-params* nil))
     (if (or (module? obj)
 	    (mappings modinst)
+	    (some #'formal-theory-decl? formals)
 	    (and (actuals modinst)
 		 (or (some #'(lambda (ofp) (memq ofp formals))
 			   (free-params obj))
@@ -307,13 +309,17 @@
 		(inv-mappings
 		 (mapcar #'(lambda (da)
 			     (cons (declaration (expr (cdr da))) (car da)))
-		   (theory-mappings formal))))
-	   ;; Now we compose the inverses of the mappings of the interpreted
-	   ;; theory and the source
-	   (append (compose-mappings inv-mappings pre-bindings)
-		   (compose-mappings inv-mappings amappings)
-		   pre-bindings
-		   bindings))))
+		   (theory-mappings formal)))
+		;; Now we compose the inverses of the mappings of the
+		;; interpreted theory and the source
+		(comp (append (compose-mappings inv-mappings pre-bindings)
+			      (compose-mappings inv-mappings amappings)
+			      pre-bindings
+			      bindings)))
+	   (dolist (imap inv-mappings)
+	     (unless (assq (car imap) comp)
+	       (push imap comp)))
+	   comp)))
 
 (defun get-theory-alias (thabbr)
   (let* ((thabbr-decl (declaration thabbr))
@@ -707,7 +713,10 @@
   (if (null bindings)
       (nreverse importings)
       (let ((importing (create-importing-for-binding
-			(caar bindings) (cdar bindings))))
+			(caar bindings)
+			(if (actual? (cdar bindings))
+			    (expr (cdar bindings))
+			    (cdar bindings)))))
 	(create-importings-for-bindings
 	 (cdr bindings)
 	 (if (and importing
@@ -716,6 +725,7 @@
 	     importings)))))
 
 (defmethod create-importing-for-binding ((decl formal-theory-decl) theory-name)
+  (assert (modname? theory-name))
   (make-instance 'importing
     :theory-name theory-name))
 
@@ -880,7 +890,9 @@
 	    ((assq decl bindings)
 	     (let ((nformals (subst-mod-params* formals modinst bindings))
 		   (nexpr (subst-mod-params* (expr (cdr (assq decl bindings)))
-					     modinst bindings)))
+					     modinst bindings))
+		   (ntype (subst-mod-params* type modinst bindings)))
+	       (assert (fully-instantiated? ntype))
 	       (copy decl
 		 :formals nformals
 		 :definition (if nformals
@@ -890,18 +902,20 @@
 					      (mapcar #'mk-name-expr fms))
 				    nformals))
 				 nexpr)
-		 :type (subst-mod-params* type modinst bindings)
+		 :type ntype
 		 :declared-type (subst-mod-params* declared-type modinst bindings)
 		 :generated-by decl
 		 :semi t)))
-	    (t (lcopy decl
-		 :formals (subst-mod-params* formals modinst bindings)
-		 :declared-type (subst-mod-params* declared-type modinst bindings)
-		 :type (subst-mod-params* type modinst bindings)
-		 :definition (subst-mod-params* definition modinst bindings)
-		 :def-axiom (subst-mod-params* def-axiom modinst bindings)
-		 :generated-by decl
-		 :semi t))))))
+	    (t (let ((ntype (subst-mod-params* type modinst bindings)))
+		 (assert (fully-instantiated? ntype))
+		 (lcopy decl
+		   :formals (subst-mod-params* formals modinst bindings)
+		   :declared-type (subst-mod-params* declared-type modinst bindings)
+		   :type ntype
+		   :definition (subst-mod-params* definition modinst bindings)
+		   :def-axiom (subst-mod-params* def-axiom modinst bindings)
+		   :generated-by decl
+		   :semi t)))))))
 
 (defmethod subst-mod-params* ((decl def-decl) modinst bindings)
   (with-slots (formals declared-type type definition declared-measure ordering) decl
