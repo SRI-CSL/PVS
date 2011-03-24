@@ -904,27 +904,29 @@
 (defmethod mk-mapping-rhs ((ex mapping-rhs))
   ex)
 
-(defun mk-proof-info (id description create-date run-date script status
-			 refers-to real-time run-time interactive?
+(defun mk-proof-info (id description create-date
+			 ;;run-date
+			 script ;;status
+			 refers-to ;;real-time run-time interactive?
 			 &optional decision-procedure)
   (make-instance 'proof-info
     :id id
     :description description
     :create-date create-date
-    :run-date run-date
+    ;;:run-date run-date
     :script (if (= (length script) 3)
 		(append script (list nil))
 		script)
-    :status status
+    ;;:status status
     :refers-to (typecase (car refers-to)
 		 (declaration refers-to)
 		 (declaration-entry
 		  (mapcar #'get-declaration-entry-decl refers-to))
 		 (t (mapcar #'get-referenced-declaration
 		      (remove-if #'null refers-to))))
-    :real-time real-time
-    :run-time run-time
-    :interactive? interactive?
+    ;;:real-time real-time
+    ;;:run-time run-time
+    ;;:interactive? interactive?
     :decision-procedure-used decision-procedure))
 
 (defun make-proof-info (script &optional id description)
@@ -938,8 +940,7 @@
     :script (if (= (length script) 3)
 		(append script (list nil))
 		script)
-    :create-date (get-universal-time)
-    :status 'unchecked))
+    :create-date (get-universal-time)))
 
 (defun make-recordtype (fields)
   #+pvsdebug (assert (every@ #'(lambda (fd)
