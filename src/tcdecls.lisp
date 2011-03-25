@@ -44,6 +44,14 @@
       (typecase decl
 	(declaration (typecheck-decl decl))
 	(importing (tcdebug "~%    Processing importing")
+		   (dolist (d (generated decl))
+		     (when (tcc-decl? d)
+		       (if (memq d (assuming (current-theory)))
+			   (setf (assuming (current-theory))
+				 (delete d (assuming (current-theory))))
+			   (setf (theory (current-theory))
+				 (delete d (theory (current-theory)))))))
+		   (setf (generated decl) nil)
 		   (let ((*generating-adt* nil))
 		     (unwind-protect
 			 (typecheck* decl nil nil nil)
