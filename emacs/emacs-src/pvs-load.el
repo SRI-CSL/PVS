@@ -89,8 +89,8 @@
 (load "prooflite" nil noninteractive) ; ProofLite
 
 (or (let ((load-path pvs-original-load-path))
-      (require 'newcomment nil t))
-    (require 'newcomment))
+      (load "newcomment" t))
+    (load "newcomment"))
 (put 'comment-region 'pvs-command 'editing)
 (global-set-key "\C-c;" 'comment-region)
 
