@@ -30,8 +30,8 @@
 ;; Try to get the default tcl, if it exists
 ;; Otherwise get the one from the PVS path
 (or (let ((load-path pvs-original-load-path))
-      (require 'tcl nil t))
-    (require 'tcl))
+      (load "tcl" t))
+    (load "tcl"))
 
 (setq tcl-prompt-regexp "^% ")
 
