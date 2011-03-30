@@ -1986,7 +1986,10 @@ pvs-strategies files.")
 	    (format out ";;; Proof for formula ~a.~a~%"
 	      (cadr proof) (caddr proof))
 	    (let ((just (if (integerp (cadddr proof))
-			    (fifth (nth (cadddr proof) (cddddr proof)))
+			    (let ((prf (nth (cadddr proof) (cddddr proof))))
+			      (if (> (length prf) 9)
+				  (fifth prf)
+				  (fourth prf)))
 			    (cdddr proof))))
 	      (write (editable-justification just)
 		     :stream out :pretty t :escape t :level nil :length nil
