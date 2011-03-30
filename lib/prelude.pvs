@@ -4256,6 +4256,20 @@ finite_sets[T: TYPE]: THEORY
   bij_exists      : COROLLARY (EXISTS (f: [(S) -> below(card(S))]):
                                        bijective?(f))
 
+  bij(S: finite_set): {f:[(S) -> below(card(S))] | bijective?(f)}
+
+  ibij(S: non_empty_finite_set): {f:[below(card(S)) -> (S)] | bijective?(f)} =
+       inverse(bij(S))
+
+  bij_ibij: LEMMA FORALL (S: non_empty_finite_set, ii: below(card(S))):
+      bij(S)(ibij(S)(ii)) = ii
+
+  ibij_bij: LEMMA FORALL (S: non_empty_finite_set, x:T):
+      S(x) IMPLIES ibij(S)(bij(S)(x)) = x
+
+  is_finite_exists_N: LEMMA FORALL (g: [below[N] -> T]):
+            is_finite({r: T | EXISTS (n: below[N]): r = g(n)})
+
 %  card_n_has_n    : THEOREM card(S) >= n IMPLIES
 %                              (EXISTS (X: [below[N] -> T]):
 %                                   (FORALL (i: below[N]): S(X(i))) AND
