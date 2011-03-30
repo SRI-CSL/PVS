@@ -1,13 +1,12 @@
 (finite_sets_nat
  (finite_bounded 0
-  (finite_bounded-1 nil 3338290622 3338290695
+  (finite_bounded-1 nil 3338290622
    ("" (skolem!)
     (("" (expand "is_finite")
       (("" (inst + "N!1" "LAMBDA (x: ({j: nat | j < N!1})): x")
         (("" (expand "injective?") (("" (skosimp) nil nil)) nil)) nil))
       nil))
     nil)
-   proved
    ((is_finite const-decl "bool" finite_sets nil)
     (injective? const-decl "bool" functions nil)
     (below type-eq-decl nil nat_types nil)
@@ -26,10 +25,10 @@
      nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil))
-   72270 430 t shostak))
+   shostak))
  (card_bounded_TCC1 0
-  (card_bounded_TCC1-1 nil 3338290605 3338290735
-   ("" (skolem!) (("" (rewrite "finite_bounded") nil nil)) nil) proved
+  (card_bounded_TCC1-1 nil 3338290605
+   ("" (skolem!) (("" (rewrite "finite_bounded") nil nil)) nil)
    ((finite_bounded formula-decl nil finite_sets_nat nil)
     (number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -45,9 +44,9 @@
     (bool nonempty-type-eq-decl nil booleans nil)
     (>= const-decl "bool" reals nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil))
-   16343 160 t nil))
+   nil))
  (card_bounded 0
-  (card_bounded-1 nil 3338290742 3338290845
+  (card_bounded-1 nil 3338290742
    ("" (skolem!)
     (("" (use "finite_bounded")
       (("" (rewrite "card_bij")
@@ -56,7 +55,6 @@
         nil))
       nil))
     nil)
-   proved
    ((finite_bounded formula-decl nil finite_sets_nat nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
@@ -80,9 +78,9 @@
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
     (card_bij formula-decl nil finite_sets nil))
-   17401 440 t shostak))
+   shostak))
  (finite_bounded_subset 0
-  (finite_bounded_subset-1 nil 3338290861 3338290939
+  (finite_bounded_subset-1 nil 3338290861
    ("" (skolem!)
     (("" (use "finite_bounded")
       (("" (lemma "finite_subset")
@@ -96,7 +94,6 @@
         nil))
       nil))
     nil)
-   proved
    ((finite_bounded formula-decl nil finite_sets_nat nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
@@ -121,12 +118,13 @@
     (pred type-eq-decl nil defined_types nil)
     (member const-decl "bool" sets nil)
     (subset? const-decl "bool" sets nil)
+    (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
+     sets_lemmas nil)
     (finite_subset formula-decl nil finite_sets nil))
-   77378 920 t shostak))
+   shostak))
  (card_bounded_subset_TCC1 0
-  (card_bounded_subset_TCC1-1 nil 3338290605 3338290971
+  (card_bounded_subset_TCC1-1 nil 3338290605
    ("" (skolem!) (("" (rewrite "finite_bounded_subset") nil nil)) nil)
-   proved
    ((finite_bounded_subset formula-decl nil finite_sets_nat nil)
     (number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -143,9 +141,9 @@
     (>= const-decl "bool" reals nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (pred type-eq-decl nil defined_types nil))
-   9096 160 t nil))
+   nil))
  (card_bounded_subset 0
-  (card_bounded_subset-1 nil 3338290974 3338291189
+  (card_bounded_subset-1 nil 3338290974
    ("" (skolem!)
     (("" (use "finite_bounded")
       (("" (use "finite_bounded_subset")
@@ -164,7 +162,6 @@
         nil))
       nil))
     nil)
-   proved
    ((finite_bounded formula-decl nil finite_sets_nat nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
@@ -188,14 +185,16 @@
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
     (finite_set type-eq-decl nil finite_sets nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
     (subset? const-decl "bool" sets nil)
     (member const-decl "bool" sets nil)
     (card_subset formula-decl nil finite_sets nil)
     (pred type-eq-decl nil defined_types nil)
     (finite_bounded_subset formula-decl nil finite_sets_nat nil))
-   50018 1180 t shostak))
+   shostak))
  (finite_nat_below 0
-  (finite_nat_below-1 nil 3338291200 3338291286
+  (finite_nat_below-1 nil 3338291200
    ("" (skolem!)
     (("" (expand "is_finite")
       ((""
@@ -207,9 +206,10 @@
         nil))
       nil))
     nil)
-   proved
    ((is_finite const-decl "bool" finite_sets nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
     (injective? const-decl "bool" functions nil)
     (below type-eq-decl nil nat_types nil)
     (number nonempty-type-decl nil numbers nil)
@@ -232,11 +232,10 @@
     (FALSE const-decl "bool" booleans nil)
     (extend const-decl "R" extend nil)
     (TRUE const-decl "bool" booleans nil))
-   86002 680 t shostak))
+   shostak))
  (card_nat_below_TCC1 0
-  (card_nat_below_TCC1-1 nil 3338290605 3338291308
+  (card_nat_below_TCC1-1 nil 3338290605
    ("" (skolem!) (("" (rewrite "finite_nat_below") nil nil)) nil)
-   proved
    ((finite_nat_below formula-decl nil finite_sets_nat nil)
     (number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -252,9 +251,9 @@
     (bool nonempty-type-eq-decl nil booleans nil)
     (>= const-decl "bool" reals nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil))
-   6143 170 t nil))
+   nil))
  (card_nat_below 0
-  (card_nat_below-1 nil 3338291312 3338291467
+  (card_nat_below-1 nil 3338291312
    ("" (skolem!)
     (("" (rewrite "card_bij")
       ((""
@@ -278,7 +277,6 @@
         nil))
       nil))
     nil)
-   proved
    ((card_bij formula-decl nil finite_sets nil)
     (set type-eq-decl nil sets nil)
     (is_finite const-decl "bool" finite_sets nil)
@@ -303,15 +301,17 @@
     (>= const-decl "bool" reals nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
     (bijective? const-decl "bool" functions nil)
     (surjective? const-decl "bool" functions nil)
     (y!1 skolem-const-decl "below[n!1]" finite_sets_nat nil)
     (injective? const-decl "bool" functions nil)
     (below type-eq-decl nil nat_types nil)
     (n!1 skolem-const-decl "nat" finite_sets_nat nil))
-   154897 1890 t shostak))
+   shostak))
  (finite_nat_upto 0
-  (finite_nat_upto-1 nil 3338291489 3338291540
+  (finite_nat_upto-1 nil 3338291489
    ("" (skolem!)
     (("" (expand "is_finite")
       ((""
@@ -323,9 +323,14 @@
         nil))
       nil))
     nil)
-   proved
    ((is_finite const-decl "bool" finite_sets nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
     (injective? const-decl "bool" functions nil)
     (below type-eq-decl nil nat_types nil)
     (number nonempty-type-decl nil numbers nil)
@@ -350,12 +355,13 @@
     (TRUE const-decl "bool" booleans nil)
     (< const-decl "bool" reals nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
-    (+ const-decl "[numfield, numfield -> numfield]" number_fields
-       nil))
-   50929 960 t shostak))
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil))
+   shostak))
  (card_nat_upto_TCC1 0
-  (card_nat_upto_TCC1-1 nil 3338290605 3338291563
-   ("" (skolem!) (("" (rewrite "finite_nat_upto") nil nil)) nil) proved
+  (card_nat_upto_TCC1-1 nil 3338290605
+   ("" (skolem!) (("" (rewrite "finite_nat_upto") nil nil)) nil)
    ((finite_nat_upto formula-decl nil finite_sets_nat nil)
     (number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -371,9 +377,9 @@
     (bool nonempty-type-eq-decl nil booleans nil)
     (>= const-decl "bool" reals nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil))
-   8112 160 t nil))
+   nil))
  (card_nat_upto 0
-  (card_nat_upto-1 nil 3338291705 3338291777
+  (card_nat_upto-1 nil 3338291705
    ("" (skolem!)
     (("" (rewrite "card_bij")
       ((""
@@ -397,8 +403,9 @@
         nil))
       nil))
     nil)
-   proved
-   ((card_bij formula-decl nil finite_sets nil)
+   ((nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (card_bij formula-decl nil finite_sets nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (set type-eq-decl nil sets nil)
@@ -424,6 +431,12 @@
     (>= const-decl "bool" reals nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
     (bijective? const-decl "bool" functions nil)
     (surjective? const-decl "bool" functions nil)
     (y!1 skolem-const-decl "below[1 + n!1]" finite_sets_nat nil)
@@ -431,9 +444,9 @@
     (below type-eq-decl nil nat_types nil)
     (< const-decl "bool" reals nil)
     (n!1 skolem-const-decl "nat" finite_sets_nat nil))
-   71906 1500 t shostak))
+   shostak))
  (finite_nat_subrange 0
-  (finite_nat_subrange-1 nil 3338291793 3338291844
+  (finite_nat_subrange-1 nil 3338291793
    ("" (skolem!)
     (("" (expand "is_finite")
       ((""
@@ -447,9 +460,14 @@
         nil))
       nil))
     nil)
-   proved
    ((is_finite const-decl "bool" finite_sets nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
     (injective? const-decl "bool" functions nil)
     (below type-eq-decl nil nat_types nil)
     (number nonempty-type-decl nil numbers nil)
@@ -477,13 +495,13 @@
     (TRUE const-decl "bool" booleans nil)
     (< const-decl "bool" reals nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
-    (+ const-decl "[numfield, numfield -> numfield]" number_fields
-       nil))
-   51502 980 t shostak))
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil))
+   shostak))
  (card_nat_subrange_TCC1 0
-  (card_nat_subrange_TCC1-1 nil 3338290605 3338291870
+  (card_nat_subrange_TCC1-1 nil 3338290605
    ("" (skolem!) (("" (rewrite "finite_nat_subrange") nil nil)) nil)
-   proved
    ((finite_nat_subrange formula-decl nil finite_sets_nat nil)
     (number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -499,9 +517,9 @@
     (bool nonempty-type-eq-decl nil booleans nil)
     (>= const-decl "bool" reals nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil))
-   6783 160 t nil))
+   nil))
  (card_nat_subrange 0
-  (card_nat_subrange-1 nil 3338291877 3338292115
+  (card_nat_subrange-1 nil 3338291877
    ("" (skolem!)
     (("" (rewrite "card_bij")
       (("1"
@@ -532,8 +550,14 @@
        ("2" (flatten) (("2" (assert) nil nil)) nil))
       nil))
     nil)
-   proved
    ((IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (int_plus_int_is_int application-judgement "int" integers nil)
+    (minus_odd_is_odd application-judgement "odd_int" integers nil)
     (card_bij formula-decl nil finite_sets nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (IF const-decl "[boolean, T, T -> T]" if_def nil)
@@ -565,14 +589,18 @@
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (bijective? const-decl "bool" functions nil)
     (surjective? const-decl "bool" functions nil)
+    (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
+     integers nil)
     (y!1 skolem-const-decl
      "below[IF i!1 <= j!1 THEN 1 - i!1 + j!1 ELSE 0 ENDIF]"
      finite_sets_nat nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
     (injective? const-decl "bool" functions nil)
     (below type-eq-decl nil nat_types nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
-    (i!1 skolem-const-decl "nat" finite_sets_nat nil)
+    (< const-decl "bool" reals nil)
     (j!1 skolem-const-decl "nat" finite_sets_nat nil)
-    (< const-decl "bool" reals nil))
-   238391 4540 t shostak)))
+    (i!1 skolem-const-decl "nat" finite_sets_nat nil))
+   shostak)))
 

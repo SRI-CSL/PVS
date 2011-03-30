@@ -1,14 +1,14 @@
 (prelude_aux
  (rest_emptyset_TCC1 0
-  (rest_emptyset_TCC1-1 nil 3338228202 3338228202
-   ("" (subtype-tcc) nil nil) proved
-   ((T formal-type-decl nil prelude_aux nil)
+  (rest_emptyset_TCC1-1 nil 3338228202 ("" (subtype-tcc) nil nil)
+   ((finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (T formal-type-decl nil prelude_aux nil)
     (member const-decl "bool" sets nil)
     (empty? const-decl "bool" sets nil)
     (nonempty? const-decl "bool" sets nil))
-   86 60 nil nil))
+   nil))
  (rest_emptyset 0
-  (rest_emptyset-1 nil 3338228215 3338228337
+  (rest_emptyset-1 nil 3338228215
    ("" (skosimp)
     (("" (use "rest_empty_lem[T]")
       (("" (assert)
@@ -22,7 +22,6 @@
         nil))
       nil))
     nil)
-   proved
    ((rest_empty_lem formula-decl nil sets_lemmas nil)
     (T formal-type-decl nil prelude_aux nil)
     (set type-eq-decl nil sets nil)
@@ -33,6 +32,7 @@
     (empty? const-decl "bool" sets nil)
     (member const-decl "bool" sets nil)
     (rest const-decl "set" sets nil)
-    (emptyset_is_empty? formula-decl nil sets_lemmas nil))
-   48752 1800 t shostak)))
+    (emptyset_is_empty? formula-decl nil sets_lemmas nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil))
+   shostak)))
 

@@ -1,9 +1,8 @@
 (finite_sets_minmax
  (minrec_TCC1 0
-  (minrec_TCC1-1 nil 3338232942 3338232977
+  (minrec_TCC1-1 nil 3338232942
    ("" (skosimp)
     (("" (rewrite "card_rest") (("" (assert) nil nil)) nil)) nil)
-   proved
    ((card_rest formula-decl nil finite_sets nil)
     (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
@@ -13,10 +12,15 @@
     (NOT const-decl "[bool -> bool]" booleans nil)
     (empty? const-decl "bool" sets nil)
     (non_empty_finite_set type-eq-decl nil finite_sets nil)
-    (T formal-type-decl nil finite_sets_minmax nil))
-   18415 340 t nil))
+    (T formal-type-decl nil finite_sets_minmax nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (finite_rest application-judgement "finite_set[T]"
+     finite_sets_minmax nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   nil))
  (lt_reflexive 0
-  (lt_reflexive-1 nil 3338233032 3338233104
+  (lt_reflexive-1 nil 3338233032
    ("" (skolem!)
     (("" (typepred "<=")
       ((""
@@ -25,7 +29,6 @@
         (("" (flatten) (("" (inst?) nil nil)) nil)) nil))
       nil))
     nil)
-   proved
    ((<= formal-const-decl "(total_order?[T])" finite_sets_minmax nil)
     (total_order? const-decl "bool" orders nil)
     (pred type-eq-decl nil defined_types nil)
@@ -36,9 +39,9 @@
     (preorder? const-decl "bool" orders nil)
     (reflexive? const-decl "bool" relations nil)
     (partial_order? const-decl "bool" orders nil))
-   72542 1060 t shostak))
+   shostak))
  (lt_transitive 0
-  (lt_transitive-1 nil 3338233109 3338233145
+  (lt_transitive-1 nil 3338233109
    ("" (skosimp)
     (("" (typepred "<=")
       ((""
@@ -50,7 +53,6 @@
         nil))
       nil))
     nil)
-   proved
    ((<= formal-const-decl "(total_order?[T])" finite_sets_minmax nil)
     (total_order? const-decl "bool" orders nil)
     (pred type-eq-decl nil defined_types nil)
@@ -61,9 +63,9 @@
     (preorder? const-decl "bool" orders nil)
     (transitive? const-decl "bool" relations nil)
     (partial_order? const-decl "bool" orders nil))
-   35758 490 t shostak))
+   shostak))
  (lt_total 0
-  (lt_total-1 nil 3338233147 3338233176
+  (lt_total-1 nil 3338233147
    ("" (skosimp)
     (("" (typepred "<=")
       (("" (expand* "total_order?" "partial_order?" "dichotomous?")
@@ -71,7 +73,6 @@
         nil))
       nil))
     nil)
-   proved
    ((<= formal-const-decl "(total_order?[T])" finite_sets_minmax nil)
     (total_order? const-decl "bool" orders nil)
     (pred type-eq-decl nil defined_types nil)
@@ -81,9 +82,9 @@
     (boolean nonempty-type-decl nil booleans nil)
     (dichotomous? const-decl "bool" orders nil)
     (partial_order? const-decl "bool" orders nil))
-   29629 500 t shostak))
+   shostak))
  (lt_antisymmetric 0
-  (lt_antisymmetric-1 nil 3338233178 3338233205
+  (lt_antisymmetric-1 nil 3338233178
    ("" (skosimp)
     (("" (typepred "<=")
       (("" (expand* "total_order?" "partial_order?" "antisymmetric?")
@@ -91,7 +92,6 @@
         nil))
       nil))
     nil)
-   proved
    ((<= formal-const-decl "(total_order?[T])" finite_sets_minmax nil)
     (total_order? const-decl "bool" orders nil)
     (pred type-eq-decl nil defined_types nil)
@@ -101,9 +101,9 @@
     (boolean nonempty-type-decl nil booleans nil)
     (antisymmetric? const-decl "bool" relations nil)
     (partial_order? const-decl "bool" orders nil))
-   26519 510 t shostak))
+   shostak))
  (min_TCC1 0
-  (min_TCC1-1 nil 3338232942 3338233688
+  (min_TCC1-1 nil 3338232942
    ("" (inst + "LAMBDA SS: minrec(SS)")
     (("" (induct "SS" + "finite_set_induction_rest")
       (("1" (typepred "SS!1") (("1" (propax) nil nil)) nil)
@@ -258,19 +258,26 @@
         nil))
       nil))
     nil)
-   proved
    ((finite_set_induction_rest formula-decl nil finite_sets_inductions
      nil)
-    (member const-decl "bool" sets nil)
     (emptyset const-decl "set" sets nil)
-    (lt_reflexive formula-decl nil finite_sets_minmax nil)
+    (member const-decl "bool" sets nil)
+    (finite_emptyset name-judgement "finite_set[T]" finite_sets_minmax
+     nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (finite_rest application-judgement "finite_set[T]"
+     finite_sets_minmax nil)
+    (choose const-decl "(p)" sets nil)
     (nonempty? const-decl "bool" sets nil)
+    (lt_reflexive formula-decl nil finite_sets_minmax nil)
     (choose_rest_or formula-decl nil sets_lemmas nil)
     (lt_transitive formula-decl nil finite_sets_minmax nil)
     (lt_total formula-decl nil finite_sets_minmax nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
-    (choose const-decl "(p)" sets nil) (rest const-decl "set" sets nil)
-    (remove const-decl "set" sets nil)
+    (finite_remove application-judgement "finite_set[T]"
+     finite_sets_minmax nil)
+    (choose_is_epsilon formula-decl nil sets nil)
+    (rest const-decl "set" sets nil) (remove const-decl "set" sets nil)
     (fsmin const-decl "T" finite_sets_minmax nil)
     (epsilon_ax formula-decl nil epsilons nil)
     (minrec def-decl "T" finite_sets_minmax nil)
@@ -288,9 +295,9 @@
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
     (T formal-type-decl nil finite_sets_minmax nil))
-   472245 7400 t nil))
+   nil))
  (max_TCC1 0
-  (max_TCC1-1 nil 3338232942 3338234108
+  (max_TCC1-1 nil 3338232942
    ("" (inst + "LAMBDA SS: maxrec(SS)")
     (("" (induct "SS" + "finite_set_induction_rest")
       (("1" (typepred "SS!1") (("1" (propax) nil nil)) nil)
@@ -454,19 +461,26 @@
         nil))
       nil))
     nil)
-   proved
    ((finite_set_induction_rest formula-decl nil finite_sets_inductions
      nil)
-    (member const-decl "bool" sets nil)
     (emptyset const-decl "set" sets nil)
+    (member const-decl "bool" sets nil)
+    (finite_emptyset name-judgement "finite_set[T]" finite_sets_minmax
+     nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (finite_rest application-judgement "finite_set[T]"
+     finite_sets_minmax nil)
     (choose_rest_or formula-decl nil sets_lemmas nil)
     (lt_reflexive formula-decl nil finite_sets_minmax nil)
-    (nonempty? const-decl "bool" sets nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
+    (nonempty? const-decl "bool" sets nil)
+    (choose const-decl "(p)" sets nil)
     (lt_total formula-decl nil finite_sets_minmax nil)
     (lt_transitive formula-decl nil finite_sets_minmax nil)
-    (remove const-decl "set" sets nil) (rest const-decl "set" sets nil)
-    (choose const-decl "(p)" sets nil)
+    (finite_remove application-judgement "finite_set[T]"
+     finite_sets_minmax nil)
+    (choose_is_epsilon formula-decl nil sets nil)
+    (rest const-decl "set" sets nil) (remove const-decl "set" sets nil)
     (fsmax const-decl "T" finite_sets_minmax nil)
     (epsilon_ax formula-decl nil epsilons nil)
     (maxrec def-decl "T" finite_sets_minmax nil)
@@ -484,9 +498,9 @@
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
     (T formal-type-decl nil finite_sets_minmax nil))
-   401972 7340 t nil))
+   nil))
  (min_lem 0
-  (min_lem-1 nil 3338234119 3338234258
+  (min_lem-1 nil 3338234119
    ("" (skolem!)
     (("" (typepred "min(SS!1)")
       (("" (ground)
@@ -501,7 +515,6 @@
         nil))
       nil))
     nil)
-   proved
    ((min const-decl
          "{a: T | SS(a) AND (FORALL (x: T): SS(x) IMPLIES a <= x)}"
          finite_sets_minmax nil)
@@ -520,9 +533,9 @@
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
     (lt_antisymmetric formula-decl nil finite_sets_minmax nil))
-   34948 850 t shostak))
+   shostak))
  (max_lem 0
-  (max_lem-1 nil 3338234270 3338234305
+  (max_lem-1 nil 3338234270
    ("" (skolem!)
     (("" (typepred "max(SS!1)")
       (("" (ground)
@@ -537,7 +550,6 @@
         nil))
       nil))
     nil)
-   proved
    ((max const-decl
          "{a: T | SS(a) AND (FORALL (x: T): SS(x) IMPLIES x <= a)}"
          finite_sets_minmax nil)
@@ -556,9 +568,9 @@
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
     (lt_antisymmetric formula-decl nil finite_sets_minmax nil))
-   34689 860 t shostak))
+   shostak))
  (min_union 0
-  (min_union-1 nil 3338234326 3338234711
+  (min_union-1 nil 3338234326
    ("" (skosimp)
     (("" (auto-rewrite "member" "union")
       (("" (lemma "min_lem")
@@ -629,7 +641,6 @@
         nil))
       nil))
     nil)
-   proved
    ((T formal-type-decl nil finite_sets_minmax nil)
     (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
@@ -639,20 +650,22 @@
     (NOT const-decl "[bool -> bool]" booleans nil)
     (empty? const-decl "bool" sets nil)
     (non_empty_finite_set type-eq-decl nil finite_sets nil)
+    (nonempty_finite_union2 application-judgement
+     "non_empty_finite_set[T]" finite_sets_minmax nil)
     (union const-decl "set" sets nil)
     (fsmin const-decl "T" finite_sets_minmax nil)
-    (A!1 skolem-const-decl "non_empty_finite_set[T]" finite_sets_minmax
-     nil)
+    (x!2 skolem-const-decl "(union(A!1, B!1))" finite_sets_minmax nil)
     (B!1 skolem-const-decl "non_empty_finite_set[T]" finite_sets_minmax
      nil)
-    (x!2 skolem-const-decl "(union(A!1, B!1))" finite_sets_minmax nil)
+    (A!1 skolem-const-decl "non_empty_finite_set[T]" finite_sets_minmax
+     nil)
     (lt_transitive formula-decl nil finite_sets_minmax nil)
     (lt_total formula-decl nil finite_sets_minmax nil)
     (member const-decl "bool" sets nil)
     (min_lem formula-decl nil finite_sets_minmax nil))
-   385392 4360 t shostak))
+   shostak))
  (max_union 0
-  (max_union-1 nil 3338234725 3338234906
+  (max_union-1 nil 3338234725
    ("" (skosimp)
     (("" (auto-rewrite "member" "union")
       (("" (lemma "max_lem")
@@ -714,7 +727,6 @@
         nil))
       nil))
     nil)
-   proved
    ((T formal-type-decl nil finite_sets_minmax nil)
     (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
@@ -724,16 +736,18 @@
     (NOT const-decl "[bool -> bool]" booleans nil)
     (empty? const-decl "bool" sets nil)
     (non_empty_finite_set type-eq-decl nil finite_sets nil)
+    (nonempty_finite_union2 application-judgement
+     "non_empty_finite_set[T]" finite_sets_minmax nil)
     (union const-decl "set" sets nil)
     (fsmax const-decl "T" finite_sets_minmax nil)
     (lt_transitive formula-decl nil finite_sets_minmax nil)
-    (A!1 skolem-const-decl "non_empty_finite_set[T]" finite_sets_minmax
-     nil)
+    (x!2 skolem-const-decl "(union(A!1, B!1))" finite_sets_minmax nil)
     (B!1 skolem-const-decl "non_empty_finite_set[T]" finite_sets_minmax
      nil)
-    (x!2 skolem-const-decl "(union(A!1, B!1))" finite_sets_minmax nil)
+    (A!1 skolem-const-decl "non_empty_finite_set[T]" finite_sets_minmax
+     nil)
     (lt_total formula-decl nil finite_sets_minmax nil)
     (member const-decl "bool" sets nil)
     (max_lem formula-decl nil finite_sets_minmax nil))
-   181116 2760 t shostak)))
+   shostak)))
 

@@ -1,43 +1,40 @@
 (func_composition
  (composition_injective 0
-  (composition_injective-1 nil 3338227240 3338227244
-   ("" (grind) nil nil) proved
+  (composition_injective-1 nil 3338227240 ("" (grind) nil nil)
    ((T1 formal-type-decl nil func_composition nil)
     (T2 formal-type-decl nil func_composition nil)
     (injective? const-decl "bool" functions nil)
     (O const-decl "T3" function_props nil))
-   3776 260 t shostak))
+   shostak))
  (composition_surjective 0
-  (composition_surjective-1 nil 3338227252 3338227254
-   ("" (grind) nil nil) proved
+  (composition_surjective-1 nil 3338227252 ("" (grind) nil nil)
    ((T2 formal-type-decl nil func_composition nil)
     (T1 formal-type-decl nil func_composition nil)
     (T3 formal-type-decl nil func_composition nil)
     (surjective? const-decl "bool" functions nil)
     (O const-decl "T3" function_props nil))
-   1778 200 t shostak))
+   shostak))
  (composition_bijective 0
-  (composition_bijective-1 nil 3338227256 3338227292
+  (composition_bijective-1 nil 3338227256
    ("" (expand "bijective?")
     (("" (skosimp)
       (("" (rewrite "composition_injective")
         (("" (rewrite "composition_surjective") nil nil)) nil))
       nil))
     nil)
-   proved
    ((composition_surjective formula-decl nil func_composition nil)
     (T3 formal-type-decl nil func_composition nil)
     (T2 formal-type-decl nil func_composition nil)
     (T1 formal-type-decl nil func_composition nil)
     (composition_injective formula-decl nil func_composition nil)
     (bijective? const-decl "bool" functions nil))
-   26032 340 t shostak))
+   shostak))
  (composition_def 0
-  (composition_def-1 nil 3338227300 3338227305
-   ("" (expand "o") (("" (propax) nil nil)) nil) proved
-   ((O const-decl "T3" function_props nil)) 5051 70 t shostak))
+  (composition_def-1 nil 3338227300
+   ("" (expand "o") (("" (propax) nil nil)) nil)
+   ((O const-decl "T3" function_props nil)) shostak))
  (composition_left_cancel1 0
-  (composition_left_cancel1-1 nil 3338227307 3338227343
+  (composition_left_cancel1-1 nil 3338227307
    ("" (skosimp)
     (("" (prop)
       (("1" (apply-extensionality :hide? t)
@@ -55,28 +52,26 @@
        ("2" (assert) nil nil))
       nil))
     nil)
-   proved
    ((injective? const-decl "bool" functions nil)
     (T3 formal-type-decl nil func_composition nil)
     (composition_def formula-decl nil func_composition nil)
     (T2 formal-type-decl nil func_composition nil)
     (T1 formal-type-decl nil func_composition nil))
-   35930 780 t shostak))
+   shostak))
  (composition_left_cancel2 0
-  (composition_left_cancel2-1 nil 3338227345 3338227359
+  (composition_left_cancel2-1 nil 3338227345
    ("" (expand "bijective?")
     (("" (skosimp) (("" (rewrite "composition_left_cancel1") nil nil))
       nil))
     nil)
-   proved
    ((T3 formal-type-decl nil func_composition nil)
     (T2 formal-type-decl nil func_composition nil)
     (T1 formal-type-decl nil func_composition nil)
     (composition_left_cancel1 formula-decl nil func_composition nil)
     (bijective? const-decl "bool" functions nil))
-   14158 220 t shostak))
+   shostak))
  (composition_right_cancel1 0
-  (composition_right_cancel1-1 nil 3338227362 3338227400
+  (composition_right_cancel1-1 nil 3338227362
    ("" (skosimp)
     (("" (prop)
       (("1" (apply-extensionality :hide? t)
@@ -96,24 +91,22 @@
        ("2" (assert) nil nil))
       nil))
     nil)
-   proved
    ((surjective? const-decl "bool" functions nil)
     (composition_def formula-decl nil func_composition nil)
     (T1 formal-type-decl nil func_composition nil)
     (T3 formal-type-decl nil func_composition nil)
     (T2 formal-type-decl nil func_composition nil))
-   38258 910 t shostak))
+   shostak))
  (composition_right_cancel2 0
-  (composition_right_cancel2-1 nil 3338227403 3338227416
+  (composition_right_cancel2-1 nil 3338227403
    ("" (expand "bijective?")
     (("" (skosimp) (("" (rewrite "composition_right_cancel1") nil nil))
       nil))
     nil)
-   proved
    ((T3 formal-type-decl nil func_composition nil)
     (T2 formal-type-decl nil func_composition nil)
     (T1 formal-type-decl nil func_composition nil)
     (composition_right_cancel1 formula-decl nil func_composition nil)
     (bijective? const-decl "bool" functions nil))
-   12532 240 t shostak)))
+   shostak)))
 

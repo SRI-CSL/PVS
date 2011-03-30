@@ -1,6 +1,6 @@
 (finite_sets_eq
  (injection_to_finite_set 0
-  (injection_to_finite_set-1 nil 3338229711 3338229756
+  (injection_to_finite_set-1 nil 3338229711
    ("" (skosimp*)
     (("" (name "n" "card(F!1)")
       (("" (rewrite "card_bij")
@@ -13,7 +13,6 @@
         nil))
       nil))
     nil)
-   proved
    ((card const-decl "{n: nat | n = Card(S)}" finite_sets nil)
     (Card const-decl "nat" finite_sets nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
@@ -42,9 +41,9 @@
     (O const-decl "T3" function_props nil)
     (composition_injective formula-decl nil func_composition nil)
     (card_bij formula-decl nil finite_sets nil))
-   45612 950 t shostak))
+   shostak))
  (surjection_from_finite_set 0
-  (surjection_from_finite_set-1 nil 3338229759 3338229888
+  (surjection_from_finite_set-1 nil 3338229759
    ("" (skosimp*)
     (("" (case "empty?(E!1)")
       (("1" (case "U!1 = emptyset[T2]")
@@ -72,7 +71,6 @@
         nil))
       nil))
     nil)
-   proved
    ((finite_set type-eq-decl nil finite_sets nil)
     (is_finite const-decl "bool" finite_sets nil)
     (empty? const-decl "bool" sets nil) (set type-eq-decl nil sets nil)
@@ -87,6 +85,7 @@
     (emptyset const-decl "set" sets nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
     (T2 formal-type-decl nil finite_sets_eq nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
     (inverse const-decl "D" function_inverse nil)
     (TRUE const-decl "bool" booleans nil)
     (number nonempty-type-decl nil numbers nil)
@@ -106,14 +105,13 @@
     (O const-decl "T3" function_props nil)
     (inj_inv formula-decl nil function_inverse nil)
     (composition_injective formula-decl nil func_composition nil))
-   128985 1910 t shostak))
+   shostak))
  (injection_to_finite_set2 0
-  (injection_to_finite_set2-1 nil 3338229898 3338230026
+  (injection_to_finite_set2-1 nil 3338229898
    ("" (skosimp)
     (("" (use "injection_to_finite_set" ("F" "F!1"))
       (("" (assert) (("" (inst?) nil nil)) nil)) nil))
     nil)
-   proved
    ((injection_to_finite_set formula-decl nil finite_sets_eq nil)
     (T2 formal-type-decl nil finite_sets_eq nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -122,14 +120,13 @@
     (is_finite const-decl "bool" finite_sets nil)
     (finite_set type-eq-decl nil finite_sets nil)
     (T1 formal-type-decl nil finite_sets_eq nil))
-   127797 1380 t shostak))
+   shostak))
  (surjection_from_finite_set2 0
-  (surjection_from_finite_set2-1 nil 3338230032 3338230063
+  (surjection_from_finite_set2-1 nil 3338230032
    ("" (skosimp)
     (("" (use "surjection_from_finite_set" ("E" "E!1"))
       (("" (assert) (("" (inst?) nil nil)) nil)) nil))
     nil)
-   proved
    ((surjection_from_finite_set formula-decl nil finite_sets_eq nil)
     (T1 formal-type-decl nil finite_sets_eq nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -138,16 +135,15 @@
     (is_finite const-decl "bool" finite_sets nil)
     (finite_set type-eq-decl nil finite_sets nil)
     (T2 formal-type-decl nil finite_sets_eq nil))
-   30282 490 t shostak))
+   shostak))
  (bijection_finite_set1 0
-  (bijection_finite_set1-1 nil 3338230066 3338230090
+  (bijection_finite_set1-1 nil 3338230066
    ("" (expand "bijective?")
     (("" (skosimp*)
       (("" (lemma "injection_to_finite_set" ("S" "S!1" "F" "F!1"))
         (("" (assert) (("" (inst?) nil nil)) nil)) nil))
       nil))
     nil)
-   proved
    ((injection_to_finite_set formula-decl nil finite_sets_eq nil)
     (T2 formal-type-decl nil finite_sets_eq nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -157,16 +153,15 @@
     (finite_set type-eq-decl nil finite_sets nil)
     (T1 formal-type-decl nil finite_sets_eq nil)
     (bijective? const-decl "bool" functions nil))
-   24291 570 t shostak))
+   shostak))
  (bijection_finite_set2 0
-  (bijection_finite_set2-1 nil 3338230092 3338230108
+  (bijection_finite_set2-1 nil 3338230092
    ("" (expand "bijective?")
     (("" (skosimp*)
       (("" (lemma "surjection_from_finite_set" ("E" "E!1" "U" "U!1"))
         (("" (assert) (("" (inst?) nil nil)) nil)) nil))
       nil))
     nil)
-   proved
    ((surjection_from_finite_set formula-decl nil finite_sets_eq nil)
     (T1 formal-type-decl nil finite_sets_eq nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -176,5 +171,5 @@
     (finite_set type-eq-decl nil finite_sets nil)
     (T2 formal-type-decl nil finite_sets_eq nil)
     (bijective? const-decl "bool" functions nil))
-   16161 430 t shostak)))
+   shostak)))
 

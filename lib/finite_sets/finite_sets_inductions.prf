@@ -1,7 +1,6 @@
 (finite_sets_inductions
  (cardinal_induction 0
-  (cardinal_induction-1 nil 3338230161 3338230170
-   ("" (grind :defs nil) nil nil) proved
+  (cardinal_induction-1 nil 3338230161 ("" (grind :defs nil) nil nil)
    ((= const-decl "[T, T -> boolean]" equalities nil)
     (Card const-decl "nat" finite_sets nil)
     (card const-decl "{n: nat | n = Card(S)}" finite_sets nil)
@@ -23,10 +22,12 @@
     (T formal-type-decl nil finite_sets_inductions nil)
     (set type-eq-decl nil sets nil)
     (is_finite const-decl "bool" finite_sets nil)
-    (finite_set type-eq-decl nil finite_sets nil))
-   9356 620 t shostak))
+    (finite_set type-eq-decl nil finite_sets nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   shostak))
  (finite_set_induction 0
-  (finite_set_induction-1 nil 3338230176 3338230516
+  (finite_set_induction-1 nil 3338230176
    ("" (skosimp)
     (("" (case "FORALL n, S: card(S) = n IMPLIES P!1(S)")
       (("1" (skosimp) (("1" (inst - "card(S!1)" "S!1") nil nil)) nil)
@@ -64,7 +65,6 @@
         nil))
       nil))
     nil)
-   proved
    ((pred type-eq-decl nil defined_types nil)
     (card const-decl "{n: nat | n = Card(S)}" finite_sets nil)
     (Card const-decl "nat" finite_sets nil)
@@ -90,16 +90,30 @@
     (number nonempty-type-decl nil numbers nil)
     (nat_induction formula-decl nil naturalnumbers nil)
     (empty_card formula-decl nil finite_sets nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (finite_emptyset name-judgement "finite_set[T]"
+     finite_sets_inductions nil)
     (emptyset_is_empty? formula-decl nil sets_lemmas nil)
     (nonempty_card formula-decl nil finite_sets nil)
     (nonempty_member formula-decl nil sets_lemmas nil)
+    (finite_remove application-judgement "finite_set[T]"
+     finite_sets_inductions nil)
     (remove const-decl "set" sets nil)
     (member const-decl "bool" sets nil)
+    (add_remove_member formula-decl nil sets_lemmas nil)
     (card_remove formula-decl nil finite_sets nil)
-    (add_remove_member formula-decl nil sets_lemmas nil))
-   144249 2860 t shostak))
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (nonempty_add_finite application-judgement
+     "non_empty_finite_set[T]" finite_sets_inductions nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   shostak))
  (finite_set_ind_modified 0
-  (finite_set_ind_modified-1 nil 3338230529 3338230642
+  (finite_set_ind_modified-1 nil 3338230529
    ("" (skosimp*)
     (("" (use "finite_set_induction")
       (("" (assert)
@@ -117,7 +131,6 @@
         nil))
       nil))
     nil)
-   proved
    ((finite_set_induction formula-decl nil finite_sets_inductions nil)
     (pred type-eq-decl nil defined_types nil)
     (finite_set type-eq-decl nil finite_sets nil)
@@ -126,13 +139,18 @@
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
     (T formal-type-decl nil finite_sets_inductions nil)
-    (= const-decl "[T, T -> boolean]" equalities nil)
-    (nonempty? const-decl "bool" sets nil)
+    (nonempty_add_finite application-judgement
+     "non_empty_finite_set[T]" finite_sets_inductions nil)
     (add const-decl "(nonempty?)" sets nil)
-    (member const-decl "bool" sets nil))
-   32058 920 t shostak))
+    (nonempty? const-decl "bool" sets nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (member const-decl "bool" sets nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (finite_emptyset name-judgement "finite_set[T]"
+     finite_sets_inductions nil))
+   shostak))
  (finite_set_induction_rest 0
-  (finite_set_induction_rest-1 nil 3338230659 3338230807
+  (finite_set_induction_rest-1 nil 3338230659
    ("" (skosimp)
     (("" (case "FORALL n, S: card(S) = n IMPLIES P!1(S)")
       (("1" (skolem!) (("1" (inst - "card(S!1)" "S!1") nil nil)) nil)
@@ -162,7 +180,6 @@
         nil))
       nil))
     nil)
-   proved
    ((pred type-eq-decl nil defined_types nil)
     (card const-decl "{n: nat | n = Card(S)}" finite_sets nil)
     (Card const-decl "nat" finite_sets nil)
@@ -189,17 +206,29 @@
     (nat_induction formula-decl nil naturalnumbers nil)
     (card_empty? formula-decl nil finite_sets nil)
     (emptyset_is_empty? formula-decl nil sets_lemmas nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (finite_emptyset name-judgement "finite_set[T]"
+     finite_sets_inductions nil)
     (emptyset const-decl "set" sets nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (finite_rest application-judgement "finite_set[T]"
+     finite_sets_inductions nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
     (nonempty? const-decl "bool" sets nil)
     (rest const-decl "set" sets nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
     (card_rest formula-decl nil finite_sets nil)
-    (non_empty_finite_set type-eq-decl nil finite_sets nil)
-    (empty? const-decl "bool" sets nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
+    (empty? const-decl "bool" sets nil)
+    (non_empty_finite_set type-eq-decl nil finite_sets nil)
     (nonempty_card formula-decl nil finite_sets nil))
-   148317 2720 t shostak))
+   shostak))
  (finite_set_induction_union 0
-  (finite_set_induction_union-1 nil 3338230825 3338230872
+  (finite_set_induction_union-1 nil 3338230825
    ("" (skosimp)
     (("" (rewrite "finite_set_induction")
       (("" (skosimp)
@@ -212,7 +241,6 @@
         nil))
       nil))
     nil)
-   proved
    ((finite_set_induction formula-decl nil finite_sets_inductions nil)
     (T formal-type-decl nil finite_sets_inductions nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -221,12 +249,23 @@
     (is_finite const-decl "bool" finite_sets nil)
     (finite_set type-eq-decl nil finite_sets nil)
     (pred type-eq-decl nil defined_types nil)
-    (singleton? const-decl "bool" sets nil)
+    (finite_union application-judgement "finite_set[T]"
+     finite_sets_inductions nil)
+    (finite_emptyset name-judgement "finite_set[T]"
+     finite_sets_inductions nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (nonempty_singleton_finite application-judgement
+     "non_empty_finite_set[T]" finite_sets_inductions nil)
+    (nonempty_add_finite application-judgement
+     "non_empty_finite_set[T]" finite_sets_inductions nil)
     (singleton const-decl "(singleton?)" sets nil)
+    (singleton? const-decl "bool" sets nil)
+    (nonempty_finite_union2 application-judgement
+     "non_empty_finite_set[T]" finite_sets_inductions nil)
     (add_as_union formula-decl nil sets_lemmas nil))
-   47551 650 t shostak))
+   shostak))
  (finite_set_induction_gen 0
-  (finite_set_induction_gen-1 nil 3338230876 3338231029
+  (finite_set_induction_gen-1 nil 3338230876
    ("" (skosimp)
     (("" (case "FORALL n, S: card(S) = n IMPLIES P!1(S)")
       (("1" (skolem!) (("1" (inst - "card(S!1)" "S!1") nil nil)) nil)
@@ -248,7 +287,6 @@
         nil))
       nil))
     nil)
-   proved
    ((pred type-eq-decl nil defined_types nil)
     (card const-decl "{n: nat | n = Card(S)}" finite_sets nil)
     (Card const-decl "nat" finite_sets nil)
@@ -272,23 +310,26 @@
      nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil)
-    (NAT_induction formula-decl nil naturalnumbers nil))
-   152814 1840 t shostak))
+    (NAT_induction formula-decl nil naturalnumbers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   shostak))
  (nonempty_card_induction_TCC1 0
-  (nonempty_card_induction_TCC1-1 nil 3338230145 3338231071
+  (nonempty_card_induction_TCC1-1 nil 3338230145
    ("" (skosimp)
     (("" (rewrite "empty_card") (("" (assert) nil nil)) nil)) nil)
-   proved
    ((empty_card formula-decl nil finite_sets nil)
     (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (set type-eq-decl nil sets nil)
     (is_finite const-decl "bool" finite_sets nil)
     (finite_set type-eq-decl nil finite_sets nil)
-    (T formal-type-decl nil finite_sets_inductions nil))
-   22865 290 t nil))
+    (T formal-type-decl nil finite_sets_inductions nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   nil))
  (nonempty_card_induction 0
-  (nonempty_card_induction-1 nil 3338231079 3338231146
+  (nonempty_card_induction-1 nil 3338231079
    ("" (skolem!)
     (("" (prop)
       (("1" (skosimp) (("1" (inst?) nil nil)) nil)
@@ -300,7 +341,6 @@
         nil))
       nil))
     nil)
-   proved
    ((non_empty_finite_set type-eq-decl nil finite_sets nil)
     (empty? const-decl "bool" sets nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -311,6 +351,8 @@
     (boolean nonempty-type-decl nil booleans nil)
     (T formal-type-decl nil finite_sets_inductions nil)
     (empty_card formula-decl nil finite_sets nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
     (card const-decl "{n: nat | n = Card(S)}" finite_sets nil)
     (Card const-decl "nat" finite_sets nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
@@ -326,9 +368,9 @@
     (number_field_pred const-decl "[number -> boolean]" number_fields
      nil)
     (number nonempty-type-decl nil numbers nil))
-   66927 780 t shostak))
+   shostak))
  (nonempty_finite_set_induct 0
-  (nonempty_finite_set_induct-1 nil 3338231149 3338231242
+  (nonempty_finite_set_induct-1 nil 3338231149
    ("" (skosimp*)
     (("" (case "FORALL S: empty?(S) OR Q!1(S)")
       (("1" (inst?) (("1" (assert) nil nil)) nil)
@@ -352,7 +394,6 @@
         nil))
       nil))
     nil)
-   proved
    ((pred type-eq-decl nil defined_types nil)
     (non_empty_finite_set type-eq-decl nil finite_sets nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -364,9 +405,16 @@
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
     (T formal-type-decl nil finite_sets_inductions nil)
+    (nonempty_add_finite application-judgement
+     "non_empty_finite_set[T]" finite_sets_inductions nil)
+    (nonempty_singleton_finite application-judgement
+     "non_empty_finite_set[T]" finite_sets_inductions nil)
     (finite_set_ind_modified formula-decl nil finite_sets_inductions
      nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (finite_emptyset name-judgement "finite_set[T]"
+     finite_sets_inductions nil)
     (singleton_as_add formula-decl nil sets_lemmas nil)
     (emptyset_is_empty? formula-decl nil sets_lemmas nil))
-   93689 1470 t shostak)))
+   shostak)))
 

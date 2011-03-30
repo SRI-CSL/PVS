@@ -1,6 +1,6 @@
 (finite_sets_pred
  (finite_pred 0
-  (finite_pred-1 nil 3338292178 3338292225
+  (finite_pred-1 nil 3338292178
    ("" (expand* "fullset" "is_finite")
     (("" (skosimp*)
       (("" (inst + "N!1" "LAMBDA (x: ({x: T | P!1(x)})): f!1(x)")
@@ -11,7 +11,6 @@
         nil))
       nil))
     nil)
-   proved
    ((injective? const-decl "bool" functions nil)
     (TRUE const-decl "bool" booleans nil)
     (below type-eq-decl nil nat_types nil)
@@ -34,27 +33,27 @@
     (number nonempty-type-decl nil numbers nil)
     (fullset const-decl "set" sets nil)
     (is_finite const-decl "bool" finite_sets nil))
-   47384 770 t shostak))
+   shostak))
  (card_implies_TCC1 0
-  (card_implies_TCC1-1 nil 3338292166 3338292254
-   ("" (skosimp) (("" (rewrite "finite_pred") nil nil)) nil) proved
+  (card_implies_TCC1-1 nil 3338292166
+   ("" (skosimp) (("" (rewrite "finite_pred") nil nil)) nil)
    ((finite_pred formula-decl nil finite_sets_pred nil)
     (T formal-type-decl nil finite_sets_pred nil)
     (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (pred type-eq-decl nil defined_types nil))
-   18798 160 t nil))
+   nil))
  (card_implies_TCC2 0
-  (card_implies_TCC2-1 nil 3338292166 3338292262
-   ("" (skosimp) (("" (rewrite "finite_pred") nil nil)) nil) proved
+  (card_implies_TCC2-1 nil 3338292166
+   ("" (skosimp) (("" (rewrite "finite_pred") nil nil)) nil)
    ((finite_pred formula-decl nil finite_sets_pred nil)
     (T formal-type-decl nil finite_sets_pred nil)
     (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (pred type-eq-decl nil defined_types nil))
-   4134 170 t nil))
+   nil))
  (card_implies 0
-  (card_implies-1 nil 3338292265 3338292326
+  (card_implies-1 nil 3338292265
    ("" (skosimp)
     (("" (use "card_subset[T]")
       (("1" (assert) (("1" (expand* "subset?" "member") nil nil)) nil)
@@ -62,7 +61,6 @@
        ("3" (rewrite "finite_pred") nil nil))
       nil))
     nil)
-   proved
    ((card_subset formula-decl nil finite_sets nil)
     (T formal-type-decl nil finite_sets_pred nil)
     (finite_set type-eq-decl nil finite_sets nil)
@@ -75,6 +73,10 @@
     (P1!1 skolem-const-decl "pred[T]" finite_sets_pred nil)
     (subset? const-decl "bool" sets nil)
     (member const-decl "bool" sets nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
+     sets_lemmas nil)
     (finite_pred formula-decl nil finite_sets_pred nil))
-   61087 700 t shostak)))
+   shostak)))
 

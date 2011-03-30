@@ -1,19 +1,20 @@
 (finite_sets_sum_real
  (IMP_finite_sets_sum_TCC1 0
-  (IMP_finite_sets_sum_TCC1-1 nil 3338293772 3338293772
-   ("" (assuming-tcc) nil nil) proved
+  (IMP_finite_sets_sum_TCC1-1 nil 3338293772
+   ("" (assuming-tcc) nil nil)
    ((restrict const-decl "R" restrict nil)
     (identity? const-decl "bool" operator_defs nil))
-   35 40 nil nil))
+   nil))
  (IMP_finite_sets_sum_TCC2 0
-  (IMP_finite_sets_sum_TCC2-1 nil 3338293772 3338293774
-   ("" (assuming-tcc) nil nil) proved
-   ((associative? const-decl "bool" operator_defs nil)
+  (IMP_finite_sets_sum_TCC2-1 nil 3338293772
+   ("" (assuming-tcc) nil nil)
+   ((real_plus_real_is_real application-judgement "real" reals nil)
+    (associative? const-decl "bool" operator_defs nil)
     (commutative? const-decl "bool" operator_defs nil)
     (restrict const-decl "R" restrict nil))
-   1409 110 nil nil))
+   nil))
  (sum_const 0
-  (sum_const-1 nil 3338293808 3338293904
+  (sum_const-1 nil 3338293808
    ("" (induct "S" :name "finite_set_induction_rest")
     (("1" (skolem!)
       (("1" (rewrite "sum_emptyset")
@@ -32,12 +33,17 @@
         nil))
       nil))
     nil)
-   proved
-   ((NOT const-decl "[bool -> bool]" booleans nil)
-    (empty? const-decl "bool" sets nil)
+   ((finite_rest application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
     (non_empty_finite_set type-eq-decl nil finite_sets nil)
+    (empty? const-decl "bool" sets nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
     (card_rest formula-decl nil finite_sets nil)
     (card_emptyset formula-decl nil finite_sets nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (finite_emptyset name-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (real_times_real_is_real application-judgement "real" reals nil)
     (sum_emptyset formula-decl nil finite_sets_sum nil)
     (finite_set_induction_rest formula-decl nil finite_sets_inductions
      nil)
@@ -67,13 +73,13 @@
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (boolean nonempty-type-decl nil booleans nil))
-   96526 1890 t shostak))
+    (boolean nonempty-type-decl nil booleans nil)
+    (real_plus_real_is_real application-judgement "real" reals nil))
+   shostak))
  (sum_1_is_card 0
-  (sum_1_is_card-1 nil 3338293922 3338293964
+  (sum_1_is_card-1 nil 3338293922
    ("" (skolem!) (("" (use "sum_const") (("" (assert) nil nil)) nil))
     nil)
-   proved
    ((sum_const formula-decl nil finite_sets_sum_real nil)
     (real nonempty-type-from-decl nil reals nil)
     (real_pred const-decl "[number_field -> boolean]" reals nil)
@@ -86,10 +92,14 @@
     (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
-    (T formal-type-decl nil finite_sets_sum_real nil))
-   41432 740 t shostak))
+    (T formal-type-decl nil finite_sets_sum_real nil)
+    (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
+     integers nil)
+    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (mult_divides2 application-judgement "(divides(m))" divides nil))
+   shostak))
  (sum_mult 0
-  (sum_mult-1 nil 3338293973 3338294086
+  (sum_mult-1 nil 3338293973
    ("" (induct "S" :name "finite_set_induction_rest")
     (("1" (skolem!)
       (("1" (rewrite "sum_emptyset")
@@ -104,8 +114,12 @@
         nil))
       nil))
     nil)
-   proved
-   ((sum_emptyset formula-decl nil finite_sets_sum nil)
+   ((finite_rest application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (finite_emptyset name-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (sum_emptyset formula-decl nil finite_sets_sum nil)
     (finite_set_induction_rest formula-decl nil finite_sets_inductions
      nil)
     (T formal-type-decl nil finite_sets_sum_real nil)
@@ -126,17 +140,18 @@
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (boolean nonempty-type-decl nil booleans nil))
-   113684 1530 t shostak))
+    (boolean nonempty-type-decl nil booleans nil)
+    (real_times_real_is_real application-judgement "real" reals nil)
+    (real_plus_real_is_real application-judgement "real" reals nil))
+   shostak))
  (sum_empty? 0
-  (sum_empty?-1 nil 3338294103 3338294132
+  (sum_empty?-1 nil 3338294103
    ("" (skosimp)
     (("" (rewrite "emptyset_is_empty?[T]")
       (("" (use "sum_emptyset[T, real, 0, +]") (("" (assert) nil nil))
         nil))
       nil))
     nil)
-   proved
    ((emptyset_is_empty? formula-decl nil sets_lemmas nil)
     (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
@@ -144,6 +159,9 @@
     (is_finite const-decl "bool" finite_sets nil)
     (finite_set type-eq-decl nil finite_sets nil)
     (T formal-type-decl nil finite_sets_sum_real nil)
+    (finite_emptyset name-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (restrict const-decl "R" restrict nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
@@ -154,14 +172,13 @@
      nil)
     (number nonempty-type-decl nil numbers nil)
     (sum_emptyset formula-decl nil finite_sets_sum nil))
-   28624 330 t shostak))
+   shostak))
  (sum_emptyset_rew 0
-  (sum_emptyset_rew-1 nil 3338294141 3338294157
+  (sum_emptyset_rew-1 nil 3338294141
    ("" (skosimp)
     (("" (use "sum_emptyset[T, real, 0, +]") (("" (assert) nil nil))
       nil))
     nil)
-   proved
    ((sum_emptyset formula-decl nil finite_sets_sum nil)
     (T formal-type-decl nil finite_sets_sum_real nil)
     (number nonempty-type-decl nil numbers nil)
@@ -173,11 +190,13 @@
     (real nonempty-type-from-decl nil reals nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (restrict const-decl "R" restrict nil)
-    (+ const-decl "[numfield, numfield -> numfield]" number_fields
-       nil))
-   15494 260 t shostak))
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (finite_emptyset name-judgement "finite_set[T]"
+     finite_sets_sum_real nil))
+   shostak))
  (sum_singleton_rew 0
-  (sum_singleton_rew-1 nil 3338294160 3338294208
+  (sum_singleton_rew-1 nil 3338294160
    ("" (skosimp)
     (("" (rewrite "card_one")
       (("" (skolem!)
@@ -188,7 +207,6 @@
         nil))
       nil))
     nil)
-   proved
    ((card_one formula-decl nil finite_sets nil)
     (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
@@ -196,7 +214,10 @@
     (is_finite const-decl "bool" finite_sets nil)
     (finite_set type-eq-decl nil finite_sets nil)
     (T formal-type-decl nil finite_sets_sum_real nil)
+    (nonempty_singleton_finite application-judgement
+     "non_empty_finite_set[T]" finite_sets_sum_real nil)
     (singleton const-decl "(singleton?)" sets nil)
+    (real_plus_real_is_real application-judgement "real" reals nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (restrict const-decl "R" restrict nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
@@ -207,16 +228,15 @@
      nil)
     (number nonempty-type-decl nil numbers nil)
     (sum_singleton formula-decl nil finite_sets_sum nil))
-   47385 700 t shostak))
+   shostak))
  (sum_remove_rew 0
-  (sum_remove_rew-1 nil 3338294211 3338294264
+  (sum_remove_rew-1 nil 3338294211
    ("" (skolem!)
     (("" (use "sum_remove[T, real, 0, +]")
       (("" (replace -1 + rl)
         (("" (hide -1) (("" (assert) nil nil)) nil)) nil))
       nil))
     nil)
-   proved
    ((sum_remove formula-decl nil finite_sets_sum nil)
     (T formal-type-decl nil finite_sets_sum_real nil)
     (number nonempty-type-decl nil numbers nil)
@@ -232,11 +252,14 @@
     (finite_set type-eq-decl nil finite_sets nil)
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
-    (bool nonempty-type-eq-decl nil booleans nil))
-   52961 530 t shostak))
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (finite_remove application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (real_minus_real_is_real application-judgement "real" reals nil)
+    (real_plus_real_is_real application-judgement "real" reals nil))
+   shostak))
  (sum_rest_rew_TCC1 0
-  (sum_rest_rew_TCC1-1 nil 3338293772 3338293774
-   ("" (subtype-tcc) nil nil) proved
+  (sum_rest_rew_TCC1-1 nil 3338293772 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -247,12 +270,11 @@
     (member const-decl "bool" sets nil)
     (empty? const-decl "bool" sets nil)
     (nonempty? const-decl "bool" sets nil))
-   44 40 nil nil))
+   nil))
  (sum_rest_rew 0
-  (sum_rest_rew-1 nil 3338294278 3338294303
+  (sum_rest_rew-1 nil 3338294278
    ("" (skosimp) (("" (use "sum_rest") (("" (assert) nil nil)) nil))
     nil)
-   proved
    ((sum_rest formula-decl nil finite_sets_sum nil)
     (T formal-type-decl nil finite_sets_sum_real nil)
     (number nonempty-type-decl nil numbers nil)
@@ -265,16 +287,19 @@
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (restrict const-decl "R" restrict nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (finite_set type-eq-decl nil finite_sets nil)
-    (is_finite const-decl "bool" finite_sets nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
     (set type-eq-decl nil sets nil)
-    (bool nonempty-type-eq-decl nil booleans nil))
-   25387 350 t shostak))
+    (is_finite const-decl "bool" finite_sets nil)
+    (finite_set type-eq-decl nil finite_sets nil)
+    (finite_rest application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (real_minus_real_is_real application-judgement "real" reals nil)
+    (minus_odd_is_odd application-judgement "odd_int" integers nil))
+   shostak))
  (sum_union_rew 0
-  (sum_union_rew-1 nil 3338294308 3338294320
+  (sum_union_rew-1 nil 3338294308
    ("" (skolem!) (("" (use "sum_union") (("" (assert) nil nil)) nil))
     nil)
-   proved
    ((sum_union formula-decl nil finite_sets_sum nil)
     (T formal-type-decl nil finite_sets_sum_real nil)
     (number nonempty-type-decl nil numbers nil)
@@ -290,11 +315,18 @@
     (finite_set type-eq-decl nil finite_sets nil)
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
-    (bool nonempty-type-eq-decl nil booleans nil))
-   11823 460 t shostak))
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (real_plus_real_is_real application-judgement "real" reals nil)
+    (finite_union application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (finite_intersection2 application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (real_minus_real_is_real application-judgement "real" reals nil)
+    (minus_odd_is_odd application-judgement "odd_int" integers nil))
+   shostak))
  (sum_eq_funs 0
-  (sum_eq_funs-1 nil 3338294327 3338294344
-   ("" (skosimp) (("" (rewrite "sum_f_g") nil nil)) nil) proved
+  (sum_eq_funs-1 nil 3338294327
+   ("" (skosimp) (("" (rewrite "sum_f_g") nil nil)) nil)
    ((sum_f_g formula-decl nil finite_sets_sum nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (set type-eq-decl nil sets nil)
@@ -312,9 +344,9 @@
     (restrict const-decl "R" restrict nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields
        nil))
-   16674 170 t shostak))
+   shostak))
  (sum_particular_gen 0
-  (sum_particular_gen-1 nil 3338294347 3338294775
+  (sum_particular_gen-1 nil 3338294347
    ("" (auto-rewrite "member")
     (("" (induct "S" :name "finite_set_induction_rest[T]")
       (("1" (skolem!)
@@ -363,8 +395,8 @@
         nil))
       nil))
     nil)
-   proved
-   ((boolean nonempty-type-decl nil booleans nil)
+   ((real_plus_real_is_real application-judgement "real" reals nil)
+    (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (set type-eq-decl nil sets nil)
     (is_finite const-decl "bool" finite_sets nil)
@@ -388,15 +420,19 @@
      nil)
     (sum_emptyset formula-decl nil finite_sets_sum nil)
     (emptyset const-decl "set" sets nil)
+    (minus_odd_is_odd application-judgement "odd_int" integers nil)
+    (real_minus_real_is_real application-judgement "real" reals nil)
+    (finite_rest application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
     (rest const-decl "set" sets nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
     (empty? const-decl "bool" sets nil)
     (non_empty_finite_set type-eq-decl nil finite_sets nil)
     (remove const-decl "set" sets nil)
     (member const-decl "bool" sets nil))
-   181115 2970 t shostak))
+   shostak))
  (sum_bound 0
-  (sum_bound-1 nil 3338294789 3338294912
+  (sum_bound-1 nil 3338294789
    ("" (induct "S" :name "finite_set_induction_rest")
     (("1" (skosimp)
       (("1" (rewrite "sum_emptyset")
@@ -422,20 +458,27 @@
         nil))
       nil))
     nil)
-   proved
    ((SS!1 skolem-const-decl "non_empty_finite_set[T]"
      finite_sets_sum_real nil)
     (t!1 skolem-const-decl "(rest(SS!1))" finite_sets_sum_real nil)
-    (/= const-decl "boolean" notequal nil)
+    (finite_remove application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (remove const-decl "set" sets nil)
     (member const-decl "bool" sets nil)
-    (remove const-decl "set" sets nil) (rest const-decl "set" sets nil)
-    (choose const-decl "(p)" sets nil)
+    (/= const-decl "boolean" notequal nil)
+    (rest const-decl "set" sets nil) (choose const-decl "(p)" sets nil)
     (nonempty? const-decl "bool" sets nil)
     (non_empty_finite_set type-eq-decl nil finite_sets nil)
     (empty? const-decl "bool" sets nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
+    (minus_odd_is_odd application-judgement "odd_int" integers nil)
+    (finite_rest application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
     (card_rest formula-decl nil finite_sets nil)
     (card_emptyset formula-decl nil finite_sets nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
     (sum_emptyset formula-decl nil finite_sets_sum nil)
     (finite_set_induction_rest formula-decl nil finite_sets_inductions
      nil)
@@ -467,19 +510,27 @@
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (boolean nonempty-type-decl nil booleans nil))
-   123443 2220 t shostak))
+    (boolean nonempty-type-decl nil booleans nil)
+    (real_plus_real_is_real application-judgement "real" reals nil)
+    (real_times_real_is_real application-judgement "real" reals nil))
+   shostak))
  (sum_order 0
-  (sum_order-1 nil 3338294915 3338294958
+  (sum_order-1 nil 3338294915
    (""
     (induct-and-simplify "S" :name "finite_set_induction_rest" :exclude
      ("rest" "choose"))
     nil nil)
-   proved
    ((non_empty_finite_set type-eq-decl nil finite_sets nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
     (choose const-decl "(p)" sets nil)
     (nonempty? const-decl "bool" sets nil)
+    (finite_rest application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (finite_emptyset name-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
     (empty? const-decl "bool" sets nil)
     (member const-decl "bool" sets nil)
     (emptyset const-decl "set" sets nil)
@@ -503,10 +554,11 @@
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (boolean nonempty-type-decl nil booleans nil))
-   43133 13450 t shostak))
+    (boolean nonempty-type-decl nil booleans nil)
+    (real_plus_real_is_real application-judgement "real" reals nil))
+   shostak))
  (sum_nonneg 0
-  (sum_nonneg-1 nil 3338294965 3338295053
+  (sum_nonneg-1 nil 3338294965
    ("" (induct "S" :name "finite_set_induction_rest")
     (("1" (skosimp)
       (("1" (rewrite "sum_emptyset") (("1" (assert) nil nil)) nil))
@@ -531,7 +583,6 @@
         nil))
       nil))
     nil)
-   proved
    ((SS!1 skolem-const-decl "non_empty_finite_set[T]"
      finite_sets_sum_real nil)
     (t!1 skolem-const-decl "(rest(SS!1))" finite_sets_sum_real nil)
@@ -542,6 +593,10 @@
     (non_empty_finite_set type-eq-decl nil finite_sets nil)
     (empty? const-decl "bool" sets nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
+    (finite_rest application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
     (sum_emptyset formula-decl nil finite_sets_sum nil)
     (finite_set_induction_rest formula-decl nil finite_sets_inductions
      nil)
@@ -563,10 +618,11 @@
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (boolean nonempty-type-decl nil booleans nil))
-   88189 1800 t shostak))
+    (boolean nonempty-type-decl nil booleans nil)
+    (real_plus_real_is_real application-judgement "real" reals nil))
+   shostak))
  (sum_pos 0
-  (sum_pos-1 nil 3338295061 3338295175
+  (sum_pos-1 nil 3338295061
    ("" (induct "S" :name "finite_set_induction_rest")
     (("1" (skolem!) nil nil)
      ("2" (skosimp*)
@@ -595,7 +651,6 @@
         nil))
       nil))
     nil)
-   proved
    ((SS!1 skolem-const-decl "non_empty_finite_set[T]"
      finite_sets_sum_real nil)
     (t!1 skolem-const-decl "(rest(SS!1))" finite_sets_sum_real nil)
@@ -603,11 +658,18 @@
     (rest_member formula-decl nil sets_lemmas nil)
     (rest const-decl "set" sets nil)
     (sum_emptyset formula-decl nil finite_sets_sum nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (finite_emptyset name-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
     (choose const-decl "(p)" sets nil)
     (nonempty? const-decl "bool" sets nil)
     (non_empty_finite_set type-eq-decl nil finite_sets nil)
     (empty? const-decl "bool" sets nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (finite_rest application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
     (finite_set_induction_rest formula-decl nil finite_sets_inductions
      nil)
     (T formal-type-decl nil finite_sets_sum_real nil)
@@ -631,10 +693,11 @@
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (boolean nonempty-type-decl nil booleans nil))
-   113812 1780 t shostak))
+    (boolean nonempty-type-decl nil booleans nil)
+    (real_plus_real_is_real application-judgement "real" reals nil))
+   shostak))
  (sum_TCC1 0
-  (sum_TCC1-1 nil 3338293772 3338295460
+  (sum_TCC1-1 nil 3338293772
    ("" (auto-rewrite-theory "rationals")
     (("" (auto-rewrite-theory "integers")
       (("" (induct "A" :name "finite_set_induction_rest")
@@ -677,14 +740,24 @@
         nil))
       nil))
     nil)
-   proved
    ((nonempty? const-decl "bool" sets nil)
     (choose const-decl "(p)" sets nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (posreal_plus_nnreal_is_posreal application-judgement "posreal"
+     real_types nil)
     (sum_emptyset formula-decl nil finite_sets_sum nil)
-    (rest const-decl "set" sets nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
-    (emptyset_is_empty? formula-decl nil sets_lemmas nil)
+    (rest const-decl "set" sets nil)
+    (finite_rest application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (finite_emptyset name-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
     (emptyset const-decl "set" sets nil)
+    (emptyset_is_empty? formula-decl nil sets_lemmas nil)
     (non_empty_finite_set type-eq-decl nil finite_sets nil)
     (finite_set_induction_rest formula-decl nil finite_sets_inductions
      nil)
@@ -712,10 +785,11 @@
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (boolean nonempty-type-decl nil booleans nil))
-   253581 2950 t nil))
+    (boolean nonempty-type-decl nil booleans nil)
+    (real_plus_real_is_real application-judgement "real" reals nil))
+   nil))
  (sum_TCC2 0
-  (sum_TCC2-1 nil 3338293772 3338299730
+  (sum_TCC2-1 nil 3338293772
    ("" (auto-rewrite-theory "rationals")
     (("" (auto-rewrite-theory "integers")
       (("" (induct-and-simplify "x1" :name "finite_set_induction_rest")
@@ -725,12 +799,18 @@
         nil))
       nil))
     nil)
-   proved
    ((closed_plus formula-decl nil integers nil)
     (closed_plus formula-decl nil rationals nil)
     (remove const-decl "set" sets nil)
     (/= const-decl "boolean" notequal nil)
-    (rest const-decl "set" sets nil) (choose const-decl "(p)" sets nil)
+    (rest const-decl "set" sets nil)
+    (finite_remove application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (finite_rest application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (finite_emptyset name-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
     (empty? const-decl "bool" sets nil)
     (member const-decl "bool" sets nil)
     (emptyset const-decl "set" sets nil)
@@ -757,16 +837,16 @@
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (boolean nonempty-type-decl nil booleans nil))
-   67375 960 t nil))
+    (boolean nonempty-type-decl nil booleans nil)
+    (real_plus_real_is_real application-judgement "real" reals nil))
+   nil))
  (sum_TCC3 0
-  (sum_TCC3-1 nil 3338293772 3338299779
+  (sum_TCC3-1 nil 3338293772
    ("" (skolem!)
     (("" (use "sum_nonneg")
       (("" (assert) (("" (skolem!) (("" (assert) nil nil)) nil)) nil))
       nil))
     nil)
-   proved
    ((sum_nonneg formula-decl nil finite_sets_sum_real nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
@@ -785,10 +865,13 @@
     (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
-    (T formal-type-decl nil finite_sets_sum_real nil))
-   35435 480 t nil))
+    (T formal-type-decl nil finite_sets_sum_real nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (nil application-judgement "int" finite_sets_sum_real nil))
+   nil))
  (sum_subset 0
-  (sum_subset-1 nil 3338299884 3338300057
+  (sum_subset-1 nil 3338299884
    ("" (skosimp)
     (("" (case "B!1 = union(A!1,difference(B!1,A!1))")
       (("1" (replace -1 +)
@@ -828,7 +911,6 @@
        ("2" (hide 2) (("2" (grind-with-ext) nil nil)) nil))
       nil))
     nil)
-   proved
    ((difference const-decl "set" sets nil)
     (union const-decl "set" sets nil)
     (finite_set type-eq-decl nil finite_sets nil)
@@ -838,11 +920,29 @@
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
     (T formal-type-decl nil finite_sets_sum_real nil)
-    (sum def-decl "R" finite_sets_sum nil)
+    (finite_union application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (finite_difference application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
     (intersection const-decl "set" sets nil)
+    (sum def-decl "R" finite_sets_sum nil)
+    (real_plus_real_is_real application-judgement "real" reals nil)
+    (finite_intersection2 application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
+     finite_sets_sum_real nil)
+    (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
+     sets_lemmas nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
     (sum_nonneg formula-decl nil finite_sets_sum_real nil)
     (emptyset const-decl "set" sets nil)
     (sum_emptyset formula-decl nil finite_sets_sum nil)
+    (finite_emptyset name-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
     (member const-decl "bool" sets nil)
     (subset? const-decl "bool" sets nil)
     (nonneg_real nonempty-type-eq-decl nil real_types nil)
@@ -857,9 +957,9 @@
      nil)
     (number nonempty-type-decl nil numbers nil)
     (sum_union formula-decl nil finite_sets_sum nil))
-   173450 3230 t shostak))
+   shostak))
  (sum_order_sub 0
-  (sum_order_sub-1 nil 3338300063 3338300144
+  (sum_order_sub-1 nil 3338300063
    ("" (skosimp)
     (("" (lemma "sum_subset")
       (("" (inst - "A!1" "B!1" "fnr!1")
@@ -872,8 +972,13 @@
         nil))
       nil))
     nil)
-   proved
    ((sum_subset formula-decl nil finite_sets_sum_real nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
+     finite_sets_sum_real nil)
+    (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
+     sets_lemmas nil)
     (sum_order formula-decl nil finite_sets_sum_real nil)
     (nonneg_real nonempty-type-eq-decl nil real_types nil)
     (>= const-decl "bool" reals nil)
@@ -889,9 +994,9 @@
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
     (T formal-type-decl nil finite_sets_sum_real nil))
-   81779 1240 t shostak))
+   shostak))
  (sum_0_nat 0
-  (sum_0_nat-1 nil 3338300152 3338300338
+  (sum_0_nat-1 nil 3338300152
    ("" (induct "S" :name "finite_set_induction_rest")
     (("1" (skolem!) nil nil)
      ("2" (skosimp* t)
@@ -915,14 +1020,23 @@
         nil))
       nil))
     nil)
-   proved
-   ((non_empty_finite_set type-eq-decl nil finite_sets nil)
+   ((NOT const-decl "[bool -> bool]" booleans nil)
     (empty? const-decl "bool" sets nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
+    (non_empty_finite_set type-eq-decl nil finite_sets nil)
+    (finite_emptyset name-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
+     integers nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
     (choose_rest_or formula-decl nil sets_lemmas nil)
     (member const-decl "bool" sets nil)
     (rest_emptyset formula-decl nil prelude_aux nil)
     (rest const-decl "set" sets nil)
+    (nil application-judgement "nat" finite_sets_sum_real nil)
+    (finite_rest application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
     (finite_set_induction_rest formula-decl nil finite_sets_inductions
      nil)
     (T formal-type-decl nil finite_sets_sum_real nil)
@@ -951,10 +1065,11 @@
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (boolean nonempty-type-decl nil booleans nil))
-   186039 2690 t shostak))
+    (boolean nonempty-type-decl nil booleans nil)
+    (real_plus_real_is_real application-judgement "real" reals nil))
+   shostak))
  (sum_is_null 0
-  (sum_is_null-1 nil 3338300358 3338300480
+  (sum_is_null-1 nil 3338300358
    ("" (skosimp)
     (("" (forward-chain "sum_0_nat")
       (("1" (hide -2 1)
@@ -965,7 +1080,6 @@
        ("2" (inst?) nil nil))
       nil))
     nil)
-   proved
    ((sum_0_nat formula-decl nil finite_sets_sum_real nil)
     (T formal-type-decl nil finite_sets_sum_real nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -988,9 +1102,9 @@
     (emptyset const-decl "set" sets nil)
     (S!1 skolem-const-decl "finite_set[T]" finite_sets_sum_real nil)
     (t!1 skolem-const-decl "T" finite_sets_sum_real nil))
-   122407 1500 t shostak))
+   shostak))
  (sum_0_int 0
-  (sum_0_int-1 nil 3338300490 3338300577
+  (sum_0_int-1 nil 3338300490
    ("" (induct "S" :name "finite_set_induction_rest")
     (("1" (skolem!) nil nil)
      ("2" (skosimp* t)
@@ -1011,10 +1125,16 @@
         nil))
       nil))
     nil)
-   proved
    ((NOT const-decl "[bool -> bool]" booleans nil)
     (empty? const-decl "bool" sets nil)
     (non_empty_finite_set type-eq-decl nil finite_sets nil)
+    (finite_emptyset name-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
+     integers nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
     (choose_rest_or formula-decl nil sets_lemmas nil)
     (t!1 skolem-const-decl "(SS!1)" finite_sets_sum_real nil)
     (SS!1 skolem-const-decl "non_empty_finite_set[T]"
@@ -1022,6 +1142,9 @@
     (member const-decl "bool" sets nil)
     (rest_emptyset formula-decl nil prelude_aux nil)
     (rest const-decl "set" sets nil)
+    (nil application-judgement "nat" finite_sets_sum_real nil)
+    (finite_rest application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
     (finite_set_induction_rest formula-decl nil finite_sets_inductions
      nil)
     (T formal-type-decl nil finite_sets_sum_real nil)
@@ -1050,10 +1173,11 @@
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (boolean nonempty-type-decl nil booleans nil))
-   87391 1660 t shostak))
+    (boolean nonempty-type-decl nil booleans nil)
+    (real_plus_real_is_real application-judgement "real" reals nil))
+   shostak))
  (sum_0_non_neg 0
-  (sum_0_non_neg-1 nil 3338300582 3338300984
+  (sum_0_non_neg-1 nil 3338300582
    ("" (induct "S" :name "finite_set_induction_rest")
     (("1" (skolem!) nil nil)
      ("2" (skosimp*)
@@ -1105,20 +1229,26 @@
         nil))
       nil))
     nil)
-   proved
-   ((choose_rest_or formula-decl nil sets_lemmas nil)
+   ((finite_emptyset name-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
+    (finite_emptyset name-judgement "finite_set" finite_sets nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (choose_rest_or formula-decl nil sets_lemmas nil)
     (member const-decl "bool" sets nil)
     (rest_emptyset formula-decl nil prelude_aux nil)
-    (choose const-decl "(p)" sets nil)
     (nonempty? const-decl "bool" sets nil)
+    (choose const-decl "(p)" sets nil)
     (rest_member formula-decl nil sets_lemmas nil)
+    (t!2 skolem-const-decl "(rest(SS!1))" finite_sets_sum_real nil)
     (SS!1 skolem-const-decl "non_empty_finite_set[T]"
      finite_sets_sum_real nil)
-    (t!2 skolem-const-decl "(rest(SS!1))" finite_sets_sum_real nil)
-    (rest const-decl "set" sets nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (empty? const-decl "bool" sets nil)
+    (finite_rest application-judgement "finite_set[T]"
+     finite_sets_sum_real nil)
     (non_empty_finite_set type-eq-decl nil finite_sets nil)
+    (empty? const-decl "bool" sets nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (rest const-decl "set" sets nil)
     (sum_nonneg formula-decl nil finite_sets_sum_real nil)
     (finite_set_induction_rest formula-decl nil finite_sets_inductions
      nil)
@@ -1144,16 +1274,16 @@
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (boolean nonempty-type-decl nil booleans nil))
-   401426 6220 t shostak))
+    (boolean nonempty-type-decl nil booleans nil)
+    (real_plus_real_is_real application-judgement "real" reals nil))
+   shostak))
  (sum_TCC4 0
-  (sum_TCC4-1 nil 3338293772 3338299822
+  (sum_TCC4-1 nil 3338293772
    ("" (skolem!)
     (("" (use "sum_nonneg")
       (("" (assert) (("" (skolem!) (("" (assert) nil nil)) nil)) nil))
       nil))
     nil)
-   proved
    ((sum_nonneg formula-decl nil finite_sets_sum_real nil)
     (nonneg_real nonempty-type-eq-decl nil real_types nil)
     (>= const-decl "bool" reals nil)
@@ -1168,11 +1298,12 @@
     (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
-    (T formal-type-decl nil finite_sets_sum_real nil))
-   36676 640 t nil))
+    (T formal-type-decl nil finite_sets_sum_real nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   nil))
  (sum_TCC5 0
-  (sum_TCC5-1 nil 3338293772 3338293775 ("" (judgement-tcc) nil nil)
-   proved
+  (sum_TCC5-1 nil 3338293772 ("" (judgement-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -1182,7 +1313,12 @@
     (finite_set type-eq-decl nil finite_sets nil)
     (empty? const-decl "bool" sets nil)
     (non_empty_finite_set type-eq-decl nil finite_sets nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (nil application-judgement "nonneg_real" finite_sets_sum_real nil)
+    (nil application-judgement "nat" finite_sets_sum_real nil)
+    (nil application-judgement "posreal" finite_sets_sum_real nil)
     (member const-decl "bool" sets nil)
     (injective? const-decl "bool" functions nil))
-   247 180 nil nil)))
+   nil)))
 

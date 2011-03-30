@@ -1,12 +1,11 @@
 (finite_sets_card_eq
  (card_injection 0
-  (card_injection-1 nil 3338229205 3338229228
+  (card_injection-1 nil 3338229205
    ("" (skosimp*)
     (("" (rewrite "card_def")
       (("" (rewrite "Card_injection") (("" (inst?) nil nil)) nil))
       nil))
     nil)
-   proved
    ((card_def formula-decl nil finite_sets nil)
     (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
@@ -14,8 +13,10 @@
     (is_finite const-decl "bool" finite_sets nil)
     (finite_set type-eq-decl nil finite_sets nil)
     (T1 formal-type-decl nil finite_sets_card_eq nil)
-    (below type-eq-decl nil nat_types nil)
     (< const-decl "bool" reals nil)
+    (below type-eq-decl nil nat_types nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
     (int nonempty-type-eq-decl nil integers nil)
@@ -29,15 +30,14 @@
      nil)
     (number nonempty-type-decl nil numbers nil)
     (Card_injection formula-decl nil finite_sets nil))
-   23417 550 t shostak))
+   shostak))
  (card_surjection 0
-  (card_surjection-1 nil 3338229232 3338229245
+  (card_surjection-1 nil 3338229232
    ("" (skosimp*)
     (("" (rewrite "card_def")
       (("" (rewrite "Card_surjection") (("" (inst?) nil nil)) nil))
       nil))
     nil)
-   proved
    ((card_def formula-decl nil finite_sets nil)
     (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
@@ -45,8 +45,10 @@
     (is_finite const-decl "bool" finite_sets nil)
     (finite_set type-eq-decl nil finite_sets nil)
     (T1 formal-type-decl nil finite_sets_card_eq nil)
-    (below type-eq-decl nil nat_types nil)
     (< const-decl "bool" reals nil)
+    (below type-eq-decl nil nat_types nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
     (int nonempty-type-eq-decl nil integers nil)
@@ -60,9 +62,9 @@
      nil)
     (number nonempty-type-decl nil numbers nil)
     (Card_surjection formula-decl nil finite_sets nil))
-   12792 360 t shostak))
+   shostak))
  (injection_and_cardinal 0
-  (injection_and_cardinal-1 nil 3338229248 3338229293
+  (injection_and_cardinal-1 nil 3338229248
    ("" (skosimp*)
     (("" (name-replace "n" "card(F!1)" :hide? nil)
       (("" (rewrite "card_bij")
@@ -77,7 +79,6 @@
         nil))
       nil))
     nil)
-   proved
    ((number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
@@ -102,14 +103,16 @@
     (bijective? const-decl "bool" functions nil)
     (T1 formal-type-decl nil finite_sets_card_eq nil)
     (card_injection formula-decl nil finite_sets_card_eq nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
     (composition_injective formula-decl nil func_composition nil)
     (< const-decl "bool" reals nil)
     (below type-eq-decl nil nat_types nil)
     (O const-decl "T3" function_props nil)
     (card_bij formula-decl nil finite_sets nil))
-   45020 680 t shostak))
+   shostak))
  (surjection_and_cardinal 0
-  (surjection_and_cardinal-1 nil 3338229296 3338229328
+  (surjection_and_cardinal-1 nil 3338229296
    ("" (skosimp*)
     (("" (name-replace "n" "card(F!1)" :hide? nil)
       (("" (rewrite "card_bij")
@@ -124,7 +127,6 @@
         nil))
       nil))
     nil)
-   proved
    ((number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
@@ -149,14 +151,16 @@
     (bijective? const-decl "bool" functions nil)
     (T1 formal-type-decl nil finite_sets_card_eq nil)
     (card_surjection formula-decl nil finite_sets_card_eq nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
     (composition_surjective formula-decl nil func_composition nil)
     (< const-decl "bool" reals nil)
     (below type-eq-decl nil nat_types nil)
     (O const-decl "T3" function_props nil)
     (card_bij formula-decl nil finite_sets nil))
-   31477 710 t shostak))
+   shostak))
  (card_eq_bij 0
-  (card_eq_bij-1 nil 3338229331 3338229651
+  (card_eq_bij-1 nil 3338229331
    ("" (skolem!)
     (("" (use "empty_card[T2]")
       (("" (ground)
@@ -224,7 +228,6 @@
         nil))
       nil))
     nil)
-   proved
    ((empty_card formula-decl nil finite_sets nil)
     (T2 formal-type-decl nil finite_sets_card_eq nil)
     (finite_set type-eq-decl nil finite_sets nil)
@@ -236,7 +239,6 @@
     (x!1 skolem-const-decl "T2" finite_sets_card_eq nil)
     (composition_bijective formula-decl nil func_composition nil)
     (bij_inv_is_bij formula-decl nil function_inverse nil)
-    (x!1 skolem-const-decl "T2" finite_sets_card_eq nil)
     (inverse const-decl "D" function_inverse nil)
     (O const-decl "T3" function_props nil)
     (below type-eq-decl nil nat_types nil)
@@ -268,5 +270,5 @@
     (F!1 skolem-const-decl "finite_set[T2]" finite_sets_card_eq nil)
     (TRUE const-decl "bool" booleans nil)
     (T1 formal-type-decl nil finite_sets_card_eq nil))
-   320865 6640 t shostak)))
+   shostak)))
 

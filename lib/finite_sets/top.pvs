@@ -27,6 +27,12 @@
 %        finite_sets_rules      -- experimental AUTO-REWRITE-THEORY rules
 %        finite_sets_minmax_props -- properties of min and max of finite sets
 %        finite_cross           -- cartesian product of finite sets is finite
+%        fs_constructors,       -- constructors for one, two, three element sets
+%        finite_sets_product,   -- product over finite sets
+%        finite_sets_product_real, -- product over finite sets of reals
+%        card_tricks,              -- more lemmas about card
+%        finite_sets_subtype_props
+
 %
 %  This theory was designed for making libraries and is not intended
 %  for importing.  One should directly import one of the above listed
@@ -36,11 +42,24 @@
 top: THEORY
 BEGIN
 
-  IMPORTING finite_sets, finite_sets_sum, 
-             finite_sets_minmax, 
-             finite_sets_inductions, finite_sets_sum_real, 
-             finite_sets_int, finite_sets_nat, finite_sets_pred,
-             finite_sets_below, finite_sets_card_eq, finite_sets_eq,
-             finite_sets_minmax_props, finite_cross
+  IMPORTING finite_sets, 
+            finite_sets_sum, 
+            finite_sets_minmax, 
+            finite_sets_inductions,
+            finite_sets_sum_real, 
+            finite_sets_int, 
+            finite_sets_nat, 
+            finite_sets_pred,
+            finite_sets_below, 
+            finite_sets_card_eq, 
+            finite_sets_eq,
+            finite_sets_minmax_props, 
+            finite_cross, 
+            fs_constructors,
+            finite_sets_product,
+            finite_sets_product_real,
+            card_tricks,
+            finite_sets_subtype_props
+
 
 END top

@@ -1,6 +1,6 @@
 (finite_sets_minmax_props
  (max_le 0
-  (max_le-1 nil 3338234952 3338235002
+  (max_le-1 nil 3338234952
    ("" (skolem!)
     (("" (typepred "max(SS!1)")
       (("" (prop)
@@ -16,7 +16,6 @@
         nil))
       nil))
     nil)
-   proved
    ((max const-decl
          "{a: T | SS(a) AND (FORALL (x: T): SS(x) IMPLIES x <= a)}"
          finite_sets_minmax nil)
@@ -36,9 +35,9 @@
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
     (lt_transitive formula-decl nil finite_sets_minmax nil))
-   49914 860 t shostak))
+   shostak))
  (le_max 0
-  (le_max-1 nil 3338235006 3338235060
+  (le_max-1 nil 3338235006
    ("" (skolem!)
     (("" (typepred "max(SS!1)")
       (("" (prop)
@@ -56,7 +55,6 @@
         nil))
       nil))
     nil)
-   proved
    ((max const-decl
          "{a: T | SS(a) AND (FORALL (x: T): SS(x) IMPLIES x <= a)}"
          finite_sets_minmax nil)
@@ -76,5 +74,5 @@
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
     (lt_transitive formula-decl nil finite_sets_minmax nil))
-   53881 930 t shostak)))
+   shostak)))
 
