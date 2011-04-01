@@ -1,0 +1,18 @@
+fs_constructors[T: TYPE]: THEORY
+BEGIN
+
+  a1,a2,a3,a4,a5: VAR T
+
+  fs(a1): non_empty_finite_set[T] = {t:T | t = a1}
+
+  fs(a1,a2): non_empty_finite_set[T] = {t:T | t = a1 OR t = a2}
+
+  fs(a1,a2,a3): non_empty_finite_set[T] = {t:T | t = a1 OR t = a2 OR t = a3}
+
+  fs(a1,a2,a3,a4): non_empty_finite_set[T] = {t:T | t = a1 OR t = a2 OR t = a3 OR t = a4}
+
+  fs(a1,a2,a3,a4,a5): non_empty_finite_set[T] 
+     = {t:T | t = a1 OR t = a2 OR t = a3 OR t = a4 OR t = a5}
+
+
+END fs_constructors

@@ -1,0 +1,52 @@
+card_tricks  [ T: TYPE, S: TYPE FROM T ] : THEORY
+%-------------------------------------------------------------------------------
+%
+%   AUTHOR: Ben Di Vito     NASA Langley
+%-------------------------------------------------------------------------------
+BEGIN
+
+  U:   VAR set[S]
+  V:   VAR set[T]
+  A:   VAR finite_set[S]
+  B:   VAR finite_set[T]
+  m,n: VAR nat
+  x,y: VAR T
+
+  subtype_full?: LEMMA full?[(U)](U)
+
+  subtype_fullset: LEMMA fullset[(U)] = U
+
+  non_subtype_elements(V): set[T] =
+      difference(V, extend[T, S, boolean, FALSE](fullset[S]))
+
+  extend_restrict: LEMMA
+      empty?(non_subtype_elements(V))
+      IMPLIES extend[T, S, boolean, FALSE](restrict[T, S, boolean](V)) = V
+
+  union_extend_restrict: LEMMA
+      union(non_subtype_elements(V),
+            extend[T, S, boolean, FALSE](restrict[T, S, boolean](V)))
+      = V
+
+  disjoint_extend_restrict: LEMMA
+      disjoint?(non_subtype_elements(V),
+                extend[T, S, boolean, FALSE](restrict[T, S, boolean](V)))
+
+  card_restrict_subtype: LEMMA
+      empty?(non_subtype_elements(B))
+      IMPLIES card(restrict[T, S, boolean](B)) = card(B)
+
+  same_card_subset_extend: LEMMA
+      subset?(extend[T, S, boolean, FALSE](A), B) AND card(A) = card(B) 
+      IMPLIES extend[T, S, boolean, FALSE](A) = B
+
+  card_restrict_plus: LEMMA
+      card(non_subtype_elements(B)) + card(restrict[T, S, boolean](B))
+      = card(B)
+
+  card_restrict_less: LEMMA
+      nonempty?(non_subtype_elements(B))
+      IMPLIES card(restrict[T, S, boolean](B)) < card(B)
+
+
+END card_tricks

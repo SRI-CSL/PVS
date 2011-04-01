@@ -1,0 +1,21 @@
+finite_sets_subtype_props  [ T1, T2: TYPE ] : THEORY
+%-------------------------------------------------------------------------------
+%
+%   AUTHOR: Ben Di Vito     NASA Langley
+%-------------------------------------------------------------------------------
+BEGIN
+
+  IMPORTING card_tricks
+
+  S: VAR set[T1]
+  A: VAR finite_set[T1]
+  B: VAR finite_set[T2]
+
+  only_subtype_elements: LEMMA empty?(non_subtype_elements[T1, (A)](A)) AND
+                               empty?(non_subtype_elements[T2, (B)](B))
+
+  same_card_inj_bij: LEMMA
+      FORALL (f: [ (A) -> (B) ]):
+   	  card(A) = card(B) AND injective?(f) IMPLIES bijective?(f)
+
+END finite_sets_subtype_props 

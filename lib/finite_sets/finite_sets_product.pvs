@@ -1,0 +1,75 @@
+finite_sets_product[T, R: TYPE, one:R, *:[R,R -> R] ]: THEORY
+%----------------------------------------------------------------------
+%  
+%                                      ----
+%                                      |  |    
+%  sum(S: finite_set[T], f:[T->R]) =   |  |  f(i) 
+%                                      |  |
+%                                      member(i,S)
+%  
+%----------------------------------------------------------------------
+BEGIN
+
+  ASSUMING
+     r,r1,r2,r3 : VAR R
+     one_identity: ASSUMPTION identity?(*)(one)
+     mult_ac:       ASSUMPTION associative?(*) AND commutative?(*)
+  ENDASSUMING
+
+  mult_one_right: LEMMA r * one = r 
+  mult_one_left : LEMMA one* r = r
+  mult_assoc     : LEMMA (r1 * r2) * r3 = r1 * (r2 * r3) 
+  mult_comm      : LEMMA r1 * r2 = r2 * r1
+
+  IMPORTING finite_sets@finite_sets_inductions[T], sets_lemmas[T]
+
+  f,g: VAR [T -> R]
+  S, A, B: VAR finite_set
+  x: VAR T
+
+  product(S,f) : RECURSIVE R = 
+    IF (empty?(S)) THEN one
+    ELSE f(choose(S)) * product(rest(S),f)
+    ENDIF MEASURE (LAMBDA S,f: card(S))
+
+  product_emptyset  : THEOREM product(emptyset[T],f) = one
+
+  product_singleton : THEOREM product(singleton(x),f) = f(x);
+
+  product_x         : THEOREM (FORALL (x: (S)): 
+                              product(S, f) = f(x) * product(remove(x, S), f))
+
+  product_x1_x2     : LEMMA (FORALL (x1,x2: (S)): f(x1) * product(remove(x1,S),f) 
+                              = f(x2) * product(remove(x2,S),f))
+
+  product_add       : THEOREM product(add(x,S),f) 
+                          = product(S,f) * IF member(x,S) THEN one ELSE f(x) ENDIF
+
+  product_remove    : THEOREM product(remove(x,S),f) 
+                          * IF member(x,S) THEN f(x) ELSE one ENDIF = product(S,f)
+
+  product_rest      : THEOREM NOT empty?(S) IMPLIES
+                            f(choose(S)) * product(rest(S),f) = product(S,f)
+ 
+  product_disj_union: THEOREM disjoint?(A,B) IMPLIES 
+                            product(union(A,B),f) = product(A,f) * product(B,f) 
+
+  product_diff_subset: THEOREM subset?(A, B) IMPLIES 
+		            product(difference(B, A), f) * product(A, f) = product(B, f) 
+
+  product_union      : THEOREM product(union(A,B),f) * product(intersection(A,B),f) 
+                                 = product(A,f) * product(B,f) 
+
+  product_diff_intersection: THEOREM product(A,f) = 
+                            product(difference(A,B),f) * product(intersection(A,B),f) 
+
+  product_f_g         : LEMMA (FORALL (x: (S)): f(x) = g(x)) 
+                               IMPLIES product(S, f) = product(S, g)
+
+  product_particular  : THEOREM product(S,f) = product(S, f WITH [x := one])
+			       * IF S(x) THEN f(x) ELSE one ENDIF 
+
+  product_distributive: THEOREM product(A,f) * product(A,g) = 
+                                product(A,(LAMBDA x: f(x) * g(x))) 
+
+END finite_sets_product

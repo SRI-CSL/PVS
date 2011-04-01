@@ -1,0 +1,111 @@
+finite_sets_product_real[T: TYPE]: THEORY
+%------------------------------------------------------------------------
+%
+% finite product over real-valued functions   
+%
+%   Authors: Ricky W. Butler
+%            David Griffioen
+%
+%   NOTES:
+%      -- there are several theorems which are virtually idential to
+%         theorems in finite_sets_product.  They are repeated here to prevent
+%         the need for commands such as (LEMMA product_emptyset[T,real,1,*])
+%      -- the theorems with names ending in "_rew" are especially useful
+%         for rewriting.  Some of these take advantage of the fact that
+%         since we have real-valued functions we have a "-" available.
+%------------------------------------------------------------------------
+BEGIN
+
+
+  IMPORTING finite_sets_product[T,real,1,*]    %% prelude_aux
+
+  S, A, B: VAR finite_set[T]
+  t: VAR T
+  c,N: VAR real
+  cnz: VAR nzreal
+  f,g: VAR function[T -> real]
+
+  SS: VAR non_empty_finite_set[T]
+
+  product_const        : THEOREM product(S, (LAMBDA t: c)) = c^card(S) 
+
+  product_1_is_card    : COROLLARY product(S,(LAMBDA t: 1)) = 1
+
+  product_mult         : THEOREM product(S,(LAMBDA t: c*f(t))) = c^card(S)*product(S,f) 
+
+
+  product_eq_0        : THEOREM product(S,f) = 0 IMPLIES  
+                                          (EXISTS (t:(S)): f(t) = 0)
+
+
+
+% ----------- Some rewrite rules using "-" ------------------
+
+  product_empty?       : THEOREM empty?(S) IMPLIES product(S,f) = 1
+
+  product_emptyset_rew : THEOREM S = emptyset[T] IMPLIES product(S,f) = 1
+
+  product_singleton_rew: THEOREM card(S) = 1 AND S(t) IMPLIES product(S,f) = f(t)
+
+  product_remove_rew   : THEOREM f(t) /= 0 IMPLIES 
+                          product(remove(t,S),f) = product(S,f) /
+                                IF S(t) THEN f(t) ELSE 1 ENDIF 
+
+  product_rest_rew     : THEOREM NOT empty?(S) AND f(choose(S)) /= 0 IMPLIES
+                                product(rest(S),f) = product(S,f) / f(choose(S))
+
+  product_union_rew    : THEOREM product(union(A,B),f)*product(intersection(A,B),f) 
+                                  = product(A,f) * product(B,f)
+
+% -------- products of slightly modified functions ----------
+
+  product_eq_funs       : THEOREM (FORALL (t: (S)): f(t) = g(t)) 
+                               IMPLIES product(S, f) = product(S, g)
+
+  product_particular_gen: THEOREM product(S,f) = product(S, f WITH [t := cnz])
+			       * IF S(t) THEN f(t)/cnz ELSE 1 ENDIF 
+
+
+% ----- some order relationships involving product -----
+
+  product_nonneg   : LEMMA (FORALL (t: (S)): f(t) >= 0) IMPLIES product(S,f) >= 0
+
+  product_pos      : LEMMA (FORALL (t: (S)): f(t) > 0) IMPLIES product(S,f) > 0 OR
+                                                    S = emptyset[T]
+
+  product_nz       : LEMMA (FORALL (t: (SS)): f(t) /= 0) IMPLIES product(SS,f) /= 0 
+
+  product_posreal: JUDGEMENT product(A: non_empty_finite_set[T], f: [T -> posreal])
+            HAS_TYPE posreal
+
+  product_int: JUDGEMENT product(A: finite_set[T], f: [T -> int]) HAS_TYPE int
+
+  product_nat: JUDGEMENT product(A: finite_set[T], f: [T -> nat]) HAS_TYPE nat
+
+% ----- Special properties non-negative valued functions -----
+
+  fnr,gnr: VAR [T -> nonneg_real]
+
+  Fnat:  VAR function[T -> nat]
+
+  product_eq_1        : THEOREM product(S,Fnat) = 1 IMPLIES  
+                                          (FORALL (t:(S)): Fnat(t) = 1)
+
+
+% ----- Special properties positive valued functions -----
+
+%  Fposnat: VAR [T -> posnat]
+%  product_subset   : THEOREM subset?(A,B) IMPLIES product(A,Fposnat) <= product(B,Fposnat)
+
+
+  JUDGEMENT product(A: finite_set[T], f: [T -> nonneg_real])
+            HAS_TYPE nonneg_real
+  JUDGEMENT product(A: finite_set[T], f: [T -> nonneg_int]) HAS_TYPE nonneg_int
+  JUDGEMENT product(A: non_empty_finite_set[T], f: [T->posnat]) HAS_TYPE posnat
+
+%  JUDGEMENT product(A: non_empty_finite_set[T], f: [T->negreal]) HAS_TYPE negreal
+%  JUDGEMENT product(A: finite_set[T], f: [T -> nonpos_real]) HAS_TYPE nonpos_real
+%  JUDGEMENT product(A: finite_set[T], f: [T -> negint]) HAS_TYPE negint
+
+END finite_sets_product_real
+
