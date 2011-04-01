@@ -71,7 +71,7 @@
     (subseq excl::cl-release-date 0 end)))
 
 (eval-when (:execute :compile-toplevel :load-toplevel)
-  (defparameter *pvs-version* "5.0-beta-2")
+  (defparameter *pvs-version* "5.0-beta-3")
 
   ;; Not used in PVS sources, but may be useful for patches, strategies, etc.
   ;;(pushnew (intern (format nil "pvs~a" *pvs-version*) :keyword) *features*)
