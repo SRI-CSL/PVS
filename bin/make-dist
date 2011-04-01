@@ -48,7 +48,7 @@
 # trap "echo 'Interrupted...cleaning up the staging directory'; rm -rf ${temppar
 # ent}; exit 1" 1 2 15
 
-TARFLAGS='-cohz --mode=u+rw --atime-preserve --exclude=CVS --exclude=.svn'
+TARFLAGS='-cohz --mode=u+rw --atime-preserve --exclude=.svn'
 
 version="5.0-beta"
 
@@ -56,7 +56,6 @@ version="5.0-beta"
 echo Creating pvs-${version}-source.tgz
 tar ${TARFLAGS} -f pvs-${version}-source.tgz --exclude pvsbin \
   pvs.system *.lisp Makefile.in README INSTALL LICENSE NOTICES \
-  README.CVS \
   configure configure.in config.guess config.sub install-sh bin/make-dist \
   pvs.in pvsio.in proveit.in provethem.in pvs.sty pvs-tex.sub \
   bin/pvs-platform bin/relocate bin/tarmail bin/untarmail \
