@@ -21,7 +21,7 @@ BEGIN
   mult_assoc     : LEMMA (r1 * r2) * r3 = r1 * (r2 * r3) 
   mult_comm      : LEMMA r1 * r2 = r2 * r1
 
-  IMPORTING finite_sets@finite_sets_inductions[T], sets_lemmas[T]
+  IMPORTING finite_sets_inductions[T], sets_lemmas[T]
 
   f,g: VAR [T -> R]
   S, A, B: VAR finite_set
