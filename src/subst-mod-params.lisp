@@ -714,9 +714,11 @@
       (nreverse importings)
       (let ((importing (create-importing-for-binding
 			(caar bindings)
-			(if (actual? (cdar bindings))
-			    (expr (cdar bindings))
-			    (cdar bindings)))))
+			(cond ((mapping-rhs-rename? (cdar bindings))
+			       nil)
+			      ((actual? (cdar bindings))
+			       (expr (cdar bindings)))
+			      (t (cdar bindings))))))
 	(create-importings-for-bindings
 	 (cdr bindings)
 	 (if (and importing
