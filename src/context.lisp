@@ -1781,7 +1781,7 @@ pvs-strategies files.")
 ;;; should be read in a case-insensitive mode.  The script is a bit tricky,
 ;;; but for now we will read it case-insensitively.
 
-;;; read-proof simply reads the next proof in the stream, up un
+;;; read-proof simply reads the next proof in the stream,
 ;;; The way we do this is to use read-char to read the first \#(, then keep
 ;;; track of what we should be reading, and read using the proper readtable
 
@@ -1824,17 +1824,29 @@ pvs-strategies files.")
 (defun read-proofs-of-decls (stream &optional proofs)
   (let ((char (read-to-paren stream)))
     (if (char= char #\()
-	(let ((proofid (read-case-sensitive stream))
-	      (description (read stream nil))
-	      (create-date (read stream nil))
-	      (run-date (read stream nil))
-	      (script (read stream nil))
-	      (status (read stream))
-	      (refers-to (read-proofs-refers-to stream))
-	      (real-time (read stream nil))
-	      (run-time (read stream nil))
-	      (interactive? (read stream))
-	      (dp (read stream)))
+	;; Old proof had 9 entries; now 5 - read as if there are 9,
+	;; This will get sorted out in restore-theory-proofs*
+	(let* ((proofid (read-case-sensitive stream))
+	       (description (read stream nil))
+	       (create-date (read stream nil))
+	       ;; May not have a run date anymore - check if a number
+	       ;; for old form of proof-info.  Problem if nil, as this
+	       ;; is both a valid run-date and script.
+	       (maybe-date (read stream nil))
+	       (run-date (when (integerp maybe-date) maybe-date))
+	       (script (if (or (integerp maybe-date) (null maybe-date))
+			   (read stream nil)
+			   maybe-date))
+	       (status (when (or (integerp maybe-date) (null maybe-date))
+			 (read stream)))
+	       (refers-to (read-proofs-refers-to stream))
+	       (real-time (when (or (integerp maybe-date) (null maybe-date))
+			    (read stream nil)))
+	       (run-time (when (or (integerp maybe-date) (null maybe-date))
+			   (read stream nil)))
+	       (interactive? (when (or (integerp maybe-date) (null maybe-date))
+			       (read stream)))
+	       (dp (read stream)))
 	  (read-to-right-paren stream)
 	  (read-proofs-of-decls
 	   stream
