@@ -680,7 +680,7 @@ cursor, or the original formula if the current buffer is the \"Proof\"
 buffer."
   (interactive)
   (confirm-not-in-checker)
-  (let ((pbuf (or (get-buffer "Proof"))))
+  (let ((pbuf (get-buffer "Proof")))
     (unless pbuf
       (error "No proof is currently being edited"))
     (when (and (current-pvs-file t)
@@ -2152,8 +2152,8 @@ Letters do not insert themselves; instead, they are commands:
       (replace-match "(checkpoint)" nil t))
     (save-excursion
       (goto-char (point-min))
-      (re-search-forward "^(" nil t)
-      (forward-char -1)
+      (when (re-search-forward "^(" nil t)
+	(forward-char -1))
       (write-region (point) (point-max) *pvs-tmp-file* nil 'notnil))
     (goto-char (point-min))
     (while (search-forward "(checkpoint)" nil t)
