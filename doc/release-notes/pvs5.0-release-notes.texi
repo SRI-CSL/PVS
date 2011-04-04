@@ -1,0 +1,123 @@
+@node PVS 5.0 Release Notes
+@unnumbered PVS 5.0 Release Notes
+
+PVS 5.0 is a significant new release of PVS.  The highlights include the
+incorporation of the PVSio, Manip, Field, and ProofLite packages from
+NASA, a new theory interpretation implementation, 
+
+@ifnottex
+@menu
+* 5.0 Installation Notes::
+* 5.0 Changes::
+* 5.0 Incompatibilities::
+@end menu
+@end ifnottex
+
+@node    5.0 Installation Notes
+@section Installation Notes
+
+The system is installed as usual; see the download pages at
+@example
+@url{http://pvs.csl.sri.com/download.shtml}
+@end example
+We strongly suggest getting a pre-built Allegro version, unless you have
+concerns with the Allegro runtime click-though license, in which case get
+one of the pre-built CMU or SBCL Lisp images.
+
+
+@node    5.0 Changes
+@section Changes
+
+@itemize @minus
+
+@item
+The prelude has been modified, mostly reflecting the theories that are
+part of PVSio, Manip, Field, and ProofLite.  Here is the complete list of
+changes:
+@itemize @bullet
+@item
+From theory @code{sets}:
+@example
+  the(p: (singleton?)): (p)
+
+  the_lem: LEMMA FORALL (p: (singleton?)): the(p) = epsilon(p)
+
+  the_prop: LEMMA FORALL (p: (singleton?)): p(the(p))
+
+  is_singleton: LEMMA
+    FORALL a: (nonempty?(a) AND
+               FORALL x, y: a(x) AND a(y) IMPLIES (x=y))
+      IMPLIES singleton?(a)
+
+  singleton_elt_lem: LEMMA
+     singleton?(a) and a(x) IMPLIES singleton_elt(a) = x
+
+  singleton_elt_def: LEMMA
+     singleton?(a) IMPLIES singleton_elt(a) = choose(a)
+
+  singleton_rew: LEMMA singleton_elt(singleton(x)) = x
+
+  AUTO_REWRITE+ singleton_rew
+@end example
+@item
+From theory @code{list_props}:
+@example
+  every_nth: LEMMA
+      every(P)(l) IFF FORALL (i:below(length(l))): P(nth(l,i))
+@end example      
+@item
+From theory @code{more_map_props}:
+@example
+  map_nth_rw: LEMMA
+    FORALL (i: below(length(l))):
+      nth(map(f)(l), i) = f(nth(l, i))
+@end example
+@end itemize
+
+@item
+C@'esar Mu@~noz has provided improvements for pvsio.  See
+@code{doc/PVSio-2.d.pdf} for details.
+
+@item
+Judgements over dependent types have been fixed - in most cases this
+meant the judgement was not used where it should have been, in a couple of
+cases it left free variables uninstantiated, causing breaks.
+
+@item
+Recursive judgements were recently introduced (see the 4.1 release notes),
+and several bugs have been fixed.  In addition, now when recursive
+judgement has a name, the corresponding formula is generated as an axiom.
+
+@item
+Auto-rewrites now find the proper instances; prior to this, the
+auto-rewrites were kept in generic form, and never properly instantiated.
+
+@item
+Theory interpretations have had a number of bugs fixed.
+
+@item
+TCC subsumption tests have been improved, leading to fewer TCCs.
+
+@item
+Batch mode now saves the context; before this, Emacs was exiting without
+giving lisp a chance to save.
+
+@item
+Libraries are more robust; in particular, relative library paths now work
+properly when used recursively.
+@end itemize
+
+@node    5.0 Incompatibilities
+@section Incompatibilities
+
+The changes lead to some incompatibilities.  The improved judgements and
+TCC subsumption lead to fewer TCCs, hence may cause TCC renumbering and
+proofs may have to be shifted (@code{M-x show-orphaned-proofs} may be
+useful here).
+
+In addition to these, the improved auto-rewrites also affect proofs, as
+some branches of a proof may no longer be generated, or may have a
+different form.  It is usually easy to repair, though it often helps to
+run an older version of PVS in parallel to figure out where the proof
+deviates.  Finally, any proof that relies on the expansion of @code{the}
+will need to use @code{the_lem} instead.
