@@ -589,7 +589,8 @@
   judgement-declarations ;;keeps track of all the judgement declarations
   number-judgements-alist
   name-judgements-alist
-  application-judgements-alist)
+  application-judgements-alist
+  expr-judgements-alist)
 
 (defcl name-judgements ()
   (minimal-judgements :initform nil)

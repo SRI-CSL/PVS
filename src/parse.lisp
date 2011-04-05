@@ -628,6 +628,9 @@
 	     :chain? t
 	     :place place)))
 	((is-sop 'JNAMEDECL jdecl)
+	 (unless (is-sop 'NOEX (term-arg1 jdecl))
+	   (parse-error (term-arg1 jdecl)
+	     "Subtype judgements may not include a definition"))
 	 (let ((name (xt-name (term-arg0 jdecl) nil)))
 	   (make-instance 'subtype-judgement
 	     :declared-subtype (change-class name 'type-name)
@@ -677,12 +680,20 @@
 	     :declared-type dtype
 	     :chain? t
 	     :place place))))
-    (JAPPLDECL (make-instance 'application-judgement
-		 :name (change-class (xt-name (term-arg0 jdecl) nil) 'name-expr)
-		 :formals (xt-pdf (term-arg1 jdecl))
-		 :declared-type dtype
-		 :chain? t
-		 :place place))
+    (JAPPLDECL
+     (make-instance 'application-judgement
+       :name (change-class (xt-name (term-arg0 jdecl) nil) 'name-expr)
+       :formals (xt-pdf (term-arg1 jdecl))
+       :declared-type dtype
+       :chain? t
+       :place place))
+    (JEXPRDECL
+     (make-instance 'expr-judgement
+       :declared-type dtype
+       :formals (xt-pdf (term-arg0 jdecl))
+       :expr (xt-expr (term-arg1 jdecl))
+       :chain? t
+       :place place))
     (t (parse-error jdecl "Types may not have HAS_TYPE judgements."))))
 
 (defun xt-rec-judgement (jdecls dtype place)

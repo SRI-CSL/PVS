@@ -220,7 +220,10 @@ judgement ::= {['RECURSIVE'] 'JUDGEMENT' {jdecl++','}
                  type-expr)>;
 
 jdecl ::= type-expr-sans-name <jsubtypedecl(type-expr-sans-name)>
-        | {name [pdformals+]} <[jnamedecl(name)|jappldecl(name,pdf(plus))]>
+        | {name [pdformals+]}
+             <[jnamedecl(name)|jappldecl(name,pdf(plus))]>
+        | {'FORALL' pdformals+ '=' expr}
+             <jexprdecl(pdf(plus),expr)>
         ;
 
 ename ::= {name [':' type-expr]} <ename(name,[notype()|type-expr])>;
@@ -335,9 +338,9 @@ type-expr-sans-name ::= { '(' expr ')'} <expr-as-type(expr)>
 		      | {'{' set-formals ['|' expr] '}'}
 			<[enumtype(set-formals) | subtype(set-formals,expr)]>
 		      | comp-type-expr
-                      | {{'FORALL' | 'EXISTS'} lambda-formals ':' type-expr}
-                        <quant-type({forall()|exists()},lambda-formals,
-                                    type-expr)>
+                      %% | {{'FORALL' | 'EXISTS'} lambda-formals ':' type-expr}
+                      %%   <quant-type({forall()|exists()},lambda-formals,
+                      %%               type-expr)>
 		      ;
 
 % Broken out so that type expressions could appear in actual parameters;

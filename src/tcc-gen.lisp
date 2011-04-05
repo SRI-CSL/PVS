@@ -1264,6 +1264,12 @@
 	(id decl))
       (call-next-method)))
 
+(defmethod make-tcc-name* ((decl expr-judgement) expr extra-id)
+  (declare (ignore extra-id))
+  (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
+	(id decl))
+      (call-next-method)))
+
 (defmethod make-tcc-name* ((decl rec-application-judgement) expr extra-id)
   (call-next-method))
 

@@ -202,6 +202,11 @@
   (generate-xref (declared-type d))
   (generate-xref (formals d)))
 
+(defmethod generate-xref ((d expr-judgement))
+  (generate-xref (expr d))
+  (generate-xref (declared-type d))
+  (generate-xref (formals d)))
+
 (defmethod generate-xref ((d conversion-decl))
   (generate-xref (expr d)))
 

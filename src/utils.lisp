@@ -2462,6 +2462,10 @@
   (or (id ref)
       (id (name ref))))
 
+(defmethod ref-to-id ((ref expr-judgement))
+  (or (id ref)
+      '|expr_judgement|))
+
 
 ;;; CASES v OF                      IF c1?(v) THEN e1
 ;;;  c1: e1,                        ELSIF c2?(v)

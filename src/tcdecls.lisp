@@ -3260,6 +3260,27 @@
     (generic-judgement-warning decl))
   (add-judgement-decl decl))
 
+(defmethod typecheck* ((decl expr-judgement) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (let ((*generate-tccs* 'none))
+    (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
+  (set-type (declared-type decl) nil)
+  (typecheck* (formals decl) nil nil nil)
+  (let ((fmlist (apply #'append (formals decl))))
+    (let ((dup (duplicates? fmlist :key #'id)))
+      (when dup
+	(type-error dup
+	  "May not use duplicate arguments in judgements")))
+    (set-formals-types fmlist))
+  (let* ((*bound-variables* (reverse (apply #'append (formals decl))))
+	 (*no-conversions-allowed* t)
+	 (*compatible-pred-reason*
+	  (acons (expr decl) "judgement" *compatible-pred-reason*)))
+    (typecheck* (expr decl) (type decl) nil nil))
+  (when (formals-sans-usings (current-theory))
+    (generic-judgement-warning decl))
+  (add-judgement-decl decl))
+
 (defmethod typecheck* ((decl rec-application-judgement) expected kind args)
   (declare (ignore expected kind args))
   (typecheck-rec-application-judgement decl))
@@ -3481,6 +3502,7 @@
          is only imported generically, as the theory instance cannot be~%  ~
          determined from the number."
       (id decl) (starting-row (place decl)) (id (module decl)))))
+  
 
 (defmethod generic-judgement-warning ((decl name-judgement))
   (unless (subsetp (free-params (type decl))
