@@ -628,9 +628,6 @@
 	     :chain? t
 	     :place place)))
 	((is-sop 'JNAMEDECL jdecl)
-	 (unless (is-sop 'NOEX (term-arg1 jdecl))
-	   (parse-error (term-arg1 jdecl)
-	     "Subtype judgements may not include a definition"))
 	 (let ((name (xt-name (term-arg0 jdecl) nil)))
 	   (make-instance 'subtype-judgement
 	     :declared-subtype (change-class name 'type-name)
