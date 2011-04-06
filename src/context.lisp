@@ -1824,29 +1824,44 @@ pvs-strategies files.")
 (defun read-proofs-of-decls (stream &optional proofs)
   (let ((char (read-to-paren stream)))
     (if (char= char #\()
-	;; Old proof had 9 entries; now 5 - read as if there are 9,
-	;; This will get sorted out in restore-theory-proofs*
+	;; Old proof had 11 entries; now 6
+	;; Old:                         New:
+	;; ------------------------     ------------------------
+	;; id                           id
+	;; description                  description
+	;; create-date                  create-date
+	;; run-date
+	;; script                       script
+	;; status
+	;; refers-to                    refers-to
+	;; real-time
+	;; run-time
+	;; interactive?
+	;; decision-procedure-used      decision-procedure-used
 	(let* ((proofid (read-case-sensitive stream))
 	       (description (read stream nil))
 	       (create-date (read stream nil))
 	       ;; May not have a run date anymore - check if a number
 	       ;; for old form of proof-info.  Problem if nil, as this
 	       ;; is both a valid run-date and script.
-	       (maybe-date (read stream nil))
-	       (run-date (when (integerp maybe-date) maybe-date))
-	       (script (if (or (integerp maybe-date) (null maybe-date))
-			   (read stream nil)
-			   maybe-date))
-	       (status (when (or (integerp maybe-date) (null maybe-date))
-			 (read stream)))
-	       (refers-to (read-proofs-refers-to stream))
-	       (real-time (when (or (integerp maybe-date) (null maybe-date))
-			    (read stream nil)))
-	       (run-time (when (or (integerp maybe-date) (null maybe-date))
-			   (read stream nil)))
-	       (interactive? (when (or (integerp maybe-date) (null maybe-date))
-			       (read stream)))
-	       (dp (read stream)))
+	       (run-date? (read stream nil))
+	       (script? (read stream nil))
+	       (status? (read-proofs-refers-to stream))
+	       ;; At this point, we may have read everything - check if next
+	       ;; char is #\)
+	       (more? (let ((ch (read-char stream)))
+			(unread-char ch stream)
+			(not (char= ch #\)))))
+	       (run-date (when more? run-date?))
+	       (script (if more? script? run-date?))
+	       (status (when more? status?))
+	       (refers-to (if more?
+			      (read-proofs-refers-to stream)
+			      script?))
+	       (real-time (when more? (read stream nil)))
+	       (run-time (when more? (read stream nil)))
+	       (interactive? (when more? (read stream)))
+	       (dp (if more? (read stream) status?)))
 	  (read-to-right-paren stream)
 	  (read-proofs-of-decls
 	   stream
@@ -1860,15 +1875,17 @@ pvs-strategies files.")
   ;; list of form (id class type theory-id library-id)
   ;; The class should be up-cased, and any |nil|s should be upcased
   (let ((refers-to (read-case-sensitive stream)))
-    (unless (eq refers-to '|nil|)
-      (mapcar #'(lambda (ref)
-		  (unless (eq ref '|nil|)
-		    (list (first ref)
-			  (intern (string-upcase (second ref)))
-			  (if (eq (third ref) '|nil|) nil (third ref))
-			  (fourth ref)
-			  (if (eq (fifth ref) '|nil|) nil (fifth ref)))))
-	refers-to))))
+    (if (symbolp refers-to)
+	;; Could be nil, or status from old proof-info format
+	(intern (string-upcase refers-to))
+	(mapcar #'(lambda (ref)
+		    (unless (eq ref '|nil|)
+		      (list (first ref)
+			    (intern (string-upcase (second ref)))
+			    (if (eq (third ref) '|nil|) nil (third ref))
+			    (fourth ref)
+			    (if (eq (fifth ref) '|nil|) nil (fifth ref)))))
+	  refers-to))))
       
 #+(or cmu sbcl)
 (defun read-to-paren-or-quote (stream)
