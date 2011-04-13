@@ -413,6 +413,9 @@
 (defmethod judgement-types ((ex expr))
   (multiple-value-bind (jtypes jdecls)
       (judgement-types-expr ex)
+    ;;(when (and (consp jtypes)
+    ;;   (member (type ex) jtypes :test #'tc-eq))
+    ;;  (break "Why is the real type a judgement type"))
     (when (and *in-checker* *ps*)
       (mapcar #'(lambda (jd)
 		  (pushnew jd (dependent-decls *ps*)))
@@ -435,7 +438,8 @@
     (multiple-value-bind (jtypes&jdecls there?)
 	(gethash ex jhash)
       (if there?
-	  (values-list jtypes&jdecls)
+	  (when jtypes&jdecls
+	    (apply #'remove-judgement-types-of-type (type ex) jtypes&jdecls))
 	  (multiple-value-bind (types jdecls)
 	      (judgement-types* ex)
 	    (let ((jlist (jdecls-list jdecls)))
@@ -459,9 +463,11 @@
 	    (multiple-value-bind (ejtypes ejdecls)
 		(expr-judgement-types ex njtypes)
 	      (let ((jtypes (if ejtypes (append njtypes ejtypes) njtypes))
-		    (jdecls (if ejdecls (append njdecls ejdecls) ejdecls)))
-		(assert (or (vectorp jtypes)
-			    (not (member (type ex) jtypes :test #'tc-eq))))
+		    (jdecls (if ejdecls (append njdecls ejdecls) njdecls)))
+		#+pvsdebug (assert (or (and (name-expr? ex)
+					    (skolem-const-decl? (declaration ex)))
+				       (vectorp jtypes)
+				       (not (member (type ex) jtypes :test #'tc-eq))))
 		#+pvsdebug (assert (valid-judgement-type-value jtypes))
 		#+pvsdebug (assert (or (and (listp njtypes) (listp jdecls))
 				       (and (vectorp njtypes)
@@ -536,19 +542,25 @@
 (defmethod judgement-types* ((ex name-expr))
   (let ((entry (name-judgements ex)))
     (when entry
-      (let ((mjudgements (remove-if (complement
-				     #'(lambda (mj)
-					 (strict-compatible? (type mj) (type ex))))
-			   (minimal-judgements entry))))
+      (let* ((mjudgements (remove-if (complement
+				      #'(lambda (mj)
+					  (and (not (subtype-of? (type ex) (type mj)))
+					       (strict-compatible? (type mj) (type ex)))))
+			    (minimal-judgements entry)))
+	     (mtypes (mapcar #'type mjudgements)))
+	#+pvsdebug (assert (not (member (type ex) mtypes :test #'tc-eq)))
 	(if (generic-judgements entry)
 	    (multiple-value-bind (inst-types gjdecls)
 		(instantiate-generic-judgement-types
 		 ex (generic-judgements entry))
-	      (assert (or (null inst-types) gjdecls))
+	      #+pvsdebug (assert (or (null inst-types) gjdecls))
+	      #+pvsdebug (assert (or (skolem-const-decl? (declaration ex))
+				     (vectorp inst-types)
+				     (not (member (type ex) inst-types :test #'tc-eq))))
 	      (values 
-	       (nconc inst-types (mapcar #'type mjudgements))
-	       (nconc gjdecls mjudgements)))
-	    (values (mapcar #'type mjudgements) mjudgements))))))
+	       (append inst-types mtypes)
+	       (append gjdecls mjudgements)))
+	    (values mtypes mjudgements))))))
 
 (defun instantiate-generic-judgement-types (name judgements
 						 &optional types jdecls)
@@ -556,6 +568,7 @@
       (values types jdecls)
       (let* ((type (instantiate-generic-judgement-type name (car judgements)))
 	     (add? (and type (fully-instantiated? type)
+			(not (subtype-of? (type name) type))
 			(compatible? type (type name)))))
 	(instantiate-generic-judgement-types
 	 name
@@ -596,6 +609,8 @@
 		 (multiple-value-bind (jtypes jdecls)
 		     (generic-application-judgement-types
 		      ex (generic-judgements entry) gtypes ijdecls)
+		   #+pvsdebug (assert (or (vectorp jtypes)
+					  (not (member (type ex) jtypes :test #'tc-eq))))
 		   (values jtypes jdecls))))))))
       (lambda-expr
        (multiple-value-bind (ljtypes ljdecls)
@@ -615,7 +630,7 @@
 	   (let* ((bndlist (bindings* op))
 		  (arglist (argument* ex))
 		  (sljtypes (subst-judgement-types ljtypes bndlist arglist)))
-	     (values sljtypes ljdecls))))))))
+	     (remove-judgement-types-of-type (type ex) sljtypes ljdecls))))))))
 
 (defun subst-judgement-types (jtypes bndlist arglist)
   (if (null bndlist)
@@ -669,9 +684,9 @@
 	    (let* ((jtypes (judgement-types+ (car argslist)))
 		   (ajtypes-list
 		    (collect-component-arg-judgement-types jtypes)))
-	      (assert (or (null bindings)
-			  (null ajtypes-list)
-			  (length= ajtypes-list bindings)))
+	      #+pvsdebug (assert (or (null bindings)
+				     (null ajtypes-list)
+				     (length= ajtypes-list bindings)))
 	      (when ajtypes-list
 		(mapc #'(lambda (bd ajtypes)
 			  (let* ((btype (type bd))
@@ -771,7 +786,7 @@
 
 (defun jvector-to-types (jtypes)
   (let ((tlist (coerce jtypes 'list)))
-    (assert (every #'consp tlist))
+    #+pvsdebug (assert (every #'consp tlist))
     (if (symbolp (caar tlist))
 	;; These are field ids - create recordtypes
 	(let* ((field-decls (mapcar #'(lambda (fld&types)
@@ -822,6 +837,7 @@
 			     (compute-appl-judgement-range-type
 			      arguments argtypes rdomains domains range)))
 		   (dont-add? (or (null jrange)
+				  (subtype-of? (type ex) jrange)
 				  (some #'(lambda (jty)
 					    (subtype-of? jty jrange))
 					jtypes))))
@@ -902,7 +918,7 @@
   argtypes)
 
 (defun compute-application-judgement-types (ex graph)
-  (assert (every #'fully-instantiated? (mapcar #'car graph)))
+  #+pvsdebug (assert (every #'fully-instantiated? (mapcar #'car graph)))
   (let ((args-list (argument* ex))
 	(cgraph (remove-if (complement
 			    #'(lambda (x)
@@ -912,6 +928,7 @@
      args-list
      (mapcar #'judgement-types* args-list) ;; Not judgement-types+
      (operator-domain ex)
+     (type ex)
      cgraph)))
 
 (defun operator-domain (ex)
@@ -944,7 +961,7 @@
 (defmethod operator-range* ((te type-expr) (args null))
   te)
 
-(defun compute-appl-judgement-types (arguments argtypes rdomains graph
+(defun compute-appl-judgement-types (arguments argtypes rdomains extype graph
 					       &optional jtypes exclude jdecls)
   (if (null graph)
       (values (nreverse jtypes) (nreverse jdecls))
@@ -956,12 +973,16 @@
 		       rdomains
 		       (caar graph))))
 	     (dont-add? (or (null range)
+			    ;; TODO: vectors@closest_approach_2D.gt_D_t1_lt_t2 doesn't
+			    ;; prove with this uncommented - not sure why
+			    ;; (subtype-of? extype range)
 			    (some #'(lambda (r) (subtype-of? r range))
 				  jtypes))))
 	(compute-appl-judgement-types
 	 arguments
 	 argtypes
 	 rdomains
+	 extype
 	 (cdr graph)
 	 (if dont-add?
 	     jtypes
@@ -1171,17 +1192,35 @@
 
 (defmethod judgement-types* ((ex field-application))
   (if (record-expr? (argument ex))
-      (judgement-types* (beta-reduce ex))
-      (let ((atypes (judgement-types* (argument ex))))
-	(when atypes
-	  (if (vectorp atypes)
-	      (let ((ftypes nil))
-		(dotimes (i (length atypes))
-		  (let ((entry (aref atypes i)))
-		    (when (eq (car entry) (id ex))
-		      (setq ftypes (cdr entry)))))
-		ftypes)
-	      (field-application-types atypes ex))))))
+      (multiple-value-bind (jtypes jdecls)
+	  (judgement-types* (beta-reduce ex))
+	(remove-judgement-types-of-type (type ex) jtypes jdecls))
+      (multiple-value-bind (ajtypes ajdecls)
+	  (judgement-types* (argument ex))
+	(when ajtypes
+	  (if (vectorp ajtypes)
+	      (let ((pos (position-if #'(lambda (x) (eq (car x) (id ex)))
+				      ajtypes)))
+		(assert pos)
+		(let ((entry (aref ajtypes pos)))
+		  (remove-judgement-types-of-type
+		   (type ex) (cdr entry) (aref ajdecls pos))))
+	      (remove-judgement-types-of-type
+	       (type ex)
+	       (field-application-types ajtypes ex)
+	       ajdecls))))))
+
+(defun remove-judgement-types-of-type (type jtypes jdecls &optional njtypes njdecls)
+  (if (vectorp jtypes)
+      (values jtypes jdecls)
+      (if (null jtypes)
+	  (values (nreverse njtypes) (nreverse njdecls))
+	  (if (subtype-of? type (car jtypes))
+	      (remove-judgement-types-of-type
+	       type (cdr jtypes) (cdr jdecls) njtypes njdecls)
+	      (remove-judgement-types-of-type
+	       type (cdr jtypes) (cdr jdecls)
+	       (cons (car jtypes) njtypes) (cons (car jdecls) njdecls))))))
 
 (defmethod judgement-types* ((ex projection-expr))
   nil)
@@ -1196,11 +1235,22 @@
   nil)
 
 (defmethod judgement-types* ((ex projection-application))
-  (let ((atypes (judgement-types* (argument ex))))
-    (when atypes
-      (if (vectorp atypes)
-	  (aref atypes (1- (index ex)))
-	  (projection-application-types atypes ex)))))
+  (if (tuple-expr? (argument ex))
+      (multiple-value-bind (jtypes jdecls)
+	  (judgement-types* (beta-reduce ex))
+	(remove-judgement-types-of-type (type ex) jtypes jdecls))
+      (multiple-value-bind (ajtypes ajdecls)
+	  (judgement-types* (argument ex))
+	(when ajtypes
+	  (if (vectorp ajtypes)
+	      (remove-judgement-types-of-type
+	       (type ex)
+	       (aref ajtypes (1- (index ex)))
+	       (aref ajdecls (1- (index ex))))
+	      (remove-judgement-types-of-type
+	       (type ex)
+	       (projection-application-types ajtypes ex)
+	       ajdecls))))))
 
 (defmethod judgement-types* ((ex injection-application))
   nil)
@@ -1295,10 +1345,12 @@
   nil)
 
 (defmethod judgement-types* ((ex lambda-expr))
-  (let ((jtypes (judgement-types* (expression ex))))
-    (when (consp jtypes)
-      (let ((dom (domain (type ex))))
-	(mapcar #'(lambda (jty) (mk-funtype dom jty)) jtypes)))))
+  (multiple-value-bind (ejtypes ejdecls)
+      (judgement-types* (expression ex))
+    (when (consp ejtypes) ;; Could be a vector
+      (let* ((dom (domain (type ex)))
+	     (ljtypes (mapcar #'(lambda (jty) (mk-funtype dom jty)) ejtypes)))
+	(remove-judgement-types-of-type (type ex) ljtypes ejdecls)))))
 
 (defmethod judgement-types* ((ex cases-expr))
   nil)
@@ -2308,7 +2360,7 @@
       (merge-appl-judgement-graphs from-graph to-graph to-gens
 				   theory theoryname)
     ;;(assert (every #'(lambda (x) (every #'judgement? x)) new-to-graph))
-    (assert (every #'(lambda (g) (fully-instantiated? (car g))) new-to-graph))
+    ;;(assert (every #'(lambda (g) (fully-instantiated? (car g))) new-to-graph))
     (merge-appl-judgement-generics
      from-gens
      (if (equal new-to-gens to-gens)
@@ -2505,7 +2557,10 @@
 	(judgement-types expr)
       (when jtypes
 	(let ((jthash (copy (judgement-types-hash (judgements context)))))
-	  (setf (gethash name jthash) (list jtypes jdecls))
+	  (setf (gethash name jthash)
+		;; This doesn't work
+		;;(remove-judgement-types-of-name-type (type name) jtypes jdecls)
+		(list jtypes jdecls))
 	  (setf (judgements context)
 		(copy (judgements context) 'judgement-types-hash jthash))
 	  (setq judgements-copied? t)))
@@ -2521,6 +2576,20 @@
 		  (setf (judgements context)
 			(copy (judgements context)
 			  'application-judgements-alist capplalist))))))))))
+
+(defun remove-judgement-types-of-name-type (ntype jtypes jdecls
+						  &optional njtypes njdecls)
+  (if (null jtypes)
+      (list (nreverse njtypes) (nreverse njdecls))
+      (if (and nil
+	       (or (subtype-of? ntype (car jtypes))
+		   (not (subtype-of? (car jtypes) ntype))))
+	  (remove-judgement-types-of-name-type
+	   ntype (cdr jtypes) (cdr jdecls) njtypes njdecls)
+	  (remove-judgement-types-of-name-type
+	   ntype (cdr jtypes) (cdr jdecls)
+	   (cons (car jtypes) njtypes) (cons (car jdecls) njdecls)))))
+      
 
 ;;; Subtype judgement handling
 
