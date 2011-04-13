@@ -90,7 +90,8 @@
 	 (acts (actuals modinst)))
     (when (and acts
 	       (not (memq expr *exprs-generating-actual-tccs*)))
-      (push expr *exprs-generating-actual-tccs*)
+      (unless (or *in-checker* *in-evaluator*)
+	(push expr *exprs-generating-actual-tccs*))
       (check-type-actuals* acts (formals-sans-usings theory))
       (generate-assuming-tccs modinst expr theory)
       (generate-actuals-tccs (actuals expr) acts))))
