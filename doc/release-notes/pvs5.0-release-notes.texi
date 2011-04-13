@@ -24,6 +24,11 @@ We strongly suggest getting a pre-built Allegro version, unless you have
 concerns with the Allegro runtime click-though license, in which case get
 one of the pre-built CMU or SBCL Lisp images.
 
+Note that we are no longer providing PVS for Solaris or PowerPC on the
+download page, as we have limited funds and the vast majority of our users
+have Intel Macs or Linux machines.  If you do need either of these, let us
+know at @email{pvs-sri@csl.sri.com}.  We will be keeping earlier versions
+available for the foreseeable future.
 
 @node    5.0 Changes
 @section Changes
@@ -31,57 +36,31 @@ one of the pre-built CMU or SBCL Lisp images.
 @itemize @minus
 
 @item
+There are now 64-bit versions available for Intel Mac and Linux for
+Allegro and SBCL Common Lisp.
+
+@item
+The @code{pvs} shell script has been modified to support SBCL Common Lisp.
+In addition, the load and eval capabilities have been simplified, where
+@code{-l} and @code{-e} are for Emacs files and expressions, and @code{-L}
+and @code{-E} are for Common Lisp files.  There was an earlier @code{-L}
+flag, but it loaded the file @emph{before} PVS initialization, which is
+more difficult to use.
+
+@item
 The prelude has been modified, mostly reflecting the theories that are
 part of PVSio, Manip, Field, and ProofLite.  Here is the complete list of
 changes:
 @itemize @bullet
 @item
-From theory @code{sets}:
-@example
-  the(p: (singleton?)): (p)
-
-  the_lem: LEMMA FORALL (p: (singleton?)): the(p) = epsilon(p)
-
-  the_prop: LEMMA FORALL (p: (singleton?)): p(the(p))
-
-  is_singleton: LEMMA
-    FORALL a: (nonempty?(a) AND
-               FORALL x, y: a(x) AND a(y) IMPLIES (x=y))
-      IMPLIES singleton?(a)
-
-  singleton_elt_lem: LEMMA
-     singleton?(a) and a(x) IMPLIES singleton_elt(a) = x
-
-  singleton_elt_def: LEMMA
-     singleton?(a) IMPLIES singleton_elt(a) = choose(a)
-
-  singleton_rew: LEMMA singleton_elt(singleton(x)) = x
-
-  AUTO_REWRITE+ singleton_rew
-@end example
-@item
-From theory @code{list_props}:
-@example
-  every_nth: LEMMA
-      every(P)(l) IFF FORALL (i:below(length(l))): P(nth(l,i))
-@end example      
-@item
-From theory @code{more_map_props}:
-@example
-  map_nth_rw: LEMMA
-    FORALL (i: below(length(l))):
-      nth(map(f)(l), i) = f(nth(l, i))
-@end example
 @end itemize
 
 @item
-C@'esar Mu@~noz has provided improvements for pvsio.  See
-@code{doc/PVSio-2.d.pdf} for details.
+C@'esar Mu@~noz has provided further improvements for PVSio, which is now
+more fully integrated into PVS.  In particular, no external files are needed.
 
 @item
-Judgements over dependent types have been fixed - in most cases this
-meant the judgement was not used where it should have been, in a couple of
-cases it left free variables uninstantiated, causing breaks.
+A new Judgement type is available
 
 @item
 Recursive judgements were recently introduced (see the 4.1 release notes),
