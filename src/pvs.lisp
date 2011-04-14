@@ -880,6 +880,7 @@
 		       ;; formals-sans-usings
 		       (setf (formals-sans-usings oth)
 			     (remove-if #'importing-param? (formals oth)))
+		       (setf (tccs-tried? oth) nil)
 		       ;; tcc-info
 		       (when (tcc-info oth)
 			 (dolist (d replaced)
