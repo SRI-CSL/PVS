@@ -45,7 +45,7 @@
 #
 # The following environment variables are used by PVS, and are set below:
 #   PVSPATH     pvs system path - this should not normally be set by the user
-#   PVSARCH	sun4, ix86, ix86_64, or powerpc
+#   PVSARCH	ix86 or ix86_64
 #
 # The PVS binary paths are appended to the front of the PATH variable
 # --------------------------------------------------------------------
@@ -162,10 +162,10 @@ do
                      shift;;
      -L) PVSEVALLOAD="$PVSEVALLOAD (load \"$2\")"
                      shift;;
-    -e) emacsargs="$emacsargs --eval $2"
-        shift;;
-    -l) emacsargs="$emacsargs --load $2"
-        shift;;
+     -e) emacsargs="$emacsargs --eval $2"
+         shift;;
+     -l) emacsargs="$emacsargs --load $2"
+         shift;;
      -ee|-eval)
         echo "Use -E, not $1, for lisp evaluation argument to PVS"
         exit 1;;
@@ -220,7 +220,7 @@ PVSEMACS=${PVSEMACS:-"emacs"}
 case $opsys in
   SunOS) majvers=`uname -r | cut -d"." -f1`
 	 if [ $majvers = 4 ]
-	    then echo "PVS only runs under Mac OS X, Linux, FreeBSD, or Solaris"; exit 1
+	    then echo "PVS only runs under Mac OS X, Linux, or FreeBSD"; exit 1
 	 fi
 	 PVSARCH=sun4;;
   Linux) # If Linux, we need to determine the Redhat version to use.
