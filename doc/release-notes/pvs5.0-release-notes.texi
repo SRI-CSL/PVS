@@ -197,8 +197,16 @@ extensions are integrated into PVS.  In practice, this has been relatively
 painless.
 @item
 In addition to adding theories from the NASA extensions, a number of
-minor changes have been made to the prelude.  These can sometimes cause
-difficulty as it may introduce ambiguities.  These are usually easily
+minor changes have been made to the prelude.  Two notable ones are that
+@code{choose} no longer has a definition, and @code{singleton} is no
+longer a conversion by default.  If you really want @code{choose} to be
+@code{epsilon}, there is an axiom for that.  The @code{singleton}
+conversion is often used unexpectedly, especially when bitvectors are
+involved.  If you want it, simply add a @code{conversion+ singleton} where
+needed.  Remember it's imported, so it can be placed in a theory low in
+the hierarchy; it doesn't have to be added to every theory.
+The rest of the changes are only likely to be a problem if
+they accidentally introduce ambiguities.  These are usually easily
 resolved.
 @end itemize
 
