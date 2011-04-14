@@ -794,7 +794,7 @@ sets [T: TYPE]: THEORY
 
   singleton(x): (singleton?) = {y | y = x}
 
-  CONVERSION+ singleton
+  % CONVERSION+ singleton
 
   add(x, a): (nonempty?) = {y | x = y OR member(y, a)}
 
