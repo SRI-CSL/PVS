@@ -994,8 +994,8 @@ Please check your results with a proof that does not rely on Yices. ~%")
 		     (values 'X nil))))))))
 
 	
-(addrule 'yices () ((fnums *) nonlinear?)
-  (yices fnums nonlinear?)
+(addrule 'yices () ((fnums *))
+  (yices fnums)
   "Invokes Yices as an endgame SMT solver to prove that the conjunction
 of the negations of the selected formulas is unsatisfiable. "
   "~%Simplifying with Yices,")
