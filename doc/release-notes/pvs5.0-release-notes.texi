@@ -1,14 +1,15 @@
 @node PVS 5.0 Release Notes
 @unnumbered PVS 5.0 Release Notes
 
-PVS 5.0 is a significant new release of PVS.  The highlights include the
-incorporation of the PVSio, Manip, Field, and ProofLite packages from
-NASA, a new theory interpretation implementation, 
+PVS 5.0 is a significant new release of PVS.  The highlights include an
+SBCL port, the incorporation of the PVSio, Manip, Field, and ProofLite
+packages from NASA, a new theory interpretation implementation, new
+judgement forms, new support for Yices and Yices2, and several bug fixes.
 
 @ifnottex
 @menu
 * 5.0 Installation Notes::
-* 5.0 Changes::
+* 5.0 New Features::
 * 5.0 Incompatibilities::
 @end menu
 @end ifnottex
@@ -27,19 +28,32 @@ one of the pre-built CMU or SBCL Lisp images.
 Note that we are no longer providing PVS for Solaris or PowerPC on the
 download page, as we have limited funds and the vast majority of our users
 have Intel Macs or Linux machines.  If you do need either of these, let us
-know at @email{pvs-sri@csl.sri.com}.  We will be keeping earlier versions
+know at @email{pvs-sri@@csl.sri.com}.  We will be keeping earlier versions
 available for the foreseeable future.
 
-@node    5.0 Changes
-@section Changes
+@node    5.0 New Features
+@section New Features
 
-@itemize @minus
+@menu
+* Available Lisp/Platforms::
+* PVS Invocation::
+* PVSio Integration::
+* Manip and Field::
+* ProofLite::
+* Theory Interpretations::
+* Expression Judgements::
+* Yices Enhancements::
+* PVS Libraries Speedbar::
+@end menu
 
-@item
-There are now 64-bit versions available for Intel Mac and Linux for
-Allegro and SBCL Common Lisp.
+@node Available Lisp/Platforms
+@subsection Available Lisp/Platforms
+There are now 64-bit and 32-bit versions available for Intel Mac and Linux for
+Allegro and SBCL Common Lisp.  32-bit versions are also available for
+CMU Common Lisp.
 
-@item
+@node PVS Invocation
+@subsection PVS Invocation
 The @code{pvs} shell script has been modified to support SBCL Common Lisp.
 In addition, the load and eval capabilities have been simplified, where
 @code{-l} and @code{-e} are for Emacs files and expressions, and @code{-L}
@@ -47,56 +61,126 @@ and @code{-E} are for Common Lisp files.  There was an earlier @code{-L}
 flag, but it loaded the file @emph{before} PVS initialization, which is
 more difficult to use.
 
-@item
-The prelude has been modified, mostly reflecting the theories that are
-part of PVSio, Manip, Field, and ProofLite.  Here is the complete list of
-changes:
-@itemize @bullet
-@item
-@end itemize
-
-@item
+@node PVSio Integration
+@subsection PVSio Integration
 C@'esar Mu@~noz has provided further improvements for PVSio, which is now
-more fully integrated into PVS.  In particular, no external files are needed.
-
+more fully integrated into PVS.  PVSio provides
+@itemize
 @item
-A new Judgement type is available
-
+an alternative interface to the ground evaluator, making it easier to interact
 @item
-Recursive judgements were recently introduced (see the 4.1 release notes),
-and several bugs have been fixed.  In addition, now when recursive
-judgement has a name, the corresponding formula is generated as an axiom.
-
+Several semantic attachments that facilitate programming in PVS
 @item
-Auto-rewrites now find the proper instances; prior to this, the
-auto-rewrites were kept in generic form, and never properly instantiated.
-
+A @code{defattach} macro, allowing users to add their own semantic attachments
 @item
-Theory interpretations have had a number of bugs fixed.
-
+A @code{pvsio} script, allowing PVS specifications to be run as scripts
 @item
-TCC subsumption tests have been improved, leading to fewer TCCs.
-
-@item
-Batch mode now saves the context; before this, Emacs was exiting without
-giving lisp a chance to save.
-
-@item
-Libraries are more robust; in particular, relative library paths now work
-properly when used recursively.
+Adds the @code{eval}, @code{eval-expr}, and @code{eval-formula} rules for
+use in the prover
 @end itemize
+PVSio now starts up without the need for loading extra library files.  The
+sematic attachments are pre-installed, and the supporting theories are in
+the prelude.  For more details on how to use PVSio, see the manual in
+@code{doc/PVSio-2.d.pdf}, (but ignore the installation instructions).
+
+@node Manip and Field
+@subsection Manip and Field
+The NASA Manip and Field packages have similarly been integrated, and
+improved by their authors.  The Manip package provides many features,
+including Emacs extensions, many new proof strategies, and a pattern
+matching facility that allows reference to subterms during proof.  For
+more details, see @code{doc/manip-guide.pdf} (but ignore the install
+instructions).
+
+The Field package builds on Manip, and adds several prover commands making
+it easier to reason about nonlinear formulas. See
+@code{doc/extrategies.pdf} for details.
+
+@node ProofLite
+@subsection ProofLite
+C@'esar Mu@~noz has also provided his ProofLite extension as part of PVS.
+This allows proofs to be included directly in PVS specifications and run
+from them, allowing for a literate programming style of specification.
+See @code{doc/ProofLite-4.2.pdf} for details.
+
+@node Theory Interpretations
+@subsection Theory Interpretations
+Theory interpretations have been significantly modified.  Previously a
+theory declaration would generate a separate theory.  This caused all
+kinds of problems, as it couldn't reference any declarations from the
+referencing theory.  In some cases this could be handled by splitting
+theories into pieces, but even this doesn't always work.
+
+In the new treatment, theory declarations are simply expanded in place,
+with the theory declaration id prepended to the included theory
+declarations.  This solves the problem with declaration references, but
+introduces new issues.  First, since the expanded theory declaration may
+itself have theory declarations, names have been extended to include any
+number of periods, e.g., @code{th1.th2.th3.d}.  In general, these are only
+needed to disambiguate, and even then a suffix of the full name usually
+suffices.
+
+The @code{prettyprint-theory-instance} is no longer meaningful, simply use
+@code{M-x prettyprint-expanded} to see the included declarations.
+
+@node Expression Judgements
+@subsection Expression Judgements
+A new Judgement form is available.  This is still in the experimental
+stage, but we welcome any feedback.  The judgement has the form of a
+subtype judgement, but with a preceding @code{FORALL} that gives the types
+of the variables, as well as making the parsing unambiguous.  Within the
+forall, any expression is allowed.  For example,
+@example
+ judgement forall (x: real) = x*x has_type nnreal
+ f: [nnreal -> real]
+ foo: formula forall (y: real): f(f((y - 100) * (y - 100)) * f((y - 100) * (y - 100))) = 2
+@end example
+Without the judgement, @code{foo} generates 2 TCCs; with the judgement,
+none are generated for @code{foo}, just the one for the judgement itself,
+which is much simpler to understand.  Note that the judgement mechanism
+has to be fast, and not itself generate proof obligations, so the matches
+are purely syntactic.  Thus `(x - 1) * (-1 + x)` will still generate a
+TCC.
+
+@node Yices Enhancements
+@subsection Yices Enhancements
+
+In addition to improvements to the @code{yices} and
+@code{yices-with-rewrites} rules, there is now support for yices2.
+Note that to use these commands you must install Yices or Yices2 from
+@url{yices.csl.sri.com}, and make certain yices is in your PATH before
+invoking PVS.
+
+@node PVS Libraries Speedbar
+@subsection PVS Libraries Speedbar
+A simple Emacs speedbar extension is now available.  This makes browsing
+libraries easier, as it lists all directories on the
+@code{PVS_LIBRARY_PATH} as well as the built-in libraries in the
+PVS @code{lib} subdirectory.  This is invoked with @code{M-x
+pvs-speedbar-browser}, and clicking on a given library shows the
+specification files within; clicking on one of them brings it up in an
+Emacs buffer.  In the future we plan to include declaration lists within
+the speedbar display.
 
 @node    5.0 Incompatibilities
 @section Incompatibilities
 
-The changes lead to some incompatibilities.  The improved judgements and
-TCC subsumption lead to fewer TCCs, hence may cause TCC renumbering and
-proofs may have to be shifted (@code{M-x show-orphaned-proofs} may be
-useful here).
-
-In addition to these, the improved auto-rewrites also affect proofs, as
-some branches of a proof may no longer be generated, or may have a
-different form.  It is usually easy to repair, though it often helps to
-run an older version of PVS in parallel to figure out where the proof
-deviates.  Finally, any proof that relies on the expansion of @code{the}
-will need to use @code{the_lem} instead.
+The changes lead to some incompatibilities, primarily in the proofs.
+This is due to a number of factors:
+@itemize
+@item
+A bug was fixed in the @code{lift-if} rule that could potentially lead to
+unsoundness.  The fix means that the rule is no longer as aggressive, so
+proofs may need to be repaired.  This is especially true for proofs with
+sequences of @code{lift-ifs}.
+@item
+Some bugs were fixed in which TCCs were missing.
+@item
+In general, judgement processing has been improved.  Though this is almost
+always better for new proofs, it does tend to cause older proofs to fail,
+because the proof trees differ.
+@item
+Any reliance on NASA libraries is obviously different now that the NASA
+extensions are integrated into PVS.  In practice, this has been relatively
+painless.
+@end itemize
