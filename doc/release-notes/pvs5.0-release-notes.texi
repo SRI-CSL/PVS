@@ -4,7 +4,7 @@
 PVS 5.0 is a significant new release of PVS.  The highlights include an
 SBCL port, the incorporation of the PVSio, Manip, Field, and ProofLite
 packages from NASA, a new theory interpretation implementation, new
-judgement forms, new support for Yices and Yices2, and several bug fixes.
+judgement forms, new support for Yices, and several bug fixes.
 
 @ifnottex
 @menu
@@ -31,6 +31,12 @@ have Intel Macs or Linux machines.  If you do need either of these, let us
 know at @email{pvs-sri@@csl.sri.com}.  We will be keeping earlier versions
 available for the foreseeable future.
 
+It's important to note that the @code{.prf} format has changed.  While PVS
+5.0 can easily read earlier proof files, the new format will confuse
+earlier versions of PVS.  Please make copies of any directories that you
+want to also use earlier versions of PVS on.  This is especially helpful
+when trying to repair proofs that work in earlier versions.
+
 @node    5.0 New Features
 @section New Features
 
@@ -48,9 +54,9 @@ available for the foreseeable future.
 
 @node Available Lisp/Platforms
 @subsection Available Lisp/Platforms
-There are now 64-bit and 32-bit versions available for Intel Mac and Linux for
-Allegro and SBCL Common Lisp.  32-bit versions are also available for
-CMU Common Lisp.
+There are now 64-bit and 32-bit versions available for Intel Mac and Linux
+for Allegro (version 8.2) and SBCL Common Lisp.  32-bit versions are also
+available for CMU Common Lisp.
 
 @node PVS Invocation
 @subsection PVS Invocation
@@ -133,7 +139,8 @@ forall, any expression is allowed.  For example,
 @example
  judgement forall (x: real) = x*x has_type nnreal
  f: [nnreal -> real]
- foo: formula forall (y: real): f(f((y - 100) * (y - 100)) * f((y - 100) * (y - 100))) = 2
+ foo: formula forall (y: real):
+   f(f((y - 100) * (y - 100)) * f((y - 100) * (y - 100))) = 2
 @end example
 Without the judgement, @code{foo} generates 2 TCCs; with the judgement,
 none are generated for @code{foo}, just the one for the judgement itself,
@@ -145,10 +152,10 @@ TCC.
 @node Yices Enhancements
 @subsection Yices Enhancements
 
-In addition to improvements to the @code{yices} and
-@code{yices-with-rewrites} rules, there is now support for yices2.
-Note that to use these commands you must install Yices or Yices2 from
-@url{yices.csl.sri.com}, and make certain yices is in your PATH before
+There are improvements to the @code{yices} and @code{yices-with-rewrites}
+rules.  Note that to use these commands you must install Yices from
+@url{yices.csl.sri.com}, and make certain the directory containing the
+@code{yices} executable is in your @code{PATH} environment variable before
 invoking PVS.
 
 @node PVS Libraries Speedbar
@@ -180,7 +187,22 @@ In general, judgement processing has been improved.  Though this is almost
 always better for new proofs, it does tend to cause older proofs to fail,
 because the proof trees differ.
 @item
+PVS 5.0 uses a new format for .prf files.  The reason for this is to
+remove some information (such as the time the last run took) that causes
+version control systems to think there is a change, making it difficult to
+keep developments in sync.
+@item
 Any reliance on NASA libraries is obviously different now that the NASA
 extensions are integrated into PVS.  In practice, this has been relatively
 painless.
+@item
+In addition to adding theories from the NASA extensions, a number of
+minor changes have been made to the prelude.  These can sometimes cause
+difficulty as it may introduce ambiguities.  These are usually easily
+resolved.
 @end itemize
+
+Most of the other incompatibilities are more obvious, and the proofs are
+easily repaired.  If you have difficulties understanding why a proof has
+failed, or want help fixing it, send it to PVS bugs
+@email{pvs-bugs@@csl.sri.com}.
