@@ -283,51 +283,28 @@
 
 (defun translate-to-yices2-funlist (list lastelem 
 					domain  bindings)
-  (translate-to-yices2-funlist* list nil 1 lastelem domain nil bindings))
+  (translate-to-yices2-funlist* list nil 1 lastelem domain bindings))
   
 
 (defun translate-to-yices2-funlist* (list accum num lastelem 
-					domain dbindings bindings)	 
+					domain bindings)	 
   (if (consp list)
       (let* ((ycar (translate-to-yices2* (car list)
 				       bindings))
-	     (dbindflag (and (dep-binding? domain)
-			     (not (dep-binding? (car list)))))
-	     (ycar_id (if dbindflag
-			  (yices-id-name
-			   (format nil "~a_~a"
-			     (id domain)
-			     num))
-			  (if (dep-binding? (car list))
-			      (yices2-name (car list))
-			      nil)))
-	     (ycarbnd (if dbindflag
-			  (format nil "~a::~a" ycar_id ycar)
-			  ycar)))
+	     (ycarbnd ycar))
 	(translate-to-yices2-funlist* (cdr list)
 				     (cons ycarbnd
 					   accum)
 				     (1+ num)
 				     lastelem
 				     domain
-				     (if (dep-binding? domain)
-					 (cons ycar_id dbindings)
-					 dbindings)
-				     (if (dep-binding? (car list))
-					 (cons (cons (car list)
-						     (yices2-name (car list)))
-					       bindings)
-					 bindings)
+				     bindings
 				     ))
       (let ((accum (nreverse accum)))
       (format nil "(-> ~{ ~a~} ~a)"
 	accum
 	(translate-to-yices2* lastelem
-			     (if (dep-binding? domain)
-				 (cons (cons domain
-					     (nreverse dbindings))
-				       bindings)
-				 bindings))))))
+			     bindings)))))
 
 
 (defun translate-to-yices2-list (list accum lastelem bindings)
@@ -355,10 +332,13 @@
 
 (defmethod translate-to-yices2* ((ty funtype) bindings)
   (with-slots (domain range) ty
+	      (let ((sdom (if (dep-binding? domain)  ;;NSH(4-16-11)
+			      (find-supertype (type domain))
+			    (find-supertype domain))))
 	      (format nil "(->~{ ~a~})"
-		      (translate-to-yices2-list (types domain) nil
+		      (translate-to-yices2-list (types sdom) nil
 						(translate-to-yices2* range bindings)
-						bindings))))
+						bindings)))))
 
 
 ;;name-exprs and binding-exprs are not hashed in binding contexts.
@@ -530,7 +510,7 @@
 	    ((and (eq op-id 'nat2bv)
 		  (number-expr? (expr (car (actuals (module-instance op*))))))
 	     (let ((size (translate-to-yices2*
-			  (expr (car (actuals (module-instance op*))))
+		  (expr (car (actuals (module-instance op*))))
 			  bindings))
 		   (num (translate-to-yices2*
 			 (args1 expr) bindings)))
