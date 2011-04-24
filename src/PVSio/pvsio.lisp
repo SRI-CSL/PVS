@@ -137,7 +137,7 @@ by Cesar Munoz at the National Institute of Aerospace.
   (let ((result
 	 (multiple-value-bind 
 	  (val err)
-	  (progn ;;ignore-errors
+	  (ignore-errors ;; Change to progn for debugging
 	   (catch 'abort
 	     (catch 'quit
 	       (catch 'tcerror
