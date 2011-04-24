@@ -1716,7 +1716,7 @@
   (clear-theory theory)
   (loop for (th . nil) in (all-usings theory)
 	do (clear-theory th))
-  (loop for inst in (assuming-instances theory)
+  (loop for (inst . nil) in (assuming-instances theory)
 	do (clear-theory inst)))
 
 (defmethod clear-dependent-theories (theory)
