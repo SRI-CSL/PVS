@@ -1354,8 +1354,9 @@
 
 (defun get-editable-justification (prf)
   (if (integerp (cadr prf))
-      (editable-justification
-       (fifth (nth (cadr prf) (cddr prf))))
+      (let ((mprf (nth (cadr prf) (cddr prf))))
+	(editable-justification
+	 (if (> (length mprf) 9) (fifth mprf) (fourth mprf))))
       ;; Old style proof - need to remove (:new-ground? t) entry if there
       (if (consp (car (cdr prf)))
 	  (editable-justification (cddr prf))
