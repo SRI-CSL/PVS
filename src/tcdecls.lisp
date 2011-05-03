@@ -527,6 +527,11 @@
 	  (when tgt-theory
 	    (typecheck-using tgt-name))
 	  (set-type-actuals-and-maps full-thname)
+	  ;; (when (mappings full-thname)
+	  ;;   (unless (fully-instantiated? full-thname)
+	  ;;     (type-error theory-name
+	  ;; 	"Theory name ~a must be fully instantiated when mappings are given"
+	  ;; 	theory-name)))
 	  (unless (fully-instantiated? full-thname)
 	    (type-error theory-name
 	      "Theory name ~a must be fully instantiated" theory-name))
@@ -3614,9 +3619,31 @@
   (declare (ignore expected kind arguments))
   (unless (typechecked? decl)
     (typecheck* (expr decl) nil nil nil)
-    (unless (singleton? (types (expr decl)))
-      (type-ambiguity (expr decl)))
-    (setf (type (expr decl)) (car (types (expr decl)))))
+    (mapobject #'(lambda (ex)
+		   (when (and (expr? ex)
+			      (not (type ex)))
+		     (if (singleton? (types ex))
+			 (setf (type ex) (car (types ex)))
+			 (let ((inst-types
+				(remove-if #'fully-instantiated?
+				  (types ex))))
+			   (cond ((singleton? inst-types)
+				  (setf (type ex) (car inst-types))
+				  (when (name-expr? ex)
+				    (setf (resolutions ex)
+					  (remove-if
+					      (complement
+					       #'(lambda (r)
+						   (tc-eq (type r)
+							  (car inst-types))))
+					    (resolutions ex)))))
+				 (t (type-ambiguity ex)))))
+		     nil))
+	       (expr decl))
+    (when (has-type-vars? (type (expr decl)))
+      (type-error (expr decl)
+	"Cannot determine the type associated with ~a:~%  Please provide more ~
+         information, i.e., actual parameters or a coercion." (expr decl))))
   (disable-conversion decl)
   decl)
 
@@ -3660,7 +3687,7 @@
 					       (same-declaration (expr decl)
 								 (expr cd))))
 			     (conversions *current-context*))
-			   (break "Finish disabling conversions for non-names")
+			   (break "TODO: Finish disabling conversions for non-names")
 			   )))))))
     
 
