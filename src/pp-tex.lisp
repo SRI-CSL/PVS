@@ -1049,7 +1049,7 @@
 	       (write #\space)
 	       (write (get-pp-tex-id '\#\]))))))
 
-(defmethod pp* ((te struct-sub-tupletype))
+(defmethod pp-tex* ((te struct-sub-tupletype))
   (with-slots (types) te
     (if types
 	(pprint-logical-block
