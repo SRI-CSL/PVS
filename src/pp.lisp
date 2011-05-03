@@ -189,6 +189,39 @@ bind tighter.")
 		   :string t
 		   :char-width *default-char-width*))))
 
+;; Unparses obj, returning the unparse string and a hash table that
+;; associates the subterms of obj with the places of the string
+(defun unparse-with-places (obj nt &optional precomments postcomments indent)
+  (let* ((*no-comments* t)
+	 (*unparse-expanded* t)
+	 (*pp-new-projection-forms* t)
+	 (prec (unless (null precomments)
+		 (if (char= (aref precomments 0) #\%)
+		     precomments
+		     (format nil "%~a" precomments))))
+	 (postc (unless (null postcomments)
+		  (if (char= (aref postcomments 0) #\%)
+		      postcomments
+		      (format nil "%~a" postcomments))))
+	 (str (if indent
+		  (unpindent obj indent :string t)
+		  (unparse obj :string t))))
+    (unless (string= str "")
+      (let* ((*valid-id-check* nil)
+	     (cstr (format nil "~@[~{~,,v@a~%~}~]~,,v@a~@[~%~{~,,v@a~}~]"
+		     (when prec (list indent prec))
+		     indent str
+		     (when postc (list indent postc))))
+	     (pobj (parse :string cstr :nt nt))
+	     (nobj (if (and (listp pobj) (null (cdr pobj)))
+		       (car pobj)
+		       pobj))
+	     (phash (make-hash-table :test #'eq)))
+	(copy-lex obj nobj nil phash)
+	(assert (> (hash-table-count phash) 0))
+	(values cstr phash)))))
+  
+
 (defun pp (obj)
   (let ((*disable-gc-printout* t)
 	(*pretty-printing-decl-list* nil)
