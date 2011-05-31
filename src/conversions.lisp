@@ -703,17 +703,13 @@
 	    (types (argument ex)) nil))))
 
 (defmethod make-implicit-conversion ((conv expr) ctype ex)
-  (let* ((nexpr (copy ex))
-	 (dom (domain (type (from-conversion ctype)))))
+  (let ((nexpr (copy-untyped ex)))
     (change-class ex 'implicit-conversion)
     (setf (argument ex) nexpr)
-    (setf (types nexpr) (list (if (typep dom 'dep-binding) (type dom) dom)))
+    (setf (types nexpr) nil)
     (setf (operator ex)
 	  (raise-actuals (copy (expr (from-conversion ctype))) 1))
-    (setf (types ex) (list ctype))
-    (when (typep (argument ex) 'name-expr)
-      (setf (resolutions (argument ex)) nil
-	    (types (argument ex)) nil))))
+    (typecheck* ex nil nil nil)))
 
 (defun find-best-type-conversion (types expected &optional best type)
   (cond ((null types)
