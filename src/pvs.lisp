@@ -116,6 +116,8 @@
     #+cmu (lf "bdd-cmu") #+sbcl (lf "bdd-sbcl")
     #+cmu (lf "mu-cmu") #+sbcl (lf "mu-sbcl")
     (BDD_bdd_init)
+    #+allegro
+    (nlyices-init)
     #+cmu (lf "dfa-foreign-cmu") #+sbcl (lf "dfa-foreign-sbcl"))
   (setq *started-with-minus-q*
 	(or dont-load-user-lisp
@@ -1118,6 +1120,30 @@
 		    (prove-unproved-tccs theories))))
 	  (values theories changed-theories))))))
 
+(defvar *etb-typechecked-theories*)
+
+(defun etb-typecheck-theory (theoryref)
+  (let ((*etb-typechecked-theories* nil))
+    (etb-typecheck-theory* theoryref)))
+
+(defun etb-typecheck-theory* (theoryref)
+  (let ((th (get-typechecked-theory theoryref nil t)))
+    (if th
+	(unless (memq th *etb-typechecked-theories*)
+	  (push th *etb-typechecked-theories*)
+	  (let ((impths (get-immediate-usings th)))
+	    (dolist (ith impths)
+	      (etb-typecheck-theory* ith))
+	    (prove-unproved-tccs* th t)
+	    (let ((tccs (remove-if-not #'tcc-decl? (all-decls th))))
+	      (format t "~%~a typechecked, ~d/~d proved TCCs, depends on ~{~a ~}"
+		theoryref
+		(count-if #'proved? tccs)
+		(length tccs)
+		impths))))
+	(pvs-error "Theory ~a not found" theoryref))))
+      
+
 (defun delete-generated-adt-files (theories)
   (dolist (th theories)
     (when (datatype? th)
@@ -1247,10 +1273,11 @@
 	  (reduce #'+ (mapcar #'(lambda (th) (length (warnings th))) theories))
 	  (reduce #'+ (mapcar #'(lambda (th) (length (info th))) theories))))))
 
-(defun prove-unproved-tccs* (theory)
+(defun prove-unproved-tccs* (theory &optional quiet?)
   (if (tccs-tried? theory)
       (progn
-	(pvs-message "TCCs attempted earlier on ~a" (id theory))
+	(unless quiet?
+	  (pvs-message "TCCs attempted earlier on ~a" (id theory)))
 	(update-tcc-info theory (collect-tccs theory)))
       (let ((tccs (collect-tccs theory))
 	    (*justifications-changed?* nil))
@@ -3375,7 +3402,9 @@
 	      (ignore-errors (values (read-from-string strategy)))
 	      strategy)
 	(let ((just (unless err
-		      (or (revert-justification strat)
+		      (or (and (listp strat)
+			       (eq (car strat) "")
+			       (revert-justification strat))
 			  (revert-justification (list "" strat))
 			  strat))))
 	  (unless just
