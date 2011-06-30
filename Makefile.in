@@ -319,6 +319,10 @@ rahd = src/rahd/rahd.lisp src/rahd/polyalg.lisp \
        src/rahd/regression.lisp src/rahd/debug.lisp \
        src/rahd/prfanal.lisp src/rahd/rahd-pvs.lisp
 
+nlyices = src/nlyices/nlyices.lisp src/nlyices/polyrep-totdeglex.lisp \
+	  src/nlyices/decide3_2a.lisp src/nlyices/nlsolver.lisp \
+	  src/nlyices/named-callbacks.lisp src/nlyices/fcpo.lisp
+
 pvs-src = src/closopt.lisp \
           src/store-object.lisp \
 	  src/defcl.lisp \
@@ -442,7 +446,8 @@ inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
 lisp-files = pvs-config.lisp $(pvs-parser-out) $(ground-prover) $(pvs-src) \
 	     $(emacs-interface) $(pvs-prover) $(bddlisp) \
 	     $(PVSiolisp) $(Maniplisp) $(Fieldlisp) $(ProofLitelisp) \
-             $(ws1slisp) $(groundevallisp) $(abstractionlisp) $(rahd)
+             $(ws1slisp) $(groundevallisp) $(abstractionlisp) $(rahd) \
+	     $(nlyices)
 
 ifneq ($(PVSPATH),)
 pvs-make-files := $(patsubst %,$(PVSPATH)%,$(pvs-make-files))
@@ -463,6 +468,7 @@ ProofLitelisp := $(patsubst %,$(PVSPATH)%,$(ProofLitelisp))
 ws1slisp := $(patsubst %,$(PVSPATH)%,$(ws1slisp))
 abstractionlisp := $(patsubst %,$(PVSPATH)%,$(abstractionlisp))
 rahd := $(patsubst %,$(PVSPATH)%,$(rahd))
+nlyices := $(patsubst %,$(PVSPATH)%,$(nlyices))
 groundevallisp := $(patsubst %,$(PVSPATH)%,$(groundevallisp))
 inst-by-unif-lisp := $(patsubst %,$(PVSPATH)%,$(inst-by-unif-lisp))
 allegrolisp := $(patsubst %,$(PVSPATH)%,$(allegrolisp))
