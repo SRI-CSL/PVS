@@ -6,7 +6,7 @@
   (:nicknames :ncb)
   (:export :add-callback :get-callbacks :free-callbacks :num-callbacks
 	   :show-callback-names :callback-desc)
-  (:use :foreign-functions :common-lisp))
+  (:use #+allegro :foreign-functions :common-lisp))
 
 (in-package :ncb)
 
@@ -58,6 +58,7 @@
 ;;   int id;
 ;; }
 ;;
+#+allegro
 (def-foreign-type callback-desc (:struct (name (* :char)) (id :int)))
 
 (defun get-callbacks () 
@@ -80,6 +81,7 @@
 ;; (i.e., don't reload "fcpo.lisp" between)
 ;;--------------------------------------------------------------------
 
+#+allegro
 (defun free-callbacks (fobj)
   (let ((n (length *callback-list*)))
     (dotimes (i n) (excl:aclfree (fslot-value fobj i)))

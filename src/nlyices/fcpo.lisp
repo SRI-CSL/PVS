@@ -3,13 +3,13 @@
 ;; and "nlsolver" callable from foreign code
 ;;====================================================
 
-(defpackage "foreign-callable-polynomial-operations"
-  (:nicknames "fcpo")
-  (:export "polyrepVarToPoly" "polyrepConstToPoly" "polyrepSubPoly" "polyrepZero"
-	   "polyrepOne" "polyrepMinusOne")
-  (:use "common-lisp" "prep" "foreign-functions" "named-callbacks"))
+(defpackage :foreign-callable-polynomial-operations
+  (:nicknames :fcpo)
+  (:export :polyrepVarToPoly :polyrepConstToPoly :polyrepSubPoly :polyrepZero
+	   :polyrepOne :polyrepMinusOne)
+  (:use :common-lisp :prep #+allegro :foreign-functions #+allegro :named-callbacks))
 
-(in-package "fcpo")
+(in-package :fcpo)
 
 
 
@@ -31,8 +31,8 @@
 
 ;; some constant polynomials
 (defconstant polyrepZero nil)
-(defconstant polyrepOne (polyrepConstToPoly 1))
-(defconstant polyrepMinusOne (polyrepConstToPoly -1))
+(defconstant polyrepOne #+allegro (polyrepConstToPoly 1) #-allegro nil)
+(defconstant polyrepMinusOne #+allegro (polyrepConstToPoly -1) #-allegro nil)
 
 ;; subtraction
 (defun polyrepSubPoly (p q)
@@ -47,9 +47,11 @@
 ;; This function allows the C code to delete an object
 ;;-----------------------------------------------------------------
 
+#+allegro
 (defun-foreign-callable delete-object ((index :int))
   (unregister-lisp-value index))
 
+#+allegro
 (add-callback 'delete-object "delete-object")
 
 
@@ -82,40 +84,48 @@
 ;; set/change the prefix
 ;; s must be a native string in C's conventions
 ;; (i.e., array of char, terminated by '\0')
+#+allegro
 (defun-foreign-callable set-prefix ((s (* :char)))
   (setq *var-prefix* (excl:native-to-string s)))
 
+#+allegro
 (add-callback 'set-prefix "set-prefix")
 
 
 ;; create a variable with the given id
 ;; - the variable is added to the list maintained in prep
+#+allegro
 (defun-foreign-callable new-var ((id :int))
   (let ((x (intern (format nil "~a~a" *var-prefix* id))))
     (set-variables (cons x (get-variables))) ;; update prep's variable list    
     (register-lisp-value x)))
 
+#+allegro
 (add-callback 'new-var "new-var")
 
 
 ;; parameters are created internally by the gb solver
 ;; it's a good idea to delete them between calls to check
 ;; we also want to reset the bounds internal to gb
+#+allegro
 (defun-foreign-callable reset-parameters ()
   (gb:set-newU nil)
   (gb:set-newV nil)
   (gb:reset-bounds)
   (set-parameters nil))
 
+#+allegro
 (add-callback 'reset-parameters "reset-parameters")
 
 ;; delete all variables and parameters
+#+allegro
 (defun-foreign-callable delete-vars ()
   (gb:set-newU nil)
   (gb:set-newV nil)
   (set-variables nil)
   (set-parameters nil))
 
+#+allegro
 (add-callback 'delete-vars "delete-vars")
 
 
@@ -125,26 +135,33 @@
 
 ;; convert variable v to a polynomial
 ;; v must be the index of a variable (as returned by new-var)
+#+allegro
 (defun-foreign-callable var-to-poly ((v :int))
   (register-lisp-value (polyrepVarToPoly (get-var v))))
 
+#+allegro
 (add-callback 'var-to-poly "var-to-poly")
 
 ;; convert integer c to a polynomial
+#+allegro
 (defun-foreign-callable int-to-poly ((c :long))
   (register-lisp-value (polyrepConstToPoly c)))
 
+#+allegro
 (add-callback 'int-to-poly "int-to-poly")
 
 ;; convert quotient a/b to a polynomial
+#+allegro
 (defun-foreign-callable quotient-to-poly ((a :long) (b :unsigned-long))
   (register-lisp-value (polyrepConstToPoly (/ a b))))
 
+#+allegro
 (add-callback 'quotient-to-poly "quotient-to-poly")
 
 ;; convert string s to a polynomial
 ;; - s must be a C-style string that can be parsed to a rational
 ;; - can be used for large rationals
+#+allegro
 (defun-foreign-callable string-to-poly ((s (* :char)))
   (let ((str (excl:native-to-string s)))
     (register-lisp-value (polyrepConstToPoly (read-from-string str)))))
@@ -153,12 +170,18 @@
 
 
 ;; small constants
+#+allegro
 (defun-foreign-callable zero () (register-lisp-value polyrepZero))
+#+allegro
 (defun-foreign-callable one () (register-lisp-value polyrepOne))
+#+allegro
 (defun-foreign-callable minus-one () (register-lisp-value polyrepMinusOne))
 
+#+allegro
 (add-callback 'zero "zero")
+#+allegro
 (add-callback 'one "one")
+#+allegro
 (add-callback 'minus-one "minus-one")
 
 

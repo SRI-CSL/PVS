@@ -75,6 +75,7 @@
 ;; Foreign function for initializing LISP callbacks
 ;;---------------------------------------------------
 
+#+allegro
 (ff:def-foreign-call init_callbacks ((n :int) (d (:array ncb:callback-desc)))  :returning :void)
 
 
@@ -98,8 +99,10 @@
 ;; extern int run_yices(void);
 ;;------------------------------------------------
 
+#+allegro
 (ff:def-foreign-call yices_main ((argc :int) (argv (:array (* char)))) :returning (:int fixnum))
 
+#+allegro
 (ff:def-foreign-call run_yices (:void) :returning (:int fixnum))
 
 
@@ -110,6 +113,7 @@
 ;; - the returned object is allocated in the lisp heap (:foreign allocation type)
 ;;--------------------------------------------------------------------------------
 
+#+allegro
 (defun strings-to-argv (args)
   (let* ((n (length args))
 	 (fobj (ff:allocate-fobject `(:array (* char) ,n))))
@@ -125,6 +129,7 @@
 ;;   string-to-native allocate memory in non-gc'd area
 ;;------------------------------------------------------
 
+#+allegro
 (defun cleanup-argv (fobj n)
   (dotimes (i n) (excl:aclfree (ff:fslot-value fobj i))))
 
@@ -154,6 +159,7 @@
 ;; error and this kills the process (including the LISP caller).
 ;;------------------------------------------------------------------
 
+#+allegro
 (defun check-with-yices (filename &optional with-egraph)
   (let* ((tmp (system:make-temp-file-name))
 	 (args (if with-egraph 
