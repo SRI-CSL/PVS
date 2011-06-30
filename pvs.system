@@ -252,13 +252,19 @@
 			 (bddpath (concatenate 'string
 				    *pvs-path* "/BDD/" platform))
 			 (ws1spath (concatenate 'string
-				     *pvs-path* "/src/WS1S/" platform)))
+				     *pvs-path* "/src/WS1S/" platform))
+			 #+allegro
+			 (yicespath (concatenate 'string
+				      *pvs-path* "/src/nlyices/" platform)))
 		    (load (format nil "~a/file_utils.~a"
 			    utilpath *load-foreign-extension*))
 		    (load (format nil "~a/mu.~a"
 			    bddpath *load-foreign-extension*))
 		    (load (format nil "~a/ws1s.~a"
-			    ws1spath *load-foreign-extension*)))
+			    ws1spath *load-foreign-extension*))
+		    #+allegro
+		    (load (format nil "~a/libyices.~a"
+			    yicespath *load-foreign-extension*)))
 		  (setq *pvs-system-loaded* t))
   :finally-do (progn
 		#+lucid (precompile-generic-functions)
@@ -527,4 +533,13 @@
 		  (:file "debug")
 		  (:file "prfanal")
 		  (:file "rahd-pvs")))
+   (:module nlyices
+     :source-pathname "src/nlyices"
+     :components ((:file "polyrep-totdeglex")
+		  (:file "decide3_2a")
+		  (:file "nlsolver")
+		  (:file "named-callbacks")
+		  #+allegro
+		  (:file "fcpo")
+		  (:file "nlyices")))
    ))
