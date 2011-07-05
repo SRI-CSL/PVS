@@ -65,7 +65,7 @@
 (load-nl "libyices.dylib")
 
 #+(and (not mk-defsystem) linux x86-64)
-(load-nl "libyices64.so")
+(load-nl "libyices.so")
 
 #+(and (not mk-defsystem) linux (not x86-64))
 (load-nl "libyices32.so")
@@ -227,6 +227,51 @@
   nil)
 
 
+;;-------------------------------------------------------------
+;; Collect all the example files and benchmark yice+rahd(s) on them
+;; for all rahd strageties s
+;;-------------------------------------------------------------
+(defstruct BenchmarkResult file answer strategy realTime runTime)
+
+(defun benchmark (file strategy)
+  (format t "~%TEST: ~A~%" (file-namestring file))
+  (nlsolver:strategize strategy)
+  (let ((real-t0 (get-internal-real-time))
+	(run-t0 (get-internal-run-time))
+	(answer (check-with-yices (namestring file))))
+    (let ((real-t1 (get-internal-real-time))
+	  (run-t1 (get-internal-run-time)))
+      (let ((realDelta (- real-t1 real-t0))
+	    (runDelta (- run-t1 run-t0)))
+	(let ((result (make-BenchmarkResult :file file :answer answer :strategy strategy :realTime realDelta :runTime runDelta)))
+	  (format t "END TEST~%Answer:~% ~A~%" result)
+	  result)))))
+
+(defun benchmarkFiles (files strategy)
+  (mapcar (lambda (x) (benchmark x strategy)) files))
+
+(defun benchmarkProduct (files strategies)
+  (reduce #'append (mapcar (lambda (y) (benchmarkFiles files y)) strategies) ))
+
+;;(defvar small (list "../examples/john1.ys" "../examples/john2.ys"))
+
+(defun all-benchmarks ()
+  (benchmarkProduct (all-examples) nlsolver::*rahd-strategies*))
+  
+(defun benchmarkResultToCSV (bm)
+  (format t "'~a', ~a, ~a, ~a, ~a ~%"
+	  (BenchmarkResult-file bm)
+	  (BenchmarkResult-answer bm)
+	  (BenchmarkResult-strategy bm)
+	  (BenchmarkResult-realTime bm)
+	  (BenchmarkResult-runTime bm)))
+
+(defun benchmarkResultListToCSV (bms)
+  (format t "file, answer, strategy, realTime, runTime~%")
+  (mapcar #'benchmarkResultToCSV bms) nil)
+
+(defun go-benchmark ()
+  (benchmarkResultListToCSV (all-benchmarks)))
 
 ;;-------------------------------------------------------------
 ;; Same thing but for examples that require egraph + nlsolver
@@ -261,4 +306,4 @@
 
 ;; get some trace
 
-;; (gb:set-debug-level 10)
+;; (gb:set-debug-level 3)

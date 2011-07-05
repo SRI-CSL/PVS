@@ -330,7 +330,7 @@
 ;; return 1 (true) for "unknown" (no conflict found)
 ;; return 0 (false) for "unsatisfiable"
 (defun-foreign-callable check-solver ((s :int))
-  (if (nlsolver:check (get-solver s)) 1 0))
+  (nlsolver:check (get-solver s)))
 
 (add-callback 'check-solver "check-solver")
 

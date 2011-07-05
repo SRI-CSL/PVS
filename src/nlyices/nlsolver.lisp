@@ -11,8 +11,9 @@
 	   :assert-neg :assert-nonpos :assert-eq :assert-geq
 	   :assert-leq :assert-gt :assert-lt :check :incremental-check
 	   :is-witness? :print-solver :print-state :print-witness
-	   :print-ids :verbose :quiet))
-
+	   :print-ids :verbose :quiet
+	   :strategize :*rahd-strategies*))
+ 
 (in-package :nlsolver)
 
 
@@ -27,7 +28,6 @@
 (defun verbose () (setf *verbose* t))
 
 (defun quiet () (setf *verbose* nil))
-
 
 
 ;;--------------------------------------------------------
@@ -123,7 +123,7 @@
 ;;-------------------------------------------------------------
 
 ;; p = 0
-(defun assert-zero (solver p &optional id) 
+(defun assert-zero (solver p &optional id)
   (if id (save-assertion solver id p))
   (setf (solver-zeros solver) (cons p (solver-zeros solver))))
 
@@ -218,7 +218,89 @@
       (if p (format t "  assertion[~a]: ~a~%" i (prep:polyrepPrint p))))
     (print-id-poly-pairs* array (+ 1 i) n)))
 
+;; generate and open the rahd v.6 temporary file
+(defvar *rahd-binary* "rahd-bin")
 
+(defun polyrepListGetVariables (polys)
+  (let ((res (mapcar 'prep:polyrepGetVariables polys)))
+    (reduce (lambda (x y) (union x (car y))) res :initial-value nil)))
+
+(defun collect-variables (solver)
+  (let ((zeroes (solver-zeros solver))
+	(positives (solver-positives solver))
+	(non-negatives (solver-non-negatives solver)))
+    (polyrepListGetVariables (append zeroes positives non-negatives))))
+
+(defun string-constraint (p constraint)
+  (format nil " ~a ~a" (prep:polyrepPrint p) constraint))
+
+(defun string-constraint-list (l constraint)
+  (mapcar (lambda (x) (string-constraint x constraint)) l))
+
+(defun string-solver (solver)
+  (append
+   (string-constraint-list (solver-zeros solver) "= 0")
+   (string-constraint-list (solver-positives solver) "> 0")
+   (string-constraint-list (solver-non-negatives solver) ">= 0")))
+
+(defparameter *rahd-verb* 1)
+(defparameter *rahd-strategies*
+  (list "calculemus-*"
+	"calculemus-2"
+	"calculemus-1"
+	"calculemus-0"
+	"icp-only-50"
+	"icp-gbrni-redlog"
+	"qepcad-redlog"
+	"redlog-only"
+	"qepcad-only-open"
+	"icp-then-qepcad-only"
+	"icp*-then-qepcad-only"
+	"qepcad-only"
+	;;"s-rq-rl-end-no-bg-end" ;; Not sure what this strategy's problem is but it seems to always crash.
+	"s-rq-rl-end"
+	"s-rq-qsat-end"
+	"waterfall-with-icp-qepcad-redlog"
+	"waterfall-with-qepcad-top"
+	"waterfall"
+	"stable-simp"))
+
+(defparameter *rahd-strategy* (nth 3 *rahd-strategies*))
+(defun strategize (s) (setf *rahd-strategy* s))
+
+(defparameter *rahd-time-limit* 30)
+
+;; Calls RAHD using RAHD as a binary
+;; return the exit status of RAHD
+(defun call-rahd (solver)
+  (let* ((varsAsString (format nil "~{ ~a ~}" (collect-variables solver)))
+	 (constraintStrings (string-solver solver))
+	 (cs (format nil "~{ ~a ~^ /\\ ~}" constraintStrings))
+	 (cmd (format nil "ulimit -t ~a; ~a -set-exit-status -verbosity ~a -run-strat ~a -v \"~a\" -f \" ~a\"" *rahd-time-limit* *rahd-binary* *rahd-verb* *rahd-strategy* varsAsString cs )))
+    (if *verbose* (format t "Executing RAHD command: ~% ~a ~%" cmd))
+    (let ((tmp-file "temp"))
+      (with-open-file (out tmp-file
+			   :direction :output :if-exists :supersede)
+	#+allegro
+	(excl:run-shell-command
+	 cmd
+	 :input "//dev//null"
+	 :output out
+	 :error-output :output)
+	#+sbcl
+	(sb-ext:run-program
+	 cmd
+	 nil
+	 :input "//dev//null"
+	 :output out
+	 :error out)
+	#+cmu
+	(extensions:run-program
+	 cmd
+	 nil
+	 :input "//dev//null"
+	 :output out
+	 :error out)))))
 
 ;;-------------------------------------------------------
 ;; Non-incremental satisfiability check
@@ -226,7 +308,19 @@
 ;; - the state is ignored and is not changed
 ;; - if the result is unsat, then the unsatisfiability
 ;;   witness is stored
+;; - The result value is
+;;    < 0 is unsat
+;;    = 0 if unknown
+;;    > 0 if sat
 ;;-------------------------------------------------------
+(defvar *rahd-sat* 10)
+(defvar *rahd-unsat* 20)
+
+(defun check-rahd (solver)
+  (let ((status (call-rahd solver)))
+    (cond ((= *rahd-sat* status) 1)
+	  ((= *rahd-unsat* status) -1)
+	  (t 0))))
 
 (defun check (solver)
   (if *verbose* 
@@ -234,14 +328,17 @@
 	(format t "~%CHECK~%")
 	(print-solver solver)
 	(format t "~%")))
-  (multiple-value-bind
-   (status polys)
-   (gb:sos (solver-zeros solver)
-	   (solver-positives solver)
-	   (solver-non-negatives solver))
-   (if (null status) ;; unsat
-       (setf (solver-witness solver) polys))
-   status))
+  (multiple-value-bind (gbstatus polys)
+      (gb:sos (solver-zeros solver)
+	      (solver-positives solver)
+	      (solver-non-negatives solver))
+    (if *verbose* (format t "gb status ~a  ~%" gbstatus polys))
+    (if (null gbstatus) ;; unsat
+	(progn (set-valid-witness solver polys) -1)
+	(let ((rahd-status (check-rahd solver))) ;; currently unknown
+	  (if *verbose* (format t "RAHD: ~a ~%" rahd-status))
+	  (set-invalid-witness solver)
+	  rahd-status))))
 
 
 
@@ -261,43 +358,70 @@
       (solver-non-negatives solver)))
 
 (defun incremental-check (solver)
-  (if (new-assertions solver)
-      (progn
-	(if *verbose* 
-	    (progn 
-	      (format t "~%INCREMENTAL CHECK~%")
-	      (print-solver solver)
-	      (format t "~%")))
-	(multiple-value-bind
-	 (status polys)
-	 (gb:sos-cheap (solver-zeros solver)
-		       (solver-positives solver)
-		       (solver-non-negatives solver)
-		       (solver-state solver))
-	 (setf (solver-zeros solver) nil)
-	 (setf (solver-positives solver) nil)
-	 (setf (solver-non-negatives solver) nil)
-	 ;; update state or witness
-	 (if status 
-	     (setf (solver-state solver) polys)  ;; sat: polys is the new stat
-	   (setf (solver-witness solver) polys)) ;; unsat: polys is the witness
-	 status)
-	)
-    t))  ;; assumes the solver current status is "sat'
+  (format t "incremental-check is currently disabled!~%"))
+
+;; (defun incremental-check (solver)
+;;   (if (new-assertions solver)
+;;       (progn
+;; 	(if *verbose* 
+;; 	    (progn 
+;; 	      (format t "~%INCREMENTAL CHECK~%")
+;; 	      (print-solver solver)
+;; 	      (format t "~%")))
+;; 	(multiple-value-bind
+;; 	 (status polys)
+;; 	 (gb:sos-cheap (solver-zeros solver)
+;; 		       (solver-positives solver)
+;; 		       (solver-non-negatives solver)
+;; 		       (solver-state solver))
+;; 	 (setf (solver-zeros solver) nil)
+;; 	 (setf (solver-positives solver) nil)
+;; 	 (setf (solver-non-negatives solver) nil)
+;; 	 ;; update state or witness
+;; 	 (if status 
+;; 	     (setf (solver-state solver) polys)  ;; sat: polys is the new stat
+;; 	   (setf (solver-witness solver) polys)) ;; unsat: polys is the witness
+;; 	 status)
+;; 	)
+;;     t))  ;; assumes the solver current status is "sat'
 
 
+;;-----------------------------------------------------------
+;; Valid Witnesses
+;;
+;; Sets a valid or invalid witness to the previous check call
+;; An invalid witness is represented by nil.
+;; A valid witness is a list of polynomials.
+;;-----------------------------------------------------------
 
+(defun set-valid-witness (solver polys)
+  (setf (solver-witness solver) polys))
 
+(defun set-invalid-witness (solver)
+  (setf (solver-witness solver) nil))
+
+(defun valid-witness (solver)
+  (not (null (solver-witness solver))))
+  
 
 ;;------------------------------------------------------------
 ;; Witness collection
+;;
+;; If the witness is valid perform the following:
 ;; - check assertion i belongs to the witness list
 ;; - this checks whether polynomial stored in assertions[i]
 ;;   occurs in the witness list
 ;; - return nil if  assertions[i] is nil 
+;;
+;; If the witness is invalid, always return an over-approximation true
 ;;------------------------------------------------------------
+(defun is-witness? (solver id) 
+  (if (valid-witness solver)
+      (let ((p (get-assertion solver id)))
+	(if p (gb:poly-in-POL-list? p (solver-witness solver)) nil))
+      t))
 
-(defun is-witness? (solver id)
-  (let ((p (get-assertion solver id)))
-    (if p (gb:poly-in-POL-list? p (solver-witness solver)) nil)))
+;; (defun is-witness? (solver id)
+;;   (let ((p (get-assertion solver id)))
+;;     (if p (gb:poly-in-POL-list? p (solver-witness solver)) nil)))
 
