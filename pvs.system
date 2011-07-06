@@ -271,6 +271,8 @@
 		#+lcl4.1 (clos::flush-pv-caches)
 		#-(or cmu sbcl)
 		(pvs::BDD_bdd_init)
+		#+allegro
+		(pvs::nlyices-init)
 		(when *load-pvs-prelude*
 		  (pvs::load-prelude)
 		  ;;(load (format nil "~a/src/PVSio/prelude-attachments" *pvs-path*))
