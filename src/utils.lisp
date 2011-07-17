@@ -1719,7 +1719,7 @@
 
 (defun var-to-binding* (var expr vlist)
   (cond ((needs-naming-apart? var expr)
-	 (let* ((new-id (make-new-variable (id var) (cons expr vlist) 1))
+	 (let* ((new-id (make-new-variable (op-to-id var) (cons expr vlist) 1))
 		(bind-decl (mk-bind-decl new-id
 			     (get-declared-type var) (type var))))
 	   (values bind-decl t)))
