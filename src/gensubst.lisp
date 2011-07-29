@@ -712,6 +712,10 @@
   ;;(mapobject* fn (justification obj))
   (call-next-method))
 
+(defmethod mapobject* :around (fn (obj tcc-decl))
+  (unless *parsing-or-unparsing*
+    (call-next-method)))
+
 (defmethod mapobject* (fn (obj subtype-judgement))
   (mapobject* fn (subtype obj))
   (call-next-method))
