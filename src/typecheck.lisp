@@ -655,7 +655,8 @@
 (defun get-exported-theory-instances (thinsts closure &optional insts)
   (if (null thinsts)
       (nreverse insts)
-      (let ((inst (car (assoc (car thinsts) closure :test #'expinst-eq))))
+      (let ((inst (or (car (assoc (car thinsts) closure :test #'tc-eq))
+		      (car (assoc (car thinsts) closure :test #'expinst-eq)))))
 	(get-exported-theory-instances
 	 (cdr thinsts) closure
 	 (if inst
