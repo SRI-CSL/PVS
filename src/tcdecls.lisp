@@ -2264,14 +2264,18 @@
       #'(lambda (ex)
 	  (typecase ex
 	    (application
-	     (let ((rem-vars (remove-if #'(lambda (x)
-					    (and (typep x 'name-expr)
-						 (memq (declaration x)
-						       fixed-vars)))
-			       (apply #'append (arguments* ex)))))
+	     (let ((rem-vars
+		    (remove-if #'null
+		      (mapcar #'(lambda (a)
+				  (remove-if #'(lambda (x)
+						 (and (typep x 'name-expr)
+						      (memq (declaration x)
+							    fixed-vars)))
+				    a))
+			(arguments* ex)))))
 	       (if (null rem-vars)
 		   (copy nvar)
-		   (make-application* nvar rem-vars))))
+		   (make!-recursive-application (copy nvar) rem-vars))))
 	    (name-expr (copy nvar))))
       #'(lambda (ex)
 	  (typecase ex
@@ -2329,19 +2333,21 @@
 					&optional pargs)
   (if (null args)
       (if pargs
-	  (make!-application* pred pargs)
+	  (make!-recursive-application pred (nreverse pargs))
 	  pred)
       (make-ind-pred-application*
        pred (cdr args) fixed-vars (cdr formals)
-       (nconc pargs
-	      (mapcan #'(lambda (arg fml)
-			  (unless (memq fml fixed-vars)
-			    (list arg)))
-		(if (and (cdr (car formals))
-			 (tuple-expr? (car args)))
-		    (exprs (car args))
-		    (list (car args)))
-		(car formals))))))
+       (let ((cargs (mapcan #'(lambda (arg fml)
+				(unless (memq fml fixed-vars)
+				  (list arg)))
+		      (if (and (cdr (car formals))
+			       (tuple-expr? (car args)))
+			  (exprs (car args))
+			  (list (car args)))
+		      (car formals))))
+	 (if cargs
+	     (cons cargs pargs)
+	     pargs)))))
 
 (defun collect-decl-formals (decl)
   (append (formals decl)
@@ -3271,13 +3277,13 @@
     (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
   (set-type (declared-type decl) nil)
   (typecheck* (formals decl) nil nil nil)
-  (let ((fmlist (apply #'append (formals decl))))
+  (let ((fmlist (formals decl)))
     (let ((dup (duplicates? fmlist :key #'id)))
       (when dup
 	(type-error dup
-	  "May not use duplicate arguments in judgements")))
+	  "May not use duplicate bindings in expr judgements")))
     (set-formals-types fmlist))
-  (let* ((*bound-variables* (reverse (apply #'append (formals decl))))
+  (let* ((*bound-variables* (reverse (formals decl)))
 	 (*no-conversions-allowed* t)
 	 (*compatible-pred-reason*
 	  (acons (expr decl) "judgement" *compatible-pred-reason*)))
@@ -3527,6 +3533,16 @@
          is only imported generically, as the theory instance cannot be~%  ~
          determined from the name ~a."
       (id decl) (starting-row (place decl)) (id (module decl)) (name decl))))
+
+(defmethod generic-judgement-warning ((decl expr-judgement))
+  (unless (subsetp (free-params (type decl))
+		   (union (free-params (expr decl))
+			  (free-params (formals decl))))
+    (pvs-warning
+	"Judgement ~@[~a ~]at line ~d will not be used if theory ~a~%  ~
+         is only imported generically, as the theory instance cannot be~%  ~
+         determined from the expr ~a."
+      (id decl) (starting-row (place decl)) (id (module decl)) (expr decl))))
 
 
 (defun mk-application-for-formals (expr formals)
