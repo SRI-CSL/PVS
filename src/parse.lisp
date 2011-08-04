@@ -685,13 +685,21 @@
        :chain? t
        :place place))
     (JEXPRDECL
-     (make-instance 'expr-judgement
-       :declared-type dtype
-       :formals (xt-pdf (term-arg0 jdecl))
-       :expr (xt-expr (term-arg1 jdecl))
-       :chain? t
-       :place place))
+     (let ((jd (xt-jexprdecl jdecl)))
+       (setf (declared-type jd) dtype
+	     (chain? jd) t
+	     (place jd) place)
+       jd))
     (t (parse-error jdecl "Types may not have HAS_TYPE judgements."))))
+
+(defun xt-jexprdecl (jdecl)
+  (when (and (> (length (term-args (term-arg0 jdecl))) 1)
+	     (xt-lambda-formals-check (term-arg0 jdecl)))
+    (parse-error (term-arg0 jdecl) "commas not allowed"))
+  (let ((bindings (xt-lambda-formals (term-arg0 jdecl) nil)))
+    (make-instance 'expr-judgement
+      :formals (xt-flatten-bindings (car bindings) 0)
+      :expr (xt-expr (term-arg1 jdecl)))))
 
 (defun xt-rec-judgement (jdecls dtype place)
   (let ((decls (mapcar #'(lambda (jdecl)
