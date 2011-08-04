@@ -222,8 +222,8 @@ judgement ::= {['RECURSIVE'] 'JUDGEMENT' {jdecl++','}
 jdecl ::= type-expr-sans-name <jsubtypedecl(type-expr-sans-name)>
         | {name [pdformals+]}
              <[jnamedecl(name)|jappldecl(name,pdf(plus))]>
-        | {'FORALL' pdformals+ '=' expr}
-             <jexprdecl(pdf(plus),expr)>
+        | {'FORALL' lambda-formals ':' expr}
+             <jexprdecl(lambda-formal, expr)>
         ;
 
 ename ::= {name [':' type-expr]} <ename(name,[notype()|type-expr])>;
