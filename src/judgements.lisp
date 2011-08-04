@@ -477,9 +477,13 @@
 		      (list jtypes jdecls))
 		(values jtypes jdecls))))))))
 
+(defvar *in-expr-judgement-types* nil)
+
 (defun expr-judgement-types (ex jtypes)
-  (expr-judgement-types* ex (expr-judgements-alist (current-judgements))
-			 jtypes nil nil))
+  (unless *in-expr-judgement-types*
+    (let ((*in-expr-judgement-types* t))
+      (expr-judgement-types* ex (expr-judgements-alist (current-judgements))
+			     jtypes nil nil))))
 
 (defun expr-judgement-types* (ex expr-jdecls jtypes ejtypes ejdecls)
   (if (null expr-jdecls)
