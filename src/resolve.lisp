@@ -204,10 +204,13 @@
 				       (eq (id (module d)) (id thalias)))
 		      adecls))
 	     (res (get-decls-resolutions decls (actuals thalias)
-					 (mappings thalias) kind args)))
+					 (mappings thalias) kind args))
+	     (fres (remove-if #'(lambda (r)
+				  (not (tc-eq (module-instance r) thalias)))
+		     res)))
 	(get-theory-alias-decls-resolutions
 	 (cdr theory-aliases) adecls kind args
-	 (nconc reses res)))))
+	 (nconc reses fres)))))
 
 (defmethod get-theory-aliases (name)
   (when (mod-id name)
@@ -586,7 +589,7 @@
   ;; Note that some instances may work, while others won't.
   ;; E.g., given mappings (x := 3), where x and y are interpretable
   ;; in theory th, the instances
-  ;;  th, th[int], and th{{y := 4}} works, but
+  ;;  th, th[int], and th{{y := 4}} work, but
   ;;  th{{x := 4}} will be ignored, since x is no longer interpretable in
   ;; that instance.
   (if (null thinsts)
@@ -1305,7 +1308,7 @@
 		   (t (and (not (type-value (rhs mmap)))
 			   (some #'(lambda (pty)
 				     (tc-eq (type (expr (rhs mmap))) pty))
-				 (types (expr (rhs map)))))))))))
+				 (ptypes (expr (rhs map)))))))))))
 
 (defun kind-match (kind1 kind2)
   (or (eq kind1 kind2)
