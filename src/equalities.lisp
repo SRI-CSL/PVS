@@ -1597,7 +1597,7 @@
   (adt-compatible-pred-actuals (actuals (module-instance atype))
 			       (actuals (module-instance etype))
 			       (formals-sans-usings (adt atype))
-			       atype
+			       (find-supertype atype)
 			       (positive-types (adt atype))
 			       aexpr
 			       incs))
@@ -1617,8 +1617,7 @@
 			     (and (typep ydecl 'formal-type-decl)
 				  (same-id x ydecl)))))
 	 (multiple-value-bind (nincs npospreds)
-	     (adt-compatible-pred-actuals* (car aacts) (car eacts)
-					   incs pospreds)
+	     (adt-compatible-pred-actuals* (car aacts) (car eacts) incs pospreds)
 	   (adt-compatible-pred-actuals
 	    (cdr aacts) (cdr eacts) (cdr formals) atype postypes aexpr
 	    nincs npospreds)))
@@ -1634,11 +1633,12 @@
   #+pvsdebug (assert (and (type-value aact) (type-value eact)))
   (let* ((atype (type-value aact))
 	 (etype (type-value eact))
-	 (stype (compatible-type atype etype))
-	 (subtype? (subtype-of? etype stype))
+	 (ctype (compatible-type atype etype))
+	 (subtype? (subtype-of? etype ctype))
+	 (stype (find-supertype ctype))
 	 (preds (when subtype? (nth-value 1 (subtype-preds etype stype)))))
     (if subtype?
-	(values incs (cons (cons aact preds) pospreds))
+	(values incs (cons (cons (mk-actual stype) preds) pospreds))
 	(values (cons (make-actuals-equality aact eact) incs) pospreds))))
 
 ;;; pospreds are of the form ((act p1 .. pn) ...)
