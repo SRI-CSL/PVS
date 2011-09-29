@@ -80,9 +80,16 @@
 	     (not (typep decl '(or theory-abbreviation-decl
 				   conversion-decl auto-rewrite-decl ;;mod-decl
 				   judgement))))
-	(let ((*insert-add-decl* nil))
-	  (mapc #'(lambda (d) (add-decl d nil))
-		(generated decl)))
+	(if (mod-decl? decl)
+	    (dolist (d (generated decl))
+	      (if (importing? d)
+		  (typecheck-using* (get-theory (theory-name d)) (theory-name d))
+		  (let ((dhash (current-declarations-hash)))
+		    (dolist (id (id-suffixes (id d)))
+		      (pushnew d (get-lhash id dhash) :test #'eq)))))
+	    (let ((*insert-add-decl* nil))
+	      (mapc #'(lambda (d) (add-decl d nil))
+		    (generated decl))))
 	(unwind-protect
 	    (progn
 	      (reset-beta-cache)
