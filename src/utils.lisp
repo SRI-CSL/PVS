@@ -802,7 +802,7 @@
 	(cons new-elt tail))))
       
 
-(defmethod generated-by ((u importing)) nil)
+;;(defmethod generated-by ((u importing)) nil)
 
 (defun add-decl-test (x y)
   (and (eq (kind-of x) (kind-of y))
@@ -1024,6 +1024,7 @@
 (defun decl-context (decl &optional include?)
   (let* ((*generate-tccs* 'none)
 	 (theory (module decl))
+	 (libalist (library-alist *current-context*)) ;; Before we change
 	 (all-decls (reverse (all-decls theory)))
 	 (pdecls (or (memq decl all-decls) (cons decl all-decls)))
 	 (prev-decls (if include?
@@ -1070,7 +1071,12 @@
 	 (setf (saved-context d) (copy-context *current-context*)))
 	(importing
 	 (let* ((thname (theory-name d))
-		(th (get-theory thname)))
+		(th (get-theory* (id thname)
+				 (or (library thname)
+				     (and (library-datatype-or-theory? theory)
+					  (car (rassoc (lib-ref theory) libalist
+						       :test #'string=)))))))
+	   (assert th)
 	   (add-usings-to-context* th thname))
 	 (setf (saved-context d) (copy-context *current-context*)))
 	;;(subtype-judgement (add-to-known-subtypes (subtype d) (type d)))
