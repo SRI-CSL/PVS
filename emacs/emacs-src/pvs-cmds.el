@@ -1085,8 +1085,11 @@ including parent directories if they do not exist.  If the command fails
 for any reason, then the current PVS context is not changed."
   (interactive (let ((cdir (pvs-current-directory t)))
 		 (confirm-not-in-checker)
-		 (list (read-directory-name
-			"(Change context to) directory path: " cdir cdir))))
+		 (list (if (fboundp 'read-directory-name)
+			   (read-directory-name
+			    "(Change context to) directory path: " cdir cdir)
+			   (read-file-name
+			    "(Change context to) directory path: " cdir cdir)))))
   (unless (file-exists-p dir)
     (if (and (fboundp 'make-directory)
 	     (yes-or-no-p (format "%s does not exist - create it? " dir)))
