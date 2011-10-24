@@ -1366,6 +1366,7 @@
   (if (consp bindings)
       (let ((id (id (car bindings))))
 	(if (or (memq id aux)
+		(special-variable-p id)
 		(constantp id)) ; SO 2002-07-31 - lisp constants are also
 					; problematic (e.g., t or nil).
 	    (make-binding-ids-without-dups
