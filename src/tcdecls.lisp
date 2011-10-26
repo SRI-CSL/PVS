@@ -1210,6 +1210,11 @@
 	 tn)
 	(t (let ((tval (typecheck* (type-expr decl) nil nil nil)))
 	     (set-type (type-expr decl) nil)
+	     (when (has-type-vars? (type-expr decl))
+	       (type-error (type-expr decl)
+		 "Cannot determine the type associated with ~a:~%  Please provide more ~
+                  information, i.e., actual parameters or a coercion."
+		 (type-expr decl)))
 	     (copy tval :print-type tn)))))
 
 ;;; Units-decl
