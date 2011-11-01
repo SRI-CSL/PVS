@@ -1949,6 +1949,22 @@ pvs-strategies files.")
     (cons (car formula-proof)
 	  (cons 0 (list (sexp prinfo))))))
 
+(defun transfer-orphaned-proofs (from-theory to-theory)
+  (let* ((th (get-typechecked-theory to-theory))
+	 (*current-context* (saved-context th))
+	 (oprfs (read-orphaned-proofs from-theory)))
+    (when (and th oprfs)
+      (dolist (fdecl (provable-formulas (all-decls th)))
+	(let ((prf (find (id fdecl) oprfs :key #'third)))
+	  (if prf
+	      (let ((prfs (mapcar #'(lambda (pr)
+				      (let ((p (get-smaller-proof-info pr)))
+					(apply #'mk-proof-info p)))
+			    (cddr (cddr prf)))))
+		(setf (proofs fdecl) prfs)
+		(setf (default-proof fdecl) (nth (fourth prf) prfs)))
+	      (format t "~%Couldn't find proof for ~a" (id fdecl))))))))
+
 (defun read-orphaned-proofs (&optional theoryref)
   (when (file-exists-p "orphaned-proofs.prf")
     (ignore-file-errors
