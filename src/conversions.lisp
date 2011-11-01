@@ -1152,6 +1152,11 @@
 	     (cons cos result)
 	     result)))))
 
+;; (defun disabled-conversion-test (conv disabled)
+;;   (and (eq (id (expr conv)) (id (expr disabled)))
+;;        (or (not (fully-instantiated? (expr disabled)))
+;; 	   (tc-eq (expr conv) (expr disabled)))))
+
 (defun compatible-conversion (conversion type)
   (let* ((ctype (find-supertype (type conversion)))
 	 (fparams (remove-if #'(lambda (fp)
