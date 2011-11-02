@@ -824,9 +824,11 @@ bind tighter.")
     (pp* declared-type)))
 
 (defmethod pp* ((decl const-decl))
-  (with-slots (declared-type definition) decl
+  (with-slots (declared-type type definition) decl
     (pprint-newline :fill)
-    (pp* declared-type)
+    (if *unparse-expanded*
+	(pp* type)
+	(pp* declared-type))
     (when definition
       (write-char #\space)
       (write #\=)
