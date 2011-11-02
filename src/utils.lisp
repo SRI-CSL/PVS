@@ -1024,7 +1024,8 @@
 (defun decl-context (decl &optional include?)
   (let* ((*generate-tccs* 'none)
 	 (theory (module decl))
-	 (libalist (library-alist *current-context*)) ;; Before we change
+	 (libalist (when *current-context*
+		     (library-alist *current-context*))) ;; Before we change
 	 (all-decls (reverse (all-decls theory)))
 	 (pdecls (or (memq decl all-decls) (cons decl all-decls)))
 	 (prev-decls (if include?
