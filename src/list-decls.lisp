@@ -57,39 +57,59 @@
 ;;; Called by Emacs - show-declaration command
 
 (defvar *containing-type* nil)
+(defvar *show-declarations-alist* nil)
 
 (defun show-declaration (oname origin pos &optional x?)
-  (if (or (equal origin "Declaration")
+  (if (or (equal origin "declaration")
 	  (typechecked-origin? oname origin))
-      (multiple-value-bind (object *containing-type*)
+      (multiple-value-bind (object *containing-type* theory)
 	  (get-id-object-at oname origin pos)
 	(let ((decl (get-decl-associated-with object)))
 	  (if decl
-	      (let* ((declstr
-		      (format nil "% From theory ~a:~2%~a~@[ ~a~]"
-			(id (module decl))
-			(unparse-decl decl)
-			(when *containing-type*
-			  (let ((kind (typecase decl
-					(field-decl "field")
-					(dep-binding "declaration"))))
-			    (when kind
-			      (format nil "(~a in ~a)" kind
-				      *containing-type*)))))))
-		(if x?
-		    (pvs-wish-source
-		     (with-output-to-temp-file
-		      (format t "show-declaration ~a ~a ~a {~a}~%"
-			(id object)
-			(min (length declstr) *default-char-width*)
-			(count #\Newline declstr)
-			declstr)))
-		    (pvs-buffer "Declaration"
-		      declstr
-		      'temp t)))
+	      (let ((thname (format nil "~@[~a@~]~a"
+			      (when (library-datatype-or-theory? (module decl))
+				(let ((*current-context* (context theory)))
+				  (assert *current-context*)
+				  (get-lib-id (lib-ref (module decl)))))
+			      (id (module decl)))))
+		(multiple-value-bind (declstr place-hash)
+		    (unparse-with-places
+		     decl (decl-nt decl)
+		     (format nil "% From theory ~a:~%" thname)
+		     (when *containing-type*
+		       (let ((kind (typecase decl
+				     (field-decl "field")
+				     (dep-binding "declaration"))))
+			 (when kind
+			   (format nil "% (~a in ~a)" kind
+				   *containing-type*)))))
+		  (let ((dname (format nil "~a.~a" thname (id decl))))
+		    (setf *show-declarations-alist*
+			  (acons dname (list decl place-hash)
+				 (remove dname *show-declarations-alist*
+					 :key #'car :test #'string=)))
+		    (if x?
+			(pvs-wish-source
+			 (with-output-to-temp-file
+			  (format t "show-declaration ~a ~a ~a {~a}~%"
+			    (id object)
+			    (min (length declstr) *default-char-width*)
+			    (count #\Newline declstr)
+			    declstr)))
+			(pvs-buffer dname declstr 'popto t nil "Declaration"))))
 	      ;;(pvs-message "Could not find associated declaration")
-	      )))
+	      ))))
       (pvs-message "~a is not typechecked" oname)))
+
+(defun decl-nt (decl)
+  (if (declaration? decl)
+      (let ((th (module decl)))
+	(if th
+	    (cond ((memq decl (theory th)) 'theory-elt)
+		  ((memq decl (assuming th)) 'assuming)
+		  ((memq decl (formals th)) 'theory-formals)
+		  (t (assert (binding? decl)) 'expr))
+	    'expr))))
 
 
 ;;; Called by Emacs - goto-declaration command
@@ -271,35 +291,47 @@
     (values object objects)))
 
 (defun get-id-object-at (oname origin pos)
-  (let ((objects (get-syntactic-objects-for oname origin))
-	(containing-type nil)
-	(object nil)
-	(*parsing-or-unparsing* t))
-    (mapobject #'(lambda (ex)
-		   (or object
-		       (and (syntax? ex)
-			    ;;(or (place ex) (break "Place not set"))
-			    (place ex)
-			    (slot-exists-p ex 'id)
-			    (within-place pos (id-place ex))
-			    (setq object ex)
-			    t)
-		       (when (and (typep ex '(and syntax
-						  (not assignment)
-						  (or funtype
-						      tupletype
-						      recordtype)))
-				  (place ex)
-				  (within-place pos (place ex)))
-			 (typecase ex
-			   (expr (setq containing-type
-				       (find-supertype (type ex))))
-			   ((or funtype tupletype recordtype)
-			    (setq containing-type ex)))
-			 nil)
-		       (when object t)))
-	       objects)
-    (values object containing-type)))
+  (multiple-value-bind (objects theories)
+      (get-syntactic-objects-for oname origin)
+    (let ((containing-type nil)
+	  (object nil)
+	  (theory (when (listp theories) (car theories)))
+	  (*parsing-or-unparsing* t))
+      (mapobject #'(lambda (ex)
+		     (or object
+			 (and (syntax? ex)
+			      (not (eq ex objects))
+			      ;;(or (place ex) (break "Place not set"))
+			      ;;(place ex)
+			      (slot-exists-p ex 'id)
+			      (if (hash-table-p theories)
+				  (let ((epos (gethash ex theories)))
+				    (and epos
+					 (within-place pos epos)))
+				  (within-place pos (id-place ex)))
+			      (setq object ex)
+			      t)
+			 (when (and (typep ex '(and syntax
+						    (not assignment)
+						    (or funtype
+							tupletype
+							recordtype)))
+				    (if (hash-table-p theories)
+					(let ((epos (gethash ex theories)))
+					  (and epos
+					       (within-place pos epos)))
+					(and (place ex)
+					     (within-place pos (place ex)))))
+			   (typecase ex
+			     (datatype-or-module (setq theory ex))
+			     (expr (setq containing-type
+					 (find-supertype (type ex))))
+			     ((or funtype tupletype recordtype)
+			      (setq containing-type ex)))
+			   nil)
+			 (when object t)))
+		 objects)
+      (values object containing-type theory))))
 
 (defun get-syntactic-objects-for (name origin)
   (case (intern (#+allegro string-downcase #-allegro string-upcase origin))
@@ -309,6 +341,10 @@
     (tccs (let ((theory (get-theory name)))
 	    (when theory
 	      (values (tcc-form theory) (list theory)))))
+    (declaration (let ((entry (assoc name *show-declarations-alist*
+				     :test #'string=)))
+		   (when entry
+		     (values-list (cdr entry)))))
     (prelude (let ((theories (remove-if #'generated-by *prelude-theories*)))
 	       (values theories theories)))
     (prelude-theory (let ((theory (get-theory name)))
