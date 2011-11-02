@@ -61,7 +61,34 @@
 		  doc))
 	  ((not (stringp format))
 	   (error "Format-string ~a is not a string (in double quotes)."
-		  format))))
+		  format)))
+    (check-prover-macro-arg-ambiguity name args body))
+
+  (defun check-prover-macro-arg-ambiguity (name args body)
+    (dolist (arg args)
+      (when (or (step-or-rule-defn arg)
+		(gethash arg *rulebase*))
+	(check-prover-macro-arg-ambiguity* name arg body))))
+
+  (defun check-prover-macro-arg-ambiguity* (name arg body)
+    (cond ((symbolp body))
+	  ((not (consp body)))
+	  ((if-form? body)
+	   (check-prover-macro-arg-ambiguity* name arg (caddr body))
+	   (check-prover-macro-arg-ambiguity* name arg (cadddr body)))
+	  ((let-form? body)
+	   (check-prover-macro-arg-ambiguity
+	    name
+	    (mapcar #'car (let-bindings body))
+	    (let-body body))
+	   (check-prover-macro-arg-ambiguity* name arg (let-body body)))
+	  ((and (consp body) (eq (car body) arg))
+	   (format t "Should probably rename arg ~a in ~a: ~
+                      it appears in the body as a possible strategy"
+		  arg name))
+	  ((consp body)
+	   (dolist (e body) (check-prover-macro-arg-ambiguity* name arg e)))))
+  
   (defun extract-lisp-exprs-from-strat-body (body &optional lispexprs)
     (cond ((null body)
 	   (nreverse lispexprs))
@@ -175,7 +202,8 @@
 	(let ((largs (mapcar #'(lambda (a) (if (consp a) (car a) a))
 		       (remove-if #'(lambda (a)
 				      (memq a '(&optional &rest)))
-			 args))))
+			 args)))
+	      )
 	  `(progn #-(or cmu sbcl)
 		  (defun ,(makesym "(defstrat) ~a" name) ,largs
 		    ,@lbody
