@@ -2314,41 +2314,41 @@ generated")
 	(generate-adt-every-rel fpairs adt)))))
 
 (defun adt-map-formal-pairs (formals adt &optional pairs)
-  (if (null formals)
-      (nreverse pairs)
-      (cond ((importing? (car formals))
-	     (let ((nusing (gensubst (car formals)
-			     #'(lambda (x)
-				 (copy x
-				   'id (id (cdr (assoc x pairs
-						       :test #'same-id)))))
-			     #'(lambda (x)
-				 (and (typep x 'name)
-				      (assoc x pairs
-					     :test #'same-id))))))
-	       (adt-map-formal-pairs (cdr formals)
-				     adt
-				     (if nil ;(eq nusing (car formals))
-					 pairs
-					 (acons (car formals) nusing pairs)))))
-	    ((if (formal-const-decl? (car formals))
-		 (not (some #'(lambda (fty)
-				(member fty (positive-types adt)
-					:key #'declaration))
+  (cond ((null formals)
+	 (nreverse pairs))
+	((importing? (car formals))
+	 (let ((nusing (gensubst (car formals)
+			 #'(lambda (x)
+			     (copy x
+			       'id (id (cdr (assoc x pairs
+						   :test #'same-id)))))
+			 #'(lambda (x)
+			     (and (typep x 'name)
+				  (assoc x pairs
+					 :test #'same-id))))))
+	   (adt-map-formal-pairs (cdr formals)
+				 adt
+				 (if nil ;(eq nusing (car formals))
+				     pairs
+				     (acons (car formals) nusing pairs)))))
+	((if (formal-const-decl? (car formals))
+	     (not (some #'(lambda (fty)
+			    (member fty (positive-types adt)
+				    :key #'declaration))
 			(free-params (type (car formals)))))
-		 (not (member (car formals)
-			      (positive-types adt)
-			      :test #'(lambda (x y)
-					(let ((fdecl (if (name? y)
-							 (declaration y)
-							 (declaration (print-type y)))))
-						(and (typep fdecl 'formal-type-decl)
-						     (same-id x fdecl)))))))
-	     (let ((nfml (copy-adt-formals (car formals))))
-	       (adt-map-formal-pairs (cdr formals)
-				     adt
-				     (acons nfml nfml pairs))))
-	    (t (let* ((fml (copy-adt-formals (car formals)))
+	     (not (member (car formals)
+			  (positive-types adt)
+			  :test #'(lambda (x y)
+				    (let ((fdecl (if (name? y)
+						     (declaration y)
+						     (declaration (print-type y)))))
+				      (and (typep fdecl 'formal-type-decl)
+					   (same-id x fdecl)))))))
+	 (let ((nfml (copy-adt-formals (car formals))))
+	   (adt-map-formal-pairs (cdr formals)
+				 adt
+				 (acons nfml nfml pairs))))
+	(t (let* ((fml (copy-adt-formals (car formals)))
 		      (nid (make-new-variable (id fml)
 			     (cons formals pairs)))
 		      (nfml (typecase fml
@@ -2368,7 +2368,7 @@ generated")
 				  'declared-type (adt-subst-declared-type
 						  (declared-type fml) pairs)))))))
 		 (adt-map-formal-pairs (cdr formals) adt
-				       (acons fml nfml pairs)))))))
+				       (acons fml nfml pairs))))))
 
 (defun adt-subst-declared-type (dtype formal-pairs)
   (gensubst dtype
@@ -4855,7 +4855,7 @@ function, tuple, or record type")
   (if (eq (adt te) adt)
       (mk-application* '|map| maps)
       (let* ((acts (raise-actuals (actuals (module-instance te))))
-	     (macts (raise-actuals (subst-map-actuals acts fpairs)))
+	     (macts (raise-actuals (subst-map-actuals (positive-actuals te) fpairs)))
 	     (name (mk-name-expr '|map| (append acts macts)))
 	     (pname (pc-parse (unparse name :string t) 'expr)))
 	(mk-application* pname maps))))
@@ -4878,9 +4878,10 @@ function, tuple, or record type")
        (eq (id (operator expr)) '|every|)))
 
 (defun subst-map-actuals (te fpairs)
-  (gensubst te
-    #'(lambda (x) (subst-map-actuals! x fpairs))
-    #'(lambda (x) (subst-map-actuals? x fpairs))))
+  (let ((rpairs (remove-if #'(lambda (pr) (eq (car pr) (cdr pr))) fpairs)))
+    (gensubst te
+      #'(lambda (x) (subst-map-actuals! x rpairs))
+      #'(lambda (x) (subst-map-actuals? x rpairs)))))
 
 (defmethod subst-map-actuals? ((name name) fpairs)
   (and (resolution name)
