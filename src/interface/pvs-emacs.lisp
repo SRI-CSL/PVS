@@ -458,13 +458,13 @@
 	(format t "~%Not a valid choice - try again~%choice? ")
 	(read-choice query))))
 
-(defun pvs-buffer (name contents &optional display? read-only? append?)
+(defun pvs-buffer (name contents &optional display? read-only? append? kind)
   (if *to-emacs*
       (let* ((*print-pretty* nil)
 	     (*output-to-emacs*
-	      (format nil ":pvs-buf ~a&~a&~a&~a&~a :end-pvs-buf"
+	      (format nil ":pvs-buf ~a&~a&~a&~a&~a&~a :end-pvs-buf"
 		name (when contents (write-to-temp-file contents))
-		display? read-only? append?)))
+		display? read-only? append? kind)))
 	(to-emacs))
       (if display?
 	  (format t "~%~a" contents))))
@@ -581,6 +581,13 @@
 	     (format t "~%~a" message))
 	 (format t "~%Restoring the state.")
 	 (restore))
+	((null *pvs-emacs-interface*)
+	 (format t "~%<pvserror msg=\"parse-error\">~%\"~a\"~%</pvserror>"
+	   (protect-emacs-output
+	    (if args
+		(format t "~%~?" message args)
+		(format t "~%~a" message))))
+	 (pvs-abort))
 	(t (if args
 	       (format t "~%~?~a~a"
 		 message
@@ -643,6 +650,10 @@
 	   (format t "~%~a" errmsg)
 	   (format t "~%Try again.")
 	   (throw 'tcerror t))
+	  ((null *pvs-emacs-interface*)
+	   (format t "~%<pvserror msg=\"type error\">~%\"~a\"~%</pvserror>"
+	     (protect-emacs-output errmsg))
+	   (pvs-abort))
 	  (t (format t "~%~a" errmsg)
 	     (error "Typecheck error")))))
 )
