@@ -876,7 +876,9 @@
 				       (car (last (generated (car diff))))
 				       (car diff)))
 			    (replaced (memq repl1 (all-decls-but-theory-formals oth)))
-			    (kept (ldiff (all-decls oth) replaced)))
+			    ;;(kept (remove-if #'generated-by
+			    ;;   (ldiff (all-decls oth) replaced)))
+			    )
 		       (setf (all-declarations oth) nil)
 		       (setf (saved-context oth) nil)
 		       ;; formals-sans-usings
