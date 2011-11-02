@@ -25,7 +25,8 @@
   (:export :sos :sos-cheap
 	   :set-debug-level :set-newU :set-newV :get-newU :get-newV
 	   :set-degree-ratio :set-length-ratio :reset-bounds
-	   :set-iteration-bound :poly-in-POL-list? :show-basis :show-witness)
+	   :set-iteration-bound :poly-in-POL-list? :show-basis :show-witness
+	   :set-gb-resource-limit)
   (:use :polynomial-representation-core :cl-user :common-lisp))
 
 (in-package :gb)	;; The core procedure

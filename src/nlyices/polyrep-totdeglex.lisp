@@ -11,7 +11,7 @@
 ;; HISTORY :
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(provide :polynomial-representation)
+(provide :polynomial-representation-core)
 (defpackage :polynomial-representation-core
   (:nicknames :prep)
   (:export :polyrepAddPoly :polyrepNegativePoly :polyrepMultiplyPoly

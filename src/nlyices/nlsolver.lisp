@@ -12,7 +12,11 @@
 	   :assert-leq :assert-gt :assert-lt :check :incremental-check
 	   :is-witness? :print-solver :print-state :print-witness
 	   :print-ids :verbose :quiet
-	   :strategize :*rahd-strategies*))
+	   :strategize :*rahd-strategies*
+	   :use-vts-gb-rahd
+	   :use-gb-rahd
+	   :use-rahd
+	   ))
  
 (in-package :nlsolver)
 
@@ -23,7 +27,7 @@
 ;; every call to check or incremental check
 ;;---------------------------------------------------
 
-(defvar *verbose* t)
+(defvar *verbose* nil)
 
 (defun verbose () (setf *verbose* t))
 
@@ -278,7 +282,7 @@
 	 (cs (format nil "~{ ~a ~^ /\\ ~}" constraintStrings))
 	 (cmd (format nil "ulimit -t ~a; ~a -set-exit-status -verbosity ~a -run-strat ~a -v \"~a\" -f \" ~a\"" *rahd-time-limit* *rahd-binary* *rahd-verb* *rahd-strategy* varsAsString cs )))
     (if *verbose* (format t "Executing RAHD command: ~% ~a ~%" cmd))
-    (let ((tmp-file "temp"))
+    (let ((tmp-file "temp-p1"))
       (with-open-file (out tmp-file
 			   :direction :output :if-exists :supersede)
 	#+allegro
@@ -322,7 +326,7 @@
 	  ((= *rahd-unsat* status) -1)
 	  (t 0))))
 
-(defun check (solver)
+(defun check-gb-rahd (solver)
   (if *verbose* 
       (progn 
 	(format t "~%CHECK~%")
@@ -340,9 +344,90 @@
 	  (set-invalid-witness solver)
 	  rahd-status))))
 
+(defvar *print-is-sats* t)
+(defvar *is-sat-constraint-counter* 0)
+(defun reset-is-sat-constraint-counter ()
+  (setf *is-sat-constraint-counter* 0))
+(defun inc-is-sat-constraint-counter ()
+  (setf *is-sat-constraint-counter* (+ 1 *is-sat-constraint-counter*)))
 
 
+(defun is-sat-constraints (zs ps nns)
+  "zeroes positives and non-negatives"
+  (inc-is-sat-constraint-counter)
+  (let ((solver (make-solver :zeros zs
+			     :positives ps
+			     :non-negatives nns)))
+    (if *print-is-sats*
+	(progn
+	  (format t "~%CHECK~a~%" *is-sat-constraint-counter*)
+	  (print-solver solver)
+	  (format t "~%")))
+    (multiple-value-bind (gbstatus polys)
+      (gb:sos (solver-zeros solver)
+	      (solver-positives solver)
+	      (solver-non-negatives solver))
+      (if (null gbstatus) ;; unsat
+	  -1
+	  (let* ((rahd-status (check-rahd solver))) ;; currently unknown
+	    (if *verbose* (format t "RAHD: ~a ~%" rahd-status))
+	    rahd-status)))))
 
+(defun find-sat-node (nodes)
+  (if (null nodes)
+      -1 ;; unsat
+      (let* ((head (car nodes)) (rest (cdr nodes)))
+	(multiple-value-bind (zs ps nns)
+	     (vts:node-get-zeroes-positives-non-negatives-polys head)
+	  (let ((status (is-sat-constraints zs ps nns)))
+	    (cond
+	      ((>= status 0) status)
+	      ;; if any child is sat/unknown the disjunct is sat/unknown
+	      ((< status 0) (find-sat-node rest))))))))
+	
+(defun check-vts-gb-rahd (solver)
+  (if *verbose* 
+      (progn 
+	(format t "~%CHECK~%")
+	(print-solver solver)
+	(format t "~%")))
+  (let ((cs (vts:poly-lists-to-constraint-set (solver-zeros solver)
+					      nil
+					      (solver-positives solver)
+					      (solver-non-negatives solver))))
+    (multiple-value-bind (status root candidate-sat-nodes)
+	(vts:is-consistent cs vts:*default-resource-limit*)
+      (format t "~%VTS status: ~a ~%" status)
+      (format t "~a~%" (vts:summarize-node root))
+      (if *verbose*
+	  (progn
+	    (format t "candidate-sat-nodes: ~a~%" candidate-sat-nodes)
+	    (format t "~a~%" root)))
+      (cond
+	((vts:is-sat? status ) 1)
+	((vts:is-unsat? status) (progn (set-invalid-witness solver) -1))
+	(t (progn (set-invalid-witness solver)
+		  (mapcar 'vts:split-non-zeroes candidate-sat-nodes)
+		  (reset-is-sat-constraint-counter)
+		  (let* ((unknown-nodes (vts:leaves-blocked-nodes root))
+			 (find-status (find-sat-node unknown-nodes)))
+		    (set-invalid-witness solver)
+		    find-status)))))))
+
+(defvar *check-method*  0)
+
+(defun use-vts-gb-rahd ()
+    (setf *check-method* 0))
+(defun use-gb-rahd ()
+    (setf *check-method* 1))
+(defun use-rahd ()
+    (setf *check-method* 2))
+
+(defun check (solver)
+  (case *check-method*
+    (0 (check-vts-gb-rahd solver))
+    (1 (check-gb-rahd solver))
+    (2 (check-rahd solver))))
 
 ;;-----------------------------------------------------------
 ;; Incremental check

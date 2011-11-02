@@ -53,6 +53,8 @@
 #-mk-defsystem
 (cfile-nl "polyrep-totdeglex")
 #-mk-defsystem
+(cfile-nl "vts")
+#-mk-defsystem
 (cfile-nl "decide3_2a")
 #-mk-defsystem
 (cfile-nl "nlsolver")
@@ -65,7 +67,7 @@
 (load-nl "libyices.dylib")
 
 #+(and (not mk-defsystem) linux x86-64)
-(load-nl "libyices.so")
+(load-nl "libyices64.so")
 
 #+(and (not mk-defsystem) linux (not x86-64))
 (load-nl "libyices32.so")
@@ -254,6 +256,26 @@
   (reduce #'append (mapcar (lambda (y) (benchmarkFiles files y)) strategies) ))
 
 ;;(defvar small (list "../examples/john1.ys" "../examples/john2.ys"))
+(defun black-list ()
+  (list "examples/angle.ys"
+	"examples/nl3.ys"
+	"examples/nl3a.ys"
+	"examples/pedos_inequality.ys"
+	;;"sdp_ternary4.ys" ;; No GB?
+	"steiner-lehmus-theorem.ys"
+	"examples/train.ys" ;; Higher cutoff for projection?
+	))
+
+;; (benchmark "../examples/train.ys" "calculemus-0")
+
+(defun passes-black-list (example)
+  (notany (lambda (x) (search x (namestring example))) (black-list)))
+
+(defun practical-examples ()
+  (remove-if-not 'passes-black-list (all-examples)))
+
+(defun practical-benchmarks ()
+  (benchmarkProduct (practical-examples) (list "calculemus-0")))
 
 (defun all-benchmarks ()
   (benchmarkProduct (all-examples) nlsolver::*rahd-strategies*))
