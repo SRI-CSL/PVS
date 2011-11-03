@@ -321,7 +321,8 @@ rahd = src/rahd/rahd.lisp src/rahd/polyalg.lisp \
 
 nlyices = src/nlyices/nlyices.lisp src/nlyices/polyrep-totdeglex.lisp \
 	  src/nlyices/decide3_2a.lisp src/nlyices/nlsolver.lisp \
-	  src/nlyices/named-callbacks.lisp src/nlyices/fcpo.lisp
+	  src/nlyices/named-callbacks.lisp src/nlyices/fcpo.lisp \
+          src/nlyices/vts.lisp
 
 pvs-src = src/closopt.lisp \
           src/store-object.lisp \
