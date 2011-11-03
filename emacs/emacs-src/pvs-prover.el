@@ -404,21 +404,23 @@ proof scripts, including those already proved."
 (defun pvs-formula-origin ()
   (let* ((file (current-pvs-file t))
 	 (buf (buffer-name))
-	 (fname (or file (pathname-name buf)))
-	 (ext (pathname-type buf))
+	 (fname (unless pvs-buffer-kind
+		  (or file (pathname-name buf))))
+	 (ext (unless pvs-buffer-kind (pathname-type buf)))
 	 (point (point))
 	 (line (current-line-number))
 	 (fref (make-pvs-formula-reference
 		:buffer buf :file fname :line line)))
-    (cond ((file-equal (format "%s/lib/prelude.pvs" pvs-path)
+    (cond ((or (equal pvs-buffer-kind "Declaration")
+	       (equal buf "Declaration"))
+	   (setf (pvs-fref-kind fref) 'declaration))
+	  ((file-equal (format "%s/lib/prelude.pvs" pvs-path)
 		       (buffer-file-name))
 	   (setf (pvs-fref-kind fref) 'prelude))
 	  (pvs-prelude
 	   (setf (pvs-fref-kind fref) 'prelude-theory
 		 (pvs-fref-prelude-offset fref) pvs-prelude))
 	  (file (setf (pvs-fref-kind fref) 'pvs))
-	  ((equal buf "Declaration")
-	   (setf (pvs-fref-kind fref) 'declaration))
 	  ((equal buf "PVS Status")
 	   (let ((theory 
 		  (save-excursion
