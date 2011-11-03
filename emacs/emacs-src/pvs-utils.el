@@ -47,6 +47,23 @@
 
 (defvar pvs-string-positions nil)
 
+(defvar pvs-search-syntax-table nil  "Syntax table used while in search mode.")
+(if pvs-search-syntax-table ()
+    (let ((st (syntax-table)))
+      (unwind-protect
+	   (progn
+	     (setq pvs-search-syntax-table (make-syntax-table))
+	     (set-syntax-table pvs-search-syntax-table)
+	     (modify-syntax-entry ?_ "w")
+	     (modify-syntax-entry ?\? "w")
+	     (modify-syntax-entry ?: ".")
+	     (modify-syntax-entry ?% "<")
+	     (modify-syntax-entry ?\f ">")
+	     (modify-syntax-entry ?\n ">")
+	     (modify-syntax-entry ?\r ">"))
+	(set-syntax-table st))))
+
+
 ;;; Define this first, so we can start logging right away.
 
 (defun pvs-log-message (kind msg)
@@ -184,23 +201,24 @@ beginning of the previous one."
 	nil)))
 
 (defun current-theory-region ()
-  (or (current-prelude-theory-region)
-      (let ((case-fold-search t))
-	(save-match-data
-	  (unless (= (point) (point-max))
-	    (forward-char 1))
-	  (backward-theory t)
-	  (unless (beginning-of-theory)
-	    (error "Can't determine theory boundaries"))
-	  (looking-at "\\w+")
-	  (let ((start (point))
-		(th-id (buffer-substring (match-beginning 0) (match-end 0))))
-	    (find-theory-or-datatype-forward)
-	    (unless (beginning-of-theory (point))
-	      (goto-char (point-max)))
-	    (if (< start (point))
-		(list th-id start (point))
-		nil))))))
+  (with-syntax-table pvs-search-syntax-table
+    (or (current-prelude-theory-region)
+	(let ((case-fold-search t))
+	  (save-match-data
+	    (unless (= (point) (point-max))
+	      (forward-char 1))
+	    (backward-theory t)
+	    (unless (beginning-of-theory)
+	      (error "Can't determine theory boundaries"))
+	    (looking-at "\\w+")
+	    (let ((start (point))
+		  (th-id (buffer-substring (match-beginning 0) (match-end 0))))
+	      (find-theory-or-datatype-forward)
+	      (unless (beginning-of-theory (point))
+		(goto-char (point-max)))
+	      (if (< start (point))
+		  (list th-id start (point))
+		  nil)))))))
 
 (defun current-prelude-theory-region ()
   (let ((prelude-file (format "%s/lib/prelude.pvs" pvs-path)))
@@ -217,7 +235,8 @@ beginning of the previous one."
 (defun theory-regions ()
   (when (current-pvs-file t)
     (condition-case err
-	(find-unbalanced-region-pvs (point-min) (point-max))
+	(with-syntax-table pvs-search-syntax-table
+	  (find-unbalanced-region-pvs (point-min) (point-max)))
       (error (error "Can't determine theory boundaries: %s" (cadr err))))
     (theory-regions*)))
 
