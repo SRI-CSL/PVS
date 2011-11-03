@@ -101,7 +101,7 @@ or the resolution determined by the typechecker for an overloaded name."
 	(message
 	 "The show-declaration command is not available in this buffer.")
 	(pvs-send-and-wait (format "(show-declaration \"%s\" \"%s\" '(%d %d))"
-			       (or fname theory buf) kind line
+			       (or fname buf) kind line
 			       (real-current-column))
 			   nil 'declaration 'dont-care))))
      
