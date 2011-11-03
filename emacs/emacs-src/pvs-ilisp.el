@@ -549,7 +549,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
 	(setq pvs-waiting nil))
       (let ((pos (pvs-get-place place)))
 	(when pos
-	  (if (member dir '("nil" "NIL"))
+	  (if (lnull dir)
 	      (pvs-display-buffer file pos)
 	      (pvs-display-file file dir pos)))
 	(comint-display-file-output err "PVS Error")
@@ -604,46 +604,34 @@ window."
                                 "PVS Messages"
 				"*Completions*"))
 
+(defvar pvs-buffer-kind nil)
+;;(make-variable-buffer-local 'pvs-buffer-kind)
+
 (defun pvs-buffer (output)
   (apply 'pvs-buffer* (parse-pvs-message output)))
 
-(defun pvs-buffer* (bufname file display read-only &optional append)
+(defun pvs-buffer* (bufname file display read-only &optional append kind)
   (if noninteractive
-      (when (not (member file '("nil" "NIL")))
-	(let* ((buf (get-buffer-create bufname))
-	       (bufstr (save-excursion
-			 (set-buffer buf)
-			 (erase-buffer)
-			 (insert-file-contents file nil)
-			 (define-pvs-key-bindings buf)
-			 (pvs-set-buffer-mode buf)
-			 (when (or (eq major-mode default-major-mode)
-				   (eq major-mode 'fundamental-mode))
-			   (pvs-view-mode))
-			 (buffer-string))))
-	  (when pvs-validating
-	    (princ bufstr)
-	    (terpri))
-	  (when (> pvs-verbose 1)
-	    (princ bufstr 'external-debugging-output)
-	    (terpri 'external-debugging-output))))
+      (pvs-buffer-noninteractive bufname file display read-only append kind)
       (let ((obuf (current-buffer)))
-	(if (member file '("nil" "NIL"))
+	(if (lnull file) ;; Delete the buffer
 	    (when (get-buffer bufname)
 	      (delete-windows-on bufname)
 	      (kill-buffer bufname))
 	    (let* ((buf (get-buffer-create bufname))
 		   (cpoint (save-excursion (set-buffer buf) (point)))
-		   (append-p (not (or (null append)
-				      (member append '("nil" "NIL")))))
+		   (append-p (not (lnull append)))
 		   (at-end (save-excursion (set-buffer buf)
 					   (= (point) (point-max)))))
 	      (save-excursion
 		(set-buffer buf)
+		(unless (lnull kind)
+		  (make-local-variable 'pvs-buffer-kind)
+		  (setq pvs-buffer-kind kind))
 		(define-pvs-key-bindings buf)
 		(let ((at-end (= (point) (point-max)))
 		      (contents (buffer-string)))
-		  (pvs-set-buffer-mode buf)
+		  (pvs-set-buffer-mode)
 		  (setq buffer-read-only nil)
 		  (unless append-p
 		    (erase-buffer))
@@ -653,7 +641,7 @@ window."
 		    (delete-initial-blank-lines)
 		    (when same
 		      (set-buffer-modified-p nil)))
-		  (when (not (member read-only '("nil" "NIL")))
+		  (when (not (lnull read-only))
 		    (set-buffer-modified-p nil)
 		    (setq buffer-read-only t))
 		  (when (or (eq major-mode default-major-mode)
@@ -698,6 +686,26 @@ window."
 	      (delete-file file)))
 	t)))
 
+(defun pvs-buffer-noninteractive (bufname file display read-only append kind)
+  (when (not (lnull file))
+    (let* ((buf (get-buffer-create bufname))
+	   (bufstr (save-excursion
+		     (set-buffer buf)
+		     (erase-buffer)
+		     (insert-file-contents file nil)
+		     (define-pvs-key-bindings buf)
+		     (pvs-set-buffer-mode)
+		     (when (or (eq major-mode default-major-mode)
+			       (eq major-mode 'fundamental-mode))
+		       (pvs-view-mode))
+		     (buffer-string))))
+      (when pvs-validating
+	(princ bufstr)
+	(terpri))
+      (when (> pvs-verbose 1)
+	(princ bufstr 'external-debugging-output)
+	(terpri 'external-debugging-output)))))
+
 (defun pvs-add-to-buffer-list (bufname)
     "Add to the given buffer name to the list of buffers
      that should be buried with pvs-bury-output."
@@ -711,8 +719,10 @@ window."
     ("Declaration" . pvs-view-mode))
   "Associates buffer names with modes, e.g. ((\"Foo\" . foo-mode))")
 
-(defun pvs-set-buffer-mode (buf)
-  (let ((mode (cdr (assoc (buffer-name buf) *pvs-buffer-mode-alist*))))
+(defun pvs-set-buffer-mode ()
+  (let ((mode (cdr (assoc (or pvs-buffer-kind
+			      (buffer-name (current-buffer)))
+			  *pvs-buffer-mode-alist*))))
     (when mode (funcall mode))))
 
 (defun pvs-y-or-n (msg &optional yesno-p timeout-p)
@@ -722,9 +732,7 @@ window."
 	     t)
       (let ((inhibit-quit nil))
 	(condition-case ()
-	    (if (if (and timeout-p
-			 (not (equal timeout-p "nil"))
-			 (not (equal timeout-p "NIL"))
+	    (if (if (and (not (lnull timeout-p))
 			 (fboundp 'with-timeout))
 		    (with-timeout (pvs-default-timeout t)
 		      (if (equal yesno-p "nil")
@@ -804,7 +812,7 @@ window."
   ;; If the file is the current buffer, put point at pos.
   ;; o.w. if there is one window, make two and display file
   ;; If there are two windows, display file in non-current one.
-  (let ((buf (if (member dir '("nil" "NIL"))
+  (let ((buf (if (lnull dir)
 		 (get-buffer file)
 		 (if (file-equal dir pvs-current-directory)
 		     (get-pvs-file-buffer file)
@@ -1021,17 +1029,17 @@ This displays information about the PVS command queue in the minibuffer."
 
 (defun pvs-modify-buffer* (dir file pos textfile)
   (let ((place (car (read-from-string pos))))
-    (cond ((member dir '("nil" "NIL"))
+    (cond ((lnull dir)
 	   (save-excursion
 	     (set-buffer file)
 	     (apply 'kill-region (pvs-region place))
-	     (unless (member textfile '("nil" "NIL"))
+	     (unless (lnull textfile)
 	       (insert-file-contents textfile))
 	     (goto-char (point-min))))
 	  (t (pvs-display-file file dir place)
 	     (let ((beg (point)))
 	       (pvs-display-file file dir (cddr place))
-	       (unless (and (not (member textfile '("nil" "NIL")))
+	       (unless (and (not (lnull textfile))
 			    (equal (buffer-substring beg (point))
 				   (save-excursion
 				     (let ((buf (find-file-noselect textfile)))
@@ -1039,13 +1047,13 @@ This displays information about the PVS command queue in the minibuffer."
 				       (prog1 (buffer-string)
 					 (kill-buffer buf))))))
 		 (kill-region beg (point))
-		 (unless (member textfile '("nil" "NIL"))
+		 (unless (lnull textfile)
 		   (insert-file-contents textfile)
 		   ;;(forward-char -1)
 		   ;;(when (looking-at "\n")
 		   ;;  (delete-char 1))
 		 )))))
-    (unless (member textfile '("nil" "NIL"))
+    (unless (lnull textfile)
       (delete-file textfile))))
 
 ;(defun pvs-modify-buffer (output)
@@ -1107,7 +1115,7 @@ This displays information about the PVS command queue in the minibuffer."
 			   ((string-equal value "!") "done")
 			   ((string-equal value "X") "fail")
 			   ((string-equal value "*") "wait")
-			   ((member value '("nil" "NIL")) "    ")
+			   ((lnull value) "    ")
 			   (t "????"))))
 	    ((string-equal type "CHILD")
 	     (goto-char (point-min))
@@ -1465,5 +1473,9 @@ Returns nil if there isn't one longer than `completion-min-length'."
   (when expanded-form-overlay
     (delete-overlay expanded-form-overlay)
     (setq expanded-form-overlay nil))
-  (ilisp-bury-output)
-  (mapcar #'ilisp-bury-output *pvs-buffers-to-bury*))
+  (unless (one-window-p t)
+    (ilisp-bury-output)
+    (mapcar #'ilisp-bury-output *pvs-buffers-to-bury*)))
+
+(defun lnull (obj)
+  (or (null obj) (member obj '("nil" "NIL"))))
