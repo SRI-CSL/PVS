@@ -68,7 +68,7 @@ these commands are provided.
 Key bindings are:
 \\{pvs-view-mode-map}"
   (interactive)
-  (kill-all-local-variables)
+  ;;(kill-all-local-variables)
   (use-local-map pvs-view-mode-map)
   (setq major-mode 'pvs-view-mode)
   (setq mode-name "PVS View")
