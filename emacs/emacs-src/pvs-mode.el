@@ -109,7 +109,7 @@
 	   (progn
 	     (setq pvs-mode-syntax-table (make-syntax-table))
 	     (set-syntax-table pvs-mode-syntax-table)
-	     (modify-syntax-entry ?_ "w")
+	     (modify-syntax-entry ?_ "_")
 	     (modify-syntax-entry ?\? "w")
 	     (modify-syntax-entry ?: ".")
 	     (modify-syntax-entry ?% "<")
