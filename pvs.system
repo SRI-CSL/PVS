@@ -539,6 +539,7 @@
      :source-pathname "src/nlyices"
      :components ((:file "polyrep-totdeglex")
 		  (:file "decide3_2a")
+		  (:file "vts")
 		  (:file "nlsolver")
 		  (:file "named-callbacks")
 		  #+allegro
