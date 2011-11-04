@@ -234,11 +234,11 @@ beginning of the previous one."
 
 (defun theory-regions ()
   (when (current-pvs-file t)
-    (condition-case err
-	(with-syntax-table pvs-search-syntax-table
-	  (find-unbalanced-region-pvs (point-min) (point-max)))
-      (error (error "Can't determine theory boundaries: %s" (cadr err))))
-    (theory-regions*)))
+    (with-syntax-table pvs-search-syntax-table
+      (condition-case err
+	  (find-unbalanced-region-pvs (point-min) (point-max))
+	(error (error "Can't determine theory boundaries: %s" (cadr err))))
+      (theory-regions*))))
 
 (defun theory-regions* (&optional verbose)
   (let ((case-fold-search t))
