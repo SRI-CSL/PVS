@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+
+   <extension
+         point="org.eclipse.ui.editors">
+      <editor
+            name="PVS Editor"
+            extensions="pvs"
+            icon="icons/pvslogo.gif"
+            contributorClass="org.eclipse.ui.texteditor.BasicTextEditorActionContributor"
+            class="com.csl.sri.pvs.plugin.editor.PVSEditor"
+            id="com.csl.sri.pvs.plugin.editor.PVSEditor">
+      </editor>
+   </extension>
+
+</plugin>

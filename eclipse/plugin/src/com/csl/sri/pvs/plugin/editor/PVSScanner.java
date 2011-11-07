@@ -19,34 +19,25 @@ public class PVSScanner extends RuleBasedScanner {
 		"PROPOSITION", "CHALLENGE", "ENDIF", "JUDGEMENT", "RECURSIVE", "CLAIM","ENDTABLE", "LAMBDA",
 		"SUBLEMMA", "CLOSURE", "EXISTS", "LAW", "SUBTYPES", "COND", "EXPORTING", "LEMMA", "SUBTYPE_OF"};
 
-	private static String[] fgTypes = { "bitvector", "bool", "datatype",
-			"define-type", "int", "lambda", "nat", "number", "real", "record",
-			"scalar", "subrange", "subtype", "tuple" };
+	//private static String[] fgTypes = {};
 
-	private static String[] fgConstants = { "false", "true" }; 
-	// May add reals and ints one day
+	private static String[] fgConstants = {}; 
 
-	private static String[] fgOperators = { "#", "*", ":)", "=>", "\\/", "|=",
-		"##", "**", "::", ">", "]", "|>", "#)", "+", ":=", ">=", "]|", "|[",
-		"#]", "++", ";", ">>", "^", "|]", "%", ",", "<", ">>=", "^^", "||",
-		"&", "-", "<<", "@", "`", "|}", "&&", "->", "<<=", "@@", "{", "}",
-		"(", ".", "<=", "[", "{|", "~", "(#", "/", "<=>", "[#", "{||}",
-		"(:", "//", "<>", "[]", "|", "(|", "/=", "<|", "[|", "|)",
-		"(||)", "/\\", "=", "[||]", "|-", ")", ":", "==", "\\", "|->" };
+	private static String[] fgOperators = { "#", "*", ":)", "=>", "\\/", "/=", "|=",
+		"##", "**", "::", ">", "|>", "#)", "+", ":=", ">=", "]|", "|[", "#]", "++",
+		";", ">>", "^", "|]", "%", ",", "<", ">>=", "^^", "||", "&", "-", "<<",
+		"@", "`", "|}", "&&", "->", "<<=", "@@", ".", "<=", "{|", "~", "(#", "/",
+		"<=>", "[#", "{||}", "(:", "//", "<>", "[]", "|","(|", "<|", "[|",
+		"|)","(||)", "/\\", "=", "[||]", "|-", ":", "==", "\\", "|->",}; 
+		//"(", ")", "[", "]", "{", "}" };
 
 	public PVSScanner(ColorManager manager) {
-		IToken keyword = new Token(new TextAttribute(manager
-				.getColor(ColorManager.KEYWORD)));
-		IToken type = new Token(new TextAttribute(manager
-				.getColor(ColorManager.TYPE)));
-		IToken constant = new Token(new TextAttribute(manager
-				.getColor(ColorManager.CONSTANT)));
-		IToken operator = new Token(new TextAttribute(manager
-				.getColor(ColorManager.OPERATION)));
-		IToken comment = new Token(new TextAttribute(manager
-				.getColor(ColorManager.COMMENT)));
-		IToken other = new Token(new TextAttribute(manager
-				.getColor(ColorManager.DEFAULT)));
+		IToken keyword = new Token(new TextAttribute(manager.getColor(ColorManager.KEYWORD)));
+		IToken constant = new Token(new TextAttribute(manager.getColor(ColorManager.CONSTANT)));
+		IToken operator = new Token(new TextAttribute(manager.getColor(ColorManager.OPERATOR)));
+		IToken comment = new Token(new TextAttribute(manager.getColor(ColorManager.COMMENT)));
+		IToken other = new Token(new TextAttribute(manager.getColor(ColorManager.DEFAULT)));
+		//IToken type = new Token(new TextAttribute(manager.getColor(ColorManager.TYPE)));
 
 		List<IRule> rules = new ArrayList<IRule>();
 
@@ -61,15 +52,15 @@ public class PVSScanner extends RuleBasedScanner {
 
 		// Add word rule for keywords, types, constants and operators.
 		WordRule wordRule = new WordRule(new PVSWordDetector(), other);
-		for (int i = 0; i < fgKeywords.length; i++)
-			wordRule.addWord(fgKeywords[i], keyword);
-		for (int i = 0; i < fgTypes.length; i++)
-			wordRule.addWord(fgTypes[i], type);
-		for (int i = 0; i < fgConstants.length; i++)
-			wordRule.addWord(fgConstants[i], constant);
-		for (int i = 0; i < fgOperators.length; i++)
-			wordRule.addWord(fgOperators[i], operator);
+		for (String word: fgKeywords)  wordRule.addWord(word, keyword);
+		for (String word: fgConstants) wordRule.addWord(word, constant);
+		//for (String word: fgTypes) wordRule.addWord(word, type);
 		rules.add(wordRule);
+
+		//TODO: Operators do not always get highlighted correctly. For now it is ok.
+		WordRule operatorRule = new WordRule(new PVSOperatorDetector(), other);
+		for (String word: fgOperators) operatorRule.addWord(word, operator);
+		rules.add(operatorRule);
 
 		// Convert to array
 		IRule[] result = new IRule[rules.size()];

@@ -23,9 +23,9 @@ public class ColorManager {
 
 	public static final RGB TYPE = new RGB(128, 0, 0); // maroon
 
-	public static final RGB CONSTANT = new RGB(0, 0, 128); // navy
+	public static final RGB CONSTANT = new RGB(0, 0, 255); // blue
 
-	public static final RGB OPERATION = new RGB(0, 128, 0); // green
+	public static final RGB OPERATOR = new RGB(0, 128, 0); // green
 
 	public static final RGB COMMENT = new RGB(128, 128, 0); // olive
 
@@ -41,9 +41,9 @@ public class ColorManager {
 	 */
 
 	public void dispose() {
-		Iterator e = fColorTable.values().iterator();
+		Iterator<Color> e = fColorTable.values().iterator();
 		while (e.hasNext())
-			((Color) e.next()).dispose();
+			e.next().dispose();
 	}
 
 	public Color getColor(RGB rgb) {

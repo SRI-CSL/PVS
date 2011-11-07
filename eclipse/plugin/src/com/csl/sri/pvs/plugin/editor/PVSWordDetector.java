@@ -3,7 +3,6 @@ package com.csl.sri.pvs.plugin.editor;
 import org.eclipse.jface.text.rules.IWordDetector;
 
 public class PVSWordDetector implements IWordDetector {
-
 	/*
 	 * @param c character 
 	 * @return boolean the character is authorized in a word
@@ -17,5 +16,4 @@ public class PVSWordDetector implements IWordDetector {
 	public boolean isWordStart(char c) {
 		return Character.isLetter(c);
 	}
-
 }

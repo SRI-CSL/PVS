@@ -110,8 +110,7 @@ public class PVSEditor extends TextEditor {
 
 	}
 
-	private final void outputFileToPVS(Process process) throws CoreException,
-			IOException {
+	private final void outputFileToPVS(Process process) throws CoreException, IOException {
 		// Lecture et renvoi a PVS
 		InputStream in = file.getContents();
 		OutputStream out = process.getOutputStream();

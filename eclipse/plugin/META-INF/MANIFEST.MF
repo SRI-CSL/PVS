@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: PVS Pllugin
-Bundle-SymbolicName: pvs-plugin
+Bundle-SymbolicName: pvs-plugin; singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: com.csl.sri.pvs.plugin.Activator
 Bundle-Vendor: SRI International
