@@ -879,6 +879,14 @@
 			    ;;(kept (remove-if #'generated-by
 			    ;;   (ldiff (all-decls oth) replaced)))
 			    )
+		       ;; assuming-instances
+		       (when (assuming-instances oth)
+		       	 (let ((pdecls (memq repl1 (reverse (all-declarations oth)))))
+		       	   (assert pdecls)
+		       	   (if (cdr pdecls)
+		       	       (let ((vis-instances (assuming-instances (cadr pdecls))))
+		       		 (setf (assuming-instances oth) vis-instances))
+		       	       (setf (assuming-instances oth) nil))))
 		       (setf (all-declarations oth) nil)
 		       (setf (saved-context oth) nil)
 		       ;; formals-sans-usings
@@ -936,7 +944,6 @@
 		       (setf (immediate-usings oth) 'unbound)
 		       ;; instances-used
 		       (when (instances-used oth) (break "instances-used"))
-		       ;; assuming-instances
 		       (cond ((memq repl1 (formals oth))
 			      (setf (formals oth)
 				    (append (ldiff (formals oth)
@@ -1322,8 +1329,9 @@
   t)
 
 (defun prove-tcc (decl)
-  (unless (and (default-proof decl)
-	       (proved? decl))
+  (unless (or (recursive-judgement-tcc? decl)
+	      (and (default-proof decl)
+		   (proved? decl)))
     (unless (and (default-proof decl)
 		 (not (or (null (script (default-proof decl)))
 			  (equal (script (default-proof decl))
@@ -1952,6 +1960,7 @@
 
 (defun tcc? (decl)
   (and (formula-decl? decl)
+       (not (recursive-judgement-tcc? decl))
        (eq (kind decl) 'tcc)))
 
 
