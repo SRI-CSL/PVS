@@ -439,7 +439,8 @@
 	(gethash ex jhash)
       (if there?
 	  (when jtypes&jdecls
-	    (apply #'remove-judgement-types-of-type (type ex) jtypes&jdecls))
+	    (funcall #'remove-judgement-types-of-type (type ex)
+		     (car jtypes&jdecls) (cadr jtypes&jdecls)))
 	  (multiple-value-bind (types jdecls)
 	      (judgement-types* ex)
 	    (let ((jlist (jdecls-list jdecls)))
@@ -2981,7 +2982,10 @@
 
 (defmethod simple-match* ((ex modname) (inst modname) bindings subst)
   (if (eq (id ex) (id inst))
-      (simple-match* (actuals ex) (actuals inst) bindings subst)
+      (let ((amatch (simple-match* (actuals ex) (actuals inst) bindings subst)))
+	(if (eq amatch 'fail)
+	    'fail
+	    (simple-match* (mappings ex) (mappings inst) bindings subst)))
       'fail))
 
 (defmethod simple-match* ((ex actual) (inst actual) bindings subst)
@@ -2992,6 +2996,12 @@
       (if (type-value inst)
 	  'fail
 	  (simple-match* (expr ex) (expr inst) bindings subst))))
+
+(defmethod simple-match* ((ex mapping) (inst mapping) bindings subst)
+  (let ((lmatch (simple-match* (lhs ex) (lhs inst) bindings subst)))
+    (if (eq lmatch 'fail)
+	'fail
+	(simple-match* (rhs ex) (rhs inst) bindings subst))))
 
 (defmethod simple-match* (ex inst bindings subst)
   (declare (ignore ex inst bindings subst))
