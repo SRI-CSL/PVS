@@ -75,7 +75,7 @@
 		(multiple-value-bind (declstr place-hash)
 		    (unparse-with-places
 		     decl (decl-nt decl)
-		     (format nil "% From theory ~a:~%" thname)
+		     (format nil "% From theory ~a:" thname)
 		     (when *containing-type*
 		       (let ((kind (typecase decl
 				     (field-decl "field")
@@ -101,15 +101,20 @@
 	      ))))
       (pvs-message "~a is not typechecked" oname)))
 
-(defun decl-nt (decl)
-  (if (declaration? decl)
-      (let ((th (module decl)))
-	(if th
-	    (cond ((memq decl (theory th)) 'theory-elt)
-		  ((memq decl (assuming th)) 'assuming)
-		  ((memq decl (formals th)) 'theory-formals)
-		  (t (assert (binding? decl)) 'expr))
-	    'expr))))
+(defmethod decl-nt ((decl declaration))
+  (let ((th (module decl)))
+    (if th
+	(cond ((memq decl (theory th)) 'theory-elt)
+	      ((memq decl (assuming th)) 'assuming)
+	      ((memq decl (formals th)) 'theory-formals)
+	      (t (assert (binding? decl)) 'expr))
+	'expr)))
+
+(defmethod decl-nt ((decl simple-decl))
+  'simplebind)
+
+(defmethod decl-nt ((decl t))
+  'expr)
 
 
 ;;; Called by Emacs - goto-declaration command
@@ -302,7 +307,7 @@
 			 (and (syntax? ex)
 			      (not (eq ex objects))
 			      ;;(or (place ex) (break "Place not set"))
-			      ;;(place ex)
+			      (place ex)
 			      (slot-exists-p ex 'id)
 			      (if (hash-table-p theories)
 				  (let ((epos (gethash ex theories)))
