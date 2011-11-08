@@ -236,7 +236,7 @@
 (defun mk-recursive-judgement-tcc (id expr)
   (make-instance 'recursive-judgement-tcc
     :id id
-    :spelling 'OBLIGATION
+    :spelling 'AXIOM
     :kind 'tcc
     :definition expr
     :semi t))
