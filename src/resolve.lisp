@@ -691,9 +691,7 @@
 				  (null (place (type (car tres)))))
 			 (setf (place (type (car tres))) (place (expr act))))
 		       (setf (type-value act) (type (car tres)))
-		       (push 'type (types (expr act)))
-		       (when (cdr (resolutions (expr act)))
-			 (setf (resolutions (expr act)) tres))))))))))
+		       (push 'type (types (expr act)))))))))))
       ;; with-no-type-errors not needed here;
       ;; the expr typechecks iff the subtype does.
       (set-expr (typecheck* (expr act) nil nil nil)
