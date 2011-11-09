@@ -556,6 +556,8 @@
 
 (defcl recursive-judgement-tcc (judgement-tcc))
 
+(defcl recursive-judgement-axiom (formula-decl))
+
 (defcl existence-tcc (tcc-decl))
 
 (defcl assuming-tcc (tcc-decl)
