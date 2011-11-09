@@ -236,8 +236,15 @@
 (defun mk-recursive-judgement-tcc (id expr)
   (make-instance 'recursive-judgement-tcc
     :id id
-    :spelling 'AXIOM
+    :spelling 'OBLIGATION
     :kind 'tcc
+    :definition expr
+    :semi t))
+
+(defun mk-recursive-judgement-axiom (id expr)
+  (make-instance 'recursive-judgement-axiom
+    :id id
+    :spelling 'AXIOM
     :definition expr
     :semi t))
 
