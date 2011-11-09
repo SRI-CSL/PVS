@@ -1329,9 +1329,8 @@
   t)
 
 (defun prove-tcc (decl)
-  (unless (or (recursive-judgement-tcc? decl)
-	      (and (default-proof decl)
-		   (proved? decl)))
+  (unless (and (default-proof decl)
+	       (proved? decl))
     (unless (and (default-proof decl)
 		 (not (or (null (script (default-proof decl)))
 			  (equal (script (default-proof decl))
@@ -1960,7 +1959,6 @@
 
 (defun tcc? (decl)
   (and (formula-decl? decl)
-       (not (recursive-judgement-tcc? decl))
        (eq (kind decl) 'tcc)))
 
 
