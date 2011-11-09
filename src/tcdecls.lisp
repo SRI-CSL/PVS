@@ -3352,7 +3352,7 @@
     ;; Generate the corresponding formula - this is generally not one of the
     ;; TCCs, as they are obtained by walking down the recursive declaration
     ;; body.  Instead, we use the rewrite-formula obtained above
-    (let ((jtcc (mk-recursive-judgement-tcc (id decl) (rewrite-formula decl))))
+    (let ((jtcc (mk-recursive-judgement-axiom (id decl) (rewrite-formula decl))))
       (setf (newline-comment jtcc)
 	    (list (format nil
 		      "% Recursive judgement axiom generated for judgement~%% ~a"
