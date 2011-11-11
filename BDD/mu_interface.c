@@ -40,6 +40,11 @@ Date: 05/09/98
 
 #include <signal.h>
 
+#ifdef __linux__
+// GLIBC 2.11 includes __longjmp_chk, not defined in earlier versions
+__asm__(".symver __longjmp_chk,siglongjmp@GLIBC_2.2.5");
+#endif
+
 int bdd_interrupted = 0;
 sigjmp_buf bddcatch;
 struct sigaction lisp_handler;
