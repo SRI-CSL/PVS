@@ -187,8 +187,10 @@ assuming ::= {importing [';']}
 		 <conversion-elt(conversion,[nosemic()|semic()])>
 	   | {auto-rewrite [';']}
 		 <auto-rewrite-elt(auto-rewrite,[nosemic()|semic()])>
-	   | {['_DECL']^d pidops pdformals* ':' assuming-decl [';']^s}
-		<assuming(pidops,pdf(star),assuming-decl,
+	   | {['_DECL']^d pidops [theory-formals]^f pdformals* ':' assuming-decl [';']^s}
+		<assuming([no-decl()|decl()]^d,pidops,
+		          [no-theory-formals()|theory-formals]^f,
+		          pdf(star),assuming-decl,
                           [nosemic()|semic()]^s,[noatdecl()|atdecl()]^d)>
 	   ;
 
@@ -202,8 +204,11 @@ theory-elt ::= {importing [';']}
 		 <conversion-elt(conversion,[nosemic()|semic()])>
 	     | {auto-rewrite [';']}
 		 <auto-rewrite-elt(auto-rewrite,[nosemic()|semic()])>
-	     | {['_DECL']^d pidops [pdformals+] ':' theory-declaration [';']^s}
-		 <theory(pidops,[noformals()|pdf(plus)],theory-declaration,
+	     | {['_DECL']^d pidops [theory-formals]^f [pdformals+]
+	                    ':' theory-declaration [';']^s}
+		 <theory([no-decl()|decl()]^d,pidops,
+		         [no-theory-formals()|theory-formals]^f,
+		         [noformals()|pdf(plus)],theory-declaration,
                          [nosemic()|semic()]^s,[noatdecl()|atdecl()]^d)>
 	     ;
 
@@ -223,7 +228,7 @@ jdecl ::= type-expr-sans-name <jsubtypedecl(type-expr-sans-name)>
         | {name [pdformals+]}
              <[jnamedecl(name)|jappldecl(name,pdf(plus))]>
         | {'FORALL' lambda-formals ':' expr}
-             <jexprdecl(lambda-formal, expr)>
+             <jexprdecl(lambda-formals, expr)>
         ;
 
 ename ::= {name [':' type-expr]} <ename(name,[notype()|type-expr])>;
