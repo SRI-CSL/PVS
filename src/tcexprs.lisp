@@ -51,7 +51,7 @@
 		 (check-for-subtype-tcc ex expected)))))
 	(t (call-next-method)
 	   (when expected
-	     (set-type ex expected))))
+	     (set-type ex expected (when (units-expr? kind) kind)))))
   ex)
 
 

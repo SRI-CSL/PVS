@@ -501,7 +501,7 @@
     (parse-integer str)))
 
 (defmethod store-object* ((obj rational))
-  (let* ((str (format nil "~d" obj))
+  (let* ((str (format nil "~d/~d" (numerator obj) (denominator obj)))
 	 (len (push-string-length str)))
     (reserve-space (1+ len)
       (push-word (store-obj 'rational))

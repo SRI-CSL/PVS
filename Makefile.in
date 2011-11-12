@@ -364,6 +364,7 @@ pvs-src = src/closopt.lisp \
 	  src/datatype.lisp \
 	  src/typecheck.lisp \
 	  src/tclib.lisp \
+	  src/check-units.lisp \
           src/compare.lisp \
 	  src/untypecheck.lisp \
 	  src/copy-lex.lisp \

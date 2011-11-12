@@ -290,7 +290,7 @@ type-def ::= {{'=' <equal()> | 'FROM' <from()> | {'<' ':'} <`\<\:()>}
 units-decl ::= {'_UNIT' '=' units-expr ['+' rational]}
                    <units-decl(units-expr,[no-offset()|rational])>;
 
-units-expr ::= name
+units-expr ::= name % Includes rational/floating point
              | {units-expr '^' rational} <units-term(`^(),units-expr,rational)>
              | {units-expr^l '*' units-expr^r}
                       <units-term(`*(),units-expr^l,units-expr^r)>
@@ -298,8 +298,8 @@ units-expr ::= name
                       <units-term(`\/(),units-expr^l,units-expr^r)>
              ;
 
-rational ::= {['-']^s number^n ['/' number^d]}
-              <rational([pos()|neg()]^s,number^n,[noden()|number^d])>;
+rational ::= {['-']^s number^n [{'/'|'.'}^o idop^d]}
+              <rational([pos()|neg()]^s,number^n,[noden()|{den(idop^d)|float(idop^d)}^o])>;
 
 var-decl ::= {'VAR' type-expr} <var-decl(type-expr)>;
 
@@ -337,6 +337,7 @@ type-expr ::= {name [arguments] ['WITH' type-expr]^e}
 type-expr-sans-name ::= { '(' expr ')'} <expr-as-type(expr)>
 		      | {'{' set-formals ['|' expr] '}'}
 			<[enumtype(set-formals) | subtype(set-formals,expr)]>
+		      | {'<#' units-expr '#>'} <type-units(units-expr)>
 		      | comp-type-expr
                       %% | {{'FORALL' | 'EXISTS'} lambda-formals ':' type-expr}
                       %%   <quant-type({forall()|exists()},lambda-formals,

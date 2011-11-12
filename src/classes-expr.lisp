@@ -61,6 +61,7 @@
 (defcl expr (syntax)
   (parens :initform 0 :parse t :restore-as nil)
   type
+  units
   (free-variables :ignore t :initform 'unbound :fetch-as 'unbound)
   (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound)
 ;;   (tcc-status :documentation "An alist of expected types and tcc-status -
@@ -452,7 +453,8 @@
 (defcl simple-decl (syntax)
   (id :parse t :restore-as nil)
   (declared-type :parse t)
-  type)
+  type
+  units)
 
 (defcl binding (simple-decl))
 

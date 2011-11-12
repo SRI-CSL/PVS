@@ -271,6 +271,12 @@ print object produces an error, and won't allow inspection of the object.")
       (call-next-method)
       (format stream "<#conversion-result ~a>" (expr cr))))
 
+(defmethod print-object ((unit units-expr) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (unparse unit :stream stream)))
+  
+
 (defmethod pp* ((pt store-print-type))
   (format t "<#store-print-type ~a>"
     (print-type pt)))

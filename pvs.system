@@ -386,7 +386,8 @@
 		  (:file "occurs-in")
 		  (:file "datatype")
 		  (:file "typecheck")
-		  (:file "tclib"))
+		  (:file "tclib")
+		  (:file "check-units"))
      :depends-on (basic))
    (:module user-interface
      :source-pathname "src/"

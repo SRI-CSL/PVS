@@ -40,7 +40,7 @@
 
 (defvar *appl-tcc-conditions* nil)
 
-(defmethod set-type ((ex expr) expected)
+(defmethod set-type ((ex expr) expected &optional units)
   (assert *current-context*)
   (assert *generate-tccs*)
   (let ((*added-recursive-def-conversion* nil))
@@ -48,14 +48,17 @@
 	       (eq *generate-tccs* 'all))
 	   (set-type* ex expected))
 	  ((eq *generate-tccs* 'top)
-	   (check-for-subtype-tcc ex expected)))))
+	   (check-for-subtype-tcc ex expected))))
+  (check-units ex units))
 
-(defmethod set-type ((te type-expr) expected)
+(defmethod set-type ((te type-expr) expected &optional units)
+  (declare (ignore units))
   (assert *current-context*)
   (let ((*added-recursive-def-conversion* nil))
     (set-type* te expected)))
 
-(defmethod set-type ((te dep-binding) expected)
+(defmethod set-type ((te dep-binding) expected &optional units)
+  (declare (ignore units))
   (let ((*added-recursive-def-conversion* nil))
     (set-type* te expected)))
 
@@ -271,6 +274,7 @@ required a context.")
       (setq *added-recursive-def-conversion* t))))
 
 (defmethod set-type-name-expr* ((ex name-expr) res)
+  (setf (units ex) (units (declaration res)))
   (setf (type ex) (type res)))
 
 (defmethod set-type-name-expr* ((ex number-expr) res)

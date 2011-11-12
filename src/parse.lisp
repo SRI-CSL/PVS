@@ -1121,7 +1121,8 @@
 	(offset (term-arg1 units-decl)))
     (values (make-instance 'units-decl
 	      :declared-units (xt-units-term units-expr)
-	      :offset (xt-rational offset))
+	      :offset (unless (is-sop 'NO-OFFSET offset)
+			(xt-rational offset)))
 	    units-expr)))
 
 (defun xt-units-term (units-expr)
@@ -1145,16 +1146,24 @@
     (t (break))))
 
 (defun xt-rational (rat-term)
-  (let ((pos? (is-sop 'POS (term-arg0 rat-term)))
-	(num (ds-number (term-arg1 rat-term))))
-    (when (zerop num)
-      (parse-error 0 "Ratio with 0 numerator is just 0"))
+  (let* ((pos? (is-sop 'POS (term-arg0 rat-term)))
+	 (nbr (ds-number (term-arg1 rat-term)))
+	 (num (if pos? nbr (- nbr))))
     (if (is-sop 'NODEN (term-arg2 rat-term))
-	(if pos? num (- num))
-	(let ((den (ds-number (term-arg2 rat-term))))
-	  (when (zerop den)
-	    (parse-error 0 "Cannot have a ratio with 0 denominator"))
-	  (if pos? (/ num den) (- (/ num den)))))))
+	num
+	(let* ((onbr (term-arg0 (term-arg2 rat-term)))
+	       (onum (xt-idop onbr)))
+	  (if (is-sop 'FLOAT (term-arg2 rat-term))
+	      (if (zerop onum)
+		  num
+		  (let* ((len (length (format nil "~d" (ds-number (term-arg0 onbr)))))
+			 (den (expt 10 len))
+			 (nnum (+ (* num den) onum)))
+		    ;; Note that this will not print correctly
+		    (/ nnum den)))
+	      (if (zerop onum)
+		  (parse-error 0 "Cannot have a ratio with 0 denominator")
+		  (/ num onum)))))))
 
 (defun xt-var-decl (var-decl)
   (let ((dtype (term-arg0 var-decl)))
@@ -1271,6 +1280,7 @@
     (EXTENDED-TYPE
      (xt-extended-type type-expr))
     (STRUCT-SUBTYPE (xt-struct-subtype type-expr))
+    (TYPE-UNITS (xt-type-units type-expr))
     (QUANT-TYPE (xt-quant-type type-expr))
     (t (error "type-expr not recognized - ~a" type-expr))))
 
@@ -1298,6 +1308,9 @@
 
 (defun xt-struct-subtype (type-expr)
   (xt-type-expr (term-arg0 type-expr)))
+
+(defun xt-type-units (type-expr)
+  (xt-units-term (term-arg0 type-expr)))
 
 (defun xt-type-extension (ext)
   (xt-type-expr ext))

@@ -365,7 +365,8 @@
 (defcl typed-declaration (declaration)
   (declared-type :parse t)
   (declared-type-string :fetch-as nil)
-  type)
+  type
+  units)
 
 
 ;;;  t: TYPE  --> type-decl
