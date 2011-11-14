@@ -31,16 +31,17 @@
 
 (defvar *count-occurrences* 0)
 (defvar *if-simplifies*)
+(defvar *expand-in-actuals?* nil)
 ;(defvar *dependent-decls*)
 
 
 (defun expand (name &optional sformnum occurrence if-simplifies
-		    assert?)
+		    assert? actuals?)
   #'(lambda (ps)
       (expand-step name ps sformnum occurrence if-simplifies
-		   assert?)))
+		   assert? actuals?)))
 
-(defun expand-step (name ps sformnum occurrence if-simplifies assert?)
+(defun expand-step (name ps sformnum occurrence if-simplifies assert? actuals?)
   (let* ((goalsequent (current-goal ps))
 	 (*assert-flag* (if (eq assert? 'none) 'none
 			    (if assert? 'assert 'simplify)))
@@ -53,10 +54,13 @@
 			sformnum
 		       (list sformnum)))
 	 (sforms (s-forms goalsequent))
-	 (nname (pc-parse name 'bname))
-	 (pname (if (number-expr? nname)
-		    (change-class nname 'name-expr 'id (number nname))
-		    nname))
+	 (lnames (if (listp name) name (list name)))
+	 (nnames (mapcar #'(lambda (n)
+			     (let ((nn (pc-parse n 'bname)))
+			       (if (number-expr? nn)
+				   (change-class nn 'name-expr 'id (number nn))
+				   nn)))
+		   lnames))
 	 (occurrence (if (numberp occurrence)
 			 (list occurrence)
 			 occurrence))
@@ -64,13 +68,15 @@
 			       (apply #'max occurrence)
 			       0))
 	 (*dependent-decls* nil)
-	 (*if-simplifies* if-simplifies))
-    (when (and (name? pname)
-	       (or (mod-id pname)
-		   (actuals pname)
-		   (mappings pname)
-		   (target pname)))
-      (pc-typecheck pname))
+	 (*if-simplifies* if-simplifies)
+	 (*expand-in-actuals?* actuals?))
+    (dolist (pname lnames)
+      (when (and (name? pname)
+		 (or (mod-id pname)
+		     (actuals pname)
+		     (mappings pname)
+		     (target pname)))
+	(pc-typecheck pname)))
     (cond ((not (or (null occurrence)
 		    (and (listp occurrence)
 			 (every #'(lambda (x)
@@ -80,9 +86,12 @@
 	   (error-format-if "Occurrence ~a must be nil, a positive number or a 
 list of positive numbers" occurrence)
 	   (values 'X nil nil))
+	  ((and occurrence
+		(cdr nnames))
+	   (error-format-if "Occurrence should not be given with multiple names"))
 	  (t 
 	   (let ((new-sforms
-		  (expand-sforms pname sforms sformnums occurrence)))
+		  (expand-sforms nnames sforms sformnums occurrence)))
 	     (cond ((every #'eq sforms new-sforms)
 		    (values 'X nil nil))
 		   (t (mapcar #'(lambda (x)
@@ -354,7 +363,32 @@ list of positive numbers" occurrence)
 			(subst-mod-params expr (module-instance expr)))
 		       (t expr))
 		 expr))
+	    ((and *expand-in-actuals?*
+		  (or (actuals expr)
+		      (mappings expr)))
+	     (let ((eacts (expand-defn name (actuals expr) occurrence))
+		   (emaps (expand-defn name (mappings expr) occurrence)))
+	       (if (and (eq eacts (actuals expr))
+			(eq emaps (mappings expr)))
+		   expr
+		   (let* ((thinst (copy (module-instance expr)
+				    'actuals eacts 'mappings emaps))
+			  (res (make-resolution (declaration expr) thinst)))
+		     (copy expr
+		       'actuals eacts
+		       'mappings emaps
+		       'resolutions (list res))))))
 	    (t expr))))
+
+(defmethod expand-defn (name (expr actual) occurrence)
+  (if (type-value expr)
+      expr
+      (lcopy expr
+	'expr (expand-defn name (expr expr) occurrence))))
+
+(defmethod expand-defn (name (expr mapping) occurrence)
+  (lcopy expr
+    'rhs (expand-defn name (rhs expr) occurrence)))
 
 (defmethod expand-defn (name (expr binding-expr) occurrence)
   (if (and (plusp *max-occurrence*)
@@ -438,7 +472,12 @@ list of positive numbers" occurrence)
 
 ;;; Compares the tgt-name from the sequent to the pat-name given by the user
 ;;; Whatever is not nil in the pat-name must match.
-(defun same-expand-name (tgt-name pat-name)
+(defun same-expand-name (tgt-name pat-names)
+  (and pat-names
+       (or (same-expand-name* tgt-name (car pat-names))
+	   (same-expand-name tgt-name (cdr pat-names)))))
+
+(defun same-expand-name* (tgt-name pat-name)
   (and (eq (id tgt-name) (id pat-name))
        (or (null (library pat-name))
 	   (eq (library tgt-name) (library pat-name))
