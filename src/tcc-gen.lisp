@@ -814,6 +814,14 @@
 (defmethod possibly-empty-type? ((te recordtype))
   (possibly-empty-type? (mapcar #'type (fields te))))
 
+(defmethod possibly-empty-type? ((te struct-sub-recordtype))
+  (or (possibly-empty-type? (type te))
+      (possibly-empty-type? (mapcar #'type (fields te)))))
+
+(defmethod possibly-empty-type? ((te struct-sub-tupletype))
+  (or (possibly-empty-type? (type te))
+      (possibly-empty-type? (types te))))
+
 (defmethod possibly-empty-type? ((te dep-binding))
   (possibly-empty-type? (type te)))
 
@@ -907,6 +915,14 @@
 (defmethod set-nonempty-type ((te recordtype) decl)
   (set-nonempty-type (mapcar #'type (fields te)) decl))
 
+(defmethod set-nonempty-type ((te struct-sub-recordtype) decl)
+  (set-nonempty-type (type te) decl)
+  (set-nonempty-type (mapcar #'type (fields te)) decl))
+
+(defmethod set-nonempty-type ((te struct-sub-tupletype) decl)
+  (set-nonempty-type (type te) decl)
+  (set-nonempty-type (types te) decl))
+
 (defmethod set-nonempty-type ((te dep-binding) decl)
   (set-nonempty-type (type te) decl))
 
@@ -916,10 +932,11 @@
     (set-nonempty-type (cdr list) decl)))
 
 (defun generate-existence-tcc (type expr &optional (fclass 'OBLIGATION))
-  (let* ((*old-tcc-name* nil)
-	 (ndecl (make-existence-tcc-decl type fclass)))
-    (insert-tcc-decl 'existence expr type ndecl)
-    ndecl))
+  (unless (eq *generate-tccs* 'none)
+    (let* ((*old-tcc-name* nil)
+	   (ndecl (make-existence-tcc-decl type fclass)))
+      (insert-tcc-decl 'existence expr type ndecl)
+      ndecl)))
 
 (defun make-existence-tcc-decl (type fclass)
   (let* ((*generate-tccs* 'none)
