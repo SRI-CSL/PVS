@@ -3850,7 +3850,8 @@ space")
 
 (defmethod formals ((map mapping)) nil)
 
-;;; sexp converts a given object to a list; 
+;;; sexp converts a given object to a list;
+;;; create-date run-date status real-time run-time interactive?
 
 (defmethod sexp ((prinfo proof-info))
   (with-slots (id description create-date ;;run-date
