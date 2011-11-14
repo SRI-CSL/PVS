@@ -664,13 +664,13 @@
 
 (defun translate-assign-args (args value trbasis type)
   (if args
-      (let ((sorted-fields (when (recordtype? type)
+      (let ((sorted-fields (when (record-or-struct-subtype? type)
 			     ;;(sort-fields (fields type))
 			     (fields type))))
 	(list 'update
 	      trbasis
 	      (typecase type
-		(recordtype
+		(record-or-struct-subtype
 		 (position (id (caar args)) sorted-fields
 			   :test #'eq :key #'id))
 		(tupletype
@@ -684,7 +684,7 @@
 	      (let* ((ntrbasis-type
 		      (find-supertype 
 		       (typecase type
-			 (recordtype
+			 (record-or-struct-subtype
 			  (type (find (id (caar args)) (fields type)
 				      :test #'eq :key #'id)))
 			 (tupletype
@@ -696,7 +696,7 @@
 			  (range (type (caar args)))))))
 		     (ntrbasis
 		      (typecase type
-			(recordtype
+			(record-or-struct-subtype
 			 (make-tr-field-application
 			  (mk-funtype type ntrbasis-type)
 			  (position (id (caar args)) sorted-fields
