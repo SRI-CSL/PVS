@@ -768,13 +768,22 @@
   (domain :parse t)
   (range :parse t))
 
+(defcl struct-subtype (type-expr)
+  generated-by)
+
 (defcl functiontype (funtype))
 
 (defcl arraytype (funtype))
 
-(defcl tupletype (type-expr)
+(defcl tuple-or-struct-subtype (type-expr)
+  ;; A mixin for making common methods
   (types :type list :parse t)
   (generated? :restore-as nil))
+
+(defcl tupletype (tuple-or-struct-subtype))
+
+(defcl struct-sub-tupletype (struct-subtype tuple-or-struct-subtype)
+  type)
 
 (defcl cotupletype (type-expr)
   (types :type list :parse t)
@@ -794,22 +803,15 @@
 (defcl dep-domain-tupletype (domain-tupletype)
   (var-bindings :parse t))
 
-(defcl recordtype (type-expr)
+(defcl record-or-struct-subtype (type-expr)
+  ;; A mixin for making common methods
   (fields :type list :parse t)
   (dependent? :restore-as nil))
 
-(defcl struct-subtype (type-expr)
-  generated-by)
+(defcl recordtype (record-or-struct-subtype))
 
-(defcl struct-sub-recordtype (struct-subtype)
-  type
-  (fields :parse t)
-  (dependent? :restore-as nil))
-
-(defcl struct-sub-tupletype (struct-subtype)
-  type
-  (types :parse t)
-  (dependent? :restore-as nil))
+(defcl struct-sub-recordtype (struct-subtype record-or-struct-subtype)
+  type)
 
 (defcl type-extension (type-expr)
   (type :parse t)
