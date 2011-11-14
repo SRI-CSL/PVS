@@ -1856,10 +1856,11 @@ required a context.")
 				optype))
 	(unless (tc-eq (type operator) optype)
 	  (setf (type ex) (application-range-type argument (type operator)))))
-      ;; Now generate the argument TCCs, unless in a recursove defn
+      ;; Now generate the argument TCCs, unless in a recursive defn
       (if (def-decl? (current-declaration))
 	  ;; refine the arg type if the optype has changed
-	  ;; Still can't generate TCCs, until after check-set-type-recursive-operator
+	  ;; Still can't generate TCCs, until after
+	  ;; check-set-type-recursive-operator
 	  (unless (eq (domain foptype) (domain optype))
 	    (let ((*generate-tccs* 'none))
 	      (set-type* argument (domain optype))))
@@ -3899,8 +3900,9 @@ required a context.")
 		  (setf (gethash ex jhash)
 			(list (cons rectype jtypes) jdecls)))
 		(set-assignment-accessor-arg-types cargs-list cvalues ex accs))
-	    (setf (gethash ex jhash)
-		  (cdr (gethash ex jhash))))
+	    (let ((jtypes&jdecls (gethash ex jhash)))
+	      (setf (gethash ex jhash)
+		    (list (cdr (car jtypes&jdecls)) (cadr jtypes&jdecls)))))
 	  (let* ((cpred (find (recognizer c) cpreds
 			      :key #'operator :test #'tc-eq))
 		 (stccs (gensubst (mapcar #'tccinfo-formula *tccforms*)
