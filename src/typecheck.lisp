@@ -1108,6 +1108,8 @@
 ;;; given by renamings.
 
 (defmethod mapping-lhs-theory-context ((thname modname))
+  (unless (every #'typed? (actuals thname))
+    (set-type-actuals thname))
   (assert (every #'typed? (actuals thname)))
   ;;(assert (null (resolutions thname)))
   (let ((res (resolve* (lcopy thname :mappings nil) 'module nil)))
