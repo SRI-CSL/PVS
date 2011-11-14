@@ -1346,8 +1346,41 @@
 	(typecheck* (definition decl) rtype nil nil))
       #+pvsdebug (assert (fully-instantiated? (definition decl)))
       (put-decl decl)
-      (make-def-axiom decl)))
+      (make-def-axiom decl)
+      (set-adt-lifted decl)))
   decl)
+
+;;; Here we look in the definition to see if there are any formal type
+;;; parameters that can be 'adt-lifted'.  The idea is that functions sucha s
+;;; length and nth should ignore their parameter when given arguments, e.g.,
+;;; length[nat](x) = length[int](x) should be true.
+;;; This can go wrong when the formal type is used outside of a adt type, e.g.,
+;;;   f(x: list[T]): T = if cons?(x) then car(x) else epsilon! (y: T): true
+
+;;; For now, keep things simple - args must be of a datatype with 
+
+(defun set-adt-lifted (decl)
+  (let ((adt-args nil)
+	(postypes nil))
+    (dolist (args (formals decl))
+      (dolist (arg args)
+	(when (and (possibly-adt-lifted-type? arg)
+		   (adt-lifted-arg? arg))
+	  (push arg (adt-lifted-args decl))))))
+
+(defun possibly-adt-lifted-type? (arg)
+  (let ((type (find-adt-supertype (type arg))))
+    (and (adt-type-name? type)
+	 )
+
+(defun adt-lifted-arg? (ex args postypes)
+  (adt-lifted-arg?* ex args postypes nil))
+
+(defmethod adt-lifted-arg?* ((ex name-expr) args postypes)
+  (if (member ex args :test #'tc-eq)
+      (break "adt-lifted-arg?* name-expr")
+      (adt-lifted-arg?* 
+      
 
 (defun add-formals-to-tcc-conditions (formals &optional conditions)
   (if (null formals)

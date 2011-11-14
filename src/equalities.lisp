@@ -667,6 +667,20 @@
 		      &optional bindings)
   (tc-eq-adt-ops op1 op2 bindings))
 
+(defmethod tc-eq-ops ((op1 name-expr) (op2 name-expr) &optional bindings)
+  (or (and (adt-lifted? op1)
+	   (eq (declaration op1) (declaration op2))
+	   (tc-eq* (mappings op1) (mappings op2) bindings)
+	   (tc-eq* (target op1) (target op2) bindings))
+      (call-next-method)))
+
+(defmethod adt-lifted? ((n name-expr))
+  (and (resolution n)
+       (adt-lifted? (declaration n))))
+
+(defmethod adt-lifted? ((d declaration))
+  (break))
+
 (defmethod tc-eq-ops (op1 op2 &optional bindings)
   (tc-eq* op1 op2 bindings))
 

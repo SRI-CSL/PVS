@@ -478,6 +478,7 @@
 ;; body.
 
 (defcl const-decl (typed-declaration)
+  adt-lifted-args
   (definition :parse t)
   def-axiom
   (eval-info :fetch-as nil))
