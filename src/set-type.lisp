@@ -83,7 +83,7 @@
 (defun set-expr-type (expr expected)
   (unless (type expr)
     #+pvsdebug (assert (not (duplicates? (ptypes expr))))
-    (let* ((ptypes (types expr))
+    (let* ((ptypes (remove-duplicates (types expr) :test #'tc-eq))
 	   (possibles
 	    (delete-if-not #'(lambda (ty)
 			       (and (not (eq ty 'type))
@@ -1421,13 +1421,18 @@ required a context.")
 (defun compatible-predicates (types expected ex &optional incs conds)
   (if (null types)
       (if *ps*
-	  (let ((implicit-constraints
-		 (collect-implicit-type-constraints (list ex) *ps* nil t)))
-	    (if implicit-constraints
-		(delete-if #'(lambda (inc)
-			       (member inc implicit-constraints :test #'tc-eq))
-		  incs)
-		incs))
+	  (multiple-value-bind (ics there?)
+	      (gethash ex (typepred-hash *ps*))
+	    (if there?
+		ics
+		(let ((implicit-constraints
+		       (collect-implicit-type-constraints (list ex) *ps* nil t)))
+		  (setf (gethash ex (typepred-hash *ps*))
+			(if implicit-constraints
+			    (delete-if #'(lambda (inc)
+					   (member inc implicit-constraints :test #'tc-eq))
+			      incs)
+			    incs)))))
 	  (or incs
 	      (progn (add-tcc-comment 'subtype ex expected 'in-context)
 		     nil)))
@@ -1788,7 +1793,9 @@ required a context.")
 	      expr
 	      (field-application-types (ptypes (argument expr)) expr)
 	      expected))
-	    ((cdr ptypes)
+	    ((and (cdr ptypes)
+		  ;;(not (every #'(lambda (x) (compatible? x (car ptypes))) (cdr ptypes)))
+		  )
 	     (setf (types (argument expr)) ptypes)
 	     (type-ambiguity (argument expr)))
 	    (t (set-type* (argument expr) (car ptypes))
@@ -2073,9 +2080,19 @@ required a context.")
 (defun let-tcc-condition-bindings (bindings argument)
   (if (cdr bindings)
       (if (typep argument 'tuple-expr)
-	  (append (pairlis bindings (exprs argument)) bindings)
-	  (append (pairlis bindings (make-projections argument)) bindings))
+	  (append (reverse (opairlis bindings (exprs argument)))
+		  (reverse bindings))
+	  (append (reverse (opairlis bindings (make-projections argument)))
+		  (reverse bindings)))
       (cons (cons (car bindings) argument) bindings)))
+
+;;; Similar to pairlis, but ensures results are in the same order
+(defun opairlis (keys data &optional result)
+  (assert (= (length keys) (length data)))
+  (if (null keys)
+      (nreverse result)
+      (opairlis (cdr keys) (cdr data)
+		(acons (car keys) (car data) result))))
 
 
 ;;; This is useful, for example, when given an expected of list[nat],
@@ -2488,6 +2505,10 @@ required a context.")
 
 (defmethod has-type-vars?* ((bd dep-binding))
   (has-type-vars?* (type bd)))
+
+(defmethod has-type-vars?* ((te type-extension))
+  (or (has-type-vars?* (type te))
+      (has-type-vars?* (extension te))))
 
 (defun maximal-domain-optypes (optypes &optional max-optypes)
   (if (null optypes)
@@ -3049,7 +3070,7 @@ required a context.")
 			     (some #'(lambda (sr)
 				       (and (typep (declaration sr)
 						   'skolem-const-decl)
-					    (tc-eq (type vr) (type sr))))
+					    (strict-compatible? (type vr) (type sr))))
 				   reses)))
 	   reses)))
     (or (resolutions-of-current-theory* resolutions nil)
