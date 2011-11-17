@@ -1,4 +1,4 @@
-package com.csl.sri.pvs.plugin.editor;
+package com.sri.csl.pvs.plugin.editor;
 
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;

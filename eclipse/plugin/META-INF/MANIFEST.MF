@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: PVS Pllugin
 Bundle-SymbolicName: pvs-plugin; singleton:=true
 Bundle-Version: 1.0.0.qualifier
-Bundle-Activator: com.csl.sri.pvs.plugin.Activator
+Bundle-Activator: com.sri.csl.pvs.plugin.Activator
 Bundle-Vendor: SRI International
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
@@ -11,6 +11,9 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.ui.editors;bundle-version="3.6.1",
  org.eclipse.ui.workbench.texteditor;bundle-version="3.6.1",
  org.eclipse.core.resources;bundle-version="3.6.1",
- org.eclipse.ui.ide;bundle-version="3.6.2"
+ org.eclipse.ui.ide;bundle-version="3.6.2",
+ org.eclipse.ui.console;bundle-version="3.5.0",
+ org.eclipse.ui.externaltools;bundle-version="3.2.0",
+ org.eclipse.debug.core;bundle-version="3.6.0"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-ActivationPolicy: lazy

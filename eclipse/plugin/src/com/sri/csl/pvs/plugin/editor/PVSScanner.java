@@ -1,4 +1,4 @@
-package com.csl.sri.pvs.plugin.editor;
+package com.sri.csl.pvs.plugin.editor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,7 +51,7 @@ public class PVSScanner extends RuleBasedScanner {
 		rules.add(new WhitespaceRule(new PVSWhitespaceDetector()));
 
 		// Add word rule for keywords, types, constants and operators.
-		WordRule wordRule = new WordRule(new PVSWordDetector(), other);
+		WordRule wordRule = new WordRule(new PVSWordDetector(), other, true);
 		for (String word: fgKeywords)  wordRule.addWord(word, keyword);
 		for (String word: fgConstants) wordRule.addWord(word, constant);
 		//for (String word: fgTypes) wordRule.addWord(word, type);

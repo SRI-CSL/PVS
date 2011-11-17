@@ -1,4 +1,4 @@
-package com.csl.sri.pvs.plugin;
+package com.sri.csl.pvs.plugin;
 
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.ui.plugin.AbstractUIPlugin;

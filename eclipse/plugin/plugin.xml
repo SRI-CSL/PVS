@@ -1,6 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?eclipse version="3.2"?>
 <plugin>
+   <extension point="org.eclipse.debug.core.launchConfigurationTypes">
+   		<launchConfigurationType
+	   		id="com.sri.csl.pvs.plugin.PVSLaunchType"
+	   		name="PVS">
+   		</launchConfigurationType>
+	</extension>
+
+	<extension point="org.eclipse.debug.core.launchModes">
+		<launchMode
+			label="Run"
+			mode="run">
+		</launchMode>
+		<launchMode
+			label="Debug"
+			mode="debug">
+		</launchMode>
+	</extension>
+
+	<extension point="org.eclipse.debug.core.launchDelegates">
+	  <launchDelegate
+	   id="com.sri.csl.pvs.plugin.PVSLaunchDelegate"
+	   delegate="com.sri.csl.pvs.plugin.launch.PVSLaunchConfigurationDelegate"
+	   type="com.sri.csl.pvs.plugin.PVSLaunchType"
+	   modes="run">
+	  </launchDelegate>
+	 </extension>
 
    <extension
          point="org.eclipse.ui.editors">
@@ -9,9 +35,34 @@
             extensions="pvs"
             icon="icons/pvslogo.gif"
             contributorClass="org.eclipse.ui.texteditor.BasicTextEditorActionContributor"
-            class="com.csl.sri.pvs.plugin.editor.PVSEditor"
-            id="com.csl.sri.pvs.plugin.editor.PVSEditor">
+            class="com.sri.csl.pvs.plugin.editor.PVSEditor"
+            id="com.sri.csl.pvs.plugin.editor.PVSEditor">
       </editor>
    </extension>
+   <extension
+         point="org.eclipse.ui.actionSets">
+      <actionSet
+            id="com.sri.csl.pvs.plugin.actionSet"
+            label="Sample Action Set"
+            visible="true">
+         <menu
+               id="sampleMenu"
+               label="Sample &amp;Menu">
+            <separator
+                  name="sampleGroup">
+            </separator>
+         </menu>
+         <action
+               class="com.sri.csl.pvs.plugin.action.PVSWindowActionDelegate"
+               icon="icons/pvslogo.gif"
+               id="com.sri.csl.pvs.plugin.action.PVSWindowActionDelegate"
+               label="&amp;Start PVS"
+               menubarPath="sampleMenu/sampleGroup"
+               toolbarPath="sampleGroup"
+               tooltip="Start PVS">
+         </action>
+      </actionSet>
+   </extension>
+
 
 </plugin>

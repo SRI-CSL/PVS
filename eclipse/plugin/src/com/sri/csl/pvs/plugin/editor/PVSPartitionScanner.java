@@ -1,4 +1,4 @@
-package com.csl.sri.pvs.plugin.editor;
+package com.sri.csl.pvs.plugin.editor;
 
 import java.util.ArrayList;
 import java.util.List;
