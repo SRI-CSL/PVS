@@ -38,8 +38,6 @@ public class IOConsoleKeyboardReader extends Thread {
 				for (IOConsoleKeyboardReaderListener l: listeners) {
 					l.onTextReceived(command);
 				}
-				//System.out.println("Command entered: " + command);
-				//PVSExecutionManager.getProcess().getOutputStream().write(command.getBytes());
 				Thread.sleep(20);
 			} catch (Exception e) {
 				//e.printStackTrace();

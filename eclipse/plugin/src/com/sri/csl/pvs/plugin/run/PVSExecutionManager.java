@@ -4,18 +4,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import org.eclipse.ui.console.ConsolePlugin;
-import org.eclipse.ui.console.IConsole;
-import org.eclipse.ui.console.IConsoleManager;
-import org.eclipse.ui.console.IOConsoleOutputStream;
-import org.eclipse.ui.console.MessageConsole;
-import org.eclipse.ui.console.MessageConsoleStream;
+import org.eclipse.jface.preference.IPreferenceStore;
+
+import com.sri.csl.pvs.plugin.Activator;
+import com.sri.csl.pvs.plugin.preferences.PreferenceConstants;
 
 public class PVSExecutionManager {
 	protected static Process process = null;
 	
 	protected static String getPVSLocation() {
-		return "/Applications/pvs-5.0-ix86-MacOSX-allegro";
+		IPreferenceStore store = Activator.getDefault().getPreferenceStore();
+		return store.getString(PreferenceConstants.P_PATH);
 	}
 	
 	public static String getPVSStartingCommand() {
