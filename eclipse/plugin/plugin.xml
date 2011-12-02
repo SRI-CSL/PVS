@@ -33,7 +33,7 @@
       <editor
             name="PVS Editor"
             extensions="pvs"
-            icon="icons/pvslogo.gif"
+            icon="icons/pvslogod.png"
             contributorClass="org.eclipse.ui.texteditor.BasicTextEditorActionContributor"
             class="com.sri.csl.pvs.plugin.editor.PVSEditor"
             id="com.sri.csl.pvs.plugin.editor.PVSEditor">
@@ -43,18 +43,18 @@
          point="org.eclipse.ui.actionSets">
       <actionSet
             id="com.sri.csl.pvs.plugin.actionSet"
-            label="Sample Action Set"
+            label="PVS Action Set"
             visible="true">
          <menu
-               id="sampleMenu"
-               label="Sample &amp;Menu">
+               id="pvsMenu"
+               label="&amp;PVS">
             <separator
-                  name="sampleGroup">
+                  name="pvsGroup">
             </separator>
          </menu>
          <action
                class="com.sri.csl.pvs.plugin.action.PVSWindowActionDelegate"
-               icon="icons/pvslogo.gif"
+               icon="icons/pvslogo.png"
                id="com.sri.csl.pvs.plugin.action.PVSWindowActionDelegate"
                label="&amp;Start PVS"
                menubarPath="sampleMenu/sampleGroup"
@@ -62,6 +62,20 @@
                tooltip="Start PVS">
          </action>
       </actionSet>
+   </extension>
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            class="com.sri.csl.pvs.plugin.preferences.PVSPreferencePage"
+            id="com.sri.csl.pvs.plugin.preferences.PVSPreferencePage"
+            name="PVS">
+      </page>
+   </extension>
+   <extension
+         point="org.eclipse.core.runtime.preferences">
+      <initializer
+            class="com.sri.csl.pvs.plugin.preferences.PreferenceInitializer">
+      </initializer>
    </extension>
 
 
