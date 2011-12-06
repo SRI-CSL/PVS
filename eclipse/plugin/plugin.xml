@@ -1,39 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?eclipse version="3.2"?>
 <plugin>
-   <extension point="org.eclipse.debug.core.launchConfigurationTypes">
-   		<launchConfigurationType
-	   		id="com.sri.csl.pvs.plugin.PVSLaunchType"
-	   		name="PVS">
-   		</launchConfigurationType>
-	</extension>
 
-	<extension point="org.eclipse.debug.core.launchModes">
-		<launchMode
-			label="Run"
-			mode="run">
-		</launchMode>
-		<launchMode
-			label="Debug"
-			mode="debug">
-		</launchMode>
-	</extension>
 
-	<extension point="org.eclipse.debug.core.launchDelegates">
-	  <launchDelegate
-	   id="com.sri.csl.pvs.plugin.PVSLaunchDelegate"
-	   delegate="com.sri.csl.pvs.plugin.launch.PVSLaunchConfigurationDelegate"
-	   type="com.sri.csl.pvs.plugin.PVSLaunchType"
-	   modes="run">
-	  </launchDelegate>
-	 </extension>
+
+
 
    <extension
          point="org.eclipse.ui.editors">
       <editor
             name="PVS Editor"
             extensions="pvs"
-            icon="icons/pvslogod.png"
+            icon="icons/pvslogo.png"
             contributorClass="org.eclipse.ui.texteditor.BasicTextEditorActionContributor"
             class="com.sri.csl.pvs.plugin.editor.PVSEditor"
             id="com.sri.csl.pvs.plugin.editor.PVSEditor">
@@ -42,8 +20,8 @@
    <extension
          point="org.eclipse.ui.actionSets">
       <actionSet
-            id="com.sri.csl.pvs.plugin.actionSet"
-            label="PVS Action Set"
+            id="com.sri.csl.pvs.plugin.ActionSet"
+            label="PVS Menu"
             visible="true">
          <menu
                id="pvsMenu"
@@ -52,14 +30,28 @@
                   name="pvsGroup">
             </separator>
          </menu>
+         <menu
+               id="pvsHelpMenu"
+               label="Help">
+            <separator
+                  name="pvsHelpGroup">
+            </separator>
+         </menu>
          <action
-               class="com.sri.csl.pvs.plugin.action.PVSWindowActionDelegate"
+               class="com.sri.csl.pvs.plugin.action.StartPVS"
                icon="icons/pvslogo.png"
-               id="com.sri.csl.pvs.plugin.action.PVSWindowActionDelegate"
+               id="com.sri.csl.pvs.plugin.action.StartPVS"
                label="&amp;Start PVS"
-               menubarPath="sampleMenu/sampleGroup"
-               toolbarPath="sampleGroup"
+               menubarPath="pvsMenu/pvsGroup"
+               toolbarPath="pvsGroup"
                tooltip="Start PVS">
+         </action>
+         <action
+               class="com.sri.csl.pvs.plugin.action.GettingHelp"
+               id="com.sri.csl.pvs.plugin.action.GettingHelp"
+               label="&amp;Getting Help"
+               menubarPath="pvsMenu/pvsGroup/pvsHelpMenu"
+               tooltip="Get Help">
          </action>
       </actionSet>
    </extension>

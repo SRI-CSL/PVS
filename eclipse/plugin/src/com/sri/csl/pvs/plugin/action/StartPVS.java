@@ -32,15 +32,16 @@ import com.sri.csl.pvs.plugin.run.PVSExecutionManager;
  * delegated to it.
  * @see IWorkbenchWindowActionDelegate
  */
-public class PVSWindowActionDelegate implements IWorkbenchWindowActionDelegate {
+public class StartPVS implements IWorkbenchWindowActionDelegate {
 	private IWorkbenchWindow window;
 	private IOConsoleKeyboardReader keyboardReader;
+	private PVSExecutionManager pvsExecutor;
 	
 	
 	/**
 	 * The constructor.
 	 */
-	public PVSWindowActionDelegate() {
+	public StartPVS() {
 	}
 
 	/**
@@ -55,22 +56,22 @@ public class PVSWindowActionDelegate implements IWorkbenchWindowActionDelegate {
 			console.activate();
 			console.clearConsole();
 			final IOConsoleOutputStream outStream = console.newOutputStream();
-			PVSExecutionManager.startPVS();
+			pvsExecutor = new PVSExecutionManager();
 			Map<String, String> attributes = new HashMap<String, String>();
 			attributes.put(IProcess.ATTR_CMDLINE, PVSExecutionManager.getPVSStartingCommand());
 			ILaunch launch = new Launch(null, ILaunchManager.RUN_MODE, null);
-			IProcess process = DebugPlugin.newProcess(launch, PVSExecutionManager.getProcess(), "pvs", attributes);
+			IProcess process = DebugPlugin.newProcess(launch, pvsExecutor.startPVS(), "PVS", attributes);
+			DebugPlugin.getDefault().getLaunchManager().addLaunch(launch);
 			IStreamsProxy streamProxy = process.getStreamsProxy();
 			IStreamMonitor outMonitor = streamProxy.getOutputStreamMonitor();
 			outMonitor.addListener(new IStreamListener() {
 
 				@Override
-				public void streamAppended(String arg0, IStreamMonitor arg1) {
+				public void streamAppended(String text, IStreamMonitor monitor) {
 					try {
-						outStream.write(arg0);
+						outStream.write(text);
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
+						// e.printStackTrace();
 					}
 				}				
 			});
@@ -78,18 +79,7 @@ public class PVSWindowActionDelegate implements IWorkbenchWindowActionDelegate {
 			keyboardReader = new IOConsoleKeyboardReader(console);
 			keyboardReader.addListener(new IOConsoleKeyboardReader.IOConsoleKeyboardReaderListener() {
 				public void onTextReceived(String text) {
-					try {
-						System.out.println("Command entered: " + text);
-						Process process = PVSExecutionManager.getProcess();
-						if ( process != null ) {
-							OutputStream st = process.getOutputStream();
-							st.write((text + "\n").getBytes());
-							st.flush();
-						}
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
+					pvsExecutor.writeToPVS(text);
 				}
 			});
 			keyboardReader.start();
@@ -118,7 +108,7 @@ public class PVSWindowActionDelegate implements IWorkbenchWindowActionDelegate {
 	 */
 	public void dispose() {
 		keyboardReader.finish();
-		PVSExecutionManager.stopPVS();
+		pvsExecutor.stopPVS();
 	}
 
 	/**
