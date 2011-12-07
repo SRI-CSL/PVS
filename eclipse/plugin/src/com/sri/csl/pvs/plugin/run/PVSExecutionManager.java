@@ -5,6 +5,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import org.eclipse.debug.core.DebugPlugin;
+import org.eclipse.debug.core.ILaunchManager;
+import org.eclipse.debug.core.model.IProcess;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.widgets.Shell;
@@ -55,9 +58,20 @@ public class PVSExecutionManager {
 				st.write((message + "\n").getBytes());
 				st.flush();
 			} catch (IOException e) {
-				e.printStackTrace();
+				// e.printStackTrace();
 			}
 		}
+	}
+	
+	public static boolean isPVSRunning() {
+		ILaunchManager manager = DebugPlugin.getDefault().getLaunchManager();
+		IProcess[] processes = manager.getProcesses();
+		for (IProcess p: processes) {
+			if ( Activator.name.equals(p.getLabel()) ) {
+				return !p.isTerminated();
+			}
+		}
+		return false;
 	}
 	
 	public InputStream getInputStream() {

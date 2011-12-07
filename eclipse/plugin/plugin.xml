@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?eclipse version="3.2"?>
 <plugin>
+   <extension
+         point="org.eclipse.core.runtime.preferences">
+      <initializer
+            class="com.sri.csl.pvs.plugin.preferences.PreferenceInitializer">
+      </initializer>
+   </extension>
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            class="com.sri.csl.pvs.plugin.preferences.PVSPreferencePage"
+            id="com.sri.csl.pvs.plugin.preferences.PVSPreferencePage"
+            name="PVS">
+      </page>
+   </extension>
 
 
 
@@ -18,56 +32,80 @@
       </editor>
    </extension>
    <extension
-         point="org.eclipse.ui.actionSets">
-      <actionSet
-            id="com.sri.csl.pvs.plugin.ActionSet"
-            label="PVS Menu"
-            visible="true">
+         point="org.eclipse.ui.handlers">
+      <handler
+            class="com.sri.csl.pvs.plugin.handlers.StartPVSHandler"
+            commandId="com.sri.csl.pvs.plugin.commands.startPVS">
+      </handler>
+      <handler
+            class="com.sri.csl.pvs.plugin.handlers.ForwardTheoryHandler"
+            commandId="com.sri.csl.pvs.plugin.commands.forwardTheory">
+      </handler>
+   </extension>
+   <extension
+         point="org.eclipse.ui.bindings">
+      <key
+            commandId="com.sri.csl.pvs.plugin.commands.startPVS"
+            contextId="org.eclipse.ui.contexts.window"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+            sequence="M1+6">
+      </key>
+   </extension>
+   <extension
+         point="org.eclipse.ui.commands">
+      <category
+            id="com.sri.csl.pvs.plugin.commands.category"
+            name="PVS Category">
+      </category>
+      <command
+            categoryId="com.sri.csl.pvs.plugin.commands.category"
+            id="com.sri.csl.pvs.plugin.commands.startPVS"
+            name="Start PVS">
+      </command>
+      <command
+            id="com.sri.csl.pvs.plugin.commands.forwardTheory"
+            name="forward-theory">
+      </command>
+   </extension>
+   <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            allPopups="true"
+            locationURI="menu:org.eclipse.ui.main.menu?after=additions">
          <menu
-               id="pvsMenu"
-               label="&amp;PVS">
-            <separator
-                  name="pvsGroup">
-            </separator>
-         </menu>
-         <menu
-               id="pvsHelpMenu"
-               label="Help">
-            <separator
-                  name="pvsHelpGroup">
-            </separator>
-         </menu>
-         <action
-               class="com.sri.csl.pvs.plugin.action.StartPVS"
-               icon="icons/pvslogo.png"
-               id="com.sri.csl.pvs.plugin.action.StartPVS"
-               label="&amp;Start PVS"
-               menubarPath="pvsMenu/pvsGroup"
-               toolbarPath="pvsGroup"
+               id="com.sri.csl.pvs.plugin.menu.topMenu"
+               label="PVS"
+               mnemonic="v"
                tooltip="Start PVS">
-         </action>
-         <action
-               class="com.sri.csl.pvs.plugin.action.GettingHelp"
-               id="com.sri.csl.pvs.plugin.action.GettingHelp"
-               label="&amp;Getting Help"
-               menubarPath="pvsMenu/pvsGroup/pvsHelpMenu"
-               tooltip="Get Help">
-         </action>
-      </actionSet>
-   </extension>
-   <extension
-         point="org.eclipse.ui.preferencePages">
-      <page
-            class="com.sri.csl.pvs.plugin.preferences.PVSPreferencePage"
-            id="com.sri.csl.pvs.plugin.preferences.PVSPreferencePage"
-            name="PVS">
-      </page>
-   </extension>
-   <extension
-         point="org.eclipse.core.runtime.preferences">
-      <initializer
-            class="com.sri.csl.pvs.plugin.preferences.PreferenceInitializer">
-      </initializer>
+            <command
+                  commandId="com.sri.csl.pvs.plugin.commands.startPVS"
+                  icon="icons/pvslogo.png"
+                  label="Start PVS"
+                  mnemonic="s"
+                  style="push">
+            </command>
+            <menu
+                  label="Editing PVS Files">
+               <command
+                     commandId="com.sri.csl.pvs.plugin.commands.forwardTheory"
+                     style="push">
+               </command>
+            </menu>
+            
+         </menu>
+      </menuContribution>
+      <menuContribution
+            locationURI="toolbar:org.eclipse.ui.main.toolbar">
+         <toolbar
+               id="toolbar:com.sri.csl.pvs.plugin.toolbars.main"
+               label="Start PVS">
+            <command
+                  commandId="com.sri.csl.pvs.plugin.commands.startPVS"
+                  icon="icons/pvslogo.png"
+                  style="push">
+            </command>
+         </toolbar>
+      </menuContribution>
    </extension>
 
 
