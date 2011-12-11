@@ -223,7 +223,7 @@ jdecl ::= type-expr-sans-name <jsubtypedecl(type-expr-sans-name)>
         | {name [pdformals+]}
              <[jnamedecl(name)|jappldecl(name,pdf(plus))]>
         | {'FORALL' lambda-formals ':' expr}
-             <jexprdecl(lambda-formal, expr)>
+             <jexprdecl(lambda-formals, expr)>
         ;
 
 ename ::= {name [':' type-expr]} <ename(name,[notype()|type-expr])>;
