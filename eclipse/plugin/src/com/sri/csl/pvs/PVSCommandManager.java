@@ -8,17 +8,12 @@ import com.sri.csl.pvs.plugin.handlers.HandlerUtil;
 import com.sri.csl.pvs.plugin.run.PVSExecutionManager;
 
 public class PVSCommandManager {
+	private static String PARSE = "parse";
+	
+	
 	public static Object handleCommand(String command) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException {
 		System.out.println("PVS Command to run: " + command);
 		return execute(command, getArguments(command));
-	}
-	
-	private static List<String> getArguments(String command) {
-		ArrayList<String> args = new ArrayList<String>();
-		if ( command.equals("parse") ) {
-			args.add(HandlerUtil.getActiveFilename());
-		}
-		return args;
 	}
 	
 	private static String prepare(String command, String... args) {
@@ -35,11 +30,19 @@ public class PVSCommandManager {
 		return buffer.toString();
 	}
 
+	private static List<String> getArguments(String command) {
+		ArrayList<String> args = new ArrayList<String>();
+		if ( command.equals(PARSE) ) {
+			args.add(HandlerUtil.getActiveFilename());
+		}
+		return args;
+	}
+
 	private static Object execute(String command, List<String> args) {
 		Object result = null;
-		if ( command.equals("parse") ) {
+		if ( command.equals(PARSE) ) {
 			String activeFileName = args.get(0);
-			PVSExecutionManager.writeToPVS(prepare("parse ", activeFileName));
+			PVSExecutionManager.writeToPVS(prepare(PARSE, activeFileName));
 		}
 		return result;
 	}	
