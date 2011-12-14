@@ -17,11 +17,7 @@ import com.sri.csl.pvs.plugin.Activator;
 import com.sri.csl.pvs.plugin.preferences.PreferenceConstants;
 
 public class PVSExecutionManager {
-	protected Process process = null;
-	
-	public PVSExecutionManager() {
-		process = null;
-	}
+	protected static Process process = null;
 	
 	protected static String getPVSDirectory() {
 		IPreferenceStore store = Activator.getDefault().getPreferenceStore();
@@ -36,7 +32,7 @@ public class PVSExecutionManager {
 		return getPVSLocation()  + " -raw";
 	}
 	
-	public Process startPVS() throws IOException {
+	public static Process startPVS() throws IOException {
 		if ( (new File(getPVSLocation()).exists()) ) {
 			Runtime runtime = Runtime.getRuntime();
 			process = runtime.exec(getPVSStartingCommand());
@@ -47,11 +43,11 @@ public class PVSExecutionManager {
 		return process;
 	}
 	
-	public Process getProcess() {
+	public static Process getProcess() {
 		return process;
 	}
 	
-	public void writeToPVS(String message) {
+	public static void writeToPVS(String message) {
 		if ( process != null ) {
 			OutputStream st = process.getOutputStream();
 			try {
@@ -74,19 +70,19 @@ public class PVSExecutionManager {
 		return false;
 	}
 	
-	public InputStream getInputStream() {
+	public static InputStream getInputStream() {
 		return process != null? process.getInputStream(): null;
 	}
 
-	public OutputStream getOutputStream() {
+	public static OutputStream getOutputStream() {
 		return process != null? process.getOutputStream(): null;
 	}
 
-	public InputStream getErrorStream() {
+	public static InputStream getErrorStream() {
 		return process != null? process.getErrorStream(): null;
 	}
 
-	public void stopPVS() {
+	public static void stopPVS() {
 		if ( process != null ) {
 			process.destroy();
 		}

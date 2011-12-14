@@ -32,7 +32,6 @@ import com.sri.csl.pvs.plugin.run.PVSExecutionManager;
  */
 public class StartPVSHandler extends AbstractHandler {
 	private IOConsoleKeyboardReader keyboardReader;
-	private PVSExecutionManager pvsExecutor;
 	private IWorkbenchWindow window;
 	
 	/**
@@ -55,11 +54,10 @@ public class StartPVSHandler extends AbstractHandler {
 				console.activate();
 				console.clearConsole();
 				final IOConsoleOutputStream outStream = console.newOutputStream();
-				pvsExecutor = new PVSExecutionManager();
 				Map<String, String> attributes = new HashMap<String, String>();
 				attributes.put(IProcess.ATTR_CMDLINE, PVSExecutionManager.getPVSStartingCommand());
 				ILaunch launch = new Launch(null, ILaunchManager.RUN_MODE, null);
-				IProcess process = DebugPlugin.newProcess(launch, pvsExecutor.startPVS(), Activator.name, attributes);
+				IProcess process = DebugPlugin.newProcess(launch, PVSExecutionManager.startPVS(), Activator.name, attributes);
 				DebugPlugin.getDefault().getLaunchManager().addLaunch(launch);
 				IStreamsProxy streamProxy = process.getStreamsProxy();
 				IStreamMonitor outMonitor = streamProxy.getOutputStreamMonitor();
@@ -78,7 +76,7 @@ public class StartPVSHandler extends AbstractHandler {
 				keyboardReader = new IOConsoleKeyboardReader(console);
 				keyboardReader.addListener(new IOConsoleKeyboardReader.IOConsoleKeyboardReaderListener() {
 					public void onTextReceived(String text) {
-						pvsExecutor.writeToPVS(text);
+						PVSExecutionManager.writeToPVS(text);
 					}
 				});
 				keyboardReader.start();
