@@ -147,6 +147,26 @@
          </toolbar>
       </menuContribution>
    </extension>
+   <extension
+         point="org.eclipse.ui.views">
+      <category
+            id="com.sri.csl.pvs.plugin.views.category"
+            name="PVS">
+      </category>
+      <view
+            category="com.sri.csl.pvs.plugin.views.category"
+            class="com.sri.csl.pvs.plugin.views.PVSElementsView"
+            icon="icons/theories.png"
+            id="com.sri.csl.pvs.plugin.views.PVSElementsView"
+            name="PVS Theories">
+      </view>
+   </extension>
+   <extension
+         point="org.eclipse.help.contexts">
+      <contexts
+            file="contexts.xml">
+      </contexts>
+   </extension>
 
 
 </plugin>
