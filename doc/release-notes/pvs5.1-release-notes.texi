@@ -1,0 +1,38 @@
+@node PVS 5.1 Release Notes
+@unnumbered PVS 5.1 Release Notes
+
+@node Polymorphic declarations
+@subsection Polymorphic declarations
+Polymorphic declarations are now allowed; this makes it more convenient to
+define related declarations in the same theory.  For example, in the past,
+group theory might be defined as
+@example
+group[T: TYPE]: THEORY
+ ...
+END group
+@endexample
+Then to define group homomorphisms requires a new theory:
+@example
+group_homomorphism[T1, T2: TYPE]: THEORY
+ IMPORTING group[T1], group[T2]
+ homo?(f: [T1 -> T2]) = ...
+ homo: TYPE = (homo?)
+ ...
+END group_homomorphism
+@endexample
+It gets worse; group homomorphisms are transitive:
+@example
+group_homomorphism_transitive[T1, T2, T3: TYPE]: THEORY
+ IMPORTING group_homomorphism[T1, T2], group_homomorphism[T2, T3]
+ homo_trans: LEMMA FORALL (f: homo[T1, T2], g: homo[T2, T3]): ...
+ ...
+@endexample
+
+In the new format, this can be expressed as
+@example
+group[T: TYPE]: THEORY
+ ...
+ homo?[T2: TYPE](f: [T-> T2]): bool = ...
+ homo_trans[T2, T3: TYPE]: LEMMA FORALL (f: homo[T1, T2], g: homo[T2, T3]): ...
+
+
