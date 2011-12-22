@@ -548,7 +548,7 @@
 	  (value (car values)))
       (assert (null (cdr args)))
       (assert (field-assignment-arg? (caar args)))
-      (check-for-tccs* value (car (types value))))
+      (check-for-tccs* value (car (ptypes value))))
     (check-assignment-rec-arg-maplet-types (cdr args-list) (cdr values) ex)))
 
 (defun check-assignment-tup-arg-types (args-list values ex types index

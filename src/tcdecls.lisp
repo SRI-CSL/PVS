@@ -2891,8 +2891,9 @@
 		     (list (mk-actual struct-subtype) (mk-actual stype))))
 	 (surjtype (typecheck* (mk-expr-as-type surjname) nil nil nil))
 	 (cdecl (declaration *current-context*))
-	 (ndecl (typecheck* (mk-const-decl pname surjtype nil nil)
-			    nil nil nil)))
+	 (ndecl (let ((*generate-tccs* 'none))
+		  (typecheck* (mk-const-decl pname surjtype nil nil)
+			      nil nil nil))))
     (setf (generated-by struct-subtype) decl)
     (setf (declaration *current-context*) cdecl)
     (add-decl ndecl)
@@ -2937,6 +2938,15 @@
 	 (tuptype (if (equal types (types type))
 		      type
 		      (mk-tupletype types))))
+    tuptype))
+
+(defmethod typecheck* ((type struct-sub-tupletype) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (typecheck* (type type) nil nil nil)
+  (let* ((types (typecheck-tuples (types type) nil))
+	 (tuptype (if (equal types (types type))
+		      type
+		      (mk-struct-sub-tupletype (type type) types))))
     tuptype))
 
 (defun typecheck-tuples (types result)
@@ -3036,6 +3046,22 @@
     (let* ((*bound-variables* (cons (car fields) *bound-variables*)))
       (typecheck-fields (cdr fields)))))
 
+(defmethod typecheck* ((type struct-sub-recordtype) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (typecheck* (type type) nil nil nil)
+  (cond ((every #'type (fields type))
+	 type)
+	(t (when (duplicates? (fields type) :test #'same-id)
+	     (type-error type "Duplicate field names not allowed"))
+	   (typecheck-fields (fields type))
+	   (let* ((dependent? (dependent-fields? (fields type)))
+		  (sorted-fields (sort-fields (fields type) dependent?))
+		  (ntype (mk-struct-sub-recordtype
+			  (type type) sorted-fields dependent?)))
+	     (setf (dependent? type) dependent?)
+	     (tcdebug "~%~6tTypechecking Struct-sub-Recordtype:~%~8t~a" type)
+	     ntype))))
+
 
 ;;; Funtype - three rules are actually used here.  As in the tupletype
 ;;; case, the f_i are optional for the first two rules.
@@ -3124,6 +3150,7 @@
     (typecheck* (if (or (struct-sub-recordtype? rt1)
 			(struct-sub-recordtype? rt2))
 		    (make-instance 'struct-sub-recordtype
+		      :type (or (type rt1) (type rt2))
 		      :generated-by te
 		      :fields nfields)
 		    (make-instance 'recordtype

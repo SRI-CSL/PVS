@@ -4121,7 +4121,7 @@ generated")
 	    (list (mk-arg-bind-decl xid (adt-type-name adt))
 		  (mk-arg-bind-decl yid (adt-type-name adt)))))
 	 (wf-type (typecheck* (mk-expr-as-type
-			       (mk-name-expr '|well_founded?|
+			       (mk-name-expr '|strict_well_founded?|
 				 (list (mk-actual (adt-type-name *adt*)))))
 			      nil nil nil))
 	 (<<-decl (mk-adt-def-decl '<<
@@ -4135,7 +4135,7 @@ generated")
 		    (print-type (supertype wf-type))))
 	 (<<-wf-decl (mk-formula-decl (makesym "~a_well_founded" (id adt))
 		       (mk-application
-			   (mk-name-expr '|well_founded?|
+			   (mk-name-expr '|strict_well_founded?|
 			     (list (mk-actual (adt-type-name *adt*))))
 			 (mk-name-expr '<<))
 		       'AXIOM)))

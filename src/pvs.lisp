@@ -871,8 +871,11 @@
 		    ((and (consp diff)
 			  (memq (car diff) (all-decls oth)))
 		     (copy-lex-upto diff oth nth)
-		     (let* ((repl1 (if (and (not (mod-decl? (car diff)))
-					    (generated (car diff)))
+		     (let* ((repl1 (if (and (generated (car diff))
+					    (memq (car diff)
+						  (memq (car (last (generated
+								    (car diff))))
+							(all-decls oth))))
 				       (car (last (generated (car diff))))
 				       (car diff)))
 			    (replaced (memq repl1 (all-decls-but-theory-formals oth)))

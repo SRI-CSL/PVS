@@ -73,6 +73,7 @@
   (tcc-hash :initform (make-pvs-hash-table))
   (subtype-hash :initform (make-pvs-hash-table))
   (rewrite-hash :initform (make-pvs-hash-table))
+  (typepred-hash :initform (make-pvs-hash-table))
   (current-xrule :initform nil))
 
 (defcl apply-proofstate (proofstate)

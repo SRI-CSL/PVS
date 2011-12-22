@@ -434,12 +434,22 @@
   (assert (and (listp types) (cdr types)))
   (make-instance 'tupletype :types types))
 
+(defun mk-struct-sub-tupletype (type types)
+  (assert (and (listp types) (cdr types)))
+  (make-instance 'struct-sub-tupletype :type type :types types))
+
 (defun mk-cotupletype (types)
   (assert (and (listp types) (cdr types)))
   (make-instance 'cotupletype :types types))
 
 (defun mk-recordtype (field-decls dependent?)
   (make-instance 'recordtype
+    :fields (sort-fields field-decls dependent?)
+    :dependent? dependent?))
+
+(defun mk-struct-sub-recordtype (rtype field-decls dependent?)
+  (make-instance 'struct-sub-recordtype
+    :type rtype
     :fields (sort-fields field-decls dependent?)
     :dependent? dependent?))
 

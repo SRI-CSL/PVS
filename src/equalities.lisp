@@ -1086,6 +1086,19 @@
   (and (length= (types atype) (types etype))
        (every #'compatible?* (types atype) (types etype))))
 
+(defmethod compatible?* ((atype tupletype) (etype struct-sub-tupletype))
+  (when (>= (length (types atype)) (length (types etype)))
+    (every #'compatible?* (types atype) (types etype))))
+
+(defmethod compatible?* ((atype struct-sub-tupletype) (etype tupletype))
+  (when (<= (length (types atype)) (length (types etype)))
+    (every #'compatible?* (types atype) (types etype))))
+
+(defmethod compatible?* ((atype struct-sub-tupletype)
+			 (etype struct-sub-tupletype))
+  (every #'compatible?* (types atype) (types etype)))
+  
+
 (defmethod compatible?* ((atype cotupletype) (etype cotupletype))
   (and (length= (types atype) (types etype))
        (every #'compatible?* (types atype) (types etype))))
@@ -1094,9 +1107,21 @@
   (and (length= (fields atype) (fields etype))
        (compatible-fields? (fields atype) (fields etype))))
 
-(defmethod compatible? ((atype struct-sub-recordtype) (etype struct-sub-recordtype))
-  (and (length= (fields atype) (fields etype))
-       (compatible-fields? (fields atype) (fields etype))))
+(defmethod compatible?* ((atype recordtype)
+			 (etype struct-sub-recordtype))
+  (when (>= (length (fields atype)) (length (fields etype)))
+    (compatible-fields? (fields etype) (fields atype))))
+
+(defmethod compatible?* ((atype struct-sub-recordtype)
+			 (etype recordtype))
+  (when (<= (length (fields atype)) (length (fields etype)))
+    (compatible-fields? (fields atype) (fields etype))))
+
+(defmethod compatible?* ((atype struct-sub-recordtype)
+			 (etype struct-sub-recordtype))
+  (if (<= (length (fields atype)) (length (fields etype)))
+      (compatible-fields? (fields atype) (fields etype))
+      (compatible-fields? (fields etype) (fields atype))))
 
 (defun compatible-fields? (aflds eflds)
   (or (null aflds)
@@ -1873,7 +1898,9 @@
 			      (aexpr injection-application) incs)
   incs)
 
-(defmethod compatible-preds* ((atype tupletype) (etype tupletype) aexpr incs)  
+(defmethod compatible-preds* ((atype tuple-or-struct-subtype)
+			      (etype tuple-or-struct-subtype)
+			      aexpr incs)
   (compatible-tupletype-preds (types atype) (types etype)
 			      (cond ((tuple-expr? aexpr) (exprs aexpr))
 				    ((listp aexpr) aexpr)
@@ -1881,7 +1908,7 @@
 			      incs))
 
 (defun compatible-tupletype-preds (atypes etypes aexprs incs)
-  (if (null atypes)
+  (if (or (null atypes) (null etypes))
       incs
       (let* ((adep (car atypes))
 	     (edep (car etypes))
@@ -1926,11 +1953,14 @@
 		 :expression pred)
 	       sels)))))
 
-(defmethod compatible-preds* ((atype recordtype) (etype recordtype)
+(defmethod compatible-preds* ((atype record-or-struct-subtype)
+			      (etype record-or-struct-subtype)
 			      (aexpr record-expr) incs)
   incs)
 
-(defmethod compatible-preds* ((atype recordtype) (etype recordtype) aexpr incs)
+(defmethod compatible-preds* ((atype record-or-struct-subtype)
+			      (etype record-or-struct-subtype)
+			      aexpr incs)
   (compatible-recordtype-preds (subst-fields atype aexpr)
 			       (subst-fields etype aexpr)
 			       aexpr incs))
@@ -1996,7 +2026,6 @@
     (let* ((ne aexpr)
 	   (appl (make!-field-application (id field) ne)))
       (substit fields (list (cons field appl))))))
-
 
 ;;; Subtype-of? is used to determine if two types are in the subtype
 ;;; relation to each other.  It returns the distance from t1 to t2 if t1

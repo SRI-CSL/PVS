@@ -1168,6 +1168,14 @@
 	    (write-char #\space)
 	    (pprint-newline :fill)))))
 
+(defmethod pp-tex* ((te type-extension))
+  (with-slots (type extension) te
+    (pprint-logical-block (nil nil)
+      (pprint-indent :current 2)
+      (pp-tex* type)
+      (write " WITH ")
+      (pp-tex* extension))))
+
 (defmethod pp-tex* ((te quant-type))
   (pprint-logical-block (nil nil)
     (write (if (forall-type? te)

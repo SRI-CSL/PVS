@@ -541,6 +541,13 @@ orders [T: TYPE]: THEORY
         (EXISTS y: p(y))
 	   IMPLIES (EXISTS (y:(p)): (FORALL (x:(p)): (NOT x < y))))
 
+  strict_well_founded?(<): bool = strict_order?(<) & well_founded?(<)
+
+  strict_well_founded_is_strict: JUDGEMENT
+    (strict_well_founded?) SUBTYPE_OF (strict_order?)
+  strict_well_founded_is_well_founded: JUDGEMENT
+    (strict_well_founded?) SUBTYPE_OF (well_founded?)
+
   well_ordered?(<): bool = strict_total_order?(<) & well_founded?(<)
 
   well_ordered_is_strict_total: JUDGEMENT

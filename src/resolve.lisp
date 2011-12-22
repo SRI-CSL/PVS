@@ -344,12 +344,17 @@
     (if (find (id name) (mappings name) :key #'(lambda (m) (id (lhs m))))
 	(let* (;;(theory (get-theory (mod-id name)))
 	       (mapping (find (id name) (mappings name)
-			      :key #'(lambda (m) (id (lhs m))))))
+			      :key #'(lambda (m) (id (lhs m)))))
+	       (thinst (mk-modname (mod-id name)
+			 (actuals name) (library name) (mappings name))))
 	  (list (make-instance 'mapping-resolution
 		  :declaration mapping
-		  :module-instance name
+		  :module-instance thinst
 		  :type (or (type-value (rhs mapping))
-			    (type (expr (rhs mapping)))))))
+			    (type (expr (rhs mapping)))
+			    (unless (cdr (types (expr (rhs mapping))))
+			      (car (types (expr (rhs mapping)))))
+			    (break "No type?")))))
 	(let* (;(theory (get-theory (mod-id name)))
 	       (aliases (get-theory-aliases name))
 	       (names aliases))
@@ -361,7 +366,10 @@
 				   :declaration mapping
 				   :module-instance alias
 				   :type (or (type-value (rhs mapping))
-					     (type (expr (rhs mapping)))))))))
+					     (type (expr (rhs mapping)))
+					     (unless (cdr (types (expr (rhs mapping))))
+					       (car (types (expr (rhs mapping)))))
+					     (break "No type here?")))))))
 	     names)))))
 
 (defun get-decls-resolutions (decls acts mappings kind args &optional reses)
@@ -1805,6 +1813,9 @@
 (defmethod locality ((res resolution))
   (locality (declaration res)))
 
+(defmethod locality ((res mapping-resolution))
+  0)
+
 (defmethod locality ((decl binding))
   0)
 
@@ -1933,7 +1944,10 @@
 (defun formula-or-definition-resolutions (name)
   (let* ((*resolve-error-info* nil)
 	 (reses (append (resolve name 'formula nil)
-			(resolve name 'expr nil))))
+			(remove-if #'(lambda (r)
+				       (and (const-decl? (declaration r))
+					    (null (definition (declaration r)))))
+			  (resolve name 'expr nil)))))
     (or reses
 	(resolution-error name 'expr-or-formula nil nil))))
 

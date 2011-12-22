@@ -715,8 +715,8 @@ AUTO-REWRITE, AUTO-REWRITE!, or AUTO-REWRITE-THEORY. E.g.,
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (addrule 'expand (function-name)
-	 ((fnum *) occurrence if-simplifies assert?)
-  (expand function-name fnum occurrence if-simplifies assert?)
+	 ((fnum *) occurrence if-simplifies assert? actuals?)
+  (expand function-name fnum occurrence if-simplifies assert? actuals?)
   "Expands (and simplifies) the definition of FUNCTION-NAME at a given
 OCCURRENCE.  If no OCCURRENCE is given, then all instances of the
 definition are expanded.  The OCCURRENCE is given as a number n
@@ -728,7 +728,8 @@ EXPAND step also applies simplification with decision procedures
 (i.e. SIMPLIFY with default options) to any sequent formulas where
 an expansion has occurred.  ASSERT? can be either NONE (meaning no
 simplification), NIL (meaning simplify using SIMPLIFY), or T (meaning
-simplify using ASSERT)."
+simplify using ASSERT).  If ACTUALS? is T, expansion is also done in
+actual parameters, mappings, and types."
   "~%Expanding the definition of ~a,")
 
 
