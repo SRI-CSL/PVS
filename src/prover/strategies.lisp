@@ -2221,6 +2221,34 @@ IF-MATCH if all, all possible instantiations of a chosen template
                otherwise the given partial substitution is used."
   "Instantiating quantified variables")
 
+(defstep inst* (fnum &rest terms-lists)
+  (let ((steps (inst*-steps fnum terms-lists)))
+    (if steps
+	steps
+	(skip)))
+  "Instantiates a given formula, creating as many copies of the formula FNUM as
+   needed to use the TERMS-LISTS.  The original formula is hidden afterward, copy
+   it before this command if desired.  If there is an error in any of the instances,
+   the entire command fails.
+   Examples:
+    (inst* -1 (1 2) (3 4) (5 6) (7 8) (9 10))
+      Assuming FNUM -1 is a universal formula that expects two numbers, this would
+      create five instances of that formula.
+    (inst* -1 (1 2) (3 4) (5) (7 8) (9 10))
+      Gives the error \"No quantified formula matching given number of terms.\"
+      and the sequent is unchanged.
+    "
+  "Instantiating quantifying variables lists")
+
+(defun inst*-steps (fnum terms-lists &optional steps)
+  (if (null terms-lists)
+      steps
+      (let ((step (if steps
+		      `(inst-cp$ ,fnum ,@(car terms-lists))
+		      `(inst$ ,fnum ,@(car terms-lists)))))
+	(inst*-steps fnum (cdr terms-lists)
+		     `(try ,step ,steps (fail))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defrule track-rewrite (&rest names)
   (let ((dummy (loop for name in names
