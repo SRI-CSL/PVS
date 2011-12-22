@@ -96,7 +96,7 @@
 (defun compare-decl-lists (olist nlist)
   ;; First remove generated declarations from consideration
   (let ((rolist (remove-if #'(lambda (d)
-			       (and (typep d 'declaration)
+			       (and ;;(typep d 'declaration)
 				    (generated-by d)))
 		  olist)))
     (compare-decls rolist nlist)))
