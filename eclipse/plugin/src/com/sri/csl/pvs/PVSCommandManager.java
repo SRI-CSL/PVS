@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.sri.csl.pvs.plugin.handlers.HandlerUtil;
-import com.sri.csl.pvs.plugin.run.PVSExecutionManager;
 
 public class PVSCommandManager {
 	private static String PARSE = "parse";

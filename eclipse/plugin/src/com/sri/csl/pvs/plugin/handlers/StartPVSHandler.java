@@ -19,11 +19,14 @@ import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.console.IOConsoleOutputStream;
 import org.eclipse.ui.handlers.HandlerUtil;
+import org.json.JSONObject;
 
+import com.sri.csl.pvs.PVSExecutionManager;
+import com.sri.csl.pvs.PVSExecutionManager.PVSRespondListener;
+import com.sri.csl.pvs.PVSJsonWrapper;
 import com.sri.csl.pvs.plugin.Activator;
 import com.sri.csl.pvs.plugin.run.IOConsoleKeyboardReader;
 import com.sri.csl.pvs.plugin.run.PVSConsole;
-import com.sri.csl.pvs.plugin.run.PVSExecutionManager;
 
 /**
  * Our sample handler extends AbstractHandler, an IHandler base class.
@@ -59,17 +62,30 @@ public class StartPVSHandler extends AbstractHandler {
 				ILaunch launch = new Launch(null, ILaunchManager.RUN_MODE, null);
 				IProcess process = DebugPlugin.newProcess(launch, PVSExecutionManager.startPVS(), Activator.name, attributes);
 				DebugPlugin.getDefault().getLaunchManager().addLaunch(launch);
+				PVSJsonWrapper.init();
+				PVSExecutionManager.addListener(new PVSRespondListener() {
+
+					@Override
+					public void onMessageReceived(String message) {
+						try {
+							outStream.write(message);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					}
+
+					@Override
+					public void onMessageReceived(JSONObject message) {
+						System.out.println("JSON received: " + message);
+						// Do nothing for JSON messages.
+					}
+					
+				});				
 				IStreamsProxy streamProxy = process.getStreamsProxy();
 				IStreamMonitor outMonitor = streamProxy.getOutputStreamMonitor();
 				outMonitor.addListener(new IStreamListener() {
-		
-					@Override
 					public void streamAppended(String text, IStreamMonitor monitor) {
-						try {
-							outStream.write(text);
-						} catch (IOException e) {
-							// e.printStackTrace();
-						}
+						PVSExecutionManager.dispatchMessage(text);
 					}				
 				});
 				

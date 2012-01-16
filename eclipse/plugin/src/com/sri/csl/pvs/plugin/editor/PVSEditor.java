@@ -17,6 +17,8 @@ import org.eclipse.ui.editors.text.TextEditor;
 import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.texteditor.IElementStateListener;
 
+import com.sri.csl.pvs.plugin.views.PVSTheoriesView;
+
 public class PVSEditor extends TextEditor {
 
 	private final ColorManager colorManager;
@@ -25,6 +27,7 @@ public class PVSEditor extends TextEditor {
 
 	public PVSEditor() {
 		super();
+
 		colorManager = new ColorManager();
 		setSourceViewerConfiguration(new PVSConfiguration(colorManager));
 		setDocumentProvider(new PVSDocumentProvider());
@@ -64,11 +67,21 @@ public class PVSEditor extends TextEditor {
 	}
 
 	public void doSave(IProgressMonitor progressMonitor) {
-
+		
 		super.doSave(progressMonitor);
 		if (file == null) {
 			return;
 		}
+		try {
+			PVSTheoriesView view = PVSTheoriesView.getInstance();
+			if ( view != null ) {
+				view.setInput(file.getContents().toString());
+			}
+		} catch (CoreException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		/*
 		try {
 
 			Process process = Runtime.getRuntime().exec("pvs ");
@@ -107,9 +120,18 @@ public class PVSEditor extends TextEditor {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
+		*/
 	}
 
+	@SuppressWarnings("rawtypes")
+	@Override
+	public Object getAdapter(Class cls) {
+		//System.out.println("Adapter Class: " + cls.getName());
+		Object adapter = super.getAdapter(cls);
+		//System.out.println("Adapter: " + adapter);
+		return adapter;
+	}
+	
 	private final void outputFileToPVS(Process process) throws CoreException, IOException {
 		// Lecture et renvoi a PVS
 		InputStream in = file.getContents();
