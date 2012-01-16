@@ -4,16 +4,17 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 	protected static String ID = "id";
 	protected static String COMMAND = "command";
 	protected static String PARAMETERS = "parameters";
-	protected static String RESPOND = "respond";
+	protected static String RESULT = "result";
 	protected static String ERROR = "error";
 	protected static String RAWCOMMAND = "rawcommand";
-	protected static String RAWRESPOND = "rawrespond";
 	
 	
 	protected Calendar cal = Calendar.getInstance();
@@ -49,9 +50,30 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 		
 		JSONObject obj = new JSONObject(map);
 		
-		String jsonString = obj.toString();
+		return sendJSON(id, obj);
+	}
+
+	public String sendCommand(String command, Object... parameters) throws PVSException {
+		HashMap<String, Object> map = new HashMap<String, Object>();
+		String id = createID();
+		map.put(ID, id);
 		
-		PVSExecutionManager.writeToPVS(jsonString);
+		map.put(COMMAND, command);
+		
+		try {
+			JSONArray jParams = new JSONArray(parameters);
+			map.put(PARAMETERS, jParams);
+		} catch (JSONException e) {
+			throw new PVSException(e.getMessage());
+		}
+		
+		JSONObject obj = new JSONObject(map);
+		
+		return sendJSON(id, obj);
+	}
+
+	private String sendJSON(String id, JSONObject obj) throws PVSException {
+		PVSExecutionManager.writeToPVS(obj.toString());
 		while ( true ) {
 			for (JSONObject respond: responds) {
 				try {
@@ -60,7 +82,7 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 						if ( respond.has(ERROR) ) {
 							throw new PVSException(respond.getString(ERROR));
 						} else {
-							return respond.getString(RAWRESPOND);
+							return respond.getString(RESULT);
 						}
 					}
 				} catch (Exception e) {
@@ -74,7 +96,7 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 			}
 		}
 	}
-
+	
 	@Override
 	public void onMessageReceived(String message) {
 		// Do Nothing
