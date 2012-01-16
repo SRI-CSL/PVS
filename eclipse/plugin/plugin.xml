@@ -154,11 +154,13 @@
             name="PVS">
       </category>
       <view
+            allowMultiple="false"
             category="com.sri.csl.pvs.plugin.views.category"
-            class="com.sri.csl.pvs.plugin.views.PVSElementsView"
+            class="com.sri.csl.pvs.plugin.views.PVSTheoriesView"
             icon="icons/theories.png"
-            id="com.sri.csl.pvs.plugin.views.PVSElementsView"
-            name="PVS Theories">
+            id="com.sri.csl.pvs.plugin.views.PVSTheoriesView"
+            name="Theories"
+            restorable="true">
       </view>
    </extension>
    <extension
