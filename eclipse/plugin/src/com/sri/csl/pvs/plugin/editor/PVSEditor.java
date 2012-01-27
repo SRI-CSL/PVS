@@ -94,7 +94,9 @@ public class PVSEditor extends TextEditor {
 			generatePVSModel();
 			modelGenerated = true;
 		}
-		PVSTheoriesView.getInstance().setInput(treeModel);
+		PVSTheoriesView view = PVSTheoriesView.getInstance();
+		if ( view != null )
+			view.setInput(treeModel);
 	}
 	
 	
