@@ -77,7 +77,7 @@ public class StartPVSHandler extends AbstractHandler {
 					@Override
 					public void onMessageReceived(JSONObject message) {
 						System.out.println("JSON received: " + message);
-						// Do nothing for JSON messages.
+						PVSJsonWrapper.INST().addToJSONQueue(message);
 					}
 					
 				});				

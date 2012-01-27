@@ -19,5 +19,8 @@ public class PVSTheory extends PVSDeclaration {
 		formulas.add(f);
 	}
 	
+	public ArrayList<PVSFormula> getFormulas() {
+		return formulas;
+	}
 
 }

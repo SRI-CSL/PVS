@@ -41,7 +41,11 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 		return "message_id_" + cal.getTimeInMillis();
 	}
 	
-	public String sendRawMessage(String message) throws PVSException {
+	synchronized public void addToJSONQueue(JSONObject obj) {
+		responds.add(obj);
+	}
+	
+	public String sendRawCommand(String message) throws PVSException {
 		HashMap<String, String> map = new HashMap<String, String>();
 		String id = createID();
 		map.put(ID, id);
@@ -75,18 +79,21 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 	private String sendJSON(String id, JSONObject obj) throws PVSException {
 		PVSExecutionManager.writeToPVS(obj.toString());
 		while ( true ) {
-			for (JSONObject respond: responds) {
-				try {
-					String rid = respond.getString(ID);
-					if ( id.equals(rid) ) {
-						if ( respond.has(ERROR) ) {
-							throw new PVSException(respond.getString(ERROR));
-						} else {
-							return respond.getString(RESULT);
+			synchronized(this) {
+				for (JSONObject respond: responds) {
+					try {
+						String rid = respond.getString(ID);
+						if ( id.equals(rid) ) {
+							responds.remove(respond);
+							if ( respond.has(ERROR) ) {
+								throw new PVSException(respond.getString(ERROR));
+							} else {
+								return respond.getString(RESULT);
+							}
 						}
+					} catch (Exception e) {
+						throw new PVSException(e.getMessage());
 					}
-				} catch (Exception e) {
-					throw new PVSException(e.getMessage());
 				}
 			}
 			try {
@@ -99,8 +106,6 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 	
 	@Override
 	public void onMessageReceived(String message) {
-		// Do Nothing
-		
 	}
 
 	@Override

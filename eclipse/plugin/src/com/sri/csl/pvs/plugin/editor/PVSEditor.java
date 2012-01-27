@@ -5,35 +5,37 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.util.ArrayList;
 
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IMarker;
-import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.jface.dialogs.MessageDialog;
-import org.eclipse.ui.editors.text.FileDocumentProvider;
+import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.editors.text.TextEditor;
 import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.texteditor.IElementStateListener;
 
+import com.sri.csl.pvs.declarations.PVSFormula;
+import com.sri.csl.pvs.declarations.PVSTheory;
 import com.sri.csl.pvs.plugin.views.PVSTheoriesView;
+import com.sri.csl.pvs.plugin.views.TreeNode;
 
 public class PVSEditor extends TextEditor {
-
 	private final ColorManager colorManager;
-
 	private IFile file;
-
+	private boolean modelGenerated;
+	private TreeNode treeModel = new TreeNode("");
+	
 	public PVSEditor() {
 		super();
-
+		modelGenerated = false;
 		colorManager = new ColorManager();
 		setSourceViewerConfiguration(new PVSConfiguration(colorManager));
 		setDocumentProvider(new PVSDocumentProvider());
 
-		FileDocumentProvider fProvider = (FileDocumentProvider) this
-				.getDocumentProvider();
+		PVSDocumentProvider fProvider = (PVSDocumentProvider)getDocumentProvider();
 		fProvider.addElementStateListener(new IElementStateListener() {
 
 			public void elementContentAboutToBeReplaced(Object element) {
@@ -58,9 +60,52 @@ public class PVSEditor extends TextEditor {
 				file = fInput.getFile();
 			}
 		});
-
 	}
+	
+	public IFile getFile() {
+		FileEditorInput fei = (FileEditorInput)getEditorInput();
+		return fei.getFile();
+	}
+	
+	private ArrayList<PVSTheory> getTheories() {
+		ArrayList<PVSTheory> theories = new ArrayList<PVSTheory>();
+		//TODO: This should be linked to actual PVS and Sam's code
+		PVSTheory d1 = new PVSTheory(3, "dummy 1");
+		d1.addFormula(new PVSFormula("Good Formula"));
+		theories.add(d1);
 
+		IPath path = getFile().getFullPath();
+		String location = path.toOSString();
+		PVSTheory d2 = new PVSTheory(3, location);
+		theories.add(d2);
+		
+		return theories;
+	}
+	
+	private void generatePVSModel() {
+		treeModel.clear();
+		for(PVSTheory theory: getTheories()) {
+			treeModel.addChild(new TreeNode(theory));
+		}
+	}
+	
+	public void updatePVSTheoriesView() {
+		if ( !modelGenerated ) {
+			generatePVSModel();
+			modelGenerated = true;
+		}
+		PVSTheoriesView.getInstance().setInput(treeModel);
+	}
+	
+	
+	protected void setSite(IWorkbenchPartSite site) {
+		super.setSite(site);
+
+		IWorkbenchPage page = getSite().getPage();
+		page.addPartListener(new PVSEditorActivationListener());
+	}
+	
+			
 	public void dispose() {
 		colorManager.dispose();
 		super.dispose();
@@ -69,18 +114,10 @@ public class PVSEditor extends TextEditor {
 	public void doSave(IProgressMonitor progressMonitor) {
 		
 		super.doSave(progressMonitor);
-		if (file == null) {
-			return;
-		}
-		try {
-			PVSTheoriesView view = PVSTheoriesView.getInstance();
-			if ( view != null ) {
-				view.setInput(file.getContents().toString());
-			}
-		} catch (CoreException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		
+		modelGenerated = false;
+		updatePVSTheoriesView();
+		
 		/*
 		try {
 
@@ -131,7 +168,7 @@ public class PVSEditor extends TextEditor {
 		//System.out.println("Adapter: " + adapter);
 		return adapter;
 	}
-	
+		
 	private final void outputFileToPVS(Process process) throws CoreException, IOException {
 		// Lecture et renvoi a PVS
 		InputStream in = file.getContents();
@@ -155,4 +192,5 @@ public class PVSEditor extends TextEditor {
 		}
 		return r;
 	}
+
 }

@@ -2,9 +2,8 @@ package com.sri.csl.pvs.plugin.views;
 
 
 import java.util.ArrayList;
+import java.util.List;
 
-import org.eclipse.core.resources.IResource;
-import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
@@ -12,6 +11,8 @@ import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.jface.util.IPropertyChangeListener;
+import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IDoubleClickListener;
 import org.eclipse.jface.viewers.ISelection;
@@ -28,12 +29,15 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.ISharedImages;
+import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchActionConstants;
+import org.eclipse.ui.IWorkingSetManager;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.part.ViewPart;
 
+import com.sri.csl.pvs.declarations.PVSFormula;
+import com.sri.csl.pvs.declarations.PVSTheory;
 import com.sri.csl.pvs.plugin.Activator;
-import com.sri.csl.pvs.plugin.views.PVSTheoriesView.TreeNode;
 
 
 /**
@@ -68,58 +72,6 @@ public class PVSTheoriesView extends ViewPart {
 	private Action action2;
 	private Action doubleClickAction;
 
-	class TreeNode implements IAdaptable {
-		private String name;
-		private TreeNode parent;
-		private IResource resouce;
-		private ArrayList<TreeNode> children = new ArrayList<TreeNode>();
-
-		public TreeNode(String name) {
-			this.name = name;
-		}
-		
-		public String getName() {
-			return name;
-		}
-		
-		public void setParent(TreeNode parent) {
-			this.parent = parent;
-		}
-		
-		
-		public TreeNode getParent() {
-			return parent;
-		}
-		
-		public String toString() {
-			return getName();
-		}
-		
-		
-		public Object getAdapter(Class key) {
-			return null;
-		}
-		
-		protected IResource getResouce() {
-			return resouce;
-		}
-		protected void setResouce(IResource resouce) {
-			this.resouce = resouce;
-		}
-		
-		public TreeNode[] getChildren() {
-			return (TreeNode[]) children.toArray(new TreeNode[children.size()]);
-		}
-
-		public boolean hasChildren() {
-			return children.size() > 0;
-		}
-		
-		public void addChild(TreeNode child) {
-			children.add(child);
-			child.setParent(this);
-		}		
-	}
 
 	
 	
@@ -135,8 +87,14 @@ public class PVSTheoriesView extends ViewPart {
 	 
 	class ViewContentProvider implements ITreeContentProvider {
 		
+		@SuppressWarnings("unchecked")
 		public void inputChanged(Viewer v, Object oldInput, Object newInput) {
-			System.out.println("newInput: " + newInput);
+			if ( newInput != null ) {
+				System.out.println("newInput: " + newInput);
+				if ( newInput instanceof TreeNode ) {
+					invisibleRoot = (TreeNode)newInput;
+				}
+			}
 		}
 		
 		public void dispose() {
@@ -144,16 +102,9 @@ public class PVSTheoriesView extends ViewPart {
 		
 		public Object[] getElements(Object node) {
 			if (node.equals(getViewSite())) {
-				if (invisibleRoot == null)
-					initialize();
-
 				return getChildren(invisibleRoot);
 			}
-
 			return getChildren(node);			
-			
-			//System.out.println("parent: " + parent);
-			//return new String[] { "Theory Foo", "Theory Bar", "Cool Theory" };
 		}
 		
 		public Object getParent(Object child) {
@@ -166,8 +117,8 @@ public class PVSTheoriesView extends ViewPart {
 		public Object[] getChildren(Object parent) {
 			if (parent instanceof TreeNode) {
 				return ((TreeNode) parent).getChildren();
-			}
-
+			} 
+			
 			return new Object[0];
 		}
 		
@@ -178,10 +129,6 @@ public class PVSTheoriesView extends ViewPart {
 		}
 		
 		public void initialize() {
-			TreeNode root = new TreeNode("WorkSpace Property Files");
-			
-			invisibleRoot = new TreeNode("");
-			invisibleRoot.addChild(root);
 		}
 	}
 	
@@ -195,8 +142,15 @@ public class PVSTheoriesView extends ViewPart {
 		}
 		
 		public Image getImage(Object obj) {
-			return  Activator.getImageDescriptor("icons/theories.png").createImage();
-			//return PlatformUI.getWorkbench().getSharedImages().getImage(ISharedImages.IMG_OBJ_ELEMENT);
+			if ( obj instanceof TreeNode ) {
+				Object nodeObject = ((TreeNode)obj).getObject();
+				if ( nodeObject instanceof PVSTheory ) {
+					return  Activator.getImageDescriptor("icons/theory.png").createImage();
+				} else if ( nodeObject instanceof PVSFormula ) {
+					return  Activator.getImageDescriptor("icons/formula.png").createImage();
+				} 
+			}
+			return PlatformUI.getWorkbench().getSharedImages().getImage(ISharedImages.IMG_OBJ_ELEMENT);
 		}
 	}
 	class NameSorter extends ViewerSorter {
@@ -206,6 +160,16 @@ public class PVSTheoriesView extends ViewPart {
 	 * The constructor.
 	 */
 	public PVSTheoriesView() {
+		IWorkbench wb = PlatformUI.getWorkbench();
+		IWorkingSetManager wsm = wb.getWorkingSetManager();
+		wsm.addPropertyChangeListener(new IPropertyChangeListener() {
+
+			@Override
+			public void propertyChange(PropertyChangeEvent event) {
+				System.out.println("Event: " + event);
+			}
+			
+		});
 	}
 
 	/**

@@ -9,4 +9,4 @@ sum: THEORY
 
  closed_form: THEOREM sum(n) = (n * (n + 1))/2
 
- END sum
+ END sum 

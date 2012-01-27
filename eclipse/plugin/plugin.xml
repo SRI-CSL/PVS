@@ -157,7 +157,7 @@
             allowMultiple="false"
             category="com.sri.csl.pvs.plugin.views.category"
             class="com.sri.csl.pvs.plugin.views.PVSTheoriesView"
-            icon="icons/theories.png"
+            icon="icons/theory.png"
             id="com.sri.csl.pvs.plugin.views.PVSTheoriesView"
             name="Theories"
             restorable="true">
