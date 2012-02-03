@@ -53,7 +53,7 @@
 	       (pvs-abort))))
 	((null *pvs-emacs-interface*)
 	 (if *pvs-json-interface*
-	     (format t "~%{\"id\": ~a, \"error\": \"~a\">~%\"~a\"}~%"
+	     (format t "~%{~%\"id\": ~a, \"error\": \"~a\">~%\"~a\"~%}~%"
 	       *pvs-json-id* (protect-emacs-output msg)
 	       (protect-emacs-output err))
 	     ;; Otherwise it's XML
@@ -96,7 +96,7 @@
 	 (restore))
 	((null *pvs-emacs-interface*)
 	 (if *pvs-json-interface*
-	     (format t "~%{\"id\": ~a, \"error\":\"parse-error:~a\"}~%"
+	     (format t "~%{~%\"id\": ~a, \"error\":\"parse-error:~a\"~%}~%"
 	       *pvs-json-id*
 	       (protect-emacs-output
 		(if args
