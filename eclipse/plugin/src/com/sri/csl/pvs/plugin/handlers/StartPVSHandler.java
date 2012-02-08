@@ -3,6 +3,7 @@ package com.sri.csl.pvs.plugin.handlers;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
@@ -83,11 +84,7 @@ public class StartPVSHandler extends AbstractHandler {
 				});				
 				IStreamsProxy streamProxy = process.getStreamsProxy();
 				IStreamMonitor outMonitor = streamProxy.getOutputStreamMonitor();
-				outMonitor.addListener(new IStreamListener() {
-					public void streamAppended(String text, IStreamMonitor monitor) {
-						PVSExecutionManager.dispatchMessage(text);
-					}				
-				});
+				outMonitor.addListener(new PVSStreamListener(0));
 				
 				keyboardReader = new IOConsoleKeyboardReader(console);
 				keyboardReader.addListener(new IOConsoleKeyboardReader.IOConsoleKeyboardReaderListener() {
@@ -104,4 +101,68 @@ public class StartPVSHandler extends AbstractHandler {
 		}
 		return null;
 	}
+}
+
+class PVSStreamListener implements IStreamListener {
+	private static String pvsAllegroPrompt = "^[ ]*\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\)?\\(\\(<[-A-Za-z]* ?[0-9]*>\\)\\3?\\|[-A-Za-z0-9]+([0-9]+): \\)\\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter";
+	private static String pvsCmuPrompt = "^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter";
+	private static Pattern pvsPromptPattern;
+	private static String NL = "\n", LCB = "{", RCB = "}";
+	StringBuffer jsonBuffer;
+	boolean jsonStarted = false;
+	
+	public PVSStreamListener(int lispType) {
+		switch ( lispType ) {
+		case 0:// ALLEGRO:
+			pvsPromptPattern = Pattern.compile(pvsAllegroPrompt);
+			break;
+		case 1:// CMU:
+			pvsPromptPattern = Pattern.compile(pvsCmuPrompt);
+			break;
+		}
+		resetJSONBuffer();
+	}
+	
+	private void resetJSONBuffer() {
+		jsonStarted = false;
+		jsonBuffer = new StringBuffer();
+	}
+	
+	@Override
+	public void streamAppended(String text, IStreamMonitor monitor) {
+		synchronized ( jsonBuffer ) {
+			String[] lines = text.split(NL);
+			for (String line: lines) {
+				if ( LCB.equals(line) ) {
+					if ( jsonStarted ) {
+						System.err.println("Got another {, but did not expect it");
+						resetJSONBuffer();
+					} else {
+						jsonStarted = true;
+						jsonBuffer.append(line).append(NL);
+					}
+				} else if ( RCB.equals(line) ) {
+					if ( !jsonStarted ) {
+						System.err.println("Got and }, but did not expect it");
+						resetJSONBuffer();
+					} else {
+						
+						jsonBuffer.append(line).append(NL);
+						PVSExecutionManager.dispatchJSONMessage(jsonBuffer.toString());
+						resetJSONBuffer();
+					}
+				}
+				if ( !jsonStarted ) {
+					if ( pvsPromptPattern.matcher(line).find() ) { // line is the prompt
+						PVSExecutionManager.pvsPromptReceived(line);
+					} else { // line is unstructured data
+						PVSExecutionManager.dispatchStringMessage(line + NL);
+					}
+				} else {
+					jsonBuffer.append(line).append(NL);
+				}
+			}
+		}
+	}
+	
 }

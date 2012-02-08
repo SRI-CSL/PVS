@@ -45,7 +45,7 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 		responds.add(obj);
 	}
 	
-	public String sendRawCommand(String message) throws PVSException {
+	public Object sendRawCommand(String message) throws PVSException {
 		HashMap<String, String> map = new HashMap<String, String>();
 		String id = createID();
 		map.put(ID, id);
@@ -57,7 +57,7 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 		return sendJSON(id, obj);
 	}
 
-	public String sendCommand(String command, Object... parameters) throws PVSException {
+	public Object sendCommand(String command, Object... parameters) throws PVSException {
 		HashMap<String, Object> map = new HashMap<String, Object>();
 		String id = createID();
 		map.put(ID, id);
@@ -76,10 +76,12 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 		return sendJSON(id, obj);
 	}
 
-	private String sendJSON(String id, JSONObject obj) throws PVSException {
-		PVSExecutionManager.writeToPVS(obj.toString());
-		while ( true ) {
-			synchronized(this) {
+	private Object sendJSON(String id, JSONObject obj) throws PVSException {
+		String  pvsJSON = "(pvs-json \"" + obj.toString().replace("\"", "\\\"") + "\")";
+		PVSExecutionManager.writeToPVS(pvsJSON);
+		int MAX = 30;
+		for (int i=0; i<50*MAX; i++) {
+			synchronized( responds ) {
 				for (JSONObject respond: responds) {
 					try {
 						String rid = respond.getString(ID);
@@ -88,7 +90,7 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 							if ( respond.has(ERROR) ) {
 								throw new PVSException(respond.getString(ERROR));
 							} else {
-								return respond.getString(RESULT);
+								return respond.get(RESULT);
 							}
 						}
 					} catch (Exception e) {
@@ -102,6 +104,7 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 				throw new PVSException(e.getMessage());
 			}
 		}
+		throw new PVSException("No response from PVS after " + MAX + " seconds");
 	}
 	
 	@Override

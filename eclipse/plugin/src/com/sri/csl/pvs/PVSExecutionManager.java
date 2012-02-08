@@ -1,10 +1,8 @@
 package com.sri.csl.pvs;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
 
@@ -102,28 +100,26 @@ public class PVSExecutionManager {
 		return process != null? process.getErrorStream(): null;
 	}
 	
-	public static void dispatchMessage(String message) {
-		JSONObject json = null;
+	public static void dispatchJSONMessage(String message) {
 		try {
+			JSONObject json = null;
 			json = new JSONObject(message);
-		} catch (JSONException e) { }
-
-		if ( json != null ) {
 			for (PVSRespondListener l: listeners) {
 				l.onMessageReceived(json);
 			}
-		} else {
-			for (PVSRespondListener l: listeners) {
-				l.onMessageReceived(message);
-			}							
+		} catch (JSONException e) {
+			e.printStackTrace();
 		}
 	}
 	
-	public static String pvsEval(String str) {
-		//TODO: implement this
-		writeToPVS(str);
-		BufferedReader reader = new BufferedReader(new InputStreamReader(getInputStream()));
-		return str;
+	public static void dispatchStringMessage(String message) {
+		for (PVSRespondListener l: listeners) {
+			l.onMessageReceived(message);
+		}
+	}
+	
+	public static void pvsPromptReceived(String prompt) {
+		
 	}
 
 	public static void stopPVS() {

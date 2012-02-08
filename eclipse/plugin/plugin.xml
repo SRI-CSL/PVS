@@ -89,6 +89,15 @@
                   mnemonic="s"
                   style="push">
             </command>
+            <command
+                  commandId="com.sri.csl.pvs.plugin.commands.genericCommand"
+                  label="Set PVS Context"
+                  style="push">
+               <parameter
+                     name="com.sri.csl.pvs.plugin.genericCommandParameter"
+                     value="pvs:change-context">
+               </parameter>
+            </command>
             <menu
                   label="Editing PVS Files">
                <command
@@ -144,6 +153,17 @@
                   icon="icons/pvslogo.png"
                   style="push">
             </command>
+            <command
+                  commandId="com.sri.csl.pvs.plugin.commands.genericCommand"
+                  icon="icons/typecheck.png"
+                  label="Typecheck"
+                  style="push"
+                  tooltip="Typecheck the active PVS file">
+               <parameter
+                     name="com.sri.csl.pvs.plugin.genericCommandParameter"
+                     value="pvs:pvs-typecheck-file">
+               </parameter>
+            </command>
          </toolbar>
       </menuContribution>
    </extension>
@@ -157,7 +177,7 @@
             allowMultiple="false"
             category="com.sri.csl.pvs.plugin.views.category"
             class="com.sri.csl.pvs.plugin.views.PVSTheoriesView"
-            icon="icons/theory.png"
+            icon="icons/theories.png"
             id="com.sri.csl.pvs.plugin.views.PVSTheoriesView"
             name="Theories"
             restorable="true">
