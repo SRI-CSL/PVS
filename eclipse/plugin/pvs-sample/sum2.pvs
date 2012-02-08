@@ -25,5 +25,4 @@ BEGIN
 
   sum_of_cubes : LEMMA
     4 * sum(cube, n+1) = n*n*(n+1)*(n+1)
-
 END sum2

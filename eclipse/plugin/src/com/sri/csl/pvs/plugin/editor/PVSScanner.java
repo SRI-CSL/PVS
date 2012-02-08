@@ -46,6 +46,8 @@ public class PVSScanner extends RuleBasedScanner {
 
 		// Add rule for strings and character constants.
 		rules.add(new SingleLineRule("\"", "\"", constant, '\\'));
+		WordRule numberRule = new WordRule(new NumberDetector(), constant);
+		rules.add(numberRule);
 
 		// Add generic whitespace rule.
 		rules.add(new WhitespaceRule(new PVSWhitespaceDetector()));

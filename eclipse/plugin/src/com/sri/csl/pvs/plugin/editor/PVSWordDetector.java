@@ -9,7 +9,7 @@ public class PVSWordDetector implements IWordDetector {
 	 * @see org.eclipse.jface.text.rules.IWordDetector#isWordPart(char)
 	 */
 	public boolean isWordPart(char c) {
-		return c == '-' || c == '_' || c == '+' || c == '!'
+		return c == '-' || c == '_' || c == '!'
 				|| Character.isLetter(c) || Character.isDigit(c);
 	}
 
