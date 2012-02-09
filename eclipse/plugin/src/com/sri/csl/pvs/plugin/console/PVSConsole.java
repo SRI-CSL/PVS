@@ -1,4 +1,4 @@
-package com.sri.csl.pvs.plugin.run;
+package com.sri.csl.pvs.plugin.console;
 
 import org.eclipse.ui.console.ConsolePlugin;
 import org.eclipse.ui.console.IConsole;

@@ -1,4 +1,4 @@
-package com.sri.csl.pvs.plugin.run;
+package com.sri.csl.pvs.plugin.console;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;

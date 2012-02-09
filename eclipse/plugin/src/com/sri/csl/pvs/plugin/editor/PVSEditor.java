@@ -62,6 +62,10 @@ public class PVSEditor extends TextEditor {
 		});
 	}
 	
+	/**
+	 * 
+	 * @return the file that is opened in this editor
+	 */
 	public IFile getFile() {
 		FileEditorInput fei = (FileEditorInput)getEditorInput();
 		return fei.getFile();
@@ -99,6 +103,11 @@ public class PVSEditor extends TextEditor {
 			view.setInput(treeModel);
 	}
 	
+	public void clearPVSTheoriesView() {
+		PVSTheoriesView view = PVSTheoriesView.getInstance();
+		if ( view != null )
+			view.setInput(null);		
+	}
 	
 	protected void setSite(IWorkbenchPartSite site) {
 		super.setSite(site);

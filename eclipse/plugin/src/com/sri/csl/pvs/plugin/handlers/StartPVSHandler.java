@@ -26,8 +26,8 @@ import com.sri.csl.pvs.PVSExecutionManager;
 import com.sri.csl.pvs.PVSExecutionManager.PVSRespondListener;
 import com.sri.csl.pvs.PVSJsonWrapper;
 import com.sri.csl.pvs.plugin.Activator;
-import com.sri.csl.pvs.plugin.run.IOConsoleKeyboardReader;
-import com.sri.csl.pvs.plugin.run.PVSConsole;
+import com.sri.csl.pvs.plugin.console.IOConsoleKeyboardReader;
+import com.sri.csl.pvs.plugin.console.PVSConsole;
 
 /**
  * Our sample handler extends AbstractHandler, an IHandler base class.

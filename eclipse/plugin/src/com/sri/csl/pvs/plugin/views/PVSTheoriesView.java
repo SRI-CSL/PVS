@@ -94,7 +94,10 @@ public class PVSTheoriesView extends ViewPart {
 				if ( newInput instanceof TreeNode ) {
 					invisibleRoot = (TreeNode)newInput;
 				}
+			} else {
+				invisibleRoot = new TreeNode("");
 			}
+			
 		}
 		
 		public void dispose() {
