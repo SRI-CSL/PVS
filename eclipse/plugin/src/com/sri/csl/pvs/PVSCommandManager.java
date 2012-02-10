@@ -87,7 +87,7 @@ public class PVSCommandManager {
 			} else if ( command.equals(TYPECHECK) ) {
 				result = typecheck(args);
 			} else if ( command.equals(CHANGECONTEXT) ) {
-				changeContext(args);
+				result = changeContext(args);
 
 			}
 		} catch (Exception e) {
@@ -100,9 +100,8 @@ public class PVSCommandManager {
 	
 	private static Object parse(List<Object> args) {
 		if ( args.size() == 0 ) return null;
-		Object filename = args.get(0);
 		try {
-			return PVSJsonWrapper.INST().sendRawCommand(prepare(PARSE, filename));
+			return PVSJsonWrapper.INST().sendCommand(PARSE, args.toArray());
 		} catch (PVSException e) {
 			EclipsePluginUtil.showMessage(e.getMessage(), SWT.ICON_ERROR);
 		}
@@ -111,9 +110,8 @@ public class PVSCommandManager {
 	
 	private static Object typecheck(List<Object> args) {
 		if ( args.size() == 0 ) return null;
-		Object filename = args.get(0);
 		try {
-			return PVSJsonWrapper.INST().sendRawCommand(prepare(TYPECHECK, filename));
+			return PVSJsonWrapper.INST().sendCommand(TYPECHECK, args.toArray());
 		} catch (PVSException e) {
 			EclipsePluginUtil.showMessage(e.getMessage(), SWT.ICON_ERROR);
 		}
@@ -122,9 +120,8 @@ public class PVSCommandManager {
 	
 	private static Object changeContext(List<Object> args) {
 		if ( args.size() == 0 ) return null;
-		Object newLocation = args.get(0);
 		try {
-			return PVSJsonWrapper.INST().sendRawCommand(prepare(CHANGECONTEXT, newLocation));
+			return PVSJsonWrapper.INST().sendCommand(CHANGECONTEXT, args.toArray());
 		} catch (PVSException e) {
 			EclipsePluginUtil.showMessage(e.getMessage(), SWT.ICON_ERROR);
 		}

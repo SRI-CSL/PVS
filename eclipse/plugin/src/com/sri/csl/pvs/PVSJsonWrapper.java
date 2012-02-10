@@ -90,7 +90,8 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 							if ( respond.has(ERROR) ) {
 								throw new PVSException(respond.getString(ERROR));
 							} else {
-								return respond.get(RESULT);
+								Object res = respond.get(RESULT);
+								return res;
 							}
 						}
 					} catch (Exception e) {

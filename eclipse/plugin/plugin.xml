@@ -91,7 +91,7 @@
             </command>
             <command
                   commandId="com.sri.csl.pvs.plugin.commands.genericCommand"
-                  label="Set PVS Context"
+                  label="Set PVS Context..."
                   style="push">
                <parameter
                      name="com.sri.csl.pvs.plugin.genericCommandParameter"

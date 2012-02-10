@@ -151,8 +151,7 @@ class PVSStreamListener implements IStreamListener {
 						PVSExecutionManager.dispatchJSONMessage(jsonBuffer.toString());
 						resetJSONBuffer();
 					}
-				}
-				if ( !jsonStarted ) {
+				} else if ( !jsonStarted ) {
 					if ( pvsPromptPattern.matcher(line).find() ) { // line is the prompt
 						PVSExecutionManager.pvsPromptReceived(line);
 					} else { // line is unstructured data
