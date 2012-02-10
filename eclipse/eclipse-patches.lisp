@@ -14,16 +14,74 @@
 (defvar *pvs-json-interface* nil)
 (defvar *pvs-json-id* nil)
 
+(defun json-error (errstr)
+  (break)
+  (format nil "~%{~%\"id\": ~a, \"error\": \"~a\"~%}~%"
+    *pvs-json-id*
+    errstr))
+
+(defun json-check-form (str key)
+  (multiple-value-bind (form err)
+      (ignore-errors (read-from-string str))
+    (if (typep err 'error)
+	(values nil
+		(json-error 
+		 (format nil "Bad ~a \\\"~a\\\": ~a"
+		   key
+		   (protect-emacs-output str)
+		   (protect-emacs-output (format nil "~a" err)))))
+	form)))
+
+(defun json-eval-form (form key)
+  (multiple-value-bind (result err)
+      (ignore-errors (eval form))
+    (if (typep err 'error)
+	(values nil
+		(json-error
+		 (format nil "Eval ~a \\\"~a\\\": ~a"
+		   key
+		   (protect-emacs-output form)
+		   (protect-emacs-output (format nil "~a" err)))))
+	result)))
+
 (defun pvs-json (json-string)
   (let* ((request (json:decode-json-from-string json-string))
 	 (*pvs-json-id* (cdr (assq :ID request)))
 	 (rawcmd (cdr (assq :RAWCOMMAND request)))
-	 (cmd (cdr (assq :COMMAND request)))
+	 (cmdstr (cdr (assq :COMMAND request)))
 	 (params (cdr (assq :PARAMETERS request)))
-	 (*pvs-json-interface* t))
+	 (*pvs-json-interface* t)
+	 (*print-pretty* nil))
     (if rawcmd
-	(eval rawcmd)
-	(apply cmd params))))
+	(multiple-value-bind (form errstr)
+	    (json-check-form rawcmd "rawcommand")
+	  (if errstr
+	      (format t "~a" errstr)
+	      (multiple-value-bind (result errstr)
+		  (json-eval-form form "rawcommand")
+		(if errstr
+		    (format t "~a" errstr)
+		    (format t "~%{~%\"id\": ~a, \"result\": \"~a\"~%}~%"
+		      *pvs-json-id*
+		      (protect-emacs-output result))))))
+	(multiple-value-bind (cmd errstr)
+	    (json-check-form cmdstr "command")
+	  (if errstr
+	      (format t "~a" errstr)
+	      (if (not (symbolp cmd))
+		  (format t "~a"
+		    (json-error "cmd ~a must be a symbol string"))
+		  (if (not (listp params))
+		      (format t "~a"
+			(json-error
+			 (format nil "parameters ~a must be a list" params)))
+		      (multiple-value-bind (result errstr)
+			  (json-eval-form (cons cmd params) "command")
+			(if errstr
+			    (format t "~a" errstr)
+			    (format t "~%{~%\"id\": ~a, \"result\": \"~a\"~%}~%"
+			      *pvs-json-id*
+			      (protect-emacs-output result)))))))))))
 
 (defun pvs-error (msg err &optional itheory iplace)
   ;; Indicates an error; no recovery possible.
