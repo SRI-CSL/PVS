@@ -99,44 +99,15 @@
                </parameter>
             </command>
             <menu
-                  label="Editing PVS Files">
-               <command
-                     commandId="com.sri.csl.pvs.plugin.commands.genericCommand"
-                     label="forward-theory"
-                     style="push">
-                  <parameter
-                        name="com.sri.csl.pvs.plugin.genericCommandParameter"
-                        value="forward-theory">
-                  </parameter>
-               </command>
-               <command
-                     commandId="com.sri.csl.pvs.plugin.commands.genericCommand"
-                     label="backward-theory"
-                     style="push">
-                  <parameter
-                        name="com.sri.csl.pvs.plugin.genericCommandParameter"
-                        value="backward-theory">
-                  </parameter>
-               </command>                     
-               <command
-                     commandId="com.sri.csl.pvs.plugin.commands.genericCommand"
-                     label="find-unbalanced-pvs"
-                     style="push">
-                  <parameter
-                        name="com.sri.csl.pvs.plugin.genericCommandParameter"
-                        value="find-unbalanced-pvs">
-                  </parameter>
-               </command>
-            </menu>
-            <menu
                   label="Parsing and Typechecking">
                <command
                      commandId="com.sri.csl.pvs.plugin.commands.genericCommand"
-                     label="parse"
+                     icon="icons/typecheck.png"
+                     label="typecheck"
                      style="push">
                   <parameter
                         name="com.sri.csl.pvs.plugin.genericCommandParameter"
-                        value="pvs:parse">
+                        value="pvs:typecheck-file">
                   </parameter>
                </command>
             </menu>
@@ -161,7 +132,7 @@
                   tooltip="Typecheck the active PVS file">
                <parameter
                      name="com.sri.csl.pvs.plugin.genericCommandParameter"
-                     value="pvs:pvs-typecheck-file">
+                     value="pvs:typecheck-file">
                </parameter>
             </command>
          </toolbar>

@@ -29,11 +29,12 @@ public class EclipsePluginUtil {
 		return null;
 	}
 	
-	public static String getVisiblePVSEditorFilename() {
+	public static String getRelativePathOfVisiblePVSEditorFilename() {
+		// It returns the relative path to the current project. 
 		String filename = null;
 		IEditorPart acEditor = EclipsePluginUtil.getVisibleEditor();
 		if ( acEditor instanceof PVSEditor ) {
-			filename = ((PVSEditor)acEditor).getFile().getFullPath().toOSString();
+			filename = ((PVSEditor)acEditor).getFile().getProjectRelativePath().toOSString();
 		}
 		return filename;
 	}

@@ -1,6 +1,5 @@
 package com.sri.csl.pvs;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,17 +16,14 @@ import com.sri.csl.pvs.plugin.misc.EclipsePluginUtil;
  * 
  */
 
-public class PVSCommandManager {
-	private static String BUFFEDQUOTE = "\\\"";
-	private static String SPACE = " ", COMMA = ", ";
-	
+public class PVSCommandManager {	
 	// PVS COMMANDS:
 	private static String PARSE = "parse";
-	private static String TYPECHECK = "pvs-typecheck-file";
+	private static String TYPECHECK = "typecheck-file";
 	private static String CHANGECONTEXT = "change-context";
 	
 	
-	public static Object handleCommand(String command) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException {
+	public static Object handleCommand(String command) {
 		if ( !PVSExecutionManager.isPVSRunning() ) {
 			EclipsePluginUtil.showMessage("PVS is not running", SWT.ICON_ERROR);
 			return null;
@@ -35,38 +31,16 @@ public class PVSCommandManager {
 		System.out.println("PVS Command to run: " + command);
 		return execute(command, getArguments(command));
 	}
-	
-	private static String prepare(String command, Object... args) {
-		
-		StringBuffer buffer = new StringBuffer("(");
-		buffer.append(command).append(SPACE);
-		if ( args.length > 0 ) {
-			if ( args[0] instanceof String ) {
-				buffer.append(BUFFEDQUOTE).append(args[0]).append(BUFFEDQUOTE);
-			} else {
-				buffer.append(args[0]);
-			}
-			for (int i=1; i<args.length; i++) {
-				if ( args[i] instanceof String ) {
-					buffer.append(COMMA).append(BUFFEDQUOTE).append(args[i]).append(BUFFEDQUOTE);
-				} else {
-					buffer.append(COMMA).append(args[i]);
-				}
-			}
-		}
-		buffer.append(")");
-		return buffer.toString();
-	}
 
 	private static List<Object> getArguments(String command) {
 		ArrayList<Object> args = new ArrayList<Object>();
 		if ( command.equals(PARSE) ) {
-			String filename = EclipsePluginUtil.getVisiblePVSEditorFilename();
+			String filename = EclipsePluginUtil.getRelativePathOfVisiblePVSEditorFilename();
 			if ( filename != null ) {
 				args.add(filename);
 			}
 		} else if ( command.equals(TYPECHECK) ) { 
-			String filename = EclipsePluginUtil.getVisiblePVSEditorFilename();
+			String filename = EclipsePluginUtil.getRelativePathOfVisiblePVSEditorFilename();
 			if ( filename != null ) {
 				args.add(filename);
 			}			
@@ -90,42 +64,37 @@ public class PVSCommandManager {
 				result = changeContext(args);
 
 			}
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		} catch (PVSException e) {
+			EclipsePluginUtil.showMessage(e.getMessage(), SWT.ICON_ERROR);
 		}
 		
 		return result;
 	}
 	
-	private static Object parse(List<Object> args) {
-		if ( args.size() == 0 ) return null;
-		try {
-			return PVSJsonWrapper.INST().sendCommand(PARSE, args.toArray());
-		} catch (PVSException e) {
-			EclipsePluginUtil.showMessage(e.getMessage(), SWT.ICON_ERROR);
-		}
-		return null;
+	private static Object performCommandAfterVerifyingArguments(String command, List<Object> args) throws PVSException {
+		return PVSJsonWrapper.INST().sendCommand(command, args.toArray());
 	}
 	
-	private static Object typecheck(List<Object> args) {
-		if ( args.size() == 0 ) return null;
-		try {
-			return PVSJsonWrapper.INST().sendCommand(TYPECHECK, args.toArray());
-		} catch (PVSException e) {
-			EclipsePluginUtil.showMessage(e.getMessage(), SWT.ICON_ERROR);
+	private static void verifyArgumentNumbers(String command, List<Object> args, int expected) throws PVSException {
+		if ( args.size() < expected ) {
+			throw new PVSException("Expected number of arguments for " + command + " is at least " + expected);
 		}
-		return null;
 	}
 	
-	private static Object changeContext(List<Object> args) {
-		if ( args.size() == 0 ) return null;
-		try {
-			return PVSJsonWrapper.INST().sendCommand(CHANGECONTEXT, args.toArray());
-		} catch (PVSException e) {
-			EclipsePluginUtil.showMessage(e.getMessage(), SWT.ICON_ERROR);
-		}
-		return null;
+	private static Object parse(List<Object> args) throws PVSException {
+		verifyArgumentNumbers(PARSE, args, 1);
+		return performCommandAfterVerifyingArguments(PARSE, args);
+
+	}
+	
+	private static Object typecheck(List<Object> args) throws PVSException {
+		verifyArgumentNumbers(TYPECHECK, args, 1);
+		return performCommandAfterVerifyingArguments(TYPECHECK, args);
+	}
+	
+	private static Object changeContext(List<Object> args) throws PVSException {
+		verifyArgumentNumbers(CHANGECONTEXT, args, 1);
+		return performCommandAfterVerifyingArguments(CHANGECONTEXT, args);
 	}
 	
 	

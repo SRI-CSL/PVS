@@ -1,7 +1,5 @@
 package com.sri.csl.pvs.plugin.handlers;
 
-import java.lang.reflect.InvocationTargetException;
-
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
@@ -23,18 +21,7 @@ public class MessageToRunningPVSHandler extends AbstractHandler {
 		Object result = null;
 		if ( parameter.startsWith(PVS_PREFIX) ) {
 			// The item chosen is a message to be sent to a runninb PVS:
-			try {
-				result = PVSCommandManager.handleCommand(parameter.substring(PVS_PREFIX.length()));
-			} catch (IllegalArgumentException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IllegalAccessException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (InvocationTargetException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			result = PVSCommandManager.handleCommand(parameter.substring(PVS_PREFIX.length()));
 		} else {
 			// The item chosen is a command that does not need be sent to PVS (like forward-theory)
 			return handleGenericMessage(parameter);
