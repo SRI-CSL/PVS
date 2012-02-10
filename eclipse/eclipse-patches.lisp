@@ -15,7 +15,6 @@
 (defvar *pvs-json-id* nil)
 
 (defun json-error (errstr)
-  (break)
   (format nil "~%{~%\"id\": ~a, \"error\": \"~a\"~%}~%"
     *pvs-json-id*
     errstr))
