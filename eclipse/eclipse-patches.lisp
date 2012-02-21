@@ -189,3 +189,64 @@
 		       (col-begin (place obj)))
 		     "")))
 	   (error "Parse error"))))
+
+(defmethod declaration-kind ((th module))
+  'theory)
+
+(defmethod declaration-kind ((decl type-decl))
+  'type-decl)
+
+(defmethod declaration-kind ((decl formal-type-decl))
+  'formal-type-decl)
+
+(defmethod declaration-kind ((decl formal-const-decl))
+  'formal-const-decl)
+
+(defmethod declaration-kind ((decl formal-theory-decl))
+  'formal-theory-decl)
+
+(defmethod declaration-kind ((decl lib-decl))
+  'lib-decl)
+
+(defmethod declaration-kind ((decl mod-decl))
+  'theory-decl)
+
+(defmethod declaration-kind ((decl var-decl))
+  'var-decl)
+
+(defmethod declaration-kind ((decl def-decl))
+  'recursive-decl)
+
+(defmethod declaration-kind ((decl conversion-decl))
+  'conversion-decl)
+
+(defmethod declaration-kind ((decl conversionminus-decl))
+  'conversion-minus-decl)
+
+(defmethod declaration-kind ((decl auto-rewrite-decl))
+  'auto-rewrite-decl)
+
+(defmethod declaration-kind ((decl auto-rewrite-minus-decl))
+  'auto-rewrite-minus-decl)
+
+(defmethod declaration-kind (decl)
+  (class-name (class-of decl)))
+
+(defmethod decl-id ((decl datatype))
+  (id decl))
+
+(defun json-all-theories-info (&optional prelude?)
+  (let ((theory-alist nil))
+    (maphash #'(lambda (id th)
+		 (push (list (cons 'id id)
+			     (cons 'declarations
+				   (mapcar #'(lambda (d)
+					       (list (cons 'id (decl-id d))
+						     (cons 'kind (class-name (class-of d)))
+						     (cons 'place (or (place d) 'None))))
+				     (all-decls th))))
+		       theory-alist))
+	     (if prelude? *prelude* *pvs-modules*))
+    (json:encode-json theory-alist)
+    ;;theory-alist
+    ))
