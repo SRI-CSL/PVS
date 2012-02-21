@@ -250,3 +250,17 @@
     (json:encode-json theory-alist)
     ;;theory-alist
     ))
+
+(defun json-pvs-file-info (file)
+  (assert (stringp file))
+  (list (cons 'file file)
+	(mapcar #'json-pvs-theory-info (cdr (gethash file *pvs-files*)))))
+
+(defun json-pvs-theory-info (th)
+  (list (cons 'id (id th))
+	(cons 'declarations
+	      (mapcar #'(lambda (d)
+			  (list (cons 'id (decl-id d))
+				(cons 'kind (class-name (class-of d)))
+				(cons 'place (or (place d) 'None))))
+		(all-decls th)))))
