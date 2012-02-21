@@ -45,7 +45,13 @@
 (defun fully-instantiated? (obj)
   (let ((frees (free-params obj)))
     (or (null frees)
-	(let ((formals (formals-sans-usings (current-theory))))
+	(let* ((tformals (formals-sans-usings (current-theory)))
+	       (dformals (or *decl-bound-parameters*
+			     (when (current-declaration)
+			       (formal-params (current-declaration)))))
+	       (formals (if dformals
+			    (append tformals dformals)
+			    tformals)))
 	  (every #'(lambda (fp) (memq fp formals)) frees)))))
 
 ;;; Theory

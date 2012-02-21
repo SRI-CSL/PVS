@@ -656,7 +656,7 @@ bind tighter.")
     (pp* theory-name)))
 
 (defmethod pp* :around ((decl declaration))
-  (with-slots (id module formals chain? semi) decl
+  (with-slots (id formal-params module formals chain? semi) decl
     (when (or *unparse-expanded*
 	      *adt*
 	      (not (generated-by decl)))
@@ -681,6 +681,8 @@ bind tighter.")
 		 (format t "  % ~a~%" (proof-status-string decl)))
 	       ;;(pprint-indent :block 2)
 	       (write id)
+	       (when formal-params
+		 (pp-theory-formals formal-params))
 	       (pprint-indent :block 6)
 	       (pp-decl-formals formals)
 	       (write-char #\:)
@@ -2481,7 +2483,7 @@ bind tighter.")
 	(pp* declared-type)))))
 
 (defmethod pp* ((ex name))
-  (with-slots (library mod-id actuals id mappings target) ex
+  (with-slots (library mod-id actuals dactuals id mappings target) ex
     (pprint-logical-block (nil (list ex))
       (pprint-indent :block 4)
       (when library
@@ -2492,6 +2494,9 @@ bind tighter.")
 	     (when actuals
 	       (pprint-newline :fill)
 	       (pp-actuals actuals))
+	     (when dactuals
+	       (pprint-newline :fill)
+	       (pp-actuals dactuals))
 	     (when mappings
 	       (pprint-newline :fill)
 	       (pp-mappings mappings))
@@ -2512,6 +2517,9 @@ bind tighter.")
 	     (when actuals
 	       (pprint-newline :fill)
 	       (pp-actuals actuals))
+	     (when dactuals
+	       (pprint-newline :fill)
+	       (pp-actuals dactuals))
 	     (when mappings
 	       (pprint-newline :fill)
 	       (pp-mappings mappings))
