@@ -66,6 +66,7 @@
 		   (argument-list argument)
 		   argument))
 	 (res (resolve* name k args)))
+    (assert (every #'resolution? res))
     (when (and (cdr res)
 	       (resolution name)
 	       (member (resolution name) res :test #'tc-eq))
@@ -103,6 +104,9 @@
 	  (t (setf (resolutions name) res))))
   name)
 
+(defmethod formal-params ((th module))
+  nil)
+
 (defmethod typecheck* ((name modname) expected kind argument)
   (declare (ignore expected))
   (if (not (or (null kind) (eq kind 'module)))
@@ -114,6 +118,8 @@
 	      ((null res)
 	       (resolution-error name 'module argument))
 	      (t (let ((theory (declaration (car res))))
+		   (when (formal-params (declaration (car res)))
+		     (break "decl params may be a problem here"))
 		   (when (actuals name)
 		     (unless (length= (formals-sans-usings theory)
 				      (actuals name))
@@ -172,8 +178,8 @@
 		      ldecls)
 		    ldecls))
 	 (theory-aliases (get-theory-aliases name))
-	 (dreses (get-decls-resolutions decls (actuals name) (mappings name)
-					kind args)))
+	 (dreses (get-decls-resolutions decls (actuals name) (dactuals name)
+					(mappings name) kind args)))
     (nconc (get-binding-resolutions name kind args)
 	   (get-record-arg-resolutions name kind args)
 	   (get-mapping-lhs-resolutions name kind args)
@@ -188,7 +194,7 @@
 					  (formals-sans-usings th)))
 				(all-importings (current-theory)))))
 	     (let* ((thname (mk-modname (id name) (actuals name)
-				       (library name) (mappings name)))
+					(library name) (mappings name)))
 		    (theory (with-no-type-errors (get-typechecked-theory thname nil t))))
 	       (when theory
 		 (list (mk-resolution theory thname nil)))))
@@ -203,7 +209,7 @@
 	     (decls (remove-if-not #'(lambda (d)
 				       (eq (id (module d)) (id thalias)))
 		      adecls))
-	     (res (get-decls-resolutions decls (actuals thalias)
+	     (res (get-decls-resolutions decls (actuals thalias) nil
 					 (mappings thalias) kind args))
 	     (fres (remove-if #'(lambda (r)
 				  (not (tc-eq (module-instance r) thalias)))
@@ -372,12 +378,11 @@
 					     (break "No type here?")))))))
 	     names)))))
 
-(defun get-decls-resolutions (decls acts mappings kind args &optional reses)
+(defun get-decls-resolutions (decls acts dacts mappings kind args &optional reses)
   (if (null decls)
       reses
-      (let ((dreses (get-decl-resolutions (car decls) acts mappings
-					  kind args)))
-	(get-decls-resolutions (cdr decls) acts mappings kind args
+      (let ((dreses (get-decl-resolutions (car decls) acts dacts mappings kind args)))
+	(get-decls-resolutions (cdr decls) acts dacts mappings kind args
 			       (nconc dreses reses)))))
 
 
@@ -390,7 +395,7 @@
 ;;; the function domain are singletons then it is treated as a
 ;;; match.
 
-(defun get-decl-resolutions (decl acts mappings kind args)
+(defun get-decl-resolutions (decl acts dacts mappings kind args)
   (let ((dth (module decl)))
     (when (and (kind-match (kind-of decl) kind)
 	       (or (eq dth (current-theory))
@@ -459,33 +464,96 @@
 				 decl thinst mappings)
 				(make-resolution decl thinst)))
 		  thinsts)))
-	  (when (length= acts (formals-sans-usings dth))
-	    (let* ((thinsts (get-importings dth))
-		   (genthinst (find-if-not #'actuals thinsts)))
-	      (if genthinst
-		  (let* ((nacts (compatible-parameters?
-				 acts (formals-sans-usings dth)))
-			 (dthi (when nacts
-				 (mk-modname-no-tccs
-				  (id dth) nacts (library genthinst))))
-			 (*generate-tccs* 'none))
-		    (when dthi
-		      (set-type-actuals-and-maps dthi dth)
-		      #+pvsdebug (assert (fully-typed? dthi))
-		      (when (and (compatible-arguments? decl dthi args
-							(current-theory))
-				 (visible-to-mapped-tcc? decl dthi dth))
-			(list (make-resolution decl dthi)))))
-		  (let* ((modinsts (decl-args-compatible? decl args mappings))
-			 (thinsts (matching-decl-theory-instances
-				   acts dth modinsts)))
-		    (when thinsts
-		      (mapcar #'(lambda (thinst)
-				  (make-resolution decl thinst))
-			(remove-if (complement
-				    #'(lambda (thinst)
-					(visible-to-mapped-tcc? decl thinst dth)))
-			  thinsts)))))))))))
+	  (resolve-with-actuals decl acts dacts dth args mappings)))))
+
+(defun resolve-with-actuals (decl acts dacts dth args mappings)
+  ;; If dacts is there, or if decl has no formal-params, no ambiguity
+  (let ((dparams (or (formal-params decl)
+		     (and *adt* (formal-params *adt*)))))
+    (if dacts
+	(when (and dparams
+		   (length= dacts dparams)
+		   (length= acts (formals-sans-usings dth)))
+	  (let ((thinsts (resolve-theory-actuals decl acts dth args mappings))
+		(dthinsts (resolve-decl-actuals decl dacts thinsts args)))
+	    (mapcar #'(lambda (thinst)
+			(make-resolution decl thinst))
+	      dthinsts)))
+	(let ((thinsts (when (length= acts (formals-sans-usings dth))
+			 (resolve-theory-actuals decl acts dth args mappings)))
+	      (dreses (when (and (formal-params decl)
+				 (length= acts dparams))
+			(resolve-decl-actuals
+			 decl acts
+			 (if (eq dth (current-theory))
+			     (list (current-theory-name))
+			     (get-importings dth))
+			 args))))
+	  (append (mapcar #'(lambda (thinst)
+			      (make-resolution decl thinst))
+		    thinsts)
+		  dreses)))))
+
+(defun resolve-theory-actuals (decl acts dth args mappings)
+  (let* ((thinsts (get-importings dth))
+	 (genthinst (find-if-not #'actuals thinsts)))
+    (if genthinst
+	(let* ((nacts (compatible-parameters?
+		       acts (formals-sans-usings dth)))
+	       (dthi (when nacts
+		       (mk-modname-no-tccs
+			(id dth) nacts (library genthinst))))
+	       (*generate-tccs* 'none))
+	  (when dthi
+	    (set-type-actuals-and-maps dthi dth)
+	    #+pvsdebug (assert (fully-typed? dthi))
+	    (when (and (compatible-arguments? decl dthi args
+					      (current-theory))
+		       (visible-to-mapped-tcc? decl dthi dth))
+	      (list dthi))))
+	(let* ((modinsts (decl-args-compatible? decl args mappings))
+	       (thinsts (matching-decl-theory-instances
+			 acts dth modinsts)))
+	  (when thinsts
+	    (remove-if (complement
+			#'(lambda (thinst)
+			    (visible-to-mapped-tcc? decl thinst dth)))
+	      thinsts))))))
+
+(defun resolve-decl-actuals (decl dacts thinsts args &optional reses)
+  (if (null thinsts)
+      (nreverse reses)
+      (let ((reses1 (resolve-decl-actuals* decl dacts (car thinsts) args)))
+	(resolve-decl-actuals decl dacts (cdr thinsts) args
+			      (nconc reses1 reses)))))
+
+(defmethod resolve-decl-actuals* ((decl typed-declaration) dacts thinst args)
+  (let* ((dtype (subst-mod-params (type decl) thinst))
+	 (sdtype (subst-types dtype
+			      (pairlis (formal-params decl)
+				       (mapcar #'type-value dacts))))
+	 (doms (domain* sdtype))
+	 (margs (if (and (singleton? doms)
+			 (not (singleton? args)))
+		    (let ((atup (mk-arg-tuple-expr* args)))
+		      (setf (types atup)
+			    (all-possible-tupletypes args))
+		      (list atup))
+		    args)))
+    (when (compatible-args? decl margs (types (car doms)))
+      ;; Note that we're using the dactuals of the module-instance
+      ;; in order to keep from having another resolution slot
+      (list (make-resolution decl (copy thinst 'dactuals dacts) sdtype)))))
+
+(defmethod resolve-decl-actuals* ((decl type-decl) dacts thinst args)
+  (let* ((dtype (if (dactuals (type-value decl))
+		    (type-value decl)
+		    (copy (type-value decl) 'dactuals dacts)))
+	 (stype (subst-mod-params dtype thinst))
+	 (sdtype (subst-types stype
+			      (pairlis (formal-params decl)
+				       (mapcar #'type-value dacts)))))
+    (list (make-resolution decl (copy thinst 'dactuals dacts) sdtype))))
 
 (defun visible-to-mapped-tcc? (decl thinst theory)
   (let ((cdecl (current-declaration)))
@@ -1403,7 +1471,9 @@
 		 (progn (push (list :arg-length decl)
 			      *resolve-error-info*)
 			nil))
-	     (if (not (fully-instantiated? modinst))
+	     (if (or (not (fully-instantiated? modinst))
+		     (and (formal-params decl)
+			  (not (fully-instantiated? dtypes))))
 		 (compatible-uninstantiated? decl modinst dtypes args)
 		 (let* ((*generate-tccs* 'none)
 			(*smp-include-actuals* t)
@@ -1520,31 +1590,40 @@
   (let ((bindings (find-compatible-bindings
 		   args
 		   dtypes
-		   (mapcar #'list (formals-sans-usings (module decl))))))
-    (or (create-compatible-modinsts modinst bindings nil)
+		   (nconc (mapcar #'list (formals-sans-usings (module decl)))
+			  (mapcar #'list (formal-params decl))))))
+    (or (create-compatible-modinsts modinst decl bindings nil)
 	(progn (push (list :no-instantiation decl)
 		     *resolve-error-info*)
 	       nil))))
+
+(defmethod formal-params ((decl binding))
+  nil)
 
 (defmethod compatible-uninstantiated? ((decl type-decl) modinst dtypes args)
   (let ((bindings (find-compatible-bindings
 		   args
 		   dtypes
-		   (mapcar #'list
-		     (formals-sans-usings (get-theory modinst))))))
-    (create-compatible-modinsts modinst bindings nil)))
+		   (nconc (mapcar #'list (formals-sans-usings (module decl)))
+			  (mapcar #'list (formal-params decl))))))
+    (create-compatible-modinsts modinst decl bindings nil)))
 
-(defun create-compatible-modinsts (modinst bindings result)
+(defun create-compatible-modinsts (modinst decl bindings result)
   (if (null bindings)
       result
       (create-compatible-modinsts
-       modinst (cdr bindings)
+       modinst decl (cdr bindings)
        (if (every #'cdr (car bindings))
-	   (cons (copy modinst
-		   'actuals (mapcar #'(lambda (a)
-					(mk-res-actual (cdr a) modinst))
-			      (car bindings)))
-		 result)
+	   (let* ((dbindings (member (car (formal-params decl)) (car bindings)
+				     :key #'car))
+		  (mbindings (ldiff (car bindings) dbindings)))
+	     (cons (copy modinst
+		     'actuals (mapcar #'(lambda (a)
+					  (mk-res-actual (cdr a) modinst))
+				mbindings)
+		     'dactuals (mapcar #'(lambda (a) (mk-actual (cdr a)))
+				 dbindings))
+		   result))
 	   (cons (copy modinst) result)))))
 
 (defun mk-res-actual (expr modinst)

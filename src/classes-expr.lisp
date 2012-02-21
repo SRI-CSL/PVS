@@ -74,6 +74,7 @@
   (mod-id :parse t :restore-as nil)
   (library :parse t :restore-as nil)
   (actuals :parse t)
+  (dactuals :parse t)
   (id :parse t :restore-as nil)
   (mappings :parse t)
   (target :parse t)

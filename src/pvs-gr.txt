@@ -187,10 +187,11 @@ assuming ::= {importing [';']}
 		 <conversion-elt(conversion,[nosemic()|semic()])>
 	   | {auto-rewrite [';']}
 		 <auto-rewrite-elt(auto-rewrite,[nosemic()|semic()])>
-	   | {['_DECL']^d pidops [theory-formals]^f pdformals* ':' assuming-decl [';']^s}
+	   | {['_DECL']^d pidops [theory-formals]^f [pdformals+]
+                          ':' assuming-decl [';']^s}
 		<assuming([no-decl()|decl()]^d,pidops,
 		          [no-theory-formals()|theory-formals]^f,
-		          pdf(star),assuming-decl,
+		          [noformals()|pdf(plus)],assuming-decl,
                           [nosemic()|semic()]^s,[noatdecl()|atdecl()]^d)>
 	   ;
 
@@ -588,7 +589,7 @@ typed-ids ::= {idops [':' type-expr]^t ['|' expr]^e}
 %% 	       [nomap()|mappings]^m, [notgt()|modname]^t, modnames(modname*))>;
 
 name ::= {[{id '@'}]^L idop [actuals] [mappings]^m [':->' modname]^t ['.' pidop]^i}
-	 <name(idop,[nolib()|id]^L,[noacts()|actuals],[nomod()|pidop]^i,
+	 <name(idop,[nolib()|id]^L,[noactuals()|actuals],[nomod()|pidop]^i,
 	       [nomap()|mappings]^m, [notgt()|modname]^t)>;
 
 unique-name ::= {name [':' {'TYPE'|type-expr|formula-name}]}
@@ -617,7 +618,9 @@ opsym ::= '+' <`+()> | '-' <`-()> | '*' <`*()> | '/' <`\/()>
         | '{||}' <`\{\|\|\}()>
 	;
 
-actuals ::= {'[' {actual ++ ','} ']'} <actuals(actual+)>;
+actuals ::= {actuals1^1 [actuals1]^2} <[actuals1^1|actuals2(actuals1^1, actuals1)]^2>;
+
+actuals1 ::= {'[' {actual ++ ','} ']'} <actuals(actual+)>;
 
 % mappings are not really allowed, but we want to give a reasonable error
 % see xt-actual in parse.lisp

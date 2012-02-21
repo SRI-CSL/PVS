@@ -132,18 +132,20 @@
     :type type
     :declared-type declared-type))
 
-(defun mk-const-decl (id type &optional definition formals dtype)
+(defun mk-const-decl (id type &optional definition formals dtype dparams)
   (make-instance 'const-decl
     :id id
+    :formal-params dparams
     :formals (if (every@ #'consp formals) formals (list formals))
     :declared-type (or dtype type)
     :type type
     :definition definition))
 
-(defun mk-adt-constructor-decl (id type &optional num)
+(defun mk-adt-constructor-decl (id type &optional num fdecls)
   (make-instance 'adt-constructor-decl
     :id id
     :declared-type type
+    :formal-params fdecls
     :ordnum num))
 
 (defun mk-adt-recognizer-decl (id type &optional num)
@@ -152,10 +154,11 @@
     :declared-type type
     :ordnum num))
 
-(defun mk-adt-accessor-decl (id type adt acc-decls)
+(defun mk-adt-accessor-decl (id type adt acc-decls &optional fdecls)
   (if (cdr acc-decls)
       (make-instance 'shared-adt-accessor-decl
 	:id id
+	:formal-params fdecls
 	:declared-type type
 	:constructors (mapcar #'(lambda (d)
 				  (id (find d (constructors adt)
@@ -163,6 +166,7 @@
 			acc-decls))
       (make-instance 'adt-accessor-decl
 	:id id
+	:formal-params fdecls
 	:declared-type type)))
 
 (defun mk-adt-def-decl (id type &optional definition formals dtype place)

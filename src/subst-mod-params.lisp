@@ -147,11 +147,11 @@
 						 (cdr elt)
 						 (mk-actual (cdr elt)))))))
 		     alist))
-	(theories (delete *current-theory*
-			  (delete-duplicates
-			   (mapcar #'(lambda (elt) (module (car elt)))
-			     alist))))
+	(theories (delete-duplicates
+		   (mapcar #'(lambda (elt) (module (car elt)))
+		     alist)))
 	(sterm term))
+    (break)
     (dolist (th theories)
       (let* ((lib-id (get-lib-id th))
 	     (thname

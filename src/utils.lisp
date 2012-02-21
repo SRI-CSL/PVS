@@ -2960,6 +2960,11 @@
     (or (cdr (assoc id *pvs-operators*))
 	id)))
 
+(defmethod dactuals ((ex number-expr))
+  nil)
+
+(defmethod formal-params ((imp importing))
+  nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;NSH(9.2.93) pseudo-normalize uses assert-if to simplify the given

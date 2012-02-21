@@ -116,7 +116,7 @@ generated")
 	       (map-lhash #'(lambda (th thinsts)
 			      (unless (from-prelude? th)
 				(push (cons th thinsts) imps)))
-			  (using-hash *current-context*))
+			  (current-using-hash))
 	       imps))
        (setf (saved-context *current-theory*) *current-context*)
        *current-theory*)))
@@ -144,17 +144,24 @@ generated")
 	(typecheck-top-level-adt adt))))
 
 (defun typecheck-inline-adt (adt)
-  (when (assuming adt)
-    (type-error (car (assuming adt))
-      "Assumings are not allowed for in-line (co)datatypes"))
+  ;; (when (assuming adt)
+  ;;   (type-error (car (assuming adt))
+  ;;     "Assumings are not allowed for in-line (co)datatypes"))
   (let ((*generating-adt* adt)
-	(*last-adt-decl* (declaration *current-context*)))
+	(*last-adt-decl* (current-declaration)))
     (generate-inline-adt adt))
   (put-decl adt)
   (setf (typechecked? adt) t))
 
 (defun generate-inline-adt (adt)
-  (generate-adt-sections adt))
+  (cond ((formal-params adt)
+	  (typecheck* (formal-params adt) nil nil nil)
+	  (dolist (fdecl (formal-params adt))
+	    (set-visibility fdecl)
+	    (setf (module fdecl) (current-theory))
+	    (setf (associated-decl fdecl) adt))
+	  (generate-adt-sections adt))
+	 (t (generate-adt-sections adt))))
 
 (defun typecheck-top-level-adt (adt)
   (tcdebug "~%Typecheck (CO)DATATYPE ~a" (id adt))
@@ -836,9 +843,25 @@ generated")
 	    (generate-adt-constructor c))
 	(constructors adt)))
 
+(defun new-formal-params ()
+  (when (formal-params *adt*)
+    (let* ((fdecls (mapcar #'(lambda (fp)
+			       (copy fp
+				 'typechecked? nil
+				 'type nil
+				 'type-value nil
+				 'associated-decl nil))
+		     (formal-params *adt*))))
+      (typecheck* fdecls nil nil nil)
+      fdecls)))
+
 (defun generate-adt-constructor (constr)
-  (let* ((ftype (generate-adt-constructor-type constr))
-	 (cdecl (mk-adt-constructor-decl (id constr) ftype (ordnum constr)))
+  (let* ((fdecls (new-formal-params))
+	 (ftype (if fdecls
+		    (with-added-decls fdecls
+				      (generate-adt-constructor-type constr))
+		    (generate-adt-constructor-type constr)))
+	 (cdecl (mk-adt-constructor-decl (id constr) ftype (ordnum constr) fdecls))
 	 (*adt-decl* constr)
 	 (*generate-tccs* 'none))
     (typecheck-adt-decl cdecl)
@@ -935,6 +958,7 @@ generated")
       (let ((corr-act (find-corresponding-acc-decl
 		       (car accs) common-accessors acc-decls)))
 	(assert corr-act)
+	(setf (accessor-decl (car accs)) corr-act)
 	(find-corresponding-acc-decls
 	 (cdr accs)
 	 common-accessors
@@ -953,17 +977,20 @@ generated")
 	(find-corresponding-acc-decl* acc (cdr common-accessors)))))
 
 (defun generate-accessor (entry adt)
-  ;; entry is of the form (((adtdecl range-type deps) adtdecl ...)
-  ;;                       ((adtdecl range-type deps) adtdecl ...) ...)
+  ;; entry is of the form (((adtdecl range-type deps dparams) adtdecl ...)
+  ;;                       ((adtdecl range-type deps dparams) adtdecl ...) ...)
   ;; where each element reflects a different, but common, range type.
   (let* ((domain (get-accessor-domain-type entry adt))
 	 (range (get-accessor-range-type entry domain adt))
-	 (acc-type (make-accessor-funtype domain range (caddr (caar entry))))
+	 (dparams (cadddr (caar entry)))
+	 (acc-type (with-added-decls dparams
+		     (make-accessor-funtype domain range (caddr (caar entry)))))
 	 (acc-decl (mk-adt-accessor-decl (id (caaar entry)) acc-type
-					 adt (cdar entry))))
+					 adt (cdar entry) dparams)))
     (typecheck-adt-decl acc-decl)
     (when (cddr (car entry))
       (make-common-accessor-subtype-judgements (cdar entry) domain adt))
+    (assert (or (null (formal-params *adt*)) (formal-params acc-decl)))
     acc-decl))
 
 (defun make-common-accessor-subtype-judgements (adtdecls domain adt)
@@ -983,9 +1010,10 @@ generated")
 	(typecheck-adt-decl jdecl)
 	(put-decl jdecl)))))
 
-(defun make-accessor-funtype (domain range deps)
+(defun make-accessor-funtype (domain range deps fdecls)
   (if deps
-      (let* ((tdom (typecheck* (copy domain) nil nil nil))
+      (let* (
+	     (tdom (typecheck* (copy domain) nil nil nil))
 	     (dtype (if (dep-binding? tdom)
 			tdom
 			(mk-dep-binding (make-new-variable '|d|
@@ -1170,45 +1198,53 @@ generated")
     (dolist (c (constructors adt))
       (let ((*bound-variables* nil))
 	(dolist (a (arguments c))
-	  (let* ((copy-type (pc-parse (unparse (declared-type a) :string t)
+	  (let* ((fdecls (new-formal-params))
+		 (copy-type (pc-parse (unparse (declared-type a) :string t)
 			      'type-expr))
-		 (type (with-no-type-errors (typecheck copy-type))))
+		 (type (with-no-type-errors
+			(with-added-decls fdecls (typecheck copy-type)))))
 	    (assert type)
 	    (copy-lex copy-type (declared-type a))
 	    (copy-lex type (declared-type a))
-	    (push (typecheck* (mk-dep-binding (id a) copy-type type)
-			      nil nil nil)
+	    (push (with-added-decls fdecls
+		    (let ((*decl-bound-parameters* fdecls))
+		      (typecheck* (mk-dep-binding (id a) copy-type type)
+				  nil nil nil)))
 		  *bound-variables*)
-	    (let* ((arg&type (list a type
-				   (sort-freevars (freevars type))))
-		   (entry (assoc arg&type common-accessors
-				 :test #'compatible-arg&type
+	    (let* ((accinfo (list a type
+				(sort-freevars (freevars type))
+				fdecls))
+		   (entry (assoc accinfo common-accessors
+				 :test #'compatible-accinfo
 				 :key #'car)))
 	      (if entry
-		  (let ((subentry (assoc arg&type entry
-					 :test #'same-arg&type)))
+		  (let ((subentry (assoc accinfo entry
+					 :test #'same-accinfo)))
 		    (if subentry
 			(nconc subentry (list a))
-			(nconc entry (list (list arg&type a)))))
+			(nconc entry (list (list accinfo a)))))
 		  (setq common-accessors
 			(nconc common-accessors
-			       (list (list (list arg&type a)))))))))))
+			       (list (list (list accinfo a)))))))))))
     common-accessors))
 
-(defun compatible-arg&type (a&t1 a&t2)
-  (and (same-id (car a&t1) (car a&t2))
+;;; accinfo is (accessor type freevars declparams)
+(defun compatible-accinfo (ai1 ai2)
+  (and (same-id (car ai1) (car ai2))
+       (progn (when (formal-params *adt*) (break "compatible-accinfo")) t)
        (multiple-value-bind (bindings mismatch?)
-	   (collect-same-arg&type-bindings (caddr a&t1) (caddr a&t2))
+	   (collect-same-accinfo-bindings (caddr ai1) (caddr ai2))
 	 (unless mismatch?
-	   (strict-compatible?* (cadr a&t1) (cadr a&t2) bindings)))))
+	   (strict-compatible?* (cadr ai1) (cadr ai2) bindings)))))
 
-(defun same-arg&type (a&t1 a&t2)
-  (and (same-id (car a&t1) (car a&t2))
-       (let ((bindings (collect-same-arg&type-bindings
-			(caddr a&t1) (caddr a&t2))))
-	 (tc-eq-with-bindings (cadr a&t1) (cadr a&t2) bindings))))
+(defun same-accinfo (ai1 ai2)
+  (and (same-id (car ai1) (car ai2))
+       (progn (when (formal-params *adt*) (break "same-accinfo")) t)
+       (let ((bindings (collect-same-accinfo-bindings
+			(caddr ai1) (caddr ai2))))
+	 (tc-eq-with-bindings (cadr ai1) (cadr ai2) bindings))))
 
-(defun collect-same-arg&type-bindings (deps1 deps2 &optional bindings)
+(defun collect-same-accinfo-bindings (deps1 deps2 &optional bindings)
   ;; bindings are sorted already
   (if (null deps1)
       (if (null deps2)
@@ -1218,7 +1254,7 @@ generated")
 	       (same-id (car deps1) (car deps2))
 	       (tc-eq-with-bindings (type (car deps1)) (type (car deps2))
 				    bindings))
-	  (collect-same-arg&type-bindings
+	  (collect-same-accinfo-bindings
 	   (cdr deps1) (cdr deps2)
 	   (acons (declaration (car deps1)) (declaration (car deps2))
 		  bindings))
@@ -1238,13 +1274,16 @@ generated")
 
 (defun generate-adt-uninterpreted-ord-function (adt)
   (let ((len (length (constructors adt)))
-	(fname (makesym "~a_ord" (id adt))))
+	(fname (makesym "~a_ord" (id adt)))
+	(dparams (new-formal-params)))
+    (break)
     (typecheck-adt-decl
      (mk-const-decl fname
        (mk-funtype (mk-type-name (id adt))
 		   (make-instance 'type-application
 		     :type (mk-type-name '|upto|)
-		     :parameters (list (mk-number-expr (1- len)))))))))
+		     :parameters (list (mk-number-expr (1- len)))))
+       nil nil nil dparams))))
 
 (defun generate-adt-uninterpreted-ord-axiom (adt)
   (let* ((fname (makesym "~a_ord" (id adt))))
@@ -1333,10 +1372,11 @@ generated")
 
 (defun check-adt-constructor-types (constructors)
   (when constructors
-    (check-adt-accessor-types (arguments (car constructors)))
+    (check-adt-accessor-types (arguments (car constructors))
+			      (acc-decls (car constructors)))
     (check-adt-constructor-types (cdr constructors))))
 
-(defun check-adt-accessor-types (accessors &optional result)
+(defun check-adt-accessor-types (accessors acc-decls &optional result)
   (if (null accessors)
       (nreverse result)
       (let* ((a (car accessors))
@@ -1345,7 +1385,9 @@ generated")
 			     'type-expr)))
 	     (*adt-decl* (declared-type a)))
 	(copy-lex (declared-type bd) (declared-type a))
-	(typecheck* bd nil nil nil)
+	(with-added-decls (formal-params (accessor-decl a))
+	  (let ((*decl-bound-parameters* (formal-params (accessor-decl a))))
+	    (typecheck* bd nil nil nil)))
 	(setf (type a) (type bd)
 	      (bind-decl a) bd)
 	(let ((*bound-variables* (cons bd *bound-variables*)))
@@ -4525,7 +4567,7 @@ generated")
 
 
 (defun typecheck-adt-decl (decl &optional (add? t) (reduce? t))
-  (setf (declaration *current-context*) decl)
+  (setf (current-declaration) decl)
   (when (typep decl '(and declaration (not formal-decl)))
     (setf (generated-by decl) (id *adt*)))
   (when (typep *adt* 'inline-recursive-type)
@@ -4540,8 +4582,15 @@ generated")
     (when *last-adt-decl*
       (setq *last-adt-decl* decl)))
   (typecase decl
-    (declaration (setf (module decl) (theory *current-context*))
-		 (typecheck* decl nil nil nil)
+    (declaration (setf (module decl) (current-theory))
+		 (unless (or (null (formal-params *adt*))
+			     (formal-params decl))
+		   (setf (formal-params decl)
+			 (mapcar #'(lambda (fp)
+				     (copy fp 'associated-decl decl))
+			   (formal-params *adt*))))
+		 (with-added-decls (formal-params decl)
+				   (typecheck* decl nil nil nil))
 		 (setf (typechecked? decl) t)
 		 (unless (or (eq add? 'no)
 			     (and (typep decl 'type-def-decl)
@@ -5316,3 +5365,6 @@ function, tuple, or record type")
 			(find-adt-subtypes* (declared-type ex) adt-type)
 			nil)))
 	     type))
+
+(defmethod formal-params ((adt recursive-type))
+  nil)
