@@ -213,6 +213,7 @@
   subtypes)
 
 (defcl inline-recursive-type (recursive-type)
+  (formal-params :parse t)
   module
   (generated :restore-as nil)
   (typechecked? :restore-as nil))
@@ -345,6 +346,7 @@
 (defcl declaration (syntax)
   (newline-comment :restore-as nil)
   (id :type (or symbol number) :parse t :restore-as nil)
+  (formal-params :type list :parse t)
   (formals :type list :parse t)
   (module :restore-as nil)
   (refers-to :type list :restore-as nil)
@@ -428,7 +430,9 @@
 (defcl formal-decl (declaration)
   (dependent? :restore-as nil))
 
-(defcl formal-type-decl (formal-decl type-decl typed-declaration))
+(defcl formal-type-decl (formal-decl type-decl typed-declaration)
+  associated-decl ; set if this is for a declaration parameter
+  )
 
 (defcl formal-nonempty-type-decl (formal-type-decl nonempty-type-decl))
 
@@ -454,7 +458,8 @@
   other-mappings)
 
 (defcl adtdecl (typed-declaration)
-  (bind-decl :documentation "Keeps a corresponding bind-decl"))
+  (bind-decl :documentation "Keeps a corresponding bind-decl")
+  (accessor-decl :documentation "The corresponding accessor-decl - may be shared"))
 
 (defcl lib-decl (declaration)
   (lib-string :parse t :restore-as nil)

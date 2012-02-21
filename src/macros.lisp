@@ -459,6 +459,26 @@
 	   (setf (get-declarations (id ,gdecl) (current-declarations-hash))
 		 ,gdecl)))))
 
+(defmacro with-added-decls (decls &rest body)
+  (let ((gdecls (gensym))
+	(gdecl (gensym))
+	(there (gensym)))
+    `(let ((,gdecls ,decls)
+	   (,there nil))
+       (if (null ,gdecls)
+	   (progn ,@body)
+	   (unwind-protect
+	       (progn (dolist (,gdecl ,gdecls)
+			(if (memq ,gdecl (get-declarations (id ,gdecl)))
+			    (push ,gdecl ,there)
+			    (setf (get-declarations (id ,gdecl)
+						    (current-declarations-hash))
+				  ,gdecl)))
+		      ,@body)
+	     (dolist (,gdecl ,gdecls)
+	       (unless (memq ,gdecl ,there)
+		 (delete-declaration ,gdecl))))))))
+
 ;; Only used by add-decl, destructively modifies the context
 (defun delete-declaration (decl &optional decl-hash)
   (assert (or decl-hash *current-context*))

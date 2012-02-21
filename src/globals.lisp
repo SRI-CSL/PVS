@@ -298,8 +298,15 @@ collected in *tccforms*")
 (defvar *expressions-seen-for-tccs* nil)
 
 (defvar *full-conversion-type* nil)
+(defvar *decl-params* nil)
 (defvar *allow-free-variables* nil)
 (defvar *bound-variables* nil)
+
+;;; *decl-bound-parameters* is used in fully-instantiated?
+;;; Normally the current-declaration is used, but, e.g., in generating
+;;; datatype accessor declarations the formals are needed before the
+;;; declaration is available.
+(defvar *decl-bound-parameters* nil)
 (defvar *typecheck-args* nil)
 (defvar *tcc-conditions* nil)
 ;;; We need to have extra conditions on the recursive function calls, but

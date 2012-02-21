@@ -279,6 +279,7 @@
 	    (subst-mod-params res
 			      (car (create-compatible-modinsts
 				    (module-instance res)
+				    (declaration res)
 				    (list bindings)
 				    nil))
 			      theory)
