@@ -62,7 +62,8 @@
 		    (format t "~a" errstr)
 		    (format t "~%{~%\"id\": ~a, \"result\": \"~a\"~%}~%"
 		      *pvs-json-id*
-		      (protect-emacs-output result))))))
+		      (with-output-to-string (*standard-output*)
+			(json:encode-json result)))))))
 	(multiple-value-bind (cmd errstr)
 	    (json-check-form cmdstr "command")
 	  (if errstr
@@ -254,7 +255,8 @@
 (defun json-pvs-file-info (file)
   (assert (stringp file))
   (list (cons 'file file)
-	(mapcar #'json-pvs-theory-info (cdr (gethash file *pvs-files*)))))
+	(cons 'theories
+	      (mapcar #'json-pvs-theory-info (cdr (gethash file *pvs-files*))))))
 
 (defun json-pvs-theory-info (th)
   (list (cons 'id (id th))
