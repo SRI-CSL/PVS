@@ -52,6 +52,7 @@ public class StartPVSHandler extends AbstractHandler {
 	 * from the application context.
 	 */
 	public Object execute(ExecutionEvent event) throws ExecutionException {
+		log.fine("Message to start PVS was received");
 		window = HandlerUtil.getActiveWorkbenchWindowChecked(event);
 		if ( PVSExecutionManager.isPVSRunning() ) {
 			MessageDialog.openInformation(window.getShell(), "PVS Running", "An instance of PVS is already running.");
@@ -115,6 +116,7 @@ class PVSStreamListener implements IStreamListener {
 	private static String NL = "\n", LCB = "{", RCB = "}";
 	StringBuffer jsonBuffer;
 	boolean jsonStarted = false;
+	protected static Logger log = Logger.getLogger(PVSStreamListener.class.getName());
 	
 	public PVSStreamListener(int lispType) {
 		switch ( lispType ) {
@@ -135,6 +137,7 @@ class PVSStreamListener implements IStreamListener {
 	
 	@Override
 	public void streamAppended(String text, IStreamMonitor monitor) {
+		log.log(Level.FINER, "Text was received: {0}", text);
 		synchronized ( jsonBuffer ) {
 			String[] lines = text.split(NL);
 			for (String line: lines) {

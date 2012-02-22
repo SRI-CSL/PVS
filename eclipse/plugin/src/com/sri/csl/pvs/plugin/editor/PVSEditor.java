@@ -84,7 +84,7 @@ public class PVSEditor extends TextEditor {
 		String location = path.toOSString();
 
 		try {
-			Object result = PVSJsonWrapper.INST().sendCommand("json-all-theories-info", "\"" + EclipsePluginUtil.getFilenameWithoutExtension(location) + "\"");
+			Object result = PVSJsonWrapper.INST().sendCommand("json-all-theories-info", EclipsePluginUtil.getFilenameWithoutExtension(location));
 			log.log(Level.INFO, "Theories: {0}", result);
 		} catch (PVSException e) {
 			e.printStackTrace();
