@@ -33,7 +33,8 @@ public class MessageToRunningPVSHandler extends AbstractHandler {
 		return result;
 	}
 	
-	private Object handleGenericMessage(String parameter) {		
+	private Object handleGenericMessage(String parameter) {
+		log.log(Level.FINE, "Generic message received: {0}", parameter);
 		return null;
 	}
 

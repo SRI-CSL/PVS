@@ -71,6 +71,7 @@ public class StartPVSHandler extends AbstractHandler {
 
 					@Override
 					public void onMessageReceived(String message) {
+						log.log(Level.FINE, "Message received: {0}", message);
 						try {
 							outStream.write(message);
 						} catch (IOException e) {
@@ -99,6 +100,7 @@ public class StartPVSHandler extends AbstractHandler {
 				
 				
 			} catch (IOException e) {
+				log.severe("Failed to start PVS");
 				MessageDialog.openInformation(window.getShell(), "Error", "Failed to start PVS");
 			}
 		}

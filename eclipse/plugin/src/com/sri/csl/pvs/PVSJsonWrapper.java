@@ -109,7 +109,9 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 				throw new PVSException(e.getMessage());
 			}
 		}
-		throw new PVSException("No response from PVS after " + MAX + " seconds");
+		String errM = "No response from PVS after " + MAX + " seconds";
+		log.warning(errM);
+		throw new PVSException(errM);
 	}
 	
 	@Override

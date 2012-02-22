@@ -27,12 +27,12 @@ public class PVSCommandManager {
 	
 	
 	public static Object handleCommand(String command) {
+		log.log(Level.INFO, "Handling command: {0}", command);
 		if ( !PVSExecutionManager.isPVSRunning() ) {
 			EclipsePluginUtil.showMessage("PVS is not running", SWT.ICON_ERROR);
 			log.warning("PVS is not running");
 			return null;
 		}
-		log.log(Level.INFO, "PVS Command to run: {0}", command);
 		return execute(command, getArguments(command));
 	}
 
