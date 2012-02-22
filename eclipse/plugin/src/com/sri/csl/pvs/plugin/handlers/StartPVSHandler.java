@@ -3,6 +3,8 @@ package com.sri.csl.pvs.plugin.handlers;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 import org.eclipse.core.commands.AbstractHandler;
@@ -37,6 +39,7 @@ import com.sri.csl.pvs.plugin.console.PVSConsole;
 public class StartPVSHandler extends AbstractHandler {
 	private IOConsoleKeyboardReader keyboardReader;
 	private IWorkbenchWindow window;
+	protected static Logger log = Logger.getLogger(StartPVSHandler.class.getName());
 	
 	/**
 	 * The constructor.
@@ -77,7 +80,7 @@ public class StartPVSHandler extends AbstractHandler {
 
 					@Override
 					public void onMessageReceived(JSONObject message) {
-						System.out.println("JSON received: " + message);
+						log.log(Level.INFO, "JSON received: {0}", message);
 						PVSJsonWrapper.INST().addToJSONQueue(message);
 					}
 					

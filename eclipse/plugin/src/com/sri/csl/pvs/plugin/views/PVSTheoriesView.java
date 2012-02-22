@@ -1,8 +1,8 @@
 package com.sri.csl.pvs.plugin.views;
 
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuListener;
@@ -71,7 +71,7 @@ public class PVSTheoriesView extends ViewPart {
 	private Action action1;
 	private Action action2;
 	private Action doubleClickAction;
-
+	protected static Logger log = Logger.getLogger(PVSTheoriesView.class.getName());
 
 	
 	
@@ -87,10 +87,9 @@ public class PVSTheoriesView extends ViewPart {
 	 
 	class ViewContentProvider implements ITreeContentProvider {
 		
-		@SuppressWarnings("unchecked")
 		public void inputChanged(Viewer v, Object oldInput, Object newInput) {
 			if ( newInput != null ) {
-				System.out.println("newInput: " + newInput);
+				log.log(Level.FINE, "New input received: {0}", newInput);
 				if ( newInput instanceof TreeNode ) {
 					invisibleRoot = (TreeNode)newInput;
 				}
@@ -169,7 +168,7 @@ public class PVSTheoriesView extends ViewPart {
 
 			@Override
 			public void propertyChange(PropertyChangeEvent event) {
-				System.out.println("Event: " + event);
+				log.log(Level.FINE, "Event received: {0}", event);
 			}
 			
 		});

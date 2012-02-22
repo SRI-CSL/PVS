@@ -1,11 +1,14 @@
 package com.sri.csl.pvs.plugin.editor;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
@@ -17,8 +20,11 @@ import org.eclipse.ui.editors.text.TextEditor;
 import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.texteditor.IElementStateListener;
 
+import com.sri.csl.pvs.PVSException;
+import com.sri.csl.pvs.PVSJsonWrapper;
 import com.sri.csl.pvs.declarations.PVSFormula;
 import com.sri.csl.pvs.declarations.PVSTheory;
+import com.sri.csl.pvs.plugin.misc.EclipsePluginUtil;
 import com.sri.csl.pvs.plugin.views.PVSTheoriesView;
 import com.sri.csl.pvs.plugin.views.TreeNode;
 
@@ -27,6 +33,7 @@ public class PVSEditor extends TextEditor {
 	private IFile file;
 	private boolean modelGenerated;
 	private TreeNode treeModel = new TreeNode("");
+	protected static Logger log = Logger.getLogger(PVSEditor.class.getName());
 	
 	public PVSEditor() {
 		super();
@@ -73,13 +80,20 @@ public class PVSEditor extends TextEditor {
 	
 	private ArrayList<PVSTheory> getTheories() {
 		ArrayList<PVSTheory> theories = new ArrayList<PVSTheory>();
-		//TODO: This should be linked to actual PVS and Sam's code
+		IPath path = getFile().getProjectRelativePath();
+		String location = path.toOSString();
+
+		try {
+			Object result = PVSJsonWrapper.INST().sendCommand("json-all-theories-info", "\"" + EclipsePluginUtil.getFilenameWithoutExtension(location) + "\"");
+			log.log(Level.INFO, "Theories: {0}", result);
+		} catch (PVSException e) {
+			e.printStackTrace();
+		}
+		
 		PVSTheory d1 = new PVSTheory(3, "dummy 1");
 		d1.addFormula(new PVSFormula("Good Formula"));
 		theories.add(d1);
 
-		IPath path = getFile().getFullPath();
-		String location = path.toOSString();
 		PVSTheory d2 = new PVSTheory(3, location);
 		theories.add(d2);
 		

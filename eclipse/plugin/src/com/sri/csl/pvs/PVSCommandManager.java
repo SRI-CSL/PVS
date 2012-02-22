@@ -2,6 +2,8 @@ package com.sri.csl.pvs;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.eclipse.swt.SWT;
 
@@ -21,14 +23,16 @@ public class PVSCommandManager {
 	private static String PARSE = "parse";
 	private static String TYPECHECK = "typecheck-file";
 	private static String CHANGECONTEXT = "change-context";
+	protected static Logger log = Logger.getLogger(PVSCommandManager.class.getName());
 	
 	
 	public static Object handleCommand(String command) {
 		if ( !PVSExecutionManager.isPVSRunning() ) {
 			EclipsePluginUtil.showMessage("PVS is not running", SWT.ICON_ERROR);
+			log.warning("PVS is not running");
 			return null;
 		}
-		System.out.println("PVS Command to run: " + command);
+		log.log(Level.INFO, "PVS Command to run: {0}", command);
 		return execute(command, getArguments(command));
 	}
 
@@ -42,7 +46,7 @@ public class PVSCommandManager {
 		} else if ( command.equals(TYPECHECK) ) { 
 			String filename = EclipsePluginUtil.getRelativePathOfVisiblePVSEditorFilename();
 			if ( filename != null ) {
-				args.add(filename);
+				args.add(EclipsePluginUtil.getFilenameWithoutExtension(filename));
 			}			
 		} else if ( command.equals(CHANGECONTEXT) ) {
 			String newLocation = EclipsePluginUtil.selectDirectory("Please select a new directory:");

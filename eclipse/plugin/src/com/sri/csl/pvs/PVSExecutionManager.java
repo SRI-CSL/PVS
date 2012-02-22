@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.logging.Logger;
 
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunchManager;
@@ -20,6 +21,9 @@ import com.sri.csl.pvs.plugin.Activator;
 import com.sri.csl.pvs.plugin.preferences.PreferenceConstants;
 
 public class PVSExecutionManager {
+	protected static Logger log = Logger.getLogger(PVSExecutionManager.class.getName());
+	
+	
 	public interface PVSRespondListener {
 		public void onMessageReceived(String message);
 		public void onMessageReceived(JSONObject message);

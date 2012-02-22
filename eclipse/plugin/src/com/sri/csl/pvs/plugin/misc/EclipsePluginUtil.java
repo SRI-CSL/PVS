@@ -85,5 +85,8 @@ public class EclipsePluginUtil {
 		return box.open();
 	}
 	
+	public static String getFilenameWithoutExtension(String filename) {
+		return filename.substring(0,filename.lastIndexOf('.'));
+	}
 	
 }

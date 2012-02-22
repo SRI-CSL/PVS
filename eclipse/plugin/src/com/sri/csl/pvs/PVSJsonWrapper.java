@@ -3,6 +3,8 @@ package com.sri.csl.pvs;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -15,6 +17,7 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 	protected static String RESULT = "result";
 	protected static String ERROR = "error";
 	protected static String RAWCOMMAND = "rawcommand";
+	protected static Logger log = Logger.getLogger(PVSJsonWrapper.class.getName());
 	
 	
 	protected Calendar cal = Calendar.getInstance();
@@ -78,6 +81,7 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 
 	private Object sendJSON(String id, JSONObject obj) throws PVSException {
 		String  pvsJSON = "(pvs-json \"" + obj.toString().replace("\"", "\\\"") + "\")";
+		log.log(Level.INFO, "Sending JSON message: {0}", pvsJSON);
 		PVSExecutionManager.writeToPVS(pvsJSON);
 		int MAX = 30;
 		for (int i=0; i<50*MAX; i++) {
@@ -114,6 +118,7 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 
 	@Override
 	public void onMessageReceived(JSONObject message) {
+		log.log(Level.INFO, "JSON message received: {0}", message);
 		responds.add(message);
 		
 	}
