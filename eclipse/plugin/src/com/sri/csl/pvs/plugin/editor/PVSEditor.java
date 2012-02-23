@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -21,6 +22,7 @@ import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.texteditor.IElementStateListener;
 
 import com.sri.csl.pvs.PVSException;
+import com.sri.csl.pvs.PVSExecutionManager;
 import com.sri.csl.pvs.PVSJsonWrapper;
 import com.sri.csl.pvs.declarations.PVSFormula;
 import com.sri.csl.pvs.declarations.PVSTheory;
@@ -80,22 +82,26 @@ public class PVSEditor extends TextEditor {
 	
 	private ArrayList<PVSTheory> getTheories() {
 		ArrayList<PVSTheory> theories = new ArrayList<PVSTheory>();
+		if ( !PVSExecutionManager.isPVSRunning() ) {
+			return theories;
+		}
 		IPath path = getFile().getProjectRelativePath();
 		String location = path.toOSString();
 
 		try {
-			Object result = PVSJsonWrapper.INST().sendCommand("json-all-theories-info", EclipsePluginUtil.getFilenameWithoutExtension(location));
+			Object result = PVSJsonWrapper.INST().sendRawCommand("(json-all-theories-info \"" + EclipsePluginUtil.getFilenameWithoutExtension(location) + "\")");
+			//Object result = PVSJsonWrapper.INST().sendCommand("json-all-theories-info", EclipsePluginUtil.getFilenameWithoutExtension(location));
+			PVSTheory d1 = new PVSTheory(3, "dummy 1");
+			d1.addFormula(new PVSFormula("Good Formula"));
+			theories.add(d1);
+
+			PVSTheory d2 = new PVSTheory(3, location);
+			theories.add(d2);
 			log.log(Level.INFO, "Theories: {0}", result);
 		} catch (PVSException e) {
 			e.printStackTrace();
 		}
 		
-		PVSTheory d1 = new PVSTheory(3, "dummy 1");
-		d1.addFormula(new PVSFormula("Good Formula"));
-		theories.add(d1);
-
-		PVSTheory d2 = new PVSTheory(3, location);
-		theories.add(d2);
 		
 		return theories;
 	}

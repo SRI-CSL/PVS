@@ -93,12 +93,15 @@ public class PVSCommandManager {
 	
 	private static Object typecheck(List<Object> args) throws PVSException {
 		verifyArgumentNumbers(TYPECHECK, args, 1);
-		return performCommandAfterVerifyingArguments(TYPECHECK, args);
+		
+		return PVSJsonWrapper.INST().sendRawCommand("(" + TYPECHECK + " \"" + args.get(0) + "\")");
+		//return performCommandAfterVerifyingArguments(TYPECHECK, args);
 	}
 	
 	private static Object changeContext(List<Object> args) throws PVSException {
 		verifyArgumentNumbers(CHANGECONTEXT, args, 1);
-		return performCommandAfterVerifyingArguments(CHANGECONTEXT, args);
+		return PVSJsonWrapper.INST().sendRawCommand("(" + CHANGECONTEXT + " \"" + args.get(0) + "\")");
+		//return performCommandAfterVerifyingArguments(CHANGECONTEXT, args);
 	}
 	
 	

@@ -80,7 +80,8 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 	}
 
 	private Object sendJSON(String id, JSONObject obj) throws PVSException {
-		String  pvsJSON = "(pvs-json \"" + obj.toString().replace("\"", "\\\"") + "\")";
+		String modifiedObj = obj.toString().replace("\\", "\\\\").replace("\"", "\\\"");
+		String  pvsJSON = "(pvs-json \"" + modifiedObj + "\")";
 		log.log(Level.INFO, "Sending JSON message: {0}", pvsJSON);
 		PVSExecutionManager.writeToPVS(pvsJSON);
 		int MAX = 30;

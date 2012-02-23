@@ -156,7 +156,9 @@ class PVSStreamListener implements IStreamListener {
 					} else {
 						
 						jsonBuffer.append(line).append(NL);
-						PVSExecutionManager.dispatchJSONMessage(jsonBuffer.toString());
+						String jbs = jsonBuffer.toString();
+						log.log(Level.FINE, "JSON received before parsing it: {0}", jbs);
+						PVSExecutionManager.dispatchJSONMessage(jbs);
 						resetJSONBuffer();
 					}
 				} else if ( !jsonStarted ) {
