@@ -83,6 +83,9 @@
 			      *pvs-json-id*
 			      (protect-emacs-output result)))))))))))
 
+(defmethod json:encode-json ((obj datatype-or-module) &optional stream)
+  (write (id obj) :stream stream))
+
 (defun pvs-error (msg err &optional itheory iplace)
   ;; Indicates an error; no recovery possible.
   (cond (*rerunning-proof*
