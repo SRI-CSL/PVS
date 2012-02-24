@@ -60,7 +60,7 @@
 		  (json-eval-form form "rawcommand")
 		(if errstr
 		    (format t "~a" errstr)
-		    (format t "~%{~%\"id\": ~a, \"result\": \"~a\"~%}~%"
+		    (format t "~%{~%\"id\": ~a, \"result\": ~a~%}~%"
 		      *pvs-json-id*
 		      (with-output-to-string (*standard-output*)
 			(json:encode-json result)))))))
@@ -79,12 +79,13 @@
 			  (json-eval-form (cons cmd params) "command")
 			(if errstr
 			    (format t "~a" errstr)
-			    (format t "~%{~%\"id\": ~a, \"result\": \"~a\"~%}~%"
+			    (format t "~%{~%\"id\": ~a, \"result\": ~a~%}~%"
 			      *pvs-json-id*
-			      (protect-emacs-output result)))))))))))
+			      (with-output-to-string (*standard-output*)
+				(json:encode-json result))))))))))))
 
 (defmethod json:encode-json ((obj datatype-or-module) &optional stream)
-  (write (id obj) :stream stream))
+  (format stream "\"~a\"" (id obj)))
 
 (defun pvs-error (msg err &optional itheory iplace)
   ;; Indicates an error; no recovery possible.
@@ -239,21 +240,19 @@
 (defmethod decl-id ((decl datatype))
   (id decl))
 
-(defun json-all-theories-info (&optional prelude?)
-  (let ((theory-alist nil))
-    (maphash #'(lambda (id th)
-		 (push (list (cons 'id id)
-			     (cons 'declarations
-				   (mapcar #'(lambda (d)
-					       (list (cons 'id (decl-id d))
-						     (cons 'kind (class-name (class-of d)))
-						     (cons 'place (or (place d) 'None))))
-				     (all-decls th))))
-		       theory-alist))
-	     (if prelude? *prelude* *pvs-modules*))
-    (json:encode-json theory-alist)
-    ;;theory-alist
-    ))
+(defun json-all-theories-info (&optional file)
+  (if (null file)
+      (let ((theory-alist nil))
+	(maphash #'(lambda (id th)
+		     (push (json-file-theories-info id th)
+			   theory-alist))
+		 (if prelude? *prelude* *pvs-modules*))
+	(json:encode-json theory-alist)
+	;;theory-alist
+	)
+      (let ((fileid (intern file)))
+	(json:encode-json (json-file-theories-info
+			   fileid (gethash fileid *pvs-modules*))))))
 
 (defun json-pvs-file-info (file)
   (assert (stringp file))
