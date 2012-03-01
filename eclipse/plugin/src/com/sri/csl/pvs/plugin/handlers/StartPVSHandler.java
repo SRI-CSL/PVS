@@ -1,6 +1,7 @@
 package com.sri.csl.pvs.plugin.handlers;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -19,17 +20,21 @@ import org.eclipse.debug.core.model.IProcess;
 import org.eclipse.debug.core.model.IStreamMonitor;
 import org.eclipse.debug.core.model.IStreamsProxy;
 import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.console.IOConsoleOutputStream;
 import org.eclipse.ui.handlers.HandlerUtil;
 import org.json.JSONObject;
 
+import com.sri.csl.pvs.PVSCommandManager;
+import com.sri.csl.pvs.PVSException;
 import com.sri.csl.pvs.PVSExecutionManager;
 import com.sri.csl.pvs.PVSExecutionManager.PVSRespondListener;
 import com.sri.csl.pvs.PVSJsonWrapper;
 import com.sri.csl.pvs.plugin.Activator;
 import com.sri.csl.pvs.plugin.console.IOConsoleKeyboardReader;
 import com.sri.csl.pvs.plugin.console.PVSConsole;
+import com.sri.csl.pvs.plugin.preferences.PreferenceConstants;
 
 /**
  * Our sample handler extends AbstractHandler, an IHandler base class.
@@ -89,7 +94,7 @@ public class StartPVSHandler extends AbstractHandler {
 				});				
 				IStreamsProxy streamProxy = process.getStreamsProxy();
 				IStreamMonitor outMonitor = streamProxy.getOutputStreamMonitor();
-				outMonitor.addListener(new PVSStreamListener(0));
+				outMonitor.addListener(new PVSStreamListener(0)); //TODO: Later change this to 0
 				
 				keyboardReader = new IOConsoleKeyboardReader(console);
 				keyboardReader.addListener(new IOConsoleKeyboardReader.IOConsoleKeyboardReaderListener() {
@@ -98,18 +103,40 @@ public class StartPVSHandler extends AbstractHandler {
 					}
 				});
 				keyboardReader.start();
-				
-				
+				Thread.sleep(500);
+				restorePVSContext();
 			} catch (IOException e) {
 				log.severe("Failed to start PVS");
 				MessageDialog.openInformation(window.getShell(), "Error", "Failed to start PVS");
+			} catch (InterruptedException e) {
+				log.severe("Failed to restore PVS context");
+				MessageDialog.openInformation(window.getShell(), "Error", "Failed to restore the PVS context");
+			} catch (PVSException e) {
+				log.severe("Failed to restore PVS context");
+				MessageDialog.openInformation(window.getShell(), "Error", "Failed to restore the PVS context");
 			}
 		}
 		return null;
 	}
+	
+	
+	protected void restorePVSContext() throws PVSException {
+		IPreferenceStore store = Activator.getDefault().getPreferenceStore();
+		boolean restoreContext = store.getBoolean(PreferenceConstants.SAVEPVSCONTEXT);
+		if ( restoreContext ) {
+			String contextLocation = store.getString(PreferenceConstants.PVSCONTEXTPATH);
+			if ( !"".equals(contextLocation) ) {
+				ArrayList<Object> args = new ArrayList<Object>();
+				args.add(contextLocation);
+				args.add(false);
+				PVSCommandManager.changeContext(args);
+			}
+		}
+	}
 }
 
 class PVSStreamListener implements IStreamListener {
+	private static String simplePrompt = "pvs\\([0-9]+\\)";
 	private static String pvsAllegroPrompt = "^[ ]*\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\)?\\(\\(<[-A-Za-z]* ?[0-9]*>\\)\\3?\\|[-A-Za-z0-9]+([0-9]+): \\)\\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter";
 	private static String pvsCmuPrompt = "^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter";
 	private static Pattern pvsPromptPattern;
@@ -120,6 +147,9 @@ class PVSStreamListener implements IStreamListener {
 	
 	public PVSStreamListener(int lispType) {
 		switch ( lispType ) {
+		case -1:// Simple
+			pvsPromptPattern = Pattern.compile(simplePrompt);
+			break;			
 		case 0:// ALLEGRO:
 			pvsPromptPattern = Pattern.compile(pvsAllegroPrompt);
 			break;
@@ -164,8 +194,10 @@ class PVSStreamListener implements IStreamListener {
 				} else if ( !jsonStarted ) {
 					//TODO: The prompt is not detected right now. What out WHY.
 					if ( pvsPromptPattern.matcher(line).find() ) { // line is the prompt
+						log.log(Level.INFO, "prompt was received: {0}", line);
 						PVSExecutionManager.pvsPromptReceived(line);
 					} else { // line is unstructured data
+						log.log(Level.INFO, "Unstructured line was received from PVS: {0}", line);						
 						PVSExecutionManager.dispatchStringMessage(line + NL);
 					}
 				} else {

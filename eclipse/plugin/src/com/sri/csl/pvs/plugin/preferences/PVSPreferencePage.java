@@ -1,5 +1,6 @@
 package com.sri.csl.pvs.plugin.preferences;
 
+import org.eclipse.jface.preference.BooleanFieldEditor;
 import org.eclipse.jface.preference.DirectoryFieldEditor;
 import org.eclipse.jface.preference.FieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
@@ -26,6 +27,7 @@ import com.sri.csl.pvs.plugin.Activator;
 
 public class PVSPreferencePage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 	protected DirectoryFieldEditor pvsDirectoryEditor;
+	protected BooleanFieldEditor savePVSContext;
 	
 	public PVSPreferencePage() {
 		super(GRID);
@@ -40,15 +42,14 @@ public class PVSPreferencePage extends FieldEditorPreferencePage implements IWor
 	 * restore itself.
 	 */
 	public void createFieldEditors() {
-		pvsDirectoryEditor = new DirectoryFieldEditor(PreferenceConstants.P_PATH, "&PVS Home Directory:", getFieldEditorParent());
+		pvsDirectoryEditor = new DirectoryFieldEditor(PreferenceConstants.PVSPATH, "&PVS Home Directory:", getFieldEditorParent());
+		savePVSContext = new BooleanFieldEditor(
+				PreferenceConstants.SAVEPVSCONTEXT,
+				"&Automatically set the context to the last used context when PVS starts",
+				getFieldEditorParent());
 		
 		addField(pvsDirectoryEditor);
-		
-//		addField(
-//			new BooleanFieldEditor(
-//				PreferenceConstants.P_BOOLEAN,
-//				"&An example of a boolean preference",
-//				getFieldEditorParent()));
+		addField(savePVSContext);
 //
 //		addField(new RadioGroupFieldEditor(
 //				PreferenceConstants.P_CHOICE,
@@ -69,16 +70,19 @@ public class PVSPreferencePage extends FieldEditorPreferencePage implements IWor
 	
 	protected void checkState() {
         super.checkState();
+    	IPreferenceStore store = Activator.getDefault().getPreferenceStore();
         String pvsDirectory = pvsDirectoryEditor.getStringValue();
         if ( pvsDirectory!= null && !pvsDirectory.equals("") ) {
         	setErrorMessage(null);
         	setValid(true);
-        	IPreferenceStore store = Activator.getDefault().getPreferenceStore();
-        	store.setValue(PreferenceConstants.P_PATH, pvsDirectory);
+        	store.setValue(PreferenceConstants.PVSPATH, pvsDirectory);
         } else {
         	setErrorMessage("Folder name cannot be blank!");
         	setValid(false);
         }
+        
+        boolean saveContext = savePVSContext.getBooleanValue();
+        store.setValue(PreferenceConstants.SAVEPVSCONTEXT, saveContext);
 	}
 	
 	public void propertyChange(PropertyChangeEvent event) {

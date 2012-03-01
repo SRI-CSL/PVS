@@ -1,13 +1,12 @@
 package com.sri.csl.pvs.plugin.editor;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,6 +35,7 @@ public class PVSEditor extends TextEditor {
 	private boolean modelGenerated;
 	private TreeNode treeModel = new TreeNode("");
 	protected static Logger log = Logger.getLogger(PVSEditor.class.getName());
+	protected static HashMap<String, Object> typecheckedFiles = new HashMap<String, Object>();
 	
 	public PVSEditor() {
 		super();
@@ -71,6 +71,23 @@ public class PVSEditor extends TextEditor {
 		});
 	}
 	
+	public static void setTypechecked(String filename, Object obj) {
+		typecheckedFiles.put(filename, obj);
+	}
+
+	public void setTypechecked(Object obj) {
+		typecheckedFiles.put(EclipsePluginUtil.getFilenameWithoutExtension(getLocation()), obj);
+	}
+	
+	public boolean isTypechecked() {
+		String location = EclipsePluginUtil.getFilenameWithoutExtension(getLocation());
+		if ( isDirty() ) {
+			typecheckedFiles.remove(location);
+			return false;
+		}
+		return typecheckedFiles.containsKey(location);
+	}
+	
 	/**
 	 * 
 	 * @return the file that is opened in this editor
@@ -80,17 +97,26 @@ public class PVSEditor extends TextEditor {
 		return fei.getFile();
 	}
 	
+	public String getLocation() {
+		IPath path = getFile().getProjectRelativePath();
+		String location = path.toOSString();
+		return location;
+	}
+	
 	private ArrayList<PVSTheory> getTheories() {
 		ArrayList<PVSTheory> theories = new ArrayList<PVSTheory>();
 		if ( !PVSExecutionManager.isPVSRunning() ) {
 			return theories;
 		}
-		IPath path = getFile().getProjectRelativePath();
-		String location = path.toOSString();
+		String location = EclipsePluginUtil.getFilenameWithoutExtension(getLocation());
+		if ( !isTypechecked() ) {
+			theories.add(new PVSTheory(0, "The file has not been typechecked yet"));
+			return theories;
+		}
 
 		try {
-			Object result = PVSJsonWrapper.INST().sendRawCommand("(json-all-theories-info \"" + EclipsePluginUtil.getFilenameWithoutExtension(location) + "\")");
-			//Object result = PVSJsonWrapper.INST().sendCommand("json-all-theories-info", EclipsePluginUtil.getFilenameWithoutExtension(location));
+			Object result = PVSJsonWrapper.INST().sendRawCommand("(json-all-theories-info \"" + location + "\")");
+			//Object result = PVSJsonWrapper.INST().sendCommand("json-all-theories-info", location);
 			PVSTheory d1 = new PVSTheory(3, "dummy 1");
 			d1.addFormula(new PVSFormula("Good Formula"));
 			theories.add(d1);

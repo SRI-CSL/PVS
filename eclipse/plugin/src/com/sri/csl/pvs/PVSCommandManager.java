@@ -5,9 +5,13 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.SWT;
 
+import com.sri.csl.pvs.plugin.Activator;
+import com.sri.csl.pvs.plugin.editor.PVSEditor;
 import com.sri.csl.pvs.plugin.misc.EclipsePluginUtil;
+import com.sri.csl.pvs.plugin.preferences.PreferenceConstants;
 
 /*
  * To add a new command:
@@ -94,14 +98,22 @@ public class PVSCommandManager {
 	private static Object typecheck(List<Object> args) throws PVSException {
 		verifyArgumentNumbers(TYPECHECK, args, 1);
 		
-		return PVSJsonWrapper.INST().sendRawCommand("(" + TYPECHECK + " \"" + args.get(0) + "\")");
-		//return performCommandAfterVerifyingArguments(TYPECHECK, args);
+		//return PVSJsonWrapper.INST().sendRawCommand("(" + TYPECHECK + " \"" + args.get(0) + "\")");
+		Object result = performCommandAfterVerifyingArguments(TYPECHECK, args);
+		PVSEditor.setTypechecked(args.get(0).toString(), result);
+		return result;
 	}
 	
-	private static Object changeContext(List<Object> args) throws PVSException {
+	public static Object changeContext(List<Object> args) throws PVSException {
 		verifyArgumentNumbers(CHANGECONTEXT, args, 1);
-		return PVSJsonWrapper.INST().sendRawCommand("(" + CHANGECONTEXT + " \"" + args.get(0) + "\")");
-		//return performCommandAfterVerifyingArguments(CHANGECONTEXT, args);
+		//return PVSJsonWrapper.INST().sendRawCommand("(" + CHANGECONTEXT + " \"" + args.get(0) + "\")");
+		Object result = performCommandAfterVerifyingArguments(CHANGECONTEXT, args);
+		if ( args.size()<2 || ((Boolean)args.get(1)) ) { // The 2nd arg is a boolean determinging whether the context should be saved. If it is not provided, then the context is saved by default.
+			String newContext = args.get(0).toString();
+			IPreferenceStore store = Activator.getDefault().getPreferenceStore();
+			store.setValue(PreferenceConstants.PVSCONTEXTPATH, newContext);
+		}
+		return result;
 	}
 	
 	

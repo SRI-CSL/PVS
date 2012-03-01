@@ -5,9 +5,10 @@ package com.sri.csl.pvs.plugin.preferences;
  */
 public class PreferenceConstants {
 
-	public static final String P_PATH = "pathPreference";
+	public static final String PVSPATH = "pvsPath";
+	public static final String PVSCONTEXTPATH = "pvsContextPath";
 
-	public static final String P_BOOLEAN = "booleanPreference";
+	public static final String SAVEPVSCONTEXT = "savePVSContext";
 
 	public static final String P_CHOICE = "choicePreference";
 

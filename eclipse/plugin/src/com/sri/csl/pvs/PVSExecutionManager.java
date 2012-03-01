@@ -34,7 +34,7 @@ public class PVSExecutionManager {
 	
 	protected static String getPVSDirectory() {
 		IPreferenceStore store = Activator.getDefault().getPreferenceStore();
-		return store.getString(PreferenceConstants.P_PATH);
+		return store.getString(PreferenceConstants.PVSPATH);
 	}
 	
 	public static void addListener(PVSRespondListener l) {
@@ -123,7 +123,10 @@ public class PVSExecutionManager {
 	}
 	
 	public static void pvsPromptReceived(String prompt) {
-		
+		// Prompts are dispatched just like unstructured messages for now.
+		for (PVSRespondListener l: listeners) {
+			l.onMessageReceived(prompt);
+		}		
 	}
 
 	public static void stopPVS() {
