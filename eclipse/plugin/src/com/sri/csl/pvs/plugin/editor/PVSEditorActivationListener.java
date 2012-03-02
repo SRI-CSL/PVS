@@ -2,6 +2,7 @@ package com.sri.csl.pvs.plugin.editor;
 
 import org.eclipse.ui.IPartListener;
 import org.eclipse.ui.IWorkbenchPart;
+import org.eclipse.ui.editors.text.TextEditor;
 
 import com.sri.csl.pvs.plugin.views.PVSTheoriesView;
 
@@ -11,10 +12,10 @@ public class PVSEditorActivationListener implements IPartListener {
 		if ( part instanceof PVSEditor ) {
 			PVSEditor ed = (PVSEditor)part;
 			ed.updatePVSTheoriesView();
-		} else {
+		} else if ( part instanceof TextEditor ) {
 			PVSTheoriesView view = PVSTheoriesView.getInstance();
-			if ( view != null )
-				view.setInput(null);			
+//			if ( view != null )
+//				view.setInput(null);			
 		}		
 	}
 	
@@ -39,7 +40,9 @@ public class PVSEditorActivationListener implements IPartListener {
 	@Override
 	public void partDeactivated(IWorkbenchPart part) {
 		if ( part instanceof PVSEditor ) {
-			//System.out.println("Page Deactivated");
+//			PVSTheoriesView view = PVSTheoriesView.getInstance();
+//			if ( view != null )
+//				view.setInput(null);			
 		}
 	}
 

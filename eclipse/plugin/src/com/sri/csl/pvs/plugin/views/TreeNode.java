@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IAdaptable;
 
-import com.sri.csl.pvs.declarations.PVSFormula;
+import com.sri.csl.pvs.declarations.PVSDeclaration;
 import com.sri.csl.pvs.declarations.PVSTheory;
 
 public class TreeNode implements IAdaptable {
@@ -17,27 +17,27 @@ public class TreeNode implements IAdaptable {
 
 	
 	public TreeNode(PVSTheory theory) {
-		this.name = theory.getName();
+		this.name = theory.getID();
 		object = theory;
-		for (PVSFormula formula: theory.getFormulas()) {
-			children.add(new TreeNode(formula));
+		for (PVSDeclaration decl: theory.getDeclarations()) {
+			children.add(new TreeNode(decl));
 		}
 	}
 	
-	public TreeNode(PVSFormula formula) {
-		this.name = formula.toString();
-		object = formula;
+	public TreeNode(PVSDeclaration d) {
+		this.name = d.toString();
+		object = d;
+	}
+	
+	public TreeNode(String s) {
+		this.name = s;
+		object = s;
 	}
 	
 	public Object getObject() {
 		return object;
 	}
 	
-	public TreeNode(Object obj) {
-		this.name = obj.toString();
-		object = obj;
-	}
-
 	public String getName() {
 		return name;
 	}

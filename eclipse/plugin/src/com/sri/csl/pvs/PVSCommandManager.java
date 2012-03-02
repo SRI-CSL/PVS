@@ -108,7 +108,7 @@ public class PVSCommandManager {
 		verifyArgumentNumbers(CHANGECONTEXT, args, 1);
 		//return PVSJsonWrapper.INST().sendRawCommand("(" + CHANGECONTEXT + " \"" + args.get(0) + "\")");
 		Object result = performCommandAfterVerifyingArguments(CHANGECONTEXT, args);
-		if ( args.size()<2 || ((Boolean)args.get(1)) ) { // The 2nd arg is a boolean determinging whether the context should be saved. If it is not provided, then the context is saved by default.
+		if ( args.size()<2 || ((Boolean)args.get(1)).booleanValue() ) { // The 2nd arg is a boolean determinging whether the context should be saved. If it is not provided, then the context is saved by default.
 			String newContext = args.get(0).toString();
 			IPreferenceStore store = Activator.getDefault().getPreferenceStore();
 			store.setValue(PreferenceConstants.PVSCONTEXTPATH, newContext);

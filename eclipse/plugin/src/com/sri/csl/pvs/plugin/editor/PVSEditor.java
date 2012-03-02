@@ -19,11 +19,13 @@ import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.editors.text.TextEditor;
 import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.texteditor.IElementStateListener;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import com.sri.csl.pvs.PVSException;
 import com.sri.csl.pvs.PVSExecutionManager;
 import com.sri.csl.pvs.PVSJsonWrapper;
-import com.sri.csl.pvs.declarations.PVSFormula;
 import com.sri.csl.pvs.declarations.PVSTheory;
 import com.sri.csl.pvs.plugin.misc.EclipsePluginUtil;
 import com.sri.csl.pvs.plugin.views.PVSTheoriesView;
@@ -34,6 +36,7 @@ public class PVSEditor extends TextEditor {
 	private IFile file;
 	private boolean modelGenerated;
 	private TreeNode treeModel = new TreeNode("");
+	private static TreeNode notTypecheckedTreeModel = new TreeNode("Theories will be displayed after the file is successfully typechecked");
 	protected static Logger log = Logger.getLogger(PVSEditor.class.getName());
 	protected static HashMap<String, Object> typecheckedFiles = new HashMap<String, Object>();
 	
@@ -104,38 +107,53 @@ public class PVSEditor extends TextEditor {
 	}
 	
 	private ArrayList<PVSTheory> getTheories() {
-		ArrayList<PVSTheory> theories = new ArrayList<PVSTheory>();
 		if ( !PVSExecutionManager.isPVSRunning() ) {
-			return theories;
+			return null;
 		}
 		String location = EclipsePluginUtil.getFilenameWithoutExtension(getLocation());
 		if ( !isTypechecked() ) {
-			theories.add(new PVSTheory(0, "The file has not been typechecked yet"));
-			return theories;
+			return null;
 		}
-
+		ArrayList<PVSTheory> theories = new ArrayList<PVSTheory>();
+		String _THEORIES = "theories";
 		try {
 			Object result = PVSJsonWrapper.INST().sendRawCommand("(json-all-theories-info \"" + location + "\")");
 			//Object result = PVSJsonWrapper.INST().sendCommand("json-all-theories-info", location);
-			PVSTheory d1 = new PVSTheory(3, "dummy 1");
-			d1.addFormula(new PVSFormula("Good Formula"));
-			theories.add(d1);
+			if ( result instanceof JSONObject ) {
+				JSONObject obj = (JSONObject)result;
+				if ( obj.has(_THEORIES) ) {
+					JSONArray jTheories;
+					try {
+						jTheories = obj.getJSONArray(_THEORIES);
+						for (int i=0; i<jTheories.length(); i++) {
+							PVSTheory theory = new PVSTheory(jTheories.getJSONObject(i));
+							theories.add(theory);
+						}
+					} catch (JSONException e) {
+						log.log(Level.SEVERE, "Problem parsing the theory: {0}", e.getMessage());
+						e.printStackTrace();
+					}
 
-			PVSTheory d2 = new PVSTheory(3, location);
-			theories.add(d2);
-			log.log(Level.INFO, "Theories: {0}", result);
+				}
+			}
+			log.log(Level.INFO, "Theories: {0}", theories);
 		} catch (PVSException e) {
+			log.log(Level.SEVERE, "Problem getting the theories back from PVS");
 			e.printStackTrace();
-		}
-		
+		}		
 		
 		return theories;
 	}
 	
 	private void generatePVSModel() {
 		treeModel.clear();
-		for(PVSTheory theory: getTheories()) {
-			treeModel.addChild(new TreeNode(theory));
+		ArrayList<PVSTheory> theories = getTheories();
+		if ( theories != null ) {
+			for(PVSTheory theory: theories) {
+				treeModel.addChild(new TreeNode(theory));
+			}
+		} else {
+			treeModel.addChild(notTypecheckedTreeModel);						
 		}
 	}
 	

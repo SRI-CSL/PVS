@@ -2,25 +2,45 @@ package com.sri.csl.pvs.declarations;
 
 import java.util.ArrayList;
 
-public class PVSTheory extends PVSDeclaration {
-	protected String name;
-	protected ArrayList<PVSFormula> formulas = new ArrayList<PVSFormula>();
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+public class PVSTheory {
+	protected static String ID = "id";
+	protected static String DECLARATIONS = "declarations";
 	
-	public PVSTheory(int pos, String n) {
-		name = n;
-		position = pos;
+	protected String id;
+	protected ArrayList<PVSDeclaration> declarations = new ArrayList<PVSDeclaration>();
+	
+	public PVSTheory(JSONObject obj) throws JSONException {
+		id = obj.getString(ID);
+		if ( obj.has(DECLARATIONS) ) {
+			JSONArray decls = obj.getJSONArray(DECLARATIONS);
+			for (int i=0; i<decls.length(); i++) {
+				PVSDeclaration decl = new PVSDeclaration(decls.getJSONObject(i));
+				declarations.add(decl);
+			}
+		}
+	}
+		
+	public String getID() {
+		return id;
 	}
 	
-	public String getName() {
-		return name;
+	public void addFormula(PVSDeclaration f) {
+		declarations.add(f);
 	}
 	
-	public void addFormula(PVSFormula f) {
-		formulas.add(f);
-	}
-	
-	public ArrayList<PVSFormula> getFormulas() {
-		return formulas;
+	public ArrayList<PVSDeclaration> getDeclarations() {
+		return declarations;
 	}
 
+	public PVSDeclaration getDeclaration(int i) {
+		return declarations.get(i);
+	}
+
+	public String toString() {
+		return id;
+	}
 }

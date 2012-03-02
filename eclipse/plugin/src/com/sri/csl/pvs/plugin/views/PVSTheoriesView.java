@@ -35,7 +35,7 @@ import org.eclipse.ui.IWorkingSetManager;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.part.ViewPart;
 
-import com.sri.csl.pvs.declarations.PVSFormula;
+import com.sri.csl.pvs.declarations.PVSDeclaration;
 import com.sri.csl.pvs.declarations.PVSTheory;
 import com.sri.csl.pvs.plugin.Activator;
 
@@ -148,7 +148,7 @@ public class PVSTheoriesView extends ViewPart {
 				Object nodeObject = ((TreeNode)obj).getObject();
 				if ( nodeObject instanceof PVSTheory ) {
 					return  Activator.getImageDescriptor("icons/theory.png").createImage();
-				} else if ( nodeObject instanceof PVSFormula ) {
+				} else if ( nodeObject instanceof PVSDeclaration ) {
 					return  Activator.getImageDescriptor("icons/formula.png").createImage();
 				} 
 			}
