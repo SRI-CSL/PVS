@@ -19,7 +19,7 @@ public class PVSDeclaration {
 	}
 	
 	public PVSDeclaration(JSONObject obj) throws JSONException {
-		id = obj.getString(ID);
+		id = obj.get(ID).toString();
 		kind = obj.getString(KIND);
 		Object pl = obj.get(PLACE);
 		if ( (pl instanceof String) && pl.toString().endsWith(NONE) ) {

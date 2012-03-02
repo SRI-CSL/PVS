@@ -170,7 +170,7 @@ public class PVSEditor extends TextEditor {
 	public void clearPVSTheoriesView() {
 		PVSTheoriesView view = PVSTheoriesView.getInstance();
 		if ( view != null )
-			view.setInput(null);		
+			view.clear();
 	}
 	
 	protected void setSite(IWorkbenchPartSite site) {

@@ -195,7 +195,11 @@ public class PVSTheoriesView extends ViewPart {
 	}
 	
 	public void setInput(Object input) {
-	viewer.setInput(input);
+		viewer.setInput(input);
+	}
+	
+	public void clear() {
+		setInput(null);
 	}
 
 	private void hookContextMenu() {
