@@ -240,19 +240,17 @@
 (defmethod decl-id ((decl datatype))
   (id decl))
 
-(defun json-all-theories-info (&optional file)
+(defun json-all-theories-info (&optional file prelude?)
   (if (null file)
       (let ((theory-alist nil))
 	(maphash #'(lambda (id th)
 		     (push (json-file-theories-info id th)
 			   theory-alist))
 		 (if prelude? *prelude* *pvs-modules*))
-	(json:encode-json theory-alist)
+	theory-alist
 	;;theory-alist
 	)
-      (let ((fileid (intern file)))
-	(json:encode-json (json-file-theories-info
-			   fileid (gethash fileid *pvs-modules*))))))
+      (json-pvs-file-info file)))
 
 (defun json-pvs-file-info (file)
   (assert (stringp file))
