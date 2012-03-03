@@ -197,8 +197,10 @@ class PVSStreamListener implements IStreamListener {
 						log.log(Level.INFO, "prompt was received: {0}", line);
 						PVSExecutionManager.pvsPromptReceived(line);
 					} else { // line is unstructured data
-						log.log(Level.INFO, "Unstructured line was received from PVS: {0}", line);						
-						PVSExecutionManager.dispatchStringMessage(line + NL);
+						log.log(Level.INFO, "Unstructured line was received from PVS: {0}", line);
+						if ( !"nil".equals(line) ) { // nil is the result of sending a JSON to PVS. For now let's ignore and not display them
+							PVSExecutionManager.dispatchStringMessage(line + NL);
+						}
 					}
 				} else {
 					jsonBuffer.append(line).append(NL);

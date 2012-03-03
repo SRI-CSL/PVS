@@ -1,6 +1,7 @@
 package com.sri.csl.pvs.plugin.views;
 
 
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -28,16 +29,20 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.ui.IActionBars;
+import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchActionConstants;
 import org.eclipse.ui.IWorkingSetManager;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.editors.text.TextEditor;
 import org.eclipse.ui.part.ViewPart;
 
 import com.sri.csl.pvs.declarations.PVSDeclaration;
 import com.sri.csl.pvs.declarations.PVSTheory;
 import com.sri.csl.pvs.plugin.Activator;
+import com.sri.csl.pvs.plugin.editor.PVSEditor;
+import com.sri.csl.pvs.plugin.misc.EclipsePluginUtil;
 
 
 /**
@@ -66,7 +71,7 @@ public class PVSTheoriesView extends ViewPart {
 	public static final String ID = "com.sri.csl.pvs.plugin.views.PVSTheoriesView";
 
 	private TreeViewer viewer;
-	private TreeNode invisibleRoot;
+	private TreeNode invisibleRoot = new TreeNode("");
 	
 	private Action action1;
 	private Action action2;
@@ -88,13 +93,19 @@ public class PVSTheoriesView extends ViewPart {
 	class ViewContentProvider implements ITreeContentProvider {
 		
 		public void inputChanged(Viewer v, Object oldInput, Object newInput) {
+			log.log(Level.INFO, "newInput: {0}", newInput);
+			invisibleRoot.clear();
 			if ( newInput != null ) {
-				log.log(Level.FINE, "New input received: {0}", newInput);
 				if ( newInput instanceof TreeNode ) {
 					invisibleRoot = (TreeNode)newInput;
+				} else if ( newInput instanceof PVSTheory ) {
+					invisibleRoot = new TreeNode((PVSTheory)newInput);
+				} else if ( newInput instanceof List ) {
+					List<PVSTheory> theories = (List<PVSTheory>)newInput;
+					for (PVSTheory theory: theories) {
+						invisibleRoot.addChild(new TreeNode(theory));
+					}
 				}
-			} else {
-				invisibleRoot = new TreeNode("");
 			}
 			
 		}
@@ -286,6 +297,17 @@ public class PVSTheoriesView extends ViewPart {
 	 */
 	public void setFocus() {
 		viewer.getControl().setFocus();
+	}
+	
+	public static void update() {
+		PVSTheoriesView view = getInstance();
+		IEditorPart ed = EclipsePluginUtil.getVisibleEditor();
+		if ( ed instanceof PVSEditor ) {
+			PVSEditor editor = (PVSEditor)ed;
+			view.setInput(editor.getTheories());
+		} else if ( ed instanceof TextEditor ) {
+			view.setInput(null);
+		}
 	}
 	
 	public static PVSTheoriesView getInstance() {

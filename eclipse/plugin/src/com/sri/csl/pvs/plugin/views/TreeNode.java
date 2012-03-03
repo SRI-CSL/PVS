@@ -14,7 +14,7 @@ public class TreeNode implements IAdaptable {
 	private TreeNode parent;
 	private IResource resouce;
 	private ArrayList<TreeNode> children = new ArrayList<TreeNode>();
-
+	
 	
 	public TreeNode(PVSTheory theory) {
 		this.name = theory.getID();

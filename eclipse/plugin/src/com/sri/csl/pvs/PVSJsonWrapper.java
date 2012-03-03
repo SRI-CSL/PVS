@@ -10,6 +10,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.sri.csl.pvs.declarations.PVSTheory;
+import com.sri.csl.pvs.plugin.misc.EclipsePluginUtil;
+
 public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 	protected static String ID = "id";
 	protected static String COMMAND = "command";
@@ -46,6 +49,27 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 	
 	synchronized public void addToJSONQueue(JSONObject obj) {
 		responds.add(obj);
+	}
+	
+	public static ArrayList<PVSTheory> getTheories(JSONObject obj) {
+		ArrayList<PVSTheory> theories = new ArrayList<PVSTheory>();
+		String _THEORIES = "theories";
+			if ( obj.has(_THEORIES) ) {
+				JSONArray jTheories;
+				try {
+					jTheories = obj.getJSONArray(_THEORIES);
+					for (int i=0; i<jTheories.length(); i++) {
+						PVSTheory theory = new PVSTheory(jTheories.getJSONObject(i));
+						theories.add(theory);
+					}
+				} catch (JSONException e) {
+					log.log(Level.SEVERE, "Problem parsing the theory: {0}", e.getMessage());
+					e.printStackTrace();
+				}
+
+			}
+		log.log(Level.INFO, "Theories: {0}", theories);
+		return theories;
 	}
 	
 	public Object sendRawCommand(String message) throws PVSException {

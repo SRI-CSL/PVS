@@ -7,11 +7,15 @@ import java.util.logging.Logger;
 
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.SWT;
+import org.eclipse.ui.IEditorPart;
+import org.json.JSONObject;
 
+import com.sri.csl.pvs.declarations.PVSTheory;
 import com.sri.csl.pvs.plugin.Activator;
 import com.sri.csl.pvs.plugin.editor.PVSEditor;
 import com.sri.csl.pvs.plugin.misc.EclipsePluginUtil;
 import com.sri.csl.pvs.plugin.preferences.PreferenceConstants;
+import com.sri.csl.pvs.plugin.views.PVSTheoriesView;
 
 /*
  * To add a new command:
@@ -100,8 +104,17 @@ public class PVSCommandManager {
 		
 		//return PVSJsonWrapper.INST().sendRawCommand("(" + TYPECHECK + " \"" + args.get(0) + "\")");
 		Object result = performCommandAfterVerifyingArguments(TYPECHECK, args);
-		PVSEditor.setTypechecked(args.get(0).toString(), result);
+		String file = args.get(0).toString();
+
+		ArrayList<PVSTheory> theories = PVSJsonWrapper.getTheories(getDeclarations(file));
+		PVSEditor.setTypechecked(file, theories);			
+		PVSTheoriesView.update();
 		return result;
+	}
+
+	private static JSONObject getDeclarations(String file) throws PVSException {
+		Object result = PVSJsonWrapper.INST().sendRawCommand("(json-all-theories-info \"" + file + "\")");
+		return (JSONObject)result;
 	}
 	
 	public static Object changeContext(List<Object> args) throws PVSException {

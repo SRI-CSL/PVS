@@ -1,21 +1,13 @@
 package com.sri.csl.pvs.plugin.editor;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.ui.IWorkbenchPage;
-import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.editors.text.TextEditor;
 import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.texteditor.IElementStateListener;
@@ -33,9 +25,9 @@ import com.sri.csl.pvs.plugin.views.TreeNode;
 
 public class PVSEditor extends TextEditor {
 	private final ColorManager colorManager;
-	private IFile file;
 	private boolean modelGenerated;
 	private TreeNode treeModel = new TreeNode("");
+	private static TreeNode emptyTreeModel = new TreeNode("");
 	private static TreeNode notTypecheckedTreeModel = new TreeNode("Theories will be displayed after the file is successfully typechecked");
 	protected static Logger log = Logger.getLogger(PVSEditor.class.getName());
 	protected static HashMap<String, Object> typecheckedFiles = new HashMap<String, Object>();
@@ -54,22 +46,16 @@ public class PVSEditor extends TextEditor {
 			}
 
 			public void elementContentReplaced(Object element) {
-				FileEditorInput fInput = (FileEditorInput) element;
-				file = fInput.getFile();
 			}
 
 			public void elementDeleted(Object element) {
-				file = null;
 			}
 
 			public void elementDirtyStateChanged(Object element, boolean isDirty) {
-				FileEditorInput fInput = (FileEditorInput) element;
-				file = fInput.getFile();
+				//FileEditorInput fInput = (FileEditorInput) element;
 			}
 
 			public void elementMoved(Object originalElement, Object movedElement) {
-				FileEditorInput fInput = (FileEditorInput) movedElement;
-				file = fInput.getFile();
 			}
 		});
 	}
@@ -79,17 +65,25 @@ public class PVSEditor extends TextEditor {
 	}
 
 	public void setTypechecked(Object obj) {
+		modelGenerated = true;
 		typecheckedFiles.put(EclipsePluginUtil.getFilenameWithoutExtension(getLocation()), obj);
 	}
 	
 	public boolean isTypechecked() {
 		String location = EclipsePluginUtil.getFilenameWithoutExtension(getLocation());
-		if ( isDirty() ) {
-			typecheckedFiles.remove(location);
-			return false;
-		}
+//		if ( isDirty() ) {
+//			typecheckedFiles.remove(location);
+//			return false;
+//		}
 		return typecheckedFiles.containsKey(location);
 	}
+	
+	public void invalidatePVSModel() {
+		modelGenerated = false;
+		String location = EclipsePluginUtil.getFilenameWithoutExtension(getLocation());
+		typecheckedFiles.remove(location);
+	}
+	
 	
 	/**
 	 * 
@@ -106,48 +100,33 @@ public class PVSEditor extends TextEditor {
 		return location;
 	}
 	
-	private ArrayList<PVSTheory> getTheories() {
+	public ArrayList<PVSTheory> getTheories() {
+		String location = EclipsePluginUtil.getFilenameWithoutExtension(getLocation());
+		if ( typecheckedFiles.containsKey(location) ) {
+			return (ArrayList<PVSTheory>)typecheckedFiles.get(location);
+		}
 		if ( !PVSExecutionManager.isPVSRunning() ) {
 			return null;
 		}
-		String location = EclipsePluginUtil.getFilenameWithoutExtension(getLocation());
 		if ( !isTypechecked() ) {
 			return null;
 		}
-		ArrayList<PVSTheory> theories = new ArrayList<PVSTheory>();
-		String _THEORIES = "theories";
 		try {
 			Object result = PVSJsonWrapper.INST().sendRawCommand("(json-all-theories-info \"" + location + "\")");
-			//Object result = PVSJsonWrapper.INST().sendCommand("json-all-theories-info", location);
-			if ( result instanceof JSONObject ) {
-				JSONObject obj = (JSONObject)result;
-				if ( obj.has(_THEORIES) ) {
-					JSONArray jTheories;
-					try {
-						jTheories = obj.getJSONArray(_THEORIES);
-						for (int i=0; i<jTheories.length(); i++) {
-							PVSTheory theory = new PVSTheory(jTheories.getJSONObject(i));
-							theories.add(theory);
-						}
-					} catch (JSONException e) {
-						log.log(Level.SEVERE, "Problem parsing the theory: {0}", e.getMessage());
-						e.printStackTrace();
-					}
-
-				}
-			}
-			log.log(Level.INFO, "Theories: {0}", theories);
+			return PVSJsonWrapper.getTheories((JSONObject)result);
 		} catch (PVSException e) {
 			log.log(Level.SEVERE, "Problem getting the theories back from PVS");
 			e.printStackTrace();
-		}		
-		
-		return theories;
+		}
+		log.severe("The code should not reach this");
+		return null;
 	}
 	
 	private void generatePVSModel() {
+		log.info("Generating the PVS Model");
 		treeModel.clear();
 		ArrayList<PVSTheory> theories = getTheories();
+		log.log(Level.INFO, "Theories: {0}", theories);
 		if ( theories != null ) {
 			for(PVSTheory theory: theories) {
 				treeModel.addChild(new TreeNode(theory));
@@ -157,6 +136,7 @@ public class PVSEditor extends TextEditor {
 		}
 	}
 	
+	
 	public void updatePVSTheoriesView() {
 		if ( !modelGenerated ) {
 			generatePVSModel();
@@ -164,6 +144,7 @@ public class PVSEditor extends TextEditor {
 		}
 		PVSTheoriesView view = PVSTheoriesView.getInstance();
 		if ( view != null )
+			log.log(Level.INFO, "Updating the PVS Theories View Model for {0} with {1}", new Object[] {getLocation(), treeModel});
 			view.setInput(treeModel);
 	}
 	
@@ -172,15 +153,7 @@ public class PVSEditor extends TextEditor {
 		if ( view != null )
 			view.clear();
 	}
-	
-	protected void setSite(IWorkbenchPartSite site) {
-		super.setSite(site);
-
-		IWorkbenchPage page = getSite().getPage();
-		page.addPartListener(new PVSEditorActivationListener());
-	}
-	
-			
+				
 	public void dispose() {
 		colorManager.dispose();
 		super.dispose();
@@ -190,7 +163,7 @@ public class PVSEditor extends TextEditor {
 		
 		super.doSave(progressMonitor);
 		
-		modelGenerated = false;
+		invalidatePVSModel();
 		updatePVSTheoriesView();
 		
 		/*
@@ -234,38 +207,4 @@ public class PVSEditor extends TextEditor {
 		}
 		*/
 	}
-
-	@SuppressWarnings("rawtypes")
-	@Override
-	public Object getAdapter(Class cls) {
-		//System.out.println("Adapter Class: " + cls.getName());
-		Object adapter = super.getAdapter(cls);
-		//System.out.println("Adapter: " + adapter);
-		return adapter;
-	}
-		
-	private final void outputFileToPVS(Process process) throws CoreException, IOException {
-		// Lecture et renvoi a PVS
-		InputStream in = file.getContents();
-		OutputStream out = process.getOutputStream();
-		int ch = 0;
-		while ((ch = in.read()) > -1) {
-			out.write(ch);
-		}
-		out.close();
-		in.close();
-	}
-
-	private static final String getOuput(InputStream errStream)
-			throws IOException {
-		final InputStreamReader iReader = new InputStreamReader(errStream);
-		BufferedReader bReader = new BufferedReader(iReader);
-		String r = "";
-		String s;
-		while ((s = bReader.readLine()) != null) {
-			r += "|" + s;
-		}
-		return r;
-	}
-
 }
