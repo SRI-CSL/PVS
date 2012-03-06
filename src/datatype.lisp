@@ -1111,8 +1111,7 @@ generated")
 
 (defun make-accessor-funtype (domain range deps fdecls)
   (if deps
-      (let* (
-	     (tdom (typecheck* (copy domain) nil nil nil))
+      (let* ((tdom (typecheck* (copy domain) nil nil nil))
 	     (dtype (if (dep-binding? tdom)
 			tdom
 			(mk-dep-binding (make-new-variable '|d|

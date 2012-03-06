@@ -66,7 +66,6 @@
 		   (argument-list argument)
 		   argument))
 	 (res (resolve* name k args)))
-    (assert (every #'resolution? res))
     (when (and (cdr res)
 	       (resolution name)
 	       (member (resolution name) res :test #'tc-eq))

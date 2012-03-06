@@ -153,7 +153,6 @@
 		   (mapcar #'(lambda (elt) (module (car elt)))
 		     alist)))
 	(sterm term))
-    (break)
     (dolist (th theories)
       (let* ((lib-id (get-lib-id th))
 	     (actuals (mapcar #'(lambda (fp)
