@@ -528,24 +528,26 @@
 			      (nconc reses1 reses)))))
 
 (defmethod resolve-decl-actuals* ((decl typed-declaration) dacts thinst args)
-  (let* ((dtype (subst-mod-params (type decl) thinst))
-	 (sdtype (subst-types dtype
-			      (pairlis (formal-params (current-declaration))
-				       (mapcar #'type-value dacts))))
-	 (doms (domain* sdtype))
-	 (margs (when args
-		  (if (and (singleton? doms)
-			   (not (singleton? args)))
-		      (let ((atup (mk-arg-tuple-expr* args)))
-			(setf (types atup)
-			      (all-possible-tupletypes args))
-			(list atup))
-		      args))))
-    (when (or (null margs)
-	      (compatible-args? decl margs (types (car doms))))
-      ;; Note that we're using the dactuals of the module-instance
-      ;; in order to keep from having another resolution slot
-      (list (make-resolution decl (copy thinst 'dactuals dacts) sdtype)))))
+    (let* ((dtype (subst-mod-params (type decl) thinst))
+	   (sdtype (if (length= (formal-params decl) dacts)
+		       (subst-types dtype
+				    (pairlis (formal-params decl)
+					     (mapcar #'type-value dacts)))
+		       dtype))
+	   (doms (domain* sdtype))
+	   (margs (when args
+		    (if (and (singleton? doms)
+			     (not (singleton? args)))
+			(let ((atup (mk-arg-tuple-expr* args)))
+			  (setf (types atup)
+				(all-possible-tupletypes args))
+			  (list atup))
+			args))))
+      (when (or (null margs)
+		(compatible-args? decl margs (types (car doms))))
+	;; Note that we're using the dactuals of the module-instance
+	;; in order to keep from having another resolution slot
+	(list (make-resolution decl (copy thinst 'dactuals dacts) sdtype)))))
 
 (defmethod resolve-decl-actuals* ((decl type-decl) dacts thinst args)
   (let* ((dtype (if (dactuals (type-value decl))
