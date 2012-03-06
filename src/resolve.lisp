@@ -66,7 +66,6 @@
 		   (argument-list argument)
 		   argument))
 	 (res (resolve* name k args)))
-    (assert (every #'resolution? res))
     (when (and (cdr res)
 	       (resolution name)
 	       (member (resolution name) res :test #'tc-eq))
@@ -249,11 +248,12 @@
 			instances))))))))
 
 (defmethod get-binding-resolutions ((name name) kind args)
-  (with-slots (mod-id library actuals id) name
+  (with-slots (mod-id library actuals dactuals id) name
     (when (and (eq kind 'expr)
 	       (null library)
 	       (null mod-id)
-	       (null actuals))
+	       (null actuals)
+	       (null dactuals))
       (let ((bdecls (remove-duplicates (remove-if-not #'(lambda (bd)
 							  (eq (id bd) id))
 					 *bound-variables*)
@@ -420,7 +420,7 @@
 				      (formal-type-decl?
 				       (declaration ftype))))))
 		     (t nil))))
-      (if (null acts)
+      (if (and (null acts) (null dacts))
 	  (if (and (null mappings)
 		   (null args)
 		   (or (eq dth (current-theory))
@@ -430,7 +430,8 @@
 	      (let* ((usings (unless (eq dth (current-theory))
 				  (get-importings dth)))
 		     (thname (mk-modname (id (module decl))
-			       nil (when usings (library (car usings))))))
+			       nil (when usings (library (car usings)))
+			       nil )))
 		(when (visible-to-mapped-tcc? decl thname dth)
 		  #+pvsdebug
 		  (assert (or (not (library-datatype-or-theory? dth))
@@ -469,16 +470,15 @@
 (defun resolve-with-actuals (decl acts dacts dth args mappings)
   ;; If dacts is there, or if decl has no formal-params, no ambiguity
   (let ((dparams (or (formal-params decl)
-		     (and *adt* (formal-params *adt*)))))
+		     (and (current-declaration)
+			  (formal-params (current-declaration))))))
     (if dacts
 	(when (and dparams
 		   (length= dacts dparams)
 		   (length= acts (formals-sans-usings dth)))
-	  (let ((thinsts (resolve-theory-actuals decl acts dth args mappings))
-		(dthinsts (resolve-decl-actuals decl dacts thinsts args)))
-	    (mapcar #'(lambda (thinst)
-			(make-resolution decl thinst))
-	      dthinsts)))
+	  (let* ((thinsts (resolve-theory-actuals decl acts dth args mappings))
+		 (reses (resolve-decl-actuals decl dacts thinsts args)))
+	    reses))
 	(let ((thinsts (when (length= acts (formals-sans-usings dth))
 			 (resolve-theory-actuals decl acts dth args mappings)))
 	      (dreses (when (and (formal-params decl)
@@ -530,17 +530,19 @@
 (defmethod resolve-decl-actuals* ((decl typed-declaration) dacts thinst args)
   (let* ((dtype (subst-mod-params (type decl) thinst))
 	 (sdtype (subst-types dtype
-			      (pairlis (formal-params decl)
+			      (pairlis (formal-params (current-declaration))
 				       (mapcar #'type-value dacts))))
 	 (doms (domain* sdtype))
-	 (margs (if (and (singleton? doms)
-			 (not (singleton? args)))
-		    (let ((atup (mk-arg-tuple-expr* args)))
-		      (setf (types atup)
-			    (all-possible-tupletypes args))
-		      (list atup))
-		    args)))
-    (when (compatible-args? decl margs (types (car doms)))
+	 (margs (when args
+		  (if (and (singleton? doms)
+			   (not (singleton? args)))
+		      (let ((atup (mk-arg-tuple-expr* args)))
+			(setf (types atup)
+			      (all-possible-tupletypes args))
+			(list atup))
+		      args))))
+    (when (or (null margs)
+	      (compatible-args? decl margs (types (car doms))))
       ;; Note that we're using the dactuals of the module-instance
       ;; in order to keep from having another resolution slot
       (list (make-resolution decl (copy thinst 'dactuals dacts) sdtype)))))
@@ -697,7 +699,9 @@
 (defun typecheck-actuals (name &optional (kind 'expr))
   (let ((*get-all-resolutions* nil))
     (mapc #'(lambda (a) (typecheck* a nil kind nil))
-	  (actuals name))))
+	  (actuals name))
+    (mapc #'(lambda (a) (typecheck* a nil kind nil))
+	  (dactuals name))))
 
 (defmethod typecheck* ((act actual) expected kind arguments)
   #+pvsdebug (assert (not (type (expr act))) () "Type set already???")

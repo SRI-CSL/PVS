@@ -117,12 +117,14 @@
     :exporting exporting
     :theory theory))
 
-(defun mk-type-decl (id &optional (class 'type-decl) type-expr)
+(defun mk-type-decl (id &optional (class 'type-decl) type-expr dparams)
   (if (eq class 'type-decl)
       (make-instance 'type-decl
-	:id id)
+	:id id
+	:formal-params dparams)
       (make-instance class
 	:id id
+	:formal-params dparams
 	:type-expr type-expr)))
     
 
@@ -141,16 +143,17 @@
     :type type
     :definition definition))
 
-(defun mk-adt-constructor-decl (id type &optional num fdecls)
+(defun mk-adt-constructor-decl (id type &optional num dparams)
   (make-instance 'adt-constructor-decl
     :id id
     :declared-type type
-    :formal-params fdecls
+    :formal-params dparams
     :ordnum num))
 
-(defun mk-adt-recognizer-decl (id type &optional num)
+(defun mk-adt-recognizer-decl (id type &optional num dparams)
   (make-instance 'adt-recognizer-decl
     :id id
+    :formal-params dparams
     :declared-type type
     :ordnum num))
 
@@ -205,9 +208,10 @@
     :type type
     :definition definition))
 
-(defun mk-formula-decl (id expr &optional (spelling 'formula) kind)
+(defun mk-formula-decl (id expr &optional (spelling 'formula) kind dparams)
   (make-instance 'formula-decl
     :id id
+    :formal-params dparams
     :spelling spelling
     :kind kind
     :definition expr
@@ -329,7 +333,7 @@
     :semi t))
 
 (defun mk-type-name (id &optional actuals mod-id resolution mappings
-			library target)
+			library target dactuals)
   (cond ((type-name? id)
 	 (copy id))
 	((name? id)
@@ -342,7 +346,8 @@
 	   :mod-id (mod-id id)
 	   :parens (parens id)
 	   :library (library id)
-	   :place (place id)))
+	   :place (place id)
+	   :dactuals dactuals))
 	(t (make-instance 'type-name
 	     :id id
 	     :actuals actuals
@@ -350,9 +355,10 @@
 	     :library library
 	     :target target
 	     :mod-id mod-id
-	     :resolutions (when resolution (list resolution))))))
+	     :resolutions (when resolution (list resolution))
+	     :dactuals dactuals))))
 
-(defun mk-adt-type-name (id &optional actuals mod-id resolution adt)
+(defun mk-adt-type-name (id &optional actuals mod-id resolution adt dparams)
   (cond ((adt-type-name? id)
 	 (copy id :adt (or adt (adt id))))
 	((type-name? id)
@@ -372,6 +378,7 @@
 	(t (make-instance 'adt-type-name
 	     :id id
 	     :actuals actuals
+	     :dactuals (mk-dactuals dparams)
 	     :mod-id mod-id
 	     :resolutions (when resolution (list resolution))
 	     :adt adt
@@ -846,10 +853,11 @@
 	:arguments arguments
 	:expression expression)))
 
-(defun mk-modname (id &optional actuals library mappings)
+(defun mk-modname (id &optional actuals library mappings dactuals)
   (make-instance 'modname
     :id id
     :actuals actuals
+    :dactuals dactuals
     :library library
     :mappings mappings))
 
@@ -896,7 +904,7 @@
 		:mod-id (mod-id arg)
 		:actuals (actuals arg)
 		:resolutions (resolutions arg)))
-	(type-value (lcopy arg :from-conversion nil)))
+	(type-value (when (resolutions arg) (lcopy arg :from-conversion nil))))
     (make-instance 'actual :expr expr :type-value type-value)))
 
 (defmethod mk-actual ((arg name-expr))

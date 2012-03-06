@@ -551,6 +551,7 @@
 	  (null (resolutions name)))
       (lcopy name
 	'actuals (gensubst* (actuals name) substfn testfn)
+	'dactuals (gensubst* (dactuals name) substfn testfn)
 	'mappings (gensubst* (mappings name) substfn testfn))
       (let ((nres (gensubst* (resolutions name) substfn testfn)))
 	(if (eq nres (resolutions name))
@@ -558,6 +559,7 @@
 	    (copy name
 	      'resolutions nres
 	      'actuals (gensubst* (actuals name) substfn testfn)
+	      'dactuals (gensubst* (dactuals name) substfn testfn)
 	      'mappings (gensubst* (mappings name) substfn testfn))))))
 
 (defmethod gensubst* ((map mapping) substfn testfn)
@@ -611,6 +613,7 @@
 
 (defmethod gensubst* ((name modname) substfn testfn)
   (let ((nacts (gensubst* (actuals name) substfn testfn))
+	(ndacts (gensubst* (dactuals name) substfn testfn))
 	(nmaps (gensubst* (mappings name) substfn testfn)))
     (lcopy name
       'actuals (if (and nacts
@@ -619,6 +622,7 @@
 		   (list (mk-actual (find-supertype
 				     (type-value (car nacts)))))
 		   nacts)
+      'dactuals ndacts
       'mappings nmaps)))
 
 (defmethod gensubst* ((obj symbol) substfn testfn)
@@ -884,16 +888,18 @@
 ;  (call-next-method))
 
 (defmethod mapobject* (fn (obj bind-decl))
-  (with-slots (actuals) obj
+  (with-slots (actuals dactuals) obj
     (call-next-method)			; binding
     (when actuals (mapobject* fn actuals))
+    (when dactuals (mapobject* fn dactuals))
     ;;(mapobject* fn (resolutions obj))
     ))
 
 (defmethod mapobject* (fn (obj name))
-  (with-slots (actuals mappings) obj
+  (with-slots (actuals dactuals mappings) obj
     (when (next-method-p) (call-next-method)) ; Handles expr part of name-expr
     (when actuals (mapobject* fn actuals))
+    (when dactuals (mapobject* fn dactuals))
     (when mappings (mapobject* fn mappings))))
 
 (defmethod mapobject* (fn (act actual))
@@ -925,10 +931,11 @@
 	  (copy-untyped* (cdr list)))))
 
 (defmethod copy-untyped* ((ex name-expr))
-  (with-slots (actuals) ex
+  (with-slots (actuals dactuals) ex
     (copy ex
       'type nil
       'actuals (copy-untyped* actuals)
+      'dactuals (copy-untyped* dactuals)
       'resolutions nil)))
 
 (defmethod copy-untyped* ((ex field-name-expr))
@@ -941,10 +948,11 @@
   (change-class (call-next-method) 'name-expr))
 
 (defmethod copy-untyped* ((ex null-expr))
-  (with-slots (actuals) ex
+  (with-slots (actuals dactuals) ex
     (copy ex
       'type nil
       'actuals (copy-untyped* actuals)
+      'dactuals (copy-untyped* dactuals)
       'resolutions nil)))
 
 (defmethod copy-untyped* ((ex recognizer-name-expr))
@@ -954,9 +962,10 @@
   (change-class (call-next-method) 'name-expr))
 
 (defmethod copy-untyped* ((ex name))
-  (with-slots (actuals) ex
+  (with-slots (actuals dactuals) ex
     (copy ex
       'actuals (copy-untyped* actuals)
+      'dactuals (copy-untyped* dactuals)
       'resolutions nil)))
 
 (defmethod copy-untyped* ((ex bind-decl))
@@ -998,27 +1007,31 @@
       'expression (copy-untyped* expression))))
 
 (defmethod copy-untyped* ((ex projection-expr))
-  (with-slots (actuals) ex
+  (with-slots (actuals dactuals) ex
     (copy ex
       'actuals (copy-untyped* actuals)
+      'dactuals (copy-untyped* dactuals)
       'type nil)))
 
 (defmethod copy-untyped* ((ex injection-expr))
-  (with-slots (actuals) ex
+  (with-slots (actuals dactuals) ex
     (copy ex
       'actuals (copy-untyped* actuals)
+      'dactuals (copy-untyped* dactuals)
       'type nil)))
 
 (defmethod copy-untyped* ((ex injection?-expr))
-  (with-slots (actuals) ex
+  (with-slots (actuals dactuals) ex
     (copy ex
       'actuals (copy-untyped* actuals)
+      'dactuals (copy-untyped* dactuals)
       'type nil)))
 
 (defmethod copy-untyped* ((ex extraction-expr))
-  (with-slots (actuals) ex
+  (with-slots (actuals dactuals) ex
     (copy ex
       'actuals (copy-untyped* actuals)
+      'dactuals (copy-untyped* dactuals)
       'type nil)))
 
 (defmethod copy-untyped* ((ex projection-application))
@@ -1209,9 +1222,10 @@
       'nonempty? nil)))
 
 (defmethod copy-untyped* ((ex type-name))
-  (with-slots (actuals) ex
+  (with-slots (actuals dactuals) ex
     (copy ex
       'actuals (copy-untyped* actuals)
+      'dactuals (copy-untyped* dactuals)
       'print-type nil
       'from-conversion nil
       'nonempty? nil)))

@@ -2303,7 +2303,7 @@ bind tighter.")
   (with-slots (constructor args expression) sel
     (pprint-logical-block (nil nil)
       (pprint-indent :current 2)
-      (write (id constructor))
+      (pp* constructor)
       (when args
 	(pprint-logical-block (nil args :prefix "(" :suffix ")")
 	  (loop (write (id (pprint-pop)))

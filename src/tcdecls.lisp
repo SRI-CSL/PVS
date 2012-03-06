@@ -1102,10 +1102,18 @@
   (check-duplication decl)
   (setf (type-value decl)
 	(let ((tn (if *generating-adt*
-		      (mk-adt-type-name (id decl) nil nil nil *generating-adt*)
-		      (mk-type-name (id decl)))))
+		      (mk-adt-type-name (id decl) nil nil nil
+					*generating-adt* (formal-params decl))
+		      (progn (when (formal-params decl)
+			       (break "typecheck* (type-decl) formal-params"))
+		      (mk-type-name (id decl))))))
+	  ;; If there are formal-params, the dactuals need to be typechecked
+	  (when (dactuals tn)
+	    (typecheck* (dactuals tn) nil nil nil))
 	  (setf (resolutions tn)
-		(list (mk-resolution decl (current-theory-name) tn)))
+		(list (mk-resolution decl
+			(lcopy (current-theory-name) 'dactuals (dactuals tn))
+			tn)))
 	  tn))
   (when *loading-prelude*
     (set-prelude-types (id decl) (type-value decl)))

@@ -2980,7 +2980,8 @@ required a context.")
 				      (tc-match expected range bindings))))
       (or (and nbindings
 	       (every #'cdr nbindings)
-	       (let ((type (subst-theory-params optype nbindings)))
+	       (let* ((dtype (subst-for-formals optype nbindings))
+		      (type (subst-theory-params dtype nbindings)))
 		 (assert (compatible? (range (find-supertype type)) expected))
 		 (when (or *dont-worry-about-full-instantiations*
 			   (fully-instantiated? type))

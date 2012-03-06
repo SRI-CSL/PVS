@@ -675,21 +675,23 @@
        (let ((adt1 (adt op1))
 	     (adt2 (adt op2)))
 	 (and (eq (adt adt1) (adt adt2))
-	      (let ((acts1 (actuals (module-instance
-				     (resolution
-				      (or (print-type adt1) adt1)))))
-		    (acts2 (actuals (module-instance
-				     (resolution
-				      (or (print-type adt2) adt2))))))
-		(cond ((null acts1)
-		       (null acts2))
-		      ((null acts2)
-		       nil)
-		      (t (tc-eq-adt-actuals acts1
-					    acts2
-					    bindings
-					    (formals-sans-usings (adt adt1))
-					    (positive-types (adt adt1))))))))))
+	      (let ((mi1 (module-instance
+			  (resolution
+			   (or (print-type adt1) adt1))))
+		    (mi2 (module-instance
+			  (resolution
+			   (or (print-type adt2) adt2))))
+		    (fmls (formals-sans-usings (adt adt1)))
+		    (ptypes (positive-types (adt adt1))))
+		(and (tc-eq-adt-op-actuals (actuals mi1) (actuals mi2) bindings
+					   fmls ptypes)
+		     (tc-eq-adt-op-actuals (dactuals mi1) (dactuals mi2) bindings
+					   fmls ptypes)))))))
+
+(defun tc-eq-adt-op-actuals (acts1 acts2 bindings fmls ptypes)
+  (cond ((null acts1) (null acts2))
+	((null acts2) nil)
+	(t (tc-eq-adt-actuals acts1 acts2 bindings fmls ptypes))))
 
 (defun tc-eq-adt-actuals (acts1 acts2 bindings formals postypes)
   (or (null acts1)
@@ -865,14 +867,15 @@
 
 (defmethod tc-eq* ((n1 name) (n2 name) bindings)
   (with-slots ((id1 id) (res1 resolutions) (mi1 mod-id) (l1 library)
-	       (act1 actuals) (m1 mappings) (t1 target)) n1
+	       (act1 actuals) (dact1 dactuals) (m1 mappings) (t1 target)) n1
     (with-slots ((id2 id) (res2 resolutions) (mi2 mod-id) (l2 library)
-		 (act2 actuals) (m2 mappings) (t2 target)) n2
+		 (act2 actuals) (dact2 dactuals) (m2 mappings) (t2 target)) n2
       (or (eq n1 n2)
 	  (and (or (not *strong-tc-eq-flag*)
 		   (and (eq mi1 mi2)
 			(eq l1 l2)
 			(tc-eq* act1 act2 bindings)
+			(tc-eq* dact1 dact2 bindings)
 			(tc-eq* m1 m2 bindings)
 			(tc-eq* t1 t2 bindings)))
 	       (tc-eq* (car res1) (car res2) bindings))))))
@@ -891,6 +894,7 @@
 				(null (library mi2))
 				(eq (library mi1) (library mi2)))
 			    (tc-eq* (actuals mi1) (actuals mi2) bindings)
+			    (tc-eq* (dactuals mi1) (dactuals mi2) bindings)
 			    (or (null (mappings mi1))
 				(null (mappings mi2))
 				(tc-eq* (mappings mi1) (mappings mi2) bindings)))
@@ -898,11 +902,14 @@
 
 (defmethod tc-eq* ((n1 modname) (n2 modname) bindings)
   (or (eq n1 n2)
-      (with-slots ((id1 id) (lib1 library) (act1 actuals) (map1 mappings)) n1
-	(with-slots ((id2 id) (lib2 library) (act2 actuals) (map2 mappings)) n2
+      (with-slots ((id1 id) (lib1 library) (act1 actuals)
+		   (dacts1 dactuals) (map1 mappings)) n1
+	(with-slots ((id2 id) (lib2 library) (act2 actuals)
+		     (dacts2 dactuals) (map2 mappings)) n2
 	  (and (eq id1 id2)
 	       (eq lib1 lib2)
 	       (tc-eq* act1 act2 bindings)
+	       (tc-eq* dacts1 dacts2 bindings)
 	       (tc-eq* map1 map2 bindings))))))
 
 (defmethod tc-eq* ((a1 actual) (a2 actual) bindings)
@@ -973,7 +980,9 @@
       (let* ((mi1 (module-instance atype))
 	     (mi2 (module-instance etype))
 	     (a1 (actuals mi1))
-	     (a2 (actuals mi2)))
+	     (a2 (actuals mi2))
+	     (da1 (dactuals mi1))
+	     (da2 (dactuals mi2)))
 	(and (eq (id atype) (id etype))
 	     (eq (id mi1) (id mi2))
 	     ;;(tc-eq (module-instance atype) (module-instance etype))
@@ -981,7 +990,10 @@
 		 (null a2)
 		 (actuals-are-outside-formals? a1)
 		 (actuals-are-outside-formals? a2)
-		 (compatible?* a1 a2))))))
+		 (compatible?* a1 a2))
+	     (or (null da1)
+		 (null da2)
+		 (compatible?* da1 da2))))))
 
 (defmethod compatible?* ((atype type-name) etype)
   (declare (ignore etype))

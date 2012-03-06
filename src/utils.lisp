@@ -4217,6 +4217,9 @@ space")
 
 (defun posnat? (x) (and (integerp x) (plusp x)))
 
+(defun parse-unparse (ex &optional (nt 'expr))
+  (pc-parse (unparse ex :string t) nt))
+
 (defun make-new-symbol (string &optional num)
   (let ((str (if num (format nil "~a-~d" string num) string)))
     (if (find-symbol str)

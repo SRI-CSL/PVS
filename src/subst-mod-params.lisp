@@ -151,7 +151,6 @@
 		   (mapcar #'(lambda (elt) (module (car elt)))
 		     alist)))
 	(sterm term))
-    (break)
     (dolist (th theories)
       (let* ((lib-id (get-lib-id th))
 	     (thname
@@ -191,6 +190,7 @@
     (if (or (module? obj)
 	    (mappings modinst)
 	    (some #'formal-theory-decl? formals)
+	    (dactuals modinst)
 	    (and (actuals modinst)
 		 (or (some #'(lambda (ofp) (memq ofp formals))
 			   (free-params obj))

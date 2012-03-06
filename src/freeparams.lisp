@@ -336,11 +336,13 @@
 ;;; Names
 
 (defmethod free-params* ((mi modname) frees)
-  (with-slots (actuals mappings) mi
-    (if actuals
+  (with-slots (actuals dactuals mappings) mi
+    (if (or actuals dactuals)
 	(let ((afrees (free-params* actuals nil))
+	      (dfrees (free-params* dactuals nil))
 	      (mfrees (free-params* mappings nil)))
-	  (union mfrees (union afrees frees :test #'eq)
+	  (union mfrees (union dfrees (union afrees frees :test #'eq)
+			       :test #'eq)
 		 :test #'eq))
 	(let ((theory (get-theory mi))
 	      (mfrees (free-params* mappings nil)))
@@ -378,22 +380,26 @@
 
 (defmethod free-params-res (decl (mi modname) type frees)
   (declare (ignore type))
-  (with-slots (actuals) mi
-    (if actuals
-	(let ((afrees (free-params* actuals nil)))
-	  (union afrees frees :test #'eq))
+  (with-slots (actuals dactuals) mi
+    (if (or actuals dactuals)
+	(let ((afrees (free-params* actuals nil))
+	      (dafrees (free-params* dactuals nil)))
+	  (union dafrees (union afrees frees :test #'eq) :test #'eq))
 	(let ((theory (module decl)))
 	  (when theory
 	    (dolist (x (formals-sans-usings theory))
 	      (setq frees (pushnew x frees :test #'eq))))
+	  (dolist (x (formal-params decl))
+	    (setq frees (pushnew x frees :test #'eq)))
 	  frees))))
 
 (defmethod free-params-res ((theory module) (mi modname) type frees)
   (declare (ignore type))
-  (with-slots (actuals) mi
-    (if actuals
-	(let ((afrees (free-params* actuals nil)))
-	  (union afrees frees :test #'eq))
+  (with-slots (actuals dactuals) mi
+    (if (or actuals dactuals)
+	(let ((afrees (free-params* actuals nil))
+	      (dfrees (free-params* dactuals nil)))
+	  (union dfrees (union afrees frees :test #'eq) :test #'eq))
 	(progn (dolist (x (formals-sans-usings theory))
 		 (setq frees (pushnew x frees :test #'eq)))
 	       frees))))
