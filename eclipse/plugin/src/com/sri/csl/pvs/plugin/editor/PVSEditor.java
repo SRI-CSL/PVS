@@ -24,7 +24,7 @@ import com.sri.csl.pvs.plugin.views.TreeNode;
 public class PVSEditor extends TextEditor {
 	private final ColorManager colorManager;
 	private boolean modelValid;
-	private TreeNode treeModel = new TreeNode("");
+	private TreeNode treeModel = null;
 	protected static Logger log = Logger.getLogger(PVSEditor.class.getName());
 	protected static HashMap<String, Object> typecheckedFiles = new HashMap<String, Object>();
 	
@@ -78,6 +78,7 @@ public class PVSEditor extends TextEditor {
 		modelValid = false;
 		String location = EclipsePluginUtil.getFilenameWithoutExtension(getLocation());
 		typecheckedFiles.remove(location);
+		treeModel = null;
 	}
 	
 	/**
@@ -117,24 +118,28 @@ public class PVSEditor extends TextEditor {
 		return null;
 	}
 	
-	private void generatePVSModel() {
+	public void generatePVSModel() {
+		if ( modelValid )
+			return;
 		log.info("Generating the PVS Model");
-		treeModel.clear();
 		ArrayList<PVSTheory> theories = getTheories();
 		log.log(Level.INFO, "Theories: {0}", theories);
 		if ( theories != null ) {
-			treeModel = EclipsePluginUtil.convertTheories2TreeNode(treeModel , theories.toArray(new PVSTheory[0]));
+			treeModel = EclipsePluginUtil.convertTheories2TreeNode(null , theories.toArray(new PVSTheory[0]));
+		} else {
+			treeModel = EclipsePluginUtil.convertTheories2TreeNode(null);
 		}
 		modelValid = true;
 	}
 	
+	public TreeNode getTreeNode() {
+		return treeModel;
+	}
 	
 	public void updatePVSTheoriesView() {
-		if ( !modelValid ) {
-			generatePVSModel();
-		}
-		log.log(Level.INFO, "Updating the PVS Theories View Model for {0} with {1}", new Object[] {getLocation(), treeModel.getObject()});
-		PVSTheoriesView.update(true, treeModel);
+		generatePVSModel();
+		log.log(Level.INFO, "Updating the PVS Theories View Model for {0} with {1}", new Object[] {getLocation(), treeModel});
+		PVSTheoriesView.update(false, treeModel);
 	}
 	
 	public void clearPVSTheoriesView() {

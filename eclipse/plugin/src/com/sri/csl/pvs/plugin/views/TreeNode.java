@@ -43,6 +43,7 @@ public class TreeNode implements IAdaptable {
 	}
 	
 	public void clear() {
+		name = "";
 		children.clear();
 	}
 	
@@ -56,7 +57,10 @@ public class TreeNode implements IAdaptable {
 	}
 	
 	public String toString() {
-		return getName();
+		if ( "".equals(name) ) {
+			return "!!! " + object;
+		}
+		return name;
 	}
 	
 	

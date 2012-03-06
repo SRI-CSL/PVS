@@ -16,6 +16,7 @@ import com.sri.csl.pvs.plugin.editor.PVSEditor;
 import com.sri.csl.pvs.plugin.misc.EclipsePluginUtil;
 import com.sri.csl.pvs.plugin.preferences.PreferenceConstants;
 import com.sri.csl.pvs.plugin.views.PVSTheoriesView;
+import com.sri.csl.pvs.plugin.views.TreeNode;
 
 /*
  * To add a new command:
@@ -107,8 +108,16 @@ public class PVSCommandManager {
 		String file = args.get(0).toString();
 
 		ArrayList<PVSTheory> theories = PVSJsonWrapper.getTheories(getDeclarations(file));
-		PVSEditor.setTypechecked(file, theories);			
-		PVSTheoriesView.update(true, theories);
+		PVSEditor.setTypechecked(file, theories);
+		IEditorPart ed = EclipsePluginUtil.getVisibleEditor();
+		if ( ed instanceof PVSEditor ) {
+			PVSEditor editor = (PVSEditor)ed;
+			if ( file.equals(EclipsePluginUtil.getFilenameWithoutExtension(editor.getLocation())) ) {
+				editor.generatePVSModel();
+			}
+		}
+		TreeNode node = EclipsePluginUtil.convertTheories2TreeNode(null, theories.toArray(new PVSTheory[0]));
+		PVSTheoriesView.update(true, node);
 		return result;
 	}
 

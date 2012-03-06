@@ -93,18 +93,20 @@ public class PVSTheoriesView extends ViewPart {
 	class ViewContentProvider implements ITreeContentProvider {
 		
 		public void inputChanged(Viewer v, Object oldInput, Object newInput) {
-			log.log(Level.INFO, "oldInput: {0}\tnewInput: {1}", new Object[] {oldInput, newInput});
-			invisibleRoot.clear();
-			if ( newInput != null ) {
-				if ( newInput instanceof TreeNode ) {
-					invisibleRoot.addChild((TreeNode)newInput);
-				} else if ( newInput instanceof PVSTheory ) {
-					invisibleRoot.addChild(EclipsePluginUtil.convertTheories2TreeNode(null , (PVSTheory)newInput));
-				} else if ( newInput instanceof List ) {
-					PVSTheory[] theories = ((List<PVSTheory>)newInput).toArray(new PVSTheory[0]);
-					invisibleRoot.addChild(EclipsePluginUtil.convertTheories2TreeNode(null , theories));
-				}
-			}
+//			invisibleRoot.clear();
+//			if ( newInput != null ) {
+//				if ( newInput instanceof TreeNode ) {
+//					log.log(Level.INFO, "oldInput: {0}\tnewInput: {1}", new Object[] {oldInput, ((TreeNode)newInput).getObject()});
+//					invisibleRoot = (TreeNode)newInput;
+//				} else if ( newInput instanceof PVSTheory ) {
+//					log.log(Level.INFO, "oldInput: {0}\tnewInput: {1}", new Object[] {oldInput, newInput});
+//					invisibleRoot.addChild(EclipsePluginUtil.convertTheories2TreeNode(null , (PVSTheory)newInput));
+//				} else if ( newInput instanceof List ) {
+//					log.log(Level.INFO, "oldInput: {0}\tnewInput: {1}", new Object[] {oldInput, newInput});
+//					PVSTheory[] theories = ((List<PVSTheory>)newInput).toArray(new PVSTheory[0]);
+//					invisibleRoot.addChild(EclipsePluginUtil.convertTheories2TreeNode(null , theories));
+//				}
+//			}
 			
 		}
 		
@@ -203,9 +205,37 @@ public class PVSTheoriesView extends ViewPart {
 		contributeToActionBars();
 	}
 	
-	public void setInput(Object input) {
-		viewer.setInput(input);
+	public void setInput(TreeNode input) {
+		if ( input != null ) {
+			log.log(Level.INFO, "newInput: {0}", input.getObject());
+			invisibleRoot = input;
+		} else {
+			log.log(Level.INFO, "newInput is null");
+			invisibleRoot.clear();
+		}
+		viewer.setInput(invisibleRoot);
 	}
+	
+//	public void setInput2(Object input) {
+//		invisibleRoot.clear();
+//		if ( input != null ) {
+//			if ( input instanceof TreeNode ) {
+//				log.log(Level.INFO, "newInput: {0}", ((TreeNode)input).getObject());
+//				invisibleRoot = (TreeNode)input;
+//			} else if ( input instanceof PVSTheory ) {
+//				log.log(Level.INFO, "tnewInput: {0}", input);
+//				invisibleRoot = EclipsePluginUtil.convertTheories2TreeNode(null , (PVSTheory)input);
+//			} else if ( input instanceof List ) {
+//				log.log(Level.INFO, "newInput: {0}", input);
+//				PVSTheory[] theories = ((List<PVSTheory>)input).toArray(new PVSTheory[0]);
+//				invisibleRoot = EclipsePluginUtil.convertTheories2TreeNode(null , theories);
+//			} else {
+//				log.log(Level.WARNING, "Strange newInput: {0}", input);
+//				invisibleRoot.addChild(new TreeNode(input.toString()));
+//			}
+//		}
+//		viewer.setInput(invisibleRoot);
+//	}
 	
 	public static void clear() {
 		PVSTheoriesView view = getInstance();
@@ -300,16 +330,17 @@ public class PVSTheoriesView extends ViewPart {
 		viewer.getControl().setFocus();
 	}
 	
-	public static void update(boolean useInputObject, Object inputObject) {
+	public static void update(boolean useInputObject, TreeNode node) {
 		PVSTheoriesView view = getInstance();
 		if (  view != null ) {
 			if ( useInputObject ) {
-				view.setInput(inputObject);
+				view.setInput(node);
 			} else {
 				IEditorPart ed = EclipsePluginUtil.getVisibleEditor();
 				if ( ed instanceof PVSEditor ) {
 					PVSEditor editor = (PVSEditor)ed;
-					view.setInput(editor.getTheories());
+					editor.generatePVSModel();
+					view.setInput(editor.getTreeNode());
 				} else if ( ed instanceof TextEditor ) {
 					view.setInput(null);
 				}
