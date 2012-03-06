@@ -108,7 +108,7 @@ public class PVSCommandManager {
 
 		ArrayList<PVSTheory> theories = PVSJsonWrapper.getTheories(getDeclarations(file));
 		PVSEditor.setTypechecked(file, theories);			
-		PVSTheoriesView.update();
+		PVSTheoriesView.update(true, theories);
 		return result;
 	}
 

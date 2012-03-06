@@ -93,18 +93,16 @@ public class PVSTheoriesView extends ViewPart {
 	class ViewContentProvider implements ITreeContentProvider {
 		
 		public void inputChanged(Viewer v, Object oldInput, Object newInput) {
-			log.log(Level.INFO, "newInput: {0}", newInput);
+			log.log(Level.INFO, "oldInput: {0}\tnewInput: {1}", new Object[] {oldInput, newInput});
 			invisibleRoot.clear();
 			if ( newInput != null ) {
 				if ( newInput instanceof TreeNode ) {
-					invisibleRoot = (TreeNode)newInput;
+					invisibleRoot.addChild((TreeNode)newInput);
 				} else if ( newInput instanceof PVSTheory ) {
-					invisibleRoot = new TreeNode((PVSTheory)newInput);
+					invisibleRoot.addChild(EclipsePluginUtil.convertTheories2TreeNode(null , (PVSTheory)newInput));
 				} else if ( newInput instanceof List ) {
-					List<PVSTheory> theories = (List<PVSTheory>)newInput;
-					for (PVSTheory theory: theories) {
-						invisibleRoot.addChild(new TreeNode(theory));
-					}
+					PVSTheory[] theories = ((List<PVSTheory>)newInput).toArray(new PVSTheory[0]);
+					invisibleRoot.addChild(EclipsePluginUtil.convertTheories2TreeNode(null , theories));
 				}
 			}
 			
@@ -209,8 +207,11 @@ public class PVSTheoriesView extends ViewPart {
 		viewer.setInput(input);
 	}
 	
-	public void clear() {
-		setInput(null);
+	public static void clear() {
+		PVSTheoriesView view = getInstance();
+		if (  view != null ) {
+			view.setInput(null);
+		}
 	}
 
 	private void hookContextMenu() {
@@ -299,14 +300,20 @@ public class PVSTheoriesView extends ViewPart {
 		viewer.getControl().setFocus();
 	}
 	
-	public static void update() {
+	public static void update(boolean useInputObject, Object inputObject) {
 		PVSTheoriesView view = getInstance();
-		IEditorPart ed = EclipsePluginUtil.getVisibleEditor();
-		if ( ed instanceof PVSEditor ) {
-			PVSEditor editor = (PVSEditor)ed;
-			view.setInput(editor.getTheories());
-		} else if ( ed instanceof TextEditor ) {
-			view.setInput(null);
+		if (  view != null ) {
+			if ( useInputObject ) {
+				view.setInput(inputObject);
+			} else {
+				IEditorPart ed = EclipsePluginUtil.getVisibleEditor();
+				if ( ed instanceof PVSEditor ) {
+					PVSEditor editor = (PVSEditor)ed;
+					view.setInput(editor.getTheories());
+				} else if ( ed instanceof TextEditor ) {
+					view.setInput(null);
+				}
+			}
 		}
 	}
 	

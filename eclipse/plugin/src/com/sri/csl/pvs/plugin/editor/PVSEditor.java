@@ -11,8 +11,6 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.ui.editors.text.TextEditor;
 import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.texteditor.IElementStateListener;
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import com.sri.csl.pvs.PVSException;
@@ -25,16 +23,14 @@ import com.sri.csl.pvs.plugin.views.TreeNode;
 
 public class PVSEditor extends TextEditor {
 	private final ColorManager colorManager;
-	private boolean modelGenerated;
+	private boolean modelValid;
 	private TreeNode treeModel = new TreeNode("");
-	private static TreeNode emptyTreeModel = new TreeNode("");
-	private static TreeNode notTypecheckedTreeModel = new TreeNode("Theories will be displayed after the file is successfully typechecked");
 	protected static Logger log = Logger.getLogger(PVSEditor.class.getName());
 	protected static HashMap<String, Object> typecheckedFiles = new HashMap<String, Object>();
 	
 	public PVSEditor() {
 		super();
-		modelGenerated = false;
+		modelValid = false;
 		colorManager = new ColorManager();
 		setSourceViewerConfiguration(new PVSConfiguration(colorManager));
 		setDocumentProvider(new PVSDocumentProvider());
@@ -65,7 +61,7 @@ public class PVSEditor extends TextEditor {
 	}
 
 	public void setTypechecked(Object obj) {
-		modelGenerated = true;
+		modelValid = true;
 		typecheckedFiles.put(EclipsePluginUtil.getFilenameWithoutExtension(getLocation()), obj);
 	}
 	
@@ -79,11 +75,10 @@ public class PVSEditor extends TextEditor {
 	}
 	
 	public void invalidatePVSModel() {
-		modelGenerated = false;
+		modelValid = false;
 		String location = EclipsePluginUtil.getFilenameWithoutExtension(getLocation());
 		typecheckedFiles.remove(location);
 	}
-	
 	
 	/**
 	 * 
@@ -128,30 +123,22 @@ public class PVSEditor extends TextEditor {
 		ArrayList<PVSTheory> theories = getTheories();
 		log.log(Level.INFO, "Theories: {0}", theories);
 		if ( theories != null ) {
-			for(PVSTheory theory: theories) {
-				treeModel.addChild(new TreeNode(theory));
-			}
-		} else {
-			treeModel.addChild(notTypecheckedTreeModel);						
+			treeModel = EclipsePluginUtil.convertTheories2TreeNode(treeModel , theories.toArray(new PVSTheory[0]));
 		}
+		modelValid = true;
 	}
 	
 	
 	public void updatePVSTheoriesView() {
-		if ( !modelGenerated ) {
+		if ( !modelValid ) {
 			generatePVSModel();
-			modelGenerated = true;
 		}
-		PVSTheoriesView view = PVSTheoriesView.getInstance();
-		if ( view != null )
-			log.log(Level.INFO, "Updating the PVS Theories View Model for {0} with {1}", new Object[] {getLocation(), treeModel});
-			view.setInput(treeModel);
+		log.log(Level.INFO, "Updating the PVS Theories View Model for {0} with {1}", new Object[] {getLocation(), treeModel.getObject()});
+		PVSTheoriesView.update(true, treeModel);
 	}
 	
 	public void clearPVSTheoriesView() {
-		PVSTheoriesView view = PVSTheoriesView.getInstance();
-		if ( view != null )
-			view.clear();
+			PVSTheoriesView.clear();
 	}
 				
 	public void dispose() {

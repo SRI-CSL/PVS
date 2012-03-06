@@ -16,15 +16,13 @@ public class PVSEditorActivationListener implements IPartListener {
 	@Override
 	public void partActivated(IWorkbenchPart part) {
 		log.log(Level.INFO, "Part title is: {0}", part.getTitle());		
-		PVSTheoriesView.update();
-//		if ( part instanceof PVSEditor ) {
-//			PVSEditor ed = (PVSEditor)part;
-//			ed.updatePVSTheoriesView();
-//		} else if ( part instanceof TextEditor ) {
-//			PVSTheoriesView view = PVSTheoriesView.getInstance();
-//			if ( view != null )
-//				view.setInput(null);			
-//		}
+		//PVSTheoriesView.update(false, null);
+		if ( part instanceof PVSEditor ) {
+			PVSEditor ed = (PVSEditor)part;
+			ed.updatePVSTheoriesView();
+		} else if ( part instanceof TextEditor ) {
+			PVSTheoriesView.clear();			
+		}
 	}
 
 	@Override

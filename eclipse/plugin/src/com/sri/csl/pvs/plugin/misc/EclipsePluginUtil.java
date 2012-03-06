@@ -11,9 +11,13 @@ import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 
+import com.sri.csl.pvs.declarations.PVSTheory;
 import com.sri.csl.pvs.plugin.editor.PVSEditor;
+import com.sri.csl.pvs.plugin.views.TreeNode;
 
 public class EclipsePluginUtil {
+	private static TreeNode notTypecheckedTreeModel = new TreeNode("Theories will be displayed after the file is successfully typechecked");
+		
 	public static IEditorPart getVisibleEditor() {
 		IWorkbench wb = PlatformUI.getWorkbench();
 		IWorkbenchWindow win = wb.getActiveWorkbenchWindow();
@@ -87,6 +91,20 @@ public class EclipsePluginUtil {
 	
 	public static String getFilenameWithoutExtension(String filename) {
 		return filename.substring(0,filename.lastIndexOf('.'));
+	}
+	
+	public static TreeNode convertTheories2TreeNode(TreeNode parent, PVSTheory... theories) {
+		if ( parent == null ) {
+			parent = new TreeNode("");
+		}
+		if ( theories != null ) {
+			for(PVSTheory theory: theories) {
+				parent.addChild(new TreeNode(theory));
+			}
+		} else {
+			parent.addChild(notTypecheckedTreeModel);						
+		}
+		return parent;
 	}
 	
 }
