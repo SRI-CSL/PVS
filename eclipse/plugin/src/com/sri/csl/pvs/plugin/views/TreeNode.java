@@ -57,9 +57,6 @@ public class TreeNode implements IAdaptable {
 	}
 	
 	public String toString() {
-		if ( "".equals(name) ) {
-			return "!!! " + object;
-		}
 		return name;
 	}
 	
@@ -77,6 +74,19 @@ public class TreeNode implements IAdaptable {
 	
 	public TreeNode[] getChildren() {
 		return (TreeNode[]) children.toArray(new TreeNode[children.size()]);
+	}
+	
+	public String getPrettyString() {
+		StringBuffer buffer = new StringBuffer();
+		buffer.append(name).append("[");
+		if ( children.size() > 0 ) {
+			buffer.append(children.get(0));
+		}
+		for (int i=1; i<children.size(); i++) {
+			buffer.append(", ").append(children.get(i));			
+		}
+		buffer.append("]");
+		return buffer.toString();
 	}
 
 	public boolean hasChildren() {

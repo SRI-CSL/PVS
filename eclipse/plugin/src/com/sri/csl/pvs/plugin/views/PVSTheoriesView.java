@@ -207,36 +207,15 @@ public class PVSTheoriesView extends ViewPart {
 	
 	public void setInput(TreeNode input) {
 		if ( input != null ) {
-			log.log(Level.INFO, "newInput: {0}", input.getObject());
+			log.log(Level.INFO, "newInput: {0}", input.getPrettyString());
 			invisibleRoot = input;
 		} else {
 			log.log(Level.INFO, "newInput is null");
-			invisibleRoot.clear();
+			invisibleRoot = new TreeNode("");
 		}
 		viewer.setInput(invisibleRoot);
 	}
-	
-//	public void setInput2(Object input) {
-//		invisibleRoot.clear();
-//		if ( input != null ) {
-//			if ( input instanceof TreeNode ) {
-//				log.log(Level.INFO, "newInput: {0}", ((TreeNode)input).getObject());
-//				invisibleRoot = (TreeNode)input;
-//			} else if ( input instanceof PVSTheory ) {
-//				log.log(Level.INFO, "tnewInput: {0}", input);
-//				invisibleRoot = EclipsePluginUtil.convertTheories2TreeNode(null , (PVSTheory)input);
-//			} else if ( input instanceof List ) {
-//				log.log(Level.INFO, "newInput: {0}", input);
-//				PVSTheory[] theories = ((List<PVSTheory>)input).toArray(new PVSTheory[0]);
-//				invisibleRoot = EclipsePluginUtil.convertTheories2TreeNode(null , theories);
-//			} else {
-//				log.log(Level.WARNING, "Strange newInput: {0}", input);
-//				invisibleRoot.addChild(new TreeNode(input.toString()));
-//			}
-//		}
-//		viewer.setInput(invisibleRoot);
-//	}
-	
+		
 	public static void clear() {
 		PVSTheoriesView view = getInstance();
 		if (  view != null ) {
@@ -339,8 +318,7 @@ public class PVSTheoriesView extends ViewPart {
 				IEditorPart ed = EclipsePluginUtil.getVisibleEditor();
 				if ( ed instanceof PVSEditor ) {
 					PVSEditor editor = (PVSEditor)ed;
-					editor.generatePVSModel();
-					view.setInput(editor.getTreeNode());
+					view.setInput(editor.getModel());
 				} else if ( ed instanceof TextEditor ) {
 					view.setInput(null);
 				}

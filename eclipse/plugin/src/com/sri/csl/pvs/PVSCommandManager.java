@@ -108,16 +108,19 @@ public class PVSCommandManager {
 		String file = args.get(0).toString();
 
 		ArrayList<PVSTheory> theories = PVSJsonWrapper.getTheories(getDeclarations(file));
-		PVSEditor.setTypechecked(file, theories);
+		TreeNode node = EclipsePluginUtil.convertTheories2TreeNode(null, theories.toArray(new PVSTheory[0]));		
+		PVSEditor.setModel(file, node);
 		IEditorPart ed = EclipsePluginUtil.getVisibleEditor();
 		if ( ed instanceof PVSEditor ) {
 			PVSEditor editor = (PVSEditor)ed;
-			if ( file.equals(EclipsePluginUtil.getFilenameWithoutExtension(editor.getLocation())) ) {
-				editor.generatePVSModel();
-			}
+			editor.updatePVSTheoriesView();
 		}
-		TreeNode node = EclipsePluginUtil.convertTheories2TreeNode(null, theories.toArray(new PVSTheory[0]));
-		PVSTheoriesView.update(true, node);
+//			if ( file.equals(EclipsePluginUtil.getFilenameWithoutExtension(editor.getLocation())) ) {
+//				editor.generatePVSModel();
+//			}
+//		}
+//		TreeNode node = EclipsePluginUtil.convertTheories2TreeNode(null, theories.toArray(new PVSTheory[0]));
+//		PVSTheoriesView.update(false, node);
 		return result;
 	}
 

@@ -23,14 +23,13 @@ import com.sri.csl.pvs.plugin.views.TreeNode;
 
 public class PVSEditor extends TextEditor {
 	private final ColorManager colorManager;
-	private boolean modelValid;
-	private TreeNode treeModel = null;
+	//private boolean modelValid;
+	//private TreeNode treeModel;
 	protected static Logger log = Logger.getLogger(PVSEditor.class.getName());
-	protected static HashMap<String, Object> typecheckedFiles = new HashMap<String, Object>();
+	protected static HashMap<String, TreeNode> models = new HashMap<String, TreeNode>();
 	
 	public PVSEditor() {
 		super();
-		modelValid = false;
 		colorManager = new ColorManager();
 		setSourceViewerConfiguration(new PVSConfiguration(colorManager));
 		setDocumentProvider(new PVSDocumentProvider());
@@ -56,14 +55,14 @@ public class PVSEditor extends TextEditor {
 		});
 	}
 	
-	public static void setTypechecked(String filename, Object obj) {
-		typecheckedFiles.put(filename, obj);
+	public static void setModel(String filename, TreeNode node) {
+		models.put(filename, node);
 	}
 
-	public void setTypechecked(Object obj) {
-		modelValid = true;
-		typecheckedFiles.put(EclipsePluginUtil.getFilenameWithoutExtension(getLocation()), obj);
-	}
+//	public void setTypechecked(Object obj) {
+//		modelValid = true;
+//		models.put(EclipsePluginUtil.getFilenameWithoutExtension(getLocation()), obj);
+//	}
 	
 	public boolean isTypechecked() {
 		String location = EclipsePluginUtil.getFilenameWithoutExtension(getLocation());
@@ -71,14 +70,13 @@ public class PVSEditor extends TextEditor {
 //			typecheckedFiles.remove(location);
 //			return false;
 //		}
-		return typecheckedFiles.containsKey(location);
+		return models.containsKey(location);
 	}
 	
 	public void invalidatePVSModel() {
-		modelValid = false;
+		log.log(Level.INFO, "Invalidating model for {0}", getLocation());
 		String location = EclipsePluginUtil.getFilenameWithoutExtension(getLocation());
-		typecheckedFiles.remove(location);
-		treeModel = null;
+		models.remove(location);
 	}
 	
 	/**
@@ -96,50 +94,27 @@ public class PVSEditor extends TextEditor {
 		return location;
 	}
 	
-	public ArrayList<PVSTheory> getTheories() {
+	public static boolean hasModel(String name) {
+		return models.containsKey(name);
+	}
+	
+	protected boolean hasModel() {
 		String location = EclipsePluginUtil.getFilenameWithoutExtension(getLocation());
-		if ( typecheckedFiles.containsKey(location) ) {
-			return (ArrayList<PVSTheory>)typecheckedFiles.get(location);
+		return models.containsKey(location);
+	}
+	
+	public TreeNode getModel() {
+		String location = EclipsePluginUtil.getFilenameWithoutExtension(getLocation());
+		if ( hasModel(location) ) {
+			return models.get(location);
 		}
-		if ( !PVSExecutionManager.isPVSRunning() ) {
-			return null;
-		}
-		if ( !isTypechecked() ) {
-			return null;
-		}
-		try {
-			Object result = PVSJsonWrapper.INST().sendRawCommand("(json-all-theories-info \"" + location + "\")");
-			return PVSJsonWrapper.getTheories((JSONObject)result);
-		} catch (PVSException e) {
-			log.log(Level.SEVERE, "Problem getting the theories back from PVS");
-			e.printStackTrace();
-		}
-		log.severe("The code should not reach this");
 		return null;
 	}
-	
-	public void generatePVSModel() {
-		if ( modelValid )
-			return;
-		log.info("Generating the PVS Model");
-		ArrayList<PVSTheory> theories = getTheories();
-		log.log(Level.INFO, "Theories: {0}", theories);
-		if ( theories != null ) {
-			treeModel = EclipsePluginUtil.convertTheories2TreeNode(null , theories.toArray(new PVSTheory[0]));
-		} else {
-			treeModel = EclipsePluginUtil.convertTheories2TreeNode(null);
-		}
-		modelValid = true;
-	}
-	
-	public TreeNode getTreeNode() {
-		return treeModel;
-	}
-	
+		
 	public void updatePVSTheoriesView() {
-		generatePVSModel();
+		TreeNode treeModel = getModel();
 		log.log(Level.INFO, "Updating the PVS Theories View Model for {0} with {1}", new Object[] {getLocation(), treeModel});
-		PVSTheoriesView.update(false, treeModel);
+		PVSTheoriesView.update(true, treeModel);
 	}
 	
 	public void clearPVSTheoriesView() {
