@@ -15,7 +15,6 @@ import com.sri.csl.pvs.plugin.Activator;
 import com.sri.csl.pvs.plugin.editor.PVSEditor;
 import com.sri.csl.pvs.plugin.misc.EclipsePluginUtil;
 import com.sri.csl.pvs.plugin.preferences.PreferenceConstants;
-import com.sri.csl.pvs.plugin.views.PVSTheoriesView;
 import com.sri.csl.pvs.plugin.views.TreeNode;
 
 /*
@@ -115,12 +114,6 @@ public class PVSCommandManager {
 			PVSEditor editor = (PVSEditor)ed;
 			editor.updatePVSTheoriesView();
 		}
-//			if ( file.equals(EclipsePluginUtil.getFilenameWithoutExtension(editor.getLocation())) ) {
-//				editor.generatePVSModel();
-//			}
-//		}
-//		TreeNode node = EclipsePluginUtil.convertTheories2TreeNode(null, theories.toArray(new PVSTheory[0]));
-//		PVSTheoriesView.update(false, node);
 		return result;
 	}
 

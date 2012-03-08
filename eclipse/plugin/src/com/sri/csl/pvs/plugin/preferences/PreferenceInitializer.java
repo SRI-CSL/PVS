@@ -1,9 +1,6 @@
 package com.sri.csl.pvs.plugin.preferences;
 
 import org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer;
-import org.eclipse.jface.preference.IPreferenceStore;
-
-import com.sri.csl.pvs.plugin.Activator;
 
 /**
  * Class used to initialize default preference values.

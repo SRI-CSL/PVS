@@ -3,7 +3,11 @@ package com.sri.csl.pvs.plugin.editor;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.jface.text.rules.*;
+import org.eclipse.jface.text.rules.EndOfLineRule;
+import org.eclipse.jface.text.rules.IPredicateRule;
+import org.eclipse.jface.text.rules.RuleBasedPartitionScanner;
+import org.eclipse.jface.text.rules.SingleLineRule;
+import org.eclipse.jface.text.rules.Token;
 
 public class PVSPartitionScanner extends RuleBasedPartitionScanner {
 	

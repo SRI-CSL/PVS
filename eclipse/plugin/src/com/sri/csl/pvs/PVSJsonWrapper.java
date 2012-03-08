@@ -11,7 +11,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import com.sri.csl.pvs.declarations.PVSTheory;
-import com.sri.csl.pvs.plugin.misc.EclipsePluginUtil;
 
 public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 	protected static String ID = "id";

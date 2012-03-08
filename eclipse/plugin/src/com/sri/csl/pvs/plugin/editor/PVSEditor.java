@@ -1,6 +1,5 @@
 package com.sri.csl.pvs.plugin.editor;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -11,22 +10,16 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.ui.editors.text.TextEditor;
 import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.texteditor.IElementStateListener;
-import org.json.JSONObject;
 
-import com.sri.csl.pvs.PVSException;
-import com.sri.csl.pvs.PVSExecutionManager;
-import com.sri.csl.pvs.PVSJsonWrapper;
-import com.sri.csl.pvs.declarations.PVSTheory;
 import com.sri.csl.pvs.plugin.misc.EclipsePluginUtil;
 import com.sri.csl.pvs.plugin.views.PVSTheoriesView;
 import com.sri.csl.pvs.plugin.views.TreeNode;
 
 public class PVSEditor extends TextEditor {
 	private final ColorManager colorManager;
-	//private boolean modelValid;
-	//private TreeNode treeModel;
 	protected static Logger log = Logger.getLogger(PVSEditor.class.getName());
 	protected static HashMap<String, TreeNode> models = new HashMap<String, TreeNode>();
+	private static TreeNode notTypecheckedTreeModel = new TreeNode("Theories will be displayed after the file is successfully typechecked");
 	
 	public PVSEditor() {
 		super();
@@ -58,22 +51,8 @@ public class PVSEditor extends TextEditor {
 	public static void setModel(String filename, TreeNode node) {
 		models.put(filename, node);
 	}
-
-//	public void setTypechecked(Object obj) {
-//		modelValid = true;
-//		models.put(EclipsePluginUtil.getFilenameWithoutExtension(getLocation()), obj);
-//	}
 	
-	public boolean isTypechecked() {
-		String location = EclipsePluginUtil.getFilenameWithoutExtension(getLocation());
-//		if ( isDirty() ) {
-//			typecheckedFiles.remove(location);
-//			return false;
-//		}
-		return models.containsKey(location);
-	}
-	
-	public void invalidatePVSModel() {
+	public void invalidateModel() {
 		log.log(Level.INFO, "Invalidating model for {0}", getLocation());
 		String location = EclipsePluginUtil.getFilenameWithoutExtension(getLocation());
 		models.remove(location);
@@ -108,13 +87,13 @@ public class PVSEditor extends TextEditor {
 		if ( hasModel(location) ) {
 			return models.get(location);
 		}
-		return null;
+		return notTypecheckedTreeModel;
 	}
 		
 	public void updatePVSTheoriesView() {
 		TreeNode treeModel = getModel();
 		log.log(Level.INFO, "Updating the PVS Theories View Model for {0} with {1}", new Object[] {getLocation(), treeModel});
-		PVSTheoriesView.update(true, treeModel);
+		PVSTheoriesView.update(treeModel);
 	}
 	
 	public void clearPVSTheoriesView() {
@@ -130,7 +109,7 @@ public class PVSEditor extends TextEditor {
 		
 		super.doSave(progressMonitor);
 		
-		invalidatePVSModel();
+		invalidateModel();
 		updatePVSTheoriesView();
 		
 		/*

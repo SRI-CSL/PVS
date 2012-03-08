@@ -16,7 +16,6 @@ import com.sri.csl.pvs.plugin.editor.PVSEditor;
 import com.sri.csl.pvs.plugin.views.TreeNode;
 
 public class EclipsePluginUtil {
-	private static TreeNode notTypecheckedTreeModel = new TreeNode("Theories will be displayed after the file is successfully typechecked");
 		
 	public static IEditorPart getVisibleEditor() {
 		IWorkbench wb = PlatformUI.getWorkbench();
@@ -101,8 +100,6 @@ public class EclipsePluginUtil {
 			for(PVSTheory theory: theories) {
 				parent.addChild(new TreeNode(theory));
 			}
-		} else {
-			parent.addChild(notTypecheckedTreeModel);						
 		}
 		return parent;
 	}

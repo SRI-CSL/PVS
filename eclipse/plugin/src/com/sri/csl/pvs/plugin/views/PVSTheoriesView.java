@@ -1,7 +1,6 @@
 package com.sri.csl.pvs.plugin.views;
 
 
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -309,20 +308,10 @@ public class PVSTheoriesView extends ViewPart {
 		viewer.getControl().setFocus();
 	}
 	
-	public static void update(boolean useInputObject, TreeNode node) {
+	public static void update(TreeNode node) {
 		PVSTheoriesView view = getInstance();
 		if (  view != null ) {
-			if ( useInputObject ) {
-				view.setInput(node);
-			} else {
-				IEditorPart ed = EclipsePluginUtil.getVisibleEditor();
-				if ( ed instanceof PVSEditor ) {
-					PVSEditor editor = (PVSEditor)ed;
-					view.setInput(editor.getModel());
-				} else if ( ed instanceof TextEditor ) {
-					view.setInput(null);
-				}
-			}
+			view.setInput(node);
 		}
 	}
 	
