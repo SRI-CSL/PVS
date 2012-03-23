@@ -11,6 +11,7 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
 
+import com.sri.csl.pvs.PVSExecutionManager;
 import com.sri.csl.pvs.plugin.editor.PVSEditorActivationListener;
 
 /**
@@ -56,6 +57,7 @@ public class Activator extends AbstractUIPlugin {
 	 */
 	public void stop(BundleContext context) throws Exception {
 		plugin = null;
+		PVSExecutionManager.stopPVS();
 		super.stop(context);
 	}
 

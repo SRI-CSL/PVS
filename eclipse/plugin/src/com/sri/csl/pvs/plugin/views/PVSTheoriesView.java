@@ -28,20 +28,16 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.ui.IActionBars;
-import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchActionConstants;
 import org.eclipse.ui.IWorkingSetManager;
 import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.editors.text.TextEditor;
 import org.eclipse.ui.part.ViewPart;
 
 import com.sri.csl.pvs.declarations.PVSDeclaration;
 import com.sri.csl.pvs.declarations.PVSTheory;
 import com.sri.csl.pvs.plugin.Activator;
-import com.sri.csl.pvs.plugin.editor.PVSEditor;
-import com.sri.csl.pvs.plugin.misc.EclipsePluginUtil;
 
 
 /**
