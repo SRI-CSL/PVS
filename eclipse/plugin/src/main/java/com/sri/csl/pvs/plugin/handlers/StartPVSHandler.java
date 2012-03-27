@@ -136,9 +136,6 @@ public class StartPVSHandler extends AbstractHandler {
 }
 
 class PVSStreamListener implements IStreamListener {
-	private static String simplePrompt = "pvs\\([0-9]+\\)";
-	private static String pvsAllegroPrompt = "^[ ]*\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\)?\\(\\(<[-A-Za-z]* ?[0-9]*>\\)\\3?\\|[-A-Za-z0-9]+([0-9]+): \\)\\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter";
-	private static String pvsCmuPrompt = "^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter";
 	private static Pattern pvsPromptPattern;
 	private static String NL = "\n", LCB = "{", RCB = "}";
 	StringBuffer jsonBuffer;
@@ -146,17 +143,7 @@ class PVSStreamListener implements IStreamListener {
 	protected static Logger log = Logger.getLogger(PVSStreamListener.class.getName());
 	
 	public PVSStreamListener(int lispType) {
-		switch ( lispType ) {
-		case -1:// Simple
-			pvsPromptPattern = Pattern.compile(simplePrompt);
-			break;			
-		case 0:// ALLEGRO:
-			pvsPromptPattern = Pattern.compile(pvsAllegroPrompt);
-			break;
-		case 1:// CMU:
-			pvsPromptPattern = Pattern.compile(pvsCmuPrompt);
-			break;
-		}
+		pvsPromptPattern = Pattern.compile(PVSExecutionManager.getPVSPromptRegex(lispType));
 		resetJSONBuffer();
 	}
 	
