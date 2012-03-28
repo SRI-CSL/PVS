@@ -1,8 +1,5 @@
 package com.sri.csl.pvs.plugin;
 
-import java.util.regex.Pattern;
-
-import junit.framework.Assert;
 import junit.framework.TestCase;
 
 import org.junit.Test;
@@ -14,14 +11,22 @@ public class PVSTest extends TestCase {
 	protected static void tell(String s) {
 		System.out.println(s);
 	}
-	
-	@Test	
-	public void testPrompt() {
+		
+	@Test
+	public void testAllegroPrompt() {
+		
 		String promptRegex = PVSExecutionManager.getPVSPromptRegex(1);
-		Pattern pvsPromptPattern = Pattern.compile(promptRegex);
+//		promptRegex = "^[ ]*((\\[\\d+i?c?\\] |" +
+//					  "\\[step\\] )?(<?[-\\p{Alpha}]* ?\\d*>?|" +
+//					  "[-\\p{Alnum}]+\\(\\d+\\):) )+|" + 
+//					  "Rule\\? |" + 
+//					  "<GndEval> |<PVSio> |yices > |\\(Y or N\\)|\\(Yes or No\\)|Please enter";
+
+		tell("Testing this regex:  " + promptRegex);
+		
 		String[] acceptAsPrompt = new String[] {
-				"pvs(2):",
 				"Please enter",
+				"pvs(2):",
 		};
 
 		String[] rejectAsPrompt = new String[] {
@@ -32,17 +37,45 @@ public class PVSTest extends TestCase {
 		
 		for (String str: acceptAsPrompt) {
 			tell("Prompt Testing: " + str);
-			boolean matched = pvsPromptPattern.matcher(str).find();
-			assertTrue(matched);
+			boolean matched = str.matches(promptRegex);
+			assertTrue(str, matched);
 		}
 	
 		for (String str: rejectAsPrompt) {
 			tell("Non-Prompt Testing: " + str);
-			boolean matched = pvsPromptPattern.matcher(str).find();
-			assertFalse(matched);
+			boolean matched = str.matches(promptRegex);
+			assertFalse(str, matched);
 		}
 	}
 	
+	@Test
+	public void testCMUPrompt() {
+		
+		String promptRegex = PVSExecutionManager.getPVSPromptRegex(2);
+		tell("Testing this regex:  " + promptRegex);
+		
+		String[] acceptAsPrompt = new String[] {
+				"Please enter",
+				"pvs(2):",
+		};
+
+		String[] rejectAsPrompt = new String[] {
+				"pvs",
+				"Allegro CL Enterprise Edition",
+				"Context file /Applications/eclipse/Eclipse.app/Contents/MacOS/.pvscontext written",
+		};
+		
+		for (String str: acceptAsPrompt) {
+			tell("Prompt Testing: " + str);
+			boolean matched = str.matches(promptRegex);
+			assertTrue(str, matched);
+		}
 	
+		for (String str: rejectAsPrompt) {
+			tell("Non-Prompt Testing: " + str);
+			boolean matched = str.matches(promptRegex);
+			assertFalse(str, matched);
+		}
+	}
 
 }
