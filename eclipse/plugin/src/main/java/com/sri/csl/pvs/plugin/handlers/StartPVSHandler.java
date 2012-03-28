@@ -180,7 +180,7 @@ class PVSStreamListener implements IStreamListener {
 					}
 				} else if ( !jsonStarted ) {
 					//TODO: The prompt is not detected right now. What out WHY.
-					if ( pvsPromptPattern.matcher(line).find() ) { // line is the prompt
+					if ( pvsPromptPattern.matcher(line).matches() ) { // line is the prompt
 						log.log(Level.INFO, "prompt was received: {0}", line);
 						PVSExecutionManager.pvsPromptReceived(line);
 					} else { // line is unstructured data
