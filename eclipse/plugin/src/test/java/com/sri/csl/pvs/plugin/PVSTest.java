@@ -16,21 +16,17 @@ public class PVSTest extends TestCase {
 	public void testAllegroPrompt() {
 		
 		String promptRegex = PVSConstants.pvsAllegroPrompt;
-//		promptRegex = "^[ ]*((\\[\\d+i?c?\\] |" +
-//					  "\\[step\\] )?(<?[-\\p{Alpha}]* ?\\d*>?|" +
-//					  "[-\\p{Alnum}]+\\(\\d+\\):) )+|" + 
-//					  "Rule\\? |" + 
-//					  "<GndEval> |<PVSio> |yices > |\\(Y or N\\)|\\(Yes or No\\)|Please enter";
 
-		tell("Testing this regex:  " + promptRegex);
+		tell("Testing ALLEGRO regex:  " + promptRegex);
 		
 		String[] acceptAsPrompt = new String[] {
-				"Please enter",
-				"(Y or N)",
-				"(Yes or No)",
-				"yices ",
-				"PVSio> ",
-				"pvs(2):",
+				"Please enter: ",
+				"(Y or N) ",
+				"(Yes or No) ",
+				"yices > ",
+				"<PVSio> ",
+				"sjdgfhjsdg> ",
+				"pvs(2): ",
 		};
 
 		String[] rejectAsPrompt = new String[] {
@@ -56,7 +52,7 @@ public class PVSTest extends TestCase {
 	public void testCMUPrompt() {
 		
 		String promptRegex = PVSConstants.pvsCmuPrompt;
-		tell("Testing this regex:  " + promptRegex);
+		tell("Testing CMU regex:  " + promptRegex);
 		
 		String[] acceptAsPrompt = new String[] {
 				"Please enter",
