@@ -27,6 +27,7 @@ public class PVSTest extends TestCase {
 				"<PVSio> ",
 				"sjdgfhjsdg> ",
 				"pvs(2): ",
+				"[1] pvs(34): ",
 		};
 
 		String[] rejectAsPrompt = new String[] {

@@ -94,7 +94,7 @@ public class StartPVSHandler extends AbstractHandler {
 				});				
 				IStreamsProxy streamProxy = process.getStreamsProxy();
 				IStreamMonitor outMonitor = streamProxy.getOutputStreamMonitor();
-				outMonitor.addListener(new PVSStreamListener(0)); //TODO: Later change this to 0
+				outMonitor.addListener(new PVSStreamListener(1)); //TODO: Later change this to 0
 				
 				keyboardReader = new IOConsoleKeyboardReader(console);
 				keyboardReader.addListener(new IOConsoleKeyboardReader.IOConsoleKeyboardReaderListener() {
