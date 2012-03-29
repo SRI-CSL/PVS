@@ -4,6 +4,7 @@ import junit.framework.TestCase;
 
 import org.junit.Test;
 
+import com.sri.csl.pvs.PVSConstants;
 import com.sri.csl.pvs.PVSExecutionManager;
 
 public class PVSTest extends TestCase {
@@ -15,7 +16,7 @@ public class PVSTest extends TestCase {
 	@Test
 	public void testAllegroPrompt() {
 		
-		String promptRegex = PVSExecutionManager.getPVSPromptRegex(1);
+		String promptRegex = PVSConstants.pvsAllegroPrompt;
 //		promptRegex = "^[ ]*((\\[\\d+i?c?\\] |" +
 //					  "\\[step\\] )?(<?[-\\p{Alpha}]* ?\\d*>?|" +
 //					  "[-\\p{Alnum}]+\\(\\d+\\):) )+|" + 
@@ -51,7 +52,7 @@ public class PVSTest extends TestCase {
 	@Test
 	public void testCMUPrompt() {
 		
-		String promptRegex = PVSExecutionManager.getPVSPromptRegex(2);
+		String promptRegex = PVSConstants.pvsCmuPrompt;
 		tell("Testing this regex:  " + promptRegex);
 		
 		String[] acceptAsPrompt = new String[] {
