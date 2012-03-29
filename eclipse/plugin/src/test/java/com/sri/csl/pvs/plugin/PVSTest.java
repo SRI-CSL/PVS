@@ -5,7 +5,6 @@ import junit.framework.TestCase;
 import org.junit.Test;
 
 import com.sri.csl.pvs.PVSConstants;
-import com.sri.csl.pvs.PVSExecutionManager;
 
 public class PVSTest extends TestCase {
 
@@ -27,6 +26,10 @@ public class PVSTest extends TestCase {
 		
 		String[] acceptAsPrompt = new String[] {
 				"Please enter",
+				"(Y or N)",
+				"(Yes or No)",
+				"yices ",
+				"PVSio> ",
 				"pvs(2):",
 		};
 
