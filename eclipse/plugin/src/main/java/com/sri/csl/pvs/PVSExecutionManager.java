@@ -21,11 +21,7 @@ import com.sri.csl.pvs.plugin.Activator;
 import com.sri.csl.pvs.plugin.preferences.PreferenceConstants;
 
 public class PVSExecutionManager {
-	protected static Logger log = Logger.getLogger(PVSExecutionManager.class.getName());
-	private static String simplePrompt = "pvs\\([0-9]+\\)";
-	private	static String pvsAllegroPrompt = "^[ ]*((\\[\\d+i?c?\\] |\\[step\\] )?(<?[-\\p{Alpha}]* ?\\d*>?|[-\\p{Alnum}]+\\(\\d+\\):) )+|Rule\\? |<GndEval> |<PVSio> |yices > |\\(Y or N\\)|\\(Yes or No\\)|Please enter";
-	private static String pvsCmuPrompt = "^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter";
-	
+	protected static Logger log = Logger.getLogger(PVSExecutionManager.class.getName());	
 	
 	public interface PVSRespondListener {
 		public void onMessageReceived(String message);
@@ -59,11 +55,11 @@ public class PVSExecutionManager {
 	public static String getPVSPromptRegex(int lispType) {
 		switch ( lispType ) {
 		case 1: // Allegro
-			return pvsAllegroPrompt;
+			return PVSConstants.pvsAllegroPrompt;
 		case 2: // CMU
-			return pvsCmuPrompt;
+			return PVSConstants.pvsCmuPrompt;
 		}
-		return simplePrompt;
+		return PVSConstants.simplePrompt;
 	}
 	
 	public static Process startPVS() throws IOException {
