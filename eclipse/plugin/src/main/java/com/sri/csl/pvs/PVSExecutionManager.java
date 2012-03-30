@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Logger;
 
 import org.eclipse.debug.core.DebugPlugin;
@@ -25,6 +26,7 @@ public class PVSExecutionManager {
 	
 	public interface PVSRespondListener {
 		public void onMessageReceived(String message);
+		public void onPromptReceived(List<String> previousLines, String prompt);
 		public void onMessageReceived(JSONObject message);
 	}
 	
@@ -51,17 +53,7 @@ public class PVSExecutionManager {
 	public static String getPVSStartingCommand() {
 		return getPVSLocation()  + " -raw";
 	}
-	
-	public static String getPVSPromptRegex(int lispType) {
-		switch ( lispType ) {
-		case 1: // Allegro
-			return PVSConstants.pvsAllegroPrompt;
-		case 2: // CMU
-			return PVSConstants.pvsCmuPrompt;
-		}
-		return PVSConstants.simplePrompt;
-	}
-	
+		
 	public static Process startPVS() throws IOException {
 		if ( (new File(getPVSLocation()).exists()) ) {
 			Runtime runtime = Runtime.getRuntime();
@@ -131,10 +123,10 @@ public class PVSExecutionManager {
 		}
 	}
 	
-	public static void pvsPromptReceived(String prompt) {
+	public static void pvsPromptReceived(List<String> previouslines, String prompt) {
 		// Prompts are dispatched just like unstructured messages for now.
 		for (PVSRespondListener l: listeners) {
-			l.onMessageReceived(prompt);
+			l.onPromptReceived(previouslines, prompt);
 		}		
 	}
 

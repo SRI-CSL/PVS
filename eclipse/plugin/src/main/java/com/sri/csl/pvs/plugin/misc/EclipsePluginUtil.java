@@ -11,6 +11,7 @@ import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 
+import com.sri.csl.pvs.PVSConstants;
 import com.sri.csl.pvs.declarations.PVSTheory;
 import com.sri.csl.pvs.plugin.editor.PVSEditor;
 import com.sri.csl.pvs.plugin.views.TreeNode;
@@ -30,6 +31,10 @@ public class EclipsePluginUtil {
 			
 		}
 		return null;
+	}
+	
+	public static int getLispType() {
+		return PVSConstants.ALLEGRO; //TODO: This should come from the preference page.
 	}
 	
 	public static String getRelativePathOfVisiblePVSEditorFilename() {
@@ -104,4 +109,12 @@ public class EclipsePluginUtil {
 		return parent;
 	}
 	
+	public static String join(String[] pieces, String delimiter) {
+	     StringBuffer b = new StringBuffer();
+	     b.append(pieces[0]);
+	     for (int i=1; i<pieces.length; i++) {
+	    	 b.append(delimiter).append(pieces[i]);
+	     }
+	     return b.toString();
+	}
 }

@@ -3,6 +3,7 @@ package com.sri.csl.pvs;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -147,5 +148,9 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 		log.log(Level.INFO, "JSON message received: {0}", message);
 		responds.add(message);
 		
+	}
+
+	@Override
+	public void onPromptReceived(List<String> previousLines, String prompt) {
 	}
 }

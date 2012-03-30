@@ -1,10 +1,13 @@
 package com.sri.csl.pvs.plugin;
 
+import java.util.regex.Pattern;
+
 import junit.framework.TestCase;
 
 import org.junit.Test;
 
 import com.sri.csl.pvs.PVSConstants;
+import com.sri.csl.pvs.PVSPromptProcessor;
 
 public class PVSTest extends TestCase {
 
@@ -14,10 +17,9 @@ public class PVSTest extends TestCase {
 		
 	@Test
 	public void testAllegroPrompt() {
-		
-		String promptRegex = PVSConstants.pvsAllegroPrompt;
+		Pattern pattern = PVSPromptProcessor.getPVSPromptPattern(PVSConstants.ALLEGRO);
 
-		tell("Testing ALLEGRO regex:  " + promptRegex);
+		tell("Testing ALLEGRO regex:  " + pattern.pattern());
 		
 		String[] acceptAsPrompt = new String[] {
 				"Please enter: ",
@@ -38,22 +40,22 @@ public class PVSTest extends TestCase {
 		
 		for (String str: acceptAsPrompt) {
 			tell("Prompt Testing: " + str);
-			boolean matched = str.matches(promptRegex);
+			boolean matched = pattern.matcher(str).matches();
 			assertTrue(str, matched);
 		}
 	
 		for (String str: rejectAsPrompt) {
 			tell("Non-Prompt Testing: " + str);
-			boolean matched = str.matches(promptRegex);
+			boolean matched = pattern.matcher(str).matches();
 			assertFalse(str, matched);
 		}
 	}
 	
 	@Test
 	public void testCMUPrompt() {
-		
-		String promptRegex = PVSConstants.pvsCmuPrompt;
-		tell("Testing CMU regex:  " + promptRegex);
+		Pattern pattern = PVSPromptProcessor.getPVSPromptPattern(PVSConstants.CMU);
+
+		tell("Testing CMU regex:  " + pattern.pattern());
 		
 		String[] acceptAsPrompt = new String[] {
 				"Please enter",
@@ -68,13 +70,13 @@ public class PVSTest extends TestCase {
 		
 		for (String str: acceptAsPrompt) {
 			tell("Prompt Testing: " + str);
-			boolean matched = str.matches(promptRegex);
+			boolean matched = pattern.matcher(str).matches();
 			assertTrue(str, matched);
 		}
 	
 		for (String str: rejectAsPrompt) {
 			tell("Non-Prompt Testing: " + str);
-			boolean matched = str.matches(promptRegex);
+			boolean matched = pattern.matcher(str).matches();
 			assertFalse(str, matched);
 		}
 	}
