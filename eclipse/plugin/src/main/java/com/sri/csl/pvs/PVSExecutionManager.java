@@ -74,7 +74,7 @@ public class PVSExecutionManager {
 		if ( process != null ) {
 			OutputStream st = process.getOutputStream();
 			try {
-				st.write((message + "\n").getBytes());
+				st.write((message + PVSConstants.NL).getBytes());
 				st.flush();
 			} catch (IOException e) {
 				// e.printStackTrace();

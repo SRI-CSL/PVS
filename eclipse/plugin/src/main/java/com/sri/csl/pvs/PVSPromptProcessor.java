@@ -4,6 +4,9 @@ import java.util.List;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
+import org.eclipse.swt.SWT;
+
+import com.sri.csl.pvs.plugin.misc.EclipseGuiUtil;
 import com.sri.csl.pvs.plugin.misc.EclipsePluginUtil;
 
 public class PVSPromptProcessor {
@@ -21,6 +24,36 @@ public class PVSPromptProcessor {
 	}
 	
 	public static void processAllegroPrompt(List<String> previousLines, String prompt) {
+		if ( prompt.indexOf(PVSConstants.yesNo1)>-1 ) {
+			int respond = EclipseGuiUtil.askUserYesNoCancel(prompt);
+			switch ( respond ) {
+			case SWT.YES:
+				PVSExecutionManager.writeToPVS("Y");
+				break;
+			case SWT.NO:
+				PVSExecutionManager.writeToPVS("N");
+				break;
+			case SWT.CANCEL:
+				break;
+			}
+		} else if ( prompt.indexOf(PVSConstants.yesNo2)>-1 ) {
+			int respond = EclipseGuiUtil.askUserYesNoCancel(prompt);
+			switch ( respond ) {
+			case SWT.YES:
+				PVSExecutionManager.writeToPVS("Yes");
+				break;
+			case SWT.NO:
+				PVSExecutionManager.writeToPVS("No");
+				break;
+			case SWT.CANCEL:
+				break;
+			}
+		} else if ( prompt.matches(PVSConstants.pvsAllegroDebugPrompt) ) {
+			int respond = EclipseGuiUtil.askUserMultipleChoice(prompt, previousLines);
+			if ( respond > -1 ) {
+				PVSExecutionManager.writeToPVS("" + respond);
+			}
+		}
 	}
 	
 	public static void processCMUPrompt(List<String> previousLines, String prompt) {	}

@@ -152,7 +152,7 @@ public class StartPVSHandler extends AbstractHandler {
 
 class PVSStreamListener implements IStreamListener {
 	private static Pattern pvsPromptPattern;
-	private static String NL = System.getProperty("line.separator"), LCB = "{", RCB = "}";
+	private static String LCB = "{", RCB = "}";
 	private static ArrayList<String> bufferedLines = new ArrayList<String>();
 	StringBuffer jsonBuffer;
 	boolean jsonStarted = false;
@@ -173,7 +173,7 @@ class PVSStreamListener implements IStreamListener {
 	public void streamAppended(String text, IStreamMonitor monitor) {
 		log.log(Level.FINER, "Text was received: {0}", text);
 		synchronized ( jsonBuffer ) {
-			String[] lines = text.split(NL);
+			String[] lines = text.split(PVSConstants.NL);
 			for (String line: lines) {
 				if ( LCB.equals(line) ) {
 					if ( jsonStarted ) {
@@ -181,7 +181,7 @@ class PVSStreamListener implements IStreamListener {
 						resetJSONBuffer();
 					} else {
 						jsonStarted = true;
-						jsonBuffer.append(line).append(NL);
+						jsonBuffer.append(line).append(PVSConstants.NL);
 					}
 				} else if ( RCB.equals(line) ) {
 					if ( !jsonStarted ) {
@@ -189,7 +189,7 @@ class PVSStreamListener implements IStreamListener {
 						resetJSONBuffer();
 					} else {
 						
-						jsonBuffer.append(line).append(NL);
+						jsonBuffer.append(line).append(PVSConstants.NL);
 						String jbs = jsonBuffer.toString();
 						PVSExecutionManager.dispatchJSONMessage(jbs);
 						resetJSONBuffer();
@@ -203,11 +203,11 @@ class PVSStreamListener implements IStreamListener {
 					} else { // line is unstructured data
 						if ( !"nil".equals(line) ) { // nil is the result of sending a JSON to PVS. For now let's ignore and not display them
 							bufferedLines.add(line);
-							PVSExecutionManager.dispatchStringMessage(line + NL);
+							PVSExecutionManager.dispatchStringMessage(line + PVSConstants.NL);
 						}
 					}
 				} else {
-					jsonBuffer.append(line).append(NL);
+					jsonBuffer.append(line).append(PVSConstants.NL);
 				}
 			}
 		}

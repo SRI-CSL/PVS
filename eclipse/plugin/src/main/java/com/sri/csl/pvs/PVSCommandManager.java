@@ -13,6 +13,7 @@ import org.json.JSONObject;
 import com.sri.csl.pvs.declarations.PVSTheory;
 import com.sri.csl.pvs.plugin.Activator;
 import com.sri.csl.pvs.plugin.editor.PVSEditor;
+import com.sri.csl.pvs.plugin.misc.EclipseGuiUtil;
 import com.sri.csl.pvs.plugin.misc.EclipsePluginUtil;
 import com.sri.csl.pvs.plugin.preferences.PreferenceConstants;
 import com.sri.csl.pvs.plugin.views.TreeNode;
@@ -37,7 +38,7 @@ public class PVSCommandManager {
 	public static Object handleCommand(String command) {
 		log.log(Level.INFO, "Handling command: {0}", command);
 		if ( !PVSExecutionManager.isPVSRunning() ) {
-			EclipsePluginUtil.showMessage("PVS is not running", SWT.ICON_ERROR);
+			EclipseGuiUtil.showMessage("PVS is not running", SWT.ICON_ERROR);
 			log.warning("PVS is not running");
 			return null;
 		}
@@ -77,7 +78,7 @@ public class PVSCommandManager {
 
 			}
 		} catch (PVSException e) {
-			EclipsePluginUtil.showMessage(e.getMessage(), SWT.ICON_ERROR);
+			EclipseGuiUtil.showMessage(e.getMessage(), SWT.ICON_ERROR);
 		}
 		
 		return result;
@@ -109,7 +110,7 @@ public class PVSCommandManager {
 		ArrayList<PVSTheory> theories = PVSJsonWrapper.getTheories(getDeclarations(file));
 		TreeNode node = EclipsePluginUtil.convertTheories2TreeNode(null, theories.toArray(new PVSTheory[0]));		
 		PVSEditor.setModel(file, node);
-		IEditorPart ed = EclipsePluginUtil.getVisibleEditor();
+		IEditorPart ed = EclipseGuiUtil.getVisibleEditor();
 		if ( ed instanceof PVSEditor ) {
 			PVSEditor editor = (PVSEditor)ed;
 			editor.updatePVSTheoriesView();

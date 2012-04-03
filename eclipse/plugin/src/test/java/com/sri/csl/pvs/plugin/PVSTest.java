@@ -30,6 +30,7 @@ public class PVSTest extends TestCase {
 				"sjdgfhjsdg> ",
 				"pvs(2): ",
 				"[1] pvs(34): ",
+				"[1] Pvs(1): (Y or N) "
 		};
 
 		String[] rejectAsPrompt = new String[] {
