@@ -9,5 +9,7 @@ sum: THEORY
 
  closed_form: THEOREM sum(n) = (n * (n + 1))/2
 
+ coolthing: CONJECTURE sum(5) = 15
+
  END sum 
  

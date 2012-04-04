@@ -15,4 +15,9 @@ public class PVSConstants {
 	public final static String pvsAllegroPrompt = "^(" + numberInSquareBrackets + "?" + packageNameAndNumber + "|Rule\\?|" + yesNo1 + "|" + yesNo2 + "|Please enter.*:) )+";
 	public final static String pvsCmuPrompt = "^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|" + yesNo1 + "|" + yesNo2 + "|Please enter";
 
+	public final static String pvsErrorMessageOptionIndex = " [0-9]+: ";
+	
+	
+	// PVS COMMANDS:
+	public final static String _CONTINUE = ":continue ";
 }

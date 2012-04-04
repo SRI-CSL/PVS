@@ -1,7 +1,9 @@
 package com.sri.csl.pvs;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.eclipse.swt.SWT;
@@ -49,9 +51,35 @@ public class PVSPromptProcessor {
 				break;
 			}
 		} else if ( prompt.matches(PVSConstants.pvsAllegroDebugPrompt) ) {
-			int respond = EclipseGuiUtil.askUserMultipleChoice(prompt, previousLines);
+			String question = "";
+			// numberCameSeparate was added because sometimes the index of the option (e.g. " 0: ") would come in a separate line than its description.
+			String numberCameSeparate = null;
+			Pattern pattern = Pattern.compile(PVSConstants.pvsErrorMessageOptionIndex);
+			ArrayList<String> choices = new ArrayList<String>();
+			for (String line: previousLines) {
+				if ( line.matches(PVSConstants.pvsErrorMessageOptionIndex) ) {
+					numberCameSeparate = line;
+					continue;
+				}
+				Matcher m = pattern.matcher(line);
+				if ( m.find() ) {
+					if ( m.start() == 0 ) {
+						choices.add(line);
+					}
+				} else {
+					if ( numberCameSeparate != null ) {
+						String apnds = choices.get(choices.size()-1);
+						choices.remove(choices.size()-1);
+						choices.add(numberCameSeparate + apnds);
+						numberCameSeparate = null;
+					} else {
+						question = question + line + PVSConstants.NL;
+					}
+				}
+			}
+			int respond = EclipseGuiUtil.askUserMultipleChoice(question, choices);
 			if ( respond > -1 ) {
-				PVSExecutionManager.writeToPVS("" + respond);
+				PVSExecutionManager.writeToPVS(PVSConstants._CONTINUE + respond);
 			}
 		}
 	}

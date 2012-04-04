@@ -81,7 +81,7 @@ public class StartPVSHandler extends AbstractHandler {
 
 					@Override
 					public void onMessageReceived(String message) {
-						log.log(Level.FINE, "Message received: {0}", message);
+						log.log(Level.INFO, "Message received: {0}", message);
 						try {
 							outStream.write(message);
 						} catch (IOException e) {
