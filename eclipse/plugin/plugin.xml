@@ -111,6 +111,15 @@
                   </parameter>
                </command>
             </menu>
+            <visibleWhen
+                  checkEnabled="false">
+               <with
+                     variable="activeEditorId">
+                  <equals
+                        value="com.sri.csl.pvs.plugin.editor.PVSEditor">
+                  </equals>
+               </with>
+            </visibleWhen>
             
          </menu>
       </menuContribution>
@@ -118,11 +127,21 @@
             locationURI="toolbar:org.eclipse.ui.main.toolbar">
          <toolbar
                id="toolbar:com.sri.csl.pvs.plugin.toolbars.main"
-               label="Start PVS">
+               label="PVS">
             <command
                   commandId="com.sri.csl.pvs.plugin.commands.startPVS"
                   icon="icons/pvslogo.png"
+                  label="Start PVS"
                   style="push">
+               <visibleWhen
+                     checkEnabled="false">
+                  <with
+                        variable="com.sri.csl.pvs.plugin.isPVSRunning">
+                     <equals
+                           value="FALSE">
+                     </equals>
+                  </with>
+               </visibleWhen>
             </command>
             <command
                   commandId="com.sri.csl.pvs.plugin.commands.genericCommand"
@@ -160,6 +179,15 @@
             file="contexts.xml">
       </contexts>
    </extension>
-
+   <extension
+         point="org.eclipse.ui.services">
+      <sourceProvider
+            provider="com.sri.csl.pvs.plugin.provider.PVSStateProvider">
+         <variable
+               name="com.sri.csl.pvs.plugin.isPVSRunning"
+               priorityLevel="workbench">
+         </variable>
+      </sourceProvider>
+   </extension>
 
 </plugin>
