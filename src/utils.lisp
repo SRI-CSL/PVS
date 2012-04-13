@@ -1534,6 +1534,9 @@
 (defmethod actuals ((n null))
   nil)
 
+(defmethod dactuals ((n null))
+  nil)
+
 (defun universal-closure (form)
   (let ((freevars-form (sort-freevars
 			(set-difference (freevars form)
