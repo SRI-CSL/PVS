@@ -219,11 +219,22 @@
 	 (format nil "setup-proof ~a ~a ~a ~a 1"
 	   (label *top-proofstate*)
 	   (id (module (declaration *top-proofstate*)))
-	   (shortname (working-directory))
+	   (protect-spaces (shortname (working-directory)))
 	   *displaying-proof-counter*))
 	(display-proof-from (wish-top-proofstate))
 	(display-current *ps*))
       (pvs-message "No proof is currently in progress")))
+
+(defun protect-spaces (string &optional (pos 0) result)
+  ;; Adds \ in front of spaces in pathnames
+  (if (< pos (length string))
+      (protect-spaces
+       string
+       (1+ pos)
+       (case (char string pos)
+	 (#\space (append '(#\space #\\) result))
+	 (t   (cons (char string pos) result))))
+      (coerce (nreverse result) 'string)))
 
 (defun call-x-show-proof-at (filename declname line origin)
   (let ((fdecl (formula-decl-to-prove filename declname line origin)))
@@ -237,7 +248,7 @@
 	     (incf *displaying-proof-counter*)
 	     (pvs-long-wish
 	      (format nil "setup-proof ~a ~a ~a ~a 0"
-		fid thid (shortname (working-directory))
+		fid thid (protect-spaces (shortname (working-directory)))
 		*displaying-proof-counter*))
 	     (pvs-long-wish
 	      (format nil "~a~%layout-proof ~a ~a 0~%"
@@ -267,7 +278,7 @@
       (format t "module-hierarchy ~a ~a ~a {~%"
 	(id (current-theory))
 	(filename (current-theory))
-	(shortname (working-directory)))
+	(protect-spaces (shortname (working-directory))))
       (module-hierarchy* (current-theory) include-libraries?)
       (format t "}")))))
 

@@ -1110,10 +1110,11 @@
 	  ;; If there are formal-params, the dactuals need to be typechecked
 	  (when (dactuals tn)
 	    (typecheck* (dactuals tn) nil nil nil))
-	  (setf (resolutions tn)
-		(list (mk-resolution decl
-			(lcopy (current-theory-name) 'dactuals (dactuals tn))
-			tn)))
+	  (let ((thinst (copy (current-theory-name))))
+	    (change-class thinst 'declparam-modname
+	      'dactuals (dactuals tn)
+	      'declaration decl)
+	    (setf (resolutions tn) (list (mk-resolution decl thinst tn))))
 	  tn))
   (when *loading-prelude*
     (set-prelude-types (id decl) (type-value decl)))

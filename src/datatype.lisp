@@ -832,7 +832,7 @@ generated")
 (defun generate-adt-recognizer (rec constr ptype)
   (let* ((dparams (new-formal-params))
 	 (rdecl (mk-adt-recognizer-decl
-		 rec ptype
+		 rec (parse-unparse ptype 'type-expr)
 		 (ordnum constr) dparams))
 	 (*adt-decl* rdecl))
     (typecheck-adt-decl rdecl)
@@ -862,7 +862,9 @@ generated")
 (defun generate-adt-constructor (constr)
   (let* ((dparams (new-formal-params))
 	 (dacts (mk-dactuals dparams))
-	 (ftype (generate-adt-constructor-type constr dacts))
+	 (ftype (with-added-decls dparams
+		  (let ((*decl-bound-parameters* dparams))
+		    (generate-adt-constructor-type constr dacts))))
 	 (cdecl (mk-adt-constructor-decl (id constr) ftype (ordnum constr) dparams))
 	 (*adt-decl* constr)
 	 (*generate-tccs* 'none))
@@ -881,7 +883,7 @@ generated")
 				(recognizer constr)
 				(type (rec-decl constr))
 				dacts)))))
-	(typecheck type)
+	;;(typecheck type)
 	type)
       (mk-expr-as-type (mk-unique-name-expr (recognizer constr)
 					    (type (rec-decl constr))
@@ -903,13 +905,12 @@ generated")
       (nreverse result)
       (let* ((acc (car accessors))
 	     (occ? (id-occurs-in (id acc) (cdr accessors)))
-	     (dtype (declared-type acc)
-		    ;;(subst-adt-decl-actuals (declared-type acc) dacts)
-		    )
+	     (dtype ;;(declared-type acc)
+		    (subst-adt-decl-actuals (declared-type acc) dacts))
 	     (atype (if occ?
 			(mk-dep-binding (id acc) dtype)
 			dtype))
-	     (*adt-decl* (declared-type acc)))
+	     (*adt-decl* dtype))
 	(assert atype)
 	(let* ((ty (when occ?
 		     (typecheck (parse-unparse atype 'dep-type-expr))))
@@ -944,6 +945,8 @@ generated")
 				(generate-accessor entry adt))
 		      common-accessors)))
     (dolist (c (constructors adt))
+      (dolist (a (arguments c))
+	(setf (type a) (typecheck* (declared-type a) nil nil nil)))
       (setf (acc-decls c)
 	    (find-corresponding-acc-decls
 	     (arguments c) common-accessors acc-decls)))
@@ -1103,7 +1106,8 @@ generated")
 	       (dacts (mk-dactuals dparams))
 	       (recname (mk-name-expr (car recognizers))))
 	   (setf (dactuals recname) dacts)
-	   (typecheck* (mk-expr-as-type recname) nil nil nil)))
+	   (with-bound-declparams dparams
+	     (typecheck* (mk-expr-as-type recname) nil nil nil))))
 	(t
 	 (let* ((*generate-tccs* 'none)
 		(preds (append subtypes recognizers))
@@ -1228,21 +1232,20 @@ generated")
     (dolist (c (constructors adt))
       (let ((*bound-variables* nil))
 	(dolist (a (arguments c))
-	  (let* ((fdecls (new-formal-params))
-		 (copy-type (parse-unparse (declared-type a) 'type-expr))
+	  (let* ((dparams (new-formal-params))
+		 (dacts (mk-dactuals dparams))
+		 (atype (subst-adt-decl-actuals (declared-type a) dacts))
+		 (type-copy (parse-unparse atype 'type-expr))
 		 (type (with-no-type-errors
-			(with-added-decls fdecls (typecheck copy-type)))))
+			(with-bound-declparams dparams (typecheck type-copy)))))
 	    (assert type)
-	    (copy-lex copy-type (declared-type a))
+	    (copy-lex type-copy (declared-type a))
 	    (copy-lex type (declared-type a))
-	    (push (with-added-decls fdecls
-		    (let ((*decl-bound-parameters* fdecls))
-		      (typecheck* (mk-dep-binding (id a) copy-type type)
-				  nil nil nil)))
+	    (push (with-bound-declparams dparams
+		    (typecheck* (mk-dep-binding (id a) type-copy type)
+				nil nil nil))
 		  *bound-variables*)
-	    (let* ((accinfo (list a type
-				(sort-freevars (freevars type))
-				fdecls))
+	    (let* ((accinfo (list a type (sort-freevars (freevars type)) dparams))
 		   (entry (assoc accinfo common-accessors
 				 :test #'compatible-accinfo
 				 :key #'car)))
@@ -1323,12 +1326,10 @@ generated")
     (setf (dactuals fname) dacts)
     (typecheck-adt-decl
      (mk-formula-decl (makesym "~a_ord_defaxiom" (id adt))
-       (pc-parse (unparse
-		     (mk-conjunction
-		      (generate-adt-uninterpreted-ord-axiom-conjuncts
-		       (constructors adt) fname 0 dacts))
-		   :string t)
-	 'expr)
+       (parse-unparse
+	(mk-conjunction
+	 (generate-adt-uninterpreted-ord-axiom-conjuncts
+	  (constructors adt) fname 0 dacts)))
        'AXIOM nil dparams))))
 
 (defun generate-adt-uninterpreted-ord-axiom-conjuncts (constrs fname num dacts
@@ -4612,6 +4613,7 @@ generated")
 
 
 (defun typecheck-adt-decl (decl &optional (add? t) (reduce? t))
+  ;;(assert (null (current-declaration)))
   (setf (current-declaration) decl)
   (when (typep decl '(and declaration (not formal-decl)))
     (setf (generated-by decl) (id *adt*)))
@@ -4648,7 +4650,8 @@ generated")
     (importing (typecheck-using (theory-name decl)))
     (datatype (unwind-protect
 		  (typecheck* decl nil nil nil)
-		(cleanup-datatype decl)))))
+		(cleanup-datatype decl))))
+  (setf (current-declaration) nil))
 
 (defun add-adt-decl (decl)
   (unless (and (typep decl 'type-def-decl)

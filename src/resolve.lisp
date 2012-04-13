@@ -428,11 +428,13 @@
 			    (every (complement #'mappings)
 				   (get-importings dth)))))
 	      (let* ((usings (unless (eq dth (current-theory))
-				  (get-importings dth)))
+			       (get-importings dth)))
 		     (thname (mk-modname (id (module decl))
-			       nil (when usings (library (car usings)))
-			       nil )))
-		(when (visible-to-mapped-tcc? decl thname dth)
+			       nil (when usings (library (car usings))) nil)))
+		(when (and (visible-to-mapped-tcc? decl thname dth)
+			   ;;(or (null (formal-params decl))
+			   ;;  (eq decl (current-declaration)))
+			   )
 		  #+pvsdebug
 		  (assert (or (not (library-datatype-or-theory? dth))
 			      (and (library (car usings))
@@ -528,36 +530,33 @@
 			      (nconc reses1 reses)))))
 
 (defmethod resolve-decl-actuals* ((decl typed-declaration) dacts thinst args)
-    (let* ((dtype (subst-mod-params (type decl) thinst))
-	   (sdtype (if (length= (formal-params decl) dacts)
-		       (subst-types dtype
-				    (pairlis (formal-params decl)
-					     (mapcar #'type-value dacts)))
-		       dtype))
-	   (doms (domain* sdtype))
-	   (margs (when args
-		    (if (and (singleton? doms)
-			     (not (singleton? args)))
-			(let ((atup (mk-arg-tuple-expr* args)))
-			  (setf (types atup)
-				(all-possible-tupletypes args))
-			  (list atup))
-			args))))
-      (when (or (null margs)
-		(compatible-args? decl margs (types (car doms))))
-	;; Note that we're using the dactuals of the module-instance
-	;; in order to keep from having another resolution slot
-	(list (make-resolution decl (copy thinst 'dactuals dacts) sdtype)))))
+  (assert (and dacts (formal-params decl)))
+  (assert (length= dacts (formal-params decl)))
+  (let* ((nthinst (change-class (copy thinst) 'declparam-modname
+		    'dactuals dacts 'declaration decl))
+	 (dtype (subst-mod-params (type decl) nthinst))
+	 (doms (domain* dtype))
+	 (margs (when args
+		  (if (and (singleton? doms)
+			   (not (singleton? args)))
+		      (let ((atup (mk-arg-tuple-expr* args)))
+			(setf (types atup)
+			      (all-possible-tupletypes args))
+			(list atup))
+		      args))))
+    (when (or (null margs)
+	      (compatible-args? decl margs (types (car doms))))
+      ;; Note that we're using the dactuals of the module-instance
+      ;; in order to keep from having another resolution slot
+      (list (make-resolution decl nthinst dtype)))))
 
 (defmethod resolve-decl-actuals* ((decl type-decl) dacts thinst args)
-  (let* ((dtype (if (dactuals (type-value decl))
-		    (type-value decl)
-		    (copy (type-value decl) 'dactuals dacts)))
-	 (stype (subst-mod-params dtype thinst))
-	 (sdtype (subst-types stype
-			      (pairlis (formal-params decl)
-				       (mapcar #'type-value dacts)))))
-    (list (make-resolution decl (copy thinst 'dactuals dacts) sdtype))))
+  (assert (and dacts (formal-params decl)))
+  (assert (length= dacts (formal-params decl)))
+  (let* ((nthinst (change-class (copy thinst) 'declparam-modname
+		    'dactuals dacts 'declaration decl))
+	 (stype (subst-mod-params (type-value decl) nthinst)))
+    (list (make-resolution decl nthinst stype))))
 
 (defun visible-to-mapped-tcc? (decl thinst theory)
   (let ((cdecl (current-declaration)))

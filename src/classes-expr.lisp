@@ -493,6 +493,9 @@
 (defcl interpreted-modname (modname)
   interp-theory)
 
+(defcl declparam-modname (modname)
+  declaration)
+
 ;;; Used to keep modnames for which TCCs have not yet been generated.  Used to
 ;;; delay the generation of TCCs until the TCC context has been built up,
 ;;; while allowing module instances to be generated, which all satisfy the

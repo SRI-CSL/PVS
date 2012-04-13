@@ -662,6 +662,10 @@
 	      (compatible-type t2 type)))
 	  (ignore-lisp-errors (compatible-type t1 t2)))))
 
+;;; expr is a cases-expr, adt is recursive-type, type is the type instance,
+;;; and args are the arguments to the expr
+;;;  e.g., the x in (cases l of null: f, cons(a, b): g)(x)
+
 (defun typecheck-selections (expr adt type args)
   (when (duplicates? (selections expr) :test #'same-id :key #'constructor)
     (type-error expr "Selections must have a unique id"))
@@ -713,6 +717,10 @@
 	       (every #'digit-char-p (subseq strid 3)))
       (parse-integer strid :start 3))))
 
+;;; expr is a cases-expr, adt is recursive-type, type is the type instance,
+;;; and args are the arguments to the expr
+;;;  e.g., the x in (cases l of null: f, cons(a, b): g)(x)
+
 (defun typecheck-selections* (selections adt type args)
   (when selections
     (let* ((sel (car selections))
@@ -751,15 +759,24 @@
 	   (atype (if (type-name? rtype)
 		      (copy rtype
 			'actuals (or (actuals rtype)
-				     (actuals (module-instance rtype))))
+				     (actuals (module-instance rtype)))
+			'dactuals (or (dactuals rtype)
+				      (dactuals (module-instance rtype))))
 		      (copy rtype)))
-	   (dtype (subst-mod-params atype (module-instance type)
-				    (module (declaration type)))))
+	   (stype (subst-mod-params atype (module-instance type)
+				    (module (declaration type))))
+	   (dtype (if (fully-instantiated? stype)
+		      stype
+		      (instantiate-from stype type (car selargs)))))
       (setf (declared-type (car selargs))
 	    (if (typep dtype 'datatype-subtype)
 		(declared-type dtype)
 		dtype))
       (unless (fully-instantiated? (declared-type (car selargs)))
+	(let* ((frees (free-params (declared-type (car selargs))))
+	       (bindings (mapcar #'list frees))
+	       (nbindings (tc-match type (declared-type (car selargs)) bindings)))
+	  (break "set-selection-types"))
 	(type-error (declared-type (car selargs))
 	    "Could not determine the full theory instance"))
       (set-selection-types
