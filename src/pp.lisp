@@ -2494,9 +2494,6 @@ bind tighter.")
 	     (when actuals
 	       (pprint-newline :fill)
 	       (pp-actuals actuals))
-	     (when dactuals
-	       (pprint-newline :fill)
-	       (pp-actuals dactuals))
 	     (when mappings
 	       (pprint-newline :fill)
 	       (pp-mappings mappings))
@@ -2507,7 +2504,10 @@ bind tighter.")
 	     (write-char #\.)
 	     (if (eq id 'O)
 		 (write '|o|)
-		 (write id)))
+		 (write id))
+	     (when dactuals
+	       (pprint-newline :fill)
+	       (pp-actuals dactuals)))
 	    (t
 	     (unless (or library (not (memq id '(|#| |##|))))
 	       (write " "))

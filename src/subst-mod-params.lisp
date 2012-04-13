@@ -153,19 +153,22 @@
 	(sterm term))
     (dolist (th theories)
       (let* ((lib-id (get-lib-id th))
+	     (actuals (mapcar #'(lambda (fp)
+				  (or (cdr (assq fp new-alist))
+				      (let ((res (make-resolution fp
+						   (mk-modname (id th)))))
+					(mk-res-actual
+					 (if (type-decl? fp)
+					     (mk-type-name (id fp) nil nil res)
+					     (mk-name-expr (id fp) nil nil res))
+					 th))))
+			(formals-sans-usings th)))
+	     (dactuals (mapcan #'(lambda (bnd)
+				   (unless (memq (car bnd) (formals-sans-usings th))
+				     (list (cdr bnd))))
+			 new-alist))
 	     (thname
-	      (mk-modname (id th)
-		(mapcar #'(lambda (fp)
-			    (or (cdr (assq fp new-alist))
-				(let ((res (make-resolution fp
-					     (mk-modname (id th)))))
-				  (mk-res-actual
-				   (if (type-decl? fp)
-				       (mk-type-name (id fp) nil nil res)
-				       (mk-name-expr (id fp) nil nil res))
-				   th))))
-		  (formals-sans-usings th))
-		lib-id)))
+	      (mk-modname (id th) actuals lib-id nil dactuals)))
 	;; This is not necessarily true - we may be retypechecking within
 	;; the library context, in which case it is already a
 	;; library-theory.
@@ -181,16 +184,27 @@
 
 (defun subst-mod-params (obj modinst &optional theory)
   (assert *current-context*)
+  (assert (or (current-declaration)
+	      (and *adt*
+		   (or (not (inline-recursive-type? *adt*))
+		       (null (formal-params *adt*))
+		       *decl-bound-parameters*))))
   (assert (modname? modinst))
   (assert (or (null theory) (null (actuals modinst)) (eq (id theory) (id modinst))))
+  (assert (or (null (dactuals modinst)) (declaration modinst)))
   (let* ((*subst-mod-params-theory* (or theory (get-theory modinst)))
+	 (*subst-mod-params-declaration* (declaration modinst))
 	 (formals (unless (eq (current-theory) *subst-mod-params-theory*)
 		    (formals-sans-usings *subst-mod-params-theory*)))
+	 (dformals (unless (or (null (dactuals modinst))
+			       (eq (current-declaration) (declaration modinst)))
+		     (formal-params (declaration modinst))))
 	 (*subst-mod-free-params* nil))
     (if (or (module? obj)
 	    (mappings modinst)
 	    (some #'formal-theory-decl? formals)
-	    (dactuals modinst)
+	    (and (dactuals modinst)
+		 )
 	    (and (actuals modinst)
 		 (or (some #'(lambda (ofp) (memq ofp formals))
 			   (free-params obj))
@@ -210,8 +224,9 @@
 	       (init-bindings (initial-subst-mod-params-mappings
 			       *subst-mod-params-theory*))
 	       (bindings (make-subst-mod-params-bindings
-			  modinst formals (actuals modinst) (mappings modinst)
-			  init-bindings))
+			  modinst (append formals dformals)
+			  (append (actuals modinst) (dactuals modinst))
+			  (mappings modinst) init-bindings))
 	       (nobj (subst-mod-params* obj modinst bindings)))
 	  #+pvsdebug (assert (or (eq obj nobj) (not (tc-eq obj nobj))))
 	  #+pvsdebug (assert (equal bindings
@@ -262,8 +277,7 @@
 ;;; to pairlis, but formal subtypes have an associated predicate that must
 ;;; be substituted for as well.
 
-(defun make-subst-mod-params-bindings (modinst formals actuals mappings
-					       bindings)
+(defun make-subst-mod-params-bindings (modinst formals actuals mappings bindings)
   (cond ((null formals)
 	 (assert (check-smp-bindings bindings))
 	 (make-subst-mod-params-map-bindings modinst mappings bindings))

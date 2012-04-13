@@ -479,6 +479,13 @@
 	       (unless (memq ,gdecl ,there)
 		 (delete-declaration ,gdecl))))))))
 
+(defmacro with-bound-declparams (decls &rest body)
+  (let ((gdecls (gensym)))
+  `(let ((,gdecls ,decls))
+     (with-added-decls ,gdecls
+       (let ((*decl-bound-parameters* ,gdecls))
+	 ,@body)))))
+
 ;; Only used by add-decl, destructively modifies the context
 (defun delete-declaration (decl &optional decl-hash)
   (assert (or decl-hash *current-context*))

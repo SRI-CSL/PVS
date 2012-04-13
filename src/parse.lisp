@@ -1856,13 +1856,11 @@
 	     (car exprs)))))
 
 (defun xt-fieldex (expr)
-  (multiple-value-bind (acts dacts)
-      (unless (is-sop 'NOACTUALS (term-arg1 expr))
-	(xt-actuals (term-arg1 expr)))
+  (let ((acts (unless (is-sop 'NOACTUALS (term-arg1 expr))
+		(xt-actuals (term-arg1 expr) t))))
     (make-instance 'fieldex
       :id (ds-id (term-arg0 expr))
       :actuals acts
-      :dactuals dacts
       :place (term-place expr))))
 
 (defun xt-fieldappl (expr)
@@ -1872,13 +1870,11 @@
     :place (term-place expr)))
 
 (defun xt-projex (expr)
-  (multiple-value-bind (acts dacts)
-      (unless (is-sop 'NOACTUALS (term-arg1 expr))
-	(xt-actuals (term-arg1 expr)))
+  (let ((acts (unless (is-sop 'NOACTUALS (term-arg1 expr))
+		(xt-actuals (term-arg1 expr) t))))
     (make-instance 'projex
       :index (ds-number (term-arg0 expr))
-      :actuals acts
-      :dactuals dacts)))
+      :actuals acts)))
 
 (defun xt-projappl (expr)
   (let ((index (ds-number (term-arg1 expr))))
@@ -2691,7 +2687,7 @@
 	 (target (term-arg4 modname)))
     (multiple-value-bind (acts dacts)
 	(unless (is-sop 'NOACTUALS actuals)
-	  (xt-actuals actuals))
+	  (xt-actuals actuals t))
       (make-instance (if (is-sop 'NOACTUALS actuals)
 			 'modname 'full-modname)
 	:id (ds-vid id)
@@ -2705,12 +2701,18 @@
 		  (xt-modname target))
 	:place (term-place modname)))))
 
-;;; name! means create a name no matter what; otherwise numbers create
-;;; number-exprs
+;;; name! means create a name no matter what; otherwise numbers create number-exprs
+;;; lib@idop[actuals]{{mappings}}:->target.pidop[dactuals]
 (defun xt-name (name &optional name!)
   (let* ((idop (term-arg0 name))
 	 (lib (term-arg1 name))
 	 (actuals (term-arg2 name))
+	 (pidop (case (sim-term-op (term-arg3 name))
+		  (NOMOD nil)
+		  (PIDACTS (term-arg0 (term-arg3 name)))
+		  (t (term-arg3 name))))
+	 (dactuals (when (is-sop 'PIDACTS (term-arg3 name))
+		     (term-arg1 (term-arg3 name))))
 	 (mappings (term-arg4 name))
 	 (target (term-arg5 name))
 	 (maybe-num? (and (not name!)
@@ -2722,10 +2724,11 @@
 			      (every #'digit-char-p
 				     (string (ds-id (term-arg0 idop))))))))
     (multiple-value-bind (idops length)
-	(xt-name-idops (term-arg3 name) maybe-num?)
-      ;; At this point, idops is a number or a symbol, and length is the length of it.
-      ;; If a number, then we know maybe-num? is true, and we can create a rational.
-      ;; The nil symbol will return a length of either 0 or 3, depending on if whether
+	(xt-name-idops pidop maybe-num?)
+      ;; At this point, idops is a number or a symbol (possibly with
+      ;; periods), and length is the length of it.  If a number, then we
+      ;; know maybe-num? is true, and we can create a rational.  The nil
+      ;; symbol will return a length of either nil or 3, depending on whether
       ;; idops is actually empty.
       (assert (or (symbolp idops) (integerp idops)))
       (cond ((integerp idops)
@@ -2747,7 +2750,7 @@
 				    :number num)
 				  (make-instance 'number-expr
 				    :number denom)))))))
-	    ((and maybe-num? (zerop length))
+	    ((and maybe-num? (null length))
 	     (let ((num (if (is-number (term-arg0 idop))
 			    (ds-number (term-arg0 idop))
 			    (parse-integer (string (ds-id (term-arg0 idop)))))))
@@ -2757,9 +2760,9 @@
 		 :place (term-place name))))
 	    (t (multiple-value-bind (acts dacts)
 		   (unless (is-sop 'NOACTUALS actuals)
-		     (xt-actuals actuals))
+		     (xt-actuals actuals pidop))
 		 (make-instance 'name
-		   :id (if (zerop length)
+		   :id (if (null length)
 			   (if (is-number (term-arg0 idop))
 			       (makesym "~d" (ds-number (term-arg0 idop)))
 			       (let ((id (ds-id (term-arg0 idop))))
@@ -2770,10 +2773,12 @@
 		   :library (unless (is-sop 'NOLIB lib)
 			      (ds-vid lib))
 		   :actuals acts
-		   :dactuals dacts
+		   :dactuals (or dacts
+				 (when dactuals
+				   (xt-actuals dactuals t)))
 		   :mappings (unless (is-sop 'NOMAP mappings)
 			       (xt-mappings mappings))
-		   :mod-id (unless (zerop length)
+		   :mod-id (unless (null length)
 			     (if (is-number (term-arg0 idop))
 				 (makesym "~d" (ds-number (term-arg0 idop)))
 				 (ds-id (term-arg0 idop))))
@@ -2782,33 +2787,35 @@
 		   :place (term-place name))))))))
 
 (defun xt-name-idops (term maybe-num?)
-  (cond ((eq (sim-term-op term) 'NOMOD)
-	 (values nil 0))
-	((and maybe-num?
-	      (null (cdr (term-args term)))
-	      (or (is-number (term-arg0 (term-arg0 term)))
-		  (every #'digit-char-p
-			 (string (ds-id (term-arg0 (term-arg0 term)))))))
-	 (if (is-number (term-arg0 (term-arg0 term)))
-	     (values (ds-number (term-arg0 (term-arg0 term)))
-		     (length (format nil "~d"
-			       (ds-number (term-arg0 (term-arg0 term))))))
-	     (values (parse-integer (string (ds-id (term-arg0 (term-arg0 term)))))
-		     (length (string (ds-id (term-arg0 (term-arg0 term))))))))
-	(t (let ((sym (makesym "~{~a~^.~}"
-			       (mapcar #'(lambda (tm)
-					   (if (is-number tm)
-					       (makesym (ds-number (term-arg0 tm)))
-					       (ds-id (term-arg0 tm))))
-				 (term-args term)))))
-	     (values sym (length (string sym)))))))
+  (when term
+    (if (and maybe-num?
+	     (null (cdr (term-args term)))
+	     (or (is-number (term-arg0 (term-arg0 term)))
+		 (every #'digit-char-p
+			(string (ds-id (term-arg0 (term-arg0 term)))))))
+	(if (is-number (term-arg0 (term-arg0 term)))
+	    (values (ds-number (term-arg0 (term-arg0 term)))
+		    (length (format nil "~d"
+			      (ds-number (term-arg0 (term-arg0 term))))))
+	    (values (parse-integer (string (ds-id (term-arg0 (term-arg0 term)))))
+		    (length (string (ds-id (term-arg0 (term-arg0 term)))))))
+	(let ((sym (makesym "~{~a~^.~}"
+			    (mapcar #'(lambda (tm)
+					(if (is-number tm)
+					    (makesym (ds-number (term-arg0 tm)))
+					    (ds-id (term-arg0 tm))))
+			      (term-args term)))))
+	  (values sym (length (string sym)))))))
 
-(defun xt-actuals (actuals)
+(defun xt-actuals (actuals single?)
   (if (eq (sim-term-op actuals) 'ACTUALS)
       (mapcar #'xt-actual (term-args actuals))
-      (let ((acts1 (mapcar #'xt-actual (term-args (term-arg0 actuals))))
-	    (acts2 (mapcar #'xt-actual (term-args (term-arg1 actuals)))))
-	(values acts1 acts2))))
+      (if single?
+	  (parse-error (term-arg1 actuals)
+	    "Cannot have two sets of actuals here")
+	  (let ((acts1 (mapcar #'xt-actual (term-args (term-arg0 actuals))))
+		(acts2 (mapcar #'xt-actual (term-args (term-arg1 actuals)))))
+	    (values acts1 acts2)))))
 
 (defun xt-actual (act)
   (if (eq (sim-term-op act) 'MAPPINGS)
