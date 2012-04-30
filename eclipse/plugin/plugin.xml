@@ -184,7 +184,7 @@
       <sourceProvider
             provider="com.sri.csl.pvs.plugin.provider.PVSStateProvider">
          <variable
-               name="com.sri.csl.pvs.plugin.isPVSRunning"
+               name="com.sri.csl.pvs.plugin.provider.isPVSRunning"
                priorityLevel="workbench">
          </variable>
       </sourceProvider>
