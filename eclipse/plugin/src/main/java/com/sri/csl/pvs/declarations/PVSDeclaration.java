@@ -5,6 +5,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class PVSDeclaration {
+	
 	protected static String ID = "id";
 	protected static String PLACE = "place";
 	protected static String KIND = "kind";

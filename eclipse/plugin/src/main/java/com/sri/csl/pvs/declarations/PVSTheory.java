@@ -6,6 +6,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.sri.csl.pvs.PVSConstants;
+
 public class PVSTheory {
 	protected static String ID = "id";
 	protected static String DECLARATIONS = "declarations";
@@ -13,13 +15,19 @@ public class PVSTheory {
 	protected String id;
 	protected ArrayList<PVSDeclaration> declarations = new ArrayList<PVSDeclaration>();
 	
-	public PVSTheory(JSONObject obj) throws JSONException {
+	public PVSTheory(JSONObject obj, boolean allDeclarations) throws JSONException {
 		id = obj.getString(ID);
 		if ( obj.has(DECLARATIONS) ) {
 			JSONArray decls = obj.getJSONArray(DECLARATIONS);
 			for (int i=0; i<decls.length(); i++) {
 				PVSDeclaration decl = new PVSDeclaration(decls.getJSONObject(i));
-				declarations.add(decl);
+				if ( allDeclarations ) {
+					declarations.add(decl);
+				} else {
+					if ( PVSConstants._FORMULADECL.equals(decl.getKind()) ) {
+						declarations.add(decl);
+					}
+				}
 			}
 		}
 	}

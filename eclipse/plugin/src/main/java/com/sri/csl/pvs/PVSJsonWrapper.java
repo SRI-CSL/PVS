@@ -59,7 +59,7 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 				try {
 					jTheories = obj.getJSONArray(_THEORIES);
 					for (int i=0; i<jTheories.length(); i++) {
-						PVSTheory theory = new PVSTheory(jTheories.getJSONObject(i));
+						PVSTheory theory = new PVSTheory(jTheories.getJSONObject(i), false);
 						theories.add(theory);
 					}
 				} catch (JSONException e) {

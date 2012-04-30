@@ -102,8 +102,6 @@ public class PVSCommandManager {
 	
 	private static Object typecheck(List<Object> args) throws PVSException {
 		verifyArgumentNumbers(TYPECHECK, args, 1);
-		
-		//return PVSJsonWrapper.INST().sendRawCommand("(" + TYPECHECK + " \"" + args.get(0) + "\")");
 		Object result = performCommandAfterVerifyingArguments(TYPECHECK, args);
 		String file = args.get(0).toString();
 
@@ -125,7 +123,6 @@ public class PVSCommandManager {
 	
 	public static Object changeContext(List<Object> args) throws PVSException {
 		verifyArgumentNumbers(CHANGECONTEXT, args, 1);
-		//return PVSJsonWrapper.INST().sendRawCommand("(" + CHANGECONTEXT + " \"" + args.get(0) + "\")");
 		Object result = performCommandAfterVerifyingArguments(CHANGECONTEXT, args);
 		if ( args.size()<2 || ((Boolean)args.get(1)).booleanValue() ) { // The 2nd arg is a boolean determinging whether the context should be saved. If it is not provided, then the context is saved by default.
 			String newContext = args.get(0).toString();

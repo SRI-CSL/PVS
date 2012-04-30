@@ -17,6 +17,9 @@ public class PVSConstants {
 
 	public final static String pvsErrorMessageOptionIndex = " [0-9]+: ";
 	
+	// PVS Declaration Kinds:
+	public final static String _FORMULADECL = "formulaDecl";
+	
 	
 	// PVS COMMANDS:
 	public final static String _CONTINUE = ":continue ";

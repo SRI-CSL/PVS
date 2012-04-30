@@ -88,21 +88,6 @@ public class PVSTheoriesView extends ViewPart {
 	class ViewContentProvider implements ITreeContentProvider {
 		
 		public void inputChanged(Viewer v, Object oldInput, Object newInput) {
-//			invisibleRoot.clear();
-//			if ( newInput != null ) {
-//				if ( newInput instanceof TreeNode ) {
-//					log.log(Level.INFO, "oldInput: {0}\tnewInput: {1}", new Object[] {oldInput, ((TreeNode)newInput).getObject()});
-//					invisibleRoot = (TreeNode)newInput;
-//				} else if ( newInput instanceof PVSTheory ) {
-//					log.log(Level.INFO, "oldInput: {0}\tnewInput: {1}", new Object[] {oldInput, newInput});
-//					invisibleRoot.addChild(EclipsePluginUtil.convertTheories2TreeNode(null , (PVSTheory)newInput));
-//				} else if ( newInput instanceof List ) {
-//					log.log(Level.INFO, "oldInput: {0}\tnewInput: {1}", new Object[] {oldInput, newInput});
-//					PVSTheory[] theories = ((List<PVSTheory>)newInput).toArray(new PVSTheory[0]);
-//					invisibleRoot.addChild(EclipsePluginUtil.convertTheories2TreeNode(null , theories));
-//				}
-//			}
-			
 		}
 		
 		public void dispose() {
