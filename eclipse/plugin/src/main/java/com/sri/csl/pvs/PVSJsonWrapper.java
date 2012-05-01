@@ -107,7 +107,7 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 		String modifiedObj = obj.toString().replace("\\", "\\\\").replace("\"", "\\\"");
 		String  pvsJSON = "(pvs-json \"" + modifiedObj + "\")";
 		log.log(Level.INFO, "Sending JSON message: {0}", pvsJSON);
-		PVSExecutionManager.writeToPVS(pvsJSON);
+		PVSExecutionManager.INST().writeToPVS(pvsJSON);
 		int MAX = 30;
 		for (int i=0; i<50*MAX; i++) {
 			synchronized( responds ) {

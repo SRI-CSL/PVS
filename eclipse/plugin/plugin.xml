@@ -88,6 +88,15 @@
                   label="Start PVS"
                   mnemonic="s"
                   style="push">
+               <visibleWhen
+                     checkEnabled="false">
+                  <with
+                        variable="com.sri.csl.pvs.plugin.provider.isPVSRunning">
+                     <equals
+                           value="FALSE">
+                     </equals>
+                  </with>
+               </visibleWhen>                  
             </command>
             <command
                   commandId="com.sri.csl.pvs.plugin.commands.genericCommand"
@@ -136,7 +145,7 @@
                <visibleWhen
                      checkEnabled="false">
                   <with
-                        variable="com.sri.csl.pvs.plugin.isPVSRunning">
+                        variable="com.sri.csl.pvs.plugin.provider.isPVSRunning">
                      <equals
                            value="FALSE">
                      </equals>
@@ -185,7 +194,7 @@
             provider="com.sri.csl.pvs.plugin.provider.PVSStateProvider">
          <variable
                name="com.sri.csl.pvs.plugin.provider.isPVSRunning"
-               priorityLevel="workbench">
+               priorityLevel="activeSite">
          </variable>
       </sourceProvider>
    </extension>

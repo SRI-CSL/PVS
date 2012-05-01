@@ -63,7 +63,7 @@ public class StartPVSHandler extends AbstractHandler {
 	public Object execute(ExecutionEvent event) throws ExecutionException {
 		log.fine("Message to start PVS was received");
 		window = HandlerUtil.getActiveWorkbenchWindowChecked(event);
-		if ( PVSExecutionManager.isPVSRunning() ) {
+		if ( PVSExecutionManager.INST().isPVSRunning() ) {
 			MessageDialog.openInformation(window.getShell(), "PVS Running", "An instance of PVS is already running.");
 		} else {
 			try {
@@ -72,12 +72,12 @@ public class StartPVSHandler extends AbstractHandler {
 				console.clearConsole();
 				final IOConsoleOutputStream outStream = console.newOutputStream();
 				Map<String, String> attributes = new HashMap<String, String>();
-				attributes.put(IProcess.ATTR_CMDLINE, PVSExecutionManager.getPVSStartingCommand());
+				attributes.put(IProcess.ATTR_CMDLINE, PVSExecutionManager.INST().getPVSStartingCommand());
 				ILaunch launch = new Launch(null, ILaunchManager.RUN_MODE, null);
-				IProcess process = DebugPlugin.newProcess(launch, PVSExecutionManager.startPVS(), Activator.name, attributes);
+				IProcess process = DebugPlugin.newProcess(launch, PVSExecutionManager.INST().startPVS(), Activator.name, attributes);
 				DebugPlugin.getDefault().getLaunchManager().addLaunch(launch);
 				PVSJsonWrapper.init();
-				PVSExecutionManager.addListener(new PVSRespondListener() {
+				PVSExecutionManager.INST().addListener(new PVSRespondListener() {
 
 					@Override
 					public void onMessageReceived(String message) {
@@ -114,7 +114,7 @@ public class StartPVSHandler extends AbstractHandler {
 				keyboardReader = new IOConsoleKeyboardReader(console);
 				keyboardReader.addListener(new IOConsoleKeyboardReader.IOConsoleKeyboardReaderListener() {
 					public void onTextReceived(String text) {
-						PVSExecutionManager.writeToPVS(text);
+						PVSExecutionManager.INST().writeToPVS(text);
 					}
 				});
 				keyboardReader.start();
@@ -191,19 +191,19 @@ class PVSStreamListener implements IStreamListener {
 						
 						jsonBuffer.append(line).append(PVSConstants.NL);
 						String jbs = jsonBuffer.toString();
-						PVSExecutionManager.dispatchJSONMessage(jbs);
+						PVSExecutionManager.INST().dispatchJSONMessage(jbs);
 						resetJSONBuffer();
 					}
 				} else if ( !jsonStarted ) {
 					if ( pvsPromptPattern.matcher(line).matches() ) {
 						synchronized ( bufferedLines ) {
-							PVSExecutionManager.pvsPromptReceived(bufferedLines, line);
+							PVSExecutionManager.INST().pvsPromptReceived(bufferedLines, line);
 							bufferedLines.clear();
 						}
 					} else { // line is unstructured data
 						if ( !"nil".equals(line) ) { // nil is the result of sending a JSON to PVS. For now let's ignore and not display them
 							bufferedLines.add(line);
-							PVSExecutionManager.dispatchStringMessage(line + PVSConstants.NL);
+							PVSExecutionManager.INST().dispatchStringMessage(line + PVSConstants.NL);
 						}
 					}
 				} else {

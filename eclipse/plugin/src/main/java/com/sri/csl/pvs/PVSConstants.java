@@ -23,4 +23,13 @@ public class PVSConstants {
 	
 	// PVS COMMANDS:
 	public final static String _CONTINUE = ":continue ";
+	
+	// PVS STATE NAMES:
+	public final static String PVSRUNNING = "com.sri.csl.pvs.plugin.provider.isPVSRunning";
+	
+
+	// General:
+	public final static String TRUE = "TRUE";
+	public final static String FALSE = "FALSE";
+	
 }

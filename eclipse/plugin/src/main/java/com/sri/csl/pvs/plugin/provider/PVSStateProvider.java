@@ -6,31 +6,36 @@ import java.util.Map;
 import org.eclipse.ui.AbstractSourceProvider;
 import org.eclipse.ui.ISources;
 
+import com.sri.csl.pvs.PVSConstants;
 import com.sri.csl.pvs.PVSExecutionManager;
 
-public class PVSStateProvider extends AbstractSourceProvider {
-	public final static String PVSRUNNING = "com.sri.csl.pvs.plugin.provider.isPVSRunning";
-	public final static String TRUE = "TRUE";
-	public final static String FALSE = "FALSE";
+public class PVSStateProvider extends AbstractSourceProvider implements PVSStateChangeListener {
 
 	@Override
 	public void dispose() {
+	}
+	
+	public PVSStateProvider() {
+		super();
+		PVSExecutionManager.INST().addListener(this);
 	}
 
 	@Override
 	public Map<String, String> getCurrentState() {
 		Map<String, String> map = new HashMap<String, String>(1);
-		String value = PVSExecutionManager.isPVSRunning() ? TRUE : FALSE;
-		map.put(PVSRUNNING, value);
+		String value = PVSExecutionManager.INST().isPVSRunning() ? PVSConstants.TRUE : PVSConstants.FALSE;
+		map.put(PVSConstants.PVSRUNNING, value);
 		return map;
 	}
 
 	@Override
 	public String[] getProvidedSourceNames() {
-		return new String[] { PVSRUNNING };
+		return new String[] {PVSConstants.PVSRUNNING};
 	}
-	
-	public void updateState(String stateName, String value) {
-		fireSourceChanged(ISources.WORKBENCH, stateName, value);
+
+	@Override
+	public void sourceChanged(String key, String value) {
+		fireSourceChanged(ISources.WORKBENCH, key, value);
 	}
+
 }

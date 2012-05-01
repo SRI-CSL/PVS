@@ -4,16 +4,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.jface.resource.ImageDescriptor;
-import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
-import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
 
 import com.sri.csl.pvs.PVSExecutionManager;
 import com.sri.csl.pvs.plugin.editor.PVSEditorActivationListener;
-import com.sri.csl.pvs.plugin.provider.PVSStateProvider;
 
 /**
  * The activator class controls the plug-in life cycle
@@ -36,11 +33,6 @@ public class Activator extends AbstractUIPlugin {
 	public Activator() {
 		Logger topLogger = Logger.getLogger("com.sri.csl.pvs");
 		topLogger.setLevel(Level.ALL);
-		String t = PVSStateProvider.FALSE;
-		IWorkbench wb = PlatformUI.getWorkbench();
-		IWorkbenchWindow win = wb.getActiveWorkbenchWindow();
-		IWorkbenchPage page = win.getActivePage();
-		page.addPartListener(new PVSEditorActivationListener());
 	}
 
 	/*
@@ -58,7 +50,7 @@ public class Activator extends AbstractUIPlugin {
 	 */
 	public void stop(BundleContext context) throws Exception {
 		plugin = null;
-		PVSExecutionManager.stopPVS();
+		PVSExecutionManager.INST().stopPVS();
 		super.stop(context);
 	}
 

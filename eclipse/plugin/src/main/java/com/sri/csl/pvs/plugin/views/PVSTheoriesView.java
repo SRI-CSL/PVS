@@ -38,6 +38,7 @@ import org.eclipse.ui.part.ViewPart;
 import com.sri.csl.pvs.declarations.PVSDeclaration;
 import com.sri.csl.pvs.declarations.PVSTheory;
 import com.sri.csl.pvs.plugin.Activator;
+import com.sri.csl.pvs.plugin.editor.PVSEditorActivationListener;
 
 
 /**
@@ -183,6 +184,7 @@ public class PVSTheoriesView extends ViewPart {
 		hookContextMenu();
 		hookDoubleClickAction();
 		contributeToActionBars();
+		getSite().getPage().addPartListener(new PVSEditorActivationListener());
 	}
 	
 	public void setInput(TreeNode input) {

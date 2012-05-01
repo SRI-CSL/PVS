@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import org.eclipse.debug.core.DebugPlugin;
@@ -14,15 +15,18 @@ import org.eclipse.debug.core.model.IProcess;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.ISourceProviderListener;
 import org.eclipse.ui.PlatformUI;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import com.sri.csl.pvs.plugin.Activator;
 import com.sri.csl.pvs.plugin.preferences.PreferenceConstants;
+import com.sri.csl.pvs.plugin.provider.PVSStateChangeListener;
 
-public class PVSExecutionManager {
+public class PVSExecutionManager implements ISourceProviderListener {
 	protected static Logger log = Logger.getLogger(PVSExecutionManager.class.getName());	
+	private static PVSExecutionManager instance = null;
 	
 	public interface PVSRespondListener {
 		public void onMessageReceived(String message);
@@ -30,35 +34,53 @@ public class PVSExecutionManager {
 		public void onMessageReceived(JSONObject message);
 	}
 	
-	protected static ArrayList<PVSRespondListener> listeners = new ArrayList<PVSRespondListener>();
-	protected static Process process = null;
+	public static PVSExecutionManager INST() {
+		if ( instance == null ) {
+			instance = new PVSExecutionManager();
+		}
+		return instance;
+	}
 	
-	protected static String getPVSDirectory() {
+	protected ArrayList<PVSRespondListener> respondListeners = new ArrayList<PVSRespondListener>();
+	protected ArrayList<PVSStateChangeListener> stateListeners = new ArrayList<PVSStateChangeListener>();	
+	protected Process process = null;
+	
+	protected String getPVSDirectory() {
 		IPreferenceStore store = Activator.getDefault().getPreferenceStore();
 		return store.getString(PreferenceConstants.PVSPATH);
 	}
 	
-	public static void addListener(PVSRespondListener l) {
-		listeners.add(l);
+	public void addListener(PVSRespondListener l) {
+		respondListeners.add(l);
 	} 
 	
-	public static void removeListener(PVSRespondListener l) {
-		listeners.remove(l);
+	public void removeListener(PVSRespondListener l) {
+		respondListeners.remove(l);
 	}
 	
-	public static String getPVSLocation() {
+	public void addListener(PVSStateChangeListener l) {
+		stateListeners.add(l);
+	} 
+	
+	public void removeListener(PVSStateChangeListener l) {
+		stateListeners.remove(l);
+	}
+	
+	public String getPVSLocation() {
 		return getPVSDirectory() + "/" + "pvs";
 	}
 	
-	public static String getPVSStartingCommand() {
+	public String getPVSStartingCommand() {
 		return getPVSLocation()  + " -raw";
 	}
 		
-	public static Process startPVS() throws IOException {
+	public Process startPVS() throws IOException {
 		if ( (new File(getPVSLocation()).exists()) ) {
 			Runtime runtime = Runtime.getRuntime();
 			process = runtime.exec(getPVSStartingCommand());
-			
+			for (PVSStateChangeListener l: stateListeners) {
+				l.sourceChanged(PVSConstants.PVSRUNNING, PVSConstants.TRUE);
+			}
 		} else {
 			Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
 			MessageDialog.openError(shell, "PVS Not found", "Please enter the correct path to PVS in the preference page.");
@@ -66,11 +88,11 @@ public class PVSExecutionManager {
 		return process;
 	}
 	
-	public static Process getProcess() {
+	public Process getProcess() {
 		return process;
 	}
 	
-	public static void writeToPVS(String message) {
+	public void writeToPVS(String message) {
 		if ( process != null ) {
 			OutputStream st = process.getOutputStream();
 			try {
@@ -82,7 +104,7 @@ public class PVSExecutionManager {
 		}
 	}
 	
-	public static boolean isPVSRunning() {
+	public boolean isPVSRunning() {
 		ILaunchManager manager = DebugPlugin.getDefault().getLaunchManager();
 		IProcess[] processes = manager.getProcesses();
 		for (IProcess p: processes) {
@@ -93,23 +115,23 @@ public class PVSExecutionManager {
 		return false;
 	}
 	
-	public static InputStream getInputStream() {
+	public InputStream getInputStream() {
 		return process != null? process.getInputStream(): null;
 	}
 
-	public static OutputStream getOutputStream() {
+	public OutputStream getOutputStream() {
 		return process != null? process.getOutputStream(): null;
 	}
 
-	public static InputStream getErrorStream() {
+	public InputStream getErrorStream() {
 		return process != null? process.getErrorStream(): null;
 	}
 	
-	public static void dispatchJSONMessage(String message) {
+	public void dispatchJSONMessage(String message) {
 		try {
 			JSONObject json = null;
 			json = new JSONObject(message);
-			for (PVSRespondListener l: listeners) {
+			for (PVSRespondListener l: respondListeners) {
 				l.onMessageReceived(json);
 			}
 		} catch (JSONException e) {
@@ -117,22 +139,37 @@ public class PVSExecutionManager {
 		}
 	}
 	
-	public static void dispatchStringMessage(String message) {
-		for (PVSRespondListener l: listeners) {
+	public void dispatchStringMessage(String message) {
+		for (PVSRespondListener l: respondListeners) {
 			l.onMessageReceived(message);
 		}
 	}
 	
-	public static void pvsPromptReceived(List<String> previouslines, String prompt) {
+	public void pvsPromptReceived(List<String> previouslines, String prompt) {
 		// Prompts are dispatched just like unstructured messages for now.
-		for (PVSRespondListener l: listeners) {
+		for (PVSRespondListener l: respondListeners) {
 			l.onPromptReceived(previouslines, prompt);
 		}		
 	}
 
-	public static void stopPVS() {
+	public void stopPVS() {
 		if ( process != null ) {
 			process.destroy();
 		}
+		for (PVSStateChangeListener l: stateListeners) {
+			l.sourceChanged(PVSConstants.PVSRUNNING, PVSConstants.FALSE);
+		}		
+	}
+
+	@Override
+	public void sourceChanged(int sourcePriority, Map sourceValuesByName) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void sourceChanged(int sourcePriority, String sourceName, Object sourceValue) {
+		// TODO Auto-generated method stub
+		
 	}	
 }

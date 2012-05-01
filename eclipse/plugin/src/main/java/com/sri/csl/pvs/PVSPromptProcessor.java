@@ -30,10 +30,10 @@ public class PVSPromptProcessor {
 			int respond = EclipseGuiUtil.askUserYesNoCancel(prompt);
 			switch ( respond ) {
 			case SWT.YES:
-				PVSExecutionManager.writeToPVS("Y");
+				PVSExecutionManager.INST().writeToPVS("Y");
 				break;
 			case SWT.NO:
-				PVSExecutionManager.writeToPVS("N");
+				PVSExecutionManager.INST().writeToPVS("N");
 				break;
 			case SWT.CANCEL:
 				break;
@@ -42,10 +42,10 @@ public class PVSPromptProcessor {
 			int respond = EclipseGuiUtil.askUserYesNoCancel(prompt);
 			switch ( respond ) {
 			case SWT.YES:
-				PVSExecutionManager.writeToPVS("Yes");
+				PVSExecutionManager.INST().writeToPVS("Yes");
 				break;
 			case SWT.NO:
-				PVSExecutionManager.writeToPVS("No");
+				PVSExecutionManager.INST().writeToPVS("No");
 				break;
 			case SWT.CANCEL:
 				break;
@@ -79,7 +79,7 @@ public class PVSPromptProcessor {
 			}
 			int respond = EclipseGuiUtil.askUserMultipleChoice(question, choices);
 			if ( respond > -1 ) {
-				PVSExecutionManager.writeToPVS(PVSConstants._CONTINUE + respond);
+				PVSExecutionManager.INST().writeToPVS(PVSConstants._CONTINUE + respond);
 			}
 		}
 	}
