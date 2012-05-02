@@ -6,16 +6,15 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 
+import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunchManager;
 import org.eclipse.debug.core.model.IProcess;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.ui.ISourceProviderListener;
 import org.eclipse.ui.PlatformUI;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -24,7 +23,7 @@ import com.sri.csl.pvs.plugin.Activator;
 import com.sri.csl.pvs.plugin.preferences.PreferenceConstants;
 import com.sri.csl.pvs.plugin.provider.PVSStateChangeListener;
 
-public class PVSExecutionManager implements ISourceProviderListener {
+public class PVSExecutionManager {
 	protected static Logger log = Logger.getLogger(PVSExecutionManager.class.getName());	
 	private static PVSExecutionManager instance = null;
 	
@@ -44,10 +43,19 @@ public class PVSExecutionManager implements ISourceProviderListener {
 	protected ArrayList<PVSRespondListener> respondListeners = new ArrayList<PVSRespondListener>();
 	protected ArrayList<PVSStateChangeListener> stateListeners = new ArrayList<PVSStateChangeListener>();	
 	protected Process process = null;
+	protected IProcess iprocess = null;
 	
 	protected String getPVSDirectory() {
 		IPreferenceStore store = Activator.getDefault().getPreferenceStore();
 		return store.getString(PreferenceConstants.PVSPATH);
+	}
+	
+	public void setIProcess(IProcess p) {
+		iprocess = p;
+	}
+	
+	public void removeRespondListeners() {
+		respondListeners.removeAll(respondListeners);
 	}
 	
 	public void addListener(PVSRespondListener l) {
@@ -153,23 +161,19 @@ public class PVSExecutionManager implements ISourceProviderListener {
 	}
 
 	public void stopPVS() {
-		if ( process != null ) {
-			process.destroy();
+		if ( iprocess != null ) {
+			if ( iprocess.canTerminate() ) {
+				try {
+					iprocess.terminate();
+					iprocess = null;
+					process = null;
+					for (PVSStateChangeListener l: stateListeners) {
+						l.sourceChanged(PVSConstants.PVSRUNNING, PVSConstants.FALSE);
+					}					
+				} catch (DebugException e) {
+					e.printStackTrace();
+				}
+			}
 		}
-		for (PVSStateChangeListener l: stateListeners) {
-			l.sourceChanged(PVSConstants.PVSRUNNING, PVSConstants.FALSE);
-		}		
 	}
-
-	@Override
-	public void sourceChanged(int sourcePriority, Map sourceValuesByName) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void sourceChanged(int sourcePriority, String sourceName, Object sourceValue) {
-		// TODO Auto-generated method stub
-		
-	}	
 }

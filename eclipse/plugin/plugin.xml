@@ -38,6 +38,10 @@
             commandId="com.sri.csl.pvs.plugin.commands.startPVS">
       </handler>
       <handler
+            class="com.sri.csl.pvs.plugin.handlers.StopPVSHandler"
+            commandId="com.sri.csl.pvs.plugin.commands.stopPVS">
+      </handler>
+      <handler
             class="com.sri.csl.pvs.plugin.handlers.MessageToRunningPVSHandler"
             commandId="com.sri.csl.pvs.plugin.commands.genericCommand">
       </handler>
@@ -57,6 +61,11 @@
             id="com.sri.csl.pvs.plugin.commands.category"
             name="PVS Category">
       </category>
+      <command
+            categoryId="com.sri.csl.pvs.plugin.commands.category"
+            id="com.sri.csl.pvs.plugin.commands.stopPVS"
+            name="Stop PVS">
+      </command>
       <command
             categoryId="com.sri.csl.pvs.plugin.commands.category"
             id="com.sri.csl.pvs.plugin.commands.startPVS"
@@ -94,6 +103,22 @@
                         variable="com.sri.csl.pvs.plugin.provider.isPVSRunning">
                      <equals
                            value="FALSE">
+                     </equals>
+                  </with>
+               </visibleWhen>                  
+            </command>
+            <command
+                  commandId="com.sri.csl.pvs.plugin.commands.stopPVS"
+                  icon="icons/stoppvs.png"
+                  label="Stop PVS"
+                  mnemonic="s"
+                  style="push">
+               <visibleWhen
+                     checkEnabled="false">
+                  <with
+                        variable="com.sri.csl.pvs.plugin.provider.isPVSRunning">
+                     <equals
+                           value="TRUE">
                      </equals>
                   </with>
                </visibleWhen>                  
@@ -148,6 +173,21 @@
                         variable="com.sri.csl.pvs.plugin.provider.isPVSRunning">
                      <equals
                            value="FALSE">
+                     </equals>
+                  </with>
+               </visibleWhen>
+            </command>
+            <command
+                  commandId="com.sri.csl.pvs.plugin.commands.stopPVS"
+                  icon="icons/stoppvs.png"
+                  label="Stop PVS"
+                  style="push">
+               <visibleWhen
+                     checkEnabled="false">
+                  <with
+                        variable="com.sri.csl.pvs.plugin.provider.isPVSRunning">
+                     <equals
+                           value="TRUE">
                      </equals>
                   </with>
                </visibleWhen>

@@ -75,8 +75,10 @@ public class StartPVSHandler extends AbstractHandler {
 				attributes.put(IProcess.ATTR_CMDLINE, PVSExecutionManager.INST().getPVSStartingCommand());
 				ILaunch launch = new Launch(null, ILaunchManager.RUN_MODE, null);
 				IProcess process = DebugPlugin.newProcess(launch, PVSExecutionManager.INST().startPVS(), Activator.name, attributes);
+				PVSExecutionManager.INST().setIProcess(process);
 				DebugPlugin.getDefault().getLaunchManager().addLaunch(launch);
 				PVSJsonWrapper.init();
+				PVSExecutionManager.INST().removeRespondListeners();
 				PVSExecutionManager.INST().addListener(new PVSRespondListener() {
 
 					@Override
