@@ -109,7 +109,7 @@
             </command>
             <command
                   commandId="com.sri.csl.pvs.plugin.commands.stopPVS"
-                  icon="icons/stoppvs.png"
+                  icon="icons/stoppvs.gif"
                   label="Stop PVS"
                   mnemonic="s"
                   style="push">
@@ -179,7 +179,7 @@
             </command>
             <command
                   commandId="com.sri.csl.pvs.plugin.commands.stopPVS"
-                  icon="icons/stoppvs.png"
+                  icon="icons/stoppvs.gif"
                   label="Stop PVS"
                   style="push">
                <visibleWhen

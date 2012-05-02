@@ -8,12 +8,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
+import org.eclipse.debug.core.DebugEvent;
 import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
+import org.eclipse.debug.core.IDebugEventSetListener;
 import org.eclipse.debug.core.ILaunchManager;
 import org.eclipse.debug.core.model.IProcess;
+import org.eclipse.debug.core.model.RuntimeProcess;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 import org.json.JSONException;
@@ -23,7 +27,7 @@ import com.sri.csl.pvs.plugin.Activator;
 import com.sri.csl.pvs.plugin.preferences.PreferenceConstants;
 import com.sri.csl.pvs.plugin.provider.PVSStateChangeListener;
 
-public class PVSExecutionManager {
+public class PVSExecutionManager implements IDebugEventSetListener {
 	protected static Logger log = Logger.getLogger(PVSExecutionManager.class.getName());	
 	private static PVSExecutionManager instance = null;
 	
@@ -169,9 +173,31 @@ public class PVSExecutionManager {
 					process = null;
 					for (PVSStateChangeListener l: stateListeners) {
 						l.sourceChanged(PVSConstants.PVSRUNNING, PVSConstants.FALSE);
-					}					
+					}
+					DebugPlugin.getDefault().removeDebugEventListener(instance);
 				} catch (DebugException e) {
 					e.printStackTrace();
+				}
+			}
+		}
+	}
+
+	@Override
+	public void handleDebugEvents(DebugEvent[] events) {
+		for (DebugEvent e: events) {
+			Object source = e.getSource();
+			if ( source instanceof RuntimeProcess ) {
+				RuntimeProcess p = ((RuntimeProcess)source);
+				if (  PVSConstants.PVS.equals(p.getLabel()) && p.isTerminated() ) {
+					Display.getDefault().syncExec(new Runnable() {
+						@Override
+						public void run() {
+							for (PVSStateChangeListener l: stateListeners) {
+								l.sourceChanged(PVSConstants.PVSRUNNING, PVSConstants.FALSE);
+							}
+						}
+					});
+					break;
 				}
 			}
 		}
