@@ -20,7 +20,9 @@ public class TreeNode implements IAdaptable {
 		this.name = theory.getID();
 		object = theory;
 		for (PVSDeclaration decl: theory.getDeclarations()) {
-			children.add(new TreeNode(decl));
+			TreeNode node = new TreeNode(decl);
+			node.setParent(this);
+			children.add(node);
 		}
 	}
 	

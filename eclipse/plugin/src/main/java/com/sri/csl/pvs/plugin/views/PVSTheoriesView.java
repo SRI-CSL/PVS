@@ -4,18 +4,12 @@ package com.sri.csl.pvs.plugin.views;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
-import org.eclipse.jface.action.Separator;
-import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
-import org.eclipse.jface.viewers.DoubleClickEvent;
-import org.eclipse.jface.viewers.IDoubleClickListener;
-import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.ITableLabelProvider;
 import org.eclipse.jface.viewers.ITreeContentProvider;
@@ -30,14 +24,16 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.IWorkbench;
-import org.eclipse.ui.IWorkbenchActionConstants;
 import org.eclipse.ui.IWorkingSetManager;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.part.ViewPart;
 
+import com.sri.csl.pvs.PVSConstants;
 import com.sri.csl.pvs.declarations.PVSDeclaration;
 import com.sri.csl.pvs.declarations.PVSTheory;
 import com.sri.csl.pvs.plugin.Activator;
+import com.sri.csl.pvs.plugin.actions.ShowTccForTheoremAction;
+import com.sri.csl.pvs.plugin.actions.StartProverForTheoremAction;
 import com.sri.csl.pvs.plugin.editor.PVSEditorActivationListener;
 
 
@@ -69,9 +65,6 @@ public class PVSTheoriesView extends ViewPart {
 	private TreeViewer viewer;
 	private TreeNode invisibleRoot = new TreeNode("");
 	
-	private Action action1;
-	private Action action2;
-	private Action doubleClickAction;
 	protected static Logger log = Logger.getLogger(PVSTheoriesView.class.getName());
 
 	
@@ -160,7 +153,7 @@ public class PVSTheoriesView extends ViewPart {
 
 			@Override
 			public void propertyChange(PropertyChangeEvent event) {
-				log.log(Level.FINE, "Event received: {0}", event);
+				log.log(Level.INFO, "Event received: {0}", event);
 			}
 			
 		});
@@ -177,13 +170,12 @@ public class PVSTheoriesView extends ViewPart {
 		viewer.setLabelProvider(new ViewLabelProvider());
 		viewer.setSorter(new NameSorter());
 		viewer.setInput(getViewSite());
-
+		viewer.addSelectionChangedListener(new PVSTheoriesTreeNodeSelectionChanged(viewer));
 		// Create the help context id for the viewer's control
 		PlatformUI.getWorkbench().getHelpSystem().setHelp(viewer.getControl(), "pvs-plugin.viewer");
-		makeActions();
 		hookContextMenu();
-		hookDoubleClickAction();
-		contributeToActionBars();
+		//hookDoubleClickAction();
+		//contributeToActionBars();
 		getSite().getPage().addPartListener(new PVSEditorActivationListener());
 	}
 	
@@ -192,7 +184,7 @@ public class PVSTheoriesView extends ViewPart {
 			log.log(Level.INFO, "newInput: {0}", input.getPrettyString());
 			invisibleRoot = input;
 		} else {
-			log.log(Level.INFO, "newInput is null");
+			log.info("newInput is null");
 			invisibleRoot = new TreeNode("");
 		}
 		viewer.setInput(invisibleRoot);
@@ -210,7 +202,8 @@ public class PVSTheoriesView extends ViewPart {
 		menuMgr.setRemoveAllWhenShown(true);
 		menuMgr.addMenuListener(new IMenuListener() {
 			public void menuAboutToShow(IMenuManager manager) {
-				PVSTheoriesView.this.fillContextMenu(manager);
+				//PVSTheoriesView.this.fillContextMenu(manager);
+				fillContextMenu(manager);
 			}
 		});
 		Menu menu = menuMgr.createContextMenu(viewer.getControl());
@@ -220,68 +213,42 @@ public class PVSTheoriesView extends ViewPart {
 
 	private void contributeToActionBars() {
 		IActionBars bars = getViewSite().getActionBars();
-		fillLocalPullDown(bars.getMenuManager());
 		fillLocalToolBar(bars.getToolBarManager());
 	}
+	
+	private void fillContextMenu(IMenuManager imanager) {
+    	MenuManager manager = (MenuManager)imanager;
+    	Menu menu = manager.createContextMenu(viewer.getControl());
+        if (viewer.getSelection().isEmpty()) {
+            return;
+        }
 
-	private void fillLocalPullDown(IMenuManager manager) {
-		manager.add(action1);
-		manager.add(new Separator());
-		manager.add(action2);
-	}
-
-	private void fillContextMenu(IMenuManager manager) {
-		manager.add(action1);
-		manager.add(action2);
-		// Other plug-ins can contribute there actions here
-		manager.add(new Separator(IWorkbenchActionConstants.MB_ADDITIONS));
-	}
+        if (viewer.getSelection() instanceof IStructuredSelection) {
+            IStructuredSelection selection = (IStructuredSelection) viewer.getSelection();
+            Object obj = selection.getFirstElement();
+            if ( obj instanceof TreeNode ) {
+            	TreeNode node = (TreeNode)obj;
+            	Object nodeObject = node.getObject();
+            	if ( nodeObject instanceof PVSDeclaration ) {
+            		PVSDeclaration decl = ((PVSDeclaration)nodeObject);
+            		if ( PVSConstants._FORMULADECL.equals(decl.getKind()) ) {
+            			StartProverForTheoremAction action1 = new StartProverForTheoremAction(node);
+            			manager.add(action1);
+            			ShowTccForTheoremAction action2 = new ShowTccForTheoremAction(node);
+            			manager.add(action2);
+            		}
+            	}
+//                        manager.add(startProverAction);
+                manager.setRemoveAllWhenShown(true);
+                viewer.getControl().setMenu(menu);		
+            } else {
+            	log.log(Level.SEVERE, "Selected node is not TreeNode, it is: {0}", obj);
+            }
+        }
+    }	
 	
 	private void fillLocalToolBar(IToolBarManager manager) {
-		manager.add(action1);
-		manager.add(action2);
-	}
-
-	private void makeActions() {
-		action1 = new Action() {
-			public void run() {
-				showMessage("Typecheck completed");
-			}
-		};
-		action1.setText("Typecheck");
-		action1.setToolTipText("Typecheck the theory");
-		action1.setImageDescriptor(Activator.getImageDescriptor("icons/check.png"));
-				//PlatformUI.getWorkbench().getSharedImages().getImageDescriptor(ISharedImages.IMG_OBJS_INFO_TSK));
-		
-		action2 = new Action() {
-			public void run() {
-				showMessage("Proof completed");
-			}
-		};
-		action2.setText("Prove");
-		action2.setToolTipText("Prove the theory");
-		action2.setImageDescriptor(PlatformUI.getWorkbench().getSharedImages().getImageDescriptor(ISharedImages.IMG_OBJS_INFO_TSK));
-		doubleClickAction = new Action() {
-			public void run() {
-				ISelection selection = viewer.getSelection();
-				Object obj = ((IStructuredSelection)selection).getFirstElement();
-				showMessage("Double-click detected on "+obj.toString());
-			}
-		};
-	}
-
-	private void hookDoubleClickAction() {
-		viewer.addDoubleClickListener(new IDoubleClickListener() {
-			public void doubleClick(DoubleClickEvent event) {
-				doubleClickAction.run();
-			}
-		});
-	}
-	private void showMessage(String message) {
-		MessageDialog.openInformation(
-			viewer.getControl().getShell(),
-			"PVS Elements",
-			message);
+		//manager.add(startProverAction);
 	}
 
 	/**
