@@ -231,7 +231,7 @@
    <extension
          point="org.eclipse.ui.services">
       <sourceProvider
-            provider="com.sri.csl.pvs.plugin.provider.PVSStateProvider">
+            provider="com.sri.csl.pvs.plugin.providers.PVSStateProvider">
          <variable
                name="com.sri.csl.pvs.plugin.provider.isPVSRunning"
                priorityLevel="activeSite">
