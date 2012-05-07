@@ -7,6 +7,9 @@ import java.util.logging.Logger;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.IRegion;
 import org.eclipse.ui.editors.text.TextEditor;
 import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.texteditor.IElementStateListener;
@@ -105,6 +108,23 @@ public class PVSEditor extends TextEditor {
 		super.dispose();
 	}
 
+	public void goToLine(int lineNumber) {
+		  IDocument document = getDocumentProvider().getDocument(getEditorInput());
+		  if (document != null) {
+			  IRegion lineInfo = null;
+			  try {
+				  // line count internaly starts with 0, and not with 1 like in
+				  // GUI
+				  lineInfo = document.getLineInformation(lineNumber - 1);
+			  } catch (BadLocationException e) {
+				  log.log(Level.SEVERE, "Line number {0} is bad", lineNumber);
+			  }
+			  if (lineInfo != null) {
+				  selectAndReveal(lineInfo.getOffset(), 0);
+				  log.log(Level.INFO, "Jumping to line number {0}", lineNumber);			  }
+		  }
+	}	
+	
 	public void doSave(IProgressMonitor progressMonitor) {
 		
 		super.doSave(progressMonitor);

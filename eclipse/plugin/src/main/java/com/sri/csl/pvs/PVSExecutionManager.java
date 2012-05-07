@@ -25,9 +25,11 @@ import org.json.JSONObject;
 
 import com.sri.csl.pvs.plugin.Activator;
 import com.sri.csl.pvs.plugin.preferences.PreferenceConstants;
-import com.sri.csl.pvs.plugin.provider.PVSStateChangeListener;
+import com.sri.csl.pvs.plugin.providers.PVSStateChangeListener;
+import com.sri.csl.pvs.plugin.views.PVSTheoriesView;
 
 public class PVSExecutionManager implements IDebugEventSetListener {
+	public static enum PVSMode {OFF, LISP, PROVER};
 	protected static Logger log = Logger.getLogger(PVSExecutionManager.class.getName());	
 	private static PVSExecutionManager instance = null;
 	
@@ -48,6 +50,7 @@ public class PVSExecutionManager implements IDebugEventSetListener {
 	protected ArrayList<PVSStateChangeListener> stateListeners = new ArrayList<PVSStateChangeListener>();	
 	protected Process process = null;
 	protected IProcess iprocess = null;
+	protected PVSMode mode;
 	
 	protected String getPVSDirectory() {
 		IPreferenceStore store = Activator.getDefault().getPreferenceStore();
@@ -93,6 +96,7 @@ public class PVSExecutionManager implements IDebugEventSetListener {
 			for (PVSStateChangeListener l: stateListeners) {
 				l.sourceChanged(PVSConstants.PVSRUNNING, PVSConstants.TRUE);
 			}
+			mode = PVSMode.LISP;
 		} else {
 			Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
 			MessageDialog.openError(shell, "PVS Not found", "Please enter the correct path to PVS in the preference page.");
@@ -115,6 +119,18 @@ public class PVSExecutionManager implements IDebugEventSetListener {
 			}
 		}
 	}
+
+	public boolean isPVSInProverMode() {
+		return mode == PVSMode.PROVER;
+	}
+	
+	public PVSMode getPVSMode() {
+		return mode;
+	}
+	
+	public void setPVSMode(PVSMode m) {
+		mode = m;
+	}
 	
 	public boolean isPVSRunning() {
 		ILaunchManager manager = DebugPlugin.getDefault().getLaunchManager();
@@ -125,6 +141,9 @@ public class PVSExecutionManager implements IDebugEventSetListener {
 			}
 		}
 		return false;
+		//TODO: this should later be replaced by:
+		// return mode != PVSMode.OFF;
+		
 	}
 	
 	public InputStream getInputStream() {
@@ -189,9 +208,12 @@ public class PVSExecutionManager implements IDebugEventSetListener {
 			if ( source instanceof RuntimeProcess ) {
 				RuntimeProcess p = ((RuntimeProcess)source);
 				if (  PVSConstants.PVS.equals(p.getLabel()) && p.isTerminated() ) {
+					log.info("PVS is terminated");
+					mode = PVSMode.OFF;
 					Display.getDefault().syncExec(new Runnable() {
 						@Override
 						public void run() {
+							PVSTheoriesView.clear();
 							for (PVSStateChangeListener l: stateListeners) {
 								l.sourceChanged(PVSConstants.PVSRUNNING, PVSConstants.FALSE);
 							}
