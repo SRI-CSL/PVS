@@ -8,6 +8,8 @@ import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.text.Document;
+import org.eclipse.jface.text.TextViewer;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -19,6 +21,7 @@ import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerSorter;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.ui.IActionBars;
@@ -32,7 +35,7 @@ import com.sri.csl.pvs.PVSConstants;
 import com.sri.csl.pvs.declarations.PVSDeclaration;
 import com.sri.csl.pvs.declarations.PVSTheory;
 import com.sri.csl.pvs.plugin.Activator;
-import com.sri.csl.pvs.plugin.actions.ShowTccForTheoremAction;
+import com.sri.csl.pvs.plugin.actions.ShowTccForTheoryAction;
 import com.sri.csl.pvs.plugin.actions.StartProverForTheoremAction;
 import com.sri.csl.pvs.plugin.editor.PVSEditorActivationListener;
 
@@ -63,6 +66,8 @@ public class PVSTheoriesView extends ViewPart {
 	public static final String ID = "com.sri.csl.pvs.plugin.views.PVSTheoriesView";
 
 	private TreeViewer viewer;
+	private TextViewer textViewer;
+	private Document document = new Document();
 	private TreeNode invisibleRoot = new TreeNode("");
 	
 	protected static Logger log = Logger.getLogger(PVSTheoriesView.class.getName());
@@ -165,12 +170,22 @@ public class PVSTheoriesView extends ViewPart {
 	 */
 	public void createPartControl(Composite parent) {
 		
+		FillLayout fillLayout = new FillLayout();
+        fillLayout.type = SWT.VERTICAL;
+        parent.setLayout(fillLayout);
+		
 		viewer = new TreeViewer(parent, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
 		viewer.setContentProvider(new ViewContentProvider());
 		viewer.setLabelProvider(new ViewLabelProvider());
 		viewer.setSorter(new NameSorter());
 		viewer.setInput(getViewSite());
 		viewer.addSelectionChangedListener(new PVSTheoriesTreeNodeSelectionChanged(viewer));
+		
+		textViewer = new TextViewer(parent, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
+		textViewer.setEditable(false);
+		textViewer.setDocument(document);
+		document.set(PVSConstants.EMPTY);
+		
 		// Create the help context id for the viewer's control
 		PlatformUI.getWorkbench().getHelpSystem().setHelp(viewer.getControl(), "pvs-plugin.viewer");
 		hookContextMenu();
@@ -185,7 +200,7 @@ public class PVSTheoriesView extends ViewPart {
 			invisibleRoot = input;
 		} else {
 			log.info("newInput is null");
-			invisibleRoot = new TreeNode("");
+			invisibleRoot = new TreeNode(PVSConstants.EMPTY);
 		}
 		viewer.setInput(invisibleRoot);
 	}
@@ -234,9 +249,12 @@ public class PVSTheoriesView extends ViewPart {
             		if ( PVSConstants._FORMULADECL.equals(decl.getKind()) ) {
             			StartProverForTheoremAction action1 = new StartProverForTheoremAction(node);
             			manager.add(action1);
-            			ShowTccForTheoremAction action2 = new ShowTccForTheoremAction(node);
-            			manager.add(action2);
+            			
             		}
+            	} else if ( nodeObject instanceof PVSTheory ) {
+            		PVSTheory theory = ((PVSTheory)nodeObject);
+            		ShowTccForTheoryAction action2 = new ShowTccForTheoryAction(theory);
+        			manager.add(action2);
             	}
 //                        manager.add(startProverAction);
                 manager.setRemoveAllWhenShown(true);
@@ -258,10 +276,15 @@ public class PVSTheoriesView extends ViewPart {
 		viewer.getControl().setFocus();
 	}
 	
+	public void setText(String text) {
+		document.set(text);
+	}
+	
 	public static void update(TreeNode node) {
 		PVSTheoriesView view = getInstance();
 		if (  view != null ) {
 			view.setInput(node);
+			view.setText(PVSConstants.EMPTY);
 		}
 	}
 	

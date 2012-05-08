@@ -51,7 +51,7 @@ public class PVSPromptProcessor {
 				break;
 			}
 		} else if ( prompt.matches(PVSConstants.pvsAllegroDebugPrompt) ) {
-			String question = "";
+			String question = PVSConstants.EMPTY;
 			// numberCameSeparate was added because sometimes the index of the option (e.g. " 0: ") would come in a separate line than its description.
 			String numberCameSeparate = null;
 			Pattern pattern = Pattern.compile(PVSConstants.pvsErrorMessageOptionIndex);

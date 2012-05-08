@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IAdaptable;
 
+import com.sri.csl.pvs.PVSConstants;
 import com.sri.csl.pvs.declarations.PVSDeclaration;
 import com.sri.csl.pvs.declarations.PVSTheory;
 
@@ -45,7 +46,7 @@ public class TreeNode implements IAdaptable {
 	}
 	
 	public void clear() {
-		name = "";
+		name = PVSConstants.EMPTY;
 		children.clear();
 	}
 	

@@ -42,7 +42,7 @@ public class EclipsePluginUtil {
 	
 	public static TreeNode convertTheories2TreeNode(TreeNode parent, PVSTheory... theories) {
 		if ( parent == null ) {
-			parent = new TreeNode("");
+			parent = new TreeNode(PVSConstants.EMPTY);
 		}
 		if ( theories != null ) {
 			for(PVSTheory theory: theories) {

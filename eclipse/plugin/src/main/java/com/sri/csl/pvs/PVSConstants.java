@@ -32,5 +32,6 @@ public class PVSConstants {
 	public final static String PVS = "PVS";
 	public final static String TRUE = "TRUE";
 	public final static String FALSE = "FALSE";
+	public final static String EMPTY = "";
 	
 }

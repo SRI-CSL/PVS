@@ -143,7 +143,7 @@ public class StartPVSHandler extends AbstractHandler {
 		boolean restoreContext = store.getBoolean(PreferenceConstants.SAVEPVSCONTEXT);
 		if ( restoreContext ) {
 			String contextLocation = store.getString(PreferenceConstants.PVSCONTEXTPATH);
-			if ( !"".equals(contextLocation) ) {
+			if ( !PVSConstants.EMPTY.equals(contextLocation) ) {
 				ArrayList<Object> args = new ArrayList<Object>();
 				args.add(contextLocation);
 				args.add(false);

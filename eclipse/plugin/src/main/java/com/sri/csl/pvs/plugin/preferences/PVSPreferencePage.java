@@ -9,6 +9,7 @@ import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 
+import com.sri.csl.pvs.PVSConstants;
 import com.sri.csl.pvs.plugin.Activator;
 
 /**
@@ -72,7 +73,7 @@ public class PVSPreferencePage extends FieldEditorPreferencePage implements IWor
         super.checkState();
     	IPreferenceStore store = Activator.getDefault().getPreferenceStore();
         String pvsDirectory = pvsDirectoryEditor.getStringValue();
-        if ( pvsDirectory!= null && !pvsDirectory.equals("") ) {
+        if ( pvsDirectory!= null && !pvsDirectory.equals(PVSConstants.EMPTY) ) {
         	setErrorMessage(null);
         	setValid(true);
         	store.setValue(PreferenceConstants.PVSPATH, pvsDirectory);
