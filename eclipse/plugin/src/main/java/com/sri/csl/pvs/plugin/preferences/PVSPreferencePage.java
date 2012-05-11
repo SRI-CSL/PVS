@@ -91,5 +91,5 @@ public class PVSPreferencePage extends FieldEditorPreferencePage implements IWor
         if ( event.getProperty().equals(FieldEditor.VALUE) ) {
         	checkState();
         }        
-}	
+	}	
 }

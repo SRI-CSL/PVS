@@ -46,7 +46,6 @@ import com.sri.csl.pvs.plugin.preferences.PreferenceConstants;
  * @see org.eclipse.core.commands.AbstractHandler
  */
 public class StartPVSHandler extends AbstractHandler {
-	private IOConsoleKeyboardReader keyboardReader;
 	private IWorkbenchWindow window;
 	protected static Logger log = Logger.getLogger(StartPVSHandler.class.getName());
 	
@@ -114,13 +113,13 @@ public class StartPVSHandler extends AbstractHandler {
 				IStreamMonitor outMonitor = streamProxy.getOutputStreamMonitor();
 				outMonitor.addListener(new PVSStreamListener(EclipsePluginUtil.getLispType()));
 				
-				keyboardReader = new IOConsoleKeyboardReader(console);
-				keyboardReader.addListener(new IOConsoleKeyboardReader.IOConsoleKeyboardReaderListener() {
+				IOConsoleKeyboardReader.init(console);
+				IOConsoleKeyboardReader.INST().addListener(new IOConsoleKeyboardReader.IOConsoleKeyboardReaderListener() {
 					public void onTextReceived(String text) {
 						PVSExecutionManager.INST().writeToPVS(text);
 					}
 				});
-				keyboardReader.start();
+				IOConsoleKeyboardReader.INST().start();
 				Thread.sleep(500);
 				restorePVSContext();
 			} catch (IOException e) {

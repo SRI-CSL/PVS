@@ -190,7 +190,7 @@ public class PVSTheoriesView extends ViewPart {
 		PlatformUI.getWorkbench().getHelpSystem().setHelp(viewer.getControl(), "pvs-plugin.viewer");
 		hookContextMenu();
 		//hookDoubleClickAction();
-		//contributeToActionBars();
+		contributeToActionBars();
 		getSite().getPage().addPartListener(new PVSEditorActivationListener());
 	}
 	
@@ -266,6 +266,7 @@ public class PVSTheoriesView extends ViewPart {
     }	
 	
 	private void fillLocalToolBar(IToolBarManager manager) {
+		//TODO: Add stuff bout the PVS file here.
 		//manager.add(startProverAction);
 	}
 

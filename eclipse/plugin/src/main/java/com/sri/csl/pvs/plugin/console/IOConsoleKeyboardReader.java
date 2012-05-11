@@ -11,8 +11,17 @@ public class IOConsoleKeyboardReader extends Thread {
 	private IOConsoleInputStream stream;
 	private ArrayList<IOConsoleKeyboardReaderListener> listeners = new ArrayList<IOConsoleKeyboardReaderListener>();
 	private boolean keepRunning;
+	private static IOConsoleKeyboardReader instance = null;
 	
-	public IOConsoleKeyboardReader(IOConsole console) {
+	public static void init(IOConsole console) {
+		instance = new IOConsoleKeyboardReader(console);
+	}
+	
+	public static IOConsoleKeyboardReader INST() {
+		return instance;
+	}
+	
+	private IOConsoleKeyboardReader(IOConsole console) {
 		stream = console.getInputStream();
 	}
 	
@@ -26,6 +35,8 @@ public class IOConsoleKeyboardReader extends Thread {
 	
 	public void finish() {
 		keepRunning = false;
+		listeners.removeAll(listeners);
+		instance = null;
 	}
 	
 	public void run() {
