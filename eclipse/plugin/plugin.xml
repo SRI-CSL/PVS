@@ -16,10 +16,6 @@
       </page>
    </extension>
 
-
-
-
-
    <extension
          point="org.eclipse.ui.editors">
       <editor
@@ -234,7 +230,7 @@
             provider="com.sri.csl.pvs.plugin.providers.PVSStateProvider">
          <variable
                name="com.sri.csl.pvs.plugin.provider.isPVSRunning"
-               priorityLevel="activeSite">
+               priorityLevel="workbench">
          </variable>
       </sourceProvider>
    </extension>
