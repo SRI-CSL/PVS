@@ -1109,7 +1109,7 @@ generated")
 	(typecheck-adt-decl jdecl)
 	(put-decl jdecl)))))
 
-(defun make-accessor-funtype (domain range deps fdecls)
+(defun make-accessor-funtype (domain range deps)
   (if deps
       (let* ((tdom (typecheck* (copy domain) nil nil nil))
 	     (dtype (if (dep-binding? tdom)
@@ -1487,11 +1487,10 @@ generated")
 
 (defun check-adt-constructor-types (constructors)
   (when constructors
-    (check-adt-accessor-types (arguments (car constructors))
-			      (acc-decls (car constructors)))
+    (check-adt-accessor-types (arguments (car constructors)))
     (check-adt-constructor-types (cdr constructors))))
 
-(defun check-adt-accessor-types (accessors acc-decls &optional result)
+(defun check-adt-accessor-types (accessors &optional result)
   (if (null accessors)
       (nreverse result)
       (let* ((a (car accessors))
