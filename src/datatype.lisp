@@ -154,9 +154,9 @@ generated")
   (setf (typechecked? adt) t))
 
 (defun generate-inline-adt (adt)
-  (cond ((formal-params adt)
-	  (typecheck* (formal-params adt) nil nil nil)
-	  (dolist (fdecl (formal-params adt))
+  (cond ((decl-formals adt)
+	  (typecheck* (decl-formals adt) nil nil nil)
+	  (dolist (fdecl (decl-formals adt))
 	    (set-visibility fdecl)
 	    (setf (module fdecl) (current-theory))
 	    (setf (associated-decl fdecl) adt))
@@ -301,8 +301,7 @@ generated")
   (generate-adt-decls adt)
   (check-adt-types adt)
   (set-adt-nonemptiness adt)
-  (when (formals adt)
-    (set-adt-positive-formal-types adt))
+  (set-adt-positive-formal-types adt)
   (generate-adt-uninterpreted-ord-function-and-axiom adt)
   (generate-adt-ord-function adt)
   (if (or (enumtype? adt)
@@ -321,7 +320,7 @@ generated")
 	       (not (every #'null (positive-types adt))))
       (generate-adt-every adt)
       (generate-adt-some adt)))
-  (generate-adt-subterm adt)
+  (generate-adt-subterm-decls adt)
   (unless (or (enumtype? adt)
 	      (every #'(lambda (c) (null (arguments c))) (constructors adt)))
     (generate-adt-reduce adt '|nat|)
@@ -329,8 +328,8 @@ generated")
 	       (get-theory "ordstruct_adt"))
       (generate-adt-reduce adt '|ordinal|))))
 
-(defmethod positive-types ((adt inline-recursive-type))
-  nil)
+;;; (remove-method #'positive-types
+;;;    (find-method #'positive-types '() (list (find-class 'inline-recursive-type))))
 
 (defmethod generate-remaining-adt-sections ((codt codatatype))
   (generate-bisimulation codt)
@@ -654,13 +653,25 @@ generated")
 	(set-nonempty-type (range (type (con-decl constructor))) (con-decl constructor)))
       (set-nonempty-type (type (con-decl constructor)) (con-decl constructor))))
 
-(defun set-adt-positive-formal-types (adt)
-  (setf (positive-types (current-theory))
-	(mapcar #'type-value
-		(remove-if-not #'(lambda (ff)
-				   (and (typep ff 'formal-type-decl)
-					(occurs-positively? (type ff) adt)))
-		  (formals-sans-usings (current-theory))))))
+(defmethod set-adt-positive-formal-types ((adt recursive-type))
+  (when (formals adt)
+    (setf (positive-types adt)
+	  (mapcar #'type-value
+	    (remove-if-not #'(lambda (ff)
+			       (and (typep ff 'formal-type-decl)
+				    (occurs-positively? (type ff) adt)))
+	      (formals-sans-usings (current-theory)))))))
+
+(defmethod set-adt-positive-formal-types ((adt inline-recursive-type))
+  ;; In this case, the positive types are only for the adt-type-name
+  ;; perhaps should do this also for the top-level recursive types as well
+  (when (decl-formals adt)
+    (setf (positive-types adt)
+	  (mapcar #'type-value
+	    (remove-if-not #'(lambda (ff)
+			       (and (typep ff 'formal-type-decl)
+				    (occurs-positively? (type ff) adt)))
+	      (decl-formals (declaration (adt-type-name adt))))))))
 
 (defun check-adt-name-uniqueness (adt)
   (let ((constrids (mapcar #'id (remove-if-not #'simple-constructor?
@@ -737,7 +748,7 @@ generated")
 
 (defun generate-adt-type (adt)
   (let* ((*adt-decl* adt)
-	 (dparams (new-formal-params))
+	 (dparams (new-decl-formals* adt))
 	 (tdecl (mk-type-decl (id adt) 'type-decl nil dparams)))
     (typecheck-adt-decl tdecl)
     (setf (generated-by tdecl) (id adt))
@@ -757,9 +768,9 @@ generated")
       (let ((rec (generate-adt-recognizer (recognizer c) c ptype)))
 	(setf (chain? rec) (not (eq c last)))))
     (generate-adt-subtypes adt)
+    (generate-accessors adt)
     (dolist (c (constructors adt))
-      (generate-adt-constructor c))
-    (generate-accessors adt)))
+      (generate-adt-constructor c))))
 
 
 ;;; Generate the subtype type declarations
@@ -853,7 +864,7 @@ generated")
     recs))
 
 (defun generate-adt-recognizer (rec constr ptype)
-  (let* ((dparams (new-formal-params))
+  (let* ((dparams (new-decl-formals* *adt*))
 	 (rdecl (mk-adt-recognizer-decl
 		 rec (parse-unparse ptype 'type-expr)
 		 (ordnum constr) dparams))
@@ -870,32 +881,44 @@ generated")
 	    (generate-adt-constructor c))
 	(constructors adt)))
 
-(defun new-formal-params ()
-  (when (formal-params *adt*)
+(defun new-decl-formals (adt)
+  (assert (adt-type-name adt))
+  (if (decl-formals adt)
+      (let* ((fdecls (new-decl-formals* adt))
+	     (dacts (mk-dactuals fdecls))
+	     (thinst (mk-modname (id (current-theory)) nil nil nil dacts))
+	     (atype (subst-adt-type (adt-type-name adt) thinst adt)))
+	(values fdecls dacts thinst atype))
+      (values nil nil (current-theory-name) (adt-type-name adt))))
+
+(defun new-decl-formals* (adt)
+  (when (decl-formals adt)
     (let* ((fdecls (mapcar #'(lambda (fp)
 			       (copy fp
+				 ;;'id (makesym "~a_1" (id fp))
 				 'typechecked? nil
 				 'type nil
 				 'type-value nil
 				 'associated-decl nil))
-		     (formal-params *adt*))))
+		     (decl-formals adt))))
       (typecheck* fdecls nil nil nil)
       fdecls)))
 
 (defun generate-adt-constructor (constr)
-  (let* ((dparams (new-formal-params))
+  (let* ((dparams (new-decl-formals* *adt*))
 	 (dacts (mk-dactuals dparams))
-	 (ftype (with-added-decls dparams
-		  (let ((*decl-bound-parameters* dparams))
-		    (generate-adt-constructor-type constr dacts))))
-	 (cdecl (mk-adt-constructor-decl (id constr) ftype (ordnum constr) dparams))
-	 (*adt-decl* constr)
-	 (*generate-tccs* 'none))
-    (typecheck-adt-decl cdecl)
-    (setf (con-decl constr) cdecl)))
+	 (cdecl (mk-adt-constructor-decl (id constr) nil (ordnum constr) dparams)))
+    ;;(typecheck-adt-decl cdecl t nil nil)
+    (let ((ftype (with-current-decl cdecl
+		   (generate-adt-constructor-type constr dacts))))
+      (setf (declared-type cdecl) ftype)
+      (let ((*adt-decl* constr)
+	    (*generate-tccs* 'none))
+	(typecheck-adt-decl cdecl)
+	(setf (con-decl constr) cdecl)))))
 
 (defun mk-dactuals (dparams)
-  (mapcar #'(lambda (dp) (mk-actual (mk-type-name (id dp)))) dparams))
+  (mapcar #'(lambda (dp) (mk-actual (type dp))) dparams))
 
 (defun generate-adt-constructor-type (constr dacts)
   (if (arguments constr)
@@ -928,15 +951,14 @@ generated")
       (nreverse result)
       (let* ((acc (car accessors))
 	     (occ? (id-occurs-in (id acc) (cdr accessors)))
-	     (dtype ;;(declared-type acc)
-		    (subst-adt-decl-actuals (declared-type acc) dacts))
+	     (dtype (parse-unparse (subst-adt-decl-actuals (declared-type acc) dacts)
+				   'type-expr))
 	     (atype (if occ?
 			(mk-dep-binding (id acc) dtype)
 			dtype))
 	     (*adt-decl* dtype))
 	(assert atype)
-	(let* ((ty (when occ?
-		     (typecheck (parse-unparse atype 'dep-type-expr))))
+	(let* ((ty (typecheck atype))
 	       (*bound-variables* (if occ?
 				      (cons ty *bound-variables*)
 				      *bound-variables*)))
@@ -968,8 +990,8 @@ generated")
 				(generate-accessor entry adt))
 		      common-accessors)))
     (dolist (c (constructors adt))
-      (dolist (a (arguments c))
-	(setf (type a) (typecheck* (declared-type a) nil nil nil)))
+      ;;(dolist (a (arguments c))
+	;;(setf (type a) (typecheck* (declared-type a) nil nil nil)))
       (setf (acc-decls c)
 	    (find-corresponding-acc-decls
 	     (arguments c) common-accessors acc-decls)))
@@ -1023,6 +1045,7 @@ generated")
 	 (cons corr-act result)))))
 
 (defun find-corresponding-acc-decl (acc common-accessors acc-decls)
+  (assert common-accessors)
   (if (find-corresponding-acc-decl* acc (car common-accessors))
       (car acc-decls)
       (find-corresponding-acc-decl
@@ -1034,21 +1057,27 @@ generated")
 	(find-corresponding-acc-decl* acc (cdr common-accessors)))))
 
 (defun generate-accessor (entry adt)
-  ;; entry is of the form (((adtdecl range-type deps dparams) adtdecl ...)
-  ;;                       ((adtdecl range-type deps dparams) adtdecl ...) ...)
+  ;; entry is of the form (((adtdecl range-type deps acc-decl) adtdecl ...)
+  ;;                       ((adtdecl range-type deps acc-decl) adtdecl ...) ...)
   ;; where each element reflects a different, but common, range type.
-  (let* ((dparams (cadddr (caar entry)))
+  (let* ((acc-decl (cadddr (caar entry)))
+	 (dparams (decl-formals acc-decl))
 	 (domain (get-accessor-domain-type entry adt))
 	 (range (get-accessor-range-type entry domain adt))
 	 (acc-type (with-added-decls dparams
-		     (make-accessor-funtype domain range nil dparams)))
-	 (acc-decl (mk-adt-accessor-decl (id (caaar entry))
-					 acc-type
-					 adt (cdar entry) dparams)))
+		     (make-accessor-funtype domain range nil)))
+	 (acc-decls (cdar entry)))
+    (setf (declared-type acc-decl) acc-type)
+    (when (cdr acc-decls)
+      (change-class 'shared-adt-accessor-decl acc-decl
+	:constructors (mapcar #'(lambda (d)
+				  (id (find d (constructors adt)
+					    :key #'arguments :test #'memq)))
+			acc-decls)))
     (typecheck-adt-decl acc-decl)
     (when (cddr (car entry))
       (make-common-accessor-subtype-judgements (cdar entry) domain adt))
-    (assert (or (null (formal-params *adt*)) (formal-params acc-decl)))
+    (assert (or (null (decl-formals *adt*)) (decl-formals acc-decl)))
     acc-decl))
 
 (defun make-common-accessor-subtype-judgements (adtdecls domain adt)
@@ -1068,7 +1097,7 @@ generated")
 	(typecheck-adt-decl jdecl)
 	(put-decl jdecl)))))
 
-(defun make-accessor-funtype (domain range deps fdecls)
+(defun make-accessor-funtype (domain range deps)
   (if deps
       (let* ((tdom (typecheck* (copy domain) nil nil nil))
 	     (dtype (if (dep-binding? tdom)
@@ -1108,7 +1137,7 @@ generated")
   
 (defun get-accessor-domain-basic-type (entry adt)
   (let ((acc-decls (mapappend #'cdr entry))
-	(dparams (cadddr (caar entry))))
+	(dparams (decl-formals (cadddr (caar entry)))))
     (if (= (length (mapappend #'cdr entry)) (length (constructors adt)))
 	(mk-type-name (id adt))
 	(if (subtypes adt)
@@ -1260,38 +1289,47 @@ generated")
     (dolist (c (constructors adt))
       (let ((*bound-variables* nil))
 	(dolist (a (arguments c))
-	  (let* ((dparams (new-formal-params))
+	  (let* ((dparams (new-decl-formals adt))
 		 (dacts (mk-dactuals dparams))
-		 (atype (subst-adt-decl-actuals (declared-type a) dacts))
-		 (type-copy (parse-unparse atype 'type-expr))
-		 (type (with-no-type-errors
-			(with-bound-declparams dparams (typecheck type-copy)))))
-	    (assert type)
-	    (copy-lex type-copy (declared-type a))
-	    (copy-lex type (declared-type a))
-	    (push (with-bound-declparams dparams
-		    (typecheck* (mk-dep-binding (id a) type-copy type)
-				nil nil nil))
-		  *bound-variables*)
-	    (let* ((accinfo (list a type (sort-freevars (freevars type)) dparams))
-		   (entry (assoc accinfo common-accessors
-				 :test #'compatible-accinfo
-				 :key #'car)))
-	      (if entry
-		  (let ((subentry (assoc accinfo entry
-					 :test #'same-accinfo)))
-		    (if subentry
-			(nconc subentry (list a))
-			(nconc entry (list (list accinfo a)))))
-		  (setq common-accessors
-			(nconc common-accessors
-			       (list (list (list accinfo a)))))))))))
+		 ;; Create the incomplete decl, to set (current-declaration)
+		 ;; so that dparams can be found properly
+		 (adecl (mk-adt-accessor-decl (id a) nil adt nil dparams))
+		 (atype (subst-adt-decl-actuals (declared-type a) dacts)))
+	    (with-added-decls dparams
+	      (init-adt-decl adecl)
+	      (assert (current-declaration))
+	      (let ((type (typecheck atype)))
+		(assert type)
+		(assert (fully-instantiated? type))
+		(when (and (type-name? type)
+			   (not (fully-instantiated? (dactuals type))))
+		  (break "Not insted"))
+		;;(copy-lex type-copy (declared-type a))
+		;;(copy-lex type (declared-type a))
+		(when (and (type-name? type)
+			   (not (fully-instantiated? (dactuals type))))
+		  (break "Not insted 2"))
+		(push (typecheck* (mk-dep-binding (id a) type) nil nil nil)
+		      *bound-variables*)
+		(let* ((accinfo (list a type (sort-freevars (freevars type)) adecl))
+		       (entry (assoc accinfo common-accessors
+				     :test #'compatible-accinfo
+				     :key #'car)))
+		  (if entry
+		      (let ((subentry (assoc accinfo entry
+					     :test #'same-accinfo)))
+			(if subentry
+			    (nconc subentry (list a))
+			    (nconc entry (list (list accinfo a)))))
+		      (setq common-accessors
+			    (nconc common-accessors
+				   (list (list (list accinfo a)))))))))))))
     common-accessors))
 
 ;;; accinfo is (accessor type freevars declparams)
 (defun compatible-accinfo (ai1 ai2)
   (and (same-id (car ai1) (car ai2))
-       (progn (when (formal-params *adt*) (break "compatible-accinfo")) t)
+       (progn (when (decl-formals *adt*) (break "compatible-accinfo")) t)
        (multiple-value-bind (bindings mismatch?)
 	   (collect-same-accinfo-bindings (caddr ai1) (caddr ai2))
 	 (unless mismatch?
@@ -1299,7 +1337,7 @@ generated")
 
 (defun same-accinfo (ai1 ai2)
   (and (same-id (car ai1) (car ai2))
-       (progn (when (formal-params *adt*) (break "same-accinfo")) t)
+       (progn (when (decl-formals *adt*) (break "same-accinfo")) t)
        (let ((bindings (collect-same-accinfo-bindings
 			(caddr ai1) (caddr ai2))))
 	 (tc-eq-with-bindings (cadr ai1) (cadr ai2) bindings))))
@@ -1321,9 +1359,9 @@ generated")
 	  (values nil t))))
 
 
-(defun mk-recognizer-type (rec-id adt)
-  (declare (ignore adt))
+(defun mk-recognizer-type (rec-id dacts)
   (let ((rpred (mk-name-expr rec-id)))
+    (setf (dactuals rpred) dacts)
     (mk-expr-as-type rpred)))
 
 ;;; Ord axiom
@@ -1333,22 +1371,21 @@ generated")
   (generate-adt-uninterpreted-ord-axiom adt))
 
 (defun generate-adt-uninterpreted-ord-function (adt)
-  (let* ((len (length (constructors adt)))
-	 (fname (makesym "~a_ord" (id adt)))
-	 (dparams (new-formal-params))
-	 (dacts (mk-dactuals dparams))
-	 (tn (mk-type-name (id adt)))
-	 (ftype (mk-funtype tn
-			    (make-instance 'type-application
-			      :type (mk-type-name '|upto|)
-			      :parameters (list (mk-number-expr (1- len))))))
-	 (cdecl (mk-const-decl fname ftype nil nil nil dparams)))
-    (setf (type cdecl) nil)
-    (setf (dactuals tn) dacts)
-    (typecheck-adt-decl cdecl)))
+  (multiple-value-bind (dparams dacts thinst tn)
+      (new-decl-formals adt)
+    (declare (ignore dacts thinst))
+    (let* ((len (length (constructors adt)))
+	   (fname (makesym "~a_ord" (id adt)))
+	   (ftype (mk-funtype tn
+			      (make-instance 'type-application
+				:type (mk-type-name '|upto|)
+				:parameters (list (mk-number-expr (1- len))))))
+	   (cdecl (mk-const-decl fname ftype nil nil nil dparams)))
+      (setf (type cdecl) nil)
+      (typecheck-adt-decl cdecl))))
 
 (defun generate-adt-uninterpreted-ord-axiom (adt)
-  (let* ((dparams (new-formal-params))
+  (let* ((dparams (new-decl-formals* adt))
 	 (dacts (mk-dactuals dparams))
 	 (fname (mk-name-expr (makesym "~a_ord" (id adt)))))
     (setf (dactuals fname) dacts)
@@ -1392,7 +1429,7 @@ generated")
 (defun generate-adt-ord-function (adt)
   (let* ((var (make-new-variable '|x| adt))
 	 (len (length (constructors adt)))
-	 (dparams (new-formal-params))
+	 (dparams (new-decl-formals* adt))
 	 (dacts (mk-dactuals dparams))
 	 (*generate-tccs* 'none))
     (typecheck-adt-decl
@@ -1447,21 +1484,20 @@ generated")
 
 (defun check-adt-constructor-types (constructors)
   (when constructors
-    (check-adt-accessor-types (arguments (car constructors))
-			      (acc-decls (car constructors)))
+    (check-adt-accessor-types (arguments (car constructors)))
     (check-adt-constructor-types (cdr constructors))))
 
-(defun check-adt-accessor-types (accessors acc-decls &optional result)
+(defun check-adt-accessor-types (accessors &optional result)
   (if (null accessors)
       (nreverse result)
       (let* ((a (car accessors))
-	     (dparams (formal-params (accessor-decl a)))
+	     (dparams (decl-formals (accessor-decl a)))
 	     (dacts (mk-dactuals dparams))
 	     (dtype (subst-adt-decl-actuals (declared-type a) dacts))
 	     (bd (mk-bind-decl (id a) (parse-unparse dtype 'type-expr)))
 	     (*adt-decl* (declared-type a)))
 	(copy-lex (declared-type bd) (declared-type a))
-	(with-added-decls (formal-params (accessor-decl a))
+	(with-added-decls (decl-formals (accessor-decl a))
 	  (let ((*decl-bound-parameters* dparams))
 	    (typecheck* bd nil nil nil)))
 	(setf (type a) (type bd)
@@ -1577,14 +1613,16 @@ generated")
 (defun generate-adt-extensionality (c adt)
   (let* ((var (mk-name-expr (makesym "~a_var" (op-to-id (recognizer c)))))
 	 (var2 (copy var 'id (makesym "~a2" (id var))))
+	 (dparams (new-decl-formals* adt))
+	 (dacts (mk-dactuals dparams))
 	 (*generate-tccs* 'none))
     (typecheck-adt-decl
      (mk-formula-decl (makesym "~a_~a_extensionality"
 			       (id adt) (op-to-id (id c)))
        (mk-forall-expr (list (mk-bind-decl (id var)
-			       (mk-recognizer-type (recognizer c) adt))
+			       (mk-recognizer-type (recognizer c) dacts))
 			     (mk-bind-decl (id var2)
-			       (mk-recognizer-type (recognizer c) adt)))
+			       (mk-recognizer-type (recognizer c) dacts)))
 	 (if (arguments c)
 	     (mk-application 'IMPLIES
 	       (mk-conjunction
@@ -1600,22 +1638,24 @@ generated")
 		  (arguments c)))
 	       (mk-application '= var var2))
 	     (mk-application '= var var2)))
-       'AXIOM))))
+       'AXIOM nil dparams))))
 
 (defun generate-adt-eta (c adt)
-  (let ((var (mk-name-expr (makesym "~a_var" (op-to-id (recognizer c)))))
-	(*generate-tccs* 'none))
+  (let* ((var (mk-name-expr (makesym "~a_var" (op-to-id (recognizer c)))))
+	 (dparams (new-decl-formals* adt))
+	 (dacts (mk-dactuals dparams))
+	 (*generate-tccs* 'none))
     (typecheck-adt-decl
      (mk-formula-decl (makesym "~a_~a_eta" (id adt) (op-to-id (id c)))
        (mk-forall-expr (list (mk-bind-decl (id var)
-			       (mk-recognizer-type (recognizer c) adt)))
+			       (mk-recognizer-type (recognizer c) dacts)))
 	 (mk-application '=
 	   (apply #'mk-application (id c)
 		  (mapcar #'(lambda (a)
 			      (mk-application (id a) var))
 			  (arguments c)))
 	   var))
-       'AXIOM))))
+       'AXIOM nil dparams))))
 
 (defun generate-adt-accessor-axioms (constructors adt)
   (when constructors
@@ -1641,17 +1681,19 @@ generated")
 					 (mk-name-expr '|x|))
 			     :argument cappl)
 			   cappl))
+	     (dparams (new-decl-formals* adt))
 	     (*generate-tccs* 'none))
 	(typecheck-adt-decl
 	 (mk-formula-decl (makesym "~a_~a_~a"
 				   (id adt)
 				   (op-to-id (id a))
 				   (op-to-id (id c)))
-	   (mk-forall-expr (adt-forall-bindings vars bds)
-	     (mk-application '=
-	       (mk-application (id a) consappl)
-	       (get-adt-var a)))
-	   'AXIOM)
+	   (parse-unparse
+	    (mk-forall-expr (adt-forall-bindings vars bds)
+	      (mk-application '=
+		(mk-application (id a) consappl)
+		(get-adt-var a))))
+	   'AXIOM nil dparams)
 	 t nil)))))
 
 (defun adt-forall-bindings (vars bds &optional result)
@@ -1715,25 +1757,31 @@ generated")
 		       (cdr appls))))))
 
 (defun generate-inclusive-axiom (adt)
-  (let ((tvar (mk-name-expr (makesym "~a_var" (id adt)))))
+  (let* ((tvar (mk-name-expr (makesym "~a_var" (id adt))))
+	 (dparams (new-decl-formals* adt))
+	 (dacts (mk-dactuals dparams))
+	 (tname (mk-type-name (id adt))))
+    (setf (dactuals tname) dacts)
     (typecheck-adt-decl
      (mk-formula-decl (makesym "~a_inclusive" (id adt))
-       (mk-forall-expr (list (mk-bind-decl (id tvar)
-			       (mk-type-name (id adt))))
+       (mk-forall-expr (list (mk-bind-decl (id tvar) tname))
 	 (mk-disjunction
 	  (mapcar #'(lambda (c) (mk-application (recognizer c) tvar))
 		  (constructors adt))))
-       'AXIOM))))
+       'AXIOM nil dparams))))
 
 (defun generate-adt-induction (adt)
-  (let ((indvar (make-new-variable '|p| adt)))
+  (let* ((indvar (make-new-variable '|p| adt))
+	 (dparams (new-decl-formals* adt))
+	 (dacts (mk-dactuals dparams))
+	 (tname (mk-type-name (id adt))))
+    (setf (dactuals tname) dacts)
     (typecheck-adt-decl
      (mk-formula-decl (makesym "~a_induction" (id adt))
-       (mk-forall-expr (list (mk-bind-decl indvar
-			       (mk-predtype (adt-type-name adt))))
+       (mk-forall-expr (list (mk-bind-decl indvar (mk-predtype tname)))
 	 (mk-implication (gen-induction-hypothesis adt indvar)
-			 (gen-induction-conclusion adt indvar)))
-       'AXIOM))))
+			 (gen-induction-conclusion adt indvar tname)))
+       'AXIOM nil dparams))))
 
 (defmethod gen-induction-hypothesis ((adt datatype) indvar &optional ign)
   (declare (ignore ign))
@@ -1990,10 +2038,9 @@ generated")
       (list (mk-bind-decl (make-new-variable '|x| type) type type))
     (copy *false*)))
 
-(defmethod gen-induction-conclusion ((adt datatype) indvar)
+(defmethod gen-induction-conclusion ((adt datatype) indvar tname)
   (let ((tvar (mk-name-expr (makesym "~a_var" (id adt)))))
-    (mk-forall-expr (list (mk-bind-decl (id tvar)
-			      (mk-type-name (id adt))))
+    (mk-forall-expr (list (mk-bind-decl (id tvar) tname))
       (mk-application indvar tvar))))
 
 
@@ -2008,47 +2055,64 @@ generated")
   (generate-adt-predicate adt '|some|))
 
 (defun generate-adt-predicate (adt function-id)
-  (let* ((ptypes (positive-types adt))
-	 (pvars (generate-adt-predicate-variables adt))
-	 (avar (mk-name-expr (make-new-variable '|a| adt)))
-	 (cases (mk-cases-expr avar
-		  (mapcar #'(lambda (c)
-			      (generate-adt-predicate-selection
-			       c pvars ptypes adt function-id t))
-		    (constructors adt))
-		  nil))
-	 (cases2 (when (datatype? adt)
-		   (mk-cases-expr avar
-		     (mapcar #'(lambda (c)
-				 (generate-adt-predicate-selection
-				  c pvars ptypes adt function-id nil))
-		       (constructors adt))
-		     nil)))
-	 (fargs (list (mapcar #'mk-arg-bind-decl
-			(mapcar #'id pvars)
-			(mapcar #'(lambda (pty)
-				    (mk-type-name 'PRED
-				      (list (mk-actual pty))))
-			  ptypes))
-		      (list (mk-arg-bind-decl (id avar)
-					      (adt-type-name adt))))))
-    (typecheck-adt-decl
-     (if (datatype? adt)
-	 (mk-adt-def-decl function-id (copy *boolean*)
-			  (pc-parse (unparse cases :string t) 'expr) fargs)
-	 (if (eq function-id '|every|)
-	     (mk-coinductive-decl function-id (copy *boolean*)
-				  (pc-parse (unparse cases :string t) 'expr)
-				  fargs)
-	     (mk-inductive-decl function-id (copy *boolean*)
-				(pc-parse (unparse cases :string t) 'expr)
-				fargs))))
-    (when (datatype? adt) 
-      (typecheck-adt-decl
-       (mk-adt-def-decl function-id (copy *boolean*)
-			(pc-parse (unparse cases2 :string t) 'expr)
-			(append (apply #'append (butlast fargs))
-				(car (last fargs))))))))
+  (multiple-value-bind (dparams1 dacts1 thinst1 atype1)
+      (new-decl-formals adt)
+    (declare (ignore dacts1))
+    (multiple-value-bind (dparams2 dacts2 thinst2 atype2)
+	(new-decl-formals adt)
+      (declare (ignore dacts2))
+      (let* ((avar (mk-name-expr (make-new-variable '|a| adt)))
+	     (pvars (generate-adt-predicate-variables adt)) ;; Purely syntactic
+	     (ptypes1 (subst-adt-type (positive-types adt) thinst1 adt))
+	     (cases1 (mk-cases-expr avar
+		       (mapcar #'(lambda (c)
+				   (generate-adt-predicate-selection
+				    c pvars ptypes1 adt function-id thinst1 t))
+			 (constructors adt))
+		       nil))
+	     (ptypes2 (subst-adt-type (positive-types adt) thinst2 adt))
+	     (cases2 (when (datatype? adt)
+		       (mk-cases-expr avar
+			 (mapcar #'(lambda (c)
+				     (generate-adt-predicate-selection
+				      c pvars ptypes2 adt function-id thinst2 nil))
+			   (constructors adt))
+			 nil)))
+	     (fargs1 (list (mapcar #'mk-arg-bind-decl
+			     (mapcar #'id pvars)
+			     (mapcar #'(lambda (pty)
+					 (mk-type-name 'PRED
+					   (list (mk-actual pty))))
+			       ptypes1))
+			   (list (mk-arg-bind-decl (id avar) atype1))))
+	     (fargs2 (when (datatype? adt)
+		       (list (mapcar #'mk-arg-bind-decl
+			       (mapcar #'id pvars)
+			       (mapcar #'(lambda (pty)
+					   (mk-type-name 'PRED
+					     (list (mk-actual pty))))
+				 ptypes2))
+			     (list (mk-arg-bind-decl (id avar) atype2))))))
+	;; Curried form
+	(typecheck-adt-decl
+	 (if (datatype? adt)
+	     (mk-adt-def-decl function-id (copy *boolean*)
+			      (parse-unparse cases1) fargs1 nil nil dparams1)
+	     (if (eq function-id '|every|)
+		 (mk-coinductive-decl function-id (copy *boolean*)
+				      (pc-parse (unparse cases1 :string t) 'expr)
+				      fargs1)
+		 (mk-inductive-decl function-id (copy *boolean*)
+				    (pc-parse (unparse cases1 :string t) 'expr)
+				    fargs1))))
+	;; Uncurried form
+	(when (datatype? adt)
+	  (typecheck-adt-decl
+	   (mk-adt-def-decl function-id (copy *boolean*)
+			    (parse-unparse cases2)
+			    (append (apply #'append (butlast fargs2))
+				    (car (last fargs2)))
+			    nil nil dparams2)))))))
 
 (defun generate-adt-predicate-variables (adt)
   (let ((ptypes (positive-types adt)))
@@ -2060,12 +2124,26 @@ generated")
 		      (mk-name-expr (make-new-variable '|p| adt (incf ctr))))
 		  ptypes)))))
 
+(defun make-accessor-bind-decls (accs thinst &optional bdecls)
+  (if (null accs)
+      (nreverse bdecls)
+      (make-accessor-bind-decls
+       (cdr accs) thinst
+       (if thinst
+	   (let* ((adecl (accessor-decl (car accs)))
+		  (atype (subst-mod-params (type (car accs))
+					   thinst (current-theory) adecl)))
+	     (make-bind-decl (id (get-adt-var-name (car accs))) atype))
+	   (make-bind-decl (id (get-adt-var-name (car accs))) (type (car accs)))))))
+  
+
 (defun generate-adt-predicate-selection (c pvars ptypes adt function-id
-					   curried?)
+					   thinst curried?)
   (if (arguments c)
       (let* ((bindings (mapcar #'(lambda (a)
 				   (make-bind-decl (id (get-adt-var-name a))
-				     (type a)))
+				     (subst-mod-params (type a)
+					 thinst (current-theory) (accessor-decl a))))
 			 (arguments c)))
 	     (vars (mapcar #'(lambda (b)
 			       (mk-name-expr (id b) nil nil
@@ -2076,7 +2154,7 @@ generated")
 	(mk-selection (mk-name-expr (id c))
 	  bindings
 	  (let ((exprs (acc-predicate-selections
-			(arguments c) vars pvars ptypes adt
+			(arguments c) vars pvars ptypes thinst adt
 			function-id curried?)))
 	    (if (eq function-id '|every|)
 		(mk-conjunction exprs)
@@ -2084,34 +2162,34 @@ generated")
       (mk-selection (mk-name-expr (id c)) nil
 		    (copy (if (eq function-id '|every|) *true* *false*)))))
 
-(defun acc-predicate-selections (args vars pvars ptypes adt function-id
+(defun acc-predicate-selections (args vars pvars ptypes thinst adt function-id
 				      curried? &optional selections)
   (if (null vars)
       (nreverse selections)
       (let ((sel (acc-predicate-selection (car vars) (type (car vars))
-					  pvars ptypes adt
+					  pvars ptypes thinst adt
 					  function-id curried?))
 	    (nvars (substit (cdr vars)
 		     (acons (bind-decl (car args)) (car vars) nil))))
-	(acc-predicate-selections (cdr args) nvars pvars ptypes adt
+	(acc-predicate-selections (cdr args) nvars pvars ptypes thinst adt
 				  function-id curried?
 				  (cons sel selections)))))
 
 
-(defmethod acc-predicate-selection (arg (te type-name) pvars ptypes adt
+(defmethod acc-predicate-selection (arg (te type-name) pvars ptypes thinst adt
 					funid curried?)
   (cond ((member te ptypes :test #'tc-eq)
 	 (let* ((pos (position te ptypes :test #'tc-eq))
 		(pvar (nth pos pvars)))
 	   (mk-application pvar (copy arg))))
-	((tc-eq te (adt-type-name adt))
+	((tc-eq te (subst-adt-type (adt-type-name adt) thinst adt))
 	 (if curried?
 	     (mk-application (mk-application* funid pvars) arg)
 	     (mk-application* funid (append pvars (list (copy arg))))))
 	((adt? te)
 	 (let ((funs (mapcar #'(lambda (act)
 				 (acc-predicate-selection*
-				  (type-value act) pvars ptypes adt funid))
+				  (type-value act) pvars ptypes thinst adt funid))
 			     (positive-actuals te))))
 	   (if (if (eq funid '|every|)
 		   (every #'everywhere-true? funs)
@@ -2125,15 +2203,15 @@ generated")
 	(t (call-next-method))))
 
 (defmethod acc-predicate-selection (arg (te datatype-subtype) pvars
-					ptypes adt funid curried?)
+					ptypes thinst adt funid curried?)
   (acc-predicate-selection arg (declared-type te) pvars
-			   ptypes adt funid curried?))
+			   ptypes thinst adt funid curried?))
 
-(defmethod acc-predicate-selection (arg (te subtype) pvars ptypes adt
+(defmethod acc-predicate-selection (arg (te subtype) pvars ptypes thinst adt
 					funid curried?)
   (if (finite-set-type? te)
       (let ((fun (acc-predicate-selection*
-		  (domain (supertype te)) pvars ptypes adt funid)))
+		  (domain (supertype te)) pvars ptypes thinst adt funid)))
 	(if (if (eq funid '|every|)
 		(everywhere-true? fun)
 		(everywhere-false? fun))
@@ -2143,14 +2221,14 @@ generated")
 		  arg)
 		(mk-predicate-application
 		 funid te adt (cons fun (list (copy arg)))))))
-      (acc-predicate-selection arg (supertype te) pvars ptypes adt
+      (acc-predicate-selection arg (supertype te) pvars ptypes thinst adt
 			       funid curried?)))
 
-(defmethod acc-predicate-selection (arg (te funtype) pvars ptypes adt
+(defmethod acc-predicate-selection (arg (te funtype) pvars ptypes thinst adt
 					funid curried?)
   (declare (ignore curried?))
   (if (sequence? te)
-      (let ((fun (acc-predicate-selection* (range te) pvars ptypes adt funid)))
+      (let ((fun (acc-predicate-selection* (range te) pvars ptypes thinst adt funid)))
 	(if (if (eq funid '|every|)
 		(everywhere-true? fun)
 		(everywhere-false? fun))
@@ -2166,7 +2244,7 @@ generated")
 		   (if (typep (domain te) 'dep-binding)
 		       (substit (range te) (acons (domain te) fvar nil))
 		       (range te))
-		   pvars ptypes adt funid)))
+		   pvars ptypes thinst adt funid)))
 	(if (if (eq funid '|every|)
 		(everywhere-true? fun)
 		(everywhere-false? fun))
@@ -2179,14 +2257,14 @@ generated")
 		  (mk-application fun
 		    (mk-application (copy arg) (copy fvar)))))))))
 
-(defmethod acc-predicate-selection (arg (te recordtype) pvars ptypes adt
+(defmethod acc-predicate-selection (arg (te recordtype) pvars ptypes thinst adt
 					funid curried?)
   (declare (ignore curried?))
   (let* ((rbd (make-bind-decl (id arg) te))
 	 (rvar (mk-name-expr (id arg) nil nil
 			     (make-resolution rbd
 			       (current-theory-name) te)))
-	 (preds (acc-predicate-fields (fields te) rvar pvars ptypes adt funid
+	 (preds (acc-predicate-fields (fields te) rvar pvars ptypes thinst adt funid
 				      (dependent? te))))
     (if (if (eq funid '|every|)
 	    (every #'everywhere-true? preds)
@@ -2201,7 +2279,7 @@ generated")
 			       (mk-application (id fd) (copy arg))))))
 	   (fields te) preds)))))
 
-(defun acc-predicate-fields (fields rvar pvars ptypes adt funid dep?
+(defun acc-predicate-fields (fields rvar pvars ptypes thinst adt funid dep?
 				    &optional result)
   (if (null fields)
       (nreverse result)
@@ -2214,13 +2292,13 @@ generated")
 	   (cdr fields))
        rvar pvars ptypes adt funid dep?
        (cons (acc-predicate-selection*
-	      (copy-untyped (type (car fields))) pvars ptypes adt funid)
+	      (copy-untyped (type (car fields))) pvars ptypes thinst adt funid)
 	     result))))
 
-(defmethod acc-predicate-selection (arg (te tupletype) pvars ptypes adt
+(defmethod acc-predicate-selection (arg (te tupletype) pvars ptypes thinst adt
 					funid curried?)
   (declare (ignore curried?))
-  (let ((preds (acc-predicate-types (types te) arg pvars ptypes adt funid)))
+  (let ((preds (acc-predicate-types (types te) arg pvars ptypes thinst adt funid)))
     (if (if (eq funid '|every|)
 	    (every #'everywhere-true? preds)
 	    (every #'everywhere-false? preds))
@@ -2239,10 +2317,10 @@ generated")
 				   :argument (copy arg))))))
 	     preds))))))
 
-(defmethod acc-predicate-selection (arg (te cotupletype) pvars ptypes adt
+(defmethod acc-predicate-selection (arg (te cotupletype) pvars ptypes thinst adt
 					funid curried?)
   (declare (ignore curried?))
-  (let ((preds (acc-predicate-types (types te) arg pvars ptypes adt funid)))
+  (let ((preds (acc-predicate-types (types te) arg pvars ptypes thinst adt funid)))
     (if (if (eq funid '|every|)
 	    (every #'everywhere-true? preds)
 	    (every #'everywhere-false? preds))
@@ -2265,7 +2343,7 @@ generated")
 	      preds (types te))
 	    nil)))))
 
-(defun acc-predicate-types (types arg pvars ptypes adt funid
+(defun acc-predicate-types (types arg pvars ptypes thinst adt funid
 				  &optional (index 1) result)
   (if (null types)
       (nreverse result)
@@ -2277,25 +2355,25 @@ generated")
 		    nil))
 	   (cdr types))
        arg pvars ptypes adt funid (1+ index)
-       (cons (acc-predicate-selection* (car types) pvars ptypes adt funid)
+       (cons (acc-predicate-selection* (car types) pvars ptypes thinst adt funid)
 	     result))))
 
-(defmethod acc-predicate-selection (arg (te type-expr) pvars ptypes adt
+(defmethod acc-predicate-selection (arg (te type-expr) pvars ptypes thinst adt
 					funid curried?)
-  (declare (ignore arg pvars ptypes adt curried?))
+  (declare (ignore arg pvars ptypes thinst adt curried?))
   (copy (if (eq funid '|every|) *true* *false*)))
 
-(defmethod acc-predicate-selection* ((te type-name) pvars ptypes adt funid)
+(defmethod acc-predicate-selection* ((te type-name) pvars ptypes thinst adt funid)
   (cond ((member te ptypes :test #'tc-eq)
 	 (let ((pos (position te ptypes :test #'tc-eq)))
 	   (nth pos pvars)))
-	((tc-eq te (adt-type-name adt))
+	((tc-eq te (subst-adt-type (adt-type-name adt) thinst adt))
 	 (mk-application* funid pvars))
 	((adt? te)
 	 (let ((funs (mapcar #'(lambda (act)
 				 (acc-predicate-selection* (type-value act)
 							   pvars ptypes
-							   adt funid))
+							   thinst adt funid))
 			     (positive-actuals te))))
 	   (if (if (eq funid '|every|)
 		   (every #'everywhere-true? funs)
@@ -2304,10 +2382,10 @@ generated")
 	       (mk-predicate-application funid te adt funs))))
 	(t (call-next-method))))
 
-(defmethod acc-predicate-selection* ((te funtype) pvars ptypes adt funid)
+(defmethod acc-predicate-selection* ((te funtype) pvars ptypes thinst adt funid)
   (if (sequence? te)
       (let ((fun (acc-predicate-selection* (range te) pvars ptypes
-					   adt funid)))
+					   thinst adt funid)))
 	(if (if (eq funid '|every|)
 		(everywhere-true? fun)
 		(everywhere-false? fun))
@@ -2323,7 +2401,7 @@ generated")
 		   (if (typep (domain te) 'dep-binding)
 		       (substit (range te) (acons (domain te) fvar nil))
 		       (range te))
-		   pvars ptypes adt funid)))
+		   pvars ptypes thinst adt funid)))
 	(if (if (eq funid '|every|)
 		(everywhere-true? fun)
 		(everywhere-false? fun))
@@ -2342,14 +2420,14 @@ generated")
 		      (mk-application fun
 			(mk-application lvar (copy fvar)))))))))))
 
-(defmethod acc-predicate-selection* ((te recordtype) pvars ptypes adt funid)
+(defmethod acc-predicate-selection* ((te recordtype) pvars ptypes thinst adt funid)
   (let* ((rid (make-new-variable '|r| te))
 	 (rbd (make-bind-decl rid te))
 	 (rvar (mk-name-expr rid nil nil
 			     (make-resolution rbd
 			       (current-theory-name) te)))
 	 (*bound-variables* (cons rbd *bound-variables*))
-	 (preds (acc-predicate-fields (fields te) rvar pvars ptypes adt funid
+	 (preds (acc-predicate-fields (fields te) rvar pvars ptypes thinst adt funid
 				      (dependent? te))))
     (if (if (eq funid '|every|)
 	    (every #'everywhere-true? preds)
@@ -2365,14 +2443,14 @@ generated")
 				 (mk-application (id fd) rvar)))))
 	     (fields te) preds))))))
 
-(defmethod acc-predicate-selection* ((te tupletype) pvars ptypes adt funid)
+(defmethod acc-predicate-selection* ((te tupletype) pvars ptypes thinst adt funid)
   (let* ((tid (make-new-variable '|t| te))
 	 (tbd (make-bind-decl tid te))
 	 (tvar (mk-name-expr tid nil nil
 			     (make-resolution tbd
 			       (current-theory-name) te)))
 	 (*bound-variables* (cons tbd *bound-variables*))
-	 (preds (acc-predicate-types (types te) tvar pvars ptypes adt funid)))
+	 (preds (acc-predicate-types (types te) tvar pvars ptypes thinst adt funid)))
     (if (if (eq funid '|every|)
 	    (every #'everywhere-true? preds)
 	    (every #'everywhere-false? preds))
@@ -2392,14 +2470,14 @@ generated")
 				     :argument tvar)))))
 	       preds)))))))
 
-(defmethod acc-predicate-selection* ((te cotupletype) pvars ptypes adt funid)
+(defmethod acc-predicate-selection* ((te cotupletype) pvars ptypes thinst adt funid)
   (let* ((tid (make-new-variable '|t| te))
 	 (tbd (make-bind-decl tid te))
 	 (tvar (mk-name-expr tid nil nil
 			     (make-resolution tbd
 			       (current-theory-name) te)))
 	 (*bound-variables* (cons tbd *bound-variables*))
-	 (preds (acc-predicate-types (types te) tvar pvars ptypes adt funid)))
+	 (preds (acc-predicate-types (types te) tvar pvars ptypes thinst adt funid)))
     (if (if (eq funid '|every|)
 	    (every #'everywhere-true? preds)
 	    (every #'everywhere-false? preds))
@@ -2423,1953 +2501,86 @@ generated")
 		preds (types te))
 	      nil))))))
 
-(defmethod acc-predicate-selection* ((te dep-binding) pvars ptypes adt funid)
-  (acc-predicate-selection* (type te) pvars ptypes adt funid))
+(defmethod acc-predicate-selection* ((te dep-binding) pvars ptypes thinst adt funid)
+  (acc-predicate-selection* (type te) pvars ptypes thinst adt funid))
 
-(defmethod acc-predicate-selection* ((te datatype-subtype) pvars ptypes adt funid)
-  (acc-predicate-selection* (declared-type te) pvars ptypes adt funid))
+(defmethod acc-predicate-selection* ((te datatype-subtype) pvars ptypes
+				     thinst adt funid)
+  (acc-predicate-selection* (declared-type te) pvars ptypes thinst adt funid))
 
-(defmethod acc-predicate-selection* ((te subtype) pvars ptypes adt funid)
+(defmethod acc-predicate-selection* ((te subtype) pvars ptypes
+				     thinst adt funid)
   (if (finite-set-type? te)
       (let ((fun (acc-predicate-selection*
-		  (domain (supertype te)) pvars ptypes adt funid)))
+		  (domain (supertype te)) pvars ptypes thinst adt funid)))
 	(if (if (eq funid '|every|)
 		(everywhere-true? fun)
 		(everywhere-false? fun))
 	    (call-next-method)
 	    (mk-predicate-application funid te adt (list fun))))
-      (acc-predicate-selection* (find-adt-supertype te) pvars ptypes adt funid)))
-
-(defmethod acc-predicate-selection* ((te type-expr) pvars ptypes adt funid)
-  (declare (ignore pvars ptypes adt))
-  (if (eq funid '|every|)
-      (mk-everywhere-true-function te)
-      (mk-everywhere-false-function te)))
-
-
-;;; Generate the map function - only when all parameters occur positively.
-;;; This generates a new theory.
-
-(defun generate-adt-map-theory (adt)
-  (when (and (some #'(lambda (ff) (typep ff 'formal-type-decl))
-		   (formals adt))
-	     (or (some-adt-type-is-positive adt)
-		 (pvs-warning
-		     "No map is generated since the datatype has no strictly ~
-                      positive formal type parameters")))
-    (build-adt-theory (makesym "~a_~a_map"
-			       (id adt)
-			       (if (datatype? adt) "adt" "codt"))
-	adt
-      (let* ((*generate-tccs* 'none)
-	     (fpairs (adt-map-formal-pairs (formals (adt-theory adt)) adt)))
-	(generate-adt-map-formals fpairs)
-	(generate-adt-map-using fpairs adt)
-	(generate-adt-map fpairs adt)
-	(catch 'no-every-rel
-	  (generate-adt-every-rel fpairs adt))))))
-
-(defun adt-map-formal-pairs (formals adt &optional pairs)
-  (cond ((null formals)
-	 (nreverse pairs))
-	((importing? (car formals))
-	 (let ((nusing (gensubst (car formals)
-			 #'(lambda (x)
-			     (copy x
-			       'id (id (cdr (assoc x pairs
-						   :test #'same-id)))))
-			 #'(lambda (x)
-			     (and (typep x 'name)
-				  (assoc x pairs
-					 :test #'same-id))))))
-	   (adt-map-formal-pairs (cdr formals)
-				 adt
-				 (if nil ;(eq nusing (car formals))
-				     pairs
-				     (acons (car formals) nusing pairs)))))
-	((if (formal-const-decl? (car formals))
-	     (not (some #'(lambda (fty)
-			    (member fty (positive-types adt)
-				    :key #'declaration))
-			(free-params (type (car formals)))))
-	     (not (member (car formals)
-			  (positive-types adt)
-			  :test #'(lambda (x y)
-				    (let ((fdecl (if (name? y)
-						     (declaration y)
-						     (declaration (print-type y)))))
-				      (and (typep fdecl 'formal-type-decl)
-					   (same-id x fdecl)))))))
-	 (let ((nfml (copy-adt-formals (car formals))))
-	   (adt-map-formal-pairs (cdr formals)
-				 adt
-				 (acons nfml nfml pairs))))
-	(t (let* ((fml (copy-adt-formals (car formals)))
-		      (nid (make-new-variable (id fml)
-			     (cons formals pairs)))
-		      (nfml (typecase fml
-			      (formal-subtype-decl
-			       (copy-adt-formals
-				(copy (car formals)
-				  'id nid
-				  'type-expr (adt-subst-declared-type
-					      (type-expr fml) pairs))))
-			      (formal-type-decl
-			       (copy-adt-formals
-				(copy fml 'id nid)))
-			      (formal-const-decl
-			       (copy-adt-formals
-				(copy (car formals)
-				  'id nid
-				  'declared-type (adt-subst-declared-type
-						  (declared-type fml) pairs)))))))
-		 (adt-map-formal-pairs (cdr formals) adt
-				       (acons fml nfml pairs))))))
-
-(defun adt-subst-declared-type (dtype formal-pairs)
-  (gensubst dtype
-    #'(lambda (x) (copy x
-		    'id (id (cdr (assoc x formal-pairs :test #'same-id)))))
-    #'(lambda (x) (and (typep x 'name)
-		       (assoc x formal-pairs :test #'same-id)))))
-
-(defun generate-adt-map-formals (fpairs)
-  (let ((formals (append (mapcar #'car fpairs)
-			 (mapcar #'cdr (remove-if #'(lambda (x)
-						      (eq (car x) (cdr x)))
-					 fpairs)))))
-    (setf (formals (current-theory)) formals)
-    (setf (formals-sans-usings (current-theory))
-	  (remove-if #'importing-param? (formals (current-theory))))
-    (mapc #'(lambda (fm)
-	      (let ((*adt-decl* fm))
-		;;(setf (abstract-syntax fm) nil)
-		(typecheck-adt-decl fm nil)))
-	  formals)
-    (set-dependent-formals (formals-sans-usings (current-theory)))))
-
-(defun generate-adt-map-using (fpairs adt)
-  (let* ((mod (mk-modname (makesym "~a_~a" (id adt)
-				   (if (datatype? adt) "adt" "codt"))))
-	 (imp (make-instance 'importing
-		:theory-name mod)))
-    (typecheck-adt-decl imp)
-    (dolist (im (importings adt))
-      (dolist (nthname (adt-map-importing im fpairs adt))
-	(typecheck-adt-decl nthname)))))
-
-(defun adt-map-importing (im fpairs adt)
-  (if (id-occurs-in (id adt) (theory-name im))
-      (list (copy im
-	      'theory-name
-	      (mapobject #'(lambda (ex)
-			     (when (and (name-expr? ex)
-					(eq (id ex) (id adt))
-					(null (actuals ex)))
-			       (setf (actuals ex)
-				     (mapcar #'(lambda (fp)
-						 (mk-actual
-						  (mk-name-expr
-						      (id (car fp)))))
-				       fpairs))))
-			 (copy-untyped (theory-name im))))
-	    (copy im
-	      'theory-name
-	      (mapobject #'(lambda (ex)
-			     (when (and (name-expr? ex)
-					(eq (id ex) (id adt))
-					(null (actuals ex)))
-			       (setf (actuals ex)
-				     (mapcar #'(lambda (fp)
-						 (mk-actual
-						  (mk-name-expr
-						      (id (cdr fp)))))
-				       fpairs))))
-			 (copy-untyped (theory-name im)))))
-      (list (copy im 'theory-name (copy-untyped (theory-name im))))))
-
-(defun generate-adt-map (fpairs adt)
-  (let* ((*generate-tccs* 'none)
-	 (postype-pairs
-	  (remove-if-not
-	      #'(lambda (fp)
-		  (member (car fp)
-			  (positive-types adt)
-			  :test #'(lambda (x y)
-				    (let ((fdecl
-					   (if (name? y)
-					       (declaration y)
-					       (declaration (print-type y)))))
-				      (and (typep fdecl 'formal-type-decl)
-					   (same-id x fdecl))))))
-	    fpairs))
-	 (ptypes (mapcar #'type-value (mapcar #'car postype-pairs)))
-	 (fvars (generate-adt-map-fvars '|f| postype-pairs adt))
-	 (avar (mk-name-expr (make-new-variable '|a| adt)))
-	 (adt-subtypes (find-adt-subtypes adt))
-	 (rtype (typecheck
-		    (mk-type-name (id adt)
-		      (mapcan #'(lambda (fp)
-				  (unless (typep (car fp) 'importing)
-				    (list (mk-actual
-					   (mk-name-expr (id (cdr fp)))))))
-			fpairs))))
-	 (frtype (if (null adt-subtypes)
-		     rtype
-		     (generate-adt-map-subtypes-rangetype
-		      adt-subtypes adt fpairs avar rtype)))
-	 (adtinst (typecheck (mk-map-adtinst fpairs adt)))
-	 (curried-cases
-	  (mk-cases-expr avar
-	    (mapcar #'(lambda (c)
-		(generate-adt-map-selection
-			 c fvars ptypes fpairs adt adtinst t))
-		    (constructors adt))
-	    nil))
-	 (uncurried-cases
-	  (mk-cases-expr avar
-	    (mapcar #'(lambda (c)
-			(generate-adt-map-selection
-			 c fvars ptypes fpairs adt adtinst nil))
-		    (constructors adt))
-	    nil))
-	 (fargs (adt-map-formals-arguments fvars postype-pairs fpairs avar adt))
-	 (cdecl (mk-adt-def-decl
-		    '|map| frtype
-		    (parse-unparse curried-cases)
-		    fargs))
-	 (uncdecl (mk-adt-def-decl
-		      '|map| frtype
-		      (parse-unparse uncurried-cases)
-		      (append (apply #'append (butlast fargs))
-			      (car (last fargs))))))
-    (typecheck-adt-decl cdecl)
-    (typecheck-adt-decl uncdecl)))
-
-(defun generate-adt-map-subtypes-rangetype (adt-subtypes adt fpairs avar rtype)
-  (let* ((xvar (mk-name-expr (make-new-variable '|x| adt)))
-	 (xbd (mk-bind-decl (id xvar) rtype))
-	 (*bound-variables* (cons xbd *bound-variables*))
-	 (srcinst (mk-map-adtinst-src fpairs adt))
-	 (tgtinst (mk-map-adtinst-tgt fpairs adt))
-	 (pred (generate-adt-map-subtypes-rangetype-pred
-		adt-subtypes avar xvar srcinst tgtinst)))
-    (mk-subtype rtype
-      (make-instance 'set-expr
-	:bindings (list xbd)
-	:expression pred))))
-
-(defun generate-adt-map-subtypes-rangetype-pred (adt-subtypes
-						 avar xvar srcinst tgtinst
-						 &optional preds)
-  (if (null adt-subtypes)
-      (mk-conjunction (nreverse preds))
-      (generate-adt-map-subtypes-rangetype-pred
-       (cdr adt-subtypes) avar xvar srcinst tgtinst
-       (cons (generate-adt-map-subtypes-rangetype-pred*
-	      (car adt-subtypes) avar xvar srcinst tgtinst)
-	     preds))))
-
-(defun generate-adt-map-subtypes-rangetype-pred* (adt-subtype avar xvar
-							      srcinst tgtinst)
-  (let ((pred
-	 (mk-application (mk-name-expr '=>)
-	   (mk-application (subst-mod-params (predicate adt-subtype) srcinst)
-	     avar)
-	   (mk-application (subst-mod-params (predicate adt-subtype) tgtinst)
-	     xvar))))
-    (setf (parens pred) 1)
-    pred))
-
-(defun mk-map-adtinst (fpairs adt)
-  (typecheck (mk-type-name (id adt)
-	       (mapcar #'(lambda (fp)
-			   (mk-actual (mk-name-expr (id (car fp)))))
-		       fpairs))))
-
-(defun mk-map-adtinst-src (fpairs adt)
-  (typecheck (mk-modname (makesym "~a_adt" (id adt))
-	       (mapcar #'(lambda (fp)
-			   (mk-actual (mk-name-expr (id (car fp)))))
-		       fpairs))))
-
-(defun mk-map-adtinst-tgt (fpairs adt)
-  (typecheck (mk-modname (makesym "~a_adt" (id adt))
-	       (mapcar #'(lambda (fp)
-			   (mk-actual (mk-name-expr (id (cdr fp)))))
-		       fpairs))))
-
-(defun adt-map-formals-arguments (fvars fptypes fpairs avar adt)
-  (list (mapcar #'mk-arg-bind-decl
-		(mapcar #'id fvars)
-		(mapcar #'(lambda (fp)
-			    (mk-funtype (list
-					 (copy (type-value (car fp))
-					   'resolutions nil))
-					(type-value (cdr fp))))
-			fptypes))
-	(list (mk-arg-bind-decl (id avar)
-		(mk-type-name (id adt)
-			      (mapcan #'adt-map-formals-actuals
-				      fpairs))))))
-
-(defun adt-map-formals-actuals (fp)
-  (unless (importing? (car fp))
-    (list (mk-actual (mk-name-expr (id (car fp)))))))
-
-(defun generate-adt-map-fvars (id fptypes adt)
-  (if (singleton? fptypes)
-	(list (mk-name-expr (make-new-variable id adt)))
-	(generate-adt-map-fvars* id fptypes adt 0 nil)))
-
-(defun generate-adt-map-fvars* (id fptypes adt ctr fvars)
-  (if (null fptypes)
-      (nreverse fvars)
-      (generate-adt-map-fvars*
-       id (cdr fptypes) adt (1+ ctr)
-       (cons (mk-name-expr (make-new-variable id (cons adt fvars)
-						(incf ctr)))
-	     fvars))))
-
-(defun generate-adt-map-selection (c pvars ptypes fpairs adt adtinst curried?)
-  (if (arguments c)
-      (let* ((bindings (mapcar #'(lambda (a)
-				   (make-bind-decl (id (get-adt-var a))
-				     (subst-mod-params
-				      (type a)
-				      (module-instance adtinst)
-				      (module (declaration adtinst)))))
-			 (arguments c)))
-	     (vars (mapcar #'(lambda (b)
-			       (mk-name-expr (id b) nil nil
-					     (make-resolution b
-					       (current-theory-name)
-					       (type b))))
-		     bindings)))
-	(mk-selection (mk-name-expr (id c))
-	  bindings
-	  (mk-application* (id c)
-	    (acc-map-selections vars (arguments c) pvars ptypes fpairs
-				adt adtinst curried?))))
-      (mk-selection (mk-name-expr (id c)) nil
-	(mk-name-expr (id c)))))
-
-(defun acc-map-selections (vars accs pvars ptypes fpairs adt adtinst curried?
-				&optional sels)
-  (if (null vars)
-      (nreverse sels)
-      (let ((sel (acc-map-selection (car vars)
-				    (subst-mod-params 
-				     (type (car vars))
-				     (module-instance adtinst)
-				     (module (declaration adtinst)))
-				    pvars ptypes fpairs adt curried?))
-	    (nvars (mapcar #'(lambda (v)
-			       (lcopy v
-				 'type (gensubst (type v)
-					 #'(lambda (ex)
-					     (declare (ignore ex))
-					     (car vars))
-					 #'(lambda (ex)
-					     (and (name-expr? ex)
-						  (eq (declaration ex)
-						      (bind-decl (car accs))))))))
-		     (cdr vars))))
-	(acc-map-selections nvars (cdr accs) pvars ptypes fpairs
-			    adt adtinst curried? (cons sel sels)))))
-  
-
-;; (defun instantiate-adt-types (type adtinst)
-;;   (let ((*parsing-or-unparsing* t))
-;;     (gensubst type
-;;       #'(lambda (x) (instantiate-adt-types! x adtinst))
-;;       #'(lambda (x) (instantiate-adt-types? x adtinst)))))
-
-;; (defmethod instantiate-adt-types? ((type type-name) adtinst)
-;;   (same-id type adtinst))
-
-;; (defmethod instantiate-adt-types? ((act actual) adtinst)
-;;   (and (type-value act)
-;;        (instantiate-adt-types? (type-value act) adtinst)))
-
-;; (defmethod instantiate-adt-types? (obj adtinst)
-;;   (declare (ignore obj adtinst)))
-
-;; (defmethod instantiate-adt-types! ((type type-name) adtinst)
-;;   (copy-all adtinst))
-
-;; (defmethod instantiate-adt-types! ((act actual) adtinst)
-;;   (let* ((ntype (instantiate-adt-types! (type-value act) adtinst))
-;; 	 (nexpr (mk-name-expr (id ntype) (actuals ntype))))
-;;     (setf (types nexpr) (list 'type)
-;; 	  (resolutions nexpr) (list (resolution ntype)))
-;;     (make-instance 'actual
-;;       :type-value ntype
-;;       :expr nexpr)))
-
-(defmethod acc-map-selection (arg (te type-name) pvars ptypes fpairs
-				  adt curried?)
-  (cond ((member te ptypes :test #'corresponding-formals)
-	 (let* ((pos (position te ptypes :test #'corresponding-formals))
-		(pvar (nth pos pvars)))
-	   (mk-application pvar (copy arg))))
-	((same-declaration te (adt-type-name adt))
-	 (if curried?
-	     (mk-application (mk-application* '|map| pvars) (copy arg))
-	     (mk-application* '|map| (append pvars (list (copy arg))))))
-	((adt? te)
-	 (let ((maps (mapcar #'(lambda (act)
-				 (acc-map-selection* (raise-actuals (type-value act))
-						     pvars ptypes fpairs adt))
-			     (positive-actuals te))))
-	   (if (every #'identity-fun? maps)
-	       (copy arg)
-	       (if curried?
-		   (mk-application (mk-map-application te fpairs adt maps)
-		     (copy arg))
-		   (mk-map-application te fpairs adt
-				       (append maps (list (copy arg))))))))
-	(t (copy arg))))
-
-(defmethod corresponding-formals (t1 (t2 type-name))
-  (and (eq (id t1) (id t2))
-       (typep (declaration (car (resolutions t1))) 'formal-type-decl)
-       (typep (declaration (car (resolutions t1))) 'formal-type-decl)))
-
-(defmethod corresponding-formals (t1 (t2 formal-type-decl))
-  (and (eq (id t1) (id t2))
-       (typep (declaration (car (resolutions t1))) 'formal-type-decl)))
-
-(defmethod corresponding-formals (t1 (t2 subtype))
-  (and (print-type t2)
-       (corresponding-formals t1 (print-type t2))))
-
-(defmethod acc-map-selection (arg (te datatype-subtype) pvars ptypes fpairs
-				  adt curried?)
-  (acc-map-selection arg (declared-type te) pvars ptypes fpairs adt curried?))
-
-(defmethod acc-map-selection (arg (te subtype) pvars ptypes fpairs
-				  adt curried?)
-  (if (finite-set-type? te)
-      (let* ((dom (raise-actuals (domain (supertype te))))
-	     (map (acc-map-selection* dom pvars ptypes fpairs adt)))
-	(if (identity-fun? map)
-	    (copy arg)
-	    (let* ((act (mk-actual dom))
-		   (mact (raise-actuals (subst-map-actuals act fpairs)))
-		   (mapname (mk-name-expr '|image| (list act mact))))
-	      (if curried?
-		  (mk-application (mk-application mapname map) (copy arg))
-		  (mk-application mapname map (copy arg))))))
-      (acc-map-selection arg (supertype te) pvars ptypes fpairs adt curried?)))
-
-(defmethod acc-map-selection (arg (te funtype) pvars ptypes fpairs
-				  adt curried?)
-  (let* ((fid (make-new-variable '|x| te))
-	 (fbd (make-bind-decl fid (domain te)))
-	 (fvar (mk-name-expr fid nil nil
-			     (make-resolution fbd
-			       (current-theory-name) (domain te))))
-	 (*bound-variables* (cons fbd *bound-variables*))
-	 (map (acc-map-selection*
-	       (if (typep (domain te) 'dep-binding)
-		   (substit (range te) (acons (domain te) fvar nil))
-		   (range te))
-	       pvars ptypes fpairs adt)))
-    (cond ((identity-fun? map)
-	   (copy arg))
-	  ((sequence? te)
-	   (if curried?
-	       (mk-application (mk-map-application te fpairs adt (list map))
-		 (copy arg))
-	       (mk-map-application te fpairs adt
-				   (list map (copy arg)))))
-	  (t
-	   (if (or curried?
-		   (not (map-application? map)))
-	       (mk-lambda-expr (list fbd)
-		 (mk-application map 
-		   (mk-application (copy arg) fvar)))
-	       (mk-lambda-expr (list fbd)
-		 (mk-map-application
-		  (range te) fpairs adt
-		  (append (arguments map)
-			  (list (mk-application (copy arg) fvar))))))))))
-
-(defmethod acc-map-selection (arg (te recordtype) pvars ptypes fpairs
-				  adt curried?)
-  (declare (ignore curried?))
-  (assert (type arg))
-  (let ((maps (acc-map-selection-fields
-	       (fields te) arg pvars ptypes fpairs adt (dependent? te))))
-    (if (every #'identity-fun? maps)
-	(copy arg)
-	(mk-record-expr
-	 (mapcar #'(lambda (fd map)
-		     (mk-assignment 'uni
-		       (list (list (mk-name-expr (id fd))))
-		       (if (identity-fun? map)
-			   (mk-application (id fd) (copy arg))
-			   (mk-application map
-			     (mk-application (id fd) (copy arg))))))
-	   (fields te) maps)))))
-
-(defun acc-map-selection-fields (fields rvar pvars ptypes fpairs adt dep?
-					&optional result)
-  (if (null fields)
-      (nreverse result)
-      (acc-map-selection-fields
-       (if dep?
-	   (substit (cdr fields)
-	     (acons (car fields)
-		    (make-field-application (car fields) rvar)
-		    nil))
-	   (cdr fields))
-       rvar pvars ptypes fpairs adt dep?
-       (cons (acc-map-selection* (type (car fields)) pvars ptypes fpairs adt)
-	     result))))
-
-(defmethod acc-map-selection (arg (te tupletype) pvars ptypes fpairs
-				  adt curried?)
-  (declare (ignore curried?))
-  (let ((maps (acc-map-selection-types
-	       (types te) arg pvars ptypes fpairs adt)))
-    (if (every #'identity-fun? maps)
-	(copy arg)
-	(mk-tuple-expr
-	 (let ((num 0))
-	   (mapcar #'(lambda (map)
-		       (incf num)
-		       (let ((proj (make-instance 'projappl
-				     :id (makesym "PROJ_~d" num)
-				     :index num
-				     :argument (copy arg))))
-			 (if (identity-fun? map)
-			     proj
-			     (mk-application map proj))))
-	     maps))))))
-
-(defmethod acc-map-selection (arg (te cotupletype) pvars ptypes fpairs
-				  adt curried?)
-  (declare (ignore curried?))
-  (let ((maps (acc-map-selection-types
-	       (types te) arg pvars ptypes fpairs adt)))
-    (if (every #'identity-fun? maps)
-	(copy arg)
-	(mk-cases-expr arg
-	  (let ((num 0)
-		(varid (make-new-variable '|x| adt)))
-	    (mapcar #'(lambda (map type)
-			(incf num)
-			(let* ((bd (make-bind-decl varid type))
-			       (var (make-variable-expr bd))
-			       (in-expr (make-instance 'injection-expr
-					  :id (makesym "IN_~d" num)
-					  :index num))
-			       (sel-expr (make-instance 'injection-application
-					   :id (makesym "IN_~d" num)
-					   :index num
-					   :actuals (subst-map-actuals
-						     (list (mk-actual te))
-						     fpairs)
-					   :argument (mk-application map
-						       var))))
-			  (mk-selection in-expr (list bd) sel-expr)))
-	      maps (types te)))
-	  nil))))
-
-(defmethod acc-map-selection (arg (te type-expr) pvars ptypes fpairs
-				  adt curried?)
-  (declare (ignore pvars ptypes fpairs adt curried?))
-  (copy arg))
-
-(defmethod acc-map-selection* ((te type-name) pvars ptypes fpairs adt)
-  (cond ((member te ptypes :test #'corresponding-formals)
-	 (let* ((pos (position te ptypes :test #'corresponding-formals))
-		(pvar (nth pos pvars)))
-	   pvar))
-	((tc-eq te (adt-type-name adt))
-	 (mk-application* '|map| pvars))
-	((adt? te)
-	 (let ((maps (mapcar #'(lambda (act)
-				 (acc-map-selection* (type-value act)
-						     pvars ptypes fpairs adt))
-			     (positive-actuals te))))
-	   (if (every #'identity-fun? maps)
-	       (mk-identity-fun te)
-	       (mk-map-application te fpairs adt maps))))
-	(t (mk-identity-fun te))))
-
-(defmethod acc-map-selection* ((te datatype-subtype) pvars ptypes fpairs adt)
-  (acc-map-selection* (declared-type te) pvars ptypes fpairs adt))
-
-(defmethod acc-map-selection* ((te subtype) pvars ptypes fpairs adt)
-  (if (finite-set-type? te)
-      (let ((map (acc-map-selection* (domain (supertype te))
-				     pvars ptypes fpairs adt)))
-	(if (identity-fun? map)
-	    (mk-identity-fun te)
-	    (mk-application '|image| map)))
-      (acc-map-selection* (supertype te) pvars ptypes fpairs adt)))
-
-(defmethod acc-map-selection* ((te funtype) pvars ptypes fpairs adt)
-  (let* ((fid (make-new-variable '|x| te))
-	 (fbd (make-bind-decl fid (domain te)))
-	 (fvar (mk-name-expr fid nil nil
-			     (make-resolution fbd
-			       (current-theory-name) (domain te))))
-	 (*bound-variables* (cons fbd *bound-variables*))
-	 (map (acc-map-selection*
-	       (if (typep (domain te) 'dep-binding)
-		   (substit (range te) (acons (domain te) fvar nil))
-		   (range te))
-	       pvars ptypes fpairs adt)))
-    (cond ((identity-fun? map)
-	   (mk-identity-fun te))
-	  ((sequence? te)
-	   (mk-map-application te fpairs adt (list map)))
-	  (t
-	   (let* ((lid (make-new-variable '|f| (list te map)))
-		  (lbd (make-bind-decl lid te))
-		  (lvar (mk-name-expr lid nil nil
-				      (make-resolution lbd
-					(current-theory-name) te))))
-	     (mk-lambda-expr (list lbd)
-	       (mk-lambda-expr (list fbd)
-		 (mk-application map
-		   (mk-application lvar fvar)))))))))
-
-(defmethod acc-map-selection* ((te recordtype) pvars ptypes fpairs adt)
-  (let* ((rid (make-new-variable '|r| te))
-	 (rbd (make-bind-decl rid te))
-	 (rvar (mk-name-expr rid nil nil
-			     (make-resolution rbd
-			       (current-theory-name) te)))
-	 (*bound-variables* (cons rbd *bound-variables*))
-	 (maps (acc-map-selection-fields
-		(fields te) rvar pvars ptypes fpairs adt (dependent? te))))
-    (if (every #'identity-fun? maps)
-	(mk-identity-fun te)
-	(mk-lambda-expr (list rbd)
-	  (mk-record-expr
-	   (mapcar #'(lambda (fd map)
-		       (mk-assignment 'uni
-			 (list (list (mk-name-expr (id fd))))
-			 (if (identity-fun? map)
-			     (mk-application (id fd) rvar)
-			     (mk-application map
-			       (mk-application (id fd) rvar)))))
-	     (fields te) maps))))))
-
-(defmethod acc-map-selection* ((te tupletype) pvars ptypes fpairs adt)
-  (let* ((tid (make-new-variable '|t| te))
-	 (tbd (make-bind-decl tid te))
-	 (tvar (mk-name-expr tid nil nil
-			     (make-resolution tbd
-			       (current-theory-name) te)))
-	 (*bound-variables* (cons tbd *bound-variables*))
-	 (maps (acc-map-selection-types
-		(types te) tvar pvars ptypes fpairs adt)))
-    (if (every #'identity-fun? maps)
-	(mk-identity-fun te)
-	(mk-lambda-expr (list tbd)
-	  (mk-tuple-expr
-	   (let ((num 0))
-	     (mapcar #'(lambda (map)
-			 (incf num)
-			 (let ((proj (make-instance 'projappl
-				       :id (makesym "PROJ_~d" num)
-				       :index num
-				       :argument tvar)))
-			   (if (identity-fun? map)
-			       proj
-			       (mk-application map proj))))
-	       maps)))))))
-
-(defmethod acc-map-selection* ((te cotupletype) pvars ptypes fpairs adt)
-  (let* ((tid (make-new-variable '|t| te))
-	 (tbd (make-bind-decl tid te))
-	 (tvar (mk-name-expr tid nil nil
-			     (make-resolution tbd
-			       (current-theory-name) te)))
-	 (*bound-variables* (cons tbd *bound-variables*))
-	 (maps (acc-map-selection-types
-		(types te) tvar pvars ptypes fpairs adt)))
-    (if (every #'identity-fun? maps)
-	(mk-identity-fun te)
-	(mk-lambda-expr (list tbd)
-	  (mk-cases-expr tvar
-	    (let ((num 0)
-		  (varid (make-new-variable '|x| adt)))
-	      (mapcar #'(lambda (map type)
-			  (incf num)
-			  (let* ((bd (make-bind-decl varid type))
-				 (var (make-variable-expr bd))
-				 (in-expr (make-instance 'injection-expr
-					    :id (makesym "IN_~d" num)
-					    :index num))
-				 (sel-expr (make-instance 'injection-application
-					     :id (makesym "IN_~d" num)
-					     :index num
-					     :actuals (subst-map-actuals
-						       (list (mk-actual te))
-						       fpairs)
-					     :argument (mk-application map
-							 var))))
-			    (mk-selection in-expr (list bd) sel-expr)))
-		maps (types te)))
-	    nil)))))
-
-(defun acc-map-selection-types (types tvar pvars ptypes fpairs adt
-				      &optional (index 1) result)
-  (if (null types)
-      (nreverse result)
-      (acc-map-selection-types
-       (if (typep (car types) 'dep-binding)
-	   (substit (cdr types)
-	     (acons (car types)
-		    (make-projection-application index tvar)
-		    nil))
-	   (cdr types))
-       tvar pvars ptypes fpairs adt (1+ index)
-       (cons (acc-map-selection* (car types) pvars ptypes fpairs adt)
-	     result))))
-
-(defmethod acc-map-selection* ((te dep-binding) pvars ptypes fpairs adt)
-  (acc-map-selection* (type te) pvars ptypes fpairs adt))
-
-(defmethod acc-map-selection* ((te type-expr) pvars ptypes fpairs adt)
-  (declare (ignore pvars ptypes fpairs adt))
-  (mk-identity-fun te))
-
-;(defmethod acc-map-selection (arg (te tupletype) pvars ptypes adt)
-;  (labels ((map-tup (types i forms)
-;	      (if (null types)
-;		  (mk-conjunction (nreverse forms))
-;		  (let ((proj (make-projection arg i (car types) te)))
-;		    (map-tup (cdr types)
-;			       (1+ i)
-;			       (cons (acc-map-selection
-;				      proj (car types) pvars ptypes adt)
-;				     forms))))))
-;    (map-tup (types te) 1 nil)))
-
-;(defmethod acc-map-selection (arg (te recordtype) pvars ptypes adt)
-;  (labels ((map-rec (fields forms)
-;	      (if (null fields)
-;		  (mk-conjunction (nreverse forms))
-;		  (let ((fappl (make-application* (id (car fields)) arg)))
-;		    (map-tup (cdr fields)
-;			       (cons (acc-map-selection
-;				      fappl (type (car fields))
-;				      pvars ptypes adt)
-;				     forms))))))
-;    (map-rec (fields te) nil)))
-
-;(defmethod acc-map-selection (arg (te funtype) pvars ptypes adt)
-;  ;; adt and type parameters must not occur in the domain
-;  (let* ((dtypes (domain te))
-;	 (bids (if (singleton? dtypes)
-;		   (list (make-new-variable '|d| adt))
-;		   (mapcar #'(lambda (d)
-;			       (declare (ignore d))
-;			       (make-new-variable '|d| adt 1))
-;			   dtypes)))
-;	 (bds (mapcar #'(lambda (bid dty)
-;			  (typecheck* (mk-bind-decl bid dty dty) nil nil nil))
-;		      bids dtypes))
-;	 (vars (mapcar #'(lambda (bd)
-;			   (mk-name-expr (id bd)
-;			     nil nil (make-resolution bd nil (type bd))))
-;		       bds))
-;	 (appl (mk-application arg vars)))
-;    (make-forall-expr bds
-;      (acc-map-selection appl (range te) pvars ptypes adt))))
-
-(defun generate-adt-every-rel (fpairs adt)
-  (let* ((postype-pairs
-	  (remove-if-not
-	      #'(lambda (fp)
-		  (member (car fp)
-			  (positive-types adt)
-			  :test #'(lambda (x y)
-				    (let ((fdecl
-					   (if (name? y)
-					       (declaration y)
-					       (declaration (print-type y)))))
-				      (and (typep fdecl 'formal-type-decl)
-					   (same-id x fdecl))))))
-	    fpairs))
-	 (ptypes (mapcar #'type-value (mapcar #'car postype-pairs)))
-	 (fvars (generate-adt-map-fvars 'R ptypes adt))
-	 (avid (make-new-variable '|x| adt))
-	 (bvid (make-new-variable '|y| adt))
-	 (atype (typecheck
-		    (mk-type-name (id adt)
-		      (mapcar #'(lambda (fp)
-				  (mk-actual (mk-name-expr (id (car fp)))))
-			fpairs))))
-	 (btype (typecheck
-		    (mk-type-name (id adt)
-		      (mapcar #'(lambda (fp)
-				  (mk-actual (mk-name-expr (id (cdr fp)))))
-			fpairs))))
-	 (abd (make-bind-decl avid atype))
-	 (bbd (make-bind-decl bvid btype))
-	 (avar (make-variable-expr abd))
-	 (bvar (make-variable-expr bbd))
-	 (*bound-variables* (cons abd (cons bbd *bound-variables*)))
-	 (form
-	  (mk-disjunction 
-	   (mapcar #'(lambda (c)
-		       (generate-adt-every-rel-case
-			c fvars avar bvar ptypes fpairs adt))
-	     (constructors adt))))
-	 (fargs (adt-every-formals-arguments
-		 fvars postype-pairs fpairs avar bvar adt))
-	 (cdecl (mk-adt-def-decl
-		    '|every| *boolean*
-		    (pc-parse (unparse form :string t) 'expr)
-		    fargs)))
-    (typecheck-adt-decl cdecl)))
-
-(defun adt-every-formals-arguments (fvars fptypes fpairs avar bvar adt)
-  (list (mapcar #'mk-arg-bind-decl
-		(mapcar #'id fvars)
-		(mapcar #'(lambda (fp)
-			    (mk-funtype (list
-					 (copy (type-value (car fp))
-					   'resolutions nil)
-					 (copy (type-value (cdr fp))
-					   'resolutions nil))
-					*boolean*))
-			fptypes))
-	(list (mk-arg-bind-decl (id avar)
-		(mk-type-name (id adt)
-			      (mapcan #'(lambda (fp)
-					  (unless (typep (car fp) 'importing)
-					    (list (mk-actual
-						   (mk-name-expr
-						       (id (car fp)))))))
-				      fpairs)))
-	      (mk-arg-bind-decl (id bvar)
-		(mk-type-name (id adt)
-			      (mapcan #'(lambda (fp)
-					  (unless (typep (car fp) 'importing)
-					    (list (mk-actual
-						   (mk-name-expr
-						       (id (cdr fp)))))))
-				      fpairs))))))
-
-(defun generate-adt-every-rel-case (c pvars avar bvar ptypes fpairs adt)
-  (let* ((arec (mk-application (mk-name-expr (recognizer c)) avar))
-	 (brec (mk-application (mk-name-expr (recognizer c)) bvar))
-	 (mpairs (mapcar #'(lambda (fp) (cons (find (car fp) (formals adt)
-						    :test #'same-id)
-					      (car fp)))
-		   fpairs))
-	 (abds (mapcar #'bind-decl (arguments c)))
-	 (*bound-variables* (cons avar *bound-variables*))
-	 (vals (generate-every-rel-conjuncts
-		abds pvars avar bvar ptypes fpairs mpairs adt)))
-    (mk-conjunction (cons arec (cons brec vals)))))
-
-(defun generate-every-rel-conjuncts (abds pvars avar bvar ptypes fpairs mpairs
-					  adt &optional conjuncts)
-  (if (null abds)
-      (nreverse conjuncts)
-      (let* ((atype (typecheck
-			(subst-map-actuals
-			 (subst-mod-params (declared-type (car abds))
-					   (module-instance (type avar))
-					   (module (declaration (type avar))))
-			 mpairs)))
-	     (btype (subst-map-actuals atype fpairs))
-	     (aex (typecheck (mk-application (id (car abds)) avar)
-		    :expected atype))
-	     (bex (typecheck (mk-application (id (car abds)) bvar)
-		     :expected btype))
-	     (conjunct (adt-every-rel
-			(type (car abds)) pvars aex bex ptypes fpairs adt))
-	     (nabds (gensubst (cdr abds)
-		      #'(lambda (ex)
-			  (declare (ignore ex))
-			  aex)
-		      #'(lambda (ex)
-			  (and (name-expr? ex)
-			       (eq (declaration ex) (car abds)))))))
-	(generate-every-rel-conjuncts nabds pvars avar bvar
-				 ptypes fpairs mpairs adt
-				 (cons conjunct conjuncts)))))
-
-(defmethod adt-every-rel ((te type-name) pvars avar bvar ptypes fpairs adt)
-  (cond ((member te ptypes :test #'corresponding-formals)
-	 (let* ((pos (position te ptypes :test #'corresponding-formals))
-		(pvar (nth pos pvars)))
-	   (mk-application pvar (copy avar) (copy bvar))))
-	((same-declaration te (adt-type-name adt))
-	 (mk-application (mk-application* '|every| pvars)
-	   (copy avar) (copy bvar)))
-	((adt? te)
-	 (let ((everys (adt-every-positive-actuals
-			(positive-actuals te)
-			(positive-actuals (find-supertype (type avar)))
-			(positive-actuals (find-supertype (type bvar)))
-			pvars ptypes fpairs adt)))
-	   (if (every #'everywhere-true? everys)
-	       *true*
-	       (mk-application (mk-simple-every-application te adt everys)
-		 (copy avar) (copy bvar)))))
-	(t (mk-application (mk-name-expr '=) (copy avar) (copy bvar)))))
-
-(defun adt-every-positive-actuals (acts aacts bacts pvars ptypes fpairs adt
-					&optional rels)
-  (if (null acts)
-      (nreverse rels)
-      (let* ((avid (make-new-variable '|u| adt))
-	     (bvid (make-new-variable '|v| adt))
-	     (atype (raise-actuals (type-value (car aacts))))
-	     (btype (raise-actuals (type-value (car bacts))))
-	     (abd (make-bind-decl avid atype))
-	     (bbd (make-bind-decl bvid btype))
-	     (avar (make-variable-expr abd))
-	     (bvar (make-variable-expr bbd))
-	     (*bound-variables* (cons abd (cons bbd *bound-variables*)))
-	     (rel (adt-every-rel (type-value (car acts))
-				 pvars avar bvar ptypes fpairs adt))
-	     (lexp (mk-lambda-expr (list abd bbd) rel)))
-	(adt-every-positive-actuals (cdr acts) (cdr aacts) (cdr bacts)
-				    pvars ptypes fpairs adt
-				    (cons lexp rels)))))
-
-(defmethod adt-every-rel ((te datatype-subtype) pvars avar bvar ptypes fpairs adt)
-  (adt-every-rel (declared-type te) pvars avar bvar ptypes fpairs adt))
-  
-(defmethod adt-every-rel ((te subtype) pvars avar bvar ptypes fpairs adt)
-  (if (and (finite-set-type? te)
-	   (occurs-in (adt-type-name adt) te))
-      ;; Can't generate an every relation in this case
-      (throw 'no-every-rel nil)
-      (adt-every-rel (supertype te) pvars avar bvar ptypes fpairs adt)))
-
-(defun adt-every-finset-actuals (dom adom bdom pvars ptypes fpairs adt)
-  (let* ((avid (make-new-variable '|u| adt))
-	 (bvid (make-new-variable '|v| adt))
-	 (atype (raise-actuals adom))
-	 (btype (raise-actuals bdom))
-	 (abd (make-bind-decl avid atype))
-	 (bbd (make-bind-decl bvid btype))
-	 (avar (make-variable-expr abd))
-	 (bvar (make-variable-expr bbd))
-	 (*bound-variables* (cons abd (cons bbd *bound-variables*)))
-	 (rel (adt-every-rel dom pvars avar bvar ptypes fpairs adt))
-	 (lexp (mk-lambda-expr (list abd bbd) rel)))
-    lexp))
-
-(defmethod adt-every-rel ((te funtype) pvars avar bvar ptypes fpairs adt)
-  (let* ((fid (make-new-variable '|z| (list te avar bvar)))
-	 (fbd (make-bind-decl fid (domain te)))
-	 (fvar (mk-name-expr fid nil nil
-			     (make-resolution fbd
-			       (current-theory-name) (domain te))))
-	 (*bound-variables* (cons fbd *bound-variables*))
-	 (every (adt-every-rel
-		 (if (typep (domain te) 'dep-binding)
-		     (substit (range te) (acons (domain te) fvar nil))
-		     (range te))
-		 pvars
-		 (make!-application (copy avar) fvar)
-		 (make!-application (copy bvar) fvar)
-		 ptypes fpairs adt)))
-    (if (everywhere-true? every)
-	*true*
-	(mk-forall-expr (list fbd) every))))
-
-(defmethod adt-every-rel ((te recordtype) pvars avar bvar ptypes fpairs adt)
-  (let ((rels (adt-every-rel-fields
-		 (fields te) pvars avar bvar ptypes fpairs adt
-		 (dependent? te))))
-    (if (every #'everywhere-true? rels)
-	*true*
-	(mk-conjunction rels))))
-
-(defun adt-every-rel-fields (fields pvars avar bvar ptypes fpairs adt
-				    dep? &optional everys)
-  (if (null fields)
-      (nreverse everys)
-      (let ((favar (make-field-application (car fields) avar))
-	    (fbvar (make-field-application (car fields) bvar)))
-	(adt-every-rel-fields
-	 (if dep?
-	     ;; Need a substit that creates two substitutions and conjoins
-	     ;; them at the predicate level; e.g., in
-	     ;;  [# a: int, b: {x: int | x < a} #]
-	     ;; the substit on cdr fields) should create
-	     ;; (b: {x: int | x < favar and x < fbvar})
-	     (every-rel-field-subst (car fields) favar fbvar (cdr fields))
-	     (cdr fields))
-	 pvars avar bvar ptypes fpairs adt dep?
-	 (cons (adt-every-rel
-		(type (car fields)) pvars favar fbvar ptypes fpairs adt)
-	       everys)))))
-
-(defun every-rel-field-subst (field var1 var2 fields)
-  (let* ((alist1 (acons field var1 nil))
-	 (alist2 (acons field var2 nil))
-	 (sfields
-	  (gensubst fields
-	    #'(lambda (ex)
-		(let* ((id (make-new-variable '|x| (supertype ex)))
-		       (bd (make-bind-decl id (supertype ex)))
-		       (var (make-variable-expr bd))
-		       (appl (make!-application (predicate ex) var))
-		       (pred1 (substit appl alist1))
-		       (pred2 (substit appl alist2))
-		       (cpred (make!-conjunction pred1 pred2)))
-		  (copy ex
-		    'predicate (make!-set-expr (list bd) cpred)
-		    'print-type nil)))
-	    #'(lambda (ex)
-		(and (subtype? ex)
-		     (member field (freevars (predicate ex))
-			     :key #'declaration))))))
-    (mapc #'(lambda (sfld fld)
-	      (unless (eq (type sfld) (type fld))
-		(setf (declared-type sfld) (type sfld))))
-	  sfields fields)
-    sfields))
-
-(defmethod adt-every-rel ((te tupletype) pvars avar bvar ptypes fpairs adt)
-  (let ((everys (adt-every-rel-types
-		 (types te) pvars avar bvar ptypes fpairs adt 1)))
-    (if (every #'everywhere-true? everys)
-	*true*
-	(mk-conjunction everys))))
-
-(defun adt-every-rel-types (types pvars avar bvar ptypes fpairs adt
-				  num &optional everys)
-  (if (null types)
-      (nreverse everys)
-      (let ((pavar (make-projection-application num avar))
-	    (pbvar (make-projection-application num bvar)))
-	(adt-every-rel-types
-	 (if (dep-binding? (car types))
-	     ;; Need a substit that creates two substitutions and conjoins
-	     ;; them at the predicate level; e.g., in
-	     ;;  [a: int, {x: int | x < a} ]
-	     ;; the substit on cdr fields) should create
-	     ;; ({x: int | x < favar and x < fbvar})
-	     (every-rel-types-subst (car types) pavar pbvar (cdr types))
-	     (cdr types))
-	 pvars avar bvar ptypes fpairs adt (incf num)
-	 (cons (adt-every-rel
-		(car types) pvars pavar pbvar ptypes fpairs adt)
-	       everys)))))
-
-(defmethod adt-every-rel ((te cotupletype) pvars avar bvar ptypes fpairs adt)
-  (let ((num 0))
-    (mk-disjunction
-     (mapcar #'(lambda (type)
-		 (incf num)
-		 (let* ((inid (makesym "IN?_~d" num))
-			(ain? (make-instance 'injection?-application
-				:id inid
-				:index num
-				:argument avar))
-			(bin? (make-instance 'injection?-application
-				:id inid
-				:index num
-				:argument bvar))
-			(outid (makesym "OUT_~d" num))
-			(aout (typecheck (make-instance 'extraction-application
-					   :id outid
-					   :index num
-					   :argument avar)))
-			(bout (typecheck (make-instance 'extraction-application
-					   :id outid
-					   :index num
-					   :argument bvar)))
-			(every-sub (adt-every-rel type pvars aout bout ptypes fpairs adt)))
-		   (mk-conjunction (list ain? bin? every-sub))))
-       (types te)))))
-
-(defun every-rel-types-subst (dep var1 var2 types)
-  (let ((alist1 (acons dep var1 nil))
-	(alist2 (acons dep var2 nil)))
-    (gensubst types
-      #'(lambda (ex)
-	  (let* ((id (make-new-variable '|x| (supertype ex)))
-		 (bd (make-bind-decl id (supertype ex)))
-		 (var (make-variable-expr bd))
-		 (appl (make!-application (predicate ex) var))
-		 (pred1 (substit appl alist1))
-		 (pred2 (substit appl alist2))
-		 (cpred (make!-conjunction pred1 pred2)))
-	    (copy ex
-	      'predicate (make!-set-expr (list bd) cpred)
-	      'print-type nil)))
-      #'(lambda (ex)
-	  (and (subtype? ex)
-	       (member dep (freevars (predicate ex))
-		       :key #'declaration))))))
-
-(defmethod adt-every-rel ((te type-expr) pvars avar bvar ptypes fpairs adt)
-  (declare (ignore pvars ptypes fpairs adt))
-  (mk-application '= (copy avar) (copy bvar)))
-
-
-;;; Theory for the reduce function
-
-(defun generate-adt-reduce-theory (adt)
-  (build-adt-theory (makesym "~a_adt_reduce" (id adt)) adt
-    (let ((ran (make-new-variable '|range| adt)))
-      (generate-adt-reduce-formals adt ran)
-      (let ((adtinst (generate-adt-reduce-using adt ran)))
-	(generate-adt-reduce adt ran adtinst)))))
-
-(defun generate-adt-reduce-formals (adt ran)
-  (let ((formals (append (mapcar #'copy-adt-formals (formals adt))
-			 (list (make-instance 'formal-type-decl
-				 :id ran)))))
-    (setf (formals (current-theory)) formals)
-    (setf (formals-sans-usings (current-theory))
-	  (remove-if #'importing-param? (formals (current-theory))))
-    (mapc #'(lambda (fm)
-	      (let ((*adt-decl* fm))
-		;;(setf (abstract-syntax fm) nil)
-		(typecheck-adt-decl fm nil)))
-	  formals)
-    (set-dependent-formals (formals-sans-usings (current-theory)))))
-
-(defmethod copy-adt-formals ((formal importing))
-  (car (pc-parse (unparse formal :string t) 'theory-elt)))
-
-(defmethod copy-adt-formals ((formal formal-type-decl))
-  (car (pc-parse (unparse formal :string t) 'theory-formal)))
-
-(defmethod copy-adt-formals ((formal formal-const-decl))
-  (car (pc-parse (unparse formal :string t) 'theory-formal)))
-
-(defun generate-adt-reduce-using (adt ran)
-  (let* ((mod (mk-modname (makesym "~a_~a" (id adt)
-				   (if (datatype? adt) "adt" "codt"))
-		(mapcar #'(lambda (ff)
-			    (mk-actual (mk-name-expr (id ff))))
-		  (formals-sans-usings (adt-theory adt)))))
-	 (imp (make-instance 'importing
-		:theory-name mod)))
-    (typecheck-adt-decl imp)
-    (dolist (im (importings adt))
-      (dolist (nthname
-	       (if (id-occurs-in (id adt) (theory-name im))
-		   (list (mapobject #'(lambda (ex)
-					(when (and (name-expr? ex)
-						   (eq (id ex) (id adt))
-						   (null (actuals ex)))
-					  (setf (actuals ex)
-						(mapcar #'(lambda (ff)
-							    (mk-actual
-							     (mk-name-expr
-								 (id ff))))
-						  (formals-sans-usings
-						   (adt-theory adt))))))
-				    (copy-untyped (theory-name im)))
-			 (mapobject #'(lambda (ex)
-					(when (and (actual? ex)
-						   (name-expr? (expr ex))
-						   (eq (id (expr ex)) (id adt))
-						   (null (actuals (expr ex))))
-					  (setf (expr ex)
-						(mk-name-expr ran))))
-				    (copy-untyped (theory-name im))))
-		   (list (copy-untyped (theory-name im)))))
-	(typecheck-adt-decl (copy im 'theory-name nthname))))
-    (subst-mod-params (adt-type-name adt) mod (adt-theory adt))))
-
-;;; Was generate-adt-recursion
-
-(defun generate-adt-reduce (adt ran &optional adtinst)
-  (let* ((*generate-tccs* 'none)
-	 (rtype (typecheck* (mk-type-name ran) nil nil nil))
-	 (atype (mk-type-name (id adt)))
-	 (fname (case ran
-		  (|nat| '|reduce_nat|)
-		  (|ordinal| '|reduce_ordinal|)
-		  (t '|reduce|)))
-	 (fdoms (gen-adt-reduce-domains rtype adt adtinst))
-	 (thinst (when adtinst (module-instance adtinst)))
-	 (fran (mk-funtype (list atype) (mk-type-name ran)))
-	 (cdecl (mk-adt-def-decl fname
-		  (mk-funtype (list atype) rtype)
-		  (parse-unparse (gen-adt-reduce-definition
-				  adt fname fdoms fran thinst))
-		  (mapcar #'(lambda (c)
-			      (mk-arg-bind-decl (makesym "~a_fun"
-						     (op-to-id (recognizer c)))
-				(gen-adt-reduce-funtype c rtype adt adtinst)))
-			  (constructors adt))))
-	 (fname2 (case ran
-		  (|nat| '|REDUCE_nat|)
-		  (|ordinal| '|REDUCE_ordinal|)
-		  (t '|REDUCE|)))
-	 (rdecl (mk-adt-def-decl fname2
-		  (mk-funtype (list atype) rtype)
-		  (parse-unparse (gen-adt-reduce-definition2
-				  adt fname2 fdoms fran thinst))
-		  (mapcar #'(lambda (c)
-			      (mk-arg-bind-decl (makesym "~a_fun"
-						     (op-to-id (recognizer c)))
-				(gen-adt-reduce-funtype2 c rtype adt adtinst)))
-			  (constructors adt)))))
-    (typecheck-adt-decl cdecl t nil)
-    (typecheck-adt-decl rdecl t nil)))
-
-(defun gen-adt-reduce-domains (rtype adt adtinst)
-  (mapcar #'(lambda (c)
-	      (gen-adt-reduce-domains* c rtype adt adtinst))
-	  (constructors adt)))
-
-(defun gen-adt-reduce-domains* (c rtype adt adtinst)
-  (if (arguments c)
-      (let* ((bindings (mapcar #'bind-decl (arguments c)))
-	     (free-params (free-params bindings))
-	     (nbindings (if (every #'(lambda (fp)
-				       (memq fp (formals (current-theory))))
-				   free-params)
-			    bindings
-			    (gen-adt-reduce-funtype-bindings bindings)))
-	     (dom (gen-adt-reduce-domain
-		   (adt-dependent-bindings
-		    (mapcar #'get-adt-var-name (arguments c))
-		    nbindings)
-		   rtype adt adtinst)))
-	(typecheck* dom nil nil nil)
-	(set-adt-reduce-dom-types dom)
-	dom)
-      nil))
-
-(defun set-adt-reduce-dom-types (dom)
-  (when dom
-    (set-type* (car dom) nil)
-    (let ((*bound-variables* (if (typep (car dom) 'dep-binding)
-				 (cons (car dom) *bound-variables*)
-				 *bound-variables*)))
-      (set-adt-reduce-dom-types (cdr dom)))))
-
-(defun gen-adt-reduce-definition (adt fname fdoms ran adtinst)
-  (let* ((avar (mk-name-expr (makesym "~a_adtvar" (id adt))))
-	 (funlist (mapcar #'(lambda (c)
-			      (let ((rid (op-to-id (recognizer c))))
-				(mk-name-expr (makesym "~a_fun" rid))))
-		    (constructors adt)))
-	 (redid (make-new-variable '|red| adt))
-	 (redvar (mk-name-expr redid))
-	 (red (mk-application* fname funlist)))
-    (mk-lambda-expr (list (mk-bind-decl (id avar) (mk-type-name (id adt))))
-      (make-instance 'let-expr
-	:operator (mk-lambda-expr (list (mk-bind-decl redid ran))
-		    (mk-cases-expr avar
-		      (mapcar #'(lambda (c fdom)
-				  (gen-adt-reduce-selection
-				   c adt redvar fname fdom adtinst))
-			(constructors adt) fdoms)
-		      nil))
-	:argument red))))
-
-(defun gen-adt-reduce-selection (c adt red fname fdom adtinst)
-  (if (arguments c)
-      (let* ((bindings (gen-adt-reduce-selection-bindings
-			(arguments c) adtinst))
-	     (vars (mapcar #'(lambda (b)
-			       (mk-name-expr (id b) nil nil
-					     (make-resolution b
-					       (current-theory-name)
-					       (type b))))
-		     bindings)))
-	(mk-selection (mk-name-expr (id c))
-	  bindings
-	  (mk-application* (makesym "~a_fun" (op-to-id (recognizer c)))
-	    (mapcar #'(lambda (v fd)
-			(acc-reduce-selection
-			 v
-			 (if adtinst
-			     (subst-mod-params (type v) adtinst
-					       (adt-theory adt))
-			     (type v))
-			 red fname
-			 (if (typep fd 'dep-binding)
-			     (type fd)
-			     fd)
-			 (if adtinst
-			     (subst-mod-params (adt-type-name adt) adtinst
-					       (adt-theory adt))
-			     (adt-type-name adt))))
-	      vars fdom))))
-      (mk-selection
-	  (mk-name-expr (id c)) nil
-	  (mk-name-expr (makesym "~a_fun" (op-to-id (recognizer c)))))))
-
-(defun gen-adt-reduce-selection-bindings (args adtinst
-					       &optional bindings alist)
-  (if (null args)
-      (nreverse bindings)
-      (let* ((a (car args))
-	     (stype (substit (type a) alist))
-	     (type (typecheck (pc-parse (unparse stype :string t) 'type-expr)))
-	     (bd (make-bind-decl (id (get-adt-var a))
-		    (if adtinst
-			(subst-mod-params type adtinst (adt-theory *adt*))
-			type)))
-	     (*bound-variables* (cons bd *bound-variables*)))
-	(gen-adt-reduce-selection-bindings
-	 (cdr args) adtinst
-	 (cons bd bindings) (acons (bind-decl a) bd alist)))))
-
-(defmethod acc-reduce-selection (arg (te type-name) red fname fdom adt)
-  (cond ((tc-eq te adt)
-	 (mk-application red (copy arg)))
-	((adt? te)
-	 (let* ((acts (actuals-corresponding-to-positive-types
-		       (actuals (module-instance te))
-		       (adt? te)))
-		(facts (if (typep fdom 'datatype-subtype)
-			   (actuals (declared-type fdom))
-			   (actuals fdom)))
-		(funs (acc-reduce-sel-acts acts facts fname red adt)))
-	   (if (every #'identity-fun? funs)
-	       (copy arg)
-	       (let* ((appname (mk-name-expr '|map|
-				 (append (actuals te) facts)))
-		      (pname (pc-parse (unparse appname :string t) 'expr)))
-		 (mk-application (mk-application* pname funs)
-		   (copy arg))))))
-	(t (copy arg))))
-
-(defun acc-reduce-sel-acts (acts facts fname red adt &optional result)
-  (if (null acts)
-      (nreverse result)
-      (if (type-value (car acts))
-	  (let ((nfun (acc-reduce-selection*
-		       (type-value (car acts))
-		       red fname (type-value (car facts)) adt)))
-	    (acc-reduce-sel-acts (cdr acts) (cdr facts) fname red adt
-				 (cons nfun result)))
-	  (acc-reduce-sel-acts (cdr acts) (cdr facts) fname red adt
-			       result))))
-
-(defmethod acc-reduce-selection (arg (te datatype-subtype) red fname fdom adt)
-  (acc-reduce-selection arg (declared-type te) red fname fdom adt))
-
-(defmethod acc-reduce-selection (arg (te subtype) red fname fdom adt)
-  (if (finite-set-type? te)
-      (let* ((dom (domain (supertype te)))
-	     (fsdom (if (finite-set-type? fdom)
-			(domain (supertype fdom))
-			(break "Look into this")))
-	     (fun (acc-reduce-selection* dom red fname fsdom adt)))
-	(if (identity-fun? fun)
-	    (copy arg)
-	    (let* ((appname (mk-name-expr '|image|
-			      (list (mk-actual dom) (mk-actual fsdom))))
-		   (pname (pc-parse (unparse appname :string t) 'expr)))
-	      (mk-application (mk-application pname fun)
-		(copy arg)))))
-      (acc-reduce-selection arg (supertype te) red fname
-			    (if (typep fdom '(and subtype (not datatype-subtype)))
-				(supertype fdom)
-				fdom)
-			    adt)))
-
-(defmethod acc-reduce-selection (arg (te funtype) red fname fdom adt)
-  (let* ((fid (make-new-variable '|x| te))
-	 (fbd (make-bind-decl fid (domain fdom)))
-	 (fvar (mk-name-expr fid nil nil
-			     (make-resolution fbd
-			       (current-theory-name) (domain fdom))))
-	 (*bound-variables* (cons fbd *bound-variables*))
-	 (fun (acc-reduce-selection*
-	       (if (typep (domain te) 'dep-binding)
-		   (substit (range te) (acons (domain te) fvar nil))
-		   (range te))
-	       red fname
-	       (if (typep (domain fdom) 'dep-binding)
-		   (substit (range fdom) (acons (domain fdom) fvar nil))
-		   (range fdom))
-	       adt)))
-    (if (identity-fun? fun)
-	(copy arg)
-	(if (sequence? te)
-	    (mk-application (mk-application '|map| fun) arg)
-	    (mk-lambda-expr (list fbd)
-	      (mk-application fun
-		(mk-application (copy arg) fvar)))))))
-
-(defmethod acc-reduce-selection (arg (te recordtype) red fname fdom adt)
-  (assert (typep fdom 'recordtype))
-  (let ((funs (acc-reduce-selection-fields
-	       (fields te) (fields fdom) arg red fname fdom adt
-	       (dependent? te) (dependent? fdom))))
-    (if (every #'identity-fun? funs)
-	(copy arg)
-	(mk-record-expr
-	 (mapcar #'(lambda (fd fun)
-		     (mk-assignment 'uni
-		       (list (list (mk-name-expr (id fd))))
-		       (if (identity-fun? fun)
-			   (mk-application (id fd) (copy arg))
-			   (mk-application fun
-			     (mk-application (id fd) (copy arg))))))
-	   (fields fdom) funs)))))
-
-(defun acc-reduce-selection-fields (fields dfields rvar red fname fdom adt
-					   dep1? dep2? &optional result)
-  (if (null fields)
-      (nreverse result)
-      (acc-reduce-selection-fields
-       (if dep1?
-	   (substit (cdr fields)
-	     (acons (car fields)
-		    (make-field-application (car fields) rvar)
-		    nil))
-	   (cdr fields))
-       (if dep2?
-	   (substit (cdr dfields)
-	     (acons (car dfields)
-		    (make-field-application (car dfields) rvar)
-		    nil))
-	   (cdr dfields))
-       rvar red fname fdom adt dep1? dep2?
-       (cons (acc-reduce-selection*
-	      (type (car fields)) red fname (type (car dfields)) adt)
-	     result))))
-
-(defmethod acc-reduce-selection (arg (te tupletype) red fname fdom adt)
-  (assert (typep fdom 'tupletype))
-  (let ((funs (acc-reduce-selection-types
-	       (types te) (types fdom) arg red fname adt)))
-    (if (every #'identity-fun? funs)
-	(copy arg)
-	(mk-tuple-expr
-	 (let ((num 0))
-	   (mapcar #'(lambda (fun)
-		       (incf num)
-		       (let ((proj (make-instance 'projappl
-				     :id (makesym "PROJ_~d" num)
-				     :index num
-				     :argument (copy arg))))
-			 (if (identity-fun? fun)
-			     proj
-			     (mk-application fun proj))))
-	     funs))))))
-
-(defmethod acc-reduce-selection (arg (te cotupletype) red fname fdom adt)
-  (assert (typep fdom 'cotupletype))
-  (let ((funs (acc-reduce-selection-types
-	       (types te) (types fdom) arg red fname adt)))
-    (if (every #'identity-fun? funs)
-	(copy arg)
-	(mk-cases-expr arg
-	  (let ((num 0)
-		(varid (make-new-variable '|x| adt)))
-	    (mapcar #'(lambda (fun type)
-			(incf num)
-			(let* ((bd (make-bind-decl varid type))
-			       (var (make-variable-expr bd))
-			       (in-expr (make-instance 'injection-expr
-					  :id (makesym "IN_~d" num)
-					  :index num))
-			       (sel-expr (make-instance 'injection-application
-					   :id (makesym "IN_~d" num)
-					   :index num
-					   :argument (mk-application fun
-						       var))))
-			  (mk-selection in-expr (list bd) sel-expr)))
-	      funs (types te)))
-	  nil))))
-
-(defmethod acc-reduce-selection (arg (te type-expr) red fname fdom adt)
-  (declare (ignore red fname fdom adt))
-  (copy arg))
-
-(defmethod acc-reduce-selection* ((te type-name) red fname fte adt)
-  (cond ((tc-eq te adt)
-	 red)
-	((adt? te)
-	 (let* ((acts (actuals-corresponding-to-positive-types
-		       (actuals (module-instance te))
-		       (adt? te)))
-		(funs (acc-reduce-sel-acts acts (actuals (find-supertype fte))
-					   fname red adt)))
-	   (if (every #'identity-fun? funs)
-	       (mk-identity-fun te)
-	       (mk-application* '|map| funs))))
-	(t (mk-identity-fun fte))))
-
-(defmethod acc-reduce-selection* ((te datatype-subtype) red fname fdom adt)
-  (acc-reduce-selection* (declared-type te) red fname fdom adt))
-
-(defmethod acc-reduce-selection* ((te subtype) red fname fdom adt)
-  (if (finite-set-type? te)
-      (let ((nfun (acc-reduce-selection*
-		   (domain (supertype te)) red fname fdom adt)))
-	(if (identity-fun? nfun)
-	    (mk-identity-fun te)
-	    (mk-application '|image| nfun)))
-      (acc-reduce-selection* (find-supertype te) red fname
-			     (find-declared-adt-supertype fdom) adt)))
-
-(defmethod acc-reduce-selection* ((te funtype) red fname fdom adt)
-  (let* ((fid (make-new-variable '|x| te))
-	 (fbd (make-bind-decl fid (domain fdom)))
-	 (fvar (mk-name-expr fid nil nil
-			     (make-resolution fbd
-			       (current-theory-name) (domain fdom))))
-	 (*bound-variables* (cons fbd *bound-variables*))
-	 (fun (acc-reduce-selection*
-	       (if (typep (domain te) 'dep-binding)
-		   (substit (range te) (acons (domain te) fvar nil))
-		   (range te))
-	       red fname
-	       (if (typep (domain fdom) 'dep-binding)
-		   (substit (range fdom) (acons (domain fdom) fvar nil))
-		   (range fdom))
-	       adt)))
-    (cond ((identity-fun? fun)
-	   (mk-identity-fun fdom))
-	  ((sequence? te)
-	   (mk-application '|map|
-	     red))
-	  (t
-	   (let* ((aid (make-new-variable '|a| (list te fun adt)))
-		  (abd (make-bind-decl aid te))
-		  (avar (mk-name-expr aid nil nil
-				      (make-resolution abd
-					(current-theory-name) te))))
-	     (mk-lambda-expr (list abd)
-	       (mk-lambda-expr (list fbd)
-		 (mk-application fun
-		   (mk-application avar fvar)))))))))
-
-(defmethod acc-reduce-selection* ((te recordtype) red fname fdom adt)
-  (assert (typep fdom 'recordtype))
-  (let* ((rid (make-new-variable '|r| te))
-	 (rbd (make-bind-decl rid te))
-	 (rvar (mk-name-expr rid nil nil
-			     (make-resolution rbd
-			       (current-theory-name) te)))
-	 (*bound-variables* (cons rbd *bound-variables*))
-	 (funs (acc-reduce-selection-fields
-		(fields te) (fields fdom) rvar red fname fdom adt
-		(dependent? te) (dependent? fdom))))
-    (if (every #'identity-fun? funs)
-	(mk-identity-fun fdom)
-	(mk-lambda-expr (list rbd)
-	  (mk-record-expr
-	   (mapcar #'(lambda (fd fun)
-		       (mk-assignment 'uni
-			 (list (list (mk-name-expr (id fd))))
-			 (if (identity-fun? fun)
-			     (mk-application (id fd) (copy rvar))
-			     (mk-application fun
-			       (mk-application (id fd) (copy rvar))))))
-	     (fields fdom) funs))))))
-
-(defmethod acc-reduce-selection* ((te tupletype) red fname fdom adt)
-  (let* ((tid (make-new-variable '|t| te))
-	 (tbd (make-bind-decl tid te))
-	 (tvar (mk-name-expr tid nil nil
-			     (make-resolution tbd
-			       (current-theory-name) te)))
-	 (*bound-variables* (cons tbd *bound-variables*))
-	 (funs (acc-reduce-selection-types
-		(types te) (types fdom) tvar red fname adt)))
-    (if (every #'identity-fun? funs)
-	(mk-identity-fun te)
-	(mk-lambda-expr (list tbd)
-	  (mk-tuple-expr
-	   (let ((num 0))
-	     (mapcar #'(lambda (fun)
-			 (incf num)
-			 (let ((proj (make-instance 'projappl
-				       :id (makesym "PROJ_~d" num)
-				       :index num
-				       :argument tvar)))
-			   (if (identity-fun? fun)
-			       proj
-			       (mk-application fun proj))))
-	       funs)))))))
-
-(defmethod acc-reduce-selection* ((te cotupletype) red fname fdom adt)
-  (let* ((tid (make-new-variable '|t| te))
-	 (tbd (make-bind-decl tid te))
-	 (tvar (mk-name-expr tid nil nil
-			     (make-resolution tbd
-			       (current-theory-name) te)))
-	 (*bound-variables* (cons tbd *bound-variables*))
-	 (funs (acc-reduce-selection-types
-		(types te) (types fdom) tvar red fname adt)))
-    (if (every #'identity-fun? funs)
-	(mk-identity-fun te)
-	(mk-lambda-expr (list tbd)
-	  (mk-cases-expr tvar
-	    (let ((num 0)
-		  (varid (make-new-variable '|x| adt)))
-	      (mapcar #'(lambda (fun type)
-			  (incf num)
-			  (let* ((bd (make-bind-decl varid type))
-				 (var (make-variable-expr bd))
-				 (in-expr (make-instance 'injection-expr
-					    :id (makesym "IN_~d" num)
-					    :index num))
-				 (sel-expr (make-instance 'injection-application
-					     :id (makesym "IN_~d" num)
-					     :index num
-					     :argument (mk-application fun
-							 var))))
-			    (mk-selection in-expr (list bd) sel-expr)))
-		funs (types te)))
-	    nil)))))
-
-(defun acc-reduce-selection-types (types dtypes tvar red fname adt
-					 &optional (index 1) result)
-  (if (null types)
-      (nreverse result)
-      (let ((ty1 (if (typep (car types) 'dep-binding)
-		     (type (car types))
-		     (car types)))
-	    (ty2 (if (typep (car dtypes) 'dep-binding)
-		     (type (car dtypes))
-		     (car dtypes))))
-      (acc-reduce-selection-types
-       (if (typep (car types) 'dep-binding)
-	   (substit (cdr types)
-	     (acons (car types)
-		    (make-projection-application index tvar)
-		    nil))
-	   (cdr types))
-       (if (typep (car dtypes) 'dep-binding)
-	   (substit (cdr dtypes)
-	     (acons (car dtypes)
-		    (make-projection-application index tvar)
-		    nil))
-	   (cdr dtypes))
-       tvar red fname adt (1+ index)
-       (cons (acc-reduce-selection* ty1 red fname ty2 adt) result)))))
-
-(defmethod acc-reduce-selection* ((te type-expr) red fname fdom adt)
-  (declare (ignore red fname fdom adt))
-  (mk-identity-fun te))
-
-
-(defun gen-adt-reduce-funtype (c rtype adt adtinst)
-  (if (arguments c)
-      (let* ((bindings (mapcar #'bind-decl (arguments c)))
-	     (free-params (free-params bindings))
-	     (nbindings (if (every #'(lambda (fp)
-				       (memq fp (formals (current-theory))))
-				   free-params)
-			    bindings
-			    (gen-adt-reduce-funtype-bindings bindings))))
-	(mk-funtype (gen-adt-reduce-domain
-		     (adt-dependent-bindings
-		      (mapcar #'get-adt-var-name (arguments c))
-		      nbindings)
-		     rtype adt adtinst)
-		    rtype))
-      rtype))
-
-(defun gen-adt-reduce-funtype-bindings (bindings)
-  (let ((nbindings (mapcar #'(lambda (b)
-			       (copy b
-				 'type nil
-				 'types nil
-				 'resolutions nil
-				 'declared-type
-				 (pc-parse (unparse (declared-type b)
-					     :string t)
-					   'type-expr)))
-			   bindings)))
-    (typecheck* nbindings nil nil nil)))
-
-
-(defun adt-dependent-bindings (vars bds &optional result)
-  (if (null vars)
-      (nreverse result)
-      (if (occurs-in (car bds) (cdr bds))
-	  (let* ((dep (mk-dep-binding (id (car vars)) (type (car bds))))
-		 (var (mk-name-expr (id (car vars)) nil nil
-				    (make-resolution dep
-				      (current-theory-name) (type dep)))))
-	    (adt-dependent-bindings (cdr vars)
-				    (substit (cdr bds)
-				      (acons (car bds) var nil))
-				    (cons dep result)))
-	  (adt-dependent-bindings (cdr vars)
-				  (cdr bds)
-				  (cons (type (car bds)) result)))))
-
-(defun gen-adt-reduce-domain (args rtype adt adtinst &optional result)
-  (if (null args)
-      (nreverse result)
-      (let ((atype (gen-adt-reduce-dom (car args) rtype adt adtinst)))
-	(if (or (tc-eq atype (car args))
-		(not (typep atype 'dep-binding)))
-	    (gen-adt-reduce-domain (cdr args) rtype adt adtinst
-				   (cons atype result))
-	    (let ((var (mk-name-expr (id atype) nil nil
-				     (make-resolution atype
-				       (current-theory-name) (type atype)))))
-	      (gen-adt-reduce-domain (substit (cdr args)
-				       (acons (car args) var nil))
-				     rtype adt adtinst
-				     (cons atype result)))))))
-
-(defun gen-adt-reduce-dom (atype rtype adt adtinst)
-  (let ((adt-type (or adtinst (adt-type-name adt))))
-    (gen-adt-reduce-dom* atype rtype (cons adt-type (subtypes adt)))))
-
-(defun gen-adt-reduce-dom* (atype rtype adt-types)
-  (gensubst atype
-    #'(lambda (ex) (gen-adt-reduce-dom! ex rtype adt-types))
-    #'(lambda (ex) (gen-adt-reduce-dom? ex adt-types))))
-
-(defmethod gen-adt-reduce-dom? ((ex type-name) adt-types)
-  (member ex adt-types :test #'same-declaration))
-
-(defmethod gen-adt-reduce-dom! ((ex type-name) rtype adt-types)
-  (declare (ignore adt-types))
-  (copy rtype))
-
-(defmethod gen-adt-reduce-dom? ((ex expr-as-type) adt-types)
-  (declare (ignore adt-types))
-  nil)
-
-(defmethod gen-adt-reduce-dom? ((ex subtype) adt-types)
-  (or (subtype-of? ex (car adt-types))
-      (unless (recognizer-name-expr? (predicate ex))
-	(let ((stype (find-supertype ex)))
-	  (and (adt-type-name? stype)
-	       (occurs-in (car adt-types) stype))))))
-
-(defmethod gen-adt-reduce-dom! ((ex subtype) rtype adt-types)
-  (if (subtype-of? ex (car adt-types))
-      (copy rtype)
-      (gen-adt-reduce-dom* (find-supertype ex) rtype adt-types)))
-
-(defmethod gen-adt-reduce-dom? ((ex datatype-subtype) adt-types)
-  (occurs-in (car adt-types) ex))
-
-(defmethod gen-adt-reduce-dom! ((ex datatype-subtype) rtype adt-types)
-  (gen-adt-reduce-dom* (supertype ex) rtype adt-types))
-
-(defmethod gen-adt-reduce-dom? (ex adt-types)
-  (declare (ignore ex adt-types))
-  nil)
-
-(defun gen-adt-reduce-definition2 (adt fname fdoms ran adtinst)
-  (let* ((avar (mk-name-expr (makesym "~a_adtvar" (id adt))))
-	 (funlist (mapcar #'(lambda (c)
-			      (let ((rid (op-to-id (recognizer c))))
-				(mk-name-expr (makesym "~a_fun" rid))))
-		    (constructors adt)))
-	 (redid (make-new-variable '|red| adt))
-	 (redvar (mk-name-expr redid))
-	 (red (mk-application* fname funlist)))
-    (mk-lambda-expr (list (mk-bind-decl (id avar)
-			      (mk-type-name (id adt))))
-      (make-instance 'let-expr
-	:operator (mk-lambda-expr (list (mk-bind-decl redid ran))
-		    (mk-cases-expr avar
-		      (mapcar #'(lambda (c fdom)
-				  (gen-adt-reduce-selection2
-				   c adt redvar fname avar fdom adtinst))
-			(constructors adt) fdoms)
-		      nil))
-	:argument red))))
-
-(defun gen-adt-reduce-selection2 (c adt red fname avar fdom adtinst)
-  (if (arguments c)
-      (let* ((bindings (gen-adt-reduce-selection-bindings
-			(arguments c) adtinst))
-	     (vars (mapcar #'(lambda (b)
-			       (mk-name-expr (id b) nil nil
-					     (make-resolution b
-					       (current-theory-name)
-					       (type b))))
-		     bindings)))      
-	(mk-selection (mk-name-expr (id c))
-	  bindings
-	  (mk-application* (makesym "~a_fun" (op-to-id (recognizer c)))
-	    (nconc (mapcar #'(lambda (v fd)
-			       (acc-reduce-selection
-				v
-				(if adtinst
-				    (subst-mod-params (type v) adtinst
-						      (adt-theory adt))
-				    (type v))
-				red fname
-				(if (typep fd 'dep-binding)
-				    (type fd)
-				    fd)
-				(if adtinst
-				    (subst-mod-params (adt-type-name adt)
-						      adtinst (adt-theory adt))
-				    (adt-type-name adt))))
-		     vars fdom)
-		   (list (copy avar))))))
-      (mk-selection (mk-name-expr (id c)) nil
-		    (mk-application
-			(mk-name-expr (makesym "~a_fun"
-					       (op-to-id (recognizer c))))
-		      (copy avar)))))
-
-(defmethod acc-reduce-selection2 (arg (te type-name) red fname adt)
-  (cond ((tc-eq te (adt-type-name adt))
-	 (mk-application red (copy arg)))
-;	((member te ptypes :test #'corresponding-formals)
-;	 (let* ((pos (position te ptypes :test #'corresponding-formals))
-;		(fun (nth pos funlist)))
-;	   (mk-application fun (copy arg))))
-	((datatype-adt? (adt-type-name adt) te)
-	 (let ((acts (actuals (module-instance (find-supertype te)))))
-	   (mk-application
-	       (mk-application* '|map|
-		 (acc-reduce-sel-acts2 (adt-type-name adt) acts fname red))
-	     (copy arg))))
-	(t (copy arg))))
-
-(defun acc-reduce-sel-acts2 (adt-type acts fname red &optional result)
-  (if (null acts)
-      (nreverse result)
-      (if (type-value (car acts))
-	  (let ((nfun (if (tc-eq (type-value (car acts)) adt-type)
-			  red
-			  (mk-name-expr '|id|
-			    (list (mk-actual (type-value (car acts))))))))
-	    (acc-reduce-sel-acts2 adt-type (cdr acts) fname red
-				 (cons nfun result)))
-	  (acc-reduce-sel-acts2 adt-type (cdr acts) fname red result))))
-
-(defmethod acc-reduce-selection2 (arg (te datatype-subtype) red fname adt)
-  (acc-reduce-selection2 arg (declared-type te) red fname adt))
-
-(defmethod acc-reduce-selection2 (arg (te subtype) red fname adt)
-  (acc-reduce-selection2 arg (supertype te) red fname adt))
-
-(defmethod acc-reduce-selection2 (arg (te funtype) red fname adt)
-  (declare (ignore fname))
-  (if (sequence-adt? (adt-type-name adt) te)
-      (mk-application
-	  (mk-application '|map| red)
-	arg)
-      (copy arg)))
-
-(defmethod acc-reduce-selection2 (arg (te type-expr) red fname adt)
-  (declare (ignore red fname adt))
-  (copy arg))
-
-(defun gen-adt-reduce-funtype2 (c rtype adt adtinst)
-  (if (arguments c)
-      (let* ((bindings (mapcar #'bind-decl (arguments c)))
-	     (free-params (free-params bindings))
-	     (nbindings (if (every #'(lambda (fp)
-				       (memq fp (formals (current-theory))))
-				   free-params)
-			    bindings
-			    (gen-adt-reduce-funtype-bindings bindings))))
-	(mk-funtype (gen-adt-reduce-domain2
-		     (adt-dependent-bindings
-		      (mapcar #'get-adt-var-name (arguments c))
-		      nbindings)
-		     rtype adt adtinst)
-		    rtype))
-      (mk-funtype (list (copy-all (adt-type-name adt))) rtype)))
-
-(defun adt-dependent-bindings2 (vars bds &optional result)
-  (if (null vars)
-      (nreverse result)
-      (let ((ty (if (occurs-in (car bds) (cdr bds))
-		    (mk-dep-binding (id (car vars)) (type (car bds)))
-		    (type (car bds)))))
-	(adt-dependent-bindings2 (cdr vars)
-				 (substit (cdr bds)
-				   (acons (car vars) (car bds) nil))
-				 (cons ty result)))))
-
-(defun gen-adt-reduce-domain2 (args rtype adt adtinst &optional result)
-  (if (null args)
-      (nreverse (cons (copy-all (adt-type-name adt)) result))
-      (let ((atype (gen-adt-reduce-dom (car args) rtype adt adtinst)))
-	(if (or (eq atype (car args))
-		(not (typep atype 'dep-binding)))
-	    (gen-adt-reduce-domain2 (cdr args) rtype adt adtinst
-				    (cons atype result))
-	    (let ((var (mk-name-expr (id atype) nil nil
-				     (make-resolution atype
-				       (current-theory-name) (type atype)))))
-	      (gen-adt-reduce-domain2 (substit (cdr args)
-					(acons (car args) var nil))
-				      rtype adt adtinst
-				      (cons atype result)))))))
-
-(defun gen-adt-reduce-dom2 (atype rtype adt adtinst)
-  (let ((adt-type (or adtinst (adt-type-name adt)))
-	(arg-type (find-supertype atype)))
-    (cond ((and (typep arg-type 'type-name)
-		(same-declaration arg-type adt-type))
-	   (copy rtype))
-	  ((sequence-adt? adt-type arg-type)
-	   (mk-type-name '|sequence| (list (mk-actual (copy rtype)))))
-	  ((adt? arg-type)
-	   (mk-type-name (id arg-type)
-	     (mapcar #'(lambda (a)
-			 (if (type-value a)
-			     (let ((act (mk-actual (gen-adt-reduce-dom2
-						    (type-value a)
-						    rtype adt adtinst))))
-			       (setf (type-value act) nil)
-			       act)
-			     (raise-actuals (copy-all a))))
-		     (actuals (module-instance arg-type)))))
-	  (t (raise-actuals (copy-all atype))))))
-
+      (acc-predicate-selection* (find-adt-supertype te) pvars ptypes thinst
+				adt funid)))
 
 ;;; subterm definition
 
+(defun generate-adt-subterm-decls (adt)
+  (generate-adt-subterm adt)
+  (generate-adt-<< adt)
+  (generate-adt-<<-wf adt))
+
 (defun generate-adt-subterm (adt)
-  (let* ((xid (make-new-variable '|x| adt))
-	 (yid (make-new-variable '|y| adt))
-	 (subterm-decl
-	  (mk-adt-def-decl '|subterm|
-	    *boolean*
-	    (parse-unparse (gen-adt-subterm-definition
-			    adt (mk-name-expr xid) (mk-name-expr yid)))
-	    (list (mk-arg-bind-decl xid (adt-type-name adt))
-		  (mk-arg-bind-decl yid (adt-type-name adt)))))
-	 (wf-type (typecheck* (mk-expr-as-type
-			       (mk-name-expr '|strict_well_founded?|
-				 (list (mk-actual (adt-type-name *adt*)))))
-			      nil nil nil))
-	 (<<-decl (mk-adt-def-decl '<<
-		    (supertype wf-type)
-		    (mk-lambda-expr
-			(list (mk-bind-decl xid (adt-type-name adt))
-			      (mk-bind-decl yid (adt-type-name adt)))
-		      (parse-unparse (gen-adt-<<-definition
-				      adt (mk-name-expr xid) (mk-name-expr yid))))
-		    nil
-		    (print-type (supertype wf-type))))
-	 (<<-wf-decl (mk-formula-decl (makesym "~a_well_founded" (id adt))
-		       (mk-application
-			   (mk-name-expr '|strict_well_founded?|
-			     (list (mk-actual (adt-type-name *adt*))))
-			 (mk-name-expr '<<))
-		       'AXIOM)))
-    (typecheck-adt-decl subterm-decl)
-    (typecheck-adt-decl <<-decl)
-    (setf (type <<-decl) wf-type
-	  (declared-type <<-decl) (print-type wf-type))
-    (typecheck-adt-decl <<-wf-decl t nil)))
+  (multiple-value-bind (dparams dacts thinst atype)
+      (new-decl-formals adt)
+    (declare (ignore dacts thinst))
+    (let* ((xid (make-new-variable '|x| adt))
+	   (yid (make-new-variable '|y| adt))
+	   (subterm-decl
+	    (mk-adt-def-decl '|subterm|
+	      *boolean*
+	      (parse-unparse (gen-adt-subterm-definition
+			      adt (mk-name-expr xid) (mk-name-expr yid)))
+	      (list (mk-arg-bind-decl xid atype)
+		    (mk-arg-bind-decl yid atype))
+	      nil nil dparams)))
+      (typecheck-adt-decl subterm-decl))))
+	   
+(defun generate-adt-<< (adt)
+  (multiple-value-bind (dparams dacts thinst atype)
+      (new-decl-formals adt)
+    (declare (ignore dacts thinst))
+    (let* ((xid (make-new-variable '|x| adt))
+	   (yid (make-new-variable '|y| adt))
+	   (wf-type (with-bound-declparams dparams
+		      (typecheck* (mk-expr-as-type
+				   (mk-name-expr '|strict_well_founded?|
+				     (list (mk-actual atype))))
+				  nil nil nil)))
+	   (<<-decl
+	    (mk-adt-def-decl '<<
+	      (supertype wf-type)
+	      (mk-lambda-expr (list (mk-bind-decl xid atype)
+				    (mk-bind-decl yid atype))
+		(parse-unparse (gen-adt-<<-definition
+				adt (mk-name-expr xid) (mk-name-expr yid))))
+	      nil
+	      (print-type (supertype wf-type))
+	      nil
+	      dparams)))
+      (typecheck-adt-decl <<-decl)
+      (setf (type <<-decl) wf-type
+	    (declared-type <<-decl) (print-type wf-type)))))
+
+(defun generate-adt-<<-wf (adt)      
+  (multiple-value-bind (dparams dacts thinst atype)
+      (new-decl-formals adt)
+    (declare (ignore dacts thinst))
+    (let* ((<<-wf-decl (mk-formula-decl (makesym "~a_well_founded" (id adt))
+			 (mk-application
+			     (mk-name-expr '|strict_well_founded?|
+			       (list (mk-actual atype)))
+			   (mk-name-expr '<<))
+			 'AXIOM nil dparams)))
+      (typecheck-adt-decl <<-wf-decl t nil))))
 
 (defun gen-adt-subterm-definition (adt xvar yvar)
   (if (every #'(lambda (c)
@@ -4765,14 +2976,17 @@ generated")
 ; (defmethod declarations ((adt datatype))
 ;   nil)
 
-
-(defun typecheck-adt-decl (decl &optional (add? t) (reduce? t))
-  ;;(assert (null (current-declaration)))
+(defun init-adt-decl (decl)
   (setf (current-declaration) decl)
   (when (typep decl '(and declaration (not formal-decl)))
     (setf (generated-by decl) (id *adt*)))
   (when (typep *adt* 'inline-recursive-type)
     (push decl (generated *adt*)))
+  decl)
+
+(defun typecheck-adt-decl (decl &optional (add? t) (reduce? t) (init? t))
+  ;;(assert (null (current-declaration)))
+  (when init? (init-adt-decl decl))
   (when (eq add? t)
     (setf (theory (current-theory))
 	  (if *last-adt-decl*
@@ -4784,13 +2998,8 @@ generated")
       (setq *last-adt-decl* decl)))
   (typecase decl
     (declaration (setf (module decl) (current-theory))
-		 (unless (or (null (formal-params *adt*))
-			     (formal-params decl))
-		   (break "Why???")
-		   (setf (formal-params decl)
-			 (mapcar #'(lambda (fp)
-				     (copy fp 'associated-decl decl))
-			   (formal-params *adt*))))
+		 (assert (or (null (decl-formals *adt*))
+			     (decl-formals decl)))
 		 (typecheck* decl nil nil nil)
 		 (setf (typechecked? decl) t)
 		 (unless (or (eq add? 'no)
@@ -4805,7 +3014,8 @@ generated")
     (datatype (unwind-protect
 		  (typecheck* decl nil nil nil)
 		(cleanup-datatype decl))))
-  (setf (current-declaration) nil))
+  ;;(setf (current-declaration) nil)
+  )
 
 (defun add-adt-decl (decl)
   (unless (and (typep decl 'type-def-decl)
@@ -4980,8 +3190,10 @@ function, tuple, or record type")
      (positive-types (adt adt))
      none)))
 
-(defmethod positive-types ((dt recursive-type))
-  (positive-types (or (adt-theory dt) (current-theory))))
+;;(defmethod positive-types ((dt recursive-type))
+;;  (positive-types (or (adt-theory dt) (current-theory))))
+;;; (remove-method #'positive-types
+;;;    (find-method #'positive-types '() (list (find-class 'inline-recursive-type))))
 
 (defun occurs-positively-in-adt? (type acts formals postypes none)
   (or (null acts)
@@ -5603,5 +3815,11 @@ function, tuple, or record type")
 			nil)))
 	     type))
 
-(defmethod formal-params ((adt recursive-type))
+(defmethod decl-formals ((adt recursive-type))
   nil)
+
+(defun subst-adt-type (te thinst adt)
+  (if thinst
+      (subst-mod-params te thinst
+	(current-theory) (declaration (adt-type-name adt)))
+      te))
