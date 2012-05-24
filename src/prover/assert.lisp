@@ -2349,7 +2349,7 @@
 	(found-rec2 (find-non-false-recognizer recs2)))
     (and (consp found-rec1)(consp found-rec2)
 	(if (tc-eq (car found-rec1)(car found-rec2))
-	    (and (null (accessors (constructor (caar recs1))))
+	    (and (null (accessors (constructor (car found-rec1))))
 		 *true*)
 	    *false*))))
 
