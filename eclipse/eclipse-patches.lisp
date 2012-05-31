@@ -273,11 +273,18 @@
   (declare (special *pvs-json-prove-id*))
   (if (boundp '*pvs-json-prove-id*)
       (error "already proving ~a" *pvs-json-prove-id*)
-      (let ((*pvs-json-prove-id* *pvs-json-id*))
+      (let ((*pvs-json-prove-id* *pvs-json-id*)
+	    (ps nil))
 	(format t "~%~a~%"
 	  (json:encode-json (acons 'id *pvs-json-prove-id*
 				   '((in_prover . "true")))))
-	(unwind-protect (prove-formula theory formula rerun?)
+	(unwind-protect
+	    (progn (setq ps (prove-formula theory formula rerun?))
+		   "")
 	  (format t "~%~a~%"
-	    (json:encode-json (acons 'id *pvs-json-prove-id*
-				     '((in_prover . "false")))))))))
+	    (json:encode-json
+	     (acons 'id *pvs-json-prove-id*
+		    (acons 'status (if (eq (status-flag ps) '!)
+				       "proved" "unproved")
+			   '((in_prover . "false"))))))))))
+
