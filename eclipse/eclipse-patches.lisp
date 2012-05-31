@@ -11,6 +11,8 @@
 ;;;   (asdf:load-system :cl-json)
 ;;;   (load "<PVSDIR>/eclipse/eclipse-patches")
 
+(in-package :pvs)
+
 (defvar *pvs-json-interface* nil)
 (defvar *pvs-json-id* nil)
 
@@ -266,3 +268,16 @@
 				(cons 'kind (class-name (class-of d)))
 				(cons 'place (or (place d) 'None))))
 		(all-decls th)))))
+
+(defun json-prove-formula (theory formula &optional rerun?)
+  (declare (special *pvs-json-prove-id*))
+  (if (boundp '*pvs-json-prove-id*)
+      (error "already proving ~a" *pvs-json-prove-id*)
+      (let ((*pvs-json-prove-id* *pvs-json-id*))
+	(format t "~%~a~%"
+	  (json:encode-json (acons 'id *pvs-json-prove-id*
+				   '((in_prover . "true")))))
+	(unwind-protect (prove-formula theory formula rerun?)
+	  (format t "~%~a~%"
+	    (json:encode-json (acons 'id *pvs-json-prove-id*
+				     '((in_prover . "false")))))))))
