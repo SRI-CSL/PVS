@@ -280,7 +280,7 @@
 				   '((in_prover . "true")))))
 	(unwind-protect
 	    (progn (setq ps (prove-formula theory formula rerun?))
-		   "")
+		   nil)
 	  (format t "~%~a~%"
 	    (json:encode-json
 	     (acons 'id *pvs-json-prove-id*
