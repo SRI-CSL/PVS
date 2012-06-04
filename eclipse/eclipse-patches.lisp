@@ -275,12 +275,13 @@
       (error "already proving ~a" *pvs-json-prove-id*)
       (let ((*pvs-json-prove-id* *pvs-json-id*)
 	    (ps nil))
-	(format t "~%{~%\"id\": ~a, \"in_prover\": \"true\"~%}~%"
+	(format t "~%{~%\"id\": ~a, \"result\": {\"in_prover\": \"true\"}~%}~%"
 	  *pvs-json-prove-id*)
 	(unwind-protect
 	    (progn (setq ps (prove-formula theory formula rerun?))
 		   nil)
-	  (format t "~%{~%\"id\": ~a, \"status\": \"~a\", \"in_prover\": \"false\"~%}~%"
+	  (format t "~%{~%\"id\": ~a, \"result\": {\"status\": \"~a\", \"in_prover\": \"false\"}~%}~%"
 	    *pvs-json-prove-id*
 	    (if (eq (status-flag ps) '!) "proved" "unproved"))))))
+
 
