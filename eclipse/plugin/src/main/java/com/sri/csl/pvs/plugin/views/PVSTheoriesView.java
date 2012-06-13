@@ -32,11 +32,10 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.part.ViewPart;
 
 import com.sri.csl.pvs.PVSConstants;
+import com.sri.csl.pvs.PVSExecutionManager;
 import com.sri.csl.pvs.declarations.PVSDeclaration;
 import com.sri.csl.pvs.declarations.PVSTheory;
 import com.sri.csl.pvs.plugin.Activator;
-import com.sri.csl.pvs.plugin.actions.ShowTccForTheoryAction;
-import com.sri.csl.pvs.plugin.actions.StartProverForTheoremAction;
 import com.sri.csl.pvs.plugin.editor.PVSEditorActivationListener;
 
 
@@ -243,20 +242,8 @@ public class PVSTheoriesView extends ViewPart {
             Object obj = selection.getFirstElement();
             if ( obj instanceof TreeNode ) {
             	TreeNode node = (TreeNode)obj;
-            	Object nodeObject = node.getObject();
-            	if ( nodeObject instanceof PVSDeclaration ) {
-            		PVSDeclaration decl = ((PVSDeclaration)nodeObject);
-            		if ( PVSConstants._FORMULADECL.equals(decl.getKind()) ) {
-            			StartProverForTheoremAction action1 = new StartProverForTheoremAction(node);
-            			manager.add(action1);
-            			
-            		}
-            	} else if ( nodeObject instanceof PVSTheory ) {
-            		PVSTheory theory = ((PVSTheory)nodeObject);
-            		ShowTccForTheoryAction action2 = new ShowTccForTheoryAction(theory);
-        			manager.add(action2);
-            	}
-//                        manager.add(startProverAction);
+            	ContextMenuFactory.fillMenuForTreeNode(manager, node, PVSExecutionManager.INST().getPVSMode());
+
                 manager.setRemoveAllWhenShown(true);
                 viewer.getControl().setMenu(menu);		
             } else {

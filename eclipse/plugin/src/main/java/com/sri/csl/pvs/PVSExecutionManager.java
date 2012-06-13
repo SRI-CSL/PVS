@@ -29,7 +29,7 @@ import com.sri.csl.pvs.plugin.providers.PVSStateChangeListener;
 import com.sri.csl.pvs.plugin.views.PVSTheoriesView;
 
 public class PVSExecutionManager implements IDebugEventSetListener {
-	public static enum PVSMode {OFF, LISP, PROVER};
+	public static enum PVSMode {OFF, LISP, PROVER, PVSIO };
 	protected static Logger log = Logger.getLogger(PVSExecutionManager.class.getName());	
 	private static PVSExecutionManager instance = null;
 	
@@ -180,7 +180,12 @@ public class PVSExecutionManager implements IDebugEventSetListener {
 		// Prompts are dispatched just like unstructured messages for now.
 		for (PVSRespondListener l: respondListeners) {
 			l.onPromptReceived(previouslines, prompt);
-		}		
+		}
+		if ( prompt.matches(PVSConstants.Rule) ) {
+			mode = PVSMode.PROVER;
+		} else {
+			mode = PVSMode.LISP;
+		}
 	}
 
 	public void stopPVS() {
@@ -199,6 +204,7 @@ public class PVSExecutionManager implements IDebugEventSetListener {
 				}
 			}
 		}
+		mode = PVSMode.OFF;
 	}
 
 	@Override

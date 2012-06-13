@@ -521,6 +521,14 @@ public class JSONObject {
                 "] is not an int.");
         }
     }
+    
+    /**
+     * 
+     * @return The internal map
+     */
+    public Map getMap() {
+    	return map;
+    }
 
 
     /**

@@ -15,11 +15,13 @@ import com.sri.csl.pvs.declarations.PVSTheory;
 
 public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 	protected static String ID = "id";
-	protected static String COMMAND = "command";
-	protected static String PARAMETERS = "parameters";
+	protected static String METHOD = "method";
+	protected static String PARAMETERS = "params";
 	protected static String RESULT = "result";
 	protected static String ERROR = "error";
 	protected static String RAWCOMMAND = "rawcommand";
+	protected static String PVSJSONLISPCOMMAND = "pvs-json";
+	protected static String PVSJSONPROVERCOMMAND = "pvs-prove";	
 	protected static Logger log = Logger.getLogger(PVSJsonWrapper.class.getName());
 	
 	
@@ -73,15 +75,7 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 	}
 	
 	public Object sendRawCommand(String message) throws PVSException {
-		HashMap<String, String> map = new HashMap<String, String>();
-		String id = createID();
-		map.put(ID, id);
-		
-		map.put(RAWCOMMAND, message);
-		
-		JSONObject obj = new JSONObject(map);
-		
-		return sendJSON(id, obj);
+		return sendCommand(RAWCOMMAND, message);
 	}
 
 	public Object sendCommand(String command, Object... parameters) throws PVSException {
@@ -89,7 +83,7 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 		String id = createID();
 		map.put(ID, id);
 		
-		map.put(COMMAND, command);
+		map.put(METHOD, command);
 		
 		try {
 			JSONArray jParams = new JSONArray(parameters);
@@ -99,13 +93,23 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 		}
 		
 		JSONObject obj = new JSONObject(map);
-		
-		return sendJSON(id, obj);
+		Object result = sendJSON(id, obj);
+		log.log(Level.INFO, "JSON Result is: {0}", result);		
+		return result;
 	}
 
 	private Object sendJSON(String id, JSONObject obj) throws PVSException {
+		String jsonCommand = null;
+		switch ( PVSExecutionManager.INST().getPVSMode() ) {
+		case LISP:
+			jsonCommand = PVSJSONLISPCOMMAND;
+			break;
+		case PROVER:
+			jsonCommand = PVSJSONLISPCOMMAND;
+			break;			
+		}
 		String modifiedObj = obj.toString().replace("\\", "\\\\").replace("\"", "\\\"");
-		String  pvsJSON = "(pvs-json \"" + modifiedObj + "\")";
+		String  pvsJSON = String.format("(%s \"%s\")", jsonCommand, modifiedObj);
 		log.log(Level.INFO, "Sending JSON message: {0}", pvsJSON);
 		PVSExecutionManager.INST().writeToPVS(pvsJSON);
 		int MAX = 30;
@@ -120,6 +124,24 @@ public class PVSJsonWrapper implements PVSExecutionManager.PVSRespondListener {
 								throw new PVSException(respond.getString(ERROR));
 							} else {
 								Object res = respond.get(RESULT);
+//								if ( res instanceof JSONObject ) {
+//									HashMap<String, Object> map = new HashMap<String, Object>();
+//									JSONObject objRes = (JSONObject)res;
+//									Iterator<?> it = objRes.keys();
+//									while ( it.hasNext() ) {
+//										String key = it.next().toString();
+//										Object value = objRes.get(key);
+//										map.put(key, value);
+//									}
+//									res = map;
+//								} else if ( res instanceof JSONArray ) {
+//									ArrayList<Object> list = new ArrayList<Object>();
+//									JSONArray arr = (JSONArray)res;
+//									for (int t=0; t<arr.length(); t++) {
+//										list.add(arr.get(t));
+//									}
+//									res = list;
+//								}
 								return res;
 							}
 						}

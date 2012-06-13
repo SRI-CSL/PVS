@@ -9,11 +9,13 @@ public class PVSConstants {
 	public final static String yesNo2 = "\\(Yes or No\\)";
 	private final static String numberInSquareBrackets = "(\\[\\d+i?c?\\] |\\[step\\] )";
 	private final static String packageNameAndNumber = "((<?[-\\p{Alpha}]* ?\\d*>)|([-\\p{Alnum}]+\\(\\d+\\):)";
+	public final static String Rule = "Rule\\?";
+	private final static String bar = "|";
 	
 	public final static String pvsAllegroDebugPrompt = numberInSquareBrackets + packageNameAndNumber + ") ";
 	
-	public final static String pvsAllegroPrompt = "^(" + numberInSquareBrackets + "?" + packageNameAndNumber + "|Rule\\?|" + yesNo1 + "|" + yesNo2 + "|Please enter.*:) )+";
-	public final static String pvsCmuPrompt = "^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|" + yesNo1 + "|" + yesNo2 + "|Please enter";
+	public final static String pvsAllegroPrompt = "^(" + numberInSquareBrackets + "?" + packageNameAndNumber + bar + Rule + bar + yesNo1 + bar + yesNo2 + "|Please enter.*:) )+";
+	public final static String pvsCmuPrompt = "^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|" + Rule + " \\|<GndEval> \\|<PVSio> \\|yices > \\|" + yesNo1 + bar + yesNo2 + "|Please enter";
 
 	public final static String pvsErrorMessageOptionIndex = " [0-9]+: ";
 	
