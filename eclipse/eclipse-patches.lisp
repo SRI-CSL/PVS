@@ -13,84 +13,93 @@
 
 (in-package :pvs)
 
-(defvar *pvs-json-interface* nil)
-(defvar *pvs-json-id* nil)
+;;; From interface.lisp
 
-(defun json-error (errstr)
-  (format nil "~%{~%\"id\": ~a, \"error\": \"~a\"~%}~%"
-    *pvs-json-id*
-    errstr))
+(defvar *pvs-interface* nil)
+(defvar *pvs-buffer-hooks* nil)
+(defvar *pvs-message-hooks* nil)
+(defvar *pvs-error-hooks* nil)
 
-(defun json-check-form (str key)
-  (multiple-value-bind (form err)
-      (ignore-errors (read-from-string str))
-    (if (typep err 'error)
-	(values nil
-		(json-error 
-		 (format nil "Bad ~a \\\"~a\\\": ~a"
-		   key
-		   (protect-emacs-output str)
-		   (protect-emacs-output (format nil "~a" err)))))
-	form)))
+(defmethod prover-read :around ()
+  (if *pvs-interface*
+      (prover-read* *pvs-interface*)
+      (call-next-method)))
 
-(defun json-eval-form (form key)
-  (multiple-value-bind (result err)
-      (ignore-errors (eval form))
-    (if (typep err 'error)
-	(values nil
-		(json-error
-		 (format nil "Eval ~a \\\"~a\\\": ~a"
-		   key
-		   (protect-emacs-output form)
-		   (protect-emacs-output (format nil "~a" err)))))
-	result)))
+(defmethod output-proofstate :around (proofstate)
+  (call-next-method))
 
-(defun pvs-json (json-string)
-  (let* ((request (json:decode-json-from-string json-string))
-	 (*pvs-json-id* (cdr (assq :ID request)))
-	 (rawcmd (cdr (assq :RAWCOMMAND request)))
-	 (cmdstr (cdr (assq :COMMAND request)))
-	 (params (cdr (assq :PARAMETERS request)))
-	 (*pvs-json-interface* t)
-	 (*print-pretty* nil))
-    (if rawcmd
-	(multiple-value-bind (form errstr)
-	    (json-check-form rawcmd "rawcommand")
-	  (if errstr
-	      (format t "~a" errstr)
-	      (multiple-value-bind (result errstr)
-		  (json-eval-form form "rawcommand")
-		(if errstr
-		    (format t "~a" errstr)
-		    (format t "~%{~%\"id\": ~a, \"result\": ~a~%}~%"
-		      *pvs-json-id*
-		      (with-output-to-string (*standard-output*)
-			(json:encode-json result)))))))
-	(multiple-value-bind (cmd errstr)
-	    (json-check-form cmdstr "command")
-	  (if errstr
-	      (format t "~a" errstr)
-	      (if (not (symbolp cmd))
-		  (format t "~a"
-		    (json-error "cmd ~a must be a symbol string"))
-		  (if (not (listp params))
-		      (format t "~a"
-			(json-error
-			 (format nil "parameters ~a must be a list" params)))
-		      (multiple-value-bind (result errstr)
-			  (json-eval-form (cons cmd params) "command")
-			(if errstr
-			    (format t "~a" errstr)
-			    (format t "~%{~%\"id\": ~a, \"result\": ~a~%}~%"
-			      *pvs-json-id*
-			      (with-output-to-string (*standard-output*)
-				(json:encode-json result))))))))))))
+(defmethod output-proofstate* ((ifc null) proofstate)
+  (output-proofstate proofstate))
 
-(defmethod json:encode-json ((obj datatype-or-module) &optional stream)
-  (format stream "\"~a\"" (id obj)))
+;;;;;;;;;;;;;;;;;;;;;;;
+
+(eval-when (:execute :compile-toplevel :load-toplevel)
+  (lf "pvs-json"))
+
+;;; from pvs-emacs.lisp
+
+(defmethod declaration-kind ((th module))
+  'theory)
+
+(defmethod declaration-kind ((decl type-decl))
+  'type-decl)
+
+(defmethod declaration-kind ((decl formal-type-decl))
+  'formal-type-decl)
+
+(defmethod declaration-kind ((decl formal-const-decl))
+  'formal-const-decl)
+
+(defmethod declaration-kind ((decl formal-theory-decl))
+  'formal-theory-decl)
+
+(defmethod declaration-kind ((decl lib-decl))
+  'lib-decl)
+
+(defmethod declaration-kind ((decl mod-decl))
+  'theory-decl)
+
+(defmethod declaration-kind ((decl var-decl))
+  'var-decl)
+
+(defmethod declaration-kind ((decl def-decl))
+  'recursive-decl)
+
+(defmethod declaration-kind ((decl conversion-decl))
+  'conversion-decl)
+
+(defmethod declaration-kind ((decl conversionminus-decl))
+  'conversion-minus-decl)
+
+(defmethod declaration-kind ((decl auto-rewrite-decl))
+  'auto-rewrite-decl)
+
+(defmethod declaration-kind ((decl auto-rewrite-minus-decl))
+  'auto-rewrite-minus-decl)
+
+(defmethod declaration-kind (decl)
+  (class-name (class-of decl)))
+
+(defmethod decl-id ((decl datatype))
+  (id decl))
+
+(defun pvs-message (ctl &rest args)
+  (dolist (hook *pvs-message-hooks*)
+    (funcall hook (format nil ":pvs-msg ~? :end-pvs-msg" ctl args)))
+  (unless *suppress-msg*
+    (if *to-emacs*
+	(let* ((*print-pretty* nil)
+	       (*output-to-emacs*
+		(protect-emacs-output
+		 (format nil ":pvs-msg ~? :end-pvs-msg" ctl args))))
+	  (to-emacs))
+	(format t "~%~?" ctl args)))
+  nil)
 
 (defun pvs-error (msg err &optional itheory iplace)
   ;; Indicates an error; no recovery possible.
+  (dolist (hook *pvs-error-hooks*)
+    (funcall hook msg err itheory iplace))
   (cond (*rerunning-proof*
 	 (restore))
 	((and *pvs-emacs-interface*
@@ -129,6 +138,19 @@
 	 (if *in-checker*
 	     (restore)
 	     (error "PVS error")))))
+
+(defun pvs-buffer (name contents &optional display? read-only? append? kind)
+  (dolist (hook *pvs-buffer-hooks*)
+    (funcall hook name contents display? read-only? append? kind))
+  (if *to-emacs*
+      (let* ((*print-pretty* nil)
+	     (*output-to-emacs*
+	      (format nil ":pvs-buf ~a&~a&~a&~a&~a&~a :end-pvs-buf"
+		name (when contents (write-to-temp-file contents))
+		display? read-only? append? kind)))
+	(to-emacs))
+      (if display?
+	  (format t "~%~a" contents))))
 
 (defun parse-error (obj message &rest args)
   ;;(assert (or *in-checker* *current-file*))
@@ -196,92 +218,4 @@
 		       (col-begin (place obj)))
 		     "")))
 	   (error "Parse error"))))
-
-(defmethod declaration-kind ((th module))
-  'theory)
-
-(defmethod declaration-kind ((decl type-decl))
-  'type-decl)
-
-(defmethod declaration-kind ((decl formal-type-decl))
-  'formal-type-decl)
-
-(defmethod declaration-kind ((decl formal-const-decl))
-  'formal-const-decl)
-
-(defmethod declaration-kind ((decl formal-theory-decl))
-  'formal-theory-decl)
-
-(defmethod declaration-kind ((decl lib-decl))
-  'lib-decl)
-
-(defmethod declaration-kind ((decl mod-decl))
-  'theory-decl)
-
-(defmethod declaration-kind ((decl var-decl))
-  'var-decl)
-
-(defmethod declaration-kind ((decl def-decl))
-  'recursive-decl)
-
-(defmethod declaration-kind ((decl conversion-decl))
-  'conversion-decl)
-
-(defmethod declaration-kind ((decl conversionminus-decl))
-  'conversion-minus-decl)
-
-(defmethod declaration-kind ((decl auto-rewrite-decl))
-  'auto-rewrite-decl)
-
-(defmethod declaration-kind ((decl auto-rewrite-minus-decl))
-  'auto-rewrite-minus-decl)
-
-(defmethod declaration-kind (decl)
-  (class-name (class-of decl)))
-
-(defmethod decl-id ((decl datatype))
-  (id decl))
-
-(defun json-all-theories-info (&optional file prelude?)
-  (if (null file)
-      (let ((theory-alist nil))
-	(maphash #'(lambda (id th)
-		     (push (json-file-theories-info id th)
-			   theory-alist))
-		 (if prelude? *prelude* *pvs-modules*))
-	theory-alist
-	;;theory-alist
-	)
-      (json-pvs-file-info file)))
-
-(defun json-pvs-file-info (file)
-  (assert (stringp file))
-  (list (cons 'file file)
-	(cons 'theories
-	      (mapcar #'json-pvs-theory-info (cdr (gethash file *pvs-files*))))))
-
-(defun json-pvs-theory-info (th)
-  (list (cons 'id (id th))
-	(cons 'declarations
-	      (mapcar #'(lambda (d)
-			  (list (cons 'id (decl-id d))
-				(cons 'kind (class-name (class-of d)))
-				(cons 'place (or (place d) 'None))))
-		(all-decls th)))))
-
-(defun json-prove-formula (theory formula &optional rerun?)
-  (declare (special *pvs-json-prove-id*))
-  (if (boundp '*pvs-json-prove-id*)
-      (error "already proving ~a" *pvs-json-prove-id*)
-      (let ((*pvs-json-prove-id* *pvs-json-id*)
-	    (ps nil))
-	(format t "~%{~%\"id\": ~a, \"result\": {\"in_prover\": \"true\"}~%}~%"
-	  *pvs-json-prove-id*)
-	(unwind-protect
-	    (progn (setq ps (prove-formula theory formula rerun?))
-		   nil)
-	  (format t "~%{~%\"id\": ~a, \"result\": {\"status\": \"~a\", \"in_prover\": \"false\"}~%}~%"
-	    *pvs-json-prove-id*
-	    (if (eq (status-flag ps) '!) "proved" "unproved"))))))
-
 
