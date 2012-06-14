@@ -187,7 +187,7 @@
 		   (cons :kind kind)
 		   (cons :error err)
 		   (cons :theory itheory)
-		   (cons :place iplace)))))
+		   (cons :place iplace))))
 
 
 ;;; The interactive prover and ground evaluator require special treatment.
