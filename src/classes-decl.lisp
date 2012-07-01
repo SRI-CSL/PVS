@@ -713,11 +713,14 @@
 
 (defcl type-expr (syntax)
   (parens :initform 0 :parse t :restore-as nil)
-  print-type
+  ;; print-type
   from-conversion
   (free-variables :ignore t :initform 'unbound :fetch-as 'unbound)
   (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound)
   (nonempty? :restore-as nil))
+
+(defcl ptype-expr (type-expr)
+  print-type)
 
 ;;(defcl type-variable (type-expr))
 
@@ -736,7 +739,7 @@
   (recognizer-names :ignore t :fetch-as nil)
   struct-name)
 
-(defcl type-application (type-expr)
+(defcl type-application (ptype-expr)
   (type :parse t)
   (parameters :parse t))
 
@@ -761,7 +764,7 @@
 
 ;;; This is a mixin class
 
-(defcl subtype (type-expr)
+(defcl subtype (ptype-expr)
   (supertype :parse t)
   (top-type :fetch-as nil :ignore t)
   predicate)
@@ -783,27 +786,27 @@
 ;;; for print-types, and is what is parsed.  Expr-as-type is a combination
 ;;; (it may not be needed).
 
-(defcl simple-expr-as-type (type-expr)
+(defcl simple-expr-as-type (ptype-expr)
   (expr :parse t))
 
 (defcl expr-as-type (subtype simple-expr-as-type))
 
-;(defcl quotienttype (type-expr)
+;(defcl quotienttype (ptype-expr)
 ;  basetype
 ;  relation)
 
-(defcl funtype (type-expr)
+(defcl funtype (ptype-expr)
   (domain :parse t)
   (range :parse t))
 
-(defcl struct-subtype (type-expr)
+(defcl struct-subtype (ptype-expr)
   generated-by)
 
 (defcl functiontype (funtype))
 
 (defcl arraytype (funtype))
 
-(defcl tuple-or-struct-subtype (type-expr)
+(defcl tuple-or-struct-subtype (ptype-expr)
   ;; A mixin for making common methods
   (types :type list :parse t)
   (generated? :restore-as nil))
@@ -813,7 +816,7 @@
 (defcl struct-sub-tupletype (struct-subtype tuple-or-struct-subtype)
   type)
 
-(defcl cotupletype (type-expr)
+(defcl cotupletype (ptype-expr)
   (types :type list :parse t)
   (generated? :restore-as nil))
 
@@ -831,7 +834,7 @@
 (defcl dep-domain-tupletype (domain-tupletype)
   (var-bindings :parse t))
 
-(defcl record-or-struct-subtype (type-expr)
+(defcl record-or-struct-subtype (ptype-expr)
   ;; A mixin for making common methods
   (fields :type list :parse t)
   (dependent? :restore-as nil))
@@ -841,11 +844,11 @@
 (defcl struct-sub-recordtype (struct-subtype record-or-struct-subtype)
   type)
 
-(defcl type-extension (type-expr)
+(defcl type-extension (ptype-expr)
   (type :parse t)
   (extension :parse t))
 
-(defcl binding-type (type-expr)
+(defcl binding-type (ptype-expr)
   (bindings :parse t)
   (type :parse t))
 
