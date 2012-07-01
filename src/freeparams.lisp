@@ -48,7 +48,7 @@
 	(let* ((tformals (formals-sans-usings (current-theory)))
 	       (dformals (or *decl-bound-parameters*
 			     (when (current-declaration)
-			       (formal-params (current-declaration)))))
+			       (decl-formals (current-declaration)))))
 	       (formals (if dformals
 			    (append tformals dformals)
 			    tformals)))
@@ -121,9 +121,9 @@
 ;;; Type expressions
 
 (defmethod free-params* :around ((texpr type-expr) frees) 
-  (with-slots (free-parameters print-type) texpr
+  (with-slots (free-parameters) texpr
     (when (eq free-parameters 'unbound)
-      (let ((pfrees (free-params* print-type nil)))
+      (let ((pfrees (free-params* (print-type texpr) nil)))
 	(call-next-method)
 	(dolist (pf pfrees)
 	  (pushnew pf free-parameters :test #'eq))))
@@ -137,6 +137,7 @@
 
 (defmethod free-params* ((texpr type-name) frees)
   (let ((nfrees (call-next-method texpr nil)))
+    #+pvs-debug (assert (subsetp (free-params (resolution texpr)) nfrees :test #'eq))
     (setf (free-parameters texpr) nfrees)
     (union nfrees frees :test #'eq)))
 
@@ -361,8 +362,14 @@
 	(free-params* expr frees))))
 
 (defmethod free-params* ((name name) frees)
-  (with-slots (resolutions) name
-    (free-params* (car resolutions) frees)))
+  (with-slots (actuals dactuals print-type resolutions) name
+    (let ((afrees (free-params* actuals nil))
+	  (dafrees (free-params* dactuals nil))
+	  (rfrees (free-params* (car resolutions) frees)))
+      (union dafrees (union afrees (union rfrees frees
+					  :test #'eq)
+			    :test #'eq)
+	     :test #'eq))))
 
 (defmethod free-params* ((res resolution) frees)
   (with-slots ((decl declaration) (mi module-instance) type) res
@@ -382,14 +389,16 @@
   (declare (ignore type))
   (with-slots (actuals dactuals) mi
     (if (or actuals dactuals)
-	(let ((afrees (free-params* actuals nil))
-	      (dafrees (free-params* dactuals nil)))
-	  (union dafrees (union afrees frees :test #'eq) :test #'eq))
+	(let* ((afrees (free-params* actuals nil))
+	       (dafrees (free-params* dactuals nil))
+	       (ufrees (union dafrees (union afrees frees :test #'eq) :test #'eq)))
+	  ;;(assert (every #'(lambda (fp) (memq fp ufrees)) (free-params* type nil)))
+	  ufrees)
 	(let ((theory (module decl)))
 	  (when theory
 	    (dolist (x (formals-sans-usings theory))
 	      (setq frees (pushnew x frees :test #'eq))))
-	  (dolist (x (formal-params decl))
+	  (dolist (x (decl-formals decl))
 	    (setq frees (pushnew x frees :test #'eq)))
 	  frees))))
 
@@ -420,6 +429,7 @@
   frees)
 
 (defun external-free-params (obj)
-  (let ((formals (formals-sans-usings (current-theory))))
-    (remove-if #'(lambda (fp) (memq fp formals))
+  (let ((formals (formals-sans-usings (current-theory)))
+	(dformals (decl-formals (current-declaration))))
+    (remove-if #'(lambda (fp) (or (memq fp formals) (memq fp dformals)))
       (free-params obj))))
