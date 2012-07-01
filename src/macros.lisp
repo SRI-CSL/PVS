@@ -459,25 +459,53 @@
 	   (setf (get-declarations (id ,gdecl) (current-declarations-hash))
 		 ,gdecl)))))
 
+;;; This is mostly used for decl-formals needed while building declarations,
+;;; e.g., for TCCs and datatypes involving decl-formals.  It temporarily
+;;; adds the new formals to the declarations hash table, removing any
+;;; conflicting ones, and restoring the declarations hash to its former
+;;; state at the end.
+
 (defmacro with-added-decls (decls &rest body)
   (let ((gdecls (gensym))
 	(gdecl (gensym))
-	(there (gensym)))
+	(there (gensym))
+	(restore (gensym)))
     `(let ((,gdecls ,decls)
-	   (,there nil))
+	   (,there nil)
+	   (,restore nil))
        (if (null ,gdecls)
 	   (progn ,@body)
 	   (unwind-protect
 	       (progn (dolist (,gdecl ,gdecls)
-			(if (memq ,gdecl (get-declarations (id ,gdecl)))
-			    (push ,gdecl ,there)
-			    (setf (get-declarations (id ,gdecl)
-						    (current-declarations-hash))
-				  ,gdecl)))
+			(let ((assoc-decls (get-declarations (id ,gdecl))))
+			  (unless (memq ,gdecl assoc-decls)
+			    (setf ,restore (acons (id ,gdecl) assoc-decls ,restore))
+			    (let ((fml (find-if #'decl-formal? assoc-decls)))
+			      ;; There should be at most one
+			      (assert (or (null fml)
+					  (not (find-if #'decl-formal?
+						 (cdr (memq fml assoc-decls))))))
+			      (setf (get-lhash (id ,gdecl)
+					       (current-declarations-hash))
+				    (cons ,gdecl
+					  (if fml
+					      (remove fml assoc-decls)
+					      assoc-decls)))))))
 		      ,@body)
-	     (dolist (,gdecl ,gdecls)
-	       (unless (memq ,gdecl ,there)
-		 (delete-declaration ,gdecl))))))))
+	     (dolist (,gdecl ,restore)
+	       (setf (get-lhash (car ,gdecl) (current-declarations-hash))
+		     (cdr ,gdecl))))))))
+
+(defmacro with-current-decl (decl &rest body)
+  (let ((cdecl (gensym))
+	(gdecl (gensym)))
+    `(let ((,cdecl (current-declaration))
+	   (,gdecl ,decl))
+       (unwind-protect
+	   (progn (setf (current-declaration) ,gdecl)
+		  (with-added-decls (decl-formals ,gdecl)
+		    ,@body))
+	 (setf (current-declaration) ,cdecl)))))
 
 (defmacro with-bound-declparams (decls &rest body)
   (let ((gdecls (gensym)))
