@@ -105,6 +105,7 @@
 (defmethod gensubst* :around ((te type-expr) substfn testfn)
   (let ((nte (call-next-method)))
     (if (or (eq te nte)
+	    (type-name? nte)
 	    (null (print-type te))
 	    ;; It's possible for the print-type to have been set if te is a
 	    ;; datatype-subtype.  This comes from
@@ -1226,7 +1227,7 @@
     (copy ex
       'actuals (copy-untyped* actuals)
       'dactuals (copy-untyped* dactuals)
-      'print-type nil
+      ;;'print-type nil
       'from-conversion nil
       'nonempty? nil)))
 
