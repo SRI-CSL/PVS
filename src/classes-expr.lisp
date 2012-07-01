@@ -71,14 +71,16 @@
 
 ;; A name of the form 'lib@th[x]{{a:=b}}:->th.id'
 (defcl name (syntax)
-  (mod-id :parse t :restore-as nil)
-  (library :parse t :restore-as nil)
-  (actuals :parse t)
-  (dactuals :parse t)
-  (id :parse t :restore-as nil)
-  (mappings :parse t)
+  (mod-id :parse t :restore-as nil :type symbol)
+  (library :parse t :restore-as nil :type symbol)
+  (actuals :parse t :type list)
+  (dactuals :parse t :type list)
+  (acts-there? :parse t :type boolean)
+  (dacts-there? :parse t :type boolean)
+  (id :parse t :restore-as nil :type symbol)
+  (mappings :parse t :type list)
   (target :parse t)
-  resolutions)
+  (resolutions :type list))
 
 (defcl formula-name (name)
   (mod-id :parse t :restore-as nil))
@@ -370,6 +372,7 @@
 ;  type-value)
 
 (defcl binding-expr (expr)
+  (op :parse t)
   (bindings :parse t)
   (expression :parse t)
   (commas? :parse t :restore-as nil)
