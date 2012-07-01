@@ -203,6 +203,7 @@
   (constructors :documentation "a list of constructors"
 		:parse t)
   (adt-type-name :restore-as nil)
+  (positive-types :restore-as nil)
   (adt-theory :restore-as nil)
   (adt-map-theory :restore-as nil)
   (adt-reduce-theory :restore-as nil)
@@ -213,7 +214,7 @@
   subtypes)
 
 (defcl inline-recursive-type (recursive-type)
-  (formal-params :parse t)
+  (decl-formals :parse t)
   module
   (generated :restore-as nil)
   (typechecked? :restore-as nil))
@@ -346,7 +347,7 @@
 (defcl declaration (syntax)
   (newline-comment :restore-as nil)
   (id :type (or symbol number) :parse t :restore-as nil)
-  (formal-params :type list :parse t)
+  (decl-formals :type list :parse t)
   (formals :type list :parse t)
   (module :restore-as nil)
   (refers-to :type list :restore-as nil)
@@ -430,24 +431,46 @@
 (defcl formal-decl (declaration)
   (dependent? :restore-as nil))
 
+(defcl decl-formal (formal-decl))
+
 (defcl formal-type-decl (formal-decl type-decl typed-declaration)
+  )
+
+(defcl decl-formal-type (formal-type-decl decl-formal)
   associated-decl ; set if this is for a declaration parameter
   )
 
 (defcl formal-nonempty-type-decl (formal-type-decl nonempty-type-decl))
 
+(defcl decl-formal-nonempty-type (decl-formal-type nonempty-type-decl))
+
 (defcl formal-subtype-decl (formal-type-decl type-from-decl))
+
+(defcl decl-formal-subtype (decl-formal-type formal-subtype-decl))
 
 (defcl formal-nonempty-subtype-decl (formal-subtype-decl nonempty-type-decl))
 
+(defcl decl-formal-nonempty-subtype (decl-formal-subtype formal-nonempty-subtype-decl))
+
 (defcl formal-struct-subtype-decl (formal-type-decl struct-subtype-decl))
 
+(defcl decl-formal-struct-subtype (decl-formal-type formal-struct-subtype-decl))
+
 (defcl formal-nonempty-struct-subtype-decl (formal-struct-subtype-decl nonempty-type-decl))
+
+(defcl decl-formal-nonempty-struct-subtype (decl-formal-struct-subtype
+					    formal-nonempty-struct-subtype-decl))
 
 (defcl formal-type-appl-decl (formal-type-decl)
   (parameters :parse t))
 
-(defcl formal-nonempty-type-appl-decl (formal-type-appl-decl))
+(defcl decl-formal-type-appl (decl-formal-type formal-type-appl-decl))
+
+(defcl formal-nonempty-type-appl-decl (formal-type-appl-decl
+				       nonempty-type-decl))
+
+(defcl decl-formal-nonempty-type-appl (decl-formal-type-appl
+				       formal-nonempty-type-appl-decl))
 
 (defcl formal-const-decl (formal-decl typed-declaration)
   (possibly-empty-type? :restore-as nil))
@@ -690,11 +713,14 @@
 
 (defcl type-expr (syntax)
   (parens :initform 0 :parse t :restore-as nil)
-  print-type
+  ;; print-type
   from-conversion
   (free-variables :ignore t :initform 'unbound :fetch-as 'unbound)
   (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound)
   (nonempty? :restore-as nil))
+
+(defcl ptype-expr (type-expr)
+  print-type)
 
 ;;(defcl type-variable (type-expr))
 
@@ -713,7 +739,7 @@
   (recognizer-names :ignore t :fetch-as nil)
   struct-name)
 
-(defcl type-application (type-expr)
+(defcl type-application (ptype-expr)
   (type :parse t)
   (parameters :parse t))
 
@@ -738,7 +764,7 @@
 
 ;;; This is a mixin class
 
-(defcl subtype (type-expr)
+(defcl subtype (ptype-expr)
   (supertype :parse t)
   (top-type :fetch-as nil :ignore t)
   predicate)
@@ -760,27 +786,27 @@
 ;;; for print-types, and is what is parsed.  Expr-as-type is a combination
 ;;; (it may not be needed).
 
-(defcl simple-expr-as-type (type-expr)
+(defcl simple-expr-as-type (ptype-expr)
   (expr :parse t))
 
 (defcl expr-as-type (subtype simple-expr-as-type))
 
-;(defcl quotienttype (type-expr)
+;(defcl quotienttype (ptype-expr)
 ;  basetype
 ;  relation)
 
-(defcl funtype (type-expr)
+(defcl funtype (ptype-expr)
   (domain :parse t)
   (range :parse t))
 
-(defcl struct-subtype (type-expr)
+(defcl struct-subtype (ptype-expr)
   generated-by)
 
 (defcl functiontype (funtype))
 
 (defcl arraytype (funtype))
 
-(defcl tuple-or-struct-subtype (type-expr)
+(defcl tuple-or-struct-subtype (ptype-expr)
   ;; A mixin for making common methods
   (types :type list :parse t)
   (generated? :restore-as nil))
@@ -790,7 +816,7 @@
 (defcl struct-sub-tupletype (struct-subtype tuple-or-struct-subtype)
   type)
 
-(defcl cotupletype (type-expr)
+(defcl cotupletype (ptype-expr)
   (types :type list :parse t)
   (generated? :restore-as nil))
 
@@ -808,7 +834,7 @@
 (defcl dep-domain-tupletype (domain-tupletype)
   (var-bindings :parse t))
 
-(defcl record-or-struct-subtype (type-expr)
+(defcl record-or-struct-subtype (ptype-expr)
   ;; A mixin for making common methods
   (fields :type list :parse t)
   (dependent? :restore-as nil))
@@ -818,11 +844,11 @@
 (defcl struct-sub-recordtype (struct-subtype record-or-struct-subtype)
   type)
 
-(defcl type-extension (type-expr)
+(defcl type-extension (ptype-expr)
   (type :parse t)
   (extension :parse t))
 
-(defcl binding-type (type-expr)
+(defcl binding-type (ptype-expr)
   (bindings :parse t)
   (type :parse t))
 
