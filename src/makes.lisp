@@ -121,10 +121,10 @@
   (if (eq class 'type-decl)
       (make-instance 'type-decl
 	:id id
-	:formal-params dparams)
+	:decl-formals dparams)
       (make-instance class
 	:id id
-	:formal-params dparams
+	:decl-formals dparams
 	:type-expr type-expr)))
     
 
@@ -137,7 +137,7 @@
 (defun mk-const-decl (id type &optional definition formals dtype dparams)
   (make-instance 'const-decl
     :id id
-    :formal-params dparams
+    :decl-formals dparams
     :formals (if (every@ #'consp formals) formals (list formals))
     :declared-type (or dtype type)
     :type type
@@ -147,13 +147,13 @@
   (make-instance 'adt-constructor-decl
     :id id
     :declared-type type
-    :formal-params dparams
+    :decl-formals dparams
     :ordnum num))
 
 (defun mk-adt-recognizer-decl (id type &optional num dparams)
   (make-instance 'adt-recognizer-decl
     :id id
-    :formal-params dparams
+    :decl-formals dparams
     :declared-type type
     :ordnum num))
 
@@ -161,7 +161,7 @@
   (if (cdr acc-decls)
       (make-instance 'shared-adt-accessor-decl
 	:id id
-	:formal-params fdecls
+	:decl-formals fdecls
 	:declared-type type
 	:constructors (mapcar #'(lambda (d)
 				  (id (find d (constructors adt)
@@ -169,14 +169,15 @@
 			acc-decls))
       (make-instance 'adt-accessor-decl
 	:id id
-	:formal-params fdecls
+	:decl-formals fdecls
 	:declared-type type)))
 
-(defun mk-adt-def-decl (id type &optional definition formals dtype place)
+(defun mk-adt-def-decl (id &key decl-formals formals declared-type type definition place)
   (make-instance 'adt-def-decl
     :id id
+    :decl-formals decl-formals
     :formals (if (every@ #'consp formals) formals (list formals))
-    :declared-type (or dtype type)
+    :declared-type (or declared-type type)
     :type type
     :definition definition
     :semi t
@@ -208,57 +209,79 @@
     :type type
     :definition definition))
 
-(defun mk-formula-decl (id expr &optional (spelling 'formula) kind dparams)
-  (make-instance 'formula-decl
-    :id id
-    :formal-params dparams
-    :spelling spelling
-    :kind kind
-    :definition expr
-    :semi t))
+(defun mk-formula-decl (id expr &optional (spelling 'formula) kind dfmls)
+  (assert (or dfmls (null (decl-formals (current-declaration)))))
+  (let ((fdecl (make-instance 'formula-decl
+		 :id id
+		 :decl-formals dfmls
+		 :spelling spelling
+		 :kind kind
+		 :definition expr
+		 :semi t)))
+    (dolist (dfml dfmls)
+      (setf (associated-decl dfml) fdecl))
+    fdecl))
 
-(defun mk-subtype-tcc (id def)
-  (make-instance 'subtype-tcc
-    :id id
-    :spelling 'OBLIGATION
-    :kind 'tcc
-    :definition def
-    :semi t))
+(defun mk-subtype-tcc (id def &optional dfmls)
+  (assert (or dfmls (null (decl-formals (current-declaration)))))
+  (let ((tccdecl (make-instance 'subtype-tcc
+		   :id id
+		   :decl-formals dfmls
+		   :spelling 'OBLIGATION
+		   :kind 'tcc
+		   :definition def
+		   :semi t)))
+    (dolist (fml dfmls)
+      (setf (associated-decl fml) tccdecl))
+    tccdecl))
 
-(defun mk-termination-tcc (id expr)
-  (make-instance 'termination-tcc
-    :id id
-    :spelling 'OBLIGATION
-    :kind 'tcc
-    :definition expr
-    :semi t))
+(defun mk-termination-tcc (id expr &optional dfmls)
+  (assert (or dfmls (null (decl-formals (current-declaration)))))
+  (let ((tccdecl (make-instance 'termination-tcc
+		   :id id
+		   :decl-formals dfmls
+		   :spelling 'OBLIGATION
+		   :kind 'tcc
+		   :definition expr
+		   :semi t)))
+    (dolist (fml dfmls)
+      (setf (associated-decl fml) tccdecl))
+    tccdecl))
 
-(defun mk-judgement-tcc (id expr)
+(defun mk-judgement-tcc (id expr &optional dfmls)
+  (assert (or dfmls (null (decl-formals (current-declaration)))))
   (make-instance 'judgement-tcc
     :id id
+    :decl-formals dfmls
     :spelling 'OBLIGATION
     :kind 'tcc
     :definition expr
     :semi t))
 
-(defun mk-recursive-judgement-tcc (id expr)
+(defun mk-recursive-judgement-tcc (id expr &optional dfmls)
+  (assert (or dfmls (null (decl-formals (current-declaration)))))
   (make-instance 'recursive-judgement-tcc
     :id id
+    :decl-formals dfmls
     :spelling 'OBLIGATION
     :kind 'tcc
     :definition expr
     :semi t))
 
-(defun mk-recursive-judgement-axiom (id expr)
+(defun mk-recursive-judgement-axiom (id expr &optional dfmls)
+  (assert (or dfmls (null (decl-formals (current-declaration)))))
   (make-instance 'recursive-judgement-axiom
     :id id
+    :decl-formals dfmls
     :spelling 'AXIOM
     :definition expr
     :semi t))
 
-(defun mk-existence-tcc (id expr)
+(defun mk-existence-tcc (id expr &optional dfmls)
+  (assert (or dfmls (null (decl-formals (current-declaration)))))
   (make-instance 'existence-tcc
     :id id
+    :decl-formals dfmls
     :spelling 'OBLIGATION
     :kind 'existence
     :definition expr
@@ -903,6 +926,9 @@
 		:id (id arg)
 		:mod-id (mod-id arg)
 		:actuals (actuals arg)
+		:dactuals (dactuals arg)
+		:acts-there? (acts-there? arg)
+		:dacts-there? (dacts-there? arg)
 		:resolutions (resolutions arg)))
 	(type-value (when (resolutions arg) (lcopy arg :from-conversion nil))))
     (make-instance 'actual :expr expr :type-value type-value)))
@@ -1016,6 +1042,7 @@
   (mk-predtype type))
 
 (defun mk-resolution (decl modinst type)
+  (assert (or (null type) (type-expr? type)))
   (make-instance 'resolution
     :declaration decl
     :module-instance modinst
