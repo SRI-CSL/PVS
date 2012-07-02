@@ -223,15 +223,28 @@
       (parse-error badsubtype
 	"This subtype has no associated constructors"))))
 
-(defun xt-theory-formals (theory-formals)
-  (mapcan #'xt-theory-formal (term-args theory-formals)))
+(defun xt-theory-formals (theory-formals &optional decl-formal?)
+  (mapcan #'(lambda (ta) (xt-theory-formal ta decl-formal?))
+    (term-args theory-formals)))
 
-(defun xt-theory-formal (theory-formal)
+(defun change-to-decl-formal (decl)
+  (change-class decl
+      (typecase decl
+	(formal-nonempty-struct-subtype-decl 'decl-formal-nonempty-struct-subtype)
+	(formal-struct-subtype-decl 'decl-formal-struct-subtype)
+	(formal-nonempty-subtype-decl 'decl-formal-nonempty-subtype)
+	(formal-subtype-decl 'decl-formal-subtype)
+	(formal-nonempty-type-decl 'decl-formal-nonempty-type)
+	(formal-type-decl 'decl-formal-type))))
+
+(defun xt-theory-formal (theory-formal &optional decl-formal?)
   (let* ((importing (term-arg0 theory-formal))
 	 (idops (xt-check-periods (term-arg1 theory-formal)))
 	 (decl-body (term-arg2 theory-formal)))
     (multiple-value-bind (decl dtype)
 	(xt-declaration-body decl-body)
+      (when decl-formal?
+	(change-to-decl-formal decl))
       (append (unless (is-sop 'THEORY-FORMAL-NULL-1 importing)
 		(xt-formal-importing-elt importing))
 	      (xt-chained-decls (term-args idops) nil dtype nil decl
@@ -382,7 +395,7 @@
   (let* ((_decl (term-arg0 assuming))
 	 (idops (xt-check-periods (term-arg1 assuming)))
 	 (decl-params (unless (is-sop 'NO-THEORY-FORMALS (term-arg2 assuming))
-			(xt-theory-formals (term-arg2 assuming))))
+			(xt-theory-formals (term-arg2 assuming) t)))
 	 (formals (term-arg3 assuming))
 	 (pdformals (unless (is-sop 'NOFORMALS formals)
 		      (xt-pdf formals)))
@@ -428,7 +441,7 @@
   (let* ((_decl (term-arg0 tdecl))
 	 (idops (xt-check-periods (term-arg1 tdecl)))
 	 (decl-params (unless (is-sop 'NO-THEORY-FORMALS (term-arg2 tdecl))
-			  (xt-theory-formals (term-arg2 tdecl))))
+			  (xt-theory-formals (term-arg2 tdecl) t)))
 	 (formals (term-arg3 tdecl))
 	 (pformals (unless (is-sop 'NOFORMALS formals)
 		     (xt-pdf formals)))
@@ -510,8 +523,8 @@
 		  (adt (funcall #'xt-datatypes (sim-term-op decl)
 				decl id t)))
 	     (setf (id adt) id
-		   (formals adt) (xt-theory-formals formals)
-		   (formal-params adt) decl-params
+		   (formals adt) (xt-theory-formals formals t)
+		   (decl-formals adt) decl-params
 		   (semi adt) (when (is-sop 'SEMIC semi) t))
 	     (list adt)))))
 
@@ -529,8 +542,8 @@
 		  (adt (funcall #'xt-datatype (sim-term-op decl)
 				decl id t)))
 	     (setf (id adt) id
-		   (formals adt) (xt-theory-formals formals)
-		   (formal-params adt) decl-params
+		   (formals adt) (xt-theory-formals formals t)
+		   (decl-formals adt) decl-params
 		   (semi adt) (when (is-sop 'SEMIC semi) t))
 	     (list adt)))))
 
@@ -887,7 +900,7 @@
 		    (when (and splace eplace)
 		      (vector (starting-row splace) (starting-col splace)
 			      (ending-row eplace) (ending-col eplace)))))))
-	(when decl-params (setf (formal-params ndecl) decl-params))
+	(when decl-params (setf (decl-formals ndecl) decl-params))
 	(when formals (setf (formals ndecl) formals))
 	(xt-chained-decls (cdr idops) decl-params dtype formals decl absyn
 			  (cons ndecl result)))))
@@ -1856,8 +1869,9 @@
 	     (car exprs)))))
 
 (defun xt-fieldex (expr)
-  (let ((acts (unless (is-sop 'NOACTUALS (term-arg1 expr))
-		(xt-actuals (term-arg1 expr) t))))
+  (multiple-value-bind (acts there?)
+      (unless (is-sop 'NOACTUALS (term-arg1 expr))
+	(xt-actuals (term-arg1 expr) t))
     (make-instance 'fieldex
       :id (ds-id (term-arg0 expr))
       :actuals acts
@@ -2028,16 +2042,26 @@
 		 (ds-number (term-arg1 expr)))
     :place (term-place expr)))
 
-(defun make-xt-bind-expr (class body save-as)
+(defun make-xt-bind-expr (op body save-as)
   (let* ((set-expr? (is-sop 'SET-EXPR body))
 	 (commas? (xt-lambda-formals-check (term-arg0 body)))
 	 (bindings (xt-lambda-formals (term-arg0 body) commas?))
-	 (expr (xt-expr (term-arg1 body))))
+	 (expr (xt-expr (term-arg1 body)))
+	 (class (bind-expr-class op)))
     (make-instance class
+      :op op
       :bindings (xt-flatten-bindings (car bindings) (if set-expr? 1 0))
       :expression (make-xt-bind-expr* (cdr bindings) class expr)
       :commas? commas?
       :place (term-place save-as))))
+
+(defun bind-expr-class (op)
+  (case (intern (string-upcase op))
+    ((LAMBDA λ LAMBDA-EXPR) 'lambda-expr)
+    ((FORALL ∀ FORALL-EXPR) 'forall-expr)
+    ((EXISTS ∃ EXISTS-EXPR) 'exists-expr)
+    ((SET-EXPR) 'set-expr)
+    (t (break "bind-expr for ~a not set" op))))
 
 
 ;;; Checks whether the formals all make sense, and returns whether the
@@ -2685,16 +2709,18 @@
 	 (actuals (term-arg2 modname))
 	 (mappings (term-arg3 modname))
 	 (target (term-arg4 modname)))
-    (multiple-value-bind (acts dacts)
+    (multiple-value-bind (acts acts-there? dacts dacts-there?)
 	(unless (is-sop 'NOACTUALS actuals)
 	  (xt-actuals actuals t))
+      (when dacts-there?
+	(parse-error (term-place modname)
+	  "Declaration actuals not allowed for theory names"))
       (make-instance (if (is-sop 'NOACTUALS actuals)
 			 'modname 'full-modname)
 	:id (ds-vid id)
 	:library (unless (is-sop 'NOLIB lib)
 		   (ds-vid lib))
 	:actuals acts
-	:dactuals dacts
 	:mappings (unless (is-sop 'NOMAP mappings)
 		    (xt-mappings mappings))
 	:target (unless (is-sop 'NOTGT target)
@@ -2758,7 +2784,7 @@
 	       (make-instance 'number-expr
 		 :number num
 		 :place (term-place name))))
-	    (t (multiple-value-bind (acts dacts)
+	    (t (multiple-value-bind (acts acts-there? dacts dacts-there?)
 		   (unless (is-sop 'NOACTUALS actuals)
 		     (xt-actuals actuals pidop))
 		 (make-instance 'name
@@ -2773,9 +2799,11 @@
 		   :library (unless (is-sop 'NOLIB lib)
 			      (ds-vid lib))
 		   :actuals acts
+		   :acts-there? acts-there?
 		   :dactuals (or dacts
 				 (when dactuals
 				   (xt-actuals dactuals t)))
+		   :dacts-there? dacts-there?
 		   :mappings (unless (is-sop 'NOMAP mappings)
 			       (xt-mappings mappings))
 		   :mod-id (unless (null length)
@@ -2809,13 +2837,19 @@
 
 (defun xt-actuals (actuals single?)
   (if (eq (sim-term-op actuals) 'ACTUALS)
-      (mapcar #'xt-actual (term-args actuals))
+      (let* ((acts (mapcar #'xt-actual (term-args actuals)))
+	     (there (null acts)))
+	(values acts there))
       (if single?
 	  (parse-error (term-arg1 actuals)
 	    "Cannot have two sets of actuals here")
-	  (let ((acts1 (mapcar #'xt-actual (term-args (term-arg0 actuals))))
-		(acts2 (mapcar #'xt-actual (term-args (term-arg1 actuals)))))
-	    (values acts1 acts2)))))
+	  (let* ((acts1 (mapcar #'xt-actual (term-args (term-arg0 actuals))))
+		 (acts2 (mapcar #'xt-actual (term-args (term-arg1 actuals))))
+		 (there1 (and (null acts1)
+			      (eq (sim-term-op (term-arg0 actuals)) 'ACTUALS)))
+		 (there2 (and (null acts2)
+			      (eq (sim-term-op (term-arg1 actuals)) 'ACTUALS))))
+	    (values acts1 there1 acts2 there2)))))
 
 (defun xt-actual (act)
   (if (eq (sim-term-op act) 'MAPPINGS)
