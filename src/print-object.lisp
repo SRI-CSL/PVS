@@ -67,6 +67,18 @@ print object produces an error, and won't allow inspection of the object.")
       (format stream "#<~a ~a.~a>"
 	(type-of decl) (when (module decl) (id (module decl))) (id decl))))
 
+(defmethod print-object ((decl decl-formal) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (format stream "#<~a ~a.~a :: ~a>"
+	(type-of decl) (when (module decl) (id (module decl))) (id decl)
+	(if (associated-decl decl)
+	    (format nil "~a.~a"
+	      (when (module (associated-decl decl))
+		(id (module (associated-decl decl))))
+	      (id (associated-decl decl)))
+	    "no associated-decl"))))
+
 (defmethod print-object ((decl conversion-decl) stream)
   (if *debugging-print-object*
       (call-next-method)
