@@ -66,13 +66,13 @@
                          pvs-prec-info))
       ;; table-index 0: initial; 1: medial left; 2: medial right; 3: aggregate
       '((type-expr sbst::[ 0 10) (type-expr jux 1 20)
-        (type-expr jux 2 21) (expr sbst::<> 0 200)
-        (expr sbst::[] 0 200) (expr sbst::+ 0 170) (expr sbst::- 0 170)
-        (expr sbst::~ 0 80) (expr sbst::NOT 0 80)
+        (type-expr jux 2 21) (expr sbst::<> 0 200) (expr sbst::◇ 0 200)
+        (expr sbst::□ 0 200) (expr sbst::+ 0 170) (expr sbst::- 0 170)
+        (expr sbst::~ 0 80) (expr sbst::NOT 0 80) (expr sbst::¬ 0 80)
         (expr jux 1 230) (expr sbst::|`| 1 220)
         (expr sbst::^^ 1 210) (expr sbst::^ 1 210)
         (expr sbst::HAS_TYPE 1 190) (expr sbst::|::| 1 190)
-        (expr sbst::|:| 1 190) (expr sbst::O 1 180)
+        (expr sbst::|:| 1 190) (expr sbst::O 1 180) (expr sbst::∘ 1 180)
         (expr sbst::// 1 160) (expr sbst::** 1 160)
         (expr sbst::/ 1 160) (expr sbst::* 1 160)
         (expr sbst::~ 1 150) (expr sbst::++ 1 150)
@@ -86,20 +86,20 @@
         (expr sbst::>> 1 100) (expr sbst::<< 1 100)
         (expr sbst::>= 1 100) (expr sbst::> 1 100)
         (expr sbst::<= 1 100) (expr sbst::< 1 100)
-        (expr sbst::== 1 90) (expr sbst::/= 1 90)
+        (expr sbst::== 1 90) (expr sbst::/= 1 90) (expr sbst::≠ 1 90)
         (expr sbst::= 1 90) (expr sbst::ANDTHEN 1 71)
-        (expr sbst::&& 1 71) (expr sbst::/\\ 1 71)
+        (expr sbst::&& 1 71) (expr sbst::/\\ 1 71) (expr sbst::∧ 1 71)
         (expr sbst::& 1 71) (expr sbst::AND 1 71)
         (expr sbst::ORELSE 1 61) (expr sbst::XOR 1 61)
-        (expr sbst::\\/ 1 61) (expr sbst::OR 1 61)
+        (expr sbst::\\/ 1 61) (expr sbst::∨ 1 61) (expr sbst::OR 1 61)
         (expr sbst::WHEN 1 51) (expr sbst::=> 1 51)
         (expr sbst::IMPLIES 1 51) (expr sbst::<=> 1 41)
-        (expr sbst::IFF 1 41) (expr sbst::\|= 1 31)
-        (expr sbst::\|- 1 31) (expr sbst::\| 1 20)
+        (expr sbst::IFF 1 41) (expr sbst::\|= 1 31) (expr sbst::⊨ 1 31)
+        (expr sbst::\|- 1 31) (expr sbst::⊢ 1 31) (expr sbst::\| 1 20)
         (expr jux 2 231) (expr sbst::|`| 2 221)
         (expr sbst::^^ 2 211) (expr sbst::^ 2 211)
         (expr sbst::HAS_TYPE 2 191) (expr sbst::|::| 2 191)
-        (expr sbst::|:| 2 191) (expr sbst::O 2 181)
+        (expr sbst::|:| 2 191) (expr sbst::O 2 181) (expr sbst::∘ 2 181)
         (expr sbst::// 2 161) (expr sbst::** 2 161)
         (expr sbst::/ 2 161) (expr sbst::* 2 161)
         (expr sbst::~ 2 151) (expr sbst::++ 2 151)
@@ -113,16 +113,16 @@
         (expr sbst::>> 2 101) (expr sbst::<< 2 101)
         (expr sbst::>= 2 101) (expr sbst::> 2 101)
         (expr sbst::<= 2 101) (expr sbst::< 2 101)
-        (expr sbst::== 2 91) (expr sbst::/= 2 91)
+        (expr sbst::== 2 91) (expr sbst::/= 2 91) (expr sbst::≠ 2 91)
         (expr sbst::= 2 91) (expr sbst::ANDTHEN 2 70)
-        (expr sbst::&& 2 70) (expr sbst::/\\ 2 70)
+        (expr sbst::&& 2 70) (expr sbst::/\\ 2 70) (expr sbst::∧ 2 70)
         (expr sbst::& 2 70) (expr sbst::AND 2 70)
         (expr sbst::ORELSE 2 60) (expr sbst::XOR 2 60)
-        (expr sbst::\\/ 2 60) (expr sbst::OR 2 60)
+        (expr sbst::\\/ 2 60) (expr sbst::∨ 2 60) (expr sbst::OR 2 60)
         (expr sbst::WHEN 2 50) (expr sbst::=> 2 50)
         (expr sbst::IMPLIES 2 50) (expr sbst::<=> 2 40)
-        (expr sbst::IFF 2 40) (expr sbst::\|= 2 30)
-        (expr sbst::\|- 2 30) (expr sbst::\| 2 21)
+        (expr sbst::IFF 2 40) (expr sbst::\|= 2 30) (expr sbst::⊨ 2 30)
+        (expr sbst::\|- 2 30) (expr sbst::⊢ 2 30) (expr sbst::\| 2 21)
         (expr sbst::IN 3 10) (expr sbst::HAS_TYPE 3 10)))
 
 (defparameter *expr-prec-info* (gethash 'expr pvs-prec-info)
@@ -656,7 +656,7 @@ bind tighter.")
     (pp* theory-name)))
 
 (defmethod pp* :around ((decl declaration))
-  (with-slots (id formal-params module formals chain? semi) decl
+  (with-slots (id decl-formals module formals chain? semi) decl
     (when (or *unparse-expanded*
 	      *adt*
 	      (not (generated-by decl)))
@@ -681,8 +681,8 @@ bind tighter.")
 		 (format t "  % ~a~%" (proof-status-string decl)))
 	       ;;(pprint-indent :block 2)
 	       (write id)
-	       (when formal-params
-		 (pp-theory-formals formal-params))
+	       (when decl-formals
+		 (pp-theory-formals decl-formals))
 	       (pprint-indent :block 6)
 	       (pp-decl-formals formals)
 	       (write-char #\:)
@@ -2482,8 +2482,11 @@ bind tighter.")
 	(pprint-newline :fill)
 	(pp* declared-type)))))
 
+;;; lib@th[acts]{{mappings}}:->thname.pidop[dacts]
+
 (defmethod pp* ((ex name))
-  (with-slots (library mod-id actuals dactuals id mappings target) ex
+  (with-slots (library mod-id actuals acts-there? dactuals dacts-there?
+		       id mappings target) ex
     (pprint-logical-block (nil (list ex))
       (pprint-indent :block 4)
       (when library
@@ -2491,7 +2494,7 @@ bind tighter.")
 	(write-char #\@))
       (cond (mod-id
 	     (write mod-id)
-	     (when actuals
+	     (when (or actuals acts-there?)
 	       (pprint-newline :fill)
 	       (pp-actuals actuals))
 	     (when mappings
@@ -2505,7 +2508,7 @@ bind tighter.")
 	     (if (eq id 'O)
 		 (write '|o|)
 		 (write id))
-	     (when dactuals
+	     (when (or dactuals dacts-there?)
 	       (pprint-newline :fill)
 	       (pp-actuals dactuals)))
 	    (t
@@ -2514,19 +2517,19 @@ bind tighter.")
 	     (if (eq id 'O)
 		 (write '|o|)
 		 (write id))
-	     (when actuals
+	     (when (or actuals acts-there?)
 	       (pprint-newline :fill)
 	       (pp-actuals actuals))
-	     (when dactuals
-	       (pprint-newline :fill)
-	       (pp-actuals dactuals))
 	     (when mappings
 	       (pprint-newline :fill)
 	       (pp-mappings mappings))
 	     (when target
 	       (write " :-> ")
 	       (pprint-newline :fill)
-	       (pp* target)))))))
+	       (pp* target))
+	     (when (or dactuals dacts-there?)
+	       (pprint-newline :fill)
+	       (pp-actuals dactuals)))))))
 
 (defun pp-mappings (mappings)
   (pprint-logical-block (nil mappings :prefix "{{ " :suffix " }}")
@@ -2631,12 +2634,13 @@ bind tighter.")
 
 (defun pp-actuals (actuals)
   (pprint-logical-block (nil actuals :prefix "[" :suffix "]")
-    (pprint-indent :current 0)
-    (loop (pp* (pprint-pop))
-	  (pprint-exit-if-list-exhausted)
-	  (write-char #\,)
-	  (write-char #\space)
-	  (pprint-newline :fill))))
+    (when actuals
+      (pprint-indent :current 0)
+      (loop (pp* (pprint-pop))
+	    (pprint-exit-if-list-exhausted)
+	    (write-char #\,)
+	    (write-char #\space)
+	    (pprint-newline :fill)))))
 
 (defmethod pp* ((act actual))
   (with-slots (expr) act
