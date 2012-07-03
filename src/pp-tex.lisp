@@ -484,7 +484,7 @@
     (pp-tex* theory-name)))
 
 (defmethod pp-tex* :around ((decl declaration))
-  (with-slots (id module formals chain? semi) decl
+  (with-slots (id decl-formals module formals chain? semi) decl
     (when (or *unparse-expanded*
 	      *adt*
 	      (not (generated-by decl)))
@@ -506,9 +506,10 @@
 	       (when (and *comment-on-proof-status*
 			  (tcc? decl))
 		 (format t "  % ~a~%" (proof-status-string decl)))
-	       (pp-tex-const-decl id formals (if module
-						 (id module)
-						 (id (current-theory))))
+	       (pp-tex-const-decl id formals decl-formals
+				  (if module
+				      (id module)
+				      (id (current-theory))))
 	       (pprint-indent :block 6)
 	       (write-char #\:)
 	       (write-char #\space)
@@ -519,7 +520,8 @@
 	       (unless (typep decl 'formal-decl)
 		 (write "\\vspace*{\\pvsdeclspacing}")))))))
 
-(defun pp-tex-const-decl (id pre-formals theory-id &optional post-formals)
+(defun pp-tex-const-decl (id pre-formals decl-formals theory-id
+			     &optional post-formals post-decl-formals)
   (cond (pre-formals
 	 (let ((funsym (get-pp-tex-funsym id (mapcar #'length pre-formals)
 					  theory-id)))
@@ -537,11 +539,13 @@
 		  (unless *in-tex-math-mode*
 		    (write "\\)"))
 		  (pp-tex-decl-formals post-formals))
-		 (t (pp-tex-const-decl id (butlast pre-formals) theory-id
+		 (t (pp-tex-const-decl id (butlast pre-formals) decl-formals
+				       theory-id
 				       (cons (car (last pre-formals))
 					     post-formals))))))
 	(t (pp-tex-id id)
-	   (pp-tex-decl-formals post-formals))))
+	   (pp-tex-decl-formals post-formals)
+	   (pp-tex-decl-formals decl-formals))))
 
 (defun pp-tex-decl-formals (formals)
   (when formals
@@ -2036,7 +2040,8 @@
 	(pp-tex* declared-type)))))
 
 (defmethod pp-tex* ((ex name))
-  (with-slots (library mod-id actuals id mappings target) ex
+  (with-slots (library mod-id actuals acts-there? dactuals dacts-there?
+		       id mappings target) ex
     (pprint-logical-block (nil (list ex))
       (pprint-indent :block 4)
       (when library
@@ -2044,7 +2049,7 @@
 	(write-char #\@))
       (cond (mod-id
 	     (pp-tex-id mod-id)
-	     (when actuals
+	     (when (or actuals acts-there?)
 	       (pprint-newline :fill)
 	       (pp-tex-actuals actuals))
 	     (when mappings
@@ -2055,10 +2060,13 @@
 	       (pprint-newline :fill)
 	       (pp-tex* target))
 	     (write-char #\.)
-	     (pp-tex-id id))
+	     (pp-tex-id id)
+	     (when (or dactuals dacts-there?)
+	       (pprint-newline :fill)
+	       (pp-tex-actuals dactuals)))
 	    (t
 	     (pp-tex-id id)
-	     (when actuals
+	     (when (or actuals acts-there?)
 	       (pprint-newline :fill)
 	       (pp-tex-actuals actuals))
 	     (when mappings
@@ -2067,7 +2075,10 @@
 	     (when target
 	       (write " :-> ")
 	       (pprint-newline :fill)
-	       (pp-tex* target)))))))
+	       (pp-tex* target))
+	     (when (or dactuals dacts-there?)
+	       (pprint-newline :fill)
+	       (pp-tex-actuals dactuals)))))))
 
 (defun pp-tex-mappings (mappings)
   (pprint-logical-block
@@ -2161,12 +2172,13 @@
       (nil actuals
 	   :prefix (get-pp-tex-id '\[)
 	   :suffix (get-pp-tex-id '\]))
-    (pprint-indent :current 0)
-    (loop (pp-tex* (pprint-pop))
-	  (pprint-exit-if-list-exhausted)
-	  (write-char #\,)
-	  (write-char #\space)
-	  (pprint-newline :fill))))
+    (when actuals
+      (pprint-indent :current 0)
+      (loop (pp-tex* (pprint-pop))
+	    (pprint-exit-if-list-exhausted)
+	    (write-char #\,)
+	    (write-char #\space)
+	    (pprint-newline :fill)))))
 
 (defmethod pp-tex* ((act actual))
   (with-slots (expr) act
