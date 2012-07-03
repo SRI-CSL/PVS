@@ -3452,9 +3452,10 @@
 	       subst))
       (let* ((stype (find-supertype (type expr)))
 	     (thinst (module-instance stype))
-	     (theory (module (declaration stype)))
+	     (decl (declaration stype))
+	     (theory (module decl))
 	     (accs (substit (subst-mod-params (accessors (constructor sel))
-					      thinst theory)
+					      thinst theory decl)
 		     subst))
 	     (vars (args sel)))
 	(nconc (pairlis vars
