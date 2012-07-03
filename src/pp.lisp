@@ -2528,9 +2528,6 @@ bind tighter.")
 	     (when (or actuals acts-there?)
 	       (pprint-newline :fill)
 	       (pp-actuals actuals))
-	     (when dactuals
-	       (pprint-newline :fill)
-	       (pp-actuals dactuals))
 	     (when mappings
 	       (pprint-newline :fill)
 	       (pp-mappings mappings))
