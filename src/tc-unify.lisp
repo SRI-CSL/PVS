@@ -182,19 +182,18 @@
 		      (tc-match* (car args) (car fargs) bindings)))))
 
 (defmethod tc-match* :around ((arg type-expr) farg bindings)
-  (with-slots (print-type) arg
-    (when bindings
-      (if (tc-eq arg farg)
-	  bindings
-	  (let ((nbindings (if (or (free-params farg)
-				   (free-params arg))
-			       (call-next-method)
-			       (when (and farg
-					  (compatible? (find-supertype arg)
-						       (find-supertype farg)))
-				 bindings))))
-	    (when nbindings
-	      (tc-match-print-type print-type farg nbindings)))))))
+  (when bindings
+    (if (tc-eq arg farg)
+	bindings
+	(let ((nbindings (if (or (free-params farg)
+				 (free-params arg))
+			     (call-next-method)
+			     (when (and farg
+					(compatible? (find-supertype arg)
+						     (find-supertype farg)))
+			       bindings))))
+	  (when nbindings
+	    (tc-match-print-type (print-type arg) farg nbindings))))))
 
 (defmethod tc-match-print-type ((ptype name) farg nbindings)
   (declare (ignore farg))
@@ -282,27 +281,49 @@
     (or (call-next-method)
 	(if (tc-eq arg farg)
 	    bindings
-	    (let ((a1 (actuals arg))
-		  (a2 (actuals farg)))
-	      (if (eq (id arg) (id farg))
-		  (or (cond ((and a1 a2)
-			     (or (tc-match* a1 a2 bindings)
-				 bindings))
-			    (a1
-			     (tc-match-acts1
-			      a1 (formals-sans-usings
-				  (module (declaration (resolution farg))))
-			      bindings))
-			    (a2
-			     (tc-match-acts1
-			      a2 (formals-sans-usings
-				  (module (declaration (resolution arg))))
-			      bindings))
-			    (t (tc-match-names arg farg bindings)))
-		      (or (and (formal-type-decl? (declaration farg))
-			       (not (assq (declaration farg) bindings))
-			       bindings)
-			  (tc-match-names arg farg bindings)))))))))
+	    (when (eq (id arg) (id farg))
+	      (let ((a1 (actuals arg))
+		    (a2 (actuals farg))
+		    (d1 (dactuals arg))
+		    (d2 (dactuals farg)))
+		(tc-match-type-name-dactuals
+		 d1 d2 arg farg
+		 (or (tc-match-type-name-actuals a1 a2 arg farg bindings)
+		     bindings))))))))
+
+(defun tc-match-type-name-dactuals (d1 d2 arg farg bindings)
+  (cond ((and d1 d2)
+	 (or (tc-match* d1 d2 bindings)
+	     bindings))
+	(d1
+	 (tc-match-acts1
+	  d1 (decl-formals (declaration (resolution farg)))
+	  bindings))
+	(d2
+	 (tc-match-acts1
+	  d2 (decl-formals (declaration (resolution arg)))
+	  bindings))
+	(t bindings)))
+
+(defun tc-match-type-name-actuals (a1 a2 arg farg bindings)
+  (or (cond ((and a1 a2)
+	     (or (tc-match* a1 a2 bindings)
+		 bindings))
+	    (a1
+	     (tc-match-acts1
+	      a1 (formals-sans-usings
+		  (module (declaration (resolution farg))))
+	      bindings))
+	    (a2
+	     (tc-match-acts1
+	      a2 (formals-sans-usings
+		  (module (declaration (resolution arg))))
+	      bindings))
+	    (t (tc-match-names arg farg bindings)))
+      (or (and (formal-type-decl? (declaration farg))
+	       (not (assq (declaration farg) bindings))
+	       bindings)
+	  (tc-match-names arg farg bindings))))
 
 (defmethod tc-match* ((arg type-application) (farg type-application) bindings)
   (unless (null bindings)
@@ -707,7 +728,7 @@
 		 (tc-match* (arguments arg) (arguments farg) bindings))))
 
 (defmethod tc-match* ((arg binding-expr) (farg binding-expr) bindings)
-  (and (eq (operator arg) (operator farg))
+  (and (same-binding-op? arg farg)
        (let ((bind-bindings
 	      (tc-match-bindings (bindings arg) (bindings farg) bindings)))
 	 (when bind-bindings

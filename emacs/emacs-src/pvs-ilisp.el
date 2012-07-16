@@ -68,7 +68,11 @@ intervenes."
 		;; Can't use kill-region as it sets this-command
 		comint-last-input-start (point))
 	       (insert (ring-ref comint-input-ring pos)))))))
-  
+
+;; (add-hook 'comint-input-filter-functions
+;;   'update-pvs-history-file)
+;; (defun update-pvs-history-file (input)
+;; )
 
 ;;; The following variables must be set correctly for the ilisp interface
 ;;; to work correctly:

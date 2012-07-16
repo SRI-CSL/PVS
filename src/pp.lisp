@@ -1124,12 +1124,13 @@ bind tighter.")
 
 (defun pp-arguments (args)
   (pprint-logical-block (nil args :prefix "(" :suffix ")")
-    (pprint-indent :current 0)
-    (loop (pp* (pprint-pop))
-	  (pprint-exit-if-list-exhausted)
-	  (write-char #\,)
-	  (write-char #\space)
-	  (pprint-newline :fill))))
+    (when args
+      (pprint-indent :current 0)
+      (loop (pp* (pprint-pop))
+	    (pprint-exit-if-list-exhausted)
+	    (write-char #\,)
+	    (write-char #\space)
+	    (pprint-newline :fill)))))
 
 (defmethod pp* ((te subtype))
   (with-slots (supertype predicate) te
@@ -1269,15 +1270,16 @@ bind tighter.")
 (defmethod pp* ((te tupletype))
   (with-slots (types) te
     (pprint-logical-block (nil types :prefix "[" :suffix "]")
-      (pprint-indent :current 0)
-      (loop (let ((ty (pprint-pop)))
-	      (if ty
-		  (pp* ty)
-		  (write " ")))
-	    (pprint-exit-if-list-exhausted)
-	    (write-char #\,)
-	    (write-char #\space)
-	    (pprint-newline :fill)))))
+      (when types
+	(pprint-indent :current 0)
+	(loop (let ((ty (pprint-pop)))
+		(if ty
+		    (pp* ty)
+		    (write " ")))
+	      (pprint-exit-if-list-exhausted)
+	      (write-char #\,)
+	      (write-char #\space)
+	      (pprint-newline :fill))))))
 
 (defmethod pp* ((te cotupletype))
   (with-slots (types) te

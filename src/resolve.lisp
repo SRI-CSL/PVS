@@ -103,7 +103,7 @@
 	  (t (setf (resolutions name) res))))
   name)
 
-(defmethod formal-params ((th module))
+(defmethod decl-formals ((th module))
   nil)
 
 (defmethod typecheck* ((name modname) expected kind argument)
@@ -117,7 +117,7 @@
 	      ((null res)
 	       (resolution-error name 'module argument))
 	      (t (let ((theory (declaration (car res))))
-		   (when (formal-params (declaration (car res)))
+		   (when (decl-formals (declaration (car res)))
 		     (break "decl params may be a problem here"))
 		   (when (actuals name)
 		     (unless (length= (formals-sans-usings theory)
@@ -427,12 +427,14 @@
 		       (and (null (formals-sans-usings dth))
 			    (every (complement #'mappings)
 				   (get-importings dth)))))
+	      ;; No actuals or mappings involved, but dacts may be needed
+	      ;; even though not provided
 	      (let* ((usings (unless (eq dth (current-theory))
 			       (get-importings dth)))
 		     (thname (mk-modname (id (module decl))
 			       nil (when usings (library (car usings))) nil)))
 		(when (and (visible-to-mapped-tcc? decl thname dth)
-			   ;;(or (null (formal-params decl))
+			   ;;(or (null (decl-formals decl))
 			   ;;  (eq decl (current-declaration)))
 			   )
 		  #+pvsdebug
@@ -470,10 +472,10 @@
 	  (resolve-with-actuals decl acts dacts dth args mappings)))))
 
 (defun resolve-with-actuals (decl acts dacts dth args mappings)
-  ;; If dacts is there, or if decl has no formal-params, no ambiguity
-  (let ((dparams (or (formal-params decl)
+  ;; If dacts is there, or if decl has no decl-formals, no ambiguity
+  (let ((dparams (or (decl-formals decl)
 		     (and (current-declaration)
-			  (formal-params (current-declaration))))))
+			  (decl-formals (current-declaration))))))
     (if dacts
 	(when (and dparams
 		   (length= dacts dparams)
@@ -483,7 +485,7 @@
 	    reses))
 	(let ((thinsts (when (length= acts (formals-sans-usings dth))
 			 (resolve-theory-actuals decl acts dth args mappings)))
-	      (dreses (when (and (formal-params decl)
+	      (dreses (when (and (decl-formals decl)
 				 (length= acts dparams))
 			(resolve-decl-actuals
 			 decl acts
@@ -530,11 +532,11 @@
 			      (nconc reses1 reses)))))
 
 (defmethod resolve-decl-actuals* ((decl typed-declaration) dacts thinst args)
-  (assert (and dacts (formal-params decl)))
-  (assert (length= dacts (formal-params decl)))
+  (assert (and dacts (decl-formals decl)))
+  (assert (length= dacts (decl-formals decl)))
   (let* ((nthinst (change-class (copy thinst) 'declparam-modname
 		    'dactuals dacts 'declaration decl))
-	 (dtype (subst-mod-params (type decl) nthinst))
+	 (dtype (subst-mod-params (type decl) nthinst (module decl) decl))
 	 (doms (domain* dtype))
 	 (margs (when args
 		  (if (and (singleton? doms)
@@ -551,12 +553,20 @@
       (list (make-resolution decl nthinst dtype)))))
 
 (defmethod resolve-decl-actuals* ((decl type-decl) dacts thinst args)
-  (assert (and dacts (formal-params decl)))
-  (assert (length= dacts (formal-params decl)))
+  (assert (or (null dacts) (decl-formals decl)))
+  (assert (length= dacts (decl-formals decl)))
   (let* ((nthinst (change-class (copy thinst) 'declparam-modname
 		    'dactuals dacts 'declaration decl))
-	 (stype (subst-mod-params (type-value decl) nthinst)))
+	 (stype (subst-mod-params (type-value decl) nthinst (module decl) decl)))
+    ;;(break "resolve-decl-actuals*")
     (list (make-resolution decl nthinst stype))))
+
+(defmethod resolve-decl-actuals* ((decl formula-decl) dacts thinst args)
+  (assert (or (null dacts) (decl-formals decl)))
+  (assert (length= dacts (decl-formals decl)))
+  (let* ((nthinst (change-class (copy thinst) 'declparam-modname
+		    'dactuals dacts 'declaration decl)))
+    (list (make-resolution decl nthinst nil))))
 
 (defun visible-to-mapped-tcc? (decl thinst theory)
   (let ((cdecl (current-declaration)))
@@ -1477,7 +1487,7 @@
 			      *resolve-error-info*)
 			nil))
 	     (if (or (not (fully-instantiated? modinst))
-		     (and (formal-params decl)
+		     (and (decl-formals decl)
 			  (not (fully-instantiated? dtypes))))
 		 (compatible-uninstantiated? decl modinst dtypes args)
 		 (let* ((*generate-tccs* 'none)
@@ -1596,13 +1606,13 @@
 		   args
 		   dtypes
 		   (nconc (mapcar #'list (formals-sans-usings (module decl)))
-			  (mapcar #'list (formal-params decl))))))
+			  (mapcar #'list (decl-formals decl))))))
     (or (create-compatible-modinsts modinst decl bindings nil)
 	(progn (push (list :no-instantiation decl)
 		     *resolve-error-info*)
 	       nil))))
 
-(defmethod formal-params ((decl binding))
+(defmethod decl-formals ((decl binding))
   nil)
 
 (defmethod compatible-uninstantiated? ((decl type-decl) modinst dtypes args)
@@ -1610,26 +1620,45 @@
 		   args
 		   dtypes
 		   (nconc (mapcar #'list (formals-sans-usings (module decl)))
-			  (mapcar #'list (formal-params decl))))))
+			  (mapcar #'list (decl-formals decl))))))
     (create-compatible-modinsts modinst decl bindings nil)))
 
 (defun create-compatible-modinsts (modinst decl bindings result)
   (if (null bindings)
       result
-      (create-compatible-modinsts
-       modinst decl (cdr bindings)
-       (if (every #'cdr (car bindings))
-	   (let* ((dbindings (member (car (formal-params decl)) (car bindings)
-				     :key #'car))
-		  (mbindings (ldiff (car bindings) dbindings)))
-	     (cons (copy modinst
-		     'actuals (mapcar #'(lambda (a)
-					  (mk-res-actual (cdr a) modinst))
-				mbindings)
-		     'dactuals (mapcar #'(lambda (a) (mk-actual (cdr a)))
-				 dbindings))
-		   result))
-	   (cons (copy modinst) result)))))
+      (let ((fbindings (if (every #'cdr (car bindings))
+			   (car bindings)
+			   (matching-decl-formals-bindings (car bindings)))))
+	(create-compatible-modinsts
+	 modinst decl (cdr bindings)
+	 (if (and fbindings (every #'cdr fbindings))
+	     (let* ((dbindings (member (car (decl-formals decl)) (car bindings)
+				       :key #'car))
+		    (mbindings (ldiff (car bindings) dbindings)))
+	       (cons (copy modinst
+		       'actuals (mapcar #'(lambda (a)
+					    (mk-res-actual (cdr a) modinst))
+				  mbindings)
+		       'dactuals (mapcar #'(lambda (a) (mk-actual (cdr a)))
+				   dbindings))
+		     result))
+	     (cons (copy modinst) result))))))
+
+(defun matching-decl-formals-bindings (bindings)
+  ;; Bindings is a partial match - this attempts to match the remaining
+  ;; bindings using the names of the current decl-formals.  We only do this
+  ;; if the ones matched so far also have the same names.
+  (let ((dfmls (decl-formals (current-declaration))))
+    (when (every #'(lambda (bd)
+		     (if (decl-formal? (car bd))
+			 (or (null (cdr bd))
+			     (same-id (car bd) (cdr bd)))
+			 (cdr bd)))
+		 bindings)
+      (dolist (bd bindings)
+	(when (null (cdr bd))
+	  (setf (cdr bd) (type-value (car bd)))))
+      bindings)))
 
 (defun mk-res-actual (expr modinst)
   (if (member (id modinst) '(|equalities| |notequal|))

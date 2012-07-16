@@ -985,15 +985,16 @@
 (defun pp-tex-arguments (args)
   (pprint-logical-block
       (nil args
-	       :prefix (get-pp-tex-id '\()
-	       :suffix (get-pp-tex-id '\)))
-    (pprint-indent :current 0)
-    (loop (pp-tex* (pprint-pop))
-	  (pprint-exit-if-list-exhausted)
-	  (write-char #\,)
-	  (write-char #\space)
-	  (unless *in-tex-math-mode*
-	    (pprint-newline :fill)))))
+	   :prefix (get-pp-tex-id '\()
+	   :suffix (get-pp-tex-id '\)))
+    (when args
+      (pprint-indent :current 0)
+      (loop (pp-tex* (pprint-pop))
+	    (pprint-exit-if-list-exhausted)
+	    (write-char #\,)
+	    (write-char #\space)
+	    (unless *in-tex-math-mode*
+	      (pprint-newline :fill))))))
 
 (defmethod pp-tex* ((te subtype))
   (with-slots (supertype predicate) te
@@ -1151,12 +1152,13 @@
 	(nil types
 	     :prefix (get-pp-tex-id '\[)
 	     :suffix (get-pp-tex-id '\]))
-      (pprint-indent :current 0)
-      (loop (pp-tex* (pprint-pop))
-	    (pprint-exit-if-list-exhausted)
-	    (write-char #\,)
-	    (write-char #\space)
-	    (pprint-newline :fill)))))
+      (when types
+	(pprint-indent :current 0)
+	(loop (pp-tex* (pprint-pop))
+	      (pprint-exit-if-list-exhausted)
+	      (write-char #\,)
+	      (write-char #\space)
+	      (pprint-newline :fill))))))
 
 (defmethod pp-tex* ((te cotupletype))
   (with-slots (types) te

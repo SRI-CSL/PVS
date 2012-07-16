@@ -71,7 +71,7 @@ bindir = $(TARGETPATH)bin/$(PLATFORM)
 SYSTEM ?= pvs
 
 ifneq ($(ALLEGRO_HOME),)
-ALLEGROEXE = $(ALLEGRO_HOME)/mlisp8
+ALLEGROEXE = $(ALLEGRO_HOME)/mlisp
 LD_LIBRARY_PATH = $(ALLEGRO_HOME):$LD_LIBRARY_PATH
 allegro-devel = $(bindir)/devel/$(SYSTEM)-allegro
 ifeq ($(shell if `grep -q dynamic-runtime $(ALLEGRO_HOME)/devel.lic`; then echo OK; fi),OK)

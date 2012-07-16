@@ -2753,6 +2753,7 @@
   (when (and bindings
 	     (every #'cdr bindings))
     (let* ((th (module (caar bindings)))
+	   (libid (get-lib-id th))
 	   (nbindings (mapcar #'(lambda (elt)
 				  (cons (car elt)
 					(if (actual? (cdr elt))
@@ -2765,9 +2766,10 @@
 				     (mk-res-actual
 				      (mk-name-expr (id fp)
 					nil nil
-					(make-resolution fp (mk-modname (id th))))
+					(make-resolution fp (mk-modname (id th) nil libid)))
 				      th)))
-		       (formals-sans-usings th)))))
+		       (formals-sans-usings th))
+		     libid)))
       (when (fully-instantiated? thinst)
 	(values thinst th)))))
     
