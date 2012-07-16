@@ -448,16 +448,15 @@ righthand-side.  Examples:
 		(skip-msg "Need theory actuals to install rewrites.")))
 	(skip-msg "No such theory in current context.")))
 	 "Installs an entire theory (or only (explicit (non-recursive))
-definitions if DEFS is T(EXPLICIT)) as auto-rewrites.  In the case of a
-parametric theory, unless the DEFS flag is T or EXPLICIT, the actual
-parameters must be given.  If ALWAYS? is T the rewrites are installed also
-so that any rewrite other than a recursive definition always takes effect
-(see auto-rewrite!).  (Added 2.10.97: If ALWAYS? is set to !!, then the
-non-recursive definitions are always rewritten even when only a few of the
-curried arguments have been provided.)  Declarations named in EXCLUDE are
-not introduced and any current rewrite rules in the EXCLUDE list are
-disabled.  By default, TCCs in the theory are excluded but they can be
-included when the TCC? flag is T.
+definitions if DEFS is T(EXPLICIT)) as auto-rewrites.  In the case of a parametric
+theory, unless the DEFS flag is T or EXPLICIT, the actual parameters must be given.
+If ALWAYS? is T the rewrites are installed also so that any rewrite other than a
+recursive definition always takes effect (see auto-rewrite!).  (If ALWAYS? is set
+to !!, then the non-recursive definitions are always rewritten even when only a
+few of the curried arguments have been provided.)  Declarations named in EXCLUDE
+are not introduced and any current rewrite rules in the EXCLUDE list are disabled.
+By default, TCCs in the theory are excluded but they can be included when the TCC?
+flag is T.
   Examples:
     (auto-rewrite-theory \"sets\" :exclude (\"union\" \"subset?\")
 			          :defs explicit)

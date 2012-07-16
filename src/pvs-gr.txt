@@ -44,11 +44,21 @@ Operators
 	'('  ')'  '-'  '+'  '*' '/' ':=' '::=' '|->'  ';'  ','  '='  '/='
 	'<'  '<='  '>'  '>=' '{' '}' '[' ']' '.' '&' '<=>'
 	'->' ':' '=>' '[#' '#]' '(#' '#)' '(:' ':)' '{:' ':}' '{{' '}}' '|'
-        '^' '/\\' '\\/' '[]' '<>' '~' '==' '++' '**' '//' '^^'
+        '^' '/\\' '\\/' '<>' '~' '==' '++' '**' '//' '^^' % '[]'
 	'<<' '>>' '::' '#' '@' '@@' '##' '[|' '|]' '(|' '|)' '{|' '|}'
         '|[' ']|' '!'
         '<<=' '>>=' '`' '\'' '..'
-	'[||]' '(||)' '{||}' '||' '|-' '|=' '<|' '|>' ':->' %'<:'
+	'[||]' '(||)' '{||}' '||' '|-' '|=' '<|' '|>' ':->' % '<:'
+	%% % unicode operators
+	%% '∧' '∨' '¬' '≤' '≥' '≪' '≫' '∈' '±' '∓' '∋' '→' '∩' '∪' '÷'
+        %% '⇔' '◁' '▷' '⋈' '∘' '≅' '≙'
+
+	%% '«' '»' '«»' '≦' '≧' '←' '≨' '≩' '≰' '≱' '≯' '≁' '⊙' '⊥' '≺' '≻'
+	%% '√' '⊩' '≍' '⊣' '≐' '≡' '⌈' '⌉' '∇' '≇' '≮' '∉' '⊕' '≃' '⊓' '⊔'
+	%% '×' '⊎' '≎' '≈' '⋂' '⋃' '⋁' '⋀' '⋈' '•' '≏' '≗' '〈' '〉' '⌊' '⌋'
+	%% '↦' '⊖' '⊘' '⊗' '⊂' '⊃' '⇑' '◯' '★' '⊞' '∔' '↝' '✠' '≉' '∄' '⊄'
+	%% '⊅' '↑' '⊟' '⊠' '⌞' '⌟' '⌜' '⌝' '⊏' '⊐' '⊆' '⊇' '⇓' '⇐' '↓' '↑'
+	%% '←' '→' '〚' '〛' '⊛' '↦' '〈' '〉' '〈〉'
 
 Lexical Terminals
 	id, number, string %, literal
@@ -64,15 +74,15 @@ Precedence Information
   expr  'HAS_TYPE' aggregate,
 	'IN' aggregate % LET
 	'|' medial left
-	'|-' medial right, '|=' medial right
+	'⊢' medial right, '⊨' medial right, '|-' medial right, '|=' medial right
 	'IFF' medial right, '<=>' medial right
 	'IMPLIES' medial right, '=>' medial right, 'WHEN' medial right
-	'OR' medial right, '\\/' medial right, 'XOR' medial right,
+	'OR' medial right, '∨' medial right, '\\/' medial right, 'XOR' medial right,
 		'ORELSE' medial right
-	'AND' medial right, '&' medial right, '/\\' medial right,
+	'AND' medial right, '&' medial right, '∧' medial right, '/\\' medial right,
 		'&&' medial right, 'ANDTHEN' medial right
-	'NOT' initial, '~' initial
-	'=' medial left, '/='  medial left, '==' medial left
+	'NOT' initial, '~' initial, '¬' initial
+	'=' medial left, '/=' medial left, '≠' medial left, '==' medial left
 		'<' medial left, '<=' medial left,
 		'>' medial left, '>=' medial left,
 		'<<' medial left, '>>' medial left,
@@ -83,12 +93,14 @@ Precedence Information
 	'@' medial left, '#' medial left 
 	'@@' medial left, '##' medial left, 
 		'||' medial left 
-	'+' medial left, '-' medial left, '++' medial left, '~' medial left
-	'*' medial left, '/' medial left, '**' medial left, '//' medial left
+	'+' medial left, '-' medial left, '++' medial left,
+		'~' medial left, '⊕' medial left, '⊖' medial left
+	'*' medial left, '/' medial left, '**' medial left,
+		'//' medial left, '⊗' medial left, '⊙' medial left
 	'-' initial, '+' initial
-	'O' medial left
+	'O' medial left, '∘' medial left
 	':' medial left, '::' medial left, 'HAS_TYPE' medial left
-	'[]' initial, '<>' initial
+	'□' initial, '◇' initial, '<>' initial % , '[]'
 	'^' medial left, '^^' medial left
 	'`' medial left
 	jux medial left  % application
@@ -386,6 +398,9 @@ expr ::= string <string-expr(string)>
        | {'[|' {expr ** ','} '|]'} <brack-expr(expr*)>
        | {'(|' {expr ** ','} '|)'} <paren-vbar-expr(expr*)>
        | {'{|' {expr ** ','} '|}'} <brace-vbar-expr(expr*)>
+       | {'〈' {expr ** ','} '〉'} <angle-brace-expr(expr*)>
+       | {'〚' {expr ** ','} '〛'} <white-sqbracket-expr(expr*)>
+       | {'«' {expr ** ','} '»'} <dangle-brace-expr(expr*)>
        | {'(#' {assignment ++ ','} '#)'} <rec-expr(assignments(assignment+))>
        | {'(' {expr ** ','} ')'} <tuple-expr(expr*)>
        | {'`' {id | number} [actuals]} <{fieldex(id,[noactuals()|actuals])
@@ -393,6 +408,7 @@ expr ::= string <string-expr(string)>
        | {expr '`' {id | number}} <{fieldappl(expr,id)|projappl(expr,number)}>
        | {expr jux fun-arguments} <application(expr,fun-arguments)>
        | {expr 'O' expr^1} <term-expr(o(),expr-args(list(expr,expr^1)))>
+       | {expr '∘' expr^1} <term-expr(∘(),expr-args(list(expr,expr^1)))>
        | {expr 'IFF' expr^1} <term-expr(iff(),expr-args(list(expr,expr^1)))>
        | {expr '<=>' expr^1} <term-expr(`\<=\>(),expr-args(list(expr,expr^1)))>
        | {expr 'IMPLIES' expr^1}
@@ -400,8 +416,10 @@ expr ::= string <string-expr(string)>
        | {expr '=>' expr^1} <term-expr(`=\>(),expr-args(list(expr,expr^1)))>
        | {expr 'WHEN' expr^1} <term-expr(when(),expr-args(list(expr,expr^1)))>
        | {expr 'OR' expr^1} <term-expr(or(),expr-args(list(expr,expr^1)))>
+       | {expr '∨' expr^1} <term-expr(`∨(),expr-args(list(expr,expr^1)))>
        | {expr '\\/' expr^1} <term-expr(`\\\/(),expr-args(list(expr,expr^1)))>
        | {expr 'AND' expr^1} <term-expr(and(),expr-args(list(expr,expr^1)))>
+       | {expr '∧' expr^1} <term-expr(`∧(),expr-args(list(expr,expr^1)))>
        | {expr '/\\' expr^1} <term-expr(`\/\\(),expr-args(list(expr,expr^1)))>
        | {expr '&' expr^1} <term-expr(`&(),expr-args(list(expr,expr^1)))>
        | {expr 'XOR' expr^1} <term-expr(xor(),expr-args(list(expr,expr^1)))>
@@ -419,11 +437,15 @@ expr ::= string <string-expr(string)>
        | {expr '**' expr^1} <term-expr(`**(),expr-args(list(expr,expr^1)))>
        | {expr '//' expr^1} <term-expr(`\/\/(),expr-args(list(expr,expr^1)))>
        | {expr '^^' expr^1} <term-expr(`\^\^(),expr-args(list(expr,expr^1)))>
+       | {expr '⊕' expr^1} <term-expr(`⊕(),expr-args(list(expr,expr^1)))>
        | {expr '|-' expr^1} <term-expr(`\|-(),expr-args(list(expr,expr^1)))>
+       | {expr '⊢' expr^1} <term-expr(`\|-(),expr-args(list(expr,expr^1)))>
        | {expr '|=' expr^1} <term-expr(`\|=(),expr-args(list(expr,expr^1)))>
+       | {expr '⊨' expr^1} <term-expr(`\|=(),expr-args(list(expr,expr^1)))>
        | {expr '<|' expr^1} <term-expr(`\<\|(),expr-args(list(expr,expr^1)))>
        | {expr '|>' expr^1} <term-expr(`\|\>(),expr-args(list(expr,expr^1)))>
        | {expr '=' expr^1} <term-expr(`=(),expr-args(list(expr,expr^1)))>
+       | {expr '≠' expr^1} <term-expr(`≠(),expr-args(list(expr,expr^1)))>
        | {expr '/=' expr^1} <term-expr(`\/=(),expr-args(list(expr,expr^1)))>
        | {expr '==' expr^1} <term-expr(`==(),expr-args(list(expr,expr^1)))>
        | {expr '<' expr^1} <term-expr(`\<(),expr-args(list(expr,expr^1)))>
@@ -439,7 +461,10 @@ expr ::= string <string-expr(string)>
        | {expr '##' expr^1} <term-expr(`\#\#(),expr-args(list(expr,expr^1)))>
        | {'NOT' expr} <unary-term-expr(not(),expr)>
        | {'~' expr} <unary-term-expr(`~(),expr)>
-       | {'[]' expr} <unary-term-expr(`\[\](),expr)>
+       | {'¬' expr} <unary-term-expr(`¬(),expr)>
+%       | {'[]' expr} <unary-term-expr(`\[\](),expr)>
+       | {'□' expr} <unary-term-expr(`□(),expr)>
+       | {'◇' expr} <unary-term-expr(`◇(),expr)>
        | {'<>' expr} <unary-term-expr(`\<\>(),expr)>
        | {'+' expr} <unary-term-expr(`+(),expr)>
        | {'-' expr} <unary-term-expr(`-(),expr)>
@@ -448,9 +473,7 @@ expr ::= string <string-expr(string)>
           {{'ELSIF' expr^ic 'THEN' expr^it} <elsif(expr^ic,expr^it)>}*
           'ELSE' expr^e 'ENDIF'}
           <if-expr(expr^c,expr^t,elsifs(star),expr^e)>
-       | {{'LAMBDA' <lambda-expr()> | 'FORALL' <forall-expr()>
-                                     | 'EXISTS' <exists-expr()>}
-		     lambda-body}
+       | {{lambda-op | forall-op | exists-op} lambda-body}
 	  <bind-expr(alt,lambda-body)>
        | {id '!' {number | lambda-body}^1}
 	  <{skovar(id,number)| name-bind-expr(id,lambda-body)}^1>
@@ -474,6 +497,12 @@ set-expr ::= {'{' set-formals '|' expr '}'} <set-expr(set-formals,expr)>
            | {'{:' expr**',' ':}'} <set-list-expr(expr*)>;
 
 cond-case ::= {expr^l '->' expr^r} <cond-case(expr^l,expr^r)>;
+
+lambda-op ::= 'LAMBDA' <lambda()> | 'λ' <λ()>;
+
+forall-op ::= 'FORALL' <forall()> | '∀' <∀()>;
+
+exists-op ::= 'EXISTS' <exists()> | '∃' <∃()>;
 
 lambda-body ::= {lambda-formals ':' expr}
 		   <lambda-body(lambda-formals,expr)>;
@@ -601,28 +630,32 @@ unique-name ::= {name [':' {'TYPE'|type-expr|formula-name}]}
 bname ::= {name ['!' number]} <[name|bname(name,number)]>;
 
 opsym ::= '+' <`+()> | '-' <`-()> | '*' <`*()> | '/' <`\/()>
-	| '=' <`=()> | '/=' <`\/=()> | '==' <`==()> | '<' <`\<()>
+	| '=' <`=()> | '≠' <`≠()> | '/=' <`\/=()> | '==' <`==()> | '<' <`\<()>
 	| '<=' <`\<=()> | '>' <`\>()> | '>=' <`\>=()>
 	| 'IFF' <iff()> | 'IMPLIES' <implies()> | 'WHEN' <when()>
-	| 'OR' <or()> | 'AND' <and()> | 'NOT' <not()> | '&' <`&()>
-	| '/\\' <`\/\\()> | '\\/' <`\\\/()> | '^' <`^()>
-	| '[]' <`\[\]()> | '<>' <`\<\>()> | '~' <`~()>
+	| 'OR' <or()> | 'AND' <and()> | 'NOT' <not()> | '¬' <¬()> | '&' <`&()>
+	| '∧' <∧()> | '∨' <∨()> | '/\\' <`\/\\()> | '\\/' <`\\\/()> | '^' <`^()>
+	% | '[]' <`\[\]()>
+        | '□' <□()> | '◇' <◇()> | '<>' <`\<\>()> | '~' <`~()>
 	| '=>' <`=\>()> | '<=>' <`\<=\>()> | 'IF' <if()>
-	| 'TRUE' <true()> | 'FALSE' <false()> | 'O' <o()>
+	| 'TRUE' <true()> | 'FALSE' <false()> | 'O' <o()> | '∘' <∘()>
 	| 'XOR' <xor()> | 'ORELSE' <orelse()> | 'ANDTHEN' <andthen()>
 	| '++' <`++()> | '**' <`**()> | '//' <`\/\/()>
 	| '^^' <`\^\^()> | '<<' <`\<\<()> | '>>' <`\>\>()>
         | '<<=' <`\<\<=()> | '>>=' <`\>\>=()>
 	| '#' <`#()> 
 	| '@@' <`\@\@()> | '##' <`\#\#()> 
-	| '|-' <`\|-()> | '|=' <`\|=()> | '<|' <`\<\|()>
+	| '⊢' <⊢()> | '⊨' <⊨()> | '|-' <`\|-()> | '|=' <`\|=()> | '<|' <`\<\|()>
 	| '|>' <`\|\>()> | '[||]' <`\[\|\|\]()> | '(||)' <`\(\|\|\)()>
-        | '{||}' <`\{\|\|\}()>
+        | '{||}' <`\{\|\|\}()> | '«»' <«»()> | '〈〉' <〈〉()> | '≦' <≦()>
+	| '≧' <≧()> | '←' <←()> | '≨' <≨()> | '≩' <≩()> | '≰' <≰()> | '≱' <≱()>
+	| '≯' <≯()> | '≁' <≁()> | '⊥' <⊥()> | '≺' <≺()> | '≻' <≻()>
+	| '⊕' <`⊕()> | '⊖' <`⊖()> | '⊗' <`⊗()> | '⊘' <`⊘()> | '⊙' <`⊙()>
 	;
 
 actuals ::= {actuals1^1 [actuals1]^2} <[actuals1^1|actuals2(actuals1^1, actuals1)]^2>;
 
-actuals1 ::= {'[' {actual ++ ','} ']'} <actuals(actual+)>;
+actuals1 ::= {'[' {actual ** ','} ']'} <actuals(actual*)>;
 
 % mappings are not really allowed, but we want to give a reasonable error
 % see xt-actual in parse.lisp

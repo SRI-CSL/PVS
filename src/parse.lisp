@@ -401,7 +401,7 @@
 		      (xt-pdf formals)))
 	 (decl (term-arg4 assuming))
 	 (semi (term-arg5 assuming)))
-    (when (and (cdr (term-args idops)) formals)
+    (when (and (cdr (term-args idops)) pdformals)
       (parse-error formals ": expected here"))
     (case (sim-term-op decl)
       ((LIB-DECL THEORY-DECL TYPE-DECL DATATYPE)
@@ -1860,7 +1860,10 @@
 (defun xt-tuple-expr (expr)
   (let ((exprs (mapcar #'xt-expr (term-args expr))))
     (cond ((null exprs)
-	   (parse-error expr "Expression expected here"))
+	   ;;(parse-error expr "Expression expected here")
+	   (make-instance 'tuple-expr
+	     :exprs nil
+	     :place (term-place expr)))
 	  ((cdr exprs)
 	   (make-instance 'tuple-expr
 	     :exprs exprs
@@ -2455,9 +2458,11 @@
 	      :constructor constr
 	      :args (if (is-sop 'SELECTION-NULL-1 args)
 			(parse-error constr "Must provide an argument")
-			(mapcar #'(lambda (a) (make-instance 'bind-decl
-						:id (xt-idop a)
-						:place (term-place a)))
+			(mapcar #'(lambda (a)
+				    (let ((aid (xt-idop a '(_))))
+				      (make-instance 'bind-decl
+					:id aid
+					:place (term-place a))))
 			  (term-args args)))
 	      :index index
 	      :expression (xt-expr expr)
@@ -2465,9 +2470,11 @@
 	    (make-instance 'selection
 	      :constructor constr
 	      :args (unless (is-sop 'SELECTION-NULL-1 args)
-		      (mapcar #'(lambda (a) (make-instance 'bind-decl
-					      :id (xt-idop a)
-					      :place (term-place a)))
+		      (mapcar #'(lambda (a)
+				  (let ((aid (xt-idop a '(_))))
+				    (make-instance 'bind-decl
+				      :id aid
+				      :place (term-place a))))
 			(term-args args)))
 	      :expression (xt-expr expr)
 	      :place (term-place sel)))))))
@@ -2791,7 +2798,7 @@
 		   :id (if (null length)
 			   (if (is-number (term-arg0 idop))
 			       (makesym "~d" (ds-number (term-arg0 idop)))
-			       (let ((id (ds-id (term-arg0 idop))))
+			       (let ((id (ds-vid (term-arg0 idop))))
 				 (when (memq id '(|/\\| |\\/|))
 				   (pushnew id *escaped-operators-used*))
 				 id))
@@ -2955,8 +2962,8 @@
 	       (setf (spelling uname) (sim-term-op (term-arg0 qual)))))
     uname))
 
-(defun xt-idop (idop)
-  (ds-vid (term-arg0 idop)))
+(defun xt-idop (idop &optional allowed-ids)
+  (ds-vid (term-arg0 idop) allowed-ids))
 
 (defun xt-bname (bname)
   (let ((name (xt-name (term-arg0 bname) nil))
@@ -2968,7 +2975,7 @@
     (make-instance 'name
       :id (makesym "~a!~d" (id name) number))))
 
-(defun ds-vid (term)
+(defun ds-vid (term &optional allowed-ids)
   (let* ((tid (ds-id term))
 	 (id (if (and (symbolp tid)
 		      (every #'digit-char-p (string tid)))
@@ -2977,6 +2984,7 @@
     (when (memq id '(|/\\| |\\/|))
       (pushnew id *escaped-operators-used*))
     (if (or (numberp id)
+	    (memq id allowed-ids)
 	    (valid-pvs-id id))
 	id
 	(parse-error term "Invalid id"))))
@@ -2994,11 +3002,15 @@
 	     (or (null dpos)
 		 (valid-pvs-id* sym (1+ dpos))))
 	(break "not valid?"))))
+
+(defun unialpha-char-p (char)
+  (or (alpha-char-p char)
+      (> (char-code char) 127)))
   
 (defun valid-pvs-id** (idstr start end)
-  (or (and (alpha-char-p (char idstr start))
+  (or (and (unialpha-char-p (char idstr start))
 	   (every #'(lambda (ch)
-		      (or (alpha-char-p ch)
+		      (or (unialpha-char-p ch)
 			  (digit-char-p ch)
 			  (and *in-checker*
 			       (char= ch #\!))

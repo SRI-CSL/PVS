@@ -347,6 +347,7 @@
 		 :test #'eq))
 	(let ((theory (get-theory mi))
 	      (mfrees (free-params* mappings nil)))
+	  (assert theory)
 	  (if theory
 	      (union mfrees (formals-sans-usings theory) :test #'eq)
 	      frees)))))

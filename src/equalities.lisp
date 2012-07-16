@@ -370,10 +370,11 @@
 (defmethod tc-eq* ((e1 projection-application) (e2 projection-application)
 		   bindings)
   (or (eq e1 e2)
-      (with-slots ((id1 index) (arg1 argument)) e1
-	(with-slots ((id2 index) (arg2 argument)) e2
+      (with-slots ((id1 index) (arg1 argument) (ty1 type)) e1
+	(with-slots ((id2 index) (arg2 argument) (ty2 type)) e2
 	  (assert (and id1 id2))
 	  (and (= id1 id2)
+	       (tc-eq* ty1 ty2 bindings)
 	       (tc-eq* arg1 arg2 bindings))))))
 
 (defmethod tc-eq* ((e1 projection-application) (e2 name-expr) bindings)
@@ -880,6 +881,8 @@
 			(tc-eq* t1 t2 bindings)))
 	       (tc-eq* (car res1) (car res2) bindings))))))
 
+(defvar *in-tc-eq-resolution* nil)
+
 (defmethod tc-eq* ((res1 resolution) (res2 resolution) bindings)
   (with-slots ((decl1 declaration) (mi1 module-instance)) res1
     (with-slots ((decl2 declaration) (mi2 module-instance)) res2
@@ -887,18 +890,26 @@
 	    (and bind
 		 (eq decl2 (if (consp bind) (car bind) bind))))
 	  (and (eq decl1 decl2)
-	       (or (binding? decl1)
-		   (if mi1
-		       (and mi2
-			    (or (null (library mi1))
-				(null (library mi2))
-				(eq (library mi1) (library mi2)))
-			    (tc-eq* (actuals mi1) (actuals mi2) bindings)
-			    (tc-eq* (dactuals mi1) (dactuals mi2) bindings)
-			    (or (null (mappings mi1))
-				(null (mappings mi2))
-				(tc-eq* (mappings mi1) (mappings mi2) bindings)))
-		       (null mi2))))))))
+	       (and ;;(binding? decl1)
+		(if mi1
+		    (and mi2
+			 (or (null (library mi1))
+			     (null (library mi2))
+			     (eq (library mi1) (library mi2)))
+			 (tc-eq* (actuals mi1) (actuals mi2) bindings)
+			 (tc-eq* (dactuals mi1) (dactuals mi2) bindings)
+			 (or (null (mappings mi1))
+			     (null (mappings mi2))
+			     (tc-eq* (mappings mi1) (mappings mi2) bindings)))
+		    (null mi2))
+		(or *in-tc-eq-resolution*
+		    (null *strong-tc-eq-flag*)
+		    (let ((*in-tc-eq-resolution* t))
+		      (tc-eq* (type res1) (type res2) bindings)))
+		;; (progn (let ((*strong-tc-eq-flag* nil))
+		;; 	 (assert (tc-eq* (type res1) (type res2) bindings)))
+		;;        t)
+		))))))
 
 (defmethod tc-eq* ((n1 modname) (n2 modname) bindings)
   (or (eq n1 n2)
@@ -1567,7 +1578,7 @@
 			    (cdr afields)
 			    (let* ((nres (make-resolution nfield
 					   (current-theory-name)
-					   (type afld)))
+					   stype))
 				   (fne (mk-field-name-expr (id afld) nres)))
 			      (substit (cdr afields)
 				(acons afld fne nil))))))

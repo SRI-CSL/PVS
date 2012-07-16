@@ -1398,11 +1398,13 @@
 	   (list
 	    (subst-mod-params (closed-definition decl)
 			      (module-instance res)
-			      (module decl)))))
+			      (module decl)
+			      decl))))
 	((typep decl '(or const-decl def-decl))
 	 (copy-list (subst-mod-params (def-axiom decl)
 				      (module-instance res)
-				      (module decl))))
+				      (module decl)
+				      decl)))
 	(t nil)))
 
 ;(defun create-formula (decl modinst num)
@@ -1437,10 +1439,10 @@
 ;;(NSH:9-14)create-definition-formula replaces create-formula-lhs and
 ;;create-formula-rhs since it creates the typechecked, universally
 ;;closed form of the entire definition formula.  
-(defun create-definition-formula (defn num)
+(defun create-definition-formula (defn1 num)
   (if (zerop num)
-      defn
-      (let* ((defn (create-definition-formula defn (1- num)))
+      defn1
+      (let* ((defn (create-definition-formula defn1 (1- num)))
 	     (forall? (forall? defn))
 	     (forall-vars (if forall? (bindings defn) nil))
 	     (equality (if forall? (expression defn) defn))
@@ -2103,7 +2105,8 @@
 	(setf (recognizer-names tn)
 	      (subst-mod-params (mapcar #'recognizer (constructors tn))
 				(module-instance tn)
-				(module (declaration tn)))))))
+				(module (declaration tn))
+				(declaration tn))))))
 
 (defmethod recognizers ((te cotupletype))
   (let ((index 0))
@@ -2183,6 +2186,8 @@
 (defun sbrt::assq (obj alist)
   (assoc obj alist :test #'eq))
 
+(defmethod print-type ((tn type-name))
+  nil)
 
 ;;; Full-name
 
@@ -2370,7 +2375,7 @@
   (unless (or (and (eq (id x) '=)
 		   (module-instance x)
 		   (eq (id (module-instance x)) '|equalities|))
-	      (and (eq (id x) '/=)
+	      (and (memq (id x) '(/= ≠))
 		   (module-instance x)
 		   (eq (id (module-instance x)) '|notequal|)))
     (raise-actuals-name? x)))
@@ -2398,6 +2403,9 @@
 	       (raise-actuals? (print-type x))))))
 
 (defmethod raise-actuals! ((x type-expr))
+  (call-next-method))
+
+(defmethod raise-actuals! ((x ptype-expr))
   (lcopy (call-next-method) 'print-type (raise-actuals (print-type x))))
 
 (defmethod raise-actuals! (x) x)
@@ -2500,7 +2508,8 @@
 		  (rec (if thinst
 			   (subst-mod-params (recognizer (constructor sel))
 					     thinst
-					     (module (declaration stype)))
+					     (module (declaration stype))
+					     (declaration stype))
 			   (recognizer (constructor sel))))
 		  (cond (make!-application rec expr))
 		  (then ;(subst-mod-params
@@ -2519,7 +2528,8 @@
 		   (module-instance stype)))
 	 (accs (if thinst
 		   (subst-mod-params (accessors (constructor sel)) thinst
-				     (module (declaration stype)))
+				     (module (declaration stype))
+				     (declaration stype))
 		   (accessors (constructor sel))))
 	 (vars (args sel))
 	 (selexpr (expression sel)))
@@ -2966,7 +2976,7 @@
 (defmethod dactuals ((ex number-expr))
   nil)
 
-(defmethod formal-params ((imp importing))
+(defmethod decl-formals ((imp importing))
   nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

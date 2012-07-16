@@ -41,6 +41,8 @@
   (when decls
     (let ((decl (car decls)))
       (setf (current-declaration) decl)
+      (when (cdr (get-declarations 'IMPLIES))
+	(break "typecheck-decls IMPLIES"))
       (typecase decl
 	(declaration (typecheck-decl decl))
 	(importing (tcdebug "~%    Processing importing")
@@ -140,18 +142,73 @@
 
 (defmethod typecheck* :around ((decl declaration) expected kind args)
    (declare (ignore expected kind args))
-   (cond ((formal-params decl)
-	  (typecheck* (formal-params decl) nil nil nil)
-	  (dolist (fdecl (formal-params decl))
+   (cond ((decl-formals decl)
+	  (assert (every #'decl-formal-type? (decl-formals decl)))
+	  (typecheck-decl-formals (decl-formals decl) decl)
+	  ;;(typecheck* (decl-formals decl) nil nil nil)
+	  (dolist (fdecl (decl-formals decl))
 	    (set-visibility fdecl)
 	    (setf (module fdecl) (current-theory))
-	    (assert (null (associated-decl fdecl)))
-	    (setf (associated-decl fdecl) decl))
-	  (with-added-decls (formal-params decl)
-			    (call-next-method)))
+	    (assert (eq (associated-decl fdecl) decl)))
+	  (with-added-decls (decl-formals decl)
+	    (call-next-method))
+	  (assert (every #'(lambda (fml)
+			     (not (memq fml (get-declarations (id fml)))))
+			 (decl-formals decl))))
 	 (t (call-next-method)))
    (setf (typechecked? decl) t)
    decl)
+
+(defun typecheck-decl-formals (dfmls decl)
+  (when dfmls
+    (let ((dfml (car dfmls)))
+      (with-added-decls (list dfml)
+	(setf (associated-decl dfml) decl)
+	(typecheck-decl dfml)
+	(typecheck-decl-formals (cdr dfmls) decl)))))
+
+
+(defmethod new-decl-formals ((decl declaration))
+  (when (decl-formals decl)
+    (let* ((dfmls (new-decl-formals* decl))
+	   (dacts (mk-dactuals dfmls))
+	   (thinst (mk-modname (id (or (module decl) (current-theory)))
+		     nil nil nil dacts)))
+      (values dfmls dacts thinst))))
+
+(defmethod new-decl-formals ((imp importing))
+  nil)
+
+(defun new-decl-formals* (decl)
+  (new-decl-formals** (decl-formals decl)))
+
+(defun new-decl-formals** (dfmls &optional nfmls)
+  (if (null dfmls)
+      (nreverse nfmls)
+      (new-decl-formals**
+       (cdr dfmls)
+       (with-added-decls nfmls
+	 (cons (new-decl-formal (car dfmls)) nfmls)))))
+
+(defmethod new-decl-formal ((fml decl-formal-type) &optional id)
+  (let ((nfml (copy fml
+		'id (or id (id fml))
+		'typechecked? nil
+		'type nil
+		'type-value nil
+		'associated-decl nil)))
+    (typecheck* nfml nil nil nil)
+    nfml))
+
+;;; If just an id, create a formal-type-decl - no need for subtype at the
+;;; moment (this is just for reduce with "range" parameter)
+(defmethod new-decl-formal ((fml symbol) &optional id)
+  (declare (ignore id))
+  (let ((nfml (make-instance 'decl-formal-type
+		:id fml
+		:module (current-theory))))
+    (typecheck* nfml nil nil nil)
+    nfml))
 
 ;;; Typechecking formal declarations - if it is a type, a type-name
 ;;; instance is created, otherwise the declared type is typechecked.
@@ -1102,17 +1159,14 @@
 (defmethod typecheck* ((decl type-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (when (formals decl)
-    (type-error decl
-      "Uninterpreted types may not have parameters"))
+    (type-error decl "Uninterpreted types may not have parameters"))
   (check-duplication decl)
   (setf (type-value decl)
 	(let ((tn (if *generating-adt*
 		      (mk-adt-type-name (id decl) nil nil nil
-					*generating-adt* (formal-params decl))
-		      (progn (when (formal-params decl)
-			       (break "typecheck* (type-decl) formal-params"))
-		      (mk-type-name (id decl))))))
-	  ;; If there are formal-params, the dactuals need to be typechecked
+					*generating-adt* (decl-formals decl))
+		      (mk-type-name (id decl)))))
+	  ;; If there are decl-formals, the dactuals need to be typechecked
 	  (when (dactuals tn)
 	    (typecheck* (dactuals tn) nil nil nil))
 	  (let ((thinst (copy (current-theory-name))))
@@ -1151,8 +1205,9 @@
   (check-type-application-formals decl)
   (check-duplication decl)
   (let* ((tn (mk-type-name (id decl)))
-	 (res (mk-resolution decl (current-theory-name) tn)))
-    (setf (resolutions tn) (list res))
+	 ;;(res (mk-resolution decl (current-theory-name) tn))
+	 )
+    ;;(setf (resolutions tn) (list res))
     (let* ((*bound-variables* (apply #'append (formals decl)))
 	   (*tcc-conditions* (add-formals-to-tcc-conditions (formals decl)))
 	   (ptype (if (formals decl)
@@ -1163,6 +1218,7 @@
 		      tn))
 	   (tval (type-def-decl-value decl ptype)))
       (setf (type-value decl) tval)
+      (setf (resolutions tn) (list (mk-resolution decl (current-theory-name) tval)))
       (typecase (type-expr decl)
 	(enumtype (typecheck* (type-expr decl) nil nil nil))
 	(subtype (when (typep (predicate (type-expr decl)) 'expr)
@@ -1352,12 +1408,16 @@
   (when (formals decl)
     (typecheck* (formals decl) nil nil nil)
     (set-formals-types (apply #'append (formals decl))))
+  (assert (fully-instantiated? (formals decl)))
   (let* ((*bound-variables* (apply #'append (formals decl)))
 	 (rtype (let ((*generate-tccs* 'none))
 		  (typecheck* (declared-type decl) nil nil nil))))
     (set-type (declared-type decl) nil)
+    (assert (fully-instantiated? (declared-type decl)))
+    (assert (fully-instantiated? rtype))
     (setf (type decl)
 	  (make-formals-funtype (formals decl) rtype))
+    (assert (fully-instantiated? (type decl)))
     (assert (null (freevars (type decl))))
     (unless (typep decl 'adt-constructor-decl)
       (if (definition decl)
@@ -1489,6 +1549,7 @@
       ;; See check-set-type-recursive-operator for how recursive conversions
       ;; are generated.
       (typecheck* (definition decl) rtype nil nil))
+    (assert (fully-instantiated? (definition decl)))
     (make-def-axiom decl))
   decl)
 
@@ -2612,7 +2673,7 @@
 (defmethod typecheck* ((type type-name) expected kind arguments)
   (declare (ignore expected kind))
   (call-next-method type nil 'type arguments)
-  ;;(set-type type nil)
+  (set-type type nil)
   (let ((tval (type (resolution type))))
     (when (and (formals (declaration (resolution type)))
 	       (null arguments))
@@ -3875,7 +3936,12 @@
 	(unless (or (and (typep y 'type-def-decl)
 			 (typep (type-expr y) 'recursive-type))
 		    (and (typep y 'type-decl)
-			 (not (types-with-same-signatures x y))))
+			 (not (types-with-same-signatures x y)))
+		    (and (typep y 'decl-formal-type)
+			 (typep x 'decl-formal-type)
+			 (or (null (associated-decl x))
+			     (null (associated-decl y))
+			     (not (eq (associated-decl x) (associated-decl y))))))
 	  (type-error x
 	    "Name ~a already in use as a ~a" (id x) (kind-of x))))))
 

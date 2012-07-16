@@ -224,11 +224,12 @@
 (defmethod prove-decl ((decl formula-decl) &key strategy context)
   (ensure-default-proof decl)
   (unless (closed-definition decl)
-    (let ((*current-context* (context decl))
-	  (*current-theory* (module decl))
-	  (*generate-tccs* 'none))
-      (setf (closed-definition decl)
-	    (universal-closure (definition decl)))))
+      (let ((*current-context* (context decl))
+	    (*current-theory* (module decl))
+	    (*generate-tccs* 'none))
+	(with-current-decl decl
+	  (setf (closed-definition decl)
+		(universal-closure (definition decl))))))
   (let* ((init-real-time (get-internal-real-time))
 	 (init-run-time (get-run-time))
 	 (*skovar-counter* nil)
@@ -284,32 +285,33 @@
     (newcounter *skovar-counter*)
     (newcounter *skofun-counter*)
     (newcounter *bind-counter*)
-    (let* ((top-formula (closed-definition decl))
-	   (s-form (make-instance 's-formula :formula top-formula))
-	   (sequent (make-instance 'sequent :s-forms (list s-form)))
-	   (*init-dp-state* (dpi-empty-state))
-	   (*dp-state* (dpi-push-state *init-dp-state*))
-	   (*top-dp-state* (dpi-push-state *init-dp-state*))
-	   (*top-proofstate*
-	    (make-instance 'top-proofstate
-	      :current-goal sequent
-	      :label (string (id decl))
-	      :strategy (if strategy
-			    strategy
-			    (query*-step))
-	      :context *current-context*
-	      :dp-state *dp-state*
-	      :justification (justification decl)
-	      :declaration decl
-	      :current-auto-rewrites auto-rewrites-info)))
-      (before-prove*)
-      (unwind-protect
-	   (dpi-start #'prove-decl-body)
-	(after-prove*)
-	(dpi-end *top-proofstate*)
-	(unless *recursive-prove-decl-call*
-	  (save-proof-info decl init-real-time init-run-time)))
-      *top-proofstate*)))
+    (with-current-decl decl
+      (let* ((top-formula (closed-definition decl))
+	     (s-form (make-instance 's-formula :formula top-formula))
+	     (sequent (make-instance 'sequent :s-forms (list s-form)))
+	     (*init-dp-state* (dpi-empty-state))
+	     (*dp-state* (dpi-push-state *init-dp-state*))
+	     (*top-dp-state* (dpi-push-state *init-dp-state*))
+	     (*top-proofstate*
+	      (make-instance 'top-proofstate
+		:current-goal sequent
+		:label (string (id decl))
+		:strategy (if strategy
+			      strategy
+			      (query*-step))
+		:context *current-context*
+		:dp-state *dp-state*
+		:justification (justification decl)
+		:declaration decl
+		:current-auto-rewrites auto-rewrites-info)))
+	(before-prove*)
+	(unwind-protect
+	    (dpi-start #'prove-decl-body)
+	  (after-prove*)
+	  (dpi-end *top-proofstate*)
+	  (unless *recursive-prove-decl-call*
+	    (save-proof-info decl init-real-time init-run-time)))
+	*top-proofstate*))))
 
 (defun determine-decision-procedure (decl)
   (or (if (or *force-dp*

@@ -465,7 +465,7 @@
   (mk-funtype type *boolean*))
 
 (defun mk-tupletype (types)
-  (assert (and (listp types) (cdr types)))
+  (assert (and (listp types) (or (null types) (cdr types))))
   (make-instance 'tupletype :types types))
 
 (defun mk-struct-sub-tupletype (type types)
@@ -1373,6 +1373,9 @@
       (typecheck* (mk-list-expr exprs) type nil nil)
       (let ((ctype (reduce #'compatible-exprs-type exprs)))
 	(typecheck* (mk-list-expr exprs) ctype nil nil))))
+
+(defun compatible-exprs-type (ex1 ex2)
+  (compatible-type ex1 ex2))
 
 (let ((numhash (make-hash-table :test #'eql)))
   (pushnew 'clrnumhash *load-prelude-hook*)
