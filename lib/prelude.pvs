@@ -46,8 +46,8 @@ booleans: THEORY
   boolean: NONEMPTY_TYPE
   bool: NONEMPTY_TYPE = boolean
   FALSE, TRUE: bool
-  NOT: [bool -> bool]
-  AND, &, OR, IMPLIES, =>, WHEN, IFF, <=>: [bool, bool -> bool]
+  NOT, ¬: [bool -> bool]
+  AND, &, ∧, OR, ∨, IMPLIES, =>, WHEN, IFF, <=>: [bool, bool -> bool]
 
  END booleans
 
@@ -67,7 +67,8 @@ notequal[T: TYPE]: THEORY
  BEGIN
   x, y: VAR T
 
-  /=(x, y): boolean = NOT (x = y)
+  /=(x, y): boolean = NOT (x = y);
+  ≠: [T, T -> bool] = /=
  END notequal
 
 

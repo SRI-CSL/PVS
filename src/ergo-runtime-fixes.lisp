@@ -65,11 +65,11 @@
 (in-package :pvs)
 
 (defparameter *infix-operators*
-  '(O IFF <=> IMPLIES => WHEN OR \\/ AND /\\ & XOR ANDTHEN ORELSE
-      ^ + - * / ++ ~ ** // ^^ \|- \|= <\| \|> = /= == < <= > >=
-      << >> <<= >>= |#| @@ |##|))
+  '(O ∘ IFF <=> IMPLIES => WHEN OR ∨ \\/ AND /\\ ∧ & XOR ANDTHEN ORELSE
+      ^ + - * / ++ ~ ** // ^^ \|- ⊢ \|= ⊨ <\| \|> = /= ≠ == < <= > >=
+      << >> <<= >>= |#| @@ |##| ⊕))
 
-(defparameter *unary-operators* '(NOT + - ~ [] <>))
+(defparameter *unary-operators* '(NOT ¬ + - ~ □ ◇ <>))
 
 (defvar *elsif-places* nil)
 

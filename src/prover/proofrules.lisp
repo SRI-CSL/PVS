@@ -923,7 +923,8 @@
 		   (not (assoc form rest :test #'tc-eq)))
 	      (cons (list form
 			  (subst-mod-params resolution thinst
-					    (module (declaration resolution)))
+					    (module (declaration resolution))
+					    (declaration resolution))
 			  nsubalist)
 		    rest)
 	      rest)))))
@@ -1157,6 +1158,7 @@ The following are not possible variables: ~{~a,~}" badnames)
 			 (error-format-if "~%Couldn't find a definition or lemma named ~a" name)
 			 (values 'X nil))
 			((null form)
+			 (break "OK")
 			 (error-format-if "~%Found ~a resolutions for ~a relative to the substitution.
 Please check substitution, provide actual parameters for lemma name,
 or supply more substitutions."

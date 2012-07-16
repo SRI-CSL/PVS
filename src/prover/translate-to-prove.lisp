@@ -428,7 +428,7 @@
 	     (let ((op (interpretation operator)))
 	       (cond ((and (eq op 'DIFFERENCE) (singleton? args))
 		      (cons 'MINUS args))
-		     ((eq op '/=)
+		     ((memq op '(/= ≠))
 		      (list 'not (cons 'equal args)))
 		     ((and (eq op 'not)
 			   (consp (car args))
@@ -495,13 +495,13 @@
 
 
 (defmethod operator ((expr lambda-expr))
-  'LAMBDA)
+  (or (op expr) 'LAMBDA))
 
 (defmethod operator ((expr forall-expr))
-  'FORALL)
+  (or (op expr) 'FORALL))
 
 (defmethod operator ((expr exists-expr))
-  'EXISTS)
+  (or (op expr) 'EXISTS))
 
 (defvar *integer-pred* nil)
 
@@ -772,6 +772,7 @@
 (defparameter *interpreted-names*
   (list (mk-name '= nil '|equalities|)
 	(mk-name '/= nil '|notequal|)
+	(mk-name '≠ nil '|notequal|)
 	(mk-name 'IMPLIES nil '|booleans|)
 	(mk-name 'AND nil '|booleans|)
 	(mk-name 'OR nil '|booleans|)

@@ -68,43 +68,60 @@
 
 (defun make-subtype-tcc-decl (expr incs)
   (assert (every #'type incs))
-  (let* ((*generate-tccs* 'none)
-	 (conc (make!-conjunction* incs))
-	 (*no-expected* nil)
-	 (*bound-variables* *keep-unbound*)
-	 (true-conc? (tcc-evaluates-to-true conc))
-	 (tform (unless true-conc? (add-tcc-conditions conc)))
-	 (uform (cond ((or true-conc? (tcc-evaluates-to-true tform))
-		       *true*)
-		      (*simplify-tccs*
-		       (pseudo-normalize tform))
-		      (t tform)))
-	 (id (make-tcc-name expr)))
-    (when (and (forall-expr? uform)
-	       (duplicates? (bindings uform) :key #'id))
-      (break "repeated bindings in make-subtype-tcc-decl"))
-    (when (some #'(lambda (fv) (not (memq (declaration fv) *keep-unbound*)))
-		(freevars uform))
-      (break "make-subtype-tcc-decl freevars"))
-    (assert (tc-eq (find-supertype (type uform)) *boolean*))
-    (unless (tc-eq uform *true*)
-      (when (and *false-tcc-error-flag*
-		 (tc-eq uform *false*))
-	(type-error expr "Subtype TCC for ~a simplifies to FALSE~@[:~2%  ~a~]"
-		    expr (unless (tc-eq uform *false*) uform)))
-      (typecheck* (cond ((and *recursive-subtype-term*
-			      (occurs-in-eq *recursive-subtype-term* incs))
-			 (mk-termination-tcc id uform))
-			((equal (cdr (assq expr *compatible-pred-reason*))
-				"judgement")
-			 (mk-judgement-tcc id uform))
-			((rec-application-judgement? (current-declaration))
-			 ;; The below doesn't work - expr is not known a priori
-			 ;;(equal (cdr (assq expr *compatible-pred-reason*))
-			 ;;"recursive-judgement")
-			 (mk-recursive-judgement-tcc id uform))
-			(t (mk-subtype-tcc id uform)))
-		  nil nil nil))))
+  (multiple-value-bind (dfmls dacts thinst)
+      (new-decl-formals (current-declaration))
+    (let* ((*generate-tccs* 'none)
+	   (cdecl (current-declaration))
+	   (cth (module cdecl))
+	   (id (make-tcc-name))
+	   (tccdecl (cond ((and *recursive-subtype-term*
+				(occurs-in-eq *recursive-subtype-term* incs))
+			   (mk-termination-tcc id nil dfmls))
+			  ((equal (cdr (assq expr *compatible-pred-reason*))
+				  "judgement")
+			   (mk-judgement-tcc id nil dfmls))
+			  ((rec-application-judgement? cdecl)
+			   ;; The below doesn't work
+			   ;; (equal (cdr (assq expr *compatible-pred-reason*))
+			   ;;        "recursive-judgement")
+			   (mk-recursive-judgement-tcc id nil dfmls))
+			  (t (mk-subtype-tcc id nil dfmls))))
+	   (conc (make!-conjunction* incs))
+	   (*no-expected* nil)
+	   (*bound-variables* *keep-unbound*)
+	   (true-conc? (tcc-evaluates-to-true conc))
+	   (tform (unless true-conc?
+		    (add-tcc-conditions conc)))
+	   (sform (unless true-conc?
+		    (if thinst
+			(with-current-decl tccdecl
+			  (subst-mod-params tform thinst cth cdecl))
+			tform)))
+	   (uform (cond ((or true-conc? (tcc-evaluates-to-true sform))
+			 *true*)
+			(*simplify-tccs*
+			 (pseudo-normalize sform))
+			(t sform))))
+      (assert (every #'(lambda (fp)
+			 (or (memq fp (formals-sans-usings (current-theory)))
+			     (memq fp dfmls)
+			     (when *in-checker*
+			       (memq fp (decl-formals (current-declaration))))))
+		     (free-params uform)))
+      (when (and (forall-expr? uform)
+		 (duplicates? (bindings uform) :key #'id))
+	(break "repeated bindings in make-subtype-tcc-decl"))
+      (when (some #'(lambda (fv) (not (memq (declaration fv) *keep-unbound*)))
+		  (freevars uform))
+	(break "make-subtype-tcc-decl freevars"))
+      (assert (tc-eq (find-supertype (type uform)) *boolean*))
+      (unless (tc-eq uform *true*)
+	(when (and *false-tcc-error-flag*
+		   (tc-eq uform *false*))
+	  (type-error expr "Subtype TCC for ~a simplifies to FALSE~@[:~2%  ~a~]"
+		      expr (unless (tc-eq uform *false*) uform)))
+	(setf (definition tccdecl) uform)
+	(typecheck* tccdecl nil nil nil)))))
 
 ;; (defun existing-tcc-subsumes (tcc)
 ;;   (some-tcc-subsumes tcc (visible-tccs)))
@@ -659,19 +676,23 @@
 	(add-tcc-comment 'termination ex nil))))
 
 (defun make-recursive-tcc-decl (name arguments)
-    (when (null arguments)
-      (type-error name
-	"Recursive definition occurrence ~a must have arguments" name))
+  (when (null arguments)
+    (type-error name
+      "Recursive definition occurrence ~a must have arguments" name))
+  (multiple-value-bind (dfmls dacts thinst)
+      (new-decl-formals (current-declaration))
     (let* ((*generate-tccs* 'none)
-	   (meas (measure (declaration *current-context*)))
-	   (ordering (or (copy (ordering (declaration *current-context*)))
-			 '<))
-	   (appl1 (mk-recursive-application
-		   meas
-		   (outer-arguments (declaration *current-context*))))
-	   (appl2 (mk-recursive-application
-		   meas
-		   arguments))
+	   (cdecl (current-declaration))
+	   (cth (module cdecl))
+	   (id (make-tcc-name))
+	   (tccdecl (mk-termination-tcc id nil dfmls))
+	   (meas (measure cdecl))
+	   (ordering
+	    (or (when (ordering cdecl)
+		  (copy (ordering cdecl)))
+		'<))
+	   (appl1 (mk-recursive-application meas (outer-arguments cdecl)))
+	   (appl2 (mk-recursive-application meas arguments))
 	   (relterm (beta-reduce
 		     (typecheck* (mk-application ordering appl2 appl1)
 				 *boolean* nil nil)))
@@ -681,21 +702,25 @@
 				     *assert-typepreds*)
 				   :test #'tc-eq)
 			   (tcc-evaluates-to-true relterm)))
-	   (form (unless true-conc? (add-tcc-conditions relterm)))
+	   (form (unless true-conc?
+		   (add-tcc-conditions relterm)))
 	   (uform (cond ((or true-conc? (tcc-evaluates-to-true form))
 			 *true*)
 			((and *simplify-tccs*
 			      (not (or *in-checker* *in-evaluator*)))
 			 (pseudo-normalize form))
 			(t (beta-reduce form))))
-	   (id (make-tcc-name)))
+	   (suform (if thinst
+		       (subst-mod-params uform thinst cth cdecl)
+		       uform)))
       (unless (tc-eq uform *true*)
 	(when (and *false-tcc-error-flag*
-		   (tc-eq uform *false*))
+		   (tc-eq suform *false*))
 	  (type-error name
 	    "Termination TCC for this expression simplifies to false:~2%  ~a"
 	    form))
-	(typecheck* (mk-termination-tcc id uform) nil nil nil))))
+	(setf (definition tccdecl) suform)
+	(typecheck* tccdecl nil nil nil)))))
 
 (defun mk-recursive-application (op args)
   (if (null args)
@@ -942,17 +967,22 @@
       ndecl)))
 
 (defun make-existence-tcc-decl (type fclass)
-  (let* ((*generate-tccs* 'none)
-	 (stype (raise-actuals type nil))
-	 (var (make-new-variable '|x| type))
-	 (form (make!-exists-expr (list (mk-bind-decl var stype stype))
-				  *true*))
-	 (uform (add-tcc-conditions form))
-	 (id (make-tcc-name)))
-    (typecheck* (if (eq fclass 'OBLIGATION)
-		    (mk-existence-tcc id uform)
-		    (mk-formula-decl id uform fclass))
-		nil nil nil)))
+  (multiple-value-bind (dfmls dacts thinst)
+      (new-decl-formals (current-declaration))
+    (let* ((*generate-tccs* 'none)
+	   (stype (raise-actuals type nil))
+	   (var (make-new-variable '|x| type))
+	   (id (make-tcc-name))
+	   (edecl (if (eq fclass 'OBLIGATION)
+		      (mk-existence-tcc id nil dfmls)
+		      (mk-formula-decl id nil fclass nil dfmls)))
+	   (form (with-current-decl edecl
+		   (make!-exists-expr (list (mk-bind-decl var stype stype))
+				      *true*)))
+	   (uform (with-current-decl edecl
+		    (add-tcc-conditions form))))
+      (setf (definition edecl) uform)
+      (typecheck* edecl nil nil nil))))
 
 (defun make-domain-tcc-bindings (types type &optional bindings)
   (if (null types)
@@ -1034,6 +1064,7 @@
   (type (car (bindings ex))))
 
 (defun make-assuming-tcc-decl (ass modinst)
+  (when (decl-formals (current-declaration)) (break "make-assuming-tcc-decl"))
   (unless (closed-definition ass)
     (let* ((*in-checker* nil)
 	   (*current-context* (context ass)))
@@ -1173,6 +1204,7 @@
   nil)
 
 (defun make-mapped-axiom-tcc-decl (axiom modinst mod)
+  (when (decl-formals (current-declaration)) (break "make-mapped-axiom-tcc-decl"))
   (let* ((*generate-tccs* 'none)
 	 (*generating-mapped-axiom-tcc* t))
     (unless (closed-definition axiom)
@@ -1213,6 +1245,7 @@
 	(generate-selections-tcc unselected expr adt)))))
 
 (defun generate-selections-tcc (constructors expr adt)
+  (when (decl-formals (current-declaration)) (break "generate-selections-tcc"))
   (let* ((*generate-tccs* 'none)
 	 (id (make-tcc-name))
 	 (form (typecheck* (mk-application 'NOT
@@ -1411,6 +1444,7 @@
 	(add-tcc-comment 'actuals act nil))))
 
 (defun make-actuals-tcc-decl (act mact)
+  (when (decl-formals (current-declaration)) (break "make-actuals-tcc-decl"))
   (let* ((*generate-tccs* 'none)
 	 (conc (typecheck* (make-actuals-equality act mact)
 			   *boolean* nil nil))
@@ -1629,6 +1663,7 @@
       (add-tcc-comment 'disjointness expr nil))))
 
 (defun make-cond-disjoint-tcc (expr conditions values)
+  (when (decl-formals (current-declaration)) (break "make-cond-disjoint-tcc"))
   (let* ((*generate-tccs* 'none)
 	 (conc (make-disjoint-cond-property conditions values)))
     (when conc
@@ -1687,6 +1722,7 @@
       (add-tcc-comment 'coverage expr nil))))
 
 (defun make-cond-coverage-tcc (expr conditions)
+  (when (decl-formals (current-declaration)) (break "make-cond-coverage-tcc"))
   (let* ((*generate-tccs* 'none)
 	 (conc (make!-disjunction* conditions))
 	 (true-conc? (tcc-evaluates-to-true conc))
