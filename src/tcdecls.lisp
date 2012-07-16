@@ -41,6 +41,8 @@
   (when decls
     (let ((decl (car decls)))
       (setf (current-declaration) decl)
+      (when (cdr (get-declarations 'IMPLIES))
+	(break "typecheck-decls IMPLIES"))
       (typecase decl
 	(declaration (typecheck-decl decl))
 	(importing (tcdebug "~%    Processing importing")

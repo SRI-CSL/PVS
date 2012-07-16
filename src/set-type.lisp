@@ -1708,10 +1708,11 @@ required a context.")
 						(range (type res))
 						(type res))
 					    type)
-	    (when (and rtype
-		       (singleton? thinsts)
-		       (eq (id (car thinsts)) (id (module (declaration res))))
-		       (compatible? rtype type))
+	    (when (or (and rtype
+			   (singleton? thinsts)
+			   (eq (id (car thinsts)) (id (module (declaration res))))
+			   (compatible? rtype type))
+		      (break "instantiate-sel-resolution"))
 	      (make-resolution (declaration res) (car thinsts))))))))
 
 (defmethod instantiate-sel-resolutions ((type cotupletype) constr args)

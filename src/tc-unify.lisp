@@ -182,19 +182,18 @@
 		      (tc-match* (car args) (car fargs) bindings)))))
 
 (defmethod tc-match* :around ((arg type-expr) farg bindings)
-  (with-slots (print-type) arg
-    (when bindings
-      (if (tc-eq arg farg)
-	  bindings
-	  (let ((nbindings (if (or (free-params farg)
-				   (free-params arg))
-			       (call-next-method)
-			       (when (and farg
-					  (compatible? (find-supertype arg)
-						       (find-supertype farg)))
-				 bindings))))
-	    (when nbindings
-	      (tc-match-print-type print-type farg nbindings)))))))
+  (when bindings
+    (if (tc-eq arg farg)
+	bindings
+	(let ((nbindings (if (or (free-params farg)
+				 (free-params arg))
+			     (call-next-method)
+			     (when (and farg
+					(compatible? (find-supertype arg)
+						     (find-supertype farg)))
+			       bindings))))
+	  (when nbindings
+	    (tc-match-print-type (print-type arg) farg nbindings))))))
 
 (defmethod tc-match-print-type ((ptype name) farg nbindings)
   (declare (ignore farg))
