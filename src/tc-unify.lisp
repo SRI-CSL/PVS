@@ -777,11 +777,13 @@
 		    (tc-match* a1 a2 bindings))
 		   (a1
 		    (tc-match-actuals a1 (formals-sans-usings
-					  (module (declaration n2)))
+					  (or (module (declaration n2))
+					      (current-theory)))
 				      bindings))
 		   (a2
 		    (tc-match-actuals a2 (formals-sans-usings
-					  (module (declaration n1)))
+					  (or (module (declaration n1))
+					      (current-theory)))
 				      bindings)))))
 	  (t (call-next-method))))))
 
