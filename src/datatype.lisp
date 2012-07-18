@@ -1045,7 +1045,7 @@ generated")
 	 (acc-decls (cdar entry)))
     (setf (declared-type acc-decl) acc-type)
     (when (cdr acc-decls)
-      (change-class 'shared-adt-accessor-decl acc-decl
+      (change-class acc-decl 'shared-adt-accessor-decl
 	:constructors (mapcar #'(lambda (d)
 				  (id (find d (constructors adt)
 					    :key #'arguments :test #'memq)))
