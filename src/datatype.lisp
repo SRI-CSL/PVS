@@ -424,8 +424,20 @@ generated")
 		 (copy avar) (copy bvar)))))
 	(t (mk-application (mk-name-expr '=) (copy avar) (copy bvar)))))
 
+(defmethod bisimulation-arg-value ((te datatype-subtype) avar bvar rvar adt)
+  (bisimulation-arg-value (declared-type te) avar bvar rvar adt))
+
 (defmethod bisimulation-arg-value ((te subtype) avar bvar rvar adt)
-  (bisimulation-arg-value (supertype te) avar bvar rvar adt))
+  (if (finite-set-type? te)
+      (let ((rel (bisimulation-rel (supertype te) rvar adt)))
+	(if (and (name-expr? rel) (eq (id rel) '=))
+	    (mk-application (mk-name-expr '=) (copy avar) (copy bvar))
+	    (mk-application (let* ((name (mk-name-expr '|every|))
+				   (pname (pc-parse (unparse name :string t)
+					    'expr)))
+			      (mk-application pname rel))
+	      (copy avar) (copy bvar))))
+      (bisimulation-arg-value (supertype te) avar bvar rvar adt)))
 
 (defmethod bisimulation-arg-value ((te funtype) avar bvar rvar adt)
   (let* ((fid (make-new-variable '|x| (list adt avar bvar rvar)))
@@ -517,8 +529,19 @@ generated")
 	       (mk-simple-every-application te adt rels))))
 	(t (mk-name-expr '=))))
 
+(defmethod bisimulation-rel ((te datatype-subtype) rvar adt)
+  (bisimulation-rel (declared-type te) rvar adt))
+
 (defmethod bisimulation-rel ((te subtype) rvar adt)
-  (bisimulation-rel (supertype te) rvar adt))
+  (if (finite-set-type? te)
+      (let ((rel (bisimulation-rel (supertype te) rvar adt)))
+	(if (and (name-expr? rel) (eq (id rel) '=))
+	    (mk-name-expr '=)
+	    (let* ((name (mk-name-expr '|every|))
+		   (pname (pc-parse (unparse name :string t)
+			    'expr)))
+	      (mk-application pname rel))))
+      (bisimulation-rel (supertype te) rvar adt)))
 
 (defmethod bisimulation-rel ((te funtype) rvar adt)
   (let* ((fid (make-new-variable '|x| te))
@@ -898,6 +921,11 @@ generated")
       (setf (acc-decls c)
 	    (find-corresponding-acc-decls
 	     (arguments c) common-accessors acc-decls)))
+    (mapc #'(lambda (entry acc-decl)
+	      (when (cddr (car entry))
+		(make-common-accessor-subtype-judgements
+		 (cdar entry) (domain (type acc-decl)) adt)))
+	  common-accessors acc-decls)
     ;;(generate-common-accessor-evel-defns acc-decls adt)
     acc-decls))
 
@@ -962,8 +990,8 @@ generated")
 	 (acc-decl (mk-adt-accessor-decl (id (caaar entry)) acc-type
 					 adt (cdar entry))))
     (typecheck-adt-decl acc-decl)
-    (when (cddr (car entry))
-      (make-common-accessor-subtype-judgements (cdar entry) domain adt))
+    ;; (when (cddr (car entry))
+    ;;   (make-common-accessor-subtype-judgements (cdar entry) domain adt))
     acc-decl))
 
 (defun make-common-accessor-subtype-judgements (adtdecls domain adt)
@@ -1721,8 +1749,17 @@ generated")
 	   (cons (car acts) posacts)
 	   posacts))))
 
+(defmethod acc-induction-hypothesis* ((te datatype-subtype) indvar adt)
+  (acc-induction-hypothesis* (declared-type te)  indvar adt))
+
 (defmethod acc-induction-hypothesis* ((te subtype) indvar adt)
-  (acc-induction-hypothesis* (supertype te) indvar adt))
+  (if (finite-set-type? te)
+      (let* ((dom (domain (supertype te)))
+	     (pred (acc-induction-hypothesis* dom indvar adt)))
+	(if (or (everywhere-true? pred) (null pred))
+	    (mk-everywhere-true-function te)
+	    (mk-application '|every| pred)))
+      (acc-induction-hypothesis* (supertype te) indvar adt)))
 
 (defmethod acc-induction-hypothesis* ((te funtype) indvar adt)
   (let* ((fid (make-new-variable '|x| te))
@@ -1997,10 +2034,27 @@ generated")
 		    funid te adt (append funs (list (copy arg))))))))
 	(t (call-next-method))))
 
+(defmethod acc-predicate-selection (arg (te datatype-subtype) pvars
+					ptypes adt funid curried?)
+  (acc-predicate-selection arg (declared-type te) pvars
+			   ptypes adt funid curried?))
+
 (defmethod acc-predicate-selection (arg (te subtype) pvars ptypes adt
 					funid curried?)
-  (acc-predicate-selection arg (supertype te) pvars ptypes adt
-			   funid curried?))
+  (if (finite-set-type? te)
+      (let ((fun (acc-predicate-selection*
+		  (domain (supertype te)) pvars ptypes adt funid)))
+	(if (if (eq funid '|every|)
+		(everywhere-true? fun)
+		(everywhere-false? fun))
+	    (call-next-method)
+	    (if curried?
+		(mk-application (mk-predicate-application funid te adt (list fun))
+		  arg)
+		(mk-predicate-application
+		 funid te adt (cons fun (list (copy arg)))))))
+      (acc-predicate-selection arg (supertype te) pvars ptypes adt
+			       funid curried?)))
 
 (defmethod acc-predicate-selection (arg (te funtype) pvars ptypes adt
 					funid curried?)
@@ -2282,8 +2336,19 @@ generated")
 (defmethod acc-predicate-selection* ((te dep-binding) pvars ptypes adt funid)
   (acc-predicate-selection* (type te) pvars ptypes adt funid))
 
+(defmethod acc-predicate-selection* ((te datatype-subtype) pvars ptypes adt funid)
+  (acc-predicate-selection* (declared-type te) pvars ptypes adt funid))
+
 (defmethod acc-predicate-selection* ((te subtype) pvars ptypes adt funid)
-  (acc-predicate-selection* (find-adt-supertype te) pvars ptypes adt funid))
+  (if (finite-set-type? te)
+      (let ((fun (acc-predicate-selection*
+		  (domain (supertype te)) pvars ptypes adt funid)))
+	(if (if (eq funid '|every|)
+		(everywhere-true? fun)
+		(everywhere-false? fun))
+	    (call-next-method)
+	    (mk-predicate-application funid te adt (list fun))))
+      (acc-predicate-selection* (find-adt-supertype te) pvars ptypes adt funid)))
 
 (defmethod acc-predicate-selection* ((te type-expr) pvars ptypes adt funid)
   (declare (ignore pvars ptypes adt))
@@ -2311,7 +2376,8 @@ generated")
 	(generate-adt-map-formals fpairs)
 	(generate-adt-map-using fpairs adt)
 	(generate-adt-map fpairs adt)
-	(generate-adt-every-rel fpairs adt)))))
+	(catch 'no-every-rel
+	  (generate-adt-every-rel fpairs adt))))))
 
 (defun adt-map-formal-pairs (formals adt &optional pairs)
   (cond ((null formals)
@@ -2688,9 +2754,24 @@ generated")
   (and (print-type t2)
        (corresponding-formals t1 (print-type t2))))
 
+(defmethod acc-map-selection (arg (te datatype-subtype) pvars ptypes fpairs
+				  adt curried?)
+  (acc-map-selection arg (declared-type te) pvars ptypes fpairs adt curried?))
+
 (defmethod acc-map-selection (arg (te subtype) pvars ptypes fpairs
 				  adt curried?)
-  (acc-map-selection arg (supertype te) pvars ptypes fpairs adt curried?))
+  (if (finite-set-type? te)
+      (let* ((dom (raise-actuals (domain (supertype te))))
+	     (map (acc-map-selection* dom pvars ptypes fpairs adt)))
+	(if (identity-fun? map)
+	    (copy arg)
+	    (let* ((act (mk-actual dom))
+		   (mact (raise-actuals (subst-map-actuals act fpairs)))
+		   (mapname (mk-name-expr '|image| (list act mact))))
+	      (if curried?
+		  (mk-application (mk-application mapname map) (copy arg))
+		  (mk-application mapname map (copy arg))))))
+      (acc-map-selection arg (supertype te) pvars ptypes fpairs adt curried?)))
 
 (defmethod acc-map-selection (arg (te funtype) pvars ptypes fpairs
 				  adt curried?)
@@ -2829,8 +2910,17 @@ generated")
 	       (mk-map-application te fpairs adt maps))))
 	(t (mk-identity-fun te))))
 
+(defmethod acc-map-selection* ((te datatype-subtype) pvars ptypes fpairs adt)
+  (acc-map-selection* (declared-type te) pvars ptypes fpairs adt))
+
 (defmethod acc-map-selection* ((te subtype) pvars ptypes fpairs adt)
-  (acc-map-selection* (supertype te) pvars ptypes fpairs adt))
+  (if (finite-set-type? te)
+      (let ((map (acc-map-selection* (domain (supertype te))
+				     pvars ptypes fpairs adt)))
+	(if (identity-fun? map)
+	    (mk-identity-fun te)
+	    (mk-application '|image| map)))
+      (acc-map-selection* (supertype te) pvars ptypes fpairs adt)))
 
 (defmethod acc-map-selection* ((te funtype) pvars ptypes fpairs adt)
   (let* ((fid (make-new-variable '|x| te))
@@ -3161,10 +3251,30 @@ generated")
 	(adt-every-positive-actuals (cdr acts) (cdr aacts) (cdr bacts)
 				    pvars ptypes fpairs adt
 				    (cons lexp rels)))))
+
+(defmethod adt-every-rel ((te datatype-subtype) pvars avar bvar ptypes fpairs adt)
+  (adt-every-rel (declared-type te) pvars avar bvar ptypes fpairs adt))
   
 (defmethod adt-every-rel ((te subtype) pvars avar bvar ptypes fpairs adt)
-  (adt-every-rel
-   (supertype te) pvars avar bvar ptypes fpairs adt))
+  (if (and (finite-set-type? te)
+	   (occurs-in (adt-type-name adt) te))
+      ;; Can't generate an every relation in this case
+      (throw 'no-every-rel nil)
+      (adt-every-rel (supertype te) pvars avar bvar ptypes fpairs adt)))
+
+(defun adt-every-finset-actuals (dom adom bdom pvars ptypes fpairs adt)
+  (let* ((avid (make-new-variable '|u| adt))
+	 (bvid (make-new-variable '|v| adt))
+	 (atype (raise-actuals adom))
+	 (btype (raise-actuals bdom))
+	 (abd (make-bind-decl avid atype))
+	 (bbd (make-bind-decl bvid btype))
+	 (avar (make-variable-expr abd))
+	 (bvar (make-variable-expr bbd))
+	 (*bound-variables* (cons abd (cons bbd *bound-variables*)))
+	 (rel (adt-every-rel dom pvars avar bvar ptypes fpairs adt))
+	 (lexp (mk-lambda-expr (list abd bbd) rel)))
+    lexp))
 
 (defmethod adt-every-rel ((te funtype) pvars avar bvar ptypes fpairs adt)
   (let* ((fid (make-new-variable '|z| (list te avar bvar)))
@@ -3559,12 +3669,28 @@ generated")
 	  (acc-reduce-sel-acts (cdr acts) (cdr facts) fname red adt
 			       result))))
 
+(defmethod acc-reduce-selection (arg (te datatype-subtype) red fname fdom adt)
+  (acc-reduce-selection arg (declared-type te) red fname fdom adt))
+
 (defmethod acc-reduce-selection (arg (te subtype) red fname fdom adt)
-  (acc-reduce-selection arg (supertype te) red fname
-			(if (typep fdom '(and subtype (not datatype-subtype)))
-			    (supertype fdom)
-			    fdom)
-			adt))
+  (if (finite-set-type? te)
+      (let* ((dom (domain (supertype te)))
+	     (fsdom (if (finite-set-type? fdom)
+			(domain (supertype fdom))
+			(break "Look into this")))
+	     (fun (acc-reduce-selection* dom red fname fsdom adt)))
+	(if (identity-fun? fun)
+	    (copy arg)
+	    (let* ((appname (mk-name-expr '|image|
+			      (list (mk-actual dom) (mk-actual fsdom))))
+		   (pname (pc-parse (unparse appname :string t) 'expr)))
+	      (mk-application (mk-application pname fun)
+		(copy arg)))))
+      (acc-reduce-selection arg (supertype te) red fname
+			    (if (typep fdom '(and subtype (not datatype-subtype)))
+				(supertype fdom)
+				fdom)
+			    adt)))
 
 (defmethod acc-reduce-selection (arg (te funtype) red fname fdom adt)
   (let* ((fid (make-new-variable '|x| te))
@@ -3691,9 +3817,18 @@ generated")
 	       (mk-application* '|map| funs))))
 	(t (mk-identity-fun fte))))
 
+(defmethod acc-reduce-selection* ((te datatype-subtype) red fname fdom adt)
+  (acc-reduce-selection* (declared-type te) red fname fdom adt))
+
 (defmethod acc-reduce-selection* ((te subtype) red fname fdom adt)
-  (acc-reduce-selection* (find-supertype te) red fname
-			 (find-declared-adt-supertype fdom) adt))
+  (if (finite-set-type? te)
+      (let ((nfun (acc-reduce-selection*
+		   (domain (supertype te)) red fname fdom adt)))
+	(if (identity-fun? nfun)
+	    (mk-identity-fun te)
+	    (mk-application '|image| nfun)))
+      (acc-reduce-selection* (find-supertype te) red fname
+			     (find-declared-adt-supertype fdom) adt)))
 
 (defmethod acc-reduce-selection* ((te funtype) red fname fdom adt)
   (let* ((fid (make-new-variable '|x| te))
@@ -4027,6 +4162,9 @@ generated")
 				 (cons nfun result)))
 	  (acc-reduce-sel-acts2 adt-type (cdr acts) fname red result))))
 
+(defmethod acc-reduce-selection2 (arg (te datatype-subtype) red fname adt)
+  (acc-reduce-selection2 arg (declared-type te) red fname adt))
+
 (defmethod acc-reduce-selection2 (arg (te subtype) red fname adt)
   (acc-reduce-selection2 arg (supertype te) red fname adt))
 
@@ -4195,8 +4333,16 @@ generated")
 	       (mk-predicate-application '|some| te adt subs))))
 	(t (call-next-method))))
 
+(defmethod acc-subterm-selection* ((te datatype-subtype) xvar adt)
+  (acc-subterm-selection* (declared-type te) xvar adt))
+
 (defmethod acc-subterm-selection* ((te subtype) xvar adt)
-  (acc-subterm-selection* (supertype te) xvar adt))
+  (if (finite-set-type? te)
+      (let ((sub (acc-subterm-selection* (domain (supertype te)) xvar adt)))
+	(if (everywhere-false? sub)
+	    (call-next-method)
+	    (mk-predicate-application '|some| te adt (list sub))))
+      (acc-subterm-selection* (supertype te) xvar adt)))
 
 (defmethod acc-subterm-selection* ((te funtype) xvar adt)
   (let* ((zid (make-new-variable '|z| (list te xvar)))
@@ -4381,8 +4527,16 @@ generated")
 	       (mk-predicate-application '|some| te adt subs))))
 	(t (call-next-method))))
 
+(defmethod acc-<<-selection* ((te datatype-subtype) xvar adt)
+  (acc-<<-selection* (declared-type te) xvar adt))
+
 (defmethod acc-<<-selection* ((te subtype) xvar adt)
-  (acc-<<-selection* (supertype te) xvar adt))
+  (if (finite-set-type? te)
+      (let ((sub (acc-<<-selection* (domain (supertype te)) xvar adt)))
+	(if (everywhere-false? sub)
+	    (call-next-method)
+	    (mk-predicate-application '|some| te adt (list sub))))
+      (acc-<<-selection* (supertype te) xvar adt)))
 
 (defmethod acc-<<-selection* ((te funtype) xvar adt)
   (let* ((zid (make-new-variable '|z| (list te xvar)))
@@ -4579,6 +4733,10 @@ generated")
   "If set to T, then occurs-positively? will return nil if the type occurs in a
 function, tuple, or record type")
 
+(defvar *is-finite-pos* nil
+  "If t, indicates we are in a finite set, in which case we no longer care
+  about positivity.")
+
 (defun occurs-positively? (type1 type2)
   (let* ((*negative-occurrence* nil)
 	 (pos? (occurs-positively?* type1 type2 nil)))
@@ -4611,7 +4769,7 @@ function, tuple, or record type")
 
 (defmethod occurs-positively?* :around (type (te type-expr) none)
   (if (tc-eq type te)
-      (cond (none
+      (cond ((and none (not *is-finite-pos*))
 	     (setq *negative-occurrence* te)
 	     nil)
 	    (t t))
@@ -4641,14 +4799,36 @@ function, tuple, or record type")
       (occurs-positively?* type (actuals te) t)))
 
 (defmethod occurs-positively?* (type (te datatype-subtype) none)
-  (occurs-positively?* type (supertype te) none))
+  (occurs-positively?* type (declared-type te) none))
 
 (defmethod occurs-positively?* (type (te subtype) none)
-  (and (occurs-positively?* type (supertype te) none)
-       (occurs-positively?* type (predicate te) none)))
+  (let ((*is-finite-pos* (or *is-finite-pos* (finite-set-type? te))))
+    (and (occurs-positively?* type (supertype te) none)
+	 (occurs-positively?* type (predicate te) none))))
+
+(defmethod finite-set-type? ((te subtype))
+  (and (set-type? (supertype te))
+       (is-finite-predicate? (predicate te))))
+
+(defmethod finite-set-type? ((te type-expr))
+  nil)
+
+(defmethod set-type? ((te funtype))
+  (tc-eq (range te) *boolean*))
+
+(defmethod set-type? ((te type-expr))
+  nil)
+
+(defmethod is-finite-predicate? ((ex name-expr))
+  (and (eq (id (declaration ex)) '|is_finite|)
+       (eq (id (module-instance ex)) '|finite_sets|)))
+
+(defmethod is-finite-predicate? ((ex expr))
+  nil)
 
 (defmethod occurs-positively?* (type (te funtype) none)
-  (and (occurs-positively?* type (range te) (or *simple-pos* none))
+  (and (occurs-positively?* type (range te)
+			    (or (and (not *is-finite-pos*) *simple-pos*) none))
        (occurs-positively?* type (domain te) t)))
 
 (defmethod occurs-positively?* (type (te tupletype) none)
@@ -4669,7 +4849,8 @@ function, tuple, or record type")
 (defvar *adt-recursive-names* nil)
 
 (defmethod occurs-positively?* (type (ex name-expr) none)
-  (or (member ex *adt-recursive-names* :test #'tc-eq)
+  (or *is-finite-pos*
+      (member ex *adt-recursive-names* :test #'tc-eq)
       (not (occurs-in type (actuals (module-instance ex))))
       (let* ((res (resolution ex))
 	     (decl (declaration res))
@@ -4684,12 +4865,14 @@ function, tuple, or record type")
 		      (append (mapcar #'make-variable-expr (bindings def))
 			      *adt-recursive-names*)
 		      *adt-recursive-names*)))
+	    (or
 	    (occurs-positively?*
 	     type
 	     (if (typep def 'binding-expr)
 		 (args2 (expression def))
 		 (args2 def))
-	     none))))))
+	     none)
+	    (break "2")))))))
 
 (defmethod occurs-positively?* (type (ex adt-name-expr) none)
   (let ((adt (adt ex)))
@@ -4864,6 +5047,9 @@ function, tuple, or record type")
   (declare (ignore fpairs adt))
   (mk-application* '|map| maps))
 
+(defmethod mk-map-application ((te datatype-subtype) fpairs adt maps)
+  (mk-map-application (declared-type te) fpairs adt maps))
+
 (defmethod mk-map-application ((te subtype) fpairs adt maps)
   (mk-map-application (supertype te) fpairs adt maps))
 
@@ -5002,16 +5188,18 @@ function, tuple, or record type")
 		    codt dom)))
 
 (defun generate-codt-structure-accessor-type (type codtype codt dom)
-  (gensubst type
-    #'(lambda (te) (if (subtype-of? (typecheck te) codtype)
-		       (typecheck (mk-type-name dom))
-		       (generate-codt-structure-accessor-type
-			(find-supertype (typecheck te)) codtype codt dom)))
-    #'(lambda (te) (and (type-expr? te)
-			(not (expr-as-type? te))
-			(or (subtype-of? (typecheck te) codtype)
-			    (and (subtype? te)
-				 (adt-type-name? (find-supertype (typecheck te)))))))))
+  (let ((*dont-expand-adt-subtypes* t))
+    (gensubst type
+      #'(lambda (te) (if (subtype-of? (typecheck te) codtype)
+			 (typecheck (mk-type-name dom))
+			 (generate-codt-structure-accessor-type
+			  (find-supertype (typecheck te)) codtype codt dom)))
+      #'(lambda (te) (and (type-expr? te)
+			  (not (expr-as-type? te))
+			  (let ((tval (typecheck te)))
+			    (or (subtype-of? tval codtype)
+				(and (subtype? te)
+				     (adt-type-name? (find-supertype tval))))))))))
 
 (defun generate-codt-structure-subtypes (codt)
   (mapcar #'(lambda (st)
@@ -5050,10 +5238,11 @@ function, tuple, or record type")
 		 (constructors struct) (constructors codt))))))
 	 (*adt-vars* (make-hash-table :test #'eq)))
     (generate-adt-vars struct)
-    (let* ((precases (mapcar #'(lambda (c)
+    (let* ((fpairs (acons (declaration dtype) (declaration codtinst) nil))
+	   (precases (mapcar #'(lambda (c)
 				 (generate-adt-map-selection
 				  c (list coreduce-op) (list dtype)
-				  (acons dtype codtinst nil) struct
+				  fpairs struct
 				  (adt-type-name struct) t))
 		       (constructors struct)))
 	   (cases (mk-cases-expr op-xvar
