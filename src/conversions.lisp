@@ -414,6 +414,7 @@
     (when (name-expr? (expr conv))
       (change-name-expr-class-if-needed (declaration (expr conv))
 					(expr conv)))
+    (assert (fully-instantiated? rtype))
     (copy rtype 'from-conversion conv)))
 
 ;;; tcexprs
@@ -440,7 +441,7 @@
 		(setf (argument op) nop)
 		(setf (types nop)
 		      (list (if (typep dom 'dep-binding) (type dom) dom)))
-		(setf (operator op) (copy (expr conv)))
+		(setf (operator op) (copy (expr conv) :type nil))
 		(setf (types op) (list ctype))
 		(typecheck* op nil nil nil))
 	      (type-mismatch-error expr))))))
