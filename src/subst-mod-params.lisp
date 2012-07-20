@@ -1776,7 +1776,7 @@
 				     () "res6")
 			     nres))))))))))
 
-(defmethod make-resolution (decl modinst &optional type)
+(defmethod make-resolution (decl modinst &optional type sdecl)
   (assert (modname? modinst))
   #+pvsdebug
   (assert (or (null type)
@@ -1804,7 +1804,7 @@
 		     (free-params rtype))))
     (mk-resolution decl (lcopy modinst :resolutions nil) rtype)))
 
-(defmethod make-resolution ((decl binding) modinst &optional type)
+(defmethod make-resolution ((decl binding) modinst &optional type sdecl)
   (assert (or modinst type))
   #+pvsdebug (assert (or (null type)
 			 (eq modinst (current-theory-name))
@@ -1812,8 +1812,9 @@
 			 (fully-instantiated? type)))
   (let* ((dtype (or type (type decl)))
 	 (mi (or modinst (current-theory-name)))
-	 (stype (subst-mod-params dtype mi)))
-    (assert (fully-instantiated? stype))
+	 (stype (subst-mod-params dtype mi nil sdecl)))
+    (assert (or (typep (current-declaration) 'conversion-decl)
+		(fully-instantiated? stype)))
     (mk-resolution decl
       mi
       (if (and modinst (not (eq modinst (current-theory-name))))
