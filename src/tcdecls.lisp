@@ -41,8 +41,6 @@
   (when decls
     (let ((decl (car decls)))
       (setf (current-declaration) decl)
-      (when (cdr (get-declarations 'IMPLIES))
-	(break "typecheck-decls IMPLIES"))
       (typecase decl
 	(declaration (typecheck-decl decl))
 	(importing (tcdebug "~%    Processing importing")
@@ -217,13 +215,14 @@
 
 (defmethod typecheck* ((decl formal-type-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (check-duplication decl)
-  (let ((tn (mk-type-name (id decl))))
-    (setf (resolutions tn)
-	  (list (mk-resolution decl (current-theory-name) tn)))
-    (setf (type decl) tn)
-    (setf (type-value decl) tn))
-  decl)
+  (with-current-decl decl
+    (check-duplication decl)
+    (let ((tn (mk-type-name (id decl))))
+      (setf (resolutions tn)
+	    (list (mk-resolution decl (current-theory-name) tn)))
+      (setf (type decl) tn)
+      (setf (type-value decl) tn))
+    decl))
 
 (defmethod typecheck* ((decl formal-nonempty-type-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
@@ -1535,12 +1534,14 @@
     (set-type (declared-type decl) nil)
     (setf (type decl)
 	  (make-formals-funtype (formals decl) rtype))
+    (assert (fully-instantiated? (type decl)))
     #+pvsdebug (assert (null (freevars (type decl))))
     (check-duplication decl)
     (unless (funtype? (find-supertype (type decl)))
       (type-error decl "Recursive definition must be a function type"))
     (unless (typep decl 'adt-def-decl)
       (typecheck-measure decl)
+      (assert (fully-instantiated? (measure decl)))
       (setf (recursive-signature decl) (compute-recursive-signature decl)))
     ;;(assert (null (freevars (recursive-signature decl))))
     (set-nonempty-type rtype decl)
@@ -1704,7 +1705,8 @@
     (if (ordering decl)
 	(typecheck-measure-with-ordering decl stype (measure decl) mtypes
 					 (ordering decl))
-	(typecheck-measure* decl stype (measure decl) mtypes))))
+	(typecheck-measure* decl stype (measure decl) mtypes))
+    (assert (fully-instantiated? (measure decl)))))
 
 (defun mk-measure-lambda-exprs (formals dmeasure)
   (let ((mformals (measure-lambda-formals (reverse formals) dmeasure)))
@@ -1797,10 +1799,12 @@
       (cond ((singleton? ctypes)
 	     (let ((eftype (mk-funtype* doms (car ctypes))))
 	       (assert (null (freevars eftype)))
+	       (assert (fully-instantiated? eftype))
 	       (setf (measure-depth decl) (length doms))
 	       (typecheck (measure decl)
 		 :expected eftype
 		 :tccs 'all))
+	     (assert (fully-instantiated? (measure decl)))
 	     (typecheck-ordering decl))
 	    ((funtype? ftype)
 	     (let ((ptypes
