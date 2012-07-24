@@ -423,6 +423,7 @@
       (if (and (null acts) (null dacts))
 	  (if (and (null mappings)
 		   (null args)
+		   (null (decl-formals (current-declaration)))
 		   (or (eq dth (current-theory))
 		       (and (null (formals-sans-usings dth))
 			    (every (complement #'mappings)
@@ -1467,7 +1468,7 @@
   (if (null args)
       (list modinst)
       (let* ((stype (subst-mod-params (find-supertype (type decl))
-				      modinst (module decl)))
+				      modinst (module decl) decl))
 	     (dtypes (when (typep stype 'funtype)
 		       (if (singleton? args)
 			   (list (domain stype))
@@ -1498,7 +1499,7 @@
 			(*smp-include-actuals* t)
 			(*smp-dont-cache* t)
 			(domtypes (subst-mod-params
-				   dtypes modinst (module decl))))
+				   dtypes modinst (module decl) decl)))
 		   (assert (fully-instantiated? domtypes))
 		   ;;(set-type-actuals-and-maps modinst)
 		   (when (compatible-args? decl args domtypes)
@@ -1632,7 +1633,8 @@
       result
       (let ((fbindings (if (every #'cdr (car bindings))
 			   (car bindings)
-			   (matching-decl-formals-bindings (car bindings)))))
+			   nil ;;(matching-decl-formals-bindings (car bindings))
+			   )))
 	(create-compatible-modinsts
 	 modinst decl (cdr bindings)
 	 (if (and fbindings (every #'cdr fbindings))

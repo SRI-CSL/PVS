@@ -165,17 +165,18 @@
 					     (mk-name-expr (id fp) nil nil res))
 					 th))))
 			(formals-sans-usings th)))
-	     (dactuals (mapcan #'(lambda (bnd)
-				   (unless (memq (car bnd) (formals-sans-usings th))
-				     (list (cdr bnd))))
-			 new-alist))
+	     (fdecl (let ((fbd (find-if #'decl-formal? new-alist :key #'car)))
+		      (when fbd (associated-decl (car fbd)))))
+	     (dactuals (when fdecl
+			 (mapcar #'(lambda (fp) (cdr (assq fp new-alist)))
+			   (decl-formals fdecl))))
 	     (thname
 	      (mk-modname (id th) actuals lib-id nil dactuals)))
 	;; This is not necessarily true - we may be retypechecking within
 	;; the library context, in which case it is already a
 	;; library-theory.
 	;; (assert (or lib-id (not (library-datatype-or-theory? th))))
-	(setf sterm (subst-mod-params sterm thname th))))
+	(setf sterm (subst-mod-params sterm thname th fdecl))))
     sterm))
 
 (defmethod subst-theory-params (term (modinst modname))
@@ -1080,7 +1081,10 @@
 				modinst bindings))
 	 ;; modinst is for the current declaration, and may not be used directly
 	 ;; for the type, e.g., in monads, could get M[A,B] instead of M[A]
-	 (nres (mk-resolution decl mi nil))
+	 (nres (mk-resolution decl (if (decl-formal? decl)
+				       (module-instance res)
+				       mi)
+			      nil))
 	 (ntype (copy type
 		  :resolutions (list nres)
 		  :actuals (unless (formal-decl? decl)
@@ -1775,7 +1779,8 @@
 				     () "res6")
 			     nres))))))))))
 
-(defmethod make-resolution (decl modinst &optional type sdecl)
+(defmethod make-resolution (decl modinst &optional type
+				 (sdecl (current-declaration)))
   (assert (modname? modinst))
   #+pvsdebug
   (assert (or (null type)
@@ -1797,13 +1802,14 @@
 		      ((or expname typed-declaration simple-decl)
 		       (subst-mod-params (type decl) modinst theory decl))))))
     (assert (current-declaration))
-    (assert (let ((tifps (free-params modinst))
-		  (dfmls (decl-formals (current-declaration))))
-	      (every #'(lambda (fp) (or (memq fp tifps) (memq fp dfmls)))
-		     (free-params rtype))))
+    ;; (assert (let ((tifps (free-params modinst))
+    ;; 		  (dfmls (decl-formals (current-declaration))))
+    ;; 	      (every #'(lambda (fp) (or (memq fp tifps) (memq fp dfmls)))
+    ;; 		     (free-params rtype))))
     (mk-resolution decl (lcopy modinst :resolutions nil) rtype)))
 
-(defmethod make-resolution ((decl binding) modinst &optional type sdecl)
+(defmethod make-resolution ((decl binding) modinst &optional type
+			    (sdecl (current-declaration)))
   (assert (or modinst type))
   #+pvsdebug (assert (or (null type)
 			 (eq modinst (current-theory-name))

@@ -227,7 +227,8 @@
 
 (defmethod free-params* ((expr binding-expr) frees)
   (let* ((efrees (free-params* (expression expr) 
-		   (free-params* (bindings expr) nil))))
+		   (free-params* (bindings expr)
+		     (free-params* (type expr) nil)))))
     (setf (free-parameters expr) efrees)
     (union efrees frees :test #'eq)))
 

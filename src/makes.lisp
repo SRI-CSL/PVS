@@ -315,11 +315,12 @@
     :definition expr
     :semi t))
 
-(defun mk-well-founded-tcc (id expr)
+(defun mk-well-founded-tcc (id expr &optional dfmls)
   (make-instance 'well-founded-tcc
     :id id
     :spelling 'OBLIGATION
     :kind 'tcc
+    :decl-formals dfmls
     :definition expr
     :semi t))
 
@@ -806,8 +807,10 @@
 
 (defun make-variable-expr (bd)
   (assert (typep bd 'binding))
+  (assert (current-declaration))
   (mk-name-expr bd nil nil
-		(make-resolution bd (current-theory-name) (type bd))))
+		(make-resolution bd (current-theory-name-dacts)
+				 (type bd) (current-declaration))))
 
 (defun mk-bindings (vars)
   (assert vars)

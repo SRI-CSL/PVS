@@ -716,8 +716,9 @@ generated")
 					(occurs-positively? (type ff) adt)))
 		  (formals-sans-usings (current-theory))))))
 
-(defun non-recursive-constructor (c type)
-  (not (some #'(lambda (a) (occurs-in type (type a))) (arguments c))))
+(defun non-recursive-constructor (c adt)
+  (not (some #'(lambda (a) (id-occurs-in (id (adt-type-name adt)) (type a)))
+	     (arguments c))))
 
 (defun generate-adt-formals (adt)
   (setf (formals (current-theory)) (mapcar #'copy (formals adt)))
@@ -1710,7 +1711,7 @@ generated")
 		       thinst (current-theory) (accessor-decl (car accs)))))
 	     (var (mk-name-expr (id (car vars)) nil nil
 				(make-resolution nbd
-				  (current-theory-name) (type nbd)))))
+				  (current-theory-name) (type nbd) (current-declaration)))))
 	(adt-forall-bindings (cdr vars)
 			     (substit (cdr bds)
 			       (acons (car bds) var nil))
@@ -1833,7 +1834,8 @@ generated")
 		     (current-theory) (accessor-decl (car accs)))))
 	     (var (mk-name-expr (id (car vars)) nil nil
 				(make-resolution nbd
-				  (current-theory-name) (type nbd)))))
+				  (current-theory-name) (type nbd)
+				  (current-declaration)))))
 	(adt-subst-alist* (cdr vars)
 			  (cdr bds)
 			  (substit (cdr sbds)
@@ -3187,7 +3189,7 @@ generated")
 	 (let* ((pos (position te ptypes :test #'corresponding-formals))
 		(pvar (nth pos pvars)))
 	   pvar))
-	((tc-eq te (adt-type-name adt))
+	((tc-eq te (tc-eq te (subst-adt-type (adt-type-name adt) thinst adt)))
 	 (mk-application* '|map| pvars))
 	((adt? te)
 	 (let ((maps (mapcar #'(lambda (act)
@@ -4437,12 +4439,15 @@ generated")
 	   (subterm-decl
 	    (mk-adt-def-decl '|subterm|
 	      :type *boolean*
-	      :definition (parse-unparse (gen-adt-subterm-definition
-					  adt (mk-name-expr xid) (mk-name-expr yid)
-					  thinst))
 	      :formals (list (mk-arg-bind-decl xid atype)
 			     (mk-arg-bind-decl yid atype))
-	      :decl-formals dfmls)))
+	      :decl-formals dfmls))
+	   (subterm-def
+	    (with-current-decl subterm-decl
+	      (parse-unparse (gen-adt-subterm-definition
+			      adt (mk-name-expr xid) (mk-name-expr yid)
+			      thinst)))))
+      (setf (definition subterm-decl) subterm-def)
       (typecheck-adt-decl subterm-decl))))
 	   
 (defun generate-adt-<< (adt)
@@ -4460,13 +4465,16 @@ generated")
 	   (<<-decl
 	    (mk-adt-def-decl '<<
 	      :type (supertype wf-type)
-	      :definition (mk-lambda-expr (list (mk-bind-decl xid atype)
-						(mk-bind-decl yid atype))
-			    (parse-unparse (gen-adt-<<-definition
-					    adt (mk-name-expr xid) (mk-name-expr yid)
-					    thinst)))
 	      :declared-type (print-type (supertype wf-type))
-	      :decl-formals dfmls)))
+	      :decl-formals dfmls))
+	   (<<-def
+	    (with-current-decl <<-decl
+	      (mk-lambda-expr (list (mk-bind-decl xid atype)
+				    (mk-bind-decl yid atype))
+		(parse-unparse (gen-adt-<<-definition
+				adt (mk-name-expr xid) (mk-name-expr yid)
+				thinst))))))
+      (setf (definition <<-decl) <<-def)
       (typecheck-adt-decl <<-decl)
       (setf (type <<-decl) wf-type
 	    (declared-type <<-decl) (print-type wf-type)))))
@@ -4485,8 +4493,7 @@ generated")
       (typecheck-adt-decl <<-wf-decl t nil))))
 
 (defun gen-adt-subterm-definition (adt xvar yvar thinst)
-  (if (every #'(lambda (c)
-		 (non-recursive-constructor c (adt-type-name adt)))
+  (if (every #'(lambda (c) (non-recursive-constructor c adt))
 	     (constructors adt))
       (mk-application '= xvar yvar)
       (mk-application 'OR
@@ -4498,26 +4505,33 @@ generated")
 
 (defun gen-adt-subterm-selection (c adt xvar thinst)
   (if (arguments c)
-      (let ((subst (adt-subst-alist (arguments c) thinst)))
+      (let ((subst (adt-subst-alist (arguments c) thinst))
+	    (adtname (if thinst
+			 (subst-mod-params (adt-type-name adt) thinst
+			   (adt-theory adt)
+			   (declaration (adt-type-name adt)))
+			 (adt-type-name adt))))
 	(mk-selection (mk-name-expr (id c))
 	  (mapcar #'(lambda (b) (declaration (cdr b))) subst)
 	  (mk-disjunction
-	   (mapcar #'(lambda (a)
-		       (acc-subterm-selection (make-instance 'name-expr
-						:id (id (get-adt-var a)))
-					      (substit (type a) subst)
-					      xvar adt))
-	     (arguments c)))))
+	   (mapcar #'(lambda (a acd)
+		       (let* ((sa (substit (type a) subst))
+			      (ta (subst-mod-params sa thinst
+				    (adt-theory adt) acd)))
+			 (acc-subterm-selection (make-instance 'name-expr
+						  :id (id (get-adt-var a)))
+						ta xvar adtname adt)))
+	     (arguments c) (acc-decls c)))))
       (mk-selection (mk-name-expr (id c)) nil *false*)))
 
-(defun acc-subterm-selection (arg type xvar adt)
-  (let ((fun (acc-subterm-selection* type xvar adt)))
+(defun acc-subterm-selection (arg type xvar adtname adt)
+  (let ((fun (acc-subterm-selection* type xvar adtname adt)))
     (if (everywhere-false? fun)
 	(copy *false*)
 	(mk-application fun arg))))
 
-(defmethod acc-subterm-selection* ((te type-name) xvar adt)
-  (cond ((tc-eq te (adt-type-name adt))
+(defmethod acc-subterm-selection* ((te type-name) xvar adtname adt)
+  (cond ((tc-eq te adtname)
 	 (let* ((bd (mk-bind-decl (make-new-variable '|z| te) te))
 		(le (mk-lambda-expr (list bd)
 		      (mk-application '|subterm| (copy xvar)
@@ -4527,25 +4541,26 @@ generated")
 	((adt? te)
 	 (let ((subs (mapcar #'(lambda (act)
 				 (acc-subterm-selection* (type-value act)
-						     xvar adt))
+							 xvar adtname adt))
 			     (positive-actuals te))))
 	   (if (every #'everywhere-false? subs)
 	       (call-next-method)
 	       (mk-predicate-application '|some| te adt subs))))
 	(t (call-next-method))))
 
-(defmethod acc-subterm-selection* ((te datatype-subtype) xvar adt)
-  (acc-subterm-selection* (declared-type te) xvar adt))
+(defmethod acc-subterm-selection* ((te datatype-subtype) xvar adtname adt)
+  (acc-subterm-selection* (declared-type te) xvar adtname adt))
 
-(defmethod acc-subterm-selection* ((te subtype) xvar adt)
+(defmethod acc-subterm-selection* ((te subtype) xvar adtname adt)
   (if (finite-set-type? te)
-      (let ((sub (acc-subterm-selection* (domain (supertype te)) xvar adt)))
+      (let ((sub (acc-subterm-selection* (domain (supertype te)) xvar
+					 adtname adt)))
 	(if (everywhere-false? sub)
 	    (call-next-method)
 	    (mk-predicate-application '|some| te adt (list sub))))
-      (acc-subterm-selection* (supertype te) xvar adt)))
+      (acc-subterm-selection* (supertype te) xvar adtname adt)))
 
-(defmethod acc-subterm-selection* ((te funtype) xvar adt)
+(defmethod acc-subterm-selection* ((te funtype) xvar adtname adt)
   (let* ((zid (make-new-variable '|z| (list te xvar)))
 	 (zbd (make-bind-decl zid (domain te)))
 	 (zvar (mk-name-expr zid nil nil
@@ -4556,7 +4571,7 @@ generated")
 	       (if (typep (domain te) 'dep-binding)
 		   (substit (range te) (acons (domain te) zvar nil))
 		   (range te))
-	       xvar adt)))
+	       xvar adtname adt)))
     (if (everywhere-false? sub)
 	(call-next-method)
 	(let* ((fid (make-new-variable '|f| (list te sub)))
@@ -4569,7 +4584,7 @@ generated")
 	      (mk-application sub
 		(mk-application fvar zvar))))))))
 
-(defmethod acc-subterm-selection* ((te recordtype) xvar adt)
+(defmethod acc-subterm-selection* ((te recordtype) xvar adtname adt)
   (let* ((rid (make-new-variable '|r| te))
 	 (rbd (make-bind-decl rid te))
 	 (rvar (mk-name-expr rid nil nil
@@ -4598,10 +4613,10 @@ generated")
 		    nil))
 	   (cdr fields))
        xvar rvar adt dep?
-       (cons (acc-subterm-selection* (type (car fields)) xvar adt)
+       (cons (acc-subterm-selection* (type (car fields)) xvar adtname adt)
 	     result))))
 
-(defmethod acc-subterm-selection* ((te tupletype) xvar adt)
+(defmethod acc-subterm-selection* ((te tupletype) xvar adtname adt)
   (let* ((tid (make-new-variable '|t| te))
 	 (tbd (make-bind-decl tid te))
 	 (tvar (mk-name-expr tid nil nil
@@ -4626,7 +4641,7 @@ generated")
 	  (setf (parens le) 1)
 	  le))))
 
-(defmethod acc-subterm-selection* ((te cotupletype) xvar adt)
+(defmethod acc-subterm-selection* ((te cotupletype) xvar adtname adt)
   (let* ((tid (make-new-variable '|t| te))
 	 (tbd (make-bind-decl tid te))
 	 (tvar (mk-name-expr tid nil nil
@@ -4663,12 +4678,12 @@ generated")
 		    nil))
 	   (cdr types))
        xvar tvar adt (1+ index)
-       (cons (acc-subterm-selection* (car types) xvar adt) result))))
+       (cons (acc-subterm-selection* (car types) xvar adtname adt) result))))
 
-(defmethod acc-subterm-selection* ((te dep-binding) xvar adt)
-  (acc-subterm-selection* (type te) xvar adt))
+(defmethod acc-subterm-selection* ((te dep-binding) xvar adtname adt)
+  (acc-subterm-selection* (type te) xvar adtname adt))
 
-(defmethod acc-subterm-selection* ((te type-expr) xvar adt)
+(defmethod acc-subterm-selection* ((te type-expr) xvar adtname adt)
   (declare (ignore xvar adt))
   (mk-everywhere-false-function te))
 
@@ -4682,8 +4697,7 @@ generated")
 
 
 (defun gen-adt-<<-definition (adt xvar yvar thinst)
-  (if (every #'(lambda (c)
-		 (non-recursive-constructor c (adt-type-name adt)))
+  (if (every #'(lambda (c) (non-recursive-constructor c adt))
 	     (constructors adt))
       (copy *false*)
       (mk-cases-expr yvar
@@ -4693,26 +4707,33 @@ generated")
 
 (defun gen-adt-<<-selection (c adt xvar thinst)
   (if (arguments c)
-      (let ((subst (adt-subst-alist (arguments c) thinst)))
+      (let ((subst (adt-subst-alist (arguments c) thinst))
+	    (adtname (if thinst
+			 (subst-mod-params (adt-type-name adt) thinst
+			   (adt-theory adt)
+			   (declaration (adt-type-name adt)))
+			 (adt-type-name adt))))
 	(mk-selection (mk-name-expr (id c))
 	  (mapcar #'(lambda (b) (declaration (cdr b))) subst)
 	  (mk-disjunction
-	   (mapcar #'(lambda (a)
-		       (acc-<<-selection (make-instance 'name-expr
+	   (mapcar #'(lambda (a acd)
+		       (let* ((sa (substit (type a) subst))
+			      (ta (subst-mod-params sa thinst
+				    (adt-theory adt) acd)))
+			 (acc-<<-selection (make-instance 'name-expr
 					   :id (id (get-adt-var a)))
-					 (substit (type a) subst)
-					 xvar adt))
-	     (arguments c)))))
+					 ta xvar adtname adt)))
+	     (arguments c) (acc-decls c)))))
       (mk-selection (mk-name-expr (id c)) nil *false*)))
 
-(defun acc-<<-selection (arg type xvar adt)
-  (let ((fun (acc-<<-selection* type xvar adt)))
+(defun acc-<<-selection (arg type xvar adtname adt)
+  (let ((fun (acc-<<-selection* type xvar adtname adt)))
     (if (everywhere-false? fun)
 	(copy *false*)
 	(mk-application fun arg))))
 
-(defmethod acc-<<-selection* ((te type-name) xvar adt)
-  (cond ((tc-eq te (adt-type-name adt))
+(defmethod acc-<<-selection* ((te type-name) xvar adtname adt)
+  (cond ((tc-eq te adtname)
 	 (let ((bd (mk-bind-decl (make-new-variable '|z| te) te)))
 	   (mk-lambda-expr (list bd)
 	     (mk-application 'OR
@@ -4721,25 +4742,25 @@ generated")
 	((adt? te)
 	 (let ((subs (mapcar #'(lambda (act)
 				 (acc-<<-selection* (type-value act)
-						     xvar adt))
+						     xvar adtname adt))
 			     (positive-actuals te))))
 	   (if (every #'everywhere-false? subs)
 	       (call-next-method)
 	       (mk-predicate-application '|some| te adt subs))))
 	(t (call-next-method))))
 
-(defmethod acc-<<-selection* ((te datatype-subtype) xvar adt)
-  (acc-<<-selection* (declared-type te) xvar adt))
+(defmethod acc-<<-selection* ((te datatype-subtype) xvar adtname adt)
+  (acc-<<-selection* (declared-type te) xvar adtname adt))
 
-(defmethod acc-<<-selection* ((te subtype) xvar adt)
+(defmethod acc-<<-selection* ((te subtype) xvar adtname adt)
   (if (finite-set-type? te)
-      (let ((sub (acc-<<-selection* (domain (supertype te)) xvar adt)))
+      (let ((sub (acc-<<-selection* (domain (supertype te)) xvar adtname adt)))
 	(if (everywhere-false? sub)
 	    (call-next-method)
 	    (mk-predicate-application '|some| te adt (list sub))))
-      (acc-<<-selection* (supertype te) xvar adt)))
+      (acc-<<-selection* (supertype te) xvar adtname adt)))
 
-(defmethod acc-<<-selection* ((te funtype) xvar adt)
+(defmethod acc-<<-selection* ((te funtype) xvar adtname adt)
   (let* ((zid (make-new-variable '|z| (list te xvar)))
 	 (zbd (make-bind-decl zid (domain te)))
 	 (zvar (mk-name-expr zid nil nil
@@ -4750,7 +4771,7 @@ generated")
 	       (if (typep (domain te) 'dep-binding)
 		   (substit (range te) (acons (domain te) zvar nil))
 		   (range te))
-	       xvar adt)))
+	       xvar adtname adt)))
     (if (everywhere-false? sub)
 	(call-next-method)
 	(let* ((fid (make-new-variable '|f| (list te sub)))
@@ -4763,7 +4784,7 @@ generated")
 	      (mk-application sub
 		(mk-application fvar zvar))))))))
 
-(defmethod acc-<<-selection* ((te recordtype) xvar adt)
+(defmethod acc-<<-selection* ((te recordtype) xvar adtname adt)
   (let* ((rid (make-new-variable '|r| te))
 	 (rbd (make-bind-decl rid te))
 	 (rvar (mk-name-expr rid nil nil
@@ -4792,10 +4813,10 @@ generated")
 		    nil))
 	   (cdr fields))
        xvar rvar adt dep?
-       (cons (acc-<<-selection* (type (car fields)) xvar adt)
+       (cons (acc-<<-selection* (type (car fields)) xvar adtname adt)
 	     result))))
 
-(defmethod acc-<<-selection* ((te tupletype) xvar adt)
+(defmethod acc-<<-selection* ((te tupletype) xvar adtname adt)
   (let* ((tid (make-new-variable '|t| te))
 	 (tbd (make-bind-decl tid te))
 	 (tvar (mk-name-expr tid nil nil
@@ -4820,7 +4841,7 @@ generated")
 	  (setf (parens le) 1)
 	  le))))
 
-(defmethod acc-<<-selection* ((te cotupletype) xvar adt)
+(defmethod acc-<<-selection* ((te cotupletype) xvar adtname adt)
   (let* ((tid (make-new-variable '|t| te))
 	 (tbd (make-bind-decl tid te))
 	 (tvar (mk-name-expr tid nil nil
@@ -4857,12 +4878,12 @@ generated")
 		    nil))
 	   (cdr types))
        xvar tvar adt (1+ index)
-       (cons (acc-<<-selection* (car types) xvar adt) result))))
+       (cons (acc-<<-selection* (car types) xvar adtname adt) result))))
 
-(defmethod acc-<<-selection* ((te dep-binding) xvar adt)
-  (acc-<<-selection* (type te) xvar adt))
+(defmethod acc-<<-selection* ((te dep-binding) xvar adtname adt)
+  (acc-<<-selection* (type te) xvar adtname adt))
 
-(defmethod acc-<<-selection* ((te type-expr) xvar adt)
+(defmethod acc-<<-selection* ((te type-expr) xvar adtname adt)
   (declare (ignore xvar adt))
   (mk-everywhere-false-function te))
 
