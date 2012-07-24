@@ -53,6 +53,14 @@
 (defsetf current-theory-name () (name)
   `(setf (theory-name *current-context*) ,name))
 
+(defun current-theory-name-dacts ()
+  (let ((thname (current-theory-name)))
+    (if (and (current-declaration)
+	     (decl-formals (current-declaration)))
+	(let ((dactuals (mk-dactuals (decl-formals (current-declaration)))))
+	  (copy thname :dactuals dactuals))
+	thname)))
+
 (defun current-declaration ()
   (assert *current-context*)
   (declaration *current-context*))

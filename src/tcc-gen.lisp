@@ -755,35 +755,43 @@
 
 (defun make-well-founded-tcc-decl (decl mtype)
   (unless (well-founded-type? (type (ordering decl)))
-    (let* ((ordering (ordering decl))
-	   (var1 (make-new-variable '|x| ordering))
-	   (var2 (make-new-variable '|y| ordering))
-	   (wfform (mk-lambda-expr (list (mk-bind-decl var1 mtype)
-					 (mk-bind-decl var2 mtype))
-		     (mk-application ordering
-		       (mk-name-expr var1) (mk-name-expr var2))))
-	   (form (typecheck* (mk-application '|well_founded?| wfform)
-			     *boolean* nil nil))
-	   (xform (cond ((tcc-evaluates-to-true form)
-			 *true*)
-			((and *simplify-tccs*
-			      (not (or *in-checker* *in-evaluator*)))
-			 (pseudo-normalize form))
-			(t (beta-reduce form))))
-	   (uform (expose-binding-types (universal-closure xform)))
-	   (id (make-tcc-name)))
-      (unless (tc-eq uform *true*)
-	(when (and *false-tcc-error-flag*
-		   (tc-eq uform *false*))
-	  (type-error ordering
-	    "TCC for this expression simplifies to false:~2%  ~a"
-	    form))
-	(typecheck* (mk-well-founded-tcc id uform) nil nil nil)))))
+    (multiple-value-bind (dfmls dacts thinst)
+	(new-decl-formals (current-declaration))
+      (let* ((id (make-tcc-name))
+	     (tccdecl (mk-well-founded-tcc id nil dfmls))
+	     (cdecl (current-declaration))
+	     (cth (module cdecl))
+	     (ordering (subst-mod-params (ordering decl) thinst cth cdecl))
+	     (var1 (make-new-variable '|x| ordering))
+	     (var2 (make-new-variable '|y| ordering))
+	     (pmtype (parse-unparse mtype 'type-expr))
+	     (wfform (mk-lambda-expr (list (mk-bind-decl var1 pmtype)
+					   (mk-bind-decl var2 pmtype))
+		       (mk-application ordering
+			 (mk-name-expr var1) (mk-name-expr var2))))
+	     (form (with-current-decl tccdecl
+		     (typecheck* (mk-application '|well_founded?| wfform)
+				 *boolean* nil nil)))
+	     (xform (cond ((tcc-evaluates-to-true form)
+			   *true*)
+			  ((and *simplify-tccs*
+				(not (or *in-checker* *in-evaluator*)))
+			   (pseudo-normalize form))
+			  (t (beta-reduce form))))
+	     (uform (expose-binding-types (universal-closure xform))))
+	(unless (tc-eq uform *true*)
+	  (when (and *false-tcc-error-flag*
+		     (tc-eq uform *false*))
+	    (type-error ordering
+	      "TCC for this expression simplifies to false:~2%  ~a"
+	      form))
+	  (setf (definition tccdecl) uform)
+	  (typecheck* tccdecl nil nil nil))))))
 
 (defmethod well-founded-type? ((otype subtype))
   (or (and (name-expr? (predicate otype))
 	   (eq (id (module-instance (predicate otype))) '|orders|)
-	   (eq (id (declaration (predicate otype))) '|well_founded?|))
+	   (eq (id (declaration (predicate otype))) '|strict_well_founded?|))
       (well-founded-type? (supertype otype))))
 
 (defmethod well-founded-type? ((otype type-expr))
