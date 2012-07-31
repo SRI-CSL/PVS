@@ -462,8 +462,10 @@
 
 (defmethod lift-adt ((ex adt-name-expr) &optional op?)
   (if op?
-      (let ((res (make-resolution (declaration ex)
-		   (module-instance (resolution (find-supertype (adt ex)))))))
+      (let* ((mi (module-instance (resolution (find-supertype (adt ex)))))
+	     (res (make-resolution (declaration ex)
+		   (lcopy mi :library (or (library mi)
+					  (library (module-instance ex)))))))
 	(mk-name-expr (id ex) nil nil res))
       ex))
 

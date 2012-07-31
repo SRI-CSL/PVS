@@ -531,6 +531,9 @@
 (defcl mapping-subst-with-formals (mapping-with-formals mapping-subst))
 (defcl mapping-rename-with-formals (mapping-with-formals mapping-rename))
 
+(defcl mapping-lhs (name)
+  (decl-formals :parse t))
+
 (defcl mapping-rhs (actual))
 
 (defcl mapping-rhs-rename (mapping-rhs))
