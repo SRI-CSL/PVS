@@ -149,13 +149,32 @@
 	    (setf (module fdecl) (current-theory))
 	    (assert (eq (associated-decl fdecl) decl)))
 	  (with-added-decls (decl-formals decl)
-	    (call-next-method))
+	    (let ((*tcc-conditions*
+		   (add-decl-formal-existence-assumptions (decl-formals decl))))
+	      (call-next-method)))
 	  (assert (every #'(lambda (fml)
 			     (not (memq fml (get-declarations (id fml)))))
 			 (decl-formals decl))))
 	 (t (call-next-method)))
    (setf (typechecked? decl) t)
    decl)
+
+(defun add-decl-formal-existence-assumptions (dfmls &optional (conditions *tcc-conditions*))
+  (if (null dfmls)
+      conditions
+      (add-decl-formal-existence-assumptions
+       (cdr dfmls)
+       (let ((dass (decl-formal-existence-assumption (car dfmls))))
+	 (if dass
+	     (cons dass conditions)
+	     conditions)))))
+
+(defun decl-formal-existence-assumption (dfml)
+  (when (nonempty-type-decl? dfml)
+    (let* ((type (type-value dfml))
+	   (var (make-new-variable '|x| type)))
+      (make!-exists-expr (list (make-bind-decl var type)) *true*))))
+  
 
 (defun typecheck-decl-formals (dfmls decl)
   (when dfmls
@@ -429,13 +448,14 @@
 				    (make-resolution (or (car tgt-decls)
 							 (declaration (car reses)))
 				      target)
-				    (mappings target) (library target))
+				    :mappings (mappings target)
+				    :library (library target))
 				  (mk-type-name (id tdecl)
 				    (actuals (module-instance (car reses)))
 				    (id (module-instance (car reses)))
 				    (car reses)
-				    (mappings (module-instance (car reses)))
-				    (library (module-instance (car reses)))))
+				    :mappings (mappings (module-instance (car reses)))
+				    :library (library (module-instance (car reses)))))
 			      nil nil nil))
 		  (module (if tgt-decls
 			      (mk-modname (id decl) (actuals target)
@@ -445,13 +465,14 @@
 		  (t (if tgt-decls
 			 (mk-name-expr (id decl) (actuals target) (id target)
 				       (make-resolution (car tgt-decls) target)
-				       (mappings target) (library target))
+				       :mappings (mappings target)
+				       :library (library target))
 			 (mk-name-expr (id tdecl)
 			   (actuals (module-instance (car reses)))
 			   (id (module-instance (car reses)))
 			   (car reses)
-			   (mappings (module-instance (car reses)))
-			   (library (module-instance (car reses)))))))))))))
+			   :mappings (mappings (module-instance (car reses)))
+			   :library (library (module-instance (car reses)))))))))))))
 
 
 (defun cleanup-mapped-axiom-tccs (thdecl cur-th src-th int-th)
@@ -1156,13 +1177,14 @@
     (type-error decl "Uninterpreted types may not have parameters"))
   (check-duplication decl)
   (setf (type-value decl)
-	(let ((tn (if *generating-adt*
-		      (mk-adt-type-name (id decl) nil nil nil
-					*generating-adt* (decl-formals decl))
-		      (mk-type-name (id decl)))))
-	  ;; If there are decl-formals, the dactuals need to be typechecked
-	  (when (dactuals tn)
-	    (typecheck* (dactuals tn) nil nil nil))
+	(let* ((dacts (mk-dactuals (decl-formals decl)))
+	       (tn (if *generating-adt*
+		       (mk-adt-type-name (id decl) nil nil nil
+					 *generating-adt* dacts)
+		       (mk-type-name (id decl) nil nil nil :dactuals dacts))))
+	  ;; ;; If there are decl-formals, the dactuals need to be typechecked
+	  ;; (when (dactuals tn)
+	  ;;   (typecheck* (dactuals tn) nil nil nil))
 	  (let ((thinst (copy (current-theory-name))))
 	    (change-class thinst 'declparam-modname
 	      'dactuals (dactuals tn)
@@ -1183,15 +1205,25 @@
   decl)
 
 (defun generate-existence-axiom (decl)
-  (let* ((id (makesym "~a_nonempty" (id decl)))
-	 (type (type-value decl))
-	 (var (make-new-variable '|x| type))
-	 (form (mk-exists-expr (list (mk-bind-decl var type)) *true*))
-	 (tform (typecheck* form *boolean* nil nil))
-	 (edecl (typecheck* (mk-formula-decl id tform 'AXIOM) nil nil nil)))
-    (pvs-info "Added existence AXIOM for ~a:~%~a"
-      (id decl) (unparse edecl :string t))
-    (add-decl edecl)))
+  (multiple-value-bind (dfmls dacts thinst)
+      (new-decl-formals decl)
+    (let* ((cdecl (current-declaration))
+	   (id (makesym "~a_nonempty" (id decl)))
+	   (edecl (mk-formula-decl id nil 'AXIOM nil dfmls))
+	   (type (if thinst
+		     (with-current-decl edecl
+		       (subst-mod-params (type-value decl)
+			   thinst (current-theory) decl))
+		     (type-value decl)))
+	   (var (make-new-variable '|x| type))
+	   (form (mk-exists-expr (list (mk-bind-decl var type)) *true*))
+	   (tform (with-current-decl edecl
+		    (typecheck* form *boolean* nil nil))))
+      (setf (definition edecl) tform)
+      (typecheck* edecl nil nil nil)
+      (pvs-info "Added existence AXIOM for ~a:~%~a"
+	(id decl) (unparse edecl :string t))
+      (add-decl edecl))))
     
 
 (defmethod typecheck* ((decl type-def-decl) expected kind arguments)
@@ -1426,7 +1458,7 @@
       (make-def-axiom decl)))
   decl)
 
-(defun add-formals-to-tcc-conditions (formals &optional conditions)
+(defun add-formals-to-tcc-conditions (formals &optional (conditions *tcc-conditions*))
   (if (null formals)
       conditions
       (add-formals-to-tcc-conditions

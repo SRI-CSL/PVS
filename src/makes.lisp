@@ -287,9 +287,10 @@
     :definition expr
     :semi t))
 
-(defun mk-assuming-tcc (id expr theory-instance assuming-decl)
+(defun mk-assuming-tcc (id expr theory-instance assuming-decl dfmls)
   (make-instance 'assuming-tcc
     :id id
+    :decl-formals dfmls
     :spelling 'OBLIGATION
     :kind 'tcc
     :definition expr
@@ -297,9 +298,10 @@
     :generating-assumption assuming-decl
     :semi t))
 
-(defun mk-mapped-axiom-tcc (id expr theory-instance axiom-decl)
+(defun mk-mapped-axiom-tcc (id expr theory-instance axiom-decl dfmls)
   (make-instance 'mapped-axiom-tcc
     :id id
+    :decl-formals dfmls
     :spelling 'OBLIGATION
     :kind 'tcc
     :definition expr
@@ -324,9 +326,10 @@
     :definition expr
     :semi t))
 
-(defun mk-same-name-tcc (id expr)
+(defun mk-same-name-tcc (id expr dfmls)
   (make-instance 'same-name-tcc
     :id id
+    :decl-formals dfmls
     :spelling 'OBLIGATION
     :kind 'tcc
     :definition expr
@@ -356,8 +359,10 @@
     :definition expr
     :semi t))
 
-(defun mk-type-name (id &optional actuals mod-id resolution mappings
-			library target dactuals)
+(defun mk-type-name (id &optional actuals mod-id resolution
+			&key mappings library target dactuals)
+  (assert (listp actuals))
+  (assert (listp dactuals))
   (cond ((type-name? id)
 	 (copy id))
 	((name? id)
@@ -382,7 +387,7 @@
 	     :resolutions (when resolution (list resolution))
 	     :dactuals dactuals))))
 
-(defun mk-adt-type-name (id &optional actuals mod-id resolution adt dparams)
+(defun mk-adt-type-name (id &optional actuals mod-id resolution adt dacts)
   (cond ((adt-type-name? id)
 	 (copy id :adt (or adt (adt id))))
 	((type-name? id)
@@ -402,7 +407,7 @@
 	(t (make-instance 'adt-type-name
 	     :id id
 	     :actuals actuals
-	     :dactuals (mk-dactuals dparams)
+	     :dactuals dacts
 	     :mod-id mod-id
 	     :resolutions (when resolution (list resolution))
 	     :adt adt
@@ -504,7 +509,7 @@
 ;    nex))
 
 (defmethod mk-name-expr ((id number) &optional actuals mod-id res
-			 mappings library target)
+			 &key mappings library target dactuals)
   (if res
       (make!-name-expr id actuals mod-id res mappings library target)
       (make-instance 'name-expr
@@ -516,7 +521,7 @@
 	:target target)))
 
 (defmethod mk-name-expr ((id symbol) &optional actuals mod-id res
-			 mappings library target)
+			 &key mappings library target)
   (if res
       (make!-name-expr id actuals mod-id res mappings library target)
       (make-instance 'name-expr
@@ -528,7 +533,7 @@
 	:target target)))
 
 (defmethod mk-name-expr ((obj bind-decl) &optional actuals mod-id res
-			 mappings library target)
+			 &key mappings library target)
   (if res
       (make!-name-expr (id obj) actuals mod-id res mappings library target)
       (make-instance 'name-expr
@@ -543,7 +548,7 @@
 			     (current-theory-name) (type obj))))))
 
 (defmethod mk-name-expr ((obj name) &optional actuals mod-id res
-			 mappings library target)
+			 &key mappings library target)
   (if (or res (resolution obj))
       (make!-name-expr (id obj) actuals mod-id (or res (resolution obj))
 		       mappings library target)
@@ -558,7 +563,7 @@
 	:resolutions (when (name? obj) (resolutions obj)))))
 
 (defmethod mk-name-expr (obj &optional actuals mod-id res
-			     mappings library target)
+			     &key mappings library target)
   (if res
       (make!-name-expr (id obj) actuals mod-id res mappings library target)
       (make-instance 'name-expr
@@ -809,7 +814,7 @@
   (assert (typep bd 'binding))
   (assert (current-declaration))
   (mk-name-expr bd nil nil
-		(make-resolution bd (current-theory-name-dacts)
+		(make-resolution bd (current-theory-name)
 				 (type bd) (current-declaration))))
 
 (defun mk-bindings (vars)
@@ -1046,6 +1051,8 @@
 
 (defun mk-resolution (decl modinst type)
   (assert (or (null type) (type-expr? type)))
+  (assert (or (null (dactuals modinst))
+	      (length= (decl-formals decl) (dactuals modinst))))
   (make-instance 'resolution
     :declaration decl
     :module-instance modinst

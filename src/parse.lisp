@@ -2876,13 +2876,13 @@
 (defun xt-mapping (mapping)
   (let* ((lhs (term-arg0 mapping))
 	 (rhs (term-arg1 mapping))
-	 (kind (unless (is-sop 'NOQUAL (term-arg2 lhs))
-		 (case (sim-term-op (term-arg2 lhs))
+	 (kind (unless (is-sop 'NOQUAL (term-arg3 lhs))
+		 (case (sim-term-op (term-arg3 lhs))
 		   (TYPE 'type)
 		   (THEORY 'theory)
 		   (t 'expr))))
-	 (dtype (when (is-sop 'TYPED (term-arg2 lhs))
-		  (xt-not-enum-type-expr (term-arg0 (term-arg2 lhs)))))
+	 (dtype (when (is-sop 'TYPED (term-arg3 lhs))
+		  (xt-not-enum-type-expr (term-arg0 (term-arg3 lhs)))))
 	 (expr (cond ((is-sop 'MAPPING-RENAME mapping)
 		      ;; Only allow idops or numbers at this point
 		      (let ((ex (xt-expr rhs)))
@@ -2906,7 +2906,7 @@
 		      (xt-not-enum-type-expr rhs))
 		     (t (xt-expr rhs)))))
     (assert (place expr))
-    (if (is-sop 'NOFORMALS (term-arg1 lhs))
+    (if (is-sop 'NOFORMALS (term-arg2 lhs))
 	(case (sim-term-op mapping)
 	  (MAPPING-SUBST
 	   (make-instance 'mapping-subst
@@ -2921,7 +2921,7 @@
 		    :expr expr :place (place expr))
 	     :kind kind
 	     :declared-type dtype)))
-	(let ((formals (xt-pdf (term-arg1 lhs))))
+	(let ((formals (xt-pdf (term-arg2 lhs))))
 	  (case (sim-term-op mapping)
 	  (MAPPING-SUBST
 	   (make-instance 'mapping-subst-with-formals
@@ -2941,9 +2941,15 @@
 	     :declared-type dtype)))))))
 
 (defun xt-mapping-lhs (lhs)
-  (make-instance 'name
-    :id (xt-lhs-idops (term-arg0 lhs))
-    :place (term-place lhs)))
+  (let ((decl-formals (xt-theory-formals (term-arg1 lhs))))
+    (if decl-formals
+	(make-instance 'mapping-lhs
+	  :id (xt-lhs-idops (term-arg0 lhs))
+	  :decl-formals decl-formals
+	  :place (term-place lhs))
+	(make-instance 'name
+	  :id (xt-lhs-idops (term-arg0 lhs))
+	  :place (term-place lhs)))))
 
 (defun xt-lhs-idops (idops)
   (if (cdr (term-args idops))

@@ -423,6 +423,7 @@
       (if (and (null acts) (null dacts))
 	  (if (and (null mappings)
 		   (null args)
+		   (null (decl-formals decl))
 		   (null (decl-formals (current-declaration)))
 		   (or (eq dth (current-theory))
 		       (and (null (formals-sans-usings dth))
@@ -474,9 +475,7 @@
 
 (defun resolve-with-actuals (decl acts dacts dth args mappings)
   ;; If dacts is there, or if decl has no decl-formals, no ambiguity
-  (let ((dparams (or (decl-formals decl)
-		     (and (current-declaration)
-			  (decl-formals (current-declaration))))))
+  (let ((dparams (decl-formals decl)))
     (if dacts
 	(when (and dparams
 		   (length= dacts dparams)

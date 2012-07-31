@@ -1034,8 +1034,12 @@
 		  #+pvsdebug (assert (not (and nacts
 					       (eq (id mi) (id modinst)))))
 		  #+pvsdebug (assert (fully-instantiated? nacts))
-		  (if nacts
-		      (if (eq (actuals mi) nacts)
+		  (assert (or (not (fully-instantiated? modinst))
+			      (and (fully-instantiated? nacts)
+				   (fully-instantiated? ndacts))))
+		  (if (or nacts ndacts)
+		      (if (and (eq (actuals mi) nacts)
+			       (eq (dactuals mi) ndacts))
 			  type
 			  ;; If modinst has a library, but mi does not, we
 			  ;; may have to add a library to mi.  If (module
@@ -1049,8 +1053,9 @@
 				    (car (rassoc (lib-ref (module decl))
 						 (current-library-alist)
 						 :test #'equal))))
-				 (nmodinst (copy mi :actuals nacts
-						 :library lib)))
+				 (nmi (copy mi :actuals nacts
+					    :dactuals ndacts
+					    :library lib)))
 			    #+pvsdebug
 			    (assert (or lib
 					(not (library-datatype-or-theory?
@@ -1060,51 +1065,45 @@
 					 (current-theory))
 					(file-equal (lib-ref (module decl))
 						    *pvs-context-path*)))
-			    (subst-mod-params-type-name type nmodinst
-							bindings)))
+			    (subst-mod-params-type-name type nmi bindings modinst)))
 		      (if (eq (id mi) (id modinst))
-			  (subst-mod-params-type-name type modinst bindings)
+			  ;; mi is useless after this
+			  (subst-mod-params-type-name type modinst bindings modinst)
 			  type))))))))
 
 (defmethod mapped-theory-value ((th module) type modinst bindings)
   (declare (ignore type modinst bindings))
   nil)
 
-;;; just goes ahead and copies the type with the new module
+;;; In the simple case,  copies the type with the new module
 ;;; instance in the newly created resolution
-(defun subst-mod-params-type-name (type modinst bindings)
-  (assert (eq (id modinst) (id (module-instance (resolution type)))))
+;;; Note that the modinst here is not the same as the one provided to
+;;; subst-mod-params
+(defun subst-mod-params-type-name (type tn-thinst bindings modinst)
+  (assert (eq (id tn-thinst) (id (module-instance (resolution type)))))
   (let* ((res (car (resolutions type)))
 	 (decl (declaration res))
-	 (libid (when (library-datatype-or-theory? (module decl))
-		  (libref-to-libid (lib-ref (module decl)))))
-	 (mi (subst-mod-params* (lcopy (module-instance res) 'library libid)
-				modinst bindings))
-	 ;; modinst is for the current declaration, and may not be used directly
-	 ;; for the type, e.g., in monads, could get M[A,B] instead of M[A]
-	 (nres (mk-resolution decl (if (decl-formal? decl)
-				       (module-instance res)
-				       mi)
-			      nil))
+	 (thinst (if (or (decl-formals decl) (null (dactuals tn-thinst)))
+		     tn-thinst
+		     (copy tn-thinst :dactuals nil)))
+	 (nres (mk-resolution decl thinst nil))
 	 (ntype (copy type
 		  :resolutions (list nres)
-		  :actuals (unless (formal-decl? decl)
-			     (actuals (module-instance nres)))
-		  :dactuals (unless (formal-decl? decl)
-			      (dactuals (module-instance nres)))
+		  :actuals (actuals thinst)
+		  :dactuals (dactuals thinst)
 		  :print-type nil))
 	 (rtype (typecase decl
 		  (type-def-decl
 		   (subst-mod-params (copy (type-value decl) :print-type nil)
-		       mi (module decl) decl))
+		       thinst (module decl) decl))
 		  (type-decl ntype)
 		  (mapping
 		   (assert (type-value (rhs decl)))
 		   (type-value (rhs decl)))
 		  (t (error "bad type-decl")))))
     (setf (type nres) rtype)
-    (assert (subsetp (free-params ntype) (free-params modinst)))
-    ;;(assert (fully-instantiated? ntype))
+    (assert (subsetp (free-params ntype) (cons decl (free-params thinst))))
+    (assert (or (not (fully-instantiated? thinst)) (fully-instantiated? ntype)))
     (adt-expand-positive-subtypes ntype)))
 
 ;;; Given a type such as list[int], this creates the datatype-subtype
@@ -1730,7 +1729,10 @@
 	     ;; Note: mappings may change the type of a resolution for an
 	     ;; uninterpreted constant.
 	     (let* ((ntype (subst-mod-params* type modinst bindings))
-		    (nres (mk-resolution decl modinst ntype)))
+		    (nmi (if (decl-formals decl)
+			     modinst
+			     (lcopy modinst :dactuals nil)))
+		    (nres (mk-resolution decl nmi ntype)))
 	       (assert (subsetp (free-params ntype) (free-params modinst)) () "res2")
 	       (assert (subsetp (free-params nres) (free-params modinst)) () "res2.5")
 	       nres))

@@ -27,6 +27,15 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
+;; The main tcc generation functions are:
+;;  make-subtype-tcc-decl
+;;  make-recursive-tcc-decl
+;;  make-well-founded-tcc-decl
+;;  make-existence-tcc-decl
+;;  make-assuming-tcc-decl
+;;  make-mapped-axiom-tcc-decl
+;;  make-actuals-tcc-decl
+
 (in-package :pvs)
 
 (export '(generate-subtype-tcc generate-recursive-tcc
@@ -70,6 +79,7 @@
   (assert (every #'type incs))
   (multiple-value-bind (dfmls dacts thinst)
       (new-decl-formals (current-declaration))
+    (declare (ignore dacts))
     (let* ((*generate-tccs* 'none)
 	   (cdecl (current-declaration))
 	   (cth (module cdecl))
@@ -663,6 +673,7 @@
   (supertype-with-bindings t1 (supertype t2) binds))
 
 (defmethod supertype-with-bindings (t1 t2 binds)
+  (declare (ignore t1 t2 binds))
   nil)
 
 (defun generate-recursive-tcc (name arguments ex)
@@ -678,6 +689,7 @@
       "Recursive definition occurrence ~a must have arguments" name))
   (multiple-value-bind (dfmls dacts thinst)
       (new-decl-formals (current-declaration))
+    (declare (ignore dacts))
     (let* ((*generate-tccs* 'none)
 	   (cdecl (current-declaration))
 	   (cth (module cdecl))
@@ -708,7 +720,8 @@
 			 (pseudo-normalize form))
 			(t (beta-reduce form))))
 	   (suform (if thinst
-		       (subst-mod-params uform thinst cth cdecl)
+		       (with-current-decl tccdecl
+			 (subst-mod-params uform thinst cth cdecl))
 		       uform)))
       (unless (tc-eq uform *true*)
 	(when (and *false-tcc-error-flag*
@@ -757,6 +770,7 @@
   (unless (well-founded-type? (type (ordering decl)))
     (multiple-value-bind (dfmls dacts thinst)
 	(new-decl-formals (current-declaration))
+      (declare (ignore dacts))
       (let* ((id (make-tcc-name))
 	     (tccdecl (mk-well-founded-tcc id nil dfmls))
 	     (cdecl (current-declaration))
@@ -927,9 +941,11 @@
     (call-next-method)))
 
 (defmethod set-nonempty-type ((te type-name) decl)
+  (declare (ignore decl))
   nil)
 
 (defmethod set-nonempty-type ((te type-application) decl)
+  (declare (ignore decl))
   nil)
 
 (defmethod set-nonempty-type ((te subtype) decl)
@@ -940,10 +956,12 @@
 
 (defmethod set-nonempty-type ((te cotupletype) decl)
   ;; Can't propagate, as [S + T] nonempty implies S or T nonempty
-  )
+  (declare (ignore decl))
+  nil)
 
 (defmethod set-nonempty-type ((te funtype) decl)
-  )
+  (declare (ignore decl))
+  nil)
 
 (defmethod set-nonempty-type ((te recordtype) decl)
   (set-nonempty-type (mapcar #'type (fields te)) decl))
@@ -974,7 +992,10 @@
 (defun make-existence-tcc-decl (type fclass)
   (multiple-value-bind (dfmls dacts thinst)
       (new-decl-formals (current-declaration))
+    (declare (ignore dacts))
     (let* ((*generate-tccs* 'none)
+	   (cdecl (current-declaration))
+	   (cth (module cdecl))
 	   (stype (raise-actuals type nil))
 	   (var (make-new-variable '|x| type))
 	   (id (make-tcc-name))
@@ -984,8 +1005,12 @@
 	   (form (with-current-decl edecl
 		   (make!-exists-expr (list (mk-bind-decl var stype stype))
 				      *true*)))
-	   (uform (with-current-decl edecl
-		    (add-tcc-conditions form))))
+	   (tform (with-current-decl edecl
+		    (add-tcc-conditions form)))
+	   (uform (if thinst
+		      (with-current-decl edecl
+			(subst-mod-params tform thinst cth cdecl))
+		      tform)))
       (setf (definition edecl) uform)
       (typecheck* edecl nil nil nil))))
 
@@ -1069,31 +1094,42 @@
   (type (car (bindings ex))))
 
 (defun make-assuming-tcc-decl (ass modinst)
-  (when (decl-formals (current-declaration)) (break "make-assuming-tcc-decl"))
-  (unless (closed-definition ass)
-    (let* ((*in-checker* nil)
-	   (*current-context* (context ass)))
+  (multiple-value-bind (dfmls dacts thinst)
+      (new-decl-formals (current-declaration))
+    (declare (ignore dacts))
+    (unless (closed-definition ass)
+      (let* ((*in-checker* nil)
+	     (*current-context* (context ass)))
 	(setf (closed-definition ass)
 	      (universal-closure (definition ass)))))
-  (assert (closed-definition ass))
-  (let* ((*generate-tccs* 'none)
-	 (expr (subst-mod-params (closed-definition ass) modinst (module ass)))
-	 (true-conc? (tcc-evaluates-to-true expr))
-	 (tform (unless true-conc? (add-tcc-conditions expr)))
-	 (uform (cond ((or true-conc? (tcc-evaluates-to-true tform))
-		       *true*)
-		      (*simplify-tccs*
-		       (pseudo-normalize tform))
-		      (t (beta-reduce tform))))
-	 (id (make-tcc-name)))
-    (assert (null (freevars uform)))
-    (unless (tc-eq uform *true*)
-      (when (and *false-tcc-error-flag*
-		 (tc-eq uform *false*))
-	(type-error ass
-	  "Assuming TCC for this expression simplifies to false:~2%  ~a"
-	  tform))
-      (typecheck* (mk-assuming-tcc id uform modinst ass) nil nil nil))))
+    (assert (closed-definition ass))
+    (let* ((*generate-tccs* 'none)
+	   (cdecl (current-declaration))
+	   (cth (module cdecl))
+	   (id (make-tcc-name))
+	   (tccdecl (mk-assuming-tcc id nil modinst ass dfmls))
+	   (expr (subst-mod-params (closed-definition ass) modinst (module ass)))
+	   (true-conc? (tcc-evaluates-to-true expr))
+	   (tform (unless true-conc? (add-tcc-conditions expr)))
+	   (sform (unless true-conc?
+		    (if thinst
+			(with-current-decl tccdecl
+			  (subst-mod-params tform thinst cth cdecl))
+			tform)))
+	   (uform (cond ((or true-conc? (tcc-evaluates-to-true sform))
+			 *true*)
+			(*simplify-tccs*
+			 (pseudo-normalize sform))
+			(t (beta-reduce sform)))))
+      (assert (null (freevars uform)))
+      (unless (tc-eq uform *true*)
+	(when (and *false-tcc-error-flag*
+		   (tc-eq uform *false*))
+	  (type-error ass
+	    "Assuming TCC for this expression simplifies to false:~2%  ~a"
+	    tform))
+	(setf (definition tccdecl) uform)
+	(typecheck* tccdecl nil nil nil)))))
 
 (defun generate-mapped-axiom-tccs (modinst)
   (let ((mod (get-theory modinst)))
@@ -1177,6 +1213,7 @@
 
 
 (defun find-uninterpreted (expr thinst theory mappings-alist)
+  (declare (ignore thinst theory mappings-alist))
   (let ((foundit nil))
     (mapobject #'(lambda (ex)
 		   (or foundit
@@ -1208,33 +1245,39 @@
   nil)
 
 (defun make-mapped-axiom-tcc-decl (axiom modinst mod)
-  (when (decl-formals (current-declaration)) (break "make-mapped-axiom-tcc-decl"))
-  (let* ((*generate-tccs* 'none)
-	 (*generating-mapped-axiom-tcc* t))
-    (unless (closed-definition axiom)
-      (let* ((*in-checker* nil)
-	     (*current-context* (context axiom)))
-	(setf (closed-definition axiom)
-	      (universal-closure (definition axiom)))))
-    (multiple-value-bind (expr mappings-alist)
-	(subst-mod-params (closed-definition axiom) modinst mod)
-      (let* ((tform (add-tcc-conditions expr))
-	     (xform (if *simplify-tccs*
-			(pseudo-normalize tform)
-			(beta-reduce tform)))
-	     (uform (raise-actuals (expose-binding-types
-				    (universal-closure xform))
-				   t))
-	     (id (make-tcc-name nil (id axiom))))
-	(unless (tc-eq uform *true*)
-	  (when (and *false-tcc-error-flag*
-		     (tc-eq uform *false*))
-	    (type-error axiom
-	      "Mapped axiom TCC for this expression simplifies to false:~2%  ~a"
-	      tform))
-	  (values (typecheck* (mk-mapped-axiom-tcc id uform modinst axiom)
-			      nil nil nil)
-		  mappings-alist))))))
+  (multiple-value-bind (dfmls dacts thinst)
+      (new-decl-formals (current-declaration))
+    (declare (ignore dacts))
+    (let* ((*generate-tccs* 'none)
+	   (*generating-mapped-axiom-tcc* t)
+	   (cdecl (current-declaration))
+	   (cth (module cdecl))
+	   (id (make-tcc-name nil (id axiom)))
+	   (tccdecl (mk-mapped-axiom-tcc id nil modinst axiom dfmls)))
+      (unless (closed-definition axiom)
+	(let* ((*in-checker* nil)
+	       (*current-context* (context axiom)))
+	  (setf (closed-definition axiom)
+		(universal-closure (definition axiom)))))
+      (multiple-value-bind (expr mappings-alist)
+	  (subst-mod-params (closed-definition axiom) modinst mod)
+	(let* ((tform (add-tcc-conditions expr))
+	       (xform (if *simplify-tccs*
+			  (pseudo-normalize tform)
+			  (beta-reduce tform)))
+	       (sform (raise-actuals (expose-binding-types
+				      (universal-closure xform))
+				     t))
+	       (uform (if thinst
+			  (subst-mod-params sform thinst cth cdecl)
+			  sform)))
+	  (unless (tc-eq uform *true*)
+	    (when (and *false-tcc-error-flag*
+		       (tc-eq uform *false*))
+	      (type-error axiom
+		"Mapped axiom TCC for this expression simplifies to false:~2%  ~a"
+		tform))
+	    (values (typecheck* tccdecl nil nil nil) mappings-alist)))))))
 
 (defun generate-selections-tccs (expr constructors adt)
   (when (and constructors
@@ -1328,8 +1371,8 @@
 	(id decl))
       (call-next-method)))
 
-(defmethod make-tcc-name* ((decl rec-application-judgement) expr extra-id)
-  (call-next-method))
+;; (defmethod make-tcc-name* ((decl rec-application-judgement) expr extra-id)
+;;   (call-next-method))
 
 (defmethod make-tcc-name* ((imp importing) expr extra-id)
   (declare (ignore expr))
@@ -1448,27 +1491,39 @@
 	(add-tcc-comment 'actuals act nil))))
 
 (defun make-actuals-tcc-decl (act mact)
-  (when (decl-formals (current-declaration)) (break "make-actuals-tcc-decl"))
-  (let* ((*generate-tccs* 'none)
-	 (conc (typecheck* (make-actuals-equality act mact)
-			   *boolean* nil nil))
-	 (true-conc? (tcc-evaluates-to-true conc))
-	 (form (unless true-conc? (add-tcc-conditions conc)))
-	 (uform (cond ((or true-conc? (tcc-evaluates-to-true form))
-		       *true*)
-		      (*simplify-tccs*
-		       (pseudo-normalize (expose-binding-types
-					  (universal-closure form))))
-		      (t (beta-reduce (expose-binding-types
-				       (universal-closure form))))))
-	 (id (make-tcc-name)))
-    (unless (tc-eq uform *true*)
-      (when (and *false-tcc-error-flag*
-		 (tc-eq uform *false*))
-	(type-error act
-	  "Actuals TCC for this expression simplifies to false:~2%  ~a"
-	  form))
-      (typecheck* (mk-same-name-tcc id uform) nil nil nil))))
+  (multiple-value-bind (dfmls dacts thinst)
+      (new-decl-formals (current-declaration))
+    (declare (ignore dacts))
+    (let* ((*generate-tccs* 'none)
+	   (*generating-mapped-axiom-tcc* t)
+	   (cdecl (current-declaration))
+	   (cth (module cdecl))
+	   (id (make-tcc-name))
+	   (tccdecl (mk-same-name-tcc id nil dfmls))
+	   (conc (with-current-decl tccdecl
+		   (typecheck* (make-actuals-equality act mact)
+			       *boolean* nil nil)))
+	   (true-conc? (tcc-evaluates-to-true conc))
+	   (form (unless true-conc? (add-tcc-conditions conc)))
+	   (tform (cond ((or true-conc? (tcc-evaluates-to-true form))
+			 *true*)
+			(*simplify-tccs*
+			 (pseudo-normalize (expose-binding-types
+					    (universal-closure form))))
+			(t (beta-reduce (expose-binding-types
+					 (universal-closure form))))))
+	   (uform (if thinst
+		      (with-current-decl tccdecl
+			(subst-mod-params tform thinst cth cdecl))
+		      tform)))
+      (unless (tc-eq uform *true*)
+	(when (and *false-tcc-error-flag*
+		   (tc-eq uform *false*))
+	  (type-error act
+	    "Actuals TCC for this expression simplifies to false:~2%  ~a"
+	    form))
+	(setf (definition tccdecl) uform)
+	(typecheck* tccdecl nil nil nil)))))
   
 (defun make-actuals-equality (act mact)
   (if (type-value act)

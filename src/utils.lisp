@@ -3368,6 +3368,9 @@ space")
 		   (intersection (collect-references ai) not-visible))
       (assuming-instances theory))))
 
+(defmethod assuming-instances ((imp importing))
+  nil)
+
 #+gcl
 (defun hash-table-test (ht)
   #'equal)

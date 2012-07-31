@@ -1116,7 +1116,7 @@ generated")
   (let ((acc-decls (mapappend #'cdr entry))
 	(dfmls (decl-formals (cadddr (caar entry)))))
     (if (= (length (mapappend #'cdr entry)) (length (constructors adt)))
-	(mk-type-name (id adt))
+	(mk-type-name (id adt) nil nil nil :dactuals (mk-dactuals dfmls))
 	(if (subtypes adt)
 	    (multiple-value-bind (subtypes recognizers)
 		(get-accessor-covered-subtypes (copy-list acc-decls) adt)
@@ -1411,8 +1411,8 @@ generated")
 			  (generate-adt-ord-selections (constructors adt))
 			  nil)))
        (list (mk-arg-bind-decl var
-			       (mk-type-name (id adt)
-				 nil nil nil nil nil nil dacts)))
+			       (mk-type-name (id adt) nil nil nil
+					     :dactuals dacts)))
        nil dfmls))))
 
 (defun set-constructor-ord-numbers (constructors &optional (num 0))
@@ -1913,8 +1913,8 @@ generated")
 			     (make-resolution rbd
 			       (current-theory-name) te)))
 	 (*bound-variables* (cons rbd *bound-variables*))
-	 (preds (acc-induction-fields (fields te) rvar indvar adt
-				      (dependent? te))))
+	 (preds (acc-induction-fields (fields te) rvar adecl indvar thinst
+				      tname adt (dependent? te))))
     (unless (every #'(lambda (p) (or (null p) (everywhere-true? p))) preds)
       (mk-lambda-expr (list rbd)
 	(mk-conjunction
@@ -1924,7 +1924,8 @@ generated")
 			       (make-field-application (id fd) rvar)))))
 	   (fields te) preds))))))
 
-(defun acc-induction-fields (fields rvar indvar adt dep? &optional result)
+(defun acc-induction-fields (fields rvar adecl indvar thinst tname adt dep?
+				    &optional result)
   (if (null fields)
       (nreverse result)
       (acc-induction-fields
@@ -1934,7 +1935,7 @@ generated")
 		    (make-field-application (car fields) rvar)
 		    nil))
 	   (cdr fields))
-       rvar indvar adt dep?
+       rvar adecl indvar thinst tname adt dep?
        (cons (acc-induction-hypothesis* (type (car fields))
 					adecl indvar thinst tname adt)
 	     result))))
@@ -2135,10 +2136,11 @@ generated")
 				     (subst-mod-params (type a)
 					 thinst (current-theory) (accessor-decl a))))
 			 (arguments c)))
+	     (bthinst (lcopy thinst :dactuals nil))
 	     (vars (mapcar #'(lambda (b a)
 			       (mk-name-expr (id b) nil nil
 					     (make-resolution b
-					       thinst (type b) (accessor-decl a))))
+					       bthinst (type b) (accessor-decl a))))
 		     bindings (arguments c))))
 	(mk-selection (mk-name-expr (id c))
 	  bindings
@@ -4317,27 +4319,26 @@ generated")
     (let* ((atype (or tn (adt-type-name adt)))
 	   (xid (make-new-variable '|x| adt))
 	   (yid (make-new-variable '|y| adt))
-	   (wf-type (with-bound-declparams dfmls
+	   (<<-decl (mk-adt-def-decl '<< :decl-formals dfmls))
+	   (wf-type (with-current-decl <<-decl
 		      (typecheck* (mk-expr-as-type
 				   (mk-name-expr '|strict_well_founded?|
 				     (list (mk-actual atype))))
-				  nil nil nil)))
-	   (<<-decl
-	    (mk-adt-def-decl '<<
-	      :type (supertype wf-type)
-	      :declared-type (print-type (supertype wf-type))
-	      :decl-formals dfmls))
-	   (<<-def
-	    (with-current-decl <<-decl
-	      (mk-lambda-expr (list (mk-bind-decl xid atype)
-				    (mk-bind-decl yid atype))
-		(parse-unparse (gen-adt-<<-definition
-				adt (mk-name-expr xid) (mk-name-expr yid)
-				thinst))))))
-      (setf (definition <<-decl) <<-def)
-      (typecheck-adt-decl <<-decl)
-      (setf (type <<-decl) wf-type
-	    (declared-type <<-decl) (print-type wf-type)))))
+				  nil nil nil))))
+      ;; First set this way for tc purposes
+      (setf (type <<-decl) (supertype wf-type)
+	    (declared-type <<-decl) (print-type (supertype wf-type)))
+      (let ((<<-def
+	     (with-current-decl <<-decl
+	       (mk-lambda-expr (list (mk-bind-decl xid atype)
+				     (mk-bind-decl yid atype))
+		 (parse-unparse (gen-adt-<<-definition
+				 adt (mk-name-expr xid) (mk-name-expr yid)
+				 thinst))))))
+	(setf (definition <<-decl) <<-def)
+	(typecheck-adt-decl <<-decl)
+	(setf (type <<-decl) wf-type
+	      (declared-type <<-decl) (print-type wf-type))))))
 
 (defun generate-adt-<<-wf (adt)      
   (multiple-value-bind (dfmls dacts thinst tn)
@@ -4442,7 +4443,8 @@ generated")
 			     (make-resolution rbd
 			       (current-theory-name) te)))
 	 (*bound-variables* (cons rbd *bound-variables*))
-	 (subs (acc-subterm-fields (fields te) xvar rvar adt (dependent? te))))
+	 (subs (acc-subterm-fields (fields te) xvar rvar
+				   adtname adt (dependent? te))))
     (if (every #'everywhere-false? subs)
 	(call-next-method)
 	(mk-lambda-expr (list rbd)
@@ -4453,7 +4455,8 @@ generated")
 				 (mk-application (id fd) rvar)))))
 	     (fields te) subs))))))
 
-(defun acc-subterm-fields (fields xvar rvar adt dep? &optional result)
+(defun acc-subterm-fields (fields xvar rvar adtname adt dep?
+				  &optional result)
   (if (null fields)
       (nreverse result)
       (acc-subterm-fields
@@ -4463,7 +4466,7 @@ generated")
 		    (make-field-application (car fields) rvar)
 		    nil))
 	   (cdr fields))
-       xvar rvar adt dep?
+       xvar rvar adtname adt dep?
        (cons (acc-subterm-selection* (type (car fields)) xvar adtname adt)
 	     result))))
 
@@ -4634,7 +4637,8 @@ generated")
 			     (make-resolution rbd
 			       (current-theory-name) te)))
 	 (*bound-variables* (cons rbd *bound-variables*))
-	 (subs (acc-<<-fields (fields te) xvar rvar adt (dependent? te))))
+	 (subs (acc-<<-fields (fields te) xvar rvar adtname
+			      adt (dependent? te))))
     (if (every #'everywhere-false? subs)
 	(call-next-method)
 	(mk-lambda-expr (list rbd)
@@ -4645,7 +4649,7 @@ generated")
 				 (mk-application (id fd) rvar)))))
 	     (fields te) subs))))))
 
-(defun acc-<<-fields (fields xvar rvar adt dep? &optional result)
+(defun acc-<<-fields (fields xvar rvar adtname adt dep? &optional result)
   (if (null fields)
       (nreverse result)
       (acc-<<-fields
@@ -4655,7 +4659,7 @@ generated")
 		    (make-field-application (car fields) rvar)
 		    nil))
 	   (cdr fields))
-       xvar rvar adt dep?
+       xvar rvar adtname adt dep?
        (cons (acc-<<-selection* (type (car fields)) xvar adtname adt)
 	     result))))
 

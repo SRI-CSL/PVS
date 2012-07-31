@@ -1468,7 +1468,7 @@
 				  bindings)
   (cond ((null acts1)
 	 (typecheck* (mk-type-name (id type) (nreverse compacts))
-				  nil nil nil))
+		     nil nil nil))
 	((tc-eq-with-bindings (car acts1) (car acts2) bindings)
 	 (adt-compatible-type (cdr acts1) (cdr acts2) (cdr formals) type
 			      postypes (cons (car acts1) compacts) bindings))
