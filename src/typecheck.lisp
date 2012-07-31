@@ -1104,6 +1104,14 @@
 			(ptypes (expr (rhs mapping)))))
 	    ))))))
 
+(defmethod resolve-lhs ((lhs mapping-lhs) kind)
+  (assert (every #'decl-formal-type? (decl-formals decl)))
+  (typecheck-decl-formals (decl-formals lhs) lhs)
+  (with-added-decls (decl-formals lhs)
+    (resolve* lhs kind nil)))
+  
+(defmethod resolve-lhs ((lhs name) kind)
+  (resolve* lhs kind nil))
 
 ;;; mapping-lhs-decl finds the declaration or theory in which the lhs is defined
 ;;; This is used to create a context, which must include all declarations

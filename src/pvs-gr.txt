@@ -673,9 +673,13 @@ theory-decl-mapping ::= {mapping-lhs {':='|'::='} mapping-rhs}
               <{mapping-subst(mapping-lhs,mapping-rhs)
                |mapping-rename(mapping-lhs,mapping-rhs)}>;
 
-mapping-lhs ::= {pidop [pdformals+]^a [':' {'TYPE'|'THEORY'|type-expr}]^q}
-                  <mapping-lhs(pidop, [noformals()|pdf(plus)]^a,
-                               [noqual()|{type()|theory()|typed(type-expr)}]^q)>;
+mapping-lhs ::= {pidop [theory-formals]^f [pdformals+]^a
+		 [':' {'TYPE'|'THEORY'|type-expr}]^q}
+                  <mapping-lhs(pidop,
+			       [no-theory-formals()|theory-formals]^f,
+			       [noformals()|pdf(plus)]^a,
+                               [noqual()|{type()|theory()
+                                |typed(type-expr)}]^q)>;
 
 mapping-rhs ::= expr | comp-type-expr;
 
