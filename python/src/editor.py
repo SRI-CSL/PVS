@@ -10,13 +10,18 @@
 
 import wx
 from pvsmainframe import PVSMainFrame
+from config import getLogger
+
+log = getLogger(__name__)
 
 class PVSEditorApp(wx.App):
+    
     def OnInit(self):
         wx.InitAllImageHandlers()
         self.mainFrame = PVSMainFrame(None, wx.ID_ANY, "")
         self.SetTopWindow(self.mainFrame)
         self.mainFrame.Show()
+        log.info("Editor initialized...") 
         return 1
 
 # end of class PVSEditorApp
@@ -24,4 +29,5 @@ class PVSEditorApp(wx.App):
 if __name__ == "__main__":
     global editor
     editor = PVSEditorApp(0)
+    log.info("Entering MainLoop...") 
     editor.MainLoop()

@@ -6,13 +6,17 @@
 import wx
 from constants import LABEL_NEW, LABEL_OPEN, LABEL_SAVE, LABEL_SAVEALL, LABEL_SAVEAS, LABEL_QUIT, DOTDOTDOT, PVS_U
 from constants import LABEL_UNDO, LABEL_SELECTALL, LABEL_COPY, LABEL_CUT, LABEL_PASTE, EMPTY_STRING, LABEL_FILE , LABEL_EDIT
-from constants import LABEL_STARTPVS, LABEL_TYPECHECK, FRAME_TITLE, TAB_FILES, TAB_BUFFERS, LABEL_PROOF_PANEL, LABEL_PVS_CONSOLE
+from constants import LABEL_STARTPVS, LABEL_TYPECHECK, FRAME_TITLE, TAB_FILES, TAB_BUFFERS, LABEL_PROOF_PANEL
+from constants import LABEL_PVS_CONSOLE
+from constants import LABEL_CLOSEFILE
 from images import *
 from filesbuffersmanager import FilesAndBuffersManager
 from filestreemanager import FilesTreeManager
-from pvsricheditor import PVSRichEditor
 from editornotebook import PVSNotebookManager
-import wx.stc as stc
+from pvsconsole import PVSConsole
+from config import getLogger
+
+log = getLogger(__name__)
 
 # begin wxGlade: dependencies
 # end wxGlade
@@ -33,6 +37,7 @@ class PVSMainFrame(wx.Frame):
         openFileMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_OPEN + DOTDOTDOT, EMPTY_STRING, wx.ITEM_NORMAL)
         saveFileMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_SAVE, EMPTY_STRING, wx.ITEM_NORMAL)
         saveFileAsMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_SAVEAS + DOTDOTDOT, EMPTY_STRING, wx.ITEM_NORMAL)
+        closeFileMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_CLOSEFILE, EMPTY_STRING, wx.ITEM_NORMAL)
         quitMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_QUIT, EMPTY_STRING, wx.ITEM_NORMAL)
         self.pvsmainframemenubar.Append(fileMenu, LABEL_FILE)
         editMenu = wx.Menu()
@@ -90,7 +95,7 @@ class PVSMainFrame(wx.Frame):
         self.panel_1 = wx.Panel(self, wx.ID_ANY)
         self.label_1 = wx.StaticText(self.panel_1, wx.ID_ANY, LABEL_PVS_CONSOLE)
         self.panel_4 = wx.Panel(self.panel_1, wx.ID_ANY)
-        self.pvsconsole = PVSRichEditor(self.panel_4, wx.ID_ANY)
+        self.pvsconsole = PVSConsole(self.panel_4, wx.ID_ANY)
         #self.pvsconsole = wx.TextCtrl(self.panel_4, wx.ID_ANY, EMPTY_STRING, style=wx.TE_PROCESS_ENTER | wx.TE_MULTILINE | wx.HSCROLL | wx.TE_RICH)
 
         self.__set_properties()
@@ -100,6 +105,7 @@ class PVSMainFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onOpenFile, openFileMenuItem)
         self.Bind(wx.EVT_MENU, self.onSaveFile, saveFileMenuItem)
         self.Bind(wx.EVT_MENU, self.onSaveAsFile, saveFileAsMenuItem)
+        self.Bind(wx.EVT_MENU, self.onCloseFile, closeFileMenuItem)
         self.Bind(wx.EVT_MENU, self.onQuitFrame, quitMenuItem)
         self.Bind(wx.EVT_MENU, self.onUndo, undoMenuItem)
         self.Bind(wx.EVT_MENU, self.onSelectAll, selectAllMenuItem)
@@ -197,81 +203,84 @@ class PVSMainFrame(wx.Frame):
        # event.Skip()
 
     def onSaveFile(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onSaveFile' not implemented!"
+        log.info("Event handler `onSaveFile' not implemented!")
         #event.Skip()
 
     def onSaveAsFile(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onSaveAsFile' not implemented!"
+        log.info("Event handler `onSaveAsFile' not implemented!")
         #event.Skip()
+
+    def onCloseFile(self, event):  # wxGlade: PVSMainFrame.<event_handler>
+        self.fileBufferManager.closeFile()
 
     def onQuitFrame(self, event):  # wxGlade: PVSMainFrame.<event_handler>
         self.Close()
 
     def onUndo(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onUndo' not implemented!"
+        log.info("Event handler `onUndo' not implemented!")
         #event.Skip()
 
     def onSelectAll(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onSelectAll' not implemented!"
+        log.info("Event handler `onSelectAll' not implemented!")
         #event.Skip()
 
     def onCutText(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onCutText' not implemented!"
+        log.info("Event handler `onCutText' not implemented!")
         #event.Skip()
 
     def onCopyText(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onCopyText' not implemented!"
+        log.info("Event handler `onCopyText' not implemented!")
         #event.Skip()
 
     def onPasteText(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onPasteText' not implemented!"
+        log.info("Event handler `onPasteText' not implemented!")
         #event.Skip()
 
     def onChangeContext(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onChangeContext' not implemented!"
+        log.info("Event handler `onChangeContext' not implemented!")
         #event.Skip()
 
     def onRestoreContextAutomatically(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onRestoreContextAutomatically' not implemented!"
+        log.info("Event handler `onRestoreContextAutomatically' not implemented!")
         #event.Skip()
 
     def onStartPVS(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onStartPVS' not implemented!"
+        log.info("Event handler `onStartPVS' not implemented!")
         #event.Skip()
 
     def onTypecheck(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onTypecheck' not implemented!"
+        log.info("Event handler `onTypecheck' not implemented!")
         #event.Skip()
 
     def onSetPVSLocation(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onSetPVSLocation' not implemented!"
+        log.info("Event handler `onSetPVSLocation' not implemented!")
         #event.Skip()
 
     def onSaveFileAs(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onSaveFileAs' not implemented!"
+        log.info("Event handler `onSaveFileAs' not implemented!")
         #event.Skip()
 
     def onCoptText(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onCoptText' not implemented!"
+        log.info("Event handler `onCoptText' not implemented!")
         #event.Skip()
 
     def onPVSConsoleEntered(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onPVSConsoleEntered' not implemented!"
+        log.info("Event handler `onPVSConsoleEntered' not implemented!")
         #event.Skip()
 
     def onPVSConsoleChanged(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onPVSConsoleChanged' not implemented!"
+        log.info("Event handler `onPVSConsoleChanged' not implemented!")
         #event.Skip()
 
     def onSaveAllFiles(self, event):  # wxGlade: PVSMainFrame.<event_handler>
         self.fileBufferManager.saveAllFiles()
 
     def onPVSConsoleTextEntered(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onPVSConsoleTextEntered' not implemented"
+        log.info("Event handler `onPVSConsoleTextEntered' not implemented")
         #event.Skip()
 
     def onPVSConsoleText(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        print "Event handler `onPVSConsoleText' not implemented"
+        log.info("Event handler `onPVSConsoleText' not implemented")
         #event.Skip()
 
 # end of class PVSMainFrame

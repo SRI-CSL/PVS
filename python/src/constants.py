@@ -3,6 +3,7 @@ IMAGE_FOLDER = "./images/"
 
 PVS_U = "PVS"
 PVS_L = "pvs"
+PVS_EXTENSION = ".pvs"
 
 LABEL_FILE = "File"
 LABEL_EDIT = "Edit"
@@ -19,11 +20,13 @@ LABEL_CUT = "Cut"
 LABEL_PASTE = "Paste"
 LABEL_STARTPVS = "Start " + PVS_U
 LABEL_TYPECHECK = "Typecheck"
+LABEL_CLOSEFILE = "Close File"
 
 DOTDOTDOT = "..."
 EMPTY_STRING = ""
 FRAME_TITLE = "PVS Editor"
 NEWLINE = "\n"
+LOGGERNAME = "PVSEditor"
 
 TAB_FILES = "Files"
 TAB_BUFFERS = "Buffers"
