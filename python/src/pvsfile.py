@@ -9,51 +9,47 @@ class PVSFile:
         self.lines = []
         self.fullname = fullname
         self.filename = os.path.split(fullname)[1]
-        if os.path.exists(fullname):
-            with open(fullname) as f:
+        self.getContentFromFile()
+        self.editor = None
+    
+    def setEditor(self, editor):
+        self.editor = editor
+    
+    def getContentFromFile(self):
+        lines = []
+        if os.path.exists(self.fullname):
+            with open(self.fullname) as f:
                 for line in f:
-                    self.lines.append(line)
+                    lines.append(line)
         else:
-            with open(fullname, 'w+') as f:
+            with open(self.fullname, 'w+') as f:
                 for line in f:
-                    self.lines.append(line)
-        self.changed = False
+                    lines.append(line)
+        self.content = EMPTY_STRING.join(lines)
+
+    def getContentFromEditor(self):
+        if self.editor != None:
+            self.content = self.editor.getText()
+        else:
+            log.error("There is no rich editor assigned to %s", self.fullname)
     
-    def getLines(self):
-        return self.lines
-    
-    def setContent(self, text):
-        log.info("Setting the content for file %s", self.fullname)
-        self.lines = text.splitlines()
-        self.changed = True
-        
-    def getContent(self):
-        log.info("Getting the content for file %s", self.fullname)
-        content = EMPTY_STRING.join(self.lines)
-        return unicode(content)
         
     def saveAs(self, newfullname):
         log.info("Savinf the file %s as the new file %s ", (self.fullname, newfullname))
         self.fullname = newfullname
         self.changed = True
         self.save()
-        
-    def setLine(self, lineNumber, line):
-        self.line[lineNumber] = line
     
     def save(self):
         log.info("Saving file %s", self.fullname)
-        if self.changed:
-            f = open(self.fullname, mode='w')
-            f.wrote(self.getContent())
-            f.close()
-            self.changed = False
+        f = open(self.fullname, mode='w')
+        self.getContentFromEditor()
+        f.write(self.content)
+        f.close()
             
     def close(self):
         log.info("Closing file %s", self.fullname)
-        if self.changed:
-            # prompt first
-            self.save()
+        self.save()
             
     def __str__(self):
         return self.fullname

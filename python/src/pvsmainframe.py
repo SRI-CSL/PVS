@@ -33,19 +33,19 @@ class PVSMainFrame(wx.Frame):
         # Menu Bar
         self.pvsmainframemenubar = wx.MenuBar()
         fileMenu = wx.Menu()
-        newFileMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_NEW + DOTDOTDOT, EMPTY_STRING, wx.ITEM_NORMAL)
-        openFileMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_OPEN + DOTDOTDOT, EMPTY_STRING, wx.ITEM_NORMAL)
-        saveFileMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_SAVE, EMPTY_STRING, wx.ITEM_NORMAL)
+        newFileMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_NEW + DOTDOTDOT + "\tCtrl-N", EMPTY_STRING, wx.ITEM_NORMAL)
+        openFileMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_OPEN + DOTDOTDOT + "\tCtrl-O", EMPTY_STRING, wx.ITEM_NORMAL)
+        saveFileMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_SAVE + "\tCtrl-S", EMPTY_STRING, wx.ITEM_NORMAL)
         saveFileAsMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_SAVEAS + DOTDOTDOT, EMPTY_STRING, wx.ITEM_NORMAL)
-        closeFileMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_CLOSEFILE, EMPTY_STRING, wx.ITEM_NORMAL)
-        quitMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_QUIT, EMPTY_STRING, wx.ITEM_NORMAL)
+        closeFileMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_CLOSEFILE + "\tCtrl-W", EMPTY_STRING, wx.ITEM_NORMAL)
+        quitMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_QUIT + "\tCtrl-Q", EMPTY_STRING, wx.ITEM_NORMAL)
         self.pvsmainframemenubar.Append(fileMenu, LABEL_FILE)
         editMenu = wx.Menu()
-        undoMenuItem = editMenu.Append(wx.ID_ANY, LABEL_UNDO, EMPTY_STRING, wx.ITEM_NORMAL)
-        selectAllMenuItem = editMenu.Append(wx.ID_ANY, LABEL_SELECTALL, EMPTY_STRING, wx.ITEM_NORMAL)
-        cutMenuItem = editMenu.Append(wx.ID_ANY, LABEL_CUT, EMPTY_STRING, wx.ITEM_NORMAL)
-        copyMenuItem = editMenu.Append(wx.ID_ANY, LABEL_COPY, EMPTY_STRING, wx.ITEM_NORMAL)
-        pasteMenuItem = editMenu.Append(wx.ID_ANY, LABEL_PASTE, EMPTY_STRING, wx.ITEM_NORMAL)
+        undoMenuItem = editMenu.Append(wx.ID_ANY, LABEL_UNDO + "\tCtrl-Z", EMPTY_STRING, wx.ITEM_NORMAL)
+        selectAllMenuItem = editMenu.Append(wx.ID_ANY, LABEL_SELECTALL + "\tCtrl-A", EMPTY_STRING, wx.ITEM_NORMAL)
+        cutMenuItem = editMenu.Append(wx.ID_ANY,  LABEL_CUT + "\tCtrl-X", EMPTY_STRING, wx.ITEM_NORMAL)
+        copyMenuItem = editMenu.Append(wx.ID_ANY, LABEL_COPY + "\tCtrl-C", EMPTY_STRING, wx.ITEM_NORMAL)
+        pasteMenuItem = editMenu.Append(wx.ID_ANY, LABEL_PASTE + "\tCtrl-V", EMPTY_STRING, wx.ITEM_NORMAL)
         self.pvsmainframemenubar.Append(editMenu, LABEL_EDIT)
         pvsMenu = wx.Menu()
         changeContextMenuItem =  pvsMenu.Append(wx.ID_ANY, "Change Context...", EMPTY_STRING, wx.ITEM_NORMAL)
@@ -203,7 +203,7 @@ class PVSMainFrame(wx.Frame):
        # event.Skip()
 
     def onSaveFile(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onSaveFile' not implemented!")
+        self.fileBufferManager.saveFile()
         #event.Skip()
 
     def onSaveAsFile(self, event):  # wxGlade: PVSMainFrame.<event_handler>
@@ -217,23 +217,23 @@ class PVSMainFrame(wx.Frame):
         self.Close()
 
     def onUndo(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onUndo' not implemented!")
+        self.pvsNotebookManager.undo()
         #event.Skip()
 
     def onSelectAll(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onSelectAll' not implemented!")
+        self.pvsNotebookManager.selectAll()
         #event.Skip()
 
     def onCutText(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onCutText' not implemented!")
+        self.pvsNotebookManager.cut()
         #event.Skip()
 
     def onCopyText(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onCopyText' not implemented!")
+        self.pvsNotebookManager.copy()
         #event.Skip()
 
     def onPasteText(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onPasteText' not implemented!")
+        self.pvsNotebookManager.paste()
         #event.Skip()
 
     def onChangeContext(self, event):  # wxGlade: PVSMainFrame.<event_handler>

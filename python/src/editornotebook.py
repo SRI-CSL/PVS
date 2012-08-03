@@ -20,8 +20,8 @@ class PVSNotebookManager(wx.Notebook):
 
         editor = PVSRichEditor(self, wx.ID_ANY, {PVSNotebookManager.PVSFILE: pvsFile})
         self.AddPage(editor, pvsFile.filename)
-
-        editor.setText(pvsFile.getContent())
+        pvsFile.setEditor(editor)
+        editor.setText(pvsFile.content)
         self.pages[pvsFile.fullname] = pvsFile
         
     def OnPageChanged(self, event):
@@ -42,12 +42,15 @@ class PVSNotebookManager(wx.Notebook):
         log.warning("Did not find the file %s", fullname) 
             
     def getActiveFilename(self):
+        fn = self.getActivePage().data[PVSNotebookManager.PVSFILE].fullname
+        log.info("Active file name is %s", fn)
+        return fn
+    
+    def getActivePage(self):
         ap = self.GetSelection()
         page = self.GetPage(ap)
-        fn = page.data[PVSNotebookManager.PVSFILE].fullname
-        #fn = self.pages.keys()[ap]
-        log.info("Active page is %d and the file name is %s", ap, fn)
-        return fn
+        log.info("Active page is %d", ap)
+        return page
     
     def closeTabForFile(self, fullname):
         log.info("Closing tab for %s", fullname)
@@ -68,4 +71,23 @@ class PVSNotebookManager(wx.Notebook):
 
 
 
+    def selectAll(self):
+        page = self.getActivePage()
+        page.selectAll()
+        
+    def copy(self):
+        page = self.getActivePage()
+        page.copy()     
+
+    def paste(self):
+        page = self.getActivePage()
+        page.paste()     
+
+    def cut(self):
+        page = self.getActivePage()
+        page.cut()
+
+    def undo(self):
+        page = self.getActivePage()
+        page.undo()
 

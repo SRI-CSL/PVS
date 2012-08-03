@@ -31,10 +31,8 @@ class PVSRichEditor(wx.Panel):
         self.styledText.MarkerDefine(3, stc.STC_MARK_ARROW, "#00FF00", "#00FF00")
         self.data = data
         self.setSyntaxHighlighting()
-            
         self.decode = codecs.lookup("utf-8")[1]
-
-
+        
     def setSyntaxHighlighting(self):
         log.debug("Setting syntax highlighting")
         self.styledText.SetLexer(stc.STC_LEX_PYTHON)
@@ -44,7 +42,6 @@ class PVSRichEditor(wx.Panel):
         self.styledText.StyleSetSpec(stc.STC_P_STRING, "fore:#7F007F,face:%(helv)s,size:%(size)d" % faces)
         # Single quoted string
         self.styledText.StyleSetSpec(stc.STC_P_CHARACTER, "fore:#7F007F,face:%(helv)s,size:%(size)d" % faces)        
-        
 
     def addRedMarker(self, lineN):
         self.MarkerAdd(lineN, 1)
@@ -58,12 +55,27 @@ class PVSRichEditor(wx.Panel):
     def setText(self, text):
         log.info("Setting content of the rich editor")
         if wx.USE_UNICODE:
-            unitext, l = self.decode(text)
+            unitext = self.decode(text)[0]
             self.styledText.SetText(unitext)
         else:
             self.styledText.SetText(text)
 
+    def getText(self):
+        return self.styledText.GetText()
 
+    def selectAll(self):
+        self.styledText.SelectAll()
+        
+    def copy(self):
+        self.styledText.Copy()     
 
+    def paste(self):
+        self.styledText.Paste()     
+
+    def cut(self):
+        self.styledText.Cut()     
+
+    def undo(self):
+        self.styledText.Undo()   
 
         
