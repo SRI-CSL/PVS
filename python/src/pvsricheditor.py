@@ -42,7 +42,6 @@ class PVSRichEditor(wx.Panel):
         self.styledText.StyleSetSpec(stc.STC_P_STRING, "fore:#7F007F,face:%(helv)s,size:%(size)d" % faces)
         # Single quoted string
         self.styledText.StyleSetSpec(stc.STC_P_CHARACTER, "fore:#7F007F,face:%(helv)s,size:%(size)d" % faces)
-        self.styledText.SetSele
 
     def addRedMarker(self, lineN):
         self.MarkerAdd(lineN, 1)

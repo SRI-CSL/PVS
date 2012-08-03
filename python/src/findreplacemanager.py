@@ -21,29 +21,54 @@ class FindReplaceManager:
         dlg.Bind(wx.EVT_FIND_REPLACE, self.OnReplace)
         dlg.Bind(wx.EVT_FIND_REPLACE_ALL, self.OnReplaceAll)
         dlg.Bind(wx.EVT_FIND_CLOSE, self.OnFindClose)
-        
-        dlg.data = data  # save a reference to it...
+        self.data = data  # save a reference to it...
+        self.goingDown = False
+        self.wholeWord = False
+        self.matchCase = False
         dlg.Show(True)
+        
+    def readFlags(self):
+        _flags = self.data.GetFlags()
+        if _flags & 1 > 0:
+            self.goingDown = True
+        else:
+            self.goingDown = False
+        if _flags & 2 > 0:
+            self.wholeWord = True
+        else:
+            self.wholeWord = False
+        if _flags & 4 > 0:
+            self.matchCase = True
+        else:
+            self.matchCase = False
         
     def OnFindClose(self, evt):
         log.info("FindReplaceDialog closing...")
         evt.GetDialog().Destroy()
         
     def OnFind(self, evt):
-        _find = set.data.GetFindString()
+        _find = self.data.GetFindString()
+        self.readFlags()
         log.info("Find %s", _find)
+        log.info("Going Down: %s, Whole Word: %s, Match Case: %s", self.goingDown, self.wholeWord, self.matchCase)
         
     def OnFindNext(self, evt):
-        _find = set.data.GetFindString()
+        _find = self.data.GetFindString()
+        self.readFlags()
         log.info("Find Next %s", _find)
+        log.info("Going Down: %s, Whole Word: %s, Match Case: %s", self.goingDown, self.wholeWord, self.matchCase)
         
     def OnReplace(self, evt):
-        _find = set.data.GetFindString()
-        _replace = set.data.GetReplaceString()
+        _find = self.data.GetFindString()
+        _replace = self.data.GetReplaceString()
+        self.readFlags()
         log.info("Replace %s with %s", _find, _replace)
+        log.info("Going Down: %s, Whole Word: %s, Match Case: %s", self.goingDown, self.wholeWord, self.matchCase)
         
     def OnReplaceAll(self, evt):
-        _find = set.data.GetFindString()
-        _replace = set.data.GetReplaceString()
+        _find = self.data.GetFindString()
+        _replace = self.data.GetReplaceString()
+        self.readFlags()
         log.info("Replace All %s with %s", _find, _replace)
+        log.info("Going Down: %s, Whole Word: %s, Match Case: %s", self.goingDown, self.wholeWord, self.matchCase)
         
