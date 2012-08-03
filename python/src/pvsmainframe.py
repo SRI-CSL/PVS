@@ -7,14 +7,14 @@ import wx
 from constants import LABEL_NEW, LABEL_OPEN, LABEL_SAVE, LABEL_SAVEALL, LABEL_SAVEAS, LABEL_QUIT, DOTDOTDOT, PVS_U
 from constants import LABEL_UNDO, LABEL_SELECTALL, LABEL_COPY, LABEL_CUT, LABEL_PASTE, EMPTY_STRING, LABEL_FILE , LABEL_EDIT
 from constants import LABEL_STARTPVS, LABEL_TYPECHECK, FRAME_TITLE, TAB_FILES, TAB_BUFFERS, LABEL_PROOF_PANEL
-from constants import LABEL_PVS_CONSOLE
-from constants import LABEL_CLOSEFILE
+from constants import LABEL_PVS_CONSOLE, LABEL_FIND, LABEL_CLOSEFILE
 from images import *
 from filesbuffersmanager import FilesAndBuffersManager
 from filestreemanager import FilesTreeManager
 from editornotebook import PVSNotebookManager
 from pvsconsole import PVSConsole
 from config import getLogger
+from findreplacemanager import FindReplaceManager
 
 log = getLogger(__name__)
 
@@ -46,6 +46,7 @@ class PVSMainFrame(wx.Frame):
         cutMenuItem = editMenu.Append(wx.ID_ANY,  LABEL_CUT + "\tCtrl-X", EMPTY_STRING, wx.ITEM_NORMAL)
         copyMenuItem = editMenu.Append(wx.ID_ANY, LABEL_COPY + "\tCtrl-C", EMPTY_STRING, wx.ITEM_NORMAL)
         pasteMenuItem = editMenu.Append(wx.ID_ANY, LABEL_PASTE + "\tCtrl-V", EMPTY_STRING, wx.ITEM_NORMAL)
+        findMenuItem = editMenu.Append(wx.ID_ANY, LABEL_FIND + "\tCtrl-F", EMPTY_STRING, wx.ITEM_NORMAL)
         self.pvsmainframemenubar.Append(editMenu, LABEL_EDIT)
         pvsMenu = wx.Menu()
         changeContextMenuItem =  pvsMenu.Append(wx.ID_ANY, "Change Context...", EMPTY_STRING, wx.ITEM_NORMAL)
@@ -112,6 +113,7 @@ class PVSMainFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onCutText, cutMenuItem)
         self.Bind(wx.EVT_MENU, self.onCopyText, copyMenuItem)
         self.Bind(wx.EVT_MENU, self.onPasteText, pasteMenuItem)
+        self.Bind(wx.EVT_MENU, self.onFindText, findMenuItem)
         self.Bind(wx.EVT_MENU, self.onChangeContext, changeContextMenuItem)
         self.Bind(wx.EVT_MENU, self.onRestoreContextAutomatically, restoreContextMenuItem)
         self.Bind(wx.EVT_MENU, self.onStartPVS, startPVSMenuItem)
@@ -234,6 +236,12 @@ class PVSMainFrame(wx.Frame):
 
     def onPasteText(self, event):  # wxGlade: PVSMainFrame.<event_handler>
         self.pvsNotebookManager.paste()
+        #event.Skip()
+
+    def onFindText(self, event):  # wxGlade: PVSMainFrame.<event_handler>
+        FindReplaceManager(None, "khar", "gav").show()
+        
+        #self.pvsNotebookManager.find()
         #event.Skip()
 
     def onChangeContext(self, event):  # wxGlade: PVSMainFrame.<event_handler>

@@ -91,3 +91,6 @@ class PVSNotebookManager(wx.Notebook):
         page = self.getActivePage()
         page.undo()
 
+    def find(self):
+        page = self.getActivePage()
+
