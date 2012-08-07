@@ -1,8 +1,8 @@
 import wx
 from constants import EMPTY_STRING
-from config import getLogger
+import config
 
-log = getLogger(__name__)
+log = config.getLogger(__name__)
 
 class FindReplaceManager:
     def __init__(self, frame, defaultFindText=EMPTY_STRING, defaultReplaceText=EMPTY_STRING):

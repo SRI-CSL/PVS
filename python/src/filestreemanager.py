@@ -1,15 +1,15 @@
 import wx, os.path
 from images import getFolderImage, getPVSLogo
-from config import getLogger
+import config
 
-log = getLogger(__name__)
+log = config.getLogger(__name__)
 
 class FilesTreeManager:
-    def __init__(self, frame):
-        self.tree = frame.filestree
+    def __init__(self, tree):
         imageList = wx.ImageList(16, 16)
         imageList.Add(getFolderImage())
         imageList.Add(getPVSLogo())
+        self.tree = tree
         self.tree.AssignImageList(imageList)
         self.root = self.tree.AddRoot("", 0, -1, wx.TreeItemData({}))
         self.children = {}

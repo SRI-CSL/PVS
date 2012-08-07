@@ -1,6 +1,6 @@
-from config import getLogger
+import config
 
-log = getLogger(__name__)
+log = config.getLogger(__name__)
 
 class PVSBuffer:
     def __init__(self, name, content):

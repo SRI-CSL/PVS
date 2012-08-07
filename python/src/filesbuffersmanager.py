@@ -2,16 +2,15 @@ from pvsfile import PVSFile
 from pvsbuffer import PVSBuffer
 import wx, os.path
 from constants import PVS_EXTENSION
-from config import getLogger
+import config
 
-log = getLogger(__name__)
+log = config.getLogger(__name__)
 
 class FilesAndBuffersManager:
     
-    def __init__(self, frame):
+    def __init__(self):
         self.files = {}
         self.buffers = {}
-        self.mainFrame = frame
         
     def addBuffer(self, buffer):
         pass
@@ -21,8 +20,8 @@ class FilesAndBuffersManager:
         if not self.files.has_key(fullname):
             f = PVSFile(fullname)
             self.files[fullname] = f
-            self.mainFrame.filesTreeManager.addFile(f)
-            self.mainFrame.pvsNotebookManager.addFile(f)
+            config.filestreemanager.addFile(f)
+            config.notebook.addFile(f)
         else:
             log.info("File %s is already open", fullname)
         #self.mainFrame.pvseditor.addRedMarker(2)
@@ -30,11 +29,11 @@ class FilesAndBuffersManager:
         
     def setFileAsActive(self, fullname):
         log.info("Setting file %s as active", fullname)
-        self.mainFrame.pvsNotebookManager.showTabForFile(fullname)
+        config.notebook.showTabForFile(fullname)
         
     def createNewFile(self):
         filters = "PVS files (*" + PVS_EXTENSION + ")|*" + PVS_EXTENSION
-        dialog = wx.FileDialog ( None, "Create a new PVS file", wildcard = filters, style = wx.SAVE | wx.OVERWRITE_PROMPT )
+        dialog = wx.FileDialog (config.frame, "Create a new PVS file", wildcard = filters, style = wx.SAVE | wx.OVERWRITE_PROMPT )
         if dialog.ShowModal() == wx.ID_OK:
             fullname = dialog.GetPath()
             if not fullname.endswith(PVS_EXTENSION):
@@ -47,7 +46,7 @@ class FilesAndBuffersManager:
 
     def openFile(self):
         filters = "PVS files (*" + PVS_EXTENSION + ")|*" + PVS_EXTENSION
-        dialog = wx.FileDialog ( None, "Open PVS file", wildcard = filters, style = wx.OPEN )
+        dialog = wx.FileDialog (config.frame, "Open PVS file", wildcard = filters, style = wx.OPEN )
         if dialog.ShowModal() == wx.ID_OK:
             fullname = dialog.GetPath()
             log.info("Opening file %s", fullname)
@@ -57,19 +56,19 @@ class FilesAndBuffersManager:
         dialog.Destroy()
 
     def closeFile(self):
-        fullname = self.mainFrame.pvsNotebookManager.getActiveFilename()
+        fullname = config.notebook.getActiveFilename()
         log.info("Closing file %s", fullname)
         if self.files.has_key(fullname):
             f = self.files[fullname]
             f.close()
             del self.files[fullname]
-            self.mainFrame.pvsNotebookManager.closeTabForFile(fullname)
-            self.mainFrame.filesTreeManager.removeFile(fullname)
+            config.notebook.closeTabForFile(fullname)
+            config.filestreemanager.removeFile(fullname)
         else:
             log.warning("The file %s is not in %s", fullname, self.files.keys())
             
     def saveFile(self):
-        fullname = self.mainFrame.pvsNotebookManager.getActiveFilename()
+        fullname = config.notebook.getActiveFilename()
         log.info("Saving file %s", fullname)
         f = self.files[fullname]
         f.save()

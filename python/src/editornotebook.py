@@ -1,9 +1,9 @@
 
 import wx
 from pvsricheditor import PVSRichEditor
-from config import getLogger
+import config
 
-log = getLogger(__name__)
+log = config.getLogger(__name__)
 
 class PVSNotebookManager(wx.Notebook):
     PVSFILE = "pvsFile"

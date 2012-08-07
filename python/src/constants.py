@@ -1,3 +1,4 @@
+import wx
 
 IMAGE_FOLDER = "./images/"
 

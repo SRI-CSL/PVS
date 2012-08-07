@@ -1,9 +1,9 @@
 import wx
 import wx.stc as stc
 import codecs
-from config import getLogger
+import config
 
-log = getLogger(__name__)
+log = config.getLogger(__name__)
 
 faces = { 'times': 'Times',
           'mono' : 'Courier',

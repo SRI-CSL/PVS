@@ -10,9 +10,9 @@
 
 import wx
 from pvsmainframe import PVSMainFrame
-from config import getLogger
+import config
 
-log = getLogger(__name__)
+log = config.getLogger(__name__)
 
 class PVSEditorApp(wx.App):
     
@@ -27,7 +27,6 @@ class PVSEditorApp(wx.App):
 # end of class PVSEditorApp
 
 if __name__ == "__main__":
-    global editor
-    editor = PVSEditorApp(0)
+    config.editor = PVSEditorApp(0)
     log.info("Entering MainLoop...") 
-    editor.MainLoop()
+    config.editor.MainLoop()

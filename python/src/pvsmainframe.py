@@ -4,19 +4,17 @@
 #
 
 import wx
-from constants import LABEL_NEW, LABEL_OPEN, LABEL_SAVE, LABEL_SAVEALL, LABEL_SAVEAS, LABEL_QUIT, DOTDOTDOT, PVS_U
-from constants import LABEL_UNDO, LABEL_SELECTALL, LABEL_COPY, LABEL_CUT, LABEL_PASTE, EMPTY_STRING, LABEL_FILE , LABEL_EDIT
-from constants import LABEL_STARTPVS, LABEL_TYPECHECK, FRAME_TITLE, TAB_FILES, TAB_BUFFERS, LABEL_PROOF_PANEL
-from constants import LABEL_PVS_CONSOLE, LABEL_FIND, LABEL_CLOSEFILE
-from images import *
+from constants import *
 from filesbuffersmanager import FilesAndBuffersManager
 from filestreemanager import FilesTreeManager
 from editornotebook import PVSNotebookManager
 from pvsconsole import PVSConsole
-from config import getLogger
-from findreplacemanager import FindReplaceManager
+from eventhandler import *
+import config
+from mainmenumanager import MainFrameMenu
+from toolbarmanager import ToolbarManager
 
-log = getLogger(__name__)
+log = config.getLogger(__name__)
 
 # begin wxGlade: dependencies
 # end wxGlade
@@ -29,52 +27,17 @@ class PVSMainFrame(wx.Frame):
         # begin wxGlade: PVSMainFrame.__init__
         kwds["style"] = wx.ICONIZE | wx.CAPTION | wx.MINIMIZE | wx.CLOSE_BOX | wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX | wx.SYSTEM_MENU | wx.RESIZE_BORDER | wx.CLIP_CHILDREN
         wx.Frame.__init__(self, *args, **kwds)
+        config.frame = self
 
         # Menu Bar
-        self.pvsmainframemenubar = wx.MenuBar()
-        fileMenu = wx.Menu()
-        newFileMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_NEW + DOTDOTDOT + "\tCtrl-N", EMPTY_STRING, wx.ITEM_NORMAL)
-        openFileMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_OPEN + DOTDOTDOT + "\tCtrl-O", EMPTY_STRING, wx.ITEM_NORMAL)
-        saveFileMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_SAVE + "\tCtrl-S", EMPTY_STRING, wx.ITEM_NORMAL)
-        saveFileAsMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_SAVEAS + DOTDOTDOT, EMPTY_STRING, wx.ITEM_NORMAL)
-        closeFileMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_CLOSEFILE + "\tCtrl-W", EMPTY_STRING, wx.ITEM_NORMAL)
-        quitMenuItem = fileMenu.Append(wx.ID_ANY, LABEL_QUIT + "\tCtrl-Q", EMPTY_STRING, wx.ITEM_NORMAL)
-        self.pvsmainframemenubar.Append(fileMenu, LABEL_FILE)
-        editMenu = wx.Menu()
-        undoMenuItem = editMenu.Append(wx.ID_ANY, LABEL_UNDO + "\tCtrl-Z", EMPTY_STRING, wx.ITEM_NORMAL)
-        selectAllMenuItem = editMenu.Append(wx.ID_ANY, LABEL_SELECTALL + "\tCtrl-A", EMPTY_STRING, wx.ITEM_NORMAL)
-        cutMenuItem = editMenu.Append(wx.ID_ANY,  LABEL_CUT + "\tCtrl-X", EMPTY_STRING, wx.ITEM_NORMAL)
-        copyMenuItem = editMenu.Append(wx.ID_ANY, LABEL_COPY + "\tCtrl-C", EMPTY_STRING, wx.ITEM_NORMAL)
-        pasteMenuItem = editMenu.Append(wx.ID_ANY, LABEL_PASTE + "\tCtrl-V", EMPTY_STRING, wx.ITEM_NORMAL)
-        findMenuItem = editMenu.Append(wx.ID_ANY, LABEL_FIND + "\tCtrl-F", EMPTY_STRING, wx.ITEM_NORMAL)
-        self.pvsmainframemenubar.Append(editMenu, LABEL_EDIT)
-        pvsMenu = wx.Menu()
-        changeContextMenuItem =  pvsMenu.Append(wx.ID_ANY, "Change Context...", EMPTY_STRING, wx.ITEM_NORMAL)
-        restoreContextMenuItem = pvsMenu.Append(wx.ID_ANY, "Restore Context Automatically", EMPTY_STRING, wx.ITEM_CHECK)
-        pvsMenu.AppendSeparator()
-        startPVSMenuItem = pvsMenu.Append(wx.ID_ANY, LABEL_STARTPVS, EMPTY_STRING, wx.ITEM_NORMAL)
-        typecheckMenuItem = pvsMenu.Append(wx.ID_ANY, LABEL_TYPECHECK, EMPTY_STRING, wx.ITEM_NORMAL)
-        pvsMenu.AppendSeparator()
-        setPVSLocationMenuItem = pvsMenu.Append(wx.ID_ANY, "Set PVS Location...", EMPTY_STRING, wx.ITEM_NORMAL)
-        self.pvsmainframemenubar.Append(pvsMenu, PVS_U)
-        self.SetMenuBar(self.pvsmainframemenubar)
+        config.menubar = MainFrameMenu()
+        self.SetMenuBar(config.menubar)
         # Menu Bar end
-        self.pvsmainframestatusbar = self.CreateStatusBar(1, 0)
+        config.statusbar = self.CreateStatusBar(1, 0)
         
         # Tool Bar
-        self.pvsmainframetoolbar = wx.ToolBar(self, -1)
-        self.SetToolBar(self.pvsmainframetoolbar)
-        createNewFileToolbarItem = self.pvsmainframetoolbar.AddLabelTool(wx.ID_ANY, LABEL_NEW, getNewImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Create a new pvs file", EMPTY_STRING)
-        openFileToolbarItem = self.pvsmainframetoolbar.AddLabelTool(wx.ID_ANY, LABEL_OPEN, getOpenImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Open a pvs file", EMPTY_STRING)
-        saveFileToolbarItem = self.pvsmainframetoolbar.AddLabelTool(wx.ID_ANY, LABEL_SAVE, getSaveImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Save the file", EMPTY_STRING)
-        saveallFileToolbarItem = self.pvsmainframetoolbar.AddLabelTool(wx.ID_ANY, LABEL_SAVEALL, getSaveAllImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Save All Files", EMPTY_STRING)
-        self.pvsmainframetoolbar.AddSeparator()
-        cutToolbarItem = self.pvsmainframetoolbar.AddLabelTool(wx.ID_ANY, LABEL_CUT, getCutImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Cut text", EMPTY_STRING)
-        copyToolbarItem = self.pvsmainframetoolbar.AddLabelTool(wx.ID_ANY, LABEL_COPY, getCopyImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Copy text", EMPTY_STRING)
-        pasteToolbarItem = self.pvsmainframetoolbar.AddLabelTool(wx.ID_ANY, LABEL_PASTE, getPasteImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Paste text here", EMPTY_STRING)
-        self.pvsmainframetoolbar.AddSeparator()
-        startPVSToolbarItem = self.pvsmainframetoolbar.AddLabelTool(wx.ID_ANY, LABEL_STARTPVS, getStartPVSImage(), getStopPVSImage(), wx.ITEM_NORMAL, "Start pvs", EMPTY_STRING)
-        typecheckToolbarItem = self.pvsmainframetoolbar.AddLabelTool(wx.ID_ANY, LABEL_TYPECHECK, getTypecheckImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Parse and typecheck file", EMPTY_STRING)
+        config.toolbar = ToolbarManager(self, wx.ID_ANY)
+        self.SetToolBar(config.toolbar)
         # Tool Bar end
         self.window_1 = wx.SplitterWindow(self, wx.ID_ANY, style=wx.SP_3D | wx.SP_BORDER)
         self.window_1_pane_1 = wx.Panel(self.window_1, wx.ID_ANY)
@@ -88,66 +51,32 @@ class PVSMainFrame(wx.Frame):
         self.prooftree = wx.TreeCtrl(self.window_1_pane_2, wx.ID_ANY, style=wx.TR_HAS_BUTTONS | wx.TR_DEFAULT_STYLE | wx.SUNKEN_BORDER)
         self.panel_2 = wx.Panel(self, wx.ID_ANY)
         
-        self.pvsNotebookManager = PVSNotebookManager(self.panel_2, wx.ID_ANY, style=0)
-        ##self.panel_3 = wx.Panel(self.pvsNotebookManager, wx.ID_ANY)
+        config.notebook = PVSNotebookManager(self.panel_2, wx.ID_ANY, style=0)
+        ##self.panel_3 = wx.Panel(config.notebook, wx.ID_ANY)
         ##self.pvseditor = PVSRichEditor(self.panel_3, wx.ID_ANY, style=wx.TE_MULTILINE | wx.HSCROLL | wx.TE_RICH | wx.TE_RICH2, markers = True)
         
-        #self.pvseditor = wx.TextCtrl(self.pvsNotebookManager, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE | wx.HSCROLL | wx.TE_RICH | wx.TE_RICH2)
+        #self.pvseditor = wx.TextCtrl(config.notebook, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE | wx.HSCROLL | wx.TE_RICH | wx.TE_RICH2)
         self.panel_1 = wx.Panel(self, wx.ID_ANY)
         self.label_1 = wx.StaticText(self.panel_1, wx.ID_ANY, LABEL_PVS_CONSOLE)
         self.panel_4 = wx.Panel(self.panel_1, wx.ID_ANY)
-        self.pvsconsole = PVSConsole(self.panel_4, wx.ID_ANY)
-        #self.pvsconsole = wx.TextCtrl(self.panel_4, wx.ID_ANY, EMPTY_STRING, style=wx.TE_PROCESS_ENTER | wx.TE_MULTILINE | wx.HSCROLL | wx.TE_RICH)
+        config.console = PVSConsole(self.panel_4, wx.ID_ANY)
+        #config.console = wx.TextCtrl(self.panel_4, wx.ID_ANY, EMPTY_STRING, style=wx.TE_PROCESS_ENTER | wx.TE_MULTILINE | wx.HSCROLL | wx.TE_RICH)
 
         self.__set_properties()
         self.__do_layout()
-
-        self.Bind(wx.EVT_MENU, self.onCreateNewFile, newFileMenuItem)
-        self.Bind(wx.EVT_MENU, self.onOpenFile, openFileMenuItem)
-        self.Bind(wx.EVT_MENU, self.onSaveFile, saveFileMenuItem)
-        self.Bind(wx.EVT_MENU, self.onSaveAsFile, saveFileAsMenuItem)
-        self.Bind(wx.EVT_MENU, self.onCloseFile, closeFileMenuItem)
-        self.Bind(wx.EVT_MENU, self.onQuitFrame, quitMenuItem)
-        self.Bind(wx.EVT_MENU, self.onUndo, undoMenuItem)
-        self.Bind(wx.EVT_MENU, self.onSelectAll, selectAllMenuItem)
-        self.Bind(wx.EVT_MENU, self.onCutText, cutMenuItem)
-        self.Bind(wx.EVT_MENU, self.onCopyText, copyMenuItem)
-        self.Bind(wx.EVT_MENU, self.onPasteText, pasteMenuItem)
-        self.Bind(wx.EVT_MENU, self.onFindText, findMenuItem)
-        self.Bind(wx.EVT_MENU, self.onChangeContext, changeContextMenuItem)
-        self.Bind(wx.EVT_MENU, self.onRestoreContextAutomatically, restoreContextMenuItem)
-        self.Bind(wx.EVT_MENU, self.onStartPVS, startPVSMenuItem)
-        self.Bind(wx.EVT_MENU, self.onTypecheck, typecheckMenuItem)
-        self.Bind(wx.EVT_MENU, self.onSetPVSLocation, setPVSLocationMenuItem)
-        
-        self.Bind(wx.EVT_TOOL, self.onCreateNewFile, createNewFileToolbarItem)
-        self.Bind(wx.EVT_TOOL, self.onOpenFile, openFileToolbarItem)
-        self.Bind(wx.EVT_TOOL, self.onSaveFile, saveFileToolbarItem)
-        self.Bind(wx.EVT_TOOL, self.onSaveAllFiles, saveallFileToolbarItem)
-        self.Bind(wx.EVT_TOOL, self.onCutText, cutToolbarItem)
-        self.Bind(wx.EVT_TOOL, self.onCoptText, copyToolbarItem)
-        self.Bind(wx.EVT_TOOL, self.onPasteText, pasteToolbarItem)
-        self.Bind(wx.EVT_TOOL, self.onStartPVS, startPVSToolbarItem)
-        self.Bind(wx.EVT_TOOL, self.onTypecheck, typecheckToolbarItem)
-        
-        self.Bind(wx.EVT_TEXT_ENTER, self.onPVSConsoleTextEntered, self.pvsconsole)
-        self.Bind(wx.EVT_TEXT, self.onPVSConsoleText, self.pvsconsole)
         # end wxGlade
         
-        self.fileBufferManager = FilesAndBuffersManager(self)
-        self.filesTreeManager = FilesTreeManager(self)
-
+        config.filesbuffermanager = FilesAndBuffersManager()
+        config.filestreemanager = FilesTreeManager(self.filestree)
 
     def __set_properties(self):
         # begin wxGlade: PVSMainFrame.__set_properties
         self.SetTitle(FRAME_TITLE)
         self.SetSize((1000, 800))
-        self.pvsmainframestatusbar.SetStatusWidths([-1])
+        config.statusbar.SetStatusWidths([-1])
         # statusbar fields
-        pvsmainframestatusbar_fields = ["PVS Mode: Prover"]
-        for i in range(len(pvsmainframestatusbar_fields)):
-            self.pvsmainframestatusbar.SetStatusText(pvsmainframestatusbar_fields[i], i)
-        self.pvsmainframetoolbar.Realize()
+        self.setStatusbarText("PVS Mode: Off")
+        config.toolbar.Realize()
         # end wxGlade
 
     def __do_layout(self):
@@ -176,17 +105,17 @@ class PVSMainFrame(wx.Frame):
         self.window_1.SplitHorizontally(self.window_1_pane_1, self.window_1_pane_2)
         sizer_1.Add(self.window_1, 1, wx.EXPAND, 0)
         
-        ##self.pvsNotebookManager.AddPage(self.panel_3, "tab1")
-        sizer_8.Add(self.pvsNotebookManager, 1, wx.EXPAND, 0)
+        ##config.notebook.AddPage(self.panel_3, "tab1")
+        sizer_8.Add(config.notebook, 1, wx.EXPAND, 0)
         self.panel_2.SetSizer(sizer_8)
         
         sizer_2.Add(self.panel_2, 3, wx.EXPAND, 0)
         sizer_7.Add(self.label_1, 0, wx.ALIGN_CENTER_HORIZONTAL, 0)
-        #sizer_7.Add(self.pvsconsole, 1, wx.EXPAND, 0)
+        #sizer_7.Add(config.console, 1, wx.EXPAND, 0)
         sizer_7.Add(self.panel_4, 1, wx.EXPAND, 0)
         self.panel_1.SetSizer(sizer_7)
         ###sizer_9.Add(self.pvseditor, 1, wx.EXPAND, 0)
-        sizer_10.Add(self.pvsconsole, 1, wx.EXPAND, 0)
+        sizer_10.Add(config.console, 1, wx.EXPAND, 0)
         self.panel_4.SetSizer(sizer_10)        
         ###self.panel_3.SetSizer(sizer_9) 
         sizer_2.Add(self.panel_1, 1, wx.EXPAND, 0)
@@ -195,100 +124,13 @@ class PVSMainFrame(wx.Frame):
         self.Layout()
         self.Centre()
         # end wxGlade
-
-    def onCreateNewFile(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        self.fileBufferManager.createNewFile()
-        #event.Skip()
-
-    def onOpenFile(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        self.fileBufferManager.openFile()
-       # event.Skip()
-
-    def onSaveFile(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        self.fileBufferManager.saveFile()
-        #event.Skip()
-
-    def onSaveAsFile(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onSaveAsFile' not implemented!")
-        #event.Skip()
-
-    def onCloseFile(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        self.fileBufferManager.closeFile()
-
-    def onQuitFrame(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        self.Close()
-
-    def onUndo(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        self.pvsNotebookManager.undo()
-        #event.Skip()
-
-    def onSelectAll(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        self.pvsNotebookManager.selectAll()
-        #event.Skip()
-
-    def onCutText(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        self.pvsNotebookManager.cut()
-        #event.Skip()
-
-    def onCopyText(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        self.pvsNotebookManager.copy()
-        #event.Skip()
-
-    def onPasteText(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        self.pvsNotebookManager.paste()
-        #event.Skip()
-
-    def onFindText(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        FindReplaceManager(None, "khar", "gav").show()
         
-        #self.pvsNotebookManager.find()
-        #event.Skip()
+    def enableToolbarButton(self, ID, value = True):
+        config.toolbar.Enable(ID, value)
+        
+    def enableMenuButton(self, ID, value = True):
+        config.menubar.Enable(ID, value)
 
-    def onChangeContext(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onChangeContext' not implemented!")
-        #event.Skip()
+    def setStatusbarText(self, text, location=0):
+        config.statusbar.SetStatusText(text, location)
 
-    def onRestoreContextAutomatically(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onRestoreContextAutomatically' not implemented!")
-        #event.Skip()
-
-    def onStartPVS(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onStartPVS' not implemented!")
-        #event.Skip()
-
-    def onTypecheck(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onTypecheck' not implemented!")
-        #event.Skip()
-
-    def onSetPVSLocation(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onSetPVSLocation' not implemented!")
-        #event.Skip()
-
-    def onSaveFileAs(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onSaveFileAs' not implemented!")
-        #event.Skip()
-
-    def onCoptText(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onCoptText' not implemented!")
-        #event.Skip()
-
-    def onPVSConsoleEntered(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onPVSConsoleEntered' not implemented!")
-        #event.Skip()
-
-    def onPVSConsoleChanged(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onPVSConsoleChanged' not implemented!")
-        #event.Skip()
-
-    def onSaveAllFiles(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        self.fileBufferManager.saveAllFiles()
-
-    def onPVSConsoleTextEntered(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onPVSConsoleTextEntered' not implemented")
-        #event.Skip()
-
-    def onPVSConsoleText(self, event):  # wxGlade: PVSMainFrame.<event_handler>
-        log.info("Event handler `onPVSConsoleText' not implemented")
-        #event.Skip()
-
-# end of class PVSMainFrame
