@@ -3058,9 +3058,26 @@ generated")
   (and (print-type t2)
        (corresponding-formals t1 (print-type t2))))
 
+(defmethod acc-map-selection (arg (te datatype-subtype) pvars ptypes fpairs
+				  adt adtinst curried?)
+  (acc-map-selection arg (declared-type te) pvars ptypes fpairs
+		     adt adtinst curried?))
+
 (defmethod acc-map-selection (arg (te subtype) pvars ptypes fpairs
 				  adt adtinst curried?)
-  (acc-map-selection arg (supertype te) pvars ptypes fpairs adt adtinst curried?))
+  (if (finite-set-type? te)
+      (let* ((dom (raise-actuals (domain (supertype te))))
+	     (map (acc-map-selection* dom pvars ptypes fpairs adt adtinst)))
+	(if (identity-fun? map)
+	    (copy arg)
+	    (let* ((act (mk-actual dom))
+		   (mact (raise-actuals (subst-map-actuals act fpairs)))
+		   (mapname (mk-name-expr '|image| (list act mact))))
+	      (if curried?
+		  (mk-application (mk-application mapname map) (copy arg))
+		  (mk-application mapname map (copy arg))))))
+      (acc-map-selection arg (supertype te) pvars ptypes fpairs
+			 adt adtinst curried?)))
 
 (defmethod acc-map-selection (arg (te funtype) pvars ptypes fpairs
 				  adt adtinst curried?)
@@ -3199,8 +3216,18 @@ generated")
 	       (mk-map-application te fpairs adt maps))))
 	(t (mk-identity-fun te))))
 
+(defmethod acc-map-selection* ((te datatype-subtype) pvars ptypes fpairs
+			       adt adtinst)
+  (acc-map-selection* (declared-type te) pvars ptypes fpairs adt adtinst))
+
 (defmethod acc-map-selection* ((te subtype) pvars ptypes fpairs adt adtinst)
-  (acc-map-selection* (supertype te) pvars ptypes fpairs adt adtinst))
+  (if (finite-set-type? te)
+      (let ((map (acc-map-selection* (domain (supertype te))
+				     pvars ptypes fpairs adt adtinst)))
+	(if (identity-fun? map)
+	    (mk-identity-fun te)
+	    (mk-application '|image| map)))
+      (acc-map-selection* (supertype te) pvars ptypes fpairs adt adtinst)))
 
 (defmethod acc-map-selection* ((te funtype) pvars ptypes fpairs adt adtinst)
   (let* ((fid (make-new-variable '|x| te))

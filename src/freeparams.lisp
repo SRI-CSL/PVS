@@ -338,20 +338,27 @@
 ;;; Names
 
 (defmethod free-params* ((mi modname) frees)
-  (with-slots (actuals dactuals mappings) mi
-    (if (or actuals dactuals)
-	(let ((afrees (free-params* actuals nil))
-	      (dfrees (free-params* dactuals nil))
-	      (mfrees (free-params* mappings nil)))
-	  (union mfrees (union dfrees (union afrees frees :test #'eq)
-			       :test #'eq)
-		 :test #'eq))
-	(let ((theory (get-theory mi))
-	      (mfrees (free-params* mappings nil)))
-	  (assert (or theory (theory-name-expr? mi)))
-	  (if theory
-	      (union mfrees (formals-sans-usings theory) :test #'eq)
-	      frees)))))
+  (with-slots (actuals dactuals mappings resolutions) mi
+    (cond ((or actuals dactuals)
+	   ;; In this case, the theory is instantiated, but there may be
+	   ;; freevars in the actuals or mappings
+	   (let ((afrees (free-params* actuals nil))
+		 (dfrees (free-params* dactuals nil))
+		 (mfrees (free-params* mappings nil)))
+	     (union mfrees (union dfrees (union afrees frees :test #'eq)
+				  :test #'eq)
+		    :test #'eq)))
+	  (resolutions
+	   (assert (null (cdr resolutions)))
+	   ;; This case is for theory references, i.e., theory declarations or
+	   ;; abbreviations
+	   (free-params* (car resolutions) frees))
+	  (t (let ((theory (get-theory mi))
+		   (mfrees (free-params* mappings nil)))
+	       (assert theory)
+	       (if theory
+		   (union mfrees (formals-sans-usings theory) :test #'eq)
+		   frees))))))
 
 (defmethod free-params* ((map mapping) frees)
   (let ((mfrees (free-params* (rhs map) nil)))

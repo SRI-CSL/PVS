@@ -2444,9 +2444,6 @@
 	       (raise-actuals? (print-type x))))))
 
 (defmethod raise-actuals! ((x type-expr))
-  (call-next-method))
-
-(defmethod raise-actuals! ((x ptype-expr))
   (lcopy (call-next-method) 'print-type (raise-actuals (print-type x))))
 
 (defmethod raise-actuals! (x) x)
