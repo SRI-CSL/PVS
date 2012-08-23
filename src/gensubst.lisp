@@ -105,7 +105,6 @@
 (defmethod gensubst* :around ((te type-expr) substfn testfn)
   (let ((nte (call-next-method)))
     (if (or (eq te nte)
-	    (type-name? nte)
 	    (null (print-type te))
 	    ;; It's possible for the print-type to have been set if te is a
 	    ;; datatype-subtype.  This comes from
@@ -581,16 +580,18 @@
     'formals (gensubst* (formals map) substfn testfn)))
 
 (defmethod gensubst* ((res resolution) substfn testfn)
-  (let ((nmi (gensubst* (module-instance res) substfn testfn)))
-    (if (eq nmi (module-instance res))
-	(if (and *gensubst-subst-types*
-		 (funcall testfn (declaration res)))
-	    (let ((ndecl (gensubst* (declaration res) substfn testfn)))
-	      (if (eq ndecl (declaration res))
-		  res
-		  (make-resolution ndecl nmi)))
-	    res)
-	(make-resolution (declaration res) nmi))))
+  (with-slots (declaration module-instance) res
+    (let* ((mi (theory-instance-with-lib res))
+	   (nmi (gensubst* mi substfn testfn)))
+      (if (eq nmi mi)
+	  (if (and *gensubst-subst-types*
+		   (funcall testfn declaration))
+	      (let ((ndecl (gensubst* declaration substfn testfn)))
+		(if (eq ndecl declaration)
+		    res
+		    (make-resolution ndecl nmi)))
+	      res)
+	(make-resolution declaration nmi)))))
 	       
 
 (defmethod gensubst* ((act actual) substfn testfn)
@@ -1227,7 +1228,7 @@
     (copy ex
       'actuals (copy-untyped* actuals)
       'dactuals (copy-untyped* dactuals)
-      ;;'print-type nil
+      'print-type nil
       'from-conversion nil
       'nonempty? nil)))
 

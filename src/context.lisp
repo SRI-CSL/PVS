@@ -2126,7 +2126,7 @@ pvs-strategies files.")
     (let ((fwd (file-write-time file)))
       (unless (= fwd (car dates))
 	(setf (car dates) fwd)
-	#+(and allegro (version>= 6))
+	#+(and allegro (version>= 6) (not pvs6))
 	(unwind-protect
 	    (progn (excl:set-case-mode :case-insensitive-lower)
 		   (multiple-value-bind (v err)
@@ -2135,6 +2135,14 @@ pvs-strategies files.")
 		     (when err
 		       (pvs-message "Error in loading ~a:~%  ~a" file err))))
 	  (excl:set-case-mode :case-sensitive-lower)
+	  (add-lowercase-prover-ids))
+	#+(and allegro (version>= 6) pvs6)
+	(unwind-protect
+	    (multiple-value-bind (v err)
+		(ignore-errors (load file))
+	      (declare (ignore v))
+	      (when err
+		(pvs-message "Error in loading ~a:~%  ~a" file err)))
 	  (add-lowercase-prover-ids))
 	#-(and allegro (version>= 6))
 	(with-open-file (str file :direction :input)

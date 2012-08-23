@@ -41,6 +41,12 @@
 (defsetf term-place (absyn) (place)
   `(setf (getf (term:term-attr ,absyn) :place) ,place))
 
+(defun term-comment (absyn)
+  (getf (term:term-attr absyn) :comment))
+
+(defsetf term-comment (absyn) (comment)
+  `(setf (getf (term:term-attr ,absyn) :comment) ,comment))
+
 
 ;;; Parsing
 
@@ -2942,6 +2948,7 @@
 
 (defun xt-mapping-lhs (lhs)
   (let ((decl-formals (xt-theory-formals (term-arg1 lhs))))
+    (mapc #'change-to-decl-formal decl-formals)
     (if decl-formals
 	(make-instance 'mapping-lhs
 	  :id (xt-lhs-idops (term-arg0 lhs))

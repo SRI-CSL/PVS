@@ -276,3 +276,6 @@ generated_subset_algebra	1	1	{{\cal A}(#1)}
 sigma_times	2	1	{#1 \times #2}
 fm_times	2	1	{#1 \times #2}
 m_times		2	1	{#1 \times #2}
+
+□		id	1	\Box
+◇		id	1	\Diamond

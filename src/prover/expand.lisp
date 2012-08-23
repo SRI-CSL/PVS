@@ -70,7 +70,7 @@
 	 (*dependent-decls* nil)
 	 (*if-simplifies* if-simplifies)
 	 (*expand-in-actuals?* actuals?))
-    (dolist (pname lnames)
+    (dolist (pname nnames)
       (when (and (name? pname)
 		 (or (mod-id pname)
 		     (actuals pname)

@@ -1159,9 +1159,12 @@ bind tighter.")
 
 (defmethod pp* ((te expr-as-type))
   (with-slots (expr) te
-    (write-char #\()
+    (let ((have-parens? (and (parens expr) (plusp (parens expr)))))
+    (unless have-parens?
+      (write-char #\())
     (pp* expr)
-    (write-char #\))))
+    (unless have-parens?
+      (write-char #\))))))
 
 (defmethod pp* ((te recordtype))
   (with-slots (fields) te
@@ -2305,7 +2308,10 @@ bind tighter.")
   (with-slots (constructor args expression) sel
     (pprint-logical-block (nil nil)
       (pprint-indent :current 2)
-      (pp* constructor)
+      (write (id constructor))
+      (when (or (dactuals constructor) (dacts-there? constructor))
+	(pprint-newline :fill)
+	(pp-actuals (dactuals constructor)))
       (when args
 	(pprint-logical-block (nil args :prefix "(" :suffix ")")
 	  (loop (write (id (pprint-pop)))
@@ -2558,6 +2564,12 @@ bind tighter.")
     (if (rhs map)
 	(pp* (expr (rhs map)))
 	(write "NORHS"))))
+
+(defmethod pp* ((lhs mapping-lhs))
+  (pprint-logical-block (nil nil)
+    (write (id lhs))
+    (when (decl-formals lhs)
+      (pp-theory-formals (decl-formals lhs)))))
 
 (defmethod pp* ((map mapping-with-formals))
   (if *unparse-expanded*

@@ -431,14 +431,14 @@
     (unless *in-typechecker*
       (setq *empty-expression-types* (make-hash-table :test 'eq)))))
 
-(defmacro with-case-insensitive-lower (&rest forms)
-  #+(and allegro (version>= 6))
-  `(unwind-protect
-       (progn (excl:set-case-mode :case-insensitive-lower)
-	      ,@forms)
-     (excl:set-case-mode :case-sensitive-lower))
-  #-(and allegro (version>= 6))
-  `(progn ,@forms))
+;; (defmacro with-case-insensitive-lower (&rest forms)
+;;   #+(and allegro (version>= 6))
+;;   `(unwind-protect
+;;        (progn (excl:set-case-mode :case-insensitive-lower)
+;; 	      ,@forms)
+;;      (excl:set-case-mode :case-sensitive-lower))
+;;   #-(and allegro (version>= 6))
+;;   `(progn ,@forms))
 
 (defmacro get-declarations (id &optional decl-hash)
   (if decl-hash
@@ -493,6 +493,14 @@
 	     (dolist (,gdecl ,restore)
 	       (setf (get-lhash (car ,gdecl) (current-declarations-hash))
 		     (cdr ,gdecl))))))))
+
+(defmacro with-current-theory (theory &rest body)
+  (let ((cth (gensym)))
+    `(let ((,cth (current-theory)))
+       (unwind-protect
+	   (progn (setf (current-theory) ,theory)
+		  ,@body)
+	 (setf (current-theory) ,cth)))))
 
 (defmacro with-current-decl (decl &rest body)
   (let ((cdecl (gensym))

@@ -323,14 +323,16 @@ still complete, if it was in the full theory."
 	(pvs-browse-quit)
 	(cond ((null file)
 	       (let* ((freg (get-prelude-file-and-region (third entry)))
-		      (line (save-excursion
-			      (let ((noninteractive t));; Shut up about read-only
-				(set-buffer (find-file-noselect (car freg))))
-			      (goto-char (cadr freg))
-			      (- (current-line-number) 1))))
+		      (line (when freg
+			      (save-excursion
+				(let ((noninteractive t)) ;; Shut up about read-only
+				  (set-buffer (find-file-noselect (car freg))))
+				(goto-char (cadr freg))
+				(- (current-line-number) 1)))))
 		 (view-prelude-theory (third entry))
-		 (goto-line (- (car loc) line))
-		 (forward-char (cadr loc))))
+		 (when line
+		   (goto-line (- (car loc) line))
+		   (forward-char (cadr loc)))))
 	      (t (find-file file)
 		 (goto-line (car loc))
 		 (forward-char (cadr loc))))

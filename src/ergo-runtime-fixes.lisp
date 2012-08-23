@@ -89,7 +89,7 @@
     (when (and (eq sim-op 'ELSIF)
 	       *elsif-places*)
       (setq splace (pop *elsif-places*)))
-    (sbrt::save-place-and-comment-info result nil splace eplace)
+    (sbrt::save-place-and-comment-info result splace eplace)
     (case sim-op
       (TERM-EXPR (reset-operator-place args))
       (UNARY-TERM-EXPR (reset-unary-operator-place args)))
@@ -362,7 +362,7 @@ with the comment so as to put it in the proper place")
     (cond ((and lterm
 		(memq type '(sbst::!id! sbst::!literal! sbst::!number!
 					sbst::!string!)))
-	   (save-place-and-comment-info lterm nil place
+	   (save-place-and-comment-info lterm place
 					(pvs::get-end-place token nil place t))
 	   (if *last-syntax*
 	       (incf *num-keywords-skipped*))
@@ -497,7 +497,7 @@ with the comment so as to put it in the proper place")
   (lexical-make-macro result #\" #'string-lexer)
   result)
 
-(defun save-place-and-comment-info (term lterm splace &optional eplace)
+(defun save-place-and-comment-info (term splace &optional eplace)
   ;;(peek-first)			;to make sure that next token is
 					;looked at.  Kludgy, but
 					;sometimes needed, eg in
@@ -506,8 +506,8 @@ with the comment so as to put it in the proper place")
 					;peeked.
   (set-term-place term splace (or eplace *end-of-last-token*))
   (when (and *last-newline-comment* 
-	     (is-leaf-term lterm))
-    ;;(format t "~%~a gets comment ~s" lterm comment)
+	     (is-leaf-term term))
+    ;;(format t "~%~a gets comment ~s" term *last-newline-comment*)
     (setf (getf (term:term-attr term) :comment)
 	  *last-newline-comment*)
     (setq *last-newline-comment* nil))
@@ -537,8 +537,8 @@ with the comment so as to put it in the proper place")
   (if (eq *abs-syn-package* (find-package :pvs))
       (let ((newline? (check-for-newline stream))
 	    (comment (collect-newline-comment-chars stream nil)))
-	;;(format t "~%lex-newline-comment: *collect-comments* = ~a, comment = ~s"
-	;;  *collect-comments* comment)
+	;;(format t "~%lex-newline-comment: collecting = ~a, comment = ~s, skip = ~d"
+	  ;;*collect-comments* comment *num-keywords-skipped*)
 	(when *collect-comments*
 	  (setq *newline-comments*
 		(append *newline-comments*

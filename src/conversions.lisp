@@ -414,7 +414,7 @@
     (when (name-expr? (expr conv))
       (change-name-expr-class-if-needed (declaration (expr conv))
 					(expr conv)))
-    (assert (fully-instantiated? rtype))
+    ;;(assert (fully-instantiated? rtype))
     (copy rtype 'from-conversion conv)))
 
 ;;; tcexprs
@@ -819,7 +819,8 @@
 	  (setf (operator expr)
 		(raise-actuals (copy (expr (car conversions))) 1))
 	  (setf (type expr) nil (types expr) nil)
-	  (set-type-actuals-and-maps (operator expr))
+	  (set-type-actuals-and-maps (operator expr)
+				     (module (declaration (operator expr))))
 	  (typecheck* expr expected nil nil)
 	  expr)))))
 
@@ -1177,6 +1178,7 @@
 				     (mk-res-actual (cdr a) theory))
 				 bindings))
 		   (nmi (mk-modname (id theory) acts))
+		   (*checking-conversions* t)
 		   (*generate-tccs* 'none)
 		   (*smp-include-actuals* t))
 	      (and (with-no-type-errors
