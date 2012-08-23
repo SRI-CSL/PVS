@@ -1,3 +1,6 @@
+
+# This class manager the Find/Replace in the Edit menu
+
 import wx
 from constants import EMPTY_STRING
 import config

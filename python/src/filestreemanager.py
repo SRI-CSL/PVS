@@ -1,3 +1,6 @@
+
+# This class manages the files tree view
+
 import wx, os.path
 from images import getFolderImage, getPVSLogo
 import config

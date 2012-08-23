@@ -1,3 +1,6 @@
+
+# This class represents an open PVS buffer
+
 import config
 
 log = config.getLogger(__name__)

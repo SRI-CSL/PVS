@@ -1,3 +1,8 @@
+
+# This File contans all the global objects for different parts of the GUI 
+# and a function to get the logger for each module
+
+
 import logging, sys
 
 PVS_CONSOLE_HAS_HORIZONTAL_SCROLL = False
@@ -13,6 +18,7 @@ console = None
 filestreemanager = None
 bufferstree = None
 filesbuffermanager = None
+pvsrunner = None
 
 
 def getLogger(name):

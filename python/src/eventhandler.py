@@ -1,5 +1,9 @@
+
+# This file contains all the functions handling menu and toolbar events
+
 import config
 from findreplacemanager import FindReplaceManager
+from pvsrunner import PVSRunner
 import wx
 
 log = config.getLogger(__name__)
@@ -61,7 +65,8 @@ def onRestoreContextAutomatically(event):  # wxGlade: PVSMainFrame.<event_handle
     #event.Skip()
 
 def onStartPVS(event):  # wxGlade: PVSMainFrame.<event_handler>
-    log.info("Event handler `onStartPVS' not implemented!")
+    config.pvsrunner = PVSRunner()
+    config.pvsrunner.start()
     #event.Skip()
 
 def onTypecheck(event):  # wxGlade: PVSMainFrame.<event_handler>
@@ -80,21 +85,5 @@ def onCoptText(event):  # wxGlade: PVSMainFrame.<event_handler>
     log.info("Event handler `onCoptText' not implemented!")
     #event.Skip()
 
-def onPVSConsoleEntered(event):  # wxGlade: PVSMainFrame.<event_handler>
-    log.info("Event handler `onPVSConsoleEntered' not implemented!")
-    #event.Skip()
-
-def onPVSConsoleChanged(event):  # wxGlade: PVSMainFrame.<event_handler>
-    log.info("Event handler `onPVSConsoleChanged' not implemented!")
-    #event.Skip()
-
 def onSaveAllFiles(event):  # wxGlade: PVSMainFrame.<event_handler>
     config.filesbuffermanager.saveAllFiles()
-
-def onPVSConsoleTextEntered(event):  # wxGlade: PVSMainFrame.<event_handler>
-    log.info("Event handler `onPVSConsoleTextEntered' not implemented")
-    #event.Skip()
-
-def onPVSConsoleText(event):  # wxGlade: PVSMainFrame.<event_handler>
-    log.info("Event handler `onPVSConsoleText' not implemented")
-    #event.Skip()

@@ -1,3 +1,6 @@
+
+# This class manages all the menu items in the main menu of the editor
+
 import wx
 from constants import *
 from eventhandler import *
@@ -64,4 +67,28 @@ class MainFrameMenu(wx.MenuBar):
         config.frame.Bind(wx.EVT_MENU, onRestoreContextAutomatically, self.restoreContextMenuItem)
         config.frame.Bind(wx.EVT_MENU, onStartPVS, self.startPVSMenuItem)
         config.frame.Bind(wx.EVT_MENU, onTypecheck, self.typecheckMenuItem)
-        config.frame.Bind(wx.EVT_MENU, onSetPVSLocation, self.setPVSLocationMenuItem)        
+        config.frame.Bind(wx.EVT_MENU, onSetPVSLocation, self.setPVSLocationMenuItem)
+        
+    def enableCloseFile(self, value = True):
+        self.closeFileMenuItem.Enable(value)
+
+    def enableUndo(self, value = True):
+        self.undoMenuItem.Enable(value)
+
+    def enableCut(self, value = True):
+        self.cutMenuItem.Enable(value)
+
+    def enableCopy(self, value = True):
+        self.copyMenuItem.Enable(value)
+
+    def enablePaste(self, value = True):
+        self.pasteMenuItem.Enable(value)
+
+    def enableSelectAll(self, value = True):
+        self.selectAllMenuItem.Enable(value)
+
+    def enableFind(self, value = True):
+        self.findMenuItem.Enable(value)
+
+
+

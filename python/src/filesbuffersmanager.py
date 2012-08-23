@@ -1,3 +1,8 @@
+
+# This class manages how buffers and files are opened and closed,
+# by managing the tree represenation of files and buffers
+# and the tabs that contain open files and editor.
+
 from pvsfile import PVSFile
 from pvsbuffer import PVSBuffer
 import wx, os.path
@@ -43,6 +48,7 @@ class FilesAndBuffersManager:
         else:
             log.info("Nothing was selected.")
         dialog.Destroy()
+        config.frame.configMenuToolbar(len(self.files))
 
     def openFile(self):
         filters = "PVS files (*" + PVS_EXTENSION + ")|*" + PVS_EXTENSION
@@ -54,6 +60,7 @@ class FilesAndBuffersManager:
         else:
             log.info("Nothing was selected.")
         dialog.Destroy()
+        config.frame.configMenuToolbar(len(self.files))
 
     def closeFile(self):
         fullname = config.notebook.getActiveFilename()
@@ -66,6 +73,7 @@ class FilesAndBuffersManager:
             config.filestreemanager.removeFile(fullname)
         else:
             log.warning("The file %s is not in %s", fullname, self.files.keys())
+        config.frame.configMenuToolbar(len(self.files))
             
     def saveFile(self):
         fullname = config.notebook.getActiveFilename()

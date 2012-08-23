@@ -1,3 +1,6 @@
+
+# This class manages the toolbar in the main frame
+
 import wx
 import config
 from constants import *
@@ -35,3 +38,7 @@ class ToolbarManager(wx.ToolBar):
         config.frame.Bind(wx.EVT_TOOL, onPasteText, self.pasteToolbarItem)
         config.frame.Bind(wx.EVT_TOOL, onStartPVS, self.startPVSToolbarItem)
         config.frame.Bind(wx.EVT_TOOL, onTypecheck, self.typecheckToolbarItem)
+        
+        
+    def enableStartPVS(self, value = True):
+        self.startPVSToolbarItem.Enable(value)

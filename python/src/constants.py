@@ -1,3 +1,6 @@
+
+# This File contans all the global constant strings used in the system
+
 import wx
 
 IMAGE_FOLDER = "./images/"

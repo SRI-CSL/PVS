@@ -1,4 +1,7 @@
 
+# This file contains a number of functions that return bitmap to differetn requireed images and icons
+
+
 import wx
 from constants import IMAGE_FOLDER
 

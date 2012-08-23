@@ -1,3 +1,6 @@
+
+# This class represents an open PVS file
+
 import os.path
 from constants import EMPTY_STRING
 import config

@@ -1,4 +1,6 @@
 
+# This class controls and manages all the tabs that contain open files and buffers for editing
+
 import wx
 from pvsricheditor import PVSRichEditor
 import config

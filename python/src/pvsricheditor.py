@@ -1,3 +1,7 @@
+
+# This class corresponds to the editor envoronment that displays the content of a file or a buffer
+# This class is also responsible for syntax highlighting
+
 import wx
 import wx.stc as stc
 import codecs
