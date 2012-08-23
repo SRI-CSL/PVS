@@ -2151,23 +2151,24 @@
 ;;; from-name-judgements.
 (defun merge-name-judgements* (from-name-judgements to-min to-gen)
   (dolist (jdecl from-name-judgements)
-    (if (fully-instantiated? (type jdecl))
-	(unless (some #'(lambda (jd) (subtype-of? (type jd) (type jdecl)))
-		      to-min)
-	  (setq to-min
-		(cons jdecl
-		      (remove-if #'(lambda (jd)
-				     (subtype-of? (type jdecl) (type jd)))
-			to-min))))
-	(unless (or (memq jdecl to-gen)
-		    (judgement-uninstantiable? jdecl)
-		    (some #'(lambda (jd) (subtype-of? (type jd) (type jdecl)))
-			  to-gen))
-	  (setq to-gen
-		(cons jdecl
-		      (remove-if #'(lambda (jd)
-				     (subtype-of? (type jdecl) (type jd)))
-			to-gen))))))
+    (with-current-decl jdecl
+      (if (fully-instantiated? (type jdecl))
+	  (unless (some #'(lambda (jd) (subtype-of? (type jd) (type jdecl)))
+			to-min)
+	    (setq to-min
+		  (cons jdecl
+			(remove-if #'(lambda (jd)
+				       (subtype-of? (type jdecl) (type jd)))
+			  to-min))))
+	  (unless (or (memq jdecl to-gen)
+		      (judgement-uninstantiable? jdecl)
+		      (some #'(lambda (jd) (subtype-of? (type jd) (type jdecl)))
+			    to-gen))
+	    (setq to-gen
+		  (cons jdecl
+			(remove-if #'(lambda (jd)
+				       (subtype-of? (type jdecl) (type jd)))
+			  to-gen)))))))
   (values to-min to-gen))
 
 (defun minimal-judgement-decls (newdecls olddecls &optional mindecls)
@@ -2203,31 +2204,32 @@
 	       (from-vector (cdr from-entry))
 	       (to-entry (assq decl to-alist))
 	       (to-vector (cdr to-entry)))
-	  (assert (or (null to-vector) (vectorp to-vector)))
-	  ;; Note: from-vector and to-vector may be eq
-	  (if (null to-vector)
-	      (let ((exp-from-vector
-		     (exportable-from-vector-judgement from-vector theory)))
-		(if exp-from-vector
-		    (if (or (formals-sans-usings theory)
-			    (mappings theoryname))
-			(setq to-alist
-			      (acons decl
-				     (subst-appl-judgements-vector
-				      exp-from-vector theory theoryname)
-				     to-alist))
-			(setq to-alist
-			      (acons decl exp-from-vector to-alist)))
-		    to-alist))
-	      (let ((new-vector
-		     (merge-appl-judgement-vectors from-vector to-vector
-						   theory theoryname)))
-		(assert (vectorp new-vector))
-		(unless (eq new-vector to-vector)
-		  (assert (not (eq new-vector from-vector)))
-		  (setq to-alist
-			(acons decl new-vector
-			       (remove* from-entry to-alist))))))))))
+	  (with-current-decl decl
+	    (assert (or (null to-vector) (vectorp to-vector)))
+	    ;; Note: from-vector and to-vector may be eq
+	    (if (null to-vector)
+		(let ((exp-from-vector
+		       (exportable-from-vector-judgement from-vector theory)))
+		  (if exp-from-vector
+		      (if (or (formals-sans-usings theory)
+			      (mappings theoryname))
+			  (setq to-alist
+				(acons decl
+				       (subst-appl-judgements-vector
+					exp-from-vector theory theoryname)
+				       to-alist))
+			  (setq to-alist
+				(acons decl exp-from-vector to-alist)))
+		      to-alist))
+		(let ((new-vector
+		       (merge-appl-judgement-vectors from-vector to-vector
+						     theory theoryname)))
+		  (assert (vectorp new-vector))
+		  (unless (eq new-vector to-vector)
+		    (assert (not (eq new-vector from-vector)))
+		    (setq to-alist
+			  (acons decl new-vector
+				 (remove* from-entry to-alist)))))))))))
   to-alist)
 
 (defun exportable-from-vector-judgement (from-vector theory)

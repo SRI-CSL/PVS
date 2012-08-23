@@ -756,7 +756,8 @@
 (defun set-selection-types (selargs type arg-decls)
   (when selargs
     (let* ((accdecl (accessor-decl (car arg-decls)))
-	   (rtype (range (declared-type accdecl)))
+	   (rtype (declared-type (car arg-decls))) ;; was accdecl - not wrong, but
+					; TCCs get big and confusing
 	   (atype (if (type-name? rtype)
 		      (copy rtype
 			'actuals (or (actuals rtype)

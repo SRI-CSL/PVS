@@ -267,7 +267,7 @@
 	 (*current-theory* (module decl))
 	 (*in-checker* t) ; Make sure this follows setting of *current-context*
 	 (*current-decision-procedure* (determine-decision-procedure decl))
-	 (auto-rewrites-info (initialize-auto-rewrites))
+	 (auto-rewrites-info (with-current-decl decl (initialize-auto-rewrites)))
 	 ;; The next section needed for translate-to-prove, which is used
 	 ;; by arith-order, make-prod, and arith-ord-translate.  This will
 	 ;; be removed once term-lt is written.

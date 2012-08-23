@@ -409,7 +409,8 @@
 	     libloads))
 	  (t (pvs-message "Loading file ~a" file)
 	     (unwind-protect
-		 (progn #+allegro (excl:set-case-mode :case-insensitive-lower)
+		 (progn #+(and allegro (not pvs6))
+			(excl:set-case-mode :case-insensitive-lower)
 			(multiple-value-bind (ignore error)
 			    (ignore-errors (load file))
 			  (declare (ignore ignore))
@@ -418,7 +419,8 @@
 				   filestr error))
 				(t (pvs-message "~a loaded" filestr)
 				   (push file *libloads*)))))
-	       #+allegro (excl:set-case-mode :case-sensitive-lower)
+	       #+(and allegro (not pvs6))
+	       (excl:set-case-mode :case-sensitive-lower)
 	       (add-lowercase-prover-ids))))))
 
 

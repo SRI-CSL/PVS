@@ -116,6 +116,9 @@ formula declaration.")
 (defvar *show-conversions* t
   "Flag indicating whether conversions are to be displayed when unparsing.")
 
+(defvar *checking-conversions* nil
+  "Only needed when lisp assertions are being checked")
+
 (defvar *no-conversions-allowed* nil)
 
 (defvar *conversions-allowed* nil)

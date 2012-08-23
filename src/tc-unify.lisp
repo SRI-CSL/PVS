@@ -182,18 +182,19 @@
 		      (tc-match* (car args) (car fargs) bindings)))))
 
 (defmethod tc-match* :around ((arg type-expr) farg bindings)
-  (when bindings
-    (if (tc-eq arg farg)
-	bindings
-	(let ((nbindings (if (or (free-params farg)
-				 (free-params arg))
-			     (call-next-method)
-			     (when (and farg
-					(compatible? (find-supertype arg)
-						     (find-supertype farg)))
-			       bindings))))
-	  (when nbindings
-	    (tc-match-print-type (print-type arg) farg nbindings))))))
+  (with-slots (print-type) arg
+    (when bindings
+      (if (tc-eq arg farg)
+	  bindings
+	  (let ((nbindings (if (or (free-params farg)
+				   (free-params arg))
+			       (call-next-method)
+			       (when (and farg
+					  (compatible? (find-supertype arg)
+						       (find-supertype farg)))
+				 bindings))))
+	    (when nbindings
+	      (tc-match-print-type print-type farg nbindings)))))))
 
 (defmethod tc-match-print-type ((ptype name) farg nbindings)
   (declare (ignore farg))
@@ -286,10 +287,11 @@
 		    (a2 (actuals farg))
 		    (d1 (dactuals arg))
 		    (d2 (dactuals farg)))
-		(tc-match-type-name-dactuals
-		 d1 d2 arg farg
-		 (or (tc-match-type-name-actuals a1 a2 arg farg bindings)
-		     bindings))))))))
+		(let ((abindings (tc-match-type-name-actuals a1 a2 arg farg bindings)))
+		  (if (or d1 d2)
+		      (tc-match-type-name-dactuals
+		       d1 d2 arg farg (or abindings bindings))
+		      abindings))))))))
 
 (defun tc-match-type-name-dactuals (d1 d2 arg farg bindings)
   (cond ((and d1 d2)
@@ -320,10 +322,9 @@
 		  (module (declaration (resolution arg))))
 	      bindings))
 	    (t (tc-match-names arg farg bindings)))
-      (or (and (formal-type-decl? (declaration farg))
-	       (not (assq (declaration farg) bindings))
-	       bindings)
-	  (tc-match-names arg farg bindings))))
+      (and (formal-type-decl? (declaration farg))
+	   (not (assq (declaration farg) bindings))
+	   bindings)))
 
 (defmethod tc-match* ((arg type-application) (farg type-application) bindings)
   (unless (null bindings)
@@ -429,6 +430,8 @@
 				 (tc-eq x (type-value y)))))))
       (cond ((null fsubtype-binding)
 	     (or (call-next-method)
+		 (when (print-type farg)
+		   (tc-match* arg (print-type farg) bindings))
 		 (tc-match* arg (supertype farg) bindings)))
 	    ((null (cdr fsubtype-binding))
 	     (when *tc-match-strictly*

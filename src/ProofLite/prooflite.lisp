@@ -35,12 +35,12 @@
            (match  (pregexp-match regexp (format nil "~a" (id fdecl))))
            (script (instantiate-script strategy match 0 "\\$")))
       (multiple-value-bind (strat err)
-	  #+allegro
+	  #+(and allegro (not pvs6))
 	  (unwind-protect
 	      (progn (excl:set-case-mode :case-insensitive-lower)
 		     (ignore-errors (values (read-from-string script))))
 	    (excl:set-case-mode :case-sensitive-lower))
-	  #-allegro
+	  #-(and allegro (not pvs6))
 	  (ignore-errors (values (read-from-string script)))
 	(let ((just (unless err
 		      (or (revert-justification strat)

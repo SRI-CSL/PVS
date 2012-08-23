@@ -234,33 +234,33 @@ beginning of the previous one."
 
 (defun theory-regions ()
   (when (current-pvs-file t)
-    (with-syntax-table pvs-search-syntax-table
-      (condition-case err
-	  (find-unbalanced-region-pvs (point-min) (point-max))
-	(error (error "Can't determine theory boundaries: %s" (cadr err))))
-      (theory-regions*))))
+    (condition-case err
+	(find-unbalanced-region-pvs (point-min) (point-max))
+      (error (error "Can't determine theory boundaries: %s" (cadr err))))
+    (theory-regions*)))
 
 (defun theory-regions* (&optional verbose)
-  (let ((case-fold-search t))
-    (save-excursion
-      (goto-char (point-min))
-      (let ((tregs nil)
-	    (pname nil)
-	    (opoint nil))
-	(while (beginning-of-theory opoint)
-	  (let ((tpoint (point)))
-	    (back-over-comments)
-	    (when pname (push (list pname opoint (point)) tregs))
-	    (setq opoint (point))
-	    (goto-char tpoint)
-	    (looking-at "\\w+")
-	    (setq pname (buffer-substring (match-beginning 0) (match-end 0)))
-	    (when verbose (princ pname) (princ " "))
-	    (find-theory-or-datatype-forward (point))))
-	(when pname
-	  (when verbose (pvs-message "Found region for %s" pname))
-	  (push (list pname opoint (point-max)) tregs))
-	(nreverse tregs)))))
+  (with-syntax-table pvs-search-syntax-table
+    (let ((case-fold-search t))
+      (save-excursion
+	(goto-char (point-min))
+	(let ((tregs nil)
+	      (pname nil)
+	      (opoint nil))
+	  (while (beginning-of-theory opoint)
+	    (let ((tpoint (point)))
+	      (back-over-comments)
+	      (when pname (push (list pname opoint (point)) tregs))
+	      (setq opoint (point))
+	      (goto-char tpoint)
+	      (looking-at "\\w+")
+	      (setq pname (buffer-substring (match-beginning 0) (match-end 0)))
+	      (when verbose (princ pname) (princ " "))
+	      (find-theory-or-datatype-forward (point))))
+	  (when pname
+	    (when verbose (pvs-message "Found region for %s" pname))
+	    (push (list pname opoint (point-max)) tregs))
+	  (nreverse tregs))))))
 
 (defun back-over-comments ()
   (let ((opoint (point))

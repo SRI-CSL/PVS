@@ -193,6 +193,14 @@
 		     nil nil nil dacts)))
       (values dfmls dacts thinst))))
 
+(defmethod new-decl-formals ((decl mapping-lhs))
+  (when (decl-formals decl)
+    (let* ((dfmls (new-decl-formals* decl))
+	   (dacts (mk-dactuals dfmls))
+	   (thinst (mk-modname (id (or (module decl) (current-theory)))
+		     nil nil nil dacts)))
+      (values dfmls dacts thinst))))
+
 (defmethod new-decl-formals ((imp importing))
   nil)
 
@@ -619,7 +627,7 @@
 	       (full-thname (lcopy thname :mappings mappings :target nil)))
 	  (when tgt-theory
 	    (typecheck-using tgt-name))
-	  (set-type-actuals-and-maps full-thname)
+	  (set-type-actuals-and-maps full-thname theory)
 	  ;; (when (mappings full-thname)
 	  ;;   (unless (fully-instantiated? full-thname)
 	  ;;     (type-error theory-name

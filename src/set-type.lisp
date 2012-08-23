@@ -230,6 +230,7 @@ required a context.")
     ;; Why not just check for actuals of the module-instance
     (unless (fully-instantiated? res)
       (let ((nres (instantiate-resolution ex res expected)))
+	(assert nres)
 	(if (or *dont-worry-about-full-instantiations*
 		(fully-instantiated? nres))
 	    (setf res nres
@@ -647,7 +648,8 @@ required a context.")
 
 ;;; should be split into two methods
 
-(defun set-type-actuals-and-maps (name &optional theory)
+(defun set-type-actuals-and-maps (name theory)
+  (assert theory)
   (prog1 (set-type-actuals name theory)
     (set-type-maps name theory)))
 
@@ -882,7 +884,7 @@ required a context.")
 		(declaration (theory-name formal)))
       (type-error act "Theory name should be (an alias of) ~a"
 		  (id (declaration (theory-name formal)))))
-    (set-type-actuals-and-maps (expr act))))
+    (set-type-actuals-and-maps (expr act) (declaration (theory-name formal)))))
 
 (defun set-type-mappings (thinst theory)
   (when (mappings thinst)
@@ -961,9 +963,16 @@ required a context.")
 
 (defun set-type-mappings* (mappings thinst &optional previous-mappings)
   (when mappings
-    (set-type-mapping (car mappings) thinst previous-mappings)
-    (set-type-mappings*
-     (cdr mappings) thinst (nconc previous-mappings (list (car mappings))))))
+    (let ((map (car mappings)))
+      (set-type-mapping map thinst previous-mappings)
+      (let ((smaps (if nil ;(decl-formals (lhs map))
+		       (subst-mod-params (cdr mappings)
+			   (lcopy thinst :dactuals (dactuals (lhs map)))
+			 (module (lhs map)) (lhs map))
+		       (cdr mappings))))
+	;;(break "set-type-mappings*")
+	(set-type-mappings* smaps thinst
+			    (nconc previous-mappings (list map)))))))
 
 (defun set-type-lhs-mappings (mappings thinst)
   (set-type-lhs-mappings* mappings thinst)
@@ -980,7 +989,8 @@ required a context.")
 	(rhs (rhs map)))
     (assert (resolutions lhs))
     ;;(assert (ptypes (expr rhs)))
-    (determine-best-mapping-lhs lhs rhs)))
+    (determine-best-mapping-lhs lhs rhs)
+    (setf (dactuals lhs) (mk-dactuals (decl-formals lhs)))))
 
 (defun determine-best-mapping-lhs (lhs rhs)
   (unless (singleton? (resolutions lhs))
@@ -1082,7 +1092,15 @@ required a context.")
     (assert (resolutions lhs))
     ;;(assert (ptypes (expr rhs)))
     ;;(determine-best-mapping-lhs lhs rhs)
-    (set-type-mapping-rhs rhs lhs thinst previous-mappings)))
+    (if (decl-formals lhs)
+	(let* ((ctn (current-theory-name))
+	       (cthinst (lcopy ctn :dactuals (dactuals lhs))))
+	  (setf (current-theory-name) cthinst)
+	  (unwind-protect 
+	      (with-current-decl lhs
+		(set-type-mapping-rhs rhs lhs thinst previous-mappings))
+	    (setf (current-theory-name) ctn)))
+	(set-type-mapping-rhs rhs lhs thinst previous-mappings))))
 
 (defmethod set-type-mapping ((map mapping-rename) thinst previous-mappings)
   (with-slots (lhs rhs) map
@@ -1151,16 +1169,20 @@ required a context.")
 		  (set-type-mappings (name-to-modname (expr rhs))
 				     (declaration (expr rhs))))))))
     (t (let* ((mapthinst (lcopy thinst
-			   :mappings (append mappings (mappings thinst))))
+			   :mappings (append mappings (mappings thinst))
+			   :dactuals (dactuals lhs)))
 	      (stype (subst-mod-params (type (declaration lhs))
 				       mapthinst
-				       (module (declaration lhs))))
+				       (module (declaration lhs))
+				       lhs))
 	      (subst-type (subst-mod-params-all-mappings stype))
 	      (subst-types (if (free-params stype)
 			       (possible-mapping-subst-types
 				(types (expr rhs)) stype)
-			       (list stype))))
-	 (set-type* (expr rhs) (or (car subst-types) subst-type))))))
+			       (list stype)))
+	      (etype (or (car subst-types) subst-type)))
+	 (assert (fully-instantiated? etype))
+	 (set-type* (expr rhs) etype)))))
 
 (defmethod target-mapped-theory ((decl module))
   decl)
@@ -1258,8 +1280,8 @@ required a context.")
 	(if (and (equal nactuals (actuals modinst))
 		 (equal dactuals (dactuals modinst)))
 	    modinst
-	    (copy modinst :actuals nactuals :dactuals dactuals))))
-      modinst)
+	    (copy modinst :actuals nactuals :dactuals dactuals)))
+      modinst))
 
 (defun simplify-actuals (actuals &optional result)
   (if (null actuals)
@@ -1448,7 +1470,8 @@ required a context.")
 
 (defun check-for-subtype-tcc (ex expected)
   #+pvsdebug (assert (fully-instantiated? expected))
-  (assert (or (typep (current-declaration) 'conversion-decl)
+  (assert (or *checking-conversions*
+	      (typep (current-declaration) 'conversion-decl)
 	      (fully-instantiated? ex)))
   #+pvsdebug (assert (fully-typed? ex))
   (unless (subtype-of? (type ex) expected)
@@ -1685,11 +1708,10 @@ required a context.")
 						(range (type res))
 						(type res))
 					    type)
-	    (when (or (and rtype
-			   (singleton? thinsts)
-			   (eq (id (car thinsts)) (id (module (declaration res))))
-			   (compatible? rtype type))
-		      (break "instantiate-sel-resolution"))
+	    (when (and rtype
+		       (singleton? thinsts)
+		       (eq (id (car thinsts)) (id (module (declaration res))))
+		       (compatible? rtype type))
 	      (make-resolution (declaration res) (car thinsts))))))))
 
 (defmethod instantiate-sel-resolutions ((type cotupletype) constr args)
@@ -2170,8 +2192,9 @@ required a context.")
     (when (and (typep dadt '(or adt-type-name datatype-subtype))
 	       (not (subtype-of? (application-range-type arg optype) dadt)))
       (let* ((eacts (actuals (module-instance dadt)))
-	     (res (resolve (copy op :resolutions nil :type nil :actuals eacts)
-			   'expr (arguments ex))))
+	     (res (let ((*resolve-error-info* nil))
+		    (resolve* (copy op :resolutions nil :type nil :actuals eacts)
+			      'expr (arguments ex)))))
 	(when (and (singleton? res)
 		   (not (tc-eq (car res) (resolution op))))
 	  (if (type op)
@@ -3000,13 +3023,82 @@ required a context.")
 
 (defun instantiate-resolution (ex res type)
   (let* ((fparams (free-params res))
-	 (bindings (instantiate-operator-bindings fparams))
+	 (theories (delete-duplicates (mapcar #'module fparams)))
 	 (nres nil))
-    (assert (every #'(lambda (fp) (eq (module fp) (module (car fparams))))
-		   (cdr fparams)))
-    (let ((bindings (tc-match type (type res) bindings)))
-      (when (every #'cdr bindings)
-	(instantiate-resolution-from-bindings res bindings)))))
+    ;; Multiple theories can come about because of actuals, mappings, etc on ex
+    (if (all-formals-from-same-decls fparams)
+	(dolist (th theories)
+	  (let ((decls nil))
+	    (dolist (frm fparams)
+	      (when (and (decl-formal-type? frm)
+			 (associated-decl frm)
+			 (eq (module frm) th))
+		(pushnew (associated-decl frm) decls)))
+	    (unless (or decls (eq th (current-theory)))
+	      (let* ((formals (remove-if #'(lambda (fp) (not (eq (module fp) th)))
+				fparams))
+		     (bindings (tc-match type (type res)
+					 (mapcar #'list formals))))
+		(when (every #'cdr bindings)
+		  (let ((thinst (mk-modname (id th)
+				  (mapcar #'(lambda (fp)
+					      (let ((bd (cdr (assq fp bindings))))
+						(if bd
+						    (mk-res-actual bd th)
+						    (mk-res-actual
+						     (mk-name-expr (id fp)
+						       nil nil
+						       (make-resolution
+							   fp (mk-modname (id th)
+								nil (lib-id th))))
+						     th))))
+				    (formals-sans-usings th))
+				  (library (module-instance res))
+				  (mappings (module-instance res)))))
+		    (if (null decls)
+			(let ((sres (subst-mod-params res thinst th)))
+			  (push sres nres))
+			(let ((sres res))
+			  (dolist (decl decls)
+			    (let* ((dacts (mapcar #'(lambda (fp)
+						      (let ((bd (cdr (assq fp bindings))))
+							(if bd
+							    (mk-res-actual bd th)
+							    (mk-res-actual
+							     (mk-name-expr (id fp)
+							       nil nil
+							       (make-resolution
+								   fp (mk-modname (id th))))
+							     th))))
+					    (decl-formals decl)))
+				   (dthinst (copy thinst :dactuals dacts)))
+			      (setq sres (subst-mod-params sres dthinst th decl))))
+			  (push sres nres)))))))))
+	(if *dont-worry-about-full-instantiations*
+	    res
+	    (type-error ex
+	       "Could not determine the full theory instance for ~a~
+                ~%  Theory instance: ~a~%  refers to multiple decl params"
+	       ex (full-name (module-instance ex)))))
+    (cond ((cdr nres)
+	   (type-ambiguity ex))
+	  (nres (car nres))
+	  (*dont-worry-about-full-instantiations* res)
+	  (t (type-error ex
+	       "Could not determine the full theory instance for ~a~
+                ~%  Theory instance: ~a"
+	       ex (full-name (module-instance ex)))))))
+
+(defun all-formals-from-same-decls (formals &optional decl)
+  (or (null formals)
+      (and (or (not (decl-formal? (car formals)))
+	       (null decl)
+	       (eq (associated-decl (car formals)) decl))
+	   (all-formals-from-same-decls
+	    (cdr formals)
+	    (or decl
+		(when (decl-formal? (car formals))
+		  (associated-decl (car formals))))))))
 
 (defun instantiate-resolution-from-bindings (res bindings)
   (multiple-value-bind (thinsts theory-decls)

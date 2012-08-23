@@ -2111,6 +2111,12 @@
 	(pp-tex* (expr (rhs map)))
 	(pp-tex-keyword 'NORHS))))
 
+(defmethod pp-tex* ((lhs mapping-lhs))
+  (pprint-logical-block (nil nil)
+    (pp-tex-id (id lhs))
+    (when (decl-formals lhs)
+      (pp-tex-theory-formals (decl-formals lhs)))))
+
 (defmethod pp-tex* ((map mapping-with-formals))
   (pprint-logical-block (nil nil)
     (pp-tex* (lhs map))

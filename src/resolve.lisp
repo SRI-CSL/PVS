@@ -117,6 +117,7 @@
 	      ((null res)
 	       (resolution-error name 'module argument))
 	      (t (let ((theory (declaration (car res))))
+		   (setf (resolutions name) res)
 		   (when (decl-formals (declaration (car res)))
 		     (break "decl params may be a problem here"))
 		   (when (actuals name)
@@ -128,8 +129,7 @@
 		   (when (mappings name)
 		     (typecheck-mappings (mappings name) name))
 		   (unless (member name (get-importings theory) :test #'tc-eq)
-		     (set-type-actuals-and-maps name))
-		   (setf (resolutions name) res)
+		     (set-type-actuals-and-maps name theory))
 		   name))))))
 
 
