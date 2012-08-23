@@ -121,29 +121,29 @@
 				
 
 (defmethod match* :around ((texpr type-expr)(instance type-expr)
-			   bind-alist subst)
-  (let ((oldmodsubst  *modsubst*)
-	(result
-	 (if (eq subst 'fail) 'fail
-	     (if (and (eq texpr instance) (null (freevars texpr)))
-		 subst
-		 (let ((print-texpr (print-type texpr))
-		       (print-instance (print-type instance)))
-		     (if (and print-texpr
-			      print-instance
-			      (type-name? print-texpr)
-			      (type-name? print-instance)
-			      (same-declaration print-texpr
-						print-instance))
-			 (match* print-texpr
-				 print-instance
-				 bind-alist subst)
-			 (call-next-method)))))))
-    (when (eq result 'fail)
-      ;; (break "failaround")
-      ;;(format t "~%resetting modsubst from ~a to ~a" *modsubst* oldmodsubst)
-      (setq *modsubst* oldmodsubst))
-    result))
+			  bind-alist subst)
+	   (let ((oldmodsubst  *modsubst*)
+		  (result
+		   (if (eq subst 'fail) 'fail
+		       (if (and (eq texpr instance)(null (freevars texpr)))
+			   subst
+			   (with-slots ((print-texpr print-type)) texpr
+			     (with-slots ((print-instance print-type)) instance
+			       (if (and print-texpr
+					print-instance
+					(type-name? print-texpr)
+					(type-name? print-instance)
+					(same-declaration print-texpr
+							  print-instance))
+				   (match* print-texpr
+					   print-instance
+					   bind-alist subst)
+				   (call-next-method))))))))
+	     (when (eq result 'fail)
+	       ; (break "failaround")
+ 	       ;(format t "~%resetting modsubst from ~a to ~a" *modsubst* oldmodsubst)
+	       (setq *modsubst* oldmodsubst))
+	     result))
 
 (defmethod match* ((texpr type-name) (instance type-expr) bind-alist subst)
   (if (and (consp *modsubst*)

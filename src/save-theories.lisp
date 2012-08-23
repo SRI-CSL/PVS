@@ -1283,9 +1283,7 @@
     (let* ((type-expr (if (actuals thinst)
 			  (let ((*pseudo-normalizing* t)) ;; disallow pseudo-normalize
 			    (subst-mod-params tval thinst (module decl)))
-			  (if (print-type te)
-			      (copy tval 'print-type te)
-			      (copy tval)))))
+			  (copy tval 'print-type te))))
       #+pvsdebug (assert (or (print-type type-expr) (tc-eq te type-expr)))
       #+pvsdebug (assert (true-type-expr? type-expr))
       type-expr)))
@@ -1314,9 +1312,8 @@
 			  (substit mtype-expr
 			    (pairlis (car (formals decl)) (parameters te))))))
       #+pvsdebug (assert (true-type-expr? type-expr))
-      (unless (type-name? type-expr)
-	(with-slots (print-type) type-expr
-	  (setf print-type te)))
+      (with-slots (print-type) type-expr
+	(setf print-type te))
       type-expr)))
 
 (defmethod print-type-correct? ((te type-expr))

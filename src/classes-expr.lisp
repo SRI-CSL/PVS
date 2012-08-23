@@ -103,7 +103,8 @@
 ;; For stand-alone field projections, e.g., `a[R]
 (defcl fieldex (expr)
   id
-  actuals)
+  actuals
+  dactuals)
 
 (defcl adt-name-expr (name-expr)
   adt-type)
@@ -532,7 +533,11 @@
 (defcl mapping-rename-with-formals (mapping-with-formals mapping-rename))
 
 (defcl mapping-lhs (name)
-  (decl-formals :parse t))
+  (decl-formals :parse t :type list)
+  (module :type datatype-or-module)
+  (refers-to :type list)
+  generated-by
+  generated)
 
 (defcl mapping-rhs (actual))
 

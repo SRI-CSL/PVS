@@ -83,7 +83,10 @@
     (let* ((*generate-tccs* 'none)
 	   (cdecl (current-declaration))
 	   (cth (module cdecl))
-	   (id (make-tcc-name))
+	   (id (if (equal (cdr (assq expr *compatible-pred-reason*))
+				  "judgement")
+		   (or (id (current-declaration)) (make-tcc-name))
+		   (make-tcc-name)))
 	   (tccdecl (cond ((and *recursive-subtype-term*
 				(occurs-in-eq *recursive-subtype-term* incs))
 			   (mk-termination-tcc id nil dfmls))
@@ -112,12 +115,12 @@
 			(*simplify-tccs*
 			 (pseudo-normalize sform))
 			(t sform))))
-      (assert (every #'(lambda (fp)
-			 (or (memq fp (formals-sans-usings (current-theory)))
-			     (memq fp dfmls)
-			     (when *in-checker*
-			       (memq fp (decl-formals (current-declaration))))))
-		     (free-params uform)))
+      ;; (assert (every #'(lambda (fp)
+      ;; 			 (or (memq fp (formals-sans-usings (current-theory)))
+      ;; 			     (memq fp dfmls)
+      ;; 			     (when *in-checker*
+      ;; 			       (memq fp (decl-formals (current-declaration))))))
+      ;; 		     (free-params uform)))
       (when (and (forall-expr? uform)
 		 (duplicates? (bindings uform) :key #'id))
 	(break "repeated bindings in make-subtype-tcc-decl"))
@@ -775,7 +778,9 @@
 	     (tccdecl (mk-well-founded-tcc id nil dfmls))
 	     (cdecl (current-declaration))
 	     (cth (module cdecl))
-	     (ordering (subst-mod-params (ordering decl) thinst cth cdecl))
+	     (ordering (subst-mod-params (ordering decl)
+			   (or thinst (current-theory-name))
+			 cth cdecl))
 	     (var1 (make-new-variable '|x| ordering))
 	     (var2 (make-new-variable '|y| ordering))
 	     (pmtype (parse-unparse mtype 'type-expr))
@@ -1246,7 +1251,7 @@
 
 (defun make-mapped-axiom-tcc-decl (axiom modinst mod)
   (multiple-value-bind (dfmls dacts thinst)
-      (new-decl-formals (current-declaration))
+      (new-decl-formals axiom)
     (declare (ignore dacts))
     (let* ((*generate-tccs* 'none)
 	   (*generating-mapped-axiom-tcc* t)
@@ -1260,7 +1265,9 @@
 	  (setf (closed-definition axiom)
 		(universal-closure (definition axiom)))))
       (multiple-value-bind (expr mappings-alist)
-	  (subst-mod-params (closed-definition axiom) modinst mod)
+	  (subst-mod-params (closed-definition axiom)
+	      (lcopy modinst :dactuals dacts)
+	    mod axiom)
 	(let* ((tform (add-tcc-conditions expr))
 	       (xform (if *simplify-tccs*
 			  (pseudo-normalize tform)
@@ -1271,6 +1278,7 @@
 	       (uform (if thinst
 			  (subst-mod-params sform thinst cth cdecl)
 			  sform)))
+	  (setf (definition tccdecl) uform)
 	  (unless (tc-eq uform *true*)
 	    (when (and *false-tcc-error-flag*
 		       (tc-eq uform *false*))
@@ -1335,6 +1343,15 @@
 		  (or (if (declaration? (generated-by (current-declaration)))
 			  (generated-by (current-declaration))
 			  (current-declaration))))))
+    (make-tcc-name** decl-id
+		     (remove-if-not #'declaration?
+		       (all-decls (current-theory)))
+		     extra-id
+		     1)))
+
+(defmethod make-tcc-name* ((decl mapping-lhs) expr extra-id)
+  (declare (ignore expr))
+  (let ((decl-id (op-to-id (current-declaration))))
     (make-tcc-name** decl-id
 		     (remove-if-not #'declaration?
 		       (all-decls (current-theory)))

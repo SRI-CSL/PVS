@@ -429,6 +429,40 @@
 			(eq (id decl) id)))
 	(theory theory))))
 
+;;; libref is a string - either a pathname (absolute or relative
+;;; to current context), or a simple name followed by / for dirs
+;;; found in PVS_LIBRARY_PATH
+(defmethod libref ((res resolution))
+  (libref (declaration res)))
+
+(defmethod libref ((decl declaration))
+  (libref (module decl)))
+
+(defmethod libref ((decl binding))
+  (when (module decl)
+    (libref (module decl))))
+
+(defmethod libref ((th datatype-or-module))
+  nil)
+
+(defmethod libref ((th library-datatype-or-theory))
+  (lib-ref th))
+
+;;; lib-id is what is found in names, either by a library declaration
+;;; or a simple reference to a PVS_LIBRARY_PATH sub directory
+(defun lib-id (obj)
+  (libref-to-libid (libref obj)))
+
+;;; This usually just returns the module-instance, but for library
+;;; theories it adds the lib-id.  Note that this can't be made a part
+;;; of the resolution, as the lib-id depends on how the library was
+;;; brought into the current PVS context.
+(defmethod theory-instance-with-lib ((res resolution))
+  (let ((thinst (module-instance res)))
+    (if (library thinst)
+	thinst
+	(lcopy thinst :library (lib-id res)))))
+
 (defmethod get-theory ((name modname))
   (with-slots (library id) name
     (get-theory* id library)))
@@ -1067,53 +1101,54 @@
     ;;; Need to clear this hash or the known-subtypes table won't get
     ;;; updated properly - see add-to-known-subtypes.
     (clrhash *subtype-of-hash*)
-    (dolist (d (reverse rem-decls))
-      (typecase d
-	(lib-decl
-	 (check-for-importing-conflicts d)
-	 (put-decl d))
-	((or mod-decl theory-abbreviation-decl formal-theory-decl)
-	 (put-decl d)
-	 (let* ((thname (theory-name d))
-		(th (get-theory thname)))
-	   (add-usings-to-context* th thname))
-	 (setf (saved-context d) (copy-context *current-context*)))
-	(importing
-	 (let* ((thname (theory-name d))
-		(th (get-theory* (id thname)
-				 (or (library thname)
-				     (and (library-datatype-or-theory? theory)
-					  (car (rassoc (lib-ref theory) libalist
-						       :test #'string=)))))))
-	   (assert th)
-	   (add-usings-to-context* th thname))
-	 (setf (saved-context d) (copy-context *current-context*)))
-	;;(subtype-judgement (add-to-known-subtypes (subtype d) (type d)))
-	(judgement (add-judgement-decl d t))
-	(conversionminus-decl (disable-conversion d))
-	(conversion-decl (push d (conversions *current-context*)))
-	(auto-rewrite-minus-decl (push d (disabled-auto-rewrites
-					 *current-context*)))
-	(auto-rewrite-decl (add-auto-rewrite-to-context  d))
-	(type-def-decl (unless (enumtype? (type-expr d))
-			 (put-decl d)))
-	(declaration (put-decl d))
-	(datatype nil)))
-    (when (from-prelude? decl)
-      (let* ((prevp (cadr (memq theory
-				(reverse *prelude-theories*))))
-	     (pths (if (datatype? prevp)
-		       (delete-if #'null
-			 (list (adt-theory prevp)
-			       (adt-map-theory prevp)
-			       (adt-reduce-theory prevp)))
-		       (list prevp))))
-	(dolist (pth pths)
-	  (setf (get-importings pth)
-		(list (mk-modname (id pth)))))))
-    (setf (declaration *current-context*) decl)
-    (update-context-importing-for-mapped-tcc decl)
-    *current-context*))
+    (with-current-decl decl
+      (dolist (d (reverse rem-decls))
+	(typecase d
+	  (lib-decl
+	   (check-for-importing-conflicts d)
+	   (put-decl d))
+	  ((or mod-decl theory-abbreviation-decl formal-theory-decl)
+	   (put-decl d)
+	   (let* ((thname (theory-name d))
+		  (th (get-theory thname)))
+	     (add-usings-to-context* th thname))
+	   (setf (saved-context d) (copy-context *current-context*)))
+	  (importing
+	   (let* ((thname (theory-name d))
+		  (th (get-theory* (id thname)
+				   (or (library thname)
+				       (and (library-datatype-or-theory? theory)
+					    (car (rassoc (lib-ref theory) libalist
+							 :test #'string=)))))))
+	     (assert th)
+	     (add-usings-to-context* th thname))
+	   (setf (saved-context d) (copy-context *current-context*)))
+	  ;;(subtype-judgement (add-to-known-subtypes (subtype d) (type d)))
+	  (judgement (add-judgement-decl d t))
+	  (conversionminus-decl (disable-conversion d))
+	  (conversion-decl (push d (conversions *current-context*)))
+	  (auto-rewrite-minus-decl (push d (disabled-auto-rewrites
+					    *current-context*)))
+	  (auto-rewrite-decl (add-auto-rewrite-to-context  d))
+	  (type-def-decl (unless (enumtype? (type-expr d))
+			   (put-decl d)))
+	  (declaration (put-decl d))
+	  (datatype nil)))
+      (when (from-prelude? decl)
+	(let* ((prevp (cadr (memq theory
+				  (reverse *prelude-theories*))))
+	       (pths (if (datatype? prevp)
+			 (delete-if #'null
+			   (list (adt-theory prevp)
+				 (adt-map-theory prevp)
+				 (adt-reduce-theory prevp)))
+			 (list prevp))))
+	  (dolist (pth pths)
+	    (setf (get-importings pth)
+		  (list (mk-modname (id pth)))))))
+      (setf (declaration *current-context*) decl)
+      (update-context-importing-for-mapped-tcc decl)
+      *current-context*)))
 
 (defmethod update-context-importing-for-mapped-tcc ((decl mapped-axiom-tcc))
   (assert (theory-instance decl))
@@ -1401,7 +1436,8 @@
 	   (let* ((*in-checker* nil)
 		  (*current-context* (context decl)))
 	     (setf (closed-definition decl)
-		   (universal-closure (definition decl)))))
+		   (with-current-decl decl
+		     (universal-closure (definition decl))))))
 	 (let ((*no-expected* t))
 	   (list
 	    (subst-mod-params (closed-definition decl)
@@ -2194,9 +2230,6 @@
 (defun sbrt::assq (obj alist)
   (assoc obj alist :test #'eq))
 
-(defmethod print-type ((tn type-name))
-  nil)
-
 ;;; Full-name
 
 (defvar *full-name-depth* nil)
@@ -2411,9 +2444,6 @@
 	       (raise-actuals? (print-type x))))))
 
 (defmethod raise-actuals! ((x type-expr))
-  (call-next-method))
-
-(defmethod raise-actuals! ((x ptype-expr))
   (lcopy (call-next-method) 'print-type (raise-actuals (print-type x))))
 
 (defmethod raise-actuals! (x) x)

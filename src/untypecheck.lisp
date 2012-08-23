@@ -425,7 +425,7 @@
   (when (next-method-p) (call-next-method))
   (setf (from-conversion te) nil)
   (setf (nonempty? te) nil)
-  (when (print-type te) (setf (print-type te) nil))
+  (setf (print-type te) nil)
   ;;(setf (no-freevars? te) nil)
   (setf (free-variables te) 'unbound)
   (setf (free-parameters te) 'unbound))

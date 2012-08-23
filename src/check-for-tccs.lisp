@@ -92,21 +92,21 @@
 	       (not (memq expr *exprs-generating-actual-tccs*)))
       (unless (or *in-checker* *in-evaluator*)
 	(push expr *exprs-generating-actual-tccs*))
-      (check-type-actuals* acts (formals-sans-usings theory))
+      (check-type-actuals* acts (formals-sans-usings theory) theory)
       (generate-assuming-tccs modinst expr theory)
       (generate-actuals-tccs (actuals expr) acts))))
 
-(defun check-type-actuals* (actuals formals &optional alist)
+(defun check-type-actuals* (actuals formals theory &optional alist)
   (when actuals
     (multiple-value-bind (nform nalist)
 	(subst-actuals-in-next-formal (car actuals) (car formals) alist)
-      (check-type-actual (car actuals) nform)
-      (check-type-actuals* (cdr actuals) (cdr formals) nalist))))
+      (check-type-actual (car actuals) nform theory)
+      (check-type-actuals* (cdr actuals) (cdr formals) theory nalist))))
 
-(defmethod check-type-actual (act (formal formal-type-decl))
+(defmethod check-type-actual (act (formal formal-type-decl) theory)
   (check-for-tccs* (type-value act) nil))
 
-(defmethod check-type-actual (act (formal formal-subtype-decl))
+(defmethod check-type-actual (act (formal formal-subtype-decl) theory)
   (call-next-method)
   (let* ((tact (type-value act))
 	 (texp (type-value formal))
@@ -117,11 +117,11 @@
 			     (make-resolution vb nil tact))))
     (check-for-subtype-tcc svar (supertype texp))))
 
-(defmethod check-type-actual (act (formal formal-const-decl))
+(defmethod check-type-actual (act (formal formal-const-decl) theory)
   (check-for-tccs* (expr act) (type formal)))
 
-(defmethod check-type-actual (act (formal formal-theory-decl))
-  (set-type-actuals-and-maps (expr act)))
+(defmethod check-type-actual (act (formal formal-theory-decl) theory)
+  (set-type-actuals-and-maps (expr act) theory))
 
 
 (defmethod check-for-tccs* ((expr number-expr) expected)

@@ -132,6 +132,9 @@ emacsversion = $(shell expr "`$(EMACS) --version 2> /dev/null`" \
                             : '[^X]*\(X*Emacs [0-9][0-9]\)')
 
 
+ifeq ($(emacsversion),Emacs 24)
+EMACSSUBDIR = emacs24
+else
 ifeq ($(emacsversion),Emacs 23)
 EMACSSUBDIR = emacs23
 else
@@ -154,6 +157,7 @@ ifeq ($(emacsversion),Emacs 19)
 EMACSSUBDIR = emacs19
 else
 $(error "Unknown version of (X)Emacs: $(emacsversion)")
+endif
 endif
 endif
 endif
@@ -727,8 +731,8 @@ distclean :
 	rm -f src/pvs-info.lisp src/pvs-lexer.lisp src/pvs-methods.lisp \
               src/pvs-parser.lisp src/pvs-sorts.lisp
 	rm -f src/utils/{$(platforms)}/b64
-	rm -rf emacs/emacs19/*.{el,elc} emacs/emacs20 emacs/emacs22 \
-               emacs/xeamcs20 emacs/xemacs21
+	rm -rf emacs/emacs19/*.{el,elc} emacs/emacs24 emacs/emacs23 \
+               emacs/emacs22 emacs/emacs20 emacs/xeamcs20 emacs/xemacs21
 	rm -rf */{$(platforms)}/*.{a,so,dylib} */*/{$(platforms)}/*.{a,so,dylib}
 	rm -f doc/langauge/Makefile doc/language/pvs-doc.el doc/prover/Makefile doc/user-guide/Makefile
 	rm -rf autom4te.cache bin/{$(platforms)}
