@@ -198,12 +198,14 @@
 		       osubsts)))
       (when (and vdecl *rec-judgement-extra-conditions*)
 	(break "Need to add extra conditions"))
-      (universal-closure (add-tcc-conditions*
-			  (raise-actuals srec-expr)
-			  (if (and vdecl ch?)
-			      (insert-var-into-conditions vdecl conditions)
-			      conditions)
-			  substs nil)))))
+      (let ((tform (add-tcc-conditions*
+		    (raise-actuals srec-expr)
+		    (if (and vdecl ch?)
+			(insert-var-into-conditions vdecl conditions)
+			conditions)
+		    substs nil)))
+	;;(break)
+	(universal-closure tform)))))
 
 (defun insert-var-into-conditions (vdecl conditions)
   (let* ((fvars (freevars vdecl))
@@ -340,6 +342,7 @@
 	     (nexpr (if nbindings
 			(make!-forall-expr nbindings nbody)
 			nbody)))
+	;;(break "add-tcc-bindings")
 	(add-tcc-conditions* nexpr conditions substs nil))))
 
 
@@ -998,7 +1001,7 @@
 			    (some #'(lambda (tcc-cond)
 				      (not (typep tcc-cond '(or bind-decl list))))
 				  *tcc-conditions*))
-		  (push (cons modinst expr)
+		  (push (list modinst expr (current-declaration))
 			(assuming-instances (current-theory))))
 		(dolist (ass assumptions)
 		  (if (or (eq (kind ass) 'existence)
@@ -1064,7 +1067,7 @@
 			:test #'(lambda (x y)
 				  (not (eq (simple-match (car y) x) 'fail))))))
 	(if prev
-	    (let ((aprev (or (cdr prev) (car prev))))
+	    (let ((aprev (or (cadr prev) (car prev))))
 	      (pvs-info "Mapped axiom TCCs not generated for~%  ~w~%~
                          as they are subsumed by the TCCs generated for~%  ~w"
 		modinst (place-string aprev) aprev))
@@ -1076,7 +1079,8 @@
 			  (some #'(lambda (tcc-cond)
 				    (not (typep tcc-cond '(or bind-decl list))))
 				*tcc-conditions*))
-		(push (list modinst) (assuming-instances (current-theory))))
+		(push (list modinst nil (current-declaration))
+		      (assuming-instances (current-theory))))
 	      (dolist (axiom (collect-mapping-axioms modinst mod))
 		(multiple-value-bind (ndecl mappings-alist)
 		    (make-mapped-axiom-tcc-decl axiom modinst mod)
