@@ -866,8 +866,10 @@
 (defun update-auto-rewrites-of-current-context (theory theoryname)
   (declare (ignore theoryname))
   (dolist (r (auto-rewrites (saved-context theory)))
+    (assert (auto-rewrite-decl? r))
     (pushnew r (auto-rewrites *current-context*)))
   (dolist (r (disabled-auto-rewrites (saved-context theory)))
+    (assert (auto-rewrite-decl? r))
     (pushnew r (disabled-auto-rewrites *current-context*))))
 
 (defmethod unimported-mapped-theory? (th theory theoryname)
