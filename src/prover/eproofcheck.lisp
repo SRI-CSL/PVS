@@ -554,7 +554,7 @@
     ;;		      proofstate
     ;;		      t t))
     ;;  (break)
-    (print-proofstate-if proofstate)
+    (output-proofstate proofstate)
     (unless *suppress-printing*
       (clear-strategy-errors))
     )
@@ -582,6 +582,12 @@
 		  proofstate)
 		 (t (prove*-int nextstate))))
 	  (t (prove*-int nextstate)))))
+
+;;; This was pulled out to be able to capture the output for JSON (i.e., Eclipse)
+;;; print-proofstate-if is a macro that eventually expands to a format, and
+;;; provides no hook to work with.
+(defmethod output-proofstate (proofstate)
+  (print-proofstate-if proofstate))
 
 ;;12/16: need to fix prove* to save the proof, etc.
 
@@ -646,10 +652,18 @@
 	  (t
 	   (check-command-arguments (car pcmd) keywords (cdr pcmd) has-rest?)))))
 
+;;; This provides a hook for, e.g., JSON
+(defmethod prover-read ()
+  (multiple-value-bind (input err)
+      (ignore-errors (read))
+    (when err
+      (format t "~%~a" err))
+    input))
+
 (defun qread (prompt)
   (format t "~%~a"  prompt)
   (force-output)
-  (let ((input (ignore-errors (read))))
+  (let ((input (prover-read)))
     (cond ((and (consp input)
 		(eq (car input) 'lisp))
 	   (format t "~%~s~%"  (eval (cadr input)))
@@ -699,7 +713,7 @@
 
   (cond
     ((fresh? proofstate)   ;;new state
-     (let ((post-proofstate  ;;check if current goal is prop-axiom.
+     (let ((post-proofstate ;;check if current goal is prop-axiom.
 	    (cond ((eq (check-prop-axiom (s-forms (current-goal proofstate)))
 		       '!) ;;set flag to proved! and update fields. 
 		   (setf (status-flag proofstate) '!      
@@ -710,9 +724,9 @@
 			 (make-instance 'justification
 			   :label (label-suffix (label proofstate))
 			   :rule '(propax)))
-		   proofstate)  ;;else display goal, 
-		               ;;eval strategy, invoke rule-apply
-		  (t (catch-restore  ;;in case of restore/enable interrupts
+		   proofstate)	    ;;else display goal, 
+		  ;;eval strategy, invoke rule-apply
+		  (t (catch-restore ;;in case of restore/enable interrupts
 		      (progn
 			(when ;;(not (strat-proofstate? proofstate))
 			    ;;NSH(8.19.95): display-proofstate called only
@@ -722,98 +736,96 @@
 				 (or (null (parent-proofstate proofstate))
 				     (current-rule (parent-proofstate proofstate))
 				     (current-input (parent-proofstate proofstate))))
-			  (display-proofstate proofstate))
+			  (apply-proofstate-hooks proofstate))
 			(let* ((*rule-args-alist* nil)
 			       (strategy
 				(strat-eval*
 				 (if (strategy proofstate)
 				     (strategy proofstate)
-				     '(postpone t));;if no strat, move on.
+				     '(postpone t)) ;;if no strat, move on.
 				 proofstate)))
 			  (setf (strategy proofstate) strategy)
 			  (rule-apply strategy proofstate))))))))
-		;;rule-apply returns a revised proofstate.
-		(cond ((null post-proofstate);;hence aborted
-		       (let ((nps ;;NSH(7.18.94) for proper restore
-			      (nonstrat-parent-proofstate
-			       proofstate)))
-			 (setf (status-flag nps) nil
-			       (remaining-subgoals nps) nil
-			       (current-subgoal nps) nil
-			       (pending-subgoals nps) nil
-			       (done-subgoals nps) nil
-			       (strategy nps)
-			       (query*-step));;unevaluated
-		       ;;(query*-step)
-		       ;;is okay here.
-			 nps))
-		      ((eq (status-flag post-proofstate) '?) ;;subgoals created
-		       (format-printout post-proofstate) ;;print commentary
-		       (cond ((> (length (remaining-subgoals post-proofstate)) 1)
-			      (when (and *rerunning-proof*
-					 (integerp *rerunning-proof-message-time*)
-					 (> (- (get-internal-real-time)
-					       *rerunning-proof-message-time*)
-					    3000))  ;;print mini-buffer msg
-				(setq *rerunning-proof* (format nil "~a." *rerunning-proof*))
-				(setq *rerunning-proof-message-time*
-				      (get-internal-real-time))
-				(pvs-message *rerunning-proof*))
-			      (format-if "~%this yields  ~a subgoals: "
-					 (length (remaining-subgoals post-proofstate))))
-			     ((not (typep (car (remaining-subgoals post-proofstate))
-					  'strat-proofstate))
-			      (format-if "~%this simplifies to: "
-					 )))
-		       post-proofstate)
-		      ((eq (status-flag post-proofstate) '!);;rule-apply proved
-		       (format-printout post-proofstate)
-		       (wish-done-proof post-proofstate)
-		       (dpi-end post-proofstate)
-;		       (when (printout post-proofstate)
-;			 (format-if (printout post-proofstate)))
-		       post-proofstate)
-		      (t  post-proofstate))))
-;;if incoming goal has subgoals
-   ((eq (status-flag proofstate) '?)     ;;working on subgoals
-    (cond ((null (remaining-subgoals proofstate))
-	   (cond ((null (pending-subgoals proofstate))
-		  (success-step proofstate));;no more subgoals,declare success
-		 (t ;;pending subgoals
-		  (post-processing-step proofstate))))
-	  (t ;;subgoals remain
-	   (let ((newps (pop (remaining-subgoals proofstate))))
-	     (setf ;;(parent-proofstate newps) proofstate
-		   (current-subgoal proofstate) newps)
-;	           (substitution newps)
-;		   (if (null (out-substitution proofstate))
-;		       (substitution proofstate)
-;		     (out-substitution proofstate))
-;;		   (context newps)
-;;		   (if (null (out-context proofstate))
-;;		       (context proofstate)
-;;		     (out-context proofstate))
-		   
-;	     (when (eq (status-flag newps) '*)
-;	       (if (null (remaining-subgoals newps));;leaf node
-;		   (setf (status-flag newps) nil;;make it fresh
-;			 (strategy newps)
-;			 (strategy proofstate))
-;;			   (post-subgoal-strat (strategy proofstate))
-;;			   nil
-;			 (setf (status-flag newps) '?
-;			       (strategy newps)
-;			       (strategy proofstate))
-;;			   (post-subgoal-strat (strategy proofstate))
-;;			   nil
-;			 )
-;	       (setf (strategy proofstate);;zero out strategy
-;		     (if (null (remaining-subgoals proofstate))
-;			 nil
-;			 (strategy proofstate))))
-
-
-	     newps))))
+       ;;rule-apply returns a revised proofstate.
+       (cond ((null post-proofstate) ;;hence aborted
+	      (let ((nps	     ;;NSH(7.18.94) for proper restore
+		     (nonstrat-parent-proofstate
+		      proofstate)))
+		(setf (status-flag nps) nil
+		      (remaining-subgoals nps) nil
+		      (current-subgoal nps) nil
+		      (pending-subgoals nps) nil
+		      (done-subgoals nps) nil
+		      (strategy nps)
+		      (query*-step)) ;;unevaluated
+		;;(query*-step)
+		;;is okay here.
+		nps))
+	     ((eq (status-flag post-proofstate) '?)	 ;;subgoals created
+	      (format-printout post-proofstate)		 ;;print commentary
+	      (cond ((> (length (remaining-subgoals post-proofstate)) 1)
+		     (when (and *rerunning-proof*
+				(integerp *rerunning-proof-message-time*)
+				(> (- (get-internal-real-time)
+				      *rerunning-proof-message-time*)
+				   3000)) ;;print mini-buffer msg
+		       (setq *rerunning-proof* (format nil "~a." *rerunning-proof*))
+		       (setq *rerunning-proof-message-time*
+			     (get-internal-real-time))
+		       (pvs-message *rerunning-proof*))
+		     (format-if "~%this yields  ~a subgoals: "
+				(length (remaining-subgoals post-proofstate))))
+		    ((not (typep (car (remaining-subgoals post-proofstate))
+				 'strat-proofstate))
+		     (format-if "~%this simplifies to: "
+				)))
+	      post-proofstate)
+	     ((eq (status-flag post-proofstate) '!) ;;rule-apply proved
+	      (format-printout post-proofstate)
+	      (wish-done-proof post-proofstate)
+	      (dpi-end post-proofstate)
+					;		       (when (printout post-proofstate)
+					;			 (format-if (printout post-proofstate)))
+	      post-proofstate)
+	     (t  post-proofstate))))
+    ;;if incoming goal has subgoals
+    ((eq (status-flag proofstate) '?) ;;working on subgoals
+     (cond ((null (remaining-subgoals proofstate))
+	    (cond ((null (pending-subgoals proofstate))
+		   (success-step proofstate)) ;;no more subgoals,declare success
+		  (t			      ;;pending subgoals
+		   (post-processing-step proofstate))))
+	   (t ;;subgoals remain
+	    (let ((newps (pop (remaining-subgoals proofstate))))
+	      (setf ;;(parent-proofstate newps) proofstate
+	       (current-subgoal proofstate) newps)
+	      ;; (substitution newps)
+	      ;; (if (null (out-substitution proofstate))
+	      ;;     (substitution proofstate)
+	      ;;     (out-substitution proofstate))
+	      ;; (context newps)
+	      ;; (if (null (out-context proofstate))
+	      ;;     (context proofstate)
+	      ;;     (out-context proofstate))
+	      
+	      ;; (when (eq (status-flag newps) '*)
+	      ;;   (if (null (remaining-subgoals newps));;leaf node
+	      ;;       (setf (status-flag newps) nil;;make it fresh
+	      ;;             (strategy newps)
+	      ;;             (strategy proofstate))
+	      ;;             (post-subgoal-strat (strategy proofstate))
+	      ;;             nil
+	      ;;       (setf (status-flag newps) '?
+	      ;;       (strategy newps)
+	      ;;       (strategy proofstate))
+	      ;;       (post-subgoal-strat (strategy proofstate))
+	      ;;       nil
+	      ;;   )
+	      ;;   (setf (strategy proofstate);;zero out strategy
+	      ;;         (if (null (remaining-subgoals proofstate))
+	      ;;             nil
+	      ;;             (strategy proofstate))))
+	      newps))))
    ((eq (status-flag proofstate) '*)  ;;pending goals, but proceeding
     (next-proofstate proofstate))
    ((memq (status-flag proofstate) '(X XX))  ;;failure
@@ -823,6 +835,14 @@
     ;;(format t "~%~%Proved ~a." (label proofstate))
     (next-proofstate proofstate))
    (t (next-proofstate proofstate))))  ;;just in case
+
+;; Allows external functions to be called, as for the wish display
+;; Used for JSON output
+(defun apply-proofstate-hooks (proofstate)
+  ;; Should make this a hook instead at some point
+  (display-proofstate proofstate)
+  (dolist (hook *proofstate-hooks*)
+    (funcall hook proofstate)))
 
 (defun nonstrat-parent-proofstate (ps) ;;NSH(7.18.94): for restore in
 				       ;;proofstepper. 
