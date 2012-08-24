@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec 16 02:42:01 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu May 20 16:23:41 2004
-;; Update Count    : 20
+;; Last Modified On: Thu Jun  7 11:59:18 2012
+;; Update Count    : 21
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -51,6 +51,9 @@
     prove-untried-pvs-file
     prove-untried-theory
     prove-with-checkpoint))
+
+;;; Called from pvs-send* in Emacs.  Name comes from ilisp's "ilisp-errors",
+;;; which is their interface to Emacs.
 
 #-(or akcl harlequin-common-lisp)
 (defmacro pvs-errors (form)
@@ -113,11 +116,56 @@
   (unless *old-result*
     (setq *old-result* (list /// // +++ ++))))
 
-;;; Writes out a message.  The message should fit on one line, and
-;;; should contain no newlines.  For Emacs, it is intended to write to
-;;; the minibuffer.
+;;; For JSON requests
+
+(defmethod declaration-kind ((th module))
+  'theory)
+
+(defmethod declaration-kind ((decl type-decl))
+  'type-decl)
+
+(defmethod declaration-kind ((decl formal-type-decl))
+  'formal-type-decl)
+
+(defmethod declaration-kind ((decl formal-const-decl))
+  'formal-const-decl)
+
+(defmethod declaration-kind ((decl formal-theory-decl))
+  'formal-theory-decl)
+
+(defmethod declaration-kind ((decl lib-decl))
+  'lib-decl)
+
+(defmethod declaration-kind ((decl mod-decl))
+  'theory-decl)
+
+(defmethod declaration-kind ((decl var-decl))
+  'var-decl)
+
+(defmethod declaration-kind ((decl def-decl))
+  'recursive-decl)
+
+(defmethod declaration-kind ((decl conversion-decl))
+  'conversion-decl)
+
+(defmethod declaration-kind ((decl conversionminus-decl))
+  'conversion-minus-decl)
+
+(defmethod declaration-kind ((decl auto-rewrite-decl))
+  'auto-rewrite-decl)
+
+(defmethod declaration-kind ((decl auto-rewrite-minus-decl))
+  'auto-rewrite-minus-decl)
+
+(defmethod declaration-kind (decl)
+  (class-name (class-of decl)))
+
+(defmethod decl-id ((decl datatype))
+  (id decl))
 
 (defun pvs-message (ctl &rest args)
+  (dolist (hook *pvs-message-hooks*)
+    (funcall hook (format nil ":pvs-msg ~? :end-pvs-msg" ctl args)))
   (unless *suppress-msg*
     (if *to-emacs*
 	(let* ((*print-pretty* nil)
@@ -319,6 +367,8 @@
 
 (defun pvs-error (msg err &optional itheory iplace)
   ;; Indicates an error; no recovery possible.
+  (dolist (hook *pvs-error-hooks*)
+    (funcall hook msg err itheory iplace))
   (cond (*rerunning-proof*
 	 (restore))
 	((and *pvs-emacs-interface*
@@ -344,8 +394,13 @@
 	       (restore)
 	       (pvs-abort))))
 	((null *pvs-emacs-interface*)
-	 (format t "~%<pvserror msg=\"~a\">~%\"~a\"~%</pvserror>"
-	   (protect-emacs-output msg) (protect-emacs-output err))
+	 (if *pvs-json-interface*
+	     (format t "~%{~%\"id\": ~a, \"error\": \"~a\">~%\"~a\"~%}~%"
+	       *pvs-json-id* (protect-emacs-output msg)
+	       (protect-emacs-output err))
+	     ;; Otherwise it's XML
+	     (format t "~%<pvserror msg=\"~a\">~%\"~a\"~%</pvserror>"
+	       (protect-emacs-output msg) (protect-emacs-output err)))
 	 (pvs-abort))
 	(t
 	 (format t "~%~%~a~%~a" msg err)
@@ -459,6 +514,8 @@
 	(read-choice query))))
 
 (defun pvs-buffer (name contents &optional display? read-only? append? kind)
+  (dolist (hook *pvs-buffer-hooks*)
+    (funcall hook name contents display? read-only? append? kind))
   (if *to-emacs*
       (let* ((*print-pretty* nil)
 	     (*output-to-emacs*
@@ -582,11 +639,19 @@
 	 (format t "~%Restoring the state.")
 	 (restore))
 	((null *pvs-emacs-interface*)
-	 (format t "~%<pvserror msg=\"parse-error\">~%\"~a\"~%</pvserror>"
-	   (protect-emacs-output
-	    (if args
-		(format t "~%~?" message args)
-		(format t "~%~a" message))))
+	 (if *pvs-json-interface*
+	     (format t "~%{~%\"id\": ~a, \"error\":\"parse-error:~a\"~%}~%"
+	       *pvs-json-id*
+	       (protect-emacs-output
+		(if args
+		    (format t "~%~?" message args)
+		    (format t "~%~a" message))))
+	     ;; Otherwise XML
+	     (format t "~%<pvserror msg=\"parse-error\">~%\"~a\"~%</pvserror>"
+	       (protect-emacs-output
+		(if args
+		    (format t "~%~?" message args)
+		    (format t "~%~a" message)))))
 	 (pvs-abort))
 	(t (if args
 	       (format t "~%~?~a~a"
@@ -612,7 +677,6 @@
 		     "")))
 	   (error "Parse error"))))
 )
-
 
 (defvar *type-error* nil)
 (defvar *type-error-argument* nil)
