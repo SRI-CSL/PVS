@@ -2000,7 +2000,11 @@
 		(multiple-value-bind (pos2 neg2)
 		    (addends* (args2 expr))
 		  (values (nconc pos1 neg2)(nconc neg1 pos2))))
-	      (list expr)))
+	      (if (is-unary-minus? expr)
+		  (multiple-value-bind (pos neg)
+		      (addends* (argument expr))
+		    (values neg pos))
+		  (list expr))))
       (list expr)))
 
 (defun multiplicands (expr)
