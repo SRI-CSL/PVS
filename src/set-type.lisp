@@ -1351,11 +1351,17 @@ required a context.")
   (declare (ignore ex alist))
   nil)
 
-(defmethod subst-acts-in-form! ((ex name) alist)
+(defmethod subst-acts-in-form! ((ex type-name) alist)
   (let ((act (cdr (assoc (declaration ex) alist :test #'subst-formal-eq))))
     (if (typep act 'actual)
 	(or (type-value act)
 	    (expr act))
+	act)))
+
+(defmethod subst-acts-in-form! ((ex name-expr) alist)
+  (let ((act (cdr (assoc (declaration ex) alist :test #'subst-formal-eq))))
+    (if (typep act 'actual)
+	(expr act)
 	act)))
 
 (defmethod subst-acts-in-form! ((ex actual) alist)
@@ -1424,15 +1430,11 @@ required a context.")
 	  (multiple-value-bind (ics there?)
 	      (gethash ex (typepred-hash *ps*))
 	    (if there?
-		ics
-		(let ((implicit-constraints
-		       (collect-implicit-type-constraints (list ex) *ps* nil t)))
-		  (setf (gethash ex (typepred-hash *ps*))
-			(if implicit-constraints
-			    (delete-if #'(lambda (inc)
-					   (member inc implicit-constraints :test #'tc-eq))
-			      incs)
-			    incs)))))
+		(remove-if #'(lambda (inc) (member inc ics :test #'tc-eq)) incs)
+		(let ((ics (collect-implicit-type-constraints (list ex) *ps* nil t)))
+		  (when (null (freevars ics))
+		    (setf (gethash ex (typepred-hash *ps*)) ics))
+		  (remove-if #'(lambda (inc) (member inc ics :test #'tc-eq)) incs))))
 	  (or incs
 	      (progn (add-tcc-comment 'subtype ex expected 'in-context)
 		     nil)))
@@ -1446,6 +1448,24 @@ required a context.")
 	     (or (nintersection incs nincs :test #'tc-eq)
 		 nincs)
 	     (nunion conds nconds :test #'tc-eq)))))))
+
+(defun uappend (list1 list2 &key (test #'eq))
+  ;; returns the append of list1 and list2, without duplicates
+  ;; (assuming no dups in list1)
+  (cond ((null list2)
+	 list1)
+	((member (car list2) list1 :test test)
+	 (uappend list1 (cdr list2)))
+	(t (uappend* (cons (car list2) (reverse list1)) (cdr list2) test))))
+
+(defun uappend* (rlist1 list2 test)
+  (if (null list2)
+      (nreverse rlist1)
+      (uappend* (if (member (car list2) rlist1 :test test)
+		    rlist1
+		    (cons (car list2) rlist1))
+		(cdr list2)
+		test)))
 
 
 (defmethod set-type* ((expr tuple-expr) expected)
@@ -3551,7 +3571,7 @@ required a context.")
 (defmethod set-type* ((ex quant-expr) expected)
   (set-binding-expr-types (append (bindings ex) (list (expression ex)))
 			  (nconc (mapcar #'type (bindings ex))
-				 (list expected)))
+				 (list (find-supertype expected))))
   (unless (compatible? *boolean* expected)
     (type-incompatible ex (list *boolean*) expected))
   (setf (type ex) *boolean*))
@@ -3930,26 +3950,32 @@ required a context.")
 			   (remove value values :count 1 :start pos)
 			   values))
 	   (done-with-field? (not (member (car fields) rem-args
-					  :test #'same-id :key #'caar))))
+					  :test #'same-id :key #'caar)))
+	   (cdr-args (when done-with-field?
+		       (mapcar #'cdr (nreverse (cons args cargs))))))
       (when args
 	(unless (field-assignment-arg? (caar args))
 	  (if (id-assign? (caar args))
 	      (change-class (caar args) 'field-assign)
 	      (change-class (caar args) 'field-assignment-arg)))
 	(when done-with-field?
-	  (let ((cdr-args (mapcar #'cdr (nreverse (cons args cargs)))))
-	    (set-assignment-arg-types*
-	     cdr-args
-	     (nreverse (cons value cvalues))
-	     (when (and ex (some (complement #'null) cdr-args))
-	       (make!-field-application (car fields) ex))
-	     (type (car fields))))))
+	  (set-assignment-arg-types*
+	   cdr-args
+	   (nreverse (cons value cvalues))
+	   (when (and ex (some (complement #'null) cdr-args))
+	     (make!-field-application (car fields) ex))
+	   (type (car fields)))))
       (let ((nfields (if done-with-field?
 			 (if (some #'(lambda (fld)
 				       (member (car fields) (freevars fld)
 					       :key #'declaration))
 				   fields)
-			     (subst-rec-dep-type value (car fields) (cdr fields))
+			     (if (and ex (some (complement #'null) cdr-args))
+				 (let* ((fapp (make!-field-application (car fields) ex))
+					(ass (make-assignment (car cdr-args) value))
+					(val (make!-update-expr fapp (list ass))))
+				   (subst-rec-dep-type val (car fields) (cdr fields)))
+				 (subst-rec-dep-type value (car fields) (cdr fields)))
 			     (cdr fields))
 			 fields)))
 	(if nfields
