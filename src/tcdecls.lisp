@@ -878,6 +878,11 @@
   ;; 	  (generated adt)))
   )
 
+(defmethod subst-new-map-decl ((decl theory-abbreviation-decl))
+  (let ((tn (subst-new-map-decls* (theory-name decl))))
+    (assert (modname? tn))
+    (setf (theory-name decl) tn)))
+
 (defmethod subst-new-map-decl ((decl declaration))
   (break "Need more methods"))
 
@@ -3755,6 +3760,7 @@
   decl)
 
 (defun add-auto-rewrite-to-context (decl)
+  (assert (auto-rewrite-decl? decl))
   (pushnew decl (auto-rewrites *current-context*))
   (let ((new-disabled
 	 (mapcar #'(lambda (disabled)
