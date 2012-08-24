@@ -539,6 +539,8 @@
 				      (same-declaration inst bdecl)))
 			   subst
 			   'fail)))
+       ((typep (declaration lhs) '(or field-decl dep-binding))
+	subst)
        (subst-entry
 	(let* ((subst-term (cdr subst-entry))
 	       (newmodsubst
