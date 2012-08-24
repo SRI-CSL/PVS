@@ -51,7 +51,8 @@
 
 #+ccl (defun cad (c generic) (declare (ignore c generic)) nil)
 
-#+allegro (defun cad (c generic)
+#+allegro
+(defun cad (c generic)
   (cond ((and (not generic) (not (open-conj c))) c)
 	((not (all-vars-in-conj c)) c)
 	(t (progn
