@@ -3,8 +3,8 @@
 ;; Author          : N. Shankar
 ;; Created On      : Fri Apr  3 12:35:13 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sat Oct 31 01:18:28 1998
-;; Update Count    : 6
+;; Last Modified On: Thu Jun  7 11:59:14 2012
+;; Update Count    : 7
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -52,6 +52,7 @@
 (defvar *skofun-counter* (let ((x 0)) #'(lambda ()  (incf x))))
 (defvar *bind-counter* (let ((x 0)) #'(lambda ()  (incf x))))
 (defvar *voss-counter* (let ((x 0)) #'(lambda ()  (incf x))))
+(defvar *proofstate-hooks* nil)
 (defvar *printproofstate* nil)
 (defvar *in-checker* nil)
 (defvar *in-apply* nil)
