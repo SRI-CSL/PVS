@@ -31,6 +31,11 @@
 
 (export '(pvs-message set-pvs-tmp-file pvs-error type-error))
 
+(defvar *pvs-message-hooks* nil)
+(defvar *pvs-error-hooks* nil)
+(defvar *pvs-buffer-hooks* nil)
+
+
 (defvar *to-emacs* nil)
 (defvar *output-to-emacs* "")
 (defvar *prover-invoking-commands*
