@@ -219,3 +219,5 @@
 		     "")))
 	   (error "Parse error"))))
 
+(defun rawcommand (fun &rest args)
+  (apply fun args))
