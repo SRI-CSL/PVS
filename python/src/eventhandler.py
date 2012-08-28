@@ -28,6 +28,9 @@ def onCloseFile(event):  # wxGlade: PVSMainFrame.<event_handler>
     config.filesbuffermanager.closeFile()
 
 def onQuitFrame(event):  # wxGlade: PVSMainFrame.<event_handler>
+    if config.pvsrunner != None:
+        config.pvsrunner.terminate()
+        config.pvsrunner = None
     config.frame.Close()
 
 def onUndo(event):  # wxGlade: PVSMainFrame.<event_handler>
@@ -68,6 +71,11 @@ def onStartPVS(event):  # wxGlade: PVSMainFrame.<event_handler>
     config.pvsrunner = PVSRunner()
     config.pvsrunner.start()
     #event.Skip()
+
+def onStopPVS(event):  # wxGlade: PVSMainFrame.<event_handler>
+    if config.pvsrunner != None:
+        config.pvsrunner.terminate()
+        config.pvsrunner = None
 
 def onTypecheck(event):  # wxGlade: PVSMainFrame.<event_handler>
     log.info("Event handler `onTypecheck' not implemented!")

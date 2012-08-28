@@ -3,9 +3,10 @@
 # and a function to get the logger for each module
 
 
-import logging, sys
+import logging, sys, wx
 
 PVS_CONSOLE_HAS_HORIZONTAL_SCROLL = False
+EVT_RESULT_ID = wx.NewId()
 
 # Common GUI Objects:
 editor = None

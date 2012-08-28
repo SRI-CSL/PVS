@@ -25,7 +25,8 @@ class ToolbarManager(wx.ToolBar):
         self.copyToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_COPY, getCopyImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Copy text", EMPTY_STRING)
         self.pasteToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_PASTE, getPasteImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Paste text here", EMPTY_STRING)
         self.AddSeparator()
-        self.startPVSToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_STARTPVS, getStartPVSImage(), getStopPVSImage(), wx.ITEM_NORMAL, "Start pvs", EMPTY_STRING)
+        self.stopPVSToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_STOPPVS, getStopPVSImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Stop pvs", EMPTY_STRING)
+        self.startPVSToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_STARTPVS, getStartPVSImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Start pvs", EMPTY_STRING)
         self.typecheckToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_TYPECHECK, getTypecheckImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Parse and typecheck file", EMPTY_STRING)
 
     def setBindings(self):
@@ -36,9 +37,29 @@ class ToolbarManager(wx.ToolBar):
         config.frame.Bind(wx.EVT_TOOL, onCutText, self.cutToolbarItem)
         config.frame.Bind(wx.EVT_TOOL, onCoptText, self.copyToolbarItem)
         config.frame.Bind(wx.EVT_TOOL, onPasteText, self.pasteToolbarItem)
+        config.frame.Bind(wx.EVT_TOOL, onStopPVS, self.stopPVSToolbarItem)
         config.frame.Bind(wx.EVT_TOOL, onStartPVS, self.startPVSToolbarItem)
         config.frame.Bind(wx.EVT_TOOL, onTypecheck, self.typecheckToolbarItem)
+
+    def enableSave(self, value = True):
+        self.saveFileToolbarItem.Enable(value)
         
+    def enableSaveAll(self, value = True):
+        self.saveallFileToolbarItem.Enable(value)
+        
+    def enableCut(self, value = True):
+        self.cutToolbarItem.Enable(value)
+        
+    def enableCopy(self, value = True):
+        self.copyToolbarItem.Enable(value)
+        
+    def enablePaste(self, value = True):
+        self.pasteToolbarItem.Enable(value)
         
     def enableStartPVS(self, value = True):
         self.startPVSToolbarItem.Enable(value)
+        
+    def enableTypecheck(self, value = True):
+        self.pasteToolbarItem.Enable(value)
+
+        

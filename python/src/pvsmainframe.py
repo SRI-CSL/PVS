@@ -10,6 +10,7 @@ from filestreemanager import FilesTreeManager
 from editornotebook import PVSNotebookManager
 from pvsconsole import PVSConsole
 from eventhandler import *
+from pvsresultevent import PVSResultEvent
 import config
 from mainmenumanager import MainFrameMenu
 from toolbarmanager import ToolbarManager
@@ -58,8 +59,12 @@ class PVSMainFrame(wx.Frame):
         #self.pvseditor = wx.TextCtrl(config.notebook, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE | wx.HSCROLL | wx.TE_RICH | wx.TE_RICH2)
         self.panel_1 = wx.Panel(self, wx.ID_ANY)
         self.label_1 = wx.StaticText(self.panel_1, wx.ID_ANY, LABEL_PVS_CONSOLE)
-        self.panel_4 = wx.Panel(self.panel_1, wx.ID_ANY)
-        config.console = PVSConsole(self.panel_4, wx.ID_ANY)
+        config.console = PVSConsole(self.panel_1, wx.ID_ANY)
+        pvsout = wx.TextCtrl(config.console, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE | wx.TE_READONLY)
+        pvsin = wx.TextCtrl(config.console, wx.ID_ANY, EMPTY_STRING, style=wx.TE_PROCESS_ENTER)
+        config.console.setPVSOut(pvsout)
+        config.console.setPVSIn(pvsin)
+        config.console.setBidnings()
         #config.console = wx.TextCtrl(self.panel_4, wx.ID_ANY, EMPTY_STRING, style=wx.TE_PROCESS_ENTER | wx.TE_MULTILINE | wx.HSCROLL | wx.TE_RICH)
 
         self.__set_properties()
@@ -69,6 +74,8 @@ class PVSMainFrame(wx.Frame):
         config.filesbuffermanager = FilesAndBuffersManager()
         config.filestreemanager = FilesTreeManager(self.filestree)
         self.configMenuToolbar(0)
+        config.toolbar.enableSave(False)
+        self.Connect(-1, -1, config.EVT_RESULT_ID, self.onPVSResult)
 
     def __set_properties(self):
         # begin wxGlade: PVSMainFrame.__set_properties
@@ -76,7 +83,7 @@ class PVSMainFrame(wx.Frame):
         self.SetSize((1000, 800))
         config.statusbar.SetStatusWidths([-1])
         # statusbar fields
-        self.setStatusbarText("PVS Mode: Off")
+        config.console.initializeConsole()
         config.toolbar.Realize()
         # end wxGlade
 
@@ -85,13 +92,13 @@ class PVSMainFrame(wx.Frame):
         sizer_1 = wx.BoxSizer(wx.HORIZONTAL)
         sizer_2 = wx.BoxSizer(wx.VERTICAL)
         sizer_7 = wx.BoxSizer(wx.VERTICAL)
-        ##sizer_8 = wx.BoxSizer(wx.HORIZONTAL)
+        ##sizer_8 = wx.BoxSizer(wx.VERTICAL)
         sizer_6 = wx.BoxSizer(wx.VERTICAL)
         sizer_3 = wx.BoxSizer(wx.HORIZONTAL)
         sizer_5 = wx.BoxSizer(wx.HORIZONTAL)
         sizer_4 = wx.BoxSizer(wx.HORIZONTAL)
         sizer_8 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_10 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer_10 = wx.BoxSizer(wx.VERTICAL)
         sizer_4.Add(self.filestree, 1, wx.EXPAND, 0)
         self.notebook_4_pane_1.SetSizer(sizer_4)
         sizer_5.Add(self.bufferstree, 1, wx.EXPAND, 0)
@@ -113,11 +120,12 @@ class PVSMainFrame(wx.Frame):
         sizer_2.Add(self.panel_2, 3, wx.EXPAND, 0)
         sizer_7.Add(self.label_1, 0, wx.ALIGN_CENTER_HORIZONTAL, 0)
         #sizer_7.Add(config.console, 1, wx.EXPAND, 0)
-        sizer_7.Add(self.panel_4, 1, wx.EXPAND, 0)
+        sizer_7.Add(config.console, 1, wx.EXPAND, 0)
         self.panel_1.SetSizer(sizer_7)
         ###sizer_9.Add(self.pvseditor, 1, wx.EXPAND, 0)
-        sizer_10.Add(config.console, 1, wx.EXPAND, 0)
-        self.panel_4.SetSizer(sizer_10)        
+        sizer_10.Add(config.console.pvsout, 1, wx.EXPAND, 0)
+        sizer_10.Add(config.console.pvsin, 0, wx.EXPAND, 0)       
+        config.console.SetSizer(sizer_10)        
         ###self.panel_3.SetSizer(sizer_9) 
         sizer_2.Add(self.panel_1, 1, wx.EXPAND, 0)
         sizer_1.Add(sizer_2, 3, wx.EXPAND, 0)
@@ -133,7 +141,21 @@ class PVSMainFrame(wx.Frame):
         config.menubar.Enable(ID, value)
 
     def setStatusbarText(self, text, location=0):
+        log.info("Setting status bar[%d] to: %s"%(location, text))
         config.statusbar.SetStatusText(text, location)
+        
+    def onPVSResult(self, event):
+        data = event.data
+        message = event.message
+        log.info("Event from PVSRunner. Message: %s, Data: %s", message, data)
+        if message == MESSAGE_INITIALIZE_CONSOLE:
+            config.console.initializeConsole()
+        elif message == MESSAGE_PVS_STATUS:
+            config.console.updateFrame(data)
+        elif message == MESSAGE_CONSOLE_WRITE:
+            config.console.write(data)
+        else:
+            log.warn("Unhandled PVSmessage: %d", message)
 
     def configMenuToolbar(self, openFiles):
         if openFiles == 0:
@@ -155,5 +177,4 @@ class PVSMainFrame(wx.Frame):
             config.menubar.enableFind()
         else:
             log.error("openFiles is a negative number: %d", openFiles)
-        
         
