@@ -25,7 +25,7 @@ class ToolbarManager(wx.ToolBar):
         self.copyToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_COPY, getCopyImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Copy text", EMPTY_STRING)
         self.pasteToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_PASTE, getPasteImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Paste text here", EMPTY_STRING)
         self.AddSeparator()
-        self.stopPVSToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_STOPPVS, getStopPVSImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Stop pvs", EMPTY_STRING)
+        self.stopPVSToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_STOPPVS, getStopPVSImage(), getStopPVSImage(False), wx.ITEM_NORMAL, "Stop pvs", EMPTY_STRING)
         self.startPVSToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_STARTPVS, getStartPVSImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Start pvs", EMPTY_STRING)
         self.typecheckToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_TYPECHECK, getTypecheckImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Parse and typecheck file", EMPTY_STRING)
 
@@ -58,6 +58,9 @@ class ToolbarManager(wx.ToolBar):
         
     def enableStartPVS(self, value = True):
         self.startPVSToolbarItem.Enable(value)
+        
+    def enableStopPVS(self, value = True):
+        self.stopPVSToolbarItem.Enable(value)
         
     def enableTypecheck(self, value = True):
         self.pasteToolbarItem.Enable(value)

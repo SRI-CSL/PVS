@@ -38,9 +38,9 @@ def getPasteImage():
 def getStartPVSImage():
     return getBitmap("start.png")
 
-def getStopPVSImage():
-    return getBitmap("stop.png")
-
+def getStopPVSImage(enable=True):
+    return getBitmap("stop.png") if enable else getBitmap("stop-disable.png")
+    
 def getTypecheckImage():
     return getBitmap("typecheck.png")
 

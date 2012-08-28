@@ -10,7 +10,6 @@ from filestreemanager import FilesTreeManager
 from editornotebook import PVSNotebookManager
 from pvsconsole import PVSConsole
 from eventhandler import *
-from pvsresultevent import PVSResultEvent
 import config
 from mainmenumanager import MainFrameMenu
 from toolbarmanager import ToolbarManager
@@ -151,11 +150,27 @@ class PVSMainFrame(wx.Frame):
         if message == MESSAGE_INITIALIZE_CONSOLE:
             config.console.initializeConsole()
         elif message == MESSAGE_PVS_STATUS:
-            config.console.updateFrame(data)
+            self.updateFrame(data)
         elif message == MESSAGE_CONSOLE_WRITE:
             config.console.write(data)
         else:
             log.warn("Unhandled PVSmessage: %d", message)
+            
+    def updateFrame(self, status = PVS_MODE_UNKNOWN):
+        log.info("Updating frame with PVS status as %s", status)
+        self.setStatusbarText(PVS_MODE + status)
+        if status == PVS_MODE_OFF:
+            log.debug("Disabling pvsin")
+            config.console.clearIn()
+            config.console.pvsin.SetEditable(False)
+            config.toolbar.enableStopPVS(False)
+            config.toolbar.enableStartPVS(True)
+        else:
+            log.debug("Enabling pvsin")
+            config.console.pvsin.SetEditable(True)
+            config.toolbar.enableStopPVS(True)
+            config.toolbar.enableStartPVS(False)
+
 
     def configMenuToolbar(self, openFiles):
         if openFiles == 0:

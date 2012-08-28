@@ -2,12 +2,10 @@
 # This class manages the GUI's console for PVS
 
 import wx
-import wx.stc as stc
 import codecs
 import config
-from promptprocessor import isPrompt, hasPrompt
-from constants import EMPTY_STRING, NEWLINE
-from constants import PVS_MODE, EMPTY_STRING, PVS_MODE_OFF, PVS_MODE_LISP, PVS_MODE_PROVER, PVS_MODE_UNKNOWN
+from promptprocessor import isPrompt
+from constants import NEWLINE, PVS_MODE, EMPTY_STRING, PVS_MODE_OFF, PVS_MODE_UNKNOWN
 
 log = config.getLogger(__name__)
 
@@ -44,7 +42,7 @@ class PVSConsole(wx.Panel):
         #wx.MutexGuiLeave()
         self.prompt = EMPTY_STRING
         self.history = []
-        self.updateFrame(PVS_MODE_OFF)
+        config.frame.updateFrame(PVS_MODE_OFF)
         
     def appendLineToOut(self, line):
         log.debug("Appending '%s' to pvsout", line)
@@ -60,7 +58,7 @@ class PVSConsole(wx.Panel):
         
     def writeTextToIn(self, text):
         log.debug("Writing '%s' to pvsin", text)
-        self.pvsin.WriteText(text)
+        self.pvsin.write(text)
         
     def writeLine(self, line):
         if isPrompt(line):
@@ -81,14 +79,7 @@ class PVSConsole(wx.Panel):
         self.prompt = prompt
         log.info("Prompt received: %s", prompt)
         
-    def updateFrame(self, status = PVS_MODE_UNKNOWN):
-        log.info("Updating frame with PVS status as %s", status)
-        config.frame.setStatusbarText(PVS_MODE + status)
-        if status == PVS_MODE_OFF:
-            self.clearIn()
-            self.pvsin.SetEditable(False)
-        else:
-            self.pvsin.SetEditable(True)
+
 
     def onPVSInTextEntered(self, event):  # wxGlade: PVSMainFrame.<event_handler>
         log.info("Event handler `onPVSConsoleTextEntered' not implemented")
