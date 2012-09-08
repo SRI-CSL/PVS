@@ -515,8 +515,12 @@
 	(or (gethash id *pvs-modules*)
 	    (gethash id *prelude*)
 	    (let ((cth (when *current-context* (theory *current-context*))))
-	      (when (and cth (eq (id cth) id))
-		cth))
+	      (when cth
+		(if (eq (id cth) id)
+		    cth
+		    (let ((imps (get-current-imported-theories id)))
+		      (unless (cdr imps)
+			(car imps))))))
 	    (car (assoc id (prelude-libraries-uselist)
 			:test #'eq :key #'id))
 	    (unless have-cc
@@ -530,6 +534,16 @@
 			   theories)
 		    (car theories))))
 	    ))))
+
+(defun get-current-imported-theories (id)
+  (when *current-context*
+    (let ((theories nil))
+      (map-lhash #'(lambda (x y)
+		     (declare (ignore y))
+		     (when (eq (id x) id)
+		       (push x theories)))
+		 (current-using-hash))
+      theories)))
 
 (defun get-imported-theories (id)
   (let ((theories nil))
@@ -3395,8 +3409,18 @@ space")
 	 (decls (all-decls theory))
 	 (not-visible (cdr (memq decl decls))))
     (remove-if #'(lambda (ai)
-		   (intersection (collect-references ai) not-visible))
+		   ;;(unless (caddr ai) (break "Figure this out"))
+		   (memq (caddr ai) not-visible))
       (assuming-instances theory))))
+
+;; (defmethod assuming-instances ((imp importing))
+;;   (let* ((theory (module imp))
+;; 	 (decls (all-decls theory))
+;; 	 (not-visible (cdr (memq imp decls))))
+;;     (remove-if #'(lambda (ai)
+;; 		   ;;(unless (caddr ai) (break "Figure this out"))
+;; 		   (memq (caddr ai) not-visible))
+;;       (assuming-instances theory))))
 
 (defmethod assuming-instances ((imp importing))
   nil)
@@ -4179,8 +4203,8 @@ space")
 	(expand-trace-form-methods
 	 (cdr trace-forms)
 	 (if (consp nform)
-	     (append nform nforms)
-	     (cons nform nforms))))))
+	     (cons (car trace-forms) (append nform nforms))
+	     (cons (car trace-forms) (cons nform nforms)))))))
 
 (defun expand-trace-form-method (trace-form)
   (if (consp trace-form)

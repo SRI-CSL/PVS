@@ -78,7 +78,10 @@
 	 (ptype (when nm (print-type (type expr))))
 	 (nargs (when nm (arity expr)))
 	 (fnm   (when nm (makesym "pvsio_~a_~a_~a" th nm nargs))))
-    (cond ((and nm (= nargs 0) (find-nameargs th (cons nm nargs)))
+    (cond ((and nm (= nargs 0) (find-attachment (make-attachment
+						 :theory th
+						 :name nm
+						 :args nargs)))
 	   fnm)
 	  ((and nm (= nargs 0) ptype (type-name? ptype)
 		(eq '|Global| (id ptype)))
@@ -605,9 +608,7 @@
 	       (sub (simple-subrange? typ1))
 	       (bind-rest (cdr binds))
 	       (expr-rest (if bind-rest
-			      (make!-forall-expr
-				  bind-rest
-				body)
+			      (make!-exists-expr bind-rest body)
 			      body)))
 	  (cond ((enum-adt? (find-supertype typ1))
 		 (if (subtype? typ1)
@@ -627,7 +628,7 @@
 				 bindings livevars)
 		     (let ((lfrom (if (number-expr? (car sub))
 				      (number (car sub))
-				      (or (pvs2cl_up* (cdr sub) bindings livevars)
+				      (or (pvs2cl_up* (car sub) bindings livevars)
 					  (let ((undef (undefined (car sub))))
 					    `(funcall ',undef)))))
 			   (lto (if (number-expr? (cdr sub))
@@ -1609,7 +1610,10 @@
 	 (th    (string (id (module-instance op))))
 	 (nm    (when (name-expr? op) 
 		  (string (id op))))
-	 (f     (when nm (find-nameargs th (cons nm nargs))))
+	 (f     (when nm (find-attachment (make-attachment
+					   :theory th
+					   :name nm
+					   :args nargs))))
 	 (fn    (cond (f (intern (format nil "pvsio_~a_~a_~a" th nm nargs)))
 		      ((> nargs 1) (pvs2cl-primitive2 op))
 		      (t           (pvs2cl-primitive op))))

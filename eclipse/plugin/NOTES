@@ -1,0 +1,21 @@
+How to add a new menu item to PVS menu:
+Assume you want to add a menu item called XYZ to the PVS menu. Add the following code to plugin.xml under the desired menu node:
+   <command
+         commandId="com.sri.csl.pvs.plugin.commands.genericCommand"
+         label="Do XYZ"
+         style="push">
+      <parameter
+            name="com.sri.csl.pvs.plugin.genericCommandParameter"
+            value="XYZ">
+      </parameter>
+   </command>                     
+
+If XYZ is a message to be passed to a running instance of PVS, then use value="pvs:XYZ" instead under the "parameter. 
+
+On the Java side, do the following:
+If XYZ is a generic message and needs not be passed to PVS, then open MessageToRunningPVSHandler.java, and add the necessary code to handleGenericMessage(...)
+But if XYZ should be sent to PVS, then create a new entry in the execute(...) method in PVSCommandManager.java. If XYZ requires some parameters as inputs, then you also need to add a new entry in getArguments(...) as well.
+
+____________________________________________________
+
+

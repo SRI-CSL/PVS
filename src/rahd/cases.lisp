@@ -362,7 +362,7 @@
 		      (cur-y  (caddr l)))
 		  (if (and (equal cur-op '=)
 			   (equal cur-x cur-y))
-		      T
+		      t
 		      `(,cur-op
 			,(if (term-ground? cur-x)
 			     (eval cur-x)

@@ -2000,7 +2000,11 @@
 		(multiple-value-bind (pos2 neg2)
 		    (addends* (args2 expr))
 		  (values (nconc pos1 neg2)(nconc neg1 pos2))))
-	      (list expr)))
+	      (if (is-unary-minus? expr)
+		  (multiple-value-bind (pos neg)
+		      (addends* (argument expr))
+		    (values neg pos))
+		  (list expr))))
       (list expr)))
 
 (defun multiplicands (expr)
@@ -2236,7 +2240,7 @@
   (cond ((and (rational-expr? l)
 	      (rational-expr? r)
 	      (not (zerop (number r))))
-	 (make!-number-expr (/ l r)))
+	 (make!-number-expr (/ (number l) (number r))))
 	(t (make!-divides l r))))
 
 ;(defmethod compare-expr ((L number-expr) (R number-expr))
@@ -2349,7 +2353,7 @@
 	(found-rec2 (find-non-false-recognizer recs2)))
     (and (consp found-rec1)(consp found-rec2)
 	(if (tc-eq (car found-rec1)(car found-rec2))
-	    (and (null (accessors (constructor (caar recs1))))
+	    (and (null (accessors (constructor (car found-rec1))))
 		 *true*)
 	    *false*))))
 
@@ -4177,7 +4181,8 @@ e LHS free variables in ~a" hyp lhs)
 	     (fixpoint-decl? (declaration res)))
 	(error-format-if "~%Can't rewrite using ~a: (co)inductive definition cannot be used." name))
        (t
-	(unless (consp res) ;;(6.16.95)avoids antecedent rewrites
+	(unless (or (consp res) ;;(6.16.95)avoids antecedent rewrites
+		    (not (fully-instantiated? res)))
 	  (typecheck (module-instance res) :tccs 'all))
 	;;NSH(6.14.95): above typecheck needed to generate
 	;;assuming TCCS.  

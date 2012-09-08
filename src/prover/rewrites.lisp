@@ -147,14 +147,13 @@
 	   (*modsubst* (if res-params
 			   (mapcar #'list res-params)
 			   t)))
-      (multiple-value-bind
-	  (subst modsubst)
+      (multiple-value-bind (subst modsubst)
 	  (if (not check) 'fail
 	      (let ((lhs (split-rewrite (car forms) subvars dir))
 		    (*no-match-assert-test* t))
 		(find-match lhs
 			    (formula (car sforms)) nil
-			    in-subst order)));;NSH(10.10.94)
+			    in-subst order))) ;;NSH(10.10.94)
 	;;dir->order.
 	(cond ((or (eq subst 'fail)
 		   (null (check-modsubst modsubst)))
@@ -185,10 +184,10 @@
 			 (if (eq modsubst t)
 			     res
 			     (subst-mod-params
-			      res modinst
-			      (when (eq (id modinst)
-					(id (module (declaration res))))
-				(module (declaration res))))))
+				 res modinst
+			       (when (eq (id modinst)
+					 (id (module (declaration res))))
+				 (module (declaration res))))))
 			(full-name-expr
 			 (copy name-expr
 			   'resolutions (list newres)

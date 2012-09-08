@@ -1,6 +1,4 @@
 ;; pvsio.el
-;; Emacs Lisp code
-;; Release : PVSio-2.d (11/09/05)
 
 ; pvsio
 (defpvs pvsio prove (theory)
@@ -70,14 +68,6 @@ The load-pvs-attachments command forces a reload of semantic attachments
 from the current and imported contexts."
   (interactive)
   (pvs-send-and-wait "(load-pvs-attachments t)" nil nil 'dont-care))
-
-; reload-pvsio
-(defpvs reload-pvsio environment ()
-  "Restarts PVSio
-
-The reload-pvsio command restarts PVSio."
-  (interactive)
-  (pvs-send-and-wait "(reload-pvsio)" nil nil 'dont-care))
 
 ; pvsio-version
 (defpvs pvsio-version environment ()

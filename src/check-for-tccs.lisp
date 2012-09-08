@@ -515,23 +515,29 @@
 			   (remove value values :count 1 :start pos)
 			   values))
 	   (done-with-field? (not (member (car fields) rem-args
-					  :test #'same-id :key #'caar))))
+					  :test #'same-id :key #'caar)))
+	   (cdr-args (when done-with-field?
+		       (mapcar #'cdr (nreverse (cons args cargs))))))
       (when args
 	(assert (field-assignment-arg? (caar args)))
 	(when done-with-field?
-	  (let ((cdr-args (mapcar #'cdr (nreverse (cons args cargs)))))
-	    (check-assignment-arg-types*
-	     cdr-args
-	     (nreverse (cons value cvalues))
-	     (when (and ex (some (complement #'null) cdr-args))
-	       (make!-field-application (car fields) ex))
-	     (type (car fields))))))
+	  (check-assignment-arg-types*
+	   cdr-args
+	   (nreverse (cons value cvalues))
+	   (when (and ex (some (complement #'null) cdr-args))
+	     (make!-field-application (car fields) ex))
+	   (type (car fields)))))
       (let ((nfields (if done-with-field?
 			 (if (some #'(lambda (fld)
 				       (member (car fields) (freevars fld)
 					       :key #'declaration))
 				   fields)
-			     (subst-rec-dep-type value (car fields) (cdr fields))
+			     (if (and ex (some (complement #'null) cdr-args))
+				 (let* ((fapp (make!-field-application (car fields) ex))
+					(ass (make-assignment (car cdr-args) value))
+					(val (make!-update-expr fapp (list ass))))
+				   (subst-rec-dep-type val (car fields) (cdr fields)))
+				 (subst-rec-dep-type value (car fields) (cdr fields)))
 			     (cdr fields))
 			 fields)))
 	(if nfields

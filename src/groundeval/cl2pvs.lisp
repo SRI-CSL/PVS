@@ -93,7 +93,8 @@
 (defmethod get-seq-range-type ((type funtype) domaindep)
   (with-slots (domain range) type
     (let ((domtype (simple-below? domain)))
-      (and (type domtype)
+      (and domtype
+	   (type domtype)
 	   (tc-eq (type domtype) domaindep)
 	   (range type)))))
   

@@ -2135,10 +2135,14 @@
   (assert (type ex2))
   (assert (tc-eq (find-supertype (type ex1)) *number*))
   (assert (tc-eq (find-supertype (type ex2)) *number*))
-  (make-instance 'infix-application
-    :operator (divides-operator)
-    :argument (make!-arg-tuple-expr ex1 ex2)
-    :type *number_field*))
+  (if (and (rational-expr? ex1)
+	   (rational-expr? ex2)
+	   (not (zerop (number ex2))))
+      (make!-number-expr (/ (number ex1) (number ex2)))
+      (make-instance 'infix-application
+	:operator (divides-operator)
+	:argument (make!-arg-tuple-expr ex1 ex2)
+	:type *number_field*)))
 
 (defun make!-forall-expr (bindings expr)
   (assert (and (type expr) (tc-eq (find-supertype (type expr)) *boolean*)))

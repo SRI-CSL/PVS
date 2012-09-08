@@ -1,17 +1,238 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?eclipse version="3.2"?>
 <plugin>
+   <extension
+         point="org.eclipse.core.runtime.preferences">
+      <initializer
+            class="com.sri.csl.pvs.plugin.preferences.PreferenceInitializer">
+      </initializer>
+   </extension>
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            class="com.sri.csl.pvs.plugin.preferences.PVSPreferencePage"
+            id="com.sri.csl.pvs.plugin.preferences.PVSPreferencePage"
+            name="PVS">
+      </page>
+   </extension>
 
    <extension
          point="org.eclipse.ui.editors">
       <editor
             name="PVS Editor"
             extensions="pvs"
-            icon="icons/pvslogo.gif"
+            icon="icons/pvslogo.png"
             contributorClass="org.eclipse.ui.texteditor.BasicTextEditorActionContributor"
-            class="com.csl.sri.pvs.plugin.editor.PVSEditor"
-            id="com.csl.sri.pvs.plugin.editor.PVSEditor">
+            class="com.sri.csl.pvs.plugin.editor.PVSEditor"
+            id="com.sri.csl.pvs.plugin.editor.PVSEditor">
       </editor>
+   </extension>
+   <extension
+         point="org.eclipse.ui.handlers">
+      <handler
+            class="com.sri.csl.pvs.plugin.handlers.StartPVSHandler"
+            commandId="com.sri.csl.pvs.plugin.commands.startPVS">
+      </handler>
+      <handler
+            class="com.sri.csl.pvs.plugin.handlers.StopPVSHandler"
+            commandId="com.sri.csl.pvs.plugin.commands.stopPVS">
+      </handler>
+      <handler
+            class="com.sri.csl.pvs.plugin.handlers.MessageToRunningPVSHandler"
+            commandId="com.sri.csl.pvs.plugin.commands.genericCommand">
+      </handler>
+   </extension>
+   <extension
+         point="org.eclipse.ui.bindings">
+      <key
+            commandId="com.sri.csl.pvs.plugin.commands.startPVS"
+            contextId="org.eclipse.ui.contexts.window"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+            sequence="M1+6">
+      </key>
+   </extension>
+   <extension
+         point="org.eclipse.ui.commands">
+      <category
+            id="com.sri.csl.pvs.plugin.commands.category"
+            name="PVS Category">
+      </category>
+      <command
+            categoryId="com.sri.csl.pvs.plugin.commands.category"
+            id="com.sri.csl.pvs.plugin.commands.stopPVS"
+            name="Stop PVS">
+      </command>
+      <command
+            categoryId="com.sri.csl.pvs.plugin.commands.category"
+            id="com.sri.csl.pvs.plugin.commands.startPVS"
+            name="Start PVS">
+      </command>
+      <command
+            id="com.sri.csl.pvs.plugin.commands.genericCommand"
+            name="CHANGE LABEL IN MENU">
+         <commandParameter
+               id="com.sri.csl.pvs.plugin.genericCommandParameter"
+               name="name"
+               optional="true">
+         </commandParameter>
+      </command>
+   </extension>
+   <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            allPopups="true"
+            locationURI="menu:org.eclipse.ui.main.menu?after=additions">
+         <menu
+               id="com.sri.csl.pvs.plugin.menu.topMenu"
+               label="PVS"
+               mnemonic="v"
+               tooltip="Start PVS">
+            <command
+                  commandId="com.sri.csl.pvs.plugin.commands.startPVS"
+                  icon="icons/pvslogo.png"
+                  label="Start PVS"
+                  mnemonic="s"
+                  style="push">
+               <visibleWhen
+                     checkEnabled="false">
+                  <with
+                        variable="com.sri.csl.pvs.plugin.provider.isPVSRunning">
+                     <equals
+                           value="FALSE">
+                     </equals>
+                  </with>
+               </visibleWhen>                  
+            </command>
+            <command
+                  commandId="com.sri.csl.pvs.plugin.commands.stopPVS"
+                  icon="icons/stoppvs.gif"
+                  label="Stop PVS"
+                  mnemonic="s"
+                  style="push">
+               <visibleWhen
+                     checkEnabled="false">
+                  <with
+                        variable="com.sri.csl.pvs.plugin.provider.isPVSRunning">
+                     <equals
+                           value="TRUE">
+                     </equals>
+                  </with>
+               </visibleWhen>                  
+            </command>
+            <command
+                  commandId="com.sri.csl.pvs.plugin.commands.genericCommand"
+                  label="Set PVS Context..."
+                  style="push">
+               <parameter
+                     name="com.sri.csl.pvs.plugin.genericCommandParameter"
+                     value="pvs:change-context">
+               </parameter>
+            </command>
+            <menu
+                  label="Parsing and Typechecking">
+               <command
+                     commandId="com.sri.csl.pvs.plugin.commands.genericCommand"
+                     icon="icons/typecheck.png"
+                     label="typecheck"
+                     style="push">
+                  <parameter
+                        name="com.sri.csl.pvs.plugin.genericCommandParameter"
+                        value="pvs:typecheck-file">
+                  </parameter>
+               </command>
+            </menu>
+            <visibleWhen
+                  checkEnabled="false">
+               <with
+                     variable="activeEditorId">
+                  <equals
+                        value="com.sri.csl.pvs.plugin.editor.PVSEditor">
+                  </equals>
+               </with>
+            </visibleWhen>
+            
+         </menu>
+      </menuContribution>
+      <menuContribution
+            locationURI="toolbar:org.eclipse.ui.main.toolbar">
+         <toolbar
+               id="toolbar:com.sri.csl.pvs.plugin.toolbars.main"
+               label="PVS">
+            <command
+                  commandId="com.sri.csl.pvs.plugin.commands.startPVS"
+                  icon="icons/pvslogo.png"
+                  label="Start PVS"
+                  style="push">
+               <visibleWhen
+                     checkEnabled="false">
+                  <with
+                        variable="com.sri.csl.pvs.plugin.provider.isPVSRunning">
+                     <equals
+                           value="FALSE">
+                     </equals>
+                  </with>
+               </visibleWhen>
+            </command>
+            <command
+                  commandId="com.sri.csl.pvs.plugin.commands.stopPVS"
+                  icon="icons/stoppvs.gif"
+                  label="Stop PVS"
+                  style="push">
+               <visibleWhen
+                     checkEnabled="false">
+                  <with
+                        variable="com.sri.csl.pvs.plugin.provider.isPVSRunning">
+                     <equals
+                           value="TRUE">
+                     </equals>
+                  </with>
+               </visibleWhen>
+            </command>
+            <command
+                  commandId="com.sri.csl.pvs.plugin.commands.genericCommand"
+                  icon="icons/typecheck.png"
+                  label="Typecheck"
+                  style="push"
+                  tooltip="Typecheck the active PVS file">
+               <parameter
+                     name="com.sri.csl.pvs.plugin.genericCommandParameter"
+                     value="pvs:typecheck-file">
+               </parameter>
+            </command>
+         </toolbar>
+      </menuContribution>
+   </extension>
+   <extension
+         point="org.eclipse.ui.views">
+      <category
+            id="com.sri.csl.pvs.plugin.views.category"
+            name="PVS">
+      </category>
+      <view
+            allowMultiple="false"
+            category="com.sri.csl.pvs.plugin.views.category"
+            class="com.sri.csl.pvs.plugin.views.PVSTheoriesView"
+            icon="icons/theories.png"
+            id="com.sri.csl.pvs.plugin.views.PVSTheoriesView"
+            name="Theories"
+            restorable="true">
+      </view>
+   </extension>
+   <extension
+         point="org.eclipse.help.contexts">
+      <contexts
+            file="contexts.xml">
+      </contexts>
+   </extension>
+   <extension
+         point="org.eclipse.ui.services">
+      <sourceProvider
+            provider="com.sri.csl.pvs.plugin.providers.PVSStateProvider">
+         <variable
+               name="com.sri.csl.pvs.plugin.provider.isPVSRunning"
+               priorityLevel="workbench">
+         </variable>
+      </sourceProvider>
    </extension>
 
 </plugin>

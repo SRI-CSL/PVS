@@ -1,8 +1,5 @@
 ;; prooflite.lisp
-;; Release: ProofLite-4.2 (01/10/10)
- 
-;; Original code written by Sam Owre (owre@csl.sri.com).
-;; Modified by Cesar Munoz (munoz@nianet.org) for ProofLite package
+
 (defun associate-proof-with-formulas (theory-name formula-name strategy force)
   (let ((theory (get-typechecked-theory theory-name)))
     (if theory
@@ -35,12 +32,12 @@
            (match  (pregexp-match regexp (format nil "~a" (id fdecl))))
            (script (instantiate-script strategy match 0 "\\$")))
       (multiple-value-bind (strat err)
-	  #+(and allegro (not pvs6))
+	  #+allegro
 	  (unwind-protect
 	      (progn (excl:set-case-mode :case-insensitive-lower)
 		     (ignore-errors (values (read-from-string script))))
 	    (excl:set-case-mode :case-sensitive-lower))
-	  #-(and allegro (not pvs6))
+	  #-allegro
 	  (ignore-errors (values (read-from-string script)))
 	(let ((just (unless err
 		      (or (revert-justification strat)

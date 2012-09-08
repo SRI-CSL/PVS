@@ -1301,9 +1301,10 @@
 	 (thinst (module-instance res)))
     (restore-object* (actuals thinst))
     (let* ((mtype-expr (if (actuals thinst)
-			 (subst-mod-params (type-value decl) thinst
-					   (module decl))
-			 (type-value decl)))
+			   (let ((*pseudo-normalizing* t)) ;; disallow pseudo-normalize
+			     (subst-mod-params (type-value decl) thinst
+			       (module decl)))
+			   (type-value decl)))
 	   (type-expr (if (every #'(lambda (x y)
 				     (and (name-expr? y)
 					  (eq (declaration y) x)))

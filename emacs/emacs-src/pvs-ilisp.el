@@ -154,12 +154,16 @@ intervenes."
   (setq ilisp-init-binary-extension ilisp-binary-extension)
   (setq ilisp-load-inits nil)
   (setq ilisp-program (format "%s -qq" (pvs-program)))
-  (setq comint-prompt-regexp
-	"^[ ]*\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\)?\\(\\(<[-A-Za-z]* ?[0-9]*>
-  \\)\\3?\\|[-A-Za-z0-9]+([0-9]+): \\)\\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter")
+  (let* ((prompt-pre "\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\)?")
+	 (old-prompt "\\(<?[-A-Za-z]* ?[0-9]*>\\)") ;  'yices >', '<PVSio>', etc
+	 (new-prompt "\\([-A-Za-z0-9]+([0-9]+):\\)")
+	 (pvs-added "Rule\\?\\|.*(Y or N)\\|.*(Yes or No)\\|.*process\\?\\|Please enter.*:"))
+    (setq comint-prompt-regexp
+	  (format "^\\(%s\\(%s\\|%s\\|%s\\)\\)+:? "
+	      prompt-pre old-prompt new-prompt pvs-added))
+    (setq pvs-top-regexp
+	  (format "^\\(%s\\(%s\\|%s\\) \\)+" prompt-pre old-prompt new-prompt)))
   (setq comint-interrupt-regexp  "Error: [^\n]* interrupt\)")
-  (setq pvs-top-regexp
-	"^\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\)?\\(<?[-A-Za-z]* ?[0-9]*>\\|[-A-Za-z0-9]+([0-9]+):\\) ")
   (setq ilisp-error-regexp
 	"^\\(Error:[^\n]*\\)\\|\\(Break:[^\n]*\\)")
   (setq pvs-gc-end-regexp ";;; Finished GC"))

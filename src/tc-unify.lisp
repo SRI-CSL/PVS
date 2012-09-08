@@ -419,6 +419,8 @@
 		    (unless (eq cdrb (cdr b))
 		      (setf (cdr b) cdrb))))
 	      nbindings)
+	(unless (every #'cdr nbindings)
+	  (call-next-method))
 	nbindings))))
 
 (defmethod tc-match* (arg (farg subtype) bindings)

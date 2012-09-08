@@ -972,6 +972,11 @@
   ;; 	  (generated adt)))
   )
 
+(defmethod subst-new-map-decl ((decl theory-abbreviation-decl))
+  (let ((tn (subst-new-map-decls* (theory-name decl))))
+    (assert (modname? tn))
+    (setf (theory-name decl) tn)))
+
 (defmethod subst-new-map-decl ((decl declaration))
   (break "Need more methods"))
 
@@ -2733,7 +2738,8 @@
 (defmethod typecheck* ((type type-application) expected kind arguments)
   (declare (ignore expected kind arguments))
   (typecheck* (parameters type) nil nil nil)
-  (let ((te (typecheck* (type type) nil 'type (parameters type))))
+  (let ((te (let ((*dont-worry-about-full-instantiations* t))
+	      (typecheck* (type type) nil 'type (parameters type)))))
     (cond ((formal-type-appl-decl? (declaration (type type)))
 	   (assert (eq (current-theory) (module (declaration (type type)))))
 	   (let ((*generate-tccs* 'none)
@@ -3878,6 +3884,7 @@
   decl)
 
 (defun add-auto-rewrite-to-context (decl)
+  (assert (auto-rewrite-decl? decl))
   (pushnew decl (auto-rewrites *current-context*))
   (let ((new-disabled
 	 (mapcar #'(lambda (disabled)

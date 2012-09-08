@@ -494,6 +494,11 @@
 	       (setf (get-lhash (car ,gdecl) (current-declarations-hash))
 		     (cdr ,gdecl))))))))
 
+(defmacro with-context (theory &rest body)
+  `(let ((*current-context* (saved-context ,theory))
+	 (*generate-tccs* 'all))
+     ,@body))
+    
 (defmacro with-current-theory (theory &rest body)
   (let ((cth (gensym)))
     `(let ((,cth (current-theory)))
@@ -505,8 +510,9 @@
 (defmacro with-current-decl (decl &rest body)
   (let ((cdecl (gensym))
 	(gdecl (gensym)))
-    `(let ((,cdecl (current-declaration))
-	   (,gdecl ,decl))
+    `(let* ((,cdecl (current-declaration))
+	    (*current-top-declaration* (or *current-top-declaration* ,cdecl))
+	    (,gdecl ,decl))
        (unwind-protect
 	   (progn (setf (current-declaration) ,gdecl)
 		  (with-added-decls (decl-formals ,gdecl)

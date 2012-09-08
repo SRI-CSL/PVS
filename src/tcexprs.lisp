@@ -755,20 +755,17 @@
 
 (defun set-selection-types (selargs type arg-decls)
   (when selargs
+    ;; type is fully-instantiated, from the cases expr
+    ;; arg-decls is the list of constructor arguments
+    ;; accdecl is the generated accessor declaration
     (let* ((accdecl (accessor-decl (car arg-decls)))
-	   (rtype (declared-type (car arg-decls))) ;; was accdecl - not wrong, but
-					; TCCs get big and confusing
-	   (atype (if (type-name? rtype)
-		      (copy rtype
-			'actuals (or (actuals rtype)
-				     (actuals (module-instance rtype)))
-			'dactuals (or (dactuals rtype)
-				      (dactuals (module-instance rtype))))
-		      (copy rtype)))
+	   ;;(rtype (declared-type (car arg-decls)))
+	   (artype (range (declared-type accdecl)))
+	   (prtype (or (print-type artype) artype))
 	   ;;(dbindings (pairlis (decl-formals accdecl)
 	   ;;  (mapcar #'type-value (dactuals (module-instance type)))))
 	   ;;(stype (subst-for-formals atype dbindings))
-	   (dtype (subst-mod-params rtype (module-instance type)
+	   (dtype (subst-mod-params prtype (module-instance type)
 				    (module accdecl) accdecl)))
       (unless (fully-instantiated? (declared-type (car selargs)))
 	(let* ((frees (free-params (declared-type (car selargs))))

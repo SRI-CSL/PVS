@@ -1,9 +1,8 @@
 #!/bin/sh
 # Script for batch proving in PVS 
-# Release: ProofLite-4.2 (01/10/10)
 
 PVSPATH=@PVSPATH@
-VERSION="ProofLite-4.2 (01/10/10)"
+VERSION="ProofLite-4.3 (11/11/11)"
 
 export PROVEITVERSION="proveit - $VERSION"
 
@@ -49,7 +48,6 @@ all_opt() {
     CLEAN=yes
     LISPIMPORT=t
     QUIET=yes
-    PACKS=`append Field $PACKS`
     LISPSCRIPTS=nil
   fi
 }
@@ -112,30 +110,24 @@ strip_ext() {
   echo "$1" | sed -e "s/\..*//g" 
 }
 
-abs_dir() {
-  case $1 in
-    */*) echo "YES";;
-    *) echo "";;
-  esac
-}
-
 # If necessary, set the name of the output file
 #
 compile_outfile_names() {
+    dir=$OUTDIR
     if [ -z "$OUTFILE" ]; then
-	if [ -z "$OUTDIR" ]; then
-	    OUTDIR=$PVSCONTEXT
+	if [ -z "$dir" ]; then
+	    dir=$PVSCONTEXT
 	fi
 	OUTFILE=$PVSFILE$EXT
+    else 
+      if [ -z "$dir" ]; then
+        dir=`dirname $OUTFILE`
+      fi
     fi
-    dir=`dirname $OUTFILE`
     base=`basename $OUTFILE`
     noext=`strip_ext $base`
     if [ "$noext" = $base ]; then
-	base=$noext$EXT
-    fi
-    if [ "$OUTDIR" -a -z `abs_dir $OUTFILE` ]; then
-	dir="$OUTDIR"
+      base=$noext$EXT
     fi
     OUTFILE=$dir/$base
     LOGFILE=$dir/$noext.log
@@ -310,6 +302,7 @@ quiet_output() {
 	sed -n -e '/Proof summary/h'\
                -e '/Proof summary/ !{
                     /unfinished/H
+                    /unchecked/H
                     /untried/H
                    }'\
                -e '/Theory totals/ { 
@@ -326,6 +319,7 @@ quiet_output() {
 	sed -n -e '/Proof summary/h'\
                -e '/Proof summary/ !{
                     /unfinished/H
+                    /unchecked/H
                     /untried/H
                    }'\
                -e '/Theory totals/ {

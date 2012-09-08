@@ -178,7 +178,7 @@
 		    ldecls))
 	 (theory-aliases (get-theory-aliases name))
 	 (dreses (get-decls-resolutions decls (actuals name) (dactuals name)
-					(mappings name) kind args)))
+					(mappings name) (mod-id name) kind args)))
     (nconc (get-binding-resolutions name kind args)
 	   (get-record-arg-resolutions name kind args)
 	   (get-mapping-lhs-resolutions name kind args)
@@ -209,7 +209,8 @@
 				       (eq (id (module d)) (id thalias)))
 		      adecls))
 	     (res (get-decls-resolutions decls (actuals thalias) nil
-					 (mappings thalias) kind args))
+					 (mappings thalias) (mod-id thalias)
+					 kind args))
 	     (fres (remove-if #'(lambda (r)
 				  (not (tc-eq (module-instance r) thalias)))
 		     res)))
@@ -378,11 +379,12 @@
 					     (break "No type here?")))))))
 	     names)))))
 
-(defun get-decls-resolutions (decls acts dacts mappings kind args &optional reses)
+(defun get-decls-resolutions (decls acts dacts mappings thid kind args &optional reses)
   (if (null decls)
       reses
-      (let ((dreses (get-decl-resolutions (car decls) acts dacts mappings kind args)))
-	(get-decls-resolutions (cdr decls) acts dacts mappings kind args
+      (let ((dreses (get-decl-resolutions (car decls) acts dacts mappings
+					  thid kind args)))
+	(get-decls-resolutions (cdr decls) acts dacts mappings thid kind args
 			       (nconc dreses reses)))))
 
 
@@ -395,7 +397,7 @@
 ;;; the function domain are singletons then it is treated as a
 ;;; match.
 
-(defun get-decl-resolutions (decl acts dacts mappings kind args)
+(defun get-decl-resolutions (decl acts dacts mappings thid kind args)
   (let ((dth (module decl)))
     (when (and (kind-match (kind-of decl) kind)
 	       (or (eq dth (current-theory))
@@ -446,10 +448,14 @@
 					      (eq (library mi)
 						  (library (car usings))))
 					  (cdr usings)))))
-		  (list (mk-resolution decl thname
-				       (case kind
-					 (expr (type decl))
-					 (type (type-value decl)))))))
+		  (let* ((ty (case kind
+			       (expr (type decl))
+			       (type (type-value decl))))
+			 (tynew (if (and (type-name? ty)
+					 (not (mod-id ty)))
+				    (copy ty :mod-id thid)
+				    ty)))
+		    (list (mk-resolution decl thname tynew)))))
 	      (let* ((modinsts (decl-args-compatible? decl args mappings))
 		     (unint-modinsts
 		      (remove-if

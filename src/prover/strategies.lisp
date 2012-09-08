@@ -4226,8 +4226,14 @@ ground prover until they are exposed."
 		  (number-expr? (args2 pred))
 		  (= (number (args2 pred)) 0))))))
 
+(defvar *collected-implicit-type-exprs* nil)
+
 (defun implicit-type-constraints (ex exprs)
-  (implicit-type-constraints* ex exprs nil nil))
+  (let ((*collected-implicit-type-exprs* nil))
+    (implicit-type-constraints* ex exprs nil nil)))
+
+;; (defmethod implicit-type-constraints* :around (ex exprs parity preds)
+;;   (call-next-method))
 
 (defmethod implicit-type-constraints* ((ex s-formula) exprs parity preds)
   (implicit-type-constraints* (formula ex) exprs parity preds))
@@ -4320,29 +4326,33 @@ ground prover until they are exposed."
 ;; check!!
 
 (defmethod implicit-type-predicates ((expr application) exprs preds)
-  (let* ((op (operator expr))
-	 (arg-list (arguments expr))
-	 (optype (type op))
-	 (domtypes (if (singleton? arg-list)
-		       (list (if (dep-binding? (domain optype))
-				 (type (domain optype))
-				 (domain optype)))
-		       (domain-types optype)))
-	 (args (if (singleton? domtypes)
-		   (list (argument expr))
-		   arg-list)))
-    (assert (= (length domtypes) (length args)))
-    (let ((npreds (when (and (cdr args)	;; ow done in implicit-type-predicates*
-			     (or (eq exprs t)
-				 (member (argument expr) exprs :test #'tc-eq)))
-		    (compatible-preds
-		     (type (argument expr))
-		     (if (dep-binding? (domain optype))
-			 (type (domain optype))
-			 (domain optype))
-		     (argument expr)))))
-      (implicit-type-predicates* domtypes args exprs
-				 (nunion npreds preds :test #'tc-eq)))))
+  (if (member expr *collected-implicit-type-exprs* :test #'tc-eq)
+      preds
+      (let* ((op (operator expr))
+	     (arg-list (arguments expr))
+	     (optype (type op))
+	     (domtypes (if (singleton? arg-list)
+			   (list (if (dep-binding? (domain optype))
+				     (type (domain optype))
+				     (domain optype)))
+			   (domain-types optype)))
+	     (args (if (singleton? domtypes)
+		       (list (argument expr))
+		       arg-list)))
+	(assert (= (length domtypes) (length args)))
+	(let ((npreds (when (and (cdr args) ;; ow done in implicit-type-predicates*
+				 (or (eq exprs t)
+				     (member (argument expr) exprs :test #'tc-eq)))
+			(compatible-preds
+			 (type (argument expr))
+			 (if (dep-binding? (domain optype))
+			     (type (domain optype))
+			     (domain optype))
+			 (argument expr)))))
+	  (prog1 (implicit-type-predicates* domtypes args exprs
+					    (nunion npreds preds :test #'tc-eq))
+	    (push expr *collected-implicit-type-exprs*)
+	    )))))
 
 (defun implicit-type-predicates* (domtypes args exprs preds)
   (if (null domtypes)

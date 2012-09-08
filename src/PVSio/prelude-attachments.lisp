@@ -1,7 +1,5 @@
 ;-*- Mode: lisp -*-
 ;; pvs-attachments
-;; Predefined semantic attachments
-;; Release : PVSio-2.d (11/09/05)
 
 (defun stdstr-attachments ()
 
@@ -58,7 +56,7 @@
   "Index of leftmost occurrence of S1 in S2, starting from 0, or -1 if none"
   (or (search s1 s2 :test #'char=) -1))
 
-(defattach |concat| (s1 s2)
+(defprimitive |concat| (s1 s2)
   "Concatenates S1 and S2"
   (format nil "~a~a" s1 s2))
 
@@ -168,7 +166,7 @@
 
 (eval '(attachments stdio  
 
-(defattach |printstr| (s) 
+(defprimitive |printstr| (s) 
   "Prints lisp format of string S"
   (not (format t "~a" s)))
 
@@ -430,6 +428,15 @@
 
 )))
 
+(defun formatlist (e type)
+  (if (and (listp e)
+	   (type-name? type)
+	   (equal (id type) '|Sexps|))
+      (let ((type (type-value (car (actuals type)))))
+	(loop for ei in e
+	      collect (format nil "~a" (cl2pvs ei type))))
+    (format nil "~a" (cl2pvs e type))))
+
 (defun stdprog-attachments ()
 
 (eval '(attachments stdprog  
@@ -473,12 +480,27 @@
   (throw '|*pvsio-loop*| e))
 
 (defattach |format| (s e)
-  "Formats T according to the S"
-  (cond ((stringp e) (format nil s e))
-	((typep e 'array)
-	 (apply #'format (append (list nil s)
-				 (reduce #'cons e :initial-value nil :from-end t))))
-	(t (format nil s e))))
+   "Formats expression E using Common Lisp format string S"
+   (let* ((fun-type (pc-parse *the-pvs-type* 'type-expr))
+	  (the-type (pc-typecheck (cadr (types (domain fun-type))))))
+     (cond ((stringp e) (format nil s e))
+	   ((and (listp e)
+		 (type-name? the-type)
+		 (equal (id the-type) '|Sexps|))
+	    (let* ((type (type-value (car (actuals the-type))))
+		   (l (loop for ei in e
+			    collect (format nil "~a" (cl2pvs ei type)))))
+	      (apply #'format (cons nil (cons s (list l))))))
+	   ((and (typep e 'array)
+		 (tupletype? the-type))
+	    (let* ((the-types (types the-type))
+		   (l (loop for ei across e
+			    for ti in the-types
+			    collect (formatlist ei ti))))
+	      (apply #'format (cons nil (cons s l)))))
+	   (t (format nil s (format nil "~a"
+				    (cl2pvs e the-type)))))))
+
 )))
 
 (defun stdcatch-attachments ()
@@ -516,6 +538,11 @@
   (let* ((the-type (pc-parse *the-pvs-type* 'type-expr))
 	 (domain   (domain the-type)))
     (format nil "~a" (cl2pvs e (pc-typecheck domain)))))
+
+(defattach |sexps| (l)
+  "Returns a s-expression representing list l. To be used exclusively in format functions."
+  l)
+
 )))
 
 (defun stdpvsio-attachments ()

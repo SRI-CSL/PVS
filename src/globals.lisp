@@ -194,7 +194,7 @@ Given a pathname, returns a hash-table")
 (defvar *noninteractive-timeout* nil)
 (defvar *proof-timeout* nil)
 
-(defvar *use-rationals* nil)
+(defvar *use-rationals* t)
 
 (defvar *recursive-calls-without-enough-args* nil)
 
@@ -216,6 +216,10 @@ Given a pathname, returns a hash-table")
 (defvar *tc-theories* nil "Used to check for IMPORT circularities.")
 (defvar *current-context* nil
   "The default context used when creating expressions")
+
+(defvar *current-top-declaration* nil
+  "Keeps track of the *real* current-declaration")
+
 (defvar *tex-mode* nil)
 ;(defvar *id-to-modinsts* nil)
 
