@@ -274,10 +274,7 @@
 			      (substit (range stype)
 				(acons (domain stype) arg nil))
 			      (range stype)))
-		   (ex (lcopy expr
-			 'operator op
-			 'argument arg
-			 'type rtype)))
+		   (ex (simplify-or-copy-app expr op arg rtype)))
 	      (unless (eq op (operator expr))
 		(change-application-class-if-necessary expr ex))
 	      ex)))))
@@ -430,7 +427,7 @@
 			  new-condition new-then new-else))
 			 ))))))))
 
-(defmethod replace-expr* (lhs rhs (expr number-expr) lastopinfix?)
+(defmethod replace-expr* (lhs rhs (expr rational-expr) lastopinfix?)
   (if (tc-eq lhs expr)
       (parenthesize rhs lastopinfix?)
       expr))

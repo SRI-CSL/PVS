@@ -453,7 +453,7 @@
 	       (tc-eq* arg1 arg2 bindings))))))
 
 
-(defmethod tc-eq* ((e1 number-expr) (e2 number-expr) bindings)
+(defmethod tc-eq* ((e1 rational-expr) (e2 rational-expr) bindings)
   (declare (ignore bindings))
   (with-slots ((n1 number)) e1
     (with-slots ((n2 number)) e2

@@ -842,7 +842,7 @@
   (setf (id ex1) (id ex2)
 	(argument ex1) (argument ex2)))
 
-(defmethod copy-slots ((ex1 number-expr) (ex2 number-expr))
+(defmethod copy-slots ((ex1 rational-expr) (ex2 rational-expr))
   (setf (number ex1) (number ex2)))
 
 (defmethod copy-slots ((ex1 tuple-expr) (ex2 tuple-expr))
