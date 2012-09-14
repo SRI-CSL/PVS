@@ -156,7 +156,7 @@
 
 ; fundamental things are ground
 
-(defmethod ground-expr?* ((expr number-expr))
+(defmethod ground-expr?* ((expr rational-expr))
   (declare (ignore expr))
   t)
   

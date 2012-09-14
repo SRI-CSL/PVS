@@ -41,7 +41,7 @@ Operators
 %  ----------		----
 %  *pvs-operators*	utils.lisp
 %  
-	'('  ')'  '-'  '+'  '*' '/' ':=' '::=' '|->'  ';'  ','  '='  '/='
+	'('  ')'  '-'  '+'  '*' '/' ':=' '::=' '|->'  ';' '§' ','  '='  '/='
 	'<'  '<='  '>'  '>=' '{' '}' '[' ']' '.' '&' '<=>'
 	'->' ':' '=>' '[#' '#]' '(#' '#)' '(:' ':)' '{:' ':}' '{{' '}}' '|'
         '^' '/\\' '\\/' '<>' '~' '==' '++' '**' '//' '^^' % '[]'
@@ -120,8 +120,8 @@ theory ::= {'THEORY' [exporting]^e 'BEGIN' [assuming-part]^a
                       [notheory()|theory-part]^t,id)>;
 
 datatype ::= {{'DATATYPE'|'CODATATYPE'}^k ['WITH' 'SUBTYPES' {id^s ++ ','}]
-	      'BEGIN' [{importing [';']^u}
-                        <importing-elt(importing,[nosemic()|semic()]^u)>]^2
+	      'BEGIN' [{importing [semic]^u}
+                        <importing-elt(importing,[nosemic()|semic(semic)]^u)>]^2
               [assuming-part]^1
 	      adtcase+ 'END' id}
 	        <{[datatype(opt^1,opt^2,adtcases(plus),id)
@@ -191,38 +191,38 @@ assuming-part ::= {'ASSUMING' assumings 'ENDASSUMING'} <assumings>;
 
 assumings ::= {assuming+} <assuming-part(plus)>;
 
-assuming ::= {importing [';']}
-               <importing-elt(importing,[nosemic()|semic()])>
-           | {judgement [';']}
-                 <judgement-elt(judgement,[nosemic()|semic()])>
-	   | {conversion [';']}
-		 <conversion-elt(conversion,[nosemic()|semic()])>
-	   | {auto-rewrite [';']}
-		 <auto-rewrite-elt(auto-rewrite,[nosemic()|semic()])>
-	   | {['_DECL']^d pidops [theory-formals]^f [pdformals+]
-                          ':' assuming-decl [';']^s}
-		<assuming([no-decl()|decl()]^d,pidops,
+assuming ::= {importing [semic]}
+               <importing-elt(importing,[nosemic()|semic(semic)])>
+           | {judgement [semic]}
+                 <judgement-elt(judgement,[nosemic()|semic(semic)])>
+	   | {conversion [semic]}
+		 <conversion-elt(conversion,[nosemic()|semic(semic)])>
+	   | {auto-rewrite [semic]}
+		 <auto-rewrite-elt(auto-rewrite,[nosemic()|semic(semic)])>
+	   | {['§']^d pidops [theory-formals]^f [pdformals+]
+                          ':' assuming-decl [semic]^s}
+		<assuming([no-sec()|sec()]^d,pidops,
 		          [no-theory-formals()|theory-formals]^f,
 		          [noformals()|pdf(plus)],assuming-decl,
-                          [nosemic()|semic()]^s,[noatdecl()|atdecl()]^d)>
+                          [nosemic()|semic(semic)]^s,[noatdecl()|atdecl()]^d)>
 	   ;
 
 theory-part ::= {theory-elt+} <theory-part(plus)>;
 
-theory-elt ::= {importing [';']}
-                 <importing-elt(importing,[nosemic()|semic()])>
-	     | {judgement [';']}
-                 <judgement-elt(judgement,[nosemic()|semic()])>
-	     | {conversion [';']}
-		 <conversion-elt(conversion,[nosemic()|semic()])>
-	     | {auto-rewrite [';']}
-		 <auto-rewrite-elt(auto-rewrite,[nosemic()|semic()])>
-	     | {['_DECL']^d pidops [theory-formals]^f [pdformals+]
-	                    ':' theory-declaration [';']^s}
-		 <theory([no-decl()|decl()]^d,pidops,
+theory-elt ::= {importing [semic]}
+                 <importing-elt(importing,[nosemic()|semic(semic)])>
+	     | {judgement [semic]}
+                 <judgement-elt(judgement,[nosemic()|semic(semic)])>
+	     | {conversion [semic]}
+		 <conversion-elt(conversion,[nosemic()|semic(semic)])>
+	     | {auto-rewrite [semic]}
+		 <auto-rewrite-elt(auto-rewrite,[nosemic()|semic(semic)])>
+	     | {['§']^d pidops [theory-formals]^f [pdformals+]
+	                    ':' theory-declaration [semic]^s}
+		 <theory([no-sec()|sec()]^d,pidops,
 		         [no-theory-formals()|theory-formals]^f,
 		         [noformals()|pdf(plus)],theory-declaration,
-                         [nosemic()|semic()]^s,[noatdecl()|atdecl()]^d)>
+                         [nosemic()|semic(semic)]^s,[noatdecl()|atdecl()]^d)>
 	     ;
 
 importing ::= {'IMPORTING' {importing-item++ ','}}
@@ -652,6 +652,8 @@ opsym ::= '+' <`+()> | '-' <`-()> | '*' <`*()> | '/' <`\/()>
 	| '≯' <≯()> | '≁' <≁()> | '⊥' <⊥()> | '≺' <≺()> | '≻' <≻()>
 	| '⊕' <`⊕()> | '⊖' <`⊖()> | '⊗' <`⊗()> | '⊘' <`⊘()> | '⊙' <`⊙()>
 	;
+
+semic ::= ';' <`;()> | '§' <`§()>;
 
 actuals ::= {actuals1^1 [actuals1]^2} <[actuals1^1|actuals2(actuals1^1, actuals1)]^2>;
 

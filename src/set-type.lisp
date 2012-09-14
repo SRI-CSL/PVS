@@ -1463,7 +1463,7 @@ required a context.")
 ;;; the judgements were unnecessary.  Otherwise we look for the "best"
 ;;; matching judgement type, and use that.
 
-(defmethod set-type* ((ex number-expr) expected)
+(defmethod set-type* ((ex rational-expr) expected)
   (unless (compatible? expected *number*)
     (type-incompatible ex (ptypes ex) expected))
   (setf (type ex) (or *real* *number_field*)))
@@ -2300,7 +2300,8 @@ required a context.")
 	     expr))
 
 (defun change-application-class-if-needed (ex)
-  (let ((operator (operator ex)))
+  (let ((operator (operator ex))
+	(argument (argument ex)))
     (cond ((and (typep operator 'name-expr)
 		(boolean-op? operator '(NOT AND & OR IMPLIES => IFF <=> WHEN)))
 	   (change-to-propositional-class ex))
@@ -2320,17 +2321,13 @@ required a context.")
 	   (unless (tuple-expr? (argument ex))
 	     (setf (argument ex)
 		   (make!-projected-arg-tuple-expr*
-		    (make-projections (argument ex))))))
-	  ((and *use-rationals*
-		(typep operator 'name-expr)
-		(eq (id operator) '/)
-		(eq (id (module-instance operator)) '|number_fields|)
-		(number-expr? (args1 ex))
-		(number-expr? (args2 ex))
-		(not (zerop (number (args2 ex)))))
-	   (let ((rat (/ (number (args1 ex)) (number (args2 ex)))))
-	     (change-class ex (if (integerp rat) 'number-expr 'rational-expr))
-	     (setf (number ex) rat)))
+		    (make-projections argument)))))
+	  ((ground-arith-simplifiable? operator argument)
+	   (let ((num (apply (id operator)
+			(if (tuple-expr? argument)
+			    (mapcar #'number (exprs argument))
+			    (list (number argument))))))
+	     (change-expr-number-class ex num)))
 	  ((typep operator 'injection-expr)
 	   (change-class ex 'injection-application
 			 :index (index operator)
@@ -2339,6 +2336,42 @@ required a context.")
 	   (change-class ex 'injection?-application
 			 :index (index operator)
 			 :id (id operator))))))
+
+(defun change-expr-number-class (ex num)
+  (let ((class (get-expr-number-class ex num)))
+    (assert class)
+    (change-class ex class)
+    (setf (number ex) num
+	  (type ex) (or *real* *number_field*))))
+
+(defun get-expr-number-class (ex num)
+  (if (integerp num)
+      (if (decimal-integer? ex)
+	  'floatp
+	  'number-expr)
+      (if (decimal? ex)
+	  'floatp-expr
+	  (if (tuple-expr? (argument ex))
+	      (if (and (cond ((floatp-expr? (args1 ex))
+			      (or (floatp-expr? (args2 ex))
+				  (number-expr? (args2 ex))))
+			     ((floatp-expr? (args2 ex))
+			      (number-expr? (args1 ex))))
+		       (float-representable? num))
+		  'floatp-expr
+		  'rational-expr)
+	      (if (and (floatp-expr? (args1 ex))
+		       (float-representable? num))
+		  'floatp-expr
+		  'rational-expr)))))
+
+;;; A rational number is representable if its decimal fraction does not
+;;; repeat, e.g., 1/8 is representable, but 1/7 is not.  This basically
+;;; means the denominator is of the form 2^n * 5^m
+(defun float-representable? (num)
+  (or (integerp num)
+      (decimal-factors (denominator num))))
+    
 
 (defmethod change-to-propositional-class ((ex propositional-application))
   nil)
@@ -4623,7 +4656,7 @@ required a context.")
 	 args-list values (cdr types) ex (1+ num)
 	 (if arg
 	     cargs
-	     (cons (list (list (make-number-expr num))) cargs))
+	     (cons (list (list (make!-number-expr num))) cargs))
 	 (if arg
 	     cvalues
 	     (cons (make!-projection-application num ex) cvalues))))))

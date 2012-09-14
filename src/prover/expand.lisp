@@ -280,13 +280,12 @@ list of positive numbers" occurrence)
 		 (eq arg newargs))
 	    expr
 	    (let* ((stype (find-supertype (type newoper)))
-		   (nex (lcopy expr
-			  'operator newoper
-			  'argument newargs
-			  'type (if (typep (domain stype) 'dep-binding)
-				    (substit (range stype)
-				      (acons (domain stype) newargs nil))
-				    (range stype)))))
+		   (nex (simplify-or-copy-app
+			 expr newoper newargs
+			 (if (typep (domain stype) 'dep-binding)
+			     (substit (range stype)
+			       (acons (domain stype) newargs nil))
+			     (range stype)))))
 	      (unless (eq newoper (operator expr))
 		(change-application-class-if-necessary expr nex))
 	      nex)))))
@@ -311,13 +310,12 @@ list of positive numbers" occurrence)
 				(list newlhs newrhs)))
 		(let* ((stype (find-supertype (type newoper)))
 		       (newargs (make!-arg-tuple-expr newlhs newrhs))
-		       (nex (lcopy expr
-			      'operator newoper
-			      'argument newargs
-			      'type (if (typep (domain stype) 'dep-binding)
-					(substit (range stype)
-					  (acons (domain stype) newargs nil))
-					(range stype)))))
+		       (nex (simplify-or-copy-app
+			     expr newoper newargs
+			     (if (typep (domain stype) 'dep-binding)
+				 (substit (range stype)
+				   (acons (domain stype) newargs nil))
+				 (range stype)))))
 		  (unless (eq newoper (operator expr))
 		    (change-application-class-if-necessary expr nex))
 		  nex))))

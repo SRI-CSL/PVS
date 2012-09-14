@@ -203,7 +203,7 @@
 	    (sort values #'< :key #'get-number-value)))
     (make!-set-list-expr values dom)))
 
-(defmethod get-number-value ((ex number-expr))
+(defmethod get-number-value ((ex rational-expr))
   (number ex))
 
 (defmethod get-number-value ((ex application))

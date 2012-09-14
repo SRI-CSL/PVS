@@ -469,13 +469,14 @@
 			 (acons (domain (find-supertype (type nop))) narg
 				nil)))
 		      (t (range (find-supertype (type nop)))))))
-    (lcopy ex
-      'operator (if (or (eq narg (argument ex))
-			(not (eq nop (operator ex))))
-		    nop
-		    (copy nop))
-      'argument narg
-      'type ntype)))
+    (simplify-or-copy-app
+     ex
+     (if (or (eq narg (argument ex))
+	     (not (eq nop (operator ex))))
+	 nop
+	 (copy nop))
+     narg
+     ntype)))
 
 (defmethod gensubst* :around ((ex table-expr) substfn testfn)
   (let ((nex (call-next-method)))

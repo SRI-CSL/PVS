@@ -339,15 +339,14 @@
 	       (extraction-expr
 		(make!-extraction-application (index op) arg (actuals op)))))
 	    (t (let* ((stype (find-supertype (type op)))
-		      (nex (copy expr
-			     'operator op
-			     'argument arg
-			     'type (if (typep (domain stype) 'dep-binding)
-				       (new-substit-hash
-					(substit* (range stype)
-						  (acons (domain stype)
-							 arg nil)))
-				       (range stype)))))
+		      (nex (simplify-or-copy-app
+			    expr op arg
+			    (if (typep (domain stype) 'dep-binding)
+				(new-substit-hash
+				 (substit* (range stype)
+					   (acons (domain stype)
+						  arg nil)))
+				(range stype)))))
 		 ;; Note: the copy :around (application) method takes care of
 		 ;; changing the class if it is needed.
 		 nex))))))

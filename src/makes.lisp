@@ -1596,13 +1596,17 @@
 
 (defun make!-number-expr (number)
   (assert (typep number 'rational))
-  (let* ((num (if (minusp number) (- number) number))
-	 (nexpr (if (integerp num)
-		    (make-instance 'number-expr
-		      :number num
-		      :type *real*)
-		    (if *use-rationals*
-			(make-instance 'rational-expr
+  (if *use-rationals*
+      (if (integerp number)
+	  (make-instance 'number-expr
+	    :number number
+	    :type *real*)
+	  (make-instance 'rational-expr
+	    :number number
+	    :type *real*))
+      (let* ((num (if (minusp number) (- number) number))
+	     (nexpr (if (integerp num)
+			(make-instance 'number-expr
 			  :number num
 			  :type *real*)
 			(make!-application (divides-operator)
@@ -1611,10 +1615,10 @@
 			    :type *real*)
 			  (make-instance 'number-expr
 			    :number (denominator num)
-			    :type *real*))))))
-    (if (minusp number)
-	(make!-minus nexpr)
-	nexpr)))
+			    :type *real*)))))
+	(if (minusp number)
+	    (make!-minus nexpr)
+	    nexpr))))
 
 (defun make!-name-expr (id actuals mod-id res
 			   &optional mappings library target)
@@ -2096,10 +2100,14 @@
   (assert (type ex2))
   (assert (tc-eq (find-supertype (type ex1)) *number*))
   (assert (tc-eq (find-supertype (type ex2)) *number*))
-  (make-instance 'infix-application
-    :operator (plus-operator)
-    :argument (make!-arg-tuple-expr ex1 ex2)
-    :type *number_field*))
+  (if (and *use-rationals*
+	   (rational-expr? ex1)
+	   (rational-expr? ex2))
+      (make!-number-expr (+ (number ex1) (number ex2)))
+      (make-instance 'infix-application
+	:operator (plus-operator)
+	:argument (make!-arg-tuple-expr ex1 ex2)
+	:type *number_field*)))
 
 (defun make!-difference (ex1 ex2)
   (assert (type ex1))
@@ -2107,18 +2115,26 @@
   (assert (tc-eq (find-supertype (type ex1)) *number*))
   (assert (tc-eq (find-supertype (type ex2)) *number*))
   ;;(assert (eq *generate-tccs* 'none))
-  (make-instance 'infix-application
-    :operator (difference-operator)
-    :argument (make!-arg-tuple-expr ex1 ex2)
-    :type *number_field*))
+  (if (and *use-rationals*
+	   (rational-expr? ex1)
+	   (rational-expr? ex2))
+      (let ((num (- (number ex1) (number ex2))))
+	(make!-number-expr num))
+      (make-instance 'infix-application
+	:operator (difference-operator)
+	:argument (make!-arg-tuple-expr ex1 ex2)
+	:type *number_field*)))
 
 (defun make!-minus (ex)
   (assert (type ex))
   (assert (tc-eq (find-supertype (type ex)) *number*))
-  (make-instance 'unary-application
-    :operator (minus-operator)
-    :argument ex
-    :type *number_field*))
+  (if (and *use-rationals*
+	   (rational-expr? ex))
+      (make!-number-expr (- (number ex)))
+      (make-instance 'unary-application
+	:operator (minus-operator)
+	:argument ex
+	:type *number_field*)))
 
 (defun make!-times (ex1 ex2)
   (assert (type ex1))

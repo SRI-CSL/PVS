@@ -1119,7 +1119,6 @@
 							new-arg)
 						  nargs))
 				       new-arg)))))
-    (break)
     new-expr))
 
 (defmethod simplify-nested-updates ((expr update-expr) outer-assignments
@@ -1858,8 +1857,7 @@
        (eq (id op) '/)))
 
 (defmethod is-division? ((expr application))
-  (with-slots (operator)
-      expr
+  (with-slots (operator) expr
     (and (is-div? operator)
 	 (= (length (arguments expr)) 2))))
 
@@ -1867,8 +1865,7 @@
   nil)
 
 (defmethod is-addition? ((expr application))
-  (with-slots (operator)
-      expr
+  (with-slots (operator) expr
     (and (is-plus? operator)
 	 (= (length (arguments expr)) 2))))
 
@@ -1971,7 +1968,7 @@
 (defun make-minus (expr)
   (let* ((coef (coefficient expr))
 	 (body (noncoefficient expr))
-	 (newcoeffexpr (if (minusp coef)
+	 (newcoeffexpr (if (or *use-rationals* (minusp coef))
 			   (make!-number-expr (- coef))
 			   (make!-minus (make!-number-expr coef)))))
     (if (null body)
@@ -2795,18 +2792,16 @@
       (multiple-value-bind (sigargs newargs)
 	  (assert-if (argument expr))
 	(let* ((sig (if (eq sigop '?) '? sigargs))
-	       (expr;;shadowing expr
-		(lcopy expr
-		  'operator (if (eq sigop '?) newop
-				(operator expr))
-		  'argument (if (eq sigargs '?) newargs
-				(argument expr))))
+	       (op (if (eq sigop '?) newop operator))
+	       (arg (if (eq sigargs '?) newargs argument))
+	       (expr ;;shadowing expr
+		(simplify-or-copy-app expr op arg))
 	       (result			;(nil)
 		(when (and (tc-eq (find-supertype (type expr)) *boolean*)
 			   (not (eq *top-assert-flag* 'rewrite))
-			   (not (connective-occurs? expr))
-			   (not (negation? expr)) ;;NSH(11.27.02)
-                            )               ;;this would be wasted work
+			   (not (negation? expr))
+			   (not (connective-occurs? expr)) ;;NSH(11.27.02)
+			   ) ;;this would be wasted work
 		  (assert-test expr))
 		))
 	  (cond ((true-p result) (values '? *true*))
@@ -2825,11 +2820,11 @@
 					    sig)))))
 		((and (is-predicate? newop)
 		      (member expr (type-constraints newargs t)
-			      :test #'tc-eq));;(break)
+			      :test #'tc-eq)) ;;(break)
 		 (values-assert-if '? *true* expr))
 		;;NSH(9.10.93) The case above is kept here so that assert-if-inside doesn't
 		;;remove something brought in by typepred.
-		((and (equation? expr);;moved here from
+		((and (equation? expr) ;;moved here from
 		      ;;assert-if-application so that
 		      ;;assert-if-inside does not
 		      ;;self-simplify antecedent
@@ -2840,6 +2835,33 @@
 		 (assert-numeric-equality expr sig))
 
 		(t  (assert-if-application expr newop newargs sig))))))))
+
+(defmethod simplify-or-copy-app (expr (op name-expr) arg
+				      &optional (type (type expr)))
+  (or (simplify-ground-arith op arg)
+      (lcopy expr 'operator op 'argument arg 'type type)))
+
+(defmethod simplify-or-copy-app (expr op arg &optional (type (type expr)))
+  (lcopy expr 'operator op 'argument arg 'type type))
+
+(defun ground-arith-simplifiable? (op arg)
+  (and *use-rationals*
+       (name-expr? op)
+       (memq (id op) '(+ - * /))
+       (resolution op)
+       (eq (id (module-instance op)) '|number_fields|)
+       (if (tuple-expr? arg)
+	   (every #'rational-expr? (exprs arg))
+	   (rational-expr? arg))
+       (or (not (eq (id op) '/))
+	   (not (zerop (number (cadr (exprs arg))))))))
+
+(defun simplify-ground-arith (op arg)
+  (when (ground-arith-simplifiable? op arg)
+    (let ((num (apply (id op) (if (tuple-expr? arg)
+				  (mapcar #'number (exprs arg))
+				  (list (number arg))))))
+      (make!-number-expr num))))
 
 (defun do-auto-rewrite (expr sig)
   (let* ((op* (operator* expr))
