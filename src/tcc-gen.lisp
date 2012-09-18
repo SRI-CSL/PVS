@@ -1055,7 +1055,7 @@
 				   (not (eq (simple-match (car y) x) 'fail))))))
 	(if prev
 	    (unless (member modinst (get-importings theory) :test #'tc-eq)
-	      (let ((aprev (or (cdr prev) (car prev))))
+	      (let ((aprev (or (cadr prev) (car prev))))
 		(pvs-info "Assuming TCCs not generated ~@[~a~] for~%  ~w~%~
                            as they are subsumed by the TCCs generated ~@[~a~] for~%  ~w"
 		  (place-string expr) expr (place-string aprev) aprev)))

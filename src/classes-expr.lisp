@@ -181,6 +181,10 @@
 
 (defcl rational-expr (expr)
   (number :type rational))
+
+;; Read in and prints as a float
+(defcl floatp-expr (rational-expr)
+  )
   
 (defcl number-expr (rational-expr)
   (number :type integer :parse t :restore-as nil))

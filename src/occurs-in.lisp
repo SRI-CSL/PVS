@@ -634,7 +634,7 @@
   (unless (memq (declaration ex) *bound-variables*)
     (pushnew (id ex) fids)))
 
-(defmethod collect-free-ids* ((ex number-expr) fids)
+(defmethod collect-free-ids* ((ex rational-expr) fids)
   fids)
 
 (defmethod collect-free-ids* ((ex record-expr) fids)

@@ -176,7 +176,7 @@
 ;  (call-next-method))
 
 (defmethod pp-tex* ((mod module))
-  (with-slots (id formals exporting assuming theory) mod
+  (with-slots (id formals theory-formal-decls exporting assuming theory) mod
     (let ((*current-context* (saved-context mod)))
       (pprint-logical-block (nil nil)
 	(pp-tex-id id)
@@ -190,6 +190,9 @@
 	(pp-tex-keyword 'BEGIN)
 	(pprint-indent :block 2)
 	(pprint-newline :mandatory)
+	(when (and *unparse-expanded*
+		   theory-formal-decls)
+	  (pp-tex-theory-formal-decls theory-formal-decls))
 	(pp-tex-assuming (if *unparse-expanded*
 			     assuming
 			     (remove-if #'generated-by assuming)))
@@ -293,6 +296,44 @@
 	    (pp-tex-keyword kind)
 	    (pp-tex* type))))))
 
+(defun pp-tex-theory-formal-decls (decls)
+  (let ((*pretty-printing-decl-list* t)
+	(last-one (car (last decls))))
+    (pprint-logical-block (nil (check-chained-syntax decls))
+      (pprint-indent :block 0)
+      (pprint-newline :mandatory)
+      (write "\\% Declarations generated from theories as parameters:")
+      (pprint-newline :mandatory)
+      (loop (let ((*pretty-printed-prefix* nil)
+		  (decl (pprint-pop)))
+	      (if (typep decl '(or importing theory-abbreviation-decl))
+		  (let ((imps (list decl)))
+		    (loop while (chain? (car imps))
+			  do (setq decl (pprint-pop))
+			  do (push decl imps))
+		    (pprint-logical-block (nil (nreverse imps))
+		      (pp-tex-keyword 'IMPORTING)
+		      (write #\space)
+		      (pprint-indent :current 0)
+		      (loop (pp-tex* (pprint-pop))
+			    (pprint-exit-if-list-exhausted)
+			    (write-char #\,)
+			    (write-char #\space)
+			    (pprint-newline :fill)))
+		    (unless *pp-compact*
+			  (pprint-newline :mandatory)))
+		  (pp-tex* decl))
+	      (unless (or (chain? decl)
+			  (eq decl last-one))
+		(pprint-newline :mandatory)
+		(unless *pp-compact*
+		  (pprint-newline :mandatory))))
+	    (pprint-exit-if-list-exhausted)))
+    (pprint-newline :mandatory)
+    (pprint-newline :mandatory)
+    (write "\\% End of declarations generated from theories as parameters")
+    (pprint-newline :mandatory)))
+
 (defun pp-tex-assuming (assuming)
   (when assuming
     (let ((*pretty-printing-decl-list* t)
@@ -365,10 +406,12 @@
 	      (pprint-exit-if-list-exhausted))))))
 
 (defmethod pp-tex* ((dt recursive-type))
-  (with-slots (id formals importings assuming constructors) dt
+  (with-slots (id formals decl-formals importings assuming constructors) dt
     (pprint-logical-block (nil nil)
       (pp-tex-id id)
       (pp-tex-theory-formals formals)
+      (when decl-formals
+	(pp-tex-theory-formals decl-formals))
       (write-char #\:)
       (write-char #\space)
       (pprint-indent :block 2)
@@ -609,14 +652,16 @@
 
 (defmethod pp-tex* ((decl formal-type-decl))
   (with-slots (type-expr) decl
-    (if (typep decl 'formal-nonempty-type-decl)
+    (if (typep decl 'nonempty-type-decl)
 	(pp-tex-keyword (case (keyword decl)
 			  (nonempty-type 'NONEMPTY_TYPE)
 			  (t 'TYPE+)))
 	(pp-tex-keyword 'TYPE))
-    (when (typep decl 'formal-subtype-decl)
+    (when (typep decl '(or formal-subtype-decl formal-struct-subtype-decl))
       (write-char #\space)
-      (pp-tex-keyword 'FROM)
+      (if (typep decl 'formal-subtype-decl)
+	  (pp-tex-keyword 'FROM)
+	  (pp-tex-keyword "<:"))
       (write-char #\space)
       (pp-tex* type-expr))))
 
@@ -635,6 +680,12 @@
     (pp-tex-keyword 'THEORY)
     (write-char #\space)
     (pp-tex* theory-name)))
+
+(defmethod pp-tex* ((decl units-decl))
+  (with-slots (declared-units) decl
+    (pp-tex-keyword '@UNIT)
+    (write-char #\space)
+    (pp-tex* declared-units)))
 
 (defmethod pp-tex* ((decl lib-decl))
   (with-slots (lib-string) decl
@@ -687,9 +738,11 @@
     (pp-tex* declared-type)))
 
 (defmethod pp-tex* ((decl const-decl))
-  (with-slots (declared-type definition) decl
+  (with-slots (declared-type type definition) decl
     (pprint-newline :fill)
-    (pp-tex* declared-type)
+    (if *unparse-expanded*
+	(pp-tex* type)
+	(pp-tex* declared-type))
     (when definition
       (write-char #\space)
       (pp-tex-keyword '=)
@@ -1023,21 +1076,28 @@
 
 (defmethod pp-tex* ((te expr-as-type))
   (with-slots (expr) te
-    (pp-tex-id '\()
-    (pp-tex* expr)
-    (pp-tex-id '\))))
+    (let ((have-parens? (and (parens expr) (plusp (parens expr)))))
+      (unless have-parens?
+	(pp-tex-id '\())
+      (pp-tex* expr)
+      (unless have-parens?
+	(pp-tex-id '\))))))
 
 (defmethod pp-tex* ((te recordtype))
   (with-slots (fields) te
-    (pprint-logical-block
-	(nil fields
-	       :prefix (get-pp-tex-id '\[\#)
-	       :suffix (get-pp-tex-id '\#\]))
-      (loop (pp-tex* (pprint-pop))
-	    (pprint-exit-if-list-exhausted)
-	    (write-char #\,)
-	    (write-char #\space)
-	    (pprint-newline :linear)))))
+    (if fields
+	(pprint-logical-block
+	    (nil fields
+		 :prefix (get-pp-tex-id '\[\#)
+		 :suffix (get-pp-tex-id '\#\]))
+	  (loop (pp-tex* (pprint-pop))
+		(pprint-exit-if-list-exhausted)
+		(write-char #\,)
+		(write-char #\space)
+		(pprint-newline :linear)))
+	(progn (write (get-pp-tex-id '\[\#))
+	       (write #\space)
+	       (write (get-pp-tex-id '\#\]))))))
 
 (defmethod pp-tex* ((te struct-sub-recordtype))
   (with-slots (fields) te
@@ -1154,7 +1214,10 @@
 	     :suffix (get-pp-tex-id '\]))
       (when types
 	(pprint-indent :current 0)
-	(loop (pp-tex* (pprint-pop))
+	(loop (let ((ty (pprint-pop)))
+		(if ty
+		    (pp-tex* (pprint-pop))
+		    (write-char #\space)))
 	      (pprint-exit-if-list-exhausted)
 	      (write-char #\,)
 	      (write-char #\space)
@@ -1197,11 +1260,30 @@
     (pprint-newline :fill)
     (pp-tex* (type te))))
 
+;;; Units
+
+(defmethod pp-tex* :around ((ue units-expr))
+  (dotimes (p (parens ue))
+    (pp-tex-id '\())
+  (call-next-method)
+  (dotimes (p (parens ue))
+    (pp-tex-id '\))))
+
+(defmethod pp-tex* ((ue units-appl))
+  (pprint-logical-block (nil nil)
+    (pp-tex* (car (arguments ue)))
+    (write-char #\space)
+    (pp-tex-id (operator ue))
+    (write-char #\space)
+    (if (rationalp (cadr (arguments ue)))
+	(pp-tex-number (cadr (arguments ue)))
+	(pp-tex* (cadr (arguments ue))))))
 
 ;;; Expressions
 
 (defmethod pp-tex* :around ((ex expr))
   (if (and *ppmacros*
+	   (current-theory)
 	   (from-macro ex))
       (pp-tex* (from-macro ex))
       (if (typep ex 'binding)
@@ -1220,10 +1302,10 @@
 	 (pp-tex-id '\)))
 	(t (call-next-method))))
 
-(defmethod pp-tex* ((ex number-expr))
+(defmethod pp-tex* ((ex rational-expr))
   (pp-tex-number (number ex)))
 
-(defmethod pp-tex* ((ex rational-expr))
+(defmethod pp-tex* ((ex floatp-expr))
   (pp-tex-number (exact-fp (number ex))))
 
 (defun pp-tex-number (number)
@@ -1236,6 +1318,24 @@
 		  (format nil "\\(~a\\)" number)
 		  (format nil "\\(~d\\)" number)))
 	(write str))))
+
+(defmethod pp-tex* ((ex decimal))
+  (if (and (name-expr? (operator ex))
+	   (eq (id (operator ex)) '/)
+	   (= (length (arguments ex)) 2)
+	   (every #'number-expr? (arguments ex)))
+      (let* ((num (number (args1 ex)))
+	     (den (number (args2 ex)))
+	     (f10 (mult10-factor den)))
+	(if f10
+	    (let ((fnum (* num f10))
+		  (fden (* den f10)))
+	      (multiple-value-bind (int-part frac-part)
+		  (floor fnum fden)
+		(let ((dec-part (dec-part-loop frac-part fden)))
+		  (format t "~d.~{~d~}" int-part dec-part))))
+	    (call-next-method)))
+      (call-next-method)))
 
 (defmethod pp-tex* ((ex decimal-integer))
   (cond (*in-tex-math-mode*
@@ -1537,14 +1637,7 @@
 
 (defmethod pp-tex* ((ex infix-application))
   (with-slots (operator argument) ex
-    (if (and (typep operator 'name-expr)
-	     (memq (id operator) *infix-operators*)
-	     (typep argument 'tuple-expr)
-	     (= (length (exprs argument)) 2)
-	     (not (or (mod-id operator)
-		      (library operator)
-		      (actuals operator)
-		      (mappings operator))))
+    (if (valid-infix-application? ex)
 	(let ((lhs (car (exprs argument)))
 	      (rhs (cadr (exprs argument)))
 	      (oper (sbst-symbol (id operator))))
@@ -1574,6 +1667,8 @@
 		       (pp-tex-id '\)))
 		(pp-tex* rhs))))
 	(call-next-method))))
+
+;; pp-tex* ((ex infix-when-expr))
 
 ;; pp-tex* ((ex infix-conjunction)) 
 
@@ -1937,7 +2032,8 @@
   (with-slots (arguments expression) ass
     (pprint-logical-block (nil nil)
       (pprint-indent :current 2)
-      (if (typep ass 'uni-assignment)
+      (if (and (typep ass 'uni-assignment)
+	       (simple-name? (caar arguments)))
 	  (pp-tex* (caar arguments))
 	  (pp-tex-arguments* arguments))
       (write-char #\space)
@@ -1950,7 +2046,8 @@
   (with-slots (arguments expression) ass
     (pprint-logical-block (nil nil)
       (pprint-indent :current 2)
-      (if (typep ass 'uni-assignment)
+      (if (and (typep ass 'uni-assignment)
+	       (simple-name? (caar arguments)))
 	  (pp-tex* (caar arguments))
 	  (pp-tex-arguments* arguments))
       (write-char #\space)
@@ -2118,24 +2215,26 @@
       (pp-tex-theory-formals (decl-formals lhs)))))
 
 (defmethod pp-tex* ((map mapping-with-formals))
-  (pprint-logical-block (nil nil)
-    (pp-tex* (lhs map))
-    (pp-tex-decl-formals (formals map))
-    (when (kind map)
-      (write ": ")
-      (if (eq (kind map) 'expr)
-	  (pp-tex* (declared-type map))
-	  (pp-tex-keyword (kind map))))
-    (pprint-indent :block 2)
-    (write-char #\space)
-    (pprint-newline :fill)
-    (typecase map
-      (mapping-subst (write ":="))
-      (mapping-rename (write "::=")))
-    (write-char #\space)
-    (if (rhs map)
-	(pp-tex* (remove-map-formals (formals map) (expr (rhs map))))
-	(pp-tex-keyword 'NORHS))))
+  (if *unparse-expanded*
+      (call-next-method)
+      (pprint-logical-block (nil nil)
+	(pp-tex* (lhs map))
+	(pp-tex-decl-formals (formals map))
+	(when (kind map)
+	  (write ": ")
+	  (if (eq (kind map) 'expr)
+	      (pp-tex* (declared-type map))
+	      (pp-tex-keyword (kind map))))
+	(pprint-indent :block 2)
+	(write-char #\space)
+	(pprint-newline :fill)
+	(typecase map
+	  (mapping-subst (write ":="))
+	  (mapping-rename (write "::=")))
+	(write-char #\space)
+	(if (rhs map)
+	    (pp-tex* (remove-map-formals (formals map) (expr (rhs map))))
+	    (pp-tex-keyword 'NORHS)))))
 
 (defmethod pp-tex* ((ex eager-rewrite-name))
   (pprint-logical-block (nil nil)
@@ -2348,6 +2447,8 @@
       (let ((chainp (and (typep (car decls) '(and (not arg-bind-decl)
 					      (or declaration bind-decl)))
 			 (chain? (car decls))
+			 (cdr decls)
+			 (tc-eq (type (car decls)) (type (cadr decls)))
 			 (or (not (typep (car decls)
 					 '(or typed-declaration bind-decl)))
 			     (declared-type (car decls))))))
