@@ -1,8 +1,5 @@
 ;; prooflite.lisp
-;; Release: ProofLite-4.2 (01/10/10)
- 
-;; Original code written by Sam Owre (owre@csl.sri.com).
-;; Modified by Cesar Munoz (munoz@nianet.org) for ProofLite package
+
 (defun associate-proof-with-formulas (theory-name formula-name strategy force)
   (let ((theory (get-typechecked-theory theory-name)))
     (if theory

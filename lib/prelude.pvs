@@ -6391,7 +6391,6 @@ END PartialFunctionComposition
 
 %% stdlang 
 %% Basic language definitions
-%% Release PVSio-2.d (11/09/05)
 
 stdlang : THEORY
 BEGIN
@@ -6409,12 +6408,13 @@ BEGIN
   Dummy : TYPE  = bool
   dummy : MACRO Dummy = false
 
+  Sexps : TYPE+  
+
 END stdlang
 
 
 %% stdexc.pvs
 %% Definition of exception type
-%% Release PVSio-2.d (11/09/05)
 
 stdexc[T:TYPE+] : THEORY
 BEGIN
@@ -6435,7 +6435,6 @@ END stdexc
 
 %% stdcatch.pvs
 %% Definition of catch and throw 
-%% Release PVSio-2.d (11/09/05)
 
 stdcatch[T1,T2:TYPE+] : THEORY
 BEGIN
@@ -6472,7 +6471,6 @@ END stdcatch
 
 %% stdprog.pvs
 %% Imperative aspects such as errors, exceptions, mutables and loops
-%% Release PVSio-2.d (11/09/05)
 
 stdprog[T:TYPE+] : THEORY
 BEGIN
@@ -6537,7 +6535,6 @@ END stdprog
 
 %% stdglobal.pvs
 %% Global variables
-%% Release PVSio-2.d (11/09/05)
 
 stdglobal[T:TYPE+,t:T] : THEORY
 BEGIN
@@ -6548,7 +6545,6 @@ END stdglobal
 
 %% stdpvs.pvs
 %% PVS printing and parsing
-%% Release PVSio-2.d (11/09/05)
 
 stdpvs[T:TYPE+] : THEORY
 BEGIN
@@ -6564,11 +6560,14 @@ BEGIN
 	  pvs2str_lisp(t),
           LAMBDA(e:Exception[void]):"<?>")
 
+  sexps(l:list[T]) : Sexps
+
+  {||}(l:list[T]) : Sexps = sexps(l)
+
 END stdpvs
 
 %% stdstr.pvs
 %% String operations
-%% Release PVSio-2.d (11/09/05)
 
 stdstr: THEORY
 BEGIN
@@ -6623,7 +6622,7 @@ BEGIN
   int?(s:string):bool
 
  %% String concatenation
-  concat(s1:string,s2:string):string
+  concat(s1:string,s2:string):string = s1 o s2
   ;+(s1:string,s2:string): MACRO string = concat(s1,s2)
   ;+(r:real,s:string): MACRO string = concat(tostr(r),s)
   ;+(s:string,r:real): MACRO string = concat(s,tostr(r))
@@ -6681,7 +6680,6 @@ END stdstr
 
 %% stdio.pvs
 %% Input/output operations
-%% Release PVSio-2.d (11/09/05)
 
 stdio : THEORY
 BEGIN
@@ -6915,7 +6913,6 @@ END stdio
 
 %% stdmath.pvs
 %% PVSio math library 
-%% Release PVSio-2.d (11/09/05)
 
 stdmath : THEORY
 BEGIN
@@ -6986,7 +6983,6 @@ END stdmath
 
 %% stdfmap.pvs
 %% Iterations on files and format printing
-%% Release PVSio-2.d (11/09/05)
 
 stdfmap[T:TYPE+] : THEORY
 BEGIN
@@ -7028,7 +7024,6 @@ END stdfmap
 
 %% stdindent.pvs
 %% Indentations
-%% Release PVSio-2.d (11/09/05)
 
 stdindent : THEORY
 BEGIN
@@ -7071,7 +7066,6 @@ END stdindent
 
 %% stdtokenizer.pvs
 %% Tokenizers
-%% Release PVSio-2.d (11/09/05)
 
 stdtokenizer : THEORY
 BEGIN
@@ -7375,7 +7369,6 @@ END stdtokenizer
 
 %% stdpvsio.pvs
 %% PVSio interface
-%% Release PVSio-2.d (11/09/05)
 
 stdpvsio : THEORY
 BEGIN
@@ -7390,7 +7383,6 @@ END stdpvsio
 
 %% stdsys.pvs
 %% PVSio sytem library 
-%% Release PVSio-2.d (11/09/05)
 
 stdsys : THEORY
 BEGIN
@@ -7465,5 +7457,11 @@ BEGIN
   get_env(name,default:string):string % Get environment variable (default)
 
   get_env(name:string): MACRO string = get_env(name,emptystr)
+
+  printf(s:string) : MACRO void =
+    print(format(s,""))
+
+  fprintf(f:OStream,s:string): MACRO void =
+    fprint(f,format(s,""))
 
 END stdsys

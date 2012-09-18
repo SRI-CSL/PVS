@@ -1,15 +1,7 @@
 ;; pvsio.lisp
 ;; PVSio interface to the ground evaluator
-;; Release : PVSio-2.c (09/16/05)
-
-;; New PVSio interface
 
 (in-package :pvs)
-
-;;(defun arity (expr)
-;;   (if (funtype? (type expr))
-;;       (length (types (domain (type expr))))
-;;     0))
 
 (defun help-pvsio ()
   (format 
@@ -39,18 +31,11 @@ Display help for <attachment>:
 Display help for semantic attachments in <theory>:
   (help_pvs_theory_attachments <theory>)!
   help_pvs_theory_attachments(<theory>);
-
-ACKNOWLEDGMENT
-PVS is a software developed, maintained, and licensed by SRI International.
-PVSio is a freely available extension to the PVS Ground Evaluator developed 
-by Cesar Munoz at the National Institute of Aerospace.
-
 "))
 
 (defun evaluation-mode-pvsio (theoryname 
 			      &optional input tccs?  
 			      append? (banner? t))
-  ;;(load-pvsio-library-if-needed)
   (let ((theory (get-typechecked-theory theoryname)))
     (format t "~%Generating ~a.log~%" theoryname)
     (with-open-file 
@@ -141,8 +126,7 @@ by Cesar Munoz at the National Institute of Aerospace.
 	   (catch 'abort
 	     (catch 'quit
 	       (catch 'tcerror
-		 (let* ((input ;;(ignore-errors (read-pvsio input-stream))
-			       (read-pvsio input-stream))
+		 (let* ((input (read-pvsio input-stream))
 			(pr-input (pc-parse input 'expr))
 			(*tccforms* nil)
 			(tc-input (pc-typecheck pr-input))
@@ -208,8 +192,7 @@ by Cesar Munoz at the National Institute of Aerospace.
   (when (not input-stream)
     (format t "~%<PVSio> ")
     (force-output))
-  (let ((input ;;(ignore-errors (read-expr input-stream))
-	       (read-expr input-stream)))
+  (let ((input (read-expr input-stream)))
     (cond ((member input '(quit (quit) "quit") :test #'equal)
 	   (clear-input)
 	   (when (pvs-y-or-n-p "Do you really want to quit?  ")
@@ -255,14 +238,6 @@ by Cesar Munoz at the National Institute of Aerospace.
 	     (fresh-line)
 	     (read-pvsio input-stream)))))
 
-(defun load-pvsio-library-if-needed ()
-  (unless (assoc "PVSio/" *prelude-libraries-files* :test #'string=)
-    (if (pvs-y-or-n-p
-	 "The PVSio library should be loaded first - do that now? ")
-	(let ((*suppress-msg* t))
-	  (load-prelude-library "PVSio"))
-	(error "PVSio library not loaded"))))
-
 (defun run-pvsio ()
   (let ((file (environment-variable "PVSIOFILE"))
 	(time (read-from-string (environment-variable "PVSIOTIME")))
@@ -285,7 +260,6 @@ by Cesar Munoz at the National Institute of Aerospace.
 	       :direction :output
 	       :if-does-not-exist :create
 	       :if-exists :supersede)
-	    ;;(pvs-init)
 	    (change-context (directory-namestring file))
 	    (dolist (pack packlist) (load-prelude-library pack))
 	    ;;(load-pvs-attachments)

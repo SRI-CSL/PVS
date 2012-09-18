@@ -538,10 +538,12 @@ bind tighter.")
 	      (pprint-exit-if-list-exhausted))))))
 
 (defmethod pp* ((dt recursive-type))
-  (with-slots (id formals importings assuming constructors) dt
+  (with-slots (id formals decl-formals importings assuming constructors) dt
     (pprint-logical-block (nil nil)
       (write id)
       (pp-theory-formals formals)
+      (when decl-formals
+	(pp-theory-formals decl-formals))
       (write-char #\:)
       (write-char #\space)
       (pprint-indent :block 2)
@@ -808,7 +810,7 @@ bind tighter.")
     (pp* modname)))
 
 (defmethod pp* ((decl theory-abbreviation-decl))
-  (with-slots (id theory-name chain? semi) decl
+  (with-slots (id theory-name) decl
     (unless *pretty-printing-decl-list*
       (write 'IMPORTING)
       (write-char #\space))
@@ -1160,11 +1162,11 @@ bind tighter.")
 (defmethod pp* ((te expr-as-type))
   (with-slots (expr) te
     (let ((have-parens? (and (parens expr) (plusp (parens expr)))))
-    (unless have-parens?
-      (write-char #\())
-    (pp* expr)
-    (unless have-parens?
-      (write-char #\))))))
+      (unless have-parens?
+	(write-char #\())
+      (pp* expr)
+      (unless have-parens?
+	(write-char #\))))))
 
 (defmethod pp* ((te recordtype))
   (with-slots (fields) te
@@ -1358,10 +1360,10 @@ bind tighter.")
 	 (write-char #\)))
 	(t (call-next-method))))
 
-(defmethod pp* ((ex number-expr))
+(defmethod pp* ((ex rational-expr))
   (write (number ex)))
 
-(defmethod pp* ((ex rational-expr))
+(defmethod pp* ((ex floatp-expr))
   (write (exact-fp (number ex))))
 
 (defun exact-fp (number)
@@ -2073,7 +2075,7 @@ bind tighter.")
 	(pp-unchain-binding-expr (expression ex) (list (bindings ex))
 				 (operator ex))
       (pprint-logical-block (nil nil)
-	(write (operator ex))
+	(write (string-upcase (operator ex)))
 	(pprint-indent :current 1)
 	(write " ")
 	(pprint-newline :miser)

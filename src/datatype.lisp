@@ -443,7 +443,7 @@ generated")
 
 (defmethod bisimulation-arg-value ((te subtype) avar bvar rvar adt adtinst)
   (if (finite-set-type? te)
-      (let ((rel (bisimulation-rel (supertype te) rvar adt)))
+      (let ((rel (bisimulation-rel (supertype te) rvar adt adtinst)))
 	(if (and (name-expr? rel) (eq (id rel) '=))
 	    (mk-application (mk-name-expr '=) (copy avar) (copy bvar))
 	    (mk-application (let* ((name (mk-name-expr '|every|))
@@ -549,7 +549,7 @@ generated")
 
 (defmethod bisimulation-rel ((te subtype) rvar adt adtinst)
   (if (finite-set-type? te)
-      (let ((rel (bisimulation-rel (supertype te) rvar adt)))
+      (let ((rel (bisimulation-rel (supertype te) rvar adt adtinst)))
 	(if (and (name-expr? rel) (eq (id rel) '=))
 	    (mk-name-expr '=)
 	    (let* ((name (mk-name-expr '|every|))
@@ -778,9 +778,14 @@ generated")
   ;;   (let ((rec (generate-adt-recognizer (recognizer c) c ptype adt)))
   ;; 	(setf (chain? rec) (not (eq c last)))))
   (generate-adt-subtypes adt)
-  (generate-accessors adt)
-  (dolist (c (constructors adt))
-    (generate-adt-constructor c adt)))
+  (let ((acc-entries (generate-accessors adt)))
+    (dolist (c (constructors adt))
+      (generate-adt-constructor c adt))
+    ;; (dolist (entry acc-entries)
+    ;;   (when (cddr (car entry))
+    ;; 	(make-common-accessor-subtype-judgements
+    ;; 	 (cdar entry) (get-accessor-domain-type entry adt) adt)))
+    ))
 
 
 ;;; Generate the subtype type declarations
@@ -966,8 +971,9 @@ generated")
 			dtype)))
 	(assert atype)
 	(assert (fully-instantiated? atype))
-	(let* ((*bound-variables* (if occ?
-				      (cons atype *bound-variables*)
+	(let* ((ty (typecheck atype))
+	       (*bound-variables* (if occ?
+				      (cons ty *bound-variables*)
 				      *bound-variables*)))
 	  (generate-adt-constructor-domain (cdr accessors)
 					   dacts thinst
@@ -1007,13 +1013,8 @@ generated")
       (setf (acc-decls c)
 	    (find-corresponding-acc-decls
 	     (arguments c) common-accessors acc-decls)))
-    (mapc #'(lambda (entry acc-decl)
-	      (when (cddr (car entry))
-		(make-common-accessor-subtype-judgements
-		 (cdar entry) (domain (type acc-decl)) adt)))
-	  common-accessors acc-decls)
     ;;(generate-common-accessor-evel-defns acc-decls adt)
-    acc-decls))
+    common-accessors))
 
 ;; This doesn't work - the ground evaluator will call it recursively
 ;; (defun generate-common-accessor-evel-defns (acc-decls adt)
@@ -1087,8 +1088,8 @@ generated")
 					    :key #'arguments :test #'memq)))
 			acc-decls)))
     (typecheck-adt-decl acc-decl)
-    (when (cddr (car entry))
-      (make-common-accessor-subtype-judgements (cdar entry) domain adt))
+    ;;(when (cddr (car entry))
+    ;;  (make-common-accessor-subtype-judgements (cdar entry) domain adt))
     (assert (or (null (decl-formals *adt*)) (decl-formals acc-decl)))
     acc-decl))
 

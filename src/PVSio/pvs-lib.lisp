@@ -1,15 +1,10 @@
 ;; pvs-lib.lisp
-;; Lisp code
-;; Release : PVSio-2.c (09/16/05)
 
 (in-package :pvs)
 
-(defparameter *pvsio-version* "PVSio-4.a (11/07/07)")
+(defparameter *pvsio-version* "PVSio-5.0 (10/11/12)")
 (defparameter *pvsio-imported* nil)
 (defparameter *pvsio-update-files* (make-hash-table :test #'equal))
-
-;; (defun reload-pvsio ()
-;;   (libload "PVSio/pvs-lib.lisp"))
 
 (defun load-update (file &optional force (verbose t))
   (when (and (> (length file) 0)
@@ -50,11 +45,4 @@
   (load-update "~/.pvs-attachments" force verbose)
   (load-update (format nil "~apvs-attachments" *pvs-context-path*) 
 	       force verbose))
-
-
-;; (load "defattach.lisp" :verbose nil)
-;; (load-pvs-attachments)
-;; (load "eval.lisp" :verbose nil)
-;; (load "pvsio.lisp" :verbose nil)
-  
 

@@ -1158,7 +1158,6 @@ The following are not possible variables: ~{~a,~}" badnames)
 			 (error-format-if "~%Couldn't find a definition or lemma named ~a" name)
 			 (values 'X nil))
 			((null form)
-			 (break "OK")
 			 (error-format-if "~%Found ~a resolutions for ~a relative to the substitution.
 Please check substitution, provide actual parameters for lemma name,
 or supply more substitutions."

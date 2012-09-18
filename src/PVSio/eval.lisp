@@ -1,6 +1,5 @@
 ;; eval.lisp
-;; Strategies 
-;; Release : PVSio-2.c (09/16/05)
+;; Definition of evaluation strategies 
 
 (in-package :pvs)
 
@@ -9,18 +8,6 @@
 (pushnew "eval-expr"    *pvsio-strategies* :test #'string=)
 (pushnew "eval"         *pvsio-strategies* :test #'string=)
 
-(defhelper __miracle__ ()
-  (let ((thetrue (make-instance 
-		  's-formula 
-		  'formula (pc-typecheck (pc-parse "TRUE" 'expr))
-		  'label nil 
-		  'new? nil 
-		  'asserted? nil))
-	(thefalse (setf (s-forms *goal*) (cons thetrue (s-forms *goal*)))))
-    (propax))
-  "[PVSio] Internal strategy. WARNING: DO NOT USE (unless you know what 
-you are doing)" 
-  "")
 
 (defun evalexpr (expr safe)
   (catch 'abort
@@ -29,8 +16,10 @@ you are doing)"
 	(let* 
 	    ((pr-input 
 	      (cond ((stringp expr) (pc-parse expr 'expr))
-		    (safe           (pc-parse (format nil "~a" expr) 'expr))
-		    (t              expr)))
+		    ((and (listp expr)
+			  (equal (car expr) '!))
+		     (ee-pvs-obj (car (eval-ext-expr expr))))
+		    ((expr? expr) expr)))
 	     (*tccforms* nil)
 	     (*generate-tccs* 'all)
 	     (tc-input (pc-typecheck pr-input)))
@@ -64,39 +53,37 @@ you are doing)"
 	      (throw 'abort (format nil "~%~a" error))))))))))
 
 (defrule eval-expr (expr &optional (safe? t) (auto? t))
-  (let ((result (evalexpr expr safe?)))
+  (let ((e (extra-get-expr expr))
+	(result (evalexpr (format nil "~a" e) safe?)))
     (if (and result (stringp result))
 	(skip-msg result)
-      (if result 
-	  (let ((casexpr (format nil "(~a) = (~a)" expr result)))
-	    (branch (case casexpr)
-		    ((skip)
-		     (__miracle__)
-		     (if auto?
-			 (eval-formula)
-		       (skip)))))
-	(skip))))
+      (when result 
+	(let ((casexpr (make-equation e (pc-parse (format nil "~a" result) 'expr))))
+	  (branch (case casexpr)
+		  ((skip)
+		   (__miracle__)
+		   (when auto? (let ((flag (tcc-sequent? *goal*))
+				     (tcc (when flag (tcc *goal*))))
+				 (when flag (eval-expr tcc) (assert))))))))))
   "[PVSio] Adds the antecedent expr=eval(EXPR) to the current goal, 
-where eval(x) is the Common Lisp evaluation of EXPR. If SAFE? is T and EXPR
+where eval(x) is the ground evaluation of EXPR. If SAFE? is T and EXPR
 generates TCCs, the expression is not evaluated. Otherwise, TCCs
 are added as subgoals and the expression is evaluated. If AUTO? is T,
-TCCs are ground evaluated. The strategy is safe in the sense that
+TCCs are ground evaluated. The strategy is sound in the sense that
 user-defined semantic attachments are not evaluated.
 However, the strategy may fail or loop in the presence of unproven TCCs."
   "Evaluating expression ~a in the current sequent")
 
 (defrule eval-formula (&optional (fnum 1) safe?)
   (let ((fexpr (car (select-seq (s-forms *goal*) fnum))))
-    (if fexpr
-	(let ((expr   (formula fexpr))
-	      (result (evalexpr expr safe?)))
-	  (if (and result (stringp result))
-	      (skip-msg result)
-	    (if result 
-		(spread (case result)
-			((__miracle__)))
-	      (skip))))
-      (skip)))
+    (when fexpr
+      (let ((expr   (formula fexpr))
+	    (result (evalexpr expr safe?)))
+	(if (and result (stringp result))
+	    (skip-msg result)
+	  (when result 
+	    (spread (case result)
+		    ((__miracle__))))))))
   "[PVSio] Evaluates the formula FNUM in Common Lisp and adds the result to 
 the antecedent of the current goal. If SAFE? is T and FNUM generates TCCs, 
 the expression is not evaluated. The strategy is safe in the sense that 
@@ -106,33 +93,25 @@ the strategy may fail in the presence of unproven TCCs. "
 
 (defrule eval (expr &optional safe?)
   (let ((*in-evaluator* t)
-	(result (unwind-protect
-		    (evalexpr expr safe?)
-		  (setq *in-evaluator* nil)))
-	(*in-evaluator* nil))
+	(e (format nil "~a" (extra-get-expr expr)))
+	(result (evalexpr e safe?)))
     (if (stringp result)
 	(skip-msg result)
       (if (expr? result)
-	(let ((mssg (format nil "~a = ~a~%" expr result)))
-	  (skip-msg mssg))
+	  (let ((mssg (format nil "~a = ~a~%" e result)))
+	    (skip-msg mssg))
 	(skip))))
   "[PVSio] Prints the evaluation of expression EXPR. If SAFE? is T and EXPR 
 generates TCCs, the expression is not evaluated."
   "Printing the evaluation of ~a")
 
 (defstrat pvsio-about ()
-  (let ((msg (format nil "%--
-% Release: ~a. 
-% http://research.nianet.org/~Amunoz/PVSio
-% Contact and Bugs: Cesar A. Munoz (munoz@nianet.org)
-% NIA - NASA LaRC
-% Strategies: ~{~a~#[~:;, ~]~}
-%--~%" *pvsio-version* "~" *pvsio-strategies*)))
-    (skip-msg msg))
+  (let ((version *pvsio-version*)
+	(strategies *pvsio-strategies*))
+    (printf "%--
+% ~a 
+% http://shemesh.larc.nasa.gov/people/cam/PVSio
+% Strategies: ~{~a~^, ~}
+%--~%" version strategies))
   "[PVSio] Prints PVSio's about information.")
 
-(defstrat reload-pvsio ()
-  (let ((a (libload "PVSio/eval.lisp"))
-	(msg (format nil "Loading: ~A" *pvsio-version*)))
-    (skip-msg msg))
-  "[PVSio] Reloads PVSio's strategies.")

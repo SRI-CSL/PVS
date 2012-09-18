@@ -1,26 +1,8 @@
-;;  Release: ProofLite-4.2 (01/10/10)
 (in-package :pvs)
-
-(defvar *pregexp-version* nil)
 
 (defun eq-thf (decl thf)
   (and (string= (format nil "~a" (id decl))
 		(car thf))))
-
-;; (let* ((prooflitepath   (environment-variable "PROOFLITEPATH"))
-;;        (package-files (if *pregexp-version*
-;;                           (list "prooflite")
-;;                         (list "pregexp" "prooflite"))))
-;;   (loop for package-file in package-files
-;;         do (let ((lisp-file (format nil "~a/~a.lisp"
-;;                                     prooflitepath package-file))
-;;                  (fasl-file (format nil "~a/~a.~a"
-;;                                     prooflitepath package-file pvs::*pvs-binary-type*)))
-;;              (when (not (and (probe-file fasl-file)
-;;                              (<= (file-write-date lisp-file)
-;;                                  (file-write-date fasl-file))))
-;;                (compile-file lisp-file))
-;; 	     (libload fasl-file))))
 
 ;; Split string given a character
 (defun split (str char) 

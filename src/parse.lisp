@@ -2041,7 +2041,7 @@
       :operator (make-instance 'name-expr
 		  :id (ds-id op)
 		  :place (term-place op))
-      :argument (make-xt-bind-expr 'lambda-expr body nil)
+      :argument (make-xt-bind-expr 'lambda body nil)
       :place (term-place bexpr))))
 
 (defun xt-skovar (expr)
@@ -2066,9 +2066,9 @@
 
 (defun bind-expr-class (op)
   (case (intern (string-upcase op))
-    ((LAMBDA λ LAMBDA-EXPR) 'lambda-expr)
-    ((FORALL ∀ FORALL-EXPR) 'forall-expr)
-    ((EXISTS ∃ EXISTS-EXPR) 'exists-expr)
+    ((LAMBDA λ) 'lambda-expr)
+    ((FORALL ∀) 'forall-expr)
+    ((EXISTS ∃) 'exists-expr)
     ((SET-EXPR) 'set-expr)
     (t (break "bind-expr for ~a not set" op))))
 

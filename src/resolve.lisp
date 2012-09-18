@@ -178,7 +178,8 @@
 		    ldecls))
 	 (theory-aliases (get-theory-aliases name))
 	 (dreses (get-decls-resolutions decls (actuals name) (dactuals name)
-					(mappings name) kind args)))
+					(mod-id name) (mappings name)
+					kind args)))
     (nconc (get-binding-resolutions name kind args)
 	   (get-record-arg-resolutions name kind args)
 	   (get-mapping-lhs-resolutions name kind args)
@@ -209,7 +210,8 @@
 				       (eq (id (module d)) (id thalias)))
 		      adecls))
 	     (res (get-decls-resolutions decls (actuals thalias) nil
-					 (mappings thalias) kind args))
+					 (mod-id name) (mappings thalias)
+					 kind args))
 	     (fres (remove-if #'(lambda (r)
 				  (not (tc-eq (module-instance r) thalias)))
 		     res)))
@@ -378,11 +380,13 @@
 					     (break "No type here?")))))))
 	     names)))))
 
-(defun get-decls-resolutions (decls acts dacts mappings kind args &optional reses)
+(defun get-decls-resolutions (decls acts dacts thid mappings kind args
+				    &optional reses)
   (if (null decls)
       reses
-      (let ((dreses (get-decl-resolutions (car decls) acts dacts mappings kind args)))
-	(get-decls-resolutions (cdr decls) acts dacts mappings kind args
+      (let ((dreses (get-decl-resolutions (car decls) acts dacts mappings
+					  thid kind args)))
+	(get-decls-resolutions (cdr decls) acts dacts thid mappings kind args
 			       (nconc dreses reses)))))
 
 
@@ -395,7 +399,7 @@
 ;;; the function domain are singletons then it is treated as a
 ;;; match.
 
-(defun get-decl-resolutions (decl acts dacts mappings kind args)
+(defun get-decl-resolutions (decl acts dacts mappings thid kind args)
   (let ((dth (module decl)))
     (when (and (kind-match (kind-of decl) kind)
 	       (or (eq dth (current-theory))

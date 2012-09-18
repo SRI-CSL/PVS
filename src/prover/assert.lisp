@@ -2237,7 +2237,7 @@
   (cond ((and (rational-expr? l)
 	      (rational-expr? r)
 	      (not (zerop (number r))))
-	 (make!-number-expr (/ l r)))
+	 (make!-number-expr (/ (number l) (number r))))
 	(t (make!-divides l r))))
 
 ;(defmethod compare-expr ((L number-expr) (R number-expr))
@@ -4203,7 +4203,8 @@ e LHS free variables in ~a" hyp lhs)
 	     (fixpoint-decl? (declaration res)))
 	(error-format-if "~%Can't rewrite using ~a: (co)inductive definition cannot be used." name))
        (t
-	(unless (consp res) ;;(6.16.95)avoids antecedent rewrites
+	(unless (or (consp res) ;;(6.16.95)avoids antecedent rewrites
+		    (not (fully-instantiated? res)))
 	  (typecheck (module-instance res) :tccs 'all))
 	;;NSH(6.14.95): above typecheck needed to generate
 	;;assuming TCCS.  

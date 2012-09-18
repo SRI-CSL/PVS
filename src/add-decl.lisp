@@ -273,7 +273,8 @@
 			   (get-declarations (id decl)))
 			 :test #'add-decl-test)))
     (let* ((thry (current-theory))
-	   (curdecl (current-declaration))
+	   (curdecl (or *current-top-declaration*
+			(current-declaration)))
 	   (cdecl (when curdecl
 		    (if (or (tcc? decl)
 			    (importing? decl)) 
