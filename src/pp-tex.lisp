@@ -2215,6 +2215,12 @@
       (pp-tex-theory-formals (decl-formals lhs)))))
 
 (defmethod pp-tex* ((map mapping-with-formals))
+  (pprint-logical-block (nil nil)
+    (pp-tex-id (id lhs))
+    (when (decl-formals lhs)
+      (pp-tex-theory-formals (decl-formals lhs)))))
+
+(defmethod pp-tex* ((map mapping-with-formals))
   (if *unparse-expanded*
       (call-next-method)
       (pprint-logical-block (nil nil)

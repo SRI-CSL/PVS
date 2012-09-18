@@ -659,8 +659,10 @@ generated")
   (if (arguments constructor)
       (unless (some #'(lambda (a) (possibly-empty-type? (type a)))
 		    (arguments constructor))
-	(set-nonempty-type (range (type (con-decl constructor))) (con-decl constructor)))
-      (set-nonempty-type (type (con-decl constructor)) (con-decl constructor))))
+	(set-nonempty-type (range (type (con-decl constructor)))
+			   (con-decl constructor)))
+      (set-nonempty-type (type (con-decl constructor))
+			 (con-decl constructor))))
 
 (defmethod set-adt-positive-formal-types ((adt recursive-type))
   (when (formals adt)
@@ -2263,8 +2265,8 @@ generated")
 		  arg)
 		(mk-predicate-application
 		 funid te adt (cons fun (list (copy arg)))))))
-      (acc-predicate-selection arg (supertype te) pvars ptypes
-			       thinst adt funid curried?)))
+      (acc-predicate-selection arg (supertype te) pvars ptypes thinst adt
+			       funid curried?)))
 
 (defmethod acc-predicate-selection (arg (te funtype) pvars ptypes thinst adt
 					funid curried?)
