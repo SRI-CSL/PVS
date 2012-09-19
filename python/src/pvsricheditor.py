@@ -68,16 +68,7 @@ class PVSRichEditor(wx.Panel):
         return self.styledText.GetText()
 
     def selectAll(self):
-        self.styledText.SelectAll()
-        
-    def copy(self):
-        self.styledText.Copy()     
-
-    def paste(self):
-        self.styledText.Paste()     
-
-    def cut(self):
-        self.styledText.Cut()     
+        self.styledText.SelectAll()  
 
     def undo(self):
         self.styledText.Undo()   

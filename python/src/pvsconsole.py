@@ -61,25 +61,11 @@ class PVSConsole(wx.Panel):
         self.pvsin.write(text)
         
     def writeLine(self, line):
-        if isPrompt(line):
-            self.writeTextToIn(line)
-            self.onPromptReceived(line)
-        else:
-            self.appendLineToOut(line)
+        self.appendLineToOut(line)
         
-    def write(self, text):
-        if text == None: return
-        lines = text.splitlines()      
-        #wx.MutexGuiEnter()
-        for line in lines:
-            self.writeLine(line)  
-        #wx.MutexGuiLeave()
-        
-    def onPromptReceived(self, prompt):
+    def writePrompt(self, prompt):
+        self.writeTextToIn(prompt)
         self.prompt = prompt
-        log.info("Prompt received: %s", prompt)
-        
-
 
     def onPVSInTextEntered(self, event):  # wxGlade: PVSMainFrame.<event_handler>
         log.info("Event handler `onPVSConsoleTextEntered' not implemented")
@@ -87,11 +73,11 @@ class PVSConsole(wx.Panel):
         pl = len(self.prompt)
         command = whole[pl:]
         log.info("Command is %s", command)
-        if config.pvsrunner != None:
+        if config.runner != None:
             self.appendLineToOut(whole)
             self.clearIn()
             self.history.append(command)
-            config.pvsrunner.tellPVS(command + NEWLINE)
+            config.runner.tellPVS(command + NEWLINE)
         #event.Skip()
 
     def onPVSInText(self, event):  # wxGlade: PVSMainFrame.<event_handler>

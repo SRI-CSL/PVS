@@ -4,6 +4,8 @@
 import config
 from findreplacemanager import FindReplaceManager
 from pvsrunner import PVSRunner
+from pvscommandmanager import *
+import wx.stc as stc
 import wx
 
 log = config.getLogger(__name__)
@@ -28,9 +30,9 @@ def onCloseFile(event):  # wxGlade: PVSMainFrame.<event_handler>
     config.filesbuffermanager.closeFile()
 
 def onQuitFrame(event):  # wxGlade: PVSMainFrame.<event_handler>
-    if config.pvsrunner != None:
-        config.pvsrunner.terminate()
-        config.pvsrunner = None
+    if config.runner != None:
+        config.runner.terminate()
+        config.runner = None
     config.frame.Close()
 
 def onUndo(event):  # wxGlade: PVSMainFrame.<event_handler>
@@ -42,15 +44,24 @@ def onSelectAll(event):  # wxGlade: PVSMainFrame.<event_handler>
     #event.Skip()
 
 def onCutText(event):  # wxGlade: PVSMainFrame.<event_handler>
-    config.notebook.cut()
+    x = config.frame.FindFocus()
+    if isinstance(x, wx.TextCtrl) or isinstance(x, stc.StyledTextCtrl):
+        x.Cut()
+    #config.notebook.cut()
     #event.Skip()
 
 def onCopyText(event):  # wxGlade: PVSMainFrame.<event_handler>
-    config.notebook.copy()
+    x = config.frame.FindFocus()
+    if isinstance(x, wx.TextCtrl) or isinstance(x, stc.StyledTextCtrl):
+        x.Copy()
+    #config.notebook.copy()
     #event.Skip()
 
 def onPasteText(event):  # wxGlade: PVSMainFrame.<event_handler>
-    config.notebook.paste()
+    x = config.frame.FindFocus()
+    if isinstance(x, wx.TextCtrl) or isinstance(x, stc.StyledTextCtrl):
+        x.Paste()
+    #config.notebook.paste()
     #event.Skip()
 
 def onFindText(event):  # wxGlade: PVSMainFrame.<event_handler>
@@ -68,17 +79,18 @@ def onRestoreContextAutomatically(event):  # wxGlade: PVSMainFrame.<event_handle
     #event.Skip()
 
 def onStartPVS(event):  # wxGlade: PVSMainFrame.<event_handler>
-    config.pvsrunner = PVSRunner()
-    config.pvsrunner.start()
+    config.runner = PVSRunner()
+    config.runner.start()
     #event.Skip()
 
 def onStopPVS(event):  # wxGlade: PVSMainFrame.<event_handler>
-    if config.pvsrunner != None:
-        config.pvsrunner.terminate()
-        config.pvsrunner = None
+    if config.runner != None:
+        config.runner.terminate()
+        config.runner = None
 
 def onTypecheck(event):  # wxGlade: PVSMainFrame.<event_handler>
-    log.info("Event handler `onTypecheck' not implemented!")
+    filename = config.notebook.getActiveFilename()
+    typecheck(filename)
     #event.Skip()
 
 def onSetPVSLocation(event):  # wxGlade: PVSMainFrame.<event_handler>

@@ -19,8 +19,8 @@ console = None
 filestreemanager = None
 bufferstree = None
 filesbuffermanager = None
-pvsrunner = None
-
+runner = None
+preference = None 
 
 def getLogger(name):
     log = logging.getLogger(name)
@@ -31,3 +31,4 @@ def getLogger(name):
     log.addHandler(hdlr) 
     log.setLevel(logging.DEBUG)
     return log
+

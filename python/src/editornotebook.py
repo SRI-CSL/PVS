@@ -76,18 +76,6 @@ class PVSNotebookManager(wx.Notebook):
     def selectAll(self):
         page = self.getActivePage()
         page.selectAll()
-        
-    def copy(self):
-        page = self.getActivePage()
-        page.copy()     
-
-    def paste(self):
-        page = self.getActivePage()
-        page.paste()     
-
-    def cut(self):
-        page = self.getActivePage()
-        page.cut()
 
     def undo(self):
         page = self.getActivePage()

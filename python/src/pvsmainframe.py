@@ -13,6 +13,7 @@ from eventhandler import *
 import config
 from mainmenumanager import MainFrameMenu
 from toolbarmanager import ToolbarManager
+from preferencemanager import PVSIDEPreferenceManager
 
 log = config.getLogger(__name__)
 
@@ -75,6 +76,7 @@ class PVSMainFrame(wx.Frame):
         self.configMenuToolbar(0)
         config.toolbar.enableSave(False)
         self.Connect(-1, -1, config.EVT_RESULT_ID, self.onPVSResult)
+        config.preference = PVSIDEPreferenceManager()
 
     def __set_properties(self):
         # begin wxGlade: PVSMainFrame.__set_properties
@@ -151,8 +153,10 @@ class PVSMainFrame(wx.Frame):
             config.console.initializeConsole()
         elif message == MESSAGE_PVS_STATUS:
             self.updateFrame(data)
-        elif message == MESSAGE_CONSOLE_WRITE:
-            config.console.write(data)
+        elif message == MESSAGE_CONSOLE_WRITE_LINE:
+            config.console.writeLine(data)
+        elif message == MESSAGE_CONSOLE_WRITE_PROMPT:
+            config.console.writePrompt(data)            
         else:
             log.warn("Unhandled PVSmessage: %d", message)
             
