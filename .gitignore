@@ -7,6 +7,7 @@
 /TAGS
 autom4te.cache
 bin/ix86_64-Linux
+bin/ix86-MacOSX
 emacs/emacs-src/pvs-prelude-files-and-regions.el
 doc/user-guide/Makefile
 doc/prover/Makefile
@@ -22,7 +23,9 @@ src/pvs-parser.lisp
 src/pvs-sorts.lisp
 src/WS1S/mona
 src/nlyices/ix86_64-Linux/
+src/nlyices/ix86-MacOSX/
 src/utils/ix86_64-Linux/b64
+src/utils/ix86-MacOSX/b64
 orphaned-proofs.prf
 pvsbin
 
@@ -32,9 +35,12 @@ pvsbin
 *~
 *.*fasl
 *.x8664s
+*.ppcf
+*.ppcs
 *.o
 *.a
 *.so
+*.dylib
 .pvscontext
 *_adt.pvs
 *.out
@@ -55,3 +61,4 @@ doc/release-notes/*.pdf
 doc/release-notes/*.info
 orphaned-proofs.prf
 pvsbin
+*.err
