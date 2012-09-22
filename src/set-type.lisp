@@ -2348,7 +2348,9 @@ required a context.")
   (if (integerp num)
       (if (decimal-integer? ex)
 	  'floatp
-	  'number-expr)
+	  (if (minusp num)
+	      'rational-expr
+	      'number-expr))
       (if (decimal? ex)
 	  'floatp-expr
 	  (if (tuple-expr? (argument ex))

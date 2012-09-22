@@ -1597,7 +1597,8 @@
 (defun make!-number-expr (number)
   (assert (typep number 'rational))
   (if *use-rationals*
-      (if (integerp number)
+      (if (and (integerp number)
+	       (not (minusp number)))
 	  (make-instance 'number-expr
 	    :number number
 	    :type *real*)
