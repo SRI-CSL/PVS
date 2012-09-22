@@ -14,6 +14,7 @@ doc/language/pvs-doc.el
 doc/language/Makefile
 doc/api/Makefile
 emacs/emacs23
+emacs/emacs24
 src/pvs-info.lisp
 src/pvs-lexer.lisp
 src/pvs-methods.lisp
@@ -22,7 +23,10 @@ src/pvs-sorts.lisp
 src/WS1S/mona
 src/nlyices/ix86_64-Linux/
 src/utils/ix86_64-Linux/b64
+orphaned-proofs.prf
+pvsbin
 
+*.tgz
 *.log
 *.status
 *~
@@ -34,3 +38,7 @@ src/utils/ix86_64-Linux/b64
 .pvscontext
 *_adt.pvs
 *.out
+*.aux
+*.dvi
+*.nav
+*.toc
