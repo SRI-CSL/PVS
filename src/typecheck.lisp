@@ -1071,14 +1071,16 @@
 				  (compatible? type (type r)))))
 		   (with-no-type-errors
 		    (resolve* (lhs mapping) 'expr nil)))))
-	 (nres (unless (and (kind mapping)
-			    (not (eq (kind mapping) 'expr)))
+	 (nres (unless (or eres
+			   (and (kind mapping)
+				(not (eq (kind mapping) 'expr))))
 		 (when (and (or (integerp (id (lhs mapping)))
 				(every #'digit-char-p
 				       (string (id (lhs mapping)))))
 			    (or (null (mod-id (lhs mapping)))
 				(eq (mod-id (lhs mapping))
 				    '|numbers|)))
+		   (break)
 		   (list (mk-resolution
 			     (number-declaration
 			      (if (integerp (id (lhs mapping)))
