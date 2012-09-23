@@ -14,6 +14,7 @@ doc/prover/Makefile
 doc/language/pvs-doc.el
 doc/language/Makefile
 doc/api/Makefile
+doc/release-notes/pvs-release-notes.pdf
 emacs/emacs23
 emacs/emacs24
 src/pvs-info.lisp
@@ -49,3 +50,13 @@ pvsbin
 *.nav
 *.toc
 *.err
+*.cp
+*.fn
+*.html
+*.info
+*.ky
+*.pg
+*.ps
+*.tp
+*.vr
+
