@@ -1,5 +1,7 @@
 #!/bin/sh
 
+version="6.0"
+
 # Creates the pvs distribution tar files from the current pvs directory
 # Will create
 #  pvs-source.tgz  - all the sources needed to build PVS
@@ -29,8 +31,6 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 # --------------------------------------------------------------------
 
-# pvsname="pvs4.0"
-
 # ### Make sure the subdirectory is available.
 # tempparent="make-dist.tmp.$$"
 # if [ -d ${tempparent} ]; then
@@ -48,9 +48,14 @@
 # trap "echo 'Interrupted...cleaning up the staging directory'; rm -rf ${temppar
 # ent}; exit 1" 1 2 15
 
-TARFLAGS='-cohz --mode=u+rw --atime-preserve --exclude=.svn'
-
-version="6.0"
+if [ `uname -s` = "Darwin" -a -e "/usr/bin/bsdtar" ]
+then
+    TAR=/usr/bin/bsdtar
+    TARFLAGS='-cohz --exclude=.svn --exclude=.git'
+else
+    TAR=tar
+    TARFLAGS='-cohz --mode=u+rw --atime-preserve --exclude=.svn --exclude=.git'
+fi
 
 # pvs-source.tgz
 echo Creating pvs-${version}-source.tgz
@@ -79,15 +84,18 @@ tar ${TARFLAGS} -f pvs-${version}-source.tgz --exclude pvsbin \
   src/README \
   src/*.lisp \
   src/pvs-gr.txt \
+  src/abstraction/*.lisp \
+  src/Field/*.lisp \
   src/ground-prover/*.lisp \
-  src/utils/*.lisp \
+  src/groundeval/*.lisp \
   src/interface/*.lisp \
+  src/Manip/*.lisp \
+  src/ProofLite/*.lisp \
   src/prover/*.lisp \
   src/PVSio/*.lisp \
-  src/WS1S/lisp/*.lisp \
-  src/abstraction/*.lisp \
-  src/groundeval/*.lisp \
+  src/rahd/*.lisp \
   src/utils/*.lisp \
+  src/WS1S/lisp/*.lisp \
   src/utils/ix86-Linux/Makefile src/utils/ix86-MacOSX/Makefile \
   src/utils/ix86_64-Linux/Makefile \
   src/utils/powerpc-MacOSX/Makefile \
@@ -119,11 +127,7 @@ tar ${TARFLAGS} -f pvs-${version}-source.tgz --exclude pvsbin \
   emacs/emacs19/Makefile
 ls -l pvs-${version}-source.tgz
 
-# pvs-system.tgz
-# Check whether we have enough to build the system tar,
-# If we have the most up-to-date (x)emacs, that is enough
-if [ -d emacs/emacs20 -o -d emacs/xemacs21 -o -d emacs/emacs22 ]
-then
+# System files
 pvssystemfiles="\
   README INSTALL LICENSE NOTICES pvs pvsio proveit provethem pvs-tex.sub pvs.sty bin/relocate \
   bin/pvs-platform bin/tar-b64-mail Examples \
@@ -140,79 +144,53 @@ pvssystemfiles="\
   doc/PVSio-2.d.pdf doc/manip-guide.pdf doc/extrategies.pdf doc/ProofLite-4.2.pdf \
   wish/gray.xbm wish/sequent.xbm \
   emacs lib/finite_sets lib/bitvectors"
-tar ${TARFLAGS} -f pvs-${version}-system.tgz $pvssystemfiles
-else
-echo "pvs-${version}-system.tgz not created - need emacs/emacs20 and emacs/xemacs21 and "
-fi
 
-
-#  pvs-libraries.tgz
-# if [ -d lib/finite_sets/pvsbin -a -d lib/bitvectors/pvsbin ]
-# then
-# tar ${TARFLAGS} -f pvs-${version}-libraries.tgz \
-#   lib/finite_sets lib/bitvectors
-# else
-# echo "pvs-libraries.tgz not created - need to typecheck finite_sets and bitvectors"
-# fi
-
-for platform in ix86-Linux ix86_64-Linux ix86-MacOSX powerpc-MacOSX \
-                sun4-SunOS5
+for platform in ix86-Linux ix86_64-Linux ix86-MacOSX
+do
+	for subdir in runtime devel
   do
-  for subdir in runtime devel
-   do
-   if [ "$subdir" = "runtime" ]
-    then
-     kind=
-    else
-     kind="-devel"
-   fi
-   if [ -e bin/${platform}/${subdir}/pvs-allegro ]
-    then
-     echo Creating pvs-${version}-${platform}-allegro${kind}.tgz
-     tar ${TARFLAGS} -f pvs-${version}-${platform}-allegro${kind}.tgz \
-          ${pvssystemfiles} \
-          bin/${platform}/b64 bin/relocate \
-	  bin/pvs-platform bin/tar-b64-mail \
-	  bin/${platform}/${subdir}/file_utils.* \
-	  bin/${platform}/${subdir}/libacl*.* \
-	  bin/${platform}/${subdir}/mu.* \
-	  bin/${platform}/${subdir}/ws1s.* \
-	  bin/${platform}/${subdir}/pvs-allegro*
-     ls -l pvs-${version}-${platform}-allegro${kind}.tgz
-    else
-     echo "Allegro ${subdir} not available for ${platform}"
-   fi
-   if [ -e bin/${platform}/${subdir}/pvs-cmulisp -a "$subdir" = "runtime" ]
-    then
-     echo Creating pvs-${version}-${platform}-cmulisp${kind}.tgz
-     tar ${TARFLAGS} -f pvs-${version}-${platform}-cmulisp${kind}.tgz \
-          ${pvssystemfiles} \
-          bin/${platform}/b64 bin/relocate \
-	  bin/pvs-platform bin/tar-b64-mail \
-	  bin/${platform}/${subdir}/mu.* \
-	  bin/${platform}/${subdir}/file_utils.* \
-	  bin/${platform}/${subdir}/ws1s.* \
-	  bin/${platform}/${subdir}/*-cmu.* \
-	  bin/${platform}/${subdir}/pvs-cmulisp*
-     ls -l pvs-${version}-${platform}-cmulisp${kind}.tgz
-    else
-     echo "CMU Lisp ${subdir} not available for ${platform}"
-   fi
-   if [ -e bin/${platform}/${subdir}/pvs-sbclisp -a "$subdir" = "runtime" ]
-    then
-     echo Creating pvs-${version}-${platform}-sbclisp${kind}.tgz
-     tar ${TARFLAGS} -f pvs-${version}-${platform}-sbclisp${kind}.tgz \
-	  ${pvssystemfiles} \
-	  bin/${platform}/b64 bin/relocate \
-	  bin/pvs-platform bin/tar-b64-mail \
-	  bin/${platform}/${subdir}/mu.* \
-	  bin/${platform}/${subdir}/file_utils.* \
-	  bin/${platform}/${subdir}/ws1s.* \
-	  bin/${platform}/${subdir}/*-sbcl.* \
-	  bin/${platform}/${subdir}/pvs-sbclisp*
-     ls -l pvs-${version}-${platform}-sbclisp${kind}.tgz
-    else
-     echo "SBCL ${subdir} not available for ${platform}"
-   fi
-   done
+		if [ "$subdir" = "runtime" ]
+		then
+	    kind=
+		else
+	    kind="-devel"
+		fi
+    if [ -e bin/${platform}/${subdir}/pvs-allegro ]
+		then
+      echo Creating pvs-${version}-${platform}-allegro${kind}.tgz
+      tar ${TARFLAGS} -f pvs-${version}-${platform}-allegro${kind}.tgz \
+        ${pvssystemfiles} \
+        bin/${platform}/b64 bin/relocate \
+				bin/pvs-platform bin/tar-b64-mail \
+				bin/${platform}/${subdir}/file_utils.* \
+				bin/${platform}/${subdir}/libacl*.* \
+				bin/${platform}/${subdir}/mu.* \
+				bin/${platform}/${subdir}/ws1s.* \
+				bin/${platform}/${subdir}/pvs-allegro*
+			ls -l pvs-${version}-${platform}-allegro${kind}.tgz
+		else
+      if [ `bin/pvs-platform` = ${platform} ]
+      then echo "Allegro ${subdir} not available for ${platform}"
+      fi
+		fi
+		if [ -e bin/${platform}/${subdir}/pvs-sbclisp -a "$subdir" = "runtime" ]
+		then
+      echo Creating pvs-${version}-${platform}-sbclisp${kind}.tgz
+      tar ${TARFLAGS} -f pvs-${version}-${platform}-sbclisp${kind}.tgz \
+				${pvssystemfiles} \
+				bin/${platform}/b64 bin/relocate \
+				bin/pvs-platform bin/tar-b64-mail \
+				bin/${platform}/${subdir}/mu.* \
+				bin/${platform}/${subdir}/file_utils.* \
+				bin/${platform}/${subdir}/ws1s.* \
+				bin/${platform}/${subdir}/*-sbcl.* \
+				bin/${platform}/${subdir}/pvs-sbclisp*
+      ls -l pvs-${version}-${platform}-sbclisp${kind}.tgz
+		else
+      if [ `bin/pvs-platform` = ${platform} ]
+			then
+				echo "SBCL ${subdir} not available for ${platform}"
+      fi
+		fi
   done
+done
