@@ -96,11 +96,12 @@
 
 (defun json-result (result &optional (id *json-id*))
   (when id
-    (let ((jresult (json:with-explicit-encoder
-		    (json:encode-json-to-string
-		     (cons :object
-			   `((:result . ,(json:encode-json-to-string result))
-			     (:id . ,id)))))))
+    (let* ((sresult (json:encode-json-to-string result))
+	   (jresult (json:with-explicit-encoder
+		     (json:encode-json-to-string
+		      (cons :object
+			    `((:result . ,sresult)
+			      (:id . ,id)))))))
       (setq *json-id* nil)
       ;; The beginning and end braces must stand alone, making them easy to find
       (format t "~%{~%~a~%}~%" (subseq jresult 1 (1- (length jresult)))))))
@@ -165,7 +166,10 @@
 (defun json-notification (method params)
   (let* ((explist (cons :object
 			`((:method . ,method)
-			  ,@(when params (list (cons :params params))))))
+			  ,@(when params (list (cons :params
+						     (if (consp params)
+							 (cons :array params)
+							 (list :array params))))))))
 	 (jnotif (json:with-explicit-encoder
 		  (json:encode-json-to-string explist))))
     (format t "~%{~%~a~%}~%" (subseq jnotif 1 (1- (length jnotif))))))
