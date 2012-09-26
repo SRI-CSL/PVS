@@ -84,7 +84,7 @@
 		     (json-error errstr)
 		     (json-result result))))))))
 
-(defun json-error (err id)
+(defun json-error (err &optional (id *json-id*))
   ;; No id means this was a notification - just drop the error
   (when id
     (let ((jerr (json:encode-json-alist-to-string
