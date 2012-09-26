@@ -898,7 +898,11 @@
 
 (defun format-resolution (res)
   (format nil "~@[~a@~]~@[~a~]~@[[~{~a~^,~}]~]~@[~I~<{{~;~@{~W~^, ~:_~}~;}}~:>~].~a~@[ : ~a~]"
-    (let ((th (module (declaration res))))
+    (let* ((decl (declaration res))
+	   (th (if (and (recursive-type? decl)
+			(not (inline-recursive-type? decl)))
+		   decl
+		   (module (declaration res)))))
       (when (typep th 'library-theory)
 	(libref-to-libid (lib-ref th))))
     (when (module-instance res)
