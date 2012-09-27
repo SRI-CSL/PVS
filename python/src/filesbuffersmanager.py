@@ -7,13 +7,37 @@ from pvsfile import PVSFile
 from pvsbuffer import PVSBuffer
 import wx, os.path
 from constants import PVS_EXTENSION
-import config
+import config, constants
+from filestreemanager import FilesTreeManager
 
 log = config.getLogger(__name__)
 
-class FilesAndBuffersManager:
+class FilesAndBuffersManager(wx.Frame):
+    title = "Files and Buffers"
     
     def __init__(self):
+        wx.Frame.__init__(self, wx.GetApp().TopWindow, title=self.title)
+        panel = wx.Panel(self, wx.ID_ANY)
+        self.notebook_4 = wx.Notebook(panel, wx.ID_ANY, style=0)
+        self.notebook_4_pane_1 = wx.Panel(self.notebook_4, wx.ID_ANY)
+        self.filestree = wx.TreeCtrl(self.notebook_4_pane_1, wx.ID_ANY, style=wx.TR_HAS_BUTTONS | wx.TR_LINES_AT_ROOT | wx.TR_DEFAULT_STYLE | wx.SUNKEN_BORDER)
+        self.notebook_4_pane_2 = wx.Panel(self.notebook_4, wx.ID_ANY)
+        self.bufferstree = wx.TreeCtrl(self.notebook_4_pane_2, wx.ID_ANY, style=wx.TR_HAS_BUTTONS | wx.TR_LINES_AT_ROOT | wx.TR_DEFAULT_STYLE | wx.SUNKEN_BORDER)
+        
+        sizer_3 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer_5 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer_4 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer_4.Add(self.filestree, 1, wx.EXPAND, 0)
+        self.notebook_4_pane_1.SetSizer(sizer_4)
+        sizer_5.Add(self.bufferstree, 1, wx.EXPAND, 0)
+        self.notebook_4_pane_2.SetSizer(sizer_5)
+        self.notebook_4.AddPage(self.notebook_4_pane_1, constants.TAB_FILES)
+        self.notebook_4.AddPage(self.notebook_4_pane_2, constants.TAB_BUFFERS)
+        sizer_3.Add(self.notebook_4, 1, wx.EXPAND, 0)
+        panel.SetSizer(sizer_3)
+        config.filestreemanager = FilesTreeManager(self.filestree)
+        self.SetSize((200, 300))
+        
         self.files = {}
         self.buffers = {}
         
@@ -80,8 +104,10 @@ class FilesAndBuffersManager:
         log.info("Saving file %s", fullname)
         f = self.files[fullname]
         f.save()
+        config.filestreemanager.removeTheoriesFromFile(fullname)
             
     def saveAllFiles(self):
         log.info("Saving all files")
-        for f in self.files.values():
+        for fullname, f in self.files.items():
             f.save()
+            config.filestreemanager.removeTheoriesFromFile(fullname)

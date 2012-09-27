@@ -54,12 +54,38 @@ class FindReplaceManager:
         self.readFlags()
         log.info("Find %s", _find)
         log.info("Going Down: %s, Whole Word: %s, Match Case: %s", self.goingDown, self.wholeWord, self.matchCase)
-        
+        page = config.notebook.getActivePage()
+        selection = page.styledText.GetSelection()
+        log.info("Selelction Position: %s", selection)
+        cursor = page.styledText.GetCurrentPos()
+        log.info("Cursor at: %s", cursor)
+        position = selection[0] if selection[0] < selection[1] else cursor
+        log.info("Position: %s", position)
+        text = page.styledText.GetText()
+        nextOne = text.find(_find, position)
+        log.info("nextOne: %s", position)
+        if nextOne > -1:
+            page.styledText.SetSelection(nextOne, nextOne + len(_find))
+            
+            
+                    
     def OnFindNext(self, evt):
         _find = self.data.GetFindString()
         self.readFlags()
         log.info("Find Next %s", _find)
         log.info("Going Down: %s, Whole Word: %s, Match Case: %s", self.goingDown, self.wholeWord, self.matchCase)
+        page = config.notebook.getActivePage()
+        selection = page.styledText.GetSelection()
+        log.info("Selelction Position: %s", selection)
+        cursor = page.styledText.GetCurrentPos()
+        log.info("Cursor at: %s", cursor)
+        position = selection[1] if selection[0] < selection[1] else cursor
+        log.info("Position: %s", position)
+        text = page.styledText.GetText()
+        nextOne = text.find(_find, position)
+        log.info("nextOne: %s", position)
+        if nextOne > -1:
+            page.styledText.SetSelection(nextOne, nextOne + len(_find))
         
     def OnReplace(self, evt):
         _find = self.data.GetFindString()

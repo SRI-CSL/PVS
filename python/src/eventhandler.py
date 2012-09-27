@@ -5,6 +5,7 @@ import config
 from findreplacemanager import FindReplaceManager
 from pvsrunner import PVSRunner
 from pvscommandmanager import *
+from constants import *
 import wx.stc as stc
 import wx
 
@@ -65,9 +66,32 @@ def onPasteText(event):  # wxGlade: PVSMainFrame.<event_handler>
     #event.Skip()
 
 def onFindText(event):  # wxGlade: PVSMainFrame.<event_handler>
-    FindReplaceManager(None, "khar", "gav").show()
+    page = config.notebook.getActivePage()
+    selected = page.styledText.GetSelectedText()
+    if selected == None:
+        selected = ""
+    FindReplaceManager(None, selected, EMPTY_STRING).show()
 
     #config.notebook.find()
+    #event.Skip()
+
+def onViewFilesAndBuffersTrees(event):
+    log.info("onViewFilesAndBuffersTrees was called")
+    visibile = config.preference.visibleFilesBuffersTrees()
+    if visibile:
+        config.filesbuffermanager.Hide()
+    else:
+        config.filesbuffermanager.Show()        
+    config.preference.setFilesBuffersTrees(not visibile)
+
+def onViewProofTree(event):
+    log.info("onViewProofTree was called")
+    visibile = config.preference.visibleProofTree()
+    if visibile:
+        config.prooftreemanager.Hide()
+    else:
+        config.prooftreemanager.Show()        
+    config.preference.setProofTree(not visibile)
     #event.Skip()
 
 def onChangeContext(event):  # wxGlade: PVSMainFrame.<event_handler>
@@ -79,14 +103,18 @@ def onRestoreContextAutomatically(event):  # wxGlade: PVSMainFrame.<event_handle
     #event.Skip()
 
 def onStartPVS(event):  # wxGlade: PVSMainFrame.<event_handler>
-    config.runner = PVSRunner()
-    config.runner.start()
-    #event.Skip()
+    if config.runner == None:
+        config.runner = PVSRunner()
+        config.runner.start()
+    else:
+        dialogs.showError("PVS is already running")
 
 def onStopPVS(event):  # wxGlade: PVSMainFrame.<event_handler>
     if config.runner != None:
         config.runner.terminate()
         config.runner = None
+    else:
+        dialogs.showError("PVS is not running")
 
 def onTypecheck(event):  # wxGlade: PVSMainFrame.<event_handler>
     filename = config.notebook.getActiveFilename()

@@ -44,4 +44,10 @@ def getStopPVSImage(enable=True):
 def getTypecheckImage():
     return getBitmap("typecheck.png")
 
+def getTheoryImage():
+    return getBitmap("theory.png")
+
+def getFormulaImage():
+    return getBitmap("formula.png")
+
 

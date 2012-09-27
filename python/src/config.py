@@ -19,6 +19,7 @@ console = None
 filestreemanager = None
 bufferstree = None
 filesbuffermanager = None
+prooftreemanager = None
 runner = None
 preference = None 
 

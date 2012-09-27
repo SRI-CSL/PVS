@@ -44,15 +44,21 @@ class PVSNotebookManager(wx.Notebook):
         log.warning("Did not find the file %s", fullname) 
             
     def getActiveFilename(self):
-        fn = self.getActivePage().data[PVSNotebookManager.PVSFILE].fullname
-        log.info("Active file name is %s", fn)
-        return fn
+        page = self.getActivePage()
+        if page != None:
+            fn = page.data[PVSNotebookManager.PVSFILE].fullname
+            log.info("Active file name is %s", fn)
+            return fn
+        return None
     
     def getActivePage(self):
         ap = self.GetSelection()
-        page = self.GetPage(ap)
-        log.info("Active page is %d", ap)
-        return page
+        if ap > -1:
+            page = self.GetPage(ap)
+            log.info("Active page is %d", ap)
+            return page
+        log.warning("No file is open")
+        return None
     
     def closeTabForFile(self, fullname):
         log.info("Closing tab for %s", fullname)

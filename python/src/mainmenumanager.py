@@ -13,6 +13,7 @@ class MainFrameMenu(wx.MenuBar):
         wx.MenuBar.__init__(self)
         self.addFileMenu()
         self.addEditMenu()
+        self.addViewMenu()
         self.addPVSMenu()
         self.setBindings()
         
@@ -39,6 +40,14 @@ class MainFrameMenu(wx.MenuBar):
         self.findMenuItem = editMenu.Append(wx.ID_FIND, LABEL_FIND + "\tCtrl-F", EMPTY_STRING, wx.ITEM_NORMAL)
         self.Append(editMenu, LABEL_EDIT)
 
+    def addViewMenu(self):
+        viewMenu = wx.Menu()
+        self.filesAndBuffersTrees = viewMenu.Append(wx.ID_ANY, "Files and Buffers Trees", EMPTY_STRING, wx.ITEM_CHECK)
+        viewMenu.Check(self.filesAndBuffersTrees.GetId(), config.preference.visibleFilesBuffersTrees())
+        self.proofTree = viewMenu.Append(wx.ID_ANY, "Proof Tree", EMPTY_STRING, wx.ITEM_CHECK)
+        viewMenu.Check(self.proofTree.GetId(), config.preference.visibleProofTree())
+        self.Append(viewMenu, LABEL_VIEW)
+
     def addPVSMenu(self):
         pvsMenu = wx.Menu()
         self.changeContextMenuItem =  pvsMenu.Append(wx.ID_ANY, "Change Context...", EMPTY_STRING, wx.ITEM_NORMAL)
@@ -63,6 +72,10 @@ class MainFrameMenu(wx.MenuBar):
         config.frame.Bind(wx.EVT_MENU, onCopyText, self.copyMenuItem)
         config.frame.Bind(wx.EVT_MENU, onPasteText, self.pasteMenuItem)
         config.frame.Bind(wx.EVT_MENU, onFindText, self.findMenuItem)
+        
+        config.frame.Bind(wx.EVT_MENU, onViewFilesAndBuffersTrees, self.filesAndBuffersTrees)
+        config.frame.Bind(wx.EVT_MENU, onViewProofTree, self.proofTree)
+        
         config.frame.Bind(wx.EVT_MENU, onChangeContext, self.changeContextMenuItem)
         config.frame.Bind(wx.EVT_MENU, onRestoreContextAutomatically, self.restoreContextMenuItem)
         config.frame.Bind(wx.EVT_MENU, onStartPVS, self.startPVSMenuItem)

@@ -64,6 +64,7 @@ class PVSConsole(wx.Panel):
         self.appendLineToOut(line)
         
     def writePrompt(self, prompt):
+        self.clearIn()
         self.writeTextToIn(prompt)
         self.prompt = prompt
 

@@ -7,7 +7,7 @@ import config
 import fcntl, os
 #from eventhandler import *
 from pvsresultevent import PVSResultEvent
-from constants import PVS_MODE, EMPTY_STRING, PVS_MODE_OFF, PVS_MODE_LISP, PVS_MODE_PROVER, NEWLINE
+from constants import PVS_MODE, EMPTY_STRING, PVS_MODE_OFF, PVS_MODE_EDIT, PVS_MODE_PROVER, NEWLINE
 from constants import MESSAGE_INITIALIZE_CONSOLE, MESSAGE_PVS_STATUS, MESSAGE_CONSOLE_WRITE_LINE, MESSAGE_CONSOLE_WRITE_PROMPT
 from promptprocessor import isPrompt
 from pvscommandmanager import changeContext
@@ -30,7 +30,7 @@ class PVSRunner(threading.Thread):
         
     def __init__(self):
         threading.Thread.__init__(self)
-        self.status = "off" # other possibilities: "lisp" and "prover"
+        self.status = PVS_MODE_OFF # other possibilities: "Edit" and "Prover"
         self.process = None
         self.asyncCommands = []
         self.resetJSONBuffer()
@@ -49,10 +49,10 @@ class PVSRunner(threading.Thread):
         log.debug("PVS Running command is %s", command)
         self.process = subprocess.Popen(command, shell = False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
         fcntl.fcntl(self.process.stdout.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
-        self.status = PVS_MODE_LISP
-        self.tellFrame(MESSAGE_PVS_STATUS, PVS_MODE_LISP)
+        self.status = PVS_MODE_EDIT
+        self.tellFrame(MESSAGE_PVS_STATUS, PVS_MODE_EDIT)
         if config.preference.restoreContextAutomatically():
-            time.sleep(5)
+            time.sleep(1)
             context = config.preference.getRestoredContext()
             changeContext(context)              
         while self.process != None and self.process.poll() == None:
@@ -83,6 +83,7 @@ class PVSRunner(threading.Thread):
             self.status = PVS_MODE_OFF
             self.tellFrame(MESSAGE_PVS_STATUS, PVS_MODE_OFF)
             self.process = None
+            config.runner = None
             
             
     def createID(self):
@@ -97,7 +98,7 @@ class PVSRunner(threading.Thread):
         message[PVSRunner.ID] = theID
         message[PVSRunner.METHOD] = command
         message[PVSRunner.PARAMETERS] = parameters
-        for key, value in keywords:
+        for key, value in keywords.items():
             message[key] = value
         
         self.asyncCommands.append((message, callback))
@@ -105,7 +106,7 @@ class PVSRunner(threading.Thread):
         self.sendAsyncJSON(callback, theID, jMessage)
         
     def sendAsyncJSON(self, callback, theID, jMessage):
-        if self.status == PVS_MODE_LISP:
+        if self.status == PVS_MODE_EDIT:
             jsonCommand = PVSRunner.PVSJSONLISPCOMMAND
         elif self.status == PVS_MODE_PROVER:
             jsonCommand = PVSRunner.PVSJSONPROVERCOMMAND
@@ -153,18 +154,22 @@ class PVSRunner(threading.Thread):
 
     def onJSONObjectReceived(self, jObject):
         log.debug("JSON message %s received", jObject)
-        theID = jObject[PVSRunner.ID]
-        for message, callback in self.asyncCommands:
-            mID = message[PVSRunner.ID]
-            if theID == mID:
-                if jObject.has_key(PVSRunner.ERROR):
-                    raise Exception(jObject[PVSRunner.ERROR])
-                if callback != None:
-                    res = jObject[PVSRunner.RESULT]
-                    callback(message, res)
-                self.asyncCommands.remove((message, callback))
-                return
-        log.error("JSON message %s does not correspond to any message in the command queue", jObject)
+        if jObject.has_key(PVSRunner.ID):
+            theID = jObject[PVSRunner.ID]
+            for message, callback in self.asyncCommands:
+                mID = message[PVSRunner.ID]
+                if theID == mID:
+                    if jObject.has_key(PVSRunner.ERROR):
+                        raise Exception(jObject[PVSRunner.ERROR])
+                    if callback != None:
+                        res = jObject[PVSRunner.RESULT]
+                        res = json.loads(res)
+                        callback(message, res)
+                    self.asyncCommands.remove((message, callback))
+                    return
+            log.error("JSON message %s does not correspond to any message in the command queue", jObject)
+        else:
+            self.onJSONNotificationReceived(jObject)
         
     def onPromptReceived(self, prompt):
         log.debug("Prompt %s received", prompt)
@@ -172,6 +177,10 @@ class PVSRunner(threading.Thread):
 
     def onRawLineReceived(self, line):
         log.debug("Line %s received", line)
-        self.tellFrame(MESSAGE_CONSOLE_WRITE_LINE, line)        
+        self.tellFrame(MESSAGE_CONSOLE_WRITE_LINE, line)
+        
+    def onJSONNotificationReceived(self, jObject):
+        # Notifications are JSON messages without an ID. PVS sends them to tell something.
+        log.debug("JSON notification %s received", jObject)
         
     
