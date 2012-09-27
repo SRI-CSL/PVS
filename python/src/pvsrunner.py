@@ -34,12 +34,9 @@ class PVSRunner(threading.Thread):
         self.process = None
         self.asyncCommands = []
         self.resetJSONBuffer()
-        
-    def getPVSLocation(self):
-        return "/Applications/pvs-5.0-ix86-MacOSX-allegro/"
     
     def getPVSStartingCommand(self):
-        return (self.getPVSLocation() + "pvs", "-raw")
+        return (config.preference.getPVSLocation() + "pvs", "-raw")
     
     def run(self):
         self.tellFrame(MESSAGE_INITIALIZE_CONSOLE)

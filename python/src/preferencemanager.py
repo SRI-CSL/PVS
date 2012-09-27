@@ -9,6 +9,7 @@ class PVSIDEPreferenceManager:
     RESTORECONTEXT = "RestoreContext"
     FILESBUFFERSTREES = "FilesBuffersTrees"
     PROOFTREE = "ProofTree"
+    PVSLOCATION = "PVSLocation"
     
     def __init__(self):
         self.preferences = {}
@@ -16,6 +17,7 @@ class PVSIDEPreferenceManager:
         self.preferences[PVSIDEPreferenceManager.RESTORECONTEXT] = True
         self.preferences[PVSIDEPreferenceManager.FILESBUFFERSTREES] = True
         self.preferences[PVSIDEPreferenceManager.PROOFTREE] = True
+        self.preferences[PVSIDEPreferenceManager.PVSLOCATION] = "/Applications/pvs-5.0-ix86-MacOSX-allegro/" 
         
     def loadPreferences(self):
         output = open(PVSIDEPreferenceManager.PREFERENCEFILE, 'rb')
@@ -28,6 +30,9 @@ class PVSIDEPreferenceManager:
         pickle.dump(self.preferences, output)
         log.info("Saved preferences: %s", self.preferences)
         output.close()
+    
+    def getPVSLocation(self):
+        return self.preferences[PVSIDEPreferenceManager.PVSLOCATION]   
     
     def restoreContextAutomatically(self):
         return self.preferences[PVSIDEPreferenceManager.RESTORECONTEXT]
