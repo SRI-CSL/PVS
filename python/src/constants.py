@@ -52,7 +52,7 @@ LABEL_PVS_CONSOLE = "PVS Console"
 
 PVS_MODE = "PVS Mode: "
 PVS_MODE_OFF = "Off"
-PVS_MODE_EDIT = "Edit"
+PVS_MODE_EDIT = "Editor"
 PVS_MODE_PROVER = "Prover"
 PVS_MODE_UNKNOWN = "Unknown"
 
