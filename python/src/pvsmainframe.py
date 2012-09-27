@@ -192,6 +192,7 @@ class PVSMainFrame(wx.Frame):
     def OnClose(self, event):
         if config.runner != None:
             config.runner.terminate()
+        config.preference.savePreferences()
         event.Skip()
 
 

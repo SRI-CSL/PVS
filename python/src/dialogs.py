@@ -12,3 +12,10 @@ def showWarning(message):
     dlg.ShowModal()
     dlg.Destroy()
     
+def chooseDirectory(message, defaultDirectory=constants.EMPTY_STRING):
+    dialog = wx.DirDialog (config.frame, message = message, defaultPath=defaultDirectory)
+    newPath = None
+    if dialog.ShowModal() == wx.ID_OK:
+        newPath = dialog.GetPath()
+    dialog.Destroy()
+    return newPath

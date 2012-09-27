@@ -17,6 +17,7 @@ class FilesAndBuffersManager(wx.Frame):
     
     def __init__(self):
         wx.Frame.__init__(self, wx.GetApp().TopWindow, title=self.title)
+        self.Bind(wx.EVT_CLOSE, self.OnClose)
         panel = wx.Panel(self, wx.ID_ANY)
         self.notebook_4 = wx.Notebook(panel, wx.ID_ANY, style=0)
         self.notebook_4_pane_1 = wx.Panel(self.notebook_4, wx.ID_ANY)
@@ -111,3 +112,13 @@ class FilesAndBuffersManager(wx.Frame):
         for fullname, f in self.files.items():
             f.save()
             config.filestreemanager.removeTheoriesFromFile(fullname)
+
+    def OnClose(self, event):
+        if event.CanVeto():
+            self.Hide()
+            config.preference.setFilesBuffersTrees(False)
+            config.menubar.filesAndBuffersTrees.Check(False)
+            event.Veto()
+        else:
+            #if we don't veto it we allow the event to propogate
+            event.Skip() 

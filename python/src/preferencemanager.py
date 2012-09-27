@@ -1,10 +1,11 @@
 import pickle
 import config
+import os.path, os
 
 log = config.getLogger(__name__)
 
 class PVSIDEPreferenceManager:
-    PREFERENCEFILE = "~/.pvseditor"
+    PREFERENCEFILE = "/.pvseditor"
     CONTEXT = "Context"
     RESTORECONTEXT = "RestoreContext"
     FILESBUFFERSTREES = "FilesBuffersTrees"
@@ -12,21 +13,28 @@ class PVSIDEPreferenceManager:
     PVSLOCATION = "PVSLocation"
     
     def __init__(self):
-        self.preferences = {}
-        self.preferences[PVSIDEPreferenceManager.CONTEXT] = "~/Desktop"
-        self.preferences[PVSIDEPreferenceManager.RESTORECONTEXT] = True
-        self.preferences[PVSIDEPreferenceManager.FILESBUFFERSTREES] = True
-        self.preferences[PVSIDEPreferenceManager.PROOFTREE] = True
-        self.preferences[PVSIDEPreferenceManager.PVSLOCATION] = "/Applications/pvs-5.0-ix86-MacOSX-allegro/" 
+        filename = os.getenv("HOME") + PVSIDEPreferenceManager.PREFERENCEFILE
+        if os.path.exists(filename):
+            self.loadPreferences()
+        else:
+            self.preferences = {}
+            self.preferences[PVSIDEPreferenceManager.CONTEXT] = "~/Desktop"
+            self.preferences[PVSIDEPreferenceManager.RESTORECONTEXT] = True
+            self.preferences[PVSIDEPreferenceManager.FILESBUFFERSTREES] = True
+            self.preferences[PVSIDEPreferenceManager.PROOFTREE] = True
+            self.preferences[PVSIDEPreferenceManager.PVSLOCATION] = "/Applications/pvs-5.0-ix86-MacOSX-allegro/" 
+            self.savePreferences()
         
     def loadPreferences(self):
-        output = open(PVSIDEPreferenceManager.PREFERENCEFILE, 'rb')
+        filename = os.getenv("HOME") + PVSIDEPreferenceManager.PREFERENCEFILE
+        output = open(filename, 'r')
         self.preferences = pickle.load(output)
         log.info("Loaded preferences: %s", self.preferences)
         output.close()
 
     def savePreferences(self):
-        output = open(PVSIDEPreferenceManager.PREFERENCEFILE, 'wb')
+        filename = os.getenv("HOME") + PVSIDEPreferenceManager.PREFERENCEFILE
+        output = open(filename, 'wt')
         pickle.dump(self.preferences, output)
         log.info("Saved preferences: %s", self.preferences)
         output.close()
@@ -37,8 +45,14 @@ class PVSIDEPreferenceManager:
     def restoreContextAutomatically(self):
         return self.preferences[PVSIDEPreferenceManager.RESTORECONTEXT]
     
-    def getRestoredContext(self):
+    def setRestoreContextAutomatically(self, value):
+        self.preferences[PVSIDEPreferenceManager.RESTORECONTEXT] = value
+    
+    def getContext(self):
         return self.preferences[PVSIDEPreferenceManager.CONTEXT]
+    
+    def setContext(self, context):
+        self.preferences[PVSIDEPreferenceManager.CONTEXT] = context
     
     def visibleFilesBuffersTrees(self):
         return self.preferences[PVSIDEPreferenceManager.FILESBUFFERSTREES]

@@ -1,5 +1,5 @@
 import wx
-
+import config
 
 class ProofTreeManager(wx.Frame):
 
@@ -7,6 +7,7 @@ class ProofTreeManager(wx.Frame):
 
     def __init__(self):
         wx.Frame.__init__(self, wx.GetApp().TopWindow, title=self.title)
+        self.Bind(wx.EVT_CLOSE, self.OnClose)
         panel = wx.Panel(self, wx.ID_ANY)
         #self.prooflabel = wx.StaticText(self.window_1_pane_2, wx.ID_ANY, LABEL_PROOF_PANEL)
         self.prooftree = wx.TreeCtrl(panel, wx.ID_ANY, style=wx.TR_HAS_BUTTONS | wx.TR_DEFAULT_STYLE | wx.SUNKEN_BORDER)
@@ -16,3 +17,12 @@ class ProofTreeManager(wx.Frame):
         panel.SetSizer(sizer_6)
         self.SetSize((200, 300))
         
+    def OnClose(self, event):
+        if event.CanVeto():
+            self.Hide()
+            config.preference.setProofTree(False)
+            config.menubar.proofTree.Check(False)
+            event.Veto()
+        else:
+            #if we don't veto it we allow the event to propogate
+            event.Skip() 

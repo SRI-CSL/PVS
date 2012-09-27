@@ -95,12 +95,18 @@ def onViewProofTree(event):
     #event.Skip()
 
 def onChangeContext(event):  # wxGlade: PVSMainFrame.<event_handler>
-    log.info("Event handler `onChangeContext' not implemented!")
-    #event.Skip()
+    if config.runner == None or config.runner.status != PVS_MODE_EDIT:
+        dialogs.showError("PVS is not running or it is in prover mode")
+    else:
+        newContext = dialogs.chooseDirectory("Select a directory", config.preference.getContext())
+        if newContext != None:
+            changeContext(newContext)
+            log.info("New context is set to %s", newContext)
 
 def onRestoreContextAutomatically(event):  # wxGlade: PVSMainFrame.<event_handler>
-    log.info("Event handler `onRestoreContextAutomatically' not implemented!")
-    #event.Skip()
+    value = config.menubar.restoreContextMenuItem.IsChecked()
+    config.preference.setRestoreContextAutomatically(value)
+    log.info("Setting RestoreContextAutomatically flag to %s", value)
 
 def onStartPVS(event):  # wxGlade: PVSMainFrame.<event_handler>
     if config.runner == None:

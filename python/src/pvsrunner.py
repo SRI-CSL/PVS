@@ -50,7 +50,7 @@ class PVSRunner(threading.Thread):
         self.tellFrame(MESSAGE_PVS_STATUS, PVS_MODE_EDIT)
         if config.preference.restoreContextAutomatically():
             time.sleep(1)
-            context = config.preference.getRestoredContext()
+            context = config.preference.getContext()
             changeContext(context)              
         while self.process != None and self.process.poll() == None:
             try:

@@ -45,3 +45,5 @@ def changeContext(newContext):
 
 def onChangeContext(request, result):
     log.info("onChangeContext for %s returned %s", request, result)
+    config.preference.setContext(result)
+
