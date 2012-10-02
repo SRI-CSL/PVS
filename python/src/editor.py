@@ -12,6 +12,7 @@ from ui.mainframe import MainFrame
 import common
 import logging
 import constants
+import platform
 
 log = common.getLogger(__name__)
 
@@ -44,8 +45,13 @@ if __name__ == "__main__":
     commonDirectory = os.path.dirname(common.__file__)
     constants.APPLICATION_FOLDER = os.path.abspath(os.path.join(commonDirectory, os.path.pardir))
     constants.IMAGE_FOLDER_PATH = os.path.join(constants.APPLICATION_FOLDER, constants.IMAGE_FOLDER_NAME)
-    processArguments(list(sys.argv))
     log.debug("Application Folder is %s", constants.APPLICATION_FOLDER)
+    processArguments(list(sys.argv))
+
+    system = platform.system()
+    if system == "Windows":
+        print "This application is not designed for Windows"
+        sys.exit()
     
     common.editor = PVSEditorApp(0)
     log.info("Entering MainLoop...") 
