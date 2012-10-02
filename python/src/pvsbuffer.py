@@ -1,11 +1,13 @@
 
 # This class represents an open PVS buffer
 
-import config
+import common
 
-log = config.getLogger(__name__)
+log = common.getLogger(__name__)
 
 class PVSBuffer:
+    """This class represents a PVS buffer"""
+    
     def __init__(self, name, content):
         self.name = name
         self.content

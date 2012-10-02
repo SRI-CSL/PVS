@@ -7,17 +7,20 @@
 
 # This is the main entry point of the editor.
 
-import wx
-from pvsmainframe import PVSMainFrame
-import config
+import wx, os.path, sys
+from ui.mainframe import MainFrame
+import common
+import logging
+import constants
 
-log = config.getLogger(__name__)
+log = common.getLogger(__name__)
 
 class PVSEditorApp(wx.App):
+    """The main class that starts the application and shows the main frame"""
     
     def OnInit(self):
         wx.InitAllImageHandlers()
-        self.mainFrame = PVSMainFrame(None, wx.ID_ANY, "")
+        self.mainFrame = MainFrame(None, wx.ID_ANY, "")
         self.SetTopWindow(self.mainFrame)
         self.mainFrame.Show()
         log.info("Editor initialized...") 
@@ -25,7 +28,25 @@ class PVSEditorApp(wx.App):
 
 # end of class PVSEditorApp
 
+def processArguments(args):
+    log.info("Command Line Arguments: %s", args)
+    del args[0]
+    for arg in args:
+        if arg.startswith(constants.INPUT_LOGGER):
+            logLevel = arg[len(constants.INPUT_LOGGER):]
+            if logLevel == constants.LOG_LEVEL_DEBUG:
+                constants.LOGGER_LEVEL = logging.DEBUG
+            elif logLevel == constants.LOG_LEVEL_DEBUG:
+                constants.LOGGER_LEVEL = logging.FATAL
+            
+
 if __name__ == "__main__":
-    config.editor = PVSEditorApp(0)
+    commonDirectory = os.path.dirname(common.__file__)
+    constants.APPLICATION_FOLDER = os.path.abspath(os.path.join(commonDirectory, os.path.pardir))
+    constants.IMAGE_FOLDER_PATH = os.path.join(constants.APPLICATION_FOLDER, constants.IMAGE_FOLDER_NAME)
+    processArguments(list(sys.argv))
+    log.debug("Application Folder is %s", constants.APPLICATION_FOLDER)
+    
+    common.editor = PVSEditorApp(0)
     log.info("Entering MainLoop...") 
-    config.editor.MainLoop()
+    common.editor.MainLoop()

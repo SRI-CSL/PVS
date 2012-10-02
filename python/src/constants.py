@@ -2,8 +2,12 @@
 # This File contans all the global constant strings used in the system
 
 import wx
+import logging
 
-IMAGE_FOLDER = "./images/"
+IMAGE_FOLDER_NAME = "images"
+IMAGE_FOLDER_PATH = None
+APPLICATION_FOLDER = None
+LOGGER_LEVEL = logging.DEBUG
 
 PVS_U = "PVS"
 PVS_L = "pvs"
@@ -11,12 +15,6 @@ PVS_EXTENSION = ".pvs"
 FULLNAME = "fullname"
 ID_U = "ID"
 ID_L = "id"
-THEORIES = "theories"
-DECLARATIONS = "declarations"
-KIND = "kind"
-FORMULA_DECLARATION = "formulaDecl"
-ERROR = "Error"
-WARNING = "Warning"
 
 LABEL_FILE = "File"
 LABEL_EDIT = "Edit"
@@ -62,4 +60,16 @@ MESSAGE_CONSOLE_WRITE_LINE = "CONSOLE WRITE LINE"
 MESSAGE_CONSOLE_WRITE_PROMPT = "CONSOLE WRITE PROMPT"
 MESSAGE_PVS_STATUS = "PVS STATUS"
 
-
+THEORIES = "theories"
+DECLARATIONS = "declarations"
+KIND = "kind"
+FORMULA_DECLARATION = "formulaDecl"
+ERROR = "Error"
+WARNING = "Warning"
+FILE = "File"
+THEORY = "Theory"
+FORMULA = "Formula"
+ROOT = "Root"
+INPUT_LOGGER = "-logger"
+LOG_LEVEL_DEBUG = "debug"
+LOG_LEVEL_OFF = "off"

@@ -3,20 +3,23 @@
 
 import threading, time, json
 import subprocess, sys, wx
-import config
+import common
 import fcntl, os
 #from eventhandler import *
 from pvsresultevent import PVSResultEvent
 from constants import PVS_MODE, EMPTY_STRING, PVS_MODE_OFF, PVS_MODE_EDIT, PVS_MODE_PROVER, NEWLINE
 from constants import MESSAGE_INITIALIZE_CONSOLE, MESSAGE_PVS_STATUS, MESSAGE_CONSOLE_WRITE_LINE, MESSAGE_CONSOLE_WRITE_PROMPT
 from promptprocessor import isPrompt
-from pvscommandmanager import changeContext
+from commandmanager import changeContext
 
-log = config.getLogger(__name__)
+log = common.getLogger(__name__)
 
 
 
 class PVSRunner(threading.Thread):
+    """This class starts an instance of PVS in a separate process, and privdes ways to
+    send and receive raw and JSON data to and from PVS"""
+    
     ID = "id"
     METHOD = "method"
     PARAMETERS = "params"
@@ -36,7 +39,7 @@ class PVSRunner(threading.Thread):
         self.resetJSONBuffer()
     
     def getPVSStartingCommand(self):
-        return (config.preference.getPVSLocation() + "pvs", "-raw")
+        return (common.preference.getPVSLocation() + "pvs", "-raw")
     
     def run(self):
         self.tellFrame(MESSAGE_INITIALIZE_CONSOLE)
@@ -44,13 +47,14 @@ class PVSRunner(threading.Thread):
         self.asyncCommands = []
         self.resetJSONBuffer()
         log.debug("PVS Running command is %s", command)
+        # TODO: shell False did not work under linux. See why.
         self.process = subprocess.Popen(command, shell = False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
         fcntl.fcntl(self.process.stdout.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
         self.status = PVS_MODE_EDIT
         self.tellFrame(MESSAGE_PVS_STATUS, PVS_MODE_EDIT)
-        if config.preference.restoreContextAutomatically():
+        if common.preference.restoreContextAutomatically():
             time.sleep(1)
-            context = config.preference.getContext()
+            context = common.preference.getContext()
             changeContext(context)              
         while self.process != None and self.process.poll() == None:
             try:
@@ -71,7 +75,7 @@ class PVSRunner(threading.Thread):
             log.error("PVS is not running")
             
     def tellFrame(self, message, data=None):
-        wx.PostEvent(config.frame, PVSResultEvent(message, data))
+        wx.PostEvent(common.frame, PVSResultEvent(message, data))
     
     def terminate(self):
         if self.process != None:
@@ -80,7 +84,7 @@ class PVSRunner(threading.Thread):
             self.status = PVS_MODE_OFF
             self.tellFrame(MESSAGE_PVS_STATUS, PVS_MODE_OFF)
             self.process = None
-            config.runner = None
+            common.runner = None
             
             
     def createID(self):

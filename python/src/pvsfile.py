@@ -3,11 +3,13 @@
 
 import os.path
 from constants import EMPTY_STRING
-import config
+import common
 
-log = config.getLogger(__name__)
+log = common.getLogger(__name__)
 
 class PVSFile:
+    """This class represents a PVS file"""
+    
     def __init__(self, fullname):
         self.lines = []
         self.fullname = fullname
