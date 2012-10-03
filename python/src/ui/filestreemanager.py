@@ -1,11 +1,10 @@
 
 # This class manages the files tree view
 
-import wx, os.path
+import wx
 from images import getFolderImage, getPVSLogo, getTheoryImage, getFormulaImage
-from constants import FULLNAME, ID_L, THEORIES, DECLARATIONS, KIND, FORMULA_DECLARATION, FILE
-from constants import THEORY, FORMULA, ROOT, EMPTY_STRING, LABEL_CLOSEFILE, LABEL_TYPECHECK
-import common, eventhandler
+from constants import *
+import common
 import commandmanager
 
 log = common.getLogger(__name__)
@@ -28,7 +27,7 @@ class FilesTreeManager:
         """add a file to the tree"""
         log.info("Adding file %s", f)
         root = self.tree.GetRootItem()
-        c = self.tree.AppendItem(root, f.filename, 1, -1, wx.TreeItemData({FULLNAME: f.fullname, KIND: FILE}))
+        self.tree.AppendItem(root, f.filename, 1, -1, wx.TreeItemData({FULLNAME: f.fullname, KIND: FILE}))
         self.tree.Expand(root)
         
     def removeFile(self, fullname):
@@ -60,14 +59,17 @@ class FilesTreeManager:
             for theory in theories:
                 log.info("Adding theory %s to %s", theory[ID_L], fullname)
                 theory[KIND] = THEORY
-                theoryNode = self.tree.AppendItem(fileNode, theory[ID_L], 2, -1, wx.TreeItemData(theory))
+                theoryName = theory[ID_L]
+                theoryNode = self.tree.AppendItem(fileNode, theoryName, 2, -1, wx.TreeItemData(theory))
                 declarations = theory[DECLARATIONS]
                 for declaration in declarations:
                     kind = declaration[KIND]
                     if kind == FORMULA_DECLARATION:
-                        log.info("Adding formula %s to theory %s", declaration[ID_L], theory[ID_L])
+                        formulaName = declaration[ID_L]
+                        log.info("Adding formula %s to theory %s", formulaName, theoryName)
                         declaration[KIND] = FORMULA
-                        self.tree.AppendItem(theoryNode, declaration[ID_L], 3, -1, wx.TreeItemData(declaration))
+                        declaration[THEORY] = theoryName
+                        self.tree.AppendItem(theoryNode, formulaName, 3, -1, wx.TreeItemData(declaration))
             self.tree.ExpandAllChildren(fileNode)
 
     
@@ -83,30 +85,57 @@ class FilesTreeManager:
         log.info("Event data: %s", data)
         kind = data[KIND]
         menu = wx.Menu()
-        if kind == ROOT:
-            pass
-        elif kind == FILE:
-            ID1 = wx.ID_ANY
-            menu.Append(ID1, LABEL_TYPECHECK, EMPTY_STRING, wx.ITEM_NORMAL)
-            wx.EVT_MENU(menu, ID1, self.onTypecheckFile)
-            ID2 = wx.ID_ANY
-            menu.Append(ID2, LABEL_CLOSEFILE, EMPTY_STRING, wx.ITEM_NORMAL)
-            wx.EVT_MENU(menu, ID2, self.onCloseFile)
-        elif kind == THEORY:
-            pass
-        elif kind == FORMULA:
-            pass
-        else:
-            log.error("Unknown type: %s", kind)
+        status = PVS_MODE_OFF if common.runner == None else common.runner.status
+        items = self.getContextMenuItems(status, kind) # each item should be a pair of a label and a callback funtion.
+        for label, callback in items:
+            ID = wx.ID_ANY
+            menu.Append(ID, label, EMPTY_STRING, wx.ITEM_NORMAL)
+            wx.EVT_MENU(menu, ID, callback)
         common.filesbuffermanager.PopupMenu(menu, event.GetPoint())
         menu.Destroy()
         
+    def getContextMenuItems(self, status, kind):
+        items = []
+        if status == PVS_MODE_OFF:
+            if kind == ROOT:
+                pass
+            elif kind == FILE:
+                items.append((LABEL_CLOSEFILE, self.onCloseFile))
+            else:
+                log.error("A node with kind %s should not be visible in %s mode", kind, status)
+        elif status == PVS_MODE_EDIT:
+            if kind == ROOT:
+                pass
+            elif kind == FILE:
+                items.append((LABEL_TYPECHECK, self.onTypecheckFile))
+                items.append((LABEL_CLOSEFILE, self.onCloseFile))
+            elif kind == THEORY:
+                pass
+            elif kind == FORMULA:
+                items.append((LABEL_PROVE_FORMULA, self.onStartProver))
+            else:
+                log.error("Unknown kind: %s", kind)
+        elif status == PVS_MODE_PROVER:
+            if kind == ROOT:
+                pass
+            elif kind == FILE:
+                items.append((LABEL_CLOSEFILE, self.onCloseFile))
+            elif kind == THEORY:
+                pass
+            elif kind == FORMULA:
+                pass
+            else:
+                log.error("Unknown kind: %s", kind)
+        else:
+            log.error("Unknown mode: %s", status)
+        return items
+            
     def getSelectedNodeData(self):
         """return the node that is currently selected"""
         node = self.tree.GetSelection()
         data = self.tree.GetItemPyData(node)
         return data
-        
+    
     def onCloseFile(self, event):
         """onCloseFile is called when the user selects Close in the context menu"""
         nodeFullname = self.getSelectedNodeData()[FULLNAME]
@@ -117,3 +146,11 @@ class FilesTreeManager:
         nodeFullname = self.getSelectedNodeData()[FULLNAME]
         commandmanager.typecheck(nodeFullname)
         
+    def onStartProver(self, event):
+        """onTypecheckFile is called when the user selects Typecheck in the context menu"""
+        data = self.getSelectedNodeData()
+        theoryName = data[THEORY]
+        formulaName = data[ID_L]        
+        commandmanager.startProver(theoryName, formulaName)
+        
+    

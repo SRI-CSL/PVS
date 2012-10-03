@@ -10,7 +10,7 @@ from pvsresultevent import PVSResultEvent
 from constants import PVS_MODE, EMPTY_STRING, PVS_MODE_OFF, PVS_MODE_EDIT, PVS_MODE_PROVER, NEWLINE
 from constants import MESSAGE_INITIALIZE_CONSOLE, MESSAGE_PVS_STATUS, MESSAGE_CONSOLE_WRITE_LINE, MESSAGE_CONSOLE_WRITE_PROMPT
 from promptprocessor import isPrompt
-from commandmanager import changeContext
+import commandmanager
 
 log = common.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class PVSRunner(threading.Thread):
         self.resetJSONBuffer()
     
     def getPVSStartingCommand(self):
-        return (common.preference.getPVSLocation() + "pvs", "-raw")
+        return (os.path.join(common.preference.getPVSLocation(), "pvs"), "-raw")
     
     def run(self):
         self.tellFrame(MESSAGE_INITIALIZE_CONSOLE)
@@ -50,12 +50,11 @@ class PVSRunner(threading.Thread):
         # TODO: shell False did not work under linux. See why.
         self.process = subprocess.Popen(command, shell = False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
         fcntl.fcntl(self.process.stdout.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
-        self.status = PVS_MODE_EDIT
-        self.tellFrame(MESSAGE_PVS_STATUS, PVS_MODE_EDIT)
+        self.setStatus(PVS_MODE_EDIT)
         if common.preference.restoreContextAutomatically():
             time.sleep(1)
             context = common.preference.getContext()
-            changeContext(context)              
+            commandmanager.changeContext(context)              
         while self.process != None and self.process.poll() == None:
             try:
                 text = self.process.stdout.read()
@@ -65,6 +64,9 @@ class PVSRunner(threading.Thread):
             time.sleep(0.01)
         log.debug("Out of the running loop for PVS")
         
+    def setStatus(self, status):
+        self.status = status
+        self.tellFrame(MESSAGE_PVS_STATUS, status)
             
     def tellPVS(self, text):
         if self.process != None:
@@ -81,8 +83,7 @@ class PVSRunner(threading.Thread):
         if self.process != None:
             log.info("Terminating PVS")
             self.process.terminate()
-            self.status = PVS_MODE_OFF
-            self.tellFrame(MESSAGE_PVS_STATUS, PVS_MODE_OFF)
+            self.setStatus(PVS_MODE_OFF)
             self.process = None
             common.runner = None
             

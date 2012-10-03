@@ -36,6 +36,7 @@ LABEL_STARTPVS = "Start " + PVS_U
 LABEL_STOPPVS = "Stop " + PVS_U
 LABEL_TYPECHECK = "Typecheck"
 LABEL_CLOSEFILE = "Close File"
+LABEL_PROVE_FORMULA = "Prove This"
 
 DOTDOTDOT = "..."
 EMPTY_STRING = ""
