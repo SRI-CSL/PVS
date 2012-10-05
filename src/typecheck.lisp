@@ -1033,6 +1033,10 @@
 	  (unless (already-typed? mapping)
 	    (typecheck-decl-formals (decl-formals mapping) (lhs mapping))
 	    (typecheck-mapping-lhs mapping lhs-context lhs-theory lhs-theory-decls)
+	    (when (let ((prev-mappings (ldiff mappings (memq mapping mappings))))
+		    (member mapping prev-mappings :test #'same-mapping-lhs?))
+	      (type-error mapping
+		"Mapping has duplicate LHS: ~a" (lhs mapping)))
 	    (when (mapping-lhs? (lhs mapping))
 	      (setf (module (lhs mapping)) (current-theory)))
 	    (with-current-decl (lhs mapping)
@@ -1041,6 +1045,11 @@
 			(name-expr? (expr (rhs mapping)))
 			(ptypes (expr (rhs mapping)))))
 	    ))))))
+
+(defun same-mapping-lhs? (map1 map2)
+  (let ((lhs1 (lhs map1))
+	(lhs2 (lhs map2)))
+    (same-declaration lhs1 lhs2)))
 
 (defun typecheck-mapping-lhs (mapping lhs-context lhs-theory lhs-theory-decls)
   (let* ((*current-theory* lhs-theory)
@@ -1080,7 +1089,6 @@
 			    (or (null (mod-id (lhs mapping)))
 				(eq (mod-id (lhs mapping))
 				    '|numbers|)))
-		   (break)
 		   (list (mk-resolution
 			     (number-declaration
 			      (if (integerp (id (lhs mapping)))
@@ -1160,6 +1168,9 @@
 
 (defmethod mapping-lhs-theory-context ((th module))
   (context th))
+
+(defmethod mapping-lhs-theory-context ((th datatype))
+  (context th))
   
 
 (defmethod already-typed? ((list list))
@@ -1206,10 +1217,14 @@
       (let* ((ldecl (declaration lhs))
 	     ;; We create a new declaration and resolution for the RHS, that
 	     ;; will be used for inlining later.
-	     (rdecl (copy ldecl :id (id rhs) :generated-by ldecl)))
+	     (rdecl (copy ldecl :id (id rhs)
+			  :module (current-theory)
+			  :generated-by ldecl)))
 	(typecase ldecl
 	  (type-decl
 	   (let ((tn (make-self-resolved-type-name rdecl)))
+	     ;;(when (adt-type-name? (type-value ldecl))
+	       ;;(change-class tn 'adt-type-name :adt (adt (type-value ldecl))))
 	     (setf (type-value rdecl) tn)
 	     (setf (type-value rhs) tn)
 	     (setf (resolutions (expr rhs)) (resolutions tn))))
