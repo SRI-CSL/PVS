@@ -1071,6 +1071,13 @@
 	    (decl-context last-decl t)
 	    (make-new-context theory)))))
 
+(defmethod context ((adt recursive-type))
+  (if (inline-recursive-type? adt)
+      (call-next-method)
+      (let ((th (adt-theory adt)))
+	(assert th)
+	(context th))))
+
 (defmethod context ((using importing))
   (decl-context using))
 
@@ -1542,16 +1549,17 @@
 ;;; formula, which is used in create-formula.
 
 (defun make-def-axiom (decl)
-  (let* ((*generate-tccs* 'none)
-	 (def (make!-lambda-exprs (formals decl) (definition decl)))
-	 (res (mk-resolution decl (current-theory-name) (type decl)))
-	 (name (mk-name-expr (id decl) nil nil res))
-	 (appl (make!-equation name def))
-	 (depth (lambda-depth decl)))
-    (assert (eq (declaration name) decl))
-    (loop for i from 0 to depth
-	  do (push (create-definition-formula appl i)
-		   (def-axiom decl)))))
+  (with-current-decl decl
+    (let* ((*generate-tccs* 'none)
+	   (def (make!-lambda-exprs (formals decl) (definition decl)))
+	   (res (mk-resolution decl (current-theory-name) (type decl)))
+	   (name (mk-name-expr (id decl) nil nil res))
+	   (appl (make!-equation name def))
+	   (depth (lambda-depth decl)))
+      (assert (eq (declaration name) decl))
+      (loop for i from 0 to depth
+	    do (push (create-definition-formula appl i)
+		     (def-axiom decl))))))
 
 (defmethod def-axiom ((map mapping))
   (when (name-expr? (expr (rhs map)))
