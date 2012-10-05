@@ -670,11 +670,12 @@
 ;;; formal-theory-decls involved as well as theory decls.
 (defun expanded-theory-name (thname)
   (assert *current-context*)
+  (with-no-type-errors (get-typechecked-theory thname nil t))
   (typecheck* thname nil 'module nil)
   ;; If no error from typecheck*, then res should be a singleton
   ;; In the above, it would be B[int].A1[int]{{assn2}}
   (assert (resolution thname))
-  (if (module? (declaration thname))
+  (if (datatype-or-module? (declaration thname))
       (values thname (declaration thname))
       (let ((next-thname (theory-name (declaration thname))))
 	(expanded-theory-name
@@ -716,7 +717,7 @@
     (make-inlined-theory theory theory-name decl)))
 
 (defun make-inlined-theory (theory theory-name decl)
-  (let* (;; Need to ignore earlier substitutions
+  (let* ( ;; Need to ignore earlier substitutions
 	 (*all-subst-mod-params-caches* nil)
 	 (stheory (subst-mod-params theory theory-name theory)))
     (assert (or (null (all-decls theory)) (not (eq stheory theory))))
@@ -727,64 +728,69 @@
     ;; so formals can be ignored.  Make sure assumings are handled somehow.
 	    
     ;; Make sure substituted decls are all new.
-    (let* ((dalist nil)
-	   (owlist nil)
-	   (theory-part
-	    (mapcar #'(lambda (sd)
-			(if (importing? sd)
-			    (copy sd)
-			    (let* ((nid (makesym "~a.~a"
-						 (id decl) (id sd)))
-				   (d (or (generated-by sd)
-					  (break "No generated-by?"))))
-			      (setf (id sd) nid)
-			      (setf (module sd) (current-theory))
-			      (typecase sd
-				((or type-def-decl const-decl mod-decl)
-				 (subst-new-map-decl-type sd dalist owlist)
-				 (let* ((res (make-resolution sd
-					       (current-theory-name)))
-					(nm (mk-name-expr nid nil nil res))
-					(act (make-instance 'actual :expr nm)))
-				   (when (type-decl? sd)
-				     (setf (type-value act) (type-value sd)))
-				   (push (cons d act) dalist)))
-				(type-decl
-				 ;; This one is tricky, because often
-				 ;; (eq d (declaration (type-value d)))
-				 ;; and we need to ensure this is true of sd
-				 (setf (type-value sd)
-				       (let ((tn (if (adt-type-name? (type-value d))
-						     (mk-adt-type-name (id sd)
-								       nil nil nil
-								       (adt (type-value sd)))
-						     (mk-type-name (id sd)))))
-					 (setf (resolutions tn)
-					       (list (mk-resolution sd
-						       (current-theory-name) tn)))
-					 tn))
-				 (let* ((type (type-value sd))
-					(res (make-resolution sd
-					       (current-theory-name) type))
-					(nm (mk-name-expr nid nil nil res))
-					(act (make-instance 'actual :expr nm
-							    :type-value (type-value sd))))
-				   (push (cons d act) dalist)))
-				(inline-recursive-type
-				 ;;(break "inline-recursive-type")
-				 (subst-new-map-decl-type sd dalist owlist)
-				 (push (cons d sd) owlist))
-				(var-decl nil)
-				(t (push (cons d sd) owlist)))
-			      sd)))
-	      (theory stheory))))
+    (multiple-value-bind (theory-part dalist owlist)
+	(subst-new-map-inline-theory-decls (theory stheory) decl)
       (setf (theory stheory)
 	    (remove-if #'var-decl? theory-part))
       (setf (theory-mappings decl) dalist)
       (setf (other-mappings decl) owlist)
       (subst-new-map-decls (theory stheory) dalist owlist)
-      ;; (break "make-inlined-theory")
       (make-inlined-theory-decls stheory decl))))
+
+(defun subst-new-map-inline-theory-decls (sdecls decl &optional ndecls dalist owlist)
+  (if (null sdecls)
+      (values (nreverse ndecls) dalist owlist)
+      (multiple-value-bind (ndecl ndalist nowlist)
+	  (subst-new-map-inline-theory-decl (car sdecls) decl dalist owlist)
+	(subst-new-map-inline-theory-decls (cdr sdecls) decl
+					   (cons ndecl ndecls) ndalist nowlist))))
+
+(defun subst-new-map-inline-theory-decl (sd decl dalist owlist)
+  (if (importing? sd)
+      (values (copy sd) dalist owlist)
+      (let* ((nid (makesym "~a.~a" (id decl) (id sd)))
+	     (d (or (generated-by sd)
+		    (break "No generated-by?"))))
+	(setf (id sd) nid)
+	(setf (module sd) (current-theory))
+	(typecase sd
+	  ((or type-def-decl const-decl mod-decl)
+	   (subst-new-map-decl-type sd dalist owlist)
+	   (let* ((res (make-resolution sd
+			 (current-theory-name)))
+		  (nm (mk-name-expr nid nil nil res))
+		  (act (make-instance 'actual :expr nm)))
+	     (when (type-decl? sd)
+	       (setf (type-value act) (type-value sd)))
+	     (push (cons d act) dalist)))
+	  (type-decl
+	   ;; This one is tricky, because often
+	   ;; (eq d (declaration (type-value d)))
+	   ;; and we need to ensure this is true of sd
+	   (setf (type-value sd)
+		 (let ((tn (if nil	;(adt-type-name? (type-value d))
+			       (mk-adt-type-name (id sd)
+						 nil nil nil
+						 (adt (type-value sd)))
+			       (mk-type-name (id sd)))))
+		   (setf (resolutions tn)
+			 (list (mk-resolution sd
+				 (current-theory-name) tn)))
+		   tn))
+	   (let* ((type (type-value sd))
+		  (res (make-resolution sd
+			 (current-theory-name) type))
+		  (nm (mk-name-expr nid nil nil res))
+		  (act (make-instance 'actual :expr nm
+				      :type-value (type-value sd))))
+	     (push (cons d act) dalist)))
+	  (inline-recursive-type
+	   ;;(break "inline-recursive-type")
+	   (subst-new-map-decl-type sd dalist owlist)
+	   (push (cons d sd) owlist))
+	  (var-decl nil)
+	  (t (push (cons d sd) owlist)))
+	(values sd dalist owlist))))
 
 (defvar *subst-new-map-decls*)
 (defvar *subst-new-other-decls*)
@@ -922,7 +928,6 @@
     
 
 (defmethod subst-new-map-decl ((decl adtdecl))
-  (when (eq (id decl) 'n) (break "subst-new-map-decl adtdecl"))
   (setf (declared-type decl) (subst-new-map-decls* (declared-type decl)))
   (setf (type decl) (subst-new-map-decls* (type decl)))
   (setf (bind-decl decl) (subst-new-map-decls* (bind-decl decl))))
@@ -1038,22 +1043,26 @@
     (if (eq nobj obj)
 	obj
 	(let ((nadt (subst-new-map-decl* (adt obj))))
-	  (assert (not (eq (adt nadt) (adt (adt obj)))))
-	  (setf (adt-type nobj) nadt)
+	  (unless (eq (adt nadt) (adt (adt obj)))
+	    (setf (adt-type nobj) nadt))
 	  nobj))))
 
 (defmethod subst-new-map-decl* ((obj adt-type-name))
   (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*))))
     (assert (or (null act) (actual? act)))
-    (let ((nobj (lcopy obj
-		  :id (if act (id (expr act)) (id obj))
-		  :resolutions (subst-new-map-decls* (resolutions obj))
-		  :adt (or (cdr (assq (adt obj) *subst-new-map-decls*))
-			   (cdr (assq (adt obj) *subst-new-other-decls*))
-			   (break "What now?")))))
-      (setf (type-value (declaration nobj)) nobj)
-      (setf (type (resolution nobj)) nobj)
-      nobj)))
+    (if act
+	(type-value act)
+	(let* ((res (subst-new-map-decls* (resolutions obj)))
+	       (nobj (lcopy obj
+		       :id (if act (id (expr act)) (id obj))
+		       :resolutions res
+		       :adt (or (cdr (assq (adt obj) *subst-new-map-decls*))
+				(cdr (assq (adt obj) *subst-new-other-decls*))
+				(adt (type (car res)))
+				(break "What now?")))))
+	  (setf (type-value (declaration nobj)) nobj)
+	  (setf (type (resolution nobj)) nobj)
+	  nobj))))
 
 (defmethod subst-new-map-decl* ((obj constructor-name-expr))
   (let ((act (cdr (assq (declaration obj) *subst-new-map-decls*)))
@@ -4017,6 +4026,7 @@
     (|naturalnumber| (setq *naturalnumber* type)
      (push-ignored-type-constraints *naturalnumber*))
     (|posint| (setq *posint* type))
+    (|negint| (setq *negint* type))
     (|even_int| (setq *even_int* type))
     (|odd_int| (setq *odd_int* type))
     (|ordinal| (setq *ordinal* type))
