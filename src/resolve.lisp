@@ -188,10 +188,12 @@
 		      (null dreses)
 		      (null args)
 		      (symbolp (id name))
+		      (visible-theory? (id name))
 		      (or (null *typechecking-actual*)
 			  (some #'(lambda (th)
 				    (some #'formal-theory-decl?
 					  (formals-sans-usings th)))
+				;; FIXME - should include prelude 
 				(all-importings (current-theory)))))
 	     (let* ((thname (mk-modname (id name) (actuals name)
 					(library name) (mappings name)))
