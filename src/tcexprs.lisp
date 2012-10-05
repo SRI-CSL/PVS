@@ -435,8 +435,10 @@
 
 (defun available-numeric-type (num)
   (if (integerp num)
-      (or (unless (zerop num) *posint*)
-	  *naturalnumber* *integer* *rational* *real* *number*
+      (or (cond ((plusp num) *posint*)
+		((minusp num) *negint*)
+		(t *naturalnumber*))
+	  *integer* *rational* *real* *number*
 	  (error "No type available for numerals"))
       ;; else must be rational
       (or *rational* *real* *number*
@@ -2165,7 +2167,7 @@
 (defun typecheck-assignments (assigns type)
   (or (null assigns)
       (let ((assign (car assigns)))
-	(when (and (maplet? assign)
+	(when (and nil (maplet? assign)
 		   (cdr (arguments assign)))
 	  (type-error assign "Maplet assignment may not be nested"))
 	(typecheck-ass-args (arguments assign) type (typep assign 'maplet))
