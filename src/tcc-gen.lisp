@@ -1215,8 +1215,8 @@
   (unless *prelude-interpreted-types*
     (setq *prelude-interpreted-types*
 	  (list *boolean* *number* *number_field* *real* *rational*
-		*integer* *naturalnumber* *posint* *even_int* *odd_int*
-		*ordinal* *character*)))
+		*integer* *naturalnumber* *posint* *negint*
+		*even_int* *odd_int* *ordinal* *character*)))
   (member name *prelude-interpreted-types*
 	  :test #'tc-eq))
 
