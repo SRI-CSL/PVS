@@ -707,7 +707,6 @@
 	   (rformals (subst-mod-params-formals formals modinst bindings))
 	   (rassuming (subst-mod-params* assuming modinst bindings))
 	   (rtheory (subst-mod-params* theory modinst bindings)))
-      (when (memq nil rtheory) (break))
       (lcopy th
 	:formals rformals ;;(subst-mod-params* rformals modinst bindings)
 	:assuming (remove-if #'null rassuming)
@@ -863,8 +862,11 @@
 			      (and (mapping-rename? m)
 				   (declaration (lhs m)))))))
       (cond (map
-	     (copy decl :id (id (expr (rhs map))) :semi t
-		   :generated-by decl))
+	     (if (mapping-rename? map)
+		 (declaration (type-value (rhs map)))
+		 (progn (break "Should this be a copy?")
+			(copy decl :id (id (expr (rhs map))) :semi t
+			      :generated-by decl))))
 	    ((assq decl bindings)
 	     (let* ((val (cdr (assq decl bindings)))
 		    (ntype (typecase val
@@ -924,7 +926,7 @@
       :generated-by decl)))
 
 (defmethod subst-mod-params* ((decl const-decl) modinst bindings)
-  (with-slots (formals declared-type type definition def-axiom) decl
+  (with-slots (decl-formals formals declared-type type definition def-axiom) decl
     (let ((map (find decl *smp-mappings*
 		     :key #'(lambda (m)
 			      (and (mapping-rename? m)
@@ -938,35 +940,64 @@
 	       (setf (declared-type decl) (subst-mod-params* declared-type modinst bindings))
 	       (setf (semi decl) t)
 	       decl))
-	    ((assq decl bindings)
-	     (let ((nformals (subst-mod-params* formals modinst bindings))
-		   (nexpr (subst-mod-params* (expr (cdr (assq decl bindings)))
-					     modinst bindings))
-		   (ntype (subst-mod-params* type modinst bindings)))
-	       (assert (fully-instantiated? ntype))
-	       (copy decl
-		 :formals nformals
-		 :definition (if nformals
-				 (make-applications
-				  nexpr
-				  (mapcar #'(lambda (fms)
-					      (mapcar #'mk-name-expr fms))
-				    nformals))
-				 nexpr)
-		 :type ntype
-		 :declared-type (subst-mod-params* declared-type modinst bindings)
-		 :generated-by decl
-		 :semi t)))
-	    (t (let ((ntype (subst-mod-params* type modinst bindings)))
-		 (assert (fully-instantiated? ntype))
-		 (lcopy decl
-		   :formals (subst-mod-params* formals modinst bindings)
-		   :declared-type (subst-mod-params* declared-type modinst bindings)
-		   :type ntype
-		   :definition (subst-mod-params* definition modinst bindings)
-		   :def-axiom (subst-mod-params* def-axiom modinst bindings)
-		   :generated-by decl
-		   :semi t)))))))
+	    ((let ((map (assoc decl bindings :key #'declaration)))
+	       (and map
+		    (multiple-value-bind (dfmls dacts)
+			(new-decl-formals decl)
+		      (let ((ndecl (copy decl :decl-formals dfmls
+					 :generated-by decl :semi t)))
+			(dolist (dfml dfmls) (setf (associated-decl dfml) ndecl))
+			(with-current-decl ndecl
+			  (let* ((nmodinst (copy modinst :dactuals dacts))
+				 (nformals (subst-mod-params formals nmodinst
+					     *subst-mod-params-theory* decl))
+				 (nexpr (subst-mod-params (expr (cdr map))
+					    nmodinst *subst-mod-params-theory* (car map)))
+				 (ntype (subst-mod-params type nmodinst
+					  *subst-mod-params-theory* decl)))
+			    (assert (fully-instantiated? nformals))
+			    (assert (fully-instantiated? nexpr))
+			    (assert (fully-instantiated? ntype))
+			    (setf (formals ndecl) nformals)
+			    (setf (definition ndecl)
+				  (if nformals
+				      (make-applications
+				       nexpr
+				       (mapcar #'(lambda (fms)
+						   (mapcar #'mk-name-expr fms))
+					 nformals))
+				      nexpr))
+			    (setf (type ndecl) ntype)
+			    (setf (declared-type ndecl)
+				  (subst-mod-params* declared-type modinst bindings))
+			    ndecl)))))))
+	    (t (multiple-value-bind (dfmls dacts)
+		   (new-decl-formals decl)
+		 (let ((ndecl (copy decl :decl-formals dfmls :generated-by decl :semi t)))
+		   (dolist (dfml dfmls) (setf (associated-decl dfml) ndecl))
+		   (with-current-decl ndecl
+		     (let* ((nmodinst (copy modinst :dactuals dacts))
+			    (ntype (subst-mod-params type nmodinst
+				     *subst-mod-params-theory* decl))
+			    (nfmls (subst-mod-params formals nmodinst
+				     *subst-mod-params-theory* decl))
+			    (ndtype (subst-mod-params declared-type nmodinst
+				      *subst-mod-params-theory* decl))
+			    (ndef (subst-mod-params definition nmodinst
+				    *subst-mod-params-theory* decl))
+			    (ndefax (subst-mod-params def-axiom nmodinst
+				      *subst-mod-params-theory* decl)))
+		       (assert (fully-instantiated? ntype))
+		       (assert (fully-instantiated? nfmls))
+		       (assert (fully-instantiated? ndtype))
+		       (assert (fully-instantiated? ndef))
+		       (assert (fully-instantiated? ndefax))
+		       (setf (formals ndecl) nfmls
+			     (declared-type ndecl) ndtype
+			     (type ndecl) ntype
+			     (definition ndecl) ndef
+			     (def-axiom ndecl) ndefax)
+		       ndecl)))))))))
 
 (defmethod subst-mod-params* ((decl def-decl) modinst bindings)
   (with-slots (formals declared-type type definition declared-measure ordering) decl
@@ -981,15 +1012,25 @@
 
 (defmethod subst-mod-params* ((decl formula-decl) modinst bindings)
   (with-slots (definition) decl
-    (let ((ndef (subst-mod-params* definition modinst bindings)))
-      (unless (and nil
-		   (axiom? decl)
-		   (not (find-uninterpreted ndef modinst
-					    *subst-mod-params-theory*
-					    *subst-mod-params-map-bindings*))))
-	(lcopy decl
-	  :definition ndef
-	  :generated-by decl))))
+    (multiple-value-bind (dfmls dacts)
+	(new-decl-formals decl)
+      (let ((ndecl (copy decl :decl-formals dfmls)))
+	(dolist (dfml dfmls) (setf (associated-decl dfml) ndecl))
+	(with-current-decl ndecl
+	  (let* ((nmodinst (copy modinst :dactuals dacts))
+		 (ndef (subst-mod-params definition nmodinst
+			 *subst-mod-params-theory* decl)))
+	    (unless (or (let ((ety (nonempty-formula-type ndef)))
+			  (and ety (not (possibly-empty-type? ety))))
+			(and nil
+			     (axiom? decl)
+			     (not (find-uninterpreted ndef modinst
+						      *subst-mod-params-theory*
+						      *subst-mod-params-map-bindings*))))
+	      (lcopy decl
+		:definition ndef
+		:generated-by decl
+		:newline-comment nil))))))))
 
 (defmethod subst-mod-params* ((decl subtype-judgement) modinst bindings)
   (with-slots (declared-subtype) decl
@@ -1346,12 +1387,14 @@
 			       (type act)))
 	       (expr act)))
 	  (lhsmatch
+	   (assert (or (null (decl-formals (car lhsmatch)))
+		       (dactuals (module-instance expr))))
 	   (let ((sexpr (subst-for-formals
 			 (expr (cdr lhsmatch))
 			 (mapcar #'(lambda (x y)
 				     (cons x (type-value y)))
 			   (decl-formals (car lhsmatch))
-			   (dactuals expr)))))
+			   (dactuals (module-instance expr))))))
 	     (subst-mod-params* sexpr modinst bindings)))
 	  (t (let ((nexpr (call-next-method)))
 	       (if (or (modname? nexpr)
@@ -1407,8 +1450,8 @@
 			  (subst-mod-params* (declared-type bd)
 					     modinst bindings)))
 	(clash? (some #'(lambda (sbd) (var-occurs-in (id bd) (cdr sbd))) bindings)))
-    (if (and (eq (type bd) ntype)
-	     (eq (declared-type bd) ndeclared-type)
+    (if (and (tc-eq (type bd) ntype)
+	     (tc-eq (declared-type bd) ndeclared-type)
 	     (not clash?))
 	bd
 	(let ((nbd (copy bd
@@ -1419,8 +1462,9 @@
 		     :declared-type (or ndeclared-type
 					(print-type ntype)
 					ntype))))
-	  (setf (resolutions nbd)
-		(list (mk-resolution nbd (current-theory-name) ntype)))
+	  (when (resolutions bd)
+	    (setf (resolutions nbd)
+		  (list (mk-resolution nbd (current-theory-name) ntype))))
 	  nbd))))
 
 (defmethod subst-mod-params* ((expr projection-expr) modinst bindings)
