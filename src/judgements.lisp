@@ -540,8 +540,8 @@
     (values
      (append (mapcar #'type jdecls)
 	     (let ((antype (available-numeric-type (number ex))))
-	       (if (tc-eq antype (type ex))
-		   (list antype))))
+	       (when antype
+		 (list antype))))
      jdecls)))
 
 (defmethod judgement-types* ((ex name-expr))
