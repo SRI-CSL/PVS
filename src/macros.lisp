@@ -446,9 +446,16 @@
       `(get-lhash ,id (current-declarations-hash))))
 
 (defsetf get-declarations (id &optional decl-hash) (decl)
-  (if decl-hash
-      `(pushnew ,decl (get-lhash ,id ,decl-hash) :test #'eq)
-      `(pushnew ,decl (get-lhash ,id (current-declarations-hash)) :test #'eq)))
+  (let ((ghash (gensym))
+	(gdecl (gensym))
+	(gid (gensym)))
+    `(let ((,gid ,id)
+	   (,gdecl ,decl)
+	   (,ghash (or ,decl-hash (current-declarations-hash))))
+       (assert (typep ,gdecl '(or declaration inline-recursive-type))
+	       () "setf get-declarations: not a declaration")
+       (assert (eq (id ,gdecl) ,gid) () "setf get-declarations: id mismatch")
+       (pushnew ,decl (get-lhash ,id ,ghash) :test #'eq))))
 
 (defmacro put-decl (decl &optional decl-hash)
   (let ((gdecl (gensym)))
