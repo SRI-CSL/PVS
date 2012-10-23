@@ -906,7 +906,11 @@
 		    (when (and splace eplace)
 		      (vector (starting-row splace) (starting-col splace)
 			      (ending-row eplace) (ending-col eplace)))))))
-	(when decl-params (setf (decl-formals ndecl) decl-params))
+	(when decl-params
+	  (when (typep ndecl '(or lib-decl))
+	    (parse-error (place decl-params)
+	      "Library declarations may not have declaration parameters"))
+	  (setf (decl-formals ndecl) decl-params))
 	(when formals (setf (formals ndecl) formals))
 	(xt-chained-decls (cdr idops) decl-params dtype formals decl absyn
 			  (cons ndecl result)))))
@@ -2065,12 +2069,13 @@
       :place (term-place save-as))))
 
 (defun bind-expr-class (op)
-  (case (intern (string-upcase op))
-    ((LAMBDA λ) 'lambda-expr)
-    ((FORALL ∀) 'forall-expr)
-    ((EXISTS ∃) 'exists-expr)
-    ((SET-EXPR) 'set-expr)
-    (t (break "bind-expr for ~a not set" op))))
+  (or (cdr (assoc op '((λ . lambda-expr)) :test #'string=))
+      (case (intern (string-upcase op))
+	((LAMBDA) 'lambda-expr)
+	((FORALL ∀) 'forall-expr)
+	((EXISTS ∃) 'exists-expr)
+	((SET-EXPR) 'set-expr)
+	(t (break "bind-expr for ~a not set" op)))))
 
 
 ;;; Checks whether the formals all make sense, and returns whether the
