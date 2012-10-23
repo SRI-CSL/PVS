@@ -924,17 +924,19 @@
 
 (defun compute-application-judgement-types (ex graph)
   #+pvsdebug (assert (every #'fully-instantiated? (mapcar #'car graph)))
-  (let ((args-list (argument* ex))
-	(cgraph (remove-if (complement
-			    #'(lambda (x)
-				(compatible? (type (car x)) (type ex))))
-		  graph)))
+  (let* ((args-list (argument* ex))
+	 (cgraph (remove-if (complement
+			     #'(lambda (x)
+				 (compatible? (type (car x)) (type ex))))
+		   graph))
+	 (op (operator* ex))
+	 (thinst (module-instance op))
+	 (theory (module (declaration op))))
     (compute-appl-judgement-types
      args-list
      (mapcar #'judgement-types* args-list) ;; Not judgement-types+
      (operator-domain ex)
-     (type ex)
-     cgraph)))
+     (type ex) thinst theory cgraph)))
 
 (defun operator-domain (ex)
   (operator-domain* (type (operator* ex)) (argument* ex) nil))
@@ -966,16 +968,15 @@
 (defmethod operator-range* ((te type-expr) (args null))
   te)
 
-(defun compute-appl-judgement-types (arguments argtypes rdomains extype graph
+(defun compute-appl-judgement-types (arguments argtypes rdomains extype
+					       thinst theory graph
 					       &optional jtypes exclude jdecls)
   (if (null graph)
       (values (nreverse jtypes) (nreverse jdecls))
       (let* ((excluded? (memq (caar graph) exclude))
 	     (range (unless excluded?
 		      (compute-appl-judgement-types*
-		       arguments
-		       argtypes
-		       rdomains
+		       arguments argtypes rdomains thinst theory
 		       (caar graph))))
 	     (dont-add? (or (null range)
 			    ;; TODO: vectors@closest_approach_2D.gt_D_t1_lt_t2 doesn't
@@ -984,10 +985,7 @@
 			    (some #'(lambda (r) (subtype-of? r range))
 				  jtypes))))
 	(compute-appl-judgement-types
-	 arguments
-	 argtypes
-	 rdomains
-	 extype
+	 arguments argtypes rdomains extype thinst theory
 	 (cdr graph)
 	 (if dont-add?
 	     jtypes
@@ -1000,8 +998,9 @@
 	     jdecls
 	     (cons (caar graph) jdecls))))))
 
-(defun compute-appl-judgement-types* (arguments argtypes rdomains jdecl)
-  (let* ((jtype (judgement-type jdecl))
+(defun compute-appl-judgement-types* (arguments argtypes rdomains thinst theory jdecl)
+  (let* ((jtype (subst-mod-params (judgement-type jdecl)
+		    thinst theory jdecl))
 	 (domains (operator-domain* jtype arguments nil))
 	 (range (operator-range* jtype arguments)))
     (when (length= argtypes (formals jdecl))
@@ -1506,10 +1505,12 @@
 			 (assert (memq oj (all-decls (current-theory))))
 			 oj)
 			(t (assert (or (eq nj j)
-				       (every #'(lambda (fp)
-						  (eq (module fp)
-						      (current-theory)))
-					      (free-params nj))))
+				       (let ((ofp (free-params j)))
+					 (every #'(lambda (fp)
+						    (or (eq (module fp)
+							    (current-theory))
+							(memq fp ofp)))
+						(free-params nj)))))
 			   (setf (gethash j smphash) nj)
 			   (unless (eq j nj)
 			     (add-decl nj t t nil t)
