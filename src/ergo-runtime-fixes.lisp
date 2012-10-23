@@ -204,8 +204,11 @@
 	   (values 'sbst::!string! token place comment))
 	  ;; SO - don't care about case for keywords
 	  ;; At some point should add another case-sensitivity option.
-	  ((gethash (intern (string-upcase token) :sbst) *keyword-table*)
-	   (let* ((upstr (string-upcase token))
+	  ((or (gethash (intern (string-upcase token) :sbst) *keyword-table*)
+	       (string= token "λ"))
+	   (let* ((upstr (if (member token '(λ) :test #'string=)
+			     (string token)
+			     (string-upcase token)))
 		  (pvs-sym (intern upstr :pvs)))
 	     (when (memq pvs-sym pvs::*infix-operators*)
 	       (let ((oplace (vector (sbrt::place-linenumber place)
@@ -223,10 +226,11 @@
 	       (and (not (eq token 'sbst::_))
 		    (char= (char (symbol-name token) 0) #\_)))
 	   (values :illegal-token :illegal-token place))
-	  (t (let ((id (intern (if *case-sensitive*
-				 (symbol-name token)
-				 (string-upcase (symbol-name token)))
-			     *abs-syn-package*)))
+	  (t (let ((id (intern (if (or *case-sensitive*
+				       (member token '(λ) :test #'string=))
+				   (symbol-name token)
+				   (string-upcase (symbol-name token)))
+			       *abs-syn-package*)))
 	       (values 'sbst::!id! id place comment))))))
 
 (in-package :sbrt)
