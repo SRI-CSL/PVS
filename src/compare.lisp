@@ -39,12 +39,10 @@
 ;;;   difference - added, deleted, reordered, changed, signature, body
 
 ;;; compare compares two theories, generally calling compare-decl-lists on the
-;;; formals, etc.  These set the variable *differences* according to the
-;;; differences found.
+;;; formals, etc.  
 
 (in-package :pvs)
 
-(defvar *differences*)
 (defvar *needs-retypechecking* nil)
 (defvar *compare-selections* nil)
 
@@ -115,6 +113,7 @@
 	      (cons (car olist) (car nlist))))))
 
 ;;; Top level declarations
+;;; compare-decl returns t if the decls are the same
 
 (defmethod compare-decl ((old inline-datatype) (new inline-codatatype))
   nil)
@@ -128,16 +127,15 @@
 	 (compare-constructors (constructors old) (constructors new)))))
 
 (defun compare-importings (oimps nimps)
-  (or (and (null oimps) (null nimps))
-      (and oimps nimps
-	   (compare* (importings old) (importings new)))))
+  (and (length= oimps nimps)
+       (every #'compare* oimps nimps)))
 
 (defun compare-constructors (ocstrs ncstrs)
   (and (= (length ocstrs) (length ncstrs))
        (every #'compare* ocstrs ncstrs)))
 
-(defmethod compare-decl :around ((old enumtype) (new enumtype))
-  (compare-decl-lists (constructors old) (constructors new)))
+(defmethod compare-decl ((old enumtype) (new enumtype))
+  (compare-constructors (constructors old) (constructors new)))
 
 (defmethod compare-decl ((old exporting) (new exporting))
   (let* ((same? (and (eq (kind old) (kind new))
@@ -538,10 +536,3 @@
 
 (defmethod compare* ((old syntax) (new syntax))
   (eq (class-of old) (class-of new)))
-
-(defun add-decl-diffs (old new)
-  (when *decl-diffs*
-    (push (list old new
-		(or (find 'signature *decl-diffs*)
-		    (find 'body *decl-diffs*)))
-	  *differences*)))
