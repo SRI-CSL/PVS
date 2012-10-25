@@ -74,3 +74,10 @@ ROOT = "Root"
 INPUT_LOGGER = "-logger"
 LOG_LEVEL_DEBUG = "debug"
 LOG_LEVEL_OFF = "off"
+
+PVS_KEYWORDS = u'and conjecture fact let table andthen containing false library then array conversion forall macro theorem assuming conversion+ formula measure theory assumption conversion- from nonempty_type true auto_rewrite corollary function not type auto_rewrite+ datatype has_type o type+ auto_rewrite- else if obligation var axiom elsif iff of when begin end implies or where but endassuming importing orelse with by endcases in postulate xor cases endcond inductive proposition challenge endif judgement recursive claim endtable lambda sublemma closure exists law subtypes cond exporting lemma subtype_of'
+
+#('and', 'conjecture', 'fact', 'let', 'table', 'andthen', 'containing', 'false', 'library', 'then', 'array', 'conversion', 'forall', 'macro', 'theorem', 'assuming', 'conversion+', 'formula', 'measure', 'theory', 'assumption', 'conversion-', 'from', 'nonempty_type', 'true', 'auto_rewrite', 'corollary', 'function', 'not', 'type', 'auto_rewrite+', 'datatype', 'has_type', 'o', 'type+', 'auto_rewrite-', 'else', 'if', 'obligation', 'var', 'axiom', 'elsif', 'iff', 'of', 'when', 'begin', 'end', 'implies', 'or', 'where', 'but', 'endassuming', 'importing', 'orelse', 'with', 'by', 'endcases', 'in', 'postulate', 'xor', 'cases', 'endcond', 'inductive', 'proposition', 'challenge', 'endif', 'judgement', 'recursive', 'claim', 'endtable', 'lambda', 'sublemma', 'closure', 'exists', 'law', 'subtypes', 'cond', 'exporting', 'lemma', 'subtype_of', )
+
+PVS_OPERATORS = ("#", "*", ":)", "=>", "\\/", "/=", "|=", "##", "**", "::", ">", "|>", "#)", "+", ":=", ">=", "]|", "|[", "#]", "++", ";", ">>", "^", "|]", "%", ",", "<", ">>=", "^^", "||", "&", "-", "<<", "@", "`", "|}", "&&", "->", "<<=", "@@", ".", "<=", "{|", "~", "(#", "/", "<=>", "[#", "{||}", "(:", "//", "<>", "[]", "|","(|", "<|", "[|", "|)","(||)", "/\\", "=", "[||]", "|-", ":", "==", "\\", "|->",)
+
