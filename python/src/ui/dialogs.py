@@ -14,6 +14,12 @@ def showWarning(message):
     dlg.ShowModal()
     dlg.Destroy()
     
+def showMessage(message):
+    """Show a dialog for a message"""
+    dlg = wx.MessageDialog(common.frame, message, constants.MESSAGE, wx.OK | wx.ICON_INFORMATION)
+    dlg.ShowModal()
+    dlg.Destroy()
+
 def chooseDirectory(message, defaultDirectory=constants.EMPTY_STRING):
     """Show a dialog to choose a directory"""    
     dialog = wx.DirDialog (common.frame, message = message, defaultPath=defaultDirectory)
