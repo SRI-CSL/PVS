@@ -246,7 +246,7 @@
 	     ;;(break "assert-typepreds")
 	     (if (some #'process-typepred *assert-typepreds*)
 		 (values '! sform)
-		 (values '? sform)))
+		 (values signal sform)))
 	    (t (values signal sform))))))
 
 (defun process-typepred (fmla)
