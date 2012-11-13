@@ -200,10 +200,10 @@
 		    (theory (with-no-type-errors (get-typechecked-theory thname nil t))))
 	       (when theory
 		 (list (mk-resolution theory thname nil)))))
-	   (get-theory-alias-decls-resolutions theory-aliases adecls
+	   (get-theory-alias-decls-resolutions theory-aliases name adecls
 					       kind args))))
 
-(defun get-theory-alias-decls-resolutions (theory-aliases adecls kind args
+(defun get-theory-alias-decls-resolutions (theory-aliases name adecls kind args
 							  &optional reses)
   (if (null theory-aliases)
       reses
@@ -218,7 +218,7 @@
 				  (not (tc-eq (module-instance r) thalias)))
 		     res)))
 	(get-theory-alias-decls-resolutions
-	 (cdr theory-aliases) adecls kind args
+	 (cdr theory-aliases) name adecls kind args
 	 (nconc reses fres)))))
 
 (defmethod get-theory-aliases (name)
@@ -563,6 +563,7 @@
       (list (make-resolution decl nthinst dtype)))))
 
 (defmethod resolve-decl-actuals* ((decl type-decl) dacts thinst args)
+  (declare (ignore args))
   (assert (or (null dacts) (decl-formals decl)))
   (assert (length= dacts (decl-formals decl)))
   (let* ((nthinst (change-class (copy thinst) 'declparam-modname
@@ -572,6 +573,7 @@
     (list (make-resolution decl nthinst stype))))
 
 (defmethod resolve-decl-actuals* ((decl formula-decl) dacts thinst args)
+  (declare (ignore args))
   (assert (or (null dacts) (decl-formals decl)))
   (assert (length= dacts (decl-formals decl)))
   (let* ((nthinst (change-class (copy thinst) 'declparam-modname
@@ -1659,17 +1661,16 @@
   ;; Bindings is a partial match - this attempts to match the remaining
   ;; bindings using the names of the current decl-formals.  We only do this
   ;; if the ones matched so far also have the same names.
-  (let ((dfmls (decl-formals (current-declaration))))
-    (when (every #'(lambda (bd)
-		     (if (decl-formal? (car bd))
-			 (or (null (cdr bd))
-			     (same-id (car bd) (cdr bd)))
-			 (cdr bd)))
-		 bindings)
-      (dolist (bd bindings)
-	(when (null (cdr bd))
-	  (setf (cdr bd) (type-value (car bd)))))
-      bindings)))
+  (when (every #'(lambda (bd)
+		   (if (decl-formal? (car bd))
+		       (or (null (cdr bd))
+			   (same-id (car bd) (cdr bd)))
+		       (cdr bd)))
+	       bindings)
+    (dolist (bd bindings)
+      (when (null (cdr bd))
+	(setf (cdr bd) (type-value (car bd)))))
+    bindings))
 
 (defun mk-res-actual (expr modinst)
   (if (member (id modinst) '(|equalities| |notequal|))
