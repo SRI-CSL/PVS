@@ -50,6 +50,13 @@
   (assert *current-context*)
   (theory-name *current-context*))
 
+(defun current-theory-name-with-dactuals ()
+  (let ((tname (current-theory-name))
+	(dfmls (decl-formals (current-declaration))))
+    (if dfmls
+	(copy tname :dactuals (mk-dactuals dfmls))
+	tname)))
+
 (defsetf current-theory-name () (name)
   `(setf (theory-name *current-context*) ,name))
 
@@ -680,7 +687,18 @@
 	(id-suffixes* (subseq string (1+ dotpos))
 		      (cons (intern string :pvs) ids))
 	(cons (intern string :pvs) ids))))
-	
+
+;; True if x is a prefix of y, e.g., a and a.b are prefixes of a.b.c
+(defun id-prefix (x y)
+  (or (same-id x y)
+      (let ((idx (get-id x))
+	    (idy (get-id y)))
+	(when (and (symbolp idx) (symbolp idy))
+	  (let ((strx (string (get-id x)))
+		(stry (string (get-id y))))
+	    ;; Note we can't simply call prefix? here, as (prefix? "t" "th.aa") is true
+	    ;; But we can assume that x is a valid id, so postpending "." will work
+	    (prefix? (concatenate 'string strx ".") stry))))))
 
 (defun prefix? (x y) ;both strings
   (let ((lx (length x))
