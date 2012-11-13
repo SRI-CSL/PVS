@@ -760,10 +760,17 @@
     ;; type is fully-instantiated, from the cases expr
     ;; arg-decls is the list of constructor arguments
     ;; accdecl is the generated accessor declaration
+    ;; We want to use the rtype, but subst-mod-params is difficult 
     (let* ((accdecl (accessor-decl (car arg-decls)))
-	   ;;(rtype (declared-type (car arg-decls)))
-	   (artype (range (declared-type accdecl)))
-	   (prtype (or (print-type artype) artype))
+	   (rtype (declared-type (car arg-decls)))
+	   (trtype (if (decl-formals accdecl)
+		       (with-current-decl accdecl
+			 (let ((*dont-worry-about-full-instantiations* t))
+			   (typecheck* rtype nil nil nil)))
+		       rtype))
+	   (prtype (or (print-type trtype) trtype))
+	   ;;(artype (range (declared-type accdecl)))
+	   ;;(prtype (or (print-type artype) artype))
 	   ;;(dbindings (pairlis (decl-formals accdecl)
 	   ;;  (mapcar #'type-value (dactuals (module-instance type)))))
 	   ;;(stype (subst-for-formals atype dbindings))
