@@ -354,11 +354,14 @@
 	   ;; abbreviations
 	   (free-params* (car resolutions) frees))
 	  (t (let ((theory (get-theory mi))
-		   (mfrees (free-params* mappings nil)))
+		   (mfrees (free-params* mappings nil))
+		   (dfrees (unless (or (null (current-declaration))
+				       (dactuals mi))
+			     (decl-formals (current-declaration)))))
 	       (assert theory)
-	       (if theory
-		   (union mfrees (formals-sans-usings theory) :test #'eq)
-		   frees))))))
+	       (union mfrees (union dfrees (formals-sans-usings theory)
+				    :test #'eq)
+		      :test #'eq))))))
 
 (defmethod free-params* ((map mapping) frees)
   (let ((mfrees (free-params* (rhs map) nil)))
