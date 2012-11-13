@@ -1117,7 +1117,7 @@ required a context.")
 			    (type-value rdecl)
 			    (lcopy thinst :mappings previous-mappings)
 			    (module ldecl))))
-	   (assert (fully-instantiated? subst-type))
+	   ;;(assert (fully-instantiated? subst-type))
 	   (setf (type-value (rhs map)) subst-type)))
 	(const-decl
 	 (let ((subst-type (subst-mod-params
@@ -1901,6 +1901,7 @@ required a context.")
       (if (null ftypes)
 	  (type-incompatible ex types expected)
 	  (let ((optype (determine-operator-type operator argument expected ex)))
+	    ;;(assert (type-expr? optype))
 	    (if (and (typep argument 'tuple-expr)
 		     (boolean-binop-type? optype)
 		     (boolean-op? operator '(AND & IMPLIES => OR WHEN)))
@@ -2591,6 +2592,25 @@ required a context.")
 					      (argument-list argument)
 					      expected)))))))
 
+;; (defun compatible-optypes (operator expected expr)
+;;   (let ((comp-res (delete-if-not #'(lambda (res)
+;; 				     (let ((ty (type res)))
+;; 				       (and (funtype? (find-supertype ty))
+;; 					    (compatible?
+;; 					     (range (find-supertype ty))
+;; 					     expected))))
+;; 		    (resolutions operator))))
+;;     (unless comp-res
+;;       (type-incompatible expr (mapcar #'range (types operator))
+;; 			 expected argument))
+;;     (mapcar #'(lambda (res)
+;; 		(subst-mod-params (type res)
+;; 		    (module-instance res)
+;; 		  (module (declaration res))
+;; 		  (declaration res)))
+;;       comp-res)))
+
+
 (defun has-type-vars? (type)
   (has-type-vars?* type))
 
@@ -3063,6 +3083,7 @@ required a context.")
 	 (theories (delete-duplicates (mapcar #'module fparams)))
 	 (nres nil))
     ;; Multiple theories can come about because of actuals, mappings, etc on ex
+    ;; First chack that any 
     (if (all-formals-from-same-decls fparams)
 	(dolist (th theories)
 	  (let ((decls nil))
@@ -3072,24 +3093,29 @@ required a context.")
 			 (eq (module frm) th))
 		(pushnew (associated-decl frm) decls)))
 	    (when (or decls (not (eq th (current-theory))))
-	      (let* ((formals (remove-if #'(lambda (fp) (not (eq (module fp) th)))
+	      (let* ((formals (remove-if #'(lambda (fp)
+					     (or (not (eq (module fp) th))
+						 (and (eq (module fp)
+							  (current-theory))
+						      (not (decl-formal-type? fp)))))
 				fparams))
 		     (bindings (tc-match type (type res)
 					 (mapcar #'list formals))))
 		(when (every #'cdr bindings)
 		  (let ((thinst (mk-modname (id th)
-				  (mapcar #'(lambda (fp)
-					      (let ((bd (cdr (assq fp bindings))))
-						(if bd
-						    (mk-res-actual bd th)
-						    (mk-res-actual
-						     (mk-name-expr (id fp)
-						       nil nil
-						       (make-resolution
-							   fp (mk-modname (id th)
-								nil (lib-id th))))
-						     th))))
-				    (formals-sans-usings th))
+				  (unless (eq th (current-theory))
+				    (mapcar #'(lambda (fp)
+						(let ((bd (cdr (assq fp bindings))))
+						  (if bd
+						      (mk-res-actual bd th)
+						      (mk-res-actual
+						       (mk-name-expr (id fp)
+							 nil nil
+							 (make-resolution
+							     fp (mk-modname (id th)
+								  nil (lib-id th))))
+						       th))))
+				      (formals-sans-usings th)))
 				  (library (module-instance res))
 				  (mappings (module-instance res)))))
 		    (if (null decls)
@@ -3111,6 +3137,7 @@ required a context.")
 				   (dthinst (copy thinst :dactuals dacts)))
 			      (setq sres (subst-mod-params sres dthinst th decl))))
 			  (push sres nres)))))))))
+	;; Should probably never get here
 	(if *dont-worry-about-full-instantiations*
 	    res
 	    (type-error ex
@@ -3182,7 +3209,8 @@ required a context.")
 			   (fully-instantiated? type))
 		   type)))
 	  (and (name-expr? op)
-	       (maybe-instantiate-from-decl-formals op))
+	       (maybe-instantiate-from-decl-formals op)
+	       (type op))
 	  (if *dont-worry-about-full-instantiations*
 	      optype
 	      (type-error op
@@ -4744,8 +4772,6 @@ required a context.")
       (let* ((dacts (mk-dactuals dfmls))
 	     (mi (mk-modname (id (current-theory)) nil nil nil (mk-dactuals dfmls)))
 	     (nex (subst-mod-params ex mi (current-theory) adecl)))
-	(when (name-expr? ex)
-	  (break "maybe-instantiate-from-decl-formals"))
 	(when (fully-instantiated? nex)
 	  (setf (resolutions ex) (resolutions nex)
 		(actuals ex) (actuals nex)
