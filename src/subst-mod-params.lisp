@@ -155,17 +155,18 @@
 	(sterm term))
     (dolist (th theories)
       (let* ((lib-id (get-lib-id th))
-	     (actuals (mapcar #'(lambda (fp)
-				  (or (cdr (assq fp new-alist))
-				      (let ((res (make-resolution fp
-						   (mk-modname (id th)
-						     nil lib-id))))
-					(mk-res-actual
-					 (if (type-decl? fp)
-					     (mk-type-name (id fp) nil nil res)
-					     (mk-name-expr (id fp) nil nil res))
-					 th))))
-			(formals-sans-usings th)))
+	     (actuals (unless (eq th (current-theory))
+			(mapcar #'(lambda (fp)
+				    (or (cdr (assq fp new-alist))
+					(let ((res (make-resolution fp
+						     (mk-modname (id th)
+						       nil lib-id))))
+					  (mk-res-actual
+					   (if (type-decl? fp)
+					       (mk-type-name (id fp) nil nil res)
+					       (mk-name-expr (id fp) nil nil res))
+					   th))))
+			  (formals-sans-usings th))))
 	     (fdecl (let ((fbd (find-if #'decl-formal? new-alist :key #'car)))
 		      (when fbd (associated-decl (car fbd)))))
 	     (dactuals (when fdecl
@@ -1537,6 +1538,9 @@
 	  (ntype (subst-mod-params* type modinst bindings)))
       #+pvsdebug (assert (fully-instantiated? ntype))
       (lcopy expr :argument narg :type ntype))))
+
+(defmethod subst-mod-params* ((expr rational-expr) modinst bindings)
+  expr)
 
 (defmethod subst-mod-params* ((expr number-expr) modinst bindings)
   (with-slots (number) expr
