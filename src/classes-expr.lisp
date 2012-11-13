@@ -245,15 +245,7 @@
   (string-value :restore-as nil))
 
 (defcl bracket-expr (application)
-  ;;"Used for expressions of the form [| |]"
-  )
-
-(defcl paren-vbar-expr (application)
-  ;;"Used for expressions of the form (| |)"
-  )
-
-(defcl brace-vbar-expr (application)
-  ;;"Used for expressions of the form {| |}"
+  ;;"Used for bracketing (outfix) expressions - the operator tells which one"
   )
 
 (defcl infix-application (application))
