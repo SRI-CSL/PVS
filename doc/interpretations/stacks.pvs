@@ -1,0 +1,26 @@
+
+stacks [t: TYPE+] : THEORY
+  BEGIN
+
+  stack : TYPE+
+  s : VAR stack
+  empty : stack
+  nonemptystack?(s) : bool = s /= empty
+  nonemptystack_exists: AXIOM EXISTS s: nonemptystack?(s)
+
+  push: [t, stack -> (nonemptystack?)]
+  pop: [(nonemptystack?) -> stack]
+  top: [(nonemptystack?) -> t]
+
+  x,y: VAR t
+
+  push_top_pop: AXIOM
+    nonemptystack?(s) IMPLIES push(top(s), pop(s)) = s
+
+  pop_push: AXIOM pop(push(x, s)) = s
+
+  top_push: AXIOM top(push(x, s)) = x
+
+  pop2push2: THEOREM pop(pop(push(x, push(y, s)))) = s   
+
+END stacks 

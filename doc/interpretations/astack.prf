@@ -1,0 +1,17 @@
+(astack
+ (top_TCC1 0
+  (top_TCC1-1 nil 3557454413
+   ("" (skeep :preds? t) (("" (grind) nil nil)) nil)
+   ((empty? const-decl "bool" astack nil)
+    (nonempty? const-decl "bool" astack nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   nil))
+ (push_TCC1 0
+  (push_TCC1-1 nil 3557454413 ("" (subtype-tcc) nil nil) nil nil))
+ (push_TCC2 0
+  (push_TCC2-1 nil 3557454413 ("" (subtype-tcc) nil nil) nil nil)))
+

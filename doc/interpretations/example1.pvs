@@ -1,0 +1,17 @@
+% example1[T: TYPE, c: T]: THEORY
+%  BEGIN
+%   f(x: T): int = IF x = c THEN 0 ELSE 1 ENDIF
+%  END example1
+
+example1: THEORY
+ BEGIN
+  T: TYPE
+  c: T
+  f(x: T): int = IF x = c THEN 0 ELSE 1 ENDIF
+ END example1
+
+example2: THEORY
+ BEGIN
+  th: THEORY = example1{{T := real}}
+  frm: FORMULA f{{c := 3}} = f
+ END example2

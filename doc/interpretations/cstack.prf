@@ -1,0 +1,2231 @@
+(cstack
+ (cempty_TCC1 0
+  (cempty_TCC1-1 nil 3502583039 3502586040 ("" (subtype-tcc) nil nil)
+   proved
+   ((some_t const-decl "t" cstack nil)
+    (cempty? const-decl "bool" cstack nil))
+   6 0 nil nil))
+ (ctop_TCC1 0
+  (ctop_TCC1-1 nil 3502583039 3502586041 ("" (subtype-tcc) nil nil)
+   proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (t formal-nonempty-type-decl nil cstack nil)
+    (cstack type-eq-decl nil cstack nil)
+    (cnonempty? const-decl "bool" cstack nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (/= const-decl "boolean" notequal nil))
+   55 28 nil nil))
+ (cpush_TCC1 0
+  (cpush_TCC1-1 nil 3502583039 3502586041 ("" (subtype-tcc) nil nil)
+   proved
+   ((posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (/= const-decl "boolean" notequal nil)
+    (cnonempty? const-decl "bool" cstack nil))
+   83 48 nil nil))
+ (ce_TCC1 0
+  (ce_TCC1-1 nil 3502583039 3502586041 ("" (subtype-tcc) nil nil)
+   proved
+   ((below type-eq-decl nil naturalnumbers nil)
+    (cstack type-eq-decl nil cstack nil)
+    (t formal-nonempty-type-decl nil cstack nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (< const-decl "bool" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (reflexive? const-decl "bool" relations nil)
+    (symmetric? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
+    (equivalence? const-decl "bool" relations nil))
+   250 186 nil nil))
+ (IMP_stack_TCC1 0
+  (IMP_stack_TCC1-1 nil 3502583039 3502586041
+   ("" (subtype-tcc) nil nil) proved
+   ((ce const-decl "equivalence[cstack]" cstack nil)
+    (restrict const-decl "R" restrict nil)
+    (member const-decl "bool" sets nil)
+    (cempty? const-decl "bool" cstack nil)
+    (EquivalenceKernel const-decl "equivalence[X1]" KernelDefinition
+     nil)
+    (subset? const-decl "bool" sets nil)
+    (PreservesEq const-decl "bool" KernelDefinition nil)
+    (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
+     sets_lemmas nil)
+    (equivalence_restrict application-judgement "(equivalence?[S])"
+     restrict_order_props nil)
+    (transitive_restrict application-judgement "(transitive?[S])"
+     restrict_order_props nil)
+    (symmetric_restrict application-judgement "(symmetric?[S])"
+     restrict_order_props nil)
+    (reflexive_restrict application-judgement "(reflexive?[S])"
+     restrict_order_props nil))
+   301 236 nil nil))
+ (IMP_stack_TCC2 0
+  (IMP_stack_TCC2-1 nil 3502583039 3502586041
+   ("" (subtype-tcc) nil nil) proved
+   ((ce const-decl "equivalence[cstack]" cstack nil)
+    (restrict const-decl "R" restrict nil)
+    (member const-decl "bool" sets nil)
+    (EquivalenceKernel const-decl "equivalence[X1]" KernelDefinition
+     nil)
+    (subset? const-decl "bool" sets nil)
+    (PreservesEq const-decl "bool" KernelDefinition nil)
+    (reflexive_restrict application-judgement "(reflexive?[S])"
+     restrict_order_props nil)
+    (symmetric_restrict application-judgement "(symmetric?[S])"
+     restrict_order_props nil)
+    (transitive_restrict application-judgement "(transitive?[S])"
+     restrict_order_props nil)
+    (equivalence_restrict application-judgement "(equivalence?[S])"
+     restrict_order_props nil)
+    (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
+     sets_lemmas nil))
+   284 216 nil nil))
+ (IMP_stack_TCC3 0
+  (IMP_stack_TCC3-1 nil 3502583039 3502586042
+   ("" (subtype-tcc) nil nil) proved
+   ((ce const-decl "equivalence[cstack]" cstack nil)
+    (restrict const-decl "R" restrict nil)
+    (member const-decl "bool" sets nil)
+    (/= const-decl "boolean" notequal nil)
+    (cnonempty? const-decl "bool" cstack nil)
+    (EquivalenceKernel const-decl "equivalence[X1]" KernelDefinition
+     nil)
+    (subset? const-decl "bool" sets nil)
+    (PreservesEq const-decl "bool" KernelDefinition nil)
+    (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
+     sets_lemmas nil)
+    (equivalence_restrict application-judgement "(equivalence?[S])"
+     restrict_order_props nil)
+    (transitive_restrict application-judgement "(transitive?[S])"
+     restrict_order_props nil)
+    (symmetric_restrict application-judgement "(symmetric?[S])"
+     restrict_order_props nil)
+    (reflexive_restrict application-judgement "(reflexive?[S])"
+     restrict_order_props nil))
+   270 238 nil nil))
+ (IMP_stack_TCC4 0
+  (IMP_stack_TCC4-1 nil 3502583039 3502586042
+   ("" (ground)
+    (("1" (inst 1 "cempty") nil nil)
+     ("2" (expand "lift")
+      (("2" (expand "cempty?")
+        (("2" (expand "rep")
+          (("2" (expand "EquivClass")
+            (("2" (typepred "choose({z: cstack | ce(cempty, z)})")
+              (("1"
+                (name-replace "ch"
+                 "choose({z: cstack | ce(cempty, z)})")
+                (("1" (expand "ce")
+                  (("1" (flatten)
+                    (("1" (expand "cempty") (("1" (assert) nil nil))
+                      nil))
+                    nil))
+                  nil))
+                nil)
+               ("2" (hide 2)
+                (("2" (expand "nonempty?")
+                  (("2" (expand "empty?")
+                    (("2" (expand "member")
+                      (("2" (inst -1 "cempty") (("2" (grind) nil nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((lift const-decl "Y" QuotientExtensionProperties nil)
+    (rep const-decl "T" QuotientDefinition nil)
+    (choose const-decl "(p)" sets nil)
+    (nonempty? const-decl "bool" sets nil)
+    (set type-eq-decl nil sets nil)
+    (ce const-decl "equivalence[cstack]" cstack nil)
+    (equivalence type-eq-decl nil relations nil)
+    (equivalence? const-decl "bool" relations nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (member const-decl "bool" sets nil)
+    (some_t const-decl "t" cstack nil)
+    (empty? const-decl "bool" sets nil)
+    (EquivClass const-decl "set[T]" QuotientDefinition nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (t formal-nonempty-type-decl nil cstack nil)
+    (cstack type-eq-decl nil cstack nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (cempty? const-decl "bool" cstack nil)
+    (cempty const-decl "(cempty?)" cstack nil))
+   177 96 t nil))
+ (IMP_stack_TCC5 0
+  (IMP_stack_TCC5-1 nil 3502583039 3502586042
+   ("" (expand "PreservesEq")
+    (("" (expand "subset?")
+      (("" (expand "member")
+        (("" (skolem-typepred)
+          (("" (expand "restrict")
+            (("" (expand "ce")
+              (("" (typepred "x!1`1")
+                (("" (typepred "x!1`2")
+                  (("" (expand "cnonempty?")
+                    (("" (assert)
+                      (("" (flatten)
+                        (("" (expand "EquivalenceKernel")
+                          (("" (expand "ctop")
+                            (("" (inst? -2) (("" (assert) nil nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((subset? const-decl "bool" sets nil)
+    (ce const-decl "equivalence[cstack]" cstack nil)
+    (EquivalenceKernel const-decl "equivalence[X1]" KernelDefinition
+     nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil) (< const-decl "bool" reals nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (ctop const-decl "t" cstack nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (t formal-nonempty-type-decl nil cstack nil)
+    (cstack type-eq-decl nil cstack nil)
+    (cnonempty? const-decl "bool" cstack nil)
+    (restrict const-decl "R" restrict nil)
+    (member const-decl "bool" sets nil)
+    (PreservesEq const-decl "bool" KernelDefinition nil))
+   118 60 t nil))
+ (IMP_stack_TCC6 0
+  (IMP_stack_TCC6-1 nil 3502583039 3502586042
+   ("" (skolem-typepred)
+    (("" (prop)
+      (("1" (skolem-typepred)
+        (("1" (expand "cnonempty?")
+          (("1" (flatten) (("1" (inst 2 "x!1") nil nil)) nil)) nil))
+        nil)
+       ("2" (skolem-typepred)
+        (("2" (expand "lift")
+          (("2" (expand "cnonempty?")
+            (("2" (flatten)
+              (("2" (expand "rep")
+                (("2" (expand "EquivClass")
+                  (("2" (decompose-equality)
+                    (("2" (typepred "choose(x2!1)")
+                      (("2" (inst -2 "choose(x2!1)")
+                        (("2" (assert)
+                          (("2" (expand "ce") (("2" (propax) nil nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("3" (skolem-typepred)
+        (("3" (inst?)
+          (("3" (expand "lift")
+            (("3" (expand "rep")
+              (("3" (typepred "choose(x2!1)")
+                (("3" (expand "EquivClass")
+                  (("3" (decompose-equality)
+                    (("3" (inst -1 "choose(x2!1)")
+                      (("3" (assert)
+                        (("3" (expand "ce")
+                          (("3" (flatten)
+                            (("3" (expand "cnonempty?")
+                              (("3" (assert) nil nil)) nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((cnonempty? const-decl "bool" cstack nil)
+    (cstack type-eq-decl nil cstack nil)
+    (t formal-nonempty-type-decl nil cstack nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (lift const-decl "Y" QuotientExtensionProperties nil)
+    (EquivClass const-decl "set[T]" QuotientDefinition nil)
+    (nonempty? const-decl "bool" sets nil)
+    (choose const-decl "(p)" sets nil)
+    (ce const-decl "equivalence[cstack]" cstack nil)
+    (equivalence type-eq-decl nil relations nil)
+    (equivalence? const-decl "bool" relations nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (set type-eq-decl nil sets nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (rep const-decl "T" QuotientDefinition nil)
+    (x!1 skolem-const-decl "cstack" cstack nil))
+   204 112 t nil))
+ (IMP_stack_TCC7 0
+  (IMP_stack_TCC7-1 nil 3502583039 3502586042
+   ("" (subtype-tcc) nil nil) proved
+   ((lift const-decl "Y" QuotientExtensionProperties nil)
+    (QuotientSub type-eq-decl nil QuotientSubDefinition nil)
+    (TRUE const-decl "bool" booleans nil)
+    (PreservesEq const-decl "bool" KernelDefinition nil)
+    (estack type-eq-decl nil cstack nil)
+    (ce const-decl "equivalence[cstack]" cstack nil)
+    (equivalence type-eq-decl nil relations nil)
+    (equivalence? const-decl "bool" relations nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (EquivClass const-decl "set[T]" QuotientDefinition nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (set type-eq-decl nil sets nil)
+    (cstack type-eq-decl nil cstack nil)
+    (t formal-nonempty-type-decl nil cstack nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (cpop const-decl "cstack" cstack nil)
+    (rep const-decl "T" QuotientDefinition nil)
+    (/= const-decl "boolean" notequal nil)
+    (cnonempty? const-decl "bool" cstack nil))
+   159 96 nil nil))
+ (IMP_stack_TCC8 0
+  (IMP_stack_TCC8-1 nil 3502583039 3502586043
+   ("" (skolem-typepred)
+    (("" (skolem-typepred)
+      (("" (inst 1 "cpop(x!1)")
+        (("1" (apply-extensionality :hide? t)
+          (("1" (expand "EquivClass")
+            (("1" (decompose-equality)
+              (("1" (expand "lift")
+                (("1" (expand "rep")
+                  (("1" (expand "ce")
+                    (("1" (iff)
+                      (("1" (prop)
+                        (("1" (expand "cnonempty?")
+                          (("1" (flatten)
+                            (("1" (typepred "choose(x1!1)")
+                              (("1"
+                                (expand "cpop")
+                                (("1"
+                                  (inst -4 "choose(x1!1)")
+                                  (("1" (assert) nil nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil)
+                         ("2" (skolem-typepred)
+                          (("2" (inst -3 "n!1")
+                            (("1" (typepred "choose(x1!1)")
+                              (("1"
+                                (inst -5 "choose(x1!1)")
+                                (("1"
+                                  (assert)
+                                  (("1"
+                                    (flatten)
+                                    (("1"
+                                      (inst -6 "n!1")
+                                      (("1"
+                                        (assert)
+                                        (("1"
+                                          (expand "cpop")
+                                          (("1" (assert) nil nil))
+                                          nil))
+                                        nil)
+                                       ("2"
+                                        (assert)
+                                        (("2"
+                                          (expand "cpop")
+                                          (("2" (assert) nil nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil)
+                             ("2" (expand "cpop")
+                              (("2"
+                                (assert)
+                                (("2"
+                                  (typepred "choose(x1!1)")
+                                  (("2"
+                                    (inst -4 "choose(x1!1)")
+                                    (("2" (assert) nil nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil)
+                         ("3" (typepred "choose(x1!1)")
+                          (("3" (inst -4 "choose(x1!1)")
+                            (("3" (assert)
+                              (("3"
+                                (flatten)
+                                (("3"
+                                  (expand "cpop")
+                                  (("3" (assert) nil nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil)
+                         ("4" (skolem-typepred)
+                          (("4" (expand "cpop")
+                            (("4" (typepred "choose(x1!1)")
+                              (("4"
+                                (inst -5 "choose(x1!1)")
+                                (("4"
+                                  (assert)
+                                  (("4"
+                                    (flatten)
+                                    (("4"
+                                      (assert)
+                                      (("4"
+                                        (inst -6 "n!1")
+                                        (("4"
+                                          (assert)
+                                          (("4"
+                                            (inst -4 "n!1")
+                                            (("1" (assert) nil nil)
+                                             ("2"
+                                              (expand "cpop")
+                                              (("2" (assert) nil nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil)
+           ("2" (skolem-typepred)
+            (("2" (flatten)
+              (("2" (skolem-typepred)
+                (("2" (skolem-typepred)
+                  (("2" (hide 2)
+                    (("2" (expand "cnonempty?")
+                      (("2" (expand "rep")
+                        (("2" (flatten)
+                          (("2" (expand "lift")
+                            (("2" (expand "rep")
+                              (("2" (flatten) nil nil)) nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil)
+         ("2" (expand "cnonempty?")
+          (("2" (expand "lift")
+            (("2" (expand "EquivClass")
+              (("2" (decompose-equality)
+                (("2" (expand "rep")
+                  (("2" (typepred "choose(x1!1)")
+                    (("2" (inst?)
+                      (("2" (assert)
+                        (("2" (expand "ce") (("2" (propax) nil nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (Quotient type-eq-decl nil QuotientDefinition nil)
+    (rep const-decl "T" QuotientDefinition nil)
+    (n!1 skolem-const-decl "below(cpop(choose(x1!1))`size)" cstack nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (< const-decl "bool" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (x1!1 skolem-const-decl
+     "{x: estack | lift[cstack, cstack, boolean](ce)(cnonempty?)(x)}"
+     cstack nil)
+    (n!1 skolem-const-decl "below(cpop(x!1)`size)" cstack nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (nonempty? const-decl "bool" sets nil)
+    (choose const-decl "(p)" sets nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (cpop const-decl "cstack" cstack nil)
+    (x!1 skolem-const-decl "cstack" cstack nil)
+    (cnonempty? const-decl "bool" cstack nil)
+    (lift const-decl "Y" QuotientExtensionProperties nil)
+    (QuotientSub type-eq-decl nil QuotientSubDefinition nil)
+    (TRUE const-decl "bool" booleans nil)
+    (PreservesEq const-decl "bool" KernelDefinition nil)
+    (estack type-eq-decl nil cstack nil)
+    (ce const-decl "equivalence[cstack]" cstack nil)
+    (equivalence type-eq-decl nil relations nil)
+    (equivalence? const-decl "bool" relations nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (EquivClass const-decl "set[T]" QuotientDefinition nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (set type-eq-decl nil sets nil)
+    (cstack type-eq-decl nil cstack nil)
+    (t formal-nonempty-type-decl nil cstack nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   631 379 t nil))
+ (IMP_stack_TCC9 0
+  (IMP_stack_TCC9-1 nil 3502583039 3502586277
+   ("" (skolem-typepred)
+    (("" (prop)
+      (("1" (inst 1 "cpush(x1!1`1)(x1!1`2)")
+        (("1" (apply-extensionality :hide? t) nil nil)) nil)
+       ("2" (expand "lift")
+        (("2" (expand "cnonempty?")
+          (("2" (expand "rep")
+            (("2" (flatten)
+              (("2"
+                (typepred
+                 "choose(EquivClass[cstack](ce)(cpush(x1!1`1)(choose(x1!1`2))))")
+                (("2" (expand "EquivClass" -1 1)
+                  (("2" (expand "ce" -1 1)
+                    (("2" (flatten)
+                      (("2"
+                        (name-replace "C"
+                         "choose(EquivClass[cstack](ce)(cpush(x1!1`1)(choose(x1!1`2))))")
+                        (("2" (expand "cpush") (("2" (assert) nil nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((rep const-decl "T" QuotientDefinition nil)
+    (Quotient type-eq-decl nil QuotientDefinition nil)
+    (estack type-eq-decl nil cstack nil)
+    (ce const-decl "equivalence[cstack]" cstack nil)
+    (equivalence type-eq-decl nil relations nil)
+    (equivalence? const-decl "bool" relations nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (EquivClass const-decl "set[T]" QuotientDefinition nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (set type-eq-decl nil sets nil)
+    (cpush const-decl "(cnonempty?)" cstack nil)
+    (cnonempty? const-decl "bool" cstack nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (cstack type-eq-decl nil cstack nil)
+    (t formal-nonempty-type-decl nil cstack nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (nonempty? const-decl "bool" sets nil)
+    (choose const-decl "(p)" sets nil)
+    (lift const-decl "Y" QuotientExtensionProperties nil))
+   178105 230 t nil))
+ (IMP_stack_stack_empty_extensionality_TCC1 0
+  (IMP_stack_stack_empty_extensionality_TCC1-1 nil 3502583039
+   3502587195
+   ("" (skolem-typepred)
+    (("" (skolem-typepred)
+      (("" (skolem-typepred)
+        (("" (replace -1 :hide? t)
+          (("" (replace -2 :hide? t)
+            (("" (expand "EquivClass")
+              (("" (apply-extensionality :hide? t)
+                (("" (expand "lift")
+                  (("" (expand "cempty?")
+                    (("" (expand "rep")
+                      (("" (expand "ce" 1)
+                        (("" (iff)
+                          (("" (prop)
+                            (("1"
+                              (typepred
+                               "choose({z: cstack | ce(x!1, z)})")
+                              (("1"
+                                (typepred
+                                 "choose({z: cstack | ce(x!2, z)})")
+                                (("1"
+                                  (name-replace
+                                   "c1"
+                                   "choose({z: cstack | ce(x!1, z)})")
+                                  (("1"
+                                    (name-replace
+                                     "c2"
+                                     "choose({z: cstack | ce(x!2, z)})")
+                                    (("1"
+                                      (expand "ce")
+                                      (("1"
+                                        (flatten)
+                                        (("1" (assert) nil nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil)
+                                 ("2"
+                                  (expand "nonempty?")
+                                  (("2"
+                                    (expand "empty?")
+                                    (("2"
+                                      (expand "member")
+                                      (("2"
+                                        (name-replace
+                                         "c1"
+                                         "choose({z: cstack | ce(x!1, z)})")
+                                        (("2"
+                                          (name-replace
+                                           "c2"
+                                           "choose({z: cstack | ce(x!2, z)})")
+                                          (("1"
+                                            (inst -1 "x!2")
+                                            (("1"
+                                              (expand "ce" 1)
+                                              (("1" (propax) nil nil))
+                                              nil))
+                                            nil)
+                                           ("2"
+                                            (inst -1 "x!2")
+                                            (("2"
+                                              (expand "ce" 2)
+                                              (("2" (propax) nil nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil)
+                               ("2"
+                                (expand "nonempty?")
+                                (("2"
+                                  (expand "empty?")
+                                  (("2"
+                                    (expand "member")
+                                    (("2"
+                                      (inst -1 "x!1")
+                                      (("2"
+                                        (expand "ce" 1)
+                                        (("2" (propax) nil nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil)
+                             ("2"
+                              (typepred
+                               "choose({z: cstack | ce(x!2, z)})")
+                              (("1"
+                                (name-replace
+                                 "c2"
+                                 "choose({z: cstack | ce(x!2, z)})")
+                                (("1"
+                                  (expand "ce" -1)
+                                  (("1"
+                                    (flatten)
+                                    (("1"
+                                      (assert)
+                                      (("1" (skolem-typepred) nil nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil)
+                               ("2"
+                                (expand "nonempty?")
+                                (("2"
+                                  (expand "empty?")
+                                  (("2"
+                                    (expand "member")
+                                    (("2"
+                                      (inst -1 "x!2")
+                                      (("2"
+                                        (expand "ce" 1)
+                                        (("2" (propax) nil nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil)
+                             ("3"
+                              (typepred
+                               "choose({z: cstack | ce(x!1, z)})")
+                              (("1"
+                                (name-replace
+                                 "c1"
+                                 "choose({z: cstack | ce(x!1, z)})")
+                                (("1"
+                                  (expand "ce" -1)
+                                  (("1"
+                                    (flatten)
+                                    (("1"
+                                      (assert)
+                                      (("1"
+                                        (typepred
+                                         "choose({z: cstack | ce(x!2, z)})")
+                                        (("1"
+                                          (name-replace
+                                           "c2"
+                                           "choose({z: cstack | ce(x!2, z)})")
+                                          (("1"
+                                            (expand "ce" -1)
+                                            (("1"
+                                              (flatten)
+                                              (("1" (assert) nil nil))
+                                              nil))
+                                            nil))
+                                          nil)
+                                         ("2"
+                                          (expand "nonempty?")
+                                          (("2"
+                                            (expand "empty?")
+                                            (("2"
+                                              (expand "member")
+                                              (("2"
+                                                (inst -1 "x!2")
+                                                (("2"
+                                                  (expand "ce" 1)
+                                                  (("2"
+                                                    (propax)
+                                                    nil
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil)
+                               ("2"
+                                (expand "nonempty?")
+                                (("2"
+                                  (expand "empty?")
+                                  (("2"
+                                    (expand "member")
+                                    (("2"
+                                      (inst -1 "x!1")
+                                      (("2"
+                                        (expand "ce" 1)
+                                        (("2" (propax) nil nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil)
+                             ("4" (skolem-typepred)
+                              (("4"
+                                (typepred
+                                 "choose({z: cstack | ce(x!1, z)})")
+                                (("1"
+                                  (typepred
+                                   "choose({z: cstack | ce(x!2, z)})")
+                                  (("1"
+                                    (name-replace
+                                     "c1"
+                                     "choose({z: cstack | ce(x!1, z)})")
+                                    (("1"
+                                      (name-replace
+                                       "c2"
+                                       "choose({z: cstack | ce(x!2, z)})")
+                                      (("1"
+                                        (expand "ce" -1)
+                                        (("1"
+                                          (flatten)
+                                          (("1"
+                                            (expand "ce" -3)
+                                            (("1"
+                                              (flatten)
+                                              (("1" (assert) nil nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil)
+                                   ("2"
+                                    (expand "nonempty?")
+                                    (("2"
+                                      (expand "empty?")
+                                      (("2"
+                                        (expand "member")
+                                        (("2"
+                                          (inst -1 "x!2")
+                                          (("2"
+                                            (expand "ce" 1)
+                                            (("2" (propax) nil nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil)
+                                 ("2"
+                                  (expand "nonempty?")
+                                  (("2"
+                                    (expand "empty?")
+                                    (("2"
+                                      (expand "member")
+                                      (("2"
+                                        (inst -1 "x!1")
+                                        (("2"
+                                          (expand "ce" 1)
+                                          (("2" (propax) nil nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((rep const-decl "T" QuotientDefinition nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (< const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (choose const-decl "(p)" sets nil)
+    (nonempty? const-decl "bool" sets nil)
+    (member const-decl "bool" sets nil)
+    (empty? const-decl "bool" sets nil)
+    (cempty? const-decl "bool" cstack nil)
+    (lift const-decl "Y" QuotientExtensionProperties nil)
+    (QuotientSub type-eq-decl nil QuotientSubDefinition nil)
+    (TRUE const-decl "bool" booleans nil)
+    (PreservesEq const-decl "bool" KernelDefinition nil)
+    (estack type-eq-decl nil cstack nil)
+    (ce const-decl "equivalence[cstack]" cstack nil)
+    (equivalence type-eq-decl nil relations nil)
+    (equivalence? const-decl "bool" relations nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (EquivClass const-decl "set[T]" QuotientDefinition nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (set type-eq-decl nil sets nil)
+    (cstack type-eq-decl nil cstack nil)
+    (t formal-nonempty-type-decl nil cstack nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   902599 684 t nil))
+ (IMP_stack_stack_push_extensionality_TCC1 0
+  (IMP_stack_stack_push_extensionality_TCC1-1 nil 3502583039 3502603325
+   ("" (skolem-typepred)
+    (("" (prop)
+      (("" (skolem-typepred)
+        (("" (skolem-typepred)
+          (("" (replace -1 :hide? t)
+            (("" (replace -2 :hide? t)
+              (("" (grind :if-match nil)
+                (("" (expand "EquivClass")
+                  (("" (typepred "choose({z: cstack | ce(x!1, z)})")
+                    (("1" (typepred "choose({z: cstack | ce(x!2, z)})")
+                      (("1"
+                        (name-replace "c1"
+                         "choose({z: cstack | ce(x!1, z)})")
+                        (("1"
+                          (name-replace "c2"
+                           "choose({z: cstack | ce(x!2, z)})")
+                          (("1" (assert :flush? t)
+                            (("1" (flatten)
+                              (("1"
+                                (apply-extensionality 3 :hide? t)
+                                (("1"
+                                  (decompose-equality -6)
+                                  (("1"
+                                    (inst -1 "cpop(x!3)")
+                                    (("1"
+                                      (grind :if-match nil)
+                                      (("1"
+                                        (inst -5 "n!1")
+                                        (("1"
+                                          (inst -9 "n!1")
+                                          (("1" (assert) nil nil))
+                                          nil)
+                                         ("2"
+                                          (assert)
+                                          (("2"
+                                            (inst -6 "n!1")
+                                            (("2"
+                                              (inst -8 "n!1")
+                                              (("2"
+                                                (inst -9 "n!1")
+                                                (("2"
+                                                  (assert)
+                                                  nil
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil)
+                                       ("2"
+                                        (inst -3 "n!1")
+                                        (("1"
+                                          (inst -10 "n!1")
+                                          (("1" (assert) nil nil))
+                                          nil)
+                                         ("2"
+                                          (inst -4 "n!1")
+                                          (("1"
+                                            (inst -9 "n!1")
+                                            (("1" (assert) nil nil))
+                                            nil)
+                                           ("2"
+                                            (inst -5 "n!1")
+                                            (("2"
+                                              (inst -6 "n!1")
+                                              (("2"
+                                                (inst -8 "n!1")
+                                                (("2"
+                                                  (assert)
+                                                  nil
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil)
+                                       ("3"
+                                        (inst -5 "n!1")
+                                        (("3"
+                                          (inst -9 "n!1")
+                                          (("3" (assert) nil nil))
+                                          nil))
+                                        nil)
+                                       ("4"
+                                        (inst -4 "n!1")
+                                        (("4"
+                                          (inst -8 "n!1")
+                                          (("4" (assert) nil nil))
+                                          nil))
+                                        nil)
+                                       ("5"
+                                        (inst -5 "n!2")
+                                        (("5"
+                                          (inst -7 "n!2")
+                                          (("5" (assert) nil nil))
+                                          nil))
+                                        nil)
+                                       ("6"
+                                        (inst -4 "n!2")
+                                        (("6"
+                                          (inst -6 "n!2")
+                                          (("6" (assert) nil nil))
+                                          nil))
+                                        nil)
+                                       ("7"
+                                        (inst -4 "n!1")
+                                        (("7"
+                                          (inst -8 "n!1")
+                                          (("7" (assert) nil nil))
+                                          nil))
+                                        nil)
+                                       ("8"
+                                        (inst -3 "n!1")
+                                        (("8"
+                                          (inst -7 "n!1")
+                                          (("8" (assert) nil nil))
+                                          nil))
+                                        nil)
+                                       ("9"
+                                        (inst -4 "n!1")
+                                        (("9"
+                                          (inst -6 "n!1")
+                                          (("9" (assert) nil nil))
+                                          nil))
+                                        nil)
+                                       ("10"
+                                        (inst -3 "n!1")
+                                        (("10"
+                                          (inst -5 "n!1")
+                                          (("10" (assert) nil nil))
+                                          nil))
+                                        nil))
+                                      nil)
+                                     ("2" (assert) nil nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil)
+                           ("2"
+                            (name-replace "c2"
+                             "choose({z: cstack | ce(x!2, z)})")
+                            (("1" (decompose-equality -5)
+                              (("1"
+                                (apply-extensionality 3 :hide? t)
+                                (("1"
+                                  (iff)
+                                  (("1"
+                                    (flatten)
+                                    (("1"
+                                      (inst -2 "x!2")
+                                      (("1" (skolem-typepred) nil nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil)
+                             ("2" (inst -1 "x!2")
+                              (("2" (skolem-typepred) nil nil)) nil))
+                            nil))
+                          nil)
+                         ("2" (inst -1 "x!1")
+                          (("2" (skolem-typepred) nil nil)) nil))
+                        nil)
+                       ("2" (inst -1 "x!2")
+                        (("2" (skolem-typepred) nil nil)) nil))
+                      nil)
+                     ("2" (inst -1 "x!1")
+                      (("2" (skolem-typepred) nil nil)) nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (c2 skolem-const-decl "({z: cstack | ce(x!2, z)})" cstack nil)
+    (n!1 skolem-const-decl "below(x!2`size)" cstack nil)
+    (x!2 skolem-const-decl "cstack" cstack nil)
+    (c1 skolem-const-decl "({z: cstack | ce(x!1, z)})" cstack nil)
+    (n!1 skolem-const-decl "below(x!1`size)" cstack nil)
+    (x!1 skolem-const-decl "cstack" cstack nil)
+    (x!3 skolem-const-decl "cstack" cstack nil)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (empty? const-decl "bool" sets nil)
+    (member const-decl "bool" sets nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil) (< const-decl "bool" reals nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (choose const-decl "(p)" sets nil)
+    (nonempty? const-decl "bool" sets nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (rep const-decl "T" QuotientDefinition nil)
+    (/= const-decl "boolean" notequal nil)
+    (ctop const-decl "t" cstack nil)
+    (cpop const-decl "cstack" cstack nil)
+    (cnonempty? const-decl "bool" cstack nil)
+    (lift const-decl "Y" QuotientExtensionProperties nil)
+    (QuotientSub type-eq-decl nil QuotientSubDefinition nil)
+    (TRUE const-decl "bool" booleans nil)
+    (PreservesEq const-decl "bool" KernelDefinition nil)
+    (estack type-eq-decl nil cstack nil)
+    (ce const-decl "equivalence[cstack]" cstack nil)
+    (equivalence type-eq-decl nil relations nil)
+    (equivalence? const-decl "bool" relations nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (EquivClass const-decl "set[T]" QuotientDefinition nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (set type-eq-decl nil sets nil)
+    (cstack type-eq-decl nil cstack nil)
+    (t formal-nonempty-type-decl nil cstack nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   8978742 13329 t nil))
+ (IMP_stack_stack_push_eta_TCC1 0
+  (IMP_stack_stack_push_eta_TCC1-1 nil 3502583039 3502604619
+   ("" (skolem-typepred)
+    (("" (skolem-typepred)
+      (("" (replace -1 :hide? t)
+        (("" (expand "EquivClass")
+          (("" (apply-extensionality :hide? t)
+            (("1" (expand "lift")
+              (("1" (expand "cnonempty?")
+                (("1" (expand "rep")
+                  (("1" (typepred "choose({z: cstack | ce(x!1, z)})")
+                    (("1"
+                      (name-replace "c1"
+                       "choose({z: cstack | ce(x!1, z)})")
+                      (("1" (expand "cpop")
+                        (("1" (flatten)
+                          (("1" (expand "ce" 1 2)
+                            (("1"
+                              (typepred "choose({z_1: cstack |
+                         c1`size - 1 = z_1`size AND
+                          (FORALL (n: below(c1`size - 1)):
+                             c1`elems(n) = z_1`elems(n))})")
+                              (("1"
+                                (name-replace
+                                 "c3"
+                                 "choose({z_1: cstack |
+                         c1`size - 1 = z_1`size AND
+                          (FORALL (n: below(c1`size - 1)):
+                             c1`elems(n) = z_1`elems(n))})")
+                                (("1"
+                                  (grind :if-match nil)
+                                  (("1"
+                                    (inst -5 "n!1")
+                                    (("1"
+                                      (inst -7 "n!1")
+                                      (("1"
+                                        (assert)
+                                        (("1"
+                                          (inst -3 "n!1")
+                                          (("1"
+                                            (assert)
+                                            (("1"
+                                              (lift-if)
+                                              (("1"
+                                                (prop)
+                                                (("1" (assert) nil nil)
+                                                 ("2"
+                                                  (assert)
+                                                  nil
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil)
+                                           ("2"
+                                            (lift-if)
+                                            (("2" (ground) nil nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil)
+                                   ("2"
+                                    (inst -5 "c3`size")
+                                    (("2"
+                                      (inst -8 "c3`size")
+                                      (("2" (assert) nil nil))
+                                      nil))
+                                    nil)
+                                   ("3"
+                                    (inst -5 "n!1")
+                                    (("3"
+                                      (inst -7 "n!1")
+                                      (("3"
+                                        (assert)
+                                        (("3"
+                                          (inst -3 "n!1")
+                                          (("3" (assert) nil nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil)
+                               ("2"
+                                (expand "nonempty?")
+                                (("2"
+                                  (expand "empty?")
+                                  (("2"
+                                    (expand "member")
+                                    (("2"
+                                      (inst -1 "cpop(c1)")
+                                      (("2"
+                                        (hide-all-but 1)
+                                        (("2" (grind) nil nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil)
+                     ("2" (expand "nonempty?")
+                      (("2" (expand "empty?")
+                        (("2" (expand "member")
+                          (("2" (inst -1 "x!1")
+                            (("2" (expand "ce" 1)
+                              (("2" (propax) nil nil)) nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil)
+             ("2" (grind :if-match nil) nil nil)
+             ("3" (grind :if-match nil)
+              (("3" (inst?)
+                (("3" (assert)
+                  (("3" (typepred "x!2`1")
+                    (("3" (typepred "x!2`2")
+                      (("3" (expand "cnonempty?")
+                        (("3" (flatten)
+                          (("3" (reveal -1) (("3" (assert) nil nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil)
+             ("4" (grind :if-match nil)
+              (("4" (grind)
+                (("4" (apply-extensionality :hide? t) nil nil)) nil))
+              nil)
+             ("5" (expand "EquivClass")
+              (("5" (expand "rep")
+                (("5" (typepred "choose({z: cstack | ce(x!1, z)})")
+                  (("1"
+                    (name-replace "c1"
+                     "choose({z: cstack | ce(x!1, z)})")
+                    (("1" (inst 1 "cpop(c1)")
+                      (("1" (expand "cnonempty?")
+                        (("1" (assert)
+                          (("1" (flatten) (("1" (grind) nil nil)) nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil)
+                   ("2" (hide-all-but 1) (("2" (grind) nil nil)) nil))
+                  nil))
+                nil))
+              nil)
+             ("6" (grind) nil nil)
+             ("7" (expand "EquivClass") (("7" (inst 1 "x!1") nil nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((c1 skolem-const-decl "({z: cstack | ce(x!1, z)})" cstack nil)
+    (x!2 skolem-const-decl "[(cnonempty?), (cnonempty?)]" cstack nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (reflexive_restrict application-judgement "(reflexive?[S])"
+     restrict_order_props nil)
+    (symmetric_restrict application-judgement "(symmetric?[S])"
+     restrict_order_props nil)
+    (transitive_restrict application-judgement "(transitive?[S])"
+     restrict_order_props nil)
+    (equivalence_restrict application-judgement "(equivalence?[S])"
+     restrict_order_props nil)
+    (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
+     sets_lemmas nil)
+    (restrict const-decl "R" restrict nil)
+    (/= const-decl "boolean" notequal nil)
+    (EquivalenceKernel const-decl "equivalence[X1]" KernelDefinition
+     nil)
+    (subset? const-decl "bool" sets nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil) (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (n!1 skolem-const-decl "below(x!1`size)" cstack nil)
+    (c1 skolem-const-decl "({z: cstack | ce(x!1, z)})" cstack nil)
+    (empty? const-decl "bool" sets nil)
+    (member const-decl "bool" sets nil)
+    (choose const-decl "(p)" sets nil)
+    (nonempty? const-decl "bool" sets nil)
+    (x!1 skolem-const-decl "cstack" cstack nil)
+    (Quotient type-eq-decl nil QuotientDefinition nil)
+    (rep const-decl "T" QuotientDefinition nil)
+    (cpop const-decl "cstack" cstack nil)
+    (ctop const-decl "t" cstack nil)
+    (cpush const-decl "(cnonempty?)" cstack nil)
+    (cnonempty? const-decl "bool" cstack nil)
+    (lift const-decl "Y" QuotientExtensionProperties nil)
+    (QuotientSub type-eq-decl nil QuotientSubDefinition nil)
+    (TRUE const-decl "bool" booleans nil)
+    (PreservesEq const-decl "bool" KernelDefinition nil)
+    (estack type-eq-decl nil cstack nil)
+    (ce const-decl "equivalence[cstack]" cstack nil)
+    (equivalence type-eq-decl nil relations nil)
+    (equivalence? const-decl "bool" relations nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (EquivClass const-decl "set[T]" QuotientDefinition nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (set type-eq-decl nil sets nil)
+    (cstack type-eq-decl nil cstack nil)
+    (t formal-nonempty-type-decl nil cstack nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   1283749 3456 t nil))
+ (IMP_stack_stack_top_push_TCC1 0
+  (IMP_stack_stack_top_push_TCC1-1 nil 3502583039 3502605003
+   ("" (skolem-typepred)
+    (("" (skolem-typepred)
+      (("" (replace -1 :hide? t)
+        (("" (expand "lift")
+          (("" (expand "EquivClass")
+            (("" (expand "rep")
+              (("" (typepred "choose({z: cstack | ce(x!1, z)})")
+                (("1"
+                  (name-replace "c1"
+                   "choose({z: cstack | ce(x!1, z)})")
+                  (("1"
+                    (typepred
+                     "choose({z_1: cstack | ce(cpush(push1_var!1)(c1), z_1)})")
+                    (("1"
+                      (name-replace "cp"
+                       "choose({z_1: cstack | ce(cpush(push1_var!1)(c1), z_1)})")
+                      (("1" (expand "ce")
+                        (("1" (flatten)
+                          (("1" (expand "cpush")
+                            (("1" (expand "ctop")
+                              (("1"
+                                (inst -2 "cp`size - 1")
+                                (("1" (assert) nil nil)
+                                 ("2"
+                                  (assert)
+                                  (("2"
+                                    (expand "cpush")
+                                    (("2" (assert) nil nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil)
+                     ("2" (expand "nonempty?")
+                      (("2" (expand "empty?")
+                        (("2" (expand "member")
+                          (("2" (inst -1 "cpush(push1_var!1)(c1)")
+                            (("2" (expand "ce")
+                              (("2" (propax) nil nil)) nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil)
+                 ("2" (hide-all-but 1) (("2" (grind) nil nil)) nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((lift const-decl "Y" QuotientExtensionProperties nil)
+    (rep const-decl "T" QuotientDefinition nil)
+    (member const-decl "bool" sets nil)
+    (empty? const-decl "bool" sets nil)
+    (ctop const-decl "t" cstack nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (push1_var!1 skolem-const-decl "t" cstack nil)
+    (x!1 skolem-const-decl "cstack" cstack nil)
+    (c1 skolem-const-decl "({z: cstack | ce(x!1, z)})" cstack nil)
+    (cp skolem-const-decl
+     "({z_1: cstack | ce(cpush(push1_var!1)(c1), z_1)})" cstack nil)
+    (< const-decl "bool" reals nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (cnonempty? const-decl "bool" cstack nil)
+    (cpush const-decl "(cnonempty?)" cstack nil)
+    (nonempty? const-decl "bool" sets nil)
+    (choose const-decl "(p)" sets nil)
+    (estack type-eq-decl nil cstack nil)
+    (ce const-decl "equivalence[cstack]" cstack nil)
+    (equivalence type-eq-decl nil relations nil)
+    (equivalence? const-decl "bool" relations nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (EquivClass const-decl "set[T]" QuotientDefinition nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (set type-eq-decl nil sets nil)
+    (cstack type-eq-decl nil cstack nil)
+    (t formal-nonempty-type-decl nil cstack nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   362914 444 t nil))
+ (IMP_stack_stack_pop_push_TCC1 0
+  (IMP_stack_stack_pop_push_TCC1-1 nil 3502583039 3502605686
+   ("" (skolem-typepred)
+    (("" (skolem-typepred)
+      (("" (replace -1 :hide? t)
+        (("" (expand "EquivClass")
+          (("" (apply-extensionality :hide? t)
+            (("1" (expand "rep")
+              (("1" (typepred "choose({z: cstack | ce(x!1, z)})")
+                (("1"
+                  (name-replace "c1"
+                   "choose({z: cstack | ce(x!1, z)})")
+                  (("1"
+                    (typepred
+                     "choose({z_1: cstack | ce(cpush(push1_var!1)(c1), z_1)})")
+                    (("1"
+                      (name-replace "cp"
+                       "choose({z_1: cstack | ce(cpush(push1_var!1)(c1), z_1)})")
+                      (("1" (expand "ce")
+                        (("1" (assert)
+                          (("1" (flatten)
+                            (("1" (iff)
+                              (("1"
+                                (ground)
+                                (("1"
+                                  (expand "cpop")
+                                  (("1"
+                                    (expand "cpush")
+                                    (("1" (assert) nil nil))
+                                    nil))
+                                  nil)
+                                 ("2"
+                                  (expand "cpop")
+                                  (("2"
+                                    (expand "cpush")
+                                    (("2"
+                                      (assert)
+                                      (("2"
+                                        (skolem-typepred)
+                                        (("2"
+                                          (assert)
+                                          (("2"
+                                            (inst -3 "n!1")
+                                            (("2"
+                                              (inst -5 "n!1")
+                                              (("2"
+                                                (inst -7 "n!1")
+                                                (("2"
+                                                  (lift-if)
+                                                  (("2"
+                                                    (assert)
+                                                    nil
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil)
+                                 ("3"
+                                  (expand "cpop")
+                                  (("3"
+                                    (expand "cpush")
+                                    (("3" (assert) nil nil))
+                                    nil))
+                                  nil)
+                                 ("4"
+                                  (skolem-typepred)
+                                  (("4"
+                                    (inst -3 "n!1")
+                                    (("1"
+                                      (expand "cpop")
+                                      (("1"
+                                        (expand "cpush")
+                                        (("1"
+                                          (inst -5 "n!1")
+                                          (("1"
+                                            (inst -7 "n!1")
+                                            (("1"
+                                              (lift-if)
+                                              (("1" (assert) nil nil))
+                                              nil)
+                                             ("2" (assert) nil nil))
+                                            nil)
+                                           ("2"
+                                            (expand "cpush")
+                                            (("2" (assert) nil nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil)
+                                     ("2"
+                                      (assert)
+                                      (("2"
+                                        (expand "cpop")
+                                        (("2"
+                                          (expand "cpush")
+                                          (("2" (assert) nil nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil)
+                     ("2" (expand "nonempty?")
+                      (("2" (expand "empty?")
+                        (("2" (expand "member")
+                          (("2" (inst -1 "cpush(push1_var!1)(c1)")
+                            (("2" (expand "ce")
+                              (("2" (propax) nil nil)) nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil)
+                 ("2" (expand "nonempty?")
+                  (("2" (expand "empty?")
+                    (("2" (expand "member")
+                      (("2" (inst -1 "x!1")
+                        (("2" (expand "ce") (("2" (propax) nil nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil)
+             ("2" (expand "cnonempty?")
+              (("2" (expand "rep")
+                (("2" (flatten)
+                  (("2" (typepred "choose({z: cstack | ce(x!1, z)})")
+                    (("1"
+                      (name-replace "c1"
+                       "choose({z: cstack | ce(x!1, z)})")
+                      (("1"
+                        (typepred
+                         "choose({z_1: cstack | ce(cpush(push1_var!1)(c1), z_1)})")
+                        (("1"
+                          (name-replace "cp"
+                           "choose({z_1: cstack | ce(cpush(push1_var!1)(c1), z_1)})")
+                          (("1" (expand "ce")
+                            (("1" (flatten)
+                              (("1"
+                                (assert)
+                                (("1"
+                                  (expand "cpush")
+                                  (("1" (assert) nil nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil)
+                         ("2" (expand "nonempty?")
+                          (("2" (expand "empty?")
+                            (("2" (expand "member")
+                              (("2"
+                                (inst -1 "cpush(push1_var!1)(c1)")
+                                (("2"
+                                  (expand "ce")
+                                  (("2" (propax) nil nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil)
+                     ("2" (hide-all-but 1) (("2" (grind) nil nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil)
+             ("3" (expand "EquivClass")
+              (("3"
+                (inst 1 "cpush(push1_var!1)
+                    (rep[cstack](ce)({z: cstack | ce(x!1, z)}))")
+                (("3" (expand "EquivClass")
+                  (("3" (inst 1 "x!1") nil nil)) nil))
+                nil))
+              nil)
+             ("4" (expand "EquivClass") (("4" (inst 1 "x!1") nil nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((member const-decl "bool" sets nil)
+    (empty? const-decl "bool" sets nil)
+    (n!1 skolem-const-decl "below(cpop(cp)`size)" cstack nil)
+    (cp skolem-const-decl
+     "({z_1: cstack | ce(cpush(push1_var!1)(c1), z_1)})" cstack nil)
+    (c1 skolem-const-decl "({z: cstack | ce(x!1, z)})" cstack nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (< const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (choose const-decl "(p)" sets nil)
+    (nonempty? const-decl "bool" sets nil)
+    (x!1 skolem-const-decl "cstack" cstack nil)
+    (rep const-decl "T" QuotientDefinition nil)
+    (Quotient type-eq-decl nil QuotientDefinition nil)
+    (push1_var!1 skolem-const-decl "t" cstack nil)
+    (cpush const-decl "(cnonempty?)" cstack nil)
+    (cnonempty? const-decl "bool" cstack nil)
+    (cpop const-decl "cstack" cstack nil)
+    (estack type-eq-decl nil cstack nil)
+    (ce const-decl "equivalence[cstack]" cstack nil)
+    (equivalence type-eq-decl nil relations nil)
+    (equivalence? const-decl "bool" relations nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (EquivClass const-decl "set[T]" QuotientDefinition nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (set type-eq-decl nil sets nil)
+    (cstack type-eq-decl nil cstack nil)
+    (t formal-nonempty-type-decl nil cstack nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   668543 1002 t nil))
+ (IMP_stack_stack_inclusive_TCC1 0
+  (IMP_stack_stack_inclusive_TCC1-1 nil 3502583039 3502586044
+   ("" (mapped-axiom-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (t formal-nonempty-type-decl nil cstack nil)
+    (cstack type-eq-decl nil cstack nil)
+    (set type-eq-decl nil sets nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (EquivClass const-decl "set[T]" QuotientDefinition nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (equivalence? const-decl "bool" relations nil)
+    (equivalence type-eq-decl nil relations nil)
+    (ce const-decl "equivalence[cstack]" cstack nil)
+    (estack type-eq-decl nil cstack nil)
+    (rep const-decl "T" QuotientDefinition nil)
+    (cempty? const-decl "bool" cstack nil)
+    (lift const-decl "Y" QuotientExtensionProperties nil)
+    (/= const-decl "boolean" notequal nil)
+    (cnonempty? const-decl "bool" cstack nil))
+   119 78 nil nil))
+ (IMP_stack_stack_induction_TCC1 0
+  (IMP_stack_stack_induction_TCC1-1 nil 3502583039 3502672076
+   ("" (skolem-typepred)
+    (("" (flatten)
+      (("" (measure-induct+ "stack_var`size" ("stack_var"))
+        (("" (case "x!1`size = 0")
+          (("1" (hide -2 -4)
+            (("1" (expand "EquivClass")
+              (("1" (expand "rep")
+                (("1" (typepred "x!1")
+                  (("1" (skolem-typepred)
+                    (("1" (expand "EquivClass")
+                      (("1" (replace -1 :hide? t)
+                        (("1"
+                          (typepred "choose({z: cstack | ce(x!2, z)})")
+                          (("1" (expand "ce" -1 1)
+                            (("1" (replace -2)
+                              (("1"
+                                (flatten)
+                                (("1"
+                                  (case-replace
+                                   "{z: cstack | ce(cempty, z)} = {z: cstack | ce(x!2, z)}")
+                                  (("1"
+                                    (hide -2 -3 -4 2)
+                                    (("1"
+                                      (apply-extensionality :hide? t)
+                                      (("1"
+                                        (expand "ce")
+                                        (("1"
+                                          (iff)
+                                          (("1"
+                                            (ground)
+                                            (("1"
+                                              (expand "cempty")
+                                              (("1" (assert) nil nil))
+                                              nil)
+                                             ("2"
+                                              (expand "cempty")
+                                              (("2"
+                                                (assert)
+                                                (("2"
+                                                  (skolem-typepred)
+                                                  nil
+                                                  nil))
+                                                nil))
+                                              nil)
+                                             ("3"
+                                              (expand "cempty")
+                                              (("3" (assert) nil nil))
+                                              nil)
+                                             ("4"
+                                              (skolem-typepred)
+                                              (("4"
+                                                (expand "cempty")
+                                                (("4"
+                                                  (assert)
+                                                  nil
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil)
+                           ("2" (expand "nonempty?")
+                            (("2" (expand "empty?")
+                              (("2"
+                                (expand "member")
+                                (("2"
+                                  (inst -1 "x!2")
+                                  (("2"
+                                    (expand "ce")
+                                    (("2" (propax) nil nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil)
+           ("2" (expand "rep")
+            (("2" (hide -2)
+              (("2" (inst -2 "ctop(x!1)" "cpop(x!1)")
+                (("1" (prop)
+                  (("1" (expand "EquivClass")
+                    (("1" (typepred "x!1")
+                      (("1" (skolem-typepred)
+                        (("1" (expand "EquivClass")
+                          (("1" (replace -1 :hide? t)
+                            (("1" (expand "rep")
+                              (("1"
+                                (typepred
+                                 "choose({z: cstack | ce(x!2, z)})")
+                                (("1"
+                                  (name-replace
+                                   "c2"
+                                   "choose({z: cstack | ce(x!2, z)})")
+                                  (("1"
+                                    (typepred
+                                     "choose({z: cstack | ce(cpop(c2), z)})")
+                                    (("1"
+                                      (name-replace
+                                       "cp"
+                                       "choose({z: cstack | ce(cpop(c2), z)})")
+                                      (("1"
+                                        (expand "ctop")
+                                        (("1"
+                                          (expand "cpop")
+                                          (("1"
+                                            (case-replace
+                                             "{z_1: cstack | ce(cpush(c2`elems(c2`size - 1))(cp), z_1)}
+= {z: cstack | ce(x!2, z)}")
+                                            (("1"
+                                              (apply-extensionality
+                                               :hide?
+                                               t)
+                                              (("1"
+                                                (expand "ce" 1)
+                                                (("1"
+                                                  (iff)
+                                                  (("1"
+                                                    (prop)
+                                                    (("1"
+                                                      (expand
+                                                       "cpush"
+                                                       -1)
+                                                      (("1"
+                                                        (assert
+                                                         :flush?
+                                                         t)
+                                                        (("1"
+                                                          (expand
+                                                           "ce"
+                                                           -4)
+                                                          (("1"
+                                                            (flatten)
+                                                            (("1"
+                                                              (assert
+                                                               :flush?
+                                                               t)
+                                                              (("1"
+                                                                (expand
+                                                                 "ce"
+                                                                 -3)
+                                                                (("1"
+                                                                  (propax)
+                                                                  nil
+                                                                  nil))
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil)
+                                                     ("2"
+                                                      (skolem-typepred)
+                                                      (("2"
+                                                        (inst -3 "n!1")
+                                                        (("1"
+                                                          (assert
+                                                           :flush?
+                                                           t)
+                                                          (("1"
+                                                            (expand
+                                                             "cpush"
+                                                             -3)
+                                                            (("1"
+                                                              (assert)
+                                                              (("1"
+                                                                (lift-if)
+                                                                (("1"
+                                                                  (prop)
+                                                                  (("1"
+                                                                    (assert)
+                                                                    (("1"
+                                                                      (grind)
+                                                                      nil
+                                                                      nil))
+                                                                    nil)
+                                                                   ("2"
+                                                                    (grind)
+                                                                    nil
+                                                                    nil))
+                                                                  nil))
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil)
+                                                         ("2"
+                                                          (grind)
+                                                          nil
+                                                          nil))
+                                                        nil))
+                                                      nil)
+                                                     ("3"
+                                                      (grind)
+                                                      nil
+                                                      nil)
+                                                     ("4"
+                                                      (skolem-typepred)
+                                                      (("4"
+                                                        (expand
+                                                         "cpush"
+                                                         1)
+                                                        (("4"
+                                                          (lift-if)
+                                                          (("4"
+                                                            (assert)
+                                                            (("4"
+                                                              (expand
+                                                               "cpush"
+                                                               -1)
+                                                              (("4"
+                                                                (assert)
+                                                                (("4"
+                                                                  (prop)
+                                                                  (("1"
+                                                                    (assert)
+                                                                    (("1"
+                                                                      (grind)
+                                                                      nil
+                                                                      nil))
+                                                                    nil)
+                                                                   ("2"
+                                                                    (grind)
+                                                                    nil
+                                                                    nil))
+                                                                  nil))
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil)
+                                             ("2" (grind) nil nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil)
+                                     ("2"
+                                      (expand "nonempty?")
+                                      (("2"
+                                        (expand "empty?")
+                                        (("2"
+                                          (expand "member")
+                                          (("2"
+                                            (inst -1 "cpop(c2)")
+                                            (("1"
+                                              (expand "ce" 1)
+                                              (("1" (propax) nil nil))
+                                              nil)
+                                             ("2"
+                                              (expand "cnonempty?")
+                                              (("2" (assert) nil nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil)
+                                     ("3"
+                                      (expand "cnonempty?")
+                                      (("3" (assert) nil nil))
+                                      nil))
+                                    nil))
+                                  nil)
+                                 ("2"
+                                  (expand "nonempty?")
+                                  (("2"
+                                    (expand "empty?")
+                                    (("2"
+                                      (expand "member")
+                                      (("2"
+                                        (inst -1 "x!2")
+                                        (("2"
+                                          (expand "ce" 1)
+                                          (("2" (propax) nil nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil)
+                   ("2" (inst -1 "cpop(rep[cstack](ce)(x!1))")
+                    (("2" (assert)
+                      (("2" (hide 1 4)
+                        (("2" (expand "EquivClass")
+                          (("2" (expand "rep")
+                            (("2"
+                              (typepred
+                               "choose({z: cstack | ce(cpop(choose(x!1)), z)})")
+                              (("1"
+                                (name-replace
+                                 "cp"
+                                 "choose({z: cstack | ce(cpop(choose(x!1)), z)})")
+                                (("1"
+                                  (expand "ce")
+                                  (("1"
+                                    (flatten)
+                                    (("1"
+                                      (expand "cpop")
+                                      (("1" (assert) nil nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil)
+                               ("2"
+                                (expand "nonempty?")
+                                (("2"
+                                  (expand "empty?")
+                                  (("2"
+                                    (expand "member")
+                                    (("2"
+                                      (inst
+                                       -1
+                                       "cpop(choose[cstack](x!1))")
+                                      (("1"
+                                        (expand "ce" 1)
+                                        (("1" (propax) nil nil))
+                                        nil)
+                                       ("2"
+                                        (expand "cnonempty?")
+                                        (("2" (assert) nil nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil)
+                               ("3"
+                                (expand "cnonempty?")
+                                (("3" (assert) nil nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil)
+                 ("2" (inst 1 "cpop(rep[cstack](ce)(x!1))")
+                  (("2" (expand "cnonempty?")
+                    (("2" (expand "rep") (("2" (assert) nil nil)) nil))
+                    nil))
+                  nil)
+                 ("3" (expand "rep")
+                  (("3" (expand "cnonempty?") (("3" (assert) nil nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((NOT const-decl "[bool -> bool]" booleans nil)
+    (nonempty? const-decl "bool" sets nil)
+    (choose const-decl "(p)" sets nil)
+    (cempty const-decl "(cempty?)" cstack nil)
+    (cempty? const-decl "bool" cstack nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (empty? const-decl "bool" sets nil)
+    (member const-decl "bool" sets nil)
+    (c2 skolem-const-decl "({z: cstack | ce(x!2, z)})" cstack nil)
+    (x!2 skolem-const-decl "cstack" cstack nil)
+    (n!1 skolem-const-decl
+     "below(cpush(c2`elems(c2`size - 1))(cp)`size)" cstack nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (cp skolem-const-decl "({z: cstack | ce(cpop(c2), z)})" cstack nil)
+    (n!1 skolem-const-decl "below(x!2`size)" cstack nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (cpush const-decl "(cnonempty?)" cstack nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (ctop const-decl "t" cstack nil)
+    (cpop const-decl "cstack" cstack nil)
+    (x!1 skolem-const-decl "estack" cstack nil)
+    (cnonempty? const-decl "bool" cstack nil)
+    (wf_nat formula-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
+    (rep const-decl "T" QuotientDefinition nil)
+    (Quotient type-eq-decl nil QuotientDefinition nil)
+    (naturalnumber type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (estack type-eq-decl nil cstack nil)
+    (ce const-decl "equivalence[cstack]" cstack nil)
+    (equivalence type-eq-decl nil relations nil)
+    (equivalence? const-decl "bool" relations nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (EquivClass const-decl "set[T]" QuotientDefinition nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (set type-eq-decl nil sets nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (cstack type-eq-decl nil cstack nil)
+    (t formal-nonempty-type-decl nil cstack nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (measure_induction formula-decl nil measure_induction nil)
+    (well_founded? const-decl "bool" orders nil)
+    (pred type-eq-decl nil defined_types nil))
+   37562121 4564 t nil)))
+

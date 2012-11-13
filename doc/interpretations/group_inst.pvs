@@ -1,0 +1,5 @@
+group_inst: THEORY
+BEGIN
+ importing group{{ G := int, + := +, 0 := 0, - := - }}
+ importing group{{ G := nzreal, + := *, 0 := 1, -(x: nzreal) := 1/x }}
+END group_inst

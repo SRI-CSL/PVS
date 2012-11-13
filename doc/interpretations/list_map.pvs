@@ -1,0 +1,17 @@
+list_map: THEORY
+BEGIN
+ IMPORTING astack[int]
+ 
+ IMPORTING list[int]{{list := stack,
+                      null := (# size := 0,
+                                 elems := lambda (x: below(0)): 0 #),
+                      null? := empty?,
+                      cons := push,
+                      cons? := nonempty?,
+                      car := top,
+                      cdr := lambda (S: nonempty_stack):
+                               S WITH [`size := S`size-1,
+                                       `elems := lambda (x: below(S`size-1)):
+                                                   S`elems(x)]
+                    }}
+end list_map

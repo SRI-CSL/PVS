@@ -1,0 +1,12 @@
+astack [T: TYPE]: THEORY
+ BEGIN
+  stack : TYPE = [# size : nat, elems: [below(size) -> T] #]
+  empty?(S: stack): bool = (S`size = 0)
+  nonempty?(S: stack): bool = NOT empty?(S)
+  nonempty_stack: TYPE = (nonempty?)
+  top(S: nonempty_stack): T = S`elems(S`size - 1)
+  push(a: T, S: stack): nonempty_stack = 
+    S WITH [`size := S`size + 1,
+            `elems := lambda (x: below(S`size+1)):
+                        if x = S`size then a else S`elems(x) endif]
+  END astack

@@ -1,0 +1,59 @@
+monad: THEORY
+ BEGIN
+
+ m[a: TYPE]: TYPE
+
+ return[a: TYPE]: [a -> m[a]];
+
+ >>=[a, b: TYPE](x: m[a], f: [a -> m[b]]): m[b] % infix
+% >>=[a, b: TYPE](x: m[a])(f: [a -> m[b]]): m[b] = x >>= f; % Curried
+
+ >>[a, b: TYPE](x: m[a])(y: m[b]): m[b] = x >>= (lambda (z: a): y);
+
+ % join :: Monad m => m (m a) -> m a
+ % join x = x >>= id
+
+ join[a: TYPE](x: m[m[a]]): m[a] = x >>= id[m[a]]
+
+ bind_return[a, b: TYPE]: AXIOM
+   FORALL (x: a, f: [a -> m[b]]): (return[a](x) >>= f) = f(x)
+
+ bind_ret2[a: TYPE]: AXIOM
+   FORALL (x: m[a]): (x >>= return[a]) = x
+
+END monad
+
+Maybe[a: type]: datatype
+begin
+  Nothing: Nothing?
+  Just(Val: a): Just?
+end Maybe
+   
+% instance Monad Maybe where
+%   return = Just
+%   (Just x) >>= g = g x
+%   Nothing  >>= _ = Nothing
+
+maybe: THEORY
+BEGIN
+ importing Maybe
+
+ bind[a, b: type](x:Maybe[a])(f: [a -> Maybe[b]]): Maybe[b]
+   = cases x of Nothing: Nothing, Just(y): f(y) endcases
+
+ maybe: THEORY =  monad{{m[a: type] := Maybe[a],
+                  return[a: type] := Just[a],
+                  >>=[a, b: type](x:Maybe[a], f: [a -> Maybe[b]])
+                         := cases x of Nothing: Nothing, Just(y): f(y) endcases
+                 }}
+
+  f(x: int): Maybe[int] = if rem(2)(x) = 0 then Nothing else Just(2 * x) endif
+
+  g(x: int): Maybe[int] = if rem(3)(x) = 0 then Nothing else Just(3 * x) endif
+
+  h(x: int): Maybe[int] = if rem(5)(x) = 0 then Nothing else Just(5 * x) endif
+
+  k(x: int): Maybe[int] = f(x) >>= g >>= h
+              % bind(bind(f(x))(g))(h)
+ 
+end maybe

@@ -1,0 +1,35 @@
+  Z : THEORY
+  BEGIN
+    t : TYPE
+    e1 : t
+    e2 : t
+    i1 : int
+    i2 : int
+
+    iequal : AXIOM i1 = i2
+  END Z
+
+  ZRef1 : THEORY
+  BEGIN
+    f : [int -> bool]
+
+    ZInt1 : THEORY = Z{{t := bool, e1 := true, e2 := false}}
+%    ZInt1 : THEORY = Z{{t := bool, e1 := f(0), e2 := f(1)}}
+  END ZRef1
+
+  ZRef1a : THEORY
+  BEGIN
+    % a)
+%    ZInt1ba : THEORY = ZRef1{{f ::= k, ZInt1 := Z}}
+    ZInt1b : THEORY = ZRef1{{f ::= k, ZInt1 ::= tt}}
+
+    % b)
+    ZInt1c : THEORY = ZRef1{{f ::= k, ZInt1 ::= Z1}}
+
+    % c)
+    ZInt1d : THEORY = ZRef1{{f ::= eval?}}
+
+    % d)
+    Z2 : THEORY = Z
+    ZInt1e : THEORY = ZRef1{{ZInt1 := Z}}
+  END ZRef1a

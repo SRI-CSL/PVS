@@ -1,0 +1,30 @@
+cstack[t: TYPE+]: THEORY
+ BEGIN
+  cstack: TYPE = [# size: nat, elems: [nat -> t] #]
+  cempty?(s: cstack): bool = (s`size = 0)
+  some_t: t = epsilon(LAMBDA (x:t): true)
+  cempty: (cempty?) =
+    (# size := 0,
+       elems := LAMBDA (n: nat): some_t #)
+  cnonempty?(s: cstack): bool = (s`size /= 0)
+  ctop(s: (cnonempty?)): t = s`elems(s`size - 1)
+  cpop(s: (cnonempty?)): cstack = s WITH [`size := s`size - 1]
+  cpush(x: t)(s: cstack): (cnonempty?) =
+    (# size := s`size + 1,
+       elems := s`elems WITH [(s`size) := x] #)
+  ce: equivalence[cstack] =
+    LAMBDA (s1, s2: cstack):
+     s1`size = s2`size AND
+     FORALL (n: below(s1`size)): s1`elems(n) = s2`elems(n)
+
+  estack: TYPE = Quotient(ce)
+  CONVERSION- singleton, singleton_elt
+  CONVERSION+ EquivClass(ce), rep(ce), lift(ce)
+  IMPORTING stack[t]{{ stack := estack,
+                       empty? := cempty?,
+                       nonempty? := cnonempty?,
+                       empty := cempty,
+                       top(s: (cnonempty?)) := ctop(s),
+                       pop(s: (cnonempty?)) := cpop(s),
+                       push(x: t, s: cstack) := cpush(x)(s) }}
+ END cstack
