@@ -1174,8 +1174,9 @@
 			  (if unint
 			      (unless *collecting-tccs*
 				(pvs-warning
-				    "Axiom ~a is not a TCC because '~a' is not interpreted"
-				  (id axiom) (id unint)))
+				    "Axiom ~a is not a TCC because~%  ~?~% ~
+                                     ~:[is~;are~] not interpreted."
+				  (id axiom) *andusingctl* unint (cdr unint)))
 			      (insert-tcc-decl 'mapped-axiom modinst axiom ndecl)))
 			(if ndecl
 			    (add-tcc-comment
@@ -1223,9 +1224,9 @@
 
 (defun find-uninterpreted (expr thinst theory mappings-alist)
   (declare (ignore thinst theory mappings-alist))
-  (let ((foundit nil))
+  (let ((needs-interp nil))
     (mapobject #'(lambda (ex)
-		   (or foundit
+		   (or (member ex needs-interp :test #'tc-eq)
 		       (prelude-interpreted-type ex)
 		       (and (name-expr? ex)
 			    (resolution ex)
@@ -1234,13 +1235,14 @@
 				  '(|booleans| |equalities| |if_def|
 				    |number_fields| |reals|
 				    |character_adt|)))
-		       (when (and (name? ex)
-				  (declaration? (declaration ex))
-				  (not (eq (module (declaration ex)) (current-theory)))
-				  (interpretable? (declaration ex)))
-			 (setq foundit ex))))
+		       (let ((decl (when (name? ex) (declaration ex))))
+			 (when (and (declaration? decl)
+				    (not (eq (module decl) (current-theory)))
+				    (eq (module decl) theory)
+				    (interpretable? decl))
+			   (push ex needs-interp)))))
 	       expr)
-    foundit))
+    needs-interp))
 
 (defmethod nonempty-formula-type ((decl formula-decl))
   (nonempty-formula-type (definition decl)))
