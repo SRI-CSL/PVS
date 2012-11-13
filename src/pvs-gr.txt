@@ -45,20 +45,32 @@ Operators
 	'<'  '<='  '>'  '>=' '{' '}' '[' ']' '.' '&' '<=>'
 	'->' ':' '=>' '[#' '#]' '(#' '#)' '(:' ':)' '{:' ':}' '{{' '}}' '|'
         '^' '/\\' '\\/' '<>' '~' '==' '++' '**' '//' '^^' % '[]'
-	'<<' '>>' '::' '#' '@' '@@' '##' '[|' '|]' '(|' '|)' '{|' '|}'
-        '|[' ']|' '!'
-        '<<=' '>>=' '`' '\'' '..'
-	'[||]' '(||)' '{||}' '||' '|-' '|=' '<|' '|>' ':->' % '<:'
-	%% % unicode operators
-	'□' '◇' '∧' '∨' '¬' '≤' '≥' '≪' '≫' '∈' '±' '∓' '∋' '→' '∩' '∪' '÷'
-        '⇔' '◁' '▷' '⋈' '∘' '≅' '≙'
-
-	'«' '»' '«»' '≦' '≧' '←' '≨' '≩' '≰' '≱' '≯' '≁' '⊙' '⊥' '≺' '≻'
-	'√' '⊩' '≍' '⊣' '≐' '≡' '⌈' '⌉' '∇' '≇' '≮' '∉' '⊕' '≃' '⊓' '⊔'
-	'×' '⊎' '≎' '≈' '⋂' '⋃' '⋁' '⋀' '⋈' '•' '≏' '≗' '〈' '〉' '⌊' '⌋'
+	'<<' '>>' '::' '#' '@' '@@' '##' '|[' ']|' '!'
+        '<<=' '>>=' '`' '\'' '..' '||' '|-' '|=' '<|' '|>' ':->' % '<:'
+        %% Bracketing operators 
+	'[|' '|]' '[||]' '(|' '|)' '(||)' '{|' '|}' '{||}'
+        %% Unicode bracketing operators (TeX input method map shown)
+	'〈' '〉' '〈〉'    % \langle \rangle
+        '〚' '〛' '〚〛' % \llbracket \rrbracket
+        '«' '»' '«»'    % \"< \">
+        '《' '》' '《》' % \ldata \rdata
+        '⌈' '⌉' '⌈⌉'    % \lceil \rceil
+        '⌊' '⌋' '⌊⌋'    % \lfloor \rfloor
+        % '∣' '∥' don't work - start and end must be distinct
+        %% Unicode prefix operators
+        '□' '◇' '¬' % \Box \Diamond \lnot
+	%% Unicode infix operators
+	 '∧' '∨' % \vee \wedge 
+        '≤' '≥' '≪' '≫' '∈' %
+        '±' '∓' '∋' '→' '÷'
+        '∩' '∪' '⇔' '◁' '▷'
+        '⋈' '∘' '≅' '≙' '⋂' '⋃'
+	'≦' '≧' '←' '≨' '≩' '≰' '≱' '≯' '≁' '⊙' '⊥' '≺' '≻'
+	'√' '⊩' '≍' '⊣' '≐' '≡' '∇' '≇' '≮' '∉' '⊕' '≃' '⊓' '⊔'
+	'×' '⊎' '≎' '≈' '⋂' '⋃' '⋁' '⋀' '⋈' '•' '≏' '≗' 
 	'↦' '⊖' '⊘' '⊗' '⊂' '⊃' '⇑' '◯' '★' '⊞' '∔' '↝' '✠' '≉' '∄' '⊄'
 	'⊅' '↑' '⊟' '⊠' '⌞' '⌟' '⌜' '⌝' '⊏' '⊐' '⊆' '⊇' '⇓' '⇐' '↓' '↑'
-	'←' '→' '〚' '〛' '⊛' '↦' '〈' '〉' '〈〉'
+	'←' '→'  '⊛' '↦'
 
 Lexical Terminals
 	id, number, string %, literal
@@ -104,6 +116,7 @@ Precedence Information
 	'^' medial left, '^^' medial left
 	'`' medial left
 	jux medial left  % application
+
 
 adt-or-theories	::= {adt-or-theory+} <adt-or-modules(adt-or-theory+)>;
 
@@ -391,18 +404,13 @@ dep-type-expr ::= type-expr
 
 
 %% Expressions
+%% It would be nice to pull out, e.g., the infix ops, but this leads to
+%% errors because the precedence can't easily be provided
 
 expr ::= string <string-expr(string)>
        | name <name-expr(name)>
-       | {'(:' {expr ** ','} ':)'} <list-expr(expr*)>
-       | {'[|' {expr ** ','} '|]'} <brack-expr(expr*)>
-       | {'(|' {expr ** ','} '|)'} <paren-vbar-expr(expr*)>
-       | {'{|' {expr ** ','} '|}'} <brace-vbar-expr(expr*)>
-       | {'〈' {expr ** ','} '〉'} <angle-brace-expr(expr*)>
-       | {'〚' {expr ** ','} '〛'} <white-sqbracket-expr(expr*)>
-       | {'«' {expr ** ','} '»'} <dangle-brace-expr(expr*)>
+       | bracket-expr
        | {'(#' {assignment ++ ','} '#)'} <rec-expr(assignments(assignment+))>
-       | {'(' {expr ** ','} ')'} <tuple-expr(expr*)>
        | {'`' {id | number} [actuals]} <{fieldex(id,[noactuals()|actuals])
                                         |projex(number,[noactuals()|actuals])}>
        | {expr '`' {id | number}} <{fieldappl(expr,id)|projappl(expr,number)}>
@@ -492,6 +500,23 @@ expr ::= string <string-expr(string)>
 	  <cond-expr(args(cond-case+),[noelse()|expr^e])>
        | table-expr
        ;
+
+bracket-expr ::= {'(' {expr ** ','} ')'} <tuple-expr(expr*)>
+               | {'(:' {expr ** ','} ':)'} <list-expr(expr*)>
+               | {'[|' {expr ** ','} '|]'} <bracket-expr(\[\|\|\](), btup(expr*))>
+               | {'(|' {expr ** ','} '|)'} <bracket-expr(\(\|\|\)(), btup(expr*))>
+               | {'{|' {expr ** ','} '|}'} <bracket-expr(\{\|\|\}(), btup(expr*))>
+               | {'〈' {expr ** ','} '〉'} <bracket-expr(〈〉(), btup(expr*))>
+ 	       | {'〚' {expr ** ','} '〛'} <bracket-expr(〚〛(), btup(expr*))>
+	       | {'«' {expr ** ','} '»'} <bracket-expr(«»(), btup(expr*))>
+	       | {'《' {expr ** ','} '》'} <bracket-expr(《》(), btup(expr*))>
+	       | {'⌈' {expr ** ','} '⌉'} <bracket-expr(⌈⌉(), btup(expr*))>
+	       | {'⌊' {expr ** ','} '⌋'} <bracket-expr(⌊⌋(), btup(expr*))>
+               % Following not easily done in Ergo
+	       % | {'∣' {expr ** ','} '∣'} <abs-brace-expr(expr*)>
+	       % | {'∥' {expr ** ','} '∥'} <par-brace-expr(expr*)>
+	       ;
+
 
 set-expr ::= {'{' set-formals '|' expr '}'} <set-expr(set-formals,expr)>
            | {'{:' expr**',' ':}'} <set-list-expr(expr*)>;
