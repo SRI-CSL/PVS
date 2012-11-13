@@ -1,0 +1,20 @@
+list2: datatype
+begin
+ null: null?
+ cons(car: int, cdr: list2): cons?
+end list2
+
+list2stack: THEORY
+BEGIN
+ % Should work for list2_adt, list2, list_adt[int], list[int],
+ %   list_adt[T], and list[T]
+ intstack: THEORY = list_adt[int]{{list:TYPE ::= stack,
+                 null ::= empty,
+                 null? ::= empty?,
+                 cons ::= push,
+                 cons? ::= nonempty?,
+                 car ::= top,
+                 cdr ::= pop}}
+
+ push2pop2: LEMMA empty?(pop(push(1, empty)))
+END list2stack

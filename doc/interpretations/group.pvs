@@ -1,0 +1,12 @@
+group: THEORY
+ BEGIN
+  G: TYPE+
+  +: [G, G -> G]
+  0: G
+  -: [G -> G]
+  x, y, z: VAR G
+  associative_ax: AXIOM FORALL x, y, z: x + (y + z) = (x + y) + z
+  identity_ax: AXIOM FORALL x: x + 0 = x
+  inverse_ax: AXIOM FORALL x: x + -x = 0 AND -x + x = 0
+  idempotent_is_identity: LEMMA x + x = x => x = 0
+ END group

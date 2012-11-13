@@ -1,0 +1,13 @@
+mix: theory
+begin
+ t1, t2: type
+ c11, c12: t1
+ c2: t2
+ diff: axiom c11 /= c12
+end mix
+
+umix: theory
+begin
+ mixm: theory = mix{{t1 := int, t2 ::= myt, c11 ::= 0, c12 := 1, c2 ::= myc}}
+end umix
+

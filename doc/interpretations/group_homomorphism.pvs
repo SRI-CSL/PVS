@@ -1,0 +1,60 @@
+group_homomorphism[G1, G2: THEORY group]: THEORY
+ BEGIN
+  x, y: VAR G1.G
+  f: VAR [G1.G -> G2.G]
+  homomorphism?(f): bool = FORALL x, y: f(x + y) = f(x) + f(y)
+  hom_exists: LEMMA EXISTS f: homomorphism?(f)
+ END group_homomorphism
+
+group_homomorphism_d: THEORY
+ BEGIN
+  G1, G2: THEORY = group
+  x, y: VAR G1.G
+  f: VAR [G1.G -> G2.G]
+  homomorphism?(f): bool = FORALL x, y: f(x + y) = f(x) + f(y)
+  hom_exists: LEMMA EXISTS f: homomorphism?(f)
+
+%  oops: LEMMA G1.0 = G2.0
+ END group_homomorphism_d
+
+gh: THEORY
+BEGIN
+ IMPORTING group_homomorphism[group{{G := int, + := +, 0 := 0, - := -}},
+                              group{{G := nzreal, + := *, 0 := 1,
+                                     - := LAMBDA (x: nzreal): 1/x}}]
+ h: (homomorphism?)
+END gh
+
+gh_d: THEORY
+BEGIN
+ IMPORTING group_homomorphism_d{{G1 := group{{G := int, + := +,
+                                              0 := 0, - := -}},
+ 	                         G2 := group{{G := nzreal, + := *, 0 := 1,
+                                              -(x: nzreal) := 1/x}}
+                               }}
+  oops: LEMMA G1.0 = G2.0
+END gh_d
+
+gh_d_d: THEORY
+BEGIN
+ gh: THEORY = group_homomorphism_d{{G1 := group{{G := int, + := +,
+                                              0 := 0, - := -}},
+ 	                         G2 := group{{G := nzreal, + := *, 0 := 1,
+                                              -(x: nzreal) := 1/x}}
+                               }}
+ END gh_d_d
+
+group_inst1: THEORY
+BEGIN
+ G1: THEORY = group{{G := int, + := +, 0 := 0, - := -}}
+END group_inst1
+
+group_inst2: THEORY
+BEGIN
+ G3: THEORY = group{{G ::= MG, + ::= *, 0 ::= 1, - ::= inv}}
+END group_inst2
+
+group_inst3: THEORY
+BEGIN
+ G4: THEORY = group{{G := nzreal, + := *, 0 ::= one}}
+END group_inst3

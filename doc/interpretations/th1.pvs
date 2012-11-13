@@ -1,0 +1,17 @@
+th1[T: TYPE, e: T]: THEORY
+ BEGIN
+  t: TYPE+
+  c: t
+  f: [t -> T]
+  ax: AXIOM EXISTS (x, y: t): f(x) /= f(y)
+  lem1: LEMMA EXISTS (x:T): x /= e
+ END th1
+
+th2: THEORY
+ BEGIN
+  IMPORTING th1[int, 0]
+               {{ t := bool,
+                  c := true,
+                  f(x: bool) := IF x THEN 1 ELSE 0 ENDIF }}
+  lem2: LEMMA EXISTS (x:int): x /= 0
+ END th2

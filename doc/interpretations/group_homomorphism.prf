@@ -1,0 +1,40 @@
+(group_homomorphism)
+(group_homomorphism_d)
+(gh)
+(gh_d
+ (IMP_group_homomorphism_d_G1.associative_ax_TCC1 0
+  (IMP_group_homomorphism_d_G1.associative_ax_TCC1-1 nil 3502912964 nil
+   ("" (mapped-axiom-tcc) nil nil) nil nil nil nil nil nil))
+ (IMP_group_homomorphism_d_G1.identity_ax_TCC1 0
+  (IMP_group_homomorphism_d_G1.identity_ax_TCC1-1 nil 3502912964 nil
+   ("" (mapped-axiom-tcc) nil nil) nil nil nil nil nil nil))
+ (IMP_group_homomorphism_d_G1.inverse_ax_TCC1 0
+  (IMP_group_homomorphism_d_G1.inverse_ax_TCC1-1 nil 3502912964 nil
+   ("" (mapped-axiom-tcc) nil nil) nil nil nil nil nil nil))
+ (IMP_group_homomorphism_d_G2.associative_ax_TCC1 0
+  (IMP_group_homomorphism_d_G2.associative_ax_TCC1-1 nil 3502912964 nil
+   ("" (mapped-axiom-tcc) nil nil) nil nil nil nil nil nil))
+ (IMP_group_homomorphism_d_G2.identity_ax_TCC1 0
+  (IMP_group_homomorphism_d_G2.identity_ax_TCC1-1 nil 3502912964 nil
+   ("" (mapped-axiom-tcc) nil nil) nil nil nil nil nil nil))
+ (IMP_group_homomorphism_d_G2.inverse_ax_TCC1 0
+  (IMP_group_homomorphism_d_G2.inverse_ax_TCC1-1 nil 3502912964 nil
+   ("" (mapped-axiom-tcc) nil nil) nil nil nil nil nil nil))
+ (oops 0
+  (oops-1 nil 3502912983 3502914461
+   ("" (expand "G1.0")
+    (("" (expand "G2.0") (("" (assert) (("" (postpone) nil nil)) nil))
+      nil))
+    nil)
+   unfinished nil 1103008 28 t shostak)))
+(group_insts
+ (G1_associative_ax_TCC1 0
+  (G1_associative_ax_TCC1-1 nil 3502912967 nil
+   ("" (mapped-axiom-tcc) nil nil) nil nil nil nil nil nil))
+ (G1_identity_ax_TCC1 0
+  (G1_identity_ax_TCC1-1 nil 3502912967 nil
+   ("" (mapped-axiom-tcc) nil nil) nil nil nil nil nil nil))
+ (G1_inverse_ax_TCC1 0
+  (G1_inverse_ax_TCC1-1 nil 3502912967 nil
+   ("" (mapped-axiom-tcc) nil nil) nil nil nil nil nil nil)))
+

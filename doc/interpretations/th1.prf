@@ -1,0 +1,38 @@
+(th1
+ (lem1 0
+  (lem1-1 nil 3502130706 3502130824
+   ("" (use "ax")
+    (("" (skosimp)
+      (("" (inst-cp 2 "f(x!1)")
+        (("" (inst 2 "f(y!1)") (("" (assert) nil nil)) nil)) nil))
+      nil))
+    nil)
+   proved
+   ((f const-decl "[t -> T]" th1 nil)
+    (t nonempty-type-decl nil th1 nil) (T formal-type-decl nil th1 nil)
+    (ax formula-decl nil th1 nil))
+   117556 78 t shostak)))
+(th2
+ (IMP_th1_ax_TCC1 0
+  (IMP_th1_ax_TCC1-1 nil 3502130690 nil ("" (mapped-axiom-tcc) nil nil)
+   nil nil nil nil nil nil))
+ (lem2 0
+  (lem2-1 nil 3496897044 3502130878
+   ("" (lemma "lem1") (("" (propax) nil nil)) nil) proved
+   ((lem1 formula-decl nil th1 nil)
+    (number nonempty-type-decl nil numbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (TRUE const-decl "bool" booleans nil)
+    (IF const-decl "[boolean, T, T -> T]" if_def nil))
+   45949 10 t shostak)))
+

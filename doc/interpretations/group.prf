@@ -1,0 +1,29 @@
+(group
+ (idempotent_is_identity 0
+  (idempotent_is_identity-1 nil 3502148587 3502148985
+   ("" (skosimp)
+    (("" (case "(x!1 + x!1) + -x!1  = x!1 + -x!1")
+      (("1" (use "inverse_ax")
+        (("1" (flatten)
+          (("1" (replace -1)
+            (("1" (rewrite "associative_ax" :dir rl)
+              (("1" (replace -1)
+                (("1" (rewrite "identity_ax") nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("2" (assert) nil nil))
+      nil))
+    nil)
+   proved
+   ((- const-decl "[G -> G]" group nil)
+    (+ const-decl "[G, G -> G]" group nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (G nonempty-type-decl nil group nil)
+    (associative_ax formula-decl nil group nil)
+    (identity_ax formula-decl nil group nil)
+    (inverse_ax formula-decl nil group nil))
+   397977 112 t shostak)))
+

@@ -1,0 +1,237 @@
+(list_map
+ (IMP_list_TCC1 0
+  (IMP_list_TCC1-1 nil 3557450993 ("" (subtype-tcc) nil nil)
+   ((int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (empty? const-decl "bool" astack nil))
+   nil))
+ (IMP_list_TCC2 0
+  (IMP_list_TCC2-1 nil 3557450993 ("" (subtype-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (stack type-eq-decl nil astack nil)
+    (nonempty? const-decl "bool" astack nil)
+    (nonempty_stack type-eq-decl nil astack nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (empty? const-decl "bool" astack nil))
+   nil))
+ (IMP_list_TCC3 0
+  (IMP_list_TCC3-1 nil 3557450993 ("" (subtype-tcc) nil nil) nil nil))
+ (IMP_list_list_null_extensionality_TCC1 0
+  (IMP_list_list_null_extensionality_TCC1-1 nil 3557450993
+   ("" (skeep :preds? t) (("" (grind-with-ext) nil nil)) nil)
+   ((empty? const-decl "bool" astack nil)
+    (number nonempty-type-decl nil numbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (< const-decl "bool" reals nil) (>= const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (stack type-eq-decl nil astack nil))
+   nil))
+ (IMP_list_list_cons_extensionality_TCC1 0
+  (IMP_list_list_cons_extensionality_TCC1-1 nil 3557450993
+   ("" (mapped-axiom-tcc) nil nil) nil nil))
+ (IMP_list_list_cons_eta_TCC1 0
+  (IMP_list_list_cons_eta_TCC1-1 nil 3557450993
+   ("" (mapped-axiom-tcc) nil nil) nil nil))
+ (IMP_list_list_car_cons_TCC1 0
+  (IMP_list_list_car_cons_TCC1-1 nil 3557450993
+   ("" (mapped-axiom-tcc) nil nil)
+   ((int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (push const-decl "nonempty_stack" astack nil)
+    (top const-decl "T" astack nil))
+   nil))
+ (IMP_list_list_cdr_cons_TCC1 0
+  (IMP_list_list_cdr_cons_TCC1-1 nil 3557450993
+   ("" (mapped-axiom-tcc) nil nil) nil nil))
+ (IMP_list_list_inclusive_TCC1 0
+  (IMP_list_list_inclusive_TCC1-1 nil 3557450993
+   ("" (mapped-axiom-tcc) nil nil)
+   ((int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (empty? const-decl "bool" astack nil)
+    (nonempty? const-decl "bool" astack nil))
+   nil))
+ (IMP_list_list_induction_TCC1 0
+  (IMP_list_list_induction_TCC1-1 nil 3557450993
+   ("" (skeep)
+    (("" (measure-induct+ "list_var`size" ("list_var"))
+      ((""
+        (case "x!1 = (# size := 0, elems := LAMBDA (x: below(0)): 0 #)")
+        (("1" (assert) nil nil)
+         ("2"
+          (inst -3 "top(x!1)" "x!1 WITH [`size := x!1`size-1,
+                                       `elems := lambda (x: below(x!1`size-1)):
+                                                   x!1`elems(x)]")
+          (("1"
+            (case-replace "push[int]
+             (top(x!1),
+              x!1
+                WITH [`size := x!1`size - 1,
+                      `elems
+                        := LAMBDA (x: below(x!1`size - 1)): x!1`elems(x)]) = x!1")
+            (("1" (assert)
+              (("1"
+                (inst -2 "x!1
+          WITH [`size := x!1`size - 1,
+                `elems := LAMBDA (x: below(x!1`size - 1)): x!1`elems(x)]")
+                (("1" (assert) nil nil)
+                 ("2" (assert)
+                  (("2" (apply-extensionality 2 :hide? t)
+                    (("2" (apply-extensionality 1 :hide? t) nil nil))
+                    nil))
+                  nil))
+                nil))
+              nil)
+             ("2" (apply-extensionality 1 :hide? t)
+              (("1" (grind) nil nil)
+               ("2" (apply-extensionality 1 :hide? t)
+                (("1" (grind) nil nil)
+                 ("2" (apply-extensionality 2 :hide? t)
+                  (("2" (apply-extensionality 1 :hide? t) nil nil))
+                  nil))
+                nil)
+               ("3" (apply-extensionality 2 :hide? t)
+                (("3" (apply-extensionality 1 :hide? t) nil nil)) nil))
+              nil)
+             ("3" (apply-extensionality 2 :hide? t)
+              (("3" (apply-extensionality 1 :hide? t) nil nil)) nil)
+             ("4" (expand "nonempty?")
+              (("4" (expand "empty?")
+                (("4" (apply-extensionality 1 :hide? t)
+                  (("4" (apply-extensionality 1 :hide? t) nil nil))
+                  nil))
+                nil))
+              nil))
+            nil)
+           ("2" (apply-extensionality 2 :hide? t)
+            (("2" (apply-extensionality 1 :hide? t) nil nil)) nil)
+           ("3" (expand "nonempty?")
+            (("3" (expand "empty?")
+              (("3" (apply-extensionality 1 :hide? t)
+                (("3" (apply-extensionality 1 :hide? t) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   ((pred type-eq-decl nil defined_types nil)
+    (well_founded? const-decl "bool" orders nil)
+    (measure_induction formula-decl nil measure_induction nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (number nonempty-type-decl nil numbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (stack type-eq-decl nil astack nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (>= const-decl "bool" reals nil)
+    (naturalnumber type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
+    (wf_nat formula-decl nil naturalnumbers nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (nonempty? const-decl "bool" astack nil)
+    (x!1 skolem-const-decl "stack[int]" list_map nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (nonempty_stack type-eq-decl nil astack nil)
+    (top const-decl "T" astack nil)
+    (empty? const-decl "bool" astack nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (push const-decl "nonempty_stack" astack nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (FALSE const-decl "bool" booleans nil))
+   nil))
+ (IMP_list_TCC4 0
+  (IMP_list_TCC4-1 nil 3557450993 ("" (subtype-tcc) nil nil) nil nil))
+ (IMP_list_list_car_cons_TCC2 0
+  (IMP_list_list_car_cons_TCC2-1 nil 3557450993
+   ("" (mapped-axiom-tcc) nil nil)
+   ((int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (push const-decl "nonempty_stack" astack nil)
+    (top const-decl "T" astack nil))
+   nil))
+ (IMP_list_list_cdr_cons_TCC2 0
+  (IMP_list_list_cdr_cons_TCC2-1 nil 3557450993
+   ("" (mapped-axiom-tcc) nil nil) nil nil))
+ (IMP_list_list_induction_TCC2 0
+  (IMP_list_list_induction_TCC2-1 nil 3557450993
+   ("" (mapped-axiom-tcc) nil nil) nil nil)))
+

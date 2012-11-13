@@ -1,0 +1,4 @@
+gi1: THEORY
+BEGIN
+ IMPORTING group{{G := int, + := +}}
+END gi1
