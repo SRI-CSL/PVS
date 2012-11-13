@@ -1592,10 +1592,8 @@
     (COND-EXPR (xt-cond-expr expr))
     (TABLE-EXPR (xt-table-expr expr))
     (SKOVAR (xt-skovar expr))
-    (BRACK-EXPR (xt-brack-expr expr))
-    (PAREN-VBAR-EXPR (xt-paren-vbar-expr expr))
-    (BRACE-VBAR-EXPR (xt-brace-vbar-expr expr))
-    (t (error "Unrecognized expr - ~a" expr))))
+    (BRACKET-EXPR (xt-bracket-expr expr))
+    (t (error "xt-expr: unrecognized expr - ~a" expr))))
 
 (defun xt-number-expr (expr)
   (let ((num (ds-number (term-arg0 expr))))
@@ -1751,43 +1749,18 @@
 	:id '|null|
 	:place last-place)))
 
-(defun xt-brack-expr (expr)
-  (let ((args (term-args expr)))
+(defun xt-bracket-expr (expr)
+  (let ((op (ds-id (term-arg0 expr)))
+	(args (term-args (term-arg1 expr))))
     (if args
 	(make-instance 'bracket-expr
 	  :operator (make-instance 'name-expr
-		      :id '[\|\|]
+		      :id op
 		      :place (term-place expr))
 	  :argument (xt-arg-expr args)
 	  :place (term-place expr))
 	(make-instance 'name-expr
-	  :id '[\|\|]
-	  :place (term-place expr)))))
-
-(defun xt-paren-vbar-expr (expr)
-  (let ((args (term-args expr)))
-    (if args
-	(make-instance 'paren-vbar-expr
-	  :operator (make-instance 'name-expr
-		      :id '\(\|\|\)
-		      :place (term-place expr))
-	  :argument (xt-arg-expr args)
-	  :place (term-place expr))
-	(make-instance 'name-expr
-	  :id '\(\|\|\)
-	  :place (term-place expr)))))
-
-(defun xt-brace-vbar-expr (expr)
-  (let ((args (term-args expr)))
-    (if args
-	(make-instance 'brace-vbar-expr
-	  :operator (make-instance 'name-expr
-		      :id '{\|\|}
-		      :place (term-place expr))
-	  :argument (xt-arg-expr args)
-	  :place (term-place expr))
-	(make-instance 'name-expr
-	  :id '{\|\|}
+	  :id op
 	  :place (term-place expr)))))
 
 (defun xt-arg-expr (args)
