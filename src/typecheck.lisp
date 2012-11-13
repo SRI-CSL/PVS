@@ -635,6 +635,7 @@
 						 (member sth curimps
 							 :test #'tc-eq))
 				    sthinsts)))
+		   #+pvsdebug
 		   (assert (or (not (fully-instantiated? theoryname))
 			       (valid-importing-entries? newinsts)))
 		   (when newinsts
@@ -1032,7 +1033,8 @@
 	(dolist (mapping mappings)
 	  (unless (already-typed? mapping)
 	    (typecheck-decl-formals (decl-formals mapping) (lhs mapping))
-	    (typecheck-mapping-lhs mapping lhs-context lhs-theory lhs-theory-decls)
+	    (typecheck-mapping-lhs mapping lhs-context lhs-theory lhs-theory-decls
+				   thinst)
 	    (when (let ((prev-mappings (ldiff mappings (memq mapping mappings))))
 		    (member mapping prev-mappings :test #'same-mapping-lhs?))
 	      (type-error mapping
@@ -1051,7 +1053,7 @@
 	(lhs2 (lhs map2)))
     (same-declaration lhs1 lhs2)))
 
-(defun typecheck-mapping-lhs (mapping lhs-context lhs-theory lhs-theory-decls)
+(defun typecheck-mapping-lhs (mapping lhs-context lhs-theory lhs-theory-decls thinst)
   (let* ((*current-theory* lhs-theory)
 	 (*current-context* lhs-context)
 	 (*generate-tccs* 'none)
@@ -1064,12 +1066,19 @@
 		     (set-type (declared-type mapping) nil)))))
 	 (tres (unless (and (kind mapping)
 			    (not (eq (kind mapping) 'type)))
-		 (delete-if-not
-		     #'(lambda (r)
-			 (and (memq (declaration r) lhs-theory-decls)
-			      (length= (decl-formals (declaration r)) dfmls)))
-		   (with-no-type-errors
-		    (resolve* (lhs mapping) 'type nil)))))
+		 (let ((tr (delete-if-not
+			       #'(lambda (r)
+				   (and (memq (declaration r) lhs-theory-decls)
+					(length= (decl-formals (declaration r)) dfmls)))
+			     (with-no-type-errors
+			      (resolve* (lhs mapping) 'type nil)))))
+		   (if (cdr tr)
+		       (or (remove-if-not
+			       #'(lambda (r)
+				   (id-prefix (id thinst) (id (declaration r))))
+			     tr)
+			   tr)
+		       tr))))
 	 (eres (unless (and (kind mapping)
 			    (not (eq (kind mapping) 'expr)))
 		 (delete-if-not
@@ -1309,7 +1318,10 @@
   nil)
 
 (defmethod interpretable? ((d mod-decl))
-  (interpretable? (get-theory (modname d))))
+  (let ((th (or (declaration (modname d))
+		(get-theory (modname d)))))
+    (assert th () "interpretable? get-theory failed")
+    (interpretable? th)))
 
 (defmethod interpretable? ((d formal-type-decl))
   nil)
