@@ -270,8 +270,10 @@
 		(elm (car list) (car list))
 		(result nil))
 	       ((null list) result)
-	    (if (alphanumericp (schar (symbol-name elm) 0))
-		(push elm result))))
+	    (let ((sch (schar (symbol-name elm) 0)))
+	      (if (and (alphanumericp sch)
+		       (< (char-code sch) 127))
+		  (push elm result)))))
 	 (user-omitted
 	  (if user-oplist
 	       (set-difference default-oplist user-ext-oplist :test #'eq)))
