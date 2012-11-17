@@ -406,12 +406,12 @@
 	      (pprint-exit-if-list-exhausted))))))
 
 (defmethod pp-tex* ((dt recursive-type))
-  (with-slots (id formals decl-formals importings assuming constructors) dt
+  (with-slots (id formals importings assuming constructors) dt
     (pprint-logical-block (nil nil)
       (pp-tex-id id)
       (pp-tex-theory-formals formals)
-      (when decl-formals
-	(pp-tex-theory-formals decl-formals))
+      (when (decl-formals dt)
+	(pp-tex-theory-formals (decl-formals dt)))
       (write-char #\:)
       (write-char #\space)
       (pprint-indent :block 2)
@@ -1375,40 +1375,20 @@
   (pp-tex-keyword '|:)|))
 
 (defmethod pp-tex* ((ex bracket-expr))
-  (pprint-logical-block
-      (nil (arguments ex)
-	   :prefix (get-pp-tex-id '\[\|)
-	   :suffix (get-pp-tex-id '\|\]))
-    (pprint-indent :current 0)
-    (loop (pp-tex* (pprint-pop))
-	  (pprint-exit-if-list-exhausted)
-	  (write-char #\,)
-	  (write-char #\space)
-	  (pprint-newline :linear))))
+  (multiple-value-bind (lb rb)
+      (get-bracket-tex-symbols (operator ex))
+    (pprint-logical-block (nil (arguments ex) :prefix lb :suffix rb)
+      (pprint-indent :current 0)
+      (loop (pp-tex* (pprint-pop))
+	    (pprint-exit-if-list-exhausted)
+	    (write-char #\,)
+	    (write-char #\space)
+	    (pprint-newline :linear)))))
 
-(defmethod pp-tex* ((ex paren-vbar-expr))
-  (pprint-logical-block
-      (nil (arguments ex)
-	   :prefix (get-pp-tex-id '\(\|)
-	   :suffix (get-pp-tex-id '\|\)))
-    (pprint-indent :current 0)
-    (loop (pp-tex* (pprint-pop))
-	  (pprint-exit-if-list-exhausted)
-	  (write-char #\,)
-	  (write-char #\space)
-	  (pprint-newline :linear))))
-
-(defmethod pp-tex* ((ex brace-vbar-expr))
-  (pprint-logical-block
-      (nil (arguments ex)
-	   :prefix (get-pp-tex-id '\{\|)
-	   :suffix (get-pp-tex-id '\|\}))
-    (pprint-indent :current 0)
-    (loop (pp-tex* (pprint-pop))
-	  (pprint-exit-if-list-exhausted)
-	  (write-char #\,)
-	  (write-char #\space)
-	  (pprint-newline :linear))))
+(defun get-bracket-tex-symbols (bracket-op)
+  (multiple-value-bind (lb rb)
+      (get-bracket-symbols bracket-op)
+    (values (get-pp-tex-id lb) (get-pp-tex-id rb))))
 
 (defmethod pp-tex* ((ex record-expr))
   (with-slots (assignments) ex
@@ -1578,7 +1558,7 @@
 
 (defmethod pp-tex* :around ((ex application))
   (with-slots (operator argument) ex
-    (if (typep ex '(or bracket-expr paren-vbar-expr brace-vbar-expr))
+    (if (typep ex 'bracket-expr)
 	(call-next-method)
 	(let* ((args (argument* ex))
 	       (arglengths (mapcar #'(lambda (arg)
