@@ -542,12 +542,12 @@ bind tighter.")
 	      (pprint-exit-if-list-exhausted))))))
 
 (defmethod pp* ((dt recursive-type))
-  (with-slots (id formals decl-formals importings assuming constructors) dt
+  (with-slots (id formals importings assuming constructors) dt
     (pprint-logical-block (nil nil)
       (write id)
       (pp-theory-formals formals)
-      (when decl-formals
-	(pp-theory-formals decl-formals))
+      (when (decl-formals dt)
+	(pp-theory-formals (decl-formals dt)))
       (write-char #\:)
       (write-char #\space)
       (pprint-indent :block 2)
