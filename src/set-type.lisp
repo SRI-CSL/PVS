@@ -3527,7 +3527,7 @@ required a context.")
   (declare (ignore expr))
   nil)
 
-(defmethod ground-arithmetic-term? ((expr number-expr))
+(defmethod ground-arithmetic-term? ((expr rational-expr))
   t)
 
 (defmethod ground-arithmetic-term? ((expr tuple-expr))
@@ -3567,7 +3567,7 @@ required a context.")
   (declare (ignore ex))
   nil)
 
-(defmethod get-arithmetic-value ((expr number-expr))
+(defmethod get-arithmetic-value ((expr rational-expr))
   (number expr))
 
 (defmethod get-arithmetic-value ((expr application))
