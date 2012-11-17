@@ -35,9 +35,9 @@
 (export '(*boolean* *bound-variables* *current-context* *current-theory*
 	  *even_int* *false* *generate-all-adt-axioms* *generate-tccs*
 	  *integer* *naturalnumber* *number* *number_field* *odd_int*
-	  *posint* *negint* *prelude* *pvs-directories* *pvs-modules*
-	  *pvs-tmp-file* *real* *show-conversions* *tcc-conditions* *true*
-	  *typechecking-module*))
+	  *posint* *negint* *posrat* *negrat* *prelude* *pvs-directories*
+	  *pvs-modules* *pvs-tmp-file* *real* *show-conversions* *tcc-conditions*
+	  *true* *typechecking-module*))
 
 (export '(all none))
 
@@ -264,6 +264,8 @@ Given a pathname, returns a hash-table")
 (defvar *naturalnumber* nil)
 (defvar *posint* nil)
 (defvar *negint* nil)
+(defvar *posrat* nil)
+(defvar *negrat* nil)
 (defvar *even_int* nil)
 (defvar *odd_int* nil)
 (defvar *ordinal* nil)
