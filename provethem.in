@@ -1,5 +1,19 @@
 #!/usr/bin/env perl
+#
+# provethem.in
+# Release: ProofLite-6.0 (12/12/12)
+#
+# Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
+# NASA Langley Research Center
+# http://shemesh.larc.nasa.gov/people/cam/ProofLite
+#
+# Copyright (c) 2011-2012 United States Government as represented by
+# the National Aeronautics and Space Administration.  No copyright
+# is claimed in the United States under Title 17, U.S.Code. All Other
+# Rights Reserved.
+#
 # Script for batch proving several libraries in PVS 
+#
 
 use Getopt::Long;
 use File::Basename;
@@ -11,11 +25,11 @@ $Term::ANSIColor::AUTORESET = 1;
 $PVSPATH="@PVSPATH@";
 
 $OUTPUT_AUTOFLUSH=1;
-$VERSION="ProofLite-4.3 (11/11/11)";
+$VERSION="ProofLite-6.0 (12/12/12)";
 $PROVEIT="$PVSPATH/proveit";
 $PROVETHEMVERSION="provethem - $VERSION";
 
-$usageln = "Usage: provethem [<option> ...] <file>";
+$usageln = "Usage: provethem [--help | <option> ...] <file>";
 
 sub usage() {
   print <<EOF;
@@ -44,6 +58,7 @@ $usageln
   --test                  process <file> but do not call proveit
   --to=<dir>              prove all libraries to <dir>, inclusive.
   --top <th>              use <th>.pvs instead of top.pvs as top theory  
+  --typecheck-only        typecheck but do not prove the libraries
   --verbose               print summary information for all theories
   --version               print version information and exit
 
@@ -83,6 +98,7 @@ GetOptions('addpath'=>\$addpath,
 	   'test'=>\$test,
            'to=s'=>\$to,
 	   'top=s'=>\$top,
+           'typecheck-only'=>\$typecheckonly,
 	   'verbose'=>\$verbose,
            'version'=>\$version) or exit 1;
 
@@ -127,6 +143,7 @@ if (!$out && !$cleanbin && !$execute && !$test) {
 open (OUTFILE,">$out") if $out;
 
 $overopts .= " --Clean" if $cleanbin;
+$overopts .= " --Typecheck" if $typecheckonly;
 $overopts .= " --dir $dir" if $dir;
 $overopts .= " .$ext" if $ext;
 $overopts .= " --lisp $lisp" if $lisp;
@@ -154,11 +171,19 @@ if ($addpath) {
     }
 }
 
-if ($cleanbin) {
-  print "Removing binary files from library\n";
-} elsif ($execute) {
+$act = "Proving";
+if ($execute) {
   print "Executing shell command \"$execute\" on library\n";
   print "The output of the execution is in $out\n" if $out;
+} elsif ($cleanbin || $typecheckonly) {
+  if ($cleanbin) {
+    print "Removing binary files from library\n";
+    $act = "Cleaning";
+  } 
+  if ($typecheckonly) {
+    print "Typechecking the library\n";
+    $act = "Typechecking";
+  }
 } else {
   my $pvslp = "PVS_LIBRARY_PATH=$ENV{PVS_LIBRARY_PATH}";
   print "$pvslp\n";
@@ -220,19 +245,19 @@ while (<INFILE>) {
 		} else {
 		  print $status;
 		}
-		print "]\n";
-		$summary .= "$beginln$status]\n";
+		print ": $act]\n";
+		$summary .= "$beginln$status: $act]\n";
 	      }
 	      last if !$force && $fail;
 	      if (!$fail) {
-		if ($cleanbin) {
+		if ($cleanbin || $typecheckonly) {
 		  $status = "OK";
 		  if ($color) {
 		    print DARK GREEN $status; 
 		  } else {
 		    print $status;
 		  }
-		  $endln = "]\n";
+		  $endln = ": $act]\n";
 		} elsif ($proveout =~ m/Grand Totals: (\d+) proofs, (\d+) attempted, (\d+) succeeded/) {
 		  $totalformulas += $1;
 		  if ($1 eq $2 && $2 eq $3) {
@@ -282,8 +307,9 @@ while (<INFILE>) {
   }
 }
 
-if (!$cleanbin && !$execute) {
-  my $mssg = "\n*** Grand Total: $totalproofs proofs / $totalformulas formulas\n";
+if (!$cleanbin && !$typecheckonly && !$execute) {
+  my $missed = $totalformulas-$totalproofs;
+  my $mssg = "\n*** Grand Total: $totalproofs proofs / $totalformulas formulas. Missed: $missed formulas.\n";
   print $mssg;
   $summary .= $mssg;
 }
