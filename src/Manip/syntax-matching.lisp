@@ -795,9 +795,9 @@
 
     (bracket  bracket-expr   ;; (operator argument)
 	      ,#'(lambda (e) (list (arg-expr-objects e))))
-    (paren_vbar  paren-vbar-expr   ;; (operator argument)
+    (paren_vbar  bracket-expr   ;; (operator argument)
 	      ,#'(lambda (e) (list (arg-expr-objects e))))
-    (brace_vbar  brace-vbar-expr   ;; (operator argument)
+    (brace_vbar  bracket-expr   ;; (operator argument)
 	      ,#'(lambda (e) (list (arg-expr-objects e))))
     (string   string-expr    ;; (string-value)
 	      ,#'(lambda (e) (list (list (string-value e)))))
@@ -1677,10 +1677,10 @@
     (bracket  bracket-expr  nil  ;; (operator argument)
 	      ,(expr-list-specializers
 		#'arg-expr-objects "[| ~A~@{, ~A~} |]" 1 t t))
-    (paren_vbar  paren-vbar-expr  nil ;; (operator argument)
+    (paren_vbar  bracket-expr  nil ;; (operator argument)
 	      ,(expr-list-specializers
 		#'arg-expr-objects "(| ~A~@{, ~A~} |)" 1 t t))
-    (brace_vbar  brace-vbar-expr  nil  ;; (operator argument)
+    (brace_vbar  bracket-expr  nil  ;; (operator argument)
 	      ,(expr-list-specializers
 		#'arg-expr-objects "{| ~A~@{, ~A~} |}" 1 t t))
     (string   string-expr  nil  ,(terminal-specializer 2))
