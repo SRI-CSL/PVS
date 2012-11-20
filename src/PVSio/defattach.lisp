@@ -1,5 +1,18 @@
+;;
 ;; defattach.lisp
-;; Functions and macros for semantic attachments
+;; Release: PVSio-6.0 (12/12/12)
+;;
+;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
+;; NASA Langley Research Center
+;; http://shemesh.larc.nasa.gov/people/cam/PVSio
+;;
+;; Copyright (c) 2011-2012 United States Government as represented by
+;; the National Aeronautics and Space Administration.  No copyright
+;; is claimed in the United States under Title 17, U.S.Code. All Other
+;; Rights Reserved.
+;;
+;; Functions and macros for defining PVSio semantic attachments
+;;
 
 (in-package :pvs)
 
@@ -49,16 +62,22 @@
 	  (attachment-name attachmnt)
 	  (attachment-primitive attachmnt)))
 
-(defun list-attachments-str ()
+(defun list-pvs-attachments-str ()
   (let ((l (loop for theory being the hash-key using (hash-value attachments) of 
 		 *pvsio-attachments* 
-		 collect (format nil "Theory ~a: ~{~a~^, ~}.~2%" theory 
-				 (mapcar #'attachment-name-prim attachments)))))
-    (if l (format nil "Semantic attachments loaded in current context:~2%~{~a~}" l)
+		 collect (cons (format nil "~a" theory)
+			       (format nil "Theory ~a: ~{~a~^, ~}.~2%" theory 
+				       (mapcar #'attachment-name-prim 
+					       (sort attachments #'(lambda (x y)
+								     (string-lessp
+								      (attachment-name x)
+								      (attachment-name y))))))))))
+    (if l (format nil "Semantic attachments loaded in current context:~2%~{~a~}" 
+		  (mapcar #'cdr (sort l #'(lambda(x y) (string-lessp (car x) (car y))))))
       (format nil "No semantics attachments loaded in current context.~2%"))))
 
-(defun list-attachments ()
-  (format t "~a" (list-attachments-str)))
+(defun list-pvs-attachments ()
+  (format t "~a" (list-pvs-attachments-str)))
 
 (defun help-attachment-doc (attachmnt)
   (let ((fun (makesym "pvsio_~a_~a_~a" 
@@ -170,7 +189,9 @@ It cannot be evaluated in a formal proof.
     (when (find-attachment attachmnt)
       (pvs-message "Redefining ~a.~a" theory (attachment-name-prim attachmnt)))
     (setf (gethash theory *pvsio-attachments*)
-	  (cons attachmnt (gethash theory *pvsio-attachments*)))
+	  (cons attachmnt (remove-if #'(lambda (x) (string= (attachment-name attachmnt)
+							    (attachment-name x)))
+				     (gethash theory *pvsio-attachments*))))
     (when (> nargs 0) (push (mk-name nm nil th) *pvsio2cl-primitives*))
     (let ((body (if primitive
 		    (cons 'progn (cdr dobo))
