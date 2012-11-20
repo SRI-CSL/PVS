@@ -477,8 +477,8 @@
 		  ))
    (:module Field
      :source-pathname "src/Field"
-     :components ((:file "extra-tegies")
-		  (:file "field-strategies")))
+     :components ((:file "extrategies")
+		  (:file "field")))
    (:module ProofLite
      :source-pathname "src/ProofLite"
      :components (;(:file "pregexp")
