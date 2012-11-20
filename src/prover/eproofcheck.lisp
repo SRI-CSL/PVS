@@ -3501,7 +3501,7 @@
 				  '?
 				  (if (and push? label)
 				      (lcopy sform
-					'label (cons symlbl (label sform)))
+					     'label (union (list symlbl) (label sform)))
 				      (lcopy sform
 					'label (when label 
 						 (list symlbl))))))
