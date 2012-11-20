@@ -1,5 +1,16 @@
-;; pvs-lib.el
-;; Release: ProofLite-4.2 (01/10/10)
+;;
+;; prooflite.el
+;; Release: ProofLite-6.0 (12/12/12)
+;;
+;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
+;; NASA Langley Research Center
+;; http://shemesh.larc.nasa.gov/people/cam/ProofLite
+;;
+;; Copyright (c) 2011-2012 United States Government as represented by
+;; the National Aeronautics and Space Administration.  No copyright
+;; is claimed in the United States under Title 17, U.S.Code. All Other
+;; Rights Reserved.
+;;
 
 (defpvs install-prooflite-scripts-theory edit-proof ()
   "Install ProofLite scripts of non-proved formulas in theory
