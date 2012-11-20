@@ -3243,6 +3243,9 @@ BEGIN
   one_times: LEMMA
     1*x = x
 
+  neg_one_times: LEMMA
+    -1*x = -x
+
   zero_div: LEMMA
     0/n0z = 0
 
@@ -6408,8 +6411,6 @@ BEGIN
   Dummy : TYPE  = bool
   dummy : MACRO Dummy = false
 
-  Sexps : TYPE+  
-
 END stdlang
 
 
@@ -6560,9 +6561,11 @@ BEGIN
 	  pvs2str_lisp(t),
           LAMBDA(e:Exception[void]):"<?>")
 
-  sexps(l:list[T]) : Sexps
+  Slisp : TYPE+  
 
-  {||}(l:list[T]) : Sexps = sexps(l)
+  slisp(l:list[T]) : Slisp
+
+  {||}(l:list[T]) : Slisp = slisp(l)
 
 END stdpvs
 
@@ -7379,6 +7382,10 @@ BEGIN
 
   pvsio_version : string
 
+  set_promptin(s:string) : void
+
+  set_promptout(s:string) : void
+
 END stdpvsio
 
 %% stdsys.pvs
@@ -7463,5 +7470,11 @@ BEGIN
 
   fprintf(f:OStream,s:string): MACRO void =
     fprint(f,format(s,""))
+
+  Blisp : TYPE+  
+
+  blisp(b:bool) : Blisp
+
+  {||}(b:bool) : Blisp = blisp(b)
 
 END stdsys
