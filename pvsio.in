@@ -1,5 +1,19 @@
 #!/bin/sh
-# Release: PVSio-4.a (11/07/07)
+#
+# pvsio.in
+# Release: PVSio-6.0 (12/12/12)
+#
+# Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
+# NASA Langley Research Center
+# http://shemesh.larc.nasa.gov/people/cam/PVSio
+#
+# Copyright (c) 2011-2012 United States Government as represented by
+# the National Aeronautics and Space Administration.  No copyright
+# is claimed in the United States under Title 17, U.S.Code. All Other
+# Rights Reserved.
+#
+# Script for batch proving several libraries in PVS 
+#
 
 PVSPATH=@PVSPATH@
 
@@ -9,25 +23,40 @@ PVSPATH=@PVSPATH@
 export PVSIOTCCS=nil
 export PVSIOVERB=nil
 export PVSIOTIME=nil
-export PVSIOVERSION="PVSio-4.a (11/07/07)"
+export PVSIOVERSION="PVSio-6.0 (12/12/12)"
+export PVSIOPROMPTIN="<PVSio> "
+export PVSIOPROMPTOUT="==>~%"
 
 PACK=PVSio
 
 usage() {
-  echo "pvsio {<option>}* [<file>@]<theory>[:<main>]
+  echo "pvsio {<option>}* <pvsfile>@[<theory>[:<main>]]
 where <option> can be
-  -h|--help                print this message
-  -p|--packages P1,..,Pn   load packages P1,..,Pn
-  -t|--tccs                generate TCCs     
-  -T|--timing              print timing information for each evaluation
-  -v|--version             print PVSio version
-  -V|--verbose             print typechecking information
-  -l|--lisp                PVS lisp version [allegro,cmulisp,sbclisp]
-  <file>@<theory>:<main>   load <theory> from <file>.pvs, evaluate <main>, 
-                           and exit 
+  -h|--help                
+   Print this message
+  -p|--packages <P1>,..,<Pn>   
+   Load packages (prelude libraries) <P1>,..,<Pn>
+  -promptin <string>
+   Change prompt \"$PVSIOPROMPTIN\" to <string>
+  -promptout <string>
+   Change prompt \"$PVSIOPROMPTOUT\" to <string>
+  -t|--tccs                
+   Generate TCCs     
+  -T|--timing              
+   Print timing information for each evaluation
+  -v|--version             
+   Print PVSio version
+  -V|--verbose             
+   Print typechecking information
+  -l|--lisp allegro|cmulisp,sbclisp 
+   Specify a particular PVS binary to execute PVSio. Use this option only 
+   if you know what you are doing.
 
-  One letter options can be combined. If <file> is not provided,
-  <theory> is assumed to be the name of the file as well. If <main> is
+  <pvsfile>@<theory>:<main>   
+  Load <theory> from <pvsfile>, evaluate <main> and exit 
+
+  One-letter options can be combined. If <theory> is not provided,
+  it is assumed to have the same name as the name of the file. If <main> is
   not provided, PVSio starts a top level read-eval-loop.
 "  
 }
@@ -50,6 +79,12 @@ do
       -p|-packages|--packages) 
 	  PACK="$PACK,$2"
 	  shift;;
+      -promptin)
+          PVSIOPROMPTIN="$2"
+          shift;;
+      -promptout)
+          PVSIOPROMPTOUT="$2"
+          shift;;
       -tccs|--tccs)        
 	  PVSIOTCCS=t;;
       -timing|--timing) 
@@ -86,7 +121,7 @@ PACK=`echo "(\"$PACK\")" | sed -e "s/,/\" \"/g"`
 
 if [ -z "$ARG" ] 
 then
-  echo "pvsio__ : THEORY BEGIN END pvsio__" > /tmp/pvsio__.pvs
+  echo "pvsio__ : THEORY BEGIN pvsio__ : void = TRUE END pvsio__" > /tmp/pvsio__.pvs
   ARG="/tmp/pvsio__"
 fi
 
@@ -95,11 +130,18 @@ MAIN=
 case $ARG in
   *@*) FILE=`echo $ARG | sed -e "s/\([^@]*\)@.*/\1/"`
        THMA=`echo $ARG | sed -e "s/[^@]*@//"`;;
-  *:*) FILE=`echo $ARG | sed -e "s/\([^:]\):.*$/\1/"`
-       THMA=`echo $ARG | sed -e "s+.*/++"`;;
   *)   FILE=$ARG
-       THMA=`echo $ARG | sed -e "s+.*/++"`;;
 esac
+
+DIR=`dirname $FILE`
+NAME=`basename $FILE .pvs`
+FILE="$DIR/$NAME"
+
+if [ ! -f "$FILE.pvs" ]
+then
+  echo Error: "File $FILE.pvs doesn't exist"
+  exit 0
+fi
 
 case $THMA in
   *:*) THEORY=`echo $THMA | sed -e "s/\([^:]\):.*$/\1/"`
@@ -107,16 +149,9 @@ case $THMA in
   *)   THEORY=$THMA
 esac
 
-if [ -z "$FILE" ]
-then
-  echo Error: Invalid theory name $ARG
-  exit 0
-fi
-
 if [ -z "$THEORY" ]
 then
-  echo Error: Invalid theory name $ARG
-  exit 0
+  THEORY=$NAME
 fi
 
 if [ -z "$MAIN" ]
