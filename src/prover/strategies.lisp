@@ -4194,26 +4194,27 @@ ground prover until they are exposed."
 ;;                  (not boolean?))
 
 ;;; Called from typepred-step for typepred! :implicit? t
-(defun collect-implicit-type-constraints (exprs ps all? &optional quiet?)
-  (let* ((texprs
-	  (if (eq exprs t)
-	      t
+(defun collect-implicit-type-constraints (exprs ps all? &optional (quiet? t))
+  (when exprs
+    (let* ((texprs
+	    (if (eq exprs t)
+		t
 	      (mapcar #'(lambda (ex)
 			  (let ((*generate-tccs* 'none)
 				(tex (pc-typecheck (pc-parse ex 'expr))))
 			    (when (freevars tex)
-			      (error-format-if "~%Free variables in expr ~a" tex))
+			      (unless quiet? (error-format-if "~%Free variables in expr ~a" tex)))
 			    tex))
-		exprs)))
-	 (sforms (s-forms (current-goal ps)))
-	 (preds (implicit-type-constraints sforms texprs)))
-    (or (if all?
-	    preds
+		      exprs)))
+	   (sforms (s-forms (current-goal ps)))
+	   (preds (implicit-type-constraints sforms texprs)))
+      (or (if all?
+	      preds
 	    (remove-if #'ignored-type-constraint-pred preds))
-	(progn (unless quiet?
-		 (error-format-if "No top-level occurrences of any of the terms in ~:_~
+	  (progn (unless quiet?
+		   (error-format-if "No top-level occurrences of any of the terms in ~:_~
                           ~w~_ yielded type constraints" exprs))
-	       nil))))
+		 nil)))))
 
 (defun ignored-type-constraint-pred (pred)
   (let ((ignored (mapcar #'predicate
@@ -4382,11 +4383,12 @@ ground prover until they are exposed."
   ""
   "Adding type information on subexpressions")
 
-(defun make-implicit-typepreds-cmd (sforms)
+(defun make-implicit-typepreds-cmd (sforms &optional (quiet? t))
   (let* ((exprlis (collect-all-subexprs-with-implicit-typepreds sforms))
          (cmd (list 'typepred! exprlis :implicit? t)))
-    (format t "Generating implicit typepreds for expressions:~{~%  ~a~^~}"
-      exprlis)
+    (unless quiet?
+      (format t "~%Generating implicit typepreds for expressions:~{~%  ~a~^~}"
+	      exprlis))
     cmd))
 
 (defun collect-all-subexprs-with-implicit-typepreds (sforms)
