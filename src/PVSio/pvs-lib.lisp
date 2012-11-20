@@ -1,8 +1,23 @@
+;;
 ;; pvs-lib.lisp
+;; Release: PVSio-6.0 (12/12/12)
+;;
+;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
+;; NASA Langley Research Center
+;; http://shemesh.larc.nasa.gov/people/cam/PVSio
+;;
+;; Copyright (c) 2011-2012 United States Government as represented by
+;; the National Aeronautics and Space Administration.  No copyright
+;; is claimed in the United States under Title 17, U.S.Code. All Other
+;; Rights Reserved.
+;;
+;; This code implements the functionality to load PVSio semantic
+;; attachments from the files pvs-attachments and ~/.pvs-attachments
+;;
 
 (in-package :pvs)
 
-(defparameter *pvsio-version* "PVSio-5.0 (10/11/12)")
+(defparameter *pvsio-version* "PVSio-6.0 (12/12/12)")
 (defparameter *pvsio-imported* nil)
 (defparameter *pvsio-update-files* (make-hash-table :test #'equal))
 
