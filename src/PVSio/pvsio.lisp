@@ -1,16 +1,32 @@
+;;
 ;; pvsio.lisp
+;; Release: PVSio-6.0 (12/12/12)
+;;
+;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
+;; NASA Langley Research Center
+;; http://shemesh.larc.nasa.gov/people/cam/PVSio
+;;
+;; Copyright (c) 2011-2012 United States Government as represented by
+;; the National Aeronautics and Space Administration.  No copyright
+;; is claimed in the United States under Title 17, U.S.Code. All Other
+;; Rights Reserved.
+;;
 ;; PVSio interface to the ground evaluator
+;;
 
 (in-package :pvs)
+
+(defparameter *pvsio-promptin* "<PVSio> ")
+(defparameter *pvsio-promptout* "==>~%")
 
 (defun help-pvsio ()
   (format 
    t 
-   "~%Enter a PVS ground expression followed by ';' at the <PVSio> prompt")
+   "~%Enter a PVS ground expression followed by ';' at the prompt '~a'" *pvsio-promptin*)
   (format t "~%  OR ")
   (format 
    t 
-   "~%Enter a Lisp expression followed by a '!' at the <PVSio> prompt~%")
+   "~%Enter a Lisp expression followed by '!' at the prompt '~a'~%" *pvsio-promptin*)
   (format t "~%The following special commands can be followed by either ';' or '!':
   help                 : Print this message
   quit                 : Exit the evaluator with confirmation
@@ -20,18 +36,22 @@
   tccs                 : Turn on TCCs generation per evaluation 
   notccs               : Turn off TCCs generation
   load_pvs_attachments : Force a reload .pvs-attachments and pvs-attachments
-  pvsio_version        : Show current version of PVSio
-  list_attachments     : List semantic attachments loaded in the current 
+  list_pvs_attachments : List semantic attachments loaded in the current 
                          context
+  pvsio_version        : Show current version of PVSio
 
-Display help for <attachment>:
-  (help_pvs_attachment <attachment>)!
-  help_pvs_attachment(<attachment>);
+To display help for <attachment>:
+  help_pvs_attachment(\"<attachment>\");
 
-Display help for semantic attachments in <theory>:
-  (help_pvs_theory_attachments <theory>)!
-  help_pvs_theory_attachments(<theory>);
-"))
+To display help for semantic attachments in <theory>:
+  help_pvs_theory_attachments(\"<theory>\");
+
+To change input prompt '~a':
+  set_promptin(\"<newprompt>\");
+
+To change output prompt '~a':
+  set_promptout(\"<newprompt>\");
+" *pvsio-promptin* *pvsio-promptout*))
 
 (defun evaluation-mode-pvsio (theoryname 
 			      &optional input tccs?  
@@ -63,16 +83,17 @@ Display help for semantic attachments in <theory>:
 +---- 
 | ~a
 |
-| Enter a PVS ground expression followed by a symbol ';' at the <PVSio> prompt.
-| Enter a Lisp expression followed by a symbol '!' at the <PVSio> prompt.
+| Enter a PVS ground expression followed by ';' at the prompt '~a'.
+| Enter a Lisp expression followed by '!' at the prompt '~a'.
 |
-| Enter help! for a list of commands and quit! to exit the evaluator.
+| Enter 'help' for help and 'exit' to exit the evaluator. Follow
+| these commands with either ';' or '!'.
 |
 | *CAVEAT*: evaluation of expressions which depend on unproven TCCs may be 
-| unsound, and result in the evaluator crashing into lisp, running out of 
-| stack, or worse. If you crash into lisp, type (restore) to resume.
+| unsound, and result in the evaluator crashing into Lisp, running out of 
+| stack, or worse. If you crash into Lisp, type (restore) to resume.
 |
-+----~%" *pvsio-version*))
++----~%" *pvsio-version* *pvsio-promptin* *pvsio-promptin*))
 		(evaluate-pvsio input-stream))
 	      (pvs-message "Theory ~a is not typechecked" theoryname))
 	(pvs-emacs-eval "(pvs-evaluator-ready)")))))
@@ -98,7 +119,7 @@ Display help for semantic attachments in <theory>:
 	  (cond ((member pref '("(lisp" "(pvs::lisp")
 			 :test #+allegro #'string= #-allegro #'string-equal)
 		 (let ((input (read input-stream nil nil)))
-		   (format t "~%~s~2%<PVSio> " (eval input)))
+		   (format t "~%~s~2%~a" (eval input) *pvsio-promptin*))
 		 (loop until (or (null c) (char= c #\)))
 		       do (setq c (read-char-no-hang input-stream nil nil)))
 		 (setq c #\Space)
@@ -168,8 +189,7 @@ Display help for semantic attachments in <theory>:
 					    (cl2pvs cl-eval (type tc-input)))
 					cl-eval)))
 			   (when (not isvoid)
-			     (fresh-line)
-			     (format t "==> ~%")
+			     (format t *pvsio-promptout*)
 			     (cond ((and clval *convert-back-to-pvs*)
 				    (unparse clval))
 				   (t
@@ -190,7 +210,7 @@ Display help for semantic attachments in <theory>:
 
 (defun read-pvsio (input-stream)
   (when (not input-stream)
-    (format t "~%<PVSio> ")
+    (format t "~%~a" *pvsio-promptin*)
     (force-output))
   (let ((input (read-expr input-stream)))
     (cond ((member input '(quit (quit) "quit") :test #'equal)
@@ -223,10 +243,10 @@ Display help for semantic attachments in <theory>:
 		   :test #'equal)
 	   (format t "~a~%" *pvsio-version*)
 	   (read-pvsio input-stream))
-	  ((member input '(list-attachments list_attachments 
-					    "list_attachments") 
+	  ((member input '(list-pvs-attachments list_pvs_attachments 
+					    "list_pvs_attachments") 
 		   :test #'equal)
-	   (list-attachments)
+	   (list-pvs-attachments)
 	   (read-pvsio input-stream))
 	  ((member input '(load-pvs-attachments load_pvs_attachments 
 						"load_pvs_attachments") 
@@ -246,6 +266,8 @@ Display help for semantic attachments in <theory>:
 	(verb (read-from-string (environment-variable "PVSIOVERB")))
 	(tccs (read-from-string (environment-variable "PVSIOTCCS")))
 	(main (read-from-string (environment-variable "PVSIOMAIN")))
+	(*pvsio-promptin* (environment-variable "PVSIOPROMPTIN"))
+	(*pvsio-promptout* (environment-variable "PVSIOPROMPTOUT"))
 	(*pvsio-version* (environment-variable "PVSIOVERSION")))
     (unless (probe-file (format nil "~a.pvs" file))
       (format t "File not found: ~a.pvs~%" file)
@@ -262,7 +284,7 @@ Display help for semantic attachments in <theory>:
 	       :if-exists :supersede)
 	    (change-context (directory-namestring file))
 	    (dolist (pack packlist) (load-prelude-library pack))
-	    ;;(load-pvs-attachments)
+	    (load-pvs-attachments)
 	    (when (null verb)
 	      (format t "~%Typechecking")
 	      (unwind-protect
@@ -277,3 +299,4 @@ Display help for semantic attachments in <theory>:
 		  err file (directory-namestring file) theory)))
     (fresh-line)
     (bye 0)))
+
