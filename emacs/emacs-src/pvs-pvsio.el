@@ -1,4 +1,18 @@
-;; pvsio.el
+;;
+;; pvs-pvsio.el
+;; Release: PVSio-6.0 (12/12/12)
+;;
+;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
+;; NASA Langley Research Center
+;; http://shemesh.larc.nasa.gov/people/cam/PVSio
+;;
+;; Copyright (c) 2011-2012 United States Government as represented by
+;; the National Aeronautics and Space Administration.  No copyright
+;; is claimed in the United States under Title 17, U.S.Code. All Other
+;; Rights Reserved.
+;;
+;; Emacs interface to PVSio utilities
+;;
 
 ; pvsio
 (defpvs pvsio prove (theory)
@@ -77,14 +91,14 @@ The pvsio-version command shows the current version of PVSio."
   (interactive)
   (pvs-send-and-wait "(pvsio-version)" nil nil 'dont-care))
 
-; list-attachments 
-(defpvs list-attachments environment ()
+; list-pvs-attachments 
+(defpvs list-pvs-attachments environment ()
   "Lists semantic attachments 
 
-The list-attachments command lists the semantic attachments loaded in 
+The list-pvs-attachments command lists the semantic attachments loaded in 
 the current context."
   (interactive)
-  (let ((info (pvs-send-and-wait "(list-attachments-str)" nil nil 'string)))
+  (let ((info (pvs-send-and-wait "(list-pvs-attachments-str)" nil nil 'string)))
     (print-info-buffer "PVS Semantic Attachments" info)))
 
 ; help-pvs-attachment
