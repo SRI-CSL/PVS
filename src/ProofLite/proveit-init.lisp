@@ -1,3 +1,17 @@
+;;
+;; proveit-init.lisp
+;; Release: ProofLite-6.0 (12/12/12)
+;;
+;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
+;; NASA Langley Research Center
+;; http://shemesh.larc.nasa.gov/people/cam/ProofLite
+;;
+;; Copyright (c) 2011-2012 United States Government as represented by
+;; the National Aeronautics and Space Administration.  No copyright
+;; is claimed in the United States under Title 17, U.S.Code. All Other
+;; Rights Reserved.
+;;
+
 (in-package :pvs)
 
 (defun eq-thf (decl thf)
@@ -192,6 +206,8 @@
 		  (environment-variable "PROVEITLISPTRACES")))
 	 (force (read-from-string 
 		 (environment-variable "PROVEITLISPFORCE")))
+	 (typecheckonly (read-from-string 
+			 (environment-variable "PROVEITLISPTYPECHECK")))
 	 (txtproofs (read-from-string 
 		     (environment-variable "PROVEITLISPTXTPROOFS")))
 	 (texproofs (read-from-string 
@@ -217,23 +233,25 @@
 		pvsfile (now-today) proveitversion)
 	      (change-context (probe-file context))
 	      (dolist (pack packs) (load-prelude-library pack t))
-	      (when (not (string= pvsfile ""))
+	      (when (string/= pvsfile "")
 		(typecheck-file pvsfile nil nil nil t))
-	      (let* ((theory-names (or theories (theories-in-file pvsfile)))
-		     (pvstheories 
-		      (if import (imported-theories-in-theories theory-names)
+	      (if typecheckonly
+		  (format t "~%File ~a.pvs typechecked" pvsfile)
+		(let* ((theory-names (or theories (theories-in-file pvsfile)))
+		       (pvstheories 
+			(if import (imported-theories-in-theories theory-names)
 			  (mapcar #'get-typechecked-theory theory-names))))
-		(when scripts 
-		  (dolist (theory pvstheories)
-		    (install-prooflite-scripts (filename theory) (id theory) 0 
-					       force)))
-		(proveit-theories pvstheories force thfs traces)
-		(proveit-status-proof-theories pvstheories thfs)
-		(save-context))
+		  (when scripts 
+		    (dolist (theory pvstheories)
+		      (install-prooflite-scripts (filename theory) (id theory) 0 
+						 force)))
+		  (proveit-theories pvstheories force thfs traces)
+		  (proveit-status-proof-theories pvstheories thfs)))
+	      (save-context)
 	      t)
-	  (storage-condition
-	   (condition) 
-	   (values nil condition)))	      
+	    (storage-condition
+	     (condition) 
+	     (values nil condition)))	      
       (when err 
 	(format t "~%~a (~a)~%" err pvsfile)
 	(bye 0)))
