@@ -334,7 +334,7 @@
 
 (defun pvs2cl-defn-application (op* expr bindings livevars)
   (with-slots (operator argument) expr
-    (if (constant? op*)
+     (if (constant? op*)
 	(let* ((defax (def-axiom (declaration op*)))
 	       (defrhs (when defax (args2 (car (last defax)))))
 	       (defbindings* (when (lambda-expr? defrhs)
@@ -352,14 +352,18 @@
 	      (mk-fun2-application op*
 				   (loop for ar in args*
 					 as bn in defbindings*
-					 append (if (= (length bn) 1)
-						    (list ar)
-						    (argument-list ar)))
+					 append
+					 (cond ((= (length bn) 1)
+						(list ar))
+					       ((and (> (length bn) 1)
+						     (not (arg-tuple-expr? ar)))
+						(make-projections ar))
+					       (t (argument-list ar))))
 				   (loop for bn in defbindings*
 					 append bn)
 				   bindings livevars)
-	      (pvs2cl-application operator argument bindings livevars)))
-	(pvs2cl-application operator argument bindings livevars))))
+	    (pvs2cl-application operator argument bindings livevars)))
+      (pvs2cl-application operator argument bindings livevars))))
 
 (defun pvs2cl-application (operator argument bindings livevars)	
   (let ((clop (pvs2cl_up* operator bindings ;in case of actuals
@@ -383,29 +387,30 @@
     (if (= (length let-bindings) (length args))
 	(let* ((clargs (pvs2cl_up* args bindings livevars))
 	       (let-pairs (loop for bnd in let-bindings
-			    as clarg in clargs
-			    collect (list bnd clarg))))
+				as clarg in clargs
+				collect (list bnd clarg))))
 	  (if declaration
-	  `(let ,let-pairs ,declaration ,cl-expression)
-	  `(let ,let-pairs ,cl-expression)))  ;;use ,@declaration
-	(if (= (length let-bindings) 1)
-	    (let ((let-pairs
-		   (list (list (car let-bindings)
-			       argument))))
-	      (if declaration
-		  `(let ,let-pairs ,declaration ,cl-expression)
-		  `(let ,let-pairs ,cl-expression)))
-	    (let* ((arg (pvs2cl_up* (car args) bindings livevars))
-		   (argvar (gentemp "A"))
-		   (let-pairs 
-		    (loop for bnd in let-bindings
-			  as i from 1
-			  collect (list bnd `(project ,i ,argvar)))))
-	      (if declaration
-		  `(let ((,argvar ,arg))
-		     (let ,let-pairs ,declaration ,cl-expression))
-		  `(let ((,argvar ,arg))
-		     (let ,let-pairs ,cl-expression))))))))
+	      `(let ,let-pairs ,declaration ,cl-expression)
+	    `(let ,let-pairs ,cl-expression)))  ;;use ,@declaration
+      (if (= (length let-bindings) 1)
+	  (let* ((clargs (pvs2cl_up* args bindings livevars))
+		 (let-pairs
+		  (list (list (car let-bindings)
+			      (cons 'pvs2cl_tuple clargs)))))
+	    (if declaration
+		`(let ,let-pairs ,declaration ,cl-expression)
+	      `(let ,let-pairs ,cl-expression)))
+	(let* ((arg (pvs2cl_up* (car args) bindings livevars))
+	       (argvar (gentemp "A"))
+	       (let-pairs 
+		(loop for bnd in let-bindings
+		      as i from 1
+		      collect (list bnd `(project ,i ,argvar)))))
+	  (if declaration
+	      `(let ((,argvar ,arg))
+		 (let ,let-pairs ,declaration ,cl-expression))
+	    `(let ((,argvar ,arg))
+	       (let ,let-pairs ,cl-expression))))))))
 
 ;;above change to pvs2cl-let-pairs simpler but untested.
 ;  (if (consp let-bindings)
