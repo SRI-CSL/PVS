@@ -3,13 +3,16 @@
 
 import wx
 import codecs
-import config
+import common
 from promptprocessor import isPrompt
 from constants import NEWLINE, PVS_MODE, EMPTY_STRING, PVS_MODE_OFF, PVS_MODE_UNKNOWN
 
-log = config.getLogger(__name__)
+log = common.getLogger(__name__)
 
 class PVSConsole(wx.Panel):
+    """This class represents and manages the console.
+    This console shows the PVS output, and the user can enter a line of input"""
+    
     def __init__(self, parent, ID):
         wx.Panel.__init__(self, parent, ID)
         self.prompt = EMPTY_STRING
@@ -24,8 +27,8 @@ class PVSConsole(wx.Panel):
         self.pvsout = o
 
     def setBidnings(self):
-        config.frame.Bind(wx.EVT_TEXT_ENTER, self.onPVSInTextEntered, self.pvsin)
-        config.frame.Bind(wx.EVT_TEXT, self.onPVSInText, self.pvsin)
+        common.frame.Bind(wx.EVT_TEXT_ENTER, self.onPVSInTextEntered, self.pvsin)
+        common.frame.Bind(wx.EVT_TEXT, self.onPVSInText, self.pvsin)
 
     def clearOut(self):
         self.pvsout.Clear()
@@ -42,7 +45,7 @@ class PVSConsole(wx.Panel):
         #wx.MutexGuiLeave()
         self.prompt = EMPTY_STRING
         self.history = []
-        config.frame.updateFrame(PVS_MODE_OFF)
+        common.frame.updateFrame(PVS_MODE_OFF)
         
     def appendLineToOut(self, line):
         log.debug("Appending '%s' to pvsout", line)
@@ -74,11 +77,11 @@ class PVSConsole(wx.Panel):
         pl = len(self.prompt)
         command = whole[pl:]
         log.info("Command is %s", command)
-        if config.runner != None:
+        if common.runner != None:
             self.appendLineToOut(whole)
             self.clearIn()
             self.history.append(command)
-            config.runner.tellPVS(command + NEWLINE)
+            common.runner.tellPVS(command + NEWLINE)
         #event.Skip()
 
     def onPVSInText(self, event):  # wxGlade: PVSMainFrame.<event_handler>

@@ -6,13 +6,14 @@
 import wx
 from constants import *
 from filesbuffersmanager import FilesAndBuffersManager
-from filestreemanager import FilesTreeManager
 from editornotebook import PVSNotebookManager
 from pvsconsole import PVSConsole
 from eventhandler import *
 import config
 from mainmenumanager import MainFrameMenu
 from toolbarmanager import ToolbarManager
+from preferencemanager import PVSIDEPreferenceManager
+from prooftreemanager import ProofTreeManager
 
 log = config.getLogger(__name__)
 
@@ -27,7 +28,9 @@ class PVSMainFrame(wx.Frame):
         # begin wxGlade: PVSMainFrame.__init__
         kwds["style"] = wx.ICONIZE | wx.CAPTION | wx.MINIMIZE | wx.CLOSE_BOX | wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX | wx.SYSTEM_MENU | wx.RESIZE_BORDER | wx.CLIP_CHILDREN
         wx.Frame.__init__(self, *args, **kwds)
+        self.Bind(wx.EVT_CLOSE, self.OnClose)
         config.frame = self
+        config.preference = PVSIDEPreferenceManager()
 
         # Menu Bar
         config.menubar = MainFrameMenu()
@@ -39,16 +42,14 @@ class PVSMainFrame(wx.Frame):
         config.toolbar = ToolbarManager(self, wx.ID_ANY)
         self.SetToolBar(config.toolbar)
         # Tool Bar end
-        self.window_1 = wx.SplitterWindow(self, wx.ID_ANY, style=wx.SP_3D | wx.SP_BORDER)
-        self.window_1_pane_1 = wx.Panel(self.window_1, wx.ID_ANY)
-        self.notebook_4 = wx.Notebook(self.window_1_pane_1, wx.ID_ANY, style=0)
-        self.notebook_4_pane_1 = wx.Panel(self.notebook_4, wx.ID_ANY)
-        self.filestree = wx.TreeCtrl(self.notebook_4_pane_1, wx.ID_ANY, style=wx.TR_HAS_BUTTONS | wx.TR_LINES_AT_ROOT | wx.TR_DEFAULT_STYLE | wx.SUNKEN_BORDER)
-        self.notebook_4_pane_2 = wx.Panel(self.notebook_4, wx.ID_ANY)
-        self.bufferstree = wx.TreeCtrl(self.notebook_4_pane_2, wx.ID_ANY, style=wx.TR_HAS_BUTTONS | wx.TR_LINES_AT_ROOT | wx.TR_DEFAULT_STYLE | wx.SUNKEN_BORDER)
-        self.window_1_pane_2 = wx.Panel(self.window_1, wx.ID_ANY)
-        self.prooflabel = wx.StaticText(self.window_1_pane_2, wx.ID_ANY, LABEL_PROOF_PANEL)
-        self.prooftree = wx.TreeCtrl(self.window_1_pane_2, wx.ID_ANY, style=wx.TR_HAS_BUTTONS | wx.TR_DEFAULT_STYLE | wx.SUNKEN_BORDER)
+
+        config.filesbuffermanager = FilesAndBuffersManager()
+        if config.preference.visibleFilesBuffersTrees():
+            config.filesbuffermanager.Show()
+        config.prooftreemanager = ProofTreeManager()
+        if config.preference.visibleProofTree():
+            config.prooftreemanager.Show()
+        
         self.panel_2 = wx.Panel(self, wx.ID_ANY)
         
         config.notebook = PVSNotebookManager(self.panel_2, wx.ID_ANY, style=0)
@@ -66,12 +67,11 @@ class PVSMainFrame(wx.Frame):
         config.console.setBidnings()
         #config.console = wx.TextCtrl(self.panel_4, wx.ID_ANY, EMPTY_STRING, style=wx.TE_PROCESS_ENTER | wx.TE_MULTILINE | wx.HSCROLL | wx.TE_RICH)
 
-        self.__set_properties()
         self.__do_layout()
+        self.__set_properties()
         # end wxGlade
         
-        config.filesbuffermanager = FilesAndBuffersManager()
-        config.filestreemanager = FilesTreeManager(self.filestree)
+        
         self.configMenuToolbar(0)
         config.toolbar.enableSave(False)
         self.Connect(-1, -1, config.EVT_RESULT_ID, self.onPVSResult)
@@ -79,38 +79,32 @@ class PVSMainFrame(wx.Frame):
     def __set_properties(self):
         # begin wxGlade: PVSMainFrame.__set_properties
         self.SetTitle(FRAME_TITLE)
-        self.SetSize((1000, 800))
         config.statusbar.SetStatusWidths([-1])
         # statusbar fields
         config.console.initializeConsole()
         config.toolbar.Realize()
+        if config.preference.visibleProofTree() and config.preference.visibleFilesBuffersTrees():
+            position = self.GetPosition()
+            #fbPosition = config.filesbuffermanager.GetPosition()
+            sz = config.filesbuffermanager.GetSize()
+            fbPosition = (position[0]-sz[0]-2, position[1])
+            config.filesbuffermanager.SetPosition(fbPosition)
+            proofPosition = (position[0]-sz[0]-2, position[1] +sz[1] + 2)
+            config.prooftreemanager.SetPosition(proofPosition)
+            #self.SetPosition((position[0] + sz[0]+2, position[1]))
+        
         # end wxGlade
 
     def __do_layout(self):
+        self.SetSize((700, 598))
         # begin wxGlade: PVSMainFrame.__do_layout
         sizer_1 = wx.BoxSizer(wx.HORIZONTAL)
         sizer_2 = wx.BoxSizer(wx.VERTICAL)
         sizer_7 = wx.BoxSizer(wx.VERTICAL)
         ##sizer_8 = wx.BoxSizer(wx.VERTICAL)
-        sizer_6 = wx.BoxSizer(wx.VERTICAL)
-        sizer_3 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_5 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_4 = wx.BoxSizer(wx.HORIZONTAL)
         sizer_8 = wx.BoxSizer(wx.HORIZONTAL)
         sizer_10 = wx.BoxSizer(wx.VERTICAL)
-        sizer_4.Add(self.filestree, 1, wx.EXPAND, 0)
-        self.notebook_4_pane_1.SetSizer(sizer_4)
-        sizer_5.Add(self.bufferstree, 1, wx.EXPAND, 0)
-        self.notebook_4_pane_2.SetSizer(sizer_5)
-        self.notebook_4.AddPage(self.notebook_4_pane_1, TAB_FILES)
-        self.notebook_4.AddPage(self.notebook_4_pane_2, TAB_BUFFERS)
-        sizer_3.Add(self.notebook_4, 1, wx.EXPAND, 0)
-        self.window_1_pane_1.SetSizer(sizer_3)
-        sizer_6.Add(self.prooflabel, 0, wx.ALIGN_CENTER_HORIZONTAL, 0)
-        sizer_6.Add(self.prooftree, 1, wx.EXPAND, 0)
-        self.window_1_pane_2.SetSizer(sizer_6)
-        self.window_1.SplitHorizontally(self.window_1_pane_1, self.window_1_pane_2)
-        sizer_1.Add(self.window_1, 1, wx.EXPAND, 0)
+        #sizer_1.Add(self.window_1, 1, wx.EXPAND, 0)
         
         ##config.notebook.AddPage(self.panel_3, "tab1")
         sizer_8.Add(config.notebook, 1, wx.EXPAND, 0)
@@ -151,8 +145,10 @@ class PVSMainFrame(wx.Frame):
             config.console.initializeConsole()
         elif message == MESSAGE_PVS_STATUS:
             self.updateFrame(data)
-        elif message == MESSAGE_CONSOLE_WRITE:
-            config.console.write(data)
+        elif message == MESSAGE_CONSOLE_WRITE_LINE:
+            config.console.writeLine(data)
+        elif message == MESSAGE_CONSOLE_WRITE_PROMPT:
+            config.console.writePrompt(data)            
         else:
             log.warn("Unhandled PVSmessage: %d", message)
             
@@ -192,4 +188,13 @@ class PVSMainFrame(wx.Frame):
             config.menubar.enableFind()
         else:
             log.error("openFiles is a negative number: %d", openFiles)
+            
+    def OnClose(self, event):
+        if config.runner != None:
+            config.runner.terminate()
+        config.preference.savePreferences()
+        event.Skip()
+
+
+
         

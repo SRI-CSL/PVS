@@ -85,7 +85,7 @@
 
 (defun pvs-message (ctl &rest args)
   (dolist (hook *pvs-message-hooks*)
-    (funcall hook (format nil ":pvs-msg ~? :end-pvs-msg" ctl args)))
+    (funcall hook (format nil "~?" ctl args)))
   (unless *suppress-msg*
     (if *to-emacs*
 	(let* ((*print-pretty* nil)
