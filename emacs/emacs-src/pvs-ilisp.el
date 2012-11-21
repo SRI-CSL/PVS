@@ -166,7 +166,15 @@ intervenes."
   (setq comint-interrupt-regexp  "Error: [^\n]* interrupt\)")
   (setq ilisp-error-regexp
 	"^\\(Error:[^\n]*\\)\\|\\(Break:[^\n]*\\)")
-  (setq pvs-gc-end-regexp ";;; Finished GC"))
+  (setq pvs-gc-end-regexp ";;; Finished GC")
+  ;; (setq font-lock-defaults
+  ;; 	`((pvs-lisp-font-lock-keywords
+  ;; 	   pvs-lisp-font-lock-keywords-1 pvs-lisp-font-lock-keywords-2)
+  ;; 	  nil nil (("+-*/.<>=!?$%_&~^:@" . "w")) nil
+  ;; 	  (font-lock-mark-block-function . mark-defun)
+  ;; 	  (font-lock-syntactic-face-function
+  ;; 	   . lisp-font-lock-syntactic-face-function)))
+  )
 
 (defdialect pvscmulisp "pvs-cmulisp"
   cmulisp
@@ -399,7 +407,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
 
 (defun pvs-output-filter (output)
   (if (string-match
-       ":pvs-\\(msg\\|log\\|warn\\|out\\|err\\|qry\\|buf\\|yn\\|bel\\|loc\\|mod\\|pmt\\|dis\\|wish\\|eval\\|addecl\\) "
+       ":pvs-\\(msg\\|log\\|warn\\|out\\|err\\|qry\\|buf\\|sqt\\|yn\\|bel\\|loc\\|mod\\|pmt\\|dis\\|wish\\|eval\\|addecl\\) "
        output)
       (let* ((orig-string-end (match-beginning 0))
 	     (beg (match-end 0))
@@ -434,6 +442,8 @@ want to set this to nil for slow terminals, or connections over a modem.")
 		     (pvs-query out))
 		    ((string-equal kind "buf")
 		     (pvs-buffer out))
+		    ((string-equal kind "sqt")
+		     (pvs-sequent out))
 		    ((string-equal kind "yn")
 		     (apply 'pvs-y-or-n (parse-pvs-message out)))
 		    ((string-equal kind "bel")
@@ -733,6 +743,54 @@ window."
 			  *pvs-buffer-mode-alist*))))
     (when mode (funcall mode))))
 
+(defvar pvs-proof-window-configuration nil)
+
+(defun set-pvs-proof-window-configuration (&optional default-p)
+  (interactive)
+  (when default-p
+    (let ((seqbuf (get-buffer-create "Current Goal"))
+	  (prfbuf (get-buffer-create "Proof"))
+	  (rulebuf (get-buffer "*pvs*")))
+      (switch-to-buffer seqbuf)
+      (delete-other-windows)
+      (split-window-below)
+      (goto-char (point-max))
+      (other-window 1)
+      (switch-to-buffer rulebuf)
+      (split-window nil -3 'above)
+      (switch-to-buffer prfbuf nil t)))
+  (setq pvs-proof-window-configuration (current-window-configuration)))
+
+(defun pvs-sequent (output)
+  (apply 'pvs-sequent* (parse-pvs-message output)))
+
+(defun pvs-sequent* (printout result label comment sequent-file)
+  (setq sss (list printout result label comment sequent-file))
+  (let* ((sqtbuf (get-buffer-create "Current Goal")))
+    (set-buffer sqtbuf)
+    (erase-buffer)
+    (unless (member printout '("nil" "NIL"))
+      (insert-file-contents printout))
+    (unless (member result '("nil" "NIL"))
+      (goto-char (point-max))
+      (insert (format "\n%s\n" result)))
+    (goto-char (point-max))
+    (insert (format "\n%s :" label))
+    (unless (member comment '("nil" "NIL"))
+      (goto-char (point-max))
+      (insert (format "\n%s" comment)))
+    (goto-char (point-max))
+    (insert-file-contents sequent-file nil)
+    (make-local-variable 'font-lock-defaults)
+    (setq font-lock-defaults '(pvs-sequent-font-lock-keywords nil t))
+    (goto-char (point-max))
+    (unless pvs-proof-window-configuration
+      (set-pvs-proof-window-configuration t))
+    (set-window-configuration pvs-proof-window-configuration)
+    (other-window -1)
+    (goto-char (point-max))
+    ))
+
 (defun pvs-y-or-n (msg &optional yesno-p timeout-p)
   (if noninteractive
       (progn (message msg)
@@ -950,7 +1008,9 @@ let the user decide what to do."
 			   (concat comment-start comment-start comment-start
 				   message "\n"
 				   output "\n" prompt))
-			  (message "Preserve break") nil)
+			  (if noninteractive
+			      (error out)
+			      (message "Preserve break") nil))
 			(message "Keep error in *Errors* and continue")
 			t))))
 	  t)
