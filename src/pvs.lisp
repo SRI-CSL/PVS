@@ -339,15 +339,20 @@
 		       :test #'string=)))))))
 
 (defun collect-pvs-patch-files ()
-  (case (ignore-errors (parse-integer
-			(environment-variable "PVSPATCHLEVEL")))
-    (0 nil)
-    (1 (pvs-patch-files-for nil))
-    (2 (append (pvs-patch-files-for nil)
-	       (pvs-patch-files-for "test")))
-    (3 (append (pvs-patch-files-for nil)
-	       (pvs-patch-files-for "test")
-	       (pvs-patch-files-for "exp")))))
+  (let ((pl (ignore-errors (parse-integer
+			    (environment-variable "PVSPATCHLEVEL")))))
+    (unless (and (integerp pl) (zerop pl))
+      (let ((pfiles nil))
+	(dolist (dir (cons *pvs-path* (reverse *pvs-library-path*)))
+	  (let ((pdir (format nil "~apvs-patches/" dir)))
+	    (when (directory-p pdir)
+	      (setq pfiles
+		    (append pfiles
+			    (sort (directory (format nil "~apatch-*.lisp" pdir))
+				  #'< :key #'(lambda (pn)
+					       (parse-integer (pathname-name pn)
+							      :start 6))))))))
+	pfiles))))
 
 (defun user-pvs-lisp-file ()
   (unless *started-with-minus-q*
