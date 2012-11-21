@@ -139,6 +139,7 @@ PVS are automatically put in the proper mode."
   (setq mode-name "PVS")
   (setq mode-line-process 'ilisp-status)
   (set-syntax-table pvs-mode-syntax-table)
+  (set-input-method "TeX")
   (setq parse-sexp-ignore-comments t)
   (run-hooks 'pvs-mode-hook))
 
