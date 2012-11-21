@@ -518,6 +518,46 @@
 	(format t "~%Not a valid choice - try again~%choice? ")
 	(read-choice query))))
 
+(defvar *testing-emacs-gui* nil)
+
+(defmethod output-proofstate :around ((ps proofstate))
+  (if (not *testing-emacs-gui*)
+      (call-next-method)
+      (with-slots (label comment current-goal) ps
+	(when *pvs-emacs-interface*
+	  (let* ((pps (parent-proofstate ps))
+		 (*ps* ps)
+		 (*print-ancestor* (if *print-ancestor*
+				       *print-ancestor*
+				       (parent-proofstate *ps*)))
+		 (*pp-print-parens* *show-parens-in-proof*)
+		 (*sb-print-depth* *prover-print-depth*)
+		 (*sb-print-length* *prover-print-length*)
+		 (*output-to-emacs*
+		  ;; action & result & label & sequent
+		  (format nil "~%:pvs-sqt ~a&~a&~a&~a&~a :end-pvs-sqt"
+		    (when pps
+		      (write-to-temp-file
+		       (string-trim '(#\Space #\Tab #\Newline)
+				    (format-printout pps t))))
+		    (proofstate-result ps)
+		    label
+		    comment
+		    (when current-goal (write-to-temp-file current-goal)))))
+	    (to-emacs)))
+	(call-next-method))))
+
+(defun proofstate-result (ps)
+  (let ((pps (parent-proofstate ps)))
+    (when (and pps (eq (status-flag pps) '?))
+      (cond ((cdr (remaining-subgoals pps))
+	     (format nil "this yields  ~a subgoals: "
+	       (length (remaining-subgoals pps))))
+	    ((not (typep (car (remaining-subgoals pps))
+			 'strat-proofstate))
+	     (format nil "this simplifies to: "))
+	    (t (break))))))
+
 (defun pvs-buffer (name contents &optional display? read-only? append? kind)
   (dolist (hook *pvs-buffer-hooks*)
     (funcall hook name contents display? read-only? append? kind))
@@ -1017,3 +1057,5 @@
 (defun ilisp-eval (form package filename)
   (let ((*package* (find-package package)))
     (eval (read-from-string form))))
+
+(in-package :pvs)
