@@ -434,6 +434,8 @@
 	  (cons (or *real* *number_field*) (mapcar #'type reses)))))
 
 (defun available-numeric-type (num)
+  ;; Note that this may be used when compiling the prelude, and not all
+  ;; types will be available
   (if (integerp num)
       (or (cond ((plusp num) *posint*)
 		((minusp num) *negint*)
@@ -441,7 +443,7 @@
 	  *integer* *rational* *real* *number*
 	  (error "No type available for numerals"))
       ;; else must be rational
-      (or *rational* *real* *number*
+      (or (if (plusp num) *posrat* *negrat*) *rational* *real* *number*
 	  (error "No type available for numerals"))))
 
 ;;; Record-expr typechecking involves typechecking the assignments and
