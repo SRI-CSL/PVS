@@ -2291,3 +2291,11 @@ Sets the default description string for interactive proofs."
   (interactive "sEnter the default description: ")
   (pvs-send-and-wait (format "(setq *default-proof-description* \"%s\")"
 			 string)))
+
+(defun pvs-checker-busy ()
+  (setq pvs-in-checker t)
+  (pvs-busy))
+
+(defun pvs-checker-ready ()
+  (setq pvs-in-checker nil)
+  (pvs-ready))
