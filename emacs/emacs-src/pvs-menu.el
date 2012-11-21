@@ -224,7 +224,7 @@
 (require 'font-lock)
 
 (defvar pvs-keywords
-  '("@DECL" "AND" "ANDTHEN" "ARRAY" "AS" "ASSUMING" "ASSUMPTION" "AUTO_REWRITE"
+  '("AND" "ANDTHEN" "ARRAY" "AS" "ASSUMING" "ASSUMPTION" "AUTO_REWRITE"
     "AUTO_REWRITE+" "AUTO_REWRITE-" "AXIOM" "BEGIN" "BUT" "BY" "CASES"
     "CHALLENGE" "CLAIM" "CLOSURE" "CODATATYPE" "COINDUCTIVE" "COND"
     "CONJECTURE" "CONTAINING" "CONVERSION" "CONVERSION+" "CONVERSION-"
@@ -238,7 +238,8 @@
     "VAR" "WHEN" "WHERE" "WITH" "XOR"))
 
 (defvar pvs-operators
-  '("!" "!!" "#" "##" "\\$" "\\$\\$" "&" "&&"
+  '(;;"!" "!!"
+    "#" "##" "\\$" "\\$\\$" "&" "&&"
     "\\*" "\\*\\*" "\\+" "\\+\\+" "-" "/"
     "//" "/=" "/\\\\" "::" ":=" "<" "<-" "<<" "<<=" "<="
     "<=>" "<>" "<|" "=" "==" "==>" "=>" ">" ">=" ">>" ">>=" "@" "@@"
@@ -345,6 +346,58 @@
 		  "\\)")
 	  1 'font-lock-function-name-face)))
   "Additional expressions to highlight in PVS mode.")
+
+(defconst pvs-sequent-font-lock-keywords-1
+  (purecopy
+   (list
+    (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
+    '("\\({[^}]*}\\)" 1 font-lock-warning-face)
+    '("\\(\\[[^]]*\\]\\)" 1 font-lock-comment-face)
+    ;; These have to come first or they will match others too soon.
+    '("\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
+      1 font-lock-function-name-face)
+    '("\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 font-lock-keyword-face)
+    '("\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 font-lock-keyword-face)
+    '("\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 font-lock-keyword-face)
+    '("\\({\\||\\|}\\)" 1 font-lock-keyword-face)
+    '("\\(\\[\\|->\\|\\]\\)" 1 font-lock-keyword-face)
+    (list (concat "\\("
+		  (mapconcat 'identity pvs-operators "\\|")
+		  "\\)")
+	  1 'font-lock-function-name-face)))
+  "Additional expressions to highlight in PVS mode.")
+
+(defconst pvs-sequent-font-lock-keywords-2
+  (purecopy
+   (list
+    (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
+    ;; These have to come first or they will match too soon.
+    (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
+	  1 'font-lock-function-name-face)
+    (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-pvs-record-parens-face)
+    (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-pvs-parens-face)
+    (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-pvs-table-face)
+    (list "\\({\\||\\|}\\)" 1 'font-lock-pvs-set-brace-face)
+    (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-pvs-function-type-face)
+    (list (concat "\\("
+		  (mapconcat 'identity pvs-operators "\\|")
+		  "\\)")
+	  1 'font-lock-function-name-face)))
+  "Additional expressions to highlight in PVS mode.")
+
+(defvar pvs-sequent-font-lock-keywords pvs-sequent-font-lock-keywords-1)
+
+(defconst pvs-lisp-font-lock-keywords-1
+  (append
+   `((("^  |-------$") 0 info-title-1))
+   lisp-font-lock-keywords-1))
+
+(defconst pvs-lisp-font-lock-keywords-2
+  (append pvs-lisp-font-lock-keywords-1
+	  (list (regexp-opt '("^  |-------$")))))
+
+(defvar pvs-lisp-font-lock-keywords pvs-lisp-font-lock-keywords-1
+  "Default expressions to highlight in pvs-lisp-modes (*pvs* buffer)")
 
 (unless (or (featurep 'xemacs)
 	    (boundp 'font-lock-maximum-decoration))
