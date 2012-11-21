@@ -4,51 +4,54 @@
 {\hlink{Ids}\ \lit{:} \lit{LIBRARY} \opt{\lit{=}} \hlink{String}}
 
 \production{TheoryDecl}
-{\hlink{Ids}\ \lit{:} \lit{THEORY} \lit{=} \hlink{TheoryDeclName}}
+{\hlink{Ids}\opt{\hlink{DeclFormals}}\ \lit{:} \lit{THEORY} \lit{=} \hlink{TheoryDeclName}}
 
 \production{TypeDecl}
-{\hlink{Id}\ \opt{\{\lit{,} \hlink{Ids}\} \choice \hlink{Bindings}} \lit{:} \\[-0.1in]
+{\hlink{Id}\opt{\hlink{DeclFormals}}\ \opt{\{\lit{,} \hlink{Ids}\} \choice \hlink{Bindings}} \lit{:} \\[-0.1in]
 & & \quad \{\lit{TYPE} \choice \lit{NONEMPTY\_TYPE} \choice \lit{TYPE+}\} \\[-0.1in]
 & & \quad \opt{\brc{\lit{=} \choice \lit{FROM}} \hlink{TypeExpr} \opt{\lit{CONTAINING} \hlink{Expr}}}}
 
 \production{VarDecl}
-{\hlink{IdOps}\ \lit{:} \lit{VAR} \hlink{TypeExpr}}
+{\hlink{IdOps}\opt{\hlink{DeclFormals}}\ \lit{:} \lit{VAR} \hlink{TypeExpr}}
 
 \production{ConstDecl}
-{\hlink{IdOp}\ \opt{\{\lit{,} \hlink{IdOps} \} \choice \ite{\hlink{Bindings}}} \lit{:} \hlink{TypeExpr} \opt{\lit{=} \hlink{Expr}}}
+{\hlink{IdOp}\opt{\hlink{DeclFormals}}\ \opt{\{\lit{,} \hlink{IdOps} \} \choice \ite{\hlink{Bindings}}} \lit{:} \hlink{TypeExpr} \opt{\lit{=} \hlink{Expr}}}
 
 \production{RecursiveDecl}
-{\hlink{IdOp}\ \opt{\{\lit{,} \hlink{IdOps} \} \choice \ite{\hlink{Bindings}}} \lit{:} \lit{RECURSIVE} \\[-0.1in]
+{\hlink{IdOp}\opt{\hlink{DeclFormals}}\ \opt{\{\lit{,} \hlink{IdOps} \} \choice \ite{\hlink{Bindings}}} \lit{:} \lit{RECURSIVE} \\[-0.1in]
 & & \quad \hlink{TypeExpr} \lit{=} \hlink{Expr} \lit{MEASURE} \hlink{Expr} \opt{\lit{BY} \hlink{Expr}}}
 
 \production{MacroDecl}
-{\hlink{IdOp}\ \opt{\{\lit{,} \hlink{IdOps} \} \choice
+{\hlink{IdOp}\opt{\hlink{DeclFormals}}\ \opt{\{\lit{,} \hlink{IdOps} \} \choice
 \ite{\hlink{Bindings}}} \lit{:} \lit{MACRO} \\[-0.1in]
 & & \quad \hlink{TypeExpr} \lit{=} \hlink{Expr}}
 
 \production{InductiveDecl}
-{\hlink{IdOp}\ \opt{\{\lit{,} \hlink{IdOps} \} \choice \ite{\hlink{Bindings}}} \lit{:} \lit{INDUCTIVE}  \\[-0.1in]
+{\hlink{IdOp}\opt{\hlink{DeclFormals}}\ \opt{\{\lit{,} \hlink{IdOps} \} \choice \ite{\hlink{Bindings}}} \lit{:} \lit{INDUCTIVE}  \\[-0.1in]
 & & \quad \hlink{TypeExpr} \lit{=} \hlink{Expr}}
 
 \production{CoInductiveDecl}
-{\hlink{IdOp}\ \opt{\{\lit{,} \hlink{IdOps} \} \choice \ite{\hlink{Bindings}}} \lit{:} \lit{COINDUCTIVE}  \\[-0.1in]
+{\hlink{IdOp}\opt{\hlink{DeclFormals}}\ \opt{\{\lit{,} \hlink{IdOps} \} \choice \ite{\hlink{Bindings}}} \lit{:} \lit{COINDUCTIVE}  \\[-0.1in]
 & & \quad \hlink{TypeExpr} \lit{=} \hlink{Expr}}
 
 \production{FormulaDecl}
-{\hlink{Ids}\ \lit{:} \hlink{FormulaName} \hlink{Expr}}
+{\hlink{Ids}\opt{\hlink{DeclFormals}}\ \lit{:} \hlink{FormulaName} \hlink{Expr}}
 
 \production{Judgement}
 {\hlink{SubtypeJudgement} \choice \hlink{ConstantJudgement}}
 
 \production{SubtypeJudgement}
-{\opt{\hlink{IdOp} \lit{:}} \lit{JUDGEMENT} \ites{\hlink{TypeExpr}}{,} \lit{SUBTYPE\_OF} \hlink{TypeExpr}}
+{\opt{\hlink{IdOp}\opt{\hlink{DeclFormals}} \lit{:}} \lit{JUDGEMENT} \ites{\hlink{TypeExpr}}{,} \lit{SUBTYPE\_OF} \hlink{TypeExpr}}
 
 \production{ConstantJudgement}
-{\opt{\hlink{IdOp} \lit{:}} \lit{JUDGEMENT} \ites{\hlink{ConstantReference}}{,}  \\[-0.1in]
+{\opt{\hlink{IdOp}\opt{\hlink{DeclFormals}} \lit{:}} \opt{\lit{RECURSIVE}}
+\lit{JUDGEMENT} \ites{\hlink{ConstantReference}}{,}  \\[-0.1in]
 & & \quad \lit{HAS\_TYPE} \hlink{TypeExpr}}
 
 \production{ConstantReference}
-{\hlink{Name} \rep{\hlink{Bindings}}}
+{\hlink{Name} \rep{\hlink{Bindings}}\\[-0.1in]
+& & \choice \lit{FORALL} \hlink{LambdaBindings} \lit{:} Expr
+}
 
 \production{Conversion}
 {\brc{\lit{CONVERSION} \choice \lit{CONVERSION+} \choice

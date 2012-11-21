@@ -1,7 +1,7 @@
 \begin{bnf}
 
 \production{Specification}
-{\ite{\brc{\hlink{Theory} \choice \hlink{Datatype}}}}
+{\ite{\brc{\hlink{Theory} \choice \hlink{RecursiveType}}}}
 
 \production{Theory}
 {\hlink{Id} \opt{\hlink{TheoryFormals}} \lit{:} \lit{THEORY}\\[-0.1in]
@@ -24,7 +24,7 @@
 
 \production{TheoryFormalType}
 {\hlink{Ids} \lit{:} \brc{\lit{TYPE} \choice \lit{NONEMPTY\_TYPE} \choice \lit{TYPE+}} \\[-0.1in]
-& & \hspace{0.5in}\opt{\lit{FROM} \hlink{TypeExpr}}}
+& & \hspace{0.5in}\opt{\brc{\lit{FROM} \choice \lit{<:}} \hlink{TypeExpr}}}
 
 \production{TheoryFormalConst}
 {\hlink{IdOps} \lit{:} \hlink{TypeExpr}}
