@@ -256,6 +256,7 @@
   (append (dactuals lhs) (dactuals modinst)))
 
 (defmethod all-dactuals (decl modinst)
+  (declare (ignore decl))
   (dactuals modinst))
 
 (defun adt-modinst (modinst &optional theory)
@@ -388,6 +389,7 @@
 ;;;       any bindings coming (recursively) from th1 and th2
 
 (defun extended-mappings (thname lhs-theory decl)
+  (declare (ignore lhs-theory))
   (let* ((rhs-theory (declaration thname))
 	 (bmappings (extended-basic-mappings (mappings thname)
 					     (when (and rhs-theory
@@ -1012,6 +1014,7 @@
       :generated-by decl)))
 
 (defmethod subst-mod-params* ((decl formula-decl) modinst bindings)
+  (declare (ignore bindings))
   (with-slots (definition) decl
     (multiple-value-bind (dfmls dacts)
 	(new-decl-formals decl)
@@ -1157,6 +1160,7 @@
 ;;; Note that the modinst here is not the same as the one provided to
 ;;; subst-mod-params
 (defun subst-mod-params-type-name (type tn-thinst bindings modinst)
+  (declare (ignore bindings modinst))
   (assert (eq (id tn-thinst) (id (module-instance (resolution type)))))
   (let* ((res (car (resolutions type)))
 	 (decl (declaration res))
@@ -1372,7 +1376,6 @@
 ;;; Expressions
 
 (defmethod subst-mod-params* ((expr name-expr) modinst bindings)
-  (declare (ignore modinst))
   (let* ((decl (declaration expr))
 	 (act (cdr (assq decl bindings)))
 	 (lhsmatch (unless act
@@ -1451,8 +1454,8 @@
 			  (subst-mod-params* (declared-type bd)
 					     modinst bindings)))
 	(clash? (some #'(lambda (sbd) (var-occurs-in (id bd) (cdr sbd))) bindings)))
-    (if (and (tc-eq (type bd) ntype)
-	     (tc-eq (declared-type bd) ndeclared-type)
+    (if (and (strong-tc-eq (type bd) ntype)
+	     (strong-tc-eq (declared-type bd) ndeclared-type)
 	     (not clash?))
 	bd
 	(let ((nbd (copy bd
@@ -1540,6 +1543,7 @@
       (lcopy expr :argument narg :type ntype))))
 
 (defmethod subst-mod-params* ((expr rational-expr) modinst bindings)
+  (declare (ignore modinst bindings))
   expr)
 
 (defmethod subst-mod-params* ((expr number-expr) modinst bindings)
@@ -1884,6 +1888,7 @@
 
 (defmethod make-resolution (decl modinst &optional type
 				 (sdecl (current-declaration)))
+  (declare (ignore sdecl))
   (assert (modname? modinst))
   #+pvsdebug
   (assert (or (null type)
