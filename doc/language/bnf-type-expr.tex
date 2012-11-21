@@ -2,37 +2,41 @@
 \begin{bnf}
 
 \production{TypeExpr}
-{\hlink{Name} \\[-0.1in]
+{\hlink{TypeName} \\[-0.1in]
 & \choice & \hlink{EnumerationType} \\[-0.1in]
-& \choice & \hlink{Subtype} \\[-0.1in]
-& \choice & \hlink{TypeApplication} \\[-0.1in]
+& \choice & \hlink{Subtype \opt{\lit{WITH} TypeExpr}} \\[-0.1in]
+& \choice & \hlink{TypeApplication \opt{\lit{WITH} TypeExpr}} \\[-0.1in]
 & \choice & \hlink{FunctionType} \\[-0.1in]
-& \choice & \hlink{TupleType} \\[-0.1in]
+& \choice & \hlink{TupleType \opt{\lit{WITH} TypeExpr}} \\[-0.1in]
 & \choice & \hlink{CotupleType} \\[-0.1in]
-& \choice & \hlink{RecordType}}
+& \choice & \hlink{RecordType \opt{\lit{WITH} TypeExpr}}}
+
+\production{TypeName}
+{\hlink{Name} \opt{\lit{WITH} TypeExpr}}
 
 \production{EnumerationType}
 {\lit{\setb} \hlink{IdOps} \lit{\sete}}
 
 \production{Subtype}
-{\lit{\setb} \hlink{SetBindings} \lit{|} \hlink{Expr} \lit{\sete} \\[-0.1in]
-& \choice & \lit{(} \hlink{Expr} \lit{)} }
+{\lit{\setb} \hlink{SetBindings} \lit{|} \hlink{Expr} \lit{\sete} \opt{\lit{WITH} TypeExpr}\\[-0.1in]
+& \choice & \lit{(} \hlink{Expr} \lit{)} \opt{\lit{WITH} TypeExpr}}
 
 \production{TypeApplication}
-{\hlink{Name}\ \hlink{Arguments}}
+{\hlink{Name}\ \hlink{Arguments} \opt{\lit{WITH} TypeExpr}}
 
 \production{FunctionType}
 {\opt{\lit{FUNCTION} \choice \lit{ARRAY}} \\[-0.1in]
 & & \lit{[} \ites{\setb \opt{\hlink{IdOp} \lit{:}} \hlink{TypeExpr} \sete}{,} \lit{->} \hlink{TypeExpr} \lit{]}}
 
 \production{TupleType}
-{\lit{[} \ites{\setb \opt{\hlink{IdOp} \lit{:}} \hlink{TypeExpr} \sete}{,} \lit{]}}
+{\lit{[} \ites{\setb \opt{\hlink{IdOp} \lit{:}} \hlink{TypeExpr} \sete}{,}
+\lit{]} \opt{\lit{WITH} TypeExpr}}
 
 \production{CotupleType}
 {\lit{[} \ites{\setb \opt{\hlink{IdOp} \lit{:}} \hlink{TypeExpr} \sete}{+} \lit{]}}
 
 \production{RecordType}
-{\lit{[\#} \ites{\hlink{FieldDecls}}{,} \lit{\#]}}
+{\lit{[\#} \ites{\hlink{FieldDecls}}{,} \lit{\#]} \opt{\lit{WITH} TypeExpr}}
 
 \production{FieldDecls}
 {\hlink{Ids}\ \lit{:} \hlink{TypeExpr}}

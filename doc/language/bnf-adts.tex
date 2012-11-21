@@ -1,22 +1,23 @@
 
 \begin{bnf}
-\production{Datatype}
-{\hlink{Id} \opt{\hlink{TheoryFormals}} \lit{:} \lit{DATATYPE} \opt{\lit{WITH} \lit{SUBTYPES} \hlink{Ids}}\\[-0.1in]
+\production{RecursiveType}
+{\hlink{Id} \opt{\hlink{TheoryFormals}} \lit{:} \brc{\lit{DATATYPE}
+\choice \lit{CODATATYPE}} \opt{\lit{WITH} \lit{SUBTYPES} \hlink{Ids}}\\[-0.1in]
 && \lit{BEGIN}\\[-0.1in]
 && \opt{\hlink{Importing} \opt{\lit{;}}} \\[-0.1in]
 && \opt{\hlink{AssumingPart}} \\[-0.1in]
-&& \hlink{DatatypePart} \\[-0.1in]
+&& \hlink{RecursiveTypePart} \\[-0.1in]
 && \lit{END} \hlink{Id}}
 
-\production{InlineDatatype}
-{\hlink{Id} \lit{:} \lit{DATATYPE} \opt{\lit{WITH} \lit{SUBTYPES} \hlink{Ids}}\\[-0.1in]
+\production{InlineRecursiveType}
+{\hlink{Id} \opt{\hlink{DeclFormals}} \lit{:} \brc{\lit{DATATYPE} \choice \lit{CODATATYPE}} \opt{\lit{WITH} \lit{SUBTYPES} \hlink{Ids}}\\[-0.1in]
 && \lit{BEGIN}\\[-0.1in]
 && \opt{\hlink{Importing} \opt{\lit{;}}} \\[-0.1in]
 && \opt{\hlink{AssumingPart}} \\[-0.1in]
 && \hlink{DatatypePart} \\[-0.1in]
 && \lit{END} \hlink{id}}
 
-\production{DatatypePart}
+\production{RecursiveTypePart}
 {\ite{\brc{\hlink{Constructor} \lit{:} \hlink{IdOp} \opt{\lit{:} \hlink{Id}}}}}
 
 \production{Constructor}
