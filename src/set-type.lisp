@@ -1474,6 +1474,7 @@ required a context.")
   #+pvsdebug (assert (fully-instantiated? expected))
   (assert (or *checking-conversions*
 	      (typep (current-declaration) 'conversion-decl)
+	      (skolem-constant? ex)
 	      (fully-instantiated? ex)))
   #+pvsdebug (assert (fully-typed? ex))
   (unless (subtype-of? (type ex) expected)

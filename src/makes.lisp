@@ -210,7 +210,8 @@
     :definition definition))
 
 (defun mk-formula-decl (id expr &optional (spelling 'formula) kind dfmls)
-  (assert (or dfmls (null (decl-formals (current-declaration)))))
+  (assert (or *in-checker* *in-evaluator*
+	      dfmls (null (decl-formals (current-declaration)))))
   (let ((fdecl (make-instance 'formula-decl
 		 :id id
 		 :decl-formals dfmls
@@ -223,7 +224,8 @@
     fdecl))
 
 (defun mk-subtype-tcc (id def &optional dfmls)
-  (assert (or dfmls (null (decl-formals (current-declaration)))))
+  (assert (or *in-checker* *in-evaluator*
+	      dfmls (null (decl-formals (current-declaration)))))
   (let ((tccdecl (make-instance 'subtype-tcc
 		   :id id
 		   :decl-formals dfmls
@@ -236,7 +238,8 @@
     tccdecl))
 
 (defun mk-termination-tcc (id expr &optional dfmls)
-  (assert (or dfmls (null (decl-formals (current-declaration)))))
+  (assert (or *in-checker* *in-evaluator*
+	      dfmls (null (decl-formals (current-declaration)))))
   (let ((tccdecl (make-instance 'termination-tcc
 		   :id id
 		   :decl-formals dfmls
@@ -249,7 +252,8 @@
     tccdecl))
 
 (defun mk-judgement-tcc (id expr &optional dfmls)
-  (assert (or dfmls (null (decl-formals (current-declaration)))))
+  (assert (or *in-checker* *in-evaluator*
+	      dfmls (null (decl-formals (current-declaration)))))
   (make-instance 'judgement-tcc
     :id id
     :decl-formals dfmls
@@ -259,7 +263,8 @@
     :semi t))
 
 (defun mk-recursive-judgement-tcc (id expr &optional dfmls)
-  (assert (or dfmls (null (decl-formals (current-declaration)))))
+  (assert (or *in-checker* *in-evaluator*
+	      dfmls (null (decl-formals (current-declaration)))))
   (make-instance 'recursive-judgement-tcc
     :id id
     :decl-formals dfmls
@@ -278,7 +283,8 @@
     :semi t))
 
 (defun mk-existence-tcc (id expr &optional dfmls)
-  (assert (or dfmls (null (decl-formals (current-declaration)))))
+  (assert (or *in-checker* *in-evaluator*
+	      dfmls (null (decl-formals (current-declaration)))))
   (make-instance 'existence-tcc
     :id id
     :decl-formals dfmls
@@ -309,7 +315,7 @@
     :generating-axiom axiom-decl
     :semi t))
 
-(defun mk-cases-tcc (id expr)
+(defun mk-cases-tcc (id expr dfmls)
   (make-instance 'cases-tcc
     :id id
     :spelling 'OBLIGATION

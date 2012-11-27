@@ -78,7 +78,8 @@
 (defun make-subtype-tcc-decl (expr incs)
   (assert (every #'type incs))
   (multiple-value-bind (dfmls dacts thinst)
-      (new-decl-formals (current-declaration))
+      (unless (or *in-checker* *in-evaluator*)
+	(new-decl-formals (current-declaration)))
     (declare (ignore dacts))
     (let* ((*generate-tccs* 'none)
 	   (cdecl (current-declaration))
@@ -999,7 +1000,8 @@
 
 (defun make-existence-tcc-decl (type fclass)
   (multiple-value-bind (dfmls dacts thinst)
-      (new-decl-formals (current-declaration))
+      (unless (or *in-checker* *in-evaluator*)
+	(new-decl-formals (current-declaration)))
     (declare (ignore dacts))
     (let* ((*generate-tccs* 'none)
 	   (cdecl (current-declaration))
@@ -1103,7 +1105,8 @@
 
 (defun make-assuming-tcc-decl (ass modinst)
   (multiple-value-bind (dfmls dacts thinst)
-      (new-decl-formals (current-declaration))
+      (unless (or *in-checker* *in-evaluator*)
+	(new-decl-formals (current-declaration)))
     (declare (ignore dacts))
     (unless (closed-definition ass)
       (let* ((*in-checker* nil)
@@ -1223,7 +1226,7 @@
 
 
 (defun find-uninterpreted (expr thinst theory mappings-alist)
-  (declare (ignore thinst theory mappings-alist))
+  (declare (ignore thinst mappings-alist))
   (let ((needs-interp nil))
     (mapobject #'(lambda (ex)
 		   (or (member ex needs-interp :test #'tc-eq)
@@ -1257,8 +1260,8 @@
 
 (defun make-mapped-axiom-tcc-decl (axiom modinst mod)
   (multiple-value-bind (dfmls dacts thinst)
-      (new-decl-formals axiom)
-    (declare (ignore dacts))
+      (unless (or *in-checker* *in-evaluator*)
+	(new-decl-formals axiom))
     (let* ((*generate-tccs* 'none)
 	   (*generating-mapped-axiom-tcc* t)
 	   (cdecl (current-declaration))
@@ -1306,23 +1309,26 @@
 	(generate-selections-tcc unselected expr adt)))))
 
 (defun generate-selections-tcc (constructors expr adt)
-  (when (decl-formals (current-declaration)) (break "generate-selections-tcc"))
-  (let* ((*generate-tccs* 'none)
-	 (id (make-tcc-name))
-	 (form (typecheck* (mk-application 'NOT
-			     (mk-disjunction
-			      (mapcar #'(lambda (c)
-					  (mk-application (recognizer c)
-					    (expression expr)))
-				      constructors)))
-			   *boolean* nil nil))
-	 (tform (add-tcc-conditions form))
-	 (uform (beta-reduce tform))
-	 (*bound-variables* nil)
-	 (*old-tcc-name* nil)
-	 (ndecl (typecheck* (mk-cases-tcc id uform) nil nil nil)))
-    ;;(assert (tc-eq (type uform) *boolean*))
-    (insert-tcc-decl 'cases (expression expr) adt ndecl)))
+  (multiple-value-bind (dfmls)
+      (new-decl-formals (current-declaration))
+    (let* ((*generate-tccs* 'none)
+	   (id (make-tcc-name))
+	   (ndecl (mk-cases-tcc id nil dfmls))
+	   (form (with-current-decl ndecl
+		   (typecheck* (mk-application 'NOT
+				 (mk-disjunction
+				  (mapcar #'(lambda (c)
+					      (mk-application (recognizer c)
+						(expression expr)))
+				    constructors)))
+			       *boolean* nil nil)))
+	   (tform (add-tcc-conditions form))
+	   (uform (beta-reduce tform))
+	   (*bound-variables* nil)
+	   (*old-tcc-name* nil))
+      (setf (definition ndecl) uform)
+      ;;(assert (tc-eq (type uform) *boolean*))
+      (insert-tcc-decl 'cases (expression expr) adt ndecl))))
 
 (defun generate-coselections-tccs (expr)
   (unless (eq *generate-tccs* 'none)
