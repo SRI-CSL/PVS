@@ -159,7 +159,7 @@ intervenes."
 	 (new-prompt "\\([-A-Za-z0-9]+([0-9]+):\\)")
 	 (pvs-added "Rule\\?\\|.*(Y or N)\\|.*(Yes or No)\\|.*process\\?\\|Please enter.*:"))
     (setq comint-prompt-regexp
-	  (format "^\\(%s\\(%s\\|%s\\|%s\\) \\)+"
+	  (format "^\\(%s\\(%s\\|%s\\|%s\\)\\)+:? "
 	      prompt-pre old-prompt new-prompt pvs-added))
     (setq pvs-top-regexp
 	  (format "^\\(%s\\(%s\\|%s\\) \\)+" prompt-pre old-prompt new-prompt)))
