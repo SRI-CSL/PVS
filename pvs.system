@@ -156,6 +156,7 @@
 (defvar pvs::*pvs-path* *pvs-path*)
 (defvar pvs::*pvs-binary-type* *pvs-binary-type*)
 
+(defvar *pvs-has-libyices* nil)
 (defvar *pvs-system-loaded* nil)
 
 (defvar *load-pvs-classes* #-allegro nil #+allegro t)
@@ -263,16 +264,19 @@
 		    (load (format nil "~a/ws1s.~a"
 			    ws1spath *load-foreign-extension*))
 		    #+allegro
-		    (load (format nil "~a/libyices.~a"
-			    yicespath *load-foreign-extension*)))
+		    (let ((libyices (format nil "~a/libyices.~a"
+				      yicespath *load-foreign-extension*)))
+		      (when (probe-file libyices)
+			(load libyices)
+			(setq *pvs-has-libyices* t))))
 		  (setq *pvs-system-loaded* t))
   :finally-do (progn
 		#+lucid (precompile-generic-functions)
 		#+lcl4.1 (clos::flush-pv-caches)
 		#-(or cmu sbcl)
 		(pvs::BDD_bdd_init)
-		#+allegro
-		(pvs::nlyices-init)
+		(when *pvs-has-libyices*
+		  (pvs::nlyices-init))
 		(when *load-pvs-prelude*
 		  (pvs::load-prelude)
 		  ;;(load (format nil "~a/src/PVSio/prelude-attachments" *pvs-path*))
@@ -535,6 +539,7 @@
 		  (:file "debug")
 		  (:file "prfanal")
 		  (:file "rahd-pvs")))
+   #+allegro
    (:module nlyices
      :source-pathname "src/nlyices"
      :components ((:file "polyrep-totdeglex")
@@ -542,7 +547,6 @@
 		  (:file "vts")
 		  (:file "nlsolver")
 		  (:file "named-callbacks")
-		  #+allegro
 		  (:file "fcpo")
 		  (:file "nlyices")))
    ))
