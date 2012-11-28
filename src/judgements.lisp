@@ -1448,9 +1448,9 @@
 		 (exportable? hj theory))
 	    hj
 	    (let* ((nj (lcopy j
-			 'declared-type (subst-mod-params (declared-type j)
-							  thname theory)
 			 'type (subst-mod-params (type j) thname theory)
+			 'declared-type (subst-mod-params (declared-type j)
+					    thname theory)
 			 'name (subst-mod-params (name j) thname theory)))
 		   (oj (car (member nj
 				    (remove-if-not
