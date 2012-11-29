@@ -799,12 +799,43 @@ string  LABEL.  If PUSH? is T, then the new label is added to any existing
 ones.  Otherwise, the new label replaces all existing ones."
   "~%Using ~a to label formula(s) ~a")
 
-(addrule 'unlabel () (fnums label)
-  (unlabel-step fnums label)
+(addrule 'unlabel () (fnums label hidden?)
+	 (if hidden?
+	     (unlabel-hidden-step fnums label)
+	   (unlabel-step fnums label))
   "Removes specified label (or all labels if none specified)
-   from the formulas FNUMS (or when FNUMS is not specified, all formulas)."
-  "~%Removing labels")
-	 
+   from the formulas FNUMS (or when FNUMS is not specified, all formulas).
+   FNUMS are considerd to be hidden formulas when hidden? is set to t."
+  "~%Removing labels from ~2@*~:[~;hidden ~]formulas")
+
+(defun unlabel-hidden-step (fnums label)
+  #'(lambda (ps)
+      (let* ((goalsequent (current-goal ps))
+	     (hsforms (hidden-s-forms goalsequent))
+	     (nfnums (cond ((null fnums) '*)
+			   ((consp fnums) fnums)
+			   (t (list fnums))))
+	     (sformnums (find-all-sformnums hsforms nfnums
+					  #'always-true))
+	     (nlabel (if (stringp label) (intern label) label)))
+	(cond (sformnums
+	       (multiple-value-bind
+		   (signal result)
+		   (hidden-sform-reduce
+		    hsforms
+		    #'(lambda (sform)
+			(values '? (if nlabel
+				       (lcopy sform 'label
+					      (loop for y in (label sform)
+						    unless (eq nlabel y)
+						    collect y))
+				     (lcopy sform 'label nil))))
+		    sformnums)
+		 (progn (setf (hidden-s-forms goalsequent) result)
+			(values signal (list goalsequent)))))
+	      (t
+	       (error-format-if "~%No hidden formulas match ~a" (or fnums '*))
+	       (values 'X nil nil))))))
 
 (addrule 'just-install-proof (proof) ()
   #'(lambda (ps)

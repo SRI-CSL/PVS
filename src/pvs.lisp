@@ -141,6 +141,7 @@
 	  (and fd (intern fd :pvs))))
   (let ((dp (environment-variable "PVSDEFAULTDP")))
     (when dp (set-decision-procedure (intern dp :pvs))))
+  (setq *pvs-library-path* (get-pvs-library-path))
   (unless dont-load-patches
     (load-pvs-patches))
   (pvs-init-globals)
@@ -169,7 +170,6 @@
   (setq *last-proof* nil)
   (clrnumhash)
   (setq *pvs-context-writable* (write-permission? (working-directory)))
-  (setq *pvs-library-path* (get-pvs-library-path))
   ;; Prover hash tables
   (setq *translate-to-prove-hash* (make-pvs-hash-table))
   (setq *translate-id-hash* (make-pvs-hash-table))

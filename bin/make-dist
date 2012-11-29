@@ -48,18 +48,12 @@ version="6.0"
 # trap "echo 'Interrupted...cleaning up the staging directory'; rm -rf ${temppar
 # ent}; exit 1" 1 2 15
 
-if [ `uname -s` = "Darwin" -a -e "/usr/bin/bsdtar" ]
-then
-    TAR=/usr/bin/bsdtar
-    TARFLAGS='-cohz --exclude=.svn --exclude=.git'
-else
-    TAR=tar
-    TARFLAGS='-cohz --mode=u+rw --atime-preserve --exclude=.svn --exclude=.git'
-fi
+TAR=tar
+TARFLAGS='-cohz --mode=u+rw --atime-preserve --exclude=.svn --exclude=.git'
 
 # pvs-source.tgz
 echo Creating pvs-${version}-source.tgz
-tar ${TARFLAGS} -f pvs-${version}-source.tgz --exclude pvsbin \
+${TAR} ${TARFLAGS} -f pvs-${version}-source.tgz --exclude pvsbin \
   pvs.system *.lisp Makefile.in README INSTALL LICENSE NOTICES \
   configure configure.in config.guess config.sub install-sh bin/make-dist \
   pvs.in pvsio.in proveit.in provethem.in pvs.sty pvs-tex.sub \
@@ -147,50 +141,48 @@ pvssystemfiles="\
 
 for platform in ix86-Linux ix86_64-Linux ix86-MacOSX
 do
-	for subdir in runtime devel
+  for subdir in runtime devel
   do
-		if [ "$subdir" = "runtime" ]
-		then
-	    kind=
-		else
-	    kind="-devel"
-		fi
+    if [ "$subdir" = "runtime" ]
+    then
+      kind=
+    else
+      kind="-devel"
+    fi
     if [ -e bin/${platform}/${subdir}/pvs-allegro ]
-		then
+    then
       echo Creating pvs-${version}-${platform}-allegro${kind}.tgz
-      tar ${TARFLAGS} -f pvs-${version}-${platform}-allegro${kind}.tgz \
+      ${TAR} ${TARFLAGS} -f pvs-${version}-${platform}-allegro${kind}.tgz \
         ${pvssystemfiles} \
-        bin/${platform}/b64 bin/relocate \
-				bin/pvs-platform bin/tar-b64-mail \
-				bin/${platform}/${subdir}/file_utils.* \
-				bin/${platform}/${subdir}/libacl*.* \
-				bin/${platform}/${subdir}/mu.* \
-				bin/${platform}/${subdir}/ws1s.* \
-				bin/${platform}/${subdir}/pvs-allegro*
-			ls -l pvs-${version}-${platform}-allegro${kind}.tgz
-		else
+        bin/${platform}/b64 \
+	bin/${platform}/${subdir}/file_utils.* \
+	bin/${platform}/${subdir}/libacl*.* \
+	bin/${platform}/${subdir}/mu.* \
+	bin/${platform}/${subdir}/ws1s.* \
+	bin/${platform}/${subdir}/pvs-allegro*
+      ls -l pvs-${version}-${platform}-allegro${kind}.tgz
+    else
       if [ `bin/pvs-platform` = ${platform} ]
       then echo "Allegro ${subdir} not available for ${platform}"
       fi
-		fi
-		if [ -e bin/${platform}/${subdir}/pvs-sbclisp -a "$subdir" = "runtime" ]
-		then
+    fi
+    if [ -e bin/${platform}/${subdir}/pvs-sbclisp -a "$subdir" = "runtime" ]
+    then
       echo Creating pvs-${version}-${platform}-sbclisp${kind}.tgz
-      tar ${TARFLAGS} -f pvs-${version}-${platform}-sbclisp${kind}.tgz \
-				${pvssystemfiles} \
-				bin/${platform}/b64 bin/relocate \
-				bin/pvs-platform bin/tar-b64-mail \
-				bin/${platform}/${subdir}/mu.* \
-				bin/${platform}/${subdir}/file_utils.* \
-				bin/${platform}/${subdir}/ws1s.* \
-				bin/${platform}/${subdir}/*-sbcl.* \
-				bin/${platform}/${subdir}/pvs-sbclisp*
+      ${TAR} ${TARFLAGS} -f pvs-${version}-${platform}-sbclisp${kind}.tgz \
+	${pvssystemfiles} \
+	bin/${platform}/b64 \
+	bin/${platform}/${subdir}/mu.* \
+	bin/${platform}/${subdir}/file_utils.* \
+	bin/${platform}/${subdir}/ws1s.* \
+	bin/${platform}/${subdir}/*-sbcl.* \
+	bin/${platform}/${subdir}/pvs-sbclisp*
       ls -l pvs-${version}-${platform}-sbclisp${kind}.tgz
-		else
+    else
       if [ `bin/pvs-platform` = ${platform} ]
-			then
-				echo "SBCL ${subdir} not available for ${platform}"
+      then
+	echo "SBCL ${subdir} not available for ${platform}"
       fi
-		fi
+    fi
   done
 done

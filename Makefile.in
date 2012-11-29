@@ -421,7 +421,7 @@ Maniplisp = src/Manip/pregexp.lisp src/Manip/manip-utilities.lisp \
             src/Manip/extended-expr.lisp src/Manip/syntax-matching.lisp \
             src/Manip/manip-strategies.lisp
 
-Fieldlisp = src/Field/extra-tegies.lisp src/Field/field-strategies.lisp
+Fieldlisp = src/Field/extrategies.lisp src/Field/field.lisp
 
 ProofLitelisp = src/ProofLite/prooflite.lisp
 

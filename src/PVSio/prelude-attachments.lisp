@@ -1,5 +1,18 @@
-;-*- Mode: lisp -*-
-;; pvs-attachments
+;;
+;; prelude-attachments.lisp
+;; Release: PVSio-6.0 (12/12/12)
+;;
+;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
+;; NASA Langley Research Center
+;; http://shemesh.larc.nasa.gov/people/cam/PVSio
+;;
+;; Copyright (c) 2011-2012 United States Government as represented by
+;; the National Aeronautics and Space Administration.  No copyright
+;; is claimed in the United States under Title 17, U.S.Code. All Other
+;; Rights Reserved.
+;;
+;; Semantic attachments for PVSio standard library
+;;
 
 (defun stdstr-attachments ()
 
@@ -64,7 +77,7 @@
   "String representation of real R"
   (if (integerp r) 
       (format nil "~d" r)
-    (format nil "~F" (rationalize r))))
+    (format nil "~f" (rationalize r))))
 
 (defattach |str2real| (s)
   "Rational denoted by S"
@@ -428,14 +441,16 @@
 
 )))
 
-(defun formatlist (e type)
-  (if (and (listp e)
-	   (type-name? type)
-	   (equal (id type) '|Sexps|))
-      (let ((type (type-value (car (actuals type)))))
-	(loop for ei in e
-	      collect (format nil "~a" (cl2pvs ei type))))
-    (format nil "~a" (cl2pvs e type))))
+(defun formatargs (e type)
+  (cond ((or (stringp e) (numberp e)
+	     (and (atom e) (type-name? type) (equal (id type) '|Blisp|))) e)
+	((and (listp e)
+	      (type-name? type)
+	      (equal (id type) '|Slisp|))
+	 (let ((ntype (type-value (car (actuals type)))))
+	   (loop for ei in e
+		 collect (formatargs ei ntype))))
+	(t (cl2pvs e type))))
 
 (defun stdprog-attachments ()
 
@@ -483,24 +498,14 @@
    "Formats expression E using Common Lisp format string S"
    (let* ((fun-type (pc-parse *the-pvs-type* 'type-expr))
 	  (the-type (pc-typecheck (cadr (types (domain fun-type))))))
-     (cond ((stringp e) (format nil s e))
-	   ((and (listp e)
-		 (type-name? the-type)
-		 (equal (id the-type) '|Sexps|))
-	    (let* ((type (type-value (car (actuals the-type))))
-		   (l (loop for ei in e
-			    collect (format nil "~a" (cl2pvs ei type)))))
-	      (apply #'format (cons nil (cons s (list l))))))
-	   ((and (typep e 'array)
-		 (tupletype? the-type))
-	    (let* ((the-types (types the-type))
-		   (l (loop for ei across e
-			    for ti in the-types
-			    collect (formatlist ei ti))))
-	      (apply #'format (cons nil (cons s l)))))
-	   (t (format nil s (format nil "~a"
-				    (cl2pvs e the-type)))))))
-
+     (if (and (arrayp e)
+	      (tupletype? the-type))
+	 (let* ((the-types (types the-type))
+		(l (loop for ei across e
+			 for ti in the-types
+			 collect (formatargs ei ti))))
+	   (apply #'format (cons nil (cons s l))))
+       (apply #'format (cons nil (cons s (list (formatargs e the-type))))))))
 )))
 
 (defun stdcatch-attachments ()
@@ -539,7 +544,7 @@
 	 (domain   (domain the-type)))
     (format nil "~a" (cl2pvs e (pc-typecheck domain)))))
 
-(defattach |sexps| (l)
+(defattach |slisp| (l)
   "Returns a s-expression representing list l. To be used exclusively in format functions."
   l)
 
@@ -561,6 +566,14 @@
   "Shows current version of PVSio"
   *pvsio-version*)
 
+(defattach |set_promptin| (s)
+  "Change current PVSio input prompt to S"
+  (when (setq *pvsio-promptin* s) t))
+
+(defattach |set_promptout| (s)
+  "Change current PVSio output prompt to S"
+  (when (setq *pvsio-promptout* s) t))
+
 )))
 
 (defun stdsys-attachments ()
@@ -579,6 +592,10 @@
 (defattach |get_env| (name default)
   "Gets environment variable NAME. Returns DEFAULT if undefined"
   (or (environment-variable (string name)) default))
+
+(defattach |blisp| (b)
+  "Returns a Boolean lisp expression representing b. To be used exclusively in format functions."
+  b)
 
 )))
 
