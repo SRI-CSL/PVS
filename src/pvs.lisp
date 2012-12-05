@@ -286,7 +286,7 @@
 		   (setq compile? t))
 		 (pvs-message "Error in loading ~a:~%  ~a"
 		   (shortname bfile) error))
-		(t (pushnew (pathname-name pfile) *pvs-patches-loaded*
+		(t (pushnew pfile *pvs-patches-loaded*
 			    :test #'string=)
 		   (setq bfile-loaded? t)))))
       (when compile?
@@ -323,7 +323,7 @@
 		 (pvs-message "Error in loading ~a:~%  ~a"
 		   (shortname pfile) error))
 		(t (setq bfile-loaded? t)
-		   (pushnew (pathname-name pfile) *pvs-patches-loaded*
+		   (pushnew pfile *pvs-patches-loaded*
 			    :test #'string=)))))
       (unless (or bfile-loaded?
 		  (not (file-exists-p pfile)))
@@ -335,7 +335,7 @@
 	  (if error
 	      (pvs-message "Error in loading ~a:~%  ~a"
 		(shortname pfile) error)
-	      (pushnew (pathname-name pfile) *pvs-patches-loaded*
+	      (pushnew pfile *pvs-patches-loaded*
 		       :test #'string=)))))))
 
 (defun collect-pvs-patch-files ()
