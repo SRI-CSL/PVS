@@ -167,7 +167,7 @@ To change output prompt '~a':
 		      t 
 		      "~%~%Evaluating in the presence of unproven TCCs may be unsound~%")
 		     (clear-input)
-		     (unless (pvs-y-or-n-p "Do you wish to proceed with evaluation?")
+		     (unless (pvs-y-or-n-p "Do you wish to proceed with evaluation? ")
 		       (throw 'abort t)))
 		   (multiple-value-bind 
 		    (cl-input error)
@@ -215,7 +215,7 @@ To change output prompt '~a':
   (let ((input (read-expr input-stream)))
     (cond ((member input '(quit (quit) "quit") :test #'equal)
 	   (clear-input)
-	   (when (pvs-y-or-n-p "Do you really want to quit?  ")
+	   (when (pvs-y-or-n-p "Do you really want to quit? ")
 	     (throw 'quit nil))
 	   (read-pvsio input-stream))
 	  ((member input '(exit (exit) "exit") :test #'equal)

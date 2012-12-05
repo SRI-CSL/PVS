@@ -108,7 +108,7 @@
   (let ((input (ignore-errors (read))))
     (cond ((member input '(quit q exit (quit)(exit)(q))
 		   :test #'equal)
-	   (if (pvs-y-or-n-p "~%Do you really want to quit?  ")
+	   (if (pvs-y-or-n-p "~%Do you really want to quit? ")
 	       (throw 'quit nil)
 	       (gqread)))
 	  ((and (consp input)
@@ -140,7 +140,7 @@
 	   (format t "~%~%Evaluator input should be enclosed in double quotes~%")
 	   (gqread))
 	  ((eq input 'abort)
-	   (if (pvs-y-or-n-p "~%Do you really want to abort?  ")
+	   (if (pvs-y-or-n-p "~%Do you really want to abort? ")
 	       (throw 'abort t)
 	       (gqread)))
 	  ((eq input 'timing)
@@ -207,7 +207,7 @@
 		   (let ((unproved-tccs (evaluate-tccs)))
 		     (when unproved-tccs
 		       (format t "~%~%Evaluating in the presence of unproven TCCs may be unsound~%")
-		       (unless (pvs-y-or-n-p "Do you wish to proceed with evaluation?")
+		       (unless (pvs-y-or-n-p "Do you wish to proceed with evaluation? ")
 			 (throw 'abort t)))))
 		 (when test?
 		   (unless (or (null (cddr raw-input))
