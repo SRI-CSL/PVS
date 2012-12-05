@@ -4799,6 +4799,9 @@ list_props [T: TYPE]: THEORY
   every_conjunct: LEMMA
     every(LAMBDA (x: T): P(x) AND Q(x))(l) => (every(P)(l) AND every(Q)(l))
 
+  every_conjunct2: LEMMA
+    (every(P)(l) AND every(Q)(l)) => every(LAMBDA (x: T): P(x) AND Q(x))(l)
+
   every_member: LEMMA every({c: T | member(c, l)})(l)
 
   every_nth: LEMMA
