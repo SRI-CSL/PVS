@@ -2525,9 +2525,9 @@
 	 (assert-if-addition  expr newargs sig))
 	((is-multiplication? expr)
 	 (assert-if-multiplication expr newargs sig))
-	((and *use-rationals*
-	      (is-division? expr))
-	 (assert-if-division expr newargs sig))
+	;; ((and *use-rationals*
+	;;       (is-division? expr))
+	;;  (assert-if-division expr newargs sig))
 	((and (typep newop 'name-expr)
 	      (accessor? newop)
 	      (typep newargs 'application)
