@@ -1229,6 +1229,7 @@
     (copy ex
       'actuals (copy-untyped* actuals)
       'dactuals (copy-untyped* dactuals)
+      'resolutions nil
       'print-type nil
       'from-conversion nil
       'nonempty? nil)))

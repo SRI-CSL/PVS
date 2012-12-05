@@ -787,8 +787,8 @@
 	    "Could not determine the full theory instance"))
       (setf (declared-type (car selargs))
 	    (if (typep dtype 'datatype-subtype)
-		(declared-type dtype)
-		dtype))
+		(pc-typecheck (copy-untyped (declared-type dtype)))
+		(pc-typecheck (copy-untyped dtype))))
       (assert (fully-instantiated? (declared-type (car selargs))))
       (assert (or (null (type (car selargs)))
 		  (fully-instantiated? (type (car selargs)))))
@@ -1859,7 +1859,7 @@
 
 (defmethod find-update-commontype* ((te adt-type-name) expr (args cons)
 				    value maplet?)
-  (declare (ignore expr value))
+  (declare (ignore expr value maplet?))
   te)
 
 (defmethod find-update-commontype* ((te subtype) expr (args cons) value maplet?)
@@ -1867,7 +1867,7 @@
 
 (defmethod find-update-commontype* ((te type-expr) expr (args null)
 				    value maplet?)
-  (declare (ignore expr))
+  (declare (ignore expr maplet?))
   (let ((tvalue (typecheck* (copy-untyped value) te nil nil)))
     (assert (and tvalue (type tvalue)))
     (reduce #'compatible-type (cons te (judgement-types+ tvalue)))))

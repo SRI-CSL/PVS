@@ -729,12 +729,15 @@
 	    
     ;; Make sure substituted decls are all new.
     (multiple-value-bind (theory-part dalist owlist)
+	;; Continues the substitutions done by subst-mod-params
 	(subst-new-map-inline-theory-decls (theory stheory) decl)
       (setf (theory stheory)
 	    (remove-if #'var-decl? theory-part))
       (setf (theory-mappings decl) dalist)
       (setf (other-mappings decl) owlist)
+      ;; Finishes the substitutions
       (subst-new-map-decls (theory stheory) dalist owlist)
+      ;; This splices the new decls into the current theory
       (make-inlined-theory-decls stheory decl))))
 
 (defun subst-new-map-inline-theory-decls (sdecls decl &optional ndecls dalist owlist)
@@ -744,6 +747,10 @@
 	  (subst-new-map-inline-theory-decl (car sdecls) decl dalist owlist)
 	(subst-new-map-inline-theory-decls (cdr sdecls) decl
 					   (cons ndecl ndecls) ndalist nowlist))))
+
+;; sd is the decl after subst-mod-params, which cannot complete the
+;; substitution itself, as dependencies need to be resolved.  These
+;; are kept in dalist and owlist.
 
 (defun subst-new-map-inline-theory-decl (sd decl dalist owlist)
   (if (importing? sd)
@@ -767,12 +774,14 @@
 	   ;; This one is tricky, because often
 	   ;; (eq d (declaration (type-value d)))
 	   ;; and we need to ensure this is true of sd
+	   ;;(subst-new-map-decl-type sd dalist owlist)
 	   (setf (type-value sd)
-		 (let ((tn (if nil	;(adt-type-name? (type-value d))
-			       (mk-adt-type-name (id sd)
-						 nil nil nil
-						 (adt (type-value sd)))
-			       (mk-type-name (id sd)))))
+		 (let* ((tn (if (adt-type-name? (type-value d))
+				(let ((sadt (cdr (assq (adt (type-value d))
+						      owlist))))
+				  (assert sadt)
+				  (mk-adt-type-name (id sd) nil nil nil sadt))
+				(mk-type-name (id sd)))))
 		   (setf (resolutions tn)
 			 (list (mk-resolution sd
 				 (current-theory-name) tn)))
@@ -821,7 +830,6 @@
   (let ((*subst-new-map-decls* dalist)
 	(*subst-new-other-decls* owlist)
 	(tdecl (find-if #'type-decl? (generated adt) :from-end t)))
-    ;;(break "subst-new-map-decl-type (inline-recursive-type)")
     (setf (adt-type-name adt)
 	  (mk-adt-type-name (id adt) nil nil nil adt))
     (setf (resolutions (adt-type-name adt))
@@ -838,7 +846,7 @@
 
 (defmethod subst-new-map-decl ((decl type-decl))
   (setf (formals decl) (subst-new-map-decls* (formals decl)))
-  (setf (generated-by decl) nil)
+  ;;(setf (generated-by decl) nil)
   (setf (type-value decl) (subst-new-map-decls* (type-value decl))))
 
 (defmethod subst-new-map-decl ((decl const-decl))
@@ -1062,6 +1070,7 @@
 				(break "What now?")))))
 	  (setf (type-value (declaration nobj)) nobj)
 	  (setf (type (resolution nobj)) nobj)
+	  (break "Make sure this is right")
 	  nobj))))
 
 (defmethod subst-new-map-decl* ((obj constructor-name-expr))
@@ -1229,8 +1238,8 @@
 (defun generate-existence-axiom (decl)
   (multiple-value-bind (dfmls dacts thinst)
       (new-decl-formals decl)
-    (let* ((cdecl (current-declaration))
-	   (id (makesym "~a_nonempty" (id decl)))
+    (declare (ignore dacts))
+    (let* ((id (makesym "~a_nonempty" (id decl)))
 	   (edecl (mk-formula-decl id nil 'AXIOM nil dfmls))
 	   (type (if thinst
 		     (with-current-decl edecl

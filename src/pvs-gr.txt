@@ -132,26 +132,26 @@ theory ::= {'THEORY' [exporting]^e 'BEGIN' [assuming-part]^a
 		      [noass()|assuming-part]^a,
                       [notheory()|theory-part]^t,id)>;
 
-datatype ::= {{'DATATYPE'|'CODATATYPE'}^k ['WITH' 'SUBTYPES' {id^s ++ ','}]
+datatype ::= {{'DATATYPE'|'CODATATYPE'}^k ['WITH' 'SUBTYPES' pidops^s]
 	      'BEGIN' [{importing [semic]^u}
                         <importing-elt(importing,[nosemic()|semic(semic)]^u)>]^2
               [assuming-part]^1
-	      adtcase+ 'END' id}
-	        <{[datatype(opt^1,opt^2,adtcases(plus),id)
-		  |datatypes(subtypes(doubleplus),opt^1,opt^2,
-                             adtcases(plus),id)]
-                 |[codatatype(opt^1,opt^2,adtcases(plus),id)
-		  |codatatypes(subtypes(doubleplus),opt^1,opt^2,
-                            adtcases(plus),id)]}^k>;
+	      adtcase+ 'END' pidop}
+	        <{[datatype(opt^1,opt^2,adtcases(plus),pidop)
+		  |datatypes(pidops^s,opt^1,opt^2,
+                             adtcases(plus),pidop)]
+                 |[codatatype(opt^1,opt^2,adtcases(plus),pidop)
+		  |codatatypes(pidops^s,opt^1,opt^2,
+                            adtcases(plus),pidop)]}^k>;
 
-adtcase ::= {constructor ':' idop [':' id]}
-              <[adtcase(constructor,idop)
-               |adtcase-subtype(constructor,idop,id)]>;
+adtcase ::= {constructor ':' pidop^r [':' pidop^s]}
+              <[adtcase(constructor,pidop^r)
+               |adtcase-subtype(constructor,pidop^r,pidop^s)]>;
 
-constructor ::= {idop [{'(' {{{idops ':' type-expr}
-				<adtdecl(idops,type-expr)>} ++ ','} ')'}
+constructor ::= {pidop [{'(' {{{pidops ':' type-expr}
+				<adtdecl(pidops,type-expr)>} ++ ','} ')'}
 			   <adtdecls(doubleplus)>]}
-			<constructor(idop,opt)>;
+			<constructor(pidop,opt)>;
 
 theory-formals	::= {'[' {theory-formal ++ ','} ']'}
 			<theory-formals(theory-formal+)>;

@@ -406,7 +406,10 @@
 	       (ufrees (union dafrees (union afrees frees :test #'eq) :test #'eq)))
 	  ;;(assert (every #'(lambda (fp) (memq fp ufrees)) (free-params* type nil)))
 	  ufrees)
-	(let ((theory (module decl)))
+	(let ((theory (if (typep decl '(and recursive-type
+					    (not inline-recursive-type)))
+			  decl
+			  (module decl))))
 	  (when theory
 	    (dolist (x (formals-sans-usings theory))
 	      (setq frees (pushnew x frees :test #'eq))))
