@@ -2939,6 +2939,17 @@ bind tighter.")
   (declare (ignore ctx))
   most-positive-fixnum)
 
+(defmethod precedence ((expr number-expr) ctx)
+  (declare (ignore ctx))
+  ;; A natural number - no need for parens
+  most-positive-fixnum)
+
+(defmethod precedence ((expr rational-expr) ctx)
+  ;; Same as division
+  (case ctx
+    (left (gethash 'SBST::/ (third *expr-prec-info*)))
+    (right (gethash 'SBST::/ (second *expr-prec-info*)))))
+
 (defmethod precedence ((expr unary-application) ctx)
   (if (and (typep (operator expr) 'name-expr)
 	   (member (id (operator expr)) *unary-operators*))
