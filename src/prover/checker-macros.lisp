@@ -383,7 +383,7 @@
     (cond ((null entry)
 	   (add-symbol-entry ,rulename1 (gethash ,rulename2 ,optable))
 	   (format t "~%~a and ~a are now synonymous.~%" ,rulename1 ,rulename2))
-	  ((y-or-n-p "Do you really want to change rule ~a?" ,rulename1)
+	  ((y-or-n-p "Do you really want to change rule ~a? " ,rulename1)
 	   (add-symbol-entry ,rulename1 (gethash ,rulename2 ,optable))
 	   (format t "~%~a and ~a are synonymous.~%" ,rulename1 ,rulename2))
 	  (t (format t "~%No Change. ~%")))))

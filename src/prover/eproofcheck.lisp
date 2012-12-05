@@ -672,11 +672,11 @@
 	   (qread prompt))
 	  ((member input '(quit q exit (quit)(exit)(q))
 		   :test #'equal)
-	   (if (pvs-y-or-n-p "~%Do you really want to quit?  ")
+	   (if (pvs-y-or-n-p "~%Do you really want to quit? ")
 	       (throw 'quit nil)
 	       (qread prompt)))
 	  ((eq input 'abort)
-	   (if (pvs-y-or-n-p "~%Do you really want to abort?  ")
+	   (if (pvs-y-or-n-p "~%Do you really want to abort? ")
 	       (throw 'abort nil)
 	       (qread prompt)))
 	  ((eq input :reset)         ;; from M-x reset-pvs 
@@ -2062,7 +2062,7 @@
 	       (setf (strategy ps)(query*-step))
 	       ps)
 	      (t (format t "~%This will undo the proof to: ~a" newps)
-		 (let ((response (pvs-y-or-n-p "Sure?")))
+		 (let ((response (pvs-y-or-n-p "Sure? ")))
 		   (cond (response
 			  (when *displaying-proof*
 			    (setf *flush-displayed* newps))
