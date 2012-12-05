@@ -287,7 +287,7 @@
 		 (pvs-message "Error in loading ~a:~%  ~a"
 		   (shortname bfile) error))
 		(t (pushnew pfile *pvs-patches-loaded*
-			    :test #'string=)
+			    :test #'equalp)
 		   (setq bfile-loaded? t)))))
       (when compile?
 	;; Needs compilation - haven't tried loading yet, or the load failed.
@@ -324,7 +324,7 @@
 		   (shortname pfile) error))
 		(t (setq bfile-loaded? t)
 		   (pushnew pfile *pvs-patches-loaded*
-			    :test #'string=)))))
+			    :test #'equalp)))))
       (unless (or bfile-loaded?
 		  (not (file-exists-p pfile)))
 	;; Haven't loaded the fasl, so we try to load the source
@@ -336,7 +336,7 @@
 	      (pvs-message "Error in loading ~a:~%  ~a"
 		(shortname pfile) error)
 	      (pushnew pfile *pvs-patches-loaded*
-		       :test #'string=)))))))
+		       :test #'equalp)))))))
 
 (defun collect-pvs-patch-files ()
   (let ((pl (ignore-errors (parse-integer
