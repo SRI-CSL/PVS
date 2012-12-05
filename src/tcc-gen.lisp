@@ -838,6 +838,7 @@
 (defmethod possibly-empty-type? ((te type-name))
   (let ((tdecl (declaration (resolution te))))
     (cond ((nonempty? te) nil)
+	  ((typep tdecl 'nonempty-type-decl) nil)
 	  ((typep tdecl 'formal-type-decl) t)
 	  (t t))))
 
