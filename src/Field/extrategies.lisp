@@ -1347,7 +1347,7 @@ of using FNUMS, rewriting formulas can be addressed via FROM and TO."
 		 (let ((qrew (list 'quote !rew))
 		       (qret (list 'quote !ret)))
 		   (mapstep@ #'(lambda (x)`(rewrite ,x :fnums ,qrew :target-fnums ,qret
-						    :dir ,qdir :order ,qorder : :dont-delete? ,qdont))
+						    :dir ,qdir :order ,qorder :dont-delete? ,qdont))
 			     lms))))
    "[Extrategies] Rewrites with a list of lemmas or fnums. LEMMAS-OR-FNUMS has the form
 (LEMMAS-OR-FNUMS1 ... LEMMAS-OR-FNUMS). Options are as in rewrite."
@@ -1364,7 +1364,7 @@ of using FNUMS, rewriting formulas can be addressed via FROM and TO."
 			(qrwt (list 'quote !rwt)))
 		    (repeat
 		     (mapstep@ #'(lambda (x)`(rewrite ,x :fnums ,qrws :target-fnums ,qrwt
-						      :dir ,qdir :order ,qorder : :dont-delete? ,qdont))
+						      :dir ,qdir :order ,qorder :dont-delete? ,qdont))
 			       lms)))))
    "[Extrategies] Recursively rewrites LEMMAS-OR-FNUMS on the main branch. Options are as in rewrites."
    "Rewriting recursively with ~a")
