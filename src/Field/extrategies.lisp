@@ -21,10 +21,10 @@
 %  Programming: mapstep, mapstep@, with-fnums, with-fnums@
 %  Control flow: finalize, touch, for, for@, when, when@, unless,
 %    unless@, when-label, unless-label, if-label, for, for@
-%  Skolem, let-in, let-def: skeep, skeep*, skoletin, skoletin*,
-%    redlet, redlet*, skodef, skodef*
-%  TCCs: tccs-expr, tccs-formula, tccs-formula*, tccs-step
-%  Miscellaneous: splash, replaces, rewrites, rewrite*")
+%  Skolem, let-in, inst: skeep, skeep*, skoletin, skoletin*,
+%    redlet, redlet*, skodef, skodef*, insteep
+%  TCCs: tccs-expr, tccs-formula, tccs-formula*, tccs-step, with-tccs
+%  Miscellaneous: splash, replaces, rewrites, rewrite*, suffices")
 
 (defparameter *extra-version* "Extrategies-6.0 (12/12/12)")
 
@@ -41,27 +41,10 @@
 (record-trusted-source '*PVSTypechecker* "PVS Typechecker" t)
 (record-trusted-source '*PVSGroundEvaluator* "PVS Ground Evaluator" t)
 
-;;;;;;;;;; Utility function to load library patches
-
-(defun extra-load-library-patches ()
-  (get-pvs-library-path)
-  (dolist (path *pvs-library-path*)
-    (dolist (lib (directory path))
-      (when (and (directory-p lib) (string= "pvs-patches" 
-					    (file-namestring lib)))
-	(loop for i from 0 
-	      for patch = (make-pathname
-			   :defaults (format nil "~a/" lib)
-			   :name (format nil "patch-~a" i)
-			   :type "lisp")
-	      while (file-exists-p patch)
-	      do (progn (pvs-message "Loading PVS library patch:")
-			(load patch)))))))
-
 ;;;;;;;;;; Utility functions and additional strategies
 
 ;; a <=> b
-(defun iffequiv (a b)
+(defun iff (a b)
   (equal (null a) (null b)))
 
 ;; Get all keys of a hash table
@@ -73,65 +56,75 @@
 (defun freshlabel (prefix)
   (when *current-context*
     (let ((alllabels (union (extra-get-labels '*)
-			    (extra-get-labels '* t))))
-      (loop for i from 0
-	    for nn = (intern (format nil "~a~a:" prefix i))
-	    when (not (member nn alllabels :test #'string=))
-	    return nn))))
+			    (extra-get-labels '* t)))
+	  (nn        (intern (format nil "~a:" prefix))))
+      (if (not (member nn alllabels)) nn
+	(loop for i from 1
+	      for nn = (intern (format nil "~a~a:" prefix i))
+	      unless (member nn alllabels)
+	      return nn)))))
 
 ;; Generates a label with given prefix that is fresh in the current context
 (defun freshlabels (prefix n)
-  (when *current-context*
-    (let ((nlabels 0)
-	  (alllabels (union (extra-get-labels '*)
-			    (extra-get-labels '* t))))
-      (loop for i from 0
-	    for nn = (intern (format nil "~a~a:" prefix i))
-	    while (< nlabels n) 
-	    when (not (member nn alllabels :test #'string=))
-	    collect (progn (incf nlabels) nn)))))
+    (when *current-context*
+      (if (= n 1)
+	  (list (freshlabel prefix))
+	(let ((nlabels   0)
+	      (alllabels (union (extra-get-labels '*)
+				(extra-get-labels '* t))))
+	  (loop for i from 1
+		for nn = (intern (format nil "~a~a:" prefix i))
+		while (< nlabels n) 
+		unless (member nn alllabels)
+		collect (progn (incf nlabels) nn))))))
 
 ;; Check if name has been defined in the proof context
 (defun check-name (name)
-  (let* ((name (if (stringp name) (intern name) name))
-	 (pc-name (pc-parse name 'expr)))
-    (resolve pc-name 'expr nil)))
+  (let ((pc-name (pc-parse name 'expr)))
+    (resolve pc-name 'expr nil *current-context*)))
 
 ;; Check if an identifier is a free variable (and not in but list)
-;; The nonstrict option includes unbounded declared variables
-(defun is-freevar (name &optional nonstrict but)
+;; If a type is provided, check if the given name is a free variable of the given type.
+(defun is-freevar (name &optional type but)
   (and (not (member name but :test #'string=))
-       (let ((rs (check-name name)))
-	 (if nonstrict 
-	   (every #'(lambda (r) (and (resolution? r) (var-decl? (declaration r))))
-		  rs)
+       (let* ((pc-name (pc-parse name 'expr))
+	      (rs      (resolve pc-name 'expr nil *current-context*)))
+	 (if type
+	     (and (name-expr? pc-name)
+		  (not (declared? (id pc-name) *current-context*))
+		  (every #'(lambda (r) (and (resolution? r)
+					    (or (var-decl? (declaration r))
+						(not (compatible? (type r)
+								  type)))))
+			 rs))
 	   (null rs)))))
 
 ;; Generates a name with given prefix that is fresh in the current context (and not in but list)
-(defun freshname (prefix &optional nonstrict (postfix "_") but)
+(defun freshname (prefix &optional type but midfix)
   (when *current-context*
-    (if (is-freevar prefix nonstrict but)
+    (if (is-freevar prefix type but)
 	prefix
-      (loop for i from 0
-	    for nn = (format nil "~a~a~a" prefix i postfix)
-	    when (is-freevar nn nonstrict but)
-	    return nn))))
+      (let ((midfix (or midfix (if type "!" "_"))))
+	(loop for i from 1
+	      for nn = (format nil "~a~a~a" prefix midfix i)
+	      when (is-freevar nn type but)
+	      return nn)))))
 
-(defun names2freshnames (names &optional nonstrict (postfix "_") but)
+(defun names2freshnames (names &optional types but midfix)
   (when names
-    (let ((nn (freshname (car names) nonstrict postfix but)))
-      (cons nn  (names2freshnames (cdr names) nonstrict postfix (cons nn but))))))
+    (let ((nn (freshname (car names) (car types) but midfix)))
+      (cons nn  (names2freshnames (cdr names) (cdr types) (cons nn but) midfix)))))
       
-;; Generates a name with given prefix that is fresh in the current context
-(defun freshnames (prefix n &optional nonstrict (postfix "_") but)
+;; Generates n names with given prefix that are fresh in the current context
+(defun freshnames (prefix n &optional type but midfix)
   (when *current-context*
     (if (= n 1)
-	(list (freshname prefix nonstrict postfix but))
+	(list (freshname prefix type but midfix))
       (let ((nnames 0))
-	(loop for i from 0
-	      for nn = (format nil "~a~a~a" prefix i postfix)
+	(loop for i from 1
+	      for nn = (format nil "~a~a~a" prefix midfix i)
 	      while (< nnames n)
-	      when (is-freevar nn nonstrict but)
+	      when (is-freevar nn type but)
 	      collect (progn (incf nnames) nn))))))
   
 ;; Get a list of formula numbers from fnums
@@ -149,17 +142,19 @@
 
 ;; Get a PVS object from expr, where expr can be speficied as a formula or a string
 ;; or using Manip's location
-(defun extra-get-expr (expr)
+(defun extra-get-expr (expr &optional (tc t))
   (cond ((expr? expr) expr)
 	((or (numberp expr) (symbolp expr))
 	 (extra-get-formula expr))
 	((stringp expr)
-	 (pc-typecheck (pc-parse expr 'expr)))
+	 (let ((e (pc-parse expr 'expr)))
+	   (if tc (pc-typecheck e) e)))
 	((and (listp expr) (equal (car expr) '!))
-	 (ee-pvs-obj (car (eval-ext-expr expr))))))
+	 (let ((e (ee-pvs-obj (car (eval-ext-expr expr)))))
+	   (when (expr? e) e)))))
 
-(defun extra-get-expstr (expr)
-  (expr2str (extra-get-expr expr)))
+(defun extra-get-expstr (expr &optional (tc t))
+  (expr2str (extra-get-expr expr tc)))
 
 ;; Returns list of formula numbers not in fnums
 (defun extra-get-but-fnums (fnums &key (all '*))
@@ -459,7 +454,7 @@ If the lists have different length, they are completed using their last element.
 new labels are added to any existing ones.  Otherwise, the new labels replace all existing ones."
   "Labeling formula(s) ~1@*~a as ~@*~a")
 
-(defstep name-label (name expr &optional label (fnums *) (dir lr) hide? (step (subtype-tcc)))
+(defstep name-label (name expr &optional label (fnums *) (dir lr) hide? (tcc-step (extra-tcc-step)))
   (let ((labnl   (unless (equal label 'none)
 		   (or label (format nil "~a:" name))))
 	(estr    (extra-get-expstr expr)))
@@ -469,32 +464,29 @@ new labels are added to any existing ones.  Otherwise, the new labels replace al
 	   ((!nml fnums)
 	    (!nlt)
 	    (!nlx))
-	   (tccs-expr estr :label !nlt :step step)
+	   (tccs-expr estr :label !nlt :tcc-step tcc-step)
 	   (branch (discriminate (name name estr) (labnl !nlx))
 		   ((then (when fnums (replace !nlx !nml))
 			  (let ((flagdir (equal dir 'rl)))
-			    (when@ flagdir
-				   (claim "%1 = %2" t name estr)
-				   (delete !nlx)
-				   (label labnl -1)))
+			    (when@ flagdir (swap-rel !nlx)))
 			  (when hide?
 			    (printf "Reveal new hidden formulas with (reveal \"~a\")" labnl)
 			    (hide labnl))
 			  (delete !nlt))
-		    (finalize step))))
+		    (finalize tcc-step))))
 	(printf "Name ~a already exists" name))))
   "[Extrategies] Adds formmula EXPR=NAME, where NAME is a new name, as a hypothesis. The added formula is
 labeled according to the value of LABEL. If LABEL is none, the formula is not labeled; if LABEL is nil,
 the formula is labeled as NAME:; otherwise, it is labeled as LABEL. If FNUMS is not nil, the name is
 replaced in those formulas. DIR indicates the direction of the name definition, e.g., EXPR=NAME,
 if DIR is lr, or NAME=EXPR, if DIR is rl. The added formula is hidden when HIDE? is t.
-TCCs generated during the execution of the command are discharged with the proof command STEP."
+TCCs generated during the execution of the command are discharged with the proof command TCC-STEP."
   "Naming ~1@*~a as ~@*~a")
 
-(defstep name-label* (names-and-exprs &optional label (fnums *) (dir lr) hide? (step (subtype-tcc)))
+(defstep name-label* (names-and-exprs &optional label (fnums *) (dir lr) hide? (tcc-step (extra-tcc-step)))
   (let ((qlabel (list 'quote label))
 	(qdir   (list 'quote dir))
-	(qstep  (list 'quote step)))
+	(qstep  (list 'quote tcc-step)))
     (with-fnums
      (!nls fnums)
      (let ((qnls (list 'quote !nls)))
@@ -503,11 +495,11 @@ TCCs generated during the execution of the command are discharged with the proof
 		 names-and-exprs :list? t))))
   "[Extrategies] Iterates name-label on NAMES-AND-EXPRS, which is assumed to be a list of the form
 (NAME1 EXPR1 NAME2 EXPR2 ... NAMEn EXPRn). Options are as in name-label.
-TCCs generated during the execution of the command are discharged with the proof command STEP."
+TCCs generated during the execution of the command are discharged with the proof command TCC-STEP."
   "Interating name-label on a list of names and expressions")
 
-(defstrat name-replace* (names-and-exprs &optional (fnums *) (dir lr) hide?  (step (subtype-tcc)))
-  (name-label* names-and-exprs none fnums dir hide? step)
+(defstrat name-replace* (names-and-exprs &optional (fnums *) (dir lr) hide?  (tcc-step (extra-tcc-step)))
+  (name-label* names-and-exprs none fnums dir hide? tcc-step)
   "[Extrategies] Same as name-label* without labeling the formulas."
   "Iterating name-replace")
 
@@ -579,21 +571,21 @@ represents the complete list at each iteration. See (help mapstep) for examples 
 
 (defhelper with-fnums__ (bindings thn steps)
   (when steps
-    (let ((bindgs (withfnums-bindings bindings))
-	  (vrslbs (mapcar #'(lambda(x)(list (car x) (list 'quote (freshlabel (string (car x))))))
-			  bindgs))
-	  (ftccs  (loop for b in bindgs
-			when (equal (caddr b) ':tccs)
-			collect (list (car b) (freshlabel (format nil "~a-tccs" (string (car b)))))))
-	  (ltccs  (mapcar #'cadr ftccs))
-	  (labs   (mapcar #'car bindgs))
-	  (fnums  (mapcar #'cadr bindgs))
+    (let ((bindgs   (withfnums-bindings bindings))
+	  (vrslbs   (mapcar #'(lambda(x)(list (car x) (list 'quote (freshlabel (string (car x))))))
+			    bindgs))
+	  (ftccs    (loop for b in bindgs
+			  when (equal (caddr b) ':tccs)
+			  collect (list (car b) (freshlabel (format nil "~a-tccs" (string (car b)))))))
+	  (ltccs    (mapcar #'cadr ftccs))
+	  (labs     (mapcar #'car bindgs))
+	  (fnums    (mapcar #'cadr bindgs))
 	  (thenstep (cons thn steps))
-	  (step `(let ,vrslbs (then (relabel ,labs ,fnums :pairing? t)
-				    (with-fnums-tccs__$ ,ftccs)
-				    (try ,thenstep (skip) (fail))
-				    (delabel ,labs)
-				    (delete ,ltccs)))))
+	  (step     `(let ,vrslbs (then (relabel ,labs ,fnums :pairing? t)
+					(with-fnums-tccs__$ ,ftccs)
+					(try ,thenstep (skip) (fail))
+					(delabel ,labs)
+					(delete ,ltccs)))))
       step))
   "[Extrategies] Internal strategy." "")
 
@@ -680,23 +672,22 @@ labels are also copied."
 of the proof. NAME needs to be a valid identifier in PVS. A tactic definition can be either
 (deftactic NAME STEP) or (deftactic NAME (ARGUMENTS) STEP). For example,
 
-(deftactic grind_when_a (when-label \"a\" (grind)))
+(deftactic myfirsttactic (then (flatten) (assert) (grind)))
 
-defines a tactic (grind_when_a) that applies (grind) only when a formula labeled \"a\"
-appears in the sequent. The definition
+defines a tactic (myfirsttactic) that sequentially applies (flatten),
+(assert), and (grind). Tactics can be parametric, for example
 
-(deftactic grind_when_lab (label) (when-label label (grind)))
+(deftactic mysecondtactic (fnums) (then (flatten) (assert fnums) (grind)))
 
-defines a tactic (grind_when_lab LABEL) that applies (grind) when a given LABEL appears in the
-sequent. Tactic parameters can be optional and they can have default values. For example,
+defines a tactic (mysecondtactic <fnum>), where <fnum> is a parameter provided by the user,
+that sequentially applies (flatten), (assert <fnum>), and (grind). Parameters can be
+optional and have a default value, for example,
 
-(deftactic grind_if_lab_else (label &optional (step (skip)))
-  (if-label label (grind) step))
+(deftactic mythirdtactic (&optional (fnums *)) (then (flatten) (assert fnums) (grind)))
 
-defines a tactic that can be used either as (grind_if_lab_else LABEL), in which case it
-behaves as (grind_when_lab LABEL), or (grind_if_lab_else LABEL STEP). In the latter case,
-the tactic behaves as  (grind_when_lab LABEL) except when LABEL doesn't appear in the
-sequent, in which case it applies STEP."
+defines a tactic that behaves as (myfirsttactic) when used without parameters, e.g.,
+(mythirdtactic), and as (mysecondtactic <fnum>) when used with a parameter, e.g.,
+(mythidtactic <fnum>)."
   "Defining local tactic ~a")
 
 ;;; This strategy enables the addition of trusted formulas into the current sequent.
@@ -719,6 +710,10 @@ and external *trusted* oracles. The strategy *must* only be used in proof rules.
 ;;; TCCs -- The following rules extend the internal proving capabilities of PVS.
 ;;; They cannot be written as a combination of the basic proof rules
 
+(defstrat extra-tcc-step ()
+  (then (assert) (subtype-tcc))
+  "Tries to prove TCCs by first using (assert) and then (subtype-tcc)")
+
 (defhelper relabel-hide__ (step lab1 lab2 hide?)
   (then step
 	(relabel lab1 lab2)
@@ -733,7 +728,7 @@ and external *trusted* oracles. The strategy *must* only be used in proof rules.
       (pc-typecheck (pc-parse (format nil "~a" expr) 'expr))
       (reverse (mapcar #'tccinfo-formula *tccforms*)))))
   
-(defhelper tccs-expr__ (expr label hide? step)
+(defhelper tccs-expr__ (expr label hide? tcc-step)
   (let ((e    (extra-get-expr expr))
 	(estr (expr2str e)))
     (when e
@@ -747,14 +742,14 @@ and external *trusted* oracles. The strategy *must* only be used in proof rules.
 	   (trust *PVSTypechecker*
 		  (discriminate (case tcc) !tce)
 		  ((relabel-hide__ (flatten -1) label !tce hide?)
-		   (finalize step) !)))))))
+		   (finalize tcc-step) !)))))))
   "[Extrategies] Internal strategy." "")
 
-(defrule tccs-expr (expr &optional label hide? (step (subtype-tcc)))
-  (tccs-expr__$ expr label hide? step)
+(defrule tccs-expr (expr &optional label hide? (tcc-step (extra-tcc-step)))
+  (tccs-expr__$ expr label hide? tcc-step)
   "[Extrategies] Adds TCCs of expression EXPR as hypotheses to the current sequent. Added hypotheses
 are labeled as LABEL(s), if LABEL is not nil. They are hidden when HIDE? is t. TCCs generated during
-the execution of the command are discharged with the proof command STEP."
+the execution of the command are discharged with the proof command TCC-STEP."
   "Adding TCCs of expression ~a as hypotheses")
 
 (defhelper tccs-formula__ (fn)
@@ -816,6 +811,16 @@ are labeled as LABEL(s), if LABEL is not nil. They are hidden when HIDE? is t."
 subgoal. Added hypotheses are labeled as LABEL(s), if LABEL is not nil. They are hidden when HIDE? is t."
  "Adding TCCs of step ~a as hypotheses")
 
+(defstep with-tccs (step &optional steps (fnums *) (tcc-step (extra-tcc-steps)))
+  (let ((stps (append (or steps '((skip))) (cons 'finalize tcc-step))))
+    (with-fnums
+     (!wtccs fnums :tccs)
+     (branch step stps)))
+  "[Extrategies] Applies STEP after introducing TCCs for the formulas in FNUMS. If STEP generates subgoals,
+these subgoals are consecutively discharged using STEPS, which is a list of steps. TCCs generated
+during the execution of the command are discharged with the proof command TCC-STEP."
+  "Applying ~a assumings TCCs")
+	     
 ;;; Control flow
 
 (defhelper finalize__ (step)
@@ -936,32 +941,115 @@ along the main branch."
   (or (and (< fn 0) (exists-expr? expr))
       (and (> fn 0) (forall-expr? expr))))
 
-(defstep skeep (&optional (fnum (+ -)) preds? (postfix ""))
-  (let ((fnexpr (first-formula fnum :test #'skeep-formula))
-    	(fn     (car fnexpr))
-	(expr   (cadr fnexpr)))
-    (when fnexpr
-        (let ((names (names2freshnames
-		      (mapcar #'(lambda(x) (format nil "~a~a" (id x) postfix)) (bindings expr))
-		      t)))
-	  (then (skolem fn names preds?)
-		(flatten)))))
-   "[Extrategies] Skolemizes the first universally quantified formula in FNUM, using the names
-of the bound variables as the names of the skolem constants. If POSTFIX is provided, it is appended
-to the variable names. Names that clash with with other names in the current sequent are replaced by
-fresh names. Type predicates are introduced as hypothesis when PREDS? is t."
-   "Skolemizing and keeping names of universal formula in ~a")
+(defun is-binding-in-subs (bnd i n subs)
+  (or (member (id  bnd) subs
+	      :test #'(lambda (x y) (and (not (numberp (car y)))
+					 (string= x (car y)))))
+      (member i subs :test 
+	      #'(lambda (x y) (and 
+			       (numberp (car y))
+			       (or (equal x (car y))
+				   (equal x (+ 1 n (car y)))))))))
+      
+(defun select-skeep-names (bindings subs)
+  (let ((n (length bindings)))
+    (loop for bnd in bindings
+	  for i from 1
+	  for is = (is-binding-in-subs bnd i n subs)
+	  collect (or (cadar is) '_))))
 
-(defstep skeep* (&optional (fnum '*) preds? (postfix "") n)
+(defun select-skeep-bindings (bindings but)
+  (let ((n (length bindings)))
+    (loop for bnd in bindings
+	  for i from 1
+	  unless (is-binding-in-subs bnd i n but)
+	  collect bnd)))
+		      
+(defstep skeep (&optional (fnum (+ -)) preds? postfix but)
+  (let ((postfix (or postfix ""))
+	(fnexpr  (first-formula fnum :test #'skeep-formula))
+    	(fn      (car fnexpr))
+	(expr    (cadr fnexpr)))
+    (when fnexpr
+      (let ((but    (mapcar #'enlist-it (enlist-it but)))
+	    (bndgs  (select-skeep-bindings (bindings expr) but))
+	    (nnames (names2freshnames
+		     (mapcar #'(lambda(x) (format nil "~a~a" (id x) postfix)) bndgs)
+		     (mapcar #'type bndgs)
+		     (mapcar #'cadr but)))
+	    (names  (if but (select-skeep-names 
+			     (bindings expr)
+			     (append (mapcar #'(lambda (x y)(list (id x) y)) bndgs nnames) but))
+		      nnames)))
+	(then (skolem fn names preds?)
+	      (flatten)))))
+   "[Extrategies] Skolemizes a universally quantified formula in FNUM, using the names
+of the bounded variables as the names of the skolem constants. If POSTFIX is provided, it 
+is appended to the variable names. Names that clash with with other names in the current
+sequent are replaced by fresh names. Type predicates are introduced as hypothesis when 
+PREDS? is t.
+
+BUT is a list of variable references of the form <VAR> or (<VAR> <NAME>), where <VAR> is either 
+a quantified variable name or a relative position of a variable in the quantifier (positive means 
+left to right, negative means right to left). If <NAME> is not provided, the variable referred to 
+by <VAR> will be excluded from the skolemization. If <NAME> is provided, it is used as the name of 
+the skolem constant for the variable <VAR>.  For example, (skeep :but \"x\") skolemizes all variables 
+but excludes \"x\", (skeep :but (\"x\" (\"y\" \"YY\"))) skolemizes all variables but \"x\" and 
+uses \"YY\" as the name of the skolem constant for \"y\"." 
+   "Skolemizing and keeping names of the universal formula in ~a")
+
+(defstep skeep* (&optional (fnum '*) preds? postfix n)
   (with-fnums (!skp fnum)
 	      (for@ n (skeep !skp :preds? preds? :postfix postfix)))
-  "[Extrategies] Iterates N times skeep (or until it does nothing if N is nil) in the first
-universally quantified formula in FNUM.  If POSTFIX is provided, it is appended to the variable
-names. Names that clash with with other names in the current sequent are replaced by fresh names.
-Type predicates are introduced as hypothesis when PREDS? is t."
+  "[Extrategies] Iterates N times skeep (or until it does nothing if N is nil) in a universally 
+quantified formula in FNUM. If POSTFIX is provided, it is appended to the names of the bounded 
+variables. Names that clash with with other names in the current sequent are replaced by fresh 
+names. Type predicates are introduced as hypothesis when PREDS? is t."
   "Iterating skeep in ~a")
 
-(defhelper skoletin__ (fn expr name nth var postfix hide? step)
+(defun insteep-formula (fn expr)
+  (or (and (> fn 0) (exists-expr? expr))
+      (and (< fn 0) (forall-expr? expr))))
+
+(defun select-insteep-exprs (bindings subs postfix)
+  (let ((n (length bindings)))
+    (loop for bnd in bindings
+	  for i from 1
+	  for is = (is-binding-in-subs bnd i n subs)
+	  collect (if is (or (extra-get-expstr (cadar is) nil) '_)
+		    (format nil "~a~a" (id bnd) postfix)))))
+
+(defstep insteep (&optional (fnum (+ -)) postfix but)
+  (let ((postfix (or postfix ""))
+	(fnexpr  (first-formula fnum :test #'insteep-formula))
+    	(fn      (car fnexpr))
+	(expr    (cadr fnexpr)))
+    (when fnexpr
+      (let ((but   (mapcar #'enlist-it (enlist-it but)))
+	    (exprs (select-insteep-exprs (bindings expr) but postfix))
+	    (stp   (cons 'inst (cons fn exprs))))
+	stp)))
+  "[Extrategies] Instantiates an existentially quantified formula in FNUM, using the names
+of the bounded variables. If POSTFIX is provided, it is appended to the variable names. 
+
+BUT is a list of variable references of the form <VAR> or (<VAR> <EXPR>), where <VAR> is either 
+a quantified variable name or a relative position of a variable in the quantifier (positive means 
+left to right, negative means right to left). If <EXPR> is not provided, the variable referred to 
+by <VAR> will be excluded from the instantiation. If <EXPR> is provided, <VAR> is instantiated with
+<EXPR>. For example, (insteep :but \"x\") instantiates all variables using the names of the quantified
+formula but excludes \"x\", (insteep :but (\"x\" (\"y\" \"100\"))) instantiates all variables but 
+\"x\" and instantiates \"\y\" with \"100\"."
+  "Instantiating with the names of the existential formula in ~a")
+
+(defstep insteep* (&optional (fnum '*) postfix n)
+  (with-fnums (!instp fnum)
+	      (for@ n (insteep !instp :postfix postfix)))
+  "[Extrategies] Iterates N times insteep (or until it does nothing if N is nil) in an
+existentially quantified formula in FNUM.  If POSTFIX is provided, it is appended to the 
+names of the bounded variables."
+  "Iterating insteep in ~a")
+
+(defhelper skoletin__ (fn expr name nth var postfix hide? tcc-step)
   (let ((flabels (extra-get-labels-from-fnum fn))
 	(consq   (> fn 0))
 	(ret     (make-ret))
@@ -984,7 +1072,7 @@ Type predicates are introduced as hypothesis when PREDS? is t."
 			  (beta !skd :let-reduce? nil))
 			(if consq (beta !skd :let-reduce? nil)
 			  (then (replaces lv :hide? nil) (beta (!skl !skd))))
-			(then (replaces lv :hide? nil) (finalize step))))
+			(then (replaces lv :hide? nil) (finalize tcc-step))))
 	       (relabel flabels !skd)
 	       (delete !skl)
 	       (if hide?
@@ -992,20 +1080,21 @@ Type predicates are introduced as hypothesis when PREDS? is t."
 		 (delabel lv)))
 	 (then (replaces lv :hide? nil)
 	       (delete !skl)
-	       (finalize step)))
+	       (finalize tcc-step)))
 	(skip)))))
   "[Extrategies] Internal strategy." "")
 
 (defun skoletin-formula (fn expr)
   (let-expr? expr))
 
-(defstep skoletin (&optional (fnum (+ -)) name (nth 1) var (postfix "") hide? (step (subtype-tcc)))
-  (let ((fnexpr (or (first-formula fnum :test #'skoletin-formula)
-		    (first-formula fnum)))
-    	(fn     (car fnexpr))
-	(expr   (cadr fnexpr)))
+(defstep skoletin (&optional (fnum (+ -)) name (nth 1) var postfix hide? (tcc-step (extra-tcc-step)))
+  (let ((postfix (or postfix ""))
+	(fnexpr  (or (first-formula fnum :test #'skoletin-formula)
+		     (first-formula fnum)))
+    	(fn      (car fnexpr))
+	(expr    (cadr fnexpr)))
     (when fnexpr
-      (skoletin__$ fn expr name nth var postfix hide? step)))
+      (skoletin__$ fn expr name nth var postfix hide? tcc-step)))
   "[Extrategies] Names the NTH occurrence (left-right, depth-first) of
 NAME in a let-binding of the form
    LET ...,NAME = <expr>,... IN <e>
@@ -1024,20 +1113,20 @@ if <vari> is _, <xi> is used instead of <vari>.
 Name definitions are hidden when HIDE? is t; they can be recalled at any time with
 the command (reveal \"<name>:\"), where <name> is one of the names introduced by the
 strategy. TCCs generated during the execution of the command are discharged with the
-proof command STEP.
+proof command TCC-STEP.
 
 NOTE: This command works better when all let-in variables are explicitly typed as in
 LET x:posreal = 2 IN 1/x."
   "Naming let-in binding in ~a")
 
-(defstep skoletin* (&optional (fnum *) (postfix "") hide? (step (subtype-tcc)) n)
+(defstep skoletin* (&optional (fnum *) postfix hide? (tcc-step (extra-tcc-step)) n)
   (with-fnums
    (!sks fnum)
-   (for@ n (skoletin !sks :postfix postfix :hide? hide? :step step)))
+   (for@ n (skoletin !sks :postfix postfix :hide? hide? :tcc-step tcc-step)))
   "[Extrategies] Iterates N times skoletin (or until it does nothing if N is nil) in FNUM."
   "Naming let-in bindings in ~a")
 
-(defhelper redlet__ (fn expr name nth step)
+(defhelper redlet__ (fn expr name nth tcc-step)
   (let ((flabels (extra-get-labels-from-fnum fn))
 	(nexpr   (sigmared expr name nth))
 	(flag    (not (numberp nexpr)))
@@ -1057,34 +1146,34 @@ LET x:posreal = 2 IN 1/x."
 		 (if (< fn 0)
 		     (beta (!rdl !rdd))
 		   (beta !rdd :let-reduce? nil)))
-		(finalize step)))
+		(finalize tcc-step)))
        (relabel flabels !rdd)
        (delete !rdl))))
   "[Extrategies] Internal strategy." "")
 
-(defstep redlet (&optional (fnum (+ -)) name (nth 1) (step (subtype-tcc)))
+(defstep redlet (&optional (fnum (+ -)) name (nth 1) (tcc-step (extra-tcc-step)))
   (let ((fnexpr (or (first-formula fnum :test #'skoletin-formula)
 		    (first-formula fnum)))
     	(fn     (car fnexpr))
 	(expr   (cadr fnexpr)))
     (when fnexpr
-      (redlet__$ fn expr name nth step)))
+      (redlet__$ fn expr name nth tcc-step)))
   "[Extrategies] Reduces the NTH occurrence of NAME (left-right, depth-first) in a let-in expression
 in FNUM. If NAME is nil, the NTH name is reduced instead. TCCs generated during the execution of the
-command are discharged with the proof command STEP.
+command are discharged with the proof command TCC-STEP.
 
 NOTE: This command works better when all let-in variables are explicitly typed as in LET x:posreal = 2 IN 1/x."
   "Reducing let-in expression in ~a")
 
-(defstep redlet* (&optional (fnum *) (step (subtype-tcc)) (n 1))
+(defstep redlet* (&optional (fnum *) (tcc-step (extra-tcc-step)) (n 1))
   (with-fnums
    (!rds fnum)
-   (for@ n (redlet !rds :step step)))
+   (for@ n (redlet !rds :tcc-step tcc-step)))
   "[Extrategies] Iterates N times redlet (or until it does nothing if N is nil). TCCs generated during
-the execution of the command are discharged with the proof command STEP."
+the execution of the command are discharged with the proof command TCC-STEP."
   "Reducing let-in expressions in ~a")
 
-(defhelper skodef__ (fnum expr name var postfix hide? step)
+(defhelper skodef__ (fnum expr name var postfix hide? tcc-step)
   (let ((names (mapcar #'(lambda(x) (format nil "~a" (id x)))
 		       (bindings expr)))
 	(flag  (or (not name)
@@ -1098,7 +1187,7 @@ the execution of the command are discharged with the proof command STEP."
 	(e     (nth 2 nve))
 	(lv    (format nil "~a:" v))
 	(cases (format nil "(~a=~a) IFF TRUE" v e))
-	(ivr   (instvar (cons v n) (length names))))
+	(ivr   (instvar v n (length names))))
     (when nve
       (with-fnums
        (!skk fnum :tccs)
@@ -1111,9 +1200,9 @@ the execution of the command are discharged with the proof command STEP."
 			    (delete -1)
 			    (unless hide? (reveal lv) (delabel lv)))
 			   (then (reveal lv) (finalize (assert (lv 1))))
-			   (finalize step)))
-		  (finalize step)))
-	 (finalize step))
+			   (finalize tcc-step)))
+		  (finalize tcc-step)))
+	 (finalize tcc-step))
 	(skip)))))
   "[Extrategies] Internal strategy." "")
 
@@ -1124,12 +1213,13 @@ the execution of the command are discharged with the proof command STEP."
       (and (> fnum 0)
 	   (exists-expr? expr))))
 
-(defstep skodef (&optional (fnum (+ -)) name var (postfix "") hide? (step (subtype-tcc)))
-  (let ((fnexpr (first-formula fnum :test #'skodef-formula))
-    	(fn     (car fnexpr))
-	(expr   (cadr fnexpr)))
+(defstep skodef (&optional (fnum (+ -)) name var postfix hide? (tcc-step (extra-tcc-step)))
+  (let ((postfix (or postfix ""))
+	(fnexpr  (first-formula fnum :test #'skodef-formula))
+    	(fn      (car fnexpr))
+	(expr    (cadr fnexpr)))
     (when fnexpr
-      (skodef__$ fn expr name var postfix hide? step)))
+      (skodef__$ fn expr name var postfix hide? tcc-step)))
   "[Extrategies] Given a antecedent formula FNUM of the form
    FORALL(..,NAME:<type>,..) : NAME=<expr> AND ... IMPLIES ...
 or a consequent formula FNUM of the form
@@ -1143,49 +1233,74 @@ fresh names.
 Name definitions are hidden when HIDE? is t; they can be recalled at any
 time with the command (reveal \"<name>:\"), where <name> is the name
 introduced by the strategy. TCCs generated during the execution of the command
-are discharged with the proof command STEP."
+are discharged with the proof command TCC-STEP."
   "Instantiating a quantifier in ~a with a name definition")
 
-(defstep skodef* (&optional (fnum *) hide? (postfix "") (step (subtype-tcc)) n)
+(defstep skodef* (&optional (fnum *) hide? postfix (tcc-step (extra-tcc-step)) n)
   (with-fnums
    (!skk fnum)
-   (for@ n (skodef !skk :postfix postfix :hide? hide? :step step)))
+   (for@ n (skodef !skk :postfix postfix :hide? hide? :tcc-step tcc-step)))
   "[Extrategies] Iterates N times skodef (or until it does nothing if N is nil) in FNUM.
-TCCs generated during the execution of the command are discharged with the proof command STEP."
+TCCs generated during the execution of the command are discharged with the proof command TCC-STEP."
   "Iterating skodef in ~a")
 
 ;;; Splitting and splashing
 
-(defhelper splash__ (fnum formula reverse step)
-  (let ((ands    (get-ands-expr formula (> fnum 0)))
-	(rands   (if reverse (reverse ands) ands))
-	(docases (> (length rands) 1)))
-    (with-fnums
-     ((!spl fnum :tccs)
-      (!spd))
-     (when docases
-       (let ((cases (expr2str (mk-conjunction (butlast rands)))))
-	 (branch (discriminate (case cases) !spd)
-		 ((then (replace !spd) (flatten !spd) (assert (!spl !spd) :let-reduce? nil))
-		  (then (delete !spl) (splash$ !spd :reverse? nil))
-		  (then (finalize step) (delete !spl)))))
-       (flatten !spl))))
+(defstep cut (cases &optional (tcc-step (extra-tcc-step)))
+  (let ((cases (enlist-it cases)))
+    (when cases
+      (let ((expr   (extra-get-expstr (car cases)))
+	    (expest (cdr cases)))
+	(branch (case expr)
+		((cut$ expest tcc-step)
+		 (skip)
+		 (finalize tcc-step))))))
+  "[Extrategies] The proof command (cut (<e1> ... <en>)) behaves as (case <e1> ... <en>).
+TCCs generated during the execution of the command are discharged with the proof command TCC-STEP."
+  "Cutting formula(s) in ~a")
+
+(defun select-ands (ands order &optional result)
+  (if order
+      (let* ((n (car order))
+	     (a (cond ((> n 0)
+		       (nth (1- n) ands))
+		      ((and (< n 0)
+			    (< (abs n) (length ands)))
+		       (nth (+ (length ands) n) ands)))))
+	(select-ands ands (cdr order) (append result (enlist-it a))))
+    result))
+
+(defhelper splash__ (fn formula reverse order tcc-step)
+  (let ((gands   (get-ands-expr formula (> fn 0)))
+	(ands    (when (> (length gands) 1)
+		   (if order (select-ands gands (enlist-it order)) gands)))
+	(rands   (if reverse (reverse ands) ands)))
+    (when rands
+      (with-fnums
+       ((!spl fn :tccs)
+	(!spd))
+       (let ((cases (mapcar #'expr2str rands)))
+	 (branch (discriminate (cut cases :tcc-step tcc-step) !spd)
+		 ((assert (!spl !spd))
+		  (delete !spl)))))))
   "[Extrategies] Internal strategy." "")
 
 (defun splash-formula (fn expr)
   (or (and (< fn 0) (or (implication? expr) (disjunction? expr)))
       (and (> fn 0) (conjunction? expr))))
 
-(defstep splash (&optional (fnum *) reverse? (step (subtype-tcc)))
+(defstep splash (&optional (fnum *) reverse? order (tcc-step (extra-tcc-step)))
   (let ((fnexpr (first-formula fnum :test #'splash-formula))
 	(fn     (car fnexpr))
 	(expr   (cadr fnexpr)))
     (when fnexpr
-      (splash__$ fn expr reverse? step)))
-  "[Extrategies] Asymmetrically splits this first (-)-disjunctive or (+)-conjunctive formula
-in FNUM. That formula is reversed when REVERSE? is t (this may generate unprovable TCCs since
-Boolean operators in PVS are non-strict.) TCCs generated during the execution of the command
-are discharged with the proof command STEP."
+      (splash__$ fn expr reverse? order tcc-step)))
+  "[Extrategies] Asymmetrically splits a (-)-disjunctive or (+)-conjunctive formula in FNUM.
+The direction of the split is reversed when REVERSE? is t (this may generate unprovable TCCs
+since Boolean operators in PVS are non-strict.) Particular components of the formula can be
+specified in ORDER, which is a list of integers (i1 .. in). An integer ik represents the ik-th
+component of the formula, left to right if ik is positive, right to left if ik is negative.
+TCCs generated during the execution of the command are discharged with the proof command TCC-STEP."
   "Splashing formula in ~a")
 
 ;;; Miscellaneous
@@ -1232,7 +1347,7 @@ of using FNUMS, rewriting formulas can be addressed via FROM and TO."
 		 (let ((qrew (list 'quote !rew))
 		       (qret (list 'quote !ret)))
 		   (mapstep@ #'(lambda (x)`(rewrite ,x :fnums ,qrew :target-fnums ,qret
-						    :dir ,qdir :order ,qorder :dont-delete? ,qdont))
+						    :dir ,qdir :order ,qorder : :dont-delete? ,qdont))
 			     lms))))
    "[Extrategies] Rewrites with a list of lemmas or fnums. LEMMAS-OR-FNUMS has the form
 (LEMMAS-OR-FNUMS1 ... LEMMAS-OR-FNUMS). Options are as in rewrite."
@@ -1249,10 +1364,65 @@ of using FNUMS, rewriting formulas can be addressed via FROM and TO."
 			(qrwt (list 'quote !rwt)))
 		    (repeat
 		     (mapstep@ #'(lambda (x)`(rewrite ,x :fnums ,qrws :target-fnums ,qrwt
-						      :dir ,qdir :order ,qorder :dont-delete? ,qdont))
+						      :dir ,qdir :order ,qorder : :dont-delete? ,qdont))
 			       lms)))))
    "[Extrategies] Recursively rewrites LEMMAS-OR-FNUMS on the main branch. Options are as in rewrites."
    "Rewriting recursively with ~a")
+
+(defun quantified-formula (fn expr)
+  (or (exists-expr? expr) (forall-expr? expr)))
+
+(defun get-suffices-expr (expr estr conseq forall var qn &optional (n 1) b)
+  (let ((thisq (or (and (null var) (null qn) 
+			(not (if forall
+				 (forall-expr? (expression expr))
+			       (exists-expr? (expression expr)))))
+		   (and (null var) (equal n qn))))
+	(thisv (and var
+		    (or (null qn) (eq n qn))
+		    (position var (bindings expr)
+			      :test #'(lambda (x y) (string= x (id y)))))))
+    (if (or thisq (equal thisv (1- (length (bindings expr)))))
+	(format nil "~:[NOT ~;~]~:[EXISTS~;FORALL~]~{(~{~a~^,~})~}:~a ~a (~a)"
+		conseq forall (append b (list (bindings expr)))
+		estr
+		(if forall "IMPLIES" "AND")
+		(expression expr))
+      (if thisv
+	  (format nil "~:[NOT ~;~]~:[EXISTS~;FORALL~]~{(~{~a~^,~})~}:~a ~a ~:[EXISTS~;FORALL~](~{~a~^,~}):~a"
+		  conseq forall (append b (list (subseq (bindings expr) 0 (1+ thisv))))
+		  estr
+		  (if forall "IMPLIES" "AND")
+		  forall (subseq (bindings expr) (1+ thisv))
+		  (expression expr))
+	(when (and (or (null qn)
+		       (< n qn))
+		   (if forall (forall-expr? (expression expr))
+		     (exists-expr? (expression expr))))
+	  (get-suffices-expr (expression expr) estr conseq forall
+			     var qn (1+ n)
+			     (append b (list (bindings expr)))))))))
+
+(defstep suffices (fnum expr &optional after-var after-qn (tcc-step (extra-tcc-step)))
+  (let ((estr   (extra-get-expstr expr nil))
+	(fnexpr (when estr (first-formula fnum :test #'skeep-formula)))
+    	(fn     (car fnexpr))
+	(expr   (cadr fnexpr))
+	(form   (when expr (get-suffices-expr expr estr (> fn 0) (forall-expr? expr) after-var after-qn))))
+    (when form
+      (with-fnums (!sff fn :tccs)
+		  (branch (case form)
+			  ((skip)
+			   (delete !sff)
+			   (finalize tcc-step))))))
+  "[Extrategies] Introduces a sufficient hypothesis EXPR to a universally quantified formula
+in FNUM. If FNUM is in the consequent, it is expected to have the form FORALL(<vars>):<expr>;
+if FNUM is in the antecedent it is expected to have the form EXISTS(<vars>):<expr>. In the
+first case, the resulting formula has the form FORALL(<vars>):EXPR IMPLIES <expr>. In the
+second case, the resulting formula has the form EXISTS(<vars>): EXPR AND <expr>. The hypothesis
+EXPR is added after the quantified variable AFTER-VAR, if provided, and/or after the AFTER-QN-th
+quantifier, if provided."
+  "Introducing a sufficient hypothesis to formula ~a")
 
 (defstrat extrategies-about ()
   (let ((version *extra-version*)
@@ -1356,17 +1526,10 @@ name of the quantified variable that encodes the recursive call.")
 		       (freshname (or var (format nil "~a~a" nm postfix)))
 		       (format nil "~a" (args2 ands))))))))))
 
-(defun fillunder (n)
-  (when (> n 0) (cons '_ (fillunder (- n 1)))))
+(defun instvar (v k n)
+  (loop for i from 1 to n
+	collect (if (eq k i) v '_)))
 
-(defun instvar_aux (vn n i)
-  (cond ((> i n) nil)
-	((eq (cdr vn) i) (cons (car vn) (fillunder (- n i))))
-	(t (cons '_ (instvar_aux vn n (+ i 1))))))
-
-(defun instvar (vn n)
-  (instvar_aux vn n 1))
-  
 (defun merge-let-names (names newnames postfix)
   (when names
     (cond ((and newnames (string= (car newnames) '_))

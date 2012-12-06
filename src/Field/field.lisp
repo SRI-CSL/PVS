@@ -305,19 +305,19 @@
 	when (string/= (format nil "~a" monom) cmonom)
 	collect (format nil "~a = ~a" monom cmonom)))
 
-(defstrat name-distrib (&optional (fnums *) (prefix "ND") label hide? (step (subtype-tcc)))
+(defstrat name-distrib (&optional (fnums *) (prefix "ND") label hide? (tcc-step (extra-tcc-step)))
   (let ((dist (get-distrib-formulas nil (extra-get-fnums fnums))))
     (when dist
       (let ((names   (freshnames prefix (length dist)))
 	    (nameseq (merge-names-exprs names dist))
 	    (lbl     (or label 'none)))
-	(name-label* nameseq :label label :fnums fnums :hide? hide? :step step))))
+	(name-label* nameseq :label label :fnums fnums :hide? hide? :tcc-step tcc-step))))
   "[Field] Introduces new names, which are based on PREFIX, to block the automatic
 application of distributive laws in formulas FNUMS. Labels as LABEL(s) the formulas
 where new names are defined. These formulas are hidden if HIDE? is t. TCCs generated
-during the execution of the command are discharged with the proof command STEP.")
+during the execution of the command are discharged with the proof command TCC-STEP.")
 
-(defstrat wrap-manip (fnum manip &optional (step (subtype-tcc)) (labels? t))
+(defstep wrap-manip (fnum manip &optional (tcc-step (extra-tcc-step)) (labels? t))
   (with-fnums
    ((!wmp fnum)
     (!wmd))
@@ -330,11 +330,12 @@ during the execution of the command are discharged with the proof command STEP."
 		 (let ((xxx (setq *suppress-manip-messages* old))) (skip))))
 	      !wmd :strict? t)
 	     ((when labels? (relabel labs !wmd))
-	      (finalize step)))))
-  "[Field] Wraps Manip's command MANIP so that it is quiet, dicharges TCCs, and, when preserve? is t,
-preserves labels of FNUM.")
+	      (finalize tcc-step)))))
+  "[Field] Applies Manip's command MANIP,  dicharges TCCs using TCC-STEP, and
+preserves labels of FNUM when labels? is t."
+  "Applying Manip's command ~1@*~a to ~@*~a")
   
-(defstep neg-formula (&optional (fnum (+ -)) (hide? t) label (step (subtype-tcc)))
+(defstep neg-formula (&optional (fnum (+ -)) (hide? t) label (tcc-step (extra-tcc-step)))
   (let ((fnexpr (first-formula fnum :test #'field-formula))
 	(fn      (car fnexpr))
 	(formula (cadr fnexpr))
@@ -350,43 +351,42 @@ preserves labels of FNUM.")
 	   (if label
 	       (relabel (!ngo label) !ngf :push? nil)
 	     (relabel !ngo !ngf))
-	   (wrap-manip !ngo (mult-by !ngo "-1" :sign -) :step step)
-	   (real-props !ngo :simplify? t))
+	   (wrap-manip !ngo (mult-by !ngo "-1" :sign -) :tcc-step tcc-step)
+	   (real-props !ngo :simple? t)
+	   (finalize (assert)))
 	  !ngl hide?))
       (printf "No arithmetic relational formula in ~a" fnum)))
   "[Field] Negates both sides of the relational formula FNUM. If HIDE? is t,
 the original formula is hidden.  The new formula is labeled as the original
 one, unless an explicit LABEL is provided. TCCs generated during the execution
-of the command are discharged with the proof command STEP."
+of the command are discharged with the proof command TCC-STEP."
   "Negating relational formula ~a")
 
-(defparameter *field-distrib* '("times_div1" "times_div2" "div_times"
-				"add_div" "minus_div1" "minus_div2"
-				"div_distributes" "div_distributes_minus"))
+(defparameter *field-simple-rewrites* '("real_props.div_simp" "real_props.div_cancel1" "real_props.div_cancel2"
+					"real_props.zero_times1" "real_props.zero_times2" "real_props.neg_times_neg"
+					"real_props.zero_is_neg_zero" "real_props.abs_abs" "real_props.abs_square"
+					"real_props.times_div_cancel1" "real_props.times_div_cancel2"
+					"extra_tegies.neg_add" "extra_tegies.add_neg"
+					"extra_tegies.one_times" "extra_tegies.neg_one_times"
+					"extra_tegies.zero_div" "extra_tegies.neg_neg"))
 
-(defparameter *field-rewrites* '("times_plus" "div_simp" "div_cancel1" "div_cancel2"
-				 "div_div1" "div_div2" 
-				 "zero_times1" "zero_times2" "neg_times_neg"
-				 "zero_is_neg_zero" "abs_mult" "abs_div" "abs_abs" "abs_square"
-				 "times_div_cancel1" "times_div_cancel2"))
-
-(defstep real-props (&optional (fnums *) theories simplify?
+(defstep real-props (&optional (fnums *) theories simple?
 			       (let-reduce? t) (distrib? t))
-  (let ((exclude (unless distrib? *field-distrib*))
-	(realp   (if simplify?
-		     (cons 'auto-rewrite (append *field-rewrites*
-						 (when distrib?
-						   *field-distrib*)))
-		   (list 'auto-rewrite-theory "real_props" :exclude exclude))) 
-	(th      (cons "extra_tegies" (enlist-it theories))))
+  (let ((rews      *field-simple-rewrites*)
+	(ths       (cons "real_props" (enlist-it theories)))
+	(startstep (if simple?
+		       (cons 'auto-rewrite rews)
+		     (cons 'auto-rewrite-theories ths)))
+	(stopstep  (if simple?
+		       (cons 'stop-rewrite rews)
+		     (cons 'stop-rewrite-theory ths))))
     (with-fnums
      ((!rps fnums)
       (!rpd))
      (let ((step    (list 'then
-			  realp
-			  (cons 'auto-rewrite-theories th)
+			  startstep
 			  (list 'assert !rps :let-reduce? let-reduce?)
-			  (cons 'stop-rewrite-theory (cons "real_props" th)))))
+			  stopstep)))
        (if distrib?
 	   step
 	 (then
@@ -394,7 +394,7 @@ of the command are discharged with the proof command STEP."
 	  step
 	  (replaces !rpd :dir rl :in !rps :but !rpd :hide? nil)
 	  (hide !rpd))))))
-  "[Field] Autorewrites with \"real_props\" and THEORIES in FNUMS. If SIMPLIFY? is t,
+  "[Field] Autorewrites with \"real_props\" and THEORIES in FNUMS. If SIMPLE? is t,
 only basic rewrite rules are applied. If LET-REDUCE? is nil, let-in expressions will
 not be reduced. If DISTRIB? is nil, distribution laws will not be applied."
   "Applying real-props")
@@ -406,7 +406,7 @@ not be reduced. If DISTRIB? is nil, distribution laws will not be applied."
 				dontdistrib protect)
   (with-fnums
    (!grd)
-   (let ((th    (cons "real_props" (cons "extra_tegies" (enlist-it theories))))
+   (let ((th    (cons "real_props" (enlist-it theories)))
 	 (pro   (cons !grd (enlist-it protect)))
 	 (step `(grind :defs ,defs :theories ,th :rewrites
 		       ,rewrites :exclude ,exclude :if-match
@@ -426,7 +426,7 @@ options as grind. Additionally, grind-reals blocks distribution laws in main lev
 expressions in the list of formulas DONTDISTRIB and protects formulas in PROTECT."
   "Applying grind-reals")
 
-(defstep add-formulas (fnum1 &optional fnum2 (hide? t) label (step (subtype-tcc)))
+(defstep add-formulas (fnum1 &optional fnum2 (hide? t) label (tcc-step (extra-tcc-step)))
   (let ((fnum2    (or fnum2 fnum1))
 	(f1       (extra-get-fnum fnum1))
 	(f2       (extra-get-fnum fnum2))
@@ -457,19 +457,20 @@ expressions in the list of formulas DONTDISTRIB and protects formulas in PROTECT
 	  (with-fnums
 	   ((!ad1 f1 :tccs)
 	    (!ad2 f2 :tccs))
-	   (discriminate (case str) labad)
-	   (else (finalize (real-props (!ad1 !ad2 labad)))
-		 (real-props (!ad1 !ad2 labad) :simplify? t))
+	   (branch (discriminate (case str) labad)
+		   ((then (real-props labad :simple? t) (finalize (assert)))
+		    (finalize (assert (!ad1 !ad2 labad)))
+		    (finalize tcc-step)))
 	   (unless label (delabel labad))
 	   (when hide? (hide (!ad1 !ad2))))) 
       (printf "No arithmetic relational formulas in ~a" formsg)))
   "[Field] Adds relational formulas FNUM1 and FNUM2. If FNUM2 is nil, adds FNUM to itself.
 If HIDE? is t, the original formulas are hidden.  The new formula is labeled as LABEL,
 if specified. TCCs generated during the execution of the command are discharged with
-the proof command STEP."
+the proof command TCC-STEP."
   "Adding formulas ~a and ~:[~@*~a~;~:*~a~]")
 
-(defstep sub-formulas (fnum1 fnum2 &optional (hide? t) label (step (subtype-tcc)))
+(defstep sub-formulas (fnum1 fnum2 &optional (hide? t) label (tcc-step (extra-tcc-step)))
   (let ((f1       (extra-get-fnum fnum1))
 	(f2       (extra-get-fnum fnum2))
 	(eqfs     (or (and (numberp f1) (numberp f2) (= f1 f2))
@@ -491,7 +492,7 @@ the proof command STEP."
 	    (!nlb))
 	   (protect
 	    !sb2
-	    (then (then@ (neg-formula !sb2 :label !nsb2 :step step)
+	    (then (then@ (neg-formula !sb2 :label !nsb2 :tcc-step tcc-step)
 			 (add-formulas !sb1 !nsb2 :hide? nil :label labsb))
 		  (unless label (delabel labsb))
 		  (delete !nsb2)
@@ -502,33 +503,35 @@ the proof command STEP."
   "[Field] Subtracts relational formulas FNUM1 and FNUM2. If HIDE? is t,
 the original formulas are hidden.  The new formula is labeled as LABEL,
 if specified. TCCs generated during the execution of the command are discharged
-with the proof command STEP."
+with the proof command TCC-STEP."
   "Substracting relational formulas ~a and ~a")
 
-(defhelper cases-monoms__ (label cases step)
+(defhelper cases-monoms__ (label cases tcc-step)
   (if cases
       (let ((frel  (car cases))
 	    (frels (cdr cases)))
-	   (branch (case frel)
-		   ((then (replaces -1 label)
-			  (cases-monoms__$ label frels step))
-		    (then (delete label)
-			  (grind-reals))
-		    (finalize step))))
-      (assert label))
+	(branch (case frel)
+		((then (replaces -1 label)
+		       (cases-monoms__$ label frels tcc-step))
+		 (then (delete label)
+		       (grind-reals))
+		 (then (delete label)
+		       (else (finalize (grind-reals)) 
+			     (finalize tcc-step))))))
+    (assert label))
   "[Field] Internal strategy." "")
 
-(defhelper simplify-monoms__ (label step)
+(defhelper simplify-monoms__ (label tcc-step)
   (let ((flag (has-divisors (extra-get-formula label))))
     (when flag
       (assert label)
       (let ((formula (extra-get-formula label))
 	    (monoms  (get-monoms-formula formula))
 	    (cases   (makecases-monoms monoms)))
-	(cases-monoms__$ label cases step))))
+	(cases-monoms__$ label cases tcc-step))))
   "[Field] Internal strategy." "")
 
-(defstep cancel-by (fnum expr &optional theories (step (subtype-tcc)))
+(defstep cancel-by (fnum expr &optional (tcc-step (extra-tcc-step)))
   (let ((fnexpr   (first-formula fnum :test #'field-formula))
 	(fn       (car fnexpr))
 	(formula  (cadr fnexpr))
@@ -543,41 +546,47 @@ with the proof command STEP."
 	  (!cbdt)
 	  (!ndc))
 	 (tccs-formula !cby :label !cbt)
-	 (branch (then@ (tccs-expr expstr :label !cbdt :step step)
-			(name-label div expstr :label !cbd :step step)
-			(name-distrib (!cby !cbd !cbt !cbdt) :prefix "NDC" :label !ndc :step step))
-		 ((cancel-by__$ !cby !cbd !ndc div theories step)
+	 (branch (then@ (tccs-expr expstr :label !cbdt :tcc-step tcc-step)
+			(name-distrib (!cby !cbt !cbdt) :prefix "NDC" :label !ndc :tcc-step tcc-step)
+			(name-label div expstr :fnums (^ !ndc) :label !cbd :tcc-step tcc-step)
+			(replace !ndc !cbd))
+		 ((cancel-by__$ !cby !cbd div tcc-step)
 		  (delete !cby)))
+	 (replaces !ndc :but !ndc :dir rl :hide? nil)
+	 (hide !ndc)
 	 (delete (!cbt !cbdt)))
       (if (not rel)
 	  (printf "No arithmetic relational formula in ~a" fnum)
 	(if (not expstr)
 	    (printf "No suitable expression ~a" expr)))))
   "[Field] Cancels the common expression EXPR in the relational formula FNUM.
-Autorewrites with THEORIES when possible. TCCs generated during the execution
-of the command are discharged with the proof command STEP."
+TCCs generated during the execution of the command are discharged with the 
+proof command TCC-STEP."
   "Canceling in formula ~a with ~a")
 
-(defhelper cancel-case__ (labcb labdiv labndc inv_div theories step &optional (sign +))
-  (then@
-   (wrap-manip labcb (mult-by labcb inv_div sign) :step step)
-   (replaces labdiv :dir rl :hide? nil)
-   (hide labdiv)
-   (simplify-monoms__$ labcb step)
-   (replaces labndc :but labndc :dir rl :hide? nil)
-   (hide labndc)
-   (real-props labcb :theories theories :distrib? nil)
-   (finalize (grind-reals :theories theories :dontdistrib labcb)))
+(defhelper cancel-case__ (labcb labdiv inv_div tcc-step &optional (sign +))
+  (branch
+   (wrap-manip labcb (mult-by labcb inv_div sign) :tcc-step (skip))
+   ((then (replace labdiv :dir rl)
+	  (hide labdiv)
+	  (simplify-monoms__$ labcb tcc-step)
+	  (real-props labcb :simple? t)
+	  (finalize (assert)))
+    (then (replace labdiv :dir rl)
+	  (hide labdiv)
+	  (finalize (grind-reals)))))
   "[Field] Internal strategy." "")
 
-(defhelper guess_cancel_by__ (labcb labdiv theories)
+(defhelper guess_cancel_by__ (labcb labdiv)
   (finalize
    (then (delete labcb)
-	 (replaces labdiv :dir rl :hide? nil)
-	 (grind-reals :theories theories)))
+	 (replace labdiv :dir rl)
+	 (hide labdiv)
+	 (assert)
+	 (grind-reals)))
   "[Field] Internal strategy." "")
 
-(defhelper cancel-by__ (labcb labdiv labndc div theories step)
+(defhelper cancel-by__ (labcb labdiv div tcc-step)
   (let ((nz_div  (format nil "~a = 0" div))
         (inv_div (format nil "1 / ~a" div))
 	(gt0_div (format nil "~a > 0" div))
@@ -586,22 +595,20 @@ of the command are discharged with the proof command STEP."
      (case nz_div)
      ((then@ (replace labdiv :dir rl)
 	     (hide labdiv)
-	     (real-props :theories theories)
-	     (replaces labndc :but labndc :dir rl :hide? nil)
-	     (hide labndc))
+	     (finalize (then (assert) (grind-reals))))
       (if is_eq
-	  (cancel-case__$ labcb labdiv labndc inv_div theories step)
+	  (cancel-case__$ labcb labdiv inv_div tcc-step)
 	(branch
 	 (case gt0_div)
-	 ((then@ (guess_cancel_by__$ labcb labdiv theories)
-		 (cancel-case__$ labcb labdiv labndc inv_div theories step +))
-	  (then@ (guess_cancel_by__$ labcb labdiv theories)
-		 (cancel-case__$ labcb labdiv labndc inv_div theories step -))
-	  (finalize step))))
-      (finalize step))))
+	 ((then@ (guess_cancel_by__$ labcb labdiv)
+		 (cancel-case__$ labcb labdiv inv_div tcc-step +))
+	  (then@ (guess_cancel_by__$ labcb labdiv)
+		 (cancel-case__$ labcb labdiv inv_div tcc-step -))
+	  (finalize tcc-step))))
+      (finalize tcc-step))))
   "[Field] Internal strategy." "")
 
-(defstep cancel-formula (&optional (fnum + -) theories (step (subtype-tcc)))
+(defstep cancel-formula (&optional (fnum + -) (tcc-step (extra-tcc-step)))
   (let ((fnexpr  (first-formula fnum :test #'field-formula))
 	(fn      (car fnexpr))
 	(formula (cadr fnexpr))
@@ -609,25 +616,25 @@ of the command are discharged with the proof command STEP."
     (if rel
 	(with-fnums
 	 (!cf fn)
-	 (try (wrap-manip !cf (factor !cf) :step step)
+	 (try (wrap-manip !cf (factor !cf) :tcc-step tcc-step)
 	      (let ((form (extra-get-formula !cf))
 		    (l1   (get-mults-monom nil (args1 form)))
 		    (l2   (get-mults-monom nil (args2 form)))
 		    (l    (inter-polynom l1 l2 nil))
 		    (cb   (normal-mult l)))
 		(if cb
-		    (cancel-by !cf cb :theories theories :step step)
-		  (finalize (grind-reals :theories theories :dontdistrib !cf))))
-	      (finalize (grind-reals :theories theories :dontdistrib !cf))))
+		    (cancel-by !cf cb :tcc-step tcc-step)
+		  (finalize (grind-reals :dontdistrib !cf))))
+	      (finalize (grind-reals :dontdistrib !cf))))
       (printf "No arithmetic relational formula in ~a" fnum)))
-  "[Field] Factorizes common terms in FNUM and then cancels them. Autorewrites with
-THEORIES when possible. TCCs generated during the execution of the
-command are discharged with the proof command STEP."
+  "[Field] Factorizes common terms in FNUM and then cancels them.
+TCCs generated during the execution of the command are discharged 
+with the proof command TCC-STEP."
   "Canceling formula ~a")
 
-(defhelper field__ (labfd labndf labx theories cancel? step)
+(defhelper field__ (labfd labndf labx theories cancel? tcc-step)
   (then@
-   (simplify-monoms__$ labfd step)
+   (simplify-monoms__$ labfd tcc-step)
    (let ((form     (extra-get-formula labfd))
 	 (is_eq    (equation? form))
 	 (divs     (get-divisors-formula form))
@@ -643,36 +650,36 @@ command are discharged with the proof command STEP."
 					(cons (cons (expr2str ndivs) 1)
 					      eprod))))
 	       (prodgt0  (format nil "~a > 0" prod)))
-	   (spread (name-label* nameseq :label labx :step step)
+	   (spread (name-label* nameseq :label labx :tcc-step tcc-step)
 		   ((if is_eq
-			(then@ (wrap-manip labfd (mult-by labfd prod) :step step)
-			       (field__$ labfd labndf labx theories cancel? step))
+			(then@ (wrap-manip labfd (mult-by labfd prod) :tcc-step tcc-step)
+			       (field__$ labfd labndf labx theories cancel? tcc-step))
 		      (branch (case prodgt0)
 			      ((then@
 				(finalize (then (delete labfd) (grind-reals :theories theories)))
-				(wrap-manip labfd (mult-by labfd prod +) :step step)
-				(field__$ labfd labndf labx theories cancel? step))
+				(wrap-manip labfd (mult-by labfd prod +) :tcc-step tcc-step)
+				(field__$ labfd labndf labx theories cancel? tcc-step))
 			       (then@
 				(finalize (then (delete labfd) (grind-reals :theories theories)))
-				(wrap-manip labfd (mult-by labfd prod -) :step step)
-				(field__$ labfd labndf labx theories cancel? step))
-			       (finalize step)))))))
+				(wrap-manip labfd (mult-by labfd prod -) :tcc-step tcc-step)
+				(field__$ labfd labndf labx theories cancel? tcc-step))
+			       (finalize tcc-step)))))))
        (try (replaces labx :but labx :dir rl :hide? nil)
 	    (then@ (delete labx)
-		   (field__$ labfd labndf labx theories cancel? step))
+		   (field__$ labfd labndf labx theories cancel? tcc-step))
 	    (try (replaces labndf :but labndf :dir rl :hide? nil)
 		 (then@ (delete labndf)
-			(field__$ labfd labndf labx theories cancel? step))
+			(field__$ labfd labndf labx theories cancel? tcc-step))
 		 (then  (real-props labfd :theories theories :distrib? cancel?)
 			(if cancel?
-			    (cancel-formula labfd :theories theories :step step)
+			    (cancel-formula labfd :theories theories :tcc-step tcc-step)
 			  (finalize (grind-reals :theories theories :dontdistrib labfd)))))))))
   "[Field] Internal strategy." "")
 
 (defun field-formula (fn expr)
   (is-relation expr))
 
-(defstep field (&optional (fnum (+ -)) theories cancel? (step (subtype-tcc)))
+(defstep field (&optional (fnum (+ -)) theories cancel? (tcc-step (extra-tcc-step)))
   (let ((fnexpr  (first-formula fnum :test #'field-formula))
 	(fn      (car fnexpr))
 	(formula (cadr fnexpr))
@@ -684,15 +691,15 @@ command are discharged with the proof command STEP."
 	  (!ndf)
 	  (!x))
 	 (tccs-formula !fd :label !fdt)
-	 (branch (name-distrib (!fd !fdt) :prefix "NDF" :label !ndf :step step)
-		 ((field__$ !fd !ndf !x theories cancel? step)
+	 (branch (name-distrib (!fd !fdt) :prefix "NDF" :label !ndf :tcc-step tcc-step)
+		 ((field__$ !fd !ndf !x theories cancel? tcc-step)
 		  (delete !fd)))
 	 (delete !fdt))
       (printf "No arithmetic relational formula in ~a" fnum)))
   "[Field] Removes divisions and apply simplification heuristics to the relational
 formula on real numbers FNUM. It autorewrites with THEORIES when possible. If CANCEL?
 is t, then it tries to cancel common terms once the expression is free of divisions.
-TCCs generated during the execution of the command are discharged with the proof command STEP."
+TCCs generated during the execution of the command are discharged with the proof command TCC-STEP."
   "Removing divisions and simplifying formula ~a with field")
 
 (defstep sq-simp (&optional (fnum *))  
@@ -702,7 +709,7 @@ TCCs generated during the execution of the command are discharged with the proof
   "[Field] Simplifies FNUM with lemmas from sq and sqrt."
   "Simplifying sq and sqrt in ~a")
 
-(defstep both-sides-f (fnum f &optional (hide? t) label (step (subtype-tcc)))
+(defstep both-sides-f (fnum f &optional (hide? t) label (tcc-step (extra-tcc-step)))
   (let ((fnexpr  (first-formula fnum :test #'field-formula))
 	(fn      (car fnexpr))
 	(formula (cadr fnexpr))
@@ -714,14 +721,16 @@ TCCs generated during the execution of the command are discharged with the proof
 	 ((!bsf fn :tccs)
 	  (!bsp)
 	  (!bsl))
-	 (spread (discriminate (wrap-manip !bsf (transform-both !bsf str) :step step :labels? nil) !bsl)
-		 ((then (delabel !bsf hide?) (finalize step))))
+	 (branch (discriminate (wrap-manip !bsf (transform-both !bsf str) :tcc-step (skip) :labels? nil) !bsl)
+		 ((else (finalize (assert)) (delabel !bsf hide?))
+		  (finalize (assert))
+		  (then (delabel !bsf hide?) (finalize tcc-step))))
 	 (relabel lbs !bsl :push? nil))
       (printf "No arithmetic relational formula in ~a" fnum)))
   "[Field] Applies function F to both sides of the relational expression in FNUM. If
 HIDE? is t, the original formula is hidden. The new formulas are labeled as the original
 one, unless an explicit LABEL is provided. TCCs generated during the execution of the
-command are discharged with the proof command STEP."
+command are discharged with the proof command TCC-STEP."
   "Applying ~1@*~a to both sides of formula ~@*~a")
 
 (defstrat wrap-formula (fnum f)

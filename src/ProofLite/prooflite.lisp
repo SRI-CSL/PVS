@@ -1,4 +1,16 @@
+;;
 ;; prooflite.lisp
+;; Release: ProofLite-6.0 (12/12/12)
+;;
+;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
+;; NASA Langley Research Center
+;; http://shemesh.larc.nasa.gov/people/cam/ProofLite
+;;
+;; Copyright (c) 2011-2012 United States Government as represented by
+;; the National Aeronautics and Space Administration.  No copyright
+;; is claimed in the United States under Title 17, U.S.Code. All Other
+;; Rights Reserved.
+;;
 
 (defun associate-proof-with-formulas (theory-name formula-name strategy force)
   (let ((theory (get-typechecked-theory theory-name)))
@@ -50,7 +62,6 @@
 	  (save-all-proofs theory)
 	  (pvs-message "Proof script ~a was installed" (id fdecl)))))
     (associate-proof-with-formula theory regexp strategy (cdr fdecls))))
-
 
 ;; Returns a list of theory names defined in a PVS file
 (defun theories-in-file (file)

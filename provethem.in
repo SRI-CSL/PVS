@@ -68,7 +68,7 @@ name and <options> are paramters to proveit. If <lib> is empty, options apply
 to all libraries thenceforth.  Output is saved in <outfile>,  which can be
 specified using the option -out.  Otherwise, a default name having the
 form <file><postfix>.summaries is used.
-The <postfix> depends on the options -do,-but,-from,-to,-after,-below
+The <postfix> depends on the options -do,-but,-from,-to,-after,-before
 given to the script.
 Unless the option -out is explictly use, an output file is not created when
 the options -cleanbin, -execute or -test are given.
@@ -102,6 +102,11 @@ GetOptions('addpath'=>\$addpath,
 	   'verbose'=>\$verbose,
            'version'=>\$version) or exit 1;
 
+$from =~ s/\/$//;
+$to =~ s/\/$//;
+$after =~ s/\/$//;
+$before =~ s/\/$//;
+
 sub trim($)
 {
 	my $string = shift;
@@ -120,8 +125,15 @@ usage if $help;
 $file = shift;
 die "$usageln\n" if !$file || shift; 
 
-@butlist = split /,/,join(',',@but);
 @dolist = split /,/,join(',',@do);
+foreach (@dolist) {
+  $_ =~ s/\/$//;
+}
+
+@butlist = split /,/,join(',',@but);
+foreach (@butlist) {
+  $_ =~ s/\/$//;
+}
 
 die "$file is a directory\n" if -d $file;
 open (INFILE,$file) || die "File $file doesn't exist\n";
@@ -136,7 +148,7 @@ if (!$out && !$cleanbin && !$execute && !$test) {
   $out .= "-from_$from" if $from;
   $out .= "-to_$to" if $to;
   $out .= "-after_$after" if $after;
-  $out .= "-below_$below" if $below;
+  $out .= "-before_$before" if $before;
   $out .= ".summaries";
 }
 

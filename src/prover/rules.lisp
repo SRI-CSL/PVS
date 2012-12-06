@@ -837,6 +837,26 @@ ones.  Otherwise, the new label replaces all existing ones."
 	       (error-format-if "~%No hidden formulas match ~a" (or fnums '*))
 	       (values 'X nil nil))))))
 
+(defun hidden-sform-reduce (sformlist simplifier sformnums
+				      &optional (pos 1) (neg -1)
+				      (rsignal 'X) reducedlist)
+  (if (null sformlist)
+      (values rsignal (nreverse reducedlist))
+    (let* ((x (car sformlist))
+	   (sign (not (negation? (formula x)))))
+      (multiple-value-bind
+	  (signal result)
+	  (if (in-sformnums? x pos neg sformnums)
+	      (funcall simplifier x)
+	    (values 'X x))
+	(hidden-sform-reduce
+	 (cdr sformlist) simplifier sformnums
+	 (if sign (1+ pos) pos)
+	 (if sign neg (1- neg))
+	 (if (eq signal 'X) rsignal (if (eq rsignal '!) '! signal))
+	 (cons result reducedlist))))))
+
+
 (addrule 'just-install-proof (proof) ()
   #'(lambda (ps)
       (just-install-proof-step proof ps))
