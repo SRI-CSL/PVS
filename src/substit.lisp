@@ -47,6 +47,14 @@
 
 (defvar *substit-hash-list*)
 
+(defvar *let-operators* nil
+  "let-exprs have lambda expressions as operators, and we don't want
+to set the declared-type for those bindings if already unset")
+
+(defvar *leave-bindings-undeclared* nil
+  "If set, then if declared-type of a binding is nil,
+it is nil in the substituted binding")
+
 (defmacro new-substit-hash (&rest forms)
   `(let* ((*alist-freevars* 'unbound)
 	  (*alist-boundvars* 'unbound)
@@ -351,6 +359,9 @@
 		 ;; changing the class if it is needed.
 		 nex))))))
 
+(defmethod substit* :around ((expr let-expr) alist)
+  (let ((*let-operators* (cons (operator expr) *let-operators*)))
+    (call-next-method)))
 
 (defmethod make!-reduced-application* ((op lambda-expr) (arg tuple-expr))
   (if (singleton? (bindings op))
@@ -595,7 +606,8 @@
 (defmethod substit* ((expr binding-expr) alist)
   (if (not (substit-possible? expr alist))
       expr
-      (let* ((new-bindings-i (make-new-bindings-internal
+      (let* ((*leave-bindings-undeclared* (memq expr *let-operators*))
+	     (new-bindings-i (make-new-bindings-internal
 			      (bindings expr) alist (expression expr)))
 	     (new-bindings (if (equal new-bindings-i (bindings expr))
 			       (bindings expr)
@@ -708,7 +720,8 @@
 		    'id (new-boundvar-id (id bind) expr)
 		    'type stype
 		    'declared-type (substit* dec-type alist)))))
-	(unless (or (eq bind new-binding)
+	(unless (or *leave-bindings-undeclared*
+		    (eq bind new-binding)
 		    (declared-type new-binding))
 	  (setf (declared-type new-binding) (or (print-type stype) stype)))
 	(make-new-bindings*
