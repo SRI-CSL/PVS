@@ -455,7 +455,8 @@
   (if op?
       (call-next-method)
       (let* ((adt (adt (adt ex)))
-	     (constr (find (id ex) (constructors adt) :test #'eq :key #'id)))
+	     (constr (find (id ex) (constructors adt)
+			   :test #'id-suffix :key #'id)))
 	(if (arguments constr)
 	    ex
 	    (call-next-method ex t)))))
