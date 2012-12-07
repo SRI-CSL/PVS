@@ -5501,7 +5501,7 @@ function, tuple, or record type")
 		 (constructors struct) (constructors codt))))))
 	 (*adt-vars* (make-hash-table :test #'eq)))
     (generate-adt-vars struct)
-    (let* ((fpairs (acons (declaration dtype) (declaration codtinst) nil))
+    (let* ((fpairs (acons (declaration dtype) (declaration (adt-type-name codt)) nil))
 	   (precases (mapcar #'(lambda (c)
 				 (generate-adt-map-selection
 				  c (list coreduce-op) (list dtype)
