@@ -167,7 +167,7 @@
   (let* ((subtypes-term (term-arg0 datatype))
 	 (subtypes (mapcar #'(lambda (st)
 			       (make-instance 'type-name
-				 :id (xt-pidop st)
+				 :id (xt-idop (xt-pidop st))
 				 :place (term-place st)))
 			   (term-args subtypes-term)))
 	 (assuming-term (term-arg1 datatype))
@@ -178,7 +178,7 @@
 		  (xt-importing-elt importing-term)))
 	 (adtcases-term (term-arg3 datatype))
 	 (adtcases (xt-adtcases adtcases-term))
-	 (endid (xt-pidop (term-arg4 datatype))))
+	 (endid (xt-idop (xt-pidop (term-arg4 datatype)))))
     (check-subtypes-constructors-consistency id subtypes adtcases)
     (unless (or (null id)
 		(eq id endid))

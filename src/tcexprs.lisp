@@ -785,29 +785,31 @@
 	  (break "set-selection-types"))
 	(type-error (declared-type (car selargs))
 	    "Could not determine the full theory instance"))
-      (setf (declared-type (car selargs))
-	    (if (typep dtype 'datatype-subtype)
-		(pc-typecheck (copy-untyped (declared-type dtype)))
-		(pc-typecheck (copy-untyped dtype))))
+      (let ((type (if (typep dtype 'datatype-subtype)
+		      (pc-typecheck (copy-untyped (declared-type dtype)))
+		      (pc-typecheck (copy-untyped (raise-actuals dtype))))))
+	(setf (declared-type (car selargs)) (or (print-type type) type)
+	      (type (car selargs)) type))
       (assert (fully-instantiated? (declared-type (car selargs))))
       (assert (or (null (type (car selargs)))
 		  (fully-instantiated? (type (car selargs)))))
-      (set-selection-types
-       (cdr selargs)
-       type
-       (let ((bd (bind-decl (car arg-decls))))
-	 (if (occurs-in bd (cdr arg-decls))
-	     (let* ((ntype (typecheck* dtype nil nil nil))
-		    (narg (mk-name-expr (id (car selargs))
-			    nil nil (make-resolution (car selargs) nil ntype)))
-		    (alist (acons bd narg nil)))
-	       (mapcar #'(lambda (a)
-			   (let ((stype (substit (type a) alist)))
-			     (lcopy a
-			       'type stype
-			       'declared-type (or (print-type stype) stype))))
-		       (cdr arg-decls)))
-	     (cdr arg-decls)))))))
+      (let ((*bound-variables* (cons (car selargs) *bound-variables*)))
+	(set-selection-types
+	 (cdr selargs)
+	 type
+	 (let ((bd (bind-decl (car arg-decls))))
+	   (if (occurs-in bd (cdr arg-decls))
+	       (let* ((ntype (typecheck* dtype nil nil nil))
+		      (narg (mk-name-expr (id (car selargs))
+			      nil nil (make-resolution (car selargs) nil ntype)))
+		      (alist (acons bd narg nil)))
+		 (mapcar #'(lambda (a)
+			     (let ((stype (substit (type a) alist)))
+			       (lcopy a
+				 'type stype
+				 'declared-type (or (print-type stype) stype))))
+		   (cdr arg-decls)))
+	       (cdr arg-decls))))))))
 
 
 ;;; Table-exprs will be transformed into one of these three, which will
