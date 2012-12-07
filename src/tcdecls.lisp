@@ -885,6 +885,7 @@
 
 (defmethod subst-new-map-decl ((decl formula-decl))
   (change-to-mapped-formula-decl decl)
+  (setf (kind decl) nil)
   (let ((fdecl (car (rassoc decl *subst-new-other-decls* :test #'eq))))
     (assert fdecl)
     (setf (from-formula decl) fdecl))
