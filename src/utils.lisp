@@ -2058,17 +2058,19 @@
 
 (defmethod accessors ((fn name-expr))
   (when (constructor? fn)
-    (let* ((con (car (member fn (constructors (adt (adt fn)))
+    (let* ((con (car (member (declaration fn) (constructors (adt (adt fn)))
 			     :test #'same-id))))
-       (mapcar #'(lambda (acc)
+      (assert con)
+      (mapcar #'(lambda (acc)
 		  (let ((res (make-resolution acc (module-instance fn))))
 		    (mk-name-expr (id acc) nil nil res)))
-	      (acc-decls con)))))
+	(acc-decls con)))))
 
 (defmethod accessors ((fn constructor-name-expr))
   (if (eq (accessor-names fn) 'unbound)
-      (let* ((con (car (member fn (constructors (adt (adt fn)))
+      (let* ((con (car (member (declaration fn) (constructors (adt (adt fn)))
 			       :test #'same-id))))
+	(assert con)
 	(setf (accessor-names fn)
 	      (mapcar #'(lambda (acc)
 			  (let ((res (make-resolution acc
