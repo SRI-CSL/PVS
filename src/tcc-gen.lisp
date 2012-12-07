@@ -1304,7 +1304,8 @@
 	   (remove-if #'(lambda (c)
 			  (member (id c) (selections expr)
 				  :test #'(lambda (x y)
-					    (eq x (id (constructor y))))))
+					    (id-suffix (id (constructor y))
+						       x))))
 	     constructors)))
       (when unselected
 	(generate-selections-tcc unselected expr adt)))))
