@@ -2532,7 +2532,7 @@
 	      (accessor? newop)
 	      (typep newargs 'application)
 	      (typep (operator newargs) 'name-expr)
-	      (member (operator newargs) (constructor newop)
+	      (member (declaration (operator newargs)) (constructor newop)
 		      :test #'same-id)) ;;NSH(9.29.00) was tc-eq-ops
 	                        ;;which is too strong.
 	 (values-assert-if
