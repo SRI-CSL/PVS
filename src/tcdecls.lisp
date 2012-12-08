@@ -830,6 +830,7 @@
   (let ((*subst-new-map-decls* dalist)
 	(*subst-new-other-decls* owlist)
 	(tdecl (find-if #'type-decl? (generated adt) :from-end t)))
+    (assert tdecl)
     (setf (adt-type-name adt)
 	  (mk-adt-type-name (id adt) nil nil nil adt))
     (setf (resolutions (adt-type-name adt))
@@ -913,7 +914,7 @@
     (setf (theory-name imp) tn)))
 
 (defmethod subst-new-map-decl ((constr simple-constructor))
-  (break "subst-new-map-decl (simple-constructor)")
+  ;;(break "subst-new-map-decl (simple-constructor)")
   (copy constr
     :arguments (mapcar #'subst-new-map-decls* (copy-all (arguments constr)))
     :con-decl (subst-new-map-decls* (copy-all (con-decl constr)))
@@ -1167,7 +1168,7 @@
 (defmethod make-inlined-theory-decl ((decl inline-recursive-type))
   (declare (ignore lastdecl))
   (setf (current-declaration) decl)
-  (setf (generated decl) nil)
+  ;;(setf (generated decl) nil)
   (let ((dhash (current-declarations-hash)))
     (dolist (id (id-suffixes (id decl)))
       (pushnew decl (get-lhash id dhash) :test #'eq))))
