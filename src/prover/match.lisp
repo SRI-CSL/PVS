@@ -835,7 +835,16 @@
 				      bind-alist subst)
 			   'fail))
 		     'fail)
-		 'fail)))
+		 (if (is-division? lhs)
+		     (if (typep instance '(and rational-expr (not number-expr)))
+			 (match* (arguments lhs)
+				 (list (make!-number-expr
+					(numerator (number instance)))
+				       (make!-number-expr
+					(denominator (number instance))))
+				 bind-alist subst)
+			 'fail)
+		     'fail))))
 	(t 'fail)))
     
 (defmethod match* ((lhs branch)(instance branch) bind-alist subst)
