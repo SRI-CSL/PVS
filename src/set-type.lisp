@@ -4998,6 +4998,10 @@ required a context.")
 (defmethod subst-for-formals? ((ex name) alist)
   (assq (declaration ex) alist))
 
+(defmethod subst-for-formals? ((ex subtype) alist)
+  (and (type-name? (print-type ex))
+       (assq (declaration (print-type ex)) alist)))
+
 (defmethod subst-for-formals? ((ex modname) alist)
   (let ((mod (get-theory ex)))
     (and (null (actuals ex))
@@ -5010,6 +5014,9 @@ required a context.")
 
 (defmethod subst-for-formals! ((ex name) alist)
   (copy (cdr (assq (declaration ex) alist))))
+
+(defmethod subst-for-formals! ((ex subtype) alist)
+  (copy (cdr (assq (declaration (print-type ex)) alist))))
 
 (defmethod subst-for-formals! ((ex modname) alist)
   (let ((mod (get-theory ex)))
