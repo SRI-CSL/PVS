@@ -194,7 +194,7 @@ Given a pathname, returns a hash-table")
 (defvar *noninteractive-timeout* nil)
 (defvar *proof-timeout* nil)
 
-(defvar *use-rationals* t)
+(defvar *use-rationals* nil)
 
 (defvar *recursive-calls-without-enough-args* nil)
 
