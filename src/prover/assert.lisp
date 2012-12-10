@@ -238,7 +238,8 @@
 
 (defun assert-sform (sform &optional rewrite-flag simplifiable?)
   (let ((*assert-typepreds* nil)
-	(*auto-rewrite-depth* 0))
+	(*auto-rewrite-depth* 0)
+	(*use-rationals* t))
     (multiple-value-bind (signal sform)
 	(assert-sform* sform rewrite-flag simplifiable?)
       (cond ((eq signal '!)(values signal sform))
@@ -1968,9 +1969,7 @@
 (defun make-minus (expr)
   (let* ((coef (coefficient expr))
 	 (body (noncoefficient expr))
-	 (newcoeffexpr (if (or *use-rationals* (minusp coef))
-			   (make!-number-expr (- coef))
-			   (make!-minus (make!-number-expr coef)))))
+	 (newcoeffexpr (make!-number-expr (- coef))))
     (if (null body)
 	newcoeffexpr
 	(make-prod (list newcoeffexpr body)
@@ -2203,17 +2202,21 @@
 
 (defun assert-if-division (expr newargs sig)
   (let* ((hashvalue (gethash expr *assert-if-arith-hash*))
-	 (prod (if hashvalue hashvalue
+	 (prod (or hashvalue
 		   (let* ((nargs (argument-list newargs))
+			  (op (operator expr))
 			  (lhs (car nargs))
 			  (rhs (cadr nargs))
-			  (type (compatible-type (type lhs)(type rhs))))
-		     (if (and (typep rhs 'rational-expr)
-			      (or (is-division? lhs)
-				  (is-multiplication? lhs)
-				  (is-addition? lhs)
-				  (is-subtraction? lhs)))
-			 (merge-division lhs rhs type)
+			  (type (compatible-type (type lhs) (type rhs))))
+		     (if (typep rhs 'rational-expr)
+			 (if (typep lhs 'rational-expr)
+			     (simplify-or-copy-app expr op newargs)
+			     (if (or (is-division? lhs)
+				     (is-multiplication? lhs)
+				     (is-addition? lhs)
+				     (is-subtraction? lhs))
+				 (merge-division lhs rhs type)
+				 expr))
 			 expr)))))
 ;    (when hashvalue (format t "~%arith"))
     (unless hashvalue
@@ -2525,9 +2528,9 @@
 	 (assert-if-addition  expr newargs sig))
 	((is-multiplication? expr)
 	 (assert-if-multiplication expr newargs sig))
-	;; ((and *use-rationals*
-	;;       (is-division? expr))
-	;;  (assert-if-division expr newargs sig))
+	((and *use-rationals*
+	       (is-division? expr))
+	 (assert-if-division expr newargs sig))
 	((and (typep newop 'name-expr)
 	      (accessor? newop)
 	      (typep newargs 'application)
@@ -2781,8 +2784,8 @@
 		     (do-auto-rewrite arg 'X))))))
 	  (t (assert-if (argument expr))))))
 
-(defmethod assert-if ((expr application)) ; (break "assert-if-ap")
-  (with-slots (operator argument) expr
+(defmethod assert-if ((ex application)) ; (break "assert-if-ap")
+  (with-slots (operator argument) ex
     (multiple-value-bind
 	(sigop newop)
 	(if (and (lambda? operator)
@@ -2790,12 +2793,16 @@
 	    (values 'X operator)
 	    (assert-if operator))
       (multiple-value-bind (sigargs newargs)
-	  (assert-if (argument expr))
+	  (assert-if argument)
 	(let* ((sig (if (eq sigop '?) '? sigargs))
 	       (op (if (eq sigop '?) newop operator))
 	       (arg (if (eq sigargs '?) newargs argument))
-	       (expr ;;shadowing expr
-		(simplify-or-copy-app expr op arg))
+	       (expr ;;(simplify-or-copy-app ex op arg)
+		(lcopy ex
+		  'operator (if (eq sigop '?) newop
+				(operator ex))
+		  'argument (if (eq sigargs '?) newargs
+				(argument ex))))
 	       (result			;(nil)
 		(when (and (tc-eq (find-supertype (type expr)) *boolean*)
 			   (not (eq *top-assert-flag* 'rewrite))
@@ -2816,8 +2823,7 @@
 		       (values-assert-if '? *false* expr)
 		       (if (true-p result)
 			   (values-assert-if '? *true* expr)
-			   (do-auto-rewrite expr
-					    sig)))))
+			   (do-auto-rewrite expr sig)))))
 		((and (is-predicate? newop)
 		      (member expr (type-constraints newargs t)
 			      :test #'tc-eq)) ;;(break)
@@ -2833,8 +2839,7 @@
 			     *number*)
 		      (not (connective-occurs? expr)))
 		 (assert-numeric-equality expr sig))
-
-		(t  (assert-if-application expr newop newargs sig))))))))
+		(t (assert-if-application expr newop newargs sig))))))))
 
 (defmethod simplify-or-copy-app (expr (op name-expr) arg
 				      &optional (type (type expr)))
