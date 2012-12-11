@@ -836,7 +836,8 @@
 			   'fail))
 		     'fail)
 		 (if (is-division? lhs)
-		     (if (typep instance '(and rational-expr (not number-expr)))
+		     (if (and (typep instance 'rational-expr)
+			      (not (integerp (number instance))))
 			 (match* (arguments lhs)
 				 (list (make!-number-expr
 					(numerator (number instance)))
