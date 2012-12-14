@@ -42,11 +42,13 @@
 				   rewrite-flag flush? linear?
 				   cases-rewrite? type-constraints?
 				   ignore-prover-output? let-reduce?
-				   quant-simp? implicit-typepreds?)
+				   quant-simp? implicit-typepreds?
+				   ignore-typepreds?)
   #'(lambda (ps)
       (let ((*cases-rewrite* cases-rewrite?)
 	    (*false-tcc-error-flag* nil)
 	    (*ignore-prover-output?* ignore-prover-output?)
+	    (*ignore-typepreds?* ignore-typepreds?)
 	    (*let-reduce?* let-reduce?)
 	    (*quant-simp?* quant-simp?)
 	    (*implicit-typepreds?* implicit-typepreds?))
@@ -245,7 +247,11 @@
       (cond ((eq signal '!)(values signal sform))
 	    ((or (eq signal '?) *assert-typepreds*)
 	     ;;(break "assert-typepreds")
-	     (if (some #'process-typepred *assert-typepreds*)
+	     ;; For some formulas (e.g., large, with lots of arithmetic)
+	     ;; the *assert-typepreds* can get very large, and take
+	     ;; a long time to process; hence the *ignore-typepreds?* flag.
+	     (if (and (null *ignore-typepreds?*)
+		      (some #'process-typepred *assert-typepreds*))
 		 (values '! sform)
 		 (values signal sform)))
 	    (t (values signal sform))))))
@@ -1908,15 +1914,14 @@
 ;;assumes that expr is an addition.  newargs is for use from
 ;;assert-if-application
 (defun simplify-addition (expr &optional newargs)
+  (assert *use-rationals*)
   (let* ((hashvalue (gethash expr *assert-if-arith-hash*))
 	 (msum (or hashvalue
 		   (get-merged-sum expr newargs))));;(break "simp-add")
     (unless hashvalue
-      (setf (gethash expr *assert-if-arith-hash*)
-	    msum)
+      (setf (gethash expr *assert-if-arith-hash*) msum)
       (unless (eq expr msum)
-	(setf (gethash msum *assert-if-arith-hash*)
-	      msum)))
+	(setf (gethash msum *assert-if-arith-hash*) msum)))
     msum))
 
 (defun get-merged-sum (expr newargs)
@@ -1935,6 +1940,7 @@
 
 (defun assert-if-addition  (expr newargs sig);;expr must be
 					     ;;addition/subtraction.
+  (assert *use-rationals*)
   (let* ((hashvalue (gethash expr *assert-if-arith-hash*))
 	 (msum (if hashvalue hashvalue
 		   (let* ((nargs (argument-list newargs))
@@ -2164,18 +2170,14 @@
 	     (if (eql newcoeff 0)
 		 (make!-number-expr 0)
 		 (if (eql newcoeff 1)
-		     (make-prod prodlist
-				type)
-		     (make-prod (list (if (minusp newcoeff)
-					  (make!-minus (make!-number-expr
-							(- newcoeff)))
-					  (make!-number-expr newcoeff))
+		     (make-prod prodlist type)
+		     (make-prod (list (make!-number-expr newcoeff)
 				      (make-prod prodlist type))
 				type)))))))
 		    
 
-;;; SO 8-18-94 - Fixed for new form of application
 (defun assert-if-multiplication (expr newargs sig)
+  (assert *use-rationals*)
   (let* ((hashvalue (gethash expr *assert-if-arith-hash*))
 	 (prod (if hashvalue hashvalue
 		   (let* ((nargs (argument-list newargs))
@@ -2188,6 +2190,7 @@
 			     (loop for x in (multiplicands rhs)
 				   thereis (or (is-addition? x)
 					       (is-subtraction? x)
+					       ;;(is-division? x)
 					       (typep x 'rational-expr))))
 			 (merge-products lhs rhs type)
 			 expr)))))
@@ -2200,7 +2203,32 @@
 	(do-auto-rewrite expr sig)
 	(do-auto-rewrite prod '?))))
 
+;; SO - 2012-12-12 - experimenting 
+;; (defun simplify-prod-divides (lhs rhs)
+;;   (cond ((and (typep lhs 'rational-expr)
+;; 	      (is-division? rhs)
+;; 	      (cond ((typep (args1 rhs) 'rational-expr) ; Q * (Q / X)
+;; 		     (make!-divides (make!-number-expr
+;; 				     (* (number lhs) (number (args1 rhs))))
+;; 				    (args2 rhs)))
+;; 		    ((typep (args2 rhs) 'rational-expr) ; Q * (X / Q)
+;; 		     (make!-times (make!-number-expr
+;; 				   (/ (number lhs) (number (args2 rhs))))
+;; 				  (args1 rhs))))))
+;; 	((and (typep rhs 'rational-expr)
+;; 	      (is-division? lhs)
+;; 	      (cond ((typep (args1 lhs) 'rational-expr) ; (Q / X) * Q
+;; 		     (make!-divides (make!-number-expr
+;; 				     (* (number rhs) (number (args1 lhs))))
+;; 				    (args2 lhs)))
+;; 		    ((typep (args2 lhs) 'rational-expr) ; (X / Q) * Q
+;; 		     (make!-times (make!-number-expr
+;; 				   (/ (number rhs) (number (args2 lhs))))
+;; 				  (args1 lhs))))))))
+
+
 (defun assert-if-division (expr newargs sig)
+  (assert *use-rationals*)
   (let* ((hashvalue (gethash expr *assert-if-arith-hash*))
 	 (prod (or hashvalue
 		   (let* ((nargs (argument-list newargs))
@@ -2211,12 +2239,13 @@
 		     (if (typep rhs 'rational-expr)
 			 (if (typep lhs 'rational-expr)
 			     (simplify-or-copy-app expr op newargs)
-			     (if (or (is-division? lhs)
-				     (is-multiplication? lhs)
-				     (is-addition? lhs)
-				     (is-subtraction? lhs))
-				 (merge-division lhs rhs type)
-				 expr))
+			     ;; (if (or (is-division? lhs)
+			     ;; 	     (is-multiplication? lhs)
+			     ;; 	     (is-addition? lhs)
+			     ;; 	     (is-subtraction? lhs))
+			     ;; 	 (merge-division lhs rhs type)
+			     ;; 	 expr)
+			     expr)
 			 expr)))))
 ;    (when hashvalue (format t "~%arith"))
     (unless hashvalue
@@ -2228,6 +2257,7 @@
 	(do-auto-rewrite prod '?))))
 
 (defun merge-division (l r type)
+  (break)
   (if (or (is-addition? l)
 	  (is-subtraction? l))
       (let ((list (loop for x in (addends l)
@@ -2843,7 +2873,8 @@
 
 (defmethod simplify-or-copy-app (expr (op name-expr) arg
 				      &optional (type (type expr)))
-  (or (simplify-ground-arith op arg)
+  (or (and *use-rationals*
+	   (simplify-ground-arith op arg))
       (lcopy expr 'operator op 'argument arg 'type type)))
 
 (defmethod simplify-or-copy-app (expr op arg &optional (type (type expr)))
