@@ -64,6 +64,7 @@
 (defvar *assert-typepreds* nil)
 (defvar *prover-indent* 0)
 (defvar *ignore-prover-output?* nil)
+(defvar *ignore-typepreds?* nil) ;; See assert-sform
 (defvar *rerunning-proof* nil)
 (defvar *rerunning-proof-message-time* nil)
 (defvar *top-label* nil)
