@@ -347,11 +347,14 @@
 	  (let ((pdir (format nil "~apvs-patches/" dir)))
 	    (when (directory-p pdir)
 	      (setq pfiles
-		    (append pfiles
-			    (sort (directory (format nil "~apatch-*.lisp" pdir))
-				  #'< :key #'(lambda (pn)
-					       (parse-integer (pathname-name pn)
-							      :start 6))))))))
+		    (append
+		     pfiles
+		     (sort (directory (format nil "~apatch-*.lisp" pdir))
+			   #'< :key #'(lambda (pn)
+					(or (ignore-errors
+					      (parse-integer (pathname-name pn)
+							     :start 6))
+					    0))))))))
 	pfiles))))
 
 (defun user-pvs-lisp-file ()
