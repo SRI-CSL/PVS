@@ -3142,7 +3142,8 @@ space")
 		    (or (and (boundp '*assert-if-arith-hash*) ;;NSH(11.30.95) 
 			     *assert-if-arith-hash*) ;;not real shadowing
 			(make-hash-table :test #'eq)))
-		   (*current-decision-procedure* 'shostak))
+		   (*current-decision-procedure* 'shostak)
+		   (*use-rationals* t))
 	      (nprotecting-cong-state
 	       ((*dp-state* (dpi-empty-state)))
 	       (let ((result (if *translate-id-counter*
