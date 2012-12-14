@@ -132,7 +132,8 @@ list of positive numbers" occurrence)
 		(if (eq *assert-flag* 'none)
 		    (values 'X new-fmla) ;;NSH(1/16/97): Myla Archer
 		    ;;wanted no-simplification option.
-		    (assert-if-inside new-fmla))
+		    (let ((*use-rationals* t))
+		      (assert-if-inside new-fmla)))
 	      (let ((new-sform (lcopy (car sforms)
 				 'formula (if (eq sig 'X)
 					      new-fmla
