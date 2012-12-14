@@ -1751,7 +1751,8 @@
        ((*dp-state* dp-state))
        ;;(break "atc")
        (let ((*rewrite-hash* (copy (rewrite-hash ps)))
-	     (*subtype-hash* (copy (subtype-hash ps))))
+	     (*subtype-hash* (copy (subtype-hash ps)))
+	     (*use-rationals* t))
 	 (assert-tccforms* tccforms ps))))))
 
 (defun assert-tccforms* (tccforms ps)
