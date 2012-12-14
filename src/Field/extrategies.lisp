@@ -118,14 +118,15 @@
 ;; Generates n names with given prefix that are fresh in the current context
 (defun freshnames (prefix n &optional type but midfix)
   (when *current-context*
-    (if (= n 1)
-	(list (freshname prefix type but midfix))
-      (let ((nnames 0))
-	(loop for i from 1
-	      for nn = (format nil "~a~a~a" prefix midfix i)
-	      while (< nnames n)
-	      when (is-freevar nn type but)
-	      collect (progn (incf nnames) nn))))))
+    (let ((midfix (or midfix (if type "!" "_"))))
+      (if (= n 1)
+	  (list (freshname prefix type but midfix))
+	(let ((nnames 0))
+	  (loop for i from 1
+		for nn = (format nil "~a~a~a" prefix midfix i)
+		while (< nnames n)
+		when (is-freevar nn type but)
+		collect (progn (incf nnames) nn)))))))
   
 ;; Get a list of formula numbers from fnums
 (defun extra-get-fnums (fnums)

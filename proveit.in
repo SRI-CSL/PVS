@@ -126,7 +126,7 @@ compile_infile_name() {
 }
 
 strip_ext() {
-  echo "$1" | sed -e "s/\..*//g" 
+  echo "$1" | sed -e "s/\(.*\)\..*/\1/g" 
 }
 
 # If necessary, set the name of the output file
