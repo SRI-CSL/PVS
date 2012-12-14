@@ -305,9 +305,9 @@ E.g., (try (skip)(flatten)(skolem!)) is just (skolem!)
 			   flush? linear? cases-rewrite?
 			   (type-constraints? t)
 			   ignore-prover-output? (let-reduce? t) quant-simp?
-			   implicit-typepreds?)
+			   implicit-typepreds? ignore-typepreds?)
   (simplify
-   fnums t t rewrite-flag flush? linear? cases-rewrite? type-constraints? ignore-prover-output? let-reduce? quant-simp? implicit-typepreds?) 
+   fnums t t rewrite-flag flush? linear? cases-rewrite? type-constraints? ignore-prover-output? let-reduce? quant-simp? implicit-typepreds? ignore-typepreds?)
   "Simplifies/rewrites/records formulas in FNUMS using decision
 procedures.  Variant of SIMPLIFY with RECORD? and REWRITE? flags set
 to T. If REWRITE-FLAG is RL(LR) then only lhs(rhs) of equality
@@ -667,9 +667,10 @@ defined, it looks for 'context-strategy', and if that is not found, it
 invokes 'grind'."
   "")
 
-(defstep bash (&optional (if-match t)(updates? t) polarity? (instantiator inst?) (let-reduce? t) quant-simp? implicit-typepreds? cases-rewrite?)
+(defstep bash (&optional (if-match t)(updates? t) polarity? (instantiator inst?) (let-reduce? t) quant-simp? implicit-typepreds? cases-rewrite? ignore-typepreds?)
   (then (assert :let-reduce? let-reduce? :quant-simp? quant-simp?
 		:implicit-typepreds? implicit-typepreds?
+		:ignore-typepreds? ignore-typepreds?
 		:cases-rewrite? cases-rewrite?)
 	(bddsimp)
 	(if if-match (let ((command (generate-instantiator-command
@@ -714,12 +715,14 @@ reasoning, quantifier instantiation, skolemization, if-lifting.")
 	 
 (defstep reduce (&optional (if-match t)(updates? t) polarity?
 			   (instantiator inst?) (let-reduce? t) quant-simp?
-			   no-replace? implicit-typepreds? cases-rewrite?)
+			   no-replace? implicit-typepreds? cases-rewrite?
+			   ignore-typepreds?)
     (repeat* (try (bash$ :if-match if-match :updates? updates?
 			 :polarity? polarity? :instantiator instantiator
 			 :let-reduce? let-reduce?
 			 :quant-simp? quant-simp?
 			 :implicit-typepreds? implicit-typepreds?
+			 :ignore-typepreds? ignore-typepreds?
 			 :cases-rewrite? cases-rewrite?)
                (if no-replace? (skip)(replace*))
                (skip)))
@@ -730,10 +733,12 @@ See BASH for more explanation."
   propositional reasoning, quantifier instantiation, skolemization,
  if-lifting and equality replacement")
 
-(defstep smash (&optional (updates? t) (let-reduce? t) quant-simp? implicit-typepreds? cases-rewrite?)
+(defstep smash (&optional (updates? t) (let-reduce? t) quant-simp?
+			  implicit-typepreds? cases-rewrite? ignore-typepreds?)
   (repeat* (then (bddsimp)
 		 (assert :let-reduce? let-reduce? :quant-simp? quant-simp?
 			 :implicit-typepreds? implicit-typepreds?
+			 :ignore-typepreds? ignore-typepreds?
 			 :cases-rewrite? cases-rewrite?)
 		 (lift-if :updates? updates?)))
   "Repeatedly tries BDDSIMP, ASSERT, and LIFT-IF.  If the UPDATES?
@@ -800,18 +805,21 @@ EXCLUDE is a list of rewrite rules. "
 			  cases-rewrite?
 			  quant-simp?
 			  no-replace?
-			  implicit-typepreds?)
+			  implicit-typepreds?
+			  ignore-typepreds?)
   (then
    (install-rewrites$ :defs defs :theories theories
 		      :rewrites rewrites :exclude exclude)
    (then (bddsimp)(assert :let-reduce? let-reduce?
-			  :cases-rewrite? cases-rewrite?))
+			  :cases-rewrite? cases-rewrite?
+			  :ignore-typepreds? ignore-typepreds?))
    (replace*)
    (reduce$ :if-match if-match :updates? updates?
 	    :polarity? polarity? :instantiator instantiator
 	    :let-reduce? let-reduce? :quant-simp? quant-simp?
 	    :no-replace? no-replace?
 	    :implicit-typepreds? implicit-typepreds?
+	    :ignore-typepreds? ignore-typepreds?
 	    :cases-rewrite? cases-rewrite?))
     "A super-duper strategy.  Does auto-rewrite-defs/theories,
 auto-rewrite then applies skolem!, inst?, lift-if, bddsimp, and
@@ -1039,13 +1047,14 @@ resulting subgoals.  The last step is used for any excess subgoals.
 If STEP does nothing, then ELSE-STEP is applied.")
 
 (defstep ground (&optional (let-reduce? t) quant-simp? implicit-typepreds?
-			   cases-rewrite?)
+			   cases-rewrite? ignore-typepreds?)
   (try (flatten)
        (ground$)
        (try (split)
 	    (ground$)
 	    (assert :let-reduce? let-reduce? :quant-simp? quant-simp?
 		    :implicit-typepreds? implicit-typepreds?
+		    :ignore-typepreds? ignore-typepreds?
 		    :cases-rewrite? cases-rewrite?)))
   "Does propositional simplification followed by the use of decision procedures."
   "Applying propositional simplification and decision procedures")
@@ -4048,12 +4057,13 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
 (defstep lazy-grind  (&optional (if-match t) polarity? (defs !) rewrites
                                 theories exclude (updates? t) (let-reduce? t)
 				quant-simp? implicit-typepreds?
-				cases-rewrite?)
+				cases-rewrite? ignore-typepreds?)
   (then
    (grind$ :if-match nil :defs defs :rewrites rewrites 
 	   :theories theories :exclude exclude :updates? updates?
 	   :let-reduce? let-reduce? :quant-simp? quant-simp?
 	   :implicit-typepreds? implicit-typepreds?
+	   :ignore-typepreds? ignore-typepreds?
 	   :cases-rewrite? cases-rewrite?)
    (reduce$ :if-match if-match :polarity? polarity? :updates? updates? :let-reduce? let-reduce?
 	    :cases-rewrite? cases-rewrite?))
@@ -4105,18 +4115,21 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
 			  cases-rewrite?
 			  quant-simp?
 			  no-replace?
-			  implicit-typepreds?)
+			  implicit-typepreds?
+			  ignore-typepreds?)
   (then
    (install-rewrites$ :defs defs :theories theories
 		      :rewrites rewrites :exclude exclude)
    (then (bddsimp) (assert :let-reduce? let-reduce?
-			   :cases-rewrite? cases-rewrite?))
+			   :cases-rewrite? cases-rewrite?
+			   :ignore-typepreds? ignore-typepreds?))
    (replace*)
    (reduce-with-ext$ :if-match if-match :updates? updates?
 		     :polarity? polarity? :instantiator instantiator
 		     :let-reduce? let-reduce? :quant-simp? quant-simp?
 		     :no-replace? no-replace?
 		     :implicit-typepreds? implicit-typepreds?
+		     :ignore-typepreds? ignore-typepreds?
 		     :cases-rewrite? cases-rewrite?))
   "Like GRIND, but calls REDUCE-EXT, which also uses APPLY-EXTENSIONALITY.  See GRIND for an explanation of the arguments."
   "Trying repeated skolemization, instantiation, if-lifting, and extensionality")
@@ -4124,12 +4137,14 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
 (defstep reduce-with-ext (&optional (if-match t)(updates? t) polarity?
 				    (instantiator inst?) (let-reduce? t)
 				    quant-simp? no-replace?
-				    implicit-typepreds? cases-rewrite?)
+				    implicit-typepreds? cases-rewrite?
+				    ignore-typepreds?)
   (repeat* (then (bash$ :if-match if-match :updates? updates?
 		       :polarity? polarity? :instantiator instantiator
 		       :let-reduce? let-reduce?
 		       :quant-simp? quant-simp?
 		       :implicit-typepreds? implicit-typepreds?
+		       :ignore-typepreds? ignore-typepreds?
 		       :cases-rewrite? cases-rewrite?)
 		 (apply-extensionality$ :hide? t)
 		 (if no-replace? (skip) (replace*))))
