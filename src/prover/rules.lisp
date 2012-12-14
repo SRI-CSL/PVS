@@ -621,12 +621,13 @@ are reduced.  Example reduction steps are:
 (addrule 'simplify ()
 	 ((fnums *) record? rewrite? 
 	  rewrite-flag flush? linear? cases-rewrite? (type-constraints? t)
-	  ignore-prover-output? let-reduce? quant-simp? implicit-typepreds?)
+	  ignore-prover-output? let-reduce? quant-simp? implicit-typepreds?
+	  ignore-typepreds?)
   (invoke-simplification fnums record? rewrite?
 			 rewrite-flag flush? nil ;;NSH(10-26-01)was linear?
 			 cases-rewrite? type-constraints?
 			 ignore-prover-output? let-reduce? quant-simp?
-			 implicit-typepreds?)
+			 implicit-typepreds? ignore-typepreds?)
   "Uses the decision procedures to to simplify the formulas in
 FNUM and record them for further simplification.  The proof steps
 ASSERT, RECORD, SIMPLIFY, DO-REWRITE are instances of this primitive
@@ -668,7 +669,12 @@ effect:
  QUANT-SIMP?: Carries out quantifier simplifications like reducing
          (EXISTS x: x = t AND P(x)) to P(t).
  IMPLICIT-TYPEPREDS?: If T asserts implicit subtype constraints of each
-         sub-expression to the ground prover.  See TYPEPRED! for details."
+         sub-expression to the ground prover.  See TYPEPRED! for details.
+ IGNORE-TYPEPREDS?: If T typepreds are not processed to see if the proof is
+         finished.  In some cases (especially for large arithmetic formulas)
+         processing the typepreds can take a very long time, and they only
+         occasionally finish a proof.  Note that this affects the completeness
+         of simplify, not soundness.  Default is to process typepreds."
   "~%Simplifying with decision procedures,")
 
 (addrule 'auto-rewrite () (&rest names)
