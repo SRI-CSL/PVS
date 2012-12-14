@@ -108,24 +108,12 @@
     (load-file-operation component :all)
     changed))
 
-#+gcl
-(in-package :pcl)
-#+gcl
-(defun structure-slotd-reader-function (structure-slot-description)
-  (second structure-slot-description))
-#+gcl
-(compile 'structure-slotd-reader-function)
-
 (in-package :cl-user)
 
 (defvar *load-pvs-prelude* t)
 
-(unless (or (find-package :clos) (find-package :pcl))
-  #+(and lcl4.0 (not lcl4.1)) (load "/usr/subsys/lisp/clos")
-  #+lcl4.1 (load "/usr/global/lisp/lucid/dbcs/clos"))
-
 #-(or gcl cmu sbcl)
-(defpackage pvs (:use #+lucid :lucid-common-lisp :cl-user :lisp :clos :make))
+(defpackage pvs (:use :cl-user :lisp :clos :make))
 
 #+(or gcl cmu)
 (defpackage :pvs (:use :cl-user :lisp :common-lisp :pcl :make))
@@ -134,7 +122,7 @@
 (defpackage :pvs (:use :cl-user :common-lisp :sb-pcl :make))
 
 #-(or gcl cmu sbcl)
-(defpackage :rahd (:use :common-lisp #+allgro :excl))
+(defpackage :rahd (:use :common-lisp #+allegro :excl))
 
 #+(or gcl cmu sbcl)
 (defpackage :rahd (:use :common-lisp))
@@ -146,12 +134,6 @@
 #+cmu
 (eval-when (:execute :compile-toplevel :load-toplevel)
   (unlock-all-packages))
-
-#+gcl
-(eval-when (:execute :compile-toplevel :load-toplevel)
-  (unless (fboundp 'pcl::structure-slotd-reader-function)
-    (defun pcl::structure-slotd-reader-function (slotd)
-      (second slotd))))
 
 (defvar pvs::*pvs-path* *pvs-path*)
 (defvar pvs::*pvs-binary-type* *pvs-binary-type*)
@@ -181,27 +163,8 @@
   :source-extension "lisp"
   :binary-extension #.*pvs-binary-type*
   :initially-do (unless *pvs-system-loaded*
-		  #+(and lcl4.0 (not lcl4.1))
-		  (when (probe-file "/usr/subsys/lisp/patches/")
-		    (load-patches :directory "/usr/subsys/lisp/patches/"))
-		  #+lcl4.1
-		  (when (probe-file "/usr/global/lisp/lucid/dbcs/patches")
-		    (load-patches :directory
-				  "/usr/global/lisp/lucid/dbcs/patches")
-		    (load "/usr/global/lisp/lucid/dbcs/patches/bug-7186.sbin"))
 		  (proclaim '(optimize (compilation-speed 0) (space 1)
 				       (safety 1) (speed 3) (debug 1)))
-		  #+lucid
-		  (change-memory-management
-		   :expand 128
-		   :growth-limit 4092	; # of 64Kb segments
-		   :growth-rate 100	; # segs added when memory is expanded
-		   :reclamation-ratio 0.33
-		   )
-		  #+gcl (setq compiler::*split-files* 100000)
-		  #+(and lcl4.0 (not lcl4.1))
-		  (setq *load-binary-pathname-types*
-			(list cl-user::*pvs-binary-type*))
 		  (unless (boundp '*print-pprint-dispatch*)
 		    #-gcl
 		    (load (format nil "~a/src/xp" *pvs-path*))
@@ -271,8 +234,6 @@
 			(setq *pvs-has-libyices* t))))
 		  (setq *pvs-system-loaded* t))
   :finally-do (progn
-		#+lucid (precompile-generic-functions)
-		#+lcl4.1 (clos::flush-pv-caches)
 		#-(or cmu sbcl)
 		(pvs::BDD_bdd_init)
 		(when *pvs-has-libyices*
