@@ -63,6 +63,7 @@
 	     incs)
       (add-tcc-comment 'subtype expr expected 'in-context)
       (let* ((*old-tcc-name* nil)
+	     (*use-rationals* *in-checker*)
 	     (ndecl (make-subtype-tcc-decl expr incs)))
 	(if ndecl
 	    (if (termination-tcc? ndecl)
