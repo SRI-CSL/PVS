@@ -180,12 +180,12 @@
 
 
 (defmethod pvs2cl_up* :around ((expr expr) bindings livevars)
-	   (declare (ignore livevars bindings))
-	   (let ((lisp-type (pvs2cl-lisp-type (type expr))))
-	     (if lisp-type
-		 `(the ,lisp-type
-		    ,(call-next-method))
-		 (call-next-method))))
+  (declare (ignore livevars bindings))
+  (let ((lisp-type (pvs2cl-lisp-type (type expr))))
+    (if lisp-type
+	`(the ,lisp-type
+	   ,(call-next-method))
+	(call-next-method))))
 
 (defmethod pvs2cl_up* ((expr string-expr) bindings livevars)
   (declare (ignore bindings livevars))
@@ -544,8 +544,19 @@
   (pvs2cl_up* (mk-translate-cases-to-if expr) bindings livevars))
 
 (defmethod pvs2cl_up* ((expr lambda-expr) bindings livevars)
-  (declare (ignore livevars))
-  (pvs2cl-lambda (bindings expr) (expression expr) bindings))
+  (with-slots ((expr-bindings bindings) expression) expr
+      (if (and *destructive?*
+	       (singleton? expr-bindings)
+	       (array-bound (type expr))
+	       (application? expression)
+	       (variable? (argument expression))
+	       (same-declaration (car expr-bindings)
+			  (argument expression))
+	       (not (member (car expr-bindings)
+			    (freevars (operator expression))
+			    :test #'same-declaration)))
+	  (pvs2cl_up* (operator expression) bindings livevars)
+	  (pvs2cl-lambda (bindings expr) (expression expr) bindings))))
     ;;was (updateable-vars expr))) ;;unsafe to update any freevar
 
 (defmethod pvs2cl_up* ((expr forall-expr) bindings livevars)
@@ -691,6 +702,7 @@
     `(pvs2cl_tuple ,@args)))
 
 (defmethod pvs2cl_up* ((expr record-expr) bindings livevars)
+  ;;add special case for strings
   (let ((args (pvs2cl_up* (mapcar #'expression
 			    (sort-assignments (assignments expr)))
 			  bindings livevars)))
@@ -709,18 +721,14 @@
           :key #'(lambda (x) (id x)))))
 
 (defun get-field-num (id typ)
-  (position id (sorted-fields typ)
-            :test #'(lambda (x y) (eq x (id y)))))
+   (position id (sort-fields (fields typ))
+             :test #'(lambda (x y) (eq x (id y)))))
 
 (defmethod pvs2cl_up*  ((expr field-application) bindings livevars)
   (let* ((clarg (pvs2cl_up* (argument expr) bindings livevars))
 	 (argtype (find-supertype (type (argument expr))))
 	 (nonstr `(project ,(1+ (get-field-num (id expr) argtype)) ,clarg)))
-    (if (finseq-type? argtype)
-	(if (eq (id expr) '|length|)
-	    `(if (stringp ,clarg) (length ,clarg) ,nonstr)
-	    `(if (stringp ,clarg) (lambda (x) (schar ,clarg x)) ,nonstr))
-	nonstr)))
+    nonstr))
 
 
 (defmethod no-livevars? ((expr update-expr) livevars assignments)
@@ -783,10 +791,13 @@
 	    (rhs (pvs2cl_up* rhs-expr bindings
 			     livevars))
 	    (cl-expr (if (funtype? type)
-			 (let* ((bound (array-bound type))
-				(cl-bound (pvs2cl_up* bound
-						      bindings livevars)))
-			   `(mk-fun-array ,cl-expr ,cl-bound))
+			 (let* ((bound (array-bound type)));;NSH(9-19-12)
+			   (if bound ;;then cl-expr is an array
+			       (let ((cl-bound (pvs2cl_up* bound
+							   bindings livevars)))
+				 `(mk-fun-array ,cl-expr ,cl-bound))
+			     `(make-closure-hash ,cl-expr)))
+			     ;;else it is a function and we make a closure-hash
 			 cl-expr))
 	    (exprvar (gentemp "E")))
 	(let* ((*lhs-args* nil)
@@ -798,7 +809,7 @@
 	       (lhs-bindings (nreverse *lhs-args*))
 	       (new-expr-body `(let ((,rhsvar ,rhs)
 				     (,exprvar ,cl-expr))
-				 (declare ((simple-array t) ,exprvar))
+				 ;;(declare ((simple-array t) ,exprvar))
 				 ,new-cl-expr
 				 ,exprvar))
 	       (newexpr-with-let
@@ -822,24 +833,30 @@
 					   livevars))
 	     (lhsvar (gentemp "LHS"))
 	     (bound (array-bound type))
-	     (cl-bound (pvs2cl_up* bound
-				   bindings livevars))
+	     (cl-bound (when bound (pvs2cl_up* bound
+					       bindings livevars)))
 	     (cl-expr (if (symbolp cl-expr)
 			  cl-expr
-			  `(mk-fun-array ,cl-expr ,cl-bound)))
+			(if bound
+			    `(mk-fun-array ,cl-expr ,cl-bound ,lhsvar)
+			  `(make-closure-hash ,cl-expr))))
 	     (cl-expr-var (gentemp "E"))
-	     (newexpr `(svref ,cl-expr-var ,lhsvar))
+	     (newexpr (if bound `(aref ,cl-expr-var ,lhsvar)
+			`(pvs-closure-hash-lookup ,cl-expr-var ,lhsvar)))
 	     (newrhs (if (null (cdr args))
 		      rhs
 		      (pvs2cl-update-nd-type
 		      (range type) newexpr (cdr args) rhs
 		      bindings livevars))))
 	(push (list lhsvar cl-args1) *lhs-args*)
-	`(setf (svref ,cl-expr ,lhsvar) ,newrhs)))
-; 	`(let ((,cl-expr-var ,cl-expr))
-; 	   (declare (simple-array ,cl-expr-var))
-; 	   (setf ,newexpr ,newrhs)
-; 	   ,cl-expr-var)))
+	(if bound
+	    `(pvs-setf ,cl-expr ,lhsvar ,newrhs)
+	  `(pvs-function-update ,cl-expr ,lhsvar ,newrhs))))
+
+(defun make-closure-hash (expr)	;;NSH(9-19-12)
+  (if (pvs-closure-hash-p expr)
+      expr
+      (mk-pvs-closure-hash (make-hash-table :test 'pvs_equalp) expr)))
 
 (defmethod pvs2cl-update-assign-args ((type subtype) cl-expr args rhs
 					 bindings livevars)
@@ -850,14 +867,19 @@
 					 bindings livevars)
   (let* ((args1 (car args))
 	 (id (id (car args1)))
-	 (field-num (get-field-num  id type))
+	 (fields (sort-fields (fields type)))
+	 (field-num (position  id fields :test #'(lambda (x y) (eq x (id y)))))
 	 (cl-expr-var (gentemp "E"))	 
 	 (newexpr `(svref ,cl-expr-var ,field-num))
-	 (field-type (type (find id (fields type) :key #'id) ))
-	 (other-updateable-types
+	 (field-type (type (find id fields :key #'id) ))
+ 	 (dep-fields (sort-fields (fields type) t));;dependent sort
+ 	 (new-bindings (pvs2cl-add-dep-field-bindings  dep-fields fields id
+						  cl-expr-var bindings))
+	 (other-updateable-types ;;to prevent updates to aliases
 	  (loop for fld in (fields type)
 		when (not (eq id (id fld)))
 		nconc (top-updateable-types (type fld) nil)))
+	 (rhs-var (gentemp "R"))
 	 (newrhs  (if (null (cdr args))
 		      rhs
 		      (if (member field-type
@@ -865,11 +887,14 @@
 				  :test #'compatible?)
 			  (pvs2cl-update-nd-type
 			   field-type newexpr (cdr args) rhs
-			   bindings livevars)
+			   new-bindings livevars)
 			  (pvs2cl-update-assign-args
 			   field-type newexpr (cdr args) rhs
-			   bindings livevars)))))
-    `(setf (svref ,cl-expr ,field-num) ,newrhs)))
+			   new-bindings livevars)))))
+    `(let* ((,cl-expr-var ,cl-expr)
+	   (,rhs-var ,newrhs))
+       (rec-tup-update ,cl-expr-var ,field-num ,rhs-var)
+       ,cl-expr-var)))
 ;     `(let ((,cl-expr-var ,cl-expr))
 ;        (declare (simple-array ,cl-expr-var))
 ;        (setf ,newexpr ,newrhs)
@@ -880,13 +905,17 @@
   (let* ((args1 (car args))
 	 (num (number (car args1)))
 	 (cl-expr-var (gentemp "E"))
-	 (newexpr `(svref ,cl-expr-var ,(1- num)))
-	 (tupsel-type (nth (1- num)(types type)))
+	 (newexpr `(project ,cl-expr-var ,num))
+	 (types (types type))
+	 (tupsel-type (nth (1- num) types))
 	 (other-updateable-types
-	  (loop for fld in (types type)
+	  (loop for fld in types
 		as pos from 1  
 		when (not (eql pos num))
 		nconc (top-updateable-types fld nil)))
+	 (new-bindings (pvs2cl-add-dep-tuple-bindings types (1- num) 0 cl-expr-var
+						      bindings))
+	 (rhs-var (gentemp "R"))
 	 (newrhs  (if (null (cdr args))
 		      rhs
 		      (if (member tupsel-type
@@ -894,39 +923,66 @@
 			      :test #'compatible?)
 		      (pvs2cl-update-nd-type
 		       tupsel-type newexpr (cdr args) rhs
-		       bindings livevars)
+		       new-bindings livevars)
 		      (pvs2cl-update-assign-args
 		       tupsel-type newexpr (cdr args) rhs
-		       bindings livevars)))))
-    `(setf (svref ,cl-expr ,(1- num)) ,newrhs)))
-;     `(let ((,cl-expr-var ,cl-expr))
-;        (declare (simple-array ,cl-expr-var))
-;        (setf ,newexpr ,newrhs)
-;        ,cl-expr-var)))
-	      
-  
+		       new-bindings livevars)))))
+    `(let* ((,cl-expr-var ,cl-expr)
+	   (,rhs-var ,newrhs))
+       (setf (svref ,cl-expr ,(1- num)) ,rhs-var)
+       ,cl-expr-var)))
+
+(defun pvs2cl-add-dep-tuple-bindings (dep-tuple-types position index expr bindings)
+  (if (eql position index)
+      bindings
+	(if (binding? (car dep-tuple-types))
+	    (pvs2cl-add-dep-tuple-bindings  (cdr dep-tuple-types) position (1+ index)
+					    expr
+					      (acons (car dep-tuple-types)
+						     `(svref ,expr ,position) bindings))
+	  (pvs2cl-add-dep-tuple-bindings  (cdr dep-tuple-types)
+					      position (1+ index)  expr
+					      bindings))))
 	
-(defun mk-fun-array (expr size) 
-  (if (or (simple-vector-p expr) (hash-table-p expr) (null size))
-      expr
-      (cond ((pvs-outer-array-p expr)
-	     (let* ((arr (make-array size :initial-element 0))
-		    (inner-array (pvs-outer-array-inner-array expr))
-		    (contents (pvs-array-contents inner-array))
-		    (inner-size (pvs-array-size inner-array))
-		    (offset (pvs-outer-array-offset expr))
-		    (outer-diffs (pvs-outer-array-diffs expr))
-		    (inner-diffs (pvs-array-diffs inner-array)))
-	       (loop for i from 0 to (1- size) do
-		     (setf (svref arr i)(svref contents i)))
-	       (loop for (x . y) in inner-diffs
-		     as i from (1+ offset) to inner-size
-		     do (setf (svref arr x) y))
-	       (insert-array-diffs outer-diffs arr)))
-	    (t (let ((arr (make-array size :initial-element 0)))
-		 (loop for i from 0 to (1- size) do
-		       (setf (svref arr i)(funcall expr i)))
-		 arr)))))
+(defun mk-fun-array (expr size &optional update-index) ;;okay to use aref here instead of pvs-setf
+  (cond ((or (simple-vector-p expr) 
+	  (hash-table-p expr) (null size))
+	 expr)
+	((vectorp expr)
+	 (let ((arraysize (array-total-size expr)))
+	   (if (< arraysize size);;then resize, else do nothing
+	     (adjust-array expr (resize-newsize arraysize size)))
+	   (setf (fill-pointer expr) size)
+	   expr))
+	((pvs-outer-array-p expr)
+	 (let* ((arr (make-array size :initial-element 0
+				      :fill-pointer size
+				      :adjustable t))
+		(inner-array (pvs-outer-array-inner-array expr))
+		(contents (pvs-array-contents inner-array))
+		(inner-size (pvs-array-size inner-array))
+		(offset (pvs-outer-array-offset expr))
+		(outer-diffs (pvs-outer-array-diffs expr))
+		(inner-diffs (pvs-array-diffs inner-array)))
+	   (loop for i from 0 to (1- size)
+		 unless (eql i update-index)
+		 do (setf (aref arr i)(aref contents i)))
+	   (loop for (x . y) in inner-diffs
+		 as i from (1+ offset) to inner-size
+		 do (setf (aref arr x) y))
+	   (insert-array-diffs outer-diffs arr)))
+	(t (let ((arr (make-array size :initial-element 0
+				       :fill-pointer size
+				       :adjustable t)))
+	     (loop for i from 0 to (1- size);;unless avoids evaluating expr on 
+		   unless (eql i update-index) do ;;newly expanded index
+		   (setf (aref arr i)(funcall expr i)))
+	     arr))))
+
+(defun resize-newsize (arraysize newsize)
+  (if (< arraysize newsize)
+      (resize-newsize (* 2 (max arraysize 1)) newsize)
+    arraysize))
 
 (defun push-output-vars (updateable-vars livevars)
     (loop for x in updateable-vars
@@ -1021,13 +1077,35 @@
 (defmethod pvs2cl-update-nd-type* ((type recordtype) expr arg1 restargs
 				   assign-expr bindings livevars)
   (let* ((id (id (car arg1)))
-	 (field-num (get-field-num  id type))
-	 (new-expr `(svref ,expr ,field-num))	 
-	 (field-type (type (find id (fields type) :key #'id) ))
+	 (fields  (sort-fields (fields type)))
+	 (field-num (position  id fields :test #'(lambda (x y) (eq x (id y)))))
+	 (cl-expr-var (gentemp "E"))	 
+	 (new-expr `(svref ,cl-expr-var ,field-num))	 
+	 (field-type (type (find id fields :key #'id) ))
+ 	 (dep-fields (sort-fields (fields type) t));;dependent sort	 
+	 (new-bindings (pvs2cl-add-dep-field-bindings  dep-fields fields id
+						  cl-expr-var bindings))
 	 (newval (pvs2cl-update-nd-type field-type new-expr
-					restargs assign-expr bindings
+					restargs assign-expr new-bindings
 					livevars)))
-    `(nd-rec-tup-update ,expr ,field-num ,newval)))
+    `(let ((,cl-expr-var ,expr))
+       (nd-rec-tup-update ,expr ,field-num ,newval))))
+
+(defun pvs2cl-add-dep-field-bindings (dep-field-types field-types field-id expr bindings)
+  (if (consp dep-field-types)
+      (if (eq (id (car dep-field-types)) field-id)
+	  bindings
+	(if (binding? (car field-types))
+	    (let ((index (position (id (car dep-field-types)) field-types
+				   :test #'(lambda (x y)(eq x (id y))))))
+	      (pvs2cl-add-dep-field-bindings  (cdr dep-field-types)
+					      field-types field-id  expr
+					      (acons (car dep-field-types)
+						     `(svref ,expr ,index) bindings)))
+	  (pvs2cl-add-dep-field-bindings  (cdr dep-field-types)
+					      field-types field-id  expr
+					      bindings)))
+      bindings))
 
 (defmethod pvs2cl-update-nd-type* ((type tupletype)  expr arg1 restargs
 				   assign-expr bindings livevars)

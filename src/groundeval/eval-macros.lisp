@@ -242,16 +242,30 @@
 	 )))
 
 (defmacro pvs-funcall (fun &rest args)
-  `(let ((funval ,fun))
-     (if (arrayp funval)
-	 (svref funval ,@args)
-	 (if (pvs-outer-array-p funval)
-	     (pvs-outer-array-lookup funval ,@args) 
-	     (if (pvs-array-closure-p funval)
-		 (funcall (pvs-array-closure-closure funval) ,@args)
-		 (if (pvs-closure-hash-p funval)
-		     (pvs-closure-hash-lookup funval ,@args)
-		     (funcall funval ,@args)))))))
+  (let ((funval (gentemp)))
+    `(let ((,funval ,fun))
+       (if (arrayp ,funval)
+	   (aref ,funval ,@args)
+	 (if (pvs-outer-array-p ,funval)
+	     (pvs-outer-array-lookup ,funval ,@args)
+	   (if (pvs-closure-hash-p ,funval);;NSH(9-19-12)
+	       (pvs-closure-hash-lookup ,funval ,@args)
+	     (funcall ,funval ,@args)))))))
+
+(defmacro pvs-setf (A i v) ;;use gentemp below
+  (let ((AA (gentemp))
+	(ii (gentemp))
+	(vv (gentemp)))
+    `(let ((,AA ,A)
+	   (,ii ,i)
+	   (,vv ,v))
+       (cond ((stringp ,AA)
+	      (setf (schar ,AA ,ii) ,vv))
+	     ((> ,ii (fill-pointer ,AA)) nil)
+	     (t (when (eq ,ii (fill-pointer ,AA)) ;;use vector-push-extend when full
+		  (vector-push-extend ,ii ,AA))
+		(setf (aref ,AA ,ii) ,vv))) ;;setf, otherwise.
+       ,AA)))
 
 (defmacro trap-undefined (expr)
   `(catch 'undefined ,expr))
@@ -285,7 +299,7 @@
      (multiple-value-bind (val found)
 	 (gethash argval (pvs-closure-hash-hash funval))
        (if found val
-	   (apply funval argval)))))
+	   (funcall (pvs-closure-hash-closure funval) argval)))))
 
 (defmacro pvs-function-update (function argument value)
     `(let ((funval ,function)
@@ -334,19 +348,20 @@
 	    :contents (mk-fun-array array arraysize)
 	    :size 0))))
 
-(defun copy-pvs-outer-array! (array arraysize)
+(defun copy-pvs-outer-array! (array arraysize &optional update-index)
   (cond ((pvs-outer-array-p array) (copy-pvs-outer-array array))
-	((simple-vector-p array)
+	((vectorp array) ;;was (simple-vector-p array)
 	 (let ((arr (make-array arraysize :initial-element 0)))
-	   (loop for i from 0 to (1- arraysize) do
-		 (setf (svref arr i)(svref array i)))
+	   (loop for i from 0 to (1- arraysize)
+		 when (not (eql i update-index))
+		 do (setf (svref arr i)(svref array i)))
 	   (make-pvs-outer-array
 	    :inner-array (make-pvs-array :contents arr :size 0)
 	    :offset 0
 	    :size 0)))
 	(t (make-pvs-outer-array
 	    :inner-array (make-pvs-array
-			  :contents (mk-fun-array array arraysize)
+			  :contents (mk-fun-array array arraysize update-index)
 			  :size 0)
 	    :offset 0
 	    :size 0))))
@@ -370,16 +385,16 @@
 	   (incf (pvs-array-size x))
 	   x)
 	  (t (when (pvs-array-p pvs-array)
-	       (push (cons at (svref contents at))
+	       (push (cons at (aref contents at))
 		     (pvs-array-diffs pvs-array))
 	       (incf (pvs-array-size pvs-array)))
-	     (setf (svref (pvs-array-contents x) at) with)
+	     (setf (aref (pvs-array-contents x) at) with)
 	     x))))
 
 (defun size-limit (x) (sqrt x))
 
 (defun pvs-outer-array-update (pvs-outer-array at with arraysize)
-  (let* ((x (copy-pvs-outer-array! pvs-outer-array arraysize))
+  (let* ((x (copy-pvs-outer-array! pvs-outer-array arraysize at))
 	 (diffs (pvs-outer-array-diffs x))
 	 (offset (pvs-outer-array-offset x))
 	 (outer-size (pvs-outer-array-size x))
@@ -387,15 +402,16 @@
 	 (inner-size (pvs-array-size inner-array))
 	 (inner-diffs (pvs-array-diffs inner-array))
 	 (contents (pvs-array-contents inner-array))
-	 (oldval (svref contents at))
+	 (oldval (aref contents at))
 	 (main? (eql offset inner-size)))
     (cond (main?
 	   (assert (not diffs))
 	   (push (cons at oldval) (pvs-array-diffs inner-array))
 	   (incf (pvs-array-size inner-array))
-	   (setf (svref contents at) with
+	   (setf (aref contents at) with
 		 (pvs-outer-array-offset x)
 		 (pvs-array-size inner-array))
+	   ;(break "main")
 	   x)
 	  (t
 	    (push (cons at with) (pvs-outer-array-diffs x))
@@ -406,7 +422,7 @@
 	      (let ((newarray (copy-seq contents)))
 		(loop for (x . y) in inner-diffs ;restore inner values
 		      as i from (1+ offset) to inner-size
-		      do (setf (svref newarray x) y))
+		      do (setf (aref newarray x) y))
 		(setf (pvs-outer-array-inner-array pvs-outer-array)
 		      (make-pvs-array ;;restore outer diffs
 			:contents 
@@ -452,7 +468,7 @@
 	  (inner-array (pvs-outer-array-inner-array arr)))
      (or (and (null (pvs-outer-array-diffs arr))
 	      (null (pvs-array-diffs inner-array))
-	      (svref (pvs-array-contents inner-array) ind))
+	      (aref (pvs-array-contents inner-array) ind))
 	 (let ((lookup-diffs (assoc ind (pvs-outer-array-diffs arr))))
 	   (and lookup-diffs
 		(cdr lookup-diffs)))
@@ -462,15 +478,17 @@
 			    (- (pvs-array-size inner-array)
 			       (pvs-outer-array-offset arr)))))
 	   (when lookup-inner-diffs (cdr lookup-inner-diffs)))
-	 (svref (pvs-array-contents inner-array) ind))))
+	 (aref (pvs-array-contents inner-array) ind))))
 
 (defmacro pvs-array-lookup (pvs-array val)
-  `(let ((arr ,pvs-array)
-	 (ind ,val))
-     (let ((lookup-diffs (assoc ind (pvs-array-diffs arr))))
+  (let ((arr (gentemp))
+	(ind (gentemp)))
+    `(let ((,arr ,pvs-array)
+	   (,ind ,val))
+     (let ((lookup-diffs (assoc ,ind (pvs-array-diffs ,arr))))
     (or (and lookup-diffs
 	     (cdr lookup-diffs))
-	(svref (pvs-array-contents arr) ind)))))
+	(aref (pvs-array-contents ,arr) ,ind))))))
 
 (defmacro pvs2cl_tuple (&rest args)
   (let ((protected-args (loop for x in args collect `(trap-undefined ,x))))
@@ -486,6 +504,8 @@
     (setf (svref newrec ,fieldnum) val)
     newrec))
 
+(defmacro rec-tup-update (expr field-num newval)
+  `(setf (svref ,expr ,field-num) ,newval))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;Defining Lisp representations for the types so that we can then

@@ -50,8 +50,10 @@
 ;;this is the only case where updateable? can be false, because
 ;;the given function type is not an array.  
 (defmethod updateable? ((texpr funtype)) ;;add enum types, subrange.
-  (and (or (simple-below? (domain texpr))(simple-upto? (domain texpr)))
-       (updateable? (range texpr))))
+  (with-slots (domain range) texpr
+    (and (not (contains-possible-closure? domain))
+	 ;;(or (simple-below? (domain texpr))(simple-upto? (domain texpr)))
+	 (updateable? range))))
 
 (defmethod updateable? ((texpr recordtype))
   (updateable? (mapcar #'type (fields texpr))))
