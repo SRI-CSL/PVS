@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre and N. Shankar
 ;; Created On      : Thu Dec  2 13:31:00 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Wed Jun 30 17:22:59 1999
-;; Update Count    : 92
+;; Last Modified On: Tue Dec 18 03:35:31 2012
+;; Update Count    : 94
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1466,7 +1466,8 @@
 	(decl (declaration res)))
     (if hashentry hashentry
 	(let ((formulas (create-formulas* res decl)))
-	  (setf (gethash res *create-formulas-cache*) formulas)
+	  (when (fully-instantiated? res)
+	    (setf (gethash res *create-formulas-cache*) formulas))
 	  formulas))))
 
 (defun create-formulas* (res decl)	  
@@ -4325,7 +4326,8 @@ space")
 (defun posnat? (x) (and (integerp x) (plusp x)))
 
 (defun parse-unparse (ex &optional (nt 'expr))
-  (pc-parse (unparse ex :string t) nt))
+  (let ((unp-string (unparse ex :string t)))
+    (values (pc-parse unp-string nt) unp-string)))
 
 (defun make-new-symbol (string &optional num)
   (let ((str (if num (format nil "~a-~d" string num) string)))
