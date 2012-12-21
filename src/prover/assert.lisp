@@ -253,7 +253,8 @@
 	     (if (and (null *ignore-typepreds?*)
 		      (some #'process-typepred *assert-typepreds*))
 		 (values '! sform)
-		 (values signal sform)))
+		 (values '? sform))) ; should be signal, but fails for the example
+					; from Cesar 2012-12-10/aaaa.pvs
 	    (t (values signal sform))))))
 
 (defun process-typepred (fmla)
@@ -1288,8 +1289,8 @@
 	(setf (gethash expr *subtype-hash*) t)))))
 
 (defmethod assert-if :around ((expr expr))
-	   (record-type-constraints expr)
-	   (call-next-method))
+  (record-type-constraints expr)
+  (call-next-method))
 
 (defun rewrite-declaration (expr)
   (if (constant? expr) (declaration expr) expr))
@@ -1950,7 +1951,6 @@
 			  (rsums (if (is-addition? expr)
 				     (addends rhs)
 				     (mapcar #'make-minus (addends rhs))))
-			  ;;SO 2/7/93 - make the type integer (at least) if not addition
 			  (ctype (compatible-type
 				  (type expr)
 				  (compatible-type (type lhs) (type rhs))))
@@ -1975,7 +1975,9 @@
 (defun make-minus (expr)
   (let* ((coef (coefficient expr))
 	 (body (noncoefficient expr))
-	 (newcoeffexpr (make!-number-expr (- coef))))
+	 (newcoeffexpr (if (minusp coef)
+			   (make!-number-expr (- coef))
+			   (make!-minus (make!-number-expr coef)))))
     (if (null body)
 	newcoeffexpr
 	(make-prod (list newcoeffexpr body)
@@ -2171,7 +2173,10 @@
 		 (make!-number-expr 0)
 		 (if (eql newcoeff 1)
 		     (make-prod prodlist type)
-		     (make-prod (list (make!-number-expr newcoeff)
+		     (make-prod (list (if (minusp newcoeff)
+					  (make!-minus (make!-number-expr
+							(- newcoeff)))
+					  (make!-number-expr newcoeff))
 				      (make-prod prodlist type))
 				type)))))))
 		    
@@ -2257,7 +2262,6 @@
 	(do-auto-rewrite prod '?))))
 
 (defun merge-division (l r type)
-  (break)
   (if (or (is-addition? l)
 	  (is-subtraction? l))
       (let ((list (loop for x in (addends l)
@@ -2828,12 +2832,8 @@
 	       (op (if (eq sigop '?) newop operator))
 	       (arg (if (eq sigargs '?) newargs argument))
 	       (expr ;;(simplify-or-copy-app ex op arg)
-		(lcopy ex
-		  'operator (if (eq sigop '?) newop
-				(operator ex))
-		  'argument (if (eq sigargs '?) newargs
-				(argument ex))))
-	       (result			;(nil)
+		(lcopy ex 'operator op 'argument arg))
+	       (result
 		(when (and (tc-eq (find-supertype (type expr)) *boolean*)
 			   (not (eq *top-assert-flag* 'rewrite))
 			   (not (negation? expr))
