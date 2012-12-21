@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec 16 02:42:01 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Jun  7 11:59:18 2012
-;; Update Count    : 21
+;; Last Modified On: Mon Dec 17 01:30:40 2012
+;; Update Count    : 23
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -535,17 +535,68 @@
 		 (*sb-print-length* *prover-print-length*)
 		 (*output-to-emacs*
 		  ;; action & result & label & sequent
-		  (format nil "~%:pvs-sqt ~a&~a&~a&~a&~a :end-pvs-sqt"
-		    (when pps
-		      (write-to-temp-file
-		       (string-trim '(#\Space #\Tab #\Newline)
-				    (format-printout pps t))))
-		    (proofstate-result ps)
-		    label
-		    comment
-		    (when current-goal (write-to-temp-file current-goal)))))
+		  (format nil "~%:pvs-proofstate ~a :end-pvs-proofstate"
+		    (emacs-proofstate-file pps ps label comment current-goal))))
 	    (to-emacs)))
 	(call-next-method))))
+
+(defun emacs-proofstate-file (ps)
+  (write-to-temp-file
+   (json-proofstate ps)))
+
+;;; Creates a json form:
+;;;   {"action" : action,
+;;;    "result" : ,
+;;;    "label" : ,
+;;;    "comment" : ,
+;;;    "sequent" : {"antecedents" : [ s-formulas ],
+;;;                 "succedents" : [ s-formulas ]}}
+(defmethod pvs2json ((ps proofstate))
+  (with-slots (label comment current-goal (pps parent-proofstate)) ps
+    (let ((action (when pps
+		    (string-trim '(#\Space #\Tab #\Newline)
+				 (format-printout pps t))))
+	  (result (proofstate-result ps))
+	  (sequent (json-sequent current-goal)))
+      (json:with-object ()
+	(json:encode-object-member "action" action)
+	(json:encode-object-member "result" result)
+	(json:encode-object-member "label" label)
+	(when comment
+	  (json:encode-object-member "comment" comment))
+	(json:encode-object-member "sequent"
+	  (json-sequent current-goal))))))
+
+(defmethod pvs2json ((seq sequent))
+  (with-slots (n-sforms p-sforms hidden-s-forms info) seq
+    (json:with-object ()
+      (json:encode-object-member "antecedents"
+	(pvs2json-sforms n-sforms t))
+      (json:encode-object-member "succedents"
+	(pvs2json-sforms p-sforms nil))
+      (json:encode-object-member "hidden-antecedents"
+	(pvs2json-sforms (neg-s-forms* hidden-s-forms) t))
+      (json:encode-object-member "hidden-succedents"
+	(pvs2json-sforms (pos-s-forms* hidden-s-forms) nil))
+      (json:encode-object-member "info" info))))
+
+(defun pvs2json-sforms (sforms neg?)
+  (json:with-array ()
+    (let ((c 0))
+      (mapc #'(lambda (sf)
+		(let* ((nf (formula sf))
+		       (frm (if (negation? nf) (args1 nf) nf))
+		       (fnum (if neg? (- (incf c)) (incf c))))
+		  (pvs2json-sform frm fnum)))
+	    sforms))))
+
+(defun pvs2json-sform (sform fnum)
+  (json:with-object ()
+    (json:encode-object-member "label"
+      (cons fnum (label sform)))
+    (json:encode-object-member "formula"
+      ;;(pp-view sform vhash 6)
+      )))
 
 (defun proofstate-result (ps)
   (let ((pps (parent-proofstate ps)))
