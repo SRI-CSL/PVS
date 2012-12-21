@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Oct 29 23:19:42 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Tue Jan 26 18:34:54 1999
-;; Update Count    : 8
+;; Last Modified On: Tue Dec 18 20:56:23 2012
+;; Update Count    : 10
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -224,7 +224,22 @@ bind tighter.")
 	(copy-lex obj nobj nil phash)
 	(assert (> (hash-table-count phash) 0))
 	(values cstr phash)))))
-  
+
+(defun pp-view (term &optional (indent 0)
+		     (width *default-char-width*))
+  (let* ((sterm (unparse term
+		  :string t
+		  :char-width (- width indent)))
+	 (iterm (with-output-to-string (*standard-output*)
+		  (unpindent* sterm indent 0
+			      (position #\linefeed sterm) nil nil)))
+	 (ppterm (pc-parse iterm
+		   (typecase term
+		     (expr 'expr)
+		     (type-expr 'type-expr)
+		     (t (break "pp-view: need more types"))))))
+    (copy-lex term ppterm nil view-hash iterm)
+    iterm))
 
 (defun pp (obj)
   (let ((*disable-gc-printout* t)
