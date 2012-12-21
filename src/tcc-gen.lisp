@@ -947,7 +947,8 @@
 
 (defmethod set-nonempty-type :around ((te type-expr) decl)
   (unless (nonempty? te)
-    (push (cons te decl) (nonempty-types (current-theory)))
+    (unless (decl-formal? decl)
+      (push (cons te decl) (nonempty-types (current-theory))))
     (setf (nonempty? te) t)
     (call-next-method)))
 
