@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Wed Jun  6 11:05:15 2012
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Jun  7 11:59:05 2012
-;; Update Count    : 3
+;; Last Modified On: Tue Dec 18 21:06:29 2012
+;; Update Count    : 5
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -257,7 +257,8 @@
 	(if *json-id*
 	    (let* ((json-id *json-id*)
 		   (par-sforms (when (parent-proofstate ps)
-				 (s-forms (current-goal (parent-proofstate ps)))))
+				 (s-forms (current-goal
+					   (parent-proofstate ps)))))
 		   (comment (comment ps))
 		   (printout (proofstate-printout ps))
 		   (yields (proofstate-yields ps))
@@ -288,10 +289,12 @@
 		     par-sforms (cons jform jforms)))))
 
 (defun json-sform (sform num changed)
-  (cons :object
-	(list (cons :fnum num)
-	      (cons :formula (format nil "~a" sform))
-	      (cons :changed changed))))
+  (let ((fstring (format nil "~a" sform)))
+    (setf (view sform) (make-view :string fstring))
+    (cons :object
+	  (list (cons :fnum num)
+		(cons :formula (format nil "~a" sform))
+		(cons :changed changed))))
   
 
 ;; (defmethod json:encode-json ((obj syntax) &optional (stream *json-output*))
