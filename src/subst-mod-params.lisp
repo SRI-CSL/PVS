@@ -4,14 +4,14 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec  9 13:10:41 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Tue May 25 17:58:34 2004
-;; Update Count    : 74
+;; Last Modified On: Tue Dec 18 03:38:55 2012
+;; Update Count    : 76
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
 ;; PVS
-;; Copyright (C) 2006, SRI International.  All Rights Reserved.
+;; Copyright (C) 2006-2012, SRI International.  All Rights Reserved.
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
@@ -947,9 +947,14 @@
 	       (and map
 		    (multiple-value-bind (dfmls dacts)
 			(new-decl-formals decl)
-		      (let ((ndecl (copy decl :decl-formals dfmls
-					 :generated-by decl :semi t)))
-			(dolist (dfml dfmls) (setf (associated-decl dfml) ndecl))
+		      (let ((ndecl (copy decl
+				     :decl-formals dfmls
+				     :module (current-theory)
+				     :generated-by decl
+				     :semi t)))
+			(dolist (dfml dfmls)
+			  (setf (associated-decl dfml) ndecl
+				(module dfml) (current-theory)))
 			(with-current-decl ndecl
 			  (let* ((nmodinst (copy modinst :dactuals dacts))
 				 (nformals (subst-mod-params formals nmodinst
@@ -976,8 +981,14 @@
 			    ndecl)))))))
 	    (t (multiple-value-bind (dfmls dacts)
 		   (new-decl-formals decl)
-		 (let ((ndecl (copy decl :decl-formals dfmls :generated-by decl :semi t)))
-		   (dolist (dfml dfmls) (setf (associated-decl dfml) ndecl))
+		 (let ((ndecl (copy decl
+				:decl-formals dfmls
+				:module (current-theory)
+				:generated-by decl
+				:semi t)))
+		   (dolist (dfml dfmls)
+		     (setf (associated-decl dfml) ndecl
+			   (module dfml) (current-theory)))
 		   (with-current-decl ndecl
 		     (let* ((nmodinst (copy modinst :dactuals dacts))
 			    (ntype (subst-mod-params type nmodinst
@@ -1018,8 +1029,12 @@
   (with-slots (definition) decl
     (multiple-value-bind (dfmls dacts)
 	(new-decl-formals decl)
-      (let ((ndecl (copy decl :decl-formals dfmls)))
-	(dolist (dfml dfmls) (setf (associated-decl dfml) ndecl))
+      (let ((ndecl (copy decl
+		     :decl-formals dfmls
+		     :module (current-theory))))
+	(dolist (dfml dfmls)
+	  (setf (associated-decl dfml) ndecl
+		(module dfml) (current-theory)))
 	(with-current-decl ndecl
 	  (let* ((nmodinst (copy modinst :dactuals dacts))
 		 (ndef (subst-mod-params definition nmodinst
@@ -1031,10 +1046,10 @@
 			     (not (find-uninterpreted ndef modinst
 						      *subst-mod-params-theory*
 						      *subst-mod-params-map-bindings*))))
-	      (lcopy decl
-		:definition ndef
-		:generated-by decl
-		:newline-comment nil))))))))
+	      (setf (definition ndecl) ndef
+		    (generated-by ndecl) decl
+		    (newline-comment ndecl) nil)
+	      ndecl)))))))
 
 (defmethod subst-mod-params* ((decl subtype-judgement) modinst bindings)
   (with-slots (declared-subtype) decl
@@ -1569,6 +1584,9 @@
       (let ((decl (mk-const-decl number *number*)))
 	(setf (module decl) (get-theory "numbers"))
 	(setf (gethash number *number-declarations*) decl))))
+
+(deftype number-declaration ()
+  '(and const-decl (satisfies number-declaration?)))
 
 (defmethod number-declaration? ((decl const-decl))
   (and (module decl)
