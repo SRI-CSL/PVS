@@ -27,30 +27,11 @@
 (setq inhibit-startup-screen t)
 
 (defconst pvs-emacs-system
-  (cond ((or (string-match "XEmacs 21" (emacs-version))
-	     (string-match "^21\..*XEmacs" emacs-version))
-	 'xemacs21)
-	((string-match "XEmacs 20" (emacs-version))
-	 'xemacs20)
-	((string-match "XEmacs 19" (emacs-version))
-	 'xemacs19)
-	((string-match "Emacs 23" (emacs-version))
-	 'emacs23)
-	((string-match "Emacs 22" (emacs-version))
-	 'emacs22)
-	((string-match "Emacs 2" (emacs-version))
-	 'emacs20)
-	((string-match "Emacs 19" (emacs-version))
-	 'emacs19)
-	(t
-	 (message "Your Emacs version is not known by PVS - assuming Emacs 20")
-         'emacs20))
-  "This is deprecated - it's difficult to keep up with version changes.
-Instead use, e.g.,
-      (and (string-match \"GNU Emacs\" (emacs-version))
-	   (boundp 'emacs-major-version)
-	   (>= emacs-major-version 20)
-This is kept in case users reference it.")
+  (let ((emacsvers (emacs-version)))
+    (string-match "\\(X?\\)Emacs \\([0-9][0-9]\\)" emacsvers)
+    (intern (format "%semacs%s"
+		(downcase (match-string 1 emacsvers))
+	      (match-string 2 emacsvers)))))
 
 (if (getenv "PVSPATH")
     (defconst pvs-path (if (string-match "/$" (getenv "PVSPATH"))
