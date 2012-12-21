@@ -3,8 +3,8 @@
 ;; Author          : N. Shankar
 ;; Created On      : Thu Apr  2 21:12:58 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu May 20 21:07:07 2004
-;; Update Count    : 11
+;; Last Modified On: Sat Dec 15 00:31:15 2012
+;; Update Count    : 12
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -3219,7 +3219,7 @@
 	when (negation? (formula sf))
 	collect sf))
 
-  
+
 
 (defmethod print-object ((sform s-formula) stream)
   (if *debugging-print-object*
