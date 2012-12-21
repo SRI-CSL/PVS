@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec 23 14:43:02 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu May 20 22:37:06 2004
-;; Update Count    : 93
+;; Last Modified On: Mon Dec 17 01:41:13 2012
+;; Update Count    : 94
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; PVS
@@ -87,6 +87,18 @@
 
 (defpackage :ilisp (:nicknames :ILISP) (:use :common-lisp #+:CMU :conditions))
 (defpackage :bvec)
+
+
+(unless (find-package :asdf)
+  (require :asdf))
+
+(assert (find-package :asdf))
+(load (format nil "~a/src/cl-json/cl-json.asd" *pvs-path*))
+
+(in-package :asdf)  
+(load-system :cl-json)
+
+(in-package :cl-user)
 
 (unless (find-package :make)
   (#-(or cmu sbcl excl) progn
