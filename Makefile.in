@@ -131,40 +131,8 @@ endif
 emacsversion = $(shell expr "`$(EMACS) --version 2> /dev/null`" \
                             : '[^X]*\(X*Emacs [0-9][0-9]\)')
 
-
-ifeq ($(emacsversion),Emacs 24)
-EMACSSUBDIR = emacs24
-else
-ifeq ($(emacsversion),Emacs 23)
-EMACSSUBDIR = emacs23
-else
-ifeq ($(emacsversion),Emacs 22)
-EMACSSUBDIR = emacs22
-else
-ifeq ($(emacsversion),Emacs 21)
-EMACSSUBDIR = emacs20
-else
-ifeq ($(emacsversion),XEmacs 21)
-EMACSSUBDIR = xemacs21
-else
-ifeq ($(emacsversion),Emacs 20)
-EMACSSUBDIR = emacs20
-else
-ifeq ($(emacsversion),XEmacs 20)
-EMACSSUBDIR = xemacs20
-else
-ifeq ($(emacsversion),Emacs 19)
-EMACSSUBDIR = emacs19
-else
-$(error "Unknown version of (X)Emacs: $(emacsversion)")
-endif
-endif
-endif
-endif
-endif
-endif
-endif
-endif
+EMACSSUBDIR = $(shell echo "$(emacsvers)" \
+                 | tr '[:upper:]' '[:lower:]' | tr -d ' ')
 
 endif # end of buildcmds check
 
