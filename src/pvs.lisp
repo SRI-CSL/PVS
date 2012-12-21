@@ -166,6 +166,7 @@
   (setq *prelude-libraries* (make-hash-table :test #'equal))
   (setq *prelude-library-context* nil)
   (reset-typecheck-caches)
+  (setq *pvs-context-changed* nil)
   (setq *current-theory* nil)
   (setq *last-proof* nil)
   (clrnumhash)
@@ -2547,7 +2548,7 @@
 	  (when (run-proof-time d)
 	    (incf runtime (run-proof-time d)))
 	  (unless (unproved? d) (incf proved)))
-	(when *justifications-changed?*
+	(when (and (null retry?) *justifications-changed?*)
 	  (save-all-proofs *current-theory*))))
     (pvs-message
 	"~a: ~d proofs attempted, ~d proved in ~,2,-3f real, ~,2,-3f cpu seconds"
