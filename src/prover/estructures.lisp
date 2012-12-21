@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Sat Oct 31 02:24:43 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu May 20 21:19:22 2004
-;; Update Count    : 2
+;; Last Modified On: Tue Dec 18 16:48:05 2012
+;; Update Count    : 3
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -33,7 +33,8 @@
   formula
   (label :initform nil)
   (new? :initform nil :ignore t)
-  (asserted? :initform nil))
+  (asserted? :initform nil)
+  (view :initform nil :ignore t))
 
 
 (defcl sequent ()
