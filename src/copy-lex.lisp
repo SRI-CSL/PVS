@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Sun Feb 27 01:34:00 1994
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Nov  5 15:10:01 1998
-;; Update Count    : 10
+;; Last Modified On: Tue Dec 18 20:56:22 2012
+;; Update Count    : 14
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -30,16 +30,42 @@
 (in-package :pvs)
 
 (defvar *copy-lex-exact* nil)
-(defvar *copy-lex-view-hash* nil)
+(defvar *copy-lex-view-string* nil)
+(defvar *copy-lex-view-tree* nil)
+
+(defstruct (view)
+  term
+  string
+  tree)
+
+(defstruct (view-node (:conc-name vnode-))
+  range
+  term
+  children)
+
+;; (defun get-view-tree (view)
+;;   "Given a view structure, make sure the corresponding tree is set
+;; and return it.  This allows us to be lazy about getting place info."
+;;   (or (view-tree view)
+;;       (setf (view-tree view)
+;; 	    (copy-lex (view-term view)
+;; 		      (pc-parse (view-string view) (parse-nt obj))
+;; 		      nil (view-string view)))))
+  
 
 ;;; Primarily copies the place information from the newobj to the oldobj.
 ;;; This is used when, for example, a PVS file is changed by adding
-;;; comments.  If the optional (eq) view-hash is provided, the place is
-;;; stored in the view-hash, rather than modifying oldobj.
-(defun copy-lex (oldobj newobj &optional exact? view-hash)
+;;; comments.  If the optional (eq) view-string is provided, the place is
+;;; stored in the view-tree, rather than modifying oldobj.  Note that there
+;;; may be term sharing in the oldobj, e.g., after substit in a proof term.
+(defun copy-lex (oldobj newobj &optional exact? view-string)
+  (assert (typep view-string '(or null string)) ()
+	  "copy-lex: view-string must be a string")
   (let ((*copy-lex-exact* exact?)
-	(*copy-lex-view-hash* view-hash))
-    (copy-lex* oldobj newobj)))
+	(*copy-lex-view-string* view-string)
+	(*copy-lex-view-tree* nil))
+    (copy-lex* oldobj newobj)
+    *copy-lex-view-tree*))
 
 (defmethod copy-lex-upto (diff (oth module) (nth module))
   (cond ((memq (car diff) (formals oth))
@@ -63,12 +89,35 @@
   (break))
 
 (defmethod copy-lex* :around ((old syntax) (new syntax))
-  (call-next-method)
-  ;;(setf (newline-comment old) (newline-comment new))
-  ;;(setf (abstract-syntax old) (abstract-syntax new))
-  (if *copy-lex-view-hash*
-      (setf (gethash old *copy-lex-view-hash*) (place new))
-      (setf (place old) (place new))))
+  (cond (*copy-lex-view-string*
+	 (let ((new-node
+		(make-view-node
+		 :range (place-to-string-range
+			 (place new) *copy-lex-view-string*)
+		 :term old)))
+	   (if *copy-lex-view-tree*
+	       (setf (vnode-children *copy-lex-view-tree*)
+		     (nconc (vnode-children *copy-lex-view-tree*)
+			    (list new-node)))
+	       (setq *copy-lex-view-tree* new-node))
+	   (let ((*copy-lex-view-tree* new-node))
+	     (call-next-method))))
+	(t (call-next-method)
+	   (setf (place old) (place new)))))
+
+(defun place-to-string-range (place string)
+  (dbind (sr sc er ec) place
+    (let ((start 0) (end 0))
+      (dotimes (x (1- sr))
+	(let ((pos (position #\newline string :start start)))
+	  (assert pos)
+	  (setq start (1+ pos))))
+      (setq end start)
+      (dotimes (x (- er sr))
+	(let ((pos (position #\newline string :start end)))
+	  (assert pos)
+	  (setq end (1+ pos))))
+      (list (+ start sc) (+ end ec)))))
 
 (defmethod copy-lex* :around ((old datatype-or-module) (new datatype-or-module))
   (call-next-method)
@@ -101,7 +150,7 @@
 
 (defmethod copy-lex* ((old importing) (new importing))
   (copy-lex* (theory-name old) (theory-name new))
-  (unless *copy-lex-view-hash*
+  (unless *copy-lex-view-string*
     (setf (semi old) (semi new))
     (setf (chain? old) (chain? new))))
 
@@ -117,10 +166,10 @@
 
 (defmethod copy-lex* :around ((old declaration) (new declaration))
   (call-next-method)
-  (assert (or *copy-lex-view-hash*
+  (assert (or *copy-lex-view-string*
 	      (equalp (place old) (place new))))
   (copy-lex* (formals old) (formals new))
-  (unless *copy-lex-view-hash*
+  (unless *copy-lex-view-string*
     (setf (chain? old) (chain? new))
     (setf (semi old) (semi new))))
 
@@ -137,13 +186,9 @@
 (defmethod copy-lex* ((old formal-type-decl) (new formal-type-decl))
   (call-next-method)
   (when (type old)
-    (if *copy-lex-view-hash*
-	(setf (gethash (type old) *copy-lex-view-hash*) (place new))
-	(setf (place (type old)) (place new))))
+    (setf (place (type old)) (place new)))
   (when (type-value old)
-    (if *copy-lex-view-hash*
-	(setf (gethash (type-value old) *copy-lex-view-hash*) (place new))
-	(setf (place (type-value old)) (place new)))))
+    (setf (place (type-value old)) (place new))))
 
 (defmethod copy-lex* ((old mod-decl) (new mod-decl))
   (copy-lex* (modname old) (modname new)))
@@ -163,7 +208,7 @@
   (copy-lex* (declared-measure old) (declared-measure new)))
 
 (defmethod copy-lex* ((old formula-decl) (new formula-decl))
-  (unless *copy-lex-view-hash*
+  (unless *copy-lex-view-string*
     (setf (spelling old) (spelling new)))
   (copy-lex* (definition old) (definition new)))
 
@@ -201,7 +246,7 @@
   (when (print-type old)
     (copy-lex* (print-type old) new))
   (call-next-method)
-  (unless *copy-lex-view-hash*
+  (unless *copy-lex-view-string*
     (setf (parens old) (parens new))))
 
 (defmethod copy-lex* ((old type-expr) (new type-expr))
@@ -210,7 +255,7 @@
 (defmethod copy-lex* ((old type-name) (new type-name))
   (when (and (null (actuals old))
 	     (actuals new))
-    (unless *copy-lex-view-hash*
+    (unless *copy-lex-view-string*
       (setf (actuals old) (actuals (module-instance (resolution old))))))
   (copy-lex* (actuals old) (actuals new)))
 
@@ -259,7 +304,7 @@
 
 (defmethod copy-lex* :around ((old expr) (new expr))
   (call-next-method)
-  (unless *copy-lex-view-hash*
+  (unless *copy-lex-view-string*
     (setf (parens old) (parens new))))
 
 (defmethod copy-lex* ((old number-expr) (new number-expr))
@@ -358,15 +403,15 @@
   (when (declared-type old)
     (if (declared-type new)
 	(copy-lex* (declared-type old) (declared-type new))
-	(unless *copy-lex-view-hash*
+	(unless *copy-lex-view-string*
 	  (setf (declared-type old) nil)))))
 
 (defmethod copy-lex* ((old field-decl) (new field-decl))
-  (unless *copy-lex-view-hash*
+  (unless *copy-lex-view-string*
     (setf (chain? old) (chain? new))))
 
 (defmethod copy-lex* ((old bind-decl) (new bind-decl))
-  (unless *copy-lex-view-hash*
+  (unless *copy-lex-view-string*
     (setf (chain? old) (chain? new))))
 
 ;;(defmethod copy-lex* ((old modname) (new modname))
@@ -375,7 +420,7 @@
 (defmethod copy-lex* ((old name) (new name))
   (when (and (null (actuals old))
 	     (actuals new))
-    (unless *copy-lex-view-hash*
+    (unless *copy-lex-view-string*
       (setf (actuals old)
 	    (mapcar #'copy-all
 	      (actuals (module-instance (resolution old)))))))
