@@ -131,7 +131,7 @@ endif
 emacsversion = $(shell expr "`$(EMACS) --version 2> /dev/null`" \
                             : '[^X]*\(X*Emacs [0-9][0-9]\)')
 
-EMACSSUBDIR = $(shell echo "$(emacsvers)" \
+EMACSSUBDIR = $(shell echo "$(emacsversion)" \
                  | tr '[:upper:]' '[:lower:]' | tr -d ' ')
 
 endif # end of buildcmds check
