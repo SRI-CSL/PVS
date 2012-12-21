@@ -247,27 +247,40 @@
 
 (defun store-declref (obj)
   (let ((module (module obj)))
-    (reserve-space 3
-      (assert (or (not *saving-theory*)
-		  (from-prelude? module)
-		  (memq module (all-imported-theories *saving-theory*))
-		  (assq module (all-usings *saving-theory*))
-		  ;; This shouldn't happen - but I haven't had time to chase
-		  ;; down exactly what is happening in untypecheck-usedbys
-		  ;; See ~owre/pvs-specs/Shankar/2007-06-12/
-		  ;; tpecheck dpll3_2, modify resolution, retypecheck, and sc.
-		  ;; Something is keeping a pointer to an old resolution theory
-		  (memq (get-theory (id module))
-			(all-imported-theories *saving-theory*))
-		  (assq (get-theory (id module))
-			(all-usings *saving-theory*)))
-	      () "Attempt to store declaration in illegal theory")
-      (cond ((number-declaration? obj)
-	     (push-word (store-obj 'number-declref))
-	     (push-word (store-obj (id obj))))
-	    (t (push-word (store-obj 'declref))
-	       (push-word (store-obj (id module)))
-	       (push-word (position obj (all-decls module))))))))
+    (assert (or (not *saving-theory*)
+		(from-prelude? module)
+		(memq module (all-imported-theories *saving-theory*))
+		(assq module (all-usings *saving-theory*))
+		;; This shouldn't happen - but I haven't had time to chase
+		;; down exactly what is happening in untypecheck-usedbys
+		;; See ~owre/pvs-specs/Shankar/2007-06-12/
+		;; tpecheck dpll3_2, modify resolution, retypecheck, and sc.
+		;; Something is keeping a pointer to an old resolution theory
+		(memq (get-theory (id module))
+		      (all-imported-theories *saving-theory*))
+		(assq (get-theory (id module))
+		      (all-usings *saving-theory*)))
+	    () "Attempt to store declaration in illegal theory")
+      (typecase obj
+	(number-declaration
+	 (reserve-space 2
+	   (push-word (store-obj 'number-declref))
+	   (push-word (store-obj (id obj)))))
+	(decl-formal
+	 (let* ((adecl (associated-decl obj))
+		(apos (position adecl (all-decls module)))
+		(fpos (position obj (decl-formals adecl))))
+	   (assert apos () "no apos?")
+	   (assert fpos () "no fpos?")
+	   (reserve-space 4
+	     (push-word (store-obj 'declformal-declref))
+	     (push-word (store-obj (id module)))
+	     (push-word apos)
+	     (push-word fpos))))
+	(t (reserve-space 3
+	     (push-word (store-obj 'declref))
+	     (push-word (store-obj (id module)))
+	     (push-word (position obj (all-decls module))))))))
 
 (defmethod store-object* :around ((obj inline-recursive-type))
   (with-slots ((theory adt-theory)) obj
@@ -503,6 +516,23 @@
       (unless decl
 	(error "Declaration was not found"))
       decl)))
+
+(setf (get 'declformal-declref 'fetcher) 'fetch-declformal-declref)
+(defun fetch-declformal-declref ()
+  ;; modid, associated-decl pos, formal pos
+  (let* ((mod-name (fetch-obj (stored-word 1)))
+	 (theory (get-theory mod-name)))
+    (unless theory
+      (error "Attempt to fetch declaration from unknown theory ~s" mod-name))
+    (let* ((adecl-pos (stored-word 2))
+	   (adecl (nth adecl-pos (all-decls theory))))
+      (unless adecl
+	(error "Associated declaration was not found"))
+      (let* ((fdecl-pos (stored-word 3))
+	     (fdecl (nth fdecl-pos (decl-formals adecl))))
+	(unless fdecl
+	  (error "Decl formal was not found"))
+	fdecl))))
 
 (setf (get 'decllibref 'fetcher) 'fetch-decllibref)
 (defun fetch-decllibref ()
