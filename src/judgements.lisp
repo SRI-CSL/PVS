@@ -2564,7 +2564,7 @@
     (multiple-value-bind (jtypes jdecls)
 	(judgement-types expr)
       (when jtypes
-	(let ((jthash (copy (judgement-types-hash (judgements context)))))
+	(let ((jthash (make-pvs-hash-table #-cmu :weak-keys? #-cmu t)))
 	  (setf (gethash name jthash)
 		;; This doesn't work
 		;;(remove-judgement-types-of-name-type (type name) jtypes jdecls)
