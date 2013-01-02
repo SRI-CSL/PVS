@@ -960,10 +960,12 @@
 	(i 0))
     (if index
 	(mapcar #'(lambda (ty)
+		    (declare (ignore ty))
 		    (incf i)
 		    (cons i (if (= i index) *true* *false*)))
 	  (types cotupletype))
 	(mapcar #'(lambda (ty)
+		    (declare (ignore ty))
 		    (let ((inj?-appl (make!-injection?-application (incf i) arg)))
 		      (cons i (assert-test inj?-appl))))
 	  (types cotupletype)))))
@@ -1037,6 +1039,7 @@
 
 (defmethod simplify-nested-updates ((expr tuple-expr) outer-assignments
 				    update-expr)
+  (declare (ignore update-expr))
   (with-slots (exprs) expr
     (let ((new-exprs (copy-list exprs))
 	  (assignment-parts (partition-tup-assignments outer-assignments)))
@@ -1074,6 +1077,7 @@
 
 (defmethod simplify-nested-updates ((expr application) outer-assignments
 				    update-expr)
+  (declare (ignore update-expr))
   (if (constructor-name-expr? (operator expr))
       (simplify-constructor-nested-update outer-assignments expr)
       (call-next-method)))
@@ -1713,6 +1717,7 @@
        (integer-expr? (argument ex))))
 
 (defmethod integer-expr? (ex)
+  (declare (ignore ex))
   nil)
 
 (defmethod assert-if ((expr tuple-expr))
@@ -1943,7 +1948,7 @@
 					     ;;addition/subtraction.
   (assert *use-rationals*)
   (let* ((hashvalue (gethash expr *assert-if-arith-hash*))
-	 (msum (if hashvalue hashvalue
+	 (msum (or hashvalue
 		   (let* ((nargs (argument-list newargs))
 			  (lhs (car nargs))
 			  (rhs (cadr nargs))
@@ -1974,14 +1979,16 @@
 
 (defun make-minus (expr)
   (let* ((coef (coefficient expr))
-	 (body (noncoefficient expr))
-	 (newcoeffexpr (if (minusp coef)
-			   (make!-number-expr (- coef))
-			   (make!-minus (make!-number-expr coef)))))
-    (if (null body)
-	newcoeffexpr
-	(make-prod (list newcoeffexpr body)
-		   (compatible-type (type newcoeffexpr) (type body))))))
+	 (body (noncoefficient expr)))
+    (cond ((null body)
+	   (make!-number-expr (- coef)))
+	  ;;((= coef 1)
+	  ;; (make!-minus body))
+	  ((= coef -1)
+	   body)
+	  (t (make-prod (list (make!-number-expr (- coef)) body)
+			(compatible-type *number_field*
+					 (type body)))))))
 
 (defun addends (expr)
   (multiple-value-bind (pos neg)
@@ -2004,11 +2011,7 @@
 		(multiple-value-bind (pos2 neg2)
 		    (addends* (args2 expr))
 		  (values (nconc pos1 neg2)(nconc neg1 pos2))))
-	      (if (is-unary-minus? expr)
-		  (multiple-value-bind (pos neg)
-		      (addends* (argument expr))
-		    (values neg pos))
-		  (list expr))))
+	      (list expr)))
       (list expr)))
 
 (defun multiplicands (expr)
@@ -2240,7 +2243,8 @@
 			  (op (operator expr))
 			  (lhs (car nargs))
 			  (rhs (cadr nargs))
-			  (type (compatible-type (type lhs) (type rhs))))
+			  ;;(type (compatible-type (type lhs) (type rhs)))
+			  )
 		     (if (typep rhs 'rational-expr)
 			 (if (typep lhs 'rational-expr)
 			     (simplify-or-copy-app expr op newargs)
@@ -2268,9 +2272,9 @@
 			collect
 			(merge-division x r type))))
 	(make-sum list type))
-      (make-div l r type)))
+      (make-div l r)))
 
-(defun make-div (l r type)
+(defun make-div (l r)
   (cond ((and (rational-expr? l)
 	      (rational-expr? r)
 	      (not (zerop (number r))))
@@ -3774,7 +3778,7 @@
 		     (*keep-unbound* *bound-variables*)
 		     (newbody (substit newbody substs))
 		     (*tccforms* nil)
-		     (substs (tc-alist substs nil 'top))
+		     (dummy (tc-alist substs nil 'top))
 		     (conjunctions (make!-conjunction*
 				    (mapcar #'tccinfo-formula *tccforms*)))
 		     (newbody (make!-conjunction conjunctions newbody))
@@ -3825,7 +3829,7 @@
 		     (*keep-unbound* *bound-variables*)
 		     (newbody (substit newbody substs))
 		     (*tccforms* nil)
-		     (substs (tc-alist substs nil 'top))
+		     (dummy (tc-alist substs nil 'top))
 		     (conjunctions (make!-conjunction*
 				    (mapcar #'tccinfo-formula
 				      *tccforms*)))
