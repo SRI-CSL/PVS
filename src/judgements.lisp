@@ -1098,6 +1098,7 @@
   (or (null rfields)
       (let ((atypes (cdr (assq (id (car rfields)) argflds))))
 	(and atypes
+	     (compatible? (type (car args)) (type (car rfields)))
 	     (eq (id (car rfields)) (id (car jfields)))
 	     (judgement-arguments-match?
 	      (car args) atypes (type (car rfields)) (type (car jfields)))
