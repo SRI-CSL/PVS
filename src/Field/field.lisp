@@ -367,7 +367,9 @@ strategy tries to discharge the current branch using the proof command AUTO-STEP
 					"real_props.zero_times1" "real_props.zero_times2" "real_props.neg_times_neg"
 					"real_props.zero_is_neg_zero" "real_props.abs_abs" "real_props.abs_square"
 					"real_props.times_div_cancel1" "real_props.times_div_cancel2"
+					"extra_tegies.neg_mult" "extra_tegies.mult_neg"
 					"extra_tegies.neg_add" "extra_tegies.add_neg"
+					"extra_tegies.neg_div" "extra_tegies.div_neg"
 					"extra_tegies.one_times" "extra_tegies.neg_one_times"
 					"extra_tegies.zero_div" "extra_tegies.neg_neg"))
 
@@ -635,6 +637,18 @@ TCCs generated during the execution of the command are discharged
 with the proof command TCC-STEP."
   "Canceling formula ~a")
 
+(defhelper field_case__ (labfd labndf labx prod theories &optional (sign +))
+  (branch
+   (wrap-manip labfd (mult-by labfd prod sign) :tcc-step (skip))
+   ((skip)
+    (then (delete labfd)
+	  (finalize (grind-reals :theories theories))
+	  (replaces labx :but labx :dir rl :hide? nil)
+	  (delete labx)
+	  (replaces labndf :but labndf :dir rl :hide? nil)
+	  (delete labndf))))
+"[Field] Internal strategy." "")
+
 (defhelper field__ (labfd labndf labx theories cancel? tcc-step)
   (then@
    (simplify-monoms__$ labfd tcc-step)
@@ -655,16 +669,16 @@ with the proof command TCC-STEP."
 	       (prodgt0  (format nil "~a > 0" prod)))
 	   (spread (name-label* nameseq :label labx :tcc-step tcc-step)
 		   ((if is_eq
-			(then@ (wrap-manip labfd (mult-by labfd prod) :tcc-step tcc-step)
+			(then@ (field_case__ labfd labndf labx prod theories)
 			       (field__$ labfd labndf labx theories cancel? tcc-step))
 		      (branch (case prodgt0)
 			      ((then@
 				(finalize (then (delete labfd) (grind-reals :theories theories)))
-				(wrap-manip labfd (mult-by labfd prod +) :tcc-step tcc-step)
+				(field_case__ labfd labndf labx prod theories +)
 				(field__$ labfd labndf labx theories cancel? tcc-step))
 			       (then@
 				(finalize (then (delete labfd) (grind-reals :theories theories)))
-				(wrap-manip labfd (mult-by labfd prod -) :tcc-step tcc-step)
+				(field_case__ labfd labndf labx prod theories -)
 				(field__$ labfd labndf labx theories cancel? tcc-step))
 			       (finalize tcc-step)))))))
        (try (replaces labx :but labx :dir rl :hide? nil)
@@ -705,11 +719,13 @@ is t, then it tries to cancel common terms once the expression is free of divisi
 TCCs generated during the execution of the command are discharged with the proof command TCC-STEP."
   "Removing divisions and simplifying formula ~a with field")
 
-(defstep sq-simp (&optional (fnum *))  
-  (rewrite* ("sq_0" "sq_1" "sq_abs" "sq_abs_neg" "sq_neg" "sq_times" "sq_plus" "sq_minus"
-  	     "sq_div" "sqrt_0" "sqrt_1" "sqrt_def" "sqrt_square"
-             "sqrt_sq" "sq_sqrt" "sqrt_times" "sqrt_div" "sqrt_sq_abs") fnum)
-  "[Field] Simplifies FNUM with lemmas from sq and sqrt."
+(defstep sq-simp (&optional (fnum *) (auto-step (assert)))  
+  (then (rewrite* ("sq_0" "sq_1" "sq_abs" "sq_abs_neg" "sq_neg" "sq_times" "sq_plus" "sq_minus"
+		   "sq_div" "sqrt_0" "sqrt_1" "sqrt_def" "sqrt_square"
+		   "sqrt_sq" "sq_sqrt" "sqrt_times" "sqrt_div" "sqrt_sq_abs") fnum)
+	(finalize auto-step))
+  "[Field] Simplifies FNUM with lemmas from sq and sqrt. At the end, the strategy tries to 
+discharge the current branch using the proof command AUTO-STEP."
   "Simplifying sq and sqrt in ~a")
 
 (defstep both-sides-f (fnum f &optional (hide? t) label (tcc-step (extra-tcc-step)) (auto-step (assert)))

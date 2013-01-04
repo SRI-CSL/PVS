@@ -1050,7 +1050,7 @@ existentially quantified formula in FNUM.  If POSTFIX is provided, it is appende
 names of the bounded variables."
   "Iterating insteep in ~a")
 
-(defhelper skoletin__ (fn expr name nth var postfix hide? tcc-step)
+(defhelper skoletin__ (fn expr name nth var postfix hide? tcc-step old)
   (let ((flabels (extra-get-labels-from-fnum fn))
 	(consq   (> fn 0))
 	(ret     (make-ret))
@@ -1065,13 +1065,16 @@ names of the bounded variables."
     (when flag
       (with-fnums
        ((!skl fn :tccs)
-	(!skd))
+	(!skd)
+	(!old))
        (try-branch
-	(name-label* retexpr :fnums nil :dir rl :hide? nil)
+	(discriminate (name-label* retexpr :fnums nil :dir rl :hide? nil) !old)
 	((then (branch (discriminate (case casestr) !skd)
 		       ((if consq (then (replaces lv :hide? nil) (beta (!skl !skd)))
-			  (beta !skd :let-reduce? nil))
-			(if consq (beta !skd :let-reduce? nil)
+			  (then (when old (hide !old) (reveal !old))
+				(beta !skd :let-reduce? nil)))
+			(if consq (then (when old (hide !old) (reveal !old))
+					(beta !skd :let-reduce? nil))
 			  (then (replaces lv :hide? nil) (beta (!skl !skd))))
 			(then (replaces lv :hide? nil) (finalize tcc-step))))
 	       (relabel flabels !skd)
@@ -1088,14 +1091,14 @@ names of the bounded variables."
 (defun skoletin-formula (fn expr)
   (let-expr? expr))
 
-(defstep skoletin (&optional (fnum (+ -)) name (nth 1) var postfix hide? (tcc-step (extra-tcc-step)))
+(defstep skoletin (&optional (fnum (+ -)) name (nth 1) var postfix hide? (tcc-step (extra-tcc-step)) old?)
   (let ((postfix (or postfix ""))
 	(fnexpr  (or (first-formula fnum :test #'skoletin-formula)
 		     (first-formula fnum)))
     	(fn      (car fnexpr))
 	(expr    (cadr fnexpr)))
     (when fnexpr
-      (skoletin__$ fn expr name nth var postfix hide? tcc-step)))
+      (skoletin__$ fn expr name nth var postfix hide? tcc-step old?)))
   "[Extrategies] Names the NTH occurrence (left-right, depth-first) of
 NAME in a let-binding of the form
    LET ...,NAME = <expr>,... IN <e>
@@ -1116,15 +1119,21 @@ the command (reveal \"<name>:\"), where <name> is one of the names introduced by
 strategy. TCCs generated during the execution of the command are discharged with the
 proof command TCC-STEP.
 
+CAVEAT: The order in which formulas are introduced by skoletin in version 6.0 is different
+from previous versions. The option OLD? reproduces the old order. 
+
 NOTE: This command works better when all let-in variables are explicitly typed as in
 LET x:posreal = 2 IN 1/x."
   "Naming let-in binding in ~a")
 
-(defstep skoletin* (&optional (fnum *) postfix hide? (tcc-step (extra-tcc-step)) n)
+(defstep skoletin* (&optional (fnum *) postfix hide? (tcc-step (extra-tcc-step)) n old?)
   (with-fnums
    (!sks fnum)
-   (for@ n (skoletin !sks :postfix postfix :hide? hide? :tcc-step tcc-step)))
-  "[Extrategies] Iterates N times skoletin (or until it does nothing if N is nil) in FNUM."
+   (for@ n (skoletin !sks :postfix postfix :hide? hide? :tcc-step tcc-step :old? old?)))
+  "[Extrategies] Iterates N times skoletin (or until it does nothing if N is nil) in FNUM.
+
+CAVEAT: The order in which formulas are introduced by skoletin in version 6.0 is different
+from previous versions. The option OLD? reproduces the old order."
   "Naming let-in bindings in ~a")
 
 (defhelper redlet__ (fn expr name nth tcc-step)
