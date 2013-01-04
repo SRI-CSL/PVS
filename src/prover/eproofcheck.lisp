@@ -37,6 +37,8 @@
 
 (defvar *default-proof-description* nil)
 
+(defvar *record-undone-proofstate* nil)
+
 (defmethod prove (name &key  strategy)
   (let ((decl (get-formula *current-theory*
 			   (if (stringp name)(intern name) name))))
@@ -242,6 +244,7 @@
 	 (*auto-rewrites-names* nil)
 	 (*auto-rewrites-off* nil)
 	 (*assert-typepreds* nil)
+	 (*record-undone-proofstate* nil)
 	 (*pvs-bdd-hash* nil)
 	 (*bdd-pvs-hash* nil)
 	 (*bdd-counter* *bdd-counter*)
@@ -255,6 +258,7 @@
 	 (*assert-if-arith-hash* (make-hash-table :test #'eq))
 	 (*auto-rewrites* (init-if-rec *auto-rewrites*))
 	 (*auto-rewrites-ops* (init-if-rec *auto-rewrites-ops*))
+	 (*all-rewrites-names* nil)
 	 ;;(*beta-cache* (init-if-rec *beta-cache*))
 	 ;;(*let-reduce-beta-cache* (init-if-rec *let-reduce-beta-cache*))
 	 (*match-cache* (init-if-rec *match-cache*))
@@ -2026,7 +2030,7 @@
 		     (t (list value)))))))))
 
 
-(defvar *record-undone-proofstate* nil)
+
 
 (defun undo-proof (info ps)
   (if (eq info 'undo)
