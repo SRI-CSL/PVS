@@ -1979,16 +1979,14 @@
 
 (defun make-minus (expr)
   (let* ((coef (coefficient expr))
-	 (body (noncoefficient expr)))
-    (cond ((null body)
-	   (make!-number-expr (- coef)))
-	  ;;((= coef 1)
-	  ;; (make!-minus body))
-	  ((= coef -1)
-	   body)
-	  (t (make-prod (list (make!-number-expr (- coef)) body)
-			(compatible-type *number_field*
-					 (type body)))))))
+	 (body (noncoefficient expr))
+	 (newcoeffexpr (if (minusp coef)
+			   (make!-number-expr (- coef))
+			   (make!-minus (make!-number-expr coef)))))
+    (if (null body)
+	newcoeffexpr
+	(make-prod (list newcoeffexpr body)
+		   (compatible-type (type newcoeffexpr) (type body))))))
 
 (defun addends (expr)
   (multiple-value-bind (pos neg)
