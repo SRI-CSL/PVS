@@ -635,6 +635,19 @@
 	  (and (tc-eq* arg1 arg2 bindings)
 	       (tc-eq-ops op1 op2 bindings))))))
 
+(defmethod tc-eq* ((e1 application) (e2 rational-expr) bindings)
+  (declare (ignore bindings))
+  (and (not *use-rationals*) ;; Don't match if trying to convert in assert
+       (name-expr? (operator e1))
+       (eq (id (operator e1)) '/)
+       (number-expr? (args1 e1))
+       (number-expr? (args2 e1))
+       (not (zerop (number (args2 e1))))
+       (= (/ (number (args1 e1)) (number (args2 e1))) (number e2))))
+
+(defmethod tc-eq* ((e1 rational-expr) (e2 application) bindings)
+  (tc-eq* e2 e1 bindings))
+
 (defmethod tc-eq-ops ((op1 field-name-expr) (op2 field-name-expr)
 		      &optional bindings)
   (with-slots ((id1 id) (ty1 type)) op1
