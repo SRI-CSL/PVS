@@ -225,21 +225,26 @@ bind tighter.")
 	(assert (> (hash-table-count phash) 0))
 	(values cstr phash)))))
 
-(defun pp-view (term &optional (indent 0)
-		     (width *default-char-width*))
+(defun pp-string (term &optional (indent 0)
+		       (width *default-char-width*))
   (let* ((sterm (unparse term
 		  :string t
 		  :char-width (- width indent)))
 	 (iterm (with-output-to-string (*standard-output*)
 		  (unpindent* sterm indent 0
-			      (position #\linefeed sterm) nil nil)))
-	 (ppterm (pc-parse iterm
-		   (typecase term
-		     (expr 'expr)
-		     (type-expr 'type-expr)
-		     (t (break "pp-view: need more types"))))))
-    (copy-lex term ppterm nil view-hash iterm)
+			      (position #\linefeed sterm) nil nil))))
     iterm))
+
+(defun pp-view (term termstr)
+  (let ((ppterm (pc-parse termstr
+		  (typecase term
+		    (expr 'expr)
+		    (type-expr 'type-expr)
+		    (t (break "pp-view: need more types"))))))
+    (copy-lex term ppterm nil termstr)))
+
+(defun get-terms-in-view (view ranges)
+  ())
 
 (defun pp (obj)
   (let ((*disable-gc-printout* t)
