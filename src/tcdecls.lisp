@@ -2798,7 +2798,8 @@
 			      (formals (declaration (type type)))
 			      (module-instance
 			       (resolution (type type)))
-			      (module (declaration (type type)))))))
+			      (module (declaration (type type)))
+			      (current-declaration)))))
 	     (set-type-for-application-parameters
 	      (parameters type) (car typeslist)))
 	   (let ((tval (substit te (pairlis (car (formals
@@ -3021,16 +3022,26 @@
 ;;; "from T1 with T_pred".
 
 (defun generate-uninterpreted-subtype (decl stype)
-  (let* ((pname (makesym "~a_pred" (id decl)))
-	 (pexpr (mk-name-expr pname))
-	 (ftype (typecheck* (mk-funtype (list stype) *boolean*) nil nil nil))
-	 (cdecl (declaration *current-context*))
-	 (ndecl (typecheck* (mk-const-decl pname ftype nil nil)
-			    nil nil nil)))
-    (setf (declaration *current-context*) cdecl)
-    (add-decl ndecl (not (formal-subtype-decl? decl)))
-    (typecheck* pexpr ftype nil nil)
-    (mk-subtype stype pexpr)))
+  (multiple-value-bind (dfmls dacts thinst)
+      (new-decl-formals decl)
+    (let* ((pname (makesym "~a_pred" (id decl)))
+	   (pdecl (mk-const-decl pname nil nil nil nil dfmls))
+	   (ptype (if thinst
+		      (with-current-decl pdecl
+			(subst-mod-params stype thinst (current-theory) decl))
+		      stype))
+	   (ftype (with-current-decl pdecl
+		    (typecheck* (mk-funtype (list ptype) *boolean*)
+				nil nil nil)))
+	   (pexpr (mk-name-expr pname))
+	   (cdecl (current-declaration)))
+      (setf (declared-type pdecl) ftype)
+      (typecheck* pdecl nil nil nil) ;; This will set current-declaration
+      (setf (current-declaration) cdecl)
+      (add-decl pdecl (not (formal-subtype-decl? decl)))
+      (setf (dactuals pexpr) dacts)
+      (typecheck* pexpr ftype nil nil)
+      (mk-subtype stype pexpr))))
 
 ;;; Generates a new uninterpreted type and an uninterpreted projection
 ;;; function from that type to the given stype.
