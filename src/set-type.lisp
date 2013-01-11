@@ -4832,7 +4832,8 @@ required a context.")
 		      (subst-mod-params (formals (declaration (type te)))
 					(module-instance
 					 (resolution (type te)))
-					(module (declaration (type te)))))))
+					(module (declaration (type te)))
+					(current-declaration)))))
     (set-type-for-application-parameters (parameters te) (car typeslist))
     (set-type* (type te) nil)))
 
