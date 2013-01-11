@@ -1058,7 +1058,7 @@
 (defun mk-resolution (decl modinst type)
   (assert (or (null type) (typep type '(or type-expr dep-binding))))
   (assert (or (null (dactuals modinst))
-	      (bind-decl? decl)
+	      (binding? decl)
 	      (decl-formal? decl)
 	      (length= (decl-formals decl) (dactuals modinst))))
   (make-instance 'resolution
