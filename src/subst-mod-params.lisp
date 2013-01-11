@@ -1849,9 +1849,7 @@
 	     ;; uninterpreted constant.
 	     (let* ((ntype (subst-mod-params* type modinst bindings))
 		    (libid (or (library mi) (library modinst)))
-		    (nmi (if (decl-formals decl)
-			     (lcopy modinst :library libid)
-			     (lcopy modinst :dactuals nil :library libid)))
+		    (nmi (subst-mod-params* mi modinst bindings))
 		    (nres (mk-resolution decl nmi ntype)))
 	       (assert (subsetp (free-params ntype) (free-params modinst)) () "res2")
 	       (assert (subsetp (free-params nres) (free-params modinst)) () "res2.5")
