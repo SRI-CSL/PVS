@@ -14,11 +14,7 @@
 #   -runtime               use the runtime image (devel is default, if there)
 #   -decision-procedures   set the default decision procedures (ics or shostak)
 #   -force-decision-procedures  forces the decision procedures to be used
-#   -patchlevel  indicates the patch level:
-#       0 (none). No patches
-#       1 (rel).  Released patches (patch4.lisp)
-#       2 (test). Test patches (patch4-test.lisp) (the default)
-#       3 (exp).  Experimental patches (patch4-exp.lisp)
+#   -patchlevel  indicates the patch level: 0 for no patches
 #   -batch       run in batch mode
 #   -timeout     seconds to timeout commands or proofs - only allowed in batch
 #   -nobg        don't run PVS in the background
