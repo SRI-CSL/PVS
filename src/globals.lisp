@@ -80,7 +80,7 @@
   (pushnew :pvs *features*)
   )
 
-(defparameter *binfile-version* 29)
+(defparameter *binfile-version* 30)
 
 (defparameter *context-name* ".pvscontext")
 
@@ -515,7 +515,9 @@ Needed to generate the same dummy name for record literals.")
     (□ . |box|)
     (~ . |tilde|)
     (=> . |implies|)
+    (⇒ . |arimplies|)
     (<=> . |iff|)
+    (⇔ . |ariff|)
     (++ . |doubleplus|)
     (-- . |doubleminus|)
     (** . |doubletimes|)
