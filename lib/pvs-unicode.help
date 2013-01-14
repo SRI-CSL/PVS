@@ -1,0 +1,169 @@
+			  PVS Unicode Summary
+			  -------------------
+
+Unicode may be used in PVS theories.  Most characters may be used in
+identifiers; a few are recognized as operators and discussed below.
+
+NOTE: If the characters below are not visible in Emacs, you need to install
+a font that supports these characters to make use of Unicode.  PVS does not
+require the use of Unicode, however, so this is optional.
+
+In Emacs, non-ASCII characters are normally inserted using an input method.
+Most of the following are input using the TeX input method, which normally
+starts with a backslash and matches the TeX input for that character.  Each
+character introduced below is presented along with its TeX input sequence,
+where it exists, otherwise its full Unicode name is used.
+
+See the last section of this for more on Emacs and Unicode.
+
+Example Theories:
+—————————————————
+Θ: THEORY
+BEGIN
+ ℝ: TYPE = real
+ ℝ⁺: TYPE = posreal
+ ℚ: TYPE = rat
+ ℚ⁺: TYPE = posrat
+ ℤ: TYPE = int
+ ℤ⁺: TYPE = posint
+ ℕ: TYPE = nat
+ ℕ⁺: TYPE = posnat
+ ε, δ: VAR ℝ⁺
+ α: FORMULA ∀ ε: ∃ δ: ε ≠ δ;
+ ν, μ: VAR ℕ;
+ ⨁: [ℕ, ℕ -> ℕ] = λ ν, μ: ν * ν + μ
+ β: FORMULA ⨁(2 ⨁ 1, 2) = 27
+END Θ
+
+Unicode Operators:
+——————————————————
+
+These are the operators specially recognized by PVS, as either special,
+unary, binary infix, or bracketing operators.  All other Unicode
+characters are treated as letters within identifiers.  Unary and binary
+operators have precedence; most are grouped and are in the same precedence
+as similar existing PVS operators.  Rather than repeat the precedence
+information in the PVS Language manual, we simply indicate one of the
+operators that share the precedence.  Of course, when in doubt, it's
+easiest to add parentheses.
+
+Note that most of these operators have no definition, they are provided
+for making new definitions that are more readable or closer to standard
+mathematical usage.  Those that have definitions in the PVS prelude are
+indicated, but even those can be redefined, as PVS supports overloading.
+
+Special characters:
+———————————————————
+λ, ∀, and ∃ (input \lambda, \forall, and \exists) are binding characters
+corresponding to the LAMBDA, FORALL, and EXISTS keywords.  Note that capital
+lambda Λ is not the same as λ, and is available for identifiers.
+
+§ (input \section) is used as an alternative to semi-colon (;) as a way of
+separating declarations.
+
+Unary operators:
+————————————————
+Recall that the main thing about unary operators is that parentheses are not
+necessary, e.g., '□φ' is a valid term, and equivalent to '□(φ)'.
+
+The precedence of □ (\Box) and ◇ (\Diamond) are at the same level as the
+'<>' operator (between '::' and '^').  Note that because of declaration
+parameters, the old '[]' operator is no longer allowed.
+
+¬ (\lnot) is at the same precedence as NOT, and is declared as the same
+operator (i.e., it is equivalent to NOT, unless redeclared).
+
+◯ (\bigcirc) is both unary and binary — much like '+' and '-' — and has
+the same precedence.  It is unary because it is useful as a possible 'next'
+operator.
+
+√ (\surd) is also both unary and binary and has the same precedence as
+unary '+' and '-'.  It's an obvious candidate for the 'sqrt' operator.
+
+Binary (infix) operators:
+—————————————————————————
+There are a lot of binary operators provided.
+The first ones have declarations in the prelude, and are intended as
+symbolic equivalents for the given operator.
+
+⇔ (\iff) same as IFF
+⇒ (\Rightarrow) same as IMPLIES
+∨ (\vee) same as OR
+∧ (\wedge) same as AND
+≠ (\neq) same as '/='
+∘ (\circ) same as 'o'
+
+
+The rest are not declared in the prelude and are shown listed from lowest
+to highest precedence.  When precedence is shared with an existing
+operator, it is given in square brackets.
+
+'|-': ⊢ (\vdash) ⊨ (\vDash)
+
+
+between '@@' and '+':
+  ≁ (\nsim) ≃ (\simeq) ≅ (\cong) ≇ (\ncong) ≈ (\approx) ≉ (\napprox) ≍ (\asymp)
+  ≎ (\Bumpeq) ≏ (\bumpeq) ≐ (\doteq) ≗ (\circeq) ≙ (\defs) ≡ (\equiv) ⋈ (\Join)
+  ≤ (\leq) ≥ (\geq) ≦ (\leqq) ≧ (\geqq) ≨ (\lneq) ≩ (\gneq) ≪ (\ll) ≫ (\gg)
+  ≮ (\nless) ≯ (\ngtr) ≰ (\nleq) ≱ (\ngeq) ≺ (\prec) ≻ (\succ) ▷ (\rhd) ◁ (\lhd)
+  ∈ (\in) ∉ (\notin) ∋ (\ni) ⊂ (\subset) ⊃ (\supset) ⊄ (\nsubset) ⊅ (\nsupset)
+  ⊆ (\subseteq) ⊇ (\supseteq) ⊏ (\sqsubset) ⊐ (\sqsupset) • (\bullet)
+  ← (\leftarrow) ↑ (\uparrow) → (\rightarrow) ↓ (\downarrow) ↝ (\leadsto)
+  ↦ (\mapsto) ⇐ (\Leftarrow) ⇑ (\Uparrow) ⇓ (\Downarrow) ∇ (\nabla) ⊣ (\dashv)
+  ⊥ (\perp) ⊩ (\Vdash) ◯ (\bigcirc) ★ (\bigstar) ✠ (\maltese)
+
+'+': ⊕ (\oplus) ⊖ (\ominus) ⨁ (N-ARY CIRCLED PLUS OPERATOR) ± (\pm) ∓ (\mp)
+     ∔ (\dotplus) ⊞ (\boxplus) ⊟ (\boxminus) ⊎ (\uplus) ∪ (\cup) ⊔ (\sqcup)
+     ⋁ (\bigvee) ⋃ (\bigcup)
+
+'*': ⊘ (\oslash) ⊗ (\otimes) ⊙ (\odot) ⊛ (\circledast)
+     ⨂ (N-ARY CIRCLED TIMES OPERATOR) ⨀ (N-ARY CIRCLED DOT OPERATOR)
+     × (\times) ÷ (\div) ⊠ (\boxtimes) ∩ (\cap) ⊓ (\sqcap) ⋀ (\bigwedge)
+     ⋂ (\bigcap) ['*']
+
+
+Bracketing Operators:
+—————————————————————
+To use these, the left/right pair must be given a declaration (no space
+between), then they can be used as brackets.  For example:
+
+  ⌊⌋(x: real): int = floor(x)
+  floorex: formula ⌊5.3⌋ = 5
+
+〈 〉 (\langle \rangle)
+〚 〛 (\llbracket \rrbracket)
+« » (\"< \">)
+《 》 (\ldata \rdata)
+⌈ ⌉ (\lceil \rceil)
+⌊ ⌋ (\lfloor \rfloor)
+⌜⌝ (\ulcorner \urcorner)
+⌞⌟ (\llcorner \lrcorner)
+
+Emacs and Unicode:
+——————————————————
+Summary:
+  M-x describe-char — describes the character under the cursor
+  M-x set-input-method (C-x RET C-\) — sets the input method
+  M-x toggle-input-method (C-\) — toggles between input methods
+  M-x describe-input-method (C-h I) — shows the input sequences
+         for all the characters handled by the method
+
+The first thing to do is to get a font that supports Unicode.  If you're
+reading this in Emacs, and the symbols are rendered correctly, then you're
+set.  Otherwise, both Mac and Linux have a wide range of fonts available -
+search on the internet for options.  Even if the symbols do render
+correctly, another font may do a better job.
+
+If the display is right, you can find out information about any character
+by putting the cursor on that character and typing 'M-x describe-char',
+which brings up a buffer containing information about the character,
+including its Unicode name and input sequences.
+
+To input a particular Unicode character, you can use 'C-x 8 RET' and type in
+the name or hex value — the internet can be used to find the character
+you're looking for.  However, it is usually easier to use an input
+method.  Most input methods are for particular languages; the most useful
+one for the mathematical fonts described above is TeX, which mostly
+follows the TeX commands for the same character.  Use M-x set-input-method
+to select an input method, and M-x toggle-input-method to switch between
+it and the previous one.
