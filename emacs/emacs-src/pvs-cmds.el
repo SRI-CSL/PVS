@@ -1308,6 +1308,21 @@ Provides an example specification, along with the PVS grammar."
     (unless buffer-read-only (toggle-read-only))
     (pop-to-buffer buf)
     (pvs-view-mode)))
+
+(defpvs help-pvs-unicode help ()
+  "Display help for Unicode in the PVS language.
+
+Provides an example specification, the Unicode operators, and Emacs help."
+  (interactive)
+  (let ((buf (get-buffer-create "Unicode Help")))
+    (set-buffer buf)
+    (if buffer-read-only (toggle-read-only))
+    (erase-buffer)
+    (insert-file-contents (concat pvs-path "/lib/pvs-unicode.help"))
+    (goto-char (point-min))
+    (unless buffer-read-only (toggle-read-only))
+    (pop-to-buffer buf)
+    (pvs-view-mode)))
   
 (defpvs pvs-release-notes help ()
   "Display the release notes."
