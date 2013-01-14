@@ -41,12 +41,13 @@ Operators
 %  ----------		----
 %  *pvs-operators*	utils.lisp
 %  
-	'('  ')'  '-'  '+'  '*' '/' ':=' '::=' '|->'  ';' '§' ','  '='  '/='
+	'('  ')'  '-'  '+'  '*' '/' ':=' '::=' '|->'  ';' ','  '='  '/='
 	'<'  '<='  '>'  '>=' '{' '}' '[' ']' '.' '&' '<=>'
 	'->' ':' '=>' '[#' '#]' '(#' '#)' '(:' ':)' '{:' ':}' '{{' '}}' '|'
         '^' '/\\' '\\/' '<>' '~' '==' '++' '**' '//' '^^' % '[]'
 	'<<' '>>' '::' '#' '@' '@@' '##' '|[' ']|' '!'
         '<<=' '>>=' '`' '\'' '..' '||' '|-' '|=' '<|' '|>' ':->' % '<:'
+	 '§'
         %% Bracketing operators 
 	'[|' '|]' '[||]' '(|' '|)' '(||)' '{|' '|}' '{||}'
         %% Unicode bracketing operators (TeX input method map shown)
@@ -56,21 +57,20 @@ Operators
         '《' '》' '《》' % \ldata \rdata
         '⌈' '⌉' '⌈⌉'    % \lceil \rceil
         '⌊' '⌋' '⌊⌋'    % \lfloor \rfloor
+	'⌜' '⌝' '⌜⌝'    % \ulcorner \urcorner
+	'⌞' '⌟' '⌞⌟'    % \llcorner \lrcorner
+
         % '∣' '∥' don't work - start and end must be distinct
         %% Unicode prefix operators
-        '□' '◇' '¬' % \Box \Diamond \lnot
+        '□' '◇' '¬' '◯' '√'
 	%% Unicode infix operators
-	 '∧' '∨' % \vee \wedge 
-        '≤' '≥' '≪' '≫' '∈' %
-        '±' '∓' '∋' '→' '÷'
-        '∩' '∪' '⇔' '◁' '▷'
-        '⋈' '∘' '≅' '≙' '⋂' '⋃'
-	'≦' '≧' '←' '≨' '≩' '≰' '≱' '≯' '≁' '⊙' '⊥' '≺' '≻'
-	'√' '⊩' '≍' '⊣' '≐' '≡' '∇' '≇' '≮' '∉' '⊕' '≃' '⊓' '⊔'
-	'×' '⊎' '≎' '≈' '⋂' '⋃' '⋁' '⋀' '⋈' '•' '≏' '≗' 
-	'↦' '⊖' '⊘' '⊗' '⊂' '⊃' '⇑' '◯' '★' '⊞' '∔' '↝' '✠' '≉' '∄' '⊄'
-	'⊅' '↑' '⊟' '⊠' '⌞' '⌟' '⌜' '⌝' '⊏' '⊐' '⊆' '⊇' '⇓' '⇐' '↓' '↑'
-	'←' '→'  '⊛' '↦'
+	'∘' '∨' '∧' '⊕' '⊘' '⊗' '⊖' '⊙' '⊛' '⨁' '⨂' '⨀'
+	'⊢' '⊨' '±' '∓' '∔' '×' '÷' '⊞' '⊟' '⊠' '≁' '≃' '≅' '≇'
+	'≈' '≉' '≍' '≎' '≏' '≐' '≗' '≙' '≡' '⋈' '≤' '≥' '≦' '≧'
+	'≨' '≩' '≪' '≫' '≮' '≯' '≰' '≱' '≺' '≻' '◁' '▷'
+	'∈' '∉' '∋' '∩' '∪' '⊂' '⊃' '⊄' '⊅' '⊆' '⊇' '⊎'
+	'⊏' '⊐' '⊓' '⊔' '⋀' '⋁' '⋂' '⋃' '•' '←' '↑' '→' '↓' '↝' '↦'
+	'⇐' '⇒' '⇑' '⇓' '⇔' '∇' '⊣' '⊥' '⊩' '◯' '★' '✠'
 
 Lexical Terminals
 	id, number, string %, literal
@@ -87,12 +87,13 @@ Precedence Information
 	'IN' aggregate % LET
 	'|' medial left
 	'⊢' medial right, '⊨' medial right, '|-' medial right, '|=' medial right
-	'IFF' medial right, '<=>' medial right
-	'IMPLIES' medial right, '=>' medial right, 'WHEN' medial right
-	'OR' medial right, '∨' medial right, '\\/' medial right, 'XOR' medial right,
-		'ORELSE' medial right
-	'AND' medial right, '&' medial right, '∧' medial right, '/\\' medial right,
-		'&&' medial right, 'ANDTHEN' medial right
+	'IFF' medial right, '<=>' medial right, '⇔' medial right
+	'IMPLIES' medial right, '=>' medial right, '⇒' medial right,
+		'WHEN' medial right
+	'OR' medial right, '∨' medial right, '\\/' medial right,
+		'XOR' medial right, 'ORELSE' medial right
+	'AND' medial right, '&' medial right, '∧' medial right,
+		'/\\' medial right, '&&' medial right, 'ANDTHEN' medial right
 	'NOT' initial, '~' initial, '¬' initial
 	'=' medial left, '/=' medial left, '≠' medial left, '==' medial left
 		'<' medial left, '<=' medial left,
@@ -104,12 +105,35 @@ Precedence Information
 	'WHERE' medial left, 'IN' medial left
 	'@' medial left, '#' medial left 
 	'@@' medial left, '##' medial left, 
-		'||' medial left 
+		'||' medial left
+        '⊞' medial left, '⊟' medial left, '⊠' medial left, '≁' medial left,
+	    '≃' medial left, '≅' medial left, '≇' medial left, '≈' medial left,
+            '≉' medial left, '≍' medial left, '≎' medial left, '≏' medial left,
+            '≐' medial left, '≗' medial left, '≙' medial left, '≡' medial left,
+            '⋈' medial left, '≤' medial left, '≥' medial left, '≦' medial left,
+            '≧' medial left, '≨' medial left, '≩' medial left, '≪' medial left,
+            '≫' medial left, '≮' medial left, '≯' medial left, '≰' medial left,
+            '≱' medial left, '≺' medial left, '≻' medial left, '◁' medial left,
+	    '▷' medial left, '∈' medial left, '∉' medial left, '∋' medial left,
+            '⊂' medial left, '⊃' medial left,
+            '⊄' medial left, '⊅' medial left, '⊆' medial left, '⊇' medial left,
+	    '⊏' medial left, '⊐' medial left,
+            '•' medial left, '←' medial left, '↑' medial left,
+	    '→' medial left, '↓' medial left, '↝' medial left, '↦' medial left,
+	    '⇐' medial left, '⇑' medial left, '⇓' medial left,
+            '∇' medial left, '⊣' medial left, '⊥' medial left,
+            '⊩' medial left, '◯' medial left, '★' medial left, '✠' medial left
 	'+' medial left, '-' medial left, '++' medial left,
-		'~' medial left, '⊕' medial left, '⊖' medial left
+		'~' medial left, '⊕' medial left, '⊖' medial left,
+		'⨁' medial left, '±' medial left, '∓' medial left, '∔' medial left,
+		'⊎' medial left, '∪' medial left, '⊔' medial left, '⋁' medial left,
+		'⋃' medial left
 	'*' medial left, '/' medial left, '**' medial left,
-		'//' medial left, '⊗' medial left, '⊙' medial left
-	'-' initial, '+' initial
+		'//' medial left, '⊗' medial left, '⊙' medial left, '⊘' medial left,
+		'⊛' medial left, '⨂' medial left, '⨀' medial left,  '×' medial left,
+		'÷' medial left, '∩' medial left, '⊓' medial left, '⋀' medial left,
+		'⋂' medial left, '√' medial left,
+	'-' initial, '+' initial, '◯' initial, '√' initial
 	'O' medial left, '∘' medial left
 	':' medial left, '::' medial left, 'HAS_TYPE' medial left
 	'□' initial, '◇' initial, '<>' initial % , '[]'
@@ -419,9 +443,11 @@ expr ::= string <string-expr(string)>
        | {expr '∘' expr^1} <term-expr(∘(),expr-args(list(expr,expr^1)))>
        | {expr 'IFF' expr^1} <term-expr(iff(),expr-args(list(expr,expr^1)))>
        | {expr '<=>' expr^1} <term-expr(`\<=\>(),expr-args(list(expr,expr^1)))>
+       | {expr '⇔' expr^1} <term-expr(`⇔(),expr-args(list(expr,expr^1)))>
        | {expr 'IMPLIES' expr^1}
                     <term-expr(implies(),expr-args(list(expr,expr^1)))>
        | {expr '=>' expr^1} <term-expr(`=\>(),expr-args(list(expr,expr^1)))>
+       | {expr '⇒' expr^1} <term-expr(`⇒(),expr-args(list(expr,expr^1)))>
        | {expr 'WHEN' expr^1} <term-expr(when(),expr-args(list(expr,expr^1)))>
        | {expr 'OR' expr^1} <term-expr(or(),expr-args(list(expr,expr^1)))>
        | {expr '∨' expr^1} <term-expr(`∨(),expr-args(list(expr,expr^1)))>
@@ -446,6 +472,14 @@ expr ::= string <string-expr(string)>
        | {expr '//' expr^1} <term-expr(`\/\/(),expr-args(list(expr,expr^1)))>
        | {expr '^^' expr^1} <term-expr(`\^\^(),expr-args(list(expr,expr^1)))>
        | {expr '⊕' expr^1} <term-expr(`⊕(),expr-args(list(expr,expr^1)))>
+       | {expr '⊘' expr^1} <term-expr(`⊘(),expr-args(list(expr,expr^1)))>
+       | {expr '⊗' expr^1} <term-expr(`⊗(),expr-args(list(expr,expr^1)))>
+       | {expr '⊖' expr^1} <term-expr(`⊖(),expr-args(list(expr,expr^1)))>
+       | {expr '⊙' expr^1} <term-expr(`⊙(),expr-args(list(expr,expr^1)))>
+       | {expr '⊛' expr^1} <term-expr(`⊛(),expr-args(list(expr,expr^1)))>
+       | {expr '⨁' expr^1} <term-expr(`⨁(),expr-args(list(expr,expr^1)))>
+       | {expr '⨂' expr^1} <term-expr(`⨂(),expr-args(list(expr,expr^1)))>
+       | {expr '⨀' expr^1} <term-expr(`⨀(),expr-args(list(expr,expr^1)))>
        | {expr '|-' expr^1} <term-expr(`\|-(),expr-args(list(expr,expr^1)))>
        | {expr '⊢' expr^1} <term-expr(`\|-(),expr-args(list(expr,expr^1)))>
        | {expr '|=' expr^1} <term-expr(`\|=(),expr-args(list(expr,expr^1)))>
@@ -467,6 +501,81 @@ expr ::= string <string-expr(string)>
        | {expr '#' expr^1} <term-expr(`#(),expr-args(list(expr,expr^1)))>
        | {expr '@@' expr^1} <term-expr(`\@\@(),expr-args(list(expr,expr^1)))>
        | {expr '##' expr^1} <term-expr(`\#\#(),expr-args(list(expr,expr^1)))>
+       | {expr '±' expr^1} <term-expr(`±(),expr-args(list(expr,expr^1)))>
+       | {expr '∓' expr^1} <term-expr(`∓(),expr-args(list(expr,expr^1)))>
+       | {expr '∔' expr^1} <term-expr(`∔(),expr-args(list(expr,expr^1)))>
+       | {expr '×' expr^1} <term-expr(`×(),expr-args(list(expr,expr^1)))>
+       | {expr '÷' expr^1} <term-expr(`÷(),expr-args(list(expr,expr^1)))>
+       | {expr '⊞' expr^1} <term-expr(`⊞(),expr-args(list(expr,expr^1)))>
+       | {expr '⊟' expr^1} <term-expr(`⊟(),expr-args(list(expr,expr^1)))>
+       | {expr '⊠' expr^1} <term-expr(`⊠(),expr-args(list(expr,expr^1)))>
+       | {expr '≁' expr^1} <term-expr(`≁(),expr-args(list(expr,expr^1)))>
+       | {expr '≃' expr^1} <term-expr(`≃(),expr-args(list(expr,expr^1)))>
+       | {expr '≇' expr^1} <term-expr(`≇(),expr-args(list(expr,expr^1)))>
+       | {expr '≈' expr^1} <term-expr(`≈(),expr-args(list(expr,expr^1)))>
+       | {expr '≉' expr^1} <term-expr(`≉(),expr-args(list(expr,expr^1)))>
+       | {expr '≍' expr^1} <term-expr(`≍(),expr-args(list(expr,expr^1)))>
+       | {expr '≎' expr^1} <term-expr(`≎(),expr-args(list(expr,expr^1)))>
+       | {expr '≏' expr^1} <term-expr(`≏(),expr-args(list(expr,expr^1)))>
+       | {expr '≐' expr^1} <term-expr(`≐(),expr-args(list(expr,expr^1)))>
+       | {expr '≗' expr^1} <term-expr(`≗(),expr-args(list(expr,expr^1)))>
+       | {expr '≙' expr^1} <term-expr(`≙(),expr-args(list(expr,expr^1)))>
+       | {expr '≡' expr^1} <term-expr(`≡(),expr-args(list(expr,expr^1)))>
+       | {expr '⋈' expr^1} <term-expr(`⋈(),expr-args(list(expr,expr^1)))>
+       | {expr '≤' expr^1} <term-expr(`≤(),expr-args(list(expr,expr^1)))>
+       | {expr '≥' expr^1} <term-expr(`≥(),expr-args(list(expr,expr^1)))>
+       | {expr '≦' expr^1} <term-expr(`≦(),expr-args(list(expr,expr^1)))>
+       | {expr '≧' expr^1} <term-expr(`≧(),expr-args(list(expr,expr^1)))>
+       | {expr '≨' expr^1} <term-expr(`≨(),expr-args(list(expr,expr^1)))>
+       | {expr '≩' expr^1} <term-expr(`≩(),expr-args(list(expr,expr^1)))>
+       | {expr '≪' expr^1} <term-expr(`≪(),expr-args(list(expr,expr^1)))>
+       | {expr '≫' expr^1} <term-expr(`≫(),expr-args(list(expr,expr^1)))>
+       | {expr '≮' expr^1} <term-expr(`≮(),expr-args(list(expr,expr^1)))>
+       | {expr '≯' expr^1} <term-expr(`≯(),expr-args(list(expr,expr^1)))>
+       | {expr '≰' expr^1} <term-expr(`≰(),expr-args(list(expr,expr^1)))>
+       | {expr '≱' expr^1} <term-expr(`≱(),expr-args(list(expr,expr^1)))>
+       | {expr '≺' expr^1} <term-expr(`≺(),expr-args(list(expr,expr^1)))>
+       | {expr '≻' expr^1} <term-expr(`≻(),expr-args(list(expr,expr^1)))>
+       | {expr '▷' expr^1} <term-expr(`▷(),expr-args(list(expr,expr^1)))>
+       | {expr '◁' expr^1} <term-expr(`◁(),expr-args(list(expr,expr^1)))>
+       | {expr '∈' expr^1} <term-expr(`∈(),expr-args(list(expr,expr^1)))>
+       | {expr '∉' expr^1} <term-expr(`∉(),expr-args(list(expr,expr^1)))>
+       | {expr '∋' expr^1} <term-expr(`∋(),expr-args(list(expr,expr^1)))>
+       | {expr '∩' expr^1} <term-expr(`∩(),expr-args(list(expr,expr^1)))>
+       | {expr '∪' expr^1} <term-expr(`∪(),expr-args(list(expr,expr^1)))>
+       | {expr '⊂' expr^1} <term-expr(`⊂(),expr-args(list(expr,expr^1)))>
+       | {expr '⊃' expr^1} <term-expr(`⊃(),expr-args(list(expr,expr^1)))>
+       | {expr '⊄' expr^1} <term-expr(`⊄(),expr-args(list(expr,expr^1)))>
+       | {expr '⊅' expr^1} <term-expr(`⊅(),expr-args(list(expr,expr^1)))>
+       | {expr '⊆' expr^1} <term-expr(`⊆(),expr-args(list(expr,expr^1)))>
+       | {expr '⊇' expr^1} <term-expr(`⊇(),expr-args(list(expr,expr^1)))>
+       | {expr '⊎' expr^1} <term-expr(`⊎(),expr-args(list(expr,expr^1)))>
+       | {expr '⊏' expr^1} <term-expr(`⊏(),expr-args(list(expr,expr^1)))>
+       | {expr '⊐' expr^1} <term-expr(`⊐(),expr-args(list(expr,expr^1)))>
+       | {expr '⊓' expr^1} <term-expr(`⊓(),expr-args(list(expr,expr^1)))>
+       | {expr '⊔' expr^1} <term-expr(`⊔(),expr-args(list(expr,expr^1)))>
+       | {expr '⋀' expr^1} <term-expr(`⋀(),expr-args(list(expr,expr^1)))>
+       | {expr '⋁' expr^1} <term-expr(`⋁(),expr-args(list(expr,expr^1)))>
+       | {expr '⋂' expr^1} <term-expr(`⋂(),expr-args(list(expr,expr^1)))>
+       | {expr '⋃' expr^1} <term-expr(`⋃(),expr-args(list(expr,expr^1)))>
+       | {expr '•' expr^1} <term-expr(`•(),expr-args(list(expr,expr^1)))>
+       | {expr '←' expr^1} <term-expr(`←(),expr-args(list(expr,expr^1)))>
+       | {expr '↑' expr^1} <term-expr(`↑(),expr-args(list(expr,expr^1)))>
+       | {expr '→' expr^1} <term-expr(`→(),expr-args(list(expr,expr^1)))>
+       | {expr '↓' expr^1} <term-expr(`↓(),expr-args(list(expr,expr^1)))>
+       | {expr '↝' expr^1} <term-expr(`↝(),expr-args(list(expr,expr^1)))>
+       | {expr '↦' expr^1} <term-expr(`↦(),expr-args(list(expr,expr^1)))>
+       | {expr '⇐' expr^1} <term-expr(`⇐(),expr-args(list(expr,expr^1)))>
+       | {expr '⇑' expr^1} <term-expr(`⇑(),expr-args(list(expr,expr^1)))>
+       | {expr '⇓' expr^1} <term-expr(`⇓(),expr-args(list(expr,expr^1)))>
+       | {expr '∇' expr^1} <term-expr(`∇(),expr-args(list(expr,expr^1)))>
+       | {expr '⊣' expr^1} <term-expr(`⊣(),expr-args(list(expr,expr^1)))>
+       | {expr '⊥' expr^1} <term-expr(`⊥(),expr-args(list(expr,expr^1)))>
+       | {expr '⊩' expr^1} <term-expr(`⊩(),expr-args(list(expr,expr^1)))>
+       | {expr '◯' expr^1} <term-expr(`◯(),expr-args(list(expr,expr^1)))>
+       | {expr '★' expr^1} <term-expr(`★(),expr-args(list(expr,expr^1)))>
+       | {expr '✠' expr^1} <term-expr(`✠(),expr-args(list(expr,expr^1)))>
+       | {expr '√' expr^1} <term-expr(`√(),expr-args(list(expr,expr^1)))>
        | {'NOT' expr} <unary-term-expr(not(),expr)>
        | {'~' expr} <unary-term-expr(`~(),expr)>
        | {'¬' expr} <unary-term-expr(`¬(),expr)>
@@ -476,6 +585,8 @@ expr ::= string <string-expr(string)>
        | {'<>' expr} <unary-term-expr(`\<\>(),expr)>
        | {'+' expr} <unary-term-expr(`+(),expr)>
        | {'-' expr} <unary-term-expr(`-(),expr)>
+       | {'√' expr} <unary-term-expr(`√(),expr)>
+       | {'◯' expr} <unary-term-expr(`◯(),expr)>
        | {expr '::' type-expr} <coercion(expr,type-coercion(type-expr))>
        | {'IF' expr^c 'THEN' expr^t
           {{'ELSIF' expr^ic 'THEN' expr^it} <elsif(expr^ic,expr^it)>}*
@@ -512,6 +623,8 @@ bracket-expr ::= {'(' {expr ** ','} ')'} <tuple-expr(expr*)>
 	       | {'《' {expr ** ','} '》'} <bracket-expr(《》(), btup(expr*))>
 	       | {'⌈' {expr ** ','} '⌉'} <bracket-expr(⌈⌉(), btup(expr*))>
 	       | {'⌊' {expr ** ','} '⌋'} <bracket-expr(⌊⌋(), btup(expr*))>
+	       | {'⌜' {expr ** ','} '⌝'} <bracket-expr(⌜⌝(), btup(expr*))>
+	       | {'⌞' {expr ** ','} '⌟'} <bracket-expr(⌞⌟(), btup(expr*))>
                % Following not easily done in Ergo
 	       % | {'∣' {expr ** ','} '∣'} <abs-brace-expr(expr*)>
 	       % | {'∥' {expr ** ','} '∥'} <par-brace-expr(expr*)>
@@ -659,23 +772,41 @@ opsym ::= '+' <`+()> | '-' <`-()> | '*' <`*()> | '/' <`\/()>
 	| '<=' <`\<=()> | '>' <`\>()> | '>=' <`\>=()>
 	| 'IFF' <iff()> | 'IMPLIES' <implies()> | 'WHEN' <when()>
 	| 'OR' <or()> | 'AND' <and()> | 'NOT' <not()> | '¬' <¬()> | '&' <`&()>
-	| '∧' <∧()> | '∨' <∨()> | '/\\' <`\/\\()> | '\\/' <`\\\/()> | '^' <`^()>
+	| '⇒' <⇒()> | '∧' <∧()> | '∨' <∨()>
+	| '/\\' <`\/\\()> | '\\/' <`\\\/()> | '^' <`^()>
 	% | '[]' <`\[\]()>
         | '□' <□()> | '◇' <◇()> | '<>' <`\<\>()> | '~' <`~()>
 	| '=>' <`=\>()> | '<=>' <`\<=\>()> | 'IF' <if()>
-	| 'TRUE' <true()> | 'FALSE' <false()> | 'O' <o()> | '∘' <∘()>
+	| 'TRUE' <true()> | 'FALSE' <false()> | 'O' <o()>
 	| 'XOR' <xor()> | 'ORELSE' <orelse()> | 'ANDTHEN' <andthen()>
 	| '++' <`++()> | '**' <`**()> | '//' <`\/\/()>
 	| '^^' <`\^\^()> | '<<' <`\<\<()> | '>>' <`\>\>()>
         | '<<=' <`\<\<=()> | '>>=' <`\>\>=()>
 	| '#' <`#()> 
 	| '@@' <`\@\@()> | '##' <`\#\#()> 
-	| '⊢' <⊢()> | '⊨' <⊨()> | '|-' <`\|-()> | '|=' <`\|=()> | '<|' <`\<\|()>
+	| '|-' <`\|-()> | '|=' <`\|=()> | '<|' <`\<\|()>
 	| '|>' <`\|\>()> | '[||]' <`\[\|\|\]()> | '(||)' <`\(\|\|\)()>
-        | '{||}' <`\{\|\|\}()> | '«»' <«»()> | '〈〉' <〈〉()> | '≦' <≦()>
-	| '≧' <≧()> | '←' <←()> | '≨' <≨()> | '≩' <≩()> | '≰' <≰()> | '≱' <≱()>
-	| '≯' <≯()> | '≁' <≁()> | '⊥' <⊥()> | '≺' <≺()> | '≻' <≻()>
-	| '⊕' <`⊕()> | '⊖' <`⊖()> | '⊗' <`⊗()> | '⊘' <`⊘()> | '⊙' <`⊙()>
+        | '{||}' <`\{\|\|\}()>
+	| '∘' <`∘()> | '⊕' <`⊕()> | '⊖' <`⊖()> | '⊗' <`⊗()> | '⊘' <`⊘()>
+	| '⊙' <`⊙()> | '⨁' <`⨁()> | '⨂' <`⨂()> | '⨀' <`⨀()>
+ 	| '⊢' <⊢()> | '⊨' <⊨()> | '±' <`±()> | '∓' <`∓()> | '∔' <`∔()>
+	| '×' <`×()> | '÷' <`÷()> | '⊞' <`⊞()> | '⊟' <`⊟()> | '⊠' <`⊠()>
+	| '≁' <`≁()> | '≃' <`≃()> | '≅' <`≅()> | '≇' <`≇()> | '≈' <`≈()>
+	| '≉' <`≉()> | '≍' <`≍()> | '≎' <`≎()> | '≏' <`≏()> | '≐' <`≐()>
+	| '≗' <`≗()> | '≙' <`≙()> | '≡' <`≡()> | '⋈' <`⋈()> | '≤' <`≤()>
+	| '≥' <`≥()> | '≦' <`≦()> | '≧' <`≧()> | '≨' <≨()> | '≩' <≩()>
+	| '≪' <≪()> | '≫' <≫()> | '≮' <≮()>| '≯' <≯()> | '≰' <≰()> | '≱' <≱()>
+	| '≺' <≺()> | '≻' <≻()> | '◁' <◁()> | '▷' <▷()> | '∈' <∈()>
+	| '∉' <∉()> | '∋' <∋()> | '∩' <∩()> | '∪' <∪()> | '⊂' <⊂()>
+	| '⊃' <⊃()> | '⊄' <⊄()> | '⊅' <⊅()> | '⊆' <⊆()> | '⊇' <⊇()>
+	| '⊎' <⊎()> | '⊏' <⊏()> | '⊐' <⊐()> | '⊓' <⊓()> | '⊔' <⊔()>
+	| '⋀' <⋀()> | '⋁' <⋁()> | '⋂' <⋂()> | '⋃' <⋃()> | '•' <•()>
+	| '←' <←()> | '↑' <↑()> | '→' <→()> | '↓' <↓()> | '↝' <↝()>
+	| '↦' <↦()> | '⇐' <⇐()> | '⇑' <⇑()> | '⇓' <⇓()>
+	| '⇔' <⇔()> | '∇' <∇()> | '⊣' <⊣()> | '⊥' <⊥()> | '⊩' <⊩()>
+	| '◯' <◯()> | '★' <★()> | '✠' <✠()> 
+	| '«»' <«»()> | '〈〉' <〈〉()> | '〚〛' <〚〛()> | '《》' <《》()>
+	| '⌈⌉' <⌈⌉()> | '⌊⌋' <⌊⌋()> | '⌜⌝' <⌜⌝()> | '⌞⌟' <⌞⌟()>
 	;
 
 semic ::= ';' <`;()> | '§' <`§()>;
