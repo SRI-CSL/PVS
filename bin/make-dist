@@ -128,7 +128,7 @@ pvssystemfiles="\
   lib/prelude.pvs lib/prelude.prf lib/list_adt.pvs \
   lib/ordstruct_adt.pvs lib/character_adt.pvs \
   lib/union_adt.pvs lib/lift_adt.pvs \
-  lib/pvs-language.help lib/pvs-prover.help lib/pvs.help \
+  lib/pvs-language.help lib/pvs-prover.help lib/pvs.help lib/pvs-unicode.help \
   lib/pvs.grammar lib/pvs.bnf wish/pvs-support.tcl \
   lib/pvs-style.css \
   doc/release-notes/pvs-release-notes.info \
