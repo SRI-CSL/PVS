@@ -47,7 +47,7 @@ booleans: THEORY
   bool: NONEMPTY_TYPE = boolean
   FALSE, TRUE: bool
   NOT, ¬: [bool -> bool]
-  AND, &, ∧, OR, ∨, IMPLIES, =>, WHEN, IFF, <=>: [bool, bool -> bool]
+  AND, &, ∧, OR, ∨, IMPLIES, =>, ⇒, WHEN, IFF, <=>, ⇔: [bool, bool -> bool]
 
  END booleans
 
