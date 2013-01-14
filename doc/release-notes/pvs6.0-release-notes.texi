@@ -1,0 +1,380 @@
+@node PVS 6.0 Release Notes
+@unnumbered PVS 6.0 Release Notes
+
+PVS 6.0 is a significant new release of PVS.  The highlights include
+declaration parameters, better numeric simplification, Unicode character
+support, and full integration of NASA packages.
+
+@ifnottex
+@menu
+* 6.0 Installation Notes::
+* 6.0 New Features::
+* 6.0 Incompatibilities::
+@end menu
+@end ifnottex
+
+@node    6.0 Installation Notes
+@section Installation Notes
+
+The system is installed as usual; see the download pages at
+@example
+@url{http://pvs.csl.sri.com/download.shtml}
+@end example
+We strongly suggest getting a pre-built Allegro version, unless you have
+concerns with the Allegro runtime click-though license, in which case get
+one of the SBCL Lisp images.  It is possible to build from sources, but it
+can be sensitive to the platform environment.  If you decide to try it and
+run into problems, let us know at @email{pvs-bugs@@csl.sri.com}.
+PVS 6.0 is built with Allegro CL 9.0 and SBCL 1.0.47.  It is available for
+Linux 32- and 64-bit machines, and Mac 64-bit.
+Note that because CMU Lisp lacks support for both 64-bit Linux and
+Unicode, we no longer provide that image.
+
+@node    6.0 New Features
+@section New Features
+
+@menu
+* Declaration Parameters::
+* Better Numeric Simplification::
+* Controlling Assert Post-processing::
+* Unicode Support::
+* Loading Patches::
+* PVSio-ProofLite-Field::
+* Theory Interpretation Changes::
+* finite_sets allowed in recursive types::
+* recursive-type-subterm strict_well_founded::
+@end menu
+
+@node Declaration Parameters
+@subsection Declaration Parameters
+PVS has theory level parameters, which allow generic theories to be
+defined.  They are very useful, and are used extensively, but there are
+situations where they are not so convenient.  In particular, because of
+the way that Why3 (@url{http://why3.lri.fr/}) generates
+theories, it was becoming increasingly difficult to support PVS.
+Declaration parameters solve these problems.
+
+@subsubsection Declaration Parameter Examples
+For example, the theory of groups may be introduced as
+@example
+groups[T: TYPE, *: [T,T -> T], one: T]: THEORY
+@end example
+Basic facts may be given, after which it is natural to define
+homomorphisms.  But to define these over two (possibly) distinct groups,
+the theory requires two sets of parameters, hence another theory:
+@example
+homomorphism_lemmas[T1: TYPE, *: [T1,T1 -> T1], one1: T1,
+                    T2: TYPE, o: [T2,T2 -> T2], one2: T2]: THEORY
+@end example
+This seemingly minor inconvenience is made much worse when stating
+that homomorphisms are associative, which now requires yet another theory
+with four sets of parameters.  At this point getting the parameters and
+importings right, while at the same time trying to follow a standard
+mathematical presentation of group theory becomes extremely difficult.
+
+PVS 6.0 solves this by providing declaration parameters.  These are
+similar to theory parameters in form, but their scope is just the
+associated declaration.  The following exemplifies this with a somewhat
+different formulation of groups.  Note that everything is within a single
+theory.  This is mostly for illustrative purposes, there are many possible
+representations of groups in PVS; choosing one depends on the use to be
+made of it.
+@example
+groups: theory
+begin
+ G[t: type+]: type+ from t
+ assocG[t: type+]: type = (associative?[G[t]])
+ idG[t: type+](op: assocG[t]): type = (identity?[G[t]](op))
+ inverseG?[t: type+](op: assocG[t], id: idG[t](op))
+                    (inv: [G[t] -> G[t]]): bool
+    = inverses?[G[t]](op)(inv)(id)
+ inverseG[t: type+](op: assocG[t], id: idG[t](op)): type
+    = (inverseG?(op, id))
+ +[t: type+]: assocG[t]
+ 0[t: type+]: idG[t](+[t])
+ -[t: type+]: inverseG[t](+[t], 0[t])
+
+ hom?[t1, t2: type+](h: [G[t1] -> G[t2]]): bool =
+   h(0) = 0 and
+   forall (a, b: G[t1]): h(a + b) = h(a) + h(b) and
+   forall (a: G[t1]): h(-a) = -h(a)
+
+ hom_is_assoc[t1, t2, t3, t4: type+]: lemma
+   forall (f: (hom?[t1, t2]), g: (hom?[t2, t3]), h: (hom?[t3, t4])):
+     h o (g o f) = (h o g) o f
+end groups
+@end example
+
+Currently declaration parameters are restricted to types, this will likely
+be extended in the future.  One of the Why3 examples is
+@example
+whyex: theory
+begin
+
+ ilist[t: type]: datatype
+  begin
+   inull: inull?
+   icons(icar: t, icdr: ilist): icons?
+  end ilist
+
+ length[t: type](l: ilist[t]): RECURSIVE nat =
+    CASES l OF
+      inull: 0,
+      icons(x, y): length(y) + 1
+    ENDCASES
+   MEASURE reduce_nat(0, (LAMBDA (x: t), (n: nat): n + 1))
+
+  inth[t: type](l: ilist[t], (n:below[length(l)])): RECURSIVE t =
+    IF n = 0 THEN icar(l) ELSE inth(icdr(l), n-1) ENDIF
+   MEASURE length(l)
+
+ mem[t: type](x: t, l: ilist[t]): recursive bool =
+   cases l of
+     inull: false,
+     icons(y, ll): x = y OR mem(x, ll)
+   endcases
+  measure length(l)
+
+ mem_inth[t: type]: lemma
+   forall (x: t, l: ilist[t]):
+     mem(x, l) iff (exists (n: below(length(l))): x = inth(l, n))
+  
+ sorted(l: ilist[int]): bool =
+   forall (n, m: below(length(l))): n < m => inth(l, n) <= inth(l, m)
+ sorted_mem: lemma
+   forall (x: int, l: ilist[int]):
+       (forall (y: int): mem[int](y, l) => x <= y)
+     & sorted(l) <=> sorted(icons(x, l))
+
+end whyex
+@end example
+Note that this defines a list datatype.  In the past, inline datatypes
+could not generate the @code{map} or @code{reduce} functions, as they
+needed extra theory parameters and had to generate external theories.
+With declaration parameters, this is not a problem, so these are generated
+inline.
+
+@subsubsection Declaration Parameter Details
+The parser has been modified to allow declarations to have an optional
+argument of exactly the form of theory parameters, except that (for now)
+importings, theory declarations, and constant declarations are not allowed.
+
+As declaration parameters are types, the PVS type checker can usually
+infer the types, as seen in the examples above.  Where it becomes
+ambiguous, names can include the parameters.  For example,
+@example
+th[t: TYPE]: THEORY
+BEGIN
+ f[s: TYPE](x: t): S
+END th
+@end example
+A reference to @code{f} may be unambiguous, if not, @code{f[int]} may
+work, but PVS will try the actuals as both theory and declaration
+parameters; if that doesn't work, then @code{f[int][int]} is allowed.  In
+this case, that would be equivalent to @code{th[int].f[int]}.  Empty
+brackets are allowed syntactically, but this hasn't been thoroughly
+tested.  The intention is that @code{f[][int]} means @code{f} must come
+from a theory with no parameters, while @code{f[int][]} means that
+@code{f} must have one parameter in its theory, and no declaration
+parameters.
+
+Most declarations allow these parameters, except for library declarations.
+However, most judgements will fail to match if they have declaration
+parameters, as the judgement mechanism uses a fairly simple matching
+algorithm to ensure it is fast.
+
+In mappings for theory interpretations, uninterpreted types and constants
+with declaration parameters must also include theory parameters, as shown
+in the following example
+@example
+monad: THEORY
+ BEGIN
+
+ m[a: TYPE+]: TYPE+
+
+ return[a: TYPE+]: [a -> m[a]]
+
+ >>=[a, b: TYPE+](x: m[a], f: [a -> m[b]]): m[b] % infix
+ >>=[a, b: TYPE+](x: m[a])(f: [a -> m[b]]): m[b] = x >>= f; % Curried
+
+ >>[a, b: TYPE+](x: m[a])(y: m[b]): m[b] = x >>= (lambda (z: a): y);
+
+ join[a: TYPE+](x: m[m[a]]): m[a] = x >>= id[m[a]]
+
+ bind_return[a, b: TYPE+]: AXIOM
+   FORALL (x: a, f: [a -> m[b]]): (return[a](x) >>= f) = f(x)
+
+ bind_ret2[a: TYPE+]: AXIOM
+   FORALL (x: m[a]): (x >>= return[a]) = x
+
+END monad
+
+Maybe[a: type]: datatype
+begin
+  Nothing: Nothing?
+  Just(Val: a): Just?
+end Maybe
+
+maybe: THEORY
+BEGIN
+ importing Maybe
+
+ bind[a, b: type](x:Maybe[a])(f: [a -> Maybe[b]]): Maybe[b]
+   = cases x of Nothing: Nothing, Just(y): f(y) endcases
+
+ mm: theory =
+      monad@{@{m[a: type] := Maybe[a],
+             return[a: type] := Just[a],
+             >>=[a, b: type](x:Maybe[a], f: [a -> Maybe[b]])
+                    := cases x of Nothing: Nothing,
+                                  Just(y): f(y) endcases
+            @}@}
+
+  f(x: int): Maybe[int] =
+      if rem(2)(x) = 0 then Nothing else Just(2 * x) endif
+  g(x: int): Maybe[int] =
+      if rem(3)(x) = 0 then Nothing else Just(3 * x) endif
+  h(x: int): Maybe[int] =
+      if rem(5)(x) = 0 then Nothing else Just(5 * x) endif
+  k(x: int): Maybe[int] = f(x) >>= g >>= h
+  k7: formula k(7) = Just(210)
+  k25: formula k(25) = Nothing
+ 
+end maybe
+@end example
+
+@node Better Numeric Simplification
+@subsection Better Numeric Simplification
+PVS 6.0 now includes better simplification as part of the prover
+assert command for all the four arithmetic operators (@code{+}, @code{-},
+@code{*}, and @code{*}).  A new numeric expression class was introduced to
+handle results that are not natural numbers, in particular negatives and
+rationals.  What this means is that subterms such as
+@code{(5 / 13 - 7 * 3)} get simplified to @code{-268/13}.  This can have a
+dramatic effect in speed and readability.
+
+Various adjustments were made to rewriting, matching, etc., in order to,
+for example, match the variables in @code{x / y} to the single rational
+number @code{-268/13}.  This is not perfect, and some proofs will likely
+need adjustment, depending on how much arithmetic is involved.
+
+@node Controlling Assert Post-processing
+@subsection Controlling Assert Post-processing
+
+The prover @code{assert} command by default checks all of the type
+predicates of any formula being asserted, as occasionally a contradiction
+is found - e.g., @code{even?(3)}.  In some cases (e.g., the Bernstein
+package of the NASA library), this check can take a significant amount of
+time, without finding a contradiction.  In such cases, @code{assert}
+will forgo the post-processing if the @code{ignore-typepreds?} flag is set
+to @code{t}.  This flag has been included in all prover commands that
+invoke @code{assert}.
+
+@node Unicode Support
+@subsection Unicode Support
+PVS 6.0 supports Unicode.  As the release notes are written in Texinfo,
+which does not support Unicode, the main documentation is in the PVS
+Unicode help file, @code{M-x help-pvs-unicode} (@code{C-c C-h u}).  Note
+that the help describes the Emacs input methods, but the point is PVS
+specifications may include Unicode, however they are edited.
+
+@node Loading Patches
+@subsection Loading Patches
+
+Patches are now loaded from files in @code{pvs-patches} subdirectories
+located in the @code{PVS_LIBRARY_PATH} and the PVS distribution @code{lib}
+(@code{M-x whereis-pvs} .  The files should have the form
+@code{patch-*.lisp}, where the @code{*} is usually a number (not
+required).  The @code{pvs-patches} subdirectories are searched in reverse
+order: thus the PVS distribution @code{pvs-patches} will be loaded first,
+and the patches in the first library appearing in @code{PVS_LIBRARY_PATH}
+will be loaded last.  This only matters in case of conflicting patches,
+and generally means that the patches in a given library override all
+following patches.
+
+From within a @code{pvs-patch} subdirectory the files are
+loaded in order of the numbers, if given, or the names.
+
+Note that this replaces the older patch mechanism - the @code{patchlevel}
+arguments are still allowed, but @code{none} or 0 mean load no patches and
+everything else is treated the same as the default and loads all patches.
+
+@node PVSio-ProofLite-Field
+@subsection PVSio, ProofLite, Field, and Manip
+NASA developed these packages, and PVSio was earlier integrated into PVS.
+Thanks to NASA, ProofLite, Field, and Manip packages are now integrated
+into PVS, and no longer need to be separately obtained and installed.  The
+documentation is included in the @code{doc} subdirectory of the PVS
+distribution: @code{PVSio-2.d.pdf}, @code{manip-guide.pdf},
+@code{extrategies.pdf} (for Field), and @code{ProofLite-4.2.pdf}.  Note
+that these may not reflect the integration, so ignore anything that
+mentions obtaining and installing the package.
+
+@node Theory Interpretation Changes
+@subsection Theory Interpretation Changes
+There are a significant number of changes to theory interpretations,
+mostly bug fixes and changes to handle declaration parameters.
+
+@node finite_sets allowed in recursive types
+@subsection Recursive types and @code{finite_sets}
+
+The (co)datatype mechanism has been modified to allow @code{finite_sets}
+in recursive types, i.e.,
+@example
+tree[t: TYPE]: DATATYPE
+BEGIN
+ leaf: leaf?
+ node(children: finite_set[tree]): node?
+END
+@end example
+Note that allowing @code{set[tree]} would cause problems, as the
+cardinality of the type of tree cannot be determined so there cannot be a
+set-theoretic semantics.  Finite sets cause no such problems.
+
+@node recursive-type-subterm strict_well_founded
+@subsection Datatype subterms
+The @code{<<} subterm relation generated for datatypes was declared to be
+well-founded, but it is actually also strict, i.e., irreflexive and
+transitive.  This property is often useful, and proving it for each
+instance of a datatype is inconvenient, so it was added to both the
+declaration and the axiom.
+
+
+@node    6.0 Incompatibilities
+@section Incompatibilities
+
+The changes in 6.0 lead to a number of incompatibilities, the impact is
+primarily in the proofs.  As usual, the best way to deal with possible
+incompatibilities is to make a copy of your specification directory, run
+PVS 6.0 on it, and for any proof that fails in ways that are not obvious,
+run the earlier version of PVS on the original directory in parallel.
+Start the proofs with @code{M-x step-proof} and use @code{TAB 1} to step
+through the two proofs, and look for differences.
+@itemize
+@item
+The handling of rationals tends to lead to smaller forms for arithmetic
+expressions (see the Bernstein library at
+@url{http://shemesh.larc.nasa.gov/fm/ftp/larc/PVS-library/} for
+examples where this is an issue).  In general, this makes proofs easier,
+but in some cases, a rewrite that worked in earlier versions no longer
+matches.  As the simplification only happens with an assert (or a strategy
+that invokes assert), it may be possible to modify the proof by delaying
+the assert.  Otherwise, it is always possible to use the lemma command to
+instantiate the formula directly, followed by replace - the
+@code{use} command may be useful here.
+@item
+The declaration parameters allows names to have up to two sets of
+parameters, i.e., @code{f[int][real]}, which would resolve to an
+@code{f} from a theory with a single type parameter, and it would itself
+have a single type parameter.  PVS also allows @code{f[real]}, and treats
+this ambiguously.  To be less ambiguous, PVS should allow, e.g.,
+@code{f[][real]}, which requires that the theory has no parameters.
+To support this, empty square brackets can no longer be an operator.
+This is somewhat mitigated by having Unicode available, so @code{\Box} and
+@code{\Diamond} can be used in place of @code{[]} and @code{<>}.
+@end itemize
+
+Most of the other incompatibilities are more obvious, and the proofs are
+easily repaired.  If you have difficulties understanding why a proof has
+failed, or want help fixing it, send it to PVS bugs
+@email{pvs-bugs@@csl.sri.com}.
