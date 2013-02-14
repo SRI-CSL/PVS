@@ -161,6 +161,9 @@ bind tighter.")
 	   (t (decf *print-right-margin* 4)
 	      (pp obj)))))
 
+(defun str (obj)
+  (unparse obj :string t))
+
 (defun unpindent (inst indent &key (width *default-char-width*)
 		       length level lines string comment?)
   (let* ((str (unparse inst
