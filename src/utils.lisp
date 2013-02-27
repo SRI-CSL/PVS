@@ -1386,8 +1386,10 @@
 		 (when gen
 		   (let ((frms (formals-sans-usings gen)))
 		     (cond ((length= acts frms)
-			    (mk-modname (id gen) (actuals inst)))
-			   (t (mk-modname (id gen) nil))))))
+			    (mk-modname (id gen) (actuals inst)
+					(library inst)))
+			   (t (mk-modname (id gen) nil
+					  (library inst)))))))
 	     (delete-if #'null
 			(list (adt-theory adt)
 			      (adt-map-theory adt)
@@ -1485,10 +1487,14 @@
 			      (module decl)
 			      decl))))
 	((typep decl '(or const-decl def-decl))
-	 (copy-list (subst-mod-params (def-axiom decl)
-				      (module-instance res)
-				      (module decl)
-				      decl)))
+	 (let ((subst-list (subst-mod-params (def-axiom decl)
+			       (module-instance res)
+			     (module decl)
+			     decl)))
+	   (assert (subsetp (freevars subst-list)
+			    (freevars (module-instance res))
+			    :test #'same-declaration))
+	   (copy-list subst-list)))
 	(t nil)))
 
 ;(defun create-formula (decl modinst num)
@@ -1543,6 +1549,7 @@
 	     (new-appl (make!-equation new-lhs new-rhs))
 	     (def-form (close-freevars new-appl *current-context*
 				       newbindings nil nil)))
+	(assert (null (freevars def-form)))
 	(assert (equation? (expression def-form)))
 	def-form)))
 
@@ -1889,6 +1896,9 @@
 (defmethod adt? ((te type-name))
   #+lucid (restore-adt te)
   (when (adt te)
+    (when (symbolp (adt te))
+      ;; May happen after restoring from bin files
+      (restore-adt-slot te))
     (change-class te 'adt-type-name
       'adt (adt te)
       'single-constructor? (singleton? (constructors (adt te))))
@@ -2163,6 +2173,9 @@
 
 (defmethod constructors ((tn type-name))
   (when (adt? tn)
+    (when (symbolp (adt tn))
+      ;; May happen after restoring from bin files
+      (restore-adt-slot tn))
     (mapcar #'(lambda (cd)
 		(mk-name-expr (id cd) nil nil
 			      (make-resolution cd (module-instance tn))))
