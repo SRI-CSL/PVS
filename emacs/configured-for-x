@@ -1,0 +1,10 @@
+:;exec $EMACS -batch -Q -l "$0" -- "$@"   ; -*-Emacs-Lisp-*-
+;; The :; allows this to be invoked as an executable script,
+;; $EMACS must be set, e.g.,
+;; [ `(export EMACS=/usr/bin/emacs; emacs/configured-for-x)` ] && echo OK
+;; This script is used by pvs to check if emacs was built for X
+;; Needed for the brain-dead Emacs that Mac provides
+(if (string-match "\\(--with-x=no\\|--without-x\\)"
+		  system-configuration-options)
+    (princ "")
+    (princ 1))
