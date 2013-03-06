@@ -315,6 +315,16 @@
     :generating-axiom axiom-decl
     :semi t))
 
+(defun mk-mapped-eq-def-tcc (id expr theory-instance dfmls)
+  (make-instance 'mapped-eq-def-tcc
+    :id id
+    :decl-formals dfmls
+    :spelling 'OBLIGATION
+    :kind 'tcc
+    :definition expr
+    :theory-instance theory-instance
+    :semi t))
+
 (defun mk-cases-tcc (id expr dfmls)
   (make-instance 'cases-tcc
     :id id
