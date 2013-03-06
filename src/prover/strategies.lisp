@@ -1865,6 +1865,9 @@ See also EXTENSIONALITY."
   "Applying extensionality")
 
 (defun ext-find-recognizer-subtype (lhs rhs)
+  (when (symbolp (adt (type lhs)))
+    ;; May happen after restoring from bin files
+    (restore-adt-slot (type lhs)))
   (dolist (c (constructors (adt (type lhs))))
     (let* ((rec (make!-recognizer-name-expr (recognizer c) (type lhs)))
 	   (lhs-rec (make!-application rec lhs)))
