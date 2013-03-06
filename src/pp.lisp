@@ -162,7 +162,7 @@ bind tighter.")
 	      (pp obj)))))
 
 (defun str (obj)
-  (unparse obj :string t))
+  (unparse obj :string t :char-width nil))
 
 (defun unpindent (inst indent &key (width *default-char-width*)
 		       length level lines string comment?)
