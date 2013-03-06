@@ -340,10 +340,10 @@
 (defmethod free-params* ((mi modname) frees)
   (with-slots (actuals dactuals mappings resolutions) mi
     (cond ((or actuals dactuals)
-	   ;; In this case, the theory is instantiated, but there may be
-	   ;; freevars in the actuals or mappings
-	   (let ((afrees (free-params* actuals nil))
-		 (dfrees (free-params* dactuals nil))
+	   ;; In this case, the theory is at least partially instantiated,
+	   ;; but there may be freevars in the actuals or mappings
+	   (let ((afrees (free-params-acts actuals mi))
+		 (dfrees (free-params-dacts dactuals))
 		 (mfrees (free-params* mappings nil)))
 	     (union mfrees (union dfrees (union afrees frees :test #'eq)
 				  :test #'eq)
@@ -401,8 +401,8 @@
   (declare (ignore type))
   (with-slots (actuals dactuals) mi
     (if (or actuals dactuals)
-	(let* ((afrees (free-params* actuals nil))
-	       (dafrees (free-params* dactuals nil))
+	(let* ((afrees (free-params-acts actuals mi))
+	       (dafrees (free-params-dacts dactuals))
 	       (ufrees (union dafrees (union afrees frees :test #'eq) :test #'eq)))
 	  ;;(assert (every #'(lambda (fp) (memq fp ufrees)) (free-params* type nil)))
 	  ufrees)
@@ -416,6 +416,20 @@
 	  (dolist (x (decl-formals decl))
 	    (setq frees (pushnew x frees :test #'eq)))
 	  frees))))
+
+(defun free-params-acts (actuals mi)
+  (if actuals
+      (free-params* actuals nil)
+      (let ((theory (get-theory mi)))
+	(assert theory ()
+		"free-params: get-theory failed for ~a" mi)
+	(formals-sans-usings theory))))
+
+(defun free-params-dacts (dactuals)
+  (if dactuals
+      (free-params* dactuals nil)
+      (unless (null (current-declaration))
+	(decl-formals (current-declaration)))))
 
 (defmethod free-params-res ((theory module) (mi modname) type frees)
   (declare (ignore type))
