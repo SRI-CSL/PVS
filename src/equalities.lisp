@@ -2183,8 +2183,11 @@
 	     (subsetp preds2 preds1 :test #'tc-eq)))))
 
 (defmethod subtype-of*? ((t1 adt-type-name) (t2 subtype))
-  (and (adt t1)
-       (singleton? (constructors (adt t1)))
+  (when (adt t1)
+    (when (symbolp (adt t1))
+      ;; May happen after restoring from bin files
+      (restore-adt-slot t1)))
+  (and (singleton? (constructors (adt t1)))
        (tc-eq t1 (supertype t2))
        (recognizer-name-expr? (predicate t2))))
 
