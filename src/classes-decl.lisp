@@ -597,6 +597,8 @@
   theory-instance
   (generating-axiom :restore-as nil))
 
+(defcl mapped-eq-def-tcc (tcc-decl))
+
 (defcl cases-tcc (tcc-decl))
 
 (defcl well-founded-tcc (tcc-decl))
