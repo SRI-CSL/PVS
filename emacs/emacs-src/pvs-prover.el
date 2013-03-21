@@ -1357,24 +1357,23 @@ through using the edit-proof command."
       (when (get-buffer "Proof")
 	(kill-buffer "Proof"))
       (set-proof-script-font-lock-keywords)
-      (setq xxx (or fname theory))
       (pvs-send-and-wait
        (format "(edit-proof-at \"%s\" %s %d \"%s\" \"%s\" %d %s)"
 	   (or fname theory) fmlastr (+ line poff) kind buf poff
 	   (and current-prefix-arg t))
-       nil 'EditProof 'dont-care))
-    (when (get-buffer "Proof")
-      (pop-to-buffer (get-buffer "Proof"))
-      (fix-edit-proof-comments)
-      (setq buffer-modified-p nil)
-      (goto-char (point-min))
-      (pvs-prover-goto-next-step)
-      (hilit-next-prover-command))
-    (ilisp-send
-     (format "(lisp (prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s))"
-	 (or fname theory) fmlastr (+ line poff) nil kind buf poff nil
-	 pvs-x-show-proofs)
-     nil 'pr t)))
+       nil 'EditProof 'dont-care)
+      (when (get-buffer "Proof")
+	(pop-to-buffer (get-buffer "Proof"))
+	(fix-edit-proof-comments)
+	(setq buffer-modified-p nil)
+	(goto-char (point-min))
+	(pvs-prover-goto-next-step)
+	(hilit-next-prover-command))
+      (ilisp-send
+       (format "(lisp (prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s))"
+	   (or fname theory) fmlastr (+ line poff) nil kind buf poff nil
+	   pvs-x-show-proofs)
+       nil 'pr t))))
 
 (defpvs x-step-proof prove ()
   "Starts the prover, the proof-stepper and the proof display
