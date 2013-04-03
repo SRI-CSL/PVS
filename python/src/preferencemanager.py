@@ -1,6 +1,7 @@
 import pickle
 import common
 import os.path, os
+import utility
 
 log = common.getLogger(__name__)
 
@@ -13,6 +14,7 @@ class PreferenceManager:
     FILESBUFFERSTREES = "FilesBuffersTrees"
     PROOFTREE = "ProofTree"
     PVSLOCATION = "PVSLocation"
+    OPENFILES = "OpenFiles"
     
     def __init__(self):
         filename = os.getenv("HOME") + PreferenceManager.PREFERENCEFILE
@@ -24,7 +26,8 @@ class PreferenceManager:
             self.preferences[PreferenceManager.RESTORECONTEXT] = True
             self.preferences[PreferenceManager.FILESBUFFERSTREES] = True
             self.preferences[PreferenceManager.PROOFTREE] = True
-            self.preferences[PreferenceManager.PVSLOCATION] = "/Applications/pvs-5.0-ix86-MacOSX-allegro/" 
+            self.preferences[PreferenceManager.PVSLOCATION] = "/Users/saadati/projects/pvs/" 
+            self.preferences[PreferenceManager.OPENFILES] = []
             self.savePreferences()
         
     def loadPreferences(self):
@@ -53,8 +56,11 @@ class PreferenceManager:
     def getContext(self):
         return self.preferences[PreferenceManager.CONTEXT]
     
+    def setPVSLocation(self, location):
+        self.preferences[PreferenceManager.PVSLOCATION] = utility.normalizePath(location)
+    
     def setContext(self, context):
-        self.preferences[PreferenceManager.CONTEXT] = context
+        self.preferences[PreferenceManager.CONTEXT] = utility.normalizePath(context)
     
     def visibleFilesBuffersTrees(self):
         return self.preferences[PreferenceManager.FILESBUFFERSTREES]
@@ -67,4 +73,12 @@ class PreferenceManager:
     
     def setProofTree(self, value):
         self.preferences[PreferenceManager.PROOFTREE] = value
-    
+        
+    def fileOpened(self, fullname):
+        self.preferences[PreferenceManager.OPENFILES].append(fullname)
+        
+    def fileClosed(self, fullname):
+        self.preferences[PreferenceManager.OPENFILES].remove(fullname)
+        
+    def listofOpenFiles(self):
+        return self.preferences[PreferenceManager.OPENFILES]

@@ -3,10 +3,11 @@
 
 
 import wx
-from constants import IMAGE_FOLDER
+import constants
+import os.path
 
 def getBitmap(filename):
-    return wx.Bitmap(IMAGE_FOLDER + filename, wx.BITMAP_TYPE_ANY)
+    return wx.Bitmap(os.path.join(constants.IMAGE_FOLDER_PATH, filename), wx.BITMAP_TYPE_ANY)
 
 def getFolderImage():
     return getBitmap("folder.gif")

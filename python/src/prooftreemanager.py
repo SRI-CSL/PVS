@@ -1,8 +1,9 @@
 import wx
-import config
+import common
 
 class ProofTreeManager(wx.Frame):
-
+    """This class manages the proof tree"""
+    
     title = "Proof Tree"
 
     def __init__(self):
@@ -20,8 +21,8 @@ class ProofTreeManager(wx.Frame):
     def OnClose(self, event):
         if event.CanVeto():
             self.Hide()
-            config.preference.setProofTree(False)
-            config.menubar.proofTree.Check(False)
+            common.preference.setProofTree(False)
+            common.menubar.proofTree.Check(False)
             event.Veto()
         else:
             #if we don't veto it we allow the event to propogate

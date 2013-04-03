@@ -130,7 +130,10 @@ def onTypecheck(event):  # wxGlade: PVSMainFrame.<event_handler>
     #event.Skip()
 
 def onSetPVSLocation(event):  # wxGlade: PVSMainFrame.<event_handler>
-    log.info("Event handler `onSetPVSLocation' not implemented!")
+    newLocation = ui.dialogs.chooseDirectory("Select the PVS directory", common.preference.getPVSLocation())
+    if newLocation != None:
+        common.preference.setPVSLocation(newLocation)
+        log.info("New PVS location is set to %s", newLocation)
     #event.Skip()
 
 def onSaveFileAs(event):  # wxGlade: PVSMainFrame.<event_handler>
