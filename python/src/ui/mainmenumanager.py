@@ -69,6 +69,7 @@ class MainFrameMenu(wx.MenuBar):
         common.frame.Bind(wx.EVT_MENU, onSaveAsFile, self.saveFileAsMenuItem)
         common.frame.Bind(wx.EVT_MENU, onCloseFile, self.closeFileMenuItem)
         common.frame.Bind(wx.EVT_MENU, onQuitFrame, self.quitMenuItem)
+        
         common.frame.Bind(wx.EVT_MENU, onUndo, self.undoMenuItem)
         common.frame.Bind(wx.EVT_MENU, onSelectAll, self.selectAllMenuItem)
         common.frame.Bind(wx.EVT_MENU, onCutText, self.cutMenuItem)

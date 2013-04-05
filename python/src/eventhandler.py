@@ -33,9 +33,6 @@ def onCloseFile(event):  # wxGlade: PVSMainFrame.<event_handler>
     common.filesbuffermanager.closeFile()
     
 def onQuitFrame(event):  # wxGlade: PVSMainFrame.<event_handler>
-    if common.runner != None:
-        common.runner.terminate()
-        common.runner = None
     common.frame.Close()
 
 def onUndo(event):  # wxGlade: PVSMainFrame.<event_handler>

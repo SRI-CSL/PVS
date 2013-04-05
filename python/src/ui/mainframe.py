@@ -192,11 +192,12 @@ class MainFrame(wx.Frame):
             log.error("openFiles is a negative number: %d", openFiles)
             
     def OnClose(self, event):
+        # TODO: if they are unsaved files, ask the user to save them
         if common.runner != None:
             common.runner.terminate()
-        common.preference.savePreferences()
+            common.runner = None
+        common.preference.saveContextPreferences()
+        common.preference.saveGlobalPreferences()
         event.Skip()
-
-
 
         
