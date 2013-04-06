@@ -213,10 +213,13 @@ print object produces an error, and won't allow inspection of the object.")
 	(unparse name :stream stream))))
 
 (defun resolution-string (res)
-  (format nil "~@<~@[~a@~]~a~@[~I~<[~;~@{~W~^, ~:_~}~;]~:>~]~@[~I~<{{~;~@{~W~^, ~:_~}~;}}~:>~]~@[.~a~]~:>"
+  (format nil "~@<~@[~a@~]~a~@[~I~<[~;~@{~W~^, ~:_~}~;]~:>~]~
+               ~@[~I~<[~;~@{~W~^, ~:_~}~;]~:>~]~
+               ~@[~I~<{{~;~@{~W~^, ~:_~}~;}}~:>~]~@[.~a~]~:>"
     (and (module-instance res) (library (module-instance res)))
     (and (module-instance res) (id (module-instance res)))
     (and (module-instance res) (actuals (module-instance res)))
+    (and (module-instance res) (dactuals (module-instance res)))
     (and (module-instance res) (mappings (module-instance res)))
     (when (declaration res) (id (declaration res)))
     (when (declaration res)
