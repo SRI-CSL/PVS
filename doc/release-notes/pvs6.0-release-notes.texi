@@ -165,7 +165,7 @@ ambiguous, names can include the parameters.  For example,
 @example
 th[t: TYPE]: THEORY
 BEGIN
- f[s: TYPE](x: t): S
+ f[s: TYPE](x: t): s
 END th
 @end example
 A reference to @code{f} may be unambiguous, if not, @code{f[int]} may
@@ -262,13 +262,20 @@ need adjustment, depending on how much arithmetic is involved.
 @subsection Controlling Assert Post-processing
 
 The prover @code{assert} command by default checks all of the type
-predicates of any formula being asserted, as occasionally a contradiction
-is found - e.g., @code{even?(3)}.  In some cases (e.g., the Bernstein
-package of the NASA library), this check can take a significant amount of
-time, without finding a contradiction.  In such cases, @code{assert}
-will forgo the post-processing if the @code{ignore-typepreds?} flag is set
-to @code{t}.  This flag has been included in all prover commands that
-invoke @code{assert}.
+predicates of any formula being asserted, as very occasionally a
+contradiction is found - e.g., @code{even?(3)}.  In rare cases (e.g.,
+proofs within the Bernstein package of the NASA library), this check can
+take a significant amount of time, even though there are no
+contradictions.  The @code{assert} command now includes an
+@code{ignore-typepreds?} flag to address this.  By default @code{assert}
+works as before but if it is taking an inordinate amount of time, it may
+be worth setting this flag to @code{t}, in which case it will forgo the
+checks.  Note that this is not unsound as any contradiction will be
+detected in later processing, but it may delay detection and thereby make
+it more difficult to pinpoint the cause.
+
+The @code{ignore-typepreds?} flag has been included in all PVS prover
+commands that invoke @code{assert}.
 
 @node Unicode Support
 @subsection Unicode Support
@@ -283,7 +290,7 @@ specifications may include Unicode, however they are edited.
 
 Patches are now loaded from files in @code{pvs-patches} subdirectories
 located in the @code{PVS_LIBRARY_PATH} and the PVS distribution @code{lib}
-(@code{M-x whereis-pvs} .  The files should have the form
+(@code{M-x whereis-pvs}).  The files should have the form
 @code{patch-*.lisp}, where the @code{*} is usually a number (not
 required).  The @code{pvs-patches} subdirectories are searched in reverse
 order: thus the PVS distribution @code{pvs-patches} will be loaded first,

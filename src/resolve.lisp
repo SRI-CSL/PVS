@@ -490,11 +490,11 @@
 	(when (and dparams
 		   (length= dacts dparams)
 		   (length= acts (formals-sans-usings dth)))
-	  (let* ((thinsts (resolve-theory-actuals decl acts dth args mappings))
+	  (let* ((thinsts (resolve-theory-actuals decl acts dacts dth args mappings))
 		 (reses (resolve-decl-actuals decl dacts thinsts args)))
 	    reses))
 	(let ((thinsts (when (length= acts (formals-sans-usings dth))
-			 (resolve-theory-actuals decl acts dth args mappings)))
+			 (resolve-theory-actuals decl acts dacts dth args mappings)))
 	      (dreses (when (and (decl-formals decl)
 				 (length= acts dparams))
 			(resolve-decl-actuals
@@ -508,7 +508,7 @@
 		    thinsts)
 		  dreses)))))
 
-(defun resolve-theory-actuals (decl acts dth args mappings)
+(defun resolve-theory-actuals (decl acts dacts dth args mappings)
   (let* ((thinsts (get-importings dth))
 	 (genthinst (find-if-not #'actuals thinsts)))
     (if genthinst
@@ -519,6 +519,10 @@
 			(id dth) nacts (library genthinst))))
 	       (*generate-tccs* 'none))
 	  (when dthi
+	    (when dacts
+	      (setf (dactuals dthi) dacts)
+	      (let ((res (mk-resolution decl nil nil)))
+		(setf (resolutions dthi) (list res))))
 	    (set-type-actuals-and-maps dthi dth)
 	    #+pvsdebug (assert (fully-typed? dthi))
 	    (when (and (compatible-arguments? decl dthi args

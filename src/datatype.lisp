@@ -724,8 +724,17 @@ generated")
 					(occurs-positively? (type ff) adt)))
 		  (formals-sans-usings (current-theory))))))
 
-(defun non-recursive-constructor (c adt)
-  (not (some #'(lambda (a) (id-occurs-in (id (adt-type-name adt)) (type a)))
+(defmethod non-recursive-constructor (c adt)
+  (not (some #'(lambda (a)
+		 (id-occurs-in (id (adt-type-name adt)) (type a)))
+	     (arguments c))))
+
+(defmethod non-recursive-constructor (c (adt recursive-type-with-subtypes))
+  (not (some #'(lambda (a)
+		 (or (id-occurs-in (id (adt-type-name adt)) (type a))
+		     (some #'(lambda (st)
+			       (id-occurs-in (id st) (type a)))
+			   (subtypes adt))))
 	     (arguments c))))
 
 (defun generate-adt-formals (adt)
@@ -2126,35 +2135,42 @@ generated")
 			   (constructors adt))
 			 nil)))
 	     (ptypes2 (subst-adt-type (positive-types adt) thinst2 adt))
-	     (fargs2 (when (datatype? adt)
-		       (list (mapcar #'mk-arg-bind-decl
-			       (mapcar #'id pvars)
-			       (mapcar #'(lambda (pty)
-					   (mk-type-name 'PRED
-					     (list (mk-actual pty))))
-				 ptypes2))
-			     (list (mk-arg-bind-decl (id avar) atype2)))))
-	     (decl2 (when (datatype? adt)
-		      (mk-adt-def-decl function-id
-			:type (copy *boolean*)
-			:formals (append (apply #'append (butlast fargs2))
-					 (car (last fargs2)))
-			:decl-formals dfmls2)))
-	     (cases2 (when (datatype? adt)
-		       (with-current-decl decl2
-			   (mk-cases-expr avar
-			     (mapcar #'(lambda (c)
-					 (generate-adt-predicate-selection
-					  c pvars ptypes2 adt function-id thinst2 nil))
-			       (constructors adt))
-			     nil)))))
+	     (fargs2 (list (mapcar #'mk-arg-bind-decl
+			     (mapcar #'id pvars)
+			     (mapcar #'(lambda (pty)
+					 (mk-type-name 'PRED
+					   (list (mk-actual pty))))
+			       ptypes2))
+			   (list (mk-arg-bind-decl (id avar) atype2))))
+	     (decl2 (if (datatype? adt)
+			(mk-adt-def-decl function-id
+			  :type (copy *boolean*)
+			  :formals (append (apply #'append (butlast fargs2))
+					   (car (last fargs2)))
+			  :decl-formals dfmls2)
+			(if (eq function-id '|every|)
+			    (mk-coinductive-decl
+			     function-id (copy *boolean*)
+			     nil (append (apply #'append (butlast fargs2))
+					 (car (last fargs2))))
+			    (mk-inductive-decl
+			     function-id (copy *boolean*)
+			     nil (append (apply #'append (butlast fargs2))
+					 (car (last fargs2)))))))
+	     (cases2 (with-current-decl decl2
+		       (mk-cases-expr avar
+			 (mapcar #'(lambda (c)
+				     (generate-adt-predicate-selection
+				      c pvars ptypes2 adt function-id thinst2 nil))
+			   (constructors adt))
+			 nil))
+			 ))
 	;; Curried form
 	(setf (definition decl1) (parse-unparse cases1))
 	(typecheck-adt-decl decl1)
 	;; Uncurried form
-	(when (datatype? adt)
-	  (setf (definition decl2) (parse-unparse cases2))
-	  (typecheck-adt-decl decl2))))))
+	(setf (definition decl2) (parse-unparse cases2))
+	(typecheck-adt-decl decl2)))))
 
 (defun generate-adt-predicate-variables (adt)
   (let ((ptypes (positive-types adt)))
@@ -3880,15 +3896,18 @@ generated")
        (cons (gen-adt-reduce-bindings** (arguments (car constructors)) thinst)
 	     bindings))))
 
-(defun gen-adt-reduce-bindings** (accessors thinst &optional bindings)
+(defun gen-adt-reduce-bindings** (accessors thinst &optional bindings alist)
   (if (null accessors)
       (nreverse bindings)
       (let* ((acc (car accessors))
 	     (adecl (accessor-decl acc))
 	     (binding (bind-decl acc))
-	     (nbinding (gen-adt-reduce-binding binding thinst adecl)))
+	     (sbinding (lcopy binding
+			 :type (substit (type binding) alist)
+			 :declared-type (substit (declared-type binding) alist)))
+	     (nbinding (gen-adt-reduce-binding sbinding thinst adecl)))
 	(gen-adt-reduce-bindings**
-	 (cdr accessors) thinst (cons nbinding bindings)))))
+	 (cdr accessors) thinst (cons nbinding bindings) (acons binding nbinding alist)))))
 
 (defun gen-adt-reduce-binding (binding thinst adecl)
   (subst-mod-params binding thinst (module adecl) adecl))
@@ -3960,18 +3979,7 @@ generated")
 					       (current-theory-name)
 					       (type b) (accessor-decl a))))
 		     bindings (arguments c)))
-	     (args (mapcar #'(lambda (v fd)
-			       (acc-reduce-selection
-				v (type v) red fname
-				(if (typep fd 'dep-binding)
-				    (type fd)
-				    fd)
-				(if adtinst
-				    (subst-mod-params (adt-type-name adt) adtinst
-				      (adt-theory adt)
-				      (declaration (adt-type-name adt)))
-				    (adt-type-name adt))))
-		     vars fdom)))
+	     (args (acc-reduce-selections adt red fname bindings vars fdom adtinst)))
 	(mk-selection (mk-name-expr (id c))
 	  bindings
 	  (mk-application* (makesym "~a_fun" (op-to-id (recognizer c)))
@@ -3986,6 +3994,29 @@ generated")
 					 (op-to-id (recognizer c))))
 		(copy avar))
 	      (mk-name-expr (makesym "~a_fun" (op-to-id (recognizer c))))))))
+
+(defun acc-reduce-selections (adt red fname bindings vars fdom adtinst &optional args)
+  (if (null vars)
+      (nreverse args)
+      (let* ((bd (car bindings))
+	     (v (car vars))
+	     (fd (car fdom))
+	     (arg (acc-reduce-selection
+		   v (type v) red fname
+		   (if (typep fd 'dep-binding)
+		       (type fd)
+		       fd)
+		   (if adtinst
+		       (subst-mod-params (adt-type-name adt) adtinst
+			 (adt-theory adt)
+			 (declaration (adt-type-name adt)))
+		       (adt-type-name adt)))))
+	(acc-reduce-selections adt red fname (cdr bindings) (cdr vars)
+			       (if (typep fd 'dep-binding)
+				   (substit (cdr fdom) (acons fd v nil))
+				   (cdr fdom))
+			       adtinst
+			       (cons arg args)))))
 
 (defun gen-adt-reduce-selection-bindings (args adtinst
 					       &optional bindings alist)
@@ -4159,6 +4190,7 @@ generated")
 			       (sel-expr (make-instance 'injection-application
 					   :id (makesym "IN_~d" num)
 					   :index num
+					   :actuals (list (mk-actual fdom))
 					   :argument (mk-application fun
 						       var))))
 			  (mk-selection in-expr (list bd) sel-expr)))
@@ -4301,9 +4333,9 @@ generated")
 					    :index num))
 				 (sel-expr (make-instance 'injection-application
 					     :id (makesym "IN_~d" num)
+					     :actuals (list (mk-actual fdom))
 					     :index num
-					     :argument (mk-application fun
-							 var))))
+					     :argument (mk-application fun var))))
 			    (mk-selection in-expr (list bd) sel-expr)))
 		funs (types te)))
 	    nil)))))

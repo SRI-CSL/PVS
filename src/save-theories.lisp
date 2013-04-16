@@ -1312,7 +1312,7 @@
     (assert (not (store-print-type? tval)))
     (let* ((type-expr (if (actuals thinst)
 			  (let ((*pseudo-normalizing* t)) ;; disallow pseudo-normalize
-			    (subst-mod-params tval thinst (module decl)))
+			    (subst-mod-params tval thinst (module decl) decl))
 			  (copy tval 'print-type te))))
       #+pvsdebug (assert (or (print-type type-expr) (tc-eq te type-expr)))
       #+pvsdebug (assert (true-type-expr? type-expr))
@@ -1329,23 +1329,24 @@
   (let* ((res (resolution (type te)))
 	 (decl (declaration res))
 	 (thinst (module-instance res)))
-    (restore-object* (actuals thinst))
-    (let* ((mtype-expr (if (actuals thinst)
-			   (let ((*pseudo-normalizing* t)) ;; disallow pseudo-normalize
-			     (subst-mod-params (type-value decl) thinst
-			       (module decl)))
-			   (type-value decl)))
-	   (type-expr (if (every #'(lambda (x y)
-				     (and (name-expr? y)
-					  (eq (declaration y) x)))
-				 (car (formals decl)) (parameters te))
-			  mtype-expr
-			  (substit mtype-expr
-			    (pairlis (car (formals decl)) (parameters te))))))
-      #+pvsdebug (assert (true-type-expr? type-expr))
-      (with-slots (print-type) type-expr
-	(setf print-type te))
-      type-expr)))
+    (with-current-decl decl
+      (restore-object* (actuals thinst))
+      (let* ((mtype-expr (if (actuals thinst)
+			     (let ((*pseudo-normalizing* t)) ;; disallow pseudo-normalize
+			       (subst-mod-params (type-value decl) thinst
+				 (module decl) decl))
+			     (type-value decl)))
+	     (type-expr (if (every #'(lambda (x y)
+				       (and (name-expr? y)
+					    (eq (declaration y) x)))
+				   (car (formals decl)) (parameters te))
+			    mtype-expr
+			    (substit mtype-expr
+			      (pairlis (car (formals decl)) (parameters te))))))
+	#+pvsdebug (assert (true-type-expr? type-expr))
+	(with-slots (print-type) type-expr
+	  (setf print-type te))
+	type-expr))))
 
 (defmethod print-type-correct? ((te type-expr))
   (or (null (print-type te))

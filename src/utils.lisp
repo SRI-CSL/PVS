@@ -382,14 +382,14 @@
 
 #+lucid
 (defun chmod (prot file)
-  (run-program "chmod"
+  (run-program "/bin/chmod"
 	       :arguments (list prot (namestring file))
 	       :output "/dev/null"
 	       :if-output-exists nil))
 
 #+allegro
 (defun chmod (prot file)
-  (excl:run-shell-command (format nil "chmod ~a ~a" prot (namestring file))
+  (excl:run-shell-command (format nil "/bin/chmod ~a ~a" prot (namestring file))
 			  :output "/dev/null"
 			  :if-output-exists :append
 			  :error-output "/dev/null"
@@ -398,7 +398,7 @@
 #+harlequin-common-lisp
 (defun chmod (prot file)
   (foreign:call-system-showing-output
-   (format nil "chmod ~a ~a" prot (namestring file))
+   (format nil "/bin/chmod ~a ~a" prot (namestring file))
    :prefix nil
    :show-cmd nil
    :output-stream (open "/dev/null" :direction :output
@@ -406,20 +406,20 @@
 #+cmu
 (defun chmod (prot file)
   (extensions:run-program
-   "chmod"
+   "/bin/chmod"
    (list prot (namestring file))
    :output nil :error nil :wait nil))
 
 #+sbcl
 (defun chmod (prot file)
   (sb-ext:run-program
-   "chmod"
+   "/bin/chmod"
    (list prot (namestring file))
    :output nil :error nil :wait nil))
 
 #+gcl
 (defun chmod (prot file)
-  (system (format nil "chmod ~a ~a" prot (namestring file))))
+  (system (format nil "/bin/chmod ~a ~a" prot (namestring file))))
 
 (defun pvs-current-directory ()
   (if (file-exists-p *pvs-context-path*)
@@ -543,14 +543,24 @@
 	    ))))
 
 (defun get-current-imported-theories (id)
-  (when *current-context*
-    (let ((theories nil))
-      (map-lhash #'(lambda (x y)
-		     (declare (ignore y))
-		     (when (eq (id x) id)
-		       (push x theories)))
-		 (current-using-hash))
-      theories)))
+  (let* ((idstr (string id))
+	 (idlen (length idstr)))
+    (when *current-context*
+      (let ((theories nil))
+	(map-lhash #'(lambda (x y)
+		       (declare (ignore y))
+		       (if (eq (id x) id)
+			   (push x theories)
+			   (when (and (library-rectype-theory? x)
+				      (let ((len (length (string (id x)))))
+					(and (< idlen len)
+					     (string= id (id x) :end2 idlen))))
+			     (let* ((lib (libref-to-libid (lib-ref x)))
+				    (adt (get-theory* id lib)))
+			       (assert adt () "Should have found adt")
+			       (pushnew adt theories :test #'eq)))))
+		   (current-using-hash))
+	theories))))
 
 (defun get-imported-theories (id)
   (let ((theories nil))
@@ -1386,8 +1396,10 @@
 		 (when gen
 		   (let ((frms (formals-sans-usings gen)))
 		     (cond ((length= acts frms)
-			    (mk-modname (id gen) (actuals inst)))
-			   (t (mk-modname (id gen) nil))))))
+			    (mk-modname (id gen) (actuals inst)
+					(library inst)))
+			   (t (mk-modname (id gen) nil
+					  (library inst)))))))
 	     (delete-if #'null
 			(list (adt-theory adt)
 			      (adt-map-theory adt)
@@ -1485,10 +1497,14 @@
 			      (module decl)
 			      decl))))
 	((typep decl '(or const-decl def-decl))
-	 (copy-list (subst-mod-params (def-axiom decl)
-				      (module-instance res)
-				      (module decl)
-				      decl)))
+	 (let ((subst-list (subst-mod-params (def-axiom decl)
+			       (module-instance res)
+			     (module decl)
+			     decl)))
+	   (assert (subsetp (freevars subst-list)
+			    (freevars (module-instance res))
+			    :test #'same-declaration))
+	   (copy-list subst-list)))
 	(t nil)))
 
 ;(defun create-formula (decl modinst num)
@@ -1543,6 +1559,7 @@
 	     (new-appl (make!-equation new-lhs new-rhs))
 	     (def-form (close-freevars new-appl *current-context*
 				       newbindings nil nil)))
+	(assert (null (freevars def-form)))
 	(assert (equation? (expression def-form)))
 	def-form)))
 
@@ -1889,6 +1906,9 @@
 (defmethod adt? ((te type-name))
   #+lucid (restore-adt te)
   (when (adt te)
+    (when (symbolp (adt te))
+      ;; May happen after restoring from bin files
+      (restore-adt-slot te))
     (change-class te 'adt-type-name
       'adt (adt te)
       'single-constructor? (singleton? (constructors (adt te))))
@@ -1924,7 +1944,17 @@
 					(typep (type-expr d) 'recursive-type)))
 			(all-decls (module (declaration te))))))
 	(when enumtype
-	  (type-expr enumtype)))))
+	  (type-expr enumtype)))
+      (let* ((adt-id (makesym "~a_adt" (id te)))
+	     (adt (get-theory adt-id))
+	     (dt (if adt
+		     (if (lib-ref adt)
+			 (get-theory* (id te)
+				      (libref-to-libid (lib-ref adt)))
+			 (break "get-adt-slot-value: no lib-ref"))
+		     (break "get-adt-slot-value: no adt"))))
+	(and (recursive-type? dt) dt))
+      (break "Can't restore")))
 
 (defun enum-adt? (te)
   (and (adt? te)(enumtype? (adt te))))
@@ -2163,6 +2193,9 @@
 
 (defmethod constructors ((tn type-name))
   (when (adt? tn)
+    (when (symbolp (adt tn))
+      ;; May happen after restoring from bin files
+      (restore-adt-slot tn))
     (mapcar #'(lambda (cd)
 		(mk-name-expr (id cd) nil nil
 			      (make-resolution cd (module-instance tn))))

@@ -256,6 +256,12 @@ case $opsys in
 	    *) PVSARCH=`uname -p`;;
 	  esac
           opsys=MacOSX
+	  # Hack for emacs on Mac - /usr/bin/emacs doesn't support X
+	  # but if X is enabled, then DISPLAY env var is set
+	  if [ ! `(export EMACS=$PVSEMACS; $PVSPATH/emacs/configured-for-x)` ]
+	  then nowin=1
+	    echo "$PVSEMACS does not support X; running in terminal mode"
+	  fi
           #majvers=`uname -r | cut -d"." -f1`
 	  majvers=
 	  ;;
