@@ -3,14 +3,13 @@
 # by managing the tree represenation of files and buffers
 # and the tabs that contain open files and editor.
 
-from pvsfile import PVSFile
-from pvsbuffer import PVSBuffer
+from bfr import PVSBuffer, PVSFile
 import wx, os.path
 from constants import PVS_EXTENSION, TAB_FILES, TAB_BUFFERS
-import common
+import util
 from filestreemanager import FilesTreeManager
 
-log = common.getLogger(__name__)
+log = util.getLogger(__name__)
 
 class FilesAndBuffersManager(wx.Frame):
     """This class implements a frame with two tabes, one to show a tree of open files and their theories,
@@ -39,7 +38,7 @@ class FilesAndBuffersManager(wx.Frame):
         self.notebook_4.AddPage(self.notebook_4_pane_2, TAB_BUFFERS)
         sizer_3.Add(self.notebook_4, 1, wx.EXPAND, 0)
         panel.SetSizer(sizer_3)
-        common.filestreemanager = FilesTreeManager(self.filestree)
+        util.filestreemanager = FilesTreeManager(self.filestree)
         self.SetSize((200, 300))
         
         self.files = {}
@@ -55,8 +54,8 @@ class FilesAndBuffersManager(wx.Frame):
         if not self.files.has_key(fullname):
             f = PVSFile(fullname)
             self.files[fullname] = f
-            common.filestreemanager.addFile(f)
-            common.notebook.addFile(f)
+            util.filestreemanager.addFile(f)
+            util.notebook.addFile(f)
         else:
             log.info("File %s is already open", fullname)
         #self.mainFrame.pvseditor.addRedMarker(2)
@@ -65,12 +64,12 @@ class FilesAndBuffersManager(wx.Frame):
     def setFileAsActive(self, fullname):
         """make the tab visible for a given file"""
         log.info("Setting file %s as active", fullname)
-        common.notebook.showTabForFile(fullname)
+        util.notebook.showTabForFile(fullname)
         
     def createNewFile(self):
         """create a new file"""
         filters = "PVS files (*" + PVS_EXTENSION + ")|*" + PVS_EXTENSION
-        dialog = wx.FileDialog (common.frame, "Create a new PVS file", wildcard = filters, style = wx.SAVE | wx.OVERWRITE_PROMPT )
+        dialog = wx.FileDialog (util.frame, "Create a new PVS file", wildcard = filters, style = wx.SAVE | wx.OVERWRITE_PROMPT )
         if dialog.ShowModal() == wx.ID_OK:
             fullname = dialog.GetPath()
             if not fullname.endswith(PVS_EXTENSION):
@@ -80,12 +79,12 @@ class FilesAndBuffersManager(wx.Frame):
         else:
             log.info("Nothing was selected.")
         dialog.Destroy()
-        common.frame.configMenuToolbar(len(self.files))
+        util.frame.configMenuToolbar(len(self.files))
 
     def openFile(self):
         """open an existing PVS file"""
         filters = "PVS files (*" + PVS_EXTENSION + ")|*" + PVS_EXTENSION
-        dialog = wx.FileDialog (common.frame, "Open PVS file", wildcard = filters, style = wx.OPEN )
+        dialog = wx.FileDialog (util.frame, "Open PVS file", wildcard = filters, style = wx.OPEN )
         if dialog.ShowModal() == wx.ID_OK:
             fullname = dialog.GetPath()
             log.info("Opening file %s", fullname)
@@ -93,44 +92,44 @@ class FilesAndBuffersManager(wx.Frame):
         else:
             log.info("Nothing was selected.")
         dialog.Destroy()
-        common.frame.configMenuToolbar(len(self.files))
+        util.frame.configMenuToolbar(len(self.files))
 
     def closeFile(self, fullname=None):
         """close an open file"""
         if fullname == None:
-            fullname = common.notebook.getActiveFilename()
+            fullname = util.notebook.getActiveFilename()
         log.info("Closing file %s", fullname)
         if self.files.has_key(fullname):
             f = self.files[fullname]
             f.close()
             del self.files[fullname]
-            common.notebook.closeTabForFile(fullname)
-            common.filestreemanager.removeFile(fullname)
+            util.notebook.closeTabForFile(fullname)
+            util.filestreemanager.removeFile(fullname)
         else:
             log.warning("The file %s is not in %s", fullname, self.files.keys())
-        common.frame.configMenuToolbar(len(self.files))
+        util.frame.configMenuToolbar(len(self.files))
             
     def saveFile(self):
         """save the active file (an active file is one whose tab is visible)"""
-        fullname = common.notebook.getActiveFilename()
+        fullname = util.notebook.getActiveFilename()
         log.info("Saving file %s", fullname)
         f = self.files[fullname]
         f.save()
-        common.filestreemanager.removeTheoriesFromFile(fullname)
+        util.filestreemanager.removeTheoriesFromFile(fullname)
             
     def saveAllFiles(self):
         """save all the open files"""
         log.info("Saving all files")
         for fullname, f in self.files.items():
             f.save()
-            common.filestreemanager.removeTheoriesFromFile(fullname)
+            util.filestreemanager.removeTheoriesFromFile(fullname)
 
     def OnClose(self, event):
         """is called when the user clicks on the close icon on top of the frame"""
         if event.CanVeto():
             self.Hide()
-            common.preference.setFilesBuffersTrees(False)
-            common.menubar.filesAndBuffersTrees.Check(False)
+            util.preference.setFilesBuffersTrees(False)
+            util.menubar.filesAndBuffersTrees.Check(False)
             event.Veto()
         else:
             #if we don't veto it we allow the event to propogate

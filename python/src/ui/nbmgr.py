@@ -2,10 +2,10 @@
 # This class controls and manages all the tabs that contain open files and buffers for editing
 
 import wx
-from ui.richeditor import RichEditor
-import common
+from ui.rchedtr import RichEditor
+import util
 
-log = common.getLogger(__name__)
+log = util.getLogger(__name__)
 
 class NotebookManager(wx.Notebook):
     """NotebookManager manages the open tabs in the editor. Each tab corresponds to a file or a buffer"""

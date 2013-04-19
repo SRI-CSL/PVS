@@ -16,25 +16,25 @@ def getPVSLogo():
     return getBitmap("pvslogo.png")
 
 def getNewImage():
-    return getBitmap("new.gif")
+    return getBitmap("newfile.png")
 
 def getOpenImage():
-    return getBitmap("open.gif")
+    return getBitmap("openfile.png")
 
 def getSaveImage():
-    return getBitmap("save.gif")
+    return getBitmap("save.png")
 
 def getSaveAllImage():
-    return getBitmap("saveall.gif")
+    return getBitmap("saveall.png")
 
 def getCutImage():
-    return getBitmap("cut.gif")
+    return getBitmap("cut.png")
 
 def getCopyImage():
-    return getBitmap("copy.gif")
+    return getBitmap("copy.png")
 
 def getPasteImage():
-    return getBitmap("paste.gif")
+    return getBitmap("paste.png")
 
 def getStartPVSImage():
     return getBitmap("start.png")

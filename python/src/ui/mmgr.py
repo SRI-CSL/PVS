@@ -3,10 +3,10 @@
 
 import wx
 from constants import *
-from eventhandler import *
-import common
+from evhdlr import *
+import util
 
-log = common.getLogger(__name__)
+log = util.getLogger(__name__)
 
 class MainFrameMenu(wx.MenuBar):
     """The class implementing and managing the main menu bar in the application"""
@@ -45,16 +45,16 @@ class MainFrameMenu(wx.MenuBar):
     def addViewMenu(self):
         viewMenu = wx.Menu()
         self.filesAndBuffersTrees = viewMenu.Append(wx.ID_ANY, "Files and Buffers Trees", EMPTY_STRING, wx.ITEM_CHECK)
-        viewMenu.Check(self.filesAndBuffersTrees.GetId(), common.preference.visibleFilesBuffersTrees())
+        viewMenu.Check(self.filesAndBuffersTrees.GetId(), util.preference.visibleFilesBuffersTrees())
         self.proofTree = viewMenu.Append(wx.ID_ANY, "Proof Tree", EMPTY_STRING, wx.ITEM_CHECK)
-        viewMenu.Check(self.proofTree.GetId(), common.preference.visibleProofTree())
+        viewMenu.Check(self.proofTree.GetId(), util.preference.visibleProofTree())
         self.Append(viewMenu, LABEL_VIEW)
 
     def addPVSMenu(self):
         pvsMenu = wx.Menu()
         self.changeContextMenuItem =  pvsMenu.Append(wx.ID_ANY, "Change Context...", EMPTY_STRING, wx.ITEM_NORMAL)
         self.restoreContextMenuItem = pvsMenu.Append(wx.ID_ANY, "Restore Context Automatically", EMPTY_STRING, wx.ITEM_CHECK)
-        pvsMenu.Check(self.restoreContextMenuItem.GetId(), common.preference.restoreContextAutomatically())
+        pvsMenu.Check(self.restoreContextMenuItem.GetId(), util.preference.restoreContextAutomatically())
         pvsMenu.AppendSeparator()
         self.startPVSMenuItem = pvsMenu.Append(wx.ID_ANY, LABEL_STARTPVS, EMPTY_STRING, wx.ITEM_NORMAL)
         self.typecheckMenuItem = pvsMenu.Append(wx.ID_ANY, LABEL_TYPECHECK, EMPTY_STRING, wx.ITEM_NORMAL)
@@ -63,28 +63,28 @@ class MainFrameMenu(wx.MenuBar):
         self.Append(pvsMenu, PVS_U)
         
     def setBindings(self):
-        common.frame.Bind(wx.EVT_MENU, onCreateNewFile, self.newFileMenuItem)
-        common.frame.Bind(wx.EVT_MENU, onOpenFile, self.openFileMenuItem)
-        common.frame.Bind(wx.EVT_MENU, onSaveFile, self.saveFileMenuItem)
-        common.frame.Bind(wx.EVT_MENU, onSaveAsFile, self.saveFileAsMenuItem)
-        common.frame.Bind(wx.EVT_MENU, onCloseFile, self.closeFileMenuItem)
-        common.frame.Bind(wx.EVT_MENU, onQuitFrame, self.quitMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onCreateNewFile, self.newFileMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onOpenFile, self.openFileMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onSaveFile, self.saveFileMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onSaveAsFile, self.saveFileAsMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onCloseFile, self.closeFileMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onQuitFrame, self.quitMenuItem)
         
-        common.frame.Bind(wx.EVT_MENU, onUndo, self.undoMenuItem)
-        common.frame.Bind(wx.EVT_MENU, onSelectAll, self.selectAllMenuItem)
-        common.frame.Bind(wx.EVT_MENU, onCutText, self.cutMenuItem)
-        common.frame.Bind(wx.EVT_MENU, onCopyText, self.copyMenuItem)
-        common.frame.Bind(wx.EVT_MENU, onPasteText, self.pasteMenuItem)
-        common.frame.Bind(wx.EVT_MENU, onFindText, self.findMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onUndo, self.undoMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onSelectAll, self.selectAllMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onCutText, self.cutMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onCopyText, self.copyMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onPasteText, self.pasteMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onFindText, self.findMenuItem)
         
-        common.frame.Bind(wx.EVT_MENU, onViewFilesAndBuffersTrees, self.filesAndBuffersTrees)
-        common.frame.Bind(wx.EVT_MENU, onViewProofTree, self.proofTree)
+        util.frame.Bind(wx.EVT_MENU, onViewFilesAndBuffersTrees, self.filesAndBuffersTrees)
+        util.frame.Bind(wx.EVT_MENU, onViewProofTree, self.proofTree)
         
-        common.frame.Bind(wx.EVT_MENU, onChangeContext, self.changeContextMenuItem)
-        common.frame.Bind(wx.EVT_MENU, onRestoreContextAutomatically, self.restoreContextMenuItem)
-        common.frame.Bind(wx.EVT_MENU, onStartPVS, self.startPVSMenuItem)
-        common.frame.Bind(wx.EVT_MENU, onTypecheck, self.typecheckMenuItem)
-        common.frame.Bind(wx.EVT_MENU, onSetPVSLocation, self.setPVSLocationMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onChangeContext, self.changeContextMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onRestoreContextAutomatically, self.restoreContextMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onStartPVS, self.startPVSMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onTypecheck, self.typecheckMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onSetPVSLocation, self.setPVSLocationMenuItem)
         
     def enableCloseFile(self, value = True):
         self.closeFileMenuItem.Enable(value)

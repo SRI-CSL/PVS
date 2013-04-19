@@ -4,11 +4,11 @@
 
 import wx
 import codecs
-import common
-from pvsstyledtext import PVSStyledText
+import util
+from styltxt import PVSStyledText
 
 
-log = common.getLogger(__name__)
+log = util.getLogger(__name__)
 
 class RichEditor(wx.Panel):
     """RichEditor corresponds to an open file or buffer. It provides syntax highlighting, 

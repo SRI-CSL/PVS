@@ -1,9 +1,9 @@
 import pickle
-import common
+import util
 import os.path, os
 import utility
 
-log = common.getLogger(__name__)
+log = util.getLogger(__name__)
 
 class PreferenceManager:
     """This class manages all the user preferences"""

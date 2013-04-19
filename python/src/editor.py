@@ -8,19 +8,19 @@
 # This is the main entry point of the editor.
 
 import wx, os.path, sys
-from ui.mainframe import MainFrame
-import common
+from ui.frame import MainFrame
+import util
 import logging
 import constants
 import platform
 
-log = common.getLogger(__name__)
+log = util.getLogger(__name__)
 
 class PVSEditorApp(wx.App):
     """The main class that starts the application and shows the main frame"""
     
     def OnInit(self):
-        wx.InitAllImageHandlers()
+        #wx.InitAllImageHandlers()
         self.mainFrame = MainFrame(None, wx.ID_ANY, "")
         self.SetTopWindow(self.mainFrame)
         self.mainFrame.Show()
@@ -42,8 +42,9 @@ def processArguments(args):
             
 
 if __name__ == "__main__":
-    commonDirectory = os.path.dirname(common.__file__)
-    constants.APPLICATION_FOLDER = os.path.abspath(os.path.join(commonDirectory, os.path.pardir))
+    print sys.maxint
+    utilDirectory = os.path.dirname(util.__file__)
+    constants.APPLICATION_FOLDER = os.path.abspath(os.path.join(utilDirectory, os.path.pardir))
     constants.IMAGE_FOLDER_PATH = os.path.join(constants.APPLICATION_FOLDER, constants.IMAGE_FOLDER_NAME)
     log.debug("Application Folder is %s", constants.APPLICATION_FOLDER)
     processArguments(list(sys.argv))
@@ -53,6 +54,6 @@ if __name__ == "__main__":
         print "This application is not designed for Windows"
         sys.exit()
     
-    common.editor = PVSEditorApp(0)
+    util.editor = PVSEditorApp(0)
     log.info("Entering MainLoop...") 
-    common.editor.MainLoop()
+    util.editor.MainLoop()

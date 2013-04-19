@@ -4,10 +4,10 @@
 import wx
 from images import getFolderImage, getPVSLogo, getTheoryImage, getFormulaImage
 from constants import *
-import common
-import commandmanager
+import util
+import cmdmgr
 
-log = common.getLogger(__name__)
+log = util.getLogger(__name__)
 
 class FilesTreeManager:
     """This class provides an api to the files tree that is inside FilesAndBuffersManager"""
@@ -85,13 +85,13 @@ class FilesTreeManager:
         log.info("Event data: %s", data)
         kind = data[KIND]
         menu = wx.Menu()
-        status = PVS_MODE_OFF if common.runner == None else common.runner.status
+        status = PVS_MODE_OFF if util.runner == None else util.runner.status
         items = self.getContextMenuItems(status, kind) # each item should be a pair of a label and a callback funtion.
         for label, callback in items:
             ID = wx.ID_ANY
             menu.Append(ID, label, EMPTY_STRING, wx.ITEM_NORMAL)
             wx.EVT_MENU(menu, ID, callback)
-        common.filesbuffermanager.PopupMenu(menu, event.GetPoint())
+        util.filesbuffermanager.PopupMenu(menu, event.GetPoint())
         menu.Destroy()
         
     def getContextMenuItems(self, status, kind):
@@ -139,18 +139,18 @@ class FilesTreeManager:
     def onCloseFile(self, event):
         """onCloseFile is called when the user selects Close in the context menu"""
         nodeFullname = self.getSelectedNodeData()[FULLNAME]
-        common.filesbuffermanager.closeFile(nodeFullname)
+        util.filesbuffermanager.closeFile(nodeFullname)
         
     def onTypecheckFile(self, event):
         """onTypecheckFile is called when the user selects Typecheck in the context menu"""
         nodeFullname = self.getSelectedNodeData()[FULLNAME]
-        commandmanager.typecheck(nodeFullname)
+        cmdmgr.typecheck(nodeFullname)
         
     def onStartProver(self, event):
         """onTypecheckFile is called when the user selects Typecheck in the context menu"""
         data = self.getSelectedNodeData()
         theoryName = data[THEORY]
         formulaName = data[ID_L]        
-        commandmanager.startProver(theoryName, formulaName)
+        cmdmgr.startProver(theoryName, formulaName)
         
     

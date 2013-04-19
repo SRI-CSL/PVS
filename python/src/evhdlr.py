@@ -1,27 +1,37 @@
 
 # This file contains all the functions handling menu and toolbar events
 
-import common
+import util
 from ui.findreplacemanager import FindReplaceManager
-from pvsrunner import PVSRunner
-from commandmanager import *
+import runr
+from cmdmgr import *
 from constants import *
 import wx.stc as stc
 import ui.dialogs
 import wx
 
-log = common.getLogger(__name__)
+log = util.getLogger(__name__)
+
+class PVSResultEvent(wx.PyEvent):
+    """Simple event to carry arbitrary result data."""
+    
+    def __init__(self, message, data):
+        """Init Result Event."""
+        wx.PyEvent.__init__(self)
+        self.SetEventType(util.EVT_RESULT_ID)
+        self.message = message
+        self.data = data
 
 def onCreateNewFile(event):  # wxGlade: PVSMainFrame.<event_handler>
-    common.filesbuffermanager.createNewFile()
+    util.filesbuffermanager.createNewFile()
     #event.Skip()
 
 def onOpenFile(event):  # wxGlade: PVSMainFrame.<event_handler>
-    common.filesbuffermanager.openFile()
+    util.filesbuffermanager.openFile()
     # event.Skip()
 
 def onSaveFile(event):  # wxGlade: PVSMainFrame.<event_handler>
-    common.filesbuffermanager.saveFile()
+    util.filesbuffermanager.saveFile()
     #event.Skip()
 
 def onSaveAsFile(event):  # wxGlade: PVSMainFrame.<event_handler>
@@ -30,106 +40,106 @@ def onSaveAsFile(event):  # wxGlade: PVSMainFrame.<event_handler>
 
 def onCloseFile(event):  # wxGlade: PVSMainFrame.<event_handler>
     log.info("onCloseFile event: %s", event)
-    common.filesbuffermanager.closeFile()
+    util.filesbuffermanager.closeFile()
     
 def onQuitFrame(event):  # wxGlade: PVSMainFrame.<event_handler>
-    common.frame.Close()
+    util.frame.Close()
 
 def onUndo(event):  # wxGlade: PVSMainFrame.<event_handler>
-    common.notebook.undo()
+    util.notebook.undo()
     #event.Skip()
 
 def onSelectAll(event):  # wxGlade: PVSMainFrame.<event_handler>
-    common.notebook.selectAll()
+    util.notebook.selectAll()
     #event.Skip()
 
 def onCutText(event):  # wxGlade: PVSMainFrame.<event_handler>
-    x = common.frame.FindFocus()
+    x = util.frame.FindFocus()
     if isinstance(x, wx.TextCtrl) or isinstance(x, stc.StyledTextCtrl):
         x.Cut()
-    #common.notebook.cut()
+    #util.notebook.cut()
     #event.Skip()
 
 def onCopyText(event):  # wxGlade: PVSMainFrame.<event_handler>
-    x = common.frame.FindFocus()
+    x = util.frame.FindFocus()
     if isinstance(x, wx.TextCtrl) or isinstance(x, stc.StyledTextCtrl):
         x.Copy()
-    #common.notebook.copy()
+    #util.notebook.copy()
     #event.Skip()
 
 def onPasteText(event):  # wxGlade: PVSMainFrame.<event_handler>
-    x = common.frame.FindFocus()
+    x = util.frame.FindFocus()
     if isinstance(x, wx.TextCtrl) or isinstance(x, stc.StyledTextCtrl):
         x.Paste()
-    #common.notebook.paste()
+    #util.notebook.paste()
     #event.Skip()
 
 def onFindText(event):  # wxGlade: PVSMainFrame.<event_handler>
-    page = common.notebook.getActivePage()
+    page = util.notebook.getActivePage()
     selected = page.styledText.GetSelectedText()
     if selected == None:
         selected = ""
     FindReplaceManager(None, selected, EMPTY_STRING).show()
 
-    #common.notebook.find()
+    #util.notebook.find()
     #event.Skip()
 
 def onViewFilesAndBuffersTrees(event):
     log.info("onViewFilesAndBuffersTrees was called")
-    visibile = common.preference.visibleFilesBuffersTrees()
+    visibile = util.preference.visibleFilesBuffersTrees()
     if visibile:
-        common.filesbuffermanager.Hide()
+        util.filesbuffermanager.Hide()
     else:
-        common.filesbuffermanager.Show()        
-    common.preference.setFilesBuffersTrees(not visibile)
+        util.filesbuffermanager.Show()        
+    util.preference.setFilesBuffersTrees(not visibile)
 
 def onViewProofTree(event):
     log.info("onViewProofTree was called")
-    visibile = common.preference.visibleProofTree()
+    visibile = util.preference.visibleProofTree()
     if visibile:
-        common.prooftreemanager.Hide()
+        util.prooftreemanager.Hide()
     else:
-        common.prooftreemanager.Show()        
-    common.preference.setProofTree(not visibile)
+        util.prooftreemanager.Show()        
+    util.preference.setProofTree(not visibile)
     #event.Skip()
 
 def onChangeContext(event):  # wxGlade: PVSMainFrame.<event_handler>
-    if common.runner == None or common.runner.status != PVS_MODE_EDIT:
+    if util.runner == None or util.runner.status != PVS_MODE_EDIT:
         ui.dialogs.showError("PVS is not running or it is in prover mode")
     else:
-        newContext = ui.dialogs.chooseDirectory("Select a directory", common.preference.getContext())
+        newContext = ui.dialogs.chooseDirectory("Select a directory", util.preference.getContext())
         if newContext != None:
             changeContext(newContext)
             log.info("New context is set to %s", newContext)
 
 def onRestoreContextAutomatically(event):  # wxGlade: PVSMainFrame.<event_handler>
-    value = common.menubar.restoreContextMenuItem.IsChecked()
-    common.preference.setRestoreContextAutomatically(value)
+    value = util.menubar.restoreContextMenuItem.IsChecked()
+    util.preference.setRestoreContextAutomatically(value)
     log.info("Setting RestoreContextAutomatically flag to %s", value)
 
 def onStartPVS(event):  # wxGlade: PVSMainFrame.<event_handler>
-    if common.runner == None:
-        common.runner = PVSRunner()
-        common.runner.start()
+    if util.runner == None:
+        util.runner = runr.PVSRunner()
+        util.runner.start()
     else:
         ui.dialogs.showError("PVS is already running")
 
 def onStopPVS(event):  # wxGlade: PVSMainFrame.<event_handler>
-    if common.runner != None:
-        common.runner.terminate()
-        common.runner = None
+    if util.runner != None:
+        util.runner.terminate()
+        util.runner = None
     else:
         ui.dialogs.showError("PVS is not running")
 
 def onTypecheck(event):  # wxGlade: PVSMainFrame.<event_handler>
-    filename = common.notebook.getActiveFilename()
+    filename = util.notebook.getActiveFilename()
     typecheck(filename)
     #event.Skip()
 
 def onSetPVSLocation(event):  # wxGlade: PVSMainFrame.<event_handler>
-    newLocation = ui.dialogs.chooseDirectory("Select the PVS directory", common.preference.getPVSLocation())
+    newLocation = ui.dialogs.chooseDirectory("Select the PVS directory", util.preference.getPVSLocation())
     if newLocation != None:
-        common.preference.setPVSLocation(newLocation)
+        util.preference.setPVSLocation(newLocation)
         log.info("New PVS location is set to %s", newLocation)
     #event.Skip()
 
@@ -142,4 +152,4 @@ def onCoptText(event):  # wxGlade: PVSMainFrame.<event_handler>
     #event.Skip()
 
 def onSaveAllFiles(event):  # wxGlade: PVSMainFrame.<event_handler>
-    common.filesbuffermanager.saveAllFiles()
+    util.filesbuffermanager.saveAllFiles()

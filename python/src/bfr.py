@@ -1,13 +1,20 @@
 
-# This class represents an open PVS file
+# This class represents an open PVS buffer
 
-import os.path
-from constants import EMPTY_STRING
-import common
+import util, os.path
+import constants
 
-log = common.getLogger(__name__)
+log = util.getLogger(__name__)
 
-class PVSFile:
+class PVSBuffer:
+    """This class represents a PVS buffer"""
+    
+    def __init__(self, fullname, content):
+        self.fullname = fullname
+        self.content
+        
+
+class PVSFile(PVSBuffer):
     """This class represents a PVS file"""
     
     def __init__(self, fullname):
@@ -30,7 +37,7 @@ class PVSFile:
             with open(self.fullname, 'w+') as f:
                 for line in f:
                     lines.append(line)
-        self.content = EMPTY_STRING.join(lines)
+        self.content = constants.EMPTY_STRING.join(lines)
 
     def getContentFromEditor(self):
         if self.editor != None:

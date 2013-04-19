@@ -4,15 +4,15 @@
 import re
 import wx
 from constants import EMPTY_STRING
-import common
+import util
 from dialogs import showMessage
 
-log = common.getLogger(__name__)
+log = util.getLogger(__name__)
 
 class FindReplaceManager:
     """A dialog box for finding and replacing texts in a RichEditor"""
     def __init__(self, frame, defaultFindText=EMPTY_STRING, defaultReplaceText=EMPTY_STRING):
-        self.mainFrame = common.frame
+        self.mainFrame = util.frame
         self.defaultFindText = defaultFindText
         self.defaultReplaceText = defaultReplaceText
         self.data = wx.FindReplaceData()
@@ -64,7 +64,7 @@ class FindReplaceManager:
     def findText(self):
         _find = self.data.GetFindString()
         log.info("Find Next %s", _find)
-        page = common.notebook.getActivePage()
+        page = util.notebook.getActivePage()
         nextOne = self.findPositionOfNext(_find)
         if nextOne != None:
             page.styledText.SetSelection(nextOne, nextOne + len(_find))
@@ -75,7 +75,7 @@ class FindReplaceManager:
         _find = self.data.GetFindString()
         _replace = self.data.GetReplaceString()
         log.info("Replace Next %s", _find)
-        page = common.notebook.getActivePage()
+        page = util.notebook.getActivePage()
         nextOne = self.findPositionOfNext(_find)
         if nextOne != None:
             page.styledText.SetSelection(nextOne, nextOne + len(_find))
@@ -87,7 +87,7 @@ class FindReplaceManager:
         _find = self.data.GetFindString()
         _replace = self.data.GetReplaceString()
         log.info("Replace All %s", _find)
-        page = common.notebook.getActivePage()
+        page = util.notebook.getActivePage()
         nextOne = self.findPositionOfNext(_find)
         while nextOne != None:
             page.styledText.SetSelection(nextOne, nextOne + len(_find))
@@ -98,7 +98,7 @@ class FindReplaceManager:
         self.readFlags()
         log.info("Going Down: %s, Whole Word: %s, Match Case: %s", self.goingDown, self.wholeWord, self.matchCase)
         flags = re.UNICODE if self.matchCase else re.IGNORECASE | re.UNICODE
-        page = common.notebook.getActivePage()
+        page = util.notebook.getActivePage()
         selection = page.styledText.GetSelection()
         log.info("Selelction Position: %s", selection)
         cursor = page.styledText.GetCurrentPos()

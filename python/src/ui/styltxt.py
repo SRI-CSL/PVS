@@ -1,10 +1,10 @@
 
 import wx
 import wx.stc as stc
-import common
+import util
 from constants import PVS_KEYWORDS, PVS_OPERATORS
 
-log = common.getLogger(__name__)
+log = util.getLogger(__name__)
 
 
 faces = {'default_color': '000000',

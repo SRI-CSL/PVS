@@ -1,7 +1,7 @@
 
 # This File contans all the global objects for different parts of the GUI 
 # and a function to get the logger for each module
-import logging, sys, wx
+import logging, sys, wx, os
 import constants
 
 PVS_CONSOLE_HAS_HORIZONTAL_SCROLL = False
@@ -32,3 +32,11 @@ def getLogger(name):
     log.setLevel(constants.LOGGER_LEVEL)
     return log
 
+def normalizePath(thePath):
+    if thePath.startswith("~"):
+        thePath = os.getenv("HOME") + thePath[1:]
+    return os.path.abspath(thePath)
+
+class PVSException(Exception):
+    def __init__(self):
+        Exception.__init__(self)

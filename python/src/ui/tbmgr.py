@@ -2,18 +2,19 @@
 # This class manages the toolbar in the main frame
 
 import wx
-import common
+import util
 from constants import *
 from images import *
-from eventhandler import *
+from evhdlr import *
 
-log = common.getLogger(__name__)
+log = util.getLogger(__name__)
 
 class ToolbarManager(wx.ToolBar):
     """This class represents and manages the toolbar in the application"""
     
     def __init__(self, parent, ID):
         wx.ToolBar.__init__(self, parent, ID)
+        #self.SetToolBitmapSize((16, 16))
         self.addButtons()
         self.setBindings()
     
@@ -32,16 +33,16 @@ class ToolbarManager(wx.ToolBar):
         self.typecheckToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_TYPECHECK, getTypecheckImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Parse and typecheck file", EMPTY_STRING)
 
     def setBindings(self):
-        common.frame.Bind(wx.EVT_TOOL, onCreateNewFile, self.createNewFileToolbarItem)
-        common.frame.Bind(wx.EVT_TOOL, onOpenFile, self.openFileToolbarItem)
-        common.frame.Bind(wx.EVT_TOOL, onSaveFile, self.saveFileToolbarItem)
-        common.frame.Bind(wx.EVT_TOOL, onSaveAllFiles, self.saveallFileToolbarItem)
-        common.frame.Bind(wx.EVT_TOOL, onCutText, self.cutToolbarItem)
-        common.frame.Bind(wx.EVT_TOOL, onCoptText, self.copyToolbarItem)
-        common.frame.Bind(wx.EVT_TOOL, onPasteText, self.pasteToolbarItem)
-        common.frame.Bind(wx.EVT_TOOL, onStopPVS, self.stopPVSToolbarItem)
-        common.frame.Bind(wx.EVT_TOOL, onStartPVS, self.startPVSToolbarItem)
-        common.frame.Bind(wx.EVT_TOOL, onTypecheck, self.typecheckToolbarItem)
+        util.frame.Bind(wx.EVT_TOOL, onCreateNewFile, self.createNewFileToolbarItem)
+        util.frame.Bind(wx.EVT_TOOL, onOpenFile, self.openFileToolbarItem)
+        util.frame.Bind(wx.EVT_TOOL, onSaveFile, self.saveFileToolbarItem)
+        util.frame.Bind(wx.EVT_TOOL, onSaveAllFiles, self.saveallFileToolbarItem)
+        util.frame.Bind(wx.EVT_TOOL, onCutText, self.cutToolbarItem)
+        util.frame.Bind(wx.EVT_TOOL, onCoptText, self.copyToolbarItem)
+        util.frame.Bind(wx.EVT_TOOL, onPasteText, self.pasteToolbarItem)
+        util.frame.Bind(wx.EVT_TOOL, onStopPVS, self.stopPVSToolbarItem)
+        util.frame.Bind(wx.EVT_TOOL, onStartPVS, self.startPVSToolbarItem)
+        util.frame.Bind(wx.EVT_TOOL, onTypecheck, self.typecheckToolbarItem)
 
     def enableSave(self, value = True):
         self.saveFileToolbarItem.Enable(value)
