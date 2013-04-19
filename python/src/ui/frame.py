@@ -54,19 +54,9 @@ class MainFrame(wx.Frame):
         self.panel_2 = wx.Panel(self, wx.ID_ANY)
         
         util.notebook = NotebookManager(self.panel_2, wx.ID_ANY, style=0)
-        ##self.panel_3 = wx.Panel(util.notebook, wx.ID_ANY)
-        ##self.pvseditor = PVSRichEditor(self.panel_3, wx.ID_ANY, style=wx.TE_MULTILINE | wx.HSCROLL | wx.TE_RICH | wx.TE_RICH2, markers = True)
         
-        #self.pvseditor = wx.TextCtrl(util.notebook, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE | wx.HSCROLL | wx.TE_RICH | wx.TE_RICH2)
-        self.panel_1 = wx.Panel(self, wx.ID_ANY)
-        self.label_1 = wx.StaticText(self.panel_1, wx.ID_ANY, constants.LABEL_PVS_CONSOLE)
-        util.console = PVSConsole(self.panel_1, wx.ID_ANY)
-        pvsout = wx.TextCtrl(util.console, wx.ID_ANY, constants.EMPTY_STRING, style=wx.TE_MULTILINE | wx.TE_READONLY)
-        pvsin = wx.TextCtrl(util.console, wx.ID_ANY, constants.EMPTY_STRING, style=wx.TE_PROCESS_ENTER)
-        util.console.setPVSOut(pvsout)
-        util.console.setPVSIn(pvsin)
-        util.console.setBidnings()
-        #util.console = wx.TextCtrl(self.panel_4, wx.ID_ANY, EMPTY_STRING, style=wx.TE_PROCESS_ENTER | wx.TE_MULTILINE | wx.HSCROLL | wx.TE_RICH)
+        util.console = PVSConsole()
+        util.console.Show()
 
         self.__do_layout()
         self.__set_properties()
@@ -97,14 +87,11 @@ class MainFrame(wx.Frame):
         # end wxGlade
 
     def __do_layout(self):
-        self.SetSize((700, 600))
+        self.SetSize((700, 400))
         # begin wxGlade: PVSMainFrame.__do_layout
-        sizer_1 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_2 = wx.BoxSizer(wx.VERTICAL)
-        sizer_7 = wx.BoxSizer(wx.VERTICAL)
-        ##sizer_8 = wx.BoxSizer(wx.VERTICAL)
+        sizer_2 = wx.BoxSizer(wx.HORIZONTAL)
         sizer_8 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_10 = wx.BoxSizer(wx.VERTICAL)
+
         #sizer_1.Add(self.window_1, 1, wx.EXPAND, 0)
         
         ##util.notebook.AddPage(self.panel_3, "tab1")
@@ -112,18 +99,7 @@ class MainFrame(wx.Frame):
         self.panel_2.SetSizer(sizer_8)
         
         sizer_2.Add(self.panel_2, 3, wx.EXPAND, 0)
-        sizer_7.Add(self.label_1, 0, wx.ALIGN_CENTER_HORIZONTAL, 0)
-        #sizer_7.Add(util.console, 1, wx.EXPAND, 0)
-        sizer_7.Add(util.console, 1, wx.EXPAND, 0)
-        self.panel_1.SetSizer(sizer_7)
-        ###sizer_9.Add(self.pvseditor, 1, wx.EXPAND, 0)
-        sizer_10.Add(util.console.pvsout, 1, wx.EXPAND, 0)
-        sizer_10.Add(util.console.pvsin, 0, wx.EXPAND, 0)       
-        util.console.SetSizer(sizer_10)        
-        ###self.panel_3.SetSizer(sizer_9) 
-        sizer_2.Add(self.panel_1, 1, wx.EXPAND, 0)
-        sizer_1.Add(sizer_2, 3, wx.EXPAND, 0)
-        self.SetSizer(sizer_1)
+        self.SetSizer(sizer_2)
         self.Layout()
         self.Centre()
         # end wxGlade
