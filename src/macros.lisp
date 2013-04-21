@@ -372,8 +372,8 @@
   (assert (stringp theory) () "THEORY should be a string")
   (eval-when (:execute :load-toplevel)
     (let ((var (gensym))
-	  (reset-name (intern (format nil "%RESET-~a" name)))
-	  (hook (if (gethash (intern theory) *prelude*)
+	  (reset-name (intern (format nil "%RESET-~a" name) :pvs))
+	  (hook (if (gethash (intern theory :pvs) *prelude*)
 		    '*load-prelude-hook*
 		    '*untypecheck-hook*)))
       `(let ((,var nil))

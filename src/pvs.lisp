@@ -32,7 +32,7 @@
 
 (in-package :pvs)
 
-(export '(exit-pvs))
+(export '(exit-pvs typecheck-file show-tccs clear-theories))
 
 ;;; This file provides the basic commands of PVS.  It provides the
 ;;; functions invoked by pvs-cmds.el, as well as the functions used in
@@ -1961,7 +1961,7 @@
 	(let ((pos (parse-integer (cdr decl-and-pos)))
 	      (imps (remove-if (complement #'importing?) (all-decls theory))))
 	  (nth (1- pos) imps))
-	(let* ((declid (intern (car decl-and-pos)))
+	(let* ((declid (intern (car decl-and-pos) :pvs))
 	       (pos (if (cadr decl-and-pos)
 			(1- (parse-integer (cadr decl-and-pos)))
 			0))
@@ -2146,7 +2146,7 @@
 			(*current-theory* (module fdecl))
 			(*current-system* (if (member origin '("tccs" "ppe"))
 					      'pvs
-					      (intern origin)))
+					      (intern origin :pvs)))
 			(*start-proof-display* display?)
 			(ojust (extract-justification-sexp
 				(justification fdecl)))
@@ -2194,7 +2194,8 @@
 	   (not (get-theory name)))
       (pvs-message "~a is not typechecked" name)
       (case (intern #+allegro (string-downcase origin)
-		    #-allegro (string-upcase origin))
+		    #-allegro (string-upcase origin)
+		    :pvs)
 	(ppe (let* ((theories (ppe-form (get-theory name)))
 		    (typespec (formula-typespec unproved?))
 		    (decl (get-decl-at line typespec theories)))
@@ -2319,13 +2320,14 @@
 	  (t (pvs-message
 		 "Not at a formula declaration~@[ - ~a buffer may be invalid~]"
 	       (car (member (intern #+allegro (string-downcase origin)
-				    #-allegro (string-upcase origin))
+				    #-allegro (string-upcase origin)
+				    :pvs)
 			    '(tccs ppe))))))))
 
 (defun prove-formula (theoryname formname rerun?)
   (let ((theory (get-typechecked-theory theoryname)))
     (if theory
-	(let* ((fid (intern formname))
+	(let* ((fid (intern formname :pvs))
 	       (fdecl (find-if #'(lambda (d) (and (formula-decl? d)
 						  (eq (id d) fid)))
 			(all-decls theory)))
@@ -2341,7 +2343,7 @@
 
 (defun rerun-proof-of? (modname formname)
   (setq *current-theory* (get-theory modname))
-  (let* ((fid (intern formname))
+  (let* ((fid (intern formname :pvs))
 	 (fdecl (find-if #'(lambda (d) (and (formula-decl? d)
 					    (eq (id d) fid)))
 		  (all-decls (current-theory)))))
@@ -2790,7 +2792,7 @@
 
 (defun new-theory (modname)
   ;;(save-some-modules)
-  (let ((id (if (stringp modname) (intern modname) modname)))
+  (let ((id (if (stringp modname) (intern modname :pvs) modname)))
     (if (gethash id *pvs-modules*)
 	(progn ;(pvs-message "Theory already exists")
 	       nil)
@@ -2895,7 +2897,8 @@
 (defun help-prover (&optional name)
   (let ((rule (if (stringp name)
 		  (intern #+allegro (string-downcase name)
-			  #-allegro (string-upcase name))
+			  #-allegro (string-upcase name)
+			  :pvs)
 		  '*))
 	(*disable-gc-printout* t))
     (pvs-buffer "Prover Help"
@@ -3454,7 +3457,8 @@
 
 (defun show-strategy (strat-name)
   (let* ((strat-id (intern #+allegro (string-downcase strat-name)
-			   #-allegro (string-upcase strat-name)))
+			   #-allegro (string-upcase strat-name)
+			   :pvs))
 	 (strategy (or (gethash strat-id *rulebase*)
 		       (gethash strat-id *steps*)
 		       (gethash strat-id *rules*))))

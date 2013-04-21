@@ -174,7 +174,7 @@
                   (if
                    (or (string= |Scheme-to-CL-9| "")
                     (not (char= (char |Scheme-to-CL-9| 0) #\:)))
-                   (intern |Scheme-to-CL-9|)
+                   (intern |Scheme-to-CL-9| :pvs)
                    (intern (subseq |Scheme-to-CL-9| 1) :keyword)))))
                (list (if neg? (list ':neg-char posix-class) posix-class)
                 (+ i 2)))))

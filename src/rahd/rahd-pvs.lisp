@@ -445,4 +445,4 @@
   (let ((idstr (format nil "rr~d" (funcall *rahd-var-counter*))))
     (if (find-symbol idstr)
 	(new-rahd-variable)
-	(intern idstr))))
+	(intern idstr :pvs))))

@@ -101,14 +101,14 @@
 	  (bpos (let ((id (intern
 			   (concatenate 'string
 			     "*" (string (id expr)) "_"
-			     (princ-to-string bpos) "*"))
+			     (princ-to-string bpos) "*") :pvs)
 			  ;;(makesym "*~a_~a*" (id expr) bpos)
 			  ))
 		  (add-to-local-typealist id expr)
 		  id)) ;;NSH(4.2.95) id was (id expr) and unsound!
 	  ;;eg. proved (FORALL i, (j|j<i): (FORALL (j| j>i): j<i).
 	  (t (let ((nvar (intern (concatenate 'string
-				   "*" (princ-to-string (1+ pos)) "*"))
+				   "*" (princ-to-string (1+ pos)) "*") :pvs)
 			 ;;(makesym "*~a*" (1+ pos))
 			 ))
 	       (list (get-subtype-coercion expr) nvar))))))
@@ -138,7 +138,7 @@
 					   "_"
 					   (princ-to-string
 					    (funcall
-					     *translate-id-counter*))))))))
+					     *translate-id-counter*))) :pvs)))))
 	       (unless id-hash
 		 (setf (gethash norm-expr *translate-id-hash*)
 		       newconst)
@@ -180,7 +180,7 @@
   (let ((stname (cdr (assoc (type expr) *subtype-names* :test #'tc-eq))))
     (or stname
 	(let ((name (intern (concatenate 'string
-			      "*" (string (gentemp "subtype")) "*"))
+			      "*" (string (gentemp "subtype")) "*") :pvs)
 		    ;;(makesym "*~a*" (gentemp "subtype"))
 		    ))
 	  (push (cons (type expr) name) *subtype-names*)
@@ -206,7 +206,7 @@
 					   (id (argument ex))))
 			       "_"
 			       (princ-to-string
-				(funcall *translate-id-counter*))))))))
+				(funcall *translate-id-counter*))) :pvs)))))
 	    (unless id-hash
 	      (setf (gethash norm-expr *translate-id-hash*)
 		    newconst))
@@ -284,7 +284,7 @@
   (let ((rtype (find-supertype rectype)))
     (or (cdr (assoc rtype *rec-type-dummies* :test #'tc-eq))
 	(let ((name (intern (concatenate 'string
-			      "*" (string (gentemp "%%dummy")) "*"))
+			      "*" (string (gentemp "%%dummy")) "*") :pvs)
 		    ;;(makesym "*~a*" (gentemp "%%dummy"))
 		    ))
 	  (push (cons rtype name) *rec-type-dummies*)
@@ -335,7 +335,7 @@
 					    (or (prover-type
 					       (nth i (types (type
 							      (car arguments)))))
-						'||))))
+						'||))) :pvs)
 				,i
 				,translated-arg)))
 		      (translate-to-prove arguments)))
@@ -377,7 +377,7 @@
 (defmethod translate-to-prove ((expr projection-application))
   (let ((arg (translate-to-prove (argument expr))))
     `(,(intern (concatenate 'string
-		 "TUPSEL-" (string (or (prover-type (type expr)) '||))))
+		 "TUPSEL-" (string (or (prover-type (type expr)) '||))) :pvs)
       ,(1- (index expr)) ,arg)))
 
 (defmethod translate-to-prove ((expr injection-application))
@@ -567,7 +567,7 @@
 					  "APPLY-"
 					  (princ-to-string (length tr-vars))
 					  "-"
-					  (string (or prtype '||)))))
+					  (string (or prtype '||))) :pvs))
 			       (apform (cons apname (cons newid tr-vars))))
 			  (unless (or (null prtype)
 				      (assoc apname typealist))
@@ -592,14 +592,14 @@
 				  (concatenate 'string
 				    "APPLY-"
 				    (princ-to-string (length tr-bndvars))
-				    "-"))
+				    "-") :pvs)
 				 tr-operator
 				 tr-bndvars)))))))
     (if (lambda-expr? expr)
 	tr-lambda-expr
 	 (list (intern
 		(concatenate 'string
-		  "APPLY-1-" (or (string prtype) "")))
+		  "APPLY-1-" (or (string prtype) "")) :pvs)
 	       tr-operator
 	       tr-lambda-expr))))
 
@@ -611,7 +611,7 @@
 			(string (operator ex))
 			"_"
 			(princ-to-string
-			 (funcall *translate-id-counter*))))))))
+			 (funcall *translate-id-counter*))) :pvs)))))
 
 (defmethod unique-binding-operator ((ex lambda-expr))
   'lambda)
@@ -732,7 +732,7 @@
 
 (defun make-tr-projection-application (type number expr)
   `(,(intern (concatenate 'string
-	       "TUPSEL-" (string (or (prover-type type) '||))))
+	       "TUPSEL-" (string (or (prover-type type) '||))) :pvs)
     ,(1- number) ,expr))
 
 (defun make-tr-assign-application (fun-type expr args)
@@ -744,7 +744,7 @@
 	 (name (intern (concatenate 'string
 			 "APPLY-"
 			 (princ-to-string (length (domain-types type)))
-			 "-" (string (or (prover-type (range type)) '||)))))
+			 "-" (string (or (prover-type (range type)) '||))) :pvs))
 	 (prtype (prover-type (range type))))
     (unless (or (not prtype)
 		(assoc name typealist))

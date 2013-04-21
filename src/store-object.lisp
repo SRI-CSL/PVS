@@ -409,8 +409,8 @@
 	  (setq *fetch-object-case-ok?* :lower)
 	  (setq *fetch-object-case-ok?* t)))
     (if (eq *fetch-object-case-ok?* :lower)
-	(intern (convert-fetched-string-to-lowercase str))
-	(intern str))))
+	(intern (convert-fetched-string-to-lowercase str) :pvs)
+	(intern str :pvs))))
 
 #-allegro
 (defun fetch-symbol ()
@@ -423,8 +423,8 @@
 	  (setq *fetch-object-case-ok?* :upper)
 	  (setq *fetch-object-case-ok?* t)))
     (if (eq *fetch-object-case-ok?* :upper)
-	(intern (convert-fetched-string-to-uppercase str))
-	(intern str))))
+	(intern (convert-fetched-string-to-uppercase str) :pvs)
+	(intern str :pvs))))
 
 (defun convert-fetched-string-to-lowercase (str)
   (let ((in-vertbars nil))

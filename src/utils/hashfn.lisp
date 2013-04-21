@@ -497,7 +497,7 @@
 (defun pvs-sxhash-id (x)
   (pvs-sxhash* (typecase x
 		 (symbol x)
-		 (string (intern x))
+		 (string (intern x :pvs))
 		 (t (id x)))
 	       nil))
 

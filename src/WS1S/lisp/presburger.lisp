@@ -262,7 +262,7 @@
 ;; Return a name for an expression
 
 (defmethod presburger-name ((expr expr))
-  (intern (format nil "@@@~a@@@" expr)))
+  (intern (format nil "@@@~a@@@" expr) :pvs))
 
 (defmethod presburger-name ((expr name-expr))
   (id expr))
@@ -291,7 +291,7 @@
 
   (defun presburger-fresh-id (id)
     (declare (special *current-context*))
-    (let ((newid (intern (format nil "~a@~d" id *counter*))))
+    (let ((newid (intern (format nil "~a@~d" id *counter*) :pvs)))
       (setf *counter* (1+ *counter*))
       (if (declared? newid *current-context*)
 	  (presburger-fresh-id id)

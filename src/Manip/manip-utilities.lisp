@@ -765,7 +765,7 @@ undoing proof attempt." just-rule)
 			  (if (or (member (car proof) *pvs-rulebase-names*)
 				  (eql (elt symb (- (length symb) 1)) #\$))
 			      proof
-			      (cons (intern (format nil "~A$" symb))
+			      (cons (intern (format nil "~A$" symb) :pvs)
 				    (cdr proof))))
 		        (mapcar #'subst-proof proof)))
 		   (t proof))))

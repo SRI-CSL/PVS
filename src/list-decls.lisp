@@ -128,7 +128,8 @@
       (pvs-message "~a has not been typechecked" oname)))
 
 (defun typechecked-origin? (name origin)
-  (case (intern (#+allegro string-downcase #-allegro string-upcase origin))
+  (case (intern (#+allegro string-downcase #-allegro string-upcase origin)
+		:pvs)
     ((ppe tccs) (get-theory name))
     ((prelude prelude-theory) t)
     (t (typechecked-file? name))))
@@ -339,7 +340,8 @@
       (values object containing-type theory))))
 
 (defun get-syntactic-objects-for (name origin)
-  (case (intern (#+allegro string-downcase #-allegro string-upcase origin))
+  (case (intern (#+allegro string-downcase #-allegro string-upcase origin)
+		:pvs)
     (ppe (let ((theory (get-theory name)))
 	   (when theory
 	     (values (ppe-form theory) (list theory)))))
@@ -363,7 +365,7 @@
 
 (defun find-declaration (string)
   (let ((declarations nil)
-	(id (intern string)))
+	(id (intern string :pvs)))
     (do-all-theories #'(lambda (th)
 			 (setq declarations
 			       (append (get-find-declaration-info id th)
@@ -425,7 +427,7 @@
 
 (defun whereis-identifier-used (string)
   (let ((declarations nil)
-	(sym (intern string)))
+	(sym (intern string :pvs)))
     (do-all-theories #'(lambda (th)
 			 (setq declarations
 			       (append (get-whereis-info sym th)

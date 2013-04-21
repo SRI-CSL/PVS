@@ -34,7 +34,7 @@
 (export '(argument* copy-all copy-context current-declarations-hash
 	  current-theory current-theory-name current-using-hash file-older
 	  find-supertype get-theory lf make-new-context mapappend operator*
-	  put-decl pvs-current-directory resolution show))
+	  put-decl pvs-current-directory resolution show assq))
 
 (declaim (notinline current-theory))
 
@@ -650,7 +650,7 @@
 (defun get-id (x)
   (typecase x
     (symbol x)
-    (string (intern x))
+    (string (intern x :pvs))
     (number x)
     (t (id x))))
 
@@ -658,7 +658,7 @@
   (let* ((str (string x))
 	 (dotpos (position #\. str :from-end t)))
     (if dotpos
-	(values (intern (subseq str (1+ dotpos))) t)
+	(values (intern (subseq str (1+ dotpos)) :pvs) t)
 	(values x nil))))
 
 (defun same-last-id (x y)
@@ -2565,7 +2565,7 @@
   ref)
 
 (defmethod ref-to-id ((ref string))
-  (intern ref))
+  (intern ref :pvs))
 
 (defmethod ref-to-id ((ref integer))
   (makesym "~r" ref))
@@ -2584,7 +2584,8 @@
       (intern (substitute #\_ #\space
 			  (substitute #\_ #\-
 				      (format nil "~r"
-					(number (number-expr ref))))))))
+					(number (number-expr ref)))))
+	      :pvs)))
 
 (defmethod ref-to-id ((ref name-judgement))
   (or (id ref)
@@ -3701,13 +3702,13 @@ space")
   (memq id *unary-operators*))
 
 (defmethod unary-op? ((id string))
-  (memq (intern id) *unary-operators*))
+  (memq (intern id :pvs) *unary-operators*))
 
 (defmethod infix-op? ((id symbol))
   (memq id *infix-operators*))
 
 (defmethod infix-op? ((id string))
-  (memq (intern id) *infix-operators*))
+  (memq (intern id :pvs) *infix-operators*))
 
 ;(defstruct (pvs-tables (:conc-name nil))
 ;  ;;(judgement-types-cache
@@ -4366,7 +4367,7 @@ space")
   (let ((str (if num (format nil "~a-~d" string num) string)))
     (if (find-symbol str)
 	(make-new-symbol string (if num (1+ num) 1))
-	(intern str))))
+	(intern str :pvs))))
 
 (defmethod dep-binding-type ((te dep-binding))
   (type te))

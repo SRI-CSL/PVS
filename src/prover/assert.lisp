@@ -4039,7 +4039,7 @@
 	 (new-index (if all-occurrences
 			(1+ (apply #'max all-occurrences))
 			1))
-	 (name (intern (format nil "~a$~a" string new-index))))
+	 (name (intern (format nil "~a$~a" string new-index) :pvs)))
     (install-rewrite-res (list name fmla) name fmla always?)))
 
 
@@ -4567,7 +4567,7 @@ e LHS free variables in ~a" hyp lhs)
 			    (symbol-index aname))
 	    (get-antec-name name (cdr all-names) max))) 
       (unless (zerop max)
-	(intern (format nil "~a$~a" name max)))))    
+	(intern (format nil "~a$~a" name max) :pvs))))    
 
 
 (defun stop-rewrite-step (names)
