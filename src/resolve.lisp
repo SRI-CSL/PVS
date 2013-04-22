@@ -489,7 +489,9 @@
     (if dacts
 	(when (and dparams
 		   (length= dacts dparams)
-		   (length= acts (formals-sans-usings dth)))
+		   (or (null acts)
+		       (and (not (eq dth (current-theory)))
+			    (length= acts (formals-sans-usings dth)))))
 	  (let* ((thinsts (resolve-theory-actuals decl acts dacts dth args mappings))
 		 (reses (resolve-decl-actuals decl dacts thinsts args)))
 	    reses))
@@ -1621,7 +1623,8 @@
   (let ((bindings (find-compatible-bindings
 		   args
 		   dtypes
-		   (nconc (mapcar #'list (formals-sans-usings (module decl)))
+		   (nconc (unless (eq (module decl) (current-theory))
+			    (mapcar #'list (formals-sans-usings (module decl))))
 			  (mapcar #'list (decl-formals decl))))))
     (or (create-compatible-modinsts modinst decl bindings nil)
 	(progn (push (list :no-instantiation decl)
