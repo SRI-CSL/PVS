@@ -15,15 +15,19 @@ INPROVER = "in_prover"
 PVS_NOT_RUNNING_MESSAGE ="PVS is not running or it is in prover mode"
 
 def execute(callback, command, *parameters, **keywords):
+    """execute a given command with parameters and optional extra keywords"""
     util.runner.sendAsyncCommand(callback, command, *parameters, **keywords)
 
 def parse(filename):
+    """execute the command 'parse'"""
     execute(onParse, PARSE, filename)
 
 def onParse(request, result):
+    """called when the pvs response is received for the command 'parse'"""
     log.info("onParse for %s returned %s", request, result)
 
 def typecheck(filename):
+    """execute the command 'typecheck'"""
     if util.runner == None or util.runner.status != PVS_MODE_EDIT:
         ui.dialogs.showError(PVS_NOT_RUNNING_MESSAGE)
     elif filename == None:
@@ -34,6 +38,7 @@ def typecheck(filename):
         execute(onTypecheck, TYPECHECK, name, fullname=filename)
 
 def onTypecheck(request, result):
+    """called when the pvs response is received for the command 'typecheck'"""
     log.info("onTypecheck for %s returned %s", request, result)
     name = request[runr.PVSRunner.PARAMETERS][0]
     filename = request[FULLNAME]
@@ -42,9 +47,10 @@ def onTypecheck(request, result):
 def onGetTheories(request, result):
     log.info("onGetTheories for %s returned %s", request, result)
     filename = request[FULLNAME]
-    util.filestreemanager.addTheoriesToFile(filename, result)
+    util.filesTreeManager.addTheoriesToFile(filename, result)
     
 def changeContext(newContext):
+    """execute the command 'change-context'"""
     execute(onChangeContext, CHANGECONTEXT, newContext)
 
 def onChangeContext(request, result):

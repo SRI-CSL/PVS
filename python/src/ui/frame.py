@@ -16,17 +16,10 @@ from ptmgr import ProofTreeManager
 
 log = util.getLogger(__name__)
 
-# begin wxGlade: dependencies
-# end wxGlade
-
-# begin wxGlade: extracode
-# end wxGlade
-
 class MainFrame(wx.Frame):
-    """The main fram of the application. It consists of a menu and a toolbar, a notebook for all the open
+    """The main frame of the application. It consists of a menu and a toolbar, a notebook for all the open
     files and buffers, and a console"""
     def __init__(self, *args, **kwds):
-        # begin wxGlade: PVSMainFrame.__init__
         kwds["style"] = wx.ICONIZE | wx.CAPTION | wx.MINIMIZE | wx.CLOSE_BOX | wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX | wx.SYSTEM_MENU | wx.RESIZE_BORDER | wx.CLIP_CHILDREN
         wx.Frame.__init__(self, *args, **kwds)
         self.Bind(wx.EVT_CLOSE, self.OnClose)
@@ -44,16 +37,16 @@ class MainFrame(wx.Frame):
         self.SetToolBar(util.toolbar)
         # Tool Bar end
 
-        util.filesbuffermanager = FilesAndBuffersManager()
-        if util.preference.visibleFilesBuffersTrees():
-            util.filesbuffermanager.Show()
-        util.prooftreemanager = ProofTreeManager()
-        if util.preference.visibleProofTree():
-            util.prooftreemanager.Show()
+        util.filesBuffersManager = FilesAndBuffersManager()
+        if util.preference.getVisibleFilesBuffersTrees():
+            util.filesBuffersManager.Show()
+        util.proofTreeManager = ProofTreeManager()
+        if util.preference.getVisibleProofTree():
+            util.proofTreeManager.Show()
         
-        self.panel_2 = wx.Panel(self, wx.ID_ANY)
+        self.mainPanel = wx.Panel(self, wx.ID_ANY)
         
-        util.notebook = NotebookManager(self.panel_2, wx.ID_ANY, style=0)
+        util.notebook = NotebookManager(self.mainPanel, wx.ID_ANY, style=0)
         
         util.console = PVSConsole()
         util.console.Show()
@@ -64,45 +57,31 @@ class MainFrame(wx.Frame):
         
         
         self.configMenuToolbar(0)
-        util.toolbar.enableSave(False)
         self.Connect(-1, -1, util.EVT_RESULT_ID, self.onPVSResult)
 
     def __set_properties(self):
-        # begin wxGlade: PVSMainFrame.__set_properties
         self.SetTitle(constants.FRAME_TITLE)
         util.statusbar.SetStatusWidths([-1])
-        # statusbar fields
         util.console.initializeConsole()
         util.toolbar.Realize()
-        if util.preference.visibleProofTree() and util.preference.visibleFilesBuffersTrees():
+        if util.preference.getVisibleProofTree() and util.preference.getVisibleFilesBuffersTrees():
             position = self.GetPosition()
-            #fbPosition = util.filesbuffermanager.GetPosition()
-            sz = util.filesbuffermanager.GetSize()
+            sz = util.filesBuffersManager.GetSize()
             fbPosition = (position[0]-sz[0]-2, position[1])
-            util.filesbuffermanager.SetPosition(fbPosition)
+            util.filesBuffersManager.SetPosition(fbPosition)
             proofPosition = (position[0]-sz[0]-2, position[1] +sz[1] + 2)
-            util.prooftreemanager.SetPosition(proofPosition)
-            #self.SetPosition((position[0] + sz[0]+2, position[1]))
-        
-        # end wxGlade
+            util.proofTreeManager.SetPosition(proofPosition)
 
     def __do_layout(self):
         self.SetSize((700, 400))
-        # begin wxGlade: PVSMainFrame.__do_layout
-        sizer_2 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_8 = wx.BoxSizer(wx.HORIZONTAL)
-
-        #sizer_1.Add(self.window_1, 1, wx.EXPAND, 0)
-        
-        ##util.notebook.AddPage(self.panel_3, "tab1")
-        sizer_8.Add(util.notebook, 1, wx.EXPAND, 0)
-        self.panel_2.SetSizer(sizer_8)
-        
-        sizer_2.Add(self.panel_2, 3, wx.EXPAND, 0)
-        self.SetSizer(sizer_2)
+        frameSizer = wx.BoxSizer(wx.HORIZONTAL)
+        mainPanelSizer = wx.BoxSizer(wx.HORIZONTAL)
+        mainPanelSizer.Add(util.notebook, 1, wx.EXPAND, 0)
+        self.mainPanel.SetSizer(mainPanelSizer)        
+        frameSizer.Add(self.mainPanel, 3, wx.EXPAND, 0)
+        self.SetSizer(frameSizer)
         self.Layout()
         self.Centre()
-        # end wxGlade
         
     def enableToolbarButton(self, ID, value = True):
         util.toolbar.Enable(ID, value)
@@ -115,6 +94,7 @@ class MainFrame(wx.Frame):
         util.statusbar.SetStatusText(text, location)
         
     def onPVSResult(self, event):
+        """called whenever a PVSResultEvent is received"""
         data = event.data
         message = event.message
         log.info("Event from PVSRunner. Message: %s, Data: %s", message, data)
@@ -147,6 +127,7 @@ class MainFrame(wx.Frame):
 
     def configMenuToolbar(self, openFiles):
         mb = util.menubar
+        tb = util.toolbar
         if openFiles == 0:
             mb.enableCloseFile(False)
             mb.enableUndo(False)
@@ -155,6 +136,8 @@ class MainFrame(wx.Frame):
             mb.enablePaste(False)
             mb.enableSelectAll(False)
             mb.enableFind(False)
+            tb.enableSave(False)
+            tb.enableSaveAll(False)
             #util.toolbar.enableStartPVS(False)
         elif openFiles > 0:
             mb.enableCloseFile()
@@ -164,10 +147,13 @@ class MainFrame(wx.Frame):
             mb.enablePaste()
             mb.enableSelectAll()
             mb.enableFind()
+            tb.enableSave()
+            tb.enableSaveAll()
         else:
             log.error("openFiles is a negative number: %d", openFiles)
             
     def OnClose(self, event):
+        """called when self.Close() is called"""
         # TODO: if they are unsaved files, ask the user to save them
         if util.runner != None:
             util.runner.terminate()

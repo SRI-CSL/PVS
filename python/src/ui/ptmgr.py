@@ -1,13 +1,12 @@
 import wx
 import util
+from constants import LABEL_PROOF_TREE
 
 class ProofTreeManager(wx.Frame):
     """This class manages the proof tree"""
-    
-    title = "Proof Tree"
 
     def __init__(self):
-        wx.Frame.__init__(self, wx.GetApp().TopWindow, title=self.title)
+        wx.Frame.__init__(self, wx.GetApp().TopWindow, title=LABEL_PROOF_TREE)
         self.Bind(wx.EVT_CLOSE, self.OnClose)
         panel = wx.Panel(self, wx.ID_ANY)
         #self.prooflabel = wx.StaticText(self.window_1_pane_2, wx.ID_ANY, LABEL_PROOF_PANEL)
@@ -21,9 +20,9 @@ class ProofTreeManager(wx.Frame):
     def OnClose(self, event):
         if event.CanVeto():
             self.Hide()
-            util.preference.setProofTree(False)
+            util.preference.setVisibleProofTree(False)
             util.menubar.proofTree.Check(False)
             event.Veto()
         else:
-            #if we don't veto it we allow the event to propogate
+            #if we don't veto it we allow the event to propagate
             event.Skip() 

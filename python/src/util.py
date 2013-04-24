@@ -1,7 +1,7 @@
 
 # This File contans all the global objects for different parts of the GUI 
 # and a function to get the logger for each module
-import logging, sys, wx, os
+import logging, sys, wx, os, os.path
 import constants
 
 PVS_CONSOLE_HAS_HORIZONTAL_SCROLL = False
@@ -15,14 +15,15 @@ toolbar = None
 statusbar = None
 notebook = None
 console = None
-filestreemanager = None
-bufferstree = None
-filesbuffermanager = None
-prooftreemanager = None
+filesTreeManager = None
+buffersTree = None
+filesBuffersManager = None
+proofTreeManager = None
 runner = None
 preference = None 
 
 def getLogger(name):
+    """Return a logger for the given name"""
     log = logging.getLogger(name)
     hdlr = logging.StreamHandler(sys.stdout)
     #hdlr = logging.FileHandler('/var/tmp/myapp.log')
@@ -33,9 +34,17 @@ def getLogger(name):
     return log
 
 def normalizePath(thePath):
+    """Replace ~ with the home directory"""
     if thePath.startswith("~"):
-        thePath = os.getenv("HOME") + thePath[1:]
+        thePath = getHomeDirectory() + thePath[1:]
     return os.path.abspath(thePath)
+
+def getHomeDirectory():
+    """return user's home directory"""
+    return os.getenv("HOME")
+
+def getFilenameFromFullPath(fullname):
+    return os.path.split(fullname)[1]
 
 class PVSException(Exception):
     def __init__(self):

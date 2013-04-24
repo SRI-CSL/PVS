@@ -20,6 +20,7 @@ class MainFrameMenu(wx.MenuBar):
         self.setBindings()
         
     def addFileMenu(self):
+        """Adding menu items to File menu"""
         fileMenu = wx.Menu()
         self.newFileMenuItem = fileMenu.Append(wx.ID_NEW, LABEL_NEW + DOTDOTDOT + "\tCtrl-N", EMPTY_STRING, wx.ITEM_NORMAL)
         self.openFileMenuItem = fileMenu.Append(wx.ID_OPEN, LABEL_OPEN + DOTDOTDOT + "\tCtrl-O", EMPTY_STRING, wx.ITEM_NORMAL)
@@ -31,6 +32,7 @@ class MainFrameMenu(wx.MenuBar):
         self.Append(fileMenu, LABEL_FILE)
  
     def addEditMenu(self):
+        """Adding menu items to Edit menu"""
         editMenu = wx.Menu()
         self.undoMenuItem = editMenu.Append(wx.ID_UNDO, LABEL_UNDO + "\tCtrl-Z", EMPTY_STRING, wx.ITEM_NORMAL)
         editMenu.AppendSeparator()
@@ -43,18 +45,24 @@ class MainFrameMenu(wx.MenuBar):
         self.Append(editMenu, LABEL_EDIT)
 
     def addViewMenu(self):
+        """Adding menu items to View menu"""
         viewMenu = wx.Menu()
         self.filesAndBuffersTrees = viewMenu.Append(wx.ID_ANY, "Files and Buffers Trees", EMPTY_STRING, wx.ITEM_CHECK)
-        viewMenu.Check(self.filesAndBuffersTrees.GetId(), util.preference.visibleFilesBuffersTrees())
+        viewMenu.Check(self.filesAndBuffersTrees.GetId(), util.preference.getVisibleFilesBuffersTrees())
+        
         self.proofTree = viewMenu.Append(wx.ID_ANY, "Proof Tree", EMPTY_STRING, wx.ITEM_CHECK)
-        viewMenu.Check(self.proofTree.GetId(), util.preference.visibleProofTree())
+        viewMenu.Check(self.proofTree.GetId(), util.preference.getVisibleProofTree())
+
+        self.toolbar = viewMenu.Append(wx.ID_ANY, "Toolbar", EMPTY_STRING, wx.ITEM_CHECK)
+        viewMenu.Check(self.toolbar.GetId(), util.preference.getVisibleToolbar())
         self.Append(viewMenu, LABEL_VIEW)
 
     def addPVSMenu(self):
+        """Adding menu items to PVS menu"""
         pvsMenu = wx.Menu()
         self.changeContextMenuItem =  pvsMenu.Append(wx.ID_ANY, "Change Context...", EMPTY_STRING, wx.ITEM_NORMAL)
         self.restoreContextMenuItem = pvsMenu.Append(wx.ID_ANY, "Restore Context Automatically", EMPTY_STRING, wx.ITEM_CHECK)
-        pvsMenu.Check(self.restoreContextMenuItem.GetId(), util.preference.restoreContextAutomatically())
+        pvsMenu.Check(self.restoreContextMenuItem.GetId(), util.preference.getContextPreferencesRestoredAutomatically())
         pvsMenu.AppendSeparator()
         self.startPVSMenuItem = pvsMenu.Append(wx.ID_ANY, LABEL_STARTPVS, EMPTY_STRING, wx.ITEM_NORMAL)
         self.typecheckMenuItem = pvsMenu.Append(wx.ID_ANY, LABEL_TYPECHECK, EMPTY_STRING, wx.ITEM_NORMAL)
@@ -77,11 +85,12 @@ class MainFrameMenu(wx.MenuBar):
         util.frame.Bind(wx.EVT_MENU, onPasteText, self.pasteMenuItem)
         util.frame.Bind(wx.EVT_MENU, onFindText, self.findMenuItem)
         
-        util.frame.Bind(wx.EVT_MENU, onViewFilesAndBuffersTrees, self.filesAndBuffersTrees)
-        util.frame.Bind(wx.EVT_MENU, onViewProofTree, self.proofTree)
+        util.frame.Bind(wx.EVT_MENU, onToggleViewFilesAndBuffersTrees, self.filesAndBuffersTrees)
+        util.frame.Bind(wx.EVT_MENU, onToggleViewProofTree, self.proofTree)
+        util.frame.Bind(wx.EVT_MENU, onToggleViewToolbar, self.toolbar)
         
         util.frame.Bind(wx.EVT_MENU, onChangeContext, self.changeContextMenuItem)
-        util.frame.Bind(wx.EVT_MENU, onRestoreContextAutomatically, self.restoreContextMenuItem)
+        util.frame.Bind(wx.EVT_MENU, onContextPreferencesRestoredAutomatically, self.restoreContextMenuItem)
         util.frame.Bind(wx.EVT_MENU, onStartPVS, self.startPVSMenuItem)
         util.frame.Bind(wx.EVT_MENU, onTypecheck, self.typecheckMenuItem)
         util.frame.Bind(wx.EVT_MENU, onSetPVSLocation, self.setPVSLocationMenuItem)

@@ -5,7 +5,6 @@ import threading, time, json
 import subprocess, sys, wx
 import util
 import fcntl, os
-#from evhdlr import *
 from evhdlr import PVSResultEvent
 from constants import PVS_MODE, EMPTY_STRING, PVS_MODE_OFF, PVS_MODE_EDIT, PVS_MODE_PROVER, NEWLINE
 from constants import MESSAGE_INITIALIZE_CONSOLE, MESSAGE_PVS_STATUS, MESSAGE_CONSOLE_WRITE_LINE, MESSAGE_CONSOLE_WRITE_PROMPT
@@ -49,7 +48,7 @@ class PVSRunner(threading.Thread):
         self.process = subprocess.Popen(command, shell = False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
         fcntl.fcntl(self.process.stdout.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
         self.setStatus(PVS_MODE_EDIT)
-        if util.preference.restoreContextAutomatically():
+        if util.preference.getContextPreferencesRestoredAutomatically():
             time.sleep(1)
             context = util.preference.getContext()
             cmdmgr.changeContext(context)              

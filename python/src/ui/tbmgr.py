@@ -38,7 +38,7 @@ class ToolbarManager(wx.ToolBar):
         util.frame.Bind(wx.EVT_TOOL, onSaveFile, self.saveFileToolbarItem)
         util.frame.Bind(wx.EVT_TOOL, onSaveAllFiles, self.saveallFileToolbarItem)
         util.frame.Bind(wx.EVT_TOOL, onCutText, self.cutToolbarItem)
-        util.frame.Bind(wx.EVT_TOOL, onCoptText, self.copyToolbarItem)
+        util.frame.Bind(wx.EVT_TOOL, onCopyText, self.copyToolbarItem)
         util.frame.Bind(wx.EVT_TOOL, onPasteText, self.pasteToolbarItem)
         util.frame.Bind(wx.EVT_TOOL, onStopPVS, self.stopPVSToolbarItem)
         util.frame.Bind(wx.EVT_TOOL, onStartPVS, self.startPVSToolbarItem)

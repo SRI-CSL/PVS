@@ -10,7 +10,7 @@ import cmdmgr
 log = util.getLogger(__name__)
 
 class FilesTreeManager:
-    """This class provides an api to the files tree that is inside FilesAndBuffersManager"""
+    """This class provides an API for the files tree that is inside FilesAndBuffersManager"""
     
     def __init__(self, tree):
         imageList = wx.ImageList(16, 16)
@@ -23,11 +23,11 @@ class FilesTreeManager:
         self.tree.AddRoot("", 0, -1, wx.TreeItemData({KIND: ROOT}))
         self.tree.Bind(wx.EVT_TREE_ITEM_MENU, self.showContextMenu)
                 
-    def addFile(self, f):
+    def addFile(self, fullname):
         """add a file to the tree"""
-        log.info("Adding file %s", f)
+        log.info("Adding file %s", fullname)
         root = self.tree.GetRootItem()
-        self.tree.AppendItem(root, f.filename, 1, -1, wx.TreeItemData({FULLNAME: f.fullname, KIND: FILE}))
+        self.tree.AppendItem(root, util.getFilenameFromFullPath(fullname), 1, -1, wx.TreeItemData({FULLNAME: fullname, KIND: FILE}))
         self.tree.Expand(root)
         
     def removeFile(self, fullname):
@@ -49,7 +49,6 @@ class FilesTreeManager:
         log.error("There is no %s in the filetree", fullname)
         return None
         
-
     def addTheoriesToFile(self, fullname, result):
         """addTheoriesToFile is called after typechecking a file and asking for the declarations in that file"""
         fileNode = self.getFileNode(fullname)
@@ -72,7 +71,6 @@ class FilesTreeManager:
                         self.tree.AppendItem(theoryNode, formulaName, 3, -1, wx.TreeItemData(declaration))
             self.tree.ExpandAllChildren(fileNode)
 
-    
     def removeTheoriesFromFile(self, fullname):
         """remove the theories nodes from a file node"""
         fileNode = self.getFileNode(fullname)
@@ -91,7 +89,7 @@ class FilesTreeManager:
             ID = wx.ID_ANY
             menu.Append(ID, label, EMPTY_STRING, wx.ITEM_NORMAL)
             wx.EVT_MENU(menu, ID, callback)
-        util.filesbuffermanager.PopupMenu(menu, event.GetPoint())
+        util.filesBuffersManager.PopupMenu(menu, event.GetPoint())
         menu.Destroy()
         
     def getContextMenuItems(self, status, kind):
@@ -139,7 +137,7 @@ class FilesTreeManager:
     def onCloseFile(self, event):
         """onCloseFile is called when the user selects Close in the context menu"""
         nodeFullname = self.getSelectedNodeData()[FULLNAME]
-        util.filesbuffermanager.closeFile(nodeFullname)
+        util.filesBuffersManager.closeFile(nodeFullname)
         
     def onTypecheckFile(self, event):
         """onTypecheckFile is called when the user selects Typecheck in the context menu"""

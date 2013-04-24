@@ -1,13 +1,12 @@
 
 # This class manages how buffers and files are opened and closed,
-# by managing the tree represenation of files and buffers
+# by managing the tree representation of files and buffers
 # and the tabs that contain open files and editor.
 
-from bfr import PVSBuffer, PVSFile
 import wx, os.path
-from constants import PVS_EXTENSION, TAB_FILES, TAB_BUFFERS
+from constants import PVS_EXTENSION, TAB_FILES, TAB_BUFFERS, LABEL_FILES_BUFFERS
 import util
-from filestreemanager import FilesTreeManager
+from ftmgr import FilesTreeManager
 
 log = util.getLogger(__name__)
 
@@ -15,30 +14,28 @@ class FilesAndBuffersManager(wx.Frame):
     """This class implements a frame with two tabes, one to show a tree of open files and their theories,
     and the other is a list of buffers sent from PVS"""
     
-    title = "Files and Buffers"
-    
     def __init__(self):
-        wx.Frame.__init__(self, wx.GetApp().TopWindow, title=self.title)
+        wx.Frame.__init__(self, wx.GetApp().TopWindow, title=LABEL_FILES_BUFFERS)
         self.Bind(wx.EVT_CLOSE, self.OnClose)
-        panel = wx.Panel(self, wx.ID_ANY)
-        self.notebook_4 = wx.Notebook(panel, wx.ID_ANY, style=0)
-        self.notebook_4_pane_1 = wx.Panel(self.notebook_4, wx.ID_ANY)
-        self.filestree = wx.TreeCtrl(self.notebook_4_pane_1, wx.ID_ANY, style=wx.TR_HAS_BUTTONS | wx.TR_LINES_AT_ROOT | wx.TR_DEFAULT_STYLE | wx.SUNKEN_BORDER)
-        self.notebook_4_pane_2 = wx.Panel(self.notebook_4, wx.ID_ANY)
-        self.bufferstree = wx.TreeCtrl(self.notebook_4_pane_2, wx.ID_ANY, style=wx.TR_HAS_BUTTONS | wx.TR_LINES_AT_ROOT | wx.TR_DEFAULT_STYLE | wx.SUNKEN_BORDER)
+        mainPanel = wx.Panel(self, wx.ID_ANY)
+        self.notebook = wx.Notebook(mainPanel, wx.ID_ANY, style=0)
+        self.filePanel = wx.Panel(self.notebook, wx.ID_ANY)
+        self.filestree = wx.TreeCtrl(self.filePanel, wx.ID_ANY, style=wx.TR_HAS_BUTTONS | wx.TR_LINES_AT_ROOT | wx.TR_DEFAULT_STYLE | wx.SUNKEN_BORDER)
+        self.bufferPanel = wx.Panel(self.notebook, wx.ID_ANY)
+        self.buffersTree = wx.TreeCtrl(self.bufferPanel, wx.ID_ANY, style=wx.TR_HAS_BUTTONS | wx.TR_LINES_AT_ROOT | wx.TR_DEFAULT_STYLE | wx.SUNKEN_BORDER)
         
-        sizer_3 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_5 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_4 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_4.Add(self.filestree, 1, wx.EXPAND, 0)
-        self.notebook_4_pane_1.SetSizer(sizer_4)
-        sizer_5.Add(self.bufferstree, 1, wx.EXPAND, 0)
-        self.notebook_4_pane_2.SetSizer(sizer_5)
-        self.notebook_4.AddPage(self.notebook_4_pane_1, TAB_FILES)
-        self.notebook_4.AddPage(self.notebook_4_pane_2, TAB_BUFFERS)
-        sizer_3.Add(self.notebook_4, 1, wx.EXPAND, 0)
-        panel.SetSizer(sizer_3)
-        util.filestreemanager = FilesTreeManager(self.filestree)
+        mainSizer = wx.BoxSizer(wx.HORIZONTAL)
+        bufferSizer = wx.BoxSizer(wx.HORIZONTAL)
+        fileSizer = wx.BoxSizer(wx.HORIZONTAL)
+        fileSizer.Add(self.filestree, 1, wx.EXPAND, 0)
+        self.filePanel.SetSizer(fileSizer)
+        bufferSizer.Add(self.buffersTree, 1, wx.EXPAND, 0)
+        self.bufferPanel.SetSizer(bufferSizer)
+        self.notebook.AddPage(self.filePanel, TAB_FILES)
+        self.notebook.AddPage(self.bufferPanel, TAB_BUFFERS)
+        mainSizer.Add(self.notebook, 1, wx.EXPAND, 0)
+        mainPanel.SetSizer(mainSizer)
+        util.filesTreeManager = FilesTreeManager(self.filestree)
         self.SetSize((200, 300))
         
         self.files = {}
@@ -49,13 +46,12 @@ class FilesAndBuffersManager(wx.Frame):
         pass
         
     def addFile(self, fullname):
-        """add a new PVSFile"""
+        """add a new PVSFile, add an entry to the file list, open the file content in the editor, and set it as the active file"""
         log.info("Adding file %s", fullname)
-        if not self.files.has_key(fullname):
-            f = PVSFile(fullname)
-            self.files[fullname] = f
-            util.filestreemanager.addFile(f)
-            util.notebook.addFile(f)
+        if not fullname in self.files.keys():
+            util.filesTreeManager.addFile(fullname)
+            richEditor = util.notebook.addFile(fullname)
+            self.files[fullname] = richEditor
         else:
             log.info("File %s is already open", fullname)
         #self.mainFrame.pvseditor.addRedMarker(2)
@@ -99,36 +95,41 @@ class FilesAndBuffersManager(wx.Frame):
         if fullname == None:
             fullname = util.notebook.getActiveFilename()
         log.info("Closing file %s", fullname)
-        if self.files.has_key(fullname):
-            f = self.files[fullname]
-            f.close()
+        if fullname in self.files.keys():
+            #TODO: First check if the file needs be saved before closing.
             del self.files[fullname]
             util.notebook.closeTabForFile(fullname)
-            util.filestreemanager.removeFile(fullname)
+            util.filesTreeManager.removeFile(fullname)
         else:
             log.warning("The file %s is not in %s", fullname, self.files.keys())
         util.frame.configMenuToolbar(len(self.files))
             
-    def saveFile(self):
+    def saveFile(self, fullname=None):
         """save the active file (an active file is one whose tab is visible)"""
-        fullname = util.notebook.getActiveFilename()
+        if fullname == None:
+            fullname = util.notebook.getActiveFilename()
+        else:
+            if not fullname in self.files.keys():
+                log.error("%s is not even open to be saved.")
+                return 
         log.info("Saving file %s", fullname)
-        f = self.files[fullname]
-        f.save()
-        util.filestreemanager.removeTheoriesFromFile(fullname)
+        if util.notebook.pages[fullname].styledText.GetModify():
+            util.notebook.pages[fullname].styledText.SaveFile(fullname)
+        util.filesTreeManager.removeTheoriesFromFile(fullname)
             
     def saveAllFiles(self):
         """save all the open files"""
         log.info("Saving all files")
-        for fullname, f in self.files.items():
-            f.save()
-            util.filestreemanager.removeTheoriesFromFile(fullname)
+        for fullname, richEditor in self.files.items():
+            if richEditor.styledText.GetModify():
+                richEditor.styledText.SaveFile(fullname)
+            util.filesTreeManager.removeTheoriesFromFile(fullname)
 
     def OnClose(self, event):
         """is called when the user clicks on the close icon on top of the frame"""
         if event.CanVeto():
             self.Hide()
-            util.preference.setFilesBuffersTrees(False)
+            util.preference.setVisibleFilesBuffersTrees(False)
             util.menubar.filesAndBuffersTrees.Check(False)
             event.Veto()
         else:

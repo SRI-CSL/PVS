@@ -1,6 +1,4 @@
 
-# This class corresponds to the editor envoronment that displays the content of a file or a buffer
-# This class is also responsible for syntax highlighting
 
 import wx
 import codecs
@@ -11,7 +9,7 @@ from styltxt import PVSStyledText
 log = util.getLogger(__name__)
 
 class RichEditor(wx.Panel):
-    """RichEditor corresponds to an open file or buffer. It provides syntax highlighting, 
+    """RichEditor displays the content a file or buffer. It provides syntax highlighting, 
     as well as other functionalities like Copy, Paste, etc"""
     
     def __init__(self, parent, ID, data):
@@ -24,13 +22,10 @@ class RichEditor(wx.Panel):
         self.data = data
         self.decode = codecs.lookup("utf-8")[1]
         
-
     def addRedMarker(self, lineN):
         self.MarkerAdd(lineN, 1)
     
     def OnDestroy(self, evt):
-        # This is how the clipboard contents can be preserved after
-        # the app has exited.
         wx.TheClipboard.Flush()
         evt.Skip()
         

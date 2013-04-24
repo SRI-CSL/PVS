@@ -15,11 +15,11 @@ class PVSConsole(wx.Frame):
     
     def __init__(self):
         """Initializes the console GUI"""
-        wx.Frame.__init__(self, wx.GetApp().TopWindow, title=constants.LABEL_PVS_CONSOLE)
+        wx.Frame.__init__(self, wx.GetApp().TopWindow, title=LABEL_PVS_CONSOLE)
         self.prompt = EMPTY_STRING
         self.history = []
-        self.pvsout = wx.TextCtrl(self, wx.ID_ANY, constants.EMPTY_STRING, style=wx.TE_MULTILINE | wx.TE_READONLY)
-        self.pvsin = wx.TextCtrl(self, wx.ID_ANY, constants.EMPTY_STRING, style=wx.TE_PROCESS_ENTER)
+        self.pvsout = wx.TextCtrl(self, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE | wx.TE_READONLY)
+        self.pvsin = wx.TextCtrl(self, wx.ID_ANY, EMPTY_STRING, style=wx.TE_PROCESS_ENTER)
         
         consoleSizer = wx.BoxSizer(wx.VERTICAL)
         consoleSizer.Add(self.pvsout, 1, wx.EXPAND, 0)

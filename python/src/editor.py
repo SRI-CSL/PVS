@@ -42,7 +42,6 @@ def processArguments(args):
             
 
 if __name__ == "__main__":
-    print sys.maxint
     utilDirectory = os.path.dirname(util.__file__)
     constants.APPLICATION_FOLDER = os.path.abspath(os.path.join(utilDirectory, os.path.pardir))
     constants.IMAGE_FOLDER_PATH = os.path.join(constants.APPLICATION_FOLDER, constants.IMAGE_FOLDER_NAME)

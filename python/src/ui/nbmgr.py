@@ -8,7 +8,7 @@ import util
 log = util.getLogger(__name__)
 
 class NotebookManager(wx.Notebook):
-    """NotebookManager manages the open tabs in the editor. Each tab corresponds to a file or a buffer"""
+    """NotebookManager manages the open tabs in the main frame. Each tab corresponds to a file or a buffer"""
     
     PVSFILE = "pvsFile"
     
@@ -17,16 +17,13 @@ class NotebookManager(wx.Notebook):
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnPageChanged)
         #self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnPageChanging)
         #self.Bind(wx.EVT_AUINOTEBOOK_PAGE_CLOSED, self.close)
-        self.pages = {}
         
-    def addFile(self, pvsFile):
-        log.info("Opening a new editor tab for %s", pvsFile) 
-
-        editor = RichEditor(self, wx.ID_ANY, {NotebookManager.PVSFILE: pvsFile})
-        self.AddPage(editor, pvsFile.filename)
-        pvsFile.setEditor(editor)
-        editor.setText(pvsFile.content)
-        self.pages[pvsFile.fullname] = pvsFile
+    def addFile(self, fullname):
+        log.info("Opening a new editor tab for %s", fullname) 
+        editor = RichEditor(self, wx.ID_ANY, {NotebookManager.PVSFILE: fullname})
+        self.AddPage(editor, util.getFilenameFromFullPath(fullname))
+        editor.styledText.LoadFile(fullname)
+        return editor
         
     def OnPageChanged(self, event):
         log.debug("Active Tab Index: %d", event.GetSelection())
@@ -38,57 +35,55 @@ class NotebookManager(wx.Notebook):
     def showTabForFile(self, fullname):
         log.info("Showing tab for %s", fullname) 
         for i in range(self.PageCount):
-            page = self.GetPage(i)
-            if page.data[NotebookManager.PVSFILE].fullname == fullname:
+            richEditor = self.GetPage(i)
+            if richEditor.data[NotebookManager.PVSFILE] == fullname:
                 self.SetSelection(i)
                 log.debug("Setting tab %d as active", i)
                 return
         log.warning("Did not find the file %s", fullname) 
             
     def getActiveFilename(self):
-        page = self.getActivePage()
-        if page != None:
-            fn = page.data[NotebookManager.PVSFILE].fullname
-            log.info("Active file name is %s", fn)
-            return fn
+        richEditor = self.getActivePage()
+        if richEditor != None:
+            fullname = richEditor.data[NotebookManager.PVSFILE]
+            log.info("Active file name is %s", fullname)
+            return fullname
         return None
     
     def getActivePage(self):
         ap = self.GetSelection()
         if ap > -1:
-            page = self.GetPage(ap)
+            richEditor = self.GetPage(ap)
             log.info("Active page is %d", ap)
-            return page
+            return richEditor
         log.warning("No file is open")
         return None
     
     def closeTabForFile(self, fullname):
         log.info("Closing tab for %s", fullname)
         for i in range(self.GetPageCount()):
-            page = self.GetPage(i)
-            if isinstance(page, RichEditor):
-                if page.data.has_key(NotebookManager.PVSFILE):
-                    pvsFile = page.data[NotebookManager.PVSFILE]
-                    if fullname == pvsFile.fullname:
+            richEditor = self.GetPage(i)
+            if isinstance(richEditor, RichEditor):
+                if richEditor.data.has_key(NotebookManager.PVSFILE):
+                    richEditorFilename = richEditor.data[NotebookManager.PVSFILE]
+                    if fullname == richEditorFilename:
                         log.debug("Editor tab %d is being closed", i)
-                        page.Destroy()
+                        richEditor.Destroy()
                         self.RemovePage(i)
                         #self.SetSelection(i)
                         self.Refresh()
-                        del self.pages[fullname]
                         return
         log.error("No tab was found for the file %s", fullname)
 
-
-
     def selectAll(self):
-        page = self.getActivePage()
-        page.selectAll()
+        richEditor = self.getActivePage()
+        richEditor.selectAll()
 
     def undo(self):
-        page = self.getActivePage()
-        page.undo()
+        richEditor = self.getActivePage()
+        richEditor.undo()
 
     def find(self):
-        page = self.getActivePage()
+        #TODO: What is this?
+        richEditor = self.getActivePage()
 

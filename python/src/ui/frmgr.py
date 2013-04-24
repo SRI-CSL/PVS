@@ -26,7 +26,7 @@ class FindReplaceManager:
         dlg.Bind(wx.EVT_FIND_NEXT, self.OnFindNext)
         dlg.Bind(wx.EVT_FIND_REPLACE, self.OnReplace)
         dlg.Bind(wx.EVT_FIND_REPLACE_ALL, self.OnReplaceAll)
-        dlg.Bind(wx.EVT_FIND_CLOSE, self.OnFindClose)
+        dlg.Bind(wx.EVT_FIND_CLOSE, self.OnFindReplaceBoxClose)
         self.goingDown = False
         self.wholeWord = False
         self.matchCase = False
@@ -51,7 +51,7 @@ class FindReplaceManager:
         else:
             self.matchCase = False
         
-    def OnFindClose(self, evt):
+    def OnFindReplaceBoxClose(self, evt):
         log.info("FindReplaceDialog closing...")
         evt.GetDialog().Destroy()
         
@@ -100,7 +100,7 @@ class FindReplaceManager:
         flags = re.UNICODE if self.matchCase else re.IGNORECASE | re.UNICODE
         page = util.notebook.getActivePage()
         selection = page.styledText.GetSelection()
-        log.info("Selelction Position: %s", selection)
+        log.info("Selection Position: %s", selection)
         cursor = page.styledText.GetCurrentPos()
         log.info("Cursor at: %s", cursor)
         position = selection[1] if selection[0] < selection[1] else cursor

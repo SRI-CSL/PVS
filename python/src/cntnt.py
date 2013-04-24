@@ -6,16 +6,24 @@ import constants
 
 log = util.getLogger(__name__)
 
-class PVSBuffer:
-    """This class represents a PVS buffer"""
+class _Content:
+    """An interface for PVS files, buffers, notifications, and messages"""
+    def __init__(self):
+        self.content = None
+
+class PVSMessage(_Content):
+    pass
+
+class PVSBufferOld(PVSMessage):
+    """represents a PVS buffer"""
     
     def __init__(self, fullname, content):
         self.fullname = fullname
-        self.content
+        self.content = content
         
 
-class PVSFile(PVSBuffer):
-    """This class represents a PVS file"""
+class PVSFileOld(_Content):
+    """represents a PVS file"""
     
     def __init__(self, fullname):
         self.lines = []
@@ -47,7 +55,7 @@ class PVSFile(PVSBuffer):
     
         
     def saveAs(self, newfullname):
-        log.info("Savinf the file %s as the new file %s ", (self.fullname, newfullname))
+        log.info("Saving the file %s as the new file %s ", (self.fullname, newfullname))
         self.fullname = newfullname
         self.changed = True
         self.save()
