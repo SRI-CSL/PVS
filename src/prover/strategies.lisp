@@ -1824,6 +1824,100 @@ extensionality axiom scheme if KEEP? is T, and discards it otherwise.
 See also EXTENSIONALITY, APPLY-EXTENSIONALITY."
   "Replacing ~a by ~a using extensionality")
 
+(defstep replace-ext (f g &optional expected keep?)
+  (let ((tt (when expected (typecheck (pc-parse expected 'type-expr))))
+	(ff (pc-typecheck (pc-parse f 'expr) :expected tt))
+	(gg (pc-typecheck (pc-parse g 'expr) :expected tt))
+	(tf (type ff))
+	(tg (type gg)))
+    (try (if tt
+	     (extensionality tt)
+	     (try (extensionality tf) (skip) (extensionality tg)))
+	 (try-branch (inst - ff gg)
+		     ((branch (split -1)
+			      ((then (replace -1)
+				     (if keep? (skip) (delete -1)))
+			       (then* (skolem! 1)
+				      (beta 1)
+				      (assert 1))))
+		      (assert))
+		     (fail)) ;;NSH(4/15/13)
+	 (skip)))
+  "Uses the extensionality axiom on the type of F (or with
+EXPECTED as the type when given) to replace F by G.  Retains the
+extensionality axiom scheme if KEEP? is T, and discards it otherwise.
+This command supersedes REPLACE-EXTENSIONALITY: it fails gracefully
+if the inst step doesn't succeed.  
+See also EXTENSIONALITY, APPLY-EXTENSIONALITY, REPLACE-EXTENSIONALITY."
+  "Replacing ~a by ~a using extensionality")
+
+;;The extensionality-type method returns the supertype to which extensionality
+;;can be applied, or nil otherwise. 
+(defmethod extensionality-type ((type funtype))
+  type)
+
+(defmethod extensionality-type ((type tupletype))
+  type)
+
+(defmethod extensionality-type ((type cotupletype))
+  type)
+
+(defmethod extensionality-type ((type recordtype))
+  type)
+
+(defmethod extensionality-type ((type subtype))
+  (if (and (adt? (find-supertype type))
+	   (recognizer? (predicate type)))
+      type
+      (extensionality-type (supertype type))))
+
+(defmethod extensionality-type ((type t))
+  nil)
+
+
+(defstep apply-ext (&optional (fnum +) keep? (hide? t))
+  (let ((sforms (select-seq (s-forms (current-goal *ps*))
+			    (if (memq fnum '(* + -)) fnum
+				(list fnum))))
+	(fmla (loop for sf in sforms thereis
+		    (let ((sf-fmla (formula sf)))
+		      (and (equation? (formula sf))
+			   (extensionality-type (type (args1 (formula sf))))
+			   sf-fmla))))
+	(lhs (when fmla (args1 fmla)))
+	(rhs (when fmla (args2 fmla)))
+	(type (when fmla
+		(typecase (type lhs)
+		  (adt-type-name (ext-find-recognizer-subtype lhs rhs))
+		  (cotupletype (ext-find-injective?-subtype lhs rhs))))))
+    (if fmla
+	(try (replace-ext$ lhs rhs :keep? keep? :expected type)
+	     (then
+	      (let ((fnums (find-all-sformnums (s-forms
+						(current-goal *ps*))
+					       '+
+					       #'(lambda (x)
+						   (eq x fmla))))
+		    (fnum (if fnums (car fnums) nil)))
+		(if (and hide? fnum) (hide fnum) (skip)))
+	      (assert))
+	     (let ((msg (format nil
+			    "Couldn't find a suitable extensionality rule ~
+                             for formula ~a"
+			  (car (gather-fnums sforms fnum nil
+					     #'(lambda (x)
+						 (tc-eq (formula x) fmla)))))))
+	       (skip-msg msg)))
+	(skip-msg "Couldn't find suitable formula for applying extensionality.")))
+  "Tries to prove an equality indicated by FNUM via extensionality.  Note that
+if FNUM is not given, then the first consequent that is an equation is used.
+If KEEP? is T, the equality is retained as an antecedent.
+If HIDE? is T (default), the equality formula to which extensionality is applied,
+is hidden.  Supersedes APPLY-EXTENSIONALITY: finds the right sform for applying
+extensionality, and hides the main formula instead of deleting it.  
+See also EXTENSIONALITY, APPLY-EXTENSIONALITY."
+  "Applying extensionality")
+
 (defstep apply-extensionality (&optional (fnum +) keep? hide?)
   (let ((sforms (select-seq (s-forms (current-goal *ps*))
 			    (if (memq fnum '(* + -)) fnum
