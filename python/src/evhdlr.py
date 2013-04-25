@@ -136,13 +136,15 @@ def onToggleViewToolbar(event):
 
 def onChangeContext(event):
     """called to handle 'change context' request"""
-    if util.runner == None or util.runner.status != PVS_MODE_EDIT:
-        ui.dialogs.showError("PVS is not running or it is in prover mode")
-    else:
-        newContext = ui.dialogs.chooseDirectory("Select a directory", util.preference.getContext())
-        if newContext != None:
+    newContext = ui.dialogs.chooseDirectory("Select a directory", util.preference.getContext())
+    if newContext != None:
+        if util.runner != None and util.runner.status == PVS_MODE_EDIT:
             changeContext(newContext)
-            log.info("New context is set to %s", newContext)
+        util.frame.closeContext()
+        util.preference.setContext(newContext)
+        util.frame.loadContext()
+        log.info("New context is set to %s", newContext)
+    
 
 def onContextPreferencesRestoredAutomatically(event):
     """called to handle 'toggle loading the context preferences automatically' request"""

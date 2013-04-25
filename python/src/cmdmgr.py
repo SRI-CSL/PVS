@@ -51,11 +51,10 @@ def onGetTheories(request, result):
     
 def changeContext(newContext):
     """execute the command 'change-context'"""
-    execute(onChangeContext, CHANGECONTEXT, newContext)
+    execute(onChangedContext, CHANGECONTEXT, newContext)
 
-def onChangeContext(request, result):
+def onChangedContext(request, result):
     log.info("onChangeContext for %s returned %s", request, result)
-    util.preference.setContext(result)
 
 def startProver(theory, theorem):
     if util.runner == None or util.runner.status != PVS_MODE_EDIT:

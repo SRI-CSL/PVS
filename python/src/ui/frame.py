@@ -4,6 +4,7 @@
 #
 
 import wx
+import os.path
 import constants
 from fbmgr import FilesAndBuffersManager
 from nbmgr import NotebookManager
@@ -53,11 +54,10 @@ class MainFrame(wx.Frame):
 
         self.__do_layout()
         self.__set_properties()
-        # end wxGlade
-        
         
         self.configMenuToolbar(0)
         self.Connect(-1, -1, util.EVT_RESULT_ID, self.onPVSResult)
+        self.loadContext()
 
     def __set_properties(self):
         self.SetTitle(constants.FRAME_TITLE)
@@ -124,33 +124,39 @@ class MainFrame(wx.Frame):
             util.toolbar.enableStopPVS(True)
             util.toolbar.enableStartPVS(False)
 
+    def loadContext(self):
+        """Load .pvseditor and open all the files that were open last time"""
+        util.preference.loadContextPreferences()
+        openFiles = util.preference.listOfOpenFiles()
+        fullnames = []
+        context = util.preference.getContext()
+        for fn in openFiles:
+            fullnames.append(os.path.join(context, fn))
+        util.filesBuffersManager.openFiles(fullnames)
+        self.configMenuToolbar(openFiles)
+        
+    def closeContext(self):
+        """save .pvseditor and close all the open files"""
+        util.preference.saveContextPreferences()
+        util.filesBuffersManager.closeAll()
 
     def configMenuToolbar(self, openFiles):
         mb = util.menubar
         tb = util.toolbar
-        if openFiles == 0:
-            mb.enableCloseFile(False)
-            mb.enableUndo(False)
-            mb.enableCut(False)
-            mb.enableCopy(False)
-            mb.enablePaste(False)
-            mb.enableSelectAll(False)
-            mb.enableFind(False)
-            tb.enableSave(False)
-            tb.enableSaveAll(False)
-            #util.toolbar.enableStartPVS(False)
-        elif openFiles > 0:
-            mb.enableCloseFile()
-            mb.enableUndo()
-            mb.enableCut()
-            mb.enableCopy()
-            mb.enablePaste()
-            mb.enableSelectAll()
-            mb.enableFind()
-            tb.enableSave()
-            tb.enableSaveAll()
-        else:
-            log.error("openFiles is a negative number: %d", openFiles)
+        value = (openFiles > 0)
+        mb.enableCloseFile(value)
+        mb.enableUndo(value)
+        mb.enableCut(value)
+        mb.enableCopy(value)
+        mb.enablePaste(value)
+        mb.enableSelectAll(value)
+        mb.enableFind(value)
+        tb.enableSave(value)
+        tb.enableSaveAll(value)
+        tb.enableCut(value)
+        tb.enableCopy(value)
+        tb.enablePaste(value)
+        #util.toolbar.enableStartPVS(False)
             
     def OnClose(self, event):
         """called when self.Close() is called"""

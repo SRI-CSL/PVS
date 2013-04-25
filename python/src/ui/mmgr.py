@@ -95,25 +95,25 @@ class MainFrameMenu(wx.MenuBar):
         util.frame.Bind(wx.EVT_MENU, onTypecheck, self.typecheckMenuItem)
         util.frame.Bind(wx.EVT_MENU, onSetPVSLocation, self.setPVSLocationMenuItem)
         
-    def enableCloseFile(self, value = True):
+    def enableCloseFile(self, value=True):
         self.closeFileMenuItem.Enable(value)
 
-    def enableUndo(self, value = True):
+    def enableUndo(self, value=True):
         self.undoMenuItem.Enable(value)
 
-    def enableCut(self, value = True):
+    def enableCut(self, value=True):
         self.cutMenuItem.Enable(value)
 
-    def enableCopy(self, value = True):
+    def enableCopy(self, value=True):
         self.copyMenuItem.Enable(value)
 
-    def enablePaste(self, value = True):
+    def enablePaste(self, value=True):
         self.pasteMenuItem.Enable(value)
 
-    def enableSelectAll(self, value = True):
+    def enableSelectAll(self, value=True):
         self.selectAllMenuItem.Enable(value)
 
-    def enableFind(self, value = True):
+    def enableFind(self, value=True):
         self.findMenuItem.Enable(value)
 
 

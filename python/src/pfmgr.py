@@ -21,31 +21,32 @@ class PreferenceManager:
     
     def __init__(self):
         filename = self.getGlobalPreferenceFilename()
-        if os.path.exists(filename):
-            self.loadGlobalPreferences()
-            self.loadContextPreferences()
-        else:
-            self.globalPreferences = {}
-            self.contextPreferences = {}
-            self.setContext(util.getHomeDirectory())
-            self.setPVSLocation(os.path.join(util.getHomeDirectory(), PVS_L))             
-            self.setContextPreferencesRestoredAutomatically(True)
-            self.setVisibleFilesBuffersTrees(True)
-            self.setVisibleProofTree(True)
-            self.setVisibleToolbar(True)
-            
-            self.saveContextPreferences()
-            self.saveGlobalPreferences()
+        self.globalPreferences = {}
+        self.contextPreferences = {}
+        self.loadGlobalPreferences()
+        self.loadContextPreferences()
 
-    def getValue(key):
+    def loadDefaultGlobalPreferences(self):
+        self.setContext(util.getHomeDirectory())
+        self.setPVSLocation(os.path.join(util.getHomeDirectory(), PVS_L))
+        self.contextPreferences[PreferenceManager.OPENFILES] = []
+        self.setContextPreferencesRestoredAutomatically(True)
+        self.setVisibleFilesBuffersTrees(True)
+        self.setVisibleProofTree(True)
+        self.setVisibleToolbar(True)
+
+    def loadDefaultContextPreferences(self):
+        self.contextPreferences[PreferenceManager.OPENFILES] = []
+
+    def getValue(self, key, default=None):
         if self.contextPreferences.has_key(key):
-            log.info("%s was found in context preference", key)
+            log.info("'%s' was found in context preference. Value: %s", key, self.contextPreferences[key])
             return self.contextPreferences[key]
         elif self.globalPreferences.has_key(key):
-            log.info("%s was found in global preference", key)
+            log.info("'%s' was found in global preference. Value: %s", key, self.globalPreferences[key])
             return self.globalPreferences[key]
-        log.info("%s was not found in either preferences", key)
-        return None
+        log.info("'%s' was not found in either preferences", key)
+        return default
         
     def getGlobalPreferenceFilename(self):
         """return the full path to the global preference file"""
@@ -58,11 +59,15 @@ class PreferenceManager:
         return f
     
     def loadGlobalPreferences(self):
-        filename = self.getGlobalPreferenceFilename()
-        output = open(filename, 'r')
-        self.globalPreferences = pickle.load(output)
-        log.info("Loaded global preferences: %s", self.globalPreferences)
-        output.close()
+        try:
+            filename = self.getGlobalPreferenceFilename()
+            output = open(filename, 'r')
+            self.globalPreferences = pickle.load(output)
+            log.info("Loaded global preferences: %s", self.globalPreferences)
+            output.close()
+        except:
+            log.error("Error loading the global preference file. Loading the defaults...")
+            self.loadDefaultGlobalPreferences()
 
     def saveGlobalPreferences(self):
         filename = self.getGlobalPreferenceFilename()
@@ -72,18 +77,24 @@ class PreferenceManager:
         output.close()
     
     def loadContextPreferences(self):
-        filename = self.getContextPreferenceFilename()
-        if os.path.exists(filename):
+        try:
+            filename = self.getContextPreferenceFilename()
             output = open(filename, 'r')
             self.contextPreferences = pickle.load(output)
             log.info("Loaded context preferences: %s", self.contextPreferences)
             output.close()
-        else:
-            self.contextPreferences[PreferenceManager.OPENFILES] = []
+        except:
+            log.error("Error loading the context preference file. Loading the defaults...")
+            self.loadDefaultContextPreferences()
+        
 
     def saveContextPreferences(self):
         filename = self.getContextPreferenceFilename()
         output = open(filename, 'wt')
+        filenames = []
+        for fullname in util.filesBuffersManager.files.keys():
+            filenames.append(util.getFilenameFromFullPath(fullname))
+        self.contextPreferences[PreferenceManager.OPENFILES] = filenames
         pickle.dump(self.contextPreferences, output)
         log.info("Saved context preferences: %s", self.contextPreferences)
         output.close()
@@ -92,33 +103,30 @@ class PreferenceManager:
     
     def getPVSLocation(self):
         """return the path to the pvs directory"""
-        return self.globalPreferences[PreferenceManager.PVSLOCATION]   
+        return self.getValue(PreferenceManager.PVSLOCATION, util.getHomeDirectory())
     
     def setPVSLocation(self, location):
         self.globalPreferences[PreferenceManager.PVSLOCATION] = util.normalizePath(location)
     
     def getContextPreferencesRestoredAutomatically(self):
         """return true only if the context preference is to be loaded automatically"""
-        return self.globalPreferences[PreferenceManager.RESTORECONTEXT]
+        return self.getValue(PreferenceManager.RESTORECONTEXT, False)
     
     def setContextPreferencesRestoredAutomatically(self, value):
         self.globalPreferences[PreferenceManager.RESTORECONTEXT] = value
     
     def getContext(self):
         """return the last active context"""
-        if self.globalPreferences.has_key(PreferenceManager.CONTEXT):
-            return self.globalPreferences[PreferenceManager.CONTEXT]
-        return util.getHomeDirectory()
+        return self.getValue(PreferenceManager.CONTEXT, util.getHomeDirectory())
     
     def setContext(self, context):
-        self.saveContextPreferences()
         newContext = util.normalizePath(context)
         self.globalPreferences[PreferenceManager.CONTEXT] = newContext
         self.loadContextPreferences()
     
     def getVisibleFilesBuffersTrees(self):
         """return true only if the FilesBuffersTree manager is to be visible"""
-        return self.globalPreferences[PreferenceManager.FILESBUFFERSTREES]
+        return self.getValue(PreferenceManager.FILESBUFFERSTREES, True)
     
     def setVisibleFilesBuffersTrees(self, value):
         """return whether the FilesBuffersTree manager should be visible"""
@@ -126,7 +134,7 @@ class PreferenceManager:
     
     def getVisibleProofTree(self):
         """return true only if the ProofTree manager is to be visible"""
-        return self.globalPreferences[PreferenceManager.PROOFTREE]
+        return self.getValue(PreferenceManager.PROOFTREE, True)
     
     def setVisibleProofTree(self, value):
         """return whether the ProofTree manager should be visible"""
@@ -134,22 +142,13 @@ class PreferenceManager:
         
     def getVisibleToolbar(self):
         """return true only if the toolbar is to be visible"""
-        return self.globalPreferences[PreferenceManager.TOOLBAR]
+        return self.getValue(PreferenceManager.TOOLBAR, True)
     
     def setVisibleToolbar(self, value):
         """return whether the toolbar should be visible"""
         self.globalPreferences[PreferenceManager.TOOLBAR] = value
         
     # Local Settings with respect to a context:
-    
-    def onFileOpened(self, fullname):
-        """called when a file is opened"""
-        self.contextPreferences[PreferenceManager.OPENFILES].append(fullname)
-        
-    def onFileClosed(self, fullname):
-        """called when a file is closed"""
-        self.contextPreferences[PreferenceManager.OPENFILES].remove(fullname)
-        
-    def listofOpenFiles(self):
-        """returns a list of open files"""
-        return self.contextPreferences[PreferenceManager.OPENFILES]
+
+    def listOfOpenFiles(self):
+        return self.getValue(PreferenceManager.OPENFILES, [])

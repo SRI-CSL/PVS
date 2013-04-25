@@ -7,6 +7,7 @@ import wx, os.path
 from constants import PVS_EXTENSION, TAB_FILES, TAB_BUFFERS, LABEL_FILES_BUFFERS
 import util
 from ftmgr import FilesTreeManager
+import dialogs
 
 log = util.getLogger(__name__)
 
@@ -57,6 +58,19 @@ class FilesAndBuffersManager(wx.Frame):
         #self.mainFrame.pvseditor.addRedMarker(2)
         self.setFileAsActive(fullname)
         
+    def openFiles(self, fullnames):
+        for fullname in fullnames:
+            if os.path.exists(fullname):
+                self.addFile(fullname)
+            else:
+                log.warning("File %s no longer exists", fullname)
+        
+    def closeAll(self):
+        util.filesTreeManager.DeleteAllItems()
+        util.notebook.DeleteAllPages()
+        self.files = {}
+        self.buffers = {}
+        
     def setFileAsActive(self, fullname):
         """make the tab visible for a given file"""
         log.info("Setting file %s as active", fullname)
@@ -96,10 +110,18 @@ class FilesAndBuffersManager(wx.Frame):
             fullname = util.notebook.getActiveFilename()
         log.info("Closing file %s", fullname)
         if fullname in self.files.keys():
-            #TODO: First check if the file needs be saved before closing.
-            del self.files[fullname]
-            util.notebook.closeTabForFile(fullname)
-            util.filesTreeManager.removeFile(fullname)
+            richEditor = self.files[fullname]
+            canClose = True
+            if richEditor.styledText.GetModify():
+                choice = dialogs.askYesNoCancelQuestion("This file has been modified. Save changes?")
+                if choice == wx.ID_YES:
+                    self.saveFile(fullname)
+                elif choice == wx.ID_CANCEL:
+                    canClose = False
+            if canClose:
+                del self.files[fullname]
+                util.notebook.closeTabForFile(fullname)
+                util.filesTreeManager.removeFile(fullname)
         else:
             log.warning("The file %s is not in %s", fullname, self.files.keys())
         util.frame.configMenuToolbar(len(self.files))
@@ -113,8 +135,8 @@ class FilesAndBuffersManager(wx.Frame):
                 log.error("%s is not even open to be saved.")
                 return 
         log.info("Saving file %s", fullname)
-        if util.notebook.pages[fullname].styledText.GetModify():
-            util.notebook.pages[fullname].styledText.SaveFile(fullname)
+        if self.files[fullname].styledText.GetModify():
+            self.files[fullname].styledText.SaveFile(fullname)
         util.filesTreeManager.removeTheoriesFromFile(fullname)
             
     def saveAllFiles(self):
