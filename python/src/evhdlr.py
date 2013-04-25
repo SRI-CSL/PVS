@@ -138,12 +138,13 @@ def onChangeContext(event):
     """called to handle 'change context' request"""
     newContext = ui.dialogs.chooseDirectory("Select a directory", util.preference.getContext())
     if newContext != None:
-        if util.runner != None and util.runner.status == PVS_MODE_EDIT:
-            changeContext(newContext)
-        util.frame.closeContext()
-        util.preference.setContext(newContext)
-        util.frame.loadContext()
-        log.info("New context is set to %s", newContext)
+        if util.ensureFilesAreSavedToPoceed():        
+            if util.runner != None and util.runner.status == PVS_MODE_EDIT:
+                changeContext(newContext)
+            util.frame.closeContext()
+            util.preference.setContext(newContext)
+            util.frame.loadContext()
+            log.info("New context is set to %s", newContext)
     
 
 def onContextPreferencesRestoredAutomatically(event):

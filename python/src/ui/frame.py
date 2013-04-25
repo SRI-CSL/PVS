@@ -160,12 +160,12 @@ class MainFrame(wx.Frame):
             
     def OnClose(self, event):
         """called when self.Close() is called"""
-        # TODO: if they are unsaved files, ask the user to save them
-        if util.runner != None:
-            util.runner.terminate()
-            util.runner = None
-        util.preference.saveContextPreferences()
-        util.preference.saveGlobalPreferences()
-        event.Skip()
+        if util.ensureFilesAreSavedToPoceed():
+            if util.runner != None:
+                util.runner.terminate()
+                util.runner = None
+            util.preference.saveContextPreferences()
+            util.preference.saveGlobalPreferences()
+            event.Skip()
 
         

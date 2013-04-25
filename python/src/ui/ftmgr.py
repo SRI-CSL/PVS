@@ -20,8 +20,12 @@ class FilesTreeManager:
         imageList.Add(getFormulaImage())        
         self.tree = tree
         self.tree.AssignImageList(imageList)
-        self.tree.AddRoot("", 0, -1, wx.TreeItemData({KIND: ROOT}))
         self.tree.Bind(wx.EVT_TREE_ITEM_MENU, self.showContextMenu)
+        self.clear()
+        
+    def clear(self):
+        self.tree.DeleteAllItems()
+        self.tree.AddRoot("", 0, -1, wx.TreeItemData({KIND: ROOT}))
                 
     def addFile(self, fullname):
         """add a file to the tree"""

@@ -21,14 +21,14 @@ class FilesAndBuffersManager(wx.Frame):
         mainPanel = wx.Panel(self, wx.ID_ANY)
         self.notebook = wx.Notebook(mainPanel, wx.ID_ANY, style=0)
         self.filePanel = wx.Panel(self.notebook, wx.ID_ANY)
-        self.filestree = wx.TreeCtrl(self.filePanel, wx.ID_ANY, style=wx.TR_HAS_BUTTONS | wx.TR_LINES_AT_ROOT | wx.TR_DEFAULT_STYLE | wx.SUNKEN_BORDER)
+        self.filesTree = wx.TreeCtrl(self.filePanel, wx.ID_ANY, style=wx.TR_HAS_BUTTONS | wx.TR_LINES_AT_ROOT | wx.TR_DEFAULT_STYLE | wx.SUNKEN_BORDER)
         self.bufferPanel = wx.Panel(self.notebook, wx.ID_ANY)
         self.buffersTree = wx.TreeCtrl(self.bufferPanel, wx.ID_ANY, style=wx.TR_HAS_BUTTONS | wx.TR_LINES_AT_ROOT | wx.TR_DEFAULT_STYLE | wx.SUNKEN_BORDER)
         
         mainSizer = wx.BoxSizer(wx.HORIZONTAL)
         bufferSizer = wx.BoxSizer(wx.HORIZONTAL)
         fileSizer = wx.BoxSizer(wx.HORIZONTAL)
-        fileSizer.Add(self.filestree, 1, wx.EXPAND, 0)
+        fileSizer.Add(self.filesTree, 1, wx.EXPAND, 0)
         self.filePanel.SetSizer(fileSizer)
         bufferSizer.Add(self.buffersTree, 1, wx.EXPAND, 0)
         self.bufferPanel.SetSizer(bufferSizer)
@@ -36,7 +36,7 @@ class FilesAndBuffersManager(wx.Frame):
         self.notebook.AddPage(self.bufferPanel, TAB_BUFFERS)
         mainSizer.Add(self.notebook, 1, wx.EXPAND, 0)
         mainPanel.SetSizer(mainSizer)
-        util.filesTreeManager = FilesTreeManager(self.filestree)
+        util.filesTreeManager = FilesTreeManager(self.filesTree)
         self.SetSize((200, 300))
         
         self.files = {}
@@ -66,7 +66,9 @@ class FilesAndBuffersManager(wx.Frame):
                 log.warning("File %s no longer exists", fullname)
         
     def closeAll(self):
-        util.filesTreeManager.DeleteAllItems()
+        """Close all tabs in the notebook, remove all files and buffers from """
+        util.filesTreeManager.clear()
+        self.buffersTree.DeleteAllItems() # TODO: When a BufferTreeManager is created, replace this with a line similar to above line
         util.notebook.DeleteAllPages()
         self.files = {}
         self.buffers = {}
@@ -137,7 +139,7 @@ class FilesAndBuffersManager(wx.Frame):
         log.info("Saving file %s", fullname)
         if self.files[fullname].styledText.GetModify():
             self.files[fullname].styledText.SaveFile(fullname)
-        util.filesTreeManager.removeTheoriesFromFile(fullname)
+            util.filesTreeManager.removeTheoriesFromFile(fullname)
             
     def saveAllFiles(self):
         """save all the open files"""
@@ -145,7 +147,7 @@ class FilesAndBuffersManager(wx.Frame):
         for fullname, richEditor in self.files.items():
             if richEditor.styledText.GetModify():
                 richEditor.styledText.SaveFile(fullname)
-            util.filesTreeManager.removeTheoriesFromFile(fullname)
+                util.filesTreeManager.removeTheoriesFromFile(fullname)
 
     def OnClose(self, event):
         """is called when the user clicks on the close icon on top of the frame"""
