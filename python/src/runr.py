@@ -5,6 +5,7 @@ import threading, time, json
 import subprocess, sys, wx
 import util
 import fcntl, os
+import gui
 from evhdlr import PVSResultEvent
 from constants import PVS_MODE, EMPTY_STRING, PVS_MODE_OFF, PVS_MODE_EDIT, PVS_MODE_PROVER, NEWLINE
 from constants import MESSAGE_INITIALIZE_CONSOLE, MESSAGE_PVS_STATUS, MESSAGE_CONSOLE_WRITE_LINE, MESSAGE_CONSOLE_WRITE_PROMPT
@@ -74,7 +75,7 @@ class PVSRunner(threading.Thread):
             log.error("PVS is not running")
             
     def tellFrame(self, message, data=None):
-        wx.PostEvent(util.frame, PVSResultEvent(message, data))
+        wx.PostEvent(gui.manager.frame, PVSResultEvent(message, data))
     
     def terminate(self):
         if self.process != None:

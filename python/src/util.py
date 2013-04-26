@@ -3,23 +3,10 @@
 # and a function to get the logger for each module
 import logging, sys, wx, os, os.path
 import constants
-import ui.dialogs
 
 PVS_CONSOLE_HAS_HORIZONTAL_SCROLL = False
 EVT_RESULT_ID = wx.NewId()
 
-# Common GUI Objects:
-editor = None
-frame = None
-menubar = None
-toolbar = None
-statusbar = None
-notebook = None
-console = None
-filesTreeManager = None
-buffersTree = None
-filesBuffersManager = None
-proofTreeManager = None
 runner = None
 preference = None 
 
@@ -45,26 +32,7 @@ def getHomeDirectory():
     return os.getenv("HOME")
 
 def getFilenameFromFullPath(fullname):
-    return os.path.split(fullname)[1]
-
-def ensureFilesAreSavedToPoceed():
-    global filesBuffersManager
-    richEditors = filesBuffersManager.files.values()
-    filesAreSaved = True
-    for richEditor in richEditors:
-        if richEditor.styledText.GetModify():
-            filesAreSaved = False
-            break
-
-    safeToProceed = True
-    if not filesAreSaved:
-        choice = ui.dialogs.askYesNoCancelQuestion("Some files have been modified. Save changes?")
-        if choice == wx.ID_YES:
-            filesBuffersManager.saveAllFiles()
-        elif choice == wx.ID_CANCEL:
-            safeToProceed = False
-    return safeToProceed
-    
+    return os.path.split(fullname)[1]    
 
 class PVSException(Exception):
     def __init__(self):

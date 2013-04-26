@@ -13,6 +13,7 @@ import util
 import logging
 import constants
 import platform
+import gui
 
 log = util.getLogger(__name__)
 
@@ -53,6 +54,7 @@ if __name__ == "__main__":
         print "This application is not designed for Windows"
         sys.exit()
     
-    util.editor = PVSEditorApp(0)
+    application = PVSEditorApp(0)
+    gui.manager.setApplication(application)
     log.info("Entering MainLoop...") 
-    util.editor.MainLoop()
+    application.MainLoop()

@@ -5,6 +5,7 @@ import wx
 import codecs
 import util
 from promptprocessor import isPrompt
+import gui
 from constants import NEWLINE, PVS_MODE, EMPTY_STRING, PVS_MODE_OFF, PVS_MODE_UNKNOWN, LABEL_PVS_CONSOLE
 
 log = util.getLogger(__name__)
@@ -47,7 +48,7 @@ class PVSConsole(wx.Frame):
         self.pvsin.Clear()
         self.prompt = EMPTY_STRING
         self.history = []
-        util.frame.updateFrame(PVS_MODE_OFF)
+        gui.manager.updateFrame(PVS_MODE_OFF)
         
     def appendLineToOut(self, line):
         log.debug("Appending '%s' to pvsout", line)

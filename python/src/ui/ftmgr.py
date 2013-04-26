@@ -6,6 +6,7 @@ from images import getFolderImage, getPVSLogo, getTheoryImage, getFormulaImage
 from constants import *
 import util
 import cmdmgr
+import gui
 
 log = util.getLogger(__name__)
 
@@ -93,7 +94,7 @@ class FilesTreeManager:
             ID = wx.ID_ANY
             menu.Append(ID, label, EMPTY_STRING, wx.ITEM_NORMAL)
             wx.EVT_MENU(menu, ID, callback)
-        util.filesBuffersManager.PopupMenu(menu, event.GetPoint())
+        gui.manager.filesBuffersManager.PopupMenu(menu, event.GetPoint())
         menu.Destroy()
         
     def getContextMenuItems(self, status, kind):
@@ -141,7 +142,7 @@ class FilesTreeManager:
     def onCloseFile(self, event):
         """onCloseFile is called when the user selects Close in the context menu"""
         nodeFullname = self.getSelectedNodeData()[FULLNAME]
-        util.filesBuffersManager.closeFile(nodeFullname)
+        gui.manager.closeFile(nodeFullname)
         
     def onTypecheckFile(self, event):
         """onTypecheckFile is called when the user selects Typecheck in the context menu"""

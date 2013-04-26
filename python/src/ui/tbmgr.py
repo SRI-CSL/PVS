@@ -33,16 +33,16 @@ class ToolbarManager(wx.ToolBar):
         self.typecheckToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_TYPECHECK, getTypecheckImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Parse and typecheck file", EMPTY_STRING)
 
     def setBindings(self):
-        util.frame.Bind(wx.EVT_TOOL, onCreateNewFile, self.createNewFileToolbarItem)
-        util.frame.Bind(wx.EVT_TOOL, onOpenFile, self.openFileToolbarItem)
-        util.frame.Bind(wx.EVT_TOOL, onSaveFile, self.saveFileToolbarItem)
-        util.frame.Bind(wx.EVT_TOOL, onSaveAllFiles, self.saveallFileToolbarItem)
-        util.frame.Bind(wx.EVT_TOOL, onCutText, self.cutToolbarItem)
-        util.frame.Bind(wx.EVT_TOOL, onCopyText, self.copyToolbarItem)
-        util.frame.Bind(wx.EVT_TOOL, onPasteText, self.pasteToolbarItem)
-        util.frame.Bind(wx.EVT_TOOL, onStopPVS, self.stopPVSToolbarItem)
-        util.frame.Bind(wx.EVT_TOOL, onStartPVS, self.startPVSToolbarItem)
-        util.frame.Bind(wx.EVT_TOOL, onTypecheck, self.typecheckToolbarItem)
+        gui.manager.frame.Bind(wx.EVT_TOOL, onCreateNewFile, self.createNewFileToolbarItem)
+        gui.manager.frame.Bind(wx.EVT_TOOL, onOpenFile, self.openFileToolbarItem)
+        gui.manager.frame.Bind(wx.EVT_TOOL, onSaveFile, self.saveFileToolbarItem)
+        gui.manager.frame.Bind(wx.EVT_TOOL, onSaveAllFiles, self.saveallFileToolbarItem)
+        gui.manager.frame.Bind(wx.EVT_TOOL, onCutText, self.cutToolbarItem)
+        gui.manager.frame.Bind(wx.EVT_TOOL, onCopyText, self.copyToolbarItem)
+        gui.manager.frame.Bind(wx.EVT_TOOL, onPasteText, self.pasteToolbarItem)
+        gui.manager.frame.Bind(wx.EVT_TOOL, onStopPVS, self.stopPVSToolbarItem)
+        gui.manager.frame.Bind(wx.EVT_TOOL, onStartPVS, self.startPVSToolbarItem)
+        gui.manager.frame.Bind(wx.EVT_TOOL, onTypecheck, self.typecheckToolbarItem)
 
     def enableSave(self, value = True):
         self.saveFileToolbarItem.Enable(value)

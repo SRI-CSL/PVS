@@ -1,5 +1,6 @@
 import wx
 import util
+import gui
 from constants import LABEL_PROOF_TREE
 
 class ProofTreeManager(wx.Frame):
@@ -21,7 +22,7 @@ class ProofTreeManager(wx.Frame):
         if event.CanVeto():
             self.Hide()
             util.preference.setVisibleProofTree(False)
-            util.menubar.proofTree.Check(False)
+            gui.manager.menubar.proofTree.Check(False)
             event.Veto()
         else:
             #if we don't veto it we allow the event to propagate

@@ -2,6 +2,7 @@ import pickle
 import util
 import os.path, os
 import util
+import gui
 from constants import PVS_L
 
 log = util.getLogger(__name__)
@@ -92,7 +93,7 @@ class PreferenceManager:
         filename = self.getContextPreferenceFilename()
         output = open(filename, 'wt')
         filenames = []
-        for fullname in util.filesBuffersManager.files.keys():
+        for fullname in gui.manager.files.keys():
             filenames.append(util.getFilenameFromFullPath(fullname))
         self.contextPreferences[PreferenceManager.OPENFILES] = filenames
         pickle.dump(self.contextPreferences, output)

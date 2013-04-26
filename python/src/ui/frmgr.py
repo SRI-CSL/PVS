@@ -5,14 +5,13 @@ import re
 import wx
 from constants import EMPTY_STRING
 import util
-from dialogs import showMessage
+import gui
 
 log = util.getLogger(__name__)
 
 class FindReplaceManager:
     """A dialog box for finding and replacing texts in a RichEditor"""
     def __init__(self, frame, defaultFindText=EMPTY_STRING, defaultReplaceText=EMPTY_STRING):
-        self.mainFrame = util.frame
         self.defaultFindText = defaultFindText
         self.defaultReplaceText = defaultReplaceText
         self.data = wx.FindReplaceData()
@@ -21,7 +20,7 @@ class FindReplaceManager:
     def show(self):
         self.data.SetFindString(self.defaultFindText)
         self.data.SetReplaceString(self.defaultReplaceText)
-        dlg = wx.FindReplaceDialog(self.mainFrame, self.data, "Find & Replace", wx.FR_REPLACEDIALOG)
+        dlg = wx.FindReplaceDialog(gui.manager.frame, self.data, "Find & Replace", wx.FR_REPLACEDIALOG)
         dlg.Bind(wx.EVT_FIND, self.OnFind)
         dlg.Bind(wx.EVT_FIND_NEXT, self.OnFindNext)
         dlg.Bind(wx.EVT_FIND_REPLACE, self.OnReplace)
@@ -30,7 +29,7 @@ class FindReplaceManager:
         self.goingDown = False
         self.wholeWord = False
         self.matchCase = False
-        p1 = self.mainFrame.GetPosition()
+        p1 = gui.manager.frame.GetPosition()
         dlg.Show(True)
         p2 = dlg.GetPosition()
         p3 = (p2[0], max(5, p1[1]-100))
@@ -64,30 +63,30 @@ class FindReplaceManager:
     def findText(self):
         _find = self.data.GetFindString()
         log.info("Find Next %s", _find)
-        page = util.notebook.getActivePage()
+        page = gui.manager.notebook.getActivePage()
         nextOne = self.findPositionOfNext(_find)
         if nextOne != None:
             page.styledText.SetSelection(nextOne, nextOne + len(_find))
         else:
-            showMessage("No more occurences of '%s' was found"%_find)
+            gui.manager.showMessage("No more occurences of '%s' was found"%_find)
         
     def OnReplace(self, evt):
         _find = self.data.GetFindString()
         _replace = self.data.GetReplaceString()
         log.info("Replace Next %s", _find)
-        page = util.notebook.getActivePage()
+        page = gui.manager.notebook.getActivePage()
         nextOne = self.findPositionOfNext(_find)
         if nextOne != None:
             page.styledText.SetSelection(nextOne, nextOne + len(_find))
             page.styledText.ReplaceSelection(_replace)
         else:
-            showMessage("No more occurences of '%s' was found"%_find)
+            gui.manager.showMessage("No more occurences of '%s' was found"%_find)
                     
     def OnReplaceAll(self, evt):
         _find = self.data.GetFindString()
         _replace = self.data.GetReplaceString()
         log.info("Replace All %s", _find)
-        page = util.notebook.getActivePage()
+        page = gui.manager.notebook.getActivePage()
         nextOne = self.findPositionOfNext(_find)
         while nextOne != None:
             page.styledText.SetSelection(nextOne, nextOne + len(_find))
@@ -98,7 +97,7 @@ class FindReplaceManager:
         self.readFlags()
         log.info("Going Down: %s, Whole Word: %s, Match Case: %s", self.goingDown, self.wholeWord, self.matchCase)
         flags = re.UNICODE if self.matchCase else re.IGNORECASE | re.UNICODE
-        page = util.notebook.getActivePage()
+        page = gui.manager.notebook.getActivePage()
         selection = page.styledText.GetSelection()
         log.info("Selection Position: %s", selection)
         cursor = page.styledText.GetCurrentPos()

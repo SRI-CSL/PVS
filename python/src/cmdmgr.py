@@ -2,7 +2,7 @@ import os.path
 import util
 import runr
 from constants import FULLNAME, PVS_MODE_EDIT, PVS_MODE_PROVER
-import ui.dialogs
+import gui
 
 log = util.getLogger(__name__)
 
@@ -29,9 +29,9 @@ def onParse(request, result):
 def typecheck(filename):
     """execute the command 'typecheck'"""
     if util.runner == None or util.runner.status != PVS_MODE_EDIT:
-        ui.dialogs.showError(PVS_NOT_RUNNING_MESSAGE)
+        gui.manager.showError(PVS_NOT_RUNNING_MESSAGE)
     elif filename == None:
-        ui.dialogs.showError("No file is open")
+        gui.manager.showError("No file is open")
     else:
         name = os.path.basename(filename)
         name = os.path.splitext(name)[0] # just get the filename without the extension 
@@ -47,7 +47,7 @@ def onTypecheck(request, result):
 def onGetTheories(request, result):
     log.info("onGetTheories for %s returned %s", request, result)
     filename = request[FULLNAME]
-    util.filesTreeManager.addTheoriesToFile(filename, result)
+    gui.manager.filesTreeManager.addTheoriesToFile(filename, result)
     
 def changeContext(newContext):
     """execute the command 'change-context'"""
@@ -58,9 +58,9 @@ def onChangedContext(request, result):
 
 def startProver(theory, theorem):
     if util.runner == None or util.runner.status != PVS_MODE_EDIT:
-        ui.dialogs.showError(PVS_NOT_RUNNING_MESSAGE)
+        gui.manager.showError(PVS_NOT_RUNNING_MESSAGE)
     elif theory == None or theorem == None:
-        ui.dialogs.showError("Theory or Theorem is not specified")
+        gui.manager.showError("Theory or Theorem is not specified")
     else:
         execute(onProverStarted, PVSJSONPROVEFORMULA, theory, theorem)
     
