@@ -7,6 +7,7 @@ import util
 from promptprocessor import isPrompt
 import gui
 from constants import NEWLINE, PVS_MODE, EMPTY_STRING, PVS_MODE_OFF, PVS_MODE_UNKNOWN, LABEL_PVS_CONSOLE
+import runner
 
 log = util.getLogger(__name__)
 
@@ -81,11 +82,11 @@ class PVSConsole(wx.Frame):
         pl = len(self.prompt)
         command = whole[pl:]
         log.info("Command is %s", command)
-        if util.runner != None:
+        if runner.manager != None:
             self.appendLineToOut(whole)
             self.clearIn()
             self.history.append(command)
-            util.runner.tellPVS(command + NEWLINE)
+            runner.manager.tellPVS(command + NEWLINE)
         #event.Skip()
 
     def onPVSInText(self, event):

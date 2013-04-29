@@ -3,12 +3,13 @@
 
 import util
 from ui.frmgr import FindReplaceManager
-import runr
 from cmdmgr import *
 from constants import *
 import wx.stc as stc
 import wx
 import gui
+import preference
+import runner
 
 log = util.getLogger(__name__)
 
@@ -69,6 +70,7 @@ def onSelectAll(event):
 
 def onCutText(event):
     """called to handle 'cut' request"""
+    #TODO: ensure that Cut/Copy/Paste calls are good and reliable
     x = gui.manager.notebook.FindFocus()
     if isinstance(x, wx.TextCtrl) or isinstance(x, stc.StyledTextCtrl):
         x.Cut()
@@ -99,22 +101,22 @@ def onFindText(event):
 def onToggleViewFilesAndBuffersTrees(event):
     """called to handle 'toggle viewing FilesAndBufferTree view' request"""
     log.info("onToggleViewFilesAndBuffersTrees was called")
-    visible = util.preference.getVisibleFilesBuffersTrees()
+    visible = preference.manager.getVisibleFilesBuffersTrees()
     gui.manager.showFilesBuffersTreeFrame(visible)
-    util.preference.setVisibleFilesBuffersTrees(not visible)
+    preference.manager.setVisibleFilesBuffersTrees(not visible)
 
 def onToggleViewProofTree(event):
     """called to handle 'toggle viewing ProofTree view' request"""
     log.info("onToggleViewProofTree was called")
-    visible = util.preference.getVisibleProofTree()
+    visible = preference.manager.getVisibleProofTree()
     gui.manager.showProofTreeFrame(visible)
-    util.preference.setVisibleProofTree(not visible)
+    preference.manager.setVisibleProofTree(not visible)
     #event.Skip()
 
 def onToggleViewToolbar(event):
     """called to handle 'toggle viewing the toolbar' request"""
     log.info("onToggleViewToolbar was called")
-    visibile = util.preference.getVisibleToolbar()
+    visibile = preference.manager.getVisibleToolbar()
     if visibile:
         toolbarHeight = gui.manager.toolbar.GetSize()[1]
         frameSize = gui.manager.frame.GetSize()
@@ -127,18 +129,18 @@ def onToggleViewToolbar(event):
         frameSize = gui.manager.frame.GetSize()
         newFrameSize = (frameSize[0], frameSize[1] - toolbarHeight)
         gui.manager.frame.SetSize(newFrameSize)
-    util.preference.setVisibleToolbar(not visibile)
+    preference.manager.setVisibleToolbar(not visibile)
     #event.Skip()
 
 def onChangeContext(event):
     """called to handle 'change context' request"""
-    newContext = gui.manager.chooseDirectory("Select a directory", util.preference.getContext())
+    newContext = gui.manager.chooseDirectory("Select a directory", preference.manager.getContext())
     if newContext != None:
         if gui.manager.ensureFilesAreSavedToPoceed():        
-            if util.runner != None and util.runner.status == PVS_MODE_EDIT:
+            if runner.manager != None and runner.manager.status == PVS_MODE_EDIT:
                 changeContext(newContext)
             gui.manager.closeContext()
-            util.preference.setContext(newContext)
+            preference.manager.setContext(newContext)
             gui.manager.loadContext()
             log.info("New context is set to %s", newContext)
     
@@ -146,22 +148,22 @@ def onChangeContext(event):
 def onContextPreferencesRestoredAutomatically(event):
     """called to handle 'toggle loading the context preferences automatically' request"""
     value = gui.manager.menubar.restoreContextMenuItem.IsChecked()
-    util.preference.setContextPreferencesRestoredAutomatically(value)
+    preference.manager.setContextPreferencesRestoredAutomatically(value)
     log.info("Setting RestoreContextAutomatically flag to %s", value)
 
 def onStartPVS(event):
     """called to handle 'start pvs' request"""
-    if util.runner == None:
-        util.runner = runr.PVSRunner()
-        util.runner.start()
+    if runner.manager == None:
+        runner.PVSRunner()
+        runner.manager.start()
     else:
         gui.manager.showError("PVS is already running")
 
 def onStopPVS(event):
     """called to handle 'stop pvs' request"""
-    if util.runner != None:
-        util.runner.terminate()
-        util.runner = None
+    if runner.manager != None:
+        runner.manager.terminate()
+        runner.manager = None
     else:
         gui.manager.showError("PVS is not running")
 
@@ -173,8 +175,8 @@ def onTypecheck(event):
 
 def onSetPVSLocation(event):
     """called to handle 'setting pvs location' request"""
-    newLocation = gui.manager.chooseDirectory("Select the PVS directory", util.preference.getPVSLocation())
+    newLocation = gui.manager.chooseDirectory("Select the PVS directory", preference.manager.getPVSLocation())
     if newLocation != None:
-        util.preference.setPVSLocation(newLocation)
+        preference.manager.setPVSLocation(newLocation)
         log.info("New PVS location is set to %s", newLocation)
     #event.Skip()

@@ -6,6 +6,7 @@ import gui
 from constants import PVS_L
 
 log = util.getLogger(__name__)
+manager = None
 
 class PreferenceManager:
     """This class manages all the user preferences"""
@@ -21,6 +22,8 @@ class PreferenceManager:
     TOOLBAR = "Toolbar"
     
     def __init__(self):
+        global manager
+        manager = self
         filename = self.getGlobalPreferenceFilename()
         self.globalPreferences = {}
         self.contextPreferences = {}

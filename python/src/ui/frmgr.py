@@ -61,6 +61,7 @@ class FindReplaceManager:
         self.findText()
 
     def findText(self):
+        #TODO: RichEditor should have an API for finding and replacing text.
         _find = self.data.GetFindString()
         log.info("Find Next %s", _find)
         page = gui.manager.notebook.getActivePage()
@@ -68,7 +69,7 @@ class FindReplaceManager:
         if nextOne != None:
             page.styledText.SetSelection(nextOne, nextOne + len(_find))
         else:
-            gui.manager.showMessage("No more occurences of '%s' was found"%_find)
+            gui.manager.showMessage("No more occurrences of '%s' was found"%_find)
         
     def OnReplace(self, evt):
         _find = self.data.GetFindString()
@@ -80,7 +81,7 @@ class FindReplaceManager:
             page.styledText.SetSelection(nextOne, nextOne + len(_find))
             page.styledText.ReplaceSelection(_replace)
         else:
-            gui.manager.showMessage("No more occurences of '%s' was found"%_find)
+            gui.manager.showMessage("No more occurrences of '%s' was found"%_find)
                     
     def OnReplaceAll(self, evt):
         _find = self.data.GetFindString()

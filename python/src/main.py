@@ -8,7 +8,6 @@
 # This is the main entry point of the editor.
 
 import wx, os.path, sys
-from ui.frame import MainFrame
 import util
 import logging
 import constants
@@ -22,7 +21,7 @@ class PVSEditorApp(wx.App):
     
     def OnInit(self):
         #wx.InitAllImageHandlers()
-        self.mainFrame = MainFrame(None, wx.ID_ANY, "")
+        self.mainFrame = gui.manager.createMainFrame()
         self.SetTopWindow(self.mainFrame)
         self.mainFrame.Show()
         log.info("Editor initialized...") 
@@ -54,6 +53,7 @@ if __name__ == "__main__":
         print "This application is not designed for Windows"
         sys.exit()
     
+    gui.GuiManager()
     application = PVSEditorApp(0)
     gui.manager.setApplication(application)
     log.info("Entering MainLoop...") 

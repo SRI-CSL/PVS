@@ -7,9 +7,6 @@ import constants
 PVS_CONSOLE_HAS_HORIZONTAL_SCROLL = False
 EVT_RESULT_ID = wx.NewId()
 
-runner = None
-preference = None 
-
 def getLogger(name):
     """Return a logger for the given name"""
     log = logging.getLogger(name)

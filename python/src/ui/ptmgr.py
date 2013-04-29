@@ -2,6 +2,7 @@ import wx
 import util
 import gui
 from constants import LABEL_PROOF_TREE
+import preference
 
 class ProofTreeManager(wx.Frame):
     """This class manages the proof tree"""
@@ -21,7 +22,7 @@ class ProofTreeManager(wx.Frame):
     def OnClose(self, event):
         if event.CanVeto():
             self.Hide()
-            util.preference.setVisibleProofTree(False)
+            preference.manager.setVisibleProofTree(False)
             gui.manager.menubar.proofTree.Check(False)
             event.Veto()
         else:

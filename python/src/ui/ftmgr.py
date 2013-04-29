@@ -53,34 +53,7 @@ class FilesTreeManager:
             item = self.tree.GetNextSibling(item)
         log.error("There is no %s in the filetree", fullname)
         return None
-        
-    def addTheoriesToFile(self, fullname, result):
-        """addTheoriesToFile is called after typechecking a file and asking for the declarations in that file"""
-        fileNode = self.getFileNode(fullname)
-        #root = self.tree.GetRootItem()
-        if result.has_key(THEORIES):
-            theories = result[THEORIES]
-            for theory in theories:
-                log.info("Adding theory %s to %s", theory[ID_L], fullname)
-                theory[KIND] = THEORY
-                theoryName = theory[ID_L]
-                theoryNode = self.tree.AppendItem(fileNode, theoryName, 2, -1, wx.TreeItemData(theory))
-                declarations = theory[DECLARATIONS]
-                for declaration in declarations:
-                    kind = declaration[KIND]
-                    if kind == FORMULA_DECLARATION:
-                        formulaName = declaration[ID_L]
-                        log.info("Adding formula %s to theory %s", formulaName, theoryName)
-                        declaration[KIND] = FORMULA
-                        declaration[THEORY] = theoryName
-                        self.tree.AppendItem(theoryNode, formulaName, 3, -1, wx.TreeItemData(declaration))
-            self.tree.ExpandAllChildren(fileNode)
-
-    def removeTheoriesFromFile(self, fullname):
-        """remove the theories nodes from a file node"""
-        fileNode = self.getFileNode(fullname)
-        self.tree.DeleteChildren(fileNode)
-        
+                
     def showContextMenu(self, event):
         """display a relevant context menu when the user right-clicks on a node"""
         item = event.GetItem()
@@ -88,7 +61,7 @@ class FilesTreeManager:
         log.info("Event data: %s", data)
         kind = data[KIND]
         menu = wx.Menu()
-        status = PVS_MODE_OFF if util.runner == None else util.runner.status
+        status = PVS_MODE_OFF if runner.manager == None else runner.manager.status
         items = self.getContextMenuItems(status, kind) # each item should be a pair of a label and a callback funtion.
         for label, callback in items:
             ID = wx.ID_ANY

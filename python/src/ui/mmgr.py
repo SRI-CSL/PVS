@@ -5,7 +5,7 @@ import wx
 from constants import *
 from evhdlr import *
 import util
-
+import preference
 log = util.getLogger(__name__)
 
 class MainFrameMenu(wx.MenuBar):
@@ -48,13 +48,13 @@ class MainFrameMenu(wx.MenuBar):
         """Adding menu items to View menu"""
         viewMenu = wx.Menu()
         self.filesAndBuffersTrees = viewMenu.Append(wx.ID_ANY, "Files and Buffers Trees", EMPTY_STRING, wx.ITEM_CHECK)
-        viewMenu.Check(self.filesAndBuffersTrees.GetId(), util.preference.getVisibleFilesBuffersTrees())
+        viewMenu.Check(self.filesAndBuffersTrees.GetId(), preference.manager.getVisibleFilesBuffersTrees())
         
         self.proofTree = viewMenu.Append(wx.ID_ANY, "Proof Tree", EMPTY_STRING, wx.ITEM_CHECK)
-        viewMenu.Check(self.proofTree.GetId(), util.preference.getVisibleProofTree())
+        viewMenu.Check(self.proofTree.GetId(), preference.manager.getVisibleProofTree())
 
         self.toolbar = viewMenu.Append(wx.ID_ANY, "Toolbar", EMPTY_STRING, wx.ITEM_CHECK)
-        viewMenu.Check(self.toolbar.GetId(), util.preference.getVisibleToolbar())
+        viewMenu.Check(self.toolbar.GetId(), preference.manager.getVisibleToolbar())
         self.Append(viewMenu, LABEL_VIEW)
 
     def addPVSMenu(self):
@@ -62,7 +62,7 @@ class MainFrameMenu(wx.MenuBar):
         pvsMenu = wx.Menu()
         self.changeContextMenuItem =  pvsMenu.Append(wx.ID_ANY, "Change Context...", EMPTY_STRING, wx.ITEM_NORMAL)
         self.restoreContextMenuItem = pvsMenu.Append(wx.ID_ANY, "Restore Context Automatically", EMPTY_STRING, wx.ITEM_CHECK)
-        pvsMenu.Check(self.restoreContextMenuItem.GetId(), util.preference.getContextPreferencesRestoredAutomatically())
+        pvsMenu.Check(self.restoreContextMenuItem.GetId(), preference.manager.getContextPreferencesRestoredAutomatically())
         pvsMenu.AppendSeparator()
         self.startPVSMenuItem = pvsMenu.Append(wx.ID_ANY, LABEL_STARTPVS, EMPTY_STRING, wx.ITEM_NORMAL)
         self.typecheckMenuItem = pvsMenu.Append(wx.ID_ANY, LABEL_TYPECHECK, EMPTY_STRING, wx.ITEM_NORMAL)

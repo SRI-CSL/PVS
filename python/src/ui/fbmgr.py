@@ -5,8 +5,9 @@
 
 import wx, os.path
 from constants import PVS_EXTENSION, TAB_FILES, TAB_BUFFERS, LABEL_FILES_BUFFERS
-import util
+import preference
 import gui
+import util
 from ftmgr import FilesTreeManager
 
 log = util.getLogger(__name__)
@@ -46,7 +47,7 @@ class FilesAndBuffersManager(wx.Frame):
         """is called when the user clicks on the close icon on top of the frame"""
         if event.CanVeto():
             self.Hide()
-            util.preference.setVisibleFilesBuffersTrees(False)
+            preference.manager.setVisibleFilesBuffersTrees(False)
             gui.manager.menubar.filesAndBuffersTrees.Check(False)
             event.Veto()
         else:

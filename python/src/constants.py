@@ -1,7 +1,6 @@
 
-# This File contans all the global constant strings used in the system
+# This File contains all the global constant strings used in the system
 
-import wx
 import logging
 
 IMAGE_FOLDER_NAME = "images"
