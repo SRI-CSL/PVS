@@ -22,26 +22,27 @@ class MainFrameMenu(wx.MenuBar):
     def addFileMenu(self):
         """Adding menu items to File menu"""
         fileMenu = wx.Menu()
-        self.newFileMenuItem = fileMenu.Append(wx.ID_NEW, LABEL_NEW + DOTDOTDOT + "\tCtrl-N", EMPTY_STRING, wx.ITEM_NORMAL)
-        self.openFileMenuItem = fileMenu.Append(wx.ID_OPEN, LABEL_OPEN + DOTDOTDOT + "\tCtrl-O", EMPTY_STRING, wx.ITEM_NORMAL)
-        self.saveFileMenuItem = fileMenu.Append(wx.ID_SAVE, LABEL_SAVE + "\tCtrl-S", EMPTY_STRING, wx.ITEM_NORMAL)
-        self.saveFileAsMenuItem = fileMenu.Append(wx.ID_SAVEAS, LABEL_SAVEAS + DOTDOTDOT, EMPTY_STRING, wx.ITEM_NORMAL)
-        self.closeFileMenuItem = fileMenu.Append(wx.ID_CLOSE, LABEL_CLOSEFILE + "\tCtrl-W", EMPTY_STRING, wx.ITEM_NORMAL)
+        self.newFileMenuItem = fileMenu.Append(wx.ID_NEW, self._makeLabel(LABEL_NEW, "N", True), EMPTY_STRING, wx.ITEM_NORMAL)
+        self.openFileMenuItem = fileMenu.Append(wx.ID_OPEN, self._makeLabel(LABEL_OPEN, "O", True), EMPTY_STRING, wx.ITEM_NORMAL)
+        self.saveFileMenuItem = fileMenu.Append(wx.ID_SAVE, self._makeLabel(LABEL_SAVE, "S"), EMPTY_STRING, wx.ITEM_NORMAL)
+        self.saveFileAsMenuItem = fileMenu.Append(wx.ID_SAVEAS, self._makeLabel(LABEL_SAVEAS, None, True), EMPTY_STRING, wx.ITEM_NORMAL)
+        self.closeFileMenuItem = fileMenu.Append(wx.ID_CLOSE, self._makeLabel(LABEL_CLOSEFILE, "W"), EMPTY_STRING, wx.ITEM_NORMAL)
         fileMenu.AppendSeparator()
-        self.quitMenuItem = fileMenu.Append(wx.ID_EXIT, LABEL_QUIT + "\tCtrl-Q", EMPTY_STRING, wx.ITEM_NORMAL)
+        self.quitMenuItem = fileMenu.Append(wx.ID_EXIT, self._makeLabel(LABEL_QUIT, "Q"), EMPTY_STRING, wx.ITEM_NORMAL)
         self.Append(fileMenu, LABEL_FILE)
  
     def addEditMenu(self):
         """Adding menu items to Edit menu"""
         editMenu = wx.Menu()
-        self.undoMenuItem = editMenu.Append(wx.ID_UNDO, LABEL_UNDO + "\tCtrl-Z", EMPTY_STRING, wx.ITEM_NORMAL)
+        self.undoMenuItem = editMenu.Append(wx.ID_UNDO, self._makeLabel(LABEL_UNDO, "U"), EMPTY_STRING, wx.ITEM_NORMAL)
+        self.redoMenuItem = editMenu.Append(wx.ID_UNDO, self._makeLabel(LABEL_REDO, SHIFT + "-Z"), EMPTY_STRING, wx.ITEM_NORMAL)
         editMenu.AppendSeparator()
-        self.cutMenuItem = editMenu.Append(wx.ID_CUT, LABEL_CUT + "\tCtrl-X", EMPTY_STRING, wx.ITEM_NORMAL)
-        self.copyMenuItem = editMenu.Append(wx.ID_COPY, LABEL_COPY + "\tCtrl-C", EMPTY_STRING, wx.ITEM_NORMAL)
-        self.pasteMenuItem = editMenu.Append(wx.ID_PASTE, LABEL_PASTE + "\tCtrl-V", EMPTY_STRING, wx.ITEM_NORMAL)
-        self.selectAllMenuItem = editMenu.Append(wx.ID_SELECTALL, LABEL_SELECTALL + "\tCtrl-A", EMPTY_STRING, wx.ITEM_NORMAL)
+        self.cutMenuItem = editMenu.Append(wx.ID_CUT, self._makeLabel(LABEL_CUT, "X"), EMPTY_STRING, wx.ITEM_NORMAL)
+        self.copyMenuItem = editMenu.Append(wx.ID_COPY, self._makeLabel(LABEL_COPY, "C"), EMPTY_STRING, wx.ITEM_NORMAL)
+        self.pasteMenuItem = editMenu.Append(wx.ID_PASTE, self._makeLabel(LABEL_PASTE, "V"), EMPTY_STRING, wx.ITEM_NORMAL)
+        self.selectAllMenuItem = editMenu.Append(wx.ID_SELECTALL, self._makeLabel(LABEL_SELECTALL, "A"), EMPTY_STRING, wx.ITEM_NORMAL)
         editMenu.AppendSeparator()
-        self.findMenuItem = editMenu.Append(wx.ID_FIND, LABEL_FIND + "\tCtrl-F", EMPTY_STRING, wx.ITEM_NORMAL)
+        self.findMenuItem = editMenu.Append(wx.ID_FIND, self._makeLabel(LABEL_FIND, "F"), EMPTY_STRING, wx.ITEM_NORMAL)
         self.Append(editMenu, LABEL_EDIT)
 
     def addViewMenu(self):
@@ -60,15 +61,20 @@ class MainFrameMenu(wx.MenuBar):
     def addPVSMenu(self):
         """Adding menu items to PVS menu"""
         pvsMenu = wx.Menu()
-        self.changeContextMenuItem =  pvsMenu.Append(wx.ID_ANY, "Change Context...", EMPTY_STRING, wx.ITEM_NORMAL)
+        self.changeContextMenuItem =  pvsMenu.Append(wx.ID_ANY, self._makeLabel("Change Context", None, True), EMPTY_STRING, wx.ITEM_NORMAL)
         self.restoreContextMenuItem = pvsMenu.Append(wx.ID_ANY, "Restore Context Automatically", EMPTY_STRING, wx.ITEM_CHECK)
         pvsMenu.Check(self.restoreContextMenuItem.GetId(), preference.manager.getContextPreferencesRestoredAutomatically())
         pvsMenu.AppendSeparator()
         self.startPVSMenuItem = pvsMenu.Append(wx.ID_ANY, LABEL_STARTPVS, EMPTY_STRING, wx.ITEM_NORMAL)
         self.typecheckMenuItem = pvsMenu.Append(wx.ID_ANY, LABEL_TYPECHECK, EMPTY_STRING, wx.ITEM_NORMAL)
         pvsMenu.AppendSeparator()
-        self.setPVSLocationMenuItem = pvsMenu.Append(wx.ID_ANY, "Set PVS Location...", EMPTY_STRING, wx.ITEM_NORMAL)
+        self.setPVSLocationMenuItem = pvsMenu.Append(wx.ID_ANY, self._makeLabel("Set PVS Location", None, True), EMPTY_STRING, wx.ITEM_NORMAL)
         self.Append(pvsMenu, PVS_U)
+        
+    def _makeLabel(self, name, shortcut=None, addDots = False):
+        if addDots:
+            name = name + DOTDOTDOT
+        return name if shortcut == None else "%s\t%s-%s"%(name, CONTROL, shortcut)
         
     def setBindings(self):
         gui.manager.frame.Bind(wx.EVT_MENU, onCreateNewFile, self.newFileMenuItem)
@@ -79,6 +85,7 @@ class MainFrameMenu(wx.MenuBar):
         gui.manager.frame.Bind(wx.EVT_MENU, onQuitFrame, self.quitMenuItem)
         
         gui.manager.frame.Bind(wx.EVT_MENU, onUndo, self.undoMenuItem)
+        gui.manager.frame.Bind(wx.EVT_MENU, onRedo, self.redoMenuItem)
         gui.manager.frame.Bind(wx.EVT_MENU, onSelectAll, self.selectAllMenuItem)
         gui.manager.frame.Bind(wx.EVT_MENU, onCutText, self.cutMenuItem)
         gui.manager.frame.Bind(wx.EVT_MENU, onCopyText, self.copyMenuItem)
@@ -100,6 +107,9 @@ class MainFrameMenu(wx.MenuBar):
 
     def enableUndo(self, value=True):
         self.undoMenuItem.Enable(value)
+
+    def enableRedo(self, value=True):
+        self.redoMenuItem.Enable(value)
 
     def enableCut(self, value=True):
         self.cutMenuItem.Enable(value)

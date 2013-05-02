@@ -40,12 +40,5 @@ class RichEditor(wx.Panel):
     def getText(self):
         return self.styledText.GetText()
 
-    def selectAll(self):
-        self.styledText.SelectAll()  
-
-    def undo(self):
-        self.styledText.Undo()   
-        
-        
         
     

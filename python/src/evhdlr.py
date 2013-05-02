@@ -5,7 +5,6 @@ import util
 from ui.frmgr import FindReplaceManager
 from cmdmgr import *
 from constants import *
-import wx.stc as stc
 import wx
 import gui
 import preference
@@ -60,35 +59,34 @@ def onQuitFrame(event):
 
 def onUndo(event):
     """called to handle 'undo' request"""
-    gui.manager.notebook.undo()
-    #event.Skip()
+    if not gui.manager.handleUndoRequest():
+        event.Skip()
+
+def onRedo(event):
+    """called to handle 'redo' request"""
+    if not gui.manager.handleRedoRequest():
+        event.Skip()
 
 def onSelectAll(event):
     """called to handle 'select all' request"""
-    gui.manager.notebook.selectAll()
-    #event.Skip()
+    if not gui.manager.handleSelectAllRequest():
+        event.Skip()
 
 def onCutText(event):
     """called to handle 'cut' request"""
-    #TODO: ensure that Cut/Copy/Paste calls are good and reliable
-    x = gui.manager.notebook.FindFocus()
-    if isinstance(x, wx.TextCtrl) or isinstance(x, stc.StyledTextCtrl):
-        x.Cut()
-    #event.Skip()
+    if not gui.manager.handleCutRequest():
+        event.Skip()
 
 def onCopyText(event):
     """called to handle 'copy' request"""
     x = gui.manager.notebook.FindFocus()
-    if isinstance(x, wx.TextCtrl) or isinstance(x, stc.StyledTextCtrl):
-        x.Copy()
-    #event.Skip()
+    if not gui.manager.handleCopyRequest():
+        event.Skip()
 
 def onPasteText(event):
     """called to handle 'paste' request"""
-    x = gui.manager.notebook.FindFocus()
-    if isinstance(x, wx.TextCtrl) or isinstance(x, stc.StyledTextCtrl):
-        x.Paste()
-    #event.Skip()
+    if not gui.manager.handlePasteRequest():
+        event.Skip()
 
 def onFindText(event):
     """called to handle 'find text' request"""

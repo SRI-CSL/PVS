@@ -58,32 +58,5 @@ class NotebookManager(wx.Notebook):
             return richEditor
         log.warning("No file is open")
         return None
-    
-    def closeTabForFile(self, fullname):
-        log.info("Closing tab for %s", fullname)
-        for i in range(self.GetPageCount()):
-            richEditor = self.GetPage(i)
-            if isinstance(richEditor, RichEditor):
-                if richEditor.data.has_key(NotebookManager.PVSFILE):
-                    richEditorFilename = richEditor.data[NotebookManager.PVSFILE]
-                    if fullname == richEditorFilename:
-                        log.debug("Editor tab %d is being closed", i)
-                        richEditor.Destroy()
-                        self.RemovePage(i)
-                        #self.SetSelection(i)
-                        self.Refresh()
-                        return
-        log.error("No tab was found for the file %s", fullname)
 
-    def selectAll(self):
-        richEditor = self.getActivePage()
-        richEditor.selectAll()
-
-    def undo(self):
-        richEditor = self.getActivePage()
-        richEditor.undo()
-
-    def find(self):
-        #TODO: What is this?
-        richEditor = self.getActivePage()
 
