@@ -29,6 +29,8 @@
 
 (in-package :pvs)
 
+(export '(*in-checker* *in-evaluator*))
+
 ;
 ; *prover-keywords* is an alist of the form
 ; (command has-rest? arg1 arg2 ...) 
