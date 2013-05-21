@@ -1142,7 +1142,10 @@
 					:test #'eq)
 		     t)
 		    (prove-unproved-tccs theories))))
-	  (values theories changed-theories))))))
+	  (if theories
+	      (values theories changed-theories)
+	      (let ((err (format nil "~a not found" filename)))
+		(pvs-error err err))))))))
 
 (defvar *etb-typechecked-theories*)
 
