@@ -29,6 +29,8 @@
 
 (in-package :pvs)
 
+(export '(all-decls))
+
 ;;; Load-prelude initializes the *prelude*, *prelude-context*, and
 ;;; *prelude-theories* variables
 
