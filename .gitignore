@@ -58,6 +58,7 @@ pvsbin
 *.tp
 *.nav
 *.toc
+*.pyc
 doc/release-notes/*.html
 doc/release-notes/*.ps
 doc/release-notes/*.pdf
