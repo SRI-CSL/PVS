@@ -29,7 +29,7 @@
 
 (in-package :pvs)
 
-(export '(*debugging-print-object*))
+(export '(*debugging-print-object* kind-of))
 
 (defvar *debugging-print-object* nil
   "If true, will print using the default print-object.  Useful when
