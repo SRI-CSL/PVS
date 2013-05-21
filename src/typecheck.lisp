@@ -29,7 +29,8 @@
 
 (in-package :pvs)
 
-(export '(typecheck typecheck* typecheck-uniquely set-dependent-formals))
+(export '(typecheck typecheck* typecheck-uniquely set-dependent-formals
+	  theory-name))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -409,9 +410,11 @@
   (let* ((th1 (adt-theory adt))
 	 (th2 (adt-map-theory adt))
 	 (th3 (adt-reduce-theory adt))
-	 (use1 (copy inst :id (id th1)))
-	 (use2 (when th2 (copy inst :id (id th2) :actuals nil :mappings nil)))
-	 (use3 (copy inst :id (id th3) :actuals nil :mappings nil))
+	 (use1 (copy inst :id (id th1) :resolutions nil))
+	 (use2 (when th2 (copy inst :id (id th2) :actuals nil :mappings nil
+			       :resolutions nil)))
+	 (use3 (copy inst :id (id th3) :actuals nil :mappings nil
+		     :resolutions nil))
 	 (*typecheck-using* inst)
 	 (*tc-theories* (remove-if #'(lambda (x)
 				       (and (eq (car x) (current-theory))
@@ -1068,7 +1071,7 @@
 			    (not (eq (kind mapping) 'type)))
 		 (let ((tr (delete-if-not
 			       #'(lambda (r)
-				   (and (memq (declaration r) lhs-theory-decls)
+				   (and ;;(memq (declaration r) lhs-theory-decls)
 					(length= (decl-formals (declaration r)) dfmls)))
 			     (with-no-type-errors
 			      (resolve* (lhs mapping) 'type nil)))))
@@ -1083,7 +1086,7 @@
 			    (not (eq (kind mapping) 'expr)))
 		 (delete-if-not
 		     #'(lambda (r)
-			 (and (memq (declaration r) lhs-theory-decls)
+			 (and ;;(memq (declaration r) lhs-theory-decls)
 			      (length= (decl-formals (declaration r)) dfmls)
 			      (or (null type)
 				  (compatible? type (type r)))))
@@ -1318,10 +1321,16 @@
   nil)
 
 (defmethod interpretable? ((d mod-decl))
-  (let ((th (or (declaration (modname d))
-		(get-theory (modname d)))))
-    (assert th () "interpretable? get-theory failed")
-    (interpretable? th)))
+  (let* ((mn (modname d))
+	 (th (or (declaration mn)
+		 (get-theory mn))))
+    (if th
+	(interpretable? th)
+	(let ((reses (resolve* (lcopy mn :mappings nil) 'module nil)))
+	  (assert reses () "interpretable? (mod-decl) reses failed")
+	  (assert (null (cdr reses)) () "interpretable? (mod-decl) ambiguous reses")
+	  (interpretable? (declaration (car reses)))))))
+
 
 (defmethod interpretable? ((d formal-type-decl))
   nil)
