@@ -45,7 +45,7 @@ Date: 05/09/98
 __asm__(".symver __longjmp_chk,siglongjmp@GLIBC_2.2.5");
 #endif
 
-int bdd_interrupted = 0;
+int __attribute__ ((aligned (16))) bdd_interrupted = 0;
 sigjmp_buf bddcatch;
 struct sigaction lisp_handler;
 void restore_sigint(void);
