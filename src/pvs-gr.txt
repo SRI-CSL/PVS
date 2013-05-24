@@ -157,25 +157,25 @@ theory ::= {'THEORY' [exporting]^e 'BEGIN' [assuming-part]^a
                       [notheory()|theory-part]^t,id)>;
 
 datatype ::= {{'DATATYPE'|'CODATATYPE'}^k ['WITH' 'SUBTYPES' pidops^s]
-	      'BEGIN' [{importing [semic]^u}
-                        <importing-elt(importing,[nosemic()|semic(semic)]^u)>]^2
-              [assuming-part]^1
-	      adtcase+ 'END' pidop}
-	        <{[datatype(opt^1,opt^2,adtcases(plus),pidop)
-		  |datatypes(pidops^s,opt^1,opt^2,
-                             adtcases(plus),pidop)]
-                 |[codatatype(opt^1,opt^2,adtcases(plus),pidop)
-		  |codatatypes(pidops^s,opt^1,opt^2,
-                            adtcases(plus),pidop)]}^k>;
+	      'BEGIN'
+	      {importing-elt|assuming-part|id-datatype-elt}+
+	      'END' pidop}
+	        <{[datatype(adtbody(plus),pidop)
+		  |datatypes(pidops^s,adtbody(plus),pidop)]
+                 |[codatatype(adtbody(plus),pidop)
+		  |codatatypes(pidops^s, adtbody(plus),pidop)]}^k>;
 
-adtcase ::= {constructor ':' pidop^r [':' pidop^s]}
-              <[adtcase(constructor,pidop^r)
-               |adtcase-subtype(constructor,pidop^r,pidop^s)]>;
+id-datatype-elt ::= {pidop {{':' theory-decl [semic]} | adtcase}}
+                     <{id-theory-decl(pidop, theory-decl, opt)
+                      |id-adtcase(pidop, adtcase)}>;
 
-constructor ::= {pidop [{'(' {{{pidops ':' type-expr}
-				<adtdecl(pidops,type-expr)>} ++ ','} ')'}
-			   <adtdecls(doubleplus)>]}
-			<constructor(pidop,opt)>;
+adtcase ::= {[constructor]^c ':' pidop^r [':' pidop^s]}
+              <[adtcase(opt^c,pidop^r)
+               |adtcase-subtype(opt^c,pidop^r,pidop^s)]>;
+
+constructor ::= {'(' {{{pidops ':' type-expr}
+ 		  <adtdecl(pidops,type-expr)>} ++ ','} ')'}
+ 		<adtdecls(doubleplus)>;
 
 theory-formals	::= {'[' {theory-formal ++ ','} ']'}
 			<theory-formals(theory-formal+)>;
@@ -261,6 +261,9 @@ theory-elt ::= {importing [semic]}
 		         [noformals()|pdf(plus)],theory-declaration,
                          [nosemic()|semic(semic)]^s,[noatdecl()|atdecl()]^d)>
 	     ;
+
+importing-elt ::= {importing [semic]}
+                  <importing-elt(importing,[nosemic()|semic(semic)])>;
 
 importing ::= {'IMPORTING' {importing-item++ ','}}
               <importing(importing-item+)>;
@@ -678,7 +681,7 @@ set-formals ::= {set-formal [[',']^c set-formals]}
 set-formal ::= {{idop [':' type-expr]} | pdformals}
 	       <{set-id(idop,[notype()|type-expr])|pdformals}>;
 
-selection ::= {pidop [{'(' idops ')'} <idops>] ':' expr}
+selection ::= {pidop [{'(' typed-ids ')'} <typed-ids>] ':' expr}
 	      <selection(pidop,opt,expr)>;
 
 % assignment	::= {expr {':='|'|->'} !+ @> expr^1 @^ !- }
