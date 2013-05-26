@@ -157,7 +157,11 @@
 	  (ignore-errors (eval (read-from-string evalload)))
 	(declare (ignore ignore))
 	(when error
-	  (pvs-message "Error executing ~a:~% ~a" evalload error))))))
+	  (pvs-message "Error executing ~a:~% ~a" evalload error)))))
+  ;; If port is set, start the XML-RPC server
+  (let ((port (environment-variable "PVSPORT")))
+    (when port
+      (pvs-xml-rpc:pvs-server :port (parse-integer port)))))
 
 (defun pvs-init-globals ()
   (setq *pvs-modules* (make-hash-table :test #'eq :size 20 :rehash-size 10))
@@ -344,19 +348,31 @@
 			    (environment-variable "PVSPATCHLEVEL")))))
     (unless (and (integerp pl) (zerop pl))
       (let ((pfiles nil))
-	(dolist (dir (cons *pvs-path* (reverse *pvs-library-path*)))
-	  (let ((pdir (format nil "~apvs-patches/" dir)))
-	    (when (directory-p pdir)
-	      (setq pfiles
-		    (append
-		     pfiles
-		     (sort (directory (format nil "~apatch-*.lisp" pdir))
-			   #'< :key #'(lambda (pn)
-					(or (ignore-errors
-					      (parse-integer (pathname-name pn)
-							     :start 6))
-					    0))))))))
+	(dolist (dir (cons (concatenate 'string *pvs-path* "/")
+			   (append (reverse *pvs-library-path*)
+				   (list (namestring (user-homedir-pathname))))))
+	  (setq pfiles (append pfiles (find-pvs-patch-files dir))))
 	pfiles))))
+
+(defun find-pvs-patch-files (dir)
+  (let ((pdir (format nil "~apvs-patches/" dir)))
+    (when (directory-p pdir)
+      ;; First get the files
+      (let ((pfiles (remove-if (complement #'valid-patch-filename)
+		      (directory (format nil "~a/*.lisp" pdir)))))
+	(sort pfiles #'string< :key #'pathname-name)))))
+
+(defun pvs-build-date ()
+  (multiple-value-bind (sec min hour date mon year)
+      (decode-universal-time *pvs-build-time*)
+    (format nil "~4,'0d~2,'0d~2,'0d" year mon date)))
+
+(defun valid-patch-filename (pathname)
+  (let ((fname (pathname-name pathname)))
+    (and (>= (length fname) 8) ; YYYYMMDD#, where # is any seq of chars
+       (let ((date (subseq fname 0 8)))
+	 (and (every #'digit-char-p date)
+	      (string> date (pvs-build-date)))))))
 
 (defun user-pvs-lisp-file ()
   (unless *started-with-minus-q*
@@ -1094,58 +1110,57 @@
 ;;; Typechecking files.
 
 (defun typecheck-file (filename &optional forced? prove-tccs? importchain?
-				nomsg?)
+				  nomsg?)
   (let ((*parsing-files* (when (boundp '*parsing-files*) *parsing-files*)))
     (multiple-value-bind (theories restored? changed-theories)
 	(parse-file filename forced? t)
       (let ((*current-file* filename)
 	    (*typechecking-module* nil))
-	(when theories
-	  (cond ((and (not forced?)
-		      theories
-		      (every #'(lambda (th)
-				 (let ((*current-context* (saved-context th))
-				       (*current-theory* th))
-				   (typechecked? th)))
-			     theories))
-		 (unless (or nomsg? restored?)
-		   (pvs-message
-		       "~a ~:[is already typechecked~;is typechecked~]~a"
-		     filename
-		     restored?
-		     (if (and prove-tccs? (not *in-checker*))
-			 " - attempting proofs of TCCs" ""))))
-		((and *in-checker*
-		      (not *tc-add-decl*))
-		 (pvs-message "Must exit the prover first"))
-		((and *in-evaluator*
-		      (not *tc-add-decl*))
-		 (pvs-message "Must exit the evaluator first"))
-		(t (pvs-message "Typechecking ~a" filename)
-		   (when forced?
-		     (delete-generated-adt-files theories))
-		   (typecheck-theories filename theories)
-		   #+pvsdebug (assert (every #'typechecked? theories))
-		   (update-context filename)))
-	  (when prove-tccs?
-	    (if *in-checker*
-		(pvs-message
-		    "Must exit the prover before running typecheck-prove")
-		(if importchain?
-		    (prove-unproved-tccs
-		     (delete-duplicates
-		      (mapcan #'(lambda (th)
-				  (let* ((*current-theory* th)
-					 (*current-context* (saved-context th)))
-				    (collect-theory-usings th)))
-			theories)
-					:test #'eq)
-		     t)
-		    (prove-unproved-tccs theories))))
-	  (if theories
-	      (values theories changed-theories)
-	      (let ((err (format nil "~a not found" filename)))
-		(pvs-error err err))))))))
+	(unless theories
+	  (let ((err (format nil "~a not found" filename)))
+	    (pvs-error err err)))
+	(cond ((and (not forced?)
+		    theories
+		    (every #'(lambda (th)
+			       (let ((*current-context* (saved-context th))
+				     (*current-theory* th))
+				 (typechecked? th)))
+			   theories))
+	       (unless (or nomsg? restored?)
+		 (pvs-message
+		     "~a ~:[is already typechecked~;is typechecked~]~a"
+		   filename
+		   restored?
+		   (if (and prove-tccs? (not *in-checker*))
+		       " - attempting proofs of TCCs" ""))))
+	      ((and *in-checker*
+		    (not *tc-add-decl*))
+	       (pvs-message "Must exit the prover first"))
+	      ((and *in-evaluator*
+		    (not *tc-add-decl*))
+	       (pvs-message "Must exit the evaluator first"))
+	      (t (pvs-message "Typechecking ~a" filename)
+		 (when forced?
+		   (delete-generated-adt-files theories))
+		 (typecheck-theories filename theories)
+		 #+pvsdebug (assert (every #'typechecked? theories))
+		 (update-context filename)))
+	(when prove-tccs?
+	  (if *in-checker*
+	      (pvs-message
+		  "Must exit the prover before running typecheck-prove")
+	      (if importchain?
+		  (prove-unproved-tccs
+		   (delete-duplicates
+		    (mapcan #'(lambda (th)
+				(let* ((*current-theory* th)
+				       (*current-context* (saved-context th)))
+				  (collect-theory-usings th)))
+		      theories)
+		    :test #'eq)
+		   t)
+		  (prove-unproved-tccs theories))))
+	(values theories changed-theories)))))
 
 (defvar *etb-typechecked-theories*)
 
