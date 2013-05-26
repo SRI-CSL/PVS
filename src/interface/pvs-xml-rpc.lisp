@@ -8,9 +8,11 @@
 ;; Status          : Unknown, Use with caution!;; 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defpackage :pvs-xml-rpc (:use :cl-user :common-lisp :pvs))
+(defpackage :pvs-xml-rpc (:use :cl-user :common-lisp))
 
 (in-package :pvs-xml-rpc)
+
+(export '(pvs-server))
 
 #+allegro
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -19,12 +21,10 @@
   (use-package :net.aserve)
   )
 
-#-allegro
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (require :s-xml-rpc)
-  (use-package :s-xml-rpc))
-
-(defvar *pvs-url* "http://localhost:55223/RPC2")
+;; #-allegro
+;; (eval-when (:compile-toplevel :load-toplevel :execute)
+;;   (require :s-xml-rpc)
+;;   (use-package :s-xml-rpc))
 
 (defvar *pvs-xmlrpc-server*)
 
@@ -54,15 +54,15 @@
 ;; expect a response - GC messages are good examples of this.
 
 #+allegro
-(defun pvs-server (&key (cmdport 55223))
+(defun pvs-server (&key (port 55223))
   (let ((cmdsrv (make-xml-rpc-server 
 		 :start (list 
 			 ;; :host "locahost" 
-			 :port cmdport))))
+			 :port port))))
     (export-xml-rpc-method cmdsrv
 	'("pvs.request" xmlrpc-pvs-request t "Request a PVS method.")
       :string :string :string)
-    (values cmdsrv)))
+    (setq *pvs-xmlrpc-server* cmdsrv)))
 
 (defvar *client-url* nil)
 
@@ -211,7 +211,7 @@
     (setq *last-response* jresult)
     jresult))
 
-(defmethod json:encode-json ((th datatype-or-module) &optional
+(defmethod json:encode-json ((th pvs:datatype-or-module) &optional
 			     (stream json:*json-output*))
   (json:encode-json (id th) stream))
 
@@ -252,7 +252,6 @@
   ;; optargs is a struct of form
   ;; {"forced?" :bool "prove-tccs?" :bool "importchain?" :bool "nomsg?" :bool}
   (let ((theories (typecheck-file filename)))
-    (if (null theories
     (cons :array (xmlrpc-theories theories))))
 
 (defun xmlrpc-theories (theories &optional thdecls)
@@ -281,23 +280,23 @@
 (defun xmlrpc-theory-decl (decl)
   (xmlrpc-theory-decl* decl))
 
-(defmethod xmlrpc-theory-decl* ((decl var-decl))
+(defmethod xmlrpc-theory-decl* ((decl pvs:var-decl))
   nil)
 
-(defmethod xmlrpc-theory-decl* ((imp importing))
+(defmethod xmlrpc-theory-decl* ((imp pvs:importing))
   (cons :object
 	`((:importing . ,(str (theory-name imp)))
 	  (:kind . :importing)
 	  (:place . ,(cons :array (place-list imp))))))
 
-(defmethod xmlrpc-theory-decl* ((decl typed-declaration))
+(defmethod xmlrpc-theory-decl* ((decl pvs:typed-declaration))
   (cons :object
 	`((:id . ,(id decl))
 	  (:kind . ,(kind-of decl))
 	  (:type . ,(str (type decl)))
 	  (:place . ,(cons :array (place-list decl))))))
 
-(defmethod xmlrpc-theory-decl* ((decl formula-decl))
+(defmethod xmlrpc-theory-decl* ((decl pvs:formula-decl))
   (cons :object
 	`((:id . ,(id decl))
 	  (:kind . :formula)
