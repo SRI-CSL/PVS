@@ -1,7 +1,6 @@
 
-# This File contans all the global constant strings used in the system
+# This File contains all the global constant strings used in the system
 
-import wx
 import logging
 
 IMAGE_FOLDER_NAME = "images"
@@ -26,6 +25,7 @@ LABEL_SAVEAS = "Save As"
 LABEL_SAVEALL = "Save All"
 LABEL_QUIT = "Quit"
 LABEL_UNDO = "Undo"
+LABEL_REDO = "Redo"
 LABEL_SELECTALL = "Select All"
 LABEL_COPY = "Copy"
 LABEL_CUT = "Cut"
@@ -39,6 +39,9 @@ LABEL_CLOSEFILE = "Close File"
 LABEL_PROVE_FORMULA = "Prove This"
 
 DOTDOTDOT = "..."
+TAB = "\t"
+CONTROL = "Ctrl"
+SHIFT = "Shift"
 EMPTY_STRING = ""
 FRAME_TITLE = "PVS Editor"
 NEWLINE = "\n"
@@ -48,6 +51,8 @@ TAB_FILES = "Files"
 TAB_BUFFERS = "Buffers"
 LABEL_PROOF_PANEL = "Proof Tree"
 LABEL_PVS_CONSOLE = "PVS Console"
+LABEL_FILES_BUFFERS = "Files and Buffers"
+LABEL_PROOF_TREE = "Proof Tree"
 
 PVS_MODE = "PVS Mode: "
 PVS_MODE_OFF = "Off"
@@ -68,6 +73,7 @@ FORMULA_DECLARATION = "formulaDecl"
 ERROR = "Error"
 WARNING = "Warning"
 MESSAGE = "Message"
+QUESTION = "Question"
 FILE = "File"
 THEORY = "Theory"
 FORMULA = "Formula"
