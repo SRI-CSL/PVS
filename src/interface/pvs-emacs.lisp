@@ -175,8 +175,6 @@
   (id decl))
 
 (defun pvs-message (ctl &rest args)
-  (format t "~%Calling pvs-message, *pvs-message-hooks* = ~a"
-    *pvs-message-hooks*)
   (dolist (hook *pvs-message-hooks*)
     (format t "~%Calling message hook ~a" hook)
     (funcall hook (format nil "~?" ctl args)))
