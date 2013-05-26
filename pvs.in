@@ -103,6 +103,12 @@ do
      -load-after) loadafter=$loadafter" -load $2"
                   shift;;
      -runtime) pvsruntime=1;;
+     -port) PVSPORT=$2
+        if expr $PVSPORT : '\([0-9]*\)' != $PVSPORT > /dev/null; then
+	  echo "The -port must be an integer"
+	  exit 1
+	fi
+	shift;;
      -decision-procedures)
         case $2 in
 	  ics)     PVSDEFAULTDP=ics;;
@@ -354,7 +360,7 @@ PVSVERBOSE=${PVSVERBOSE:-0}
 
 export ALLEGRO_CL_HOME DISPLAY LD_LIBRARY_PATH
 export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE PVSTIMEOUT
-export PVSPATCHLEVEL PVSMINUSQ PVSFORCEDP PVSDEFAULTDP
+export PVSPORT PVSPATCHLEVEL PVSMINUSQ PVSFORCEDP PVSDEFAULTDP
 export PVSNONINTERACTIVE PVSINEMACS PVSEVALLOAD
 
 # Warn about for PVS_LIBRARY_PATH conflicts
