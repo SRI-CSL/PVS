@@ -261,7 +261,9 @@
 		  (compile-file optfile)
 		  (load optfile))
 		(pvs::remove-typecheck-caches)
-		(assert (every #'fboundp pvs::*untypecheck-hook*)))
+		(assert (every #'fboundp pvs::*untypecheck-hook*))
+		;;(setq *pvs-build-time* (get-universal-time))
+		)
   :components
   ((:module ground-prover
      :source-pathname "src/ground-prover/"
@@ -335,7 +337,7 @@
 		  (:file "gensubst")
 		  (:file "substit"))
      :depends-on (language))
-   (:module emacs-interface
+   (:module interface
      :source-pathname "src/interface"
      :components ((:file "pvs-emacs")
 		  (:file "emacs-calls")
@@ -345,6 +347,7 @@
 		  (:file "allegro")
 		  #+cmu
 		  (:file "cmulisp")
+		  (:file "pvs-xml-rpc")
 		  ))
    (:module typechecker
      :source-pathname "src/"
