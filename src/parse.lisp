@@ -29,6 +29,8 @@
 
 (in-package :pvs)
 
+(defvar *allowed-ids* nil)
+
 ;;; Makes extensive use of the following functions from ERGO:
 ;;;	sim-term-op - returns the symbol which is the operator of a term
 ;;;	is-sop	    - checks whether a given symbol is the operator of a term
@@ -170,35 +172,26 @@
 				 :id (xt-idop (xt-pidop st))
 				 :place (term-place st)))
 			   (term-args subtypes-term)))
-	 (assuming-term (term-arg1 datatype))
-	 (assuming (unless (is-sop 'DATATYPE-NULL-2 assuming-term)
-		     (xt-assumings assuming-term)))
-	 (importing-term (term-arg2 datatype))
-	 (importings (unless (is-sop 'DATATYPE-NULL-1 importing-term)
-		  (xt-importing-elt importing-term)))
-	 (adtcases-term (term-arg3 datatype))
-	 (adtcases (xt-adtcases adtcases-term))
-	 (endid (xt-idop (xt-pidop (term-arg4 datatype)))))
-    (check-subtypes-constructors-consistency id subtypes adtcases)
+	 (adtbody (term-arg1 datatype))
+	 (endidop (xt-pidop (term-arg2 datatype)))
+	 (endid (ds-vid (term-arg0 endidop))))
     (unless (or (null id)
 		(eq id endid))
-      (parse-error (term-arg4 datatype)
+      (parse-error (term-arg2 datatype)
 	"End id ~a does not match datatype id ~a" endid id))
-    (if (or (null id) inline)
-	(make-instance (if (eq class 'DATATYPES)
-			   'inline-datatype-with-subtypes
-			   'inline-codatatype-with-subtypes)
+    (multiple-value-bind (imps assuming adtcases)
+	(xt-adtbody (term-args adtbody))
+      (check-subtypes-constructors-consistency id subtypes adtcases)
+	(make-instance (if (or (null id) inline)
+			   (if (eq class 'DATATYPES)
+			       'inline-datatype-with-subtypes
+			       'inline-codatatype-with-subtypes)
+			   (if (eq class 'DATATYPES)
+			       'datatype-with-subtypes
+			       'codatatype-with-subtypes))
 	  :subtypes subtypes
 	  :assuming assuming
-	  :importings importings
-	  :constructors adtcases
-	  :place (term-place datatype))
-	(make-instance (if (eq class 'DATATYPES)
-			   'datatype-with-subtypes
-			   'codatatype-with-subtypes)
-	  :subtypes subtypes
-	  :assuming assuming
-	  :importings importings
+	  :importings imps
 	  :constructors adtcases
 	  :place (term-place datatype)))))
 
@@ -257,36 +250,62 @@
 				theory-formal)))))
 
 (defun xt-datatype (class datatype &optional id inline)
-  (let* ((assuming (term-arg0 datatype))
-	 (importing (term-arg1 datatype))
-	 (adtcases (term-arg2 datatype))
-	 (endidop (xt-pidop (term-arg3 datatype)))
+  (let* ((adtbody (term-arg0 datatype))
+	 (endidop (xt-pidop (term-arg1 datatype)))
 	 (endid (ds-vid (term-arg0 endidop))))
     (unless (or (null id)
 		(eq id endid))
       (parse-error (term-arg3 datatype)
 	"End id ~a does not match datatype id ~a" endid id))
-    (make-instance (if (or (null id) inline)
-		       (if (eq class 'DATATYPE)
-			   'inline-datatype
-			   'inline-codatatype)
-		       (if (eq class 'DATATYPE)
-			   'datatype
-			   'codatatype))
-      :assuming (unless (is-sop 'DATATYPE-NULL-2 assuming)
-		  (xt-assumings assuming))
-      :importings (unless (is-sop 'DATATYPE-NULL-1 importing)
-		   (xt-importing-elt importing))
-      :constructors (xt-adtcases adtcases)
-      :place (term-place datatype))))
+    (multiple-value-bind (imps assuming adtcases)
+	(xt-adtbody (term-args adtbody))
+      (make-instance (if (or (null id) inline)
+			 (if (eq class 'DATATYPE)
+			     'inline-datatype
+			     'inline-codatatype)
+			 (if (eq class 'DATATYPE)
+			     'datatype
+			     'codatatype))
+	:assuming assuming
+	:importings imps
+	:constructors adtcases
+	:place (term-place datatype)))))
+
+(defun xt-adtbody (adtbody &optional imps assuming adtcases)
+  (if (null adtbody)
+      (values imps assuming (nreverse adtcases))
+      (case (sim-term-op (car adtbody))
+	(ID-THEORY-DECL
+	 (if (or assuming adtcases)
+	     (error)
+	     (let ((id (xt-check-periods (term-arg0 (car adtbody))))
+		   (tdecl (xt-theory-decl (term-arg1 (car adtbody)))))
+	       (setf (id tdecl) (xt-idop (xt-pidop id)))
+	       (xt-adtbody (cdr adtbody) (cons tdecl imps) assuming adtcases))))
+	(IMPORTING-ELT
+	 (if (or assuming adtcases)
+	     (error)
+	     (let ((imp (xt-importing-elt (car adtbody))))
+	       (xt-adtbody (cdr adtbody) (append imp imps) assuming adtcases))))
+	(ASSUMING
+	 (if (or assuming adtcases)
+	     (error)
+	     (let ((ass (xt-assumings (car adtbody))))
+	       (xt-adtbody (cdr adtbody) imps ass adtcases))))
+	(ID-ADTCASE
+	 (let ((adtcase (xt-id-adtcase (car adtbody))))
+	   (xt-adtbody (cdr adtbody) imps assuming (cons adtcase adtcases))))
+	(t (error "Huh?")))))
 
 (defun xt-adtcases (adtcases)
   (mapcar #'xt-adtcase (term-args adtcases)))
 
-(defun xt-adtcase (adtcase)
-  (let* ((constructor (term-arg0 adtcase))
+(defun xt-id-adtcase (id-adtcase)
+  (let* ((constrid (term-arg0 id-adtcase))
+	 (adtcase (term-arg1 id-adtcase))
+	 (constructor (term-arg0 adtcase))
 	 (recognizer (term-arg1 adtcase))
-	 (constr (xt-constructor constructor))
+	 (constr (xt-constructor constrid constructor))
 	 (subtype (when (is-sop 'ADTCASE-SUBTYPE adtcase)
 		    (xt-check-periods (term-arg2 adtcase))
 		    (make-instance 'type-name
@@ -300,15 +319,13 @@
     (setf (place constr) (term-place constructor))
     constr))
 
-(defun xt-constructor (constructor)
-  (let ((idop (xt-check-periods (term-arg0 constructor)))
-	(adtdecls (term-arg1 constructor)))
-    (xt-check-periods idop)
+(defun xt-constructor (id adtdecls)
+  (let ((idop (xt-check-periods id)))
     (make-instance 'simple-constructor
       :id (xt-idop (xt-pidop idop))
       :arguments (unless (is-sop 'CONSTRUCTOR-NULL-1 adtdecls)
 		   (xt-adtdecls adtdecls))
-      :place (term-place constructor))))
+      :place (term-place-interval id adtdecls))))
 
 (defun xt-adtdecls (decls)
   (mapcan #'xt-adtdecl (term-args decls)))
@@ -858,6 +875,14 @@
       (MACRO (make-instance 'macro-fnum-rewrite
 	       :fnum number)))))
 
+(defun term-place-interval (strm etrm)
+  (let ((splace (term-place strm))
+	(eplace (term-place etrm)))
+    (if (and splace eplace)
+	(vector (starting-row splace) (starting-col splace)
+		(ending-row eplace) (ending-col eplace))
+	(or splace eplace))))
+
 (defun xt-chained-decls (idops decl-params dtype formals decl absyn &optional result)
   (assert (listp formals))
   (if (null idops)
@@ -905,11 +930,7 @@
 				   (term-args absyn))))
 	  (when idpos
 	    (setf (place ndecl)
-		  (let ((splace (term-place (car idops)))
-			(eplace (term-place absyn)))
-		    (when (and splace eplace)
-		      (vector (starting-row splace) (starting-col splace)
-			      (ending-row eplace) (ending-col eplace)))))))
+		  (term-place-interval (car idops) absyn))))
 	(when decl-params
 	  (when (typep ndecl '(or lib-decl))
 	    (parse-error (place decl-params)
@@ -1780,7 +1801,8 @@
   (let ((name (xt-name (term-arg0 expr) nil)))
     (if (typep name '(or number-expr decimal))
 	name
-	(let ((upid (intern (string-upcase (format nil "~a" (id name))))))
+	(let ((upid (intern (string-upcase (format nil "~a" (id name)))
+			    :pvs)))
 	  (multiple-value-bind (prindex prkind)
 	      (projection? upid)
 	    (if prindex
@@ -2047,7 +2069,7 @@
 
 (defun bind-expr-class (op)
   (or (cdr (assoc op '((λ . lambda-expr)) :test #'string=))
-      (case (intern (string-upcase op))
+      (case (intern (string-upcase op) :pvs)
 	((LAMBDA) 'lambda-expr)
 	((FORALL ∀) 'forall-expr)
 	((EXISTS ∃) 'exists-expr)
@@ -2435,7 +2457,7 @@
 	(projection? id)
       (let ((constr (case kind
 		      (in (make-instance 'injection-expr
-			       :id (intern (string-upcase id))
+			       :id (intern (string-upcase id) :pvs)
 			       :index index
 			       :place (term-place expr)))
 		      (proj (parse-error sel "Projection illegal here"))
@@ -2446,24 +2468,16 @@
 	      :constructor constr
 	      :args (if (is-sop 'SELECTION-NULL-1 args)
 			(parse-error constr "Must provide an argument")
-			(mapcar #'(lambda (a)
-				    (let ((aid (xt-idop a '(_))))
-				      (make-instance 'bind-decl
-					:id aid
-					:place (term-place a))))
-			  (term-args args)))
+			(let* ((*allowed-ids* '(_)))
+			  (xt-typed-ids args)))
 	      :index index
 	      :expression (xt-expr expr)
 	      :place (term-place sel))
 	    (make-instance 'selection
 	      :constructor constr
 	      :args (unless (is-sop 'SELECTION-NULL-1 args)
-		      (mapcar #'(lambda (a)
-				  (let ((aid (xt-idop a '(_))))
-				    (make-instance 'bind-decl
-				      :id aid
-				      :place (term-place a))))
-			(term-args args)))
+		      (let* ((*allowed-ids* '(_)))
+			(xt-typed-ids args)))
 	      :expression (xt-expr expr)
 	      :place (term-place sel)))))))
 
@@ -2957,8 +2971,8 @@
 	       (setf (spelling uname) (sim-term-op (term-arg0 qual)))))
     uname))
 
-(defun xt-idop (idop &optional allowed-ids)
-  (ds-vid (term-arg0 idop) allowed-ids))
+(defun xt-idop (idop)
+  (ds-vid (term-arg0 idop)))
 
 (defun xt-bname (bname)
   (let ((name (xt-name (term-arg0 bname) nil))
@@ -2970,7 +2984,7 @@
     (make-instance 'name
       :id (makesym "~a!~d" (id name) number))))
 
-(defun ds-vid (term &optional allowed-ids)
+(defun ds-vid (term)
   (let* ((tid (ds-id term))
 	 (id (if (and (symbolp tid)
 		      (every #'digit-char-p (string tid)))
@@ -2979,7 +2993,7 @@
     (when (memq id '(|/\\| |\\/|))
       (pushnew id *escaped-operators-used*))
     (if (or (numberp id)
-	    (memq id allowed-ids)
+	    (memq id *allowed-ids*)
 	    (valid-pvs-id id))
 	id
 	(parse-error term "Invalid id"))))
