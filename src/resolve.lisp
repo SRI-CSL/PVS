@@ -1624,7 +1624,15 @@
 		   args
 		   dtypes
 		   (nconc (unless (eq (module decl) (current-theory))
-			    (mapcar #'list (formals-sans-usings (module decl))))
+			    (if (actuals modinst)
+				(mapcar #'(lambda (fml act)
+					    (cons fml
+						  (or (type-value act)
+						      (expr act))))
+				  (formals-sans-usings (module decl))
+				  (actuals modinst))
+				(mapcar #'list
+				  (formals-sans-usings (module decl)))))
 			  (mapcar #'list (decl-formals decl))))))
     (or (create-compatible-modinsts modinst decl bindings nil)
 	(progn (push (list :no-instantiation decl)
