@@ -351,12 +351,13 @@ sbcllisp += src/utils/file-utils-sbcl.lisp
 cmulisp += src/utils/file-utils-cmu.lisp
 allegrolisp += src/utils/file-utils.lisp
 
-emacs-interface = src/interface/pvs-emacs.lisp \
-		  src/interface/emacs-calls.lisp \
-		  src/interface/cl-ilisp.lisp \
-		  src/interface/allegro.lisp \
-		  src/interface/cmulisp.lisp \
-		  src/interface/ilisp-pkg.lisp
+interface = src/interface/pvs-emacs.lisp \
+	    src/interface/emacs-calls.lisp \
+	    src/interface/cl-ilisp.lisp \
+	    src/interface/allegro.lisp \
+	    src/interface/cmulisp.lisp \
+	    src/interface/ilisp-pkg.lisp \
+	    src/interface/pvs-xml-rpc.lisp
 
 pvs-prover = src/prover/checker-macros.lisp \
          src/prover/decision-procedure-interface.lisp \
@@ -417,7 +418,7 @@ inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
                     src/inst-by-unif/inst-by-unif.lisp
 
 lisp-files = pvs-config.lisp $(pvs-parser-out) $(ground-prover) $(pvs-src) \
-	     $(emacs-interface) $(pvs-prover) $(bddlisp) \
+	     $(interface) $(pvs-prover) $(bddlisp) \
 	     $(PVSiolisp) $(Maniplisp) $(Fieldlisp) $(ProofLitelisp) \
              $(ws1slisp) $(groundevallisp) $(abstractionlisp) $(rahd) \
 	     $(nlyices)
@@ -431,7 +432,7 @@ pvs-parser-in := $(patsubst %,$(PVSPATH)%,$(pvs-parser-in))
 pvs-parser-out := $(patsubst %,$(PVSPATH)%,$(pvs-parser-out))
 ground-prover := $(patsubst %,$(PVSPATH)%,$(ground-prover))
 pvs-src := $(patsubst %,$(PVSPATH)%,$(pvs-src))
-emacs-interface := $(patsubst %,$(PVSPATH)%,$(emacs-interface))
+interface := $(patsubst %,$(PVSPATH)%,$(interface))
 pvs-prover := $(patsubst %,$(PVSPATH)%,$(pvs-prover))
 bddlisp := $(patsubst %,$(PVSPATH)%,$(bddlisp))
 PVSiolisp := $(patsubst %,$(PVSPATH)%,$(PVSiolisp))
