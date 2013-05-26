@@ -1071,7 +1071,7 @@
 			    (not (eq (kind mapping) 'type)))
 		 (let ((tr (delete-if-not
 			       #'(lambda (r)
-				   (and ;;(memq (declaration r) lhs-theory-decls)
+				   (and (memq (declaration r) lhs-theory-decls)
 					(length= (decl-formals (declaration r)) dfmls)))
 			     (with-no-type-errors
 			      (resolve* (lhs mapping) 'type nil)))))
@@ -1086,7 +1086,7 @@
 			    (not (eq (kind mapping) 'expr)))
 		 (delete-if-not
 		     #'(lambda (r)
-			 (and ;;(memq (declaration r) lhs-theory-decls)
+			 (and (memq (declaration r) lhs-theory-decls)
 			      (length= (decl-formals (declaration r)) dfmls)
 			      (or (null type)
 				  (compatible? type (type r)))))
