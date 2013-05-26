@@ -844,7 +844,8 @@
 	  (t t))))
 
 (defmethod possibly-empty-type? ((te subtype))
-  (if (recognizer-name-expr? (predicate te))
+  (if (and (recognizer-name-expr? (predicate te))
+	   (not (eq (adt (adt (constructor (predicate te)))) *adt*)))
       (let ((accs (accessors (constructor (predicate te)))))
 	(some #'possibly-empty-type? (mapcar #'type accs)))
       t))
@@ -1145,6 +1146,54 @@
 	(setf (definition tccdecl) uform)
 	(typecheck* tccdecl nil nil nil)))))
 
+(defun generate-mapped-eq-def-tcc (lhs rhs mapthinst)
+  (multiple-value-bind (dfmls dacts thinst)
+      (unless (or *in-checker* *in-evaluator*)
+	(new-decl-formals (current-declaration)))
+    (declare (ignore dacts))
+    (let* ((*generate-tccs* 'none)
+	   (cdecl (current-declaration))
+	   (cth (module cdecl))
+	   (id (make-tcc-name))
+	   (tccdecl (mk-mapped-eq-def-tcc id nil mapthinst dfmls))
+	   (expr (make-def-tcc-equation lhs rhs))
+	   (true-conc? (tcc-evaluates-to-true expr))
+	   (tform (unless true-conc? (add-tcc-conditions expr)))
+	   (sform (unless true-conc?
+		    (if thinst
+			(with-current-decl tccdecl
+			  (subst-mod-params tform thinst cth cdecl))
+			tform)))
+	   (uform (cond ((or true-conc? (tcc-evaluates-to-true sform))
+			 *true*)
+			(*simplify-tccs*
+			 (pseudo-normalize sform))
+			(t (beta-reduce sform)))))
+      (assert (null (freevars uform)))
+      (unless (tc-eq uform *true*)
+	(when (and *false-tcc-error-flag*
+		   (tc-eq uform *false*))
+	  (type-error expr
+	    "Definition equality TCC for this expression simplifies to false:~2%  ~a"
+	    expr))
+	(setf (definition tccdecl) uform)
+	(typecheck* tccdecl nil nil nil)
+	(insert-tcc-decl 'mapped-definition-equality mapthinst lhs tccdecl)))))
+
+;; Generally, lhs is a function name, rhs a lambda-expr.
+;; This generates the more useful FORALL appl = body form
+(defun make-def-tcc-equation (lhs rhs)
+  (make-def-tcc-equation* rhs lhs nil))
+
+(defmethod make-def-tcc-equation* ((rhs lambda-expr) lhs dbindings)
+  (with-slots (bindings expression) rhs
+    (let ((app (make!-application* lhs (mapcar #'mk-name-expr bindings))))
+      (make-def-tcc-equation* expression app (append dbindings bindings)))))
+
+(defmethod make-def-tcc-equation* (rhs lhs dbindings)
+  (let ((eqn (make-equation lhs rhs)))
+    (make!-forall-expr dbindings eqn)))
+
 (defun generate-mapped-axiom-tccs (modinst)
   (let ((mod (get-theory modinst)))
     (unless (and (not *collecting-tccs*)
@@ -1241,6 +1290,7 @@
 				  '(|booleans| |equalities| |if_def|
 				    |number_fields| |reals|
 				    |character_adt|)))
+		       (adt-name-expr? ex)
 		       (let ((decl (when (name? ex) (declaration ex))))
 			 (when (and (declaration? decl)
 				    (not (eq (module decl) (current-theory)))
