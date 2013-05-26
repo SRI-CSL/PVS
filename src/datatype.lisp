@@ -762,10 +762,16 @@ generated")
 	     (*adt-decl* nil))
 	(typecheck-adt-decl cimp)))))
 
-(defun copy-importing (imp)
+(defmethod copy-importing ((imp importing))
   (let ((thname (parse-unparse (theory-name imp) 'modname)))
     (setf (place thname) (place (theory-name imp)))
     (make-instance 'importing
+      :theory-name thname)))
+
+(defmethod copy-importing ((thdecl mod-decl))
+  (let ((thname (parse-unparse (theory-name thdecl) 'modname)))
+    (setf (place thname) (place (theory-name thdecl)))
+    (make-instance 'mod-decl
       :theory-name thname)))
 
 (defun generate-adt-type (adt)
@@ -1540,7 +1546,7 @@ generated")
 	  (setf (filename *current-theory*) *current-file*)
 	  (type-error (or negocc (declared-type arg))
 	    "Recursive uses of the datatype ~a may not appear in:~%  ~
-             the domain of a function type,~%  ~
+             the (possible) domain of a function type,~%  ~
              as a non-positive parameter to another datatype,~%  ~
              or in the predicate of a subtype."
 	    (id adt-type)))))))
@@ -1898,21 +1904,46 @@ generated")
 		(preds (mapcar #'(lambda (act)
 				   (acc-induction-hypothesis*
 				    (type-value act) adecl indvar thinst tname adt))
-			       acts)))
+			 acts))
+		(dacts (dactuals-corresponding-to-positive-types
+			(dactuals (module-instance te))
+			(adt? te)))
+		(dpreds (mapcar #'(lambda (dact)
+				    (acc-induction-hypothesis*
+				     (type-value dact) adecl indvar thinst tname adt))
+			  dacts)))
 	   (if (every #'(lambda (p) (or (everywhere-true? p) (null p)))
 		      preds)
-	       (mk-everywhere-true-function te)
-	       (mk-application* '|every|
-		 (mapcar #'(lambda (p a)
-			     (or p
-				 (mk-everywhere-true-function (type-value a))))
-		   preds acts)))))
+	       (if (every #'(lambda (p) (or (everywhere-true? p) (null p)))
+			  dpreds)
+		   (mk-everywhere-true-function te)
+		   (let ((every-name (mk-name-expr '|every|
+				       (actuals (module-instance te))
+				       (id (module-instance te)))))
+		     (setf (dactuals every-name) (dactuals (module-instance te)))
+		     (mk-application* every-name
+		       (mapcar #'(lambda (p a)
+				   (or p
+				       (mk-everywhere-true-function (type-value a))))
+			 dpreds dacts))))
+	       (if (every #'(lambda (p) (or (everywhere-true? p) (null p)))
+			  dpreds)
+		   (mk-application* '|every|
+		     (mapcar #'(lambda (p a)
+				 (or p
+				     (mk-everywhere-true-function (type-value a))))
+		       preds acts))
+		   (break "acc-induction-hypothesis* (type-name): both actuals and dactuals")))))
 	(t ;;(mk-everywhere-true-function te)
 	 nil)))
 
 (defun actuals-corresponding-to-positive-types (acts adt)
   (actuals-corresponding-to-positive-types*
    acts (formals-sans-usings adt) (positive-types adt)))
+
+(defun dactuals-corresponding-to-positive-types (dacts adt)
+  (actuals-corresponding-to-positive-types*
+   dacts (decl-formals adt) (positive-types adt)))
 
 (defun actuals-corresponding-to-positive-types* (acts formals postypes
 						      &optional posacts)
@@ -3055,14 +3086,27 @@ generated")
 	 (let ((maps (mapcar #'(lambda (act)
 				 (acc-map-selection* (raise-actuals (type-value act))
 						     pvars ptypes fpairs adt adtinst))
-			     (positive-actuals te))))
+		       (positive-actuals te)))
+	       (dmaps (mapcar #'(lambda (act)
+				  (acc-map-selection* (raise-actuals (type-value act))
+						      pvars ptypes fpairs adt adtinst))
+			(positive-dactuals te))))
 	   (if (every #'identity-fun? maps)
-	       (copy arg)
-	       (if curried?
-		   (mk-application (mk-map-application te fpairs adt maps)
-		     (copy arg))
-		   (mk-map-application te fpairs adt
-				       (append maps (list (copy arg))))))))
+	       (if (every #'identity-fun? dmaps)
+		   (copy arg)
+		   (if curried?
+		       (mk-application (mk-map-application te fpairs adt dmaps)
+			 (copy arg))
+		       (mk-map-application te fpairs adt
+					   (append dmaps (list (copy arg))))))
+	       
+	       (if (every #'identity-fun? dmaps)
+		   (if curried?
+		       (mk-application (mk-map-application te fpairs adt maps)
+			 (copy arg))
+		       (mk-map-application te fpairs adt
+					   (append maps (list (copy arg)))))
+		   (break "acc-map-selection (type-name): both actuals and dactuals")))))
 	(t (copy arg))))
 
 (defmethod corresponding-formals (t1 (t2 type-name))
@@ -4044,14 +4088,31 @@ generated")
 		(facts (if (typep fdom 'datatype-subtype)
 			   (actuals (declared-type fdom))
 			   (actuals fdom)))
-		(funs (acc-reduce-sel-acts acts facts fname red adt)))
+		(funs (acc-reduce-sel-acts acts facts fname red adt))
+		(dacts (dactuals-corresponding-to-positive-types
+			(dactuals (module-instance te))
+			(adt? te)))
+		(dfacts (if (typep fdom 'datatype-subtype)
+			    (dactuals (declared-type fdom))
+			    (dactuals fdom)))
+		(dfuns (acc-reduce-sel-acts dacts dfacts fname red adt)))
 	   (if (every #'identity-fun? funs)
-	       (copy arg)
-	       (let* ((appname (mk-name-expr '|map|
-				 (append (actuals te) facts)))
-		      (pname (pc-parse (unparse appname :string t) 'expr)))
-		 (mk-application (mk-application* pname funs)
-		   (copy arg))))))
+	       (if (every #'identity-fun? dfuns)
+		   (copy arg)
+		   (let ((appname (mk-name-expr '|map|
+				     (actuals te)
+				     (id (module-instance te)))))
+		     (setf (dactuals appname) (append (dactuals te) dfacts))
+		     (let ((pname (pc-parse (unparse appname :string t) 'expr)))
+		       (mk-application (mk-application* pname dfuns)
+			 (copy arg)))))
+	       (if (every #'identity-fun? dfuns)
+		   (let* ((appname (mk-name-expr '|map|
+				     (append (actuals te) facts)))
+			  (pname (pc-parse (unparse appname :string t) 'expr)))
+		     (mk-application (mk-application* pname funs)
+		       (copy arg)))
+		   (break "acc-reduce-selection (type-name): have both actuals and dactuals")))))
 	(t (copy arg))))
 
 (defun acc-reduce-sel-acts (acts facts fname red adt &optional result)
@@ -4998,7 +5059,8 @@ generated")
     (importing (typecheck-using (theory-name decl)))
     (datatype (unwind-protect
 		  (typecheck* decl nil nil nil)
-		(cleanup-datatype decl))))
+		(cleanup-datatype decl)))
+    (t (break "typecheck-adt-decl")))
   ;;(setf (current-declaration) nil)
   )
 
@@ -5088,7 +5150,10 @@ function, tuple, or record type")
 				       (positive-types adt)
 				       :test #'same-id))
 			   (formals-sans-usings adt)))))
-      (occurs-positively?* type (actuals te) t)))
+      ;; t for none may be too constrained, but how to map,
+      ;; e.g., T[D] -> T[nat] for reduce_nat?
+      (and (occurs-positively?* type (actuals te) t)
+	   (occurs-positively?* type (dactuals te) t))))
 
 (defmethod occurs-positively?* (type (te datatype-subtype) none)
   (occurs-positively?* type (declared-type te) none))
@@ -5333,9 +5398,12 @@ function, tuple, or record type")
       (mk-application* '|map| maps)
       (let* ((acts (raise-actuals (actuals (module-instance te))))
 	     (macts (raise-actuals (subst-map-actuals (positive-actuals te) fpairs)))
-	     (name (mk-name-expr '|map| (append acts macts)))
-	     (pname (pc-parse (unparse name :string t) 'expr)))
-	(mk-application* pname maps))))
+	     (dacts (raise-actuals (dactuals (module-instance te))))
+	     (dmacts (raise-actuals (subst-map-actuals (positive-dactuals te) fpairs)))
+	     (name (mk-name-expr '|map| (append acts macts))))
+	(setf (dactuals name) (append dacts dmacts))
+	(let ((pname (pc-parse (unparse name :string t) 'expr)))
+	  (mk-application* pname maps)))))
 
 (defmethod mk-map-application ((te funtype) fpairs adt maps)
   (declare (ignore fpairs adt))
@@ -5414,6 +5482,13 @@ function, tuple, or record type")
 				     :test #'same-id)
 			     (cons (car acts) result)
 			     result))))
+
+(defun positive-dactuals (type-name)
+  (let ((adt (adt? type-name)))
+    (positive-actuals* (dactuals (module-instance type-name))
+			(decl-formals adt)
+			(positive-types adt))))
+
 
 (defmethod subtypes ((adt recursive-type))
   nil)
@@ -5640,7 +5715,8 @@ function, tuple, or record type")
   (declare (ignore ste var op codt struct type-alist))
   nil)
 
-(defmethod generate-coreduce-funtype-selection-value* ((te subtype) (ste type-name) var op codt struct type-alist)
+(defmethod generate-coreduce-funtype-selection-value* ((te subtype) (ste type-name)
+						       var op codt struct type-alist)
   (cond ((subtype-of? te (adt-type-name codt))
 	 (let ((struct-subtype (cdr (assoc te type-alist :test #'tc-eq))))
 	   (assert struct-subtype)
@@ -5654,45 +5730,58 @@ function, tuple, or record type")
 				  (resolution (or (print-type supte) supte)))))
 		  (sacts (actuals (module-instance
 				   (resolution (or (print-type ste) ste)))))
-		  (vals (mapcar
-			    #'(lambda (a sa fm)
-				(when (member fm ptypes
-					      :test #'same-id
-					      :key #'(lambda (x)
-						       (or (print-type x) x)))
-				  (let* ((did (make-new-variable '|x| codt))
-					 (dbd (make-bind-decl did (type-value sa)))
-					 (dvar (make-variable-expr dbd))
-					 (*bound-variables*
-					  (cons dbd *bound-variables*))
-					 (dval
-					  (generate-coreduce-funtype-selection-value*
-					   (type-value a) (type-value sa)
-					   dvar op codt struct type-alist)))
-				    (mk-lambda-expr (list dbd)
-				      (or dval *true*)))))
-			  acts sacts formals)))
+		  (dacts (dactuals (module-instance
+				    (resolution (or (print-type supte) supte)))))
+		  (sdacts (dactuals (module-instance
+				     (resolution (or (print-type ste) ste)))))
+		  (vals (gen-coreduce-funtype-selection-value
+			 (acts sacts formals op struct type-alist ptypes codt)))
+		  (dvals (gen-coreduce-funtype-selection-value
+			  (dacts sdacts (decl-formals (current-declaration))
+				 op struct type-alist ptypes codt))))
+	     (break)
 	     (unless (every #'everywhere-true? vals)
 	       (mk-application (mk-application* (mk-name-expr '|every|)
 				 vals)
 		 var))))))
-					 
-	     
+
+(defun gen-coreduce-funtype-selection-value (acts sacts formals op
+						  struct type-alist ptypes codt)
+  (mapcar #'(lambda (a sa fm)
+	      (when (member fm ptypes
+			    :test #'same-id
+			    :key #'(lambda (x)
+				     (or (print-type x) x)))
+		(let* ((did (make-new-variable '|x| codt))
+		       (dbd (make-bind-decl did (type-value sa)))
+		       (dvar (make-variable-expr dbd))
+		       (*bound-variables* (cons dbd *bound-variables*))
+		       (dval (generate-coreduce-funtype-selection-value*
+			      (type-value a) (type-value sa)
+			      dvar op codt struct type-alist)))
+		  (mk-lambda-expr (list dbd)
+		    (or dval *true*)))))
+    acts sacts formals))
 
 (defmethod generate-coreduce-funtype-selection-value* ((te subtype) (ste subtype) var op codt struct type-alist)
   (declare (ignore op struct type-alist))
   (assert (not (subtype-of? te (adt-type-name codt))))
   nil)
 
-(defmethod generate-coreduce-funtype-selection-value* ((te funtype) (ste funtype) var op codt struct type-alist)
+(defmethod generate-coreduce-funtype-selection-value* ((te funtype) (ste funtype)
+						       var op codt struct type-alist)
   ;;(assert (tc-eq (domain te) (domain ste)))
   (let* ((dvarid (make-new-variable '|d| codt))
-	 (dbd (make-bind-decl dvarid (if (dep-binding? (domain te))
-					 (type (domain te))
-					 (domain te))))
+	 (dtype (if (dep-binding? (domain te))
+		    (type (domain te))
+		    (domain te)))
+	 (dbtype (typecheck (parse-unparse dtype 'type-expr)))
+	 (dbd (make-bind-decl dvarid dbtype))
 	 (dvar (make-variable-expr dbd))
 	 (*bound-variables* (cons dbd *bound-variables*))
-	 (value (generate-coreduce-funtype-selection-value* (range te) (range ste) (make-application var dvar) op codt struct type-alist)))
+	 (value (generate-coreduce-funtype-selection-value*
+		 (range te) (range ste) (make-application var dvar)
+		 op codt struct type-alist)))
     (when value
       (mk-forall-expr (list dbd)
 	(if (dep-binding? (domain ste))
