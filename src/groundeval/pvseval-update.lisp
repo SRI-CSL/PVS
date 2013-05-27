@@ -749,6 +749,7 @@
 	 (live-rhs-updateables
 	  (set-difference rhs-updateables updateable-outputs
 			  :test #'same-declaration)))
+    (break "no-livevars")
     (and check-updateables
 	 check-rhs
 	 (cons updateable-outputs (append live-rhs-updateables
@@ -1232,11 +1233,9 @@
 	(t (pvs2cl-resolution expr)
 	   (if (datatype-constant? expr)
 	       (if (scalar-constant? expr)
-		   (lisp-function (declaration expr))
+		   (lisp-function2 (declaration expr))
 		   (let ((fun (lisp-function (declaration expr))))
-		     (if (not (funtype? (find-supertype (type expr))))
-			 (mk-funapp fun nil)
-			 `(function ,fun))));;actuals irrelevant for datatypes
+		     (mk-funapp fun nil)))
 	       (let* ((actuals (expr-actuals (module-instance expr)))
 		      (decl (declaration expr))
 		      (internal-actuals
@@ -1311,7 +1310,7 @@
     (unless (eval-info decl)
       (make-eval-info decl))
     (if (datatype-constant? expr)
-	(or (lisp-function (declaration expr))
+	(or (lisp-function2 (declaration expr))
 	    (pvs2cl-datatype expr))
 	(if (or (eq (module decl) *external*)
 		(expr-actuals (module-instance expr)));;datatype-subtype?
@@ -1642,12 +1641,35 @@
 	    (t (let* ((accessors (accessors constructor))
 		      (struct-id (car struct))
 		      (constructor-symbol (makesym "make-~a" struct-id))
-		      (defn (cdr struct)))
+		      (defn (cdr struct))
+		      (xvar (gentemp "x"))
+		      )
+		 ;;(break "pvs2cl-constructor")
 		 (make-eval-info (declaration constructor))
-		 (setf (definition (in-defn (declaration constructor)))
+		 (setf (definition (in-defn-m (declaration constructor)))
 		       defn)
-		 (setf (in-name (declaration constructor))
+		 (setf (in-name-m (declaration constructor))
 		       constructor-symbol)
+		 (when accessors
+		   (let* ((uname (intern (format nil "~a_~a" constructor-symbol "unary")))
+			  (unary-binding (when accessors
+					   (if (cdr accessors)
+					       (loop for ac in accessors
+						     as i from 0
+						     collect (list (id ac)
+								   `(svref ,xvar ,i)))
+					     (list (id (car accessors)) xvar))))
+			  (unary-form (when accessors
+					`(lambda (,xvar) (let ,unary-binding
+							   (,constructor-symbol
+							    ,@(loop for ac in accessors
+								    collect (id ac)))))))
+			  (udefn (when accessors `(defun ,uname () ,unary-form))))
+		     (setf (definition (in-defn (declaration constructor)))
+			   udefn)
+		     (eval udefn)
+		     (setf (in-name (declaration constructor))
+			   uname)))
 		 (make-eval-info (declaration (recognizer constructor)))
 		 (setf (in-name (declaration (recognizer constructor)))
 		       (makesym "~a?" struct-id))
