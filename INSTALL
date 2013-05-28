@@ -8,9 +8,9 @@ PVS directory to your path.
 
 * Building PVS
 
-PVS is open source, get the latest sources using subversion:
+PVS is open source, get the latest sources using Git:
 
-svn checkout https://spartan.csl.sri.com/svn/public/pvs/trunk pvs
+ git clone https://github.com/samowre/PVS.git pvs
 
 The build process is described below, please feel free
 to contribute your own experiences.

@@ -823,7 +823,7 @@ ones.  Otherwise, the new label replaces all existing ones."
 			   (t (list fnums))))
 	     (sformnums (find-all-sformnums hsforms nfnums
 					  #'always-true))
-	     (nlabel (if (stringp label) (intern label) label)))
+	     (nlabel (if (stringp label) (intern label :pvs) label)))
 	(cond (sformnums
 	       (multiple-value-bind
 		   (signal result)

@@ -24,7 +24,7 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
-(in-package "PVS")
+(in-package :pvs)
 
 #-runtime
 (declaim (special *dont-write-object-files* *pvs-verbose* *latex-linelength*

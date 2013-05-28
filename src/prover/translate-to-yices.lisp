@@ -106,7 +106,8 @@
      "_"
      (princ-to-string
       (funcall
-       *yices-id-counter*)))))
+       *yices-id-counter*)))
+   :pvs))
 
 ;;Next, we translate PVS types to Yices types so that any enumerated
 ;;types or datatypes introduce names.

@@ -29,9 +29,15 @@
 
 (in-package :pvs)
 
-(export '(pvs-message set-pvs-tmp-file pvs-error type-error))
+(export '(*pvs-buffer-hooks* *pvs-message-hooks* *pvs-warning-hooks*
+	  *pvs-error-hooks* pvs-buffer pvs-error pvs-warning pvs-message
+	  pvs-display pvs-abort pvs-yn pvs-query pvs-emacs-eval
+	  output-proofstate pvs2json protect-emacs-output parse-error
+	  type-error set-pvs-tmp-file place place-list type-ambiguity
+	  type-incompatible pvs-locate))
 
 (defvar *pvs-message-hooks* nil)
+(defvar *pvs-warning-hooks* nil)
 (defvar *pvs-error-hooks* nil)
 (defvar *pvs-buffer-hooks* nil)
 
@@ -170,7 +176,8 @@
 
 (defun pvs-message (ctl &rest args)
   (dolist (hook *pvs-message-hooks*)
-    (funcall hook (format nil ":pvs-msg ~? :end-pvs-msg" ctl args)))
+    (format t "~%Calling message hook ~a" hook)
+    (funcall hook (format nil "~?" ctl args)))
   (unless *suppress-msg*
     (if *to-emacs*
 	(let* ((*print-pretty* nil)
@@ -186,6 +193,8 @@
 ;;; them to a buffer.
 
 (defun pvs-warning (ctl &rest args)
+  (dolist (hook *pvs-warning-hooks*)
+    (funcall hook (format nil "~?" ctl args)))
   (if *noninteractive*
       (pvs-message "~% ~?~%" ctl args)
       (format t "~% ~?~%" ctl args))

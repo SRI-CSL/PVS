@@ -218,11 +218,11 @@
     (error "depth must be nil or a positive integer"))
   (with-working-context
    (let* ((fdecl (when (and lemma (not (string= lemma "")))
-		   (mk-formula-decl (intern name) (pc-parse lemma 'expr))))
+		   (mk-formula-decl (intern name :pvs) (pc-parse lemma 'expr))))
 	  (edecl (find-if #'(lambda (d)
 			      (and (formula-decl? d)
 				   (eq (module d) (current-theory))))
-		   (get-declarations (intern name)))))
+		   (get-declarations (intern name :pvs)))))
      (when fdecl
        (when edecl
 	 (setf (theory (current-theory))

@@ -29,6 +29,8 @@
 
 (in-package :pvs)
 
+(export '(all-decls))
+
 ;;; Load-prelude initializes the *prelude*, *prelude-context*, and
 ;;; *prelude-theories* variables
 
@@ -621,7 +623,7 @@
 	       (typecase theoryname
 		 (modname theoryname)
 		 (symbol (mk-modname theoryname))
-		 (string (mk-modname (intern theoryname)))
+		 (string (mk-modname (intern theoryname :pvs)))
 		 (t (error
 		     "Bad theoryname argument to load-imported-library")))))
 	  (load-library-theory lib-ref theory-name)))))

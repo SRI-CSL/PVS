@@ -52,7 +52,7 @@
 ;used in process
 
 (defun db-index-name (num)
-  (intern (format nil "*~a*" num)))
+  (intern (format nil "*~a*" num) :pvs))
 
 ;from prpp
 (defun is-db-lambda (form) ;;NSH(7.30.98: equal to >=)
@@ -171,7 +171,7 @@
 
 (defun symbol-to-charlist (symbol)
   (map 'list
-       #'(lambda (ch) (intern (string ch)))
+       #'(lambda (ch) (intern (string ch) :pvs))
        (princ-to-string symbol)))
 
 ;from prtop
@@ -198,7 +198,7 @@
 				   (charlist-to-string sym)
 				   (princ-to-string sym)))
 			   (argument-form symbols))))
-	     ))))
+	     :pvs))))
 
 (defun charlist-to-string (charlist)
   (map 'string                               ; (string ch) ensures type

@@ -41,7 +41,7 @@
 
 (defmethod prove (name &key  strategy)
   (let ((decl (get-formula *current-theory*
-			   (if (stringp name)(intern name) name))))
+			   (if (stringp name)(intern name :pvs) name))))
     (if decl
 	(prove-decl decl
 		    :strategy
@@ -152,7 +152,8 @@
 		#'(lambda (ex)
 		    (or (cdr (assoc ex alist :test #'tc-eq))
 			(let* ((str (string (id ex)))
-			       (id (intern (subseq str 0 (position #\! str))))
+			       (id (intern (subseq str 0 (position #\! str))
+					   :pvs))
 			       (nid (make-new-variable id expr))
 			       (nbd (mk-bind-decl nid (type ex))))
 			  (push (cons ex nbd) alist)
@@ -485,7 +486,7 @@
 	 (format t "Please enter an id (default ~a): " default)
 	 (let ((id (read-line)))
 	   (cond ((equal id "") default)
-		 ((valid-proof-id id) (intern id))
+		 ((valid-proof-id id) (intern id :pvs))
 		 (t (format t "~a is not a legal proof identifier:~%" id)
 		    (read-proof-id default)))))
 	(t (format t "Saving proof as ~a" default)
@@ -642,7 +643,7 @@
 				      (char= (char dolform dolpos) #\$))
 			     (subseq dolform 0 dolpos))))
 	     (if (and rawform
-		      (assq (intern rawform) *prover-keywords*)
+		      (assq (intern rawform :pvs) *prover-keywords*)
 		      (not (and (> dolpos 0)
 				(char= (char rawform (1- dolpos)) #\$))))
 		 (error-format-if "~%~s is a rule, not a strategy, so does not have a $ form"
@@ -1273,7 +1274,7 @@
 (defun set-decision-procedure (name)
   (assert (or (stringp name) (symbolp name)))
   (let* ((id (if (stringp name)
-		 (intern (string-downcase name))
+		 (intern (string-downcase name) :pvs)
 		 name))
 	 (dp (car (member id *decision-procedures*))))
     (if dp
@@ -3001,7 +3002,7 @@
 	     (cleanup-fnums (cadr fnums))
 	     (append (cleanup-fnums (car fnums)) (cleanup-fnums (cdr fnums)))))
 	((null fnums) nil)
-	((stringp fnums) (list (intern fnums)))
+	((stringp fnums) (list (intern fnums :pvs)))
 	(t (list fnums))))
 
 (defun select-seq (seq nums)
@@ -3143,7 +3144,7 @@
 			      (stringp sformnum))
 			  (memq (if (symbolp sformnum)
 				    sformnum
-				    (intern sformnum))
+				    (intern sformnum :pvs))
 				(label (car sforms)))))
 		 (funcall pred (car sforms)))
 	    neg
@@ -3155,7 +3156,7 @@
 			      (stringp sformnum))
 			  (memq (if (symbolp sformnum)
 				    sformnum
-				    (intern sformnum))
+				    (intern sformnum :pvs))
 				(label (car sforms)))))
 		 (funcall pred (car sforms)))
 	    pos
@@ -3487,7 +3488,7 @@
 	     (fnums (if (consp fnums) fnums (list fnums))))
 	(cond ((or (stringp label) (symbolp label))
 	       (let ((strlbl (if (stringp label) label (string label)))
-		     (symlbl (if (symbolp label) label (intern label))))
+		     (symlbl (if (symbolp label) label (intern label :pvs))))
 		 (cond ((memq symlbl '(quote nil * + -))
 			(error-format-if
 			 "~%Label cannot be nil, quote, *, +, or -.")
@@ -3525,7 +3526,7 @@
 			   (t (list fnums))))
 	     (sforms (find-all-sformnums (s-forms goalsequent) nfnums
 					  #'always-true))
-	     (nlabel (if (stringp label) (intern label) label)))
+	     (nlabel (if (stringp label) (intern label :pvs) label)))
 	(cond (sforms
 	       (multiple-value-bind
 		   (signal subgoal)

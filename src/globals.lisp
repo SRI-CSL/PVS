@@ -82,6 +82,8 @@
 
 (defparameter *binfile-version* 30)
 
+(defvar *pvs-build-time* (get-universal-time)) ;; set on loading in operate-on-system
+
 (defparameter *context-name* ".pvscontext")
 
 (defvar *pvs-global-tables* nil)

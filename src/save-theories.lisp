@@ -1329,24 +1329,23 @@
   (let* ((res (resolution (type te)))
 	 (decl (declaration res))
 	 (thinst (module-instance res)))
-    (with-current-decl decl
-      (restore-object* (actuals thinst))
-      (let* ((mtype-expr (if (actuals thinst)
-			     (let ((*pseudo-normalizing* t)) ;; disallow pseudo-normalize
-			       (subst-mod-params (type-value decl) thinst
-				 (module decl) decl))
-			     (type-value decl)))
-	     (type-expr (if (every #'(lambda (x y)
-				       (and (name-expr? y)
-					    (eq (declaration y) x)))
-				   (car (formals decl)) (parameters te))
-			    mtype-expr
-			    (substit mtype-expr
-			      (pairlis (car (formals decl)) (parameters te))))))
-	#+pvsdebug (assert (true-type-expr? type-expr))
-	(with-slots (print-type) type-expr
-	  (setf print-type te))
-	type-expr))))
+    (restore-object* (actuals thinst))
+    (let* ((mtype-expr (if (or (actuals thinst) (dactuals thinst))
+			   (let ((*pseudo-normalizing* t)) ;; disallow pseudo-normalize
+			     (subst-mod-params (type-value decl) thinst
+			       (module decl) decl))
+			   (type-value decl)))
+	   (type-expr (if (every #'(lambda (x y)
+				     (and (name-expr? y)
+					  (eq (declaration y) x)))
+				 (car (formals decl)) (parameters te))
+			  mtype-expr
+			  (substit mtype-expr
+			    (pairlis (car (formals decl)) (parameters te))))))
+      #+pvsdebug (assert (true-type-expr? type-expr))
+      (with-slots (print-type) type-expr
+	(setf print-type te))
+      type-expr)))
 
 (defmethod print-type-correct? ((te type-expr))
   (or (null (print-type te))

@@ -631,7 +631,7 @@
 	     (with-output-to-string (outstr)
 	       (format outstr "Proof scripts for theory ~a:" theoryname)
 	       (let ((valid? (valid-proofs-file (context-entry-of theoryname)))
-		     (thproofs (assq (intern theoryname) proofs)))
+		     (thproofs (assq (intern theoryname :pvs) proofs)))
 		 (show-all-proofs-theory (car thproofs) (cdr thproofs)
 					 outstr valid?)))
 	     'popto t)
@@ -675,7 +675,7 @@
 		     (remove-if-not #'(lambda (pr)
 					(member (car pr) imports
 						:test #'(lambda (x y)
-							  (eq x (intern y)))))
+							  (eq x (intern y :pvs)))))
 		       vproofs)))))
     all-proofs))
 
@@ -1037,7 +1037,8 @@
   (if (and (member origin '("ppe" "tccs") :test #'string=)
 	   (not (get-theory bufname)))
       (pvs-message "~a is not typechecked" bufname)
-      (case (intern (#+allegro string-downcase #-allegro string-upcase origin))
+      (case (intern (#+allegro string-downcase #-allegro string-upcase origin)
+		    :pvs)
 	(ppe (let* ((theories (ppe-form (get-theory bufname)))
 		    (decl (get-decl-at line t theories)))
 	       (values (find-if #'(lambda (d) (and (declaration? d)

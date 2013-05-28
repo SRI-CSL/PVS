@@ -226,17 +226,18 @@
       (unit? rec)))
 
 (defun unit-derecognize (expr)
-  (cond ((negation? expr)
-	 (negate (unit-derecognize (args1 expr))))
-	((application? expr)
-	 (let ((unit (unit-recognizer? (operator expr))))
-	   (if (or (not unit)(tc-eq (args1 expr) unit))
-	       expr
-	       ;;multiple-value-bind (sig fmla);;assert-if too slow
-	       ;;  (assert-if unit);;to get its subtype constraint.
-	       (progn (record-type-constraints unit)
-		      (make!-equation (args1 expr) unit)))))
-	(t expr)))
+  (unless *adt* ;; Don't do this if typechecking recursive types
+    (cond ((negation? expr)
+	   (negate (unit-derecognize (args1 expr))))
+	  ((application? expr)
+	   (let ((unit (unit-recognizer? (operator expr))))
+	     (if (or (not unit)(tc-eq (args1 expr) unit))
+		 expr
+		 ;;multiple-value-bind (sig fmla);;assert-if too slow
+		 ;;  (assert-if unit);;to get its subtype constraint.
+		 (progn (record-type-constraints unit)
+			(make!-equation (args1 expr) unit)))))
+	  (t expr))))
 
 (defun assert-sform (sform &optional rewrite-flag simplifiable?)
   (let ((*assert-typepreds* nil)
@@ -893,25 +894,26 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun check-all-recognizers (arg)
-  (let* ((stype (find-supertype (type arg)))
-	 (recs (when (adt? stype) (recognizers stype)))
-	 (constructor
-	  (if (and (name-expr? arg) (constructor? arg))
-	      arg
-	      (if (and (application? arg)
-		       (constructor? (operator arg)))
-		  (operator arg)
-		  nil))))
-    (if constructor
-	(let ((cons-rec (recognizer constructor)))
+  (unless *adt* ;; Don't do this if typechecking a recursive type
+    (let* ((stype (find-supertype (type arg)))
+	   (recs (when (adt? stype) (recognizers stype)))
+	   (constructor
+	    (if (and (name-expr? arg) (constructor? arg))
+		arg
+		(if (and (application? arg)
+			 (constructor? (operator arg)))
+		    (operator arg)
+		    nil))))
+      (if constructor
+	  (let ((cons-rec (recognizer constructor)))
+	    (loop for rec in recs
+	       collect
+		 (if (same-id cons-rec rec)
+		     (cons rec *true*)
+		     (cons rec *false*))))
 	  (loop for rec in recs
-		collect
-		(if (same-id cons-rec rec)
-		    (cons rec *true*)
-		    (cons rec *false*))))
-	(loop for rec in recs
-	      collect
-	      (cons rec (assert-test (make!-application rec arg)))))))
+	     collect
+	       (cons rec (assert-test (make!-application rec arg))))))))
 
 
 (defun check-rest-recognizers (rec all-result &optional indirect)
@@ -3394,7 +3396,7 @@
     (if (eq newsig 'X) (values sig newexpr)(values newsig newexpr))))
 
 (defmethod lazy-assert-if-with-subst ((expr cases-expr) subst &optional if-flag)
-  (with-slots (expression selections else-part) expr
+  (with-slots (type expression selections else-part) expr
     (let ((expression (substit expression subst)))
       (multiple-value-bind (sigexpr newexpr)
 	  (assert-if expression) ;;(10.8.96):was cond-assert-if
@@ -3421,11 +3423,11 @@
 			  (values 'X expr)
 			  (if (eq sigexpr '?)
 			      (values '?
-				      (lcopy expr 'expression expression
-					     'selections
-					     (substit selections subst)
-					     'else-part
-					     (substit else-part subst))) 
+				      (lcopy expr
+					'type (substit type subst)
+					'expression expression
+					'selections (substit selections subst)
+					'else-part (substit else-part subst)))
 			      (values '? (substit expr subst))))))
 		((and (name-expr? expression)(constructor? expression))
 		 (sig-lazy-assert-if-with-subst
@@ -4039,7 +4041,7 @@
 	 (new-index (if all-occurrences
 			(1+ (apply #'max all-occurrences))
 			1))
-	 (name (intern (format nil "~a$~a" string new-index))))
+	 (name (intern (format nil "~a$~a" string new-index) :pvs)))
     (install-rewrite-res (list name fmla) name fmla always?)))
 
 
@@ -4567,7 +4569,7 @@ e LHS free variables in ~a" hyp lhs)
 			    (symbol-index aname))
 	    (get-antec-name name (cdr all-names) max))) 
       (unless (zerop max)
-	(intern (format nil "~a$~a" name max)))))    
+	(intern (format nil "~a$~a" name max) :pvs))))    
 
 
 (defun stop-rewrite-step (names)

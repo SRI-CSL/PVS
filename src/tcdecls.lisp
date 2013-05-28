@@ -588,7 +588,7 @@
 	   (if (file-exists-p (merge-pathnames dirstr *pvs-context-path*))
 	       dirstr
 	       (values nil (format nil "Directory ~a does not exist" libstr))))
-	  (t (or (get-library-reference (intern libstr))
+	  (t (or (get-library-reference (intern libstr :pvs))
 		 (values nil (format nil
 				 "Directory ~a does not exist" libstr)))))))
 
@@ -596,6 +596,9 @@
 
 (defmethod typecheck* ((decl mod-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
+  (when (decl-formals decl)
+    (type-error decl
+      "Declaration formals are not allowed in theory declarations"))
   (let ((th (get-theory (id decl))))
     (when (and th (get-importings th))
       (type-error decl
@@ -891,7 +894,7 @@
     (assert fdecl)
     (setf (from-formula decl) fdecl))
   (setf (definition decl) (subst-new-map-decls* (definition decl)))
-  (setf (closed-definition decl) (subst-new-map-decls* (closed-definition decl)))
+  (setf (closed-definition decl) nil)
   (setf (default-proof decl) nil)
   (setf (proofs decl) nil)
   (setf (generated-by decl) nil))
@@ -2290,12 +2293,32 @@
 		  (make!-implication sprem sconc)))
 	 (wid (makesym "~a_weak_~ainduction" (op-to-id (id decl))
 		       (if (inductive-decl? decl) "" "co")))
+	 (uwid (unique-formula-id wid))
 	 (sid (makesym "~a_~ainduction" (op-to-id (id decl))
 		       (if (inductive-decl? decl) "" "co")))
-	 (wdecl (typecheck* (mk-formula-decl wid wform 'AXIOM) nil nil nil))
-	 (sdecl (typecheck* (mk-formula-decl sid sform 'AXIOM) nil nil nil)))
+	 (usid (unique-formula-id sid))
+	 (wdecl (typecheck* (mk-formula-decl uwid wform 'AXIOM) nil nil nil))
+	 (sdecl (typecheck* (mk-formula-decl usid sform 'AXIOM) nil nil nil)))
     (add-decl wdecl)
     (add-decl sdecl)))
+
+(defun unique-formula-id (fid)
+  (let ((decls (all-decls (current-theory))))
+    (if (member fid decls
+		:test #'(lambda (x y)
+			  (and (formula-decl? y)
+			       (eq x (id y)))))
+	(unique-formula-id* fid 1 decls)
+	fid)))
+
+(defun unique-formula-id* (fid num decls)
+  (let ((nfid (makesym "~a_~d" fid num)))
+    (if (member nfid decls
+		:test #'(lambda (x y)
+			  (and (formula-decl? y)
+			       (eq x (id y)))))
+	(unique-formula-id* fid (1+ num) decls)
+	nfid)))
 
 (defmethod definition-body ((decl const-decl))
   (definition-body (beta-reduce (definition decl))))
@@ -2799,7 +2822,7 @@
 			      (module-instance
 			       (resolution (type type)))
 			      (module (declaration (type type)))
-			      (current-declaration)))))
+			      (declaration (type type))))))
 	     (set-type-for-application-parameters
 	      (parameters type) (car typeslist)))
 	   (let ((tval (substit te (pairlis (car (formals

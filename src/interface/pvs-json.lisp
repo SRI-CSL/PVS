@@ -222,7 +222,7 @@
 		  (cmdstr (cdr (assq :METHOD request)))
 		  (params (cdr (assq :PARAMS request))))
 	     (setq *json-id* json-id)
-	     (cons (intern cmdstr) params)))
+	     (cons (intern cmdstr :pvs) params)))
 	  (t cmd))))
 
 (defun proofstate-yields (proofstate)
@@ -294,7 +294,7 @@
     (cons :object
 	  (list (cons :fnum num)
 		(cons :formula (format nil "~a" sform))
-		(cons :changed changed))))
+		(cons :changed changed)))))
   
 
 ;; (defmethod json:encode-json ((obj syntax) &optional (stream *json-output*))

@@ -29,14 +29,12 @@
 
 (in-package :pvs)
 
-;;; Called from both Emacs and PVS
-(export '(save-context context-usingchain))
-
-;;; Called from Emacs only
-(export '(change-context get-pvs-file-dependencies pvs-rename-file
-	  show-context-path context-files-and-theories show-proof-file
-	  show-proofs-pvs-file show-orphaned-proofs pvs-select-proof
-	  pvs-view-proof pvs-delete-proof))
+;;; Called from outside PVS
+(export '(change-context context-files-and-theories context-usingchain
+	  current-context-path get-pvs-file-dependencies pvs-delete-proof
+	  pvs-rename-file pvs-select-proof pvs-view-proof save-context
+	  show-context-path show-orphaned-proofs show-proof-file
+	  show-proofs-pvs-file))
 
 ;;; Called from PVS only
 (export '(handle-deleted-theories restore-from-context update-context
@@ -232,10 +230,10 @@ pvs-strategies files.")
     (clear-theories t)
     (restore-context)
     (pvs-message "Context changed to ~a"
-      (shortname *pvs-context-path*))
+      (current-context-path))
     (when *pvs-context-writable*
       (copy-auto-saved-proofs-to-orphan-file))
-    (shortname *pvs-context-path*)))
+    (current-context-path)))
 
 (defun reset-context ()
   ;; First reset local context
@@ -1044,7 +1042,10 @@ pvs-strategies files.")
 ;;; Show Context Path
 
 (defun show-context-path ()
-  (pvs-message (shortname *pvs-context-path*)))
+  (pvs-message (current-context-path)))
+
+(defun current-context-path ()
+  (shortname *pvs-context-path*))
 
 
 ;;; For a given filename, valid-context-entry returns two values: the
@@ -1879,11 +1880,11 @@ pvs-strategies files.")
   (let ((refers-to (read-case-sensitive stream)))
     (if (symbolp refers-to)
 	;; Could be nil, or status from old proof-info format
-	(intern (string-upcase refers-to))
+	(intern (string-upcase refers-to) :pvs)
 	(mapcar #'(lambda (ref)
 		    (unless (eq ref '|nil|)
 		      (list (first ref)
-			    (intern (string-upcase (second ref)))
+			    (intern (string-upcase (second ref)) :pvs)
 			    (if (eq (third ref) '|nil|) nil (third ref))
 			    (fourth ref)
 			    (if (eq (fifth ref) '|nil|) nil (fifth ref)))))
@@ -2162,7 +2163,7 @@ pvs-strategies files.")
   (let ((new-entries nil))
     (maphash #'(lambda (id entry)
 		 (when (some #'upper-case-p (string id))
-		   (let* ((lid (intern (string-downcase (string id))))
+		   (let* ((lid (intern (string-downcase (string id)) :pvs))
 			  (lentry (gethash lid hash)))
 		     (unless (eq entry lentry)
 		       (push (cons lid entry) new-entries)))))
@@ -2183,7 +2184,7 @@ pvs-strategies files.")
     (let ((id (car rule))
 	  (entry (cdr rule)))
       (when (some #'upper-case-p (string id))
-	(let ((lid (intern (string-downcase (string id)))))
+	(let ((lid (intern (string-downcase (string id)) :pvs)))
 	  (unless (assoc lid *prover-keywords*)
 	    (push (cons lid entry) *prover-keywords*)))))))
 
@@ -2233,7 +2234,7 @@ pvs-strategies files.")
 
 
 (defun collect-theories ()
-  (cons (shortname *pvs-context-path*)
+  (cons (current-context-path)
 	(sort (apply #'append
 		     (mapcar #'collect-theories*
 			     (pvs-context-entries)))

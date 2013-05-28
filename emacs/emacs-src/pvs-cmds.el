@@ -318,6 +318,7 @@ trivial TCCs."
   (interactive (append (complete-theory-name "Show TCCs of theory named: ")
 		       (list (when current-prefix-arg
 			       (prefix-numeric-value current-prefix-arg)))))
+  (save-some-pvs-buffers)
   (unless (interactive-p) (pvs-collect-theories))
   (message "Creating the %s.tccs buffer..." theory)
   (pvs-send-and-wait (format "(show-tccs \"%s\" %s)" theory arg)

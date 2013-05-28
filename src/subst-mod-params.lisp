@@ -229,7 +229,10 @@
 	       (init-bindings (initial-subst-mod-params-mappings
 			       *subst-mod-params-theory*))
 	       (bindings (make-subst-mod-params-bindings
-			  modinst (append formals dformals)
+			  modinst (append (when (actuals modinst)
+					    formals)
+					  (when (dactuals modinst)
+					    dformals))
 			  (append (actuals modinst)
 				  (all-dactuals decl modinst))
 			  (mappings modinst) init-bindings))
@@ -663,7 +666,8 @@
 		  (let ((fconv (subst-mod-params* (from-conversion obj)
 						  modinst bindings)))
 		    (setq nobj (lcopy nobj :from-conversion fconv)))))
-	      (unless (freevars nobj)
+	      (unless (or (freevars nobj)
+			  (some #'decl-formal? (free-params nobj)))
 		(if (relatively-fully-instantiated? nobj)
 		    (setf (gethash obj *subst-mod-params-cache*) nobj)
 		    (setf (gethash obj *subst-mod-params-eq-cache*) nobj)))
@@ -1116,22 +1120,31 @@
 		     (decl-formals (car lhsmatch))
 		     (dactuals type)))))
 	     (subst-mod-params* stype modinst bindings)))
-	  ((and *subst-mod-params-module?*
-		(eq (module decl) *subst-mod-params-module?*))
-	   type)
+	  ;;((and nil *subst-mod-params-module?*
+	  ;;	(eq (module decl) *subst-mod-params-module?*))
+	  ;; type)
 	  (t (or (mapped-theory-value (module decl) type modinst bindings)
 		 (let* ((mi (module-instance res))
-			(nacts (subst-mod-params*
-				(actuals mi) modinst bindings))
-			(ndacts (subst-mod-params*
-				 (dactuals mi) modinst bindings)))
+			(nacts (cond ((actuals mi)
+				      (subst-mod-params*
+				       (actuals mi) modinst bindings))
+				     ((eq (id mi) (id modinst))
+				      (actuals modinst))))
+			(ndacts (cond ((dactuals mi)
+				       (subst-mod-params*
+					(dactuals mi) modinst bindings))
+				      ((eq decl *subst-mod-params-declaration*)
+				       (dactuals modinst)))))
 		   #+pvsdebug (assert (not (and nacts
 						(eq (id mi) (id modinst)))))
 		   #+pvsdebug (assert (fully-instantiated? nacts))
+		   #+pvsdebug
 		   (assert (or (mappings modinst)
 			       (not (fully-instantiated? modinst))
-			       (and (fully-instantiated? nacts)
-				    (fully-instantiated? ndacts))))
+			       (and (every #'(lambda (fp) (not (assq fp bindings)))
+					   (free-params nacts))
+				    (every #'(lambda (fp) (not (assq fp bindings)))
+					   (free-params ndacts)))))
 		   (if (or nacts ndacts)
 		       (if (and (eq (actuals mi) nacts)
 				(eq (dactuals mi) ndacts))
@@ -1370,6 +1383,8 @@
 (defun subst-mod-params-fields (fields modinst bindings &optional nfields)
   (if fields
       (let ((nfield (subst-mod-params* (car fields) modinst bindings)))
+	(assert (every #'(lambda (fp) (not (assq fp bindings)))
+		       (free-params nfield)))
 	(subst-mod-params-fields
 	 (substit (cdr fields) (acons (car fields) nfield nil))
 	 modinst bindings (cons nfield nfields)))
@@ -1836,7 +1851,8 @@
 
 (defmethod subst-mod-params* ((res resolution) modinst bindings)
   (with-slots ((decl declaration) (mi module-instance) type) res
-    (let ((acts (actuals mi)))
+    (let ((acts (actuals mi))
+	  (dacts (dactuals mi)))
       #+pvsdebug (assert (not (assq decl bindings)))
       #+pvsdebug (assert mi)
       (cond ((tc-eq mi modinst)
@@ -1855,12 +1871,24 @@
 				 (lcopy modinst :library libid))
 			     (lcopy modinst :dactuals nil :library libid)))
 		    (nres (mk-resolution decl nmi ntype)))
-	       (assert (subsetp (free-params ntype) (free-params modinst)) () "res2")
-	       (assert (subsetp (free-params nres) (free-params modinst)) () "res2.5")
+	       #+pvsdebug
+	       (assert (subsetp (remove-if #'(lambda (d)
+					       (memq d (decl-formals (current-declaration))))
+				  (free-params ntype))
+				(free-params modinst)) () "res2")
+	       #+pvsdebug
+	       (assert (subsetp (remove-if #'(lambda (fp)
+					       (or (memq fp (formals-sans-usings
+							     *subst-mod-params-theory*))
+						   (memq fp (decl-formals (current-declaration)))))
+				  (free-params nres))
+				(free-params modinst)) () "res2.5")
 	       nres))
-	    (t (let* ((nacts (subst-mod-params* acts modinst bindings)))
+	    (t (let ((nacts (subst-mod-params* acts modinst bindings))
+		     (ndacts (subst-mod-params* dacts modinst bindings)))
 		 (assert (every #'actual? nacts))
 		 (if (and (eq nacts acts)
+			  (eq ndacts dacts)
 			  (not (binding? decl))
 			  (null (mappings modinst)))
 		     (progn (assert (subsetp (free-params res) (free-params modinst))
@@ -1872,6 +1900,7 @@
 		       ;; 	       () "res4")
 		       (if (and (strong-tc-eq type ntype)
 				(strong-tc-eq nacts acts)
+				(strong-tc-eq ndacts dacts)
 				(not (memq (id mi) '(|equalities| |notequal|)))
 				(not (library-datatype-or-theory?
 				      (module decl))))
@@ -1898,7 +1927,8 @@
 							    (not (eq (id mi) (id modinst)))
 							    (not (eq (library mi)
 								     (library modinst))))
-						  (mappings modinst))))
+						  (mappings modinst)))
+					    ndacts)
 					  (if eqtype
 					      (mk-funtype (list eqtype eqtype) *boolean*)
 					      ntype))))

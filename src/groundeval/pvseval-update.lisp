@@ -46,7 +46,7 @@
   (if (special-variable-p id) 
       (let ((lid (gethash id *lisp-id-hash*)))
 	(or lid
-	    (let ((new-lid (intern (symbol-name (gensym (string id))))))
+	    (let ((new-lid (intern (symbol-name (gensym (string id))) :pvs)))
 	      (setf (gethash id *lisp-id-hash*) new-lid)
 	      new-lid)))
       id))
@@ -1323,10 +1323,10 @@
   (let ((str (format nil "~a_~a" x counter)))
     (if (find-symbol str)
 	(mk-newsymb x (1+ counter))
-	(intern str))))
+	(intern str :pvs))))
 
 (defun mk-newfsymb (x &optional counter)
-  (let ((fsym (intern (format nil "~a~@[_~a~]" x counter))))
+  (let ((fsym (intern (format nil "~a~@[_~a~]" x counter) :pvs)))
     (if (fboundp fsym)
 	(mk-newfsymb x (if counter (1+ counter) 0))
 	fsym)))
@@ -1614,7 +1614,7 @@
 					acc)))))
     (if (or const-str? mk-str? rec-str? acc-strs?)
 	(mk-newconstructor id accessor-ids (1+ counter))
-	(intern const-str))))
+	(intern const-str :pvs))))
 
 (defun pvs2cl-constructor (constructor struct all-structs datatype)
   (let ((decl (declaration constructor)))
@@ -1719,7 +1719,7 @@
 					   :theory th
 					   :name nm
 					   :args nargs))))
-	 (fn    (cond (f (intern (format nil "pvsio_~a_~a_~a" th nm nargs)))
+	 (fn    (cond (f (intern (format nil "pvsio_~a_~a_~a" th nm nargs) :pvs))
 		      ((> nargs 1) (pvs2cl-primitive2 op))
 		      (t           (pvs2cl-primitive op))))
 	 (xtra  (if f (list (format nil "~a" (type op))) nil)))
@@ -1802,8 +1802,8 @@
 	((eq (id expr) '|null|) nil)
 	((and (eq (id expr) '-) ;;hard to distinguish unary,binary.
 	      (tupletype? (domain (find-supertype (type expr)))))
-	 (intern (format nil "pvs_--")))
-	(t (intern (format nil "pvs_~a" (id expr))))))
+	 (intern (format nil "pvs_--") :pvs))
+	(t (intern (format nil "pvs_~a" (id expr)) :pvs))))
 
 (defun pvs2cl-primitive2 (expr) ;;assuming expr is an id
   (let* ((id (id expr))
@@ -1813,7 +1813,7 @@
 	     (eq (id modinst) '|equalities|)
 	     (tc-eq  (type-value (car acts)) *number*))
 	'=
-	(intern (format nil "pvs__~a" id)))))
+	(intern (format nil "pvs__~a" id) :pvs))))
 
 ;;;
 ;;; this clearing is now done automatically by untypecheck

@@ -232,21 +232,22 @@
 	  (t (set-tc-match-binding binding arg bindings)))))
 
 (defun set-tc-match-binding (binding arg bindings &optional (last-attempt? t))
-  (let ((type (compatible-type (cdr binding) arg)))
-    (cond (type
-	   (unless (or (and (dependent-type? type)
-			    (not (has-type-vars? (cdr binding))))
-		       (and (member (cdr binding) *tc-strict-matches*
-				    :test #'tc-eq)
-			    (or (fully-instantiated? (cdr binding))
-				(not (fully-instantiated? arg)))))
-	     (cond (*tc-match-strictly*
-		    (push arg *tc-strict-matches*)
-		    (setf (cdr binding) arg))
-		   (t (setf (cdr binding) type))))
+  (let ((dtype (compatible-type (cdr binding) arg)))
+    (if dtype
+	(let ((type (dep-binding-type dtype)))
+	  (unless (or (and (dependent-type? type)
+			   (not (has-type-vars? (cdr binding))))
+		      (and (member (cdr binding) *tc-strict-matches*
+				   :test #'tc-eq)
+			   (or (fully-instantiated? (cdr binding))
+			       (not (fully-instantiated? arg)))))
+	    (cond (*tc-match-strictly*
+		   (push arg *tc-strict-matches*)
+		   (setf (cdr binding) arg))
+		  (t (setf (cdr binding) type))))
 	   bindings)
-	  (t (when last-attempt?
-	       (tc-match-last-attempt (cdr binding) arg binding bindings))))))
+	(when last-attempt?
+	  (tc-match-last-attempt (cdr binding) arg binding bindings)))))
 
 (defun tc-match-last-attempt (arg1 arg2 binding bindings)
   (if (fully-instantiated? arg1)

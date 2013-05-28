@@ -159,7 +159,7 @@
 		     &optional docstring format-string)
   (defgen* name formals definition docstring format-string
 		 'defstep-entry *rules*)
-  (defgen* (intern (format nil "~a$" name))
+  (defgen* (intern (format nil "~a$" name) :pvs)
     formals definition docstring format-string
 		 'defstep-entry *steps*))
 
@@ -167,7 +167,7 @@
 		     &optional docstring format-string)
   (defgen* name formals definition docstring format-string
 		 'defhelper-entry *rules*)
-  (defgen* (intern (format nil "~a$" name))
+  (defgen* (intern (format nil "~a$" name) :pvs)
     formals definition docstring format-string
 		 'defhelper-entry *steps*))
 
@@ -1180,38 +1180,38 @@ is T) and disjunctively simplifies."
        (or (when (tc-eq type *naturalnumber*)
 	     (intern
 		(format nil
-		    "naturalnumbers.nat_induction")))
+		    "naturalnumbers.nat_induction") :pvs))
 	(let ((upfrom? (upfrom? type)))
 	     (when upfrom?
 	       (intern
 		(format nil
 		    "bounded_int_inductions[~a].upfrom_induction"
-		  upfrom?))))
+		  upfrom?) :pvs)))
 	   (let ((upto? (upto? type)))
 	     (when upto?
 	       (intern
 		(format nil
 		    "bounded_nat_inductions[~a].upto_induction"
-		  upto?))))
+		  upto?) :pvs)))
 	   (let ((below? (below? type)))
 	     (when below?
 	       (intern
 		(format nil
 		    "bounded_nat_inductions[~a].below_induction"
-		  below?))))
+		  below?) :pvs)))
 	   (let ((above? (above? type)))
 	     (when above?
 	       (intern
 		(format nil
 		    "bounded_int_inductions[~a].above_induction"
-		  above?))))
+		  above?) :pvs)))
 	   (let ((subrange? (subrange? type)))
 	     (when subrange?
 	       (intern
 		(format nil
 		    "subrange_inductions[~a,~a].subrange_induction"
 		  (car subrange?)
-		  (cdr subrange?)))))
+		  (cdr subrange?)) :pvs)))
 	   (bounded-int-type? (supertype type)))))
 
 (defun get-induction-domain-type (induction-name actual-type actual-var)
@@ -1283,7 +1283,7 @@ is T) and disjunctively simplifies."
 					   (raise-actuals
 					    (module-instance
 					     (resolution actual-supertype)))
-					   (id actual-supertype)))
+					   (id actual-supertype)) :pvs)
 				 (if (compatible? actual-type
 						  *naturalnumber*)
 				     (if (tc-eq  (compatible-type actual-type
@@ -1567,7 +1567,7 @@ simplifies using given REWRITES. "
 			       :expected order-type))))
 		(induction-name
 		 (when range-type 
-		   (mk-name (intern "measure_induction")
+		   (mk-name (intern "measure_induction" :pvs)
 			  (mapcar #'mk-actual (list domain-type range-type measure order)))))
 		)
 	    (if measure-freevars
@@ -3395,7 +3395,7 @@ is needed, the best option is to use CASE."
 		     string))
 	 (index (when pos  ;;NSH(9.20.95)
 		  (parse-integer string :start (1+ pos) :junk-allowed t))))
-    (if index (intern prefix) id)))
+    (if index (intern prefix :pvs) id)))
 
 (defun make-constant-bind-decl-alist (constants done-alist expr)
   ;;constants must be sorted according to occurrence as done in

@@ -29,7 +29,8 @@
 
 (in-package :pvs)
 
-(export '(unparse pp* pp-chained-decls check-chained-syntax simple-name?))
+(export '(unparse pp* pp-chained-decls check-chained-syntax simple-name?
+	  str))
 
 ;; The variable excl:*enclose-printer-errors* when set to nil is supposed to
 ;; allow errors to be caught when they happen, but I've never seen this work.

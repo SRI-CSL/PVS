@@ -1607,8 +1607,8 @@ which should be fully instantiated. Please supply actual parameters.")
 				    (format nil
 					"~a_~a_extensionality"
 				      (id (supertype texpr))
-				      (id constructor)
-				      )))))
+				      (id constructor))
+				    :pvs))))
 	 (new-fmla (when fmla-decl
 		     (subst-mod-params (definition fmla-decl)
 				       (module-instance
@@ -1681,7 +1681,7 @@ which should be fully instantiated. Please supply actual parameters.")
 ;; (the name skolem-const-decl should be changed, but I didn't want
 ;; to change that much code)
 (defun add-name-step (name expr ps)
-  (let* ((name (if (stringp name) (intern name) name))
+  (let* ((name (if (stringp name) (intern name :pvs) name))
 	 ;;(*generate-tccs* 'all)
 	 (pc-name (pc-parse name 'expr))
 	 (tc-expr (internal-pc-typecheck (pc-parse expr 'expr)

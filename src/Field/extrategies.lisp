@@ -57,10 +57,10 @@
   (when *current-context*
     (let ((alllabels (union (extra-get-labels '*)
 			    (extra-get-labels '* t)))
-	  (nn        (intern (format nil "~a:" prefix))))
+	  (nn        (intern (format nil "~a:" prefix) :pvs)))
       (if (not (member nn alllabels)) nn
 	(loop for i from 1
-	      for nn = (intern (format nil "~a~a:" prefix i))
+	      for nn = (intern (format nil "~a~a:" prefix i) :pvs)
 	      unless (member nn alllabels)
 	      return nn)))))
 
@@ -73,7 +73,7 @@
 	      (alllabels (union (extra-get-labels '*)
 				(extra-get-labels '* t))))
 	  (loop for i from 1
-		for nn = (intern (format nil "~a~a:" prefix i))
+		for nn = (intern (format nil "~a~a:" prefix i) :pvs)
 		while (< nlabels n) 
 		unless (member nn alllabels)
 		collect (progn (incf nlabels) nn))))))

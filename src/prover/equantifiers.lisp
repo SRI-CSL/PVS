@@ -64,7 +64,7 @@
     (format nil "~a~a~a" prestring char (funcall counter))))
 
 (defun symbol-index (name)
-  (let* ((name  (intern  (string  (op-to-id  name))))
+  (let* ((name  (intern (string (op-to-id  name)) :pvs))
 	 (string (format nil "~a" name))
 	 (pos (position-if #'(lambda (x)(member x (list  #\! #\$))) string))
          (index (when pos (parse-integer string :start (1+ pos)
@@ -78,14 +78,14 @@
 		     string))
 	 (index (when pos  ;;NSH(9.20.95)
 		  (parse-integer string :start (1+ pos) :junk-allowed t))))
-    (if index (intern prefix) id)))
+    (if index (intern prefix :pvs) id)))
 	
 
 (defun pvs-gentemp (string &optional (count 0))
   (let ((next (format nil "~a~a" string count)))
     (if (find-symbol next)
 	(pvs-gentemp string (1+ count))
-	(intern next))))
+	(intern next :pvs))))
 
 (defun new-boundvar-id (id expr)
   (let* ((string (string (op-to-id id)))
@@ -105,7 +105,7 @@
          
 
 (defun new-symbol (name counter)
-  (intern (gen-symbol name #\$ counter)))
+  (intern (gen-symbol name #\$ counter) :pvs))
 
 (defun new-sko-symbol (name context &optional counter symbols &key keep-underscore?)
   (unless counter (newcounter *skofun-counter*))
@@ -115,7 +115,7 @@
 		     "!"
 		     (princ-to-string (funcall *skofun-counter*)))
 		   (gen-symbol name #\! *skofun-counter*)))
-	 (isymb (intern symb)))
+	 (isymb (intern symb :pvs)))
     (if (or (declared? isymb context)
 	    (member symb symbols :test #'same-id))
 	(new-sko-symbol name context *skofun-counter* symbols
