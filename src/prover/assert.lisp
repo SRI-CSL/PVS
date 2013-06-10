@@ -226,18 +226,19 @@
       (unit? rec)))
 
 (defun unit-derecognize (expr)
-  (unless *adt* ;; Don't do this if typechecking recursive types
-    (cond ((negation? expr)
-	   (negate (unit-derecognize (args1 expr))))
-	  ((application? expr)
-	   (let ((unit (unit-recognizer? (operator expr))))
-	     (if (or (not unit)(tc-eq (args1 expr) unit))
-		 expr
-		 ;;multiple-value-bind (sig fmla);;assert-if too slow
-		 ;;  (assert-if unit);;to get its subtype constraint.
-		 (progn (record-type-constraints unit)
-			(make!-equation (args1 expr) unit)))))
-	  (t expr))))
+  (if *adt* ;; Don't do this if typechecking recursive types
+      expr
+      (cond ((negation? expr)
+	     (negate (unit-derecognize (args1 expr))))
+	    ((application? expr)
+	     (let ((unit (unit-recognizer? (operator expr))))
+	       (if (or (not unit)(tc-eq (args1 expr) unit))
+		   expr
+		   ;;multiple-value-bind (sig fmla);;assert-if too slow
+		   ;;  (assert-if unit);;to get its subtype constraint.
+		   (progn (record-type-constraints unit)
+			  (make!-equation (args1 expr) unit)))))
+	    (t expr))))
 
 (defun assert-sform (sform &optional rewrite-flag simplifiable?)
   (let ((*assert-typepreds* nil)
@@ -3648,7 +3649,7 @@
 			      ;; NSH(12.30.93)not sure if *keep-unbound*
 			      ;; needs to be set.
 			      (collect-type-constraints* y))))
-	   );;(break "binding")
+	   ) ;;(break "binding")
       (multiple-value-bind (sig newexpr)
 	  (cond-assert-if expression typepreds)
 	(assert-if-quant expr sig newexpr)))))
