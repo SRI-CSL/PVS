@@ -3101,7 +3101,7 @@ required a context.")
 (defun instantiate-resolution (ex res type)
   (let* ((fparams (free-params res))
 	 (theories (delete-duplicates (mapcar #'module fparams)))
-	 (nres nil))
+	 (nres res))
     ;; Multiple theories can come about because of actuals, mappings, etc on ex
     ;; First chack that any 
     (if (all-formals-from-same-decls fparams)
@@ -3139,9 +3139,9 @@ required a context.")
 				  (library (module-instance res))
 				  (mappings (module-instance res)))))
 		    (if (null decls)
-			(let ((sres (subst-mod-params res thinst th)))
-			  (push sres nres))
-			(let ((sres res))
+			(let ((sres (subst-mod-params nres thinst th)))
+			  (setq nres sres))
+			(let ((sres nres))
 			  (dolist (decl decls)
 			    (let* ((dacts (mapcar #'(lambda (fp)
 						      (let ((bd (cdr (assq fp bindings))))
@@ -3156,7 +3156,7 @@ required a context.")
 					    (decl-formals decl)))
 				   (dthinst (copy thinst :dactuals dacts)))
 			      (setq sres (subst-mod-params sres dthinst th decl))))
-			  (push sres nres)))))))))
+			  (setq nres sres)))))))))
 	;; Should probably never get here
 	(if *dont-worry-about-full-instantiations*
 	    res
@@ -3164,14 +3164,13 @@ required a context.")
 	       "Could not determine the full theory instance for ~a~
                 ~%  Theory instance: ~a~%  refers to multiple decl params"
 	       ex (full-name (module-instance ex)))))
-    (cond ((cdr nres)
-	   (type-ambiguity ex))
-	  (nres (car nres))
-	  (*dont-worry-about-full-instantiations* res)
-	  (t (type-error ex
-	       "Could not determine the full theory instance for ~a~
+    (if (or (fully-instantiated? nres)
+	    *dont-worry-about-full-instantiations*)
+	nres
+	(type-error ex
+	  "Could not determine the full theory instance for ~a~
                 ~%  Theory instance: ~a"
-	       ex (full-name (module-instance ex)))))))
+	  ex (full-name (module-instance ex))))))
 
 (defun all-formals-from-same-decls (formals &optional decl)
   (or (null formals)
@@ -3203,7 +3202,9 @@ required a context.")
   (let* ((frees (free-params optype))
 	 (bindings ;;(instantiate-operator-bindings frees)
 	  (mapcar #'list (remove-if #'(lambda (x)
-					(memq x (formals (current-theory))))
+					(or (memq x (formals (current-theory)))
+					    (memq x (decl-formals
+						     (current-declaration)))))
 			   frees)))
 	 (domain (domain-types optype))
 	 (range (range optype)))
