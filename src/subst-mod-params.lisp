@@ -666,9 +666,9 @@
 		  (let ((fconv (subst-mod-params* (from-conversion obj)
 						  modinst bindings)))
 		    (setq nobj (lcopy nobj :from-conversion fconv)))))
-	      (unless (or (freevars nobj)
-			  (some #'decl-formal? (free-params nobj)))
-		(if (relatively-fully-instantiated? nobj)
+	      (unless (freevars nobj)
+		(if (and (not (some #'decl-formal? (free-params nobj)))
+			 (relatively-fully-instantiated? nobj))
 		    (setf (gethash obj *subst-mod-params-cache*) nobj)
 		    (setf (gethash obj *subst-mod-params-eq-cache*) nobj)))
 	      #+pvsdebug
@@ -1904,7 +1904,8 @@
 				(not (memq (id mi) '(|equalities| |notequal|)))
 				(not (library-datatype-or-theory?
 				      (module decl))))
-			   (progn (assert (or (mappings modinst)
+			   (progn #+pvsdebug
+				  (assert (or (mappings modinst)
 					      (subsetp (free-params res)
 						       (free-params modinst))) () "res5")
 				  res)
