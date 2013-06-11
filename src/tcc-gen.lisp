@@ -824,7 +824,7 @@
 (defun check-nonempty-type (te expr)
   (let ((type (if (dep-binding? te) (type te) te)))
     (unless (or (nonempty? type)
-		(typep (declaration *current-context*) 'adt-accessor-decl)
+		(typep (current-declaration) 'adt-accessor-decl)
 		(assoc type (nonempty-types (current-theory)) :test #'tc-eq))
       (when (possibly-empty-type? type)
 	(let ((etcc (generate-existence-tcc type expr)))
@@ -1055,7 +1055,7 @@
       (let* ((cdecl (or (and (or *in-checker* *in-evaluator*)
 			     *top-proofstate*
 			     (declaration *top-proofstate*))
-			(declaration *current-context*)))
+			(current-declaration)))
 	     (prev (find modinst (assuming-instances (current-theory))
 			 :test #'(lambda (x y)
 				   (not (eq (simple-match (car y) x) 'fail))))))
@@ -1065,7 +1065,8 @@
 		(pvs-info "Assuming TCCs not generated ~@[~a~] for~%  ~w~%~
                            as they are subsumed by the TCCs generated ~@[~a~] for~%  ~w"
 		  (place-string expr) expr (place-string aprev) aprev)))
-	    (unless (existence-tcc? cdecl)
+	    (unless (and (not *in-checker*)
+			 (existence-tcc? cdecl))
 	      (let ((assumptions (remove-if-not #'assumption? (assuming mod))))
 		;; Don't want to save this module instance unless it does not
 		;; depend on any conditions, including implicit ones in the
@@ -1662,6 +1663,15 @@
 			      (actuals (module-instance t2))
 			      bindings npred)))
 
+;; Normally just adds (predicate t2) to p2 and continues, but this can
+;; mishandle  [x: t1, {y: t2 | p(x, y)]  {z: [t1, t2] | p(z)}
+;; 
+;; (defmethod equality-predicates* ((t1 tupletype) (t2 subtype) p1 p2 precond bindings)
+;;   (let ((stype (find-supertype t2)))
+;;     (assert (tupletype? stype))
+
+;; (defmethod equality-predicates* ((t1 subtype) (t2 tupletype)
+
 (defmethod equality-predicates* ((t1 subtype) (t2 type-expr) p1 p2 precond
 				 bindings)
   (equality-predicates*
@@ -1730,7 +1740,7 @@
 	     (carl1 (car l1))
 	     (carl2 (car l2))
 	     (dep-bindings? (and (dep-binding? carl1)
-				(dep-binding? carl2))))
+				 (dep-binding? carl2))))
 	(cond (dep-bindings?
 	       (let* ((bd (make-bind-decl (id carl1) carl1))
 		      (bdvar (make-variable-expr bd))
