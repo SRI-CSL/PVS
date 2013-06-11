@@ -690,7 +690,7 @@ required a context.")
 	    (dactuals modinst))
     (let ((nmodinst (simplify-modinst modinst)))
       (unless (eq *generate-tccs* 'none)
-	(generate-assuming-tccs nmodinst modinst theory))
+	(generate-assuming-tccs (lcopy nmodinst :mappings nil) modinst theory))
       nmodinst)))
 
 (defmethod set-type-actuals ((expr name) &optional theory)
