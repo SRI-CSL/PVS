@@ -171,8 +171,8 @@
                 (dotimes (i length t)
                   (let ((x-el (aref x i))
                         (y-el (aref y i)))
-                    (unless (or (eq x-el y-el)
-                                (pvs_equalp x-el y-el))
+                    (unless (pvs_equalp x-el y-el);;(NSH:4/25/2013)
+		      ;;removed redundant eq test
                       (return nil)))))))
         ((arrayp x)
          (and (arrayp y)
@@ -501,8 +501,8 @@
 (defmacro nd-rec-tup-update (rec fieldnum newval)
   `(let ((val ,newval)
 	(newrec  (copy-seq ,rec)))
-    (setf (svref newrec ,fieldnum) val)
-    newrec))
+    (setf (svref newrec ,fieldnum) val);;no need to gentemp val and rec
+    newrec))                           ;;since fieldnum is a fixed number
 
 (defmacro rec-tup-update (expr field-num newval)
   `(setf (svref ,expr ,field-num) ,newval))
@@ -588,7 +588,7 @@
      :constructors (pvs2cl-constructors constructors (adt type)))))
 
 (defmethod pvs-lisp-type ((type tupletype) bindings)
-  (make-pvs-lisp-type 
+  (make-pvs-lisp-tuple 
    :elemtypes (pvs-lisp-type (types type) bindings)))
 
 (defmethod pvs-lisp-type ((type recordtype) bindings)
@@ -625,8 +625,8 @@
 					   bindings)))
       (if subrange
 	  (make-pvs-lisp-array
-	   :size `(- ,(pvs-lisp-subrange-low subrange)
-		     ,(pvs-lisp-subrange-high subrange))
+	   :size `(- ,(pvs-lisp-subrange-high subrange)
+		     ,(pvs-lisp-subrange-low subrange))
 	   :offset (pvs-lisp-subrange-low subrange)
 	   :range (if (binding? domain)
 		      (pvs-lisp-type range (acons domain

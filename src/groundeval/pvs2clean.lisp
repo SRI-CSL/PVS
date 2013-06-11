@@ -180,7 +180,7 @@
 	      (format nil "(pvsSelect ~a ~a ~a)"
 		clean-op clean-arg
 		(mk-clean-funcall clean-op
-				  (list clean-arg))))))))
+				  (list clean-arg))))))));;why is there no else case?
 
 (defun pvs2clean-primitive-app (expr bindings livevars)
   (format nil "~a ~{ ~a~}"
@@ -213,7 +213,8 @@
 				       (clean_nondestructive_id operator))
 			    clean-args)
 	      )
-	(format nil "(~a ~{ ~a~})" (clean_id operator) clean-args)))))
+	(format nil "(~a ~{ ~a~})" (clean_id operator) clean-args)))));;this should be
+;;clean_nondestructive_id?
 
 (defun pvs2clean-resolution (op)
   (let* ((op-decl (declaration op)))

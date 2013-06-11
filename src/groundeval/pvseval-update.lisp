@@ -1313,7 +1313,7 @@
     (unless (eval-info decl)
       (make-eval-info decl))
     (if (datatype-constant? expr)
-	(or (lisp-function (declaration expr))
+	(or (lisp-function2 (declaration expr))
 	    (pvs2cl-datatype expr))
 	(if (or (eq (module decl) *external*)
 		(expr-actuals (module-instance expr)));;datatype-subtype?
@@ -1645,17 +1645,41 @@
 	    (t (let* ((accessors (accessors constructor))
 		      (struct-id (car struct))
 		      (constructor-symbol (makesym "make-~a" struct-id))
-		      (defn (cdr struct)))
+		      (defn (cdr struct))
+		      (xvar (gentemp "x"))
+		      )
+		 ;;(break "pvs2cl-constructor")
 		 (make-eval-info (declaration constructor))
-		 (setf (definition (in-defn (declaration constructor)))
+		 (setf (definition (in-defn-m (declaration constructor)))
 		       defn)
-		 (setf (in-name (declaration constructor))
+		 (setf (in-name-m (declaration constructor))
 		       constructor-symbol)
+		 (when accessors
+		   (let* ((uname (intern (format nil "~a_~a" constructor-symbol "unary")))
+			  (unary-binding (when accessors
+					   (if (cdr accessors)
+					       (loop for ac in accessors
+						     as i from 0
+						     collect (list (id ac)
+								   `(svref ,xvar ,i)))
+					     (list (id (car accessors)) xvar))))
+			  (unary-form (when accessors
+					`(lambda (,xvar) (let ,unary-binding
+							   (,constructor-symbol
+							    ,@(loop for ac in accessors
+								    collect (id ac)))))))
+			  (udefn (when accessors `(defun ,uname () ,unary-form))))
+		     (setf (definition (in-defn (declaration constructor)))
+			   udefn)
+		     (eval udefn)
+		     (setf (in-name (declaration constructor))
+			   uname)))
 		 (make-eval-info (declaration (recognizer constructor)))
 		 (setf (in-name (declaration (recognizer constructor)))
 		       (makesym "~a?" struct-id))
 		 (loop for x in accessors
-		    do (unless (eval-info (declaration x))
+		    do (unless (and (eval-info (declaration x))
+				    (lisp-function (declaration x)))
 			 (make-eval-info (declaration x)))
 		    do (setf (in-name (declaration x))
 			     (pvs2cl-accessor-defn
