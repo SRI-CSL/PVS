@@ -113,17 +113,17 @@
   (let ((gurl (gentemp)))
     `(let ((,gurl ,url))
        (if ,gurl
-	   (let ((*pvs-message-hooks*
+	   (let ((pvs:*pvs-message-hooks*
 		  (cons #'(lambda (msg) (json-message msg ,gurl))
-			*pvs-message-hooks*))
-		 (*pvs-warning-hooks*
+			pvs:*pvs-message-hooks*))
+		 (pvs:*pvs-warning-hooks*
 		  (cons #'(lambda (msg) (json-message msg ,gurl :warning))
-			*pvs-warning-hooks*))
-		 (*pvs-buffer-hooks*
+			pvs:*pvs-warning-hooks*))
+		 (pvs:*pvs-buffer-hooks*
 		  (cons #'(lambda (name contents display? read-only? append? kind)
 			    (json-buffer name contents display? read-only? append? kind
 					 ,gurl))
-			*pvs-buffer-hooks*)))
+			pvs:*pvs-buffer-hooks*)))
 	     ,@body)
 	   (progn ,@body)))))
 
@@ -193,7 +193,7 @@
 	(json:encode-json-to-string
 	 (cons :object
 	       `((:mode . ,(pvs-current-mode))
-		 (:context . ,(current-context-path))
+		 (:context . ,(pvs:current-context-path))
 		 ,result))))))
 
 (defun pvs-current-mode ()
@@ -213,7 +213,7 @@
 
 (defmethod json:encode-json ((th pvs:datatype-or-module) &optional
 			     (stream json:*json-output*))
-  (json:encode-json (id th) stream))
+  (json:encode-json (pvs:id th) stream))
 
 ;; (defun json-result (result id)
 ;;   (setq *last-response* result)
@@ -232,8 +232,8 @@
 (defun pvs-subscribe (json-string)
   (let ((subscription (json:decode-json-from-string json-string)))
     (cond ((and (listp subscription)
-		(assq :URL subscription))
-	   (pushnew (cdr (assq :URL subscription)) *pvs-subscribers*
+		(pvs:assq :URL subscription))
+	   (pushnew (cdr (pvs:assq :URL subscription)) *pvs-subscribers*
 		    :test #'string=)
 	   (json-result "t")))))
 
@@ -251,7 +251,7 @@
   ;; filename is a string
   ;; optargs is a struct of form
   ;; {"forced?" :bool "prove-tccs?" :bool "importchain?" :bool "nomsg?" :bool}
-  (let ((theories (typecheck-file filename)))
+  (let ((theories (pvs:typecheck-file filename)))
     (cons :array (xmlrpc-theories theories))))
 
 (defun xmlrpc-theories (theories &optional thdecls)
@@ -262,9 +262,9 @@
 
 (defun xmlrpc-theory (theory)
   (cons :object
-	(acons :theory (id theory)
+	(acons :theory (pvs:id theory)
 	       (acons :decls (cons :array
-				   (xmlrpc-theory-decls (all-decls theory)))
+				   (xmlrpc-theory-decls (pvs:all-decls theory)))
 		      nil))))
 
 (defun xmlrpc-theory-decls (decls &optional thdecls)
@@ -285,19 +285,19 @@
 
 (defmethod xmlrpc-theory-decl* ((imp pvs:importing))
   (cons :object
-	`((:importing . ,(str (theory-name imp)))
+	`((:importing . ,(pvs:str (pvs:theory-name imp)))
 	  (:kind . :importing)
-	  (:place . ,(cons :array (place-list imp))))))
+	  (:place . ,(cons :array (pvs:place-list imp))))))
 
 (defmethod xmlrpc-theory-decl* ((decl pvs:typed-declaration))
   (cons :object
-	`((:id . ,(id decl))
-	  (:kind . ,(kind-of decl))
-	  (:type . ,(str (type decl)))
-	  (:place . ,(cons :array (place-list decl))))))
+	`((:id . ,(pvs:id decl))
+	  (:kind . ,(pvs:kind-of decl))
+	  (:type . ,(pvs:str (pvs:type decl)))
+	  (:place . ,(cons :array (pvs:place-list decl))))))
 
 (defmethod xmlrpc-theory-decl* ((decl pvs:formula-decl))
   (cons :object
-	`((:id . ,(id decl))
+	`((:id . ,(pvs:id decl))
 	  (:kind . :formula)
-	  (:place . ,(cons :array (place-list decl))))))
+	  (:place . ,(cons :array (pvs:place-list decl))))))
