@@ -1760,6 +1760,11 @@
 (defmethod type-constraints* ((te dep-binding) ex preds all?)
   (type-constraints* (type te) ex preds all?))
 
+(defmethod type-constraints* ((te funtype) ex preds all?)
+  (let ((npreds (loop for tp in (type-predicates te all?)
+		      collect (make!-application tp ex))))
+    (nconc npreds preds)))
+
 (defmethod type-constraints* (te ex preds all?)
   (declare (ignore te ex all?))
   (nreverse preds))

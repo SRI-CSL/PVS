@@ -857,7 +857,7 @@ bind tighter.")
 
 (defmethod pp* ((decl const-decl))
   (with-slots (declared-type type definition) decl
-    (pprint-newline :fill)
+    (pprint-newline :miser)
     (if *unparse-expanded*
 	(pp* type)
 	(pp* declared-type))

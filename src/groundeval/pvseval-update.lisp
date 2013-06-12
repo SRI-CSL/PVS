@@ -334,36 +334,36 @@
 
 (defun pvs2cl-defn-application (op* expr bindings livevars)
   (with-slots (operator argument) expr
-     (if (constant? op*)
+    (if (constant? op*)
 	(let* ((defax (def-axiom (declaration op*)))
 	       (defrhs (when defax (args2 (car (last defax)))))
 	       (defbindings* (when (lambda-expr? defrhs)
 			       (bindings* defrhs)))
 	       (args* (loop for ar in (argument* expr)
-			    collect ar)))
+			 collect ar)))
 	  (if (and defax
 		   (= (length defbindings*)
 		      (length args*)))
-; 		   (loop for bn in defbindings*
-; 			 as ar in args*
-; 			 always (= (length bn)(length ar))))
+	      ;; (loop for bn in defbindings*
+	      ;; 	 as ar in args*
+	      ;; 	 always (= (length bn)(length ar))))
 	      ;;NSH(6.26.02) This still doesn't handle multiple
 	      ;;tuple arguments for curried application.
 	      (mk-fun2-application op*
 				   (loop for ar in args*
-					 as bn in defbindings*
-					 append
-					 (cond ((= (length bn) 1)
-						(list ar))
-					       ((and (> (length bn) 1)
-						     (not (arg-tuple-expr? ar)))
-						(make-projections ar))
-					       (t (argument-list ar))))
+				      as bn in defbindings*
+				      append
+					(cond ((= (length bn) 1)
+					       (list ar))
+					      ((and (> (length bn) 1)
+						    (not (arg-tuple-expr? ar)))
+					       (make-projections ar))
+					      (t (argument-list ar))))
 				   (loop for bn in defbindings*
-					 append bn)
+				      append bn)
 				   bindings livevars)
-	    (pvs2cl-application operator argument bindings livevars)))
-      (pvs2cl-application operator argument bindings livevars))))
+	      (pvs2cl-application operator argument bindings livevars)))
+	(pvs2cl-application operator argument bindings livevars))))
 
 (defun pvs2cl-application (operator argument bindings livevars)	
   (let ((clop (pvs2cl_up* operator bindings ;in case of actuals
@@ -749,7 +749,6 @@
 	 (live-rhs-updateables
 	  (set-difference rhs-updateables updateable-outputs
 			  :test #'same-declaration)))
-    (break "no-livevars")
     (and check-updateables
 	 check-rhs
 	 (cons updateable-outputs (append live-rhs-updateables
@@ -1233,9 +1232,13 @@
 	(t (pvs2cl-resolution expr)
 	   (if (datatype-constant? expr)
 	       (if (scalar-constant? expr)
-		   (lisp-function2 (declaration expr))
-		   (let ((fun (lisp-function (declaration expr))))
-		     (mk-funapp fun nil)))
+		   (lisp-function (declaration expr))
+		   (let ((fun (or (lisp-function (declaration expr))
+				  (pvs2cl-lisp-function (declaration expr)))))
+		     (assert fun)
+		     (if (not (funtype? (find-supertype (type expr))))
+			 (mk-funapp fun nil)
+			 `(function ,fun))));;actuals irrelevant for datatypes
 	       (let* ((actuals (expr-actuals (module-instance expr)))
 		      (decl (declaration expr))
 		      (internal-actuals
@@ -1428,7 +1431,8 @@
 					   (pvs2cl_up* defn  bindings nil))))))
 		     (eval (definition (ex-defn decl)))
 		     (assert id)
-		     (compile id))))))))
+		     (compile id)
+		     )))))))
 
 (defun pvs2cl-till-output-stable (defn-slot expr bindings livevars)
   (let ((old-outputvars (copy-list *output-vars*))
@@ -1515,12 +1519,12 @@
 			  ,@(append (when declarations
 				      (list declarations))
 				    (list 
-					     (pvs2cl-till-output-stable
-					      (in-defn-d decl)
-					      defn-body
-					      (pairlis defn-bindings
-						       defn-binding-ids)
-					      nil)))))
+				     (pvs2cl-till-output-stable
+				      (in-defn-d decl)
+				      defn-body
+				      (pairlis defn-bindings
+					       defn-binding-ids)
+				      nil)))))
 		 ;;setf output-vars already in
 		 ;;pvs2cl-till-output-stable
 		 (setf (output-vars (in-defn-d decl))
@@ -1674,12 +1678,13 @@
 		 (setf (in-name (declaration (recognizer constructor)))
 		       (makesym "~a?" struct-id))
 		 (loop for x in accessors
-		       do (unless (eval-info (declaration x))
-			    (make-eval-info (declaration x))
-			    (setf (in-name (declaration x))
-				  (pvs2cl-accessor-defn
-				   (declaration x) struct-id all-structs
-				   datatype))))
+		    do (unless (and (eval-info (declaration x))
+				    (lisp-function (declaration x)))
+			 (make-eval-info (declaration x)))
+		    do (setf (in-name (declaration x))
+			     (pvs2cl-accessor-defn
+			      (declaration x) struct-id all-structs
+			      datatype)))
 		 ))))))
 
 (defmethod pvs2cl-accessor-defn ((acc adt-accessor-decl)

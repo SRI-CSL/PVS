@@ -243,6 +243,9 @@
     (multiple-value-bind (decl dtype)
 	(xt-declaration-body decl-body)
       (when decl-formal?
+	(unless (formal-type-decl? decl)
+	  (parse-error theory-formal
+	    "Only type declarations allowed for declaration parameters"))
 	(change-to-decl-formal decl))
       (append (unless (is-sop 'THEORY-FORMAL-NULL-1 importing)
 		(xt-formal-importing-elt importing))
