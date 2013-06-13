@@ -196,7 +196,7 @@
     (xmlrpc-value jsonrpc-result nil)))
 
 (defun xmlrpc-value (jsonrpc-value err)
-  (let ((result (cond (jsonrpc-value (cons :jsonrpc jsonrpc-value))
+  (let ((result (cond (jsonrpc-value (cons :jsonrpc-result jsonrpc-value))
 		      (err (cons :error err)))))
     (json:with-explicit-encoder
 	(json:encode-json-to-string
