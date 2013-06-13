@@ -53,6 +53,14 @@
 ;; The input request may omit the id, in which case the request does not
 ;; expect a response - GC messages are good examples of this.
 
+;; (defmacro defrequest (methodname args docstring &rest body)
+;;   "Creates a JSON-RPC request form"
+;;   (let* ((gargs (gensym))
+;; 	 (pname (intern (format nil "jsonrpc-~a" methodname) :pvs-xml-rpc)))
+;;     `(let ((,gargs ',args))
+;;        (defun ,pname ,gargs
+;; 	 ,@body))))
+
 #+allegro
 (defun pvs-server (&key (port 55223))
   (let ((cmdsrv (make-xml-rpc-server 
@@ -151,7 +159,8 @@
 	(let* ((spec (cadr entry))
 	       (fun (car spec))
 	       (sig (cadr spec))
-	       (ret (caddr spec)))
+	       ;;(ret (caddr spec))
+	       )
 	  (if (check-params params sig)
 	      (if t
 		  (let ((result (with-pvs-hooks url (apply fun params))))
@@ -197,8 +206,8 @@
 		 ,result))))))
 
 (defun pvs-current-mode ()
-  (cond (*in-checker* :prover)
-	(*in-evaluator* :evaluator)
+  (cond (pvs:*in-checker* :prover)
+	(pvs:*in-evaluator* :evaluator)
 	(t :lisp)))
 
 (defun json-result (result id)
@@ -221,21 +230,14 @@
 ;;   nil)
 
 (defun check-params (params signature)
+  (declare (ignore params signature))
   ;;; for now, assume ok
   t)
 
 (defun json-eval-form (form)
-  (if (or *in-checker* *in-evaluator*)
+  (if (or pvs:*in-checker* pvs:*in-evaluator*)
       form
       (eval form)))
-
-(defun pvs-subscribe (json-string)
-  (let ((subscription (json:decode-json-from-string json-string)))
-    (cond ((and (listp subscription)
-		(pvs:assq :URL subscription))
-	   (pushnew (cdr (pvs:assq :URL subscription)) *pvs-subscribers*
-		    :test #'string=)
-	   (json-result "t")))))
 
 ;; #-allegro
 ;; (defun pvs-server (&optional (port 55223))
@@ -251,6 +253,7 @@
   ;; filename is a string
   ;; optargs is a struct of form
   ;; {"forced?" :bool "prove-tccs?" :bool "importchain?" :bool "nomsg?" :bool}
+  (declare (ignore optargs))
   (let ((theories (pvs:typecheck-file filename)))
     (cons :array (xmlrpc-theories theories))))
 
