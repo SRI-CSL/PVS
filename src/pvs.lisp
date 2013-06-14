@@ -369,8 +369,8 @@
 
 (defun valid-patch-filename (pathname)
   (let ((fname (pathname-name pathname)))
-    (and (>= (length fname) 8) ; YYYYMMDD#, where # is any seq of chars
-       (let ((date (subseq fname 0 8)))
+    (and (>= (length fname) 14) ; patch-YYYYMMDD#, where # is any seq of chars
+       (let ((date (subseq fname 6 14)))
 	 (and (every #'digit-char-p date)
 	      (string> date (pvs-build-date)))))))
 
