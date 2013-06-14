@@ -126,12 +126,22 @@
 
 #-(or gcl cmu sbcl)
 (defpackage pvs (:use :cl-user :lisp :clos :make))
+#-(or gcl cmu sbcl)
+(defpackage pvs-xml-rpc
+  (:use :cl-user :lisp :clos :make)
+  (:export "pvs-server"))
 
 #+(or gcl cmu)
 (defpackage :pvs (:use :cl-user :lisp :common-lisp :pcl :make))
+#+(or gcl cmu)
+(defpackage :pvs-xml-rpc (:use :cl-user :lisp :common-lisp :pcl :make))
 
 #+sbcl
 (defpackage :pvs (:use :cl-user :common-lisp :sb-pcl :make))
+#+sbcl
+(defpackage :pvs-xml-rpc
+  (:use :cl-user :common-lisp :sb-pcl :make)
+  (:export "PVS-SERVER"))
 
 #-(or gcl cmu sbcl)
 (defpackage :rahd (:use :common-lisp #+allegro :excl))
@@ -347,7 +357,6 @@
 		  (:file "allegro")
 		  #+cmu
 		  (:file "cmulisp")
-		  (:file "pvs-xml-rpc")
 		  ))
    (:module typechecker
      :source-pathname "src/"
@@ -525,4 +534,7 @@
 		  (:file "named-callbacks")
 		  (:file "fcpo")
 		  (:file "nlyices")))
+   (:module xmlrpc
+     :source-pathname "src/interface"
+     :components ((:file "pvs-xml-rpc")))
    ))
