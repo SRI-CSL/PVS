@@ -401,7 +401,7 @@ required a context.")
 			    (eq *generate-tccs* 'none))
 		   (mapc #'(lambda (arg dom)
 			     (let* ((jtypes (judgement-types+ arg))
-				    (incs (compatible-predicates jtypes dom ex)))
+				    (incs (compatible-predicates jtypes dom arg)))
 			       (when incs
 				 (generate-subtype-tcc arg dom incs))))
 			 (argument* ex) (get-lambda-expr-full-domain def)))
