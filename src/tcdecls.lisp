@@ -50,7 +50,8 @@
 			   (setf (assuming (current-theory))
 				 (delete d (assuming (current-theory))))
 			   (setf (theory (current-theory))
-				 (delete d (theory (current-theory)))))))
+				 (delete d (theory (current-theory)))))
+		       (decf (total-tccs))))
 		   (setf (generated decl) nil)
 		   (let ((*generating-adt* nil))
 		     (unwind-protect
@@ -89,7 +90,8 @@
 		      (pushnew d (get-lhash id dhash) :test #'eq)))))
 	    (let ((*insert-add-decl* nil))
 	      (mapc #'(lambda (d) (add-decl d nil))
-		    (generated decl))))
+		    (generated decl))
+	      (regenerate-xref decl)))
 	(unwind-protect
 	    (progn
 	      (reset-beta-cache)
