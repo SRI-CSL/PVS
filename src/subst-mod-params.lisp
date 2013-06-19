@@ -1891,9 +1891,13 @@
 			  (eq ndacts dacts)
 			  (not (binding? decl))
 			  (null (mappings modinst)))
-		     (progn (assert (subsetp (free-params res) (free-params modinst))
-				    () "res3")
-			    res)
+		     (progn
+		       ;; This assertion is too strong if subst-mod-params is called
+		       ;; from e.g., instantiate-resolution
+		       #+pvsdebug
+		       (assert (subsetp (free-params res) (free-params modinst))
+			       () "res3")
+		       res)
 		     (let ((ntype (subst-mod-params* type modinst bindings)))
 		       ;; (assert (or (mappings modinst)
 		       ;; 		   (subsetp (free-params ntype) (free-params modinst)))

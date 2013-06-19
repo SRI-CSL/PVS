@@ -107,8 +107,8 @@ between '@@' and '+':
   ≤ (\leq) ≥ (\geq) ≦ (\leqq) ≧ (\geqq) ≨ (\lneq) ≩ (\gneq) ≪ (\ll) ≫ (\gg)
   ≮ (\nless) ≯ (\ngtr) ≰ (\nleq) ≱ (\ngeq) ≺ (\prec) ≻ (\succ) ▷ (\rhd) ◁ (\lhd)
   ∈ (\in) ∉ (\notin) ∋ (\ni) ⊂ (\subset) ⊃ (\supset) ⊄ (\nsubset) ⊅ (\nsupset)
-  ⊆ (\subseteq) ⊇ (\supseteq) ⊏ (\sqsubset) ⊐ (\sqsupset) • (\bullet)
-  ← (\leftarrow) ↑ (\uparrow) → (\rightarrow) ↓ (\downarrow) ↝ (\leadsto)
+  ⊆ (\subseteq) ⊇ (\supseteq) ⊊ (\subsetneq) ⊋ (\supsetneq) ⊏ (\sqsubset) ⊐ (\sqsupset)
+  • (\bullet) ← (\leftarrow) ↑ (\uparrow) → (\rightarrow) ↓ (\downarrow) ↝ (\leadsto)
   ↦ (\mapsto) ⇐ (\Leftarrow) ⇑ (\Uparrow) ⇓ (\Downarrow) ∇ (\nabla) ⊣ (\dashv)
   ⊥ (\perp) ⊩ (\Vdash) ◯ (\bigcirc) ★ (\bigstar) ✠ (\maltese)
 

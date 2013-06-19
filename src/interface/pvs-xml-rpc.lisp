@@ -53,6 +53,14 @@
 ;; The input request may omit the id, in which case the request does not
 ;; expect a response - GC messages are good examples of this.
 
+;; (defmacro defrequest (methodname args docstring &rest body)
+;;   "Creates a JSON-RPC request form"
+;;   (let* ((gargs (gensym))
+;; 	 (pname (intern (format nil "jsonrpc-~a" methodname) :pvs-xml-rpc)))
+;;     `(let ((,gargs ',args))
+;;        (defun ,pname ,gargs
+;; 	 ,@body))))
+
 #+allegro
 (defun pvs-server (&key (port 55223))
   (let ((cmdsrv (make-xml-rpc-server 
@@ -113,17 +121,17 @@
   (let ((gurl (gentemp)))
     `(let ((,gurl ,url))
        (if ,gurl
-	   (let ((*pvs-message-hooks*
+	   (let ((pvs:*pvs-message-hooks*
 		  (cons #'(lambda (msg) (json-message msg ,gurl))
-			*pvs-message-hooks*))
-		 (*pvs-warning-hooks*
+			pvs:*pvs-message-hooks*))
+		 (pvs:*pvs-warning-hooks*
 		  (cons #'(lambda (msg) (json-message msg ,gurl :warning))
-			*pvs-warning-hooks*))
-		 (*pvs-buffer-hooks*
+			pvs:*pvs-warning-hooks*))
+		 (pvs:*pvs-buffer-hooks*
 		  (cons #'(lambda (name contents display? read-only? append? kind)
 			    (json-buffer name contents display? read-only? append? kind
 					 ,gurl))
-			*pvs-buffer-hooks*)))
+			pvs:*pvs-buffer-hooks*)))
 	     ,@body)
 	   (progn ,@body)))))
 
@@ -151,7 +159,8 @@
 	(let* ((spec (cadr entry))
 	       (fun (car spec))
 	       (sig (cadr spec))
-	       (ret (caddr spec)))
+	       ;;(ret (caddr spec))
+	       )
 	  (if (check-params params sig)
 	      (if t
 		  (let ((result (with-pvs-hooks url (apply fun params))))
@@ -187,18 +196,18 @@
     (xmlrpc-value jsonrpc-result nil)))
 
 (defun xmlrpc-value (jsonrpc-value err)
-  (let ((result (cond (jsonrpc-value (cons :jsonrpc jsonrpc-value))
-		      (err (cons :error err)))))
+  (let ((result (cond (jsonrpc-value (cons :jsonrpc_result jsonrpc-value))
+		      (err (cons :xmlrpc_error err)))))
     (json:with-explicit-encoder
 	(json:encode-json-to-string
 	 (cons :object
 	       `((:mode . ,(pvs-current-mode))
-		 (:context . ,(current-context-path))
+		 (:context . ,(pvs:current-context-path))
 		 ,result))))))
 
 (defun pvs-current-mode ()
-  (cond (*in-checker* :prover)
-	(*in-evaluator* :evaluator)
+  (cond (pvs:*in-checker* :prover)
+	(pvs:*in-evaluator* :evaluator)
 	(t :lisp)))
 
 (defun json-result (result id)
@@ -213,7 +222,7 @@
 
 (defmethod json:encode-json ((th pvs:datatype-or-module) &optional
 			     (stream json:*json-output*))
-  (json:encode-json (id th) stream))
+  (json:encode-json (pvs:id th) stream))
 
 ;; (defun json-result (result id)
 ;;   (setq *last-response* result)
@@ -221,21 +230,14 @@
 ;;   nil)
 
 (defun check-params (params signature)
+  (declare (ignore params signature))
   ;;; for now, assume ok
   t)
 
 (defun json-eval-form (form)
-  (if (or *in-checker* *in-evaluator*)
+  (if (or pvs:*in-checker* pvs:*in-evaluator*)
       form
       (eval form)))
-
-(defun pvs-subscribe (json-string)
-  (let ((subscription (json:decode-json-from-string json-string)))
-    (cond ((and (listp subscription)
-		(assq :URL subscription))
-	   (pushnew (cdr (assq :URL subscription)) *pvs-subscribers*
-		    :test #'string=)
-	   (json-result "t")))))
 
 ;; #-allegro
 ;; (defun pvs-server (&optional (port 55223))
@@ -251,7 +253,8 @@
   ;; filename is a string
   ;; optargs is a struct of form
   ;; {"forced?" :bool "prove-tccs?" :bool "importchain?" :bool "nomsg?" :bool}
-  (let ((theories (typecheck-file filename)))
+  (declare (ignore optargs))
+  (let ((theories (pvs:typecheck-file filename)))
     (cons :array (xmlrpc-theories theories))))
 
 (defun xmlrpc-theories (theories &optional thdecls)
@@ -262,9 +265,9 @@
 
 (defun xmlrpc-theory (theory)
   (cons :object
-	(acons :theory (id theory)
+	(acons :theory (pvs:id theory)
 	       (acons :decls (cons :array
-				   (xmlrpc-theory-decls (all-decls theory)))
+				   (xmlrpc-theory-decls (pvs:all-decls theory)))
 		      nil))))
 
 (defun xmlrpc-theory-decls (decls &optional thdecls)
@@ -285,19 +288,19 @@
 
 (defmethod xmlrpc-theory-decl* ((imp pvs:importing))
   (cons :object
-	`((:importing . ,(str (theory-name imp)))
+	`((:importing . ,(pvs:str (pvs:theory-name imp)))
 	  (:kind . :importing)
-	  (:place . ,(cons :array (place-list imp))))))
+	  (:place . ,(cons :array (pvs:place-list imp))))))
 
 (defmethod xmlrpc-theory-decl* ((decl pvs:typed-declaration))
   (cons :object
-	`((:id . ,(id decl))
-	  (:kind . ,(kind-of decl))
-	  (:type . ,(str (type decl)))
-	  (:place . ,(cons :array (place-list decl))))))
+	`((:id . ,(pvs:id decl))
+	  (:kind . ,(pvs:kind-of decl))
+	  (:type . ,(pvs:str (pvs:type decl)))
+	  (:place . ,(cons :array (pvs:place-list decl))))))
 
 (defmethod xmlrpc-theory-decl* ((decl pvs:formula-decl))
   (cons :object
-	`((:id . ,(id decl))
+	`((:id . ,(pvs:id decl))
 	  (:kind . :formula)
-	  (:place . ,(cons :array (place-list decl))))))
+	  (:place . ,(cons :array (pvs:place-list decl))))))
