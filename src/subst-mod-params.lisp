@@ -837,8 +837,12 @@
 	      (if t ;(library modinst)
 		  modinst
 		  (lcopy modinst :library (library mn) :dactuals nil))
-	      (let ((nacts (subst-mod-params* actuals modinst bindings))
-		    (ndacts (subst-mod-params* dactuals modinst bindings))
+	      (let ((nacts (if actuals
+			       (subst-mod-params* actuals modinst bindings)
+			       (when (eq id (id modinst)) (actuals modinst))))
+		    (ndacts (if dactuals
+				(subst-mod-params* dactuals modinst bindings)
+				(when (eq id (id modinst)) (dactuals modinst))))
 		    (nmaps (subst-mod-params* mappings modinst bindings)))
 		(lcopy mn :actuals nacts :dactuals ndacts :mappings nmaps)))))))
 
