@@ -128,39 +128,39 @@
 (defun unique-prover-name (expr)
   (cond ((constant? expr) ;;NSH(2.16.94): changed to deal with Ricky's
 	                  ;;soundness bug where actuals are ignored.
-	 (if (and (constructor? expr)
-		  (enum-adt? (find-supertype (type expr))))
-	     (position (id expr)
-		       (constructors (adt (find-supertype (type expr))))
-		       :test #'eq :key #'id)
-	     (let* ((norm-expr (normalize-name-expr-actuals expr))
-		    (id-hash (gethash norm-expr *translate-id-hash*))
-		    (newconst (or id-hash
-				  (when (tc-eq expr *true*) '(true))
-				  (when (tc-eq expr *false*) '(false))
-				  (list (intern
-					 (concatenate 'string
-					   (string (if (integerp (id expr))
-						       (format nil "~r"
-							 (id expr))
-						       (id expr)))
-					   "_"
-					   (princ-to-string
-					    (funcall
-					     *translate-id-counter*))) :pvs))))
-		    (expr-freevars (freevars expr))
-		    (expr-bindings (intersection expr-freevars *bindings*
-						 :test #'same-declaration))
-		    (tr-vars (translate-to-prove expr-bindings))
-		    (prtype (prover-type (or (type expr) (car (ptypes expr)))))
-		    (apname (make-apply-symbol (length tr-vars) prtype)))
-	       (unless id-hash
-		 (setf (gethash norm-expr *translate-id-hash*)
-		       newconst)
-		 ;;(format t "~%adding ~a to typealist" (car newconst))
-		 ;(add-to-typealist (car newconst) expr)
-		 )
-	       (cons apname (cons newconst tr-vars)))))
+	 (cond ((and (constructor? expr)
+		     (enum-adt? (find-supertype (type expr))))
+		(position (id expr)
+			  (constructors (adt (find-supertype (type expr))))
+			  :test #'eq :key #'id))
+	       ((tc-eq expr *true*) '(true))
+	       ((tc-eq expr *false*) '(false))
+	       (t (let* ((norm-expr (normalize-name-expr-actuals expr))
+			 (id-hash (gethash norm-expr *translate-id-hash*))
+			 (newconst (or id-hash
+				       (list (intern
+					      (concatenate 'string
+							   (string (if (integerp (id expr))
+								       (format nil "~r"
+									       (id expr))
+								     (id expr)))
+							   "_"
+							   (princ-to-string
+							    (funcall
+							     *translate-id-counter*))) :pvs))))
+			 (expr-freevars (freevars expr))
+			 (expr-bindings (intersection expr-freevars *bindings*
+						      :test #'same-declaration))
+			 (tr-vars (translate-to-prove expr-bindings))
+			 (prtype (prover-type (or (type expr) (car (ptypes expr)))))
+			 (apname (make-apply-symbol (length tr-vars) prtype)))
+		    (unless id-hash
+		      (setf (gethash norm-expr *translate-id-hash*)
+			    newconst)
+		      ;;(format t "~%adding ~a to typealist" (car newconst))
+					;(add-to-typealist (car newconst) expr)
+		      )
+		    (cons apname (cons newconst tr-vars))))))
 	(t (add-to-local-typealist (id expr) expr)
 	   (id expr))))
 
