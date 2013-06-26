@@ -34,7 +34,7 @@
 	  pvs-display pvs-abort pvs-yn pvs-query pvs-emacs-eval
 	  output-proofstate pvs2json protect-emacs-output parse-error
 	  type-error set-pvs-tmp-file place place-list type-ambiguity
-	  type-incompatible pvs-locate))
+	  type-incompatible pvs-locate write-to-temp-file))
 
 (defvar *pvs-message-hooks* nil)
 (defvar *pvs-warning-hooks* nil)
