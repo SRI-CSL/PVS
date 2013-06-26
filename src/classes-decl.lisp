@@ -132,14 +132,14 @@
 	  expr expression exprs field-application field-decl fields filename 
 	  formal-const-decl formal-type-decl formals formals-sans-usings
 	  formula-decl funtype generated-by id importing infix-application
-	  info inline-datatype judgement? lambda-expr let-expr modname module
-	  name name-expr nonempty-types nonempty? number number-expr operator
-	  parens predicate print-type projection-application quant-expr range
-	  recognizer record-expr recordtype resolutions saved-context 
-	  simple-constructor status subtype supertype theory theory-name
-	  tuple-expr tupletype type type-decl type-def-decl type-expr
-	  type-name type-name? type-value typed-declaration types update-expr
-	  using-hash var-decl visible?))
+	  info inline-datatype judgement? justification lambda-expr let-expr
+	  modname module name name-expr nonempty-types nonempty? number
+	  number-expr operator parens predicate print-type
+	  projection-application quant-expr range recognizer record-expr
+	  recordtype resolutions saved-context simple-constructor status
+	  subtype supertype theory theory-name tuple-expr tupletype type
+	  type-decl type-def-decl type-expr type-name type-name? type-value
+	  typed-declaration types update-expr using-hash var-decl visible?))
 #+(or cmu sbcl)
 (#-sbcl ext:without-package-locks #+sbcl sb-ext:without-package-locks
  (defgeneric class (x))

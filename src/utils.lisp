@@ -1477,7 +1477,8 @@
 	(decl (declaration res)))
     (if hashentry hashentry
 	(let ((formulas (create-formulas* res decl)))
-	  (when (fully-instantiated? res)
+	  (when (and (fully-instantiated? res)
+		     (not (some #'decl-formal? (free-params (module-instance res)))))
 	    (setf (gethash res *create-formulas-cache*) formulas))
 	  formulas))))
 

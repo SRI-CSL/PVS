@@ -426,7 +426,7 @@
   (let ((*generate-tccs* 'none))
     (setf (tcc-disjuncts ndecl) (get-tcc-disjuncts ndecl))
     (let ((match (car (member ndecl *tccdecls* :test #'tcc-subsumed-by)))
-	  (decl (declaration *current-context*)))
+	  (decl (current-declaration)))
       (when (eq (spelling ndecl) 'OBLIGATION)
 	(incf (total-tccs)))
       (cond
@@ -496,7 +496,7 @@
 		  (termination nil)
 		  (well-founded (format nil "for ~a" (id decl))))))
     (when (and *typecheck-using*
-	       (typep (declaration *current-context*) 'importing))
+	       (typep (current-declaration) 'importing))
       (setf (importing-instance ndecl)
 	    (list *typecheck-using* *set-type-formal*)))
     (push (definition ndecl) *tccs*)
@@ -907,13 +907,13 @@
 	 (id (make-tcc-name))
 	 (decl (typecheck* (mk-existence-tcc id tform) nil nil nil)))
     (setf (spelling decl) 'ASSUMPTION)
-    (unless (member decl (assuming (theory *current-context*))
+    (unless (member decl (assuming (current-theory))
 		    :test #'(lambda (d1 d2)
 			      (and (formula-decl? d2)
 				   (eq (spelling d2) 'ASSUMPTION)
 				   (tc-eq (definition d1) (definition d2)))))
-      (setf (assuming (theory *current-context*))
-	    (append (assuming (theory *current-context*)) (list decl))))
+      (setf (assuming (current-theory))
+	    (append (assuming (current-theory)) (list decl))))
     (add-decl decl nil)
     decl))
     
@@ -1521,7 +1521,7 @@
     (makesym "IMP_~a" (id (theory-name imp)))))
 
 (defun subst-var-for-recs (conditions expr &optional vdecl)
-  (let ((recdecl (declaration *current-context*)))
+  (let ((recdecl (current-declaration)))
     (if (and (def-decl? recdecl)
 	     (recursive-signature recdecl))
 	(let* ((vid (if vdecl (id vdecl) (make-new-variable '|v|

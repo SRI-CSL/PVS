@@ -39,7 +39,7 @@ Operators
 % and functions:
 %  Var or Fun		File
 %  ----------		----
-%  *pvs-operators*	utils.lisp
+%  *pvs-operators*	globals.lisp
 %  *pvs-prec-info*      pp.lisp
 %  *infix-operators*    ergo-runtime-fixes.lisp
 %  *unary-operators*    ergo-runtime-fixes.lisp

@@ -266,7 +266,7 @@ intervenes."
 (defvar pvs-aborted nil)
 
 (defun pvs-file-send-and-wait (string &optional message status expected)
-  (let* ((fstring (format "(write-to-temp-file %s t)" string))
+  (let* ((fstring (format "(pvs:write-to-temp-file %s t)" string))
 	 (file (pvs-send-and-wait fstring message status 'tmp-file))
 	 (buf (find-file-noselect file))
 	 (raw-value (read buf))
