@@ -1678,17 +1678,19 @@
 
 (defun update-expr-types (expr)
   (let ((*generate-tccs* 'none))
-    (if (some #'maplet? (assignments expr))
-	(let ((*dont-worry-about-full-instantiations* t)
-	      (*generate-tccs* 'none))
-	  (find-update-commontypes expr))
-	(find-update-commontypes expr))))
+    (cond ((some #'maplet? (assignments expr))
+	   (let ((*dont-worry-about-full-instantiations* t)
+		 (*generate-tccs* 'none))
+	     ;;(break "maplet case")
+	     (find-update-commontypes expr)))
+	  (t (assert (singleton? (ptypes (expression expr))))
+	     (ptypes (expression expr))))))
 
 (defun find-update-commontypes (expr)
   (assert (singleton? (ptypes (expression expr))))
   (mapcar #'(lambda (ptype)
-	      (find-update-commontype
-	       ptype (expression expr) (assignments expr)))
+  	      (find-update-commontype
+  	       ptype (expression expr) (assignments expr)))
     (ptypes (expression expr))))
 
 (defun find-update-commontype (te expr assignments)
