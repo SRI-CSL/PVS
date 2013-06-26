@@ -151,16 +151,19 @@
 			 (expr-freevars (freevars expr))
 			 (expr-bindings (intersection expr-freevars *bindings*
 						      :test #'same-declaration))
-			 (tr-vars (translate-to-prove expr-bindings))
-			 (prtype (prover-type (or (type expr) (car (ptypes expr)))))
-			 (apname (make-apply-symbol (length tr-vars) prtype)))
+			 )
 		    (unless id-hash
 		      (setf (gethash norm-expr *translate-id-hash*)
 			    newconst)
 		      ;;(format t "~%adding ~a to typealist" (car newconst))
 					;(add-to-typealist (car newconst) expr)
 		      )
-		    (cons apname (cons newconst tr-vars))))))
+		    (if expr-bindings
+			(let ((tr-vars (translate-to-prove expr-bindings))
+			      (prtype (prover-type (or (type expr) (car (ptypes expr)))))
+			      (apname (make-apply-symbol (length tr-vars) prtype)))
+			  (cons apname (cons newconst tr-vars)))
+		      newconst)))))
 	(t (add-to-local-typealist (id expr) expr)
 	   (id expr))))
 
