@@ -5,7 +5,8 @@ import wx
 from constants import *
 from evhdlr import *
 import util
-import preference
+from preference import Preferences
+
 log = util.getLogger(__name__)
 
 class MainFrameMenu(wx.MenuBar):
@@ -18,6 +19,10 @@ class MainFrameMenu(wx.MenuBar):
         self.addViewMenu()
         self.addPVSMenu()
         self.setBindings()
+        self.plugins = {}
+        pub.subscribe(self.update, PUB_UPDATEMENUBAR)
+        pub.subscribe(self.showPlugin, PUB_SHOWPLUGIN)
+        pub.subscribe(self.addPluginToViewMenu, PUB_ADDITEMTOVIEWMENU)
         
     def addFileMenu(self):
         """Adding menu items to File menu"""
@@ -47,25 +52,33 @@ class MainFrameMenu(wx.MenuBar):
 
     def addViewMenu(self):
         """Adding menu items to View menu"""
-        viewMenu = wx.Menu()
-        self.filesAndBuffersTrees = viewMenu.Append(wx.ID_ANY, "Files and Buffers Trees", EMPTY_STRING, wx.ITEM_CHECK)
-        viewMenu.Check(self.filesAndBuffersTrees.GetId(), preference.manager.getVisibleFilesBuffersTrees())
-        
-        self.proofTree = viewMenu.Append(wx.ID_ANY, "Proof Tree", EMPTY_STRING, wx.ITEM_CHECK)
-        viewMenu.Check(self.proofTree.GetId(), preference.manager.getVisibleProofTree())
+        self.viewMenu = wx.Menu()
+        preferences = Preferences()
 
-        self.toolbar = viewMenu.Append(wx.ID_ANY, "Toolbar", EMPTY_STRING, wx.ITEM_CHECK)
-        viewMenu.Check(self.toolbar.GetId(), preference.manager.getVisibleToolbar())
-        self.Append(viewMenu, LABEL_VIEW)
+        self.toolbar = self.viewMenu.Append(wx.ID_ANY, TOOLBAR, EMPTY_STRING, wx.ITEM_CHECK)
+        self.viewMenu.Check(self.toolbar.GetId(), preferences.getVisibleToolbar())
+        self.viewMenu.AppendSeparator()
+        self.pluginMenu = wx.Menu()
+        self.viewMenu.AppendMenu(203, 'Plugins', self.pluginMenu)
+        # Add View Menu to the menu bar:
+        self.Append(self.viewMenu, LABEL_VIEW)
+        
+    def addPluginToViewMenu(self, name, callBackFunction):
+        log.debug("addPluginToViewMenu was called for %s", name)
+        preferences = Preferences()
+        frame = util.getMainFrame()
+        item = self.pluginMenu.Append(wx.ID_ANY, name, EMPTY_STRING, wx.ITEM_CHECK)
+        self.plugins[name] = item
+        self.pluginMenu.Check(item.GetId(), preferences.shouldPluginBeVisible(name))
+        frame.Bind(wx.EVT_MENU, callBackFunction, item)
 
     def addPVSMenu(self):
         """Adding menu items to PVS menu"""
         pvsMenu = wx.Menu()
         self.changeContextMenuItem =  pvsMenu.Append(wx.ID_ANY, self._makeLabel("Change Context", None, True), EMPTY_STRING, wx.ITEM_NORMAL)
         self.restoreContextMenuItem = pvsMenu.Append(wx.ID_ANY, "Restore Context Automatically", EMPTY_STRING, wx.ITEM_CHECK)
-        pvsMenu.Check(self.restoreContextMenuItem.GetId(), preference.manager.getContextPreferencesRestoredAutomatically())
+        pvsMenu.Check(self.restoreContextMenuItem.GetId(), Preferences().getContextPreferencesRestoredAutomatically())
         pvsMenu.AppendSeparator()
-        self.startPVSMenuItem = pvsMenu.Append(wx.ID_ANY, LABEL_STARTPVS, EMPTY_STRING, wx.ITEM_NORMAL)
         self.typecheckMenuItem = pvsMenu.Append(wx.ID_ANY, LABEL_TYPECHECK, EMPTY_STRING, wx.ITEM_NORMAL)
         pvsMenu.AppendSeparator()
         self.setPVSLocationMenuItem = pvsMenu.Append(wx.ID_ANY, self._makeLabel("Set PVS Location", None, True), EMPTY_STRING, wx.ITEM_NORMAL)
@@ -74,57 +87,62 @@ class MainFrameMenu(wx.MenuBar):
     def _makeLabel(self, name, shortcut=None, addDots = False):
         if addDots:
             name = name + DOTDOTDOT
-        return name if shortcut == None else "%s\t%s-%s"%(name, CONTROL, shortcut)
+        return name if shortcut is None else "%s\t%s-%s"%(name, CONTROL, shortcut)
         
     def setBindings(self):
-        gui.manager.frame.Bind(wx.EVT_MENU, onCreateNewFile, self.newFileMenuItem)
-        gui.manager.frame.Bind(wx.EVT_MENU, onOpenFile, self.openFileMenuItem)
-        gui.manager.frame.Bind(wx.EVT_MENU, onSaveFile, self.saveFileMenuItem)
-        gui.manager.frame.Bind(wx.EVT_MENU, onSaveAsFile, self.saveFileAsMenuItem)
-        gui.manager.frame.Bind(wx.EVT_MENU, onCloseFile, self.closeFileMenuItem)
-        gui.manager.frame.Bind(wx.EVT_MENU, onQuitFrame, self.quitMenuItem)
+        frame = util.getMainFrame()
+        frame.Bind(wx.EVT_MENU, onCreateNewFile, self.newFileMenuItem)
+        frame.Bind(wx.EVT_MENU, onOpenFile, self.openFileMenuItem)
+        frame.Bind(wx.EVT_MENU, onSaveFile, self.saveFileMenuItem)
+        frame.Bind(wx.EVT_MENU, onSaveAsFile, self.saveFileAsMenuItem)
+        frame.Bind(wx.EVT_MENU, onCloseFile, self.closeFileMenuItem)
+        frame.Bind(wx.EVT_MENU, onQuitFrame, self.quitMenuItem)
         
-        gui.manager.frame.Bind(wx.EVT_MENU, onUndo, self.undoMenuItem)
-        gui.manager.frame.Bind(wx.EVT_MENU, onRedo, self.redoMenuItem)
-        gui.manager.frame.Bind(wx.EVT_MENU, onSelectAll, self.selectAllMenuItem)
-        gui.manager.frame.Bind(wx.EVT_MENU, onCutText, self.cutMenuItem)
-        gui.manager.frame.Bind(wx.EVT_MENU, onCopyText, self.copyMenuItem)
-        gui.manager.frame.Bind(wx.EVT_MENU, onPasteText, self.pasteMenuItem)
-        gui.manager.frame.Bind(wx.EVT_MENU, onFindText, self.findMenuItem)
+        frame.Bind(wx.EVT_MENU, onUndo, self.undoMenuItem)
+        frame.Bind(wx.EVT_MENU, onRedo, self.redoMenuItem)
+        frame.Bind(wx.EVT_MENU, onSelectAll, self.selectAllMenuItem)
+        frame.Bind(wx.EVT_MENU, onCutText, self.cutMenuItem)
+        frame.Bind(wx.EVT_MENU, onCopyText, self.copyMenuItem)
+        frame.Bind(wx.EVT_MENU, onPasteText, self.pasteMenuItem)
+        frame.Bind(wx.EVT_MENU, onFindText, self.findMenuItem)
         
-        gui.manager.frame.Bind(wx.EVT_MENU, onToggleViewFilesAndBuffersTrees, self.filesAndBuffersTrees)
-        gui.manager.frame.Bind(wx.EVT_MENU, onToggleViewProofTree, self.proofTree)
-        gui.manager.frame.Bind(wx.EVT_MENU, onToggleViewToolbar, self.toolbar)
+        frame.Bind(wx.EVT_MENU, onToggleViewToolbar, self.toolbar)
         
-        gui.manager.frame.Bind(wx.EVT_MENU, onChangeContext, self.changeContextMenuItem)
-        gui.manager.frame.Bind(wx.EVT_MENU, onContextPreferencesRestoredAutomatically, self.restoreContextMenuItem)
-        gui.manager.frame.Bind(wx.EVT_MENU, onStartPVS, self.startPVSMenuItem)
-        gui.manager.frame.Bind(wx.EVT_MENU, onTypecheck, self.typecheckMenuItem)
-        gui.manager.frame.Bind(wx.EVT_MENU, onSetPVSLocation, self.setPVSLocationMenuItem)
+        frame.Bind(wx.EVT_MENU, onChangeContext, self.changeContextMenuItem)
+        frame.Bind(wx.EVT_MENU, onContextPreferencesRestoredAutomatically, self.restoreContextMenuItem)
+        frame.Bind(wx.EVT_MENU, onTypecheck, self.typecheckMenuItem)
+        frame.Bind(wx.EVT_MENU, onSetPVSLocation, self.setPVSLocationMenuItem)
         
-    def enableCloseFile(self, value=True):
-        self.closeFileMenuItem.Enable(value)
-
-    def enableUndo(self, value=True):
-        self.undoMenuItem.Enable(value)
-
-    def enableRedo(self, value=True):
-        self.redoMenuItem.Enable(value)
-
-    def enableCut(self, value=True):
-        self.cutMenuItem.Enable(value)
-
-    def enableCopy(self, value=True):
-        self.copyMenuItem.Enable(value)
-
-    def enablePaste(self, value=True):
-        self.pasteMenuItem.Enable(value)
-
-    def enableSelectAll(self, value=True):
-        self.selectAllMenuItem.Enable(value)
-
-    def enableFind(self, value=True):
-        self.findMenuItem.Enable(value)
-
-
-
+    def update(self, parameters):
+        if OPENFILES in parameters:
+            value = parameters[OPENFILES] > 0
+            self.closeFileMenuItem.Enable(value)
+            self.cutMenuItem.Enable(value)
+            self.copyMenuItem.Enable(value)
+            self.pasteMenuItem.Enable(value)
+            self.selectAllMenuItem.Enable(value)
+            self.findMenuItem.Enable(value)
+            self.undoMenuItem.Enable(value)
+            self.redoMenuItem.Enable(value)
+        
+        if PVSMODE in parameters:
+            pvsMode = parameters[PVSMODE]
+            if pvsMode == PVS_MODE_OFF:
+                pass
+            elif pvsMode == PVS_MODE_LISP:
+                pass
+            elif pvsMode == PVS_MODE_PROVER:
+                pass
+            elif pvsMode == PVS_MODE_UNKNOWN:
+                pass
+            else:
+                log.error("pvsMode %s is not recognized", pvsMode)
+                
+    def showPlugin(self, name, value=True):
+        log.info("Menu.showPlugin was called for %s and %s", name, value)
+        if name in self.plugins:
+            item = self.plugins[name]
+            item.Check(value)
+        else:
+            log.warn("No menu option for %s", name)
+            

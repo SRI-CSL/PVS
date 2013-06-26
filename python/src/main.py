@@ -12,7 +12,14 @@ import util
 import logging
 import constants
 import platform
-import gui
+import time
+from ui.images import getIDELogo
+from ui.frame import MainFrame
+from ui.plugin import PluginManager
+from ui.plg.ft import FilesTreePlugin
+from ui.plg.pt import ProofTreePlugin
+from ui.plg.console import ConsolePlugin
+from config import PLUGIN_DEFINITIONS
 
 log = util.getLogger(__name__)
 
@@ -21,10 +28,19 @@ class PVSEditorApp(wx.App):
     
     def OnInit(self):
         #wx.InitAllImageHandlers()
-        self.mainFrame = gui.manager.createMainFrame()
-        self.SetTopWindow(self.mainFrame)
-        self.mainFrame.Show()
-        log.info("Editor initialized...") 
+        
+        # Splash Screen:
+        #splash = wx.SplashScreen(getIDELogo(), wx.SPLASH_CENTRE_ON_SCREEN|wx.SPLASH_TIMEOUT, 2000, None, style=wx.SIMPLE_BORDER|wx.STAY_ON_TOP)
+        #time.sleep(2)
+        
+        #Initiate Main Frame:
+        mainFrame = MainFrame(None, wx.ID_ANY, "")
+        self.SetTopWindow(mainFrame)
+        mainFrame.Show()
+        log.info("Main Frame initialized...") 
+        pm = PluginManager()
+        pm.initializePlugins(PLUGIN_DEFINITIONS)
+        mainFrame.loadContext()
         return 1
 
 # end of class PVSEditorApp
@@ -53,8 +69,6 @@ if __name__ == "__main__":
         print "This application is not designed for Windows"
         sys.exit()
     
-    gui.GuiManager()
     application = PVSEditorApp(0)
-    gui.manager.setApplication(application)
     log.info("Entering MainLoop...") 
     application.MainLoop()

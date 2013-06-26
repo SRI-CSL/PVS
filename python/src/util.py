@@ -1,11 +1,8 @@
 
-# This File contans all the global objects for different parts of the GUI 
-# and a function to get the logger for each module
+# This File contains all the generic function calls 
+
 import logging, sys, wx, os, os.path
 import constants
-
-PVS_CONSOLE_HAS_HORIZONTAL_SCROLL = False
-EVT_RESULT_ID = wx.NewId()
 
 def getLogger(name):
     """Return a logger for the given name"""
@@ -28,9 +25,32 @@ def getHomeDirectory():
     """return user's home directory"""
     return os.getenv("HOME")
 
-def getFilenameFromFullPath(fullname):
-    return os.path.split(fullname)[1]    
+def getFilenameFromFullPath(fullname, includeExtension=True):
+    filename = os.path.split(fullname)[1]
+    return filename if includeExtension else os.path.splitext(filename)[0]
+
+def getMainFrame():
+    return wx.GetApp().GetTopWindow()
+
+def auiManager():
+    return wx.GetApp().GetTopWindow().auiManager
+
+def getOpenFilesNames():
+    frame = getMainFrame()
+    openFiles = []
+    for i in range(frame.notebook.GetPageCount()):
+        richEditor = frame.notebook.GetPage(i)
+        openFiles.append(richEditor.getFilename())
+    return openFiles
 
 class PVSException(Exception):
-    def __init__(self):
-        Exception.__init__(self)
+    def __init__(self, *args):
+        Exception.__init__(self, *args)
+
+class PVSIDEException(Exception):
+    def __init__(self, *args):
+        Exception.__init__(self, *args)
+
+class XMLRPCException(Exception):
+    def __init__(self, *args):
+        Exception.__init__(self, *args)
