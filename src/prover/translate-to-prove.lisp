@@ -158,12 +158,13 @@
 		      ;;(format t "~%adding ~a to typealist" (car newconst))
 					;(add-to-typealist (car newconst) expr)
 		      )
-		    (if expr-bindings
-			(let ((tr-vars (translate-to-prove expr-bindings))
-			      (prtype (prover-type (or (type expr) (car (ptypes expr)))))
-			      (apname (make-apply-symbol (length tr-vars) prtype)))
-			  (cons apname (cons newconst tr-vars)))
-		      newconst)))))
+		    (cond (expr-bindings
+			   (let ((tr-vars (translate-to-prove expr-bindings))
+				 (prtype (prover-type (or (type expr) (car (ptypes expr)))))
+				 (apname (make-apply-symbol (length tr-vars) prtype)))
+			     (cons apname (cons newconst tr-vars))))
+			  (t (add-to-typealist (car newconst) expr)
+			     newconst))))))
 	(t (add-to-local-typealist (id expr) expr)
 	   (id expr))))
 
