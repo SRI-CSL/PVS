@@ -590,7 +590,7 @@
 ;    (with-slots ((n2 number)) e2
 ;      (= (the integer n1) (the integer n2)))))
 
-(defmethod pvs-sxhash* ((e1 number-expr) bindings)
+(defmethod pvs-sxhash* ((e1 rational-expr) bindings)
   (declare (ignore bindings))
   (with-slots ((n1 number)) e1
     (sxhash n1)))
