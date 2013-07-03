@@ -56,6 +56,7 @@ class PVSStyledText(stc.StyledTextCtrl):
         self.MarkerDefine(3, stc.STC_MARK_ARROW, "#00FF00", "#00FF00")
         self.SetStyleBits(7)
         self.setSyntaxHighlighting_usingmatlab()
+        self.Bind(wx.EVT_SET_CURSOR, self.onCursor)  #TODO: what is this?
 
     def setSyntaxHighlighting_usingmatlab(self):
         log.debug("Setting syntax highlighting")
@@ -76,3 +77,7 @@ class PVSStyledText(stc.StyledTextCtrl):
 
         self.SetKeyWords(0, PVS_KEYWORDS)
         self.SetKeyWords(1, " ".join(PVS_OPERATORS))
+        self.GetCurrentPos()
+        
+    def onCursor(self, event):
+        log.info("Event: %s", event)

@@ -1038,14 +1038,16 @@
 	    (typecheck-decl-formals (decl-formals mapping) (lhs mapping))
 	    (typecheck-mapping-lhs mapping lhs-context lhs-theory lhs-theory-decls
 				   thinst)
-	    (when (let ((prev-mappings (ldiff mappings (memq mapping mappings))))
-		    (member mapping prev-mappings :test #'same-mapping-lhs?))
-	      (type-error mapping
-		"Mapping has duplicate LHS: ~a" (lhs mapping)))
+	    ;; (when (let ((prev-mappings (ldiff mappings (memq mapping mappings))))
+	    ;; 	    (member mapping prev-mappings :test #'same-mapping-lhs?))
+	    ;;   (type-error mapping
+	    ;; 	"Mapping has duplicate LHS: ~a" (lhs mapping)))
 	    (when (mapping-lhs? (lhs mapping))
 	      (setf (module (lhs mapping)) (current-theory)))
-	    (with-current-decl (lhs mapping)
-	      (typecheck-mapping-rhs mapping))
+	    (if (declaration? (lhs mapping))
+		(with-current-decl (declaration (lhs mapping))
+		  (typecheck-mapping-rhs mapping))
+		(typecheck-mapping-rhs mapping))
 	    (assert (or (type-value (rhs mapping))
 			(name-expr? (expr (rhs mapping)))
 			(ptypes (expr (rhs mapping)))))
@@ -1142,7 +1144,7 @@
   nil)
 
 (defmethod resolve-lhs ((lhs mapping-lhs) kind)
-  (assert (every #'decl-formal-type? (decl-formals decl)))
+  (assert (every #'decl-formal-type? (decl-formals lhs)))
   (typecheck-decl-formals (decl-formals lhs) lhs)
   (with-added-decls (decl-formals lhs)
     (resolve* lhs kind nil)))

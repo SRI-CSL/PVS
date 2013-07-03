@@ -13,9 +13,9 @@ def getLispType():
 
 def isPrompt(text):
     matcher = allegroRe.match(text)
-    return matcher != None
+    return matcher is not None
 
 def hasPrompt(text):
     found = allegroRe.search(text)
-    return found != None
+    return found is not None
 

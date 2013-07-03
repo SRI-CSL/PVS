@@ -17,6 +17,7 @@ class ToolbarManager(wx.ToolBar):
         #self.SetToolBitmapSize((16, 16))
         self.addButtons()
         self.setBindings()
+        pub.subscribe(self.update, PUB_UPDATETOOLBAR)
     
     def addButtons(self):
         self.createNewFileToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_NEW, getNewImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Create a new pvs file", EMPTY_STRING)
@@ -28,44 +29,34 @@ class ToolbarManager(wx.ToolBar):
         self.copyToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_COPY, getCopyImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Copy text", EMPTY_STRING)
         self.pasteToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_PASTE, getPasteImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Paste text here", EMPTY_STRING)
         self.AddSeparator()
-        self.stopPVSToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_STOPPVS, getStopPVSImage(), getStopPVSImage(False), wx.ITEM_NORMAL, "Stop pvs", EMPTY_STRING)
-        self.startPVSToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_STARTPVS, getStartPVSImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Start pvs", EMPTY_STRING)
         self.typecheckToolbarItem = self.AddLabelTool(wx.ID_ANY, LABEL_TYPECHECK, getTypecheckImage(), wx.NullBitmap, wx.ITEM_NORMAL, "Parse and typecheck file", EMPTY_STRING)
 
     def setBindings(self):
-        gui.manager.frame.Bind(wx.EVT_TOOL, onCreateNewFile, self.createNewFileToolbarItem)
-        gui.manager.frame.Bind(wx.EVT_TOOL, onOpenFile, self.openFileToolbarItem)
-        gui.manager.frame.Bind(wx.EVT_TOOL, onSaveFile, self.saveFileToolbarItem)
-        gui.manager.frame.Bind(wx.EVT_TOOL, onSaveAllFiles, self.saveallFileToolbarItem)
-        gui.manager.frame.Bind(wx.EVT_TOOL, onCutText, self.cutToolbarItem)
-        gui.manager.frame.Bind(wx.EVT_TOOL, onCopyText, self.copyToolbarItem)
-        gui.manager.frame.Bind(wx.EVT_TOOL, onPasteText, self.pasteToolbarItem)
-        gui.manager.frame.Bind(wx.EVT_TOOL, onStopPVS, self.stopPVSToolbarItem)
-        gui.manager.frame.Bind(wx.EVT_TOOL, onStartPVS, self.startPVSToolbarItem)
-        gui.manager.frame.Bind(wx.EVT_TOOL, onTypecheck, self.typecheckToolbarItem)
-
-    def enableSave(self, value = True):
-        self.saveFileToolbarItem.Enable(value)
-        
-    def enableSaveAll(self, value = True):
-        self.saveallFileToolbarItem.Enable(value)
-        
-    def enableCut(self, value = True):
-        self.cutToolbarItem.Enable(value)
-        
-    def enableCopy(self, value = True):
-        self.copyToolbarItem.Enable(value)
-        
-    def enablePaste(self, value = True):
-        self.pasteToolbarItem.Enable(value)
-        
-    def enableStartPVS(self, value = True):
-        self.startPVSToolbarItem.Enable(value)
-        
-    def enableStopPVS(self, value = True):
-        self.stopPVSToolbarItem.Enable(value)
+        frame = util.getMainFrame()
+        frame.Bind(wx.EVT_TOOL, onCreateNewFile, self.createNewFileToolbarItem)
+        frame.Bind(wx.EVT_TOOL, onOpenFile, self.openFileToolbarItem)
+        frame.Bind(wx.EVT_TOOL, onSaveFile, self.saveFileToolbarItem)
+        frame.Bind(wx.EVT_TOOL, onSaveAllFiles, self.saveallFileToolbarItem)
+        frame.Bind(wx.EVT_TOOL, onCutText, self.cutToolbarItem)
+        frame.Bind(wx.EVT_TOOL, onCopyText, self.copyToolbarItem)
+        frame.Bind(wx.EVT_TOOL, onPasteText, self.pasteToolbarItem)
+        frame.Bind(wx.EVT_TOOL, onTypecheck, self.typecheckToolbarItem)
         
     def enableTypecheck(self, value = True):
-        self.pasteToolbarItem.Enable(value)
+        self.typecheckToolbarItem.Enable(value)
+        
+    def update(self, parameters):
+        if OPENFILES in parameters:
+            value = parameters[OPENFILES] > 0
+            self.saveFileToolbarItem.Enable(value)
+            self.saveallFileToolbarItem.Enable(value)
+            self.cutToolbarItem.Enable(value)
+            self.copyToolbarItem.Enable(value)
+            self.pasteToolbarItem.Enable(value)
+        if PVSMODE in parameters:
+            self.typecheckToolbarItem.Enable(parameters[PVSMODE] == PVS_MODE_LISP)
+        
+        
+            
 
         
