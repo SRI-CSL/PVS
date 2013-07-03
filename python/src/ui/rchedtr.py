@@ -4,12 +4,20 @@ import wx
 import codecs
 import util
 from styltxt import PVSStyledText
+from wx.lib.pubsub import pub
+import constants
 
 log = util.getLogger(__name__)
 
 class RichEditor(wx.Panel):
     """RichEditor displays the content a file or buffer. It provides syntax highlighting, 
     as well as other functionalities like Copy, Paste, etc"""
+    
+    ALL = "all"
+    FULLNAME = "fullname"
+    FOCUSED = "focused"
+    NEWNAME = "newName"
+    
     
     def __init__(self, parent, ID, fullname):
         wx.Panel.__init__(self, parent, ID)
@@ -23,6 +31,7 @@ class RichEditor(wx.Panel):
         self.decode = codecs.lookup("utf-8")[1]
         self.styledText.Bind(wx.EVT_KEY_UP,self.onTextKeyEvent)
         self.styledText.Bind(wx.EVT_LEFT_UP,self.onMouseEvent)
+        pub.subscribe(self.saveFile, constants.PUB_SAVEFILE)
         
     def addRedMarker(self, lineN):
         self.MarkerAdd(lineN, 1)
@@ -60,8 +69,11 @@ class RichEditor(wx.Panel):
     def getFilename(self):
         return self.fullname
     
-    def saveFile(self):
+    def saveFile(self, newName=None):
+        if newName is not None:
+            self.fullname = newName
         log.info("Saving file %s", self.fullname)
         self.styledText.SaveFile(self.fullname)
+        pub.sendMessage(constants.PUB_FILESAVED, fullname=self.fullname)
         
     

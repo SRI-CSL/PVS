@@ -6,6 +6,8 @@ from ui.frmgr import FindReplaceManager
 from pvscomm import PVSCommandManager, PVSCommandManager
 from constants import *
 import wx
+from remgr import RichEditorManager
+#import ui.tbmgr
 from preference import Preferences
 from pvscomm import PVSCommunicator
 from wx.lib.pubsub import pub
@@ -20,8 +22,8 @@ def onChangeContext(event):
     preferences = Preferences()
     newContext = frame.chooseDirectory("Select a directory", preferences.getContext())
     if newContext is not None:
-        if frame.ensureFilesAreSavedToPoceed(): 
-            if PVSCommunicator().pvsMode == PVS_MODE_LISP:
+        if RichEditorManager().ensureFilesAreSavedToPoceed(): 
+            if PVSCommandManager().pvsMode == PVS_MODE_LISP:
                 PVSCommandManager().changeContext(newContext)
             frame.closeContext()
             preferences.setContext(newContext)
@@ -42,7 +44,7 @@ def onCreateNewFile(event):
     else:
         log.info("Nothing was selected.")
     dialog.Destroy()
-    frame.handleNumberOfOpenFilesChanged(openFiles = self.notebook.getNumberOfOpenFiles())
+    frame.handleNumberOfOpenFilesChanged(openFiles = RichEditorManager().getNumberOfOpenFiles())
 
 def onOpenFile(event):
     """called to handle 'open file' request"""
@@ -56,26 +58,37 @@ def onOpenFile(event):
     else:
         log.info("Nothing was selected.")
     dialog.Destroy()
-    frame.handleNumberOfOpenFilesChanged(openFiles = frame.notebook.getNumberOfOpenFiles())
+    frame.handleNumberOfOpenFilesChanged(openFiles = RichEditorManager().getNumberOfOpenFiles())
 
 def onCloseFile(event):
     """close an open file"""
-    frame = util.getMainFrame()
-    richEditor = frame.notebook.getActiveRichEditor()
-    frame.handleCloseFileRequest(richEditor=richEditor)
+    richEditor = RichEditorManager().getFocusedRichEditor()
+    if richEditor is not None:
+        canClose = True
+        if richEditor.styledText.GetModify():
+            choice = self.askYesNoCancelQuestion("This file has been modified. Save changes?")
+            if choice == wx.ID_YES:
+                richEditor.saveFile()
+            elif choice == wx.ID_CANCEL:
+                canClose = False
+        if canClose:
+            pub.sendMessage(PUB_CLOSEFILE, fullname=richEditor.getFilename())
+            util.getMainFrame().handleNumberOfOpenFilesChanged(openFiles = RichEditorManager().getNumberOfOpenFiles())
+    else:
+        log.warn("No rich editor is open")
 
 def onSaveFile(event):
     """save the active file (an active file is one whose tab is visible)"""
-    pub.sendMessage(PUB_SAVEFILE)        
+    RichEditorManager().getFocusedRichEditor().saveFile()
         
 def onSaveAsFile(event):
     """save the active file (an active file is one whose tab is visible)"""
-    #TODO: implement this
-    #pub.sendMessage(PUB_SAVEFILE, fullname=fullname)        
+    #TODO: implement this, we need a dialog box to get the new file name
+    RichEditorManager().getFocusedRichEditor().saveFile()  
         
 def onSaveAllFiles(event):
     """save all the open files"""
-    pub.sendMessage(PUB_SAVEALLFILES)
+    RichEditorManager().saveAllFiles()
     
 def onQuitFrame(event):
     """called to handle 'quit application' request"""
@@ -116,11 +129,11 @@ def onFindText(event):
     """called to handle 'find text' request"""
     #TODO: Fix Find/Replace in a good manner.
     focus = util.getMainFrame().FindFocus()
-    #page = util.getMainFrame().notebook.getActiveRichEditor()
+    #page = RichEditorManager().getFocusedRichEditor()
     if focus is not None and (isinstance(focus, wx.TextCtrl) or isinstance(focus, stc.StyledTextCtrl)):
         pass
     else:
-        focus = util.getMainFrame().notebook.GetCurrentPage()
+        focus = RichEditorManager().getFocusedRichEditor()
         if focus is not None:
             focus = focus.styledText
     if focus is not None:
@@ -174,7 +187,7 @@ def onContextPreferencesRestoredAutomatically(event):
 
 def onTypecheck(event):
     """called to handle 'typecheck' request"""
-    fullname = util.getMainFrame().notebook.getActiveFilename()
+    fullname = RichEditorManager().getFocusedRichEditor().getFilename()
     PVSCommandManager().typecheck(fullname)
     #event.Skip()
 

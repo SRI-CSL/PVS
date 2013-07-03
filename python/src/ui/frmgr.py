@@ -66,7 +66,7 @@ class FindReplaceManager:
         frame = util.getMainFrame()
         _find = self.data.GetFindString()
         log.info("Find Next %s", _find)
-        page = frame.notebook.getActiveRichEditor()
+        page = RichEditorManager().getFocusedRichEditor()
         nextOne = self.findPositionOfNext(_find)
         if nextOne is not None:
             page.styledText.SetSelection(nextOne, nextOne + len(_find))
@@ -78,7 +78,7 @@ class FindReplaceManager:
         _find = self.data.GetFindString()
         _replace = self.data.GetReplaceString()
         log.info("Replace Next %s", _find)
-        page = frame.notebook.getActiveRichEditor()
+        page = RichEditorManager().getFocusedRichEditor()
         nextOne = self.findPositionOfNext(_find)
         if nextOne is not None:
             page.styledText.SetSelection(nextOne, nextOne + len(_find))
@@ -91,7 +91,7 @@ class FindReplaceManager:
         _find = self.data.GetFindString()
         _replace = self.data.GetReplaceString()
         log.info("Replace All %s", _find)
-        page = frame.notebook.getActiveRichEditor()
+        page = RichEditorManager().getFocusedRichEditor()
         nextOne = self.findPositionOfNext(_find)
         while nextOne is not None:
             page.styledText.SetSelection(nextOne, nextOne + len(_find))
@@ -103,7 +103,7 @@ class FindReplaceManager:
         self.readFlags()
         log.info("Going Down: %s, Whole Word: %s, Match Case: %s", self.goingDown, self.wholeWord, self.matchCase)
         flags = re.UNICODE if self.matchCase else re.IGNORECASE | re.UNICODE
-        page = frame.notebook.getActiveRichEditor()
+        page = RichEditorManager().getFocusedRichEditor()
         selection = page.styledText.GetSelection()
         log.info("Selection Position: %s", selection)
         cursor = page.styledText.GetCurrentPos()

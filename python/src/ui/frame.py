@@ -7,7 +7,7 @@ import wx
 import os.path
 from constants import *
 from wx.lib.pubsub import pub
-from nbmgr import NotebookManager
+from remgr import RichEditorManager
 import util
 import evhdlr
 from mmgr import MainFrameMenu
@@ -49,7 +49,9 @@ class MainFrame(wx.Frame):
 
         self.mainPanel = wx.Panel(self, wx.ID_ANY)
         
-        self.notebook = NotebookManager(self)
+        notebook = aui.AuiNotebook(self)
+        notebook.SetArtProvider(aui.ChromeTabArt())        
+        RichEditorManager().setNotebook(notebook)
 
         self.__do_layout()
         self.SetTitle(MAINFRAME)
@@ -64,14 +66,14 @@ class MainFrame(wx.Frame):
     def __do_layout(self):
         self.SetSize(EDITOR_SIZE)
         self.SetMinSize(EDITOR_MINIMUM_SIZE) # Setting the minimum size of the main frame
-        self.auiManager.AddPane(self.notebook, aui.AuiPaneInfo().CenterPane())
+        self.auiManager.AddPane(RichEditorManager().notebook, aui.AuiPaneInfo().CenterPane())
         self.auiManager.Update()
         #self.Layout()
         self.Centre()
                               
     def OnClose(self, event):
         """called when self.Close() is called"""
-        if self.ensureFilesAreSavedToPoceed():
+        if RichEditorManager().ensureFilesAreSavedToPoceed():
             preferences = Preferences()
             preferences.saveContextPreferences()
             preferences.saveGlobalPreferences()
@@ -111,23 +113,6 @@ class MainFrame(wx.Frame):
             else:
                 log.warning("File %s no longer exists", fullname)
         
-    def ensureFilesAreSavedToPoceed(self):
-        """Ensure that all files are saved before closing them all"""
-        filesAreSaved = True
-        for i in range(self.notebook.GetPageCount()):
-            richEditor = self.notebook.GetPage(i)
-            if richEditor.styledText.GetModify():
-                filesAreSaved = False
-                break    
-        safeToProceed = True
-        if not filesAreSaved:
-            choice = self.askYesNoCancelQuestion("Some files have been modified. Save changes?")
-            if choice == wx.ID_YES:
-                self.saveAllFiles()
-            elif choice == wx.ID_CANCEL:
-                safeToProceed = False
-        return safeToProceed
-
     def handlePVSModeUpdated(self, pvsMode = PVS_MODE_OFF):
         self.updateMenuAndToolbar({PVSMODE: pvsMode})
         self.setStatusbarText("PVS Mode: " + pvsMode)
@@ -136,31 +121,13 @@ class MainFrame(wx.Frame):
         self.setStatusbarText("PVS Context: " + context, 1)
 
     def handleNumberOfOpenFilesChanged(self, openFiles = 0):
+        #TODO: Is this needed? If so, maybe it should be called via pubsub
         self.updateMenuAndToolbar({OPENFILES: openFiles})
         
     def updateMenuAndToolbar(self, params):
         """Enable/Disable menu options based on the situation"""
         pub.sendMessage(PUB_UPDATEMENUBAR, parameters=params)
         pub.sendMessage(PUB_UPDATETOOLBAR, parameters=params)
-
-    def handleCloseFileRequest(self, fullname=None, richEditor=None):
-        """called by the main frame or filesTree to close an open file"""
-        if richEditor is None:
-            richEditor = self.notebook.getRichEditorForFile(fullname)
-        elif fullname is None:
-            fullname = richEditor.fullname
-        else:
-            raise util.PVSIDEException("Both richEditor and fullname are None")
-        canClose = True
-        if richEditor.styledText.GetModify():
-            choice = self.askYesNoCancelQuestion("This file has been modified. Save changes?")
-            if choice == wx.ID_YES:
-                pub.sendMessage(PUB_SAVEFILE, fullname=fullname)
-            elif choice == wx.ID_CANCEL:
-                canClose = False
-        if canClose:
-            pub.sendMessage(PUB_CLOSEFILE, fullname=fullname)
-            self.handleNumberOfOpenFilesChanged(openFiles = self.notebook.getNumberOfOpenFiles())
 
     def handleUndoRequest(self):
         """handle the Undo request and return true if succeeded."""

@@ -3,6 +3,7 @@ import util
 import os.path, os
 import constants
 import sets
+from remgr import RichEditorManager
 
 log = util.getLogger(__name__)
 
@@ -108,7 +109,7 @@ class Preferences:
     def saveContextPreferences(self):
         filename = self.getContextPreferenceFilename()
         output = open(filename, 'wt')
-        self.contextPreferences[constants.OPENFILES] = util.getOpenFilesNames()
+        self.contextPreferences[constants.OPENFILES] = RichEditorManager().getOpenFileNames()
         pickle.dump(self.contextPreferences, output)
         log.info("Saved context preferences: %s", self.contextPreferences)
         output.close()

@@ -33,7 +33,7 @@ class MainFrameMenu(wx.MenuBar):
         self.saveFileAsMenuItem = fileMenu.Append(wx.ID_SAVEAS, self._makeLabel(LABEL_SAVEAS, None, True), EMPTY_STRING, wx.ITEM_NORMAL)
         self.closeFileMenuItem = fileMenu.Append(wx.ID_CLOSE, self._makeLabel(LABEL_CLOSEFILE, "W"), EMPTY_STRING, wx.ITEM_NORMAL)
         fileMenu.AppendSeparator()
-        self.quitMenuItem = fileMenu.Append(wx.ID_EXIT, self._makeLabel(LABEL_QUIT, "Q"), EMPTY_STRING, wx.ITEM_NORMAL)
+        self.quitMenuItem = fileMenu.Append(wx.ID_ANY, self._makeLabel(LABEL_QUIT, "Q"), EMPTY_STRING, wx.ITEM_NORMAL)
         self.Append(fileMenu, LABEL_FILE)
  
     def addEditMenu(self):
