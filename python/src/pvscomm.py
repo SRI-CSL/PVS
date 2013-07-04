@@ -12,6 +12,9 @@ The advantage of using XML-RPC is that it is ubiquitous.
 """
 
 import json
+import socket
+import httplib
+import exceptions
 import xmlrpclib
 import threading
 from SimpleXMLRPCServer import SimpleXMLRPCServer
@@ -72,16 +75,12 @@ class PVSCommunicator:
         reqid = 'gui_{0}'.format(self.counter)
         self.counter += 1
         request = {PVSCommunicator.METHOD: method, PVSCommunicator.PARAMS: params, PVSCommunicator.ID: reqid}
-        try:
-            jRequest = json.dumps(request)
-            log.debug("JSON request: %s", jRequest)
-            sResult = self.pvsProxy.pvs.request(jRequest, self.guiURL)
-            log.debug("JSON result: %s", sResult)
-            result = json.loads(sResult, object_hook=self.responseCheck)
-            return result
-        except Exception as err:
-            log.error("Error happened: %s", err)
-            
+        jRequest = json.dumps(request)
+        log.debug("JSON request: %s", jRequest)
+        sResult = self.pvsProxy.pvs.request(jRequest, self.guiURL)
+        log.debug("JSON result: %s", sResult)
+        result = json.loads(sResult, object_hook=self.responseCheck)
+        return result            
     
     def onPVSMessageReceived(self, jsonString):
         """
@@ -216,32 +215,57 @@ class PVSCommandManager:
     def sendRawCommand(self, command):
         pass
     
+    def _processError(self, err):
+        title = constants.ERROR
+        if isinstance(err, socket.error):
+            errMessage = err.strerror + "\nMake sure PVS is running and the port is set correctly"
+            title = "PVS Communication Error"
+        elif isinstance(err, httplib.BadStatusLine):
+            errMessage = err.message
+        elif isinstance(err, exceptions.ValueError):
+            errMessage =  err.message
+            title = "JSON Parse Error"
+        elif isinstance(err, PVSException):
+            errMessage = err.message
+        elif isinstance(err, Exception):
+            errMessage = err.message
+        else:
+            errMessage = str(err)
+        log.error("Error: %s", errMessage)
+        util.getMainFrame().showError(errMessage, title)
+            
+            
+    
     def _sendCommand(self, method, *params):
-        jsonResult = self.pvsComm.requestPVS(method, *params)
-        pvsMode = jsonResult[PVSCommunicator.MODE]
-        context = jsonResult[PVSCommunicator.CONTEXT]
-        if PVSCommunicator.XMLRPCERROR in jsonResult:
-            errorObject = jsonResult[PVSCommunicator.XMLRPCERROR]
-            code = int(errorObject[PVSCommunicator.CODE])
-            message = errorObject[PVSCommunicator.MESSAGE]
-            if PVSCommunicator.DATA in errorObject:
-                data = errorObject[PVSCommunicator.DATA]
-            raise PVSException("Error: "  + message)
-        result = jsonResult[PVSCommunicator.JSONRPCRESULT]
-        result = json.loads(result)[PVSCommunicator.RESULT] #TODO: Ask Sam to make sure this is correct
-        if pvsMode != self.pvsMode:
-            self.pvsMode = pvsMode
-            pub.sendMessage(constants.PUB_UPDATEPVSMODE, pvsMode = pvsMode)   
-        if context != self.pvsContext:
-            self.pvsContext = context
-            pub.sendMessage(constants.PUB_UPDATEPVSCONTEXT, context = context)
-        return result
+        try:
+            jsonResult = self.pvsComm.requestPVS(method, *params)
+            pvsMode = jsonResult[PVSCommunicator.MODE]
+            context = jsonResult[PVSCommunicator.CONTEXT]
+            if PVSCommunicator.XMLRPCERROR in jsonResult:
+                errorObject = jsonResult[PVSCommunicator.XMLRPCERROR]
+                code = int(errorObject[PVSCommunicator.CODE])
+                message = errorObject[PVSCommunicator.MESSAGE]
+                data = errorObject[PVSCommunicator.DATA] if PVSCommunicator.DATA in errorObject else None
+                raise PVSException(message=message, code=code, data=data)
+            result = jsonResult[PVSCommunicator.JSONRPCRESULT]
+            result = json.loads(result)[PVSCommunicator.RESULT]
+            if pvsMode != self.pvsMode:
+                self.pvsMode = pvsMode
+                pub.sendMessage(constants.PUB_UPDATEPVSMODE, pvsMode = pvsMode)   
+            if context != self.pvsContext:
+                self.pvsContext = context
+                pub.sendMessage(constants.PUB_UPDATEPVSCONTEXT, context = context)
+            return result
+        except Exception as err:
+            self._processError(err)
+        return None
             
     def typecheck(self, fullname):
         name = os.path.basename(fullname)
-        name = os.path.splitext(name)[0] # just get the filename without the extension 
+        name = util.getFilenameFromFullPath(fullname, False)
         result = self._sendCommand("typecheck", name)
-        pub.sendMessage(constants.PUB_FILETYPECHECKED, fullname=fullname, result=result)
+        if result is not None:
+            pub.sendMessage(constants.PUB_FILETYPECHECKED, fullname=fullname, result=result)
     
     def parse(self, fullname):
         name = os.path.basename(fullname)

@@ -1,52 +1,52 @@
 import pickle
 import util
 import os.path, os
-import util
-import gui
-from constants import PVS_L
+import constants
+import sets
+from remgr import RichEditorManager
 
 log = util.getLogger(__name__)
-manager = None
 
-class PreferenceManager:
+class Preferences:
     """This class manages all the user preferences"""
+    __shared_state = {}
     
     GLOBALPREFERENCEFILE = ".pvseditorglobal"
     CONTEXTPREFERENCEFILE = ".pvseditor"
     CONTEXT = "Context"
     RESTORECONTEXT = "RestoreContext"
-    FILESBUFFERSTREES = "FilesBuffersTrees"
-    PROOFTREE = "ProofTree"
     PVSLOCATION = "PVSLocation"
-    OPENFILES = "OpenFiles"
-    TOOLBAR = "Toolbar"
+    VISIBLEPLUGINS = "VisiblePlusings"
+    IGNORE_GLOBALPREFERENCEFILE  = False # if True, load the default global preference
+    IGNORE_CONTEXTPREFERENCEFILE = False # if True, load the default context preference
     
     def __init__(self):
-        global manager
-        manager = self
+        self.__dict__ = self.__shared_state
+        
+    def loadPreferences(self):
+        """load both global and context preferences"""
         filename = self.getGlobalPreferenceFilename()
         self.globalPreferences = {}
         self.contextPreferences = {}
         self.loadGlobalPreferences()
-        self.loadContextPreferences()
+        #self.loadContextPreferences()
 
     def loadDefaultGlobalPreferences(self):
         self.setContext(util.getHomeDirectory())
-        self.setPVSLocation(os.path.join(util.getHomeDirectory(), PVS_L))
-        self.contextPreferences[PreferenceManager.OPENFILES] = []
+        self.setPVSLocation(os.path.join(util.getHomeDirectory(), constants.PVS_L))
+        self.contextPreferences[constants.OPENFILES] = []
         self.setContextPreferencesRestoredAutomatically(True)
-        self.setVisibleFilesBuffersTrees(True)
-        self.setVisibleProofTree(True)
+        self.globalPreferences[Preferences.VISIBLEPLUGINS] = sets.Set([constants.FILESTREE, constants.PROOFTREE, constants.CONSOLEPLUGIN])
         self.setVisibleToolbar(True)
 
     def loadDefaultContextPreferences(self):
-        self.contextPreferences[PreferenceManager.OPENFILES] = []
+        self.contextPreferences[constants.OPENFILES] = []
 
     def getValue(self, key, default=None):
-        if self.contextPreferences.has_key(key):
+        if key in self.contextPreferences:
             log.info("'%s' was found in context preference. Value: %s", key, self.contextPreferences[key])
             return self.contextPreferences[key]
-        elif self.globalPreferences.has_key(key):
+        elif key in self.globalPreferences:
             log.info("'%s' was found in global preference. Value: %s", key, self.globalPreferences[key])
             return self.globalPreferences[key]
         log.info("'%s' was not found in either preferences", key)
@@ -54,23 +54,30 @@ class PreferenceManager:
         
     def getGlobalPreferenceFilename(self):
         """return the full path to the global preference file"""
-        f = os.path.join(util.getHomeDirectory(), PreferenceManager.GLOBALPREFERENCEFILE)
+        f = os.path.join(util.getHomeDirectory(), Preferences.GLOBALPREFERENCEFILE)
         return f
     
     def getContextPreferenceFilename(self):
         """return the full path to the context preference file"""
-        f = os.path.join(self.getContext(), PreferenceManager.CONTEXTPREFERENCEFILE)
+        f = os.path.join(self.getContext(), Preferences.CONTEXTPREFERENCEFILE)
         return f
     
     def loadGlobalPreferences(self):
-        try:
-            filename = self.getGlobalPreferenceFilename()
-            output = open(filename, 'r')
-            self.globalPreferences = pickle.load(output)
-            log.info("Loaded global preferences: %s", self.globalPreferences)
-            output.close()
-        except:
-            log.error("Error loading the global preference file. Loading the defaults...")
+        if Preferences.IGNORE_GLOBALPREFERENCEFILE:
+            loadDefault = True
+        else:
+            loadDefault = False
+            try:
+                filename = self.getGlobalPreferenceFilename()
+                output = open(filename, 'r')
+                self.globalPreferences = pickle.load(output)
+                log.info("Loaded global preferences: %s", self.globalPreferences)
+                output.close()
+            except:
+                log.error("Error loading the global preference file...")
+                loadDefault = True
+        if loadDefault:
+            log.info(" Loading the default global preference...")
             self.loadDefaultGlobalPreferences()
 
     def saveGlobalPreferences(self):
@@ -81,24 +88,28 @@ class PreferenceManager:
         output.close()
     
     def loadContextPreferences(self):
-        try:
-            filename = self.getContextPreferenceFilename()
-            output = open(filename, 'r')
-            self.contextPreferences = pickle.load(output)
-            log.info("Loaded context preferences: %s", self.contextPreferences)
-            output.close()
-        except:
-            log.error("Error loading the context preference file. Loading the defaults...")
+        if Preferences.IGNORE_CONTEXTPREFERENCEFILE:
+            loadDefault = True
+        else:
+            loadDefault = False
+            try:
+                filename = self.getContextPreferenceFilename()
+                output = open(filename, 'r')
+                self.contextPreferences = pickle.load(output)
+                log.info("Loaded context preferences: %s", self.contextPreferences)
+                output.close()
+            except:
+                log.error("Error loading the context preference file.")
+                loadDefault = True
+        if loadDefault:
+            log.info(" Loading the default context preference...")
             self.loadDefaultContextPreferences()
         
 
     def saveContextPreferences(self):
         filename = self.getContextPreferenceFilename()
         output = open(filename, 'wt')
-        filenames = []
-        for fullname in gui.manager.files.keys():
-            filenames.append(util.getFilenameFromFullPath(fullname))
-        self.contextPreferences[PreferenceManager.OPENFILES] = filenames
+        self.contextPreferences[constants.OPENFILES] = RichEditorManager().getOpenFileNames()
         pickle.dump(self.contextPreferences, output)
         log.info("Saved context preferences: %s", self.contextPreferences)
         output.close()
@@ -107,52 +118,47 @@ class PreferenceManager:
     
     def getPVSLocation(self):
         """return the path to the pvs directory"""
-        return self.getValue(PreferenceManager.PVSLOCATION, util.getHomeDirectory())
+        return self.getValue(Preferences.PVSLOCATION, util.getHomeDirectory())
     
     def setPVSLocation(self, location):
-        self.globalPreferences[PreferenceManager.PVSLOCATION] = util.normalizePath(location)
+        self.globalPreferences[Preferences.PVSLOCATION] = util.normalizePath(location)
     
     def getContextPreferencesRestoredAutomatically(self):
         """return true only if the context preference is to be loaded automatically"""
-        return self.getValue(PreferenceManager.RESTORECONTEXT, False)
+        return self.getValue(Preferences.RESTORECONTEXT, False)
     
     def setContextPreferencesRestoredAutomatically(self, value):
-        self.globalPreferences[PreferenceManager.RESTORECONTEXT] = value
+        self.globalPreferences[Preferences.RESTORECONTEXT] = value
     
     def getContext(self):
         """return the last active context"""
-        return self.getValue(PreferenceManager.CONTEXT, util.getHomeDirectory())
+        return self.getValue(Preferences.CONTEXT, util.getHomeDirectory())
     
     def setContext(self, context):
         newContext = util.normalizePath(context)
-        self.globalPreferences[PreferenceManager.CONTEXT] = newContext
+        self.globalPreferences[Preferences.CONTEXT] = newContext
         self.loadContextPreferences()
     
-    def getVisibleFilesBuffersTrees(self):
-        """return true only if the FilesBuffersTree manager is to be visible"""
-        return self.getValue(PreferenceManager.FILESBUFFERSTREES, True)
+    def shouldPluginBeVisible(self, toolname):
+        """return true if the tool with the given name should be visible"""
+        return toolname in self.globalPreferences[Preferences.VISIBLEPLUGINS]
     
-    def setVisibleFilesBuffersTrees(self, value):
-        """return whether the FilesBuffersTree manager should be visible"""
-        self.globalPreferences[PreferenceManager.FILESBUFFERSTREES] = value
-    
-    def getVisibleProofTree(self):
-        """return true only if the ProofTree manager is to be visible"""
-        return self.getValue(PreferenceManager.PROOFTREE, True)
-    
-    def setVisibleProofTree(self, value):
-        """return whether the ProofTree manager should be visible"""
-        self.globalPreferences[PreferenceManager.PROOFTREE] = value
+    def setPluginVisibility(self, toolname, visible):
+        if visible:
+            self.globalPreferences[Preferences.VISIBLEPLUGINS].add(toolname)
+        else:
+            if toolname in self.globalPreferences[Preferences.VISIBLEPLUGINS]:
+                self.globalPreferences[Preferences.VISIBLEPLUGINS].remove(toolname)
         
     def getVisibleToolbar(self):
         """return true only if the toolbar is to be visible"""
-        return self.getValue(PreferenceManager.TOOLBAR, True)
+        return self.getValue(constants.TOOLBAR, True)
     
     def setVisibleToolbar(self, value):
-        """return whether the toolbar should be visible"""
-        self.globalPreferences[PreferenceManager.TOOLBAR] = value
+        """set the visibility of the toolbar"""
+        self.globalPreferences[constants.TOOLBAR] = value
         
     # Local Settings with respect to a context:
 
     def listOfOpenFiles(self):
-        return self.getValue(PreferenceManager.OPENFILES, [])
+        return self.getValue(constants.OPENFILES, [])

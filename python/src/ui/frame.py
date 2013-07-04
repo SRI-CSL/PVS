@@ -1,123 +1,243 @@
 # -*- coding: US-ASCII -*-
 #
 # This class represents the main frame of the editor
-#
+#GetTopWindow
 
 import wx
 import os.path
-import constants
-from fbmgr import FilesAndBuffersManager
-from nbmgr import NotebookManager
-from console import PVSConsole
+from constants import *
+from wx.lib.pubsub import pub
+from remgr import RichEditorManager
 import util
+import evhdlr
 from mmgr import MainFrameMenu
 from tbmgr import ToolbarManager
-import preference
-from ptmgr import ProofTreeManager
-import runner
-import gui
+from preference import Preferences
+import wx.lib.agw.aui as aui
+from config import *
 
 log = util.getLogger(__name__)
 
 class MainFrame(wx.Frame):
     """The main frame of the application. It consists of a menu and a toolbar, a notebook for all the open
     files and buffers, and a console"""
+    
     def __init__(self, *args, **kwds):
-        kwds["style"] = wx.ICONIZE | wx.CAPTION | wx.MINIMIZE | wx.CLOSE_BOX | wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX | wx.SYSTEM_MENU | wx.RESIZE_BORDER | wx.CLIP_CHILDREN
+        kwds["style"] = wx.ICONIZE | wx.CAPTION | wx.MINIMIZE | wx.CLOSE_BOX | wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX | wx.SYSTEM_MENU | wx.CLIP_CHILDREN | wx.RESIZE_BORDER
         wx.Frame.__init__(self, *args, **kwds)
-        preference.PreferenceManager()
-        gui.manager.setMainFrame(self)
+        self.auiManager = aui.AuiManager()
+        self.auiManager.SetManagedWindow(self)        
+        
+        preferences = Preferences()
+        preferences.loadPreferences()
         self.Bind(wx.EVT_CLOSE, self.OnClose)
-
+        self.auiManager.Bind(aui.EVT_AUI_PANE_CLOSE, self.OnPanelClose)
+        
+        self.statusbar = self.CreateStatusBar(2)
+        self.statusbar.SetStatusWidths([-1, -1])
+        
         # Menu Bar
-        menubar = MainFrameMenu()
-        gui.manager.setMenubar(menubar)
-        self.SetMenuBar(menubar)
+        self.menubar = MainFrameMenu()
+        self.SetMenuBar(self.menubar)
         # Menu Bar end
-        statusbar = self.CreateStatusBar(1, 0)
-        gui.manager.setStatusbar(statusbar)
         
         # Tool Bar
-        toolbar = ToolbarManager(self, wx.ID_ANY)
-        gui.manager.setToolbar(toolbar)
-        self.SetToolBar(toolbar)
+        self.toolbar = ToolbarManager(self, wx.ID_ANY)
+        self.SetToolBar(self.toolbar)
+        self.toolbar.Realize()
         # Tool Bar end
 
-        filesBuffersManager = FilesAndBuffersManager()
-        gui.manager.setFilesBuffersManager(filesBuffersManager)
-        if preference.manager.getVisibleFilesBuffersTrees():
-            filesBuffersManager.Show()
-        proofTreeManager = ProofTreeManager()
-        gui.manager.setProofTreeManager(proofTreeManager)
-        if preference.manager.getVisibleProofTree():
-            proofTreeManager.Show()
-        
         self.mainPanel = wx.Panel(self, wx.ID_ANY)
         
-        notebook = NotebookManager(self.mainPanel, wx.ID_ANY, style=0)
-        gui.manager.setNotebook(notebook)
-        
-        console = PVSConsole()
-        gui.manager.setConsole(console)
-        console.Show()
+        notebook = aui.AuiNotebook(self)
+        notebook.SetArtProvider(aui.ChromeTabArt())        
+        RichEditorManager().setNotebook(notebook)
 
         self.__do_layout()
-        self.__set_properties()
+        self.SetTitle(MAINFRAME)
+        pub.sendMessage(PUB_CONSOLEINITIALIZE)
+        pub.subscribe(self.handlePVSModeUpdated, PUB_UPDATEPVSMODE)
+        pub.subscribe(self.handlePVSContextUpdated, PUB_UPDATEPVSCONTEXT)
+        pub.subscribe(self.setStatusbarText, PUB_UPDATESTATUSBAR)
+        self.handleNumberOfOpenFilesChanged(openFiles = 0)
         
-        gui.manager.configMenuToolbar(0)
-        
-        self.Connect(-1, -1, util.EVT_RESULT_ID, self.onPVSResult)
-        gui.manager.loadContext()
-
-    def __set_properties(self):
-        self.SetTitle(constants.FRAME_TITLE)
-        gui.manager.statusbar.SetStatusWidths([-1])
-        gui.manager.console.initializeConsole()
-        gui.manager.toolbar.Realize()
-        if preference.manager.getVisibleProofTree() and preference.manager.getVisibleFilesBuffersTrees():
-            position = self.GetPosition()
-            sz = gui.manager.filesBuffersManager.GetSize()
-            fbPosition = (position[0]-sz[0]-2, position[1])
-            gui.manager.filesBuffersManager.SetPosition(fbPosition)
-            proofPosition = (position[0]-sz[0]-2, position[1] +sz[1] + 2)
-            gui.manager.proofTreeManager.SetPosition(proofPosition)
+        #self.Connect(-1, -1, util.EVT_RESULT_ID, self.onPVSResult)
 
     def __do_layout(self):
-        self.SetSize((700, 400))
-        frameSizer = wx.BoxSizer(wx.HORIZONTAL)
-        mainPanelSizer = wx.BoxSizer(wx.HORIZONTAL)
-        mainPanelSizer.Add(gui.manager.notebook, 1, wx.EXPAND, 0)
-        self.mainPanel.SetSizer(mainPanelSizer)        
-        frameSizer.Add(self.mainPanel, 3, wx.EXPAND, 0)
-        self.SetSizer(frameSizer)
-        self.Layout()
+        self.SetSize(EDITOR_SIZE)
+        self.SetMinSize(EDITOR_MINIMUM_SIZE) # Setting the minimum size of the main frame
+        self.auiManager.AddPane(RichEditorManager().notebook, aui.AuiPaneInfo().CenterPane())
+        self.auiManager.Update()
+        #self.Layout()
         self.Centre()
-         
-    def onPVSResult(self, event):
-        """called whenever a PVSResultEvent is received"""
-        data = event.data
-        message = event.message
-        log.info("Event from PVSRunner. Message: %s, Data: %s", message, data)
-        if message == constants.MESSAGE_INITIALIZE_CONSOLE:
-            gui.manager.console.initializeConsole()
-        elif message == constants.MESSAGE_PVS_STATUS:
-            gui.manager.updateFrame(data)
-        elif message == constants.MESSAGE_CONSOLE_WRITE_LINE:
-            gui.manager.console.writeLine(data)
-        elif message == constants.MESSAGE_CONSOLE_WRITE_PROMPT:
-            gui.manager.console.writePrompt(data)            
-        else:
-            log.warn("Unhandled PVSmessage: %d", message)
-                     
-                    
+                              
     def OnClose(self, event):
         """called when self.Close() is called"""
-        if gui.manager.ensureFilesAreSavedToPoceed():
-            if runner.manager != None:
-                runner.manager.terminate()
-                runner.manager = None
-            preference.manager.saveContextPreferences()
-            preference.manager.saveGlobalPreferences()
+        if RichEditorManager().ensureFilesAreSavedToPoceed():
+            preferences = Preferences()
+            preferences.saveContextPreferences()
+            preferences.saveGlobalPreferences()
+            self.auiManager.UnInit()
             event.Skip()
+
+    def OnPanelClose(self, event):
+        """called after the panel is added to the frame"""
+        paneInfo = event.GetPane()
+        name = paneInfo.caption
+        log.info("Pane %s was closed", name)
+        pub.sendMessage(PUB_SHOWPLUGIN, name=name, value=False)
+
+
+    def loadContext(self):
+        """Load .pvseditor and open all the files that were open last time"""
+        preferences = Preferences()
+        preferences.loadContextPreferences()
+        fullnames = preferences.listOfOpenFiles()
+        self.openFiles(fullnames)
+        self.handleNumberOfOpenFilesChanged(openFiles = len(fullnames))
+        
+    def setStatusbarText(self, text, location=0):
+        log.info("Setting status bar[%d] to: %s"%(location, text))
+        self.statusbar.SetStatusText(text, location)
+        
+    def closeContext(self):
+        """Save .pvseditor and close all the open files"""
+        Preferences().saveContextPreferences()
+        pub.sendMessage(PUB_CLOSEALLFILES)
+        pub.sendMessage(PUB_CLOSEALLBUFFERS)
+        
+    def openFiles(self, fullnames):
+        for fullname in fullnames:
+            if os.path.exists(fullname):
+                pub.sendMessage(PUB_ADDFILE, fullname=fullname)
+            else:
+                log.warning("File %s no longer exists", fullname)
+        
+    def handlePVSModeUpdated(self, pvsMode = PVS_MODE_OFF):
+        self.updateMenuAndToolbar({PVSMODE: pvsMode})
+        self.setStatusbarText("PVS Mode: " + pvsMode)
+
+    def handlePVSContextUpdated(self, context):
+        self.setStatusbarText("PVS Context: " + context, 1)
+
+    def handleNumberOfOpenFilesChanged(self, openFiles = 0):
+        #TODO: Is this needed? If so, maybe it should be called via pubsub
+        self.updateMenuAndToolbar({OPENFILES: openFiles})
+        
+    def updateMenuAndToolbar(self, params):
+        """Enable/Disable menu options based on the situation"""
+        pub.sendMessage(PUB_UPDATEMENUBAR, parameters=params)
+        pub.sendMessage(PUB_UPDATETOOLBAR, parameters=params)
+
+    def handleUndoRequest(self):
+        """handle the Undo request and return true if succeeded."""
+        textCtrl = self._findFocusedTextCtrl()
+        if textCtrl is not None and textCtrl.CanUndo():
+            textCtrl.Undo()
+            return True
+        return False
+        
+    def handleRedoRequest(self):
+        """handle the Redo request and return true if succeeded."""
+        textCtrl = self._findFocusedTextCtrl()
+        if textCtrl is not None and textCtrl.CanRedo():
+            textCtrl.Redo()
+            return True
+        return False
+                
+    def handleCopyRequest(self):
+        """handle the Copy request and return true if succeeded."""
+        textCtrl = self._findFocusedTextCtrl()
+        if textCtrl is not None and textCtrl.CanCopy():
+            textCtrl.Copy()
+            return True
+        return False
+    
+    def handleCutRequest(self):
+        """handle the Cut request and return true if succeeded."""
+        textCtrl = self._findFocusedTextCtrl()
+        if textCtrl is not None and textCtrl.CanCut():
+            textCtrl.Cut()
+            return True
+        return False
+    
+    def handlePasteRequest(self):
+        """handle the Paste request and return true if succeeded."""
+        textCtrl = self._findFocusedTextCtrl()
+        if textCtrl is not None and textCtrl.CanPaste():
+            textCtrl.Paste()
+            return True
+        return False
+    
+    def handleSelectAllRequest(self):
+        """handle the Select All request and return true if succeeded."""
+        textCtrl = self._findFocusedTextCtrl()
+        if textCtrl is not None:
+            textCtrl.SelectAll()
+            return True
+        return False
+    
+    
+    # Dialog Boxes: 
+    
+    def showDialogBox(self, message, type=MESSAGE):
+        if type==MESSAGE:
+            self.showMessage(message)
+        elif type==ERROR:
+            self.showError(message)
+        elif type==WARNING:
+            self.showWarning(message)
+        else:
+            log.error("Unknown message type, I will display it as a normal message")
+            self.showMessage(message)
+        
+    def showError(self, message, title=ERROR):
+        """Show a dialog for an error"""
+        dlg = wx.MessageDialog(self, message, title, wx.OK | wx.ICON_ERROR)
+        dlg.ShowModal()
+        dlg.Destroy()
+        
+    def showWarning(self, message, title=WARNING):
+        """Show a dialog for a warning"""
+        dlg = wx.MessageDialog(self, message, title, wx.OK | wx.ICON_WARNING)
+        dlg.ShowModal()
+        dlg.Destroy()
+        
+    def showMessage(self, message, title=MESSAGE):
+        """Show a dialog for a message"""
+        dlg = wx.MessageDialog(self, message, title, wx.OK | wx.ICON_INFORMATION)
+        dlg.ShowModal()
+        dlg.Destroy()
+        
+    def askYesNoQuestion(self, question, title=EMPTY_STRING):
+        """Show a dialog box to ask a question with two possible answers: Yes and No"""
+        dlg = wx.MessageDialog(self, question, title, wx.YES_NO | wx.ICON_QUESTION)
+        choice = dlg.ShowModal() # choice will be either wx.ID_YES or wx.ID_NO
+        dlg.Destroy()
+        return choice
+    
+    def askYesNoCancelQuestion(self, question, title=EMPTY_STRING):
+        """Show a dialog box to ask a question with three possible answers: Yes, No, and Cancel"""
+        dlg = wx.MessageDialog(self, question, title, wx.YES_NO | wx.CANCEL | wx.ICON_QUESTION)
+        choice = dlg.ShowModal() # choice will be either wx.ID_YES or wx.ID_NO or wx.ID_CANCEL
+        dlg.Destroy()
+        return choice
+    
+    def chooseDirectory(self, message, defaultDirectory=EMPTY_STRING):
+        """Show a dialog to choose a directory"""    
+        dialog = wx.DirDialog (self, message = message, defaultPath=defaultDirectory)
+        newPath = None
+        if dialog.ShowModal() == wx.ID_OK:
+            newPath = dialog.GetPath()
+        dialog.Destroy()
+        return newPath
+
+    # Private methods:
+    
+    def _findFocusedTextCtrl(self):
+        focus = self.FindFocus()
+        if focus is not None and (isinstance(focus, wx.TextCtrl) or isinstance(focus, stc.StyledTextCtrl)):
+            return focus
+        return None
 
         

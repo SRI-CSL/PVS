@@ -252,6 +252,20 @@
       (or (eq t1 t2)
 	  (tc-eq-types ty1 ty2 bindings)))))
 
+;; (defmethod tc-eq* ((t1 tupletype) (t2 subtype) bindings)
+;;   ;; handles {z: [t1, t2] | p(z)}  [x: t1, {y: t2 | p(x, y)]
+;;   (let ((stype (find-supertype t2)))
+;;     (when (and (tupletype? stype)
+;; 	       (length= (types stype) (types t1)))
+;;       (let* ((nbds (make-new-bind-decls (types stype)))
+;; 	     (nvars (mapcar #'make-variable-expr nbds))
+;; 	     (ntupex (make!-arg-tuple-expr* nvars))
+;; 	     (spred (make!-application (predicate t2) ntupex)))
+;; 	(tc-eq-tuptypes (types t1) nbds bindings spred)))))
+
+;; (defun tc-eq-tuptypes (types1 types2 bindings preds1 preds2)
+;;   (and 
+
 (defun tc-eq-types (types1 types2 bindings)
   (declare (list types1 types2))
   (cond ((null types1) (null types2))
@@ -2285,7 +2299,8 @@
 
 (defmethod subtype-preds ((t1 subtype) (t2 subtype) &optional incs)
   (if (subtype-of? t1 t2)
-      (subtype-preds (supertype t1) t2 (cons (predicate t1) incs))
+      (subtype-preds (supertype t1) (compatible-type t2 t1)
+		     (cons (predicate t1) incs))
       (multiple-value-bind (ty preds)
 	  (subtype-preds t1 (compatible-type t2 t1) nil)
 	(when ty
@@ -2499,7 +2514,8 @@
 
 ;;; Type-canon generally tries to push down subtypes.
 ;;; For example, it takes types of the form
-;;;  {t: [T1,..,Tn] | p(proj_1(t),..,proj_n(t))}
+;;;  {t: [T1,..,Tn] | p(t)}
+;;; Generating [t1: T1, ..., {tn: Tn | p(t1,...,tn)}]
 ;;; and pushes down all the projections it can.  It does this by splitting
 ;;; p into conjuncts, collecting those conjuncts in which t only occurs as
 ;;; the argument to a proj_i for some i (the same throughout the
@@ -2608,6 +2624,17 @@
 (defmethod type-canon* ((te tupletype) predicates)
   (type-canon-tupletype te predicates))
 
+;; (defun make-new-dep-bindings (types &optional expr (id '|t|) (num 1) dpbdgs)
+;;   (if (null types)
+;;       (nreverse dpbdgs)
+;;       (if (dep-binding? (car types))
+;; 	  (make-new-dep-bindings (cdr types) expr id num (cons (car types) dpbdgs))
+;; 	  (let* ((nid (make-new-variable id expr num))
+;; 		 (db (mk-dep-binding (dep-binding-type (car types)))))
+;; 	(make-new-dep-bindings (cdr types) expr id (
+	
+
+;; Should return a tupletype
 (defun type-canon-tupletype (te predicates)
   (multiple-value-bind (npreds var)
       (make-preds-with-same-binding te predicates)
@@ -2622,6 +2649,21 @@
 	    :predicate (make-lambda-expr-or-eta-equivalent (declaration var)
 			 (make!-conjunction* toppreds)))
 	  ntuptype))))
+
+;; (defun type-canon-tupletype (types predicates)
+;;  (let* ((dbdgs (mapcar #'mk-dep-binding 
+;;         (parts (partition-projection-predicates
+;;                 var (mapcan #'conjuncts npreds)))
+;;         (ntypes (add-tupletype-preds (types te) parts))
+;;         (ntuptype (make-instance 'tupletype :types ntypes))
+;;         (toppreds (cdr (assq nil parts))))
+;;    (break)
+;;    (if toppreds
+;;        (make-instance 'subtype
+;;          :supertype ntuptype
+;;          :predicate (make-lambda-expr-or-eta-equivalent (declaration var)
+;;                                                         (make!-conjunction* toppreds)))
+;;        ntuptype))))
 
 (defun add-tupletype-preds (types parts &optional (index 1) ntypes)
   (if (null types)

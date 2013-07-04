@@ -1038,14 +1038,16 @@
 	    (typecheck-decl-formals (decl-formals mapping) (lhs mapping))
 	    (typecheck-mapping-lhs mapping lhs-context lhs-theory lhs-theory-decls
 				   thinst)
-	    (when (let ((prev-mappings (ldiff mappings (memq mapping mappings))))
-		    (member mapping prev-mappings :test #'same-mapping-lhs?))
-	      (type-error mapping
-		"Mapping has duplicate LHS: ~a" (lhs mapping)))
+	    ;; (when (let ((prev-mappings (ldiff mappings (memq mapping mappings))))
+	    ;; 	    (member mapping prev-mappings :test #'same-mapping-lhs?))
+	    ;;   (type-error mapping
+	    ;; 	"Mapping has duplicate LHS: ~a" (lhs mapping)))
 	    (when (mapping-lhs? (lhs mapping))
 	      (setf (module (lhs mapping)) (current-theory)))
-	    (with-current-decl (lhs mapping)
-	      (typecheck-mapping-rhs mapping))
+	    (if (declaration? (lhs mapping))
+		(with-current-decl (declaration (lhs mapping))
+		  (typecheck-mapping-rhs mapping))
+		(typecheck-mapping-rhs mapping))
 	    (assert (or (type-value (rhs mapping))
 			(name-expr? (expr (rhs mapping)))
 			(ptypes (expr (rhs mapping)))))
@@ -1087,9 +1089,7 @@
 		 (delete-if-not
 		     #'(lambda (r)
 			 (and (memq (declaration r) lhs-theory-decls)
-			      (length= (decl-formals (declaration r)) dfmls)
-			      (or (null type)
-				  (compatible? type (type r)))))
+			      (length= (decl-formals (declaration r)) dfmls)))
 		   (with-no-type-errors
 		    (resolve* (lhs mapping) 'expr nil)))))
 	 (nres (unless (or eres
@@ -1144,7 +1144,7 @@
   nil)
 
 (defmethod resolve-lhs ((lhs mapping-lhs) kind)
-  (assert (every #'decl-formal-type? (decl-formals decl)))
+  (assert (every #'decl-formal-type? (decl-formals lhs)))
   (typecheck-decl-formals (decl-formals lhs) lhs)
   (with-added-decls (decl-formals lhs)
     (resolve* lhs kind nil)))
@@ -1263,10 +1263,17 @@
 	   (thres (unless (or (mod-id ex)
 			      (and kind
 				   (not (eq kind 'theory))))
-		    (if (or tres eres)
-			(with-no-type-errors (resolve* (name-to-modname ex)
-						       'module nil))
-			(resolve* (name-to-modname ex) 'module nil)))))
+		    (let ((thname (name-to-modname ex)))
+		      (if (or tres eres)
+			  (with-no-type-errors (typecheck* thname nil 'module nil))
+			  (typecheck* thname nil 'module nil))
+		      (when (resolutions thname)
+			;; Check that imported modname is visible
+			(let ((vreses (visible-modname-resolutions thname)))
+			  (unless (or tres eres vreses)
+			    (type-error ex "~a is not a visible theory"
+					(copy ex :mappings nil)))
+			  vreses))))))
 ;;       (when type
 ;; 	(setf eres (delete-if-not #'(lambda (r) (compatible? (type r) type))
 ;; 		     eres)))
@@ -1296,6 +1303,37 @@
 	      (type-ambiguity ex))
 	    (progn
 	      (setf (type-value rhs) (type (car tres)))))))))
+
+(defun visible-modname-resolutions (thname)
+  ;; Context has to be for the modname being imported
+  ;; i.e., in importing foo[a] {{ bar := bar[b] {{ ... }} }}
+  ;; foo gives context, bar[b] is the thname
+  (let ((imps (get-importings (get-theory thname))))
+    (if (some #'(lambda (x) (null (actuals x))) imps)
+	;; all instances are visible in this case
+	(resolutions thname)
+	(visible-modname-resolutions* (resolutions thname) imps nil))))
+
+(defun visible-modname-resolutions* (resolutions importings vis-reses)
+  (if (null resolutions)
+      (nreverse vis-reses)
+      (visible-modname-resolutions*
+       (cdr resolutions) importings
+       (if (some #'(lambda (imp) (visible-modname-resolution
+				  imp (car resolutions)))
+		 importings)
+	   (cons (car resolutions) vis-reses)
+	   vis-reses))))
+
+(defun visible-modname-resolution (imp res)
+  (let ((mi (module-instance res)))
+    (assert (eq (id imp) (id mi)))
+    (assert (= (length (actuals imp)) (length (actuals mi))))
+    (every #'(lambda (act mact)
+	       (or (null (type-value act))
+		   (compatible? (type-value act) (type-value mact))))
+	   (actuals imp) (actuals mi))))
+  
 
 (defmethod typecheck-mapping-rhs* (ex kind type rhs)
   (declare (ignore kind type))
