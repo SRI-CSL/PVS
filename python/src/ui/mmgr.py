@@ -4,6 +4,7 @@
 import wx
 from constants import *
 from evhdlr import *
+from tbmgr import ToolbarManager
 import util
 from preference import Preferences
 
@@ -14,15 +15,18 @@ class MainFrameMenu(wx.MenuBar):
     
     def __init__(self):
         wx.MenuBar.__init__(self)
+        self.plugins = {}
+        self.toolbars = {}
         self.addFileMenu()
         self.addEditMenu()
         self.addViewMenu()
         self.addPVSMenu()
         self.setBindings()
-        self.plugins = {}
         pub.subscribe(self.update, PUB_UPDATEMENUBAR)
         pub.subscribe(self.showPlugin, PUB_SHOWPLUGIN)
+        pub.subscribe(self.showToolbar, PUB_SHOWTOOLBAR)
         pub.subscribe(self.addPluginToViewMenu, PUB_ADDITEMTOVIEWMENU)
+        pub.subscribe(self.prepareRecentContextsSubMenu, PUB_UPDATEPVSCONTEXT)
         
     def addFileMenu(self):
         """Adding menu items to File menu"""
@@ -55,13 +59,56 @@ class MainFrameMenu(wx.MenuBar):
         self.viewMenu = wx.Menu()
         preferences = Preferences()
 
-        self.toolbar = self.viewMenu.Append(wx.ID_ANY, TOOLBAR, EMPTY_STRING, wx.ITEM_CHECK)
-        self.viewMenu.Check(self.toolbar.GetId(), preferences.getVisibleToolbar())
-        self.viewMenu.AppendSeparator()
+        self.toolbarsMenu = wx.Menu()
+        self.viewMenu.AppendMenu(wx.ID_ANY, 'Toolbars', self.toolbarsMenu)
+        tm = ToolbarManager()
+        for name in tm.toolbars:
+            self.addToolbarToViewMenu(name)
+        
         self.pluginMenu = wx.Menu()
-        self.viewMenu.AppendMenu(203, 'Plugins', self.pluginMenu)
+        self.viewMenu.AppendMenu(wx.ID_ANY, 'Plugins', self.pluginMenu)
         # Add View Menu to the menu bar:
         self.Append(self.viewMenu, LABEL_VIEW)
+        
+    def addPVSMenu(self):
+        """Adding menu items to PVS menu"""
+        pvsMenu = wx.Menu()
+        self.changeContextMenuItem =  pvsMenu.Append(wx.ID_ANY, self._makeLabel("Change Context", None, True), EMPTY_STRING, wx.ITEM_NORMAL)
+
+        self.recentContextsMenu = wx.Menu()
+        self.prepareRecentContextsSubMenu()
+        pvsMenu.AppendMenu(wx.ID_ANY, "Recent Contexts", self.recentContextsMenu)
+        
+        pvsMenu.AppendSeparator()
+        self.typecheckMenuItem = pvsMenu.Append(wx.ID_ANY, LABEL_TYPECHECK, EMPTY_STRING, wx.ITEM_NORMAL)
+        pvsMenu.AppendSeparator()
+        self.setPVSLocationMenuItem = pvsMenu.Append(wx.ID_ANY, self._makeLabel("Set PVS Location", None, True), EMPTY_STRING, wx.ITEM_NORMAL)
+        self.Append(pvsMenu, PVS_U)
+        
+    def prepareRecentContextsSubMenu(self):
+        try:
+            while True: #TODO: Find out if there is a better way to remove all the items from a menu
+                item = self.recentContextsMenu.FindItemByPosition(0)
+                self.recentContextsMenu.RemoveItem(item)
+        except:
+            pass
+        preferences = Preferences()
+        recentContexts = preferences.getRecentContexts()
+        frame = util.getMainFrame()
+        for cxt in recentContexts:
+            item = self.recentContextsMenu.Append(wx.ID_ANY, cxt, EMPTY_STRING, wx.ITEM_NORMAL)
+            frame.Bind(wx.EVT_MENU, lambda ce: PVSCommandManager().changeContext(cxt), item)
+        
+    def addToolbarToViewMenu(self, name):
+        log.debug("addToolbarToViewMenu was called for %s", name)
+        preferences = Preferences()
+        frame = util.getMainFrame()
+        tm = ToolbarManager()
+        #toolbar = tm.getToolbar(name)
+        item = self.toolbarsMenu.Append(wx.ID_ANY, name, EMPTY_STRING, wx.ITEM_CHECK)
+        self.toolbars[name] = item
+        self.toolbarsMenu.Check(item.GetId(), True) #TODO: Save this Ture thing in global preferences and get it from there
+        frame.Bind(wx.EVT_MENU, lambda ce: tm.toggleToolbar(name), item)
         
     def addPluginToViewMenu(self, name, callBackFunction):
         log.debug("addPluginToViewMenu was called for %s", name)
@@ -72,18 +119,6 @@ class MainFrameMenu(wx.MenuBar):
         self.pluginMenu.Check(item.GetId(), preferences.shouldPluginBeVisible(name))
         frame.Bind(wx.EVT_MENU, callBackFunction, item)
 
-    def addPVSMenu(self):
-        """Adding menu items to PVS menu"""
-        pvsMenu = wx.Menu()
-        self.changeContextMenuItem =  pvsMenu.Append(wx.ID_ANY, self._makeLabel("Change Context", None, True), EMPTY_STRING, wx.ITEM_NORMAL)
-        self.restoreContextMenuItem = pvsMenu.Append(wx.ID_ANY, "Restore Context Automatically", EMPTY_STRING, wx.ITEM_CHECK)
-        pvsMenu.Check(self.restoreContextMenuItem.GetId(), Preferences().getContextPreferencesRestoredAutomatically())
-        pvsMenu.AppendSeparator()
-        self.typecheckMenuItem = pvsMenu.Append(wx.ID_ANY, LABEL_TYPECHECK, EMPTY_STRING, wx.ITEM_NORMAL)
-        pvsMenu.AppendSeparator()
-        self.setPVSLocationMenuItem = pvsMenu.Append(wx.ID_ANY, self._makeLabel("Set PVS Location", None, True), EMPTY_STRING, wx.ITEM_NORMAL)
-        self.Append(pvsMenu, PVS_U)
-        
     def _makeLabel(self, name, shortcut=None, addDots = False):
         if addDots:
             name = name + DOTDOTDOT
@@ -106,10 +141,9 @@ class MainFrameMenu(wx.MenuBar):
         frame.Bind(wx.EVT_MENU, onPasteText, self.pasteMenuItem)
         frame.Bind(wx.EVT_MENU, onFindText, self.findMenuItem)
         
-        frame.Bind(wx.EVT_MENU, onToggleViewToolbar, self.toolbar)
+        #frame.Bind(wx.EVT_MENU, onToggleViewToolbar, self.toolbar)
         
         frame.Bind(wx.EVT_MENU, onChangeContext, self.changeContextMenuItem)
-        frame.Bind(wx.EVT_MENU, onContextPreferencesRestoredAutomatically, self.restoreContextMenuItem)
         frame.Bind(wx.EVT_MENU, onTypecheck, self.typecheckMenuItem)
         frame.Bind(wx.EVT_MENU, onSetPVSLocation, self.setPVSLocationMenuItem)
         
@@ -144,5 +178,13 @@ class MainFrameMenu(wx.MenuBar):
             item = self.plugins[name]
             item.Check(value)
         else:
-            log.warn("No menu option for %s", name)
+            log.warn("No menu option for plugin %s", name)
+            
+    def showToolbar(self, name, value=True):
+        log.info("Menu.showToolbar was called for %s and %s", name, value)
+        if name in self.toolbars:
+            item = self.toolbars[name]
+            item.Check(value)
+        else:
+            log.warn("No menu option for toolbar %s", name)
             

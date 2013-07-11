@@ -74,7 +74,7 @@ class FilesTreePlugin(PluginPanel):
         kind = data[KIND]
         menu = wx.Menu()
         status = pvscomm.PVSCommandManager().pvsMode
-        items = self.getContextMenuItems(status, kind) # each item should be a pair of a label and a callback funtion.
+        items = self.getContextMenuItems(status, kind) # each item should be a pair of a label and a callback function.
         for label, callback in items:
             ID = wx.ID_ANY
             menu.Append(ID, label, EMPTY_STRING, wx.ITEM_NORMAL)
@@ -156,8 +156,12 @@ class FilesTreePlugin(PluginPanel):
                 self.tree.AppendItem(theoryNode, formulaName, 3, -1, wx.TreeItemData(declaration))
         self.tree.ExpandAllChildren(fileNode)        
         
-    def onFileSaved(self, fullname):
+    def onFileSaved(self, fullname, oldname=None):
         """remove the theories nodes from a file node"""
-        fileNode = self.getFileNode(fullname)
+        fileNode = self.getFileNode(fullname) if oldname is None else self.getFileNode(oldname)
         self.tree.DeleteChildren(fileNode)
-    
+        if oldname is not None:
+            self.tree.SetItemPyData(fileNode, wx.TreeItemData({FULLNAME: fullname, KIND: FILE}))
+            self.tree.SetItemText(fileNode, util.getFilenameFromFullPath(fullname))
+            
+                                    

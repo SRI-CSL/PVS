@@ -4,6 +4,7 @@
 import re
 import wx
 from constants import EMPTY_STRING
+from remgr import RichEditorManager
 import util
 
 log = util.getLogger(__name__)
@@ -38,18 +39,9 @@ class FindReplaceManager:
         
     def readFlags(self):
         _flags = self.data.GetFlags()
-        if _flags & 1 > 0:
-            self.goingDown = True
-        else:
-            self.goingDown = False
-        if _flags & 2 > 0:
-            self.wholeWord = True
-        else:
-            self.wholeWord = False
-        if _flags & 4 > 0:
-            self.matchCase = True
-        else:
-            self.matchCase = False
+        self.goingDown = _flags & 1 > 0
+        self.wholeWord = _flags & 2 > 0
+        self.matchCase = _flags & 4 > 0
         
     def OnFindReplaceBoxClose(self, evt):
         log.info("FindReplaceDialog closing...")
@@ -99,7 +91,6 @@ class FindReplaceManager:
             nextOne = self.findPositionOfNext(_find)
             
     def findPositionOfNext(self, _findText):
-        frame = util.getMainFrame()
         self.readFlags()
         log.info("Going Down: %s, Whole Word: %s, Match Case: %s", self.goingDown, self.wholeWord, self.matchCase)
         flags = re.UNICODE if self.matchCase else re.IGNORECASE | re.UNICODE

@@ -36,13 +36,15 @@ def auiManager():
     return wx.GetApp().GetTopWindow().auiManager
 
 class PVSException(Exception):
-    def __init__(self, *args):
-        Exception.__init__(self, *args)
+    pass
+
+#    def __init__(self, *args, **keywords):
+#        Exception.__init__(self, *args, **keywords)
 
 class PVSIDEException(Exception):
-    def __init__(self, *args):
-        Exception.__init__(self, *args)
+    def __init__(self, *args, **keywords):
+        Exception.__init__(self, *args, **keywords)
 
 class XMLRPCException(Exception):
-    def __init__(self, *args):
-        Exception.__init__(self, *args)
+    def __init__(self, *args, **keywords):
+        Exception.__init__(self, *args, **keywords)

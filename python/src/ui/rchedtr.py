@@ -71,9 +71,10 @@ class RichEditor(wx.Panel):
     
     def saveFile(self, newName=None):
         if newName is not None:
+            oldName = self.fullname
             self.fullname = newName
         log.info("Saving file %s", self.fullname)
         self.styledText.SaveFile(self.fullname)
-        pub.sendMessage(constants.PUB_FILESAVED, fullname=self.fullname)
+        pub.sendMessage(constants.PUB_FILESAVED, fullname=self.fullname, oldname=oldName)
         
     

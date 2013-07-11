@@ -21,8 +21,9 @@ class RichEditorManager:
         if not "editors" in self.__dict__:
             self.editors = {}
             pub.subscribe(self.addFile, PUB_ADDFILE)
-            pub.subscribe(self.closeAllFiles, PUB_CLOSEALLFILES)
-            pub.subscribe(self.closeFile, PUB_CLOSEFILE)
+            pub.subscribe(self.removeAllFiles, PUB_CLOSEALLFILES)
+            pub.subscribe(self.removeFile, PUB_CLOSEFILE)
+            pub.subscribe(self.onFileSaved, PUB_FILESAVED)
             #self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnPageChanging)
         
     def __setitem__(self, name, re):
@@ -42,6 +43,7 @@ class RichEditorManager:
         self.notebook.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.OnPageChanged)
         self.notebook.Bind(aui.EVT_AUINOTEBOOK_PAGE_CLOSE, self.OnPageClose)
         
+        
     def saveAllFiles(self):
         for richEditor in self.getOpenRichEditors():
             richEditor.saveFile()
@@ -52,14 +54,14 @@ class RichEditorManager:
     def getOpenFileNames(self):
         return self.editors.keys()
     
-    def closeAllFiles(self):
-        for i in range(self.notebook.GetPageCount()):
-            self.notebook.DeletePage(self.notebook.GetPage(i))
-        self.editors = {}
+    def removeAllFiles(self):
+        for fullname in self.editors.keys():
+            self.removefile(fullname)
             
-    def closeFile(self, fullname):
+    def removeFile(self, fullname):
         richEditor = self[fullname]
         log.info("Closing RichEditor for %s", fullname)
+        del self[fullname]
         frame = self._getWidgetFrame(richEditor)
         if "richEditor" in frame.__dict__:
             frame.attachRichEditorBackToNotebook = False # Close frame and the editor both
@@ -69,7 +71,6 @@ class RichEditorManager:
             for i in range(self.notebook.GetPageCount()):
                 page = self.notebook.GetPage(i)
                 if fullname == page.getFilename():
-                    del self[fullname]
                     self.notebook.DeletePage(i)
                     return
             log.warning("Did not find the file %s", fullname) 
@@ -110,7 +111,7 @@ class RichEditorManager:
         """called to close an open file"""
         if self.ensureFilesAreSavedToPoceed((fullname,)):
             pub.sendMessage(PUB_CLOSEFILE, fullname=fullname)
-            util.getMainFrame().handleNumberOfOpenFilesChanged(openFiles = RichEditorManager().getNumberOfOpenFiles())
+            pub.sendMessage(PUB_NUMBEROFOPENFILESCHANGED)
     
     def addFile(self, fullname):
         if not fullname in self.editors:
@@ -140,11 +141,9 @@ class RichEditorManager:
         focus = self._getWidgetFrame(focus)
         if "richEditor" in focus.__dict__:
             return focus.richEditor # A Floating Frame
-        if focus == util.getMainFrame():
+        elif focus == util.getMainFrame():
             return self._getSelectedPage()
         return None
-    
-            
     
     #TODO: Check the following functions and see if they are redundant or something.
     
@@ -179,6 +178,15 @@ class RichEditorManager:
             return richEditor
         log.warning("No file is open")
         return None
+    
+    def onFileSaved(self, fullname, oldname=None):
+        """called when a file is saved"""
+        if oldname is not None:
+            richEditor = self[oldname]
+            del self[oldname]
+            self[fullname] = richEditor
+            newName = util.getFilenameFromFullPath(fullname)
+            self.notebook.SetPageText(self._getPageIndex(richEditor), newName)    
     
     # The following methods are to make the page to be float-able:
     
