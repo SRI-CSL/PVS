@@ -7,9 +7,9 @@ import util
 from promptprocessor import isPrompt
 from constants import *
 try:
-    from wx.lib.pubsub import pub
+    from wx.lib.pubsub import Publisher as pub 
 except ImportError:
-    from wx.lib.pubsub import Publisher as pub    
+    from wx.lib.pubsub import pub    
 from ui.plugin import PluginPanel
 import pvscomm
 

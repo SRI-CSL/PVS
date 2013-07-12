@@ -3,9 +3,9 @@ import util
 import pvscomm
 from constants import *
 try:
-    from wx.lib.pubsub import pub
+    from wx.lib.pubsub import Publisher as pub 
 except ImportError:
-    from wx.lib.pubsub import Publisher as pub
+    from wx.lib.pubsub import pub    
 from ui.plugin import PluginPanel
 from ui.images import getFolderImage, getPVSLogo, getTheoryImage, getFormulaImage
 from preference import Preferences

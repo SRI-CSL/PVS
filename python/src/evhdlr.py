@@ -14,9 +14,9 @@ from ui.plugin import PluginManager
 import wx.stc as stc
 import constants
 try:
-    from wx.lib.pubsub import pub
+    from wx.lib.pubsub import Publisher as pub 
 except ImportError:
-    from wx.lib.pubsub import Publisher as pub    
+    from wx.lib.pubsub import pub    
 
 log = util.getLogger(__name__)
 
