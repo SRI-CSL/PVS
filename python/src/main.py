@@ -62,6 +62,12 @@ def processArguments(args):
 
 if __name__ == "__main__":
     utilDirectory = os.path.dirname(util.__file__)
+    try:
+        from wx.lib.pubsub import pub    
+    except ImportError:
+        print "Could not import the new PubSub (version 3)."
+        print "Please go to http://pubsub.sourceforge.net/ and install the latest PubSub"
+        sys.exit(1)
     constants.APPLICATION_FOLDER = os.path.abspath(os.path.join(utilDirectory, os.path.pardir))
     constants.IMAGE_FOLDER_PATH = os.path.join(constants.APPLICATION_FOLDER, constants.IMAGE_FOLDER_NAME)
     log.debug("Application Folder is %s", constants.APPLICATION_FOLDER)

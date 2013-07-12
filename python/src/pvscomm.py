@@ -24,10 +24,7 @@ import constants
 import util
 import config
 import os.path
-try:
-    from wx.lib.pubsub import Publisher as pub 
-except ImportError:
-    from wx.lib.pubsub import pub    
+from wx.lib.pubsub import pub    
 
 log = util.getLogger(__name__)
 
