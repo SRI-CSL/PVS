@@ -21,10 +21,13 @@ from preference import Preferences
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 import constants
-from wx.lib.pubsub import pub
 import util
 import config
 import os.path
+try:
+    from wx.lib.pubsub import pub
+except ImportError:
+    from wx.lib.pubsub import Publisher as pub    
 
 log = util.getLogger(__name__)
 

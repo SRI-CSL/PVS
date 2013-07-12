@@ -7,6 +7,10 @@ from evhdlr import *
 from tbmgr import ToolbarManager
 import util
 from preference import Preferences
+try:
+    from wx.lib.pubsub import pub
+except ImportError:
+    from wx.lib.pubsub import Publisher as pub
 
 log = util.getLogger(__name__)
 

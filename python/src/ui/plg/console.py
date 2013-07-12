@@ -6,7 +6,10 @@ import codecs
 import util
 from promptprocessor import isPrompt
 from constants import *
-from wx.lib.pubsub import pub
+try:
+    from wx.lib.pubsub import pub
+except ImportError:
+    from wx.lib.pubsub import Publisher as pub    
 from ui.plugin import PluginPanel
 import pvscomm
 

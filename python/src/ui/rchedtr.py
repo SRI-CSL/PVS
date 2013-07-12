@@ -3,9 +3,12 @@
 import wx
 import codecs
 import util
-from styltxt import PVSStyledText
-from wx.lib.pubsub import pub
 import constants
+from styltxt import PVSStyledText
+try:
+    from wx.lib.pubsub import pub
+except ImportError:
+    from wx.lib.pubsub import Publisher as pub
 
 log = util.getLogger(__name__)
 

@@ -12,8 +12,8 @@ log = util.getLogger(__name__)
 
 class ToolbarManager():
     """This class represents and manages the toolbar in the application"""
-    EDITTOOLBAR = "editToolbar"
-    PVSTOOLBAR = "pvsToolbar"
+    EDITTOOLBAR = "Edit Toolbar"
+    PVSTOOLBAR = "PVS Toolbar"
     
     __shared_state = {}
     

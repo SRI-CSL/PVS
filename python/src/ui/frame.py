@@ -6,7 +6,10 @@
 import wx
 import os.path
 from constants import *
-from wx.lib.pubsub import pub
+try:
+    from wx.lib.pubsub import pub
+except ImportError:
+    from wx.lib.pubsub import Publisher as pub
 from remgr import RichEditorManager
 import util
 import evhdlr

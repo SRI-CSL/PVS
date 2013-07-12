@@ -2,8 +2,11 @@ import wx
 import util
 from constants import *
 from preference import Preferences
-from wx.lib.pubsub import pub
 import wx.lib.agw.aui as aui
+try:
+    from wx.lib.pubsub import pub
+except ImportError:
+    from wx.lib.pubsub import Publisher as pub
 
 log = util.getLogger(__name__)
 

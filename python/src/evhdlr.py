@@ -10,9 +10,13 @@ from remgr import RichEditorManager
 #import ui.tbmgr
 from preference import Preferences
 from pvscomm import PVSCommunicator
-from wx.lib.pubsub import pub
 from ui.plugin import PluginManager
 import wx.stc as stc
+import constants
+try:
+    from wx.lib.pubsub import pub
+except ImportError:
+    from wx.lib.pubsub import Publisher as pub    
 
 log = util.getLogger(__name__)
 

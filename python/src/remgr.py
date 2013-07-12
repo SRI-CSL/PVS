@@ -3,12 +3,15 @@
 
 import wx
 from ui.rchedtr import RichEditor
-from wx.lib.pubsub import pub
 from constants import *
 import wx.lib.agw.aui as aui
 import os.path
 import util
 from ui.images import getPVSLogo
+try:
+    from wx.lib.pubsub import pub
+except ImportError:
+    from wx.lib.pubsub import Publisher as pub    
 
 log = util.getLogger(__name__)
 
