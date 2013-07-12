@@ -20,6 +20,7 @@ from ui.plg.ft import FilesTreePlugin
 from ui.plg.pt import ProofTreePlugin
 from ui.plg.console import ConsolePlugin
 from config import PLUGIN_DEFINITIONS
+from wx.lib.pubsub import setupkwargs, pub 
 
 log = util.getLogger(__name__)
 
@@ -61,13 +62,9 @@ def processArguments(args):
             
 
 if __name__ == "__main__":
+    log.debug("PubSub version is %s", pub.PUBSUB_VERSION)
+    assert pub.PUBSUB_VERSION == 3
     utilDirectory = os.path.dirname(util.__file__)
-    try:
-        from wx.lib.pubsub import pub    
-    except ImportError:
-        print "Could not import the new PubSub (version 3)."
-        print "Please go to http://pubsub.sourceforge.net/ and install the latest PubSub"
-        sys.exit(1)
     constants.APPLICATION_FOLDER = os.path.abspath(os.path.join(utilDirectory, os.path.pardir))
     constants.IMAGE_FOLDER_PATH = os.path.join(constants.APPLICATION_FOLDER, constants.IMAGE_FOLDER_NAME)
     log.debug("Application Folder is %s", constants.APPLICATION_FOLDER)

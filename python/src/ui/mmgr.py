@@ -7,7 +7,7 @@ from evhdlr import *
 from tbmgr import ToolbarManager
 import util
 from preference import Preferences
-from wx.lib.pubsub import pub    
+from wx.lib.pubsub import setupkwargs, pub 
 
 log = util.getLogger(__name__)
 

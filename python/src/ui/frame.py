@@ -6,7 +6,7 @@
 import wx
 import os.path
 from constants import *
-from wx.lib.pubsub import pub    
+from wx.lib.pubsub import setupkwargs, pub 
 from remgr import RichEditorManager
 import util
 import evhdlr

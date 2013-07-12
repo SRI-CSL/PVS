@@ -8,7 +8,7 @@ import wx.lib.agw.aui as aui
 import os.path
 import util
 from ui.images import getPVSLogo
-from wx.lib.pubsub import pub
+from wx.lib.pubsub import setupkwargs, pub 
 
 log = util.getLogger(__name__)
 

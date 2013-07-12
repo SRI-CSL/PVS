@@ -24,7 +24,7 @@ import constants
 import util
 import config
 import os.path
-from wx.lib.pubsub import pub    
+from wx.lib.pubsub import setupkwargs, pub 
 
 log = util.getLogger(__name__)
 

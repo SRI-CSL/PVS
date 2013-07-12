@@ -13,7 +13,7 @@ from pvscomm import PVSCommunicator
 from ui.plugin import PluginManager
 import wx.stc as stc
 import constants
-from wx.lib.pubsub import pub    
+from wx.lib.pubsub import setupkwargs, pub 
 
 log = util.getLogger(__name__)
 

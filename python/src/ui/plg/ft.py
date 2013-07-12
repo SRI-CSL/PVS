@@ -2,7 +2,7 @@ import wx
 import util
 import pvscomm
 from constants import *
-from wx.lib.pubsub import pub    
+from wx.lib.pubsub import setupkwargs, pub 
 from ui.plugin import PluginPanel
 from ui.images import getFolderImage, getPVSLogo, getTheoryImage, getFormulaImage
 from preference import Preferences

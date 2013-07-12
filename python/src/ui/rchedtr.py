@@ -5,7 +5,7 @@ import codecs
 import util
 import constants
 from styltxt import PVSStyledText
-from wx.lib.pubsub import pub    
+from wx.lib.pubsub import setupkwargs, pub 
 
 log = util.getLogger(__name__)
 
