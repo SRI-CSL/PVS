@@ -55,8 +55,11 @@
 ;	    (setf (gethash obj *translate-to-prove-hash*) result))
 ;	  result))))
 
+;;NSH(7/8/13): added  caching when obj has no free variables so that
+;;expressions in bound context can have their translation reused if they
+;;have no free variables. 
 (defmethod translate-to-prove :around ((obj name-expr))
-  (if (or *bound-variables* *bindings*)
+  (if (and (free-variables obj)(or *bound-variables* *bindings*))
       (call-next-method)
       (let ((hashed-value (gethash obj *translate-to-prove-hash*)))
 	(or hashed-value
@@ -66,7 +69,7 @@
 	      result)))))
 
 (defmethod translate-to-prove :around ((obj binding-expr))
-  (if (or *bound-variables* *bindings*)
+  (if (and (free-variables obj)(or *bound-variables* *bindings*))
       (call-next-method)
       (let ((hashed-value
 	     (gethash obj *translate-to-prove-hash*)))
@@ -159,9 +162,9 @@
 					;(add-to-typealist (car newconst) expr)
 		      )
 		    (cond (expr-bindings
-			   (let ((tr-vars (translate-to-prove expr-bindings))
-				 (prtype (prover-type (or (type expr) (car (ptypes expr)))))
-				 (apname (make-apply-symbol (length tr-vars) prtype)))
+			   (let* ((tr-vars (translate-to-prove expr-bindings))
+				  (prtype (prover-type (or (type expr) (car (ptypes expr)))))
+				  (apname (make-apply-symbol (length tr-vars) prtype)))
 			     (cons apname (cons newconst tr-vars))))
 			  (t (add-to-typealist (car newconst) expr)
 			     newconst))))))
