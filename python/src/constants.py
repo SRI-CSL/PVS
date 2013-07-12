@@ -59,7 +59,7 @@ PVS_MODE_PROVER = "prover"
 PVS_MODE_UNKNOWN = "unknown"
 
 # PUBSUB Messages:
-PUB_UPDATETOOLBAR = "toolbar.Update"
+PUB_UPDATETOOLBAR = "toolbar.Update" #TODO: This is not used anywhere
 PUB_UPDATEMENUBAR = "menubar.Update"
 PUB_SHOWPLUGIN = "menubar.showPlugin"
 PUB_SHOWTOOLBAR = "toolbar.showToolbar"

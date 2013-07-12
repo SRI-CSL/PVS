@@ -176,7 +176,8 @@ class MainFrameMenu(wx.MenuBar):
             else:
                 log.error("pvsMode %s is not recognized", pvsMode)
                 
-    def showPlugin(self, name, value=True):
+    def showPlugin(self, message):
+        name, value = message
         log.info("Menu.showPlugin was called for %s and %s", name, value)
         if name in self.plugins:
             item = self.plugins[name]
