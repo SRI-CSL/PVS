@@ -6,16 +6,10 @@
 /pvsio
 /TAGS
 autom4te.cache
-bin/ix86_64-Linux
-bin/ix86-MacOSX
-emacs/emacs-src/pvs-prelude-files-and-regions.el
-doc/user-guide/Makefile
-doc/prover/Makefile
-doc/language/pvs-doc.el
-doc/language/Makefile
-doc/api/Makefile
-doc/release-notes/pvs-release-notes.pdf
-doc/interpretations/interpretations.pdf
+bin/*
+emacs/*
+doc/*
+Examples/*
 
 emacs/emacs23
 emacs/emacs24
@@ -32,6 +26,7 @@ src/utils/ix86-MacOSX/b64
 orphaned-proofs.prf
 pvsbin
 
+*.pvs
 *.tgz
 *.log
 *.status
@@ -66,3 +61,11 @@ doc/release-notes/*.info
 orphaned-proofs.prf
 pvsbin
 *.err
+
+python/.DS_Store
+
+python/src/.DS_Store
+
+python/.settings/org.eclipse.core.resources.prefs
+
+.project
