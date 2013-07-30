@@ -2,8 +2,8 @@ import wx
 import util
 from constants import *
 from preference import Preferences
-from wx.lib.pubsub import pub
 import wx.lib.agw.aui as aui
+from wx.lib.pubsub import setupkwargs, pub 
 
 log = util.getLogger(__name__)
 

@@ -35,22 +35,16 @@ def getMainFrame():
 def auiManager():
     return wx.GetApp().GetTopWindow().auiManager
 
-def getOpenFilesNames():
-    frame = getMainFrame()
-    openFiles = []
-    for i in range(frame.notebook.GetPageCount()):
-        richEditor = frame.notebook.GetPage(i)
-        openFiles.append(richEditor.getFilename())
-    return openFiles
-
 class PVSException(Exception):
-    def __init__(self, *args):
-        Exception.__init__(self, *args)
+    pass
+
+#    def __init__(self, *args, **keywords):
+#        Exception.__init__(self, *args, **keywords)
 
 class PVSIDEException(Exception):
-    def __init__(self, *args):
-        Exception.__init__(self, *args)
+    def __init__(self, *args, **keywords):
+        Exception.__init__(self, *args, **keywords)
 
 class XMLRPCException(Exception):
-    def __init__(self, *args):
-        Exception.__init__(self, *args)
+    def __init__(self, *args, **keywords):
+        Exception.__init__(self, *args, **keywords)

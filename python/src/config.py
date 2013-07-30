@@ -11,7 +11,7 @@ PVSURL = "http://localhost:22334"
 EDITORHOST = "localhost"
 EDITORPORT = 22335
 
-EDITOR_SIZE = (1100, 800)
+EDITOR_SIZE = (900, 600)
 EDITOR_MINIMUM_SIZE = (500, 300)
 
 # Plugin Definitions:

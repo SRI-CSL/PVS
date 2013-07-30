@@ -4,6 +4,7 @@
 import re
 import wx
 from constants import EMPTY_STRING
+from remgr import RichEditorManager
 import util
 
 log = util.getLogger(__name__)
@@ -38,18 +39,9 @@ class FindReplaceManager:
         
     def readFlags(self):
         _flags = self.data.GetFlags()
-        if _flags & 1 > 0:
-            self.goingDown = True
-        else:
-            self.goingDown = False
-        if _flags & 2 > 0:
-            self.wholeWord = True
-        else:
-            self.wholeWord = False
-        if _flags & 4 > 0:
-            self.matchCase = True
-        else:
-            self.matchCase = False
+        self.goingDown = _flags & 1 > 0
+        self.wholeWord = _flags & 2 > 0
+        self.matchCase = _flags & 4 > 0
         
     def OnFindReplaceBoxClose(self, evt):
         log.info("FindReplaceDialog closing...")
@@ -66,7 +58,7 @@ class FindReplaceManager:
         frame = util.getMainFrame()
         _find = self.data.GetFindString()
         log.info("Find Next %s", _find)
-        page = frame.notebook.getActiveRichEditor()
+        page = RichEditorManager().getFocusedRichEditor()
         nextOne = self.findPositionOfNext(_find)
         if nextOne is not None:
             page.styledText.SetSelection(nextOne, nextOne + len(_find))
@@ -78,7 +70,7 @@ class FindReplaceManager:
         _find = self.data.GetFindString()
         _replace = self.data.GetReplaceString()
         log.info("Replace Next %s", _find)
-        page = frame.notebook.getActiveRichEditor()
+        page = RichEditorManager().getFocusedRichEditor()
         nextOne = self.findPositionOfNext(_find)
         if nextOne is not None:
             page.styledText.SetSelection(nextOne, nextOne + len(_find))
@@ -91,7 +83,7 @@ class FindReplaceManager:
         _find = self.data.GetFindString()
         _replace = self.data.GetReplaceString()
         log.info("Replace All %s", _find)
-        page = frame.notebook.getActiveRichEditor()
+        page = RichEditorManager().getFocusedRichEditor()
         nextOne = self.findPositionOfNext(_find)
         while nextOne is not None:
             page.styledText.SetSelection(nextOne, nextOne + len(_find))
@@ -99,11 +91,10 @@ class FindReplaceManager:
             nextOne = self.findPositionOfNext(_find)
             
     def findPositionOfNext(self, _findText):
-        frame = util.getMainFrame()
         self.readFlags()
         log.info("Going Down: %s, Whole Word: %s, Match Case: %s", self.goingDown, self.wholeWord, self.matchCase)
         flags = re.UNICODE if self.matchCase else re.IGNORECASE | re.UNICODE
-        page = frame.notebook.getActiveRichEditor()
+        page = RichEditorManager().getFocusedRichEditor()
         selection = page.styledText.GetSelection()
         log.info("Selection Position: %s", selection)
         cursor = page.styledText.GetCurrentPos()

@@ -2,7 +2,7 @@ import wx
 import util
 import pvscomm
 from constants import *
-from wx.lib.pubsub import pub
+from wx.lib.pubsub import setupkwargs, pub 
 from ui.plugin import PluginPanel
 from ui.images import getFolderImage, getPVSLogo, getTheoryImage, getFormulaImage
 from preference import Preferences
@@ -32,7 +32,7 @@ class FilesTreePlugin(PluginPanel):
         pub.subscribe(self.addFile, PUB_ADDFILE)
         pub.subscribe(self.clear, PUB_CLOSEALLFILES)
         pub.subscribe(self.removeFile, PUB_CLOSEFILE)
-        pub.subscribe(self.removeTheoriesFromFileTree, PUB_REMOVETHEORIESFROMFILETREE)
+        pub.subscribe(self.onFileSaved, PUB_FILESAVED)
         pub.subscribe(self.addTheoriesToFileTree, PUB_FILETYPECHECKED)
         
     def clear(self):
@@ -42,8 +42,8 @@ class FilesTreePlugin(PluginPanel):
     def addFile(self, fullname):
         """add a file to the tree"""
         log.info("Adding file %s", fullname)
+        root = self.tree.GetRootItem()
         if self.getFileNode(fullname) is None:
-            root = self.tree.GetRootItem()
             self.tree.AppendItem(root, util.getFilenameFromFullPath(fullname), 1, -1, wx.TreeItemData({FULLNAME: fullname, KIND: FILE}))
         self.tree.Expand(root)
         
@@ -74,7 +74,7 @@ class FilesTreePlugin(PluginPanel):
         kind = data[KIND]
         menu = wx.Menu()
         status = pvscomm.PVSCommandManager().pvsMode
-        items = self.getContextMenuItems(status, kind) # each item should be a pair of a label and a callback funtion.
+        items = self.getContextMenuItems(status, kind) # each item should be a pair of a label and a callback function.
         for label, callback in items:
             ID = wx.ID_ANY
             menu.Append(ID, label, EMPTY_STRING, wx.ITEM_NORMAL)
@@ -127,7 +127,7 @@ class FilesTreePlugin(PluginPanel):
     def onCloseFile(self, event):
         """onCloseFile is called when the user selects Close in the context menu"""
         nodeFullname = self.getSelectedNodeData()[FULLNAME]
-        util.getMainFrame().handleCloseFileRequest(fullname=nodeFullname)
+        RichEditorManager().handleCloseFileRequest(nodeFullname)
         
     def onTypecheckFile(self, event):
         """onTypecheckFile is called when the user selects Typecheck in the context menu"""
@@ -156,8 +156,12 @@ class FilesTreePlugin(PluginPanel):
                 self.tree.AppendItem(theoryNode, formulaName, 3, -1, wx.TreeItemData(declaration))
         self.tree.ExpandAllChildren(fileNode)        
         
-    def removeTheoriesFromFileTree(self, fullname):
+    def onFileSaved(self, fullname, oldname=None):
         """remove the theories nodes from a file node"""
-        fileNode = self.getFileNode(fullname)
+        fileNode = self.getFileNode(fullname) if oldname is None else self.getFileNode(oldname)
         self.tree.DeleteChildren(fileNode)
-    
+        if oldname is not None:
+            self.tree.SetItemPyData(fileNode, wx.TreeItemData({FULLNAME: fullname, KIND: FILE}))
+            self.tree.SetItemText(fileNode, util.getFilenameFromFullPath(fullname))
+            
+                                    

@@ -20,6 +20,7 @@ from ui.plg.ft import FilesTreePlugin
 from ui.plg.pt import ProofTreePlugin
 from ui.plg.console import ConsolePlugin
 from config import PLUGIN_DEFINITIONS
+from wx.lib.pubsub import setupkwargs, pub 
 
 log = util.getLogger(__name__)
 
@@ -30,8 +31,8 @@ class PVSEditorApp(wx.App):
         #wx.InitAllImageHandlers()
         
         # Splash Screen:
-        #splash = wx.SplashScreen(getIDELogo(), wx.SPLASH_CENTRE_ON_SCREEN|wx.SPLASH_TIMEOUT, 2000, None, style=wx.SIMPLE_BORDER|wx.STAY_ON_TOP)
-        #time.sleep(2)
+        #splash = wx.SplashScreen(getIDELogo(), wx.SPLASH_CENTRE_ON_SCREEN|wx.SPLASH_TIMEOUT, 1000, None, style=wx.SIMPLE_BORDER|wx.STAY_ON_TOP)
+        #time.sleep(1)
         
         #Initiate Main Frame:
         mainFrame = MainFrame(None, wx.ID_ANY, "")
@@ -40,6 +41,9 @@ class PVSEditorApp(wx.App):
         log.info("Main Frame initialized...") 
         pm = PluginManager()
         pm.initializePlugins(PLUGIN_DEFINITIONS)
+        operatingSystem = platform.system()
+        if operatingSystem == "Windows":
+            mainFrame.showDialogBox("PVS does not run on Windows", constants.WARNING)
         mainFrame.loadContext()
         return 1
 
@@ -58,17 +62,14 @@ def processArguments(args):
             
 
 if __name__ == "__main__":
+    log.debug("PubSub version is %s", pub.PUBSUB_VERSION)
+    assert pub.PUBSUB_VERSION == 3
     utilDirectory = os.path.dirname(util.__file__)
     constants.APPLICATION_FOLDER = os.path.abspath(os.path.join(utilDirectory, os.path.pardir))
     constants.IMAGE_FOLDER_PATH = os.path.join(constants.APPLICATION_FOLDER, constants.IMAGE_FOLDER_NAME)
     log.debug("Application Folder is %s", constants.APPLICATION_FOLDER)
     processArguments(list(sys.argv))
 
-    system = platform.system()
-    if system == "Windows":
-        print "This application is not designed for Windows"
-        sys.exit()
-    
     application = PVSEditorApp(0)
     log.info("Entering MainLoop...") 
     application.MainLoop()

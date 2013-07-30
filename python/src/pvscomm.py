@@ -17,13 +17,14 @@ import httplib
 import exceptions
 import xmlrpclib
 import threading
+from preference import Preferences
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 import constants
-from wx.lib.pubsub import pub
 import util
 import config
 import os.path
+from wx.lib.pubsub import setupkwargs, pub 
 
 log = util.getLogger(__name__)
 
@@ -225,7 +226,7 @@ class PVSCommandManager:
         elif isinstance(err, exceptions.ValueError):
             errMessage =  err.message
             title = "JSON Parse Error"
-        elif isinstance(err, PVSException):
+        elif isinstance(err, util.PVSException):
             errMessage = err.message
         elif isinstance(err, Exception):
             errMessage = err.message
@@ -233,9 +234,7 @@ class PVSCommandManager:
             errMessage = str(err)
         log.error("Error: %s", errMessage)
         util.getMainFrame().showError(errMessage, title)
-            
-            
-    
+
     def _sendCommand(self, method, *params):
         try:
             jsonResult = self.pvsComm.requestPVS(method, *params)
@@ -246,15 +245,19 @@ class PVSCommandManager:
                 code = int(errorObject[PVSCommunicator.CODE])
                 message = errorObject[PVSCommunicator.MESSAGE]
                 data = errorObject[PVSCommunicator.DATA] if PVSCommunicator.DATA in errorObject else None
-                raise PVSException(message=message, code=code, data=data)
+                raise util.PVSException(message=message, code=code, data=data)
             result = jsonResult[PVSCommunicator.JSONRPCRESULT]
-            result = json.loads(result)[PVSCommunicator.RESULT]
+            result = json.loads(result) #TODO: Ask Sam to make sure the JOSN parsing should be done once and not twice.
+            if PVSCommunicator.ERROR in result:
+                raise util.PVSException(result[PVSCommunicator.ERROR])
+            result = result[PVSCommunicator.RESULT]
             if pvsMode != self.pvsMode:
                 self.pvsMode = pvsMode
                 pub.sendMessage(constants.PUB_UPDATEPVSMODE, pvsMode = pvsMode)   
             if context != self.pvsContext:
                 self.pvsContext = context
-                pub.sendMessage(constants.PUB_UPDATEPVSCONTEXT, context = context)
+                Preferences().setRecentContext(context)
+                pub.sendMessage(constants.PUB_UPDATEPVSCONTEXT)
             return result
         except Exception as err:
             self._processError(err)

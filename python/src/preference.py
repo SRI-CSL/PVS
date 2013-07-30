@@ -3,6 +3,7 @@ import util
 import os.path, os
 import constants
 import sets
+from remgr import RichEditorManager
 
 log = util.getLogger(__name__)
 
@@ -12,12 +13,12 @@ class Preferences:
     
     GLOBALPREFERENCEFILE = ".pvseditorglobal"
     CONTEXTPREFERENCEFILE = ".pvseditor"
-    CONTEXT = "Context"
-    RESTORECONTEXT = "RestoreContext"
+    RECENTCONTEXTS = "RecentContexts"
     PVSLOCATION = "PVSLocation"
     VISIBLEPLUGINS = "VisiblePlusings"
     IGNORE_GLOBALPREFERENCEFILE  = False # if True, load the default global preference
     IGNORE_CONTEXTPREFERENCEFILE = False # if True, load the default context preference
+    NUMBEROFRECENTCONTEXTS = 10
     
     def __init__(self):
         self.__dict__ = self.__shared_state
@@ -31,10 +32,9 @@ class Preferences:
         #self.loadContextPreferences()
 
     def loadDefaultGlobalPreferences(self):
-        self.setContext(util.getHomeDirectory())
+        self.setRecentContext(util.getHomeDirectory())
         self.setPVSLocation(os.path.join(util.getHomeDirectory(), constants.PVS_L))
         self.contextPreferences[constants.OPENFILES] = []
-        self.setContextPreferencesRestoredAutomatically(True)
         self.globalPreferences[Preferences.VISIBLEPLUGINS] = sets.Set([constants.FILESTREE, constants.PROOFTREE, constants.CONSOLEPLUGIN])
         self.setVisibleToolbar(True)
 
@@ -58,7 +58,7 @@ class Preferences:
     
     def getContextPreferenceFilename(self):
         """return the full path to the context preference file"""
-        f = os.path.join(self.getContext(), Preferences.CONTEXTPREFERENCEFILE)
+        f = os.path.join(self.getRecentContexts()[0], Preferences.CONTEXTPREFERENCEFILE)
         return f
     
     def loadGlobalPreferences(self):
@@ -107,8 +107,8 @@ class Preferences:
 
     def saveContextPreferences(self):
         filename = self.getContextPreferenceFilename()
-        output = open(filename, 'wt')
-        self.contextPreferences[constants.OPENFILES] = util.getOpenFilesNames()
+        output = open(filename, 'wt+')
+        self.contextPreferences[constants.OPENFILES] = RichEditorManager().getOpenFileNames()
         pickle.dump(self.contextPreferences, output)
         log.info("Saved context preferences: %s", self.contextPreferences)
         output.close()
@@ -122,20 +122,19 @@ class Preferences:
     def setPVSLocation(self, location):
         self.globalPreferences[Preferences.PVSLOCATION] = util.normalizePath(location)
     
-    def getContextPreferencesRestoredAutomatically(self):
-        """return true only if the context preference is to be loaded automatically"""
-        return self.getValue(Preferences.RESTORECONTEXT, False)
-    
-    def setContextPreferencesRestoredAutomatically(self, value):
-        self.globalPreferences[Preferences.RESTORECONTEXT] = value
-    
-    def getContext(self):
+    def getRecentContexts(self):
         """return the last active context"""
-        return self.getValue(Preferences.CONTEXT, util.getHomeDirectory())
+        return self.getValue(Preferences.RECENTCONTEXTS, [util.getHomeDirectory()])
     
-    def setContext(self, context):
+    def setRecentContext(self, context):
         newContext = util.normalizePath(context)
-        self.globalPreferences[Preferences.CONTEXT] = newContext
+        recent = self.getRecentContexts()
+        if context in recent:
+            recent.remove(context)
+        recent.insert(0, context)
+        if len(recent) > Preferences.NUMBEROFRECENTCONTEXTS:
+            recent.pop()
+        self.globalPreferences[Preferences.RECENTCONTEXTS] = recent
         self.loadContextPreferences()
     
     def shouldPluginBeVisible(self, toolname):

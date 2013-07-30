@@ -6,8 +6,8 @@
 import wx
 import os.path
 from constants import *
-from wx.lib.pubsub import pub
-from nbmgr import NotebookManager
+from wx.lib.pubsub import setupkwargs, pub 
+from remgr import RichEditorManager
 import util
 import evhdlr
 from mmgr import MainFrameMenu
@@ -15,6 +15,7 @@ from tbmgr import ToolbarManager
 from preference import Preferences
 import wx.lib.agw.aui as aui
 from config import *
+import wx.stc as stc
 
 log = util.getLogger(__name__)
 
@@ -36,42 +37,47 @@ class MainFrame(wx.Frame):
         self.statusbar = self.CreateStatusBar(2)
         self.statusbar.SetStatusWidths([-1, -1])
         
+        # Tool Bar
+        tm = ToolbarManager()
+        editToolbar = tm.initializeEditToolbar()
+        self.auiManager.AddPane(editToolbar, aui.AuiPaneInfo().ToolbarPane().Top().Name(ToolbarManager.EDITTOOLBAR).RightDockable(False).LeftDockable(False).BottomDockable(False))
+        editToolbar.Realize()
+        pvsToolbar = tm.initializePVSToolbar()
+        self.auiManager.AddPane(pvsToolbar, aui.AuiPaneInfo().ToolbarPane().Top().Name(ToolbarManager.PVSTOOLBAR).RightDockable(False).LeftDockable(False).BottomDockable(False))
+        pvsToolbar.Realize()
+        # Tool Bar end
+
         # Menu Bar
         self.menubar = MainFrameMenu()
         self.SetMenuBar(self.menubar)
         # Menu Bar end
         
-        # Tool Bar
-        self.toolbar = ToolbarManager(self, wx.ID_ANY)
-        self.SetToolBar(self.toolbar)
-        self.toolbar.Realize()
-        # Tool Bar end
-
         self.mainPanel = wx.Panel(self, wx.ID_ANY)
         
-        self.notebook = NotebookManager(self)
+        notebook = aui.AuiNotebook(self)
+        notebook.SetArtProvider(aui.ChromeTabArt())        
+        RichEditorManager().setNotebook(notebook)
 
         self.__do_layout()
         self.SetTitle(MAINFRAME)
         pub.sendMessage(PUB_CONSOLEINITIALIZE)
         pub.subscribe(self.handlePVSModeUpdated, PUB_UPDATEPVSMODE)
         pub.subscribe(self.handlePVSContextUpdated, PUB_UPDATEPVSCONTEXT)
+        pub.subscribe(self.handleNumberOfOpenFilesChanged, PUB_NUMBEROFOPENFILESCHANGED)
         pub.subscribe(self.setStatusbarText, PUB_UPDATESTATUSBAR)
-        self.handleNumberOfOpenFilesChanged(openFiles = 0)
-        
         #self.Connect(-1, -1, util.EVT_RESULT_ID, self.onPVSResult)
 
     def __do_layout(self):
         self.SetSize(EDITOR_SIZE)
         self.SetMinSize(EDITOR_MINIMUM_SIZE) # Setting the minimum size of the main frame
-        self.auiManager.AddPane(self.notebook, aui.AuiPaneInfo().CenterPane())
+        self.auiManager.AddPane(RichEditorManager().notebook, aui.AuiPaneInfo().CenterPane())
         self.auiManager.Update()
         #self.Layout()
         self.Centre()
                               
     def OnClose(self, event):
         """called when self.Close() is called"""
-        if self.ensureFilesAreSavedToPoceed():
+        if RichEditorManager().ensureFilesAreSavedToPoceed():
             preferences = Preferences()
             preferences.saveContextPreferences()
             preferences.saveGlobalPreferences()
@@ -81,9 +87,14 @@ class MainFrame(wx.Frame):
     def OnPanelClose(self, event):
         """called after the panel is added to the frame"""
         paneInfo = event.GetPane()
-        name = paneInfo.caption
-        log.info("Pane %s was closed", name)
-        pub.sendMessage(PUB_SHOWPLUGIN, name=name, value=False)
+        name = paneInfo.name
+        tm = ToolbarManager()
+        if name in tm.toolbars:
+            log.info("Toolbar %s was closed", name)
+            pub.sendMessage(PUB_SHOWTOOLBAR, name=name, value=False)
+        else:
+            log.info("Pane %s was closed", name)
+            pub.sendMessage(PUB_SHOWPLUGIN, name=name, value=False)
 
 
     def loadContext(self):
@@ -92,7 +103,7 @@ class MainFrame(wx.Frame):
         preferences.loadContextPreferences()
         fullnames = preferences.listOfOpenFiles()
         self.openFiles(fullnames)
-        self.handleNumberOfOpenFilesChanged(openFiles = len(fullnames))
+        self.handleNumberOfOpenFilesChanged()
         
     def setStatusbarText(self, text, location=0):
         log.info("Setting status bar[%d] to: %s"%(location, text))
@@ -111,56 +122,20 @@ class MainFrame(wx.Frame):
             else:
                 log.warning("File %s no longer exists", fullname)
         
-    def ensureFilesAreSavedToPoceed(self):
-        """Ensure that all files are saved before closing them all"""
-        filesAreSaved = True
-        for i in range(self.notebook.GetPageCount()):
-            richEditor = self.notebook.GetPage(i)
-            if richEditor.styledText.GetModify():
-                filesAreSaved = False
-                break    
-        safeToProceed = True
-        if not filesAreSaved:
-            choice = self.askYesNoCancelQuestion("Some files have been modified. Save changes?")
-            if choice == wx.ID_YES:
-                self.saveAllFiles()
-            elif choice == wx.ID_CANCEL:
-                safeToProceed = False
-        return safeToProceed
-
     def handlePVSModeUpdated(self, pvsMode = PVS_MODE_OFF):
         self.updateMenuAndToolbar({PVSMODE: pvsMode})
         self.setStatusbarText("PVS Mode: " + pvsMode)
 
-    def handlePVSContextUpdated(self, context):
-        self.setStatusbarText("PVS Context: " + context, 1)
+    def handlePVSContextUpdated(self):
+        self.setStatusbarText("PVS Context: " + Preferences().getRecentContexts()[0], 1)
 
-    def handleNumberOfOpenFilesChanged(self, openFiles = 0):
-        self.updateMenuAndToolbar({OPENFILES: openFiles})
+    def handleNumberOfOpenFilesChanged(self):
+        self.updateMenuAndToolbar({OPENFILES: RichEditorManager().getNumberOfOpenFiles()})
         
     def updateMenuAndToolbar(self, params):
         """Enable/Disable menu options based on the situation"""
         pub.sendMessage(PUB_UPDATEMENUBAR, parameters=params)
         pub.sendMessage(PUB_UPDATETOOLBAR, parameters=params)
-
-    def handleCloseFileRequest(self, fullname=None, richEditor=None):
-        """called by the main frame or filesTree to close an open file"""
-        if richEditor is None:
-            richEditor = self.notebook.getRichEditorForFile(fullname)
-        elif fullname is None:
-            fullname = richEditor.fullname
-        else:
-            raise util.PVSIDEException("Both richEditor and fullname are None")
-        canClose = True
-        if richEditor.styledText.GetModify():
-            choice = self.askYesNoCancelQuestion("This file has been modified. Save changes?")
-            if choice == wx.ID_YES:
-                pub.sendMessage(PUB_SAVEFILE, fullname=fullname)
-            elif choice == wx.ID_CANCEL:
-                canClose = False
-        if canClose:
-            pub.sendMessage(PUB_CLOSEFILE, fullname=fullname)
-            self.handleNumberOfOpenFilesChanged(openFiles = self.notebook.getNumberOfOpenFiles())
 
     def handleUndoRequest(self):
         """handle the Undo request and return true if succeeded."""
