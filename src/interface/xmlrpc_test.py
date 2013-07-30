@@ -55,12 +55,16 @@ class PVS_XMLRPC(object):
                              'info': self.pvs_info,
                              'warning': self.pvs_warning}
 
-    def pvs_request(self, method, params):
+    def pvs_request(self, method, params=None):
         """ Send a request to PVS """
-        reqid = 'gui_{0}'.format(self.ctr)
+        reqid = 'testgui_{0}'.format(self.ctr)
         self.ctr += 1
-        request = {'method': method, 'params': params, 'id': reqid}
-        return self.pvs_proxy.pvs.request(json.dumps(request), self.gui_url)
+        if params is None:
+            request = {'method': method, 'id': reqid}
+        else:
+            request = {'method': method, 'params': params, 'id': reqid}
+        result = json_loads(self.pvs_proxy.pvs.request(json.dumps(request), self.gui_url))
+        return json.loads(result)
 
     def request(self, json_string):
         """
