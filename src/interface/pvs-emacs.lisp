@@ -34,7 +34,8 @@
 	  pvs-display pvs-abort pvs-yn pvs-query pvs-emacs-eval
 	  output-proofstate pvs2json protect-emacs-output parse-error
 	  type-error set-pvs-tmp-file place place-list type-ambiguity
-	  type-incompatible pvs-locate write-to-temp-file))
+	  type-incompatible pvs-locate write-to-temp-file
+	  *proofstate-info* make-psinfo psinfo-psjson))
 
 (defvar *pvs-message-hooks* nil)
 (defvar *pvs-warning-hooks* nil)
@@ -408,13 +409,8 @@
 	       (restore)
 	       (pvs-abort))))
 	((null *pvs-emacs-interface*)
-	 (if *pvs-json-interface*
-	     (format t "~%{~%\"id\": ~a, \"error\": \"~a\">~%\"~a\"~%}~%"
-	       *pvs-json-id* (protect-emacs-output msg)
-	       (protect-emacs-output err))
-	     ;; Otherwise it's XML
-	     (format t "~%<pvserror msg=\"~a\">~%\"~a\"~%</pvserror>"
-	       (protect-emacs-output msg) (protect-emacs-output err)))
+	 (format t "~%<pvserror msg=\"~a\">~%\"~a\"~%</pvserror>"
+	   (protect-emacs-output msg) (protect-emacs-output err))
 	 (pvs-abort))
 	(t
 	 (format t "~%~%~a~%~a" msg err)
@@ -527,27 +523,41 @@
 	(format t "~%Not a valid choice - try again~%choice? ")
 	(read-choice query))))
 
-(defvar *testing-emacs-gui* nil)
+(defvar *proofstate-info* nil
+  "Used to communicate proof results to XML-RPC clients")
+
+(defstruct psinfo
+  psjson
+  lock
+  gate
+  process)
+
+(defun add-psinfo (psi ps)
+  (mp:with-process-lock ((psinfo-lock psi))
+    (setf (psinfo-psjson psi)
+	  (pvs2json ps))
+    (mp:open-gate (psinfo-gate psi)))
+  ps)
 
 (defmethod output-proofstate :around ((ps proofstate))
-  (if (not *testing-emacs-gui*)
-      (call-next-method)
-      (with-slots (label comment current-goal) ps
-	(when *pvs-emacs-interface*
-	  (let* ((pps (parent-proofstate ps))
-		 (*ps* ps)
-		 (*print-ancestor* (if *print-ancestor*
-				       *print-ancestor*
-				       (parent-proofstate *ps*)))
-		 (*pp-print-parens* *show-parens-in-proof*)
-		 (*sb-print-depth* *prover-print-depth*)
-		 (*sb-print-length* *prover-print-length*)
-		 (*output-to-emacs*
-		  ;; action & result & label & sequent
-		  (format nil "~%:pvs-proofstate ~a :end-pvs-proofstate"
-		    (emacs-proofstate-file ps))))
-	    (to-emacs)))
-	(call-next-method))))
+  (with-slots (label comment current-goal) ps
+    (when nil ;*pvs-emacs-interface*
+      (let* ((*ps* ps)
+	     (*print-ancestor* (if *print-ancestor*
+				   *print-ancestor*
+				   (parent-proofstate *ps*)))
+	     (*pp-print-parens* *show-parens-in-proof*)
+	     (*sb-print-depth* *prover-print-depth*)
+	     (*sb-print-length* *prover-print-length*)
+	     (*output-to-emacs*
+	      ;; action & result & label & sequent
+	      (format nil "~%:pvs-proofstate ~a :end-pvs-proofstate"
+		(emacs-proofstate-file ps))))
+	(to-emacs)))
+    (format t "~%output-proofstate called: ~a~%" *proofstate-info*)
+    (when *proofstate-info*
+      (add-psinfo *proofstate-info* ps))
+    (call-next-method)))
 
 (defun emacs-proofstate-file (ps)
   (write-to-temp-file
@@ -567,41 +577,43 @@
 				 (format-printout pps t))))
 	  (result (proofstate-result ps))
 	  (sequent (pvs2json current-goal)))
-      (break)
-      (json:with-object ()
-	(json:encode-object-member "action" action)
-	(json:encode-object-member "result" result)
-	(json:encode-object-member "label" label)
-	(when comment
-	  (json:encode-object-member "comment" comment))
-	(json:encode-object-member "sequent"
-	  (pvs2json current-goal))))))
+      `(("action" . ,action)
+	("result" . ,result)
+	("label" . ,label)
+	,@(when comment `(("comment" . ,comment)))
+	("sequent" . ,sequent)))))
 
 (defmethod pvs2json ((seq sequent))
-  (with-slots (n-sforms p-sforms hidden-s-forms info) seq
-    (json:with-object ()
-      ;(json:encode-object-member "antecedents"
-;	(pvs2json-sforms n-sforms t))
-      (json:encode-object-member "succedents"
-	(pvs2json-sforms p-sforms nil))
- ;     (json:encode-object-member "hidden-antecedents"
-;	(pvs2json-sforms (neg-s-forms* hidden-s-forms) t))
- ;     (json:encode-object-member "hidden-succedents"
-;	(pvs2json-sforms (pos-s-forms* hidden-s-forms) nil))
-      ;(json:encode-object-member "info" info)
-      )))
+  (let* ((par-sforms (when *print-ancestor*
+		       (s-forms (current-goal *print-ancestor*))))
+	 (hidden-s-forms (hidden-s-forms seq))
+	 (hn-sforms (neg-s-forms* hidden-s-forms))
+	 (hp-sforms (pos-s-forms* hidden-s-forms)))
+    `(,@(when (neg-s-forms seq)
+	      `(("antecedents" . ,(pvs2json-sforms (neg-s-forms seq)
+						   t par-sforms))))
+	,@(when (pos-s-forms seq)
+		`(("succedents" . ,(pvs2json-sforms (pos-s-forms seq)
+						    nil par-sforms))))
+	,@(when hn-sforms
+		`(("hidden-antecedents" . ,(pvs2json-sforms hn-sforms
+							    t par-sforms))))
+	,@(when hp-sforms
+		`(("hidden-succedents" . ,(pvs2json-sforms hp-sforms
+							   nil par-sforms))))
+	,@(when (info seq)
+		`(("info" . ,(info seq)))))))
 
-(defun pvs2json-sforms (sforms neg?)
-  (json:with-array ()
-    (let ((c 0))
-      (mapc #'(lambda (sf)
-		  (let* ((fnum (if neg? (- (incf c)) (incf c))))
-		    (pvs2json-sform sf fnum)))
-	    sforms))))
+(defun pvs2json-sforms (sforms neg? par-sforms)
+  (let ((c 0))
+    (mapcar #'(lambda (sf)
+		(let* ((fnum (if neg? (- (incf c)) (incf c))))
+		  (pvs2json-sform sf fnum par-sforms)))
+      sforms)))
 
 ;; Note that this has the side effect of setting the view of the sform,
 ;; Which is a cons of the string and its view (computed lazily).
-(defun pvs2json-sform (sform fnum)
+(defun pvs2json-sform (sform fnum par-sforms)
   (let* ((nf (formula sform))
 	 (frm (if (negation? nf) (args1 nf) nf))
 	 (frmstr (if (view sform)
@@ -609,10 +621,9 @@
 		     (pp-string frm 6))))
     (unless (view sform)
       (setf (view sform) (list frmstr)))
-    (json:with-object ()
-      (json:encode-object-member "label"
-	(cons fnum (label sform)))
-      (json:encode-object-member "formula" frmstr))))
+    `(("label" . ,(cons fnum (label sform)))
+      ("changed" . ,(not (memq sform par-sforms)))
+      ("formula" . ,frmstr))))
 
 (defun proofstate-result (ps)
   (let ((pps (parent-proofstate ps)))
@@ -751,19 +762,11 @@
 	 (format t "~%Restoring the state.")
 	 (restore))
 	((null *pvs-emacs-interface*)
-	 (if *pvs-json-interface*
-	     (format t "~%{~%\"id\": ~a, \"error\":\"parse-error:~a\"~%}~%"
-	       *pvs-json-id*
-	       (protect-emacs-output
-		(if args
-		    (format t "~%~?" message args)
-		    (format t "~%~a" message))))
-	     ;; Otherwise XML
-	     (format t "~%<pvserror msg=\"parse-error\">~%\"~a\"~%</pvserror>"
-	       (protect-emacs-output
-		(if args
-		    (format t "~%~?" message args)
-		    (format t "~%~a" message)))))
+	 (format t "~%<pvserror msg=\"parse-error\">~%\"~a\"~%</pvserror>"
+	   (protect-emacs-output
+	    (if args
+		(format t "~%~?" message args)
+		(format t "~%~a" message))))
 	 (pvs-abort))
 	(t (if args
 	       (format t "~%~?~a~a"
@@ -1123,6 +1126,7 @@
 (export '(ilisp-eval))
 (defun ilisp-eval (form package filename)
   (let ((*package* (find-package package)))
+    filename
     (eval (read-from-string form))))
 
 (in-package :pvs)
