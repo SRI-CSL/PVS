@@ -32,7 +32,8 @@
 
 (in-package :pvs)
 
-(export '(exit-pvs typecheck-file show-tccs clear-theories))
+(export '(exit-pvs typecheck-file show-tccs clear-theories formula-decl-to-prove
+	  prove-formula))
 
 ;;; This file provides the basic commands of PVS.  It provides the
 ;;; functions invoked by pvs-cmds.el, as well as the functions used in
@@ -227,7 +228,8 @@
     (setq *prelude-libraries-files* nil)
     (when (and (not cc?)
 	       *pvs-context*
-	       (cadr *pvs-context*))
+	       (consp (cadr *pvs-context*))
+	       (every #'stringp (cadr *pvs-context*)))
       (load-prelude-libraries (cadr *pvs-context*)))))
 
 (defun get-pvs-library-path ()
