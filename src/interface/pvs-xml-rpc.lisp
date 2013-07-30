@@ -8,26 +8,6 @@
 ;; Status          : Unknown, Use with caution!;; 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defpackage :pvs-xml-rpc (:use :cl-user :common-lisp))
-
-(in-package :pvs-xml-rpc)
-
-(export '(pvs-server))
-
-#+allegro
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (require :xml-rpc)
-  (use-package :net.xml-rpc)
-  (use-package :net.aserve)
-  )
-
-;; #-allegro
-;; (eval-when (:compile-toplevel :load-toplevel :execute)
-;;   (require :s-xml-rpc)
-;;   (use-package :s-xml-rpc))
-
-(defvar *pvs-xmlrpc-server*)
-
 ;; To test from Python:
 ;; import xmlrpclib
 ;; s = xmlrpclib.ServerProxy('http://localhost:55223')
@@ -53,13 +33,27 @@
 ;; The input request may omit the id, in which case the request does not
 ;; expect a response - GC messages are good examples of this.
 
-;; (defmacro defrequest (methodname args docstring &rest body)
-;;   "Creates a JSON-RPC request form"
-;;   (let* ((gargs (gensym))
-;; 	 (pname (intern (format nil "jsonrpc-~a" methodname) :pvs-xml-rpc)))
-;;     `(let ((,gargs ',args))
-;;        (defun ,pname ,gargs
-;; 	 ,@body))))
+(defpackage :pvs-xml-rpc (:use :cl-user :common-lisp))
+
+(in-package :pvs-xml-rpc)
+
+(export '(pvs-server))
+
+#+allegro
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (require :xml-rpc)
+  (use-package :net.xml-rpc)
+  (use-package :net.aserve)
+  )
+
+;; #-allegro
+;; (eval-when (:compile-toplevel :load-toplevel :execute)
+;;   (require :s-xml-rpc)
+;;   (use-package :s-xml-rpc))
+
+(defvar *pvs-xmlrpc-server*)
+
+(defvar *json-id* nil)
 
 #+allegro
 (defun pvs-server (&key (port 55223))
@@ -74,233 +68,44 @@
 
 (defvar *client-url* nil)
 
-(defvar *last-request* nil)
-(defvar *last-response* nil)
-
-;;; This is an xml-rpc method - the json-string is the json-rpc part
+;;; This is an xml-rpc method - the json-request is the json-rpc part
 ;;; the client-url is to satisfy acting like json-rpc, by providing a
 ;;; URL for callbacks.  The return is of the form
 ;;; {"context": dir, "mode": mode, "jsonrpc-result": jsonrpc, "error": error}
-;;; Only one of error or jsonrpc-result is returned, depending of if an id
+;;; Only one of error or jsonrpc-result is returned, depending on if an id
 ;;; was included in the request.
-(defun xmlrpc-pvs-request (json-string client-url)
-  (format t "~%pvs.request: ~s~%  from ~s~%" json-string client-url)
+(defun xmlrpc-pvs-request (json-request client-url)
+  (format t "~%pvs.request: ~s~%  from ~s~%" json-request client-url)
   (handler-case
-      (let* ((request (json:decode-json-from-string json-string))
-	     (json-id (cdr (assoc :id request :test #'string-equal)))
+      (let* ((json:*json-identifier-name-to-lisp* #'identity)
+	     (request (json:decode-json-from-string json-request))
+	     (id (cdr (assoc :id request :test #'string-equal)))
 	     (method (cdr (assoc :method request :test #'string-equal)))
 	     (params (cdr (assoc :params request :test #'string-equal)))
 	     (*print-pretty* nil))
-	(setq *last-request* (list json-id method params))
-	(cond ((not (stringp method))
-	       (xmlrpc-error (format nil "method ~a must be a symbol string"
-			       method) json-id))
-	      ((not (listp params))
-	       (xmlrpc-error (format nil "parameters ~a must be a list"
-			     params) json-id))
-	      (t (format t "~%Calling process-pvs-request: ~a ~a ~a ~a"
-		   json-id method params client-url)
-		 (process-pvs-request json-id method params client-url))))
-    ;; No json-id available in this case
-    (cl-json:json-syntax-error (c) (format nil "~a" c))
-    (error (c) (format nil "~a" c))))
+	(setq *last-request* (list id method params))
+	(xmlrpc-result (pvs-json-rpc:process-json-request
+			method params id client-url)
+		       id))
+    ;; Note: id will not be available if this error is hit
+    (error (c) (xmlrpc-error (format nil "~a" c)))))
 
-;;; These are the valid methods for the API
-;;; (method (lisp-function r1 ... rn &optional o1 ... om) 
-(defparameter *pvs-request-methods*
-  '((typecheck (xmlrpc-pvs-typecheck-file
-		(filename &optional forced? prove-tccs? importchain? nomsg?)))
-    (show-tccs (show-tccs
-		(theoryname &optional flag)))
-    (prove (prove-file-at
-	    (name declname line rerun?
-		  &optional origin buffer prelude-offset
-		  background? display? unproved?)))))
-
-(defmacro with-pvs-hooks (url &rest body)
-  (let ((gurl (gentemp)))
-    `(let ((,gurl ,url))
-       (if ,gurl
-	   (let ((pvs:*pvs-message-hooks*
-		  (cons #'(lambda (msg) (json-message msg ,gurl))
-			pvs:*pvs-message-hooks*))
-		 (pvs:*pvs-warning-hooks*
-		  (cons #'(lambda (msg) (json-message msg ,gurl :warning))
-			pvs:*pvs-warning-hooks*))
-		 (pvs:*pvs-buffer-hooks*
-		  (cons #'(lambda (name contents display? read-only? append? kind)
-			    (json-buffer name contents display? read-only? append? kind
-					 ,gurl))
-			pvs:*pvs-buffer-hooks*)))
-	     ,@body)
-	   (progn ,@body)))))
-
-(defun json-message (msg url &optional (level :info))
-  (when url
-    (let ((jmsg (json:encode-json-alist-to-string
-		 `((:method . ,level)
-		   (:params . (,msg))
-		   (:jsonrpc . "2.0")))))
-      (xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url))))
-
-(defun json-buffer (name contents display? read-only? append? kind url)
-  (when url
-    (let ((jmsg (json:encode-json-alist-to-string
-		 `((:method . :buffer)
-		   (:params . ,(list name contents display? read-only? append? kind))
-		   (:jsonrpc . "2.0")))))
-      (xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url))))
-
-(defun process-pvs-request (id method params url)
-  (let ((entry (assoc method *pvs-request-methods*
-		      :test #'string-equal)))
-    (setq *last-response* nil)
-    (if entry
-	(let* ((spec (cadr entry))
-	       (fun (car spec))
-	       (sig (cadr spec))
-	       ;;(ret (caddr spec))
-	       )
-	  (if (check-params params sig)
-	      (if t
-		  (let ((result (with-pvs-hooks url (apply fun params))))
-		    (setq *last-response* result)
-		    (xmlrpc-result result id))
-		  (handler-case
-		      (let ((result (with-pvs-hooks url (apply fun params))))
-			(setq *last-response* result)
-			(xmlrpc-result result id))
-		    (error (c) (xmlrpc-error (format nil "~a" c) id))))
-	      (xmlrpc-error "Params don't match" id)))
-	(xmlrpc-error (format nil "Method ~a not found" method) id))))
-
-(defun xmlrpc-error (msg id)
-  (if id
-      (let ((jsonrpc-error
-	     (json:with-explicit-encoder
-		 (json:encode-json-to-string
-		  (cons :object
-			`((:error . ,msg)
-			  (:id . ,id)))))))
-	(xmlrpc-value jsonrpc-error nil))
-      (xmlrpc-value nil msg)))
+(defun xmlrpc-error (msg)
+  ;; id not available
+  (let ((json:*lisp-identifier-name-to-json* #'identity))
+    (json:encode-json-to-string
+     `((:mode . ,(pvs-current-mode))
+       (:context . ,(pvs:current-context-path))
+       (:xmlrpc_error . ,msg)))))
 
 (defun xmlrpc-result (result id)
-  (let ((jsonrpc-result
-	 (when id
-	   (json:with-explicit-encoder
-	       (json:encode-json-to-string
-		(cons :object
-		      `((:result . ,result)
-			(:id . ,id))))))))
-    (xmlrpc-value jsonrpc-result nil)))
-
-(defun xmlrpc-value (jsonrpc-value err)
-  (let ((result (cond (jsonrpc-value (cons :jsonrpc_result jsonrpc-value))
-		      (err (cons :xmlrpc_error err)))))
-    (json:with-explicit-encoder
-	(json:encode-json-to-string
-	 (cons :object
-	       `((:mode . ,(pvs-current-mode))
-		 (:context . ,(pvs:current-context-path))
-		 ,result))))))
+  (let ((json:*lisp-identifier-name-to-json* #'identity))
+    (json:encode-json-to-string
+     `((:mode . ,(pvs-current-mode))
+       (:context . ,(pvs:current-context-path))
+       ,@(when id `((:jsonrpc_result . ,result)))))))
 
 (defun pvs-current-mode ()
   (cond (pvs:*in-checker* :prover)
 	(pvs:*in-evaluator* :evaluator)
 	(t :lisp)))
-
-(defun json-result (result id)
-  (let* ((sresult (json:encode-json-to-string result))
-	 (jresult (json:with-explicit-encoder
-		   (json:encode-json-to-string
-		    (cons :object
-			  `((:result . ,sresult)
-			    (:id . ,id)))))))
-    (setq *last-response* jresult)
-    jresult))
-
-(defmethod json:encode-json ((th pvs:datatype-or-module) &optional
-			     (stream json:*json-output*))
-  (json:encode-json (pvs:id th) stream))
-
-;; (defun json-result (result id)
-;;   (setq *last-response* result)
-;;   ;;jresult
-;;   nil)
-
-(defun check-params (params signature)
-  (declare (ignore params signature))
-  ;;; for now, assume ok
-  t)
-
-(defun json-eval-form (form)
-  (if (or pvs:*in-checker* pvs:*in-evaluator*)
-      form
-      (eval form)))
-
-;; #-allegro
-;; (defun pvs-server (&optional (port 55223))
-;;   (let ((s-xml-rpc:*xml-rpc-debug* t)
-;; 	(s (s-xml-rpc:start-xml-rpc-server :port port)))
-;;     (sleep 1)
-;;     (export-xml-rpc-method s
-;; 	'("pvs.csl.sri.com" xmlrpc-pvs-typecheck-file t)
-;;       :string :struct)
-;;     (setf *pvs-xmlrpc-server* s)))
-
-(defun xmlrpc-pvs-typecheck-file (filename &optional optargs)
-  ;; filename is a string
-  ;; optargs is a struct of form
-  ;; {"forced?" :bool "prove-tccs?" :bool "importchain?" :bool "nomsg?" :bool}
-  (declare (ignore optargs))
-  (let ((theories (pvs:typecheck-file filename)))
-    (cons :array (xmlrpc-theories theories))))
-
-(defun xmlrpc-theories (theories &optional thdecls)
-  (if (null theories)
-      (nreverse thdecls)
-      (let ((thdecl (xmlrpc-theory (car theories))))
-	(xmlrpc-theories (cdr theories) (cons thdecl thdecls)))))
-
-(defun xmlrpc-theory (theory)
-  (cons :object
-	(acons :theory (pvs:id theory)
-	       (acons :decls (cons :array
-				   (xmlrpc-theory-decls (pvs:all-decls theory)))
-		      nil))))
-
-(defun xmlrpc-theory-decls (decls &optional thdecls)
-  (if (null decls)
-      (nreverse thdecls)
-      (let ((thdecl (xmlrpc-theory-decl (car decls))))
-	(xmlrpc-theory-decls
-	 (cdr decls)
-	 (if thdecl
-	     (cons thdecl thdecls)
-	     thdecls)))))
-
-(defun xmlrpc-theory-decl (decl)
-  (xmlrpc-theory-decl* decl))
-
-(defmethod xmlrpc-theory-decl* ((decl pvs:var-decl))
-  nil)
-
-(defmethod xmlrpc-theory-decl* ((imp pvs:importing))
-  (cons :object
-	`((:importing . ,(pvs:str (pvs:theory-name imp)))
-	  (:kind . :importing)
-	  (:place . ,(cons :array (pvs:place-list imp))))))
-
-(defmethod xmlrpc-theory-decl* ((decl pvs:typed-declaration))
-  (cons :object
-	`((:id . ,(pvs:id decl))
-	  (:kind . ,(pvs:kind-of decl))
-	  (:type . ,(pvs:str (pvs:type decl)))
-	  (:place . ,(cons :array (pvs:place-list decl))))))
-
-(defmethod xmlrpc-theory-decl* ((decl pvs:formula-decl))
-  (cons :object
-	`((:id . ,(pvs:id decl))
-	  (:kind . :formula)
-	  (:place . ,(cons :array (pvs:place-list decl))))))
