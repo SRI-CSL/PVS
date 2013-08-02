@@ -60,14 +60,19 @@
   (cond ((string-type? type)
 	 (cl2pvs*-string sexpr))
 	((finseq-type? type)
-	 (throw 'cant-translate nil))
+	 (let ((len (elt sexpr 0))
+	       (fn (elt sexpr 1)))
+	   (mk-application (mk-name-expr '|list2finseq|)
+			   (cl2pvs*-list (loop for x from 0 to (- len 1) collect (pvs-funcall fn x))
+					 (finseq-type? type)
+					 context))))
 	(t
 	 (mk-record-expr
 	  (loop for fld in (sorted-fields type)
-		as i from 0
-		collect (mk-assignment 'uni
-			  (list (list (mk-name-expr (id fld))))
-			  (cl2pvs* (svref sexpr i) (type fld) context)))))))
+	     as i from 0
+	     collect (mk-assignment 'uni
+				    (list (list (mk-name-expr (id fld))))
+				    (cl2pvs* (svref sexpr i) (type fld) context)))))))
 
 (defmethod string-type? ((type recordtype))
   (let ((range (finseq-type? type)))
