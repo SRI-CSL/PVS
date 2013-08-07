@@ -75,7 +75,7 @@
 ;;; Only one of error or jsonrpc-result is returned, depending on if an id
 ;;; was included in the request.
 (defun xmlrpc-pvs-request (json-request client-url)
-  (format t "~%pvs.request: ~s~%  from ~s~%" json-request client-url)
+  ;;(format t "~%pvs.request: ~s~%  from ~s~%" json-request client-url)
   (handler-case
       (let* ((json:*json-identifier-name-to-lisp* #'identity)
 	     (request (json:decode-json-from-string json-request))
