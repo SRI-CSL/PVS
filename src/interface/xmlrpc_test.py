@@ -63,8 +63,8 @@ class PVS_XMLRPC(object):
             request = {'method': method, 'id': reqid}
         else:
             request = {'method': method, 'params': params, 'id': reqid}
-        result = json_loads(self.pvs_proxy.pvs.request(json.dumps(request), self.gui_url))
-        return json.loads(result)
+        result = json.loads(self.pvs_proxy.pvs.request(json.dumps(request), self.gui_url))
+        return result
 
     def request(self, json_string):
         """
