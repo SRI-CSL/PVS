@@ -367,6 +367,7 @@
 (defun pvs-build-date ()
   (multiple-value-bind (sec min hour date mon year)
       (decode-universal-time *pvs-build-time*)
+    (declare (ignore sec min hour))
     (format nil "~4,'0d~2,'0d~2,'0d" year mon date)))
 
 (defun valid-patch-filename (pathname)
@@ -1833,6 +1834,7 @@
 
 (defun prettyprint-theory-instance (theoryname-string
 				    &optional context-theoryname)
+  (declare (ignore theoryname-string context-theoryname))
   (pvs-message
       "prettyprint-theory-instance no longer used - use prettyprint-expanded instead"))
 
