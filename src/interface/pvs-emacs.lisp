@@ -30,17 +30,20 @@
 (in-package :pvs)
 
 (export '(*pvs-buffer-hooks* *pvs-message-hooks* *pvs-warning-hooks*
-	  *pvs-error-hooks* pvs-buffer pvs-error pvs-warning pvs-message
+	  *pvs-error-hooks* *pvs-y-or-n-hook*
+	  pvs-buffer pvs-error pvs-warning pvs-message
 	  pvs-display pvs-abort pvs-yn pvs-query pvs-emacs-eval
 	  output-proofstate pvs2json protect-emacs-output parse-error
 	  type-error set-pvs-tmp-file place place-list type-ambiguity
 	  type-incompatible pvs-locate write-to-temp-file
-	  *proofstate-info* make-psinfo psinfo-psjson))
+	  *ps-control-info* make-ps-control-info psinfo-json-result
+	  psinfo-command psinfo-cmd-gate psinfo-res-gate psinfo-lock))
 
 (defvar *pvs-message-hooks* nil)
 (defvar *pvs-warning-hooks* nil)
 (defvar *pvs-error-hooks* nil)
 (defvar *pvs-buffer-hooks* nil)
+(defvar *pvs-y-or-n-hook* nil)
 
 
 (defvar *to-emacs* nil)
@@ -445,7 +448,10 @@
   (pvs-yn (apply #'format nil msg args) t t))
 
 (defun pvs-yn (msg full? timeout?)
-  (cond (*noninteractive* t)
+  (cond (*pvs-y-or-n-hook*
+	 (format t "~%Calling y-or-n hook ~a" *pvs-y-or-n-hook*)
+	 (funcall hook msg full? timeout?))
+	(*noninteractive* t)
 	((and *pvs-emacs-interface* *to-emacs*)
 	 (let* ((*print-pretty* nil)
 		(*output-to-emacs*
@@ -523,21 +529,57 @@
 	(format t "~%Not a valid choice - try again~%choice? ")
 	(read-choice query))))
 
-(defvar *proofstate-info* nil
+(defvar *ps-control-info* nil
   "Used to communicate proof results to XML-RPC clients")
 
-(defstruct psinfo
-  psjson
+(defstruct (ps-control-info (:conc-name psinfo-)
+			    (:print-function
+			     (lambda (psi stream depth)
+			       (declare (ignore depth))
+			       (format stream "<ps-control-info :cmd-gate ~a~%~
+                                                                :command ~a~%~
+                                                                :res-gate ~a~%~
+                                                                :json-result ~a~%~
+                                                                :lock ~a>"
+				 (mp:gate-open-p (psinfo-cmd-gate psi))
+				 (psinfo-command psi)
+				 (mp:gate-open-p (psinfo-res-gate psi))
+				 (psinfo-json-result psi)
+				 (psinfo-lock psi)))))
+  command
+  json-result
   lock
-  gate
-  process)
+  cmd-gate
+  res-gate)
 
 (defun add-psinfo (psi ps)
   (mp:with-process-lock ((psinfo-lock psi))
-    (setf (psinfo-psjson psi)
-	  (pvs2json ps))
-    (mp:open-gate (psinfo-gate psi)))
+    (let ((result (pvs2json ps)))
+      ;;(format t "~%add-psinfo: Setting result to ~a~%" result)
+      (setf (psinfo-json-result psi) result)
+      ;;(format t "~%add-psinfo: opening res-gate~%")
+      (mp:open-gate (psinfo-res-gate psi))))
   ps)
+
+(defmethod prover-read :around ()
+  (mp:process-wait
+   "Prover Waiting"
+   #'(lambda ()
+       (or (and *ps-control-info*
+		(mp:gate-open-p (psinfo-cmd-gate *ps-control-info*))
+		(psinfo-command *ps-control-info*))
+	   (excl:read-no-hang-p *terminal-io*))))
+  (if (and *ps-control-info*
+	   (mp:gate-open-p (psinfo-cmd-gate *ps-control-info*)))
+      (unwind-protect
+	   (multiple-value-bind (input err)
+	       (ignore-errors (read-from-string (psinfo-command *ps-control-info*)))
+	     (when err
+	       (format t "~%~a" err))
+	     input)
+	(mp:close-gate (psinfo-cmd-gate *ps-control-info*))
+	(setf (psinfo-command *ps-control-info*) nil))
+      (call-next-method)))
 
 (defmethod output-proofstate :around ((ps proofstate))
   (with-slots (label comment current-goal) ps
@@ -554,9 +596,9 @@
 	      (format nil "~%:pvs-proofstate ~a :end-pvs-proofstate"
 		(emacs-proofstate-file ps))))
 	(to-emacs)))
-    (format t "~%output-proofstate called: ~a~%" *proofstate-info*)
-    (when *proofstate-info*
-      (add-psinfo *proofstate-info* ps))
+    ;;(format t "~%output-proofstate called: ~a~%" *ps-control-info*)
+    (when *ps-control-info*
+      (add-psinfo *ps-control-info* ps))
     (call-next-method)))
 
 (defun emacs-proofstate-file (ps)
@@ -575,34 +617,48 @@
     (let ((action (when pps
 		    (string-trim '(#\Space #\Tab #\Newline)
 				 (format-printout pps t))))
-	  (result (proofstate-result ps))
-	  (sequent (pvs2json current-goal)))
-      `(("action" . ,action)
-	("result" . ,result)
+	  (num-subgoals (proofstate-num-subgoals ps))
+	  (sequent (pvs2json-seq current-goal pps)))
+      `(,@(when action `(("action" . ,action)))
+	,@(when num-subgoals `(("num_subgoals" . ,num-subgoals)))
 	("label" . ,label)
 	,@(when comment `(("comment" . ,comment)))
 	("sequent" . ,sequent)))))
 
-(defmethod pvs2json ((seq sequent))
-  (let* ((par-sforms (when *print-ancestor*
-		       (s-forms (current-goal *print-ancestor*))))
+(defstruct seqstruct
+  antecedents
+  succedents
+  hidden-antecedents
+  hidden-succedents
+  info)
+
+(defmethod json:encode-json ((ss seqstruct) &optional (stream json:*json-output*))
+  (json:with-object (stream)
+    (when (seqstruct-antecedents ss)
+      (json:as-object-member (:antecedents stream)
+	(json:encode-json (seqstruct-antecedents ss) stream)))
+    (when (seqstruct-succedents ss)
+      (json:as-object-member (:succedents stream)
+	(json:encode-json (seqstruct-succedents ss) stream)))
+    (when (seqstruct-hidden-antecedents ss)
+      (json:as-object-member (:hidden-antecedents stream)
+	(json:encode-json (seqstruct-hidden-antecedents ss) stream)))
+    (when (seqstruct-hidden-succedents ss)
+      (json:as-object-member (:hidden-succedents stream)
+	(json:encode-json (seqstruct-hidden-succedents ss) stream)))))
+
+(defmethod pvs2json-seq (seq parent-ps)
+  (let* ((par-sforms (when parent-ps
+		       (s-forms (current-goal parent-ps))))
 	 (hidden-s-forms (hidden-s-forms seq))
 	 (hn-sforms (neg-s-forms* hidden-s-forms))
 	 (hp-sforms (pos-s-forms* hidden-s-forms)))
-    `(,@(when (neg-s-forms seq)
-	      `(("antecedents" . ,(pvs2json-sforms (neg-s-forms seq)
-						   t par-sforms))))
-	,@(when (pos-s-forms seq)
-		`(("succedents" . ,(pvs2json-sforms (pos-s-forms seq)
-						    nil par-sforms))))
-	,@(when hn-sforms
-		`(("hidden-antecedents" . ,(pvs2json-sforms hn-sforms
-							    t par-sforms))))
-	,@(when hp-sforms
-		`(("hidden-succedents" . ,(pvs2json-sforms hp-sforms
-							   nil par-sforms))))
-	,@(when (info seq)
-		`(("info" . ,(info seq)))))))
+    (make-seqstruct 
+     :antecedents (pvs2json-sforms (neg-s-forms seq) t par-sforms)
+     :succedents (pvs2json-sforms (pos-s-forms seq) nil par-sforms)
+     :hidden-antecedents (pvs2json-sforms hn-sforms t par-sforms)
+     :hidden-succedents (pvs2json-sforms hp-sforms nil par-sforms)
+     :info (info seq))))
 
 (defun pvs2json-sforms (sforms neg? par-sforms)
   (let ((c 0))
@@ -621,19 +677,18 @@
 		     (pp-string frm 6))))
     (unless (view sform)
       (setf (view sform) (list frmstr)))
-    `(("label" . ,(cons fnum (label sform)))
+    `(("labels" . ,(cons fnum (label sform)))
       ("changed" . ,(not (memq sform par-sforms)))
       ("formula" . ,frmstr))))
 
-(defun proofstate-result (ps)
+(defun proofstate-num-subgoals (ps)
   (let ((pps (parent-proofstate ps)))
     (when (and pps (eq (status-flag pps) '?))
-      (cond ((cdr (remaining-subgoals pps))
-	     (format nil "this yields  ~a subgoals: "
-	       (length (remaining-subgoals pps))))
+      (cond ((remaining-subgoals pps)
+	     (1+ (length (remaining-subgoals pps))))
 	    ((not (typep (car (remaining-subgoals pps))
 			 'strat-proofstate))
-	     (format nil "this simplifies to: "))
+	     1)
 	    (t (break))))))
 
 (defun pvs-buffer (name contents &optional display? read-only? append? kind)
