@@ -536,5 +536,7 @@
 		  (:file "nlyices")))
    (:module xmlrpc
      :source-pathname "src/interface"
-     :components ((:file "pvs-xml-rpc")))
+     :components ((:file "pvs-json-rpc")
+		  (:file "pvs-json-methods")
+		  (:file "pvs-xml-rpc")))
    ))
