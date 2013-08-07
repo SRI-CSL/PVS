@@ -16,6 +16,7 @@
 
 (defvar *last-request* nil)
 (defvar *last-response* nil)
+(defvar *json-rpc-id-ctr* 0)
 
 (eval-when (:compile-toplevel :load-toplevel)
   (defvar *pvs-request-methods* nil
@@ -89,7 +90,10 @@
 		  (cons #'(lambda (name contents display? read-only? append? kind)
 			    (json-buffer name contents display? read-only? append? kind
 					 ,gurl))
-			pvs:*pvs-buffer-hooks*)))
+			pvs:*pvs-buffer-hooks*))
+		 (pvs:*pvs-y-or-n-hook*
+		  #'(lambda (msg full? timeout?)
+		      (json-y-or-n msg full? timeout? ,gurl))))
 	     ,@body)
 	   (progn ,@body)))))
 
@@ -110,6 +114,16 @@
 		    (:params . ,(list name contents display? read-only? append? kind))
 		    (:jsonrpc . "2.0")))))
       (xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url))))
+
+(defun json-y-or-n (msg full? timeout? url)
+  (or (null url)
+      (let* ((json:*lisp-identifier-name-to-json* #'identity)
+	     (jmsg (json:encode-json-to-string
+		    `((:method . :yes-no)
+		      (:params . ,(list msg full? timeout?))
+		      (:id . ,(pvs:makesym "pvs_~d" (incf *json-rpc-id-ctr*)))
+		      (:jsonrpc . "2.0")))))
+	(xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url))))
 
 (defun jsonrpc-result (result id)
   (let* ((json:*lisp-identifier-name-to-json* #'identity)
