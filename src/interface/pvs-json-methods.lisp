@@ -11,7 +11,7 @@
    provides the docstring and the argument spec"
   (multiple-value-bind (reqfun argspec docstring)
       (get-json-request-function methodname)
-    (if entry
+    (if reqfun
 	`((:argspec ,argspec)
 	  (:docstring . ,docstring))
 	(error "~a not found" methodname))))
@@ -25,7 +25,7 @@
   "Change PVS context"
   (pvs:change-context dir))
 
-(defrequest typecheck (filename &optional forced? prove-tccs? importchain? nomsg?)
+(defrequest typecheck (filename)
   "Typecheck a file"
   (let ((theories (pvs:typecheck-file filename)))
     (xmlrpc-theories theories)))
@@ -82,32 +82,62 @@
 
 ;;; Prover interface
 
+;; (defrequest prove-formula (formula theory)
+;;   "Starts interactive proof of a formula from a given theory"
+;;   (let* ((gate (mp:make-gate nil))
+;; 	 (lock (mp:make-process-lock)))
+;;     (setq pvs:*ps-control-info*
+;; 	  (pvs:make-psinfo
+;; 	   :lock lock
+;; 	   :gate gate
+;; 	   :process (mp:process-run-function
+;; 		     "PVS Prover"
+;; 		     #'pvs:prove-formula theory formula nil)))
+;;     (format t "~%prove-formula: Waiting...~%")
+;;     (mp:process-wait "Waiting for initial Proofstate" #'mp:gate-open-p gate)
+;;     (format t "~%prove-formula: Done waiting...~%")
+;;     (mp:with-process-lock (lock)
+;;       (let ((psjson (pvs:psinfo-psjson pvs:*ps-control-info*)))
+;; 	(setf (pvs:psinfo-psjson pvs:*ps-control-info*) nil)
+;; 	psjson))))
+
 (defrequest prove-formula (formula theory)
   "Starts interactive proof of a formula from a given theory"
-  (let* ((gate (mp:make-gate nil))
-	 (lock (mp:make-process-lock)))
-    (setq pvs:*proofstate-info*
-	  (pvs:make-psinfo
+  (let ((res-gate (mp:make-gate nil))
+	(cmd-gate (mp:make-gate nil))
+	(lock (mp:make-process-lock))
+	(proc (mp:process-name-to-process "Initial Lisp Listener"))
+	(pvs:*in-checker* t))
+    (setq pvs:*ps-control-info*
+	  (pvs:make-ps-control-info
 	   :lock lock
-	   :gate gate
-	   :process (mp:process-run-function
-		     "PVS Prover"
-		     #'pvs:prove-formula theory formula nil)))
-    (format t "~%prove-formula: Waiting...~%")
-    (mp:process-wait "Waiting for initial Proofstate" #'mp:gate-open-p gate)
-    (format t "~%prove-formula: Done waiting...~%")
+	   :res-gate res-gate
+	   :cmd-gate cmd-gate))
+    ;;(format t "~%prove-formula: Waiting...~%")
+    (mp:process-interrupt proc #'pvs:prove-formula theory formula nil)
+    (mp:process-wait "Waiting for initial Proofstate" #'mp:gate-open-p res-gate)
+    ;;(format t "~%prove-formula: Done waiting...~%")
     (mp:with-process-lock (lock)
-      (let ((psjson (psinfo-psjson *proofstate-info*)))
-	(setf (psinfo-psjson *proofstate-info*) nil)
-	psjson))))
+      (let ((json-result (pvs:psinfo-json-result pvs:*ps-control-info*)))
+	;;(format t "~%prove-formula: returning json-result ~a~%" json-result)
+	(setf (pvs:psinfo-json-result pvs:*ps-control-info*) nil)
+	(mp:close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
+	json-result))))
 
 (defrequest proof-command (form)
   "Sends a command to the prover"
-  (format t "~a" form)
+  (assert (not (mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*))))
+  (assert (null (pvs:psinfo-command pvs:*ps-control-info*)))
+  (assert (not (mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))))
+  (assert (null (pvs:psinfo-json-result pvs:*ps-control-info*)))
+  (setf (pvs:psinfo-command pvs:*ps-control-info*) form)
+  (mp:open-gate (pvs:psinfo-cmd-gate pvs:*ps-control-info*))
   (mp:process-wait "Waiting for next Proofstate"
-		   #'mp:gate-open-p (psinfo-gate *proofstate-info*))
-  (mp:with-process-lock ((psinfo-lock *proofstate-info*))
-      (let ((psjson (psinfo-psjson *proofstate-info*)))
-	(setf (psinfo-psjson *proofstate-info*) nil)
-	psjson)))
-  
+		   #'mp:gate-open-p (pvs:psinfo-res-gate pvs:*ps-control-info*))
+  (assert (not (mp:gate-open-p (pvs:psinfo-cmd-gate pvs:*ps-control-info*))))
+  (assert (null (pvs:psinfo-command pvs:*ps-control-info*)))
+  (mp:with-process-lock ((pvs:psinfo-lock pvs:*ps-control-info*))
+    (let ((psjson (pvs:psinfo-json-result pvs:*ps-control-info*)))
+      (setf (pvs:psinfo-json-result pvs:*ps-control-info*) nil)
+      (mp:close-gate (pvs:psinfo-res-gate pvs:*ps-control-info*))
+      psjson)))
