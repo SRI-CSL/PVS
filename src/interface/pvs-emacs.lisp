@@ -533,6 +533,7 @@
   "Used to communicate proof results to XML-RPC clients")
 
 (defstruct (ps-control-info (:conc-name psinfo-)
+			    #+allegro
 			    (:print-function
 			     (lambda (psi stream depth)
 			       (declare (ignore depth))
@@ -553,6 +554,7 @@
   res-gate)
 
 (defun add-psinfo (psi ps)
+  #+allegro
   (mp:with-process-lock ((psinfo-lock psi))
     (let ((result (pvs2json ps)))
       ;;(format t "~%add-psinfo: Setting result to ~a~%" result)
@@ -562,24 +564,28 @@
   ps)
 
 (defmethod prover-read :around ()
-  (mp:process-wait
-   "Prover Waiting"
-   #'(lambda ()
-       (or (and *ps-control-info*
-		(mp:gate-open-p (psinfo-cmd-gate *ps-control-info*))
-		(psinfo-command *ps-control-info*))
-	   (excl:read-no-hang-p *terminal-io*))))
-  (if (and *ps-control-info*
-	   (mp:gate-open-p (psinfo-cmd-gate *ps-control-info*)))
-      (unwind-protect
-	   (multiple-value-bind (input err)
-	       (ignore-errors (read-from-string (psinfo-command *ps-control-info*)))
-	     (when err
-	       (format t "~%~a" err))
-	     input)
-	(mp:close-gate (psinfo-cmd-gate *ps-control-info*))
-	(setf (psinfo-command *ps-control-info*) nil))
-      (call-next-method)))
+  (cond (*ps-control-info*
+	 #+allegro
+	 (mp:process-wait
+	  "Prover Waiting"
+	  #'(lambda ()
+	      (or (and *ps-control-info*
+		       (mp:gate-open-p (psinfo-cmd-gate *ps-control-info*))
+		       (psinfo-command *ps-control-info*))
+		  (excl:read-no-hang-p *terminal-io*))))
+	 #+allegro
+	 (if (and *ps-control-info*
+		  (mp:gate-open-p (psinfo-cmd-gate *ps-control-info*)))
+	     (unwind-protect
+		  (multiple-value-bind (input err)
+		      (ignore-errors (read-from-string (psinfo-command *ps-control-info*)))
+		    (when err
+		      (format t "~%~a" err))
+		    input)
+	       (mp:close-gate (psinfo-cmd-gate *ps-control-info*))
+	       (setf (psinfo-command *ps-control-info*) nil))
+	     (call-next-method)))
+	(t (call-next-method))))
 
 (defmethod output-proofstate :around ((ps proofstate))
   (with-slots (label comment current-goal) ps
@@ -678,7 +684,7 @@
     (unless (view sform)
       (setf (view sform) (list frmstr)))
     `(("labels" . ,(cons fnum (label sform)))
-      ("changed" . ,(not (memq sform par-sforms)))
+      ("changed" . ,(if (memq sform par-sforms) "false" "true"))
       ("formula" . ,frmstr))))
 
 (defun proofstate-num-subgoals (ps)
