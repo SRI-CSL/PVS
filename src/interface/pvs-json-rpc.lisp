@@ -5,6 +5,31 @@
 
 (export '(process-json-request))
 
+;;; With-pvs-hooks sets up callbacks when the url is provided
+;;; Used primarily for informative messages that are not part of the result
+;;; E.g., "foo typechecked in 3 sec", garbage collecting, ...
+
+(defmacro with-pvs-hooks (url &rest body)
+  (let ((gurl (gentemp)))
+    `(let ((,gurl ,url))
+       (if ,gurl
+	   (let ((pvs:*pvs-message-hooks*
+		  (cons #'(lambda (msg) (json-message msg ,gurl))
+			pvs:*pvs-message-hooks*))
+		 (pvs:*pvs-warning-hooks*
+		  (cons #'(lambda (msg) (json-message msg ,gurl :warning))
+			pvs:*pvs-warning-hooks*))
+		 (pvs:*pvs-buffer-hooks*
+		  (cons #'(lambda (name contents display? read-only? append? kind)
+			    (json-buffer name contents display? read-only? append? kind
+					 ,gurl))
+			pvs:*pvs-buffer-hooks*))
+		 (pvs:*pvs-y-or-n-hook*
+		  #'(lambda (msg full? timeout?)
+		      (json-y-or-n msg full? timeout? ,gurl))))
+	     ,@body)
+	   (progn ,@body)))))
+
 #+allegro
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (require :xml-rpc)
@@ -71,31 +96,6 @@
   ;;; for now, assume ok
   ;; (error "Params ~a don't match signature ~a" params reqsig)
   )
-
-;;; With-pvs-hooks sets up callbacks when the url is provided
-;;; Used primarily for informative messages that are not part of the result
-;;; E.g., "foo typechecked in 3 sec", garbage collecting, ...
-
-(defmacro with-pvs-hooks (url &rest body)
-  (let ((gurl (gentemp)))
-    `(let ((,gurl ,url))
-       (if ,gurl
-	   (let ((pvs:*pvs-message-hooks*
-		  (cons #'(lambda (msg) (json-message msg ,gurl))
-			pvs:*pvs-message-hooks*))
-		 (pvs:*pvs-warning-hooks*
-		  (cons #'(lambda (msg) (json-message msg ,gurl :warning))
-			pvs:*pvs-warning-hooks*))
-		 (pvs:*pvs-buffer-hooks*
-		  (cons #'(lambda (name contents display? read-only? append? kind)
-			    (json-buffer name contents display? read-only? append? kind
-					 ,gurl))
-			pvs:*pvs-buffer-hooks*))
-		 (pvs:*pvs-y-or-n-hook*
-		  #'(lambda (msg full? timeout?)
-		      (json-y-or-n msg full? timeout? ,gurl))))
-	     ,@body)
-	   (progn ,@body)))))
 
 (defun json-message (msg url &optional (level :info))
   (when url
