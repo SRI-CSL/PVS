@@ -6,6 +6,10 @@
   "List all available methods"
   (sort (mapcar #'car *pvs-request-methods*) #'string-lessp))
 
+(defrequest list-client-methods ()
+  "List methods clients need to support"
+  (list "info" "warning" "debug" "buffer" "yes-no"))
+
 (defrequest help (methodname)
   "Get help for the specified methodname -
    provides the docstring and the argument spec"
@@ -38,15 +42,29 @@
   (let ((theories (pvs:typecheck-file filename)))
     (xmlrpc-theories theories)))
 
-(defun xmlrpc-theories (theories &optional thdecls)
+(defstruct theory-struct
+  id
+  decls)
+
+(defun xmlrpc-theories (theories &optional thstructs)
   (if (null theories)
-      (nreverse thdecls)
-      (let ((thdecl (xmlrpc-theory (car theories))))
-	(xmlrpc-theories (cdr theories) (cons thdecl thdecls)))))
+      (nreverse thstructs)
+      (let ((thstruct (xmlrpc-theory (car theories))))
+	(xmlrpc-theories (cdr theories) (cons thstruct thstructs)))))
 
 (defun xmlrpc-theory (theory)
-  `(:theory . ((:id . ,(pvs:id theory))
-	       (:decls . ,(xmlrpc-theory-decls (pvs:all-decls theory))))))
+  (make-theory-struct
+   :id (pvs:id theory)
+   :decls (xmlrpc-theory-decls (pvs:all-decls theory))))
+
+(defmethod json:encode-json ((ts theory-struct) &optional (stream json:*json-output*))
+  (json:with-object (stream)
+    (json:as-object-member (:theory stream)
+      (json:with-object (stream)
+	(json:as-object-member (:id stream)
+	  (json:encode-json (theory-struct-id ts) stream))
+	(json:as-object-member (:decls stream)
+	  (json:encode-json (theory-struct-decls ts) stream))))))
 
 (defun xmlrpc-theory-decls (decls &optional thdecls)
   (if (null decls)
@@ -106,8 +124,7 @@
   (let ((res-gate (mp:make-gate nil))
 	(cmd-gate (mp:make-gate nil))
 	(lock (mp:make-process-lock))
-	(proc (mp:process-name-to-process "Initial Lisp Listener"))
-	(pvs:*in-checker* t))
+	(proc (mp:process-name-to-process "Initial Lisp Listener")))
     (setq pvs:*ps-control-info*
 	  (pvs:make-ps-control-info
 	   :lock lock
