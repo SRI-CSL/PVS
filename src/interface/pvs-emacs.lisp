@@ -29,8 +29,8 @@
 
 (in-package :pvs)
 
-(export '(*pvs-buffer-hooks* *pvs-message-hooks* *pvs-warning-hooks*
-	  *pvs-error-hooks* *pvs-y-or-n-hook*
+(export '(*pvs-buffer-hook* *pvs-message-hook* *pvs-warning-hook*
+	  *pvs-error-hook* *pvs-y-or-n-hook* *pvs-query-hook* *pvs-dialog-hook*
 	  pvs-buffer pvs-error pvs-warning pvs-message
 	  pvs-display pvs-abort pvs-yn pvs-query pvs-emacs-eval
 	  output-proofstate pvs2json protect-emacs-output parse-error
@@ -39,12 +39,13 @@
 	  *ps-control-info* make-ps-control-info psinfo-json-result
 	  psinfo-command psinfo-cmd-gate psinfo-res-gate psinfo-lock))
 
-(defvar *pvs-message-hooks* nil)
-(defvar *pvs-warning-hooks* nil)
-(defvar *pvs-error-hooks* nil)
-(defvar *pvs-buffer-hooks* nil)
+(defvar *pvs-message-hook* nil)
+(defvar *pvs-warning-hook* nil)
+(defvar *pvs-error-hook* nil)
+(defvar *pvs-buffer-hook* nil)
 (defvar *pvs-y-or-n-hook* nil)
-
+(defvar *pvs-query-hook* nil)
+(defvar *pvs-dialog-hook* nil)
 
 (defvar *to-emacs* nil)
 (defvar *output-to-emacs* "")
@@ -179,9 +180,9 @@
   (id decl))
 
 (defun pvs-message (ctl &rest args)
-  (dolist (hook *pvs-message-hooks*)
-    (format t "~%Calling message hook ~a" hook)
-    (funcall hook (format nil "~?" ctl args)))
+  (when *pvs-message-hook*
+    (format t "~%Calling message hook ~a" *pvs-message-hook*)
+    (funcall *pvs-message-hook* (format nil "~?" ctl args)))
   (unless *suppress-msg*
     (if *to-emacs*
 	(let* ((*print-pretty* nil)
@@ -197,8 +198,8 @@
 ;;; them to a buffer.
 
 (defun pvs-warning (ctl &rest args)
-  (dolist (hook *pvs-warning-hooks*)
-    (funcall hook (format nil "~?" ctl args)))
+  (when *pvs-warning-hook*
+    (funcall *pvs-warning-hook* (format nil "~?" ctl args)))
   (if *noninteractive*
       (pvs-message "~% ~?~%" ctl args)
       (format t "~% ~?~%" ctl args))
@@ -385,8 +386,8 @@
 
 (defun pvs-error (msg err &optional itheory iplace)
   ;; Indicates an error; no recovery possible.
-  (dolist (hook *pvs-error-hooks*)
-    (funcall hook msg err itheory iplace))
+  (when *pvs-error-hook*
+    (funcall *pvs-error-hook* msg err itheory iplace))
   (cond (*rerunning-proof*
 	 (restore))
 	((and *pvs-emacs-interface*
@@ -449,8 +450,8 @@
 
 (defun pvs-yn (msg full? timeout?)
   (cond (*pvs-y-or-n-hook*
-	 (format t "~%Calling y-or-n hook ~a" *pvs-y-or-n-hook*)
-	 (funcall hook msg full? timeout?))
+	 ;;(format t "~%Calling y-or-n hook ~a" *pvs-y-or-n-hook*)
+	 (funcall *pvs-y-or-n-hook* msg full? timeout?))
 	(*noninteractive* t)
 	((and *pvs-emacs-interface* *to-emacs*)
 	 (let* ((*print-pretty* nil)
@@ -468,22 +469,44 @@
 	(full? (yes-or-no-p-with-prompt msg nil))
 	(t (y-or-n-p-with-prompt msg nil))))
 
+(defun pvs-dialog (prompt &rest args)
+  (cond (*pvs-dialog-hook*
+	 ;;(format t "~%Calling dialog hook ~a" *pvs-dialog-hook*)
+	 (funcall *pvs-dialog-hook* (format nil "~?" prompt args)))
+	(*to-emacs*
+	 (let* ((*print-pretty* nil)
+		(*output-to-emacs*
+		 (format nil ":pvs-dia ~a:end-pvs-dia"
+		   (protect-emacs-output
+		    (format nil "~?" prompt args)))))
+	   (to-emacs)
+	   (let ((val (read)))
+	     (when (eq val :abort)
+	       (pvs-message "Aborting")
+	       (pvs-abort))
+	     val)))
+	(t (format t "~?" prompt args)
+	   (read-line))))
+
 ;;;        Returns t, nil, :auto, or aborts
 ;;; Corresponds to y, n,   !,    and q (C-g) on Emacs side.
 (defun pvs-query (prompt &rest args)
-  (if *to-emacs*
-      (let* ((*print-pretty* nil)
-	     (*output-to-emacs*
-	      (format nil ":pvs-qry ~a:end-pvs-qry"
-		(protect-emacs-output
-		 (format nil "~?" prompt args)))))
-	(to-emacs)
-	(let ((val (read)))
-	  (when (eq val :abort)
-	    (pvs-message "Aborting")
-	    (pvs-abort))
-	  val))
-      (pvs-query* (format nil "~?" prompt args))))
+  (cond (*pvs-query-hook*
+	 ;;(format t "~%Calling query hook ~a" *pvs-query-hook*)
+	 (funcall *pvs-query-hook* (format nil "~?" prompt args)))
+	(*to-emacs*
+	 (let* ((*print-pretty* nil)
+		(*output-to-emacs*
+		 (format nil ":pvs-qry ~a:end-pvs-qry"
+		   (protect-emacs-output
+		    (format nil "~?" prompt args)))))
+	   (to-emacs)
+	   (let ((val (read)))
+	     (when (eq val :abort)
+	       (pvs-message "Aborting")
+	       (pvs-abort))
+	     val)))
+	(t (pvs-query* (format nil "~?" prompt args)))))
 
 (defun pvs-query* (prompt)
   (format t "~a [Type y, n, q or !]~%" prompt)
@@ -698,8 +721,8 @@
 	    (t (break))))))
 
 (defun pvs-buffer (name contents &optional display? read-only? append? kind)
-  (dolist (hook *pvs-buffer-hooks*)
-    (funcall hook name contents display? read-only? append? kind))
+  (when *pvs-buffer-hook*
+    (funcall *pvs-buffer-hook* name contents display? read-only? append? kind))
   (if *to-emacs*
       (let* ((*print-pretty* nil)
 	     (*output-to-emacs*
