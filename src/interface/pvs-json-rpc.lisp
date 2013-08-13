@@ -8,26 +8,43 @@
 ;;; With-pvs-hooks sets up callbacks when the url is provided
 ;;; Used primarily for informative messages that are not part of the result
 ;;; E.g., "foo typechecked in 3 sec", garbage collecting, ...
+;;; But also needed for pvs-y-or-n and pvs-dialog
+
+;;; Note that we can't do a let on, e.g., *pvs-message-hook* directly, as
+;;; that would bind it in the current XML-RPC process, and the main lisp
+;;; process would not see the values.
 
 (defmacro with-pvs-hooks (url &rest body)
   (let ((gurl (gentemp)))
     `(let ((,gurl ,url))
        (if ,gurl
-	   (let ((pvs:*pvs-message-hooks*
-		  (cons #'(lambda (msg) (json-message msg ,gurl))
-			pvs:*pvs-message-hooks*))
-		 (pvs:*pvs-warning-hooks*
-		  (cons #'(lambda (msg) (json-message msg ,gurl :warning))
-			pvs:*pvs-warning-hooks*))
-		 (pvs:*pvs-buffer-hooks*
-		  (cons #'(lambda (name contents display? read-only? append? kind)
-			    (json-buffer name contents display? read-only? append? kind
-					 ,gurl))
-			pvs:*pvs-buffer-hooks*))
-		 (pvs:*pvs-y-or-n-hook*
-		  #'(lambda (msg full? timeout?)
-		      (json-y-or-n msg full? timeout? ,gurl))))
-	     ,@body)
+	   (let ((message-hook pvs:*pvs-message-hook*)
+		 (warning-hook pvs:*pvs-warning-hook*)
+		 (buffer-hook pvs:*pvs-buffer-hook*)
+		 (y-or-n-hook pvs:*pvs-y-or-n-hook*)
+		 (dialog-hook pvs:*pvs-dialog-hook*))
+	     (unwind-protect
+		  (progn
+		    (setf pvs:*pvs-message-hook*
+			  #'(lambda (msg) (json-message msg ,gurl))
+			  pvs:*pvs-warning-hook*
+			  #'(lambda (msg) (json-message msg ,gurl :warning))
+			  pvs:*pvs-buffer-hook*
+			  #'(lambda (name contents display? read-only? append? kind)
+			      (json-buffer name contents display? read-only? append? kind
+					   ,gurl))
+			  pvs:*pvs-y-or-n-hook*
+			  #'(lambda (msg full? timeout?)
+			      (json-y-or-n msg full? timeout? ,gurl))
+			  pvs:*pvs-dialog-hook*
+			  #'(lambda (prompt)
+			      (json-dialog prompt ,gurl)))
+		    ,@body)
+	       (setf pvs:*pvs-message-hook* message-hook
+		     pvs:*pvs-warning-hook* warning-hook
+		     pvs:*pvs-buffer-hook* buffer-hook
+		     pvs:*pvs-y-or-n-hook* y-or-n-hook
+		     pvs:*pvs-dialog-hook* dialog-hook)))
 	   (progn ,@body)))))
 
 #+allegro
@@ -115,15 +132,44 @@
 		    (:jsonrpc . "2.0")))))
       (xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url))))
 
+(defun json-response (id response)
+  (let* ((json:*json-identifier-name-to-lisp* #'identity)
+	 (xmlrpc-res (json:decode-json-from-string response))
+	 (json-res (cdr (assoc :jsonrpc_result xmlrpc-res :test #'string-equal)))
+	 (rid (cdr (assoc :id json-res :test #'string-equal)))
+	 (result (assoc :result json-res :test #'string-equal))
+	 (err (cdr (assoc :error json-res :test #'string-equal))))
+    (cond ((not (string= id rid))
+	   (error "Mismatching ids"))
+	  ((and err result)
+	   (error "Both result and error given"))
+	  (err
+	   (error "~a" err))
+	  (result
+	   (cdr result))
+	  (t (error "Neither result nor error given")))))
+
 (defun json-y-or-n (msg full? timeout? url)
   (or (null url)
       (let* ((json:*lisp-identifier-name-to-json* #'identity)
+	     (id (pvs:makesym "pvs_~d" (incf *json-rpc-id-ctr*)))
 	     (jmsg (json:encode-json-to-string
 		    `((:method . :yes-no)
 		      (:params . ,(list msg full? timeout?))
-		      (:id . ,(pvs:makesym "pvs_~d" (incf *json-rpc-id-ctr*)))
+		      (:id . ,id)
 		      (:jsonrpc . "2.0")))))
-	(xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url))))
+	(json-response id (xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url)))))
+
+(defun json-dialog (prompt url)
+  (or (null url)
+      (let* ((json:*lisp-identifier-name-to-json* #'identity)
+	     (id (pvs:makesym "pvs_~d" (incf *json-rpc-id-ctr*)))
+	     (jmsg (json:encode-json-to-string
+		    `((:method . :dialog)
+		      (:params . ,(list prompt))
+		      (:id . ,id)
+		      (:jsonrpc . "2.0")))))
+	(json-response id (xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url)))))
 
 (defun jsonrpc-result (result id)
   (let* ((json:*lisp-identifier-name-to-json* #'identity)
