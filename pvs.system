@@ -534,6 +534,7 @@
 		  (:file "named-callbacks")
 		  (:file "fcpo")
 		  (:file "nlyices")))
+   #+allegro
    (:module xmlrpc
      :source-pathname "src/interface"
      :components ((:file "pvs-json-rpc")
