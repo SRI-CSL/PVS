@@ -11,6 +11,9 @@ in Lisp (though there is undocumented JSON-RPC in CL-JSON).
 The advantage of using XML-RPC is that it is ubiquitous. 
 """
 
+import sys
+import os
+import wx
 import json
 import xmlrpclib
 import threading
@@ -53,7 +56,9 @@ class PVS_XMLRPC(object):
         self.pvs_proxy = xmlrpclib.ServerProxy('http://localhost:22334')
         self.json_methods = {'debug': self.pvs_debug,
                              'info': self.pvs_info,
-                             'warning': self.pvs_warning}
+                             'warning': self.pvs_warning,
+                             'yes-no': self.pvs_yes_no,
+                             'dialog': self.pvs_dialog}
 
     def pvs_request(self, method, params=None):
         """ Send a request to PVS """
@@ -108,10 +113,11 @@ class PVS_XMLRPC(object):
             params = []
         if method in self.json_methods:
             try:
+                print '\nCalling method {}\n'.format(method)
                 mthd = self.json_methods[method]
                 result = self.json_methods[method](*params)
                 if id is not None:
-                    return json.dumps({'id': id, 'result': result})
+                    return json.dumps({'jsonrpc_result': {'id': id, 'result': result, 'jsonrpc': "2.0"}})
                 else:
                     return "OK"
             except Exception as err:
@@ -159,6 +165,40 @@ class PVS_XMLRPC(object):
     def pvs_warning(self, msg):
         """ JSON-RPC method """
         print('WARNING: {0}'.format(msg))
+
+    def pvs_yes_no(self, prompt, fullp, timeout):
+        """ JSON-RPC method """
+        print('yes-no: {0} {1} {2}'.format(prompt, fullp, timeout))
+        answer = raw_input(prompt)
+        while answer != "yes" and answer != "no":
+            answer = raw_input('Please answer yes or no: ')
+        if answer.lower() == "yes":
+            return True
+        else:
+            return False
+
+    def pvs_dialog(self, prompt):
+        print('dialog: {0}'.format(prompt))
+        answer = raw_input(prompt)
+        return answer
+        
+
+# class MyFrame(wx.Frame):
+#   def YesNo(self, question, caption = 'Yes or no?'):
+#     dlg = wx.MessageDialog(None, question, caption, wx.YES_NO | wx.ICON_QUESTION)
+#     result = dlg.ShowModal() == wx.ID_YES
+#     dlg.Destroy()
+#     self.Destroy()
+#     print result
+
+# class MyApp(wx.App):
+#   def OnInit(self):
+#     myframe = MyFrame(None)
+#     myframe.YesNo('foo?')
+#     return True
+
+# app = MyApp(0)
+# app.MainLoop()
         
 def main():
     ''' Starts the server, runs tests '''
