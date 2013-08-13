@@ -483,8 +483,7 @@
 
 (defun read-proof-id (default)
   (cond ((eq *multiple-proof-default-behavior* :ask)
-	 (format t "Please enter an id (default ~a): " default)
-	 (let ((id (read-line)))
+	 (let ((id (pvs-dialog "Please enter an id (default ~a): " default)))
 	   (cond ((equal id "") default)
 		 ((valid-proof-id id) (intern id :pvs))
 		 (t (format t "~a is not a legal proof identifier:~%" id)
@@ -502,9 +501,8 @@
 
 (defun read-proof-description ()
   (cond ((eq *multiple-proof-default-behavior* :ask)
-	 (format t "Please enter a description~@[ (default ~s)~]: "
-	   *default-proof-description*)
-	 (let ((descr (read-line)))
+	 (let ((descr (pvs-dialog "Please enter a description~@[ (default ~s)~]: "
+				  *default-proof-description*)))
 	   (if (string-equal descr "")
 	       (or *default-proof-description* descr)
 	       descr)))
