@@ -1,13 +1,12 @@
 import wx
 import util
+import logging
 import pvscomm
 from constants import *
 from wx.lib.pubsub import setupkwargs, pub 
 from ui.plugin import PluginPanel
 from ui.images import getFolderImage, getPVSLogo, getTheoryImage, getFormulaImage
 from preference import Preferences
-
-log = util.getLogger(__name__)
 
 class FilesTreePlugin(PluginPanel):
     """This class provides an API for the files tree that is inside FilesTreeFrame"""
@@ -41,7 +40,7 @@ class FilesTreePlugin(PluginPanel):
                 
     def addFile(self, fullname):
         """add a file to the tree"""
-        log.info("Adding file %s", fullname)
+        logging.info("Adding file %s", fullname)
         root = self.tree.GetRootItem()
         if self.getFileNode(fullname) is None:
             self.tree.AppendItem(root, util.getFilenameFromFullPath(fullname), 1, -1, wx.TreeItemData({FULLNAME: fullname, KIND: FILE}))
@@ -49,7 +48,7 @@ class FilesTreePlugin(PluginPanel):
         
     def removeFile(self, fullname):
         """remove a file from the tree"""
-        log.info("Removing file %s", fullname)
+        logging.info("Removing file %s", fullname)
         fileNode = self.getFileNode(fullname)
         self.tree.Delete(fileNode)
         
@@ -63,22 +62,25 @@ class FilesTreePlugin(PluginPanel):
                 if fullname == nodeFullname:
                     return item
             item = self.tree.GetNextSibling(item)
-        log.info("There is no %s in the filetree", fullname)
+        logging.info("There is no %s in the filetree", fullname)
         return None
                 
     def showContextMenu(self, event):
         """display a relevant context menu when the user right-clicks on a node"""
         item = event.GetItem()
         data = self.tree.GetItemPyData(item)
-        log.info("Event data: %s", data)
+        logging.info("Event data: %s", data)
         kind = data[KIND]
         menu = wx.Menu()
         status = pvscomm.PVSCommandManager().pvsMode
         items = self.getContextMenuItems(status, kind) # each item should be a pair of a label and a callback function.
         for label, callback in items:
-            ID = wx.ID_ANY
-            menu.Append(ID, label, EMPTY_STRING, wx.ITEM_NORMAL)
-            wx.EVT_MENU(menu, ID, callback)
+            if isinstance(callback, wx.Menu):
+                menu.AppendMenu(wx.ID_ANY, label, callback)
+            else:
+                ID = wx.ID_ANY
+                menu.Append(ID, label, EMPTY_STRING, wx.ITEM_NORMAL)
+                wx.EVT_MENU(menu, ID, callback)
         self.tree.GetParent().PopupMenu(menu, event.GetPoint())
         menu.Destroy()
         
@@ -90,19 +92,19 @@ class FilesTreePlugin(PluginPanel):
             elif kind == FILE:
                 items.append((LABEL_CLOSEFILE, self.onCloseFile))
             else:
-                log.error("A node with kind %s should not be visible in %s mode", kind, status)
+                logging.error("A node with kind %s should not be visible in %s mode", kind, status)
         elif status == PVS_MODE_LISP:
             if kind == ROOT:
                 pass
             elif kind == FILE:
                 items.append((LABEL_TYPECHECK, self.onTypecheckFile))
                 items.append((LABEL_CLOSEFILE, self.onCloseFile))
-            elif kind == THEORY:
+            elif kind == THEORY.lower():
                 pass
-            elif kind == FORMULA:
+            elif kind == FORMULA.lower():
                 items.append((LABEL_PROVE_FORMULA, self.onStartProver))
             else:
-                log.error("Unknown kind: %s", kind)
+                logging.error("Unknown kind: %s", kind)
         elif status == PVS_MODE_PROVER:
             if kind == ROOT:
                 pass
@@ -110,12 +112,12 @@ class FilesTreePlugin(PluginPanel):
                 items.append((LABEL_CLOSEFILE, self.onCloseFile))
             elif kind == THEORY:
                 pass
-            elif kind == FORMULA:
+            elif kind == FORMULA.lower():
                 pass
             else:
-                log.error("Unknown kind: %s", kind)
+                logging.error("Unknown kind: %s", kind)
         else:
-            log.error("Unknown mode: %s", status)
+            logging.error("Unknown mode: %s", status)
         return items
             
     def getSelectedNodeData(self):
@@ -137,23 +139,27 @@ class FilesTreePlugin(PluginPanel):
     def onStartProver(self, event):
         """onTypecheckFile is called when the user selects Typecheck in the context menu"""
         data = self.getSelectedNodeData()
-        theoryName = data[THEORY]
+        theoryName = data[THEORY.lower()]
         formulaName = data[ID_L]        
         pvscomm.PVSCommandManager().startProver(theoryName, formulaName)
         
     def addTheoriesToFileTree(self, fullname, result):
         """addTheoriesToFileTree is called after typechecking a file and asking for the declarations in that file"""
         fileNode = self.getFileNode(fullname)
-        for theory in result:
-            theoryName = theory["theory"]
-            log.info("Adding theory %s to %s", theoryName, fullname)
-            declarations = theory["decls"]
-            theoryNode = self.tree.AppendItem(fileNode, theoryName, 2, -1, wx.TreeItemData(theory))
-            for declaration in declarations:
-                kind = declaration["kind"]
-                place = declaration["place"]
-                formulaName = declaration["id"]
-                self.tree.AppendItem(theoryNode, formulaName, 3, -1, wx.TreeItemData(declaration))
+        for item in result :
+            if "theory" in item:
+                theory = item["theory"]
+                theoryName = theory["id"]
+                logging.info("Adding theory %s to %s", theoryName, fullname)
+                declarations = theory["decls"]
+                theoryNode = self.tree.AppendItem(fileNode, theoryName, 2, -1, wx.TreeItemData(theory))
+                for declaration in declarations:
+                    kind = declaration["kind"]
+                    if kind == "formula":
+                        place = declaration["place"]
+                        formulaName = declaration["id"]
+                        declaration["theory"] = theoryName
+                        self.tree.AppendItem(theoryNode, formulaName, 3, -1, wx.TreeItemData(declaration))
         self.tree.ExpandAllChildren(fileNode)        
         
     def onFileSaved(self, fullname, oldname=None):

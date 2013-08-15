@@ -7,10 +7,9 @@ from constants import *
 import wx.lib.agw.aui as aui
 import os.path
 import util
+import logging
 from ui.images import getPVSLogo
 from wx.lib.pubsub import setupkwargs, pub 
-
-log = util.getLogger(__name__)
 
 class RichEditorManager:
     """NotebookManager manages the open tabs in the main frame. Each tab corresponds to a file or a buffer"""
@@ -56,11 +55,11 @@ class RichEditorManager:
     
     def removeAllFiles(self):
         for fullname in self.editors.keys():
-            self.removefile(fullname)
+            self.removeFile(fullname)
             
     def removeFile(self, fullname):
         richEditor = self[fullname]
-        log.info("Closing RichEditor for %s", fullname)
+        logging.info("Closing RichEditor for %s", fullname)
         del self[fullname]
         frame = self._getWidgetFrame(richEditor)
         if "richEditor" in frame.__dict__:
@@ -73,9 +72,9 @@ class RichEditorManager:
                 if fullname == page.getFilename():
                     self.notebook.DeletePage(i)
                     return
-            log.warning("Did not find the file %s", fullname) 
+            logging.warning("Did not find the file %s", fullname) 
         else:
-            log.error("The code should not reach here for %s", fullname)
+            logging.error("The code should not reach here for %s", fullname)
             
     def OnPageClose(self, event):
         richEditor = self._getSelectedPage()
@@ -115,7 +114,7 @@ class RichEditorManager:
     
     def addFile(self, fullname):
         if not fullname in self.editors:
-            log.info("Opening a new editor tab for %s", fullname) 
+            logging.info("Opening a new editor tab for %s", fullname) 
             editor = RichEditor(self.notebook, wx.ID_ANY, fullname)
             self.notebook.AddPage(editor, util.getFilenameFromFullPath(fullname), True, self.getProperBitmap())
             if os.path.exists(fullname):
@@ -148,14 +147,14 @@ class RichEditorManager:
     #TODO: Check the following functions and see if they are redundant or something.
     
     def OnPageChanged(self, event):
-        log.debug("Active Tab Index: %d", event.GetSelection())
+        logging.debug("Active Tab Index: %d", event.GetSelection())
         event.Skip()
         
     def OnPageChanging(self, event):
         event.Skip()
 
     def showRichEditorForFile(self, fullname):
-        log.info("Showing richEditor for %s", fullname)
+        logging.info("Showing richEditor for %s", fullname)
         richEditor = self[fullname]
         frame = self._getWidgetFrame(richEditor)
         if frame == util.getMainFrame():
@@ -174,9 +173,9 @@ class RichEditorManager:
         ap = self.notebook.GetSelection()
         if ap > -1:
             richEditor = self.notebook.GetPage(ap)
-            log.info("Active page is %d", ap)
+            logging.info("Active page is %d", ap)
             return richEditor
-        log.warning("No file is open")
+        logging.warning("No file is open")
         return None
     
     def onFileSaved(self, fullname, oldname=None):
@@ -191,7 +190,7 @@ class RichEditorManager:
     # The following methods are to make the page to be float-able:
     
     def onDragMotion(self, event):
-        log.debug("onDragMotion was called")
+        logging.debug("onDragMotion was called")
         self.auiManager.HideHint()
         if self.notebook.IsMouseWellOutsideWindow():
             x, y = wx.GetMousePosition()
@@ -202,7 +201,7 @@ class RichEditorManager:
         event.Skip()
 
     def onEndDrag(self, event):
-        log.debug("onEndDrag was called")
+        logging.debug("onEndDrag was called")
         self.auiManager.HideHint()
         if self.notebook.IsMouseWellOutsideWindow():
             # Use CallAfter so we our superclass can deal with the event first
@@ -210,13 +209,13 @@ class RichEditorManager:
         event.Skip()
 
     def IsMouseWellOutsideWindow(self):
-        log.debug("IsMouseWellOutsideWindow was called")
+        logging.debug("IsMouseWellOutsideWindow was called")
         screenRect = self.notebook.GetScreenRect()
         screenRect.Inflate(50, 50)
         return not screenRect.Contains(wx.GetMousePosition())
     
     def FloatPage(self, pageIndex):
-        log.debug("FloatPage was called")
+        logging.debug("FloatPage was called")
         pageTitle = self.notebook.GetPageText(pageIndex)
         frame = wx.Frame(self.notebook, title=pageTitle, style=wx.DEFAULT_FRAME_STYLE|wx.FRAME_TOOL_WINDOW)
         frame.attachRichEditorBackToNotebook = True
@@ -229,11 +228,11 @@ class RichEditorManager:
         frame.Show()
         
     def onCloseRichEditor(self, event):
-        log.debug("onCloseRichEditor was called")
+        logging.debug("onCloseRichEditor was called")
         event.Skip()
 
     def closeFloatingRichEditor(self, event):
-        log.debug("closeFloatingRichEditor was called")
+        logging.debug("closeFloatingRichEditor was called")
         frame = event.GetEventObject()
         if frame.attachRichEditorBackToNotebook:
             pageTitle = frame.GetTitle()

@@ -6,10 +6,9 @@ from constants import *
 from evhdlr import *
 from tbmgr import ToolbarManager
 import util
+import logging
 from preference import Preferences
 from wx.lib.pubsub import setupkwargs, pub 
-
-log = util.getLogger(__name__)
 
 class MainFrameMenu(wx.MenuBar):
     """The class implementing and managing the main menu bar in the application"""
@@ -18,6 +17,7 @@ class MainFrameMenu(wx.MenuBar):
         wx.MenuBar.__init__(self)
         self.plugins = {}
         self.toolbars = {}
+        self._recentContexts = {}
         self.addFileMenu()
         self.addEditMenu()
         self.addViewMenu()
@@ -93,15 +93,23 @@ class MainFrameMenu(wx.MenuBar):
                 self.recentContextsMenu.RemoveItem(item)
         except:
             pass
+        self._recentContexts = {}
         preferences = Preferences()
         recentContexts = preferences.getRecentContexts()
+        logging.debug("Recent Contexts: %s", recentContexts)
         frame = util.getMainFrame()
         for cxt in recentContexts:
             item = self.recentContextsMenu.Append(wx.ID_ANY, cxt, EMPTY_STRING, wx.ITEM_NORMAL)
-            frame.Bind(wx.EVT_MENU, lambda ce: PVSCommandManager().changeContext(cxt), item)
+            self._recentContexts[item.GetId()] = cxt
+            frame.Bind(wx.EVT_MENU, self.onRecentContextSelected, item)
+            
+    def onRecentContextSelected(self, event):
+        context = self._recentContexts[event.GetId()]
+        PVSCommandManager().changeContext(context)
+        
         
     def addToolbarToViewMenu(self, name):
-        log.debug("addToolbarToViewMenu was called for %s", name)
+        logging.debug("addToolbarToViewMenu was called for %s", name)
         preferences = Preferences()
         frame = util.getMainFrame()
         tm = ToolbarManager()
@@ -112,7 +120,7 @@ class MainFrameMenu(wx.MenuBar):
         frame.Bind(wx.EVT_MENU, lambda ce: tm.toggleToolbar(name), item)
         
     def addPluginToViewMenu(self, name, callBackFunction):
-        log.debug("addPluginToViewMenu was called for %s", name)
+        logging.debug("addPluginToViewMenu was called for %s", name)
         preferences = Preferences()
         frame = util.getMainFrame()
         item = self.pluginMenu.Append(wx.ID_ANY, name, EMPTY_STRING, wx.ITEM_CHECK)
@@ -171,22 +179,22 @@ class MainFrameMenu(wx.MenuBar):
             elif pvsMode == PVS_MODE_UNKNOWN:
                 pass
             else:
-                log.error("pvsMode %s is not recognized", pvsMode)
+                logging.error("pvsMode %s is not recognized", pvsMode)
                 
     def showPlugin(self, message):
         name, value = message
-        log.info("Menu.showPlugin was called for %s and %s", name, value)
+        logging.info("Menu.showPlugin was called for %s and %s", name, value)
         if name in self.plugins:
             item = self.plugins[name]
             item.Check(value)
         else:
-            log.warn("No menu option for plugin %s", name)
+            logging.warn("No menu option for plugin %s", name)
             
     def showToolbar(self, name, value=True):
-        log.info("Menu.showToolbar was called for %s and %s", name, value)
+        logging.info("Menu.showToolbar was called for %s and %s", name, value)
         if name in self.toolbars:
             item = self.toolbars[name]
             item.Check(value)
         else:
-            log.warn("No menu option for toolbar %s", name)
+            logging.warn("No menu option for toolbar %s", name)
             

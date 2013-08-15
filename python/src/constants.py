@@ -1,12 +1,9 @@
 
 # This File contains all the global constant strings used in the system
 
-import logging
-
 IMAGE_FOLDER_NAME = "images"
 IMAGE_FOLDER_PATH = None
 APPLICATION_FOLDER = None
-LOGGER_LEVEL = logging.DEBUG
 
 PVS_U = "PVS"
 PVS_L = "pvs"
@@ -52,6 +49,7 @@ MAINFRAME = "PVS Editor"
 CONSOLEPLUGIN = "PVS Console"
 FILESTREE = "Files Tree"
 PROOFTREE = "Proof Tree"
+PROOFMANAGERPLUGIN = "Proof Manager"
 
 PVS_MODE_OFF = "off"
 PVS_MODE_LISP = "lisp"
@@ -75,6 +73,7 @@ PUB_CONSOLEINITIALIZE = "console.initialize"
 PUB_CONSOLEWRITELINE = "console.writeLine"
 PUB_CONSOLEWRITEPROMPT = "console.writePrompt"
 PUB_TOOLSTATUSUPDATE = "ToolManager.ToolStatusUpdate"
+PUB_PROOFINFORMATIONRECEIVED = "Proof.Information.Received"
 PUB_SAVEFILE = "File.Save"
 PUB_FILESAVED = "pvs.file.Saved"
 PUB_FILETYPECHECKED = "pvs.file.typechecked"

@@ -2,17 +2,18 @@
 # This File contains all the generic function calls 
 
 import logging, sys, wx, os, os.path
-import constants
+import config
+import sys
 
 def getLogger(name):
     """Return a logger for the given name"""
     log = logging.getLogger(name)
-    hdlr = logging.StreamHandler(sys.stdout)
+    hdlr = logging.StreamHandler(sys.stdout) # if config.LOG_OUTPUT is None else logging.FileHandler(config.LOG_OUTPUT)
     #hdlr = logging.FileHandler('/var/tmp/myapp.log')
-    formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter(config.LOG_FORMAT)
     hdlr.setFormatter(formatter)
-    log.addHandler(hdlr) 
-    log.setLevel(constants.LOGGER_LEVEL)
+    logging.addHandler(hdlr) 
+    logging.setLevel(config.LOG_LEVEL)
     return log
 
 def normalizePath(thePath):
@@ -23,7 +24,7 @@ def normalizePath(thePath):
 
 def getHomeDirectory():
     """return user's home directory"""
-    return os.getenv("HOME")
+    return normalizePath(os.getenv("HOME"))
 
 def getFilenameFromFullPath(fullname, includeExtension=True):
     filename = os.path.split(fullname)[1]

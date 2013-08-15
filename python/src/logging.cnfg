@@ -1,0 +1,26 @@
+[loggers]
+keys = root
+ 
+[logger_root]
+handlers = stdout
+level = DEBUG
+ 
+[handlers]
+keys = stdout, logfile
+ 
+[handler_stdout]
+class = StreamHandler
+args = (sys.stdout,)
+formatter = mine
+
+[handler_logfile]
+class = FileHandler
+args = ("pythongui.log",)
+formatter = mine
+ 
+[formatters]
+keys = mine
+ 
+[formatter_mine]
+format = [%(module)s %(funcName)s] %(levelname)s: %(message)s
+

@@ -8,7 +8,7 @@ import os.path
 from constants import *
 from wx.lib.pubsub import setupkwargs, pub 
 from remgr import RichEditorManager
-import util
+import logging
 import evhdlr
 from mmgr import MainFrameMenu
 from tbmgr import ToolbarManager
@@ -16,8 +16,6 @@ from preference import Preferences
 import wx.lib.agw.aui as aui
 from config import *
 import wx.stc as stc
-
-log = util.getLogger(__name__)
 
 class MainFrame(wx.Frame):
     """The main frame of the application. It consists of a menu and a toolbar, a notebook for all the open
@@ -90,10 +88,10 @@ class MainFrame(wx.Frame):
         name = paneInfo.name
         tm = ToolbarManager()
         if name in tm.toolbars:
-            log.info("Toolbar %s was closed", name)
+            logging.info("Toolbar %s was closed", name)
             pub.sendMessage(PUB_SHOWTOOLBAR, name=name, value=False)
         else:
-            log.info("Pane %s was closed", name)
+            logging.info("Pane %s was closed", name)
             pub.sendMessage(PUB_SHOWPLUGIN, name=name, value=False)
 
 
@@ -106,7 +104,7 @@ class MainFrame(wx.Frame):
         self.handleNumberOfOpenFilesChanged()
         
     def setStatusbarText(self, text, location=0):
-        log.info("Setting status bar[%d] to: %s"%(location, text))
+        logging.info("Setting status bar[%d] to: %s"%(location, text))
         self.statusbar.SetStatusText(text, location)
         
     def closeContext(self):
@@ -120,7 +118,7 @@ class MainFrame(wx.Frame):
             if os.path.exists(fullname):
                 pub.sendMessage(PUB_ADDFILE, fullname=fullname)
             else:
-                log.warning("File %s no longer exists", fullname)
+                logging.warning("File %s no longer exists", fullname)
         
     def handlePVSModeUpdated(self, pvsMode = PVS_MODE_OFF):
         self.updateMenuAndToolbar({PVSMODE: pvsMode})
@@ -196,7 +194,7 @@ class MainFrame(wx.Frame):
         elif type==WARNING:
             self.showWarning(message)
         else:
-            log.error("Unknown message type, I will display it as a normal message")
+            logging.error("Unknown message type, I will display it as a normal message")
             self.showMessage(message)
         
     def showError(self, message, title=ERROR):

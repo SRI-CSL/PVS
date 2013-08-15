@@ -1,11 +1,8 @@
 
 import wx
 import wx.stc as stc
-import util
+import logging
 from constants import PVS_KEYWORDS, PVS_OPERATORS
-
-log = util.getLogger(__name__)
-
 
 faces = {'default_color': '000000',
          'keyword_color': '0000FF',
@@ -59,7 +56,7 @@ class PVSStyledText(stc.StyledTextCtrl):
         self.Bind(wx.EVT_SET_CURSOR, self.onCursor)  #TODO: what is this?
 
     def setSyntaxHighlighting_usingmatlab(self):
-        log.debug("Setting syntax highlighting")
+        logging.debug("Setting syntax highlighting")
         self.SetLexer(stc.STC_LEX_MATLAB)
         # Default
         self.StyleSetSpec(stc.STC_MATLAB_DEFAULT, "fore:#%(default_color)s,size:%(size)d" % faces)
@@ -80,4 +77,4 @@ class PVSStyledText(stc.StyledTextCtrl):
         self.GetCurrentPos()
         
     def onCursor(self, event):
-        log.info("Event: %s", event)
+        logging.info("Event: %s", event)

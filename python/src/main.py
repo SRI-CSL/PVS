@@ -9,10 +9,12 @@
 
 import wx, os.path, sys
 import util
-import logging
 import constants
 import platform
 import time
+import config
+import logging
+import logging.config
 from ui.images import getIDELogo
 from ui.frame import MainFrame
 from ui.plugin import PluginManager
@@ -21,8 +23,6 @@ from ui.plg.pt import ProofTreePlugin
 from ui.plg.console import ConsolePlugin
 from config import PLUGIN_DEFINITIONS
 from wx.lib.pubsub import setupkwargs, pub 
-
-log = util.getLogger(__name__)
 
 class PVSEditorApp(wx.App):
     """The main class that starts the application and shows the main frame"""
@@ -38,7 +38,7 @@ class PVSEditorApp(wx.App):
         mainFrame = MainFrame(None, wx.ID_ANY, "")
         self.SetTopWindow(mainFrame)
         mainFrame.Show()
-        log.info("Main Frame initialized...") 
+        logging.info("Main Frame initialized...") 
         pm = PluginManager()
         pm.initializePlugins(PLUGIN_DEFINITIONS)
         operatingSystem = platform.system()
@@ -50,7 +50,7 @@ class PVSEditorApp(wx.App):
 # end of class PVSEditorApp
 
 def processArguments(args):
-    log.info("Command Line Arguments: %s", args)
+    logging.info("Command Line Arguments: %s", args)
     del args[0]
     for arg in args:
         if arg.startswith(constants.INPUT_LOGGER):
@@ -60,16 +60,29 @@ def processArguments(args):
             elif logLevel == constants.LOG_LEVEL_DEBUG:
                 constants.LOGGER_LEVEL = logging.FATAL
             
+def configLogger():
+    """Return a logger for the given name"""
+    logConfigFile = os.path.join(constants.APPLICATION_FOLDER, "src/logging.cnfg")
+    if os.path.exists(logConfigFile):
+        logging.config.fileConfig(logConfigFile)
+    else:
+        print "Could not find the config file for logging. Using default settings..."
+        hdlr = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter("[%(module)s %(funcName)s] %(levelname)s - %(message)s")
+        hdlr.setFormatter(formatter)
+        logging.addHandler(hdlr) 
+        logging.setLevel(logging.DEBUG)
 
 if __name__ == "__main__":
-    log.debug("PubSub version is %s", pub.PUBSUB_VERSION)
+    #logging.debug("PubSub version is %s", pub.PUBSUB_VERSION)
     assert pub.PUBSUB_VERSION == 3
     utilDirectory = os.path.dirname(util.__file__)
     constants.APPLICATION_FOLDER = os.path.abspath(os.path.join(utilDirectory, os.path.pardir))
     constants.IMAGE_FOLDER_PATH = os.path.join(constants.APPLICATION_FOLDER, constants.IMAGE_FOLDER_NAME)
-    log.debug("Application Folder is %s", constants.APPLICATION_FOLDER)
+    configLogger()
+    logging.debug("Application Folder is %s", constants.APPLICATION_FOLDER)
     processArguments(list(sys.argv))
 
     application = PVSEditorApp(0)
-    log.info("Entering MainLoop...") 
+    logging.info("Entering MainLoop...") 
     application.MainLoop()

@@ -1,11 +1,10 @@
 import wx
 import util
+import logging
 from constants import *
 from preference import Preferences
 import wx.lib.agw.aui as aui
 from wx.lib.pubsub import setupkwargs, pub 
-
-log = util.getLogger(__name__)
 
 class PluginManager:
     """A class to manage all the tool frames, create, and show/hide them"""
@@ -13,25 +12,33 @@ class PluginManager:
     CLASS = "class"
     SIZE = "size"
     LOCATION = "location"
+    VISIBLE = "visible"
     TOP = "top"
     BOTTOM = "bottom"
     LEFT = "left"
     RIGHT = "right"
     FLOAT = "float"
+    CENTER = "center"
     
     __shared_state = {}    
     
     def __init__(self):
         self.__dict__ = self.__shared_state
         if not "pluginsDefinitions" in self.__dict__:
-            self.plugins = {}
             self.pluginsDefinitions = []
+            pub.subscribe(self.onPVSModeUpdated, PUB_UPDATEPVSMODE)
             
     def initializePlugins(self, pluginsDefinitions):
         preference = Preferences()
         self.pluginsDefinitions = pluginsDefinitions
         for pluginDefinitions in pluginsDefinitions:
             self.create(pluginDefinitions)
+            
+    def onPVSModeUpdated(self, pvsMode = PVS_MODE_OFF):
+        for plugin in self.pluginsDefinitions:
+            if PluginManager.VISIBLE in plugin:
+                visibility = plugin[PluginManager.VISIBLE]
+                self.showPlugin(plugin[PluginManager.NAME], pvsMode in visibility)
             
     def create(self, pluginDefinition):
         name = pluginDefinition[PluginManager.NAME]
@@ -52,20 +59,28 @@ class PluginManager:
             paneInfo = paneInfo.Right()
         elif location == PluginManager.FLOAT:
             paneInfo = paneInfo.Float()
+        elif location == PluginManager.CENTER:
+            paneInfo = paneInfo.Center()
         else:
-            log.error("Unknown Location: %s", location)
+            logging.error("Unknown Location: %s", location)
             paneInfo = paneInfo.Float()
         auiManager.AddPane(panel, paneInfo)
+        if PluginManager.VISIBLE in pluginDefinition:
+            self.showPlugin(name, PVS_MODE_UNKNOWN in pluginDefinition[PluginManager.VISIBLE])
         auiManager.Update()
         pub.sendMessage(PUB_ADDITEMTOVIEWMENU, name=name, callBackFunction=(lambda ce: self.togglePluginVisibility(name)))
         return None
             
     def togglePluginVisibility(self, name):
-        print "togglePluginVisibility was called for %s"%(name, )
+        logging.debug("togglePluginVisibility was called for %s", name)
         paneInfo = self.getPlugin(name)
-        newVisibility = not paneInfo.IsShown()
-        paneInfo.Show(newVisibility)
-        util.auiManager().Update()
+        self.showPlugin(name, not paneInfo.IsShown())
+        
+    def showPlugin(self, name, visible):
+        logging.debug("showPlugin was called for %s and %s", name, visible)
+        paneInfo = self.getPlugin(name)
+        paneInfo.Show(visible)
+        util.auiManager().Update()        
         
     def getPlugin(self, name):
         paneInfo = util.auiManager().GetPane(name)
@@ -76,7 +91,6 @@ class PluginManager:
     def destroy(self, name):
         plugin = self.getPlugin(name)
         plugin.Destroy()
-        del self.plugins[name]
         self.toolsDir[name] = [info[0], None, False]
 
 
