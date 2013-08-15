@@ -1528,32 +1528,32 @@ required a context.")
 	      (when incs
 		(generate-subtype-tcc ex expected incs))))))))
 
-(defun compatible-predicates (types expected ex &optional incs conds)
+(defun compatible-predicates (types expected ex &optional incs)
   (if (null types)
       (if *ps*
 	  (multiple-value-bind (ics there?)
 	      (gethash ex (typepred-hash *ps*))
 	    (if there?
 		(remove-if #'(lambda (inc) (member inc ics :test #'tc-eq))
-		  (nreverse incs))
+		  incs)
 		(let ((ics (collect-implicit-type-constraints (list ex) *ps* nil t)))
 		  (when (null (freevars ics))
 		    (setf (gethash ex (typepred-hash *ps*)) ics))
 		  (remove-if #'(lambda (inc) (member inc ics :test #'tc-eq))
-		    (nreverse incs)))))
-	  (or (nreverse incs)
+		    incs))))
+	  (or incs
 	      (progn (add-tcc-comment 'subtype ex expected 'in-context)
 		     nil)))
-      (let ((npreds (compatible-preds (car types) expected ex)))
-	(multiple-value-bind (nconds nincs)
-	    (split-on #'(lambda (x) (member x *tcc-conditions* :test #'tc-eq))
-		      npreds)
+      (let* ((npreds (compatible-preds (car types) expected ex))
+	     (nincs (remove-if #'(lambda (x)
+				   (or (member x *tcc-conditions* :test #'tc-eq)
+				       (member x incs :test #'tc-eq)))
+		      npreds)))
 	  (when npreds
 	    (compatible-predicates
 	     (cdr types) expected ex
-	     (or (nintersection incs nincs :test #'tc-eq)
-		 nincs)
-	     (nunion conds nconds :test #'tc-eq)))))))
+	     (uappend incs nincs :test #'tc-eq)
+	     )))))
 
 (defun uappend (list1 list2 &key (test #'eq))
   ;; returns the append of list1 and list2, without duplicates
