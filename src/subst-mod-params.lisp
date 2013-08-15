@@ -545,7 +545,7 @@
 	       ((or type-decl formal-type-decl)
 		(or (type-decl? (cdr bd))
 		    (and (actual? (cdr bd)) (type-value (cdr bd)))
-		    (break "Type")))
+		    (break "No binding for type ~a" (car bd))))
 	       ((or const-decl formal-const-decl)
 		(or (const-decl? (cdr bd))
 		    (and (actual? (cdr bd))
@@ -1124,9 +1124,9 @@
 		     (decl-formals (car lhsmatch))
 		     (dactuals type)))))
 	     (subst-mod-params* stype modinst bindings)))
-	  ;;((and nil *subst-mod-params-module?*
-	  ;;	(eq (module decl) *subst-mod-params-module?*))
-	  ;; type)
+	  ((and *subst-mod-params-module?*
+	  	(eq (module decl) *subst-mod-params-module?*))
+	   type)
 	  (t (or (mapped-theory-value (module decl) type modinst bindings)
 		 (let* ((mi (module-instance res))
 			(nacts (cond ((actuals mi)
