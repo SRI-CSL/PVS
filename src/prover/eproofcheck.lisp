@@ -315,7 +315,9 @@
 	  (after-prove*)
 	  (dpi-end *top-proofstate*)
 	  (unless *recursive-prove-decl-call*
-	    (save-proof-info decl init-real-time init-run-time)))
+	    (save-proof-info decl init-real-time init-run-time))
+	  (when *ps-control-info*
+	    (add-psinfo *ps-control-info* *top-proofstate* t)))
 	*top-proofstate*))))
 
 (defun determine-decision-procedure (decl)
@@ -374,8 +376,6 @@
 	     (prove* *top-proofstate*))))))
 
 (defun after-prove* ()
-  (when *ps-control-info*
-    (add-psinfo *ps-control-info* *top-proofstate* t))
   (unless *recursive-prove-decl-call*
     (when (or (not *proving-tcc*)
 	      *noninteractive*)
