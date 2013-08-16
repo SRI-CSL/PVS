@@ -53,8 +53,6 @@
 
 (defvar *pvs-xmlrpc-server*)
 
-(defvar *json-id* nil)
-
 #+allegro
 (defun pvs-server (&key (port 55223))
   (let ((cmdsrv (make-xml-rpc-server 
@@ -83,7 +81,8 @@
 	     (method (cdr (assoc :method request :test #'string-equal)))
 	     (params (cdr (assoc :params request :test #'string-equal)))
 	     (*print-pretty* nil))
-	(setq *last-request* (list id method params))
+	(setq *last-request* (list method params id client-url))
+	;; (apply #'pvs-json-rpc:process-json-request pvs-xml-rpc::*last-request*)
 	(xmlrpc-result (pvs-json-rpc:process-json-request
 			method params id client-url)
 		       id))
