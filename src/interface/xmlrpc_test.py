@@ -57,7 +57,7 @@ class PVS_XMLRPC(object):
         self.json_methods = {'debug': self.pvs_debug,
                              'info': self.pvs_info,
                              'warning': self.pvs_warning,
-                             'yes-no': self.pvs_yes_no,
+                             'yes_no': self.pvs_yes_no,
                              'dialog': self.pvs_dialog}
 
     def pvs_request(self, method, params=None):
