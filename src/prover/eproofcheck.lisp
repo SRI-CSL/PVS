@@ -374,6 +374,8 @@
 	     (prove* *top-proofstate*))))))
 
 (defun after-prove* ()
+  (when *ps-control-info*
+    (add-psinfo *ps-control-info* *top-proofstate* t))
   (unless *recursive-prove-decl-call*
     (when (or (not *proving-tcc*)
 	      *noninteractive*)
