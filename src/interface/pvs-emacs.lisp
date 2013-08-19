@@ -386,9 +386,16 @@
 
 (defun pvs-error (msg err &optional itheory iplace)
   ;; Indicates an error; no recovery possible.
-  (when *pvs-error-hook*
-    (funcall *pvs-error-hook* msg err itheory iplace))
-  (cond (*rerunning-proof*
+  (cond (*pvs-error-hook*
+	 (let* ((place (if *adt-decl* (place *adt-decl*) iplace))
+		(buff (if *adt-decl*
+			  (or (filename *generating-adt*)
+			      (and (current-theory)
+				   (filename (current-theory)))
+			      *current-file*)
+			  (or *from-buffer* itheory))))
+	   (funcall *pvs-error-hook* msg (write-to-temp-file err) buff place)))
+	(*rerunning-proof*
 	 (restore))
 	((and *pvs-emacs-interface*
 	      *to-emacs*)
@@ -576,10 +583,15 @@
   cmd-gate
   res-gate)
 
-(defun add-psinfo (psi ps)
+(defun add-psinfo (psi ps &optional done?)
   #+allegro
   (mp:with-process-lock ((psinfo-lock psi))
-    (let ((result (pvs2json ps)))
+    (let ((result (if done?
+		      `(("result" . ,(if (and (typep ps 'top-proofstate)
+					      (eq (status-flag ps) '!))
+					 "Q.E.D."
+					 "Unfinished")))
+		      (pvs2json ps))))
       ;;(format t "~%add-psinfo: Setting result to ~a~%" result)
       (setf (psinfo-json-result psi) result)
       ;;(format t "~%add-psinfo: opening res-gate~%")
@@ -826,11 +838,12 @@
 			    (format nil "~?" message args)
 			    message)
 			obj)))
-	((and (or *to-emacs*
-		  (null *pvs-emacs-interface*))
-	      (or (not *in-checker*)
-		  (not *in-evaluator*)
-		  *tc-add-decl*))
+	((or *pvs-error-hook*
+	     (and (or *to-emacs*
+		      (null *pvs-emacs-interface*))
+		  (or (not *in-checker*)
+		      (not *in-evaluator*)
+		      *tc-add-decl*)))
 	 (pvs-error "Parser error"
 	   (if args
 	       (format nil "~?" message args)
@@ -896,9 +909,10 @@
 			       (format nil "~a" errmsg))
 			      (format nil "~a" errmsg))
 			  obj)))
-	  ((and *to-emacs*
-		(or (not *in-checker*)
-		    *tc-add-decl*))
+	  ((or *pvs-error-hook*
+	       (and *to-emacs*
+		    (or (not *in-checker*)
+			*tc-add-decl*)))
 	   (pvs-error "Typecheck error"
 	     errmsg
 	     (or (and (current-theory)

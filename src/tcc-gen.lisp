@@ -253,10 +253,11 @@
 
 (defun add-tcc-conditions* (expr conditions substs antes)
   (cond ((null conditions)
-	 (let ((ex (substit (if antes
-				(make!-implication
-				 (make!-conjunction* antes) expr)
-				expr)
+	 (let ((ex (substit
+		       (if antes
+			   (make!-implication
+			    (make!-conjunction* (nreverse antes)) expr)
+			   expr)
 		     substs)))
 	   (assert (type ex))
 	   ex))
@@ -279,7 +280,7 @@
 	((typep (car conditions) 'bind-decl)
 	 ;; Binding from a binding-expr
 	 (add-tcc-bindings expr conditions substs antes))
-	(t     ;; We collect antes so we can form (A & B) => C rather than
+	(t ;; We collect antes so we can form (A & B) => C rather than
 	 ;; A => (B => C)
 	 (add-tcc-conditions* expr (cdr conditions)
 			      substs

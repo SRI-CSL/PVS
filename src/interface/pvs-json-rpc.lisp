@@ -5,6 +5,12 @@
 
 (export '(process-json-request))
 
+(define-condition pvs-error (simple-error)
+  ((message :accessor message :initarg :message)
+   (error-file :accessor error-file :initarg :error-file)
+   (file-or-buffer-name :accessor file-or-buffer-name :initarg :file-or-buffer-name)
+   (place :accessor place :initarg :place)))
+
 ;;; With-pvs-hooks sets up callbacks when the url is provided
 ;;; Used primarily for informative messages that are not part of the result
 ;;; E.g., "foo typechecked in 3 sec", garbage collecting, ...
@@ -16,36 +22,40 @@
 
 (defmacro with-pvs-hooks (url &rest body)
   (let ((gurl (gentemp)))
-    `(let ((,gurl ,url))
-       (if ,gurl
-	   (let ((message-hook pvs:*pvs-message-hook*)
-		 (warning-hook pvs:*pvs-warning-hook*)
-		 (buffer-hook pvs:*pvs-buffer-hook*)
-		 (y-or-n-hook pvs:*pvs-y-or-n-hook*)
-		 (dialog-hook pvs:*pvs-dialog-hook*))
-	     (unwind-protect
-		  (progn
-		    (setf pvs:*pvs-message-hook*
-			  #'(lambda (msg) (json-message msg ,gurl))
-			  pvs:*pvs-warning-hook*
-			  #'(lambda (msg) (json-message msg ,gurl :warning))
-			  pvs:*pvs-buffer-hook*
-			  #'(lambda (name contents display? read-only? append? kind)
-			      (json-buffer name contents display? read-only? append? kind
-					   ,gurl))
-			  pvs:*pvs-y-or-n-hook*
-			  #'(lambda (msg full? timeout?)
-			      (json-y-or-n msg full? timeout? ,gurl))
-			  pvs:*pvs-dialog-hook*
-			  #'(lambda (prompt)
-			      (json-dialog prompt ,gurl)))
-		    ,@body)
-	       (setf pvs:*pvs-message-hook* message-hook
-		     pvs:*pvs-warning-hook* warning-hook
-		     pvs:*pvs-buffer-hook* buffer-hook
-		     pvs:*pvs-y-or-n-hook* y-or-n-hook
-		     pvs:*pvs-dialog-hook* dialog-hook)))
-	   (progn ,@body)))))
+    `(let ((,gurl ,url)
+	   (error-hook pvs:*pvs-error-hook*)
+	   (message-hook pvs:*pvs-message-hook*)
+	   (warning-hook pvs:*pvs-warning-hook*)
+	   (buffer-hook pvs:*pvs-buffer-hook*)
+	   (y-or-n-hook pvs:*pvs-y-or-n-hook*)
+	   (dialog-hook pvs:*pvs-dialog-hook*))
+       (unwind-protect
+	    (progn
+	      ;; Error-hook is different, as it is the end result
+	      ;; url is not needed
+	      (setf pvs:*pvs-error-hook* #'json-make-pvs-error)
+	      (when ,gurl
+		(setf pvs:*pvs-message-hook*
+		      #'(lambda (msg) (json-message msg ,gurl))
+		      pvs:*pvs-warning-hook*
+		      #'(lambda (msg) (json-message msg ,gurl :warning))
+		      pvs:*pvs-buffer-hook*
+		      #'(lambda (name contents display? read-only? append? kind)
+			  (json-buffer name contents display? read-only?
+				       append? kind ,gurl))
+		      pvs:*pvs-y-or-n-hook*
+		      #'(lambda (msg full? timeout?)
+			  (json-y-or-n msg full? timeout? ,gurl))
+		      pvs:*pvs-dialog-hook*
+		      #'(lambda (prompt)
+			  (json-dialog prompt ,gurl))))
+	      ,@body)
+	 (setf pvs:*pvs-error-hook* error-hook
+	       pvs:*pvs-message-hook* message-hook
+	       pvs:*pvs-warning-hook* warning-hook
+	       pvs:*pvs-buffer-hook* buffer-hook
+	       pvs:*pvs-y-or-n-hook* y-or-n-hook
+	       pvs:*pvs-dialog-hook* dialog-hook)))))
 
 #+allegro
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -92,6 +102,7 @@
 (defun process-json-request (method params id url)
   (if id
       (handler-case (process-json-request* method params id url)
+	(pvs-error (c) (json-pvs-error id c))
 	(error (c) (jsonrpc-error id c)))
       (process-json-request* method params id url)))
 
@@ -102,8 +113,9 @@
     (error "parameters ~a must be a list" params))
   (multiple-value-bind (reqfun reqsig)
       (get-json-request-function method)
-    (setq *last-response* nil)
     (check-params params reqsig)
+    (setq *last-request* (cons reqfun params))
+    (setq *last-response* nil)
     (let ((result (with-pvs-hooks url (apply reqfun params))))
       (setq *last-response* result)
       (jsonrpc-result result id))))
@@ -113,6 +125,29 @@
   ;;; for now, assume ok
   ;; (error "Params ~a don't match signature ~a" params reqsig)
   )
+
+;; Called from pvs-error, but this is the response, unlike, e.g., pvs-message
+(defun json-make-pvs-error (msg errfile fbname place)
+  (let ((plist (pvs:place-list place)))
+    (error 'pvs-error
+	   :message msg
+	   :error-file errfile
+	   :file-or-buffer-name fbname
+	   :place plist)))
+
+(defun json-pvs-error (id c)
+  (with-slots (message error-file file-or-buffer-name place) c
+    (let* ((jerr `((:error . ((:code . 0)
+			      (:message . ,message)
+			      (:data . ((:error_file . ,error-file)
+					,@(when file-or-buffer-name
+						`((:theory . ,file-or-buffer-name)))
+					,@(when place
+						`((:begin . ,(list (car place)
+								   (cadr place)))))))))
+		   (:id . ,id)
+		   (:jsonrpc . "2.0"))))
+      jerr)))
 
 (defun json-message (msg url &optional (level :info))
   (when url
@@ -154,7 +189,7 @@
       (let* ((json:*lisp-identifier-name-to-json* #'identity)
 	     (id (pvs:makesym "pvs_~d" (incf *json-rpc-id-ctr*)))
 	     (jmsg (json:encode-json-to-string
-		    `((:method . :yes-no)
+		    `((:method . :yes_no)
 		      (:params . ,(list msg full? timeout?))
 		      (:id . ,id)
 		      (:jsonrpc . "2.0")))))
@@ -179,11 +214,12 @@
     (setq *last-response* jresult)
     jresult))
 
-(defun jsonrpc-error (result id)
+(defun jsonrpc-error (id result)
   (let* ((json:*lisp-identifier-name-to-json* #'identity)
 	 (sresult (json:encode-json-to-string result))
 	 (jresult (json:encode-json-to-string
-		   `((:result . ,sresult)
+		   `((:error . ((:code . 1)
+				(:message . ,sresult)))
 		     (:id . ,id)))))
     (setq *last-response* jresult)
     jresult))

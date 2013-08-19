@@ -80,7 +80,7 @@
   (pushnew :pvs *features*)
   )
 
-(defparameter *binfile-version* 30)
+(defparameter *binfile-version* 31)
 
 (defvar *pvs-build-time* (get-universal-time)) ;; set on loading in operate-on-system
 

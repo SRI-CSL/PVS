@@ -399,12 +399,7 @@ required a context.")
 		      (orig (copy ex)))
 		 (when (and (lambda-expr? def)
 			    (eq *generate-tccs* 'none))
-		   (mapc #'(lambda (arg dom)
-			     (let* ((jtypes (judgement-types+ arg))
-				    (incs (compatible-predicates jtypes dom arg)))
-			       (when incs
-				 (generate-subtype-tcc arg dom incs))))
-			 (argument* ex) (get-lambda-expr-full-domain def)))
+		   (check-for-application-macro-tccs (argument* ex) def))
 		 (change-class ex (class-of appl))
 		 (copy-slots ex appl)
 		 (setf (from-macro ex) orig)
@@ -423,6 +418,32 @@ required a context.")
 		   (setf (from-macro ex) orig)
 		   ;;(push (cons orig ex) (macro-expressions (current-theory)))
 		   ))))))))
+
+(defun check-for-application-macro-tccs (args def)
+  (let ((bindings (lambda-bindings* def)))
+    (assert (<= (length args) (length bindings)))
+    (check-for-application-macro-tccs* args bindings)))
+
+(defun check-for-application-macro-tccs* (args bindings)
+  (when args
+    (let* ((arg (car args))
+	   (bnds (car bindings))
+	   (dom (if (cdr bnds)
+		    (mk-tupletype (mapcar #'type bnds))
+		    (type (car bnds))))
+	   (jtypes (judgement-types+ arg))
+	   (incs (compatible-predicates jtypes dom arg)))
+      (when incs
+	(generate-subtype-tcc arg dom incs))
+      (check-for-application-macro-tccs*
+       (cdr args)
+       (let ((sbindings (if (cdr bnds)
+			    (pairlis bnds
+				     (if (tuple-expr? arg)
+					 (exprs arg)
+					 (make-projections arg ex)))
+			    (acons (car bnds) arg nil))))
+	 (substit (cdr bindings) sbindings))))))
 
 (defmethod set-type* :around ((ex projection-application) expected)
   (declare (ignore expected))
@@ -1524,30 +1545,32 @@ required a context.")
 	      (when incs
 		(generate-subtype-tcc ex expected incs))))))))
 
-(defun compatible-predicates (types expected ex &optional incs conds)
+(defun compatible-predicates (types expected ex &optional incs)
   (if (null types)
       (if *ps*
 	  (multiple-value-bind (ics there?)
 	      (gethash ex (typepred-hash *ps*))
 	    (if there?
-		(remove-if #'(lambda (inc) (member inc ics :test #'tc-eq)) incs)
+		(remove-if #'(lambda (inc) (member inc ics :test #'tc-eq))
+		  incs)
 		(let ((ics (collect-implicit-type-constraints (list ex) *ps* nil t)))
 		  (when (null (freevars ics))
 		    (setf (gethash ex (typepred-hash *ps*)) ics))
-		  (remove-if #'(lambda (inc) (member inc ics :test #'tc-eq)) incs))))
+		  (remove-if #'(lambda (inc) (member inc ics :test #'tc-eq))
+		    incs))))
 	  (or incs
 	      (progn (add-tcc-comment 'subtype ex expected 'in-context)
 		     nil)))
-      (let ((npreds (compatible-preds (car types) expected ex)))
-	(multiple-value-bind (nconds nincs)
-	    (split-on #'(lambda (x) (member x *tcc-conditions* :test #'tc-eq))
-		      npreds)
+      (let* ((npreds (compatible-preds (car types) expected ex))
+	     (nincs (remove-if #'(lambda (x)
+				   (or (member x *tcc-conditions* :test #'tc-eq)
+				       (member x incs :test #'tc-eq)))
+		      npreds)))
 	  (when npreds
 	    (compatible-predicates
 	     (cdr types) expected ex
-	     (or (nintersection incs nincs :test #'tc-eq)
-		 nincs)
-	     (nunion conds nconds :test #'tc-eq)))))))
+	     (uappend incs nincs :test #'tc-eq)
+	     )))))
 
 (defun uappend (list1 list2 &key (test #'eq))
   ;; returns the append of list1 and list2, without duplicates
