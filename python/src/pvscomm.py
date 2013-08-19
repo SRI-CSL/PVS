@@ -93,11 +93,11 @@ class PVSCommunicator:
         and no error, "null" is returned.  Otherwise, a valid JSON-RPC
         response/error form is returned.
         """
-        logging.debug("onPVSMessageReceived was called with %s", jsonString)
+        logging.debug("Input: %s", jsonString)
         try:
             message = json.loads(jsonString, object_hook=self.requestCheck)
             result = self.processMessage(message)
-            logging.debug("onPVSMessageReceived is returning %s", result)
+            logging.debug("Output: %s", result)
             return result
         except TypeError as err:
             return 'request: {0} is of type {1}, string expected'.format(jsonString, type(jsonString))

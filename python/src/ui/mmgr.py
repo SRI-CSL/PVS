@@ -109,7 +109,7 @@ class MainFrameMenu(wx.MenuBar):
         
         
     def addToolbarToViewMenu(self, name):
-        logging.debug("addToolbarToViewMenu was called for %s", name)
+        logging.debug("Name %s", name)
         preferences = Preferences()
         frame = util.getMainFrame()
         tm = ToolbarManager()
@@ -120,7 +120,7 @@ class MainFrameMenu(wx.MenuBar):
         frame.Bind(wx.EVT_MENU, lambda ce: tm.toggleToolbar(name), item)
         
     def addPluginToViewMenu(self, name, callBackFunction):
-        logging.debug("addPluginToViewMenu was called for %s", name)
+        logging.debug("Name: %s", name)
         preferences = Preferences()
         frame = util.getMainFrame()
         item = self.pluginMenu.Append(wx.ID_ANY, name, EMPTY_STRING, wx.ITEM_CHECK)

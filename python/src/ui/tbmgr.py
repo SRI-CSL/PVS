@@ -64,7 +64,7 @@ class ToolbarManager():
         self.showToolbar(name, not toolbar.IsShown())
 
     def showToolbar(self, name, visible=True):
-        logging.debug("showToolbar was called for %s and %s", name, visible)
+        logging.debug("Name: %s Visible %s", name, visible)
         frame = util.getMainFrame()
         toolbar = util.auiManager().GetPane(name)
         toolbar.Show(visible)

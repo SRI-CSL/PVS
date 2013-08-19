@@ -72,12 +72,12 @@ class PluginManager:
         return None
             
     def togglePluginVisibility(self, name):
-        logging.debug("togglePluginVisibility was called for %s", name)
+        logging.debug("Name: %s", name)
         paneInfo = self.getPlugin(name)
         self.showPlugin(name, not paneInfo.IsShown())
         
     def showPlugin(self, name, visible):
-        logging.debug("showPlugin was called for %s and %s", name, visible)
+        logging.debug("Name: %s Visibility: %s", name, visible)
         paneInfo = self.getPlugin(name)
         paneInfo.Show(visible)
         util.auiManager().Update()        

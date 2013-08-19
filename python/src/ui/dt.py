@@ -436,7 +436,7 @@ def randomTree(tree):
 	root = TreeNode("Root")
 	tree.setRoot(root)
 	nodes = [root]
-	for i in range(10):
+	for i in range(100):
 		node = TreeNode("Node %s"%i)
 		idx = random.randint(0, len(nodes)-1)
 		tree.addChild(nodes[idx], node)

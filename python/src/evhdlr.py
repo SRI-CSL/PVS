@@ -18,7 +18,6 @@ from wx.lib.pubsub import setupkwargs, pub
 
 def onChangeContext(event):
     """called to handle 'change context' request"""
-    logging.debug("onChangeContext was called")
     frame = util.getMainFrame()
     preferences = Preferences()
     newContext = frame.chooseDirectory("Select a directory", preferences.getRecentContexts()[0])
@@ -55,8 +54,8 @@ def onOpenFile(event):
     frame = util.getMainFrame()
     filters = "PVS files (*" + PVS_EXTENSION + ")|*" + PVS_EXTENSION
     dialog = wx.FileDialog (frame, "Open PVS file", wildcard = filters, style = wx.OPEN )
-    if dialogging.ShowModal() == wx.ID_OK:
-        fullname = dialogging.GetPath()
+    if dialog.ShowModal() == wx.ID_OK:
+        fullname = dialog.GetPath()
         logging.info("Opening file %s", fullname)
         pub.sendMessage(PUB_ADDFILE, fullname=fullname)
     else:
