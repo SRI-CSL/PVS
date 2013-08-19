@@ -353,9 +353,9 @@
     (pvs-emacs-eval "(setq pvs-in-checker t)")))
 
 (defun initialize-auto-rewrites ()
-  (let* ((rewrites+ (mapappend #'rewrite-names
+  (let* ((rewrites+ (mapappend #'get-rewrite-names
 			       (auto-rewrites *current-context*)))
-	 (rewrites- (mapappend #'rewrite-names
+	 (rewrites- (mapappend #'get-rewrite-names
 			       (disabled-auto-rewrites *current-context*)))
 	 (rewrites (set-difference rewrites+ rewrites- :test #'tc-eq)))
     (catch 'abort
@@ -366,6 +366,28 @@
     :auto-rewrites!-names *auto-rewrites!-names*
     :macro-names *macro-names*
     :all-rewrites-names *all-rewrites-names*))
+
+(defun get-rewrite-names (rewrite-decl)
+  (if (library-datatype-or-theory? (module rewrite-decl))
+      ;; May need to add libids in this case
+      (mapcar #'(lambda (rn)
+		  ;; Note that in general we can't add a library to rn,
+		  ;; as it may have diverse resolutions
+		  (lcopy rn
+		    :resolutions
+		    (mapcar #'(lambda (res)
+				(let ((rth (module (declaration res))))
+				  (if (library-datatype-or-theory? rth)
+				      (let ((libid (libref-to-libid (lib-ref rth))))
+					(lcopy res
+					  :module-instance
+					  (lcopy (module-instance res)
+					    :library libid)))
+				      res)))
+		      (resolutions rn))))
+	(rewrite-names rewrite-decl))
+      (progn (assert (get-theory (module-instance (car (rewrite-names rewrite-decl)))))
+	     (rewrite-names rewrite-decl))))
 
 (defun prove-decl-body ()
   (unwind-protect
