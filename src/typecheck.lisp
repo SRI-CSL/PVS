@@ -1044,11 +1044,13 @@
 	    ;; 	"Mapping has duplicate LHS: ~a" (lhs mapping)))
 	    (when (mapping-lhs? (lhs mapping))
 	      (setf (module (lhs mapping)) (current-theory)))
-	    (if (declaration? (lhs mapping))
-		(with-current-decl (declaration (lhs mapping))
-		  (typecheck-mapping-rhs mapping))
-		(with-current-decl (lhs mapping)
-		  (typecheck-mapping-rhs mapping)))
+	    (cond ((declaration? (lhs mapping))
+		   (with-current-decl (declaration (lhs mapping))
+		     (typecheck-mapping-rhs mapping)))
+		  ((mapping-lhs? (lhs mapping))
+		   (with-current-decl (lhs mapping)
+		     (typecheck-mapping-rhs mapping)))
+		  (t (typecheck-mapping-rhs mapping)))
 	    (assert (or (type-value (rhs mapping))
 			(name-expr? (expr (rhs mapping)))
 			(ptypes (expr (rhs mapping)))))
@@ -1309,19 +1311,22 @@
   ;; Context has to be for the modname being imported
   ;; i.e., in importing foo[a] {{ bar := bar[b] {{ ... }} }}
   ;; foo gives context, bar[b] is the thname
-  (let ((imps (nth-value 1 (all-importings (get-theory thname))))
-	(cimps (when (and (name? (current-declaration))
-			  (resolution (current-declaration)))
-		 (nth-value 1
-		   (all-importings (get-theory
-				    (module-instance (resolution
-						      (current-declaration)))))))))
-    (if (or (some #'(lambda (x) (null (actuals x))) imps)
-	    (some #'(lambda (x) (null (actuals x))) cimps))
-	;; all instances are visible in this case
+  (let ((th (get-theory thname)))
+    (if (null (formals-sans-usings th))
 	(resolutions thname)
-	(or (visible-modname-resolutions* (resolutions thname) imps nil)
-	    (visible-modname-resolutions* (resolutions thname) cimps nil)))))
+	(let ((imps (nth-value 1 (all-importings th)))
+	      (cimps (when (and (name? (current-declaration))
+				(resolution (current-declaration)))
+		       (nth-value 1
+			 (all-importings (get-theory
+					  (module-instance (resolution
+							    (current-declaration)))))))))
+	  (if (or (some #'(lambda (x) (null (actuals x))) imps)
+		  (some #'(lambda (x) (null (actuals x))) cimps))
+	      ;; all instances are visible in this case
+	      (resolutions thname)
+	      (or (visible-modname-resolutions* (resolutions thname) imps nil)
+		  (visible-modname-resolutions* (resolutions thname) cimps nil)))))))
 
 (defun visible-modname-resolutions* (resolutions importings vis-reses)
   (if (null resolutions)
