@@ -399,16 +399,7 @@ required a context.")
 		      (orig (copy ex)))
 		 (when (and (lambda-expr? def)
 			    (eq *generate-tccs* 'none))
-		   (mapc #'(lambda (arg dom)
-			     (let* ((jtypes (judgement-types+ arg))
-				    (incs (compatible-predicates jtypes dom arg)))
-			       (when incs
-				 (let ((*tcc-conditions*
-					(append (nreverse
-						 (mapcar #'declaration (freevars dom)))
-						*tcc-conditions*)))
-				   (generate-subtype-tcc arg dom incs)))))
-			 (argument* ex) (get-lambda-expr-full-domain def)))
+		   (check-for-application-macro-tccs (argument* ex) def))
 		 (change-class ex (class-of appl))
 		 (copy-slots ex appl)
 		 (setf (from-macro ex) orig)
@@ -427,6 +418,32 @@ required a context.")
 		   (setf (from-macro ex) orig)
 		   ;;(push (cons orig ex) (macro-expressions (current-theory)))
 		   ))))))))
+
+(defun check-for-application-macro-tccs (args def)
+  (let ((bindings (lambda-bindings* def)))
+    (assert (<= (length args) (length bindings)))
+    (check-for-application-macro-tccs* args bindings)))
+
+(defun check-for-application-macro-tccs* (args bindings)
+  (when args
+    (let* ((arg (car args))
+	   (bnds (car bindings))
+	   (dom (if (cdr bnds)
+		    (mk-tupletype (mapcar #'type bnds))
+		    (type (car bnds))))
+	   (jtypes (judgement-types+ arg))
+	   (incs (compatible-predicates jtypes dom arg)))
+      (when incs
+	(generate-subtype-tcc arg dom incs))
+      (check-for-application-macro-tccs*
+       (cdr args)
+       (let ((sbindings (if (cdr bnds)
+			    (pairlis bnds
+				     (if (tuple-expr? arg)
+					 (exprs arg)
+					 (make-projections arg ex)))
+			    (acons (car bnds) arg nil))))
+	 (substit (cdr bindings) sbindings))))))
 
 (defmethod set-type* :around ((ex projection-application) expected)
   (declare (ignore expected))
