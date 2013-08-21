@@ -37,10 +37,11 @@ def auiManager():
     return wx.GetApp().GetTopWindow().auiManager
 
 class PVSException(Exception):
-    pass
-
-#    def __init__(self, *args, **keywords):
-#        Exception.__init__(self, *args, **keywords)
+    def __init__(self, message, code=0, data=""):
+        Exception.__init__(self, message, code, data)
+        self.message = message
+        self.code = code
+        self.data = data
 
 class PVSIDEException(Exception):
     def __init__(self, *args, **keywords):

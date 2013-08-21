@@ -7,6 +7,7 @@ from wx.lib.pubsub import setupkwargs, pub
 from ui.plugin import PluginPanel
 from ui.images import getFolderImage, getPVSLogo, getTheoryImage, getFormulaImage
 from preference import Preferences
+from remgr import RichEditorManager
 
 class FilesTreePlugin(PluginPanel):
     """This class provides an API for the files tree that is inside FilesTreeFrame"""
@@ -86,13 +87,17 @@ class FilesTreePlugin(PluginPanel):
         
     def getContextMenuItems(self, status, kind):
         items = []
+        items.append((LABEL_CLOSEFILE, self.onCloseFile))
         if status == PVS_MODE_OFF:
             if kind == ROOT:
                 pass
             elif kind == FILE:
-                items.append((LABEL_CLOSEFILE, self.onCloseFile))
+                pass
             else:
                 logging.error("A node with kind %s should not be visible in %s mode", kind, status)
+        elif status == PVS_MODE_UNKNOWN:
+            if kind == ROOT:
+                pass
         elif status == PVS_MODE_LISP:
             if kind == ROOT:
                 pass

@@ -190,7 +190,6 @@ class RichEditorManager:
     # The following methods are to make the page to be float-able:
     
     def onDragMotion(self, event):
-        logging.debug("onDragMotion was called")
         self.auiManager.HideHint()
         if self.notebook.IsMouseWellOutsideWindow():
             x, y = wx.GetMousePosition()
@@ -201,7 +200,6 @@ class RichEditorManager:
         event.Skip()
 
     def onEndDrag(self, event):
-        logging.debug("onEndDrag was called")
         self.auiManager.HideHint()
         if self.notebook.IsMouseWellOutsideWindow():
             # Use CallAfter so we our superclass can deal with the event first
@@ -209,14 +207,13 @@ class RichEditorManager:
         event.Skip()
 
     def IsMouseWellOutsideWindow(self):
-        logging.debug("IsMouseWellOutsideWindow was called")
         screenRect = self.notebook.GetScreenRect()
         screenRect.Inflate(50, 50)
         return not screenRect.Contains(wx.GetMousePosition())
     
     def FloatPage(self, pageIndex):
-        logging.debug("FloatPage was called")
         pageTitle = self.notebook.GetPageText(pageIndex)
+        logging.debug("Float Page: %s", pageTitle)
         frame = wx.Frame(self.notebook, title=pageTitle, style=wx.DEFAULT_FRAME_STYLE|wx.FRAME_TOOL_WINDOW)
         frame.attachRichEditorBackToNotebook = True
         frame.richEditor = self.notebook.GetPage(pageIndex)
@@ -228,14 +225,13 @@ class RichEditorManager:
         frame.Show()
         
     def onCloseRichEditor(self, event):
-        logging.debug("onCloseRichEditor was called")
         event.Skip()
 
     def closeFloatingRichEditor(self, event):
-        logging.debug("closeFloatingRichEditor was called")
         frame = event.GetEventObject()
         if frame.attachRichEditorBackToNotebook:
             pageTitle = frame.GetTitle()
+            logging.debug("Attaching %s back to the main frame", pageTitle)
             richEditor = frame.GetChildren()[0]
             richEditor.Reparent(self.notebook)
             self.notebook.AddPage(richEditor, pageTitle, True, self.getProperBitmap())

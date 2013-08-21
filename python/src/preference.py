@@ -14,7 +14,6 @@ class Preferences:
     CONTEXTPREFERENCEFILE = ".pvseditor"
     RECENTCONTEXTS = "RecentContexts"
     PVSLOCATION = "PVSLocation"
-    VISIBLEPLUGINS = "VisiblePlusings"
     IGNORE_GLOBALPREFERENCEFILE  = False # if True, load the default global preference
     IGNORE_CONTEXTPREFERENCEFILE = False # if True, load the default context preference
     NUMBEROFRECENTCONTEXTS = 10
@@ -34,7 +33,6 @@ class Preferences:
         self.setRecentContext(util.getHomeDirectory())
         self.setPVSLocation(os.path.join(util.getHomeDirectory(), constants.PVS_L))
         self.contextPreferences[constants.OPENFILES] = []
-        self.globalPreferences[Preferences.VISIBLEPLUGINS] = sets.Set([constants.FILESTREE, constants.PROOFTREE, constants.CONSOLEPLUGIN])
         self.setVisibleToolbar(True)
 
     def loadDefaultContextPreferences(self):
@@ -144,18 +142,7 @@ class Preferences:
             recent.pop()
         self.globalPreferences[Preferences.RECENTCONTEXTS] = recent
         self.loadContextPreferences()
-    
-    def shouldPluginBeVisible(self, toolname):
-        """return true if the tool with the given name should be visible"""
-        return toolname in self.globalPreferences[Preferences.VISIBLEPLUGINS]
-    
-    def setPluginVisibility(self, toolname, visible):
-        if visible:
-            self.globalPreferences[Preferences.VISIBLEPLUGINS].add(toolname)
-        else:
-            if toolname in self.globalPreferences[Preferences.VISIBLEPLUGINS]:
-                self.globalPreferences[Preferences.VISIBLEPLUGINS].remove(toolname)
-        
+            
     def getVisibleToolbar(self):
         """return true only if the toolbar is to be visible"""
         return self.getValue(constants.TOOLBAR, True)

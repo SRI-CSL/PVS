@@ -18,9 +18,6 @@ import logging.config
 from ui.images import getIDELogo
 from ui.frame import MainFrame
 from ui.plugin import PluginManager
-from ui.plg.ft import FilesTreePlugin
-from ui.plg.pt import ProofTreePlugin
-from ui.plg.console import ConsolePlugin
 from config import PLUGIN_DEFINITIONS
 from wx.lib.pubsub import setupkwargs, pub 
 

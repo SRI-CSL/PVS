@@ -44,12 +44,8 @@ NEWLINE = "\n"
 LOGGERNAME = "PVSEditor"
 TOOLBAR = "Toolbar"
 
-#Frame Titles::
-MAINFRAME = "PVS Editor"
-CONSOLEPLUGIN = "PVS Console"
-FILESTREE = "Files Tree"
-PROOFTREE = "Proof Tree"
-PROOFMANAGERPLUGIN = "Proof Manager"
+#Frame Titles:
+MAINFRAME = "PVS IDE"
 
 PVS_MODE_OFF = "off"
 PVS_MODE_LISP = "lisp"

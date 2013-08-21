@@ -14,6 +14,8 @@ class ConsolePlugin(PluginPanel):
     """This class represents and manages the console.
     This console shows the PVS output, and the user can enter a line of input"""
     
+    _title = "PVS Lisp Console"
+    
     def __init__(self, parent, definition):
         PluginPanel.__init__(self, parent, definition)
         self.prompt = EMPTY_STRING
@@ -25,13 +27,13 @@ class ConsolePlugin(PluginPanel):
         #TODO: Try to add a little border to pvsin and pvsout
         mainPanelSizer = wx.BoxSizer(wx.VERTICAL)
         mainPanelSizer.Add(self.pvsout, 1, wx.EXPAND | wx.TE_MULTILINE |wx.TE_READONLY | wx.LEFT, 5)
-        mainPanelSizer.Add(self.pvsin, 1, wx.EXPAND | wx.TE_MULTILINE | wx.LEFT, 5)
+        mainPanelSizer.Add(self.pvsin, 0, wx.EXPAND | wx.TE_MULTILINE | wx.LEFT, 5)
         self.mainPanel.SetSizer(mainPanelSizer)
         
         consoleSizer = wx.BoxSizer(wx.HORIZONTAL)
         consoleSizer.Add(self.mainPanel, 1, wx.EXPAND | wx.LEFT, 5)
-        self.SetSizer(consoleSizer)        
-
+        self.SetSizer(consoleSizer)
+        self.setInEditable(True)
         
         self.Bind(wx.EVT_TEXT_ENTER, self.onPVSInTextEntered, self.pvsin)
         self.Bind(wx.EVT_TEXT, self.onPVSInText, self.pvsin)
@@ -44,7 +46,7 @@ class ConsolePlugin(PluginPanel):
 
 
     def pvsModeUpdated(self, pvsMode=PVS_MODE_OFF):
-        self.setInEditable(pvsMode != PVS_MODE_OFF)
+        self.setInEditable(pvsMode == PVS_MODE_LISP)
 
     def clearOut(self):
         """Clears the PVS output text in the console"""
@@ -65,7 +67,7 @@ class ConsolePlugin(PluginPanel):
         self.pvsin.Clear()
         self.prompt = EMPTY_STRING
         self.history = []
-        self.pvsModeUpdated(PVS_MODE_OFF)
+        #self.pvsModeUpdated(PVS_MODE_OFF)
         
     def appendLineToOut(self, line):
         logging.debug("Appending '%s' to pvsout", line)

@@ -92,9 +92,20 @@ class PluginManager:
         plugin = self.getPlugin(name)
         plugin.Destroy()
         self.toolsDir[name] = [info[0], None, False]
+        
+    def shouldPluginBeVisible(self, name, pvsMode):
+        for definition in self.pluginsDefinitions:
+            if definition[PluginManager.NAME] == name:
+                if PluginManager.VISIBLE in definition:
+                    return pvsMode in definition[PluginManager.VISIBLE]
+                else:
+                    return True
+        
+        raise util.PVSIDEException("There is no plugin with the name '%s'"%name)
 
 
 class PluginPanel(wx.Panel):
+    
     def __init__(self, parent, pluginDefinition):
         wx.Panel.__init__(self, parent)
         wx.definition = pluginDefinition

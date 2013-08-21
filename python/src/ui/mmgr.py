@@ -82,8 +82,6 @@ class MainFrameMenu(wx.MenuBar):
         
         pvsMenu.AppendSeparator()
         self.typecheckMenuItem = pvsMenu.Append(wx.ID_ANY, LABEL_TYPECHECK, EMPTY_STRING, wx.ITEM_NORMAL)
-        pvsMenu.AppendSeparator()
-        self.setPVSLocationMenuItem = pvsMenu.Append(wx.ID_ANY, self._makeLabel("Set PVS Location", None, True), EMPTY_STRING, wx.ITEM_NORMAL)
         self.Append(pvsMenu, PVS_U)
         
     def prepareRecentContextsSubMenu(self):
@@ -121,11 +119,10 @@ class MainFrameMenu(wx.MenuBar):
         
     def addPluginToViewMenu(self, name, callBackFunction):
         logging.debug("Name: %s", name)
-        preferences = Preferences()
         frame = util.getMainFrame()
         item = self.pluginMenu.Append(wx.ID_ANY, name, EMPTY_STRING, wx.ITEM_CHECK)
         self.plugins[name] = item
-        self.pluginMenu.Check(item.GetId(), preferences.shouldPluginBeVisible(name))
+        self.pluginMenu.Check(item.GetId(), PluginManager().shouldPluginBeVisible(name, PVSCommandManager().pvsMode))
         frame.Bind(wx.EVT_MENU, callBackFunction, item)
 
     def _makeLabel(self, name, shortcut=None, addDots = False):
@@ -154,7 +151,6 @@ class MainFrameMenu(wx.MenuBar):
         
         frame.Bind(wx.EVT_MENU, onChangeContext, self.changeContextMenuItem)
         frame.Bind(wx.EVT_MENU, onTypecheck, self.typecheckMenuItem)
-        frame.Bind(wx.EVT_MENU, onSetPVSLocation, self.setPVSLocationMenuItem)
         
     def update(self, parameters):
         if OPENFILES in parameters:
@@ -183,16 +179,16 @@ class MainFrameMenu(wx.MenuBar):
                 
     def showPlugin(self, message):
         name, value = message
-        logging.info("Menu.showPlugin was called for %s and %s", name, value)
         if name in self.plugins:
+            logging.info("Changing the visibility of %s to %s", name, value)
             item = self.plugins[name]
             item.Check(value)
         else:
             logging.warn("No menu option for plugin %s", name)
             
     def showToolbar(self, name, value=True):
-        logging.info("Menu.showToolbar was called for %s and %s", name, value)
         if name in self.toolbars:
+            logging.info("Changing the visibility of %s to %s", name, value)
             item = self.toolbars[name]
             item.Check(value)
         else:

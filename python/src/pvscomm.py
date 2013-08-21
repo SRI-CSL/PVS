@@ -93,12 +93,13 @@ class PVSCommunicator:
         and no error, "null" is returned.  Otherwise, a valid JSON-RPC
         response/error form is returned.
         """
-        logging.debug("Input: %s", jsonString)
+        logging.debug("Received: %s", jsonString)
         try:
             message = json.loads(jsonString, object_hook=self.requestCheck)
             result = self.processMessage(message)
-            logging.debug("Output: %s", result)
+            logging.debug("Sending Back: %s", result)
             return result
+        #TODO: The return vlaues for errors should be different and json-based
         except TypeError as err:
             return 'request: {0} is of type {1}, string expected'.format(jsonString, type(jsonString))
         except ValueError as err:
@@ -226,7 +227,8 @@ class PVSCommandManager:
             self.pvsContext = None
                         
     def sendRawCommand(self, command):
-        pass
+        logging.error("Unimplemented method")
+        raise Exception("Unimplemented method: sendRawCommand")
     
     def _processError(self, err):
         title = constants.ERROR
@@ -260,7 +262,15 @@ class PVSCommandManager:
                 raise util.PVSException(message=message, code=code, data=data)
             result = jsonResult[PVSCommunicator.JSONRPCRESULT]
             if PVSCommunicator.ERROR in result:
-                raise util.PVSException(result[PVSCommunicator.ERROR])
+                errDict = result[PVSCommunicator.ERROR]
+                errorMessage = errDict["message"]
+                errorCode = errDict["code"]
+                errorDataFile = errDict["data"]["error_file"]
+                with open (errorDataFile, "r") as errorFile:
+                    errorData = errorFile.read()
+                errorFile.close()
+                #TODO delete the temp file.
+                raise util.PVSException(message=errorMessage, code=errorCode, data=errorData)
             result = result[PVSCommunicator.RESULT]
             if pvsMode != self.pvsMode:
                 self.pvsMode = pvsMode
@@ -273,6 +283,9 @@ class PVSCommandManager:
         except Exception as err:
             self._processError(err)
         return None
+            
+    def ping(self):
+        self._sendCommand("+", 1, 2)
             
     def typecheck(self, fullname):
         name = os.path.basename(fullname)

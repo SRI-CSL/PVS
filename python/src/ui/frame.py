@@ -64,6 +64,7 @@ class MainFrame(wx.Frame):
         pub.subscribe(self.handleNumberOfOpenFilesChanged, PUB_NUMBEROFOPENFILESCHANGED)
         pub.subscribe(self.setStatusbarText, PUB_UPDATESTATUSBAR)
         #self.Connect(-1, -1, util.EVT_RESULT_ID, self.onPVSResult)
+        #PVSCommandManager().ping()
 
     def __do_layout(self):
         self.SetSize(EDITOR_SIZE)
