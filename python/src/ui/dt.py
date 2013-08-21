@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 import wx
 import time
@@ -5,36 +6,40 @@ from wx.lib.floatcanvas import NavCanvas, Resources
 from wx.lib.floatcanvas import FloatCanvas as FC
 from wx.lib.floatcanvas.Utilities import BBox
 import numpy as N
+import sets
 import random
+from sl import SortedList
 
 class ConnectorLine(FC.LineOnlyMixin, FC.DrawObject,):
 	"""
 	A Line that connects two objects -- it uses the objects to get its coordinates
 	The objects must have a GetConnectPoint() method.
 	"""
-	def __init__(self, Object1, Object2, LineColor = "Black", LineStyle = "Solid", LineWidth	= 1, InForeground = False):
+	def __init__(self, Object1, Object2, config, LineWidth = 1, InForeground = True):
 		FC.DrawObject.__init__(self, InForeground)
-		self.Object1 =  Object1	   
-		self.Object2 =  Object2	   
-		self.LineColor = LineColor
-		self.LineStyle = LineStyle
-		self.LineWidth = LineWidth
+		self.Object1 =  Object1
+		self.Object2 =  Object2
+		self.Object1.connectors.add(self)
+		self.Object2.connectors.add(self)
+		self.LineColor = config.getLineColor()
+		self.LineStyle = config.getLineStyle()
+		self.LineWidth = config.getLineWidth()
+		self.RectangleSize = config.getRectangleSize()
 
 		self.CalcBoundingBox()
-		self.SetPen(LineColor,LineStyle,LineWidth)
+		self.SetPen(self.LineColor, self.LineStyle, self.LineWidth)
 
-		self.HitLineWidth = max(LineWidth,self.MinHitLineWidth)
+		self.HitLineWidth = max(self.LineWidth, self.MinHitLineWidth)
 
 	def CalcBoundingBox(self):
-		self.BoundingBox = BBox.fromPoints((self.Object1.GetConnectPoint(), self.Object2.GetConnectPoint()))
+		self.BoundingBox = BBox.fromPoints(self.getEndPoints())
 		if self._Canvas:
 			self._Canvas.BoundingBoxDirty = True
 
-
-	def _Draw(self, dc , WorldToPixel, ScaleWorldToPixel, HTdc=None):
+	def getEndPoints(self):
 		p1 = self.Object1.GetConnectPoint()
 		p2 = self.Object2.GetConnectPoint()
-		half = NodeViewObject.RectangleSize[1]/2
+		half = self.RectangleSize[1]/2
 		if self.Object1.Node._level > self.Object2.Node._level:
 			p1[1] = p1[1] + half
 			p2[1] = p2[1] - half
@@ -42,31 +47,32 @@ class ConnectorLine(FC.LineOnlyMixin, FC.DrawObject,):
 			pass
 			p1[1] = p1[1] - half
 			p2[1] = p2[1] + half
-			
-		Points = N.array((p1, p2))
+		return (p1, p2)
+
+	def _Draw(self, dc , WorldToPixel, ScaleWorldToPixel, HTdc=None):
+		#print "Drawing Line from %s to %s"%(self.Object1.Node, self.Object2.Node)
+		Points = N.array(self.getEndPoints())
 		Points = WorldToPixel(Points)
 		dc.SetPen(self.Pen) # dc is an instance of wx.MemoryDC
 		dc.DrawLines(Points)
 		if HTdc and self.HitAble:
 			HTdc.SetPen(self.HitPen)
 			HTdc.DrawLines(Points)
-
-
+			
 class NodeViewObject(FC.Group):
 	"""
 	A version of the moving group for nodes -- an ellipse with text on it.
 	"""
-	RectangleSize = (12, 4)
-	
-	def __init__(self, node, shape, InForeground = False, IsVisible = True):
+	def __init__(self, node, config, InForeground = False, IsVisible = True):
 		Label = node.name
-		location = node.Point()
+		location = config.Point(node)
+		self.connectors = sets.Set([])
 
-		BackgroundColor = "Green"
-		TextColor = "Black"
-			
+		BackgroundColor = config.getNodeColor(node)
+		TextColor = config.getNodeTextColor(node)
+		shape = config.getNodeShape(node)
 		locationArray = N.asarray(location, N.float).reshape(2,)
-		WH = N.asarray(NodeViewObject.RectangleSize, N.float).reshape(2,)
+		WH = N.asarray(config.getRectangleSize(), N.float).reshape(2,)
 		#print "Node %s: Location = %s, WH = %s"%(Label, locationArray, WH)
 		self.Node = node
 		scaler = 1. + len(Label)/7.0
@@ -81,12 +87,74 @@ class NodeViewObject(FC.Group):
 
 	def GetConnectPoint(self):
 		return self.BoundingBox.Center
-
+	
+	def Move(self, Delta):
+		#TODO: is this the right way to call this:
+		FC.Group.Move(self, Delta)
+		#super(NodeViewObject, self).Move(Delta)
+		for connector in self.connectors:
+			connector.CalcBoundingBox()
+			
+class DynamicTreeConfig:
+	def __init__(self, lineColor="Grey", lineStyle="Solid", lineWidth=2, nodeWidth=15, levelHeight=20, nodeShape="rectangle", nodeColors=("Blue", "Green"), nodeTextColors=("White", "Black")):
+		self.lineColor = lineColor
+		self.lineStyle = lineStyle
+		self.lineWidth = lineWidth
+		self.nodeWidth = nodeWidth
+		self.levelHeight = levelHeight
+		if nodeShape in ("rectangle", "ellipse"):
+			self.nodeShape = nodeShape
+		else:
+			self.nodeShape = "ellipse"
+			print "Unknown Shape: %s. Using ellipse instead"
+		self.nonLeafColor = nodeColors[0]
+		self.leafColor = nodeColors[1]
+		self.nonLeafTextColor = nodeTextColors[0]
+		self.leafTextColor = nodeTextColors[1]
+		self.tree = None # to be filled by the tree later
+		
+	
+	def getLineColor(self):
+		return self.lineColor
+	
+	def getLineStyle(self):
+		return self.lineStyle
+	
+	def getLineWidth(self):
+		return self.lineWidth
+	
+	def getRectangleSize(self):
+		return (12, 4)
+	
+	def getNodeWidth(self):
+		return self.nodeWidth
+		
+	def getLevelHeight(self):
+		return self.levelHeight
+		
+	def getNodeShape(self, node):
+		return self.nodeShape
+	
+	def getNodeColor(self, node):
+		return self.leafColor if node.isLeaf() else self.nonLeafColor
+	
+	def getNodeTextColor(self, node):
+		return self.leafTextColor if node.isLeaf() else self.nonLeafTextColor
+	
+	def Point(self, node):
+		return (node._location, -node._level * self.getLevelHeight())
+	
+	def onNodeRightClicked(self, node):
+		print "%s was right clicked"%node.name
+	
+	def onNodeLeftClicked(self, node):
+		print "%s was left clicked"%node.name
+		self.tree.toggleExpansion(node)
+		
+	def getTooltipText(self, node):
+		return node.name
 
 class TreeNode:
-	NEXTINROW = 15
-	NEXTINCOLUMN = 10
-	
 	def __init__(self, _id, name=None, data={}):
 		self._id = _id
 		self.name = _id if name is None else name 
@@ -96,39 +164,40 @@ class TreeNode:
 		self._location = 0
 		self._delta = 0
 		self._parent = None
+		self._left = None
+		self._right = None
 		self._connector = None
 		self._drawObject = None
 		self._expanded = True
-		
-	def Point(self):
-		return (self._location, -self._level * TreeNode.NEXTINCOLUMN)
-		
-	def subTreeAsList(self):
-		kids = []
-		for c in self.children:
-			kids.append(c)
-			kids.extend(c.subTreeAsList())
-		return kids
+
+	def isLeaf(self):
+		return len(self.children) == 0
+	
+	def __delitem__(self, key):
+		del self.data[key]
 	
 	def __getitem__(self, key):
 		return self.data[key]
 	
 	def __setitem__(self, key, value):
 		self.data[key] = value
-		
+				
 	def __str__(self):
 		return self.name
 
+	def __repr__(self):
+		return self.__str__()
+
 
 class DynamicTreeView(NavCanvas.NavCanvas):
-	def __init__(self, parent):
+	def __init__(self, parent, config):
 		NavCanvas.NavCanvas.__init__(self,parent,wx.ID_ANY,(500,500), ProjectionFun = None, Debug = 0, BackgroundColor = "White")
-		self._levels = {}
 		self._nodes = {}
 		self.root = None
-		self.setLeafProperties("Green", "Black")
-		self.setNonLeafProperties("Blue", "White")
-		self.shape = "rectangle"
+		self.config = config # config is an instance of DynamicTreeConfig
+		self.history = None
+		self.tooltip = None
+		config.tree = self
 
 	def setRoot(self, root):
 		assert self.root == None
@@ -136,18 +205,22 @@ class DynamicTreeView(NavCanvas.NavCanvas):
 		self.root._level = 0
 		self.root._location = 0
 		self.root._delta = 0
+		self.root._left = None
+		self.root._right = None
 		self._nodes[root._id] = root
-		self._levels[0] = []
-		self._levels[0].append(root)
 		rootObj = self._createNodeViewObject(root)
 		self.Canvas.AddObjects((rootObj,))
 		rootObj.Bind(FC.EVT_FC_LEFT_UP, self.onNodeLeftClicked)
 		rootObj.Bind(FC.EVT_FC_RIGHT_UP, self.onNodeRightClicked)
-		#rootObj.Bind(FC.EVT_FC_LEFT_DCLICK, self.onNodeDoubleClicked) 
+		rootObj.Bind(FC.EVT_FC_ENTER_OBJECT, self.onNodeWindowEntered)
+		rootObj.Bind(FC.EVT_FC_LEAVE_OBJECT, self.onNodeWindowLeft)
+		rootObj.Bind(FC.EVT_FC_LEFT_DCLICK, self.onNodeDoubleClicked) 
 		self._updateNode(root) 
 		print "Root was set to %s"%self.root.name
+		self.history = "\ttree.setRoot(TreeNode(\"%s\"))\n"%root.name
 
 	def addChild(self, parent, node, idx=None):
+		print "__________"
 		if node._id in self._nodes:
 			print "Error. There is already another node in the tree with ID = %s"%(node._id)
 			return
@@ -162,182 +235,220 @@ class DynamicTreeView(NavCanvas.NavCanvas):
 			idx = 0
 		node._level = parent._level + 1
 		node._parent = parent
+		node._left = None
+		node._right = None
 		node._delta = 0
 		self._nodes[node._id] = node
-		if not node._level in self._levels:
-			self._levels[node._level] = []
-		self._levels[node._level].append(node)
 		parent.children.insert(idx, node)
 		self._setLocation(node)
 		node._drawObject = self._createNodeViewObject(node)
 		node._connector = self._addConnector(parent, node)
-		self.Canvas.AddObjects([node._drawObject, node._connector])
-		node._drawObject.Bind(FC.EVT_FC_LEFT_DOWN, self.onNodeLeftClicked)
-		node._drawObject.Bind(FC.EVT_FC_RIGHT_DOWN, self.onNodeRightClicked)
+		self.Canvas.AddObjects([node._drawObject,node._connector])
+		node._drawObject.Bind(FC.EVT_FC_LEFT_DCLICK, self.onNodeDoubleClicked) 
+		node._drawObject.Bind(FC.EVT_FC_LEFT_UP, self.onNodeLeftClicked)
+		node._drawObject.Bind(FC.EVT_FC_RIGHT_UP, self.onNodeRightClicked)
+		node._drawObject.Bind(FC.EVT_FC_ENTER_OBJECT, self.onNodeWindowEntered)
+		node._drawObject.Bind(FC.EVT_FC_LEAVE_OBJECT, self.onNodeWindowLeft)
 		if not parent._expanded:
 			node._drawObject.Hide()
 			node._connector.Hide()
-		affectedNodes = self._updateNextSiblingLocations(node)
-		affectedNodes.insert(0, node)
-		#self.onNodeRelocated(node)
-		print "Node %s was added to %s as child #%d. level %d and location %d"%(node.name, parent.name, idx, node._level, node._location)
-		self._updateLocationOfAffectedParents(affectedNodes)
-		self._updateNode(parent)
 
-	def removeNode(self, node):
+		self._balancify(node)
+		print "Node %s was added to %s. (%d, %d)"%(node.name, parent.name, node._level, node._location)
+		self._updateNode(parent)
+		self.Canvas.Draw(True)
+		self.history = self.history + "\ttree.addChild(\"%s\", TreeNode(\"%s\"))\n"%(parent.name, node.name)
+
+	def removeNode(self, node, indent=""):
+		#TODO: after removing a node, the tree layout should be redone
 		if not isinstance(node, TreeNode):
 			if not node in self._nodes:
 				print "Error. There is no current node in the tree with ID = %s"%(node, )
 				return
 			node = self._nodes[node]
-		self._levels[node._level].remove(node)
-		del self._nodes[node._id]
+		print "%sRemoving %s and its %d children"%(indent, node, len(node.children))
+		while node.children:
+			self.removeNode(node.children[0], indent + "\t")
+		leftNode = node._left
+		rightNode = node._right
+		if leftNode is not None:
+			if rightNode is not None:
+				leftNode._right = rightNode
+				rightNode._left = leftNode
+				
+				#TODO: This is where I am trying to shrink the tree. 
+				distance = self._subTreeDistance(leftNode, rightNode)
+				if distance > self.config.getNodeWidth():
+					rightNode._delta = self.config.getNodeWidth() - distance
+					self.onNodeRelocated(rightNode)
+					self._balancify(rightNode)
+				#End of the todo above.
+			else:
+				leftNode._right = None
+		else:
+			if rightNode is not None:
+				rightNode._left = None
 		node._parent.children.remove(node)
+		self.Canvas.RemoveObjects([node._drawObject,node._connector])
 		self._updateNode(node._parent)
-		print "Node %s was removed"%node.name
+		del self._nodes[node._id]
 
 	def onNodeRelocated(self, node):
 		if node._delta != 0:
-			currentPoint = node.Point()
+			currentPoint = self.config.Point(node)
 			node._location = node._location + node._delta
 			node._delta = 0
-			newPoint = node.Point()
+			newPoint = self.config.Point(node)
 			delta = (newPoint[0] - currentPoint[0], newPoint[1] - currentPoint[1])
-			#dxy = self.Canvas.ScalePixelToWorld(delta)
-			print "%s was relocated. Delta is %f"%(node.name, node._delta)
 			node._drawObject.Move(delta) 
-			self.Canvas.Draw(True)
-
-	def _updateLocationOfAffectedParents(self, affectedNodes):
-		if affectedNodes:
-			affectedParents = []
-			for affn in affectedNodes:
-				if not (affn._parent is None or affn._parent in affectedParents):
-					affectedParents.append(affn._parent)
-			for affp in affectedParents:
-				newLoc = int(0.5 + (affp.children[0]._location + affp.children[-1]._location)/2) # Here you might wanna round it
-				affpNext = self._nextInLevel(affp)
-				if newLoc > affp._location:
-					affpNext = self._nextInLevel(affp)
-					if affpNext:
-						newLoc = min(newLoc, affpNext._location - TreeNode.NEXTINROW)
-				elif newLoc < affp._location:
-						affpPrev = self._previousInLevel(affp)
-						if affpPrev:
-							newLoc = max(newLoc, affpPrev._location + TreeNode.NEXTINROW)
-				if newLoc != affp._location:
-					print "Relocating %s from %d to %d"%(affp.name, affp._location, newLoc)
-					affp._delta = newLoc - affp._location
-					self.onNodeRelocated(affp)
-					self._updateNextSiblingLocations(affp)
-			self._updateLocationOfAffectedParents(affectedParents)
 		
-	def _updateNextSiblingLocations(self, node):
-		nxt = self._nextInLevel(node)
-		result = []
-		if nxt is not None:
-			print "=> %s location: %d. Next %s location: %d"%(node.name, node._location, nxt.name, nxt._location)
-			if nxt._location <= node._location + TreeNode.NEXTINROW:
-				nxt._delta = node._location + TreeNode.NEXTINROW - nxt._location
-				self.onNodeRelocated(nxt)
-				print "  Pushing %s one step to the right"%nxt.name
-				result = [nxt] + self._updateNextSiblingLocations(nxt)
-			else:
-				print "  Not Pushing %s"%nxt.name
-		return result
-				
-	def _updatePreviousSiblingLocations(self, node):
-		return # TODO: remove this?
-		result = []
-		prev = self._previousInLevel(node)
-		if prev is not None:
-			print "=> %s location: %d. Prev %s location: %d"%(node.name, node._location, prev.name, prev._location)
-			if node._location <= prev._location + TreeNode.NEXTINROW:
-				prev._delta = node._location - TreeNode.NEXTINROW + prev._location
-				self.onNodeRelocated(prev)
-				print "  Pushing %s one step to the right"%prev.name
-				result = [prev] + self._updatePreviousSiblingLocations(prev)
-			else:
-				print "  Not Pushing %s"%prev.name
-		return result
-
-	def _setLocation(self, node):
-		prev = self._previousInLevel(node)
-		nxt = self._nextInLevel(node)
-		if prev is None:
-			if nxt is None:
-				node._location = node._parent._location
-			else:
-				node._location = min(node._parent._location,  nxt._location - TreeNode.NEXTINROW)
-		else:
-			node._location = max(node._parent._location, prev._location + TreeNode.NEXTINROW)
-				
-
-	def _nextInLevel(self, node):
-		if node == self.root:
-			return None
-		nodeIndex = node._parent.children.index(node)
-		if nodeIndex < len(node._parent.children) - 1:
-			return node._parent.children[nodeIndex + 1] # next sibling
-		nextSibling = None
-		curr = node._parent
-		while True:
-			curr = self._nextInLevel(curr)
-			if curr is None:
-				break
-			if curr.children:
-				nextSibling = curr.children[0]
-				break
-		return nextSibling
+	def _balancify(self, node, updateLeft=False, updateRight=True, updateParent=True, updateFirstChild=True):
+		#print "Balancifying for %s"%node
+		if updateFirstChild and node.children:
+			self.onParentMoved(node.children[0])
+		if updateRight and node._right is not None:
+			self.onLeftSiblingMoved(node._right)
+		if updateLeft and node._left is not None:
+			self.onRightSiblingMoved(node._left)
+		if updateParent and node._parent is not None:
+			self.onChildMoved(node._parent)
+			
+	def onRightSiblingMoved(self, node):
+		newLocation = max(node._location, node._right._location - self.config.getNodeWidth())
+		if newLocation != node._location:
+			node._delta = newLocation - node._location
+			self.onNodeRelocated(node)
+			self._balancify(node, updateLeft=True, updateRight=False)
 	
-	def _previousInLevel(self, node):
-		if node == self.root:
-			return None
-		nodeIndex = node._parent.children.index(node)
-		if nodeIndex > 0:
-			return node._parent.children[nodeIndex - 1] # previous sibling
-		previousibling = None
-		curr = node._parent
-		while True:
-			curr = self._previousInLevel(curr)
-			if curr is None:
-				break
-			if curr.children:
-				previousibling = curr.children[-1]
-				break
-		return previousibling
+	def onLeftSiblingMoved(self, node):
+		newLocation = max(node._location, node._left._location + self.config.getNodeWidth())
+		if newLocation != node._location:
+			node._delta = newLocation - node._location
+			self.onNodeRelocated(node)
+			self._balancify(node)
+	
+	def onChildMoved(self, node):
+		newLocation = max(node._location, int(0.5 + (node.children[0]._location + node.children[-1]._location)/2.0))
+		if newLocation != node._location:
+			node._delta = newLocation - node._location
+			self.onNodeRelocated(node)
+			self._balancify(node, updateFirstChild=False)
+	
+	def onParentMoved(self, node):
+		newLocation = max(node._location, node._parent._location - self.config.getNodeWidth() * (len(node._parent.children)-1) / 2.0)
+		node._delta = newLocation - node._location
+		self.onNodeRelocated(node)
+		self._balancify(node, updateParent=False)
+		
+	def _subTreeDistance(self, leftNode, rightNode):
+		if leftNode is None or rightNode is None:
+			return self.config.getNodeWidth() * 100
+		assert leftNode._level == rightNode._level
+		assert leftNode._location <= rightNode._location
+		distance1 = rightNode._location - leftNode._location
+		distance2 = self._subTreeDistance(self._getFarthestChild(leftNode, True), self._getFarthestChild(rightNode, False))
+		return min(distance1, distance2)
+		
+	def _getFarthestChild(self, node, right=True):
+		if node.children:
+			index = -1 if right else 0
+			return node.children[index]
+		return None		
+		
+	def _setLocation(self, node):
+		leftNode  = None
+		rightNode = None
+		position = node._parent.children.index(node)
+		if position > 0:
+			leftNode = node._parent.children[position-1]
+			node._location = leftNode._location + self.config.getNodeWidth()
+			node._left = leftNode
+		else:
+			uncle = node._parent._left
+			while uncle is not None:
+				if uncle.children:
+					leftNode = uncle.children[-1]
+					break
+				uncle = uncle._left
+		if leftNode is not None:
+			rightNode = leftNode._right
+		else:
+			if position < len(node._parent.children)-1:
+				rightNode = node._parent.children[position+1]
+			else:
+				uncle = node._parent._right
+				while uncle is not None:
+					if uncle.children:
+						rightNode = uncle.children[0]
+						break
+					uncle = uncle._right
+		if leftNode is not None:
+			node._location = max(node._parent._location, leftNode._location + self.config.getNodeWidth())
+			node._left = leftNode
+			leftNode._right = node
+		else:
+			node._location = node._parent._location
+		if rightNode is not None:
+			node._right = rightNode
+			rightNode._left = node
+		print "%s was located between %s and %s"%(node, node._left, node._right)
 	
 	def __getitem__(self, item):
 		return self.nodes[item]
+	
+	def traverse(node, func):
+		func(node)
+		for child in (root.children):
+			traverse(child, node)
 
-	def display(self, node=None, indent=""):
-		if node is None:
-			node = self.root
-		print "%s %s (lev: %d, loc: %d)"%(indent, node.name, node._level, node._location)
-		for c in node.children:
-			ind = "   " + indent
-			self.display(c, ind)
-
+	def _testNodeLocationOk(self, node):
+		if node._left:
+			if node._left._location + self.config.getNodeWidth() > node._location:
+				print "BAAAD Left !!! %s, %s, %s"%(node._left, node, node._right)
+				assert False
+		if node._right:
+			if node._location + self.config.getNodeWidth() > node._right._location:
+				print "BAAAD Right !!! %s, %s, %s"%(node._left, node, node._right)
+				assert False				
+			
+	def _testTree(self):
+		for node in self._nodes.values():
+			self._testNodeLocationOk(node)
 	# _______________
 	
 	def _createNodeViewObject(self, node):
-		node._drawObject = NodeViewObject(node, self.shape)
+		node._drawObject = NodeViewObject(node, self.config)
 		return node._drawObject
 		
 	def _addConnector(self, node, child):
-		child._connector = ConnectorLine(node._drawObject, child._drawObject, LineWidth=3, LineColor="Grey")
+		child._connector = ConnectorLine(node._drawObject, child._drawObject, self.config)
+		child._connector.Visible = True
 		return child._connector
 		
+	def onNodeWindowEntered(self, obj):
+		node = obj.Node
+		obj = node._drawObject
+		center = obj.GetConnectPoint()
+		self.tooltip = wx.ToolTip(tip=self.config.getTooltipText(node))
+		self.tooltip.SetDelay(100)
+		self.SetToolTip(self.tooltip)
+		self.tooltip.Enable(True)
+
+	def onNodeWindowLeft(self, obj):
+		node = obj.Node
+		self.tooltip.Enable(False)
+		self.tooltip = None
+
 	def onNodeRightClicked(self, obj):
 		node = obj.Node
-		print "%s was right clicked"%node.name
+		self.config.onNodeRightClicked(node)
 
 	def onNodeLeftClicked(self, obj):
 		node = obj.Node
-		print "%s was clicked"%node.name
-		self.toggleExpansion(node)
+		self.config.onNodeLeftClicked(node)
 	
 	def onNodeDoubleClicked(self, obj):
+		node = obj.Node
 		print "%s was double clicked"%node.name
 
 	def toggleExpansion(self, node):
@@ -374,75 +485,36 @@ class DynamicTreeView(NavCanvas.NavCanvas):
 				objects.extend(o)
 				nodes.extend(n)
 		return (nodes, objects)
-
-	def setLeafProperties(self, color, textColor):
-		self.leafColor = color
-		self.leafTextColor = textColor
 		
-	def setNonLeafProperties(self, color, textColor):
-		self.nonleafColor = color
-		self.nonleafTextColor = textColor
-		
-	def setNodeShape(self, shape):
-		shape = shape.lower()
-		acceptableShapes = ("rectangle", "ellipse")
-		if shape not in acceptableShapes:
-			print "Error. Shape should be one of %s"%(acceptableShapes,)
-		else:
-			self.shape = shape
 				
 	def _updateNode(self, node):
 		if node is not None:
-			if len(node.children) > 0:
-				self.setNodeColor(node, self.nonleafColor)
-				node._drawObject.Label.SetColor(self.nonleafTextColor)
-			else:
-				self.setNodeColor(node, self.leafColor)
-				node._drawObject.Label.SetColor(self.leafTextColor)
-		self.Canvas.Draw()
-			
-	def setNodeColor(self, node, color):
-		if isinstance(node, str):
-			node = self[node]
-		node._drawObject.SetFillColor(color)
-			
-	
+			node._drawObject.Shape.SetFillColor(self.config.getNodeColor(node))
+			node._drawObject.Label.SetColor(self.config.getNodeTextColor(node))
+		self.Canvas.Draw(True)
 
-def familyTree(tree):
-	tree.setRoot(TreeNode("Akbar"))
-	tree.addChild(tree.root, TreeNode("Hooshangiz"))
-	tree.addChild(tree.root, TreeNode("Enayat"))
-	tree.addChild(tree.root, TreeNode("Faraj"))
-	tree.addChild(tree.root, TreeNode("Davood"))
-	tree.addChild(tree.root, TreeNode("Shahnaz"))
-	tree.addChild("Davood", TreeNode("Ruha"))
-	tree.addChild("Davood", TreeNode("Neda"))
-	tree.addChild("Davood", TreeNode("Hoda"))
-	tree.addChild("Hooshangiz", TreeNode("Shahryar"))
-	tree.addChild("Hooshangiz", TreeNode("Shahram"))
-	tree.addChild("Hooshangiz", TreeNode("Narges"))	
-	tree.addChild("Faraj", TreeNode("Salar"))
-	tree.addChild("Faraj", TreeNode("Mahyar"))
-	tree.addChild("Enayat", TreeNode("Shahrokh"))
-	tree.addChild("Shahrokh", TreeNode("Aveesa"))
-	tree.addChild("Enayat", TreeNode("Shahin"))
-	tree.addChild("Davood", TreeNode("Maryam"))
-	tree.addChild("Davood", TreeNode("Koosha"))
 
-	#tree.addChild("Faraj", TreeNode("Salar"))
-	#tree.display()
-	
+
+
 def randomTree(tree):
 	root = TreeNode("Root")
 	tree.setRoot(root)
 	nodes = [root]
-	for i in range(100):
+	for i in range(200):
 		node = TreeNode("Node %s"%i)
 		idx = random.randint(0, len(nodes)-1)
 		tree.addChild(nodes[idx], node)
 		nodes.append(node)
 	#tree.display()
-
+	
+def predefinedTree(tree):
+	tree.setRoot(TreeNode("Root"))
+	tree.addChild("Root", TreeNode("Node 0"))
+	tree.addChild("Root", TreeNode("Node 1"))
+	tree.addChild("Node 0", TreeNode("Node 2"))
+	tree.addChild("Node 1", TreeNode("Node 3"))
+	tree.addChild("Node 3", TreeNode("Node 4"))
+	tree.addChild("Node 2", TreeNode("Node 5"))
 
 class DrawFrame(wx.Frame):
 	def __init__(self, *args, **kwargs):
@@ -450,19 +522,20 @@ class DrawFrame(wx.Frame):
 		
 		sizer = wx.BoxSizer(wx.VERTICAL)
 		self.CreateStatusBar()            
-		self.tree = DynamicTreeView(self)
-		self.tree.setLeafProperties("Green", "Black")
-		self.tree.setNonLeafProperties("Red", "White")
-		self.tree.setNodeShape("ellipse")
-		button = wx.Button(self, wx.ID_ANY, "Add Node") #TODO: Change this to remove and test removeChild also.
-		button.Bind(wx.EVT_BUTTON, self.onClick)
+		self.tree = DynamicTreeView(self, DynamicTreeConfig())
+		addButton = wx.Button(self, wx.ID_ANY, "Add Node") #TODO: Change this to remove and test removeChild also.
+		addButton.Bind(wx.EVT_BUTTON, self.onAddNode)
+		removeButton = wx.Button(self, wx.ID_ANY, "Remove Random Node")
+		removeButton.Bind(wx.EVT_BUTTON, self.onRemoveButton)
 		sizer.Add(self.tree, 1, wx.EXPAND | wx.LEFT, 5)
-		sizer.Add(button, 0, wx.EXPAND | wx.LEFT, 5)
+		sizer.Add(addButton, 0, wx.EXPAND | wx.LEFT, 5)
+		sizer.Add(removeButton, 0, wx.EXPAND | wx.LEFT, 5)
 		self.SetSizer(sizer)     
 		#Canvas.Bind(FC.EVT_LEFT_UP, self.OnLeftUp) 
 		self.Bind(wx.EVT_SIZE, self.onResize)
-
+		
 		randomTree(self.tree)
+		#predefinedTree(self.tree)
 		
 		self.Show(True)
 		self.tree.Canvas.ZoomToBB()
@@ -471,7 +544,16 @@ class DrawFrame(wx.Frame):
 		self.tree.Canvas.ZoomToBB()
 		event.Skip()
 		
-	def onClick(self, event):
+	def onRemoveButton(self, event):
+		nodes = self.tree._nodes.values()
+		nnodes = len(nodes)
+		idx = random.randint(0, nnodes-1)
+		node = nodes[idx]
+		print "Removing %s"%node
+		self.tree.removeNode(node)
+		self.tree.Canvas.Draw(True)
+
+	def onAddNode(self, event):
 		print "_________"
 		nodes = self.tree._nodes.values()
 		nnodes = len(nodes)
@@ -485,3 +567,4 @@ if __name__ == "__main__":
 	app = wx.PySimpleApp(0)
 	DrawFrame(None, -1, "FloatCanvas Tree Demo App", wx.DefaultPosition, (700,700) )
 	app.MainLoop()
+
