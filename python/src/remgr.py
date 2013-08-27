@@ -43,8 +43,9 @@ class RichEditorManager:
         self.notebook.Bind(aui.EVT_AUINOTEBOOK_PAGE_CLOSE, self.OnPageClose)
         
         
-    def saveAllFiles(self):
-        for richEditor in self.getOpenRichEditors():
+    def saveAllFiles(self, files=None):
+        richEditors = self.getOpenRichEditors() if files is None else [self.editors[fullname] for fullname in files]
+        for richEditor in richEditors:
             richEditor.saveFile()
             
     def getOpenRichEditors(self):
@@ -84,10 +85,7 @@ class RichEditorManager:
     def ensureFilesAreSavedToPoceed(self, files=None):
         """Ensure that all files are saved before closing them all"""
         filesAreSaved = True
-        if files is None:
-            richEditors = RichEditorManager().getOpenRichEditors()
-        else:
-            richEditors = [self.editors[fullname] for fullname in files]
+        richEditors = self.getOpenRichEditors() if files is None else [self.editors[fullname] for fullname in files]
         for richEditor in richEditors:
             if richEditor.styledText.GetModify():
                 filesAreSaved = False

@@ -278,6 +278,7 @@ class PVSCommandManager:
             if context != self.pvsContext:
                 self.pvsContext = context
                 Preferences().setRecentContext(context)
+                logging.debug("New Context is: %s", context)
                 pub.sendMessage(constants.PUB_UPDATEPVSCONTEXT)
             return result
         except Exception as err:

@@ -6,6 +6,9 @@ from wx.lib.pubsub import setupkwargs, pub
 import constants
 import pvscomm
 import json
+import util
+import config
+import ui.images
 
 class ProofManagerPlugin(PluginPanel):
     PROMPT = "Rule? "
@@ -19,8 +22,20 @@ class ProofManagerPlugin(PluginPanel):
         self.sequentView = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_MULTILINE | wx.TE_READONLY | wx.HSCROLL | wx.TE_RICH | wx.TE_RICH2)
         self.commandTextControl = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
         self.sequent = None
+        self.initializeCommandList()
 
         sizer_1 = wx.BoxSizer(wx.VERTICAL)
+        toolbar = wx.ToolBar(self, wx.ID_ANY, style=wx.TB_HORIZONTAL | wx.NO_BORDER)
+        
+        lb = wx.ComboBox(toolbar, -1, pos=(50, 170), size=(150, -1), choices=self.commandList, style=wx.CB_READONLY)
+        lb.SetToolTipString("My List of Commands")
+        toolbar.AddControl(lb, 'List of Commands')
+        
+        undoButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('undo.gif'), shortHelpString="Undo the last command")
+        quitButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('quit.png'), shortHelpString="Quit the prover")
+        
+        sizer_1.Add(toolbar)
+        
         sizer_1.Add(self.actionLabel, 0, wx.ALL | wx.EXPAND, 5)
         sizer_1.Add(self.numberOfSubgoalsLabel, 0, wx.ALL | wx.EXPAND, 5)
         sizer_1.Add(self.labelLabel, 0, wx.ALL | wx.EXPAND, 5)
@@ -30,13 +45,34 @@ class ProofManagerPlugin(PluginPanel):
         sizer_1.Add(self.commandTextControl, 1, wx.ALL | wx.EXPAND, 5)
         self.SetSizer(sizer_1)
         self.Layout()
+        
+        toolbar.Realize()
 
         #self.Bind(wx.EVT_TEXT_ENTER, self.onCommandEntered, self.commandTextControl)
         self.Bind(wx.EVT_TEXT, self.onCommand, self.commandTextControl)
+        self.Bind(wx.EVT_COMBOBOX, self.OnSelect)
+        self.Bind(wx.EVT_TOOL, self.OnUndoLastCommand, undoButton)
+        self.Bind(wx.EVT_TOOL, self.OnQuitProver, quitButton)
         pub.subscribe(self.proofInformationReceived, constants.PUB_PROOFINFORMATIONRECEIVED)
 
+    def initializeCommandList(self):
+        self.commandList = config.PROVER_COMMANDS.keys()
+        
+    def OnUndoLastCommand(self, event):
+        pvscomm.PVSCommandManager().proofCommand("(undo)")
+        event.Skip()
+
+    def OnQuitProver(self, event):
+        pvscomm.PVSCommandManager().proofCommand("(quit)")
+        event.Skip()
+
+    def OnSelect(self, event):
+        item = event.GetSelection()
+        command = self.commandList[item]
+        self.commandTextControl.SetValue(config.PROVER_COMMANDS[command])
 
     def proofInformationReceived(self, information):
+        assert information is not None
         logging.debug("proofInformationReceived: %s", information)
         action = information["action"] if "action" in information else None
         
@@ -73,10 +109,11 @@ class ProofManagerPlugin(PluginPanel):
     def onCommand(self, event):
         text = self.commandTextControl.GetValue()
         if text.endswith("\n"):
-            command = text.strip()
-            logging.info("Proof command entered: %s", command)
-            pvscomm.PVSCommandManager().proofCommand(command)
-            self.commandTextControl.SetValue("")
+            if util.isS_Expression(text):
+                command = text.strip()
+                logging.info("Proof command entered: %s", command)
+                pvscomm.PVSCommandManager().proofCommand(command)
+                self.commandTextControl.SetValue("")
         event.Skip()
 
 

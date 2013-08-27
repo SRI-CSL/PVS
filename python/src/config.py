@@ -16,7 +16,7 @@ EDITOR_MINIMUM_SIZE = (500, 300)
 
 # Plugin Definitions:
 FILES_TREE_PLUGIN = {PluginManager.CLASS: ui.plg.ft.FilesTreePlugin, \
-                    PluginManager.NAME: "Files Tree", \
+                    PluginManager.NAME: "Open Contexts and Files", \
                     PluginManager.SIZE: (200, 300), \
                     PluginManager.LOCATION: PluginManager.LEFT, \
                     PluginManager.VISIBLE: [constants.PVS_MODE_UNKNOWN, constants.PVS_MODE_OFF, constants.PVS_MODE_LISP]}
@@ -32,5 +32,14 @@ PROOF_MANAGER_PLUGIN = {PluginManager.CLASS: ui.plg.pm.ProofManagerPlugin, \
                         PluginManager.VISIBLE: [constants.PVS_MODE_PROVER]}
 # PROOF_TREE_PLUGIN = {PluginManager.CLASS: ui.plg.pt.ProofTreePlugin, PluginManager.NAME: "Proof Tree", PluginManager.SIZE: (200, 300), PluginManager.LOCATION: PluginManager.RIGHT}
 
-
 PLUGIN_DEFINITIONS = [FILES_TREE_PLUGIN, PROOF_MANAGER_PLUGIN, CONSOLE_PLUGIN]
+
+
+# Command List:
+PROVER_COMMANDS = { \
+    "----": "", \
+    "grind": "(grind)\n", \
+    "assert": "(assert)\n", \
+    "skosimp": "(skosimp)\n", \
+    "expand": "(expand <formula>)",                
+}

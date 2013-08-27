@@ -4,6 +4,8 @@
 import logging, sys, wx, os, os.path
 import config
 import sys
+from sxp import sexp
+
 
 def getLogger(name):
     """Return a logger for the given name"""
@@ -21,6 +23,15 @@ def normalizePath(thePath):
     if thePath.startswith("~"):
         thePath = getHomeDirectory() + thePath[1:]
     return os.path.abspath(thePath)
+
+def isS_Expression(text):
+    """Return true is text is an s-expression"""
+    try:
+        sexp.parseString(text, parseAll=True)
+        return True
+    except Exception:
+        logging.debug("Text '%s' is not an S-Expression", text)
+    return False
 
 def getHomeDirectory():
     """return user's home directory"""
