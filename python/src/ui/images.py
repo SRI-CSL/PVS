@@ -10,9 +10,11 @@ def getBitmap(filename):
     return wx.Bitmap(os.path.join(constants.IMAGE_FOLDER_PATH, filename), wx.BITMAP_TYPE_ANY)
 
 
-
 def getFolderImage():
     return getBitmap("folder.gif")
+
+def getGrayFolderImage():
+    return getBitmap("folder-gray.png")
 
 def getIDELogo():
     return getBitmap("idelogo.png")

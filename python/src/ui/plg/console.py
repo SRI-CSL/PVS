@@ -3,18 +3,18 @@
 
 import wx
 import codecs
-import util
+import logging
 from promptprocessor import isPrompt
 from constants import *
 from wx.lib.pubsub import setupkwargs, pub 
 from ui.plugin import PluginPanel
 import pvscomm
 
-log = util.getLogger(__name__)
-
 class ConsolePlugin(PluginPanel):
     """This class represents and manages the console.
     This console shows the PVS output, and the user can enter a line of input"""
+    
+    _title = "PVS Lisp Console"
     
     def __init__(self, parent, definition):
         PluginPanel.__init__(self, parent, definition)
@@ -26,14 +26,14 @@ class ConsolePlugin(PluginPanel):
         self.mainPanel = wx.Panel(self, wx.ID_ANY)
         #TODO: Try to add a little border to pvsin and pvsout
         mainPanelSizer = wx.BoxSizer(wx.VERTICAL)
-        mainPanelSizer.Add(self.pvsout, 1, wx.EXPAND | wx.LEFT, 5)
-        mainPanelSizer.Add(self.pvsin, 0, wx.EXPAND | wx.LEFT, 5)
+        mainPanelSizer.Add(self.pvsout, 1, wx.EXPAND | wx.TE_MULTILINE |wx.TE_READONLY | wx.LEFT, 5)
+        mainPanelSizer.Add(self.pvsin, 0, wx.EXPAND | wx.TE_MULTILINE | wx.LEFT, 5)
         self.mainPanel.SetSizer(mainPanelSizer)
         
         consoleSizer = wx.BoxSizer(wx.HORIZONTAL)
         consoleSizer.Add(self.mainPanel, 1, wx.EXPAND | wx.LEFT, 5)
-        self.SetSizer(consoleSizer)        
-
+        self.SetSizer(consoleSizer)
+        self.setInEditable(True)
         
         self.Bind(wx.EVT_TEXT_ENTER, self.onPVSInTextEntered, self.pvsin)
         self.Bind(wx.EVT_TEXT, self.onPVSInText, self.pvsin)
@@ -46,21 +46,17 @@ class ConsolePlugin(PluginPanel):
 
 
     def pvsModeUpdated(self, pvsMode=PVS_MODE_OFF):
-        if pvsMode == PVS_MODE_OFF:
-            log.debug("Disabling pvsin")
-            self.setInEditable(False)
-        else:
-            self.setInEditable(True)
+        self.setInEditable(pvsMode == PVS_MODE_LISP)
 
     def clearOut(self):
         """Clears the PVS output text in the console"""
         self.pvsout.Clear()
-        log.debug("Clearing pvsout")
+        logging.debug("Clearing pvsout")
         
     def clearIn(self):
         """Clears the PVS prompt box in the console"""
         self.pvsin.Clear()
-        log.debug("Clearing pvsin")
+        logging.debug("Clearing pvsin")
         
     def setInEditable(self, value):
         self.pvsin.SetEditable(value)
@@ -71,22 +67,22 @@ class ConsolePlugin(PluginPanel):
         self.pvsin.Clear()
         self.prompt = EMPTY_STRING
         self.history = []
-        self.pvsModeUpdated(PVS_MODE_OFF)
+        #self.pvsModeUpdated(PVS_MODE_OFF)
         
     def appendLineToOut(self, line):
-        log.debug("Appending '%s' to pvsout", line)
+        logging.debug("Appending '%s' to pvsout", line)
         self.pvsout.AppendText(line + NEWLINE)
         
     def appendTextToOut(self, text):
-        log.debug("Appending '%s' to pvsout", text)
+        logging.debug("Appending '%s' to pvsout", text)
         self.pvsout.AppendText(text)      
         
     def appendTextToIn(self, text):
-        log.debug("Appending '%s' to pvsin", text)
+        logging.debug("Appending '%s' to pvsin", text)
         self.pvsin.AppendText(text)
         
     def writeTextToIn(self, text):
-        log.debug("Writing '%s' to pvsin", text)
+        logging.debug("Writing '%s' to pvsin", text)
         self.pvsin.write(text)
         
     def writeLine(self, line):
@@ -99,11 +95,11 @@ class ConsolePlugin(PluginPanel):
                 
     def onPVSInTextEntered(self, event):
         """This method is called whenever the user types something in the prompt and Enters."""
-        log.info("Event handler `onPVSInTextEntered' not implemented")
+        logging.info("Event handler `onPVSInTextEntered' not implemented")
         whole = event.GetString()
         pl = len(self.prompt)
         command = whole[pl:]
-        log.info("Command is %s", command)
+        logging.info("Command is %s", command)
         self.appendLineToOut(whole)
         self.clearIn()
         self.history.append(command)
@@ -113,7 +109,7 @@ class ConsolePlugin(PluginPanel):
     def onPVSInText(self, event):
         """This method is called whenever PVS sends some text to the Editor"""
         st = event.GetString()
-        log.info("Received: %s", st)
+        logging.info("Received: %s", st)
         if not st.startswith(self.prompt):
             self.clearIn()
             self.writeTextToIn(self.prompt)

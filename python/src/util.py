@@ -2,17 +2,20 @@
 # This File contains all the generic function calls 
 
 import logging, sys, wx, os, os.path
-import constants
+import config
+import sys
+from sxp import sexp
+
 
 def getLogger(name):
     """Return a logger for the given name"""
     log = logging.getLogger(name)
-    hdlr = logging.StreamHandler(sys.stdout)
+    hdlr = logging.StreamHandler(sys.stdout) # if config.LOG_OUTPUT is None else logging.FileHandler(config.LOG_OUTPUT)
     #hdlr = logging.FileHandler('/var/tmp/myapp.log')
-    formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter(config.LOG_FORMAT)
     hdlr.setFormatter(formatter)
-    log.addHandler(hdlr) 
-    log.setLevel(constants.LOGGER_LEVEL)
+    logging.addHandler(hdlr) 
+    logging.setLevel(config.LOG_LEVEL)
     return log
 
 def normalizePath(thePath):
@@ -21,9 +24,18 @@ def normalizePath(thePath):
         thePath = getHomeDirectory() + thePath[1:]
     return os.path.abspath(thePath)
 
+def isS_Expression(text):
+    """Return true is text is an s-expression"""
+    try:
+        sexp.parseString(text, parseAll=True)
+        return True
+    except Exception:
+        logging.debug("Text '%s' is not an S-Expression", text)
+    return False
+
 def getHomeDirectory():
     """return user's home directory"""
-    return os.getenv("HOME")
+    return normalizePath(os.getenv("HOME"))
 
 def getFilenameFromFullPath(fullname, includeExtension=True):
     filename = os.path.split(fullname)[1]
@@ -36,10 +48,11 @@ def auiManager():
     return wx.GetApp().GetTopWindow().auiManager
 
 class PVSException(Exception):
-    pass
-
-#    def __init__(self, *args, **keywords):
-#        Exception.__init__(self, *args, **keywords)
+    def __init__(self, message, code=0, data=""):
+        Exception.__init__(self, message, code, data)
+        self.message = message
+        self.code = code
+        self.data = data
 
 class PVSIDEException(Exception):
     def __init__(self, *args, **keywords):

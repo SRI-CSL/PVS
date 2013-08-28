@@ -1,12 +1,9 @@
 
 # This File contains all the global constant strings used in the system
 
-import logging
-
 IMAGE_FOLDER_NAME = "images"
 IMAGE_FOLDER_PATH = None
 APPLICATION_FOLDER = None
-LOGGER_LEVEL = logging.DEBUG
 
 PVS_U = "PVS"
 PVS_L = "pvs"
@@ -14,6 +11,15 @@ PVS_EXTENSION = ".pvs"
 FULLNAME = "fullname"
 ID_U = "ID"
 ID_L = "id"
+LTHEORY = "theory"
+LFORMULA = "formula"
+LROOT = "root"
+LFILE = "file"
+LKIND = "kind"
+LPLACE = "place"
+LCONTEXT = "context"
+LINACTIVECONTEXT = "inactive-context"
+DECLS = "decls"
 
 LABEL_FILE = "File"
 LABEL_EDIT = "Edit"
@@ -47,11 +53,8 @@ NEWLINE = "\n"
 LOGGERNAME = "PVSEditor"
 TOOLBAR = "Toolbar"
 
-#Frame Titles::
-MAINFRAME = "PVS Editor"
-CONSOLEPLUGIN = "PVS Console"
-FILESTREE = "Files Tree"
-PROOFTREE = "Proof Tree"
+#Frame Titles:
+MAINFRAME = "PVS IDE"
 
 PVS_MODE_OFF = "off"
 PVS_MODE_LISP = "lisp"
@@ -75,6 +78,7 @@ PUB_CONSOLEINITIALIZE = "console.initialize"
 PUB_CONSOLEWRITELINE = "console.writeLine"
 PUB_CONSOLEWRITEPROMPT = "console.writePrompt"
 PUB_TOOLSTATUSUPDATE = "ToolManager.ToolStatusUpdate"
+PUB_PROOFINFORMATIONRECEIVED = "Proof.Information.Received"
 PUB_SAVEFILE = "File.Save"
 PUB_FILESAVED = "pvs.file.Saved"
 PUB_FILETYPECHECKED = "pvs.file.typechecked"

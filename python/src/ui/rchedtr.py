@@ -2,12 +2,10 @@
 
 import wx
 import codecs
-import util
+import logging
 import constants
 from styltxt import PVSStyledText
 from wx.lib.pubsub import setupkwargs, pub 
-
-log = util.getLogger(__name__)
 
 class RichEditor(wx.Panel):
     """RichEditor displays the content a file or buffer. It provides syntax highlighting, 
@@ -40,7 +38,7 @@ class RichEditor(wx.Panel):
         line = self.styledText.GetCurrentLine() + 1
         column = self.styledText.GetColumn(self.styledText.GetCurrentPos()) + 1
         position = "Line: %d, Column %d"%(line, column)
-        #log.debug(position)
+        #logging.debug(position)
         self.statusbar.SetStatusText(position, 0)
     
     def onTextKeyEvent(self, event):
@@ -56,7 +54,7 @@ class RichEditor(wx.Panel):
         evt.Skip()
         
     def setText(self, text):
-        log.info("Setting content of the rich editor")
+        logging.info("Setting content of the rich editor")
         if wx.USE_UNICODE:
             unitext = self.decode(text)[0]
             self.styledText.SetText(unitext)
@@ -73,7 +71,9 @@ class RichEditor(wx.Panel):
         if newName is not None:
             oldName = self.fullname
             self.fullname = newName
-        log.info("Saving file %s", self.fullname)
+        else:
+            oldName = None
+        logging.info("Saving file %s", self.fullname)
         self.styledText.SaveFile(self.fullname)
         pub.sendMessage(constants.PUB_FILESAVED, fullname=self.fullname, oldname=oldName)
         

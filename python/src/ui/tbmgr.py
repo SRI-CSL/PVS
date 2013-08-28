@@ -3,12 +3,11 @@
 
 import wx
 import util
+import logging
 from constants import *
 from images import *
 from evhdlr import *
 import wx.lib.agw.aui as aui
-
-log = util.getLogger(__name__)
 
 class ToolbarManager():
     """This class represents and manages the toolbar in the application"""
@@ -65,7 +64,7 @@ class ToolbarManager():
         self.showToolbar(name, not toolbar.IsShown())
 
     def showToolbar(self, name, visible=True):
-        log.debug("showToolbar was called for %s and %s", name, visible)
+        logging.debug("Name: %s Visible %s", name, visible)
         frame = util.getMainFrame()
         toolbar = util.auiManager().GetPane(name)
         toolbar.Show(visible)

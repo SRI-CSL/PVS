@@ -6,8 +6,7 @@ import wx
 from constants import EMPTY_STRING
 from remgr import RichEditorManager
 import util
-
-log = util.getLogger(__name__)
+import logging
 
 class FindReplaceManager:
     """A dialog box for finding and replacing texts in a RichEditor"""
@@ -44,7 +43,7 @@ class FindReplaceManager:
         self.matchCase = _flags & 4 > 0
         
     def OnFindReplaceBoxClose(self, evt):
-        log.info("FindReplaceDialog closing...")
+        logging.info("FindReplaceDialog closing...")
         evt.GetDialog().Destroy()
         
     def OnFind(self, evt):
@@ -57,7 +56,7 @@ class FindReplaceManager:
         #TODO: RichEditor should have an API for finding and replacing text.
         frame = util.getMainFrame()
         _find = self.data.GetFindString()
-        log.info("Find Next %s", _find)
+        logging.info("Find Next %s", _find)
         page = RichEditorManager().getFocusedRichEditor()
         nextOne = self.findPositionOfNext(_find)
         if nextOne is not None:
@@ -69,7 +68,7 @@ class FindReplaceManager:
         frame = util.getMainFrame()
         _find = self.data.GetFindString()
         _replace = self.data.GetReplaceString()
-        log.info("Replace Next %s", _find)
+        logging.info("Replace Next %s", _find)
         page = RichEditorManager().getFocusedRichEditor()
         nextOne = self.findPositionOfNext(_find)
         if nextOne is not None:
@@ -82,7 +81,7 @@ class FindReplaceManager:
         frame = util.getMainFrame()
         _find = self.data.GetFindString()
         _replace = self.data.GetReplaceString()
-        log.info("Replace All %s", _find)
+        logging.info("Replace All %s", _find)
         page = RichEditorManager().getFocusedRichEditor()
         nextOne = self.findPositionOfNext(_find)
         while nextOne is not None:
@@ -92,15 +91,15 @@ class FindReplaceManager:
             
     def findPositionOfNext(self, _findText):
         self.readFlags()
-        log.info("Going Down: %s, Whole Word: %s, Match Case: %s", self.goingDown, self.wholeWord, self.matchCase)
+        logging.info("Going Down: %s, Whole Word: %s, Match Case: %s", self.goingDown, self.wholeWord, self.matchCase)
         flags = re.UNICODE if self.matchCase else re.IGNORECASE | re.UNICODE
         page = RichEditorManager().getFocusedRichEditor()
         selection = page.styledText.GetSelection()
-        log.info("Selection Position: %s", selection)
+        logging.info("Selection Position: %s", selection)
         cursor = page.styledText.GetCurrentPos()
-        log.info("Cursor at: %s", cursor)
+        logging.info("Cursor at: %s", cursor)
         position = selection[1] if selection[0] < selection[1] else cursor
-        log.info("Position: %s", position)
+        logging.info("Position: %s", position)
         text = page.styledText.GetText()
         if self.wholeWord:
             searchFor = r"\b%s\b"%_findText
@@ -124,7 +123,7 @@ class FindReplaceManager:
                     break
                 else:
                     nextOne = result.start()
-        log.info("nextOne: %s", position)
+        logging.info("nextOne: %s", position)
         if nextOne < 0:
             nextOne = None
         return nextOne

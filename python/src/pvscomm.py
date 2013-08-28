@@ -22,11 +22,9 @@ from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 import constants
 import util
-import config
+import logging
 import os.path
 from wx.lib.pubsub import setupkwargs, pub 
-
-log = util.getLogger(__name__)
 
 # Restrict to a particular path.
 class RequestHandler(SimpleXMLRPCRequestHandler):
@@ -39,9 +37,6 @@ class PVSCommunicator:
     REQUEST = "request"
     RESULT = "result"
     ERROR = "error"
-    DEBUG = "debug"
-    INFO = "info"
-    WARNING = "warning"
     JSONRPC = "jsonrpc"
     JSONRPCRESULT = "jsonrpc_result"
     XMLRPCERROR = "xmlrpc_error"
@@ -54,22 +49,23 @@ class PVSCommunicator:
     
     __shared_state = {}
     
-    def __init__(self, host=config.EDITORHOST, port=config.EDITORPORT):
+    def __init__(self, host=None, port=None):
         self.__dict__ = self.__shared_state
         # Create server
         if not "counter" in self.__dict__:
-            log.info("Initializing PVSCommunicator with (%s, %s)", host,port)
+            logging.info("Initializing PVSCommunicator with (%s, %s)", host,port)
             self.counter = 0
+            import config
+            if host is None:
+                host = config.EDITORHOST
+            if port is None:
+                port = config.EDITORPORT
             self.guiURL = 'http://{0}:{1}/RPC2'.format(host, port)
             self.guiServer = SimpleXMLRPCServer((host, port), requestHandler=RequestHandler)
             self.guiServer.register_function(self.onPVSMessageReceived, PVSCommunicator.REQUEST)
             self.serverThread = threading.Thread(target=self.guiServer.serve_forever)
             self.serverThread.start()
             self.pvsProxy = xmlrpclib.ServerProxy(config.PVSURL)
-            self.json_methods = {}
-            self.json_methods[PVSCommunicator.DEBUG]   = self.onPVSDebugMessageReceived
-            self.json_methods[PVSCommunicator.INFO]    = self.onPVSInfoMessageReceived
-            self.json_methods[PVSCommunicator.WARNING] = self.onPVSWarningMessageReceived
             
     def requestPVS(self, method, *params):
         """ Send a request to PVS """
@@ -77,10 +73,11 @@ class PVSCommunicator:
         self.counter += 1
         request = {PVSCommunicator.METHOD: method, PVSCommunicator.PARAMS: params, PVSCommunicator.ID: reqid}
         jRequest = json.dumps(request)
-        log.debug("JSON request: %s", jRequest)
+        logging.debug("JSON request: %s", jRequest)
         sResult = self.pvsProxy.pvs.request(jRequest, self.guiURL)
-        log.debug("JSON result: %s", sResult)
-        result = json.loads(sResult, object_hook=self.responseCheck)
+        logging.debug("JSON result: %s", sResult)
+        result = json.loads(sResult)
+        result = self.responseCheck(result)
         return result            
     
     def onPVSMessageReceived(self, jsonString):
@@ -96,10 +93,13 @@ class PVSCommunicator:
         and no error, "null" is returned.  Otherwise, a valid JSON-RPC
         response/error form is returned.
         """
-        log.debug("onPVSMessageReceived was called with %s", jsonString)
+        logging.debug("Received: %s", jsonString)
         try:
             message = json.loads(jsonString, object_hook=self.requestCheck)
-            return self.processMessage(message)
+            result = self.processMessage(message)
+            logging.debug("Sending Back: %s", result)
+            return result
+        #TODO: The return vlaues for errors should be different and json-based
         except TypeError as err:
             return 'request: {0} is of type {1}, string expected'.format(jsonString, type(jsonString))
         except ValueError as err:
@@ -114,38 +114,10 @@ class PVSCommunicator:
         Processes the json-rpc message
         """
         method = message[PVSCommunicator.METHOD]
-        if PVSCommunicator.ID in message:
-            id = message[PVSCommunicator.ID]
-        else:
-            id = None
-        if PVSCommunicator.PARAMS in message:
-            params = message[PVSCommunicator.PARAMS]
-        else:
-            params = []
-        if method in self.json_methods:
-            try:
-                callFunction = self.json_methods[method]
-                result = callFunction(*params)
-                if id is not None:
-                    return json.dumps({PVSCommunicator.ID: id, PVSCommunicator.RESULT: result})
-                else:
-                    return "OK"
-            except Exception as err:
-                errmsg = ('Error in handling message: {0}\n  {1}'.format(message, err))
-                if id is None:
-                    # No json-rpc return, but still have xml-rpc level
-                    print(errmsg)
-                    return errmsg
-                else:
-                    return json.dumps({PVSCommunicator.ID: id, PVSCommunicator.ERROR: errmsg})
-        else:
-            errmsg = "method '{0}' not handled".format(method)
-            if id is None:
-                # No json-rpc return, but still have xml-rpc level
-                print(errmsg)
-                return errmsg
-            else:
-                return json.dumps({PVSCommunicator.ID: id, PVSCommunicator.ERROR: errmsg})
+        _id = message[PVSCommunicator.ID] if PVSCommunicator.ID in message else None
+        params = message[PVSCommunicator.PARAMS] if PVSCommunicator.PARAMS in message else []
+        result = PVSResponseManager().processCommand(_id, method, *params)
+        return result
 
     def responseCheck(self, dct):
         """
@@ -160,12 +132,12 @@ class PVSCommunicator:
         if PVSCommunicator.JSONRPCRESULT in dct:
             res = dct[PVSCommunicator.JSONRPCRESULT]
             if isinstance(res, str) or isinstance(res, unicode): #TODO: should not this be a json object already and not just a string?
-                log.warning("%s should already be a json object and not a string", res)
+                logging.warning("%s should already be a json object and not a string", res)
                 res = json.loads(res)
             if not isinstance(res, dict):
                 raise util.XMLRPCException("jsonrcp_result value '%s' must be a JSON object", res)
             if not PVSCommunicator.JSONRPC in res:
-                log.warning("%s does not have a jsonrpc key", res)
+                logging.warning("%s does not have a jsonrpc key", res)
             if PVSCommunicator.ID in res:
                 if not (PVSCommunicator.RESULT in res or PVSCommunicator.ERROR in res):
                     raise util.XMLRPCException("jsonrcp_result value '%s' must include either 'result' or 'error'", res)
@@ -190,18 +162,59 @@ class PVSCommunicator:
             raise util.XMLRPCException("Request must only have 'jsonrpcResult', 'method', 'id', and 'params' fields")
         return dct
 
-    def onPVSDebugMessageReceived(self, message):
-        """ JSON-RPC method """
-        log.debug("onPVSDebugMessageReceived was called with message %s", message)
 
-    def onPVSInfoMessageReceived(self, message):
-        """ JSON-RPC method """
-        log.debug("onPVSInfoMessageReceived was called with message %s", message)
-
-    def onPVSWarningMessageReceived(self, message):
-        """ JSON-RPC method """
-        log.debug("onPVSWarningMessageReceived was called with message %s", message)
+class PVSResponseManager:
+    __shared_state = {}
+    
+    def __init__(self):
+        self.__dict__ = self.__shared_state
+                        
+    def processCommand(self, _id, method, *parameters):
+        functionName = "_process_" + method.replace("-", "_")
+        if functionName in PVSResponseManager.__dict__:
+            function = PVSResponseManager.__dict__[functionName]
+            result = function(self, *parameters)
+            sResult = self.resultToJSON(result, _id)
+            return sResult
+        else:
+            self._process_everything_else(method, *parameters)
+            
+    def resultToJSON(self, result, _id):
+        jResult = None
+        if _id is not None:
+            value = {}
+            value[PVSCommunicator.ID] = _id
+            value[PVSCommunicator.JSONRPC] = "2.0"
+            value[PVSCommunicator.RESULT] = result
+            jResult = {}
+            jResult[PVSCommunicator.JSONRPCRESULT] = value
+        jResultS = json.dumps(jResult)
+        return jResultS
         
+        
+    def _process_yes_no(self, *parameters):
+        logging.debug("PVS Info received. Parameters %s", (parameters,))
+        frame = util.getMainFrame()
+        question = parameters[0].strip()
+        answer = frame.askYesNoQuestion(question)
+        return "yes" if answer==wx.ID_YES else "no"
+    
+        
+    def _process_info(self, *parameters):
+        logging.debug("PVS Info received. Parameters %s", (parameters,))
+
+    def _process_debug(self, *parameters):
+        logging.debug("PVS Debug received. Parameters %s", (parameters,))
+
+    def _process_warning(self, *parameters):
+        logging.debug("PVS Warning received. Parameters %s", (parameters,))
+        
+    def _process_buffer(self, *parameters):  
+        logging.debug("buffer received. Parameters %s", (parameters,))
+
+    def _process_everything_else(self, method, *parameters):
+        logging.debug("Unknown method '%s' received. Parameters %s", method, (parameters,))
+        raise util.PVSException("Unknown request method: %s"%method)
     
 class PVSCommandManager:
     __shared_state = {}
@@ -214,7 +227,8 @@ class PVSCommandManager:
             self.pvsContext = None
                         
     def sendRawCommand(self, command):
-        pass
+        logging.error("Unimplemented method")
+        raise Exception("Unimplemented method: sendRawCommand")
     
     def _processError(self, err):
         title = constants.ERROR
@@ -232,14 +246,14 @@ class PVSCommandManager:
             errMessage = err.message
         else:
             errMessage = str(err)
-        log.error("Error: %s", errMessage)
+        logging.error("Error: %s", errMessage)
         util.getMainFrame().showError(errMessage, title)
 
     def _sendCommand(self, method, *params):
         try:
             jsonResult = self.pvsComm.requestPVS(method, *params)
             pvsMode = jsonResult[PVSCommunicator.MODE]
-            context = jsonResult[PVSCommunicator.CONTEXT]
+            context = util.normalizePath(jsonResult[PVSCommunicator.CONTEXT])
             if PVSCommunicator.XMLRPCERROR in jsonResult:
                 errorObject = jsonResult[PVSCommunicator.XMLRPCERROR]
                 code = int(errorObject[PVSCommunicator.CODE])
@@ -247,9 +261,16 @@ class PVSCommandManager:
                 data = errorObject[PVSCommunicator.DATA] if PVSCommunicator.DATA in errorObject else None
                 raise util.PVSException(message=message, code=code, data=data)
             result = jsonResult[PVSCommunicator.JSONRPCRESULT]
-            result = json.loads(result) #TODO: Ask Sam to make sure the JOSN parsing should be done once and not twice.
             if PVSCommunicator.ERROR in result:
-                raise util.PVSException(result[PVSCommunicator.ERROR])
+                errDict = result[PVSCommunicator.ERROR]
+                errorMessage = errDict["message"]
+                errorCode = errDict["code"]
+                errorDataFile = errDict["data"]["error_file"]
+                with open (errorDataFile, "r") as errorFile:
+                    errorData = errorFile.read()
+                errorFile.close()
+                #TODO delete the temp file.
+                raise util.PVSException(message=errorMessage, code=errorCode, data=errorData)
             result = result[PVSCommunicator.RESULT]
             if pvsMode != self.pvsMode:
                 self.pvsMode = pvsMode
@@ -257,11 +278,15 @@ class PVSCommandManager:
             if context != self.pvsContext:
                 self.pvsContext = context
                 Preferences().setRecentContext(context)
+                logging.debug("New Context is: %s", context)
                 pub.sendMessage(constants.PUB_UPDATEPVSCONTEXT)
             return result
         except Exception as err:
             self._processError(err)
         return None
+            
+    def ping(self):
+        self._sendCommand("+", 1, 2)
             
     def typecheck(self, fullname):
         name = os.path.basename(fullname)
@@ -277,12 +302,18 @@ class PVSCommandManager:
         return result
     
     def changeContext(self, newContext):
+        logging.debug("User requested to change context to: %s", newContext)
         result = self._sendCommand("change-context", newContext)
-        #TODO: send a ContextChganged message via pubsub
         return result
     
-    def startProver(theoryName, formulaName):
-        result = self._sendCommand("json-prove-formula", theoryName, formulaName)
+    def startProver(self, theoryName, formulaName):
+        result = self._sendCommand("prove-formula", formulaName, theoryName)
+        pub.sendMessage(constants.PUB_PROOFINFORMATIONRECEIVED, information=result) 
+        return result
+        
+    def proofCommand(self, command):
+        result = self._sendCommand("proof-command", command)
+        pub.sendMessage(constants.PUB_PROOFINFORMATIONRECEIVED, information=result)
         return result
         
     
