@@ -386,8 +386,7 @@
 				      res)))
 		      (resolutions rn))))
 	(rewrite-names rewrite-decl))
-      (progn (assert (get-theory (module-instance (car (rewrite-names rewrite-decl)))))
-	     (rewrite-names rewrite-decl))))
+      (rewrite-names rewrite-decl)))
 
 (defun prove-decl-body ()
   (unwind-protect
