@@ -20,6 +20,7 @@ import threading
 from preference import Preferences
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
+from urlparse import urlparse
 import constants
 import util
 import logging
@@ -55,17 +56,17 @@ class PVSCommunicator:
         if not "counter" in self.__dict__:
             logging.info("Initializing PVSCommunicator with (%s, %s)", host,port)
             self.counter = 0
-            import config
-            if host is None:
-                host = config.EDITORHOST
-            if port is None:
-                port = config.EDITORPORT
-            self.guiURL = 'http://{0}:{1}/RPC2'.format(host, port)
+            from config import PVSIDEConfiguration
+            cfg = PVSIDEConfiguration()
+            self.ideURL = cfg.ideURL
+            parsedURL = urlparse(self.ideURL)
+            host = parsedURL.hostname
+            port = parsedURL.port
             self.guiServer = SimpleXMLRPCServer((host, port), requestHandler=RequestHandler)
             self.guiServer.register_function(self.onPVSMessageReceived, PVSCommunicator.REQUEST)
             self.serverThread = threading.Thread(target=self.guiServer.serve_forever)
             self.serverThread.start()
-            self.pvsProxy = xmlrpclib.ServerProxy(config.PVSURL)
+            self.pvsProxy = xmlrpclib.ServerProxy(cfg.pvsURL)
             
     def requestPVS(self, method, *params):
         """ Send a request to PVS """
@@ -74,7 +75,7 @@ class PVSCommunicator:
         request = {PVSCommunicator.METHOD: method, PVSCommunicator.PARAMS: params, PVSCommunicator.ID: reqid}
         jRequest = json.dumps(request)
         logging.debug("JSON request: %s", jRequest)
-        sResult = self.pvsProxy.pvs.request(jRequest, self.guiURL)
+        sResult = self.pvsProxy.pvs.request(jRequest, self.ideURL)
         logging.debug("JSON result: %s", sResult)
         result = json.loads(sResult)
         result = self.responseCheck(result)

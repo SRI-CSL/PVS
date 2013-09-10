@@ -12,14 +12,13 @@ import util
 import constants
 import platform
 import time
-import config
 import logging
 import logging.config
 from ui.images import getIDELogo
 from ui.frame import MainFrame
 from ui.plugin import PluginManager
-from config import PLUGIN_DEFINITIONS
 from wx.lib.pubsub import setupkwargs, pub 
+from config import PVSIDEConfiguration
 
 class PVSEditorApp(wx.App):
     """The main class that starts the application and shows the main frame"""
@@ -37,7 +36,7 @@ class PVSEditorApp(wx.App):
         mainFrame.Show()
         logging.info("Main Frame initialized...") 
         pm = PluginManager()
-        pm.initializePlugins(PLUGIN_DEFINITIONS)
+        pm.initializePlugins(PVSIDEConfiguration().pluginDefinitions)
         operatingSystem = platform.system()
         if operatingSystem == "Windows":
             mainFrame.showDialogBox("PVS does not run on Windows", constants.WARNING)
@@ -57,9 +56,15 @@ def processArguments(args):
             elif logLevel == constants.LOG_LEVEL_DEBUG:
                 constants.LOGGER_LEVEL = logging.FATAL
             
+def processConfigFile():
+    configFile = os.path.join(constants.APPLICATION_FOLDER, "src/pvside.cfg")
+    cfg = PVSIDEConfiguration()
+    if os.path.exists(configFile):
+        cfg.initialize(configFile)
+
 def configLogger():
     """Return a logger for the given name"""
-    logConfigFile = os.path.join(constants.APPLICATION_FOLDER, "src/logging.cnfg")
+    logConfigFile = os.path.join(constants.APPLICATION_FOLDER, "src/logging.cfg")
     if os.path.exists(logConfigFile):
         logging.config.fileConfig(logConfigFile)
     else:
@@ -77,6 +82,7 @@ if __name__ == "__main__":
     constants.APPLICATION_FOLDER = os.path.abspath(os.path.join(utilDirectory, os.path.pardir))
     constants.IMAGE_FOLDER_PATH = os.path.join(constants.APPLICATION_FOLDER, constants.IMAGE_FOLDER_NAME)
     configLogger()
+    processConfigFile()
     logging.debug("Application Folder is %s", constants.APPLICATION_FOLDER)
     processArguments(list(sys.argv))
 

@@ -29,7 +29,7 @@ class ProofManagerPlugin(PluginPanel):
         
         lb = wx.ComboBox(toolbar, -1, pos=(50, 170), size=(150, -1), choices=self.commandList, style=wx.CB_READONLY)
         lb.SetToolTipString("My List of Commands")
-        toolbar.AddControl(lb, 'List of Commands')
+        toolbar.AddControl(lb)
         
         undoButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('undo.gif'), shortHelpString="Undo the last command")
         quitButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('quit.png'), shortHelpString="Quit the prover")
@@ -56,7 +56,7 @@ class ProofManagerPlugin(PluginPanel):
         pub.subscribe(self.proofInformationReceived, constants.PUB_PROOFINFORMATIONRECEIVED)
 
     def initializeCommandList(self):
-        self.commandList = config.PROVER_COMMANDS.keys()
+        self.commandList = config.PVSIDEConfiguration().proverCommands.keys()
         
     def OnUndoLastCommand(self, event):
         pvscomm.PVSCommandManager().proofCommand("(undo)")
@@ -69,14 +69,16 @@ class ProofManagerPlugin(PluginPanel):
     def OnSelect(self, event):
         item = event.GetSelection()
         command = self.commandList[item]
-        self.commandTextControl.SetValue(config.PROVER_COMMANDS[command])
+        self.commandTextControl.SetValue(config.PVSIDEConfiguration().proverCommands[command])
 
     def proofInformationReceived(self, information):
         assert information is not None
-        logging.debug("proofInformationReceived: %s", information)
-        action = information["action"] if "action" in information else None
-        
+        logging.debug("information received: %s", information)
         result = information["result"] if "result" in information else None
+        if result == "Q.E.D.":
+            logging.info("Proof Completed")
+            return
+        action = information["action"] if "action" in information else None        
         nsubgoals = information["num_subgoals"] if "num_subgoals" in information else None
         jsequent = information["sequent"]
         self.sequent = Sequent(jsequent)

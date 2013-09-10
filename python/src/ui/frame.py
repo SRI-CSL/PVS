@@ -14,7 +14,7 @@ from mmgr import MainFrameMenu
 from tbmgr import ToolbarManager
 from preference import Preferences
 import wx.lib.agw.aui as aui
-from config import *
+from config import PVSIDEConfiguration
 import wx.stc as stc
 
 class MainFrame(wx.Frame):
@@ -67,8 +67,9 @@ class MainFrame(wx.Frame):
         #PVSCommandManager().ping()
 
     def __do_layout(self):
-        self.SetSize(EDITOR_SIZE)
-        self.SetMinSize(EDITOR_MINIMUM_SIZE) # Setting the minimum size of the main frame
+        cfg = PVSIDEConfiguration()
+        self.SetSize(cfg.ideSize)
+        self.SetMinSize(cfg.ideMinumumSize) # Setting the minimum size of the main frame
         self.auiManager.AddPane(RichEditorManager().notebook, aui.AuiPaneInfo().CenterPane())
         self.auiManager.Update()
         #self.Layout()
@@ -81,7 +82,14 @@ class MainFrame(wx.Frame):
             preferences.saveContextPreferences()
             preferences.saveGlobalPreferences()
             self.auiManager.UnInit()
-            event.Skip()
+            #event.Skip()
+            for item in wx.GetTopLevelWindows():
+                if not isinstance(item, MainFrame):
+                    if isinstance(item, wx.Dialog):
+                        item.Destroy()
+                    item.Close()            
+            self.Destroy()
+            wx.GetApp().ExitMainLoop()
 
     def OnPanelClose(self, event):
         """called after the panel is added to the frame"""

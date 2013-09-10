@@ -2,21 +2,8 @@
 # This File contains all the generic function calls 
 
 import logging, sys, wx, os, os.path
-import config
 import sys
 from sxp import sexp
-
-
-def getLogger(name):
-    """Return a logger for the given name"""
-    log = logging.getLogger(name)
-    hdlr = logging.StreamHandler(sys.stdout) # if config.LOG_OUTPUT is None else logging.FileHandler(config.LOG_OUTPUT)
-    #hdlr = logging.FileHandler('/var/tmp/myapp.log')
-    formatter = logging.Formatter(config.LOG_FORMAT)
-    hdlr.setFormatter(formatter)
-    logging.addHandler(hdlr) 
-    logging.setLevel(config.LOG_LEVEL)
-    return log
 
 def normalizePath(thePath):
     """Replace ~ with the home directory"""

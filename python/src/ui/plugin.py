@@ -4,11 +4,14 @@ import logging
 from constants import *
 from preference import Preferences
 import wx.lib.agw.aui as aui
-from wx.lib.pubsub import setupkwargs, pub 
+from wx.lib.pubsub import setupkwargs, pub
+import importlib
+
 
 class PluginManager:
     """A class to manage all the tool frames, create, and show/hide them"""
     NAME = "name"
+    MODULE = "module"
     CLASS = "class"
     SIZE = "size"
     LOCATION = "location"
@@ -42,7 +45,8 @@ class PluginManager:
             
     def create(self, pluginDefinition):
         name = pluginDefinition[PluginManager.NAME]
-        panelClass = pluginDefinition[PluginManager.CLASS]
+        module = importlib.import_module(pluginDefinition[PluginManager.MODULE])
+        panelClass = getattr(module, pluginDefinition[PluginManager.CLASS])
         size = pluginDefinition[PluginManager.SIZE]
         panel = panelClass(util.getMainFrame(), pluginDefinition)
         location = pluginDefinition[PluginManager.LOCATION] if PluginManager.LOCATION in pluginDefinition else PluginManager.FLOAT
