@@ -78,6 +78,9 @@ class ProofManagerPlugin(PluginPanel):
         if result == "Q.E.D.":
             logging.info("Proof Completed")
             return
+        elif result == "Unfinished":
+            logging.info("Proof Unfinished")
+            return
         action = information["action"] if "action" in information else None        
         nsubgoals = information["num_subgoals"] if "num_subgoals" in information else None
         jsequent = information["sequent"]

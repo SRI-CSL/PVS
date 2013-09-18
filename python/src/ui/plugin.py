@@ -5,6 +5,7 @@ from constants import *
 from preference import Preferences
 import wx.lib.agw.aui as aui
 from wx.lib.pubsub import setupkwargs, pub
+from pvscomm import PVSCommandManager
 import importlib
 
 
@@ -42,6 +43,8 @@ class PluginManager:
             if PluginManager.VISIBLE in plugin:
                 visibility = plugin[PluginManager.VISIBLE]
                 self.showPlugin(plugin[PluginManager.NAME], pvsMode in visibility)
+            else:
+                self.showPlugin(plugin[PluginManager.NAME], True)
             
     def create(self, pluginDefinition):
         name = pluginDefinition[PluginManager.NAME]
@@ -70,7 +73,9 @@ class PluginManager:
             paneInfo = paneInfo.Float()
         auiManager.AddPane(panel, paneInfo)
         if PluginManager.VISIBLE in pluginDefinition:
-            self.showPlugin(name, PVS_MODE_UNKNOWN in pluginDefinition[PluginManager.VISIBLE])
+            self.showPlugin(name, PVSCommandManager().pvsMode in pluginDefinition[PluginManager.VISIBLE])
+        else:
+            self.showPlugin(name, True)            
         auiManager.Update()
         pub.sendMessage(PUB_ADDITEMTOVIEWMENU, name=name, callBackFunction=(lambda ce: self.togglePluginVisibility(name)))
         return None
@@ -112,5 +117,8 @@ class PluginPanel(wx.Panel):
     
     def __init__(self, parent, pluginDefinition):
         wx.Panel.__init__(self, parent)
-        wx.definition = pluginDefinition
-        self.SetName(pluginDefinition["name"])
+        self.definition = pluginDefinition
+        self.SetName(pluginDefinition[PluginManager.NAME])
+
+
+

@@ -23,6 +23,7 @@ from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 from urlparse import urlparse
 import constants
 import util
+import wx
 import logging
 import os.path
 from wx.lib.pubsub import setupkwargs, pub 
@@ -59,14 +60,23 @@ class PVSCommunicator:
             from config import PVSIDEConfiguration
             cfg = PVSIDEConfiguration()
             self.ideURL = cfg.ideURL
-            parsedURL = urlparse(self.ideURL)
-            host = parsedURL.hostname
-            port = parsedURL.port
-            self.guiServer = SimpleXMLRPCServer((host, port), requestHandler=RequestHandler)
-            self.guiServer.register_function(self.onPVSMessageReceived, PVSCommunicator.REQUEST)
-            self.serverThread = threading.Thread(target=self.guiServer.serve_forever)
-            self.serverThread.start()
-            self.pvsProxy = xmlrpclib.ServerProxy(cfg.pvsURL)
+            self.pvsURL = cfg.pvsURL
+            
+            
+    def start(self):
+        parsedURL = urlparse(self.ideURL)
+        host = parsedURL.hostname
+        port = parsedURL.port
+        self.guiServer = SimpleXMLRPCServer((host, port), requestHandler=RequestHandler)
+        
+        self.guiServer.register_function(self.onPVSMessageReceived, PVSCommunicator.REQUEST)
+        self.serverThread = threading.Thread(target=self.guiServer.serve_forever)
+        self.serverThread.start()
+        self.pvsProxy = xmlrpclib.ServerProxy(self.pvsURL)
+        
+            
+    def shutdown(self):
+        self.guiServer.shutdown()
             
     def requestPVS(self, method, *params):
         """ Send a request to PVS """
@@ -109,6 +119,8 @@ class PVSCommunicator:
             # Can't give normal JSON-RPC error response,
             # This is just an XML-RPC answer.
             return 'request: {0} is invalid - {1}'.format(jsonString, err)
+        except Exception as err:
+            return "Unknown Error"
 
     def processMessage(self, message):
         """
@@ -198,8 +210,8 @@ class PVSResponseManager:
         frame = util.getMainFrame()
         question = parameters[0].strip()
         answer = frame.askYesNoQuestion(question)
-        return "yes" if answer==wx.ID_YES else "no"
-    
+        result = "yes" if answer==wx.ID_YES else "no"
+        return result
         
     def _process_info(self, *parameters):
         logging.debug("PVS Info received. Parameters %s", (parameters,))
@@ -224,13 +236,10 @@ class PVSCommandManager:
         self.__dict__ = self.__shared_state
         if not "pvsComm" in self.__dict__:
             self.pvsComm = PVSCommunicator()
+            self.pvsComm.start()
             self.pvsMode = constants.PVS_MODE_UNKNOWN
             self.pvsContext = None
                         
-    def sendRawCommand(self, command):
-        logging.error("Unimplemented method")
-        raise Exception("Unimplemented method: sendRawCommand")
-    
     def _processError(self, err):
         title = constants.ERROR
         if isinstance(err, socket.error):
@@ -289,6 +298,13 @@ class PVSCommandManager:
     def ping(self):
         self._sendCommand("+", 1, 2)
             
+    def lisp(self, command, *parameters):
+        allItems = [command,] + list(parameters)
+        params = ", ".join([str(p) for p in allItems])
+        form = "(" + params + ")"
+        result = self._sendCommand("lisp", form)
+        return result
+        
     def typecheck(self, fullname):
         name = os.path.basename(fullname)
         name = util.getFilenameFromFullPath(fullname, False)

@@ -1,9 +1,4 @@
-
 # This File contains all the global constant strings used in the system
-
-IMAGE_FOLDER_NAME = "images"
-IMAGE_FOLDER_PATH = None
-APPLICATION_FOLDER = None
 
 PVS_U = "PVS"
 PVS_L = "pvs"
@@ -74,7 +69,6 @@ PUB_UPDATEPVSMODE = "pvs.mode.Update"
 PUB_UPDATEPVSCONTEXT = "pvs.context.Update"
 PUB_PVSMESSAGERECEIVED = "pvs.messageReceived"
 PUB_CONSOLECLEARIN = "console.ClearIn"
-PUB_CONSOLEINEDITABLE = "console.SetInEditable"
 PUB_CONSOLEINITIALIZE = "console.initialize"
 PUB_CONSOLEWRITELINE = "console.writeLine"
 PUB_CONSOLEWRITEPROMPT = "console.writePrompt"

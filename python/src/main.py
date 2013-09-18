@@ -56,15 +56,14 @@ def processArguments(args):
             elif logLevel == constants.LOG_LEVEL_DEBUG:
                 constants.LOGGER_LEVEL = logging.FATAL
             
-def processConfigFile():
-    configFile = os.path.join(constants.APPLICATION_FOLDER, "src/pvside.cfg")
+def processConfigFile(applicationFolder):
+    configFile = os.path.join(applicationFolder, "src/pvside.cfg")
     cfg = PVSIDEConfiguration()
-    if os.path.exists(configFile):
-        cfg.initialize(configFile)
+    cfg.initialize(applicationFolder)
 
-def configLogger():
+def configLogger(applicationFolder):
     """Return a logger for the given name"""
-    logConfigFile = os.path.join(constants.APPLICATION_FOLDER, "src/logging.cfg")
+    logConfigFile = os.path.join(applicationFolder, "src/logging.cfg")
     if os.path.exists(logConfigFile):
         logging.config.fileConfig(logConfigFile)
     else:
@@ -79,11 +78,10 @@ if __name__ == "__main__":
     #logging.debug("PubSub version is %s", pub.PUBSUB_VERSION)
     assert pub.PUBSUB_VERSION == 3
     utilDirectory = os.path.dirname(util.__file__)
-    constants.APPLICATION_FOLDER = os.path.abspath(os.path.join(utilDirectory, os.path.pardir))
-    constants.IMAGE_FOLDER_PATH = os.path.join(constants.APPLICATION_FOLDER, constants.IMAGE_FOLDER_NAME)
-    configLogger()
-    processConfigFile()
-    logging.debug("Application Folder is %s", constants.APPLICATION_FOLDER)
+    applicationFolder = os.path.abspath(os.path.join(utilDirectory, os.path.pardir))
+    configLogger(applicationFolder)
+    processConfigFile(applicationFolder)
+    logging.debug("Application Folder is %s", applicationFolder)
     processArguments(list(sys.argv))
 
     application = PVSEditorApp(0)

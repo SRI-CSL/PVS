@@ -1,13 +1,15 @@
 
-# This file contains a number of functions that return bitmap to differetn requireed images and icons
+# This file contains a number of functions that return bitmap to different required images and icons
 
 
 import wx
-import constants
 import os.path
 
+
 def getBitmap(filename):
-    return wx.Bitmap(os.path.join(constants.IMAGE_FOLDER_PATH, filename), wx.BITMAP_TYPE_ANY)
+    import config
+    cfg = config.PVSIDEConfiguration()
+    return wx.Bitmap(os.path.join(cfg.imageFolderPath, filename), wx.BITMAP_TYPE_ANY)
 
 
 def getFolderImage():

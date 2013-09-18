@@ -10,12 +10,14 @@ from wx.lib.pubsub import setupkwargs, pub
 from remgr import RichEditorManager
 import logging
 import evhdlr
+import sys
 from mmgr import MainFrameMenu
 from tbmgr import ToolbarManager
 from preference import Preferences
 import wx.lib.agw.aui as aui
 from config import PVSIDEConfiguration
 import wx.stc as stc
+from pvscomm import PVSCommunicator
 
 class MainFrame(wx.Frame):
     """The main frame of the application. It consists of a menu and a toolbar, a notebook for all the open
@@ -74,7 +76,7 @@ class MainFrame(wx.Frame):
         self.auiManager.Update()
         #self.Layout()
         self.Centre()
-                              
+        
     def OnClose(self, event):
         """called when self.Close() is called"""
         if RichEditorManager().ensureFilesAreSavedToPoceed():
@@ -82,13 +84,7 @@ class MainFrame(wx.Frame):
             preferences.saveContextPreferences()
             preferences.saveGlobalPreferences()
             self.auiManager.UnInit()
-            #event.Skip()
-            for item in wx.GetTopLevelWindows():
-                if not isinstance(item, MainFrame):
-                    if isinstance(item, wx.Dialog):
-                        item.Destroy()
-                    item.Close()            
-            self.Destroy()
+            PVSCommunicator().shutdown()            
             wx.GetApp().ExitMainLoop()
 
     def OnPanelClose(self, event):
