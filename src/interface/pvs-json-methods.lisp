@@ -23,7 +23,7 @@
 (defrequest lisp (string)
   "Just evaluate the string in lisp"
   (let ((*package* (find-package :pvs)))
-    (eval (read-from-string string))))
+    (format nil "~a" (eval (read-from-string string)))))
 
 (defrequest change-context (dir)
   "Change PVS context"
