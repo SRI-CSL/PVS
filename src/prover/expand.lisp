@@ -173,15 +173,19 @@ list of positive numbers" occurrence)
 
 
 (defmethod expand-defn (name (expr projection-expr) occurrence)
+  (declare (ignore name occurrence))
   expr)
 
 (defmethod expand-defn (name (expr injection-expr) occurrence)
+  (declare (ignore name occurrence))
   expr)
 
 (defmethod expand-defn (name (expr injection?-expr) occurrence)
+  (declare (ignore name occurrence))
   expr)
 
 (defmethod expand-defn (name (expr extraction-expr) occurrence)
+  (declare (ignore name occurrence))
   expr)
 
 (defmethod expand-defn (name (expr projection-application) occurrence)
@@ -287,6 +291,9 @@ list of positive numbers" occurrence)
 			     (substit (range stype)
 			       (acons (domain stype) newargs nil))
 			     (range stype)))))
+	      #+pvsdebug
+	      (assert (subsetp (freevars nex) (union (freevars expr) *bound-variables*)
+			       :key #'declaration))
 	      (unless (eq newoper (operator expr))
 		(change-application-class-if-necessary expr nex))
 	      nex)))))
@@ -404,11 +411,13 @@ list of positive numbers" occurrence)
       (let ((exp-expr (expand-defn name (expression expr) occurrence)))
 	(if (eq exp-expr (expression expr))
 	    expr
-	    (copy expr
-	      'expression exp-expr
-	      'type (if (tc-eq (range (type expr)) (type exp-expr))
-			(type expr)
-			(lcopy (type expr) 'range (type exp-expr))))))))
+	    (let ((ltype (if (tc-eq (range (type expr)) (type exp-expr))
+			     (type expr)
+			     (get-lambda-expr-funtype-for-range
+			      expr (type exp-expr)))))
+	      (copy expr
+		:expression exp-expr
+		:type ltype))))))
 
 (defmethod expand-defn (name (expr tuple-expr) occurrence)
   (if (and (plusp *max-occurrence*)
@@ -435,6 +444,7 @@ list of positive numbers" occurrence)
     'expression (expand-defn name (expression expr) occurrence)))
 
 (defmethod expand-defn (name (expr field-assignment-arg) occurrence)
+  (declare (ignore name occurrence))
   expr)
 
 (defmethod expand-defn (name (expr list) occurrence)
