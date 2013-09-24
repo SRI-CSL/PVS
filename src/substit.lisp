@@ -182,12 +182,8 @@ it is nil in the substituted binding")
     (let* ((decl (declaration (car resolutions)))
 	   (binding (assq decl alist)))
       (cond ((null binding)
-	     (let ((res (substit* resolutions alist))
-		   (ntype (substit* type alist)))
-	       (if (eq res resolutions)
-		   (unless (eq ntype type)
-		     (setq res (list (copy (car res) 'type ntype))))
-		   (setf (type (car res)) ntype))
+	     (let* ((res (substit* resolutions alist))
+		    (ntype (type (car res))))
 	       (lcopy expr
 		 'type ntype
 		 'actuals (substit* actuals alist)
@@ -197,9 +193,9 @@ it is nil in the substituted binding")
 		 expr
 		 (let ((nex (if (typep (cdr binding) 'field-decl)
 				(change-class (copy (cdr binding))
-					      'field-name-expr)
+				    'field-name-expr)
 				(change-class (copy (cdr binding))
-					      'name-expr))))
+				    'name-expr))))
 		   (setf (parens nex) 0)
 		   (setf (resolutions nex)
 			 (list (mk-resolution (cdr binding)
@@ -817,11 +813,12 @@ it is nil in the substituted binding")
       (if (eq npred predicate)
 	  texpr
 	  (let* ((spred (pseudo-normalize npred))
-		 (stype (domain (find-supertype (type spred)))))
+		 (stype (domain (find-supertype (type spred))))
+		 (ptype (substit* print-type alist)))
 	    (lcopy texpr
 	      'supertype stype
 	      'predicate spred
-	      'print-type (substit* print-type alist)))))))
+	      'print-type ptype))))))
 
 (defmethod substit* ((texpr setsubtype) alist)
   (declare (ignore alist))
