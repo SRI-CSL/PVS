@@ -196,7 +196,7 @@
 		 (if (null antes)
 		     (make!-disjunction* succs)
 		     (if (null succs)
-			 (make!-conjunction* antes)
+			 (negate (make!-conjunction* antes))
 			 (make!-implication
 			  (make!-conjunction* antes)
 			  (make!-disjunction* succs))))))
