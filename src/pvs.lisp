@@ -3026,7 +3026,9 @@
 			theoryref
 			(pc-parse theoryref 'modname))))
     (or (and (or *in-checker*
-		 *generating-adt*)
+		 *generating-adt*
+		 (and *current-context*
+		      (eq *current-context* *working-current-context*)))
 	     (get-theory theoryname))
 	(let ((theory (get-parsed-theory theoryname quiet?)))
 	  (when theory
