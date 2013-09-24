@@ -87,14 +87,19 @@
 (defun check-type-actuals (expr)
   (let* ((modinst (module-instance expr))
 	 (theory (module (declaration expr)))
-	 (acts (actuals modinst)))
-    (when (and acts
-	       (not (memq expr *exprs-generating-actual-tccs*)))
-      (unless (or *in-checker* *in-evaluator*)
-	(push expr *exprs-generating-actual-tccs*))
-      (check-type-actuals* acts (formals-sans-usings theory) theory)
-      (generate-assuming-tccs modinst expr theory)
-      (generate-actuals-tccs (actuals expr) acts))))
+	 (acts (actuals modinst))
+	 (dacts (dactuals modinst)))
+    (unless (memq expr *exprs-generating-actual-tccs*)
+      (when (or acts dacts)
+	(unless (or *in-checker* *in-evaluator*)
+	  (push expr *exprs-generating-actual-tccs*)))
+      (when acts
+	(check-type-actuals* acts (formals-sans-usings theory) theory)
+	(generate-assuming-tccs modinst expr theory)
+	(generate-actuals-tccs (actuals expr) acts))
+      (when dacts
+	(check-type-actuals* dacts (decl-formals (declaration expr)) theory)
+	(generate-actuals-tccs (dactuals expr) dacts)))))
 
 (defun check-type-actuals* (actuals formals theory &optional alist)
   (when actuals
@@ -745,7 +750,8 @@
 
 (defmethod check-for-tccs* ((te type-name) expected)
   (declare (ignore expected))
-  (when (actuals (module-instance te))
+  (when (or (actuals (module-instance te))
+	    (dactuals (module-instance te)))
     (check-type-actuals te)))
 
 (defmethod check-for-tccs* ((te type-application) expected)
