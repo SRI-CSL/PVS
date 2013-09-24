@@ -1195,8 +1195,8 @@
 	    (setf (get-importings pth)
 		  (list (mk-modname (id pth)))))))
       (setf (declaration *current-context*) decl)
-      (update-context-importing-for-mapped-tcc decl)
-      *current-context*)))
+      (update-context-importing-for-mapped-tcc decl))
+    *current-context*))
 
 (defmethod update-context-importing-for-mapped-tcc ((decl mapped-axiom-tcc))
   (assert (theory-instance decl))
@@ -1493,9 +1493,7 @@
 	 (let ((*no-expected* t))
 	   (list
 	    (subst-mod-params (closed-definition decl)
-			      (module-instance res)
-			      (module decl)
-			      decl))))
+		(module-instance res) (module decl) decl))))
 	((typep decl '(or const-decl def-decl))
 	 (let ((subst-list (subst-mod-params (def-axiom decl)
 			       (module-instance res)
@@ -2410,7 +2408,8 @@
 
 (defmethod full-name! ((te type-expr))
   (assert (print-type te))
-  (lcopy te 'print-type (full-name! (print-type te))))
+  (let ((pfname (full-name! (print-type te))))
+    (lcopy te 'print-type pfname)))
 
 (defmethod full-name! ((x type-name))
   (let* ((mi (module-instance (resolution x)))
@@ -2520,7 +2519,8 @@
 	       (raise-actuals? (print-type x))))))
 
 (defmethod raise-actuals! ((x type-expr))
-  (lcopy (call-next-method) 'print-type (raise-actuals (print-type x))))
+  (let ((pt (raise-actuals (print-type x))))
+    (lcopy (call-next-method) 'print-type pt)))
 
 (defmethod raise-actuals! (x) x)
 
