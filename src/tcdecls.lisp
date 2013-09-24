@@ -1736,8 +1736,8 @@
 			 (compatible? (domain sty) (domain stype)))))
 	      (ptypes (declared-measure decl)))
 	(setf (measure decl) (declared-measure decl))
-	(let ((nmeas (mk-measure-lambda-exprs (formals decl)
-					      (declared-measure decl))))
+	(let ((nmeas (mk-measure-lambda-exprs
+		      (formals decl) (declared-measure decl))))
 	  (typecheck* nmeas nil nil nil)
 	  (setf (place nmeas) (place (declared-measure decl)))
 	  (setf (measure decl) nmeas)))
@@ -1975,7 +1975,7 @@
   (unless (funtype? type)
     (type-error (measure decl)
       "Wrong number of arguments in measure"))
-  (let ((natrange (mk-funtype* doms (copy type 'range *naturalnumber*)))
+  (let ((natrange (mk-funtype* doms (copy type :range *naturalnumber*)))
 	(ordrange (when *ordinal*
 		    (mk-funtype* doms (copy type 'range *ordinal*)))))
     (cond ((some #'(lambda (ty) (compatible? ty natrange))
@@ -2764,24 +2764,27 @@
 
 (defmethod typecheck* ((type type-name) expected kind arguments)
   (declare (ignore expected kind))
-  (call-next-method type nil 'type arguments)
-  (set-type type nil)
-  (let ((tval (type (resolution type))))
-    (when (and (formals (declaration (resolution type)))
+  (unless (and (resolution type)
 	       (null arguments))
-      (type-error type "Type name must have arguments"))
-    (assert tval)
-    (when (mod-id type)
-      (cond ((null (print-type tval))
-	     (setq tval (copy tval 'print-type (copy type))))
-	    ((and (type-name? (print-type tval))
-		  (not (mod-id (print-type tval))))
-	     (setq tval (copy tval
-			  'print-type (copy (print-type tval)
-					'mod-id (mod-id type)))))))
-    (if (eq tval 'type)
-	type
-	tval)))
+    (call-next-method type nil 'type arguments)
+    (set-type type nil)
+    (let ((tval (type (resolution type))))
+      (when (and (formals (declaration (resolution type)))
+		 (null arguments))
+	(type-error type "Type name must have arguments"))
+      (assert tval)
+      (when (mod-id type)
+	(cond ((null (print-type tval))
+	       (setq tval (copy tval 'print-type (copy type))))
+	      ((and (type-name? (print-type tval))
+		    (not (mod-id (print-type tval))))
+	       (setq tval (copy tval
+			    'print-type (copy (print-type tval)
+					  'mod-id (mod-id type)))))))
+      (if (eq tval 'type)
+	  type
+	  tval)))
+  (type (resolution type)))
 
 (defmethod typecheck* ((type type-application) expected kind arguments)
   (declare (ignore expected kind arguments))
@@ -3733,7 +3736,7 @@
     (mk-funtype* domtypes nrng)))
 
 (defmethod generic-judgement-warning ((decl number-judgement))
-  (when (free-parameters (type decl))
+  (when (free-params (type decl))
     (pvs-warning
 	"Judgement ~@[~a ~]at line ~d will not be used if theory ~a~%  ~
          is only imported generically, as the theory instance cannot be~%  ~
