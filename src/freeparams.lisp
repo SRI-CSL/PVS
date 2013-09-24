@@ -50,7 +50,7 @@
 			     (when (current-declaration)
 			       (decl-formals (current-declaration)))))
 	       (formals (if dformals
-			    (append tformals dformals)
+			    (append dformals tformals)
 			    tformals)))
 	  (every #'(lambda (fp) (memq fp formals)) frees)))))
 
@@ -354,14 +354,9 @@
 	   ;; abbreviations
 	   (free-params* (car resolutions) frees))
 	  (t (let ((theory (get-theory mi))
-		   (mfrees (free-params* mappings nil))
-		   (dfrees (unless (or (null (current-declaration))
-				       (dactuals mi))
-			     (decl-formals (current-declaration)))))
+		   (mfrees (free-params* mappings nil)))
 	       (assert theory)
-	       (union mfrees (union dfrees (formals-sans-usings theory)
-				    :test #'eq)
-		      :test #'eq))))))
+	       (union mfrees (formals-sans-usings theory) :test #'eq))))))
 
 (defmethod free-params* ((map mapping) frees)
   (let ((mfrees (free-params* (rhs map) nil)))
@@ -451,10 +446,8 @@
 	(formals-sans-usings theory))))
 
 (defun free-params-dacts (dactuals)
-  (if dactuals
-      (free-params* dactuals nil)
-      (unless (null (current-declaration))
-	(decl-formals (current-declaration)))))
+  (when dactuals
+    (free-params* dactuals nil)))
 
 (defmethod free-params-res ((theory module) (mi modname) type frees)
   (declare (ignore type))
