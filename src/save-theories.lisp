@@ -997,7 +997,7 @@
 	(call-next-method)
 	(if (and (module obj)
 		 (eq (module obj) *restoring-theory*))
-	    (unless (boundp '*restoring-declaration*)
+	    (unless (boundp '*restoring-declaration*) ;; bound to nil in context
 	      (let ((*restoring-declaration* obj))
 		(call-next-method)
 		(when (and (eq *restoring-theory* (theory *current-context*))
@@ -1068,6 +1068,9 @@
 	   (let ((*restore-object-parent* obj)
 		 (*restore-object-parent-slot* 'actuals))
 	     (restore-object* (actuals obj)))
+	   (let ((*restore-object-parent* obj)
+		 (*restore-object-parent-slot* 'dactuals))
+	     (restore-object* (dactuals obj)))
 	   (let ((*restore-object-parent* res)
 		 (*restore-object-parent-slot* 'module-instance))
 	     (restore-object* (module-instance res)))
@@ -1254,6 +1257,7 @@
 	   tn)
 	  (t (restore-object* (type-expr decl))
 	     (let* ((*generate-tccs* 'none)
+		    (*bound-variables* (apply #'append (formals decl)))
 		    (tval (typecheck* (type-expr decl) nil nil nil)))
 	       (assert (type-expr? tn))
 	       #+pvsdebug (assert (true-type-expr? tval))
@@ -1308,9 +1312,11 @@
 	 (thinst (module-instance (resolution te))))
     (assert (eq (id (module decl)) (id thinst))
 	    () "Strange type-name resolution")
+    (restore-object* tval)
     (restore-object* (actuals thinst))
+    (restore-object* (dactuals thinst))
     (assert (not (store-print-type? tval)))
-    (let* ((type-expr (if (actuals thinst)
+    (let* ((type-expr (if (or (actuals thinst) (dactuals thinst))
 			  (let ((*pseudo-normalizing* t)) ;; disallow pseudo-normalize
 			    (subst-mod-params tval thinst (module decl) decl))
 			  (copy tval 'print-type te))))
@@ -1330,6 +1336,7 @@
 	 (decl (declaration res))
 	 (thinst (module-instance res)))
     (restore-object* (actuals thinst))
+    (restore-object* (dactuals thinst))
     (let* ((mtype-expr (if (or (actuals thinst) (dactuals thinst))
 			   (let ((*pseudo-normalizing* t)) ;; disallow pseudo-normalize
 			     (subst-mod-params (type-value decl) thinst
@@ -1340,11 +1347,13 @@
 					  (eq (declaration y) x)))
 				 (car (formals decl)) (parameters te))
 			  mtype-expr
-			  (substit mtype-expr
-			    (pairlis (car (formals decl)) (parameters te))))))
+			  (let ((*pseudo-normalizing* t)) ;; disallow pseudo-normalize
+			    (substit mtype-expr
+			      (pairlis (car (formals decl)) (parameters te)))))))
       #+pvsdebug (assert (true-type-expr? type-expr))
-      (with-slots (print-type) type-expr
-	(setf print-type te))
+      (unless (eq type-expr (type-value decl))
+	(with-slots (print-type) type-expr
+	  (setf print-type te)))
       type-expr)))
 
 (defmethod print-type-correct? ((te type-expr))
