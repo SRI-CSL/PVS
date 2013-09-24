@@ -152,7 +152,9 @@
   (when *storing-or-fetching*
     (error "Attempt to store object while in ~s~@
             (sorry, these functions are not reentrant)" *storing-or-fetching*))
-  (clrhash *store-object-hash*)
+  (if *store-object-hash*
+      (clrhash *store-object-hash*)
+      (reset-store-object-caches))
   (let ((*package* (find-package :pvs))
 	(*store-object-ptr* 2)
 	(*storing-or-fetching* 'store-object))
