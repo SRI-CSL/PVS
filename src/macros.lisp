@@ -30,7 +30,7 @@
 (in-package :pvs)
 
 (export '(length= singleton? add-to-alist makesym get-declarations put-decl
-		  get-importings))
+	  get-importings))
 
 (defmacro tcdebug (ctl &rest args)
   `(when *tcdebug*
@@ -64,11 +64,11 @@
 (defmacro add-comment (decl ctl &rest args)
   (let ((cdecl (gensym)))
     `(when *typechecking-module*
-      (let ((,cdecl (or (car (generated ,decl))
-			,decl)))
-	(setf (newline-comment ,cdecl)
-	      (append (newline-comment ,cdecl)
-		      (list (format nil "% ~@?" ,ctl ,@args))))))))
+       (let ((,cdecl (or (car (generated ,decl))
+			 ,decl)))
+	 (setf (newline-comment ,cdecl)
+	       (append (newline-comment ,cdecl)
+		       (list (format nil "% ~@?" ,ctl ,@args))))))))
 
 ;;; Courtesy of Tim Winkler
 
@@ -107,7 +107,7 @@
          ,@decls
          (block nil
            (tagbody
-            ,label
+	      ,label
               (when (>= ,var ,limit) (return-from nil ,val))
               ,@bod
               (setq ,var (the fixnum (1+ ,var)))
@@ -131,11 +131,11 @@
 #+lucid
 (defmacro ignore-file-errors (&rest body)
   `(ignore-errors
-    (handler-bind ((lucid::file-protection-error
-		    #'(lambda (x)
-			(declare (ignore x))
-			(invoke-restart (car (compute-restarts))))))
-	,@body)))
+     (handler-bind ((lucid::file-protection-error
+		     #'(lambda (x)
+			 (declare (ignore x))
+			 (invoke-restart (car (compute-restarts))))))
+       ,@body)))
 
 #+(not lucid)
 (defmacro ignore-file-errors (&rest body)
@@ -173,8 +173,8 @@
 				       (make!-application o ,nvar))
 			     ,op))
 			  (make!-application ,op ,nvar)))))
-;;        (unless (tc-eq ,lexpr (beta-reduce ,lexpr))
-;; 	 (break "Why?"))
+       ;;        (unless (tc-eq ,lexpr (beta-reduce ,lexpr))
+       ;; 	 (break "Why?"))
        ,lexpr)))
 
 (defmacro gen-forall-expr (vsym vtype operator)
@@ -188,13 +188,13 @@
 	    (,id (make-new-variable ,vsym (cons ,type ,op)))
 	    (,bd (typecheck* (mk-bind-decl ,id ,type ,type) nil nil nil))
 	    (,nvar (mk-name-expr ,id nil nil (make-resolution ,bd nil ,type))))
-      (beta-reduce (make-forall-expr (list ,bd)
-		     (if (listp ,op)
-			 (mk-conjunction
-			  (mapcar #'(lambda (o)
-				      (mk-application o ,nvar))
-				  ,op))
-			 (mk-application ,op ,nvar)))))))
+       (beta-reduce (make-forall-expr (list ,bd)
+		      (if (listp ,op)
+			  (mk-conjunction
+			   (mapcar #'(lambda (o)
+				       (mk-application o ,nvar))
+			     ,op))
+			  (mk-application ,op ,nvar)))))))
 
 
 (defmacro with-no-type-errors (&rest forms)
@@ -215,22 +215,22 @@
 	(shortdir (gentemp))
 	(orig-dir (gentemp)))
     `(let ((,dir (directory-p (libref-to-pathname ,lib-ref))))
-      (if (pathnamep ,dir)
-	  (let* ((,orig-dir (working-directory))
-		 (,shortdir (shortpath ,dir))
-		 (*pvs-context-path* ,shortdir)
-		 (*default-pathname-defaults* ,shortdir)
-		 (*pvs-context-writable* (write-permission? ,shortdir))
-		 (*pvs-context* nil)
-		 (*pvs-context-changed* nil)
-		 (*current-context* nil)
-		 (*current-theory* nil)
-		 (*all-subst-mod-params-caches* nil))
-	    (unwind-protect 
-		(progn (set-working-directory ,shortdir)
-		       ,@forms)
-	      (set-working-directory ,orig-dir)))
-	  (pvs-message "Library ~a does not exist" ,dir)))))
+       (if (pathnamep ,dir)
+	   (let* ((,orig-dir (working-directory))
+		  (,shortdir (shortpath ,dir))
+		  (*pvs-context-path* ,shortdir)
+		  (*default-pathname-defaults* ,shortdir)
+		  (*pvs-context-writable* (write-permission? ,shortdir))
+		  (*pvs-context* nil)
+		  (*pvs-context-changed* nil)
+		  (*current-context* nil)
+		  (*current-theory* nil)
+		  (*all-subst-mod-params-caches* nil))
+	     (unwind-protect 
+		  (progn (set-working-directory ,shortdir)
+			 ,@forms)
+	       (set-working-directory ,orig-dir)))
+	   (pvs-message "Library ~a does not exist" ,dir)))))
 
 
 ;;; The *imported libraries* hash table and (library-alist *current-context*)
@@ -263,16 +263,16 @@
 	   (,mods nil)
 	   (,entry nil))
        (unwind-protect
-	   (progn
-	     (setq ,entry (gethash ,lref *imported-libraries*))
-	     (remhash ,lref *imported-libraries*)
-	     (setq ,mods
-		   (relativize-imported-library ,cpath *pvs-context-path*))
-	     (maphash #'(lambda (id th)
-			  (declare (ignore id))
-			  (change-from-library-class th))
-		      (cadr ,entry))
-	     ,@forms)
+	    (progn
+	      (setq ,entry (gethash ,lref *imported-libraries*))
+	      (remhash ,lref *imported-libraries*)
+	      (setq ,mods
+		    (relativize-imported-library ,cpath *pvs-context-path*))
+	      (maphash #'(lambda (id th)
+			   (declare (ignore id))
+			   (change-from-library-class th))
+		       (cadr ,entry))
+	      ,@forms)
 	 (revert-relativized-imported-library
 	  *pvs-context-path* ,cpath ,mods)
 	 (maphash #'(lambda (id th)
@@ -355,9 +355,9 @@
 #+gcl
 (defmacro with-interrupts-disabled (&rest body)
   `(unwind-protect
-       (progn
-	 (disable-interrupts)
-	 ,@body)
+	(progn
+	  (disable-interrupts)
+	  ,@body)
      (enable-interrupts)))
 
 (defmacro add-place (form place)
@@ -384,8 +384,8 @@
 		      (*current-context* (saved-context *current-theory*))
 		      (*generate-tccs* 'none)
 		      ,@(when expected
-			  `((expected-type
-			     (pc-typecheck (pc-parse ,expected 'type-expr))))))
+			      `((expected-type
+				 (pc-typecheck (pc-parse ,expected 'type-expr))))))
 		 (assert *current-context*)
 		 (setq ,var (pc-typecheck (pc-parse ,term ',nt)
 			      ,@(when expected '(:expected expected-type)))))))
@@ -418,18 +418,18 @@
 
 (defmacro protect-types-hash (obj &rest forms)
   `(unwind-protect
-      (let ((*expression-types* (if *in-typechecker*
-				    *expression-types*
-				    *empty-expression-types*))
-	    (*in-typechecker* (or *in-typechecker*
-				  (if (or *in-checker* *in-evaluator*)
-				      (if (syntax? ,obj)
-					  (copy-all ,obj)
-					  ,obj)
-				      t))))
-	,@forms)
-    (unless *in-typechecker*
-      (setq *empty-expression-types* (make-hash-table :test 'eq)))))
+	(let ((*expression-types* (if *in-typechecker*
+				      *expression-types*
+				      *empty-expression-types*))
+	      (*in-typechecker* (or *in-typechecker*
+				    (if (or *in-checker* *in-evaluator*)
+					(if (syntax? ,obj)
+					    (copy-all ,obj)
+					    ,obj)
+					t))))
+	  ,@forms)
+     (unless *in-typechecker*
+       (setq *empty-expression-types* (make-hash-table :test 'eq)))))
 
 ;; (defmacro with-case-insensitive-lower (&rest forms)
 ;;   #+(and allegro (version>= 6))
@@ -481,22 +481,22 @@
        (if (null ,gdecls)
 	   (progn ,@body)
 	   (unwind-protect
-	       (progn (dolist (,gdecl ,gdecls)
-			(let ((assoc-decls (get-declarations (id ,gdecl))))
-			  (unless (memq ,gdecl assoc-decls)
-			    (setf ,restore (acons (id ,gdecl) assoc-decls ,restore))
-			    (let ((fml (find-if #'decl-formal? assoc-decls)))
-			      ;; There should be at most one
-			      (assert (or (null fml)
-					  (not (find-if #'decl-formal?
-						 (cdr (memq fml assoc-decls))))))
-			      (setf (get-lhash (id ,gdecl)
-					       (current-declarations-hash))
-				    (cons ,gdecl
-					  (if fml
-					      (remove fml assoc-decls)
-					      assoc-decls)))))))
-		      ,@body)
+		(progn (dolist (,gdecl ,gdecls)
+			 (let ((assoc-decls (get-declarations (id ,gdecl))))
+			   (unless (memq ,gdecl assoc-decls)
+			     (setf ,restore (acons (id ,gdecl) assoc-decls ,restore))
+			     (let ((fml (find-if #'decl-formal? assoc-decls)))
+			       ;; There should be at most one
+			       (assert (or (null fml)
+					   (not (find-if #'decl-formal?
+						  (cdr (memq fml assoc-decls))))))
+			       (setf (get-lhash (id ,gdecl)
+						(current-declarations-hash))
+				     (cons ,gdecl
+					   (if fml
+					       (remove fml assoc-decls)
+					       assoc-decls)))))))
+		       ,@body)
 	     (dolist (,gdecl ,restore)
 	       (setf (get-lhash (car ,gdecl) (current-declarations-hash))
 		     (cdr ,gdecl))))))))
@@ -510,8 +510,8 @@
   (let ((cth (gensym)))
     `(let ((,cth (current-theory)))
        (unwind-protect
-	   (progn (setf (current-theory) ,theory)
-		  ,@body)
+	    (progn (setf (current-theory) ,theory)
+		   ,@body)
 	 (setf (current-theory) ,cth)))))
 
 (defmacro with-current-decl (decl &rest body)
@@ -521,17 +521,17 @@
 	    (*current-top-declaration* (or *current-top-declaration* ,cdecl))
 	    (,gdecl ,decl))
        (unwind-protect
-	   (progn (setf (current-declaration) ,gdecl)
-		  (with-added-decls (decl-formals ,gdecl)
-		    ,@body))
+	    (progn (setf (current-declaration) ,gdecl)
+		   (with-added-decls (decl-formals ,gdecl)
+		     ,@body))
 	 (setf (current-declaration) ,cdecl)))))
 
 (defmacro with-bound-declparams (decls &rest body)
   (let ((gdecls (gensym)))
-  `(let ((,gdecls ,decls))
-     (with-added-decls ,gdecls
-       (let ((*decl-bound-parameters* ,gdecls))
-	 ,@body)))))
+    `(let ((,gdecls ,decls))
+       (with-added-decls ,gdecls
+	 (let ((*decl-bound-parameters* ,gdecls))
+	   ,@body)))))
 
 ;; Only used by add-decl, destructively modifies the context
 (defun delete-declaration (decl &optional decl-hash)
@@ -611,7 +611,7 @@
 			 (if (consp (car b))
 			     (car b)
 			     b))
-	       binds)
+		     binds)
 	 ,(dbind-ex (mapcan #'(lambda (b)
 				(if (consp (car b))
 				    (cdr b)))
