@@ -112,9 +112,18 @@
 	    ;;                     -> adt-expand-positive-subtypes!
 	    (not (eq (print-type nte) (print-type te))))
 	nte
-	(lcopy nte
-	  'print-type (let ((*dont-expand-adt-subtypes* t))
-			(gensubst* (print-type te) substfn testfn))))))
+	(copy nte
+	  :print-type (let* ((*dont-expand-adt-subtypes* t)
+			     (npt (gensubst* (print-type te) substfn testfn)))
+			#+pvsdebug
+			(assert (typep (print-type te)
+				       '(or null type-name expr-as-type
+					 type-application)))
+			#+pvsdebug
+			(assert (typep npt
+				       '(or null type-name expr-as-type
+					 type-application)))
+			npt)))))
 
 (defmethod gensubst* ((list list) substfn testfn)
   (let ((nlist (gensubst-list list substfn testfn nil)))
@@ -301,7 +310,8 @@
 	     (when (name-expr? ex)
 	       (setf (resolutions ex) nil))))
 	  (*gensubst-subst-types*
-	   (when (and (eq ex nex) (type ex))
+	   (when (and (eq ex nex) (type ex)
+		      (not (name-expr? ex))) ;; type already done for name-exprs
 	     (let ((ntype (gensubst* (type ex) substfn testfn)))
 	       (unless (eq ntype (type ex))
 		 (setq nex (copy ex :type ntype))))))
@@ -320,7 +330,8 @@
 	(let ((ntype (type (resolution nex))))
 	  (if (eq ntype (type ex))
 	      nex
-	      (lcopy nex 'type ntype))))))
+	      (lcopy nex
+		'type ntype))))))
 
 (defmethod gensubst* ((ex adt-name-expr) substfn testfn)
   (let ((nex (call-next-method)))
