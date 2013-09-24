@@ -421,11 +421,11 @@ required a context.")
 
 (defun check-for-application-macro-tccs (args def)
   (let ((bindings (lambda-bindings* def)))
-    (assert (<= (length args) (length bindings)))
+    ;;(assert (<= (length args) (length bindings)))
     (check-for-application-macro-tccs* args bindings)))
 
 (defun check-for-application-macro-tccs* (args bindings)
-  (when args
+  (when (and args bindings)
     (let* ((arg (car args))
 	   (bnds (car bindings))
 	   (dom (if (cdr bnds)
@@ -441,7 +441,7 @@ required a context.")
 			    (pairlis bnds
 				     (if (tuple-expr? arg)
 					 (exprs arg)
-					 (make-projections arg ex)))
+					 (make-projections arg)))
 			    (acons (car bnds) arg nil))))
 	 (substit (cdr bindings) sbindings))))))
 
@@ -1257,7 +1257,7 @@ required a context.")
   (if (null types)
       (nreverse stypes)
       (let* ((bindings (tc-match stype (car types) 
-				 (mapcar #'list (free-parameters stype)))))
+				 (mapcar #'list (free-params stype)))))
 	(possible-mapping-subst-types
 	 (cdr types) stype
 	 (if (and bindings
@@ -2970,7 +2970,9 @@ required a context.")
 	      (mapcar #'list (remove-if #'(lambda (x)
 					(eq (module x) (current-theory)))
 			   frees)))
-	     (domain (domain-types optype))
+	     (domain (if (singleton? args)
+			 (domain optype)
+			 (domain-types optype)))
 	     (range (range optype)))
 	(assert bindings)
 	(let ((nbindings (tc-match-domain args domain
@@ -3140,89 +3142,31 @@ required a context.")
   nil)
 
 (defun instantiate-resolution (ex res type)
-  (let* ((fparams (free-params res))
-	 (theories (delete-duplicates (mapcar #'module fparams)))
-	 (nres res))
-    ;; Multiple theories can come about because of actuals, mappings, etc on ex
-    ;; First chack that any 
-    (if (all-formals-from-same-decls fparams)
-	(dolist (th theories)
-	  (let ((decls nil))
-	    (dolist (frm fparams)
-	      (when (and (decl-formal-type? frm)
-			 (associated-decl frm)
-			 (not (eq (associated-decl frm) (current-declaration)))
-			 (eq (module frm) th))
-		(pushnew (associated-decl frm) decls)))
-	    (when (or decls (not (eq th (current-theory))))
-	      (let* ((formals (remove-if #'(lambda (fp)
-					     (or (not (eq (module fp) th))
-						 (and (eq (module fp)
-							  (current-theory))
-						      (not (decl-formal-type? fp)))))
-				fparams))
-		     (bindings (tc-match type (type res)
-					 (mapcar #'list formals))))
-		(when (every #'cdr bindings)
-		  (let ((thinst (mk-modname (id th)
-				  (unless (eq th (current-theory))
-				    (if (and (eq (id th) (id (module-instance res)))
-					     (actuals (module-instance res)))
-					(mapcar #'(lambda (fp act)
-						    (let ((bd (cdr (assq fp bindings))))
-						      (if bd
-							  (mk-res-actual bd th)
-							  act)))
-					  (formals-sans-usings th)
-					  (actuals (module-instance res)))
-					(mapcar #'(lambda (fp)
-						    (let ((bd (cdr (assq fp bindings))))
-						      (if bd
-							  (mk-res-actual bd th)
-							  (mk-res-actual
-							   (mk-name-expr (id fp)
-							     nil nil
-							     (make-resolution
-								 fp (mk-modname (id th)
-								      nil (lib-id th))))
-							   th))))
-					  (formals-sans-usings th))))
-				  (library (module-instance res))
-				  (mappings (module-instance res)))))
-		    (if (null decls)
-			(let ((sres (subst-mod-params nres thinst th)))
-			  (setq nres sres))
-			(let ((sres nres))
-			  (dolist (decl decls)
-			    (let* ((dacts (mapcar #'(lambda (fp)
-						      (let ((bd (cdr (assq fp bindings))))
-							(if bd
-							    (mk-res-actual bd th)
-							    (mk-res-actual
-							     (mk-name-expr (id fp)
-							       nil nil
-							       (make-resolution
-								   fp (mk-modname (id th))))
-							     th))))
-					    (decl-formals decl)))
-				   (dthinst (copy thinst :dactuals dacts)))
-			      (setq sres (subst-mod-params sres dthinst th decl))))
-			  (setq nres sres)))))))
-	    ))
-	;; Should probably never get here
+  (let* ((frees (free-params res))
+	 (bindings
+	  (mapcar #'list (remove-if #'(lambda (x)
+					(or (memq x (formals (current-theory)))
+					    (memq x (decl-formals
+						     (current-declaration)))))
+			   frees)))
+	 (nbindings (tc-match type (type res) bindings)))
+    (if (and nbindings
+	     (every #'cdr nbindings))
+	(let ((nres (subst-for-formals res nbindings)))
+	  (if (fully-instantiated? nres)
+	      nres
+	      (if *dont-worry-about-full-instantiations*
+		  nres
+		  (type-error ex
+		    "Could not determine the full theory instance for ~a~
+                     ~%  Theory instance: ~a"
+		    ex (full-name (module-instance nres))))))
 	(if *dont-worry-about-full-instantiations*
 	    res
 	    (type-error ex
-	       "Could not determine the full theory instance for ~a~
-                ~%  Theory instance: ~a~%  refers to multiple decl params"
-	       ex (full-name (module-instance ex)))))
-    (if (or (fully-instantiated? nres)
-	    *dont-worry-about-full-instantiations*)
-	nres
-	(type-error ex
-	  "Could not determine the full theory instance for ~a~
+	      "Could not determine the full theory instance for ~a~
                 ~%  Theory instance: ~a"
-	  ex (full-name (module-instance ex))))))
+	      ex (full-name (module-instance res)))))))
 
 (defun all-formals-from-same-decls (formals &optional decl)
   (or (null formals)
@@ -3256,27 +3200,29 @@ required a context.")
 
 (defun instantiate-operator-type (optype op args expected)
   (let* ((frees (free-params optype))
-	 (bindings ;;(instantiate-operator-bindings frees)
+	 (bindings
 	  (mapcar #'list (remove-if #'(lambda (x)
 					(or (memq x (formals (current-theory)))
 					    (memq x (decl-formals
 						     (current-declaration)))))
 			   frees)))
-	 (domain (domain-types optype))
+	 (domain (if (singleton? args)
+		     (list (domain optype))
+		     (domain-types optype)))
 	 (range (range optype)))
-    (let ((th nil) (decl nil))
-      (dolist (bd bindings)
-	(cond ((null th) (setq th (module (car bd))))
-	      ((and (decl-formal? (car bd))
-		    (not (eq (module (car bd)) th)))
-	       (break "Check mixed optype params")))
-	(when (decl-formal? (car bd))
-	  (cond ((null decl)
-		 (if (associated-decl (car bd))
-		     (setq decl (associated-decl (car bd)))
-		     (break "No associated decl")))
-		((not (eq (associated-decl (car bd)) decl))
-		 (break "Check mixed optype dactuals"))))))
+    ;; (let ((th nil) (decl nil))
+    ;;   (dolist (bd bindings)
+    ;; 	(cond ((null th) (setq th (module (car bd))))
+    ;; 	      ((and (decl-formal? (car bd))
+    ;; 		    (not (eq (module (car bd)) th)))
+    ;; 	       (break "Check mixed optype params")))
+    ;; 	(when (decl-formal? (car bd))
+    ;; 	  (cond ((null decl)
+    ;; 		 (if (associated-decl (car bd))
+    ;; 		     (setq decl (associated-decl (car bd)))
+    ;; 		     (break "No associated decl")))
+    ;; 		((not (eq (associated-decl (car bd)) decl))
+    ;; 		 (break "Check mixed optype dactuals"))))))
     (let ((nbindings (tc-match-domain args domain
 				      (tc-match expected range bindings))))
       (or (and nbindings
@@ -3528,12 +3474,14 @@ required a context.")
 		(cond ((and (singleton? res)
 			    (not (tc-eq (car res)
 					(resolution (operator ex)))))
-		       (setf (type op) (type (car res)))
-		       (setf (resolutions op) (list (car res))))
-		      (t (setf (type op)
-			       (mk-funtype (list *boolean* iftype iftype)
-					   iftype))
-			 (setf (resolutions op) reses))))
+		       (setf (resolutions op) (list (car res)))
+		       (setf (type op) (type (car res))))
+		      (t (setf (resolutions op) reses)
+			 #+pvsdebug
+			 (assert (tc-eq (type (car reses))
+					(mk-funtype (list *boolean* iftype iftype)
+						    iftype)))
+			 (setf (type op) (type (car reses))))))
 	      (unless (eq (id (current-theory)) '|if_def|)
 		(setf (actuals (module-instance op))
 		      (list (mk-actual iftype))))
@@ -3791,6 +3739,7 @@ required a context.")
 	(get-lambda-expr-full-domain (expression ex))))
 
 (defmethod get-lambda-expr-full-domain (ex)
+  (declare (ignore ex))
   nil)
 
 (defun get-lambda-expr-domain (ex)
@@ -4858,7 +4807,7 @@ required a context.")
 		      fparams))
       (assert (every #'(lambda (fp) (eq (associated-decl fp) adecl))
 		     (cdr fparams)))
-      (let* ((dacts (mk-dactuals dfmls))
+      (let* (;(dacts (mk-dactuals dfmls))
 	     (mi (mk-modname (id (current-theory)) nil nil nil (mk-dactuals dfmls)))
 	     (nex (subst-mod-params ex mi (current-theory) adecl)))
 	(when (fully-instantiated? nex)
@@ -5096,9 +5045,18 @@ required a context.")
 (defmethod subst-for-formals? ((ex modname) alist)
   (let ((mod (get-theory ex)))
     (and (null (actuals ex))
+	 (formals-sans-usings mod)
 	 (every #'(lambda (fm) (assq fm alist))
 		(formals-sans-usings mod)))))
-       
+
+(defmethod subst-for-formals? ((res resolution) alist)
+  (let ((mi (module-instance res)))
+    (or (subst-for-formals? mi alist)
+	(and (null (dactuals mi))
+	     (decl-formals (declaration res))
+	     (every #'(lambda (fm) (assq fm alist))
+		    (decl-formals (declaration res)))))))
+
 (defmethod subst-for-formals? (ex alist)
   (declare (ignore ex alist))
   nil)
@@ -5116,6 +5074,28 @@ required a context.")
 			   (let ((exp (cdr (assq fm alist))))
 			     (mk-actual exp)))
 		       (formals-sans-usings mod)))))
+
+(defmethod subst-for-formals! ((res resolution) alist)
+  (let* ((mi (subst-for-formals (module-instance res) alist))
+	 (decl (declaration res))
+	 (type nil
+	   ;; Can't do this, or it loops - just let make-resolution take care of it
+	   ;; (unless (or t
+	   ;; 		   (and (type-decl? decl)
+	   ;; 			(type-name? (type res))
+	   ;; 			(eq (declaration (type res)) decl)))
+	   ;; 	 (subst-for-formals (type res) alist))
+	   )
+	 (dacts (cond ((dactuals mi)
+		       (subst-for-formals? (dactuals mi) alist))
+		      ((decl-formals decl)
+		       (mapcar #'(lambda (fm)
+				   (let ((exp (cdr (assq fm alist))))
+				     (if exp
+					 (mk-actual exp)
+					 (break))))
+			 (decl-formals decl))))))
+    (make-resolution decl (lcopy mi :dactuals dacts) type)))
 
 (defun push-tcc-conditions (conditions tcc-conditions)
   (if (null conditions)
