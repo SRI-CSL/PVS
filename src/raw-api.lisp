@@ -72,7 +72,7 @@
 		   :kind 'default)))
 	(setq *working-theory*
 	      (make-instance 'module
-		   :id 'working-theory
+		   :id 'working_theory
 		   :exporting exp)))))
 
 (defun clear-working-theory ()
@@ -85,7 +85,12 @@
 
 (defun add-working-decls (declstring)
   (with-working-context
-   (let* ((decls (pc-parse declstring 'theory-part)))
+   (let* ((*typechecking-module* t)
+	  (*tccs* nil)
+	  (*tccdecls* nil)
+	  (*tccforms* nil)
+	  (*exprs-generating-actual-tccs* nil)
+	  (decls (pc-parse declstring 'theory-part)))
      (dolist (decl decls)
        (typecheck-decls (list decl))
        (if (theory (current-theory))
