@@ -953,6 +953,7 @@
 		:dactuals (dactuals arg)
 		:acts-there? (acts-there? arg)
 		:dacts-there? (dacts-there? arg)
+		:type (when (resolution arg) (type (resolution arg)))
 		:resolutions (resolutions arg)))
 	(type-value (when (resolutions arg) (lcopy arg :from-conversion nil))))
     (make-instance 'actual :expr expr :type-value type-value)))
@@ -1786,6 +1787,23 @@
 	      seltype))
     cex))
 
+(defun make!-in-selection (index type args ex)
+  (assert (cotupletype? type))
+  (make-instance 'in-selection
+    :constructor (make!-injection-expr index type)
+    :args args
+    :index index
+    :expression ex))
+
+(defun make!-injection-expr (index type)
+  (assert (cotupletype? type))
+  (assert (and (integerp index) (plusp index)
+	       (<= index (length (types type)))))
+  (make-instance 'injection-expr
+    :type (make-funtype (nth (1- index) (types type)) type)
+    :id (makesym "IN_~d" index)
+    :index index))
+
 (defun make!-arg-tuple-expr (&rest args)
   (funcall #'make!-arg-tuple-expr* args))
 
@@ -2207,10 +2225,11 @@
 (defun make!-set-expr (bindings expr)
   (assert (every #'type bindings))
   (assert (type expr))
-  (make-instance 'set-expr
-    :bindings bindings
-    :expression expr
-    :type (make-formals-funtype (list bindings) (type expr))))
+  (let ((ntype (make-formals-funtype (list bindings) (type expr))))
+    (make-instance 'set-expr
+      :bindings bindings
+      :expression expr
+      :type ntype)))
 
 (defun make!-set-list-expr (exprs type)
   (assert (every #'type exprs))
