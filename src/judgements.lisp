@@ -1353,9 +1353,74 @@
   (multiple-value-bind (ejtypes ejdecls)
       (judgement-types* (expression ex))
     (when (consp ejtypes) ;; Could be a vector
-      (let* ((dom (domain (type ex)))
-	     (ljtypes (mapcar #'(lambda (jty) (mk-funtype dom jty)) ejtypes)))
+      (let ((ljtypes (mapcar #'(lambda (jty)
+				 (get-lambda-expr-funtype-for-range ex jty))
+		       ejtypes)))
 	(remove-judgement-types-of-type (type ex) ljtypes ejdecls)))))
+
+;; ex is a lambda expression, type is a new range type, e.g., after
+;; substit, def expansion, etc.  If any of the lambda bindings occur in
+;; the type, we need to construct a dep-binding for the domain and substitute
+;; accordingly.  Otherwise it is simply the type(s) associated with the lambda
+;; bindings.
+(defun get-lambda-expr-funtype-for-range (ex range)
+  (assert (lambda-expr? ex))
+  (assert (type-expr? range))
+  (get-lambda-expr-funtype-for-range* (bindings ex) range))
+
+(defun get-lambda-expr-funtype-for-range* (bindings range
+					   &optional (idx 1) substs types)
+  (if (null bindings)
+      (make-lambda-expr-funtype-for-range range substs types)
+      (let* ((bind (car bindings))
+	     (nsubsts (if (member bind (freevars range) :key #'declaration)
+			  (acons bind idx substs)
+			  substs)))
+	(if (member bind (freevars (cdr bindings)) :key #'declaration)
+	    (let ((db (mk-dep-binding (id bind) (type bind)
+				      (declared-type bind))))
+	      (get-lambda-expr-funtype-for-range*
+	       (substit (cdr bindings) (acons bind db nil))
+	       range (1+ idx) nsubsts (cons db types)))
+	    (get-lambda-expr-funtype-for-range*
+	     (cdr bindings) range (1+ idx) nsubsts (cons (type bind) types))))))
+
+;; This should only be called from get-lambda-expr-funtype-for-range*
+;; If the substs is null, the range type does not depend on any bindings.
+;; If there is only one binding, then the substs is a singleton, and there
+;; is no need to create projections.
+;; The tricky one is, e.g, a lambda-expr λ (x, y: T): e(x, y)
+;; with a range type R(x, y); in this case the substs would be
+;; ((y . 2) (x . 1)) and the types (T T).  The resulting funtype is
+;; [z: [T, T] -> R(z`1, z`2)]
+(defun make-lambda-expr-funtype-for-range (range substs types)
+  (let* ((dom (if (cdr types)
+		  (mk-tupletype (reverse types))
+		  (car types)))
+	 (dep-dom (if substs
+		      (if (cdr types)
+			  (mk-dep-binding
+			   (make-new-variable '|z| (cons range types)) dom)
+			  (if (dep-binding? dom)
+			      dom
+			      (progn (assert (singleton? substs))
+				     (mk-dep-binding (id (caar substs)) dom))))
+		      dom)))
+    (if substs
+	(if (cdr types)
+	    (let ((dvar (mk-name-expr (id dep-dom) nil nil
+				      (make-resolution dep-dom
+					(current-theory-name) dom))))
+	      (mk-funtype dep-dom
+			  (substit range
+			    (mapcar #'(lambda (subst)
+					(cons (car subst)
+					      (make-projection-application
+					       (cdr subst) dvar)))
+			      substs))))
+	    (mk-funtype dep-dom
+			(substit range (acons (caar substs) dep-dom nil))))
+	(mk-funtype dom range))))
 
 (defmethod judgement-types* ((ex cases-expr))
   nil)
@@ -1908,7 +1973,7 @@
       (let* ((nftype (find-supertype* (type (car fields)) all?))
 	     (nfield (if (eq nftype (type (car fields)))
 			 (car fields)
-			 (mk-field-decl (id (car fields)) nftype))))
+			 (mk-field-decl (id (car fields)) nftype nftype))))
 	(lift-recordtype-field-types*
 	 (if (eq nftype (type (car fields)))
 	     (cdr fields)
@@ -1944,6 +2009,53 @@
 
 (defmethod type-predicates* ((te field-decl) preds all?)
   (type-predicates* (type te) preds all?))
+
+(defmethod type-predicates* ((te cotupletype) preds all?)
+  (let ((cpreds (mapcar #'(lambda (ct) (type-predicates ct all?))
+		  (types te))))
+    (if (every #'null cpreds)
+	preds
+	(type-predicates-cotupletype cpreds (types te) te preds all?))))
+
+;;; Given a cotuple [S1 + ... + Sn] with corresponding supertypes
+;;; [T1 + ... + Tn], cpreds is of the form
+;;; ((p11 ... p1m_1) ... (pn1 ... pnm_n)), and the result is
+;;; lambda (x: [T1 + ... + Tn]):
+;;;    CASES x OF
+;;;      IN_1(y): p11(y) and ... and p1m_1(y)
+;;;      ...
+;;;      IN_n(y): pn1(y) and ... and pnm_n(y)
+;;;    ENDCASES
+(defun type-predicates-cotupletype (cpreds types te preds all?)
+  (let* ((vid (make-new-variable 't te))
+	 (bd (make-bind-decl vid (mk-cotupletype
+				  (mapcar #'(lambda (ty)
+					      (find-supertype* ty all?))
+				    (types te)))))
+	 (var (make-variable-expr bd))
+	 (opred (type-predicates-cotupletype* cpreds types te var)))
+    (cons opred preds)))
+
+(defun type-predicates-cotupletype* (cpreds types te var
+				     &optional (index 1) sels)
+  (if (null cpreds)
+      (make!-lambda-expr (list (declaration var))
+	(make!-cases-expr var (nreverse sels)))
+      (let* ((id (make-new-variable '|x| (cons (car cpreds) (car types))))
+	     (bd (typecheck* (mk-bind-decl id (find-supertype (car types)))
+			     nil nil nil))
+	     (svar (mk-name-expr id nil nil (make-resolution bd nil (car types))))
+	     (sel (make!-in-selection index (type var) (list bd)
+				      (make!-conjunction*
+				       (mapcar #'(lambda (cpred)
+						   (make!-application cpred svar))
+					 (car cpreds))))))
+	(type-predicates-cotupletype*
+	 (cdr cpreds)
+	 (cdr types)
+	 te var (1+ index)
+	 (cons sel sels)))))
+
 
 (defmethod type-predicates* ((te type-name) preds all?)
   (declare (ignore all?))
@@ -1990,6 +2102,10 @@
 	     nalist))))
 
 (defun set-prelude-name-judgements-elt (elt)
+  #+pvsdebug
+  (assert (every #'judgement? (minimal-judgements (cdr elt))))
+  #+pvsdebug
+  (assert (every #'judgement? (generic-judgements (cdr elt))))
   (if (fully-instantiated? (minimal-judgements (cdr elt)))
       elt
       (cons (car elt)
@@ -2030,6 +2146,8 @@
 		    (let ((ngenerics (copy-judgements-graph-to-generics
 				      (judgements-graph ajs)
 				      (generic-judgements ajs))))
+		      #+pvsdebug
+		      (assert (every #'judgement? ngenerics))
 		      (make-instance 'application-judgements
 			:generic-judgements ngenerics
 			:judgements-graph nil)))))))
