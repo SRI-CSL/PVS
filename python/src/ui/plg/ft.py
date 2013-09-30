@@ -3,10 +3,11 @@ import util
 import logging
 import pvscomm
 import os.path
+import evhdlr
 from constants import *
 from wx.lib.pubsub import setupkwargs, pub 
 from ui.plugin import PluginPanel
-from ui.images import getFolderImage, getPVSLogo, getTheoryImage, getFormulaImage, getGrayFolderImage
+import ui.images
 from preference import Preferences
 from remgr import RichEditorManager
 
@@ -16,18 +17,36 @@ class FilesTreePlugin(PluginPanel):
     def __init__(self, parent, definition):
         PluginPanel.__init__(self, parent, definition)
         self.tree = wx.TreeCtrl(self, wx.ID_ANY, style=wx.TR_HIDE_ROOT | wx.TR_HAS_BUTTONS | wx.TR_LINES_AT_ROOT | wx.TR_DEFAULT_STYLE | wx.SUNKEN_BORDER)
-        
-        mainSizer = wx.BoxSizer(wx.HORIZONTAL)
-        mainSizer.Add(self.tree, 1, wx.EXPAND, 0)
+        self.history = []
 
+        mainSizer = wx.BoxSizer(wx.VERTICAL)
+        toolbar = wx.ToolBar(self, wx.ID_ANY, style = wx.TB_HORIZONTAL | wx.NO_BORDER)
+        
+        toolbarInfo = [ \
+                       ["new.gif", "Create a new PVS file", evhdlr.onCreateNewFile], \
+                       ["open.gif", "Open an existing PVS file", evhdlr.onOpenFile], \
+                       ["save.gif", "Save file", evhdlr.onSaveFile], \
+                       ["saveall.gif", "Save all files", evhdlr.onSaveAllFiles], \
+                       ["context.png", "Change PVS context", evhdlr.onChangeContext], \
+        ]
+        self.toolbarButton = {}
+        for imageName, tooltipText, command in toolbarInfo:
+            buttonID = wx.NewId()
+            toolbar.AddTool(buttonID, ui.images.getBitmap(imageName))
+            wx.EVT_TOOL(self, buttonID, self.onToolboxButtonClicked)
+            self.toolbarButton[buttonID] = command
+            
+        toolbar.Realize()
+        mainSizer.Add(toolbar, 0)
+        mainSizer.Add(self.tree, 1, wx.EXPAND, 0)
         self.SetSizer(mainSizer)
         
         imageList = wx.ImageList(16, 16)
-        imageList.Add(getFolderImage())
-        imageList.Add(getPVSLogo())
-        imageList.Add(getTheoryImage())
-        imageList.Add(getFormulaImage())
-        imageList.Add(getGrayFolderImage())
+        imageList.Add(ui.images.getFolderImage())
+        imageList.Add(ui.images.getPVSLogo())
+        imageList.Add(ui.images.getTheoryImage())
+        imageList.Add(ui.images.getFormulaImage())
+        imageList.Add(ui.images.getGrayFolderImage())
         self.tree.AssignImageList(imageList)
         self.imageIndices = {LROOT: -1, LCONTEXT: 0, LFILE: 1, LTHEORY: 2, LFORMULA: 3, LINACTIVECONTEXT: 4}
         self.tree.Bind(wx.EVT_TREE_ITEM_MENU, self.showContextMenu)
@@ -38,6 +57,11 @@ class FilesTreePlugin(PluginPanel):
         pub.subscribe(self.onFileSaved, PUB_FILESAVED)
         pub.subscribe(self.addTheoriesToFileTree, PUB_FILETYPECHECKED)
         pub.subscribe(self.pvsContextUpdated, PUB_UPDATEPVSCONTEXT)
+        
+    def onToolboxButtonClicked(self, event):
+        command = self.toolbarButton[event.GetId()]
+        command(event)
+        event.Skip()
         
     def clear(self):
         self.tree.DeleteAllItems()

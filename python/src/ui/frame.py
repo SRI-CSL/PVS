@@ -12,7 +12,6 @@ import logging
 import evhdlr
 import sys
 from mmgr import MainFrameMenu
-from tbmgr import ToolbarManager
 from preference import Preferences
 import wx.lib.agw.aui as aui
 from config import PVSIDEConfiguration
@@ -36,16 +35,6 @@ class MainFrame(wx.Frame):
         
         self.statusbar = self.CreateStatusBar(2)
         self.statusbar.SetStatusWidths([-1, -1])
-        
-        # Tool Bar
-        tm = ToolbarManager()
-        editToolbar = tm.initializeEditToolbar()
-        self.auiManager.AddPane(editToolbar, aui.AuiPaneInfo().ToolbarPane().Top().Name(ToolbarManager.EDITTOOLBAR).RightDockable(False).LeftDockable(False).BottomDockable(False))
-        editToolbar.Realize()
-        pvsToolbar = tm.initializePVSToolbar()
-        self.auiManager.AddPane(pvsToolbar, aui.AuiPaneInfo().ToolbarPane().Top().Name(ToolbarManager.PVSTOOLBAR).RightDockable(False).LeftDockable(False).BottomDockable(False))
-        pvsToolbar.Realize()
-        # Tool Bar end
 
         # Menu Bar
         self.menubar = MainFrameMenu()

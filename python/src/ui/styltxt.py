@@ -77,4 +77,5 @@ class PVSStyledText(stc.StyledTextCtrl):
         self.GetCurrentPos()
         
     def onCursor(self, event):
-        logging.info("Event: %s", event)
+        pass
+        #logging.debug("Event: %s", event)

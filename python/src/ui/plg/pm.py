@@ -20,14 +20,15 @@ class ProofManagerPlugin(PluginPanel):
         self.labelLabel = wx.StaticText(self, wx.ID_ANY, "Label: ")
         self.resultLabel = wx.StaticText(self, wx.ID_ANY, "Result: ")
         self.sequentView = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_MULTILINE | wx.TE_READONLY | wx.HSCROLL | wx.TE_RICH | wx.TE_RICH2)
+        self.historyBox = wx.ComboBox(self, wx.ID_ANY, choices=["history"], style=wx.CB_READONLY)
         self.commandTextControl = wx.TextCtrl(self, wx.ID_ANY, "", style=wx.TE_MULTILINE)
         self.sequent = None
         self.initializeCommandList()
+        self.history = []
 
         sizer_1 = wx.BoxSizer(wx.VERTICAL)
-        toolbar = wx.ToolBar(self, wx.ID_ANY, style=wx.TB_HORIZONTAL | wx.NO_BORDER)
-        
-        lb = wx.ComboBox(toolbar, -1, pos=(50, 170), size=(150, -1), choices=self.commandList, style=wx.CB_READONLY)
+        toolbar = wx.ToolBar(self, wx.ID_ANY, style=wx.TB_HORIZONTAL) # | wx.NO_BORDER)
+        lb = wx.ComboBox(toolbar, wx.ID_ANY, pos=(50, 170), size=(150, -1), choices=self.commandList, style=wx.CB_READONLY)
         lb.SetToolTipString("My List of Commands")
         toolbar.AddControl(lb)
         
@@ -41,7 +42,10 @@ class ProofManagerPlugin(PluginPanel):
         sizer_1.Add(self.labelLabel, 0, wx.ALL | wx.EXPAND, 5)
         sizer_1.Add(self.resultLabel, 0, wx.ALL | wx.EXPAND, 5)
         sizer_1.Add(self.sequentView, 2, wx.ALL | wx.EXPAND, 5)
-        sizer_1.Add(wx.StaticText(self, wx.ID_ANY, "Enter Rule:"), 0, wx.ALL | wx.EXPAND, 5)
+        sizer_2 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer_2.Add(wx.StaticText(self, wx.ID_ANY, "Enter Rule:"), 1, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 0)
+        sizer_2.Add(self.historyBox, 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 0)
+        sizer_1.Add(sizer_2, 0, wx.ALL | wx.EXPAND, 5)        
         sizer_1.Add(self.commandTextControl, 1, wx.ALL | wx.EXPAND, 5)
         self.SetSizer(sizer_1)
         self.Layout()
@@ -50,7 +54,8 @@ class ProofManagerPlugin(PluginPanel):
 
         #self.Bind(wx.EVT_TEXT_ENTER, self.onCommandEntered, self.commandTextControl)
         self.Bind(wx.EVT_TEXT, self.onCommand, self.commandTextControl)
-        self.Bind(wx.EVT_COMBOBOX, self.OnSelect)
+        lb.Bind(wx.EVT_COMBOBOX, self.OnSelectCommand)
+        self.historyBox.Bind(wx.EVT_COMBOBOX, self.OnSelectHistory)
         self.Bind(wx.EVT_TOOL, self.OnUndoLastCommand, undoButton)
         self.Bind(wx.EVT_TOOL, self.OnQuitProver, quitButton)
         pub.subscribe(self.proofInformationReceived, constants.PUB_PROOFINFORMATIONRECEIVED)
@@ -66,7 +71,16 @@ class ProofManagerPlugin(PluginPanel):
         pvscomm.PVSCommandManager().proofCommand("(quit)")
         event.Skip()
 
-    def OnSelect(self, event):
+
+    def OnSelectHistory(self, event):
+        selection = event.GetSelection()
+        if selection > 0:
+            command = self.historyBox.GetString(selection)
+            self.commandTextControl.SetValue(command)
+        elf.historyBox.SetSelection(0)
+        event.Skip()
+
+    def OnSelectCommand(self, event):
         item = event.GetSelection()
         command = self.commandList[item]
         self.commandTextControl.SetValue(config.PVSIDEConfiguration().proverCommands[command])
@@ -116,10 +130,16 @@ class ProofManagerPlugin(PluginPanel):
         if text.endswith("\n"):
             if util.isS_Expression(text):
                 command = text.strip()
-                logging.info("Proof command entered: %s", command)
-                pvscomm.PVSCommandManager().proofCommand(command)
-                self.commandTextControl.SetValue("")
+                self.executeCommand(command, True)
         event.Skip()
+        
+    def executeCommand(self, command, addToHistory=False):
+        logging.info("Proof command entered: %s", command)
+        pvscomm.PVSCommandManager().proofCommand(command)
+        if addToHistory:
+            self.history.append(command)
+            self.historyBox.Insert(command, 1)
+        self.commandTextControl.SetValue("")
 
 
 class Sequent:
