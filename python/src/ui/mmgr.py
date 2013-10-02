@@ -4,7 +4,6 @@
 import wx
 from constants import *
 from evhdlr import *
-from tbmgr import ToolbarManager
 import util
 import logging
 from preference import Preferences
@@ -59,12 +58,6 @@ class MainFrameMenu(wx.MenuBar):
         """Adding menu items to View menu"""
         self.viewMenu = wx.Menu()
         preferences = Preferences()
-
-        self.toolbarsMenu = wx.Menu()
-        self.viewMenu.AppendMenu(wx.ID_ANY, 'Toolbars', self.toolbarsMenu)
-        tm = ToolbarManager()
-        for name in tm.toolbars:
-            self.addToolbarToViewMenu(name)
         
         self.pluginMenu = wx.Menu()
         self.viewMenu.AppendMenu(wx.ID_ANY, 'Plugins', self.pluginMenu)
@@ -104,18 +97,6 @@ class MainFrameMenu(wx.MenuBar):
     def onRecentContextSelected(self, event):
         context = self._recentContexts[event.GetId()]
         PVSCommandManager().changeContext(context)
-        
-        
-    def addToolbarToViewMenu(self, name):
-        logging.debug("Name %s", name)
-        preferences = Preferences()
-        frame = util.getMainFrame()
-        tm = ToolbarManager()
-        #toolbar = tm.getToolbar(name)
-        item = self.toolbarsMenu.Append(wx.ID_ANY, name, EMPTY_STRING, wx.ITEM_CHECK)
-        self.toolbars[name] = item
-        self.toolbarsMenu.Check(item.GetId(), True) #TODO: Save this Ture thing in global preferences and get it from there
-        frame.Bind(wx.EVT_MENU, lambda ce: tm.toggleToolbar(name), item)
         
     def addPluginToViewMenu(self, name, callBackFunction):
         logging.debug("Name: %s", name)
