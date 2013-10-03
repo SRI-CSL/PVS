@@ -50,6 +50,7 @@ class PVSCommunicator:
     BEGIN = "begin"
     END = "end"
     THEORY = "theory"
+    SILENT = "silent"
     
     
     __shared_state = {}
@@ -271,8 +272,9 @@ class PVSCommandManager:
         logging.error("Error: %s", errMessage)
         util.getMainFrame().showError(errMessage, title)
 
-    def _sendCommand(self, method, *params):
+    def _sendCommand(self, method, *params, **keywords):
         try:
+            silent = keywords[PVSCommunicator.SILENT] if PVSCommunicator.SILENT in keywords else False
             jsonResult = self.pvsComm.requestPVS(method, *params)
             pvsMode = jsonResult[PVSCommunicator.MODE]
             context = util.normalizePath(jsonResult[PVSCommunicator.CONTEXT])
@@ -299,7 +301,8 @@ class PVSCommandManager:
                 pub.sendMessage(constants.PUB_UPDATEPVSCONTEXT)
             return result
         except Exception as err:
-            self._processError(err)
+            if not silent:
+                self._processError(err)
         return None
     
     def _processErrorObject(self, errDict):
@@ -319,10 +322,13 @@ class PVSCommandManager:
             return errorObject
             
     def ping(self):
-        self._sendCommand("+", 1, 2)
+        result = self.lisp("(+ 1 2)", silent=True)
+        if result != "3":
+            pub.sendMessage(constants.PUB_UPDATEPVSMODE, pvsMode = constants.PVS_MODE_OFF)   
+        return result
             
-    def lisp(self, form):
-        result = self._sendCommand("lisp", form)
+    def lisp(self, form, silent=False):
+        result = self._sendCommand("lisp", form, silent=silent)
         return result
         
     def typecheck(self, fullname):

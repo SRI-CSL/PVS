@@ -2,6 +2,7 @@
 # This class manages the GUI's console for PVS
 
 import wx
+import wx.richtext
 import codecs
 import logging
 from constants import *
@@ -19,11 +20,10 @@ class ConsolePlugin(PluginPanel):
     
     def __init__(self, parent, definition):
         PluginPanel.__init__(self, parent, definition)
-        self.pvsout = wx.TextCtrl(self, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE | wx.TE_READONLY)
+        self.pvsout = wx.richtext.RichTextCtrl(self, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE | wx.TE_READONLY)
         self.pvsin = wx.TextCtrl(self, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE)
 
         toolbarInfo = [ \
-                          ["undo.gif", "Typecheck the active file", evhdlr.onTypecheck], \
                           ["typecheck16.png", "Typecheck the active file", evhdlr.onTypecheck], \
         ]
 
@@ -91,18 +91,22 @@ class ConsolePlugin(PluginPanel):
         """Initializes PVS In and Out"""
         self.pvsout.Clear()
         self.pvsin.Clear()
-        self.prompt = "pvs > "
+        self.prompt = "pvs> "
         self.history = []
         self.historyBox.Clear()
         self.historyBox.Insert("history", 0)
         self.historyBox.SetSelection(0)
         #self.pvsModeUpdated(PVS_MODE_OFF)
         
-    def appendToOut(self, line, newLine=False):
-        logging.debug("Appending '%s' to pvsout", line)
+    def appendToOut(self, text, newLine=False, color=None):
+        logging.debug("Appending '%s' to pvsout", text)
+        if color is not None:
+            self.pvsout.BeginTextColour(color)
+        self.pvsout.WriteText(text)
         if newLine:
-            line = line + NEWLINE
-        self.pvsout.AppendText(line)
+            self.pvsout.Newline()
+        if color is not None:
+            self.pvsout.EndTextColour()
         
     def appendTextToIn(self, text):
         logging.debug("Appending '%s' to pvsin", text)
@@ -128,13 +132,14 @@ class ConsolePlugin(PluginPanel):
             if util.isS_Expression(text):
                 command = text.strip()
                 logging.info("Command is %s", command)
-                self.appendToOut(self.prompt + command + "\n")
+                self.appendToOut(self.prompt, color=wx.BLUE)
+                self.appendToOut(command, newLine=True)
                 self.clearIn()
                 self.history.append(command)
                 self.historyBox.Insert(command, 1)                
                 result = pvscomm.PVSCommandManager().lisp(command)
                 if result is not None:
-                    self.appendToOut(result + "\n")
+                    self.appendToOut(result, newLine=True)
         #event.Skip()
         
 

@@ -16,7 +16,7 @@ from preference import Preferences
 import wx.lib.agw.aui as aui
 from config import PVSIDEConfiguration
 import wx.stc as stc
-from pvscomm import PVSCommunicator
+from pvscomm import PVSCommunicator, PVSCommandManager
 
 class MainFrame(wx.Frame):
     """The main frame of the application. It consists of a menu and a toolbar, a notebook for all the open
@@ -55,7 +55,7 @@ class MainFrame(wx.Frame):
         pub.subscribe(self.handleNumberOfOpenFilesChanged, PUB_NUMBEROFOPENFILESCHANGED)
         pub.subscribe(self.setStatusbarText, PUB_UPDATESTATUSBAR)
         #self.Connect(-1, -1, util.EVT_RESULT_ID, self.onPVSResult)
-        #PVSCommandManager().ping()
+        PVSCommandManager().ping()
 
     def __do_layout(self):
         cfg = PVSIDEConfiguration()
