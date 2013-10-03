@@ -32,7 +32,10 @@ class RichEditor(wx.Panel):
         pub.subscribe(self.saveFile, constants.PUB_SAVEFILE)
         
     def addRedMarker(self, lineN):
-        self.MarkerAdd(lineN, 1)
+        self.styledText.MarkerAdd(lineN-1, 1)
+        
+    def removeRedMarkers(self):
+        self.styledText.MarkerDeleteAll(1)
         
     def onCursorPositionChanged(self):
         line = self.styledText.GetCurrentLine() + 1
@@ -68,6 +71,7 @@ class RichEditor(wx.Panel):
         return self.fullname
     
     def saveFile(self, newName=None):
+        self.removeRedMarkers()
         if newName is not None:
             oldName = self.fullname
             self.fullname = newName

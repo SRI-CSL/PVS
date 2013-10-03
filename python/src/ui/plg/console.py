@@ -19,7 +19,6 @@ class ConsolePlugin(PluginPanel):
     
     def __init__(self, parent, definition):
         PluginPanel.__init__(self, parent, definition)
-        self.prompt = EMPTY_STRING
         self.pvsout = wx.TextCtrl(self, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE | wx.TE_READONLY)
         self.pvsin = wx.TextCtrl(self, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE)
 
@@ -40,8 +39,8 @@ class ConsolePlugin(PluginPanel):
         self.historyBox = wx.ComboBox(self, wx.ID_ANY, choices=[], style=wx.CB_READONLY)
 
         belowSizer = wx.BoxSizer(wx.HORIZONTAL)
-        belowSizer.Add(self.pvsin, 5, wx.EXPAND | wx.ALL | wx.ALIGN_CENTRE_VERTICAL, 5)
-        belowSizer.Add(self.historyBox, 1, wx.EXPAND | wx.ALL | wx.ALIGN_CENTRE_VERTICAL, 5)
+        belowSizer.Add(self.pvsin, 5, wx.EXPAND | wx.UP | wx.DOWN | wx.ALIGN_CENTRE_VERTICAL, 5)
+        belowSizer.Add(self.historyBox, 1, wx.EXPAND | wx.LEFT | wx.UP | wx.DOWN | wx.ALIGN_CENTRE_VERTICAL, 5)
 
         leftSizer = wx.BoxSizer(wx.VERTICAL)
         leftSizer.Add(self.pvsout, 4, wx.EXPAND , 0)
@@ -92,10 +91,11 @@ class ConsolePlugin(PluginPanel):
         """Initializes PVS In and Out"""
         self.pvsout.Clear()
         self.pvsin.Clear()
-        self.prompt = EMPTY_STRING
+        self.prompt = "pvs > "
         self.history = []
         self.historyBox.Clear()
         self.historyBox.Insert("history", 0)
+        self.historyBox.SetSelection(0)
         #self.pvsModeUpdated(PVS_MODE_OFF)
         
     def appendToOut(self, line, newLine=False):
@@ -122,19 +122,19 @@ class ConsolePlugin(PluginPanel):
     
     def onPVSInText(self, event):
         """This method is called whenever PVS sends some text to the Editor"""
-        logging.info("Event handler `onPVSInTextEntered' not implemented")
+        #logging.info("Event handler `onPVSInTextEntered' not implemented")
         text = event.GetString()
         if text.endswith("\n"):
             if util.isS_Expression(text):
                 command = text.strip()
                 logging.info("Command is %s", command)
-                self.appendToOut(command)
+                self.appendToOut(self.prompt + command + "\n")
                 self.clearIn()
                 self.history.append(command)
                 self.historyBox.Insert(command, 1)                
                 result = pvscomm.PVSCommandManager().lisp(command)
                 if result is not None:
-                    self.appendToOut(result)
+                    self.appendToOut(result + "\n")
         #event.Skip()
         
 

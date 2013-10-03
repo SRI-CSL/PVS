@@ -47,6 +47,9 @@ class PVSCommunicator:
     CODE = "code"
     MESSAGE = "message"
     DATA = "data"
+    BEGIN = "begin"
+    END = "end"
+    THEORY = "theory"
     
     
     __shared_state = {}
@@ -251,7 +254,16 @@ class PVSCommandManager:
             errMessage =  err.message
             title = "JSON Parse Error"
         elif isinstance(err, util.PVSException):
-            errMessage = err.message
+            data = err.errorObject[PVSCommunicator.DATA]
+            if data is not None:
+                title = err.message
+                errMessage = err.errorObject[PVSCommunicator.DATA]
+            else:
+                errMessage = err.message
+            if PVSCommunicator.BEGIN in err.errorObject:
+                begin = err.errorObject[PVSCommunicator.BEGIN]
+                end = err.errorObject[PVSCommunicator.END] if PVSCommunicator.END in err.errorObject else None
+                pub.sendMessage(constants.PUB_ERRORLOCATION, begin=begin, end=end)
         elif isinstance(err, Exception):
             errMessage = err.message
         else:
@@ -265,22 +277,17 @@ class PVSCommandManager:
             pvsMode = jsonResult[PVSCommunicator.MODE]
             context = util.normalizePath(jsonResult[PVSCommunicator.CONTEXT])
             if PVSCommunicator.XMLRPCERROR in jsonResult:
-                errorObject = jsonResult[PVSCommunicator.XMLRPCERROR]
-                code = int(errorObject[PVSCommunicator.CODE])
-                message = errorObject[PVSCommunicator.MESSAGE]
-                data = errorObject[PVSCommunicator.DATA] if PVSCommunicator.DATA in errorObject else None
-                raise util.PVSException(message=message, code=code, data=data)
+                errorObj = jsonResult[PVSCommunicator.XMLRPCERROR]
+                errorObject = {}
+                errorObject[PVSCommunicator.CODE] = int(errorObj[PVSCommunicator.CODE])
+                errorObject[PVSCommunicator.MESSAGE] = errorObj[PVSCommunicator.MESSAGE]
+                errorObject[PVSCommunicator.DATA] = errorObj[PVSCommunicator.DATA] if PVSCommunicator.DATA in errorObj else None
+                raise util.PVSException(message=errorObject[PVSCommunicator.MESSAGE], errorObject=errorObject)
             result = jsonResult[PVSCommunicator.JSONRPCRESULT]
             if PVSCommunicator.ERROR in result:
                 errDict = result[PVSCommunicator.ERROR]
-                errorMessage = errDict["message"]
-                errorCode = errDict["code"]
-                errorDataFile = errDict["data"]["error_file"]
-                with open (errorDataFile, "r") as errorFile:
-                    errorData = errorFile.read()
-                errorFile.close()
-                #TODO delete the temp file.
-                raise util.PVSException(message=errorMessage, code=errorCode, data=errorData)
+                errorObject = self._processErrorObject(errDict)
+                raise util.PVSException(message=errorObject[PVSCommunicator.MESSAGE], errorObject=errorObject)
             result = result[PVSCommunicator.RESULT]
             if pvsMode != self.pvsMode:
                 self.pvsMode = pvsMode
@@ -294,20 +301,34 @@ class PVSCommandManager:
         except Exception as err:
             self._processError(err)
         return None
+    
+    def _processErrorObject(self, errDict):
+            errorObject = {}
+            errorObject[PVSCommunicator.CODE] = errDict[PVSCommunicator.CODE]
+            errorObject[PVSCommunicator.MESSAGE] = errDict[PVSCommunicator.MESSAGE]
+            data = errDict[PVSCommunicator.DATA]
+            errorDataFile = data["error_file"]
+            with open (errorDataFile, "r") as errorFile:
+                errorData = errorFile.read()
+            errorFile.close()
+            errorObject[PVSCommunicator.DATA] = errorData
+            #TODO delete the temp file.
+            errorObject[PVSCommunicator.BEGIN] = data[PVSCommunicator.BEGIN]
+            errorObject[PVSCommunicator.THEORY] = data[PVSCommunicator.THEORY]
+            errorObject[PVSCommunicator.END] = data[PVSCommunicator.END] if PVSCommunicator.END in data else None
+            return errorObject
             
     def ping(self):
         self._sendCommand("+", 1, 2)
             
-    def lisp(self, command, *parameters):
-        allItems = [command,] + list(parameters)
-        params = ", ".join([str(p) for p in allItems])
-        form = "(" + params + ")"
+    def lisp(self, form):
         result = self._sendCommand("lisp", form)
         return result
         
     def typecheck(self, fullname):
         name = os.path.basename(fullname)
         name = util.getFilenameFromFullPath(fullname, False)
+        pub.sendMessage(constants.PUB_REMOVEMARKERS)
         result = self._sendCommand("typecheck", name)
         if result is not None:
             pub.sendMessage(constants.PUB_FILETYPECHECKED, fullname=fullname, result=result)

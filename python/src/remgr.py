@@ -23,6 +23,9 @@ class RichEditorManager:
             pub.subscribe(self.removeAllFiles, PUB_CLOSEALLFILES)
             pub.subscribe(self.removeFile, PUB_CLOSEFILE)
             pub.subscribe(self.onFileSaved, PUB_FILESAVED)
+            pub.subscribe(self.onErrorLocation, PUB_ERRORLOCATION)
+            pub.subscribe(self.clearMarkers, PUB_REMOVEMARKERS)
+            
             #self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnPageChanging)
         
     def __setitem__(self, name, re):
@@ -141,6 +144,14 @@ class RichEditorManager:
         elif focus == util.getMainFrame():
             return self._getSelectedPage()
         return None
+    
+    def onErrorLocation(self, begin, end):
+        richEditor = self.getFocusedRichEditor()
+        richEditor.addRedMarker(begin[0])
+        
+    def clearMarkers(self):
+        richEditor = self.getFocusedRichEditor()
+        richEditor.removeRedMarkers()
     
     #TODO: Check the following functions and see if they are redundant or something.
     

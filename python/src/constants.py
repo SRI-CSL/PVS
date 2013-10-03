@@ -81,6 +81,9 @@ PUB_ADDFILE = "AddFile"
 PUB_CLOSEALLBUFFERS = "CloseAllBuffers"
 PUB_CLOSEALLFILES = "CloseAllFiles"
 PUB_CLOSEFILE = "File.Close"
+PUB_ERRORLOCATION = "File.Error.Location"
+PUB_REMOVEMARKERS = "File.Remove.Markers"
+
 
 GROUP_TOOLS = "tools"
 
