@@ -4,6 +4,7 @@
 import logging, sys, wx, os, os.path
 import sys
 from sxp import sexp
+import remgr
 
 def normalizePath(thePath):
     """Replace ~ with the home directory"""
@@ -23,6 +24,9 @@ def isS_Expression(text):
 def getHomeDirectory():
     """return user's home directory"""
     return normalizePath(os.getenv("HOME"))
+
+def getActiveFileName():
+    return remgr.RichEditorManager().getFocusedRichEditor().getFilename()
 
 def getFilenameFromFullPath(fullname, includeExtension=True):
     filename = os.path.split(fullname)[1]

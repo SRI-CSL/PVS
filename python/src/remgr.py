@@ -20,7 +20,6 @@ class RichEditorManager:
         if not "editors" in self.__dict__:
             self.editors = {}
             pub.subscribe(self.addFile, PUB_ADDFILE)
-            pub.subscribe(self.removeAllFiles, PUB_CLOSEALLFILES)
             pub.subscribe(self.removeFile, PUB_CLOSEFILE)
             pub.subscribe(self.onFileSaved, PUB_FILESAVED)
             pub.subscribe(self.onErrorLocation, PUB_ERRORLOCATION)

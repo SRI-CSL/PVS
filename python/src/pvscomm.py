@@ -321,6 +321,13 @@ class PVSCommandManager:
             errorObject[PVSCommunicator.END] = data[PVSCommunicator.END] if PVSCommunicator.END in data else None
             return errorObject
             
+    def _ensureFilenameIsIknown(self, fullname):
+        if fullname is None:
+            fullname = util.getActiveFileName()
+        if fullname is None:
+            logging.warn("fullname is still None")
+        return fullname
+            
     def ping(self):
         result = self.lisp("(+ 1 2)", silent=True)
         if result != "3":
@@ -331,7 +338,8 @@ class PVSCommandManager:
         result = self._sendCommand("lisp", form, silent=silent)
         return result
         
-    def typecheck(self, fullname):
+    def typecheck(self, fullname=None):
+        fullname = self._ensureFilenameIsIknown(fullname)
         name = os.path.basename(fullname)
         name = util.getFilenameFromFullPath(fullname, False)
         pub.sendMessage(constants.PUB_REMOVEMARKERS)
@@ -339,9 +347,11 @@ class PVSCommandManager:
         if result is not None:
             pub.sendMessage(constants.PUB_FILETYPECHECKED, fullname=fullname, result=result)
     
-    def parse(self, fullname):
+    def parse(self, fullname=None):
+        fullname = self._ensureFilenameIsIknown(fullname)
         name = os.path.basename(fullname)
         name = os.path.splitext(name)[0] # just get the filename without the extension 
+        pub.sendMessage(constants.PUB_REMOVEMARKERS)
         result = self._sendCommand("parse", name)
         return result
     

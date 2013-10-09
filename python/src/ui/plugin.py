@@ -89,7 +89,7 @@ class PluginManager:
         logging.debug("Name: %s Visibility: %s", name, visible)
         paneInfo = self.getPlugin(name)
         paneInfo.Show(visible)
-        util.auiManager().Update()        
+        util.auiManager().Update()
         
     def getPlugin(self, name):
         paneInfo = util.auiManager().GetPane(name)

@@ -50,9 +50,8 @@ class FilesTreePlugin(PluginPanel):
         self.tree.AssignImageList(imageList)
         self.imageIndices = {LROOT: -1, LCONTEXT: 0, LFILE: 1, LTHEORY: 2, LFORMULA: 3, LINACTIVECONTEXT: 4}
         self.tree.Bind(wx.EVT_TREE_ITEM_MENU, self.showContextMenu)
-        self.clear()
+        self.clearAll()
         pub.subscribe(self.addFile, PUB_ADDFILE)
-        pub.subscribe(self.clear, PUB_CLOSEALLFILES)
         pub.subscribe(self.removeFile, PUB_CLOSEFILE)
         pub.subscribe(self.onFileSaved, PUB_FILESAVED)
         pub.subscribe(self.addTheoriesToFileTree, PUB_FILETYPECHECKED)
@@ -63,7 +62,7 @@ class FilesTreePlugin(PluginPanel):
         command(event)
         event.Skip()
         
-    def clear(self):
+    def clearAll(self):
         self.tree.DeleteAllItems()
         self.tree.AddRoot("", self.imageIndices[LROOT], -1, wx.TreeItemData({KIND: LROOT}))
         

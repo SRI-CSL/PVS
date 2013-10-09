@@ -22,9 +22,11 @@ class ConsolePlugin(PluginPanel):
         PluginPanel.__init__(self, parent, definition)
         self.pvsout = wx.richtext.RichTextCtrl(self, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE | wx.TE_READONLY)
         self.pvsin = wx.TextCtrl(self, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE)
+        commandManager = pvscomm.PVSCommandManager()
 
         toolbarInfo = [ \
-                          ["typecheck16.png", "Typecheck the active file", evhdlr.onTypecheck], \
+                          ["module.png", "Parse the active file", commandManager.parse], \
+                          ["typecheck16.png", "Typecheck the active file", commandManager.typecheck], \
         ]
 
         toolbar = wx.ToolBar(self, wx.ID_ANY, style = wx.TB_VERTICAL | wx.NO_BORDER)
@@ -63,7 +65,7 @@ class ConsolePlugin(PluginPanel):
 
     def onToolboxButtonClicked(self, event):
         command = self.toolbarButton[event.GetId()]
-        command(event)
+        command()
         event.Skip()
 
     def OnSelectHistory(self, event):

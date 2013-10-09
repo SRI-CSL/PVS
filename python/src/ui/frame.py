@@ -55,7 +55,6 @@ class MainFrame(wx.Frame):
         pub.subscribe(self.handleNumberOfOpenFilesChanged, PUB_NUMBEROFOPENFILESCHANGED)
         pub.subscribe(self.setStatusbarText, PUB_UPDATESTATUSBAR)
         #self.Connect(-1, -1, util.EVT_RESULT_ID, self.onPVSResult)
-        PVSCommandManager().ping()
 
     def __do_layout(self):
         cfg = PVSIDEConfiguration()
@@ -68,10 +67,12 @@ class MainFrame(wx.Frame):
         
     def OnClose(self, event):
         """called when self.Close() is called"""
-        if RichEditorManager().ensureFilesAreSavedToPoceed():
+        rmgr = RichEditorManager()
+        if rmgr.ensureFilesAreSavedToPoceed():
+            openFiles = rmgr.getOpenFileNames()
             preferences = Preferences()
-            preferences.saveContextPreferences()
-            preferences.saveGlobalPreferences()
+            preferences.setListOfOpenFiles(openFiles)
+            preferences.savePreferences()
             self.auiManager.UnInit()
             PVSCommunicator().shutdown()            
             wx.GetApp().ExitMainLoop()
@@ -88,11 +89,9 @@ class MainFrame(wx.Frame):
             logging.info("Pane %s was closed", name)
             pub.sendMessage(PUB_SHOWPLUGIN, name=name, value=False)
 
-
-    def loadContext(self):
+    def restoreOpenFiles(self):
         """Load .pvseditor and open all the files that were open last time"""
         preferences = Preferences()
-        preferences.loadContextPreferences()
         fullnames = preferences.listOfOpenFiles()
         self.openFiles(fullnames)
         self.handleNumberOfOpenFilesChanged()
@@ -100,12 +99,6 @@ class MainFrame(wx.Frame):
     def setStatusbarText(self, text, location=0):
         logging.info("Setting status bar[%d] to: %s"%(location, text))
         self.statusbar.SetStatusText(text, location)
-        
-    def closeContext(self):
-        """Save .pvseditor and close all the open files"""
-        Preferences().saveContextPreferences()
-        pub.sendMessage(PUB_CLOSEALLFILES)
-        pub.sendMessage(PUB_CLOSEALLBUFFERS)
         
     def openFiles(self, fullnames):
         for fullname in fullnames:
@@ -127,6 +120,7 @@ class MainFrame(wx.Frame):
     def updateMenuAndToolbar(self, params):
         """Enable/Disable menu options based on the situation"""
         pub.sendMessage(PUB_UPDATEMENUBAR, parameters=params)
+        #TODO: do we need the next line?
         pub.sendMessage(PUB_UPDATETOOLBAR, parameters=params)
 
     def handleUndoRequest(self):

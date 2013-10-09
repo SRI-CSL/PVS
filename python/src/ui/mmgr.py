@@ -128,8 +128,6 @@ class MainFrameMenu(wx.MenuBar):
         frame.Bind(wx.EVT_MENU, onPasteText, self.pasteMenuItem)
         frame.Bind(wx.EVT_MENU, onFindText, self.findMenuItem)
         
-        #frame.Bind(wx.EVT_MENU, onToggleViewToolbar, self.toolbar)
-        
         frame.Bind(wx.EVT_MENU, onChangeContext, self.changeContextMenuItem)
         frame.Bind(wx.EVT_MENU, onTypecheck, self.typecheckMenuItem)
         

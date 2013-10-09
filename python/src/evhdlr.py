@@ -25,10 +25,9 @@ def onChangeContext(event):
         if RichEditorManager().ensureFilesAreSavedToPoceed(): 
             if PVSCommandManager().pvsMode == PVS_MODE_LISP:
                 PVSCommandManager().changeContext(newContext)
-            frame.closeContext()
             preferences.setRecentContext(newContext)
-            frame.menubar.prepareRecentContextsSubMenu()
-            frame.loadContext()
+            pub.sendMessage(PUB_UPDATEPVSCONTEXT)
+            frame.restoreOpenFiles()
             logging.info("New context is set to %s", newContext)
 
 def onCreateNewFile(event):
@@ -175,27 +174,6 @@ def onFindText(event):
 def toggleTool(name):
     PluginManager().toggleTool(name)
 
-def onToggleViewToolbar(event):
-    """called to handle 'toggle viewing the toolbar' request"""
-    logging.debug("Starting")
-    preferences = Preferences()
-    visibile = preferences.getVisibleToolbar()
-    #TODO: fix this. toolbar is no longer in 
-    frame = util.getMainFrame()
-    if visibile:
-        toolbarHeight = frame.toolbar.GetSize()[1]
-        frameSize = frame.GetSize()
-        newFrameSize = (frameSize[0], frameSize[1] + toolbarHeight)
-        frame.SetSize(newFrameSize)
-        frame.toolbar.Hide()
-    else:
-        frame.toolbar.Show()        
-        toolbarHeight = frame.toolbar.GetSize()[1]
-        frameSize = frame.GetSize()
-        newFrameSize = (frameSize[0], frameSize[1] - toolbarHeight)
-        frame.SetSize(newFrameSize)
-    preferences.setVisibleToolbar(not visibile)
-    #event.Skip()
 
 def onTypecheck(event):
     """called to handle 'typecheck' request"""

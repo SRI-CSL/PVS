@@ -25,6 +25,7 @@ class ProofManagerPlugin(PluginPanel):
         self.sequent = None
         self.initializeCommandList()
         self.history = []
+        self.historyBox.SetSelection(0)
 
         sizer_1 = wx.BoxSizer(wx.VERTICAL)
         toolbar = wx.ToolBar(self, wx.ID_ANY, style=wx.TB_HORIZONTAL) # | wx.NO_BORDER)
@@ -77,7 +78,7 @@ class ProofManagerPlugin(PluginPanel):
         if selection > 0:
             command = self.historyBox.GetString(selection)
             self.commandTextControl.SetValue(command)
-        elf.historyBox.SetSelection(0)
+        self.historyBox.SetSelection(0)
         event.Skip()
 
     def OnSelectCommand(self, event):

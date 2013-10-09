@@ -3,6 +3,7 @@ import wx
 import wx.stc as stc
 import logging
 from constants import PVS_KEYWORDS, PVS_OPERATORS
+import ui.images
 
 faces = {'default_color': '000000',
          'keyword_color': '0000FF',
@@ -48,6 +49,7 @@ class PVSStyledText(stc.StyledTextCtrl):
         self.StyleSetSpec(stc.STC_STYLE_LINENUMBER, "size:%d,face:%s" % (faces['size'], faces['mono']))
         self.SetMarginType(1, stc.STC_MARGIN_SYMBOL)
         self.MarkerDefine(0, stc.STC_MARK_ROUNDRECT, "#CCFF00", "RED")
+        #self.MarkerDefineBitmap(1, ui.images.getBitmap("debug.png"))
         self.MarkerDefine(1, stc.STC_MARK_CIRCLE, "RED", "RED")
         #self.MarkerDefine(1, stc.STC_MARK_CIRCLE, "FOREST GREEN", "SIENNA")
         self.MarkerDefine(2, stc.STC_MARK_SHORTARROW, "blue", "blue")
