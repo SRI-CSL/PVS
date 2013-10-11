@@ -9,7 +9,8 @@ import os.path
 import util
 import logging
 from ui.images import getPVSLogo
-from wx.lib.pubsub import setupkwargs, pub 
+from wx.lib.pubsub import setupkwargs, pub
+from preference import Preferences
 
 class RichEditorManager:
     """NotebookManager manages the open tabs in the main frame. Each tab corresponds to a file or a buffer"""
@@ -109,6 +110,7 @@ class RichEditorManager:
     def handleCloseFileRequest(self, fullname):
         """called to close an open file"""
         if self.ensureFilesAreSavedToPoceed((fullname,)):
+            Preferences().setRecentFile(fullname)
             pub.sendMessage(PUB_CLOSEFILE, fullname=fullname)
             pub.sendMessage(PUB_NUMBEROFOPENFILESCHANGED)
     
@@ -174,7 +176,7 @@ class RichEditorManager:
         for i in range(self.notebook.GetPageCount()):
             if richEditor == self.notebook.GetPage(i):
                 return i
-        return None        
+        return None
     
     def _getSelectedPage(self):
         """Return the selected page in the notebook"""

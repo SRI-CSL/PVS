@@ -12,9 +12,11 @@ class Preferences:
     
     PREFERENCEFILE = ".pvseditor"
     RECENTCONTEXTS = "RecentContexts"
+    RECENTFILES = "RecentFiles"
     OPENFILES = "OpenFiles"
     IGNORE_PREFERENCEFILE  = False # if True, load the default preference
     NUMBEROFRECENTCONTEXTS = 10
+    NUMBEROFRECENTFILES = 20
     
     def __init__(self):
         self.__dict__ = self.__shared_state
@@ -24,6 +26,7 @@ class Preferences:
     def clearAllPreferences(self):
         self.preferences[Preferences.OPENFILES] = sets.Set()
         self.preferences[Preferences.RECENTCONTEXTS] = []
+        self.preferences[Preferences.RECENTFILES] = []
         
     def getPreferenceFilename(self):
         """return the full path to the global preference file"""
@@ -88,6 +91,26 @@ class Preferences:
         if len(recent) > Preferences.NUMBEROFRECENTCONTEXTS:
             recent.pop()
         self.preferences[Preferences.RECENTCONTEXTS] = recent
+        
+    def getRecentFiles(self):
+        """return the recently opened files"""
+        fullnames = self.getValue(Preferences.RECENTFILES, [])
+        return fullnames
+    
+    def setRecentFile(self, fullname):
+        self.removeFromRecentFiles(fullname)
+        fullname = util.normalizePath(fullname)
+        recent = self.getRecentFiles()
+        recent.insert(0, fullname)
+        if len(recent) > Preferences.NUMBEROFRECENTFILES:
+            recent.pop()
+        self.preferences[Preferences.RECENTFILES] = recent
+        
+    def removeFromRecentFiles(self, fullname):
+        if Preferences.RECENTFILES in self.preferences:
+            fullname = util.normalizePath(fullname)
+            if fullname in self.preferences[Preferences.RECENTFILES]:
+                self.preferences[Preferences.RECENTFILES].remove(fullname)
         
     def listOfOpenFiles(self):
         return self.getValue(Preferences.OPENFILES, [])

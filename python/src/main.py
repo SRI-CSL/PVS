@@ -87,6 +87,6 @@ if __name__ == "__main__":
 
     application = PVSEditorApp(0)
     logging.info("Entering MainLoop...")
-    pvscomm.PVSCommandManager() #.ping()
+    #pvscomm.PVSCommandManager().ping()
     
     application.MainLoop()

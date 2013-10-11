@@ -315,7 +315,7 @@ class PVSCommandManager:
                 errorData = errorFile.read()
             errorFile.close()
             errorObject[PVSCommunicator.DATA] = errorData
-            #TODO delete the temp file.
+            os.remove(errorDataFile)
             errorObject[PVSCommunicator.BEGIN] = data[PVSCommunicator.BEGIN]
             errorObject[PVSCommunicator.THEORY] = data[PVSCommunicator.THEORY]
             errorObject[PVSCommunicator.END] = data[PVSCommunicator.END] if PVSCommunicator.END in data else None

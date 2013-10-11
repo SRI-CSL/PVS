@@ -108,21 +108,17 @@ class MainFrame(wx.Frame):
                 logging.warning("File %s no longer exists", fullname)
         
     def handlePVSModeUpdated(self, pvsMode = PVS_MODE_OFF):
-        self.updateMenuAndToolbar({PVSMODE: pvsMode})
+        params = {PVSMODE: pvsMode}
+        pub.sendMessage(PUB_UPDATEMENUBAR, parameters=params)
         self.setStatusbarText("PVS Mode: " + pvsMode)
 
     def handlePVSContextUpdated(self):
         self.setStatusbarText("PVS Context: " + Preferences().getRecentContexts()[0], 1)
 
     def handleNumberOfOpenFilesChanged(self):
-        self.updateMenuAndToolbar({OPENFILES: RichEditorManager().getNumberOfOpenFiles()})
-        
-    def updateMenuAndToolbar(self, params):
-        """Enable/Disable menu options based on the situation"""
+        params = {OPENFILES: RichEditorManager().getNumberOfOpenFiles()}
         pub.sendMessage(PUB_UPDATEMENUBAR, parameters=params)
-        #TODO: do we need the next line?
-        pub.sendMessage(PUB_UPDATETOOLBAR, parameters=params)
-
+        
     def handleUndoRequest(self):
         """handle the Undo request and return true if succeeded."""
         textCtrl = self._findFocusedTextCtrl()

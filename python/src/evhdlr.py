@@ -42,6 +42,7 @@ def onCreateNewFile(event):
             fullname = fullname + PVS_EXTENSION
         logging.info("Creating new file %s", fullname)
         pub.sendMessage(PUB_ADDFILE, fullname=fullname)
+        Preferences().removeFromRecentFiles(fullname)
     else:
         logging.info("Nothing was selected.")
     dialogging.Destroy()
@@ -57,6 +58,7 @@ def onOpenFile(event):
         fullname = dialog.GetPath()
         logging.info("Opening file %s", fullname)
         pub.sendMessage(PUB_ADDFILE, fullname=fullname)
+        Preferences().removeFromRecentFiles(fullname)
     else:
         logging.info("Nothing was selected.")
     dialog.Destroy()
@@ -75,7 +77,9 @@ def onCloseFile(event):
             elif choice == wx.ID_CANCEL:
                 canClose = False
         if canClose:
-            pub.sendMessage(PUB_CLOSEFILE, fullname=richEditor.getFilename())
+            fullname = richEditor.getFilename()
+            Preferences().setRecentFile(fullname)
+            pub.sendMessage(PUB_CLOSEFILE, fullname=fullname)
             pub.sendMessage(PUB_NUMBEROFOPENFILESCHANGED)
     else:
         logging.warn("No rich editor is open")
