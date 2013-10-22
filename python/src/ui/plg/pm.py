@@ -34,8 +34,9 @@ class ProofManagerPlugin(PluginPanel):
         toolbar.AddControl(lb)
         
         undoButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('undo.gif'), shortHelpString="Undo the last command")
+        postponeButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('rightarrow.png'), shortHelpString="Postpone the current subgoal")
+        toolbar.AddSeparator()
         quitButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('quit.png'), shortHelpString="Quit the prover")
-        
         sizer_1.Add(toolbar)
         
         sizer_1.Add(self.actionLabel, 0, wx.ALL | wx.EXPAND, 5)
@@ -58,6 +59,7 @@ class ProofManagerPlugin(PluginPanel):
         lb.Bind(wx.EVT_COMBOBOX, self.OnSelectCommand)
         self.historyBox.Bind(wx.EVT_COMBOBOX, self.OnSelectHistory)
         self.Bind(wx.EVT_TOOL, self.OnUndoLastCommand, undoButton)
+        self.Bind(wx.EVT_TOOL, self.OnPostponeCommand, postponeButton)
         self.Bind(wx.EVT_TOOL, self.OnQuitProver, quitButton)
         pub.subscribe(self.proofInformationReceived, constants.PUB_PROOFINFORMATIONRECEIVED)
 
@@ -66,6 +68,10 @@ class ProofManagerPlugin(PluginPanel):
         
     def OnUndoLastCommand(self, event):
         pvscomm.PVSCommandManager().proofCommand("(undo)")
+        event.Skip()
+
+    def OnPostponeCommand(self, event):
+        pvscomm.PVSCommandManager().proofCommand("(postpone)")
         event.Skip()
 
     def OnQuitProver(self, event):

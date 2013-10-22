@@ -80,7 +80,7 @@ PUB_ADDFILE = "AddFile"
 PUB_CLOSEFILE = "File.Close"
 PUB_ERRORLOCATION = "File.Error.Location"
 PUB_REMOVEMARKERS = "File.Remove.Markers"
-
+PUB_PREPARERECENTFILESMENU = "Prepare.Recent.Files.Menu"
 
 GROUP_TOOLS = "tools"
 

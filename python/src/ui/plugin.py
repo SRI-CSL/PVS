@@ -2,12 +2,10 @@ import wx
 import util
 import logging
 from constants import *
-from preference import Preferences
 import wx.lib.agw.aui as aui
 from wx.lib.pubsub import setupkwargs, pub
 from pvscomm import PVSCommandManager
 import importlib
-
 
 class PluginManager:
     """A class to manage all the tool frames, create, and show/hide them"""
@@ -33,7 +31,8 @@ class PluginManager:
             pub.subscribe(self.onPVSModeUpdated, PUB_UPDATEPVSMODE)
             
     def initializePlugins(self, pluginsDefinitions):
-        preference = Preferences()
+        import preference
+        preference = preference.Preferences()
         self.pluginsDefinitions = pluginsDefinitions
         for pluginDefinitions in pluginsDefinitions:
             self.create(pluginDefinitions)

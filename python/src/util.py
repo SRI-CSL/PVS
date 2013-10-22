@@ -5,6 +5,9 @@ import logging, sys, wx, os, os.path
 import sys
 from sxp import sexp
 import remgr
+from wx.lib.pubsub import setupkwargs, pub
+import preference
+import constants
 
 def normalizePath(thePath):
     """Replace ~ with the home directory"""
@@ -37,6 +40,18 @@ def getMainFrame():
 
 def auiManager():
     return wx.GetApp().GetTopWindow().auiManager
+
+def openFile(fullname):
+    pub.sendMessage(constants.PUB_ADDFILE, fullname=fullname)
+    preference.Preferences().removeFromRecentFiles(fullname)
+    pub.sendMessage(constants.PUB_PREPARERECENTFILESMENU)
+    pub.sendMessage(constants.PUB_NUMBEROFOPENFILESCHANGED)
+
+def closeFile(fullname):
+    preference.Preferences().setRecentFile(fullname)
+    pub.sendMessage(constants.PUB_CLOSEFILE, fullname=fullname)
+    pub.sendMessage(constants.PUB_PREPARERECENTFILESMENU)
+    pub.sendMessage(constants.PUB_NUMBEROFOPENFILESCHANGED)
 
 class PVSException(Exception):
     def __init__(self, message, errorObject=None):

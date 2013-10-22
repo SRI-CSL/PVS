@@ -4,6 +4,7 @@ import os.path, os
 import constants
 import sets
 import logging
+import config
 from wx.lib.pubsub import setupkwargs, pub 
 
 class Preferences:
@@ -14,6 +15,7 @@ class Preferences:
     RECENTCONTEXTS = "RecentContexts"
     RECENTFILES = "RecentFiles"
     OPENFILES = "OpenFiles"
+    FRAMESIZE = "FrameSize"
     IGNORE_PREFERENCEFILE  = False # if True, load the default preference
     NUMBEROFRECENTCONTEXTS = 10
     NUMBEROFRECENTFILES = 20
@@ -117,6 +119,13 @@ class Preferences:
     
     def setListOfOpenFiles(self, fullnames):
         self.preferences[Preferences.OPENFILES] = sets.Set(fullnames)
+        
+    def getLastFrameSize(self):
+        return self.getValue(Preferences.FRAMESIZE, config.PVSIDEConfiguration().ideSize)
+    
+    def setLastFrameSize(self, ideSize):
+        self.preferences[Preferences.FRAMESIZE] = ideSize
+    
     
         
 

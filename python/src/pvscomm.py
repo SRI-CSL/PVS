@@ -17,16 +17,31 @@ import httplib
 import exceptions
 import xmlrpclib
 import threading
-from preference import Preferences
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 from urlparse import urlparse
 import constants
+import time
 import util
 import wx
 import logging
 import os.path
 from wx.lib.pubsub import setupkwargs, pub 
+
+class PVSCommunicationLogger:
+    __shared_state = {}
+    
+    def __init__(self):
+        self.__dict__ = self.__shared_state
+        if not "logList" in self.__dict__:
+            self.clear()
+
+    def log(self, message):
+        #message = "%d %s"%(time.time(), message)
+        self.logList.append(str(message))
+        
+    def clear(self):
+        self.logList = []
 
 # Restrict to a particular path.
 class RequestHandler(SimpleXMLRPCRequestHandler):
@@ -65,7 +80,7 @@ class PVSCommunicator:
             cfg = PVSIDEConfiguration()
             self.ideURL = cfg.ideURL
             self.pvsURL = cfg.pvsURL
-            
+            self.miniLog = []
             
     def start(self):
         parsedURL = urlparse(self.ideURL)
@@ -88,8 +103,10 @@ class PVSCommunicator:
         self.counter += 1
         request = {PVSCommunicator.METHOD: method, PVSCommunicator.PARAMS: params, PVSCommunicator.ID: reqid}
         jRequest = json.dumps(request)
+        PVSCommunicationLogger().log("=> %s"%(jRequest,))
         logging.debug("JSON request: %s", jRequest)
         sResult = self.pvsProxy.pvs.request(jRequest, self.ideURL)
+        PVSCommunicationLogger().log("<= %s"%(sResult,))
         logging.debug("JSON result: %s", sResult)
         result = json.loads(sResult)
         result = self.responseCheck(result)
@@ -111,6 +128,7 @@ class PVSCommunicator:
         logging.debug("Received: %s", jsonString)
         try:
             message = json.loads(jsonString, object_hook=self.requestCheck)
+            PVSCommunicationLogger().log("<= %s"%(message,))
             result = self.processMessage(message)
             logging.debug("Sending Back: %s", result)
             return result
@@ -296,7 +314,8 @@ class PVSCommandManager:
                 pub.sendMessage(constants.PUB_UPDATEPVSMODE, pvsMode = pvsMode)   
             if context != self.pvsContext:
                 self.pvsContext = context
-                Preferences().setRecentContext(context)
+                import preference
+                preference.Preferences().setRecentContext(context)
                 logging.debug("New Context is: %s", context)
                 pub.sendMessage(constants.PUB_UPDATEPVSCONTEXT)
             return result
@@ -367,6 +386,7 @@ class PVSCommandManager:
         
     def proofCommand(self, command):
         result = self._sendCommand("proof-command", command)
+        assert result is not None
         pub.sendMessage(constants.PUB_PROOFINFORMATIONRECEIVED, information=result)
         return result
         

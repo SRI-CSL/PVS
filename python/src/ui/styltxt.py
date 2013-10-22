@@ -45,7 +45,7 @@ class PVSStyledText(stc.StyledTextCtrl):
     def __init__(self, parent):
         stc.StyledTextCtrl.__init__(self, parent, wx.ID_ANY, pos=wx.DefaultPosition, size=wx.DefaultSize, style=wx.TE_MULTILINE | wx.HSCROLL | wx.TE_RICH | wx.TE_RICH2)
         self.SetMarginType(0, stc.STC_MARGIN_NUMBER)
-        self.SetMarginWidth(0, 22)
+        self.SetMarginWidth(0, 30)
         self.StyleSetSpec(stc.STC_STYLE_LINENUMBER, "size:%d,face:%s" % (faces['size'], faces['mono']))
         self.SetMarginType(1, stc.STC_MARGIN_SYMBOL)
         self.MarkerDefine(0, stc.STC_MARK_ROUNDRECT, "#CCFF00", "RED")

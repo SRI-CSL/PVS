@@ -16,7 +16,7 @@ from preference import Preferences
 import wx.lib.agw.aui as aui
 from config import PVSIDEConfiguration
 import wx.stc as stc
-from pvscomm import PVSCommunicator, PVSCommandManager
+from pvscomm import PVSCommunicator, PVSCommandManager            
 
 class MainFrame(wx.Frame):
     """The main frame of the application. It consists of a menu and a toolbar, a notebook for all the open
@@ -31,6 +31,7 @@ class MainFrame(wx.Frame):
         preferences = Preferences()
         preferences.loadPreferences()
         self.Bind(wx.EVT_CLOSE, self.OnClose)
+        #self.Bind(wx.EVT_IDLE, self.OnIdle)
         self.auiManager.Bind(aui.EVT_AUI_PANE_CLOSE, self.OnPanelClose)
         
         self.statusbar = self.CreateStatusBar(2)
@@ -58,7 +59,8 @@ class MainFrame(wx.Frame):
 
     def __do_layout(self):
         cfg = PVSIDEConfiguration()
-        self.SetSize(cfg.ideSize)
+        pref = Preferences()
+        self.SetSize(pref.getLastFrameSize())
         self.SetMinSize(cfg.ideMinumumSize) # Setting the minimum size of the main frame
         self.auiManager.AddPane(RichEditorManager().notebook, aui.AuiPaneInfo().CenterPane())
         self.auiManager.Update()
@@ -69,8 +71,9 @@ class MainFrame(wx.Frame):
         """called when self.Close() is called"""
         rmgr = RichEditorManager()
         if rmgr.ensureFilesAreSavedToPoceed():
-            openFiles = rmgr.getOpenFileNames()
             preferences = Preferences()
+            preferences.setLastFrameSize(self.GetSize())
+            openFiles = rmgr.getOpenFileNames()
             preferences.setListOfOpenFiles(openFiles)
             preferences.savePreferences()
             self.auiManager.UnInit()
