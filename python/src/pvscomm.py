@@ -39,6 +39,8 @@ class PVSCommunicationLogger:
     def log(self, message):
         #message = "%d %s"%(time.time(), message)
         self.logList.append(str(message))
+        if len(self.logList) > 1000:
+            del self.logList[0]
         
     def clear(self):
         self.logList = []
@@ -284,7 +286,8 @@ class PVSCommandManager:
                 end = err.errorObject[PVSCommunicator.END] if PVSCommunicator.END in err.errorObject else None
                 pub.sendMessage(constants.PUB_ERRORLOCATION, begin=begin, end=end)
         elif isinstance(err, Exception):
-            errMessage = err.message
+            raise err
+            #errMessage = err.message
         else:
             errMessage = str(err)
         logging.error("Error: %s", errMessage)
