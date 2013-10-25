@@ -250,13 +250,14 @@
 	    "type": "object",
 	    "properties": {
 		"result": {
-		    "type": "array",
-		    "minItems": 4,
-		    "maxItems": 4,
-		    "items": [{"$ref": "#/definitions/place"},
-			      {"type": "string"},
-			      {"type": "string"},
-			      {"$ref": "#/definitions/place"}]
+		    "type": "object",
+		    "properties": {
+			"id": {"type": "string"},
+			"place": {"$ref": "#/definitions/place"},
+			"decl": {"type": "string"},
+			"decl-file": {"type": "string"},
+			"decl-place": {"$ref": "#/definitions/place"}
+		    }
 		}
 	    }
 	},
