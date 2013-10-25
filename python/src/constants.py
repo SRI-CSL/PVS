@@ -58,7 +58,6 @@ PVS_MODE_PROVER = "prover"
 PVS_MODE_UNKNOWN = "unknown"
 
 # PUBSUB Messages:
-PUB_UPDATETOOLBAR = "toolbar.Update" #TODO: This is not used anywhere
 PUB_UPDATEMENUBAR = "menubar.Update"
 PUB_SHOWPLUGIN = "menubar.showPlugin"
 PUB_SHOWTOOLBAR = "toolbar.showToolbar"
@@ -78,9 +77,10 @@ PUB_SAVEFILE = "File.Save"
 PUB_FILESAVED = "pvs.file.Saved"
 PUB_FILETYPECHECKED = "pvs.file.typechecked"
 PUB_ADDFILE = "AddFile"
-PUB_CLOSEALLBUFFERS = "CloseAllBuffers"
-PUB_CLOSEALLFILES = "CloseAllFiles"
 PUB_CLOSEFILE = "File.Close"
+PUB_ERRORLOCATION = "File.Error.Location"
+PUB_REMOVEMARKERS = "File.Remove.Markers"
+PUB_PREPARERECENTFILESMENU = "Prepare.Recent.Files.Menu"
 
 GROUP_TOOLS = "tools"
 

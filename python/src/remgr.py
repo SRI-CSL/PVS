@@ -9,7 +9,8 @@ import os.path
 import util
 import logging
 from ui.images import getPVSLogo
-from wx.lib.pubsub import setupkwargs, pub 
+from wx.lib.pubsub import setupkwargs, pub
+from preference import Preferences
 
 class RichEditorManager:
     """NotebookManager manages the open tabs in the main frame. Each tab corresponds to a file or a buffer"""
@@ -20,9 +21,11 @@ class RichEditorManager:
         if not "editors" in self.__dict__:
             self.editors = {}
             pub.subscribe(self.addFile, PUB_ADDFILE)
-            pub.subscribe(self.removeAllFiles, PUB_CLOSEALLFILES)
             pub.subscribe(self.removeFile, PUB_CLOSEFILE)
             pub.subscribe(self.onFileSaved, PUB_FILESAVED)
+            pub.subscribe(self.onErrorLocation, PUB_ERRORLOCATION)
+            pub.subscribe(self.clearMarkers, PUB_REMOVEMARKERS)
+            
             #self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnPageChanging)
         
     def __setitem__(self, name, re):
@@ -107,6 +110,7 @@ class RichEditorManager:
     def handleCloseFileRequest(self, fullname):
         """called to close an open file"""
         if self.ensureFilesAreSavedToPoceed((fullname,)):
+            Preferences().setRecentFile(fullname)
             pub.sendMessage(PUB_CLOSEFILE, fullname=fullname)
             pub.sendMessage(PUB_NUMBEROFOPENFILESCHANGED)
     
@@ -142,6 +146,14 @@ class RichEditorManager:
             return self._getSelectedPage()
         return None
     
+    def onErrorLocation(self, begin, end):
+        richEditor = self.getFocusedRichEditor()
+        richEditor.addRedMarker(begin[0])
+        
+    def clearMarkers(self):
+        richEditor = self.getFocusedRichEditor()
+        richEditor.removeRedMarkers()
+    
     #TODO: Check the following functions and see if they are redundant or something.
     
     def OnPageChanged(self, event):
@@ -164,7 +176,7 @@ class RichEditorManager:
         for i in range(self.notebook.GetPageCount()):
             if richEditor == self.notebook.GetPage(i):
                 return i
-        return None        
+        return None
     
     def _getSelectedPage(self):
         """Return the selected page in the notebook"""

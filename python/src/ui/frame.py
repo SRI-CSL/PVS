@@ -16,7 +16,7 @@ from preference import Preferences
 import wx.lib.agw.aui as aui
 from config import PVSIDEConfiguration
 import wx.stc as stc
-from pvscomm import PVSCommunicator
+from pvscomm import PVSCommunicator, PVSCommandManager            
 
 class MainFrame(wx.Frame):
     """The main frame of the application. It consists of a menu and a toolbar, a notebook for all the open
@@ -31,6 +31,7 @@ class MainFrame(wx.Frame):
         preferences = Preferences()
         preferences.loadPreferences()
         self.Bind(wx.EVT_CLOSE, self.OnClose)
+        #self.Bind(wx.EVT_IDLE, self.OnIdle)
         self.auiManager.Bind(aui.EVT_AUI_PANE_CLOSE, self.OnPanelClose)
         
         self.statusbar = self.CreateStatusBar(2)
@@ -55,11 +56,11 @@ class MainFrame(wx.Frame):
         pub.subscribe(self.handleNumberOfOpenFilesChanged, PUB_NUMBEROFOPENFILESCHANGED)
         pub.subscribe(self.setStatusbarText, PUB_UPDATESTATUSBAR)
         #self.Connect(-1, -1, util.EVT_RESULT_ID, self.onPVSResult)
-        #PVSCommandManager().ping()
 
     def __do_layout(self):
         cfg = PVSIDEConfiguration()
-        self.SetSize(cfg.ideSize)
+        pref = Preferences()
+        self.SetSize(pref.getLastFrameSize())
         self.SetMinSize(cfg.ideMinumumSize) # Setting the minimum size of the main frame
         self.auiManager.AddPane(RichEditorManager().notebook, aui.AuiPaneInfo().CenterPane())
         self.auiManager.Update()
@@ -68,10 +69,13 @@ class MainFrame(wx.Frame):
         
     def OnClose(self, event):
         """called when self.Close() is called"""
-        if RichEditorManager().ensureFilesAreSavedToPoceed():
+        rmgr = RichEditorManager()
+        if rmgr.ensureFilesAreSavedToPoceed():
             preferences = Preferences()
-            preferences.saveContextPreferences()
-            preferences.saveGlobalPreferences()
+            preferences.setLastFrameSize(self.GetSize())
+            openFiles = rmgr.getOpenFileNames()
+            preferences.setListOfOpenFiles(openFiles)
+            preferences.savePreferences()
             self.auiManager.UnInit()
             PVSCommunicator().shutdown()            
             wx.GetApp().ExitMainLoop()
@@ -88,11 +92,9 @@ class MainFrame(wx.Frame):
             logging.info("Pane %s was closed", name)
             pub.sendMessage(PUB_SHOWPLUGIN, name=name, value=False)
 
-
-    def loadContext(self):
+    def restoreOpenFiles(self):
         """Load .pvseditor and open all the files that were open last time"""
         preferences = Preferences()
-        preferences.loadContextPreferences()
         fullnames = preferences.listOfOpenFiles()
         self.openFiles(fullnames)
         self.handleNumberOfOpenFilesChanged()
@@ -100,12 +102,6 @@ class MainFrame(wx.Frame):
     def setStatusbarText(self, text, location=0):
         logging.info("Setting status bar[%d] to: %s"%(location, text))
         self.statusbar.SetStatusText(text, location)
-        
-    def closeContext(self):
-        """Save .pvseditor and close all the open files"""
-        Preferences().saveContextPreferences()
-        pub.sendMessage(PUB_CLOSEALLFILES)
-        pub.sendMessage(PUB_CLOSEALLBUFFERS)
         
     def openFiles(self, fullnames):
         for fullname in fullnames:
@@ -115,20 +111,17 @@ class MainFrame(wx.Frame):
                 logging.warning("File %s no longer exists", fullname)
         
     def handlePVSModeUpdated(self, pvsMode = PVS_MODE_OFF):
-        self.updateMenuAndToolbar({PVSMODE: pvsMode})
+        params = {PVSMODE: pvsMode}
+        pub.sendMessage(PUB_UPDATEMENUBAR, parameters=params)
         self.setStatusbarText("PVS Mode: " + pvsMode)
 
     def handlePVSContextUpdated(self):
         self.setStatusbarText("PVS Context: " + Preferences().getRecentContexts()[0], 1)
 
     def handleNumberOfOpenFilesChanged(self):
-        self.updateMenuAndToolbar({OPENFILES: RichEditorManager().getNumberOfOpenFiles()})
-        
-    def updateMenuAndToolbar(self, params):
-        """Enable/Disable menu options based on the situation"""
+        params = {OPENFILES: RichEditorManager().getNumberOfOpenFiles()}
         pub.sendMessage(PUB_UPDATEMENUBAR, parameters=params)
-        pub.sendMessage(PUB_UPDATETOOLBAR, parameters=params)
-
+        
     def handleUndoRequest(self):
         """handle the Undo request and return true if succeeded."""
         textCtrl = self._findFocusedTextCtrl()

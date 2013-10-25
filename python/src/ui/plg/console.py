@@ -2,6 +2,7 @@
 # This class manages the GUI's console for PVS
 
 import wx
+import wx.richtext
 import codecs
 import logging
 from constants import *
@@ -19,13 +20,13 @@ class ConsolePlugin(PluginPanel):
     
     def __init__(self, parent, definition):
         PluginPanel.__init__(self, parent, definition)
-        self.prompt = EMPTY_STRING
-        self.pvsout = wx.TextCtrl(self, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE | wx.TE_READONLY)
+        self.pvsout = wx.richtext.RichTextCtrl(self, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE | wx.TE_READONLY)
         self.pvsin = wx.TextCtrl(self, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE)
+        commandManager = pvscomm.PVSCommandManager()
 
         toolbarInfo = [ \
-                          ["undo.gif", "Typecheck the active file", evhdlr.onTypecheck], \
-                          ["typecheck16.png", "Typecheck the active file", evhdlr.onTypecheck], \
+                          ["module.png", "Parse the active file", commandManager.parse], \
+                          ["typecheck16.png", "Typecheck the active file", commandManager.typecheck], \
         ]
 
         toolbar = wx.ToolBar(self, wx.ID_ANY, style = wx.TB_VERTICAL | wx.NO_BORDER)
@@ -40,8 +41,8 @@ class ConsolePlugin(PluginPanel):
         self.historyBox = wx.ComboBox(self, wx.ID_ANY, choices=[], style=wx.CB_READONLY)
 
         belowSizer = wx.BoxSizer(wx.HORIZONTAL)
-        belowSizer.Add(self.pvsin, 5, wx.EXPAND | wx.ALL | wx.ALIGN_CENTRE_VERTICAL, 5)
-        belowSizer.Add(self.historyBox, 1, wx.EXPAND | wx.ALL | wx.ALIGN_CENTRE_VERTICAL, 5)
+        belowSizer.Add(self.pvsin, 5, wx.EXPAND | wx.UP | wx.DOWN | wx.ALIGN_CENTRE_VERTICAL, 5)
+        belowSizer.Add(self.historyBox, 1, wx.EXPAND | wx.LEFT | wx.UP | wx.DOWN | wx.ALIGN_CENTRE_VERTICAL, 5)
 
         leftSizer = wx.BoxSizer(wx.VERTICAL)
         leftSizer.Add(self.pvsout, 4, wx.EXPAND , 0)
@@ -64,7 +65,7 @@ class ConsolePlugin(PluginPanel):
 
     def onToolboxButtonClicked(self, event):
         command = self.toolbarButton[event.GetId()]
-        command(event)
+        command()
         event.Skip()
 
     def OnSelectHistory(self, event):
@@ -92,17 +93,22 @@ class ConsolePlugin(PluginPanel):
         """Initializes PVS In and Out"""
         self.pvsout.Clear()
         self.pvsin.Clear()
-        self.prompt = EMPTY_STRING
+        self.prompt = "pvs> "
         self.history = []
         self.historyBox.Clear()
         self.historyBox.Insert("history", 0)
+        self.historyBox.SetSelection(0)
         #self.pvsModeUpdated(PVS_MODE_OFF)
         
-    def appendToOut(self, line, newLine=False):
-        logging.debug("Appending '%s' to pvsout", line)
+    def appendToOut(self, text, newLine=False, color=None):
+        logging.debug("Appending '%s' to pvsout", text)
+        if color is not None:
+            self.pvsout.BeginTextColour(color)
+        self.pvsout.WriteText(text)
         if newLine:
-            line = line + NEWLINE
-        self.pvsout.AppendText(line)
+            self.pvsout.Newline()
+        if color is not None:
+            self.pvsout.EndTextColour()
         
     def appendTextToIn(self, text):
         logging.debug("Appending '%s' to pvsin", text)
@@ -122,19 +128,20 @@ class ConsolePlugin(PluginPanel):
     
     def onPVSInText(self, event):
         """This method is called whenever PVS sends some text to the Editor"""
-        logging.info("Event handler `onPVSInTextEntered' not implemented")
+        #logging.info("Event handler `onPVSInTextEntered' not implemented")
         text = event.GetString()
         if text.endswith("\n"):
             if util.isS_Expression(text):
                 command = text.strip()
                 logging.info("Command is %s", command)
-                self.appendToOut(command)
+                self.appendToOut(self.prompt, color=wx.BLUE)
+                self.appendToOut(command, newLine=True)
                 self.clearIn()
                 self.history.append(command)
                 self.historyBox.Insert(command, 1)                
                 result = pvscomm.PVSCommandManager().lisp(command)
                 if result is not None:
-                    self.appendToOut(result)
+                    self.appendToOut(result, newLine=True)
         #event.Skip()
         
 

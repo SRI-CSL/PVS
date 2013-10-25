@@ -19,6 +19,8 @@ from ui.frame import MainFrame
 from ui.plugin import PluginManager
 from wx.lib.pubsub import setupkwargs, pub 
 from config import PVSIDEConfiguration
+import pvscomm
+import gc
 
 class PVSEditorApp(wx.App):
     """The main class that starts the application and shows the main frame"""
@@ -33,6 +35,8 @@ class PVSEditorApp(wx.App):
         #Initiate Main Frame:
         mainFrame = MainFrame(None, wx.ID_ANY, "")
         self.SetTopWindow(mainFrame)
+        #favicon = wx.Icon(PVSIDEConfiguration().applicationFolder + "/images/pvs.ico", wx.BITMAP_TYPE_ICO, 32, 32)
+        #wx.Frame.SetIcon(mainFrame, favicon)
         mainFrame.Show()
         logging.info("Main Frame initialized...") 
         pm = PluginManager()
@@ -40,7 +44,7 @@ class PVSEditorApp(wx.App):
         operatingSystem = platform.system()
         if operatingSystem == "Windows":
             mainFrame.showDialogBox("PVS does not run on Windows", constants.WARNING)
-        mainFrame.loadContext()
+        mainFrame.restoreOpenFiles()
         return 1
 
 # end of class PVSEditorApp
@@ -83,7 +87,10 @@ if __name__ == "__main__":
     processConfigFile(applicationFolder)
     logging.debug("Application Folder is %s", applicationFolder)
     processArguments(list(sys.argv))
-
+    gc.enable()
+    gc.set_threshold(1, 2, 3)
     application = PVSEditorApp(0)
-    logging.info("Entering MainLoop...") 
+    logging.info("Entering MainLoop...")
+    #pvscomm.PVSCommandManager().ping()
+    
     application.MainLoop()

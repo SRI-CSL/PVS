@@ -17,6 +17,7 @@ class MainFrameMenu(wx.MenuBar):
         self.plugins = {}
         self.toolbars = {}
         self._recentContexts = {}
+        self._recentFiles = {}
         self.addFileMenu()
         self.addEditMenu()
         self.addViewMenu()
@@ -27,12 +28,19 @@ class MainFrameMenu(wx.MenuBar):
         pub.subscribe(self.showToolbar, PUB_SHOWTOOLBAR)
         pub.subscribe(self.addPluginToViewMenu, PUB_ADDITEMTOVIEWMENU)
         pub.subscribe(self.prepareRecentContextsSubMenu, PUB_UPDATEPVSCONTEXT)
+        pub.subscribe(self.prepareRecentFilesSubMenu, PUB_PREPARERECENTFILESMENU)
         
     def addFileMenu(self):
         """Adding menu items to File menu"""
         fileMenu = wx.Menu()
         self.newFileMenuItem = fileMenu.Append(wx.ID_NEW, self._makeLabel(LABEL_NEW, "N", True), EMPTY_STRING, wx.ITEM_NORMAL)
         self.openFileMenuItem = fileMenu.Append(wx.ID_OPEN, self._makeLabel(LABEL_OPEN, "O", True), EMPTY_STRING, wx.ITEM_NORMAL)
+
+        self.recentFilesMenu = wx.Menu()
+        self.prepareRecentFilesSubMenu()
+        fileMenu.AppendMenu(wx.ID_ANY, "Recent Files", self.recentFilesMenu)
+        
+        
         self.saveFileMenuItem = fileMenu.Append(wx.ID_SAVE, self._makeLabel(LABEL_SAVE, "S"), EMPTY_STRING, wx.ITEM_NORMAL)
         self.saveFileAsMenuItem = fileMenu.Append(wx.ID_SAVEAS, self._makeLabel(LABEL_SAVEAS, None, True), EMPTY_STRING, wx.ITEM_NORMAL)
         self.closeFileMenuItem = fileMenu.Append(wx.ID_CLOSE, self._makeLabel(LABEL_CLOSEFILE, "W"), EMPTY_STRING, wx.ITEM_NORMAL)
@@ -75,8 +83,27 @@ class MainFrameMenu(wx.MenuBar):
         
         pvsMenu.AppendSeparator()
         self.typecheckMenuItem = pvsMenu.Append(wx.ID_ANY, LABEL_TYPECHECK, EMPTY_STRING, wx.ITEM_NORMAL)
+        
+        self.pvsDialogMenuItem = pvsMenu.Append(wx.ID_ANY, "PVS Log...", EMPTY_STRING, wx.ITEM_NORMAL)        
         self.Append(pvsMenu, PVS_U)
         
+    def prepareRecentFilesSubMenu(self):
+        try:
+            while True: #TODO: Find out if there is a better way to remove all the items from a menu
+                item = self.recentFilesMenu.FindItemByPosition(0)
+                self.recentFilesMenu.RemoveItem(item)
+        except:
+            pass
+        self._recentFiles = {}
+        preferences = Preferences()
+        recentFiles = preferences.getRecentFiles()
+        logging.debug("Recent Files: %s", recentFiles)
+        frame = util.getMainFrame()
+        for fullname in recentFiles:
+            item = self.recentFilesMenu.Append(wx.ID_ANY, fullname, EMPTY_STRING, wx.ITEM_NORMAL)
+            self._recentFiles[item.GetId()] = fullname
+            frame.Bind(wx.EVT_MENU, self.onRecentFileSelected, item)
+            
     def prepareRecentContextsSubMenu(self):
         try:
             while True: #TODO: Find out if there is a better way to remove all the items from a menu
@@ -97,6 +124,12 @@ class MainFrameMenu(wx.MenuBar):
     def onRecentContextSelected(self, event):
         context = self._recentContexts[event.GetId()]
         PVSCommandManager().changeContext(context)
+        
+    def onRecentFileSelected(self, event):
+        fullname = self._recentFiles[event.GetId()]
+        pub.sendMessage(PUB_ADDFILE, fullname=fullname)
+        Preferences().removeFromRecentFiles(fullname)
+        self.prepareRecentFilesSubMenu()
         
     def addPluginToViewMenu(self, name, callBackFunction):
         logging.debug("Name: %s", name)
@@ -128,10 +161,9 @@ class MainFrameMenu(wx.MenuBar):
         frame.Bind(wx.EVT_MENU, onPasteText, self.pasteMenuItem)
         frame.Bind(wx.EVT_MENU, onFindText, self.findMenuItem)
         
-        #frame.Bind(wx.EVT_MENU, onToggleViewToolbar, self.toolbar)
-        
         frame.Bind(wx.EVT_MENU, onChangeContext, self.changeContextMenuItem)
         frame.Bind(wx.EVT_MENU, onTypecheck, self.typecheckMenuItem)
+        frame.Bind(wx.EVT_MENU, onShowPVSCommunicationLog, self.pvsDialogMenuItem)
         
     def update(self, parameters):
         if OPENFILES in parameters:

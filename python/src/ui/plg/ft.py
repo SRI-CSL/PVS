@@ -8,8 +8,8 @@ from constants import *
 from wx.lib.pubsub import setupkwargs, pub 
 from ui.plugin import PluginPanel
 import ui.images
-from preference import Preferences
-from remgr import RichEditorManager
+import preference
+import remgr
 
 class FilesTreePlugin(PluginPanel):
     """This class provides an API for the files tree that is inside FilesTreeFrame"""
@@ -41,6 +41,7 @@ class FilesTreePlugin(PluginPanel):
         mainSizer.Add(self.tree, 1, wx.EXPAND, 0)
         self.SetSizer(mainSizer)
         
+        
         imageList = wx.ImageList(16, 16)
         imageList.Add(ui.images.getFolderImage())
         imageList.Add(ui.images.getPVSLogo())
@@ -50,25 +51,25 @@ class FilesTreePlugin(PluginPanel):
         self.tree.AssignImageList(imageList)
         self.imageIndices = {LROOT: -1, LCONTEXT: 0, LFILE: 1, LTHEORY: 2, LFORMULA: 3, LINACTIVECONTEXT: 4}
         self.tree.Bind(wx.EVT_TREE_ITEM_MENU, self.showContextMenu)
-        self.clear()
+        self.clearAll()
         pub.subscribe(self.addFile, PUB_ADDFILE)
-        pub.subscribe(self.clear, PUB_CLOSEALLFILES)
         pub.subscribe(self.removeFile, PUB_CLOSEFILE)
         pub.subscribe(self.onFileSaved, PUB_FILESAVED)
         pub.subscribe(self.addTheoriesToFileTree, PUB_FILETYPECHECKED)
         pub.subscribe(self.pvsContextUpdated, PUB_UPDATEPVSCONTEXT)
+        self.tree.SetDropTarget(PVSFileDropTarget())
         
     def onToolboxButtonClicked(self, event):
         command = self.toolbarButton[event.GetId()]
         command(event)
         event.Skip()
         
-    def clear(self):
+    def clearAll(self):
         self.tree.DeleteAllItems()
         self.tree.AddRoot("", self.imageIndices[LROOT], -1, wx.TreeItemData({KIND: LROOT}))
         
     def pvsContextUpdated(self):
-        newContext = Preferences().getRecentContexts()[0]
+        newContext = preference.Preferences().getRecentContexts()[0]
         item = self.tree.GetFirstChild(self.tree.GetRootItem())[0]
         while item.IsOk():
             data = self.tree.GetItemPyData(item)
@@ -88,7 +89,7 @@ class FilesTreePlugin(PluginPanel):
         """remove a context from the tree"""
         logging.info("Removing context %s", context)
         contextNode = self.getContextNode(context)
-        richEditorManager = RichEditorManager()
+        richEditorManager = remgr.RichEditorManager()
         fullnames = [self.tree.GetItemPyData(fileNode)[FULLNAME] for fileNode in self.getChildren(contextNode)]
         assert len(fullnames) > 0
         if richEditorManager.ensureFilesAreSavedToPoceed(fullnames):
@@ -267,7 +268,7 @@ class FilesTreePlugin(PluginPanel):
     def onCloseFile(self, event):
         """onCloseFile is called when the user selects Close in the context menu"""
         nodeFullname = self.getSelectedNodeData()[FULLNAME]
-        RichEditorManager().handleCloseFileRequest(nodeFullname)
+        remgr.RichEditorManager().handleCloseFileRequest(nodeFullname)
         
     def onTypecheckFile(self, event):
         """onTypecheckFile is called when the user selects Typecheck in the context menu"""
@@ -308,4 +309,18 @@ class FilesTreePlugin(PluginPanel):
             self.tree.SetItemPyData(fileNode, wx.TreeItemData({FULLNAME: fullname, KIND: LFILE}))
             self.tree.SetItemText(fileNode, util.getFilenameFromFullPath(fullname))
             
+
+class PVSFileDropTarget(wx.FileDropTarget):
+    def __init__(self):
+        wx.FileDropTarget.__init__(self)
+
+    def OnDropFiles(self, x, y, fullnames):
+        logging.debug("These files were dropped: %s", fullnames)
+        pref = preference.Preferences()
+        for fullname in fullnames:
+            fileExtension = os.path.splitext(fullname)[1]
+            if fileExtension == PVS_EXTENSION:
+                util.openFile(fullname)
+
+
                                     

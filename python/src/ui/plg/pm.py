@@ -16,6 +16,7 @@ class ProofManagerPlugin(PluginPanel):
     def __init__(self, parent, definition):
         PluginPanel.__init__(self, parent, definition)
         self.actionLabel = wx.StaticText(self, wx.ID_ANY, "Action: ")
+        self.actionLabel.Wrap(100)
         self.numberOfSubgoalsLabel = wx.StaticText(self, wx.ID_ANY, "Number of Subgoals: 0")
         self.labelLabel = wx.StaticText(self, wx.ID_ANY, "Label: ")
         self.resultLabel = wx.StaticText(self, wx.ID_ANY, "Result: ")
@@ -25,6 +26,7 @@ class ProofManagerPlugin(PluginPanel):
         self.sequent = None
         self.initializeCommandList()
         self.history = []
+        self.historyBox.SetSelection(0)
 
         sizer_1 = wx.BoxSizer(wx.VERTICAL)
         toolbar = wx.ToolBar(self, wx.ID_ANY, style=wx.TB_HORIZONTAL) # | wx.NO_BORDER)
@@ -33,8 +35,9 @@ class ProofManagerPlugin(PluginPanel):
         toolbar.AddControl(lb)
         
         undoButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('undo.gif'), shortHelpString="Undo the last command")
+        postponeButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('rightarrow.png'), shortHelpString="Postpone the current subgoal")
+        toolbar.AddSeparator()
         quitButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('quit.png'), shortHelpString="Quit the prover")
-        
         sizer_1.Add(toolbar)
         
         sizer_1.Add(self.actionLabel, 0, wx.ALL | wx.EXPAND, 5)
@@ -48,7 +51,6 @@ class ProofManagerPlugin(PluginPanel):
         sizer_1.Add(sizer_2, 0, wx.ALL | wx.EXPAND, 5)        
         sizer_1.Add(self.commandTextControl, 1, wx.ALL | wx.EXPAND, 5)
         self.SetSizer(sizer_1)
-        self.Layout()
         
         toolbar.Realize()
 
@@ -57,14 +59,22 @@ class ProofManagerPlugin(PluginPanel):
         lb.Bind(wx.EVT_COMBOBOX, self.OnSelectCommand)
         self.historyBox.Bind(wx.EVT_COMBOBOX, self.OnSelectHistory)
         self.Bind(wx.EVT_TOOL, self.OnUndoLastCommand, undoButton)
+        self.Bind(wx.EVT_TOOL, self.OnPostponeCommand, postponeButton)
         self.Bind(wx.EVT_TOOL, self.OnQuitProver, quitButton)
         pub.subscribe(self.proofInformationReceived, constants.PUB_PROOFINFORMATIONRECEIVED)
+        self.Layout()
+
 
     def initializeCommandList(self):
         self.commandList = config.PVSIDEConfiguration().proverCommands.keys()
+        self.commandList.sort()
         
     def OnUndoLastCommand(self, event):
         pvscomm.PVSCommandManager().proofCommand("(undo)")
+        event.Skip()
+
+    def OnPostponeCommand(self, event):
+        pvscomm.PVSCommandManager().proofCommand("(postpone)")
         event.Skip()
 
     def OnQuitProver(self, event):
@@ -77,7 +87,7 @@ class ProofManagerPlugin(PluginPanel):
         if selection > 0:
             command = self.historyBox.GetString(selection)
             self.commandTextControl.SetValue(command)
-        elf.historyBox.SetSelection(0)
+        self.historyBox.SetSelection(0)
         event.Skip()
 
     def OnSelectCommand(self, event):
@@ -101,9 +111,10 @@ class ProofManagerPlugin(PluginPanel):
         self.sequent = Sequent(jsequent)
         label = information["label"]
         if action:
-            self.actionLabel.SetLabel("Action: " + action)
+            self.actionLabel.SetLabel("Action: is a great thign to test here for things I may or may not do " + action)
         else:
             self.actionLabel.SetLabel("No Action")
+        self.actionLabel.Wrap(max(50, self.GetSize()[1]-20))        
         if result:
             self.resultLabel.SetLabel("Result: " + result)
         else:
@@ -115,6 +126,7 @@ class ProofManagerPlugin(PluginPanel):
         self.labelLabel.SetLabel("Label: " + label)
         self.sequentView.SetValue(str(self.sequent))
         self.commandTextControl.SetValue("")
+        self.Layout()
 
     def onCommandEntered(self, event):
         text = self.commandTextControl.GetValue()
@@ -167,7 +179,7 @@ class Sequent:
         labels = [str(i) for i in item[Sequent.LABELS]]
         changed = item[Sequent.CHANGED]
         slabels = ", ".join(labels)
-        slabels = "[%s]"%slabels if changed else "{%s}"%slabels
+        slabels = "{%s}"%slabels if changed else "[%s]"%slabels
         separator = "\n    " if len(labels) > 1 else "  "
         value = slabels + separator + str(formula) + "\n"
         return value   

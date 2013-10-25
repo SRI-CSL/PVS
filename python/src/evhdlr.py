@@ -4,12 +4,13 @@
 import util
 import logging
 from ui.frmgr import FindReplaceManager
-from pvscomm import PVSCommandManager, PVSCommandManager
+from pvscomm import PVSCommandManager, PVSCommandManager, PVSCommunicationLogger
 from constants import *
 import wx
-from remgr import RichEditorManager
+import remgr
+import ui.logdlg
 #import ui.tbmgr
-from preference import Preferences
+import preference
 from pvscomm import PVSCommunicator
 from ui.plugin import PluginManager
 import wx.stc as stc
@@ -19,16 +20,15 @@ from wx.lib.pubsub import setupkwargs, pub
 def onChangeContext(event):
     """called to handle 'change context' request"""
     frame = util.getMainFrame()
-    preferences = Preferences()
+    preferences = preference.Preferences()
     newContext = frame.chooseDirectory("Select a directory", preferences.getRecentContexts()[0])
     if newContext is not None:
-        if RichEditorManager().ensureFilesAreSavedToPoceed(): 
+        if remgr.RichEditorManager().ensureFilesAreSavedToPoceed(): 
             if PVSCommandManager().pvsMode == PVS_MODE_LISP:
                 PVSCommandManager().changeContext(newContext)
-            frame.closeContext()
             preferences.setRecentContext(newContext)
-            frame.menubar.prepareRecentContextsSubMenu()
-            frame.loadContext()
+            pub.sendMessage(PUB_UPDATEPVSCONTEXT)
+            frame.restoreOpenFiles()
             logging.info("New context is set to %s", newContext)
 
 def onCreateNewFile(event):
@@ -42,11 +42,10 @@ def onCreateNewFile(event):
         if not fullname.endswith(PVS_EXTENSION):
             fullname = fullname + PVS_EXTENSION
         logging.info("Creating new file %s", fullname)
-        pub.sendMessage(PUB_ADDFILE, fullname=fullname)
+        util.openFile(fullname)
     else:
         logging.info("Nothing was selected.")
     dialogging.Destroy()
-    pub.sendMessage(PUB_NUMBEROFOPENFILESCHANGED)
 
 def onOpenFile(event):
     """called to handle 'open file' request"""
@@ -57,16 +56,15 @@ def onOpenFile(event):
     if dialog.ShowModal() == wx.ID_OK:
         fullname = dialog.GetPath()
         logging.info("Opening file %s", fullname)
-        pub.sendMessage(PUB_ADDFILE, fullname=fullname)
+        util.openFile(fullname)
     else:
         logging.info("Nothing was selected.")
     dialog.Destroy()
-    pub.sendMessage(PUB_NUMBEROFOPENFILESCHANGED)
 
 def onCloseFile(event):
     """close an open file"""
     logging.debug("Starting")
-    richEditor = RichEditorManager().getFocusedRichEditor()
+    richEditor = remgr.RichEditorManager().getFocusedRichEditor()
     if richEditor is not None:
         canClose = True
         if richEditor.styledText.GetModify():
@@ -76,15 +74,15 @@ def onCloseFile(event):
             elif choice == wx.ID_CANCEL:
                 canClose = False
         if canClose:
-            pub.sendMessage(PUB_CLOSEFILE, fullname=richEditor.getFilename())
-            pub.sendMessage(PUB_NUMBEROFOPENFILESCHANGED)
+            fullname = richEditor.getFilename()
+            util.closeFile(fullname)
     else:
         logging.warn("No rich editor is open")
 
 def onSaveFile(event):
     """save the active file (an active file is one whose tab is visible)"""
     logging.debug("Starting")
-    richEditor = RichEditorManager().getFocusedRichEditor()
+    richEditor = remgr.RichEditorManager().getFocusedRichEditor()
     if richEditor is not None:
         richEditor.saveFile()
         
@@ -99,7 +97,7 @@ def onSaveAsFile(event):
         if not fullname.endswith(PVS_EXTENSION):
             fullname = fullname + PVS_EXTENSION
         logging.info("Saving file as %s", fullname)
-        richEditor = RichEditorManager().getFocusedRichEditor()
+        richEditor = remgr.RichEditorManager().getFocusedRichEditor()
         if richEditor is not None:
             richEditor.saveFile(fullname)
     else:
@@ -110,7 +108,7 @@ def onSaveAsFile(event):
 def onSaveAllFiles(event):
     """save all the open files"""
     logging.debug("Starting")
-    RichEditorManager().saveAllFiles()
+    remgr.RichEditorManager().saveAllFiles()
     
 def onQuitFrame(event):
     """called to handle 'quit application' request"""
@@ -159,11 +157,11 @@ def onFindText(event):
     logging.debug("Starting")
     #TODO: Fix Find/Replace in a good manner.
     focus = util.getMainFrame().FindFocus()
-    #page = RichEditorManager().getFocusedRichEditor()
+    #page = remgr.RichEditorManager().getFocusedRichEditor()
     if focus is not None and (isinstance(focus, wx.TextCtrl) or isinstance(focus, stc.StyledTextCtrl)):
         pass
     else:
-        focus = RichEditorManager().getFocusedRichEditor()
+        focus = remgr.RichEditorManager().getFocusedRichEditor()
         if focus is not None:
             focus = focus.styledText
     if focus is not None:
@@ -175,32 +173,19 @@ def onFindText(event):
 def toggleTool(name):
     PluginManager().toggleTool(name)
 
-def onToggleViewToolbar(event):
-    """called to handle 'toggle viewing the toolbar' request"""
-    logging.debug("Starting")
-    preferences = Preferences()
-    visibile = preferences.getVisibleToolbar()
-    #TODO: fix this. toolbar is no longer in 
-    frame = util.getMainFrame()
-    if visibile:
-        toolbarHeight = frame.toolbar.GetSize()[1]
-        frameSize = frame.GetSize()
-        newFrameSize = (frameSize[0], frameSize[1] + toolbarHeight)
-        frame.SetSize(newFrameSize)
-        frame.toolbar.Hide()
-    else:
-        frame.toolbar.Show()        
-        toolbarHeight = frame.toolbar.GetSize()[1]
-        frameSize = frame.GetSize()
-        newFrameSize = (frameSize[0], frameSize[1] - toolbarHeight)
-        frame.SetSize(newFrameSize)
-    preferences.setVisibleToolbar(not visibile)
-    #event.Skip()
 
 def onTypecheck(event):
     """called to handle 'typecheck' request"""
     logging.debug("Starting")
-    fullname = RichEditorManager().getFocusedRichEditor().getFilename()
+    fullname = remgr.RichEditorManager().getFocusedRichEditor().getFilename()
     PVSCommandManager().typecheck(fullname)
     #event.Skip()
+
+def onShowPVSCommunicationLog(event):
+    """called to handle 'pvs communication logs' request"""
+    logging.debug("Starting")
+    logList = PVSCommunicationLogger().logList
+    dlg = ui.logdlg.PVSCommunicationLogDialog(util.getMainFrame(), logList)
+    dlg.ShowModal()
+
 

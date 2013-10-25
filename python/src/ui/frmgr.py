@@ -4,7 +4,7 @@
 import re
 import wx
 from constants import EMPTY_STRING
-from remgr import RichEditorManager
+import remgr
 import util
 import logging
 
@@ -57,7 +57,7 @@ class FindReplaceManager:
         frame = util.getMainFrame()
         _find = self.data.GetFindString()
         logging.info("Find Next %s", _find)
-        page = RichEditorManager().getFocusedRichEditor()
+        page = remgr.RichEditorManager().getFocusedRichEditor()
         nextOne = self.findPositionOfNext(_find)
         if nextOne is not None:
             page.styledText.SetSelection(nextOne, nextOne + len(_find))
@@ -69,7 +69,7 @@ class FindReplaceManager:
         _find = self.data.GetFindString()
         _replace = self.data.GetReplaceString()
         logging.info("Replace Next %s", _find)
-        page = RichEditorManager().getFocusedRichEditor()
+        page = remgr.RichEditorManager().getFocusedRichEditor()
         nextOne = self.findPositionOfNext(_find)
         if nextOne is not None:
             page.styledText.SetSelection(nextOne, nextOne + len(_find))
@@ -82,7 +82,7 @@ class FindReplaceManager:
         _find = self.data.GetFindString()
         _replace = self.data.GetReplaceString()
         logging.info("Replace All %s", _find)
-        page = RichEditorManager().getFocusedRichEditor()
+        page = remgr.RichEditorManager().getFocusedRichEditor()
         nextOne = self.findPositionOfNext(_find)
         while nextOne is not None:
             page.styledText.SetSelection(nextOne, nextOne + len(_find))
@@ -93,7 +93,7 @@ class FindReplaceManager:
         self.readFlags()
         logging.info("Going Down: %s, Whole Word: %s, Match Case: %s", self.goingDown, self.wholeWord, self.matchCase)
         flags = re.UNICODE if self.matchCase else re.IGNORECASE | re.UNICODE
-        page = RichEditorManager().getFocusedRichEditor()
+        page = remgr.RichEditorManager().getFocusedRichEditor()
         selection = page.styledText.GetSelection()
         logging.info("Selection Position: %s", selection)
         cursor = page.styledText.GetCurrentPos()

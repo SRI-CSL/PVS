@@ -17,16 +17,33 @@ import httplib
 import exceptions
 import xmlrpclib
 import threading
-from preference import Preferences
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 from urlparse import urlparse
 import constants
+import time
 import util
 import wx
 import logging
 import os.path
 from wx.lib.pubsub import setupkwargs, pub 
+
+class PVSCommunicationLogger:
+    __shared_state = {}
+    
+    def __init__(self):
+        self.__dict__ = self.__shared_state
+        if not "logList" in self.__dict__:
+            self.clear()
+
+    def log(self, message):
+        #message = "%d %s"%(time.time(), message)
+        self.logList.append(str(message))
+        if len(self.logList) > 1000:
+            del self.logList[0]
+        
+    def clear(self):
+        self.logList = []
 
 # Restrict to a particular path.
 class RequestHandler(SimpleXMLRPCRequestHandler):
@@ -47,6 +64,10 @@ class PVSCommunicator:
     CODE = "code"
     MESSAGE = "message"
     DATA = "data"
+    BEGIN = "begin"
+    END = "end"
+    THEORY = "theory"
+    SILENT = "silent"
     
     
     __shared_state = {}
@@ -61,7 +82,7 @@ class PVSCommunicator:
             cfg = PVSIDEConfiguration()
             self.ideURL = cfg.ideURL
             self.pvsURL = cfg.pvsURL
-            
+            self.miniLog = []
             
     def start(self):
         parsedURL = urlparse(self.ideURL)
@@ -84,8 +105,10 @@ class PVSCommunicator:
         self.counter += 1
         request = {PVSCommunicator.METHOD: method, PVSCommunicator.PARAMS: params, PVSCommunicator.ID: reqid}
         jRequest = json.dumps(request)
+        PVSCommunicationLogger().log("=> %s"%(jRequest,))
         logging.debug("JSON request: %s", jRequest)
         sResult = self.pvsProxy.pvs.request(jRequest, self.ideURL)
+        PVSCommunicationLogger().log("<= %s"%(sResult,))
         logging.debug("JSON result: %s", sResult)
         result = json.loads(sResult)
         result = self.responseCheck(result)
@@ -107,6 +130,7 @@ class PVSCommunicator:
         logging.debug("Received: %s", jsonString)
         try:
             message = json.loads(jsonString, object_hook=self.requestCheck)
+            PVSCommunicationLogger().log("<= %s"%(message,))
             result = self.processMessage(message)
             logging.debug("Sending Back: %s", result)
             return result
@@ -251,70 +275,105 @@ class PVSCommandManager:
             errMessage =  err.message
             title = "JSON Parse Error"
         elif isinstance(err, util.PVSException):
-            errMessage = err.message
+            data = err.errorObject[PVSCommunicator.DATA]
+            if data is not None:
+                title = err.message
+                errMessage = err.errorObject[PVSCommunicator.DATA]
+            else:
+                errMessage = err.message
+            if PVSCommunicator.BEGIN in err.errorObject:
+                begin = err.errorObject[PVSCommunicator.BEGIN]
+                end = err.errorObject[PVSCommunicator.END] if PVSCommunicator.END in err.errorObject else None
+                pub.sendMessage(constants.PUB_ERRORLOCATION, begin=begin, end=end)
         elif isinstance(err, Exception):
-            errMessage = err.message
+            raise err
+            #errMessage = err.message
         else:
             errMessage = str(err)
         logging.error("Error: %s", errMessage)
         util.getMainFrame().showError(errMessage, title)
 
-    def _sendCommand(self, method, *params):
+    def _sendCommand(self, method, *params, **keywords):
         try:
+            silent = keywords[PVSCommunicator.SILENT] if PVSCommunicator.SILENT in keywords else False
             jsonResult = self.pvsComm.requestPVS(method, *params)
             pvsMode = jsonResult[PVSCommunicator.MODE]
             context = util.normalizePath(jsonResult[PVSCommunicator.CONTEXT])
             if PVSCommunicator.XMLRPCERROR in jsonResult:
-                errorObject = jsonResult[PVSCommunicator.XMLRPCERROR]
-                code = int(errorObject[PVSCommunicator.CODE])
-                message = errorObject[PVSCommunicator.MESSAGE]
-                data = errorObject[PVSCommunicator.DATA] if PVSCommunicator.DATA in errorObject else None
-                raise util.PVSException(message=message, code=code, data=data)
+                errorObj = jsonResult[PVSCommunicator.XMLRPCERROR]
+                errorObject = {}
+                errorObject[PVSCommunicator.CODE] = int(errorObj[PVSCommunicator.CODE])
+                errorObject[PVSCommunicator.MESSAGE] = errorObj[PVSCommunicator.MESSAGE]
+                errorObject[PVSCommunicator.DATA] = errorObj[PVSCommunicator.DATA] if PVSCommunicator.DATA in errorObj else None
+                raise util.PVSException(message=errorObject[PVSCommunicator.MESSAGE], errorObject=errorObject)
             result = jsonResult[PVSCommunicator.JSONRPCRESULT]
             if PVSCommunicator.ERROR in result:
                 errDict = result[PVSCommunicator.ERROR]
-                errorMessage = errDict["message"]
-                errorCode = errDict["code"]
-                errorDataFile = errDict["data"]["error_file"]
-                with open (errorDataFile, "r") as errorFile:
-                    errorData = errorFile.read()
-                errorFile.close()
-                #TODO delete the temp file.
-                raise util.PVSException(message=errorMessage, code=errorCode, data=errorData)
+                errorObject = self._processErrorObject(errDict)
+                raise util.PVSException(message=errorObject[PVSCommunicator.MESSAGE], errorObject=errorObject)
             result = result[PVSCommunicator.RESULT]
             if pvsMode != self.pvsMode:
                 self.pvsMode = pvsMode
                 pub.sendMessage(constants.PUB_UPDATEPVSMODE, pvsMode = pvsMode)   
             if context != self.pvsContext:
                 self.pvsContext = context
-                Preferences().setRecentContext(context)
+                import preference
+                preference.Preferences().setRecentContext(context)
                 logging.debug("New Context is: %s", context)
                 pub.sendMessage(constants.PUB_UPDATEPVSCONTEXT)
             return result
         except Exception as err:
-            self._processError(err)
+            if not silent:
+                self._processError(err)
         return None
+    
+    def _processErrorObject(self, errDict):
+            errorObject = {}
+            errorObject[PVSCommunicator.CODE] = errDict[PVSCommunicator.CODE]
+            errorObject[PVSCommunicator.MESSAGE] = errDict[PVSCommunicator.MESSAGE]
+            data = errDict[PVSCommunicator.DATA]
+            errorDataFile = data["error_file"]
+            with open (errorDataFile, "r") as errorFile:
+                errorData = errorFile.read()
+            errorFile.close()
+            errorObject[PVSCommunicator.DATA] = errorData
+            os.remove(errorDataFile)
+            errorObject[PVSCommunicator.BEGIN] = data[PVSCommunicator.BEGIN]
+            errorObject[PVSCommunicator.THEORY] = data[PVSCommunicator.THEORY]
+            errorObject[PVSCommunicator.END] = data[PVSCommunicator.END] if PVSCommunicator.END in data else None
+            return errorObject
+            
+    def _ensureFilenameIsIknown(self, fullname):
+        if fullname is None:
+            fullname = util.getActiveFileName()
+        if fullname is None:
+            logging.warn("fullname is still None")
+        return fullname
             
     def ping(self):
-        self._sendCommand("+", 1, 2)
+        result = self.lisp("(+ 1 2)", silent=True)
+        if result != "3":
+            pub.sendMessage(constants.PUB_UPDATEPVSMODE, pvsMode = constants.PVS_MODE_OFF)   
+        return result
             
-    def lisp(self, command, *parameters):
-        allItems = [command,] + list(parameters)
-        params = ", ".join([str(p) for p in allItems])
-        form = "(" + params + ")"
-        result = self._sendCommand("lisp", form)
+    def lisp(self, form, silent=False):
+        result = self._sendCommand("lisp", form, silent=silent)
         return result
         
-    def typecheck(self, fullname):
+    def typecheck(self, fullname=None):
+        fullname = self._ensureFilenameIsIknown(fullname)
         name = os.path.basename(fullname)
         name = util.getFilenameFromFullPath(fullname, False)
+        pub.sendMessage(constants.PUB_REMOVEMARKERS)
         result = self._sendCommand("typecheck", name)
         if result is not None:
             pub.sendMessage(constants.PUB_FILETYPECHECKED, fullname=fullname, result=result)
     
-    def parse(self, fullname):
+    def parse(self, fullname=None):
+        fullname = self._ensureFilenameIsIknown(fullname)
         name = os.path.basename(fullname)
         name = os.path.splitext(name)[0] # just get the filename without the extension 
+        pub.sendMessage(constants.PUB_REMOVEMARKERS)
         result = self._sendCommand("parse", name)
         return result
     
@@ -330,6 +389,7 @@ class PVSCommandManager:
         
     def proofCommand(self, command):
         result = self._sendCommand("proof-command", command)
+        assert result is not None
         pub.sendMessage(constants.PUB_PROOFINFORMATIONRECEIVED, information=result)
         return result
         

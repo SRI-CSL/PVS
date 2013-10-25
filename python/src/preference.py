@@ -4,123 +4,75 @@ import os.path, os
 import constants
 import sets
 import logging
-from remgr import RichEditorManager
+import config
+from wx.lib.pubsub import setupkwargs, pub 
 
 class Preferences:
     """This class manages all the user preferences"""
     __shared_state = {}
     
-    GLOBALPREFERENCEFILE = ".pvseditorglobal"
-    CONTEXTPREFERENCEFILE = ".pvseditor"
+    PREFERENCEFILE = ".pvseditor"
     RECENTCONTEXTS = "RecentContexts"
-    PVSLOCATION = "PVSLocation"
-    IGNORE_GLOBALPREFERENCEFILE  = False # if True, load the default global preference
-    IGNORE_CONTEXTPREFERENCEFILE = False # if True, load the default context preference
+    RECENTFILES = "RecentFiles"
+    OPENFILES = "OpenFiles"
+    FRAMESIZE = "FrameSize"
+    IGNORE_PREFERENCEFILE  = False # if True, load the default preference
     NUMBEROFRECENTCONTEXTS = 10
+    NUMBEROFRECENTFILES = 20
     
     def __init__(self):
         self.__dict__ = self.__shared_state
+        if not "preferences" in self.__dict__:
+            self.preferences = {}
+            
+    def clearAllPreferences(self):
+        self.preferences[Preferences.OPENFILES] = sets.Set()
+        self.preferences[Preferences.RECENTCONTEXTS] = []
+        self.preferences[Preferences.RECENTFILES] = []
         
-    def loadPreferences(self):
-        """load both global and context preferences"""
-        filename = self.getGlobalPreferenceFilename()
-        self.globalPreferences = {}
-        self.contextPreferences = {}
-        self.loadGlobalPreferences()
-        #self.loadContextPreferences()
-
-    def loadDefaultGlobalPreferences(self):
+    def getPreferenceFilename(self):
+        """return the full path to the global preference file"""
+        f = os.path.join(util.getHomeDirectory(), Preferences.PREFERENCEFILE)
+        return f
+    
+    def loadDefaultPreferences(self):
         self.setRecentContext(util.getHomeDirectory())
-        self.setPVSLocation(os.path.join(util.getHomeDirectory(), constants.PVS_L))
-        self.contextPreferences[constants.OPENFILES] = []
-        self.setVisibleToolbar(True)
-
-    def loadDefaultContextPreferences(self):
-        self.contextPreferences[constants.OPENFILES] = []
-
+        
     def getValue(self, key, default=None):
-        if key in self.contextPreferences:
-            logging.info("'%s' was found in context preference. Value: %s", key, self.contextPreferences[key])
-            return self.contextPreferences[key]
-        elif key in self.globalPreferences:
-            logging.info("'%s' was found in global preference. Value: %s", key, self.globalPreferences[key])
-            return self.globalPreferences[key]
-        logging.info("'%s' was not found in either preferences", key)
+        if key in self.preferences:
+            logging.info("'%s' was found in preference. Value: %s", key, self.preferences[key])
+            return self.preferences[key]
+        logging.info("'%s' was not found in preferences", key)
         return default
         
-    def getGlobalPreferenceFilename(self):
-        """return the full path to the global preference file"""
-        f = os.path.join(util.getHomeDirectory(), Preferences.GLOBALPREFERENCEFILE)
-        return f
-    
-    def getContextPreferenceFilename(self):
-        """return the full path to the context preference file"""
-        f = os.path.join(self.getRecentContexts()[0], Preferences.CONTEXTPREFERENCEFILE)
-        return f
-    
-    def loadGlobalPreferences(self):
-        if Preferences.IGNORE_GLOBALPREFERENCEFILE:
+    def loadPreferences(self):
+        self.clearAllPreferences()
+        if Preferences.IGNORE_PREFERENCEFILE:
             loadDefault = True
         else:
             loadDefault = False
             try:
-                filename = self.getGlobalPreferenceFilename()
+                filename = self.getPreferenceFilename()
                 output = open(filename, 'r')
-                self.globalPreferences = pickle.load(output)
-                logging.info("Loaded global preferences: %s", self.globalPreferences)
+                self.preferences = pickle.load(output)
+                logging.info("Loaded preferences: %s", self.preferences)
                 output.close()
-            except:
-                logging.error("Error loading the global preference file...")
+            except e:
+                logging.error("Error loading the preference file...")
                 loadDefault = True
         if loadDefault:
-            logging.info(" Loading the default global preference...")
-            self.loadDefaultGlobalPreferences()
+            logging.info(" Loading the default preference...")
+            self.loadDefaultPreferences()
 
-    def saveGlobalPreferences(self):
-        filename = self.getGlobalPreferenceFilename()
+    def savePreferences(self):
+        filename = self.getPreferenceFilename()
         if os.path.exists(filename):
             output = file(filename, "r+")
         else:
             output = file(filename, "w")
-        pickle.dump(self.globalPreferences, output)
-        logging.info("Saved global preferences: %s", self.globalPreferences)
+        pickle.dump(self.preferences, output)
+        logging.info("Saved preferences: %s", self.preferences)
         output.close()
-    
-    def loadContextPreferences(self):
-        if Preferences.IGNORE_CONTEXTPREFERENCEFILE:
-            loadDefault = True
-        else:
-            loadDefault = False
-            try:
-                filename = self.getContextPreferenceFilename()
-                output = open(filename, 'r')
-                self.contextPreferences = pickle.load(output)
-                logging.info("Loaded context preferences: %s", self.contextPreferences)
-                output.close()
-            except:
-                logging.error("Error loading the context preference file.")
-                loadDefault = True
-        if loadDefault:
-            logging.info(" Loading the default context preference...")
-            self.loadDefaultContextPreferences()
-        
-
-    def saveContextPreferences(self):
-        filename = self.getContextPreferenceFilename()
-        output = open(filename, 'wt+')
-        self.contextPreferences[constants.OPENFILES] = RichEditorManager().getOpenFileNames()
-        pickle.dump(self.contextPreferences, output)
-        logging.info("Saved context preferences: %s", self.contextPreferences)
-        output.close()
-    
-    # Global Settings:
-    
-    def getPVSLocation(self):
-        """return the path to the pvs directory"""
-        return self.getValue(Preferences.PVSLOCATION, util.getHomeDirectory())
-    
-    def setPVSLocation(self, location):
-        self.globalPreferences[Preferences.PVSLOCATION] = util.normalizePath(location)
     
     def getRecentContexts(self):
         """return the last active context"""
@@ -140,18 +92,41 @@ class Preferences:
         recent.insert(0, newContext)
         if len(recent) > Preferences.NUMBEROFRECENTCONTEXTS:
             recent.pop()
-        self.globalPreferences[Preferences.RECENTCONTEXTS] = recent
-        self.loadContextPreferences()
-            
-    def getVisibleToolbar(self):
-        """return true only if the toolbar is to be visible"""
-        return self.getValue(constants.TOOLBAR, True)
-    
-    def setVisibleToolbar(self, value):
-        """set the visibility of the toolbar"""
-        self.globalPreferences[constants.TOOLBAR] = value
+        self.preferences[Preferences.RECENTCONTEXTS] = recent
         
-    # Local Settings with respect to a context:
-
+    def getRecentFiles(self):
+        """return the recently opened files"""
+        fullnames = self.getValue(Preferences.RECENTFILES, [])
+        return fullnames
+    
+    def setRecentFile(self, fullname):
+        self.removeFromRecentFiles(fullname)
+        fullname = util.normalizePath(fullname)
+        recent = self.getRecentFiles()
+        recent.insert(0, fullname)
+        if len(recent) > Preferences.NUMBEROFRECENTFILES:
+            recent.pop()
+        self.preferences[Preferences.RECENTFILES] = recent
+        
+    def removeFromRecentFiles(self, fullname):
+        if Preferences.RECENTFILES in self.preferences:
+            fullname = util.normalizePath(fullname)
+            if fullname in self.preferences[Preferences.RECENTFILES]:
+                self.preferences[Preferences.RECENTFILES].remove(fullname)
+        
     def listOfOpenFiles(self):
-        return self.getValue(constants.OPENFILES, [])
+        return self.getValue(Preferences.OPENFILES, [])
+    
+    def setListOfOpenFiles(self, fullnames):
+        self.preferences[Preferences.OPENFILES] = sets.Set(fullnames)
+        
+    def getLastFrameSize(self):
+        return self.getValue(Preferences.FRAMESIZE, config.PVSIDEConfiguration().ideSize)
+    
+    def setLastFrameSize(self, ideSize):
+        self.preferences[Preferences.FRAMESIZE] = ideSize
+    
+    
+        
+
+    

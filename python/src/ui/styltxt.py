@@ -3,6 +3,7 @@ import wx
 import wx.stc as stc
 import logging
 from constants import PVS_KEYWORDS, PVS_OPERATORS
+import ui.images
 
 faces = {'default_color': '000000',
          'keyword_color': '0000FF',
@@ -44,11 +45,13 @@ class PVSStyledText(stc.StyledTextCtrl):
     def __init__(self, parent):
         stc.StyledTextCtrl.__init__(self, parent, wx.ID_ANY, pos=wx.DefaultPosition, size=wx.DefaultSize, style=wx.TE_MULTILINE | wx.HSCROLL | wx.TE_RICH | wx.TE_RICH2)
         self.SetMarginType(0, stc.STC_MARGIN_NUMBER)
-        self.SetMarginWidth(0, 22)
+        self.SetMarginWidth(0, 30)
         self.StyleSetSpec(stc.STC_STYLE_LINENUMBER, "size:%d,face:%s" % (faces['size'], faces['mono']))
         self.SetMarginType(1, stc.STC_MARGIN_SYMBOL)
         self.MarkerDefine(0, stc.STC_MARK_ROUNDRECT, "#CCFF00", "RED")
-        self.MarkerDefine(1, stc.STC_MARK_CIRCLE, "FOREST GREEN", "SIENNA")
+        #self.MarkerDefineBitmap(1, ui.images.getBitmap("debug.png"))
+        self.MarkerDefine(1, stc.STC_MARK_CIRCLE, "RED", "RED")
+        #self.MarkerDefine(1, stc.STC_MARK_CIRCLE, "FOREST GREEN", "SIENNA")
         self.MarkerDefine(2, stc.STC_MARK_SHORTARROW, "blue", "blue")
         self.MarkerDefine(3, stc.STC_MARK_ARROW, "#00FF00", "#00FF00")
         self.SetStyleBits(7)
