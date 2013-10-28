@@ -1055,6 +1055,13 @@
   (declare (ignore obj))
   nil)
 
+(defun id-place-list (name)
+  (let ((place (place name)))
+    (list (svref place 0)
+	  (svref place 1)
+	  (svref place 0)
+	  (+ (svref place 1) (length (string (id name)))))))
+
 (defun merge-places (place1 place2)
   (if (and place1 place2)
       (vector (min (starting-row place1) (starting-row place2))
