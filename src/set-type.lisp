@@ -5093,9 +5093,13 @@ required a context.")
 				   (let ((exp (cdr (assq fm alist))))
 				     (if exp
 					 (mk-actual exp)
-					 (break))))
-			 (decl-formals decl))))))
-    (make-resolution decl (lcopy mi :dactuals dacts) type)))
+					 (break "Shouldn't happen"))))
+			 (decl-formals decl)))))
+	 (dmi (if dacts
+		  (change-class (copy mi) 'declparam-modname
+		    :dactuals dacts :declaration decl)
+		  (lcopy mi :dactuals dacts))))
+    (make-resolution decl dmi type)))
 
 (defun push-tcc-conditions (conditions tcc-conditions)
   (if (null conditions)
