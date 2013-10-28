@@ -431,3 +431,74 @@
 ;;   (purecopy
 ;;    (list
 ;;     (cons 'pvs-lisp-font-lock-matcher 'font-lock-warning-face))))
+
+(require 'json)
+(require 'button)
+(require 'ring)
+
+(define-button-type 'pvs-decl
+    'action 'pvs-decl-button-action
+    'face 'default)
+
+(defun pvs-decl-button-action (button)
+  (pvs-goto-file-location
+   (button-get button 'decl-file)
+   (button-get button 'decl-place)))
+
+(defvar pvs-place-ring (make-ring 200))
+
+(defun pvs-goto-file-location (file place)
+  (setq yyy (cons file place))
+  (let ((elt (cons (buffer-file-name) (point))))
+    (unless (and (not (ring-empty-p pvs-place-ring))
+		 (equal elt (ring-ref pvs-place-ring 0)))
+      (ring-insert pvs-place-ring elt))
+    (setq yyy elt)
+    (find-file file)
+    (let ((row (elt place 0))
+	  (col (elt place 1)))
+      (goto-line row)
+      (forward-char col))))
+
+(defun pvs-backto-last-location ()
+  (interactive)
+  (let* ((elt (ring-remove pvs-place-ring))
+	 (file (car elt))
+	 (point (cdr elt)))
+    (find-file file)
+    (goto-char point)))
+
+(defun pvs-add-tooltips (fname)
+  (interactive (list (current-pvs-file)))
+  (let* ((dlist-json
+	  (pvs-file-send-and-wait (format "(collect-pvs-file-decls-info \"%s\")"
+				      fname)
+				  nil 'get-decls 'string))
+	 (dlist (json-read-from-string dlist-json)))
+    (with-silent-modifications
+      (dotimes (i (length dlist))
+	(let* ((delt (elt dlist i))
+	       (region (place-to-region (cdr (assq 'place delt))))
+	       (msg (cdr (assq 'decl delt)))
+	       (decl-file (cdr (assq 'decl-file delt)))
+	       (decl-place (cdr (assq 'decl-place delt))))
+	  (add-text-properties
+	   (car region) (cdr region)
+	   `(mouse-face highlight help-echo ,msg))
+	  (make-text-button
+	   (car region) (cdr region)
+	   'type 'pvs-decl 'decl-file decl-file 'decl-place decl-place))))))
+
+(defun place-to-region (place)
+  (let ((srow (elt place 0))
+	(scol (elt place 1))
+	(erow (elt place 2))
+	(ecol (elt place 3)))
+    (cons (row-col-to-point srow scol)
+	  (row-col-to-point erow ecol))))
+
+(defun row-col-to-point (row col)
+  (save-excursion
+    (goto-line row)
+    (forward-char col)
+    (point)))
