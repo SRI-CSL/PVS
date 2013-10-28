@@ -122,6 +122,7 @@
 (defcl field-application (expr)
   (id :restore-as nil)
   actuals
+  dactuals
   argument)
 
 (defcl fieldappl (field-application))
@@ -138,6 +139,7 @@
 (defcl projection-application (expr)
   (id :restore-as nil)
   actuals
+  dactuals
   (index :type fixnum :restore-as nil)
   argument)
 
@@ -158,6 +160,7 @@
 (defcl injection-application (expr)
   (id :restore-as nil)
   actuals
+  dactuals
   (index :type fixnum :restore-as nil)
   argument)
 
@@ -167,12 +170,14 @@
 (defcl injection?-application (expr)
   (id :restore-as nil)
   actuals
+  dactuals
   (index :type fixnum :restore-as nil)
   argument)
 
 (defcl extraction-application (expr)
   (id :restore-as nil)
   actuals
+  dactuals
   (index :type fixnum :restore-as nil)
   argument)
 
@@ -391,7 +396,8 @@
 ;; After typechecking, a fieldex is converted to a fieldex-lambda-expr, to
 ;; minimize the effect of adding the fieldex class.
 (defcl fieldex-lambda-expr (lambda-expr)
-  actuals)
+  actuals
+  dactuals)
 
 (defcl funtype-conversion (lambda-expr)
   domain-conversion
