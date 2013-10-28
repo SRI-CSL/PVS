@@ -1684,13 +1684,16 @@
 	 (if (and fbindings (every #'cdr fbindings))
 	     (let* ((dbindings (member (car (decl-formals decl)) (car bindings)
 				       :key #'car))
-		    (mbindings (ldiff (car bindings) dbindings)))
-	       (cons (copy modinst
-		       'actuals (mapcar #'(lambda (a)
-					    (mk-res-actual (cdr a) modinst))
-				  mbindings)
-		       'dactuals (mapcar #'(lambda (a) (mk-actual (cdr a)))
-				   dbindings))
+		    (mbindings (ldiff (car bindings) dbindings))
+		    (acts (mapcar #'(lambda (a) (mk-res-actual (cdr a) modinst))
+			    mbindings))
+		    (dacts (mapcar #'(lambda (a) (mk-actual (cdr a)))
+			     dbindings)))
+	       (cons (if dacts
+			 (mk-modname (id modinst)
+			   acts (library modinst) (mappings modinst)
+			   dacts decl)
+			 (copy modinst 'actuals acts))
 		     result))
 	     (cons (copy modinst) result))))))
 
