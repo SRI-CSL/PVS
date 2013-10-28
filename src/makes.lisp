@@ -900,13 +900,22 @@
 	:arguments arguments
 	:expression expression)))
 
-(defun mk-modname (id &optional actuals library mappings dactuals)
-  (make-instance 'modname
-    :id id
-    :actuals actuals
-    :dactuals dactuals
-    :library library
-    :mappings mappings))
+(defun mk-modname (id &optional actuals library mappings dactuals decl)
+  (assert (or (null dactuals) decl))
+  (if decl
+      (make-instance 'declparam-modname
+	:id id
+	:declaration decl
+	:actuals actuals
+	:dactuals dactuals
+	:library library
+	:mappings mappings)
+      (make-instance 'modname
+	:id id
+	:actuals actuals
+	:dactuals dactuals
+	:library library
+	:mappings mappings)))
 
 (defun mk-modname-no-tccs (id &optional actuals library mappings)
   (make-instance 'modname-no-tccs
