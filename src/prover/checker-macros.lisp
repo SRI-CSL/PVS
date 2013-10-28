@@ -37,18 +37,30 @@
 ;
 (defvar *prover-keywords* nil)
 
+(defun keyword-arg-symbol (keyword-arg &optional (pkg :keyword))
+  (intern (string (if (consp keyword-arg)
+		      (car keyword-arg)
+		      keyword-arg))
+	  pkg))
+
 (defun make-prover-keywords (formals &optional result)
   (if (null formals)
       (nreverse result)
       (let* ((formal (car formals))
-	     (nresult (if (memq formal '(&optional &rest))
+	     (nresult (if (memq formal '(&optional &key &rest))
 			  result
-		          (cons (intern (string (if (consp formal)
-						    (car formal)
-						    formal))
-					'keyword)
-				result))))
+		          (cons (keyword-arg-symbol formal) result))))
 	(make-prover-keywords (cdr formals) nresult))))
+
+(defun update-prover-keywords (name formals)
+  (assert (not (memq '&inherit formals)) ()
+	  "&inherit args should have been expanded")
+  (let ((old (assoc name *prover-keywords*))
+	(has-rest? (when (memq '&rest formals) t)))
+    (if old
+	(setf (cdr old) (cons has-rest? (make-prover-keywords formals)))
+	(push (cons name (cons has-rest? (make-prover-keywords formals)))
+	      *prover-keywords*))))
 
 (defvar *skovar-counter* (let ((x 0)) #'(lambda ()  (incf x))))
 (defvar *skofun-counter* (let ((x 0)) #'(lambda ()  (incf x))))
