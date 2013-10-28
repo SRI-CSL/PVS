@@ -184,6 +184,7 @@ it is nil in the substituted binding")
       (cond ((null binding)
 	     (let* ((res (substit* resolutions alist))
 		    (ntype (type (car res))))
+	       (assert (tc-eq ntype (substit* type alist)))
 	       (lcopy expr
 		 'type ntype
 		 'actuals (substit* actuals alist)
@@ -289,10 +290,8 @@ it is nil in the substituted binding")
 
 (defmethod substit* ((expr resolution) alist)
   (let ((new-modinst (substit* (module-instance expr) alist)))
-    (if (eq new-modinst (module-instance expr))
-	expr
-	(mk-resolution (declaration expr) new-modinst
-		       (substit* (type expr) alist)))))
+    (mk-resolution (declaration expr) new-modinst
+		   (substit* (type expr) alist))))
 
 (defmethod substit* ((expr modname) alist)
   (lcopy expr 'actuals (substit* (actuals expr) alist)))
@@ -830,8 +829,9 @@ it is nil in the substituted binding")
     nexpr))
 
 (defmethod substit* ((texpr expr-as-type) alist)
-  (lcopy texpr
-    'expr (beta-reduce (substit* (expr texpr) alist))))
+  (let* ((sexpr (substit* (expr texpr) alist))
+	 (bexpr (beta-reduce sexpr)))
+    (lcopy texpr :expr bexpr)))
 
 (defmethod substit* ((texpr datatype-subtype) alist)
   (lcopy (call-next-method)
