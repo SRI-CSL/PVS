@@ -183,32 +183,42 @@
       (let ((id1 (id expr))
 	    (id2 (id instance))
 	    (act1 (actuals expr))
-	    (act2 (actuals instance)))
+	    (act2 (actuals instance))
+	    (dact1 (dactuals expr))
+	    (dact2 (dactuals instance)))
 	(if (eq id1 id2)
-	    (if act1 
-		(match* act1 act2 bind-alist subst)
-		(if act2 
-		    (let ((formals (formals theory)))
-		      (if formals
-			  (let ((*tc-match-exact* t))
-			    (multiple-value-bind (newmodsubst strict-matches)
-				(and (consp *modsubst*)
-				     (or (tc-match-acts
-					  act2 formals  (copy-tree *modsubst*))
-					 (tc-match-acts
-					  act2 formals
-					  (mapcar #'(lambda (s) (list (car s)))
-					    *modsubst*))))
-			      (cond (newmodsubst
-				     (setq *strict-matches*
-					   (union strict-matches
-						  *strict-matches*))
-				     (setq *modsubst* newmodsubst)
-				     subst)
-				    (t 'fail))))
-			  'fail))
-		    subst))
+	    (let ((asubst (match-actuals act1 act2 bind-alist subst theory)))
+	      (match-actuals dact1 dact2 bind-alist asubst nil))
 	    'fail))))
+
+(defun match-actuals (act1 act2 bind-alist subst theory)
+  (assert (or theory
+	      (and act1 act2)
+	      (and (null act1) (null act2)))
+	  () "modinst was not fully instantiated")
+  (if act1
+      (match* act1 act2 bind-alist subst)
+      (if act2
+	  (let ((formals (formals theory)))
+	    (if formals
+		(let ((*tc-match-exact* t))
+		  (multiple-value-bind (newmodsubst strict-matches)
+		      (and (consp *modsubst*)
+			   (or (tc-match-acts
+				act2 formals (copy-tree *modsubst*))
+			       (tc-match-acts
+				act2 formals
+				(mapcar #'(lambda (s) (list (car s)))
+				  *modsubst*))))
+		    (cond (newmodsubst
+			   (setq *strict-matches*
+				 (union strict-matches
+					*strict-matches*))
+			   (setq *modsubst* newmodsubst)
+			   subst)
+			  (t 'fail))))
+		'fail))
+	  subst)))
 
 
 (defmethod match* ((expr actual)(instance actual) bind-alist subst)
