@@ -115,6 +115,8 @@
   (setq *subst-mod-params-eq-cache* nil))
 
 (defun copy-subst-mod-params-cache ()
+  (unless *all-subst-mod-params-caches*
+    (reset-subst-mod-params-cache))
   (let ((new-hash (make-pvs-hash-table
 		   :strong-eq? t
 		   :size (floor (hash-table-size *all-subst-mod-params-caches*)
@@ -674,29 +676,15 @@
 
 (defmethod subst-mod-params-print-type ((obj type-expr) (nobj type-expr) modinst bindings)
   (assert (typep (print-type obj) '(or null type-name expr-as-type type-application)))
-  (if (print-type obj)
-      (if (free-params (print-type obj))
-      	  (let* ((stype (subst-mod-params* (print-type obj) modinst bindings))
-      		 (pte (or (print-type stype) stype)))
-      	    (if (tc-eq pte nobj)
-      		nobj
-      		(if (eq obj nobj)
-      		    (lcopy nobj :print-type pte)
-      		    (progn (setf (print-type nobj) pte)
-      			   nobj))))
-      	  (if (eq obj nobj)
-      	      nobj
-      	      (lcopy nobj :print-type nil)))
-      ;; (if (or (tc-eq obj nobj)
-      ;; 	      (and (free-params obj)
-      ;; 		   (tc-match nobj obj
-      ;; 			     (mapcar #'list (free-params obj)))))
-      ;; 	  (let* ((stype (subst-mod-params* (print-type obj) modinst bindings))
-      ;; 		 (pte (or (print-type stype) stype)))
-      ;; 	    (if (tc-eq pte nobj)
-      ;; 		nobj
-      ;; 		(lcopy nobj :print-type pte)))
-      ;; 	  (lcopy nobj :print-type nil))
+  (if (and (print-type obj)
+	   (or (null (print-type nobj))
+	       (free-params (print-type nobj)))
+	   (free-params (print-type obj)))
+      (let* ((stype (subst-mod-params* (print-type obj) modinst bindings))
+	     (pte (or (print-type stype) stype)))
+	(if (tc-eq pte nobj)
+	    nobj
+	    (lcopy nobj :print-type pte)))
       nobj))
 
 (defmethod subst-mod-params-print-type (obj nobj modinst bindings)
