@@ -171,7 +171,7 @@
   (rule-format :initform nil))
 
 (defcl defrule-entry ()
-  name formals defn docstring format-string)
+  name source-formals source-defn formals defn docstring format-string)
 
 (defcl defstep-entry (defrule-entry))
 (defcl defhelper-entry (defstep-entry))
