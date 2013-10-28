@@ -1092,21 +1092,21 @@
 		 (t resolutions)))
 	  (pre-alist (make-alist substs))
 	  (badnames (loop for (x . nil) in pre-alist
-			  when (not (typep (pc-parse x 'expr) 'name-expr))
-			  collect x))
+		       when (not (typep (pc-parse x 'expr) 'name-expr))
+		       collect x))
 	  (subalist
 	   (loop for (x . y) in pre-alist
-		 collect (let* ((yex (pc-parse y 'expr))
-				;; Want a copy in case yex has conversions
-				;; applied - faster to just reparse
-				(*in-typechecker* (pc-parse y 'expr)))
-			   (cons x (internal-pc-typecheck yex
-				     :context *current-context*
-				     :uniquely? nil)))))
+	      collect (let* ((yex (pc-parse y 'expr))
+			     ;; Want a copy in case yex has conversions
+			     ;; applied - faster to just reparse
+			     (*in-typechecker* (pc-parse y 'expr)))
+			(cons x (internal-pc-typecheck yex
+				  :context *current-context*
+				  :uniquely? nil)))))
 	  (*conversions-allowed* (loop for (nil . y) in pre-alist
-				       as (nil . yex) in subalist
-				       when (stringp y)
-				       collect yex))
+				    as (nil . yex) in subalist
+				    when (stringp y)
+				    collect yex))
 	  ;;tccs ALL is checked in tc-alist below.
 	  )
      (cond ((not (listp substs))
@@ -1141,19 +1141,19 @@ The following are not possible variables: ~{~a,~}" badnames)
 		     (newalist
 		      (when form
 			(loop for x in
-			      (substitutable-vars form)
-			      when (assoc x nsubalist :test #'same-id)
-			      collect
-			      (cons x
-				    (cdr (assoc x nsubalist
-						:test #'same-id)))))))
+			     (substitutable-vars form)
+			   when (assoc x nsubalist :test #'same-id)
+			   collect
+			     (cons x
+				   (cdr (assoc x nsubalist
+					       :test #'same-id)))))))
 		(when form ;;NSH(10.20.94)(let ((*generate-tccs* 'all)))
 		  (typecheck (module-instance res)
 		    :tccs 'all)
 		  (tc-alist newalist) ;;does tccs all.
 		  )
 		(let ((subfreevars (loop for (nil . y) in newalist
-					 append (freevars y))))	;;was nconc
+				      append (freevars y)))) ;;was nconc
 		  (cond ((null resolutions)
 			 (error-format-if "~%Couldn't find a definition or lemma named ~a" name)
 			 (values 'X nil))
@@ -1179,7 +1179,7 @@ or supply more substitutions."
 			      ;; (intermediate-body (forall-body* form))
 			      (intermediate-form (if (forall? form)
 						     (if  (null remaining-vars)
-							  (expression form)
+							  (forall-body* form)
 							  (make-forall-expr
 							      remaining-vars
 							    (forall-body* form)))
@@ -1204,8 +1204,8 @@ or supply more substitutions."
 			   (when (and (null (actuals name-expr))
 				      (actuals (module-instance res)))
 			     (format t "~%Using instance~%  ~a.~a"
-					(module-instance res)
-					(id (declaration res))))
+			       (module-instance res)
+			       (id (declaration res))))
 			   (values '? (list newsequent)
 					;NSH(4.9.99)
 					;changed d-d to update parent.
