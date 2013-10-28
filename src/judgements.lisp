@@ -139,23 +139,22 @@
 (defmethod judgement-lt ((d1 number-judgement) (d2 number-judgement))
   (and (not (eq d1 d2))
        (not (tc-eq (type d1) (type d2)))
-       (subtype-of? (type d1) (type d2))))
+       (simple-subtype-of? (type d1) (type d2))))
 
 (defmethod judgement-lt ((d1 name-judgement) (d2 name-judgement))
   (and (not (eq d1 d2))
        (not (tc-eq (type d1) (type d2)))
-       (subtype-of? (type d1) (type d2))))
+       (simple-subtype-of? (type d1) (type d2))))
 
 (defmethod judgement-lt ((d1 application-judgement) (d2 application-judgement))
   (and (not (eq d1 d2))
-       (not (tc-eq (judgement-type d1) (judgement-type d2)))
        (judgement-lt (judgement-type d1) (judgement-type d2))))
 
 ;;; Should this take dependent types into account?
 (defmethod judgement-lt ((t1 funtype) (t2 funtype))
   (and (not (tc-eq t1 t2))
-       (subtype-of? (range t1) (range t2))
-       (subtype-of? (domain t1) (domain t2))))
+       (simple-subtype-of? (range t1) (range t2))
+       (simple-subtype-of? (domain t1) (domain t2))))
 
 (defmethod judgement-subsumes ((d1 application-judgement)
 			       (d2 application-judgement))
@@ -163,8 +162,8 @@
 
 ;;; Should this take dependent types into account?
 (defmethod judgement-subsumes ((t1 funtype) (t2 funtype))
-  (and (subtype-of? (range t1) (range t2))
-       (subtype-of? (domain t2) (domain t1))))
+  (and (simple-subtype-of? (range t1) (range t2))
+       (simple-subtype-of? (domain t2) (domain t1))))
 	
 
 ;;; Accessors and update functions for the above
@@ -243,7 +242,7 @@
 	 (entry (assq decl (name-judgements-alist (current-judgements)))))
     (let ((sjdecl (when entry
 		    (find-if #'(lambda (jd)
-				 (subtype-of? (type jd) (type jdecl)))
+				 (simple-subtype-of? (type jd) (type jdecl)))
 		      (minimal-judgements (cdr entry))))))
       (cond (sjdecl
 ;; 	     (pvs-warning
@@ -265,8 +264,8 @@
 				  (cons jdecl
 					(delete-if
 					    #'(lambda (jd)
-						(subtype-of? (type jdecl)
-							     (type jd)))
+						(simple-subtype-of? (type jdecl)
+								    (type jd)))
 					  (minimal-judgements (cdr entry)))))
 				(make-instance 'name-judgements
 				  :minimal-judgements (list jdecl)))
@@ -1366,24 +1365,27 @@
 (defun get-lambda-expr-funtype-for-range (ex range)
   (assert (lambda-expr? ex))
   (assert (type-expr? range))
-  (get-lambda-expr-funtype-for-range* (bindings ex) range))
+  (get-lambda-expr-funtype-for-range* (bindings ex) (bindings ex) range))
 
-(defun get-lambda-expr-funtype-for-range* (bindings range
+(defun get-lambda-expr-funtype-for-range* (obindings sbindings range
 					   &optional (idx 1) substs types)
-  (if (null bindings)
+  (if (null obindings)
       (make-lambda-expr-funtype-for-range range substs types)
-      (let* ((bind (car bindings))
-	     (nsubsts (if (member bind (freevars range) :key #'declaration)
-			  (acons bind idx substs)
+      (let* ((obind (car obindings))
+	     (sbind (car sbindings))
+	     (nsubsts (if (member obind (freevars range) :key #'declaration)
+			  (acons obind idx substs)
 			  substs)))
-	(if (member bind (freevars (cdr bindings)) :key #'declaration)
-	    (let ((db (mk-dep-binding (id bind) (type bind)
-				      (declared-type bind))))
+	(if (member obind (freevars (cdr sbindings)) :key #'declaration)
+	    (let ((db (mk-dep-binding (id sbind) (type sbind)
+				      (declared-type sbind))))
 	      (get-lambda-expr-funtype-for-range*
-	       (substit (cdr bindings) (acons bind db nil))
+	       (cdr obindings)
+	       (substit (cdr sbindings) (acons obind db nil))
 	       range (1+ idx) nsubsts (cons db types)))
 	    (get-lambda-expr-funtype-for-range*
-	     (cdr bindings) range (1+ idx) nsubsts (cons (type bind) types))))))
+	     (cdr obindings) (cdr sbindings) range
+	     (1+ idx) nsubsts (cons (type sbind) types))))))
 
 ;; This should only be called from get-lambda-expr-funtype-for-range*
 ;; If the substs is null, the range type does not depend on any bindings.
@@ -2843,44 +2845,42 @@
 ;;; T.  If it does match, then for each Ti the same substitution is done,
 ;;; and it is checked if this is a subtype-of*? tt2.
 (defun subtype-of-test (tt1 tt2 ksubtypes)
-  (when (and (or (subtype? tt1) (not (subtype? (car ksubtypes))))
-	     (compatible? tt1 (car ksubtypes)))
-    (let* ((frees (when (fully-instantiated? tt1)
-		    (mapcan #'(lambda (x)
-				(unless (eq (module x) (current-theory))
-				  (list (list x))))
-		      (free-params (car ksubtypes)))))
-	   (bindings (when frees (tc-match tt1 (car ksubtypes) frees))))
-      (multiple-value-bind (thinst theory)
-	  (subst-theory-inst-from-free-params bindings)
-	(let ((kt (if frees
-		      (when thinst
-			(subst-mod-params (car ksubtypes) thinst theory))
-		      (car ksubtypes))))
-	  (when kt
-	    (let ((subst (when (freevars kt) (simple-match kt tt1))))
-	      (when (if subst
-			(not (eq subst 'fail))
-			(tc-eq tt1 kt))
-		(flet ((findone (ks)
-			 (let* ((subst2 (when (freevars ks)
-					  (simple-match ks tt2)))
-				(kss (unless (eq subst2 'fail)
-				       (substit ks subst2))))
-			   (when kss
-			     (subtype-of*?
-			      (substit (if thinst
-					   (subst-mod-params ks thinst theory)
-					   kss)
-				subst)
-			      tt2)))))
-		  (some #'findone (cdr ksubtypes)))))))))))
+  (when (compatible? tt1 (car ksubtypes))
+    (let* ((fparams (when (fully-instantiated? tt1)
+		      (free-params (car ksubtypes))))
+	   (theory (when fparams (module (car fparams))))
+	   (frees (unless (or (null fparams)
+			      (eq theory (current-theory)))
+		    (mapcan #'(lambda (x) (list (list x)))
+		      (formals-sans-usings (module (car fparams))))))
+	   (bindings (when frees (tc-match tt1 (car ksubtypes) frees)))
+	   (thinst (subst-theory-inst-from-free-params theory bindings))
+	   (kt (if frees
+		   (when thinst
+		     (subst-mod-params (car ksubtypes) thinst theory))
+		   (car ksubtypes))))
+      (when kt
+	(let ((subst (when (freevars kt) (simple-match kt tt1))))
+	  (when (if subst
+		    (not (eq subst 'fail))
+		    (tc-eq tt1 kt))
+	    (flet ((findone (ks)
+		     (let* ((subst2 (when (freevars ks)
+				      (simple-match ks tt2)))
+			    (kss (unless (eq subst2 'fail)
+				   (substit ks subst2))))
+		       (when kss
+			 (subtype-of*?
+			  (substit (if thinst
+				       (subst-mod-params ks thinst theory)
+				       kss)
+			    subst)
+			  tt2)))))
+	      (some #'findone (cdr ksubtypes)))))))))
 
-(defun subst-theory-inst-from-free-params (bindings)
-  (when (and bindings
-	     (every #'cdr bindings))
-    (let* ((th (module (caar bindings)))
-	   (libid (get-lib-id th))
+(defun subst-theory-inst-from-free-params (th bindings)
+  (when (and bindings (every #'cdr bindings))
+    (let* ((libid (get-lib-id th))
 	   (nbindings (mapcar #'(lambda (elt)
 				  (cons (car elt)
 					(if (actual? (cdr elt))
@@ -2888,14 +2888,7 @@
 					    (mk-actual (cdr elt)))))
 			bindings))
 	   (thinst (mk-modname (id th)
-		     (mapcar #'(lambda (fp)
-				 (or (cdr (assq fp nbindings))
-				     (mk-res-actual
-				      (mk-name-expr (id fp)
-					nil nil
-					(make-resolution fp (mk-modname (id th) nil libid)))
-				      th)))
-		       (formals-sans-usings th))
+		     (mapcar #'cdr nbindings)
 		     libid)))
       (when (fully-instantiated? thinst)
 	(values thinst th)))))
