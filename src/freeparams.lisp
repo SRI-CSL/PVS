@@ -44,15 +44,15 @@
 
 (defun fully-instantiated? (obj)
   (let ((frees (free-params obj)))
+    (declare (type list frees))
     (or (null frees)
-	(let* ((tformals (formals-sans-usings (current-theory)))
-	       (dformals (or *decl-bound-parameters*
-			     (when (current-declaration)
-			       (decl-formals (current-declaration)))))
-	       (formals (if dformals
-			    (append dformals tformals)
-			    tformals)))
-	  (every #'(lambda (fp) (memq fp formals)) frees)))))
+	(let ((tformals (formals-sans-usings (current-theory)))
+	      (dformals (or *decl-bound-parameters*
+			    (when (current-declaration)
+			      (decl-formals (current-declaration))))))
+	  (declare (type list tformals dformals))
+	  (every #'(lambda (fp) (memq fp (append dformals tformals)))
+		 frees)))))
 
 ;;; Theory
 
@@ -359,7 +359,10 @@
 	       (union mfrees (formals-sans-usings theory) :test #'eq))))))
 
 (defmethod free-params* ((map mapping) frees)
-  (let ((mfrees (free-params* (rhs map) nil)))
+  (let* ((rmfrees (free-params* (rhs map) nil))
+	 (mfrees (remove-if #'(lambda (mf)
+				(memq mf (decl-formals (lhs map))))
+		   rmfrees)))
     (union mfrees frees :test #'eq)))
 
 (defmethod free-params* ((map mapping-rhs) frees)
@@ -415,27 +418,30 @@
 (defmethod free-params-res (decl (mi modname) type frees)
   ;(declare (ignore type))
   (with-slots (actuals dactuals) mi
-    (if (or actuals dactuals)
-	(let* ((afrees (free-params-acts actuals mi))
-	       (dafrees (free-params-dacts dactuals))
-	       (tfrees (free-params type))
-	       (ufrees (union dafrees
-			      (union afrees
-				     (union tfrees frees :test #'eq)
-				     :test #'eq)
-			      :test #'eq)))
-	  ;;(assert (every #'(lambda (fp) (memq fp ufrees)) (free-params* type nil)))
-	  ufrees)
-	(let ((theory (if (typep decl '(and recursive-type
-					    (not inline-recursive-type)))
-			  decl
-			  (module decl))))
-	  (when theory
-	    (dolist (x (formals-sans-usings theory))
-	      (setq frees (pushnew x frees :test #'eq))))
-	  (dolist (x (decl-formals decl))
-	    (setq frees (pushnew x frees :test #'eq)))
-	  frees))))
+    (let* ((afrees (if actuals
+		       (free-params-acts actuals mi)
+		       (free-params-from-theory mi decl)))
+	   (dafrees (if dactuals
+			(free-params-dacts dactuals)
+			(free-params-from-decl decl)))
+	   (tfrees (free-params type))
+	   (ufrees (union dafrees
+			  (union afrees
+				 (union tfrees frees :test #'eq)
+				 :test #'eq)
+			  :test #'eq)))
+      ;;(assert (every #'(lambda (fp) (memq fp ufrees)) (free-params* type nil)))
+      ufrees)))
+
+(defun free-params-from-theory (mi decl)
+  (let ((theory (if (typep decl '(and recursive-type
+				  (not inline-recursive-type)))
+		    decl
+		    (module decl))))
+    (formals-sans-usings theory)))
+
+(defun free-params-from-decl (decl)
+  (decl-formals decl))
 
 (defun free-params-acts (actuals mi)
   (if actuals
