@@ -170,31 +170,36 @@
 			   (let* ((module (module (caar modsubst)))
 				  (mod-id (id module))
 				  (formals (formals-sans-usings module))
-				  (alist
-				   (mapcar #'(lambda (fml)
-					       (assoc fml modsubst))
-				     formals)))
-			     (make-instance 'modname
-			       :id mod-id
-			       :library (get-lib-id module)
-			       :actuals (mapcar #'(lambda (x)
-						    (mk-actual (cdr x)))
-					  alist)))))
+				  (dformals (decl-formals (declaration res)))
+				  (alist (mapcar #'(lambda (fml)
+						     (assoc fml modsubst))
+					   formals))
+				  (dalist (mapcar #'(lambda (fml)
+						      (assoc fml modsubst))
+					    dformals)))
+			     (mk-modname mod-id
+			       (mapcar #'(lambda (x) (mk-actual (cdr x))) alist)
+			       (get-lib-id module)
+			       nil
+			       (mapcar #'(lambda (x) (mk-actual (cdr x))) dalist)
+			       (declaration res)))))
 			(newres
 			 (if (eq modsubst t)
 			     res
-			     (subst-mod-params
-				 res modinst
+			     (subst-mod-params res modinst
 			       (when (eq (id modinst)
 					 (id (module (declaration res))))
-				 (module (declaration res))))))
+				 (module (declaration res)))
+			       (declaration res))))
 			(full-name-expr
 			 (copy name-expr
 			   'resolutions (list newres)
-			   'actuals (actuals (module-instance newres)))))
+			   'actuals (actuals (module-instance newres))
+			   'dactuals (dactuals (module-instance newres)))))
 		   (format-if "~%Found matching substitution:")
 		   (loop for (x . y) in subst
 			 do (format-if "~%~a gets ~a," x y))
+		   ;;(assert (fully-instantiated? full-name-expr))
 		   `(rewrite-lemma$ ,full-name-expr
 				    ,(flatten-sub subst)
 				    ,in-sformnums
