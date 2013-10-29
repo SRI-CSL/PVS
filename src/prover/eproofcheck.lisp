@@ -658,15 +658,9 @@
     (cond ((not keylist)
 	   ;; The user may have used a $ form for a rule, remove it and check
 	   ;; so we can give a more informative error message.
-	   (let* ((dolform (string (car pcmd)))
-		  (dolpos (1- (length dolform)))
-		  (rawform (when (and (>= dolpos 0)
-				      (char= (char dolform dolpos) #\$))
-			     (subseq dolform 0 dolpos))))
-	     (if (and rawform
-		      (assq (intern rawform :pvs) *prover-keywords*)
-		      (not (and (> dolpos 0)
-				(char= (char rawform (1- dolpos)) #\$))))
+	   (let ((rawform (rule-rawname (car pcmd))))
+	     (if (and (not (eq rawform (car pcmd)))
+		      (assq rawform *prover-keywords*))
 		 (error-format-if "~%~s is a rule, not a strategy, so does not have a $ form"
 				  rawform)
 		 (error-format-if "~%~s is not a valid prover command" (car pcmd))))
@@ -738,7 +732,6 @@
 ;;rule.  It also won't print out any output.  In replaying a proof, the
 ;;apply-strategies will be replayed but the change-strategies will not.
 ;;
-
   (cond
     ((fresh? proofstate)   ;;new state
      (let ((post-proofstate ;;check if current goal is prop-axiom.
@@ -954,7 +947,7 @@
 (defun strat-eval* (strat ps)
   (let* ((*ps* ps)
 	 (*par-ps* (get-parent-proofstate ps))
-	 (* '*)
+	 ;;(* '*)
 	 (*goal* (current-goal ps))
 	 (*label* (label (current-goal ps)))
 					;	 (*subgoalnum* (subgoalnum ps))
@@ -982,7 +975,7 @@
 	 (error-format-if "~%Ill-formed rule/strategy: ~s " strat)
 	 (get-rule '(skip) *ps*))
 	((quote? strat)(strat-eval (cadr strat)))
-	((if-form? strat) ;;(break "if")
+	((if-form? strat) ;;(break "strat-eval: if")
 	 (if (expr-eval (cadr strat))
 	     (strat-eval (caddr strat))
 	     (strat-eval (cadddr strat))))
@@ -997,21 +990,6 @@
 			(let-body strat)
 			let-value
 			(reverse let-value)))))
-;; 	((eq (car strat) 'note)
-;; 	 ;;if this evaluates to a rule, then the input is noted with
-;; 	 ;;comment string which becomes part of the printout.
-;; 	 (let ((result
-;; 		(strat-eval (cadr strat))))
-;; 	   (break)
-;; 	   (when (typep result 'rule-instance)
-;; 	     (setf (rule-input result) strat
-;; 		   (rule-format result)
-;; 		   (if (cddr strat)
-;; 		       (cons (format nil "~%(~a)~a" (caddr strat)
-;; 				     (car (rule-format result)))
-;; 			     (cdr (rule-format result)))
-;; 		       (rule-format result))))
-;; 	   result))
 	((rule-definition (car strat))
 	 (let* ((def (rule-definition (car strat)))
 		(subalist (pair-formals-args (formals def)
@@ -1019,7 +997,7 @@
 		(args (loop for x in (formals def)
 			    when (not (memq x '(&optional &rest)))
 			    collect
-			    (if (consp x) ;;NHS(4.23.97)
+			    (if (consp x)
 				;;was ignoring args, otherwise.
 				(cdr (assoc (car x) subalist))
 				(cdr (assoc x subalist)))))
@@ -1086,90 +1064,226 @@
   (cond ((null optionals) nil)
 	((and (eq (car optionals) '&rest)
 	      (equal (string key)
-		     (string (optional-name (cadr optionals)))))
+		     (string (prover-keyarg (cadr optionals)))))
 	 (cadr optionals))
-	((equal (string key)(string (optional-name (car optionals))))
+	((equal (string key)(string (prover-keyarg (car optionals))))
 	 (car optionals))
 	(t (check-keyword key (cdr optionals)))))
 
-;;NSH(2.28.95): check-keyword checks if key is a keyword in optionals.
-;;get-keyword gets the value to be paired with the keyword. 
+;;get-keyword-arg returns the keyword-arg pair and the remaining args
+(defun find-keyword-arg-pair (formal args)
+  (let ((akey (member formal args :test #'keyword-formal-arg-match)))
+    (when akey
+      (values (cons (prover-keyarg formal) (cadr akey))
+	      (append (ldiff args akey) (cddr akey))))))
 
-(defun get-keyword-arg (key optionals args)
-  (cond ((null optionals) nil)
-	((and (eq (car optionals) '&rest)
-	      (consp (cdr optionals))
-	      (equal (string key)
-		     (string (optional-name (cadr optionals)))))
-	 (when (consp args)
-	   (if (listp (car args))
-	       (cons (optional-name (cadr optionals)) (car args))
-	       (cons (optional-name (cadr optionals))
-		     (list (car args))))))
-	((equal (string key)(string (optional-name (car optionals))))
-	 (if (consp args)
-	     (cons (optional-name (car optionals))(car args))
-	     (cons (optional-name (car optionals))
-		   (default (car optionals)))))
-	(t (get-keyword-arg key (cdr optionals) args))))
 	 
+;;; Given a list of formals of the form (a &optional (b b1) &key (c c1) &rest d)
+;;; and a list of arguments of the form (x1 x2 ... xn)
+;;; returns an alist of the form ((a . x1) (b . X) (c . Y) (d . Z))
+;;; It does this by walking down the formals.
+;;; The required args are simple, but once they are paired, the remainder
+;;; could be optional by position, optional by key, simple key, or fall
+;;; into the rest.  Hence valid args could be
+;;;  (1)            ==> ((a . 1) (b . b1) (c . c1) (d . nil))
+;;;  (1 2)          ==> ((a . 1) (b . 2)  (c . c1) (d . nil))
+;;;  (1 2 3)        ==> ((a . 1) (b . 2)  (c . c1) (d . (3)))
+;;;  (1 2 :c 3)     ==> ((a . 1) (b . 2)  (c . 3)  (d . nil))
+;;;  (1 2 3 4 :c 5) ==> ((a . 1) (b . 2)  (c . 5)  (d . (3 4)))
+;;;  (1 2 3 :c 4 5) ==> ((a . 1) (b . 2)  (c . 4)  (d . (3 5))) ???
+;;;  (1 :b 2)       ==> ((a . 1) (b . 2)  (c . c1) (d . nil))
+;;;  (1 :c 2)       ==> ((a . 1) (b . b1) (c . 2)  (d . nil))
+;;;  (1 :c 2 :b 3)  ==> ((a . 1) (b . 3)  (c . 2)  (d . nil))
+;;;  (1 2 :p 3)     ==> ((a . 1) (b . 2)  (c . c1) (d . (:p 3))) Bad keyword warning
 
-(defun pair-formals-args (formals args &optional opt-flag)
-  (cond ((null formals) nil)
-	((eq (car formals) '&rest)
-	 (if (and (consp args)
-		  (keywordp (car args)))
-	     (let ((pair (get-keyword-arg (car args)
-				formals
-				(cdr args))))
-	       (if (null pair)
-		   (format t "~%Bad keyword in argument: ~a" (car args)))
-	       (if pair
-		   (list pair)
-		   (if (consp (cdr formals))
-		       (list (list (cadr formals)))
-		       nil)))
-	     (when (consp (cdr formals))
-	       (list (cons (optional-name
-			    (cadr formals))
-			   (when (listp args) args))))))
-	((eq (car formals) '&optional)
-	 (pair-formals-args (cdr formals) args t))
-	((null args) (if opt-flag
-			 (collect-default-values formals)
-			 (progn (error-format-if
-				 "~%Not enough arguments for prover command.")
-				(restore))))
-	((and opt-flag
-	      (keywordp (car args)))
-	 (let ((pair
-		(get-keyword-arg (car args) formals (cdr args))))
-	   (if (null pair)
-	       (format t "~%Bad keyword in argument: ~a" (car args)))
-	   (if  pair
-	       (cons pair
-		     (pair-formals-args (remove (car pair) formals
-						:key #'optional-name)
-					(cddr args)  opt-flag))
+(defun pair-formals-args (formals args)
+  (let ((alist (pair-formals-args* formals args nil nil))
+	;; (old-alist (unless (memq '&key formals)
+	;; 	     (pair-formals-args-old formals args)))
+	)
+    ;; (unless (or (null old-alist)
+    ;; 		(set-equal alist old-alist :test #'equal))
+    ;;   (break "Mismatch in pair-formals-args and pair-formals-args-old"))
+    alist))
 
-	       (cons (cons (optional-name (car formals))
-			   (car args)) ;;NSH(3.16.95)
-		     (pair-formals-args (cdr formals)(cdr args)
-					opt-flag)))))
-	(t (cons (cons (optional-name (car formals))  (car args))
-		 (pair-formals-args (cdr formals)(cdr args) opt-flag)))))
+(defun pair-formals-args* (formals args &optional argsec result)
+  (cond ((null formals)
+	 (if args
+	     (progn (error-format-if
+		     "~%Too many arguments for prover command.")
+		    (restore))
+	     (nreverse result)))
+	((memq (car formals) '(&optional &key &rest))
+	 ;; Change argsec accordingly
+	 (pair-formals-args* (cdr formals) args (car formals) result))
+	((null argsec) ;; Required args
+	 (pair-formals-required-arg formals args result))
+	((eq argsec '&optional)
+	 (pair-formals-optional-arg formals args result))
+	((eq argsec '&key)
+	 (pair-formals-key-arg formals args result))
+	(t
+	 (assert (eq argsec '&rest))
+	 (pair-formals-rest-arg formals args result))))
 
-(defun collect-default-values (formals)
-  (when (consp formals)
-    (if (eq (car formals) '&rest)
-	(when (consp (cdr formals))
-	  (list (list (optional-name (cadr formals)))))
-	(cons (cons (optional-name (car formals))
-		    (default (car formals)))
-	      (collect-default-values (cdr formals))))))
-(defun default (x)(when (and (consp x)(consp (cdr x)))(cadr x)))
-(defun optional-name (x) (if  (consp x)(car x) x))
-(defun quoted? (x) (and (consp x)(eq (car x) 'quote)))
+(defun pair-formals-required-arg (formals args result)
+  (cond ((null args)
+	 (error-format-if
+	  "~%Not enough arguments for prover command.")
+	 (restore))
+	(t (when (keywordp (car args))
+	     (format t "~%Warning: keyword ~a used for required arg"
+	       (car args)))
+	   (pair-formals-args*
+	    (cdr formals) (cdr args) nil
+	    (acons (prover-keyarg (car formals)) (car args) result)))))
+
+(defun pair-formals-optional-arg (formals args result)
+  (if (null args)
+      (pair-formals-defaults formals result)
+      (multiple-value-bind (pair rem-args)
+	  (find-keyword-arg-pair (car formals) args)
+	(cond (pair
+	       ;; No longer accept positional optionals in recursive calls
+	       (pair-formals-args* (cdr formals) rem-args '&key
+				  (cons pair result)))
+	      ((member (car args) formals :test #'keyword-arg-formal-match)
+	       ;; Take the default, save arg for later match
+	       (pair-formals-args* (cdr formals) args '&key
+			       (cons (formal-default-pair (car formals))
+				     result)))
+	      (t (when (keywordp (car args))
+		   (format t "~%Warning: keyword ~a bound to ~a"
+		     (car args) (prover-keyarg (car formals))))
+		 (pair-formals-args* (cdr formals) (cdr args) '&optional
+				    (acons (prover-keyarg (car formals))
+					   (car args)
+					   result)))))))
+
+(defun pair-formals-key-arg (formals args result)
+  (if (null args)
+      (pair-formals-defaults formals result)
+      (multiple-value-bind (pair rem-args)
+	  (find-keyword-arg-pair (car formals) args)
+	(if pair
+	    (pair-formals-args* (cdr formals) rem-args '&key
+				(cons pair result))
+	    (pair-formals-args* (cdr formals) args '&key
+				(cons (formal-default-pair (car formals))
+				      result))))))
+
+(defun pair-formals-rest-arg (formals args result)
+  (assert (null (cdr formals)))
+  (nreverse
+   (cond ((null args)
+	  (acons (prover-keyarg (car formals)) nil result))
+	 ((keyword-formal-arg-match (car formals) (car args))
+	  (when (cddr args)
+	    (error-format-if
+	     "~%Too many arguments for prover command.")
+	    (restore))
+	  (acons (prover-keyarg (car formals))
+		 (if (listp (cadr args))
+		     (cadr args)
+		     (list (cadr args)))
+		 result))
+	 ((member (car formals) (cdr args) :test #'keyword-formal-arg-match)
+	  (progn (error-format-if
+		  "~%rest keyword :~a appears after some unmatched args"
+		  (prover-keyarg (car formals)))
+		 (restore)))
+	 (t (acons (prover-keyarg (car formals)) args result)))))
+
+;; No more args - pair the rest of the formals with their defaults
+(defun pair-formals-defaults (formals result)
+  (if (null formals)
+      (nreverse result)
+      (pair-formals-defaults (cdr formals)
+			     (cons (formal-default-pair (car formals))
+				   result))))
+
+(defun formal-default-pair (formal)
+  (cons (prover-keyarg formal)
+	(prover-keydefault formal)))
+
+;;; DELETE to next DELETE
+;;; These are old, and are only here during transition to new forms
+;;; that allow &key, &inherit args
+;; (defun pair-formals-args-old (formals args &optional opt-flag)
+;;   (cond ((null formals) nil)
+;; 	((eq (car formals) '&rest)
+;; 	 (if (and (consp args)
+;; 		  (keywordp (car args)))
+;; 	     (let ((pair (get-keyword-arg (car args)
+;; 				formals
+;; 				(cdr args))))
+;; 	       (if (null pair)
+;; 		   (format t "~%Bad keyword in argument: ~a" (car args)))
+;; 	       (if pair
+;; 		   (list pair)
+;; 		   (if (consp (cdr formals))
+;; 		       (list (list (cadr formals)))
+;; 		       nil)))
+;; 	     (when (consp (cdr formals))
+;; 	       (list (cons (prover-keyarg
+;; 			    (cadr formals))
+;; 			   (when (listp args) args))))))
+;; 	((eq (car formals) '&optional)
+;; 	 (pair-formals-args-old (cdr formals) args t))
+;; 	((null args) (if opt-flag
+;; 			 (collect-default-values formals)
+;; 			 (progn (error-format-if
+;; 				 "~%Not enough arguments for prover command.")
+;; 				(restore))))
+;; 	((and opt-flag
+;; 	      (keywordp (car args)))
+;; 	 (let ((pair
+;; 		(get-keyword-arg (car args) formals (cdr args))))
+;; 	   (if (null pair)
+;; 	       (format t "~%Bad keyword in argument: ~a" (car args)))
+;; 	   (if  pair
+;; 	       (cons pair
+;; 		     (pair-formals-args-old (remove (car pair) formals
+;; 						:key #'prover-keyarg)
+;; 					(cddr args)  opt-flag))
+
+;; 	       (cons (cons (prover-keyarg (car formals))
+;; 			   (car args)) ;;NSH(3.16.95)
+;; 		     (pair-formals-args-old (cdr formals)(cdr args)
+;; 					opt-flag)))))
+;; 	(t (cons (cons (prover-keyarg (car formals))  (car args))
+;; 		 (pair-formals-args-old (cdr formals)(cdr args) opt-flag)))))
+
+;; (defun collect-default-values (formals)
+;;   (when (consp formals)
+;;     (if (eq (car formals) '&rest)
+;; 	(when (consp (cdr formals))
+;; 	  (list (list (prover-keyarg (cadr formals)))))
+;; 	(cons (cons (prover-keyarg (car formals))
+;; 		    (default (car formals)))
+;; 	      (collect-default-values (cdr formals))))))
+
+;; (defun get-keyword-arg (key optionals args)
+;;   (cond ((null optionals) nil)
+;; 	((and (eq (car optionals) '&rest)
+;; 	      (consp (cdr optionals))
+;; 	      (equal (string key)
+;; 		     (string (prover-keyarg (cadr optionals)))))
+;; 	 (when (consp args)
+;; 	   (if (listp (car args))
+;; 	       (cons (prover-keyarg (cadr optionals)) (car args))
+;; 	       (cons (prover-keyarg (cadr optionals))
+;; 		     (list (car args))))))
+;; 	((equal (string key)(string (prover-keyarg (car optionals))))
+;; 	 (if (consp args)
+;; 	     (cons (prover-keyarg (car optionals))(car args))
+;; 	     (cons (prover-keyarg (car optionals))
+;; 		   (default (car optionals)))))
+;; 	(t (get-keyword-arg key (cdr optionals) args))))
+
+;; (defun default (x)(when (and (consp x)(consp (cdr x)))(cadr x)))
+;; (defun quoted? (x) (and (consp x)(eq (car x) 'quote)))
+;;; DELETE
 
 (defun subst-stratexpr (expr alist reverse-alist)  
   (cond ((symbolp expr)
@@ -1203,6 +1317,7 @@
 (defun let-form? (x)
   (and (typep x 'list)
        (not (null x))
+       (typep (cdr x) 'list)
        (> (length x) 2)
        (eq (car x) 'let)
        (loop for y in (cadr x)
@@ -1750,8 +1865,8 @@
   (cond ((null optionals) nil)
 	((eq (car optionals) '&rest)
 	 (when (cdr optionals)
-	   (cdr (assoc (optional-name (cadr optionals)) match))))
-	(t (cons (cdr (assoc (optional-name (car optionals))
+	   (cdr (assoc (prover-keyarg (cadr optionals)) match))))
+	(t (cons (cdr (assoc (prover-keyarg (car optionals))
 			     match))
 		 (extract-optionals (cdr optionals) match)))))
 
@@ -1821,7 +1936,6 @@
  	 (*macro-names* (macro-names ps))	 
 	 (*rewrite-hash* (rewrite-hash ps))
 	 (*dp-state* (dp-state ps)))
-    ;;(break)
     (cond ((typep step 'rule-instance);;if step is a rule, then
 	   ;;reinvoke rule-apply with corresponding strategy. 
 	   (rule-apply (make-instance 'strategy
@@ -1840,8 +1954,8 @@
 		       (rule-input topstep))
 	       (incf *ruletracedepth*))
 	     (multiple-value-bind (signal subgoals updates)
-		 (funcall (rule topstep) ps);;(break "rule-ap")
-	       (cond ((eq signal '!);;success
+		 (funcall (rule topstep) ps) ;;(break "rule-ap")
+	       (cond ((eq signal '!)	     ;;success
 		      (when (memq name *ruletrace*)
 			(decf *ruletracedepth*)
 			(format t "~%~vT Exit: ~a -- Proved subgoal"
@@ -1857,9 +1971,9 @@
 		      (setf (status-flag ps) '!      
 			    (current-rule ps) (rule-input topstep)
 			    (parsed-input ps) (sublis (remove-if #'null
-								*rule-args-alist*
-								:key #'cdr)
-							      (rule-input topstep))
+							*rule-args-alist*
+							:key #'cdr)
+						      (rule-input topstep))
 			    (printout ps) (sublis (remove-if #'null
 						    *rule-args-alist*
 						    :key #'cdr)
@@ -1870,7 +1984,7 @@
 						 :comment (new-comment ps)))
 		      (make-updates updates ps)
 		      ps)
-		     ((eq signal '?);;subgoals generated
+		     ((eq signal '?) ;;subgoals generated
 		      (make-updates updates ps)
 		      ;;(NSH:5/1/99)make-updates should be above
 		      ;;make-subgoal-proofstates
@@ -1881,13 +1995,13 @@
 			     (tcc-hash-counter 0)
 			     (*tccforms*
 			      (loop for tcc in *tccforms*
-				    when (or
-					  (null (gethash
-						 (tccinfo-formula tcc)
-						 (tcc-hash ps)))
-					  (and (incf tcc-hash-counter)
-					       nil))
-				    collect tcc))
+				 when (or
+				       (null (gethash
+					      (tccinfo-formula tcc)
+					      (tcc-hash ps)))
+				       (and (incf tcc-hash-counter)
+					    nil))
+				 collect tcc))
 			     (new-tcc-hash
 			      (if *tccforms*
 				  (copy (tcc-hash ps))
@@ -1895,112 +2009,112 @@
 			     (tccforms (assert-tccforms *tccforms* ps))
 			     (false-tccforms
 			      (loop for tccform in *tccforms*
-				    as assert-tccform in tccforms
-				    when (tc-eq (tccinfo-formula assert-tccform)
-						*false*)
-				    collect tccform)))
+				 as assert-tccform in tccforms
+				 when (tc-eq (tccinfo-formula assert-tccform)
+					     *false*)
+				 collect tccform)))
 			(cond (false-tccforms
 			       ;;treated as a skip
 			       (unless *suppress-printing*
 				 (format t "~%No change. False TCCs: ~%~{  ~a, ~%~}"
 				   (mapcar #'tccinfo-formula false-tccforms)))
-			       (setf (status-flag ps) nil;;start afresh
+			       (setf (status-flag ps) nil ;;start afresh
 				     (strategy ps)
 				     (failure-strategy step))
 			       ps)
 			      (t (let* ((tcc-subgoals
-				    (mapcar
-					#'(lambda (x)
-					    (let ((y 
-						   (change-class
-						    (copy (current-goal ps)
-						      's-forms
-						      (cons
-						       (make-instance
-							   's-formula
-							 :formula
-							 (tccinfo-formula x))
-						       (s-forms
-							(current-goal ps))))
-						    'tcc-sequent)))
-					      (setf (tcc y)
-						    (tccinfo-formula x)
-						    (reason y)
-						    (tccinfo-reason x)
-						    (expr y)
-						    (tccinfo-expr x)
-						    (kind y)
-						    (tccinfo-kind x)
-						    (type y)
-						    (tccinfo-type x))
-					      y))
-				      tccforms))
-				   (subgoal-proofstates
-				    (make-subgoal-proofstates
-				     ps
-				     (subgoal-strategy step)
-				     subgoals
-				     tcc-subgoals
+					 (mapcar
+					     #'(lambda (x)
+						 (let ((y 
+							(change-class
+							    (copy (current-goal ps)
+							      's-forms
+							      (cons
+							       (make-instance
+								   's-formula
+								 :formula
+								 (tccinfo-formula x))
+							       (s-forms
+								(current-goal ps))))
+							    'tcc-sequent)))
+						   (setf (tcc y)
+							 (tccinfo-formula x)
+							 (reason y)
+							 (tccinfo-reason x)
+							 (expr y)
+							 (tccinfo-expr x)
+							 (kind y)
+							 (tccinfo-kind x)
+							 (type y)
+							 (tccinfo-type x))
+						   y))
+					   tccforms))
+					(subgoal-proofstates
+					 (make-subgoal-proofstates
+					  ps
+					  (subgoal-strategy step)
+					  subgoals
+					  tcc-subgoals
 					;updates;must be attached to subgoals.
-				     )))
-			      ;;cleaning up (NSH 7.27.94)
-			      ;;1. convert main subgoals of tccs into
-			      ;;non-tccs.
-			      ;;2. hash the new tccs into new-tcc-hash
-			      ;;3. set tcc-hash of main subgoals as
-			      ;;new-tcc-hash
-			      (when (> tcc-hash-counter 0)
-				(format-if "~%Ignoring ~a repeated TCCs."
-					   tcc-hash-counter))
-			      (loop for tcc in *tccforms*
-				    do
-				    (setf (gethash (tccinfo-formula tcc)
-						   new-tcc-hash)
-					  t))
-			      (assert
-			       (every #'(lambda (sps)
-					  (every #'(lambda (sfmla)
-						     (null (freevars (formula sfmla)))
-						     )
-						 (s-forms (current-goal sps))))
-				      subgoal-proofstates))
-			      (loop for sps in subgoal-proofstates
-				    when (not (tcc-proofstate? sps))
-				    do (setf (tcc-hash sps)
-					     new-tcc-hash))
-			      (when (memq name *ruletrace*)
-				(decf *ruletracedepth*)
-				(format t "~%~vT Exit: ~a -- ~a subgoal(s) generated."
-				  *ruletracedepth* name (length subgoal-proofstates)))
-			      (push-references *tccforms* ps)
-			      (when (eq (car (rule-input topstep)) 'apply)
-				(let* ((rinput (rule-input topstep))
-				       (mtimeout (memq :timeout rinput)))
-				  (if mtimeout
-				      ;; Given by keyword
-				      (setf (rule-input topstep)
-					    (append (ldiff rinput mtimeout)
-						    (cddr mtimeout)))
-				      ;; Positional
-				      (when (and (not (some #'keywordp rinput))
-						 (> (length rinput) 4))
-					(assert (= (length rinput) 5))
-					(setf (rule-input topstep)
-					      (butlast rinput))))))
-			      (setf (status-flag ps) '?
-				    (current-rule ps) (rule-input topstep)
-				    (parsed-input ps) (sublis (remove-if #'null
-								*rule-args-alist*
-								:key #'cdr)
-							      (rule-input topstep))
-				    (printout ps) (sublis (remove-if #'null
-							    *rule-args-alist*
-							    :key #'cdr)
-							  (rule-format topstep))
-				    (remaining-subgoals ps) subgoal-proofstates)
-			      (unless (typep ps 'top-proofstate)
-				(setf (strategy ps) nil))
-			      ps)))))
+					  )))
+				   ;;cleaning up (NSH 7.27.94)
+				   ;;1. convert main subgoals of tccs into
+				   ;;non-tccs.
+				   ;;2. hash the new tccs into new-tcc-hash
+				   ;;3. set tcc-hash of main subgoals as
+				   ;;new-tcc-hash
+				   (when (> tcc-hash-counter 0)
+				     (format-if "~%Ignoring ~a repeated TCCs."
+						tcc-hash-counter))
+				   (loop for tcc in *tccforms*
+				      do
+					(setf (gethash (tccinfo-formula tcc)
+						       new-tcc-hash)
+					      t))
+				   (assert
+				    (every #'(lambda (sps)
+					       (every #'(lambda (sfmla)
+							  (null (freevars (formula sfmla)))
+							  )
+						      (s-forms (current-goal sps))))
+					   subgoal-proofstates))
+				   (loop for sps in subgoal-proofstates
+				      when (not (tcc-proofstate? sps))
+				      do (setf (tcc-hash sps)
+					       new-tcc-hash))
+				   (when (memq name *ruletrace*)
+				     (decf *ruletracedepth*)
+				     (format t "~%~vT Exit: ~a -- ~a subgoal(s) generated."
+				       *ruletracedepth* name (length subgoal-proofstates)))
+				   (push-references *tccforms* ps)
+				   (when (eq (car (rule-input topstep)) 'apply)
+				     (let* ((rinput (rule-input topstep))
+					    (mtimeout (memq :timeout rinput)))
+				       (if mtimeout
+					   ;; Given by keyword
+					   (setf (rule-input topstep)
+						 (append (ldiff rinput mtimeout)
+							 (cddr mtimeout)))
+					   ;; Positional
+					   (when (and (not (some #'keywordp rinput))
+						      (> (length rinput) 4))
+					     (assert (= (length rinput) 5))
+					     (setf (rule-input topstep)
+						   (butlast rinput))))))
+				   (setf (status-flag ps) '?
+					 (current-rule ps) (rule-input topstep)
+					 (parsed-input ps) (sublis (remove-if #'null
+								     *rule-args-alist*
+								     :key #'cdr)
+								   (rule-input topstep))
+					 (printout ps) (sublis (remove-if #'null
+								 *rule-args-alist*
+								 :key #'cdr)
+							       (rule-format topstep))
+					 (remaining-subgoals ps) subgoal-proofstates)
+				   (unless (typep ps 'top-proofstate)
+				     (setf (strategy ps) nil))
+				   ps)))))
 		     ((eq signal 'X)
 		      (when (memq name *ruletrace*)
 			(decf *ruletracedepth*)
@@ -2009,18 +2123,18 @@
 		      (unless *suppress-printing*
 			(explain-errors)
 			(format t "~%No change on: ~s" (rule-input topstep)))
-		      (setf (status-flag ps) nil;;start afresh
+		      (setf (status-flag ps) nil ;;start afresh
 			    (strategy ps)
 			    (failure-strategy step))
 		      (make-updates updates ps)
 		      ps)
-		     ((eq signal 'XX);;marks the current goal a failure
+		     ((eq signal 'XX) ;;marks the current goal a failure
 		      (setf (status-flag ps) 'XX)
 		      ps)
 		     ((eq signal '*)
 		      (setf (status-flag ps) '*)
 		      ps)
-		     (t  (undo-proof signal ps))))))
+		     (t (undo-proof signal ps))))))
 	  ((typep (topstep step) 'strategy)
 	   (setf (status-flag ps) '?
 		 ;;		 (current-rule ps) (strategy-input rule)
@@ -2697,13 +2811,21 @@
   (and (keywordp key)
        (find key optionals
 	     :test #'(lambda (x y)
-		       (if (equal (string x)(string (optional-name y)))
-			   (optional-name y)
+		       (if (equal (string x)(string (prover-keyarg y)))
+			   (prover-keyarg y)
 			   nil)))))
 
-(defun match-formals-with-actuals (required optional  actuals)
-  (pair-formals-args (append required (cons '&optional optional))
-		     actuals))
+(defun match-formals-with-actuals (required optional actuals)
+  (let* ((formals (append required
+			  (if (and optional
+				   (not (eq (car optional) '&rest)))
+			      (cons '&optional optional)
+			      optional)))
+	 (alist (pair-formals-args formals actuals)))
+    ;; (unless (set-equal alist (pair-formals-args-old formals actuals)
+    ;; 		       :test #'equal)
+    ;;   (break "match-formals-with-actuals: mismatch"))
+    alist))
 ;  (cond ((consp required) ;;assuming enough actuals for required.
 ;	 (cons (cons (car required)(car actuals))
 ;	       (match-formals-with-actuals (cdr required) optional
@@ -2720,17 +2842,17 @@
 ;			    (remove entry optional) 
 ;			    (cddr actuals))))
 ;		 (if (consp (cdr actuals))
-;		     (cons (cons (optional-name entry) (cadr actuals))
+;		     (cons (cons (prover-keyarg entry) (cadr actuals))
 ;			   result)
-;		     (cons (cons (optional-name entry) (default entry))
+;		     (cons (cons (prover-keyarg entry) (default entry))
 ;			   result)))
 ;	     (if (consp optional)
-;		 (cons (cons (optional-name (car optional))(car actuals))
+;		 (cons (cons (prover-keyarg (car optional))(car actuals))
 ;		       (match-formals-with-actuals required (cdr optional)
 ;						   (cdr actuals)))
 ;		 nil))))
 ;	(t (loop for x in optional when (not (eq x '&rest))
-;		 collect (cons (optional-name x) (default x)))))
+;		 collect (cons (prover-keyarg x) (default x)))))
 				 
 	
 ;(defun check-rule (input-rule ps) ;;returns two values: final rule and
