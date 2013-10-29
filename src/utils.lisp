@@ -1477,8 +1477,9 @@
 	(decl (declaration res)))
     (if hashentry hashentry
 	(let ((formulas (create-formulas* res decl)))
-	  (when (and (fully-instantiated? res)
-		     (not (some #'decl-formal? (free-params (module-instance res)))))
+	  (when (and ;;(not (decl-formals (declaration res)))
+		     ;;(not (some #'decl-formal? (free-params res)))
+		     (fully-instantiated? res))
 	    (setf (gethash res *create-formulas-cache*) formulas))
 	  formulas))))
 
@@ -1490,10 +1491,10 @@
 	     (setf (closed-definition decl)
 		   (with-current-decl decl
 		     (universal-closure (definition decl))))))
-	 (let ((*no-expected* t))
-	   (list
-	    (subst-mod-params (closed-definition decl)
-		(module-instance res) (module decl) decl))))
+	 (let* ((*no-expected* t)
+		(sdef (subst-mod-params (closed-definition decl)
+			  (module-instance res) (module decl) decl)))
+	   (list sdef)))
 	((typep decl '(or const-decl def-decl))
 	 (let ((subst-list (subst-mod-params (def-axiom decl)
 			       (module-instance res)
