@@ -30,31 +30,88 @@
 (in-package :pvs)
 
 (eval-when (:execute :compile-toplevel :load-toplevel)
-  (defun check-formals (formals &optional opt-flag)
-    (or (null formals)
-	(if (eq (car formals) '&optional)
-	    (if (member '&optional (cdr formals))
-		(format t "~%'&optional occurs twice")
-		(check-formals (cdr formals) t))
-	    (if (eq (car formals) '&rest)
-		(if (not (singleton? (cdr formals)))
-		    (format t "~%Exactly one &rest argument allowed.")
-		    (if (not (symbolp (cadr formals)))
-			(format t "~%&rest argument should be a symbol.")
-			t))
-		(and (or (symbolp (car formals))
-			 (and (consp (car formals))
-			      opt-flag
-			      (symbolp (caar formals)))
-			 (format t "~%Formals must be symbols or pairs (when optional)"))
-		     (check-formals (cdr formals) opt-flag))))))
+  (defun check-formals (formals &optional vars section)
+    "Checks that formals are well-formed:
+     {var}*
+     [&optional {var | (var initform)}*]
+     [&key {var | (var initform)}*]
+     [&rest var]
+     [&inherit {var | (var :except var+)}*]"
+    (cond ((null formals)
+	   t)
+	  ((eq (car formals) '&optional)
+	   (if (member '&optional (cdr formals))
+	       (format t "~%'&optional occurs twice")
+	       (check-formals (cdr formals) vars '&optional)))
+	  ((eq (car formals) '&key)
+	   (cond ((member '&optional (cdr formals))
+		  (format t "~%'&optional occurs after '&key"))
+		 ((member '&key (cdr formals))
+		  (format t "~%'&key occurs twice"))
+		 (t (check-formals (cdr formals) vars '&key))))
+	  ((eq (car formals) '&rest)
+	   (cond ((member '&optional (cdr formals))
+		  (format t "~%'&optional occurs after '&rest"))
+		 ((member '&key (cdr formals))
+		  (format t "~%'&key occurs after '&rest"))
+		 ((member '&rest (cdr formals))
+		  (format t "~%'&rest occurs twice"))
+		 ((not (symbolp (cadr formals)))
+		  (format t "~%'&rest argument should be a symbol."))
+		 ((member (cadr formals) vars)
+		  (format t "~%Duplicate argument symbols"))
+		 (t (check-formals (cddr formals) nil '&rest))))
+	  ((eq (car formals) '&inherit)
+	   (cond ((member '&optional (cdr formals))
+		  (format t "~%'&optional occurs after '&inherit"))
+		 ((member '&key (cdr formals))
+		  (format t "~%'&key occurs after '&inherit"))
+		 ((member '&rest (cdr formals))
+		  (format t "~%'&rest occurs after '&inherit"))
+		 ((member '&inherit (cdr formals))
+		  (format t "~%'&inherit occurs twice."))
+		 (t (if (every #'(lambda (fm)
+				   (or (symbolp fm)
+				       (and (consp fm)
+					    (eq (cadr fm) :except)
+					    (cddr fm)
+					    (every #'symbolp (cddr fm)))))
+			       (cdr formals))
+			(if (null (cdr formals))
+			    (format t "~%'&inherit has no formals.")
+			    (if (duplicates?
+				 (cdr formals)
+				 :key #'(lambda (fm)
+					  (if (consp fm) (car fm) fm)))
+				(format t "~%'&inherit args duplicated")
+				t))
+			(format t "~%'&inherit args must be symbols or of the form~%~
+                                    (symbol :except symbol ...)")))))
+	  (t (cond ((symbolp (car formals))
+		    (cond ((eq section '&rest)
+			   (format t "~%Only a single formal allowed after &rest"))
+			  ((member (car formals) vars)
+			   (format t "~%Duplicate argument symbols"))
+			  (t
+			   (check-formals (cdr formals) (cons (car formals) vars)
+					  section))))
+		   ((consp (car formals))
+		    (if (member section '(&optional &key))
+			(if (symbolp (caar formals))
+			    (if (or (null (cdar formals))
+				    (cddar formals))
+				(format t "~%Optional or key formal lists must be pairs")
+				(check-formals (cdr formals) (cons (caar formals) vars)
+					       section))
+			    (format t "~%Formals must be symbols or pairs (when optional or keyword)"))
+			(format t "~%Formals are pairs only when optional or keyword")))))))
+  
   (defun check-prover-macro-args (name args body doc format)
-    (declare (ignore body))
     (cond ((not (symbolp name))
 	   (error "Name ~a must be a symbol." name))
 	  ((not (check-formals args))
 	   (error "Arguments ~a must be a list of the form~
-                 ~%  (arg1 arg2... &optional... &rest argn)."
+                 ~%  (arg1 arg2... &optional... &key... &rest arg &inherit...)."
 		  args))
 	  ((not (stringp doc))
 	   (error "Documentation ~a is not a string (in double quotes)."
@@ -62,13 +119,17 @@
 	  ((not (stringp format))
 	   (error "Format-string ~a is not a string (in double quotes)."
 		  format)))
-    (check-prover-macro-arg-ambiguity name args body))
+    (check-prover-macro-arg-ambiguity name args body)
+    ;(check-prover-macro-inherit-args name args body)
+    )
 
   (defun check-prover-macro-arg-ambiguity (name args body)
-    (dolist (arg args)
-      (when (or (step-or-rule-defn arg)
-		(gethash arg *rulebase*))
-	(check-prover-macro-arg-ambiguity* name arg body))))
+    (when args
+      (when (or (step-or-rule-defn (car args))
+		(gethash (car args) *rulebase*))
+	(check-prover-macro-arg-ambiguity* name (car args) body))
+      (unless (eq (car args) '&inherit)
+	(check-prover-macro-arg-ambiguity name (cdr args) body))))
 
   (defun check-prover-macro-arg-ambiguity* (name arg body)
     (cond ((symbolp body))
@@ -84,10 +145,56 @@
 	   (check-prover-macro-arg-ambiguity* name arg (let-body body)))
 	  ((and (consp body) (eq (car body) arg))
 	   (format t "Should probably rename arg ~a in ~a: ~
-                      it appears in the body as a possible strategy"
+                      it appears in the body as a possible strategy~%"
 		  arg name))
 	  ((consp body)
 	   (dolist (e body) (check-prover-macro-arg-ambiguity* name arg e)))))
+
+  ;; (defun check-prover-macro-inherit-args (name args body)
+  ;;   (let ((inherit-args (get-&inherit-args args)))
+  ;;     (check-prover-macro-inherit-args* name inherit-args body)))
+
+  ;; (defun check-prover-macro-inherit-args* (name args body)
+  ;;   (when args
+  ;;     (let ((rule (gethash (car args) *rulebase*)))
+  ;; 	(if rule
+  ;; 	    (if (rule-entry? rule)
+  ;; 		(if (optional-args rule)
+  ;; 		    (check-prover-macro-rule-in-body (car args) body)
+  ;; 		    (error "No keyword or optional args in ~a" (car args)))
+  ;; 		(error "Not a rule-entry?" (car args)))
+  ;; 	    (let ((step (gethash (car args) *rules*)))
+  ;; 	      (if step
+  ;; 		  (if (defstep-entry? step)
+  ;; 		      (let ((formals (formals step)))
+  ;; 			(if (or (member '&optional formals)
+  ;; 				(member '&key formals)
+  ;; 				(member '&inherit formals))
+  ;; 			    (check-prover-macro-rule-in-body (car args) body)
+  ;; 			    (error "No keyword, optional, or inherit arg in ~a"
+  ;; 				   (car args))))
+  ;; 		      (error "Strange step ~a" (car args)))
+  ;; 		  (error "~a is not a rule or a step" (car args))))))))
+
+  (defun check-prover-macro-rule-in-body (arg body)
+    ;; Here we simply check that the rule occurs in the body
+    (cond ((symbolp body)
+	   nil)
+	  ((not (consp body))
+	   nil)
+	  ((if-form? body)
+	   (or (check-prover-macro-rule-in-body arg (caddr body))
+	       (check-prover-macro-rule-in-body arg (cadddr body))))
+	  ((let-form? body)
+	   (or (check-prover-macro-rule-in-body
+		(mapcar #'car (let-bindings body))
+		(let-body body))
+	       (check-prover-macro-rule-in-body arg (let-body body))))
+	  ((and (consp body) (eq (car body) arg))
+	   t)
+	  ((consp body)
+	   (some #'(lambda (e) (check-prover-macro-rule-in-body arg e))
+		 body))))
   
   (defun extract-lisp-exprs-from-strat-body (body &optional lispexprs)
     (cond ((null body)
@@ -110,9 +217,50 @@
 	  (t (nreverse lispexprs))))
   )
 
+
+(defun get-&required-args (formals)
+  (cond ((memq '&optional formals)
+	 (ldiff formals (memq '&optional formals)))
+	((memq '&key formals)
+	 (ldiff formals (memq '&key formals)))
+	((memq '&rest formals)
+	 (ldiff formals (memq '&rest formals)))
+	((memq '&inherit formals)
+	 (ldiff formals (memq '&inherit formals)))
+	(t formals)))
+
+(defun get-&optional-args (formals)
+  (let ((opts (cdr (memq '&optional formals))))
+    (when opts
+      (cond ((memq '&key opts)
+	     (ldiff opts (memq '&key opts)))
+	    ((memq '&rest opts)
+	     (ldiff opts (memq '&rest opts)))
+	    ((memq '&inherit opts)
+	     (ldiff opts (memq '&inherit opts)))
+	    (t opts)))))
+      
+(defun get-&key-args (formals)
+  (let ((keys (cdr (memq '&key formals))))
+    (when keys
+      (cond ((memq '&rest keys)
+	     (ldiff keys (memq '&rest keys)))
+	    ((memq '&inherit keys)
+	     (ldiff keys (memq '&inherit keys)))
+	    (t keys)))))
+
+(defun get-&rest-args (formals)
+  (let ((rest (cdr (memq '&rest formals))))
+    (when rest
+      (cond ((memq '&inherit rest)
+	     (ldiff rest (memq '&inherit rest)))
+	    (t rest)))))
+
+(defun get-&inherit-args (formals)
+  (cdr (memq '&inherit formals)))
 	    
 (defun defgen* (name formals definition docstring format-string
-		     entry-type rules-or-steps)
+		entry-type rules-or-steps)
   (let ((primitive (gethash name *rulebase*))
 	(rule (gethash name *rules*))
 	(strat (gethash name *steps*)))
@@ -123,27 +271,307 @@
 	  (strat
 	   (format-if "~%~a exists as a strategy." name)))
     (cond (primitive (format t "~%No change. "))
-	  (t  (if (or rule strat)
-		  (format-if "~%Redefining ~a. " name)
-		  (format-if "~%Defining ~a. " name))
-	      (if rule (remhash name *rules*))
-	      (if strat (remhash name *steps*))
-	      #+lucid (record-source-file name 'strategy)
-	      (let ((old (assoc name *prover-keywords*))
-		    (has-rest? (when (memq '&rest formals) t)))
-		(if old
-		    (setf (cdr old) (cons has-rest? (make-prover-keywords formals)))
-		    (push (cons name (cons has-rest? (make-prover-keywords formals)))
-				*prover-keywords*)))
-	      (add-symbol-entry name
-				(make-instance entry-type
-				  'name name
-				  'formals formals
-				  'defn definition
-				  'docstring docstring
-				  'format-string format-string)
-				rules-or-steps)))))
+	  (t (if (or rule strat)
+		 (format-if "~%Redefining ~a. " name)
+		 (format-if "~%Defining ~a. " name))
+	     (if rule (remhash name *rules*))
+	     (if strat (remhash name *steps*))
+	     #+lucid (record-source-file name 'strategy)
+	     (let* ((inh-formals (cdr (memq '&inherit formals)))
+		    (rules-inheritance (collect-rules-inheritance inh-formals)))
+	       (if (or (null inh-formals) rules-inheritance)
+		   (let ((expanded-formals
+			  (expand-inherited-formals formals rules-inheritance)))
+		     (update-prover-keywords name expanded-formals)
+		     (add-symbol-entry
+		      name
+		      (make-instance entry-type
+			'name name
+			'formals expanded-formals
+			'source-formals formals
+			'defn (add-inherited-args-to-definition
+			       definition rules-inheritance)
+			'source-defn definition
+			'docstring docstring
+			'format-string format-string)
+		      rules-or-steps)
+		     (when rules-inheritance
+		       (update-dependent-proof-rules name)))
+		   ;; Need to wait in this case, but we create an entry with
+		   ;; what we have
+		   (let ((msg (format nil "Not all inherited rules ~a are available"
+				inh-formals)))
+		     (format t "~%~a is postponed - missing one of inherited rules ~a."
+		       name inh-formals)
+		     (add-symbol-entry
+		      name
+		      (make-instance entry-type
+			'name name
+			'formals :unbound
+			'source-formals formals
+			'defn `(skip-msg ,msg)
+			'source-defn definition
+			'docstring docstring
+			'format-string format-string)
+		      rules-or-steps)
+		     )))))))
 
+;;; The &inherit gives a dependency between rules.
+;;; Rules may not be in proper order, but even if they were, they
+;;; can later be modified.  This function is called from defgen*
+;;; Whenever a new rule is added, unless it is a "pending" rule, i.e.,
+;;; waiting for some other rule (formals is :unbound in that case)
+;;; Note that this can trigger propagation for any rule that is changed
+;;; because of this.  Need to be careful of loops.
+(defun update-dependent-proof-rules (name)
+  (do-all-strategies #'(lambda (entry) (update-dependent-proof-rule name entry))))
+
+(defun update-dependent-proof-rule (name entry)
+  (let* ((args (if (rule-entry? entry)
+		   (optional-args entry)
+		   (source-formals entry)))
+	 (inh-formals (get-&inherit-args args)))
+    (when (memq name inh-formals)
+      (let ((rules-inheritance (collect-rules-inheritance inh-formals)))
+	;; If rules-inheritance is null, still waiting on a rule to be defined
+	(if rules-inheritance
+	    (let ((expanded-formals
+		   (expand-inherited-formals (source-formals entry) rules-inheritance)))
+	      (unless (equal expanded-formals (formals entry))
+		(update-prover-keywords (name entry) expanded-formals)
+		(setf (formals entry) expanded-formals)
+		(setf (defn entry) (add-inherited-args-to-definition
+				    (source-defn entry) rules-inheritance))
+		(update-dependent-proof-rules (name entry))))
+	    (format t "~%~a is still postponed - missing one of inherited rules ~a."
+	      (name entry) inh-formals))))))
+
+  
+
+(defun expand-inherited-formals (formals rules-inheritance)
+  (if (memq '&inherit formals)
+      (let* ((inherited (memq '&inherit formals))
+	     (keyargs (append (get-&optional-args formals)
+			      (get-&key-args formals)))
+	     (rest (memq '&rest formals))
+	     ;;(rules-inheritance (collect-rules-inheritance (cdr inherited)))
+	     (inherited-args (merge-inherited-formals
+			      rules-inheritance
+			      (if rest
+				  (cons (cadr rest) keyargs)
+				  keyargs))))
+	(append (if rest
+		    (ldiff formals rest)
+		    (ldiff formals inherited))
+		(if (memq '&key formals)
+		    inherited-args
+		    (cons '&key inherited-args))
+		(ldiff rest inherited)))
+      formals))
+
+(defun merge-inherited-formals (rules-inheritance keyargs &optional newkeyargs)
+  ;; keyargs are the &optional and &key args given to the rule
+  ;; We are getting all other keyargs from the inherited rules
+  (if (null rules-inheritance)
+      (nreverse newkeyargs)
+      (merge-inherited-formals (cdr rules-inheritance) keyargs
+			       (merge-inherited-formals*
+				(cdar rules-inheritance)
+				keyargs newkeyargs))))
+
+(defun merge-inherited-formals* (inh-keys keyargs newkeyargs)
+  (if (null inh-keys)
+      newkeyargs
+      (let ((inh-key (car inh-keys)))
+	(merge-inherited-formals*
+	 (cdr inh-keys)
+	 keyargs
+	 (if (or (member inh-key keyargs :test #'same-prover-keyarg)
+		 (member inh-key newkeyargs :test #'same-prover-keyarg))
+	     newkeyargs
+	     (cons inh-key newkeyargs))))))
+
+(defun prover-keyarg (key)
+  (if (consp key) (car key) key))
+
+(defun prover-keydefault (key)
+  (when (consp key) (cadr key)))
+
+;; Compares two keyarg-formals (e.g., the args from two different defsteps)
+(defun same-prover-keyarg (key1 key2)
+  (string-equal (prover-keyarg key1) (prover-keyarg key2)))
+
+;; Compares a formal to an actual - useful in :test for find, etc.
+(defun keyword-formal-arg-match (formal arg)
+  (and (keywordp arg)
+       (string-equal (prover-keyarg formal) arg)))
+
+;; Compares an actual to a formal - useful in :test for find, etc.
+(defun keyword-arg-formal-match (arg formal)
+  (keyword-formal-arg-match formal arg))
+
+(defun add-inherited-args-to-definition (definition rules-inheritance)
+  (if rules-inheritance
+      (add-inherited-args-to-definition* definition rules-inheritance)
+      definition))
+
+(defun add-inherited-args-to-definition* (sexp rules-inheritance &optional backquoted)
+  (cond ((not (consp sexp))
+	 sexp)
+	((if-form? sexp)
+	 (list 'if
+	       (cadr sexp)
+	       (add-inherited-args-to-definition*
+		(caddr sexp) rules-inheritance backquoted)
+	       (add-inherited-args-to-definition*
+		(cadddr sexp) rules-inheritance backquoted)))
+	((let-form? sexp)
+	 (cons 'let
+	       (cons (mapcar #'(lambda (b)
+				 (cons (car b)
+				       (add-inherited-args-to-definition*
+					(cdr b) rules-inheritance backquoted)))
+		       (cadr sexp))
+		     (add-inherited-args-to-definition*
+		      (cddr sexp) rules-inheritance backquoted))))
+	((and (symbolp (car sexp))
+	      (assq (rule-rawname (car sexp)) rules-inheritance))
+	 ;; Add keyword args to call - need to recurse on subexprs?
+	 (let* ((rule (rule-rawname (car sexp)))
+		(formals (get-rule-formals rule))
+		(opts (get-&optional-args formals)))
+	   (add-keyword-args-to-call
+	    sexp opts (cdr (assq rule rules-inheritance)) backquoted)))
+	((backquoted? sexp)
+	 (cons (car sexp)
+	       (add-inherited-args-to-definition* (cdr sexp) rules-inheritance t)))
+	((unbackquoted? sexp)
+	 (cons (car sexp)
+	       (add-inherited-args-to-definition* (cdr sexp) rules-inheritance nil)))
+	(t (cons (add-inherited-args-to-definition*
+		  (car sexp) rules-inheritance backquoted)
+		 (add-inherited-args-to-definition*
+		  (cdr sexp) rules-inheritance backquoted)))))
+
+(defun backquoted? (sexp)
+  (and (consp sexp)
+       (eq (car sexp)
+	   #+allegro 'excl::backquote
+	   #+sbcl 'sb-impl::backq-cons
+	   #-(or allegro sbcl)
+	   (error "backquoted? not defined for this lisp"))))
+
+(defun unbackquoted? (sexp)
+  (and (consp sexp)
+       (memq (car sexp)
+	     #+allegro '(excl::bq-comma excl::bq-comma-atsign)
+	     #+sbcl '(sb-impl::backq-comma sb-impl::backq-comma-at))))
+	   
+
+(defun rule-rawname (rule)
+  (let* ((str (string rule))
+	 (len (length str)))
+    (if (char= (char str (1- len)) #\$)
+	(intern (subseq str 0 (1- len)) :pvs)
+	rule)))
+
+(defun add-keyword-args-to-call (step opts keyword-args backquoted)
+  (let ((rkeys (remove-used-args-from-keywords (cdr step) opts keyword-args)))
+    (append step
+	    (mapcan #'(lambda (ka)
+			(list (keyword-arg-symbol ka)
+			      (if backquoted
+				  (list #+allegro 'excl::bq-comma
+					#+sbcl 'sb-impl::backq-comma
+					(keyword-arg-symbol ka :pvs))
+				  (keyword-arg-symbol ka :pvs))))
+	      (remove-if
+		  #'(lambda (ka)
+		      (memq (keyword-arg-symbol ka) step))
+	      rkeys)))))
+
+(defun remove-used-args-from-keywords (step-args opts keyword-args)
+  (cond ((and (keywordp (car step-args))
+	      (member (car step-args) keyword-args
+		      :test #'keyword-arg-formal-match))
+	 (remove-used-args-from-keywords
+	  (cddr step-args) opts (remove (car step-args) keyword-args
+					:test #'keyword-arg-formal-match)))
+	((or (null step-args)
+	     (null opts))
+	 keyword-args)
+	(t (remove-used-args-from-keywords
+	    (cdr step-args) (cdr opts)
+	    (remove (car opts) keyword-args
+		    :test #'same-prover-keyarg)))))
+
+
+;;; Returns an alist of the form
+;;; ((rule key1 ... keyn) ...) where each keyi is a symbol or a (symbol init) pair
+;;; Note that this can return nil, meaning that an inherited rule was not found.
+;;; This can happen because rules are mutually recursive, or simply unsorted.
+(defun collect-rules-inheritance (inherited-rules &optional inheritance)
+  (if (null inherited-rules)
+      (nreverse inheritance)
+      (let ((inhrule (car inherited-rules)))
+	(multiple-value-bind (rkeys there?)
+	    (get-all-keyword-args inhrule)
+	  (when there?
+	    (collect-rules-inheritance
+	     (cdr inherited-rules)
+	     (acons (if (consp inhrule) (car inhrule) inhrule) rkeys inheritance)))))))
+
+(defun get-all-keyword-args (rule)
+  (if (consp rule)
+      (get-all-keyword-args* (list (car rule)) (cddr rule))
+      (get-all-keyword-args* (list rule) nil)))
+
+(defun get-all-keyword-args* (pending-rules exclude &optional keys done-rules)
+  (cond ((null pending-rules)
+	 (values keys t))
+	((memq (car pending-rules) done-rules)
+	 (get-all-keyword-args* (cdr pending-rules) exclude keys done-rules))
+	(t (multiple-value-bind (formals there?)
+	       (get-rule-formals (car pending-rules))
+	     (when there?
+	       (let* ((akeys (get-keyword-args formals))
+		      (rkeys (remove-if #'(lambda (akey)
+					    (member (if (consp akey) (car akey) akey)
+						    exclude :test #'string-equal))
+			       akeys)))
+		 (assert (not (memq '&inherit formals)))
+		 (get-all-keyword-args* (cdr pending-rules)
+					exclude
+					(merge-keyword-args rkeys keys)
+					(cons (car pending-rules) done-rules))))))))
+
+(defun get-keyword-args (formals)
+  (append (get-&optional-args formals) (get-&key-args formals)))
+
+(defun merge-keyword-args (new-keys keys)
+  (cond ((null new-keys)
+	 keys)
+	((member (car new-keys) keys :test #'same-prover-keyarg)
+	 (merge-keyword-args (cdr new-keys) keys))
+	(t (merge-keyword-args (cdr new-keys)
+			       (nconc keys (list (car new-keys)))))))
+
+;;; Called from collect-rules-inheritance - if rule is not found,
+;;; returns nil for second arg - rule will be processed later
+(defun get-rule-formals (rule)
+  (let* ((rrule (rule-rawname rule))
+	 (rbentry (gethash rrule *rulebase*)))
+    (assert (typep rbentry '(or null rule-entry)))
+    (if rbentry
+	(values (append (required-args rbentry)
+			(when (optional-args rbentry)
+			  (cons '&optional (optional-args rbentry))))
+		t)
+	(let ((rentry (gethash rrule *rules*)))
+	  (assert (typep rentry '(or null defstep-entry)))
+	  (when (and rentry
+		     (not (eq (formals rentry) :unbound)))
+	    (values (formals rentry) t))))))
 
 (defun defstrat* (name formals definition
 		     &optional docstring format-string)
@@ -224,7 +652,7 @@
     (if lbody
 	(let ((largs (mapcar #'(lambda (a) (if (consp a) (car a) a))
 		       (remove-if #'(lambda (a)
-				      (memq a '(&optional &rest)))
+				      (memq a '(&optional &key &rest &inherit)))
 			 args))))
 	  `(progn #-(or cmu sbcl)
 		  (defun ,(makesym "(defstep) ~a" name) ,largs
@@ -301,13 +729,9 @@ E.g., (try (skip)(flatten)(skolem!)) is just (skolem!)
   "")
 
 
-(defstep assert (&optional (fnums *) rewrite-flag
-			   flush? linear? cases-rewrite?
-			   (type-constraints? t)
-			   ignore-prover-output? (let-reduce? t) quant-simp?
-			   implicit-typepreds? ignore-typepreds?)
-  (simplify
-   fnums t t rewrite-flag flush? linear? cases-rewrite? type-constraints? ignore-prover-output? let-reduce? quant-simp? implicit-typepreds? ignore-typepreds?)
+(defstep assert (&optional (fnums *) rewrite-flag &key (let-reduce? t)
+			   &inherit (simplify :except record? rewrite?))
+  (simplify fnums t t)
   "Simplifies/rewrites/records formulas in FNUMS using decision
 procedures.  Variant of SIMPLIFY with RECORD? and REWRITE? flags set
 to T. If REWRITE-FLAG is RL(LR) then only lhs(rhs) of equality
@@ -325,12 +749,9 @@ Examples:
   database."
   "Simplifying, rewriting, and recording with decision procedures")
 
-(defstep record (&optional (fnums *) rewrite-flag
-			   flush? linear? (type-constraints? t)
-			   ignore-prover-output?)
-  (simplify
-   fnums t nil rewrite-flag flush? linear? type-constraints?
-   ignore-prover-output?)
+(defstep record (&optional (fnums *)
+			   &inherit (simplify :except record? rewrite?))
+  (simplify fnums t nil)
   "Uses decision procedures to simplify and record the formulas
 in FNUMS for further simplification.   Variant of SIMPLIFY with RECORD?
 flag set to T and REWRITE? flags set to NIL. If REWRITE-FLAG is
@@ -340,11 +761,9 @@ Example:
  (record - :flush? T): flushes database and records antecedent formulas."
   "Simplifying and recording with decision procedures")
 
-(defstep do-rewrite (&optional (fnums *) rewrite-flag
-			       flush? linear? cases-rewrite?
-			       (type-constraints? t))
-  (simplify
-   fnums nil t rewrite-flag flush? linear? cases-rewrite? type-constraints?) 
+(defstep do-rewrite (&optional (fnums *)
+			       &inherit (simplify :except record? rewrite?))
+  (simplify fnums nil t)
   "Uses decision procedures to rewrite the formulas in FNUMS.
 Variant of SIMPLIFY with RECORD? flag set to NIL and REWRITE? flags set to
 T. If REWRITE-FLAG is RL(LR) then only lhs(rhs) is simplified.  If FLUSH?
@@ -546,94 +965,8 @@ AUTO-REWRITE-THEORY, or AUTO-REWRITE-THEORIES. E.g.,
   "~%Turning off automatic rewriting for theories: ~{~%   ~a~}")
 
 
-(defhelper subtype-tcc ()
-  (tcc$ explicit)
-  "The strategy used for subtype TCCs - invokes 'tcc' (defaults to 'grind',
-but may be redefined) with non-recursive definitions as auto-rewrites"
-  "Trying repeated skolemization, instantiation, and if-lifting")
-
-(defhelper termination-tcc ()
-  (tcc$ !)
-  "The strategy used for termination TCCs - invokes 'tcc' (defaults to
-'grind', but may be redefined) with all definitions as auto-rewrites."
-  "Trying repeated skolemization, instantiation, and if-lifting")
-
-(defhelper existence-tcc ()
-  (tcc$ explicit)
-  "The strategy used for existence TCCs - invokes 'tcc' (defaults to
-'grind', but may be redefined) with non-recursive definitions as
-auto-rewrites"
-  "Trying repeated skolemization, instantiation, and if-lifting")
-
-(defhelper judgement-tcc ()
-  (tcc$ explicit)
-  "The strategy used for judgement TCCs - invokes 'tcc' (defaults to
-'grind', but may be redefined) with non-recursive definitions as
-auto-rewrites"
-  "Trying repeated skolemization, instantiation, and if-lifting")
-
-(defhelper recursive-judgement-tcc ()
-  (tcc$)
-  "The strategy used for recursive judgement TCCs - invokes 'tcc' (defaults
-to 'grind', but may be redefined) with all definitions as auto-rewrites."
-  "Trying repeated skolemization, instantiation, and if-lifting")
-
-(defhelper assuming-tcc ()
-  (tcc$ explicit)
-  "The strategy used for assuming TCCs - invokes 'tcc' (defaults to 'grind',
-but may be redefined) with non-recursive definitions as auto-rewrites"
-  "Trying repeated skolemization, instantiation, and if-lifting")
-
-(defhelper mapped-axiom-tcc ()
-  (tcc$ explicit)
-  "The strategy used for mapped axiom TCCs - invokes 'tcc' (defaults to
-'grind', but may be redefined) with non-recursive definitions as
-auto-rewrites"
-  "Trying repeated skolemization, instantiation, and if-lifting")
-
-(defhelper cases-tcc ()
-  (tcc$ explicit)
-  "The strategy used for cases TCCs - invokes 'tcc' (defaults to 'grind',
-but may be redefined) with non-recursive definitions as auto-rewrites"
-  "Trying repeated skolemization, instantiation, and if-lifting")
-
-(defhelper well-founded-tcc ()
-  (tcc$ explicit)
-  "The strategy used for well-founded TCCs - invokes 'tcc' (defaults to
-'grind', but may be redefined) with non-recursive definitions as
-auto-rewrites"
-  "Trying repeated skolemization, instantiation, and if-lifting")
-
-(defhelper same-name-tcc ()
-  (tcc$ explicit)
-  "The strategy used for same-name TCCs - invokes 'tcc' (defaults to
-'grind', but may be redefined) with non-recursive definitions as
-auto-rewrites"
-  "Trying repeated skolemization, instantiation, and if-lifting")
-
-(defhelper cond-disjoint-tcc ()
-  (tcc$ explicit)
-  "The strategy used for cond-disjoint TCCs - invokes 'tcc' (defaults to
-'grind', but may be redefined) with non-recursive definitions as
-auto-rewrites"
-  "Trying repeated skolemization, instantiation, and if-lifting")
-
-(defhelper cond-coverage-tcc ()
-  (tcc$ explicit)
-  "The strategy used for cond-coverage TCCs - invokes 'tcc' (defaults to
-'grind', but may be redefined) with non-recursive definitions as
-auto-rewrites"
-  "Trying repeated skolemization, instantiation, and if-lifting")
-
-(defhelper monotonicity-tcc ()
-  (tcc$ explicit)
-  "The strategy used for monotonicity TCCs - invokes 'tcc' (defaults to
-'grind', but may be redefined) with non-recursive definitions as
-auto-rewrites"
-  "Trying repeated skolemization, instantiation, and if-lifting")
-
-(defhelper tcc (&optional (defs !))
-  (grind$ :defs defs)
+(defhelper tcc (&key (defs !) &inherit grind)
+  (grind$)
   "The guts of the tcc-strategy defined as '(grind :defs defs)'.
 Does auto-rewrite-explicit, then applies skolem!, inst?, lift-if,
 bddsimp, and assert, until nothing works.  :defs is either
@@ -645,9 +978,95 @@ bddsimp, and assert, until nothing works.  :defs is either
  explicit!: Only explicit defns installed as unconditional rewrites."
     "Trying repeated skolemization, instantiation, and if-lifting")
 
+(defhelper subtype-tcc (&key (defs :explicit) &inherit tcc)
+  (tcc$)
+  "The strategy used for subtype TCCs - invokes 'tcc' (defaults to 'grind',
+but may be redefined) with non-recursive definitions as auto-rewrites"
+  "Trying repeated skolemization, instantiation, and if-lifting")
+
+(defhelper termination-tcc (&key (defs !) &inherit tcc)
+  (tcc$)
+  "The strategy used for termination TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with all definitions as auto-rewrites."
+  "Trying repeated skolemization, instantiation, and if-lifting")
+
+(defhelper existence-tcc (&key (defs :explicit) &inherit tcc)
+  (tcc$)
+  "The strategy used for existence TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with non-recursive definitions as
+auto-rewrites"
+  "Trying repeated skolemization, instantiation, and if-lifting")
+
+(defhelper judgement-tcc (&key (defs :explicit) &inherit tcc)
+  (tcc$)
+  "The strategy used for judgement TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with non-recursive definitions as
+auto-rewrites"
+  "Trying repeated skolemization, instantiation, and if-lifting")
+
+(defhelper recursive-judgement-tcc (&key (defs !) &inherit tcc)
+  (tcc$)
+  "The strategy used for recursive judgement TCCs - invokes 'tcc' (defaults
+to 'grind', but may be redefined) with all definitions as auto-rewrites."
+  "Trying repeated skolemization, instantiation, and if-lifting")
+
+(defhelper assuming-tcc (&key (defs :explicit) &inherit tcc)
+  (tcc$)
+  "The strategy used for assuming TCCs - invokes 'tcc' (defaults to 'grind',
+but may be redefined) with non-recursive definitions as auto-rewrites"
+  "Trying repeated skolemization, instantiation, and if-lifting")
+
+(defhelper mapped-axiom-tcc (&key (defs :explicit) &inherit tcc)
+  (tcc$)
+  "The strategy used for mapped axiom TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with non-recursive definitions as
+auto-rewrites"
+  "Trying repeated skolemization, instantiation, and if-lifting")
+
+(defhelper cases-tcc (&key (defs :explicit) &inherit tcc)
+  (tcc$)
+  "The strategy used for cases TCCs - invokes 'tcc' (defaults to 'grind',
+but may be redefined) with non-recursive definitions as auto-rewrites"
+  "Trying repeated skolemization, instantiation, and if-lifting")
+
+(defhelper well-founded-tcc (&key (defs :explicit) &inherit tcc)
+  (tcc$)
+  "The strategy used for well-founded TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with non-recursive definitions as
+auto-rewrites"
+  "Trying repeated skolemization, instantiation, and if-lifting")
+
+(defhelper same-name-tcc (&key (defs :explicit) &inherit tcc)
+  (tcc$)
+  "The strategy used for same-name TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with non-recursive definitions as
+auto-rewrites"
+  "Trying repeated skolemization, instantiation, and if-lifting")
+
+(defhelper cond-disjoint-tcc (&key (defs :explicit) &inherit tcc)
+  (tcc$)
+  "The strategy used for cond-disjoint TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with non-recursive definitions as
+auto-rewrites"
+  "Trying repeated skolemization, instantiation, and if-lifting")
+
+(defhelper cond-coverage-tcc (&key (defs :explicit) &inherit tcc)
+  (tcc$)
+  "The strategy used for cond-coverage TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with non-recursive definitions as
+auto-rewrites"
+  "Trying repeated skolemization, instantiation, and if-lifting")
+
+(defhelper monotonicity-tcc (&key (defs :explicit) &inherit tcc)
+  (tcc$)
+  "The strategy used for monotonicity TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with non-recursive definitions as
+auto-rewrites"
+  "Trying repeated skolemization, instantiation, and if-lifting")
+
 ;;NSH(12.15.94): For backward compatibility.
-(defhelper tcc-bdd (&optional (defs !))
-  (grind$ :defs defs)
+(defhelper tcc-bdd (&optional (defs !) &inherit grind)
+  (grind)
   "Obsolete - subsumed by (TCC)."
   "Trying repeated skolemization, instantiation, and if-lifting")
 
@@ -667,17 +1086,14 @@ defined, it looks for 'context-strategy', and if that is not found, it
 invokes 'grind'."
   "")
 
-(defstep bash (&optional (if-match t)(updates? t) polarity? (instantiator inst?) (let-reduce? t) quant-simp? implicit-typepreds? cases-rewrite? ignore-typepreds?)
-  (then (assert :let-reduce? let-reduce? :quant-simp? quant-simp?
-		:implicit-typepreds? implicit-typepreds?
-		:ignore-typepreds? ignore-typepreds?
-		:cases-rewrite? cases-rewrite?)
-	(bddsimp)
+(defstep bash (&key (if-match t) polarity? (instantiator inst?) (cases-rewrite? t)
+		    &inherit (assert :except fnums) (lift-if :except fnums))
+  (then (assert) (bddsimp)
 	(if if-match (let ((command (generate-instantiator-command
 				     if-match polarity? instantiator)))
 		       command)(skip))
-	(repeat (then (skolem-typepred)(flatten)))
-	(lift-if :updates? updates?))
+	(repeat (then (skolem-typepred) (flatten)))
+	(lift-if))
   "Core of REDUCE.  Does ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, 
 FLATTEN, and LIFT-IF once and in that order.  The IF-MATCH option
 can be NIL, T, ALL, or BEST for no, some, all, or the best instantiation.
@@ -688,6 +1104,7 @@ The INSTANTIATOR argument can be used to specify use of an alternative
 instantiation mechanism.  This defaults to the (INST?) strategy."
   "Simplifying with decision procedures, rewriting, propositional
 reasoning, quantifier instantiation, skolemization, if-lifting.")
+
 
 (defun generate-instantiator-command (if-match polarity? instantiator &optional fnum)
   (let* ((instcmd (if (consp instantiator)
@@ -712,35 +1129,19 @@ reasoning, quantifier instantiation, skolemization, if-lifting.")
 	command
 	'(fail))))
 
-	 
-(defstep reduce (&optional (if-match t)(updates? t) polarity?
-			   (instantiator inst?) (let-reduce? t) quant-simp?
-			   no-replace? implicit-typepreds? cases-rewrite?
-			   ignore-typepreds?)
-    (repeat* (try (bash$ :if-match if-match :updates? updates?
-			 :polarity? polarity? :instantiator instantiator
-			 :let-reduce? let-reduce?
-			 :quant-simp? quant-simp?
-			 :implicit-typepreds? implicit-typepreds?
-			 :ignore-typepreds? ignore-typepreds?
-			 :cases-rewrite? cases-rewrite?)
-               (if no-replace? (skip)(replace*))
-               (skip)))
-"Core of GRIND (ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, FLATTEN,
+(defstep reduce (&key no-replace? &inherit bash replace*)
+  (repeat* (try (bash$)
+		(if no-replace? (skip) (replace*))
+		(skip)))
+  "Core of GRIND (ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, FLATTEN,
 LIFT-IF, i.e., BASH then REPLACE*) without reestablishing all the rewrites.
 See BASH for more explanation."
-"Repeatedly simplifying with decision procedures, rewriting,
+  "Repeatedly simplifying with decision procedures, rewriting,
   propositional reasoning, quantifier instantiation, skolemization,
  if-lifting and equality replacement")
 
-(defstep smash (&optional (updates? t) (let-reduce? t) quant-simp?
-			  implicit-typepreds? cases-rewrite? ignore-typepreds?)
-  (repeat* (then (bddsimp)
-		 (assert :let-reduce? let-reduce? :quant-simp? quant-simp?
-			 :implicit-typepreds? implicit-typepreds?
-			 :ignore-typepreds? ignore-typepreds?
-			 :cases-rewrite? cases-rewrite?)
-		 (lift-if :updates? updates?)))
+(defstep smash (&inherit (assert :except fnums) (lift-if :except fnums))
+  (repeat* (then (bddsimp) (assert) (lift-if)))
   "Repeatedly tries BDDSIMP, ASSERT, and LIFT-IF.  If the UPDATES?
 option is NIL, update applications are not if-lifted."
   "Repeatedly simplifying with BDDs, decision procedures, rewriting,
@@ -750,15 +1151,15 @@ and if-lifting")
 				     exclude-theories exclude)
   (if (or defs theories rewrites exclude-theories exclude)
       (then 
-       (if (eq defs '!!)
+       (if (string-equal defs '!!)
 	   (auto-rewrite-defs :always? !!)
-	   (if (eq defs '!)
+	   (if (string-equal defs '!)
 	       (auto-rewrite-defs :always? t)
-	       (if (eq defs 'explicit)
+	       (if (string-equal defs 'explicit)
 		   (auto-rewrite-defs :explicit? t)
-		   (if (eq defs 'explicit!!)
+		   (if (string-equal defs 'explicit!!)
 		       (auto-rewrite-defs :always? !! :explicit? t)
-		       (if (eq defs 'explicit!)
+		       (if (string-equal defs 'explicit!)
 			   (auto-rewrite-defs :always? t :explicit? t)
 			   (if defs (auto-rewrite-defs) (skip)))))))
        (auto-rewrite-theories :theories theories)
@@ -793,34 +1194,14 @@ EXCLUDE is a list of rewrite rules. "
 ~@[,~%and excluding theories: ~a~]~
 ~@[,~%and excluding rewrites: ~a~]")
 
-(defstep grind (&optional (defs !); nil, t, !, explicit, or explicit!
-			  theories
-			  rewrites
-			  exclude
-			  (if-match t)
-			  (updates? t)
-			  polarity?
-			  (instantiator inst?)
-			  (let-reduce? t)
-			  cases-rewrite?
-			  quant-simp?
-			  no-replace?
-			  implicit-typepreds?
-			  ignore-typepreds?)
+(defstep grind (&optional (defs !) ;; nil, t, !, explicit, or explicit!
+			  &inherit install-rewrites (assert :except fnums)
+			  replace* reduce)
   (then
-   (install-rewrites$ :defs defs :theories theories
-		      :rewrites rewrites :exclude exclude)
-   (then (bddsimp)(assert :let-reduce? let-reduce?
-			  :cases-rewrite? cases-rewrite?
-			  :ignore-typepreds? ignore-typepreds?))
+   (install-rewrites$)
+   (then (bddsimp) (assert))
    (replace*)
-   (reduce$ :if-match if-match :updates? updates?
-	    :polarity? polarity? :instantiator instantiator
-	    :let-reduce? let-reduce? :quant-simp? quant-simp?
-	    :no-replace? no-replace?
-	    :implicit-typepreds? implicit-typepreds?
-	    :ignore-typepreds? ignore-typepreds?
-	    :cases-rewrite? cases-rewrite?))
+   (reduce$))
     "A super-duper strategy.  Does auto-rewrite-defs/theories,
 auto-rewrite then applies skolem!, inst?, lift-if, bddsimp, and
 assert, until nothing works. Here
@@ -847,12 +1228,10 @@ instantiation mechanism.  This defaults to the (INST?) strategy."
     "Trying repeated skolemization, instantiation, and if-lifting")
 
 
-(defstep simplify-with-rewrites
-  (&optional (fnums *) defs theories rewrites exclude-theories exclude)
-  (then (install-rewrites :defs defs :theories theories
-			  :rewrites rewrites
-			  :exclude-theories exclude-theories
-			  :exclude exclude)
+(defstep simplify-with-rewrites (&optional (fnums *) defs theories
+					   &inherit install-rewrites stop-rewrite
+					   stop-rewrite-theory)
+  (then (install-rewrites)
     (assert fnums)
     (let ((decls (collect-referenced-decls
 		  (declaration *top-proofstate*)
@@ -863,15 +1242,15 @@ instantiation mechanism.  This defaults to the (INST?) strategy."
 				 (disabled-auto-rewrites *current-context*))))
 	  (names (loop for decl in decls
 		       collect (mk-name-expr (id decl) nil (id (module decl))))))
-      (stop-rewrite :names names))
+      (stop-rewrite))
     (let ((theories (if (listp theories) theories (list theories)))
 	  (theories (loop for entry in theories
 			  collect
 			  (if (consp entry)
 			      (car entry)
 			      entry))))
-      (stop-rewrite-theory :theories theories))
-    (stop-rewrite :names rewrites))
+      (stop-rewrite-theory))
+    (stop-rewrite))
   "Installs rewrites from statement (DEFS is either NIL, T, !, explicit,
 or explicit!), from THEORIES, and REWRITES, then applies (assert fnums), and
 then turns off all the installed rewrites.  Examples:
@@ -912,9 +1291,9 @@ then turns off all the installed rewrites.  Examples:
 
 (defstrat repeat (step)
   (try step (if (equal (get-goalnum *ps*) 1)
-			  (repeat step)
-			  (skip))
-    (skip))
+		(repeat step)
+		(skip))
+       (skip))
   "Successively apply STEP along main branch until it does nothing.")
 
 (defstrat repeat* (step)
@@ -922,7 +1301,7 @@ then turns off all the installed rewrites.  Examples:
   "Successively apply STEP until it does nothing.")
 
 (defstep prop ()
-  (try (flatten) (prop$) (try (split)(prop$) (skip)))
+  (try (flatten) (prop$) (try (split) (prop$) (skip)))
   "A black-box rule for propositional simplification."
   "Applying propositional simplification")
 
@@ -949,12 +1328,12 @@ then turns off all the installed rewrites.  Examples:
        (let ((goalnum (get-goalnum *ps*))
 	     (par-ps (parent-proofstate *ps*))
 	     ;;no dummy as opposed to spread@.
-	      (x (if (consp steplist)
-			  (nth (1- goalnum)
-			       steplist)
-			  '(skip))))
-	       x)
-    (let ((x (if (consp steplist)(car steplist) '(postpone t)))) x))
+	     (x (if (consp steplist)
+		    (nth (1- goalnum)
+			 steplist)
+		    '(skip))))
+	 x)
+       (let ((x (if (consp steplist)(car steplist) '(postpone t)))) x))
   "Applies STEP and then pairs the steps in STEPLIST with the subgoals")
 
 (defstrat spread@ (step steplist)
@@ -975,12 +1354,12 @@ then turns off all the installed rewrites.  Examples:
                                   Fewer subgoals (~s) than subproofs (~s)"
 			 (1+ (length (remaining-subgoals par-ps)))
 			 (length steplist))))))
-	      (x (if (consp steplist)
-			  (nth (1- goalnum)
-			       steplist)
-			  '(skip))))
-	       x)
-    (let ((x (if (consp steplist)(car steplist) '(postpone t)))) x))
+	     (x (if (consp steplist)
+		    (nth (1- goalnum)
+			 steplist)
+		    '(skip))))
+	 x)
+       (let ((x (if (consp steplist)(car steplist) '(postpone t)))) x))
   "Like SPREAD, applies STEP and then pairs the steps in STEPLIST with
 the subgoals, but generates warnings if number of subgoals do not match
 the number of subproofs.")
@@ -988,33 +1367,33 @@ the number of subproofs.")
 
 
 (defstrat spread! (step steplist)
-  (try (try  step
-	     (let ((goalnum (get-goalnum *ps*))
-		   (par-ps (parent-proofstate *ps*))
-		   (mismatch?
-		    (when (eql goalnum 1)
-		      (cond ((> (1+ (length (remaining-subgoals par-ps)))
-				(length steplist))
-			     (format t
-				 "~%***Error: ~
-                                  Fewer subproofs (~s) than subgoals (~s)"
-			       (length steplist)
-			       (1+ (length (remaining-subgoals par-ps))))
-			     t)
-			    ((< (1+ (length (remaining-subgoals par-ps)))
-				(length steplist))
-			     (format t
-				 "~%***Error: ~
-                                  Fewer subgoals (~s) than subproofs (~s)"
-			       (1+ (length (remaining-subgoals par-ps)))
+  (try (try step
+	    (let ((goalnum (get-goalnum *ps*))
+		  (par-ps (parent-proofstate *ps*))
+		  (mismatch?
+		   (when (eql goalnum 1)
+		     (cond ((> (1+ (length (remaining-subgoals par-ps)))
 			       (length steplist))
-			     t))))
-		   (x (if (consp steplist)
-			  (nth (1- goalnum)
-			       steplist)
-			  '(skip))))
-	       (if mismatch? (fail) x))
-	     (query*))
+			    (format t
+				"~%***Error: ~
+                                  Fewer subproofs (~s) than subgoals (~s)"
+			      (length steplist)
+			      (1+ (length (remaining-subgoals par-ps))))
+			    t)
+			   ((< (1+ (length (remaining-subgoals par-ps)))
+			       (length steplist))
+			    (format t
+				"~%***Error: ~
+                                  Fewer subgoals (~s) than subproofs (~s)"
+			      (1+ (length (remaining-subgoals par-ps)))
+			      (length steplist))
+			    t))))
+		  (x (if (consp steplist)
+			 (nth (1- goalnum)
+			      steplist)
+			 '(skip))))
+	      (if mismatch? (fail) x))
+	    (query*))
        (query*)
        (query*))
   "Like SPREAD, applies STEP and then pairs the steps in STEPLIST with
@@ -1023,12 +1402,12 @@ of subgoals do not match the number of subproofs.")
 
 (defstrat branch (step steplist)
   (try step (let ((x (if (consp steplist)
-			  (nth (1- (min (length steplist)
-					(get-goalnum *ps*)))
-			       steplist)
-			  '(skip))))
-	       x)
-    (let ((x (if (consp steplist)(car steplist) '(skip)))) x))
+			 (nth (1- (min (length steplist)
+				       (get-goalnum *ps*)))
+			      steplist)
+			 '(skip))))
+	      x)
+       (let ((x (if (consp steplist)(car steplist) '(skip)))) x))
   "Like SPREAD, applies STEP then pairs steps
 in STEPLIST with the resulting subgoals, using the last step in STEPLIST
 for any excess subgoals.  If STEP does nothing, the first step in STEPLIST
@@ -1036,26 +1415,20 @@ is applied.")
 
 (defstrat try-branch (step steplist else-step)
   (try step (let ((x (if (consp steplist)
-			  (nth (1- (min (length steplist)
-					(get-goalnum *ps*)))
-			       steplist)
-			  '(skip))))
-	       x)
-    else-step)
+			 (nth (1- (min (length steplist)
+				       (get-goalnum *ps*)))
+			      steplist)
+			 '(skip))))
+	      x)
+       else-step)
   "Like BRANCH, tries STEP and then pairs the steps in STEPLIST to the
 resulting subgoals.  The last step is used for any excess subgoals.
 If STEP does nothing, then ELSE-STEP is applied.")
 
-(defstep ground (&optional (let-reduce? t) quant-simp? implicit-typepreds?
-			   cases-rewrite? ignore-typepreds?)
+(defstep ground (&inherit (assert :except fnums))
   (try (flatten)
        (ground$)
-       (try (split)
-	    (ground$)
-	    (assert :let-reduce? let-reduce? :quant-simp? quant-simp?
-		    :implicit-typepreds? implicit-typepreds?
-		    :ignore-typepreds? ignore-typepreds?
-		    :cases-rewrite? cases-rewrite?)))
+       (try (split) (ground$) (assert)))
   "Does propositional simplification followed by the use of decision procedures."
   "Applying propositional simplification and decision procedures")
 
@@ -1079,19 +1452,11 @@ the user instead."
   "")
 
 
-;; (defstrat run-proof-list (proof-list)
-;;   (let ((*standard-input* (make-string-input-stream
-;; 			   (format nil "~{~a ~}" proof-list))))
-;;     )
-;;   "Strategy to run the given sequence of commands, as if they were
-;; typed in individually by the user.  This is not the same as rerun, as
-;; rerun expects a tree structure, and only applies to the current sequent."
-;;   "")
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defstep skosimp (&optional (fnum *) preds? dont-simplify?)
-  (then (if preds? (skolem-typepred fnum)
-	    (skolem! fnum :dont-simplify? dont-simplify?))
+(defstep skosimp (&optional (fnum *) preds? &inherit skolem! skolem-typepred)
+  (then (if preds?
+	    (skolem-typepred fnum)
+	    (skolem! fnum))
 	(flatten))
   "Skolemize (with typepreds on skolem constants when PREDS? is T)
 then disjunctively simplify.  "
@@ -1099,8 +1464,8 @@ then disjunctively simplify.  "
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defstep skosimp* (&optional preds? dont-simplify?)
-  (repeat (then (if preds? (skolem-typepred :dont-simplify? dont-simplify?)(skolem!))
+(defstep skosimp* (&optional preds? &inherit skolem-typepred skolem!)
+  (repeat (then (if preds? (skolem-typepred) (skolem!))
 		(flatten)))
   "Repeatedly Skolemizes (with typepreds on skolem constants when PREDS?
 is T) and disjunctively simplifies."
@@ -1245,37 +1610,37 @@ is T) and disjunctively simplifies."
 	      supertype)))))
 
 (defstep simple-induct (var fmla &optional name)
-  (let ((var (pc-parse var 'expr));;get var name-expr
-	(fmla (typecheck (pc-parse fmla 'expr);;typecheck fmla
+  (let ((var (pc-parse var 'expr)) ;;get var name-expr
+	(fmla (typecheck (pc-parse fmla 'expr) ;;typecheck fmla
 		:expected *boolean*)))
-    (if (and fmla;;if fmla is sensible
+    (if (and fmla ;;if fmla is sensible
 	     (forall? fmla)
 	     (member var (bindings fmla)
 		     :test #'(lambda (x y)
 			       (or (format-equal x y)
 				   (format-equal x (symbol-prefix (id y)))))))
 	(let ((actual-var  (or (find var (bindings fmla) :test #'format-equal)
-			       (find var (bindings fmla);;get var in fmla
+			       (find var (bindings fmla) ;;get var in fmla
 				     :test #'format-equal
 				     :key #'(lambda (x)
 					      (symbol-prefix (id x))))))
 	      (remaining-vars (remove actual-var (bindings fmla)
-				      :test #'eq)));;get non-var vars
+				      :test #'eq))) ;;get non-var vars
 	  (if (not (null (freevars (type actual-var))))
 	      ;;type of actual-var should not contain
 	      ;;free occurrences of other bound vars.
 	      (skip-msg "Type of induction variable contains bound variables.")
-	      (let ((body;;make body of induction predicate
+	      (let ((body ;;make body of induction predicate
 		     (if remaining-vars
 			 (lcopy fmla 'bindings
 				remaining-vars)
 			 (expression fmla)))
-		    (actual-type (type actual-var));;type/supertype
-		    (actual-supertype;;of actual-var
+		    (actual-type (type actual-var)) ;;type/supertype
+		    (actual-supertype ;;of actual-var
 		     (find-declared-adt-supertype actual-type))
 		    ;;NSH(2.16.97): was find-supertype
 		    (induction-name  
-		     (if name name;;get induction-name from
+		     (if name name ;;get induction-name from
 			 ;;given name or actual-(super)type
 			 (or (bounded-int-type? actual-type)
 			     (if (adt?  actual-supertype)
@@ -1292,7 +1657,7 @@ is T) and disjunctively simplifies."
 					 '|nat_induction|
 					 nil)
 				     nil)))))
-		    (type;;get domain type for induction predicate
+		    (type ;;get domain type for induction predicate
 		     (get-induction-domain-type induction-name actual-type actual-var))
 		    (new-bound-var
 		     (if (and type (not (tc-eq type actual-type)))
@@ -1302,7 +1667,7 @@ is T) and disjunctively simplifies."
 		    (subtype-constraints
 		     (if (not (eq new-bound-var actual-var))
 			 (compatible-preds type actual-type new-var)
-			 nil));;compatible? has been checked above.
+			 nil)) ;;compatible? has been checked above.
 		    (predicate
 		     (when type
 		       (if subtype-constraints
@@ -1316,7 +1681,8 @@ is T) and disjunctively simplifies."
 			   (make-lambda-expr (list actual-var) body)))))
 		(if induction-name
 		    (if predicate
-			(let ((rule `(then (lemma ,induction-name)(inst -1 ,predicate))))
+			(let ((rule `(then (lemma ,induction-name)
+					   (inst -1 ,predicate))))
 			  rule)
 			(skip-msg "Could not construct induction predicate"))
 		    (skip-msg "Given variable does not have type natural number or datatype.")))))
@@ -1393,22 +1759,16 @@ as the optional NAME argument.
    scheme is instantiated with an induction predicate constructed from fnum 2."
   "Inducting on ~a~@[ on formula ~a~]~@[ using induction scheme ~a~]")
 
-(defstep induct-and-simplify (var &optional (fnum 1) name
-				  (defs t)
-				  (if-match best)
-				  theories
-				  rewrites
-				  exclude
-				  (instantiator inst?)
-				  )
+(defstep induct-and-simplify (var &optional (fnum 1) name &key (defs t)
+				  (if-match best) (instantiator inst?)
+				  &inherit assert install-rewrites)
   (then
-   (install-rewrites$ :defs defs :theories theories
-		      :rewrites rewrites :exclude exclude)
+   (install-rewrites$)
    (try (induct var fnum name)
 	(then
 	 (skosimp*)
-	 (assert);;To expand the functions in the induction conclusion
-	 (repeat (lift-if));;To lift the embedded ifs,
+	 (assert) ;;To expand the functions in the induction conclusion
+	 (repeat (lift-if)) ;;To lift the embedded ifs,
 	 ;;then simplify, split, then instantiate
 	 ;;the induction hypothesis.  
 	 (repeat* (then (assert)
@@ -1693,13 +2053,13 @@ See also SIMPLE-MEASURE-INDUCT."
 		     (if innerbvars
 			 (let 
 			     ((new-outers (make-new-bindings outerbvars nil body))
-			      (new-measure-ineq (substit measure-ineq
-						  (pairlis new-outers
-							   outerbvars)))
+			      (subst-list (pairlis outerbvars new-outers))
+			      (new-measure-ineq (substit measure-ineq subst-list))
+			      (new-innerbody (substit innerbody subst-list))
 			      (new-ih (make-forall-expr new-outers
 					(make-forall-expr innerbvars
 					  (make-implication new-measure-ineq
-							    innerbody)))))
+							    new-innerbody)))))
 			   (branch (case new-ih)
 				   ((let ((ihfnum (1- ihnum)))
 				      (hide ihfnum))
@@ -2099,18 +2459,17 @@ See also ETA, APPLY-ETA."
 steps to the first subgoal, postponing remaining subgoals.")
 
 
-(defstep case-replace (formula &optional hide?)
-  (then@ (case formula)
-	 (replace -1 :hide? hide?))
+(defstep case-replace (formula &inherit replace)
+  (then@ (case formula) (replace -1))
   "Case splits on a given FORMULA lhs=rhs and replaces lhs by rhs.
 See also CASE, CASE*.  Hides FORMULA when HIDE? is T."
   "Assuming and applying ~a")
 
-(defstep name-case-replace (a b x)
+(defstep name-case-replace (a b x &inherit case-replace name-replace)
   (let ((a (pc-typecheck (pc-parse a 'expr)))
 	(b (pc-typecheck (pc-parse b 'expr)))
 	(eq (make-equality a b)))
-    (then@ (case-replace eq :hide? t)(name-replace x b))) 
+    (then@ (case-replace eq)(name-replace x b))) 
   "Replace A with B, then name B as X" 
   "Replacing ~a with ~a which is then named ~a")
 
@@ -2129,7 +2488,7 @@ See also CASE, CASE*.  Hides FORMULA when HIDE? is T."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;NSH(12.16.93): replace* strategy does LR replacement on fnums.
 
-(defstep replace* (&rest fnums)
+(defstep replace* (&rest fnums &inherit replace)
   (let ((fnums (find-all-sformnums (s-forms *goal*)
 				   (if (null fnums) '* fnums)
 				   #'always-true))
@@ -2138,10 +2497,10 @@ See also CASE, CASE*.  Hides FORMULA when HIDE? is T."
   "Apply left-to-right replacement with formulas in FNUMS."
   "Repeatedly applying the replace rule")
 
-(defstep skolem! (&optional (fnum *) keep-underscore? dont-simplify?)
+(defstep skolem! (&optional (fnum *) keep-underscore? &inherit skolem)
   (let ((sformnum (find-!quant fnum *ps*)))
     (let ((newterms (fill-up-terms sformnum nil *ps* keep-underscore?)))
-      (skolem sformnum newterms :dont-simplify? dont-simplify?)))
+      (skolem sformnum newterms)))
   "Skolemizes by automatically generating skolem constants.
 When KEEP-UNDERSCORE? is T, a bound variable x_1 is replaced by skolem constant
 x_1!n rather than x!n, for some number n."
@@ -2173,17 +2532,17 @@ x_1!n rather than x!n, for some number n."
 (defstep instantiate-one (fnum terms &optional copy?)
   (else (try (instantiate fnum terms copy?)
 	     (let ((new-sforms
-		     (select-seq (s-forms (current-goal *ps*))
-				 *new-fmla-nums*))
-		    (rest (delete-seq (s-forms (current-goal *ps*))
-				 *new-fmla-nums*)))
-		(if (subsetp new-sforms rest
-			       :test #'tc-eq
-			       :key #'formula)
-		    (then (skip-msg
-			   "Avoiding instantiation leading to duplicate formulas")
-			  (fail))
-		  (skip)))
+		    (select-seq (s-forms (current-goal *ps*))
+				*new-fmla-nums*))
+		   (rest (delete-seq (s-forms (current-goal *ps*))
+				     *new-fmla-nums*)))
+	       (if (subsetp new-sforms rest
+			    :test #'tc-eq
+			    :key #'formula)
+		   (then (skip-msg
+			  "Avoiding instantiation leading to duplicate formulas")
+			 (fail))
+		   (skip)))
 	     (skip))
 	(skip))
   "Same as INSTANTIATE but treated as a SKIP if the instantiation would
@@ -2194,15 +2553,15 @@ introduce a duplicate formula."
 (defstep inst (fnum &rest terms)
   (let ((terms (if (listp terms) terms (list terms)))
 	(fnum (find-sform (s-forms (current-goal *ps*)) fnum
-			   #'(lambda (sform)
+			  #'(lambda (sform)
 			      (if (negation? (formula sform))
 				  (check-inst-quant (args1 (formula sform))
 						    terms nil)
 				  (check-inst-quant (formula sform)
 						    terms t)))))
 	(bindings (let* ((sforms (select-seq (s-forms (current-goal *ps*))
-					   fnum))
-			(fmla (when sforms (formula (car sforms)))))
+					     fnum))
+			 (fmla (when sforms (formula (car sforms)))))
 		    (when fmla
 		      (if (negation? fmla)
 			  (bindings (args1 fmla))
@@ -2212,14 +2571,14 @@ introduce a duplicate formula."
 	    (instantiate-one$ fnum terms)
 	    (if (< (length bindings)(length terms))
 		(let ((current-terms (loop for x in terms as nil in bindings
-					   collect x))
+					collect x))
 		      (remaining-terms (nthcdr (length bindings) terms)))
 		  (try-branch (instantiate-one$ fnum current-terms)
-		       ((try (inst fnum :terms remaining-terms)
-			    (skip)
-			    (fail))
-			(skip))
-		       (skip)))
+			      ((try (inst fnum :terms remaining-terms)
+				    (skip)
+				    (fail))
+			       (skip))
+			      (skip)))
 		(skip-msg "Not enough terms given.")))
 	(skip-msg "No quantified formula matching given number of terms.")))
   "Instantiates the top quantifier in formula FNUM. See INST-CP for copying
@@ -2397,39 +2756,38 @@ empty, and for the named rewrite rules, otherwise.  Behaves like (SKIP) otherwis
   "Turns on list of applied auto rewrites and skips."
   "")
 
-(defstep auto-rewrite-defs (&optional explicit? always?
-				      exclude-theories)
-    (let ((exclude-theories (if (listp exclude-theories)
-				exclude-theories
-				(list exclude-theories)))
-	  (exclude-theories
-	   (loop for name in exclude-theories
-		 collect (get-theory
-			  (typecheck (pc-parse name 'modname)))))
+(defstep auto-rewrite-defs (&optional explicit? always? exclude-theories)
+  (let ((exclude-theories (if (listp exclude-theories)
+			      exclude-theories
+			      (list exclude-theories)))
+	(exclude-theories
+	 (loop for name in exclude-theories
+	    collect (get-theory
+		     (typecheck (pc-parse name 'modname)))))
 			   
-	  (exclude (mapappend #'rewrite-names
+	(exclude (mapappend #'rewrite-names
 			    (disabled-auto-rewrites *current-context*)))
-	  (decls (collect-referenced-decls (declaration *top-proofstate*)
-					    *ps*
-					  explicit?
-					  exclude-theories
-					  exclude))
-	   (rule-list (loop for decl in decls
-			    collect
-			    (let ((name (mk-auto-rewrite-name
-					 decl
-					 (mk-modname (id (module decl)))
-					 always?)))
-			      `(auto-rewrite ,name))))
-	   (rule `(then* ,@rule-list)))
-      rule)
-	 "Installs all the definitions used directly or indirectly in the
+	(decls (collect-referenced-decls (declaration *top-proofstate*)
+					 *ps*
+					 explicit?
+					 exclude-theories
+					 exclude))
+	(rule-list (loop for decl in decls
+		      collect
+			(let ((name (mk-auto-rewrite-name
+				     decl
+				     (mk-modname (id (module decl)))
+				     always?)))
+			  `(auto-rewrite ,name))))
+	(rule `(then* ,@rule-list)))
+    rule)
+  "Installs all the definitions used directly or indirectly in the
 original statement as auto-rewrite rules.  If the explicit? flag is T, the
 recursive definitions are not installed and only the explicit ones are.
 If always? is !!, it uses auto-rewrite!!, and if it 
 is T, then it uses auto-rewrite! on explicit definitions,
 else auto-rewrite." 
-	 "Auto-rewriting with all the definitions relevant to conjecture")
+  "Auto-rewriting with all the definitions relevant to conjecture")
 
 (defstep auto-rewrite-explicit (&optional always?)
   (auto-rewrite-defs t always?)
@@ -2437,28 +2795,23 @@ else auto-rewrite."
 statement.  If always? is T, then it uses auto-rewrite! else auto-rewrite."
   "Auto-rewriting with all the explicit definitions relevant to statement")
 
-(defhelper rewrite-directly-with-fnum (fnum  &optional (fnums *) (dir lr)
-					     dont-delete?)
-    (if (select-seq (s-forms (current-goal *ps*)) fnums)
-	(then (beta fnum dir)
-	      (try-branch (split fnum)
-		      ((let ((newnum  (car *new-fmla-nums*)))
-			     (let ((newnums (list newnum)))
-			       (then (assert newnums dir)
-				     (replace newnum
-					      fnums
-					      dir :dont-delete? dont-delete?)
-				     (delete newnums))))
-		       (then (beta *)
-			     (assert *)))
-		      (then (assert fnum dir)
-			    (replace fnum
-				     fnums
-				     dir :dont-delete? dont-delete?)
-			    (delete fnum)))
-		       )
-	(skip-msg "Invalid target formula(s) given to rewrite-directly-with-fnum"))
-    "Beta-reduces, splits, and simplifies FNUM, and does a replacement in FNUMS
+(defhelper rewrite-directly-with-fnum (fnum &optional (fnums *) (dir lr) dont-delete?)
+  (if (select-seq (s-forms (current-goal *ps*)) fnums)
+      (then (beta fnum dir)
+	    (try-branch (split fnum)
+			((let ((newnum (car *new-fmla-nums*)))
+			   (let ((newnums (list newnum)))
+			     (then (assert newnums dir)
+				   (replace newnum fnums dir
+					    :dont-delete? dont-delete?)
+				   (delete newnums))))
+			 (then (beta *) (assert *)))
+			(then (assert fnum dir)
+			      (replace fnum fnums dir
+				       :dont-delete? dont-delete?)
+			      (delete fnum))))
+      (skip-msg "Invalid target formula(s) given to rewrite-directly-with-fnum"))
+  "Beta-reduces, splits, and simplifies FNUM, and does a replacement in FNUMS
 corresponding to dir (left-to-right when LR, and right-to-left when RL)."
   "Rewriting directly with ~a")
 
@@ -2551,28 +2904,28 @@ SUBST, target FNUMS where rewrites are to occur, and the rewrite direction
 DIR (LR for left-to-right, and RL, otherwise)."
   "Rewriting with ~a")
 
-(defstep rewrite-lemma (lemma subst &optional (fnums *)
-			  (dir lr) dont-delete?)
+(defstep rewrite-lemma (lemma-name subst &optional (fnums *)
+				   (dir lr) dont-delete?)
   (let ((in-sformnums (if (consp fnums)
-			   (loop for x in fnums
-				 collect (if (and (integerp x)
-						  (< x 0))
-					     (1- x)
-					     x))
-			   (if (and (integerp fnums)(< fnums 0))
-			       (1- fnums)
-			       fnums))))
-	  (try-branch (lemma lemma subst)
-	   ((if *new-fmla-nums*
-		(let ((num (car *new-fmla-nums*)))
-		  (rewrite-directly-with-fnum num in-sformnums dir dont-delete?))
-		(skip))
-	    (then (beta *)(assert *)))
-	   (skip )))
+			  (loop for x in fnums
+			     collect (if (and (integerp x)
+					      (< x 0))
+					 (1- x)
+					 x))
+			  (if (and (integerp fnums)(< fnums 0))
+			      (1- fnums)
+			      fnums))))
+    (try-branch (lemma lemma-name subst)
+		((if *new-fmla-nums*
+		     (let ((num (car *new-fmla-nums*)))
+		       (rewrite-directly-with-fnum num in-sformnums dir dont-delete?))
+		     (skip))
+		 (then (beta *)(assert *)))
+		(skip )))
   "Rewrites using the given lemma/defintion as a (conditional) rewrite
  rule, relative to the given substitution (which must provide substitutions
  for all of the substitutable variables).  See REWRITE."
-   "Rewriting using ~a~@[ where~{~%   ~a gets ~a~^,~}~]")
+  "Rewriting using ~a~@[ where~{~%   ~a gets ~a~^,~}~]")
 
 (defstep rewrite (lemma-or-fnum &optional (fnums *)  subst (target-fnums *)
 		    (dir lr) (order in) dont-delete?) ;;(hash-rewrites? t) NSH(9.21.95)
@@ -3100,11 +3453,11 @@ or (LAMBDA x: ...)."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;NSH(7.27.94): skolem then typepred the skolem constants.
 
-(defstep skolem-typepred (&optional (fnum *) dont-simplify?)
+(defstep skolem-typepred (&optional (fnum *) &inherit skolem)
   (let ((sformnum (find-!quant fnum *ps*))
 	(newterms (fill-up-terms sformnum nil *ps*))
 	(x `(typepred ,@newterms))) 
-    (then (skolem sformnum newterms :dont-simplify? dont-simplify?)
+    (then (skolem sformnum newterms)
 	  x))
   "Skolemizes and then introduces type-constraints of the Skolem
 constants.
@@ -3112,17 +3465,17 @@ See also SKOLEM!, TYPEPRED."
   "Skolemizing (with typepred on new Skolem constants)")
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defstep name-replace (name expr &optional (hide? t))
-  (try-branch (name name expr)
-	      ((then (replace -1)
-		     (if hide? (hide -1)(skip)))
+(defstep name-replace (rname expr &optional (hide? t) &inherit replace)
+  (try-branch (name rname expr)
+	      ((replace -1)
 	       (skip))
 	      (skip-msg "NAME step in NAME-REPLACE failed."))
   "Uses NAME, REPLACE, and HIDE to abbreviate an expression with a
 newly chosen name"
   "Using ~a to name and replace ~a")
 
-(defstep name-replace* (name-and-exprs &optional (hide? t))
+(defstep name-replace* (name-and-exprs &optional (hide? t)
+				       &inherit name-replace)
   (if (consp name-and-exprs)
       (if (consp (cdr name-and-exprs))
 	  (let ((name (car name-and-exprs))
@@ -3161,9 +3514,9 @@ replaces each expri in the sequent with the corresponding namei."
 
 ;;NSH(5.27.95) : From JMR
 ;;added exclude argument to grind and if-match argument to use.
-(defstep use (lemma &optional subst (if-match best) (instantiator inst?)
+(defstep use (lemma-name &optional subst (if-match best) (instantiator inst?)
 		    polarity? let-reduce?)
-  (try-branch (lemma lemma subst)
+  (try-branch (lemma lemma-name subst)
 	      ((let ((fnum (car *new-fmla-nums*))
 		     (command (generate-instantiator-command
 			       if-match polarity? instantiator fnum)))
@@ -3172,12 +3525,12 @@ replaces each expri in the sequent with the corresponding namei."
 		  (repeat command)))
 	       (skip))
 	      (skip))
-  "Introduces lemma LEMMA, then does BETA and INST? (repeatedly) on
+  "Introduces lemma LEMMA-NAME, then does BETA and INST? (repeatedly) on
  the lemma.  The INSTANTIATOR argument may be used to specify an alternative
  to INST?."
   "Using lemma ~a")
 
-(defstep use* (&rest names)
+(defstep use* (&rest names &inherit use)
   (if (consp names)
       (let ((first (car names))
             (rest (cdr names)))
@@ -3486,7 +3839,8 @@ in the given fnums."
 	   (adt? (find-supertype
 		  (type (args1 fmla)))))))
 
-(defstep decompose-equality (&optional (fnum *) (hide? t))
+(defstep decompose-equality (&optional (fnum *) (hide? t)
+				       &inherit simplify replace* grind)
   (let ((sforms (select-seq (s-forms (current-goal *ps*))
 			    (if (memq fnum '(* + -)) fnum
 				(list fnum))))
@@ -3955,7 +4309,7 @@ See also ETA"
 		(if (ineq? fmla) fmla nil))))
 	       
 
-(defstep both-sides (op term &optional (fnum 1))
+(defstep both-sides (op term &optional (fnum 1) &inherit case-replace assert)
   (let ((op (pc-parse op 'name))
 	(term (pc-parse term 'expr))
 	(sforms (select-seq (s-forms (current-goal *ps*)) fnum))
@@ -3966,24 +4320,24 @@ See also ETA"
 	   (let* ((ineq-conjuncts (and+ ineq-conjunction))
 		  (new-conjuncts
 		   (loop for conj in ineq-conjuncts	
-		 collect
-			 (make-application
-			     (operator conj)
-			   (typecheck
-			       (mk-application op
-				 (args1 conj) term)
-			     :expected
-			     (if *integer*
-				 (compatible-type
-				  (type (args1 conj))
-				  *integer*)
-				 (type (args1 conj))))
-			   (typecheck
-			       (mk-application op
-				 (args2 conj) term)
-			     :expected
-			     (compatible-type (type (args2 conj))
-					      *integer*))))))
+		      collect
+			(make-application
+			    (operator conj)
+			  (typecheck
+			      (mk-application op
+				(args1 conj) term)
+			    :expected
+			    (if *integer*
+				(compatible-type
+				 (type (args1 conj))
+				 *integer*)
+				(type (args1 conj))))
+			  (typecheck
+			      (mk-application op
+				(args2 conj) term)
+			    :expected
+			    (compatible-type (type (args2 conj))
+					     *integer*))))))
 	     (make-conjunction new-conjuncts))))
 	(case-fmla (when new-ineq-conjunction
 		     (make-equality ineq-conjunction new-ineq-conjunction))))
@@ -4151,26 +4505,17 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
   "Applies (auto-rewrite-theory :always? T) on a given list of theories."
   "Auto-rewriting given theories ~a with :always? T option")
 
-(defstep lazy-grind  (&optional (if-match t) polarity? (defs !) rewrites
-                                theories exclude (updates? t) (let-reduce? t)
-				quant-simp? implicit-typepreds?
-				cases-rewrite? ignore-typepreds?)
+(defstep lazy-grind  (&optional (if-match t) polarity? (defs !)
+				&inherit grind reduce)
   (then
-   (grind$ :if-match nil :defs defs :rewrites rewrites 
-	   :theories theories :exclude exclude :updates? updates?
-	   :let-reduce? let-reduce? :quant-simp? quant-simp?
-	   :implicit-typepreds? implicit-typepreds?
-	   :ignore-typepreds? ignore-typepreds?
-	   :cases-rewrite? cases-rewrite?)
-   (reduce$ :if-match if-match :polarity? polarity? :updates? updates? :let-reduce? let-reduce?
-	    :cases-rewrite? cases-rewrite?))
+   (grind$ :if-match nil)
+   (reduce$))
   "Equiv. to (grind) with the instantiations postponed until after simplification."
   "By skolemization, if-lifting, simplification and instantiation")
 
 (defstep grind-with-lemmas
-  (&optional (lazy-match? t) (lazy-inst? nil) (if-match t) (polarity? t)
-	     (defs !) rewrites theories exclude (updates? t) (let-reduce? t)
-	     &rest lemmas)
+  (&optional (lazy-match? t) (lazy-inst? nil) (if-match t) (polarity? t) (defs !)
+	     &rest lemmas &inherit grind reduce use)
   (then
    (if lemmas
        (if lazy-inst?
@@ -4180,69 +4525,30 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
 	     x)
 	   (let ((lemmata (if (listp lemmas) lemmas (list lemmas)))
 		 (x `(then ,@(loop for lemma in lemmata
-				   append 
-				   `((skosimp* t)
-				     (use ,lemma :if-match ,if-match
-					  :polarity? ,polarity?
-					  :let-reduce? ,let-reduce?))))))
+				   append `((skosimp* t) (use ,lemma))))))
 	     x))
        (skip))
-   (if lazy-match? 
-       (then (grind :if-match nil :defs defs :rewrites rewrites
-		    :theories theories :exclude exclude :updates? updates?
-		    :let-reduce? let-reduce?) 
-             (reduce :if-match if-match :polarity? polarity? :updates? updates?
-		     :let-reduce? let-reduce?))
-       (grind :if-match if-match :polarity? polarity? :defs defs
-	      :rewrites rewrites :theories theories :exclude exclude
-	      :updates? updates? :let-reduce? let-reduce?)))
+   (if lazy-match?
+       (then (grind :if-match nil) (reduce))
+       (grind :if-match if-match)))
   "Does a combination of (lemma) and (grind); if lazy-match? is t,
      postpones instantiations to follow a first round of simplification."
   "~%Grinding away with the supplied lemmas,")
 
 (defstep grind-with-ext (&optional (defs !); nil, t, !, explicit, or explicit!
-			  theories
-			  rewrites
-			  exclude
-			  (if-match t)
-			  (updates? t)
-			  polarity?
-			  (instantiator inst?)
-			  (let-reduce? t)
-			  cases-rewrite?
-			  quant-simp?
-			  no-replace?
-			  implicit-typepreds?
-			  ignore-typepreds?)
+				   &inherit install-rewrites (assert :except fnums)
+				   replace* reduce-with-ext)
+				   
   (then
-   (install-rewrites$ :defs defs :theories theories
-		      :rewrites rewrites :exclude exclude)
-   (then (bddsimp) (assert :let-reduce? let-reduce?
-			   :cases-rewrite? cases-rewrite?
-			   :ignore-typepreds? ignore-typepreds?))
+   (install-rewrites$)
+   (then (bddsimp) (assert))
    (replace*)
-   (reduce-with-ext$ :if-match if-match :updates? updates?
-		     :polarity? polarity? :instantiator instantiator
-		     :let-reduce? let-reduce? :quant-simp? quant-simp?
-		     :no-replace? no-replace?
-		     :implicit-typepreds? implicit-typepreds?
-		     :ignore-typepreds? ignore-typepreds?
-		     :cases-rewrite? cases-rewrite?))
+   (reduce-with-ext$))
   "Like GRIND, but calls REDUCE-EXT, which also uses APPLY-EXTENSIONALITY.  See GRIND for an explanation of the arguments."
   "Trying repeated skolemization, instantiation, if-lifting, and extensionality")
 
-(defstep reduce-with-ext (&optional (if-match t)(updates? t) polarity?
-				    (instantiator inst?) (let-reduce? t)
-				    quant-simp? no-replace?
-				    implicit-typepreds? cases-rewrite?
-				    ignore-typepreds?)
-  (repeat* (then (bash$ :if-match if-match :updates? updates?
-		       :polarity? polarity? :instantiator instantiator
-		       :let-reduce? let-reduce?
-		       :quant-simp? quant-simp?
-		       :implicit-typepreds? implicit-typepreds?
-		       :ignore-typepreds? ignore-typepreds?
-		       :cases-rewrite? cases-rewrite?)
+(defstep reduce-with-ext (&key no-replace? &inherit bash replace*)
+  (repeat* (then (bash$)
 		 (apply-extensionality$ :hide? t)
 		 (if no-replace? (skip) (replace*))))
   "Core of GRIND-WITH-EXT (ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, FLATTEN,
@@ -4624,6 +4930,7 @@ ground prover until they are exposed."
 	     (cons (car args) subexprs)
 	     subexprs)))))
 
+;; Eventually does case-replace, name-replace, and beta, but can't inherit
 (defstep let-name-replace (&optional (fnum *) hide? (where top))
   (let ((sformnum (find-sform (s-forms (current-goal *ps*)) fnum
 			      #'(lambda (x)
