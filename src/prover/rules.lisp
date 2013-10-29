@@ -30,15 +30,15 @@
 (in-package :pvs)
 
 (defmacro addrule (name required-args optional-args body docstring
-			&optional format-string)
+		   &optional format-string)
   `(let* ((entry (gethash ,name *rulebase*))
-	  (form (cons ,name (append ',required-args
-				    (when (consp ',optional-args)
-				      (if (eq (car ',optional-args) '&rest)
-					  ',optional-args
-					  '(&optional ,optional-args))))))
-	  (docstr (format nil "~s: ~%    ~a" form ,docstring))
-	  (has-rest? (when (memq '&rest ',optional-args) t)))
+	  (args (append ',required-args
+			(when (consp ',optional-args)
+			  (if (eq (car ',optional-args) '&rest)
+			      ',optional-args
+			      '(&optional ,@optional-args)))))
+	  (form (cons ,name args))
+	  (docstr (format nil "~s: ~%    ~a" form ,docstring)))
      (cond ((null entry)
 	    (add-symbol-entry ,name
 			      (make-instance 'rule-entry
@@ -54,11 +54,7 @@
 				'format-string ,format-string)
 			      *rulebase*)
 	    (push ,name *rulenames*)
-	    (push (cons ,name
-			(cons has-rest?
-			      (make-prover-keywords
-			       (append ',required-args ',optional-args))))
-		  *prover-keywords*)
+	    (update-prover-keywords ,name args)
 	    #+lucid (record-source-file ,name 'strategy)
 	    (format t "~%Added rule ~a.~%" ,name))
 	   (t
@@ -70,20 +66,31 @@
 		  ,(macroexpand `(make-lambda-macro ,required-args
 						    ,optional-args
 						    ,body)))
-	    (let ((old (assoc ,name *prover-keywords*)))
-	      (if old
-		  (setf (cdr old)
-			(cons has-rest?
-			      (make-prover-keywords
-			       (append ',required-args ',optional-args))))
-		  (push (cons ,name
-			      (cons has-rest?
-				    (make-prover-keywords
-				     (append ',required-args
-					     ',optional-args))))
-			*prover-keywords*)))
+	    (update-prover-keywords ,name args)
 	    #+lucid (record-source-file ,name 'strategy)
 	    (format t "~%Changed rule ~a" ,name)))))
+
+;;; Potential replacement for addrule
+;;; Doesn't separate required-args and optional-args
+;;; The docstring is immediately after the args
+;;; The optional format-string is immediately after the docstring
+;;; and is the first thing in the body, if it is a string
+;;; The arg declarations follow that, then the body, e.g.,
+
+;;;  (defrulepr lemma (name &optional subst)
+;;;   "Adds lemma named NAME as the first antecedent formula
+;;;    after applying the substitutions in SUBST to it.  Example:
+;;;      (LEMMA \"assoc\" (\"x\" 1 \"y\" 2 \"z\" 3))."
+;;;   "~%Applying ~a ~@[where ~{~%  ~a gets ~a,~}~]"
+;;;   (pr-input formula-or-definition-name-with-subst name subst)
+;;;   (lemma-rule-fun name subst))
+
+
+(defmacro defrulepr (name args docstring &rest body)
+  `(let* ((entry (gethash ,name *rulebase*))
+	  (form (cons ,name ,args))
+	  (docstr (format nil "~s: ~%    ~a" form ,docstring)))
+     (break "needs work")))
 
 (defun internal-pc-typecheck (expr &key expected fnums
 				   (context *current-context*)
