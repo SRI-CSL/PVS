@@ -924,10 +924,10 @@
 			     (null (library mi2))
 			     (eq (library mi1) (library mi2)))
 			 (tc-eq* (actuals mi1) (actuals mi2) bindings)
-			 (or (null (dactuals mi1)) (null (dactuals mi2))
+			 (or ;;(null (dactuals mi1)) (null (dactuals mi2))
 			     (tc-eq* (dactuals mi1) (dactuals mi2) bindings))
-			 (or (null (mappings mi1))
-			     (null (mappings mi2))
+			 (or ;;(null (mappings mi1))
+			     ;;(null (mappings mi2))
 			     (tc-eq* (mappings mi1) (mappings mi2) bindings)))
 		    (null mi2))
 		(or *in-tc-eq-resolution*
@@ -1050,7 +1050,7 @@
 
 (defun declaration-outside-formals? (type-name)
   (unless *strong-tc-eq-flag*
-    (let ((decl (declaration type-name)))
+    (let ((decl (declaration (car (resolutions type-name)))))
       (and (typep decl 'formal-decl)
 	   (current-theory)
 	   (not (memq decl (formals (current-theory))))
@@ -1059,10 +1059,11 @@
 
 (defun actuals-are-outside-formals? (actuals)
   (unless *strong-tc-eq-flag*
-    (let ((ex (actual-value (car actuals))))
-      (and (typep ex 'name)
-	   (typep (declaration ex) 'formal-decl)
-	   (not (memq (declaration ex) (formals (current-theory))))))))
+    (let* ((ex (actual-value (car actuals)))
+	   (decl (when (typep ex 'name)
+		   (declaration (car (resolutions ex))))))
+      (and (typep decl 'formal-decl)
+	   (not (memq decl (formals (current-theory))))))))
 
 (defmethod compatible?* ((atype type-variable) (etype type-expr))
   t)
