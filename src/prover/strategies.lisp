@@ -280,8 +280,14 @@
 	     (let* ((inh-formals (cdr (memq '&inherit formals)))
 		    (rules-inheritance (collect-rules-inheritance inh-formals)))
 	       (if (or (null inh-formals) rules-inheritance)
-		   (let ((expanded-formals
-			  (expand-inherited-formals formals rules-inheritance)))
+		   (let* ((expanded-formals
+			   (expand-inherited-formals formals rules-inheritance))
+			  (expanded-docstring
+			   (if (equal expanded-formals formals)
+			       docstring
+			       (format nil "~s :~%  expanded from:~%~a"
+				 (cons name expanded-formals)
+				 docstring))))
 		     (update-prover-keywords name expanded-formals)
 		     (add-symbol-entry
 		      name
@@ -292,7 +298,7 @@
 			'defn (add-inherited-args-to-definition
 			       definition rules-inheritance)
 			'source-defn definition
-			'docstring docstring
+			'docstring expanded-docstring
 			'format-string format-string)
 		      rules-or-steps)
 		     (when rules-inheritance
@@ -574,30 +580,30 @@
 	    (values (formals rentry) t))))))
 
 (defun defstrat* (name formals definition
-		     &optional docstring format-string)
+		  &optional docstring format-string)
   (defgen* name formals definition docstring format-string
-		 'defrule-entry *steps*))
+	   'defrule-entry *steps*))
 
 (defun defrule* (name formals definition
-		     &optional docstring format-string)
+		 &optional docstring format-string)
   (defgen* name formals definition docstring format-string
-		 'defrule-entry *rules*))
+	   'defrule-entry *rules*))
 
 (defun defstep* (name formals definition
-		     &optional docstring format-string)
+		 &optional docstring format-string)
   (defgen* name formals definition docstring format-string
-		 'defstep-entry *rules*)
+	   'defstep-entry *rules*)
   (defgen* (intern (format nil "~a$" name) :pvs)
-    formals definition docstring format-string
-		 'defstep-entry *steps*))
+      formals definition docstring format-string
+      'defstep-entry *steps*))
 
 (defun defhelper* (name formals definition
-		     &optional docstring format-string)
+		   &optional docstring format-string)
   (defgen* name formals definition docstring format-string
-		 'defhelper-entry *rules*)
+	   'defhelper-entry *rules*)
   (defgen* (intern (format nil "~a$" name) :pvs)
-    formals definition docstring format-string
-		 'defhelper-entry *steps*))
+      formals definition docstring format-string
+      'defhelper-entry *steps*))
 
 
 (defmacro defrule (name args body doc format)
@@ -3887,7 +3893,7 @@ in the given fnums."
 				     (delete fnum)
 				     (skip))))
 			   (flatten))
-		     (then (flatten) (replace*)
+		     (then (flatten) (replace* :hide? nil)
 			   (grind :defs nil :if-match nil)))))
 	(skip-msg "Couldn't find a suitable equation")))
   "Decomposes an equality or disequality to the component equalities.
