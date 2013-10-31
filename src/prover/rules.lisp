@@ -138,7 +138,7 @@
 	(t (let* ((rule-entry (gethash rule-name *rulebase*))
 		  (defrule-entry (gethash rule-name *rules*))
 		  (step-entry (gethash rule-name *steps*))
-		  (entry (cond (rule-entry)(defrule-entry)(step-entry)(t nil))))
+		  (entry (or rule-entry defrule-entry step-entry)))
 	     (if (null entry)
 		 (format t "~%No such rule, defined rule or strategy.~%")
 		 (format t "~%~a~%" (docstring entry))))))
