@@ -1854,8 +1854,7 @@
 		     (collect-prover-input-strings rule-args
 						   *rule-args-alist*))
 	       (make-instance 'rule-instance
-		 :rule (apply (rule-function entry)
-			 args)
+		 :rule (apply (rule-function entry) args)
 		 :rule-input rule
 		 :rule-format (when (format-string entry)
 				(cons (format-string entry)
@@ -1916,7 +1915,7 @@
 
 (defun rule-apply (step ps)
   (let* ((*ps* ps)
-	 (* '*)
+	 ;;(* '*)
 	 (*goal* (current-goal ps))
 	 (*label* (label  ps))
 	 ;; (*subgoalnum* (subgoalnum ps))
