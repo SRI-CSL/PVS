@@ -448,12 +448,10 @@
 (defvar pvs-place-ring (make-ring 200))
 
 (defun pvs-goto-file-location (file place)
-  (setq yyy (cons file place))
   (let ((elt (cons (buffer-file-name) (point))))
     (unless (and (not (ring-empty-p pvs-place-ring))
 		 (equal elt (ring-ref pvs-place-ring 0)))
       (ring-insert pvs-place-ring elt))
-    (setq yyy elt)
     (find-file file)
     (let ((row (elt place 0))
 	  (col (elt place 1)))
@@ -468,26 +466,31 @@
     (find-file file)
     (goto-char point)))
 
+(global-set-key (kbd "<M-left>") 'pvs-backto-last-location)
+
 (defun pvs-add-tooltips (fname)
   (interactive (list (current-pvs-file)))
   (let* ((dlist-json
 	  (pvs-file-send-and-wait (format "(collect-pvs-file-decls-info \"%s\")"
 				      fname)
-				  nil 'get-decls 'string))
-	 (dlist (json-read-from-string dlist-json)))
-    (with-silent-modifications
-      (dotimes (i (length dlist))
-	(let* ((delt (elt dlist i))
-	       (region (place-to-region (cdr (assq 'place delt))))
-	       (msg (cdr (assq 'decl delt)))
-	       (decl-file (cdr (assq 'decl-file delt)))
-	       (decl-place (cdr (assq 'decl-place delt))))
-	  (add-text-properties
-	   (car region) (cdr region)
-	   `(mouse-face highlight help-echo ,msg))
-	  (make-text-button
-	   (car region) (cdr region)
-	   'type 'pvs-decl 'decl-file decl-file 'decl-place decl-place))))))
+				  nil 'get-decls '(or string null)))
+	 (dlist (when dlist-json (json-read-from-string dlist-json))))
+    (if dlist
+	(with-silent-modifications
+	  (dotimes (i (length dlist))
+	    (let* ((delt (elt dlist i))
+		   (region (place-to-region (cdr (assq 'place delt))))
+		   (msg (cdr (assq 'decl delt)))
+		   (decl-file (cdr (assq 'decl-file delt)))
+		   (decl-place (cdr (assq 'decl-place delt))))
+	      (add-text-properties
+	       (car region) (cdr region)
+	       `(mouse-face highlight help-echo ,msg))
+	      (make-text-button
+	       (car region) (cdr region)
+	       'type 'pvs-decl 'decl-file decl-file 'decl-place decl-place)))
+	  (message "Tooltips set"))
+	(message "Tooltips not set - is file typechecked?"))))
 
 (defun place-to-region (place)
   (let ((srow (elt place 0))
