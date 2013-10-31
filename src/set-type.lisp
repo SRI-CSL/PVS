@@ -5051,7 +5051,8 @@ required a context.")
 
 (defmethod subst-for-formals? ((res resolution) alist)
   (let ((mi (module-instance res)))
-    (or (subst-for-formals? mi alist)
+    (or (typep (declaration res) 'field-decl)
+	(subst-for-formals? mi alist)
 	(and (null (dactuals mi))
 	     (decl-formals (declaration res))
 	     (every #'(lambda (fm) (assq fm alist))
@@ -5078,14 +5079,10 @@ required a context.")
 (defmethod subst-for-formals! ((res resolution) alist)
   (let* ((mi (subst-for-formals (module-instance res) alist))
 	 (decl (declaration res))
-	 (type nil
-	   ;; Can't do this, or it loops - just let make-resolution take care of it
-	   ;; (unless (or t
-	   ;; 		   (and (type-decl? decl)
-	   ;; 			(type-name? (type res))
-	   ;; 			(eq (declaration (type res)) decl)))
-	   ;; 	 (subst-for-formals (type res) alist))
-	   )
+	 (type (when (typep decl 'field-decl)
+		 ;; Can't do this in general, or it loops - just let
+		 ;; make-resolution take care of it
+		 (subst-for-formals (type res) alist)))
 	 (dacts (cond ((dactuals mi)
 		       (subst-for-formals? (dactuals mi) alist))
 		      ((decl-formals decl)
