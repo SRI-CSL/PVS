@@ -613,7 +613,7 @@ current branch using the proof command AUTO-STEP."
       (finalize tcc-step))))
   "[Field] Internal strategy." "")
 
-(defstep cancel-formula (&optional (fnum + -) (tcc-step (extra-tcc-step)))
+(defstep cancel-formula (&optional (fnum (+ -)) (tcc-step (extra-tcc-step)))
   (let ((fnexpr  (first-formula fnum :test #'field-formula))
 	(fn      (car fnexpr))
 	(formula (cadr fnexpr))
