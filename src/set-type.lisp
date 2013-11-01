@@ -3380,8 +3380,8 @@ required a context.")
       (nreverse result)
       (resolutions-of-current-theory*
        (cdr resolutions)
-       (if (tc-eq (module-instance (car resolutions))
-		  (current-theory-name))
+       (if (same-id (module-instance (car resolutions))
+		    (current-theory-name))
 	   (cons (car resolutions) result)
 	   result))))
 
