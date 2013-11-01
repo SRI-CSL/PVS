@@ -148,7 +148,8 @@
   (resolve** name kind args))
 
 (defun resolve** (name kind args)
-  (let ((reses (filter-preferences name (get-resolutions name kind args) kind args)))
+  (let* ((all-reses (get-resolutions name kind args))
+	 (reses (filter-preferences name all-reses kind args)))
     (or reses
 	(when (mod-id name)
 	  ;; Try again, making the mod-id part of the id
@@ -824,6 +825,7 @@
 (defmethod typecheck-actual ((ex set-expr) act expected kind arguments)
   ;; with-no-type-errors not needed here;
   ;; the expr typechecks iff the subtype does.
+  (declare (ignore expected kind arguments))
   (typecheck* ex nil nil nil)
   (let ((texpr (typecheck* (setsubtype-from-set-expr ex) nil nil nil)))
     (when texpr
@@ -831,6 +833,7 @@
       (push 'type (types ex)))))
 
 (defmethod typecheck-actual ((app application) act expected kind arguments)
+  (declare (ignore expected kind arguments))
   (multiple-value-bind (ex error obj)
       (let ((*typechecking-actual* t))
 	(with-no-type-errors (typecheck* app nil nil nil)))
@@ -865,6 +868,7 @@
 (defmethod typecheck-actual ((ex expr) act expected kind arguments)
   ;; with-no-type-errors not needed here;
   ;; the expr typechecks iff the expr-as-type does.
+  (declare (ignore expected kind arguments))
   (typecheck* ex nil nil nil)
   (when (and (plusp (parens ex))
 	     (some #'(lambda (ty)
@@ -878,6 +882,7 @@
 
 (defmethod typecheck-actual (ex act expected kind arguments)
   ;; Must be a type-expr
+  (declare (ignore expected kind arguments))
   (unless (type-value act)
     (setf (type-value act) (typecheck* ex nil nil nil))))
 
