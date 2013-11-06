@@ -29,7 +29,7 @@
 	},
 	"pvs.error": {
 	    "description": "An XML-RPC response in case of an error where",
-	    "description": "id is not available - else a ",
+	    "description": "id is not available - o.w. a pvs.response is given",
 	    "type": "object",
 	    "required": [ "mode", "context", "xmlrpc-error" ],
 	    "properties": {
@@ -72,22 +72,45 @@
 	},
 	"pvs-json-response": {
 	    "type": "object",
-	    "required": [ "jsonrpc", "result", "id" ],
+	    "required": [ "jsonrpc", "id" ],
 	    "properties": {
 		"jsonrpc": { "enum": ["2.0"]
 		},
 		"id": { "type": "string" }
 	    },
+	    "oneOf": [
+		{"$ref": "#/definitions/pvs-json-error"},
+		{"$ref": "#/definitions/pvs-json-result"}
+	    ]
+	},
+	"pvs-json-error": {
+	    "type": "object",
+	    "required": [ "error" ],
+	    "properties": {
+		"error": {
+		    "type": "object",
+		    "required": [ "code", "message" ],
+		    "properties": {
+			"code": { "type": "integer"},
+			"message": { "type": "string"},
+			"data": {}
+		    }
+		}
+	    }
+	},
+	"pvs-json-result": {
+	    "type": "object",
+	    "required": [ "result" ],
 	    "anyOf": [
-		{"$ref": "#/definitions/list-methods-response"},
-		{"$ref": "#/definitions/list-client-methods-response"},
-		{"$ref": "#/definitions/help-response"},
-		{"$ref": "#/definitions/change-context-response"},
-		{"$ref": "#/definitions/typecheck-response"},
-		{"$ref": "#/definitions/prove-formula-response"},
-		{"$ref": "#/definitions/proof-command-response"},
-		{"$ref": "#/definitions/names-info-response"},
-		{"$ref": "#/definitions/lisp-response"}
+		{"$ref": "#/definitions/list-methods-result"},
+		{"$ref": "#/definitions/list-client-methods-result"},
+		{"$ref": "#/definitions/help-result"},
+		{"$ref": "#/definitions/change-context-result"},
+		{"$ref": "#/definitions/typecheck-result"},
+		{"$ref": "#/definitions/prove-formula-result"},
+		{"$ref": "#/definitions/proof-command-result"},
+		{"$ref": "#/definitions/names-info-result"},
+		{"$ref": "#/definitions/lisp-result"}
 	    ]
 	},
 	"list-methods-request": {
@@ -96,7 +119,7 @@
 		"method": { "enum": ["list-methods"] }
 	    }
 	},
-	"list-methods-response": {
+	"list-methods-result": {
 	    "oneOf": [{"$ref": "#/definitions/string-array-result"}]
 	},
 	"list-client-methods-request": {
@@ -105,7 +128,7 @@
 		"method": { "enum": ["list-client-methods"] }
 	    }
 	},
-	"list-client-methods-response": {
+	"list-client-methods-result": {
 	    "oneOf": [{"$ref": "#/definitions/string-array-result"}]
 	},
 	"help-request": {
@@ -116,7 +139,7 @@
 	    },
 	    "required": ["params"]
 	},
-	"help-response": {
+	"help-result": {
 	    "type": "object",
 	    "properties": {
 		"result": { "type" : "object" }
@@ -129,7 +152,7 @@
 		"params": { "type": "string" }
 	    }
 	},
-	"change-context-response": {
+	"change-context-result": {
 	    "type": "object",
 	    "properties": {
 		"result": { "type" : "string" }
@@ -142,7 +165,7 @@
 		"params": { "type": "string" }
 	    }
 	},
-	"typecheck-response": {
+	"typecheck-result": {
 	    "type": "object",
 	    "properties": {
 		"result": {
@@ -205,7 +228,7 @@
 		}
 	    }
 	},
-	"prove-formula-response": {
+	"prove-formula-result": {
 	    "type": "object",
 	    "properties": {
 		"result": {
@@ -225,7 +248,7 @@
 		}
 	    }
 	},
-	"proof-command-response": {
+	"proof-command-result": {
 	    "type": "object",
 	    "properties": {
 		"result": {
@@ -246,7 +269,7 @@
 	    },
 	    "required": ["params"]
 	},
-	"names-info-response": {
+	"names-info-result": {
 	    "type": "object",
 	    "properties": {
 		"result": {
@@ -274,7 +297,7 @@
 	    },
 	    "required": ["params"]
 	},
-	"lisp-response": {
+	"lisp-result": {
 	    "oneOf": [{"$ref": "#/definitions/string-result"}]
 	},
 	"string-result": {
@@ -306,6 +329,11 @@
 	    "items": {"type": "integer"}
 	}
     },
-    "oneOf": [{"$ref": "#/definitions/pvs-json-request"},
-	      {"$ref": "#/definitions/pvs-json-response"}]
+    "oneOf": [
+	{"$ref": "#/definitions/pvs.request"},
+	{"$ref": "#/definitions/pvs.response"},
+	{"$ref": "#/definitions/pvs.error"},
+	{"$ref": "#/definitions/pvs-json-request"},
+	{"$ref": "#/definitions/pvs-json-response"}
+    ]
 }
