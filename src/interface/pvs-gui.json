@@ -270,16 +270,19 @@
 	    "required": ["params"]
 	},
 	"names-info-result": {
-	    "type": "object",
-	    "properties": {
-		"result": {
-		    "type": "object",
-		    "properties": {
-			"id": {"type": "string"},
-			"place": {"$ref": "#/definitions/place"},
-			"decl": {"type": "string"},
-			"decl-file": {"type": "string"},
-			"decl-place": {"$ref": "#/definitions/place"}
+	    "type": "array",
+	    "items": {
+		"type": "object",
+		"properties": {
+		    "result": {
+			"type": "object",
+			"properties": {
+			    "id": {"type": "string"},
+			    "place": {"$ref": "#/definitions/place"},
+			    "decl": {"type": "string"},
+			    "decl-file": {"type": "string"},
+			    "decl-place": {"$ref": "#/definitions/place"}
+			}
 		    }
 		}
 	    }
