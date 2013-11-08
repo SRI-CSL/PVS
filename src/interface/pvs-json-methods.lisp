@@ -98,6 +98,13 @@
     (:kind . :formula)
     (:place . ,(pvs:place-list decl))))
 
+;;; Info
+
+(defrequest names-info (filename)
+  "Get the names-tooltip information for a PVS file"
+  (when (pvs:typecheck-file filename)
+    (pvs:collect-pvs-file-decls-info filename)))
+
 ;;; Prover interface
 
 ;; (defrequest prove-formula (formula theory)
