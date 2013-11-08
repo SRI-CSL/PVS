@@ -36,6 +36,8 @@
 
 (in-package :pvs)
 
+(export '(collect-pvs-file-decls-info))
+
 (defvar *list-declarations* nil)
 
 ;;; Called by Emacs - show-expanded-form command
