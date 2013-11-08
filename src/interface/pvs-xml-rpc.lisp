@@ -54,7 +54,7 @@
 (defvar *pvs-xmlrpc-server*)
 
 #+allegro
-(defun pvs-server (&key (port 55223))
+(defun pvs-server (&key (port 22334))
   (let ((cmdsrv (make-xml-rpc-server 
 		 :start (list 
 			 ;; :host "locahost" 
