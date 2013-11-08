@@ -132,7 +132,7 @@
     (error 'pvs-error
 	   :message msg
 	   :error-file errfile
-	   :file-or-buffer-name (namestring fbname)
+	   :file-or-buffer-name (when fbname (namestring fbname))
 	   :place plist)))
 
 (defun json-pvs-error (id c)
