@@ -26,7 +26,9 @@ import util
 import wx
 import logging
 import os.path
-from wx.lib.pubsub import setupkwargs, pub 
+from wx.lib.pubsub import setupkwargs, pub
+from jsonschema import validate
+import remgr
 
 class PVSCommunicationLogger:
     __shared_state = {}
@@ -83,6 +85,13 @@ class PVSCommunicator:
             self.ideURL = cfg.ideURL
             self.pvsURL = cfg.pvsURL
             self.miniLog = []
+            jsonschemaFullname = os.path.join(cfg.applicationFolder, "src/pvs-gui.json")
+            if os.path.exists(jsonschemaFullname):
+                with open(jsonschemaFullname, 'r') as jsonschemaFile:
+                    self.pvsJsonSchema = json.load(jsonschemaFile)
+                    jsonschemaFile.close()
+            self._doValidate = logging.getLogger("root").getEffectiveLevel() == logging.DEBUG
+            
             
     def start(self):
         parsedURL = urlparse(self.ideURL)
@@ -98,12 +107,22 @@ class PVSCommunicator:
             
     def shutdown(self):
         self.guiServer.shutdown()
+        
+    def _validateJSON(self, jsonObject):
+        if self._doValidate:
+            try:
+                validate(jsonObject, self.pvsJsonSchema["definitions"])
+                logging.debug("Validation successful for: %s", jsonObject)
+            except Exception as err:
+                logging.error("JSON Object is not valid: %s", err)
+                raise err
             
     def requestPVS(self, method, *params):
         """ Send a request to PVS """
         reqid = 'gui_{0}'.format(self.counter)
         self.counter += 1
         request = {PVSCommunicator.METHOD: method, PVSCommunicator.PARAMS: params, PVSCommunicator.ID: reqid}
+        self._validateJSON(request)
         jRequest = json.dumps(request)
         PVSCommunicationLogger().log("=> %s"%(jRequest,))
         logging.debug("JSON request: %s", jRequest)
@@ -111,8 +130,8 @@ class PVSCommunicator:
         PVSCommunicationLogger().log("<= %s"%(sResult,))
         logging.debug("JSON result: %s", sResult)
         result = json.loads(sResult)
-        result = self.responseCheck(result)
-        return result            
+        self._validateJSON(result)
+        return result
     
     def onPVSMessageReceived(self, jsonString):
         """
@@ -129,10 +148,13 @@ class PVSCommunicator:
         """
         logging.debug("Received: %s", jsonString)
         try:
-            message = json.loads(jsonString, object_hook=self.requestCheck)
+            message = json.loads(jsonString)
+            self._validateJSON(message)
             PVSCommunicationLogger().log("<= %s"%(message,))
             result = self.processMessage(message)
             logging.debug("Sending Back: %s", result)
+            self._validateJSON(result)
+            PVSCommunicationLogger().log("=> %s"%(result,))
             return result
         #TODO: The return vlaues for errors should be different and json-based
         except TypeError as err:
@@ -155,50 +177,6 @@ class PVSCommunicator:
         params = message[PVSCommunicator.PARAMS] if PVSCommunicator.PARAMS in message else []
         result = PVSResponseManager().processCommand(_id, method, *params)
         return result
-
-    def responseCheck(self, dct):
-        """
-        Checks that the request is a JSON object (i.e., dictionary)
-        with a method, jsonrpc of '2.0', optional id and params, and
-        nothing else.
-        """
-        if not isinstance(dct, dict):
-            raise util.XMLRPCException("Response '%s' must be a JSON object", dct)
-        if not (PVSCommunicator.MODE in dct or PVSCommunicator.CONTEXT in dct):
-            raise util.XMLRPCException("Response '%s' must include 'mode' and 'context'", dct)
-        if PVSCommunicator.JSONRPCRESULT in dct:
-            res = dct[PVSCommunicator.JSONRPCRESULT]
-            if isinstance(res, str) or isinstance(res, unicode): #TODO: should not this be a json object already and not just a string?
-                logging.warning("%s should already be a json object and not a string", res)
-                res = json.loads(res)
-            if not isinstance(res, dict):
-                raise util.XMLRPCException("jsonrcp_result value '%s' must be a JSON object", res)
-            if not PVSCommunicator.JSONRPC in res:
-                logging.warning("%s does not have a jsonrpc key", res)
-            if PVSCommunicator.ID in res:
-                if not (PVSCommunicator.RESULT in res or PVSCommunicator.ERROR in res):
-                    raise util.XMLRPCException("jsonrcp_result value '%s' must include either 'result' or 'error'", res)
-        elif PVSCommunicator.XMLRPCERROR in dct:
-            err = dct[PVSCommunicator.XMLRPCERROR]
-            raise util.XMLRPCException("Error: " + str(err))
-        return dct
-
-    def requestCheck(self, dct):
-        """
-        Checks that the request is a JSON object (i.e., dictionary)
-        with a method, jsonrpc of '2.0', optional id and params, and
-        nothing else.
-        """
-        if not isinstance(dct, dict):
-            raise util.XMLRPCException("Request must be a JSON object")
-        if PVSCommunicator.JSONRPC not in dct:
-            raise util.XMLRPCException("Request must include 'jsonrpcResult':")
-        if PVSCommunicator.METHOD not in dct:
-            raise util.XMLRPCException("Request must include a method")
-        if not all(k in [PVSCommunicator.JSONRPC, PVSCommunicator.METHOD, PVSCommunicator.ID, PVSCommunicator.PARAMS] for k in dct.keys()):
-            raise util.XMLRPCException("Request must only have 'jsonrpcResult', 'method', 'id', and 'params' fields")
-        return dct
-
 
 class PVSResponseManager:
     __shared_state = {}
@@ -307,6 +285,9 @@ class PVSCommandManager:
                 errorObject[PVSCommunicator.DATA] = errorObj[PVSCommunicator.DATA] if PVSCommunicator.DATA in errorObj else None
                 raise util.PVSException(message=errorObject[PVSCommunicator.MESSAGE], errorObject=errorObject)
             result = jsonResult[PVSCommunicator.JSONRPCRESULT]
+            if isinstance(result, str) or isinstance(result, unicode):
+                logging.warning("result should not be a string here, but an object")
+                result = json.loads(result)
             if PVSCommunicator.ERROR in result:
                 errDict = result[PVSCommunicator.ERROR]
                 errorObject = self._processErrorObject(errDict)
@@ -331,16 +312,20 @@ class PVSCommandManager:
             errorObject = {}
             errorObject[PVSCommunicator.CODE] = errDict[PVSCommunicator.CODE]
             errorObject[PVSCommunicator.MESSAGE] = errDict[PVSCommunicator.MESSAGE]
-            data = errDict[PVSCommunicator.DATA]
-            errorDataFile = data["error_file"]
-            with open (errorDataFile, "r") as errorFile:
-                errorData = errorFile.read()
-            errorFile.close()
-            errorObject[PVSCommunicator.DATA] = errorData
-            os.remove(errorDataFile)
-            errorObject[PVSCommunicator.BEGIN] = data[PVSCommunicator.BEGIN]
-            errorObject[PVSCommunicator.THEORY] = data[PVSCommunicator.THEORY]
-            errorObject[PVSCommunicator.END] = data[PVSCommunicator.END] if PVSCommunicator.END in data else None
+            if PVSCommunicator.DATA in errDict:
+                data = errDict[PVSCommunicator.DATA]
+                errorDataFile = data["error_file"]
+                with open (errorDataFile, "r") as errorFile:
+                    errorData = errorFile.read()
+                errorFile.close()
+                errorObject[PVSCommunicator.DATA] = errorData
+                os.remove(errorDataFile)
+                errorObject[PVSCommunicator.BEGIN] = data[PVSCommunicator.BEGIN]
+                errorObject[PVSCommunicator.THEORY] = data[PVSCommunicator.THEORY]
+                errorObject[PVSCommunicator.END] = data[PVSCommunicator.END] if PVSCommunicator.END in data else None
+            else:
+                logging.warning("error object %s did not have data", errDict)
+                errorObject[PVSCommunicator.DATA] = ""
             return errorObject
             
     def _ensureFilenameIsIknown(self, fullname):
@@ -364,16 +349,24 @@ class PVSCommandManager:
         fullname = self._ensureFilenameIsIknown(fullname)
         name = os.path.basename(fullname)
         name = util.getFilenameFromFullPath(fullname, False)
-        pub.sendMessage(constants.PUB_REMOVEMARKERS)
+        pub.sendMessage(constants.PUB_REMOVEANNOTATIONS)
         result = self._sendCommand("typecheck", name)
         if result is not None:
             pub.sendMessage(constants.PUB_FILETYPECHECKED, fullname=fullname, result=result)
+            information = self._sendCommand("names-info", name)
+            if isinstance(information, str) or isinstance(information, unicode):
+                logging.error("information should not be a string, it should be a dictionary")
+                information = json.loads(information)
+                # {"id":"n","place":[27,36,27,37],"decl":"n: VAR nat","decl-file":"sum2.pvs","decl-place":[4,2,4,13]},
+            information.sort(key=lambda x: x["place"])
+            remgr.RichEditorManager().applyNamesInformation(fullname, information)
+            logging.debug("name-info returned: %s", information)
     
     def parse(self, fullname=None):
         fullname = self._ensureFilenameIsIknown(fullname)
         name = os.path.basename(fullname)
         name = os.path.splitext(name)[0] # just get the filename without the extension 
-        pub.sendMessage(constants.PUB_REMOVEMARKERS)
+        pub.sendMessage(constants.PUB_REMOVEANNOTATIONS)
         result = self._sendCommand("parse", name)
         return result
     

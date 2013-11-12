@@ -25,7 +25,6 @@ class MainFrameMenu(wx.MenuBar):
         self.setBindings()
         pub.subscribe(self.update, PUB_UPDATEMENUBAR)
         pub.subscribe(self.showPlugin, PUB_SHOWPLUGIN)
-        pub.subscribe(self.showToolbar, PUB_SHOWTOOLBAR)
         pub.subscribe(self.addPluginToViewMenu, PUB_ADDITEMTOVIEWMENU)
         pub.subscribe(self.prepareRecentContextsSubMenu, PUB_UPDATEPVSCONTEXT)
         pub.subscribe(self.prepareRecentFilesSubMenu, PUB_PREPARERECENTFILESMENU)
@@ -65,8 +64,6 @@ class MainFrameMenu(wx.MenuBar):
     def addViewMenu(self):
         """Adding menu items to View menu"""
         self.viewMenu = wx.Menu()
-        preferences = Preferences()
-        
         self.pluginMenu = wx.Menu()
         self.viewMenu.AppendMenu(wx.ID_ANY, 'Plugins', self.pluginMenu)
         # Add View Menu to the menu bar:
@@ -197,12 +194,4 @@ class MainFrameMenu(wx.MenuBar):
             item.Check(value)
         else:
             logging.warn("No menu option for plugin %s", name)
-            
-    def showToolbar(self, name, value=True):
-        if name in self.toolbars:
-            logging.info("Changing the visibility of %s to %s", name, value)
-            item = self.toolbars[name]
-            item.Check(value)
-        else:
-            logging.warn("No menu option for toolbar %s", name)
             

@@ -2,7 +2,6 @@
 # This File contains all the generic function calls 
 
 import logging, sys, wx, os, os.path
-import sys
 from sxp import sexp
 import remgr
 from wx.lib.pubsub import setupkwargs, pub

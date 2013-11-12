@@ -4,7 +4,7 @@
 import util
 import logging
 from ui.frmgr import FindReplaceManager
-from pvscomm import PVSCommandManager, PVSCommandManager, PVSCommunicationLogger
+from pvscomm import PVSCommandManager, PVSCommunicationLogger
 from constants import *
 import wx
 import remgr
@@ -14,7 +14,6 @@ import preference
 from pvscomm import PVSCommunicator
 from ui.plugin import PluginManager
 import wx.stc as stc
-import constants
 from wx.lib.pubsub import setupkwargs, pub 
 
 def onChangeContext(event):
@@ -37,15 +36,15 @@ def onCreateNewFile(event):
     frame = util.getMainFrame()
     filters = "PVS files (*" + PVS_EXTENSION + ")|*" + PVS_EXTENSION
     dialog = wx.FileDialog (frame, "Create a new PVS file", wildcard = filters, style = wx.SAVE | wx.OVERWRITE_PROMPT )
-    if dialogging.ShowModal() == wx.ID_OK:
-        fullname = dialogging.GetPath()
+    if dialog.ShowModal() == wx.ID_OK:
+        fullname = dialog.GetPath()
         if not fullname.endswith(PVS_EXTENSION):
             fullname = fullname + PVS_EXTENSION
         logging.info("Creating new file %s", fullname)
         util.openFile(fullname)
     else:
         logging.info("Nothing was selected.")
-    dialogging.Destroy()
+    dialog.Destroy()
 
 def onOpenFile(event):
     """called to handle 'open file' request"""
@@ -92,8 +91,8 @@ def onSaveAsFile(event):
     frame = util.getMainFrame()
     filters = "PVS files (*" + PVS_EXTENSION + ")|*" + PVS_EXTENSION
     dialog = wx.FileDialog (frame, "Save File As...", wildcard = filters, style = wx.SAVE | wx.OVERWRITE_PROMPT )
-    if dialogging.ShowModal() == wx.ID_OK:
-        fullname = dialogging.GetPath()
+    if dialog.ShowModal() == wx.ID_OK:
+        fullname = dialog.GetPath()
         if not fullname.endswith(PVS_EXTENSION):
             fullname = fullname + PVS_EXTENSION
         logging.info("Saving file as %s", fullname)
@@ -102,7 +101,7 @@ def onSaveAsFile(event):
             richEditor.saveFile(fullname)
     else:
         logging.info("Nothing was selected.")
-    dialogging.Destroy()
+    dialog.Destroy()
     
         
 def onSaveAllFiles(event):
@@ -168,7 +167,7 @@ def onFindText(event):
         selected = focus.GetSelectedText()
         if selected is None:
             selected = ""
-        FindReplaceManager(None, selected, EMPTY_STRING).show()
+        FindReplaceManager(selected, EMPTY_STRING).show()
 
 def toggleTool(name):
     PluginManager().toggleTool(name)

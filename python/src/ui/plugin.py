@@ -41,9 +41,11 @@ class PluginManager:
         for plugin in self.pluginsDefinitions:
             if PluginManager.VISIBLE in plugin:
                 visibility = plugin[PluginManager.VISIBLE]
-                self.showPlugin(plugin[PluginManager.NAME], pvsMode in visibility)
+                visible = pvsMode in visibility
             else:
-                self.showPlugin(plugin[PluginManager.NAME], True)
+                visible=True
+            self.showPlugin(plugin[PluginManager.NAME], visible)
+            pub.sendMessage(PUB_SHOWPLUGIN, name=plugin[PluginManager.NAME], value=visible)
             
     def create(self, pluginDefinition):
         name = pluginDefinition[PluginManager.NAME]
@@ -99,7 +101,7 @@ class PluginManager:
     def destroy(self, name):
         plugin = self.getPlugin(name)
         plugin.Destroy()
-        self.toolsDir[name] = [info[0], None, False]
+        util.auiManager().Update()
         
     def shouldPluginBeVisible(self, name, pvsMode):
         for definition in self.pluginsDefinitions:

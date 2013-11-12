@@ -4,6 +4,7 @@ import wx.stc as stc
 import logging
 from constants import PVS_KEYWORDS, PVS_OPERATORS
 import ui.images
+from config import PVSIDEConfiguration
 
 faces = {'default_color': '000000',
          'keyword_color': '0000FF',
@@ -46,6 +47,16 @@ class PVSStyledText(stc.StyledTextCtrl):
         stc.StyledTextCtrl.__init__(self, parent, wx.ID_ANY, pos=wx.DefaultPosition, size=wx.DefaultSize, style=wx.TE_MULTILINE | wx.HSCROLL | wx.TE_RICH | wx.TE_RICH2)
         self.SetMarginType(0, stc.STC_MARGIN_NUMBER)
         self.SetMarginWidth(0, 30)
+        self.namesInformation = []
+        cfg = PVSIDEConfiguration()
+        faces['default_color'] = cfg.default_color
+        faces['keyword_color'] = cfg.keyword_color
+        faces['comment_color'] = cfg.comment_color
+        faces['number_color'] = cfg.number_color
+        faces['operator_color'] = cfg.operator_color
+        faces['string_color'] = cfg.string_color
+        faces['size'] = cfg.font_size
+        
         self.StyleSetSpec(stc.STC_STYLE_LINENUMBER, "size:%d,face:%s" % (faces['size'], faces['mono']))
         self.SetMarginType(1, stc.STC_MARGIN_SYMBOL)
         self.MarkerDefine(0, stc.STC_MARK_ROUNDRECT, "#CCFF00", "RED")
@@ -55,8 +66,11 @@ class PVSStyledText(stc.StyledTextCtrl):
         self.MarkerDefine(2, stc.STC_MARK_SHORTARROW, "blue", "blue")
         self.MarkerDefine(3, stc.STC_MARK_ARROW, "#00FF00", "#00FF00")
         self.SetStyleBits(7)
+        self.SetMouseDwellTime(300)
         self.setSyntaxHighlighting_usingmatlab()
         self.Bind(wx.EVT_SET_CURSOR, self.onCursor)  #TODO: what is this?
+        self.Bind(stc.EVT_STC_DWELLSTART, self.onMouseDwellStarted)
+        #self.Bind(stc.EVT_STC_DWELLEND, self.onMouseDwellEnded)
 
     def setSyntaxHighlighting_usingmatlab(self):
         logging.debug("Setting syntax highlighting")
@@ -79,6 +93,44 @@ class PVSStyledText(stc.StyledTextCtrl):
         self.SetKeyWords(1, " ".join(PVS_OPERATORS))
         self.GetCurrentPos()
         
+    def onMouseDwellStarted(self, event):
+        text = None
+        if event.Position > -1:
+            position = (self.LineFromPosition(event.Position), self.GetColumn(event.Position))
+            logging.debug("Mouse position is at %s", position)
+            text = self._getTooltipText(position)
+        if text is not None:
+            self.SetToolTipString(text)
+        else:
+            self.SetToolTip(None)
+        event.Skip()
+    
+    def _getTooltipText(self, position):
+        (row, column) = position # row and column here both start at 0.
+        text = None
+        row = row + 1 # PVS Columns start at 0, Rows start at 1
+        inf = self._findDecl((row, column))
+        if inf is not None:
+            text = inf["decl"]
+        return text
+    
+    def _findDecl(self, position, lo=0, hi=None):
+        if hi is None:
+            hi = len(self.namesInformation)
+        while lo < hi:
+            mid = (lo+hi)//2
+            midval = self.namesInformation[mid]
+            place = midval["place"]
+            begin = (place[0], place[1])
+            end = (place[2], place[3])
+            if end < position:
+                lo = mid+1
+            elif begin > position: 
+                hi = mid
+            else:
+                return midval
+        return None
+    
     def onCursor(self, event):
         pass
         #logging.debug("Event: %s", event)

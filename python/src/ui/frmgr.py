@@ -11,7 +11,7 @@ import logging
 class FindReplaceManager:
     """A dialog box for finding and replacing texts in a RichEditor"""
     
-    def __init__(self, frame, defaultFindText=EMPTY_STRING, defaultReplaceText=EMPTY_STRING):
+    def __init__(self, defaultFindText=EMPTY_STRING, defaultReplaceText=EMPTY_STRING):
         self.defaultFindText = defaultFindText
         self.defaultReplaceText = defaultReplaceText
         self.data = wx.FindReplaceData()
@@ -78,7 +78,6 @@ class FindReplaceManager:
             frame.showMessage("No more occurrences of '%s' was found"%_find)
                     
     def OnReplaceAll(self, evt):
-        frame = util.getMainFrame()
         _find = self.data.GetFindString()
         _replace = self.data.GetReplaceString()
         logging.info("Replace All %s", _find)

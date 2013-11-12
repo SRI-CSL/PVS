@@ -18,6 +18,13 @@ class PVSIDEConfiguration:
             self.ideURL = "http://localhost:22335/RPC2"
             self.ideSize = (900, 600)
             self.ideMinumumSize = (500, 300)
+            self.default_color = '000000'
+            self.keyword_color = '0000FF'
+            self.comment_color = '008B00'
+            self.number_color = '00CD66'
+            self.operator_color = '878787'
+            self.string_color = '1C86EE'
+            self.font_size = 10
             self.proverCommands = { \
                 "----": "", \
                 "grind": "(grind)\n", \
@@ -44,6 +51,16 @@ class PVSIDEConfiguration:
         self.ideURL = config.get(constants.GENERAL, "ide_url", 0)
         self.ideSize = self._string2Tuple(config.get(constants.GENERAL, "ide_size", 0), True)
         self.ideMinumumSize = self._string2Tuple(config.get(constants.GENERAL, "ide_minimum_size", 0), True)
+        logging.debug("Configuring the Syntax Highlighting Options")
+        self.default_color = config.get("Syntax_Highlighting", "default_color", 0)
+        self.keyword_color = config.get("Syntax_Highlighting", "keyword_color", 0)
+        self.comment_color = config.get("Syntax_Highlighting", "comment_color", 0)
+        self.number_color = config.get("Syntax_Highlighting", "number_color", 0)
+        self.operator_color = config.get("Syntax_Highlighting", "operator_color", 0)
+        self.string_color = config.get("Syntax_Highlighting", "string_color", 0)
+        self.font_size = config.getint("Syntax_Highlighting", "size")
+           
+        
         logging.debug("Configuring the Plugins")
         for section in config.sections():
             if section.startswith("Plugin_"):

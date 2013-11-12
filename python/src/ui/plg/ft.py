@@ -83,7 +83,7 @@ class FilesTreePlugin(PluginPanel):
     def addContext(self, context):
         root = self.tree.GetRootItem()
         image = self.imageIndices[LCONTEXT] if context == pvscomm.PVSCommandManager().pvsContext else self.imageIndices[LINACTIVECONTEXT]
-        self.tree.AppendItem(root, context, self.imageIndices[LINACTIVECONTEXT], -1, wx.TreeItemData({LCONTEXT: context, KIND: LCONTEXT}))
+        self.tree.AppendItem(root, context, image, -1, wx.TreeItemData({LCONTEXT: context, KIND: LCONTEXT}))
     
     def removeContext(self, context):
         """remove a context from the tree"""
@@ -104,7 +104,6 @@ class FilesTreePlugin(PluginPanel):
         if contextNode is None:
             self.addContext(directory)
             contextNode = self.getContextNode(directory)
-        root = self.tree.GetRootItem()
         if self.getFileNode(fullname) is None:
             self.tree.AppendItem(contextNode, util.getFilenameFromFullPath(fullname), self.imageIndices[LFILE], -1, wx.TreeItemData({FULLNAME: fullname, KIND: LFILE}))
         self.tree.Expand(contextNode)        
@@ -149,7 +148,7 @@ class FilesTreePlugin(PluginPanel):
                 
     def getChildren(self, node):
         children = []
-        child = item = self.tree.GetFirstChild(node)[0]
+        child = self.tree.GetFirstChild(node)[0]
         while child.IsOk():
             children.append(child)
             child = self.tree.GetNextSibling(child)
@@ -316,7 +315,6 @@ class PVSFileDropTarget(wx.FileDropTarget):
 
     def OnDropFiles(self, x, y, fullnames):
         logging.debug("These files were dropped: %s", fullnames)
-        pref = preference.Preferences()
         for fullname in fullnames:
             fileExtension = os.path.splitext(fullname)[1]
             if fileExtension == PVS_EXTENSION:
