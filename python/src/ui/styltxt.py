@@ -1,10 +1,13 @@
 
+import os.path
 import wx
 import wx.stc as stc
 import logging
-from constants import PVS_KEYWORDS, PVS_OPERATORS
+from constants import PVS_KEYWORDS, PVS_OPERATORS, EMPTY_STRING
 import ui.images
 from config import PVSIDEConfiguration
+import preference
+import remgr
 
 faces = {'default_color': '000000',
          'keyword_color': '0000FF',
@@ -47,6 +50,7 @@ class PVSStyledText(stc.StyledTextCtrl):
         stc.StyledTextCtrl.__init__(self, parent, wx.ID_ANY, pos=wx.DefaultPosition, size=wx.DefaultSize, style=wx.TE_MULTILINE | wx.HSCROLL | wx.TE_RICH | wx.TE_RICH2)
         self.SetMarginType(0, stc.STC_MARGIN_NUMBER)
         self.SetMarginWidth(0, 30)
+        self.SetMarginSensitive(0, True)
         self.namesInformation = []
         cfg = PVSIDEConfiguration()
         faces['default_color'] = cfg.default_color
@@ -59,6 +63,8 @@ class PVSStyledText(stc.StyledTextCtrl):
         
         self.StyleSetSpec(stc.STC_STYLE_LINENUMBER, "size:%d,face:%s" % (faces['size'], faces['mono']))
         self.SetMarginType(1, stc.STC_MARGIN_SYMBOL)
+        self.SetMouseDownCaptures(True)
+        self.UsePopUp(0)
         self.MarkerDefine(0, stc.STC_MARK_ROUNDRECT, "#CCFF00", "RED")
         #self.MarkerDefineBitmap(1, ui.images.getBitmap("debug.png"))
         self.MarkerDefine(1, stc.STC_MARK_CIRCLE, "RED", "RED")
@@ -71,6 +77,8 @@ class PVSStyledText(stc.StyledTextCtrl):
         self.Bind(wx.EVT_SET_CURSOR, self.onCursor)  #TODO: what is this?
         self.Bind(stc.EVT_STC_DWELLSTART, self.onMouseDwellStarted)
         #self.Bind(stc.EVT_STC_DWELLEND, self.onMouseDwellEnded)
+        self.Bind(wx.EVT_RIGHT_UP, self.onMouseRightClicked)
+        self.Bind(stc.EVT_STC_MARGINCLICK, self.onMarginClicked)
 
     def setSyntaxHighlighting_usingmatlab(self):
         logging.debug("Setting syntax highlighting")
@@ -92,12 +100,44 @@ class PVSStyledText(stc.StyledTextCtrl):
         self.SetKeyWords(0, PVS_KEYWORDS)
         self.SetKeyWords(1, " ".join(PVS_OPERATORS))
         self.GetCurrentPos()
+
+    def onMarginClicked(self, event):
+        #TODO: Implement this later to give information about the Markers
+        position = (self.LineFromPosition(event.Position), self.GetColumn(event.Position))
+        event.Skip()
+        
+    def onMouseRightClicked(self, event):
+        position = (event.EventObject.GetCurrentLine()+1, event.EventObject.GetCurLineRaw()[1])
+        inf = self._findDecl(position)
+        if inf is not None:
+            menu = wx.Menu()
+            declFile = inf["decl-file"]
+            declPlace = inf["decl-place"]
+            callback = lambda event: self._showDeclaration(event, declFile=declFile, declPlace=declPlace)
+            ID = menu.Append(wx.ID_ANY, "Show Declaration", EMPTY_STRING, wx.ITEM_NORMAL).GetId()
+            wx.EVT_MENU(menu, ID, callback)       
+            self.PopupMenu(menu, event.GetPosition())
+            menu.Destroy()     
+        event.Skip()
+        
+    def _showDeclaration(self, event, declFile, declPlace):
+        context = preference.Preferences().getRecentContexts()[0]
+        fullname = os.path.join(context, declFile)
+        rem = remgr.RichEditorManager()
+        openFiles = rem.getOpenFileNames()
+        if not fullname in openFiles:
+            pub.sendMessage(PUB_ADDFILE, fullname=fullname)
+        rem.showRichEditorForFile(fullname)
+        fre = rem.getFocusedRichEditor()
+        if fre is not None:
+            fre.styledText.GotoLine(declPlace[0]-1)
+
         
     def onMouseDwellStarted(self, event):
         text = None
+        ePosition = event.GetPosition()
         if event.Position > -1:
-            position = (self.LineFromPosition(event.Position), self.GetColumn(event.Position))
-            logging.debug("Mouse position is at %s", position)
+            position = (self.LineFromPosition(ePosition), self.GetColumn(ePosition))
             text = self._getTooltipText(position)
         if text is not None:
             self.SetToolTipString(text)
