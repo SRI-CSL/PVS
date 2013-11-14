@@ -4,7 +4,7 @@ import logging
 from constants import *
 import wx.lib.agw.aui as aui
 from wx.lib.pubsub import setupkwargs, pub
-from pvscomm import PVSCommandManager
+import pvscomm
 import importlib
 
 class PluginManager:
@@ -74,7 +74,7 @@ class PluginManager:
             paneInfo = paneInfo.Float()
         auiManager.AddPane(panel, paneInfo)
         if PluginManager.VISIBLE in pluginDefinition:
-            self.showPlugin(name, PVSCommandManager().pvsMode in pluginDefinition[PluginManager.VISIBLE])
+            self.showPlugin(name, pvscomm.PVSCommandManager().pvsMode in pluginDefinition[PluginManager.VISIBLE])
         else:
             self.showPlugin(name, True)            
         auiManager.Update()

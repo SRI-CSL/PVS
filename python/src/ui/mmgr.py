@@ -8,6 +8,7 @@ import util
 import logging
 from preference import Preferences
 from wx.lib.pubsub import setupkwargs, pub 
+import pvscomm
 
 class MainFrameMenu(wx.MenuBar):
     """The class implementing and managing the main menu bar in the application"""
@@ -133,7 +134,7 @@ class MainFrameMenu(wx.MenuBar):
         frame = util.getMainFrame()
         item = self.pluginMenu.Append(wx.ID_ANY, name, EMPTY_STRING, wx.ITEM_CHECK)
         self.plugins[name] = item
-        self.pluginMenu.Check(item.GetId(), PluginManager().shouldPluginBeVisible(name, PVSCommandManager().pvsMode))
+        self.pluginMenu.Check(item.GetId(), PluginManager().shouldPluginBeVisible(name, pvscomm.PVSCommandManager().pvsMode))
         frame.Bind(wx.EVT_MENU, callBackFunction, item)
 
     def _makeLabel(self, name, shortcut=None, addDots = False):

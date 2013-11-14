@@ -26,7 +26,6 @@ class RichEditor(wx.Panel):
         sizer.Add(self.statusbar, 0, wx.EXPAND, 0)        
         self.SetSizer(sizer) 
         self.fullname = fullname
-        self.namesInformation = []
         self.decode = codecs.lookup("utf-8")[1]
         self.styledText.Bind(wx.EVT_KEY_UP,self.onTextKeyEvent)
         self.styledText.Bind(wx.EVT_LEFT_UP,self.onMouseEvent)
@@ -83,7 +82,7 @@ class RichEditor(wx.Panel):
             oldName = None
         logging.info("Saving file %s", self.fullname)
         self.styledText.SaveFile(self.fullname)
-        self.styledText.namesInformation = []
+        self.applyNamesInformation([])
 
         pub.sendMessage(constants.PUB_FILESAVED, fullname=self.fullname, oldname=oldName)
         

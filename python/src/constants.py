@@ -80,6 +80,7 @@ PUB_CLOSEFILE = "File.Close"
 PUB_ERRORLOCATION = "File.Error.Location"
 PUB_REMOVEANNOTATIONS = "File.Remove.Annotations"
 PUB_PREPARERECENTFILESMENU = "Prepare.Recent.Files.Menu"
+PUB_NAMESINFOUPDATE = "Names.Info.Updated"
 
 GROUP_TOOLS = "tools"
 

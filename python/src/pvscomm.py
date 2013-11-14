@@ -28,7 +28,6 @@ import logging
 import os.path
 from wx.lib.pubsub import setupkwargs, pub
 from jsonschema import validate
-import remgr
 
 class PVSCommunicationLogger:
     __shared_state = {}
@@ -286,7 +285,7 @@ class PVSCommandManager:
                 raise util.PVSException(message=errorObject[PVSCommunicator.MESSAGE], errorObject=errorObject)
             result = jsonResult[PVSCommunicator.JSONRPCRESULT]
             if isinstance(result, str) or isinstance(result, unicode):
-                logging.warning("result should not be a string here, but an object")
+                logging.error("result should not be a string here, but an object")
                 result = json.loads(result)
             if PVSCommunicator.ERROR in result:
                 errDict = result[PVSCommunicator.ERROR]
@@ -352,19 +351,28 @@ class PVSCommandManager:
         pub.sendMessage(constants.PUB_REMOVEANNOTATIONS)
         result = self._sendCommand("typecheck", name)
         if result is not None:
+            pub.sendMessage(constants.PUB_REMOVEANNOTATIONS)
             pub.sendMessage(constants.PUB_FILETYPECHECKED, fullname=fullname, result=result)
-            information = self._sendCommand("names-info", name)
-            # {"id":"n","place":[27,36,27,37],"decl":"n: VAR nat","decl-file":"sum2.pvs","decl-place":[4,2,4,13]},
-            information.sort(key=lambda x: x["place"])
-            for inf in information:
-                declFile = inf["decl-file"]
-                if declFile is not None:
-                    if not os.path.isabs(declFile):
-                        inf["decl-file"] = os.path.join(self.pvsContext, declFile)
-                else:
-                    logging.warn("decl-file is None in %s", inf)
-            remgr.RichEditorManager().applyNamesInformation(fullname, information)
-            logging.debug("name-info returned: %s", information)
+            self.names_info(fullname)
+        return result
+            
+    def names_info(self, fullname=None):
+        fullname = self._ensureFilenameIsIknown(fullname)
+        name = os.path.basename(fullname)
+        name = util.getFilenameFromFullPath(fullname, False)
+        information = self._sendCommand("names-info", name)
+        # {"id":"n","place":[27,36,27,37],"decl":"n: VAR nat","decl-file":"sum2.pvs","decl-place":[4,2,4,13]},
+        information.sort(key=lambda x: x["place"])
+        for inf in information:
+            declFile = inf["decl-file"]
+            if declFile is not None:
+                if not os.path.isabs(declFile):
+                    inf["decl-file"] = os.path.join(self.pvsContext, declFile)
+            else:
+                logging.warn("decl-file is None in %s", inf)
+        pub.sendMessage(constants.PUB_NAMESINFOUPDATE, fullname=fullname, information=information)
+        logging.debug("name-info returned: %s", information)
+        return information
     
     def parse(self, fullname=None):
         fullname = self._ensureFilenameIsIknown(fullname)
@@ -377,6 +385,7 @@ class PVSCommandManager:
     def changeContext(self, newContext):
         logging.debug("User requested to change context to: %s", newContext)
         result = self._sendCommand("change-context", newContext)
+        result = util.normalizePath(result)
         return result
     
     def startProver(self, theoryName, formulaName):

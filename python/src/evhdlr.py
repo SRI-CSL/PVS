@@ -4,14 +4,13 @@
 import util
 import logging
 from ui.frmgr import FindReplaceManager
-from pvscomm import PVSCommandManager, PVSCommunicationLogger
+import pvscomm
 from constants import *
 import wx
 import remgr
 import ui.logdlg
 #import ui.tbmgr
 import preference
-from pvscomm import PVSCommunicator
 from ui.plugin import PluginManager
 import wx.stc as stc
 from wx.lib.pubsub import setupkwargs, pub 
@@ -23,8 +22,8 @@ def onChangeContext(event):
     newContext = frame.chooseDirectory("Select a directory", preferences.getRecentContexts()[0])
     if newContext is not None:
         if remgr.RichEditorManager().ensureFilesAreSavedToPoceed(): 
-            if PVSCommandManager().pvsMode == PVS_MODE_LISP:
-                PVSCommandManager().changeContext(newContext)
+            if pvscomm.PVSCommandManager().pvsMode == PVS_MODE_LISP:
+                pvscomm.PVSCommandManager().changeContext(newContext)
             preferences.setRecentContext(newContext)
             pub.sendMessage(PUB_UPDATEPVSCONTEXT)
             frame.restoreOpenFiles()
@@ -177,13 +176,13 @@ def onTypecheck(event):
     """called to handle 'typecheck' request"""
     logging.debug("Starting")
     fullname = remgr.RichEditorManager().getFocusedRichEditor().getFilename()
-    PVSCommandManager().typecheck(fullname)
+    pvscomm.PVSCommandManager().typecheck(fullname)
     #event.Skip()
 
 def onShowPVSCommunicationLog(event):
     """called to handle 'pvs communication logs' request"""
     logging.debug("Starting")
-    logList = PVSCommunicationLogger().logList
+    logList = pvscomm.PVSCommunicationLogger().logList
     dlg = ui.logdlg.PVSCommunicationLogDialog(util.getMainFrame(), logList)
     dlg.ShowModal()
 

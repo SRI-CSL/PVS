@@ -25,6 +25,7 @@ class RichEditorManager:
             pub.subscribe(self.onFileSaved, PUB_FILESAVED)
             pub.subscribe(self.onErrorLocation, PUB_ERRORLOCATION)
             pub.subscribe(self.clearAnnotations, PUB_REMOVEANNOTATIONS)
+            pub.subscribe(self.applyNamesInformation, PUB_NAMESINFOUPDATE)
             
             #self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnPageChanging)
         
@@ -153,7 +154,7 @@ class RichEditorManager:
     def clearAnnotations(self):
         richEditor = self.getFocusedRichEditor()
         richEditor.removeRedMarkers()
-        richEditor.styledText.namesInformation = []
+        richEditor.applyNamesInformation([])
     
     #TODO: Check the following functions and see if they are redundant or something.
     
@@ -174,8 +175,11 @@ class RichEditorManager:
             frame.Raise()
             
     def applyNamesInformation(self, fullname, information):
-        richEditor = self[fullname]
-        richEditor.applyNamesInformation(information)
+        if fullname in self.editors:
+            richEditor = self[fullname]
+            richEditor.applyNamesInformation(information)
+        else:
+            logging.warn("information received for %s, but no richEditor is opened for it", fullname)
     
     def _getPageIndex(self, richEditor):
         for i in range(self.notebook.GetPageCount()):
