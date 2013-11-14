@@ -1,6 +1,5 @@
 from ui.plugin import PluginManager
 import ui.plg.ft
-import ui.plg.pt
 import ui.plg.pm
 import ui.plg.console
 import constants

@@ -241,7 +241,27 @@ class PVSCommandManager:
             self.pvsMode = constants.PVS_MODE_UNKNOWN
             self.pvsContext = None
                         
-    def _processError(self, err):
+    def _processJSONErrorObject(self, errDict):
+            errorObject = {}
+            errorObject[PVSCommunicator.CODE] = errDict[PVSCommunicator.CODE]
+            errorObject[PVSCommunicator.MESSAGE] = errDict[PVSCommunicator.MESSAGE]
+            if PVSCommunicator.DATA in errDict:
+                data = errDict[PVSCommunicator.DATA]
+                errorDataFile = data["error_file"]
+                with open (errorDataFile, "r") as errorFile:
+                    errorData = errorFile.read()
+                errorFile.close()
+                errorObject[PVSCommunicator.DATA] = errorData
+                os.remove(errorDataFile)
+                errorObject[PVSCommunicator.BEGIN] = data[PVSCommunicator.BEGIN]
+                errorObject[PVSCommunicator.THEORY] = data[PVSCommunicator.THEORY]
+                errorObject[PVSCommunicator.END] = data[PVSCommunicator.END] if PVSCommunicator.END in data else None
+            else:
+                logging.warning("error object %s did not have data", errDict)
+                errorObject[PVSCommunicator.DATA] = ""
+            return errorObject
+            
+    def _handleError(self, err):
         title = constants.ERROR
         if isinstance(err, socket.error):
             errMessage = err.strerror + "\nMake sure PVS is running and the port is set correctly"
@@ -285,11 +305,15 @@ class PVSCommandManager:
                 raise util.PVSException(message=errorObject[PVSCommunicator.MESSAGE], errorObject=errorObject)
             result = jsonResult[PVSCommunicator.JSONRPCRESULT]
             if isinstance(result, str) or isinstance(result, unicode):
-                logging.error("result should not be a string here, but an object")
-                result = json.loads(result)
+                result2 = json.loads(result)
+                #TODO: Keep this for a while, but remove the if statement later if you never get an assertion error.
+                #assert (result2 == result), "result '%s' is a json object inside a string"%result
+                if result2 != result:
+                    logging.error("result '%s' should not be a string here, but an object", result)
+                    result2 = result
             if PVSCommunicator.ERROR in result:
                 errDict = result[PVSCommunicator.ERROR]
-                errorObject = self._processErrorObject(errDict)
+                errorObject = self._processJSONErrorObject(errDict)
                 raise util.PVSException(message=errorObject[PVSCommunicator.MESSAGE], errorObject=errorObject)
             result = result[PVSCommunicator.RESULT]
             if pvsMode != self.pvsMode:
@@ -304,29 +328,9 @@ class PVSCommandManager:
             return result
         except Exception as err:
             if not silent:
-                self._processError(err)
+                self._handleError(err)
         return None
     
-    def _processErrorObject(self, errDict):
-            errorObject = {}
-            errorObject[PVSCommunicator.CODE] = errDict[PVSCommunicator.CODE]
-            errorObject[PVSCommunicator.MESSAGE] = errDict[PVSCommunicator.MESSAGE]
-            if PVSCommunicator.DATA in errDict:
-                data = errDict[PVSCommunicator.DATA]
-                errorDataFile = data["error_file"]
-                with open (errorDataFile, "r") as errorFile:
-                    errorData = errorFile.read()
-                errorFile.close()
-                errorObject[PVSCommunicator.DATA] = errorData
-                os.remove(errorDataFile)
-                errorObject[PVSCommunicator.BEGIN] = data[PVSCommunicator.BEGIN]
-                errorObject[PVSCommunicator.THEORY] = data[PVSCommunicator.THEORY]
-                errorObject[PVSCommunicator.END] = data[PVSCommunicator.END] if PVSCommunicator.END in data else None
-            else:
-                logging.warning("error object %s did not have data", errDict)
-                errorObject[PVSCommunicator.DATA] = ""
-            return errorObject
-            
     def _ensureFilenameIsIknown(self, fullname):
         if fullname is None:
             fullname = util.getActiveFileName()
@@ -353,10 +357,10 @@ class PVSCommandManager:
         if result is not None:
             pub.sendMessage(constants.PUB_REMOVEANNOTATIONS)
             pub.sendMessage(constants.PUB_FILETYPECHECKED, fullname=fullname, result=result)
-            self.names_info(fullname)
+            self.namesInfo(fullname)
         return result
             
-    def names_info(self, fullname=None):
+    def namesInfo(self, fullname=None):
         fullname = self._ensureFilenameIsIknown(fullname)
         name = os.path.basename(fullname)
         name = util.getFilenameFromFullPath(fullname, False)
