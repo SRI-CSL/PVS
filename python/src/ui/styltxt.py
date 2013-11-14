@@ -3,10 +3,10 @@ import os.path
 import wx
 import wx.stc as stc
 import logging
-from constants import PVS_KEYWORDS, PVS_OPERATORS, EMPTY_STRING
+from constants import PVS_KEYWORDS, PVS_OPERATORS, EMPTY_STRING, PUB_ADDFILE
 import ui.images
 from config import PVSIDEConfiguration
-import preference
+from wx.lib.pubsub import setupkwargs, pub
 import remgr
 
 faces = {'default_color': '000000',
@@ -121,16 +121,15 @@ class PVSStyledText(stc.StyledTextCtrl):
         event.Skip()
         
     def _showDeclaration(self, event, declFile, declPlace):
-        context = preference.Preferences().getRecentContexts()[0]
-        fullname = os.path.join(context, declFile)
         rem = remgr.RichEditorManager()
         openFiles = rem.getOpenFileNames()
-        if not fullname in openFiles:
-            pub.sendMessage(PUB_ADDFILE, fullname=fullname)
-        rem.showRichEditorForFile(fullname)
+        if not declFile in openFiles:
+            pub.sendMessage(PUB_ADDFILE, fullname=declFile)
+        rem.showRichEditorForFile(declFile)
         fre = rem.getFocusedRichEditor()
         if fre is not None:
             fre.styledText.GotoLine(declPlace[0]-1)
+            fre.styledText.SetFocus()
 
         
     def onMouseDwellStarted(self, event):

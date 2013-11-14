@@ -19,7 +19,7 @@ class RichEditor(wx.Panel):
     
     def __init__(self, parent, ID, fullname):
         wx.Panel.__init__(self, parent, ID)
-        sizer = wx.BoxSizer(orient=wx.VERTICAL)        
+        sizer = wx.BoxSizer(orient=wx.VERTICAL)  
         self.styledText = PVSStyledText(self)
         sizer.Add(self.styledText, 1, wx.EXPAND, 0)
         self.statusbar = wx.StatusBar(self)

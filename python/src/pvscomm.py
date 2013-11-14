@@ -354,11 +354,15 @@ class PVSCommandManager:
         if result is not None:
             pub.sendMessage(constants.PUB_FILETYPECHECKED, fullname=fullname, result=result)
             information = self._sendCommand("names-info", name)
-            if isinstance(information, str) or isinstance(information, unicode):
-                logging.error("information should not be a string, it should be a dictionary")
-                information = json.loads(information)
-                # {"id":"n","place":[27,36,27,37],"decl":"n: VAR nat","decl-file":"sum2.pvs","decl-place":[4,2,4,13]},
+            # {"id":"n","place":[27,36,27,37],"decl":"n: VAR nat","decl-file":"sum2.pvs","decl-place":[4,2,4,13]},
             information.sort(key=lambda x: x["place"])
+            for inf in information:
+                declFile = inf["decl-file"]
+                if declFile is not None:
+                    if not os.path.isabs(declFile):
+                        inf["decl-file"] = os.path.join(self.pvsContext, declFile)
+                else:
+                    logging.warn("decl-file is None in %s", inf)
             remgr.RichEditorManager().applyNamesInformation(fullname, information)
             logging.debug("name-info returned: %s", information)
     
