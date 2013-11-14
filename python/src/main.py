@@ -9,11 +9,11 @@ import platform
 import time
 import logging
 import logging.config
-from ui.images import getIDELogo
-from ui.frame import MainFrame
-from ui.plugin import PluginManager
+import ui.images
+import ui.frame
+import ui.plugin
 from wx.lib.pubsub import setupkwargs, pub 
-from config import PVSIDEConfiguration
+import config
 import pvscomm
 import gc
 import argparse
@@ -25,18 +25,18 @@ class PVSEditorApp(wx.App):
         #wx.InitAllImageHandlers()
         
         # Splash Screen:
-        #splash = wx.SplashScreen(getIDELogo(), wx.SPLASH_CENTRE_ON_SCREEN|wx.SPLASH_TIMEOUT, 1000, None, style=wx.SIMPLE_BORDER|wx.STAY_ON_TOP)
+        #splash = wx.SplashScreen(ui.images.getIDELogo(), wx.SPLASH_CENTRE_ON_SCREEN|wx.SPLASH_TIMEOUT, 1000, None, style=wx.SIMPLE_BORDER|wx.STAY_ON_TOP)
         #time.sleep(1)
         
         #Initiate Main Frame:
-        mainFrame = MainFrame(None, wx.ID_ANY, "")
+        mainFrame = ui.frame.MainFrame(None, wx.ID_ANY, "")
         self.SetTopWindow(mainFrame)
-        #favicon = wx.Icon(PVSIDEConfiguration().applicationFolder + "/images/pvs.ico", wx.BITMAP_TYPE_ICO, 32, 32)
+        #favicon = wx.Icon(config.PVSIDEConfiguration().applicationFolder + "/images/pvs.ico", wx.BITMAP_TYPE_ICO, 32, 32)
         #wx.Frame.SetIcon(mainFrame, favicon)
         mainFrame.Show()
         logging.info("Main Frame initialized...") 
-        pm = PluginManager()
-        pm.initializePlugins(PVSIDEConfiguration().pluginDefinitions)
+        pm = ui.plugin.PluginManager()
+        pm.initializePlugins(config.PVSIDEConfiguration().pluginDefinitions)
         operatingSystem = platform.system()
         if operatingSystem == "Windows":
             mainFrame.showDialogBox("PVS does not run on Windows", constants.WARNING)
@@ -57,7 +57,7 @@ def processCommandLineArguments(args):
     pvsURL = args.pvsURL
     ideURL = args.guiURL
     logLevel = args.level
-    cfg = PVSIDEConfiguration()
+    cfg = config.PVSIDEConfiguration()
     if pvsURL is not None:
         cfg.pvsURL = pvsURL
     if ideURL is not None:
@@ -68,7 +68,7 @@ def processCommandLineArguments(args):
             logging.getLogger("root").setLevel(levels[logLevel])
             
 def processConfigFile(applicationFolder):
-    cfg = PVSIDEConfiguration()
+    cfg = config.PVSIDEConfiguration()
     cfg.initialize(applicationFolder)
 
 def configLogger(applicationFolder):
@@ -86,6 +86,7 @@ def configLogger(applicationFolder):
         rootLogger.setLevel(logging.DEBUG)
 
 def downloadFiles(applicationFolder):
+    #TODO: I might decide to delete this function completely
     if logging.getLogger("root").getEffectiveLevel() == logging.DEBUG:
         DESTINATION = os.path.join(applicationFolder, "src")
         JSONFILE = os.path.join(DESTINATION, "pvs-gui.json")
@@ -104,6 +105,7 @@ def downloadFiles(applicationFolder):
                 logging.getLogger("root").setLevel(logging.INFO)
                 
 def checkPackages():
+    #TODO: I might decide to delete this function completely
     ALWAYSNEEDED = 2
     NEEDEDFORDEBUG = 1
     OPTIONAL = 0
@@ -138,7 +140,7 @@ def checkPackages():
         
 if __name__ == "__main__":
     #logging.debug("PubSub version is %s", pub.PUBSUB_VERSION)
-    assert pub.PUBSUB_VERSION == 3
+    assert (pub.PUBSUB_VERSION == 3), "This application requires PUBSUB version 3 or higher."
     args = readCommandLineArguments()
     utilDirectory = os.path.dirname(util.__file__)
     applicationFolder = os.path.abspath(os.path.join(utilDirectory, os.path.pardir))
@@ -147,7 +149,7 @@ if __name__ == "__main__":
     logging.debug("Application Folder is %s", applicationFolder)
     processCommandLineArguments(args)
     checkPackages()
-    downloadFiles(applicationFolder)
+    #downloadFiles(applicationFolder)
     gc.enable()
     gc.set_threshold(1, 2, 3)
     application = PVSEditorApp(0)

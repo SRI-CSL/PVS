@@ -27,7 +27,7 @@ import wx
 import logging
 import os.path
 from wx.lib.pubsub import setupkwargs, pub
-from jsonschema import validate
+
 
 class PVSCommunicationLogger:
     __shared_state = {}
@@ -108,9 +108,10 @@ class PVSCommunicator:
         self.guiServer.shutdown()
         
     def _validateJSON(self, jsonObject):
+        import jsonschema
         if self._doValidate:
             try:
-                validate(jsonObject, self.pvsJsonSchema["definitions"])
+                jsonschema.validate(jsonObject, self.pvsJsonSchema["definitions"])
                 logging.debug("Validation successful for: %s", jsonObject)
             except Exception as err:
                 logging.error("JSON Object is not valid: %s", err)

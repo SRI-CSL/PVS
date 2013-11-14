@@ -2,7 +2,7 @@
 # This class controls and manages all the tabs that contain open files and buffers for editing
 
 import wx
-from ui.rchedtr import RichEditor
+import ui.rchedtr
 from constants import *
 import wx.lib.agw.aui as aui
 import os.path
@@ -118,7 +118,7 @@ class RichEditorManager:
     def addFile(self, fullname):
         if not fullname in self.editors:
             logging.info("Opening a new editor tab for %s", fullname) 
-            editor = RichEditor(self.notebook, wx.ID_ANY, fullname)
+            editor = ui.rchedtr.RichEditor(self.notebook, wx.ID_ANY, fullname)
             self.notebook.AddPage(editor, util.getFilenameFromFullPath(fullname), True, self.getProperBitmap())
             if os.path.exists(fullname):
                 editor.styledText.LoadFile(fullname)
