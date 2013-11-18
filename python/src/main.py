@@ -65,7 +65,7 @@ def processCommandLineArguments(args):
     if logLevel is not None:
         levels = {"debug": logging.DEBUG, "info": logging.INFO, "warning": logging.WARN, "warn": logging.WARN, "error": logging.ERROR, "critical": logging.CRITICAL}
         if logLevel in levels:
-            logging.getLogger("root").setLevel(levels[logLevel])
+            logging.getLogger(constants.LROOT).setLevel(levels[logLevel])
             
 def processConfigFile(applicationFolder):
     cfg = config.PVSIDEConfiguration()
@@ -81,13 +81,13 @@ def configLogger(applicationFolder):
         hdlr = logging.StreamHandler(sys.stdout)
         formatter = logging.Formatter("[%(module)s %(funcName)s] %(levelname)s - %(message)s")
         hdlr.setFormatter(formatter)
-        rootLogger = logging.getLogger("root")
+        rootLogger = logging.getLogger(constants.LROOT)
         rootLogger.addHandler(hdlr) 
         rootLogger.setLevel(logging.DEBUG)
 
 def downloadFiles(applicationFolder):
     #TODO: I might decide to delete this function completely
-    if logging.getLogger("root").getEffectiveLevel() == logging.DEBUG:
+    if logging.getLogger(constants.LROOT).getEffectiveLevel() == logging.DEBUG:
         DESTINATION = os.path.join(applicationFolder, "src")
         JSONFILE = os.path.join(DESTINATION, "pvs-gui.json")
         if not os.path.exists(JSONFILE):
@@ -102,10 +102,11 @@ def downloadFiles(applicationFolder):
             except Exception:
                 logging.error("Please either install the 'requests' package, or download %s and copy it under %s", PVS_GUI_JSON, DESTINATION)
                 logging.info("Setting the logging level to INFO")
-                logging.getLogger("root").setLevel(logging.INFO)
+                logging.getLogger(constants.LROOT).setLevel(logging.INFO)
                 
-def checkPackages():
-    #TODO: I might decide to delete this function completely
+def verifyPythonPackagesAreFine():
+    #logging.debug("PubSub version is %s", pub.PUBSUB_VERSION)
+    assert (pub.PUBSUB_VERSION == 3), "This application requires PUBSUB version 3 or higher."
     ALWAYSNEEDED = 2
     NEEDEDFORDEBUG = 1
     OPTIONAL = 0
@@ -132,15 +133,14 @@ def checkPackages():
     if necessaryPackageMissing:
         logging.critical("Application exiting since some necessary packages are missing")
         sys.exit(2)
-    if debugPackageMissing and logging.getLogger("root").getEffectiveLevel() == logging.DEBUG:
+    if debugPackageMissing and logging.getLogger(constants.LROOT).getEffectiveLevel() == logging.DEBUG:
         logging.info("Setting the logging level to INFO")
-        logging.getLogger("root").setLevel(logging.INFO)            
+        logging.getLogger(constants.LROOT).setLevel(logging.INFO)            
     if optionalPackageMissing:
         logging.warning("The application can still run without the optional packages")
         
 if __name__ == "__main__":
-    #logging.debug("PubSub version is %s", pub.PUBSUB_VERSION)
-    assert (pub.PUBSUB_VERSION == 3), "This application requires PUBSUB version 3 or higher."
+    verifyPythonPackagesAreFine()
     args = readCommandLineArguments()
     utilDirectory = os.path.dirname(util.__file__)
     applicationFolder = os.path.abspath(os.path.join(utilDirectory, os.path.pardir))
@@ -148,7 +148,6 @@ if __name__ == "__main__":
     processConfigFile(applicationFolder)
     logging.debug("Application Folder is %s", applicationFolder)
     processCommandLineArguments(args)
-    checkPackages()
     #downloadFiles(applicationFolder)
     gc.enable()
     gc.set_threshold(1, 2, 3)

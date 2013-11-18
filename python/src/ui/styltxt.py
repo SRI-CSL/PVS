@@ -3,7 +3,7 @@ import os.path
 import wx
 import wx.stc as stc
 import logging
-from constants import PVS_KEYWORDS, PVS_OPERATORS, EMPTY_STRING, PUB_ADDFILE
+import constants
 import ui.images
 from config import PVSIDEConfiguration
 from wx.lib.pubsub import setupkwargs, pub
@@ -97,8 +97,8 @@ class PVSStyledText(stc.StyledTextCtrl):
         # Comment
         self.StyleSetSpec(stc.STC_MATLAB_COMMENT, "fore:#%(comment_color)s,face:%(mono)s,size:%(size)d" % faces)
 
-        self.SetKeyWords(0, PVS_KEYWORDS)
-        self.SetKeyWords(1, " ".join(PVS_OPERATORS))
+        self.SetKeyWords(0, constants.PVS_KEYWORDS)
+        self.SetKeyWords(1, " ".join(constants.PVS_OPERATORS))
         self.GetCurrentPos()
 
     def onMarginClicked(self, event):
@@ -111,10 +111,10 @@ class PVSStyledText(stc.StyledTextCtrl):
         inf = self._findDecl(position)
         if inf is not None:
             menu = wx.Menu()
-            declFile = inf["decl-file"]
-            declPlace = inf["decl-place"]
+            declFile = inf[constants.DECLFILE]
+            declPlace = inf[constants.DECLPLACE]
             callback = lambda event: self._showDeclaration(event, declFile=declFile, declPlace=declPlace)
-            ID = menu.Append(wx.ID_ANY, "Show Declaration", EMPTY_STRING, wx.ITEM_NORMAL).GetId()
+            ID = menu.Append(wx.ID_ANY, "Show Declaration", constants.EMPTY_STRING, wx.ITEM_NORMAL).GetId()
             wx.EVT_MENU(menu, ID, callback)       
             self.PopupMenu(menu, event.GetPosition())
             menu.Destroy()     
@@ -124,7 +124,7 @@ class PVSStyledText(stc.StyledTextCtrl):
         rem = remgr.RichEditorManager()
         openFiles = rem.getOpenFileNames()
         if not declFile in openFiles:
-            pub.sendMessage(PUB_ADDFILE, fullname=declFile)
+            pub.sendMessage(constants.PUB_ADDFILE, fullname=declFile)
         rem.showRichEditorForFile(declFile)
         fre = rem.getFocusedRichEditor()
         if fre is not None:
@@ -150,7 +150,7 @@ class PVSStyledText(stc.StyledTextCtrl):
         row = row + 1 # PVS Columns start at 0, Rows start at 1
         inf = self._findDecl((row, column))
         if inf is not None:
-            text = inf["decl"]
+            text = inf[constants.DECL]
         return text
     
     def _findDecl(self, position, lo=0, hi=None):
@@ -159,7 +159,7 @@ class PVSStyledText(stc.StyledTextCtrl):
         while lo < hi:
             mid = (lo+hi)//2
             midval = self.namesInformation[mid]
-            place = midval["place"]
+            place = midval[constants.LPLACE]
             begin = (place[0], place[1])
             end = (place[2], place[3])
             if end < position:

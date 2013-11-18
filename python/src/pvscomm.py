@@ -89,7 +89,7 @@ class PVSCommunicator:
                 with open(jsonschemaFullname, 'r') as jsonschemaFile:
                     self.pvsJsonSchema = json.load(jsonschemaFile)
                     jsonschemaFile.close()
-            self._doValidate = logging.getLogger("root").getEffectiveLevel() == logging.DEBUG
+            self._doValidate = logging.getLogger(constants.LROOT).getEffectiveLevel() == logging.DEBUG
             
             
     def start(self):
@@ -367,12 +367,12 @@ class PVSCommandManager:
         name = util.getFilenameFromFullPath(fullname, False)
         information = self._sendCommand("names-info", name)
         # {"id":"n","place":[27,36,27,37],"decl":"n: VAR nat","decl-file":"sum2.pvs","decl-place":[4,2,4,13]},
-        information.sort(key=lambda x: x["place"])
+        information.sort(key=lambda x: x[constants.LPLACE])
         for inf in information:
-            declFile = inf["decl-file"]
+            declFile = inf[constants.DECLFILE]
             if declFile is not None:
                 if not os.path.isabs(declFile):
-                    inf["decl-file"] = os.path.join(self.pvsContext, declFile)
+                    inf[constants.DECLFILE] = os.path.join(self.pvsContext, declFile)
             else:
                 logging.warn("decl-file is None in %s", inf)
         pub.sendMessage(constants.PUB_NAMESINFOUPDATE, fullname=fullname, information=information)

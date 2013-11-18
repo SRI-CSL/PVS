@@ -3,58 +3,98 @@ import unittest
 import config
 import os.path
 import constants
+import logging
 
 class PVSGUITestSuite(unittest.TestCase):
 
     def setUp(self):
-        self.testContext = "/Users/saadati/projects/pvs/Examples"
-        self.testPVSFile = "sum"
-        self.typeCheckReturnValue = [{u'theory': {u'decls': [{u'kind': u'formula', u'place': None, u'id': u'sum_TCC1'}, {u'kind': u'formula', u'place': None, u'id': u'sum_TCC2'}, {u'place': [6, 1, 8, 12], u'kind': u'expr', u'type': u'[nat -> nat]', u'id': u'sum'}, {u'kind': u'formula', u'place': [10, 1, 10, 46], u'id': u'closed_form'}], u'id': u'sum'}}]
-        self.SampleDeclInNamesInfo = {u'decl': u'nat: TYPE+ = naturalnumber', u'decl-place': [2253, 2, 2253, 36], u'place': [4, 8, 4, 11], u'id': u'nat', u'decl-file': u'/Users/saadati/projects/pvs/lib/prelude.pvs'}
+        pass
 
     def test_pvscalls(self):
+        testContext = "/Users/saadati/projects/pvs/Examples"
+        testPVSFile = "sum"
+        tobeProved = ("sum", "closed_form")
+        proofCommand = "(grind)"
+
+        def _verifyPlace(_dict, key):
+            self.assertTrue(key in _dict.keys())
+            self.assertTrue(_dict[key] is None or len(_dict[key]) == 4)
+            
+        def _verifyString(_dict, thing, optional=False):
+            if optional:
+                if thing in _dict:
+                    self.assertTrue(isinstance(_dict[thing], str) or isinstance(_dict[thing], unicode))
+            else:            
+                self.assertTrue(thing in _dict)
+                self.assertTrue(isinstance(_dict[thing], str) or isinstance(_dict[thing], unicode))
+            
+        def _testing_ping():
+            result = pm.ping()
+            self.assertEqual(result, "3")
+            
+        def _testing_lisp():
+            result = pm.lisp("(* 7 5)")
+            self.assertEqual(result, "35")
+            
+        def _testing_change_context():
+            result = pm.changeContext(testContext)
+            self.assertEqual(result, testContext)
+            self.assertEqual(pm.pvsContext, testContext)
+            self.assertEqual(pm.pvsMode, constants.PVS_MODE_LISP)
+    
+        def _testing_typecheck():
+            result = pm.typecheck(testPVSFile)
+            for theory in result:
+                theoryInfo = theory[constants.LTHEORY]
+                decls = theoryInfo[constants.DECLS]
+                for decl in decls:
+                    _verifyString(decl, constants.ID_L)
+                    _verifyString(decl, constants.LKIND)
+                    _verifyString(decl, constants.LTYPE, optional=True)
+                    _verifyPlace(decl, constants.LPLACE)
+            self.assertEqual(pm.pvsContext, testContext)
+            self.assertEqual(pm.pvsMode, constants.PVS_MODE_LISP)
+    
+        def _testing_names_info():
+            result = pm.namesInfo(testPVSFile)
+            for inf in result:
+                _verifyPlace(inf, constants.LPLACE)
+                _verifyPlace(inf, constants.DECLPLACE)
+                _verifyString(inf, constants.ID_L)
+                _verifyString(inf, constants.DECLFILE)
+                _verifyString(inf, constants.DECL)
+            self.assertEqual(pm.pvsContext, testContext)
+            self.assertEqual(pm.pvsMode, constants.PVS_MODE_LISP)
+            
+        def _testing_start_prover():
+            result = pm.startProver(*tobeProved)
+            self.assertTrue("sequent" in result)
+            self.assertTrue("label" in result)
+            self.assertEqual(pm.pvsContext, testContext)
+            self.assertEqual(pm.pvsMode, constants.PVS_MODE_PROVER)
+    
+        def _testing_proof_command():
+            result = pm.proofCommand(proofCommand)
+            self.assertEqual(pm.pvsContext, testContext)
+            self.assertEqual(pm.pvsMode, constants.PVS_MODE_PROVER)
+            
         pm = pvscomm.PVSCommandManager()
+        theTests = [_testing_ping, \
+                 _testing_lisp, \
+                 _testing_change_context, \
+                 _testing_typecheck, \
+                 _testing_names_info, \
+                 _testing_start_prover, \
+                 _testing_proof_command, \
+                 ]
+        for aTest in theTests:
+            print "Testing %s..."%(aTest.__name__)
+            aTest()
         
-        result = pm.ping()
-        #self.assertEqual(result, "3")
-        
-        result = pm.lisp("(* 7 5)")
-        self.assertEqual(result, "35")
-        
-        result = pm.changeContext(self.testContext)
-        self.assertEqual(result, self.testContext)
-        self.assertEqual(pm.pvsMode, constants.PVS_MODE_LISP)
-        
-        result = pm.changeContext(self.testContext)
-        self.assertEqual(result, self.testContext)
-        self.assertEqual(pm.pvsContext, self.testContext)
-        self.assertEqual(pm.pvsMode, constants.PVS_MODE_LISP)
-
-        result = pm.typecheck(self.testPVSFile)
-        self.assertEqual(result, self.typeCheckReturnValue)
-        self.assertEqual(pm.pvsContext, self.testContext)
-        self.assertEqual(pm.pvsMode, constants.PVS_MODE_LISP)
-
-        result = pm.namesInfo(self.testPVSFile)
-        # Since the result may be too long, we just check one sample decl to ensure it is in result:
-        self.assertTrue(self.SampleDeclInNamesInfo in result)
-        self.assertEqual(pm.pvsContext, self.testContext)
-        self.assertEqual(pm.pvsMode, constants.PVS_MODE_LISP)
-        
-        result = pm.startProver("sum", "closed_form")
-        self.assertTrue("sequent" in result)
-        self.assertTrue("label" in result)
-        self.assertEqual(pm.pvsContext, self.testContext)
-        self.assertEqual(pm.pvsMode, constants.PVS_MODE_PROVER)
-
-        result = pm.proofCommand("(grind)")
-        self.assertEqual(pm.pvsContext, self.testContext)
-        self.assertEqual(pm.pvsMode, constants.PVS_MODE_PROVER)        
-        print result
-        
-        
+    
 
 if __name__ == '__main__':
+    logging.getLogger(constants.LROOT).setLevel(logging.INFO)
     utilDirectory = os.path.dirname(config.__file__)
     applicationFolder = os.path.abspath(os.path.join(utilDirectory, os.path.pardir))    
     config.PVSIDEConfiguration().initialize(applicationFolder)
