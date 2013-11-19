@@ -134,6 +134,8 @@ class RichEditorManager:
         return getPVSLogo()
     
     def _getWidgetFrame(self, w):
+        if w is None:
+            return util.getMainFrame()
         while not isinstance(w, wx.Frame):
             w = w.GetParent()
         return w
