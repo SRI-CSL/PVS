@@ -288,23 +288,29 @@
 (defvar *auto-rewrites-off* nil)
 (defvar *new-fmla-nums* nil)
 (defvar *rewrite-msg-off* nil)
+(defvar *prover-commentary* nil)
 
 (defmacro format-list-of-items (list)
   `(format nil "~{~#[ none~;~s~; ~s and ~s~:;~@{~#[~; and~] ~s~^,~}~].~}"
     ,list))
 
+(defmacro commentary (string &rest args)
+  `(let ((com (format nil ,string ,@args)))
+     (push com *prover-commentary*) 
+     (format t "~a" com)))
+
 (defmacro error-format-if (string &rest args)
   `(if *suppress-printing*
     (set-strategy-errors (format nil ,string ,@args))
-    (format t ,string ,@args)))
+    (commentary ,string ,@args)))
 
 (defmacro format-if (string &rest args)
   `(unless *suppress-printing*
-    (format t ,string ,@args)))
+    (commentary ,string ,@args)))
 
 (defmacro format-if-nontcc (string &rest args)
   `(unless *proving-tcc*
-    (format t ,string ,@args)))
+    (commentary ,string ,@args)))
 
 (defmacro format-rewrite-msg (id lhs rhs)
   `(unless (or *proving-tcc* *rewrite-msg-off*)
@@ -312,15 +318,15 @@
 	   (*sb-print-depth* *rewrite-print-depth*)
 	   (*sb-print-length* *rewrite-print-length*))
       (cond ((eq *rewrite-print-depth* 0)
-	     (format t "~%Rewriting with ~a" id-string))
-	    (t (format t "~%~a rewrites " id-string)
+	     (commentary "~%Rewriting with ~a" id-string))
+	    (t (commentary "~%~a rewrites " id-string)
 	       (let* ((lhs-string (format nil "~a" ,lhs))
 		      (id-length (length id-string))
 		      (lhs-length (length lhs-string)))
 		 (if (< lhs-length (- *default-char-width* (+ id-length 12)))
-		     (format t "~a" lhs-string)
-		     (format t "~%~V@T~a" 2 (unpindent ,lhs 2 :string t)))
-		 (format t "~%  to ~a" (unpindent ,rhs 6 :string t))))))))
+		     (commentary "~a" lhs-string)
+		     (commentary "~%~V@T~a" 2 (unpindent ,lhs 2 :string t)))
+		 (commentary "~%  to ~a" (unpindent ,rhs 6 :string t))))))))
 	     
 ;    (format t "~%~a rewrites ~a to ~a"
 ;      ,id ,lhs ,rhs)))
@@ -397,11 +403,11 @@
   `(let ((entry (gethash ,rulename1 ,optable)))
     (cond ((null entry)
 	   (add-symbol-entry ,rulename1 (gethash ,rulename2 ,optable))
-	   (format t "~%~a and ~a are now synonymous.~%" ,rulename1 ,rulename2))
+	   (commentary "~%~a and ~a are now synonymous.~%" ,rulename1 ,rulename2))
 	  ((y-or-n-p "Do you really want to change rule ~a? " ,rulename1)
 	   (add-symbol-entry ,rulename1 (gethash ,rulename2 ,optable))
-	   (format t "~%~a and ~a are synonymous.~%" ,rulename1 ,rulename2))
-	  (t (format t "~%No Change. ~%")))))
+	   (commentary "~%~a and ~a are synonymous.~%" ,rulename1 ,rulename2))
+	  (t (commentary "~%No Change. ~%")))))
 
 (defmacro rule-synonym (rulename1 rulename2)
   `(synonymize ,rulename1 ,rulename2 *rulebase*))
@@ -532,12 +538,12 @@
      ;;NSH(9.19.97) removed (format nil "~a" ...) from above
      (when (member id *track-rewrites* :test #'same-id)
        (let ((expr-string (format nil "~a" ,expr)))
-	 (format t "~%;;~a failed to rewrite " id)
+	 (commentary "~%;;~a failed to rewrite " id)
 	 (if (> (+ (length (string id))(length expr-string) 21) *default-char-width*)
-	     (format t "~%;;~a" (unpindent ,expr 2 :string t))
-	     (format t "~a" expr-string))
-	 (format t "~%;;;;")
-	 (format t ,format-string ,@args)))))
+	     (commentary "~%;;~a" (unpindent ,expr 2 :string t))
+	     (commentary "~a" expr-string))
+	 (commentary "~%;;;;")
+	 (commentary ,format-string ,@args)))))
 
 
 (defmacro replace-eq (lhs rhs)
@@ -555,7 +561,7 @@
 (defmacro print-proofstate (ps)
   `(let ((*sb-print-depth* *prover-print-depth*)
 	 (*sb-print-length* *prover-print-length*))
-    (format t "~a" ,ps)))
+    (commentary "~a" ,ps)))
 
 
 (defmacro print-proofstate-if (ps)
@@ -619,7 +625,7 @@
   `(let ((id (if (consp ,res) (car ,res)(id ,res))))
      (incf *auto-rewrite-depth*)
      (when (zerop (mod *auto-rewrite-depth* 50))
-       (format t "~%Warning: Rewriting depth = ~d; Rewriting with ~a"
+       (commentary "~%Warning: Rewriting depth = ~d; Rewriting with ~a"
 	 *auto-rewrite-depth* id))))
   
 (defmacro match! (pattern expr bind-alist subst)
