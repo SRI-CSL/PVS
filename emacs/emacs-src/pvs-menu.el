@@ -221,217 +221,6 @@
     '(lambda ()
        (add-submenu nil pvs-mode-menus ""))))
 
-(require 'font-lock)
-
-(defvar pvs-keywords
-  '("AND" "ANDTHEN" "ARRAY" "AS" "ASSUMING" "ASSUMPTION" "AUTO_REWRITE"
-    "AUTO_REWRITE+" "AUTO_REWRITE-" "AXIOM" "BEGIN" "BUT" "BY" "CASES"
-    "CHALLENGE" "CLAIM" "CLOSURE" "CODATATYPE" "COINDUCTIVE" "COND"
-    "CONJECTURE" "CONTAINING" "CONVERSION" "CONVERSION+" "CONVERSION-"
-    "COROLLARY" "DATATYPE" "ELSE" "ELSIF" "END" "ENDASSUMING" "ENDCASES"
-    "ENDCOND" "ENDIF" "ENDTABLE" "EXISTS" "EXPORTING" "FACT" "FALSE"
-    "FORALL" "FORMULA" "FROM" "FUNCTION" "HAS_TYPE" "IF" "IFF" "IMPLIES"
-    "IMPORTING" "IN" "INDUCTIVE" "JUDGEMENT" "LAMBDA" "LAW" "LEMMA" "LET"
-    "LIBRARY" "MACRO" "MEASURE" "NONEMPTY_TYPE" "NOT" "O" "OBLIGATION" "OF"
-    "OR" "ORELSE" "POSTULATE" "PROPOSITION" "RECURSIVE" "SUBLEMMA" "SUBTYPES"
-    "SUBTYPE_OF" "TABLE" "THEN" "THEOREM" "THEORY" "TRUE" "TYPE" "TYPE+"
-    "VAR" "WHEN" "WHERE" "WITH" "XOR"))
-
-(defvar pvs-operators
-  '(;;"!" "!!"
-    "#" "##" "\\$" "\\$\\$" "&" "&&"
-    "\\*" "\\*\\*" "\\+" "\\+\\+" "-" "/"
-    "//" "/=" "/\\\\" "::" ":=" "<" "<-" "<<" "<<=" "<="
-    "<=>" "<>" "<|" "=" "==" "==>" "=>" ">" ">=" ">>" ">>=" "@" "@@"
-    "\\[\\]" "\\\\/" "\\^" "\\^\\^" "|-" "|->" "|=" "|>" "~"))
-
-(defun pvs-keyword-match (keyword)
-  (let ((regexp "")
-	(index 0)
-	(len (length keyword)))
-    (while (< index len)
-      (let ((c (aref keyword index)))
-	(setq regexp
-	      (concat regexp (format "[%c%c]" (downcase c) (upcase c))))
-	(setq index (+ index 1))))
-    (format "\\b%s\\b" regexp)))
-
-(unless (featurep 'xemacs)
-  (add-hook 'pvs-mode-hook
-    '(lambda ()
-       (make-local-variable 'font-lock-defaults)
-       (setq font-lock-defaults '(pvs-font-lock-keywords nil t))))
-  (add-hook 'pvs-view-mode-hook
-    '(lambda ()
-       (make-local-variable 'font-lock-defaults)
-       (setq font-lock-defaults '(pvs-font-lock-keywords nil t)))))
-
-;;; facep works differently in XEmacs - always returns nil for a symbol
-;;; find-face is used there instead, but red and blue faces are already
-;;; defined anyway.
-(unless (featurep 'xemacs)
-  (unless (facep 'red)
-    (make-face 'red)
-    (set-face-foreground 'red "red"))
-  (unless (facep 'blue)
-    (make-face 'blue)
-    (set-face-foreground 'blue "blue")))
-
-(defvar font-lock-pvs-record-parens-face 'font-lock-pvs-record-parens-face)
-(make-face 'font-lock-pvs-record-parens-face)
-;;(set-face-background 'font-lock-pvs-record-parens-face "lightcyan")
-
-(defvar font-lock-pvs-set-brace-face 'font-lock-pvs-set-brace-face)
-(make-face 'font-lock-pvs-set-brace-face)
-;;(set-face-background 'font-lock-pvs-set-brace-face "Yellow")
-
-(defvar font-lock-pvs-parens-face 'font-lock-pvs-parens-face)
-(make-face 'font-lock-pvs-parens-face)
-;;(set-face-foreground 'font-lock-pvs-parens-face "Magenta")
-
-(defvar font-lock-pvs-table-face 'font-lock-pvs-table-face)
-(make-face 'font-lock-pvs-table-face)
-;;(set-face-background 'font-lock-pvs-table-face "Yellow")
-
-(defvar font-lock-pvs-function-type-face 'font-lock-pvs-function-type-face)
-(make-face 'font-lock-pvs-function-type-face)
-;;(set-face-background 'font-lock-pvs-function-type-face "thistle1")
-
-;(make-face 'font-lock-pvs-symbol-face)
-;(set-face-background 'font-lock-pvs-symbol-face "Green")
-;(set-face-font
-; 'font-lock-pvs-symbol-face
-; "-adobe-symbol-medium-r-normal--12-*-*-*-p-*-adobe-fontspecific")
-
-(defun pvs-minimal-decoration ()
-  (interactive)
-  (setq pvs-font-lock-keywords pvs-font-lock-keywords-1))
-
-(defun pvs-maximal-decoration ()
-  (interactive)
-  (setq pvs-font-lock-keywords pvs-font-lock-keywords-2))
-
-(defconst pvs-font-lock-keywords-1
-  (purecopy
-   (list
-    (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
-    ;; These have to come first or they will match too soon.
-    (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
-	  1 'font-lock-function-name-face)
-    (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-keyword-face)
-    (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-keyword-face)
-    (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-keyword-face)
-    (list "\\({\\||\\|}\\)" 1 'font-lock-keyword-face)
-    (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-keyword-face)
-    (list (concat "\\("
-		  (mapconcat 'identity pvs-operators "\\|")
-		  "\\)")
-	  1 'font-lock-function-name-face)))
-  "Additional expressions to highlight in PVS mode.")
-
-(defconst pvs-font-lock-keywords-2
-  (purecopy
-   (list
-    (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
-    ;; These have to come first or they will match too soon.
-    (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
-	  1 'font-lock-function-name-face)
-    (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-pvs-record-parens-face)
-    (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-pvs-parens-face)
-    (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-pvs-table-face)
-    (list "\\({\\||\\|}\\)" 1 'font-lock-pvs-set-brace-face)
-    (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-pvs-function-type-face)
-    (list (concat "\\("
-		  (mapconcat 'identity pvs-operators "\\|")
-		  "\\)")
-	  1 'font-lock-function-name-face)))
-  "Additional expressions to highlight in PVS mode.")
-
-(defconst pvs-sequent-font-lock-keywords-1
-  (purecopy
-   (list
-    (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
-    '("\\({[^}]*}\\)" 1 font-lock-warning-face)
-    '("\\(\\[[^]]*\\]\\)" 1 font-lock-comment-face)
-    ;; These have to come first or they will match others too soon.
-    '("\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
-      1 font-lock-function-name-face)
-    '("\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 font-lock-keyword-face)
-    '("\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 font-lock-keyword-face)
-    '("\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 font-lock-keyword-face)
-    '("\\({\\||\\|}\\)" 1 font-lock-keyword-face)
-    '("\\(\\[\\|->\\|\\]\\)" 1 font-lock-keyword-face)
-    (list (concat "\\("
-		  (mapconcat 'identity pvs-operators "\\|")
-		  "\\)")
-	  1 'font-lock-function-name-face)))
-  "Additional expressions to highlight in PVS mode.")
-
-(defconst pvs-sequent-font-lock-keywords-2
-  (purecopy
-   (list
-    (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
-    ;; These have to come first or they will match too soon.
-    (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
-	  1 'font-lock-function-name-face)
-    (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-pvs-record-parens-face)
-    (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-pvs-parens-face)
-    (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-pvs-table-face)
-    (list "\\({\\||\\|}\\)" 1 'font-lock-pvs-set-brace-face)
-    (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-pvs-function-type-face)
-    (list (concat "\\("
-		  (mapconcat 'identity pvs-operators "\\|")
-		  "\\)")
-	  1 'font-lock-function-name-face)))
-  "Additional expressions to highlight in PVS mode.")
-
-(defvar pvs-sequent-font-lock-keywords pvs-sequent-font-lock-keywords-1)
-
-(defconst pvs-lisp-font-lock-keywords-1
-  (append
-   `((("^  |-------$") 0 info-title-1))
-   lisp-font-lock-keywords-1))
-
-(defconst pvs-lisp-font-lock-keywords-2
-  (append pvs-lisp-font-lock-keywords-1
-	  (list (regexp-opt '("^  |-------$")))))
-
-(defvar pvs-lisp-font-lock-keywords pvs-lisp-font-lock-keywords-1
-  "Default expressions to highlight in pvs-lisp-modes (*pvs* buffer)")
-
-(unless (or (featurep 'xemacs)
-	    (boundp 'font-lock-maximum-decoration))
-  (defvar font-lock-maximum-decoration nil))
-
-(defconst pvs-font-lock-keywords
-  (if font-lock-maximum-decoration
-      pvs-font-lock-keywords-2
-      pvs-font-lock-keywords-1))
-
-;; (defconst pvs-lisp-font-lock-keywords-1
-;;   (purecopy
-;;    (list
-;;     ("\\(Rule\\?\\|pvs([0-9]+):\\)" (0 font-lock-warning-face)
-;;      (cons "\{-?[0-9]+\}\\|\[-?[0-9]+\]" 'font-lock-builtin-face)
-;;     (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
-;;     ;; These have to come first or they will match too soon.
-;;     (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
-;; 	  1 'font-lock-function-name-face)
-;;     (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-pvs-record-parens-face)
-;;     (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-pvs-parens-face)
-;;     (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-pvs-table-face)
-;;     (list "\\({\\||\\|}\\)" 1 'font-lock-pvs-set-brace-face)
-;;     (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-pvs-function-type-face)
-;;     (list (concat "\\("
-;; 		  (mapconcat 'identity pvs-operators "\\|")
-;; 		  "\\)")
-;; 	  1 'font-lock-function-name-face))))
-
-;; (defconst pvs-lisp-font-lock-keywords-1
-;;   (purecopy
-;;    (list
-;;     (cons 'pvs-lisp-font-lock-matcher 'font-lock-warning-face))))
-
 (require 'json)
 (require 'button)
 (require 'ring)
@@ -471,7 +260,7 @@
 (defun pvs-add-tooltips (fname)
   (interactive (list (current-pvs-file)))
   (let* ((dlist-json
-	  (pvs-file-send-and-wait (format "(collect-pvs-file-decls-info \"%s\")"
+	  (pvs-file-send-and-wait (format "(collect-pvs-file-decls-info \"%s\" t)"
 				      fname)
 				  nil 'get-decls '(or string null)))
 	 (dlist (when dlist-json (json-read-from-string dlist-json))))
@@ -492,11 +281,13 @@
 	  (message "Tooltips set"))
 	(message "Tooltips not set - is file typechecked?"))))
 
-(defun place-to-region (place)
-  (let ((srow (elt place 0))
-	(scol (elt place 1))
-	(erow (elt place 2))
-	(ecol (elt place 3)))
+(defun place-to-region (place &optional relrow relcol)
+  (let* ((rr (or relrow 0))
+	 (rc (or relcol 0))
+	 (srow (+ (elt place 0) rr))
+	 (scol (+ (elt place 1) rc))
+	 (erow (+ (elt place 2) rr))
+	 (ecol (+ (elt place 3) rc)))
     (cons (row-col-to-point srow scol)
 	  (row-col-to-point erow ecol))))
 
@@ -505,3 +296,20 @@
     (goto-line row)
     (forward-char col)
     (point)))
+
+(defpvs select-pvs-subterm browse (fname row col)
+  "Select a subterm containing point"
+  (interactive (list (current-pvs-file)
+		     (current-line-number)
+		     (current-column)))
+  (let* ((slist-json
+	  (pvs-file-send-and-wait (format "(get-subterms-at-place \"%s\" %d %d t)"
+				      fname row col)
+				  nil 'subterms '(or string null)))
+	 (slist (when slist-json (json-read-from-string slist-json))))
+    (if slist
+	(let ((sterm (x-popup-menu
+		      t (list "Subterms"
+			      (cons "Subterms"
+				    (cl-mapcar (lambda (x) (cons x x))
+					       slist))))))))))
