@@ -315,6 +315,12 @@ bind tighter.")
 	     (cc (copy-lex obj nobj nil cstr)))
 	(values cstr cc)))))
 
+(defun pp-with-view (term &optional (indent 0)
+			    (width *default-char-width*))
+  (let* ((termstr (pp-string term indent width))
+	 (view (pp-view term termstr)))
+    (values termstr view)))
+
 (defun pp-string (term &optional (indent 0)
 		       (width *default-char-width*))
   (let* ((sterm (unparse term
