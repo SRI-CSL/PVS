@@ -32,8 +32,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;The rulefun rewrite finds the matching instantiations automatically.
 
-(defun rewrite-step (lemma fnums &optional subst target-fnums
-			       dir order dont-delete?)
+(defun rewrite-step (lemma fnums
+		     &optional subst target-fnums dir order dont-delete?)
   (let* ((lemmaname-expr (unless (and (integerp lemma)
 				      (minusp lemma))
 			   (pc-parse lemma 'bname)))
@@ -47,16 +47,16 @@
 	  ((or (not (listp subst))
 	       (oddp (length subst)))
 	   (error-format-if "~%Substitution ~a must be an even length list."
-		      subst)
+			    subst)
 	   '(skip))
 	  ((null sforms)
 	   (error-format-if "~%No sequent formulas for ~a" fnums)
 	   '(skip))
 	  (t (let ((in-subst
 		    (loop for (x . y) in (make-alist subst)
-			  collect
-			  (cons (pc-parse x 'name)
-				(pc-parse y 'expr)))))
+		       collect
+			 (cons (pc-parse x 'name)
+			       (pc-parse y 'expr)))))
 	       (search-and-rewrite lemmaname-expr resolutions sforms
 				   in-subst
 				   *current-context*
@@ -878,8 +878,8 @@
 (defun split-rewrite* (form vars dir)
   (cond ((or (equation? form)(iff? form))
 	 ;;checks if rhs freevars are in given + lhs freevars.
-	 (let ((lhs (if (eq dir 'rl)(args2 form)(args1 form)))
-	       (rhs (if (eq dir 'rl)(args1 form)(args2 form))))
+	 (let ((lhs (if (symbol-equal dir 'rl)(args2 form)(args1 form)))
+	       (rhs (if (symbol-equal dir 'rl)(args1 form)(args2 form))))
 	   (if
 	     (subsetp (freevars rhs)
 		      (append vars
