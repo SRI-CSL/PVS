@@ -428,21 +428,21 @@ arguments ARGS. ARGS can only have constant values.")
   "[Extrategies] Removes specified LABEL(s) (or all labels if LABEL is nil) from FNUMS."
   "Removing ~1@*~:[all labels~;label(s) ~:*~a~] from ~@*~a")
 
-(defstep delabel (label &optional hide? (hidden? t))
-  (let ((fnums (extra-get-fnums label))
-	(seqfs  (when hidden? (extra-get-seqfs label t))))
+(defstep delabel (labl &optional hide? (hidden? t))
+  (let ((fnums (extra-get-fnums labl))
+	(seqfs  (when hidden? (extra-get-seqfs labl t))))
     (then (when fnums
-	    (unlabel* fnums label)
+	    (unlabel* fnums labl)
 	    (when hide? (hide fnums)))
 	  (when seqfs
-	    (let ((lbs (enlist-it label)))
+	    (let ((lbs (enlist-it labl)))
 	      (mapstep #'(lambda(x)`(unlabel :label ,x :hidden? t)) lbs)))))
   "[Extrategies] Removes LABEL(s). If HIDE? is t, the delabeled formulas are hidden.
 If hidden? is t, LABEL(s) are also removed from hidden formulas."
   "Removing label(s) ~a")
 
-(defstep relabel (label fnums &optional pairing? (push? t))
-  (let ((lbs  (enlist-it label))
+(defstep relabel (labl fnums &optional pairing? (push? t))
+  (let ((lbs  (enlist-it labl))
 	(lfs  (mapcar #'extra-get-fnums (if pairing? fnums (list fnums))))
 	(lbfs (if pairing? (pair-lists lbs lfs)
 		(mapcar #'(lambda (x) (cons x lfs)) lbs))))
@@ -775,7 +775,7 @@ the execution of the command are discharged with the proof command TCC-STEP."
 (defrule tccs-formula* (&optional (fnums *) label hide?)
   (with-fnums
    (!tcfs)
-   (then (discriminate (tccs-formula*__$ fnums label hide?) !tcfs)
+   (then (discriminate (tccs-formula*$ fnums label hide?) !tcfs)
 	 (relabel-hide__ (skip) label !tcfs hide?)))
   "[Extrategies] Adds TCCs of formulas FNUMS as hypotheses to the current sequent. Added hypotheses
 are labeled as LABEL(s), if LABEL is not nil. They are hidden when HIDE? is t."
@@ -1692,5 +1692,3 @@ name of the quantified variable that encodes the recursive call.")
       (if (numberp e) e
 	(copy expr 'exprs e))))
    (t n)))
-
-    
