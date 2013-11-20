@@ -140,7 +140,7 @@ PVS are automatically put in the proper mode."
   (setq mode-line-process 'ilisp-status)
   (set-syntax-table pvs-mode-syntax-table)
   (unless default-input-method
-    (setq default-input-method "TeX"))
+    (setq default-input-method "PVS-TeX"))
   (setq parse-sexp-ignore-comments t)
   (run-hooks 'pvs-mode-hook))
 
@@ -426,5 +426,291 @@ BUFFER is the buffer speedbar is requesting buttons for."
 ;; 		"^This is the \\(?:first\\|last\\) pvs node you looked at$"
 ;; 		search-failed))
 ;;   (add-to-list 'debug-ignored-errors mess))
+
+(register-input-method
+ "PVS-TeX" "UTF-8" 'quail-use-package
+ "⊢" "LaTeX-like input method for PVS."
+ "pvs-ltx")
+
+;;; Various faces used by PVS
+
+;;; facep works differently in XEmacs - always returns nil for a symbol
+;;; find-face is used there instead, but red and blue faces are already
+;;; defined anyway.
+(unless (featurep 'xemacs)
+  (unless (facep 'red)
+    (make-face 'red)
+    (set-face-foreground 'red "red"))
+  (unless (facep 'blue)
+    (make-face 'blue)
+    (set-face-foreground 'blue "blue")))
+
+;;(set-face-background 'font-lock-pvs-record-parens-face "lightcyan")
+(defface font-lock-pvs-record-parens-face
+    `()
+  "Face for PVS record parens."
+  :group 'pvs-mode-faces)
+
+;;(set-face-background 'font-lock-pvs-set-brace-face "Yellow")
+(defface font-lock-pvs-set-brace-face
+    `()
+  "Face for PVS set braces."
+  :group 'pvs-mode-faces)
+
+;;(set-face-foreground 'font-lock-pvs-parens-face "Magenta")
+(defface font-lock-pvs-parens-face
+    `()
+  "Face for PVS parens."
+  :group 'pvs-mode-faces)
+
+;;(set-face-background 'font-lock-pvs-table-face "Yellow")
+(defface font-lock-pvs-table-face
+    `()
+  "Face for PVS tables."
+  :group 'pvs-mode-faces)
+
+;;(set-face-background 'font-lock-pvs-function-type-face "thistle1")
+(defface font-lock-pvs-function-type-face
+    `()
+  "Face for PVS tables."
+  :group 'pvs-mode-faces)
+
+(defface font-lock-pvs-symbol-face
+    `()
+  "Face for PVS symbols."
+  :group 'pvs-mode-faces)
+
+(defface proofstate-commentary-face
+    `((((class color) (background light))
+       :background "cyan1" :foreground "black")
+      (((class color) (background dark))
+       :background "darkblue" :foreground "white"))
+  "Face for proofstate commentaries."
+  :group 'pvs-mode-faces)
+
+(defface proofstate-action-face
+    `((((class color) (background light))
+       :background "ivory2" :foreground "black")
+      (((class color) (background dark))
+       :background "darkblue" :foreground "white"))
+  "Face for proofstate actions."
+  :group 'pvs-mode-faces)
+
+(defface proofstate-yields-face
+    `((((class color) (background light))
+       :background "pink" :foreground "black")
+      (((class color) (background dark))
+       :background "darkblue" :foreground "white"))
+  "Face for proofstate yields messages."
+  :group 'pvs-mode-faces)
+
+(defface proofstate-label-face
+    `((((class color) (background light))
+       :background "yellow" :foreground "black")
+      (((class color) (background dark))
+       :background "darkblue" :foreground "white"))
+  "Face for proofstate labels."
+  :group 'pvs-mode-faces)
+
+(defface proofstate-formula-face
+    `((((class color) (background light))
+       :background "ivory2" :foreground "black")
+      (((class color) (background dark))
+       :background "darkblue" :foreground "white"))
+  "Face for proofstate formulas."
+  :group 'pvs-mode-faces)
+
+(defface proofstate-formula-changed-label-face
+    `((((class color) (background light))
+       :background "light green" :foreground "red")
+      (((class color) (background dark))
+       :background "darkblue" :foreground "red"))
+  "Face for proofstate formula changed labels."
+  :group 'pvs-mode-faces)
+
+(defface proofstate-formula-unchanged-label-face
+    `((((class color) (background light))
+       :background "white" :foreground "navy")
+      (((class color) (background dark))
+       :background "darkblue" :foreground "white"))
+  "Face for proofstate formula unchanged labels."
+  :group 'pvs-mode-faces)
+
+;;; PVS Font Lock support
+
+(require 'font-lock)
+
+(defvar pvs-keywords
+  '("AND" "ANDTHEN" "ARRAY" "AS" "ASSUMING" "ASSUMPTION" "AUTO_REWRITE"
+    "AUTO_REWRITE+" "AUTO_REWRITE-" "AXIOM" "BEGIN" "BUT" "BY" "CASES"
+    "CHALLENGE" "CLAIM" "CLOSURE" "CODATATYPE" "COINDUCTIVE" "COND"
+    "CONJECTURE" "CONTAINING" "CONVERSION" "CONVERSION+" "CONVERSION-"
+    "COROLLARY" "DATATYPE" "ELSE" "ELSIF" "END" "ENDASSUMING" "ENDCASES"
+    "ENDCOND" "ENDIF" "ENDTABLE" "EXISTS" "EXPORTING" "FACT" "FALSE"
+    "FORALL" "FORMULA" "FROM" "FUNCTION" "HAS_TYPE" "IF" "IFF" "IMPLIES"
+    "IMPORTING" "IN" "INDUCTIVE" "JUDGEMENT" "LAMBDA" "LAW" "LEMMA" "LET"
+    "LIBRARY" "MACRO" "MEASURE" "NONEMPTY_TYPE" "NOT" "O" "OBLIGATION" "OF"
+    "OR" "ORELSE" "POSTULATE" "PROPOSITION" "RECURSIVE" "SUBLEMMA" "SUBTYPES"
+    "SUBTYPE_OF" "TABLE" "THEN" "THEOREM" "THEORY" "TRUE" "TYPE" "TYPE+"
+    "VAR" "WHEN" "WHERE" "WITH" "XOR"))
+
+(defvar pvs-operators
+  '(;;"!" "!!"
+    "#" "##" "\\$" "\\$\\$" "&" "&&"
+    "\\*" "\\*\\*" "\\+" "\\+\\+" "-" "/"
+    "//" "/=" "/\\\\" "::" ":=" "<" "<-" "<<" "<<=" "<="
+    "<=>" "<>" "<|" "=" "==" "==>" "=>" ">" ">=" ">>" ">>=" "@" "@@"
+    "\\[\\]" "\\\\/" "\\^" "\\^\\^" "|-" "|->" "|=" "|>" "~"))
+
+(defun pvs-keyword-match (keyword)
+  (let ((regexp "")
+	(index 0)
+	(len (length keyword)))
+    (while (< index len)
+      (let ((c (aref keyword index)))
+	(setq regexp
+	      (concat regexp (format "[%c%c]" (downcase c) (upcase c))))
+	(setq index (+ index 1))))
+    (format "\\b%s\\b" regexp)))
+
+(unless (featurep 'xemacs)
+  (add-hook 'pvs-mode-hook
+    '(lambda ()
+       (make-local-variable 'font-lock-defaults)
+       (setq font-lock-defaults '(pvs-font-lock-keywords nil t))))
+  (add-hook 'pvs-view-mode-hook
+    '(lambda ()
+       (make-local-variable 'font-lock-defaults)
+       (setq font-lock-defaults '(pvs-font-lock-keywords nil t)))))
+
+
+(defun pvs-minimal-decoration ()
+  (interactive)
+  (setq pvs-font-lock-keywords pvs-font-lock-keywords-1))
+
+(defun pvs-maximal-decoration ()
+  (interactive)
+  (setq pvs-font-lock-keywords pvs-font-lock-keywords-2))
+
+(defconst pvs-font-lock-keywords-1
+  (purecopy
+   (list
+    (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
+    ;; These have to come first or they will match too soon.
+    (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
+	  1 'font-lock-function-name-face)
+    (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-keyword-face)
+    (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-keyword-face)
+    (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-keyword-face)
+    (list "\\({\\||\\|}\\)" 1 'font-lock-keyword-face)
+    (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-keyword-face)
+    (list (concat "\\("
+		  (mapconcat 'identity pvs-operators "\\|")
+		  "\\)")
+	  1 'font-lock-function-name-face)))
+  "Additional expressions to highlight in PVS mode.")
+
+(defconst pvs-font-lock-keywords-2
+  (purecopy
+   (list
+    (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
+    ;; These have to come first or they will match too soon.
+    (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
+	  1 'font-lock-function-name-face)
+    (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-pvs-record-parens-face)
+    (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-pvs-parens-face)
+    (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-pvs-table-face)
+    (list "\\({\\||\\|}\\)" 1 'font-lock-pvs-set-brace-face)
+    (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-pvs-function-type-face)
+    (list (concat "\\("
+		  (mapconcat 'identity pvs-operators "\\|")
+		  "\\)")
+	  1 'font-lock-function-name-face)))
+  "Additional expressions to highlight in PVS mode.")
+
+(defconst pvs-sequent-font-lock-keywords-1
+  (purecopy
+   (list
+    (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
+    '("\\({[^}]*}\\)" 1 font-lock-warning-face)
+    '("\\(\\[[^]]*\\]\\)" 1 font-lock-comment-face)
+    ;; These have to come first or they will match others too soon.
+    '("\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
+      1 font-lock-function-name-face)
+    '("\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 font-lock-keyword-face)
+    '("\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 font-lock-keyword-face)
+    '("\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 font-lock-keyword-face)
+    '("\\({\\||\\|}\\)" 1 font-lock-keyword-face)
+    '("\\(\\[\\|->\\|\\]\\)" 1 font-lock-keyword-face)
+    (list (concat "\\("
+		  (mapconcat 'identity pvs-operators "\\|")
+		  "\\)")
+	  1 'font-lock-function-name-face)))
+  "Additional expressions to highlight in PVS mode.")
+
+(defconst pvs-sequent-font-lock-keywords-2
+  (purecopy
+   (list
+    (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
+    ;; These have to come first or they will match too soon.
+    (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
+	  1 'font-lock-function-name-face)
+    (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-pvs-record-parens-face)
+    (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-pvs-parens-face)
+    (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-pvs-table-face)
+    (list "\\({\\||\\|}\\)" 1 'font-lock-pvs-set-brace-face)
+    (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-pvs-function-type-face)
+    (list (concat "\\("
+		  (mapconcat 'identity pvs-operators "\\|")
+		  "\\)")
+	  1 'font-lock-function-name-face)))
+  "Additional expressions to highlight in PVS mode.")
+
+(defvar pvs-sequent-font-lock-keywords pvs-sequent-font-lock-keywords-1)
+
+(defconst pvs-lisp-font-lock-keywords-1
+  (append
+   `((("^  |-------$") 0 info-title-1))
+   lisp-font-lock-keywords-1))
+
+(defconst pvs-lisp-font-lock-keywords-2
+  (append pvs-lisp-font-lock-keywords-1
+	  (list (regexp-opt '("^  |-------$")))))
+
+(defvar pvs-lisp-font-lock-keywords pvs-lisp-font-lock-keywords-1
+  "Default expressions to highlight in pvs-lisp-modes (*pvs* buffer)")
+
+(unless (or (featurep 'xemacs)
+	    (boundp 'font-lock-maximum-decoration))
+  (defvar font-lock-maximum-decoration nil))
+
+(defconst pvs-font-lock-keywords
+  (if font-lock-maximum-decoration
+      pvs-font-lock-keywords-2
+      pvs-font-lock-keywords-1))
+
+;; (defconst pvs-lisp-font-lock-keywords-1
+;;   (purecopy
+;;    (list
+;;     ("\\(Rule\\?\\|pvs([0-9]+):\\)" (0 font-lock-warning-face)
+;;      (cons "\{-?[0-9]+\}\\|\[-?[0-9]+\]" 'font-lock-builtin-face)
+;;     (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
+;;     ;; These have to come first or they will match too soon.
+;;     (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
+;; 	  1 'font-lock-function-name-face)
+;;     (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-pvs-record-parens-face)
+;;     (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-pvs-parens-face)
+;;     (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-pvs-table-face)
+;;     (list "\\({\\||\\|}\\)" 1 'font-lock-pvs-set-brace-face)
+;;     (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-pvs-function-type-face)
+;;     (list (concat "\\("
+;; 		  (mapconcat 'identity pvs-operators "\\|")
+;; 		  "\\)")
+;; 	  1 'font-lock-function-name-face))))
+
+;; (defconst pvs-lisp-font-lock-keywords-1
+;;   (purecopy
+;;    (list
+;;     (cons 'pvs-lisp-font-lock-matcher 'font-lock-warning-face))))
 
 (provide 'pvs-mode)
