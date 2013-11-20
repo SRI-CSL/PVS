@@ -287,10 +287,10 @@
 			    nil)
 		       (when (and (place ex)
 				  (typep ex '(and syntax
-						  (not assignment)
-						  (or funtype
-						      tupletype
-						      recordtype)))
+					      (not assignment)
+					      (or funtype
+					       tupletype
+					       recordtype)))
 				  (within-place pos1 (place ex))
 				  (or (equal pos1 pos2)
 				      (within-place pos2 (place ex))))
@@ -1061,14 +1061,17 @@
   (collect-visible-decl-info* (dactuals obj))
   (collect-visible-decl-info* (mappings obj))
   (collect-visible-decl-info* (target obj))
-  (when (and (or (resolution obj)
-		 (simple-decl? obj))
-	     (place obj))
-    (when (and *max-row* (> (svref (place obj) 2) *max-row*))
+  (name-visible-decl-info obj (place obj)))
+
+(defun name-visible-decl-info (obj place)
+  (when (and place
+	     (or (resolution obj)
+		 (simple-decl? obj)))
+    (when (and *max-row* (> (svref place 2) *max-row*))
       (break "Something's wrong"))
     ;;(format t "~%~a: ~a - ~a" x (declaration x) (place x))
     (push `((:id . ,(id obj))
-	    (:place . ,(id-place-list obj))
+	    (:place . ,(id-place-list obj place))
 	    (:decl . ,(if (resolution obj)
 			  (if (and (simple-decl? (declaration obj))
 				   (null (declared-type (declaration obj))))
@@ -1080,12 +1083,327 @@
 				    (id (declaration obj))
 				    (with-output-to-string (*standard-output*)
 				      (pp-theory-formals (formals (declaration obj)))))
-				  (str (declaration obj))))
+				  (concatenate 'string
+				    (if (skolem-constant? obj)
+					"Skolem Constant: " "")
+				    (str (declaration obj)))))
 			  (if (and (declared-type obj)
 				   (not (untyped-bind-decl? obj)))
 			      (str obj)
 			      (format nil "~a: ~a" (id obj) (type obj)))))
-	    (:decl-file . ,(let ((th (module (declaration obj))))
-			   (when th (theory-filename th))))
-	    (:decl-place . ,(place-list (declaration obj))))
+	    (:decl-file . ,(unless (skolem-constant? obj)
+				   (let ((th (module (declaration obj))))
+				     (unless th (break "No module?"))
+				     (when th (theory-filename th)))))
+	    (:decl-place . ,(unless (skolem-constant? obj)
+				    (place-list (declaration obj)))))
 	  *visible-decl-info*)))
+
+
+(defun names-info-proof-formula (s-form &optional json?)
+  (let* ((info (collect-visible-decl-info (cadr (view s-form)))))
+    (if json?
+	(let ((json:*lisp-identifier-name-to-json* #'identity))
+	  (json:encode-json-to-string info))
+	info)))))))
+
+(defmethod collect-visible-decl-info* ((obj view-node))
+  (let ((term (vnode-term obj)))
+    (when (name? term)
+      (name-visible-decl-info term (vnode-place obj)))
+    (collect-visible-decl-info* (vnode-children obj))))
+
+;;;
+
+(defun get-subterms-at-place (pvs-file row col &optional json?)
+  (if (string= pvs-file "prelude")
+      (get-subterms-at *prelude-theories* (list row col))
+      (let* ((file (make-specpath pvs-file))
+	     (theories (get-theories pvs-file))
+	     (*max-row* (when theories (svref (place (car (last theories))) 2))))
+	(cond ((not (file-exists-p file))
+	       (pvs-message "PVS file ~a is not in the current context" pvs-file))
+	      ((null theories)
+	       (pvs-message "PVS file ~a is not typechecked" pvs-file))
+	      (t (let* ((subterms (get-subterms-at theories (list row col))))
+		   (if json?
+		       (let ((json:*lisp-identifier-name-to-json* #'identity))
+			 (json:encode-json-to-string subterms))
+		       subterms)))))))
+
+(defun get-subterms-at (theories pos)
+  (let ((*subterms-at-pos* pos)
+	(*subterms-at* nil))
+    (declare (special *subterms-at-pos* *subterms-at*))
+    (get-subterms-at* theories)
+    *subterms-at*))
+
+(defmethod get-subterms-at* ((list list))
+  (when list
+    (get-subterms-at* (car list))
+    (get-subterms-at* (cdr list))))
+
+(defmethod get-subterms-at* ((obj datatype-or-module))
+  (get-subterms-at* (formals obj))
+  (get-subterms-at* (assuming obj))
+  (call-next-method))
+
+(defmethod get-subterms-at* ((obj module))
+  (get-subterms-at* (theory obj)))
+
+(defmethod get-subterms-at* ((obj recursive-type))
+  (get-subterms-at* (importings obj))
+  (get-subterms-at* (constructors obj)))
+
+(defmethod get-subterms-at* ((obj simple-constructor))
+  (get-subterms-at* (arguments obj)))
+
+(defmethod get-subterms-at* ((obj exporting))
+  (get-subterms-at* (names obj)))
+
+(defmethod get-subterms-at* ((obj importing))
+  (get-subterms-at* (theory-name obj)))
+
+(defmethod get-subterms-at* ((obj declaration))
+  (when (place obj)
+    (get-subterms-at* (formals obj))))
+
+(defmethod get-subterms-at* ((obj typed-declaration))
+  (when (place obj)
+    (get-subterms-at* (declared-type obj))
+    (call-next-method)))
+
+(defmethod get-subterms-at* ((obj type-decl))
+  (get-subterms-at* (type-value obj))
+  (call-next-method))
+
+(defmethod get-subterms-at* ((obj type-def-decl))
+  (get-subterms-at* (type-expr obj))
+  (get-subterms-at* (contains obj))
+  (call-next-method))
+
+(defmethod get-subterms-at* ((obj formal-theory-decl))
+  (get-subterms-at* (theory-name obj))
+  (call-next-method))
+
+(defmethod get-subterms-at* ((obj mod-decl))
+  (get-subterms-at* (modname obj)))
+
+(defmethod get-subterms-at* ((obj theory-abbreviation-decl))
+  (get-subterms-at* (theory-name obj)))
+
+(defmethod get-subterms-at* ((obj const-decl))
+  (get-subterms-at* (definition obj))
+  (call-next-method))
+
+(defmethod get-subterms-at* ((obj def-decl))
+  (get-subterms-at* (declared-measure obj))
+  (get-subterms-at* (ordering obj))
+  (call-next-method))
+
+(defmethod get-subterms-at* ((obj formula-decl))
+  (when (place obj)
+    (get-subterms-at* (definition obj))
+    (call-next-method)))
+
+(defmethod get-subterms-at* ((obj subtype-judgement))
+  (get-subterms-at* (declared-subtype obj)))
+
+(defmethod get-subterms-at* ((obj number-judgement))
+  (get-subterms-at* (number-expr obj)))
+
+(defmethod get-subterms-at* ((obj name-judgement))
+  (get-subterms-at* (name obj)))
+
+(defmethod get-subterms-at* ((obj application-judgement))
+  (get-subterms-at* (name obj))
+  (get-subterms-at* (formals obj))
+  (get-subterms-at* (judgement-type obj)))
+
+(defmethod get-subterms-at* ((obj expr-judgement))
+  (get-subterms-at* (expr obj))
+  (get-subterms-at* (formals obj))
+  (get-subterms-at* (judgement-type obj)))
+
+(defmethod get-subterms-at* ((obj conversion-decl))
+  (unless (generated-by obj)
+    (get-subterms-at* (expr obj))))
+
+(defmethod get-subterms-at* ((obj auto-rewrite-decl))
+  (get-subterms-at* (rewrite-names obj)))
+
+(defmethod get-subterms-at* ((obj constant-rewrite-name))
+  (get-subterms-at* (declared-type obj)))
+
+;;; Type expr subterms
+(defmethod get-subterms-at* :around ((obj type-expr))
+  (declare (special *subterms-at-pos* *subterms-at*))
+  (cond ((print-type obj)
+	 (get-subterms-at* (print-type obj)))
+	((place obj)
+	 (when (within-place *subterms-at-pos* (place obj))
+	   (push obj *subterms-at*)
+	   (call-next-method)))
+	((typep obj 'domain-tupletype)
+	 (call-next-method))))
+
+(defmethod get-subterms-at* ((obj type-application))
+  (get-subterms-at* (type obj))
+  (get-subterms-at* (parameters obj)))
+
+(defmethod get-subterms-at* ((obj subtype))
+  (get-subterms-at* (supertype obj))
+  (get-subterms-at* (predicate obj)))
+
+(defmethod get-subterms-at* ((obj setsubtype))
+  (get-subterms-at* (formals obj))
+  (get-subterms-at* (formula obj)))
+
+(defmethod get-subterms-at* ((obj expr-as-type))
+  (get-subterms-at* (expr obj)))
+
+(defmethod get-subterms-at* ((obj funtype))
+  (get-subterms-at* (domain obj))
+  (get-subterms-at* (range obj)))
+
+(defmethod get-subterms-at* ((obj tuple-or-struct-subtype))
+  (get-subterms-at* (types obj)))
+
+(defmethod get-subterms-at* ((obj cotupletype))
+  (get-subterms-at* (types obj)))
+
+(defmethod get-subterms-at* ((obj dep-domain-tupletype))
+  (get-subterms-at* (var-bindings obj))
+  (get-subterms-at* (types obj)))
+
+(defmethod get-subterms-at* ((obj record-or-struct-subtype))
+  (get-subterms-at* (fields obj)))
+
+(defmethod get-subterms-at* ((obj struct-sub-recordtype))
+  (get-subterms-at* (type obj))
+  (call-next-method))
+
+(defmethod get-subterms-at* ((obj type-extension))
+  (get-subterms-at* (type obj))
+  (get-subterms-at* (extension obj)))
+
+(defmethod get-subterms-at* ((obj binding-type))
+  (get-subterms-at* (bindings obj))
+  (get-subterms-at* (type obj)))
+
+(defmethod get-subterms-at* :around ((obj expr))
+  (declare (special *subterms-at-pos* *subterms-at*))
+  (when (place obj)
+    (when (within-place *subterms-at-pos* (place obj))
+      (unless (typep obj 'arg-tuple-expr)
+	;;(when (string= (str obj) "sq(a)") (break "check"))
+	(push obj *subterms-at*))
+      (call-next-method))))
+
+(defmethod get-subterms-at* ((obj typed-name-expr))
+  (get-subterms-at* (declared-type obj))
+  (call-next-method))
+
+(defmethod get-subterms-at* ((obj fieldex))
+  (get-subterms-at* (actuals obj))
+  (get-subterms-at* (dactuals obj)))
+
+(defmethod get-subterms-at* ((obj field-application))
+  (get-subterms-at* (actuals obj))
+  (get-subterms-at* (dactuals obj))
+  (get-subterms-at* (argument obj)))
+
+(defmethod get-subterms-at* ((obj projection-application))
+  (get-subterms-at* (actuals obj))
+  (get-subterms-at* (dactuals obj))
+  (get-subterms-at* (argument obj)))
+
+(defmethod get-subterms-at* ((obj injection-application))
+  (get-subterms-at* (actuals obj))
+  (get-subterms-at* (dactuals obj))
+  (get-subterms-at* (argument obj)))
+
+(defmethod get-subterms-at* ((obj injection?-application))
+  (get-subterms-at* (actuals obj))
+  (get-subterms-at* (dactuals obj))
+  (get-subterms-at* (argument obj)))
+
+(defmethod get-subterms-at* ((obj extraction-application))
+  (get-subterms-at* (actuals obj))
+  (get-subterms-at* (dactuals obj))
+  (get-subterms-at* (argument obj)))
+
+(defmethod get-subterms-at* ((obj tuple-expr))
+  (get-subterms-at* (exprs obj)))
+
+(defmethod get-subterms-at* ((obj record-expr))
+  (get-subterms-at* (assignments obj)))
+
+(defmethod get-subterms-at* ((obj cases-expr))
+  (get-subterms-at* (expression obj))
+  (get-subterms-at* (selections obj))
+  (get-subterms-at* (else-part obj)))
+
+(defmethod get-subterms-at* ((obj selection))
+  (get-subterms-at* (constructor obj))
+  (get-subterms-at* (args obj))
+  (get-subterms-at* (expression obj)))
+
+(defmethod get-subterms-at* ((obj application))
+  (get-subterms-at* (operator obj))
+  (get-subterms-at* (argument obj)))
+
+(defmethod get-subterms-at* ((obj implicit-conversion))
+  (get-subterms-at* (argument obj)))
+
+;;; Tables should go here
+
+(defmethod get-subterms-at* ((obj binding-expr))
+  (get-subterms-at* (bindings obj))
+  (get-subterms-at* (expression obj)))
+
+(defmethod get-subterms-at* ((obj set-list-expr))
+  (get-subterms-at* (exprs obj)))
+
+(defmethod get-subterms-at* ((obj fieldex-lambda-expr))
+  (get-subterms-at* (actuals obj))
+  (get-subterms-at* (dactuals obj))
+  (call-next-method))
+
+(defmethod get-subterms-at* ((obj update-expr))
+  (get-subterms-at* (expression obj))
+  (get-subterms-at* (assignments obj)))
+
+(defmethod get-subterms-at* ((obj assignment))
+  (get-subterms-at* (arguments obj))
+  (get-subterms-at* (expression obj)))
+
+(defmethod get-subterms-at* ((obj simple-decl))
+  (unless (untyped-bind-decl? obj)
+    (get-subterms-at* (declared-type obj)))
+  (call-next-method))
+
+(defmethod get-subterms-at* ((obj actual))
+  (get-subterms-at* (expr obj)))
+
+(defmethod get-subterms-at* ((obj mapping))
+  (get-subterms-at* (lhs obj))
+  (get-subterms-at* (rhs obj))
+  (get-subterms-at* (declared-type obj)))
+
+(defmethod get-subterms-at* ((obj mapping-with-formals))
+  (get-subterms-at* (formals obj))
+  (call-next-method))
+
+(defmethod get-subterms-at* ((obj mapping-lhs))
+  (get-subterms-at* (decl-formals obj))
+  (call-next-method))
+
+(defmethod get-subterms-at* ((obj rational-expr))
+  )
+
+(defmethod get-subterms-at* (obj)
+  (break "Should define method for ~a" obj))
+
+(defmethod get-subterms-at* ((obj name))
+  nil)
