@@ -2067,7 +2067,9 @@ existence and time differences to be whitespace")
       (t
        (defun pvs-update-window-titles ()
 	 (let ((title (pvs-title-string)))
-	   (when title
+	   (when (and title
+		      (not (equal (frame-parameter (car (frame-list)) 'title)
+				  "Proofstate")))
 	     (modify-frame-parameters (car (frame-list))
 				      (list (cons 'icon-name title)
 					    (cons 'title title))))))))
