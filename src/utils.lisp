@@ -4370,6 +4370,12 @@ space")
 	(make-new-symbol string (if num (1+ num) 1))
 	(intern str :pvs))))
 
+(defun symbol-equal (x y)
+  (if (typep x '(or symbol string))
+      (when (typep y '(or symbol string))
+	(string-equal x y))
+      (equalp x y)))
+
 (defmethod dep-binding-type ((te dep-binding))
   (type te))
 
