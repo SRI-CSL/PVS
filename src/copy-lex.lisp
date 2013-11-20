@@ -39,7 +39,7 @@
   tree)
 
 (defstruct (view-node (:conc-name vnode-))
-  range
+  place
   term
   children)
 
@@ -92,8 +92,7 @@
   (cond (*copy-lex-view-string*
 	 (let ((new-node
 		(make-view-node
-		 :range (place-to-string-range
-			 (place new) *copy-lex-view-string*)
+		 :place (place new)
 		 :term old)))
 	   (if *copy-lex-view-tree*
 	       (setf (vnode-children *copy-lex-view-tree*)
@@ -105,19 +104,19 @@
 	(t (call-next-method)
 	   (setf (place old) (place new)))))
 
-(defun place-to-string-range (place string)
-  (dbind (sr sc er ec) place
-    (let ((start 0) (end 0))
-      (dotimes (x (1- sr))
-	(let ((pos (position #\newline string :start start)))
-	  (assert pos)
-	  (setq start (1+ pos))))
-      (setq end start)
-      (dotimes (x (- er sr))
-	(let ((pos (position #\newline string :start end)))
-	  (assert pos)
-	  (setq end (1+ pos))))
-      (list (+ start sc) (+ end ec)))))
+;; (defun place-to-string-range (place string)
+;;   (dbind (sr sc er ec) place
+;;     (let ((start 0) (end 0))
+;;       (dotimes (x (1- sr))
+;; 	(let ((pos (position #\newline string :start start)))
+;; 	  (assert pos)
+;; 	  (setq start (1+ pos))))
+;;       (setq end start)
+;;       (dotimes (x (- er sr))
+;; 	(let ((pos (position #\newline string :start end)))
+;; 	  (assert pos)
+;; 	  (setq end (1+ pos))))
+;;       (list (+ start sc) (+ end ec)))))
 
 (defmethod copy-lex* :around ((old datatype-or-module) (new datatype-or-module))
   (call-next-method)
