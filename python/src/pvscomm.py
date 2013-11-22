@@ -367,6 +367,9 @@ class PVSCommandManager:
         name = util.getFilenameFromFullPath(fullname, False)
         information = self._sendCommand("names-info", name)
         # {"id":"n","place":[27,36,27,37],"decl":"n: VAR nat","decl-file":"sum2.pvs","decl-place":[4,2,4,13]},
+        if isinstance(information, str) or isinstance(information, unicode):
+            logging.error("information '%s...' should not be a string. It should be a list", information[0:30])
+            information = json.loads(information)
         information.sort(key=lambda x: x[constants.LPLACE])
         for inf in information:
             declFile = inf[constants.DECLFILE]

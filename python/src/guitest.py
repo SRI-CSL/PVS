@@ -10,12 +10,17 @@ class PVSGUITestSuite(unittest.TestCase):
     def setUp(self):
         pass
 
-    def test_pvscalls(self):
-        testContext = "/Users/saadati/projects/pvs/Examples"
-        testPVSFile = "sum"
-        tobeProved = ("sum", "closed_form")
-        proofCommand = "(grind)"
+    def _initialize(self):
+        self.testContext = "/Users/saadati/projects/pvs/Examples"
+        self.testPVSFile = "sum"
+        self.tobeProved = ("sum", "closed_form")
+        self.proofCommand = "(grind)"
+        logging.getLogger(constants.LROOT).setLevel(logging.DEBUG)
+        configDirectory = os.path.dirname(config.__file__)
+        applicationFolder = os.path.abspath(os.path.join(configDirectory, os.path.pardir))    
+        config.PVSIDEConfiguration().initialize(applicationFolder)
 
+    def test_pvscalls(self):
         def _verifyPlace(_dict, key):
             self.assertTrue(key in _dict.keys())
             self.assertTrue(_dict[key] is None or len(_dict[key]) == 4)
@@ -37,13 +42,13 @@ class PVSGUITestSuite(unittest.TestCase):
             self.assertEqual(result, "35")
             
         def _testing_change_context():
-            result = pm.changeContext(testContext)
-            self.assertEqual(result, testContext)
-            self.assertEqual(pm.pvsContext, testContext)
+            result = pm.changeContext(self.testContext)
+            self.assertEqual(result, self.testContext)
+            self.assertEqual(pm.pvsContext, self.testContext)
             self.assertEqual(pm.pvsMode, constants.PVS_MODE_LISP)
     
         def _testing_typecheck():
-            result = pm.typecheck(testPVSFile)
+            result = pm.typecheck(self.testPVSFile)
             for theory in result:
                 theoryInfo = theory[constants.LTHEORY]
                 decls = theoryInfo[constants.DECLS]
@@ -52,32 +57,33 @@ class PVSGUITestSuite(unittest.TestCase):
                     _verifyString(decl, constants.LKIND)
                     _verifyString(decl, constants.LTYPE, optional=True)
                     _verifyPlace(decl, constants.LPLACE)
-            self.assertEqual(pm.pvsContext, testContext)
+            self.assertEqual(pm.pvsContext, self.testContext)
             self.assertEqual(pm.pvsMode, constants.PVS_MODE_LISP)
     
         def _testing_names_info():
-            result = pm.namesInfo(testPVSFile)
+            result = pm.namesInfo(self.testPVSFile)
             for inf in result:
                 _verifyPlace(inf, constants.LPLACE)
                 _verifyPlace(inf, constants.DECLPLACE)
                 _verifyString(inf, constants.ID_L)
                 _verifyString(inf, constants.DECLFILE)
                 _verifyString(inf, constants.DECL)
-            self.assertEqual(pm.pvsContext, testContext)
+            self.assertEqual(pm.pvsContext, self.testContext)
             self.assertEqual(pm.pvsMode, constants.PVS_MODE_LISP)
             
         def _testing_start_prover():
-            result = pm.startProver(*tobeProved)
+            result = pm.startProver(*self.tobeProved)
             self.assertTrue("sequent" in result)
             self.assertTrue("label" in result)
-            self.assertEqual(pm.pvsContext, testContext)
+            self.assertEqual(pm.pvsContext, self.testContext)
             self.assertEqual(pm.pvsMode, constants.PVS_MODE_PROVER)
     
         def _testing_proof_command():
-            result = pm.proofCommand(proofCommand)
-            self.assertEqual(pm.pvsContext, testContext)
+            result = pm.proofCommand(self.proofCommand)
+            self.assertEqual(pm.pvsContext, self.testContext)
             self.assertEqual(pm.pvsMode, constants.PVS_MODE_PROVER)
-            
+        
+        self._initialize()
         pm = pvscomm.PVSCommandManager()
         theTests = [_testing_ping, \
                  _testing_lisp, \
@@ -90,15 +96,9 @@ class PVSGUITestSuite(unittest.TestCase):
         for aTest in theTests:
             print "Testing %s..."%(aTest.__name__)
             aTest()
-        
-    
+        self._clean()
 
-if __name__ == '__main__':
-    logging.getLogger(constants.LROOT).setLevel(logging.INFO)
-    utilDirectory = os.path.dirname(config.__file__)
-    applicationFolder = os.path.abspath(os.path.join(utilDirectory, os.path.pardir))    
-    config.PVSIDEConfiguration().initialize(applicationFolder)
-    suite = unittest.TestLoader().loadTestsFromTestCase(PVSGUITestSuite)
-    unittest.TextTestRunner(verbosity=2).run(suite)
-    pvscomm.PVSCommunicator().shutdown()
+    def _clean(self):
+        pvscomm.PVSCommunicator().shutdown()
+
     
