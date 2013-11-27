@@ -31,6 +31,7 @@
  "LaTeX-like input method for PVS.
 These characters are from the charsets used by the `utf-8' coding
 system, including many technical ones.  Examples:
+ \\and -> ∧  \\or -> ∨
  \\'a -> á  \\`{a} -> à
  \\pi -> π  \\int -> ∫  ^1 -> ¹"
 
