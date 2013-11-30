@@ -509,6 +509,7 @@
 (defcl const-decl (typed-declaration)
   (definition :parse t)
   def-axiom
+  (positive-types :initform :none)
   (eval-info :fetch-as nil))
 
 (defcl macro-decl (const-decl))
