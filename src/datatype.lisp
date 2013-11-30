@@ -2147,7 +2147,8 @@ generated")
 			(mk-adt-def-decl function-id
 			  :type (copy *boolean*)
 			  :formals fargs1
-			  :decl-formals dfmls1)
+			  :decl-formals dfmls1
+			  :positive-types (positive-types adt))
 			(if (eq function-id '|every|)
 			    (mk-coinductive-decl
 			     function-id (copy *boolean*)
@@ -2175,7 +2176,8 @@ generated")
 			  :type (copy *boolean*)
 			  :formals (append (apply #'append (butlast fargs2))
 					   (car (last fargs2)))
-			  :decl-formals dfmls2)
+			  :decl-formals dfmls2
+			  :positive-types (positive-types adt))
 			(if (eq function-id '|every|)
 			    (mk-coinductive-decl
 			     function-id (copy *boolean*)
