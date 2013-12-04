@@ -34,20 +34,7 @@ class ProofManagerPlugin(PluginPanel):
         quitButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('quit.png'), shortHelpString="Quit the prover")
         mainSizer.Add(toolbar)
 
-        topPanel = wx.Panel(splitter)
-        topSizer = wx.BoxSizer(wx.VERTICAL)
-        self.actionLabel = wx.StaticText(topPanel, wx.ID_ANY, "Action: ")
-        self.actionLabel.Wrap(100)
-        self.numberOfSubgoalsLabel = wx.StaticText(topPanel, wx.ID_ANY, "Number of Subgoals: 0")
-        self.labelLabel = wx.StaticText(topPanel, wx.ID_ANY, "Label: ")
-        self.resultLabel = wx.StaticText(topPanel, wx.ID_ANY, "Result: ")
-        self.sequentView = wx.TextCtrl(topPanel, wx.ID_ANY, "", style=wx.TE_MULTILINE | wx.TE_READONLY | wx.HSCROLL | wx.TE_RICH | wx.TE_RICH2)
-        topSizer.Add(self.actionLabel, 0, wx.ALL | wx.EXPAND, 5)
-        topSizer.Add(self.numberOfSubgoalsLabel, 0, wx.ALL | wx.EXPAND, 5)
-        topSizer.Add(self.labelLabel, 0, wx.ALL | wx.EXPAND, 5)
-        topSizer.Add(self.resultLabel, 0, wx.ALL | wx.EXPAND, 5)
-        topSizer.Add(self.sequentView, 2, wx.ALL | wx.EXPAND, 5)
-        topPanel.SetSizer(topSizer)
+        self.outputTextCtrl = wx.TextCtrl(splitter, wx.ID_ANY, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH | wx.TE_RICH2)
 
         bottomPanel = wx.Panel(splitter)
         bottomSizer = wx.BoxSizer(wx.VERTICAL)
@@ -61,7 +48,7 @@ class ProofManagerPlugin(PluginPanel):
         self.historyBox.SetSelection(0)
         bottomPanel.SetSizer(bottomSizer)
         
-        splitter.SplitHorizontally(topPanel, bottomPanel)
+        splitter.SplitHorizontally(self.outputTextCtrl, bottomPanel)
         splitter.SetSashPosition(300)
         mainSizer.Add(splitter, 1, wx.ALL | wx.EXPAND, 0)        
         self.SetSizer(mainSizer)
@@ -124,23 +111,27 @@ class ProofManagerPlugin(PluginPanel):
         jsequent = information["sequent"]
         self.sequent = Sequent(jsequent)
         label = information["label"]
-        if action:
-            self.actionLabel.SetLabel("Action: is a great thign to test here for things I may or may not do " + action)
-        else:
-            self.actionLabel.SetLabel("No Action")
-        self.actionLabel.Wrap(max(50, self.GetSize()[1]-20))        
-        if result:
-            self.resultLabel.SetLabel("Result: " + result)
-        else:
-            self.resultLabel.SetLabel("No Result")
-        if nsubgoals:
-            self.numberOfSubgoalsLabel.SetLabel("Number of Subgoals: " + str(nsubgoals))
-        else:
-            self.numberOfSubgoalsLabel.SetLabel("No Subgoals")
-        self.labelLabel.SetLabel("Label: " + label)
-        self.sequentView.SetValue(str(self.sequent))
-        self.commandTextControl.SetValue("")
+        self.outputTextCtrl.Clear()
+        header = []
+        header.append(("Action: ", "None" if action is None else action))
+        header.append(("Result: ", "None" if result is None else result))
+        header.append(("Number of Subgoals: ", "0" if nsubgoals is None else str(nsubgoals)))
+        header.append(("Label: ", label))
+
+        for key, value in header:
+            self._appendTextToOut(key, wx.BLUE, newLine=False)
+            self._appendTextToOut(value, wx.LIGHT_GREY)
+
+        self._appendTextToOut("", newLine=True)
+        self._appendTextToOut(str(self.sequent))
+        self.commandTextControl.SetValue(constants.EMPTY_STRING)
         self.Layout()
+        
+    def _appendTextToOut(self, text, color=wx.BLACK, backgroundColor=wx.BLUE, newLine=True):
+        self.outputTextCtrl.SetDefaultStyle(wx.TextAttr(color, backgroundColor))
+        self.outputTextCtrl.AppendText(text)
+        if newLine:
+            self.outputTextCtrl.AppendText(constants.NEWLINE)
 
     def onCommandEntered(self, event):
         text = self.commandTextControl.GetValue()
