@@ -10,39 +10,17 @@ from wx.lib.pubsub import setupkwargs, pub
 import remgr
 
 faces = {'default_color': '000000',
+         'identity_color': '000000',
          'keyword_color': '0000FF',
          'comment_color': '008B00',
          'number_color': '00CD66',
          'operator_color': '878787',
          'string_color': '1C86EE',
          'times': 'Times',
-          'mono' : 'Courier',
-          'helv' : 'Helvetica',
-          'other': 'new century schoolbook',
+          'font' : 'Courier',
           'size' : 12,
           'size2': 10,
          }
-
-issl_table = ';+-?.#~'
-
-# Style Id's
-  
-(STC_PVS_DEFAULT,
-STC_PVS_COMMENT,
-STC_PVS_KEYWORD,
-STC_PVS_OPERATOR,
-STC_PVS_STRING,
-STC_PVS_NUMBER) = range(6)
-
-#---- Syntax Style Specs ----#
-SYNTAX_ITEMS = [
-    (STC_PVS_DEFAULT, 'default_style'),
-    (STC_PVS_COMMENT, 'comment_style'),
-    (STC_PVS_STRING,   'string_style'),
-    (STC_PVS_NUMBER,     'number_style'),
-    (STC_PVS_KEYWORD,  'keyword_style'),
-    (STC_PVS_OPERATOR,    'operator_style'),
-    ]
 
 
 class PVSStyledText(stc.StyledTextCtrl):
@@ -54,16 +32,16 @@ class PVSStyledText(stc.StyledTextCtrl):
         self.namesInformation = []
         cfg = PVSIDEConfiguration()
         faces['default_color'] = cfg.default_color
+        faces['identity_color'] = cfg.identity_color
         faces['keyword_color'] = cfg.keyword_color
         faces['comment_color'] = cfg.comment_color
         faces['number_color'] = cfg.number_color
         faces['operator_color'] = cfg.operator_color
         faces['string_color'] = cfg.string_color
         faces['size'] = cfg.font_size
-        faces['size2'] = cfg.font_size
-        faces['mono'] = cfg.font
+        faces['font'] = cfg.font
         
-        self.StyleSetSpec(stc.STC_STYLE_LINENUMBER, "size:%d,face:%s" % (faces['size'], faces['mono']))
+        self.StyleSetSpec(stc.STC_STYLE_LINENUMBER, "size:%d,face:%s" % (faces['size2'], faces['times']))
         self.SetMarginType(1, stc.STC_MARGIN_SYMBOL)
         self.SetMouseDownCaptures(True)
         self.UsePopUp(0)
@@ -76,9 +54,6 @@ class PVSStyledText(stc.StyledTextCtrl):
         self.SetStyleBits(7)
         self.SetMouseDwellTime(300)
         
-        #self.SetLexer(stc.STC_LEX_CONTAINER)
-        #self.Bind(wx.stc.EVT_STC_STYLENEEDED, self.OnStyling)
-        
         self.setSyntaxHighlighting_usingmatlab()
         
         self.Bind(wx.EVT_SET_CURSOR, self.onCursor)  #TODO: what is this?
@@ -87,33 +62,23 @@ class PVSStyledText(stc.StyledTextCtrl):
         self.Bind(wx.EVT_RIGHT_UP, self.onMouseRightClicked)
         self.Bind(stc.EVT_STC_MARGINCLICK, self.onMarginClicked)
         
-    def OnStyling(self, event):
-        start = self.GetEndStyled()
-        end = event.GetPosition()
-        line = self.LineFromPosition(start)
-        start = self.PositionFromLine(line)
-        text = self.GetTextRange(start, end)
-        
-        event.Skip()
-        
-
     def setSyntaxHighlighting_usingmatlab(self):
         logging.debug("Setting syntax highlighting")
         self.SetLexer(stc.STC_LEX_MATLAB)
         # Default 
-        self.StyleSetSpec(stc.STC_MATLAB_DEFAULT, "fore:#%(default_color)s,face:%(mono)s,size:%(size)d" % faces)
-        self.StyleSetSpec(stc.STC_MATLAB_IDENTIFIER, "fore:#%(default_color)s,face:%(mono)s,size:%(size)d" % faces)
+        self.StyleSetSpec(stc.STC_MATLAB_DEFAULT, "fore:#%(default_color)s,face:%(font)s,size:%(size)d" % faces)
+        self.StyleSetSpec(stc.STC_MATLAB_IDENTIFIER, "fore:#%(default_color)s,face:%(font)s,size:%(size)d" % faces)
         # Number
-        self.StyleSetSpec(stc.STC_MATLAB_NUMBER, "fore:#%(number_color)s,face:%(mono)s,size:%(size)d" % faces)
+        self.StyleSetSpec(stc.STC_MATLAB_NUMBER, "fore:#%(number_color)s,face:%(font)s,size:%(size)d" % faces)
         # String
-        self.StyleSetSpec(stc.STC_MATLAB_DOUBLEQUOTESTRING, "fore:#%(string_color)s,face:%(mono)s,size:%(size)d" % faces)
-        self.StyleSetSpec(stc.STC_MATLAB_STRING, "fore:#%(string_color)s,face:%(mono)s,size:%(size)d" % faces)
+        self.StyleSetSpec(stc.STC_MATLAB_DOUBLEQUOTESTRING, "fore:#%(string_color)s,face:%(font)s,size:%(size)d" % faces)
+        self.StyleSetSpec(stc.STC_MATLAB_STRING, "fore:#%(string_color)s,face:%(font)s,size:%(size)d" % faces)
         # Operator
-        self.StyleSetSpec(stc.STC_MATLAB_OPERATOR, "fore:#%(operator_color)s,face:%(mono)s,size:%(size)d" % faces)
+        self.StyleSetSpec(stc.STC_MATLAB_OPERATOR, "fore:#%(operator_color)s,face:%(font)s,size:%(size)d" % faces)
         # Keyword
-        self.StyleSetSpec(stc.STC_MATLAB_KEYWORD, "fore:#%(keyword_color)s,face:%(mono)s,size:%(size)d" % faces)
+        self.StyleSetSpec(stc.STC_MATLAB_KEYWORD, "fore:#%(keyword_color)s,face:%(font)s,size:%(size)d" % faces)
         # Comment
-        self.StyleSetSpec(stc.STC_MATLAB_COMMENT, "fore:#%(comment_color)s,face:%(mono)s,size:%(size)d" % faces)
+        self.StyleSetSpec(stc.STC_MATLAB_COMMENT, "fore:#%(comment_color)s,face:%(font)s,size:%(size)d" % faces)
 
         self.SetKeyWords(0, constants.PVS_KEYWORDS)
         self.SetKeyWords(1, " ".join(constants.PVS_OPERATORS))

@@ -52,6 +52,7 @@ NEWLINE = "\n"
 LOGGERNAME = "PVSEditor"
 TOOLBAR = "Toolbar"
 GENERAL = "General"
+EDITOR = "Editor"
 
 #Frame Titles:
 MAINFRAME = "PVS IDE"
