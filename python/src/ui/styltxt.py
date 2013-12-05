@@ -40,7 +40,7 @@ SYNTAX_ITEMS = [
     (STC_PVS_COMMENT, 'comment_style'),
     (STC_PVS_STRING,   'string_style'),
     (STC_PVS_NUMBER,     'number_style'),
-    (STC_PVS_KEYWORD,  'keyword4_style'),
+    (STC_PVS_KEYWORD,  'keyword_style'),
     (STC_PVS_OPERATOR,    'operator_style'),
     ]
 
@@ -60,6 +60,8 @@ class PVSStyledText(stc.StyledTextCtrl):
         faces['operator_color'] = cfg.operator_color
         faces['string_color'] = cfg.string_color
         faces['size'] = cfg.font_size
+        faces['size2'] = cfg.font_size
+        faces['mono'] = cfg.font
         
         self.StyleSetSpec(stc.STC_STYLE_LINENUMBER, "size:%d,face:%s" % (faces['size'], faces['mono']))
         self.SetMarginType(1, stc.STC_MARGIN_SYMBOL)
@@ -73,27 +75,43 @@ class PVSStyledText(stc.StyledTextCtrl):
         self.MarkerDefine(3, stc.STC_MARK_ARROW, "#00FF00", "#00FF00")
         self.SetStyleBits(7)
         self.SetMouseDwellTime(300)
+        
+        #self.SetLexer(stc.STC_LEX_CONTAINER)
+        #self.Bind(wx.stc.EVT_STC_STYLENEEDED, self.OnStyling)
+        
         self.setSyntaxHighlighting_usingmatlab()
+        
         self.Bind(wx.EVT_SET_CURSOR, self.onCursor)  #TODO: what is this?
         self.Bind(stc.EVT_STC_DWELLSTART, self.onMouseDwellStarted)
         #self.Bind(stc.EVT_STC_DWELLEND, self.onMouseDwellEnded)
         self.Bind(wx.EVT_RIGHT_UP, self.onMouseRightClicked)
         self.Bind(stc.EVT_STC_MARGINCLICK, self.onMarginClicked)
+        
+    def OnStyling(self, event):
+        start = self.GetEndStyled()
+        end = event.GetPosition()
+        line = self.LineFromPosition(start)
+        start = self.PositionFromLine(line)
+        text = self.GetTextRange(start, end)
+        
+        event.Skip()
+        
 
     def setSyntaxHighlighting_usingmatlab(self):
         logging.debug("Setting syntax highlighting")
         self.SetLexer(stc.STC_LEX_MATLAB)
-        # Default
-        self.StyleSetSpec(stc.STC_MATLAB_DEFAULT, "fore:#%(default_color)s,size:%(size)d" % faces)
+        # Default 
+        self.StyleSetSpec(stc.STC_MATLAB_DEFAULT, "fore:#%(default_color)s,face:%(mono)s,size:%(size)d" % faces)
+        self.StyleSetSpec(stc.STC_MATLAB_IDENTIFIER, "fore:#%(default_color)s,face:%(mono)s,size:%(size)d" % faces)
         # Number
-        self.StyleSetSpec(stc.STC_MATLAB_NUMBER, "fore:#%(number_color)s,size:%(size)d" % faces)
+        self.StyleSetSpec(stc.STC_MATLAB_NUMBER, "fore:#%(number_color)s,face:%(mono)s,size:%(size)d" % faces)
         # String
-        self.StyleSetSpec(stc.STC_MATLAB_DOUBLEQUOTESTRING, "fore:#%(string_color)s,face:%(helv)s,size:%(size)d" % faces)
-        self.StyleSetSpec(stc.STC_MATLAB_STRING, "fore:#%(string_color)s,face:%(helv)s,size:%(size)d" % faces)
+        self.StyleSetSpec(stc.STC_MATLAB_DOUBLEQUOTESTRING, "fore:#%(string_color)s,face:%(mono)s,size:%(size)d" % faces)
+        self.StyleSetSpec(stc.STC_MATLAB_STRING, "fore:#%(string_color)s,face:%(mono)s,size:%(size)d" % faces)
         # Operator
-        self.StyleSetSpec(stc.STC_MATLAB_OPERATOR, "fore:#%(operator_color)s,face:%(helv)s,size:%(size)d" % faces)
+        self.StyleSetSpec(stc.STC_MATLAB_OPERATOR, "fore:#%(operator_color)s,face:%(mono)s,size:%(size)d" % faces)
         # Keyword
-        self.StyleSetSpec(stc.STC_MATLAB_KEYWORD, "fore:#%(keyword_color)s,face:%(helv)s,size:%(size)d" % faces)
+        self.StyleSetSpec(stc.STC_MATLAB_KEYWORD, "fore:#%(keyword_color)s,face:%(mono)s,size:%(size)d" % faces)
         # Comment
         self.StyleSetSpec(stc.STC_MATLAB_COMMENT, "fore:#%(comment_color)s,face:%(mono)s,size:%(size)d" % faces)
 

@@ -57,7 +57,8 @@ class PVSIDEConfiguration:
         self.number_color = config.get("Syntax_Highlighting", "number_color", 0)
         self.operator_color = config.get("Syntax_Highlighting", "operator_color", 0)
         self.string_color = config.get("Syntax_Highlighting", "string_color", 0)
-        self.font_size = config.getint("Syntax_Highlighting", "size")
+        self.font_size = config.getint("Syntax_Highlighting", "font_size")
+        self.font = config.get("Syntax_Highlighting", "font")
            
         
         logging.debug("Configuring the Plugins")
