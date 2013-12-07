@@ -93,7 +93,10 @@
 	 (let ((new-node
 		(make-view-node
 		 :place (place new)
-		 :term old)))
+		 :term (if (and (name? new)
+				(not (eq (id new) (id old))))
+			   (copy old :id (id new))
+			   old))))
 	   (if *copy-lex-view-tree*
 	       (setf (vnode-children *copy-lex-view-tree*)
 		     (nconc (vnode-children *copy-lex-view-tree*)
