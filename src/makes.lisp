@@ -172,7 +172,8 @@
 	:decl-formals fdecls
 	:declared-type type)))
 
-(defun mk-adt-def-decl (id &key decl-formals formals declared-type type definition place)
+(defun mk-adt-def-decl (id &key decl-formals formals declared-type type
+			     definition place positive-types)
   (make-instance 'adt-def-decl
     :id id
     :decl-formals decl-formals
@@ -181,7 +182,8 @@
     :type type
     :definition definition
     :semi t
-    :place place))
+    :place place
+    :positive-types positive-types))
 
 (defun mk-inductive-decl (id type &optional definition formals dtype)
   (make-instance 'inductive-decl
