@@ -1063,6 +1063,15 @@
   (collect-visible-decl-info* (target obj))
   (name-visible-decl-info obj (place obj)))
 
+(defun field-appl-id-visible-decl-info (fappl place)
+  (when place
+    (push `((:id . ,(id fappl))
+	    (:place . ,(id-place-list fappl place))
+	    (:decl . ,(format nil "FieldAccess: ~a" (type fappl))))
+	  *visible-decl-info*)))
+
+(defvar *tooltip-char-width* *default-char-width*)
+
 (defun name-visible-decl-info (obj place)
   (when (and place
 	     (or (resolution obj)
@@ -1072,25 +1081,26 @@
     ;;(format t "~%~a: ~a - ~a" x (declaration x) (place x))
     (push `((:id . ,(id obj))
 	    (:place . ,(id-place-list obj place))
-	    (:decl . ,(if (resolution obj)
-			  (if (and (simple-decl? (declaration obj))
-				   (null (declared-type (declaration obj))))
-			      (format nil "~a: ~a"
-				(id (declaration obj))
-				(type (declaration obj)))
-			      (if (datatype-or-module? (declaration obj))
-				  (format nil "~a~a: theory"
-				    (id (declaration obj))
-				    (with-output-to-string (*standard-output*)
-				      (pp-theory-formals (formals (declaration obj)))))
-				  (concatenate 'string
-				    (if (skolem-constant? obj)
-					"Skolem Constant: " "")
-				    (str (declaration obj)))))
-			  (if (and (declared-type obj)
-				   (not (untyped-bind-decl? obj)))
-			      (str obj)
-			      (format nil "~a: ~a" (id obj) (type obj)))))
+	    (:decl . ,(let ((*default-char-width* *tooltip-char-width*))
+			   (if (resolution obj)
+			       (if (and (simple-decl? (declaration obj))
+					(null (declared-type (declaration obj))))
+				   (format nil "~a: ~a"
+				     (id (declaration obj))
+				     (type (declaration obj)))
+				   (if (datatype-or-module? (declaration obj))
+				       (format nil "~a~a: theory"
+					 (id (declaration obj))
+					 (with-output-to-string (*standard-output*)
+					   (pp-theory-formals (formals (declaration obj)))))
+				       (concatenate 'string
+					 (if (skolem-constant? obj)
+					     "Skolem Constant: " "")
+					 (str (declaration obj)))))
+			       (if (and (declared-type obj)
+					(not (untyped-bind-decl? obj)))
+				   (str obj)
+				   (format nil "~a: ~a" (id obj) (type obj))))))
 	    (:decl-file . ,(unless (skolem-constant? obj)
 				   (let ((th (module (declaration obj))))
 				     (unless th (break "No module?"))
@@ -1105,12 +1115,15 @@
     (if json?
 	(let ((json:*lisp-identifier-name-to-json* #'identity))
 	  (json:encode-json-to-string info))
-	info)))))))
+	info)))
 
 (defmethod collect-visible-decl-info* ((obj view-node))
   (let ((term (vnode-term obj)))
-    (when (name? term)
-      (name-visible-decl-info term (vnode-place obj)))
+    (typecase term
+      (name
+       (name-visible-decl-info term (vnode-place obj)))
+      (field-application
+       (field-appl-id-visible-decl-info term (vnode-place obj))))
     (collect-visible-decl-info* (vnode-children obj))))
 
 ;;;
