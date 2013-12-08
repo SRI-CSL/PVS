@@ -644,10 +644,12 @@
 
 (defmethod tc-eq* ((e1 application) (e2 application) bindings)
   (or (eq e1 e2)
-      (with-slots ((op1 operator) (arg1 argument)) e1
-	(with-slots ((op2 operator) (arg2 argument)) e2
+      (with-slots ((op1 operator) (arg1 argument) (ty1 type)) e1
+	(with-slots ((op2 operator) (arg2 argument) (ty2 type)) e2
 	  (and (tc-eq* arg1 arg2 bindings)
-	       (tc-eq-ops op1 op2 bindings))))))
+	       (if (funtype? (find-supertype ty1))
+		   (tc-eq* op1 op2 bindings)
+		   (tc-eq-ops op1 op2 bindings)))))))
 
 (defmethod tc-eq* ((e1 application) (e2 rational-expr) bindings)
   (declare (ignore bindings))
@@ -694,6 +696,26 @@
 (defmethod tc-eq-ops ((op1 accessor-name-expr) (op2 accessor-name-expr)
 		      &optional bindings)
   (tc-eq-adt-ops op1 op2 bindings))
+
+(defmethod tc-eq-ops ((op1 name-expr) (op2 name-expr) &optional bindings)
+  (let ((decl (declaration op1)))
+    (if (and (eq decl (declaration op2))
+	     (const-decl? decl)
+	     (listp (positive-types decl))
+	     (not (every #'null (positive-types decl))))
+	(let ((mi1 (module-instance (resolution op1)))
+	      (mi2 (module-instance (resolution op2)))
+	      (fmls (formals-sans-usings (module decl)))
+	      (ptypes (positive-types decl)))
+	  (and (tc-eq-adt-op-actuals (actuals mi1) (actuals mi2) bindings
+				     fmls ptypes)
+	       (tc-eq-adt-op-actuals (dactuals mi1) (dactuals mi2) bindings
+				     fmls ptypes)))
+	(call-next-method))))
+
+(defmethod tc-eq-ops ((op1 application) (op2 application) &optional bindings)
+  (and (tc-eq* (argument op1) (argument op2) bindings)
+       (tc-eq-ops (operator op1) (operator op2) bindings)))
 
 (defmethod tc-eq-ops (op1 op2 &optional bindings)
   (tc-eq* op1 op2 bindings))
