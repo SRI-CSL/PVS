@@ -1313,7 +1313,7 @@
 	  (filename (car theories))
 	  (if importchain? " importchain has" "")
 	  tot proved subsumed
-	  (- tot proved subsumed)
+	  (- tot proved)
 	  (reduce #'+ (mapcar #'(lambda (th) (length (conversion-messages th))) theories))
 	  (reduce #'+ (mapcar #'(lambda (th) (length (warnings th))) theories))
 	  (reduce #'+ (mapcar #'(lambda (th) (length (info th))) theories))))))
@@ -1326,6 +1326,8 @@
 	(update-tcc-info theory (collect-tccs theory)))
       (let ((tccs (collect-tccs theory))
 	    (*justifications-changed?* nil))
+	;; tcc-info - total proved subsumed
+	(setf (cadr (tcc-info theory)) 0)
 	(unless (every #'proved? tccs)
 	  (let ((*current-context* (or (saved-context theory)
 				       (context theory)))
@@ -1340,7 +1342,8 @@
 	(when *justifications-changed?*
 	  (save-all-proofs theory))
 	(setf (tccs-tried? theory) t)
-	(update-tcc-info theory tccs))))
+	;;(update-tcc-info theory tccs)
+	)))
 
 (defun collect-tccs (theory)
   (remove-if-not #'tcc?
@@ -2405,6 +2408,9 @@
       (status-proof-theories theories))))
 
 (defun prove-usingchain (theoryname retry? &optional exclude use-default-dp?)
+  (prove-importchain theoryname retry? exclude use-default-dp?))
+
+(defun prove-importchain (theoryname retry? &optional exclude use-default-dp?)
   (let ((theory (get-typechecked-theory theoryname))
 	(*use-default-dp?* use-default-dp?))
     (when theory
@@ -3276,9 +3282,10 @@
 (defun within-place (pos place)
   (assert (vectorp place))
   (and (<= (starting-row place) (car pos) (ending-row place))
-       (if (= (starting-row place) (ending-row place))
-	   (<= (starting-col place) (cadr pos) (ending-col place))
-	   t)))
+       (or (not (= (starting-row place) (car pos)))
+	   (<= (starting-col place) (cadr pos)))
+       (or (not (= (ending-row place) (car pos)))
+	   (< (cadr pos) (ending-col place)))))
 
 (defun show-last-proof (&optional terse?)
   (if *last-proof*
@@ -3494,8 +3501,12 @@
 	(pvs-message "No such strategy: ~a" strat-id))))
     
 (defmethod show-strategy* ((strat rule-entry) out)
-  (format out "~(~a~) is a primitive rule:" (name strat))
-  (format out "~2%Arguments: ~(~a~)"
+  (format out "~(~a~) is a primitive rule" (name strat))
+  #+allegro
+  (let ((source (cdr (assq :strategy (excl:source-file (name strat) t)))))
+    (when source
+      (format out " (defined in ~a)" source)))
+  (format out ":~2%Arguments: ~(~a~)"
     (if (optional-args strat)
 	(append (required-args strat)
 		(cons '&optional (optional-args strat)))
@@ -3509,9 +3520,13 @@
       (format out "~2%Defined in file: ~s" (namestring file)))))
 
 (defmethod show-strategy* ((strat defrule-entry) out)
-  (format out "~(~a~) is a ~:[strategy~;defined rule~]:"
+  (format out "~(~a~) is a ~:[strategy~;defined rule~]"
     (name strat) (gethash (name strat) *rules*))
-  (format out "~2%Arguments: ~(~a~)" (formals strat))
+  #+allegro
+  (let ((source (cdr (assq :strategy (excl:source-file (name strat) t)))))
+    (when source
+      (format out " (defined in ~a)" source)))
+  (format out ":~2%Arguments: ~(~a~)" (formals strat))
   (format out "~2%Definition: ~%")
   (write (defn strat) :stream out :pretty t :level nil :length nil)
   (format out "~2%Format string: ~s" (format-string strat))
@@ -3522,9 +3537,13 @@
       (format out "~2%Defined in file: ~s" (namestring file)))))
 
 (defmethod show-strategy* ((strat defstep-entry) out)
-  (format out "~(~a~) is a ~:[strategy~;defined rule~]:"
+  (format out "~(~a~) is a ~:[strategy~;defined rule~]"
     (name strat) (gethash (name strat) *rules*))
-  (format out "~2%Arguments: ~(~a~)" (formals strat))
+  #+allegro
+  (let ((source (cdr (assq :strategy (excl:source-file (name strat) t)))))
+    (when source
+      (format out " (defined in ~a)" source)))
+  (format out ":~2%Arguments: ~(~a~)" (formals strat))
   (format out "~2%Definition: ~%")
   (write (defn strat) :stream out :pretty t :level nil :length nil)
   (format out "~2%Format string: ~s" (format-string strat))
