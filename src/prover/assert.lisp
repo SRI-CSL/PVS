@@ -4287,13 +4287,13 @@ e LHS free variables in ~a" hyp lhs)
 	       (setq *macro-names*
 		     (remove res *macro-names*))
 	       ;;:test #'tc-eq
-	       (format-if "~%Installing rewrite rule(!) ~a~@[ ~a~]"
-			  (if (resolution? res)
-			      (resolution-string res)
-			      name)
-			  (and (resolution? res)
-			       (not (fully-instantiated? res))
-			       "(all instances)")))
+	       (commentary "~%Installing rewrite rule(!) ~a~@[ ~a~]"
+			   (if (resolution? res)
+			       (resolution-string res)
+			       name)
+			   (and (resolution? res)
+				(not (fully-instantiated? res))
+				"(all instances)")))
 	      (t (pushnew res *auto-rewrites-names*)
 		 ;;:test #'tc-eq
 		 (setq *auto-rewrites!-names*
@@ -4774,10 +4774,10 @@ e LHS free variables in ~a" hyp lhs)
 
 (defun collect-auto-rewrites ()
   (when (macro-names *ps*)
-    (format t "The following definitions are always macro-expanded.~2%")
+    (commentary "The following definitions are always macro-expanded.~2%")
     (loop for res in (macro-names *ps*)
 	  do (if (consp res)
-		 (format t "~a: ~a~2%" (car res)
+		 (commentary "~a: ~a~2%" (car res)
 			 (unpindent (cadr res)
 				    (+ (length (string (car res))) 2)
 				    :string t))
@@ -4785,7 +4785,7 @@ e LHS free variables in ~a" hyp lhs)
 			       :id (id (declaration res))
 			       :actuals (actuals (module-instance res))))
 		       (name-string (unparse name :string t)))
-		   (format t "~a: ~:[ ~;~%    ~]~a~2%"
+		   (commentary "~a: ~:[ ~;~%    ~]~a~2%"
 		     name-string
 		     (> (length name-string) 15)
 		     (unpindent (car (create-formulas res))
@@ -4794,15 +4794,15 @@ e LHS free variables in ~a" hyp lhs)
 				    (+ (length name-string) 2))
 				:string t)
 		     )))))
-  (format t "~2%The remaining rewrites of function definitions only occur 
+  (commentary "~2%The remaining rewrites of function definitions only occur 
 when an expression matches the most curried form of the LHS of the
 definition. ~2%")
   (when (auto-rewrites!-names *ps*)
-    (format t "The following rewrite rules apply unconditionally
+    (commentary "The following rewrite rules apply unconditionally
 in reverse chronological order: ~3%")
     (loop for res in (auto-rewrites!-names *ps*)
 	  do (if (consp res)
-		 (format t "~a: ~a~2%" (car res)
+		 (commentary "~a: ~a~2%" (car res)
 			 (unpindent (cadr res)
 				    (+ (length (string (car res))) 2)
 				    :string t))
@@ -4810,7 +4810,7 @@ in reverse chronological order: ~3%")
 			       :id (id (declaration res))
 			       :actuals (actuals (module-instance res))))
 		       (name-string (unparse name :string t)))
-		   (format t "~a: ~:[ ~;~%    ~]~a~2%"
+		   (commentary "~a: ~:[ ~;~%    ~]~a~2%"
 		     name-string
 		     (> (length name-string) 15)
 		     (unpindent (car (create-formulas res))
@@ -4819,15 +4819,15 @@ in reverse chronological order: ~3%")
 				    (+ (length name-string) 2))
 				:string t)
 		     ))))
-    (format t "~3%"))
+    (commentary "~3%"))
   (when (auto-rewrites-names *ps*)
-    (format t "The following rewrite rules apply only if any top-level
+    (commentary "The following rewrite rules apply only if any top-level
 IF-THEN-ELSE or CASE in the RHS simplifies.  The rules in reverse
 chronological order are:~3%") 
     (let ((names (auto-rewrites-names *ps*)))
       (loop for res in names do
 	    (if (consp res)
-		(format t "~a: ~a~2%" (car res)
+		(commentary "~a: ~a~2%" (car res)
 			(unpindent (cadr res)
 				   (+ (length (string (car res))) 2)
 				   :string t))
@@ -4835,7 +4835,7 @@ chronological order are:~3%")
 			       :id (id (declaration res))
 			       :actuals (actuals (module-instance res))))
 		       (name-string (unparse name :string t)))
-		  (format t "~a: ~:[ ~;~%    ~]~a~2%"
+		  (commentary "~a: ~:[ ~;~%    ~]~a~2%"
 		     name-string
 		     (> (length name-string) 15)
 		     (unpindent (car (create-formulas res))
