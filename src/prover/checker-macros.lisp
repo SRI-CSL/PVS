@@ -304,6 +304,11 @@
     (set-strategy-errors (format nil ,string ,@args))
     (commentary ,string ,@args)))
 
+(defmacro format-nif (string &rest args)
+  ;; Like format-if, but not in commentary
+  `(unless *suppress-printing*
+    (format t ,string ,@args)))
+
 (defmacro format-if (string &rest args)
   `(unless *suppress-printing*
     (commentary ,string ,@args)))
