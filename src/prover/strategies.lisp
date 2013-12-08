@@ -261,6 +261,7 @@
 	    
 (defun defgen* (name formals definition docstring format-string
 		entry-type rules-or-steps)
+  #+allegro (excl:record-source-file name :type :strategy)
   (let ((primitive (gethash name *rulebase*))
 	(rule (gethash name *rules*))
 	(strat (gethash name *steps*)))
