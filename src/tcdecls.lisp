@@ -1494,13 +1494,161 @@
 	  (set-nonempty-type (type decl) decl)
 	  (check-nonempty-type (type decl) decl)))
     (check-duplication decl)
-    (when (definition decl)
-      (let ((*tcc-conditions* (add-formals-to-tcc-conditions (formals decl))))
-	(typecheck* (definition decl) rtype nil nil))
-      #+pvsdebug (assert (fully-instantiated? (definition decl)))
-      (put-decl decl)
-      (make-def-axiom decl)))
+    (if (definition decl)
+	(let ((*tcc-conditions* (add-formals-to-tcc-conditions (formals decl))))
+	  (typecheck* (definition decl) rtype nil nil)
+	  (check-positive-types decl)
+	  #+pvsdebug (assert (fully-instantiated? (definition decl)))
+	  (put-decl decl)
+	  (make-def-axiom decl))
+	(setf (positive-types decl) nil)))
+  (assert (listp (positive-types decl)))
   decl)
+
+(defun check-positive-types (decl)
+  (if (or (formals-sans-usings (current-theory))
+	  (decl-formals decl))
+      ;; check-positive-types* essentially filters out those postypes
+      ;; that are found to not be positive
+      (let* ((pformals (append (remove-if-not #'formal-type-decl?
+				 (formals-sans-usings (current-theory)))
+			       (decl-formals decl)))
+	     (ptypes (mapcar #'type-value
+		       (check-positive-types* (definition decl)
+					      (apply #'append (formals decl))
+					      decl pformals))))
+	(setf (positive-types decl) ptypes))
+      (setf (positive-types decl) nil)))
+    
+
+(defmethod check-positive-types* ((ex application) fargs decl postypes)
+  (check-positive-types* (operator ex) fargs decl
+			 (check-positive-types* (argument ex) fargs decl
+						postypes)))
+
+(defmethod check-positive-types* ((ex tuple-expr) fargs decl postypes)
+  (check-positive-types* (exprs ex) fargs decl postypes))
+
+(defmethod check-positive-types* ((ex binding-expr) fargs decl postypes)
+  ;; Nothing postitive here
+  (let ((fps (free-params ex)))
+    (remove-if #'(lambda (pt) (memq pt fps)) postypes)))
+
+(defmethod check-positive-types* ((ex list) fargs decl postypes)
+  (if (null ex)
+      postypes
+      (check-positive-types*
+       (car ex) fargs decl
+       (check-positive-types* (cdr ex) fargs decl postypes))))
+
+(defmethod check-positive-types* ((ex cases-expr) fargs decl postypes)
+  (check-positive-types*
+   (expression ex) fargs decl
+   (check-positive-types*
+    (selections ex) fargs decl
+    (check-positive-types*
+     (else-part ex) fargs decl postypes))))
+
+(defvar *ignore-bindings* nil)
+
+(defmethod check-positive-types* ((ex selection) fargs decl postypes)
+  (check-positive-types*
+   (constructor ex) fargs decl
+   (let ((*ignore-bindings* (append (args ex) *ignore-bindings*)))
+     (check-positive-types*
+      (expression ex) fargs decl postypes))))
+
+(defmethod check-positive-types* ((ex field-application) fargs decl postypes)
+  (check-positive-types* (argument ex) fargs decl postypes))
+
+(defmethod check-positive-types* ((ex projection-application) fargs decl postypes)
+  (check-positive-types* (argument ex) fargs decl postypes))
+
+(defmethod check-positive-types* ((ex record-expr) fargs decl postypes)
+  (check-positive-types* (assignments ex) fargs decl postypes))
+
+(defmethod check-positive-types* ((ex update-expr) fargs decl postypes)
+  (check-positive-types*
+   (expression ex) fargs decl
+   (check-positive-types*
+    (assignments ex) fargs decl postypes)))
+
+(defmethod check-positive-types* ((ex assignment) fargs decl postypes)
+  (check-positive-types*
+   (expression ex) fargs decl 
+   (check-positive-types*
+    (arguments ex) fargs decl postypes)))
+   
+
+
+(defmethod check-positive-types* ((ex rational-expr) fargs decl postypes)
+  postypes)
+
+(defmethod check-positive-types* ((ex field-assignment-arg) fargs decl postypes)
+  postypes)
+
+(defmethod check-positive-types* ((ex name-expr) fargs decl postypes)
+  ;; if interpreted, check interpretation postypes
+  ;; else any types appearing in actuals are not postypes
+  ;; =, /=, if-then-else, are treated as interpreted
+  (let ((ndecl (declaration ex)))
+    (if (or (eq ndecl decl)
+	    (memq ndecl fargs)
+	    (memq ndecl *ignore-bindings*)
+	    (and (eq (id ex) '=) (eq (id (module ndecl)) '|equalities|))
+	    (and (memq (id ex) '(/= ≠)) (eq (id (module ndecl)) '|notequal|))
+	    (and (eq (id ex) 'IF) (eq (id (module ndecl)) '|if_def|))
+	    (and (null (formals-sans-usings (module decl)))
+		 (null (decl-formals decl))))
+	postypes
+	(typecase ndecl
+	  (const-decl
+	   (let ((cpostypes (positive-types ndecl)))
+	     (unless (listp cpostypes) (break "Not a list?"))
+	     ;; Find actuals corresponding to cpostypes, and check positivity
+	     ;; relative to that.  For example, T may be positive, but the
+	     ;; corresponding actual is [D -> R], hence D is not positive.
+	     (check-positive-types-actuals (module-instance ex)
+					   ndecl
+					   cpostypes
+					   postypes)))
+	  (formal-const-decl
+	   (assert (eq (module ndecl) (current-theory)))
+	   postypes)
+	  (t (break "Need more here"))))))
+
+(defun all-type-params (decl)
+  (append (remove-if-not #'type-decl? (formals (module decl)))
+	  (remove-if-not #'type-decl? (decl-formals decl))))
+
+(defun check-positive-types-actuals (modinst ndecl cpostypes postypes)
+  ;; modinst has actuals and dactuals, these relate cpostypes to postypes
+  (let ((actuals (append (actuals modinst) (dactuals modinst)))
+	(formals (append (unless (eq (module ndecl) (current-theory))
+			   (formals-sans-usings (module ndecl)))
+			 (decl-formals ndecl))))
+    (assert (= (length actuals) (length formals)))
+    (check-positive-types-actuals* actuals formals cpostypes postypes)))
+
+(defun check-positive-types-actuals* (actuals formals cpostypes postypes)
+  (if (or (null actuals)
+	  (null postypes))
+      postypes
+      (check-positive-types-actuals*
+       (cdr actuals) (cdr formals) cpostypes
+       (let ((afps (remove-if-not #'formal-type-decl?
+		     (free-params (car actuals)))))
+	 ;; In this case, we need to find those types in the actuals that
+	 ;; appear in postypes for concreteness, suppose the formal is T,
+	 ;; the actual is [D -> R], T is in cpostypes, and D and R are in
+	 ;; postypes - then D is removed from postypes because it has a
+	 ;; negative occurrence.
+	 (remove-if #'(lambda (afp)
+			(and (member (type afp) postypes :test #'tc-eq)
+			     (or (not (memq (car formals) cpostypes))
+				 (not (occurs-positively?
+				       (type afp) (car actuals))))))
+	   postypes)))))
 
 (defun add-formals-to-tcc-conditions (formals &optional (conditions *tcc-conditions*))
   (if (null formals)
@@ -1617,13 +1765,47 @@
     ;;(assert (null (freevars (recursive-signature decl))))
     (set-nonempty-type rtype decl)
     (put-decl decl)
-    (let ((*tcc-conditions* (add-formals-to-tcc-conditions (formals decl))))
+    (let ((*tcc-conditions* (add-formals-to-tcc-conditions (formals decl)))
+	  (*added-recursive-defn-conversions* nil))
       ;; See check-set-type-recursive-operator for how recursive conversions
       ;; are generated.
-      (typecheck* (definition decl) rtype nil nil))
+      (typecheck* (definition decl) rtype nil nil)
+      (remove-recursive-defn-conversions *added-recursive-defn-conversions*))
     (assert (fully-instantiated? (definition decl)))
+    (check-positive-types decl)
     (make-def-axiom decl))
   decl)
+
+(defun remove-recursive-defn-conversions (added-conversions)
+  (when added-conversions
+    (let* ((convex (car added-conversions))
+	   (ex (from-expr convex))
+	   (cex (copy ex)))
+      (assert (or (name-expr? ex) (application? ex)) ()
+	      "recursive-defn-conversion not on name-expr?")
+      (typecase ex
+	(name-expr
+	 (change-class convex (class-of ex)
+	   :type (type cex)
+	   :mod-id (mod-id cex)
+	   :library (library cex)
+	   :actuals (actuals cex)
+	   :dactuals (dactuals cex)
+	   :acts-there? (acts-there? cex)
+	   :dacts-there? (dacts-there? cex)
+	   :id (id cex)
+	   :mappings (mappings cex)
+	   :target (target cex)
+	   :resolutions (resolutions cex)))
+	(application
+	 (change-class convex (class-of ex)
+	   :type (type cex)
+	   :operator (operator cex)
+	   :argument (argument cex)))
+	(t (break "need a case here")))
+      (assert (tc-eq convex cex) ()
+	      "Error in remove-recursive-defn-conversions"))
+    (remove-recursive-defn-conversions (cdr added-conversions))))
 
 (defun set-formals-types (formals)
   (when formals
@@ -2084,7 +2266,8 @@
 	   (pred-type (inductive-pred-type decl fixed-vars)))
       (check-inductive-occurrences decl pred-type fixed-vars rem-vars)
       (make-def-axiom decl)
-      (make-inductive-def-inductions decl pred-type fixed-vars rem-vars)))
+      (make-inductive-def-inductions decl pred-type fixed-vars rem-vars))
+    (check-positive-types decl))
   decl)
 
 (defun inductive-pred-type (decl fixed-vars)
