@@ -138,6 +138,8 @@ parsing or typechecking - used by pvs-error.")
 (defvar *dont-untypecheck-recdef-conversions* nil
   "Flag to control untypechecking of recursive-defn-conversions - see typecheck* (def-decl)")
 
+(defvar *added-recursive-defn-conversions*) ;; bound in typecheck* (def-decl)
+
 (defvar *prelude-context* nil
   "Provides the context associated with the prelude")
 
