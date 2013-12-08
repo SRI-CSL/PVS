@@ -60,10 +60,10 @@
 (defun explain-errors ()
   (when *first-strategy-error*
     (when *last-strategy-error*
-      (format t "~%The following errors occurred within the strategy:~%"))
-    (format t "~a~%" *first-strategy-error*)
+      (commentary "~%The following errors occurred within the strategy:~%"))
+    (commentary "~a~%" *first-strategy-error*)
     (when *last-strategy-error*
-      (format t "~a~%" *last-strategy-error*))
+      (commentary "~a~%" *last-strategy-error*))
     (clear-strategy-errors)))
 
 (defun set-strategy-errors (message)
@@ -316,8 +316,7 @@
 	  (dpi-end *top-proofstate*)
 	  (unless *recursive-prove-decl-call*
 	    (save-proof-info decl init-real-time init-run-time))
-	  (when *ps-control-info*
-	    (add-psinfo *ps-control-info* *top-proofstate* t)))
+	  (finish-proofstate *top-proofstate*))
 	*top-proofstate*))))
 
 (defun determine-decision-procedure (decl)
@@ -493,8 +492,8 @@
 		   (not *context-modified*))
 	      'proved
 	      'unfinished))
-    (format-if "~%~%Run time  = ~,2,-3F secs." (run-time prinfo))
-    (format-if "~%Real time = ~,2,-3F secs.~%" (real-time prinfo))
+    (format-nif "~%~%Run time  = ~,2,-3F secs." (run-time prinfo))
+    (format-nif "~%Real time = ~,2,-3F secs.~%" (real-time prinfo))
     (when *context-modified*
       (setf (proof-status decl) 'unfinished)
       (when (and (not *proving-tcc*)
@@ -577,13 +576,10 @@
 	     ;;(not (null (strategy proofstate)))
 	     ;;(NSH:11.17.94): commented out
 	     )
-    ;;(let ((*to-emacs* t))
-    ;;      (pvs-buffer "*goal*"
-    ;;		      proofstate
-    ;;		      t t))
-    ;;  (break)
-    (output-proofstate proofstate)
     (unless *suppress-printing*
+      (catch-restore
+       (output-proofstate proofstate))
+      (setq *prover-commentary* nil)
       (clear-strategy-errors))
     )
   (let ((nextstate (proofstepper proofstate)))
@@ -605,7 +601,7 @@
 		       (null (strategy proofstate))
 		       (not (typep proofstate 'top-proofstate))) 
 		  (unless *suppress-printing*
-		    (format t "Subgoal completed"))
+		    (commentary "Subgoal completed"))
 		  (setf (status-flag proofstate) '*)
 		  proofstate)
 		 (t (prove*-int nextstate))))
@@ -679,7 +675,7 @@
   (multiple-value-bind (input err)
       (ignore-errors (read))
     (when err
-      (format t "~%~a" err))
+      (commentary "~%~a" err))
     input))
 
 (defun qread (prompt)
@@ -794,12 +790,13 @@
 		       (setq *rerunning-proof-message-time*
 			     (get-internal-real-time))
 		       (pvs-message *rerunning-proof*))
-		     (format-if "~%this yields  ~a subgoals: "
-				(length (remaining-subgoals post-proofstate))))
+		     (unless *suppress-printing*
+		       (format t "~%this yields  ~a subgoals: "
+			 (length (remaining-subgoals post-proofstate)))))
 		    ((not (typep (car (remaining-subgoals post-proofstate))
 				 'strat-proofstate))
-		     (format-if "~%this simplifies to: "
-				)))
+		     (unless *suppress-printing*
+		       (format t "~%this simplifies to: "))))
 	      post-proofstate)
 	     ((eq (status-flag post-proofstate) '!) ;;rule-apply proved
 	      (format-printout post-proofstate)
@@ -858,7 +855,7 @@
    (t (next-proofstate proofstate))))  ;;just in case
 
 ;; Allows external functions to be called, as for the wish display
-;; Used for JSON output
+;; Used for JSON output - *proofstate-hooks* are not used; see output-proofstate
 (defun apply-proofstate-hooks (proofstate)
   ;; Should make this a hook instead at some point
   (display-proofstate proofstate)
@@ -884,7 +881,10 @@
 					   x))
 				   (cdr pp)))
 		    pp)))
-	(if quiet-flag pp (format-if "~a" pp))))))
+	(if quiet-flag
+	    pp
+	    (unless *suppress-printing*
+	      (format t "~a" pp)))))))
 
 
 (defun if-form? (x) (and (typep x 'sequence)
@@ -947,7 +947,7 @@
 (defun strat-eval* (strat ps)
   (let* ((*ps* ps)
 	 (*par-ps* (get-parent-proofstate ps))
-	 ;;(* '*)
+	 (* '*) ;; Causes problems when debugging, but needed to interpret :fnums *
 	 (*goal* (current-goal ps))
 	 (*label* (label (current-goal ps)))
 					;	 (*subgoalnum* (subgoalnum ps))
@@ -993,7 +993,8 @@
 	((rule-definition (car strat))
 	 (let* ((def (rule-definition (car strat)))
 		(subalist (pair-formals-args (formals def)
-					     (cdr strat)))
+					     (cdr strat)
+					     (car strat)))
 		(args (loop for x in (formals def)
 			    when (not (memq x '(&optional &rest)))
 			    collect
@@ -1020,7 +1021,8 @@
 	((step-definition (car strat))
 	 (let* ((def (step-definition (car strat)))
 		(alist (pair-formals-args (formals def)
-					  (cdr strat)))
+					  (cdr strat)
+					  (car strat)))
 		(def-expr  (subst-stratexpr
 			    (defn def)
 			    alist
@@ -1096,8 +1098,8 @@
 ;;;  (1 :c 2 :b 3)  ==> ((a . 1) (b . 3)  (c . 2)  (d . nil))
 ;;;  (1 2 :p 3)     ==> ((a . 1) (b . 2)  (c . c1) (d . (:p 3))) Bad keyword warning
 
-(defun pair-formals-args (formals args)
-  (let ((alist (pair-formals-args* formals args nil nil))
+(defun pair-formals-args (formals args strat)
+  (let ((alist (pair-formals-args* formals args strat nil nil))
 	;; (old-alist (unless (memq '&key formals)
 	;; 	     (pair-formals-args-old formals args)))
 	)
@@ -1106,69 +1108,69 @@
     ;;   (break "Mismatch in pair-formals-args and pair-formals-args-old"))
     alist))
 
-(defun pair-formals-args* (formals args &optional argsec result)
+(defun pair-formals-args* (formals args strat &optional argsec result)
   (cond ((null formals)
 	 (if args
-	     (progn (error-format-if
-		     "~%Too many arguments for prover command.")
+	     (progn (commentary "~%Too many arguments ~a for prover command ~a."
+				args strat)
 		    (restore))
 	     (nreverse result)))
 	((memq (car formals) '(&optional &key &rest))
 	 ;; Change argsec accordingly
-	 (pair-formals-args* (cdr formals) args (car formals) result))
+	 (pair-formals-args* (cdr formals) args strat (car formals) result))
 	((null argsec) ;; Required args
-	 (pair-formals-required-arg formals args result))
+	 (pair-formals-required-arg formals args strat result))
 	((eq argsec '&optional)
-	 (pair-formals-optional-arg formals args result))
+	 (pair-formals-optional-arg formals args strat result))
 	((eq argsec '&key)
-	 (pair-formals-key-arg formals args result))
+	 (pair-formals-key-arg formals args strat result))
 	(t
 	 (assert (eq argsec '&rest))
 	 (pair-formals-rest-arg formals args result))))
 
-(defun pair-formals-required-arg (formals args result)
+(defun pair-formals-required-arg (formals args strat result)
   (cond ((null args)
 	 (error-format-if
 	  "~%Not enough arguments for prover command.")
 	 (restore))
 	(t (when (keywordp (car args))
-	     (format t "~%Warning: keyword ~a used for required arg"
+	     (commentary "~%Warning: keyword ~a used for required arg"
 	       (car args)))
 	   (pair-formals-args*
-	    (cdr formals) (cdr args) nil
+	    (cdr formals) (cdr args) strat nil
 	    (acons (prover-keyarg (car formals)) (car args) result)))))
 
-(defun pair-formals-optional-arg (formals args result)
+(defun pair-formals-optional-arg (formals args strat result)
   (if (null args)
       (pair-formals-defaults formals result)
       (multiple-value-bind (pair rem-args)
 	  (find-keyword-arg-pair (car formals) args)
 	(cond (pair
 	       ;; No longer accept positional optionals in recursive calls
-	       (pair-formals-args* (cdr formals) rem-args '&key
+	       (pair-formals-args* (cdr formals) rem-args strat '&key
 				  (cons pair result)))
 	      ((member (car args) formals :test #'keyword-arg-formal-match)
 	       ;; Take the default, save arg for later match
-	       (pair-formals-args* (cdr formals) args '&key
+	       (pair-formals-args* (cdr formals) args strat '&key
 			       (cons (formal-default-pair (car formals))
 				     result)))
 	      (t (when (keywordp (car args))
-		   (format t "~%Warning: keyword ~a bound to ~a"
+		   (commentary "~%Warning: keyword ~a bound to ~a"
 		     (car args) (prover-keyarg (car formals))))
-		 (pair-formals-args* (cdr formals) (cdr args) '&optional
+		 (pair-formals-args* (cdr formals) (cdr args) strat '&optional
 				    (acons (prover-keyarg (car formals))
 					   (car args)
 					   result)))))))
 
-(defun pair-formals-key-arg (formals args result)
+(defun pair-formals-key-arg (formals args strat result)
   (if (null args)
       (pair-formals-defaults formals result)
       (multiple-value-bind (pair rem-args)
 	  (find-keyword-arg-pair (car formals) args)
 	(if pair
-	    (pair-formals-args* (cdr formals) rem-args '&key
+	    (pair-formals-args* (cdr formals) rem-args strat '&key
 				(cons pair result))
-	    (pair-formals-args* (cdr formals) args '&key
+	    (pair-formals-args* (cdr formals) args strat '&key
 				(cons (formal-default-pair (car formals))
 				      result))))))
 
@@ -1218,7 +1220,7 @@
 ;; 				formals
 ;; 				(cdr args))))
 ;; 	       (if (null pair)
-;; 		   (format t "~%Bad keyword in argument: ~a" (car args)))
+;; 		   (commentary "~%Bad keyword in argument: ~a" (car args)))
 ;; 	       (if pair
 ;; 		   (list pair)
 ;; 		   (if (consp (cdr formals))
@@ -1240,7 +1242,7 @@
 ;; 	 (let ((pair
 ;; 		(get-keyword-arg (car args) formals (cdr args))))
 ;; 	   (if (null pair)
-;; 	       (format t "~%Bad keyword in argument: ~a" (car args)))
+;; 	       (commentary "~%Bad keyword in argument: ~a" (car args)))
 ;; 	   (if  pair
 ;; 	       (cons pair
 ;; 		     (pair-formals-args-old (remove (car pair) formals
@@ -1443,7 +1445,7 @@
     (report-proof* ps)
     (when (and (typep proofstate 'top-proofstate)
 	       (eq (status-flag proofstate) '!))
-      (format t "~%Q.E.D."))))
+      (commentary "~%Q.E.D."))))
 
 (defun collect-all-remaining-subgoals (proofstate)
   (if (eq (status-flag proofstate) '!) nil
@@ -1843,7 +1845,7 @@
 	       (get-rule '(skip) ps)))))
 	  (t (let* ((match (match-formals-with-actuals (required-args entry)
 						       (optional-args entry)
-						       rule-args))
+						       rule-args rule-name))
 		    (args (nconc (loop for x in (required-args entry)
 				       collect
 				       (cdr (assoc x match)))
@@ -1915,7 +1917,7 @@
 
 (defun rule-apply (step ps)
   (let* ((*ps* ps)
-	 ;;(* '*)
+	 (* '*) ;; Causes problems when debugging, but needed to interpret :fnums *
 	 (*goal* (current-goal ps))
 	 (*label* (label  ps))
 	 ;; (*subgoalnum* (subgoalnum ps))
@@ -2121,7 +2123,7 @@
 			  *ruletracedepth* name))
 		      (unless *suppress-printing*
 			(explain-errors)
-			(format t "~%No change on: ~s" (rule-input topstep)))
+			(commentary "~%No change on: ~s" (rule-input topstep)))
 		      (setf (status-flag ps) nil ;;start afresh
 			    (strategy ps)
 			    (failure-strategy step))
@@ -2173,7 +2175,7 @@
 		  (eq ps (car *record-undone-proofstate*)))
 	     (let ((oldps (cadr *record-undone-proofstate*))
 		   (newps (caddr *record-undone-proofstate*)))
-	       (format t "~%Restoring the proof to state prior to UNDO, ")
+	       (commentary "~%Restoring the proof to state prior to UNDO, ")
 	       (setf (justification ps)
 		     (justification oldps)
 		     (status-flag ps) (status-flag oldps)
@@ -2188,21 +2190,21 @@
 	       (setf (strategy newps)(query*-step))
 	       newps))
 	    (t (if *record-undone-proofstate*
-		   (format t "~%Undo operations must be immediately undone.")
-		   (format t "~%No undo to undo."))
+		   (commentary "~%Undo operations must be immediately undone.")
+		   (commentary "~%No undo to undo."))
 	       (setf (strategy ps) (query*-step));;(NSH:5/8/99)
 	       ps))
       (let ((newps (findps info ps)))
 	(cond ((null newps)
-	       (format t "~%Sorry. Couldn't find such a proof state.")
+	       (commentary "~%Sorry. Couldn't find such a proof state.")
 	       (setf (strategy ps) (query*-step))
 	       ps)
 	      ((eq ps newps)
-	       (format t "~%No change.")
+	       (commentary "~%No change.")
 	       (setf (strategy ps)(query*-step))
 	       ps)
-	      (t (format t "~%This will undo the proof to: ~a" newps)
-		 (let ((response (pvs-y-or-n-p "Sure? ")))
+	      (t (let ((response (pvs-y-or-n-p "~%This will undo the proof to: ~a~%Sure? "
+					       newps)))
 		   (cond (response
 			  (when *displaying-proof*
 			    (setf *flush-displayed* newps))
@@ -2814,13 +2816,13 @@
 			   (prover-keyarg y)
 			   nil)))))
 
-(defun match-formals-with-actuals (required optional actuals)
+(defun match-formals-with-actuals (required optional actuals strat)
   (let* ((formals (append required
 			  (if (and optional
 				   (not (eq (car optional) '&rest)))
 			      (cons '&optional optional)
 			      optional)))
-	 (alist (pair-formals-args formals actuals)))
+	 (alist (pair-formals-args formals actuals strat)))
     ;; (unless (set-equal alist (pair-formals-args-old formals actuals)
     ;; 		       :test #'equal)
     ;;   (break "match-formals-with-actuals: mismatch"))
