@@ -39,6 +39,7 @@
 			      '(&optional ,@optional-args)))))
 	  (form (cons ,name args))
 	  (docstr (format nil "~s: ~%    ~a" form ,docstring)))
+     #+allegro (excl:record-source-file ,name :type :strategy)
      (cond ((null entry)
 	    (add-symbol-entry ,name
 			      (make-instance 'rule-entry
