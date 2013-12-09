@@ -302,7 +302,7 @@
 	  (if (pvs2cl-primitive? op*)
 	      (pvs2cl-primitive-app expr bindings livevars)
 	      (if (datatype-constant? operator)
-		  (mk-funapp (pvs2cl-resolution operator)
+		  (mk-funapp (pvs2cl-resolution2 operator)
 			     (pvs2cl_up* (arguments expr) bindings livevars))
 		  (pvs2cl-defn-application op* expr bindings livevars)))
 	  (mk-funcall (pvs2cl_up* operator bindings
