@@ -10,7 +10,7 @@
 
 ;; --------------------------------------------------------------------
 ;; PVS
-;; Copyright (C) 2006, SRI International.  All Rights Reserved.
+;; Copyright (C) 2006-2013, SRI International.  All Rights Reserved.
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
@@ -397,11 +397,9 @@ want to set this to nil for slow terminals, or connections over a modem.")
 	      (when (and *pvs-maximize-proof-display*
 			 (eq (current-buffer) (ilisp-buffer))
 			 (string-match "Rule\\? " pvs-process-output))
-		(save-excursion
-		  (let ((owin (selected-window)))
-		    (select-window (get-buffer-window "*pvs*"))
-		    (recenter -1)
-		    (select-window owin)))))
+		(save-selected-window
+		  (switch-to-buffer "*pvs*")
+		  (recenter -1))))
 	  (set-ilisp-value 'pvs-partial-line
 			   pvs-process-output))))))
 
@@ -1370,131 +1368,6 @@ is emptied."
 	    comint-end-queue comint-send-queue)
       (set-marker (process-mark (ilisp-process)) (point-max))))
   t)
-
-(defun get-proofstate-frame ()
-  (or (dolist (fr (frame-list))
-	(when (equal (frame-parameter fr 'name) "Proofstate")
-	  (return fr)))
-      (make-frame '((name . "Proofstate")
-		    (title . "Proofstate")
-		    (tool-bar-lines . 0)
-		    (menu-bar-lines . 0)))))
-		    
-
-(defun pvs-proofstate (fname)
-  ;; proofstate is:
-  ;; ((action . string)     - optional
-  ;;  (num-subgoals . int)  - optional (in initial proofstate)
-  ;;  (label . string)
-  ;;  (comment . string)    - optional
-  ;;  (sequent (antecedents . [s-formulas])        - all are optional
-  ;;           (succedents . [s-formulas])
-  ;;           (hidden-antecedents . [s-formulas])
-  ;;           (hidden-succedents . [s-formulas])))
-  ;;
-  ;; s-formula is:
-  ;; ((labels . [strings])
-  ;;  (changed . boolean)
-  ;;  (formula . string)
-  ;;  (names-info . names-info) - see 
-  (let* ((ps (save-excursion
-	       (set-buffer (find-file-noselect fname))
-	       (json-read-from-string (buffer-string))))
-	 (commentary (cdr (assq 'commentary ps)))
-	 (action (cdr (assq 'action ps)))
-	 (num-subgoals (cdr (assq 'num-subgoals ps)))
-	 (label (cdr (assq 'label ps)))
-	 (comment (cdr (assq 'comment ps)))
-	 (sequent (cdr (assq 'sequent ps)))
-	 (prframe (get-proofstate-frame)))
-    (setq xxx ps)
-    (select-frame prframe)
-    (switch-to-buffer (get-buffer-create "Proofstate"))
-    (erase-buffer)
-    (when commentary
-      (dotimes (i (length commentary))
-	(let ((comm (elt commentary i)))
-	  (when (and (= i 0) (= (elt comm 0) ?\n))
-	    (setq comm (cl-subseq comm 1)))
-	  (put-text-property 0 (length comm)
-			     'face 'proofstate-commentary-face comm)
-	  (insert comm)))
-      (insert "\n"))
-    (when action
-      (put-text-property 0 (length action)
-			 'face 'proofstate-action-face action)
-      (insert action))
-    (insert "\n")
-    (when num-subgoals
-      (let ((yields (if (= num-subgoals 1)
-			"this simplifies to:"
-			(format "this yields %d subgoals:" num-subgoals))))
-	(put-text-property 0 (length yields)
-			   'face 'proofstate-yields-face yields)
-	(insert yields)))
-    (insert "\n\n")
-    (let ((labelstr (format "%s :" label)))
-      (put-text-property 0 (length labelstr)
-			 'face 'proofstate-label-face labelstr)
-      (insert labelstr))
-    (when comment
-      (put-text-property 0 (length comment)
-			 'face 'proofstate-comment-face comment)
-      (insert comment))
-    (insert "\n")
-    (insert-proofstate-sequent sequent)
-    (goto-char (point-min))))
-
-(defun insert-proofstate-sequent (sequent)
-  (let ((antecedents (cdr (assq 'antecedents sequent)))
-	(succedents (cdr (assq 'succedents sequent))))
-    (insert-proofstate-formulas antecedents)
-    (insert "\n  |-------")
-    (insert-proofstate-formulas succedents)))
-
-(defun insert-proofstate-formulas (s-fmlas)
-  (when s-fmlas
-    (dotimes (i (length s-fmlas))
-      (let* ((s-fmla (elt s-fmlas i))
-	     (labels (cdr (assq 'labels s-fmla)))
-	     (changed (equal (cdr (assq 'changed s-fmla)) "true"))
-	     (formula (cdr (assq 'formula s-fmla)))
-	     (names-info (cdr (assq 'names-info s-fmla))))
-	(insert "\n")
-	(setq iii names-info)
-	(let ((labelstr (concat (if changed "{" "[")
-				(format "%s" (elt labels 0)))))
-	  (when (> (length labels) 1)
-	    (dotimes (j (1- (length labels)))
-	      (setq labelstr (concat labelstr ", "
-				     (elt labels (1+ j))))))
-	  (setq labelstr (concat labelstr (if changed "}" "]")))
-	  (put-text-property 0 (length labelstr)
-			     'face (if changed
-				       'proofstate-formula-changed-label-face
-				       'proofstate-formula-unchanged-label-face)
-			     labelstr)
-	  (insert labelstr))
-	(insert " ")
-	(let ((srow (current-line-number))
-	      (scol (current-column)))
-	  (put-text-property 0 (length formula)
-			     'face 'proofstate-formula-face
-			     formula)
-	  (insert formula)
-	  (dotimes (i (length names-info))
-	    (let* ((delt (elt names-info i))
-		   (place (cdr (assq 'place delt)))
-		   (region (place-to-region place srow scol))
-		   (msg (cdr (assq 'decl delt)))
-		   (decl-file (cdr (assq 'decl-file delt)))
-		   (decl-place (cdr (assq 'decl-place delt))))
-	      (add-text-properties
-	       (car region) (cdr region)
-	       `(mouse-face highlight help-echo ,msg))
-	      (make-text-button
-	       (car region) (cdr region)
-	       'type 'pvs-decl 'decl-file decl-file 'decl-place decl-place))))))))
 
 ;;; The following functions fix a problem with completion.el
 ;;; distributed with Emacs prior to 19.31
