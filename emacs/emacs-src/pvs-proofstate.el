@@ -51,35 +51,37 @@
     ;;(select-frame prframe)
     (setq ppp ps)
     (display-proofstate-commentary commentary)
-    (with-current-buffer "Proofstate"
-      (erase-buffer)
-      (when action
-	(put-text-property 0 (length action)
-			   'face 'proofstate-action-face action)
-	(insert action)
-	(insert "\n"))
-      (when num-subgoals
-	(let ((yields (if (= num-subgoals 1)
-			  "this simplifies to:"
-			  (format "this yields %d subgoals:" num-subgoals))))
-	  (put-text-property 0 (length yields)
-			     'face 'proofstate-yields-face yields)
-	  (insert yields))
-	(insert "\n\n"))
-      (let ((labelstr (format "%s :" label)))
-	(put-text-property 0 (length labelstr)
-			   'face 'proofstate-label-face labelstr)
-	(insert labelstr))
-      (when comment
-	(put-text-property 0 (length comment)
-			   'face 'proofstate-comment-face comment)
-	(insert comment))
-      (insert "\n")
-      (insert-proofstate-sequent sequent)
-      (goto-char (point-min)))))
+    (when (get-buffer "Proofstate")
+      (with-current-buffer "Proofstate"
+	(erase-buffer)
+	(when action
+	  (put-text-property 0 (length action)
+			     'face 'proofstate-action-face action)
+	  (insert action)
+	  (insert "\n"))
+	(when num-subgoals
+	  (let ((yields (if (= num-subgoals 1)
+			    "this simplifies to:"
+			    (format "this yields %d subgoals:" num-subgoals))))
+	    (put-text-property 0 (length yields)
+			       'face 'proofstate-yields-face yields)
+	    (insert yields))
+	  (insert "\n\n"))
+	(let ((labelstr (format "%s :" label)))
+	  (put-text-property 0 (length labelstr)
+			     'face 'proofstate-label-face labelstr)
+	  (insert labelstr))
+	(when comment
+	  (put-text-property 0 (length comment)
+			     'face 'proofstate-comment-face comment)
+	  (insert comment))
+	(insert "\n")
+	(insert-proofstate-sequent sequent)
+	(goto-char (point-min))))))
 
 (defun display-proofstate-commentary (commentary)
-  (when commentary
+  (when (and commentary
+	     (get-buffer "Commentary"))
     (let* ((frame-names-alist (make-frame-names-alist))
 	   (com-frame (or (cdr (assoc "Proofcommentary" frame-names-alist))
 			  (cdr (assoc "Proofstate" frame-names-alist))
