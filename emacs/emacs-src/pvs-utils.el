@@ -28,7 +28,10 @@
 ;; --------------------------------------------------------------------
 
 (eval-when-compile (require 'pvs-macros))
-(require 'cl)
+(require 'cl) ;; This generates warnings - with-no-warnings doesn't help
+              ;; Emacs 24 uses cl-lib instead, but all functions need
+              ;; to be prefixed with cl- so this isn't a good solution
+              ;;for PVS (at least not now).
 (require 'compare-w)
 
 (defvar comint-status)
@@ -323,8 +326,7 @@ beginning of the previous one."
 	    ((or (null (cdr fandp))
 		 (buffer-modified-p (find-file-noselect (car fandp))))
 	     (unless must-match
-	       (save-excursion
-		 (set-buffer (find-file-noselect (car fandp)))
+	       (with-current-buffer (find-file-noselect (car fandp))
 		 (theory-region-from-buffer theoryname))))
 	    (t (file-and-place-to-region fandp))))))
 
@@ -333,8 +335,7 @@ beginning of the previous one."
     (dolist (buf (buffer-list))
       (when (and (null theory-region)
 		 (pvs-buffer-file-name buf))
-	(save-excursion
-	  (set-buffer buf)
+	(with-current-buffer buf
 	  (let ((region (cdr (assoc theoryname (theory-regions)))))
 	    (when region
 	      (setq theory-region (cons (buffer-file-name) region)))))))
@@ -358,8 +359,7 @@ beginning of the previous one."
 (defun file-and-place-to-region (file-and-place)
   (let ((file (car file-and-place))
 	(place (cdr file-and-place)))
-    (save-excursion
-      (set-buffer (find-file-noselect (car file-and-place)))
+    (with-current-buffer (find-file-noselect (car file-and-place))
       (cons file (pvs-region place)))))
 
 (defun buffer-theories ()
@@ -562,15 +562,13 @@ delimiter."
       nil))
 
 (defun theory-buffer-p (buf)
-  (save-excursion
-    (set-buffer buf)
+  (with-current-buffer buf
     (and (buffer-file-name)
 	 (string-match (pvs-extensions-regexp) (buffer-file-name)))))
 
 (defun pvs-buffer-file-name (&optional buf)
   (unless buf (setq buf (current-buffer)))
-  (save-excursion
-    (set-buffer buf)
+  (with-current-buffer buf
     (and (buffer-file-name)
 	 (string-match (pvs-extensions-regexp) (buffer-file-name))
 	 (pathname-name (buffer-file-name)))))
@@ -591,8 +589,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
       (let ((buff (get-pvs-file-buffer filename)))
 	(if buff
 	    (if (buffer-modified-p buff)
-		(save-excursion
-		  (set-buffer buff)
+		(with-current-buffer buff
 		  (save-buffer)
 		  ;;(setq buffer-modified nil)
 		  ))
@@ -639,8 +636,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	      "pvs")))
 
 (defun clear-buffer (buffer)
-  (save-excursion
-    (set-buffer buffer)
+  (with-current-buffer buffer
     (erase-buffer)))
 
 (defvar current-pvs-file 'unbound)
@@ -724,7 +720,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 		((file-equal file lname)
 		 (setq shortname lname)))
 	  (setq lname (apply 'concat
-			(cons "/" (mapcar '(lambda (x) (concat "/" x))
+			(cons "/" (mapcar #'(lambda (x) (concat "/" x))
 				    dirnames))))
 	  (setq hname (concat "~" lname)))
 	shortname)
@@ -838,7 +834,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 				 (concat string "/")
 				 (file-name-directory string)))
 		       (fnames (file-name-all-completions fstring fdir)))
-		  (mapcar '(lambda (fname) (concat fdir fname)) fnames)))
+		  (mapcar #'(lambda (fname) (concat fdir fname)) fnames)))
 	       (t (all-completions string pvs-library-path-completions
 				   predicate))))
 	((eq flag 'lambda)
@@ -891,10 +887,10 @@ The save-pvs-file command saves the PVS file of the current buffer."
 (defun pvs-complete-library-theory-name (prompt)
   (pvs-bury-output)
   (let ((theories
-	 (mapcar '(lambda (tf)
-		    (list (relativize-pvs-filename (car tf))
-			  (relativize-pvs-filename (cadr tf))
-			  (caddr tf)))
+	 (mapcar #'(lambda (tf)
+		     (list (relativize-pvs-filename (car tf))
+			   (relativize-pvs-filename (cadr tf))
+			   (caddr tf)))
 	   (pvs-send-and-wait "(library-theories)" nil nil 'list))))
     (if theories
 	(let ((theory (completing-read prompt theories nil 't nil)))
@@ -1096,7 +1092,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
       (let* ((cur-file (current-pvs-file t))
 	     (cur-theories (when cur-file (buffer-theories))))
 	(when cur-theories
-	  (mapcar '(lambda (th) (list th cur-file)) cur-theories)))))
+	  (mapcar #'(lambda (th) (list th cur-file)) cur-theories)))))
 
 (defun pvs-current-prelude-theories ()
   (let ((prelude-file (format "%s/lib/prelude.pvs" pvs-path)))
@@ -1203,10 +1199,12 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 (defun pvs-region (place)
   (save-excursion
-    (goto-line (car place))
+    (goto-char (point-min))
+    (forward-line (1- (car place)))
     (forward-char (cadr place))
     (let ((beg (point)))
-      (goto-line (caddr place))
+      (goto-char (point-min))
+      (forward-line (1- (caddr place)))
       (forward-char (cadddr place))
       (list beg (point)))))
 
@@ -1260,13 +1258,6 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	      default
 	    spec))))
 
-(defun kill-pvs-buffers ()
-  (dolist (buf (buffer-list))
-    (condition-case ()
-	(when (theory-name buf)
-	  (kill-buffer buf))
-      (error nil))))
-
 (defun member-equal (item list)
   (let ((ptr list)
         (done nil)
@@ -1284,7 +1275,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 		 (if (listp abbrevs)
 		     abbrevs
 		     (list abbrevs)))))
-    (mapc '(lambda (a) (fset a cmd)) abbrs)
+    (mapc #'(lambda (a) (fset a cmd)) abbrs)
     (put cmd 'abbreviations abbrs)))
 
 (defun pvs-get-abbreviation (cmd)
@@ -1312,7 +1303,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
       (delete-initial-blank-lines))))
 
 (defun pvs-extensions-regexp ()
-  (mapconcat '(lambda (x) (format "\\.%s$" x))
+  (mapconcat #'(lambda (x) (format "\\.%s$" x))
 	     *pvs-file-extensions*
 	     "\\|"))
 
@@ -1389,18 +1380,6 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 ;;; end of window config
 
-(defvar *demo-font*
-  "-adobe-courier-medium-r-normal--24-240-75-75-m-150-iso8859-1")
-
-(defvar *demo-mode* nil)
-
-(defun demo-mode ()
-  (interactive)
-  (if (eq window-system 'x)
-      (let ((nfont (if *demo-mode* (x-get-default "Font") *demo-font*)))
-	(x-set-font nfont)
-	(setq *demo-mode* (not *demo-mode*)))))
-
 (setq pvs-reserved-words-regexp
   "\\bassuming\\b\\|\\baxiom\\b\\|\\baccept\\b\\|\\bchanges\\b\\|\\ball\\b\\|\\band\\b\\|\\barray\\b\\|\\bbegin\\b\\|\\bby\\b\\|\\bcase\\b\\|\\bdeclare\\b\\|\\bdefinition\\b\\|\\belse\\b\\|\\belsif\\b\\|\\bendif\\b\\|\\bendassuming\\b\\|\\bendcase\\b\\|\\bend\\b\\|\\bexists\\b\\|\\bexporting\\b\\|\\bexit\\b\\|\\bforall\\b\\|\\bfunction\\b\\|\\bformula\\b\\|\\bfrom\\b\\|\\bif\\b\\|\\biff\\b\\|\\bimplies\\b\\|\\bimporting\\b\\|\\bin\\b\\|\\bis\\b\\|\\blambda\\b\\|\\blemma\\b\\|\\bloop\\b\\|\\bmapping\\b\\|\\bmeasure\\b\\|\\bmodule\\b\\|\\bnot\\b\\|\\bnothing\\b\\|\\bof\\b\\|\\bonto\\b\\|\\bobligation\\b\\|\\bopspec\\b\\|\\bor\\b\\|\\bproof\\b\\|\\bprove\\b\\|\\brecursive\\b\\|\\bresult\\b\\|\\btheorem\\b\\|\\btheory\\b\\|\\busing\\b\\|\\bvar\\b\\|\\bvariable\\b\\|\\brecord\\b\\|\\bverify\\b\\|\\bwhere\\b\\|\\bthen\\b\\|\\btype\\b\\|\\bwhen\\b\\|\\bwhile\\b\\|\\bwith\\b\\|\\blet\\b\\|\\bsetvariable\\b\\|\\[#\\|#\\]\\|[(]#\\|#[)]")
 
@@ -1408,23 +1387,6 @@ The save-pvs-file command saves the PVS file of the current buffer."
   (if (featurep 'xemacs)
       `(find-face ,name)
     `(facep ,name)))
-
-(defun highlight-pvs ()
-  (interactive)
-  (unless (pvs-find-face 'pvs-keyword)
-    (make-face 'pvs-keyword)
-    (set-face-foreground 'pvs-keyword "Blue")
-    (set-face-font 'pvs-keyword "*courier-bold-r-normal--12*"))
-  ;;(highlight-keywords)
-  (save-excursion
-    (goto-char (point-min))
-    (let* ((case-fold-search t)
-	   (found (re-search-forward pvs-reserved-words-regexp nil t)))
-      (while found
-	(let ((e (make-extent (match-beginning 0) (match-end 0))))
-	  (set-extent-face e 'pvs-keyword)
-	  (setq found (re-search-forward pvs-reserved-words-regexp nil t)))))))
-
 
 (defun find-unbalanced-pvs-tex (arg)
   "Go to the point in buffer where PVS delimiters become unbalanced.
@@ -1447,8 +1409,7 @@ Point will be on the offending delimiter."
   (pvs-count-string-pairs start end "\\\\zi" "\\\\zo" t))
 
 (defun define-pvs-key-bindings (buffer)
-  (save-excursion
-    (set-buffer buffer)
+  (with-current-buffer buffer
     (let ((lmap (current-local-map)))
       (unless lmap
 	(setq lmap (make-sparse-keymap))
@@ -1574,7 +1535,7 @@ Point will be on the offending delimiter."
       (if (file-exists-p dname)
 	  (setq dirnames nil)
 	  (setq dname (apply 'concat
-			(mapcar '(lambda (x) (concat "/" x))
+			(mapcar #'(lambda (x) (concat "/" x))
 			  (reverse dirnames))))
 	  (setq dirnames (cdr dirnames))))
     (and (stringp dname)
@@ -1808,8 +1769,7 @@ Point will be on the offending delimiter."
     (pvs-wait-for-it)))
 
 (defun pvs-validate-show-buffer (bufname)
-  (save-excursion
-    (set-buffer bufname)
+  (with-current-buffer bufname
     (princ-nl (buffer-string))))
 
 (defun pvs-expected-output-regexps (output-regexps)
@@ -1848,8 +1808,7 @@ Point will be on the offending delimiter."
 (defun pvs-backup-logfile (logfile)
   (or (not (file-exists-p logfile))
       (let ((logbuf (find-file-noselect logfile t)))
-	(save-excursion
-	  (set-buffer logbuf)
+	(with-current-buffer logbuf
 	  (let ((delete-old-versions t)
 		(kept-old-versions 0)
 		(kept-new-versions *pvs-backup-logfiles*)
@@ -1883,8 +1842,7 @@ existence and time differences to be whitespace")
 	(error "No other window"))
     (setq p2 (window-point w2)
 	  b2 (window-buffer w2))
-    (save-excursion
-      (set-buffer b2)
+    (with-current-buffer b2
       (setq p2max (point-max))
       (push-mark p2 t))
     (push-mark)
@@ -1903,24 +1861,22 @@ existence and time differences to be whitespace")
 (defun pvs-find-validation-buffers-mismatch (log1 log2 &optional spos1 spos2)
   (let* ((pos1 (or spos1 1))
 	 (pos2 (or spos2 1))
-	 (end1 (save-excursion (set-buffer log1) (point-max)))
-	 (end2 (save-excursion (set-buffer log2) (point-max)))
+	 (end1 (with-current-buffer log1 (point-max)))
+	 (end2 (with-current-buffer log2 (point-max)))
 	 (dpos (compare-buffer-substrings log1 pos1 end1 log2 pos2 end2))
 	 (match t)
 	 ipos1 ipos2)
     (while (and (/= dpos 0) match)
       (setq pos1 (+ (abs dpos) pos1 -1) ipos1 pos1)
       (setq pos2 (+ (abs dpos) pos2 -1) ipos2 pos2)
-      (if (or (let ((p1match (save-excursion
-			       (set-buffer log1)
+      (if (or (let ((p1match (with-current-buffer log1
 			       (goto-char pos1)
 			       (when (looking-at pvs-validation-regexp)
 				 (setq pos1
 				       (if (eq (match-end 0) (line-end-position))
 					   (1+ (match-end 0))
 					   (match-end 0)))))))
-		(or (save-excursion
-		      (set-buffer log2)
+		(or (with-current-buffer log2
 		      (goto-char pos2)
 		      (when (looking-at pvs-validation-regexp)
 			(setq pos2
@@ -1930,15 +1886,13 @@ existence and time differences to be whitespace")
 		    p1match))
 	      ;; the following allows for diffs where something in the regexp
 	      ;; matches the *entire* line.
-	      (let ((p1match (save-excursion
-			       (set-buffer log1)
+	      (let ((p1match (with-current-buffer log1
 			       (goto-char ipos1)
 			       (beginning-of-line)
 			       (when (and (looking-at pvs-validation-regexp)
 					  (eq (match-end 0) (line-end-position)))
 				 (setq pos1 (1+ (match-end 0)))))))
-		(or (save-excursion
-		      (set-buffer log2)
+		(or (with-current-buffer log2
 		      (goto-char ipos2)
 		      (beginning-of-line)
 		      (when (and (looking-at pvs-validation-regexp)
@@ -1961,9 +1915,8 @@ existence and time differences to be whitespace")
   (while (and (ilisp-process)
 	      (or (null timeout)
 		  (> timeout 0))
-	      (not (save-excursion
+	      (not (with-current-buffer ilisp-buffer
 		     ;; comint-status is buffer-local
-		     (set-buffer (ilisp-buffer))
 		     ;;(message "Waiting...%s %s %s"
 			;;      comint-status (process-status (ilisp-process))
 			;;      timeout)
