@@ -256,6 +256,43 @@
 		}
 	    }
 	},
+	"proofstate": {
+	    "type": "object",
+	    "required": [ "label", "sequent" ],
+	    "properties": {
+		"commentary": { "type": "array",
+				"items": "string" },
+		"action": { "type": "string" },
+		"num-subgoals": { "type": "integer" },
+		"label": { "type": "string" },
+		"comment": { "type": "string" },
+		"sequent": {
+		    "type": "object",
+		    "properties": {
+			"antecedents": {"$ref": "#/definitions/s-formulas"},
+			"succedents": {"$ref": "#/definitions/s-formulas"},
+			"hidden-antecedents": {"$ref": "#/definitions/s-formulas"},
+			"hidden-succedents": {"$ref": "#/definitions/s-formulas"}
+		    }
+		}
+	    }
+	},
+	"s-formulas": {
+	    "type": "array",
+	    "items": {
+		"type": "object",
+		"required": ["labels", "changed", "formula"],
+		"properties": {
+		    "labels": {
+			"type": "array",
+			"minItems": 1,
+			"items": {"type": "string"}
+		    },
+		    "changed": {"type": "boolean"},
+		    "formula": {"type": "string"}
+		}
+	    }
+	},
 	"names-info-request": {
 	    "type": "object",
 	    "properties": {
