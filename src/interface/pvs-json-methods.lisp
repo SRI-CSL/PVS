@@ -1,3 +1,22 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; pvs-json-methods.lisp -- provides json-rpc methods for PVS
+;; Author          : Sam Owre
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; --------------------------------------------------------------------
+;; PVS
+;; Copyright (C) 2006-2013 SRI International.  All Rights Reserved.
+
+;; This program is free software; you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License
+;; as published by the Free Software Foundation; either version 2
+;; of the License, or (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
 (in-package :pvs-json-rpc)
 
 ;;; The requests
@@ -102,6 +121,7 @@
 
 (defrequest names-info (filename)
   "Get the names-tooltip information for a PVS file"
+  (assert (stringp filename) () "Filename must be a string: ~a" filename)
   (when (pvs:typecheck-file filename)
     (pvs:collect-pvs-file-decls-info filename)))
 
