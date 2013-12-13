@@ -66,6 +66,7 @@
     (load "pvs-prelude-files-and-regions" nil noninteractive)
   (error 0))
 (load "pvs-print" nil noninteractive)
+(load "pvs-proofstate" nil noninteractive)
 (load "pvs-prover" nil noninteractive)
 (load "pvs-abbreviations" nil noninteractive)
 (if (or (and (not (featurep 'xemacs))
