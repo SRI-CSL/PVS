@@ -116,15 +116,24 @@ class RichEditorManager:
             pub.sendMessage(PUB_NUMBEROFOPENFILESCHANGED)
     
     def addFile(self, fullname):
+        opened = True
         if not fullname in self.editors:
+            opened = False
             logging.info("Opening a new editor tab for %s", fullname) 
             editor = ui.rchedtr.RichEditor(self.notebook, wx.ID_ANY, fullname)
             self.notebook.AddPage(editor, util.getFilenameFromFullPath(fullname), True, self.getProperBitmap())
-            if os.path.exists(fullname):
-                editor.styledText.LoadFile(fullname)
+            if not os.path.exists(fullname):
+                f = open(fullname, "w")
+                f.close()
+            if editor.styledText.readFile(fullname):                    
                 editor.styledText.SetSelection(0, 0)
                 self[fullname] = editor
-        self.showRichEditorForFile(fullname)
+                opened = True
+        if opened:
+            self.showRichEditorForFile(fullname)
+        else:
+            util.getMainFrame().showError("Could not open %s"%fullname)
+            
         
     def getNumberOfOpenFiles(self):
         return len(self.editors)

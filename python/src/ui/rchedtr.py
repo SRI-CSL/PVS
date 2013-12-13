@@ -81,9 +81,11 @@ class RichEditor(wx.Panel):
         else:
             oldName = None
         logging.info("Saving file %s", self.fullname)
-        self.styledText.SaveFile(self.fullname)
-        self.applyNamesInformation([])
 
-        pub.sendMessage(constants.PUB_FILESAVED, fullname=self.fullname, oldname=oldName)
+        if self.styledText.saveFile(self.fullname):
+            pub.sendMessage(constants.PUB_FILESAVED, fullname=self.fullname, oldname=oldName)
+            self.applyNamesInformation([])
+        else:
+            util.getMainFrame().showError("Could not save %s"%self.fullname)
         
     

@@ -18,6 +18,9 @@ def getFolderImage():
 def getGrayFolderImage():
     return getBitmap("folder-gray.png")
 
+def getBulletImage():
+    return getBitmap("bullet.png")
+
 def getIDELogo():
     return getBitmap("idelogo.png")
 

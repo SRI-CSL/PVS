@@ -8,6 +8,7 @@ import ui.images
 from config import PVSIDEConfiguration
 from wx.lib.pubsub import setupkwargs, pub
 import remgr
+import codecs
 
 faces = {'default_color': '000000',
          'identity_color': '000000',
@@ -29,6 +30,7 @@ class PVSStyledText(stc.StyledTextCtrl):
         self.SetMarginType(0, stc.STC_MARGIN_NUMBER)
         self.SetMarginWidth(0, 30)
         self.SetMarginSensitive(0, True)
+        self.SetCodePage(stc.STC_CP_UTF8)
         self.namesInformation = []
         cfg = PVSIDEConfiguration()
         faces['default_color'] = cfg.default_color
@@ -54,6 +56,12 @@ class PVSStyledText(stc.StyledTextCtrl):
         self.SetStyleBits(7)
         self.SetMouseDwellTime(300)
         
+        self.RegisterImage(1, ui.images.getBulletImage())
+        self.autoCompleteWords = constants.PVS_KEYWORDS.upper().split()
+        self.autoCompleteWords = self.autoCompleteWords + constants.MATH_SYMBOLS.keys()
+        self.autoCompleteWords.sort()
+        self.autoCompleteWords = " ".join(self.autoCompleteWords)
+        
         self.setSyntaxHighlighting_usingmatlab()
         
         self.Bind(wx.EVT_SET_CURSOR, self.onCursor)  #TODO: what is this?
@@ -61,13 +69,16 @@ class PVSStyledText(stc.StyledTextCtrl):
         #self.Bind(stc.EVT_STC_DWELLEND, self.onMouseDwellEnded)
         self.Bind(wx.EVT_RIGHT_UP, self.onMouseRightClicked)
         self.Bind(stc.EVT_STC_MARGINCLICK, self.onMarginClicked)
+        self.Bind(wx.EVT_KEY_DOWN, self.OnKeyPressed)
+        self.Bind(wx.stc.EVT_STC_AUTOCOMP_SELECTION, self.OnAutoCompItemSelected)
         
     def setSyntaxHighlighting_usingmatlab(self):
         logging.debug("Setting syntax highlighting")
         self.SetLexer(stc.STC_LEX_MATLAB)
         # Default 
         self.StyleSetSpec(stc.STC_MATLAB_DEFAULT, "fore:#%(default_color)s,face:%(font)s,size:%(size)d" % faces)
-        self.StyleSetSpec(stc.STC_MATLAB_IDENTIFIER, "fore:#%(default_color)s,face:%(font)s,size:%(size)d" % faces)
+        # Identity
+        self.StyleSetSpec(stc.STC_MATLAB_IDENTIFIER, "fore:#%(identity_color)s,face:%(font)s,size:%(size)d" % faces)
         # Number
         self.StyleSetSpec(stc.STC_MATLAB_NUMBER, "fore:#%(number_color)s,face:%(font)s,size:%(size)d" % faces)
         # String
@@ -83,6 +94,26 @@ class PVSStyledText(stc.StyledTextCtrl):
         self.SetKeyWords(0, constants.PVS_KEYWORDS)
         self.SetKeyWords(1, " ".join(constants.PVS_OPERATORS))
         self.GetCurrentPos()
+        
+    def OnAutoCompItemSelected(self, event):
+        text = event.GetText()
+        start = self.GetCurrentPos() - 3
+        wx.CallAfter(self._adjustAutoCompleteText, (start, text))
+        event.Skip()
+        
+    def _adjustAutoCompleteText(self, parameters):
+        (start, text) = parameters
+        if text in constants.MATH_SYMBOLS:
+            end = start + len(text)
+            self.SetSelection(start, end)
+            assert text == self.GetSelectedText()
+            self.ReplaceSelection(constants.MATH_SYMBOLS[text])
+        
+    def OnKeyPressed(self, event):
+        self.AutoCompSetIgnoreCase(True)
+        self.AutoCompShow(2, self.autoCompleteWords)
+        event.Skip()
+
 
     def onMarginClicked(self, event):
         #TODO: Implement this later to give information about the Markers
@@ -156,3 +187,30 @@ class PVSStyledText(stc.StyledTextCtrl):
     def onCursor(self, event):
         pass
         #logging.debug("Event: %s", event)
+
+    def saveFile(self, fullname):
+        try:
+            text = self.GetText()
+            utext = text.encode("utf-8")
+            fl = open(fullname, "wb")
+            fl.write(utext)
+            fl.close()
+            self.SetSavePoint()
+            return True
+        except e:
+            logging.error("File %s was not saved", fullname)
+        return False
+        
+    def readFile(self, fullname):
+        try:
+            fl = open(fullname, "rb")
+            text = fl.read()
+            utext = unicode(text, "utf-8")
+            fl.close()
+            self.SetText(utext)
+            self.SetSavePoint()
+            return True
+        except e:
+            logging.error("File %s was not read", fullname)
+        return False
+        

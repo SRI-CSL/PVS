@@ -138,4 +138,6 @@ PVS_OPERATORS = [u'(', u')', u'-', u'+', u'*', u'/', u':=', u'::=', u'|->', u';'
                  u'\u21a6', u'\u21d0', u'\u21d2', u'\u21d1', u'\u21d3', u'\u21d4', u'\u2207', u'\u22a3', \
                  u'\u22a5', u'\u22a9', u'\u25ef', u'\u2605', u'\u2720']
 
+MATH_SYMBOLS = {"\FORALL": u"\u2200", "\EXISTS": u"\u2203"}
+
 PVS_GITHUB_REPOSITORY = "https://raw.github.com/samowre/PVS/master"
