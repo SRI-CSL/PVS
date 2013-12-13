@@ -35,7 +35,9 @@
   ;; ((labels . [strings])
   ;;  (changed . boolean)
   ;;  (formula . string)
-  ;;  (names-info . names-info) - see 
+  ;;  (names-info . names-info) - see
+  (unless pvs-in-checker
+    (error "Not in proof checker"))
   (let* ((ps (save-excursion
 	       (set-buffer (find-file-noselect fname))
 	       (json-read-from-string (buffer-string))))
@@ -200,7 +202,7 @@
 	 (com-frame (cdr (assoc "Proofcommentary" frame-names-alist)))
 	 (cmd-frame (cdr (assoc "Proofcommand" frame-names-alist)))
 	 (scr-frame (cdr (assoc "Proofscript" frame-names-alist)))
-	 (doit (or reset (not (eq current-proofstate-display-style 'none))
+	 (doit (or reset (not (eq current-proofstate-display-style 'no-frame))
 		   ps-frame com-frame cmd-frame scr-frame)))
     (when doit
       (when ps-frame (delete-frame ps-frame))
@@ -227,7 +229,7 @@
 	  ;;(dolist (win windows)
 	  ;;(set-window-dedicated-p win t))
 	  ))
-      (setq current-proofstate-display-style 'none))))
+      (setq current-proofstate-display-style 'no-frame))))
 
 (defun pvs-proofstate-0-frame (&optional reset)
   (let* ((frame-names-alist (make-frame-names-alist))
@@ -304,9 +306,12 @@
       (when com-frame (delete-frame com-frame))
       (when cmd-frame (delete-frame cmd-frame))
       (when scr-frame (delete-frame scr-frame))
-      (delete-windows-on "Proofstate" pvs-frame)
-      (delete-windows-on "Proof" pvs-frame)
-      (delete-windows-on "Commentary" pvs-frame)
+      (when (get-buffer "Proofstate")
+	(delete-windows-on "Proofstate" pvs-frame))
+      (when (get-buffer "Proof")
+	(delete-windows-on "Proof" pvs-frame))
+      (when (get-buffer "Commentary")
+	(delete-windows-on "Commentary" pvs-frame))
       ;; Now want com-buffer at top, proofstate middle, cmd bottom
       (let* ((windows (window-list ps-frame))
 	     (buffers (mapcar #'window-buffer windows)))
@@ -558,5 +563,7 @@
 			proofstate-display-styles))
 	 (next (or (cadr (member curmem proofstate-display-styles))
 		   (car proofstate-display-styles))))
-    (funcall (cdr next))))
-
+    (if pvs-in-checker
+	(funcall (cdr next))
+	(message "Not in proof checker, setting display style to %s"
+		 (setq current-proofstate-display-style (car next))))))
