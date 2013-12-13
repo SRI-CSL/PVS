@@ -10,7 +10,7 @@
 
 ;; --------------------------------------------------------------------
 ;; PVS
-;; Copyright (C) 2006, SRI International.  All Rights Reserved.
+;; Copyright (C) 2006-2013 SRI International.  All Rights Reserved.
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
@@ -583,14 +583,11 @@
   cmd-gate
   res-gate)
 
-(defun add-psinfo (psi ps &optional done?)
+(defun add-psinfo (psi ps-json &optional done-str)
   #+allegro
   (mp:with-process-lock ((psinfo-lock psi))
-    (let ((result (if done?
-		      `(("result" . ,(if (and (typep ps 'top-proofstate)
-					      (eq (status-flag ps) '!))
-					 "Q.E.D."
-					 "Unfinished")))
+    (let ((result (if done-str
+		      `(("result" . ,done-str))
 		      (pvs2json ps))))
       ;;(format t "~%add-psinfo: Setting result to ~a~%" result)
       (setf (psinfo-json-result psi) result)
@@ -622,37 +619,53 @@
 	     (call-next-method)))
 	(t (call-next-method))))
 
+;;; Summary of prover (from eproofcheck.lisp)
+;;; prove-decl -> prove-decl-body -> prove* -> (prove*-int -> output-proofstate)*
+
+;;; The primary method (i.e., call-next-method) simply prints the proofstate in the
+;;; *pvs* buffer.  This around method allows other displays, currently Emacs and
+;;; XML-RPC clients
+
 (defmethod output-proofstate :around ((ps proofstate))
   (with-slots (label comment current-goal) ps
-    (when nil ;*pvs-emacs-interface*
-      (let* ((*ps* ps)
-	     (*print-ancestor* (if *print-ancestor*
-				   *print-ancestor*
-				   (parent-proofstate *ps*)))
-	     (*pp-print-parens* *show-parens-in-proof*)
-	     (*sb-print-depth* *prover-print-depth*)
-	     (*sb-print-length* *prover-print-length*)
-	     (*output-to-emacs*
-	      ;; action & result & label & sequent
-	      (format nil "~%:pvs-proofstate ~a :end-pvs-proofstate"
-		(emacs-proofstate-file ps))))
-	(to-emacs)))
-    ;;(format t "~%output-proofstate called: ~a~%" *ps-control-info*)
-    (when *ps-control-info*
-      (add-psinfo *ps-control-info* ps))
-    (call-next-method)))
+    (let* ((json:*lisp-identifier-name-to-json* #'identity)
+	   (ps-json (json:encode-json-to-string (pvs2json ps))))
+      (when *pvs-emacs-interface*
+	(let* ((*output-to-emacs*
+		;; action & result & label & sequent
+		(format nil "~%:pvs-prfst ~a :end-pvs-prfst"
+		  (write-to-temp-file ps-json))))
+	  (to-emacs)))
+      ;;(format t "~%output-proofstate called: ~a~%" *ps-control-info*)
+      ;; *ps-control-info* is used for XML-RPC control - set when the prover
+      ;; starts or a command is given for a running proof.
+      (when *ps-control-info*
+	(add-psinfo *ps-control-info* ps))
+      (call-next-method))))
 
-(defun emacs-proofstate-file (ps)
-  (write-to-temp-file
-   (pvs2json ps)))
+(defun finish-proofstate (ps)
+  (let ((done-str (if (and (typep ps 'top-proofstate)
+			   (eq (status-flag ps) '!))
+		      "Q.E.D."
+		      "Unfinished")))
+    (when *pvs-emacs-interface*
+      ;; What should be done here?
+      nil)
+    (when *ps-control-info*
+      (add-psinfo *ps-control-info* *top-proofstate* done-str))))
 
 ;;; Creates a json form:
-;;;   {"action" : action,
+;;;   {"commentary" : [ strings ],
+;;;    "action" : string,
 ;;;    "result" : ,
 ;;;    "label" : ,
 ;;;    "comment" : ,
 ;;;    "sequent" : {"antecedents" : [ s-formulas ],
 ;;;                 "succedents" : [ s-formulas ]}}
+
+(defvar *proofstate-width* 80)
+(defvar *proofstate-indent* 6)
+
 (defmethod pvs2json ((ps proofstate))
   (with-slots (label comment current-goal (pps parent-proofstate)) ps
     (let ((action (when pps
@@ -660,11 +673,13 @@
 				 (format-printout pps t))))
 	  (num-subgoals (proofstate-num-subgoals ps))
 	  (sequent (pvs2json-seq current-goal pps)))
-      `(,@(when action `(("action" . ,action)))
-	,@(when num-subgoals `(("num_subgoals" . ,num-subgoals)))
-	("label" . ,label)
-	,@(when comment `(("comment" . ,comment)))
-	("sequent" . ,sequent)))))
+      `(,@(when *prover-commentary*
+		`(("commentary" . ,(reverse *prover-commentary*))))
+	  ,@(when action `(("action" . ,action)))
+	  ,@(when num-subgoals `(("num-subgoals" . ,num-subgoals)))
+	  ("label" . ,label)
+	  ,@(when comment `(("comment" . ,comment)))
+	  ("sequent" . ,sequent)))))
 
 (defstruct seqstruct
   antecedents
@@ -712,15 +727,16 @@
 ;; Which is a cons of the string and its view (computed lazily).
 (defun pvs2json-sform (sform fnum par-sforms)
   (let* ((nf (formula sform))
-	 (frm (if (negation? nf) (args1 nf) nf))
-	 (frmstr (if (view sform)
-		     (car (view sform))
-		     (pp-string frm 6))))
+	 (frm (if (negation? nf) (args1 nf) nf)))
     (unless (view sform)
-      (setf (view sform) (list frmstr)))
-    `(("labels" . ,(cons fnum (label sform)))
-      ("changed" . ,(if (memq sform par-sforms) "false" "true"))
-      ("formula" . ,frmstr))))
+      (multiple-value-bind (frmstr frmview)
+	  (pp-with-view frm *proofstate-indent* *proofstate-width*)
+	(setf (view sform) (list frmstr frmview))))
+    (let ((names-info (names-info-proof-formula sform)))
+      `(("labels" . ,(cons fnum (label sform)))
+	("changed" . ,(if (memq sform par-sforms) "false" "true"))
+	("formula" . ,(car (view sform)))
+	("names-info" . ,names-info)))))
 
 (defun proofstate-num-subgoals (ps)
   (let ((pps (parent-proofstate ps)))
@@ -1055,8 +1071,8 @@
   (declare (ignore obj))
   nil)
 
-(defun id-place-list (name)
-  (let ((place (place name)))
+(defun id-place-list (name &optional nplace)
+  (let ((place (or nplace (place name))))
     (list (svref place 0)
 	  (svref place 1)
 	  (svref place 0)
