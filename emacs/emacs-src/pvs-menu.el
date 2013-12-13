@@ -11,7 +11,7 @@
 
 ;; --------------------------------------------------------------------
 ;; PVS
-;; Copyright (C) 2006, SRI International.  All Rights Reserved.
+;; Copyright (C) 2006-2013, SRI International.  All Rights Reserved.
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
@@ -283,11 +283,14 @@
 
 (defun place-to-region (place &optional relrow relcol)
   (let* ((rr (or relrow 0))
-	 (rc (or relcol 0))
-	 (srow (+ (elt place 0) rr))
+	 (prow (elt place 0))
+	 (rc (if (and (= prow 1) relcol) relcol 0))
+	 (srow (+ prow rr))
 	 (scol (+ (elt place 1) rc))
 	 (erow (+ (elt place 2) rr))
 	 (ecol (+ (elt place 3) rc)))
+    (setq ppp (list place relrow relcol))
+    (setq rrr (list srow scol erow ecol))
     (cons (row-col-to-point srow scol)
 	  (row-col-to-point erow ecol))))
 
