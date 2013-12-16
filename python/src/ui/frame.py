@@ -119,52 +119,44 @@ class MainFrame(wx.Frame):
         
     def handleUndoRequest(self):
         """handle the Undo request and return true if succeeded."""
-        textCtrl = self._findFocusedTextCtrl()
-        if textCtrl is not None and textCtrl.CanUndo():
-            textCtrl.Undo()
-            return True
-        return False
+        return self._handleEditingRequest("Undo", "CanUndo")
         
     def handleRedoRequest(self):
         """handle the Redo request and return true if succeeded."""
-        textCtrl = self._findFocusedTextCtrl()
-        if textCtrl is not None and textCtrl.CanRedo():
-            textCtrl.Redo()
-            return True
-        return False
+        return self._handleEditingRequest("Redo", "CanRedo")
                 
     def handleCopyRequest(self):
         """handle the Copy request and return true if succeeded."""
-        textCtrl = self._findFocusedTextCtrl()
-        if textCtrl is not None and textCtrl.CanCopy():
-            textCtrl.Copy()
-            return True
-        return False
+        return self._handleEditingRequest("Copy", "CanCopy")
     
     def handleCutRequest(self):
         """handle the Cut request and return true if succeeded."""
-        textCtrl = self._findFocusedTextCtrl()
-        if textCtrl is not None and textCtrl.CanCut():
-            textCtrl.Cut()
-            return True
-        return False
+        return self._handleEditingRequest("Cut", "CanCut")
     
     def handlePasteRequest(self):
         """handle the Paste request and return true if succeeded."""
-        textCtrl = self._findFocusedTextCtrl()
-        if textCtrl is not None and textCtrl.CanPaste():
-            textCtrl.Paste()
-            return True
-        return False
+        return self._handleEditingRequest("Paste", "CanPaste")
     
     def handleSelectAllRequest(self):
         """handle the Select All request and return true if succeeded."""
+        return self._handleEditingRequest("SelectAll")
+    
+    def _handleEditingRequest(self, methodToCall, methodToVerify=None):
         textCtrl = self._findFocusedTextCtrl()
         if textCtrl is not None:
-            textCtrl.SelectAll()
-            return True
+            verified = True
+            if methodToVerify is not None:
+                verifyingMethod = getattr(textCtrl, methodToVerify, None)
+                if callable(verifyingMethod):
+                    verified = verifyingMethod()
+                    logging.debug("Verified value: %s", verified)
+            if verified:
+                callingMethod = getattr(textCtrl, methodToCall, None)
+                if callingMethod is not None:
+                    logging.debug("Calling: %s", methodToCall)
+                    callingMethod()
+                    return True
         return False
-    
     
     # Dialog Boxes: 
     

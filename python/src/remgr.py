@@ -111,9 +111,7 @@ class RichEditorManager:
     def handleCloseFileRequest(self, fullname):
         """called to close an open file"""
         if self.ensureFilesAreSavedToPoceed((fullname,)):
-            Preferences().setRecentFile(fullname)
-            pub.sendMessage(PUB_CLOSEFILE, fullname=fullname)
-            pub.sendMessage(PUB_NUMBEROFOPENFILESCHANGED)
+            util.closeFile(fullname)    
     
     def addFile(self, fullname):
         opened = True

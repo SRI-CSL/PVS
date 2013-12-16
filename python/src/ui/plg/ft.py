@@ -305,8 +305,10 @@ class FilesTreePlugin(PluginPanel):
         fileNode = self.getFileNode(fullname) if oldname is None else self.getFileNode(oldname)
         self.tree.DeleteChildren(fileNode)
         if oldname is not None:
-            self.tree.SetItemPyData(fileNode, wx.TreeItemData({FULLNAME: fullname, KIND: LFILE}))
-            self.tree.SetItemText(fileNode, util.getFilenameFromFullPath(fullname))
+            self.removeFile(oldname)
+            self.addFile(fullname)
+            #self.tree.SetItemPyData(fileNode, wx.TreeItemData({FULLNAME: fullname, KIND: LFILE}))
+            #self.tree.SetItemText(fileNode, util.getFilenameFromFullPath(fullname))
             
 
 class PVSFileDropTarget(wx.FileDropTarget):
