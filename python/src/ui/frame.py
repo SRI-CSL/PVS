@@ -84,13 +84,8 @@ class MainFrame(wx.Frame):
         """called after the panel is added to the frame"""
         paneInfo = event.GetPane()
         name = paneInfo.name
-        tm = ToolbarManager()
-        if name in tm.toolbars:
-            logging.info("Toolbar %s was closed", name)
-            pub.sendMessage(PUB_SHOWTOOLBAR, name=name, value=False)
-        else:
-            logging.info("Pane %s was closed", name)
-            pub.sendMessage(PUB_SHOWPLUGIN, name=name, value=False)
+        logging.info("Pane %s was closed", name)
+        pub.sendMessage(PUB_SHOWPLUGIN, name=name, value=False)
 
     def restoreOpenFiles(self):
         """Load .pvseditor and open all the files that were open last time"""

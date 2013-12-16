@@ -8,7 +8,7 @@ from wx.lib.floatcanvas.Utilities import BBox
 import numpy as N
 import sets
 import random
-from sl import SortedList
+#from sl import SortedList
 
 class ConnectorLine(FC.LineOnlyMixin, FC.DrawObject,):
 	"""
@@ -258,6 +258,19 @@ class DynamicTreeView(NavCanvas.NavCanvas):
 		self._updateNode(parent)
 		self.Canvas.Draw(True)
 		self.history = self.history + "\ttree.addChild(\"%s\", TreeNode(\"%s\"))\n"%(parent.name, node.name)
+		
+	def redrawTree(self):
+		nodes = self._nodes.values()
+		nodeLevel = {}
+		for node in nodes:
+			if not node._level in nodeLevel:
+				nodeLevel[node._level] = []
+			nodeLevel[node._level].append(node)
+		lowestLevel = max(nodeLevel.keys())
+		nodeLevel[lowestLevel].sort(key=lambda x: x._location)
+		
+		
+		
 
 	def removeNode(self, node, indent=""):
 		#TODO: after removing a node, the tree layout should be redone
@@ -396,10 +409,10 @@ class DynamicTreeView(NavCanvas.NavCanvas):
 	def __getitem__(self, item):
 		return self.nodes[item]
 	
-	def traverse(node, func):
-		func(node)
+	def traverse(self, func):
+		func(self)
 		for child in (root.children):
-			traverse(child, node)
+			traverse(child, self)
 
 	def _testNodeLocationOk(self, node):
 		if node._left:
@@ -428,14 +441,14 @@ class DynamicTreeView(NavCanvas.NavCanvas):
 	def onNodeWindowEntered(self, obj):
 		node = obj.Node
 		obj = node._drawObject
-		center = obj.GetConnectPoint()
+		#center = obj.GetConnectPoint()
 		self.tooltip = wx.ToolTip(tip=self.config.getTooltipText(node))
 		self.tooltip.SetDelay(100)
 		self.SetToolTip(self.tooltip)
 		self.tooltip.Enable(True)
 
 	def onNodeWindowLeft(self, obj):
-		node = obj.Node
+		#node = obj.Node
 		self.tooltip.Enable(False)
 		self.tooltip = None
 

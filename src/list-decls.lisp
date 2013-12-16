@@ -755,7 +755,7 @@
 
 (defvar *max-row* nil)
 
-(defun collect-pvs-file-decls-info (pvs-file &optional json?)
+(defun collect-pvs-file-decls-info (pvs-file)
   (if (string= pvs-file "prelude")
       (collect-visible-decl-info *prelude-theories*)
       (let* ((file (make-specpath pvs-file))
@@ -765,11 +765,7 @@
 	       (pvs-message "PVS file ~a is not in the current context" pvs-file))
 	      ((null theories)
 	       (pvs-message "PVS file ~a is not typechecked" pvs-file))
-	      (t (let* ((info (collect-visible-decl-info theories)))
-		   (if json?
-		       (let ((json:*lisp-identifier-name-to-json* #'identity))
-			 (json:encode-json-to-string info))
-		       info)))))))
+	      (t (collect-visible-decl-info theories))))))
 
 ;; This doesn't work
 ;; (defun collect-name-to-decl-alist (obj)
@@ -801,7 +797,8 @@
 (defun collect-visible-decl-info (obj)
   (let ((*visible-decl-info* nil))
     (collect-visible-decl-info* obj)
-    *visible-decl-info*))
+    (let ((json:*lisp-identifier-name-to-json* #'identity))
+      (json:encode-json-to-string *visible-decl-info*))))
 
 (defmethod collect-visible-decl-info* ((list list))
   (when list
@@ -891,8 +888,7 @@
   (collect-visible-decl-info* (judgement-type obj)))
 
 (defmethod collect-visible-decl-info* ((obj conversion-decl))
-  (unless (generated-by obj)
-    (collect-visible-decl-info* (expr obj))))
+  (collect-visible-decl-info* (expr obj)))
 
 (defmethod collect-visible-decl-info* ((obj auto-rewrite-decl))
   (collect-visible-decl-info* (rewrite-names obj)))

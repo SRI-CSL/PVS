@@ -8,6 +8,7 @@ import util
 import logging
 from preference import Preferences
 from wx.lib.pubsub import setupkwargs, pub 
+import pvscomm
 
 class MainFrameMenu(wx.MenuBar):
     """The class implementing and managing the main menu bar in the application"""
@@ -25,7 +26,6 @@ class MainFrameMenu(wx.MenuBar):
         self.setBindings()
         pub.subscribe(self.update, PUB_UPDATEMENUBAR)
         pub.subscribe(self.showPlugin, PUB_SHOWPLUGIN)
-        pub.subscribe(self.showToolbar, PUB_SHOWTOOLBAR)
         pub.subscribe(self.addPluginToViewMenu, PUB_ADDITEMTOVIEWMENU)
         pub.subscribe(self.prepareRecentContextsSubMenu, PUB_UPDATEPVSCONTEXT)
         pub.subscribe(self.prepareRecentFilesSubMenu, PUB_PREPARERECENTFILESMENU)
@@ -65,8 +65,6 @@ class MainFrameMenu(wx.MenuBar):
     def addViewMenu(self):
         """Adding menu items to View menu"""
         self.viewMenu = wx.Menu()
-        preferences = Preferences()
-        
         self.pluginMenu = wx.Menu()
         self.viewMenu.AppendMenu(wx.ID_ANY, 'Plugins', self.pluginMenu)
         # Add View Menu to the menu bar:
@@ -136,7 +134,7 @@ class MainFrameMenu(wx.MenuBar):
         frame = util.getMainFrame()
         item = self.pluginMenu.Append(wx.ID_ANY, name, EMPTY_STRING, wx.ITEM_CHECK)
         self.plugins[name] = item
-        self.pluginMenu.Check(item.GetId(), PluginManager().shouldPluginBeVisible(name, PVSCommandManager().pvsMode))
+        self.pluginMenu.Check(item.GetId(), PluginManager().shouldPluginBeVisible(name, pvscomm.PVSCommandManager().pvsMode))
         frame.Bind(wx.EVT_MENU, callBackFunction, item)
 
     def _makeLabel(self, name, shortcut=None, addDots = False):
@@ -197,12 +195,4 @@ class MainFrameMenu(wx.MenuBar):
             item.Check(value)
         else:
             logging.warn("No menu option for plugin %s", name)
-            
-    def showToolbar(self, name, value=True):
-        if name in self.toolbars:
-            logging.info("Changing the visibility of %s to %s", name, value)
-            item = self.toolbars[name]
-            item.Check(value)
-        else:
-            logging.warn("No menu option for toolbar %s", name)
             

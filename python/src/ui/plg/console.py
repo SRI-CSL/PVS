@@ -20,8 +20,6 @@ class ConsolePlugin(PluginPanel):
     
     def __init__(self, parent, definition):
         PluginPanel.__init__(self, parent, definition)
-        self.pvsout = wx.richtext.RichTextCtrl(self, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE | wx.TE_READONLY)
-        self.pvsin = wx.TextCtrl(self, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE)
         commandManager = pvscomm.PVSCommandManager()
 
         toolbarInfo = [ \
@@ -38,18 +36,25 @@ class ConsolePlugin(PluginPanel):
             self.toolbarButton[buttonID] = command        
         toolbar.Realize()
 
-        self.historyBox = wx.ComboBox(self, wx.ID_ANY, choices=[], style=wx.CB_READONLY)
+
+
+        splitter  = wx.SplitterWindow(self, style = wx.SP_NOBORDER)
+        splitter.SetMinimumPaneSize(35)
+        self.pvsout = wx.richtext.RichTextCtrl(splitter, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE | wx.TE_READONLY)
+
+        belowPanel = wx.Panel(splitter)
+        self.pvsin = wx.TextCtrl(belowPanel, wx.ID_ANY, EMPTY_STRING, style=wx.TE_MULTILINE)
+        self.historyBox = wx.ComboBox(belowPanel, wx.ID_ANY, choices=[], style=wx.CB_READONLY)
 
         belowSizer = wx.BoxSizer(wx.HORIZONTAL)
         belowSizer.Add(self.pvsin, 5, wx.EXPAND | wx.UP | wx.DOWN | wx.ALIGN_CENTRE_VERTICAL, 5)
         belowSizer.Add(self.historyBox, 1, wx.EXPAND | wx.LEFT | wx.UP | wx.DOWN | wx.ALIGN_CENTRE_VERTICAL, 5)
-
-        leftSizer = wx.BoxSizer(wx.VERTICAL)
-        leftSizer.Add(self.pvsout, 4, wx.EXPAND , 0)
-        leftSizer.Add(belowSizer, 1, wx.EXPAND , 0)
-
+        belowPanel.SetSizer(belowSizer)
+        splitter.SplitHorizontally(self.pvsout, belowPanel)
+        splitter.SetSashPosition(120)
+        
         consoleSizer = wx.BoxSizer(wx.HORIZONTAL)
-        consoleSizer.Add(leftSizer, 1, wx.EXPAND | wx.ALL, 5)
+        consoleSizer.Add(splitter, 1, wx.EXPAND | wx.ALL, 5)
         consoleSizer.Add(toolbar, 0, wx.EXPAND | wx.ALL, 5)
         
         self.SetSizer(consoleSizer)

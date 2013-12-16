@@ -1,6 +1,5 @@
 from ui.plugin import PluginManager
 import ui.plg.ft
-import ui.plg.pt
 import ui.plg.pm
 import ui.plg.console
 import constants
@@ -18,6 +17,13 @@ class PVSIDEConfiguration:
             self.ideURL = "http://localhost:22335/RPC2"
             self.ideSize = (900, 600)
             self.ideMinumumSize = (500, 300)
+            self.default_color = '000000'
+            self.keyword_color = '0000FF'
+            self.comment_color = '008B00'
+            self.number_color = '00CD66'
+            self.operator_color = '878787'
+            self.string_color = '1C86EE'
+            self.font_size = 10
             self.proverCommands = { \
                 "----": "", \
                 "grind": "(grind)\n", \
@@ -44,6 +50,19 @@ class PVSIDEConfiguration:
         self.ideURL = config.get(constants.GENERAL, "ide_url", 0)
         self.ideSize = self._string2Tuple(config.get(constants.GENERAL, "ide_size", 0), True)
         self.ideMinumumSize = self._string2Tuple(config.get(constants.GENERAL, "ide_minimum_size", 0), True)
+        EDITOR = constants.EDITOR
+        logging.debug("Configuring the Syntax Highlighting Options")
+        self.default_color = config.get(EDITOR, "default_color", 0)
+        self.identity_color = config.get(EDITOR, "identity_color", 0)
+        self.keyword_color = config.get(EDITOR, "keyword_color", 0)
+        self.comment_color = config.get(EDITOR, "comment_color", 0)
+        self.number_color = config.get(EDITOR, "number_color", 0)
+        self.operator_color = config.get(EDITOR, "operator_color", 0)
+        self.string_color = config.get(EDITOR, "string_color", 0)
+        self.font_size = config.getint(EDITOR, "font_size")
+        self.font = config.get(EDITOR, "font")
+           
+        
         logging.debug("Configuring the Plugins")
         for section in config.sections():
             if section.startswith("Plugin_"):

@@ -2,7 +2,7 @@
 # This class controls and manages all the tabs that contain open files and buffers for editing
 
 import wx
-from ui.rchedtr import RichEditor
+import ui.rchedtr
 from constants import *
 import wx.lib.agw.aui as aui
 import os.path
@@ -24,7 +24,8 @@ class RichEditorManager:
             pub.subscribe(self.removeFile, PUB_CLOSEFILE)
             pub.subscribe(self.onFileSaved, PUB_FILESAVED)
             pub.subscribe(self.onErrorLocation, PUB_ERRORLOCATION)
-            pub.subscribe(self.clearMarkers, PUB_REMOVEMARKERS)
+            pub.subscribe(self.clearAnnotations, PUB_REMOVEANNOTATIONS)
+            pub.subscribe(self.applyNamesInformation, PUB_NAMESINFOUPDATE)
             
             #self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnPageChanging)
         
@@ -115,15 +116,24 @@ class RichEditorManager:
             pub.sendMessage(PUB_NUMBEROFOPENFILESCHANGED)
     
     def addFile(self, fullname):
+        opened = True
         if not fullname in self.editors:
+            opened = False
             logging.info("Opening a new editor tab for %s", fullname) 
-            editor = RichEditor(self.notebook, wx.ID_ANY, fullname)
+            editor = ui.rchedtr.RichEditor(self.notebook, wx.ID_ANY, fullname)
             self.notebook.AddPage(editor, util.getFilenameFromFullPath(fullname), True, self.getProperBitmap())
-            if os.path.exists(fullname):
-                editor.styledText.LoadFile(fullname)
+            if not os.path.exists(fullname):
+                f = open(fullname, "w")
+                f.close()
+            if editor.styledText.readFile(fullname):                    
                 editor.styledText.SetSelection(0, 0)
                 self[fullname] = editor
-        self.showRichEditorForFile(fullname)
+                opened = True
+        if opened:
+            self.showRichEditorForFile(fullname)
+        else:
+            util.getMainFrame().showError("Could not open %s"%fullname)
+            
         
     def getNumberOfOpenFiles(self):
         return len(self.editors)
@@ -133,6 +143,8 @@ class RichEditorManager:
         return getPVSLogo()
     
     def _getWidgetFrame(self, w):
+        if w is None:
+            return util.getMainFrame()
         while not isinstance(w, wx.Frame):
             w = w.GetParent()
         return w
@@ -150,9 +162,10 @@ class RichEditorManager:
         richEditor = self.getFocusedRichEditor()
         richEditor.addRedMarker(begin[0])
         
-    def clearMarkers(self):
+    def clearAnnotations(self):
         richEditor = self.getFocusedRichEditor()
         richEditor.removeRedMarkers()
+        richEditor.applyNamesInformation([])
     
     #TODO: Check the following functions and see if they are redundant or something.
     
@@ -171,6 +184,13 @@ class RichEditorManager:
             self.notebook.SetSelection(self._getPageIndex(richEditor))
         else:
             frame.Raise()
+            
+    def applyNamesInformation(self, fullname, information):
+        if fullname in self.editors:
+            richEditor = self[fullname]
+            richEditor.applyNamesInformation(information)
+        else:
+            logging.warn("information received for %s, but no richEditor is opened for it", fullname)
     
     def _getPageIndex(self, richEditor):
         for i in range(self.notebook.GetPageCount()):

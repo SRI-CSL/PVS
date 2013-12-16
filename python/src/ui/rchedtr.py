@@ -19,7 +19,7 @@ class RichEditor(wx.Panel):
     
     def __init__(self, parent, ID, fullname):
         wx.Panel.__init__(self, parent, ID)
-        sizer = wx.BoxSizer(orient=wx.VERTICAL)        
+        sizer = wx.BoxSizer(orient=wx.VERTICAL)  
         self.styledText = PVSStyledText(self)
         sizer.Add(self.styledText, 1, wx.EXPAND, 0)
         self.statusbar = wx.StatusBar(self)
@@ -43,7 +43,10 @@ class RichEditor(wx.Panel):
         position = "Line: %d, Column %d"%(line, column)
         #logging.debug(position)
         self.statusbar.SetStatusText(position, 0)
-    
+        
+    def applyNamesInformation(self, information):
+        self.styledText.namesInformation = information
+        
     def onTextKeyEvent(self, event):
         self.onCursorPositionChanged()
         event.Skip()    
@@ -78,7 +81,11 @@ class RichEditor(wx.Panel):
         else:
             oldName = None
         logging.info("Saving file %s", self.fullname)
-        self.styledText.SaveFile(self.fullname)
-        pub.sendMessage(constants.PUB_FILESAVED, fullname=self.fullname, oldname=oldName)
+
+        if self.styledText.saveFile(self.fullname):
+            pub.sendMessage(constants.PUB_FILESAVED, fullname=self.fullname, oldname=oldName)
+            self.applyNamesInformation([])
+        else:
+            util.getMainFrame().showError("Could not save %s"%self.fullname)
         
     

@@ -1,7 +1,7 @@
 import pickle
 import util
 import os.path, os
-import constants
+#import constants
 import sets
 import logging
 import config
