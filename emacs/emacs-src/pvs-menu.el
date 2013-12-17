@@ -221,98 +221,100 @@
     '(lambda ()
        (add-submenu nil pvs-mode-menus ""))))
 
-(require 'json)
-(require 'button)
-(require 'ring)
+(unless (featurep 'xemacs)
+  (require 'json)
+  (require 'button)
+  (require 'ring)
 
-(define-button-type 'pvs-decl
-    'action 'pvs-decl-button-action
-    'face 'default)
+  (define-button-type 'pvs-decl
+      'action 'pvs-decl-button-action
+      'face 'default)
 
-(defun pvs-decl-button-action (button)
-  (pvs-goto-file-location
-   (button-get button 'decl-file)
-   (button-get button 'decl-place)))
+  (defun pvs-decl-button-action (button)
+    (pvs-goto-file-location
+     (button-get button 'decl-file)
+     (button-get button 'decl-place)))
 
-(defvar pvs-place-ring (make-ring 200))
+  (defvar pvs-place-ring (make-ring 200))
 
-(defun pvs-goto-file-location (file place)
-  (let ((elt (cons (buffer-file-name) (point))))
-    (unless (and (not (ring-empty-p pvs-place-ring))
-		 (equal elt (ring-ref pvs-place-ring 0)))
-      (ring-insert pvs-place-ring elt))
-    (find-file file)
-    (let ((row (elt place 0))
-	  (col (elt place 1)))
+  (defun pvs-goto-file-location (file place)
+    (let ((elt (cons (buffer-file-name) (point))))
+      (unless (and (not (ring-empty-p pvs-place-ring))
+		   (equal elt (ring-ref pvs-place-ring 0)))
+	(ring-insert pvs-place-ring elt))
+      (find-file file)
+      (let ((row (elt place 0))
+	    (col (elt place 1)))
+	(goto-line row)
+	(forward-char col))))
+
+  (defun pvs-backto-last-location ()
+    (interactive)
+    (let* ((elt (ring-remove pvs-place-ring))
+	   (file (car elt))
+	   (point (cdr elt)))
+      (find-file file)
+      (goto-char point)))
+
+  (global-set-key (kbd "<M-left>") 'pvs-backto-last-location)
+
+  (defun pvs-add-tooltips (fname)
+    (interactive (list (current-pvs-file)))
+    (let* ((dlist-json
+	    (pvs-file-send-and-wait (format "(collect-pvs-file-decls-info \"%s\" t)"
+					fname)
+				    nil 'get-decls '(or string null)))
+	   (dlist (when dlist-json (json-read-from-string dlist-json))))
+      (if dlist
+	  (with-silent-modifications
+	    (dotimes (i (length dlist))
+	      (let* ((delt (elt dlist i))
+		     (region (place-to-region (cdr (assq 'place delt))))
+		     (msg (cdr (assq 'decl delt)))
+		     (decl-file (cdr (assq 'decl-file delt)))
+		     (decl-place (cdr (assq 'decl-place delt))))
+		(add-text-properties
+		 (car region) (cdr region)
+		 `(mouse-face highlight help-echo ,msg))
+		(make-text-button
+		 (car region) (cdr region)
+		 'type 'pvs-decl 'decl-file decl-file 'decl-place decl-place)))
+	    (message "Tooltips set"))
+	  (message "Tooltips not set - is file typechecked?"))))
+
+  (defun place-to-region (place &optional relrow relcol)
+    (let* ((rr (or relrow 0))
+	   (prow (elt place 0))
+	   (rc (if (and (= prow 1) relcol) relcol 0))
+	   (srow (+ prow rr))
+	   (scol (+ (elt place 1) rc))
+	   (erow (+ (elt place 2) rr))
+	   (ecol (+ (elt place 3) rc)))
+      (setq ppp (list place relrow relcol))
+      (setq rrr (list srow scol erow ecol))
+      (cons (row-col-to-point srow scol)
+	    (row-col-to-point erow ecol))))
+
+  (defun row-col-to-point (row col)
+    (save-excursion
       (goto-line row)
-      (forward-char col))))
+      (forward-char col)
+      (point)))
 
-(defun pvs-backto-last-location ()
-  (interactive)
-  (let* ((elt (ring-remove pvs-place-ring))
-	 (file (car elt))
-	 (point (cdr elt)))
-    (find-file file)
-    (goto-char point)))
-
-(global-set-key (kbd "<M-left>") 'pvs-backto-last-location)
-
-(defun pvs-add-tooltips (fname)
-  (interactive (list (current-pvs-file)))
-  (let* ((dlist-json
-	  (pvs-file-send-and-wait (format "(collect-pvs-file-decls-info \"%s\" t)"
-				      fname)
-				  nil 'get-decls '(or string null)))
-	 (dlist (when dlist-json (json-read-from-string dlist-json))))
-    (if dlist
-	(with-silent-modifications
-	  (dotimes (i (length dlist))
-	    (let* ((delt (elt dlist i))
-		   (region (place-to-region (cdr (assq 'place delt))))
-		   (msg (cdr (assq 'decl delt)))
-		   (decl-file (cdr (assq 'decl-file delt)))
-		   (decl-place (cdr (assq 'decl-place delt))))
-	      (add-text-properties
-	       (car region) (cdr region)
-	       `(mouse-face highlight help-echo ,msg))
-	      (make-text-button
-	       (car region) (cdr region)
-	       'type 'pvs-decl 'decl-file decl-file 'decl-place decl-place)))
-	  (message "Tooltips set"))
-	(message "Tooltips not set - is file typechecked?"))))
-
-(defun place-to-region (place &optional relrow relcol)
-  (let* ((rr (or relrow 0))
-	 (prow (elt place 0))
-	 (rc (if (and (= prow 1) relcol) relcol 0))
-	 (srow (+ prow rr))
-	 (scol (+ (elt place 1) rc))
-	 (erow (+ (elt place 2) rr))
-	 (ecol (+ (elt place 3) rc)))
-    (setq ppp (list place relrow relcol))
-    (setq rrr (list srow scol erow ecol))
-    (cons (row-col-to-point srow scol)
-	  (row-col-to-point erow ecol))))
-
-(defun row-col-to-point (row col)
-  (save-excursion
-    (goto-line row)
-    (forward-char col)
-    (point)))
-
-(defpvs select-pvs-subterm browse (fname row col)
-  "Select a subterm containing point"
-  (interactive (list (current-pvs-file)
-		     (current-line-number)
-		     (current-column)))
-  (let* ((slist-json
-	  (pvs-file-send-and-wait (format "(get-subterms-at-place \"%s\" %d %d t)"
-				      fname row col)
-				  nil 'subterms '(or string null)))
-	 (slist (when slist-json (json-read-from-string slist-json))))
-    (if slist
-	(let ((sterm (x-popup-menu
-		      t (list "Subterms"
-			      (cons "Subterms"
-				    (cl-mapcar (lambda (x) (cons x x))
-					       slist))))))))))
+  (defpvs select-pvs-subterm browse (fname row col)
+	  "Select a subterm containing point"
+	  (interactive (list (current-pvs-file)
+			     (current-line-number)
+			     (current-column)))
+	  (let* ((slist-json
+		  (pvs-file-send-and-wait (format "(get-subterms-at-place \"%s\" %d %d t)"
+					      fname row col)
+					  nil 'subterms '(or string null)))
+		 (slist (when slist-json (json-read-from-string slist-json))))
+	    (if slist
+		(let ((sterm (x-popup-menu
+			      t (list "Subterms"
+				      (cons "Subterms"
+					    (cl-mapcar (lambda (x) (cons x x))
+						       slist))))))))))
+  )
