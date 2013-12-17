@@ -633,7 +633,7 @@
       (when *pvs-emacs-interface*
 	(let* ((*output-to-emacs*
 		;; action & result & label & sequent
-		(format nil "~%:pvs-prfst ~a :end-pvs-prfst"
+		(format nil ":pvs-prfst ~a :end-pvs-prfst"
 		  (write-to-temp-file ps-json))))
 	  (to-emacs)))
       ;;(format t "~%output-proofstate called: ~a~%" *ps-control-info*)
