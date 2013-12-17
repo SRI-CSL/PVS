@@ -1099,7 +1099,7 @@
 				   (format nil "~a: ~a" (id obj) (type obj))))))
 	    (:decl-file . ,(unless (skolem-constant? obj)
 				   (let ((th (module (declaration obj))))
-				     (unless th (break "No module?"))
+				     ;;(unless th (break "No module?"))
 				     (when th (theory-filename th)))))
 	    (:decl-place . ,(unless (skolem-constant? obj)
 				    (place-list (declaration obj)))))
