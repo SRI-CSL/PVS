@@ -94,6 +94,7 @@
 		(make-view-node
 		 :place (place new)
 		 :term (if (and (name? new)
+				(name? old)
 				(not (eq (id new) (id old))))
 			   (copy old :id (id new))
 			   old))))
