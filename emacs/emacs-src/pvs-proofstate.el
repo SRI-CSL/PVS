@@ -20,6 +20,9 @@
     
 ;; This is called from pvs-ilisp when the prover provides a proofstate
 
+(unless (featurep 'xemacs)
+  (require 'json))
+
 (defun pvs-proofstate (fname)
   ;; proofstate is:
   ;; ((action . string)     - optional
@@ -38,48 +41,50 @@
   ;;  (names-info . names-info) - see
   (unless pvs-in-checker
     (error "Not in proof checker"))
-  (let* ((ps (save-excursion
-	       (set-buffer (find-file-noselect fname))
-	       (json-read-from-string (buffer-string))))
-	 (commentary (cdr (assq 'commentary ps)))
-	 (action (cdr (assq 'action ps)))
-	 (num-subgoals (cdr (assq 'num-subgoals ps)))
-	 (label (cdr (assq 'label ps)))
-	 (comment (cdr (assq 'comment ps)))
-	 (sequent (cdr (assq 'sequent ps)))
-	 ;;(prframe (get-proofstate-frame))
-	 )
-    (pvs-proofstate-display)
-    ;;(select-frame prframe)
-    (setq ppp ps)
-    (display-proofstate-commentary commentary)
-    (when (get-buffer "Proofstate")
-      (with-current-buffer "Proofstate"
-	(erase-buffer)
-	(when action
-	  (put-text-property 0 (length action)
-			     'face 'proofstate-action-face action)
-	  (insert action)
-	  (insert "\n"))
-	(when num-subgoals
-	  (let ((yields (if (= num-subgoals 1)
-			    "this simplifies to:"
-			    (format "this yields %d subgoals:" num-subgoals))))
-	    (put-text-property 0 (length yields)
-			       'face 'proofstate-yields-face yields)
-	    (insert yields))
-	  (insert "\n\n"))
-	(let ((labelstr (format "%s :" label)))
-	  (put-text-property 0 (length labelstr)
-			     'face 'proofstate-label-face labelstr)
-	  (insert labelstr))
-	(when comment
-	  (put-text-property 0 (length comment)
-			     'face 'proofstate-comment-face comment)
-	  (insert comment))
-	(insert "\n")
-	(insert-proofstate-sequent sequent)
-	(goto-char (point-min))))))
+  (if (featurep 'xemacs)
+      (message "Proofstate displays not yet supported in XEmacs")
+      (let* ((ps (save-excursion
+		   (set-buffer (find-file-noselect fname))
+		   (json-read-from-string (buffer-string))))
+	     (commentary (cdr (assq 'commentary ps)))
+	     (action (cdr (assq 'action ps)))
+	     (num-subgoals (cdr (assq 'num-subgoals ps)))
+	     (label (cdr (assq 'label ps)))
+	     (comment (cdr (assq 'comment ps)))
+	     (sequent (cdr (assq 'sequent ps)))
+	     ;;(prframe (get-proofstate-frame))
+	     )
+	(pvs-proofstate-display)
+	;;(select-frame prframe)
+	(setq ppp ps)
+	(display-proofstate-commentary commentary)
+	(when (get-buffer "Proofstate")
+	  (with-current-buffer "Proofstate"
+	    (erase-buffer)
+	    (when action
+	      (put-text-property 0 (length action)
+				 'face 'proofstate-action-face action)
+	      (insert action)
+	      (insert "\n"))
+	    (when num-subgoals
+	      (let ((yields (if (= num-subgoals 1)
+				"this simplifies to:"
+				(format "this yields %d subgoals:" num-subgoals))))
+		(put-text-property 0 (length yields)
+				   'face 'proofstate-yields-face yields)
+		(insert yields))
+	      (insert "\n\n"))
+	    (let ((labelstr (format "%s :" label)))
+	      (put-text-property 0 (length labelstr)
+				 'face 'proofstate-label-face labelstr)
+	      (insert labelstr))
+	    (when comment
+	      (put-text-property 0 (length comment)
+				 'face 'proofstate-comment-face comment)
+	      (insert comment))
+	    (insert "\n")
+	    (insert-proofstate-sequent sequent)
+	    (goto-char (point-min)))))))
 
 (defun display-proofstate-commentary (commentary)
   (when (and commentary
