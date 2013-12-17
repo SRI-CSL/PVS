@@ -481,58 +481,40 @@ BUFFER is the buffer speedbar is requesting buttons for."
   :group 'pvs-mode-faces)
 
 (defface proofstate-commentary-face
-    `((((class color) (background light))
-       :background "cyan1" :foreground "black")
-      (((class color) (background dark))
-       :background "darkblue" :foreground "white"))
+    `()
   "Face for proofstate commentaries."
   :group 'pvs-mode-faces)
 
 (defface proofstate-action-face
-    `((((class color) (background light))
-       :background "ivory2" :foreground "black")
-      (((class color) (background dark))
-       :background "darkblue" :foreground "white"))
+    `()
   "Face for proofstate actions."
   :group 'pvs-mode-faces)
 
 (defface proofstate-yields-face
-    `((((class color) (background light))
-       :background "pink" :foreground "black")
-      (((class color) (background dark))
-       :background "darkblue" :foreground "white"))
+    `()
   "Face for proofstate yields messages."
   :group 'pvs-mode-faces)
 
 (defface proofstate-label-face
-    `((((class color) (background light))
-       :background "yellow" :foreground "black")
-      (((class color) (background dark))
-       :background "darkblue" :foreground "white"))
+    `()
   "Face for proofstate labels."
   :group 'pvs-mode-faces)
 
 (defface proofstate-formula-face
-    `((((class color) (background light))
-       :background "ivory2" :foreground "black")
-      (((class color) (background dark))
-       :background "darkblue" :foreground "white"))
+    `()
   "Face for proofstate formulas."
   :group 'pvs-mode-faces)
 
 (defface proofstate-formula-changed-label-face
     `((((class color) (background light))
-       :background "light green" :foreground "red")
+       (:foreground "red"))
       (((class color) (background dark))
-       :background "darkblue" :foreground "red"))
+       (:foreground "red")))
   "Face for proofstate formula changed labels."
   :group 'pvs-mode-faces)
 
 (defface proofstate-formula-unchanged-label-face
-    `((((class color) (background light))
-       :background "white" :foreground "navy")
-      (((class color) (background dark))
-       :background "darkblue" :foreground "white"))
+    `()
   "Face for proofstate formula unchanged labels."
   :group 'pvs-mode-faces)
 
