@@ -295,9 +295,10 @@
     ,list))
 
 (defmacro commentary (string &rest args)
-  `(let ((com (format nil ,string ,@args)))
-     (push com *prover-commentary*) 
-     (format t "~a" com)))
+  `(unless *suppress-printing*
+     (let ((com (format nil ,string ,@args)))
+       (push com *prover-commentary*) 
+       (format t "~a" com))))
 
 (defmacro error-format-if (string &rest args)
   `(if *suppress-printing*
