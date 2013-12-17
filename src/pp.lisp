@@ -1933,27 +1933,35 @@ bind tighter.")
     (unicode '∧)
     (short '&)
     (lower '|and|)
-    (t 'AND)))
+    (t (if (symbol-equal (id (operator ex)) 'AND)
+	   'AND
+	   (operator ex)))))
 
 (defmethod pp-infix-operator ((ex infix-disjunction))
   (case *ppcase*
     (unicode '∨)
     (lower '|or|)
-    (t 'OR)))
+    (t (if (symbol-equal (id (operator ex)) 'OR)
+	   'OR
+	   (operator ex)))))
 
 (defmethod pp-infix-operator ((ex infix-implication))
   (case *ppcase*
     (unicode '⇒)
     (short '=>)
     (lower '|implies|)
-    (t 'IMPLIES)))
+    (t (if (symbol-equal (id (operator ex)) 'IMPLIES)
+	   'IMPLIES
+	   (operator ex)))))
 
 (defmethod pp-infix-operator ((ex infix-iff))
   (case *ppcase*
     (unicode '⇔)
     (short '<=>)
     (lower '|iff|)
-    (t 'IFF)))
+    (t (if (symbol-equal (id (operator ex)) 'IFF)
+	   'IFF
+	   (operator ex)))))
 
 (defmethod pp-infix-operator ((ex infix-disequation))
   (case *ppcase*
