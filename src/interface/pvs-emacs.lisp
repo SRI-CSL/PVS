@@ -592,8 +592,7 @@
       ;;(format t "~%add-psinfo: Setting result to ~a~%" result)
       (setf (psinfo-json-result psi) result)
       ;;(format t "~%add-psinfo: opening res-gate~%")
-      (mp:open-gate (psinfo-res-gate psi))))
-  ps)
+      (mp:open-gate (psinfo-res-gate psi)))))
 
 (defmethod prover-read :around ()
   (cond (*ps-control-info*
@@ -652,7 +651,8 @@
       ;; What should be done here?
       nil)
     (when *ps-control-info*
-      (add-psinfo *ps-control-info* *top-proofstate* done-str))))
+      (add-psinfo *ps-control-info* *top-proofstate* done-str)
+      ps)))
 
 ;;; Creates a json form:
 ;;;   {"commentary" : [ strings ],
