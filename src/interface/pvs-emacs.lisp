@@ -588,7 +588,7 @@
   (mp:with-process-lock ((psinfo-lock psi))
     (let ((result (if done-str
 		      `(("result" . ,done-str))
-		      (pvs2json ps))))
+		      ps-json)))
       ;;(format t "~%add-psinfo: Setting result to ~a~%" result)
       (setf (psinfo-json-result psi) result)
       ;;(format t "~%add-psinfo: opening res-gate~%")
