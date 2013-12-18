@@ -141,10 +141,10 @@ class PVSCommunicator:
         self._validateJSON(request)
         jRequest = json.dumps(request)
         lg = PVSCommunicationLogger()
-        lg.log(constants.JSONLOG, "=> %s"%(jRequest,))
+        lg.log(constants.JSONLOG, "=> %s\n"%(jRequest,))
         logging.debug("JSON request: %s", jRequest)
         sResult = self.pvsProxy.pvs.request(jRequest, self.ideURL)
-        lg.log(constants.JSONLOG, "<= %s"%(sResult,))
+        lg.log(constants.JSONLOG, "<= %s\n"%(sResult,))
         logging.debug("JSON result: %s", sResult)
         result = json.loads(sResult)
         self._validateJSON(result)
@@ -168,11 +168,11 @@ class PVSCommunicator:
             message = json.loads(jsonString)
             self._validateJSON(message)
             lg = PVSCommunicationLogger()
-            lg.log(constants.JSONLOG, "<= %s"%(message,))
+            lg.log(constants.JSONLOG, "<= %s\n"%(message,))
             result = self.processMessage(message)
             logging.debug("Sending Back: %s", result)
             self._validateJSON(result)
-            lg.log(constants.JSONLOG, "=> %s"%(result,))
+            lg.log(constants.JSONLOG, "=> %s\n"%(result,))
             return result
         #TODO: The return vlaues for errors should be different and json-based
         except TypeError as err:
@@ -418,7 +418,8 @@ class PVSCommandManager:
     def changeContext(self, newContext):
         logging.debug("User requested to change context to: %s", newContext)
         result = self._sendCommand("change-context", newContext)
-        result = util.normalizePath(result)
+        if result is not None:
+            result = util.normalizePath(result)
         return result
     
     def startProver(self, theoryName, formulaName):

@@ -121,7 +121,7 @@ class MainFrameMenu(wx.MenuBar):
             
     def onRecentContextSelected(self, event):
         context = self._recentContexts[event.GetId()]
-        PVSCommandManager().changeContext(context)
+        pvscomm.PVSCommandManager().changeContext(context)
         
     def onRecentFileSelected(self, event):
         fullname = self._recentFiles[event.GetId()]

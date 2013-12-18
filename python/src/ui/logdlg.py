@@ -36,11 +36,11 @@ class PVSCommunicationLogDialog(wx.Frame):
                 for mes in message:
                     self.logsTextCtrl.SetDefaultStyle(self._attrs[self._attrIndex])
                     self._attrIndex = 1 - self._attrIndex
-                    self.logsTextCtrl.AppendText(mes + constants.NEWLINE)
+                    self.logsTextCtrl.AppendText(mes)
             else:
                 self.logsTextCtrl.SetDefaultStyle(self._attrs[self._attrIndex])
                 self._attrIndex = 1 - self._attrIndex
-                self.logsTextCtrl.AppendText(str(message) + constants.NEWLINE)
+                self.logsTextCtrl.AppendText(str(message))
                 
         
     def onCloseButton(self, event):
@@ -50,7 +50,7 @@ class PVSCommunicationLogDialog(wx.Frame):
         
     def onClearButton(self, event):
         self._attrIndex = 0
-        pvscomm.PVSCommunicationLogger().clear(loggerName)
+        pvscomm.PVSCommunicationLogger().clear(self.loggerName)
         self.logsTextCtrl.Clear()
         event.Skip()
         

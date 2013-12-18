@@ -21,13 +21,7 @@ def onChangeContext(event):
     preferences = preference.Preferences()
     newContext = frame.chooseDirectory("Select a directory", preferences.getRecentContexts()[0])
     if newContext is not None:
-        if remgr.RichEditorManager().ensureFilesAreSavedToPoceed(): 
-            if pvscomm.PVSCommandManager().pvsMode == PVS_MODE_LISP:
-                pvscomm.PVSCommandManager().changeContext(newContext)
-            preferences.setRecentContext(newContext)
-            pub.sendMessage(PUB_UPDATEPVSCONTEXT)
-            frame.restoreOpenFiles()
-            logging.info("New context is set to %s", newContext)
+        pvscomm.PVSCommandManager().changeContext(newContext)
 
 def onCreateNewFile(event):
     """called to handle 'create new file' request"""

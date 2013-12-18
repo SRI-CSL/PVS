@@ -105,6 +105,9 @@ class ProofManagerPlugin(PluginPanel):
 
     def proofInformationReceived(self, information):
         assert information is not None
+        if isinstance(information, str) or isinstance(information, unicode):
+            logging.warn("information should be a dictionary and not a string")
+            information = json.loads(information)
         logging.debug("information received: %s", information)
         result = information["result"] if "result" in information else None
         if result == "Q.E.D.":
@@ -113,6 +116,7 @@ class ProofManagerPlugin(PluginPanel):
         elif result == "Unfinished":
             logging.info("Proof Unfinished")
             return
+        commentary = information["commentary"] if "commentary" in information else None        
         action = information["action"] if "action" in information else None        
         nsubgoals = information["num_subgoals"] if "num_subgoals" in information else None
         jsequent = information["sequent"]
@@ -124,6 +128,9 @@ class ProofManagerPlugin(PluginPanel):
         header.append(("Result: ", "None" if result is None else result))
         header.append(("Number of Subgoals: ", "0" if nsubgoals is None else str(nsubgoals)))
         header.append(("Label: ", label))
+        if commentary is not None:
+            lg = pvscomm.PVSCommunicationLogger()
+            lg.log(constants.COMMENTARYLOG, commentary)
 
         for key, value in header:
             self._appendTextToOut(key, wx.BLUE, newLine=False)
