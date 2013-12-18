@@ -583,16 +583,13 @@
   cmd-gate
   res-gate)
 
-(defun add-psinfo (psi ps-json &optional done-str)
+(defun add-psinfo (psi ps-json)
   #+allegro
   (mp:with-process-lock ((psinfo-lock psi))
-    (let ((result (if done-str
-		      `(("result" . ,done-str))
-		      ps-json)))
-      ;;(format t "~%add-psinfo: Setting result to ~a~%" result)
-      (setf (psinfo-json-result psi) result)
-      ;;(format t "~%add-psinfo: opening res-gate~%")
-      (mp:open-gate (psinfo-res-gate psi)))))
+    ;;(format t "~%add-psinfo: Setting result to ~a~%" result)
+    (setf (psinfo-json-result psi) ps-json)
+    ;;(format t "~%add-psinfo: opening res-gate~%")
+    (mp:open-gate (psinfo-res-gate psi))))
 
 (defmethod prover-read :around ()
   (cond (*ps-control-info*
@@ -639,7 +636,7 @@
       ;; *ps-control-info* is used for XML-RPC control - set when the prover
       ;; starts or a command is given for a running proof.
       (when *ps-control-info*
-	(add-psinfo *ps-control-info* ps))
+	(add-psinfo *ps-control-info* ps-json))
       (call-next-method))))
 
 (defun finish-proofstate (ps)
@@ -651,8 +648,9 @@
       ;; What should be done here?
       nil)
     (when *ps-control-info*
-      (add-psinfo *ps-control-info* *top-proofstate* done-str)
-      ps)))
+      (let ((ps-json `(("result" . ,done-str))))
+	(add-psinfo *ps-control-info* ps-json)))
+    ps))
 
 ;;; Creates a json form:
 ;;;   {"commentary" : [ strings ],
