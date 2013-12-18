@@ -199,6 +199,7 @@ class Sequent:
         formula = item[Sequent.FORMULA]
         labels = [str(i) for i in item[Sequent.LABELS]]
         changed = item[Sequent.CHANGED]
+        names_info = item["names-info"] #TODO: This should be used for tooltip stuff
         slabels = ", ".join(labels)
         slabels = "{%s}"%slabels if changed else "[%s]"%slabels
         separator = "\n    " if len(labels) > 1 else "  "

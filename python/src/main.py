@@ -47,25 +47,25 @@ class PVSEditorApp(wx.App):
 
 def readCommandLineArguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pvs", nargs=1, help="specify the PVS URL", dest="pvsURL")
-    parser.add_argument("--url", nargs=1, help="specify the GUI URL", dest="guiURL")
-    parser.add_argument("--ll", nargs=1, help="set the logging level to one of: debug, info, warning, error", dest="level")
+    parser.add_argument("-pvs", nargs=1, help="specify the PVS URL", dest="pvsURL")
+    parser.add_argument("-url", nargs=1, help="specify the GUI URL", dest="guiURL")
+    parser.add_argument("-ll", nargs=1, help="set the logging level to one of: debug, info, warning, error", dest="level")
     args = parser.parse_args()
     return args
 
 def processCommandLineArguments(args):
-    pvsURL = args.pvsURL
-    ideURL = args.guiURL
-    logLevel = args.level
+    pvsURLs = args.pvsURL
+    ideURLs = args.guiURL
+    logLevels = args.level
     cfg = config.PVSIDEConfiguration()
-    if pvsURL is not None:
-        cfg.pvsURL = pvsURL
-    if ideURL is not None:
-        cfg.ideURL = ideURL
-    if logLevel is not None:
+    if pvsURLs is not None:
+        cfg.pvsURL = pvsURLs[0]
+    if ideURLs is not None:
+        cfg.ideURL = ideURLs[0]
+    if logLevels is not None:
         levels = {"debug": logging.DEBUG, "info": logging.INFO, "warning": logging.WARN, "warn": logging.WARN, "error": logging.ERROR, "critical": logging.CRITICAL}
-        if logLevel in levels:
-            logging.getLogger(constants.LROOT).setLevel(levels[logLevel])
+        if logLevels[0] in levels:
+            logging.getLogger(constants.LROOT).setLevel(levels[logLevel[0]])
             
 def processConfigFile(applicationFolder):
     cfg = config.PVSIDEConfiguration()

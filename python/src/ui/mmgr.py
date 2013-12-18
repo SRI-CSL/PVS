@@ -23,6 +23,7 @@ class MainFrameMenu(wx.MenuBar):
         self.addEditMenu()
         self.addViewMenu()
         self.addPVSMenu()
+        self.addHelpMenu()
         self.setBindings()
         pub.subscribe(self.update, PUB_UPDATEMENUBAR)
         pub.subscribe(self.showPlugin, PUB_SHOWPLUGIN)
@@ -85,6 +86,13 @@ class MainFrameMenu(wx.MenuBar):
         self.pvsDialogMenuItem = pvsMenu.Append(wx.ID_ANY, "PVS Log...", EMPTY_STRING, wx.ITEM_NORMAL)        
         self.Append(pvsMenu, PVS_U)
         
+    def addHelpMenu(self):
+        """Adding menu items to Help menu"""
+        helpMenu = wx.Menu()
+        self.helpMenuItem =  helpMenu.Append(wx.ID_ANY, self._makeLabel("PVS IDE Help", None, True), EMPTY_STRING, wx.ITEM_NORMAL)
+        self.Append(helpMenu, "Help")
+
+    
     def prepareRecentFilesSubMenu(self):
         try:
             while True: #TODO: Find out if there is a better way to remove all the items from a menu
@@ -162,6 +170,7 @@ class MainFrameMenu(wx.MenuBar):
         frame.Bind(wx.EVT_MENU, onChangeContext, self.changeContextMenuItem)
         frame.Bind(wx.EVT_MENU, onTypecheck, self.typecheckMenuItem)
         frame.Bind(wx.EVT_MENU, onShowPVSCommunicationLog, self.pvsDialogMenuItem)
+        frame.Bind(wx.EVT_MENU, onShowHelpFrame, self.helpMenuItem)
         
     def update(self, parameters):
         if OPENFILES in parameters:

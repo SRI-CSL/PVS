@@ -1,0 +1,42 @@
+<h2>Table of contents:</h2>
+<ul>
+<li>Requirements</li>
+<li>Running the GUI</li>
+<li>Entering Lisp commands</li>
+<li>Menus</li>
+<li>Proof Manager</li>
+</ul>
+<h3>Requirements</h3>
+<div>The PVS GUi is a wxPython application. In order to run it properly, you will need to install Python 2.7 or older (but not Python 3.x). You will also need the following packages:</div>
+<div>
+<p>&nbsp;</p>
+<table border="1" align="center">
+<tbody>
+<tr>
+<td>&nbsp;<strong>Package</strong></td>
+<td>&nbsp;<strong>Website</strong></td>
+</tr>
+<tr>
+<td>&nbsp;wx (version 2.8 or older) with unicode support&nbsp;</td>
+<td>&nbsp;http://www.wxpython.org</td>
+</tr>
+<tr>
+<td>&nbsp;pyparsing</td>
+<td>&nbsp;http://pyparsing.wikispaces.com</td>
+</tr>
+<tr>
+<td>&nbsp;jsonschema</td>
+<td>&nbsp;https://github.com/Julian/jsonschema&nbsp;</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3>Running the GUI</h3>
+<p>The GUI communicates with a running instance of PVS via xmlrpc. By default, the GUI assumes that PVS is running on localhost:22334. Therefore you will need to start PVS using "pvs -port 22334". You can change the default port that the GUI assumes to communicate with PVS. For instance, if PVS is using port number 22400, then you can use "pvs-gui -pvs http://localhost:22400". For more information on how to run the GUI, try "pvs-gui --help".</p>
+<h3>Entering Lisp commands</h3>
+<div>When the GUI is up and running, you can enter any lisp command (e.g. typecheck, change-context) using the console that appears at the bottom of the GUI by default.</div>
+<h3>Menus</h3>
+<div>The GUI provides a main menu with a number of options to communicate with PVS (e.g. changing the context). Furthermore, you can right-click on the open files and contexts to view a context menu with proper options. For instance, you can change the context by righ-clicking on any context/directory on the file tree and choose "Make Active Context"</div>
+<h3>Proof Manager</h3>
+<p>The GUI hides and shows the differnt boxes according to the PVS mode. Once a formula is selected to be proved, the GUI enters the proof mode with the Proof Manager appearing on the right side. You will be able to enter different proof commands using the Proof Manager.</p>
+<p>&nbsp;</p>

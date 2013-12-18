@@ -76,7 +76,7 @@ class PluginManager:
         if PluginManager.VISIBLE in pluginDefinition:
             self.showPlugin(name, pvscomm.PVSCommandManager().pvsMode in pluginDefinition[PluginManager.VISIBLE])
         else:
-            self.showPlugin(name, True)            
+            self.showPlugin(name, False)            
         auiManager.Update()
         pub.sendMessage(PUB_ADDITEMTOVIEWMENU, name=name, callBackFunction=(lambda ce: self.togglePluginVisibility(name)))
         return None

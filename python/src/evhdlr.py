@@ -4,6 +4,7 @@
 import util
 import logging
 from ui.frmgr import FindReplaceManager
+from ui.help import HelpFrame
 import pvscomm
 from constants import *
 import wx
@@ -179,4 +180,6 @@ def onShowPVSCommunicationLog(event):
     dlg = ui.logdlg.PVSCommunicationLogDialog(util.getMainFrame(), "PVS Communication Log", JSONLOG)
     dlg.Show()
 
-
+def onShowHelpFrame(event):
+    help = HelpFrame()
+    help.Show()
