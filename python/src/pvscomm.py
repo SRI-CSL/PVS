@@ -28,23 +28,32 @@ import logging
 import os.path
 from wx.lib.pubsub import setupkwargs, pub
 
-
 class PVSCommunicationLogger:
     __shared_state = {}
     
     def __init__(self):
         self.__dict__ = self.__shared_state
-        if not "logList" in self.__dict__:
-            self.clear()
+        if not "logName" in self.__dict__:
+            self.logName = {}
+            self.MAXNUMBEROFLOGS = 1000
+            
+    def createLogger(self, name):
+        self.logName[name] = []
 
-    def log(self, message):
+    def log(self, name, message):
         #message = "%d %s"%(time.time(), message)
-        self.logList.append(str(message))
-        if len(self.logList) > 1000:
-            del self.logList[0]
+        self.logName[name].append(str(message))
+        pub.sendMessage(constants.PUB_APPENDLOG, name=name, message=message)
+        if len(self.logName[name]) > self.MAXNUMBEROFLOGS:
+            del self.logName[name][0]
         
-    def clear(self):
-        self.logList = []
+    def clear(self, name):
+        self.logName[name] = []
+        
+    def get(self, name):
+        return self.logName[name]
+    
+    
 
 # Restrict to a particular path.
 class RequestHandler(SimpleXMLRPCRequestHandler):
@@ -79,11 +88,14 @@ class PVSCommunicator:
         if not "counter" in self.__dict__:
             logging.info("Initializing PVSCommunicator with (%s, %s)", host,port)
             self.counter = 0
+            self.guiServer = None
             from config import PVSIDEConfiguration
+            lg = PVSCommunicationLogger()
+            lg.createLogger(constants.JSONLOG)
+            lg.createLogger(constants.COMMENTARYLOG)
             cfg = PVSIDEConfiguration()
             self.ideURL = cfg.ideURL
             self.pvsURL = cfg.pvsURL
-            self.miniLog = []
             jsonschemaFullname = os.path.join(cfg.applicationFolder, "src/pvs-gui.json")
             if os.path.exists(jsonschemaFullname):
                 with open(jsonschemaFullname, 'r') as jsonschemaFile:
@@ -96,16 +108,20 @@ class PVSCommunicator:
         parsedURL = urlparse(self.ideURL)
         host = parsedURL.hostname
         port = parsedURL.port
-        self.guiServer = SimpleXMLRPCServer((host, port), requestHandler=RequestHandler)
-        
-        self.guiServer.register_function(self.onPVSMessageReceived, PVSCommunicator.REQUEST)
-        self.serverThread = threading.Thread(target=self.guiServer.serve_forever)
-        self.serverThread.start()
-        self.pvsProxy = xmlrpclib.ServerProxy(self.pvsURL)
+        try:
+            self.guiServer = SimpleXMLRPCServer((host, port), requestHandler=RequestHandler)
+            self.guiServer.register_function(self.onPVSMessageReceived, PVSCommunicator.REQUEST)
+            self.serverThread = threading.Thread(target=self.guiServer.serve_forever)
+            self.serverThread.start()
+            self.pvsProxy = xmlrpclib.ServerProxy(self.pvsURL)
+        except Exception as e:
+            logging.error("Error starting the xmlrpc server: %s", e)
+            util.getMainFrame().showError("You may be running another instance of this application", "Error Starting the XMLRPC Server")
         
             
     def shutdown(self):
-        self.guiServer.shutdown()
+        if self.guiServer is not None:
+            self.guiServer.shutdown()
         
     def _validateJSON(self, jsonObject):
         import jsonschema
@@ -124,10 +140,11 @@ class PVSCommunicator:
         request = {PVSCommunicator.METHOD: method, PVSCommunicator.PARAMS: params, PVSCommunicator.ID: reqid}
         self._validateJSON(request)
         jRequest = json.dumps(request)
-        PVSCommunicationLogger().log("=> %s"%(jRequest,))
+        lg = PVSCommunicationLogger()
+        lg.log(constants.JSONLOG, "=> %s\n"%(jRequest,))
         logging.debug("JSON request: %s", jRequest)
         sResult = self.pvsProxy.pvs.request(jRequest, self.ideURL)
-        PVSCommunicationLogger().log("<= %s"%(sResult,))
+        lg.log(constants.JSONLOG, "<= %s\n"%(sResult,))
         logging.debug("JSON result: %s", sResult)
         result = json.loads(sResult)
         self._validateJSON(result)
@@ -150,11 +167,12 @@ class PVSCommunicator:
         try:
             message = json.loads(jsonString)
             self._validateJSON(message)
-            PVSCommunicationLogger().log("<= %s"%(message,))
+            lg = PVSCommunicationLogger()
+            lg.log(constants.JSONLOG, "<= %s\n"%(message,))
             result = self.processMessage(message)
             logging.debug("Sending Back: %s", result)
             self._validateJSON(result)
-            PVSCommunicationLogger().log("=> %s"%(result,))
+            lg.log(constants.JSONLOG, "=> %s\n"%(result,))
             return result
         #TODO: The return vlaues for errors should be different and json-based
         except TypeError as err:
@@ -284,9 +302,10 @@ class PVSCommandManager:
                 end = err.errorObject[PVSCommunicator.END] if PVSCommunicator.END in err.errorObject else None
                 pub.sendMessage(constants.PUB_ERRORLOCATION, begin=begin, end=end)
         elif isinstance(err, Exception):
-            raise err
-            #errMessage = err.message
+            logging.debug("Unknown Exception: %s", err)
+            errMessage = str(err)
         else:
+            logging.debug("Unknown Thrown Object: %s", err)
             errMessage = str(err)
         logging.error("Error: %s", errMessage)
         util.getMainFrame().showError(errMessage, title)
@@ -300,9 +319,15 @@ class PVSCommandManager:
             if PVSCommunicator.XMLRPCERROR in jsonResult:
                 errorObj = jsonResult[PVSCommunicator.XMLRPCERROR]
                 errorObject = {}
-                errorObject[PVSCommunicator.CODE] = int(errorObj[PVSCommunicator.CODE])
-                errorObject[PVSCommunicator.MESSAGE] = errorObj[PVSCommunicator.MESSAGE]
-                errorObject[PVSCommunicator.DATA] = errorObj[PVSCommunicator.DATA] if PVSCommunicator.DATA in errorObj else None
+                if isinstance(errorObj, str) or isinstance(errorObj, unicode):
+                    logging.error("jsonResult[xmlrpc_error] should be a dictionary and not a string")
+                    errorObject[PVSCommunicator.CODE] = -100
+                    errorObject[PVSCommunicator.MESSAGE] = errorObj
+                    errorObject[PVSCommunicator.DATA] = None
+                else:
+                    errorObject[PVSCommunicator.CODE] = int(errorObj[PVSCommunicator.CODE])
+                    errorObject[PVSCommunicator.MESSAGE] = errorObj[PVSCommunicator.MESSAGE]
+                    errorObject[PVSCommunicator.DATA] = errorObj[PVSCommunicator.DATA] if PVSCommunicator.DATA in errorObj else None
                 raise util.PVSException(message=errorObject[PVSCommunicator.MESSAGE], errorObject=errorObject)
             result = jsonResult[PVSCommunicator.JSONRPCRESULT]
             if isinstance(result, str) or isinstance(result, unicode):
@@ -393,7 +418,8 @@ class PVSCommandManager:
     def changeContext(self, newContext):
         logging.debug("User requested to change context to: %s", newContext)
         result = self._sendCommand("change-context", newContext)
-        result = util.normalizePath(result)
+        if result is not None:
+            result = util.normalizePath(result)
         return result
     
     def startProver(self, theoryName, formulaName):

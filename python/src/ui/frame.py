@@ -76,7 +76,10 @@ class MainFrame(wx.Frame):
             openFiles = rmgr.getOpenFileNames()
             preferences.setListOfOpenFiles(openFiles)
             preferences.savePreferences()
-            self.auiManager.UnInit()
+            try:
+                self.auiManager.UnInit()
+            except:
+                pass
             PVSCommunicator().shutdown()            
             wx.GetApp().ExitMainLoop()
 

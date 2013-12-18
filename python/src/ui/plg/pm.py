@@ -30,6 +30,7 @@ class ProofManagerPlugin(PluginPanel):
         
         undoButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('undo.gif'), shortHelpString="Undo the last command")
         postponeButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('rightarrow.png'), shortHelpString="Postpone the current subgoal")
+        commentaryButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('commentary.png'), shortHelpString="Display the commentary box")
         toolbar.AddSeparator()
         quitButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('quit.png'), shortHelpString="Quit the prover")
         mainSizer.Add(toolbar)
@@ -54,6 +55,7 @@ class ProofManagerPlugin(PluginPanel):
         self.SetSizer(mainSizer)
         
         toolbar.Realize()
+        self.commentaryDialog = ui.logdlg.PVSCommunicationLogDialog(util.getMainFrame(), "Proof Commentary", constants.COMMENTARYLOG)
 
         #self.Bind(wx.EVT_TEXT_ENTER, self.onCommandEntered, self.commandTextControl)
         self.Bind(wx.EVT_TEXT, self.onCommand, self.commandTextControl)
@@ -61,6 +63,7 @@ class ProofManagerPlugin(PluginPanel):
         self.historyBox.Bind(wx.EVT_COMBOBOX, self.OnSelectHistory)
         self.Bind(wx.EVT_TOOL, self.OnUndoLastCommand, undoButton)
         self.Bind(wx.EVT_TOOL, self.OnPostponeCommand, postponeButton)
+        self.Bind(wx.EVT_TOOL, self.OnCommentaryButtonClicked, commentaryButton)
         self.Bind(wx.EVT_TOOL, self.OnQuitProver, quitButton)
         pub.subscribe(self.proofInformationReceived, constants.PUB_PROOFINFORMATIONRECEIVED)
         self.Layout()
@@ -76,6 +79,10 @@ class ProofManagerPlugin(PluginPanel):
 
     def OnPostponeCommand(self, event):
         pvscomm.PVSCommandManager().proofCommand("(postpone)")
+        event.Skip()
+
+    def OnCommentaryButtonClicked(self, event):
+        self.commentaryDialog.Show()
         event.Skip()
 
     def OnQuitProver(self, event):
@@ -98,6 +105,9 @@ class ProofManagerPlugin(PluginPanel):
 
     def proofInformationReceived(self, information):
         assert information is not None
+        if isinstance(information, str) or isinstance(information, unicode):
+            logging.warn("information should be a dictionary and not a string")
+            information = json.loads(information)
         logging.debug("information received: %s", information)
         result = information["result"] if "result" in information else None
         if result == "Q.E.D.":
@@ -106,6 +116,7 @@ class ProofManagerPlugin(PluginPanel):
         elif result == "Unfinished":
             logging.info("Proof Unfinished")
             return
+        commentary = information["commentary"] if "commentary" in information else None        
         action = information["action"] if "action" in information else None        
         nsubgoals = information["num_subgoals"] if "num_subgoals" in information else None
         jsequent = information["sequent"]
@@ -117,6 +128,9 @@ class ProofManagerPlugin(PluginPanel):
         header.append(("Result: ", "None" if result is None else result))
         header.append(("Number of Subgoals: ", "0" if nsubgoals is None else str(nsubgoals)))
         header.append(("Label: ", label))
+        if commentary is not None:
+            lg = pvscomm.PVSCommunicationLogger()
+            lg.log(constants.COMMENTARYLOG, commentary)
 
         for key, value in header:
             self._appendTextToOut(key, wx.BLUE, newLine=False)
@@ -139,7 +153,7 @@ class ProofManagerPlugin(PluginPanel):
             command = text.strip()
             logging.info("Proof command entered: %s", command)
             pvscomm.PVSCommandManager().proofCommand(command)
-            self.commandTextControl.SetValue("")
+            self.commandTextControl.Clear()
         event.Skip()
 
     def onCommand(self, event):
