@@ -182,8 +182,7 @@ def onTypecheck(event):
 def onShowPVSCommunicationLog(event):
     """called to handle 'pvs communication logs' request"""
     logging.debug("Starting")
-    logList = pvscomm.PVSCommunicationLogger().logList
-    dlg = ui.logdlg.PVSCommunicationLogDialog(util.getMainFrame(), logList)
-    dlg.ShowModal()
+    dlg = ui.logdlg.PVSCommunicationLogDialog(util.getMainFrame(), "PVS Communication Log", JSONLOG)
+    dlg.Show()
 
 

@@ -19,6 +19,8 @@ DECLS = "decls"
 DECL = "decl"
 DECLFILE = "decl-file"
 DECLPLACE = "decl-place"
+JSONLOG = "json-log"
+COMMENTARYLOG = "commentary-log"
 
 LABEL_FILE = "File"
 LABEL_EDIT = "Edit"
@@ -86,6 +88,7 @@ PUB_ERRORLOCATION = "File.Error.Location"
 PUB_REMOVEANNOTATIONS = "File.Remove.Annotations"
 PUB_PREPARERECENTFILESMENU = "Prepare.Recent.Files.Menu"
 PUB_NAMESINFOUPDATE = "Names.Info.Updated"
+PUB_APPENDLOG = "Append.To.Log.Dialog"
 
 GROUP_TOOLS = "tools"
 

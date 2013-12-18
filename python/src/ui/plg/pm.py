@@ -30,6 +30,7 @@ class ProofManagerPlugin(PluginPanel):
         
         undoButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('undo.gif'), shortHelpString="Undo the last command")
         postponeButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('rightarrow.png'), shortHelpString="Postpone the current subgoal")
+        commentaryButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('commentary.png'), shortHelpString="Display the commentary box")
         toolbar.AddSeparator()
         quitButton = toolbar.AddTool(wx.ID_ANY, ui.images.getBitmap('quit.png'), shortHelpString="Quit the prover")
         mainSizer.Add(toolbar)
@@ -54,6 +55,7 @@ class ProofManagerPlugin(PluginPanel):
         self.SetSizer(mainSizer)
         
         toolbar.Realize()
+        self.commentaryDialog = ui.logdlg.PVSCommunicationLogDialog(util.getMainFrame(), "Proof Commentary", constants.COMMENTARYLOG)
 
         #self.Bind(wx.EVT_TEXT_ENTER, self.onCommandEntered, self.commandTextControl)
         self.Bind(wx.EVT_TEXT, self.onCommand, self.commandTextControl)
@@ -61,6 +63,7 @@ class ProofManagerPlugin(PluginPanel):
         self.historyBox.Bind(wx.EVT_COMBOBOX, self.OnSelectHistory)
         self.Bind(wx.EVT_TOOL, self.OnUndoLastCommand, undoButton)
         self.Bind(wx.EVT_TOOL, self.OnPostponeCommand, postponeButton)
+        self.Bind(wx.EVT_TOOL, self.OnCommentaryButtonClicked, commentaryButton)
         self.Bind(wx.EVT_TOOL, self.OnQuitProver, quitButton)
         pub.subscribe(self.proofInformationReceived, constants.PUB_PROOFINFORMATIONRECEIVED)
         self.Layout()
@@ -76,6 +79,10 @@ class ProofManagerPlugin(PluginPanel):
 
     def OnPostponeCommand(self, event):
         pvscomm.PVSCommandManager().proofCommand("(postpone)")
+        event.Skip()
+
+    def OnCommentaryButtonClicked(self, event):
+        self.commentaryDialog.Show()
         event.Skip()
 
     def OnQuitProver(self, event):
@@ -139,7 +146,7 @@ class ProofManagerPlugin(PluginPanel):
             command = text.strip()
             logging.info("Proof command entered: %s", command)
             pvscomm.PVSCommandManager().proofCommand(command)
-            self.commandTextControl.SetValue("")
+            self.commandTextControl.Clear()
         event.Skip()
 
     def onCommand(self, event):
