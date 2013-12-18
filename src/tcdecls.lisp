@@ -1628,7 +1628,10 @@
 			   (formals-sans-usings (module ndecl)))
 			 (decl-formals ndecl))))
     (assert (= (length actuals) (length formals)))
-    (check-positive-types-actuals* actuals formals cpostypes postypes)))
+    (check-positive-types-actuals* actuals formals cpostypes
+				   (if (eq (module ndecl) (current-theory))
+				       (intersection postypes cpostypes)
+				       postypes))))
 
 (defun check-positive-types-actuals* (actuals formals cpostypes postypes)
   (if (or (null actuals)
