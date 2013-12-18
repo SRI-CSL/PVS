@@ -290,8 +290,6 @@
 	   (scol (+ (elt place 1) rc))
 	   (erow (+ (elt place 2) rr))
 	   (ecol (+ (elt place 3) rc)))
-      (setq ppp (list place relrow relcol))
-      (setq rrr (list srow scol erow ecol))
       (cons (row-col-to-point srow scol)
 	    (row-col-to-point erow ecol))))
 
