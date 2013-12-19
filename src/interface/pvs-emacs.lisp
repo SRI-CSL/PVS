@@ -625,12 +625,13 @@
 (defmethod output-proofstate :around ((ps proofstate))
   (with-slots (label comment current-goal) ps
     (let* ((json:*lisp-identifier-name-to-json* #'identity)
-	   (ps-json (json:encode-json-to-string (pvs2json ps))))
+	   (ps-json (pvs2json ps))
+	   (ps-string (json:encode-json-to-string ps-json)))
       (when *pvs-emacs-interface*
 	(let* ((*output-to-emacs*
 		;; action & result & label & sequent
 		(format nil ":pvs-prfst ~a :end-pvs-prfst"
-		  (write-to-temp-file ps-json))))
+		  (write-to-temp-file ps-string))))
 	  (to-emacs)))
       ;;(format t "~%output-proofstate called: ~a~%" *ps-control-info*)
       ;; *ps-control-info* is used for XML-RPC control - set when the prover
