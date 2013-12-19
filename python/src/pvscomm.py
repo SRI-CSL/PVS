@@ -405,7 +405,7 @@ class PVSCommandManager:
                 if not os.path.isabs(declFile):
                     inf[constants.DECLFILE] = os.path.join(self.pvsContext, declFile)
             else:
-                logging.warn("decl-file is None in %s", inf)
+                logging.debug("decl-file is None in %s", inf)
         pub.sendMessage(constants.PUB_NAMESINFOUPDATE, fullname=fullname, information=information)
         logging.debug("name-info returned: %s", information)
         return information
