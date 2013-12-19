@@ -11,7 +11,7 @@
 
 ;; --------------------------------------------------------------------
 ;; PVS
-;; Copyright (C) 2006, SRI International.  All Rights Reserved.
+;; Copyright (C) 2006-2013, SRI International.  All Rights Reserved.
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
@@ -71,7 +71,7 @@
     (subseq excl::cl-release-date 0 end)))
 
 (eval-when (:execute :compile-toplevel :load-toplevel)
-  (defparameter *pvs-version* "6.0")
+  (defparameter *pvs-version* "6.1")
 
   ;; Not used in PVS sources, but may be useful for patches, strategies, etc.
   ;;(pushnew (intern (format nil "pvs~a" *pvs-version*) :keyword) *features*)
@@ -80,7 +80,7 @@
   (pushnew :pvs *features*)
   )
 
-(defparameter *binfile-version* 31)
+(defparameter *binfile-version* 32)
 
 (defvar *pvs-build-time* (get-universal-time)) ;; set on loading in operate-on-system
 
