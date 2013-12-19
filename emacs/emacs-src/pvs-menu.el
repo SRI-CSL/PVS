@@ -261,8 +261,7 @@
   (defun pvs-add-tooltips (fname)
     (interactive (list (current-pvs-file)))
     (let* ((dlist-json
-	    (pvs-file-send-and-wait (format "(collect-pvs-file-decls-info \"%s\" t)"
-					fname)
+	    (pvs-file-send-and-wait (format "(names-info \"%s\")" fname)
 				    nil 'get-decls '(or string null)))
 	   (dlist (when dlist-json (json-read-from-string dlist-json))))
       (if dlist
