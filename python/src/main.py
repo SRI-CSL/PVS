@@ -7,7 +7,6 @@ import sys
 import constants
 import logging
 import logging.config
-import config
 import gc
 import argparse
 
@@ -25,6 +24,7 @@ def processCommandLineArguments(args):
     pvsURLs = args.pvsURL
     ideURLs = args.guiURL
     logLevels = args.level
+    import config
     cfg = config.PVSIDEConfiguration()
     if pvsURLs is not None:
         cfg.pvsURL = pvsURLs[0]
@@ -36,6 +36,7 @@ def processCommandLineArguments(args):
             logging.getLogger().setLevel(levels[logLevels[0]])
             
 def processConfigFile(applicationFolder):
+    import config
     cfg = config.PVSIDEConfiguration()
     cfg.initialize(applicationFolder)
 
@@ -77,7 +78,7 @@ def verifyPythonPackagesAreFine():
     ALWAYSNEEDED = 2
     NEEDEDFORDEBUG = 1
     OPTIONAL = 0
-    PACKAGELIST = [("wx2", "http://www.wxpython.org/", ALWAYSNEEDED), \
+    PACKAGELIST = [("wx", "http://www.wxpython.org/", ALWAYSNEEDED), \
                    ("pyparsing", "http://pyparsing.wikispaces.com/", ALWAYSNEEDED), \
                    ("jsonschema", "https://github.com/Julian/jsonschema", NEEDEDFORDEBUG), \
                    ("requests", "http://www.wxpython.org/", OPTIONAL), \

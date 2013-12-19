@@ -5,7 +5,7 @@ import wx.stc as stc
 import logging
 import constants
 import ui.images
-from config import PVSIDEConfiguration
+import config
 from wx.lib.pubsub import setupkwargs, pub
 import remgr
 import codecs
@@ -32,7 +32,7 @@ class PVSStyledText(stc.StyledTextCtrl):
         self.SetMarginSensitive(0, True)
         self.SetCodePage(stc.STC_CP_UTF8)
         self.namesInformation = []
-        cfg = PVSIDEConfiguration()
+        cfg = config.PVSIDEConfiguration()
         faces['default_color'] = cfg.default_color
         faces['identity_color'] = cfg.identity_color
         faces['keyword_color'] = cfg.keyword_color
