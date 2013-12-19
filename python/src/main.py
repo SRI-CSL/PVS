@@ -114,7 +114,7 @@ def verifyPythonPackagesAreFine():
 if __name__ == "__main__":
     verifyPythonPackagesAreFine()
     args = readCommandLineArguments()
-    utilDirectory = os.path.dirname(util.__file__)
+    utilDirectory = os.path.dirname(constants.__file__)
     applicationFolder = os.path.abspath(os.path.join(utilDirectory, os.path.pardir))
     configLogger(applicationFolder)
     processConfigFile(applicationFolder)
