@@ -113,11 +113,14 @@ class PVSCommunicator:
             self.guiServer.register_function(self.onPVSMessageReceived, PVSCommunicator.REQUEST)
             self.serverThread = threading.Thread(target=self.guiServer.serve_forever)
             self.serverThread.start()
-            self.pvsProxy = xmlrpclib.ServerProxy(self.pvsURL)
         except Exception as e:
             logging.error("Error starting the xmlrpc server: %s", e)
             util.getMainFrame().showError("You may be running another instance of this application", "Error Starting the XMLRPC Server")
-        
+        try:        
+            self.pvsProxy = xmlrpclib.ServerProxy(self.pvsURL)
+        except Exception as e:
+            logging.error("Error starting the server proxy: %s", e)
+            util.getMainFrame().showError("Cannot start the server proxy for PVS", "Error Starting Server Proxy")
             
     def shutdown(self):
         if self.guiServer is not None:
@@ -402,7 +405,7 @@ class PVSCommandManager:
                 if not os.path.isabs(declFile):
                     inf[constants.DECLFILE] = os.path.join(self.pvsContext, declFile)
             else:
-                logging.warn("decl-file is None in %s", inf)
+                logging.debug("decl-file is None in %s", inf)
         pub.sendMessage(constants.PUB_NAMESINFOUPDATE, fullname=fullname, information=information)
         logging.debug("name-info returned: %s", information)
         return information

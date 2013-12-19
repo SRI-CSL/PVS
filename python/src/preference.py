@@ -57,7 +57,7 @@ class Preferences:
                 self.preferences = pickle.load(output)
                 logging.info("Loaded preferences: %s", self.preferences)
                 output.close()
-            except e:
+            except Exception as e:
                 logging.error("Error loading the preference file...")
                 loadDefault = True
         if loadDefault:

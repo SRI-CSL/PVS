@@ -123,33 +123,35 @@ class ProofManagerPlugin(PluginPanel):
         self.sequent = Sequent(jsequent)
         label = information["label"]
         self.outputTextCtrl.Clear()
-        header = []
-        header.append(("Action: ", "None" if action is None else action))
-        header.append(("Result: ", "None" if result is None else result))
-        header.append(("Number of Subgoals: ", "0" if nsubgoals is None else str(nsubgoals)))
-        header.append(("Label: ", label))
+        if action is not None:
+            self._appendTextToOut(action)
+        if nsubgoals is None:
+            self._appendTextToOut("no subgoals")            
+        elif nsubgoals == 0:
+            self._appendTextToOut("no subgoals")
+        elif nsubgoals == 1:
+            self._appendTextToOut("this simplifies to:")
+        else:
+            self._appendTextToOut("this yields %d subgoals"%nsubgoals)
+        self._appendTextToOut(constants.EMPTY_STRING, newLine=True)
+        self._appendTextToOut(str(self.sequent))
+            
         if commentary is not None:
             lg = pvscomm.PVSCommunicationLogger()
             lg.log(constants.COMMENTARYLOG, commentary)
 
-        for key, value in header:
-            self._appendTextToOut(key, wx.BLUE, newLine=False)
-            self._appendTextToOut(value, wx.LIGHT_GREY)
-
-        self._appendTextToOut("", newLine=True)
-        self._appendTextToOut(str(self.sequent))
-        self.commandTextControl.SetValue(constants.EMPTY_STRING)
+        self.commandTextControl.Clear()
         self.Layout()
         
-    def _appendTextToOut(self, text, color=wx.BLACK, backgroundColor=wx.BLUE, newLine=True):
-        self.outputTextCtrl.SetDefaultStyle(wx.TextAttr(color, backgroundColor))
+    def _appendTextToOut(self, text, color=wx.BLACK, newLine=True):
+        self.outputTextCtrl.SetDefaultStyle(wx.TextAttr(color))
         self.outputTextCtrl.AppendText(text)
         if newLine:
             self.outputTextCtrl.AppendText(constants.NEWLINE)
 
     def onCommandEntered(self, event):
         text = self.commandTextControl.GetValue()
-        if text.endswith("\n"):
+        if text.endswith(constants.NEWLINE):
             command = text.strip()
             logging.info("Proof command entered: %s", command)
             pvscomm.PVSCommandManager().proofCommand(command)
@@ -197,6 +199,7 @@ class Sequent:
         formula = item[Sequent.FORMULA]
         labels = [str(i) for i in item[Sequent.LABELS]]
         changed = item[Sequent.CHANGED]
+        names_info = item["names-info"] #TODO: This should be used for tooltip stuff
         slabels = ", ".join(labels)
         slabels = "{%s}"%slabels if changed else "[%s]"%slabels
         separator = "\n    " if len(labels) > 1 else "  "
