@@ -159,7 +159,7 @@ class FilesTreePlugin(PluginPanel):
         item = event.GetItem()
         data = self.tree.GetItemPyData(item)
         logging.debug("Event data: %s", data)
-        kind = data[KIND]
+        kind = data[KIND] if KIND in data else None #TODO: Figure out what to do when KIND is absent (may be a PVS issue)
         menu = wx.Menu()
         pvsMode = pvscomm.PVSCommandManager().pvsMode
         items = self.getContextMenuItems(pvsMode, kind) # each item should be a pair of a label and a callback function.
