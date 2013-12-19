@@ -4,15 +4,12 @@
 
 import os.path
 import sys
-import util
 import constants
 import logging
 import logging.config
 import config
-import pvscomm
 import gc
 import argparse
-import edap
 
 # end of class PVSEditorApp
 
@@ -123,6 +120,7 @@ if __name__ == "__main__":
     #downloadFiles(applicationFolder)
     gc.enable()
     gc.set_threshold(1, 2, 3)
+    import edap
     application = edap.PVSEditorApp(0)
     logging.info("Entering MainLoop...")
     #pvscomm.PVSCommandManager().ping()
