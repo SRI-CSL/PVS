@@ -37,7 +37,15 @@
 (pushnew '("pvs-strategies\\'" . lisp-mode) auto-mode-alist)
 (pushnew ".prf" completion-ignored-extensions)
 
-(defvar *pvs-menu-type* 'simple)
+(defgroup pvs nil
+  "PVS Interaction"
+  :prefix "pvs-"
+  :group 'applications)
+
+(defcustom pvs-menu-type 'simple
+  "Type of menu to popup"
+  :type '(choice (const simple) (const x-menu))
+  :group 'pvs)
 
 (defvar pvs-mode-map nil)
 (if pvs-mode-map () 
@@ -100,7 +108,7 @@
     (define-key pvs-mode-map "\C-c\C-c"  'pvs-interrupt-subjob)
     (if (featurep 'xemacs)
 	(define-key pvs-mode-map [(shift button2)] 'mouse-show-declaration)
-      (define-key pvs-mode-map [S-mouse-2] 'mouse-show-declaration)))
+	(define-key pvs-mode-map [S-mouse-2] 'mouse-show-declaration)))
 
 (defvar pvs-mode-syntax-table nil  "Syntax table used while in pvs mode.")
 (if pvs-mode-syntax-table ()
@@ -147,7 +155,7 @@ PVS are automatically put in the proper mode."
 ;;; Each item is a (string . value) pair.
 
 (defun pvs-menu (query items)
-  (case *pvs-menu-type*
+  (case pvs-menu-type
     (simple (pvs-simple-menu query items))
     (x-menu (pvs-x-menu query items))))
 
@@ -449,61 +457,69 @@ BUFFER is the buffer speedbar is requesting buttons for."
 (defface font-lock-pvs-record-parens-face
     `()
   "Face for PVS record parens."
-  :group 'pvs-mode-faces)
+  :group 'pvs)
+
+(defface font-lock-pvs-checkpoint-face
+    '((((class color) (background light))
+       (:background "red"))
+      (((class color) (background dark))
+       (:background "red")))
+  "Face for proof checkpoint indicators"
+  :group 'pvs)
 
 ;;(set-face-background 'font-lock-pvs-set-brace-face "Yellow")
 (defface font-lock-pvs-set-brace-face
     `()
   "Face for PVS set braces."
-  :group 'pvs-mode-faces)
+  :group 'pvs)
 
 ;;(set-face-foreground 'font-lock-pvs-parens-face "Magenta")
 (defface font-lock-pvs-parens-face
     `()
   "Face for PVS parens."
-  :group 'pvs-mode-faces)
+  :group 'pvs)
 
 ;;(set-face-background 'font-lock-pvs-table-face "Yellow")
 (defface font-lock-pvs-table-face
     `()
   "Face for PVS tables."
-  :group 'pvs-mode-faces)
+  :group 'pvs)
 
 ;;(set-face-background 'font-lock-pvs-function-type-face "thistle1")
 (defface font-lock-pvs-function-type-face
     `()
   "Face for PVS tables."
-  :group 'pvs-mode-faces)
+  :group 'pvs)
 
 (defface font-lock-pvs-symbol-face
     `()
   "Face for PVS symbols."
-  :group 'pvs-mode-faces)
+  :group 'pvs)
 
 (defface proofstate-commentary-face
     `()
   "Face for proofstate commentaries."
-  :group 'pvs-mode-faces)
+  :group 'pvs)
 
 (defface proofstate-action-face
     `()
   "Face for proofstate actions."
-  :group 'pvs-mode-faces)
+  :group 'pvs)
 
 (defface proofstate-yields-face
     `()
   "Face for proofstate yields messages."
-  :group 'pvs-mode-faces)
+  :group 'pvs)
 
 (defface proofstate-label-face
     `()
   "Face for proofstate labels."
-  :group 'pvs-mode-faces)
+  :group 'pvs)
 
 (defface proofstate-formula-face
     `()
   "Face for proofstate formulas."
-  :group 'pvs-mode-faces)
+  :group 'pvs)
 
 (defface proofstate-formula-changed-label-face
     `((((class color) (background light))
@@ -511,12 +527,12 @@ BUFFER is the buffer speedbar is requesting buttons for."
       (((class color) (background dark))
        (:foreground "red")))
   "Face for proofstate formula changed labels."
-  :group 'pvs-mode-faces)
+  :group 'pvs)
 
 (defface proofstate-formula-unchanged-label-face
     `()
   "Face for proofstate formula unchanged labels."
-  :group 'pvs-mode-faces)
+  :group 'pvs)
 
 ;;; PVS Font Lock support
 
