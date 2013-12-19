@@ -755,7 +755,12 @@
 
 (defvar *max-row* nil)
 
-(defun collect-pvs-file-decls-info (pvs-file &optional json?)
+(defun names-info (pvs-file)
+  (let ((info (collect-pvs-file-decls-info pvs-file))
+	(json:*lisp-identifier-name-to-json* #'identity))
+    (json:encode-json-to-string info)))
+
+(defun collect-pvs-file-decls-info (pvs-file)
   (if (string= pvs-file "prelude")
       (collect-visible-decl-info *prelude-theories*)
       (let* ((file (make-specpath pvs-file))
@@ -765,11 +770,7 @@
 	       (pvs-message "PVS file ~a is not in the current context" pvs-file))
 	      ((null theories)
 	       (pvs-message "PVS file ~a is not typechecked" pvs-file))
-	      (t (let* ((info (collect-visible-decl-info theories)))
-		   (if json?
-		       (let ((json:*lisp-identifier-name-to-json* #'identity))
-			 (json:encode-json-to-string info))
-		       info)))))))
+	      (t (collect-visible-decl-info theories))))))
 
 ;; This doesn't work
 ;; (defun collect-name-to-decl-alist (obj)
