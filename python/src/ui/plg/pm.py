@@ -118,7 +118,7 @@ class ProofManagerPlugin(PluginPanel):
             return
         commentary = information["commentary"] if "commentary" in information else None        
         action = information["action"] if "action" in information else None        
-        nsubgoals = information["num_subgoals"] if "num_subgoals" in information else None
+        nsubgoals = information["num-subgoals"] if "num-subgoals" in information else None
         jsequent = information["sequent"]
         self.sequent = Sequent(jsequent)
         label = information["label"]
