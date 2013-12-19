@@ -65,7 +65,7 @@ def processCommandLineArguments(args):
     if logLevels is not None:
         levels = {"debug": logging.DEBUG, "info": logging.INFO, "warning": logging.WARN, "warn": logging.WARN, "error": logging.ERROR, "critical": logging.CRITICAL}
         if logLevels[0] in levels:
-            logging.getLogger(constants.LROOT).setLevel(levels[logLevel[0]])
+            logging.getLogger(constants.LROOT).setLevel(levels[logLevels[0]])
             
 def processConfigFile(applicationFolder):
     cfg = config.PVSIDEConfiguration()
