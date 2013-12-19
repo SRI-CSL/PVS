@@ -2089,9 +2089,6 @@ Letters do not insert themselves; instead, they are commands:
   (when (eq (current-buffer) (get-buffer "Proof"))
     (fix-edit-proof-comments)))
 
-(make-face 'font-lock-pvs-checkpoint-face)
-(set-face-background 'font-lock-pvs-checkpoint-face "red")
-
 (defun install-proof-checkpoint ()
   (interactive)
   (unless (eq (current-buffer) (get-buffer "Proof"))
