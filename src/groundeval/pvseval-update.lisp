@@ -19,6 +19,8 @@
 
 (in-package :pvs)
 
+;;The ground-eval step evaluates a ground PVS expression returning its value,
+;;but has no effect on the proof
 (defstep ground-eval (expr &optional destructive?)
   (let ((tc-expr (pc-typecheck (pc-parse expr 'expr)))
 	(cl-expr (let ((*destructive?* destructive?))
@@ -33,8 +35,9 @@
   "Ground evaluation of expression expr."
   "")
 
-(defvar *destructive?* nil)
-(defvar *output-vars* nil)
+;;These variables are special
+(defvar *destructive?* nil)  ;;tracks if the translation is in the destructive mode
+(defvar *output-vars* nil) ;;
 (defvar *external* nil)
 (defvar *pvsio2cl-primitives* nil)
 
@@ -178,7 +181,7 @@
 	      (t nil)))
       t))
 
-
+;;wraps (the type ..) around the translated lisp when the type is known
 (defmethod pvs2cl_up* :around ((expr expr) bindings livevars)
   (declare (ignore livevars bindings))
   (let ((lisp-type (pvs2cl-lisp-type (type expr))))
@@ -187,6 +190,7 @@
 	   ,(call-next-method))
 	(call-next-method))))
 
+;;String literals are translated directly to strings. 
 (defmethod pvs2cl_up* ((expr string-expr) bindings livevars)
   (declare (ignore bindings livevars))
   (string-value expr))
