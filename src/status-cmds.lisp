@@ -10,7 +10,7 @@
 
 ;; --------------------------------------------------------------------
 ;; PVS
-;; Copyright (C) 2006, SRI International.  All Rights Reserved.
+;; Copyright (C) 2006-2013, SRI International.  All Rights Reserved.
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
@@ -28,6 +28,8 @@
 ;; --------------------------------------------------------------------
 
 (in-package :pvs)
+
+(export '(pc-complete))
 
 (defvar *unproved-dependings* nil)
 (defvar *proved-dependings* nil)

@@ -37,7 +37,8 @@
 	  type-error set-pvs-tmp-file place place-list type-ambiguity
 	  type-incompatible pvs-locate write-to-temp-file
 	  *ps-control-info* make-ps-control-info psinfo-json-result
-	  psinfo-command psinfo-cmd-gate psinfo-res-gate psinfo-lock))
+	  psinfo-command psinfo-cmd-gate psinfo-res-gate psinfo-lock
+	  pvs-abort))
 
 (defvar *pvs-message-hook* nil)
 (defvar *pvs-warning-hook* nil)

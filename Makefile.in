@@ -357,7 +357,9 @@ interface = src/interface/pvs-emacs.lisp \
 	    src/interface/allegro.lisp \
 	    src/interface/cmulisp.lisp \
 	    src/interface/ilisp-pkg.lisp \
-	    src/interface/pvs-xml-rpc.lisp
+	    src/interface/pvs-xml-rpc.lisp \
+	    src/interface/pvs-json-rpc.lisp \
+	    src/interface/pvs-json-methods.lisp
 
 pvs-prover = src/prover/checker-macros.lisp \
          src/prover/decision-procedure-interface.lisp \

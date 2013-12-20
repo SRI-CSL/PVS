@@ -51,10 +51,10 @@ version="6.1"
 if [ `uname -s` = "Darwin" ]
 then
   TAR=bsdtar
-  TARFLAGS='-cohz --mode=u+rw --atime-preserve --exclude=.svn --exclude=.git'
+  TARFLAGS='-coz --mode=u+rw --atime-preserve --exclude=.svn --exclude=.git'
 else
   TAR=tar
-  TARFLAGS='-cohz --mode=u+rw --atime-preserve --exclude=.svn --exclude=.git'
+  TARFLAGS='-coz --mode=u+rw --atime-preserve --exclude=.svn --exclude=.git'
 fi
 
 # pvs-source.tgz
