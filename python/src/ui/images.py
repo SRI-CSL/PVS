@@ -58,9 +58,12 @@ def getTypecheckImage():
     return getBitmap("typecheck.png")
 
 def getTheoryImage():
-    return getBitmap("theory.png")
+    return getBitmap("bluet.png")
 
-def getFormulaImage():
-    return getBitmap("formula.png")
+def getGreenFormulaImage():
+    return getBitmap("greenf.png")
+
+def getGrayFormulaImage():
+    return getBitmap("grayf.png")
 
 

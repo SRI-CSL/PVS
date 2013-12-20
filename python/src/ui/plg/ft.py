@@ -41,22 +41,25 @@ class FilesTreePlugin(PluginPanel):
         mainSizer.Add(self.tree, 1, wx.EXPAND, 0)
         self.SetSizer(mainSizer)
         
-        
         imageList = wx.ImageList(16, 16)
-        imageList.Add(ui.images.getFolderImage())
-        imageList.Add(ui.images.getPVSLogo())
-        imageList.Add(ui.images.getTheoryImage())
-        imageList.Add(ui.images.getFormulaImage())
-        imageList.Add(ui.images.getGrayFolderImage())
+        images = {LCONTEXT: ui.images.getFolderImage(), LFILE: ui.images.getPVSLogo(), LTHEORY: ui.images.getTheoryImage(), \
+                  GREENFORMULA: ui.images.getGreenFormulaImage(), GRAYFORMULA: ui.images.getGrayFormulaImage(), LINACTIVECONTEXT: ui.images.getGrayFolderImage()}
+        index = 0
+        self.imageIndices = {LROOT: -1}
+        for name, im in images.iteritems():
+            imageList.Add(im)
+            self.imageIndices[name] = index
+            index = index + 1
         self.tree.AssignImageList(imageList)
-        self.imageIndices = {LROOT: -1, LCONTEXT: 0, LFILE: 1, LTHEORY: 2, LFORMULA: 3, LINACTIVECONTEXT: 4}
+        
         self.tree.Bind(wx.EVT_TREE_ITEM_MENU, self.showContextMenu)
         self.clearAll()
         pub.subscribe(self.addFile, PUB_ADDFILE)
         pub.subscribe(self.removeFile, PUB_CLOSEFILE)
         pub.subscribe(self.onFileSaved, PUB_FILESAVED)
-        pub.subscribe(self.addTheoriesToFileTree, PUB_FILETYPECHECKED)
+        pub.subscribe(self.onFileIsTypechecked, PUB_FILETYPECHECKED)
         pub.subscribe(self.pvsContextUpdated, PUB_UPDATEPVSCONTEXT)
+        pub.subscribe(self.onFormulaUpdated, PUB_FORMULAUPDATE)
         self.tree.SetDropTarget(PVSFileDropTarget())
         
     def onToolboxButtonClicked(self, event):
@@ -145,6 +148,41 @@ class FilesTreePlugin(PluginPanel):
             item = self.tree.GetNextSibling(item)
         logging.info("There is no %s in the filetree", fullname)
         return None
+    
+    def getTheoryNode(self, fullname, theoryname):
+        fileNode = self.getFileNode(fullname)
+        if fileNode is not None:
+            item = self.tree.GetFirstChild(fileNode)[0]
+            while item.IsOk():
+                data = self.tree.GetItemPyData(item)                
+                if ID_L in data:
+                    itemName = data[ID_L]
+                    if theoryname == itemName:
+                        return item
+                item = self.tree.GetNextSibling(item)
+            logging.info("There is no theory %s in %s", theoryname, fullname)
+        return None
+                
+    def getFormulaNode(self, fullname, theoryname, formulaname):
+        theoryNode = self.getTheoryNode(fullname, theoryname)
+        if theoryNode is not None:
+            item = self.tree.GetFirstChild(theoryNode)[0]
+            while item.IsOk():
+                data = self.tree.GetItemPyData(item)                
+                if data[LKIND] == LFORMULA:
+                    itemName = data[ID_L]
+                    if formulaname == itemName:
+                        return item
+                item = self.tree.GetNextSibling(item)
+            logging.info("There is no formula %s in %s", formulaname, theoryname)
+        return None
+    
+    def onFormulaUpdated(self, fullname, theoryname, formulaname, updatedata):
+        item = self.getFormulaNode(fullname, theoryname, formulaname)
+        if item is not None:
+            isProved = updatedata["proved?"]
+            self.tree.SetItemImage(item, self.imageIndices[GREENFORMULA if isProved else GRAYFORMULA])
+            
                 
     def getChildren(self, node):
         children = []
@@ -278,14 +316,19 @@ class FilesTreePlugin(PluginPanel):
         
     def onStartProver(self, event):
         """onTypecheckFile is called when the user selects Typecheck in the context menu"""
-        data = self.getSelectedNodeData()
+        node = self.tree.GetSelection()
+        parent = self.tree.GetItemParent(self.tree.GetItemParent(node))
+        data = self.tree.GetItemPyData(node)
+        parentData = self.tree.GetItemPyData(parent)
         theoryName = data[THEORY.lower()]
-        formulaName = data[ID_L]        
-        pvscomm.PVSCommandManager().startProver(theoryName, formulaName)
+        formulaName = data[ID_L]
+        fullname = parentData[FULLNAME]
+        pvscomm.PVSCommandManager().startProver(fullname, theoryName, formulaName)
         
-    def addTheoriesToFileTree(self, fullname, result):
-        """addTheoriesToFileTree is called after typechecking a file and asking for the declarations in that file"""
+    def onFileIsTypechecked(self, fullname, result):
+        """onFileIsTypechecked is called after typechecking a file and asking for the declarations in that file"""
         fileNode = self.getFileNode(fullname)
+        logging.debug("%s was typechecked. Result is: %s", fullname, result)
         for item in result :
             if LTHEORY in item:
                 theory = item[LTHEORY]
@@ -297,9 +340,12 @@ class FilesTreePlugin(PluginPanel):
                     kind = declaration[LKIND]
                     if kind == LFORMULA:
                         place = declaration[LPLACE]
+                        isComplete = declaration["complete?"] == True
+                        isProved = declaration["proved?"] == True
+                        hasProofScript = declaration["has-proofscript?"] == True
                         formulaName = declaration[ID_L]
                         declaration[LTHEORY] = theoryName
-                        self.tree.AppendItem(theoryNode, formulaName, self.imageIndices[LFORMULA], -1, wx.TreeItemData(declaration))
+                        self.tree.AppendItem(theoryNode, formulaName, self.imageIndices[GREENFORMULA if isProved else GRAYFORMULA], -1, wx.TreeItemData(declaration))
         self.tree.ExpandAllChildren(fileNode)        
         
     def onFileSaved(self, fullname, oldname=None):

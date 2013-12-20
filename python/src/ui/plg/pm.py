@@ -109,12 +109,19 @@ class ProofManagerPlugin(PluginPanel):
             logging.warn("information should be a dictionary and not a string")
             information = json.loads(information)
         logging.debug("information received: %s", information)
+        if constants.FULLNAME in information:
+            self.fullname = information[constants.FULLNAME]
+        if constants.LTHEORY in information:
+            self.theoryname = information[constants.LTHEORY]
+        if constants.LFORMULA in information:
+            self.formulaname = information[constants.LFORMULA]
+            
         result = information["result"] if "result" in information else None
-        if result == "Q.E.D.":
-            logging.info("Proof Completed")
-            return
-        elif result == "Unfinished":
-            logging.info("Proof Unfinished")
+        if result in ("Q.E.D.", "Unfinished"):
+            updatedata = {"proved?": result=="Q.E.D."}
+            
+            pub.sendMessage(constants.PUB_FORMULAUPDATE, fullname=self.fullname, theoryname=self.theoryname, formulaname=self.formulaname, updatedata=updatedata) 
+            logging.info("Proof Done. Result: %s", result)
             return
         commentary = information["commentary"] if "commentary" in information else None        
         action = information["action"] if "action" in information else None        

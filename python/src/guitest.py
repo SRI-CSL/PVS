@@ -13,7 +13,7 @@ class PVSGUITestSuite(unittest.TestCase):
     def _initialize(self):
         self.testContext = "/Users/saadati/projects/pvs/Examples"
         self.testPVSFile = "sum"
-        self.tobeProved = ("sum", "closed_form")
+        self.tobeProved = ("/Users/saadati/projects/pvs/Examples/sum.pvs", "sum", "closed_form")
         self.proofCommand = "(grind)"
         logging.getLogger(constants.LROOT).setLevel(logging.DEBUG)
         configDirectory = os.path.dirname(config.__file__)

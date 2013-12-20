@@ -21,6 +21,8 @@ DECLFILE = "decl-file"
 DECLPLACE = "decl-place"
 JSONLOG = "json-log"
 COMMENTARYLOG = "commentary-log"
+GREENFORMULA = "green-formula"
+GRAYFORMULA = "gray-formula"
 
 LABEL_FILE = "File"
 LABEL_EDIT = "Edit"
@@ -89,6 +91,7 @@ PUB_REMOVEANNOTATIONS = "File.Remove.Annotations"
 PUB_PREPARERECENTFILESMENU = "Prepare.Recent.Files.Menu"
 PUB_NAMESINFOUPDATE = "Names.Info.Updated"
 PUB_APPENDLOG = "Append.To.Log.Dialog"
+PUB_FORMULAUPDATE = "formula.shouldbe.updated"
 
 GROUP_TOOLS = "tools"
 

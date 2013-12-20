@@ -374,7 +374,7 @@ class PVSCommandManager:
         return result
             
     def reset(self):
-        result = self.lisp("(reset)")
+        result = self._sendCommand("reset")
         return result
             
     def lisp(self, form, silent=False):
@@ -439,9 +439,13 @@ class PVSCommandManager:
             result = util.normalizePath(result)
         return result
     
-    def startProver(self, theoryName, formulaName):
+    def startProver(self, fullname, theoryName, formulaName):
         result = self._sendCommand("prove-formula", formulaName, theoryName)
-        pub.sendMessage(constants.PUB_PROOFINFORMATIONRECEIVED, information=result) 
+        if result is not None:
+            result[constants.FULLNAME] = fullname
+            result[constants.LTHEORY] = theoryName
+            result[constants.LFORMULA] = formulaName
+            pub.sendMessage(constants.PUB_PROOFINFORMATIONRECEIVED, information=result) 
         return result
         
     def proofCommand(self, command):
