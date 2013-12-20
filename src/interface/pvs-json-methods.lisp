@@ -113,9 +113,17 @@
     (:place . ,(pvs:place-list decl))))
 
 (defmethod xmlrpc-theory-decl* ((decl pvs:formula-decl))
-  `((:id . ,(pvs:id decl))
-    (:kind . :formula)
-    (:place . ,(pvs:place-list decl))))
+  (let* ((proved? (pvs:proved? decl))
+	 (complete? (and proved?
+			 (string= (pvs:pc-complete decl)
+				  "complete")))
+	 (has-proofscript? (not (null (pvs:justification decl)))))
+    `((:id . ,(pvs:id decl))
+      (:kind . :formula)
+      (:proved? . ,proved?)
+      (:complete? . ,complete?)
+      (:has-proofscript? . ,has-proofscript?)
+      (:place . ,(pvs:place-list decl)))))
 
 ;;; Info
 
