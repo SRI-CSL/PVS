@@ -125,6 +125,10 @@
   (when (pvs:typecheck-file filename)
     (pvs:collect-pvs-file-decls-info filename)))
 
+(defrequest reset ()
+  "Resets PVS"
+  (pvs:pvs-abort))
+
 ;;; Prover interface
 
 ;; (defrequest prove-formula (formula theory)
