@@ -162,7 +162,7 @@ class FilesTreePlugin(PluginPanel):
         kind = data[KIND] if KIND in data else None #TODO: Figure out what to do when KIND is absent (may be a PVS issue)
         menu = wx.Menu()
         pvsMode = pvscomm.PVSCommandManager().pvsMode
-        items = self.getContextMenuItems(pvsMode, kind) # each item should be a pair of a label and a callback function.
+        items = self.getContextMenuItems(pvsMode, kind, data) # each item should be a pair of a label and a callback function.
         for label, callback in items:
             if isinstance(callback, wx.Menu):
                 menu.AppendMenu(wx.ID_ANY, label, callback)
@@ -172,28 +172,28 @@ class FilesTreePlugin(PluginPanel):
         self.tree.GetParent().PopupMenu(menu, event.GetPoint())
         menu.Destroy()
         
-    def getContextMenuItems(self, pvsMode, kind):
+    def getContextMenuItems(self, pvsMode, kind, data):
         items = []
         if not pvsMode in [PVS_MODE_OFF, PVS_MODE_LISP, PVS_MODE_PROVER, PVS_MODE_UNKNOWN]:
             logging.error("Unknown PVS mode: %s", pvsMode)
         if kind == LROOT:
-            items = self.getContextMenuItemsForRoot(pvsMode)
+            items = self.getContextMenuItemsForRoot(pvsMode, data)
         elif kind == LCONTEXT:
-            items = self.getContextMenuItemsForPVSContext(pvsMode)
+            items = self.getContextMenuItemsForPVSContext(pvsMode, data)
         elif kind == LFILE:
-            items = self.getContextMenuItemsForFile(pvsMode)
+            items = self.getContextMenuItemsForFile(pvsMode, data)
         elif kind == LTHEORY:
-            items = self.getContextMenuItemsForTheory(pvsMode)
+            items = self.getContextMenuItemsForTheory(pvsMode, data)
         elif kind == LFORMULA:
-            items = self.getContextMenuItemsForFormula(pvsMode)
+            items = self.getContextMenuItemsForFormula(pvsMode, data)
         else:
             logging.error("Unknown kind: %s", kind)
         return items
 
-    def getContextMenuItemsForRoot(self, pvsMode):
+    def getContextMenuItemsForRoot(self, pvsMode, data):
         return []
     
-    def getContextMenuItemsForPVSContext(self, pvsMode):
+    def getContextMenuItemsForPVSContext(self, pvsMode, data):
         items = []
         if pvsMode == PVS_MODE_OFF:
             pass
@@ -207,11 +207,13 @@ class FilesTreePlugin(PluginPanel):
         logging.debug("%d many items added to the context menu", len(items))
         return items
         
-    def getContextMenuItemsForFile(self, pvsMode):
+    def getContextMenuItemsForFile(self, pvsMode, data):
+        fullname = data[FULLNAME]
+        directory = os.path.split(fullname)[0]
         items = []
         if pvsMode == PVS_MODE_OFF:
             pass
-        elif pvsMode == PVS_MODE_LISP:
+        elif pvsMode == PVS_MODE_LISP and directory == pvscomm.PVSCommandManager().pvsContext:
             items.append((LABEL_TYPECHECK, self.onTypecheckFile))
         elif pvsMode == PVS_MODE_PROVER:
             pass
@@ -221,7 +223,7 @@ class FilesTreePlugin(PluginPanel):
         logging.debug("%d many items added to the context menu", len(items))
         return items
         
-    def getContextMenuItemsForTheory(self, pvsMode):
+    def getContextMenuItemsForTheory(self, pvsMode, data):
         items = []
         if pvsMode == PVS_MODE_OFF:
             pass
@@ -234,7 +236,7 @@ class FilesTreePlugin(PluginPanel):
         logging.debug("%d many items added to the context menu", len(items))
         return items
         
-    def getContextMenuItemsForFormula(self, pvsMode):
+    def getContextMenuItemsForFormula(self, pvsMode, data):
         items = []
         if pvsMode == PVS_MODE_OFF:
             pass

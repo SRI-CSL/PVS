@@ -57,7 +57,7 @@ GENERAL = "General"
 EDITOR = "Editor"
 
 #Frame Titles:
-MAINFRAME = "PVS IDE"
+MAINFRAME = "PVS GUI"
 
 PVS_MODE_OFF = "off"
 PVS_MODE_LISP = "lisp"

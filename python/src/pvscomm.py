@@ -339,7 +339,7 @@ class PVSCommandManager:
                 #assert (result2 == result), "result '%s' is a json object inside a string"%result
                 if result2 != result:
                     logging.error("result '%s' should not be a string here, but an object", result)
-                    result2 = result
+                    result = result2
             if PVSCommunicator.ERROR in result:
                 errDict = result[PVSCommunicator.ERROR]
                 errorObject = self._processJSONErrorObject(errDict)
@@ -373,21 +373,30 @@ class PVSCommandManager:
             pub.sendMessage(constants.PUB_UPDATEPVSMODE, pvsMode = constants.PVS_MODE_OFF)   
         return result
             
+    def reset(self):
+        result = self.lisp("(reset)")
+        return result
+            
     def lisp(self, form, silent=False):
         result = self._sendCommand("lisp", form, silent=silent)
         return result
         
     def typecheck(self, fullname=None):
         fullname = self._ensureFilenameIsIknown(fullname)
-        name = os.path.basename(fullname)
-        name = util.getFilenameFromFullPath(fullname, False)
-        pub.sendMessage(constants.PUB_REMOVEANNOTATIONS)
-        result = self._sendCommand("typecheck", name)
-        if result is not None:
+        directory = os.path.split(fullname)[0]
+        if directory != self.pvsContext:
+            util.getMainFrame().showError("%s is not in the active context"%fullname)
+            return None
+        else:
+            name = os.path.basename(fullname)
+            name = util.getFilenameFromFullPath(fullname, False)
             pub.sendMessage(constants.PUB_REMOVEANNOTATIONS)
-            pub.sendMessage(constants.PUB_FILETYPECHECKED, fullname=fullname, result=result)
-            self.namesInfo(fullname)
-        return result
+            result = self._sendCommand("typecheck", name)
+            if result is not None:
+                pub.sendMessage(constants.PUB_REMOVEANNOTATIONS)
+                pub.sendMessage(constants.PUB_FILETYPECHECKED, fullname=fullname, result=result)
+                self.namesInfo(fullname)
+            return result
             
     def namesInfo(self, fullname=None):
         fullname = self._ensureFilenameIsIknown(fullname)
@@ -412,11 +421,16 @@ class PVSCommandManager:
     
     def parse(self, fullname=None):
         fullname = self._ensureFilenameIsIknown(fullname)
-        name = os.path.basename(fullname)
-        name = os.path.splitext(name)[0] # just get the filename without the extension 
-        pub.sendMessage(constants.PUB_REMOVEANNOTATIONS)
-        result = self._sendCommand("parse", name)
-        return result
+        directory = os.path.split(fullname)[0]
+        if directory != self.pvsContext:
+            util.getMainFrame().showError("%s is not in the active context"%fullname)
+            return None
+        else:
+            name = os.path.basename(fullname)
+            name = os.path.splitext(name)[0] # just get the filename without the extension 
+            pub.sendMessage(constants.PUB_REMOVEANNOTATIONS)
+            result = self._sendCommand("parse", name)
+            return result
     
     def changeContext(self, newContext):
         logging.debug("User requested to change context to: %s", newContext)

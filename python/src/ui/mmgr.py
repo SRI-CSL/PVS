@@ -79,6 +79,7 @@ class MainFrameMenu(wx.MenuBar):
         self.recentContextsMenu = wx.Menu()
         self.prepareRecentContextsSubMenu()
         pvsMenu.AppendMenu(wx.ID_ANY, "Recent Contexts", self.recentContextsMenu)
+        self.pvsResetMenuItem = pvsMenu.Append(wx.ID_ANY, "Reset PVS", EMPTY_STRING, wx.ITEM_NORMAL)        
         
         pvsMenu.AppendSeparator()
         self.typecheckMenuItem = pvsMenu.Append(wx.ID_ANY, LABEL_TYPECHECK, EMPTY_STRING, wx.ITEM_NORMAL)
@@ -89,7 +90,7 @@ class MainFrameMenu(wx.MenuBar):
     def addHelpMenu(self):
         """Adding menu items to Help menu"""
         helpMenu = wx.Menu()
-        self.helpMenuItem =  helpMenu.Append(wx.ID_ANY, self._makeLabel("PVS IDE Help", None, True), EMPTY_STRING, wx.ITEM_NORMAL)
+        self.helpMenuItem =  helpMenu.Append(wx.ID_ANY, self._makeLabel("PVS GUI Help", None, True), EMPTY_STRING, wx.ITEM_NORMAL)
         self.Append(helpMenu, "Help")
 
     
@@ -169,6 +170,7 @@ class MainFrameMenu(wx.MenuBar):
         
         frame.Bind(wx.EVT_MENU, onChangeContext, self.changeContextMenuItem)
         frame.Bind(wx.EVT_MENU, onTypecheck, self.typecheckMenuItem)
+        frame.Bind(wx.EVT_MENU, onResetPVS, self.pvsResetMenuItem)
         frame.Bind(wx.EVT_MENU, onShowPVSCommunicationLog, self.pvsDialogMenuItem)
         frame.Bind(wx.EVT_MENU, onShowHelpFrame, self.helpMenuItem)
         

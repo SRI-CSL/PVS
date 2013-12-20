@@ -180,6 +180,10 @@ def onShowPVSCommunicationLog(event):
     dlg = ui.logdlg.PVSCommunicationLogDialog(util.getMainFrame(), "PVS Communication Log", JSONLOG)
     dlg.Show()
 
+def onResetPVS(event):
+    logging.debug("Starting")
+    pvscomm.PVSCommandManager().reset()
+
 def onShowHelpFrame(event):
     help = HelpFrame()
     help.Show()

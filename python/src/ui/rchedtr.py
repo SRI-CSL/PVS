@@ -40,7 +40,7 @@ class RichEditor(wx.Panel):
     def onCursorPositionChanged(self):
         line = self.styledText.GetCurrentLine() + 1
         column = self.styledText.GetColumn(self.styledText.GetCurrentPos()) + 1
-        position = "Line: %d, Column %d"%(line, column)
+        position = "Line: %d, Column: %d"%(line, column)
         #logging.debug(position)
         self.statusbar.SetStatusText(position, 0)
         

@@ -133,6 +133,7 @@ class ProofManagerPlugin(PluginPanel):
             self._appendTextToOut("this simplifies to:")
         else:
             self._appendTextToOut("this yields %d subgoals"%nsubgoals)
+        self._appendTextToOut(label + " :")            
         self._appendTextToOut(constants.EMPTY_STRING, newLine=True)
         self._appendTextToOut(str(self.sequent))
             
