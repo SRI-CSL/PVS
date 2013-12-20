@@ -1,3 +1,21 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; pvs-json-rpc.lisp -- support for json-rpc server in PVS
+;; Author          : Sam Owre
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; --------------------------------------------------------------------
+;; PVS
+;; Copyright (C) 2006-2013 SRI International.  All Rights Reserved.
+
+;; This program is free software; you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License
+;; as published by the Free Software Foundation; either version 2
+;; of the License, or (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
 
 (defpackage :pvs-json-rpc (:use :json :cl-user :common-lisp :pvs))
 
@@ -214,8 +232,9 @@
     (setq *last-response* jresult)
     jresult))
 
-(defun jsonrpc-error (id result)
-  (let* ((json:*lisp-identifier-name-to-json* #'identity)
+(defun jsonrpc-error (id c)
+  (let* ((result (format nil "~a" c))
+	 (json:*lisp-identifier-name-to-json* #'identity)
 	 (sresult (json:encode-json-to-string result))
 	 (jresult (json:encode-json-to-string
 		   `((:error . ((:code . 1)
