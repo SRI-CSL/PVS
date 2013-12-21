@@ -206,8 +206,8 @@ class MainFrame(wx.Frame):
         dlg.Destroy()
         return choice
     
-    def askForText(self, question, defaultVlue=EMPTY_STRING, title=EMPTY_STRING):
-        dialog = wx.TextEntryDialog(None, question, defaultVlue, title=tile, style=wx.OK)
+    def askForText(self, question, title=EMPTY_STRING, defaultValue=EMPTY_STRING):
+        dialog = wx.TextEntryDialog(None, question, title, defaultValue, style=wx.OK)
         value = dialog.GetValue() if dialog.ShowModal() == wx.ID_OK else None
         dialog.Destroy()
         return value
