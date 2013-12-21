@@ -236,6 +236,13 @@ class PVSResponseManager:
         result = "yes" if answer==wx.ID_YES else "no"
         return result
         
+    def _process_dialog(self, *parameters):
+        logging.debug("PVS Info received. Parameters %s", (parameters,))
+        frame = util.getMainFrame()
+        question = parameters[0].strip()
+        result = frame.askForText(question)
+        return result
+        
     def _process_info(self, *parameters):
         logging.debug("PVS Info received. Parameters %s", (parameters,))
 

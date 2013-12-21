@@ -206,6 +206,13 @@ class MainFrame(wx.Frame):
         dlg.Destroy()
         return choice
     
+    def askForText(self, question, defaultVlue=EMPTY_STRING, title=EMPTY_STRING):
+        dialog = wx.TextEntryDialog(None, question, defaultVlue, title=tile, style=wx.OK)
+        value = dialog.GetValue() if dialog.ShowModal() == wx.ID_OK else None
+        dialog.Destroy()
+        return value
+        wx.TextEntryDialog()
+    
     def chooseDirectory(self, message, defaultDirectory=EMPTY_STRING):
         """Show a dialog to choose a directory"""    
         dialog = wx.DirDialog (self, message = message, defaultPath=defaultDirectory)
