@@ -1,40 +1,24 @@
 <h2>Table of contents:</h2>
 <ul>
-	<li>Running the GUI</li>
-	<li>Entering Lisp commands</li>
-	<li>Menus</li>
-	<li>Proof Manager</li>
+<li>Running the GUI</li>
+<li>GUI Overview</li>
+<li>Entering Lisp commands</li>
+<li>Menus</li>
+<li>Proof Manager</li>
 </ul>
 <h3>Running the GUI</h3>
-<p>The GUI communicates with a running instance of PVS via xmlrpc.
-	The GUI and PVS can be launched in any order. By default, the GUI
-	assumes that PVS is running on localhost:22334. This is an example of
-	how to start PVS and the GUI:</p>
-<p>
-	<em>PVS_HOME&gt; pvs -port 22334</em>
-</p>
-<p>
-	<em>PVS_HOME&gt; ./pvs-gui</em>
-</p>
-<p>
-	For more information on how to run the GUI, try "<em>./pvs-gui
-		--help</em>".
-</p>
+<p>The GUI communicates with a running instance of PVS via xmlrpc. The GUI and PVS can be launched in any order. By default, the GUI assumes that PVS is running on localhost:22334. This is an example of how to start PVS and the GUI:</p>
+<p><em>PVS_HOME&gt; pvs -port 22334</em></p>
+<p><em>PVS_HOME&gt; ./pvs-gui</em></p>
+<p>For more information on how to run the GUI, try "<em>./pvs-gui --help</em>".</p>
+<h3>GUI Overview</h3>
+<p>The GUI has a very flexible and configurable design. Different parts of the GUI can be detached from the main frame and become a floating box, or be re-attached back to the frame based on user's preference. Similarly, each open PVS file can be dragged out of the frame and be placed back by closing the floating box.</p>
 <h3>Entering Lisp commands</h3>
-<div>When the GUI is up and running, you can enter any lisp
-	command (e.g. typecheck, change-context) using the console that appears
-	at the bottom of the GUI by default.</div>
+<div>When the GUI is up and running, you can enter any lisp command (e.g. typecheck, change-context) using the console that appears at the bottom of the GUI by default.</div>
 <h3>Menus</h3>
-<div>The GUI provides a main menu with a number of options to
-	communicate with PVS (e.g. changing the context). Furthermore, you can
-	right-click on the open files and contexts to view a context menu with
-	proper options. For instance, you can change the context by
-	righ-clicking on any context/directory on the file tree and choose
-	"Make Active Context". You can also typecheck a file in the active
-	context by right-clicking on the file name and choosing "Typecheck".</div>
+<div>The GUI provides a main menu with a number of options to communicate with PVS (e.g. changing the context). Furthermore, you can right-click on the open files and contexts to view a context menu with proper options. For instance, you can change the context by righ-clicking on any context/directory on the file tree and choose "Make Active Context". You can also typecheck a file in the active context by right-clicking on the file name and choosing "Typecheck".</div>
+<h3>Typechecking</h3>
+<p>You can typecheck a file in the active context simply by right-clicking on its name and choosing the typecheck option. You will see an error message, along with a red mark if the typecheck fails. Otherwise, you may see a list of theories and formulas as a subtree under the file name. Furthermore, you will be able to hover the mouse pointer over different words in the PVS file to see the declarations as a tooltip. You could also right-click on the words and choose "Show Declaration" to see the original declaration.</p>
 <h3>Proof Manager</h3>
-<p>The GUI hides and shows the differnt boxes according to the PVS
-	mode. Once a formula is selected to be proved, the GUI enters the proof
-	mode with the Proof Manager appearing on the right side. You will be
-	able to enter different proof commands using the Proof Manager.</p>
+<p>The GUI hides and shows the differnt boxes according to the PVS mode. Once a formula is selected to be proved, the GUI enters the proof mode with the Proof Manager appearing on the right side. You will be able to enter different proof commands using the Proof Manager.</p>
 <p>&nbsp;</p>
