@@ -240,7 +240,8 @@ class PVSResponseManager:
         logging.debug("PVS Info received. Parameters %s", (parameters,))
         frame = util.getMainFrame()
         question = parameters[0].strip()
-        result = frame.askForText(question)
+        defaultName=constants.EMPTY_STRING
+        result = frame.askForText(question, "Enter a new name", defaultName, False)
         return result
         
     def _process_info(self, *parameters):
