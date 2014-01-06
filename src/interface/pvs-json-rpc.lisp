@@ -211,7 +211,10 @@
 		      (:params . ,(list msg full? timeout?))
 		      (:id . ,id)
 		      (:jsonrpc . "2.0")))))
-	(json-response id (xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url)))))
+	(string-equal
+	 (json-response id (xml-rpc-call (encode-xml-rpc-call :request jmsg)
+					 :url url))
+	 "yes"))))
 
 (defun json-dialog (prompt url)
   (or (null url)
