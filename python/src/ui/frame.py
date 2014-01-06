@@ -16,7 +16,7 @@ from preference import Preferences
 import wx.lib.agw.aui as aui
 from config import PVSIDEConfiguration
 import wx.stc as stc
-from pvscomm import PVSCommunicator, PVSCommandManager            
+from pvscomm import PVSCommunicator, PVSCommandManager
 
 class MainFrame(wx.Frame):
     """The main frame of the application. It consists of a menu and a toolbar, a notebook for all the open
@@ -201,18 +201,20 @@ class MainFrame(wx.Frame):
     
     def askYesNoCancelQuestion(self, question, title=EMPTY_STRING):
         """Show a dialog box to ask a question with three possible answers: Yes, No, and Cancel"""
-        dlg = wx.MessageDialog(self, question, title, wx.YES_NO | wx.CANCEL | wx.ICON_QUESTION)
-        choice = dlg.ShowModal() # choice will be either wx.ID_YES or wx.ID_NO or wx.ID_CANCEL
-        dlg.Destroy()
+        dialog = wx.MessageDialog(self, question, title, wx.YES_NO | wx.CANCEL | wx.ICON_QUESTION)
+        choice = dialog.ShowModal() # choice will be either wx.ID_YES or wx.ID_NO or wx.ID_CANCEL
+        dialog.Destroy()
         return choice
     
     def askForText(self, question, title=EMPTY_STRING, defaultValue=EMPTY_STRING, cancelButton=True):
         buttons = wx.OK | wx.CANCEL if cancelButton else wx.OK
-        dialog = wx.TextEntryDialog(None, question, title, defaultValue, style=buttons)
-        value = dialog.GetValue() if dialog.ShowModal() == wx.ID_OK else None
+        dialog = wx.TextEntryDialog(self, question, title, defaultValue, style=buttons)
+        #dialog = wx.MessageDialog(self, question, title, wx.YES_NO | wx.CANCEL | wx.ICON_QUESTION)
+        dialog.Center()
+        answer = dialog.ShowModal()
+        value = dialog.GetValue() if answer == wx.ID_OK else None
         dialog.Destroy()
         return value
-        wx.TextEntryDialog()
     
     def chooseDirectory(self, message, defaultDirectory=EMPTY_STRING):
         """Show a dialog to choose a directory"""    
