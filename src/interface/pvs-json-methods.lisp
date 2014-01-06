@@ -51,6 +51,7 @@
 (defrequest typecheck (filename)
   "Typecheck a file"
   (let ((theories (pvs:typecheck-file filename)))
+    (pvs:save-context)
     (xmlrpc-theories theories)))
 
 (defun jsonrpc-pvs-typecheck-file (filename &optional optargs)
