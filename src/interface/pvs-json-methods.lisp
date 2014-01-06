@@ -27,7 +27,7 @@
 
 (defrequest list-client-methods ()
   "List methods clients need to support"
-  (list "info" "warning" "debug" "buffer" "yes-no"))
+  (list "info" "warning" "debug" "buffer" "yes-no" "dialog"))
 
 (defrequest help (methodname)
   "Get help for the specified methodname -
@@ -113,7 +113,7 @@
     (:place . ,(pvs:place-list decl))))
 
 (defmethod xmlrpc-theory-decl* ((decl pvs:formula-decl))
-  (let* ((proved? (pvs:proved? decl))
+  (let* ((proved? (not (null (pvs:proved? decl))))
 	 (complete? (and proved?
 			 (string= (pvs:pc-complete decl)
 				  "complete")))
@@ -135,7 +135,8 @@
 
 (defrequest reset ()
   "Resets PVS"
-  (pvs:pvs-abort))
+  (let ((proc (mp:process-name-to-process "Initial Lisp Listener")))
+    (mp:process-interrupt proc #'pvs:pvs-abort)))
 
 ;;; Prover interface
 
