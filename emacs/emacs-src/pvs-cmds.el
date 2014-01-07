@@ -1164,7 +1164,7 @@ needed, as PVS automatically saves the context as needed."
 The context-path command displays the current pathname (directory) in the
 echo area."
   (interactive)
-  (let ((dir (pvs-current-directory)))
+  (let ((dir (pvs-send-and-wait "(namestring *pvs-context-path*)")))
     (message "Context Path: %s" (short-file-name dir))))
 
 
