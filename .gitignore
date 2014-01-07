@@ -5,11 +5,13 @@
 /pvs
 /pvsio
 /TAGS
+pvs-patches
 autom4te.cache
 bin/*
 emacs/*
 doc/*
 Examples/*
+lib/why/*
 
 emacs/emacs23
 emacs/emacs24
@@ -23,6 +25,7 @@ src/nlyices/ix86_64-Linux/
 src/nlyices/ix86-MacOSX/
 src/utils/ix86_64-Linux/b64
 src/utils/ix86-MacOSX/b64
+src/cl-json/_darcs
 orphaned-proofs.prf
 pvsbin
 
