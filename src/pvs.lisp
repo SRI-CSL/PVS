@@ -230,7 +230,8 @@
 	       *pvs-context*
 	       (consp (cadr *pvs-context*))
 	       (every #'stringp (cadr *pvs-context*)))
-      (load-prelude-libraries (cadr *pvs-context*)))))
+      (load-prelude-libraries (cadr *pvs-context*))))
+  (restore-context))
 
 (defun get-pvs-library-path ()
   (setq *pvs-library-path* nil)
