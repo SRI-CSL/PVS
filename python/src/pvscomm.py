@@ -229,7 +229,7 @@ class PVSResponseManager:
         
         
     def _process_yes_no(self, *parameters):
-        logging.debug("PVS Info received. Parameters %s", (parameters,))
+        logging.debug("Parameters %s", (parameters,))
         frame = util.getMainFrame()
         question = parameters[0].strip()
         answer = frame.askYesNoQuestion(question)
@@ -237,24 +237,25 @@ class PVSResponseManager:
         return result
         
     def _process_dialog(self, *parameters):
-        logging.debug("PVS Info received. Parameters %s", (parameters,))
-        frame = util.getMainFrame()
+        logging.debug("Parameters %s", (parameters,))
         question = parameters[0].strip()
-        defaultName=constants.EMPTY_STRING
-        result = frame.askForText(question, "Enter a new name", defaultName, False)
-        return result
+        frame = util.getMainFrame()
+        defaultName = parameters[1].strip() if len(parameters)>1 else constants.EMPTY_STRING
+        frame.showMessage("This is not implemented yet...Using the default name")
+        #result = frame.askForText(question, constants.EMPTY_STRING, defaultName, True)
+        return defaultName
         
     def _process_info(self, *parameters):
-        logging.debug("PVS Info received. Parameters %s", (parameters,))
+        logging.debug("Parameters %s", (parameters,))
 
     def _process_debug(self, *parameters):
-        logging.debug("PVS Debug received. Parameters %s", (parameters,))
+        logging.debug("Parameters %s", (parameters,))
 
     def _process_warning(self, *parameters):
-        logging.debug("PVS Warning received. Parameters %s", (parameters,))
+        logging.debug("Parameters %s", (parameters,))
         
     def _process_buffer(self, *parameters):  
-        logging.debug("buffer received. Parameters %s", (parameters,))
+        logging.debug("Parameters %s", (parameters,))
 
     def _process_everything_else(self, method, *parameters):
         logging.debug("Unknown method '%s' received. Parameters %s", method, (parameters,))
@@ -398,10 +399,10 @@ class PVSCommandManager:
         else:
             name = os.path.basename(fullname)
             name = util.getFilenameFromFullPath(fullname, False)
-            pub.sendMessage(constants.PUB_REMOVEANNOTATIONS)
+            pub.sendMessage(constants.PUB_FILEPARSING, fullname=fullname)
             result = self._sendCommand("typecheck", name)
             if result is not None:
-                pub.sendMessage(constants.PUB_REMOVEANNOTATIONS)
+                pub.sendMessage(constants.PUB_FILEPARSING, fullname=fullname)
                 pub.sendMessage(constants.PUB_FILETYPECHECKED, fullname=fullname, result=result)
                 self.namesInfo(fullname)
             return result
@@ -436,7 +437,7 @@ class PVSCommandManager:
         else:
             name = os.path.basename(fullname)
             name = os.path.splitext(name)[0] # just get the filename without the extension 
-            pub.sendMessage(constants.PUB_REMOVEANNOTATIONS)
+            pub.sendMessage(constants.PUB_FILEPARSING, fullname=fullname)
             result = self._sendCommand("parse", name)
             return result
     

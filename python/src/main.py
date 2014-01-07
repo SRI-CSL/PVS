@@ -10,12 +10,10 @@ import logging.config
 import gc
 import argparse
 
-# end of class PVSEditorApp
-
 def readCommandLineArguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-pvs", nargs=1, help="specify the PVS URL", dest="pvsURL")
-    parser.add_argument("-url", nargs=1, help="specify the GUI URL", dest="guiURL")
+    parser.add_argument("-pvs", nargs=1, help="specify the PVS URL (e.g. http://localhost:22334)", dest="pvsURL")
+    parser.add_argument("-url", nargs=1, help="specify the GUI URL (e.g. http://localhost:22335/RPC2)", dest="guiURL")
     parser.add_argument("-ll", nargs=1, help="set the logging level to one of: debug, info, warning, error", dest="level")
     args = parser.parse_args()
     return args

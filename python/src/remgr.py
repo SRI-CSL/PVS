@@ -24,7 +24,7 @@ class RichEditorManager:
             pub.subscribe(self.removeFile, PUB_CLOSEFILE)
             pub.subscribe(self.onFileSaved, PUB_FILESAVED)
             pub.subscribe(self.onErrorLocation, PUB_ERRORLOCATION)
-            pub.subscribe(self.clearAnnotations, PUB_REMOVEANNOTATIONS)
+            pub.subscribe(self.clearAnnotations, PUB_FILEPARSING)
             pub.subscribe(self.applyNamesInformation, PUB_NAMESINFOUPDATE)
             
             #self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnPageChanging)
@@ -160,7 +160,7 @@ class RichEditorManager:
         richEditor = self.getFocusedRichEditor()
         richEditor.addRedMarker(begin[0])
         
-    def clearAnnotations(self):
+    def clearAnnotations(self, fullname):
         richEditor = self.getFocusedRichEditor()
         richEditor.removeRedMarkers()
         richEditor.applyNamesInformation([])

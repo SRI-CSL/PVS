@@ -58,6 +58,7 @@ class FilesTreePlugin(PluginPanel):
         pub.subscribe(self.removeFile, PUB_CLOSEFILE)
         pub.subscribe(self.onFileSaved, PUB_FILESAVED)
         pub.subscribe(self.onFileIsTypechecked, PUB_FILETYPECHECKED)
+        pub.subscribe(self.clearFileNodeChildren, PUB_FILEPARSING)
         pub.subscribe(self.pvsContextUpdated, PUB_UPDATEPVSCONTEXT)
         pub.subscribe(self.onFormulaUpdated, PUB_FORMULAUPDATE)
         self.tree.SetDropTarget(PVSFileDropTarget())
@@ -350,13 +351,17 @@ class FilesTreePlugin(PluginPanel):
         
     def onFileSaved(self, fullname, oldname=None):
         """remove the theories nodes from a file node"""
-        fileNode = self.getFileNode(fullname) if oldname is None else self.getFileNode(oldname)
-        self.tree.DeleteChildren(fileNode)
+        self.clearFileNodeChildren(fullname) if oldname is None else self.clearFileNodeChildren(oldname)
         if oldname is not None:
             self.removeFile(oldname)
             self.addFile(fullname)
             #self.tree.SetItemPyData(fileNode, wx.TreeItemData({FULLNAME: fullname, KIND: LFILE}))
             #self.tree.SetItemText(fileNode, util.getFilenameFromFullPath(fullname))
+            
+    def clearFileNodeChildren(self, fullname):
+        fileNode = self.getFileNode(fullname)
+        self.tree.DeleteChildren(fileNode)
+        
             
 
 class PVSFileDropTarget(wx.FileDropTarget):
