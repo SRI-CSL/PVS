@@ -241,8 +241,9 @@ class PVSResponseManager:
         question = parameters[0].strip()
         frame = util.getMainFrame()
         defaultName = parameters[1].strip() if len(parameters)>1 else constants.EMPTY_STRING
-        result = frame.askForText(question, constants.EMPTY_STRING, defaultName, True)
-        return result
+        frame.showMessage("This is not implemented yet...Using the default name")
+        #result = frame.askForText(question, constants.EMPTY_STRING, defaultName, True)
+        return defaultName
         
     def _process_info(self, *parameters):
         logging.debug("Parameters %s", (parameters,))

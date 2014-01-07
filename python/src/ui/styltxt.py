@@ -124,6 +124,7 @@ class PVSStyledText(stc.StyledTextCtrl):
         position = (event.EventObject.GetCurrentLine()+1, event.EventObject.GetCurLineRaw()[1])
         inf = self._findDecl(position)
         if inf is not None:
+            self.SetToolTip(None)
             menu = wx.Menu()
             declFile = inf[constants.DECLFILE]
             declPlace = inf[constants.DECLPLACE]
