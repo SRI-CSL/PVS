@@ -58,6 +58,7 @@ class PVS_XMLRPC(object):
                              'info': self.pvs_info,
                              'warning': self.pvs_warning,
                              'yes_no': self.pvs_yes_no,
+                             'buffer': self.pvs_buffer,
                              'dialog': self.pvs_dialog}
 
     def pvs_request(self, method, params=None):
