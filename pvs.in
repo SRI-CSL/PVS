@@ -14,15 +14,16 @@
 #   -runtime               use the runtime image (devel is default, if there)
 #   -decision-procedures   set the default decision procedures (ics or shostak)
 #   -force-decision-procedures  forces the decision procedures to be used
-#   -patchlevel  indicates the patch level: 0 for no patches
-#   -batch       run in batch mode
-#   -timeout     seconds to timeout commands or proofs - only allowed in batch
-#   -nobg        don't run PVS in the background
-#   -raw         run PVS without Emacs
-#   -v           the (verbose) level number - 0-3 (mostly for batch mode)
-#   -q           do not load ~/.emacs, ~/.pvsemacs, or ~/.pvs.lisp files
-#   -e expr      evaluate the given Emacs expression
-#   -l efile     load the given Emacs file before PVS emacs files
+#   -patchlevel    indicates the patch level: 0 for no patches
+#   -batch         run in batch mode
+#   -timeout       seconds to timeout commands or proofs - only allowed in batch
+#   -nobg          don't run PVS in the background
+#   -port number   start XML-RPC server on port number num
+#   -raw           run PVS without Emacs
+#   -v             the (verbose) level number - 0-3 (mostly for batch mode)
+#   -q             do not load ~/.emacs, ~/.pvsemacs, or ~/.pvs.lisp files
+#   -e expr        evaluate the given Emacs expression
+#   -l efile       load the given Emacs file before PVS emacs files
 #   -load-after efile      loads Emacs file after PVS emacs files
 #   -E expr
 #   -L lfile     load the given Lisp file (after PVS initializes)
@@ -196,6 +197,7 @@ where options include:
   -batch             run in batch mode
   -timeout number    use a timeout for commands or proofs in batch mode
   -nobg              don't put PVS in the background
+  -port number       run PVS as XML-RPC server on port number
   -raw               run PVS without Emacs
   -v number          verbosity level for batch mode (0-3)
   -q           do not load ~/.emacs, ~/.pvsemacs, or ~/.pvs.lisp files
