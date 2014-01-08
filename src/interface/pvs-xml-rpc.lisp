@@ -62,7 +62,8 @@
     (export-xml-rpc-method cmdsrv
 	'("pvs.request" xmlrpc-pvs-request t "Request a PVS method.")
       :string :string :string)
-    (setq *pvs-xmlrpc-server* cmdsrv)))
+    (setq *pvs-xmlrpc-server* cmdsrv)
+    t))
 
 (defvar *client-url* nil)
 
