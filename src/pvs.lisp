@@ -3530,6 +3530,9 @@
   (format out ":~2%Arguments: ~(~a~)" (formals strat))
   (format out "~2%Definition: ~%")
   (write (defn strat) :stream out :pretty t :level nil :length nil)
+  (format out ":~2%Original Arguments: ~(~a~)" (source-formals strat))
+  (format out "~2%Original Definition: ~%")
+  (write (source-defn strat) :stream out :pretty t :level nil :length nil)
   (format out "~2%Format string: ~s" (format-string strat))
   (format out "~2%Documentation: ~%~a" (docstring strat))
   #+lucid
@@ -3547,6 +3550,9 @@
   (format out ":~2%Arguments: ~(~a~)" (formals strat))
   (format out "~2%Definition: ~%")
   (write (defn strat) :stream out :pretty t :level nil :length nil)
+  (format out ":~2%Original Arguments: ~(~a~)" (source-formals strat))
+  (format out "~2%Original Definition: ~%")
+  (write (source-defn strat) :stream out :pretty t :level nil :length nil)
   (format out "~2%Format string: ~s" (format-string strat))
   (format out "~2%Documentation: ~%~a" (docstring strat))
   #+lucid
