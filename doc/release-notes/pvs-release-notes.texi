@@ -44,6 +44,7 @@ are available in the @code{doc/release-notes} subdirectory of the PVS
 distribution.
 
 @menu
+* PVS 6.1 Release Notes::
 * PVS 6.0 Release Notes::
 * PVS 5.0 Release Notes::
 * PVS 4.2 Release Notes::
@@ -54,6 +55,7 @@ distribution.
 * PVS 3.0 Release Notes::
 @end menu
 
+@include pvs6.1-release-notes.texi
 @include pvs6.0-release-notes.texi
 @include pvs5.0-release-notes.texi
 @include pvs4.2-release-notes.texi
