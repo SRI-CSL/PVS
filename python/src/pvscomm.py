@@ -127,14 +127,17 @@ class PVSCommunicator:
             self.guiServer.shutdown()
         
     def _validateJSON(self, jsonObject):
-        import jsonschema
-        if self._doValidate:
-            try:
-                jsonschema.validate(jsonObject, self.pvsJsonSchema["definitions"])
-                logging.debug("Validation successful for: %s", jsonObject)
-            except Exception as err:
-                logging.error("JSON Object is not valid: %s", err)
-                raise err
+        try:
+            import jsonschema
+            if self._doValidate:
+                try:
+                    jsonschema.validate(jsonObject, self.pvsJsonSchema["definitions"])
+                    logging.debug("Validation successful for: %s", jsonObject)
+                except Exception as err:
+                    logging.error("JSON Object is not valid: %s", err)
+                    raise err
+        except ImportError:
+            pass
             
     def requestPVS(self, method, *params):
         """ Send a request to PVS """
