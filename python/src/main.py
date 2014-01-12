@@ -104,8 +104,11 @@ def verifyPythonPackagesAreFine():
         logging.getLogger(constants.LROOT).setLevel(logging.INFO)            
     if optionalPackageMissing:
         logging.warning("The application can still run without the optional packages")
-    from wx.lib.pubsub import setupkwargs, pub 
-    assert (pub.PUBSUB_VERSION == 3), "This application requires PUBSUB version 3 or higher."  
+    from wx.lib.pubsub import setupkwargs, pub
+    if hasattr(pub, 'PUBSUB_VERSION'):
+        assert (pub.PUBSUB_VERSION == 3), "This application requires PUBSUB version 3 or higher."
+    else:
+        assert (pub.VERSION_API == 3), "This application requires PUBSUB version 3 or higher."
         
 if __name__ == "__main__":
     verifyPythonPackagesAreFine()
