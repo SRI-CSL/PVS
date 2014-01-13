@@ -174,7 +174,7 @@
   name source-formals source-defn formals defn docstring format-string)
 
 (defmethod print-object ((entry defrule-entry) stream)
-  (format stream "#<~a: (~a ~{~a~})>"
+  (format stream "#<~a: (~a ~{~a~^ ~})>"
     (class-name (class-of entry))
     (name entry)
     (formals entry)))
