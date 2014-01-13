@@ -1823,6 +1823,13 @@ context."
 (defun get-prove-formula-proof ()
   (pvs-file-send-and-wait "(get-prove-formula-proof)" nil nil 'list))
 
+(defpvs pvs-server environment (port)
+  "Start the PVS XML-RPC server.
+
+Starts up the PVS XML-RPC server (currently only in Allegro Lisp."
+  (interactive "nPort number (between 1024 and 65335): ")
+  (pvs-send (format "(pvs-xml-rpc:pvs-server :port %d)" port)))
+
 (defvar pvs-busy-hook nil)
 (defvar pvs-ready-hook nil)
 
