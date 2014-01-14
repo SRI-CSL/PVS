@@ -113,6 +113,11 @@
     (:type . ,(pvs:str (pvs:type decl)))
     (:place . ,(pvs:place-list decl))))
 
+(defmethod xmlrpc-theory-decl* ((decl pvs:type-decl))
+  `((:id . ,(pvs:id decl))
+    (:kind . ,(pvs:kind-of decl))
+    (:place . ,(pvs:place-list decl))))
+
 (defmethod xmlrpc-theory-decl* ((decl pvs:formula-decl))
   (let* ((proved? (not (null (pvs:proved? decl))))
 	 (complete? (and proved?
