@@ -34,14 +34,25 @@ Linux 64-bit machines, and Mac 64-bit.
 
 Note that the XML-RPC server is not (yet) available in SBCL.
 
+The latest PVS includes a preliminary version of a PVS client, written in
+wxPython.  To use, you will need to have Python 2.7, along with @code{wx}
+(@url{http://www.wxpython.org/}), @code{pyparsing}
+(@url{http://pyparsing.wikispaces.com/}), and optionally @code{jsonschema}
+(@url{https://github.com/Julian/jsonschema}) and @code{requests}
+(@url{http://www.wxpython.org/}).  If missing, the latter will give
+warnings - these can be ignored.  These packages may often be gotten
+through Linux package managers, or using easy_install or pip.
+
 @node    6.1 New Features
 @section New Features
 
 @menu
 * PVS XML-RPC server::
 * GUI::
-* Declaration Tooltips::
+* Prover GUI::
+* PVS Identifier Tooltips::
 * Proof Command Definitions::
+* Positive Type Parameters::
 * Typepred Extension::
 * TCC Ordering::
 @end menu
@@ -223,8 +234,46 @@ single proof.
 @node GUI
 @subsection GUI
 
-@node Declaration Tooltips
-@subsection Declaration Tooltips
+As described above, the new GUI is built on wxPython.  The executable is
+@code{pvs-gui} in the top level PVS directory.  Starting it with no
+arguments creates a client with port 22335, and expects the PVS server to
+be at port 22334.  Currently you have to start up both, but they can be
+started in either order; for pvs include @code{-port 22334} with any other
+arguments you might want.  In principle, pvs can be started with -raw,
+meaning no Emacs, but it is easier for debugging to have the Emacs ILISP
+interface available.
+
+Once started, it should be fairly easy to explore and find files, change
+context, typecheck, and start proofs.  There is a Help menu that gives
+more details.  This is very much an early prototype, and suggestions are
+welcome.  Note that the sources are available on GitHub with the rest of
+PVS in the python subdirectory.  Please let us know if you would like to
+get involved in development of the GUI.
+
+@node Prover GUI
+@subsection Prover GUI
+
+The prover has been significantly modified to generate structures suitable
+for sending to the GUI.  As a means to test this, a new capability was
+added to the PVS Emacs, that makes use of the same JSON forms as those
+sent to the GUI.  By default, PVS uses the old display, simply printing
+the sequent in the @code{*pvs*} buffer, displaying the @code{Rule?}
+prompt, and reading the next prover command.
+
+To get a different display, use 
+
+@node PVS Identifier Tooltips
+@subsection PVS Identifier Tooltips
+
+A new feature of PVS, developed partly for the new GUI, is the ability to
+associate tooltips with each PVS identifier of a PVS file or proof
+sequent.  These tooltips are only available in typechecked files.  They
+are automatically available in the GUI after typechecking; in Emacs, run
+@code{M-x pvs-add-tooltips} in any typechecked buffer (including the
+prelude) and then move the mouse over identifiers in the buffer to see
+their types.  Clicking middle takes you to the file with the cursor at the
+declaration.
+
 
 @node Proof Command Definitions
 @subsection Proof Command Definitions
@@ -375,6 +424,37 @@ The PVS Emacs command @code{M-x help-pvs-prover-strategy} (@code{C-c C-h
 s}) now includes the expanded argument list and definitions, as well as
 the original forms.  This can be helpful in understanding how the
 prover arguments work.
+
+This change has little impact on existing proofs, though in the regression
+tests it was found that a couple of strategies defined in the NASA
+libraries were not quite correct, but the old strategy mechanism simply
+ignored extra arguments.  Now those generate an error.
+
+@node Positive Type Parameters
+@subsection Positive Type Parameters
+PVS treats positive type parameters specially in datatypes, so that, e.g.,
+@code{cons[int](1, null) = cons[nat](1, null)}, but this did not extend
+beyond constructors and accessors.  Now PVS treats all definitions
+accordingly.  The basic idea is that if a given definition does not depend
+directly on the type, and only on the values, then it is safe to ignore
+the type parameter - though typechecking may still generate a TCC.
+
+Thus, for example, @code{length[T]((: 2, 3, 5 :))} is 3, regardless of
+which numeric subtype T may be, though unprovable TCCs may result (e.g.,
+if @code{T} is @code{even}).  Similarly, @code{nth} and @code{every}
+depend only on the arguments, not on the types.  An example of a
+definition that depends on the types, not merely the arguments, is
+@example
+th[T: type from int]: theory
+ ...
+ foo(x: T): int = if (exists (y: T): y > x) then x else 0 endif
+ ...
+end th
+@end example
+
+This change can have an impact on existing proofs, though mostly it makes
+them more direct - some proofs involving recursive functions, e.g.,
+@code{length[int](x) = length[nat](x)} require convoluted proofs.
 
 @node Typepred Extension
 @subsection Typepred Extension
