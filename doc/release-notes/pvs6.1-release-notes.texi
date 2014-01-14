@@ -6,7 +6,10 @@ XML-RPC server.  A few enhancements were made to PVS to support more GUI
 features, and most of these were added to the Emacs GUI as well.
 
 In addition, the prover command definition forms were generalized in order
-to make it easier to add new arguments.
+to make it easier to add new arguments, declaration information is now
+readily available as tooltips, positive type parameters are now used beyond
+datatypes, and the typepred command has been extended to include function
+ranges.
 
 @ifnottex
 @menu
@@ -85,7 +88,7 @@ several constraints we want to satisfy:
 @item
 PVS should act as a server, with potentially many clients
 @item
-The interface should be "restful", in the same way the internet is,
+The interface should be "RESTful", in the same way the internet is,
 i.e., there are no heartbeats, simply requests that are answered by PVS
 @item
 There should be no restriction on the language used to implement a
@@ -123,21 +126,24 @@ In the future we will explore the possibility of having separate threads
 associated with different clients, allowing different clients to
 simultaneously run different proofs, possibly in different contexts. 
 
-PVS provides an XML-RPC server when started with a @code{-port} value, normally
-an unused port between 1024 and 65535.  XML-RPC was chosen because it is
-supported by most modern languages.  But XML-RPC forms a layer, under
-which the JSON-RPC 2.0 protocol is implemented.  There is a single
-XML-RPC method provided by the PVS server, @code{pvs.request}, that takes a
-JSON-RPC request string, and an optional client URI, which is used to send
-requests to the client, providing a 2-way communication.  Note that PVS
-does not keep the client URL after answering the request, thus clients may
-be killed and restarted at any time.  In like manner, PVS should be able
-to be restarted without needing to restart any clients, though it may be
-necessary to change context, retypecheck, etc.  At the XML-RPC level, the
-return value includes the JSON-RPC response, the current PVS context, and
-the mode (@code{lisp}, @code{prover}, or @code{evaluator}).  Thus if a given client
-has changed the context and started a proof, that information is included
-in the next request from a different client.
+PVS provides an XML-RPC server when started with a @code{-port} value,
+e.g., @code{pvs -port 22334}, normally an unused port between 1024 and 65535.
+XML-RPC was chosen because it is supported by most modern languages, and
+we chose to implement the JSON-RPC 2.0 protocol within XML-RPC.  Directly
+using JSON-RPC is possible, but it is not yet widely supported.
+
+There is a single XML-RPC method provided by the PVS server,
+@code{pvs.request}, that takes a JSON-RPC request string, and an optional
+client URI, which is used to send requests to the client, providing a
+2-way communication.  Note that PVS does not keep the client URI after
+answering the request, thus clients may be killed and restarted at any
+time.  In like manner, PVS can be restarted without needing
+to restart any clients, though it may be necessary to change context,
+retypecheck, etc.  At the XML-RPC level, the return value includes the
+JSON-RPC response, the current PVS context, and the mode (@code{lisp},
+@code{prover}, or @code{evaluator}).  Thus if a given client has changed
+the context and started a proof, that information is included in the next
+request from a different client.
 
 We chose JSON as the data interchange format over XML since it is more
 compact, and supported by most languages.  In addition, there is a JSON
@@ -176,12 +182,12 @@ This method simply lists the currently available methods.
 As described above, PVS may provide information or make requests to the
 client.  This method lists all the JSON-RPC requests that PVS will invoke
 if it is given a URI at the XML-RPC level.  Currently it consists of
-=info=, =warning=, =debug=, =buffer=, =yes-no=, and =dialog=.  The JSON
-Schema gives details about the format.
+@code{info}, @code{warning}, @code{debug}, @code{buffer}, @code{yes-no},
+and @code{dialog}.  The JSON Schema gives details about the format.
 @end deffn
 
 @deffn method  help
-Gives help for any given method returned by =list-methods=.
+Gives help for any given method returned by @code{list-methods}.
 @end deffn
 
 @deffn method  lisp
@@ -191,7 +197,7 @@ also be useful for other purposes.
 @end deffn
 
 @deffn method  change-context
-Changes the current context as with the Emacs =change-context= command.
+Changes the current context as with the Emacs @code{change-context} command.
 @end deffn
 
 @deffn method  typecheck
@@ -225,7 +231,7 @@ see the JSON schema for details.
 
 @deffn method  proof-command
 This sends the specified proof command to PVS, returning the current goal.
-Currently the proof needs to be started with =prove-formula=, though in
+Currently the proof needs to be started with @code{prove-formula}, though in
 principle any client (e.g., Emacs) could start the proof and a different
 client continue.  It's possible for this to allow collaboration on a
 single proof.
@@ -238,10 +244,12 @@ As described above, the new GUI is built on wxPython.  The executable is
 @code{pvs-gui} in the top level PVS directory.  Starting it with no
 arguments creates a client with port 22335, and expects the PVS server to
 be at port 22334.  Currently you have to start up both, but they can be
-started in either order; for pvs include @code{-port 22334} with any other
-arguments you might want.  In principle, pvs can be started with -raw,
-meaning no Emacs, but it is easier for debugging to have the Emacs ILISP
-interface available.
+started in either order, and if one crashes it can be restarted without
+directly affecting the other.  For starting pvs include @code{-port 22334}
+with any other arguments you might want.  In principle, pvs can be started
+with -raw, meaning no Emacs, but it is easier for debugging to have the
+Emacs ILISP interface available.  Run @code{pvs-gui -h} for details on how
+to set the ports and debug levels.
 
 Once started, it should be fairly easy to explore and find files, change
 context, typecheck, and start proofs.  There is a Help menu that gives
@@ -251,7 +259,7 @@ PVS in the python subdirectory.  Please let us know if you would like to
 get involved in development of the GUI.
 
 @node Prover GUI
-@subsection Prover GUI
+@subsection Prover Emacs UI
 
 The prover has been significantly modified to generate structures suitable
 for sending to the GUI.  As a means to test this, a new capability was
@@ -260,7 +268,40 @@ sent to the GUI.  By default, PVS uses the old display, simply printing
 the sequent in the @code{*pvs*} buffer, displaying the @code{Rule?}
 prompt, and reading the next prover command.
 
-To get a different display, use 
+There are new proof displays available.  These are new, and not well
+tested, please send feedback if you try them out.  Keep in mind the
+distinction Emacs makes between frames, windows, and buffers.  A frame is 
+what most systems call a window; each frame can be moved around on the
+desktop, closed, resized, etc.  Frames may be subdivided into windows, and
+each window displays a buffer.  Note that buffers are there, even if they
+are not currently displayed; there are separate commands for listing
+buffers, killing buffers, etc.
+
+There are 6 proof display styles available; @code{no-frame},
+@code{0-frame}, @code{1-frame}, @code{2-frame}, @code{3-frame}, and
+@code{4-frame}.  As you might guess, the names say how many frames are
+involved.  @code{no-frame}, the default, works as in the past.
+The rest create separate windows and frames for different parts of a proof
+session: the current goal, the command input, the proof commentary, and
+optionally the proof script.
+
+The @code{0-frame} uses the same frame as the PVS startup frame, and
+splits it into separate windows.  The @code{1-frame} creates a new frame
+for this purpose.  The @code{2-frame} puts the commentary in a separate
+frame, the @code{3-frame} puts the commentary and proof script in separate
+frames, and the @code{4-frame} puts all four parts in separate frames.
+
+The commentary is used for the running commentary of a proof; information
+that is part of the proof session, but not really part of a given proof
+step.  The command input is currently just a window into the @code{*pvs*}
+buffer, which still has the proof as before, even when displays are
+active.  The sequent buffer has the feature that hovering the mouse over
+an identifier shows the corresponding declaration; this can be very
+helpful in proofs.
+
+The different parts of the proof display have associated faces, and can be
+customized.  Do @code{M-x customize} and search for @code{pvs} to find all
+customizable faces.
 
 @node PVS Identifier Tooltips
 @subsection PVS Identifier Tooltips
@@ -462,7 +503,7 @@ them more direct - some proofs involving recursive functions, e.g.,
 The @code{typepred} prover command was extended to include functional
 typepreds.  Thus if @code{f} has type @code{[D -> @{x: R | p(x)@}]}, then
 the proof command @code{(typepred "f")} would generate a hypothesis of the
-form @code{∀ (x: D): p(f(x))}.  Note that some commands such as
+form @code{FORALL (x: D): p(f(x))}.  Note that some commands such as
 @code{skolem}, take a flag that causes typepreds to be generated - this
 would also include these functional typepreds.
 
