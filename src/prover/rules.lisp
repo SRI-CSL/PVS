@@ -71,12 +71,12 @@
 	    #+lucid (record-source-file ,name 'strategy)
 	    (format t "~%Changed rule ~a" ,name)))))
 
-;;; Potential replacement for addrule
-;;; Doesn't separate required-args and optional-args
-;;; The docstring is immediately after the args
-;;; The optional format-string is immediately after the docstring
-;;; and is the first thing in the body, if it is a string
-;;; The arg declarations follow that, then the body, e.g.,
+;;; defrulepr (primitive rule def) - potential replacement for addrule
+;;; Doesn't separate required-args and optional-args, and args may be of the
+;;; form (var :documentation string :type type).  The docstring is
+;;; immediately after the args.  The optional format-string is immediately
+;;; after the docstring and is the first thing in the body, if it is a
+;;; string The arg declarations follow that, then the body, e.g.,
 
 ;;;  (defrulepr lemma (name &optional subst)
 ;;;   "Adds lemma named NAME as the first antecedent formula
@@ -86,12 +86,32 @@
 ;;;   (pr-input formula-or-definition-name-with-subst name subst)
 ;;;   (lemma-rule-fun name subst))
 
+(defun defrulepr* (name formals definition
+		   &optional docstring format-string)
+  (defgen* name formals definition docstring format-string
+	   'rule-entry *rulenames*))
 
-(defmacro defrulepr (name args docstring &rest body)
-  `(let* ((entry (gethash ,name *rulebase*))
-	  (form (cons ,name ,args))
-	  (docstr (format nil "~s: ~%    ~a" form ,docstring)))
-     (break "needs work")))
+(defmacro defrulepr (name args body doc &optional format)
+  (check-prover-macro-args name args body doc format)
+  (let ((lbody (extract-lisp-exprs-from-strat-body body)))
+    (if lbody
+	(let ((largs (mapcar #'(lambda (a) (if (consp a) (car a) a))
+		       (remove-if #'(lambda (a)
+				      (memq a '(&optional &rest)))
+			 args))))
+	  ;; the defun |(DEFRULE) name| is only there for cross referencing
+	  `(progn #-(or cmu sbcl)
+		  (defun ,(makesym "(DEFRULE) ~a" name) ,largs
+		    ,@lbody
+		    (list ,@largs))
+		  (defrule* ',name ',args ',body
+			    (format nil "~s :~%    ~a"
+			      (cons ',(makesym "~a/$" name) ',args)
+			      ,doc)
+			    (format nil "~%~a," ,format))))
+	`(defrulepr* ',name ',args ',body
+		     (format nil "~s:~%    ~a" (cons ',name ',args) ,doc)
+		     (format nil "~%~a," ,format)))))
 
 (defun internal-pc-typecheck (expr &key expected fnums
 				   (context *current-context*)
