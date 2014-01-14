@@ -642,13 +642,12 @@
       (call-next-method))))
 
 (defun finish-proofstate (ps)
-  (let ((done-str (if (and (typep ps 'top-proofstate)
-			   (eq (status-flag ps) '!))
-		      "Q.E.D."
-		      "Unfinished")))
+  (let* ((proved? (and (typep ps 'top-proofstate)
+		       (eq (status-flag ps) '!)))
+	 (done-str (if proved? "Q.E.D." "Unfinished")))
     (when *pvs-emacs-interface*
-      ;; What should be done here?
-      nil)
+      (format nil ":pvs-prfst ~a :end-pvs-prfst"
+	(write-to-temp-file (if proved? "true" "false"))))
     (when *ps-control-info*
       (let ((ps-json `(("result" . ,done-str))))
 	(add-psinfo *ps-control-info* ps-json)))
