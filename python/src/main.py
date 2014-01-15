@@ -89,8 +89,8 @@ def verifyPythonPackagesAreFine():
         try:
             __import__(name)
         except ImportError:
-            print "Please install the '%s' package for Python by visiting %s"%(name, website)
             if whenNeeded == ALWAYSNEEDED:
+                print "Please install the '%s' package for Python by visiting %s"%(name, website)
                 necessaryPackageMissing = True
             elif whenNeeded == NEEDEDFORDEBUG:
                 debugPackageMissing = True
@@ -104,7 +104,14 @@ def verifyPythonPackagesAreFine():
         logging.getLogger(constants.LROOT).setLevel(logging.INFO)            
     if optionalPackageMissing:
         logging.warning("The application can still run without the optional packages")
-    from wx.lib.pubsub import setupkwargs, pub
+    try:
+        from wx.lib.pubsub import setupkwargs, pub
+    except ImportError:
+        import inspect
+        wxpath = inspect.getfile(wx)
+        print 'wx at {0} does not have lib/pubsub subdirectory'.format(wxpath)
+        print 'Please uninstall it and install directly from http://www.wxpython.org/'
+        sys.exit(2)
     if hasattr(pub, 'PUBSUB_VERSION'):
         assert (pub.PUBSUB_VERSION == 3), "This application requires PUBSUB version 3 or higher."
     else:
