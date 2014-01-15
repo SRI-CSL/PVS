@@ -257,7 +257,7 @@ directory.  At startup, this file is read, then the @code{~/pvside.cfg}
 file is read, if it exists.  This has the same syntax as the default
 file (with sections and attributes), 
 but should include only those sections and attributes that you wish to
-modify.  This includes things like the default ports, fonts, colors, etc.
+overwrite.  This includes things like the default ports, fonts, colors, etc.
 
 Once started, it should be fairly easy to explore and find files, change
 context, typecheck, and start proofs.  There is a Help menu that gives
