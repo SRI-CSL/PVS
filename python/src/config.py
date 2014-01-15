@@ -19,10 +19,12 @@ class PVSIDEConfiguration:
             self.ideMinumumSize = (500, 300)
             self.default_color = '000000'
             self.keyword_color = '0000FF'
+            self.identity_color = '000000'
             self.comment_color = '008B00'
             self.number_color = '00CD66'
             self.operator_color = '878787'
             self.string_color = '1C86EE'
+            self.font = 'Courier'
             self.font_size = 10
             self.proverCommands = { \
                 "----": "", \
@@ -44,6 +46,13 @@ class PVSIDEConfiguration:
             return
         config = ConfigParser.ConfigParser()
         config.read(configFile)
+        userConfigFile = os.path.expanduser("~/pvside.cfg")
+        if os.path.exists(userConfigFile):
+            try:
+                config.read(userConfigFile)
+            except ConfigParser.ParsingError as err:
+                logging.warn("Parse error, config files ignored:\n {0}".format(err))
+                return
         logging.debug("Configuring General Values")
         
         self.pvsURL = config.get(constants.GENERAL, "pvs_url", 0)
