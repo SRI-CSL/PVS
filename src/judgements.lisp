@@ -1822,7 +1822,7 @@
 	    (cdr acts) (cdr fmls) te postypes ex preds all?
 	    (cons (cons act npreds) pospreds))))
 	(t (adt-type-constraints
-	    (cdr acts) (cdr fmls) postypes te ex preds all? pospreds))))
+	    (cdr acts) (cdr fmls) te postypes ex preds all? pospreds))))
 
 (defmethod type-constraints* ((te dep-binding) ex preds all?)
   (type-constraints* (type te) ex preds all?))
