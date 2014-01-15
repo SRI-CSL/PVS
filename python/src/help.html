@@ -30,6 +30,12 @@
   preference. Similarly, each open PVS file can be dragged out of the
   frame and be placed back by closing the floating box.
 </p>
+<p>The GUI configuration by default is in the file
+PVS/python/src/pvside.cfg, where PVS is the pvs installation directory.
+At startup, this file is read, then the ~/pvside.cfg file is read, if it
+exists.  This should have the same form as the default file, but should include
+only those sections and attributes that you wish to modify.
+</p>
 <h3>Entering Lisp commands</h3>
 <div>When the GUI is up and running, you can enter any lisp command
   (e.g. typecheck, change-context) using the console that appears at the
