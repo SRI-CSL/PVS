@@ -96,8 +96,11 @@
 	     (cons thdecl thdecls)
 	     thdecls)))))
 
+(defvar *idgensymctr*)
+
 (defun xmlrpc-theory-decl (decl)
-  (xmlrpc-theory-decl* decl))
+  (let ((*idgensymctr* nil))
+    (xmlrpc-theory-decl* decl)))
 
 (defmethod xmlrpc-theory-decl* ((decl pvs:var-decl))
   nil)
@@ -108,15 +111,30 @@
     (:place . ,(pvs:place-list imp))))
 
 (defmethod xmlrpc-theory-decl* ((decl pvs:typed-declaration))
-  `((:id . ,(pvs:id decl))
-    (:kind . ,(pvs:kind-of decl))
-    (:type . ,(pvs:str (pvs:type decl)))
-    (:place . ,(pvs:place-list decl))))
+  (let ((id (or (pvs:id decl)
+		(gen-id (pvs:kind-of decl)))))
+    `((:id . ,id)
+      (:kind . ,(pvs:kind-of decl))
+      (:type . ,(pvs:str (pvs:type decl)))
+      (:place . ,(pvs:place-list decl)))))
 
-(defmethod xmlrpc-theory-decl* ((decl pvs:type-decl))
-  `((:id . ,(pvs:id decl))
-    (:kind . ,(pvs:kind-of decl))
-    (:place . ,(pvs:place-list decl))))
+(defmethod xmlrpc-theory-decl* ((decl pvs:declaration))
+  (let ((id (or (pvs:id decl)
+		(gen-id (pvs:kind-of decl)))))
+    `((:id . ,id)
+      (:kind . ,(pvs:kind-of decl))
+      (:place . ,(pvs:place-list decl)))))
+  
+(defun gen-id (kind)
+  (let ((num (gen-id-number kind)))
+    (format nil "~a_~d" kind num)))
+
+(defun gen-id-number (kind)
+  (let ((entry (assq kind *idgensymctr*)))
+    (cond (entry
+	   (incf (cdr entry)))
+	  (t (push (cons kind 0) *idgensymctr*)
+	     0))))
 
 (defmethod xmlrpc-theory-decl* ((decl pvs:formula-decl))
   (let* ((proved? (not (null (pvs:proved? decl))))
