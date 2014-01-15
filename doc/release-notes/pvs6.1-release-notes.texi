@@ -251,6 +251,14 @@ with -raw, meaning no Emacs, but it is easier for debugging to have the
 Emacs ILISP interface available.  Run @code{pvs-gui -h} for details on how
 to set the ports and debug levels.
 
+The GUI configuration by default is in the file
+@code{PVS/python/src/pvside.cfg}, where @code{PVS} is the pvs installation
+directory.  At startup, this file is read, then the @code{~/pvside.cfg}
+file is read, if it exists.  This has the same syntax as the default
+file (with sections and attributes), 
+but should include only those sections and attributes that you wish to
+modify.  This includes things like the default ports, fonts, colors, etc.
+
 Once started, it should be fairly easy to explore and find files, change
 context, typecheck, and start proofs.  There is a Help menu that gives
 more details.  This is very much an early prototype, and suggestions are
