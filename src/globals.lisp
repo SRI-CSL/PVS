@@ -63,7 +63,7 @@
     "src/utils" "BDD" "src/interface" "src/ics-interface"
     "src/WS1S/lisp" "src/abstraction" "src/ground-prover" "src/groundeval"
     "src/PVSio" "src/inst-by-unif" "src/Field" "src/Manip" "src/ProofLite"
-    "src/rahd"))
+    "src/rahd" "src/cl-json/src"))
 
 #+allegro
 (defun pvs-build-date ()
