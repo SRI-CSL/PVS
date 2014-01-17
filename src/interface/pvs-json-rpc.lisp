@@ -56,7 +56,7 @@
 		(setf pvs:*pvs-message-hook*
 		      #'(lambda (msg) (json-message msg ,gurl))
 		      pvs:*pvs-warning-hook*
-		      #'(lambda (msg) (json-message msg ,gurl :warning))
+		      #'(lambda (msg) (json-message msg ,gurl "warning"))
 		      pvs:*pvs-buffer-hook*
 		      #'(lambda (name contents display? read-only? append? kind)
 			  (json-buffer name contents display? read-only?
@@ -167,10 +167,10 @@
 		   (:jsonrpc . "2.0"))))
       jerr)))
 
-(defun json-message (msg url &optional (level :info))
+(defun json-message (msg url &optional (level "info"))
   (when url
     (let* ((json:*lisp-identifier-name-to-json* #'identity)
-	   (jmsg (json:encode-json-to-string
+	   (jmsg (json:encode-json-alist-to-string
 		  `((:method . ,level)
 		    (:params . (,msg))
 		    (:jsonrpc . "2.0")))))
@@ -179,8 +179,8 @@
 (defun json-buffer (name contents display? read-only? append? kind url)
   (when url
     (let* ((json:*lisp-identifier-name-to-json* #'identity)
-	   (jmsg (json:encode-json-to-string
-		  `((:method . :buffer)
+	   (jmsg (json:encode-json-alist-to-string
+		  `((:method . "buffer")
 		    (:params . ,(list name contents display? read-only? append? kind))
 		    (:jsonrpc . "2.0")))))
       (xml-rpc-call (encode-xml-rpc-call :request jmsg) :url url))))
@@ -206,8 +206,8 @@
   (or (null url)
       (let* ((json:*lisp-identifier-name-to-json* #'identity)
 	     (id (pvs:makesym "pvs_~d" (incf *json-rpc-id-ctr*)))
-	     (jmsg (json:encode-json-to-string
-		    `((:method . :yes_no)
+	     (jmsg (json:encode-json-alist-to-string
+		    `((:method . "yes_no")
 		      (:params . ,(list msg full? timeout?))
 		      (:id . ,id)
 		      (:jsonrpc . "2.0")))))
@@ -220,8 +220,8 @@
   (or (null url)
       (let* ((json:*lisp-identifier-name-to-json* #'identity)
 	     (id (pvs:makesym "pvs_~d" (incf *json-rpc-id-ctr*)))
-	     (jmsg (json:encode-json-to-string
-		    `((:method . :dialog)
+	     (jmsg (json:encode-json-alist-to-string
+		    `((:method . "dialog")
 		      (:params . ,(list prompt))
 		      (:id . ,id)
 		      (:jsonrpc . "2.0")))))
