@@ -169,6 +169,10 @@ class PVS_XMLRPC(object):
         """ JSON-RPC method """
         print('WARNING: {0}'.format(msg))
 
+    def pvs_buffer(self, msg):
+        """ JSON-RPC method """
+        print('WARNING: {0}'.format(msg))
+
     def pvs_yes_no(self, prompt, fullp, timeout):
         """ JSON-RPC method """
         print('yes-no: {0} {1} {2}'.format(prompt, fullp, timeout))
