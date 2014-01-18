@@ -419,6 +419,8 @@ class PVSCommandManager:
         if isinstance(information, str) or isinstance(information, unicode):
             logging.error("information '%s...' should not be a string. It should be a list", information[0:30])
             information = json.loads(information)
+        if information is None:
+            return None
         information.sort(key=lambda x: x[constants.LPLACE])
         for inf in information:
             declFile = inf[constants.DECLFILE]
