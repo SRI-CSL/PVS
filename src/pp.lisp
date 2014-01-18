@@ -1427,7 +1427,7 @@ bind tighter.")
 
 (defmethod pp* ((te quant-type))
   (pprint-logical-block (nil nil)
-    (write (if (forall-type? te) "FORALL" "EXISTS"))
+    (write (if (forall-expr? te) "FORALL" "EXISTS"))
     (pprint-indent :current 1)
     (write " ")
     (pprint-newline :miser)
