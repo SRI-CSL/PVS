@@ -627,7 +627,7 @@
   (with-slots (label comment current-goal) ps
     (let* ((json:*lisp-identifier-name-to-json* #'identity)
 	   (ps-json (pvs2json ps))
-	   (ps-string (json:encode-json-to-string ps-json)))
+	   (ps-string (json:encode-json-alist-to-string ps-json)))
       (when *pvs-emacs-interface*
 	(let* ((*output-to-emacs*
 		;; action & result & label & sequent
@@ -690,16 +690,16 @@
 (defmethod json:encode-json ((ss seqstruct) &optional (stream json:*json-output*))
   (json:with-object (stream)
     (when (seqstruct-antecedents ss)
-      (json:as-object-member (:antecedents stream)
+      (json:as-object-member ("antecedents" stream)
 	(json:encode-json (seqstruct-antecedents ss) stream)))
     (when (seqstruct-succedents ss)
-      (json:as-object-member (:succedents stream)
+      (json:as-object-member ("succedents" stream)
 	(json:encode-json (seqstruct-succedents ss) stream)))
     (when (seqstruct-hidden-antecedents ss)
-      (json:as-object-member (:hidden-antecedents stream)
+      (json:as-object-member ("hidden-antecedents" stream)
 	(json:encode-json (seqstruct-hidden-antecedents ss) stream)))
     (when (seqstruct-hidden-succedents ss)
-      (json:as-object-member (:hidden-succedents stream)
+      (json:as-object-member ("hidden-succedents" stream)
 	(json:encode-json (seqstruct-hidden-succedents ss) stream)))))
 
 (defmethod pvs2json-seq (seq parent-ps)

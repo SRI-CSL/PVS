@@ -103,7 +103,7 @@ def verifyPythonPackagesAreFine():
         logging.info("Setting the logging level to INFO")
         logging.getLogger(constants.LROOT).setLevel(logging.INFO)            
     if optionalPackageMissing:
-        logging.warning("The application can still run without the optional packages")
+        logging.info("The application can still run without the optional packages")
     try:
         from wx.lib.pubsub import setupkwargs, pub
     except ImportError:

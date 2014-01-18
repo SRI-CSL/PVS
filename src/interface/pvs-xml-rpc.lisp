@@ -93,14 +93,14 @@
 (defun xmlrpc-error (msg)
   ;; id not available
   (let ((json:*lisp-identifier-name-to-json* #'identity))
-    (json:encode-json-to-string
+    (json:encode-json-alist-to-string
      `((:mode . ,(pvs-current-mode))
        (:context . ,(pvs:current-context-path))
        (:xmlrpc_error . ,msg)))))
 
 (defun xmlrpc-result (result id)
   (let ((json:*lisp-identifier-name-to-json* #'identity))
-    (json:encode-json-to-string
+    (json:encode-json-alist-to-string
      `((:mode . ,(pvs-current-mode))
        (:context . ,(pvs:current-context-path))
        ,@(when id `((:jsonrpc_result . ,result)))))))
@@ -111,6 +111,6 @@
 	(mp:symeval-in-process 'pvs:*in-checker* proc)
       (multiple-value-bind (ineval ebound?)
 	  (mp:symeval-in-process 'pvs:*in-evaluator* proc)
-	(cond (inchecker :prover)
-	      (ineval :evaluator)
-	      (t :lisp))))))
+	(cond (inchecker "prover")
+	      (ineval "evaluator")
+	      (t "lisp"))))))
