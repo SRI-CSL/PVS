@@ -28,6 +28,29 @@ import logging
 import os.path
 from wx.lib.pubsub import setupkwargs, pub
 
+# A PyEventBinder
+EVT_RESP_FROM_PVS = wx.NewEventType()
+EVT_RESPONSE_FROM_PVS = wx.PyEventBinder(EVT_RESP_FROM_PVS, 0)
+
+class PVSResponseEvent(wx.PyCommandEvent):
+    """Event to signal that a response came from PVS"""
+    def __init__(self, eventType=EVT_RESP_FROM_PVS, id=0):
+        wx.PyCommandEvent.__init__(self, eventType, id)
+        self.request = None
+        self.response = None
+        self.threadEvent = None
+
+EVT_REQ_FROM_PVS = wx.NewEventType()
+EVT_REQUEST_FROM_PVS = wx.PyEventBinder(EVT_REQ_FROM_PVS, 0)
+
+class PVSRequestEvent(wx.PyCommandEvent):
+    """Event to signal that a request came from PVS"""
+    def __init__(self, eventType=EVT_REQ_FROM_PVS, id=0):
+        wx.PyCommandEvent.__init__(self, eventType, id)
+        self.result = None
+        self.message = None
+        self.threadEvent = None
+
 class PVSCommunicationLogger:
     __shared_state = {}
     
@@ -111,8 +134,11 @@ class PVSCommunicator:
         try:
             self.guiServer = SimpleXMLRPCServer((host, port), requestHandler=RequestHandler)
             self.guiServer.register_function(self.onPVSMessageReceived, PVSCommunicator.REQUEST)
-            self.serverThread = threading.Thread(target=self.guiServer.serve_forever)
+            self.serverThread = threading.Thread(target=self.guiServer.serve_forever,
+                                                 name='XmlRpcThread')
+            self.threadEvent = threading.Event()
             self.serverThread.start()
+
         except Exception as e:
             logging.error("Error starting the xmlrpc server: %s", e)
             util.getMainFrame().showError("You may be running another instance of this application", "Error Starting the XMLRPC Server")
@@ -155,7 +181,7 @@ class PVSCommunicator:
         result = json.loads(sResult)
         self._validateJSON(result)
         return result
-    
+
     def onPVSMessageReceived(self, jsonString):
         """
         Process a request from PVS
@@ -175,7 +201,22 @@ class PVSCommunicator:
             self._validateJSON(message)
             lg = PVSCommunicationLogger()
             lg.log(constants.JSONLOG, "<= %s\n"%(message,))
-            result = self.processMessage(message)
+            evt = PVSRequestEvent()
+            evt.message = message
+            evt.threadEvent = self.threadEvent
+            evt.threadEvent.clear()
+            try:
+                # calls processEvent
+                mframe = util.getMainFrame()
+                #mframe.Bind(EVT_REQUEST_FROM_PVS, mframe.processEvent)
+                wx.PostEvent(mframe, evt)
+                import time
+                time.sleep(0)
+                evt.threadEvent.wait()
+            except Exception as err:
+                lg.log(constants.JSONLOG, "PostEvent error: {0}".format(err))
+            result = evt.result
+            # result = self.processMessage(message)
             logging.debug("Sending Back: %s", result)
             self._validateJSON(result)
             lg.log(constants.JSONLOG, "=> %s\n"%(result,))
@@ -190,6 +231,7 @@ class PVSCommunicator:
             # This is just an XML-RPC answer.
             return 'request: {0} is invalid - {1}'.format(jsonString, err)
         except Exception as err:
+            lg.log(constants.JSONLOG, 'Unknown error: {0}'.format(err)
             return "Unknown Error"
 
     def processMessage(self, message):
@@ -202,6 +244,12 @@ class PVSCommunicator:
         result = PVSResponseManager().processCommand(_id, method, *params)
         return result
 
+    def processEvent(self, evt):
+        # self.eventLock = event.eventLock
+        result = self.processMessage(evt.message)
+        evt.result = result
+        evt.threadEvent.set()
+
 class PVSResponseManager:
     __shared_state = {}
     
@@ -209,8 +257,14 @@ class PVSResponseManager:
         self.__dict__ = self.__shared_state
                         
     def processCommand(self, _id, method, *parameters):
+        # event = frame.PVSRequestEvent()
         functionName = "_process_" + method.replace("-", "_")
         if functionName in PVSResponseManager.__dict__:
+            # event.function = PVSResponseManager.__dict__[functionName]
+            # event.eventLock = self.eventLock
+            # event.eventLock.acquire()
+            # frame.AddPendingEvent(event)
+            # How to get the result?
             function = PVSResponseManager.__dict__[functionName]
             result = function(self, *parameters)
             sResult = self.resultToJSON(result, _id)
@@ -235,6 +289,7 @@ class PVSResponseManager:
         logging.debug("Parameters %s", (parameters,))
         frame = util.getMainFrame()
         question = parameters[0].strip()
+        
         answer = frame.askYesNoQuestion(question)
         result = "yes" if answer==wx.ID_YES else "no"
         return result
@@ -326,11 +381,26 @@ class PVSCommandManager:
         util.getMainFrame().showError(errMessage, title)
 
     def _sendCommand(self, method, *params, **keywords):
+        th = threading.Thread(target=self._sendCommandPVS, args=(method,)+params, kwargs=(keywords))
+        th.start()
+        
+    def _sendCommandPVS(self, *args, **keywords):
+        method = args[0]
+        params = args[1:]
+        if 'resultfn' in keywords:
+            resultfn = keywords['resultfn']
+            del keywords['resultfn']
+        else:
+            resultfn = None
+        evt = PVSResponseEvent()
         try:
             silent = keywords[PVSCommunicator.SILENT] if PVSCommunicator.SILENT in keywords else False
+            # Spawn a new thread, allowing the WX thread to go back to the main loop.
+            # Note that _sendCommand does not directly return a result.
             jsonResult = self.pvsComm.requestPVS(method, *params)
             pvsMode = jsonResult[PVSCommunicator.MODE]
-            context = util.normalizePath(jsonResult[PVSCommunicator.CONTEXT])
+            evt.pvsmode = pvsMode
+            evt.context = util.normalizePath(jsonResult[PVSCommunicator.CONTEXT])
             if PVSCommunicator.XMLRPCERROR in jsonResult:
                 errorObj = jsonResult[PVSCommunicator.XMLRPCERROR]
                 errorObject = {}
@@ -356,21 +426,32 @@ class PVSCommandManager:
                 errDict = result[PVSCommunicator.ERROR]
                 errorObject = self._processJSONErrorObject(errDict)
                 raise util.PVSException(message=errorObject[PVSCommunicator.MESSAGE], errorObject=errorObject)
-            result = result[PVSCommunicator.RESULT]
-            if pvsMode != self.pvsMode:
-                self.pvsMode = pvsMode
-                pub.sendMessage(constants.PUB_UPDATEPVSMODE, pvsMode = pvsMode)   
-            if context != self.pvsContext:
-                self.pvsContext = context
-                import preference
-                preference.Preferences().setRecentContext(context)
-                logging.debug("New Context is: %s", context)
-                pub.sendMessage(constants.PUB_UPDATEPVSCONTEXT)
-            return result
+            evt.result = result[PVSCommunicator.RESULT]
+            evt.resultfn = resultfn
+            wx.PostEvent(util.getMainFrame(), evt)
         except Exception as err:
+            # import traceback
+            # traceback.print_stack()
             if not silent:
                 self._handleError(err)
-        return None
+
+    def processResponse(self, evt):
+        pvsMode = evt.pvsmode
+        context = evt.context
+        result = evt.result
+        resultfn = evt.resultfn
+        if pvsMode != self.pvsMode:
+            self.pvsMode = pvsMode
+            pub.sendMessage(constants.PUB_UPDATEPVSMODE, pvsMode = pvsMode)   
+        if context != self.pvsContext:
+            self.pvsContext = context
+            import preference
+            preference.Preferences().setRecentContext(context)
+            logging.debug("New Context is: %s", context)
+            pub.sendMessage(constants.PUB_UPDATEPVSCONTEXT)
+        if resultfn is not None:
+            resultfn(result)
+        PVSCommunicator()._validateJSON(result)
     
     def _ensureFilenameIsIknown(self, fullname):
         if fullname is None:
@@ -380,18 +461,17 @@ class PVSCommandManager:
         return fullname
             
     def ping(self):
-        result = self.lisp("(+ 1 2)", silent=True)
+        self.lisp("(+ 1 2)", silent=True, resultfn=self.pingResult)
+
+    def pingResult(self, result):
         if result != "3":
             pub.sendMessage(constants.PUB_UPDATEPVSMODE, pvsMode = constants.PVS_MODE_OFF)   
-        return result
             
     def reset(self):
-        result = self._sendCommand("reset")
-        return result
+        self._sendCommand("reset")
             
-    def lisp(self, form, silent=False):
-        result = self._sendCommand("lisp", form, silent=silent)
-        return result
+    def lisp(self, form, silent=False, resultfn=None):
+        self._sendCommand("lisp", form, silent=silent, resultfn=resultfn)
         
     def typecheck(self, fullname=None):
         fullname = self._ensureFilenameIsIknown(fullname)
@@ -403,18 +483,23 @@ class PVSCommandManager:
             name = os.path.basename(fullname)
             name = util.getFilenameFromFullPath(fullname, False)
             pub.sendMessage(constants.PUB_FILEPARSING, fullname=fullname)
-            result = self._sendCommand("typecheck", name)
-            if result is not None:
-                pub.sendMessage(constants.PUB_FILEPARSING, fullname=fullname)
-                pub.sendMessage(constants.PUB_FILETYPECHECKED, fullname=fullname, result=result)
-                self.namesInfo(fullname)
-            return result
+            self._sendCommand("typecheck", name,
+                              resultfn=lambda r: self.typecheckResult(r, fullname))
+
+    def typecheckResult(self, result, fullname):
+        if result is not None:
+            pub.sendMessage(constants.PUB_FILEPARSING, fullname=fullname)
+            pub.sendMessage(constants.PUB_FILETYPECHECKED, fullname=fullname, result=result)
+            self.namesInfo(fullname)
             
     def namesInfo(self, fullname=None):
         fullname = self._ensureFilenameIsIknown(fullname)
         name = os.path.basename(fullname)
         name = util.getFilenameFromFullPath(fullname, False)
-        information = self._sendCommand("names-info", name)
+        self._sendCommand("names-info", name,
+                          resultfn=lambda r: self.namesInfoResult(r, fullname))
+
+    def namesInfoResult(self, information, fullname):
         # {"id":"n","place":[27,36,27,37],"decl":"n: VAR nat","decl-file":"sum2.pvs","decl-place":[4,2,4,13]},
         if isinstance(information, str) or isinstance(information, unicode):
             logging.error("information '%s...' should not be a string. It should be a list", information[0:30])
@@ -443,33 +528,27 @@ class PVSCommandManager:
             name = os.path.basename(fullname)
             name = os.path.splitext(name)[0] # just get the filename without the extension 
             pub.sendMessage(constants.PUB_FILEPARSING, fullname=fullname)
-            result = self._sendCommand("parse", name)
-            return result
+            self._sendCommand("parse", name)
     
     def changeContext(self, newContext):
         logging.debug("User requested to change context to: %s", newContext)
-        result = self._sendCommand("change-context", newContext)
-        if result is not None:
-            result = util.normalizePath(result)
-        return result
+        self._sendCommand("change-context", newContext)
     
     def startProver(self, fullname, theoryName, formulaName):
-        result = self._sendCommand("prove-formula", formulaName, theoryName)
+        result = self._sendCommand("prove-formula", formulaName, theoryName,
+                                   resultfn=lambda r: self.startProverResult(r,fullname, theoryName, formulaName))
+
+    def startProverResult(self, result, fullname, theoryName, formulaName):
         if result is not None:
             result[constants.FULLNAME] = fullname
             result[constants.LTHEORY] = theoryName
             result[constants.LFORMULA] = formulaName
             pub.sendMessage(constants.PUB_PROOFINFORMATIONRECEIVED, information=result) 
-        return result
         
     def proofCommand(self, command):
-        result = self._sendCommand("proof-command", command)
+        self._sendCommand("proof-command", command, resultfn=self.proofCommandResult)
+
+    def proofCommandResult(self, result):
         assert result is not None
         pub.sendMessage(constants.PUB_PROOFINFORMATIONRECEIVED, information=result)
         return result
-        
-    
-    
-    
-
-            
