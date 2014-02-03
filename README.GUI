@@ -1,0 +1,9 @@
+The gui is run with the pvs-gui command.
+Run pvs with argument '-port 22334' and pvs-gui defaults to pvs port 22334
+and gui port 22335.  Run pvs-gui -h for quick help.
+
+For more details, see the help button in the pvs-gui, or the release notes.
+
+This is beta; a lot of functionality is missing.  Please let us know at
+pvs-bugs@csl.sri.com of any problems or suggestions, or if you wish to
+contribute to the development.
