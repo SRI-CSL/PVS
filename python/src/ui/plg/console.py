@@ -143,12 +143,8 @@ class ConsolePlugin(PluginPanel):
                 self.appendToOut(command, newLine=True)
                 self.clearIn()
                 self.history.append(command)
-                self.historyBox.Insert(command, 1)                
+                self.historyBox.Insert(command, 1)
                 result = pvscomm.PVSCommandManager().lisp(command)
                 if result is not None:
                     self.appendToOut(result, newLine=True)
         #event.Skip()
-        
-
-        
-        
