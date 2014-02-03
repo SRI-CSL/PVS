@@ -231,7 +231,7 @@ class PVSCommunicator:
             # This is just an XML-RPC answer.
             return 'request: {0} is invalid - {1}'.format(jsonString, err)
         except Exception as err:
-            lg.log(constants.JSONLOG, 'Unknown error: {0}'.format(err)
+            lg.log(constants.JSONLOG, 'Unknown error: {0}'.format(err))
             return "Unknown Error"
 
     def processMessage(self, message):
