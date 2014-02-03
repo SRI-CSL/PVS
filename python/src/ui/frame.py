@@ -1,5 +1,3 @@
-# -*- coding: US-ASCII -*-
-#
 # This class represents the main frame of the editor
 #GetTopWindow
 
@@ -16,7 +14,7 @@ from preference import Preferences
 import wx.lib.agw.aui as aui
 from config import PVSIDEConfiguration
 import wx.stc as stc
-from pvscomm import PVSCommunicator, PVSCommandManager
+from pvscomm import PVSCommunicator, PVSCommandManager, EVT_REQUEST_FROM_PVS, EVT_RESPONSE_FROM_PVS
 
 class MainFrame(wx.Frame):
     """The main frame of the application. It consists of a menu and a toolbar, a notebook for all the open
@@ -26,11 +24,13 @@ class MainFrame(wx.Frame):
         kwds["style"] = wx.ICONIZE | wx.CAPTION | wx.MINIMIZE | wx.CLOSE_BOX | wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX | wx.SYSTEM_MENU | wx.CLIP_CHILDREN | wx.RESIZE_BORDER
         wx.Frame.__init__(self, *args, **kwds)
         self.auiManager = aui.AuiManager()
-        self.auiManager.SetManagedWindow(self)        
+        self.auiManager.SetManagedWindow(self)
         
         preferences = Preferences()
         preferences.loadPreferences()
         self.Bind(wx.EVT_CLOSE, self.OnClose)
+        self.Bind(EVT_REQUEST_FROM_PVS, PVSCommunicator().processEvent)
+        self.Bind(EVT_RESPONSE_FROM_PVS, PVSCommandManager().processResponse)
         #self.Bind(wx.EVT_IDLE, self.OnIdle)
         self.auiManager.Bind(aui.EVT_AUI_PANE_CLOSE, self.OnPanelClose)
         
@@ -232,5 +232,3 @@ class MainFrame(wx.Frame):
         if focus is not None and (isinstance(focus, wx.TextCtrl) or isinstance(focus, stc.StyledTextCtrl)):
             return focus
         return None
-
-        
