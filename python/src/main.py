@@ -25,9 +25,17 @@ def processCommandLineArguments(args):
     import config
     cfg = config.PVSIDEConfiguration()
     if pvsURLs is not None:
-        cfg.pvsURL = pvsURLs[0]
+        try:
+            port = int(pvsURLs[0])
+            cfg.pvsURL = 'http://localhost:{0}'.format(port)
+        except:
+            cfg.pvsURL = pvsURLs[0]
     if ideURLs is not None:
-        cfg.ideURL = ideURLs[0]
+        try:
+            port = int(pvsURLs[0])
+            cfg.ideURL = 'http://localhost:{0}/RPC2'.format(port)
+        except:
+            cfg.ideURL = ideURLs[0]
     if logLevels is not None:
         levels = {"debug": logging.DEBUG, "info": logging.INFO, "warning": logging.WARN, "warn": logging.WARN, "error": logging.ERROR, "critical": logging.CRITICAL}
         if logLevels[0] in levels:
