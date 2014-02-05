@@ -851,11 +851,13 @@
   (collect-visible-decl-info* (theory-name obj)))
 
 (defmethod collect-visible-decl-info* ((obj declaration))
-  (when (place obj)
+  (when (and (place obj)
+	     (not (generated-by obj)))
     (collect-visible-decl-info* (formals obj))))
 
 (defmethod collect-visible-decl-info* :around ((obj typed-declaration))
-  (when (place obj)
+  (when (and (place obj)
+	     (not (generated-by obj)))
     (collect-visible-decl-info* (declared-type obj))
     (call-next-method)))
 
@@ -888,7 +890,8 @@
   (call-next-method))
 
 (defmethod collect-visible-decl-info* :around ((obj formula-decl))
-  (when (place obj)
+  (when (and (place obj)
+	     (not (generated-by obj)))
     (collect-visible-decl-info* (definition obj))
     (call-next-method)))
 
