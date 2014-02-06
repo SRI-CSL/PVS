@@ -52,6 +52,7 @@
 ;;   (use-package :s-xml-rpc))
 
 (defvar *pvs-xmlrpc-server*)
+;;; net.aserve:*wserver* will give the port
 
 #+allegro
 (defun pvs-server (&key (port 22334))
