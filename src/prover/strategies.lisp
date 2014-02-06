@@ -338,7 +338,7 @@
 		   (optional-args entry)
 		   (source-formals entry)))
 	 (inh-formals (get-&inherit-args args)))
-    (when (memq name inh-formals)
+    (when (member name inh-formals :test #'symbol-equal)
       (let ((rules-inheritance (collect-rules-inheritance inh-formals)))
 	;; If rules-inheritance is null, still waiting on a rule to be defined
 	(if rules-inheritance
@@ -441,6 +441,20 @@
 		       (cadr sexp))
 		     (add-inherited-args-to-definition*
 		      (cddr sexp) rules-inheritance backquoted))))
+	#+sbcl
+	((and (consp sexp)
+	      (consp (car sexp))
+	      (eq (caar sexp) 'quote)
+	      (symbolp (cadar sexp))
+	      (assq (rule-rawname (cadar sexp)) rules-inheritance))
+	 (let* ((rule (rule-rawname (cadar sexp)))
+		(formals (get-rule-formals rule))
+		(opts (get-&optional-args formals)))
+	   (add-keyword-args-to-call
+	    sexp opts (cdr (assq rule rules-inheritance))
+	    ;; nil is not necessarily correct here - there is no easy way to
+	    ;; detect this in SBCL
+	    nil)))
 	((and (symbolp (car sexp))
 	      (assq (rule-rawname (car sexp)) rules-inheritance))
 	 ;; Add keyword args to call - need to recurse on subexprs?
@@ -462,11 +476,12 @@
 
 (defun backquoted? (sexp)
   (and (consp sexp)
-       (eq (car sexp)
-	   #+allegro 'excl::backquote
-	   #+sbcl 'sb-impl::backq-cons
-	   #-(or allegro sbcl)
-	   (error "backquoted? not defined for this lisp"))))
+       #+allegro 
+       (eq (car sexp) 'excl::backquote)
+       #+sbcl
+       (memq (car sexp) '(sb-impl::backq-cons sb-impl::backq-list))
+       #-(or allegro sbcl)
+       (error "backquoted? not defined for this lisp")))
 
 (defun unbackquoted? (sexp)
   (and (consp sexp)
