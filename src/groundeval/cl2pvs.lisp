@@ -174,11 +174,14 @@
 		  (accessor-funs (loop for acc in accessors
 				       collect
 				       (lisp-function (declaration acc))))
-		  (args (loop for accfn in accessor-funs
+		  (args (if (and (co-constructor? constructor)
+				 accessors);;NSH(2-9-2014)
+			    (throw 'cant-translate nil)
+			    (loop for accfn in accessor-funs
 			      as acc in accessors
 			      collect 
 			      (cl2pvs* (funcall accfn sexpr) (range (type acc))
-				       context))))
+				       context)))))
 	     (if accessors
 		 (mk-application* constructor args)
 		 constructor))))))

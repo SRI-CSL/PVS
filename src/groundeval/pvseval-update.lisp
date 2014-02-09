@@ -306,8 +306,9 @@
 	  (if (pvs2cl-primitive? op*)
 	      (pvs2cl-primitive-app expr bindings livevars)
 	      (if (datatype-constant? operator)
-		  (mk-funapp (pvs2cl-resolution2 operator)
-			     (pvs2cl_up* (arguments expr) bindings livevars))
+		  (pvs2cl-datatype-application operator expr bindings livevars)
+		  ;; (mk-funapp (pvs2cl-resolution2 operator)
+		  ;; 	     (pvs2cl_up* (arguments expr) bindings livevars))
 		  (pvs2cl-defn-application op* expr bindings livevars)))
 	  (mk-funcall (pvs2cl_up* operator bindings
 				  (append (updateable-vars
@@ -335,6 +336,30 @@
 	   `(not (and (subsetp ',set1 ',set2 :test #'equalp) ;;roll into pvs_equalp
 		      (subsetp ',set2 ',set1 :test #'equalp)))))
 	(t (call-next-method))))
+
+(defun pvs2cl-datatype-application (operator expr bindings livevars)
+  (let ((opdecl (declaration operator)))
+    (or (and (eval-info opdecl)
+	     (lisp-function opdecl)) ;;generate code if needed
+	(pvs2cl-datatype operator))
+    (let* ((args (arguments expr))
+	   (clargs (pvs2cl_up* args bindings livevars)))
+      (if (constructor? operator);;i.e., also a co-constructor
+	  (if (not (eql (length args)(arity operator)))
+	      (mk-funcall (mk-funapp (lisp-function opdecl) nil)
+			  clargs)
+	    (mk-funapp (lisp-function2 opdecl)
+		       (if (co-constructor? operator)
+			   (loop for arg in clargs
+				 collect `(delay ,arg))
+			 clargs)))
+	(mk-funapp (lisp-function2 opdecl)
+		   clargs)))))
+
+(defun codatatype-expression? (expr)
+  (codatatype? (adt (find-supertype (type expr)))))
+  
+      
 
 (defun pvs2cl-defn-application (op* expr bindings livevars)
   (with-slots (operator argument) expr
@@ -1240,9 +1265,13 @@
 		   (let ((fun (or (lisp-function (declaration expr))
 				  (pvs2cl-lisp-function (declaration expr)))))
 		     (assert fun)
-		     (if (not (funtype? (find-supertype (type expr))))
+		     (if (constructor? expr)
 			 (mk-funapp fun nil)
-			 `(function ,fun))));;actuals irrelevant for datatypes
+		       `(function ,fun))
+		     ;; (if (not (funtype? (find-supertype (type expr))))
+		     ;; 	 (mk-funapp fun nil)
+		     ;; 	 `(function ,fun))
+		     ));;actuals irrelevant for datatypes
 	       (let* ((actuals (expr-actuals (module-instance expr)))
 		      (decl (declaration expr))
 		      (internal-actuals
@@ -1287,10 +1316,12 @@
 
 (defun pvs2cl-resolution2 (expr)
   (pvs2cl-resolution expr)
-  (if (or (expr-actuals (module-instance expr))
-	  (eq (module (declaration expr)) *external*)) 
-      (external-lisp-function2 (declaration expr))
-      (lisp-function2 (declaration expr))))
+  (if (datatype-constant? expr)
+      (lisp-function2 (declaration expr))
+      (if (or (expr-actuals (module-instance expr))
+	      (eq (module (declaration expr)) *external*)) 
+	  (external-lisp-function2 (declaration expr))
+	(lisp-function2 (declaration expr)))))
 
 (defun lisp-function (decl)
   (or (in-name decl)(in-name-m decl)))
@@ -1624,6 +1655,9 @@
 	(mk-newconstructor id accessor-ids (1+ counter))
 	(intern const-str :pvs))))
 
+(defun co-constructor? (fn)
+  (codatatype? (adt (adt fn))))
+
 (defun pvs2cl-constructor (constructor struct all-structs datatype)
   (let ((decl (declaration constructor)))
     (or (and (eval-info decl)
@@ -1652,7 +1686,7 @@
 		      (defn (cdr struct))
 		      (xvar (gentemp "x"))
 		      )
-		 ;;(break "pvs2cl-constructor")
+;;		 (break "pvs2cl-constructor")
 		 (make-eval-info (declaration constructor))
 		 (setf (definition (in-defn-m (declaration constructor)))
 		       defn)
@@ -1667,6 +1701,7 @@
 						     collect (list (id ac)
 								   `(svref ,xvar ,i)))
 					     (list (id (car accessors)) xvar))))
+			  ;;NSH(2-4-2014): delay co-constructor arguments
 			  (unary-form (when accessors
 					`(lambda (,xvar) (let ,unary-binding
 							   (,constructor-symbol
@@ -1685,18 +1720,28 @@
 		    do (unless (and (eval-info (declaration x))
 				    (lisp-function (declaration x)))
 			 (make-eval-info (declaration x)))
-		    do (setf (in-name (declaration x))
-			     (pvs2cl-accessor-defn
-			      (declaration x) struct-id all-structs
-			      datatype)))
+		    do (pvs2cl-accessor-defn
+			      (declaration x) constructor
+			      struct-id all-structs
+			      datatype))
 		 ))))))
 
 (defmethod pvs2cl-accessor-defn ((acc adt-accessor-decl)
+				 constructor
 				 struct-id all-structs datatype)
   (declare (ignore all-structs datatype))
-  (makesym "~a-~a" struct-id (id acc)))
+  (let ((acc-id (makesym "~a-~a" struct-id (id acc))))
+    (cond ((co-constructor? constructor);co-accessor forces evaluation of delayed arg
+	   (let* ((co-accessor (makesym "co-~a" acc-id))
+		  (co-accessor-defn `(defun ,co-accessor (x)(force (,acc-id x)))))
+	     (setf (in-name acc) co-accessor)
+	     (setf (definition (in-defn acc)) co-accessor-defn)
+	     (eval co-accessor-defn)
+	     ))
+	  (t (setf (in-name acc) acc-id)))))
 
-(defmethod pvs2cl-accessor-defn ((acc shared-adt-accessor-decl) struct-id
+
+(defmethod pvs2cl-accessor-defn ((acc shared-adt-accessor-decl) constructor struct-id
 				 all-structs datatype)
   (declare (ignore struct-id))
   (let* ((acc-id (makenewsym "~a-~a" (id datatype) (id acc)))
@@ -1705,14 +1750,21 @@
 	 (defn `(defun ,acc-id (,var)
 		  (typecase ,var
 		    ,@(mapcar #'(lambda (cid)
-				  (let ((struct (cdr (assoc cid constr-structs
-							    :key #'id))))
+				  (let* ((struct (cdr (assoc cid constr-structs
+							    :key #'id)))
+					 (access-expr (list (makesym "~a-~a"
+							 (car struct) (id acc))
+							    var))
+					 (co-access-expr
+					  (if (co-constructor? constructor)
+					      `(force ,access-expr)
+					    access-expr)))
 				    (assert struct)
 				    (list (car struct)
-					  (list (makesym "~a-~a"
-							 (car struct) (id acc))
-						var))))
+					  co-access-expr)))
 			(constructors acc))))))
+    (setf (in-name acc) acc-id);;NSH(2-9-14): Added the setfs which were missing
+    (setf (definition (in-defn acc)) defn)
     (eval defn)
     acc-id))
     

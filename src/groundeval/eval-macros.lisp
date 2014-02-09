@@ -640,3 +640,29 @@
   (declare (ignore bindings))
   nil)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;delay and force are macros needed for codatatypes.  Constructors
+;;add a delay to their arguments, and accessors force the evaluation of
+;;the argument
+
+(defstruct delay 
+  expr evaluated?)
+
+(defmacro delay (expr)
+  `(make-delay :expr (function (lambda () ,expr))
+              :evaluated? nil))
+
+(defmacro apply-coconstructor (coconstructor &rest args)
+  (let ((delayed-args (loop for arg in args collect
+			    `(delay  ,arg))))
+    (list coconstructor delayed-args)))
+
+(defmacro force (delay)
+  `(cond ((delay-evaluated? ,delay)
+          (delay-expr ,delay))
+         (t (let ((val (funcall (delay-expr ,delay))))
+               (setf (delay-expr ,delay) val
+       	             (delay-evaluated? ,delay) t)
+               val))))
+            
+
