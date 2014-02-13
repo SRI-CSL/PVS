@@ -42,6 +42,7 @@
 (in-package :pvs)
 (import '(cl-user:*pvs-path*))
 (let (#+allegro (excl:*enable-package-locked-errors* nil))
+  #+sbcl (sb-ext:unlock-package "COMMON-LISP")
   (load "src/defcl.lisp")
   (load "src/store-object.lisp")
   (load "src/classes-expr.lisp")
