@@ -162,10 +162,10 @@ struct stat_record_ {
 extern struct stat_record_ stat_record[];
 extern boolean table_has_been_doubled;
 
-inline unsigned lookup_cache(bdd_manager *bddm, unsigned *h,
+inline __attribute__((gnu_inline)) unsigned lookup_cache(bdd_manager *bddm, unsigned *h,
 			     unsigned p, unsigned q);
 
-inline void insert_cache(bdd_manager *bddm, unsigned h, 
+inline __attribute__((gnu_inline)) void insert_cache(bdd_manager *bddm, unsigned h, 
 			 unsigned p, unsigned q, unsigned res);
 
 void double_cache( bdd_manager *bddm,

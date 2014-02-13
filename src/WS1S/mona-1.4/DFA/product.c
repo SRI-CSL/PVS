@@ -73,7 +73,7 @@ unsigned prod_term_fn(unsigned  p, unsigned q)
 
  
 /*insert a loop for the product state (p, q) */
-inline void make_loop (bdd_manager *bddm, unsigned  p, unsigned q) {
+inline __attribute__((gnu_inline)) void make_loop (bdd_manager *bddm, unsigned  p, unsigned q) {
   int res;
   res = (int) (long) lookup_in_hash_tab(htbl, p, q);
   invariant(res);
@@ -89,18 +89,18 @@ inline void make_loop (bdd_manager *bddm, unsigned  p, unsigned q) {
 #endif
 }
 
-inline int lookup_binfun(int x, int y, char *binfun) {
+inline __attribute__((gnu_inline)) int lookup_binfun(int x, int y, char *binfun) {
   return binfun[2*x + y];
 }
 
-inline int is_loop (bdd_manager *bddm, unsigned p, unsigned w) {
+inline __attribute__((gnu_inline)) int is_loop (bdd_manager *bddm, unsigned p, unsigned w) {
   return (bdd_is_leaf (bddm, w) && (bdd_leaf_value (bddm, w) == p));
 }
 
 /* return 1 if a loop involving an accepting state can be made; return
    -1 if a loop with a rejecting state can be made; return
    0 if loop with bottom can be made, otherwise return 2 */
-inline int make_a_loop_status (int is_loop_p, int status_p,
+inline __attribute__((gnu_inline)) int make_a_loop_status (int is_loop_p, int status_p,
 			int is_loop_q, int status_q,
 			char *binfun) {
   if (is_loop_p) {

@@ -34,7 +34,7 @@ boolean table_has_been_doubled;
 /* if something is cached for (p, q), then return it; otherwise, return
    0.  In any case, set *h to the hash value calculated) */
 
-inline unsigned lookup_cache(bdd_manager *bddm, unsigned *h,
+inline __attribute__((gnu_inline)) unsigned lookup_cache(bdd_manager *bddm, unsigned *h,
 			     unsigned p, unsigned q)  {
   unsigned temp, res;
    cache_record *cache_ptr;
@@ -49,7 +49,7 @@ inline unsigned lookup_cache(bdd_manager *bddm, unsigned *h,
 
 /* insert in cache, while calculating cache value.  Note: bddm->cache
    may change during this operation */
-inline void insert_cache(bdd_manager *bddm, unsigned h, 
+inline __attribute__((gnu_inline)) void insert_cache(bdd_manager *bddm, unsigned h, 
 			 unsigned p, unsigned q, unsigned res){
   unsigned temp;
   unsigned p_, q_, r_;
@@ -120,7 +120,7 @@ unsigned same_r(unsigned r) {
   return (r);
 }
 
-inline bdd_ptr bdd_get_free_node_sequential(bdd_manager *bddm) {
+inline __attribute__((gnu_inline)) bdd_ptr bdd_get_free_node_sequential(bdd_manager *bddm) {
   bddm->table_elements++;
   if (bddm->table_next < bddm->table_total_size) {
     return (bddm->table_next++);    
@@ -142,14 +142,14 @@ bdd_ptr bdd_find_node_sequential(bdd_manager *bddm,
   return (res);
 }
 
-inline unsigned bdd_find_leaf_sequential(bdd_manager *bddm, unsigned val) {
+inline __attribute__((gnu_inline)) unsigned bdd_find_leaf_sequential(bdd_manager *bddm, unsigned val) {
   unsigned res = bdd_get_free_node_sequential(bddm);
   STR_lri(&bddm->node_table[res], val, BDD_USED, BDD_LEAF_INDEX);
   return (res);
 }
 
 
-inline unsigned bdd_find_node_hashed(bdd_manager *bddm,
+inline __attribute__((gnu_inline)) unsigned bdd_find_node_hashed(bdd_manager *bddm,
 			      unsigned l, unsigned r, unsigned indx,
 			      unsigned *some_roots,
 			      void (*update_fn)(unsigned 
@@ -263,7 +263,7 @@ insert_in_new_bucket:
 }
 
 
-inline bdd_ptr bdd_find_node_hashed_add_root(bdd_manager *bddm,
+inline __attribute__((gnu_inline)) bdd_ptr bdd_find_node_hashed_add_root(bdd_manager *bddm,
 				             bdd_ptr l, bdd_ptr r, unsigned indx) {
   bdd_ptr p;
   invariant(indx <= BDD_MAX_INDEX);
@@ -272,7 +272,7 @@ inline bdd_ptr bdd_find_node_hashed_add_root(bdd_manager *bddm,
   return (p);
 }
 
-inline bdd_handle bdd_handle_find_node_hashed_add_root(bdd_manager *bddm,
+inline __attribute__((gnu_inline)) bdd_handle bdd_handle_find_node_hashed_add_root(bdd_manager *bddm,
 				              bdd_ptr l, bdd_ptr r, unsigned indx) {
   bdd_ptr p;
   invariant(indx <= BDD_MAX_INDEX);
@@ -282,20 +282,20 @@ inline bdd_handle bdd_handle_find_node_hashed_add_root(bdd_manager *bddm,
 }
 
 
-inline unsigned bdd_find_leaf_hashed(bdd_manager *bddm, unsigned val,
+inline __attribute__((gnu_inline)) unsigned bdd_find_leaf_hashed(bdd_manager *bddm, unsigned val,
 			      void *some_roots,
 			      void (*update_fn)(unsigned (*new_place)(unsigned node))) {
  return (bdd_find_node_hashed(bddm, val, BDD_USED, BDD_LEAF_INDEX, some_roots, update_fn));
 }
 
-inline bdd_ptr bdd_find_leaf_hashed_add_root(bdd_manager *bddm,
+inline __attribute__((gnu_inline)) bdd_ptr bdd_find_leaf_hashed_add_root(bdd_manager *bddm,
 					     unsigned val) {
   bdd_ptr p = bdd_find_leaf_hashed(bddm, val, BDD_ROOTS(bddm), NULL);
   BDD_ADD_ROOT(bddm, p);
   return (p);
 }
 
-inline bdd_handle bdd_handle_find_leaf_hashed_add_root(bdd_manager *bddm,
+inline __attribute__((gnu_inline)) bdd_handle bdd_handle_find_leaf_hashed_add_root(bdd_manager *bddm,
  						       unsigned val) {
   bdd_ptr p = bdd_find_leaf_hashed(bddm, val, BDD_ROOTS(bddm), NULL);
   BDD_ADD_ROOT(bddm, p);

@@ -826,11 +826,13 @@ Void_t *(*__morecore)() = __default_morecore_init;
 
 #else /* INTERNAL_LINUX_C_LIB */
 
+#ifdef LACKS_UNISTD_H
 #if __STD_C
 extern Void_t*     sbrk(ptrdiff_t);
 #else
 extern Void_t*     sbrk();
-#endif
+#endif /* __STD_C */
+#endif /* !LACKS_UNISTD_H */
 
 #ifndef MORECORE
 #define MORECORE sbrk
