@@ -85,7 +85,7 @@
   #+(and cmu linux) "x86f"
   #+(and cmu darwin) "ppcf"
   #+(and cmu solaris) "sparcf"
-  #+(and sbcl x86-64 linux) "x8664s"
+  #+(and sbcl x86-64 linux) "fasl"
   #+(and sbcl (not x86-64) linux) "x86s"
   #+(and sbcl darwin) "ppcs"
   #+(and sbcl sparc) "sparcs"
