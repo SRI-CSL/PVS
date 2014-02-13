@@ -672,7 +672,7 @@ $(emacs-elc) : $(PVSPATH)emacs/$(EMACSSUBDIR)/.readme
 install:
 	@echo "target install is not used for PVS - see INSTALL"
 
-faslexts = fasl,rfasl,hfasl,lfasl,mfasl,nfasl,sbin,obin,rbin,mbin,x86f,ppcf,sparcf,x8664s,x86s,ppcs,sparcs,clfasl,wfasl,err
+faslexts = fasl,rfasl,hfasl,lfasl,mfasl,nfasl,n64fasl,sbin,obin,rbin,mbin,x86f,ppcf,sparcf,x8664s,x86s,ppcs,sparcs,clfasl,wfasl,err
 
 platforms = ix86-Linux,ix86_64-Linux,ix86-MacOSX,powerpc-MacOSX,powerpc-MacOSX,sun4-SunOS5
 # HT: Need to put a comma in a variable, because a literal 
