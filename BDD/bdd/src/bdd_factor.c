@@ -537,8 +537,8 @@ static void calc_nr_of_literals_action (BDDPTR v)
      number of positive and negative literals.
   */
   if (current_interface->use_xors && PTR (T) == PTR (E)) {
-    BDD_POS_SIZE (v) = BDD_POS_SIZE (T) +
-      (BDD_POS_SIZE (T) < MAXFACTORSIZE) ? 1 : 0;
+    BDD_POS_SIZE (v) = (BDD_POS_SIZE (T) +
+			(BDD_POS_SIZE (T) < MAXFACTORSIZE)) ? 1 : 0;
     BDD_NEG_SIZE (v) = BDD_NEG_SIZE (T);
     return;
   }
