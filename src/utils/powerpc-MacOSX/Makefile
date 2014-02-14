@@ -14,9 +14,7 @@ obj=file_utils.o
 all : file_utils.dylib b64
 
 file_utils.dylib: ${obj} utils_table.o
-	$(LD) $(LDFLAGS) -o file_utils.dylib ${obj} utils_table.o -lc
-
-utils_table.o : ../utils_table.c
+	$(LD) $(LDFLAGS) -o file_utils.dylib ${obj} -lc
 
 b64: ../b64.c
 	$(CC) -o ./b64 ../b64.c
