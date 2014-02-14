@@ -832,6 +832,9 @@ extern Void_t*     sbrk(ptrdiff_t);
 #else
 extern Void_t*     sbrk();
 #endif /* __STD_C */
+#else
+  /* Force unistd declaration because it is being deprecated */
+  extern void * sbrk(intptr_t increment);
 #endif /* !LACKS_UNISTD_H */
 
 #ifndef MORECORE
