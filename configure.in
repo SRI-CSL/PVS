@@ -68,32 +68,36 @@ fi
 AC_SUBST(PVSPATH)
 
 dnl Check for programs required to build PVS
-AC_PROG_CC    
-if test "$GCC" != yes ; then
-	AC_MSG_ERROR(Cannot find gcc)
-fi
-AC_MSG_CHECKING(for $CC version >= 2.95)
-gcc_version=`$CC --version | head -n 1 | sed -e 's,[[^0-9.]],,g'`
-maj_gcc_version=`echo $gcc_version | cut -d. -f 1`
-min_gcc_version=`echo $gcc_version | cut -d. -f 2`
-if test $maj_gcc_version -lt 2 -o \( $maj_gcc_version -eq 2 -a $min_gcc_version -lt 95 \); then
-   AC_MSG_ERROR(found $gcc_version)
-else
-   AC_MSG_RESULT(found $gcc_version)
-fi
+AC_PROG_CC([clang gcc])
 
-AC_CHECK_PROG(LD,ld,ld,no)
-if test "$LD" = no ; then
-	AC_MSG_ERROR(Cannot find ld)
-fi
-AC_MSG_CHECKING(for $LD version >= 2.11)
-ld_version=`$LD --version | head -n 1 | sed -e 's,[[^0-9.]],,g'`
-maj_ld_version=`echo $ld_version | cut -d. -f 1`
-min_ld_version=`echo $ld_version | cut -d. -f 2`
-if test $maj_ld_version -lt 2 -o \( $maj_ld_version -eq 2 -a $min_ld_version -lt 11 \); then
-   AC_MSG_ERROR(found $ld_version)
-else
-   AC_MSG_RESULT(found $ld_version)
+if test $CC = "gcc"; then
+  AC_MSG_CHECKING(for $CC version >= 2.95)
+  gcc_version=`$CC --version | head -n 1 | sed -e 's,[[^0-9.]],,g'`
+  maj_gcc_version=`echo $gcc_version | cut -d. -f 1`
+  min_gcc_version=`echo $gcc_version | cut -d. -f 2`
+  if test $maj_gcc_version -lt 2 -o \( $maj_gcc_version -eq 2 -a $min_gcc_version -lt 95 \); then
+    AC_MSG_ERROR(found $gcc_version)
+  else
+    AC_MSG_RESULT(found $gcc_version)
+  fi
+  dnl Check LD is not from 1991
+  dnl if using clang, no need to check
+
+  AC_CHECK_PROG(LD,ld,ld,no)
+  if test "$LD" = no ; then
+    AC_MSG_ERROR(Cannot find ld)
+  fi
+  AC_MSG_CHECKING(for $LD version >= 2.11)
+  ld_version=`$LD --version | head -n 1 | sed -e 's,[[^0-9.]],,g'`
+  maj_ld_version=`echo $ld_version | cut -d. -f 1`
+  min_ld_version=`echo $ld_version | cut -d. -f 2`
+  if test $maj_ld_version -lt 2 -o \( $maj_ld_version -eq 2 -a $min_ld_version -lt 11 \); then
+    AC_MSG_ERROR(found $ld_version)
+  else
+    AC_MSG_RESULT(found $ld_version)
+  fi
+elif test $CC != "clang"; then
+  AC_MSG_ERROR(no supported C compiler found)
 fi
 
 AC_CHECK_PROG(AR,ar,ar,no)
