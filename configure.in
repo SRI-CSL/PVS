@@ -27,7 +27,7 @@ AC_INIT([pvs],[4.2],[pvs-bugs@csl.sri.com])
 dnl If it doesn't look like GNU Make is being used, give a friendly warning
 tem=`make --version -f /dev/null 2>&1 | grep GNU`
 if test "x$tem" = "x"; then
-  AC_MSG_WARN([You need to use GNU Make when compiling])
+  AC_MSG_WARN([You probably need to use GNU Make when compiling])
 fi
 
 dnl This file must exist for configure to run
@@ -38,7 +38,19 @@ AC_CANONICAL_BUILD
 	
 dnl No longer look for lisp within configure, as it is possible to
 dnl build with several lisps.  Checks have been moved into the Makefile
-	
+
+dnl Still, allow to record which lisp is wanted by default
+AC_ARG_WITH(allegro, AS_HELP_STRING([--with-allegro=ALLEGRO_HOME],
+				        [will use allegro with home directory ALLEGRO_HOME]),[ALLEGRO_HOME=$with_allegro])
+AC_SUBST(ALLEGRO_HOME)
+AC_ARG_WITH(cmulisp, AS_HELP_STRING([--with-cmulisp=CMULISP_HOME],
+				        [will use CMUCL with home directory CMULISP_HOME]),[CMULISP_HOME=$with_cmulisp])
+AC_SUBST(CMULISP_HOME)
+AC_ARG_WITH(sbclisp, AS_HELP_STRING([--with-sbclisp=SBCLISP_HOME],
+					[will use SBCL with home directoruy SBCLISP_HOME])[SBCLISP_HOME=$with_sbclisp])
+AC_SUBST(SBCLISP_HOME)
+
+
 dnl Giving pvspath is optional
 AC_MSG_CHECKING(pvspath)
 AC_ARG_WITH(pvspath, AS_HELP_STRING([--with-pvspath=path],

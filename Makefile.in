@@ -54,6 +54,7 @@ ETAGS = @ETAGS@
 MKDIR = @MKDIR@
 CFLAGS = @CFLAGS@
 
+
 # Check to see if we are doing something that requires Emacs and Lisp
 # If MAKECMDGOALS is empty, or has something besides clean, tar, etc.
 # then buildcmds will be nonempty
@@ -69,6 +70,18 @@ export PLATFORM
 bindir = $(TARGETPATH)bin/$(PLATFORM)
 
 SYSTEM ?= pvs
+
+
+# If no lisp is provided, get the one given to configure
+ifndef ALLEGRO_HOME
+ifndef CMULISP_HOME
+ifndef SBCLISP_HOME
+ALLEGRO_HOME = @ALLEGRO_HOME@
+CMULISP_HOME = @CMULISP_HOME@
+SBCLISP_HOME = @SBCLISP_HOME@
+endif
+endif
+endif
 
 ifneq ($(ALLEGRO_HOME),)
 ALLEGROEXE = $(ALLEGRO_HOME)/mlisp
