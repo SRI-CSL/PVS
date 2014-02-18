@@ -717,8 +717,9 @@ distclean : cleanobj
 	rm -rf emacs/emacs19/*.{el,elc} emacs/emacs24 emacs/emacs23 \
                emacs/emacs22 emacs/emacs20 emacs/xeamcs20 emacs/xemacs21
 	rm -rf */{$(platforms)}/*.{a,so,dylib} */*/{$(platforms)}/*.{a,so,dylib}
-	rm -f doc/langauge/Makefile doc/language/pvs-doc.el doc/prover/Makefile doc/user-guide/Makefile
+	rm -f doc/language/Makefile doc/language/pvs-doc.el doc/prover/Makefile doc/user-guide/Makefile doc/api/Makefile
 	rm -rf autom4te.cache bin/{$(platforms)}
+	rm -f proveit provethem
 
 cleanall : clean distclean
 
