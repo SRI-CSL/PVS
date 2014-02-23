@@ -3521,7 +3521,7 @@ space")
 	   (setq *pvs-gc-count* 0))
 	  (t (setq *pvs-gc-count* (+ *pvs-gc-count* to-old))
 	     (if (> *pvs-gc-count* excl:*tenured-bytes-limit*)
-		 (excl:without-interrupts
+		 (excl:with-delayed-interrupts
 		  (setq *prevent-gc-recursion* t)
 		  (format t ";;; GC:")
 		  (excl:gc t)
@@ -3536,7 +3536,7 @@ space")
 	   (setq *pvs-gc-count* 0))
 	  (t (setq *pvs-gc-count* (+ *pvs-gc-count* to-old))
 	     (if (> *pvs-gc-count* excl:*tenured-bytes-limit*)
-		 (excl:without-interrupts
+		 (excl:with-delayed-interrupts
 		  (setq *prevent-gc-recursion* t)
 		  (unless *disable-gc-printout*
 		    (format t ";;; GC:"))
@@ -4421,3 +4421,120 @@ space")
 (sb-int:define-hash-table-test 'tc-eq #'tc-eq #'pvs-sxhash)
 #+(and sbcl sunos)
 (sb-int:define-hash-table-test 'strong-tc-eq #'strong-tc-eq #'pvs-sxhash)
+
+;;; The following are for gathering information about dependencies
+;;; Note it is difficult to be complete here - e.g., the user could
+;;; simply type a defun at the prompt.  We're just trying to catch the
+;;; recreateable dependencies.
+
+;; {"pvs version": string,
+;;  "pvs path": string,
+;;  "lisp version": string,
+;;  "emacs version": string,
+;;  "lisp-exec": array[fileref],
+;;  "lisp-patches": array[fileref],
+;;  "strategies": array[fileref],
+;;  "lisp-other": array[fileref],
+;;  "emacs-exec": array[fileref],
+;;  "emacs-files": array[fileref]
+;; }
+
+(defun pvs-meta-info ()
+  `((:pvs-version . ,*pvs-version*)
+    (:pvs-path . ,*pvs-path*)
+    (:lisp-version . ,(lisp-implementation-version))
+    (:emacs-version . :unknown)
+    (:lisp-exec ,(get-exec-info))
+    (:lisp-patches ,(get-patches-info))
+    (:strategies-files ,(cdr (assq :strategies *files-loaded*)))))
+
+(defun get-lisp-exec-info ()
+  (list (get-file-ref (format nil "~a/pvs" *pvs-path*))
+	))
+
+(defun get-patches-info ()
+  (mapcar #'get-file-ref
+    (cdr (assq :patches *files-loaded*))))
+
+(defun get-file-ref (file)
+  (let ((path (probe-file file)))
+    (if path
+	(list (namestring file) (get-file-git-sha1 path))
+	(list (namestring file) ""))))
+
+(defun get-file-git-sha1 (file)
+  ;; Use the Git SHA1, which is different from simple SHA1
+  ;; as it includes "blob" and length of file
+  ;; Advantage is that it is the same inside or outside of Git
+  (let ((stream (excl:run-shell-command
+		 (format nil "git hash-object ~a" file)
+		 :wait nil
+		 :input "//dev//null"
+		 :output :stream
+		 :error-output :output)))
+    (format nil "~a" (read stream))))
+
+(defun record-file-loaded-for-pvs (file)
+  (let ((elt (assq *loading-files* *files-loaded*)))
+    (if elt
+	(push file elt)
+	(push (list *loading-files* file) *files-loaded*))))
+
+#+allegro
+(excl:def-fwrapper load-wrap (file)
+  (excl:call-next-fwrapper)
+  (record-file-loaded-for-pvs file))
+
+#+allegro
+(defun start-load-watching ()
+  (setq *files-loaded* nil)
+  (excl:fwrap 'load 'pvs-loadwrapper 'load-wrap))
+
+#+allegro
+(defun stop-load-watching ()
+  (excl:funwrap 'load 'pvs-loadwrapper))
+
+#+sbcl
+;; This is clearly a hack, but SBCL has no defadvice/defwrapper that I could find.
+;; Note that (untrace) will untrace this along with whatever the user was tracing.
+(defun start-load-watching ()
+  (setq *files-loaded* nil)
+  (trace sb-fasl::load-as-source
+	 :condition-after (progn (record-file-loaded-for-pvs *load-truename*) nil))
+  (trace sb-fasl::load-as-fasl
+	 :condition-after (progn (record-file-loaded-for-pvs *load-truename*) nil))
+  )
+
+(defun get-fasl-info (faslfile)
+  (multiple-value-bind (source version)
+      (get-fasl-info* faslfile)
+    `((:source . ,source)
+      (:object . ,faslfile)
+      (:version . ,version))))
+
+#+allegro
+(defun get-fasl-info* (faslfile)
+  (with-open-file (s faslfile)
+    (let ((src-line (read-line s))
+	  (vers-line (read-line s)))
+      (multiple-value-bind (match? all source user host time)
+	  (excl:match-re "<<AcL>> (.*) by (.*) on (.*) at (.*)\\\\"
+			 src-line)
+	(declare (ignore match? all))
+	(multiple-value-bind (match2? all2 version)
+	    (excl:match-re "using (.*)\\\\" vers-line)
+	  (declare (ignore match2? all2))
+	  (values source version user host time))))))
+
+#+sbcl
+(defun get-fasl-info* (faslfile)
+  (with-open-file (s faslfile)
+    (let ((start-line (read-line s))
+	  (fasl-line (read-line s))
+	  (src-line (read-line s))
+	  (vers-line (read-line s)))
+      (multiple-value-bind (match? all source)
+	  (match-regexp "compiled from \"(.*)\"" src-line)
+	(multiple-value-bind (match? all2 version)
+	    (match-regexp "using (.*)" vers-line)
+	  (values source version))))))
