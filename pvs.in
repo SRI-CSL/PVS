@@ -276,10 +276,10 @@ case $opsys in
   *) echo "PVS only runs under Solaris, Linux, FreeBSD (linux-enabled), or MacOSX"; exit 1
 esac
 
-binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
+PVSBINPATH=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
 # Check if this is a 64-bit platform, but only 32-bit available
-if [ "$PVSARCH" = "ix86_64" -a ! -x "$binpath" ]
-    then binpath=$PVSPATH/bin/ix86-$opsys${majvers}
+if [ "$PVSARCH" = "ix86_64" -a ! -x "$PVSBINPATH" ]
+    then PVSBINPATH=$PVSPATH/bin/ix86-$opsys${majvers}
 fi
 
 if [ -n "$PVSLISP" -a "$PVSLISP" != "allegro" -a "$PVSLISP" != "cmulisp" -a "$PVSLISP" != "sbclisp" ]
@@ -288,38 +288,38 @@ if [ -n "$PVSLISP" -a "$PVSLISP" != "allegro" -a "$PVSLISP" != "cmulisp" -a "$PV
 fi
 
 if [ -z "$PVSLISP" ]
-   then if   [ -x $binpath/devel/pvs-allegro ]
+   then if   [ -x $PVSBINPATH/devel/pvs-allegro ]
         then PVSLISP=allegro
-        elif [ -x $binpath/runtime/pvs-allegro ]
+        elif [ -x $PVSBINPATH/runtime/pvs-allegro ]
         then PVSLISP=allegro
-        elif [ -x $binpath/devel/pvs-cmulisp ]
+        elif [ -x $PVSBINPATH/devel/pvs-cmulisp ]
         then PVSLISP=cmulisp
-        elif [ -x $binpath/runtime/pvs-cmulisp ]
+        elif [ -x $PVSBINPATH/runtime/pvs-cmulisp ]
         then PVSLISP=cmulisp
-	elif [ -e $binpath/devel/pvs-sbclisp ]
+	elif [ -e $PVSBINPATH/devel/pvs-sbclisp ]
 	then PVSLISP=sbclisp
-	elif [ -e $binpath/runtime/pvs-sbclisp ]
+	elif [ -e $PVSBINPATH/runtime/pvs-sbclisp ]
 	then PVSLISP=sbclisp
-        else echo "No executable available in $binpath"
+        else echo "No executable available in $PVSBINPATH"
              exit 1
         fi
 fi
 PVSIMAGE=pvs-$PVSLISP
 
-if [ -d $binpath/devel -a -e $binpath/devel/$PVSIMAGE -a ! "$pvsruntime" ]
+if [ -d $PVSBINPATH/devel -a -e $PVSBINPATH/devel/$PVSIMAGE -a ! "$pvsruntime" ]
 then
-  PATH=$binpath/devel:$binpath:$PVSPATH/bin:$PATH
-  LD_LIBRARY_PATH=$binpath/devel:$LD_LIBRARY_PATH
-  DYLD_LIBRARY_PATH=$binpath/devel:$DYLD_LIBRARY_PATH
-  pvsimagepath=$binpath/devel/$PVSIMAGE
-elif [ -d $binpath/runtime -a -e $binpath/runtime/$PVSIMAGE ]
+  PATH=$PVSBINPATH/devel:$PVSBINPATH:$PVSPATH/bin:$PATH
+  LD_LIBRARY_PATH=$PVSBINPATH/devel:$LD_LIBRARY_PATH
+  DYLD_LIBRARY_PATH=$PVSBINPATH/devel:$DYLD_LIBRARY_PATH
+  pvsimagepath=$PVSBINPATH/devel/$PVSIMAGE
+elif [ -d $PVSBINPATH/runtime -a -e $PVSBINPATH/runtime/$PVSIMAGE ]
 then
-  PATH=$binpath/runtime:$binpath:$PVSPATH/bin:$PATH
-  LD_LIBRARY_PATH=$binpath/runtime:$LD_LIBRARY_PATH
-  DYLD_LIBRARY_PATH=$binpath/runtime:$DYLD_LIBRARY_PATH
-  pvsimagepath=$binpath/runtime/$PVSIMAGE
+  PATH=$PVSBINPATH/runtime:$PVSBINPATH:$PVSPATH/bin:$PATH
+  LD_LIBRARY_PATH=$PVSBINPATH/runtime:$LD_LIBRARY_PATH
+  DYLD_LIBRARY_PATH=$PVSBINPATH/runtime:$DYLD_LIBRARY_PATH
+  pvsimagepath=$PVSBINPATH/runtime/$PVSIMAGE
 else
-  echo "Cannot find $binpath/runtime/$PVSIMAGE"
+  echo "Cannot find $PVSBINPATH/runtime/$PVSIMAGE"
   echo "Check the values of PVSPATH and PVSLISP"
   exit 1
 fi
@@ -361,7 +361,7 @@ fi
 PVSVERBOSE=${PVSVERBOSE:-0}
 
 export ALLEGRO_CL_HOME DISPLAY LD_LIBRARY_PATH
-export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE PVSTIMEOUT
+export PVSARCH PVSIMAGE PVSPATH PVSBINPATH PATH PVSLISP PVSVERBOSE PVSTIMEOUT
 export PVSPORT PVSPATCHLEVEL PVSMINUSQ PVSFORCEDP PVSDEFAULTDP
 export PVSNONINTERACTIVE PVSINEMACS PVSEVALLOAD
 
