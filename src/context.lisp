@@ -34,7 +34,8 @@
 	  current-context-path get-pvs-file-dependencies pvs-delete-proof
 	  pvs-rename-file pvs-select-proof pvs-view-proof save-context
 	  show-context-path show-orphaned-proofs show-proof-file
-	  show-proofs-pvs-file))
+	  show-proofs-pvs-file
+	  pvs-context-stack push-context pop-context))
 
 ;;; Called from PVS only
 (export '(handle-deleted-theories restore-from-context update-context
@@ -213,6 +214,12 @@ pvs-strategies files.")
 (defun cc (directory)
   (change-context directory))
 
+(defun pushc (directory)
+  (push-context directory))
+
+(defun popc (directory)
+  (pop-context directory))
+
 
 ;;; Change-context checks that the specified directory exists, prompting
 ;;; for a different directory otherwise.  When a directory is given, the
@@ -234,6 +241,29 @@ pvs-strategies files.")
     (when *pvs-context-writable*
       (copy-auto-saved-proofs-to-orphan-file))
     (current-context-path)))
+
+(defvar *pvs-context-stack* nil)
+
+(defun pvs-context-stack ()
+  *pvs-context-stack*)
+
+(defun push-context (&optional directory)
+  (cond (directory
+	 (let ((cpath (current-context-path)))
+	   (change-context directory)
+	   (unless (file-equal cpath (current-context-path))
+	     (push cpath *pvs-context-stack*))))
+	(*pvs-context-stack*
+	 ;; Swap current and top
+	 (let ((cpath (current-context-path)))
+	   (change-context (pop *pvs-context-stack*))
+	   (unless (file-equal cpath (current-context-path))
+	     (push cpath *pvs-context-stack*))))
+	(t (pvs-message "No directory given, and context stack is empty"))))
+
+(defun pop-context ()
+  (when *pvs-context-stack*
+    (change-context (pop *pvs-context-stack*))))
 
 (defun reset-context ()
   ;; First reset local context
@@ -2123,35 +2153,37 @@ pvs-strategies files.")
 		    (pvs-message "Error in loading ~a" file))))))))))
 
 (defun load-strategies-file (file dates)
-  (when (file-exists-p file)
-    (let ((fwd (file-write-time file)))
-      (unless (= fwd (car dates))
-	(setf (car dates) fwd)
-	#+(and allegro (version>= 6) (not pvs6))
-	(unwind-protect
-	    (progn (excl:set-case-mode :case-insensitive-lower)
-		   (multiple-value-bind (v err)
-		       (ignore-errors (load file))
-		     (declare (ignore v))
-		     (when err
-		       (pvs-message "Error in loading ~a:~%  ~a" file err))))
-	  (excl:set-case-mode :case-sensitive-lower)
-	  (add-lowercase-prover-ids))
-	#+(and allegro (version>= 6) pvs6)
-	(unwind-protect
+  (let ((*loading-files* :strategies))
+    (when (file-exists-p file)
+      (let ((fwd (file-write-time file)))
+	(unless (= fwd (car dates))
+	  (setf (car dates) fwd)
+	  #+(and allegro (version>= 6) (not pvs6))
+	  (unwind-protect
+	       (progn (excl:set-case-mode :case-insensitive-lower)
+		      (multiple-value-bind (v err)
+			  (ignore-errors (load file))
+			(declare (ignore v))
+			(when err
+			  (pvs-message "Error in loading ~a:~%  ~a" file err))))
+	    (excl:set-case-mode :case-sensitive-lower)
+	    (add-lowercase-prover-ids))
+	  #+(and allegro (version>= 6) pvs6)
+	  (unwind-protect
+	       (multiple-value-bind (v err)
+		   (ignore-errors (load file))
+		 (declare (ignore v))
+		 (when err
+		   (pvs-message "Error in loading ~a:~%  ~a" file err)))
+	    (add-lowercase-prover-ids))
+	  #-(and allegro (version>= 6))
+	  (with-open-file (str file :direction :input)
 	    (multiple-value-bind (v err)
-		(ignore-errors (load file))
+		(ignore-lisp-errors (load str))
 	      (declare (ignore v))
 	      (when err
-		(pvs-message "Error in loading ~a:~%  ~a" file err)))
-	  (add-lowercase-prover-ids))
-	#-(and allegro (version>= 6))
-	(with-open-file (str file :direction :input)
-	  (multiple-value-bind (v err)
-	      (ignore-lisp-errors (load str))
-	    (declare (ignore v))
-	    (when err
-	      (pvs-message "Error in loading ~a:~%  ~a" file err))))))))
+		(pvs-message "Error in loading ~a:~%  ~a" file err)))))))))
+
 
 (defun add-lowercase-prover-ids ()
   (add-lowercase-prover-hash-ids *rulebase*)
