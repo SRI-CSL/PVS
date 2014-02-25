@@ -32,15 +32,6 @@
 
 (defconst pvs-mode-menus
   '("PVS"
-    ("Getting Help"
-     ["help-pvs" help-pvs t]
-     ["help-pvs-language" help-pvs-language t]
-     ["help-pvs-bnf" help-pvs-bnf t]
-     ["help-pvs-prover" help-pvs-prover t]
-     ["help-pvs-prover-command" help-pvs-prover-command t]
-     ["help-pvs-prover-strategy" help-pvs-prover-strategy t]
-     ["help-pvs-prover-emacs" help-pvs-prover-emacs t]
-     ["pvs-release-notes" pvs-release-notes t])
     ("Editing PVS Files"
      ["forward-theory" forward-theory (current-pvs-file t)]
      ["backward-theory" backward-theory (current-pvs-file t)]
@@ -52,6 +43,45 @@
      ["typecheck-importchain" typecheck-importchain (current-pvs-file t)]
      ["typecheck-prove" typecheck-prove (current-pvs-file t)]
      ["typecheck-prove-importchain" typecheck-prove-importchain (current-pvs-file t)])
+    ("Adding and Modifying Declarations"
+     ["add-declaration" add-declaration (current-pvs-file t)]
+     ["modify-declaration" modify-declaration (current-pvs-file t)])
+    ("Prettyprint"
+     ["prettyprint-theory" prettyprint-theory (current-pvs-file t)]
+     ["prettyprint-pvs-file" prettyprint-pvs-file (current-pvs-file t)]
+     ["prettyprint-declaration" prettyprint-declaration (current-pvs-file t)]
+     ["prettyprint-region" prettyprint-region (current-pvs-file t)]
+     ["prettyprint-theory-instance" prettyprint-theory-instance (current-pvs-file t)]
+     ["pvs-set-linelength" pvs-set-linelength t])
+    ("Viewing TCCs"
+     ["show-tccs" show-tccs (current-pvs-file t)]
+     ["show-declaration-tccs" show-declaration-tccs (current-pvs-file t)]
+     ["prettyprint-expanded" prettyprint-expanded (current-pvs-file t)])
+    ("Files and Theories"
+     ["find-pvs-file" find-pvs-file t]
+     ["find-theory" find-theory t]
+     ["view-prelude-file" view-prelude-file t]
+     ["view-prelude-theory" view-prelude-theory t]
+     ["view-library-file" view-library-file t]
+     ["view-library-theory" view-library-theory t]
+     ["load-prelude-library" load-prelude-library t]
+     ["remove-prelude-library" remove-prelude-library t]
+     ["list-prelude-libraries" list-prelude-libraries t]
+     ["new-pvs-file" new-pvs-file t]
+     ["new-theory" new-theory t]
+     ["import-pvs-file" import-pvs-file t]
+     ["import-theory" import-theory t]
+     ["delete-pvs-file" delete-pvs-file t]
+     ["delete-theory" delete-theory t]
+     ["save-pvs-file" save-pvs-file t]
+     ["save-some-pvs-files" save-some-pvs-files t]
+     ["smail-pvs-files" smail-pvs-files (current-pvs-file t)]
+     ["rmail-pvs-files" rmail-pvs-files t]
+     ["dump-pvs-files" dump-pvs-files (current-pvs-file t)]
+     ["undump-pvs-files" undump-pvs-files t]
+     ["edit-pvs-dump-file" edit-pvs-dump-file t]
+     ["save-pvs-buffer" save-pvs-buffer t])
+    "----"
     ("Prover Invocation"
      ["prove" prove (pvs-valid-formula-buffer)]
      ["x-prove" x-prove (pvs-valid-formula-buffer)]
@@ -62,11 +92,52 @@
      ["prove-theories" prove-theories (current-pvs-file t)]
      ["prove-pvs-file" prove-pvs-file (current-pvs-file t)]
      ["prove-importchain" prove-importchain (current-pvs-file t)]
-     ["prove-proofchain" prove-proofchain (pvs-valid-formula-buffer)])
+     ["prove-proofchain" prove-proofchain (pvs-valid-formula-buffer)]
+     ["prove-next-unproved-formula" prove-next-unproved-formula (current-pvs-file t)]
+     ["prove-importchain-subtree" prove-importchain-subtree (current-pvs-file t)]
+     ["prove-untried-importchain" prove-untried-importchain (current-pvs-file t)]
+     ["prove-untried-importchain-subtree" prove-untried-importchain-subtree
+      (current-pvs-file t)]
+     ["prove-untried-pvs-file" prove-untried-pvs-file (current-pvs-file t)]
+     ["prove-untried-theory" prove-untried-theory (current-pvs-file t)]
+     ["prove-formulas-importchain" prove-formulas-importchain (current-pvs-file t)]
+     ["prove-formulas-importchain-subtree" prove-formulas-importchain-subtree
+      (current-pvs-file t)]
+     ["prove-formulas-pvs-file" prove-formulas-pvs-file (current-pvs-file t)]
+     ["prove-formulas-theory" prove-formulas-theory (current-pvs-file t)]
+     ["prove-tccs-importchain" prove-tccs-importchain (current-pvs-file t)]
+     ["prove-tccs-importchain-subtree" prove-tccs-importchain-subtree
+      (current-pvs-file t)]
+     ["prove-tccs-pvs-file" prove-tccs-pvs-file (current-pvs-file t)]
+     ["prove-tccs-theory" prove-tccs-theory (current-pvs-file t)]
+     ("Selecting Decision Procedure (old, alternate dp needed)"
+      ["set-decision-procedure" set-decision-procedure t]
+      ["prove-theory-using-default-dp" prove-theory-using-default-dp
+				       (current-pvs-file t)]
+      ["prove-theories-using-default-dp" prove-theories-using-default-dp
+					 (current-pvs-file t)]
+      ["prove-pvs-file-using-default-dp" prove-pvs-file-using-default-dp
+					 (current-pvs-file t)]
+      ["prove-importchain-using-default-dp" prove-importchain-using-default-dp
+					    (current-pvs-file t)]
+      ["prove-importchain-subtree-using-default-dp"
+       prove-importchain-subtree-using-default-dp
+       (current-pvs-file t)]
+      ["prove-proofchain-using-default-dp" prove-proofchain-using-default-dp
+					   (current-pvs-file t)])
+     )
     ("Proof Editing"
      ["edit-proof" edit-proof (pvs-valid-formula-buffer)]
      ["install-proof" install-proof (or (pvs-valid-formula-buffer)
 					(equal (buffer-name) "Proof"))]
+     ["install-proof!" install-proof! (or (pvs-valid-formula-buffer)
+					  (equal (buffer-name) "Proof"))]
+     ["install-and-step-proof" install-and-step-proof
+      (or (pvs-valid-formula-buffer)
+	  (equal (buffer-name) "Proof"))]
+     ["install-and-x-step-proof" install-and-x-step-proof
+      (or (pvs-valid-formula-buffer)
+	  (equal (buffer-name) "Proof"))]
      ["display-proofs-formula" display-proofs-formula
       (or (pvs-valid-formula-buffer) (equal (buffer-name) "Proof"))]
      ["display-proofs-theory" display-proofs-theory (current-pvs-file t)]
@@ -83,12 +154,16 @@
      ["toggle-proof-prettyprinting" toggle-proof-prettyprinting t]
      ["set-print-depth" set-print-depth t]
      ["set-print-length" set-print-length t]
+     ["set-print-lines" set-print-lines t]
      ["set-rewrite-depth" set-rewrite-depth t]
-     ["set-rewrite-length" set-rewrite-length t])
+     ["set-rewrite-length" set-rewrite-length t]
+     ["set-proof-backup-number" set-proof-backup-number t]
+     ["show-proof-backup-number" show-proof-backup-number t])
     ("Proof Information"
      ["show-current-proof" show-current-proof pvs-in-checker]
      ["explain-tcc" explain-tcc pvs-in-checker]
      ["show-last-proof" show-last-proof pvs-in-checker]
+     ["dump-sequents" dump-sequents t]
      ["ancestry" ancestry pvs-in-checker]
      ["siblings" siblings pvs-in-checker]
      ["show-hidden-formulas" show-hidden-formulas pvs-in-checker]
@@ -97,39 +172,40 @@
      ["show-skolem-constants" show-skolem-constants pvs-in-checker]
      ["pvs-set-proof-parens" pvs-set-proof-parens t]
      ["pvs-set-proof-prompt-behavior" pvs-set-proof-prompt-behavior t]
-     ["pvs-set-proof-default-description" pvs-set-proof-default-description t])
-    ("Adding and Modifying Declarations"
-     ["add-declaration" add-declaration (current-pvs-file t)]
-     ["modify-declaration" modify-declaration (current-pvs-file t)])
-    ("Prettyprint"
-     ["prettyprint-theory" prettyprint-theory (current-pvs-file t)]
-     ["prettyprint-pvs-file" prettyprint-pvs-file (current-pvs-file t)]
-     ["prettyprint-declaration" prettyprint-declaration (current-pvs-file t)]
-     ["prettyprint-region" prettyprint-region (current-pvs-file t)]
-     ["prettyprint-theory-instance" prettyprint-theory-instance (current-pvs-file t)])
-    ("Viewing TCCs"
-     ["show-tccs" show-tccs (current-pvs-file t)]
-     ["prettyprint-expanded" prettyprint-expanded (current-pvs-file t)])
-    ("Files and Theories"
-     ["find-pvs-file" find-pvs-file t]
-     ["find-theory" find-theory t]
-     ["view-prelude-file" view-prelude-file t]
-     ["view-prelude-theory" view-prelude-theory t]
-     ["view-library-file" view-library-file t]
-     ["view-library-theory" view-library-theory t]
-     ["new-pvs-file" new-pvs-file t]
-     ["new-theory" new-theory t]
-     ["import-pvs-file" import-pvs-file t]
-     ["import-theory" import-theory t]
-     ["delete-pvs-file" delete-pvs-file t]
-     ["delete-theory" delete-theory t]
-     ["save-pvs-file" save-pvs-file t]
-     ["save-some-pvs-files" save-some-pvs-files t]
-     ["smail-pvs-files" smail-pvs-files (current-pvs-file t)]
-     ["rmail-pvs-files" rmail-pvs-files t]
-     ["dump-pvs-files" dump-pvs-files (current-pvs-file t)]
-     ["undump-pvs-files" undump-pvs-files t]
-     ["save-pvs-buffer" save-pvs-buffer t])
+     ["pvs-set-proof-default-description" pvs-set-proof-default-description t]
+     ["pvs-sizeof-proof" pvs-sizeof-proof t]
+     ["pvs-sizeof-proofs-theory" pvs-sizeof-proofs-theory t]
+     ["pvs-sizeof-proofs-pvs-file" pvs-sizeof-proofs-pvs-file t]
+     ["pvs-sizeof-proofs-importchain" pvs-sizeof-proofs-importchain t]
+     ["pvs-sizeof-proofs-proofchain" pvs-sizeof-proofs-proofchain t])
+    ("ProofLite"
+     ["install-prooflite-scripts-theory" install-prooflite-scripts-theory
+      (current-pvs-file t)]
+     ["install-prooflite-script" install-prooflite-script
+      (current-pvs-file t)]
+     ["install-prooflite-scripts-theory!" install-prooflite-scripts-theory!
+      (current-pvs-file t)]
+     ["install-prooflite-script!" install-prooflite-script!
+      (current-pvs-file t)]
+     ["insert-prooflite-script" insert-prooflite-script
+      (current-pvs-file t)]
+     ["display-prooflite-script" display-prooflite-script
+      (current-pvs-file t)])
+    ("ProofState Displays (experimental)"
+     ["set-proofstate-display-style" set-proofstate-display-style t]
+     ["pvs-proofstate-no-frame" pvs-proofstate-no-frame t]
+     ["pvs-proofstate-0-frame" pvs-proofstate-0-frame t]
+     ["pvs-proofstate-1-frame" pvs-proofstate-1-frame t]
+     ["pvs-proofstate-2-frame" pvs-proofstate-2-frame t]
+     ["pvs-proofstate-3-frame" pvs-proofstate-3-frame t]
+     ["pvs-proofstate-4-frame" pvs-proofstate-4-frame t])
+    "----"
+    ("Ground Evaluator"
+     ["pvsio" pvsio (current-pvs-file t)]
+     ["pvs-ground-evaluator" pvs-ground-evaluator (current-pvs-file t)]
+     ["pvs-lisp-theory" pvs-lisp-theory (current-pvs-file t)]
+     ["load-pvs-attachments" load-pvs-attachments t]
+     ["list-pvs-attachments" list-pvs-attachments t])
     ("Printing"
      ["pvs-print-buffer" pvs-print-buffer t]
      ["pvs-print-region" pvs-print-region t]
@@ -145,6 +221,7 @@
      ["latex-importchain" latex-importchain (current-pvs-file t)]
      ["latex-proof" latex-proof t]
      ["latex-theory-view" latex-theory-view (current-pvs-file t)]
+     ["latex-proof-view" latex-proof-view t]
      ["latex-set-linelength" latex-set-linelength t]
      ["html-pvs-file" html-pvs-file t]
      ["html-pvs-files" html-pvs-files t])
@@ -164,12 +241,19 @@
      ["context-path" context-path t])
     ("Browsing"
      ["show-declaration" show-declaration (current-pvs-file t)]
+     ["goto-declaration" goto-declaration (current-pvs-file t)]
      ["find-declaration" find-declaration (current-pvs-file t)]
+     ["whereis-identifier-used" whereis-identifier-used t]
      ["whereis-declaration-used" whereis-declaration-used (current-pvs-file t)]
      ["list-declarations" list-declarations (current-pvs-file t)]
      ["show-expanded-form" show-expanded-form (current-pvs-file t)]
+     ["usedby-proofs" usedby-proofs (current-pvs-file t)]
      ["unusedby-proof-of-formula" unusedby-proof-of-formula (current-pvs-file t)]
-     ["unusedby-proofs-of-formulas" unusedby-proofs-of-formulas (current-pvs-file t)])
+     ["unusedby-proofs-of-formulas" unusedby-proofs-of-formulas (current-pvs-file t)]
+     ["display-proofs-formula" display-proofs-formula (current-pvs-file t)]
+     ["display-proofs-theory" display-proofs-theory (current-pvs-file t)]
+     ["display-proofs-pvs-file" display-proofs-pvs-file (current-pvs-file t)]
+     )
     ("Status"
      ["status-theory" status-theory (current-pvs-file t)]
      ["status-pvs-file" status-pvs-file (current-pvs-file t)]
@@ -192,19 +276,35 @@
     ("Environment"
      ["whereis-pvs" whereis-pvs t]
      ["pvs-version" pvs-version t]
+     ["pvsio-version" pvsio-version t]
      ["pvs-log" pvs-log t]
      ["pvs-mode" pvs-mode t]
      ["status-display" status-display t]
      ["pvs-status" pvs-status t]
      ["remove-popup-buffer" remove-popup-buffer t]
      ["pvs" pvs t]
+     ["pvs-server" pvs-server t]
      ["pvs-load-patches" pvs-load-patches t]
      ["pvs-interrupt-subjob" pvs-interrupt-subjob t]
      ["reset-pvs" reset-pvs t])
     ["report-pvs-bug" report-pvs-bug t]
     ("Exiting"
      ["suspend-pvs" suspend-pvs t]
-     ["exit-pvs" exit-pvs t])))
+     ["exit-pvs" exit-pvs t])
+    ("Getting Help"
+     ["help-pvs" help-pvs t]
+     ["help-pvs-language" help-pvs-language t]
+     ["help-pvs-bnf" help-pvs-bnf t]
+     ["help-pvs-unicode" help-pvs-unicode t]
+     ["help-pvs-prover" help-pvs-prover t]
+     ["help-pvs-prover-command" help-pvs-prover-command t]
+     ["help-pvs-prover-strategy" help-pvs-prover-strategy t]
+     ["help-pvs-prover-emacs" help-pvs-prover-emacs t]
+     ["help-pvs-attachment" help-pvs-attachment t]
+     ["help-pvs-attachments" help-pvs-attachments t]
+     ["help-pvs-theory-attachments" help-pvs-theory-attachments t]
+     ["pvs-release-notes" pvs-release-notes t])
+    ))
 
 (unless (featurep 'xemacs)
 
