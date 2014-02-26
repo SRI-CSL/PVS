@@ -639,14 +639,14 @@ The save-pvs-file command saves the PVS file of the current buffer."
   (with-current-buffer buffer
     (erase-buffer)))
 
-(defvar current-pvs-file 'unbound)
-(make-variable-buffer-local 'current-pvs-file)
-
 (defun current-pvs-file (&optional no-error)
   (if (and no-error
-	   (not (eq current-pvs-file 'unbound)))
+	   (boundp 'current-pvs-file)
+	   (boundp 'pvs-lib-p))
       current-pvs-file
       (pvs-current-directory)
+      (make-local-variable 'current-pvs-file)
+      (set (make-local-variable 'pvs-lib-p) nil)
       (cond ((or (not (buffer-file-name))
 		 (not (member-equal (pathname-type (buffer-file-name))
 				    *pvs-file-extensions*)))
@@ -654,20 +654,26 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	       (error "%s is not a valid PVS file" (buffer-name))))
 	    ((file-equal (buffer-file-name)
 			 (format "%s/lib/prelude.pvs" pvs-path))
-	     (setq current-pvs-file (pathname-name (buffer-file-name))))
+	     (setq current-pvs-file) (pathname-name (buffer-file-name)))
 	    ((file-equal (buffer-file-name)
 			 (format "%s%s"
 			     pvs-current-directory
 			   (file-name-nondirectory (buffer-file-name))))
 	     (setq current-pvs-file (pathname-name (buffer-file-name))))
-	    ((pvs-library-file (buffer-file-name)))
+	    ((pvs-library-file-p (buffer-file-name))
+	     (setq current-pvs-file (pathname-name (buffer-file-name)))
+	     (setq pvs-lib-p t)
+	     current-pvs-file)
 	    (t (unless no-error
-		 (error "%s is not in the current context"
+		 (error "%s is not in the current context or a typechecked library file"
 			(buffer-file-name)))))))
 
+(defun pvs-library-file-p (filename)
+  (pvs-send-and-wait (format "(library-file? \"%s\")" filename)
+		     nil nil 'bool))
+
 (defun pvs-library-file (filename)
-  (and (pvs-send-and-wait (format "(library-file? \"%s\")" filename)
-			  nil nil 'bool)
+  (and (pvs-library-file-p filename)
        (concat (pathname-directory filename) (pathname-name filename))))
 
 
