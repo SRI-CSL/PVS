@@ -91,6 +91,7 @@ or the resolution determined by the typechecker for an overloaded name."
   (let* ((fref (pvs-formula-origin))
 	 (kind (pvs-fref-kind fref))
 	 (file (pvs-fref-file fref))
+	 (lib (pvs-fref-library fref))
 	 (fname (pvs-fref-file fref))
 	 (buf (or file (pvs-fref-buffer fref)))
 	 (poff (pvs-fref-prelude-offset fref))
@@ -100,9 +101,10 @@ or the resolution determined by the typechecker for an overloaded name."
     (if (memq kind '(tccs ppe))
 	(message
 	 "The show-declaration command is not available in this buffer.")
-	(pvs-send-and-wait (format "(show-declaration \"%s\" \"%s\" '(%d %d))"
+	(pvs-send-and-wait (format "(show-declaration \"%s\" \"%s\" '(%d %d) nil %s)"
 			       (or fname buf) kind line
-			       (real-current-column))
+			       (real-current-column)
+			       (when lib (format "\"%s\"" lib)))
 			   nil 'declaration 'dont-care))))
      
 (defpvs goto-declaration browse ()
@@ -116,15 +118,17 @@ declaration."
   (let* ((fref (pvs-formula-origin))
 	 (kind (pvs-fref-kind fref))
 	 (file (pvs-fref-file fref))
+	 (lib (pvs-fref-library fref))
 	 (fname (pvs-fref-file fref))
 	 (buf (or file (pvs-fref-buffer fref)))
 	 (poff (pvs-fref-prelude-offset fref))
 	 (line (+ (pvs-fref-line fref) poff)))
     (pvs-bury-output)
     (save-some-pvs-files)
-    (pvs-send-and-wait (format "(goto-declaration \"%s\" \"%s\" '(%d %d))"
+    (pvs-send-and-wait (format "(goto-declaration \"%s\" \"%s\" '(%d %d) %s)"
 			   (or fname theory buf) kind line
-			   (real-current-column))
+			   (real-current-column)
+			   (when lib (format "\"%s\"" lib)))
 		       'declaration 'dont-care)))
 
 (defpvs find-declaration browse (symbol)
@@ -161,6 +165,7 @@ and removes the declaration buffer."
   (let* ((fref (pvs-formula-origin))
 	 (kind (pvs-fref-kind fref))
 	 (file (pvs-fref-file fref))
+	 (lib (pvs-fref-library fref))
 	 (fname (pvs-fref-file fref))
 	 (buf (or file (pvs-fref-buffer fref)))
 	 (poff (pvs-fref-prelude-offset fref))
@@ -169,11 +174,12 @@ and removes the declaration buffer."
     (pvs-bury-output)
     (if (memq kind '(tccs ppe))
 	(message
-	 "The show-declaration command is not available in this buffer.")
+	 "The whereis-declaration-used command is not available in this buffer.")
 	(let ((pvs-decls
 	       (pvs-file-send-and-wait
-		(format "(whereis-declaration-used \"%s\" \"%s\" '(%d %d))"
-		    (or fname theory buf) kind line (real-current-column))
+		(format "(whereis-declaration-used \"%s\" \"%s\" '(%d %d) nil %s)"
+		    (or fname theory buf) kind line (real-current-column)
+		    (when lib (format "\"%s\"" lib)))
 		"Listing..." 'listing 'list)))
 	  (unless pvs-decls
 	    (error "No declarations using were found"))
@@ -234,6 +240,7 @@ proofchain is still complete, if it was in the full theory."
   (let* ((fref (pvs-formula-origin))
 	 (kind (pvs-fref-kind fref))
 	 (fname (pvs-fref-file fref))
+	 (lib (pvs-fref-library fref))
 	 (buf (pvs-fref-buffer fref))
 	 (poff (pvs-fref-prelude-offset fref))
 	 (line (+ (pvs-fref-line fref) poff)))
@@ -241,8 +248,9 @@ proofchain is still complete, if it was in the full theory."
 	(message
 	 "The unusedby-proof-of-formula command is not available in this buffer.")
 	(let ((pvs-decls (pvs-file-send-and-wait
-			  (format "(unusedby-proof-of-formula \"%s\" \"%s\" %d)"
-			      (or fname buf) kind line)
+			  (format "(unusedby-proof-of-formula \"%s\" \"%s\" %d %s)"
+			      (or fname buf) kind line
+			      (when lib (format "\"%s\"" lib)))
 			  "Collecting..." 'unusedby 'list)))
 	  (unless pvs-decls
 	    (error "No unused declarations found for formula"))
@@ -422,6 +430,7 @@ or the resolution determined by the typechecker for an overloaded name."
   (interactive)
   (let* ((fref (pvs-formula-origin))
 	 (fname (pvs-fref-file fref))
+	 (lib (pvs-fref-library fref))
 	 (kind (pvs-fref-kind fref))
 	 (buf (pvs-fref-buffer fref))
 	 (poff (pvs-fref-prelude-offset fref))
@@ -432,8 +441,9 @@ or the resolution determined by the typechecker for an overloaded name."
 	(message
 	 "The usedby-proofs command is not available in this buffer.")
 	(let ((pvs-decls (pvs-file-send-and-wait
-			  (format "(usedby-proofs \"%s\" \"%s\" %d)"
-			      (or fname buf) kind line)
+			  (format "(usedby-proofs \"%s\" \"%s\" %d %s)"
+			      (or fname buf) kind line
+			      (when lib (format "\"%s\"" lib)))
 			  "Listing..." 'listing 'list)))
 	  (when pvs-decls
 	    (setq *pvs-decls* pvs-decls)
@@ -454,6 +464,7 @@ argument they are expanded as well."
   (let* ((fref (pvs-formula-origin))
 	 (kind (pvs-fref-kind fref))
 	 (fname (pvs-fref-file fref))
+	 (lib (pvs-fref-library fref))
 	 (buf (pvs-fref-buffer fref))
 	 (poff (pvs-fref-prelude-offset fref))
 	 (beg (if (mark t) (region-beginning) (point)))
@@ -469,9 +480,10 @@ argument they are expanded as well."
     (save-some-pvs-files)
     (pvs-bury-output)
     (let ((place (pvs-send-and-wait
-		  (format "(show-expanded-form \"%s\" \"%s\" '%s '%s %s)"
+		  (format "(show-expanded-form \"%s\" \"%s\" '%s '%s %s %s)"
 		      (or fname theory buf) kind pos1 pos2
-		      (and current-prefix-arg t))
+		      (and current-prefix-arg t)
+		      (when lib (format "\"%s\"" lib)))
 		  nil 'expanded-form 'list)))
       (unless noninteractive
 	(when place
