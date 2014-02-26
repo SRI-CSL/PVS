@@ -410,7 +410,9 @@ proof scripts, including those already proved."
 	 (point (point))
 	 (line (current-line-number))
 	 (fref (make-pvs-formula-reference
-		:buffer buf :file fname :line line)))
+		:buffer buf :file fname :line line
+		:library (when pvs-lib-p
+			   (pathname-directory (buffer-file-name))))))
     (cond ((or (equal pvs-buffer-kind "Declaration")
 	       (equal buf "Declaration"))
 	   (setf (pvs-fref-kind fref) 'declaration))
