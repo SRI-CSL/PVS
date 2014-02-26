@@ -83,6 +83,7 @@ be detected."
   formula ; string: name of formula (or decl)
   theory  ; string: name of theory
   file    ; string: pvs file name (no extension)
+  library ; string: pvs directory when a library theory
   buffer  ; buffer name
   line    ; current line number in buffer
   (prelude-offset 0) ; line offset within the prelude
