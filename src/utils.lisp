@@ -4466,12 +4466,16 @@ space")
   ;; Use the Git SHA1, which is different from simple SHA1
   ;; as it includes "blob" and length of file
   ;; Advantage is that it is the same inside or outside of Git
-  (let ((stream (excl:run-shell-command
-		 (format nil "git hash-object ~a" file)
-		 :wait nil
-		 :input "//dev//null"
-		 :output :stream
-		 :error-output :output)))
+  (let ((stream #+allegro (excl:run-shell-command
+			   (format nil "git hash-object ~a" file)
+			   :wait nil
+			   :input "//dev//null"
+			   :output :stream
+			   :error-output :output)
+		#+sbcl (sb-ext:run-program "git hash-object" (list "-a")
+					   :input "//dev//null"
+					   :output :stream
+					   :wait nil)))
     (format nil "~a" (read stream))))
 
 (defun record-file-loaded-for-pvs (file)
