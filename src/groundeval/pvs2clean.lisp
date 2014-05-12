@@ -177,10 +177,9 @@
 				      (updateable-free-formal-vars operator)
 				      livevars))))
 	  (if (clean-updateable? (type operator))
-	      (format nil "(pvsSelect ~a ~a ~a)"
-		clean-op clean-arg
-		(mk-clean-funcall clean-op
-				  (list clean-arg))))))));;why is there no else case?
+	      (format nil "(pvsSelect ~a ~a)"
+		clean-op clean-arg)
+	      (mk-clean-funcall clean-op (list clean-arg)))))))
 
 (defun pvs2clean-primitive-app (expr bindings livevars)
   (format nil "~a ~{ ~a~}"
@@ -200,20 +199,22 @@
 	   (args (arguments expr))
 	   (clean-args (pvs2clean* (append actuals args) bindings livevars)))
       (if *destructive?*
-	(let* ((defns (def-axiom op-decl))
-	   (defn (when defns (args2 (car (last (def-axiom op-decl))))))
-	   (def-formals (when (lambda-expr? defn)
-			  (bindings defn)))
-	   (module-formals (constant-formals (module op-decl)))
-	   (alist (append (pairlis module-formals actuals)
-			  (pairlis def-formals args)))
-	   (analysis (clean_analysis operator))
-	   (check (check-output-vars analysis alist livevars)))
-	  (format nil "(~a ~{ ~a~})" (if check (clean_id operator)
-				       (clean_nondestructive_id operator))
-			    clean-args)
-	      )
-	(format nil "(~a ~{ ~a~})" (clean_id operator) clean-args)))));;this should be
+	  (let* ((defns (def-axiom op-decl))
+		 (defn (when defns (args2 (car (last (def-axiom op-decl))))))
+		 (def-formals (when (lambda-expr? defn)
+				(bindings defn)))
+		 (module-formals (unless (eq (module op-decl) (current-theory))
+				   (constant-formals (module op-decl))))
+		 (alist (append (pairlis module-formals actuals)
+				(when def-formals
+				  (pairlis def-formals args))))
+		 (analysis (clean_analysis operator))
+		 (check (check-output-vars analysis alist livevars)))
+	    (format nil "(~a ~{ ~a~})" (if check (clean_id operator)
+					   (clean_nondestructive_id operator))
+		    clean-args)
+	    )
+	  (format nil "(~a ~{ ~a~})" (clean_id operator) clean-args))))) ;;this should be
 ;;clean_nondestructive_id?
 
 (defun pvs2clean-resolution (op)
@@ -255,7 +256,7 @@
 		  (loop for var in formals
 			collect (format nil "!~a" (pvs2clean-type (type var))))
 		  (pvs2clean-type range-type)))
-	 (cl-defn (format nil "~a ~{~a ~} -> ~a" "\\ " bind-ids cl-body))
+	 (cl-defn (format nil "~a ~{~a ~} -> ~a" "\\" bind-ids cl-body))
 	 (hash-entry (gethash op-decl *clean-nondestructive-hash*)))
     (format t "~%Defining (nondestructively) ~a with ~%type ~a ~%as ~a" (id op-decl) cl-type cl-defn)
     (setf (clean-info-type hash-entry)
@@ -278,7 +279,7 @@
 				    (format nil "!*~a" (pvs2clean-type (type var)))
 				    (format nil "!~a" (pvs2clean-type (type var)))))
 		  (pvs2clean-type range-type)))
-	 (cl-defn  (format nil "~a ~{~a ~} -> ~a" "\\ " bind-ids cl-body))
+	 (cl-defn  (format nil "~a ~{~a ~} -> ~a" "\\" bind-ids cl-body))
 	 (hash-entry (gethash op-decl *clean-destructive-hash*))
 	 (old-output-vars (clean-info-analysis hash-entry)))
         (format t "~%Defining (destructively) ~a with ~%type ~a ~%as ~a" (id op-decl) cl-type cl-defn)
@@ -313,15 +314,15 @@
     (pvs2clean-resolution expr)
     (if def-formals 
 	(let ((eta-expansion
-		   (mk-lambda-expr def-formals
-		     (mk-application expr
-		       (loop for bd in def-formals
-			     collect (change-class (copy bd) 'name-expr))))))
+	       (make!-lambda-expr def-formals
+		 (make!-application* expr
+		   (loop for bd in def-formals
+		      collect (mk-name-expr bd))))))
 	  (pvs2clean* eta-expansion bindings livevars))
 	(let* ((actuals (expr-actuals (module-instance expr)))
 	       (clean-actuals (pvs2clean* actuals bindings livevars)))
-	(format nil "(~a ~{ ~a~})" (clean_nondestructive_id expr)
-		clean-actuals)))))
+	  (format nil "(~a ~{ ~a~})" (clean_nondestructive_id expr)
+		  clean-actuals)))))
 
 
 
@@ -332,7 +333,7 @@
 			   (append (pairlis bind-decls bind-ids)
 				   bindings)
 			   nil)))
-    (format nil "~a ~{~a ~} -> ~a" "\\ " bind-ids cl-body)))
+    (format nil "~a ~{~a ~} -> ~a" "\\" bind-ids cl-body)))
 
 (defmethod pvs2clean* ((expr lambda-expr) bindings livevars)
   (declare (ignore livevars))
@@ -539,7 +540,7 @@
   (pvs2clean-update-nd-type* (find-supertype type) expr newexprvar arg1 restargs
 			  assign-expr bindings livevars accum))
 
-(defmethod pvs2clean-type ((type recordtype))
+(defmethod pvs2clean-type ((type recordtype) &optional tbindings)
   (with-slots (print-type) type
     (if (type-name? print-type)
 	(let ((entry (assoc (declaration print-type) *clean-record-defns*)))
@@ -555,23 +556,28 @@
 		clean-rectype-name)))
 	(pvs2clean-error "~%Record type ~a must be declared." type))))
 
-(defmethod pvs2clean-type ((type tupletype))
+(defmethod pvs2clean-type ((type tupletype) &optional tbindings)
   (format nil "(~{!~a~^, ~})" (loop for elemtype in (types type)
 				   collect (pvs2clean-type elemtype))))
 
-(defmethod pvs2clean-type ((type funtype))
+(defmethod pvs2clean-type ((type funtype) &optional tbindings)
   (if (clean-updateable? type)
       (format nil "(PvsArray ~a)" (pvs2clean-type (range type)))
       (format nil "(~a -> ~a)"
 	(pvs2clean-type (domain type))
 	(pvs2clean-type (range type)))))
 
-(defmethod pvs2clean-type ((type subtype))
-  (let ((fs (find-supertype type)))
-    (if (and (eq fs *number*)
-	     (subtype-of? type *integer*))
-	(format nil "BigInt");;Generates nonsense if type is not subtype of int.
-	(pvs2clean-type (find-supertype type)))))
+(defmethod pvs2clean-type ((type subtype) &optional tbindings)
+  (cond ((subtype-of? type *integer*)
+	 "BigInt") ;;Generates nonsense if type is not subtype of int.
+	((subtype-of? type *real*)
+	 "Rational")
+	(t (pvs2clean-type (find-supertype type)))))
+
+(defmethod pvs2clean-type ((type type-name) &optional tbindings)
+  (or (cdr (assoc type tbindings :test #'tc-eq))
+      (id type)))
+
 
 
 ;;clean-updateable? is used to check if the type of an updated expression
@@ -616,13 +622,13 @@
 	 (*current-theory* theory)
 	 (*current-context* (context theory)))
     (cond ((datatype? theory)
-	   (let ((adt (adt-type-name theory)))
-	     (pvs2clean-constructors (constructors adt) adt))
-	   (pvs2clean-theory (adt-theory theory))
-	   (let ((map-theory (adt-map-theory theory))
-		 (reduce-theory (adt-reduce-theory theory)))
-	     (when map-theory (pvs2clean-theory (adt-map-theory theory)))
-	     (when reduce-theory (pvs2clean-theory (adt-reduce-theory theory))))) 
+	   (pvs2clean-datatype theory)
+	   ;;(pvs2clean-theory (adt-theory theory))
+	   ;;(let ((map-theory (adt-map-theory theory))
+	   ;;   (reduce-theory (adt-reduce-theory theory)))
+	   ;;   (when map-theory (pvs2clean-theory (adt-map-theory theory)))
+	   ;;   (when reduce-theory (pvs2clean-theory (adt-reduce-theory theory))))
+	   )
 	  (t (loop for decl in (theory theory)
 		   do (cond ((type-eq-decl? decl)
 			     (let ((dt (find-supertype (type-value decl))))
@@ -637,6 +643,84 @@
 				 (pvs2clean-declaration decl))))
 			    (t nil)))))))
 
+;;; maps to AlgebraicTypeDef
+(defun pvs2clean-datatype (dt)
+  (let* ((typevars (mapcar #'(lambda (fm)
+			       (pvs2clean-datatype-formal fm dt))
+		     (formals dt)))
+	 (constructors (pvs2clean-constructors
+			(constructors dt) dt
+			(mapcar #'cons (formals dt) typevars))))
+    (format nil "::~a~{ ~a~} = ~{~a~^ | ~}"
+      (id dt) typevars constructors)))
+
+(defun pvs2clean-datatype-formal (formal dt)
+  (if (formal-type-decl? formal)
+      (let ((id-str (string (id formal))))
+	(if (lower-case-p (char id-str 0))
+	    (id formal)
+	    (make-new-variable (string-downcase id-str :end 1) dt)))
+      (break "What to di with constant formals?")))
+
+(defun pvs2clean-constructors (constrs datatype tvars)
+  (pvs2clean-constructors* constrs datatype tvars))
+
+(defun pvs2clean-constructors* (constrs datatype tvars)
+  (when constrs
+    (cons (pvs2clean-constructor (car constrs) datatype tvars)
+	  (pvs2clean-constructors* (cdr constrs) datatype tvars))))
+
+;;; Maps to ConstructorDef
+(defun pvs2clean-constructor (constr datatype tvars)
+  (format nil "~a~{ ~a~}" (id constr)
+	  (mapcar #'(lambda (arg) (pvs2clean-type (type arg) tvars))
+	    (arguments constr))))
+
 (defun clear-clean-hash ()
   (clrhash *clean-nondestructive-hash*)
   (clrhash *clean-destructive-hash*))
+
+(defun generate-clean-for-pvs-file (filename &optional force?)
+  (let ((theories (cdr (gethash filename *pvs-files*))))
+    ;; Sets the hash-tables
+    (dolist (theory theories)
+      (pvs2clean-theory theory))
+    (with-open-file (output (format nil "~a.icl" filename)
+			    :direction :output
+			    :if-exists :supersede
+			    :if-does-not-exist :create)
+      (format output "// Clean file generated from ~a.pvs~2%" filename)
+      (format output
+	  "// In general for a definiton foo in an ~
+               unparameterized~%// theory th, the names are:~
+           ~%//    foo  - takes no arguments, returns a unary closure~
+           ~%//   _foo  - the nondestructive version of the function~
+           ~%//    foo! - the destructive version of the function")
+      (format output
+	  "// If the definition appears in a parameterized theory th, ~
+               additional functions are generated ~%// that take arguments ~
+               corresponding to the theory parameters, take names are:~
+           ~%//    th_foo  - takes no arguments, returns a unary closure~
+           ~%//   _th_foo  - the nondestructive version of the function~
+           ~%//    th_foo! - the destructive version of the function")
+      (format output
+	  "~%// Function names must be unique, so a number may be appended, ~
+            and the type~%// is included for functions associated with ~
+            datatypes.~%// For these functions, the mappings are given here.")
+      (format output "~%module ~a" filename)
+      (dolist (theory theories)
+	(dolist (decl (theory theory))
+	  (let ((ndes-info (gethash decl *clean-nondestructive-hash*))
+		(des-info (gethash decl *clean-destructive-hash*)))
+	    (when ndes-info
+	      (let ((id (clean-info-id ndes-info)))
+		;; First the signature
+		(format output "~%~a:: ~a" id (clean-info-type ndes-info))
+		;; Then the defn
+		(format output "~%~a = ~a" id (clean-info-definition ndes-info))))
+	    (when des-info
+	      (let ((id (clean-info-id des-info)))
+		;; First the signature
+		(format output "~%~a:: ~a" id (clean-info-type des-info))
+		;; Then the defn
+		(format output "~%~a = ~a" id (clean-info-definition des-info))))))))))
