@@ -5102,16 +5102,28 @@ function, tuple, or record type")
   (and (occurs-positively?* type (formals-sans-usings adt) none)
        (occurs-positively?* type (constructors adt) none)))
 
+(defmethod occurs-positively?* (type (adt inline-recursive-type) none)
+  (and (occurs-positively?* type (decl-formals adt) none)
+       (occurs-positively?* type (constructors adt) none)))
+
 (defmethod occurs-positively?* (type (list list) none)
   (or (null list)
       (and (occurs-positively?* type (car list) none)
 	   (occurs-positively?* type (cdr list) none))))
 
 (defmethod occurs-positively?* (type (con simple-constructor) none)
-  (occurs-positively?* type
-		       (mapcar #'(lambda (ac) (range (type ac)))
-			       (acc-decls con))
-		       none))
+  (occurs-positively?-accs type (acc-decls con) none))
+
+(defun occurs-positively?-accs (type acc-decls none)
+  (or (null acc-decls)
+      (let* ((acc-decl (car acc-decls))
+	     (dtype (if (decl-formal-type? (declaration type))
+			(let ((ty (find type (decl-formals acc-decl) :test #'same-id)))
+			  (when ty (type ty)))
+			type)))
+	(assert dtype)
+	(and (occurs-positively?* dtype (range (type acc-decl)) none)
+	     (occurs-positively?-accs type (cdr acc-decls) none)))))
 
 (defmethod occurs-positively?* (type (fm formal-type-decl) none)
   (declare (ignore type none))
