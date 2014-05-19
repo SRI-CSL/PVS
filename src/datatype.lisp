@@ -3747,7 +3747,7 @@ generated")
 	     (cdr types))
 	 pvars avar bvar ptypes fpairs adt (incf num)
 	 (cons (adt-every-rel
-		(car types) pvars pavar pbvar ptypes fpairs adt)
+		(dep-binding-type (car types)) pvars pavar pbvar ptypes fpairs adt)
 	       everys)))))
 
 (defmethod adt-every-rel ((te cotupletype) pvars avar bvar ptypes fpairs adt)
