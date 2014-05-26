@@ -461,10 +461,11 @@
 (defmethod tc-eq* ((e1 field-application) (e2 field-application)
 		   bindings)
   (or (eq e1 e2)
-      (with-slots ((id1 id) (arg1 argument)) e1
-	(with-slots ((id2 id) (arg2 argument)) e2
+      (with-slots ((id1 id) (arg1 argument) (ty1 type)) e1
+	(with-slots ((id2 id) (arg2 argument) (ty2 type)) e2
 	  (and (eq id1 id2)
-	       (tc-eq* arg1 arg2 bindings))))))
+	       (tc-eq* arg1 arg2 bindings)
+	       (tc-eq* ty1 ty2 bindings))))))
 
 
 (defmethod tc-eq* ((e1 rational-expr) (e2 rational-expr) bindings)
@@ -646,6 +647,7 @@
   (or (eq e1 e2)
       (with-slots ((op1 operator) (arg1 argument) (ty1 type)) e1
 	(with-slots ((op2 operator) (arg2 argument) (ty2 type)) e2
+	  (assert ty1)
 	  (and (tc-eq* arg1 arg2 bindings)
 	       (if (funtype? (find-supertype ty1))
 		   (tc-eq* op1 op2 bindings)
@@ -1727,7 +1729,8 @@
 				      atype postypes aexpr incs pospreds))
 	(t (adt-compatible-pred-actuals
 	    (cdr aacts) (cdr eacts) (cdr formals) atype postypes aexpr
-	    (cons (actual-equality (car aacts) (car eacts)) incs)
+	    (let ((eqp (actual-equality (car aacts) (car eacts))))
+	      (if eqp (cons eqp incs) incs))
 	    pospreds))))
 
 (defun adt-compatible-pred-actuals* (aact eact incs pospreds)
