@@ -299,3 +299,10 @@
 
 ;; (defmethod json:encode-json ((obj syntax) &optional (stream *json-output*))
 ;;   (json:encode-json (list "foo") stream))
+
+;; Original in encoder.lisp walks through chars, which breaks unicode of more than
+;; 2 bytes.  Here we simply put the string on the stream, as a string
+(defun json::write-json-string (s stream)
+  "Write a JSON representation (String) of S to STREAM."
+  (format stream "\"~a\"" s)
+  nil)
