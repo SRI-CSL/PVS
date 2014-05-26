@@ -186,6 +186,12 @@
 ;;; Note that proofscript may not be there, in which case it is not displayed
 ;;; though M-x show-current-proof would then display it.
 
+(defpvs refresh-proofstate prove ()
+  "Refreshes the display, so that Commentary, Proofstate, Proof, and *pvs*
+windows are displayed properly."
+  (interactive)
+  (pvs-proofstate-display t))
+
 (defvar default-proofstate-display-style nil)
 (defvar current-proofstate-display-style nil)
 (defvar proofstate-display-styles
@@ -203,14 +209,14 @@
   (setq default-proofstate-display-style style)
   (setq current-proofstate-display-style style))
 
-(defun pvs-proofstate-display ()
+(defun pvs-proofstate-display (&optional reset)
   (case current-proofstate-display-style
-    (0-frame (pvs-proofstate-0-frame))
-    (1-frame (pvs-proofstate-1-frame))
-    (2-frame (pvs-proofstate-2-frame))
-    (3-frame (pvs-proofstate-3-frame))
-    (4-frame (pvs-proofstate-4-frame))
-    (t (pvs-proofstate-no-frame))))
+    (0-frame (pvs-proofstate-0-frame reset))
+    (1-frame (pvs-proofstate-1-frame reset))
+    (2-frame (pvs-proofstate-2-frame reset))
+    (3-frame (pvs-proofstate-3-frame reset))
+    (4-frame (pvs-proofstate-4-frame reset))
+    (t (pvs-proofstate-no-frame reset))))
 
 (defun remove-proofstate-frames ()
   (let* ((frame-names-alist (make-frame-names-alist))
