@@ -41,9 +41,11 @@
 (defmacro defpvs (name class arglist docstring &rest body)
   "(defpvs NAME CLASS ARGLIST DOCSTRING BODY...):
 define NAME as a PVS command."
+  (declare (indent defun))
   (list 'progn
 	(list 'put (list 'quote name) ''pvs-command (list 'quote class))
 	(cons 'defun (cons name (cons arglist (cons docstring body))))))
+(put 'defpvs 'common-lisp-indent-function 'defun)
 
 
 ;; This is courtesy of Jerry James.
