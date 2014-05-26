@@ -545,11 +545,10 @@ PVS files (i.e., those with extension '.pvs'"
 (defun pvs-find-file-hook ()
   (let ((filename (current-pvs-file t)))
     (when (and filename
-	       (not (and (boundp 'pvs-tooltips)
-			 pvs-tooltips))
+	       (not (and (boundp 'pvs-tooltip-time)
+			 (equal pvs-tooltip-time (visited-file-modtime))))
 	       (typechecked-file-p filename))
-      (pvs-add-tooltips filename)
-      )))
+      (pvs-add-tooltips filename))))
 
 (add-hook 'find-file-hook 'pvs-find-file-hook)
 
