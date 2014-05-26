@@ -538,6 +538,7 @@
    (:module xmlrpc
      :source-pathname "src/interface"
      :components ((:file "pvs-json-rpc")
+		  (:file "pvs-json")
 		  (:file "pvs-json-methods")
 		  (:file "pvs-xml-rpc")))
    ))
