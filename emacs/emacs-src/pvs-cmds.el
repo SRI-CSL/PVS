@@ -149,9 +149,9 @@ reparsing and retypechecking of the entire importchain."
 	 (pvs-send (format "(typecheck-file \"%s\" %s %s %s)"
 		       filename (and current-prefix-arg t)
 		       prove-tccs-p importchain-p)
-		   nil (pvs-get-abbreviation cmd)))
+		   nil (pvs-get-abbreviation cmd))
+	 (pvs-check-for-tooltips))
 	(t (message "PVS file %s does not exist" filename))))
-
 
 ;;; Prettyprinting
 
@@ -541,6 +541,17 @@ is very much like the Emacs find-file command, but restricts completion to
 PVS files (i.e., those with extension '.pvs'"
   (interactive (complete-pvs-file-name "Find PVS file named: " t))
   (switch-to-buffer (get-pvs-file-buffer filename)))
+
+(defun pvs-find-file-hook ()
+  (let ((filename (current-pvs-file t)))
+    (when (and filename
+	       (not (and (boundp 'pvs-tooltips)
+			 pvs-tooltips))
+	       (typechecked-file-p filename))
+      (pvs-add-tooltips filename)
+      )))
+
+(add-hook 'find-file-hook 'pvs-find-file-hook)
 
 
 ;;; find-theory
