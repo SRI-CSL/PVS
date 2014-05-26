@@ -536,6 +536,11 @@ delimiter."
    (format "(and (typechecked? (get-theory \"%s\")) t)" theory)
    nil nil 'bool))
 
+(defun typechecked-file-p (file)
+  (pvs-send-and-wait
+   (format "(and (typechecked-file? \"%s\") t)" file)
+   nil nil 'bool))
+
 (defun pathname-directory (file-name)
   (or (file-name-directory file-name) ""))
 
