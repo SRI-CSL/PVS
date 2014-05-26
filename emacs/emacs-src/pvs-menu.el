@@ -377,9 +377,22 @@
 		 `(mouse-face highlight help-echo ,msg))
 		(make-text-button
 		 (car region) (cdr region)
-		 'type 'pvs-decl 'decl-file decl-file 'decl-place decl-place)))
-	    (message "Tooltips set"))
+		 'type 'pvs-decl 'decl-file decl-file 'decl-place decl-place)
+		(make-local-variable 'pvs-tooltip-time)
+		(setf pvs-tooltip-time (visited-file-modtime))))
+	    ;;(message "Tooltips set")
+	    )
 	  (message "Tooltips not set - is file typechecked?"))))
+  
+  (defun pvs-check-for-tooltips ()
+    (dolist (buf (buffer-list))
+      (with-current-buffer buf
+	(let ((fname (current-pvs-file t)))
+	  (when (and fname
+		     (not (and (boundp 'pvs-tooltip-time)
+			       (equal pvs-tooltip-time (visited-file-modtime))))
+		     (typechecked-file-p fname))
+	    (pvs-add-tooltips fname))))))
 
   (defun place-to-region (place &optional relrow relcol)
     (let* ((rr (or relrow 0))
