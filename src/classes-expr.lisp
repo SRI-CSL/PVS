@@ -194,6 +194,9 @@
 (defcl number-expr (rational-expr)
   (number :type integer :parse t :restore-as nil))
 
+(defcl name-expr-from-number (name-expr)
+  (number :type integer))
+
 ;; This is for integers of the form xxx.000, where the fractional part is
 ;; all zeros.  We keep it as a number expr, but store the number of zeros so
 ;; the printer can restore it.
