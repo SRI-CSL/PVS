@@ -1977,7 +1977,7 @@ Letters do not insert themselves; instead, they are commands:
   (pvs-bury-output)
   (let* ((fref (pvs-formula-origin))
 	 (kind (pvs-fref-kind fref))
-	 (fname (pvs-fref-file fref))
+	 (fname (or (pvs-fref-file fref) (pvs-fref-theory fref)))
 	 (buf (pvs-fref-buffer fref))
 	 (line (pvs-fref-line fref))
 	 (poff (pvs-fref-prelude-offset fref))
