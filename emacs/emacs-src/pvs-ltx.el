@@ -39,7 +39,13 @@ system, including many technical ones.  Examples:
  t t nil nil nil nil nil nil nil t)
 
 (eval-when-compile
-  (require 'cl-lib)
+  (cond ((require 'cl-lib nil t)
+	 (defalias 'cl-block-wrapper 'identity)
+	 (defalias 'member* 'cl-member)
+	 (defalias 'adjoin 'cl-adjoin))
+	(t
+	 (require 'cl)
+	 (defalias 'cl-assert 'assert)))
 
   (defconst pvs-ltx--mark-map
     '(("DOT BELOW" . "d")

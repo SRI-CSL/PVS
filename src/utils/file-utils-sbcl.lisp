@@ -22,17 +22,8 @@
 (export '(file-exists-p directory-p read-permission? write-permission?
 			file-write-time get-file-info))
 
-(defun remove-backslashes (string)
-  (declare (type string string))
-  (sb-impl::remove-backslashes string 0 (length string)))
-
 (defun file-exists-p (file)
-  (handler-case
-      (zerop
-       (sb-posix:access
-	(remove-backslashes (namestring (merge-pathnames file)))
-	sb-posix:f-ok))
-    (sb-posix:syscall-error () nil)))
+   (probe-file file))
 
 (defun directory-p (dir)
   (handler-case
