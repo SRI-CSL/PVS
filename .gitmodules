@@ -1,0 +1,3 @@
+[submodule "javascript/ProofExplorer"]
+	path = javascript/ProofExplorer
+	url = https://github.com/thehogfather/ProofExplorer
