@@ -22,3 +22,4 @@ Directories:
 * wish     - Tcl/Tk files
 * bin      - shell scripts and executables
 * lib      - prelude, help files, and libraries
+* javascript -  utility tools for creating interactive demos and exploring proofs written in PVS. See [javascript/README.md](javascript/README.md) for more info on how to get run the tools.
