@@ -445,7 +445,13 @@
 		  (:file "cl2pvs")
 		  (:file "generate-lisp-for-theory")
 		  (:file "random-test")
-		  (:file "pvs2clean"))
+		  (:file "pvs2clean")
+		  (:file "pvs2c-utils")
+		  (:file "pvs2c-types")
+		  (:file "pvs2c-code")
+		  (:file "pvs2c-analysis")
+		  (:file "pvs2c-primop")
+		  (:file "pvs2c"))
      :depends-on (basic))
    (:module PVSio
      :source-pathname "src/PVSio"

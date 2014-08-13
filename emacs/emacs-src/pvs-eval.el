@@ -1,3 +1,4 @@
+
 ;; PVS evaluator - emacs end.  dave_sc 10/12/98
 
 ;; --------------------------------------------------------------------
@@ -42,6 +43,33 @@
   (let ((lisp-file (format "%s%s.lisp" pvs-current-directory theoryname)))
     (when (file-exists-p lisp-file)
       (find-file-read-only-other-window lisp-file))))
+
+
+(defpvs pvs-C-file find-file (filename)
+  "Generates the C code for a given file and displays it in a buffer"
+  (interactive (pvs-complete-file-name "Generate C for file: "))
+  (unless (interactive-p) (pvs-collect-theories))
+  (pvs-bury-output)
+  (message (format "Generating C for file %s ..." filename))
+  (pvs-send-and-wait (format "(generate-C-for-pvs-file \"%s\")"
+			     (pathname-name filename))
+		     nil nil 'dont-care)
+  (let ((buf (pvs-find-C-file (pathname-name filename))))
+    (when buf
+      (message "")
+      (save-excursion
+	(set-buffer buf)
+	(setq pvs-context-sensitive t)
+	(lisp-mode)))))
+
+(defun pvs-find-C-file (filename)
+  (let ((buf (get-buffer (format "%s.c" filename))))
+    (when buf (kill-buffer buf)))
+  (let ((C-file (format "%s%s.c" pvs-current-directory filename)))
+    (when (file-exists-p C-file)
+      (find-file-read-only-other-window C-file))))
+
+
 
 
 (defpvs pvs-ground-evaluator prove (theory)
