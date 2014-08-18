@@ -1087,7 +1087,8 @@
 	   (decl (when (typep ex 'name)
 		   (declaration (car (resolutions ex))))))
       (and (typep decl 'formal-decl)
-	   (not (memq decl (formals (current-theory))))))))
+	   (not (or (memq decl (formals (current-theory)))
+		    (memq decl (decl-formals (current-declaration)))))))))
 
 (defmethod compatible?* ((atype type-variable) (etype type-expr))
   t)
