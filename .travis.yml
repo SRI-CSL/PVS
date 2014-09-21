@@ -5,6 +5,7 @@ compiler:
 
 env:
   matrix:
+    - SBCL_VERSION=1.2.3
     - SBCL_VERSION=1.2.1
     - SBCL_VERSION=1.1.18
     - SBCL_VERSION=1.0.58

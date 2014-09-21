@@ -446,7 +446,8 @@
 	      (consp (car sexp))
 	      (eq (caar sexp) 'quote)
 	      (symbolp (cadar sexp))
-	      (assq (rule-rawname (cadar sexp)) rules-inheritance))
+	      (assq (rule-rawname (cadar sexp)) rules-inheritance)
+	      (find-symbol "BACKQ-CONS" 'sb-impl)) ;;; TODO: Remove this branch when SBCL <1.2.2 is no longer supported.
 	 (let* ((rule (rule-rawname (cadar sexp)))
 		(formals (get-rule-formals rule))
 		(opts (get-&optional-args formals)))
@@ -479,15 +480,15 @@
        #+allegro 
        (eq (car sexp) 'excl::backquote)
        #+sbcl
-       (memq (car sexp) '(sb-impl::backq-cons sb-impl::backq-list))
+       (memq (car sexp) (list (find-symbol "BACKQ-CONS" `sb-impl) (find-symbol "BACKQ-LIST" `sb-impl))) ;;; TODO: Remove when SBCL <1.2.2 is no longer supported.
        #-(or allegro sbcl)
        (error "backquoted? not defined for this lisp")))
 
 (defun unbackquoted? (sexp)
-  (and (consp sexp)
+  (and #-allegro nil
+       (consp sexp)
        (memq (car sexp)
-	     #+allegro '(excl::bq-comma excl::bq-comma-atsign)
-	     #+sbcl '(sb-impl::backq-comma sb-impl::backq-comma-at))))
+	     #+allegro '(excl::bq-comma excl::bq-comma-atsign))))
 	   
 
 (defun rule-rawname (rule)
@@ -504,7 +505,7 @@
 			(list (keyword-arg-symbol ka)
 			      (if backquoted
 				  (list #+allegro 'excl::bq-comma
-					#+sbcl 'sb-impl::backq-comma
+					#+sbcl (find-symbol "BACKQ-COMMA" 'sb-impl) ;;; TODO: Remove when SBCL <1.2.2 is no longer supported.
 					(keyword-arg-symbol ka :pvs))
 				  (keyword-arg-symbol ka :pvs))))
 	      (remove-if
