@@ -789,7 +789,8 @@
 	    (unless nonlinear? (format stream "~{~a ~%~}" *yices2-subtype-constraints*))
 	    (format stream "~{~a ~%~}" yices-forms)
 	    (format stream "(check)~%")
-	    (unless nonlinear? (format stream "(status)")))
+	    ;(unless nonlinear? (format stream "(status)"))
+	    )
 	  (let ((status nil)
 		(tmp-file (pvs-tmp-file)))
 	    (with-open-file (out tmp-file
@@ -798,20 +799,20 @@
 		    (t (setq status
 			     #+allegro
 			     (excl:run-shell-command
-			      (format nil "~a ~a" *yices-call* (namestring file))
+			      (format nil "~a ~a" *yices2-call* (namestring file))
 			      :input "//dev//null"
 			      :output out
 			      :error-output :output)
 			     #+sbcl
 			     (sb-ext:run-program
-			      (format nil "~a ~a" *yices-call* (namestring file))
+			      (format nil "~a ~a" *yices2-call* (namestring file))
 			      nil
 			      :input "//dev//null"
 			      :output out
 			      :error out)
 			     #+cmu
 			     (extensions:run-program
-			      (format nil "~a ~a" *yices-call* (namestring file))
+			      (format nil "~a ~a" *yices2-call* (namestring file))
 			      nil
 			      :input "//dev//null"
 			      :output out
