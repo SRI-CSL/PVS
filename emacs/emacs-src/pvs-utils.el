@@ -645,13 +645,14 @@ The save-pvs-file command saves the PVS file of the current buffer."
     (erase-buffer)))
 
 (defun current-pvs-file (&optional no-error)
+  (make-local-variable 'current-pvs-file)
+  (make-local-variable 'pvs-lib-p)
   (if (and no-error
 	   (boundp 'current-pvs-file)
 	   (boundp 'pvs-lib-p))
       current-pvs-file
       (pvs-current-directory)
-      (make-local-variable 'current-pvs-file)
-      (set (make-local-variable 'pvs-lib-p) nil)
+      (setq pvs-lib-p nil)
       (cond ((or (not (buffer-file-name))
 		 (not (member-equal (pathname-type (buffer-file-name))
 				    *pvs-file-extensions*)))
