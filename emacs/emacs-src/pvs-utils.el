@@ -644,6 +644,9 @@ The save-pvs-file command saves the PVS file of the current buffer."
   (with-current-buffer buffer
     (erase-buffer)))
 
+(defvar current-pvs-file)
+(defvar pvs-lib-p)
+
 (defun current-pvs-file (&optional no-error)
   (make-local-variable 'current-pvs-file)
   (make-local-variable 'pvs-lib-p)
@@ -660,7 +663,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	       (error "%s is not a valid PVS file" (buffer-name))))
 	    ((file-equal (buffer-file-name)
 			 (format "%s/lib/prelude.pvs" pvs-path))
-	     (setq current-pvs-file) (pathname-name (buffer-file-name)))
+	     (setq current-pvs-file (pathname-name (buffer-file-name))))
 	    ((file-equal (buffer-file-name)
 			 (format "%s%s"
 			     pvs-current-directory
