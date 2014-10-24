@@ -879,8 +879,9 @@
 		      bindings livevars))))
 	(push (list lhsvar cl-args1) *lhs-args*)
 	(if bound
-	    `(pvs-setf ,cl-expr ,lhsvar ,newrhs)
-	  `(pvs-function-update ,cl-expr ,lhsvar ,newrhs))))
+	    `(let ((,cl-expr-var ,cl-expr));;NSH(10.21.14): without let, the cl-expr-var is unbound
+	       (pvs-setf ,cl-expr-var ,lhsvar ,newrhs))
+	  `(let ((,cl-expr-var ,cl-expr))(pvs-function-update ,cl-expr-var ,lhsvar ,newrhs)))))
 
 (defun make-closure-hash (expr)	;;NSH(9-19-12)
   (if (pvs-closure-hash-p expr)
