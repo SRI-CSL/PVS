@@ -2365,33 +2365,34 @@
 ;;;              (FORALL (x:[d1,...,dn]): p(f(x))))
 
 (defmethod subtype-preds ((t1 funtype) (t2 funtype) &optional incs)
-  (let ((types1 (extract-domain t1))
-	(types2 (extract-domain t2)))
-    (and (length= types1 types2)
-	 (tc-eq types1 types2)
-	 (multiple-value-bind (ty preds)
-	     (subtype-preds (range t1) (range t2))
-	   (when ty
-	     (let* ((xid (make-new-variable '|x| (list t1 t2)))
-		    (tupty (dep-binding-type (domain t2)))
-		    (xb (mk-bind-decl xid tupty tupty))
-		    (xvar (mk-name-expr xid nil nil
-					(make-resolution xb
-					  (current-theory-name) tupty)))
-		    (vid (make-new-variable '|f| (list t1 t2)))
-		    (vb (mk-bind-decl vid t2 t2))
-		    (var (mk-name-expr vid nil nil
-				       (make-resolution vb
-					 (current-theory-name) t2)))
-		    (npred (make!-lambda-expr (list vb)
-			     (make!-forall-expr (list xb)
-			       (make!-conjunction*
-				(mapcar #'(lambda (pred)
-					    (make!-application pred
-					      (make!-application var
-						xvar)))
-				  preds))))))
-	       (values t2 (cons npred incs))))))))
+  (let ((eq-inc (unless (tc-eq (domain t1) (domain t2))
+		  (actual-equality-type (domain t1) (domain t2)))))
+    (multiple-value-bind (ty preds)
+	(subtype-preds (range t1) (range t2))
+      (when (or eq-inc ty)
+	(let* ((xid (make-new-variable '|x| (list t1 t2)))
+	       (tupty (dep-binding-type (domain t2)))
+	       (xb (mk-bind-decl xid tupty tupty))
+	       (xvar (mk-name-expr xid nil nil
+				   (make-resolution xb
+				     (current-theory-name) tupty)))
+	       (vid (make-new-variable '|f| (list t1 t2)))
+	       (vb (mk-bind-decl vid t2 t2))
+	       (var (mk-name-expr vid nil nil
+				  (make-resolution vb
+				    (current-theory-name) t2)))
+	       (rapps (mapcar #'(lambda (pred)
+				  (make!-application pred
+				    (make!-application var
+				      xvar)))
+			preds))
+	       (conj (make!-conjunction*
+		      (if eq-inc
+			  (cons eq-inc rapps)
+			  rapps)))
+	       (npred (make!-lambda-expr (list vb)
+			(make!-forall-expr (list xb) conj))))
+	  (values t2 (cons npred incs)))))))
 
 (defun extract-domain (ftype)
   (let ((dom (dep-binding-type (domain ftype))))
