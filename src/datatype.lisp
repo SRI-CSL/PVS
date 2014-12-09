@@ -669,8 +669,10 @@ generated")
     (setf (positive-types adt)
 	  (mapcar #'type-value
 	    (remove-if-not #'(lambda (ff)
-			       (and (typep ff 'formal-type-decl)
-				    (occurs-positively? (type ff) adt)))
+			       (if (formal-subtype-decl? ff)
+				   (occurs-positively? (print-type (type-value ff)) adt)
+				   (and (typep ff 'formal-type-decl)
+					(occurs-positively? (type ff) adt))))
 	      (formals-sans-usings (current-theory)))))
     (setf (positive-types (current-theory)) (positive-types adt))))
 
