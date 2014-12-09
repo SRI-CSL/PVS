@@ -267,6 +267,7 @@
 
 (defcl conjunction (propositional-application))
 (defcl infix-conjunction (conjunction infix-application))
+(defcl chained-relation (infix-conjunction))
 
 (defcl disjunction (propositional-application))
 (defcl infix-disjunction (disjunction infix-application))
