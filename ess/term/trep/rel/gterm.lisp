@@ -395,7 +395,7 @@ list ARGS of term args."
 (defun oper-sort (op)
   "Map an operator to the symbol part of its result sort.  Returns silly
 sort if none known"
-  (declare-ftype oper-sort (oper:oper) Symbol)
+  (declare-ftype oper-sort (oper:oper) symbol)
   (let ((opsig (sort:opsig-table-lookup op)))
     (if opsig
 	(let ((sort (sort:ds-sort-ttype (sort:opsig-output opsig))))
