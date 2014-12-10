@@ -1239,10 +1239,10 @@
   (if (eq (id (car fields)) field-id)
       (type (car fields))
       (let* ((fapp (make-instance 'fieldappl
-		    :id (id (car fields))
-		    :argument arg
-		    :type (type (car fields))))
-	    (cdrfields (subst-rec-dep-type fapp (car fields) (cdr fields))))
+		     :id (id (car fields))
+		     :argument arg
+		     :type (type (car fields))))
+	     (cdrfields (subst-rec-dep-type fapp (car fields) (cdr fields))))
 	(field-application-type* cdrfields field-id arg))))
 
 ;;; Gets the accessor type from the given type (a subtype of a recursive type)
