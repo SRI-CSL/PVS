@@ -1374,10 +1374,15 @@
   (let ((pos (position #\. label :from-end t)))
     (if pos
 	(let* ((suffix (subseq label (1+ pos)))
-	       (check (every #'digit-char-p suffix)))
-	  (if check suffix ""))
+	       (lcpos (1- (length suffix))))
+	  (if (char= (char suffix lcpos) #\T)
+	      (setq suffix (subseq suffix 0 lcpos)))
+	  (if (every #'digit-char-p suffix)
+	      suffix
+	      ""))
 	"")))
-	
+
+
 
 (defun success-step (proofstate)
   (wish-done-proof proofstate)
@@ -2329,8 +2334,7 @@
 			      'tcc-proofstate
 			      'proofstate))
 		    :current-goal
-		    (let* (
-			   (sequent
+		    (let* ((sequent
 			    (if tcc-to-sequent? ;;NSH(10.3.95)
 				;;added copy since sequents are shared
 				;;so destructive change-class is bad.
@@ -2342,8 +2346,8 @@
 		    :label
 		    (if (= (length allsubgoals) 1)
 			(label proofstate)
-			(format nil "~a.~a" (label proofstate)
-				goalnum))
+			(format nil "~a.~a~@[T~]" (label proofstate)
+				goalnum (memq goal tcc-subgoals)))
 		    :subgoalnum (1- goalnum)
 		    :proof-dependent-decls proof-dependent-decls
 		    :dependent-decls (dependent-decls proofstate)
@@ -2393,10 +2397,10 @@
   (let* ((label (string (label ps)))
 	 (pos (position  #\.  label :from-end t))
 	 (par-ps (parent-proofstate ps)))
-    (cond ((or (null par-ps)(null pos)
-	       (equal (label par-ps)(label ps)))
+    (cond ((or (null par-ps) (null pos)
+	       (equal (label par-ps) (label ps)))
 	   1)
-	  (t (string-to-number (subseq label (1+ pos)))))))
+	  (t (string-to-number (label-suffix label))))))
 
 
 
