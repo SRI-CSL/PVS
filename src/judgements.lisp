@@ -769,13 +769,21 @@
     (multiple-value-bind (else-types else-jdecls)
 	(judgement-types* (else-part ex))
       (when (or then-types else-types)
-	;; May have to convert a vector
-	(let* ((ttypes (jtypes-to-types then-types (then-part ex)))
-	       (etypes (jtypes-to-types else-types (else-part ex)))
-	       (comp-types (join-compatible-types ttypes etypes (type ex))))
-	  (when comp-types
-	    (values comp-types
-		    (jdecls-union then-jdecls else-jdecls))))))))
+	(cond ((equal then-types else-types)
+	       (values then-types then-jdecls))
+	      ((and (vectorp then-types) (vectorp else-types))
+	       (let ((comp-types (join-compatible-vector-types
+				  then-types else-types (type ex))))
+		 (when comp-types
+		   (values comp-types
+			   (jdecls-union then-jdecls else-jdecls)))))
+	      ;; May have to convert a vector, might be better the other way
+	      (t (let* ((ttypes (jtypes-to-types then-types (then-part ex)))
+			(etypes (jtypes-to-types else-types (else-part ex)))
+			(comp-types (join-compatible-types ttypes etypes (type ex))))
+		   (when comp-types
+		     (values comp-types
+			     (jdecls-union then-jdecls else-jdecls))))))))))
 
 (defun jdecls-union (jdecls1 jdecls2)
   (let ((ldecls1 (jdecls-list jdecls1))
@@ -804,6 +812,67 @@
 	    recfields))
 	;; otherwise tupletypes
 	(mapcar #'mk-tupletype (cartesian-product tlist)))))
+
+(defun join-compatible-vector-types (types1 types2 type)
+  (assert (= (length types1) (length types2)))
+  (let ((ntypes (make-array (length types1) :initial-element nil)))
+    (dotimes (i (length types1))
+      (let ((t1 (svref types1 i)))
+	(if (and (car t1) (symbolp (car t1)))
+	    ;; This is for a record type
+	    (let ((t2 (find (car t1) types2 :key #'car))
+		  (fld (find (car t1) (fields type) :key #'id)))
+	      (assert t2)
+	      (assert fld)
+	      (setf (aref ntypes i)
+		    (if (tc-eq t1 t2)
+			t1
+			(cons (car t1) (join-minimal-types (cdr t1) (cdr t2))))))
+	    ;; Else a tuple type
+	    (setf (aref ntypes i)
+		  (join-compatible-types t1 (svref types2 i) (nth i (types type)))))))
+    ntypes))
+
+;; types1 and types2 are both minimal types lists, and are compatible
+;; result is new list of minimal types.
+;; 2 has mintypes (even_int, posint), 3 has (odd_int, posint)
+;; the result is (posint), as even_int is not a subtype of anything in 
+;; Suppose types1 = (a1 b1 c1), so the given ex1 has these minimal types
+;;     and types2 = (a2 b2 c2), ex2 has these minimal types
+(defun join-minimal-types (types1 types2 &optional rem min)
+  (if (null types1)
+      (join-minimal-types* types2 min rem)
+      (if (member (car types1) types2 :test #'tc-eq)
+	  (join-minimal-types (cdr types1)
+			      (remove (car types1) types2 :test #'tc-eq)
+			      rem (cons (car types1) min))
+	  (let ((ty2 (find-if #'(lambda (ty2) (strict-subtype-of? (car types1) ty2)) types2)))
+	    (if ty2
+		(join-minimal-types (cdr types1) (remove ty2 types2)
+				    rem (cons ty2 min))
+		(join-minimal-types (cdr types1) types2
+				    (if (null rem)
+					(car types1)
+					(let ((ctype (compatible-type rem (car types1))))
+					  (unless (some #'(lambda (mty) (subtype-of? mty ctype))
+							min)
+					    ctype)))
+				    min))))))
+
+(defun join-minimal-types* (types2 min rem)
+  (if (null types2)
+      (if rem
+	  (cons rem min)
+	  min)
+      (if (and rem (subtype-of? rem (car types2)))
+	  (join-minimal-types* (cdr types2) min rem)
+	  (join-minimal-types* (cdr types2) min
+			       (if (null rem)
+				   (car types2)
+				   (let ((ctype (compatible-type rem (car types2))))
+				      (unless (some #'(lambda (mty) (subtype-of? mty ctype))
+						    min)
+					ctype)))))))
 
 (defun join-compatible-types (types1 types2 type &optional compats)
   (if (null types1)
@@ -1208,7 +1277,7 @@
 		(assert pos)
 		(let ((entry (aref ajtypes pos)))
 		  (remove-judgement-types-of-type
-		   (type ex) (cdr entry) (aref ajdecls pos))))
+		   (type ex) (cdr entry) (when ajdecls (aref ajdecls pos)))))
 	      (remove-judgement-types-of-type
 	       (type ex)
 	       (field-application-types ajtypes ex)
@@ -1548,51 +1617,45 @@
 
 (defmethod subst-params-decl ((j application-judgement) thname theory)
   (if (or (mappings thname)
-	  (memq theory (free-params-theories j)))
+	  (and (actuals thname)
+	       (memq theory (free-params-theories j))))
       (let* ((smphash (cdr (get-subst-mod-params-caches thname)))
 	     (hj (gethash j smphash)))
 	(or hj
-	    (let ((nname (subst-mod-params (name j) thname theory)))
-	      (when (name? nname)
-		(let* ((nj (lcopy j
-			     'declared-type (subst-mod-params (declared-type j)
-							      thname theory)
-			     'type (subst-mod-params (type j) thname theory)
-			     'judgement-type (subst-mod-params
-					      (judgement-type j) thname theory)
-			     'name nname
-			     'formals (subst-mod-params (formals j)
-							thname theory)))
-		       (oj (car (member nj
-					(remove-if-not
-					    #'(lambda (d)
-						(eq (module d) (current-theory)))
-					  (get-declarations (id nj)))
-					:test #'add-decl-test))))
-		  (cond (oj
-			 (assert (memq oj (all-decls (current-theory))))
-			 oj)
-			(t (assert (or (eq nj j)
-				       (let ((ofp (free-params j)))
-					 (every #'(lambda (fp)
-						    (or (eq (module fp)
-							    (current-theory))
-							(memq fp ofp)))
-						(free-params nj)))))
-			   (setf (gethash j smphash) nj)
-			   (unless (eq j nj)
-			     (add-decl nj t t nil t)
-			     (setf (place nj) nil)
-			     (setf (refers-to nj) nil)
-			     (assert (or (null *insert-add-decl*)
-					 (memq nj (all-decls (current-theory)))))
-			     (setf (module nj)
-				   (if (fully-instantiated? thname)
-				       (current-theory)
-				       (module j)))
-			     (setf (generated-by nj) (or (generated-by j) j))
-			     (assert (eq (module nj) (current-theory))))
-			   nj)))))))
+	    (let* ((*subst-params-decl* t)
+		   (nj (subst-mod-params j thname theory))
+		   (oj (when nj
+			 (car (member nj
+				      (remove-if-not
+					  #'(lambda (d)
+					      (eq (module d) (current-theory)))
+					(get-declarations (id nj)))
+				      :test #'add-decl-test)))))
+	      (when nj
+		(cond (oj
+		       (assert (memq oj (all-decls (current-theory))))
+		       oj)
+		      (t (assert (or (eq nj j)
+				     (let ((ofp (free-params j)))
+				       (every #'(lambda (fp)
+						  (or (eq (module fp)
+							  (current-theory))
+						      (memq fp ofp)))
+					      (free-params nj)))))
+			 (setf (gethash j smphash) nj)
+			 (unless (eq j nj)
+			   (add-decl nj t t nil t)
+			   (setf (place nj) nil)
+			   (setf (refers-to nj) nil)
+			   (assert (or (null *insert-add-decl*)
+				       (memq nj (all-decls (current-theory)))))
+			   (setf (module nj)
+				 (if (fully-instantiated? thname)
+				     (current-theory)
+				     (module j)))
+			   (setf (generated-by nj) (or (generated-by j) j))
+			   (assert (eq (module nj) (current-theory))))
+			 nj))))))
       j))
 
 (defun free-params-theories (jdecl)
@@ -1779,6 +1842,13 @@
   (let ((car-preds (type-constraints* (car list) ex nil all?)))
     (type-constraints* (cdr list) ex (nconc car-preds preds) all?)))
 
+;;; all? can be nil :none, :funcs, or t, defaults to nil
+;;;  nil - don't include ignored type constraints (currently nat and up)
+;;;        unless there are no other preds; excludes function constraints
+;;;        for backward compatibility
+;;;  :none - don't include ignored in any case; excludes function
+;;;  :funcs - include function constraints
+;;;  t - include all type constraints
 (defmethod type-constraints* ((te subtype) ex preds all?)
   (cond ((everywhere-true? (predicate te))
 	 (type-constraints* (supertype te) ex preds all?))
@@ -1828,9 +1898,11 @@
   (type-constraints* (type te) ex preds all?))
 
 (defmethod type-constraints* ((te funtype) ex preds all?)
-  (let ((npreds (loop for tp in (type-predicates te all?)
-		      collect (make!-application tp ex))))
-    (nconc npreds preds)))
+  (if (memq all? '(:funcs t))
+      (let ((npreds (loop for tp in (type-predicates te all?)
+		       collect (make!-application tp ex))))
+	(nconc npreds (nreverse preds)))
+      (call-next-method)))
 
 (defmethod type-constraints* (te ex preds all?)
   (declare (ignore te ex all?))
@@ -2487,6 +2559,28 @@
       'generic-judgements gen-jdecls
       'judgements-graph graph)))
 
+;;; from-gens are the generic judgements from the theory
+;;; from-graph is the judgement graph from the theory - fully-instantiated wrt theory
+;;; to-gens are the current generic judgements
+;;; from-graph is the current fully-instantiated judgement graph
+;;; Roughly speaking, we are instantiating the from- judgements with theoryname instance
+;;; and merging them into the to- judgements.
+
+;;; If the theory has no formals, merging is direct:
+;;;   from-gen -> to-gen, from-graph -> to-graph wo instantiation
+;;; If the theoryname has no actuals, it is imported generically:
+;;;   from-gen -> to-gen directly
+;;;   from-graph needs to be checked: some judgements
+;;;     may be uninstantiated wrt current (they move to to-gen), while others
+;;;     may be instantiated (they move to to-graph).
+;;; If the theoryname has actuals, it is fully instantiated.
+;;;   from-gen are instantiated, but they will not become fully instantiated,
+;;;     and are merged into to-gen.
+;;;   from-graph should become fully-instantiated
+
+;;; Both of these are used in getting judgement-types
+;;; Note that a judgement may appear in both the judgement-graph and generic-judgements
+
 (defun merge-appl-judgements-entries* (from-gens from-graph to-gens
 						 to-graph theory theoryname)
   ;; Note: from-graph and to-graph may be eq, from-gens and to-gens may be eq
@@ -3128,3 +3222,31 @@
 (defmethod simple-match* (ex inst bindings subst)
   (declare (ignore ex inst bindings subst))
   'fail)
+
+(defun describe-judgements (&optional (context *current-context*))
+  (let ((judgements (judgements context)))
+    (format t "~%~d number-judgements"
+      (length (number-judgements-alist judgements)))
+    (format t "~%~d name-judgements"
+      (length (name-judgements-alist judgements)))
+    (format t "~%~d application-judgements"
+      (length (application-judgements-alist judgements)))
+    (let ((histu nil) (histg nil))
+      (dolist (el (application-judgements-alist judgements))
+	(dotimes (i (length (cdr el)))
+	  (when (aref (cdr el) i)
+	    (let* ((aj (aref (cdr el) i))
+		   (ul (length (generic-judgements aj)))
+		   (uent (assoc ul histu :test #'=))
+		   (gl (length (judgements-graph aj)))
+		   (gent (assoc gl histg :test #'=)))
+	      (when (= ul 83) (setq *lll* el))
+	      (if uent
+		  (incf (cdr uent))
+		  (push (cons ul 1) histu))
+	      (if gent
+		  (incf (cdr gent))
+		  (push (cons gl 1) histg))))))
+      (format t "~%  generic hist: ~a~%  graph hist: ~a" histu histg))
+    (format t "~%~d subtype-judgements"
+      (count-if #'subtype-judgement? (judgement-declarations judgements)))))
