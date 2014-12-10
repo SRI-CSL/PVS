@@ -1025,8 +1025,8 @@
 	(t (pc-analyze* (car list))
 	   (pc-analyze* (cdr list)))))
 
-(defun usedby-proofs (bufname origin line)
-  (let ((udecl (get-decl-at-origin bufname origin line)))
+(defun usedby-proofs (bufname origin line &optional libpath)
+  (let ((udecl (get-decl-at-origin bufname origin line libpath)))
     (when udecl
       (let ((decls (declaration-used-by-proofs-of udecl)))
 	(if decls
@@ -1035,51 +1035,54 @@
 	      decls)
 	    (pvs-message "No proofs use ~a" (id udecl)))))))
 
-(defun get-decl-at-origin (bufname origin line)
-  (if (and (member origin '("ppe" "tccs") :test #'string=)
-	   (not (get-theory bufname)))
-      (pvs-message "~a is not typechecked" bufname)
-      (case (intern (#+allegro string-downcase #-allegro string-upcase origin)
-		    :pvs)
-	(ppe (let* ((theories (ppe-form (get-theory bufname)))
-		    (decl (get-decl-at line t theories)))
-	       (values (find-if #'(lambda (d) (and (declaration? d)
-						   (eq (id d) (id decl))))
-			 (all-decls (get-theory bufname)))
-		       (place decl))))
-	(tccs (let* ((decls (tcc-form (get-theory bufname)))
-		     (decl (find-if #'(lambda (d)
-					(>= (line-end (place d)) line))
-			     decls)))
-		(values (find-if #'(lambda (d) (and (declaration? d)
-						    (eq (id d) (id decl))))
-			  (all-decls (get-theory bufname)))
-			(place decl))))
-	(prelude (let* ((theory (get-theory bufname))
-			(theories (if (and theory (generated-by theory))
-				      (list theory)
-				      (remove-if #'generated-by
-					*prelude-theories*)))
-			(decl (get-decl-at line t theories)))
-		   (values decl (place decl))))
-	(t (if (pathname-directory bufname)
-	       (let* ((lpath (get-library-reference
-			      (namestring (make-pathname
-					   :directory
-					   (pathname-directory bufname)))))
-		      (files&theories
-		       (or (gethash lpath *prelude-libraries*)
-			   (gethash lpath *imported-libraries*))))
-		 (if files&theories
-		     (let* ((name (pathname-name bufname))
-			    (theories (cdr (gethash name
-						    (car files&theories))))
-			    (decl (get-decl-at line t theories)))
-		       (values decl (when decl (place decl))))
-		     (pvs-message "Library ~a is not imported" bufname)))
-	       (let* ((theories (typecheck-file bufname nil nil nil t))
+(defun get-decl-at-origin (bufname origin line &optional libpath)
+  (let ((bname (if (stringp bufname) (intern bufname :pvs) bufname)))
+    (if (and (member origin '("ppe" "tccs") :test #'string=)
+	     (not (get-theory* bname libpath)))
+	(pvs-message "~a is not typechecked" bufname)
+	(case (intern (#+allegro string-downcase #-allegro string-upcase origin)
+		      :pvs)
+	  (ppe (let* ((theory (get-theory* bname libpath))
+		      (theories (ppe-form theory))
 		      (decl (get-decl-at line t theories)))
-		 (values decl (when decl (place decl)))))))))
+		 (values (find-if #'(lambda (d) (and (declaration? d)
+						     (eq (id d) (id decl))))
+			   (all-decls theory))
+			 (place decl))))
+	  (tccs (let* ((th (get-theory* bname libpath))
+		       (decls (tcc-form th))
+		       (decl (find-if #'(lambda (d)
+					  (>= (line-end (place d)) line))
+			       decls)))
+		  (values (find-if #'(lambda (d) (and (declaration? d)
+						      (eq (id d) (id decl))))
+			    (all-decls th))
+			  (place decl))))
+	  (prelude (let* ((theory (get-theory* bname libpath))
+			  (theories (if (and theory (generated-by theory))
+					(list theory)
+					(remove-if #'generated-by
+					  *prelude-theories*)))
+			  (decl (get-decl-at line t theories)))
+		     (values decl (place decl))))
+	  (t (if (pathname-directory bufname)
+		 (let* ((lpath (get-library-reference
+				(namestring (make-pathname
+					     :directory
+					     (pathname-directory bufname)))))
+			(files&theories
+			 (or (gethash lpath *prelude-libraries*)
+			     (gethash lpath *imported-libraries*))))
+		   (if files&theories
+		       (let* ((name (pathname-name bufname))
+			      (theories (cdr (gethash name
+						      (car files&theories))))
+			      (decl (get-decl-at line t theories)))
+			 (values decl (when decl (place decl))))
+		       (pvs-message "Library ~a is not imported" bufname)))
+		 (let* ((theories (typecheck-file bufname nil nil nil t))
+			(decl (get-decl-at line t theories)))
+		   (values decl (when decl (place decl))))))))))
 
 (defun declaration-used-by-proofs-of (udecl)
   (let ((usedbys nil))
@@ -1424,8 +1427,8 @@
 			 (string< (id (module x)) (id (module y))))))))
 
 
-(defun unusedby-proof-of-formula (bufname origin line)
-  (let ((udecl (get-decl-at-origin bufname origin line)))
+(defun unusedby-proof-of-formula (bufname origin line &optional libpath)
+  (let ((udecl (get-decl-at-origin bufname origin line libpath)))
     (when udecl
       (let ((decls (unused-by-proof-of udecl)))
 	(if decls
