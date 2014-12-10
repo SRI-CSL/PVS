@@ -218,11 +218,13 @@
 	     (decls (remove-if-not #'(lambda (d)
 				       (eq (id (module d)) (id thalias)))
 		      adecls))
-	     (res (get-decls-resolutions decls (actuals thalias) nil
+	     (res (get-decls-resolutions decls (actuals thalias) (dactuals name)
 					 (mod-id name) (mappings thalias)
 					 kind args))
 	     (fres (remove-if #'(lambda (r)
-				  (not (tc-eq (module-instance r) thalias)))
+				  (not (tc-eq (lcopy (module-instance r)
+						:dactuals nil)
+					      thalias)))
 		     res)))
 	(get-theory-alias-decls-resolutions
 	 (cdr theory-aliases) name adecls kind args
@@ -540,10 +542,8 @@
 		(setf (resolutions dthi) (list res))))
 	    (set-type-actuals-and-maps dthi dth)
 	    #+pvsdebug (assert (fully-typed? dthi))
-	    (when (and (compatible-arguments? decl dthi args
-					      (current-theory))
-		       (visible-to-mapped-tcc? decl dthi dth))
-	      (list dthi))))
+	    (when (visible-to-mapped-tcc? decl dthi dth)
+	      (compatible-arguments? decl dthi args (current-theory)))))
 	(let* ((modinsts (decl-args-compatible? decl args mappings))
 	       (thinsts (matching-decl-theory-instances
 			 acts dth modinsts)))
@@ -555,7 +555,8 @@
 
 (defun resolve-decl-actuals (decl dacts thinsts args &optional reses)
   (if (null thinsts)
-      (nreverse reses)
+      (let ((res (remove-if-not #'fully-instantiated? reses)))
+	(nreverse (or res reses)))
       (let ((reses1 (resolve-decl-actuals* decl dacts (car thinsts) args)))
 	(resolve-decl-actuals decl dacts (cdr thinsts) args
 			      (nconc reses1 reses)))))
@@ -563,23 +564,28 @@
 (defmethod resolve-decl-actuals* ((decl typed-declaration) dacts thinst args)
   (assert (and dacts (decl-formals decl)))
   (assert (length= dacts (decl-formals decl)))
-  (let* ((nthinst (change-class (copy thinst) 'declparam-modname
-		    'dactuals dacts 'declaration decl))
-	 (dtype (subst-mod-params (type decl) nthinst (module decl) decl))
-	 (doms (domain* dtype))
-	 (margs (when args
-		  (if (and (singleton? doms)
-			   (not (singleton? args)))
-		      (let ((atup (mk-arg-tuple-expr* args)))
-			(setf (types atup)
-			      (all-possible-tupletypes args))
-			(list atup))
-		      args))))
-    (when (or (null margs)
-	      (compatible-args? decl margs (types (car doms))))
-      ;; Note that we're using the dactuals of the module-instance
-      ;; in order to keep from having another resolution slot
-      (list (make-resolution decl nthinst dtype)))))
+  (when (every #'(lambda (dfml dact)
+		   (if (decl-formal-type? dfml)
+		       (type-value dact)
+		       (null (type-value dact))))
+	       (decl-formals decl) dacts)
+    (let* ((nthinst (change-class (copy thinst) 'declparam-modname
+		      'dactuals dacts 'declaration decl))
+	   (dtype (subst-mod-params (type decl) nthinst (module decl) decl))
+	   (doms (domain* dtype))
+	   (margs (when args
+		    (if (and (singleton? doms)
+			     (not (singleton? args)))
+			(let ((atup (mk-arg-tuple-expr* args)))
+			  (setf (types atup)
+				(all-possible-tupletypes args))
+			  (list atup))
+			args))))
+      (when (or (null margs)
+		(compatible-args? decl margs (types (car doms))))
+	;; Note that we're using the dactuals of the module-instance
+	;; in order to keep from having another resolution slot
+	(list (make-resolution decl nthinst dtype))))))
 
 (defmethod resolve-decl-actuals* ((decl type-decl) dacts thinst args)
   (declare (ignore args))
@@ -968,15 +974,17 @@
   (if (null actuals)
       nacts
       (multiple-value-bind (nfml nalist)
-	  (subst-actuals-in-next-formal (car actuals) (car formals) alist)
-	(let ((type (compatible-parameter? (car actuals) nfml)))
-	  (and type
-	       (if (typep nfml 'formal-type-decl)
-		   (compatible-parameters?*
-		    (cdr actuals) (cdr formals)
-		    (cons (copy-all (car actuals)) nacts) nalist)
-		   (compatible-parameters?**
-		    actuals (cons nfml (cdr formals)) type nacts nalist)))))))
+	  (with-no-type-errors
+	      (subst-actuals-in-next-formal (car actuals) (car formals) alist))
+	(when nfml
+	  (let ((type (compatible-parameter? (car actuals) nfml)))
+	    (and type
+		 (if (typep nfml 'formal-type-decl)
+		     (compatible-parameters?*
+		      (cdr actuals) (cdr formals)
+		      (cons (copy-all (car actuals)) nacts) nalist)
+		     (compatible-parameters?**
+		      actuals (cons nfml (cdr formals)) type nacts nalist))))))))
 
 (defun compatible-parameters?** (actuals formals types nacts alist)
   (when types
