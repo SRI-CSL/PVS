@@ -42,11 +42,11 @@
 
 ;;; Called by Emacs - show-expanded-form command
 
-(defun show-expanded-form (oname origin pos1 &optional (pos2 pos1) all?)
+(defun show-expanded-form (oname origin pos1 &optional (pos2 pos1) all? libpath)
   (if (or (equal origin "Declaration")
-	  (typechecked-origin? oname origin))
+	  (typechecked-origin? oname origin libpath))
       (multiple-value-bind (object *current-theory*)
-	  (get-object-at oname origin pos1 pos2)
+	  (get-object-at oname origin pos1 pos2 libpath)
 	(when object
 	  (let ((*disable-gc-printout* t)
 		(*current-context* (context *current-theory*)))
@@ -61,11 +61,11 @@
 (defvar *containing-type* nil)
 (defvar *show-declarations-alist* nil)
 
-(defun show-declaration (oname origin pos &optional x?)
+(defun show-declaration (oname origin pos &optional x? libpath)
   (if (or (equal origin "declaration")
-	  (typechecked-origin? oname origin))
+	  (typechecked-origin? oname origin libpath))
       (multiple-value-bind (object *containing-type* theory)
-	  (get-id-object-at oname origin pos)
+	  (get-id-object-at oname origin pos libpath)
 	(let ((decl (get-decl-associated-with object)))
 	  (if decl
 	      (let ((thname (format nil "~@[~a@~]~a"
@@ -121,19 +121,23 @@
 
 ;;; Called by Emacs - goto-declaration command
 
-(defun goto-declaration (oname origin pos)
-  (if (typechecked-origin? oname origin)
-      (let* ((object (get-id-object-at oname origin pos))
+(defun goto-declaration (oname origin pos &optional libpath)
+  (if (typechecked-origin? oname origin libpath)
+      (let* ((object (get-id-object-at oname origin pos libpath))
 	     (decl (get-decl-associated-with object)))
 	(when decl
 	  (pvs-locate (module decl) decl)))
       (pvs-message "~a has not been typechecked" oname)))
 
-(defun typechecked-origin? (name origin)
+(defun typechecked-origin? (name origin &optional libpath)
   (case (intern (#+allegro string-downcase #-allegro string-upcase origin)
 		:pvs)
     ((ppe tccs) (get-theory name))
     ((prelude prelude-theory) t)
+    (libpath
+     (let ((libref (get-library-reference libpath)))
+       (and libref
+	    (get-theory* name libref))))
     (t (typechecked-file? name))))
 
 (defmethod get-decl-associated-with ((obj datatype-or-module))
@@ -214,9 +218,9 @@
   (pvs-message "Not at a valid id")
   nil)
 
-(defun get-object-at (oname origin pos1 pos2)
+(defun get-object-at (oname origin pos1 pos2 &optional libpath)
   (multiple-value-bind (objects theories)
-      (get-syntactic-objects-for oname origin)
+      (get-syntactic-objects-for oname origin libpath)
     (let ((theory (find-element-containing-pos theories pos1)))
       (if (or (equal pos1 pos2)
 	      (within-place pos2 (place theory)))
@@ -298,9 +302,9 @@
 	       decl)
     (values object objects)))
 
-(defun get-id-object-at (oname origin pos)
+(defun get-id-object-at (oname origin pos &optional libpath)
   (multiple-value-bind (objects theories)
-      (get-syntactic-objects-for oname origin)
+      (get-syntactic-objects-for oname origin libpath)
     (let ((containing-type nil)
 	  (object nil)
 	  (theory (when (listp theories) (car theories)))
@@ -341,7 +345,7 @@
 		 objects)
       (values object containing-type theory))))
 
-(defun get-syntactic-objects-for (name origin)
+(defun get-syntactic-objects-for (name origin &optional libpath)
   (case (intern (#+allegro string-downcase #-allegro string-upcase origin)
 		:pvs)
     (ppe (let ((theory (get-theory name)))
@@ -359,8 +363,13 @@
     (prelude-theory (let ((theory (get-theory name)))
 		      (when theory
 			(values theory (list theory)))))
-    (t (let ((theories (typecheck-file name nil nil nil t)))
-	 (values theories theories)))))
+    (t (if libpath
+	   (let* ((thname (if (stringp name) (intern name :pvs) name))
+		  (theory (get-theory* thname libpath)))
+	     (assert theory)
+	     (values theory (list theory)))
+	   (let ((theories (typecheck-file name nil nil nil t)))
+	     (values theories theories))))))
 
 
 ;;; Called by Emacs - find-declaration command
@@ -398,11 +407,11 @@
 
 ;;; Called by Emacs - whereis-declaration-used command
 
-(defun whereis-declaration-used (oname origin pos &optional x?)
+(defun whereis-declaration-used (oname origin pos &optional x? libpath)
   (declare (ignore x?))
   (if (or (equal origin "Declaration")
-	  (typechecked-origin? oname origin))
-      (let* ((object (get-id-object-at oname origin pos))
+	  (typechecked-origin? oname origin libpath))
+      (let* ((object (get-id-object-at oname origin pos libpath))
 	     (decl (if (typep object '(or declaration importing))
 		       object
 		       (get-decl-associated-with object))))
@@ -820,7 +829,10 @@
       (json:encode-json (decl-info-decl-place dinfo) stream))))
 
 (defun collect-visible-decl-info (obj)
-  (let ((*visible-decl-info* nil))
+  (let ((*visible-decl-info* nil)
+	(*print-escape* nil)
+	(*print-readably* nil)
+	(*print-pretty* t))
     (collect-visible-decl-info* obj)
     *visible-decl-info*))
 
