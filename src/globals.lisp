@@ -49,6 +49,12 @@
 
 ;; import
 
+(defvar *files-loaded* nil
+  "Keeps track of files that have been loaded using defwrapper/defadvice
+in util.lisp")
+
+(defvar *loading-files* :other)
+
 (defvar *pvs-path* nil
   "Set by Emacs")
 
@@ -80,7 +86,7 @@
   (pushnew :pvs *features*)
   )
 
-(defparameter *binfile-version* 32)
+(defparameter *binfile-version* 33)
 
 (defvar *pvs-build-time* (get-universal-time)) ;; set on loading in operate-on-system
 
@@ -418,6 +424,8 @@ that gensubst does not try to pseudo-normalize inappropriately.")
 
 (defvar *substit-dont-simplify* nil)
 
+(defvar *subst-params-decl* nil)
+
 (defvar *context-modified* nil
   "Set by add-declaration and modify-declaration to indicate that the
 current proof is suspect.")
@@ -593,3 +601,12 @@ Needed to generate the same dummy name for record literals.")
     (⊠ . |boxtimes|                     ) (∩ . |cap|)
     (⊓ . |sqcap|                        ) (⋀ . |bigwedge|)
     ))
+
+(defparameter *pvs-relational-operators*
+  ;; Operators that can be chained, e.g., "1 < x <= 2",
+  ;; which is translated as "1 < x and x <= 2"
+  ;; This is basically all relational operators
+  '(= /= < <= > >= == << >> <<= >>= <| |>
+    ≁ ∼ ≃ ≅ ≇ ≈ ≉ ≍ ≎ ≏ ≐ ≗ ≙ ≡ ⋈ ≤ ≥ ≦ ≧
+    ≨ ≩ ≪ ≫ ≮ ≯ ≰ ≱ ≺ ≻ ◁ ▷
+    ⊂ ⊃ ⊄ ⊅ ⊆ ⊇ ⊊ ⊋ ⊏ ⊐ ⊑ ⊒))
