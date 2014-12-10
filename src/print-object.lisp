@@ -175,8 +175,8 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod print-object ((obj application-judgement) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "#<Judgement ~a~@[: ~a~]>"
-	(or (id obj) (name obj)) (unless (id obj) (judgement-type obj)))))
+      (format stream "#<appl-jdgt ~a:~_ ~a: ~a>"
+	(or (id obj) "@") (name obj) (judgement-type obj))))
 
 (defmethod print-object ((obj dep-binding) stream)
   (if *debugging-print-object*
@@ -285,6 +285,16 @@ print object produces an error, and won't allow inspection of the object.")
   (if *debugging-print-object*
       (call-next-method)
       (format stream "<#conversion-result ~a>" (expr cr))))
+
+(defmethod print-object ((jdgs application-judgements) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (let* ((jdg (or (car (generic-judgements jdgs))
+		      (caar (judgements-graph jdgs))))
+	     (ndecl (declaration (name jdg))))
+	(format stream "#<application-judgements ~a.~a>"
+	  (when (module ndecl) (id (module ndecl))) (id ndecl)))))
+  
 
 (defmethod pp* ((pt store-print-type))
   (format t "<#store-print-type ~a>"
