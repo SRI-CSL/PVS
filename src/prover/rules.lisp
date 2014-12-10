@@ -508,7 +508,7 @@ the decision procedures. E.g.,
   "Extract subtype constraints for EXPRS and add as antecedents.
 ALL? flag when T also brings in nat (>= 0), integer_pred,
 rational_pred, real_pred type constraints.  IMPLICIT? when T means
-bring in subtype constraints that are implicit.  An imlpicit
+bring in subtype constraints that are implicit.  An implicit
 constraint is one that is implied by the terms of the sequent, e.g.,
 if the sequent contains the formula \"1/(x*y) < 0\", then
  (typepred! \"x*y\" :implicit? t) adds \"x * y /= 0\" as an antecedent.
