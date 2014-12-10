@@ -617,3 +617,23 @@
 				    (cdr b)))
 		      binds)
 		    body))))
+
+(defmacro update-alist (akey value alist &key overwrite test test-not key)
+  (let ((%elt (gentemp))
+	(%akey (gentemp))
+	(%alist (gentemp))
+	(%test (gentemp))
+	(%test-not (gentemp))
+	(%key (gentemp)))
+    (format t "~%test: ~a" test)
+    `(let* ((,%alist ,alist)
+	    (,%akey ,akey)
+	    (,%elt (assoc ,%akey ,%alist
+			  ,@(when test (list :test test))
+			  ,@(when test-not (list :test-not test-not))
+			  ,@(when key (list :key key)))))
+       (if ,%elt
+	   (progn (when ,overwrite
+		    (setf (cdr ,%elt) ,value))
+		  ,%alist)
+	   (acons ,%akey ,value ,%alist)))))
