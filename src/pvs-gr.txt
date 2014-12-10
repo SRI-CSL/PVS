@@ -72,7 +72,7 @@ Operators
 	'≈' '≉' '≍' '≎' '≏' '≐' '≗' '≙' '≡' '⋈' '≤' '≥' '≦' '≧'
 	'≨' '≩' '≪' '≫' '≮' '≯' '≰' '≱' '≺' '≻' '◁' '▷'
 	'∈' '∉' '∋' '∩' '∪' '⊂' '⊃' '⊄' '⊅' '⊆' '⊇' '⊎' '⊊' '⊋'
-	'⊏' '⊐' '⊓' '⊔' '⋀' '⋁' '⋂' '⋃' '•' '←' '↑' '→' '↓' '↝' '↦'
+	'⊏' '⊐' '⊑' '⊒' '⊓' '⊔' '⋀' '⋁' '⋂' '⋃' '•' '←' '↑' '→' '↓' '↝' '↦'
 	'⇐' '⇒' '⇑' '⇓' '⇔' '∇' '⊣' '⊥' '⊩' '◯' '★' '✠'
 
 Lexical Terminals
@@ -121,7 +121,8 @@ Precedence Information
 	    '▷' medial left, '∈' medial left, '∉' medial left, '∋' medial left,
             '⊂' medial left, '⊃' medial left,
             '⊄' medial left, '⊅' medial left, '⊆' medial left, '⊇' medial left,
-	    '⊏' medial left, '⊐' medial left, '⊊' medial left, '⊋' medial left,
+	    '⊏' medial left, '⊐' medial left, '⊑' medial left, '⊒' medial left,
+            '⊊' medial left, '⊋' medial left,
             '•' medial left, '←' medial left, '↑' medial left,
 	    '→' medial left, '↓' medial left, '↝' medial left, '↦' medial left,
 	    '⇐' medial left, '⇑' medial left, '⇓' medial left,
@@ -562,6 +563,8 @@ expr ::= string <string-expr(string)>
        | {expr '⊎' expr^1} <term-expr(`⊎(),expr-args(list(expr,expr^1)))>
        | {expr '⊏' expr^1} <term-expr(`⊏(),expr-args(list(expr,expr^1)))>
        | {expr '⊐' expr^1} <term-expr(`⊐(),expr-args(list(expr,expr^1)))>
+       | {expr '⊑' expr^1} <term-expr(`⊑(),expr-args(list(expr,expr^1)))>
+       | {expr '⊒' expr^1} <term-expr(`⊒(),expr-args(list(expr,expr^1)))>
        | {expr '⊓' expr^1} <term-expr(`⊓(),expr-args(list(expr,expr^1)))>
        | {expr '⊔' expr^1} <term-expr(`⊔(),expr-args(list(expr,expr^1)))>
        | {expr '⋀' expr^1} <term-expr(`⋀(),expr-args(list(expr,expr^1)))>
@@ -810,7 +813,7 @@ opsym ::= '+' <`+()> | '-' <`-()> | '*' <`*()> | '/' <`\/()>
 	| '≺' <≺()> | '≻' <≻()> | '◁' <◁()> | '▷' <▷()> | '∈' <∈()>
 	| '∉' <∉()> | '∋' <∋()> | '∩' <∩()> | '∪' <∪()> | '⊂' <⊂()>
 	| '⊃' <⊃()> | '⊄' <⊄()> | '⊅' <⊅()> | '⊆' <⊆()> | '⊇' <⊇()> | '⊊' <⊊()> | '⊋' <⊋()>
-	| '⊎' <⊎()> | '⊏' <⊏()> | '⊐' <⊐()> | '⊓' <⊓()> | '⊔' <⊔()>
+	| '⊎' <⊎()> | '⊏' <⊏()> | '⊐' <⊐()> | '⊑' <⊑()> | '⊒' <⊒()> | '⊓' <⊓()> | '⊔' <⊔()>
 	| '⋀' <⋀()> | '⋁' <⋁()> | '⋂' <⋂()> | '⋃' <⋃()> | '•' <•()>
 	| '←' <←()> | '↑' <↑()> | '→' <→()> | '↓' <↓()> | '↝' <↝()>
 	| '↦' <↦()> | '⇐' <⇐()> | '⇑' <⇑()> | '⇓' <⇓()>
