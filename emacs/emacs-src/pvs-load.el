@@ -106,13 +106,6 @@
       (setq load-path
 	    (cons (car load-path) (append dirs (cdr load-path))))))
 
-(defpvs report-pvs-bug help ()
-  "Sets up mail buffer for reporting PVS bugs."
-  (interactive)
-  (mail)
-  (mail-to) (insert "pvs-bugs@csl.sri.com")
-  (mail-subject))
-
 ; fancy PVS logo for Emacs startup
 
 (when (and (not (featurep 'xemacs))

@@ -150,7 +150,8 @@ reparsing and retypechecking of the entire importchain."
 		       filename (and current-prefix-arg t)
 		       prove-tccs-p importchain-p)
 		   nil (pvs-get-abbreviation cmd))
-	 (pvs-check-for-tooltips))
+	 ;;(pvs-check-for-tooltips)
+	 )
 	(t (message "PVS file %s does not exist" filename))))
 
 ;;; Prettyprinting
@@ -1076,6 +1077,12 @@ ESC or `q' to not overwrite any of the remaining files,
 	  (push (cons dir ldir) pvs-libdirs)
 	  ldir))))
 
+(defpvs report-pvs-bug help ()
+  "Sets up mail buffer for reporting PVS bugs."
+  (interactive)
+  (mail)
+  (mail-to) (insert "pvs-bugs@csl.sri.com")
+  (mail-subject))
 
 ;;;---------------------------------------------
 ;;; Context Commands
