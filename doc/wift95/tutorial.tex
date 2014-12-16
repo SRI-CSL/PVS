@@ -1,0 +1,182 @@
+% Document Type: LaTeX
+% Master File: tutorial.tex
+\documentstyle[11pt,relative,alltt,twoside,relative,fancyheadings,boxedminipage,/homes/EHDM/pvs/pvs]{article}
+\sloppy
+
+% full list of sections:
+%\includeonly{title,intro,informal,pspace,undecide,conclu,ack,rules}
+
+%\pagestyle{myheadings} % page number in upper right corner
+%\markboth{Specification and Verification}{}
+%\makeindex
+\newcommand{\allttinput}[1]{\hozline{\smaller\smaller\smaller\begin{alltt}\input{#1}\end{alltt}}\hozline}
+\newenvironment{pvsscript}{\hozline\smaller\smaller\smaller\begin{alltt}}{\end{alltt}\hozline}
+
+\topmargin -10pt
+\textheight 8.5in
+\textwidth 6.0in
+\headheight 15 pt
+\columnwidth \textwidth
+\oddsidemargin 0.5in
+\evensidemargin 0.5in   % fool system for page 0
+\setcounter{topnumber}{9}
+\renewcommand{\topfraction}{.99}
+\setcounter{bottomnumber}{9}
+\renewcommand{\bottomfraction}{.99}
+\setcounter{totalnumber}{10}
+\renewcommand{\textfraction}{.01}
+\renewcommand{\floatpagefraction}{.01}
+%\newenvironment{smalltt}{\begin{alltt}\small}{\end{alltt}}
+
+\raggedbottom
+
+\font\largett=cmtt10 scaled\magstep2
+\font\hugett=cmtt10 scaled\magstep4
+\def\opt{{\smaller\sc {\smaller\smaller \&}optional}}
+\def\rest{{\smaller\sc {\smaller\smaller \&}rest}}
+\def\default#1{[\,{\tt #1}] }
+\def\bkt#1{{$\langle$#1$\rangle$}}
+
+\newenvironment{usage}[1]{\item[usage:\hspace*{-0.175in}]#1\begin{description}\setlength{\itemindent}{-0.2in}\setlength{\itemsep}{0.1in}}{\end{description}}
+
+\begin{document}
+\pagestyle{empty}
+\title{\Large\bf A Tutorial on Specification and Verification Using
+PVS\\(Beta Release)}
+\author{N.~Shankar and S.~Owre and J.~M.~Rushby\\Computer Science Laboratory\\SRI International\\
+Menlo Park CA 94025 USA\\
+Phone: (415) 859-5272\\
+\{Shankar,Owre,Rushby\}@csl.sri.com}
+
+
+%\renewcommand{\baselinestretch}{2}
+\newenvironment{display}{\begin{alltt}\small\tt\vspace{0.3\baselineskip}}{\vspace{0.3\baselineskip}\end{alltt}}
+\newcommand{\choice}{[\!]}
+\newcommand{\normtt}[1]{{\obeyspaces {\tt #1 }}}
+\newenvironment{pagegroup}{}{}
+%\newenvironment{smalltt}{\begin{alltt}\small\tt}{\end{alltt}}
+\newenvironment{tdisplay}{\begin{alltt}\footnotesize\tt\vspace{0.3\baselineskip}}{\vspace{0.3\baselineskip}\end{alltt}}
+\input{/homes/EHDM/pvs/doc/jmacros}
+\input{/homes/EHDM/pvs/doc/lmacros}
+\input{/homes/EHDM/pvs/doc/mathprel}
+\input{/homes/EHDM/pvs/doc/pvstex}
+\def\id#1{\hbox{\tt #1}} %changing ids from roman to tt.
+\bibliographystyle{alpha}
+%\input{title}
+\vspace{4in}
+\maketitle
+\pagestyle{fancy}
+\renewcommand{\sectionmark}[1]{\markboth{{\em #1}}{}\markright{{\em #1}}}
+\renewcommand{\subsectionmark}[1]{\markright{\em #1}}
+%\lhead[\thepage]{\rightmark}
+%\cfoot{\protect\small\bf \fbox{Beta Release}}
+%\rhead[\leftmark]{\thepage}
+\setcounter{secnumdepth}{2} 
+\setcounter{tocdepth}{3}
+\begin{abstract}
+
+\newcommand{\PVSlanguage}{S.~Owre, N.~Shankar, and J.~M. Rushby.
+{\em The PVS Specification Language (Beta Release)}.
+Computer Science Laboratory, SRI International, Menlo Park, CA,
+February 1993.}
+
+\newcommand{\PVSuserguide}{S.~Owre, N.~Shankar, and J.~M. Rushby.
+{\em User Guide for the PVS Specification and Verification
+System (Beta Release)}.   Computer Science Laboratory, SRI
+International, Menlo Park, CA, February 1993.}
+
+\newcommand{\PVSprover}{ N.~Shankar, S.~Owre, and J.~M. Rushby.
+{\em The PVS Proof Checker: A Reference Manual (Beta Release)}.
+Computer Science Laboratory, SRI International, Menlo Park,
+CA, February 1993.}
+
+PVS stands for ``Prototype Verification System.'' It consists of a
+specification language integrated with support tools and a theorem
+prover.  PVS tries to provide the mechanization needed to apply formal
+methods both rigorously and productively.
+
+This tutorial serves to introduce PVS.  In the first section, we
+briefly sketch the purposes for which PVS is intended and the
+rationale behind its design, mention some of the uses that we and
+others are making of it, and explain how to get a copy of the system.
+In Section 2, we use a simple example to briefly introduce the major
+functions of PVS; Sections 3 and 4 then give more detail on the PVS
+language and theorem prover, respectively, also using examples.  The
+PVS language, system, and theorem prover each have their own reference
+manuals,~\footnote{\PVSlanguage}$^{,}$\footnote{\PVSprover}$^{,}$\footnote{\PVSuserguide}
+which you will need to study in order to make productive use of the
+system.  A pocket reference card, summarizing all the features of the
+PVS language, system, and prover is also available.
+
+This tutorial does not introduce the general ideas of formal methods,
+nor explain how formal specification and verification can best be
+applied to various problem domains; rather, its purpose is to
+introduce some of the more unusual and powerful capabilities that are
+provided by PVS.  Consequently, this document, and the examples we
+use, are somewhat technical and are most suitable for those who
+already have some experience with formal methods and wish to
+understand how PVS provides mechanized support for some of the more
+challenging aspects of formal methods.
+
+\end{abstract}
+\pagenumbering{roman}
+\newpage
+\tableofcontents
+\newpage
+\pagenumbering{arabic}
+
+\input{overview}
+\input{system}
+\input{language}
+\input{prover}
+\input{hardware-eg}
+
+\section{Exercises}
+
+\newtheorem{prob}{Problem}
+
+\begin{prob}
+Based on the discussion of the specification of stacks, try to specify a
+PVS theory formalizing queues.  Can the PVS abstract datatype facility
+be used for specifying queues?
+\end{prob}
+
+\begin{prob}
+Specify binary trees with value type {\tt T} as a parametric abstract
+datatype in PVS.
+\end{prob}
+
+\begin{prob}
+Specify a PVS theory formalizing {\em ordered\/} binary trees with respect to a
+type parameter {\tt T} and a given total-ordering relation, \ie\ define
+a predicate {\tt ordered?} that checks if a given binary tree is ordered
+with respect to the given total ordering.
+\end{prob}
+
+\begin{prob}
+  Prove the stack axioms for the definitions stated in {\tt newstacks}.
+\end{prob}
+
+\begin{prob}
+  Prove the theorems in the theory {\tt half} (Page~\pageref{half}).
+\end{prob}
+
+\begin{prob}
+  Define the operation for carrying out the ordered insertion of a value
+into an ordered binary tree.  Prove that the insertion operator applied
+to an ordered binary tree returns an ordered binary tree.
+\end{prob}
+
+% \section{References}
+{\smaller
+%\bibliographystyle{modplain}
+\addcontentsline{toc}{section}{References}
+\bibliography{mybib,/homes/rushby/jmr,/homes/EHDM/pvs/doc/pvs,/homes/krypton/shankar/tex}
+\newpage
+\pagestyle{empty}
+\mbox{ }
+\newpage 
+\pagestyle{empty}
+\mbox{ }
+\newpage 
+\end{document}

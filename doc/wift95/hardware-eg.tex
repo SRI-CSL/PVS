@@ -1,0 +1,736 @@
+% Master File: tutorial.tex
+\sloppy
+
+% full list of sections:
+%\includeonly{title,intro,informal,pspace,undecide,conclu,ack,rules}
+
+%\pagestyle{myheadings} % page number in upper right corner
+%\markboth{Specification and Verification}{}
+%\makeindex
+%\newcommand{\allttinput}[1]{\hozline{\smaller\smaller\smaller\begin{alltt}\input{#1}\end{alltt}}\hozline}
+%\newenvironment{pvsscript}{\hozline\smaller\smaller\smaller\begin{alltt}}{\end{alltt}\hozline}
+%\newcommand{\ehdm}{{E{\smaller\smaller HDM}}}
+%\newcommand{\Ehdm}{\ehdm}
+
+%\topmargin -10pt
+%\textheight 8.5in
+%\textwidth 6.0in
+%\headheight 15 pt
+%\columnwidth \textwidth
+%\oddsidemargin 0.5in
+%\evensidemargin 0.5in   % fool system for page 0
+%\setcounter{topnumber}{9}
+%\renewcommand{\topfraction}{.99}
+%\setcounter{bottomnumber}{9}
+%\renewcommand{\bottomfraction}{.99}
+%\setcounter{totalnumber}{10}
+%\renewcommand{\textfraction}{.01}
+%\renewcommand{\floatpagefraction}{.01}
+%\newenvironment{smalltt}{\begin{alltt}\small}{\end{alltt}}
+\raggedbottom
+
+\font\largett=cmtt10 scaled\magstep2
+\font\hugett=cmtt10 scaled\magstep4
+\def\opt{{\smaller\sc {\smaller\smaller \&}optional}}
+\def\rest{{\smaller\sc {\smaller\smaller \&}rest}}
+\def\default#1{[\,{\tt #1}] }
+\def\bkt#1{{$\langle$#1$\rangle$}}
+\def\SetFigFont#1#2#3{\smaller\smaller\rm}
+
+%\newenvironment{usage}[1]{\item[usage:\hspace*{-0.175in}]#1\begin{description}\setlength{\itemindent}{-0.2in}\setlength{\itemsep}{0.1in}}{\end{description}}
+\renewcommand{\pvstheory}[3]
+  {\begin{figure}[htb]\begin{boxedminipage}{\textwidth}%
+   {\smaller\smaller\smaller\begin{alltt} \input{#1}\end{alltt}}\end{boxedminipage}%
+   \caption{#2}\label{#3}\end{figure}}
+
+
+\section{Two Hardware Examples}
+
+In this final section, we develop two hardware examples that
+illustrate a more sophisticated use of \pvs\ and suggest the
+intellectual discipline involved in specifying and proving
+industrial-strength applications.  The pipelined microprocessor and
+n-bit ripple-carry adder examples provide an opportunity to touch on
+modeling issues, specification styles, and hardware proof strategies,
+as well as a chance to review many of the \pvs\ language and prover
+features described in earlier sections of this tutorial.\footnote{One
+point worth noting that may not be apparent in reading these examples
+is that the process of specification and verification is an iterative one in
+which proof is used not to certify a completed specification, but
+as an aid to developing the specification.}
+
+
+
+\subsection{A Pipelined Microprocessor}
+
+We first develop a complete proof of a correctness property of the
+controller logic of a simple pipelined processor design described at a
+register-transfer level.  The design and the property verified are
+both based on the processor example given in \cite{Clarke-etal90}.
+The example has been used as a benchmark for evaluating how well
+finite state-enumeration based tools, such as model checkers, can
+handle datapath-oriented circuits with a large number of states by
+varying the size of the datapath.  From the perspective of a theorem
+prover, the size of the datapath is irrelevant because the
+specification and proof are independent of the datapath size.  As a
+theorem proving exercise, the challenge is to see if the proof can be
+done as automatically as a model checker proof.
+
+\begin{figure}[b]
+\begin{center}
+\input{clarkepipeverysmall}
+\end{center}
+\caption{A Pipelined Microprocessor}
+\label{clarkepipefig}
+\end{figure}
+
+\subsubsection{Informal Description}
+
+Figure~\ref{clarkepipefig} shows a block diagram of the pipeline
+design.  The processor executes instructions of
+the form {\tt (opcode src1 src2 dstn)}, i.e., ``destination register
+{\tt dstn} in the register file {\tt REGFILE} becomes some {\tt ALU}
+function determined by {\tt opcode} of the contents of source registers
+{\tt src1} and {\tt src2}.
+Every instruction is executed in three stages (cycles) by the processor:
+\begin{enumerate}
+\item {\em Read}: Obtain the proper contents of the register file at {\tt src1}
+and {\tt src2} and clock them into {\tt opreg1} and {\tt opreg2},
+respectively.
+
+\item {\em Compute}: Perform the ALU operation corresponding to the
+opcode (remembered in {\tt opcoded}) of the instruction and clock the
+result into {\tt wbreg}.
+
+\item {\em Write}: Update the register file at the destination register
+(remembered in {\tt dstndd}) of the instruction with the value in
+{\tt wbreg}.
+\end{enumerate}
+The processor uses a three-stage pipeline to simultaneously execute
+distinct stages of three successive instructions.  That is, 
+the read stage of the current instruction is executed along with the
+compute stage of the previous instruction and the write stage
+of the previous-to-previous instruction.
+Since the {\tt REGFILE} is not updated with the results of the previous and
+previous-to-previous instructions while a read is being
+performed for the current instruction, the controller
+``bypasses'' {\tt REGFILE}, if necessary, to get the correct values for
+the read.  The processor can abort, i.e., treat as {\tt NOP},
+the instruction in the read stage by asserting the {\tt stall} signal true.
+An instruction is aborted by inhibiting its write stage
+by remembering the {\tt stall} signal until the write stage via
+the registers {\tt stalld} and {\tt stalldd}.
+We verify that an instruction entering the pipeline
+at any time gets completed correctly, i.e., will write the correct result
+into the register file, three cycles later, provided the instruction
+is not aborted.
+
+\subsubsection{Formal Specification}
+
+\pvs\ specifications consist of a number of files, each of which
+contains one or more theories.
+%A theory is a collection of declarations:
+%types, constants (including functions), axioms that express properties
+%about the constants, and theorems and lemmas to be proved.
+%Theories may import other theories.
+%Every entity used in a theory must be either declared in an imported theory
+%or be part of the prelude (the standard
+%collection of theories built-in to \pvs\).
+\pvstheory{pipeline-spec}{Microprocessor Specification}{pipeline-spec}
+The microprocessor specification is organized into three theories, selected
+parts of which are shown in Figures~\ref{pipeline-spec} and
+\ref{signal-spec}.
+(The complete specification can be found in~\cite{HW-Tutorial:Report}.)
+The theory {\tt pipe} (Figure~\ref{pipeline-spec})
+contains a specification
+of the design and a statement of the correctness property to be
+proved.
+The theories {\tt signal} and {\tt time}, (Figure~\ref{signal-spec})
+imported by {\tt pipe}, declares the types {\tt signal} and {\tt time}
+used in {\tt pipe}.
+
+\pvstheory{signal-spec}{Signal Specification}{signal-spec}
+%\pvstheory{pipeline-spec}{Microprocessor Specification}{pipeline-spec-part2}
+
+The theory {\tt pipe} is parameterized with respect to the types of the
+register address, data, and the opcode field of the instructions.
+A theory parameter in PVS can be either a type parameter or
+a parameter belonging to a particular type, such as {\tt nat}.
+Since {\tt pipe} does not impose any restriction on its parameters,
+other than the requirement that they be nonempty, which is stated
+in the {\tt ASSUMING} part of the theory,
+one can instantiate them with any type.
+Every entity declared in a parameterized theory is implicitly parameterized
+with respect to the parameters of the theory.
+For example, the type {\tt signal} declared in the parameterized
+theory {\tt signal} is a parametric type denoting a function that
+maps {\tt time} (a synonym for {\tt nat})
+to the type parameter {\tt T}.  (The type {\tt signal} is used
+to model the wires in our design.)
+By importing the theory {\tt signal} uninstantiated in {\tt pipe},
+we have the freedom to create any desired instances of the type
+{\tt signal}.
+
+In this example, we use a {\em functional} style of specification
+to model register-transfer-level digital hardware in logic.
+In this style, the inputs to the design and the outputs of every component
+in the design are modeled as signals.
+Every signal that is an output of a component is
+specified as a function of the signals appearing at the inputs to
+the component.
+
+This style should be contrasted with
+a {\em predicative} style, which is commonly used in most HOL applications.
+In the predicative style every hardware component is specified as a
+predicate relating the
+input and output signals of the component and a design is
+specified as a conjunction of the component predicates, with all
+the internal signals used to connect the components
+hidden by existential quantification.
+A proof of correctness for a predicative style specification usually involves
+executing a few additional steps at the start of the proof
+to essentially transform
+the predictative specification into an equivalent functional style.
+After that, the proof proceeds similar to that of a proof in
+a functional specification.
+The additional proof steps required for a predicative specification
+essentially unwind the component predicates using
+their definitions and then appropriately
+instantiate the existentially quantified variables.
+An automatic way of performing this translation is discussed in
+\cite{HW-Tutorial:Report}, which illustrates more examples
+of hardware design verification using PVS.
+
+Returning to our example, the microprocessor specification
+in {\tt pipe} consists of two parts.
+The first part declares all the signals
+used in the design---the inputs
+to the design and the internal wires that denote the outputs of components.
+The composite state of {\tt REGFILE}, which is represented
+as a function from {\tt addr} to {\tt data}, is modeled by the signal
+{\tt regfile}.
+The signals are declared as uninterpreted constants of appropriate types.
+The second part consists of a set of AXIOMs that specify the
+the values of the signals over time.
+(To conserve space, we have only shown the specification of a subset
+of the signals in the design.)
+For example, the signal value at the output of the
+register {\tt dstnd} at time {\tt t+1} is defined to be that of its
+input a cycle earlier.
+The output of the ALU, which is a combinational component, is defined
+in terms of the inputs at the same time instant.
+
+In PVS, we can use a descriptive style of definition, as illustrated
+in this example, by selectively introducing properties of the
+constants declared in a theory as AXIOMs.  Alternatively, we can use
+the definitional forms provided by the language to define the
+constants.  An advantage of using the definitions is that a
+specification is guaranteed to be consistent. A disadvantage is that
+the resulting specification may be overly specific (i.e.,
+overspecified).  An advantage of the descriptive style is that it
+gives better control over the degree to which an entity is defined For
+example, we could have specified {\tt dstnd} prescriptively, using the
+conventional function definition mechanism of PVS, which would have
+forced us to specify the value of the signal at time {\tt t = 0} to
+ensure that the function is total.  In the descriptive style used, we
+have left the value of the signal at {\tt 0} unspecified.
+
+In the present example, the specifications of the signals
+{\tt opreg1} and {\tt opreg2} are the most interesting of all.
+They have to check for any register collisions that might
+exist between the instruction in the
+read stage and the instructions in the later stages and bypass reading
+from the register file in case of collisions.
+The {\tt regfile} signal specification is recursive since the register
+file state remains the same as its previous state except,
+possibly, at a single register location.
+The {\tt WITH} expression is an abbreviation for the result
+of updating a function at a given point in the domain value with a new value.
+Note that the function {\tt aluop} that denotes the operation ALU performs
+for a given {\tt opcode} is left completely unspecified since it
+is irrelevant to the controller logic.
+
+The theorem ({\tt correctness}) to be proved states a correctness property
+about the execution of the instruction that enters the pipeline at
+{\tt t}, provided the instruction is not aborted, i.e., {\tt stall(t)} is
+not true.
+The equation in the conclusion of the implication compares the
+actual value (left hand side) in the destination register three
+cycles later, when the result of the instruction would be in place,
+with the expected value.
+The expected value is the result of applying the {\tt aluop} corresponding
+to the opcode of the instruction to the values at the source field
+registers in the register file at {\tt t+2}.
+We use the state of the register file at {\tt t+2} rather than {\tt t}
+to allow for the results of the two previous instructions in the pipeline
+to be completed.
+
+\subsubsection{Proof of Correctness}
+
+Once the specification is complete, the next step is to typecheck the
+file, which parses and checks for semantic errors, such as undeclared
+names and ambiguous types.  As we have already seen, typechecking may
+build new files or internal structures such as {\em type correctness
+conditions} ({\em \tccs}) that represent {\em proof obligations\/}
+that must be discharged before the {\tt pipe} theory can be considered
+typechecked.  The typechecker does not generate any \tccs\ in the
+present example.  If, for example, one of the assumptions, say for
+{\tt addr}, in the {\tt ASSUMING} part of the theory was missing, the
+typechecker would generate the following \tcc\ to show that the {\tt
+addr} type is nonempty.  The declaration of the signal {\tt src1}
+forces generation of this \tcc\ because a function is nonexistent if
+its range is empty.
+
+\mbox{}
+
+\noindent
+\begin{boxedminipage}{\textwidth}
+\begin{alltt}
+{\smaller\smaller
+% Existence TCC generated (line 17) for src1: signal[addr]
+% May need to add an assuming clause to prove this.
+  % unproved
+src1_TCC1: OBLIGATION (EXISTS (x1: signal[addr]): TRUE);
+}
+\end{alltt}
+\end{boxedminipage}
+
+\mbox{}
+
+%The \pvs\ proof checker runs as a subprocess of Emacs.
+%Once invoked on a theorem to be proved, it accepts commands
+%directly from the user.
+
+By way of review, the basic objective of developing a proof in \pvs\
+as in other subgoal-directed proof checkers (e.g., HOL), is to
+generate a {\em proof tree\/} in which all of the leaves are trivially
+true.  The nodes of the proof tree are sequents, and in the
+prover you are always looking at an unproved leaf of the tree.
+The {\em current\/} branch of a proof is the branch leading back to
+the root from the current sequent.  When a given branch is complete
+(i.e., ends in a true leaf), the prover automatically moves on to the
+next unproved branch, or, if there are no more unproven branches,
+notifies you that the proof is complete.
+
+%One reason why a proof in \pvs\ differs from a HOL proof is due to
+The primitive inference steps in \pvs\ are a lot more
+powerful than in HOL; it is not necessary to build complex tactics to
+handle tedious lower level proofs in \pvs\@.  A knowledgeable \pvs\
+user can typically get proofs to go through mostly automatically by
+making a few critical decisions at the start of the proof.  However,
+as noted previously, \pvs\ does provide the user with the equivalent
+of HOL's tacticals, called {\em strategies}, and other features to
+control the desired level of automation in a proof.
+
+The proof of the microprocessor property shown below follows a certain
+general pattern that works successfully for most hardware proofs.
+This general proof pattern, variants of which have been used
+in other verification
+exercises \cite{mephisto,HOL:super}, consists of the following
+sequence of general proof tasks.
+\begin{description}
+\item[Quantifier elimination:] Since the decision procedures work on
+ground formulas, the user must eliminate the relevant universal
+quantifiers by skolemization or selecting variables on which to induct
+and existential quantifiers by suitable instantiation.
+
+\item[Unfolding definitions:] The user may have to simplify selected
+expressions
+and defined function symbols in the goal by rewriting using definitions,
+axioms or lemmas.
+The user may also have to decide the level to which the function symbols have
+to rewritten.
+
+\item[Case analysis:] The user may have to split the proof based on
+selected boolean expressions in the current goal and simplify the
+resulting goals further.
+\end{description}
+
+Each of the above tasks can be accomplished automatically using a short
+sequence of primitive PVS proof commands.
+The complete proof of the theorem is shown below.
+Selected parts of the proof session are reproduced below as we describe
+the proof.
+
+\mbox{}
+
+\noindent
+\begin{boxedminipage}{\textwidth}
+\begin{alltt}
+{\smaller\smaller
+1: ({\em then*} (skosimp)
+2:         (auto-rewrite-theory ``pipe'' :always? t)
+3:         (repeat (do-rewrite))
+4:         (apply (then* (repeat (lift-if))
+5:                       (bddsimp)
+6:                       (assert))))
+}
+\end{alltt}
+\end{boxedminipage}
+
+\mbox{}
+
+In the proof, the names of strategies are shown in {\em italics} and
+the primitive inference steps in {\tt type-writer font}.
+(We have numbered the lines in the proof for reference.)
+{\tt Then*} applies
+the first command in the list that follows to the current goal;
+the rest of the commands in the list are then applied
+to each of the subgoals generated by the first command
+application.
+The {\tt apply} command used in line 5 makes the application of 
+a compound proof step implemented by a strategy behave as
+an atomic step.
+
+The first goal in the proof session is shown below.
+It consists of a
+single formula (labeled {\tt \{1\}}) under a dashed line.  This is a
+{\em sequent\/}; formulas above the dashed lines are called {\em
+antecedents\/} and those below are called {\em succedents\/}.  The
+interpretation of a sequent is that the conjunction of the antecedents
+implies the disjunction of the succedents.
+\comment{
+Either or both of the
+antecedents and succedents may be empty.\footnote{An empty antecedent
+is equivalent to {\tt true}, and an empty succedent is equivalent to
+{\tt false}, so if both are empty the sequent is unprovable.}}
+
+\mbox{}
+
+\noindent
+\begin{boxedminipage}{\textwidth}
+\begin{alltt}
+{\smaller\smaller
+correctness :   
+
+  |-------
+\{1\}   (FORALL t: NOT (stall(t))
+                  IMPLIES regfile(t + 3)(dstn(t)) =
+                     aluop(opcode(t), regfile(t + 2)(src1(t)),
+                           regfile(t + 2)(src2(t))))
+}
+\end{alltt}
+\end{boxedminipage}
+
+\mbox{}
+
+The quantifier elimination task of the proof is accomplished
+by the command {\tt skosimp}, which skolemizes all the universally quantified
+variables in a formula and flattens the sequent resulting in the following
+goal.  Note that {\tt stall(t!1)} has been moved to the
+succedent in the sequent because \pvs\ displays every atomic formula in
+its positive form.
+
+\mbox{}
+
+\noindent
+\begin{boxedminipage}{\textwidth}
+\begin{alltt}
+{\smaller\smaller
+Rule? (skosimp)
+Skolemizing and flattening, this simplifies to: 
+correctness :   
+
+  |-------
+\{1\}   (stall(t!1))
+\{2\}   regfile(t!1 + 3)(dstn(t!1))
+        =
+        aluop(opcode(t!1), regfile(t!1 + 2)(src1(t!1)),
+              regfile(t!1 + 2)(src2(t!1)))
+}
+\end{alltt}
+\end{boxedminipage}
+
+\mbox{}
+
+The next task---unfolding definitions---is performed by the commands
+in lines 2 through 3.  \pvs\ provides a number of ways of unfolding
+definitions ranging from unfolding one step at a time to automatic
+rewriting that performs unfolding in a brute-force fashion.
+Brute-force rewriting usually results in larger expressions than
+controlled unfolding and, hence, potentially larger number of cases to
+consider.  If a system provides automatic and efficient rewriting and
+case analysis facilities, then the automatic approach is viable,
+as illustrated here.  In \pvs\, automatic rewriting is performed
+by first entering the definitions and AXIOMs to be used
+for unfolding as rewrite rules.  Once entered, the commands that
+perform rewriting as part of their repertoire, such as {\tt
+do-rewrite} and {\tt assert}, repeatedly apply the rewrite rules until
+none of the rules is applicable.  To control the size of the
+expression resulting from rewriting and the potential for looping, the
+rewriter uses the following restriction for stopping a rewrite: If the
+right-hand-side of a rewrite is a conditional expression, then the
+rule is applied only if the condition simplifies to true or false.
+\comment{ Also, application of a recursive rewrite rule, such as {\tt
+regfile\_ax} is inhibited on recursive instances of a function symbol
+if the function is inside a conditional expression.}
+
+Here our aim is to unfold every signal in
+the sequent so that every signal expression contains only the
+start time {\tt t!1}.
+So, we make a rewrite rule out of every AXIOM in the theory {\tt pipe}
+by means of the command {\tt auto-rewrite-theory} on line 2.
+We also force an over-ride of the default restriction for stopping rewriting by
+setting the tag\footnote{Tags are one of the ways in which \pvs\ permits the user to modify
+the functionality of proof commands.} {\tt always?}\ to true in the {\tt auto-rewrite-theory}
+command and embed {\tt do-rewrite} inside a {\tt repeat} loop to force
+maximum rewriting.
+In the present example, the rewriting
+is guaranteed to terminate because every feedback loop is cut by a sequential
+component.
+
+At the end of automatic rewriting, the succedent we are trying to prove
+is in the form of an equation on two deeply nested conditional expressions
+as shown below in an abbreviated fashion.
+The various cases in conditional expression shown above
+arise as a result of
+the different possible conflicts between instructions
+in the pipeline.  The equation we are trying to prove contains
+two distinct, but equivalent conditional expressions, as in
+{\tt IF a THEN b ELSE c ENDIF = IF NOT a THEN c ELSE b ENDIF}, that
+can only be proved equal by performing a case-split on one or more of the
+conditions.  While {\tt assert} simplifies the leaves of a conditional
+expression assuming every condition along the path to the leaves holds,
+it does not split propositions.
+One way to perform the case-splitting task automatically is
+to ``lift'' all the {\tt IF-THEN-ELSE}s to the top so that the equation
+is transformed into a propositional formula with unconditional equalities
+as atomic predicates.
+After performing such a lifting, we can try to reduce the resulting
+proposition to true using the propositional simplification command
+{\tt bddsimp}.  If {\tt bddsimp} does not simplify the proposition
+to true, then it is most likely the case that equations at one or more
+of the leaves of the proposition need to be further simplified, e.g., by
+{\tt assert}, using the conditions along the path.
+If the propositional formula does not reduce to true or false,
+{\tt bddsimp} produces a set of subgoals to be proved.
+In the present case, each of these goals can be discharged
+by {\tt assert}.
+The compound proof step appearing on lines 4 through 6 of the proof
+accomplishes the case-splitting task.
+
+\mbox{}
+
+\noindent
+\begin{boxedminipage}{\textwidth}
+\begin{alltt}
+{\smaller\smaller
+correctness :   
+
+  |-------
+[1]   (stall(t!1))
+\{2\}   aluop(opcode(t!1),
+            IF src1(t!1) = dstnd(t!1) & NOT stalld(t!1)
+              THEN aluop(opcoded(t!1), opreg1(t!1), opreg2(t!1))
+            ELSIF src1(t!1) = dstndd(t!1) & NOT stalldd(t!1)
+            THEN wbreg(t!1)
+            ELSE regfile(t!1)(src1(t!1)) ENDIF,
+            ....
+            ENDIF)
+        = aluop(opcode(t!1),
+              IF stalld(t!1) THEN IF stalldd(t!1) THEN regfile(t!1)
+                ELSE regfile(t!1) WITH [(dstndd(t!1)) := wbreg(t!1)]
+                ENDIF
+              ELSE ...
+              ENDIF(src1(t!1)),
+              IF stalld(t!1) THEN IF stalldd(t!1) THEN regfile(t!1)
+                ELSE ... ENDIF
+              ELSE ...
+              ENDIF(src2(t!1)))
+}
+\end{alltt}
+\end{boxedminipage}
+
+\mbox{}
+
+We have found that the sequence of steps shown above works successfully
+for proving safety properties of finite state machines that relate
+states of the machine that are finite distance apart.  If the strategy
+does not succeed, the most likely cause is that either the
+property is not true or that a certain property about some of the
+functions in the specification unknown to the prover needs to be
+proved as a lemma.  In either case, the unproven goals remaining at the
+end of the proof provide information about the probable cause.
+
+
+\subsection{An N-bit Ripple-Carry Adder}
+
+The second example we consider is the verification of a parametrized
+N-bit ripple-carry adder circuit.
+The theory {\tt adder}, shown in Figure~\ref{adder-spec},
+specifies a ripple-carry adder
+circuit and a statement of correctness for the circuit.
+
+\pvstheory{adder-spec}{Adder Specification}{adder-spec}
+
+The theory is parameterized with respect to the length of the bit-vectors.
+It imports the theories (not shown here)
+{\tt full\_adder}, which contains a
+specification of a full adder circuit ({\tt fa\_cout} and {\tt fa\_sum}),
+and {\tt bv}, which specifies
+the bit-vector type ({\tt bvec[N]}) and functions.
+An N-bit bit-vector is represented as an array, i.e., a function, from
+the the type {\tt below[N]}, a subtype of {\tt nat} ranging from
+{\tt 0} through {\tt N-1}, to {\tt bool}; the index {\tt 0} denotes the least
+significant bit.
+Note that the parameter {\tt N} is constrained to be a {\tt posnat} since
+we do not permit bit vectors of length {\tt 0}.
+The {\tt adder} theory contains several declarations including a set
+of initial variable declarations.
+%\pvs\ allows logical variables to be declared globally within a theory
+%so that the variables can be used later in function
+%definitions and quantified formulas.
+
+The carry bit that ripples through the full adder is specified recursively
+by means of the function {\tt nth\_cin}.
+%Associated with this definition is a
+%{\em measure\/} function, following the {\tt MEASURE} keyword, which
+%will be explained below.
+The function {\tt bv\_cout} and {\tt bv\_sum} define the carry output
+and the bit-vector sum of the adder, respectively.
+The theorem {\tt adder\_correct} expresses the conventional correctness
+statement of an adder circuit using {\tt bvec2nat}, which returns the
+natural number equivalent of an N-bit bit-vector.
+Note that variables that are left free in a formula are assumed to be
+universally quantified.
+We state and prove a more general lemma {\tt adder\_correct\_rec} of which
+{\tt adder\_correct} is an instance.
+For a given {\tt n < N},
+{\tt bvec2nat\_rec} returns the natural number equivalent of
+the least significant n-bits of a given bit-vector and {\tt bool2bit}
+converts the boolean constants {\tt TRUE} and {\tt FALSE} into the natural
+numbers {\tt 1} and {\tt 0}, respectively.
+
+\subsubsection{Typechecking}
+\index{typecheck|(}
+
+The typechecker generates several \tccs\
+(shown in Figure~\ref{adder-tccs} below) for {\tt adder}.
+%These \tccs\ represent
+%{\em proof obligations\/} that must be discharged before the {\tt adder}
+%theory can be considered typechecked.  The proofs of the \tccs\
+%may be postponed until it is convenient to prove them, though it is a good
+%idea to view them to see if they are provable.
+
+\pvstheory{adder-tccs}{\tccs\ for Theory {\tt adder}}{adder-tccs}
+
+The first \tcc\ is due to the fact that the first argument to {\tt nth\_cin}
+is of type {\tt below[N]}, but the type of the argument ({\tt n-1})
+in the recursive
+call to {\tt nth\_cin} is integer, since {\tt below[N]} is not closed
+under subtraction.
+Note that the \tcc\ includes the condition {\tt NOT n = 0}, which holds
+in the branch of the {\tt IF-THEN-ELSE} in which the expression
+{\tt n - 1} occurs.
+A \tcc\ identical to this one is generated for each
+of the two other occurrences of the expression {\tt n-1} because
+{\tt bv1} and {\tt bv2} also expect arguments of type {\tt below[N]}.
+These \tccs\ are not retained because they are subsumed by the first one.
+
+The second \tcc\ is generated by the expression {\tt N-1} in the
+definition of the theorem {\tt adder\_correct} because the first
+argument to {\tt bv\_cout} is expected to be the subtype {\tt below[N]}.
+
+There is yet another \tcc\ that is internally generated
+by \pvs\ but is not even included in the \tccs\ file because
+it can be discharged trivially by the typechecker, which calls
+the prover to perform simple normalizations of expressions.
+This \tcc\ is generated to ensure that the recursive definition
+of {\tt nth\_cin} terminates.
+\pvs\ does not directly support partial
+functions, although its powerful subtyping mechanism allows \pvs\ to
+express many operations that are traditionally regarded as partial.
+As discussed earlier, the
+measure function is used to show that recursive definitions are total by
+requiring the measure to decrease with each recursive call.
+For the definition of {\tt nth\_cin}, this entails showing
+{\tt n-1 < n}, which the typechecker trivially deduces.
+
+In the present case, all the remaining \tccs\ are simple, and in fact can be
+discharged automatically
+by using the {\tt typecheck-prove} command, which attempts
+to prove all \tccs\ that have been generated using a predefined
+proof strategy called {\tt tcc}.
+\index{TCCs@\tccs|)}\index{typecheck|)}
+
+\subsubsection{Proof of Adder\_correct\_n}
+The proof of the lemma uses the same core strategy as in the
+microprocessor proof except for the quantifier elimination step.
+Since the specification is recursive in the length of the bit-vector,
+we need to perform induction on the variable {\tt n}. As we've seen
+in earlier proofs,
+the user invokes an inductive proof in \pvs\ by means of the command
+{\tt induct} with the variable to induct on ({\tt n}) and the induction
+scheme to be used ({\tt below\_induction[N]}) as arguments.
+The induction used in this case is defined in the \pvs\ prelude and
+is parameterized, as is the type {\tt below[N]}, with respect to
+the upper limit of the subrange.
+
+This command  generates two subgoals:
+the subgoal corresponding to the base case, which is the first goal presented
+to prove, is shown in Figure~\ref{base-step}.
+
+\pvstheory{base-step}{Base Step}{base-step}
+
+The goal corresponding to the inductive case is shown below.
+
+\pvstheory{siblings}{Inductive Step}{siblings}
+
+The base and the inductive steps can be proved automatically
+using essentially the same strategy used in the microprocessor proof.
+A complete proof of {\tt adder\_correct\_n} is shown in~Figure~\ref{siblings}.
+
+\begin{alltt}
+{\smaller\smaller
+ 1: ({\em spread} (induct ``n'' 1 ``below_induction[N]'')
+ 2:   ( ({\em then*}  (skosimp*)
+ 3:              (auto-rewrite-defs :always? t)
+ 4:              (do-rewrite)
+ 5:              ({\em repeat} (lift-if))
+ 6:              ({\em apply} ({\em then*} (bddsimp)(assert))))
+ 7:     ({\em then*} (skosimp*)
+ 8:             (inst?)
+ 9:             (auto-rewrite-defs :always? t)
+10:             (do-rewrite)
+11:             ({\em repeat} (lift-if))
+12:             ({\em apply} ({\em then*} (bddsimp)(assert))))))
+}
+\end{alltt}
+
+The strategy {\em spread} used on line 1 applies the first proof step
+({\tt induct})
+and then applies the $i^{th}$ element of the list of commands that follow
+to the $i^{th}$ subgoal resulting from the application of the first prof step.
+Thus, the proof steps listed on lines 2 through 6 prove the base case
+of induction, the steps on lines 7 through 12 prove the inductive case, and
+the proof step on line 13 takes care of the third \tcc\ subgoal.
+
+%\input{adder-auto-proof-script}
+
+We consider the base case first.
+The {\tt induct} command has already instantiated the variable {\tt n}
+to {\tt 0}.
+The remaining variables are skolemized away by {\tt skosimp*}.
+To unfold the definitions in the resulting goal, we use
+the command {\tt auto-rewrite-defs}, which makes rewrite rules out
+of the definition of every function either directly or indirectly
+used in the given formula.
+The rest of the proof proceeds exactly as for the microprocessor.
+
+The proof of the inductive step follows exactly the same pattern except
+that we need to instantiate the induction hypothesis and use it in
+the process of unfolding and case-analysis.
+\pvs\ provides a command {\tt inst?}\ that tries to find instantiations
+for existential-strength variables in a formula by searching for possible
+matches between terms involving these variables with ground terms inside
+formulas in the rest of the sequent.  This command finds the desired
+instantiations in the present case.  The rest of the proof proceeds
+as in the basis case.
+
+Since the inductive proof pattern shown above is applicable to any
+iteratively generated hardware designs, we have packaged it into a
+general proof strategy called {\tt name-induct-and-bddrewrite}.  The
+strategy is parameterized with respect to an induction scheme
+and the set of rewrite rules to be used for unfolding.  We have used
+the strategy to prove an N-bit ALU~\cite{cantu:alu} that executes 12
+microoperations by cascading N 1-bit ALU slices.

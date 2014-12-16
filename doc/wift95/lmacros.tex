@@ -1,0 +1,61 @@
+ % zero-width inference rule markers
+ % (if they have width, they throw off centering)
+\newcommand{\zwb}[1]{\makebox[0cm][l]{{\scriptsize $#1$}}}
+
+\newcommand{\mall}{{\sc mall}}
+\newcommand{\ol}{\overline}
+\newcommand{\ul}{\underline}
+\newcommand{\lan}{\langle}
+\newcommand{\ran}{\rangle}
+
+ % Linear Arrow
+\newcommand{\la}{\mbox{$-\!\circ$}} 
+
+ % Backwards Linear Arrow
+\newcommand{\bla}{\mbox{$\circ\!-$}} 
+
+ % Par
+%\newcommand{\Par}{\,{\parfont P}\,}
+\newcommand{\Par}{\mathrel{\wp}}
+
+ % With (Linear And) (&)
+\newcommand{\with}{\,{\&}\,}
+
+% Old par
+% \newcommand{\Par}{\mbox{\raisebox{.4ex}{$\wp$}}} 
+
+ % PDL's prettier bounded reuse operator
+\newcommand{\bang}[1]{\stackrel{\scriptstyle \dagger}{\scriptstyle #1}}
+ 
+ % Implies in Relevant Implication
+\newcommand{\ra}{\mbox{$\rightarrow_{R_{\rightarrow}}$}}
+
+ % Relevant Implication (Logic)
+\newcommand{\rara}{\mbox{${R_{\rightarrow}}$}}
+
+ % Multiplicative Linear Logic  
+\newcommand{\lala}{\mbox{$LL_{\la, \otimes, !}$}}
+
+ % (Propositional) Circular Logic
+\newcommand{\cl}{\mbox{ CL }}
+
+ % (Propositional) Multiplicative Circular Logic
+\newcommand{\mcl}{\mbox{ MCL }}
+
+ % Definition
+\newcommand{\define}{\mbox{${\stackrel{\Delta}{=}}$}}
+
+ % Derived From
+\newcommand{\derive}{\mbox{${\stackrel{\vdots}{\vdash}}$}}
+
+ % Semi-Thue Reduction
+\newcommand{\stred}[1]{\mbox{$\Longrightarrow$}}
+
+\newcommand{\stredstar}[1]{\mbox{$\Longrightarrow^*$}}
+
+\newcommand{\deltared}[1]{\mbox{$\, \stackrel{\delta_{#1}}
+                                             {\longrightarrow} \, $}}
+
+\newcommand{\deltaredp}[1]{\mbox{$\, \stackrel{\delta'_{#1}}
+                                             {\longrightarrow} \, $}}
+

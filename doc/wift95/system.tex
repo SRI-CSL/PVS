@@ -1,0 +1,381 @@
+% Document Type: LaTeX
+% Master File: tutorial.tex
+\section{A Brief Tour of \pvs}
+\label{system-tutorial}
+
+In this section we introduce the system by developing a theory and
+doing a simple proof.  This will introduce the most useful commands
+and provide a glimpse into the philosophy behind \pvs.  You will get
+the most out of this section if you are sitting in front of a
+workstation (or terminal) with \pvs\ installed.  In the following we
+assume familiarity with Sun Unix and \gnu.
+
+Start by going to a \unix\ shell window and creating a working
+directory (using {\tt mkdir}). Next, connect ({\tt cd}) to that
+working directory and start up \pvs\ by typing {\tt pvs}.\footnote{You
+may need to include a pathname, depending on where and how \pvs\ is
+installed.} This command executes a shell script which runs \gnu,
+loads the necessary \pvs\ \emacs\ extensions, and starts the \pvs\
+lisp image as a subprocess.\footnote{All the \gnu\ (and X-Windows or
+Emacstool) command line flags can be added to the {\tt pvs} command
+and passed through as appropriate; the {\tt -q} flag inhibits loading
+of the user's {\tt .emacs} initialization file, and should be used if
+difficulties are encountered starting \pvs\ or if there appear to be
+conflicts in keybindings.  Do {\em not\/} report errors to us unless
+they can be reproduced when the {\tt -q} flag is used.} 
+After a few moments, you should see the
+welcome screen indicating the version of \pvs\ being run, the current
+directory, and instructions for getting help.  You may be asked
+whether you want to create a new context in the directory; answer {\tt
+yes} unless it is the wrong directory or you don't have write
+permission there, in which case you should answer {\tt no} and provide
+an alternative directory when prompted.
+
+\pvs\ uses \emacs\ as its interface by extending \emacs\ with \pvs\
+functions, but all the underlying capabilities of \emacs\ are available.
+Thus the user can read mail and news, edit non\pvs\ files, or execute
+commands in a shell buffer in the usual way.
+
+In the following, \pvs\ \emacs\ commands are given first in their long
+form, followed by an alternative abbreviation and/or key binding in
+parentheses.  For example, the command for proving in \pvs\ is given
+as \ecmd{prove} (\ecmd{pr}, \key{C-c p}).  This command can be entered
+by typing the {\tt Escape} key, then an {\tt x}\footnote{Many
+keyboards provide a {\tt Meta} key (hence the {\tt M-} prefix), and
+this may be used instead.  On the \sun 3, the {\tt Meta} key is
+normally labeled {\tt Left} and on the \sun 4 ({\sc sparc}), it is
+labeled $\Diamond$.  The {\tt Meta} key is like the shift key; to use
+it simply hold the {\tt Meta} key down while typing another key.}
+followed by {\tt prove} (or {\tt pr}) and the {\tt Return} key.
+Alternatively, hold the {\tt Control} key down while typing a {\tt c},
+then let go and type a {\tt p}.  The {\tt Return} key does not need to
+be pressed when giving the key binding form.  In \pvs\ all commands
+and abbreviations are preceded by a {\tt M-x}; everything else is a
+key-binding.  In later sections we will refer to commands by their
+long form name, without the {\tt M-x} prefix.  Some of the commands
+prompt for a theory or \pvs\ file name and specify a default; if the
+default is the desired theory or file, you can simply type the {\tt
+Return} key.  Although the basic keyword commands described here are
+preferred by most serious users, \pvs\ commands are also available as
+menu selections if you are running under \emacs\ 19.
+
+To begin, type \iecmd{pvs-help} ({\tt C-h p}) for an overview of the
+commands available in \pvs\ (type {\tt q} to exit the help buffer).
+To exit \pvs, use \iecmd{exit-pvs} (\key{C-x C-c}).
+
+\pvs\ specifications consist of a number of files, each of which
+contains one or more theories.  Theories may import other theories;
+imported theories must either be part of the prelude (the standard
+collection of theories built-in to PVS), or the files containing them
+must be in the same directory.\footnote{\pvs\ does support soft links,
+thus supporting a limited capability for reusing theories.}
+Specification files in \pvs\ all have a {\tt .pvs} extension.  As
+specifications are developed, their proofs are kept in files of the
+same name with {\tt .prf} extensions.  The specification and proof
+files in a given directory constitute a PVS {\em context\/}; \pvs\
+maintains the state of a specification between sessions by means of
+the {\tt .pvscontext} file.  The {\tt .pvscontext} and {\tt .prf}
+files are not meant to be modified by the user.  Other files used or
+created by the system will be described as needed.  You may move to a
+different context (\ie\ directory) using the \ecmd{change-context}
+command, which is analogous to the \unix\ {\tt cd} command.
+
+Now let's develop a small specification:
+\begin{pvsex}
+sum: THEORY
+ BEGIN
+  n: VAR nat
+  sum(n): RECURSIVE nat =
+   (IF n = 0 THEN 0 ELSE n + sum(n - 1) ENDIF)
+   MEASURE (LAMBDA n: n)
+  closed_form: THEOREM sum(n) = (n * (n + 1))/2
+ END sum
+\end{pvsex}
+%
+This is a specification for summation of the first $n$ natural numbers
+
+This simple theory has no parameters and contains three declarations.
+The first declares {\tt n} to be a variable of type {\tt nat}, the
+built-in type of natural numbers.  The next declaration is a recursive
+definition of the function {\tt sum(n)}, whose value is the sum of the
+first {\tt n} natural numbers.  Associated with this definition is a
+{\em measure\/} function, following the {\tt MEASURE} keyword, which
+will be explained below.\footnote{In this case, the measure is the
+identity function, which could have been written simply as {\tt MEASURE
+n}.} The final declaration is a formula which gives the closed form of
+the sum.
+
+\subsection{Creating the Specification}
+
+The {\tt sum} theory may be introduced to the system in a number of
+ways, all of which create a file with a {\tt .pvs}
+extension,\footnote{The file does not have to be named {\tt sum.pvs}, it
+simply needs the {\tt .pvs} extension.} which can be done by
+\begin{enumerate}
+
+\item using the {\tt M-x new-pvs-file} command (\ecmd{nf}) to create a new
+\pvs\ file, and typing {\tt sum} when prompted.  Then type in the {\tt
+sum} specification.
+
+\item Since the file is included on the distribution tape in the {\tt
+Examples/tutorial} subdirectory of the main \pvs\ directory, it can be
+imported with the {\tt M-x import-pvs-file} command (\ecmd{imf}).  Use
+the \ecmd{whereis-pvs} command to find the path of the main \pvs\
+directory.
+
+\item Finally, any external means of introducing a file with extension
+{\tt .pvs} into the current directory will make it available to the
+system; for example, using {\tt vi} to type it in, or {\tt cp} to copy
+it from the {\tt Examples/tutorial} subdirectory.
+
+\end{enumerate}
+The first two alternatives display the specification in a buffer.
+The third option requires an explicit request such as a built-in \gnu\
+file command (like {\tt M-x find-file}, {\tt C-x C-f}), or the {\tt M-x
+find-pvs-file} ({\tt M-x ff} or {\tt C-c C-f}) command.  The latter is
+more useful when there are multiple specification files, as it supports
+completion on just the specification files, ignoring other files that
+you or the system have created in the directory.
+
+\subsection{Parsing}
+
+Once the {\tt sum} specification is displayed, it can be parsed with the
+{\tt M-x parse} ({\tt M-x pa}) command, which creates the internal
+abstract representation for the theory described by the specification.
+If the system finds an error during parsing, an error window will pop up
+with an error message, and the cursor will be placed in the vicinity of
+the error.  If you didn't get an error, introduce one (say by
+misspelling the {\tt VAR} keyword), then move the cursor somewhere else and
+parse the file again (note that the buffer is automatically saved).  Fix
+the error and parse once more.  In practice, the parse command is rarely
+used, as the system automatically parses the specification when it needs
+to.
+
+\subsection{Typechecking}
+\index{typecheck|(}
+
+The next step is to typecheck the file by typing \ecmd{typecheck}
+(\ecmd{tc}, \key{C-c t}), which checks for semantic errors, such as
+undeclared names and ambiguous types.  Typechecking may build new files
+or internal structures such as \tccs.  When {\tt sum} has been
+typechecked, a message is displayed in the minibuffer indicating that
+two \tccs\index{TCCs@\tccs|(} were generated.  These \tccs\ represent
+{\em proof obligations\/} that must be discharged before the {\tt sum}
+theory can be considered typechecked.  The proofs of the \tccs\
+may be postponed indefinitely, though it is a good idea to view them to
+see if they are provable.  \tccs\ can be viewed using the \ecmd{show-tccs}
+command, the results of which are shown in Figure~\ref{sum-tccs} below.
+
+\pvstheory{sum-tccs}{\tccs\ for Theory {\tt sum}}{sum-tccs}
+
+The first \tcc\ is due to the fact that {\tt sum} takes an argument of
+type {\tt nat}, but the type of the argument in the recursive call to
+{\tt sum} is integer, since {\tt nat} is not closed under subtraction.
+Note that the \tcc\ includes the condition {\tt NOT n = 0}, which holds
+in the branch of the {\tt IF-THEN-ELSE} in which the expression
+{\tt n - 1} occurs.
+
+The second \tcc\ is needed to ensure that the function {\tt sum} is
+total, \ie\ terminates.  \pvs\ does not directly support partial
+functions, although its powerful subtyping mechanism allows \pvs\ to
+express many operations that are traditionally regarded as partial.  The
+measure function is used to show that recursive definitions are total by
+requiring the measure to decrease with each recursive call.
+
+These \tccs\ are trivial, and in fact can be discharged automatically
+by using the \ecmd{typecheck-prove} (\ecmd{tcp}) command, which attempts
+to prove all \tccs\ that have been generated.  (Try it).
+\index{TCCs@\tccs|)}\index{typecheck|)}
+
+\subsection{Proving}
+
+We are now ready to try to prove the main theorem.  Place the cursor on
+the line containing the {\tt closed\_form} theorem, and type
+\ecmd{prove} (\ecmd{pr} or \key{C-c p}).  A new buffer will pop up, the
+formula will be displayed, and the cursor will appear at the {\tt Rule?}
+prompt, indicating that the user can interact with the prover.  The
+commands needed to prove this theorem constitute only a very small
+subset of the commands available to the prover; more details can be
+found in the prover guide~\cite{PVS:prover}.
+
+First, notice the display (reproduced below), which consists of a
+single formula (labeled {\tt \{1\}}) under a dashed line.  This is a
+{\em sequent\/}; formulas above the dashed lines are called {\em
+antecedents\/} and those below are called {\em succedents\/}.  The
+interpretation of a sequent is that the conjunction of the antecedents
+implies the disjunction of the succedents.  Either or both of the
+antecedents and succedents may be empty.\footnote{An empty antecedent
+is equivalent to {\tt true}, and an empty succedent is equivalent to
+{\tt false}, so if both are empty the sequent is unprovable.} In our
+case, we are trying to prove a single succedent.
+
+The basic objective of the proof is to generate a {\em proof tree\/} in
+which all of the leaves are trivially true.  The nodes of the proof tree
+are sequents, and while in the prover you will always be looking at an
+unproved leaf of the tree.  The {\em current\/} branch of a proof is the
+branch leading back to the root from the current sequent.  When a given
+branch is complete (\ie\ ends in a true leaf), the prover automatically
+moves on to the next unproved branch, or, if there are no more unproven
+branches, notifies you that the proof is complete.
+
+Now back to the proof.  We will prove this formula by induction on {\tt
+n}.  To do this, type {\tt (induct "n")}.\footnote{\pvs\ expressions are
+case-sensitive, and must be put in double quotes when they appear as
+arguments in prover commands.} This is not an \emacs\ command, rather it
+is typed directly at the prompt, including the parentheses.  This
+generates two subgoals; the one displayed is the base case, where {\tt
+n} is {\tt 0}.  To see the inductive step, type {\tt (postpone)}, which
+postpones the current subgoal and moves on to the next unproved one.
+Type {\tt (postpone)} a second time to cycle back to the original
+subgoal (labeled {\tt closed\_form.1}).\footnote{Three extremely useful
+\emacs\ key sequences to know here are \key{M-p}, \key{M-n}, and
+\key{M-s}.  \key{M-p} gets the last input typed to the prover; further
+uses of \key{M-p} cycle back in the input history.  \key{M-n} works in
+the opposite direction.  To use \key{M-s}, type the beginning of a
+command that was previously input, and type \key{M-s}.  This will get
+the previous input that matches the partial input; further uses of
+\key{M-s} will find earlier matches.  Try these key sequences out; they
+are easier to use than to explain.}
+
+To prove the base case, we need to expand the definition of {\tt sum},
+which is done by typing {\tt (expand "sum")}.  After expanding the
+definition of {\tt sum}, we send the proof to the \pvs\ decision
+procedures, which automatically decide certain fragments of
+arithmetic, by typing {\tt (assert)}.\footnote{The {\tt
+assert} command actually does a lot more than decide arithmetical
+formulas, performing three basic tasks:
+\begin{itemize}\def\itemsep{0in}
+\item it tries to prove the subgoal using the decision procedures.
+
+\item it stores the subgoal information in an underlying database,
+allowing automatic use to be made of it later.
+
+\item it simplifies the subgoal, again utilizing the underlying decision
+procedures.
+\end{itemize}
+These arithmetic and equality procedures are the main workhorses to
+most \pvs\ proofs.  You should learn to use them effectively in a
+proof.} 
+This completes the proof of this subgoal, and the system moves on to
+the next subgoal, which is the inductive step.
+
+The first thing to do here is to eliminate the {\tt FORALL} quantifier.
+This can most easily be done with the {\tt skolem!}\
+command\footnote{The exclamation point differentiates this command from
+the {\tt skolem} command, where the new constants have to be provided by
+the user.}, which provides new constants for the bound variables.  To
+invoke this command type {\tt (skolem!)} at the prompt.  The resulting
+formula may be simplified by typing {\tt (flatten)}, which will break up
+the succedent into a new antecedent and succedent.  The obvious thing to
+do now is to expand the definition of {\tt sum} in the succedent.  This
+again is done with the {\tt expand} command, but this time we want to
+control where it is expanded, as expanding it in the antecedent will not
+help.  So we type {\tt (expand "sum" +)}, indicating that we want to
+expand {\tt sum} in the succedent.\footnote{We could also have specified
+the exact formula number (here {\tt 1}), but including formula numbers
+in a proof tends to make it less robust in the face of changes.  There
+is more discussion of this in the prover guide~\cite{PVS:prover}.}
+
+The final step is to send the proof to the \pvs\ decision procedures
+by typing {\tt (assert)}.  The proof is now complete, the system may
+ask whether to save the new proof, and whether to display a brief
+printout of the proof.  You should answer {\tt yes} to these questions
+just to see how they work.  After responding to these questions, the
+buffer from which the \cmd{prove} command was issued is redisplayed if
+necessary, and the cursor is placed on the formula that was just
+proved.  The entire proof transcript is shown below.  Yours may be
+different, depending on your window size and the timings involved.
+
+{\smaller\smaller\smaller\begin{alltt}
+\input{sum-proof}
+\end{alltt}}
+
+Note: The proof presented here is a low-level interactive one chosen
+for illustrative purposes.  In practice, trivial theorems such as this
+are handled automatically by the higher-level strategies of PVS.  This
+particular theorem, for example, is proved automatically by the single
+command {\tt (induct-and-simplify "n" :defs T)}.
+
+
+\subsection{Status}
+
+Now type \iecmd{status-proof-theory} (\ecmd{spt}) and you will see a
+buffer which displays the formulas in {\tt sum} (including the \tccs),
+along with an indication of their proof status.  This command is
+useful to see which formulas and \tccs\ still require proofs.  Another
+useful command is \iecmd{status-proofchain} (\ecmd{spc}), which
+analyzes a given proof to determine its dependencies.  To use this,
+go to the {\tt sum.pvs} buffer, place the cursor on the {\tt
+closed\_form} theorem, and enter the command.  A buffer will pop up
+indicating whether the proof is complete, and that it depends on the
+\tccs\ and the {\tt nat\_induction} axiom.
+
+\subsection[Generating \LaTeX]{Generating \BoldLaTeX}
+
+In order to try out this section, you must have access to \LaTeX\ and a
+\TeX\ previewer, such as {\tt vitex} or {\tt dvitool} (for \sunview), or
+{\tt xdvi} (for X-windows).  Otherwise this section may be skipped.
+
+Type \iecmd{latex-theory-view} (\ecmd{ltv}).  You will be prompted for
+the theory name---type {\tt sum}, or just {\tt Return} if {\tt sum} is
+the default.  You will then be prompted for the \TeX\ previewer name.
+Either the previewer must be in your path, or the entire pathname must
+be given.  This information will only be prompted for once per session,
+after that \pvs\ assumes that you want to use the same previewer.
+
+\begin{figure}[ht]
+\begin{center}
+\begin{boxedminipage}{\textwidth}
+{\smaller\smaller\input{sum}}
+\end{boxedminipage}
+\end{center}
+\caption{Theory {\tt sum}}\label{sum-plain}
+\end{figure}
+
+After a few moments the previewer will pop up displaying the {\tt sum}
+theory, as shown in Figure~\ref{sum-plain}.  Note that {\tt LAMBDA}
+has been translated as $\lambda$.  This and other translations are
+built into \pvs; the user may also specify translations for keywords
+and identifiers (and override those built-in) by providing a
+substitution file, {\tt pvs-tex.sub}, which contains commands to
+customize the \LaTeX\ output.  For example, if the substitution file
+contains the three lines
+
+{\smaller\smaller\begin{alltt}
+    THEORY key 7 \verb|{\large\bf Theory}|
+    sum    1   2 \verb|{\sum_{i = 0}^{#1} i}|
+\end{alltt}}
+the output will look like Figure~\ref{sum-sub}.
+
+\begin{figure}[ht]
+\begin{center}
+\begin{boxedminipage}{\textwidth}
+{\smaller\smaller\input{sum-sub}}
+\end{boxedminipage}
+\end{center}
+\caption{Theory {\tt sum}}\label{sum-sub}
+\end{figure}
+
+Finally, using the \iecmd{latex-proof} command, it is possible to
+generate a \LaTeX\ file from a proof.  A part of an example is shown
+below; details are in the PVS system manual.
+
+\noindent
+\begin{boxedminipage}{\linewidth}
+\def\sumonefn#1{{\sum_{i = 0}^{#1} i}}
+
+Expanding the definition of sum
+
+{\tt closed\_form.2:}
+
+\vspace*{0.2in}\hspace*{0.2in}
+\begin{tabular}{ll}
+$\{-1\}$ &\begin{minipage}[t]{6in}{ \begin{program} 
+ \sumonefn { j^{\prime} } \mbox{ }=\mbox{ }(\ii j^{\prime} \mbox{ }\times\mbox{ }(\ii j^{\prime} \mbox{ }+\mbox{ } 1)) \mbox{ }/\mbox{ } 2 \\ 
+\oo\oo\zi\zi\zi\zi\zo\zo \end{program}}\end{minipage}\\\hline
+$\{1\}$ &\begin{minipage}[t]{6in}{ \begin{program} 
+(\ii \pvskey{IF\mbox{ }} j^{\prime} \mbox{ }+\mbox{ } 1 \mbox{ }=\mbox{ } 0 \pvskey{\mbox{ }THEN\mbox{ }} 0 \pvskey{\mbox{ }ELSE\mbox{ }} j^{\prime} \mbox{ }+\mbox{ } 1 \mbox{ }+\mbox{ } \sumonefn { j^{\prime} \mbox{ }+\mbox{ } 1 \mbox{ }-\mbox{ } 1 } \pvskey{\mbox{ }ENDIF}) \\
+\oo\zi \mbox{ }=\mbox{ }(\ii(\ii j^{\prime} \mbox{ }+\mbox{ } 1) \mbox{ }\times\mbox{ }(\ii j^{\prime} \mbox{ }+\mbox{ } 1 \mbox{ }+\mbox{ } 1)) \mbox{ }/\mbox{ } 2 \\ 
+\oo\oo\oo\zi\zi\zi\zo\zo \end{program}}\end{minipage}\\
+\end{tabular}
+\end{boxedminipage}

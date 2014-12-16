@@ -1,0 +1,69 @@
+% Master File: wift-tutintro.tex
+\documentstyle[11pt,epsf,part,notochead,nobibhead,nfltxsym,relative,cite,alltt,twoside,relative,fancyheadings,boxedminipage,/homes/EHDM/pvs/pvs]{article}
+\sloppy
+\newcommand{\allttinput}[1]{\hozline{\smaller\smaller\smaller\begin{alltt}\input{#1}\end{alltt}}\hozline}
+\newenvironment{pvsscript}{\hozline\smaller\smaller\smaller\begin{alltt}}{\end{alltt}\hozline}
+\topmargin -10pt
+\textheight 8.5in
+\textwidth 6.0in
+\headheight 15 pt
+\columnwidth \textwidth
+\oddsidemargin 0.5in
+\evensidemargin 0.5in   % fool system for page 0
+\setcounter{topnumber}{9}
+\renewcommand{\topfraction}{.99}
+\setcounter{bottomnumber}{9}
+\renewcommand{\bottomfraction}{.99}
+\setcounter{totalnumber}{10}
+\renewcommand{\textfraction}{.01}
+\renewcommand{\floatpagefraction}{.01}
+\raggedbottom
+\font\largett=cmtt10 scaled\magstep2
+\font\hugett=cmtt10 scaled\magstep4
+\def\opt{{\smaller\sc {\smaller\smaller \&}optional}}
+\def\rest{{\smaller\sc {\smaller\smaller \&}rest}}
+\def\default#1{[\,{\tt #1}] }
+\def\bkt#1{{$\langle$#1$\rangle$}}
+\newenvironment{usage}[1]{\item[usage:\hspace*{-0.175in}]#1\begin{description}\setlength{\itemindent}{-0.2in}\setlength{\itemsep}{0.1in}}{\end{description}}
+%\renewcommand{\baselinestretch}{2}
+\newenvironment{display}{\begin{alltt}\small\tt\vspace{0.3\baselineskip}}{\vspace{0.3\baselineskip}\end{alltt}}
+\newcommand{\choice}{[\!]}
+\newcommand{\normtt}[1]{{\obeyspaces {\tt #1 }}}
+\newenvironment{pagegroup}{}{}
+%\newenvironment{smalltt}{\begin{alltt}\small\tt}{\end{alltt}}
+\newenvironment{tdisplay}{\begin{alltt}\footnotesize\tt\vspace{0.3\baselineskip}}{\vspace{0.3\baselineskip}\end{alltt}}
+\input{/homes/EHDM/pvs/doc/jmacros}
+\input{/homes/EHDM/pvs/doc/lmacros}
+\input{/homes/EHDM/pvs/doc/mathprel}
+\input{/homes/EHDM/pvs/doc/pvstex}
+%\newlength{\hsbw}
+\newenvironment{jmrsession}{\begin{flushleft}
+ \setlength{\hsbw}{\linewidth}
+ \addtolength{\hsbw}{-\arrayrulewidth}
+ \addtolength{\hsbw}{-\tabcolsep}
+ \begin{tabular}{@{}|c@{}|@{}}\hline 
+ \begin{minipage}[b]{\hsbw}
+ \begingroup\small\mbox{ }\\[-1.8\baselineskip]\begin{alltt}}{\end{alltt}\endgroup\end{minipage}\\ \hline 
+ \end{tabular}
+ \end{flushleft}}
+\def\id#1{\hbox{\tt #1}} %changing ids from roman to tt.
+\pagestyle{fancy}
+\renewcommand{\sectionmark}[1]{\markright{{\em #1}}}
+\renewcommand{\subsectionmark}[1]{}
+%\lhead[\thepage]{\rightmark}
+%\cfoot{\protect\small\bf \fbox{alpha+ Release}}
+%\rhead[\leftmark]{\thepage}
+\setcounter{secnumdepth}{2} 
+\setcounter{tocdepth}{3}
+%\setcounter{page}{0} 
+\begin{document} 
+\setcounter{section}{0}
+\markboth{PVS Reference}{}
+%\cleardoublepage
+\newcommand{\wiftnewpage}{\newpage}
+\newcommand{\refnewpage}{}
+\input{refcard}
+
+\end{document}
+
+

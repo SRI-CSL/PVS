@@ -1,0 +1,308 @@
+% Master File: wift-tutintro.tex
+% \documentstyle[11pt,epsf,part,notochead,nobibhead,nfltxsym,relative,cite,alltt,twoside,relative,fancyheadings,boxedminipage,url,/project/pvs/pvs]{article}
+\documentclass[11pt,part]{article}
+\usepackage{,notochead,nobibhead,relsize,cite,alltt,relsize,fancyheadings,boxedminipage,url}
+\sloppy
+\newcommand{\allttinput}[1]{\hozline{\smaller\smaller\smaller\begin{alltt}\input{#1}\end{alltt}}\hozline}
+\newenvironment{pvsscript}{\hozline\smaller\smaller\smaller\begin{alltt}}{\end{alltt}\hozline}
+\topmargin -10pt
+\textheight 8.5in
+\textwidth 6.0in
+\headheight 15 pt
+\columnwidth \textwidth
+\oddsidemargin 0.5in
+\evensidemargin 0.5in   % fool system for page 0
+\setcounter{topnumber}{9}
+\renewcommand{\topfraction}{.99}
+\setcounter{bottomnumber}{9}
+\renewcommand{\bottomfraction}{.99}
+\setcounter{totalnumber}{10}
+\renewcommand{\textfraction}{.01}
+\renewcommand{\floatpagefraction}{.01}
+\raggedbottom
+\font\largett=cmtt10 scaled\magstep2
+\font\hugett=cmtt10 scaled\magstep4
+\def\opt{{\smaller\sc {\smaller\smaller \&}optional}}
+\def\rest{{\smaller\sc {\smaller\smaller \&}rest}}
+\def\default#1{[\,{\tt #1}] }
+\def\bkt#1{{$\langle$#1$\rangle$}}
+\newenvironment{usage}[1]{\item[usage:\hspace*{-0.175in}]#1\begin{description}\setlength{\itemindent}{-0.2in}\setlength{\itemsep}{0.1in}}{\end{description}}
+%\renewcommand{\baselinestretch}{2}
+\newenvironment{display}{\begin{alltt}\small\tt\vspace{0.3\baselineskip}}{\vspace{0.3\baselineskip}\end{alltt}}
+\newcommand{\choice}{[\!]}
+\newcommand{\normtt}[1]{{\obeyspaces {\tt #1 }}}
+\newenvironment{pagegroup}{}{}
+%\newenvironment{smalltt}{\begin{alltt}\small\tt}{\end{alltt}}
+\newenvironment{tdisplay}{\begin{alltt}\footnotesize\tt\vspace{0.3\baselineskip}}{\vspace{0.3\baselineskip}\end{alltt}}
+%% \input{/project/pvs/doc/jmacros}
+%% \input{/project/pvs/doc/lmacros}
+%% \input{/project/pvs/doc/mathprel}
+%% \input{/project/pvs/doc/pvstex}
+\input{jmacros}
+\input{lmacros}
+\input{mathprel}
+\input{pvstex}
+%\newlength{\hsbw}
+\newenvironment{jmrsession}{\begin{flushleft}
+ \setlength{\hsbw}{\linewidth}
+ \addtolength{\hsbw}{-\arrayrulewidth}
+ \addtolength{\hsbw}{-\tabcolsep}
+ \begin{tabular}{@{}|c@{}|@{}}\hline 
+ \begin{minipage}[b]{\hsbw}
+ \begingroup\small\mbox{ }\\[-1.8\baselineskip]\begin{alltt}}{\end{alltt}\endgroup\end{minipage}\\ \hline 
+ \end{tabular}
+ \end{flushleft}}
+\def\id#1{\hbox{\tt #1}} %changing ids from roman to tt.
+\pagestyle{fancy}
+\renewcommand{\sectionmark}[1]{\markright{{\em #1}}}
+\renewcommand{\subsectionmark}[1]{}
+%\lhead[\thepage]{\rightmark}
+%\cfoot{\protect\small\bf \fbox{Beta Release}}
+%\rhead[\leftmark]{\thepage}
+\setcounter{secnumdepth}{2} 
+\setcounter{tocdepth}{3}
+\setcounter{page}{0} 
+\title{{\Huge\bf A Tutorial Introduction to PVS}\\
+\smaller  Presented at WIFT '95: Workshop on Industrial-Strength Formal
+Specification Techniques, Boca Raton, Florida, April 1995}
+\author{Judy Crow, Sam Owre, John Rushby, Natarajan Shankar, Mandayam
+Srivas\thanks{Dave Stringer-Calvert provided valuable comments on
+earlier versions of this tutorial, and also checked the specifications
+and proofs appearing here.   Preparation of this tutorial was
+partially funded by NASA Langley Research Center under Contract
+NAS1-18969, and by the Advanced Research Projects Agency through NASA
+Ames Research Center NASA-NAG-2-891 (Arpa order A721) to
+Stanford Unversity.}\\
+Computer Science Laboratory\\
+SRI International\\
+Menlo Park CA 94025 USA
+\\ \mbox{ }\\
+{\sc www}: {\tt http://www.csl.sri.com/sri-csl-fm.html}
+%{\tt Rushby@csl.sri.com}
+%\\Phone: +1 (415) 859-5456\ \ Fax: +1 (415) 859-2844
+}
+\date{Updated June 1995}
+\begin{document} 
+\maketitle
+\begin{abstract}
+This document provides an introductory example, a tutorial, and a
+compact reference to the PVS verification system.  It is intended to
+provide enough information to get you started using PVS, and to help
+you appreciate the capabilities of the system and the purposes for
+which it is suitable.
+
+% Full documentation for PVS is available in three volumes (language,
+% system, and prover), and a number of more advanced tutorial and other
+% examples are also available.
+
+\end{abstract}
+\thispagestyle{empty}
+\newpage
+\evensidemargin 0.0in
+\mbox{}
+\thispagestyle{empty}
+\newpage
+
+\pagenumbering{roman}
+\setcounter{page}{1} 
+
+%\section*{Table of Contents}
+\markboth{}{Contents}
+
+\tableofcontents
+\cleardoublepage
+
+\setcounter{page}{0} 
+\pagenumbering{arabic}
+
+\section*{Overview}
+\addcontentsline{toc}{section}{Overview}
+\markboth{}{Overview}
+
+PVS is a {\em verification system\/}:  an interactive environment for
+writing formal specifications and checking formal proofs.  It builds on
+nearly 20 years experience at SRI in building verification systems, and on
+substantial experience with other systems.  The distinguishing feature of
+PVS is its synergistic integration of an expressive specification
+language and powerful theorem-proving capabilities.  PVS has been
+applied successfully to large and difficult applications in both
+academic and industrial settings.
+
+PVS provides an expressive specification language that augments
+classical higher-order logic with a sophisticated type system
+containing predicate subtypes and dependent types, and with
+parameterized theories and a mechanism for defining abstract datatypes
+such as lists and trees.  The standard PVS types include numbers
+(reals, rationals, integers, naturals, and the ordinals to
+$\epsilon_{0}$), records, tuples, arrays, functions, sets, sequences,
+lists, and trees, etc.  The combination of features in the PVS
+type-system is very convenient for specification, but it makes
+typechecking undecidable.  The PVS typechecker copes with this
+undecidability by generating proof obligations for the PVS theorem
+prover.  Most such proof obligations can be discharged automatically.
+This liberation from purely algorithmic typechecking allows PVS to
+provide relatively simple solutions to issues that are considered
+difficult in some other systems (for example, accommodating partial
+functions such as division within a logic of total functions), and it
+allows PVS to enforce very strong checks on consistency and other
+properties (such as preservation of invariants) in an entirely uniform
+manner.
+
+PVS has a powerful interactive theorem prover/proof checker.  The
+basic deductive steps in PVS are large compared with many other
+systems: there are atomic commands for induction, quantifier
+reasoning, automatic conditional rewriting, simplification using
+arithmetic and equality decision procedures and type information, and
+propositional simplification using binary decision diagrams.  The PVS
+proof checker manages the proof construction process by prompting the
+user for a suitable command for a given subgoal.  The execution of the
+given command can either generate further subgoals or complete a
+subgoal and move the control over to the next subgoal in a proof.
+User-defined proof strategies can be used to enhance the automation in
+the proof checker.  Model-checking capabilities used for automatically
+verifying temporal properties of finite-state systems have recently
+been integrated into PVS\@.  PVS's automation suffices to prove many
+straightforward results automatically; for hard proofs, the automation
+takes care of the details and frees the user to concentrate on
+directing the key steps.
+
+PVS is implemented in Common Lisp---with ancillary functions provided
+in C, Tcl/TK, and \LaTeX---and uses GNU Emacs for its interface.
+Configured for Sun {\sc Sparc} Workstations running under SunOS
+4.1.3,  the system is freely available under license from SRI.
+
+PVS has been used at SRI to undertake proofs of difficult
+fault-tolerant
+algorithms~\cite{Lincoln&Rushby93:CAV,Lincoln&Rushby93:FTCS,Lincoln&Rushby94:FTP},
+to verify the microcode for selected instructions of a complex,
+pipelined, commercial microprocessor having 500,000 transistors where
+seeded and unseeded errors were found~\cite{Miller&Srivas95}, to
+provide an embedding for the Duration Calculus (an interval temporal
+logic~\cite{Skakkebaek&Shankar94}), and for several other
+applications.  PVS is installed at many sites worldwide, and is in
+serious use at about a dozen of them.  There is a growing list of
+significant applications undertaken using PVS by people outside SRI.
+Many of these can be examined at the WWW site {\tt
+http://www.csl.sri.com/sri-csl-fm.html}.
+
+This tutorial is intended to give you an idea of the flavor of PVS, of
+the opportunities created by effective mechanization of formal
+methods, and an introduction to the use of the system itself.  PVS is
+a big and complex system, so we can really only scratch the surface
+here.  To make advanced use of the system, you should study the
+manuals (there are three volumes: language~\cite{PVS:language},
+prover~\cite{PVS:prover}, and system~\cite{PVS:userguide}), and some
+of the more substantial applications.
+
+There are three parts to this tutorial.
+\begin{itemize}
+
+\item {\em An Introduction to the Mechanized Analysis of Requirements
+Specifications Using PVS.} This tutorial introduction shows how PVS
+can be used to actively explore and analyze a simple requirements
+specification.  It is intended to demonstrate the utility of
+mechanized support for formal methods, and the opportunities for
+validation and exploration that are created by effective
+mechanization.
+
+% \item {\em Formal Verification for Fault-Tolerant Architectures:
+% Prolegomena to the Design of PVS}.  This paper from the February 1995
+% issue of the IEEE Transactions on Software Engineering describes some
+% of the verifications undertaken using PVS and motivates and describes
+% some of the design decisions underlying PVS.  It also illustrates
+% some of the more advanced language capabilities.
+
+\item {\em Tutorial on Using PVS}.   This introduces many of
+the capabilities of PVS by means of simple examples and takes you
+through the process of using the system.  While it can be read as an
+overview, it is best to have PVS available and to actively follow along.
+
+\item {\em PVS Reference}.    This presents all PVS
+system and prover commands, and illustrates the language constructs
+in a very compact form.
+
+\end{itemize}
+
+A useful supplement to the material presented here
+is~\cite{Owre95:prolegomena}, which describes some of the larger
+verifications undertaken using PVS and also motivates and describes
+some of the design decisions underlying PVS.
+
+\part[Introduction to Mechanized Analysis of
+Specifications Using PVS]{An Introduction to the Mechanized Analysis of
+Requirements Specifications Using PVS}
+\cleardoublepage
+\markboth{Analyzing Specifications Using PVS}{}
+\input{phones}
+\newpage
+\thispagestyle{plain}
+
+%\part{Prolegomena}
+
+\setcounter{section}{0}
+\part{Tutorial on Using PVS}
+\markboth{Using PVS}{}
+\cleardoublepage
+
+\input{overview}
+\input{system}
+\input{language}
+\input{prover}
+\input{hardware-eg}
+
+\section{Exercises}
+
+\newtheorem{prob}{Problem}
+
+\begin{prob}
+Based on the discussion of the specification of stacks, try to specify a
+PVS theory formalizing queues.  Can the PVS abstract datatype facility
+be used for specifying queues?
+\end{prob}
+
+\begin{prob}
+Specify binary trees with value type {\tt T} as a parametric abstract
+datatype in PVS.
+\end{prob}
+
+\begin{prob}
+Specify a PVS theory formalizing {\em ordered\/} binary trees with respect to a
+type parameter {\tt T} and a given total-ordering relation, \ie\ define
+a predicate {\tt ordered?} that checks if a given binary tree is ordered
+with respect to the given total ordering.
+\end{prob}
+
+\begin{prob}
+  Prove the stack axioms for the definitions stated in {\tt newstacks}.
+\end{prob}
+
+\begin{prob}
+  Prove the theorems in the theory {\tt half} (Page~\pageref{half}).
+\end{prob}
+
+\begin{prob}
+  Define the operation for carrying out the ordered insertion of a value
+into an ordered binary tree.  Prove that the insertion operator applied
+to an ordered binary tree returns an ordered binary tree.
+\end{prob}
+
+\setcounter{section}{0}
+\part{PVS Reference}
+\markboth{PVS Reference}{}
+\cleardoublepage
+\newcommand{\wiftnewpage}{\newpage}
+\newcommand{\refnewpage}{}
+\input{refcard}
+
+\newpage
+\def\UrlFont{\tt}
+\section*{References}
+\markboth{}{References}
+\bibliographystyle{modalpha}
+\addcontentsline{toc}{section}{References}
+\bibliography{/homes/rushby/jmr,/project/pvs/doc/pvs,/homes/shankar/tex}
+
+
+\end{document}
+
+

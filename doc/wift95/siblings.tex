@@ -1,0 +1,20 @@
+The remaining siblings are: 
+adder_correct_n.2 :   
+
+  |-------
+\{1\}   (FORALL (r: below[N]):
+         r < N - 1
+           AND (FORALL (bv1, bv2: bvec[N]), (cin: bool):
+                  bvec2nat_rec(r, bv1) + bvec2nat_rec(r, bv2)
+                    + bool2bit(cin)
+                    = exp2(r + 1) * bool2bit(bv_cout(r, cin, bv1, bv2))
+                        + bvec2nat_rec(r, bv_sum(cin, bv1, bv2)))
+           IMPLIES (FORALL (bv1, bv2: bvec[N]), (cin: bool):
+                      bvec2nat_rec(r + 1, bv1)
+                        + bvec2nat_rec(r + 1, bv2)
+                        + bool2bit(cin)
+                        = exp2(r + 1 + 1)
+                            * bool2bit(bv_cout(r + 1, cin, bv1, bv2))
+                            +
+                            bvec2nat_rec(r + 1,
+                                         bv_sum(cin, bv1, bv2))))

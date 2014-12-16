@@ -1,0 +1,32 @@
+adder[N: posnat] : THEORY
+BEGIN
+  IMPORTING bv[N], full_adder
+
+  n: VAR below[N]
+  bv, bv1, bv2: VAR bvec
+  cin: VAR bool
+
+  nth_cin(n, cin, bv1, bv2): RECURSIVE bool =
+      IF n = 0 THEN cin
+      ELSE fa_cout(nth_cin(n - 1, cin, bv1, bv2), bv1(n - 1), bv2(n - 1))
+      ENDIF
+    MEASURE n
+
+  bv_sum(cin, bv1, bv2): bvec =
+    (LAMBDA n: fa_sum(bv1(n), bv2(n), nth_cin(n, cin, bv1, bv2)))
+      
+  bv_cout(n, cin, bv1, bv2): bool =
+    fa_cout(nth_cin(n, cin, bv1, bv2), bv1(n), bv2(n))
+      
+  adder_correct_n: LEMMA 
+      bvec2nat_rec(n, bv1) + bvec2nat_rec(n, bv2) + bool2bit(cin)
+        = exp2(n + 1) * bool2bit(bv_cout(n, cin, bv1, bv2))
+          + bvec2nat_rec(n, bv_sum(cin, bv1, bv2))
+    
+  adder_correct: THEOREM 
+      bvec2nat(bv1) + bvec2nat(bv2) + bool2bit(cin)
+        = exp2(N) * bool2bit(bv_cout(N - 1, cin, bv1, bv2))
+          + bvec2nat(bv_sum(cin, bv1, bv2))
+END adder
+
+

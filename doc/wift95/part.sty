@@ -1,0 +1,12 @@
+\def\part{\cleardoublepage \thispagestyle{plain} \if@twocolumn \onecolumn
+\@tempswatrue \else \@tempswafalse \fi \hbox{}\vfil \secdef\@part\@spart} 
+
+\def\@part[#1]#2{\ifnum \c@secnumdepth >-2\relax \refstepcounter{part}
+\addcontentsline{toc}{part}{\thepart \hspace{1em}#1}\else
+\addcontentsline{toc}{part}{#1}\fi \markboth{}{}
+ {\centering \ifnum \c@secnumdepth >-2\relax \huge\bf Part \thepart \par
+\vskip 20pt \fi \Huge \bf #1\par}\@endpart} 
+\def\@endpart{\vfil\newpage \if@twoside \hbox{} \thispagestyle{plain} 
+ \newpage 
+ \fi \if@tempswa \twocolumn \fi} 
+\def\@spart#1{{\centering \Huge \bf #1\par}\@endpart}

@@ -1,0 +1,106 @@
+% Derived from John Rushby's prelude.tex, modified for NFSS2
+%
+% define variants of the \LaTeX macro that avoid using \sc
+% for use in headings
+%
+
+% Define fonts that work in math or text mode
+\def\dwimrm#1{\ifmmode\mathrm{#1}\else\textrm{#1}\fi}
+\def\dwimsf#1{\ifmmode\mathsf{#1}\else\textsf{#1}\fi}
+\def\dwimtt#1{\ifmmode\mathtt{#1}\else\texttt{#1}\fi}
+\def\dwimbf#1{\ifmmode\mathbf{#1}\else\textbf{#1}\fi}
+\def\dwimit#1{\ifmmode\mathit{#1}\else\textit{#1}\fi}
+\def\dwimnormal#1{\ifmmode\mathnormal{#1}\else\textnormal{#1}\fi}
+
+\def\BigLaTeX{{\rm L\kern-.36em\raise.3ex\hbox{\small\small A}\kern-.15em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\def\BoldLaTeX{{\bf L\kern-.36em\raise.3ex\hbox{\small\small\bf A}\kern-.15em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+%\def\labelitemi{$\bullet$}
+\def\labelitemii{$\circ$}
+\def\labelitemiii{$\star$}
+\def\labelitemiv{$\diamond$}
+\newcommand{\tcc}{{\small\small TCC}}
+\newcommand{\tccs}{\tcc s}
+\newcommand{\emacs}{{Emacs}}
+\newcommand{\Emacs}{\emacs}
+\newcommand{\ehdm}{{E{\small\small HDM}}}
+\newcommand{\Ehdm}{\ehdm}
+\newcommand{\tm}{$^{\mbox{\tiny TM}}$}
+\newcommand{\hozline}{{\noindent\rule{\textwidth}{0.4mm}}}
+
+\newcommand{\allclear}%
+  {\mbox{\boldmath$\stackrel{\raisebox{-.2ex}[0pt][0pt]%
+              {$\textstyle\oslash$}}{\displaystyle\bot}$}}
+
+\newenvironment{private}{}{}
+
+\newenvironment{smalltt}{\begin{alltt}\small}{\end{alltt}}
+
+\newlength{\hsbw}
+
+\newenvironment{session}%
+  {\begin{flushleft}
+   \setlength{\hsbw}{\linewidth}
+   \addtolength{\hsbw}{-\arrayrulewidth}
+   \addtolength{\hsbw}{-\tabcolsep}
+   \begin{tabular}{@{}|c@{}|@{}}\hline 
+   \begin{minipage}[b]{\hsbw}
+   \begingroup\small\mbox{ }\\[-1.8\baselineskip]\begin{alltt}}
+  {\end{alltt}\endgroup\end{minipage}\\ \hline 
+   \end{tabular}
+   \end{flushleft}}
+
+\newenvironment{smallsession}%
+  {\begin{flushleft}
+   \setlength{\hsbw}{\linewidth}
+   \addtolength{\hsbw}{-\arrayrulewidth}
+   \addtolength{\hsbw}{-\tabcolsep}
+   \begin{tabular}{@{}|c@{}|@{}}\hline 
+   \begin{minipage}[b]{\hsbw}
+   \begingroup\footnotesize\mbox{ }\\[-1.8\baselineskip]\begin{alltt}}%
+  {\end{alltt}\endgroup\end{minipage}\\ \hline 
+   \end{tabular}
+   \end{flushleft}}
+
+\newenvironment{spec}%
+  {\begin{flushleft}
+   \setlength{\hsbw}{\textwidth}
+   \addtolength{\hsbw}{-\arrayrulewidth}
+   \addtolength{\hsbw}{-\tabcolsep}
+   \begin{tabular}{@{}|c@{}|@{}}\hline 
+   \begin{minipage}[b]{\hsbw}
+   \begingroup\small\mbox{ }\\[-0.2\baselineskip]}%
+  {\endgroup\end{minipage}\\ \hline 
+   \end{tabular}
+   \end{flushleft}}
+
+\newcommand{\memo}[1]%
+  {\mbox{}\par\vspace{0.25in}%
+   \setlength{\hsbw}{\linewidth}\addtolength{\hsbw}{-1.5ex}%
+   \noindent\fbox{\parbox{\hsbw}{{\bf Memo: }#1}}\vspace{0.25in}}
+
+\newcommand{\nb}[1]%
+  {\mbox{}\par\vspace{0.25in}%
+   \setlength{\hsbw}{\linewidth}\addtolength{\hsbw}{-1.5ex}%
+   \noindent\fbox{\parbox{\hsbw}{{\bf Note: }#1}}\vspace{0.25in}}
+
+\newcommand{\comment}[1]{}
+\newcommand{\exfootnote}[1]{}
+%\newcommand{\ifelse}[2]{#1}
+\sloppy
+\clubpenalty=100000
+\widowpenalty=100000
+%\displaywidowpenalty=100000
+\setcounter{secnumdepth}{3} 
+\setcounter{tocdepth}{3}
+\setcounter{topnumber}{9}
+\setcounter{bottomnumber}{9}
+\setcounter{totalnumber}{9}
+\renewcommand{\topfraction}{.99}
+\renewcommand{\bottomfraction}{.99}
+\renewcommand{\floatpagefraction}{.01}
+\renewcommand{\textfraction}{.2}
+\font\largett=cmtt10 scaled\magstep1
+\font\Largett=cmtt10 scaled\magstep2
+\font\hugett=cmtt10 scaled\magstep3

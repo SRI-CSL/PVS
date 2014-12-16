@@ -1,0 +1,17 @@
+% The following substitutions are from the file:
+%   /homes/helium/pvs/pvs-tex.sub
+\def\membertwofn#1#2{{#1 \in #2}}% How to print function member with arity (2)
+ \begin{program} 
+ \pvsid{sum} :\mbox{ } \pvskey{THEORY} \\
+\zi \pvskey{BEGIN} \\
+ \\[-0.2in]
+ n :\mbox{ } \pvskey{VAR\mbox{ }} \pvsid{nat} \\
+ \\[-0.2in]
+ \pvsid{sum}(\ii n) :\mbox{ } \pvskey{RECURSIVE\mbox{ }} \pvsid{nat } \mbox{ }= \\
+\oo\zi\zi( \pvskey{IF\mbox{ }} n \mbox{ }=\mbox{ } 0 \pvskey{\mbox{ }THEN\mbox{ }} 0 \pvskey{\mbox{ }ELSE\mbox{ }} n \mbox{ }+\mbox{ } \pvsid{sum}(\ii n \mbox{ }-\mbox{ } 1) \pvskey{\mbox{ }ENDIF}) \\
+\oo\zi\zi\zi\zo\zo \pvskey{MEASURE\mbox{ }}( \lambda\mbox{ }\ii n :\mbox{ } n) \\
+\oo\zo\zo\zo \\[-0.2in]
+ \pvsid{closed\_form} :\mbox{ } \pvskey{THEOREM\mbox{ }} \pvsid{sum}(\ii n) \mbox{ }=\mbox{ }( n \mbox{ }\times\mbox{ }( n \mbox{ }+\mbox{ } 1)) \mbox{ }/\mbox{ } 2 \\
+\oo\zi\zi\zo\zo \\[-0.2in]
+ \pvskey{END\mbox{ }} \pvsid{sum}
+ \end{program}

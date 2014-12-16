@@ -1,0 +1,3 @@
+(|sum| (|closed_form| ""
+                      (INDUCT-AND-SIMPLIFY "n" :DEFS T)
+                      NIL))

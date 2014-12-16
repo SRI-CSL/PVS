@@ -1,0 +1,282 @@
+% Master File: wift95.tex
+\documentstyle[11pt]{article}
+\topmargin .2in
+\textwidth 5.5in
+\textheight 7.75in
+\oddsidemargin .65in
+\evensidemargin .41in
+\sloppy
+\title{\bf Tutorial Proposal for WIFT:\\
+Mechanically Checked Formal Specification and Verification using PVS}
+\author{John Rushby\\
+Computer Science Laboratory\\
+SRI International\\
+Menlo Park CA 94025 USA
+\\ \mbox{ }\\
+{\tt Rushby@csl.sri.com}
+\\Phone: +1 (415) 859-5456\ \ Fax: +1 (415) 859-2844
+}
+
+\date{}
+\begin{document}
+\maketitle
+
+\section{Tutorial Proposal}
+
+We propose a half-day tutorial on mechanized formal methods using PVS
+(PVS is introduced below).  The goal of the tutorial is not to teach
+PVS to but to give some appreciation for the opportunities conferred
+by state-of-the-art mechanization of formal methods.  In our view, the
+significance of formal methods is that they allow certain question
+about computational systems to be reduced to calculation.  The
+role of mechanization is to make it possible to actually undertake the
+calculations for questions of real significance at reasonable cost.
+The ideas and techniques presented will be useful to users of systems
+other than PVS.
+
+The tutorial will mainly be presented as an extended interaction with
+PVS\@.  We will bring our own Sparc Laptop and overhead display tablet
+and will work through a graduated series of examples that demonstrate
+the utility of very strong typechecking, of definitional forms of
+expression that guarantee conservative extensions, and of
+proof-obligations generated during typechecking.  After explaining the
+basics of theorem proving in PVS, we will demonstrate how
+specifications may be ``challenged'' by putative theorems and how
+flaws may be detected in this way.  We will end by demonstrating the
+interactive verification of a hard algorithm (e.g., Byzantine
+Agreement), and the highly automated verification of structured
+designs (e.g., correctness of a microprocessor pipeline).
+
+Previous tutorials and courses using PVS in this style have been given
+at the Formal Methods Europe conference at Odense, Denmark in 1993
+(half day), Compass '93 in Washington DC (whole day), Boeing (whole
+day), Collins Commercial Avionics (three days), NSA (three days), SRI
+(two days and three days), Loral Houston/Johnson Space Center (whole
+day), JPL (half day).  Another is upcoming at the 2nd International
+Conference on Theorem Provers in Circuit Design, Bad Herrenalb,
+Germany in September.  These tutorials have been given by various
+(usually pairwise) combinations of Sam Owre, Pat Lincoln, John Rushby,
+Shankar, and Srivas, who are all from SRI and are either developers or
+major users of PVS\@.  The WIFT tutorial presenter will be selected
+from among these; all have advanced degrees from respectable
+universities (MS in Math from UCLA, and PhDs in Computer Science from
+Stanford, Newcastle, Texas, and MIT, respectively), and numerous
+publications in formal methods.
+
+PVS tutorial course material is available by World Wide Web at URL
+{\tt http://www.csl.sri.com/sri-csl-pvs.html}, where a general
+overview tutorial and one specialized towards hardware verification
+may be found.  We will provide a set of tutorial notes based on these
+materials and on an elementary tutorial developed by Ricky Butler at
+NASA Langley~\cite{Butler:PVS-tut}.  We may also use some material
+from an undergraduate course taught using PVS by Professor Ian Wand at
+the University of York in England.
+
+As can be seen from the number of times we have presented this and
+similar material, the basic presentation is quite mature.  Audience
+reaction has generally been very positive; most attendees (especially
+in Europe) have previously been unaware of the sheer power of modern
+verification systems and theorem provers, and have left with a new
+appreciation of the possibilities and benefits of mechanization in
+formal methods.
+
+\section{Introducing PVS}
+
+PVS is the latest in a line of verification systems developed at SRI
+International over a period of 20 years.  PVS is unusual in that it
+combines a very expressive and convenient specification language with
+a powerful proof checker.  
+
+\subsection{Language}
+
+The specification language of PVS is a higher order logic with very
+rich type system that includes predicate and dependent types.  This
+allows division, for example, to be typed so that the divisor is
+constrained to be nonzero---thereby providing a treatment for
+partially-defined functions without the usual difficulties of logics
+of partial functions.  The PVS typechecker generates proof obligations
+to ensure that functions are applied appropriately.  The PVS type
+system allows many of the constraints on a specification to be stated
+in the types; the typechecker can then provide very strong checks on
+consistency.  For example, the injections can be defined as the
+subtype of the functions associated with the predicate $f(x)=f(y)
+\supset x=y$.  Any attempt to define an injection will then cause the
+typechecker to generate the proof obligation that ensures this
+predicate is satisfied for the definition concerned.
+
+The base types of PVS include built-in types such as the booleans,
+integers, reals, and the ordinals up to $\epsilon_0$, and uninterpreted
+types that may be introduced by the user; the type-constructors
+include functions, sets, tuples, records, enumerations, and
+recursively-defined abstract data types.  
+
+PVS specifications are organized into parameterized theories that may
+contain assumptions, definitions, axioms, and theorems.  Definitions
+are guaranteed to provide conservative extension; to ensure this,
+recursive function definitions generate proof obligations.  PVS
+expressions provide the usual arithmetic and logical operators,
+function application, lambda abstraction, and quantifiers, within a
+natural syntax.  Names may be freely overloaded, including those of the
+built-in operators such as AND and +.
+
+\subsection{Proof Checker}
+
+The PVS theorem prover provides a collection of powerful primitive
+inference procedures that are applied interactively under user
+guidance within a sequent calculus framework.  The primitive inferences
+include quantifier rules, BDD-based propositional simplification,
+induction, rewriting, simplification of abstract datatype expressions,
+and decision procedures for linear arithmetic (over both reals and
+integers).  User-defined procedures can combine these primitive
+inferences to yield higher-level proof strategies.  Proofs yield
+scripts that can be edited, attached to additional formulas, and
+rerun.  This allows many similar theorems to be proved efficiently,
+permits proofs to be adjusted economically to follow changes in
+requirements or design, and encourages the development of readable
+proofs.
+
+The combination of powerful automation for the primitive proof steps
+with user-written strategies and interactive guidance provides a proof
+checker whose efficiency matches or exceeds that of other theorem
+provers and proof checkers over a wide class of applications.  For
+example, using a single strategy, PVS is able to verify microcode
+correctness for the Gordon's Tamarack computer, pipeline correctness
+for Saxe's processor, and correctness of Bundy and Cantu's
+12-operation ALU, all completely automatically and within a few
+minutes~\cite{Cyrluk94:TPCD}.
+
+\subsection{Applications and Users}
+
+The main applications of PVS have been fault-tolerant algorithms,
+problems in real-time, processor verification, and requirements
+specification.
+
+While the verification of hard fault-tolerant algorithms has mainly
+been done by
+us~\cite{Lincoln&Rushby93:CAV,Lincoln&Rushby93:FTCS,Lincoln&Rushby94:FTP,Owre-etal:FME93,Rushby94:icah},
+we are very pleased that many of the other applications have been
+undertaken jointly with collaborators in government, industry or
+academia.
+
+Jens Skakkeb{\ae}k, a student from the Technical University of
+Denmark, has collaborated with Shankar to develop a proof assistant
+for the Duration Calculus (called PC/DC) on top of
+PVS~\cite{Skakkebaek&Shankar94}.  PC/DC has been used to check a
+number of pencil and paper specifications and proofs in the Duration
+Calculus, leading to the discovery of errors in every
+one~\cite{Inal&Jens94}.  Working independently, Professor Jozef Hooman
+at Eindhoven University of Technology in The Netherlands has developed
+an approach for the top-down development of distributed real-time
+systems using an extension to Hoare logic, and has mechanized it using
+PVS~\cite{Hooman94}.  Also in The Netherlands, Sreeranga Rajan used
+PVS to specify and verify some of the transformations used for high
+level synthesis in a VLSI CAD system at Philips Research Laboratories.
+PVS is used at a number of other universities in Northern Europe and a
+PVS User's meeting was held at Lyngby in April, 1994.
+
+A collaborative project between Collins Commercial Avionics and SRI
+has been using PVS to formally specify the macro- and
+micro-architectures and to formally verify the microcode of an
+avionics processor called AAMP5~\cite{Miller&Srivas95}.  This is
+probably the most complex processor verification ever undertaken (the
+AAMP5 has 500,000 transistors, 208 instructions, is microcoded, and
+has a pipeline and other complicating factors).  The formal
+verification detected an error that had been missed by Collins
+traditional V\&V process.  Ricky Butler of NASA Langley developed the
+extensive PVS bitvector library that was used in this verification.
+
+Ricky Butler, together with Damir Jamsek of ORA, also developed a
+finite sets library that has been used in the PVS specification of
+requirements for railroad signalling developed by ORA and Union Switch
+and Signal.  Other groups making use of PVS include JPL, Loral, NSA,
+and several universities in the US and Europe.
+
+\bibliographystyle{modplain}
+\begin{thebibliography}{10}
+
+\bibitem{Butler:PVS-tut}
+Ricky~W. Butler.
+\newblock An elementary tutorial on formal specification and verification using
+  {PVS}.
+\newblock NASA Technical Memorandum 108991, NASA Langley Research Center,
+  Hampton, VA, June 1993.
+
+\bibitem{Cyrluk94:TPCD}
+D.~Cyrluk, S.~Rajan, N.~Shankar, and M.~K. Srivas.
+\newblock Effective theorem proving for hardware verification.
+\newblock In {\em Theorem Provers in Circuit Design}, Bad Herrenalb
+  (Blackforest), Germany, September 1994.
+\newblock To appear.
+
+\bibitem{Hooman94}
+Jozef Hooman.
+\newblock Correctness of real time systems by construction.
+\newblock In {\em Symposium on Formal Techniques in Real-Time and
+  Fault-Tolerant Systems}, L\"{u}beck, Germany, September 1994. Lecture Notes
+  in Computer Science, Springer-Verlag.
+\newblock (To appear).
+
+\bibitem{Inal&Jens94}
+Ricep Inal and Jens~U. Skakkeb{\ae}k.
+\newblock Applying a mechanized duration calculus assistant.
+\newblock In Hans Rischel, editor, {\em Nordic Seminar on Dependable Computing
+  Systems}, pages 69--80, Lyngby, Denmark, August 1994. Technical University of
+  Denmark.
+
+\bibitem{Lincoln&Rushby93:CAV}
+Patrick Lincoln and John Rushby.
+\newblock Formal verification of an algorithm for interactive consistency under
+  a hybrid fault model.
+\newblock In Costas Courcoubetis, editor, {\em Computer-Aided Verification, CAV
+  '93}, pages 292--304, Elounda, Greece, June/July 1993. Volume 697 of {\em
+  Lecture Notes in Computer Science}, Springer-Verlag.
+
+\bibitem{Lincoln&Rushby93:FTCS}
+Patrick Lincoln and John Rushby.
+\newblock A formally verified algorithm for interactive consistency under a
+  hybrid fault model.
+\newblock In {\em Fault Tolerant Computing Symposium 23}, pages 402--411,
+  Toulouse, France, June 1993. IEEE Computer Society.
+
+\bibitem{Lincoln&Rushby94:FTP}
+Patrick Lincoln and John Rushby.
+\newblock Formal verification of an interactive consistency algorithm for the
+  {Draper FTP} architecture under a hybrid fault model.
+\newblock In {\em COMPASS '94 (Proceedings of the Ninth Annual Conference on
+  Computer Assurance)}, pages 107--120, Gaithersburg, MD, June 1994. IEEE
+  Washington Section.
+
+\bibitem{Miller&Srivas95}
+Steven~P. Miller and Mandayam Srivas.
+\newblock Formal verificatin of the {AAMP5} microprocessor: A case study in the
+  industrial use of formal methods.
+\newblock Submitted to WIFT '95.
+
+\bibitem{Owre-etal:FME93}
+Sam Owre, John Rushby, Natarajan Shankar, and Friedrich von Henke.
+\newblock Formal verification for fault-tolerant architectures: Some lessons
+  learned.
+\newblock In J.~C.~P. Woodcock and P.~G. Larsen, editors, {\em FME '93:
+  Industrial-Strength Formal Methods}, pages 482--500, Odense, Denmark, April
+  1993. Volume 670 of {\em Lecture Notes in Computer Science}, Springer-Verlag.
+
+\bibitem{Rushby94:icah}
+John Rushby.
+\newblock A formally verified algorithm for clock synchronization under a
+  hybrid fault model.
+\newblock In {\em Thirteenth ACM Symposium on Principles of Distributed
+  Computing}, pages 304--313, Los Angeles, CA, August 1994. Association for
+  Computing Machinery.
+
+\bibitem{Skakkebaek&Shankar94}
+Jens~U. Skakkeb{\ae}k and N.~Shankar.
+\newblock Towards a duration calculus proof assistant in pvs.
+\newblock In {\em Symposium on Formal Techniques for Real-Time and
+  Fault-Tolerant Systems}, L\"{u}beck, Germany, September 1994. Lecture Notes
+  in Computer Science, Springer-Verlag.
+\newblock (To appear).
+
+\end{thebibliography}
+
+\end{document}
+% End of wift95.tex -----------------------------------

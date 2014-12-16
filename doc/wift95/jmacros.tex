@@ -1,0 +1,173 @@
+%
+%
+%    LaTeX  Macro File  /usr2/jcm/tex/macros.tex
+%
+%
+\tracingonline=0 % shorter error messages (on screen)
+
+%\long\def\comment#1{} % mulit-line comments
+%\newcommand{\note}[1]{\fbox{#1}}
+
+% font changes  (as function calls, scribe style)
+
+\renewcommand{\i}[1]{{\it #1\/}}       % italics with space correction
+%\newcommand{\emex}[1]{\/{\em #1}}   % emphasis in example, exercise, theorem, etc.
+\renewcommand{\c}[1]{{\sc #1}}       % small caps (eliminates \c as cedilla)
+%\newcommand{\r}[1]{{\rm #1}}            % for roman font in math mode
+%\newcommand{\s}[1]{{\scr #1}}          % script (for use with tatex) 
+\newcommand{\s}[1]{{\cal #1}}
+\renewcommand{\b}[1]{{\bf #1}}           % bold face
+\newcommand{\calg}[1]{{\cal #1}}          % caligraphic 
+
+%\newcommand{\q}[1]{``#1''}    % matching quotes for in-line quotation
+
+% numbered environments
+
+%\newcounter{partcounter}
+%\setcounter{partcounter}{0}
+%\renewcommand{\part}[1]{\newpage \addtocounter{partcounter}{1}
+%\noindent{\Large \bf Part \Roman{partcounter}. #1 } \\[1ex]}
+
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{theorem}[thm]{Theorem}
+\newtheorem{lemma}[thm]{Lemma}
+\newtheorem{cor}[thm]{Corollary}
+\newtheorem{corollary}[thm]{Corollary}
+\newtheorem{claim}[thm]{Claim}
+\newtheorem{prop}[thm]{Proposition}
+\newtheorem{conj}[thm]{Conjecture}
+\newtheorem{definition}[thm]{Definition}
+\newtheorem{exercise}[thm]{Exercise}
+\newtheorem{example}[thm]{Example}
+\newtheorem{remark}[thm]{Remark}
+\newtheorem{open}[thm]{Open Problem}
+
+%\newcommand{\proof}{\\{\bf Proof.}\ }
+\newenvironment{proof}{{\bf Proof. }}{\thmbox}
+
+% axiom and inference rule (centered, in math mode,  with name at left)
+
+\newcommand{\axiom}[2]
+{\[ \hbox to \columnwidth
+    { \rlap{$#2$} \hfil {$ #1 $} \hfil }
+\]}
+
+\newcommand{\infrule}[4]
+{\[ \hbox to \columnwidth %\textwidth
+    { \rlap{$#4$} \hfil $
+      \frac {\strut\displaystyle #1 } {\strut\displaystyle #2 } \; \rlap{$#3$} \hfil $
+      \hfil }
+\]}
+\newcommand{\infruletw}[4]
+{\[ \hbox to \textwidth
+    { \rlap{$#4$} \hfil $
+      \frac {\strut\displaystyle #1 } {\strut\displaystyle #2 } \; \rlap{$#3$} \hfil $
+      \hfil }
+\]}
+
+%\newcommand{\infrule}[4]
+%{\[ \hbox to \columnwidth
+%    { \rlap{$#4$} \hfil $
+%      {{\displaystyle\strut #1}\over{\displaystyle\strut #2}}\quad\makebox[0pt][l]{\it #3} $
+%      \hfil }
+%\]}
+
+% axiom and inference rule macros for use in tables, etc.
+% presumed in math mode #1=axiom, #2=side condition
+\newcommand{\Axiom}[2]{
+{\displaystyle\strut #1}\qquad\makebox[0pt][l]{\it #2}
+}
+% presumed in math mode #1=top, #2=bottom, #3=side condition
+\newcommand{\Infrule}[3]{
+{{\displaystyle\strut #1}\over{\displaystyle\strut #2}}\;\mbox{\scriptsize$\bf #3$}
+}
+
+% sequence of #1's, numbered up to #2  (e.g., seq{x}{n} for x1, ..., xn   )
+
+\newcommand{\seq}[2]{#1_{1} \ldots #1_{#2}}  
+%\newcommand{\ie}{{\it i.e.}}
+%\newcommand{\eg}{{\it e.g.}}
+%\newcommand{\cf}{{\it c.f.\,}}
+
+% common symbols
+
+\newcommand{\union}{\cup}
+\newcommand{\intersect}{\cap}
+\newcommand{\subs}{\subseteq}
+\newcommand{\el}{\in}
+\newcommand{\nel}{\not\in}
+\newcommand{\ns}{\emptyset}
+\newcommand{\compose}{\circ}
+\newcommand{\set}[2]{ \{\, #1 \,\mid\, #2 \,\}  } % set macro
+\newcommand{\infinity}{\infty}
+\newcommand{\pair}[1]{\langle #1 \rangle}
+\newcommand{\tuple}[1]{\langle #1 \rangle}
+
+
+\newcommand{\fa}{\forall}
+\newcommand{\te}{\exists}
+\newcommand{\imp}{\supset}
+\newcommand{\implies}{\supset}
+\newcommand{\ts}{\vdash}
+\newcommand{\dts}{\models}
+
+\newcommand{\aro}{\mathord\rightarrow} % see pages 154-155 of TeX manual
+\newcommand{\paro}{\rightharpoonup} 
+\newcommand{\karo}{\mathop\Rightarrow} % see pages 154-155 of TeX manual
+%\newcommand{\cross}{\times}
+%\newcommand{\dlb}{\lbrack\!\lbrack}
+%\newcommand{\drb}{\rbrack\!\rbrack}
+\newcommand{\mean}[1]{\lbrack\!\lbrack #1 \rbrack\!\rbrack}
+\newcommand{\lam}{\lambda}
+\newcommand{\subst}[2]{{}[#1/#2]}
+\renewcommand{\dot}{\mathrel{\bullet}}
+\newcommand{\Dinf}{D_{\infty}}
+\newcommand{\bottom}{\perp}
+
+\mathcode`:="603A  % treat : as punctuation instead of relation in math mode
+\mathchardef\colon="303A	% relation colon
+
+\newcommand{\eqdef}{\mathrel{:=}}
+\newcommand{\Dom}{\mathop{\rm dom}}
+\newcommand{\Pow}{\mathop{\rm Pow}}
+
+\newcommand{\aequiv}{\equiv_\alpha}
+\newcommand{\baro}{\buildrel \beta \over \rightarrow}
+\newcommand{\earo}{\buildrel \eta \over \rightarrow}
+\newcommand{\red}{\rightarrow\!\!\!\!\rightarrow}
+\newcommand{\backred}{\leftarrow\!\!\!\!\leftarrow}
+\newcommand{\bred}{\buildrel \beta \over \red}
+\newcommand{\ered}{\buildrel \eta \over \red}
+\newcommand{\conv}{\leftrightarrow}
+\newcommand{\beconv}{\buildrel {\beta, \eta} \over\leftrightarrow}
+
+% lambda calculus abbreviations
+\newcommand{\letdec}[3]{\b{let\ } #1 = #2 \b{\ in\ } #3}
+\newcommand{\letrec}[3]{\b{letrec\ } #1 = #2 \b{\ in\ } #3}
+
+\newcommand{\thmbox}
+   {{\ \hfill\hbox{%
+      \vrule width1.0ex height1.0ex
+   }\parfillskip 0pt }}
+\newcommand{\qed}{\thmbox}
+
+
+% make single spacing
+
+\newcommand{\singlespace}{\renewcommand{\baselinestretch}{1}\@normalsize}
+\newcommand{\etal}{{\em et al.}}
+
+% bycase command for definition by cases (pg 49 of LaTeX)
+
+\newcommand{\bycase}[1]
+	{\left\{ \begin{array}{ll}  #1  \end{array} \right. }
+
+
+% make \cite put blanks after the comma (use in alpha style)
+
+%\def\@citex[#1]#2{\if@filesw\immediate\write\@auxout{\string\citation{#2}}\fi
+%  \def\@citea{}\@cite{\@for\@citeb:=#2\do
+%    {\@citea\def\@citea{,\penalty100\hskip2.5pt plus1.5pt minus.8pt}%
+%       \@ifundefined{b@\@citeb}{{\bf ?}\@warning
+%       {Citation `\@citeb' on page \thepage \space undefined}}
+%\hbox{\csname b@\@citeb\endcsname}}}{#1}}

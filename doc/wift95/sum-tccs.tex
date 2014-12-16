@@ -1,0 +1,7 @@
+% Subtype TCC generated (line 7) for n - 1
+  % unchecked
+sum_TCC1: OBLIGATION (FORALL (n: nat): NOT n = 0 IMPLIES n - 1 >= 0);
+
+% Termination TCC generated (line 7) for sum
+  % unchecked
+sum_TCC2: OBLIGATION (FORALL (n: nat): NOT n = 0 IMPLIES n - 1 < n);

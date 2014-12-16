@@ -1,0 +1,299 @@
+% Document Type: LaTeX
+% Master File: refcard.tex
+% Reference Card for \pvs\ version 6.1; adapted from the refcard.tex
+% distributed with GNU Emacs
+%**start of header
+
+%\documentstyle[alltt,relative]{article}
+%\pagestyle{empty}
+\newcount\columnsperpage
+
+% This file can be printed with 1, 2, or 3 columns per page (see below).
+% Specify how many you want here.  Nothing else needs to be changed.
+
+\columnsperpage=1
+
+% This file is intended to be processed by LaTeX
+%
+% The final reference card has eight columns, four on each side.
+% This file can be used to produce it in any of three ways:
+% 1 column per page
+%    produces six separate pages, each of which needs to be reduced to 80%.
+%    This gives the best resolution.
+% 2 columns per page
+%    produces three already-reduced pages.
+%    You will still need to cut and paste.
+% 3 columns per page
+%    produces two pages which must be printed sideways to make a
+%    ready-to-use 8.5 x 11 inch reference card.
+%    For this you need a dvi device driver that can print sideways.
+% Which mode to use is controlled by setting \columnsperpage above.
+%
+% Author:
+%  Sam Owre
+%  Internet: owre@csl.sri.com
+
+\def\pvs{{PVS}}
+\def\titlepvs{{PVS}}
+\def\headingpvs{{PVS}}
+\def\headinglatex{{\bf L\kern-.36em\raise.3ex\hbox{\smaller\smaller\bf A}\kern-.15em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\def\versionnumber{2.0\alpha+}
+\def\year{1995}
+\def\version{February \year\ v\versionnumber}
+
+%\def\shortcopyrightnotice{\vskip 1ex plus 2 fill
+%  \centerline{\small \copyright\ \year\ Free Software Foundation, Inc.
+%  Permissions on back.  v\versionnumber}}
+
+%\def\copyrightnotice{
+%\vskip 1ex plus 2 fill\begingroup\small
+%\centerline{Copyright \copyright\ \year\ Free Software Foundation, Inc.}
+%\centerline{designed by Stephen Gildea, \version}
+%\centerline{for GNU Emacs version 18 on Unix systems}
+
+%Permission is granted to make and distribute copies of
+%this card provided the copyright notice and this permission notice
+%are preserved on all copies.
+%
+%For copies of the GNU Emacs manual, write to the Free Software
+%Foundation, Inc., 675 Massachusetts Ave, Cambridge MA 02139.
+%
+%\endgroup}
+
+% make \bye not \outer so that the \def\bye in the \else clause below
+% can be scanned without complaint.
+%\def\bye{\par\vfill\supereject\end}
+
+\newdimen\intercolumnskip
+\newbox\columna
+\newbox\columnb
+
+\def\ncolumns{\the\columnsperpage}
+
+\message{[\ncolumns\space 
+  column\if 1\ncolumns\else s\fi\space per page]}
+
+\def\scaledmag#1{ scaled \magstep #1}
+
+% This multi-way format was designed by Stephen Gildea
+% October 1986.
+\if 1\ncolumns
+  \hsize \textwidth
+%  \textwidth \hsize
+%  \vsize 10in
+%  \textheight \vsize
+%  \topmargin -.6in
+%  \voffset -.7in
+  \font\titlefont=cmbx10 \scaledmag3
+  \font\headingfont=cmbx10 \scaledmag1
+  \font\smallfont=cmr7
+  \font\smallsy=cmsy7
+
+%  \footline{\hss\folio}
+%  \def\makefootline{\baselineskip10pt\hsize6.5in\line{\the\footline}}
+\else
+  \hsize 3.2in
+  \vsize 7.95in
+  \hoffset -.75in
+  \voffset -.745in
+  \font\titlefont=cmbx10 \scaledmag2
+  \font\headingfont=cmbx10 \scaledmag1
+  \font\smallfont=cmr6
+  \font\smallsy=cmsy6
+  \font\eightrm=cmr8
+  \font\eightbf=cmbx8
+  \font\eightit=cmti8
+  \font\eighttt=cmtt8
+  \font\eightsy=cmsy8
+  \textfont0=\eightrm
+  \textfont2=\eightsy
+  \def\rm{\eightrm}
+  \def\bf{\eightbf}
+  \def\it{\eightit}
+  \def\tt{\eighttt}
+  \normalbaselineskip=.8\normalbaselineskip
+  \normallineskip=.8\normallineskip
+  \normallineskiplimit=.8\normallineskiplimit
+  \normalbaselines\rm		%make definitions take effect
+
+  \if 2\ncolumns
+    \let\maxcolumn=b
+%    \footline{\hss\rm\folio\hss}
+    \def\makefootline{\vskip 2in \hsize=6.86in\line{\the\footline}}
+  \else \if 3\ncolumns
+    \let\maxcolumn=c
+    %\nopagenumbers
+  \else
+    \errhelp{You must set \columnsperpage equal to 1, 2, or 3.}
+    \errmessage{Illegal number of columns per page}
+  \fi\fi
+
+  \intercolumnskip=.46in
+  \def\abc{a}
+  \output={%
+      % This next line is useful when designing the layout.
+      %\immediate\write16{Column \folio\abc\space starts with \firstmark}
+      \if \maxcolumn\abc \multicolumnformat \global\def\abc{a}
+      \else\if a\abc
+	\global\setbox\columna\columnbox \global\def\abc{b}
+        %% in case we never use \columnb (two-column mode)
+        \global\setbox\columnb\hbox to -\intercolumnskip{}
+      \else
+	\global\setbox\columnb\columnbox \global\def\abc{c}\fi\fi}
+  \def\multicolumnformat{\shipout\vbox{\makeheadline
+      \hbox{\box\columna\hskip\intercolumnskip
+        \box\columnb\hskip\intercolumnskip\columnbox}
+      \makefootline}\advancepageno}
+  \def\columnbox{\leftline{\pagebody}}
+
+  \def\bye{\par\vfill\supereject
+    \if a\abc \else\null\vfill\eject\fi
+    \if a\abc \else\null\vfill\eject\fi
+    \end}  
+\fi
+
+% we won't be using math mode much, so redefine some of the characters
+% we might want to talk about
+%\catcode`\^=12
+%\catcode`\_=12
+
+\chardef\\=`\\
+\chardef\{=`\{
+\chardef\}=`\}
+
+\hyphenation{mini-buf-fer}
+
+\parindent 0pt
+\parskip 1ex plus .5ex minus .5ex
+
+\def\small{\smallfont\textfont2=\smallsy\baselineskip=.8\baselineskip}
+\def\hyphfill{\cleaders\hbox{-}\hfill}
+
+\outer\def\newcolumn{\vfill\eject}
+
+\outer\def\title#1{{\titlefont\centerline{#1}}\vskip 1ex plus .5ex}
+
+\outer\def\refsection#1{\par % \filbreak
+  \vskip 2ex plus 1ex minus 1ex {\headingfont #1}%\mark{#1}%
+  \vskip 1ex plus .5ex minus .75ex}
+%\outer\def\subsection#1{\par\filbreak
+%  \vskip 0.5ex plus .25ex minus .4ex {\mbox{}\hyphfill\fbox{#1}\hyphfill\mbox{}}\mark{#1}%
+%  \vskip -1ex}
+
+\newdimen\keyindent
+
+\def\beginindentedkeys{\keyindent=1em}
+\def\endindentedkeys{\keyindent=0em}
+\endindentedkeys
+
+\def\paralign{\vskip\parskip\halign}
+
+\def\<#1>{$\langle${\rm #1}$\rangle$}
+
+\def\kbd#1{{\tt#1}\null}	%\null so not an abbrev even if period follows
+
+\def\beginexample{\par\leavevmode\begingroup
+  \obeylines\obeyspaces\parskip0pt\tt}
+{\obeyspaces\global\let =\ }
+\def\endexample{\endgroup}
+
+\def\key#1#2{\leavevmode\hbox to \hsize{\vtop
+  {\hsize=.6\hsize\rightskip=1em
+  \hskip\keyindent\relax#1}\kbd{#2}\hfil}}
+
+\def\nkey#1#2{\leavevmode\hbox to \hsize{\vtop
+  {\hsize=.4\hsize\rightskip=1em
+  \hskip\keyindent\relax#1${}^\dagger$}\kbd{#2}\hfil}}
+
+\newbox\metaxbox
+\setbox\metaxbox\hbox{\kbd{M-x }}
+\newdimen\metaxwidth
+\metaxwidth=\wd\metaxbox
+
+\def\metax#1#2{\leavevmode\hbox to \hsize{\hbox to .75\hsize
+  {\hskip\keyindent\relax#1\hfil}%
+  \hskip -\metaxwidth minus 1fil
+  \kbd{#2}\hfil}}
+
+\def\threecol#1#2#3{\hskip\keyindent\relax#1\hfil&\kbd{#2}\quad
+  &\kbd{#3}\quad\cr}
+
+\def\var#1#2{\hskip\keyindent\relax#1\hfil&\kbd{#2}\quad\cr}
+%\def\var#1#2{\hskip\keyindent\relax#1\hfil&\kbd{}\quad\cr}
+
+\def\cmdkey#1#2{\leavevmode\hbox to \hsize{\vtop
+  {\hsize=.6\hsize\rightskip=1em
+  \hskip\keyindent\relax#1}\kbd{#2}\hfil}}
+
+%\outer\def\refsubsection#1{\par\filbreak
+%  \vskip 0.5ex plus .25ex minus .4ex {\mbox{}\hyphfill\fbox{#1}\hyphfill\mbox{}}\mark{#1}%
+%  \vskip -1ex}
+
+% redefine refsubsection to be same as refsection
+
+\outer\def\refsubsection#1{\par % \filbreak
+  \vskip 2ex plus 1ex minus 1ex {\headingfont #1}%\mark{#1}%
+  \vskip 1ex plus .5ex minus .75ex}
+%\outer\def\subsection#1{\par\filbreak
+%  \vskip 0.5ex plus .25ex minus .4ex {\mbox{}\hyphfill\fbox{#1}\hyphfill\mbox{}}\mark{#1}%
+%  \vskip -1ex}
+
+
+
+%**end of header
+
+%\begin{document}
+%\title{\titlepvs\ Reference Card}
+
+\centerline{Reference to PVS Version 2.0$\alpha+$}
+\vspace*{2ex}
+
+\markright{PVS Files}
+\title{\titlepvs\ Files}
+\addcontentsline{toc}{section}{\numberline{1} PVS Files}
+
+\input{/project/pvs/doc/refcard/pvs-files}
+
+\input{/project/pvs/doc/refcard/latex-ref}
+
+\newcolumn
+\title{\titlepvs\ Language Summary}
+\markright{PVS Language Summary}
+\addcontentsline{toc}{section}{\numberline{2} PVS Language Summary}
+\input{/project/pvs/doc/refcard/language-ref}
+
+\newcolumn
+\title{\titlepvs\ Emacs Commands}
+\markright{PVS Emacs Commands}
+\addcontentsline{toc}{section}{\numberline{3} PVS Emacs Commands}
+
+\input{/project/pvs/doc/refcard/emacs-commands}
+
+
+\newcolumn
+%\def\vars#1{\paralign to \hsize{##\tabskip=10pt plus 1 fil&\vtop{\parindent=0pt\hsize=0.1in{\small\strut##\strut}}\cr#1}}
+\def\pcmds#1{\setlength{\partopsep}{-0.1in}\begin{description}\setlength{\itemsep}{-0.05in}#1\end{description}}
+%\def\pcmd#1#2{\item[{\tt #1}]\makebox[0in]{}\dotfill\makebox[0in]{#2}}
+\def\pcmd#1#2{\item{\tt #1}}
+\def\opt{\textmedium{\textsc{{\footnotesize \&}opt }}}
+\def\rest{\textmedium{\textsl{{\footnotesize \&}rest }}}
+\def\default#1{[{\tt #1}]}
+
+
+\title{\titlepvs\ Prover Commands}
+\markright{PVS Prover Commands}
+\addcontentsline{toc}{section}{\numberline{4} PVS Prover Commands}
+
+\input{/project/pvs/doc/refcard/prover-cmds}
+
+\wiftnewpage
+
+\markright{PVS Prover Emacs Shortcuts}
+\input{/project/pvs/doc/refcard/prover-emacs-cmds}
+
+
+%\copyrightnotice
+
+%\end{document}

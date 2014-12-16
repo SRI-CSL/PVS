@@ -1,0 +1,756 @@
+% Master File: wift-tutintro.tex
+
+\section{Introducing PVS}
+
+PVS stands for ``Prototype Verification System.''\footnote{A number of
+people have contributed significantly to the design and implementation
+of PVS.  They include David Cyrluk, Friedrich von~Henke, Pat Lincoln,
+Steven Phillips, Sreeranga Rajan, Jens Skakkeb\ae{}k, Mandayam Srivas,
+and Carl Witty.  We also thank Mark Moriconi, Director of the SRI
+Computer Science Laboratory, for his support and encouragement.} It
+consists of a specification language integrated with support tools and
+a theorem prover.  PVS tries to provide the mechanization needed to
+apply formal methods both rigorously and productively.
+
+%We have tried to make it a very productive system to employ for
+%most purposes that require mechanized support for formal methods.
+
+% We think you will find that it is the most productive verification
+% system available for many purposes.
+
+The specification language of PVS is a higher-order logic with a rich
+type-system, and is quite expressive; we have found that most of the
+mathematical and computational concepts we wish to describe can be
+formulated very directly and naturally in PVS\@.  Its theorem prover, or
+proof checker (we use either term, though the latter is more correct),
+is both interactive and highly mechanized: the user chooses each step
+that is to be applied and PVS performs it, displays the result, and then
+waits for the next command.  PVS differs from most other interactive
+theorem provers in the power of its basic steps: these can invoke
+decision procedures for arithmetic, automatic rewriting, induction, and
+other relatively large units of deduction; it differs from other highly
+automated theorem provers in being directly controlled by the user.  We
+have been able to perform some significant new verifications quite
+economically using PVS; we have also repeated some verifications first
+undertaken in other systems and have usually been able to complete them
+in a fraction of the original time (of course, these are previously
+solved problems, which makes them much easier for us than for the
+original developers).
+
+PVS is the most recent in a line of specification languages, theorem
+provers, and verification systems developed at SRI, dating back over
+20 years.  That line includes the Jovial Verification
+System~\cite{jovial:pv}, the Hierarchical Development Methodology
+(HDM)~\cite{Robinson&Levitt,HDM:Handbook}, STP~\cite{STP}, and
+\ehdm~\cite{Melliar-Smith&Rushby,EHDM:tutorial}.  We call PVS a
+``Prototype Verification System,'' because it was built partly as a
+lightweight prototype to explore ``next generation'' technology for
+\ehdm, our main, heavyweight, verification system.  Another goal for
+PVS was that it should be freely available, require no costly
+licenses, and be relatively easy to install, maintain, and use.
+Development of PVS was funded entirely by SRI International
+
+%\memo{and
+%by our unpaid work at nights and weekends.} and it is made available
+%free of charge.
+
+%SRI's investment is not entirely altruistic: we
+%expect to significantly increase the size of the market for formal
+%methods by making a productive verification system readily available.
+
+In the rest of this introduction, we briefly sketch the purposes for
+which PVS is intended and the rationale behind its design, mention
+some of the uses that we and others are making of it, and explain how
+to get a copy of the system.  In Section~2, we use a simple example to
+briefly introduce the major functions of PVS; Sections~3 and 4 then
+give more detail on the PVS language and theorem prover, respectively,
+also using examples.  More realistic examples are provided in
+Section~5.  The PVS language, system, and theorem prover each have
+their own reference
+manuals~\cite{PVS:language,PVS:prover,PVS:userguide}, which you will
+need to study in order to make productive use of the system.  A pocket
+reference card, summarizing all the features of the PVS language,
+system, and prover is also available.
+
+The purpose of this tutorial is not to introduce the general ideas of
+formal methods, nor to explain how formal specification and
+verification can best be applied to various problem domains; rather,
+its purpose is to introduce some of the more unusual and powerful
+capabilities that are provided by PVS.  Consequently, this
+document, and the examples we use, are somewhat technical and are most
+suitable for those who already have some experience with formal
+methods and wish to understand how PVS provides mechanized support for
+some of the more challenging aspects of formal methods.
+
+\subsection{Design Goals for PVS}
+
+PVS provides mechanized support for Formal Methods in Computer
+Science.  ``Formal Methods'' refers to the use of concepts and
+techniques from logic and discrete mathematics in the development of
+computer systems, and we assume that you already have some
+familiarity with this topic.
+
+
+Formal methods can be undertaken for many different purposes, in many
+different ways and styles, and with varying degrees of rigor.  The
+earliest formal methods were concerned with proving programs
+``correct'': a detailed specification was assumed to be available and
+assumed to be correct, and the concern was to show that a program in
+some concrete programming language satisfied the specification.  If
+this kind of program verification is your interest, then PVS is not
+for you.  You will probably be better served by a verification system
+built around a programming language, such as Penelope~\cite{Prasad92} (for
+Ada), or by some member of the Larch family~\cite{Larch85}.
+Similarly, if your interests are gate-level hardware designs, you
+will probably do best to consider model-checking and automatic
+procedures based on BDDs~\cite{Clarke-etal90}.
+
+\comment{
+We have worked chiefly on problems in ``critical systems'' of various
+kinds (e.g., digital flight control) and the design of PVS reflects
+this background.  These critical systems are developed according to
+very exacting procedures, involving extensive testing and review
+(see, e.g., the standards for airborne systems for civil
+aircraft~\cite{DO178B}).  The evidence is that few undetected faults are
+introduced during the later stages of the lifecycle (i.e., detailed
+design and coding) of systems constructed according to these
+procedures.  Instead, the overwhelming evidence is that the serious
+and undetected faults are introduced during the early stages of the
+lifecycle---in requirements formulation, interface specification, and
+mistaken or inconsistent assumptions about the behavior of the larger
+system with which the computer system must interact.  For example, in
+203 formal inspections of six projects at the Jet Propulsion
+Laboratory, it was found that requirements documents averaged one
+major defect every three pages, compared with one every 20 pages for
+code.  Two-thirds of the defects in requirements were
+omissions~\cite{Kelly-etal92}.  In other JPL data, 197 faults
+detected during integration and system testing of the Voyager and
+Galileo spacecraft were characterized as having potentially
+significant or catastrophic effects (with respect to the spacecraft's
+missions)~\cite{Lutz92:rqts}.  Of these 197 faults, 3 were coding
+errors.  The remaining 194 faults were divided approximately 3:1
+overall between ``function faults'' (faults within a single software
+module) and interface faults (interactions with other modules or
+system components).  Two thirds of function faults were attributed to
+flawed requirements (of which omissions were the most common flaw);
+the remaining one third were due to incorrect implementation of
+requirements (i.e., faulty design or algorithms), and tended to
+involve inherent technical complexity, rather than a failure to
+follow the letter of the requirements.  Turning to hardware,
+Keutzer~\cite{Keutzer:hol91} reports that over half of all VLSI chips contain
+faults that are only detected after first fabrication.  None of these
+faults come from the later stages of the development lifecycle
+(probably because of the extensive simulation and analysis
+performed); {\em all\/} are due to flawed requirements or to errors
+introduced in the earliest stages of design.
+
+Thus, in the fields from which our applications come, the later
+stages of the lifecycle are considered under control (maybe
+expensively and clumsily, but under control nonetheless).  All the
+concern is with the early lifecycle: with requirements, overall
+architectural design, interfaces, and critical algorithms.  The
+latter arise, for instance, in fault-tolerant systems, where
+malfunctioning channels and timing anomalies can lead to unexpected
+behavior.  For example, in flight testing of the AFTI-F16 (which had
+an early digital flight control system), ill-understood interactions
+in the redundancy management and fault-tolerance mechanisms became
+the {\em primary\/} source of system failure~\cite{Mackall:TR}.  
+}
+
+The design of PVS was shaped by our experience in doing or
+contemplating early-lifecycle applications of formal methods.  Many of
+the larger examples we have done concern algorithms and architectures
+for fault-tolerance (see~\cite{Owre95:prolegomena} for an overview).  We
+found that many of the published proofs that we attempted to check
+were in fact, incorrect, as was one of the important algorithms.  We
+have also found that many of our own specifications are subtly flawed
+when first written.  For these reasons, PVS is designed to help in the
+detection of errors as well as in the confirmation of ``correctness.''
+One way it supports early error detection is by having a very rich
+type-system and correspondingly rigorous typechecking.  A great deal
+of specification can be embedded in PVS types (for example, the
+invariant to be maintained by a state-machine can be expressed as a
+type constraint), and typechecking can generate proof obligations that
+amount to a very strong consistency check on some aspects of the
+specification.\footnote{As a way to further strengthen error checking,
+we are thinking of adding dimensions and dimensional analysis to the
+PVS type system and typechecker.}
+
+Another way PVS helps eliminate certain kinds of errors is by
+providing very rich mechanisms for conservative extension---that is,
+definitional forms that are guaranteed to preserve consistency.
+Axiomatic specifications can very effective for certain kinds of
+problem (e.g., for stating assumptions about the environment), but
+axioms can also introduce inconsistencies---and our experience has
+been that this does happen rather more often than one would wish.
+Definitional constructs avoid this problem, but a limited repertoire
+of such constructs (e.g., requiring everything to be specified as a
+recursive function) can lead to excessively constructive
+specifications: specifications that say ``how'' rather than ``what.''
+PVS provides both the freedom of axiomatic specifications, and the
+safety of a generous collection of definitional and constructive
+forms, so that users may choose the style of specification most
+appropriate to their problems.\footnote{Unlike \ehdm, PVS does not
+provide special facilities for demonstrating the consistency of
+axiomatic specifications.  We do expect to provide these in a later
+release, but using a different approach than \ehdm.}
+
+The third way that PVS supports error detection is by providing an
+effective theorem prover.  Our experience has been that the act of
+trying to prove properties about specifications is the most effective
+way to truly understand their content and to identify errors.  This
+can come about incidentally, while attempting to prove a ``real''
+theorem, such as that an algorithm achieves its purpose, or it can be
+done deliberately through the process of ``challenging''
+specifications as part of a validation process.  A challenge has the
+form ``if this specification is right, then the following ought to
+follow''---it is a test case posed as a putative theorem; we
+``execute'' the specification by proving theorems about
+it.\footnote{Directly executable specification languages
+(e.g.,~\cite{me-too,Hekmatpour&Ince:prototyping}) support validation
+of specifications by running conventional test cases.  We think there
+can be merit in this approach, but that it should not compromise the
+effectiveness of the specification language as a tool for deductive
+analysis; we are considering supporting an executable subset within
+PVS.}
+
+\comment{
+Some challenges can be constructed systematically (e.g., it is
+always useful to demonstrate that a predicate---a boolean valued
+function---is capable of yielding both true and false results), but
+most require imagination and insight.  Of course, challenges can be
+undertaken without mechanized proof checking, but our experience is
+that informal proofs are too often influenced by what the author
+thinks the specification says (or ought to say); mechanized proof
+checking helps the user understand what the specification really does
+say.\footnote{For experienced users, the discovery of overlooked
+cases is the most common benefit of performing challenges---which is
+consistent with the observation that omissions are the most common
+flaw in informal requirements specifications.  Inexperienced users
+usually find that their specifications are essentially meaningless.}
+Our own experience, and that of users of \ehdm\ and PVS, has been
+such that we attach very little credibility to formal specifications
+that have not been subjected to some degree of mechanized proof
+checking.
+
+A theorem prover that is to help in challenging specifications
+obviously needs to be effective---so that the user can concentrate on
+the substance of the problem, and not on incidental difficulties of
+mechanization---but the notion of ``effective'' must comprehend more
+than just ``efficiency'' or ``power.''  It will be obvious from what
+we have said that many of the ``theorems'' on which the prover is
+invoked will not, in fact, be theorems at all.  Most theorem provers
+are set up to prove true theorems, and may waste a lot of time
+exploring fruitless paths when confronted by a nontheorem.  Even when
+they return with ``unproved,'' it may not be clear whether the
+theorem is false, or inadequate heuristics were employed.  The PVS
+theorem prover, on the other hand, is designed so that the user
+understands and shapes the overall argument.  This not only helps
+discover errors fairly effectively (typically, the user discovers an
+``obviously false'' case due to some missing constraint or other
+oversight), but it maximizes the information content and
+understanding derived from successful proofs; our goal in PVS is to
+shift the focus from theorems (``can you get it proved?'') to proofs
+(``what did you learn by proving it?'').  As a side effect, the
+approach to theorem proving used in PVS generally seems to allow
+proofs of true theorems to be constructed far more quickly than with
+any other theorem prover we know.
+}
+
+%\memo{Main use of FM should be to discover assumptions, test
+%requirements---to do validation as much as verification.}
+%
+\comment{
+%\section{Design Choices in PVS}
+
+The first choice that must be made in design of a specification
+language is selection of its logical foundation.  There are three
+main traditions in mathematics and logic to draw on: the {\em
+logicist\/} approach of Frege and Russell, which uses higher-order
+logic, with the constraints of type theory to keep it consistent; the
+{\em formalist\/} approach of Hilbert, Zermelo, and Fraenkel, which
+uses first-order logic plus axiomatic set theory; and the {\em
+intuitionistic\/} approach of Brouwer, which in computer science is
+mostly shaped by Martin-L\"{o}f's notions of propositions-as-types.
+
+Our decisions for PVS were largely pragmatic rather than
+philosophical.  The intuitionistic approach is a fruitful area of
+research in computer science, and may lead to new understandings of
+computational processes, but it does not seem likely to lead, in the
+short term at least, to the major gains in productivity of formal
+methods that are our aim.
+
+Set theory is the foundation of choice for most mathematicians, but
+it is important to understand their motivations, and how they differ
+from those who undertake formal methods in computer science.
+Set theory was designed as a minimalist foundation within which
+``all of mathematics'' could {\em in principle\/} be formalized.
+The ``in principle'' is important: mathematicians seldom
+actually formalize anything.  Formal methods in computer science, on
+the other hand, is concerned with formalizing requirements, designs,
+algorithms and programs, and with developing formal proofs {\em in
+practice\/}.  Set theory requires mathematical knowledge to be built
+from the bottom up by encoding concepts in terms of more primitive
+concepts.   Proofs in computing are, however, best carried out with some
+degree of abstraction that is unencumbered by details of particular
+encodings of concepts.  
+
+%Mathematical logic was developed by mathematicians to address matters
+%of concern to them.  Initially, those concerns were to provide a
+%minimal and self-evident foundation for mathematics; later, technical
+%questions about logic itself became important.  For these reasons,
+%much of mathematical logic is set up for {\em meta\/}mathematical
+%purposes: to support (relatively) simple proofs of properties such as
+%soundness and completeness, and to show that certain elementary
+%concepts allow some parts of mathematics to be formalized in
+%principle.  
+
+The problems with set theory as a foundation for formal methods are
+that many of its constructions are metamathematical (i.e., they are
+constructions about set theory, not {\em in\/} set theory---although,
+of course, they could performed within set theory {\em in
+principle\/}) and use inperspicuous encodings (e.g., Kuratowski and
+Wiener's ``programming trick'' for representing the ordered pair $(a,
+b)$ as the set $\{a, \{a, b\}\}$).  Of course, these difficulties can
+be mitigated: for example, we can provide parameterized modules or
+``schemas'' in order to admit some metamathematical constructions,
+and we can use a set theory with some of the basic data types built
+in to avoid the more grotesque constructions.  Despite these
+mitigations, however, set theory still has two problems that we
+consider fatal.  First, it is an essentially untyped system:
+everything is a set and can be freely combined with other sets.
+Thus, a function is a set of pairs, and we can take its union with
+some other set.  Our experience has been that strong typing is
+essential for efficient and early detection of errors in
+specifications, and is a useful discipline in its own right (e.g.,
+simply writing down the types of the inputs to a function, or of the
+components of a state, can be a valuable first step in a
+specification).  Strong typing sits uncomfortably on set theory and
+is essentially as kludge (since it must be escaped to perform certain
+constructions).  Second, functions in set theory are sets of pairs,
+and are inherently partial; total functions are a special case.
+Efficient theorem proving usually requires that functions be total,
+and can therefore be difficult to achieve in classical set theory.
+But there is another difficulty to partial functions apart from this:
+it is tricky to ascribe a semantics to expressions involving
+functions that might be applied outside their domain.  Mathematicians
+avoid this problem, by informally ensuring that their function
+applications are always well-defined, but in formal methods we have
+to find some way to enforce this mechanically.  The best choice is
+probably a logic of partial terms~\cite{Beeson86}, in which terms can
+be undefined, but expressions retain the familiar two truth values of
+classical logic.  A less satisfactory choice is a logic of partial
+functions in which ``undefined'' becomes a truth value and the whole
+structure of the logic is modified to accommodate
+it~\cite{Cheng&Jones90}.  In either case, the appealing simplicity of
+set theory is compromised.  As with the other difficulties described
+earlier, it is possible to mitigate these ones, but the mitigations
+tend to move in the direction of type theory (also known as
+higher-order logic), and it might seem best to simply adopt that
+approach in the first place.
+
+Higher-order logic\footnote{``Higher-order'' means that functions can
+take functions as arguments and return functions as values, and
+allows quantification to range over functions.} is the principal
+alternative to axiomatic set theory as a classical (i.e.,
+nonintuitionistic) foundation for mathematics.  Higher-order logic
+needs the discipline of strong typing to keep it
+consistent,\footnote{Russell's paradox shows that unrestricted
+higher-order logic is inconsistent (as is unrestricted set theory).
+Russell developed his theory of types to restore consistency to
+higher-order logic.  His original theory had a notion of ``order'' as
+well of type and is known as the ``Ramified Theory of Types.''
+Ramsey observed that orders were not needed to exclude the
+``logical'' paradoxes, and the theory with types but not orders is
+called the ``Simple Theory of Types.''  Its modern formulation is due
+to Church.  In current terminology ``Simple Type Theory'' is
+equivalent to ``Higher-Order Logic.''} but this aligns with our
+wishes anyway.  Many mathematicians find this discipline and some of
+its associated distinctions irksome.  For example, the empty set is
+not a single notion in type theory: there is a different empty set
+for each type of elements.  Mathematicians call this ``reduplication
+of notions'' ``repugnant''~\cite{Fraenkel-etal84}, but it is
+perfectly defensible on linguistic grounds (e.g., is having no money
+the same as having no worries?), and no trouble for formal methods in
+practice.\footnote{Mathematicians also saddled themselves with opaque
+notation for type theory: they reverse the order of the type symbols,
+``curry'' all functions, and write applications without parentheses.
+Computer Scientists are usually happy to ``declare'' the types of
+variables and functions before use, and can take advantage of
+computerized analysis that supports notational conveniences such as
+name overloading and type-inference.}
+
+One attraction of higher-order logic as a foundation for mechanized
+formal methods is that it is very expressive: it is possible to say
+a great deal in higher-order logic without metalogical assistance.
+A second attraction is that it is inherently a typed system, and a
+third is that functions are total, so that the lower levels of
+theorem proving can be made relatively efficient.
+
+For the reasons described, we have chosen higher-order logic as the
+foundation for the PVS specification language.  Essentially similar
+logics also provide the foundations for \ehdm, and for
+HOL~\cite{Gordon:HOL88}, and the wide range of examples successfully
+undertaken in those systems attest to the utility of higher-order
+logic as a foundation for formal methods.  PVS differs from HOL in
+supplying built-in interpretations for the {\tt integer} and {\tt
+rational} numeric types, and in providing records, enumerations, and
+certain tree-like data structures through built-in type constructors
+(in addition to functions and tuples).  In addition PVS allows {\em
+predicate subtypes\/} and {\em dependent types\/}.  These greatly
+increase the ``precision'' with which terms may be typed---to such an
+extent that typechecking is no longer a deterministic operation but
+can require the assistance of the theorem prover.
+
+As their name suggests, predicate subtypes use a predicate to induce
+a subtype on some parent type.   For example, the natural numbers are
+specified in PVS as:
+\[ {\em nat}: {\bf type} = \{ n: {\em int} | n >= 0 \}. \]
+More interestingly, the signature for the division operation (on the
+rationals) is specified by
+\[ / : [rat, nonzero\_rat -> rat] \]
+where
+\[{\em nonzero\_rat}: {\bf type} = \{ x : {\em rat} | x /= 0 \}\]
+specifies the nonzero rational numbers.   
+This constrains division to nonzero divisors, so that a formula
+such as
+\[ x /= y => (y-x)/(x-y) <0 \]
+requires the typechecker to discharge the proof obligation
+\[ x /= y => (x-y) /= 0 \]
+in order to ensure that the occurrence of division is well-typed.
+Proof obligations such as this are called Typecheck Correctness
+Conditions, or TCCs; they are sufficient (though not always
+necessary) conditions which ensure that the values of logical
+expressions do not depend on functions applied outside their domains.
+The decision procedures of the PVS theorem prover  can
+instantly dispose of simple TCCs similar to this example.   More
+complex TCCs are carried along as proof obligations that must
+discharged (under control of the user) before analysis of the
+specification is considered complete.
+
+As the example of division illustrates, predicate subtypes allow
+certain functions that are partial in some other treatments to remain
+total (thereby avoiding the need for logics of partial terms or
+three-valued logics).  Related constructions allow nice treatments of
+errors, such as {\em pop\/}({\em empty\/}) in the theory of stacks.
+Here we can type the stack operations as follows:
+\begin{alltt}\rm
+  {\em stack\/}: {\bf type}
+  {\em empty\/}: {\em stack\/}
+  {\em nonempty\_stack\/}: {\bf type} = \{({\em s: stack\/}) \(|\) {\em s\/} \(\neq\) {\em empty\/}\}
+
+  {\em push\/}: [{\em elem\/}, {\em stack\/} \(\rightarrow\) {\em nonempty\_stack\/}]
+  {\em pop\/}: [{\em nonempty\_stack} \(\rightarrow\) {\em stack\/}]
+  {\em top\/}: [{\em nonempty\_stack} \(\rightarrow\) {\em elem\/}]
+\end{alltt}
+With these signatures, the expression ${\em pop\/}({\em empty\/})$ is
+rejected during typechecking (because {\em pop\/} requires a {\em
+nonempty\_stack\/} as its argument), and the theorem
+\[ {\em push\/}(e, s) \neq {\em empty\/}\]
+is an immediate consequence of the type definitions.   More
+interestingly, the formula
+\[{\em pop\/}({\em pop\/}({\em push\/}(x, {\em push\/} (y, s)))) = s\]
+is shown to be well-typed by proving the TCC
+\[{\em pop\/}({\em push\/}(x, {\em push\/}(y, s))) /= {\em empty\/},\]
+which follows from the usual stack axioms.  
+
+Untrue proof obligations indicate a type-error
+in the specification, and have proved a potent method for the early
+discovery of specification errors.
+For example, the injections are specified as that subtype of the
+ functions associated with the one-to-one property:
+\[{\em injection}: {\bf type} = \{f: [t_{1} -> t_{2}] \;|
+	 \;\forall (i, j: t_{1}): f(i) = f(j) => i = j\}\]
+(here $t_{1}$ and $t_{2}$ are uninterpreted types introduced
+in the module parameter list).
+If we were later to specify the function {\em square\/} as an
+injection on the integers by the declaration
+\[ {\em square}: {\em injection} = 
+	lambda (x: {\em int}): x \times x\]
+then the PVS typechecker would require us to show that the body of
+{\em square\/} satisfies the {\em injection\/} subtype predicate.
+That is, it requires the proof obligation $i^{2} = j^{2} => i = j$ to be
+proved in order to establish that the {\em square\/} function is
+well-typed.  Since this theorem is untrue (e.g., $2^{2} = (-2)^{2}$
+but $2 \neq -2$), we are led to discover a fault in this
+specification.
+
+Notice how use of predicate subtypes here has automatically led to
+the generation of proof obligations that might require
+special-purpose tools in other systems.  Yet another example of the
+utility of predicate subtypes arises when modeling a system by means
+of a state machine.  In this style of specification, we first
+identify the components of the system state; an invariant then
+specifies how the components of the system state are related, and
+operations are required to preserve this relation.  With predicate
+subtypes available, we can use the invariant to induce a subtype on
+the state type, and can specify that each operation returns a value
+of that subtype.  Typechecking the specification will then
+automatically generate the proof obligations necessary to ensure that
+the operations preserve the invariant.
+
+Dependent types increase the expressive convenience of the language
+still further.   We find them particularly convenient for dealing
+with functions that would be partial in simpler type systems.
+The standard ``challenge'' for treatments of partial
+functions~\cite{Cheng&Jones90} is the function {\em subp\/} on the
+integers defined by
+\[{\em subp\/}(i, j) = \rmif i = j \rmthen 0 
+\rmelse {\em subp\/}(i,j+1)+1 \rmendif.\]
+This function is undefined if $i<j$ (when $i \geq j, {\em
+subp\/}(i,j)=i-j$) and it is often argued that if a specification
+language is to admit this kind of definition, then it must provide a
+treatment for partial functions.  Fortunately, examples such as these
+do {\em not\/} require partial functions: they can be admitted as
+total functions on a very precisely specified domain.  {\em Dependent
+types\/}, in which the {\em type\/} of one component of a structure
+depends on the {\em value\/} of another, are the key to this.  For
+example, in the language of PVS, {\em subp\/} can be specified as
+follows.
+\begin{alltt}\rm
+  {\em subp}({\em i:int}, ({\em j:int} \(|\) \(i\geq j\))): {\bf recursive} {\em int\/} =
+       (\rmif \(i=j\) \rmthen 0 \rmelse \({\em subp\/}(i, j+1)+1\) \rmendif)
+   {\bf measure} \((\lambda (i:{\em int\/}), (j:{\em int\/} | i\geq j): i-j)\)\footnotemark
+\end{alltt}
+\footnotetext{The {\bf measure} clause specifies the function to
+be used in the termination proof.}
+Here, the domain of {\em subp\/} is the dependent tuple-type
+\[ [i:{\em int\/}, \{j:{\em int\/} | i >= j\}]\]
+(i.e., the pairs of integers in which the first component is greater
+than or equal to the second) and the function is total on this domain.
+
+PVS is not unique in providing predicate and dependent types;
+Nuprl~\cite{Nuprl-book} and Veritas~\cite{Hanna89:Veritas}, for
+example, also support these constructions.  PVS differs from others
+in that we support a rich type-system within an entirely classical
+framework (Nuprl mechanizes a constructive type theory, Veritas
+provides the unusual combination of a Martin-L\"{o}f type system and
+a classical higher-order logic).
+
+A unique feature of PVS is the tightness of the integration between
+the specification language and its typechecker, and the theorem
+prover.  We have just seen examples how willingness to use theorem
+proving in typechecking provides simple and sound solutions to
+problems that can otherwise require very complex treatments.
+Conversely, the PVS theorem prover can exploit information from the
+typechecker to guide its search and to decide certain properties.
+Furthermore, the prover uses the PVS language-processing tools, such
+as the parser, typechecker and prettyprinters, so that its dialog
+with the user is conducted entirely in terms of the PVS specification
+language (even though much more austere forms are used internally),
+and so that the user can modify or add the statement of a lemma or
+definition during an ongoing proof.  Much of what happens during a
+proof attempt is the discovery of inadequacies, oversights, and
+faults in the specification that is intended to support the theorem.
+Having to abandon the current proof attempt, correct the problem, and
+then get back to the previous position in the proof, can be very time
+consuming.  Allowing the underlying specification to be extended and
+modified during a proof confers enormous gains in productivity.
+
+The design of the PVS theorem prover was guided by our conviction
+that proofs are at least as important as theorems: it is usually not
+enough to know that a theorem is true, we need to understand {\em
+why\/} it is true---because this understanding will be needed if (or,
+more likely, when) we need to modify the specification to accommodate
+changed assumptions, requirements, or designs.  The PVS prover is
+therefore designed so that the main steps of the proof are given by
+the user; the theorem prover automates the bookkeeping and the routine
+steps and provides the interactive environment that allows the user
+to explore and develop the main argument.  The ideal to which we
+aspire is that developing a proof with PVS should be akin to
+developing one with a knowledgeable but skeptical human colleague.
+This means that the basic inferences that PVS performs automatically
+must be rather powerful, so that the ``dialog'' between user and
+machine is not interrupted by tedious subcases to establish trivial
+facts of arithmetic or to expand and simplify definitions.
+
+For the reasons just explained, the basic inference steps in PVS were
+chosen to be powerful in comparison with the simple rules given in
+textbook introductions to logic.  Each inference step is flexible, so
+it can be used in a variety of related ways, and takes optional
+parameters that adjust its behavior.  For example, the beta reduction
+rule eliminates all redexes (and for flexibility many things are
+regarded as redexes) from a set of formulas specified by a parameter
+(the default is all formulas).  PVS also provides a mechanism for
+composing basic inference steps into proof ``strategies'' (rather
+like subroutines in a programming language, or the tacticals of
+LCF-style provers), a facility for rerunning proofs, and another to
+check that all secondary proof obligations (such as Type Correctness
+Conditions) have been discharged.  Powerful primitive inferences make
+the composed inference steps correspondingly more powerful, and allow
+the proof to be represented in a manner that can be rerun efficiently
+and that is robust in the face of small changes to the specification
+or theorem.  A small and carefully chosen set of primitive inferences
+also makes the system easier to learn and use.
+
+Interaction between PVS and the user is organized in the manner of
+Gentzen's Sequent Calculus.  This is explained in the documents
+describing the theorem prover, but the basic idea is that a proof is
+developed as a tree of {\em sequents\/}; each sequent can be
+considered as a disjunction of ``antecedent'' formulas that implies a
+conjunction of ``consequent'' formulas; at any instant, the focus of
+attention is one of the leaf sequents in the proof tree; a proof step
+(i.e., a primitive inference) either recognizes the current focus
+sequent as true and shifts attention to some other leaf sequent in
+the proof tree, or else it adds one or more children to the current
+focus sequent and shifts attention to one of those children; the goal
+is to develop a proof tree whose leaves are all recognized as true.
+This is a ``backwards'' approach to proof, in that we start from the
+conclusion to be proved and progressively apply inference steps to
+generate subgoals until the subgoals are trivially provable.  The
+attraction of the sequent calculus is that a sequent is a
+very compact and clear way to represent all the information relevant
+to the current step of the proof, and the basic steps are very
+regular and intuitive.
+
+The various tools and functions of PVS use the GNU Emacs editor
+running under Unix as their interface: the theorem prover runs in its
+own buffer and its commands are typed directly into that buffer; the
+other tools and functions are invoked through extended Emacs
+commands.  This means that you do need to learn Emacs in order to use
+PVS effectively.  Apart from the extra functionality of the PVS
+commands, the PVS Emacs is a perfectly standard Gnu Emacs and that
+can be used for editing non-PVS files, reading mail and news, and so
+on.  We chose Emacs as the interface for PVS partly for its
+portability and economy---the rich functionality of Emacs and of
+extensions such as ILISP allowed us to construct many attractive
+capabilities rather easily and inexpensively---and partly from
+personal preference: Emacs is our interface of choice for everything
+else we use our computers for.
+
+PVS specifications are composed of units called {\em theories\/},
+which are stored in standard ascii text files with extension {\tt
+pvs}.  Each PVS file contains one or more theories, and a collection
+of such files stored in one directory make up a specification.  Any
+proofs developed for the theories in a given PVS file are saved in a
+file with the same name, but extension {\tt prf}.  The {\tt .pvs} and
+{\tt .prf} files in a single directory constitute a PVS {\em
+context\/} whose state of development is automatically saved and
+restored from one PVS session to another.  A typical PVS session
+begins by loading and modifying some existing PVS files, or creating
+new some new ones, using standard Emacs editing capabilities.
+Usually, the commands to parse and typecheck a PVS file will be given
+next.  Either or both of these operations may detect errors in the
+PVS specification whose correction may require some iteration of
+these steps.  Next, a proof may be attempted; this is started by
+moving the cursor to the formula to be proved and giving the
+appropriate command.  If a proof has already been saved for the
+formula concerned, the user is given the option of rerunning it or
+developing a new proof from scratch.  If the former option is chosen,
+the saved proof may succeed, or it may not (e.g., because the
+specification has changed).  In the latter case, control is returned
+to the user in the same state as if the saved proof had just been
+developed interactively; the user can now choose to undo some proof
+steps on certain branches of the proof tree in order to develop a
+modified proof suitable to the changed specification.  An alternative
+approach, which is especially suitable when a specification changes
+in a very regular way (e.g., a function is renamed), is to use the PVS
+facilities for editing saved proof scripts---this approach is most
+suitable for more advanced users.  An edited proof can be attached to
+a different (or additional) formula than the one it came from
+originally.  This can be very convenient if several theorems have a
+very similar form and should yield to similar proofs.  Another
+approach in these cases is to develop a {\em strategy\/}, that is
+series of PVS proof steps combined within a control mechanism that
+can be used rather like a ``proof subroutine.''
+
+When a specification is modified, all saved proofs associated with
+the changed PVS files become ``suspect'': the system will once again
+consider their corresponding theorems ``proved'' only when the PVS
+prover has successfully rerun them.  PVS provides commands for
+rerunning such proofs as a batch, and for discovering the current
+status of the theories, files, and proofs that constitute a
+specification.
+
+Specifications and proofs generally need to be studied by others than
+their original developers.  PVS provides a prettyprinter for
+reformatting specifications in a very regular manner, and a rather
+versatile \LaTeX-printer that can be used to typeset PVS
+specifications.  The \LaTeX-printer can be customized by simple
+user-supplied tables in ways that allow it to reproduce standard
+mathematical notation.  The same capability can also be used to
+typeset a proof transcript.  PVS is also able to generate a
+cross-reference to the declarations of identifiers, and has functions
+that allow the declaration or uses of an identifier under the cursor
+to be viewed or visited.
+
+%\section{What's in PVS?}
+
+In this section we briefly list the capabilities and functions of the
+PVS language, prover, and system.  
+
+TBD.
+
+%\section{Comparing PVS to other Verification Systems}
+
+In this section we briefly compare the facilities, capabilities, and
+design choices employed in PVS with those of a number of other
+systems that you might be familiar with.  The purpose of this section
+is not to suggest that PVS is better than these other very fine
+systems, but to give you an idea how it differs from them, and
+thereby to help you decide whether PVS is likely to provide the
+services you need.
+
+% three traditions.
+
+% VDM, Z, and mural etc,
+% BM, Otter, Paulson's system
+% HOL, Eves, Imps
+
+% tight leash or drag towards conclusion
+}
+
+\subsection{Uses of PVS}
+
+PVS has so far been applied to several small demonstration examples,
+and a growing number of significant verifications.  The smaller
+examples include the specification and verification of ordered binary
+tree insertion~\cite{Shankar:ADT}, a compiler for simple arithmetic
+expressions~\cite{Rushby95:Movie}, and several small hardware examples
+including pipeline and microcode correctness~\cite{Cyrluk94:TPCD}.
+Examples of this scale can typically be completed within a day.  More
+substantial examples include the correctness of a real-time railroad
+crossing controller~\cite{Shankar93:CAV}, an embedding of the Duration
+Calculus~\cite{Skakkebaek&Shankar94}, the correctness of some
+transformations used in digital syntheses~\cite{Sree94:TR}, and the
+correctness of distributed agreement protocols for a hybrid fault
+model consisting of Byzantine, symmetric, and crash
+faults~\cite{Lincoln&Rushby93:CAV,Lincoln&Rushby93:FTCS,Lincoln&Rushby94:FTP}.
+These harder examples can take from several days to several weeks.
+Industrial applications of PVS include verification of selected
+elements of a commercial avionics microprocessor whose implementation
+has 500,000 transistors~\cite{Miller&Srivas95}.
+Some of these applications of PVS are summarized
+in~\cite{Owre95:prolegomena}, which also
+motivates and describes
+some of the design decisions underlying PVS\@.
+Applications of PVS undertaken independently of SRI
+include~\cite{Hooman94,Butler:PVS-tut,Johnson94:TPCD,Miner94:circuit}.
+
+\subsection{Getting and Using PVS}
+
+At the moment, PVS is readily available only for Sun SPARC
+workstations running SunOS 4.1.3, although versions of the system have
+been run on IBM Risc 6000 (under AIX) and DECSystem 5000 (under
+Ultrix).  PVS is implemented in Common Lisp (with CLOS), and has been
+ported to Lucid, Allegro, AKCL, CMULISP, and Harlequin Lisps.
+Only the Lucid and Allegro versions deliver acceptable performance.
+All versions of PVS require \gnuemacs, which must be obtained
+separately.  It is not particular about the window system, as long as
+it supports \gnuemacs, although some facilities for presenting
+graphical representaitons of theory dependencies and proof trees
+(implemented in Tcl/TK) do require X-Windows.  In addition, \LaTeX\
+and an appropriate viewer are needed to support certain optional
+features of \pvs.
+
+PVS is quite large, requiring about 50 megabytes of disk space.  In
+addition, any system on which it is to be run should have a minimum of
+100 megabytes of swap space and 48 megabytes of real memory (more is
+better).  To obtain the \pvs\ system, send a request to {\tt
+pvs-request@csl.sri.com}, and we will provide further instructions for
+obtaining a tape or for getting the system by FTP\@.  Alternatively,
+you may inspect the installation instructions over WWW at URL {\tt
+http://www.csl.sri.com/pvs.html}.  All installations of PVS must be
+licensed by SRI\@.  The Lucid Lisp version requires that you have a
+runtime license for Lucid Lisp.  A nominal distribution fee is charged
+for tapes; there is no charge for obtaining PVS by FTP.

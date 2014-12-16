@@ -1,0 +1,40 @@
+The WIFT tutorial (wift-tutorial.dvi) was created by concatenating five
+separate dvi files using dviconcat:
+
+  dviconcat wift-tutintro.dvi \
+            phones.dvi \
+            tse95.dvi \
+            tutorial.dvi \
+            refcard.dvi > merged.dvi
+
+wift-tutintro - simply introduces the tutorial organization
+
+phones - Rushby's phone examples
+
+tse95 - reformatted version of the IEEE 95 paper
+     IEEE.bst
+     IEEE.sty
+     IEEEtran.sty
+
+tutorial - the PVS tutorial
+     overview
+     system
+       sum-proof
+       sum
+       sum-sub
+       sum-tccs
+     language
+     prover
+     hardware-eg
+       adder-spec
+       adder-tccs
+       base-step
+       clarkeverysmall
+       pipeline-spec
+       siblings
+       signal-spec
+
+refcard - the PVS reference card - requires LaTeX2e
+
+
+Also in this directory is the wift-proposal

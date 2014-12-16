@@ -1,0 +1,35 @@
+\newenvironment{commentary}{\begin{quote}\small{\bf Commentary:}}{{\bf
+End of Commentary}\normalsize\end{quote}} 
+%\newenvironment{proof}{{\bf Proof:}}{$\Box$\\}
+%\newtheorem{theorem}{Theorem}
+%\newtheorem{lemma}{Lemma}
+%\newtheorem{proposition}{Proposition}
+%\newtheorem{definition}{Definition}
+%\newtheorem{corollary}{Corollary}
+%\newtheorem{example}{Example}
+\newenvironment{mytheorem}{\begin{theorem}\rm}{\end{theorem}}
+%\newcommand{\qed}[0] {\rule{1ex}{1ex} \vspace{2ex}}
+\newcommand{\defdef}{\mbox{$\stackrel{\rm def}{=}$}}
+\def\defn{\mathrel{\defdef}}
+%\newcommand{\defn}{\mbox{$\stackrel{\rm def}{=}$}}
+\newcommand{\intro}[1]{\begin{itemize}\item #1 \end{itemize}}
+\newcommand{\simeqrel}[1]{\stackrel{#1}{\simeq}}
+\newcommand{\eqrel}[1]{\stackrel{#1}{\approx}}
+\newcommand{\simrel}[1]{\stackrel{#1}{\sim}}
+\newcommand{\congrel}[1]{\stackrel{#1}{\cong}}
+\def\maj{\mathop{\rm maj}}
+\def\min{\mathop{\rm min}}
+\def\rem{\mathop{\rm rem}}
+\def\div{\mathop{\rm div}}
+\newcommand{\rmand}{\mbox{\bf \ and }}
+\newcommand{\rmif}{\mbox{\bf if\ }}
+\newcommand{\rmiff}{\mbox{\bf \ iff \ }}
+\newcommand{\rmthen}{\mbox{\bf \ then }}
+\newcommand{\rmelse}{\mbox{\bf \ else }}
+\newcommand{\rmend}{\mbox{\bf end}}
+\newcommand{\rmendif}{\mbox{\bf \ endif}}
+\newcommand{\rmotherwise}{\mbox{\bf otherwise}}
+\newcommand{\rmwith}{\mbox{\bf \ with\ }}
+\newcommand{\aless}{\mathrel{\mbox{\lower.9ex\hbox{$\stackrel{\textstyle <}{\sim}$}}}}
+\newcommand{\amore}{\mathrel{\mbox{\lower.9ex\hbox{$\stackrel{\textstyle >}{\sim}$}}}}
+\newcommand{\seqarrow}{\mathrel{\mbox{\boldmath $\rightarrow$}}}

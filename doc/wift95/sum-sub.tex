@@ -1,0 +1,27 @@
+% The following substitutions are from the file:
+%   /amber/homes/rushby/tadpole/pvs-tex.sub
+\def\sumonefn#1{{\sum_{i=0}^{#1} i}}% How to print function sum with arity (1)
+\def\removetwofn#1#2{{#2 \setminus \{#1\}}}% How to print function remove with arity (2)
+\def\addtwofn#1#2{{\{#1\} \cup #2}}% How to print function add with arity (2)
+\def\emptysetoneid#1{{\emptyset_#1}}% How to print name emptyset with (1) actuals
+\def\singletononefn#1{{\{ #1 \}}}% How to print function singleton with arity (1)
+\def\uniontwofn#1#2{{#1 \cup #2}}% How to print function union with arity (2)
+\def\differencetwofn#1#2{{#1 \setminus #2}}% How to print function difference with arity (2)
+\setlength{\fboxsep}{1pt} 
+% The following substitutions are from the file:
+%   /homes/EHDM/pvs/pvs-tex.sub
+\def\membertwofn#1#2{{#1 \in #2}}% How to print function member with arity (2)
+\setlength{\fboxsep}{1pt} 
+ \begin{program} 
+ \pvsid{sum} :\mbox{ } \mbox{\large\bf Theory} \pvsnewline{}
+\zi\zi \pvskey{BEGIN} \pvsnewline{}
+ \pvsnewline{}
+ n :\mbox{ } \pvskey{VAR\mbox{ }} \pvsid{nat} \pvsnewline{}
+ \pvsnewline{}
+ \sumonefn { n } :\mbox{ } \pvskey{RECURSIVE\mbox{ }} \pvsid{nat } \mbox{ }=\mbox{ }(\ii \pvskey{IF\mbox{ }} n \mbox{ }=\mbox{ }\ii 0 \pvskey{\mbox{ }THEN\mbox{ }} 0 \pvskey{\mbox{ }ELSE\mbox{ }} n \mbox{ }+\mbox{ }\ii \sumonefn { n \mbox{ }-\mbox{ } 1 } \pvskey{\mbox{ }ENDIF}) \pvsnewline{}
+\\[-\baselineskip]\oo\oo\oo\zi\zi\zi\zi\zi\zo\zo\zo \pvskey{MEASURE\mbox{ }}(\ii \lambda\mbox{ } n :\mbox{ } n) \pvsnewline{}
+\\[-\baselineskip]\oo\zi\zo\zo\zo \pvsnewline{}
+ \pvsid{closed\_form} :\mbox{ } \pvskey{THEOREM\mbox{ }} \sumonefn { n } \mbox{ }=\mbox{ }\ii(\ii n \mbox{ }\times\mbox{ }\ii(\ii n \mbox{ }+\mbox{ }\ii 1)) \mbox{ }/\mbox{ }\ii 2 \pvsnewline{}
+\\[-\baselineskip]\oo\oo\oo\oo\oo\oo\zi\zi\zi\zi\zi\zo\zo\zi\zo\zo\zo\zo \pvsnewline{}
+ \pvskey{END\mbox{ }} \pvsid{sum} \pvsnewline{}
+\zo \end{program}

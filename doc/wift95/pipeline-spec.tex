@@ -1,0 +1,47 @@
+pipe[addr: TYPE, data: TYPE, opcodes: TYPE]: THEORY
+  BEGIN
+   IMPORTING signal, time
+
+   ASSUMING
+    addr_nonempty: ASSUMPTION (EXISTS (a: addr): TRUE)
+    data_nonempty: ASSUMPTION (EXISTS (d: data): TRUE)
+    opcodes_nonempty: ASSUMPTION (EXISTS (o: opcodes): TRUE)
+   ENDASSUMING
+ 
+   t: VAR time   
+
+   %% Signal declarations
+      opcode: signal[opcodes]
+      src1, src2, dstn: signal[addr]
+      stall: signal[bool]
+      aluout: signal[data]
+      regfile: signal[[addr -> data]]
+       ...
+
+    %% Specification of constraints on the signals
+      dstnd_ax: AXIOM dstnd(t+1) = dstn(t)
+      dstndd_ax: AXIOM dstndd(t+1)= dstnd(t)
+      .....
+
+      regfile_ax: AXIOM regfile(t+1) =
+                         IF stalldd(t) THEN regfile(t)
+                         ELSE regfile(t)
+                              WITH [(dstndd(t)) := wbreg(t)]
+                         ENDIF
+      opreg1_ax: AXIOM opreg1(t+1) =
+                    IF src1(t) = dstnd(t) & NOT stalld(t)
+                       THEN aluout(t)
+                    ELSIF src1(t) = dstndd(t) & NOT stalldd(t)
+                          THEN wbreg(t)
+                    ELSE regfile(t)(src1(t)) ENDIF
+       opreg2_ax: AXIOM ...
+
+       aluop: [opcodes, data, data -> data]
+       ALU_ax: AXIOM aluout(t) = aluop(opcoded(t), opreg1(t),
+                                      opreg2(t))
+      correctness: THEOREM (FORALL t:
+        NOT(stall(t)) IMPLIES regfile(t+3)(dstn(t)) =
+                     aluop(opcode(t), regfile(t+2)(src1(t)),
+                                       regfile(t+2)(src2(t))) )
+  END pipe
+  

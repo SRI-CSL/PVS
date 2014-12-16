@@ -1,0 +1,11 @@
+adder_correct.1 :   
+
+  |-------
+{1}   (N > 0
+         IMPLIES
+         (FORALL
+          (bv1: bvec[N], bv2: bvec[N], cin: bool):
+            bvec2nat_rec(0, bv1) + bvec2nat_rec(0, bv2)
+              + bool2bit(cin)
+              = exp2(0 + 1) * bool2bit(bv_cout(0, cin, bv1, bv2))
+                  + bvec2nat_rec(0, bv_sum(cin, bv1, bv2))))

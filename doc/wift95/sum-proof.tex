@@ -1,0 +1,90 @@
+     closed_form :  
+     
+       |-------
+     \{1\}   (FORALL (n: nat): sum(n) = (n * (n + 1)) / 2)
+     
+     Rule? {\bf (induct "n")}
+     Inducting on n,
+     this yields  2 subgoals: 
+     closed_form.1 :  
+     
+       |-------
+     \{1\}   sum(0) = (0 * (0 + 1)) / 2
+     
+     Rule? {\bf (postpone)}
+     Postponing closed_form.1.
+     
+     closed_form.2 :  
+     
+       |-------
+     \{1\}   (FORALL (j: nat):
+              sum(j) = (j * (j + 1)) / 2
+                IMPLIES sum(j + 1) = ((j + 1) * (j + 1 + 1)) / 2)
+     
+     Rule? {\bf (postpone)}
+     Postponing closed_form.2.
+     
+     closed_form.1 :  
+     
+       |-------
+     \{1\}   sum(0) = (0 * (0 + 1)) / 2
+     
+     Rule? {\bf (expand "sum")}
+     (IF 0 = 0 THEN 0 ELSE 0 + sum(0 - 1) ENDIF) 
+     simplifies to 0
+     Expanding the definition of sum,
+     this simplifies to: 
+     closed_form.1 :  
+     
+       |-------
+     \{1\}   0 = 0 / 2
+     
+     Rule? {\bf (assert)}
+     Simplifying, rewriting, and recording with decision procedures,
+     
+     This completes the proof of closed_form.1.
+     
+     closed_form.2 :  
+     
+       |-------
+     \{1\}   (FORALL (j: nat):
+              sum(j) = (j * (j + 1)) / 2
+                IMPLIES sum(j + 1) = ((j + 1) * (j + 1 + 1)) / 2)
+     
+     Rule? {\bf (skolem!)}
+     Skolemizing,
+     this simplifies to: 
+     closed_form.2  |-------
+     \{1\}   sum(j!1) = (j!1 * (j!1 + 1)) / 2
+             IMPLIES sum(j!1 + 1) = ((j!1 + 1) * (j!1 + 1 + 1)) / 2
+     
+     Rule? {\bf (flatten)}
+     Applying disjunctive simplification to flatten sequent,
+     this simplifies to: 
+     closed_form.2 :  
+     
+     \{-1\}   sum(j!1) = (j!1 * (j!1 + 1)) / 2
+       |-------
+     \{1\}   sum(j!1 + 1) = ((j!1 + 1) * (j!1 + 1 + 1)) / 2
+     
+     Rule? {\bf (expand "sum" +)}
+     (IF j!1 + 1 = 0 THEN 0 ELSE j!1 + 1 + sum(j!1 + 1 - 1) ENDIF) 
+     simplifies to 1 + sum(j!1) + j!1
+     Expanding the definition of sum,
+     this simplifies to: 
+     closed_form.2 :  
+     
+     [-1]   sum(j!1) = (j!1 * (j!1 + 1)) / 2
+       |-------
+     \{1\}   1 + sum(j!1) + j!1 = (2 + j!1 + (j!1 * j!1 + 2 * j!1)) / 2
+     
+     Rule? {\bf (assert)}
+     Simplifying, rewriting, and recording with decision procedures,
+     
+     This completes the proof of closed_form.2.
+     
+     Q.E.D.
+     
+     
+     Run time  = 5.62 secs.
+     Real time = 58.95 secs.

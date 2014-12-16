@@ -1,0 +1,1335 @@
+
+\section{The PVS Proof Checker}
+
+The PVS Proof Checker is also referred to as an interactive theorem
+prover.  It is much more automated than the low-level ``proof
+editors'' that support some specification notations, but operates
+under the user's direction and is therefore more controllable than
+purely automatic theorem provers.
+
+
+\subsection{Introduction}
+
+Just as we execute programs to check if they return the desired result,
+we subject high-level functional descriptions of a system to challenges
+by demanding proofs of desirable properties.  We call such challenges
+{\em putative theorems}.  Here are some simple examples:
+\begin{itemize}
+  \item If a function that reverses a list has been
+correctly specified, then we should be able to prove that we get the
+original list by reversing a list twice.
+
+  \item When a train is allowed into a railroad crossing the gates must
+be down.  
+
+  \item If the operational semantics is correct, then it should conform
+to the denotational semantics.
+\end{itemize}
+%
+The point of these challenges is that the process of proving putative
+theorems quickly highlights the gaps, errors, and inadequacies in the
+functional description.  In some cases, such a proof could also prove
+that the system as described meets its complete specification, in other
+words, that it is {\em correct\/}.  But it is the rare proof that
+succeeds.  The typical proof attempt fails, but such failure usually
+yields valuable insights that can be used to correct oversights in the
+specification or formulation of the challenge.  A useful automated proof
+assistant must therefore play the role of an intelligent but implacable
+skeptic in rejecting any argument that is not entirely watertight.
+Furthermore, in rejecting these arguments, such a skeptic must pinpoint
+the source of the failure so that the argument can be corrected and the
+dialogue resumed.  The PVS proof checker is intended to serve as the
+skeptical party in such a dialogue.  The user supplies the steps in the
+argument and PVS applies them to the goal of the proof progressively
+breaking them into simpler subgoals or to obvious truths or falsehoods.
+If all of the subgoals are reduced to obvious truths, the proof attempt
+has succeeded.  Otherwise, the proof attempts fails either because the
+argument or the conjecture is incorrect.
+
+The central design assumptions in PVS are therefore that
+\begin{itemize}
+  \item The purpose of an automated proof checker is not merely to prove
+theorems but also to provide useful feedback from failed and partial proofs
+by serving as a rigorous skeptic.
+  \item The most straightforward mechanizable criterion for a rigorous
+argument is that of a formal proof.
+  \item Automation serves to minimize the tedious aspects of
+formal reasoning  while maintaining a high level of accuracy in the
+book-keeping and formal manipulations.
+  \item Automation should also be used to capture repetitive patterns
+of argumentation.
+  \item The end product of a proof attempt should be a proof that, with
+only a small amount of work, can be made humanly readable so that it can
+be subjected to the {\em social process\/} of mathematical scrutiny.
+\end{itemize}
+In following these design assumptions, the PVS proof checker 
+is more automated than a low-level proof checker such as
+AUTOMATH~\cite{deBruijn80}, LCF~\cite{LCF}, Nuprl~\cite{Constable86},
+Coq~\cite{Coquand-Huet85}, and HOL~\cite{Gordon:HOL}, but provides more
+user control over the structure of the proof than highly
+automated systems such as Nqthm~\cite{Boyer-Moore79,boyer-moore88} and
+Otter~\cite{Otter90}.  We feel that the low-level systems over-emphasize
+the formal correctness of proofs at the expense of their cogency, and
+the highly automated systems emphasize theorems at the expense of their
+proofs.
+
+What is unusual about PVS is the extent to which aspects of the
+language, the typechecker, and proof checker are intertwined.  The
+typechecker invokes the proof checker in order to discharge proof
+obligations that arise from typechecking expressions involving predicate
+subtypes or dependent types.  The proof checker also makes heavy use of
+the typechecker to ensure that all expressions involved in a proof are
+well-typed.  This use of the typechecker can also generate proof
+obligations that are either discharged automatically or are presented as
+additional subgoals.  Several aspects of the language, particularly the
+type system, are built into the proof checker.  These include the
+automatic use of type constraints by the decision procedures, the
+simplifications given by the abstract datatype axioms, and forms of
+beta-reduction and extensionality, Another less unusual aspect of PVS is
+the extent to which decision procedures involving equalities and linear
+arithmetic inequalities are employed.\footnote{The Ontic
+system~\cite{mcallester89} is a proof checker where decision procedures
+are ubiquitously used.  Nqthm~\cite{Boyer-Moore79,boyer-moore88},
+Eves~\cite{Pase-Saaltink}, and IMPS~\cite{IMPS91} also rely heavily on
+the use of decision procedures.} The most direct consequence of this is
+that the trivial, obvious, or tedious parts of the proof are often
+entirely hidden from the displayed proof so that the user can focus on
+the intellectually demanding parts of the proof, and the resulting proof
+is also easier to read.
+
+As with much else in PVS, the implementation philosophy of the proof
+checker has been guided by the 80-20 rule, namely that 80\% of the
+functionality of a nearly perfect system can be built with 20\% of the
+effort, and the remaining 20\% of the functionality can take up the
+remaining 80\% of the effort.  PVS attempts to provide much of the 80\%
+of the functionality that is easily implemented.  Each PVS proof
+commands performs the function that, in our experience, is typically
+required of it.  To some reasonable extent, the less typical
+functionality can be obtained by providing optional arguments to these
+proof commands.  In atypical instances, the burden of carrying out some
+manipulation falls squarely on the user.  Even in these instances, it is
+not too tedious to achieve one's ends with the existing proof commands
+in some fairly simple ways.  The reader should let us know if any of our
+design decisions are found to be ill-considered.
+
+In order to learn how to use the PVS proof checker, one must first
+understand the sequent representation used by PVS to represent proof
+goals, the commands used to move around and undo parts of the proof
+tree, and the commands used to get help.  One must then understand the
+syntax and effects of proof commands used to build proofs.  Many of these
+commands are extremely powerful even in their simplest usage.  Several
+of these commands can be more carefully directed by supplying them with
+one or more optional arguments.  The advanced user will also need to
+understand how to define proof strategies that capture repetitive
+patterns of proof commands, and commands used for displaying, editing,
+and replaying proofs.
+
+Section~\ref{prelims} provides the basic information needed to get
+started with the PVS proof checker.  The remaining sections give a
+collection of typical examples of how the proof checker is used.
+The PVS Proof Checker Reference
+Manual~\cite{PVS:prover} contains detailed descriptions of the PVS
+proof commands.
+
+\subsection{Preliminaries}\label{prelims}
+
+\paragraph{Sequent Representation of Proof Goals.}
+Each goal or subgoal in a PVS proof attempt is a sequent
+of the form $\Gamma\vdash\Delta$, where $\Gamma$ is a sequence of
+{\em antecedent\/} formulas and $\Delta$ is a 
+sequence of {\em consequent\/} formulas.  The actual displayed form of a
+PVS sequent is
+\begin{center}
+\begin{tabular}{ll}
+  {\tt \{-1\}} & $A_1$\\
+  {\tt \{-2\}} & $A_2$\\
+  {\tt [-3]} & $A_3$\\
+ & \vdots\\
+ \multicolumn{2}{l}{\tt |-------}\\
+  {\tt [1]} & $B_1$\\
+  {\tt \{2\}} & $B_2$\\
+  {\tt \{3\}} & $B_3$\\
+ & \vdots
+\end{tabular}
+\end{center}
+where each $A_i$ is an antecedent formula and each $B_i$ is a consequent
+formula.  The intuitive reading of such a sequent is as the formula
+$$(A_1\wedge A_2 \wedge A_3 \wedge \ldots ) \supset (B_1 \vee B_2 \vee
+B_3 \vee \ldots).$$ Note that the antecedent formulas are numbered with
+negative integers and the consequent formulas with positive integers.
+These numberings are used in directing the PVS proof commands. If a
+formula number $n$ appears as {\tt [$n$]} in the sequent, it is an
+indication that the formula was unaffected by the proof step that
+created the sequent.  It is a good heuristic is to examine the new
+formulas (\ie\ the formulas whose number appears as {\tt \{$n$\}}) in
+the sequent to formulate the next proof step.
+
+
+\paragraph{Starting and Quitting Proofs. }
+
+As indicated earlier, the PVS Emacs command {\tt M-x pr} initiates a
+proof with the cursor on the formula to be proved.   This brings up the
+{\tt *pvs*} buffer with the goal sequent and a {\tt Rule?}\ prompt.
+Typing the PVS Emacs command {\tt M-x help-pvs-prover} brings up
+help on the prover commands.
+To quit out of an existing proof attempt, type {\tt q} or {\tt
+quit} at the {\tt Rule?}\ prompt.   You will be asked whether you wish to
+save the partial proof.  Remember that if you answer {\tt yes}, the old
+proof will be overwritten, and if you answer {\tt no}, you will lose the
+partial proof that you have developed up to this point.
+
+
+\comment{The main steps in initiating a proof are to: 
+\begin{enumerate}
+  \item Set up a working directory for each specification.
+  \item Copy any {\tt .pvs} files you need into this directory.
+  \item Start \pvs\ by invoking ``{\tt pvs}'' (provided you have the
+relevant pvs directory in your path.
+  \item To exit \pvs, type {\tt C-x C-c} in Emacs.
+  \item {\tt M-x cc} to change the context to your working directory.
+  \item {\tt M-x nf} starts a new pvs file called {\tt \bkt{\em
+name}.pvs}, where \bkt{\em name} is your response to the prompt.
+  \item {\tt M-x ps} parses a buffer, {\tt M-x tc} typechecks a buffer,
+and {\tt M-x tcp} typechecks a buffer with proof attempts on the \tccs.
+Each PVS command does 
+the parsing and typechecking of the buffer as needed.  {\tt M-x ppe} shows the
+expanded and pretty printed version of the buffer with all the \tccs\ and
+datatype axioms.
+  \item {M-x pr} on a declaration starts a proof attempt on the declaration.
+If the formula has been proved, you are asked whether you wish to
+continue the proof attempt.  If there is an existing proof, you are
+queried if you wish to rerun that proof.
+  \item Proof commands are typed in response to the ``{\tt Rule?}'' prompt.
+  \item Typing {\tt (help)} prints a brief line describing each of the
+proof commands.  Typing {\tt (help {\em command-name})} prints the
+information for a specific proof command.
+\end{enumerate}
+}
+
+
+Since PVS proof construction is carried out in a Lisp buffer, there is a
+small chance that you could find yourself at a Lisp breakpoint with a
+`{\tt ->}' prompt.  Typing {\tt (restore)} at this point should almost
+always  take you back to the nearest sensible proof goal and a  {\tt
+Rule?}\ prompt.   
+
+
+\paragraph{The Structure of PVS Proofs. }
+In the course of a proof, PVS builds up a tree of sequents where
+each sequent is a subgoal generated from its parent sequent by a PVS
+proof command.  At any point in a proof attempt, the control is at a
+leaf sequent of such a proof tree.  At this point a PVS proof command
+can either 
+\begin{itemize}
+  \item  cause control to be transferred to next proof sequent in the
+tree ({\tt postpone})
+  \item undo a subtree by causing control to move up to some ancestor node
+in the proof tree ({\tt undo})
+  \item prove the {\em current sequent\/} causing control to move to the
+next remaining leaf sequent in the tree
+  \item generate subgoals so that control moves to the first of these
+subgoals, or
+  \item leave the proof tree unchanged while providing some useful status information.
+\end{itemize}
+A proof is completed when there are no remaining unproved leaf sequents
+in the proof tree.  The resulting proof is saved and can be edited and
+rerun on the same or a different conjecture.
+
+
+\subsection{Using the Proof Checker}\label{using}
+
+\subsubsection{Propositional Proof Commands}
+
+Now that we have gotten past the preliminaries, we can look at
+examples of some simple interactions with the PVS proof checker.
+We start with the following PVS theory named {\tt propositions}
+that declares three Boolean constants {\tt A}, {\tt B}, and {\tt C}, and
+states a theorem named {\tt prop} asserting that the conjunction of
+$( \mbox{\tt A} \supset ( \mbox{\tt B} \supset \mbox{\tt C}))$ and $(
+\mbox{\tt A} \supset \mbox{\tt B})$ and $ \mbox{\tt A}$ implies $
+\mbox{\tt C}$.
+
+\begin{pvsscript}
+propositions : THEORY
+  BEGIN
+
+  A, B, C: bool
+
+  prop: THEOREM (A IMPLIES (B IMPLIES C)) AND (A IMPLIES B) AND A
+               IMPLIES C
+
+  END propositions
+\end{pvsscript}
+
+The proof script displayed below is the result of typing the PVS Emacs
+command {\tt M-x pr} on the formula {\tt prop} and typing the inputs
+(shown in bold-face) in response to the {\tt Rule?}\ prompt or to other
+queries from PVS.  The {\tt (flatten)} command eliminates the
+disjunctive connectives in the formula so as to flatten the formula out
+into the sequent.  The next proof command {\tt (split)} picks the first
+available conjunctive formula, in this case {\tt (A IMPLIES (B IMPLIES
+C))}, and generates the three subgoals resulting from the conjunctive
+splitting of this formula.  PVS then observes that the first of these
+subgoals is trivially true since it has {\tt C} in both the antecedent
+and consequent.  The {\tt (split)} command applied to the second subgoal
+generates two further subgoals which are both recognized as being
+trivially true, as is the remaining subgoal from the earlier {\tt
+(split)} command.  The proof has now been successfully completed
+generating the {\tt Q.E.D.} message, and  the new proof is automatically
+saved.  The system inquires whether the user would like to see an
+abbreviated version of the proof which is then printed out following the
+{\tt yes} response.  For space reasons, we only display a few lines of
+this printout in the script below.  The two timings printed out at the
+end provide the machine time and the human time for the
+proof attempt,  respectively.  The Emacs command {\tt M-x
+show-last-proof} can be used to bring up an abbreviated version
+of the most recently completed proof that can be used as a guide
+in developing an informal presentation of the proof.  It displays
+the sequents at the branch points in the proof and the commentary in
+between.  
+
+\begin{pvsscript}
+     prop :   
+
+       |-------
+     \{1\}   (A IMPLIES (B IMPLIES C)) AND (A IMPLIES B) AND A IMPLIES C
+
+     Rule? {\bf (flatten)}
+     Applying disjunctive simplification to flatten sequent,
+     this simplifies to: 
+     prop :   
+
+     \{-1\}   (A IMPLIES (B IMPLIES C))
+     \{-2\}   (A IMPLIES B)
+     \{-3\}   A
+       |-------
+     \{1\}   C
+
+     Rule? {\bf (split)}
+     Splitting conjunctions,
+     this yields  3 subgoals: 
+     prop.1 :   
+
+     \{-1\}   C
+     [-2]   (A IMPLIES B)
+     [-3]   A
+       |-------
+     [1]   C
+
+     which is trivially true.
+
+     This completes the proof of prop.1.
+
+     prop.2 :   
+
+     [-1]   (A IMPLIES B)
+     [-2]   A
+       |-------
+     \{1\}   B
+     [2]   C
+
+     Rule? {\bf (split)}
+     Splitting conjunctions,
+     this yields  2 subgoals: 
+     prop.2.1 :   
+
+     \{-1\}   B
+     [-2]   A
+       |-------
+     [1]   B
+     [2]   C
+
+     which is trivially true.
+
+     This completes the proof of prop.2.1.
+
+     prop.2.2 :   
+
+     [-1]   A
+       |-------
+     \{1\}   A
+     [2]   B
+     [3]   C
+
+     which is trivially true.
+
+     This completes the proof of prop.2.2.
+
+
+     This completes the proof of prop.2.
+
+     prop.3 :   
+
+     [-1]   (A IMPLIES B)
+     [-2]   A
+       |-------
+     \{1\}   A
+     [2]   C
+
+     which is trivially true.
+
+     This completes the proof of prop.3.
+
+     Q.E.D.
+
+
+     Run time  = 0.52 secs.
+     Real time = 14.32 secs.
+\end{pvsscript}
+
+\paragraph{Summary. }
+The PVS Emacs command {\tt M-x pr} is used to invoke the PVS proof
+checker.  Proof goals are represented as sequents with the formulas
+numbered.  The command {\tt (flatten)} flattens the top-level
+disjunctive structure of all of the sequent formulas so that there are
+no disjunctive formulas in the resulting subgoal sequent.  (Variations:
+{\tt (flatten *)} is the same as {\tt (flatten)}.  {\tt (flatten +)}
+flattens only the consequent formulas, and {\tt (flatten -)} the
+antecedent formulas.  {\tt (flatten -2 3 4)} flattens formulas numbered
+{\tt -2}, {\tt 3}, and {\tt 4} in the goal sequent.)  The command {\tt
+(split)} picks the first top-level conjunctive sequent formula and
+generates the subgoals that result from splitting this conjunction.
+As with {\tt flatten}, {\tt (split *)} is the same as {\tt (split)},
+{\tt (split -)} splits the first antecedent conjunction, {\tt (split +)}
+the first consequent conjunction, and {\tt (split -3)} splits the
+formula numbered {\tt -3}.  
+
+With the same example, we can now attempt to repeat the proof in order
+to explore some other commands.  When we now type {\tt M-x pr} at the
+formula {\tt prop} in the theory {\tt proposition}, PVS informs us that
+the formula has already been proved and asks whether we wish to retry
+proving the formula.  If we respond that we do, then PVS inquires
+whether the existing proof should be rerun.  If we choose to rerun the
+existing proof, the following script is automatically generated.
+
+\begin{pvsscript}
+    prop :   
+
+      |-------
+    \{1\}   (A IMPLIES (B IMPLIES C)) AND (A IMPLIES B) AND A IMPLIES C
+
+    Rerunning step: (FLATTEN)
+    Applying disjunctive simplification to flatten sequent,
+    this simplifies to: 
+    prop :   
+
+    \{-1\}   (A IMPLIES (B IMPLIES C))
+    \{-2\}   (A IMPLIES B)
+    \{-3\}   A
+      |-------
+    \{1\}   C
+
+    Rerunning step: (SPLIT)
+    Splitting conjunctions,
+    this yields  3 subgoals: 
+    prop.1 :   
+
+    \{-1\}   C
+    [-2]   (A IMPLIES B)
+    [-3]   A
+      |-------
+    [1]   C
+
+    which is trivially true.
+
+    This completes the proof of prop.1.
+
+       \vdots
+\end{pvsscript}
+
+\paragraph{Summary. }  Proofs can be rerun by responding suitably to the
+mini-buffer query when {\tt M-x pr} is invoked on a formula that has a
+proof or a partial proof.  Another way to rerun the existing proof is to
+type {\tt (rerun)} as the first step in a manual proof.
+
+We can retry the same example to explore some further proof commands.
+In this version, we choose not to rerun the existing proof.
+Typing the inappropriate command {\tt (split)} results in
+{\tt No change} to the proof state since there is no top level
+conjunctive formula in the sequent.  We then type {\tt (flatten)} which
+flattens the formula followed by {\tt (split)} which generates three
+subgoals, the first of which is trivially true.  We then type {\tt
+(postpone)} at the second subgoal.  This causes the control to shift to
+the third subgoal which is also trivially true.  The control now returns
+to the second subgoal.  A further {\tt (postpone)} brings us back to the
+same subgoal since there are no other pending subgoals.  At this point,
+we simply choose to quit the proof by typing {\tt q} at the {\tt Rule?}
+prompt.  At the query, we choose to save the partial proof from the
+current proof attempt.  
+
+\begin{pvsscript}
+     prop :   
+
+       |-------
+     \{1\}   (A IMPLIES (B IMPLIES C)) AND (A IMPLIES B) AND A IMPLIES C
+
+     Rule? {\bf (split)}
+     No change on: (SPLIT) 
+     prop :   
+
+       |-------
+     \{1\}   (A IMPLIES (B IMPLIES C)) AND (A IMPLIES B) AND A IMPLIES C
+
+     Rule? {\bf (flatten)}
+     Applying disjunctive simplification to flatten sequent,
+     this simplifies to: 
+     prop :   
+
+     \{-1\}   (A IMPLIES (B IMPLIES C))
+     \{-2\}   (A IMPLIES B)
+     \{-3\}   A
+       |-------
+     \{1\}   C
+
+     Rule? {\bf (split)}
+     Splitting conjunctions,
+     this yields  3 subgoals: 
+     prop.1 :   
+
+     \{-1\}   C
+     [-2]   (A IMPLIES B)
+     [-3]   A
+       |-------
+     [1]   C
+
+     which is trivially true.
+
+     This completes the proof of prop.1.
+
+     prop.2 :   
+
+     [-1]   (A IMPLIES B)
+     [-2]   A
+       |-------
+     \{1\}   B
+     [2]   C
+
+     Rule? {\bf (postpone)}
+     Postponing prop.2.
+
+     prop.3 :   
+
+     [-1]   (A IMPLIES B)
+     [-2]   A
+       |-------
+     \{1\}   A
+     [2]   C
+
+     which is trivially true.
+
+     This completes the proof of prop.3.
+
+     prop.2 :   
+
+     [-1]   (A IMPLIES B)
+     [-2]   A
+       |-------
+     \{1\}   B
+     [2]   C
+
+     Rule? {\bf (postpone)}
+     Postponing prop.2.
+
+     prop.2 :   
+
+     [-1]   (A IMPLIES B)
+     [-2]   A
+       |-------
+     \{1\}   B
+     [2]   C
+
+     Rule? {\bf q}
+     Do you really want to quit?   (Y or N): {\bf y}
+     Would you like the partial proof to be saved? 
+     (***Old proof will be overwritten.***)
+      (Yes or No) {\bf yes}
+     Use M-x revert-proof to revert to previous proof.
+
+     Run time  = 0.77 secs.
+     Real time = 22.63 secs.
+\end{pvsscript}
+
+We can again type {\tt M-x pr} and this time we can rerun the partial
+proof that we saved.  
+Notice that we are back at the subgoal where we quit the proof
+since this is the only unfinished subgoal in the proof.
+
+\paragraph{Summary. }  The command {\tt (postpone)} is used to navigate
+cyclically around the unproved subgoals in a proof.  The PVS Emacs
+command {\tt M-x siblings} displays all those subgoals that share the
+same parent goal as the current subgoal in the proof.  The PVS Emacs
+command {\tt M-x ancestry} displays the chain of goals leading back from
+the current goal back to the root node of the proof tree.  A {\tt q} or
+{\tt quit} can be used to quit out of a proof-in-progress with the
+option of saving the partial proof.  If a previous proof is overwritten
+as a result, then the PVS Emacs command {\tt M-x revert-proof}
+can be used to recover the earlier proof.  
+The PVS Emacs command {\tt M-x show-proof} can be used to display a
+proof in progress in such a way that parts of it can be edited and
+used as input to the {\tt rerun} proof command.  The PVS Emacs command
+{\tt M-x edit-proof} with the cursor positioned on a formula in a theory
+brings up a buffer containing the proof of the formula displayed as a
+tree of commands.  This displayed proof can also be edited and rerun.
+
+
+\comment{
+\begin{pvsscript}
+> ;;;
+prop :   
+
+  |-------
+\{1\}   (A IMPLIES (B IMPLIES C)) AND (A IMPLIES B) AND A IMPLIES C
+
+Rerunning step: (FLATTEN)
+Applying disjunctive simplification to flatten sequent,
+this simplifies to: 
+prop :   
+
+\{-1\}   (A IMPLIES (B IMPLIES C))
+\{-2\}   (A IMPLIES B)
+\{-3\}   A
+  |-------
+\{1\}   C
+
+Rerunning step: (SPLIT)
+Splitting conjunctions,
+this yields  3 subgoals: 
+prop.1 :   
+
+\{-1\}   C
+[-2]   (A IMPLIES B)
+[-3]   A
+  |-------
+[1]   C
+
+which is trivially true.
+
+This completes the proof of prop.1.
+
+prop.2 :   
+
+[-1]   (A IMPLIES B)
+[-2]   A
+  |-------
+\{1\}   B
+[2]   C
+
+Rerunning step: (POSTPONE)
+prop.3 :   
+
+[-1]   (A IMPLIES B)
+[-2]   A
+  |-------
+\{1\}   A
+[2]   C
+
+which is trivially true.
+
+This completes the proof of prop.3.
+
+prop.2 :   
+
+[-1]   (A IMPLIES B)
+[-2]   A
+  |-------
+\{1\}   B
+[2]   C
+
+Rule? {\bf q}
+Do you really want to quit?   (Y or N): {\bf y}
+Would you like the partial proof to be saved? 
+(***Old proof will be overwritten.***)
+ (Yes or No) {\bf no}
+
+Run time  = 0.61 secs.
+Real time = 137.33 secs.
+\end{pvsscript}
+}
+
+\subsubsection{Quantifier Proof Commands}
+
+We now consider a simple example involving quantifiers displayed in the
+theory {\tt predicate} below.
+
+\begin{pvsscript}
+predicate: THEORY
+  BEGIN
+   T : TYPE
+   x, y, z: VAR T
+   P, Q : [T -> bool]
+
+   pred_calc: THEOREM
+      (FORALL x: P(x) AND Q(x))
+      IMPLIES (FORALL x: P(x)) AND (FORALL x: Q(x))
+
+  END predicate
+\end{pvsscript}
+
+The proof script for this example starts with the application of {\tt
+(flatten)} to the given conjecture followed by the {\tt (split)} command
+to break the consequent conjunction.  In the first branch of the proof,
+we use the {\tt (skolem)} command to replace the universally quantified
+variable {\tt x} in the consequent formula numbered {\tt 1} with the
+(Skolem) constant {\tt X}, where {\tt X} is new (\ie\ undeclared) in the
+present context.  The next step is to instantiate the universally
+quantified variable {\tt x} in the antecedent formula numbered {\tt -1}
+with the constant {\tt X} using the {\tt (inst)} command.  The first
+branch of the proof is then easily completed by propositional reasoning.
+Note that the two quantifier steps, {\tt skolem} and {\tt inst}, only
+affect the outermost quantifier of a formula in the sequent.  Also,
+universally quantified variables in consequent formulas are replaced by
+new constants, whereas antecedent universally quantified variables are
+instantiated with terms.  Existentially quantified variables behave
+dually.  The second branch of the proof employs minor variants of the
+{\tt skolem} and {\tt inst}.  Here the {\tt (skolem!)} command picks
+the first ``skolemizable'' sequent formula and replaces the quantified
+variables with internally generated constants (containing exclamations).
+The {\tt (inst?)} command picks the first instantiable sequent formula
+and tries to find an instantiation for the quantified variables by
+matching against the rest of the sequent.
+
+\begin{pvsscript}
+    pred_calc :   
+
+      |-------
+    \{1\}   (FORALL x: P(x) AND Q(x)) IMPLIES (FORALL x: P(x)) AND (FORALL x: Q(x))
+
+    Rule? {\bf (flatten)}
+    Applying disjunctive simplification to flatten sequent,
+    this simplifies to: 
+    pred_calc :   
+
+    \{-1\}   (FORALL x: P(x) AND Q(x))
+      |-------
+    \{1\}   (FORALL x: P(x)) AND (FORALL x: Q(x))
+
+    Rule? {\bf (split)}
+    Splitting conjunctions,
+    this yields  2 subgoals: 
+    pred_calc.1 :   
+
+    [-1]   (FORALL x: P(x) AND Q(x))
+      |-------
+    \{1\}   (FORALL x: P(x))
+
+    Rule? {\bf (skolem 1 {\tt "X"})}
+    For the top quantifier in 1, we introduce Skolem constants: X
+    this simplifies to: 
+    pred_calc.1 :   
+
+    [-1]   (FORALL x: P(x) AND Q(x))
+      |-------
+    \{1\}   P(X)
+
+    Rule? {\bf (inst -1 {\tt "X"})}
+    Instantiating the top quantifier in -1 with the terms: 
+     X
+    this simplifies to: 
+    pred_calc.1 :   
+
+    \{-1\}   P(X) AND Q(X)
+      |-------
+    [1]   P(X)
+
+    Rule? {\bf (prop)}
+    By propositional simplification,
+
+    This completes the proof of pred_calc.1.
+
+    pred_calc.2 :   
+
+    [-1]   (FORALL x: P(x) AND Q(x))
+      |-------
+    \{1\}   (FORALL x: Q(x))
+
+    Rule? {\bf (skolem!)}
+    Skolemizing,
+    this simplifies to: 
+    pred_calc.2 :   
+
+    [-1]   (FORALL x: P(x) AND Q(x))
+      |-------
+    \{1\}   Q(x!1)
+
+    Rule? {\bf (inst?)}
+    Found substitution:
+    x gets x!1,
+    Instantiating quantified variables,
+    this simplifies to: 
+    pred_calc.2 :   
+
+    \{-1\}   P(x!1) AND Q(x!1)
+      |-------
+    [1]   Q(x!1)
+
+    Rule? {\bf (prop)}
+    By propositional simplification,
+
+    This completes the proof of pred_calc.2.
+
+    Q.E.D.
+\end{pvsscript}
+
+\comment{
+Types in PVS are not necessarily nonempty so that one cannot prove
+statements like {\tt (FORALL x:\ P(x)) IMPLIES (EXISTS x:\ P(x))} unless
+the variable {\tt x} is known to range over a nonempty type.
+}
+
+\paragraph{Summary. }
+The command {\tt (skolem 1 "X")} is used to introduce a new constant
+{\tt X} in place of the universally quantified variable in the formula
+numbered {\tt 1}.  {\tt (skolem 1 ("X" "\_" "Z"))} is to be used if
+there are three variables bound by the universal quantifier and only the
+first and third are to be replaced by constants.  {\tt (skolem + "X")}
+carries out the skolemization step for the first consequent universally
+quantified formula, and {\tt (skolem - "X")} for the first antecedent
+existentially quantified formula.  The variations of the instantiation
+command {\tt inst} are similar to those of {\tt skolem}.  The command
+forms {\tt (skolem!)}, {\tt (skolem! 1)}, {\tt (skolem! -)}, etc., are
+variants of {\tt skolem} where the new constant names are internally
+generated.  The command {\tt (inst?)} is a version of {\tt inst} that
+tries to find a matching substitution for a chosen quantified formula.
+It can also be supplied a partial substitution to disambiguate the
+matching process as in {\tt (inst? - :subst ("x" "X"))}.  Both {\tt
+inst} and {\tt inst?}\ take an optional {\tt :copy?}\ argument that can
+be given as {\tt T} in order to retain a copy of the original quantified
+formula in the sequent in case further instances of the formula are
+needed, as in {\tt (inst + ("x" "X") :copy? T)}.  The PVS rule
+{\tt inst-cp} is a version of the {\tt inst} that automatically
+copies the quantified formula, and {\tt inst} is the non-copying
+variant.  
+Note that optional
+arguments to PVS proof commands can be given by order or by keyword.
+To find out the order, the keywords, and defaults for each of the proof
+commands, use {\tt M-x help-pvs-prover}.
+
+\subsubsection{Decision Procedures}
+
+The equality and linear inequality decision procedures are the
+workhorses of almost any nontrivial PVS proof.  The theory {\tt
+decisions} displayed below illustrates some of the power of these
+decision procedures.  The formulas marked {\tt THEOREM} are those that
+can be proved using the decision procedures, and the ones marked
+{\tt CONJECTURE} are either true but cannot be proved solely by the
+decision procedures (like {\tt badarith1}) or false (like {\tt badarith}
+and {\tt badarith2}) and hence unprovable.  The reader should
+invoke {\tt M-x pr} on each of the formulas in {\tt decisions} and
+type either {\tt (then (skolem!)(ground))} or
+{\tt (then* (skolem!)(flatten)(assert))} to the {\tt Rule?}\ prompt
+to observe the effects of the decision procedures.  The command
+{\tt assert} is used to either record equality or inequality information
+into the data-structures used by the decision procedures, or to simplify
+propositional or {\tt IF-THEN-ELSE} structures in a formula, or
+carry out the automatic rewrites (to be described below).
+The command {\tt (ground)} is a combination of {\tt (prop)} and {\tt (assert)}.
+
+\begin{pvsscript}
+decisions: THEORY
+  BEGIN
+   x,y,v: VAR number
+   f: [number -> number]
+
+   eq1: THEOREM x = f(x) IMPLIES f(f(f(x))) = x
+
+   g : [number, number -> number]
+
+   eq2: THEOREM x = f(y) IMPLIES g(f(y + 2 - 2), x + 2) = g(x, f(y) + 2)
+
+   arith: THEOREM  %Proved by decision procedures
+     x < 2*y AND y < 3*v IMPLIES 3*x < 18*v
+
+   badarith: CONJECTURE %Not proved; statement is false.
+     x < 2*y AND y < 3*v IMPLIES 3*x < 17*v
+
+   badarith1: CONJECTURE %Not proved; statement true but non-linear
+     x<0 AND y<0 IMPLIES x*y>0
+
+   i, j, k: VAR int
+ 
+   intarith: THEOREM %Proved by decision procedures  
+     2*i < 5 AND i > 1 IMPLIES i = 2
+
+   badarith2: CONJECTURE  %Not proved; stmt. true of integers but not reals.
+     2*x < 5 AND x > 1 IMPLIES x = 2
+
+   range : THEOREM  %Proved by decision procedures
+     i > 0 AND i < 3 IMPLIES i = 1 OR i = 2
+
+  END decisions
+\end{pvsscript}
+
+We now consider an example proof that further illustrates the use of
+decision procedures.  The theory {\tt stamps} below contains the formula
+asserting that any postage requirement of 8~cents or more can be met
+solely with 3 and 5~cent stamps, \ie\ is the sum of some multiple of 3
+and some multiple of 5.
+
+\begin{pvsscript}
+stamps: THEORY
+  BEGIN
+  
+  i, three, five: VAR nat
+  
+  stamps: LEMMA (FORALL i: (EXISTS three, five: i + 8 = 3 * three + 5 * five))
+  
+  END stamps
+\end{pvsscript}
+
+In abstract terms, the proof proceeds by induction on {\tt i}.  In the
+base case, when {\tt i} is {\tt 0}, the left-hand side is 8.  Letting
+{\tt m} and {\tt n} both be {\tt 1} fulfills the equality.  In the
+induction case, we know that {\tt that i + 8} can be expressed as {\tt
+3*M + 5*N} for some {\tt M} and {\tt N} and we need to find {\tt m} and
+{\tt n} such that {\tt i + 8 + 1} is {\tt 3*m + 5*n}.  If {\tt N = 0},
+then {\tt M} is at least {\tt 3}.  We then let {\tt m} be {\tt  M - 3}
+and {\tt n} be {\tt 2}, \ie\ we remove three 3~cent stamps and add two
+5~cent stamps to get postage worth {\tt i + 8 + 1}.  If {\tt N > 0},
+then we simply remove a 5~cent stamp and add two 3~cent stamps to prove
+the induction conclusion.
+
+In the proof script below, the first command {\tt (induct "i")} directs
+PVS to use induction on {\tt i}.  PVS deduces from the type {\tt nat} of
+{\tt i} that natural number induction is to be used and formulates an
+induction predicate based on the formula number 1 in the sequent.  The
+command {\tt induct}, like {\tt prop} and {\tt ground}, is a compound
+step or a {\em proof strategy\/}.  Two subgoals are generated
+corresponding to the base and induction cases.  In the base case, the
+{\tt inst} command is used to instantiate {\tt three} with {\tt 1} and {\tt
+five} with {\tt 1}.  The decision procedures are invoked to prove the
+resulting trivial arithmetic equality.  In the induction case, the {\tt
+skolem} command followed by {\tt flatten} results in a sequent
+containing the induction hypothesis in its antecedent and the conclusion
+in its consequent part.  The witnesses corresponding to the induction
+hypothesis are produced by the {\tt skolem!}\ command.  The case-split
+according to {\tt five!1 = 0} is created by the {\tt case} command.  In the
+first {\tt five!1 = 0} case, we instantiate the existential quantifiers in
+the conclusion as required by the abstract proof.  Since the bound
+variable {\tt three} has type {\tt nat} (which is a subtype of the {\tt
+integer} type consisting of the non-negative integers), the {\tt inst}
+command generates a second (type correctness) subgoal demanding proof
+that {\tt three!1 - 3} is at least {\tt 0}.  Both subgoals are discharged
+through the use of {\tt assert}.  In the case when {\tt five!1 = 0} is
+false, note that the assumption of falsity is indicated by the formula
+{\tt five!1 = 0} appearing in the consequent part of the goal sequent.  We
+now follow an approach that is slightly different from that of the
+previous branch; we use {\tt assert} at this point.  This has no visible
+effect on the sequent to be proved, but the falsity of {\tt five!1 = 0} is
+noted by the decision procedures for use deeper in the proof.  Now note
+that the {\tt inst} command instantiating {\tt five} with {\tt five!1 - 1}
+does not generate the type correctness subgoal that was generated in the
+previous branch since the decision procedures were able to automatically
+demonstrate that {\tt five!1 - 1} was non-negative from the known
+information. 
+
+\begin{pvsscript}
+     stamps :  
+
+       |-------
+     \{1\}   (FORALL i: (EXISTS three, five: i + 8 = 3 * three + 5 * five))
+     
+     Rule? {\bf (induct "i")}
+     Inducting on i,
+     this yields  2 subgoals: 
+     stamps.1 :  
+     
+       |-------
+     \{1\}   (EXISTS (three: nat), (five: nat): 0 + 8 = 3 * three + 5 * five)
+     
+     Rule? {\bf (inst 1 1 1)}
+     Instantiating the top quantifier in 1 with the terms: 
+      1, 1,
+     this simplifies to: 
+     stamps.1 :  
+     
+       |-------
+     \{1\}   0 + 8 = 3 * 1 + 5 * 1
+     
+     Rule? {\bf (assert)}
+     Simplifying, rewriting, and recording with decision procedures,
+     
+     This completes the proof of stamps.1.
+     
+     stamps.2 :  
+     
+       |-------
+     \{1\}   (FORALL (j: nat):
+              (EXISTS (three: nat), (five: nat): j + 8 = 3 * three + 5 * five)
+                IMPLIES
+                (EXISTS (three: nat), (five: nat):
+                   j + 1 + 8 = 3 * three + 5 * five))
+     
+     Rule? {\bf (skolem + "JJ")}
+     For the top quantifier in +, we introduce Skolem constants: JJ,
+     this simplifies to: 
+     stamps.2 :  
+     
+       |-------
+     \{1\}   (EXISTS (three: nat), (five: nat): JJ + 8 = 3 * three + 5 * five)
+             IMPLIES
+             (EXISTS (three: nat), (five: nat):
+                JJ + 1 + 8 = 3 * three + 5 * five)
+     
+     Rule? {\bf (flatten)}
+     Applying disjunctive simplification to flatten sequent,
+     this simplifies to: 
+     stamps.2 :  
+     
+     \{-1\}   (EXISTS (three: nat), (five: nat): JJ + 8 = 3 * three + 5 * five)
+       |-------
+     \{1\}   (EXISTS (three: nat), (five: nat): JJ + 1 + 8 = 3 * three + 5 * five)
+     
+     Rule? {\bf (skolem!)}
+     Skolemizing,
+     this simplifies to: 
+     stamps.2 :  
+     
+     \{-1\}   JJ + 8 = 3 * three!1 + 5 * five!1
+       |-------
+     [1]   (EXISTS (three: nat), (five: nat): JJ + 1 + 8 = 3 * three + 5 * five)
+     
+     Rule? {\bf (case "five!1 = 0")}
+     Case splitting on 
+        five!1 = 0, 
+     this yields  2 subgoals: 
+     stamps.2.1 :  
+     
+     \{-1\}   five!1 = 0
+     [-2]   JJ + 8 = 3 * three!1 + 5 * five!1
+       |-------
+     [1]   (EXISTS (three: nat), (five: nat): JJ + 1 + 8 = 3 * three + 5 * five)
+     
+     Rule? {\bf (inst + "three!1 - 3" 2)}
+     Instantiating the top quantifier in + with the terms: 
+      three!1 - 3, 2,
+     this yields  2 subgoals: 
+     stamps.2.1.1 :  
+     
+     [-1]   five!1 = 0
+     [-2]   JJ + 8 = 3 * three!1 + 5 * five!1
+       |-------
+     \{1\}   JJ + 1 + 8 = 3 * (three!1 - 3) + 5 * 2
+     
+     Rule? {\bf (assert)}
+     Simplifying, rewriting, and recording with decision procedures,
+     
+     This completes the proof of stamps.2.1.1.
+     
+     stamps.2.1.2 (TCC):   
+     
+     [-1]   five!1 = 0
+     [-2]   JJ + 8 = 3 * three!1 + 5 * five!1
+       |-------
+     \{1\}   three!1 - 3 >= 0
+     
+     Rule? {\bf (assert)}
+     Simplifying, rewriting, and recording with decision procedures,
+     
+     This completes the proof of stamps.2.1.2.
+     
+     
+     This completes the proof of stamps.2.1.
+     
+     stamps.2.2 :  
+     
+     [-1]   JJ + 8 = 3 * three!1 + 5 * five!1
+       |-------
+     \{1\}   five!1 = 0
+     [2]   (EXISTS (three: nat), (five: nat): JJ + 1 + 8 = 3 * three + 5 * five)
+     
+     Rule? {\bf (assert)}
+     Simplifying, rewriting, and recording with decision procedures,
+     this simplifies to: 
+     stamps.2.2 :  
+     
+     \{-1\}   8 + JJ = 5 * five!1 + 3 * three!1
+       |-------
+     [1]   five!1 = 0
+     \{2\}   (EXISTS (three: nat), (five: nat): 9 + JJ = 5 * five + 3 * three)
+     
+     Rule? {\bf (inst + "three!1 + 2" "five!1 - 1")}
+     Instantiating the top quantifier in + with the terms: 
+      three!1 + 2, five!1 - 1,
+     this simplifies to: 
+     stamps.2.2 :  
+     
+     [-1]   8 + JJ = 5 * five!1 + 3 * three!1
+       |-------
+     [1]   five!1 = 0
+     \{2\}   9 + JJ = 5 * (five!1 - 1) + 3 * (three!1 + 2)
+     
+     Rule? {\bf (assert)}
+     Simplifying, rewriting, and recording with decision procedures,
+     
+     This completes the proof of stamps.2.2.
+     
+     
+     This completes the proof of stamps.2.
+     
+     Q.E.D.
+
+
+\end{pvsscript}
+
+\paragraph{Summary. }
+PVS proofs make heavy use of decision procedures to simplify tedious
+equality and arithmetic reasoning so that the number
+of trivial subgoals can be minimized and to keep the sequent formulas 
+simple.  The equality decision procedure employs congruence closure
+to propagate equality information along the term structure to quickly
+decide whether a sequent containing equalities and other propositions is
+true.  An antecedent formula $P$ that is not an equality can be treated
+as $P \mbox{\tt = TRUE}$, and a consequent formula $P$ as the equality
+$P \mbox{\tt = FALSE}$.  The {\tt assert} rule is the most powerful form
+in which decision procedures are applied.  It is a combination of
+the {\tt record} rule which records sequent formulas in the
+data-structures used by the decision procedures, {\tt simplify} which
+simplifies branching and propositional structure using the decision
+procedures, {\tt beta} which beta-reduces record, tuple,
+function-update, {\tt LAMBDA}, and abstract datatype redexes,
+and {\tt do-rewrite} which applies the rewrites specified by
+{\tt auto-rewrite} and {\tt auto-rewrite-theory}.  
+
+The {\tt (case $\langle formula\rangle^*$)} command used in the above
+proof is extremely useful for case-splitting on a formula.  For example,
+if there is no straightforward way to simplify a formula $A$ to another
+formula $A'$, then one can case-split on $A'$ so that we can use $A'$ on
+one branch and prove it from $A$ on the other branch.  The {\tt case}
+command can also be used to replace a term $s$ by $s'$ by case-splitting
+on $s = s'$ and using the {\tt replace} proof command (which is not
+explained here) to carry out the replacement.
+
+\subsubsection{Using Definitions and Lemmas}
+
+For the purpose of this discussion, we use the following very simple
+example of a recursive function that halves a given natural number.
+
+\begin{pvsscript}\label{half}
+half: THEORY
+  BEGIN
+  
+  i, j, k: VAR nat
+  
+  half(i): RECURSIVE nat =
+      (IF i = 0 THEN 0 ELSIF i = 1 THEN 0 ELSE half(i - 2) + 1 ENDIF)
+        MEASURE (LAMBDA i: i)
+  
+  half_halves: THEOREM half(2 * i) = i
+  
+  half_half: THEOREM half(2 * half(2 * i)) = i
+  
+  END half
+\end{pvsscript}
+
+We show a segment of the proof of {\tt half\_halves} where the
+definition of {\tt half} is expanded.  Notice that the first use
+of {\tt expand} brings in an unsimplified expansion of the definition of
+{\tt half}.  When we {\tt undo} this proof step and retry the same
+{\tt expand} step following an {\tt assert}, not only is the expansion
+simplified, but the equality is itself reduced to {\tt TRUE}.  
+
+\begin{pvsscript}
+       \vdots
+    half_halves.2 :   
+
+    \{-1\}   half(2 * J) = J
+      |-------
+    \{1\}   half(2 * (J + 1)) = J + 1
+
+    Rule? {\bf (expand {\tt "half"} +)}
+    Expanding the definition of half
+    this simplifies to: 
+    half_halves.2 :   
+
+    [-1]   half(2 * J) = J
+      |-------
+    \{1\}   (IF 2 * (J + 1) = 0 THEN 0 ELSE half(2 * (J + 1) - 2) + 1 ENDIF) = J + 1
+
+    Rule? {\bf (undo)}
+    This will undo the proof to: 
+    half_halves.2 :   
+
+    \{-1\}   half(2 * J) = J
+      |-------
+    \{1\}   half(2 * (J + 1)) = J + 1
+    Sure? (Y or N): y
+    half_halves.2 :   
+
+    \{-1\}   half(2 * J) = J
+      |-------
+    \{1\}   half(2 * (J + 1)) = J + 1
+
+    Rule? {\bf (assert)}
+    Invoking decision procedures,
+    this simplifies to: 
+    half_halves.2 :   
+
+    [-1]   half(2 * J) = J
+      |-------
+    [1]   half(2 * (J + 1)) = J + 1
+
+    Rule? {\bf (expand {\tt "half"} +)}
+    Expanding the definition of half
+    this simplifies to: 
+    half_halves.2 :   
+
+    [-1]   half(2 * J) = J
+      |-------
+    \{1\}   TRUE
+
+    which is trivially true.
+       \vdots
+\end{pvsscript}
+
+The {\tt rewrite} command is an alternative to {\tt expand}, though {\tt
+rewrite} can be used to rewrite with both formulas and definitions.  In
+the script below, the {\tt rewrite} step replaces the second of the
+above applications of {\tt expand}.  Notice that {\tt rewrite} behaves
+slightly differently from {\tt expand}, but it too is sensitive to the
+facts recorded by the decision procedures from a previous {\tt assert}.
+
+\begin{pvsscript}
+       \vdots
+    half_halves.2 :   
+
+    [-1]   half(2 * J) = J
+      |-------
+    [1]   half(2 * (J + 1)) = J + 1
+
+    Rule? {\bf (rewrite {\tt "half"} +)}
+    Rewriting using half,  
+    this simplifies to: 
+    half_halves.2 :   
+
+    [-1]   half(2 * J) = J
+      |-------
+    \{1\}   half(2 * (J + 1) - 2) + 1 = J + 1
+
+    Rule? {\bf (assert)}
+    Invoking decision procedures,
+
+    This completes the proof of half_halves.2.
+       \vdots
+\end{pvsscript}
+
+In summary, {\tt expand} is used to expand definitions, and {\tt
+rewrite} is used to rewrite using definitions and formulas.  Both employ
+decision procedures for simplification during rewriting.  Decision
+procedures are also used to discharge any conditions (arising from a
+conditional rewrite rule) and the type-correctness conditions arising
+from the lemma instantiation applied by {\tt rewrite}.  The {\tt expand}
+step is the preferred way to expand definitions.
+%Here is an example of
+%the use of rewrite on a formula taken from the proof of {\tt half\_half}.
+%
+%\begin{pvsscript}
+%       \vdots
+%    half_half :   
+%
+%      |-------
+%    \{1\}   half(2 * half(2 * i!1)) = i!1
+%
+%    Rule? {\bf (rewrite {\tt "half\_halves"})}
+%    Rewriting using half_halves,  
+%    Q.E.D.
+%\end{pvsscript}
+
+\paragraph{Other Commands.}
+We have described some typical commands, but have not mentioned many
+others.  A partial account of some of those we've omitted is given
+below; a complete, annotated list of prover commands can be found
+in The PVS Prover Checker Reference Manual~\cite{PVS:prover}.
+The {\tt lemma} command is used to bring in an instance of a
+lemma as an antecedent sequent formula.  The {\tt extensionality}
+proof command is similarly used to bring in the extensionality scheme
+given a suitable type expression, \ie\ a function, record, or tuple
+type or an abstract datatype.  The {\tt beta} rule is used to carry
+out beta-reduction of redexes including those involving {\tt
+LAMBDA}-abstraction, record access, tuple access, function updates,
+and datatype expressions.  The command {\tt delete} can be used to
+drop irrelevant sequent formulas; {\tt hide} is a more conservative
+form of {\tt delete} where the formula can be restored using the {\tt
+reveal} command.  The PVS Emacs command {\tt M-x show-hidden} shows
+the hidden formulas.  The command {\tt typepred} can be used to make
+the subtype predicates on a given expression explicit as sequent
+formulas.  The {\tt lift-if} command lifts {\tt IF}-branching to the
+top-level of a sequent formula through $F${\tt (IF $A$ THEN $s$ ELSE
+$t$ ENDIF)} being transformed to {\tt (IF $A$ THEN $F(s)$ ELSE $F(t)$
+ENDIF)}.  The commands {\tt auto-rewrite} and {\tt
+auto-rewrite-theory} are used to install rewrite rules to be used
+automatically by the {\tt assert} command.
+
+
+\subsubsection{Proof Checker Pragmatics}
+
+The \pvs\ proofs in the tutorial examples reflect a very low level of
+automation and should be viewed merely as pedagogical exercises.  The
+proof checker actually provides several powerful commands for the
+advanced user that make it possible to verify large classes of
+theorems using only a small number of steps.  For example, the {\tt
+grind} command is usually a good way to complete a proof that only
+requires definition expansion, and arithmetic, equality, and
+quantifier reasoning.  The decision procedure command {\tt assert} is
+used very frequently since it does simplification, automatic
+rewriting, and records the sequent formulas in the decision procedure
+database.  The {\tt inst?}\ command is the most effective way to
+automatically instantiate quantifiers of existential strength.  The
+{\tt induct-and-simplify} command is a powerful way to construct
+proofs by induction.  The commands {\tt induct-and-rewrite} and {\tt
+induct-and-rewrite!}\ are variants of {\tt induct-and-simplify}\@.
+These induction commands are able to automatically complete a fairly
+large class of induction proofs.
+
+It is not necessary to master all the proof commands in order to use
+the \pvs\ proof checker effectively.  In general, it is advisable to
+learn the most powerful commands first and only rely on the simpler
+commands when the powerful ones fail.  For example, the initial step
+in a proof is usually skolemization, and the preferred and most
+powerful form here is {\tt skosimp*}. Similarly, {\tt
+induct-and-simplify} or one of its variants should be used to initiate
+induction proofs.
+
+ Typically, the creative choices in a proof are:
+ \begin{enumerate}
+ \item The induction scheme: One of the above induction commands should be
+ employed here.
+
+ \item The case analysis: If the case analysis is not explicit in the
+ propositional structure, then it might be implicit in an embedded {\tt
+ IF-THEN-ELSE} or {\tt CASES} structure in which case the {\tt lift-if}
+ command should be used to bring the case analyses to the surface of the
+ sequent where they can be propositionally simplified.  Otherwise, the case
+ analysis has to be supplied explicitly using the {\tt case} command.
+
+\item The quantifier instantiations:  The instantiation of antecedent
+universal and succedent existential quantifiers is done automatically by
+the {\tt inst?}\ command.  When this fails, the more manual {\tt inst} and
+{\tt inst-cp} commands should be used.
+\end{enumerate}
+
+The {\tt bddsimp} command is the most efficient way to do propositional
+simplification, but {\tt prop} will do when efficiency is not important.
+Propositional simplification has to be used with care because it can
+generate many subgoals that share the same proof.  The {\tt flatten}
+and {\tt split} commands are used to do the propositional
+simplification more delicately.  
+
+User-defined {\em proof strategies\/}, similar to the tactics and
+tacticals of LCF, can be employed by more advanced \pvs\ users.  A
+file containing definitions of basic strategies is distributed with
+\pvs\ and provides a good introduction to this topic. The PVS Prover Checker
+Reference Manual~\cite{PVS:prover} can be consulted for additional
+information on user-defined proof strategies.
+
+Finally, it is helpful to be familiar with the \pvs\ prelude theories,
+which provide very useful background mathematics, as well as a rich
+source of examples.
+
+
+
+
+
+
+
+
+

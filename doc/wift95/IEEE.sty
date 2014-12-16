@@ -1,0 +1,47 @@
+% IEEE.sty by Paul Taylor, April 1991
+% Imperial College, London SW7 2BZ; pt@doc.ic.ac.uk; +44 71 589 5111 x 5057
+% When used in "\documentstyle[IEEE]{article}" this has the same effect as
+% the template I received for LiCS from Gilles Kahn which had been written
+% by Matthew Ward of CS Department, Worcester Polytechnic Institute.
+% EXCEPT that \baselineskip=12pt has been restored.
+
+\input twocolumn.sty
+\pagestyle{empty}
+
+%set dimensions of columns, gap between columns, and space between paragraphs
+% Matthew Ward was responsible for the miscellaneous units of measurement!
+\setlength{\textheight}{8.75in}
+\setlength{\columnsep}{2.0pc}
+\setlength{\textwidth}{6.8in}
+\setlength{\footheight}{0.0in}
+\setlength{\topmargin}{0.25in}
+\setlength{\headheight}{0.0in}
+\setlength{\headsep}{0.0in}
+\setlength{\oddsidemargin}{-.19in}
+\setlength{\parskip}{1ex plus .2ex minus .2ex}
+\setlength{\baselineskip}{12pt} % could be 10pt instead.
+\setlength{\parindent}{0pc}
+
+%need an 11 pt font size for subsection and abstract headings
+\def\subsize{\@setsize\subsize{12pt}\xipt\@xipt}
+
+%make section titles bold and 12 point, 2 blank lines before, 1 after
+\def\section{\@startsection {section}{1}{\z@}{1.0ex plus 1ex minus
+ .2ex}{.2ex plus .2ex}{\large\bf}}
+
+%make subsection titles bold and 11 point, 1 blank line before, 1 after
+\def\subsection{\@startsection {subsection}{2}{\z@}{.2ex plus 1ex}%
+{.2ex plus .2ex}{\subsize\bf}}
+
+%don't want date printed
+\date{}
+
+%make title bold and 14 pt font (Latex default is non-bold, 16 pt)
+\let\xtitle\title\def\title#1{\xtitle{\Large\bf #1}}
+
+% \maketitle mangles things.
+\let\xmaketitle\maketitle\def\maketitle{\xmaketitle\thispagestyle{empty}}
+
+% abstract in italics with centred heading
+\def\abstract{\section*{\centering Abstract}\em}
+\def\endabstract{}
