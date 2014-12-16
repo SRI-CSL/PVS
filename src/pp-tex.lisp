@@ -1682,7 +1682,7 @@
     (if (lambda-expr? argument)
 	(pprint-logical-block (nil nil)
 	  (pprint-indent :current 2)
-	  (pp-tex-id (id operator))
+	  (pp-tex-keyword 'LAMBDA)
 	  (write-char #\!)
 	  (write-char #\space)
 	  (pprint-newline :miser)
@@ -2590,14 +2590,16 @@
 	 (texstr (gethash sym *latex-keyword-strings*)))
     (or texstr
 	(setf (gethash sym *latex-keyword-strings*)
-	      (let* ((ktrans (cdr (assq symbol *latex-keyword-list*)))
+	      (let* ((ktrans (cdr (assoc symbol *latex-keyword-list*
+					 :test #'string-equal)))
 		     (trans (if ktrans
 				(if *in-tex-math-mode*
 				    ktrans
 				    (format nil "\\(~a\\)" ktrans))
 				(format nil "\\pvskey{~a}"
 				  (latex-protect (string symbol)))))
-		     (len (or (cdr (assq symbol *latex-keyword-length-list*))
+		     (len (or (cdr (assoc symbol *latex-keyword-length-list*
+					  :test #'string-equal))
 			      (length (string symbol))))
 		     (str (make-new-tex-string len)))
 		(setf (gethash str *pvs-tex-substitution-hash*) trans)
