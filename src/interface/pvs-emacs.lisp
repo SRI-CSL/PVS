@@ -671,7 +671,8 @@
 		    (string-trim '(#\Space #\Tab #\Newline)
 				 (format-printout pps t))))
 	  (num-subgoals (proofstate-num-subgoals ps))
-	  (sequent (pvs2json-seq current-goal pps)))
+	  (sequent (pvs2json-seq current-goal pps))
+	  (prooftree-info (proofstate-tree-info ps)))
       `(,@(when *prover-commentary*
 		`(("commentary" . ,(reverse *prover-commentary*))))
 	  ,@(when action `(("action" . ,action)))
@@ -746,6 +747,70 @@
 			 'strat-proofstate))
 	     1)
 	    (t (break))))))
+
+;;; Similar to display-proof-from (wish.lisp)
+;;;  delete-proof-subtree
+;;;   proof-num-children  \
+;;;   [proof-rule]        |
+;;;   [proof-sequent]     > repeat down the tree
+;;;   [proof-done]        |
+;;;   [proof-tcc]         |
+;;;   proof-show          /
+;;;  layout-proof
+(defun proofstate-tree-info (ps)
+  nil
+  ;; (let* ((top-ps (or *top-proofstate* *last-proof*))
+  ;; 	 (path (path-to-subgoal (wish-top-proofstate) ps)) ; list of nats
+  ;; 	 (pathstr (format nil "top~{.~a~}" path))
+  ;; 	 (fdecl (declaration top-ps))
+  ;; 	 (fid (id fdecl))
+  ;; 	 (thid (id (module fdecl))))
+  ;;   (unless (member nil path)
+  ;;     (make-prooftree-info
+  ;;      :delete path
+  ;;      :status (proofstate-tree-status ps path)
+       
+  ;; 	(format t "delete-proof-subtree ~a ~a ~a~%" fid thid tcl-path)
+  ;; 	(write-proof-status ps path)
+  ;; 	(format t "layout-proof ~a ~a 1~%" fid thid))))
+  )
+
+;;; From write-proof-status in wish.lisp
+;; (defun proofstate-tree-status (ps path)
+;;   (let* ((tcl-path (path-to-tcl-path path))
+;; 	 (subs (x-subgoals ps))
+;; 	 (rule (sexp-unparse (wish-current-rule ps)))
+;; 	 (sequent (path-subgoal (wish-top-proofstate) path))
+;; 	 (fdecl (declaration (or *top-proofstate* *last-proof*)))
+;; 	 (fid (id fdecl))
+;; 	 (thid (id (module fdecl))))
+;;     (if (and (null rule) (eql (length subs) 1))
+;; 	(proofstate-tree-status (car subs) path)
+;; 	(let* ((nsubs (length subs))
+;; 	       (prule (when rule
+;; 			(let ((*print-case* :downcase))
+;; 			  (format nil "~@[+~*~]~s" (null (current-rule ps))
+;; 				  rule))))
+;; 	       (seq (pvs2json sequent))
+;; 	       (done? (eq (status-flag ps) '!))
+;; 	       (tcc? (typep ps 'tcc-proofstate))
+;; 	  (t (format t "proof-num-children ~a ~a ~a ~a 1~%"
+;; 	       fid thid tcl-path (length subs))
+;; 	     (when rule
+;; 	       (format t "proof-rule ~a ~a ~a {~a} 1~%" fid thid tcl-path
+;; 		       (let ((*print-case* :downcase))
+;; 			 (format nil "~@[+~*~]~s" (null (current-rule ps))
+;; 				 rule))))
+;; 	     (when sequent
+;; 	       (format t "proof-sequent ~a ~a ~a {~a} {~a}~%"
+;; 		 fid thid tcl-path (label sequent) sequent))
+;; 	     (when (eq (status-flag ps) '!)
+;; 	       (format t "proof-done ~a ~a ~a 1~%" fid thid tcl-path))
+;; 	     (when (typep ps 'tcc-proofstate)
+;; 	       (format t "proof-tcc ~a~%" tcl-path))
+;; 	     (format t "proof-show ~a ~a ~a 1~%" fid thid tcl-path)
+;; 	     (dotimes (i (length subs))
+;; 	       (proofstate-tree-status (nth i subs) (append path (list i))))))))))
 
 (defun pvs-buffer (name contents &optional display? read-only? append? kind)
   (when *pvs-buffer-hook*
@@ -1165,7 +1230,7 @@
 	     (*output-to-emacs*
 	      (format nil ":pvs-loc ~a&~a&~a :end-pvs-loc"
 		(cond ((typep theory '(or library-theory library-datatype))
-		       (library theory))
+		       (libref-to-pathname (lib-ref theory)))
 		      ((datatype-or-module? theory)
 		       (if (from-prelude? theory)
 			   (format nil "~a/lib/" *pvs-path*)
