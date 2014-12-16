@@ -4708,7 +4708,7 @@ lex2: THEORY
      ENDIF)
 
   lex2_lt: LEMMA
-    lex2(i, j) < lex2(m, n) =
+    (lex2(i, j) < lex2(m, n)) =
      (i < m OR (i = m AND j < n))
 
  END lex2
