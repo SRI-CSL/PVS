@@ -308,11 +308,15 @@
 	       (setq nbd (change-class (copy nbd 'declared-type dtype)
 				       'bind-decl))))
 	   (let* ((dtype (raise-actuals (declared-type nbd)))
-		  (ptype (when (print-type (type nbd))
-			   (if (tc-eq (print-type (type nbd))
-				      (declared-type nbd))
-			       dtype
-			       (raise-actuals (print-type (type nbd)))))))
+		  (prtype (when (print-type (type nbd))
+			    (if (tc-eq (print-type (type nbd))
+				       (declared-type nbd))
+				dtype
+				(raise-actuals (print-type (type nbd))))))
+		  (ptype (when prtype (or (print-type prtype) prtype))))
+	     (assert (typep ptype '(or null type-name type-application
+				    expr-as-type type-extension))
+		     () "get-tcc-binding-substitutions: bad print-type")
 	     (unless (and (eq dtype (declared-type nbd))
 			  (or (null ptype)
 			      (eq ptype dtype)
@@ -1332,7 +1336,7 @@
 	  (subst-mod-params (closed-definition axiom)
 	      (lcopy modinst :dactuals dacts)
 	    mod axiom)
-	(let* ((tform (add-tcc-conditions expr))
+	(let* ((tform expr) ;(add-tcc-conditions expr)
 	       (xform (if *simplify-tccs*
 			  (pseudo-normalize tform)
 			  (beta-reduce tform)))
@@ -1340,7 +1344,7 @@
 				      (universal-closure xform))
 				     t))
 	       (uform (if thinst
-			  (subst-mod-params sform thinst cth cdecl)
+			  (subst-mod-params sform thinst cth axiom) ;cdecl
 			  sform)))
 	  (setf (definition tccdecl) uform)
 	  (unless (tc-eq uform *true*)
