@@ -856,7 +856,8 @@
     (mapcar #'libref-to-pathname (nreverse libs))))
 
 (defun library-file? (pvsfile)
-  (let* ((lib-ref (pathname-to-libref (pathname-directory pvsfile)))
+  (let* ((lib-ref (pathname-to-libref (make-pathname
+				       :directory (pathname-directory pvsfile))))
 	 (file (pathname-name pvsfile))
 	 (ext (pathname-type pvsfile))
 	 (hash (when lib-ref
@@ -864,9 +865,9 @@
 			  (gethash lib-ref *prelude-libraries*))))))
     (when (and hash
 	       file
-	       (or (null ext) (string= ext "pvs"))
+	       (or (null ext) (string= ext "pvs")))
       (and (gethash file hash)
-	   t)))))
+	   t))))
 
 (defun get-imported-files-and-theories (lib-ref)
   (get-library-files-and-theories lib-ref *imported-libraries*))
@@ -912,16 +913,6 @@
 ;;;      d. Otherwise, it is an absolute pathname, starting with "/".
 
 ;;;   3. A libpath, which is an absolute pathname.
-
-;;; Get-library-pathname takes a libref (e.g., the fset in
-;;; fset@finite_sets[int] or the string provided in a lib-decl) and a flag
-;;; indicating whether to use the libref as a lib-decl reference.  It
-;;; returns three values: the libref, libname, and libpath.  It first
-;;; checks for a library declaration of the same name, and returns the
-;;; associated path if it is found, otherwise it checks for the name as
-;;; part of the current directory, then the default library.  If a library
-;;; is not found, it returns a third value indicating the problem with the
-;;; library.
 
 (defmethod get-library-reference ((libstr string))
   ;; libstr is the string in a lib-decl, and must be a valid directory
