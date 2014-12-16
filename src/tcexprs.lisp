@@ -424,11 +424,13 @@
 (defmethod typecheck* ((expr number-expr) expected kind arguments)
   (declare (ignore expected kind))
   ;;(assert (typep *number* 'type-expr))
-  (let ((reses (resolve* expr 'expr arguments)))
+  (let* ((nm (mk-name-expr (makesym "~d" (number expr))))
+	 (reses (resolve* nm 'expr arguments)))
     (when reses
-      (change-class expr 'name-expr
-		    'id (number expr)
-		    'resolutions reses))
+      (change-class expr 'name-expr-from-number
+		    'id (id nm)
+		    'resolutions reses
+		    'number (number expr)))
     (assert *number_field*)
     (setf (types expr)
 	  (cons (or *real* *number_field*) (mapcar #'type reses)))))
@@ -608,7 +610,18 @@
 		  (selections expr))
 		(when (else-part expr) (list (ptypes (else-part expr)))))))
   (unless (types expr)
-    (type-error expr "Selections have incompatible types"))
+    (let* ((sel-types
+	    (nconc (mapcar #'(lambda (s)
+			       (list (id (constructor s)) (ptypes (expression s))))
+		     (selections expr))
+		   (when (else-part expr) (list (list 'ELSE (ptypes (else-part expr)))))))
+	   (len1 (max (reduce #'max sel-types
+			      :key #'(lambda (st) (length (string (car st)))))
+		      9)))
+      (type-error expr "Selections have incompatible types: ~%~va Possible types~%~
+                      ~v,,,'-a~{~{~%~va ~{~a~^, ~}~}~}"
+		  len1 "Selection" (+ len1 14) ""
+		  (mapcar #'(lambda (st) (cons len1 st)) sel-types))))
   expr)
 
 (defmethod find-adt-supertype ((te subtype))
@@ -745,7 +758,8 @@
 			:actuals (or (actuals constr)
 				     (actuals type))
 			:dactuals (or (dactuals constr)
-				      (dactuals type)))))
+				      (and (type-name? type)
+					   (dactuals type))))))
 	(typecheck* nconstr nil nil (cond ((null (args sel)) nil)
 					  ((cdr (args sel)) 
 					   (mk-tuple-expr (args sel)))
@@ -783,10 +797,10 @@
 	   ;;(stype (subst-for-formals atype dbindings))
 	   (dtype (subst-mod-params prtype (module-instance type)
 				    (module accdecl) accdecl)))
-      (unless (fully-instantiated? (declared-type (car selargs)))
-	(let* ((frees (free-params (declared-type (car selargs))))
+      (unless (fully-instantiated? dtype)
+	(let* ((frees (free-params dtype))
 	       (bindings (mapcar #'list frees))
-	       (nbindings (tc-match type (declared-type (car selargs)) bindings)))
+	       (nbindings (tc-match type dtype bindings)))
 	  (break "set-selection-types"))
 	(type-error (declared-type (car selargs))
 	    "Could not determine the full theory instance"))
@@ -1675,8 +1689,10 @@
 	(type-error (expression expr)
 	  "Must resolve to a record, tuple, function, array, or datatype.")))
   (let* ((etype (find-declared-adt-supertype (car (ptypes (expression expr)))))
-	 (found-assns (with-no-type-errors
-		       (typecheck-assignments (assignments expr) etype))))
+	 (found-assns ;(with-no-type-errors
+		       (typecheck-assignments (assignments expr) etype)
+					;)
+	   ))
     (if found-assns
 	(setf (types expr) (update-expr-types expr))
 	(find-update-conversions expr etype))))
