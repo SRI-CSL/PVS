@@ -92,6 +92,8 @@
 
 (defvar *subst-mod-params-declaration* nil)
 
+(defvar *subst-mod-params-freevars* nil)
+
 (defvar *subst-mod-params-map-bindings*)
 
 ;;; This resets the *all-subst-mod-params-caches* hash table.  It is
@@ -175,7 +177,7 @@
 			 (mapcar #'(lambda (fp) (cdr (assq fp new-alist)))
 			   (decl-formals fdecl))))
 	     (thname
-	      (mk-modname (id th) actuals lib-id nil dactuals)))
+	      (mk-modname (id th) actuals lib-id nil dactuals fdecl)))
 	;; This is not necessarily true - we may be retypechecking within
 	;; the library context, in which case it is already a
 	;; library-theory.
@@ -203,6 +205,8 @@
   (assert (or (null (dactuals modinst)) decl))
   (let* ((*subst-mod-params-theory* (or theory (get-theory modinst)))
 	 (*subst-mod-params-declaration* decl)
+	 (*subst-mod-params-freevars* (or *subst-mod-params-freevars*
+					  (freevars obj)))
 	 (formals (unless (eq (current-theory) *subst-mod-params-theory*)
 		    (formals-sans-usings *subst-mod-params-theory*)))
 	 (dformals (when decl (all-decl-formals decl)))
@@ -656,7 +660,9 @@
 	    (let ((fconv (subst-mod-params* (from-conversion obj)
 					    modinst bindings)))
 	      (setq nobj (lcopy nobj :from-conversion fconv)))))
-	(unless (freevars nobj)
+	(unless (some #'(lambda (fv) (member fv *subst-mod-params-freevars*
+					     :test #'same-declaration))
+		      (freevars nobj))
 	  (if (and (not (some #'decl-formal? (free-params nobj)))
 		   (relatively-fully-instantiated? nobj))
 	      (setf (gethash obj *subst-mod-params-cache*) nobj)
@@ -688,6 +694,7 @@
       nobj))
 
 (defmethod subst-mod-params-print-type (obj nobj modinst bindings)
+  (declare (ignore obj modinst bindings))
   nobj)
 
 (defun no-matching-free-params (obj frees)
@@ -977,9 +984,9 @@
 					    nmodinst *subst-mod-params-theory* (car map)))
 				 (ntype (subst-mod-params type nmodinst
 					  *subst-mod-params-theory* decl)))
-			    (assert (fully-instantiated? nformals))
-			    (assert (fully-instantiated? nexpr))
-			    (assert (fully-instantiated? ntype))
+			    ;;(assert (fully-instantiated? nformals))
+			    ;;(assert (fully-instantiated? nexpr))
+			    ;;(assert (fully-instantiated? ntype))
 			    (setf (formals ndecl) nformals)
 			    (setf (definition ndecl)
 				  (if nformals
@@ -1015,11 +1022,11 @@
 				    *subst-mod-params-theory* decl))
 			    (ndefax (subst-mod-params def-axiom nmodinst
 				      *subst-mod-params-theory* decl)))
-		       (assert (fully-instantiated? ntype))
-		       (assert (fully-instantiated? nfmls))
-		       (assert (fully-instantiated? ndtype))
-		       (assert (fully-instantiated? ndef))
-		       (assert (fully-instantiated? ndefax))
+		       ;; (assert (fully-instantiated? ntype))
+		       ;; (assert (fully-instantiated? nfmls))
+		       ;; (assert (fully-instantiated? ndtype))
+		       ;; (assert (fully-instantiated? ndef))
+		       ;; (assert (fully-instantiated? ndefax))
 		       (setf (formals ndecl) nfmls
 			     (declared-type ndecl) ndtype
 			     (type ndecl) ntype
@@ -1078,10 +1085,30 @@
       :generated-by decl)))
 
 (defmethod subst-mod-params* ((decl application-judgement) modinst bindings)
-  (with-slots (name) decl
-    (lcopy decl
-      :name (subst-mod-params* name modinst bindings)
-      :generated-by decl)))
+  (with-slots (name declared-type type judgement-type formals) decl
+    (if *subst-params-decl*
+	(let ((nname (subst-mod-params* name modinst bindings)))
+	  (when (name? nname)
+	    (let ((ntype (subst-mod-params* type modinst bindings)))
+	      (lcopy decl
+		'declared-type (if (tc-eq declared-type type)
+				   ntype
+				   (if (and (print-type type)
+					    (typep declared-type
+						   '(or type-application)))
+				       (print-type type)
+				   (progn (unless (typep declared-type
+							 '(or type-name expr-as-type
+							   type-application type-extension))
+					    (break "declared-type"))
+				   (subst-mod-params* declared-type modinst bindings))))
+		'type ntype
+		'judgement-type (subst-mod-params* judgement-type modinst bindings)
+		'name nname
+		'formals (subst-mod-params* formals modinst bindings)))))
+	(lcopy decl
+	  :name (subst-mod-params* name modinst bindings)
+	  :generated-by decl))))
 
 (defmethod subst-mod-params* ((decl conversion-decl) modinst bindings)
   (with-slots (expr) decl
@@ -1271,19 +1298,21 @@
 	(nparms (subst-mod-params* (parameters type) modinst bindings)))
     (lcopy type :type ntype :parameters nparms)))
 
-(defmethod subst-mod-params* ((type dep-binding) modinst bindings)
-  (let ((ntype (subst-mod-params* (type type) modinst bindings))
-	(ndeclared-type (subst-mod-params* (declared-type type)
-					   modinst bindings)))
-    (if (and (eq (type type) ntype)
-	     (eq (declared-type type) ndeclared-type))
-	type
-	(let ((ndep (copy type
+(defmethod subst-mod-params* ((dtype dep-binding) modinst bindings)
+  (with-slots (type declared-type) dtype
+    (let* ((ntype (subst-mod-params* type modinst bindings))
+	   (ndeclared-type (if (eq declared-type type)
+			       ntype
+			       (subst-mod-params* declared-type modinst bindings))))
+    (if (and (eq type ntype)
+	     (eq declared-type ndeclared-type))
+	dtype
+	(let ((ndep (copy dtype
 		       :type ntype
 		       :declared-type ndeclared-type)))
  	  (setf (resolutions ndep)
  		(list (mk-resolution ndep (current-theory-name) ntype)))
-	  ndep))))
+	  ndep)))))
 
 (defmethod subst-mod-params* ((type expr-as-type) modinst bindings)
   (let* ((ntype (call-next-method))
@@ -1375,7 +1404,8 @@
   (if types
       (let ((ntype (subst-mod-params* (car types) modinst bindings)))
 	(subst-mod-params-type-list
-	 (if (typep ntype 'dep-binding)
+	 (if (and (not (eq ntype (car types)))
+		  (typep ntype 'dep-binding))
 	     (substit (cdr types) (acons (car types) ntype nil))
 	     (cdr types))
 	 modinst bindings (cons ntype ntypes)))
@@ -1398,7 +1428,9 @@
 	(assert (every #'(lambda (fp) (not (assq fp bindings)))
 		       (free-params nfield)))
 	(subst-mod-params-fields
-	 (substit (cdr fields) (acons (car fields) nfield nil))
+	 (if (eq (car fields) nfield)
+	     (cdr fields)
+	     (substit (cdr fields) (acons (car fields) nfield nil)))
 	 modinst bindings (cons nfield nfields)))
       (nreverse nfields)))
 
@@ -1503,11 +1535,13 @@
 	  (t nexpr))))
 
 (defmethod subst-mod-params* ((bd binding) modinst bindings)
-  (let ((ntype (subst-mod-params* (type bd) modinst bindings))
-	(ndeclared-type (unless *generating-mapped-axiom-tcc*
-			  (subst-mod-params* (declared-type bd)
-					     modinst bindings)))
-	(clash? (some #'(lambda (sbd) (var-occurs-in (id bd) (cdr sbd))) bindings)))
+  (let* ((ntype (subst-mod-params* (type bd) modinst bindings))
+	 (ndeclared-type (unless *generating-mapped-axiom-tcc*
+			   (if (eq (type bd) (declared-type bd))
+			       ntype
+			       (subst-mod-params* (declared-type bd)
+						  modinst bindings))))
+	 (clash? (some #'(lambda (sbd) (var-occurs-in (id bd) (cdr sbd))) bindings)))
     (if (and (strong-tc-eq (type bd) ntype)
 	     (strong-tc-eq (declared-type bd) ndeclared-type)
 	     (not clash?))
@@ -1846,11 +1880,14 @@
 (defmethod subst-mod-params* ((map mapping) modinst bindings)
   (with-slots (lhs rhs declared-type type) map
     ;; Does it make sense to substitute the lhs?
-    (lcopy map
-      :lhs (lcopy lhs :resolutions (subst-mod-params* (resolutions lhs) modinst bindings))
-      :rhs (subst-mod-params* rhs modinst bindings)
-      :declared-type (subst-mod-params* declared-type modinst bindings)
-      :type (subst-mod-params* type modinst bindings))))
+    (let ((ntype (subst-mod-params* type modinst bindings)))
+      (lcopy map
+	:lhs (lcopy lhs :resolutions (subst-mod-params* (resolutions lhs) modinst bindings))
+	:rhs (subst-mod-params* rhs modinst bindings)
+	:declared-type (if (eq declared-type type)
+			   ntype
+			   (subst-mod-params* declared-type modinst bindings))
+	:type ntype))))
 
 ;;; A mapping-rhs is an actual
 ;; (defmethod subst-mod-params* ((rhs mapping-rhs) modinst bindings)
@@ -1960,7 +1997,8 @@
 							    (not (eq (library mi)
 								     (library modinst))))
 						  (mappings modinst)))
-					    ndacts)
+					    ndacts
+					    decl)
 					  (if eqtype
 					      (mk-funtype (list eqtype eqtype) *boolean*)
 					      ntype))))
