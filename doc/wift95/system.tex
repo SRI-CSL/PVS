@@ -81,7 +81,7 @@ different context (\ie\ directory) using the \ecmd{change-context}
 command, which is analogous to the \unix\ {\tt cd} command.
 
 Now let's develop a small specification:
-\begin{pvsex}
+\begin{jmrsession}
 sum: THEORY
  BEGIN
   n: VAR nat
@@ -90,7 +90,7 @@ sum: THEORY
    MEASURE (LAMBDA n: n)
   closed_form: THEOREM sum(n) = (n * (n + 1))/2
  END sum
-\end{pvsex}
+\end{jmrsession}
 %
 This is a specification for summation of the first $n$ natural numbers
 
@@ -155,7 +155,7 @@ to.
 \index{typecheck|(}
 
 The next step is to typecheck the file by typing \ecmd{typecheck}
-(\ecmd{tc}, \key{C-c t}), which checks for semantic errors, such as
+(\ecmd{tc}, \key{C-c C-t}), which checks for semantic errors, such as
 undeclared names and ambiguous types.  Typechecking may build new files
 or internal structures such as \tccs.  When {\tt sum} has been
 typechecked, a message is displayed in the minibuffer indicating that
@@ -287,7 +287,7 @@ proved.  The entire proof transcript is shown below.  Yours may be
 different, depending on your window size and the timings involved.
 
 {\smaller\smaller\smaller\begin{alltt}
-\input{sum-proof}
+input{sum-proof}
 \end{alltt}}
 
 Note: The proof presented here is a low-level interactive one chosen
@@ -326,7 +326,7 @@ after that \pvs\ assumes that you want to use the same previewer.
 \begin{figure}[ht]
 \begin{center}
 \begin{boxedminipage}{\textwidth}
-{\smaller\smaller\input{sum}}
+{\smaller\smaller \input{sum}}
 \end{boxedminipage}
 \end{center}
 \caption{Theory {\tt sum}}\label{sum-plain}
@@ -350,7 +350,7 @@ the output will look like Figure~\ref{sum-sub}.
 \begin{figure}[ht]
 \begin{center}
 \begin{boxedminipage}{\textwidth}
-{\smaller\smaller\input{sum-sub}}
+{\smaller\smaller \input{sum-sub}}
 \end{boxedminipage}
 \end{center}
 \caption{Theory {\tt sum}}\label{sum-sub}
@@ -362,20 +362,19 @@ below; details are in the PVS system manual.
 
 \noindent
 \begin{boxedminipage}{\linewidth}
-\def\sumonefn#1{{\sum_{i = 0}^{#1} i}}
+\def\opdividetwofn#1#2{{\frac{#1}{#2}}}% How to print function / with arity (2)
+\def\optimestwofn#1#2{{#1\times#2}}% How to print function * with arity (2)
+\def\opplustwofn#1#2{{#1+#2}}% How to print function + with arity (2)
 
-Expanding the definition of sum
+Rule?  (expand sum +)
+
+Expanding the definition of sum,
 
 {\tt closed\_form.2:}
 
-\vspace*{0.2in}\hspace*{0.2in}
-\begin{tabular}{ll}
-$\{-1\}$ &\begin{minipage}[t]{6in}{ \begin{program} 
- \sumonefn { j^{\prime} } \mbox{ }=\mbox{ }(\ii j^{\prime} \mbox{ }\times\mbox{ }(\ii j^{\prime} \mbox{ }+\mbox{ } 1)) \mbox{ }/\mbox{ } 2 \\ 
-\oo\oo\zi\zi\zi\zi\zo\zo \end{program}}\end{minipage}\\\hline
-$\{1\}$ &\begin{minipage}[t]{6in}{ \begin{program} 
-(\ii \pvskey{IF\mbox{ }} j^{\prime} \mbox{ }+\mbox{ } 1 \mbox{ }=\mbox{ } 0 \pvskey{\mbox{ }THEN\mbox{ }} 0 \pvskey{\mbox{ }ELSE\mbox{ }} j^{\prime} \mbox{ }+\mbox{ } 1 \mbox{ }+\mbox{ } \sumonefn { j^{\prime} \mbox{ }+\mbox{ } 1 \mbox{ }-\mbox{ } 1 } \pvskey{\mbox{ }ENDIF}) \\
-\oo\zi \mbox{ }=\mbox{ }(\ii(\ii j^{\prime} \mbox{ }+\mbox{ } 1) \mbox{ }\times\mbox{ }(\ii j^{\prime} \mbox{ }+\mbox{ } 1 \mbox{ }+\mbox{ } 1)) \mbox{ }/\mbox{ } 2 \\ 
-\oo\oo\oo\zi\zi\zi\zo\zo \end{program}}\end{minipage}\\
+\vspace*{0.1in}\hspace*{0.2in}
+\begin{tabular}{|cl}
+$\{\mbox{\rm -1}\}$ &\begin{minipage}[t]{5.5in}{\begin{alltt}\pvsid{sum}\pvsid{(}\(j'\)\pvsid{)} \(=\) \(\opdividetwofn{\pvsid{(}\optimestwofn{j'}{\pvsid{(}\opplustwofn{j'}{1}\pvsid{)}}\pvsid{)}}{2}\)\end{alltt}}\end{minipage}\\\hline
+$\{\mbox{\rm 1}\}$ &\begin{minipage}[t]{5.5in}{\begin{alltt}\(\opplustwofn{\opplustwofn{1}{\pvsid{sum}\pvsid{(}j'\pvsid{)}}}{j'}\) \(=\) \(\opdividetwofn{\opplustwofn{\opplustwofn{2}{j'}}{\opplustwofn{\optimestwofn{j'}{j'}}{\optimestwofn{2}{j'}}}}{2}\)\end{alltt}}\end{minipage}\\
 \end{tabular}
 \end{boxedminipage}

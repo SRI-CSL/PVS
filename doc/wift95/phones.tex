@@ -62,7 +62,7 @@ number to the phone book; and that {\em DelPhone\/} should take a
 phone book and a name and delete the phone number associated with that
 name (if any).
 
-The next step is decide how to represent these entities and operations
+The next step is to decide how to represent these entities and operations
 in PVS\@.  If we were programming, we would have to choose some specific
 representations for phone numbers and names---e.g., ascii strings, or
 more structured representations such as records containing the
@@ -71,10 +71,10 @@ at this point.  But for requirements specification, all we require is
 that phone numbers and names are distinguishable {\em types\/} of
 entities.  In PVS, we can specify this as follows (a \% sign
 introduces a comment that extends to the end of the line).
-\begin{jmrsession}
-  N: TYPE              \% names
-  P: TYPE              \% phone numbers
-\end{jmrsession}
+\begin{pvsexample}
+N: TYPE              % names
+P: TYPE              % phone numbers
+\end{pvsexample}
 These types are {\em uninterpreted\/}, meaning that we know nothing
 about their members---not even whether they are zero, many, or
 infinite in number---except that elements of type {\tt N} are
@@ -90,9 +90,9 @@ function from names to phone numbers (you can think of a function as
 an array if that notion is more familiar to you).  PVS is able to
 reason very effectively with functions, so there is some advantage to
 the latter representation.  We can specify this as follows.
-\begin{jmrsession}
-  B: TYPE = [N -> P]   \% phone books
-\end{jmrsession}
+\begin{pvsexample}
+B: TYPE = [N -> P]   % phone books
+\end{pvsexample}
 This says that phone books have the {\em type\/} {\tt
 B}, and are functions from names to phone numbers.
 
@@ -110,16 +110,16 @@ particular phone number, represented by {\tt n0} say, to indicate this
 fact.  Of course we need to mentally make note that this number must
 be different from any ``real'' phone number (we will see later how we
 can enforce this requirement, and later still we will see a better way
-to deal this whole issue of names that have no phone number).  Give
+to deal with this whole issue of names that have no phone number).  Given
 this decision, we can next
 specify the empty phone book as the (unique) phone book that maps all
 names to {\tt n0}.  I will specify this axiomatically, later we will
 see how to do it definitionally.
-\begin{jmrsession}
-  n0: P
-  emptybook: B
-  emptyax: AXIOM   FORALL (nm: N): emptybook(nm) = n0
-\end{jmrsession}
+\begin{pvsexample}
+n0: P
+emptybook: B
+emptyax: AXIOM   FORALL (nm: N): emptybook(nm) = n0
+\end{pvsexample}
 If we were programming an implementation, a literal translation of
 this representation would be grossly inefficient: it requires
 ``space'' for every possible name and it explicitly records for every
@@ -133,10 +133,10 @@ to suggest an efficient implementation.
 We can specify the {\tt FindPhone} operation as a function that takes a
 phone book and a name and returns the phone number associated with
 that name.
-\begin{jmrsession}
-  FindPhone: [B, N -> P]
-  Findax: AXIOM   FORALL (bk: B), (nm: N):  FindPhone(bk, nm) = bk(nm)
-\end{jmrsession}
+\begin{pvsexample}
+FindPhone: [B, N -> P]
+Findax: AXIOM   FORALL (bk: B), (nm: N):  FindPhone(bk, nm) = bk(nm)
+\end{pvsexample}
 Notice that this is a {\em functional\/} specification style: the
 ``state'' of the system we are interested in (i.e., the phone book) is
 passed to the {\tt FindPhone} function as an argument; this is in contrast
@@ -155,11 +155,11 @@ functional style used here, we model the operation by a function that
 takes a phone book, a name, and a number, and gives us back a ``new''
 phone book in which the association between the name and number has
 been added.   
-\begin{jmrsession}
-  AddPhone: [B, N, P -> B]
-  Addax: AXIOM   FORALL (bk: B), (nm: N), (pn: P): 
-     AddPhone(bk, nm, pn) = bk WITH [(nm) := pn]
-\end{jmrsession}
+\begin{pvsexample}
+AddPhone: [B, N, P -> B]
+Addax: AXIOM   FORALL (bk: B), (nm: N), (pn: P): 
+   AddPhone(bk, nm, pn) = bk WITH [(nm) := pn]
+\end{pvsexample}
 The {\tt WITH} construct is similar to function overriding in Z.
 
 Now that we have specified two operations, perhaps we should check our
@@ -183,10 +183,10 @@ very efficient.)  A suitable challenge for the specification
 we have so far is: ``if I add a name {\tt nm} with phone number {\tt
 pn} to a phone book and look up the name {\tt nm}, I should get back
 the phone number {\tt pn}.''  We can write this as follows.
-\begin{jmrsession}
-  FindAdd: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
-    FindPhone(AddPhone(bk, nm, pn), nm) = pn
-\end{jmrsession}
+\begin{pvsexample}
+FindAdd: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
+  FindPhone(AddPhone(bk, nm, pn), nm) = pn
+\end{pvsexample}
 
 In order to test this conjecture, we have to extend the specification into a
 complete PVS ``theory'' (as modules are called in PVS).  This is shown
@@ -199,14 +199,13 @@ the cursor on the {\tt CONJECTURE} and type {\tt M-x prove} (this will
 automatically parse and typecheck if necessary).
 
 \begin{figure}[htbp]
-\begin{jmrsession}
+\begin{pvsexample}
 phone_1: THEORY
-
 BEGIN
 
-  N: TYPE              \% names
-  P: TYPE              \% phone numbers
-  B: TYPE = [N -> P]   \% phone books
+  N: TYPE              % names
+  P: TYPE              % phone numbers
+  B: TYPE = [N -> P]   % phone books
 
   n0: P
   emptybook: B
@@ -223,22 +222,24 @@ BEGIN
     FindPhone(AddPhone(bk, nm, pn), nm) = pn
 
 END phone_1
-\end{jmrsession}
+\end{pvsexample}
 \caption{\label{fig1}Specification Ready for Checking the First Challenge}
 \end{figure}
 
+%\newpage
 Starting the prover on the {\tt FindAdd} conjecture produces the following
 display.
-\begin{jmrsession}
+\begin{pvsexample}
 FindAdd :  
 
   |-------
-\{1\}   FORALL (bk: B), (nm: N), (pn: P): FindPhone(AddPhone(bk, nm, pn), nm) = pn
+{1}   FORALL (bk: B), (nm: N), (pn: P): 
+        FindPhone(AddPhone(bk, nm, pn), nm) = pn
 
 Rule? 
-\end{jmrsession}
-This is a {\em sequent\/}: in general there will be several numbered
-formulas above the turnstile symbol {\tt |-------}, and several below.
+\end{pvsexample}
+This is a \emph{sequent}: in general there will be several numbered
+formulas above the turnstile symbol \verb!|-------!, and several below.
 The idea is that we have to establish that the conjunction (and) of the
 formulas above the turnstile implies the disjunction (or) of the
 formulas below the line.  The {\tt Rule?} prompt indicates that PVS is
@@ -276,7 +277,7 @@ instance of the right hand side).  In this case, we need to tell it
 that all the definitions and axioms in the theory {\tt phone\_1} may
 be used as rewrites.  The command above does this, and is sufficient
 to prove the challenge.
-\begin{jmrsession}
+\begin{pvsexample}
 Rule? (grind :theories ("phone_1"))
 Addax rewrites AddPhone(bk, nm, pn)
   to bk WITH [(nm) := pn]
@@ -284,29 +285,29 @@ Findax rewrites FindPhone(bk WITH [(nm) := pn], nm)
   to pn
 Trying repeated skolemization, instantiation, and if-lifting,
 Q.E.D.
-\end{jmrsession}
+\end{pvsexample}
 
 Encouraged by this small confirmation that we are on the right track
 we can return to specifying the {\tt DelPhone} operation.  This is
 specified in a similar way to {\tt AddPhone}.
-\begin{jmrsession}
-  DelPhone: [B, N -> B]
-  Delax: AXIOM   FORALL (bk: B), (nm: N): DelPhone(bk, nm) = bk WITH [(nm) := n0]
-\end{jmrsession}
+\begin{pvsexample}
+DelPhone: [B, N -> B]
+Delax: AXIOM   FORALL (bk: B), (nm: N): DelPhone(bk, nm) = bk WITH [(nm) := n0]
+\end{pvsexample}
 We can similarly test our understanding of this specification by
 checking the intuition that adding a name and phone number to a book
 and then deleting them leaves the book unchanged.
-\begin{jmrsession}
-  DelAdd: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
-    DelPhone(AddPhone(bk, nm, pn), nm) = bk
-\end{jmrsession}
+\begin{pvsexample}
+DelAdd: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
+  DelPhone(AddPhone(bk, nm, pn), nm) = bk
+\end{pvsexample}
 The same proof strategy as before fails to prove the conjecture and
 produces the following result.
-\begin{jmrsession}
+\begin{pvsexample}
 DelAdd :  
 
   |-------
-\{1\}   FORALL (bk: B), (nm: N), (pn: P): DelPhone(AddPhone(bk, nm, pn), nm) = bk
+{1}   FORALL (bk: B), (nm: N), (pn: P): DelPhone(AddPhone(bk, nm, pn), nm) = bk
 
 Rule? (grind :theories ("phone_1"))
 Addax rewrites AddPhone(bk, nm, pn)
@@ -317,10 +318,10 @@ Trying repeated skolemization, instantiation, and if-lifting, this simplifies to
 DelAdd :  
 
   |-------
-\{1\}   bk!1 WITH [(nm!1) := pn!1] WITH [(nm!1) := n0] = bk!1
+{1}   bk!1 WITH [(nm!1) := pn!1] WITH [(nm!1) := n0] = bk!1
 
 Rule?
-\end{jmrsession}
+\end{pvsexample}
 The identifiers with {\tt !} in them are Skolem constants---arbitrary
 representatives for quantified variables.  This sequent is requiring
 us to prove that two functions (i.e., phone books) are the same: one
@@ -329,13 +330,13 @@ that is unchanged.  To prove that two functions are the same, we
 appeal to the principle of {\em extensionality\/}, which says that
 this is so if the values of the two functions are identical for every
 point in their domains.
-\begin{jmrsession}
+\begin{pvsexample}
 Rule? (apply-extensionality)
   Applying extensionality, this simplifies to: 
 DelAdd :  
 
   |-------
-\{1\}   bk!1 WITH [(nm!1) := pn!1] WITH [(nm!1) := n0](x!1) = bk!1(x!1)
+{1}   bk!1 WITH [(nm!1) := pn!1] WITH [(nm!1) := n0](x!1) = bk!1(x!1)
 [2]   bk!1 WITH [(nm!1) := pn!1] WITH [(nm!1) := n0] = bk!1
 
 Rule? (delete 2)
@@ -346,7 +347,7 @@ DelAdd :
 [1]   bk!1 WITH [(nm!1) := pn!1] WITH [(nm!1) := n0](x!1) = bk!1(x!1)
 
 Rule? 
-\end{jmrsession}
+\end{pvsexample}
 It is always possible to delete formulas from a sequent; here I have
 deleted the original formula to reduce clutter, since it is the
 extensional form that is interesting.  This sequent is asking us to
@@ -358,7 +359,7 @@ the {\tt (lift-if)} command, which converts {\tt WITH} expressions to
 their corresponding {\tt IF-THEN-ELSE} form.  The {\tt (ground)}
 command (a slightly less muscular command than {\tt (grind)}) then
 takes care of the various cases, except for one.
-\begin{jmrsession}
+\begin{pvsexample}
 DelAdd :  
 
   |-------
@@ -370,7 +371,7 @@ this simplifies to:
 DelAdd :  
 
   |-------
-\{1\}   IF nm!1 = x!1 THEN n0 = bk!1(x!1)
+{1}   IF nm!1 = x!1 THEN n0 = bk!1(x!1)
       ELSE IF nm!1 = x!1 THEN n0 = bk!1(x!1)
         ELSE bk!1(x!1) = bk!1(x!1)
         ENDIF
@@ -381,12 +382,12 @@ Applying propositional simplification and decision procedures,
 this simplifies to: 
 DelAdd :  
 
-\{-1\}   nm!1 = x!1
+{-1}   nm!1 = x!1
   |-------
-\{1\}   n0 = bk!1(x!1)
+{1}   n0 = bk!1(x!1)
 
 Rule?
-\end{jmrsession}
+\end{pvsexample}
 (A {\tt (grind)} command would have performed both these steps.)
 For this sequent to be true, we need to to demonstrate
 that if {\tt x!1 = nm!1}, then the phone number originally associated
@@ -401,18 +402,18 @@ operation changes it again to {\tt n0}---which is not equal to {\tt
 nm!2}.  Thus our conjecture is only true under the assumption that the
 name we add to the phone book currently has no number associated with it.
 We can test this by modifying the conjecture as follows.
-\begin{jmrsession}
-  DelAdd2: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
-    FindPhone(bk, nm) = n0 => DelPhone(AddPhone(bk, nm, pn), nm) = bk
-\end{jmrsession}
+\begin{pvsexample}
+DelAdd2: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
+  FindPhone(bk, nm) = n0 => DelPhone(AddPhone(bk, nm, pn), nm) = bk
+\end{pvsexample}
 And the {\tt (grind :theories ("phone\_1"))} strategy proves this.
 
 Another conjecture is that the result of adding a name and then
 deleting it is the same as just deleting it.
-\begin{jmrsession}
-  DelAdd3: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
-    DelPhone(AddPhone(bk, nm, pn), nm) = DelPhone(bk, nm)
-\end{jmrsession}
+\begin{pvsexample}
+DelAdd3: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
+  DelPhone(AddPhone(bk, nm, pn), nm) = DelPhone(bk, nm)
+\end{pvsexample}
 The {\tt (grind :theories ("phone\_1"))} strategy proves this
 conjecture also.
 
@@ -427,10 +428,10 @@ problem.
 Another conjecture we might try to prove is that after adding a name
 and phone number to the phone book, the number stored for that name is
 a ``real'' number (i.e., not {\tt n0}).
-\begin{jmrsession}
-  KnownAdd: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
-    FindPhone(AddPhone(bk, nm, pn), nm) /= n0
-\end{jmrsession}
+\begin{pvsexample}
+KnownAdd: CONJECTURE  FORALL (bk: B), (nm: N), (pn: P):
+  FindPhone(AddPhone(bk, nm, pn), nm) /= n0
+\end{pvsexample}
 The same kind of exploration with the prover will rapidly show that
 this is unprovable because there is nothing that requires the {\tt
 pn} argument to {\tt AddPhone} to be a ``real'' phone number.
@@ -450,9 +451,9 @@ of ``good phone numbers'' as a {\em subtype\/} of P, with the
 constraint that {\tt n0} is not a member of {\tt GP}.  In PVS, this is
 done by means of a {\em predicate subtype}, which can be written as
 follows.
-\begin{jmrsession}
-  GP: TYPE = \{ pn: P | pn /= n0 \}
-\end{jmrsession}
+\begin{pvsexample}
+GP: TYPE = { pn: P | pn /= n0 }
+\end{pvsexample}
 We will see later that predicate subtypes are a very powerful element
 of the PVS specification language.  Here we can make simple use of
 them by changing the {\em signature\/} of the {\tt AddPhone}
@@ -472,10 +473,10 @@ predicate {\tt Known?} that takes a phone book and a name and returns
 {\tt true} if that name has a ``real'' phone number in the book
 concerned.  (A {\em predicate\/} is just a function whose range type
 is boolean.)  This can be specified as follows.
-\begin{jmrsession}
-  Known?: [B, N -> bool]
-  Known_ax: AXIOM   FORALL (bk: B), (nm: N): Known?(bk, nm) = (bk(nm) /= n0)
-\end{jmrsession}
+\begin{pvsexample}
+Known?: [B, N -> bool]
+Known_ax: AXIOM FORALL (bk: B), (nm: N): Known?(bk, nm) = (bk(nm) /= n0)
+\end{pvsexample}
 
 This axiomatic style of specification has the disadvantage that axioms
 can introduce inconsistencies.  An individual axiom is seldom
@@ -483,9 +484,9 @@ dangerous: rather, danger lies in the interactions among several
 axioms.  For example, with the original signature and definition of
 {\tt AddPhone}, adding the following axiom to that above yields an
 inconsistent specification.
-\begin{jmrsession}
-  Whoops: AXIOM   FORALL (bk: B), (nm: N), (pn, P): Known?(AddPhone(bk, nm, pn), nm)
-\end{jmrsession}
+\begin{pvsexample}
+Whoops: AXIOM   FORALL (bk: B), (nm: N), (pn, P): Known?(AddPhone(bk, nm, pn), nm)
+\end{pvsexample}
 
 Inconsistent specifications are dangerous because they can be used to
 prove anything at all,\footnote{For example, when used in conjunction
@@ -504,35 +505,35 @@ extension'' (and therefore does not introduce an inconsistency).
 The predicate {\tt Known?} can be introduced by means of a definition
 by replacing the two lines used earlier (the specification of its
 signature and axiom) by the following single line.
-\begin{jmrsession}
-  Known?: [B, N -> bool] = LAMBDA (bk: B), (nm: N): bk(nm) /= n0
-\end{jmrsession}
+\begin{pvsexample}
+Known?: [B, N -> bool] = LAMBDA (bk: B), (nm: N): bk(nm) /= n0
+\end{pvsexample}
 The use of {\tt LAMBDA} notation can be a little daunting, so PVS allows an
 alternative, ``applicative,'' form of definition as follows.
-\begin{jmrsession}
-  Known?(bk: B, nm: N): bool = bk(nm) /= n0
-\end{jmrsession}
+\begin{pvsexample}
+Known?(bk: B, nm: N): bool = bk(nm) /= n0
+\end{pvsexample}
 The need to specify the types of the variables in this declaration
 can be eliminated by declaring them separately.
-\begin{jmrsession}
-  bk: VAR B
-  nm: VAR N
-  Known?(bk, nm): bool = bk(nm) /= n0
-\end{jmrsession}
+\begin{pvsexample}
+bk: VAR B
+nm: VAR N
+Known?(bk, nm): bool = bk(nm) /= n0
+\end{pvsexample}
 In this way, the previous axiomatic specification for {\tt AddPhone} can be
 changed to the following definition, which incorporates the refinement
 that the function does not change the phone book if the name already
 has a number known for it.
-\begin{jmrsession}
-  gp: VAR GP
-  AddPhone(bk, nm, gp): B = 
-    IF Known?(bk, nm) THEN bk ELSE bk WITH [(nm) := gp] ENDIF
-\end{jmrsession}
+\begin{pvsexample}
+gp: VAR GP
+AddPhone(bk, nm, gp): B = 
+  IF Known?(bk, nm) THEN bk ELSE bk WITH [(nm) := gp] ENDIF
+\end{pvsexample}
 We can check that these changes provide some of the properties we
 expect by considering the following formal challenge.
-\begin{jmrsession}
-  KnownAdd: CONJECTURE  FORALL bk, nm, gp: Known?(AddPhone(bk, nm, gp), nm)
-\end{jmrsession}
+\begin{pvsexample}
+KnownAdd: CONJECTURE  FORALL bk, nm, gp: Known?(AddPhone(bk, nm, gp), nm)
+\end{pvsexample}
 This says that a name is definitely known (i.e., has a ``real'' phone
 number) after applying {\tt AddPhone} to it.   Notice that since the
 variables {\tt bk}, {\tt nm}, and {\tt gp} have already been declared,
@@ -541,13 +542,13 @@ In fact, there is no need to provide the {\tt FORALL} construction at all:
 the following specification is equivalent to the one above, since PVS
 automatically interprets ``free'' variables as universally quantified
 at the outermost level.
-\begin{jmrsession}
-  KnownAdd: CONJECTURE  Known?(AddPhone(bk, nm, gp), nm)
-\end{jmrsession}
+\begin{pvsexample}
+KnownAdd: CONJECTURE  Known?(AddPhone(bk, nm, gp), nm)
+\end{pvsexample}
 This conjecture is easily proved by the {\tt grind} strategy.
 
 \begin{figure}[htbp]
-\begin{jmrsession}
+\begin{pvsexample}
 phone_2: THEORY
 
 BEGIN
@@ -558,7 +559,7 @@ BEGIN
 
   n0: P
 
-  GP: TYPE = \{pn: P | pn /= n0\}
+  GP: TYPE = {pn: P | pn /= n0}
 
   nm: VAR N
   pn: VAR P
@@ -595,7 +596,7 @@ BEGIN
       AddPhone(ChangePhone(bk, nm, gp2), nm, gp2)
 
 END phone_2
-\end{jmrsession}
+\end{pvsexample}
 \caption{\label{fig2}Revised Specification}
 \end{figure}
 Proceeding in this way, we can construct the theory {\tt phone\_2}
@@ -618,11 +619,11 @@ typechecked until all its TCCs have been proved (though you can
 postpone doing the proof until convenient).  TCCs are displayed by the
 command {\tt M-x show-tccs}; in the present case, the TCC generated by
 {\rm Whoops} is the following.
-\begin{jmrsession}
+\begin{pvsexample}
 % Subtype TCC generated (line 37) for pn
   % untried
 whoops_TCC1: OBLIGATION (FORALL (pn: P): pn /= n0);
-\end{jmrsession}
+\end{pvsexample}
 This is obviously unproveable (and untrue!), and the folly of adding
 the axiom {\tt Whoops} is thereby brought to our attention.
 
@@ -645,9 +646,9 @@ decide that it is better to allow names to
 have multiple numbers associated with them.  We can accommodate this
 by changing the range of the phone book function from a single phone
 number to a {\em set\/} of phone numbers as follows.
-\begin{jmrsession}
-  B: TYPE = [N -> setof[P]]   \% phone books
-\end{jmrsession}
+\begin{pvsexample}
+B: TYPE = [N -> setof[P]]   \% phone books
+\end{pvsexample}
 This approach has the benefit that we now have a ``natural''
 representation for names that do not have phone numbers: they can be
 associated with the emptyset of phone numbers.
@@ -659,7 +660,7 @@ are defined in a PVS {\em prelude\/} (i.e., built-in)
 theory called {\tt set}.  You can inspect this theory with the command
 {\tt M-x view-prelude-theory}.
 \begin{figure}[htbp]
-\begin{jmrsession}
+\begin{pvsexample}
 phone_3 : THEORY
 
   BEGIN
@@ -687,7 +688,7 @@ phone_3 : THEORY
                 DelPhoneNum(bk, nm, pn)
 
   END phone_3
-\end{jmrsession}
+\end{pvsexample}
 \caption{\label{fig3}Specification Using Set Constructions}
 \end{figure}
 A rather more attractive rendition of this specification is shown in
@@ -695,59 +696,15 @@ Figure~\ref{fig3-latex}; this is produced by the command {\tt M-x
 latex-theory}, which typesets the specification using \LaTeX.
 
 \begin{figure}
-% The following substitutions are from the file:
-%   /tmp_mnt/homes/csla/rushby/tadpole/pvs-tex.sub
-\def\removetwofn#1#2{{#2 \setminus \{#1\}}}% How to print function remove with arity (2)
-\def\addtwofn#1#2{{\{#1\} \cup #2}}% How to print function add with arity (2)
-\def\emptysetoneid#1{{\emptyset_#1}}% How to print name emptyset with (1) actuals
-\def\singletononefn#1{{\{ #1 \}}}% How to print function singleton with arity (1)
-\def\uniontwofn#1#2{{#1 \cup #2}}% How to print function union with arity (2)
-\def\differencetwofn#1#2{{#1 \setminus #2}}% How to print function difference with arity (2)
-\setlength{\fboxsep}{1pt} 
-% The following substitutions are from the file:
-%   /homes/EHDM/pvs/pvs-tex.sub
-\def\membertwofn#1#2{{#1 \in #2}}% How to print function member with arity (2)
-\setlength{\fboxsep}{1pt} 
- \begin{program} 
- \pvsid{phone\_3} :\mbox{ } \pvskey{THEORY} \pvsnewline{}
-\zi\zi \pvskey{BEGIN} \pvsnewline{}
- \pvsnewline{}
- N :\mbox{ } \pvskey{TYPE} \pvsnewline{}
- \pvsnewline{}
- P :\mbox{ } \pvskey{TYPE} \pvsnewline{}
- \pvsnewline{}
- B :\mbox{ } \pvskey{TYPE\mbox{ }} \mbox{ }=\mbox{ }[\ii N \rightarrow\mbox{ } \pvsid{setof}[\ii P]] \pvsnewline{}
-\\[-\baselineskip]\oo\oo\zi\zi\zi\zo\zo\zo \pvsnewline{}
- \pvsid{nm} , x :\mbox{ } \pvskey{VAR\mbox{ }} N \pvsnewline{}
- \pvsnewline{}
- \pvsid{pn} :\mbox{ } \pvskey{VAR\mbox{ }} P \pvsnewline{}
- \pvsnewline{}
- \pvsid{bk} :\mbox{ } \pvskey{VAR\mbox{ }} B \pvsnewline{}
- \pvsnewline{}
- \pvsid{emptybook}(\ii \pvsid{nm}) :\mbox{ } \pvsid{setof}[\ii P] \mbox{ }=\mbox{ } \emptysetoneid { P } \pvsnewline{}
-\\[-\baselineskip]\oo\oo\zi\zo \pvsnewline{}
- \pvsid{FindPhone}(\ii \pvsid{bk} , \pvsid{ nm}) :\mbox{ } \pvsid{setof}[\ii P] \mbox{ }=\mbox{ } \pvsid{bk}(\ii \pvsid{nm}) \pvsnewline{}
-\\[-\baselineskip]\oo\oo\oo\zi\zi\zo\zo \pvsnewline{}
- \pvsid{AddPhone}(\ii \pvsid{bk} , \pvsid{ nm} , \pvsid{ pn}) :\mbox{ } B \mbox{ }=\mbox{ } \pvsid{bk } \pvskey{WITH\mbox{ }}[\ii(\ii \pvsid{nm}) \mbox{ }:=\mbox{ }\ii \addtwofn { \pvsid{pn}}{ \pvsid{bk}( \pvsid{nm}) }] \pvsnewline{}
-\\[-\baselineskip]\oo\oo\oo\oo\zi\zi\zi\zo\zo\zo \pvsnewline{}
- \pvsid{DelPhone}(\ii \pvsid{bk} , \pvsid{ nm}) :\mbox{ } B \mbox{ }=\mbox{ } \pvsid{bk } \pvskey{WITH\mbox{ }}[\ii(\ii \pvsid{nm}) \mbox{ }:=\mbox{ }\ii \emptysetoneid { P }] \pvsnewline{}
-\\[-\baselineskip]\oo\oo\oo\oo\zi\zi\zi\zo\zo\zo \pvsnewline{}
- \pvsid{DelPhoneNum}(\ii \pvsid{bk} , \pvsid{ nm} , \pvsid{ pn}) :\mbox{ } B \mbox{ }=\mbox{ } \pvsid{bk } \pvskey{WITH\mbox{ }}[\ii(\ii \pvsid{nm}) \mbox{ }:=\mbox{ }\ii \removetwofn { \pvsid{pn}}{ \pvsid{bk}( \pvsid{nm}) }] \pvsnewline{}
-\\[-\baselineskip]\oo\oo\oo\oo\zi\zi\zi\zo\zo\zo \pvsnewline{}
- \pvsid{FindAdd} :\mbox{ } \pvskey{CONJECTURE\mbox{ }} \membertwofn { \pvsid{pn}}{ \pvsid{FindPhone}( \pvsid{AddPhone}( \pvsid{bk} , \pvsid{ nm} , \pvsid{ pn}) , \pvsid{ nm}) } \pvsnewline{}
- \pvsnewline{}
- \pvsid{DelAdd} :\mbox{ } \pvskey{CONJECTURE} \pvsnewline{}
-\zi\zi \pvsid{DelPhoneNum}(\ii \pvsid{AddPhone}(\ii \pvsid{bk} , \pvsid{ nm} , \pvsid{ pn}) , \pvsid{ nm} , \pvsid{ pn}) \mbox{ }=\mbox{ }\ii \pvsid{DelPhoneNum}(\ii \pvsid{bk} , \pvsid{ nm} , \pvsid{ pn}) \pvsnewline{}
-\\[-\baselineskip]\oo\oo\oo\oo\zi\zi\zo\zi\zo\zo\zo\zo \pvsnewline{}
- \pvskey{END\mbox{ }} \pvsid{phone\_3} \pvsnewline{}
-\zo \end{program}
+\def\pvsdeclspacing{-2mm}
+\input{phone_3}
 \caption{\label{fig3-latex}\LaTeX-Printed Version of the Specification
 in Figure~\protect\ref{fig3}}
 \end{figure}
 The first conjecture in this specification is easily proved using {\tt
 (grind)}.   The second one requires the more complex proof shown
 below.
-\begin{jmrsession}
+\begin{pvsexample}
 ("" (GRIND)
     (APPLY-EXTENSIONALITY)
     (DELETE 2)
@@ -756,7 +713,7 @@ below.
     (APPLY-EXTENSIONALITY)
     (DELETE 2)
     (GRIND))
-\end{jmrsession}
+\end{pvsexample}
 This is the form in which PVS proofs are stored for later replay.
 
 We have specified single additions to the phone book, but it seems
@@ -778,16 +735,16 @@ otherwise recurses by applying the tail of the list to the phone book
 that results from applying {\tt AddPhone} to the first name and number
 pair in the list.
 
-\begin{jmrsession}
-  updates: VAR list[[N, P]]
+\begin{pvsexample}
+updates: VAR list[[N, P]]
 
-  AddList(bk, updates): RECURSIVE B = 
-    CASES updates OF
-      null: bk,
-      cons(upd, rest): AddList(AddPhone(bk, proj_1(upd), proj_2(upd)), rest)
-    ENDCASES
-    MEASURE length(updates)
-\end{jmrsession}
+AddList(bk, updates): RECURSIVE B = 
+  CASES updates OF
+    null: bk,
+    cons(upd, rest): AddList(AddPhone(bk, proj_1(upd), proj_2(upd)), rest)
+  ENDCASES
+  MEASURE length(updates)
+\end{pvsexample}
 
 In this specification, the {\tt CASES} expression introduces a
 pattern-matching enumeration over the constructors of an abstract data
@@ -798,26 +755,26 @@ specifies a function of the arguments, and an ordering relation
 according to which it decreases).  PVS uses the {\tt MEASURE} to
 generate a TCC to ensure that the function is total (i.e., that the
 recursion always ``terminates'').  In this case, the TCC is
-\begin{jmrsession}
+\begin{pvsexample}
 % Termination TCC generated (line 48) for AddList
 
   AddList_TCC1: OBLIGATION
       (FORALL (rest: list[[N, P]], upd: [N, P], updates: list[[N, P]]):
          updates = cons[[N, P]](upd, rest)
            IMPLIES length[[N, P]](rest) < length[[N, P]](updates))
-\end{jmrsession}
+\end{pvsexample}
 and it is proved automatically by PVS's standard strategy for proving
 TCCs (this strategy, called {\tt (tcc)}, is a variety of {\tt (grind)}).
 
 The {\tt list} datatype is specified in the PVS prelude using the
 datatype construction (similar to a ``free type'' in Z).
-\begin{jmrsession}
+\begin{pvsexample}
 list [T: TYPE]: DATATYPE 
  BEGIN
   null: null?
   cons (car: T, cdr:list):cons?
  END list
-\end{jmrsession}
+\end{pvsexample}
 This specifies that {\tt list} is a datatype that takes a single type
 parameter and has constructors {\tt null} and {\tt cons}, with
 corresponding recognizers and predicate subtypes {\tt null?} and {\tt
@@ -831,11 +788,11 @@ challenges.  A reasonable expectation is that if a number is a member
 of the set of phone numbers for a given name, then it is still a member
 of that set after an arbitrary list of names and phone numbers have
 been added to the phone book.
-\begin{jmrsession}
-  AddList_member: CONJECTURE
-    member(pn, FindPhone(bk, nm)) =>
-       member(pn, FindPhone(AddList(bk, updates), nm))
-\end{jmrsession}
+\begin{pvsexample}
+AddList_member: CONJECTURE
+  member(pn, FindPhone(bk, nm)) =>
+     member(pn, FindPhone(AddList(bk, updates), nm))
+\end{pvsexample}
 Like most conjectures involving recursively-defined functions, this
 one requires a proof by induction.  PVS provides some powerful
 strategies for inductive proofs.  Here, the single strategy
@@ -852,11 +809,11 @@ A rather more complicated conjecture is that the set of phone numbers
 associated with a given name is unchanged when a list of names and
 phone numbers are added to the phone book if the given name is not
 mentioned in the list.  This can be specified as follows.
-\begin{jmrsession}
-  FindList: CONJECTURE
-    (every! (upd:[N, P]): proj_1(upd)/=nm) (updates) =>
-      FindPhone(AddList2(bk, updates), nm) = FindPhone(bk, nm)
-\end{jmrsession}
+\begin{pvsexample}
+FindList: CONJECTURE
+  (every! (upd:[N, P]): proj_1(upd)/=nm) (updates) =>
+    FindPhone(AddList2(bk, updates), nm) = FindPhone(bk, nm)
+\end{pvsexample}
 In this specification, {\tt every!} introduces the body of a predicate
 that is true of all members of the list supplied as its argument
 (here, {\tt updates}).  It is another of the constructions defined
@@ -878,15 +835,15 @@ specification to ensure this by adding a predicate {\tt
 UnusedPhoneNum} that returns {\tt true} if a given number is not
 assigned to any name in a given phone book, and  then modifying
 {\tt AddPhone} to check the  number being added is indeed unused.
-\begin{jmrsession}
-  UnusedPhoneNum(bk, pn): bool =
-     (FORALL nm: NOT member(pn,FindPhone(bk, nm)))
+\begin{pvsexample}
+UnusedPhoneNum(bk, pn): bool =
+   (FORALL nm: NOT member(pn,FindPhone(bk, nm)))
 
-  AddPhone(bk, nm, pn): B = 
-    IF UnusedPhoneNum(bk, pn) THEN bk WITH [(nm) := add(pn, bk(nm))]
-      ELSE bk
-    ENDIF
-\end{jmrsession}
+AddPhone(bk, nm, pn): B = 
+  IF UnusedPhoneNum(bk, pn) THEN bk WITH [(nm) := add(pn, bk(nm))]
+    ELSE bk
+  ENDIF
+\end{pvsexample}
 
 If we've got this right, then it ought to be the case that the sets of
 phone numbers assigned to different names are always disjoint.  We
@@ -904,19 +861,19 @@ We have already seen that PVS allows predicate subtypes.  The first
 step is to define those phone books that are ``valid'' as the subtype {\tt VB}
 of phone books in which the sets of numbers associated with different
 names are disjoint.
-\begin{jmrsession}
-  VB: TYPE = \{ b:B | (FORALL (x,y: N): x /= y => disjoint?(b(x), b(y))) \}
-\end{jmrsession}
+\begin{pvsexample}
+VB: TYPE = { b:B | (FORALL (x,y: N): x /= y => disjoint?(b(x), b(y))) }
+\end{pvsexample}
 Then we change the specification of {\tt FindPhone} to specify that it takes
 a {\tt VB} and returns a {\tt VB}:
-\begin{jmrsession}
-  bk: VAR VB
+\begin{pvsexample}
+bk: VAR VB
 
-  AddPhone(bk, nm, pn): VB = 
-    IF UnusedPhoneNum(bk, pn) THEN bk WITH [(nm) := add(pn, bk(nm))]
-      ELSE bk
-    ENDIF
-\end{jmrsession}
+AddPhone(bk, nm, pn): VB = 
+  IF UnusedPhoneNum(bk, pn) THEN bk WITH [(nm) := add(pn, bk(nm))]
+    ELSE bk
+  ENDIF
+\end{pvsexample}
 Now the expression {\tt bk WITH [(nm) := add(pn, bk(nm))]} appearing
 here is a {\tt B}, but not necessarily a {\tt VB}.  But in order to
 satisfy the return type specified for {\tt AddPhone}, this expression
@@ -926,21 +883,23 @@ value can be proven, in its context, to satisfy the predicate of the
 subtype concerned.  The context here is {\tt UnusedPhoneNum(bk, pn)},
 so the proof obligation that needs to be discharged in order to ensure
 this specification is well-typed is the following.
-\begin{jmrsession}
-% Subtype TCC generated (line 37) for bk WITH [(nm) := add(pn, bk(nm))]
-
+\begin{pvsexample}
+% Subtype TCC generated (at line 22, column 34) for
+    % bk WITH [(nm) := add(pn, bk(nm))]
+    % expected type  VB
+  % proved - complete
 AddPhone_TCC1: OBLIGATION
-      (FORALL (bk: VB, nm: N, pn: P):
-         UnusedPhoneNum(bk, pn) IMPLIES
-           (FORALL (x, y: N): 
-              x /= y =>
-                disjoint?[P](bk WITH [(nm) := add[P](pn, bk(nm))](x),
-                             bk WITH [(nm) := add[P](pn, bk(nm))](y))));
-\end{jmrsession}
+  FORALL (bk: VB, nm: N, pn: P):
+    UnusedPhoneNum(bk, pn) IMPLIES
+     (FORALL (x, y: N):
+        x /= y =>
+         disjoint?[P](bk WITH [(nm) := add[P](pn, bk(nm))](x),
+                      bk WITH [(nm) := add[P](pn, bk(nm))](y))));
+\end{pvsexample}
 This proof obligation is called a Type-Correctness Condition (TCC) and
 it is generated automatically by PVS\@.  
 Proving it requires the following steps.
-\begin{jmrsession}
+\begin{pvsexample}
 ("" (GRIND :IF-MATCH NIL)
     (("1" (GRIND)) ("2" (INST -1 "x!1" "y!1")
                         (GRIND))
@@ -949,7 +908,7 @@ Proving it requires the following steps.
                         (GRIND))
                    ("5" (INST -1 "x!1" "y!1")
                         (GRIND))))
-\end{jmrsession}
+\end{pvsexample}
 Notice that the proof splits into several branches after the first
 step.  PVS can generate a graphical display of the proof tree---which
 can then be saved as a postscript file---using the command {\tt M-x
@@ -958,7 +917,8 @@ Figure~\ref{proof-pic},
 
 \begin{figure}[htb]
 \begin{center}
-\leavevmode\epsfxsize=1.0\hsize\epsfbox{phone_4_AddPhone_TCC1.ps}\mbox{}
+%\leavevmode\epsfxsize=1.0\hsize\epsfbox{phone_4_AddPhone_TCC1.ps}\mbox{}
+\includegraphics[width=\linewidth]{phone_4_AddPhone_TCC1}
 \end{center}
 \caption{\label{proof-pic}Graphical Display of the Proof Tree for
 TCC {\tt AddPhone\_TCC1}}
@@ -974,101 +934,58 @@ in figure~\ref{fig4} and the TCCs generated are shown in
 Figure~\ref{fig4-tccs}.
 
 \begin{figure}
-% The following substitutions are from the file:
-%   /tmp_mnt/homes/csla/rushby/tadpole/pvs-tex.sub
-\def\removetwofn#1#2{{#2 \setminus \{#1\}}}% How to print function remove with arity (2)
-\def\addtwofn#1#2{{\{#1\} \cup #2}}% How to print function add with arity (2)
-\def\emptysetoneid#1{{\emptyset_#1}}% How to print name emptyset with (1) actuals
-\def\singletononefn#1{{\{ #1 \}}}% How to print function singleton with arity (1)
-\def\uniontwofn#1#2{{#1 \cup #2}}% How to print function union with arity (2)
-\def\differencetwofn#1#2{{#1 \setminus #2}}% How to print function difference with arity (2)
-\setlength{\fboxsep}{1pt} 
-% The following substitutions are from the file:
-%   /homes/EHDM/pvs/pvs-tex.sub
-\def\membertwofn#1#2{{#1 \in #2}}% How to print function member with arity (2)
-\setlength{\fboxsep}{1pt} 
- \begin{program} 
- \pvsid{phone\_4} :\mbox{ } \pvskey{THEORY} \pvsnewline{}
-\zi\zi \pvskey{BEGIN} \pvsnewline{}
- \pvsnewline{}
- N :\mbox{ } \pvskey{TYPE} \pvsnewline{}
- \pvsnewline{}
- P :\mbox{ } \pvskey{TYPE} \pvsnewline{}
- \pvsnewline{}
- B :\mbox{ } \pvskey{TYPE\mbox{ }} \mbox{ }=\mbox{ }[\ii N \rightarrow\mbox{ } \pvsid{setof}[\ii P]] \pvsnewline{}
-\\[-\baselineskip]\oo\oo\zi\zi\zi\zo\zo\zo \pvsnewline{}
- \pvsid{VB} :\mbox{ } \pvskey{TYPE\mbox{ }} \mbox{ }=\mbox{ }\ii \{ b :\mbox{ } B \mbox{ }|\mbox{ }\mbox{ }(\ii \forall\mbox{ }(\ii x , y :\mbox{ } N) :\mbox{ } x \mbox{ }\neq\mbox{ }\ii y \mbox{ }\Rightarrow\mbox{ }\ii \pvsid{disjoint?}(\ii b(\ii x) , b(\ii y))) \} \pvsnewline{}
-\\[-\baselineskip]\oo\oo\oo\oo\oo\oo\oo\oo\zi\zi\zi\zi\zi\zi\zi\zo\zo\zo\zo\zo\zo\zo \pvsnewline{}
- \pvsid{nm} , x :\mbox{ } \pvskey{VAR\mbox{ }} N \pvsnewline{}
- \pvsnewline{}
- \pvsid{pn} :\mbox{ } \pvskey{VAR\mbox{ }} P \pvsnewline{}
- \pvsnewline{}
- \pvsid{bk} :\mbox{ } \pvskey{VAR\mbox{ }} \pvsid{VB} \pvsnewline{}
- \pvsnewline{}
-% \pvskey{IMPORTING\mbox{ }}\ii \pvsid{withexpr}[\ii N , \pvsid{ setof}[\ii P]] \pvsnewline{}
-%\\[-\baselineskip]\oo\oo\oo  \pvsnewline{}
- \pvsid{emptybook} :\mbox{ } \pvsid{VB } \mbox{ }=\mbox{ }(\ii \lambda\mbox{ }(\ii x :\mbox{ } N) :\mbox{ } \emptysetoneid { P }) \pvsnewline{}
-\\[-\baselineskip]\oo\oo\zi\zo \pvsnewline{}
- \pvsid{FindPhone}(\ii \pvsid{bk} , \pvsid{ nm}) :\mbox{ } \pvsid{setof}[\ii P] \mbox{ }=\mbox{ } \pvsid{bk}(\ii \pvsid{nm}) \pvsnewline{}
-\\[-\baselineskip]\oo\oo\oo\zi\zi\zo\zo \pvsnewline{}
- \pvsid{UnusedPhoneNum}(\ii \pvsid{bk} , \pvsid{ pn}) :\mbox{ } \pvsid{bool } \mbox{ }=\mbox{ }(\ii \forall\mbox{ } \pvsid{nm} :\mbox{ } \neg\mbox{ } \membertwofn { \pvsid{pn}}{ \pvsid{FindPhone}( \pvsid{bk} , \pvsid{ nm}) }) \pvsnewline{}
-\\[-\baselineskip]\oo\oo\zi\zo \pvsnewline{}
- \pvsid{AddPhone}(\ii \pvsid{bk} , \pvsid{ nm} , \pvsid{ pn}) :\mbox{ } \pvsid{VB } \mbox{ }= \pvsnewline{}
-\\[-\baselineskip]\oo\zi \pvskey{IF\mbox{ }} \pvsid{UnusedPhoneNum}(\ii \pvsid{bk} , \pvsid{ pn}) \pvskey{\mbox{ }THEN\mbox{ }} \pvsid{bk } \pvskey{WITH\mbox{ }}[\ii(\ii \pvsid{nm}) \mbox{ }:=\mbox{ }\ii \addtwofn { \pvsid{pn}}{ \pvsid{bk}( \pvsid{nm}) }] \pvsnewline{}
-\\[-\baselineskip]\oo\oo\oo\oo\zi\zi\zi\zo\zi\zo\zo\zo \pvskey{\mbox{ }ELSE\mbox{ }} \pvsid{bk} \pvsnewline{}
- \pvskey{\mbox{ }ENDIF} \pvsnewline{}
-\zo \pvsnewline{}
- \pvsid{DelPhone}(\ii \pvsid{bk} , \pvsid{ nm}) :\mbox{ } \pvsid{VB } \mbox{ }=\mbox{ } \pvsid{bk } \pvskey{WITH\mbox{ }}[\ii(\ii \pvsid{nm}) \mbox{ }:=\mbox{ }\ii \emptysetoneid { P }] \pvsnewline{}
-\\[-\baselineskip]\oo\oo\oo\oo\zi\zi\zi\zo\zo\zo \pvsnewline{}
- \pvsid{DelPhoneNum}(\ii \pvsid{bk} , \pvsid{ nm} , \pvsid{ pn}) :\mbox{ } \pvsid{VB } \mbox{ }=\mbox{ } \pvsid{bk } \pvskey{WITH\mbox{ }}[\ii(\ii \pvsid{nm}) \mbox{ }:=\mbox{ }\ii \removetwofn { \pvsid{pn}}{ \pvsid{bk}( \pvsid{nm}) }] \pvsnewline{}
-\\[-\baselineskip]\oo\oo\oo\oo\zi\zi\zi\zo\zo\zo \pvsnewline{}
- \pvsid{FindAdd} :\mbox{ } \pvskey{CONJECTURE} \pvsnewline{}
-\zi\zi \pvsid{UnusedPhoneNum}(\ii \pvsid{bk} , \pvsid{ pn}) \pvsnewline{}
-\\[-\baselineskip]\oo\zi \mbox{ }\supset\mbox{ }\ii \membertwofn { \pvsid{pn}}{ \pvsid{FindPhone}( \pvsid{AddPhone}( \pvsid{bk} , \pvsid{ nm} , \pvsid{ pn}) , \pvsid{ nm}) } \pvsnewline{}
-\\[-\baselineskip]\oo\zo\zo\zo \pvsnewline{}
- \pvsid{DelAdd} :\mbox{ } \pvskey{CONJECTURE} \pvsnewline{}
-\zi\zi \pvsid{DelPhoneNum}(\ii \pvsid{AddPhone}(\ii \pvsid{bk} , \pvsid{ nm} , \pvsid{ pn}) , \pvsid{ nm} , \pvsid{ pn}) \mbox{ }=\mbox{ }\ii \pvsid{DelPhoneNum}(\ii \pvsid{bk} , \pvsid{ nm} , \pvsid{ pn}) \pvsnewline{}
-\\[-\baselineskip]\oo\oo\oo\oo\zi\zi\zo\zi\zo\zo\zo\zo \pvsnewline{}
- \pvskey{END\mbox{ }} \pvsid{phone\_4} \pvsnewline{}
-\zo \end{program}
+\def\pvsdeclspacing{-2mm}
+\input{phone_4}
 \caption{\label{fig4}Specification Enforcing the Invariant that
 Different Names Have Disjoint Sets of Phone Numbers}
 \end{figure}
 
 \begin{figure}
-\begin{jmrsession}
-% Subtype TCC generated (line 15) for (LAMBDA (x: N): emptyset[P])
-
+\begin{pvsexample}
+% Subtype TCC generated (at line 14, column 19) for
+    % (LAMBDA (x: N): emptyset[P])
+    % expected type  VB
+  % proved - complete
 emptybook_TCC1: OBLIGATION
-      (FORALL (x, y: N): x /= y => disjoint?[P](emptyset[P], emptyset[P]));
+  FORALL (x_1, y: N): x_1 /= y => disjoint?[P](emptyset[P], emptyset[P]);
 
-% Subtype TCC generated (line 23) for bk WITH [(nm) := add(pn, bk(nm))]
-
+% Subtype TCC generated (at line 22, column 34) for
+    % bk WITH [(nm) := add(pn, bk(nm))]
+    % expected type  VB
+  % proved - complete
 AddPhone_TCC1: OBLIGATION
-      (FORALL (bk: VB, nm: N, pn: P):
-         UnusedPhoneNum(bk, pn) IMPLIES
-           (FORALL (x, y: N): 
-              x /= y =>
-                disjoint?[P](bk WITH [(nm) := add[P](pn, bk(nm))](x),
-                             bk WITH [(nm) := add[P](pn, bk(nm))](y))));
+  FORALL (bk: VB, nm: N, pn: P):
+    UnusedPhoneNum(bk, pn) IMPLIES
+     (FORALL (x_1, y: N):
+        x_1 /= y =>
+         disjoint?[P]
+             ((bk WITH [(nm) := add[P](pn, bk(nm))])(x_1),
+              (bk WITH [(nm) := add[P](pn, bk(nm))])(y)));
 
-% Subtype TCC generated (line 28) for bk WITH [(nm) := emptyset[P]]
-
+% Subtype TCC generated (at line 27, column 24) for
+    % bk WITH [(nm) := emptyset[P]]
+    % expected type  VB
+  % proved - complete
 DelPhone_TCC1: OBLIGATION
-      (FORALL (bk: VB), (nm: N), (x, y: N):
-         x /= y =>
-           disjoint?[P](bk WITH [(nm) := emptyset[P]](x),
-                        bk WITH [(nm) := emptyset[P]](y)));
+  FORALL (bk: VB, nm: N):
+    FORALL (x_1, y: N):
+      x_1 /= y =>
+       disjoint?[P]
+           ((bk WITH [(nm) := emptyset[P]])(x_1),
+            (bk WITH [(nm) := emptyset[P]])(y));
 
-% Subtype TCC generated (line 30) for bk WITH [(nm) := remove(pn, bk(nm))]
-
+% Subtype TCC generated (at line 29, column 30) for
+    % bk WITH [(nm) := remove(pn, bk(nm))]
+    % expected type  VB
+  % proved - complete
 DelPhoneNum_TCC1: OBLIGATION
-      (FORALL (bk: VB), (nm: N), (pn: P), (x, y: N):
-         x /= y =>
-           disjoint?[P](bk WITH [(nm) := remove[P](pn, bk(nm))](x),
-                        bk WITH [(nm) := remove[P](pn, bk(nm))](y)));
-
-\end{jmrsession}
+  FORALL (bk: VB, nm: N, pn: P):
+    FORALL (x_1, y: N):
+      x_1 /= y =>
+       disjoint?[P]
+           ((bk WITH [(nm) := remove[P](pn, bk(nm))])(x_1),
+            (bk WITH [(nm) := remove[P](pn, bk(nm))])(y));
+\end{pvsexample}
 \caption{\label{fig4-tccs}TCCs for the Specification of Figure \protect\ref{fig4}}  
 \end{figure}
 

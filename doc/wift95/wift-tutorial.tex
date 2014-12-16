@@ -1,9 +1,17 @@
 % Master File: wift-tutintro.tex
 % \documentstyle[11pt,epsf,part,notochead,nobibhead,nfltxsym,relative,cite,alltt,twoside,relative,fancyheadings,boxedminipage,url,/project/pvs/pvs]{article}
-\documentclass[11pt,part]{article}
-\usepackage{,notochead,nobibhead,relsize,cite,alltt,relsize,fancyheadings,boxedminipage,url}
+\documentclass[11pt]{article}
+
+\usepackage{notochead,nobibhead,relsize,cite,alltt,relsize,fancyhdr,boxedminipage,url}
+\usepackage[skip=0pt]{caption}
+\usepackage{fancyvrb}
+\usepackage{titling}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{pvs}
 \sloppy
-\newcommand{\allttinput}[1]{\hozline{\smaller\smaller\smaller\begin{alltt}\input{#1}\end{alltt}}\hozline}
+\CustomVerbatimEnvironment{pvsexample}{Verbatim}{fontsize=\relsize{-1},frame=single,samepage=true}
+%\newcommand{\allttinput}[1]{\hozline{\smaller\smaller\smaller\begin{alltt}\input{#1}\end{alltt}}\hozline}
 \newenvironment{pvsscript}{\hozline\smaller\smaller\smaller\begin{alltt}}{\end{alltt}\hozline}
 \topmargin -10pt
 \textheight 8.5in
@@ -42,6 +50,7 @@
 \input{lmacros}
 \input{mathprel}
 \input{pvstex}
+
 %\newlength{\hsbw}
 \newenvironment{jmrsession}{\begin{flushleft}
  \setlength{\hsbw}{\linewidth}
@@ -62,7 +71,7 @@
 \setcounter{secnumdepth}{2} 
 \setcounter{tocdepth}{3}
 \setcounter{page}{0} 
-\title{{\Huge\bf A Tutorial Introduction to PVS}\\
+\title{{\Huge\bf A Tutorial Introduction to PVS}\\\vspace*{20mm}
 \smaller  Presented at WIFT '95: Workshop on Industrial-Strength Formal
 Specification Techniques, Boca Raton, Florida, April 1995}
 \author{Judy Crow, Sam Owre, John Rushby, Natarajan Shankar, Mandayam
@@ -75,13 +84,10 @@ Ames Research Center NASA-NAG-2-891 (Arpa order A721) to
 Stanford Unversity.}\\
 Computer Science Laboratory\\
 SRI International\\
-Menlo Park CA 94025 USA
-\\ \mbox{ }\\
-{\sc www}: {\tt http://www.csl.sri.com/sri-csl-fm.html}
-%{\tt Rushby@csl.sri.com}
-%\\Phone: +1 (415) 859-5456\ \ Fax: +1 (415) 859-2844
+Menlo Park CA 94025 USA\\[1ex]
+\texttt{http://www.csl.sri.com/sri-csl-fm.html}
 }
-\date{Updated June 1995}
+\date{Updated December 2014}
 \begin{document} 
 \maketitle
 \begin{abstract}
@@ -228,6 +234,7 @@ is~\cite{Owre95:prolegomena}, which describes some of the larger
 verifications undertaken using PVS and also motivates and describes
 some of the design decisions underlying PVS.
 
+\newpage
 \part[Introduction to Mechanized Analysis of
 Specifications Using PVS]{An Introduction to the Mechanized Analysis of
 Requirements Specifications Using PVS}
@@ -240,6 +247,7 @@ Requirements Specifications Using PVS}
 %\part{Prolegomena}
 
 \setcounter{section}{0}
+\newpage
 \part{Tutorial on Using PVS}
 \markboth{Using PVS}{}
 \cleardoublepage
@@ -287,6 +295,7 @@ to an ordered binary tree returns an ordered binary tree.
 \end{prob}
 
 \setcounter{section}{0}
+\newpage
 \part{PVS Reference}
 \markboth{PVS Reference}{}
 \cleardoublepage
@@ -300,7 +309,7 @@ to an ordered binary tree returns an ordered binary tree.
 \markboth{}{References}
 \bibliographystyle{modalpha}
 \addcontentsline{toc}{section}{References}
-\bibliography{/homes/rushby/jmr,/project/pvs/doc/pvs,/homes/shankar/tex}
+\bibliography{../pvs}
 
 
 \end{document}
