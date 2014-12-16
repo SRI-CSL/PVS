@@ -517,7 +517,7 @@
 	    (when (mappings name)
 	      (make-xml-mappings :list (mappings name)))
 	    (when (library name)
-	      (make-xml-library-id (library name)))
+	      (make-xml-library-id :id (library name)))
 	    (car (resolutions name))))
 
 (defmethod pp-xml* (stream (name formula-rewrite-name) &optional colon? atsign?)
@@ -531,7 +531,7 @@
 	    (when (mappings name)
 	      (make-xml-mappings :list (mappings name)))
 	    (when (library name)
-	      (make-xml-library-id (library name)))
+	      (make-xml-library-id :id (library name)))
 	    (car (resolutions name))
 	    (string-downcase (spelling name))))
 
@@ -546,7 +546,7 @@
 	    (when (mappings name)
 	      (make-xml-mappings :list (mappings name)))
 	    (when (library name)
-	      (make-xml-library-id (library name)))
+	      (make-xml-library-id :id (library name)))
 	    (car (resolutions name))
 	    (declared-type name)))
 
@@ -561,7 +561,7 @@
 	    (when (mappings name)
 	      (make-xml-mappings :list (mappings name)))
 	    (when (library name)
-	      (make-xml-library-id (library name)))
+	      (make-xml-library-id :id (library name)))
 	    (car (resolutions name))
 	    (fnum name)))
 
@@ -589,7 +589,7 @@
 		(unless (null (mappings mi))
 		  (make-xml-mappings :list (mappings mi)))
 		(unless (not (library mi))
-		  (make-xml-library-id (library mi)))))))
+		  (make-xml-library-id :id (library mi)))))))
 
 (defmethod pp-xml* (stream (te type-application) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -891,7 +891,7 @@
 		(when mappings
 		  (make-xml-mappings :list mappings))
 		(when library
-		  (make-xml-library-id library))
+		  (make-xml-library-id :id library))
 		type
 		(car resolutions)))))
 
