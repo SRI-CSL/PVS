@@ -9,7 +9,6 @@ pvs-patches
 autom4te.cache
 bin/*
 emacs/*
-doc/*
 Examples/*
 lib/why/*
 
