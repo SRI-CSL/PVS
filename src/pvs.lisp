@@ -51,6 +51,14 @@
 
 (defvar *parsing-files*)
 
+(defstruct pvs-meta-info
+  version
+  environment
+  patch-files
+  strategy-files
+  lisp-files
+  libfiles)
+
 
 ;;; A robodoc header
 ;****f* interface/pvs-init
@@ -58,7 +66,7 @@
 ;*  NAME
 ;*    pvs-init -- initialize the pvs session
 ;*      Used to be invoked from Emacs, it is now called form the
-;*      lisp initialization code - see make-pvs.lisp and pvs.system
+;*      lisp initialization code - see make-pvs.lisp and pvs.system (startup-pvs)
 ;*      It uses a number of environment variables - these are mostly
 ;*      set in the pvs shell script:
 ;*        PVSPATH - must be set to the PVS directory (where it was installed)
@@ -89,8 +97,8 @@
 ;*
 ;******
 
-(defun pvs-init (&optional dont-load-patches dont-load-user-lisp
-			   path)
+(defun pvs-init (&optional dont-load-patches dont-load-user-lisp path)
+  (start-load-watching)
   #+allegro (setq excl:*enclose-printer-errors* nil)
   (setq *print-pretty* t)
   ;;(setf (symbol-function 'ilisp::ilisp-restore) #'pvs-ilisp-restore)
@@ -163,6 +171,26 @@
   (let ((port (environment-variable "PVSPORT")))
     (when port
       (pvs-xml-rpc:pvs-server :port (parse-integer port)))))
+
+(defparameter *pvs-env-variables*
+  '("PVSDEFAULTDP"
+    "PVSEVALLOAD"
+    "PVSFORCEDP"
+    "PVSINEMACS"
+    "PVS_LIBRARY_PATH"
+    "PVSLISP"
+    "PVSMINUSQ"
+    "PVSNONINTERACTIVE"
+    "PVSPATCHLEVEL"
+    "PVSPATH"
+    "PVSPORT"
+    "PVSTIMEOUT"
+    "PVSVERBOSE"
+    #+(or cmu sbcl) "LD_LIBRARY_PATH"))
+
+(defun collect-pvs-env-variables ()
+  (mapcar #'(lambda (env) (cons env (environment-variable env)))
+    *pvs-env-variables*))
 
 (defun pvs-init-globals ()
   (setq *pvs-modules* (make-hash-table :test #'eq :size 20 :rehash-size 10))
@@ -273,78 +301,79 @@
 (defvar *pvs-patches-loaded* nil)
 
 (defun load-pvs-patches ()
-  (dolist (pfile (append (collect-pvs-patch-files)
-			 (user-pvs-lisp-file)))
-    (let* ((bfile (make-pathname :defaults pfile :type *pvs-binary-type*))
-	   (compile? (and (file-exists-p pfile)
-			  (or (not (file-exists-p bfile))
-			      (compiled-file-older-than-source?
-			       pfile bfile))))
-	   (compilation-error? nil)
-	   (bfile-loaded? nil))
-      (when (and (not compile?)
-		 (file-exists-p bfile))
-	;; Everything looks up-to-date, try loading
-	(multiple-value-bind (ignore error)
-	    (ignore-errors (load bfile))
-	  (declare (ignore ignore))
-	  (cond (error
-		 ;; Likely due to a different lisp version
-		 (when (file-exists-p pfile)
-		   (setq compile? t))
-		 (pvs-message "Error in loading ~a:~%  ~a"
-		   (shortname bfile) error))
-		(t (pushnew pfile *pvs-patches-loaded*
-			    :test #'equalp)
-		   (setq bfile-loaded? t)))))
-      (when compile?
-	;; Needs compilation - haven't tried loading yet, or the load failed.
-	(pvs-message "Attempting to compile patch file ~a"
-	  (pathname-name pfile))
-	(multiple-value-bind (ignore condition)
-	    (ignore-file-errors
-	     (values (compile-file pfile)))
-	  (declare (ignore ignore))
-	  (cond (condition
-		 ;; Could be many reasons - permissions, source errors
-		 (pvs-message "Compilation error - ~a" condition)
-		 (setq compilation-error? t)
-		 ;; Note that this may fail as well
-		 (ignore-errors (delete-file bfile)))
-		(t
-		 ;; Change so that next person in the same group may compile
-		 (chmod "ug+w" (namestring bfile))
-		 (pvs-message "Compilation complete, generated file ~a"
-		   (shortname bfile))))))
-      (when (and (not bfile-loaded?)
-		 compile?
-		 (not compilation-error?)
-		 (file-exists-p bfile))
-	;; Here when we have not loaded the fasl, needed to compile, and
-	;; didn't get a compilation error
-	(pvs-message "Attempting to load compiled patch file ~a"
-	  (shortname bfile))
-	(multiple-value-bind (ignore error)
-	    (ignore-file-errors (load bfile))
-	  (declare (ignore ignore))
-	  (cond (error
-		 (pvs-message "Error in loading ~a:~%  ~a"
-		   (shortname pfile) error))
-		(t (setq bfile-loaded? t)
-		   (pushnew pfile *pvs-patches-loaded*
-			    :test #'equalp)))))
-      (unless (or bfile-loaded?
-		  (not (file-exists-p pfile)))
-	;; Haven't loaded the fasl, so we try to load the source
-	(pvs-message "Loading file ~a interpreted" (shortname pfile))
-	(multiple-value-bind (ignore error)
-	    (ignore-file-errors (load pfile))
-	  (declare (ignore ignore))
-	  (if error
-	      (pvs-message "Error in loading ~a:~%  ~a"
-		(shortname pfile) error)
-	      (pushnew pfile *pvs-patches-loaded*
-		       :test #'equalp)))))))
+  (let ((*loading-files* :patches))
+    (dolist (pfile (append (collect-pvs-patch-files)
+			   (user-pvs-lisp-file)))
+      (let* ((bfile (make-pathname :defaults pfile :type *pvs-binary-type*))
+	     (compile? (and (file-exists-p pfile)
+			    (or (not (file-exists-p bfile))
+				(compiled-file-older-than-source?
+				 pfile bfile))))
+	     (compilation-error? nil)
+	     (bfile-loaded? nil))
+	(when (and (not compile?)
+		   (file-exists-p bfile))
+	  ;; Everything looks up-to-date, try loading
+	  (multiple-value-bind (ignore error)
+	      (ignore-errors (load bfile))
+	    (declare (ignore ignore))
+	    (cond (error
+		   ;; Likely due to a different lisp version
+		   (when (file-exists-p pfile)
+		     (setq compile? t))
+		   (pvs-message "Error in loading ~a:~%  ~a"
+		     (shortname bfile) error))
+		  (t (pushnew pfile *pvs-patches-loaded*
+			      :test #'equalp)
+		     (setq bfile-loaded? t)))))
+	(when compile?
+	  ;; Needs compilation - haven't tried loading yet, or the load failed.
+	  (pvs-message "Attempting to compile patch file ~a"
+	    (pathname-name pfile))
+	  (multiple-value-bind (ignore condition)
+	      (ignore-file-errors
+	       (values (compile-file pfile)))
+	    (declare (ignore ignore))
+	    (cond (condition
+		   ;; Could be many reasons - permissions, source errors
+		   (pvs-message "Compilation error - ~a" condition)
+		   (setq compilation-error? t)
+		   ;; Note that this may fail as well
+		   (ignore-errors (delete-file bfile)))
+		  (t
+		   ;; Change so that next person in the same group may compile
+		   (chmod "ug+w" (namestring bfile))
+		   (pvs-message "Compilation complete, generated file ~a"
+		     (shortname bfile))))))
+	(when (and (not bfile-loaded?)
+		   compile?
+		   (not compilation-error?)
+		   (file-exists-p bfile))
+	  ;; Here when we have not loaded the fasl, needed to compile, and
+	  ;; didn't get a compilation error
+	  (pvs-message "Attempting to load compiled patch file ~a"
+	    (shortname bfile))
+	  (multiple-value-bind (ignore error)
+	      (ignore-file-errors (load bfile))
+	    (declare (ignore ignore))
+	    (cond (error
+		   (pvs-message "Error in loading ~a:~%  ~a"
+		     (shortname pfile) error))
+		  (t (setq bfile-loaded? t)
+		     (pushnew pfile *pvs-patches-loaded*
+			      :test #'equalp)))))
+	(unless (or bfile-loaded?
+		    (not (file-exists-p pfile)))
+	  ;; Haven't loaded the fasl, so we try to load the source
+	  (pvs-message "Loading file ~a interpreted" (shortname pfile))
+	  (multiple-value-bind (ignore error)
+	      (ignore-file-errors (load pfile))
+	    (declare (ignore ignore))
+	    (if error
+		(pvs-message "Error in loading ~a:~%  ~a"
+		  (shortname pfile) error)
+		(pushnew pfile *pvs-patches-loaded*
+			 :test #'equalp))))))))
 
 (defun collect-pvs-patch-files ()
   (let ((pl (ignore-errors (parse-integer
@@ -1114,7 +1143,7 @@
 ;;; Typechecking files.
 
 (defun typecheck-file (filename &optional forced? prove-tccs? importchain?
-				  nomsg?)
+				  nomsg? outside-call?)
   (let ((*parsing-files* (when (boundp '*parsing-files*) *parsing-files*)))
     (multiple-value-bind (theories restored? changed-theories)
 	(parse-file filename forced? t)
@@ -1164,7 +1193,10 @@
 		    :test #'eq)
 		   t)
 		  (prove-unproved-tccs theories))))
-	(values theories changed-theories)))))
+	(if outside-call?
+	    ;; Emacs expects t or nil - error will not get here
+	    (and changed-theories t)
+	    (values theories changed-theories))))))
 
 (defvar *etb-typechecked-theories*)
 
@@ -1314,7 +1346,7 @@
 	  (filename (car theories))
 	  (if importchain? " importchain has" "")
 	  tot proved subsumed
-	  (- tot proved)
+	  (- tot proved subsumed)
 	  (reduce #'+ (mapcar #'(lambda (th) (length (conversion-messages th))) theories))
 	  (reduce #'+ (mapcar #'(lambda (th) (length (warnings th))) theories))
 	  (reduce #'+ (mapcar #'(lambda (th) (length (info th))) theories))))))
@@ -2004,11 +2036,12 @@
 
 
 (defun parsed-file? (filename)
-  (let ((file (if (pathnamep filename)
-		  filename
-		  (make-specpath filename))))
-    (eql (parsed-date file)
-	 (file-write-date file))))
+  (let* ((file (if (pathnamep filename)
+		   filename
+		   (make-specpath filename)))
+	 (pdate (parsed-date file)))
+    (and pdate
+	 (eql pdate (file-write-date file)))))
 
 (defmethod parsed? ((mod datatype-or-module))
   (parsed?* mod))
