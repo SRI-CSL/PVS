@@ -93,6 +93,9 @@
   (require :asdf))
 
 (assert (find-package :asdf))
+#+allegro
+(asdf/find-system:initialize-source-registry (format nil "~a/src/cl-json/" *pvs-path*))
+#-allegro
 (load (format nil "~a/src/cl-json/cl-json.asd" *pvs-path*))
 
 (in-package :asdf)  
@@ -304,6 +307,14 @@
 			 :depends-on ("defcl"))
 		  (:file "prover/estructures"
 			 :depends-on ("defcl"))
+		  (:file "groundeval/pvs2c-utils" ; has macros
+			 :depends-on ("defcl"))
+		  (:file "groundeval/pvs2c-types"
+			 :depends-on ("defcl"))
+		  (:file "groundeval/pvs2c-code"
+			 :depends-on ("defcl"))
+		  (:file "groundeval/pvs2c-analysis"
+			 :depends-on ("defcl"))
 		  (:file "pvs-methods"
 			 :initially-do
 			 (pvs::write-deferred-methods-to-file))))
@@ -446,10 +457,10 @@
 		  (:file "generate-lisp-for-theory")
 		  (:file "random-test")
 		  (:file "pvs2clean")
-		  (:file "pvs2c-utils")
-		  (:file "pvs2c-types")
-		  (:file "pvs2c-code")
-		  (:file "pvs2c-analysis")
+		  ;;(:file "pvs2c-utils")
+		  ;;(:file "pvs2c-types")
+		  ;;(:file "pvs2c-code")
+		  ;;(:file "pvs2c-analysis")
 		  (:file "pvs2c-primop")
 		  (:file "pvs2c"))
      :depends-on (basic))
