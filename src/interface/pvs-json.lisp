@@ -300,9 +300,17 @@
 ;; (defmethod json:encode-json ((obj syntax) &optional (stream *json-output*))
 ;;   (json:encode-json (list "foo") stream))
 
-;; Original in encoder.lisp walks through chars, which breaks unicode of more than
-;; 2 bytes.  Here we simply put the string on the stream, as a string
-(defun json::write-json-string (s stream)
-  "Write a JSON representation (String) of S to STREAM."
-  (format stream "\"~a\"" s)
+(defun json::write-json-chars (s stream)
+  "Overrides the function in encoder.lisp, which tries to go
+char-by-char, breaking Unicode of more than two bytes."
+  (write-json-escaped-pieces s stream)
   nil)
+
+(defun write-json-escaped-pieces (s stream &optional pos)
+  (let ((npos (position-if #'(lambda (ch) (member ch '(#\\ #\")))
+			   s :start (if pos (1+ pos) 0))))
+    (cond (npos
+	   (format stream "~a" (subseq s (or pos 0) npos))
+	   (write-char #\\ stream)
+	   (write-json-escaped-pieces s stream npos))
+	  (t (format stream "~a" (subseq s (or pos 0)))))))
