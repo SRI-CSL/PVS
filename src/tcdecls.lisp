@@ -91,7 +91,9 @@
 		    (dolist (id (id-suffixes (id d)))
 		      (pushnew d (get-lhash id dhash) :test #'eq)))))
 	    (let ((*insert-add-decl* nil))
-	      (mapc #'(lambda (d) (add-decl d nil))
+	      (mapc #'(lambda (d)
+			(add-decl d nil)
+			(when (tcc? d) (push d *tccdecls*)))
 		    (generated decl))
 	      (regenerate-xref decl)))
 	(unwind-protect
@@ -405,6 +407,7 @@
 (defun determine-implicit-mappings (theory theory-name tgt-name tgt-theory)
   (if tgt-theory
       (let ((*current-context* (copy-context *current-context*)))
+	(typecheck-mappings (mappings theory-name) theory-name)
 	(add-to-using tgt-name tgt-theory)
 	(determine-implicit-mappings*
 	 (interpretable-declarations theory)
@@ -2962,17 +2965,18 @@
 		 (null arguments))
 	(type-error type "Type name must have arguments"))
       (assert tval)
-      (when (mod-id type)
-	(cond ((null (print-type tval))
-	       (setq tval (copy tval 'print-type (copy type))))
-	      ((and (type-name? (print-type tval))
-		    (not (mod-id (print-type tval))))
-	       (setq tval (copy tval
-			    'print-type (copy (print-type tval)
-					  'mod-id (mod-id type)))))))
-      (if (eq tval 'type)
-	  type
-	  tval)))
+      ;; (when (mod-id type)
+      ;; 	(cond ((null (print-type tval))
+      ;; 	       (setq tval (copy tval 'print-type (copy type))))
+      ;; 	      ((and (type-name? (print-type tval))
+      ;; 		    (not (mod-id (print-type tval))))
+      ;; 	       (setq tval (copy tval
+      ;; 			    'print-type (copy (print-type tval)
+      ;; 					  'mod-id (mod-id type)))))))
+      ;; (if (eq tval 'type)
+      ;; 	  type
+      ;; 	  tval)
+      ))
   (type (resolution type)))
 
 (defmethod typecheck* ((type type-application) expected kind arguments)
@@ -4034,13 +4038,16 @@
 				   (memq fp (formals-sans-usings
 					     (current-theory))))
 		      (free-params (expr decl))))
-	     (ftheory (module (car frees))))
+	     (ftheory (module (car frees)))
+	     (fdecl (declaration (expr decl))))
 	(unless (every #'(lambda (fp) (eq (module fp) ftheory))
 		       (cdr frees))
 	  (type-error (expr decl)
 	    "Conversion expression has free parameters from different theories"
 	    ))
-	(unless (= (length frees) (length (formals-sans-usings ftheory)))
+	(unless (= (length frees)
+		   (+ (length (formals-sans-usings ftheory))
+		      (length (decl-formals fdecl))))
 	  (type-error (expr decl)
 	    "conversion does not determine all free parameters"))))))
 
