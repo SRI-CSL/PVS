@@ -4444,7 +4444,7 @@ space")
     (:pvs-path . ,*pvs-path*)
     (:lisp-version . ,(lisp-implementation-version))
     (:emacs-version . :unknown)
-    (:lisp-exec ,(get-exec-info))
+    (:lisp-exec ,(get-lisp-exec-info))
     (:lisp-patches ,(get-patches-info))
     (:strategies-files ,(cdr (assq :strategies *files-loaded*)))))
 
@@ -4485,7 +4485,7 @@ space")
 	(push (list *loading-files* file) *files-loaded*))))
 
 #+allegro
-(excl:def-fwrapper load-wrap (file)
+(excl:def-fwrapper load-wrap (file &rest args)
   (excl:call-next-fwrapper)
   (record-file-loaded-for-pvs file))
 
