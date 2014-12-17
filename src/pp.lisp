@@ -384,10 +384,14 @@ bind tighter.")
 		 theory-formal-decls)
 	(pp-theory-formal-decls theory-formal-decls))
       (pp-assuming (if *unparse-expanded*
-		       assuming
+		       (remove-if #'(lambda (d) (and (generated-by d)
+						   (typep d '(or conversion-decl))))
+			 assuming)
 		       (remove-if #'generated-by assuming)))
       (pp-theory (if *unparse-expanded*
-		     theory
+		     (remove-if #'(lambda (d) (and (generated-by d)
+						   (typep d '(or conversion-decl))))
+		       theory)
 		     (remove-if #'generated-by theory)))
       (pprint-indent :block 1)
       (pprint-newline :mandatory)
@@ -950,9 +954,7 @@ bind tighter.")
 (defmethod pp* ((decl const-decl))
   (with-slots (declared-type type definition) decl
     (pprint-newline :miser)
-    (if *unparse-expanded*
-	(pp* type)
-	(pp* declared-type))
+    (pp* declared-type)
     (when definition
       (write-char #\space)
       (write #\=)
@@ -1272,7 +1274,7 @@ bind tighter.")
 			   (mk-application (predicate te) var))))))
       (pprint-logical-block (nil nil :prefix "{" :suffix "}")
 	(pp-bindings bindings)
-	(pprint-indent :block 8)
+	(pprint-indent :block 2)
 	(write-char #\space)
 	(write-char #\|)
 	(write-char #\space)
@@ -1928,6 +1930,35 @@ bind tighter.")
 		(pp* rhs))))
 	(call-next-method))))
 
+(defmethod pp* ((ex chained-relation))
+  (pp-chained-relation ex))
+
+(defmethod pp-chained-relation ((ex chained-relation) &optional rhs?)
+  (pp-chained-relation (args1 ex) rhs?)
+  (pp-chained-relation (args2 ex) t))
+
+(defmethod pp-chained-relation ((ex infix-application) &optional rhs?)
+  (if (and (name-expr? (operator ex))
+	   (memq (id (operator ex)) *pvs-relational-operators*)
+	   (arg-tuple-expr? (argument ex))
+	   (= (length (exprs (argument ex))) 2))
+      (pprint-logical-block (nil nil)
+	(pprint-indent :block 1)
+	(unless rhs?
+	  (pp* (args1 ex)))
+	(write-char #\space)
+	(pprint-newline :fill)
+	(pp* (pp-infix-operator ex))
+	(write-char #\space)
+	(pprint-newline :fill)
+	(pp* (args2 ex)))
+      (pp* ex)))
+
+(defmethod pp-chained-relation (ex &optional rhs?)
+  (if rhs?
+      (pp* (args2 ex))
+      (pp* ex)))
+
 (defmethod pp-infix-operator ((ex infix-conjunction))
   (case *ppcase*
     (unicode '∧)
@@ -1935,7 +1966,7 @@ bind tighter.")
     (lower '|and|)
     (t (if (symbol-equal (id (operator ex)) 'AND)
 	   'AND
-	   (operator ex)))))
+	   (id (operator ex))))))
 
 (defmethod pp-infix-operator ((ex infix-disjunction))
   (case *ppcase*
@@ -1943,7 +1974,7 @@ bind tighter.")
     (lower '|or|)
     (t (if (symbol-equal (id (operator ex)) 'OR)
 	   'OR
-	   (operator ex)))))
+	   (id (operator ex))))))
 
 (defmethod pp-infix-operator ((ex infix-implication))
   (case *ppcase*
@@ -1952,7 +1983,7 @@ bind tighter.")
     (lower '|implies|)
     (t (if (symbol-equal (id (operator ex)) 'IMPLIES)
 	   'IMPLIES
-	   (operator ex)))))
+	   (id (operator ex))))))
 
 (defmethod pp-infix-operator ((ex infix-iff))
   (case *ppcase*
@@ -1961,7 +1992,7 @@ bind tighter.")
     (lower '|iff|)
     (t (if (symbol-equal (id (operator ex)) 'IFF)
 	   'IFF
-	   (operator ex)))))
+	   (id (operator ex))))))
 
 (defmethod pp-infix-operator ((ex infix-disequation))
   (case *ppcase*
@@ -2023,7 +2054,7 @@ bind tighter.")
 	(let ((op (pp-infix-operator ex)))
 	  (pprint-logical-block (nil conjuncts)
 	    (write "   ")
-	    (when (string-equal op 'AND)
+	    (when (symbol-equal op 'AND)
 	      (write "  "))
 	    (loop (pp* (pprint-pop))
 		  (pprint-exit-if-list-exhausted)
@@ -2039,7 +2070,7 @@ bind tighter.")
 	(let ((op (pp-infix-operator ex)))
 	  (pprint-logical-block (nil disjuncts)
 	    (write "   ")
-	    (when (string-equal op 'OR)
+	    (when (symbol-equal op 'OR)
 	      (write "  "))
 	    (loop (pp* (pprint-pop))
 	       (pprint-exit-if-list-exhausted)
@@ -3019,12 +3050,15 @@ bind tighter.")
 	(pp-paren-adformals* b 0))))
 
 (defun pp-lambda-adformals (bindings)
-  (pprint-logical-block (nil bindings :prefix "(" :suffix ")")
-    (loop (pprint-indent :current 2)
-	  (pp* (pprint-pop))
-	  (pprint-exit-if-list-exhausted)
-	  (write ", ")
-	  (pprint-newline :fill))))
+  (if (and (null (cdr bindings))
+	   (pred-bind-decl? (car bindings)))
+      (pp* (car bindings))
+      (pprint-logical-block (nil bindings :prefix "(" :suffix ")")
+	(loop (pprint-indent :current 2)
+	   (pp* (pprint-pop))
+	   (pprint-exit-if-list-exhausted)
+	   (write ", ")
+	   (pprint-newline :fill)))))
 
 ;(defun pp-typed-ids (bindings)
 ;  (pprint-logical-block (nil bindings)
