@@ -1918,19 +1918,75 @@
   (let* ((op (term-arg0 expr))
 	 (opid (sim-term-op op))
 	 (args (term-args (term-arg1 expr)))
+	 (arg (if (cdr args)
+		  (let ((exprs (mapcar #'xt-expr args)))
+		    (make-instance 'arg-tuple-expr
+		      :exprs exprs
+		      :place (merge-places (place (car exprs))
+					   (place (car (last exprs))))))
+		  (xt-expr (car args))))
 	 (ne (make-instance 'name-expr
 	       :id opid
 	       :place (term-place op))))
-    (make-instance 'infix-application
-      :operator ne
-      :argument (if (cdr args)
-		    (let ((exprs (mapcar #'xt-expr args)))
-		      (make-instance 'arg-tuple-expr
-			:exprs exprs
-			:place (merge-places (place (car exprs))
-					     (place (car (last exprs))))))
-		    (xt-expr (car args)))
-      :place (term-place expr))))
+    (if (and (memq opid *pvs-relational-operators*)
+	     (arg-tuple-expr? arg)
+	     (= (length (exprs arg)) 2))
+	(let* ((lhs (rightmost-relation-term (car (exprs arg))))
+	       (rhs (leftmost-relation-term (cadr (exprs arg))))
+	       (app (mk-application ne lhs rhs)))
+	  (setf (place app)
+		(merge-places (place lhs) (place rhs)))
+	  (if (eq lhs (car (exprs arg))) ; cannot be conjoined
+	      (if (eq rhs (cadr (exprs arg)))
+		  app
+		  (mk-chained-relation app rhs))
+	      (let ((conj1 (mk-chained-relation (car (exprs arg)) app)))
+		(if (eq rhs (cadr (exprs arg)))
+		    conj1
+		    (mk-chained-relation conj1 (cadr (exprs arg)))))))
+	(make-instance 'infix-application
+	  :operator ne
+	  :argument arg
+	  :place (term-place expr)))))
+
+(defun mk-chained-relation (lhs rhs)
+  (make-instance 'chained-relation
+    :operator (make-instance 'name-expr :id 'AND)
+    :argument (make-instance 'arg-tuple-expr
+		:exprs (list lhs rhs)
+		:place (merge-places (place lhs) (place rhs)))))
+
+
+;; Get the lhs arg, which is the rightmost element
+;; idea is that with a infix rel expr 'lex R rex',
+;; where R is a binary infix relational operator,
+;; we want the right-most arg of lex and the left-most arg of rex
+(defmethod rightmost-relation-term ((arg infix-application))
+  (if (and (zerop (parens arg))
+	   (name-expr? (operator arg))
+	   (memq (id (operator arg)) *pvs-relational-operators*))
+      (args2 arg)
+      arg))
+
+(defmethod rightmost-relation-term ((arg chained-relation))
+  (rightmost-relation-term (args2 arg)))
+
+(defmethod rightmost-relation-term ((arg t))
+  arg)
+
+(defmethod leftmost-relation-term ((arg infix-application))
+  (if (and (zerop (parens arg))
+	   (name-expr? (operator arg))
+	   (memq (id (operator arg)) *pvs-relational-operators*))
+      (args1 arg)
+      arg))
+
+(defmethod leftmost-relation-term ((arg chained-relation))
+  (leftmost-relation-term (args1 arg)))
+
+(defmethod leftmost-relation-term ((arg t))
+  arg)
+
 
 (defun xt-unary-term-expr (uexpr)
   (let* ((op (term-arg0 uexpr))
@@ -2989,9 +3045,8 @@
 
 (defun ds-vid (term)
   (let* ((tid (ds-id term))
-	 (id (if (and (symbolp tid)
-		      (every #'digit-char-p (string tid)))
-		 (parse-integer (string tid))
+	 (id (if (integerp tid)
+		 (makesym "~d" tid)
 		 tid)))
     (when (memq id '(|/\\| |\\/|))
       (pushnew id *escaped-operators-used*))
