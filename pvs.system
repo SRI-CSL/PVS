@@ -94,7 +94,8 @@
 
 (assert (find-package :asdf))
 #+allegro
-(asdf/find-system:initialize-source-registry (format nil "~a/src/cl-json/" *pvs-path*))
+(asdf:initialize-source-registry (format nil "~a/src/cl-json/" *pvs-path*))
+    
 #-allegro
 (load (format nil "~a/src/cl-json/cl-json.asd" *pvs-path*))
 
