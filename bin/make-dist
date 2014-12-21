@@ -129,7 +129,7 @@ ls -l pvs-${version}-source.tgz
 
 # System files
 pvssystemfiles="\
-  README README.GUI INSTALL LICENSE NOTICES pvs pvsio pvs-gui proveit provethem pvs-tex.sub pvs.sty bin/relocate \
+  README.md README.GUI INSTALL LICENSE NOTICES pvs pvsio pvs-gui proveit provethem pvs-tex.sub pvs.sty bin/relocate \
   bin/pvs-platform bin/tar-b64-mail Examples \
   lib/prelude.pvs lib/prelude.prf lib/list_adt.pvs \
   lib/ordstruct_adt.pvs lib/character_adt.pvs \
