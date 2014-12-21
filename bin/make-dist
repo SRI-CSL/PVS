@@ -60,7 +60,7 @@ fi
 # pvs-source.tgz
 echo Creating pvs-${version}-source.tgz
 ${TAR} ${TARFLAGS} -f pvs-${version}-source.tgz --exclude pvsbin \
-  pvs.system *.lisp Makefile.in README README.GUI INSTALL LICENSE NOTICES \
+  pvs.system *.lisp Makefile.in README.md README.GUI INSTALL LICENSE NOTICES \
   configure configure.in config.guess config.sub install-sh bin/make-dist \
   pvs.in pvsio.in proveit.in provethem.in pvs.sty pvs-tex.sub \
   bin/pvs-platform bin/relocate bin/tarmail bin/untarmail \
