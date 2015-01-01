@@ -307,7 +307,7 @@
 	    #'(lambda (x) (declare (ignore x)) (type fld))
 	    #'(lambda (x) (eq x fvar))))))))
 
-(defmethod reset-typevar-binding ((cvar cotup-out-variable) arg bindings)
+(defmethod reset-typevar-binding ((cvar cotup-type-variable) arg bindings)
   (let ((ovar (out-type-var cvar))
 	(cotype (find-supertype arg)))
     (when (and (cotupletype? cotype)

@@ -770,11 +770,11 @@
   (field-id :restore-as nil))
 
 ;; extraction-expr out_i is of type [coT -> T_i]
-;; coT is a cotup-out-variable - maps to (in?_i)
+;; coT is a cotup-type-variable - maps to (in?_i)
 ;; T_i is a out-type-variable
 ;; coT points to T_i, used in tc-unify
 
-(defcl cotup-out-variable (type-var)
+(defcl cotup-type-variable (type-var)
   out-type-var)
 
 (defcl out-type-variable (type-var)

@@ -217,7 +217,7 @@
 		 (let* ((outtype (make-instance 'out-type-variable
 				   :id (make-new-variable 'T expr)
 				   :index (index expr)))
-			(cotv (make-instance 'cotup-out-variable
+			(cotv (make-instance 'cotup-type-variable
 				:id (make-new-variable '|coT| expr)
 				:out-type-var outtype)))
 		   (list (mk-funtype cotv outtype)))))))
