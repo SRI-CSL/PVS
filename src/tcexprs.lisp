@@ -102,10 +102,13 @@
 	       (setf (types expr)
 		     (list (mk-funtype rtype (type field)))))))
 	(t (setf (types expr)
-		 (list (mk-funtype (make-instance 'rec-type-variable
-				     :id (make-new-variable '|recT| expr))
-				   (make-instance 'type-variable
-				     :id (make-new-variable 'T expr))))))))
+		 (let* ((ftype (make-instance 'field-type-variable
+				 :id (make-new-variable 'T expr)
+				 :field-id (id expr)))
+			(recv (make-instance 'rec-type-variable
+				:id (make-new-variable '|recT| expr)
+				:field-type-var ftype)))
+		   (list (mk-funtype recv ftype)))))))
 
 ;;; Projection-exprs are created by the parser, and those that appear as
 ;;; operators to an application are then converted to
@@ -134,10 +137,13 @@
 	   (setf (types expr)
 		 (list (make-projection-type expr ttype)))))
 	(t (setf (types expr)
-		 (list (mk-funtype (make-instance 'tup-type-variable
-				     :id (make-new-variable '|tupT| expr))
-				   (make-instance 'type-variable
-				     :id (make-new-variable 'T expr))))))))
+		 (let* ((ptype (make-instance 'proj-type-variable
+				 :id (make-new-variable 'T expr)
+				 :index (index expr)))
+			(tupv (make-instance 'tup-type-variable
+				:id (make-new-variable '|tupT| expr)
+				:proj-type-var ptype)))
+		   (list (mk-funtype tupv ptype)))))))
 
 (defun make-projection-type (projection-expr &optional type)
   (let* ((ttype (or type (type projection-expr)))
@@ -152,9 +158,6 @@
 	  (mk-funtype db
 		      (make!-projection-type* (types tuptype) index 1 dvar)))
 	(mk-funtype ttype (nth (1- index) (types tuptype))))))
-		      
-	      
-	 
 
 (defmethod typecheck* ((expr injection-expr) expected kind argument)
   (declare (ignore kind expected argument))
@@ -176,11 +179,19 @@
 			   (types (find-supertype
 				   (type-value (car (actuals expr))))))
 		      (find-supertype (type-value (car (actuals expr))))))))
-	(t (setf (types expr)
-		 (list (mk-funtype (make-instance 'type-variable
-				     :id (make-new-variable 'T expr))
-				   (make-instance 'cotup-type-variable
-				     :id (make-new-variable '|coT| expr))))))))
+	(t 
+	 ;; This doesn't work - no way to figure out the cotuple type
+	 ;; instead generate type-error, saying to include actuals.
+	 ;; (setf (types expr)
+	 ;; 	 (let* ((cotv (make-instance 'cotup-in-variable
+	 ;; 			:id (make-new-variable '|coT| expr)
+	 ;; 			:index (index expr)))
+	 ;; 		(intype (make-instance 'in-type-variable
+	 ;; 			  :id (make-new-variable 'T expr)
+	 ;; 			  :cotup-var cotv)))
+	 ;; 	   (list (mk-funtype intype cotv))))
+	 (type-error expr "~a should be applied or include actuals (e.g., ~a[[int + bool]])"
+	   expr expr))))
 
 (defmethod typecheck* ((expr extraction-expr) expected kind argument)
   (declare (ignore kind expected argument))
@@ -203,10 +214,13 @@
 			   (types (find-supertype
 				   (type-value (car (actuals expr))))))))))
 	(t (setf (types expr)
-		 (list (mk-funtype (make-instance 'cotup-type-variable
-				     :id (make-new-variable '|coT| expr))
-				   (make-instance 'type-variable
-				     :id (make-new-variable 'T expr))))))))
+		 (let* ((outtype (make-instance 'out-type-variable
+				   :id (make-new-variable 'T expr)
+				   :index (index expr)))
+			(cotv (make-instance 'cotup-out-variable
+				:id (make-new-variable '|coT| expr)
+				:out-type-var outtype)))
+		   (list (mk-funtype cotv outtype)))))))
 
 (defmethod typecheck* ((expr injection?-expr) expected kind argument)
   (declare (ignore kind expected argument))

@@ -220,7 +220,6 @@
 	      (tc-match-print-type print-type farg nbindings)))))))
 
 (defmethod tc-match-print-type ((ptype name) farg nbindings)
-  (declare (ignore farg))
   (let* ((res (car (resolutions ptype)))
 	 (acts (actuals (module-instance res)))
 	 (dacts (dactuals (module-instance res))))
@@ -273,8 +272,16 @@
 			   (not (has-type-vars? (cdr binding))))
 		      (and (member (cdr binding) *tc-strict-matches*
 				   :test #'tc-eq)
+			   (or (has-type-vars? arg)
+			       (not (has-type-vars? (cdr binding))))
 			   (or (fully-instantiated? (cdr binding))
 			       (not (fully-instantiated? arg)))))
+	    ;; May be that (cdr binding) has form [tupT -> recT]
+	    ;; tupT and recT each point to their corresponding type-vars tT, rT
+	    ;; arg should have form [[A, B] -> [# a: C, ... #]]
+	    ;; then substitute into binding
+	    (setq nbindings
+		  (reset-typevar-binding (cdr binding) arg (or nbindings bindings)))
 	    (cond (*tc-match-strictly*
 		   (push arg *tc-strict-matches*)
 		   (setf (cdr binding) arg))
@@ -283,6 +290,46 @@
 	(when last-attempt?
 	  (tc-match-last-attempt (cdr binding) arg binding
 				 (or nbindings bindings))))))
+
+(defmethod reset-typevar-binding ((tvar tup-type-variable) arg bindings)
+  (let ((pvar (proj-type-var tvar)))
+    (gensubst bindings
+      #'(lambda (x) (declare (ignore x)) (nth (1- (index pvar)) (types arg)))
+      #'(lambda (x) (eq x pvar)))))
+
+(defmethod reset-typevar-binding ((rvar rec-type-variable) arg bindings)
+  (let ((fvar (field-type-var rvar))
+	(rtype (find-supertype arg)))
+    (when (recordtype? rtype)
+      (let ((fld (find (field-id fvar) (fields rtype) :test #'same-id)))
+	(when fld
+	  (gensubst bindings
+	    #'(lambda (x) (declare (ignore x)) (type fld))
+	    #'(lambda (x) (eq x fvar))))))))
+
+(defmethod reset-typevar-binding ((cvar cotup-out-variable) arg bindings)
+  (let ((ovar (out-type-var cvar))
+	(cotype (find-supertype arg)))
+    (when (and (cotupletype? cotype)
+	       (<= (index ovar) (length (types cotype))))
+      (gensubst bindings
+	#'(lambda (x) (declare (ignore x)) (nth (1- (index ovar)) (types cotype)))
+	#'(lambda (x) (eq x ovar))))))
+
+;; No way to find the cotuptype for in-type-variables here
+;; (defmethod reset-typevar-binding ((ivar in-type-variable) arg bindings)
+;;   (let ((covar (cotup-var ivar))
+;; 	(intype (find-supertype arg)))
+;;     (break "reset-typevar-binding in-type-variable")
+;;     (when (and (cotupletype? cotype)
+;; 	       (<= (length (types cotype)) (index ovar)))
+;;       (gensubst bindings
+;; 	#'(lambda (x) (declare (ignore x)) (nth (1- (index ovar)) (types cotype)))
+;; 	#'(lambda (x) (eq x ovar))))))
+
+(defmethod reset-typevar-binding (bnd arg bindings)
+  (declare (ignore bnd arg))
+  bindings)
 
 (defun tc-match-last-attempt (arg1 arg2 binding bindings)
   (declare (type list bindings))

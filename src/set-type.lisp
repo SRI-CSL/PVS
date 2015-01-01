@@ -357,13 +357,13 @@ required a context.")
   (let* ((etype (if (or (actuals ex) (dactuals ex))
 		    (car (types ex))
 		    (compatible-type expected (car (types ex)))))
-	 (cotuptype (range (find-supertype etype)))
+	 (cotuptype (domain (find-supertype etype)))
 	 (inrec (make-instance 'injection?-expr
-		    :id (makesym "IN?_~d" (index ex))
-		    :index (index ex)
-		    :type (mk-funtype cotuptype *boolean*)))
+		  :id (makesym "IN?_~d" (index ex))
+		  :index (index ex)
+		  :type (mk-funtype cotuptype *boolean*)))
 	 (insubtype (make!-expr-as-type inrec)))
-    (setf (type ex) (mk-funtype insubtype (domain (find-supertype etype))))))
+    (setf (type ex) (mk-funtype insubtype (range etype)))))
 
 (defvar *applied-operators* nil)
 

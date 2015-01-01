@@ -1666,9 +1666,9 @@
 			    (formals-sans-usings (module decl))))))
 	 (dbindings (mapcar #'list (decl-formals decl)))
 	 (bindings (find-compatible-bindings
-		      args
-		      dtypes
-		      (nconc mbindings dbindings))))
+		    args
+		    dtypes
+		    (nconc mbindings dbindings))))
     (or (create-compatible-modinsts modinst decl bindings nil)
 	(progn (push (list :no-instantiation decl)
 		     *resolve-error-info*)

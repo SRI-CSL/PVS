@@ -1090,13 +1090,16 @@
 	   (not (or (memq decl (formals (current-theory)))
 		    (memq decl (decl-formals (current-declaration)))))))))
 
-(defmethod compatible?* ((atype type-variable) (etype type-expr))
+(defmethod compatible?* ((atype type-var) (etype type-expr))
   t)
 
-(defmethod compatible?* ((etype type-expr) (atype type-variable))
+(defmethod compatible?* ((etype type-expr) (atype type-var))
   t)
 
-(defmethod compatible?* ((etype type-name) (atype type-variable))
+(defmethod compatible?* ((etype type-name) (atype type-var))
+  t)
+
+(defmethod compatible?* ((etype type-var) (atype type-name))
   t)
 
 (defmethod compatible?* ((atype rec-type-variable) (etype recordtype))
@@ -1383,20 +1386,20 @@
   (compatible-type* atype (type etype) bindings))
 
 
-(defmethod compatible-type* ((atype type-variable) (etype type-expr) bindings)
+(defmethod compatible-type* ((atype type-var) (etype type-expr) bindings)
   (declare (ignore bindings))
   etype)
 
-(defmethod compatible-type* ((atype type-expr) (etype type-variable) bindings)
+(defmethod compatible-type* ((atype type-expr) (etype type-var) bindings)
   (declare (ignore bindings))
   atype)
 
-(defmethod compatible-type* ((atype dep-binding) (etype type-variable)
+(defmethod compatible-type* ((atype dep-binding) (etype type-var)
 			     bindings)
   (declare (ignore bindings))
   atype)
 
-(defmethod compatible-type* ((atype subtype) (etype type-variable) bindings)
+(defmethod compatible-type* ((atype subtype) (etype type-var) bindings)
   (declare (ignore bindings))
   atype)
 

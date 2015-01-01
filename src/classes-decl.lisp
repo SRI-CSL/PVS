@@ -747,13 +747,51 @@
 
 (defcl type-var (type-name)) ;; The mixin
 
-(defcl type-variable (type-var))
+;; projection-expr proj_i (or `i) is of type [tupT -> T_i]
+;; tupT is a tup-type-variable
+;; T_i is a proj-type-variable
+;; tupT points to T_i, used in tc-unify
 
-(defcl tup-type-variable (type-var))
+(defcl tup-type-variable (type-var)
+  proj-type-var)
 
-(defcl cotup-type-variable (type-var))
+(defcl proj-type-variable (type-var)
+  (index :type fixnum :parse t :restore-as nil))
 
-(defcl rec-type-variable (type-var))
+;; fieldex `a is of type [recT -> T_a]
+;; recT is a rec-type-variable
+;; T_a is a field-type-variable
+;; recT points to T_a, used in tc-unify
+
+(defcl rec-type-variable (type-var)
+  field-type-var)
+
+(defcl field-type-variable (type-var)
+  (field-id :restore-as nil))
+
+;; extraction-expr out_i is of type [coT -> T_i]
+;; coT is a cotup-out-variable - maps to (in?_i)
+;; T_i is a out-type-variable
+;; coT points to T_i, used in tc-unify
+
+(defcl cotup-out-variable (type-var)
+  out-type-var)
+
+(defcl out-type-variable (type-var)
+  (index :type fixnum :parse t :restore-as nil))
+
+;; This doesn't work - no way to figure out the cotuple type
+;; instead generate type-error, saying to include actuals.
+    ;; injection-expr in_i is of type [T_i -> coT]
+    ;; T_i is an in-type-variable
+    ;; coT is a cotup-in-variable - maps to (in?_i)
+    ;; T_i points to coT, used in tc-unify
+
+    ;; (defcl in-type-variable (type-var)
+    ;;   cotup-var)
+
+    ;; (defcl cotup-in-variable (type-var)
+    ;;   (index :type fixnum :parse t :restore-as nil))
 
 
 ;;; Subtypes are of the form {x [: type] | expr},
