@@ -1,0 +1,16 @@
+#!/bin/sh
+# Gets the pvs patches from the PVS website and installs them locally
+PATCHDIR=@PVSHOME@/lib/pvs-patches
+
+# Check that wget is available
+command -v wget >/dev/null 2>&1 || { echo >&2 "Please install wget."; exit 1; }
+
+# Now make sure lib/pvs-patches is there
+if [ ! -d "$PATCHDIR" ]; then mkdir $PATCHDIR; fi
+
+# Finally, get the patches
+cd $PATCHDIR
+wget -q -N -np -r -nd http://pvs.csl.sri.com/patches/
+rm index.html*
+echo "PVS patches fetched"
+
