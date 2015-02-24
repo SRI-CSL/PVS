@@ -1706,7 +1706,9 @@
 		 (setf (in-name-m (declaration constructor))
 		       constructor-symbol)
 		 (when accessors
-		   (let* ((uname (intern (format nil "~a_~a" constructor-symbol "unary")))
+		   ;; Added :pvs to intern (Feb 20 2015) [CM]
+		   (let* ((uname (intern 
+				  (format nil "~a_~a" constructor-symbol "unary") :pvs))
 			  (unary-binding (when accessors
 					   (if (cdr accessors)
 					       (loop for ac in accessors
