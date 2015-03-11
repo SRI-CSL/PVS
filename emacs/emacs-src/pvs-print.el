@@ -154,10 +154,11 @@ pvs-print-region command."
 	  (let ((pbuf (get-buffer-create theoryname)))
 	    (save-excursion
 	      (set-buffer pbuf)
-	      (setq pvs-prelude (save-excursion
-				  (set-buffer buf)
-				  (goto-char (car region))
-				  (- (current-line-number) 1)))
+	      (set (make-local-variable 'pvs-prelude)
+		   (save-excursion
+		     (set-buffer buf)
+		     (goto-char (car region))
+		     (- (current-line-number) 1)))
 	      (when buffer-read-only (toggle-read-only))
 	      (erase-buffer)
 	      (insert-buffer-substring buf (car region) (cadr region))
@@ -187,7 +188,7 @@ pvs-print-buffer command."
 		(error "%s does not exist." fname)
 		(save-excursion
 		  (set-buffer (find-file-noselect fname))
-		  (setq pvs-prelude 0)
+		  (set (make-local-variable 'pvs-prelude) 0)
 		  (unless buffer-read-only (toggle-read-only))
 		  (pvs-mode)
 		  (pvs-print-buffer))))))))

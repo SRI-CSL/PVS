@@ -419,7 +419,7 @@ proof scripts, including those already proved."
 	  ((file-equal (format "%s/lib/prelude.pvs" pvs-path)
 		       (buffer-file-name))
 	   (setf (pvs-fref-kind fref) 'prelude))
-	  (pvs-prelude
+	  ((boundp 'pvs-prelude)
 	   (setf (pvs-fref-kind fref) 'prelude-theory
 		 (pvs-fref-prelude-offset fref) pvs-prelude))
 	  (file (setf (pvs-fref-kind fref) 'pvs))
@@ -444,31 +444,39 @@ proof scripts, including those already proved."
 		       (error "Not at a formula line")))
 		 (error "Not in a Proof summary - run one of the status-proof- commands"))))
 	  ((equal ext "tccs")
-	   (setf (pvs-fref-kind fref) 'tccs)
-	   (let ((dotpos (position ?. fname)))
-	     (when dotpos
-	       (setf (pvs-fref-theory fref) (substring name 0 dotpos)
-		     (pvs-fref-formula fref) (substring name (1+ dotpos))))))
-	  ((equal ext "ppe") (setf (pvs-fref-kind fref) 'ppe))
+	   (cond ((equal pvs-theory-modtime (get-theory-modtime from-pvs-theory))
+		  (setf (pvs-fref-kind fref) 'tccs)
+		  (let ((dotpos (position ?. fname)))
+		    (when dotpos
+		      (setf (pvs-fref-theory fref) (substring name 0 dotpos)
+			    (pvs-fref-formula fref) (substring name (1+ dotpos))))))
+		 ((yes-or-no-p "TCC buffer is stale (PVS file was modified) regenerate?")
+		  (show-tccs from-pvs-theory)
+		  (error "TCC buffer was stale, has been updated"))
+		 (t (error "TCC buffer is stale (PVS file was modified)"))))
+	  ((equal ext "ppe")
+	   (cond ((equal pvs-theory-modtime (get-theory-modtime from-pvs-theory))
+		  (setf (pvs-fref-kind fref) 'ppe))
+		 ((yes-or-no-p "PPE buffer is stale (PVS file was modified) regenerate?")
+		  (prettyprint-expanded from-pvs-theory)
+		  (error "PPE buffer was stale, has been updated"))
+		 (t (error "PPE buffer is stale (PVS file was modified)"))))
 	  ((equal ext "pvs")
 	   (error "File is not in the current context"))
 	  (t (error "Cannot determine formula from this buffer")))
     fref))
 
 
-(defvar pvs-valid-formula-buffer 'unbound)
-(make-variable-buffer-local 'pvs-valid-formula-buffer)
-
 (defun pvs-valid-formula-buffer ()
-  (if (eq pvs-valid-formula-buffer 'unbound)
+  (if (not (boundp 'pvs-valid-formula-buffer))
       (let ((file (current-pvs-file t))
 	    (ext (pathname-type (buffer-name))))
-	(setq pvs-valid-formula-buffer
-	      (or pvs-prelude
-		  (file-equal (format "%s/lib/prelude.pvs" pvs-path)
-			      (buffer-file-name))
-		  file
-		  (member-equal ext '("ppe" "tccs")))))
+	(set (make-local-variable 'pvs-valid-formula-buffer)
+	     (or (boundp 'pvs-prelude)
+		 (file-equal (format "%s/lib/prelude.pvs" pvs-path)
+			     (buffer-file-name))
+		 file
+		 (member-equal ext '("ppe" "tccs")))))
       pvs-valid-formula-buffer))
 
 ;;; Editing proofs
@@ -2159,7 +2167,7 @@ Letters do not insert themselves; instead, they are commands:
     (while (search-forward "(checkpoint)" nil t)
       (replace-match "!!!" nil t)))
   (let* ((pvs-error nil)
-	 (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
+	 (prelude-offset (if (boundp 'pvs-prelude) pvs-prelude 0))
 	 (line (+ (current-line-number) prelude-offset))
 	 (installed (pvs-send-and-wait
 		     (format "(install-proof \"%s\" %s %s %d %s \"%s\" %d)"

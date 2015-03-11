@@ -44,7 +44,6 @@
 (defvar pvs-path) ; Set in pvs-go.el
 (defvar *prelude-files-and-regions*)
 (defvar pvs-library-path)
-(defvar pvs-prelude)
 (defvar pvs-in-checker)
 (defvar pvs-reserved-words-regexp)
 
@@ -1023,7 +1022,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
   (pvs-bury-output)
   (let ((default (or (current-theory)
 		     (and with-prelude-p
-			  pvs-prelude
+			  (boundp 'pvs-prelude)
 			  (buffer-name))))
 	(theories (append (pvs-collect-theories)
 			  (when with-prelude-p
@@ -1078,6 +1077,13 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	 (car trs))
 	(t (find-current-theory-region (cdr trs)))))
 
+(defun get-theory-modtime (theory)
+  (let ((thbuf (get-theory-buffer theory)))
+    (if thbuf
+	(save-excursion
+	  (set-buffer thbuf)
+	  (visited-file-modtime))
+	(message "Theory %s not found" theory))))
 
 ;;; pvs-collect-theories returns an assoc list of the theory names and
 ;;; their associated PVS filenames.  The filename is accessed using cadr,
@@ -1559,7 +1565,7 @@ Point will be on the offending delimiter."
 	 (file-writable-p dname))))
 
 (defadvice rename-buffer (after rename-buffer-pvs activate)
-  (setq current-pvs-file 'unbound))
+  (makunbound 'current-pvs-file))
 
 (defun real-current-column ()
   (- (point) (save-excursion (beginning-of-line) (point))))

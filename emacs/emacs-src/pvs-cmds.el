@@ -262,10 +262,6 @@ instance.  No longer used - use prettyprint-expanded instead"
 
 ;;; prettyprint-expanded
 
-(defvar pvs-context-sensitive nil
-  "Indicates whether the buffer should be deleted when the context is
-changed.")
-(make-variable-buffer-local 'pvs-context-sensitive)
 
 (defvar pvs-show-formulas-map nil)
 (if pvs-show-formulas-map ()
@@ -301,12 +297,14 @@ command."
     (when buf
       (save-excursion
 	(set-buffer buf)
-	(setq pvs-context-sensitive t)
+	(set (make-local-variable 'pvs-context-sensitive) t)
+	(set (make-local-variable 'from-pvs-theory) theory)
+	(set (make-local-variable 'pvs-theory-modtime) mtime)
 	(pvs-view-mode)
 	(use-local-map pvs-show-formulas-map)))))
 
 (defpvs show-tccs tcc (theory &optional arg)
-  "Shows all the TCCs of the indicated theory
+	"Shows all the TCCs of the indicated theory
 
 The show-tccs command pops up a buffer with the name \"THEORY.tccs\".
 displaying just the TCCs of the theory.  Proofs of any displayed TCCs may
@@ -316,23 +314,26 @@ to be proved and invoking the prove command.
 With a nonnegative argument (e.g., C-u or M-0), shows only the unproved TCCs.
 With a negative argument (M--), shows all TCCs, including comments for
 trivial TCCs."
-  (interactive (append (complete-theory-name "Show TCCs of theory named: ")
-		       (list (when current-prefix-arg
-			       (prefix-numeric-value current-prefix-arg)))))
-  (save-some-pvs-buffers)
-  (unless (interactive-p) (pvs-collect-theories))
-  (message "Creating the %s.tccs buffer..." theory)
-  (pvs-send-and-wait (format "(show-tccs \"%s\" %s)" theory arg)
-		     nil (pvs-get-abbreviation 'show-tccs)
-		     'dont-care)
-  (let ((buf (get-buffer (format "%s.tccs" theory))))
-    (when buf
-      (save-excursion
-	(message "")
-	(set-buffer buf)
-	(setq pvs-context-sensitive t)
-	(pvs-view-mode)
-	(use-local-map pvs-show-formulas-map)))))
+	(interactive (append (complete-theory-name "Show TCCs of theory named: ")
+			     (list (when current-prefix-arg
+				     (prefix-numeric-value current-prefix-arg)))))
+	(save-some-pvs-buffers)
+	(unless (interactive-p) (pvs-collect-theories))
+	(message "Creating the %s.tccs buffer..." theory)
+	(pvs-send-and-wait (format "(show-tccs \"%s\" %s)" theory arg)
+			   nil (pvs-get-abbreviation 'show-tccs)
+			   'dont-care)
+	(let ((buf (get-buffer (format "%s.tccs" theory))))
+	  (when buf
+	    (let ((mtime (get-theory-modtime theory)))
+	      (save-excursion
+		(message "")
+		(set-buffer buf)
+		(set (make-local-variable 'pvs-context-sensitive) t)
+		(set (make-local-variable 'from-pvs-theory) theory)
+		(set (make-local-variable 'pvs-theory-modtime) mtime)
+		(pvs-view-mode)
+		(use-local-map pvs-show-formulas-map))))))
 
 (defpvs show-declaration-tccs tcc ()
   "Shows the TCCs of the declaration at the current-cursor position
@@ -361,7 +362,7 @@ the prove command."
 	(save-excursion
 	  (message "")
 	  (set-buffer tbuf)
-	  (setq pvs-context-sensitive t)
+	  (set (make-local-variable 'pvs-context-sensitive) t)
 	  (pvs-view-mode)
 	  (use-local-map pvs-show-formulas-map)))))))
 
@@ -422,10 +423,6 @@ the prove command."
 
 ;;; View Prelude
 
-(defvar pvs-prelude nil
-  "Line number indicating where the buffer is in the prelude (local).")
-(make-variable-buffer-local 'pvs-prelude)
-
 (defpvs view-prelude-file find-files ()
   "Views the prelude file
 
@@ -440,7 +437,7 @@ and invoking the prove command."
 	(find-file fname)
 	(unless buffer-read-only (toggle-read-only))
 	(pvs-mode)
-	(setq pvs-prelude 0))))
+	(set (make-local-variable 'pvs-prelude) 0))))
 
 
 (defpvs view-prelude-theory find-files (theoryname)
@@ -472,7 +469,7 @@ formula and invoking the prove command."
 		(goto-char (point-min))
 		(pop-to-buffer pbuf)
 		(pvs-mode)
-		(setq pvs-prelude poff))
+		(setq (make-local-variable 'pvs-prelude) poff))
 	      (error "%s is not in the prelude." fname))))))
 
 (defun get-prelude-file-and-region (theoryname)
@@ -1142,7 +1139,8 @@ for any reason, then the current PVS context is not changed."
   (dolist (b (buffer-list))
     (save-excursion
       (set-buffer b)
-      (when pvs-context-sensitive
+      (when (and (boundp 'pvs-context-sensitive)
+		 pvs-context-sensitive)
 	(set-buffer-modified-p nil)
 	(kill-buffer b)))))
 

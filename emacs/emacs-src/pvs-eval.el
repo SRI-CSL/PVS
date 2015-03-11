@@ -33,7 +33,7 @@
       (message "")
       (save-excursion
 	(set-buffer buf)
-	(setq pvs-context-sensitive t)
+	(set (make-local-variable 'pvs-context-sensitive) t)
 	(lisp-mode)))))
 
 (defun pvs-find-lisp-file (theoryname)
@@ -59,7 +59,7 @@
       (message "")
       (save-excursion
 	(set-buffer buf)
-	(setq pvs-context-sensitive t)
+	(set (make-local-variable 'pvs-context-sensitive) t)
 	(lisp-mode)))))
 
 (defun pvs-find-C-file (filename)
