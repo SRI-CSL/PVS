@@ -22,7 +22,7 @@ dnl --------------------------------------------------------------------
 
 dnl make sure we are using a recent autoconf version
 AC_PREREQ(2.59)
-AC_INIT([pvs],[4.2],[pvs-bugs@csl.sri.com])
+AC_INIT([pvs],[6.1],[pvs-bugs@csl.sri.com])
 
 dnl If it doesn't look like GNU Make is being used, give a friendly warning
 tem=`make --version -f /dev/null 2>&1 | grep GNU`
@@ -35,7 +35,7 @@ AC_CONFIG_SRCDIR([src/pvs.lisp])
 	
 dnl This sets build, build_cpu, build_vendor, and build_os
 AC_CANONICAL_BUILD
-	
+
 dnl No longer look for lisp within configure, as it is possible to
 dnl build with several lisps.  Checks have been moved into the Makefile
 	
@@ -57,10 +57,8 @@ AC_SUBST(PVSPATH)
 
 dnl Check for programs required to build PVS
 AC_PROG_CC    
-if test "$GCC" != yes ; then
-	AC_MSG_ERROR(Cannot find gcc)
-fi
 AC_MSG_CHECKING(for $CC version >= 2.95)
+
 gcc_version=`$CC --version | head -n 1 | sed -e 's,[[^0-9.]],,g'`
 maj_gcc_version=`echo $gcc_version | cut -d. -f 1`
 min_gcc_version=`echo $gcc_version | cut -d. -f 2`
@@ -107,7 +105,12 @@ if test "$EMACS" != no; then
       AC_MSG_RESULT(found $emacs_version)
    fi
 fi
-dnl Don't need to check the xemacs version	
+dnl Don't need to check the xemacs version
+
+AC_CHECK_PROG(GIT,git,git,no)
+if test "$GIT" = no ; then
+	AC_MSG_ERROR(Cannot find git)
+fi
 
 AC_CHECK_PROG(ETAGS,etags,etags,no)
 if test "$ETAGS" = no ; then
@@ -118,6 +121,8 @@ AC_CHECK_PROG(MKDIR,mkdir,mkdir,no)
 if test "$MKDIR" = no ; then
 	AC_MSG_ERROR(Cannot find mkdir)
 fi
+
+AC_PROG_MKDIR_P
 
 AC_CHECK_PROG(TAR,tar,tar,no)
 if test "$TAR" = no ; then
@@ -145,7 +150,7 @@ PLATFORM=`./bin/pvs-platform`
 export PLATFORM
 
 # Finally create all the generated files
-AC_CONFIG_FILES([Makefile pvs pvsio proveit provethem get-pvs-patches doc/api/Makefile doc/user-guide/Makefile doc/language/Makefile doc/language/pvs-doc.el doc/prover/Makefile])
+AC_CONFIG_FILES([Makefile pvs pvsio proveit provethem pvs-get-patches doc/api/Makefile doc/user-guide/Makefile doc/language/Makefile doc/language/pvs-doc.el doc/prover/Makefile])
 AC_OUTPUT
 
 chmod a+x pvs pvsio proveit provethem
