@@ -29,20 +29,20 @@ namespace a = "http://relaxng.org/ns/compatibility/annotations/1.0"
 namespace xlink = "http://www.w3.org/1999/xlink"
 
 start = [ xlink:type = "simple" ]
-  file-content | theory-content | recursive-type-content | top-proofstate
+  file-content | theory-content | recursive-type | top-proofstate
 
 ### Modules
 
 file-content =
   element pvs-file {top-level-content+}
 
-top-level-content = theory-content | recursive-type-content
+top-level-content = theory-content | recursive-type
 
 theory-content =
   element theory
     {commonattrs,
      id,
-     formals-content?,
+     theory-formals-content?,
      assuming-part?,
      theory-part?,
      exporting-content?}
@@ -51,11 +51,21 @@ theory-content =
 # latter are inline-datatypes, and are the same except that formals are not
 # allowed.
 
-recursive-type-content =
+recursive-type = datatype-content | codatatype-content
+
+datatype-content =
   element datatype
     {commonattrs,
      id,
-     formals-content?,
+     theory-formals-content?,
+     importings,
+     constructors}
+
+codatatype-content =
+  element codatatype
+    {commonattrs,
+     id,
+     theory-formals-content?,
      importings,
      constructors}
 
@@ -88,31 +98,34 @@ accessor-content =
      id,
      type-expr}
 
-formals-content =
-  element formals {formals}
-
-formals = (importings | formal)*
+theory-formals-content =
+  element theory-formals {formal*}
 
 formal = importing-content
-       | type-decl-content
+       | formal-type-decl-content
        | formal-subtype-decl-content
        | formal-const-decl-content
        | formal-theory-decl-content
 
+formal-type-decl-content =
+  element formal-type-decl {commonattrs, chainattr, id, nonempty-content}
+
 formal-subtype-decl-content =
-  element formal-subtype-decl {type-def-decl}
+  element formal-subtype-decl
+   {commonattrs, chainattr, id, nonempty-content, type-expr, type-expr}
 
 formal-const-decl-content =
   element formal-const-decl {id, typed-declaration}
 
 formal-theory-decl-content =
-  element formal-theory-decl {theory-name}
+  element formal-theory-decl {commonattrs, chainattr, theory-name-content}
 
 theory-name-content =
   element theory-name {theory-name}
 
 theory-name = id,
               actuals-content?,
+              dactuals-content?,
               library-id-content?,
               mappings-content?
 
@@ -122,13 +135,19 @@ actuals-content =
 actual-content =
   element actual {expr | type-expr | theory-name}
 
+dactuals-content =
+  element dactuals {(expr | type-expr | theory-name)+}
+
+dactual-content =
+  element dactual {expr | type-expr | theory-name}
+
 library-id-content =
   element library-id {id}
 
 mappings-content =
   element mappings {mapping+}
 
-mapping = mapping-def-content | mapping-subst-content | mapping-rename-content
+mapping = mapping-subst-content | mapping-rename-content
 
 mapping-def-content =
   element mapping-def {mapping-lhs-content, mapping-rhs-content}
@@ -181,105 +200,140 @@ assuming-part =
 assuming-decl = theory-decl | assumption-content
 
 assumption-content =
-  element assumption {formula-decl-attr, id, declaration, expr}
+  element assumption {formula-decl-attr, id, declaration-attrs, expr}
 
 theory-part = theory-decl+
 
 ### Declarations
 
 theory-decl =
-    importing-content
-  | judgement-decl
-  | conversion-content
-  | auto-rewrite-content
-  | lib-decl-content
-  | theory-decl-content
-  | type-decl-content
-  | type-from-decl-content
-  | var-decl-content
-  | const-decl-content
-  | macro-decl-content
-  | def-decl-content
-  | ind-decl-content
-  | corec-decl-content
-  | coind-decl-content
-  | formula-decl-content
-  | axiom-decl-content
-  | tcc-decl-content
-  | inline-datatype-content
+   importing-content
+ | judgement-decl
+ | conversion-content
+ | auto-rewrite-content
+ | lib-decl-content
+ | theory-decl-content
+ | type-decl-content
+ | enumtype-decl-content
+ | type-from-decl-content
+ | type-def-decl-content
+ | var-decl-content
+ | const-decl-content
+ | macro-decl-content
+ | def-decl-content
+ | ind-decl-content
+ | coind-decl-content
+ | formula-decl-content
+ | axiom-decl-content
+ | tcc-decl-content
+ | inline-recursive-type
 
-judgement-decl = subtype-judgement-content
-               | number-judgement-content
-               | name-judgement-content
-               | application-judgement-content
+decl-formals-content =
+   element decl-formals {formal*}
 
+judgement-decl =
+   subtype-judgement-content
+ | number-judgement-content
+ | name-judgement-content
+ | application-judgement-content
+ | expr-judgement-content
+ | recursive-judgement-content
+
+# Order of type-exprs is: declared-subtype, subtype, declared-type, type
 subtype-judgement-content =
-  element subtype-judgement {commonattrs, id?, type-expr, type-expr}
+  element subtype-judgement
+   {commonattrs, id?, type-expr, type-expr, type-expr, type-expr}
 
 number-judgement-content =
-  element number-judgement {commonattrs, id?, number-expr-content, type-expr}
+  element number-judgement {commonattrs, id?, number-expr-content, type-expr, type-expr}
 
 name-judgement-content =
-  element name-judgement {commonattrs, id?, name-expr-content, type-expr}
+  element name-judgement {commonattrs, id?, name-expr-content, type-expr, type-expr}
 
 application-judgement-content =
-  element application-judgement {commonattrs, id?, type-expr, name-expr-content, bindings-content}
+   element application-judgement
+   {commonattrs, id?, decl-formals-content?, name-expr-content,
+      arg-formals-content?, type-expr, type-expr}
+
+expr-judgement-content =
+   element expr-judgement
+   {commonattrs, id?, decl-formals-content?, name-expr-content,
+      arg-formals-content?, expr, type-expr, type-expr}
+
+recursive-judgement-content =
+   element recursive-judgement
+   {commonattrs, id?, decl-formals-content?, name-expr-content,
+      arg-formals-content?, type-expr, type-expr}
 
 conversion-content =
-  element conversion-decl {declaration, expr}
+   element conversion-decl
+   {conversion-kind-content, declaration-attrs, conversion-attrs, expr}
+
+conversion-attrs =
+   attribute key
+   {string "CONVERSION" | string "CONVERSION+" |string "CONVERSION-"}
+
+conversion-kind-content =
+   element kind {string "add" | string "remove"}
 
 auto-rewrite-content =
   element auto-rewrite
-   {auto-rewrite-attr?, declaration, rewrite-name-content+}
+   {declaration-attrs, auto-rewrite-attr?, auto-rewrite-kind, rewrite-name-content+}
+
+auto-rewrite-kind =
+   element kind
+   {string "add" | string "remove"}
 
 rewrite-name-content =
    element rewrite-name
-   {commonattrs, rewrite-name-attrs?, name, resolution?, rewrite-name-spec?}
+   {commonattrs, name, rewrite-name-kind?, rewrite-name-spec?, resolution?}
 
 rewrite-name-spec =
-   element rewrite-name-spec {type-expr | name | xsd:integer}
+   element rewrite-name-spec {type-expr | formula-name}
 
-rewrite-name-attrs =
-   attribute kind {string "lazy" | string "eager" | string "macro"}
+rewrite-name-kind =
+   element kind {string "lazy" | string "eager" | string "macro"}
 
 lib-decl-content =
-  element lib-decl {id, typed-declaration}
+  element lib-decl {commonattrs, id, path-content}
+
+path-content =
+   element path {string}
 
 theory-decl-content =
-  element theory-decl {id, typed-declaration}
+  element theory-decl {id, typed-declaration, theory-name}
 
 type-decl-content =
   element type-decl
     # The type-value is the given type, the type-expr is its canonical form
     #                              type-value  type-expr
-    {type-decl-attrs, id, declaration, type-expr?, type-expr?, contains-content?}
+    {type-decl-attrs, decl-formals-content?, id, nonempty-content,
+       declaration-attrs}
+
+nonempty-content =
+   element nonempty-p {xsd:boolean}
 
 type-from-decl-content =
-  element type-from-decl
-    {type-decl-attrs, id, declaration, type-expr, contains-content?}
+   element type-from-decl
+   {type-decl-attrs, declaration-attrs, id, decl-formals-content?,
+      arg-formals-content?, type-expr, type-expr}
 
 var-decl-content =
   element var-decl {id, typed-declaration}
 
 const-decl-content =
-  element const-decl {id, decl-formals-content?, typed-declaration, expr?}
+  element const-decl {id, decl-formals-content?, arg-formals-content?, typed-declaration, expr?}
 
-decl-formals-content =
-   element decl-formals {decl-formals1-content+}
-
-decl-formals1-content =
-   element formals {decl-formals2-content+}
-
-decl-formals2-content =
-   element formals {binding-content+}
+arg-formals-content =
+   element arg-formals {bindings-content+}
 
 macro-decl-content =
-  element macro-decl {id, typed-declaration}
+  element macro-decl {id, decl-formals-content?, arg-formals-content?, typed-declaration, expr?}
 
 def-decl-content =
    element def-decl
-   {id, decl-formals-content?, typed-declaration,
-      def-expr, measure-expr, order-expr?}
+   {id, decl-formals-content?, arg-formals-content?, typed-declaration,
+      def-expr, measure-expr?, order-expr?}
 
 def-expr = expr
 
@@ -288,40 +342,61 @@ measure-expr = expr
 order-expr = expr
 
 ind-decl-content =
-  element ind-decl {id, typed-declaration}
-
-corec-decl-content =
-  element corec-decl {id, typed-declaration}
+  element ind-decl
+   {id, decl-formals-content?, arg-formals-content?, typed-declaration, expr}
 
 coind-decl-content =
-  element coind-decl {id, typed-declaration}
+  element coind-decl
+   {id, decl-formals-content?, arg-formals-content?, typed-declaration, expr}
 
 formula-decl-content =
-  element formula-decl {formula-decl-attr, id, declaration, expr}
+  element formula-decl
+   {formula-decl-attr, id, declaration-attrs, decl-formals-content?, expr}
 
 axiom-decl-content =
-  element axiom-decl {formula-decl-attr, id, declaration, expr}
+  element axiom-decl
+   {formula-decl-attr, id, declaration-attrs, decl-formals-content?, expr}
 
 tcc-decl-content =
-  element tcc-decl {formula-decl-attr, id, declaration, expr}
+  element tcc-decl
+   {formula-decl-attr, id, declaration-attrs, decl-formals-content?, expr}
 
 formula-decl-attr =
-  attribute kind { "assumption" | "axiom" | "challenge" | "claim" |
-                   "conjecture" | "corollary" | "fact" | "formula" | "law" |
-                   "lemma" | "obligation" | "postulate" | "proposition" |
-                   "sublemma" | "theorem" }
+   attribute kind {formula-name}
+
+formula-name =
+   "assumption" | "axiom" | "challenge" | "claim" |
+   "conjecture" | "corollary" | "fact" | "formula" | "law" |
+   "lemma" | "obligation" | "postulate" | "proposition" |
+   "sublemma" | "theorem"
+
+inline-recursive-type = inline-datatype-content | inline-codatatype-content
 
 inline-datatype-content =
-  element inline-datatype {id, typed-declaration}
+   element inline-datatype
+   {commonattrs, id, decl-formals-content?, constructors}
 
-declaration =
-  commonattrs, chainattr?
+inline-codatatype-content =
+   element inline-codatatype
+   {commonattrs, id, decl-formals-content?, constructors}
+
+enumtype-decl-content =
+   element enumtype-decl {declaration-attrs, id, enum-elts-content}
+
+enum-elts-content =
+   element enum-elts {id+}
+
+declaration-attrs =
+  commonattrs, chainattr?, semicolonattr?
 
 type-decl =
-  id, declaration
+  id, declaration-attrs
+
+type-def-decl-content =
+   element type-def-decl {commonattrs, type-def-decl}
 
 type-def-decl =
-  type-decl-attrs, type-decl, type-expr, contains-content?
+   type-decl-attrs, id, arg-formals-content?, arg-formals-content?, type-expr, type-expr, contains-content?
 
 type-decl-attrs =
   attribute nonempty-type {boolean}?
@@ -331,7 +406,7 @@ contains-content =
     {expr}
   
 typed-declaration =
-  declaration, declared-type, type-expr
+  declaration-attrs, declared-type, type-expr
 
 declared-type = type-expr  
 
@@ -343,7 +418,7 @@ type-content =
 type-expr = type-name-content
           | type-application-content          
           | expr-as-type-content
-          | subtype-content
+          | setsubtype-content
           | function-type-content
           | tuple-type-content
           | cotuple-type-content
@@ -353,9 +428,8 @@ type-name-content =
   element type-name {commonattrs, name, resolution?}
 
 type-application-content =
-  element type-application {commonattrs,
-                            type-name-content,
-                            (binding-content|expr)+}
+  element type-application
+   {commonattrs, type-name-content, expr+}
 
 type-parameters-content =
   element type-parameters {expr+}
@@ -363,20 +437,16 @@ type-parameters-content =
 expr-as-type-content =
   element expr-as-type {commonattrs, expr, type-expr?}
 
-subtype-content =
-  element subtype {commonattrs, type-expr, expr}
+setsubtype-content =
+  element setsubtype {commonattrs, type-expr, expr}
 
 function-type-content =
-  element function-type {commonattrs, domain, type-expr}
+  element function-type {commonattrs, funtype-attrs, domain, type-expr}
+
+funtype-attrs =
+   attribute keyword {"ARRAY" | "FUNCTION"}?
 
 domain = type-expr | binding-content
-
-binding-content =
-  element binding {declaration, binding-attr, id, type-expr}
-
-binding-attr =
-  attribute id { xsd:ID }?
-
 
 tuple-type-content =
   element tuple-type {commonattrs, domain+}
@@ -398,15 +468,15 @@ expr-content =
 
 exprattrs =
   commonattrs,
-  attribute parens {xsd:integer}
+  attribute parens {xsd:integer}?
 
 expr = name-expr-content
+     | varname-expr-content
      | number-expr-content
      | string-expr-content
      | list-expr-content
      | record-expr-content
      | tuple-expr-content
-     | field-expr-content
      | proj-expr-content
      | field-appl-expr-content
      | proj-appl-expr-content
@@ -426,19 +496,22 @@ expr = name-expr-content
 # Keep the type - it may be derived from the resolution, but requires
 # substitution
 name-expr-content =
-  element name-expr {commonattrs, name, type-expr?, resolution?}
+   element name-expr {exprattrs, name, type-expr?, resolution?}
+
+varname-expr-content =
+   element varname-expr {exprattrs, id, type-expr}
 
 number-expr-content =
-  element number-expr {commonattrs, xsd:integer}
+  element number-expr {exprattrs, xsd:integer}
 
 string-expr-content =
-  element string-expr {string}
+  element string-expr {exprattrs, string}
 
 list-expr-content =
-  element list-expr {expr+}
+  element list-expr {exprattrs, expr+}
 
 record-expr-content =
-  element record-expr {commonattrs, assignment-content+}
+  element record-expr {exprattrs, assignment-content+}
 
 assignments-content =
   element assignments {assignment-content+}
@@ -464,50 +537,58 @@ tuple-expr-content =
 tuple-content =
   element tuple {expr+}
 
-field-expr-content =
-  element field-expr {id}
-
 proj-expr-content =
-  element proj-expr {xsd:integer}
+  element proj-expr {exprattrs, xsd:integer}
 
 field-appl-expr-content =
-  element field-appl-expr {commonattrs, expr, id}
+  element field-appl-expr {exprattrs, id, actuals-content?, dactuals-content?, expr}
   
 proj-appl-expr-content =
-  element proj-appl-expr {commonattrs, expr, index}
+  element proj-appl-expr {exprattrs, expr, index}
 
 index =
   element index {xsd:integer}
 
 application-expr-content =
-  element application {commonattrs, applicationattrs, expr, expr}
+  element application {exprattrs, applicationattrs, expr, expr}
 
 applicationattrs =
   attribute infix {boolean}?
 
 coercion-expr-content =
-  element coercion-expr {expr-content, type-content}
+  element coercion-expr {exprattrs, expr-content, type-content}
 
 if-expr-content =
-  element if-expr {expr-content, expr-content, expr-content}
+  element if-expr {exprattrs, expr-content, expr-content, expr-content}
 
 lambda-expr-content =
-  element lambda-expr {commonattrs, bindings-content, expr}
+   # declared-type and type-expr for return-type
+  element lambda-expr {exprattrs, bindings-content, declared-type?, type-expr?, expr}
 
 exists-expr-content =
-  element exists-expr {commonattrs, bindings-content, expr}
+  element exists-expr {exprattrs, bindings-content, expr}
 
 forall-expr-content =
-  element forall-expr {commonattrs, bindings-content, expr}
+  element forall-expr {exprattrs, bindings-content, expr}
+
+bindings-list-content =
+  element bindings-list {bindings-content+}
 
 bindings-content =
   element bindings {binding-content+}
 
+binding-content =
+  element binding {declaration-attrs, binding-attr, id, type-expr}
+
+binding-attr =
+  attribute id { xsd:ID }?,
+  attribute parens {xsd:integer}?
+
 set-expr-content =
-  element set-expr {bindings-content, expr-content}
+  element set-expr {exprattrs, bindings-content, expr-content}
 
 let-expr-content =
-  element let-expr {let-bindings-content, expr-content}
+  element let-expr {exprattrs, let-bindings-content, expr-content}
 
 let-bindings-content =
   element let-bindings {let-binding-content+}
@@ -516,10 +597,10 @@ let-binding-content =
   element let-binding {binding-content, expr}
 
 update-expr-content =
-  element update-expr {expr-content, assignments-content}
+  element update-expr {exprattrs, expr, assignments-content}
 
 cases-expr-content =
-  element cases-expr {commonattrs, expr, selection-content+}
+  element cases-expr {exprattrs, expr, selection-content+}
 
 selections-content =
   element selections {selection-content+}
@@ -529,18 +610,18 @@ selection-content =
   element selection {commonattrs, expr, bindings-content?, expr}
 
 cond-expr-content =
-  element cond-expr {expr-content, conditions-context}
-
-conditions-context =
-  element conditions {cond-content+}
+  element cond-expr {exprattrs, cond-content+, cond-else-content?}
 
 cond-content =
-  element cond {expr, expr}
+   element cond {expr, expr}
+
+cond-else-content =
+   element cond-else {expr}
 
 # row-expr, col-expr, row-headings, col-headings, table-entries
 # all but the table-entries may be omitted
 table-expr-content =
-  element table-expr {commonattrs,
+  element table-expr {exprattrs,
                       table-heading-expr-content, table-heading-expr-content,
                       table-headings-content, table-headings-content,
                       table-entries-content}
@@ -561,7 +642,8 @@ row-entries-content =
 
 names = name+
 
-name = id, theory-id?, library-id?, actuals-content?, mappings-content?, target?
+name = id, theory-id?, library-id?, actuals-content?, dactuals-content?,
+       mappings-content?, target?
 
 theory-id = element theory-id {identifier-token}
 
@@ -570,14 +652,14 @@ library-id = element library-id {identifier-token}
 target = element target {theory-name}
 
 resolution =
-  element resolution {theory-name-content, declref}
+  element resolution {theory-name-content, decl-index}
 
 #declref = element declref {xsd:anyURI}
 
 ### Proofstates
 
 top-proofstate =
-   element top-proofstate {declref, proofstate-content}
+   element top-proofstate {decl-index, proofstate-content}
 
 proofstate = element proofstate {proofstate-content}
 
@@ -624,7 +706,7 @@ identifier-content =
 
 # \p{L} = letters, \i = letters and '_', \d = digits, \? = '?'
 identifier-token = xsd:token
-  {pattern = "(\p{L}[\i\d\?]*)|([$&@^~=/\+\-\*<>][^\p{L}\d\(\)\[\]\{\}%,\.:;#'!\?_\|\s]*)"}
+#  {pattern = "(\p{L}[\i\d\?]*)|([$&@^~=/\+\-\*<>][^\p{L}\d\(\)\[\]\{\}%,\.:;#'!\?_\|\s]*)"}
 
 ### Common Attributes
 
@@ -632,25 +714,29 @@ commonattrs =
   attribute place {place-string}?
 
 chainattr =
-  attribute chain-p {boolean}
+  attribute chain-p {boolean}?
+
+semicolonattr =
+  attribute semi-colon-p {boolean}
 
 auto-rewrite-attr =
-   attribute kind {string "plus" | string "minus"}
+   attribute key
+     {string "AUTO_REWRITE" | string "AUTO_REWRITE+" | string "AUTO_REWRITE-"}
 
 place-string = xsd:string {pattern = "\d+ \d+ \d+ \d+"}
 
 ## Links
 
-declref = element declref { attlist.declref }
+decl-index = element index {xsd:integer}
 
-attlist.declref &=
-  [ a:defaultValue = "simple" ] attribute xlink:type { "simple" }?,
-  attribute xlink:href { text }?,
-  attribute xlink:role { text }?,
-  attribute xlink:arcrole { text }?,
-  attribute xlink:title { text }?,
-  attribute xlink:show { "new" | "replace" | "embed" | "other" | "none" }?,
-  attribute xlink:actuate { "onLoad" | "onRequest" | "other" | "none" }?
+# attlist.declref &=
+#   [ a:defaultValue = "simple" ] attribute xlink:type { "simple" }?,
+#   attribute xlink:href { text }?,
+#   attribute xlink:role { text }?,
+#   attribute xlink:arcrole { text }?,
+#   attribute xlink:title { text }?,
+#   attribute xlink:show { "new" | "replace" | "embed" | "other" | "none" }?,
+#   attribute xlink:actuate { "onLoad" | "onRequest" | "other" | "none" }?
 
 any =
   (element * {
