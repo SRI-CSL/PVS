@@ -658,8 +658,8 @@ are reduced.  Example reduction steps are:
 			 implicit-typepreds? ignore-typepreds?)
   "Uses the decision procedures to to simplify the formulas in
 FNUM and record them for further simplification.  The proof steps
-ASSERT, RECORD, SIMPLIFY, DO-REWRITE are instances of this primitive
-rule and should always be preferred.  The arguments have the following
+ASSERT, RECORD, and DO-REWRITE are instances of this primitive
+rule and should generally be preferred.  The arguments have the following
 effect:
  RECORD?: If T, the formula is simplified and recorded as true or false
           by the decision procedures to be used for further
