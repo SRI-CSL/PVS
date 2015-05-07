@@ -5,6 +5,8 @@ BEGIN
   IMPORTING bv_arith_nat, bv_caret, div,
             bv_sum, bv_arith_concat % For proofs only
 
+  CONVERSION+ b2n
+
   N: VAR posnat
   i: VAR int
   
@@ -38,5 +40,7 @@ BEGIN
 
   bv2nat_lem     : THEOREM FORALL (n: above(1), bv: bvec[n]):
                               bv2nat(bv)  = 2 * bv2nat(bv ^ (n - 1, 1)) + bv ^ 0
+
+  CONVERSION- b2n
 
 END bv_arith_caret

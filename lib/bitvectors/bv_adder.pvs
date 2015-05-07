@@ -25,6 +25,8 @@ BEGIN
 
 
    IMPORTING bv_bitwise[N], bv_nat[N]
+
+   CONVERSION+ b2n
    
    a,b,cin : VAR bit
    
@@ -86,14 +88,8 @@ BEGIN
    IMPORTING bv_arith_nat
 
    bv1,bv2: VAR bvec[N]
-   adder_is_add: THEOREM bv_adder(bv1,bv2,FALSE) = bv1 + bv2 
+   adder_is_add: THEOREM bv_adder(bv1,bv2,FALSE) = bv1 + bv2
+
+   CONVERSION- b2n
                              
 END bv_adder
-
-
-
-
-
-
-
-

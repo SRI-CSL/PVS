@@ -24,6 +24,7 @@ bv_int[N: posnat]: THEORY
 BEGIN
 
   IMPORTING bv_nat[N], bv_int_defs[N]
+  CONVERSION+ b2n
 
 % Definitions have been moved to the prelude theory bv_int_defs
 % to support Yices
@@ -80,12 +81,6 @@ BEGIN
   int2bv_2nat: THEOREM  int2bv(ii) = IF ii >= 0 THEN nat2bv[N](ii)
                                    ELSE nat2bv[N](ii+exp2(N)) ENDIF
 
+  CONVERSION- b2n
 
 END bv_int
-
-
-
-
-
-
-

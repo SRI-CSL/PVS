@@ -14,6 +14,8 @@ BEGIN
 
   IMPORTING bv_nat, sums
 
+  CONVERSION+ b2n
+
   bv: VAR bvec[N]
 
   nn: VAR nat
@@ -28,5 +30,7 @@ BEGIN
 
   bv2nat_as_sum: THEOREM bv2nat(bv) = IF N = 0 THEN 0
          ELSE sigma(0,N-1, extend((LAMBDA ii: exp2(ii) * bv(ii)))) ENDIF
+
+  CONVERSION- b2n
 
 END bv_sum
