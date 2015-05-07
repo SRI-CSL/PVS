@@ -260,7 +260,7 @@
   (cdr (memq '&inherit formals)))
 	    
 (defun defgen* (name formals definition docstring format-string
-		entry-type rules-or-steps)
+		entry-type rules-or-steps &optional step?)
   #+allegro (excl:record-source-file name :type :strategy)
   (let ((primitive (gethash name *rulebase*))
 	(rule (gethash name *rules*))
@@ -287,7 +287,8 @@
 			   (if (equal expanded-formals formals)
 			       docstring
 			       (format nil "~s :~%  expanded from:~%~a"
-				 (cons name expanded-formals)
+				 (cons (if step? (makesym "~a/$" name) name)
+				       expanded-formals)
 				 docstring))))
 		     (update-prover-keywords name expanded-formals)
 		     (add-symbol-entry
@@ -598,20 +599,20 @@
 (defun defstrat* (name formals definition
 		  &optional docstring format-string)
   (defgen* name formals definition docstring format-string
-	   'defrule-entry *steps*))
+	   'defrule-entry *steps* t))
 
 (defun defrule* (name formals definition
 		 &optional docstring format-string)
   (defgen* name formals definition docstring format-string
-	   'defrule-entry *rules*))
+	   'defrule-entry *rules* t))
 
 (defun defstep* (name formals definition
 		 &optional docstring format-string)
   (defgen* name formals definition docstring format-string
-	   'defstep-entry *rules*)
+	   'defstep-entry *rules* t)
   (defgen* (intern (format nil "~a$" name) :pvs)
       formals definition docstring format-string
-      'defstep-entry *steps*))
+      'defstep-entry *steps* t))
 
 (defun defhelper* (name formals definition
 		   &optional docstring format-string)
@@ -619,7 +620,7 @@
 	   'defhelper-entry *rules*)
   (defgen* (intern (format nil "~a$" name) :pvs)
       formals definition docstring format-string
-      'defhelper-entry *steps*))
+      'defhelper-entry *steps* t))
 
 
 (defmacro defrule (name args body doc format)
