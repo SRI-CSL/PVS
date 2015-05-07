@@ -247,17 +247,36 @@
     (multiple-value-bind (signal sform)
 	(assert-sform* sform rewrite-flag simplifiable?)
       (cond ((eq signal '!)(values signal sform))
-	    ((or (eq signal '?) *assert-typepreds*)
-	     ;;(break "assert-typepreds")
+	    ((and (null *ignore-typepreds?*)
+		  (or (eq signal '?) *assert-typepreds*))
 	     ;; For some formulas (e.g., large, with lots of arithmetic)
 	     ;; the *assert-typepreds* can get very large, and take
 	     ;; a long time to process; hence the *ignore-typepreds?* flag.
-	     (if (and (null *ignore-typepreds?*)
-		      (some #'process-typepred *assert-typepreds*))
-		 (values '! sform)
-		 (values '? sform))) ; should be signal, but fails for the example
-					; from Cesar 2012-12-10/aaaa.pvs
+	     (let ((newsig (process-assert-typepreds *assert-typepreds* signal)))
+	       ;; should be signal, but fails for the example
+	       ;; from Cesar 2012-12-10/aaaa.pvs
+	       (values newsig sform)))
 	    (t (values signal sform))))))
+
+(defun process-assert-typepreds (assert-typepreds signal)
+  (if (null assert-typepreds)
+      signal
+      (let* ((fmla (car assert-typepreds))
+	     (sign (not (negation? fmla)))
+	     (body (if sign fmla (args1 fmla))))
+	(if (not (connective-occurs? body))
+	    (let* ((res (call-process fmla *dp-state*)))
+	      (cond ((true-p res)
+		     (process-assert-typepreds (cdr assert-typepreds) signal))
+		    ((false-p res)
+		     '!)
+		    ((and (consp res)
+			  (not (update-or-connective-occurs? body)))
+		     (loop for x in res
+			do (push x *process-output*))
+		     (process-assert-typepreds (cdr assert-typepreds) signal))
+		    (t (process-assert-typepreds (cdr assert-typepreds) '?))))
+	    (process-assert-typepreds (cdr assert-typepreds) signal)))))
 
 (defun process-typepred (fmla)
   (let* ((sign (not (negation? fmla)))
