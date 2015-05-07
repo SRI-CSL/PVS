@@ -5219,7 +5219,7 @@ BEGIN
   b2n(b:bool)     : nbit = IF b THEN 1 ELSE 0 ENDIF 
   n2b(nb: nbit)   : bool = (nb = 1)
 
-  CONVERSION b2n
+  %CONVERSION b2n
 
 END bit
 
@@ -5241,6 +5241,7 @@ END bit
 %------------------------------------------------------------------------
 bv[N: nat]: THEORY
 BEGIN
+  CONVERSION+ b2n
 
   bvec : TYPE = [below(N) -> bit]
 
@@ -5258,6 +5259,8 @@ BEGIN
   %-----------------------------------------------------------------------  
     
   ^(bv, i): bit = bv(i)
+
+  CONVERSION- b2n
 
 END bv
 
@@ -5386,6 +5389,7 @@ END bv_bitwise
 %------------------------------------------------------------------------
 bv_nat[N: nat]: THEORY
 BEGIN
+  CONVERSION+ b2n
 
 % === Interpretation of a bit vector as a natural number ================
 
@@ -5454,6 +5458,8 @@ BEGIN
   nat2bv_rew       : LEMMA nat2bv(val) = bv IFF bv2nat(bv) = val
 
   bv2nat_inv       : THEOREM bv2nat(nat2bv(val)) = val
+
+  CONVERSION- b2n
 
 END bv_nat
 
