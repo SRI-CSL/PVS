@@ -43,9 +43,7 @@
     (error "Not in proof checker"))
   (if (featurep 'xemacs)
       (message "Proofstate displays not yet supported in XEmacs")
-      (let ((ps (save-excursion
-		  (set-buffer (find-file-noselect fname))
-		  (json-read-from-string (buffer-string)))))
+      (let ((ps (json-read-file fname)))
 	(if (listp ps)
 	    (let* ((commentary (cdr (assq 'commentary ps)))
 		   (action (cdr (assq 'action ps)))
@@ -86,7 +84,8 @@
 		  (insert "\n")
 		  (insert-proofstate-sequent sequent)
 		  (goto-char (point-min)))))
-	    (finish-proofstate (not (eq ps :json-false)))))))
+	    (finish-proofstate (not (eq ps :json-false))))
+	(delete-file fname))))
 
 (defun finish-proofstate (proved)
   (unless (eq current-proofstate-display-style 'no-frame)
