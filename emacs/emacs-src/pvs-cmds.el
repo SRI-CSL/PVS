@@ -299,7 +299,8 @@ command."
 	(set-buffer buf)
 	(set (make-local-variable 'pvs-context-sensitive) t)
 	(set (make-local-variable 'from-pvs-theory) theory)
-	(set (make-local-variable 'pvs-theory-modtime) mtime)
+	(let ((mtime (get-theory-modtime theory)))
+	  (set (make-local-variable 'pvs-theory-modtime) mtime))
 	(pvs-view-mode)
 	(use-local-map pvs-show-formulas-map)))))
 
@@ -469,7 +470,7 @@ formula and invoking the prove command."
 		(goto-char (point-min))
 		(pop-to-buffer pbuf)
 		(pvs-mode)
-		(setq (make-local-variable 'pvs-prelude) poff))
+		(set (make-local-variable 'pvs-prelude) poff))
 	      (error "%s is not in the prelude." fname))))))
 
 (defun get-prelude-file-and-region (theoryname)
