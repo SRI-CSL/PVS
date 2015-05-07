@@ -6,6 +6,16 @@ the files, run 'bin/relocate', and you should be able to run
 './pvs'.  Copy this script to a directory in your path, or add the
 PVS directory to your path.
 
+Note that it is generally not necessary to build PVS yourself, even if you
+want to do your own development.  Simply clone the sources using
+
+ git clone https://github.com/samowre/PVS.git pvs
+
+then cd to the 'pvs' subdirectory, and untar one of the downloaded PVS image
+files there, and run bin/locate.  You can then run PVS, and develop or
+modify lisp files and load them into the running PVS, without having to
+build the system yourself.
+
 * Building PVS
 
 PVS is open source, get the latest sources using Git:
@@ -24,24 +34,22 @@ will need to build it yourself. Hopefully it will not be too difficult.
 
 In summary, the steps you need to take are: 
 
-* Obtain and install Common Lisp 
-* Get the PVS sources 
-* Set the ALLEGRO_HOME, CMULISP_HOME, and/or SBCLISP_HOME
-  environment variable(s) 
+* Obtain and install SBCL (open source) and/or Allegro (proprietary) Common Lisp
+* Get the PVS sources
+* Set the SBCLISP_HOME and/or ALLEGRO_HOME environment variable(s)
 * Run configure and make
 
 Obtaining and Installing Common Lisp
 ------------------------------------
 
 PVS currently works with Allegro Common Lisp, which is proprietary ($$$),
-SBCL, and CMU Common Lisp, which are open source. PVS is roughly twice as fast
+and SBCL Common Lisp, which is open source. PVS is roughly twice as fast
 with Allegro, so if you already have Allegro, or have extra money, it is
-preferred. In addition, the Intel Mac is not supported by CMU Lisp. You can
-get Allegro from franz.com. PVS works best with Allegro 8.2, and probably
-won't work at all for versions before 6.0.
+preferred.  You can get Allegro from franz.com. PVS works best with current
+Allegro versions, and probably won't work at all for versions before 6.0.
 
-SBCL and CMU Lisp are free. Note that you can build them from source,
-but it's not necessary (and apparently it is not easy).
+SBCL Lisp is free. Note that you can build it from source, but it's not
+necessary (and apparently it is not easy).
 
 Install as directed by these sites. 
 
