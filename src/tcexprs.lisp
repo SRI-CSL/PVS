@@ -1615,6 +1615,10 @@
   (typecheck* (bindings expr) nil nil nil)
   ;; XXX do something with arguments here
   (let ((*bound-variables* (append (bindings expr) *bound-variables*)))
+    (when (lambda-expr-with-type? expr)
+      (setf (return-type expr)
+	    (typecheck* (declared-ret-type expr) nil nil nil))
+      (set-type (declared-ret-type expr) nil))
     (typecheck* (expression expr) nil nil nil)
     (setf (types expr)
 	  (mapcar #'(lambda (ty)

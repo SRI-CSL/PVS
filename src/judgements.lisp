@@ -400,13 +400,29 @@
 
 ;;; judgement-types
 
-(defun judgement-types+ (expr)
+(defmethod judgement-types+ (expr)
   (let ((jtypes (judgement-types expr)))
     (if (consp jtypes)
 	(if (some #'(lambda (jty) (subtype-of? jty (type expr)))
 		  jtypes)
 	    jtypes
 	    (cons (type expr) jtypes))
+	(list (type expr)))))
+
+(defmethod judgement-types+ ((expr lambda-expr-with-type))
+  (let ((jtypes (judgement-types expr)))
+    (if (consp jtypes)
+	(if (some #'(lambda (jty) (subtype-of? jty (type expr)))
+		  jtypes)
+	    (if (some #'(lambda (jty) (subtype-of? jty (return-type expr)))
+		      jtypes)
+		jtypes
+		(cons (return-type expr) jtypes))
+	    (if (subtype-of? (return-type expr) (type expr))
+		(cons (return-type expr) jtypes)
+		(if (subtype-of? (type expr) (return-type expr))
+		    (cons (type expr) jtypes)
+		    (cons (return-type expr) (cons (type expr) jtypes)))))
 	(list (type expr)))))
 
 (defmethod judgement-types ((ex expr))
@@ -1277,7 +1293,10 @@
 		(assert pos)
 		(let ((entry (aref ajtypes pos)))
 		  (remove-judgement-types-of-type
-		   (type ex) (cdr entry) (when ajdecls (aref ajdecls pos)))))
+		   (type ex) (cdr entry) (when ajdecls
+					   (if (vectorp ajdecls)
+					       (aref ajdecls pos)
+					       ajdecls)))))
 	      (remove-judgement-types-of-type
 	       (type ex)
 	       (field-application-types ajtypes ex)

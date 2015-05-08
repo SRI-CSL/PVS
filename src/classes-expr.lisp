@@ -386,11 +386,17 @@
 
 (defcl lambda-expr (binding-expr))
 
+(defcl lambda-expr-with-type (lambda-expr)
+  (declared-ret-type :parse t)
+  return-type)
+
 ;;(defcl lam-expr (lambda-expr))
 
 (defcl lambda-conversion (lambda-expr))
 
 (defcl set-expr (lambda-expr))
+
+(defcl set-expr-with-type (set-expr lambda-expr-with-type))
 
 (defcl set-list-expr (set-expr)
   exprs)

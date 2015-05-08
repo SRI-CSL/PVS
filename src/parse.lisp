@@ -479,6 +479,9 @@
 	 (semi (term-arg5 tdecl)))
     (when (and (cdr (term-args idops)) pformals)
       (parse-error formals ": expected here"))
+    (when (and decl-params
+	       (memq (sim-term-op decl) '(LIB-DECL VAR-DECL)))
+      (parse-error decl-params "Declaration formals not allowed here"))
     (case (sim-term-op decl)
       ((LIB-DECL THEORY-DECL TYPE-DECL DATATYPE CODATATYPE)
        (let ((badid (find-if #'(lambda (tid)
@@ -527,14 +530,16 @@
   (let ((nterm (mk-ergo-term (sim-term-op pidops)
 		 (mapcar
 		     #'(lambda (pidop)
-			 (if (cdr (term-args pidop)) ;; have periods
-			     (if *xt-periods-allowed*
-				 (xt-pidop pidop)
-				 (parse-error pidops
-				   "periods not allowed here"))
-			     (if (is-sop 'PIDOP pidop)
-				 (term-arg0 pidop)
-				 pidop)))
+			 (if (is-sop 'IDOPAPPL pidop)
+			     (parse-error pidops "parens not allowed here")
+			     (if (cdr (term-args pidop)) ;; have periods
+				 (if *xt-periods-allowed*
+				     (xt-pidop pidop)
+				     (parse-error pidops
+				       "periods not allowed here"))
+				 (if (is-sop 'PIDOP pidop)
+				     (term-arg0 pidop)
+				     pidop))))
 		   (term-args pidops)))))
     (setf (term-place nterm) (term-place pidops))
     nterm))
@@ -1422,7 +1427,8 @@
 (defun xt-subtype (type-expr)
   (let* ((args (term-arg0 type-expr))
 	 (expr (term-arg1 type-expr))
-	 (set-expr (mk-ergo-term* 'set-expr args expr))
+	 (set-expr (mk-ergo-term* 'SET-EXPR args
+				  (mk-ergo-term 'NO-TYPE-EXPR nil) expr))
 	 (pred (make-xt-bind-expr 'set-expr set-expr set-expr)))
     (setf (place pred) (term-place type-expr))
     (make-instance 'subtype
@@ -2117,14 +2123,29 @@
   (let* ((set-expr? (is-sop 'SET-EXPR body))
 	 (commas? (xt-lambda-formals-check (term-arg0 body)))
 	 (bindings (xt-lambda-formals (term-arg0 body) commas?))
-	 (expr (xt-expr (term-arg1 body)))
+	 (expr (xt-expr (term-arg2 body)))
+	 (lambda-type (unless (is-sop 'NO-TYPE-EXPR (term-arg1 body))
+			(xt-not-enum-type-expr (term-arg1 body))))
 	 (class (bind-expr-class op)))
-    (make-instance class
-      :op op
-      :bindings (xt-flatten-bindings (car bindings) (if set-expr? 1 0))
-      :expression (make-xt-bind-expr* (cdr bindings) class expr)
-      :commas? commas?
-      :place (term-place save-as))))
+    (if lambda-type
+	(if (memq class '(lambda-expr set-expr))
+	    (make-instance (if (eq class 'lambda-expr)
+			       'lambda-expr-with-type
+			       'set-expr-with-type)
+	      :op op
+	      :declared-ret-type lambda-type
+	      :bindings (xt-flatten-bindings (car bindings) (if set-expr? 1 0))
+	      :expression (make-xt-bind-expr* (cdr bindings) class expr)
+	      :commas? commas?
+	      :place (term-place save-as))
+	    (parse-error (term-arg1 body)
+	      "Return type only allowed for lambda expressions"))
+	(make-instance class
+	  :op op
+	  :bindings (xt-flatten-bindings (car bindings) (if set-expr? 1 0))
+	  :expression (make-xt-bind-expr* (cdr bindings) class expr)
+	  :commas? commas?
+	  :place (term-place save-as)))))
 
 (defun bind-expr-class (op)
   (or (cdr (assoc op '((λ . lambda-expr)) :test #'string=))

@@ -932,7 +932,13 @@ required a context.")
 
 (defun set-type-mappings (thinst theory)
   (when (mappings thinst)
-    (let ((cthinst (copy thinst :mappings nil)))
+    (let* ((athinst (if (recursive-type? theory)
+			(typecheck* (copy thinst
+				      :id (id (adt-theory theory))
+				      :resolutions nil)
+				    nil 'module nil)
+			thinst))
+	   (cthinst (copy athinst :mappings nil)))
       (unless (fully-instantiated? cthinst)
 	(type-error thinst
 	  "Actual parameters must be provided to include mappings"))
@@ -1190,6 +1196,8 @@ required a context.")
 (defun set-type-mapping-rhs (rhs lhs thinst mappings)
   (typecase (declaration lhs)
     (type-decl
+     (unless (type-value rhs)
+       (typecheck* rhs nil 'type nil))
      (if (type-value rhs)
 	 (set-type* (type-value rhs) nil)
 	 (type-error (expr rhs) "Type expected here")))
@@ -1223,13 +1231,16 @@ required a context.")
 		(when (mappings (expr rhs))
 		  (set-type-mappings (name-to-modname (expr rhs))
 				     (declaration (expr rhs))))))))
-    (t (let* ((mapthinst (lcopy thinst
-			   :mappings (append mappings (mappings thinst))
-			   :dactuals (dactuals lhs)))
-	      (stype (subst-mod-params (type (declaration lhs))
-				       mapthinst
-				       (module (declaration lhs))
-				       lhs))
+    (t (let* ((theory (module (declaration lhs)))
+	      (mapthinst (if (and (rectype-theory? theory)
+				  (not (same-id theory thinst)))
+			     
+			     (lcopy thinst
+			       :mappings (append mappings (mappings thinst))
+			       :dactuals (dactuals lhs))
+			     (break)))
+	      (stype (subst-mod-params (type (declaration lhs)) mapthinst
+		       theory lhs))
 	      (subst-type (subst-mod-params-all-mappings stype))
 	      (subst-types (if (free-params stype)
 			       (possible-mapping-subst-types
@@ -3725,9 +3736,13 @@ required a context.")
 			(range sexpected))))
 	(set-binding-expr-types (append (bindings ex) (list (expression ex)))
 				(nconc (mapcar #'type (bindings ex))
-				       (list erange)))
+				       (if (lambda-expr-with-type? ex)
+					   (list (return-type ex) erange)
+					   (list erange))))
 	(let ((atype (make-formals-funtype (list (bindings ex))
-					   (type (expression ex)))))
+					   (if (lambda-expr-with-type? ex)
+					       (return-type ex)
+					       (type (expression ex))))))
 	  (setf (type ex) atype)
 	  (unless (tc-eq adomain edomain)
 	    (or (find-funtype-conversion atype sexpected ex)
@@ -3897,8 +3912,11 @@ required a context.")
 	       (cdr expected-types)))))
       (let ((*tcc-conditions*
 	     (append (car *appl-tcc-conditions*) *tcc-conditions*)))
-	(set-type* (car bindings) (car expected-types)))))
-
+	(set-type* (car bindings) (car expected-types))
+	(when (cdr expected-types)
+	  ;; Only happens for lambda-expr with type
+	  ;; We have set-type for the lambda body against the return-type
+	  (check-for-tccs (car bindings) (cadr expected-types))))))
 
 
 (defmethod set-type* ((expr record-expr) expected)
