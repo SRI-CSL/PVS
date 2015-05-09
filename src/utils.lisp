@@ -1420,6 +1420,37 @@
   (theory ctx))
 
 
+;;; Generates a unique id for a given typechecked decl
+;;; Currently assumes the decl id is unique except for const-decls
+;;; If the const-decl is unique already, simply returns it.
+;;; Otherwise creates, e.g., the symbol 'c_2' for the second decl
+;;; with id 'c' in the list of all declarations for the theory
+;;; the decl occurs in.
+(defun unique-decl-id (decl)
+  (if (const-decl? decl)
+      (let ((same-id-decls (remove-if
+			       (complement #'(lambda (d)
+					       (and (const-decl? d)
+						    (eq (id d) (id decl)))))
+			     (all-decls (module decl)))))
+	(assert (memq decl same-id-decls))
+	(if (cdr same-id-decls)
+	    (let ((idx (1+ (position decl same-decl-ids))))
+	      (intern (format nil "~a_~a_~d" (id (module decl)) (id decl) idx)
+		      :pvs))
+	    (intern (format nil "~a_~a" (id (module decl))(id decl)))))
+      (intern (format nil "~a_~a" (id (module decl))(id decl)))))
+
+(defun unique-const-id* (cid num decls)
+  (let ((ncid (makesym "~a_~d" cid num)))
+    (if (member ncid decls
+		:test #'(lambda (x y)
+			  (and (const-decl? y)
+			       (eq x (id y)))))
+	(unique-const-id* cid (1+ num) decls)
+	ncid)))
+
+
 ;;; lambda-depth - returns the number of lambdas in the
 ;;; right-hand-side of the given definition.  E.g.
 ;;;   foo(a:int):[int -> [int -> int]] = (lam x: (lam y: a))
