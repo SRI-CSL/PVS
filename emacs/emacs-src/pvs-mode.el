@@ -110,21 +110,17 @@
 	(define-key pvs-mode-map [(shift button2)] 'mouse-show-declaration)
 	(define-key pvs-mode-map [S-mouse-2] 'mouse-show-declaration)))
 
-(defvar pvs-mode-syntax-table nil  "Syntax table used while in pvs mode.")
-(if pvs-mode-syntax-table ()
-    (let ((st (syntax-table)))
-      (unwind-protect
-	   (progn
-	     (setq pvs-mode-syntax-table (make-syntax-table))
-	     (set-syntax-table pvs-mode-syntax-table)
-	     (modify-syntax-entry ?_ "w")
-	     (modify-syntax-entry ?\? "w")
-	     (modify-syntax-entry ?: ".")
-	     (modify-syntax-entry ?% "<")
-	     (modify-syntax-entry ?\f ">")
-	     (modify-syntax-entry ?\n ">")
-	     (modify-syntax-entry ?\r ">"))
-	(set-syntax-table st))))
+(defvar pvs-mode-syntax-table
+  (let ((st (make-syntax-table)))
+    (modify-syntax-entry ?_ "w" st)
+    (modify-syntax-entry ?\? "w" st)
+    (modify-syntax-entry ?: "." st)
+    (modify-syntax-entry ?% "<" st)
+    (modify-syntax-entry ?\f ">" st)
+    (modify-syntax-entry ?\n ">" st)
+    (modify-syntax-entry ?\r ">" st)
+    st)
+  "Syntax table for PVS mode.")
 
 (defpvs pvs-mode environment ()
   "Major mode for PVS specification files.
@@ -578,8 +574,9 @@ BUFFER is the buffer speedbar is requesting buttons for."
        (setq font-lock-defaults '(pvs-font-lock-keywords nil t))))
   (add-hook 'pvs-view-mode-hook
     '(lambda ()
-       (make-local-variable 'font-lock-defaults)
-       (setq font-lock-defaults '(pvs-font-lock-keywords nil t)))))
+      (make-local-variable 'font-lock-defaults)
+      (setq font-lock-defaults '(pvs-font-lock-keywords nil t))
+      (font-lock-mode 1))))
 
 
 (defun pvs-minimal-decoration ()
