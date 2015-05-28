@@ -480,7 +480,7 @@
        #+allegro 
        (eq (car sexp) 'excl::backquote)
        #+sbcl
-       (memq (car sexp) '(sb-impl::backq-cons sb-impl::backq-list))
+       (memq (car sexp) '(sb-int:quasiquote))
        #-(or allegro sbcl)
        (error "backquoted? not defined for this lisp")))
 
@@ -488,7 +488,7 @@
   (and (consp sexp)
        (memq (car sexp)
 	     #+allegro '(excl::bq-comma excl::bq-comma-atsign)
-	     #+sbcl '(sb-impl::backq-comma sb-impl::backq-comma-at))))
+	     #+sbcl '(sb-int:quasiquote))))
 	   
 
 (defun rule-rawname (rule)
@@ -505,7 +505,7 @@
 			(list (keyword-arg-symbol ka)
 			      (if backquoted
 				  (list #+allegro 'excl::bq-comma
-					#+sbcl 'sb-impl::backq-comma
+					#+sbcl 'sb-int:quasiquote
 					(keyword-arg-symbol ka :pvs))
 				  (keyword-arg-symbol ka :pvs))))
 	      (remove-if
