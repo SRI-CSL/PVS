@@ -29,10 +29,10 @@ opsym-table.tex : pvs-doc.el ${pvs-grammar-file}
 	emacs -batch -q -l pvs-doc.el -f pvs-opsym-table-6 > opsym-table.tex 2> /dev/null 
 
 language.dvi : ${sources} ${grammar-tables}
-	latex $<;
-	makeindex -c language.idx;
-	bibtex language || echo;
-	latex $<;
+	latex $<
+	makeindex -c language.idx
+	bibtex language || echo
+	latex $<
 	latex $<
 
 language.ps.gz : language.ps
