@@ -3358,7 +3358,7 @@ floor_ceil: THEORY
   
   floor_ceiling_nonint: LEMMA NOT integer?(x) => ceiling(x) - floor(x) = 1
 
-  floor_ceiling_int: lemma floor(i)=ceiling(i)
+  floor_ceiling_int: LEMMA floor(i)=ceiling(i)
   
   floor_neg: LEMMA 
         floor(x) = IF integer?(x) THEN -floor(-x) ELSE -floor(-x) - 1 ENDIF
@@ -3371,11 +3371,11 @@ floor_ceil: THEORY
   ceiling_plus: LEMMA
         ceiling(x + y) = floor(x) + floor(y) + ceiling(fractional(x) + fractional(y))
   
-  floor_split: lemma i = floor(i/2)+ceiling(i/2)
+  floor_split: LEMMA i = floor(i/2)+ceiling(i/2)
 
-  floor_within_1: lemma x - floor(x) < 1
+  floor_within_1: LEMMA x - floor(x) < 1
 
-  ceiling_within_1: lemma ceiling(x) - x < 1
+  ceiling_within_1: LEMMA ceiling(x) - x < 1
 
   floor_val:   LEMMA i >= k*j AND i < (k+1)*j IMPLIES floor(i/j) = k 
 
@@ -3615,7 +3615,7 @@ exponentiation: THEORY
 
   exponent_adjust: LEMMA b^i+b^(i-pm) < b^(i+1)
 
-  exp_of_exists: lemma exists i: b^i <= py & py < b^(i+1)
+  exp_of_exists: LEMMA exists i: b^i <= py & py < b^(i+1)
 
  END exponentiation
 
