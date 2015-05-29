@@ -24,6 +24,6 @@ prover.pdf : ${sources}
 
 .PHONY: clean
 clean :
-	rm -f Makefile prover.dvi prover.pdf prover.ps prover.ps.gz \
+	rm -f prover.dvi prover.pdf prover.ps prover.ps.gz \
               *.log *.bbl *.ind *.ilg *.blg *.bbl *.aux \
-              *.toc *.idx *.brf 
+              *.toc *.idx *.brf *.out
