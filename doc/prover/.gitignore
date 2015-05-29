@@ -1,0 +1,10 @@
+Makefile
+*.bbl
+*.blg
+*.brf
+*.idx
+*.ilg
+*.ind
+*.pdf
+*.ps
+*.ps.gz
