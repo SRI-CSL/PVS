@@ -1,7 +1,13 @@
 /Makefile
+/doc/api/Makefile
+/doc/user-guide/Makefile
+/doc/prover/Makefile
+/doc/language/Makefile
 /configure
 /proveit
 /provethem
+/pvs-get-patches
+/doc/language/pvs-doc.el
 /pvs
 /pvsio
 /TAGS
