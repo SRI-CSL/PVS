@@ -2325,7 +2325,7 @@ generated")
 	    (call-next-method)
 	    (mk-application (mk-application funid fun) (copy arg))))
       (let* ((fid (make-new-variable '|x| te))
-	     (fbd (make-bind-decl fid (domain te)))
+	     (fbd (make-bind-decl fid (typecheck (domain te))))
 	     (fvar (mk-name-expr fid nil nil
 				 (make-resolution fbd
 				   (current-theory-name) (domain te))))
@@ -2382,7 +2382,9 @@ generated")
 	   (cdr fields))
        rvar pvars ptypes thinst adt funid dep?
        (cons (acc-predicate-selection*
-	      (copy-untyped (type (car fields))) pvars ptypes thinst adt funid)
+	      (let ((*bound-variables* (cons (declaration rvar) *bound-variables*)))
+		(typecheck (copy-untyped (type (car fields)))))
+	      pvars ptypes thinst adt funid)
 	     result))))
 
 (defmethod acc-predicate-selection (arg (te tupletype) pvars ptypes thinst adt
