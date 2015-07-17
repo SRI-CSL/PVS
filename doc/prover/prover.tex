@@ -1739,7 +1739,7 @@ rules initiated by track-rewrite.
 \item[effect:] The undo command undoes the proof back to an ancestor
 node of the current node as indicated by the \emph{to} argument.  The
 user is then shown the sequent at that ancestor node, and asked for
-verification.  The \emph{to} argument can either be:
+confirmation.  The \emph{to} argument can either be:
 \begin{enumerate}
 \item A positive number indicating the number of levels in the proof tree
 to be undone
@@ -2073,7 +2073,7 @@ A_1, \Gamma & \vdash & A_2,\Delta \\
 Note that the \texttt{case} command generates $n+1$ subgoals given $n$
 formulas.  This allows us to assume a formula or a collection of formulas
 and subsequently prove these formulas to be true.  The formulas $A_i$ are
-given as strings, \eg, \texttt{"x > 0 AND y > 0"}.  The given formulas
+given as strings, \eg\ \texttt{"x > 0 AND y > 0"}.  The given formulas
 $A_1, \ldots, A_n$ are parsed and typechecked and are expected to be of
 type \texttt{bool}.  The typechecking of these formulas could generate
 additional subgoals corresponding to the type correctness conditions \eg\
@@ -2737,13 +2737,13 @@ must be of the form \texttt{(\emph{var} \emph{term} \emph{var} \emph{term} \ldot
 formula found in the range specified by \emph{fnums}.
 
 {\bf Couldn't find a suitable instantiation for any
-quantified  formula.  Please provide partial instantiation: }
+quantified  formula.  Please provide partial instantiation:}
 Pattern-matching was unable to instantiate the quantified variables so
 that a further  hint in the form of a partial substitution might be
 needed.
 
 {\bf Given substitution \ldots
-is not of the form: (<var> <term>...): }  An odd length substitution was
+is not of the form: (<var> <term>...):}  An odd length substitution was
 given.
 
 {\bf The supplied terms should not contain free variables:}
@@ -3140,7 +3140,7 @@ if the given \emph{expr} is not well-formed.
 
 {\bf \ldots is not a symbol:}  The \emph{name} argument must be a symbol.
 
-{\bf \ldots is already declared: } The name argument must be a new name.
+{\bf \ldots is already declared:} The name argument must be a new name.
 \end{description}
 
 \prdolsubsection{name-case-replace}{Replace one Expression by Another,
@@ -3272,7 +3272,7 @@ and the formulas used in the replacement cannot be hidden.
 $\texttt{cons[\{i:\ nat | i /= 0\}]}$ can be denotationally equal yet
 syntactically distinct.  The command \indtt{same-name} can be used to
 introduce an antecedent formula asserting the equality of two such names,
-\eg, $\texttt{cons[\{i:\ nat | i > 0\}]} = \texttt{cons[\{i:\ nat | i /=
+\eg\ $\texttt{cons[\{i:\ nat | i > 0\}]} = \texttt{cons[\{i:\ nat | i /=
 0\}]}$, while generating the proof obligations required to show that the
 actuals coincide.  In the above case, the obligation would be to show that
 \texttt{FORALL (i:\ nat):\ i > 0 IFF i /= 0}\@.
@@ -3404,7 +3404,7 @@ or occurrences
 of a function symbol to be expanded.
 
 \item \indtt{expand} can rewrite subterms containing variables that are
-bound in some superterm, \eg, If $f(x)$ is defined as $g(h(x))$, then
+bound in some superterm, \eg\ if $f(x)$ is defined as $g(h(x))$, then
 \indtt{expand} would be able to rewrite $(\forall x. f(x) = 0)$ as
 $(\forall x. g(h(x)) = 0)$, but \indtt{rewrite} would not.  
 \end{itemize}
@@ -4951,7 +4951,7 @@ command has any effect.  The arguments are as in \indtt{reduce}.
 \item[syntax:] \texttt{(simplify \optl\ \cargdflt{fnums}{*}
 \carg{record?}\ \carg{rewrite?}\ \carg{rewrite-flag} \carg{flush?}\
 \newline\hspace*{1in}
-\carg{linear?}\ \carg{ cases-rewrite?}\
+\carg{linear?}\ \carg{cases-rewrite?}\
 \cargdflt{type-constraints?}{t}
 \newline\hspace*{1in}
 \carg{ignore-prover-output?}\ 
@@ -4963,7 +4963,7 @@ definition of \indtt{assert}, \indtt{do-rewrite}, and \texttt{record}.
 with two flags: \emph{record?}, and \emph{rewrite?}.  For the
 \indtt{assert} command, \emph{record?}\ and \emph{rewrite?}\ must be
 \texttt{t}.  To get the \indtt{do-rewrite} command, \emph{record?}\ must
-be \texttt{ nil} and \emph{rewrite?}\ must be \texttt{t}.  To get the
+be \texttt{nil} and \emph{rewrite?}\ must be \texttt{t}.  To get the
 \indtt{record} command, \emph{record?}\ must be \texttt{t}, and
 \emph{rewrite?}\ must be \texttt{nil}.
 
@@ -4988,12 +4988,12 @@ The theories handled by the ground decision procedures include:
 would enable it to prove a sequent of the form \texttt{x = f(x) $\vdash$
 f(f(f(x))) = x}.
 
-\item Quantifier-free linear arithmetic equalities and inequalities, \eg,
+\item Quantifier-free linear arithmetic equalities and inequalities, \eg\
 \texttt{x < 2*y, y < 3*z $\vdash$ 3*x < 18*z}.  Note that \texttt{x},
 \texttt{y}, and \texttt{z} are implicitly universally quantified.
 
 
-\item Quantifier-free integer linear arithmetic, \eg, \texttt{i > 1, 2*i <
+\item Quantifier-free integer linear arithmetic, \eg\ \texttt{i > 1, 2*i <
 5 $\vdash$ i = 2}.  This procedure is incomplete since the decision
 problem for this theory is not known to be polynomial.
 
@@ -5001,7 +5001,7 @@ problem for this theory is not known to be polynomial.
 \begin{enumerate}
 \item  \texttt{$\vdash$ f with [(s) := f(s)] = f},
 \item  \texttt{$\vdash$ (f with [(s) := x])(s) = x}, and
-\item  \texttt{ r/=s $\vdash$ (f with [(s) := x])(s) = f(s)}
+\item  \texttt{r/=s $\vdash$ (f with [(s) := x])(s) = f(s)}
 \end{enumerate}
 \end{enumerate}
 
@@ -5047,13 +5047,13 @@ arbitrary arithmetic expressions, the following are examples of
 simplifications that are
 carried out by the \indtt{simplify} command :
 \begin{eqnarray*}
- \texttt{ a + 0} &  \Longrightarrow & \texttt{a}\\
- \texttt{ a + 2*a } & \Longrightarrow & \texttt{3*a}\\
- \texttt{1 + a + 3 } & \Longrightarrow & \texttt{a + 4}\\
- \texttt{a*(b + c) } & \Longrightarrow & \texttt{a*b + a*c}\\
- \texttt{0 * a } & \Longrightarrow & \texttt{0}\\
- \texttt{1 * a } & \Longrightarrow & \texttt{a}\\
- \texttt{a + b = b + c } & \Longrightarrow & \texttt{a = c}
+ \texttt{a + 0} &  \Longrightarrow & \texttt{a}\\
+ \texttt{a + 2*a} & \Longrightarrow & \texttt{3*a}\\
+ \texttt{1 + a + 3} & \Longrightarrow & \texttt{a + 4}\\
+ \texttt{a*(b + c)} & \Longrightarrow & \texttt{a*b + a*c}\\
+ \texttt{0 * a} & \Longrightarrow & \texttt{0}\\
+ \texttt{1 * a} & \Longrightarrow & \texttt{a}\\
+ \texttt{a + b = b + c} & \Longrightarrow & \texttt{a = c}
 \end{eqnarray*}
 In addition, sums and products are ordered into a canonical form.
 
@@ -5061,10 +5061,10 @@ In addition, sums and products are ordered into a canonical form.
 \texttt{a} and \texttt{b} are expressions, the following are examples of
 simplifications applied by \indtt{simplify}:
 \begin{eqnarray*}
- \texttt{(IF\ TRUE\ THEN\ a\ ELSE\ b\ ENDIF) } & \Longrightarrow & \texttt{a}\\
- \texttt{ (IF\ FALSE\ THEN\ a\ ELSE\ b\ ENDIF) } & \Longrightarrow & \texttt{b}\\
- \texttt{(IF\ A\ THEN\ b\ ELSE\ b\ ENDIF) } & \Longrightarrow & \texttt{b}\\
- \texttt{(IF\ A\ THEN\ a\ ELSE\ b\ ENDIF) } & \Longrightarrow & \texttt{(IF\ A'\ THEN\ a'\
+ \texttt{(IF\ TRUE\ THEN\ a\ ELSE\ b\ ENDIF)} & \Longrightarrow & \texttt{a}\\
+ \texttt{(IF\ FALSE\ THEN\ a\ ELSE\ b\ ENDIF)} & \Longrightarrow & \texttt{b}\\
+ \texttt{(IF\ A\ THEN\ b\ ELSE\ b\ ENDIF)} & \Longrightarrow & \texttt{b}\\
+ \texttt{(IF\ A\ THEN\ a\ ELSE\ b\ ENDIF)} & \Longrightarrow & \texttt{(IF\ A'\ THEN\ a'\
 ELSE\ b')}
 \end{eqnarray*}
 where: 
@@ -5448,7 +5448,7 @@ rules that are already installed are not affected by
 \prdolsubsection{auto-rewrite-defs}{Install Relevant Definitions as Rewrites}
 
 \begin{description}
-\item[syntax:] \texttt{(auto-rewrite-defs \optl\ \carg{explicit?}\ \carg{always?}\ \carg{exclude-theories}) }
+\item[syntax:] \texttt{(auto-rewrite-defs \optl\ \carg{explicit?}\ \carg{always?}\ \carg{exclude-theories})}
 
 \item[effect:]  Installs all the definitions used directly or indirectly in the
 current sequent as auto-rewrite rules.  If the \emph{explicit?}\ flag is T, the
@@ -5680,7 +5680,7 @@ possibilities.
 e_n$, then for each $e_i$, and for each type-constraint predicate $p$ in
 the type of $e_i$, an antecedent formula of the form $p(e_i)$ is
 introduced.  A predicate $p$ is a type-constraint predicate in a type
-$\{ x : \tau | q(x) \}$ if either $p \equiv q$ or $p$ is a
+$\{x : \tau | q(x) \}$ if either $p \equiv q$ or $p$ is a
 type-constraint predicate in $\tau$.
 
 \begin{usage}{}
@@ -5926,7 +5926,7 @@ expression for the sake of efficiency.
 The commands \emph{defs}, \emph{theories}, \emph{rewrites}, and \emph{exclude}, are used exactly as in \indtt{install-rewrites} to set
 up rewrite rules for use in simplification prior to model checking.
 
-The model checker invoked by \indtt{ musimp} uses the same BDD package
+The model checker invoked by \indtt{musimp} uses the same BDD package
 as the \indtt{bddsimp} command.  The results of Boolean simplification
 and model checking are returned in sum-of-products form as a
 disjunction of conjunction of literals.  Some of the disjuncts
@@ -6306,7 +6306,7 @@ A strategy definition has the form:
 \end{alltt}
 
 This generates both a (blackbox) defined rule \emph{name} and a (glassbox)
-strategy \emph{ name\texttt{\char36}}.  There are two other definition
+strategy \emph{name\texttt{\char36}}.  There are two other definition
 forms that are essentially similar to \indtt{defstep}.  These are
 \indtt{defstrat} and \indtt{defhelper}.  The \indtt{defhelper} version is
 identical to \indtt{defstep} but is used for defining strategies that are
