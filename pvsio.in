@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # pvsio.in
-# Release: PVSio-6.0 (12/12/12)
+# Release: PVSio-6.0.10 (xx/xx/xx)
 #
 # Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 # NASA Langley Research Center
@@ -23,14 +23,17 @@ PVSPATH=@PVSPATH@
 export PVSIOTCCS=nil
 export PVSIOVERB=nil
 export PVSIOTIME=nil
-export PVSIOVERSION="PVSio-6.0 (12/12/12)"
+export PVSIOVERSION="PVSio-6.0.10 (xx/xx/xx)"
 export PVSIOPROMPTIN="<PVSio> "
 export PVSIOPROMPTOUT="==>~%"
 
-PACK=PVSio
+PACK=
+DEBUG=
 
 usage() {
-  echo "pvsio {<option>}* <pvsfile>@[<theory>[:<main>]]
+  echo "$PVSIOVERSION -- pvsio is a command-line utility to run the PVSio ground evaluator.
+
+Usage: pvsio <option>* [<pvsfile>][@<theory>[:[<main>]]]
 where <option> can be
   -h|--help                
    Print this message
@@ -52,18 +55,31 @@ where <option> can be
    Specify a particular PVS binary to execute PVSio. Use this option only 
    if you know what you are doing.
 
-  <pvsfile>@<theory>:<main>   
-  Load <theory> from <pvsfile>, evaluate <main> and exit 
+One-letter options can be combined.
 
-  One-letter options can be combined. If <theory> is not provided,
-  it is assumed to have the same name as the name of the file. If <main> is
-  not provided, PVSio starts a top level read-eval-loop.
+Typical use:
+  * pvsio <pvsfile.pvs>
+    Load PVS file pvsfile.pvs and start PVSio read-and-eval loop
+  * pvsio @<theory>
+    Load PVS theory <theory> from file <theory>.pvs and start PVSio 
+    read-and-eval loop
+  * pvsio @<theory>:
+    Load PVS theory <theory> from file <theory>.pvs and ground evaluate 
+    function \"main\".
+  * pvsio @<theory>:<f> <a1> ... <an>
+    Load PVS theory <theory> from file <theory>.pvs and ground evaluate
+    function f(a1,...,an) 
+  * pvsio <file>@<theory>:<f> <a1> ... <an>
+    Load PVS thoery <theory> from file <file>.pvs and ground evaluate
+    function f(a1,...,an)
 "  
 }
 
 while [ $# -gt 0 ]
 do
   case $1 in
+      -debug|--debug)
+        DEBUG=yes;;
       -h|-help|--help)     
 	  usage
 	  exit 0;;
@@ -77,7 +93,11 @@ do
 	  esac
 	  shift;;
       -p|-packages|--packages) 
-	  PACK="$PACK,$2"
+	  if [ "$PACK" ]; then
+  	    PACK="$PACK,$2"
+          else
+            PACK=$2
+          fi
 	  shift;;
       -promptin)
           PVSIOPROMPTIN="$2"
@@ -113,14 +133,27 @@ do
 	  done;;  
       *)            
 	  ARG="$1"
+	  shift
+	  if [ "$1" ]; then
+            PARAM="$1"
+	    shift
+          fi
+          while [ $# -gt 0 ]
+          do
+            PARAM="$PARAM,$1"
+            shift
+          done
   esac
   shift
 done
 
-PACK=`echo "(\"$PACK\")" | sed -e "s/,/\" \"/g"`
+if [ "$PACK" ]; then
+    PACK=`echo "(\"$PACK\")" | sed -e "s/,/\" \"/g"`
+else
+    PACK=nil
+fi
 
-if [ -z "$ARG" ] 
-then
+if [ -z "$ARG" ]; then
   echo "pvsio__ : THEORY BEGIN pvsio__ : void = TRUE END pvsio__" > /tmp/pvsio__.pvs
   ARG="/tmp/pvsio__"
 fi
@@ -133,30 +166,33 @@ case $ARG in
   *)   FILE=$ARG
 esac
 
+case $THMA in
+  *:*) THEORY=`echo $THMA | sed -e "s/\([^:]\):.*$/\1/"`
+       MAIN=`echo $THMA | sed -e "s/[^:]*://"`
+       if [ -z "$MAIN" ]; then
+         MAIN="main"
+       fi
+       if [ "$PARAM" ]; then
+         MAIN="$MAIN($PARAM)"
+       fi;;
+  *)   THEORY=$THMA
+esac
+
+if [ "$THMA" -a -z "$FILE" ]; then
+  FILE=$THEORY
+fi
+
 DIR=`dirname $FILE`
 NAME=`basename $FILE .pvs`
 FILE="$DIR/$NAME"
 
-if [ ! -f "$FILE.pvs" ]
-then
+if [ ! -f "$FILE.pvs" ]; then
   echo Error: "File $FILE.pvs doesn't exist"
   exit 0
 fi
 
-case $THMA in
-  *:*) THEORY=`echo $THMA | sed -e "s/\([^:]\):.*$/\1/"`
-       MAIN=`echo $THMA | sed -e "s/[^:]*://"`;;
-  *)   THEORY=$THMA
-esac
-
-if [ -z "$THEORY" ]
-then
+if [ -z "$THEORY" ]; then
   THEORY=$NAME
-fi
-
-if [ -z "$MAIN" ]
-then MAIN=nil
-else MAIN="\"$MAIN;\""
 fi
 
 export PVSIOFILE=$FILE
@@ -164,4 +200,21 @@ export PVSIOTHEORY=$THEORY
 export PVSIOPACK=$PACK
 export PVSIOMAIN=$MAIN
 
-$PVSPATH/pvs -raw $PVSLISP -E "(run-pvsio)"
+if [ "$DEBUG" ]; then
+  echo "*** PVSio Environment Variables"
+  echo "\$PVSIOFILE=$PVSIOFILE"
+  echo "\$PVSIOTHOERY=$PVSIOTHEORY"
+  echo "\$PVSIOPACK=$PVSIOPACK"
+  echo "\$PVSIOMAIN=$PVSIOMAIN"
+fi
+
+if [ "$PVSIOMAIN" -a "$PVSIOVERB" = nil ]; then
+    $PVSPATH/pvs -raw $PVSLISP -E "(run-pvsio)" | awk '
+BEGIN { beginpvsio = 0 }
+/Starting pvsio script/ { beginpvsio = 1; getline }
+beginpvsio == 1 { print }
+END { }
+'
+else 
+    $PVSPATH/pvs -raw $PVSLISP -E "(run-pvsio)"
+fi

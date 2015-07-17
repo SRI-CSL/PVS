@@ -1,6 +1,6 @@
 ;;
 ;; field.lisp
-;; Release: Field-6.0 (12/12/12)
+;; Release: Field-6.0.10 (xx/xx/xx)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -21,9 +21,8 @@
 %  neg-formula, add-formulas, sub-formulas,
 %  cancel-by, cancel-formula,
 %  both-sides-f, sq-simp")
-;;
 
-(defparameter *field-version* "Field-6.0 (12/12/12)")
+(defparameter *field-version* "Field-6.0.10 (xx/xx/xx)")
 
 (defun check-no-relation (fnum)
   (let* ((f   (extra-get-formula fnum))
@@ -41,22 +40,26 @@
      (format nil "No ~a~p found in ~{~a~^ or ~}." 
 	    msg (length fnums) fnums)))
 
-(defun ord2num (expr)
-  (when expr
-    (cond ((is-infix-operator expr '<)  -2)
-	  ((is-infix-operator expr '<=) -1)
-	  ((is-infix-operator expr '=)   0)
-	  ((is-infix-operator expr '>=)  1)
-	  ((is-infix-operator expr '>)   2))))
+(defun abs-symm-rel (op)
+  (let ((aop (abs op)))
+    (cond ((= aop 0) op)
+          ((= aop 1) 2)
+	  ((= aop 2) 1))))
 
-(defun num2ord (num)
-  (when num
-    (cond ((= num -2) "<")
-	  ((= num -1) "<=")
-	  ((= num 0) "=")
-	  ((= num 1) ">=")
-	  ((= num 2) ">"))))
-
+(defun new-relation (f1 f2 o1 o2)
+  (cond ((= o1 0) o2)
+	((= o2 0) o1)
+	(t 
+	 (let ((op (cond ((and (< f1 0) (< f2 0))
+			  (max (abs o1) (abs o2)))
+			 ((and (> f1 0) (> f2 0))
+			  (min (abs o1) (abs o2)))
+			 ((< f1 0) 
+		   (max (abs o1) (abs-symm-rel o2)))
+			 (t 
+			  (min (abs o1) (abs-symm-rel o2))))))
+	      (* (sign o1) op)))))
+	
 (defun get-distrib-plus (l expr)
   (cond ((or (is-infix-operator expr '+)
 	     (is-infix-operator expr '-))
@@ -309,7 +312,7 @@
   (let ((dist (get-distrib-formulas nil (extra-get-fnums fnums))))
     (when dist
       (let ((names   (freshnames prefix (length dist)))
-	    (nameseq (merge-names-exprs names dist))
+	    (nameseq (merge-lists names dist))
 	    (lbl     (or label 'none)))
 	(name-label* nameseq :label label :fnums fnums :hide? hide? :tcc-step tcc-step))))
   "[Field] Introduces new names, which are based on PREFIX, to block the automatic
@@ -318,16 +321,17 @@ where new names are defined. These formulas are hidden if HIDE? is t. TCCs gener
 during the execution of the command are discharged with the proof command TCC-STEP.")
 
 (defstep wrap-manip (fnum manip &optional (tcc-step (extra-tcc-step)) (labels? t))
-  (with-fnums
+  (with-fresh-labels
    ((!wmp fnum)
     (!wmd))
    (let ((labs (when labels? (extra-get-labels fnum))))
      (branch (discriminate
-	      (let ((old *suppress-manip-messages*)
-		     (xxx (setq *suppress-manip-messages* t)))
+	      (let ((old *suppress-manip-messages*))
 		(unwind-protect$
-		 manip
-		 (let ((xxx (setq *suppress-manip-messages* old))) (skip))))
+		 (then
+		  (sklisp (setq *suppress-manip-messages* t))
+		  manip)
+		 (sklisp (setq *suppress-manip-messages* old))))
 	      !wmd :strict? t)
 	     ((when labels? (relabel labs !wmd))
 	      (finalize tcc-step)))))
@@ -341,7 +345,7 @@ preserves labels of FNUM when labels? is t."
 	(formula (cadr fnexpr))
 	(rel     (is-relation formula)))
     (if rel
-	(with-fnums
+	(with-fresh-labels
 	 ((!ngf fn :tccs)
 	  (!ngl)
 	  (!ngo))
@@ -383,7 +387,7 @@ strategy tries to discharge the current branch using the proof command AUTO-STEP
 	(stopstep  (if simple?
 		       (cons 'stop-rewrite rews)
 		     (cons 'stop-rewrite-theory ths))))
-    (with-fnums
+    (with-fresh-labels
      ((!rps fnums)
       (!rpd))
      (let ((step    (list 'then
@@ -407,7 +411,7 @@ not be reduced. If DISTRIB? is nil, distribution laws will not be applied."
 				polarity? (instantiator inst?)
 				(let-reduce? t)
 				dontdistrib protect)
-  (with-fnums
+  (with-fresh-labels
    (!grd)
    (let ((th    (cons "real_props" (enlist-it theories)))
 	 (pro   (cons !grd (enlist-it protect)))
@@ -438,10 +442,8 @@ expressions in the list of formulas DONTDISTRIB and protects formulas in PROTECT
 	(formula1 (extra-get-formula-from-fnum f1))
 	(formula2 (extra-get-formula-from-fnum f2))
     	(formsg   (if eqfs fnum1 (list fnum1 fnum2)))
-	(rel1     (is-relation formula1))
-	(rel2     (is-relation formula2))
-	(o1       (ord2num formula1))
-	(o2       (ord2num formula2)))
+	(o1       (relation2num (car (is-relation formula1))))
+	(o2       (relation2num (car (is-relation formula2)))))
     (if (and o1 o2)
 	(let ((flag  (>= (* f1 f2 o1 o2) 0))
 	      (f11   (args1 formula1))
@@ -452,12 +454,12 @@ expressions in the list of formulas DONTDISTRIB and protects formulas in PROTECT
 	      (f22   (if flag 
 			 (args2 formula2)
 		       (args1 formula2)))
-	      (op    (num2ord (new-relation f1 f2 o1 o2)))
+	      (op    (num2relation (new-relation f1 f2 o1 o2)))
 	      (str   (when op (format nil "~a ~a ~a"
 				      (mk-application '+ f11 f12) op
 				      (mk-application '+ f21 f22))))
 	      (labad (or label (freshlabel "AD"))))
-	  (with-fnums
+	  (with-fresh-labels
 	   ((!ad1 f1 :tccs)
 	    (!ad2 f2 :tccs))
 	   (branch (discriminate (case str) labad)
@@ -481,15 +483,13 @@ branch using the proof command AUTO-STEP."
 		      (and (numberp fnum1) (numberp fnum2) (= fnum1 fnum2))))
 	(formula1 (extra-get-formula-from-fnum f1))
 	(formula2 (extra-get-formula-from-fnum f2))
-	(rel1     (is-relation formula1))
-	(rel2     (is-relation formula2))
-	(o1       (ord2num formula1))
-	(o2       (ord2num formula2))
+	(o1       (relation2num (car (is-relation formula1))))
+	(o2       (relation2num (car (is-relation formula2))))
 	(labsb    (or label (freshlabel "SB"))))
     (if eqfs
 	(printf "Formula ~a cannot be subtracted from itself" fnum1)
       (if (and o1 o2)
-	  (with-fnums
+	  (with-fresh-labels
 	   ((!sb1 f1 :tccs)
 	    (!sb2 f2 :tccs)
 	    (!nsb2)
@@ -543,14 +543,14 @@ with the proof command TCC-STEP."
 	(expstr   (extra-get-expstr expr))
 	(div      (freshname "CBD")))
     (if (and rel expstr)
-	(with-fnums
+	(with-fresh-labels
 	 ((!cby fn)
 	  (!cbt)
 	  (!cbd)
 	  (!cbdt)
 	  (!ndc))
 	 (tccs-formula !cby :label !cbt)
-	 (branch (then@ (tccs-expr expstr :label !cbdt :tcc-step tcc-step)
+	 (branch (then@ (tccs-expression expstr :label !cbdt :tcc-step tcc-step)
 			(name-distrib (!cby !cbt !cbdt) :prefix "NDC" :label !ndc :tcc-step tcc-step)
 			(name-label div expstr :fnums (^ !ndc) :label !cbd :tcc-step tcc-step)
 			(replace !ndc !cbd))
@@ -619,7 +619,7 @@ current branch using the proof command AUTO-STEP."
 	(formula (cadr fnexpr))
 	(rel     (is-relation formula)))
     (if rel
-	(with-fnums
+	(with-fresh-labels
 	 (!cf fn)
 	 (try (wrap-manip !cf (factor !cf) :tcc-step tcc-step)
 	      (let ((form (extra-get-formula !cf))
@@ -659,9 +659,9 @@ with the proof command TCC-STEP."
 	 (edivs    (remove-if #'(lambda (x) (str2int (car x))) divs)))
      (if divs
 	 (let ((names    (freshnames "FDX" (length edivs)))
-	       (nameseq  (merge-names-exprs names
-					    (mapcar #'(lambda(x) (car x))
-						    edivs)))
+	       (nameseq  (merge-lists names
+				      (mapcar #'(lambda(x) (car x))
+					      edivs)))
 	       (eprod    (makeprod edivs names))
 	       (prod     (normal-mult (if (= ndivs 1) eprod
 					(cons (cons (expr2str ndivs) 1)
@@ -689,7 +689,7 @@ with the proof command TCC-STEP."
 			(field__$ labfd labndf labx theories cancel? tcc-step))
 		 (then  (real-props labfd :theories theories :distrib? cancel?)
 			(if cancel?
-			    (cancel-formula labfd :theories theories :tcc-step tcc-step)
+			    (cancel-formula labfd :tcc-step tcc-step)
 			  (finalize (grind-reals :theories theories :dontdistrib labfd)))))))))
   "[Field] Internal strategy." "")
 
@@ -702,7 +702,7 @@ with the proof command TCC-STEP."
 	(formula (cadr fnexpr))
 	(rel     (is-relation formula)))
     (if rel
-	(with-fnums
+	(with-fresh-labels
 	 ((!fd fn)
 	  (!fdt)
 	  (!ndf)
@@ -736,7 +736,7 @@ discharge the current branch using the proof command AUTO-STEP."
 	(str     (format nil "~a(%1)" f))
 	(lbs     (or label (extra-get-labels-from-fnum fn))))
     (if rel
-	(with-fnums
+	(with-fresh-labels
 	 ((!bsf fn :tccs)
 	  (!bsp)
 	  (!bsl))

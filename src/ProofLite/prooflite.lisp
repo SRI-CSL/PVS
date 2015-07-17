@@ -1,6 +1,6 @@
 ;;
 ;; prooflite.lisp
-;; Release: ProofLite-6.0 (12/12/12)
+;; Release: ProofLite-6.0.10 (xx/xx/xx)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -72,24 +72,38 @@
 
 ;; Returns a list of theories imported in theory-names  
 (defun imported-theories-in-theories (theory-names)
-  (let ((myl  (mapcan #'(lambda (theo) (imported-theories-in-theory theo))
-		      theory-names)))
-    (remove-duplicates 
-     myl 
-     :test #'(lambda (th1 th2) (equal (id th1) (id th2))))))
-
+  (remove-duplicates 
+   (mapcan #'(lambda (theo) (imported-theories-in-theory theo))
+	   theory-names)))
 
 (defun my-collect-theory-usings (theory)
   (unless (or (memq theory *modules-visited*)
 	      (from-prelude? theory)
 	      (typep theory '(or library-datatype
+				 library-codatatype
 				 library-theory)))
     (let ((*current-theory* theory))
       (push theory *modules-visited*)
       (dolist (use (get-immediate-usings theory))
 	(let ((th (get-theory use)))
 	  (when th
-	    (my-collect-theory-usings th)))))))
+	    (my-collect-theory-usings 
+	     (if (typep th 'rectype-theory)
+		 (get-typechecked-theory (generated-by th))
+	       th))))))))
+
+;; Returns a list of immediately imported theories in the theory-name
+(defun immediate-theories-in-theory (theory-name)
+  (let ((theory (get-typechecked-theory theory-name)))
+    (when theory
+      (remove-duplicates 
+       (loop for use in (get-immediate-usings theory)
+	     for th = (get-theory use)
+	     when th
+	     unless (from-prelude? th)
+	     collect (if (typep th 'rectype-theory)
+			 (get-typechecked-theory (generated-by th))
+		       th))))))
 
 ;; Returns a list of theories imported in the theory-name
 (defun imported-theories-in-theory (theory-name)
