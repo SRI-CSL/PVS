@@ -1,3 +1,7 @@
+EMACS = emacs
+LATEXMK = latexmk
+LATEXMKFLAGS = -pdf -pdflatex='lualatex -file-line-error -synctex=1'
+
 pvs-path = @PVSPATH@
 pvs-grammar-file = ${pvs-path}/src/pvs-gr.txt
 
@@ -17,39 +21,22 @@ sources = language.tex ../makebnf.sty ../pvstex.tex intro.tex lexical.tex \
 
 grammar-tables = keywords.tex operator-table.tex opsym-table.tex
 
-all : language.dvi language.ps language.ps.gz language.pdf
+all : language.pdf
 
 keywords.tex : pvs-doc.el ${pvs-grammar-file}
-	emacs -batch -q -l pvs-doc.el -f pvs-keyword-table-5 > keywords.tex 2> /dev/null 
+	$(EMACS) -batch -q -l pvs-doc.el -f pvs-keyword-table-5 > keywords.tex 2> /dev/null 
 
 operator-table.tex : pvs-doc.el ${pvs-grammar-file}
-	emacs -batch -q -l pvs-doc.el -f pvs-operator-table-6 > operator-table.tex 2> /dev/null
+	$(EMACS) -batch -q -l pvs-doc.el -f pvs-operator-table-6 > operator-table.tex 2> /dev/null
 
 opsym-table.tex : pvs-doc.el ${pvs-grammar-file}
-	emacs -batch -q -l pvs-doc.el -f pvs-opsym-table-6 > opsym-table.tex 2> /dev/null 
-
-language.dvi : ${sources} ${grammar-tables}
-	latex $<;
-	makeindex -c language.idx;
-	bibtex language || echo;
-	latex $<;
-	latex $<
-
-language.ps.gz : language.ps
-	gzip -c $< > $@
-
-language.ps : language.dvi
-	dvips -o $@ $<
+	$(EMACS) -batch -q -l pvs-doc.el -f pvs-opsym-table-6 > opsym-table.tex 2> /dev/null 
 
 language.pdf : ${sources} ${grammar-tables}
-	pdflatex $<
-	makeindex -c language.idx
-	bibtex language || echo
-	pdflatex $<
-	pdflatex $<
+	$(LATEXMK) $(LATEXMKFLAGS) language.tex
 
 .PHONY: clean
 clean :
-	rm -f *.dvi *.pdf *.ps *.ps.gz *.log *.bbl *.ind *.ilg *.blg *.bbl \
+	rm -f *.pdf *.log *.bbl *.ind *.ilg *.blg *.bbl \
               *.aux *.toc *.idx *.brf \
               keywords.tex operator-table.tex opsym-table.tex
