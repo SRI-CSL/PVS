@@ -258,6 +258,16 @@
 	},
 	"proofstate": {
 	    "type": "object",
+	    "required": [ "current-goal", "tree-delta" ],
+	    "properties": {
+		"children": { "type": "array",
+			      "items": {"$ref": "#/definitions/proofstate-node"}},
+		"current-goal": { "type": "string" },
+		"tree-delta": { "type": "string" }
+	    }
+	},
+	"proofstate-node": {
+	    "type": "object",
 	    "required": [ "label", "sequent" ],
 	    "properties": {
 		"commentary": { "type": "array",
