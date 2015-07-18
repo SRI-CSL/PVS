@@ -1089,32 +1089,41 @@
     (if *subst-params-decl*
 	(let ((nname (subst-mod-params* name modinst bindings)))
 	  (when (name? nname)
-	    (let ((ntype (subst-mod-params* type modinst bindings)))
+	    (let* ((nformals (subst-mod-params* formals modinst bindings))
+		   (nlist (apply #'append nformals))
+		   (alist (unless (equal nformals formals)
+			    (pairlis (apply #'append formals) nlist)))
+		   (ntype (subst-mod-params* type modinst bindings))
+		   (ndecl-type (cond ((tc-eq declared-type type) ntype)
+				     ((and (print-type type)
+					   (typep declared-type '(or type-application)))
+				      (print-type type))
+				     (t (subst-mod-params*
+					 declared-type modinst bindings)))))
+	      (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
+			     (freevars (substit ndecl-type alist))))
+	      (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
+			     (freevars (substit ntype alist))))
+	      (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
+			     (freevars (subst-mod-params*
+					judgement-type modinst bindings))))
 	      (lcopy decl
-		'declared-type (if (tc-eq declared-type type)
-				   ntype
-				   (if (and (print-type type)
-					    (typep declared-type
-						   '(or type-application)))
-				       (print-type type)
-				   (progn (unless (typep declared-type
-							 '(or type-name expr-as-type
-							   type-application type-extension))
-					    (break "declared-type"))
-				   (subst-mod-params* declared-type modinst bindings))))
-		'type ntype
+		'declared-type (substit ndecl-type alist)
+		'type (substit ntype alist)
 		'judgement-type (subst-mod-params* judgement-type modinst bindings)
 		'name nname
-		'formals (subst-mod-params* formals modinst bindings)))))
+		'formals nformals))))
 	(lcopy decl
 	  :name (subst-mod-params* name modinst bindings)
 	  :generated-by decl))))
 
 (defmethod subst-mod-params* ((decl conversion-decl) modinst bindings)
   (with-slots (expr) decl
-    (lcopy decl
-      :expr (subst-mod-params* expr modinst bindings)
-      :generated-by decl)))
+    (let ((nexpr (subst-mod-params* expr modinst bindings)))
+      (assert (null (freevars nexpr)))
+      (lcopy decl
+	:expr nexpr
+	:generated-by decl))))
 
 
 ;;; Type Expressions
