@@ -103,6 +103,8 @@
 
 (defstruct xml-path path)
 
+(defstruct xml-exporting-names list)
+
 ;; xml-proofstate and xml-top-proofstate are for proofstates, but
 ;; ignoring all slots which are only needed during a proof
 
@@ -290,7 +292,7 @@
 	    (pp-xml* stream (xml-theory-formals-list formals) colon? atsign?)))
 
 (defmethod pp-xml* (stream (formals xml-decl-formals) &optional colon? atsign?)
-  (xpvs-elt stream assdecl-formals (xml-attributes formals)
+  (xpvs-elt stream decl-formals (xml-attributes formals)
 	    (pp-xml* stream (xml-decl-formals-list formals) colon? atsign?)))
 
 (defmethod pp-xml* (stream (formals xml-arg-formals) &optional colon? atsign?)
@@ -319,23 +321,44 @@
 		  (make-xml-enum-elts
 		   :list (mapcar #'id constructors)))
 	(if (datatype? rtype)
-	    (xpvs-elt stream datatype (xml-attributes rtype)
-		      id
-		      ;; Only one of formals or decl-formals should be there
-		      (when formals (make-xml-theory-formals :list formals))
-		      (when (and (inline-recursive-type? rtype)
-				 (decl-formals rtype))
-			(make-xml-decl-formals :list (decl-formals rtype)))
-		      importings
-		      constructors)
-	    (xpvs-elt stream codatatype (xml-attributes rtype)
-		      id
-		      (when formals (make-xml-theory-formals :list formals))
-		      (when (and (inline-recursive-type? rtype)
-				 (decl-formals rtype))
-			(make-xml-decl-formals :list (decl-formals rtype)))
-		      importings
-		      constructors)))))
+	    (if (inline-datatype? rtype)
+		(xpvs-elt stream inline-datatype
+			  (xml-attributes rtype)
+			  id
+			  ;; Only one of formals or decl-formals should be there
+			  (when formals (make-xml-theory-formals :list formals))
+			  (when (and (inline-recursive-type? rtype)
+				     (decl-formals rtype))
+			    (make-xml-decl-formals :list (decl-formals rtype)))
+			  importings
+			  constructors)
+		(xpvs-elt stream datatype
+			  (xml-attributes rtype)
+			  id
+			  ;; Only one of formals or decl-formals should be there
+			  (when formals (make-xml-theory-formals :list formals))
+			  (when (and (inline-recursive-type? rtype)
+				     (decl-formals rtype))
+			    (make-xml-decl-formals :list (decl-formals rtype)))
+			  importings
+			  constructors))
+	    (if (inline-codatatype? rtype)
+		(xpvs-elt stream inline-codatatype (xml-attributes rtype)
+			  id
+			  (when formals (make-xml-theory-formals :list formals))
+			  (when (and (inline-recursive-type? rtype)
+				     (decl-formals rtype))
+			    (make-xml-decl-formals :list (decl-formals rtype)))
+			  importings
+			  constructors)
+		(xpvs-elt stream codatatype (xml-attributes rtype)
+			  id
+			  (when formals (make-xml-theory-formals :list formals))
+			  (when (and (inline-recursive-type? rtype)
+				     (decl-formals rtype))
+			    (make-xml-decl-formals :list (decl-formals rtype)))
+			  importings
+			  constructors))))))
 
 (defmethod pp-xml* (stream (elts xml-enum-elts) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -377,8 +400,7 @@
 (defmethod pp-xml* (stream (subtype xml-constr-subtype)
 			   &optional colon? atsign?)
   (declare (ignore colon? atsign?))
-  (break)
-  (xpvs-elt stream subtype (xml-attributes subtype)
+  (xpvs-elt stream subtype-id (xml-attributes subtype)
 	    (xml-constr-subtype-id subtype)))
 
 (defmethod pp-xml* (stream (decl adtdecl) &optional colon? atsign?)
@@ -415,14 +437,14 @@
 	      (pp-xml-exporting-modules stream modules))))
 
 (defun pp-xml-exporting-names (stream names)
-  (when names
+  (when (consp names) ; Don't generate for 'all, only need but-names
     (xpvs-elt stream exporting-names nil
-	      (pp-xml* stream names nil nil))))
+	      (make-xml-exporting-names :list names))))
 
 (defun pp-xml-exporting-but-names (stream names)
   (when names
-    (xpvs-elt stream exporting-but-names
-	      (pp-xml* stream names nil nil))))
+    (xpvs-elt stream exporting-but-names nil
+	      (make-xml-exporting-names :list names))))
 
 (defun pp-xml-exporting-kind (stream kind)
   (xpvs-elt stream exporting-kind nil
@@ -430,14 +452,17 @@
 
 (defun pp-xml-exporting-modules (stream names)
   (when names
-    (xpvs-elt stream exporting-theory-names
-	      (pp-xml* stream names nil nil))))
+    (xpvs-elt stream exporting-theory-names nil
+	      (make-xml-exporting-names :list names))))
+
+(defmethod pp-xml* (stream (names xml-exporting-names) &optional colon? atsign?)
+  (pp-xml* stream (xml-exporting-names-list names) colon? atsign?))
 	    
 
 (defmethod pp-xml* (stream (name expname) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
   (with-slots (id kind type) name
-    (xpvs-elt stream export-name (xml-attributes name) id kind type)))
+    (xpvs-elt stream export-name (xml-attributes name) id (or kind type))))
 
 
 ;;; Declarations
@@ -756,6 +781,18 @@
 		declared-subtype subtype
 		declared-type type))))
 
+(defmethod pp-xml* (stream (decl expr-judgement) &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
+  (with-slots (id decl-formals formals expr declared-type type) decl
+    (let* ((*pp-xml-bindings* (append formals *pp-xml-bindings*)))
+      (dolist (binding formals)
+	(increment-binding-count binding))
+      (xpvs-elt stream expr-judgement (xml-attributes decl)
+		id
+		(when decl-formals (make-xml-decl-formals :list decl-formals))
+		(make-xml-bindings :list formals)
+		declared-type type))))
+
 (defmethod pp-xml* (stream (fml xml-varname) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
   (let ((fm (xml-varname-arg fml)))
@@ -959,9 +996,9 @@
   (with-slots (supertype predicate) te
     (xpvs-elt stream setsubtype (xml-attributes te) supertype predicate)))
 
-(defmethod pp-xml* (stream (te setsubtype) &optional colon? atsign?)
-  (declare (ignore colon? atsign?))
-  (call-next-method))
+;; (defmethod pp-xml* (stream (te setsubtype) &optional colon? atsign?)
+;;   (declare (ignore colon? atsign?))
+;;   (call-next-method))
 
 ;;; TBD nsetsubtype needed?
 
@@ -1042,7 +1079,7 @@
 (defmethod pp-xml* (stream (te type-extension) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
   (with-slots (type extension) te
-    (xpvs-elt stream binding (xml-attributes te) type extension)))
+    (xpvs-elt stream type-extension (xml-attributes te) type extension)))
 
 
 ;;; Expressions
@@ -1058,7 +1095,8 @@
 
 (defmethod pp-xml* (stream (ex rational-expr) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
-  (xpvs-elt stream rational-expr (xml-attributes ex) (number ex)))
+  (xpvs-elt stream rational-expr (xml-attributes ex)
+	    (format nil "~d ~d" (numerator (number ex)) (denominator (number ex)))))
 
 (defmethod pp-xml* (stream (ex number-expr) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -1267,7 +1305,8 @@
 (defmethod pp-xml* (stream (ass maplet) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
   (with-slots (arguments expression) ass
-    (xpvs-elt stream maplet (xml-attributes ass) arguments expression)))
+    (xpvs-elt stream maplet (xml-attributes ass)
+	      (make-xml-ass-args :list arguments) expression)))
 
 (defmethod pp-xml* (stream (ex table-expr) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -1383,6 +1422,16 @@
 			       (all-decls (module decl))))))
     pos))
 
+(defmethod xml-declaration-index ((decl decl-formal))
+  (assert (and (associated-decl decl)
+	       (memq decl (decl-formals (associated-decl decl)))))
+  (let* ((id (or (id decl) (ref-to-id decl)))
+	 (pos (position decl (remove-if #'(lambda (x)
+					    (or (importing? x)
+						(not (eq (ref-to-id x) id))))
+			       (decl-formals (associated-decl decl))))))
+    pos))
+
 (defmethod xml-declaration-index ((decl skolem-const-decl))
   (let* ((id (id decl))
 	 (opt (assq id *pvs-operators*)))
@@ -1400,19 +1449,19 @@
 	(setq *pp-xml-decl-bindings-ctr*
 	      (acons (id binding) 0 *pp-xml-decl-bindings-ctr*)))))
 
-(defmethod xml-declaration-index ((bd binding))
-  (break "Should not get here")
-  (assert *pp-xml-declaration*)
-  (assert (memq bd *pp-xml-bindings*))
-  (let ((pos (position bd (remove bd *pp-xml-bindings* :test-not #'same-id)))
-	(cnt (cdr (assq (id bd) *pp-xml-decl-bindings-ctr*))))
-    (assert pos)
-    (assert cnt)
-    (translate-characters-to-xml-id 
-     (format nil "~a-~a~@[-~d~]~@[-~d~]"
-       (xml-declaration-id *pp-xml-declaration*)
-       (id bd)
-       (unless (zerop pos) pos) (unless (zerop cnt) cnt)))))
+;; (defmethod xml-declaration-index ((bd binding))
+;;   (break "Should not get here")
+;;   (assert *pp-xml-declaration*)
+;;   (assert (memq bd *pp-xml-bindings*))
+;;   (let ((pos (position bd (remove bd *pp-xml-bindings* :test-not #'same-id)))
+;; 	(cnt (cdr (assq (id bd) *pp-xml-decl-bindings-ctr*))))
+;;     (assert pos)
+;;     (assert cnt)
+;;     (translate-characters-to-xml-id 
+;;      (format nil "~a-~a~@[-~d~]~@[-~d~]"
+;;        (xml-declaration-id *pp-xml-declaration*)
+;;        (id bd)
+;;        (unless (zerop pos) pos) (unless (zerop cnt) cnt)))))
 
 (defmethod xml-declaration-index ((imp importing))
   (break "What?")
@@ -1448,7 +1497,7 @@
 
 (defmethod pp-xml* (stream (actuals xml-dactuals) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
-  (xpvs-elt stream decl-actuals (xml-attributes actuals)
+  (xpvs-elt stream dactuals (xml-attributes actuals)
 	    (xml-dactuals-list actuals)))
 
 (defmethod pp-xml* (stream (mappings xml-mappings) &optional colon? atsign?)

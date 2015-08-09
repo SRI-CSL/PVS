@@ -14,7 +14,7 @@
 #   Names
 #   Proofs
 
-# Many of the classes and attributes of PVSAS exist solely to be able to
+# Many of the classes and attributes of PVS exist solely to be able to
 # maintain the form of expressions given by the user.  For example, the "="
 # in the expression "x = 1" would internally be treated as
 # "equalities[numbers.number].=".  This is handled by having a name with
@@ -90,7 +90,7 @@ accessors-content =
   element accessors {accessor-content+}
 
 subtype-id-content =
-  element subtype-id {id}
+  element subtype-id {identifier-token}
 
 accessor-content =
   element accessor
@@ -121,7 +121,7 @@ formal-theory-decl-content =
   element formal-theory-decl {commonattrs, chainattr, theory-name-content}
 
 theory-name-content =
-  element theory-name {theory-name}
+  element theory-name {commonattrs, theory-name}
 
 theory-name = id,
               actuals-content?,
@@ -168,23 +168,30 @@ importings = importing-content*
 
 importing-content =
   element importing
-    {commonattrs,
-     chainattr,
-     theory-name}
+    {declaration-attrs,
+     theory-name-content}
 
 exporting-content =
   element exporting
-    {commonattrs,
+    {declaration-attrs,
      exporting-names?,
      exporting-but-names?,
      exporting-kind,
      exporting-theory-names?}
 
 exporting-names =
-  element exporting-names {names}
+  element exporting-names {export-names}
 
 exporting-but-names =
-  element exporting-but-names {names}
+  element exporting-but-names {export-names}
+
+export-names = export-name+
+
+export-name =
+   element export-name {commonattrs, id, export-name-kind?}
+
+export-name-kind =
+   element export-name-kind {"type" | "formula" | type-expr}
 
 exporting-kind =
   element exporting-kind {"nil" | "all" | "closure" | "default"}
@@ -242,27 +249,27 @@ judgement-decl =
 # Order of type-exprs is: declared-subtype, subtype, declared-type, type
 subtype-judgement-content =
   element subtype-judgement
-   {commonattrs, id?, type-expr, type-expr, type-expr, type-expr}
+   {commonattrs, chainattr, id?, type-expr, type-expr, type-expr, type-expr}
 
 number-judgement-content =
-  element number-judgement {commonattrs, id?, number-expr-content, type-expr, type-expr}
+  element number-judgement {commonattrs, chainattr, id?, number-expr-content, type-expr, type-expr}
 
 name-judgement-content =
-  element name-judgement {commonattrs, id?, name-expr-content, type-expr, type-expr}
+  element name-judgement {commonattrs, chainattr, id?, name-expr-content, type-expr, type-expr}
 
 application-judgement-content =
    element application-judgement
-   {commonattrs, id?, decl-formals-content?, name-expr-content,
+   {commonattrs, chainattr, id?, decl-formals-content?, name-expr-content,
       arg-formals-content?, type-expr, type-expr}
 
 expr-judgement-content =
    element expr-judgement
-   {commonattrs, id?, decl-formals-content?, name-expr-content,
+   {commonattrs, chainattr, id?, decl-formals-content?, name-expr-content,
       arg-formals-content?, expr, type-expr, type-expr}
 
 recursive-judgement-content =
    element recursive-judgement
-   {commonattrs, id?, decl-formals-content?, name-expr-content,
+   {commonattrs, chainattr, id?, decl-formals-content?, name-expr-content,
       arg-formals-content?, type-expr, type-expr}
 
 conversion-content =
@@ -301,7 +308,7 @@ path-content =
    element path {string}
 
 theory-decl-content =
-  element theory-decl {id, typed-declaration, theory-name}
+  element theory-decl {commonattrs, id, theory-name-content}
 
 type-decl-content =
   element type-decl
@@ -393,10 +400,10 @@ type-decl =
   id, declaration-attrs
 
 type-def-decl-content =
-   element type-def-decl {commonattrs, type-def-decl}
+   element type-def-decl {declaration-attrs, type-def-decl}
 
 type-def-decl =
-   type-decl-attrs, id, arg-formals-content?, arg-formals-content?, type-expr, type-expr, contains-content?
+   type-decl-attrs, id, decl-formals-content?, arg-formals-content?, type-expr, type-expr, contains-content?
 
 type-decl-attrs =
   attribute nonempty-type {boolean}?
@@ -423,6 +430,7 @@ type-expr = type-name-content
           | tuple-type-content
           | cotuple-type-content
           | record-type-content
+          | type-extension-content
 
 type-name-content =
   element type-name {commonattrs, name, resolution?}
@@ -460,6 +468,8 @@ record-type-content =
 field-decl-content =
   element field-decl {commonattrs, id, type-expr}
 
+type-extension-content =
+   element type-extension {commonattrs, type-expr, type-expr}
 
 # Expressions
 
@@ -473,6 +483,7 @@ exprattrs =
 expr = name-expr-content
      | varname-expr-content
      | number-expr-content
+     | rational-expr-content
      | string-expr-content
      | list-expr-content
      | record-expr-content
@@ -504,6 +515,9 @@ varname-expr-content =
 number-expr-content =
   element number-expr {exprattrs, xsd:integer}
 
+rational-expr-content =
+   element rational-expr {exprattrs, list{xsd:integer, xsd:integer}}
+
 string-expr-content =
   element string-expr {exprattrs, string}
 
@@ -512,9 +526,6 @@ list-expr-content =
 
 record-expr-content =
   element record-expr {exprattrs, assignment-content+}
-
-assignments-content =
-  element assignments {assignment-content+}
 
 assignment-content =
   element assignment {commonattrs, assignment-args-content, expr}
@@ -597,7 +608,13 @@ let-binding-content =
   element let-binding {binding-content, expr}
 
 update-expr-content =
-  element update-expr {exprattrs, expr, assignments-content}
+  element update-expr {exprattrs, expr, update-assignments-content}
+
+update-assignments-content =
+  element assignments {(assignment-content | maplet-content)+}
+
+maplet-content =
+  element maplet {commonattrs, assignment-args-content, expr}
 
 cases-expr-content =
   element cases-expr {exprattrs, expr, selection-content+}
