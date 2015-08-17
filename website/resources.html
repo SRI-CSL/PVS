@@ -1,0 +1,269 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+
+<head>
+  <title>PVS Resources</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="description" content="PVS Prototype Verification System" />
+    <meta name="keywords" content="PVS Prototype Verification System" />
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=9" />
+    <link rel="stylesheet" type="text/css" href="css/materialize.css" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="css/pvs.css" />
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/index.js"></script>
+</head>
+
+<body>
+    <nav id="menubar" class="indigo ">
+        <div class="nav-wrapper container">
+            <a href="#" data-activates="mobile-menu" class="button-collapse"><i class="material-icons">menu</i></a>
+            <ul id="menu" class="left hide-on-med-and-down ">
+                <li>
+                    <a  href="index.html">PVS</a>
+                </li>
+                <li><a href="downloads.html">Downloads</a>
+                </li>
+                <li><a class="active" href="resources.html">Resources</a>
+                </li>
+                <li><a href="community.html">Community</a>
+                </li>
+            </ul>
+            <ul id="mobile-menu" class="side-nav">
+                <li>
+                    <a href="index.html">PVS</a>
+                </li>
+                <li><a href="downloads.html">Downloads</a>
+                </li>
+                <li><a href="resources.html">Resources</a>
+                </li>
+                <li><a href="community.html">Community</a>
+                </li>
+            </ul>
+             <div id="search" class="nav-wrapper right">
+                <form method="get" action="http://www.google.com/search" onSubmit="googlesearch(this)">
+                    <div class="input-field indigo lighten-2">
+                        <input type="search" name="search_input" id="search_input" placeholder="search this site"/>
+                        <label for="search"><i class="material-icons">search</i>
+                        </label>
+                        <input type="hidden" name="q">
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </nav>
+
+    <div id="site_content" class="container">
+        <div id="content">
+            <div class="content_item clear">
+                <div id="" class="row col s12 indigo-text secondarymenubar">
+                    <ul id="" class="tabs indigo-text secondarymenu">
+                        <li class="tab label col s4"><a href="#manuals">Manuals </a>
+                        </li>
+                        <li class="col tab s4"><a href="#tutorials">Tutorials</a>
+                        </li>
+                        <li class="tab label col s4"><a href="#libraries">Libraries </a>
+                        </li>
+                        <li class="tab label col s4"><a href="#advanced-features">Advanced Features </a>
+                        </li>
+                        <li class="col tab s4"><a href="#publications">Publications</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col" id="manuals">
+                <h5>PVS Manuals</h5>
+                <p>This page collects the essential resources to get started with PVS. To effectively use PVS, you should at least get the <a href="#manuals">PVS Manuals</a> (System Guide, Language Reference, and Prover Guide). The System Guide presents the PVS architecture and the commands needed to create, edit, and verify PVS specifications. The Language Reference introduces the PVS syntax. The Prover Guide presents the commands for interacting with the PVS theorem prover. PVSio is the animation environment. PVSio-web is the graphical prototyping environment.</p>
+                <div class="row secondarymenubar">
+                    <ul class="secondarymenu right row">
+                      <li class="col"><a href="http://pvs.csl.sri.com/doc/pvs-system-guide.pdf"
+                             target="_blank"><i class="material-icons">insert_drive_file</i>System Guide</a></li>
+                      <li class="col"><a href="http://pvs.csl.sri.com/doc/pvs-language-reference.pdf"
+                             target="_blank"><i class="material-icons">insert_drive_file</i>Language Reference</a></li>
+                      <li class="col"><a href="http://pvs.csl.sri.com/doc/pvs-prover-guide.pdf"
+                             target="_blank"><i class="material-icons">insert_drive_file</i>Prover Guide</a></li>
+                      <li class="col"><a href="http://shemesh.larc.nasa.gov/people/cam/PVSio/"
+                             target="_blank"><i class="material-icons">link</i>PVSio</a></li>
+                      <li class="col"><a href="http://www.pvsioweb.org"
+                             target="_blank"><i class="material-icons">link</i>PVSio-web</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="col" id="advanced-features">
+                <h5> PVS Advanced Features </h5>
+                    <p>The semantics report provides the semantics for the core of PVS, the datatypes report provides details and examples that go beyond what is described in the language manual, and theory interpretations describes the recently introduced capabilities supporting refinement and consistency.</p>
+                    <div class="row secondarymenubar">
+                        <ul class="secondarymenu right row">
+                            <li class="col"><a href="http://pvs.csl.sri.com/papers/csl-97-2/csl-97-2.ps"
+                             target="_blank"><i class="material-icons">insert_drive_file</i>PVS Semantics</a></li>
+                            <li class="col"><a href="http://pvs.csl.sri.com/papers/csl-93-9/csl-93-9.pdf"
+                             target="_blank"><i class="material-icons">insert_drive_file</i>Datatypes</a></li>
+                            <li class="col"><a href="http://pvs.csl.sri.com/doc/interpretations.pdf"
+                             target="_blank"><i class="material-icons">insert_drive_file</i>Theory Interpretations</a></li>
+                            <li class="col"><a href="http://pvs.csl.sri.com/experimental/abstract.shtml"
+                             target="_blank"><i class="material-icons">link</i>Predicate Abstraction</a></li>
+                            <li class="col"><a href="http://pvs.csl.sri.com/experimental/ws1s.shtml"
+                             target="_blank"><i class="material-icons">link</i>PVS with Mona</a></li>
+                        </ul>
+                    </div>
+            </div>
+            <div class="col" id="libraries">
+                <h5>Libraries </h5>
+                    <p>A PVS library is a directory containing PVS theories and proofs for concepts that have some wider use. Research groups have developed several libraries, but over the years most have been consolidated into either the PVS Prelude or the NASA Librarysince these are fully maintained. The PVS Prelude is the standard library built in to the PVS system. It is preloaded automatically every time PVS is executed. It provides standard definitions, ranging from common base types (bool, integer,real, etc.) to functions, set, relations, lists and many more. The NASA Library is a massive library developed and maintained by the the <a href="http://shemesh.larc.nasa.gov/fm">NASA Langley Formal Methods team</a>. It includes definitions and theorems for algebra, analysis, graphs, series, and trigonometric functions, among others.</p>
+
+                    <div class="row secondarymenubar">
+                        <ul class="secondarymenu right row">
+                            <li class="col"><a href="http://pvs.csl.sri.com/doc/pvs-prelude.pdf"
+                             target="_blank"><i class="material-icons">insert_drive_file</i>Prelude</a></li>
+                            <li class="col"><a href="http://shemesh.larc.nasa.gov/fm/ftp/larc/PVS-library/pvslib.html"
+                             target="_blank"><i class="material-icons">link</i>NASA Library</a></li>
+                        </ul>
+                    </div>
+            </div>
+            <div class="col" id="tutorials">
+                <h5>PVS Tutorials and Examples</h5>
+                <p>The following links lead to tutorials and examples relating to PVS. For some examples we made available a <em>PVS dump files</em>, which contain the specifications and proofs presented in the example, allowing you to follow them on your workstation. To open a PVS dump file (.dmp), copy the file into a new directory and issue the command <span class="style1">M-x undump-pvs-files</span> from within PVS. After typechecking, you can then step through the proofs with M-x step-proof and TAB-1.</p>
+                <ul>
+                  <li><a href="http://research.microsoft.com/en-us/events/tptpa2011/popl2011.pdf" target="_blank">A brief overview of PVS</a></li>
+                  <li><a href="http://www.csl.sri.com/users/rushby/abstracts/fm-tut" target="_blank">Tutorial on mechanized formal methods (PVS, SAL, Yices)</a> </li>
+                  <li><a href="http://pvs.csl.sri.com/papers/forte97/" target="_blank">Tutorial on specification, proof checking, and model checking with PVS </a></li>
+                  <li><a href="http://www.csl.sri.com/users/ruess/papers/HWBook/" target="_blank">Tutorial on hardware verification using PVS</a></li>
+                  <li><a href="http://www.csl.sri.com/papers/csl-95-12/" target="_blank">Tutorial on analyzing tabular specifications and state-transition relations in PVS</a></li>
+                  <li><a href="http://www.csl.sri.com/papers/csl-92-1/" target="_blank">Tutorial on using PVS to verify the Byzantine agreement protocol</a></li>
+                  <li><a href="http://pvs.csl.sri.com/papers/AgExample/" target="_blank">Tutorial on embedding of the Ag dynamic logic in PVS</a></li>
+                  <li><a href="http://fm.csl.sri.com/AFM06/papers/5-Owre.pdf" target="_blank">Tutorial on random testing in PVS</a></li>
+                  <li><a href="http://pvs.csl.sri.com/papers/subtypes98/" target="_blank">Tutorial on using predicate subtyping in PVS</a></li>
+                  <li><a href="http://pvs.csl.sri.com/papers/wadt99/" target="_blank">Tutorial on principles and pragmatics of subtyping in PVS</a></li>
+                  <li><a href="http://pvs.csl.sri.com/papers/fme96-tutorial/" target="_blank">Tutorial on some advanced capabilities of PVS</a></li>
+                  <li><a href="http://shemesh.larc.nasa.gov/fm/fm-pvs.html" target="_blank">PVS Nasa Libraries</a></li>
+                </ul>
+            </div>
+
+            <div class="col" id="publications">
+                <h5>PVS Publications</h5>
+            <p>The original PVS publication is our CADE-11 paper &quot;<a href="http://pvs.csl.sri.com/papers/cade92-pvs/" target="_blank">PVS: A Prototype Verification System</a>&quot;. A list of selected PVS publications maintained by members of the PVS team can be found at the following links. For a comprehensive list of publications related to PVS, you can <a href="javascript:googlescholar()">Search PVS Publications on Google Scholar</a>.</p>
+            <ul>
+              <li><a href="http://www.csl.sri.com/~rushby/biblio.html" target="_blank">John Rushby</a> (SRI International) </li>
+              <li><a href="http://www.csl.sri.com/~shankar" target="_blank">N. Shankar</a> (SRI International)</li>
+              <li><a href="http://www.csl.sri.com/~ruess" target="_blank">Harald Rue&szlig;</a> (SRI International)</li>
+              <li><a href="http://www.csl.sri.com/~owre" target="_blank">Sam Owre</a> (SRI International)</li>
+              <li><a href="http://www.csl.sri.com/~tiwari" target="_blank">Ashish Tiwari</a> (SRI International)</li>
+              <li><a href="http://www.sdl.sri.com/~saidi" target="_blank">Hassan Sa&iuml;di </a>(SRI International)</li>
+              <li><a href="http://www.sdl.sri.com/~bruno" target="_blank">Bruno Dutertre</a> (SRI International) </li>
+              <li><a href="http://shemesh.larc.nasa.gov/people/rwb/" target="_blank">Ricky Butler</a> (Nasa Langley) </li>
+              <li><a href="http://shemesh.larc.nasa.gov/people/cam/publications.html" target="_blank">C&eacute;sar Mu&ntilde;oz</a> (Nasa Langley)</li>
+              <li><a href="http://shemesh.larc.nasa.gov/people/bld/" target="_blank">Ben Di Vito</a> (Nasa Langley)</li>
+              <li><a href="http://shemesh.larc.nasa.gov/people/aeg/" target="_blank">Alwyn Goodloe</a> (Nasa Langley) </li>
+              <li><a href="http://shemesh.larc.nasa.gov/people/geh/" target="_blank">George Hagen</a> (Nasa Langley)</li>
+              <li><a href="http://shemesh.larc.nasa.gov/people/jmm/" target="_blank">Jeff Maddalon</a> (Nasa Langley)  </li>
+              <li><a href="http://shemesh.larc.nasa.gov/people/mrm/" target="_blank">Mahyar Malekpour </a>(Nasa Langley) </li>
+              <li><a href="http://shemesh.larc.nasa.gov/people/psm/" target="_blank">Paul Miner</a> (Nasa Langley)</li>
+              <li><a href="http://shemesh.larc.nasa.gov/people/ajn/" target="_blank">Anthony Narkawicz</a> (Nasa Langley)  </li>
+              <li><a href="http://shemesh.larc.nasa.gov/people/sjp/" target="_blank">Suzette Person </a>(Nasa Langley) </li>
+              <li><a href="http://research.microsoft.com/en-us/um/people/leonardo/publications/index.html" target="_blank">Leonardo Demoura</a> (Microsoft Research)</li>
+              <li><a href="http://hp.sibilatores.de/" target="_blank">Holger Pfeifer</a> (Ulm University, Germany)</li>
+              <li><a href="http://www.eecs.qmul.ac.uk/~masci/" target="_blank">Paolo Masci</a> (Queen Mary University of London)</li>
+              <li><a href="http://cs.swan.ac.uk/~cspo/" target="_blank">Patrick Oladimeji</a> (Swansea University)</li>
+        </ul>
+
+            </div>
+        </div>
+    </div><!--close site_content-->
+
+<footer class="page-footer indigo white-text padding">
+        <div class="container">
+            <div class="row">
+                <div class="col l6 s12">
+                    <h5>Support</h5>
+                    <p>A group of experienced PVS users have offered to provide help to other PVS users. You can ask them questions about all aspects of PVS by sending an email to <a href="mailto:pvs-help@csl.sri.com" target="_blank">pvs-help@csl.sri.com</a>.
+                    </p>
+                        <ul>
+                            <li>Check out our <a href="http://pvs.csl.sri.com/mail-archive/pvs-help/" target="_blank">pvs-help archive</a> to see questions asked by other PVS users, and the received answers.</li>
+                            <li><a href="http://pvs-wiki.csl.sri.com/index.php/FAQ" target="_blank">FAQs</a> related to the installation of PVS.</li>
+                        </ul>
+                </div>
+                <div class="col l2 s6">
+                    <h5>Resources</h5>
+                    <ul>
+                        <li>
+                            <a href="resources.html#manuals" target="_self">Manuals</a>
+                        </li>
+                        <li>
+                            <a href="resources.html#tutorials" target="_self">Tutorials</a>
+                        </li>
+                        <li>
+                            <a href="resources.html#publications" target="_self">Publications</a>
+                        </li>
+                        <li>
+                            <a href="http://pvs-wiki.csl.sri.com/index.php/FAQ" target="_blank">FAQs</a>
+                        </li>
+                        <li>
+                            <script type="text/javascript">
+                                function googlescholarsearch(query) {
+                                    query.q.value = search_pvs.value + "&" + search_date.value;
+                                }
+
+                                function onClick(_this) {
+                                    _this.form.target = '_blank';
+                                }
+
+                                function googlescholar() {
+                                    document.getElementById("submit_scholar_query").click();
+                                }
+                            </script>
+                            <div class="googlescholarform hidden hide">
+                                <form method="get" action="http://scholar.google.com/scholar" onSubmit="googlescholarsearch(this)">
+                                    <input type="hidden" name="as_q" value="PVS+prototype+verification+system" id="search_pvs" />
+                                    <input type="hidden" name="as_ylo" value="1992" id="search_date" />
+                                    <input type="hidden" name="q">
+                                    <input type="submit" id="submit_scholar_query" value="Search PVS publications on GoogleScholar" class="button" onclick="onClick(this)" />
+                                </form>
+                            </div>
+                            <a href="javascript:googlescholar()">Google Scholar</a>
+                        </li>
+
+                    </ul>
+                </div>
+
+                <div class="col l2 s6">
+                    <h5>Community</h5>
+                    <ul>
+                        <li><a href="#!" target="_blank">PVS Users on Facebook</a>
+                    </ul>
+                </div>
+                <div class="col l2 s6">
+                    <h5>Code</h5>
+                    <ul>
+                        <li class="link col">
+                            <a href="downloads.html#platforms" target="_self">Binaries</a>
+                        </li>
+                        <li class="link col">
+                            <a href="downloads.html#nightly" target="_self">Nightly Builds</a>
+                        </li>
+                        <li class="link col">
+                            <a href="downloads.html#sources" target="_self">Sources</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div id="footer" class=" footer-copyright">
+            <div class="container">
+                  Last modified:
+                    <script>
+                        document.write(new Date(document.lastModified));
+                    </script>&nbsp; | &nbsp;Webmasters: <a href="mailto:paolo.masci@sri.com">Paolo Masci</a>• <a href="mailto:dodopat@gmail.com">Patrick Oladimeji</a>  &#149; <a href="mailto:owre@csl.sri.com">Sam Owre</a>
+            </div>
+
+        </div>
+        <!--close footer-->
+    </footer>
+
+    <script type="text/javascript" src="js/materialize.js">
+    </script>
+
+</body>
+</html>
