@@ -21,13 +21,13 @@
             <a href="#" data-activates="mobile-menu" class="button-collapse"><i class="material-icons">menu</i></a>
             <ul id="menu" class="left hide-on-med-and-down ">
                 <li>
-                    <a class="active" href="index.html">PVS</a>
+                    <a href="index.html">PVS</a>
                 </li>
                 <li><a href="downloads.html">Downloads</a>
                 </li>
                 <li><a href="resources.html">Resources</a>
                 </li>
-                <li><a href="community.html">Community</a>
+                <li><a class="active" href="community.html">Community</a>
                 </li>
             </ul>
             <ul id="mobile-menu" class="side-nav">
@@ -55,7 +55,48 @@
 
     </nav>
 
-     <footer class="page-footer indigo white-text padding">
+    <div id="site_content" class="container">
+      <div id="content">
+        <div class="content_item  clear">
+
+
+            <div id="" class="row col s12 indigo-text secondarymenubar">
+                <ul class="tabs indigo-text secondarymenu">
+                    <li class="col tab s3" ><a id="mailpvshelp_li" href="#mailpvshelp">Getting help on using PVS</a>
+                    </li>
+                </ul>
+            </div>
+            <div class="col s12 " id="mailpvshelp">
+                <h5>PVS-Help</h5>
+                <p>PVS-Help is a moderated mailing list for submitting questions about any aspect of the use of PVS. Messages are distributed to a group of experienced users who have offered to provide help. You can send messages to this list at any time, and do not need to subscribe.</p>
+                <div class="row secondarymenubar">
+                    <ul class="secondarymenu  right row">
+                        <li class="col">
+                            <a href="http://pvs.csl.sri.com/mail-archive/pvs-help/" target="_blank">
+                                <i class="material-icons">link</i>
+                                View topics discussed in PVS-Help
+                            </a>
+                        </li>
+                        <li class="col">
+                            <a href="mailto:pvs-help@csl.sri.com" target="_blank">
+                                <i class="material-icons">link</i>
+                                Send a message to PVS-Help
+                            </a>
+                        </li>
+                        <li class="col">
+                            <a href="mailto:pvs-help-subscribe@csl.sri.com" target="_blank">
+                                <i class="material-icons">email</i>
+                                Subscribe to PVS-Help
+                            </a>
+                        </li>
+                    </ul>
+                </div>                
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="page-footer indigo white-text padding">
         <div class="container">
             <div class="row">
                 <div class="col l6 s12">
@@ -137,10 +178,12 @@
                   Last modified:
                     <script>
                         document.write(new Date(document.lastModified));
-                    </script>&nbsp; | &nbsp;Webmasters: <a href="mailto:paolo.masci@sri.com">Paolo Masci</a>• <a href="mailto:dodopat@gmail.com">Patrick Oladimeji</a>  &#149; <a href="mailto:owre@csl.sri.com">Sam Owre</a>
+                    </script>&nbsp; | &nbsp;Webmasters: <a href="mailto:paolo.masci@sri.com">Paolo Masci</a> • <a href="mailto:dodopat@gmail.com">Patrick Oladimeji</a>  &#149; <a href="mailto:owre@csl.sri.com">Sam Owre</a>
             </div>
 
         </div>
         <!--close footer-->
     </footer>
+    <script type="text/javascript" src="js/materialize.js">
+    </script>    
 </html>
