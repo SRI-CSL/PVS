@@ -1014,7 +1014,8 @@
   (or (all-declarations theory)
       (let ((decls (append (formals theory)
 			   (mapcan #'(lambda (d)
-				       (when (typep d 'formal-subtype-decl)
+				       (when (typep d '(or formal-subtype-decl
+							formal-struct-subtype-decl))
 					 (remove-if #'tcc? (generated d))))
 			     (formals theory))
 			   (when (recursive-type? theory)

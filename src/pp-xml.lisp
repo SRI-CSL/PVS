@@ -538,7 +538,7 @@
 						    (make-xml-bindings :list fm))
 					  formals)))
 		   type-expr
-		   type-value
+		   (supertype decl)
 		   (when contains (make-xml-contains :expr contains))))
 	(type-from-decl
 	 (xpvs-elt stream type-from-decl (xml-attributes decl)
@@ -549,7 +549,7 @@
 						    (make-xml-bindings :list fm))
 					  formals)))
 		   type-expr
-		   type-value))
+		   (supertype decl)))
 	(t
 	 (xpvs-elt stream type-def-decl (xml-attributes decl)
 		   id
@@ -576,21 +576,23 @@
 
 (defmethod pp-xml* (stream (decl formal-subtype-decl) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
-  (with-slots (id type-expr type-value) decl
+  (with-slots (id type-expr supertype predicate) decl
     (xpvs-elt stream formal-subtype-decl (xml-attributes decl)
 	      id
 	      (make-xml-nonempty-type :nonempty? (nonempty-type-decl? decl))
 	      type-expr
-	      type-value)))
+	      supertype
+	      predicate)))
 
 (defmethod pp-xml* (stream (decl formal-struct-subtype-decl) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
-  (with-slots (id type-expr type-value) decl
-    (xpvs-elt stream formal-subtype-decl (xml-attributes decl)
+  (with-slots (id type-expr supertype projection) decl
+    (xpvs-elt stream formal-struct-subtype-decl (xml-attributes decl)
 	      id
 	      (make-xml-nonempty-type :nonempty? (nonempty-type-decl? decl))
 	      type-expr
-	      type-value)))
+	      supertype
+	      projection)))
 
 ;; (defmethod pp-xml* (stream (decl formal-nonempty-subtype-decl) &optional colon? atsign?)
 ;;   (declare (ignore colon? atsign?))
@@ -791,6 +793,7 @@
 		id
 		(when decl-formals (make-xml-decl-formals :list decl-formals))
 		(make-xml-bindings :list formals)
+		expr
 		declared-type type))))
 
 (defmethod pp-xml* (stream (fml xml-varname) &optional colon? atsign?)

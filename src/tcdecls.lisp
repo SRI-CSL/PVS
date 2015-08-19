@@ -90,10 +90,11 @@
 		  (let ((dhash (current-declarations-hash)))
 		    (dolist (id (id-suffixes (id d)))
 		      (pushnew d (get-lhash id dhash) :test #'eq)))))
-	    (let ((*insert-add-decl* nil))
+	    (progn
 	      (mapc #'(lambda (d)
-			(add-decl d nil)
-			(when (tcc? d) (push d *tccdecls*)))
+			(let ((*insert-add-decl* t))
+			  (add-decl d nil)
+			  (when (tcc? d) (push d *tccdecls*))))
 		    (generated decl))
 	      (regenerate-xref decl)))
 	(unwind-protect
@@ -1340,6 +1341,7 @@
 		(stype (typecheck* (type-expr decl) nil nil nil))
 		(utype (generate-uninterpreted-subtype decl stype)))
 	   (set-type (type-expr decl) nil)
+	   (setf (supertype decl) stype)
 	   (setf (type-value decl) utype)
 	   (setf (print-type utype) tn)
 	   utype))
@@ -1352,6 +1354,7 @@
 		(stype (typecheck* (type-expr decl) nil nil nil))
 		(utype (generate-uninterpreted-projtype decl stype)))
 	   (set-type (type-expr decl) nil)
+	   (setf (supertype decl) stype)
 	   (setf (type-value decl) utype)
 	   utype))
 	((enumtype? (type-expr decl))
@@ -3259,6 +3262,7 @@
       (setf (declared-type pdecl) ftype)
       (typecheck* pdecl nil nil nil) ;; This will set current-declaration
       (setf (current-declaration) cdecl)
+      (setf (predicate decl) pdecl)
       (add-decl pdecl (not (formal-subtype-decl? decl)))
       (setf (dactuals pexpr) dacts)
       (typecheck* pexpr ftype nil nil)
@@ -3267,21 +3271,29 @@
 ;;; Generates a new uninterpreted type and an uninterpreted projection
 ;;; function from that type to the given stype.
 (defun generate-uninterpreted-projtype (decl stype)
-  (let* ((pname (makesym "~a_proj" (id decl)))
-	 ;;(pexpr (mk-name-expr pname))
-	 (tname (make-self-resolved-type-name decl))
-	 (struct-subtype (generate-struct-subtype stype tname))
-	 (surjname (mk-name-expr '|surjective?|
-		     (list (mk-actual struct-subtype) (mk-actual stype))))
-	 (surjtype (typecheck* (mk-expr-as-type surjname) nil nil nil))
-	 (cdecl (declaration *current-context*))
-	 (ndecl (let ((*generate-tccs* 'none))
-		  (typecheck* (mk-const-decl pname surjtype nil nil)
-			      nil nil nil))))
-    (setf (generated-by struct-subtype) decl)
-    (setf (declaration *current-context*) cdecl)
-    (add-decl ndecl)
-    struct-subtype))
+  (multiple-value-bind (dfmls dacts thinst)
+      (new-decl-formals decl)
+    (let* ((pname (makesym "~a_proj" (id decl)))
+	   (pdecl (mk-const-decl pname nil nil nil nil dfmls))
+	   (ptype (if thinst
+		      (with-current-decl pdecl
+			(subst-mod-params stype thinst (current-theory) decl))
+		      stype))
+	   (tname (make-self-resolved-type-name decl))
+	   (struct-subtype (generate-struct-subtype ptype tname))
+	   (surjname (mk-name-expr '|surjective?|
+		       (list (mk-actual struct-subtype) (mk-actual stype))))
+	   (surjtype (typecheck* (mk-expr-as-type surjname) nil nil nil))
+	   (cdecl (declaration *current-context*))
+	   (ndecl (let ((*generate-tccs* 'none))
+		    (setf (type pdecl) surjtype
+			  (declared-type pdecl) surjtype)
+		    (typecheck* pdecl nil nil nil))))
+      (setf (generated-by struct-subtype) decl)
+      (setf (current-declaration) cdecl)
+      (setf (projection decl) ndecl)
+      (add-decl ndecl (not (formal-struct-subtype-decl? decl)))
+      struct-subtype)))
 
 ;; (defun generate-dep-type-binding (decl tname)
 ;;   (let ((bd (mk-dep-binding (binding-id decl) tname)))

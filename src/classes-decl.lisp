@@ -399,11 +399,15 @@
 
 (defcl nonempty-type-eq-decl (type-eq-decl nonempty-type-def-decl))
 
-(defcl type-from-decl (type-def-decl))
+(defcl type-from-decl (type-def-decl)
+  predicate
+  supertype)
 
 (defcl nonempty-type-from-decl (type-from-decl nonempty-type-def-decl))
 
-(defcl struct-subtype-decl (type-def-decl))
+(defcl struct-subtype-decl (type-def-decl)
+  projection
+  supertype)
 
 (defcl nonempty-struct-subtype-decl (struct-subtype-decl nonempty-type-def-decl))
 
