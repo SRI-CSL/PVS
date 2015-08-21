@@ -1,6 +1,6 @@
 ;;
 ;; pvs-lib.lisp
-;; Release: PVSio-6.0 (12/12/12)
+;; Release: PVSio-6.0.10 (xx/xx/xx)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -17,47 +17,39 @@
 
 (in-package :pvs)
 
-(defparameter *pvsio-version* "PVSio-6.0 (12/12/12)")
+(defparameter *pvsio-version* "PVSio-6.0.10 (xx/xx/xx)")
 (defparameter *pvsio-imported* nil)
 (defparameter *pvsio-update-files* (make-hash-table :test #'equal))
 
-(defun load-update (file &optional force (verbose t))
-  (when (and (> (length file) 0)
-	     (probe-file file))
-    (let ((date    (gethash file *pvsio-update-files*))
-	  (newdate (file-write-date file)))
-      (when (or force
-		(not date)
-		(not newdate)
-		(< date newdate))
-	(setf (gethash file *pvsio-update-files*) newdate)
-	(load file :verbose verbose)))))
+(defun load-update-attachments (dir filename &optional force (verbose t))
+  (let* ((file (merge-pathnames dir filename)))
+    (when (probe-file file)
+      (let ((date    (gethash file *pvsio-update-files*))
+	    (newdate (file-write-date file)))
+	(when (or force (not date) (not newdate) (< date newdate))
+	  (setf (gethash file *pvsio-update-files*) newdate)
+	  (load file :verbose verbose))))))
 		
-(defun libload-update (file &optional force (verbose t))
-  (when (> (length file) 0)
-    (cond ((or (char= (elt file 0) #\/) 
-	       (char= (elt file 0) #\~) 
-	       (string= (directory-namestring file) "./"))
-	   (load-update file force verbose))
-	  (t
-	   (some #'(lambda (path) 
-		     (load-update (format nil "~a~a" path file) force verbose))
-		 *pvs-library-path*)))))
+(defun libload-attachments (dir file &optional force (verbose t))
+  (if (probe-file (merge-pathnames dir file))
+      (load-update-attachments dir file force verbose)
+    (some #'(lambda (path) 
+	      (let ((lib (format nil "~a~a" path dir)))
+		(load-update-attachments lib file force verbose)))
+	  *pvs-library-path*)))
 
-(defun load-imported (h &optional force (verbose t))
-  (maphash #'(lambda (k e) 
-	       (when (or (and (not (member k *pvsio-imported* :test #'string=))
-			      (push k *pvsio-imported*)
-			      (equal e e))
-			 force)
-		 (libload-update (format nil "~apvs-attachments" k) 
-				 force verbose)))
-	   h))
+(defun load-imported-attachments (libs &optional force (verbose t))
+  (loop for dir being the hash-key of libs 
+	when (or (and (not (member dir *pvsio-imported* :test #'string=))
+		      (push dir *pvsio-imported*))
+		 force)
+	do (libload-attachments dir "pvs-attachments" force verbose)))
 
 (defun load-pvs-attachments (&optional force (verbose t))
-  (load-imported *prelude-libraries* force verbose)
-  (load-imported *imported-libraries* force verbose)
-  (load-update "~/.pvs-attachments" force verbose)
-  (load-update (format nil "~apvs-attachments" *pvs-context-path*) 
-	       force verbose))
+  (format t "Loading semantic attachments~%")
+  (when force (initialize-prelude-attachments))
+  (load-imported-attachments *prelude-libraries* force verbose)
+  (load-imported-attachments *imported-libraries* force verbose)
+  (load-update-attachments "~/" ".pvs-attachments" force verbose)
+  (load-update-attachments *pvs-context-path* "pvs-attachments" force verbose))
 

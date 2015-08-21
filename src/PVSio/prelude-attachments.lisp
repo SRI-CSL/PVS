@@ -1,6 +1,6 @@
 ;;
 ;; prelude-attachments.lisp
-;; Release: PVSio-6.0 (12/12/12)
+;; Release: PVSio-6.0.10 (xx/xx/xx)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -74,15 +74,16 @@
   (format nil "~a~a" s1 s2))
 
 (defattach |real2str| (r)
-  "String representation of real R"
-  (if (integerp r) 
-      (format nil "~d" r)
-    (format nil "~f" (rationalize r))))
+  "Converts real number r to string, where the integer n represents the precision 10^-n, and m is the rounding mode
+    (0: to zero, 1: to infinity (away from zero), 2: to negative infinity (floor), 3: to positive infinity (ceiling)"
+  (let ((n 6)
+	(m 0))
+    (ratio2decimal r (or (= m 3) (and (= m 1) (> r 0)) (and (= m 0) (< r 0))) n)))
 
 (defattach |str2real| (s)
   "Rational denoted by S"
   (let ((i (read-from-string s)))
-    (if (numberp i) (rationalize i) 
+    (if (numberp i) (rational i) 
       (throw '|NotARealNumber|
 	     (pvs2cl_record (the string "NotARealNumber")
 			    (the string s))))))
@@ -197,7 +198,7 @@
   "Queries a real number from standard input with prompt MSSG"
   (prompt mssg)
   (let ((i (read)))
-    (if (numberp i) (rationalize i)
+    (if (numberp i) (rational i)
       (throw '|NotARealNumber|
 	     (pvs2cl_record (the string "NotARealNumber")
 			    (the string (format nil "~a" i)))))))
@@ -334,7 +335,7 @@
   "Reads a real number from stream F"
   (let ((i (read f nil nil)))
     (when i 
-      (if (numberp i) (rationalize i)
+      (if (numberp i) (rational i)
 	(throw '|NotARealNumber|
 	       (pvs2cl_record (the string "NotARealNumber")
 			      (the string (format nil "~a" i))))))))
@@ -349,29 +350,32 @@
 			      (the string (format nil "~a" i))))))))
 )))
 
+(defun rat2double (x) 
+  (float x 1.0d0))
+
 (defun stdmath-attachments ()
 
 (eval '(attachments stdmath
 	     
 (defattach |PI| () 
   "Number Pi"
-  pi)
+  (rational pi))
 
 (defattach |SIN| (x) 
   "Sine of X"
-  (sin x))
+  (rational (sin (rat2double x))))
 
 (defattach |COS| (x)
   "Cosine of X"
-  (cos x))
+  (rational (cos (rat2double x))))
 
 (defattach |EXP| (x) 
   "Exponential of X"
-  (exp x))
+  (rational (exp (rat2double x))))
 
 (defattach |RANDOM| ()
   "Real random number in the interval [0..1]"
-  (random 1.0))
+  (rational (random (rat2double 1))))
 
 (defattach |NRANDOM| (x)
   "Natural random number in the interval [0..X)"
@@ -379,23 +383,23 @@
 
 (defattach |sqrt_lisp| (x) 
   "Square root of X"
-   (sqrt x))
+   (rational (sqrt (rat2double x))))
 
 (defattach |log_lisp| (x) 
   "Logarithm of X"
-  (if (<= x 0) 0 (log x)))
+  (rational (log (rat2double x))))
 
 (defattach |atan_lisp| (x y)
   "Arctangent of Y/X"
-  (atan x y))
+  (rational (atan (rat2double x) (rat2double y))))
 
 (defattach |asin_lisp| (x)
   "Arcsine of X"
-  (asin x))
+  (rational (asin (rat2double x))))
 
 (defattach |acos_lisp| (x)
   "Arccosine of X"
-  (acos x))
+  (rational (acos (rat2double x))))
 
 )))
 
@@ -496,8 +500,7 @@
 
 (defattach |format| (s e)
    "Formats expression E using Common Lisp format string S"
-   (let* ((fun-type (pc-parse *the-pvs-type* 'type-expr))
-	  (the-type (pc-typecheck (cadr (types (domain fun-type))))))
+   (let* ((the-type (pc-typecheck (cadr (types (domain *the-pvs-type*))))))
      (if (and (arrayp e)
 	      (tupletype? the-type))
 	 (let* ((the-types (types the-type))
@@ -530,9 +533,8 @@
 
 (defattach |typeof| (e)
   "Returns the string value of the type of E"
-  (let* ((the-type (pc-parse *the-pvs-type* 'type-expr))
-	 (domain   (domain the-type)))
-    (format nil "~a" (or (print-type domain) domain))))
+  (let* ((the-domain (domain *the-pvs-type*)))
+    (format nil "~a" (or (print-type the-domain) the-domain))))
 
 (defattach |str2pvs| (s)
   "Translates string S to PVS format"
@@ -540,9 +542,8 @@
 
 (defattach |pvs2str_lisp| (e)
   "Translates PVS expresion E to a string"
-  (let* ((the-type (pc-parse *the-pvs-type* 'type-expr))
-	 (domain   (domain the-type)))
-    (format nil "~a" (cl2pvs e (pc-typecheck domain)))))
+  (let* ((the-domain (domain *the-pvs-type*)))
+    (format nil "~a" (cl2pvs e (pc-typecheck the-domain)))))
 
 (defattach |slisp| (l)
   "Returns a s-expression representing list l. To be used exclusively in format functions."
