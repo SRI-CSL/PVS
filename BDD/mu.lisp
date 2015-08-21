@@ -1218,12 +1218,12 @@ time).  Verbose? set to T provides more information."
 (defun make-geq-bdd* (bdd-list num-rep)
   (if (consp num-rep)
       (if (consp (cdr num-rep))
-	  (if (= (car num-rep) (mu-mk-true))
+	  (if (equal (car num-rep) (mu-mk-true))
                (mu-mk-and  (mu-create-bool-var (car bdd-list)) 
                         (make-geq-bdd* (cdr bdd-list)(cdr num-rep)))
                (mu-mk-or (mu-create-bool-var (car bdd-list)) 
                         (make-geq-bdd* (cdr bdd-list)(cdr num-rep))))
-	  (if (= (car num-rep) (mu-mk-true))
+	  (if (equal (car num-rep) (mu-mk-true))
 	      (mu-create-bool-var  (car bdd-list))
 	      (mu-mk-true)))
       (mu-mk-true)))
@@ -1245,14 +1245,14 @@ time).  Verbose? set to T provides more information."
 (defun make-leq-bdd* (bdd-list num-rep)
   (if (consp num-rep)
       (if (consp (cdr num-rep))
-	  (if (= (car num-rep) (mu-mk-true))
+	  (if (equal (car num-rep) (mu-mk-true))
               (mu-mk-or
                     (mu-mk-not (mu-create-bool-var (car bdd-list)))
                        (make-leq-bdd* (cdr bdd-list)(cdr num-rep)))
               (mu-mk-and 
                     (mu-mk-not (mu-create-bool-var (car bdd-list)))
                        (make-leq-bdd* (cdr bdd-list)(cdr num-rep))))
-	  (if (= (car num-rep) (mu-mk-true))
+	  (if (equal (car num-rep) (mu-mk-true))
 	      (mu-mk-true)
 	      (mu-mk-not (mu-create-bool-var (car bdd-list)) )))
       (mu-mk-true)))
@@ -1610,14 +1610,21 @@ time).  Verbose? set to T provides more information."
 ;;
 ;;
 
+#+sbcl
+(defun check-null (ptr)
+  (sb-alien:null-alien ptr))
+
+#-sbcl
+(defun check-null (ptr)
+  (zerop ptr))
 
 (defun mu-translate-from-bdd-list (bddlist)
-  (let ((bdds (unless (zerop bddlist)
+  (let ((bdds (unless (check-null bddlist)
 		(mu-translate-from-bdd-list* (list_first bddlist)))))
     (mapcar #'mu-translate-bdd-cube bdds)))
 
 (defun mu-translate-from-bdd-list* (bddlist &optional result)
-  (if (zerop bddlist)
+  (if (check-null bddlist)
       (nreverse result)
       (mu-translate-from-bdd-list*
        (list_next bddlist)
