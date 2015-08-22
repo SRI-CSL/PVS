@@ -455,7 +455,8 @@ useful if more than one specification is to be included in one document")
   (when (or (null terse?) (null flag))
     (latex-print proofstate stream))
   (when (current-rule proofstate)
-    (format stream "~%Rule? ~VT~a~%" *prover-indent* (current-rule proofstate)))
+    (format stream "~%Rule? ~VT~a~%"
+      *prover-indent* (latex-protect (format nil "~s" (current-rule proofstate)))))
   (latex-proof-printout (printout proofstate) stream)
   (when (null (done-subgoals proofstate))
     (format stream "~%This completes the proof of {\\tt ~a}.~%"
