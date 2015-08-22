@@ -2219,6 +2219,7 @@
 (defun predicate-subtype-of? (t1 t2 st)
   (or (simple-subtype-of? t1 t2)
       (and (not (simple-subtype-of? t2 t1))
+	   (strict-compatible? t1 t2)
 	   (let* ((bid '%)
 		  (bd (make!-bind-decl bid st))
 		  (bvar (make-variable-expr bd))
