@@ -2100,6 +2100,13 @@
 		      (car cpreds)))
 		   opreds))))))
 
+(defmethod type-predicates* ((te struct-sub-recordtype) preds all?)
+  (let ((cpreds (mapcar #'(lambda (ct) (type-predicates* ct nil all?))
+		  (fields te))))
+    (if (every #'null cpreds)
+	preds
+	(type-predicates-recordtype cpreds (fields te) te preds all?))))
+
 (defmethod type-predicates* ((te field-decl) preds all?)
   (type-predicates* (type te) preds all?))
 
