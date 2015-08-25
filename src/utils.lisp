@@ -1194,8 +1194,8 @@
 	  (dolist (pth pths)
 	    (setf (get-importings pth)
 		  (list (mk-modname (id pth)))))))
-      (setf (declaration *current-context*) decl)
       (update-context-importing-for-mapped-tcc decl))
+    (setf (declaration *current-context*) decl)
     *current-context*))
 
 (defmethod update-context-importing-for-mapped-tcc ((decl mapped-axiom-tcc))
