@@ -468,6 +468,7 @@
 					    (not (mod-id ty)))
 				       (copy ty :mod-id thid))
 				      ((and ty
+					    (type-expr? ty)
 					    (type-name? (print-type ty))
 					    (not (mod-id (print-type ty))))
 				       (copy ty
