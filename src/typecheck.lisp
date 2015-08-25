@@ -899,14 +899,15 @@
 ;; 					      (free-params (current-theory))))))
 ;; 			   (actuals modinst)))
 	       ))
-      (let ((nc (lcopy c
-		  :expr (subst-mod-params (expr c) modinst theory))))
+      (let* ((nexpr (subst-mod-params (expr c) modinst theory))
+	     (nc (lcopy c :expr nexpr)))
 	(unless (eq c nc)
 	  (setf (module nc)
 		(if (fully-instantiated? modinst)
 		    (current-theory)
 		    (module c)))
-	  (add-decl nc))
+	  (unless (freevars (expr nc))
+	    (add-decl nc)))
 	nc)
       c))
 		    
@@ -958,7 +959,7 @@
      (typecase formal
        (formal-subtype-decl
 	(let ((type (subst-types (supertype (type-value formal)) assoc)))
-	  (unless (compatible? (type-value actual) type)
+	  (unless (strict-compatible? (type-value actual) type)
 	    (type-error actual "~a Should be a subtype of ~a"
 			(type-value actual) type))))
        (formal-struct-subtype-decl
