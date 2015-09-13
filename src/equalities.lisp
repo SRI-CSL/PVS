@@ -732,13 +732,14 @@
 			   (or (print-type adt1) adt1))))
 		    (mi2 (module-instance
 			  (resolution
-			   (or (print-type adt2) adt2))))
-		    (fmls (formals-sans-usings (adt adt1)))
-		    (ptypes (positive-types (adt adt1))))
-		(and (tc-eq-adt-op-actuals (actuals mi1) (actuals mi2) bindings
-					   fmls ptypes)
-		     (tc-eq-adt-op-actuals (dactuals mi1) (dactuals mi2) bindings
-					   fmls ptypes)))))))
+			   (or (print-type adt2) adt2)))))
+		(or (and (null (actuals mi1)) (null (actuals mi2)))
+		    (let ((fmls (formals-sans-usings (adt adt1)))
+			  (ptypes (positive-types (adt adt1))))
+		      (and (tc-eq-adt-op-actuals (actuals mi1) (actuals mi2) bindings
+						 fmls ptypes)
+			   (tc-eq-adt-op-actuals (dactuals mi1) (dactuals mi2) bindings
+						 fmls ptypes)))))))))
 
 (defun tc-eq-adt-op-actuals (acts1 acts2 bindings fmls ptypes)
   (cond ((null acts1) (null acts2))
