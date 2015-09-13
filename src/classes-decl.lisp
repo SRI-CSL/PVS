@@ -292,6 +292,7 @@
   saved-context
   dependent-known-subtypes ; Those that reference the theory parameters
   (macro-expressions :restore-as nil)
+  (macro-subtype-tcc-args-alist :restore-as nil)
   (tccs-tried? :restore-as nil)
   (modified-proof? :restore-as nil)
   (tcc-info :type list :initform (list 0 0 0 0) :restore-as nil)
