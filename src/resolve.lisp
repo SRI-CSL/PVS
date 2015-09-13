@@ -1778,8 +1778,9 @@
 
 (defun disallowed-free-variable? (decl)
   (and (typep decl 'var-decl)
-       (not (typep (current-declaration)
-		   '(or formula-decl subtype-judgement)))))
+       (or *in-checker*
+	   (not (typep (current-declaration)
+		       '(or formula-decl subtype-judgement))))))
 
 
 ;;; Filter-preferences returns a subset of the list of decls, filtering
