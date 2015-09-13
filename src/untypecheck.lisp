@@ -796,6 +796,7 @@
 	(library ex1) (library ex2)
 	(actuals ex1) (actuals ex2)
 	(id ex1) (id ex2)
+	(type ex1) (type ex2)
 	(resolutions ex1) (resolutions ex2)))
 
 (defmethod copy-slots ((ex1 projection-expr) (ex2 projection-expr))
