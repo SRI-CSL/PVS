@@ -901,6 +901,9 @@
   (collect-visible-decl-info* (ordering obj))
   (call-next-method))
 
+(defmethod collect-visible-decl-info* :around ((obj adt-def-decl))
+  nil)
+
 (defmethod collect-visible-decl-info* :around ((obj formula-decl))
   (when (and (place obj)
 	     (not (generated-by obj)))
@@ -948,7 +951,8 @@
   (collect-visible-decl-info* (parameters obj)))
 
 (defmethod collect-visible-decl-info* ((obj subtype))
-  (collect-visible-decl-info* (supertype obj))
+  (unless (typep (predicate obj) 'binding-expr)
+    (collect-visible-decl-info* (supertype obj)))
   (collect-visible-decl-info* (predicate obj)))
 
 (defmethod collect-visible-decl-info* ((obj setsubtype))
