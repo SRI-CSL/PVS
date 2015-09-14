@@ -1,5 +1,3 @@
-% Document Type: LaTeX
-% Master File: language.tex
 
 \chapter{Expressions}\label{expressions}
 \index{expressions|(}
@@ -600,7 +598,8 @@ Functions, tuples, records, and datatype elements may be ``modified'' by
 means of the override expression.  The result of an override expression is
 a function, tuple, record, or datatype element that is exactly the same as
 the original, except that at the specified arguments it takes the new
-values.  For example,
+values.  Keep in mind that there is no state change here, a new element is
+constructed from the existing one.  For example,
 \begin{pvsex}
   identity WITH [(0) := 1, (1) := 2]
 \end{pvsex}
@@ -716,3 +715,8 @@ the resulting \tccs\ may be considerably simplified.
 \input{tables}
 
 \index{expression|)}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "language"
+%%% End: 

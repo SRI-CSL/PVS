@@ -20,6 +20,13 @@
 \else
 \usepackage[bookmarks=true,hyperindex=true]{hyperref}
 \fi
+\usepackage{unicode-math}
+%\setmathfont{latinmodern-math.otf}
+%\setmathfont{xits-math.otf}
+\setmathfont{xits-math.otf}
+%\setmathfont{texgyrepagella-math.otf}
+%\setmathfont{Asana-Math.otf}
+\usepackage{fontspec}
 
 \input{../pvstex}
 
@@ -127,7 +134,7 @@ F49620-95-C0044, and DARPA Orders E276, A721, D431, D855, and E301.
 
 \appendix
 \include{grammar}
-\include{prelude}
+%\include{prelude}
 
 %\addcontentsline{toc}{chapter}{Bibliography}
 \bibliographystyle{plain}
@@ -141,3 +148,9 @@ F49620-95-C0044, and DARPA Orders E276, A721, D431, D855, and E301.
 }
 
 \end{document}
+
+%%% Local Variables: 
+%%% TeX-command-default: "Make"
+%%% mode: latex
+%%% TeX-master: "language"
+%%% End: 

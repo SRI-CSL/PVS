@@ -166,6 +166,82 @@ uninterpreted subtypes are as well.
 
 \index{uninterpreted subtype|)}
 
+\subsection{Structural Subtypes}
+
+PVS has support for structural subtyping for record and tuple types.  A
+record type \texttt{S} is a structural subtype of record type \texttt{R}
+if every field of \texttt{R} occurs in \texttt{S}, and similarly, a tuple
+type \texttt{T} is a structural subtype of a tuple type forming a prefix
+of \texttt{T}.  Section \ref{Record and Tuple Type Extensions} gives
+examples, as \texttt{colored\_point} is a structural subtype of
+\texttt{point}, and \texttt{R5} is a structural subtype of \texttt{R3}.
+Structural subtypes are akin to the class hierarchy of object-oriented
+systems, where the fields of a record can be viewed as the slots of a
+class instance.  The PVS equivalent of setting a slot value is the
+override expression (sometimes called update), and this works with
+structural subtypes, allowing the equivalent of generic methods to be
+defined.  Here is an example:
+\begin{pvsex}
+points: THEORY
+BEGIN
+ point: TYPE+ = [# x, y: real #]
+END points
+
+genpoints[(IMPORTING points) gpoint: TYPE <: point]: THEORY
+BEGIN
+ move(p: gpoint)(dx, dy: real): gpoint =
+  p WITH [`x := p`x + dx, `y := p`y + dy]
+END genpoints
+
+colored_points: THEORY
+BEGIN
+ IMPORTING points
+ Color: TYPE = {red, green, blue}
+ colored_point: TYPE = point WITH [# color: Color #]
+ IMPORTING genpoints[colored_point]
+ p: colored_point
+ move0: LEMMA move(p)(0, 0) = p
+END colored_points
+\end{pvsex}
+
+The declaration for \texttt{gpoint} uses the structural subtype operator
+\texttt{<:}.  This is analogous to the \texttt{FROM} keyword, which
+introduces a (predicate) subtype.  This example also serves to explain
+why we chose to separate structural and predicate subtyping.  If they
+were treated uniformly, then \texttt{gpoint} could be instantiated with
+the unit disk; but in that case the \texttt{move} operator would not
+necessarily return a \texttt{gpoint}.  The TCC could not be generated
+for the \texttt{move} declaration, but would have to be generated when
+the \texttt{move} was referenced.  This both complicates typechecking,
+and makes TCCs and error messages more inscrutable.  If both are
+desired, simply include a structural subtype followed by a predicate
+subtype, for example:
+\begin{pvsex}
+genpoints[(IMPORTING points) gpoint: TYPE <: point,
+          spoint: TYPE FROM gpoint]: THEORY
+\end{pvsex}
+Now \texttt{move} may be applied to \texttt{gpoint}s, but if applied to a
+\texttt{spoint} an unprovable TCC will result.
+
+Structural subtypes are a work in progress.  In particular, structural
+subtyping could be extended to function and datatypes.  And to have
+real object-oriented PVS, we must be able to support a form of method
+invocation.
+
+
+\subsection{Empty and Singleton Record and Tuple Types}
+
+Empty and singleton record and tuple types are now allowed in PVS.
+Thus the following are valid declarations:
+\begin{pvsex}
+Tup0: TYPE = [ ]
+Tup1: TYPE = [int]
+Rec0: TYPE = [# #]
+\end{pvsex}
+Note that the space is important in the empty tuple type, as otherwise
+it is taken to be an operator (the box operator).
+
+
 \subsection{Interpreted Type Declarations}
 \index{interpreted type declarations|(}\index{type!interpreted|(}
 
@@ -818,3 +894,8 @@ allowed.
 \input{auto-rewrite}
 
 \index{declaration|)}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "language"
+%%% End: 

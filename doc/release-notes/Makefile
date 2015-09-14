@@ -1,3 +1,4 @@
+TEX = luatex
 TEXI2DVI = texi2dvi
 DVIPS = dvips
 MAKEINFO = makeinfo

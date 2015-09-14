@@ -52,7 +52,8 @@ references to declarations of the theory.
 In the \pvs\ system, the set of theories currently available to the
 session form a \emph{context}.  Within the context theory names must be
 unique.  There is an initial context available, called the prelude
-(described in Appendix~\ref{prelude}), that provides, among other things,
+% (described in Appendix~\ref{prelude}),
+that provides, among other things,
 the Boolean operators, equality, and the \texttt{real}, \texttt{rational},
 \texttt{integer}, and \texttt{naturalnumber} types and their associated
 properties.  The only difference between the prelude and user-defined
@@ -86,6 +87,7 @@ The actuals must match the formals in number, kind, and (where
 applicable) type.  In this matching process the importings, which
 must be enclosed in parentheses, are ignored.  For example, given the
 theory declaration
+
 \begin{pvsex}
   T [t: TYPE,
      subt: TYPE FROM t
@@ -361,3 +363,8 @@ which occur later in the theory.  The theory part usually contains the
 main body of the theory.  Assuming declarations are not allowed in the
 theory part.  The grammar for the theory part is given in
 Figure~\ref{bnf-theory-part}.
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "language"
+%%% End: 
