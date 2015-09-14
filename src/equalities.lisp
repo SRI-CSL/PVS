@@ -1798,7 +1798,7 @@
 
 (defun actual-equality-type (atype etype)
   (unless (tc-eq atype etype)
-    (let* ((stype (compatible-type atype etype))
+    (let* ((stype (dep-binding-type (compatible-type atype etype)))
 	   (apred (nth-value 1 (subtype-preds atype stype)))
 	   (epred (nth-value 1 (subtype-preds etype stype))))
       (cond ((null apred)
