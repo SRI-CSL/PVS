@@ -857,16 +857,13 @@
 ;Note that set-type is used to set the type of the rhs-expr to the
 ;chosen type.
 
-(defun tc-unify-over (lhs-types  rhs-exprs rhs-typelists
-				 match)
-  (cond ((null lhs-types) (if match
-			      (if (every #'cdr match)
-				  match
-				  nil)
+(defun tc-unify-over (lhs-types rhs-exprs rhs-typelists match)
+  (cond ((null lhs-types) (if (and match
+				   (every #'cdr match))
+			      match
 			      t))
 	((null (car rhs-typelists)) nil)
-	(t (let* (
-		  (rhs1 (caar rhs-typelists))
+	(t (let* ((rhs1 (caar rhs-typelists))
 		  (first-match
 		   (if match
 		       (tc-match rhs1 (car lhs-types) match)
@@ -998,7 +995,7 @@
 		       collect
 		       (type (find x (substitutable-vars (car forms))
 				   :test #'format-equal)))
-		 (mapcar #'cdr  subalist)
+		 (mapcar #'cdr subalist)
 		 (mapcar #'(lambda (x)
 			     (if (type (cdr x))
 				 (list (type (cdr x)))
