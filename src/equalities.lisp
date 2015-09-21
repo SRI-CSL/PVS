@@ -1074,7 +1074,8 @@
       (call-next-method)))
 
 (defun declaration-outside-formals? (type-name)
-  (unless *strong-tc-eq-flag*
+  (unless (or *strong-tc-eq-flag*
+	      (type-var? type-name))
     (let ((decl (declaration (car (resolutions type-name)))))
       (and (typep decl 'formal-decl)
 	   (current-theory)
