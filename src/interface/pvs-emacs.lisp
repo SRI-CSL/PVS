@@ -1147,7 +1147,10 @@
     (list (svref place 0)
 	  (svref place 1)
 	  (svref place 0)
-	  (+ (svref place 1) (length (string (id name)))))))
+	  (+ (svref place 1)
+	     (length (if (numberp (id name))
+			 (format nil "~a" (id name))
+			 (string (id name))))))))
 
 (defun merge-places (place1 place2)
   (if (and place1 place2)
