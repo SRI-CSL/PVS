@@ -1030,7 +1030,7 @@ function run() {
                     restart = true;
                 }
                 if (val.toLowerCase().indexOf("pvsdir:") === 0) {
-                    process.env.pvsdir = val.split(":")[1];
+                    process.env.pvsdir = path.join(__dirname, "../../" + val.toLowerCase().split(":")[1]);
 					console.log("PVS directory is " + process.env.pvsdir);
                 }
             });
