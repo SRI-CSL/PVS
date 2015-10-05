@@ -1,0 +1,62 @@
+@charset "UTF-8";
+
+/** 
+ * Flickr Ultimate Linear CSS Drop-Down Menu Theme
+ *
+ * @file		default.ultimate.linear.css
+ * @name		Flickr
+ * @version		beta
+ * @type		transitional
+ * @browsers	Windows: IE7+, Opera7+, Firefox3+
+ *				Mac OS: Safari2+, Firefox3+
+ *
+ * @link		http://www.lwis.net/free-css-drop-down-menu
+ * @copyright	2009-2012 Live Web Initiatives, http://www.lwis.net
+ *
+ */
+
+@import "default.ultimate.css";
+
+
+/* -- Base drop-down styling -- */
+
+ul.dropdown {
+ width: 100%;
+}
+
+	ul.dropdown li.divider {
+	 border: none;
+	}
+
+	/* -- level mark -- */
+
+	ul.dropdown ul {
+	 width: 100%;
+	 margin-top: -1px;
+	 padding: 3px 0;
+	}
+
+		ul.dropdown ul li {
+		 background: url(../../../../images/flickr.com/pattern2.png) 100% 0 repeat-y;
+		}
+
+		ul.dropdown ul li.last {
+		 background: none;
+		}
+
+		ul.dropdown ul a {
+		 padding: 4px 6px !important;
+		}
+
+
+/* -- Supporting class `dir` -- */
+
+ul.dropdown ul *.dir,
+ul.dropdown ul a.dir:hover {
+ padding-right: 0;
+ background: none !important;
+}
+
+ul.dropdown ul span.dir {
+ display: none; /* POI: consider moving to abstract */
+}

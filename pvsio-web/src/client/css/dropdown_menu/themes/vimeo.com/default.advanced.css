@@ -1,0 +1,58 @@
+@charset "UTF-8";
+
+/** 
+ * Default Advanced CSS Drop-Down Menu Theme
+ *
+ * @file		default.advanced.css
+ * @name		Default
+ * @version		beta
+ * @type		transitional
+ * @browsers	Windows: IE7+, Opera9+, Firefox3+
+ *				Mac OS: Safari2+, Firefox3+
+ *
+ * @link		http://www.lwis.net/free-css-drop-down-menu
+ * @copyright	2008-2012 Live Web Initiatives, http://www.lwis.net
+ *
+ */
+
+@import "default.css";
+
+
+/* -- Base style extension -- */
+
+ul.dropdown li a {
+ display: block;
+ padding: 5px 10px;
+}
+
+
+/* -- Base style override -- */
+
+ul.dropdown li, ul.dropdown ul li {
+ padding: 0;
+}
+
+
+/* -- Base style reinitiate: post-override activities -- */
+
+ul.dropdown li.dir {
+ padding: 5px 20px 5px 10px;
+}
+
+ul.dropdown ul li.dir {
+ padding: 5px 15px;
+}
+
+
+/* -- Custom -- */
+
+ul.dropdown ul a {
+ padding-left: 15px;
+}
+
+
+/* -- Drop-down open -- */
+
+ul.dropdown li:hover > *.dir {
+ color: #b0d730;
+}

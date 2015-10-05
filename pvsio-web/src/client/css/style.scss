@@ -1,0 +1,35 @@
+//variables
+$pvsioblue: rgb(8, 88, 154);
+$bgcolor: whitesmoke;
+//main content
+
+//collapsible panel utils
+.toggle-collapse {
+    display: inline-block;
+	width: 25px;
+	height: 25px;
+	cursor: pointer;
+	padding: 5px;
+}
+
+.collapsible-panel-parent {
+    background-color: $bgcolor;
+	width: 100%;
+	overflow:hidden;
+	border:1px solid #ccc;
+	margin-bottom: 5px;
+    
+    .header {
+        margin-left: 10px;
+        display: inline-block;
+    }
+}
+
+//editor styles
+.main-file {
+    a {
+        &:after{
+            content: " [main]";
+        }
+    }
+}

@@ -1,0 +1,27 @@
+<div class="form-center">
+    <div class="panel panel-info shadow center">
+        <div class="panel-heading">{{header}}</div>
+        <form class="center form-horizontal" onsubmit="return false">
+            <div class="panel-body" style="overflow-y: scroll; height: 80px;">
+                <div class="form-group">
+                    <label class="control-label col-sm-4" for="currentLabel">{{textLabel}}</label>
+                    <div class="col-sm-8">
+                        <select id="currentLabel"
+                                class="form-control"
+                                type="text"
+                                value=""
+                                required="true">
+                            {{#each currentLabels}}
+                            <option value="{{this}}">{{this}}</option>
+                            {{/each}}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-footer">
+                <button type="button" class="btn btn-danger left" id="btnLeft">{{buttons.[0]}}</button>
+                <button type="submit" class="btn btn-success right" id="btnRight">{{buttons.[1]}}</button>
+            </div>
+        </form>
+    </div>
+</div>

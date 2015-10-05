@@ -1,0 +1,19 @@
+; File: pvs-attachments
+(defattach sqrt.sqrt (x) 
+  (sqrt x))
+
+(defattach Extra.mysin (x)
+  (sin x))
+
+(defattach Extra.mycos (x)
+  (cos x))
+
+(defattach Extra.myatan2 (x y)
+  (atan x y))
+
+(defattach Extra.to_rad (x)
+  (/ (* x pi) 180))
+
+(defattach Extra.to_deg (x)
+  (/ (* x 180) pi))
+  

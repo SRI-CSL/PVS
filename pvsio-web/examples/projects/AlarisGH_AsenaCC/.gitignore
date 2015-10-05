@@ -1,0 +1,5 @@
+.pvscontext
+*.prf
+*.log
+*.summary
+pvsbin/

@@ -1,0 +1,27 @@
+<div class="form-center">
+    <div class="panel panel-info dialog shadow center">
+        <div class="panel-heading">Preferences</div>
+        <form class="center form-horizontal" onsubmit="return false" role="form">
+            <div class="panel-body">
+                <div class="form-group">
+                    <label for="BACKUP_INTERVAL" class="col-sm-4 control-label">Backup interval (in minutes)</label>
+                    <div class="col-sm-8">
+                        <input id="BACKUP_INTERVAL"
+                               class="form-control"
+                               type="number",
+                               min="1",
+                               value={{BACKUP_INTERVAL}}
+                               alt="autosave interval in minutes"
+                               name="BACKUP_INTERVAL"
+                               required="true"
+                               style="padding: 6px 12px;"/>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-footer">
+                <button type="button" class="btn btn-danger left" id="btnCancel">Cancel</button>
+                <button type="submit" class="btn btn-success right" id="btnOk">Save</button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,112 @@
+-- ---------------------------------------------------------------
+--  Model : emucharts_MedtronicMinimed530G_VDM
+--  Author: <author name>
+--          <affiliation>
+--          <contact>
+-- ---------------------------------------------------------------
+
+module emucharts_MedtronicMinimed530G_VDM
+exports all
+
+definitions
+
+values
+
+types
+  -- machine states
+  MachineState = <off> | <on>;
+
+  -- emuchart state
+  state State of 
+    current_state: MachineState 
+    previous_state: MachineState 
+    display: real
+  
+  -- initial state
+  init s == s = mk_State(    
+    <off>, --current_state
+    <off>, --previous_state
+    0  --display
+  ) end
+
+functions
+  -- utility functions
+  enter_into: MachineState * State -> State
+  enter_into(ms, s) == mu(s, current_state |-> ms );
+  leave_state: MachineState * State -> State
+  leave_state(ms, s) == mu(s, previous_state |-> ms );
+
+  -- transition functions
+  per_turn_on: State -> bool
+  per_turn_on(s) == ((s.current_state = <off>));
+  turn_on: State -> State
+  turn_on(s) ==
+    if (s.current_state = <off>)
+    then let new_s = leave_state(<off>, s)
+          in enter_into(<on>, new_s)
+    else s
+  pre per_turn_on(s);
+
+  per_turn_off: State -> bool
+  per_turn_off(s) == ((s.current_state = <on>));
+  turn_off: State -> State
+  turn_off(s) ==
+    if (s.current_state = <on>)
+    then let new_s = leave_state(<on>, s)
+          in enter_into(<off>, new_s)
+    else s
+  pre per_turn_off(s);
+
+  per_click_DOWN: State -> bool
+  per_click_DOWN(s) == ((s.current_state = <on>) and (s.display > 0)) or ((s.current_state = <on>) and (s.display = 0));
+  click_DOWN: State -> State
+  click_DOWN(s) ==
+    if (s.current_state = <on>) and (s.display > 0)
+    then let new_s = leave_state(<on>, s),
+             new_s = mu(new_s, display |-> s.display - 0.1 )
+          in enter_into(<on>, new_s)
+    elseif (s.current_state = <on>) and (s.display = 0)
+    then let new_s = leave_state(<on>, s),
+             new_s = mu(new_s, display |-> 10 )
+          in enter_into(<on>, new_s)
+    else s
+  pre per_click_DOWN(s);
+
+  per_click_UP: State -> bool
+  per_click_UP(s) == ((s.current_state = <on>) and (s.display < 10)) or ((s.current_state = <on>) and (s.display = 10));
+  click_UP: State -> State
+  click_UP(s) ==
+    if (s.current_state = <on>) and (s.display < 10)
+    then let new_s = leave_state(<on>, s),
+             new_s = mu(new_s, display |-> s.display + 0.1 )
+          in enter_into(<on>, new_s)
+    elseif (s.current_state = <on>) and (s.display = 10)
+    then let new_s = leave_state(<on>, s),
+             new_s = mu(new_s, display |-> 0 )
+          in enter_into(<on>, new_s)
+    else s
+  pre per_click_UP(s);
+
+operations
+  transition_turn_on: () ==> ()
+  transition_turn_on() == State := turn_on(State)
+  pre pre_turn_on(State);
+
+  transition_turn_off: () ==> ()
+  transition_turn_off() == State := turn_off(State)
+  pre pre_turn_off(State);
+
+  transition_click_DOWN: () ==> ()
+  transition_click_DOWN() == State := click_DOWN(State)
+  pre pre_click_DOWN(State);
+
+  transition_click_UP: () ==> ()
+  transition_click_UP() == State := click_UP(State)
+  pre pre_click_UP(State);
+
+end emucharts_MedtronicMinimed530G_VDM
+
+-- ---------------------------------------------------------------
+--  VDM model generated using PVSio-web VDMPrinter ver 0.1
+--  Tool freely available at http://www.pvsioweb.org
+-- ---------------------------------------------------------------

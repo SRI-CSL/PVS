@@ -1,0 +1,25 @@
+<div class="form-center">
+    <div class="panel panel-info shadow center">
+        <div class="panel-heading">{{header}}</div>
+        <form class="center form-horizontal" onsubmit="return false">
+            <div class="panel-body" style="overflow-y: scroll; height: 80px;">
+                <div class="form-group">
+                    <label class="control-label col-sm-4" for="label">{{textLabel}}</label>
+                    <div class="col-sm-8">
+                        <input id="newExpression"
+                               class="form-control"
+                               type="text"
+                               value=""
+                               placeholder="{{placeholder}}"
+                               required="true"
+                               style="padding: 6px 12px;"/>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-footer">
+                <button type="button" class="btn btn-danger left" id="btnLeft">{{buttons.[0]}}</button>
+                <button type="submit" class="btn btn-success right" id="btnRight">{{buttons.[1]}}</button>
+            </div>
+        </form>
+    </div>
+</div>

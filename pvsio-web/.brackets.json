@@ -1,0 +1,4 @@
+{
+    "linting.prefer": ["JSHint"],
+    "linting.usePreferredOnly": true
+}
