@@ -23,11 +23,11 @@ Running pvsio-web
 -----------------
 To run pvsio-web, a backend and a frontend need to be started.
 
-To start the backend: open a Terminal window in the pvsio-web directory, and use the following command (and leave the Terminal window open):
+To start the backend: open a Terminal window in the PVS directory, and use the following command (and leave the Terminal window open):
 
-    ./start.sh
+    ./pvsio-web
 
-To start the frontend: open a browser (Firefox 21 or greater, or Chrome), and type the following address in the address bar:
+To start the frontend: open a browser (Firefox 21 or greater, or Chrome 45 or greater), and type the following address in the address bar:
 
     http://localhost:8082/
 
