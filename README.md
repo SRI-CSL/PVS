@@ -14,6 +14,7 @@ Files:
 
 * README           - this file
 * pvs              - the shell script for invoking pvs
+* pvsio-web        - the shell script for invoking the pvsio-web prototyping tool
 * pvs.sty	   - the style file supporting LaTeX output
 * pvs-tex.sub      - the default substitution file for generating LaTeX
 
@@ -23,4 +24,5 @@ Directories:
 * wish     - Tcl/Tk files
 * bin      - shell scripts and executables
 * lib      - prelude, help files, and libraries
-* javascript -  utility tools for creating interactive demos and exploring proofs written in PVS. See [javascript/README.md](javascript/README.md) for more info on how to get run the tools.
+* pvsio-web  - PVSio-web prototyping tool and example prototypes
+* javascript -  experimental javascript front-ends for PVS. See [javascript/README.md](javascript/README.md) for more info on how to run the tools.
