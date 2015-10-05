@@ -1,5 +1,4 @@
 #!/bin/bash
-npm install
 if [ -d "pvsio-web/src/server/lib" ] && [ -f "pvsio-web/src/server/lib/glassfish-4-1.zip.partaa" ] && 
 	[ -f "pvsio-web/src/server/lib/glassfish-4-1.zip.partab" ] && 
 	[ -f "pvsio-web/src/server/lib/glassfish-4-1.zip.partac" ] && 
@@ -21,5 +20,5 @@ if [ -d "pvsio-web/src/server/ext" ] && [ ! -d "pvsio-web/src/server/ext/IVY" ] 
   cd ../../../..
 fi
 cd pvsio-web/src/server
-node pvssocketserver.js pvsdir:.. start
+node pvssocketserver.js start pvsdir:..
 
