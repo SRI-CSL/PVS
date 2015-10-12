@@ -77,12 +77,12 @@ in util.lisp")
     (subseq excl::cl-release-date 0 end)))
 
 (eval-when (:execute :compile-toplevel :load-toplevel)
-  (defparameter *pvs-version* "6.1")
+  (defparameter *pvs-version* "7.0")
 
   ;; Not used in PVS sources, but may be useful for patches, strategies, etc.
   ;;(pushnew (intern (format nil "pvs~a" *pvs-version*) :keyword) *features*)
-  (pushnew :pvs6.0 *features*)
-  (pushnew :pvs6 *features*)
+  (pushnew :pvs7.0 *features*)
+  (pushnew :pvs7 *features*)
   (pushnew :pvs *features*)
   )
 
