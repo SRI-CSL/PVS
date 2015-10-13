@@ -531,11 +531,12 @@
 		     (when (actuals imported-adt)
 		       (ldiff (actuals imported-adt)
 			      (nthcdr (length (formals-sans-usings adt))
-				      (actuals imported-adt))))))
+				      (actuals imported-adt))))
+		     (library imported-adt)))
 	     (when th2
-	       (list (mk-modname (id th2))))
+	       (list (mk-modname (id th2) nil (library imported-adt))))
 	     (when th3
-	       (list (mk-modname (id th3))))))))
+	       (list (mk-modname (id th3) nil (library imported-adt))))))))
 
 (defmethod get-immediate-usings ((adt recursive-type))
   (append (mapcar #'theory-name
@@ -1312,7 +1313,11 @@
   ;; Context has to be for the modname being imported
   ;; i.e., in importing foo[a] {{ bar := bar[b] {{ ... }} }}
   ;; foo gives context, bar[b] is the thname
-  (let ((th (get-theory thname)))
+  (let ((th (or (get-theory thname)
+		(and (declaration thname)
+		     (theory-abbreviation-decl? (declaration thname))
+		     (get-theory (theory-name (declaration thname)))))))
+    (assert th)
     (if (null (formals-sans-usings th))
 	(resolutions thname)
 	(let ((imps (nth-value 1 (all-importings th)))
