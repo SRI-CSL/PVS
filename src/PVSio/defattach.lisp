@@ -1,6 +1,6 @@
 ;;
 ;; defattach.lisp
-;; Release: PVSio-6.0 (12/12/12)
+;; Release: PVSio-6.0.10 (xx/xx/xx)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -22,25 +22,35 @@
   (pvs-message *pvsio-version*))
 
 ;; Primitive attachments are TRUSTED
-(defstruct attachment theory name args primitive)
+(defstruct attachment theory name args primitive symbol)
 
-(defun find-attachment-name (name)
+(defun find-attachments (name)
   (loop for attachments being the hash-value of *pvsio-attachments*
-	for attachmnt = (car (member 
-			      name attachments 
-			      :test #'(lambda (n a) (string= n (attachment-name a)))))
-	when attachmnt
-	collect attachmnt))
+	append (loop for attachment in attachments
+		     when (string= name (attachment-name attachment))
+		     collect attachment)))
+
+(defun same-attachment (a1 a2)
+  (and (string= (attachment-name a1)
+		(attachment-name a2))
+       (string= (attachment-theory a1)
+		(attachment-theory a2))
+       (equal (attachment-args a1)
+	      (attachment-args a2))))
 
 (defun find-attachment (attachmnt)
   (find attachmnt (gethash (attachment-theory attachmnt)
 			   *pvsio-attachments*)
-	:test #'(lambda (a1 a2) (and (string= (attachment-name a1)
-					      (attachment-name a2))
-				     (string= (attachment-theory a1)
-					      (attachment-theory a2))
-				     (equal (attachment-args a1)
-					    (attachment-args a2))))))
+	:test #'same-attachment))
+
+(defun pvsio-symbol (expr nargs)
+  (let* ((nm (string (id expr)))
+	 (th (string (id (module-instance expr))))
+	 (a  (find-attachment (make-attachment
+			       :theory th
+			       :name nm 
+			       :args nargs))))
+      (when a (attachment-symbol a))))
 
 (defun attachment-list ()
   (loop for attachments being the hash-value of *pvsio-attachments*
@@ -58,8 +68,9 @@
 	#'string<))	
 
 (defun attachment-name-prim (attachmnt)
-  (format nil "~a~:[~; [primitive]~]" 
+  (format nil "~a [~a~:[~;, primitive~]]" 
 	  (attachment-name attachmnt)
+	  (attachment-args attachmnt)
 	  (attachment-primitive attachmnt)))
 
 (defun list-pvs-attachments-str ()
@@ -99,12 +110,11 @@
   (help-pvs-theory-attachments theory))
 
 (defun help-attachment-str (name)
-  (let ((l (find-attachment-name name)))
-    (let ((l (loop for attachmnt in l
-		   collect (help-attachment-doc attachmnt))))
-      (if l
-	  (format nil "Semantic attachments named ~a:~2%~{~a~}" name l)
-	(format nil "No semantic attachments named ~a.~2%" name)))))
+  (let ((l (loop for attachmnt in (find-attachments name)
+		 collect (help-attachment-doc attachmnt))))
+    (if l
+	(format nil "Semantic attachments named ~a:~2%~{~a~}" name l)
+      (format nil "No semantic attachments named ~a.~2%" name))))
 
 (defun help-pvs-attachment (name)
   (format t "~a" (help-attachment-str name)))
@@ -115,7 +125,7 @@
 (defun check-defattach (name body)
   (cond ((not (symbolp name))
 	 (pvs-message
-	  "Error: ~a is not a valid name of a semantic attachment"
+	  "Error: ~a is not a valid name for a semantic attachment"
 	  name)
 	 nil)
 	((null body) 
@@ -129,12 +139,13 @@
 	   (pos    (position #\. thnms)))
       (cond ((not pos) 
 	     (pvs-message  
-	      "Error: ~a is not a valid name of a semantic attachment"
+	      "Error: ~a is not a valid name for a semantic attachment"
 	      thnms))
 	    (t 
 	     (let ((theory (subseq thnms 0 pos))
 		   (name   (subseq thnms (+ pos 1))))
-	       (pvs-message "Loading semantic attachment: ~a.~a" theory name)
+	       (pvs-message "Loading semantic attachment: ~a.~a [~a]" 
+			    theory name (length args))
 	       (defattach-aux theory name args body)))))))
 
 ;; semantic primitives are TRUSTED
@@ -144,24 +155,23 @@
 	   (pos    (position #\. thnms)))
       (cond ((not pos) 
 	     (pvs-message  
-	      "Error: ~a is not a valid name of a semantic primitive"
+	      "Error: ~a is not a valid name for a semantic attachment [primitive]"
 	      thnms))
 	    (t 
 	     (let ((theory (subseq thnms 0 pos))
 		   (name   (subseq thnms (+ pos 1))))
-	       (pvs-message "Loading semantic primitive: ~a.~a" theory name)
+	       (pvs-message "Loading semantic attachment: ~a.~a [~a, primitive]" 
+			    theory name (length args))
 	       (defattach-aux theory name args body t)))))))
 
 ;; Primitive attachments are TRUSTED
 (defun defattach-aux (theory name args body &optional primitive)
   (let* ((nargs     (length args))
-	 (newargs   (if (> nargs 0) 
-			(append args (list '&optional '*the-pvs-type*))
-		      args))
-	 (attachmnt (make-attachment :theory theory :name name :args nargs 
-				     :primitive primitive))
-	 (nm        (makesym "~a" name))
+	 (newargs   (append args (list '&optional '*the-pvs-type*)))
 	 (fnm       (makesym "pvsio_~a_~a_~a" theory name nargs))
+	 (attachmnt (make-attachment :theory theory :name name :args nargs 
+				     :primitive primitive :symbol fnm))
+	 (nm        (makesym "~a" name))
 	 (th        (makesym "~a" theory))
 	 (argstr    (if args (format nil "(~{~a~^, ~})" args) ""))
 	 (dobo      (if (and body (cdr body) (stringp (car body))) 
@@ -183,16 +193,13 @@ Lisp definition: ~%
 	  (format 
 	   nil 
 	   "Function ~a.~a is defined as a semantic attachment. 
-It cannot be evaluated in a formal proof.
-" 
+It cannot be evaluated in a formal proof." 
 	   theory name)))
     (when (find-attachment attachmnt)
       (pvs-message "Redefining ~a.~a" theory (attachment-name-prim attachmnt)))
     (setf (gethash theory *pvsio-attachments*)
-	  (cons attachmnt (remove-if #'(lambda (x) (string= (attachment-name attachmnt)
-							    (attachment-name x)))
+	  (cons attachmnt (remove-if #'(lambda (x) (same-attachment attachmnt x))
 				     (gethash theory *pvsio-attachments*))))
-    (when (> nargs 0) (push (mk-name nm nil th) *pvsio2cl-primitives*))
     (let ((body (if primitive
 		    (cons 'progn (cdr dobo))
 		  `(if *in-evaluator* 

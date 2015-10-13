@@ -192,10 +192,17 @@
 ;;;;;;;;;;;;;;;;;;;
 
 ;;; LIST append_cont (void *p, LIST list)
-(sb-alien:define-alien-routine ("mu___append_cont" append_cont)
+(sb-alien:define-alien-routine ("mu___append_cont" append_cont_internal_alien)
 			       (* t)
   (p (* t))
   (list (* t)))
+(defun append_cont (p list)
+  (append_cont_internal_alien
+   (if (typep p '(UNSIGNED-BYTE 64))
+       (sb-alien:sap-alien (sb-sys:int-sap p) (* t))
+       p)
+   list))
+
 ;;; LIST empty_list (void)
 (sb-alien:define-alien-routine ("mu___empty_list" empty_list)
 			       (* t))

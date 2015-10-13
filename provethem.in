@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #
 # provethem.in
-# Release: ProofLite-6.0 (12/12/12)
+# Release: ProofLite-6.0.10 (xx/xx/xx)
 #
 # Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 # NASA Langley Research Center
@@ -24,8 +24,10 @@ $Term::ANSIColor::AUTORESET = 1;
 
 $PVSPATH="@PVSPATH@";
 
+@prelude = ("bitvector", "finite_sets");
+
 $OUTPUT_AUTOFLUSH=1;
-$VERSION="ProofLite-6.0 (12/12/12)";
+$VERSION="ProofLite-6.0.10 (xx/xx/xx)";
 $PROVEIT="$PVSPATH/proveit";
 $PROVETHEMVERSION="provethem - $VERSION";
 
@@ -47,6 +49,9 @@ $usageln
   --clearpath             consider an empty PVS_LIBRARY_PATH
   --dir <dir>             use <dir> as default directory of summary files
   --do=<dir1>,..,<dirn>   process libraries <dir1>,...,<dirn>
+  --disable <o1,...on>    disable external oracles o1,...,on.
+  --disable-oracles       disable any external oracle
+  --enable <o1,..,on>     enable external oracles o1,..,on. Overwrite --disable
   --ext <ext>             use <ext> as default extension of summary files
   --execute <command>     execute Unix <command> on all libraries. Command 
                           may refer to \%DIR\% and \%FILE\%
@@ -87,6 +92,8 @@ GetOptions('addpath'=>\$addpath,
 	   'color!'=>\$color,
            'dir=s'=>\$dir,
 	   'do=s'=>\@do,
+           'disable=s'=>\@disable,
+           'disable-oracles'=>\$disableoracles,
 	   'execute=s'=>\$execute,
 	   'ext=s'=>\$ext,
 	   'force'=>\$force,
@@ -98,6 +105,7 @@ GetOptions('addpath'=>\$addpath,
 	   'test'=>\$test,
            'to=s'=>\$to,
 	   'top=s'=>\$top,
+           'enable=s'=>\@enable,
            'typecheck-only'=>\$typecheckonly,
 	   'verbose'=>\$verbose,
            'version'=>\$version) or exit 1;
@@ -135,6 +143,9 @@ foreach (@butlist) {
   $_ =~ s/\/$//;
 }
 
+$disablelist = join(',',@disable);
+$enablelist = join(',',@enable);
+
 die "$file is a directory\n" if -d $file;
 open (INFILE,$file) || die "File $file doesn't exist\n";
 
@@ -150,16 +161,20 @@ if (!$out && !$cleanbin && !$execute && !$test) {
   $out .= "-after_$after" if $after;
   $out .= "-before_$before" if $before;
   $out .= ".summaries";
+  $out .= "-tc" if $typecheckonly;
 }
 
 open (OUTFILE,">$out") if $out;
 
 $overopts .= " --Clean" if $cleanbin;
 $overopts .= " --Typecheck" if $typecheckonly;
+$overopts .= " --disable \"$disablelist\"" if $disablelist;
+$overopts .= " --disable-oracles" if $disableoracles;
 $overopts .= " --dir $dir" if $dir;
 $overopts .= " .$ext" if $ext;
 $overopts .= " --lisp $lisp" if $lisp;
 $overopts .= " --top $top" if $top;
+$overopts .= " --enable \"$enablelist\"" if $enablelist;
 $overopts .= " --verbose" if $verbose;
 if ($log) {
   $overopts .= " --log";
@@ -191,9 +206,8 @@ if ($execute) {
   if ($cleanbin) {
     print "Removing binary files from library\n";
     $act = "Cleaning";
-  } 
-  if ($typecheckonly) {
-    print "Typechecking the library\n";
+  } elsif ($typecheckonly) {
+    print "Typechecking library\n";
     $act = "Typechecking";
   }
 } else {
@@ -206,6 +220,7 @@ $go = "ok" if !($from || $after || @do);
 
 my $totalformulas = 0;
 my $totalproofs = 0;
+my @libraries=();
 
 while (<INFILE>) {
   $line = $_;
@@ -270,7 +285,8 @@ while (<INFILE>) {
 		    print $status;
 		  }
 		  $endln = ": $act]\n";
-		} elsif ($proveout =~ m/Grand Totals: (\d+) proofs, (\d+) attempted, (\d+) succeeded/) {
+		} elsif ($proveout =~ 
+			 m/Grand Totals: (\d+) proofs, (\d+) attempted, (\d+) succeeded/) {
 		  $totalformulas += $1;
 		  if ($1 eq $2 && $2 eq $3) {
 		    $totalproofs += $1;
@@ -306,11 +322,31 @@ while (<INFILE>) {
 		}
 		print $endln;
 		$summary .= "$beginln$status$endln";
+		if (!$cleanbin) {
+		  $top = "top" if !$top;
+		  $depfile = "$lib/pvsbin/$top.dep";
+		  if (-f $depfile) {
+		    open (DEPFILE,"$depfile");
+		    while (<DEPFILE>) {
+		      $line = $_;
+		      last if $line =~ /:/;
+		      @list = split /\//,$line;
+		      if ($list[0] &&  !(grep {$_ eq $list[0]} @prelude) &&
+			  !grep {$_ eq $list[0]} @libraries) {
+			print "*** Warning: Library $list[0] is out of order. It should appear before $lib in $file\n";
+		      }
+		    }
+		    close (DEPFILE);
+		  } else {
+		    print "*** Warning: File $depfile not found\n";
+		  } 
+		}
 	      }
 	    }
 	  }
 	}
       }
+      push(@libraries,$lib) if !$execute && !$cleanbin;
       $go = "ok" if $after eq $lib;
       last if $to eq $lib;
     } else {
