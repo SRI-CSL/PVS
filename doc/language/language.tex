@@ -13,20 +13,32 @@
 \usepackage{latexsym}
 %\usepackage{showidx} % shows index entries in the margin
 \usepackage[chapter]{tocbibind}
+\usepackage{fancyvrb}
+% redefine \VerbatimInput
+% \RecustomVerbatimCommand{\VerbatimInput}{VerbatimInput}%
+% {fontsize=\footnotesize,
+%  %
+%  frame=lines,  % top and bottom rule only
+%  framesep=2em, % separation between frame and text
+%  rulecolor=\color{Gray},
+%  %
+%  label=\fbox{\color{Black}data.txt},
+%  labelposition=topline,
+%  %
+%  commandchars=\|\(\), % escape character and argument delimiters for
+%                       % commands within the verbatim
+%  commentchar=*        % comment character
+% }
+\usepackage{unicode-math}
 \usepackage{ifpdf}
 \ifpdf
 \usepackage[pdftex,dvipsnames,usenames]{color}
-\usepackage[bookmarks=true,hyperindex=true,colorlinks=true,linkcolor=Brown,citecolor=blue,backref=page,pagebackref=true,plainpages=false,pdfpagelabels]{hyperref}
-\else
-\usepackage[bookmarks=true,hyperindex=true]{hyperref}
-\fi
-\usepackage{unicode-math}
+\usepackage{fontspec}
 %\setmathfont{latinmodern-math.otf}
 %\setmathfont{xits-math.otf}
 \setmathfont{xits-math.otf}
 %\setmathfont{texgyrepagella-math.otf}
 %\setmathfont{Asana-Math.otf}
-\usepackage{fontspec}
 
 \input{../pvstex}
 
@@ -52,6 +64,10 @@
 \index{type correctness condition|see{TCC}}
 \makeindex
 
+\usepackage[bookmarks=true,hyperindex=true,colorlinks=true,linkcolor=Brown,citecolor=blue,backref=page,pagebackref=true,plainpages=false,pdfpagelabels]{hyperref}
+\else
+\usepackage[bookmarks=true,hyperindex=true]{hyperref}
+\fi
 
 \begin{document}
 

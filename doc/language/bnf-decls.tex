@@ -66,6 +66,13 @@
 {\hlink{Name} \opt{\lit{!} \opt{\lit{!}}} \opt{\lit{:}
 \brc{\hlink{TypeExpr} \choice \hlink{FormulaName}}}}
 
+\production{DeclFormals}
+{\lit{[}\ \ites{\hlink{DeclFormal}}{,} \lit{]}}
+
+\production{DeclFormal}
+{TheoryFormalType}
+%{\opt{\hlink{TheoryFormalDecl}}
+
 \production{Bindings}
 {\lit{(} \ites{\hlink{Binding}}{,} \lit{)}}
 
