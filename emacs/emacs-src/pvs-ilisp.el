@@ -1370,7 +1370,9 @@ is emptied."
 	    (list (list nil nil nil 'run "Top Level"
 			nil t nil 0 (cons nil nil)))
 	    comint-end-queue comint-send-queue)
-      (set-marker (process-mark (ilisp-process)) (point-max))))
+      (set-marker (process-mark (ilisp-process)) (point-max))
+      (lisp-pop-to-buffer (ilisp-buffer))
+      (goto-char (point-max))))
   t)
 
 ;;; The following functions fix a problem with completion.el
