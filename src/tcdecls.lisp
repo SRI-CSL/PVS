@@ -1629,7 +1629,9 @@
 
 (defun check-positive-types-actuals (modinst ndecl cpostypes postypes)
   ;; modinst has actuals and dactuals, these relate cpostypes to postypes
-  (let ((actuals (append (actuals modinst) (dactuals modinst)))
+  (let ((actuals (append (unless (eq (module ndecl) (current-theory))
+			   (actuals modinst))
+			 (dactuals modinst)))
 	(formals (append (unless (eq (module ndecl) (current-theory))
 			   (formals-sans-usings (module ndecl)))
 			 (decl-formals ndecl))))
@@ -1779,7 +1781,12 @@
       ;; See check-set-type-recursive-operator for how recursive conversions
       ;; are generated.
       (typecheck* (definition decl) rtype nil nil)
-      (remove-recursive-defn-conversions *added-recursive-defn-conversions*))
+      (when *added-recursive-defn-conversions*
+	(remove-recursive-defn-conversions *added-recursive-defn-conversions*)
+	(mapobject #'(lambda (ex) (progn (when (typep ex '(or expr type-expr))
+					   (setf (free-variables ex) 'unbound))
+					 nil))
+		   (definition decl))))
     (assert (fully-instantiated? (definition decl)))
     (check-positive-types decl)
     (make-def-axiom decl))
