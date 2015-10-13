@@ -315,6 +315,17 @@
 		   (sys:getenv "PATH") command arguments)))
     (excl:shell string)))
 
+#+allegro
+(defun program-version (command expected)
+  (let* ((match-p nil)
+	 (errstr nil)
+	 (errno (excl.osi:with-command-output (out command
+						  :error-output
+						  #'(lambda (estr) (setq errstr estr)))
+		  (setq match-p (string= expected out :end2 (length expected)))
+		  (excl.osi:loop-exit))))
+    (and (zerop errno) match-p)))
+	
 
 #+lucid
 (defun ls ()
