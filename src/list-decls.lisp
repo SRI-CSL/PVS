@@ -1462,3 +1462,276 @@
 
 (defmethod get-subterms-at* ((obj name))
   nil)
+
+;;; Collect-visible-defs finds the definitions that are visible
+;;; in the given obj - for now, types are ignored
+
+(defvar *visible-defs*)
+
+(defun collect-visible-defs (obj)
+  (let ((*visible-defs* nil))
+    (collect-visible-defs* obj)
+    *visible-defs*))
+
+(defmethod collect-visible-defs* ((list list))
+  (when list
+    (collect-visible-defs* (car list))
+    (collect-visible-defs* (cdr list))))
+
+(defmethod collect-visible-defs* :around ((obj datatype-or-module))
+  ;;(collect-visible-defs* (formals obj))
+  (collect-visible-defs* (assuming obj))
+  (call-next-method))
+
+(defmethod collect-visible-defs* ((obj module))
+  (collect-visible-defs* (theory obj)))
+
+(defmethod collect-visible-defs* ((obj recursive-type))
+  nil)
+
+(defmethod collect-visible-defs* ((obj simple-constructor))
+  nil)
+
+(defmethod collect-visible-defs* ((obj exporting))
+  nil)
+
+(defmethod collect-visible-defs* ((obj importing))
+  (collect-visible-defs* (theory-name obj)))
+
+(defmethod collect-visible-defs* ((obj declaration))
+  nil)
+
+;; (defmethod collect-visible-defs* :around ((obj typed-declaration))
+;;   (when (and nil (place obj)
+;; 	     (not (generated-by obj)))
+;;     (collect-visible-defs* (declared-type obj))
+;;     (call-next-method)))
+
+;; (defmethod collect-visible-defs* :around ((obj type-decl))
+;;   ;(collect-visible-defs* (type-value obj))
+;;   (call-next-method))
+
+;; (defmethod collect-visible-defs* :around ((obj type-def-decl))
+;;   (collect-visible-defs* (type-expr obj))
+;;   (collect-visible-defs* (contains obj))
+;;   (call-next-method))
+
+;; (defmethod collect-visible-defs* :around ((obj formal-theory-decl))
+;;   (collect-visible-defs* (theory-name obj))
+;;   (call-next-method))
+
+(defmethod collect-visible-defs* ((obj mod-decl))
+  (collect-visible-defs* (modname obj)))
+
+(defmethod collect-visible-defs* ((obj theory-abbreviation-decl))
+  (collect-visible-defs* (theory-name obj)))
+
+(defmethod collect-visible-defs* :around ((obj const-decl))
+  (collect-visible-defs* (definition obj))
+  (call-next-method))
+
+(defmethod collect-visible-defs* :around ((obj def-decl))
+  (collect-visible-defs* (declared-measure obj))
+  (collect-visible-defs* (ordering obj))
+  (call-next-method))
+
+(defmethod collect-visible-defs* :around ((obj adt-def-decl))
+  nil)
+
+(defmethod collect-visible-defs* :around ((obj formula-decl))
+  (collect-visible-defs* (definition obj))
+  (call-next-method))
+
+(defmethod collect-visible-defs* ((obj subtype-judgement))
+  (collect-visible-defs* (declared-subtype obj)))
+
+(defmethod collect-visible-defs* ((obj number-judgement))
+  (collect-visible-defs* (number-expr obj)))
+
+(defmethod collect-visible-defs* ((obj name-judgement))
+  (collect-visible-defs* (name obj)))
+
+(defmethod collect-visible-defs* ((obj application-judgement))
+  (collect-visible-defs* (name obj))
+  (collect-visible-defs* (formals obj))
+  (collect-visible-defs* (judgement-type obj)))
+
+(defmethod collect-visible-defs* ((obj expr-judgement))
+  (collect-visible-defs* (expr obj))
+  (collect-visible-defs* (formals obj))
+  (collect-visible-defs* (judgement-type obj)))
+
+(defmethod collect-visible-defs* ((obj conversion-decl))
+  (unless (generated-by obj)
+    (collect-visible-defs* (expr obj))))
+
+(defmethod collect-visible-defs* ((obj auto-rewrite-decl))
+  (collect-visible-defs* (rewrite-names obj)))
+
+(defmethod collect-visible-defs* ((obj constant-rewrite-name))
+  (collect-visible-defs* (declared-type obj)))
+
+(defmethod collect-visible-defs* :around ((obj type-expr))
+  (cond ((print-type obj)
+	 (collect-visible-defs* (print-type obj)))
+	((or (place obj)
+	     (typep obj 'domain-tupletype))
+	 (call-next-method))))
+
+(defmethod collect-visible-defs* ((obj type-application))
+  (collect-visible-defs* (type obj))
+  (collect-visible-defs* (parameters obj)))
+
+(defmethod collect-visible-defs* ((obj subtype))
+  (unless (typep (predicate obj) 'binding-expr)
+    (collect-visible-defs* (supertype obj)))
+  (collect-visible-defs* (predicate obj)))
+
+(defmethod collect-visible-defs* ((obj setsubtype))
+  (collect-visible-defs* (formals obj))
+  (collect-visible-defs* (formula obj)))
+
+(defmethod collect-visible-defs* ((obj expr-as-type))
+  (collect-visible-defs* (expr obj)))
+
+(defmethod collect-visible-defs* ((obj funtype))
+  (collect-visible-defs* (domain obj))
+  (collect-visible-defs* (range obj)))
+
+(defmethod collect-visible-defs* ((obj tuple-or-struct-subtype))
+  (collect-visible-defs* (types obj)))
+
+(defmethod collect-visible-defs* ((obj cotupletype))
+  (collect-visible-defs* (types obj)))
+
+(defmethod collect-visible-defs* ((obj dep-domain-tupletype))
+  (collect-visible-defs* (var-bindings obj))
+  (collect-visible-defs* (types obj)))
+
+(defmethod collect-visible-defs* ((obj record-or-struct-subtype))
+  (collect-visible-defs* (fields obj)))
+
+(defmethod collect-visible-defs* :around ((obj struct-sub-recordtype))
+  (collect-visible-defs* (type obj))
+  (call-next-method))
+
+(defmethod collect-visible-defs* ((obj type-extension))
+  (collect-visible-defs* (type obj))
+  (collect-visible-defs* (extension obj)))
+
+(defmethod collect-visible-defs* ((obj binding-type))
+  (collect-visible-defs* (bindings obj))
+  (collect-visible-defs* (type obj)))
+
+(defmethod collect-visible-defs* :around ((obj typed-name-expr))
+  (collect-visible-defs* (declared-type obj))
+  (call-next-method))
+
+(defmethod collect-visible-defs* ((obj fieldex))
+  (collect-visible-defs* (actuals obj))
+  (collect-visible-defs* (dactuals obj)))
+
+(defmethod collect-visible-defs* ((obj field-application))
+  (collect-visible-defs* (actuals obj))
+  (collect-visible-defs* (dactuals obj))
+  (collect-visible-defs* (argument obj)))
+
+(defmethod collect-visible-defs* ((obj projection-application))
+  (collect-visible-defs* (actuals obj))
+  (collect-visible-defs* (dactuals obj))
+  (collect-visible-defs* (argument obj)))
+
+(defmethod collect-visible-defs* ((obj injection-application))
+  (collect-visible-defs* (actuals obj))
+  (collect-visible-defs* (dactuals obj))
+  (collect-visible-defs* (argument obj)))
+
+(defmethod collect-visible-defs* ((obj injection?-application))
+  (collect-visible-defs* (actuals obj))
+  (collect-visible-defs* (dactuals obj))
+  (collect-visible-defs* (argument obj)))
+
+(defmethod collect-visible-defs* ((obj extraction-application))
+  (collect-visible-defs* (actuals obj))
+  (collect-visible-defs* (dactuals obj))
+  (collect-visible-defs* (argument obj)))
+
+(defmethod collect-visible-defs* ((obj tuple-expr))
+  (collect-visible-defs* (exprs obj)))
+
+(defmethod collect-visible-defs* ((obj record-expr))
+  (collect-visible-defs* (assignments obj)))
+
+(defmethod collect-visible-defs* ((obj cases-expr))
+  (collect-visible-defs* (expression obj))
+  (collect-visible-defs* (selections obj))
+  (collect-visible-defs* (else-part obj)))
+
+(defmethod collect-visible-defs* ((obj selection))
+  (collect-visible-defs* (constructor obj))
+  (collect-visible-defs* (args obj))
+  (collect-visible-defs* (expression obj)))
+
+(defmethod collect-visible-defs* ((obj application))
+  (collect-visible-defs* (operator obj))
+  (collect-visible-defs* (argument obj)))
+
+;;; Tables should go here
+
+(defmethod collect-visible-defs* ((obj binding-expr))
+  (collect-visible-defs* (bindings obj))
+  (collect-visible-defs* (expression obj)))
+
+(defmethod collect-visible-defs* ((obj set-list-expr))
+  (collect-visible-defs* (exprs obj)))
+
+(defmethod collect-visible-defs* :around ((obj fieldex-lambda-expr))
+  (collect-visible-defs* (actuals obj))
+  (collect-visible-defs* (dactuals obj))
+  (call-next-method))
+
+(defmethod collect-visible-defs* ((obj update-expr))
+  (collect-visible-defs* (expression obj))
+  (collect-visible-defs* (assignments obj)))
+
+(defmethod collect-visible-defs* ((obj assignment))
+  (collect-visible-defs* (arguments obj))
+  (collect-visible-defs* (expression obj)))
+
+(defmethod collect-visible-defs* ((obj simple-decl))
+  (unless (untyped-bind-decl? obj)
+    (collect-visible-defs* (declared-type obj)))
+  (call-next-method))
+
+(defmethod collect-visible-defs* ((obj actual))
+  (collect-visible-defs* (expr obj)))
+
+(defmethod collect-visible-defs* ((obj mapping))
+  (collect-visible-defs* (lhs obj))
+  (collect-visible-defs* (rhs obj))
+  (collect-visible-defs* (declared-type obj)))
+
+(defmethod collect-visible-defs* :around ((obj mapping-with-formals))
+  (collect-visible-defs* (formals obj))
+  (call-next-method))
+
+(defmethod collect-visible-defs* :around ((obj mapping-lhs))
+  (collect-visible-defs* (decl-formals obj))
+  (call-next-method))
+
+(defmethod collect-visible-defs* ((obj rational-expr))
+  )
+
+(defmethod collect-visible-defs* (obj)
+  (break "Should define method for ~a" obj))
+
+(defmethod collect-visible-defs* ((obj name))
+  (collect-visible-defs* (actuals obj))
+  (collect-visible-defs* (dactuals obj))
+  (collect-visible-defs* (mappings obj))
+  (collect-visible-defs* (target obj))
+  (when (and (declaration obj)
+	     (const-decl? (declaration obj))
+	     (definition (declaration obj)))
+    (pushnew (declaration obj) *visible-defs*)))
+
