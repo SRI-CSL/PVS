@@ -545,9 +545,13 @@
 	    #+pvsdebug (assert (fully-typed? dthi))
 	    (when (visible-to-mapped-tcc? decl dthi dth)
 	      (compatible-arguments? decl dthi args (current-theory)))))
-	(let* ((modinsts (decl-args-compatible? decl args mappings))
-	       (thinsts (matching-decl-theory-instances
-			 acts dth modinsts)))
+	(let* ((cinsts (decl-args-compatible? decl args mappings))
+	       (modinsts (mapcar #'(lambda (thinst)
+				     (if (actuals thinst)
+					 thinst
+					 (copy thinst :actuals acts)))
+			   cinsts))
+	       (thinsts (matching-decl-theory-instances acts dth modinsts)))
 	  (when thinsts
 	    (remove-if (complement
 			#'(lambda (thinst)
@@ -818,11 +822,15 @@
 		  (push (car tres) (resolutions (expr act)))
 		  (type-ambiguity (expr act)))
 		(progn
-		  (when (and (mod-id (expr act))
+		  (when (and ;;(not (eq (module (declaration (car tres))) (current-theory)))
 			     (typep (type (car tres)) 'type-name)
 			     (same-id (expr act) (type (car tres))))
 		    (setf (mod-id (type (car tres)))
-			  (mod-id (expr act))))
+			  (mod-id (expr act)))
+		    (setf (actuals (type (car tres)))
+			  (actuals (expr act)))
+		    (setf (dactuals (type (car tres)))
+			  (dactuals (expr act))))
 		  (when (and (place (expr act))
 			     (null (place (type (car tres)))))
 		    (setf (place (type (car tres))) (place (expr act))))
