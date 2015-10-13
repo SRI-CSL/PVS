@@ -1764,7 +1764,8 @@
   (declare (ignore acts))
   (let* ((adtth (adt-theory (adt atype)))
 	 (decl (find '|every| (theory adtth) :key #'decl-id))
-	 (modname (mk-modname (id adtth) (actuals atype)))
+	 (thinst (module-instance atype))
+	 (modname (mk-modname (id adtth) (actuals atype) (library thinst)))
 	 (res (make-resolution decl modname)))
     (mk-name-expr '|every| nil nil res)))
 
