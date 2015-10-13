@@ -850,7 +850,10 @@
 
 (defmethod possibly-empty-type? ((te subtype))
   (if (and (recognizer-name-expr? (predicate te))
-	   (not (eq (adt (adt (constructor (predicate te)))) *adt*)))
+	   (or (null *adt*)
+	       (let ((rtype (adt (constructor (predicate te)))))
+		 (and (recursive-type? rtype)
+		      (not (eq (adt rtype) *adt*))))))
       (let ((accs (accessors (constructor (predicate te)))))
 	(some #'possibly-empty-type? (mapcar #'type accs)))
       t))
