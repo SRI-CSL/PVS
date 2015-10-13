@@ -37,7 +37,8 @@
 (defvar *ydatatype-warning* nil)
 (defvar *yname-hash* (make-pvs-hash-table))
 (defvar *translate-to-yices-hash* (make-pvs-hash-table))
-(defvar *yices-call* "yices -e -st -mi 2000")
+(defvar *yices-executable* nil)
+(defvar *yices-flags* "-e -st -mi 2000")
 (defvar *yices-id-counter*)  ;;needs to be initialized in eproofcheck
 (newcounter *yices-id-counter*)
 
@@ -417,35 +418,38 @@
 ;;*bound-variables* are the bound variables in the calling context, and
 ;;*bindings* are the ones built up locally.
 (defmethod translate-to-yices* :around ((obj type-expr) bindings)
-	   (if (or *bound-variables* *bindings*)
-	       (call-next-method)
-	       (let ((hashed-value (gethash obj *translate-to-yices-hash*)))
-		 (or hashed-value
-		     (let ((result (call-next-method)))
-		       (setf (gethash obj *translate-to-yices-hash*)
-			     result)
-		       result)))))
+  (declare (ignore bindings))
+  (if (or *bound-variables* *bindings*)
+      (call-next-method)
+      (let ((hashed-value (gethash obj *translate-to-yices-hash*)))
+	(or hashed-value
+	    (let ((result (call-next-method)))
+	      (setf (gethash obj *translate-to-yices-hash*)
+		    result)
+	      result)))))
     
 (defmethod translate-to-yices* :around ((obj name-expr) bindings)
-	   (if (or *bound-variables* *bindings*)
-	       (call-next-method)
-	       (let ((hashed-value (gethash obj *translate-to-yices-hash*)))
-		 (or hashed-value
-		     (let ((result (call-next-method)))
-		       (setf (gethash obj *translate-to-yices-hash*)
-			     result)
-		       result)))))
+  (declare (ignore bindings))
+  (if (or *bound-variables* *bindings*)
+      (call-next-method)
+      (let ((hashed-value (gethash obj *translate-to-yices-hash*)))
+	(or hashed-value
+	    (let ((result (call-next-method)))
+	      (setf (gethash obj *translate-to-yices-hash*)
+		    result)
+	      result)))))
 
 (defmethod translate-to-yices* :around ((obj binding-expr) bindings)
-	   (if (or *bound-variables* *bindings*)
-	       (call-next-method)
-	       (let ((hashed-value
-		      (gethash obj *translate-to-yices-hash*)))
-		 (or hashed-value
-		     (let ((result (call-next-method)))
-		       (setf (gethash obj *translate-to-yices-hash*)
-			     result)
-		       result)))))
+  (declare (ignore bindings))
+  (if (or *bound-variables* *bindings*)
+      (call-next-method)
+      (let ((hashed-value
+	     (gethash obj *translate-to-yices-hash*)))
+	(or hashed-value
+	    (let ((result (call-next-method)))
+	      (setf (gethash obj *translate-to-yices-hash*)
+		    result)
+	      result)))))
 
 (defmethod translate-to-yices* ((list list) bindings)
   (cond ((consp list)
@@ -455,10 +459,8 @@
 
 (defun yices-recognizer (name bindings)
   (when (recognizer? name)
-       (let ((ytype (translate-to-yices* (type name)
-						bindings)))
-	 (format nil "~a?" (translate-to-yices* (constructor name) bindings) ))))
-
+    (translate-to-yices* (type name) bindings)
+    (format nil "~a?" (translate-to-yices* (constructor name) bindings))))
 
 (defmethod translate-to-yices* ((expr name-expr) bindings)
   (let ((bpos (assoc expr bindings
@@ -483,33 +485,35 @@
 		      (format-if "~%Adding definition: ~a" defn)
 		      yname))))))))
 
-(defun eta-expanded-yices-interpretation (name-expr)
-  (let ((yy (yices-interpretation name-expr)))
-    (when yy
-      (if (funtype? (type name-expr))
-	  (let* ((ftype (type name-expr))
-		 (dtypes (types (domain ftype)))
-		 (etavars (loop for dt in dtypes
-			       as i from 1
-			       collect
-			       (format nil "etavar_~a" i)))
-		 (etabindings (loop for dt in dtypes
-			       as ev in etavars
-			       collect (format nil "~a::~a"
-					       ev (translate-to-yices* dt nil)))))
-	    (format nil "(lambda (~{ ~a~})(~a ~{ ~a~}))"
-		    etabindings yy etavars))
-	yy))))
+;; (defun eta-expanded-yices-interpretation (name-expr)
+;;   (let ((yy (yices-interpretation name-expr)))
+;;     (when yy
+;;       (if (funtype? (type name-expr))
+;; 	  (let* ((ftype (type name-expr))
+;; 		 (dtypes (types (domain ftype)))
+;; 		 (etavars (loop for dt in dtypes
+;; 			       as i from 1
+;; 			       collect
+;; 			       (format nil "etavar_~a" i)))
+;; 		 (etabindings (loop for dt in dtypes
+;; 			       as ev in etavars
+;; 			       collect (format nil "~a::~a"
+;; 					       ev (translate-to-yices* dt nil)))))
+;; 	    (format nil "(lambda (~{ ~a~})(~a ~{ ~a~}))"
+;; 		    etabindings yy etavars))
+;; 	yy))))
 
 (defmethod translate-to-yices* ((expr constructor-name-expr) bindings)
   (call-next-method (lift-adt expr) bindings))
 
 
 (defmethod translate-to-yices* ((expr number-expr) bindings)
-      (number expr))
+  (declare (ignore bindings))
+  (number expr))
 
 (defmethod translate-to-yices* ((ex string-expr) bindings)
-      (string->int (string-value ex)))
+  (declare (ignore bindings))
+  (string->int (string-value ex)))
 
 (defmethod translate-to-yices* ((expr record-expr) bindings)
   (format nil "(mk-record~{ ~a~})"
@@ -517,8 +521,8 @@
 
 (defmethod translate-to-yices* ((expr uni-assignment) bindings)
   (format nil "~a::~a"
-	  (id (caar (arguments expr)))
-	  (translate-to-yices* (expression expr) bindings)))
+    (id (caar (arguments expr)))
+    (translate-to-yices* (expression expr) bindings)))
 
 (defmethod translate-to-yices* ((expr tuple-expr) bindings)
   (format nil "(mk-tuple ~{ ~a~})"
@@ -699,8 +703,8 @@
 			(format nil "(exists (~a) ~a)"
 			  bindstring yexpression)))))))))) ;;no else case
 
-(defmethod translate-to-yices* ((expr forall-expr) bindings)
-  (call-next-method))
+;; (defmethod translate-to-yices* ((expr forall-expr) bindings)
+;;   (call-next-method))
 
 ;; (if *yqexpand*
 ;;       (with-slots ((expr-bindings bindings) expression) expr
@@ -714,40 +718,40 @@
   (cond ((consp expr-bindings)
 	 (let* ((bind1 (car expr-bindings))
 		(typ1 (type bind1))
-		(styp1 (find-supertype typ1)))
+		;;(styp1 (find-supertype typ1))
+		)
 	   (cond ((enum-adt? (find-supertype typ1))
 		  (format nil "(and ~{ ~a~})"
-		    (multiple-value-bind (nbinding npreds)
+		    (multiple-value-bind (nbindings npreds)
 			(collect-bindings-predicates bind1 nil)
 		      (let ((ypreds
-			     (translate-typepreds-to-yices nbindings npreds)))
+			     (translate-typepreds-to-yices nbindings bindings npreds)))
 			(loop for const in (constructors typ1) collect
-			      (if ypreds
-				  (format nil "(implies ~a ~a)"
-				    (format nil "(and ~{ ~a~})"
-				      (loop for ypred in ypreds
-					    collect (format nil "~a(~a)" ypred
-							    const)))
-				    (translate-forall-to-yices (cdr expr-bindings)
-							       expression
-							       (cons (cons bind1 const)
-								   bindings)))
-				  (translate-forall-to-yices (cdr expr-bindings)
-							       expression
-							       (cons (cons bind1 const)
-								   bindings))))))))
+			     (if ypreds
+				 (format nil "(implies ~a ~a)"
+				   (format nil "(and ~{ ~a~})"
+				     (loop for ypred in ypreds
+					collect (format nil "~a(~a)" ypred
+							const)))
+				   (translate-forall-to-yices (cdr expr-bindings)
+							      expression
+							      (cons (cons bind1 const)
+								    bindings)))
+				 (translate-forall-to-yices (cdr expr-bindings)
+							    expression
+							    (cons (cons bind1 const)
+								  bindings))))))))
 		 )))))
 				    
 
 ;;used to generate subtype predicate applications to expr
-(defun translate-typepreds-to-yices (nbinding npreds)
+(defun translate-typepreds-to-yices (nbinding bindings npreds)
   (loop for pred in npreds collect
-	(multiple-value-bind
-	    (newbindings bindstring)
-	    (translate-yices-bindings (list nbinding) bindings "")
-	  (format nil "(lambda (~a) ~a)"
-	    bindstring
-	    (translate-to-yices pred
+       (multiple-value-bind (newbindings bindstring)
+	   (translate-yices-bindings (list nbinding) bindings "")
+	 (format nil "(lambda (~a) ~a)"
+	   bindstring
+	   (translate-to-yices* pred
 				(cons newbindings bindings))))))
 		      
 
@@ -839,6 +843,7 @@
       (translate-to-yices* value bindings)))
 
 (defmethod translate-yices-assign-args (args value trbasis (type t) bindings)
+  (declare (ignore args trbasis))
   (translate-to-yices* value bindings))
 
 (defun eta-expanded-yices-interpretation (name-expr)
@@ -919,12 +924,40 @@
 ;;     ( . bv-sgt)
 ;;     ( . bv-sge)))
 
+(defun find-yices-executable ()
+  (or *yices-executable*
+      (cond ((and (pvs-context-yices-executable)
+		  (program-version (pvs-context-yices-executable) "1"))
+	     (setq *yices-executable* "(pvs-context-yices-executable)"))
+	    ((program-version "yices1 --version" "1")
+	     (setq *yices-executable* "yices1"))
+	    ((program-version "yices --version" "1")
+	     (setq *yices-executable* "yices"))
+	    (t (format t "~%Yices 1 cannot be found in your path")
+	       (when (program-version "yices --version" "Yices 2")
+		 (format t "~%\"yices\" is in your path, but it is version 2"))
+	       (unless (pvs-yes-or-no-p
+			"~%Use yices2 (i.e., \"yices2\" or \"yices2-with-rewrites\") instead? ")
+		 (format t "~%If necessary, download and install Yices 1 from http://yices.csl.sri.com")
+		 (let ((path (pvs-dialog "~%Please enter the path to Yices 1: ")))
+		   (get-yices-executable-path path)))))))
+
+(defun get-yices-executable-path (path)
+  (cond ((program-version (concatenate 'string path " --version") "1")
+	 (setq *yices-executable* path))
+	(t (format t "~%Invalid path to Yices 1 executable")
+	   (let ((npath (pvs-dialog "~%Please enter the path to Yices 1: ")))
+	     (get-yices-executable-path npath)))))
+	    
+
 (defun yices (sformnums)
   #'(lambda (ps)
       (let* ((goalsequent (current-goal ps))
 	     (s-forms (select-seq (s-forms goalsequent) sformnums))
 	     (*ydefns* nil)
 	     (*ydatatype-warning* nil))
+	(find-yices-executable)
+	(assert *yices-executable*)
 	(clear-yices)
 	(let ((yices-forms
 	       (loop for sf in s-forms
@@ -952,20 +985,20 @@
 	      (setq status
 		    #+allegro
 		    (excl:run-shell-command
-		     (format nil "~a ~a" *yices-call* (namestring file))
+		     (format nil "~a ~a ~a" *yices-executable* *yices-flags* (namestring file))
 		     :input "//dev//null"
 		     :output out
 		     :error-output :output)
 		    #+sbcl
 		    (sb-ext:run-program
-		     (format nil "~a ~a" *yices-call* (namestring file))
+		     (format nil "~a ~a ~a" *yices-executable* *yices-flags* (namestring file))
 		     nil
 		     :input "//dev//null"
 		     :output out
 		     :error out)
 		    #+cmu
 		    (extensions:run-program
-		     (format nil "~a ~a" *yices-call* (namestring file))
+		     (format nil "~a ~a ~a" *yices-executable* *yices-flags* (namestring file))
 		     nil
 		     :input "//dev//null"
 		     :output out
@@ -1004,7 +1037,10 @@ of the negations of the selected formulas is unsatisfiable. "
   
 (defstep yices-with-rewrites
   (&optional (fnums *) defs theories rewrites exclude-theories exclude)
-  (then (simplify-with-rewrites fnums defs theories rewrites exclude-theories exclude)
+  (then (simplify-with-rewrites fnums defs theories
+				:rewrites rewrites
+				:exclude-theories exclude-theories
+				:exclude exclude)
 	(yices fnums))
   "Installs rewrites from statement (DEFS is either NIL, T, !, explicit,
 or explicit!), from THEORIES, and REWRITES, then applies (assert fnums) followed
