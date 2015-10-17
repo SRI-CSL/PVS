@@ -213,7 +213,11 @@
    If we cannot guarantee that BDD pointers have a 0 MSB then our trick
    falls apart. This is tested in bdd_alloc().
 */
+#ifdef __LP64__
+#define BDD_F_MASK	0x8000000000000000
+#else
 #define BDD_F_MASK	0x80000000
+#endif
 #define BDD_F_SET(F)	((BDDPTR) (BITS (F) | BDD_F_MASK))
 #define BDD_F_SET_SAVE(F)	\
 	(bdd_ok_to_use_MSB ? BDD_F_SET(F) \
