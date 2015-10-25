@@ -1818,9 +1818,9 @@
 (defun generate-cond-disjoint-tcc (expr conditions values)
   (let* ((*old-tcc-name* nil)
 	 (ndecl (make-cond-disjoint-tcc expr conditions values)))
-    (when ndecl
-      (insert-tcc-decl 'disjointness expr nil ndecl)
-      (add-tcc-comment 'disjointness expr nil))))
+    (if ndecl
+	(insert-tcc-decl 'disjointness expr nil ndecl)
+	(add-tcc-comment 'disjointness expr nil))))
 
 (defun make-cond-disjoint-tcc (expr conditions values)
   (when (decl-formals (current-declaration)) (break "make-cond-disjoint-tcc"))
@@ -1877,9 +1877,9 @@
 (defun generate-cond-coverage-tcc (expr conditions)
   (let* ((*old-tcc-name* nil)
 	 (ndecl (make-cond-coverage-tcc expr conditions)))
-    (when ndecl
-      (insert-tcc-decl 'coverage expr nil ndecl)
-      (add-tcc-comment 'coverage expr nil))))
+    (if ndecl
+	(insert-tcc-decl 'coverage expr nil ndecl)
+	(add-tcc-comment 'coverage expr nil))))
 
 (defun make-cond-coverage-tcc (expr conditions)
   (when (decl-formals (current-declaration)) (break "make-cond-coverage-tcc"))
