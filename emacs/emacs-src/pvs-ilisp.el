@@ -165,7 +165,7 @@ intervenes."
 	  (format "^\\(%s\\(%s\\|%s\\) \\)+" prompt-pre old-prompt new-prompt)))
   (setq comint-interrupt-regexp  "Error: [^\n]* interrupt\)")
   (setq ilisp-error-regexp
-	"^\\(Error:[^\n]*\\)\\|\\(Break:[^\n]*\\)")
+	"^[ \t]\\(Error:[^\n]*\\)\\|\\(Break:[^\n]*\\)")
   (setq pvs-gc-end-regexp ";;; Finished GC")
   ;; (setq font-lock-defaults
   ;; 	`((pvs-lisp-font-lock-keywords
@@ -187,7 +187,7 @@ intervenes."
   (setq comint-prompt-regexp
 	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter")
   (setq comint-interrupt-regexp  "^Interrupted at")
-  (setq ilisp-error-regexp "^Restarts:$")
+  (setq ilisp-error-regexp "^[ \t]Restarts:$")
   (setq pvs-top-regexp
 	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) ")
   (setq pvs-gc-end-regexp ";;; Finished GC"))
@@ -205,7 +205,7 @@ intervenes."
 	"^\\([0-9]+\\]+\\|[0-9]+\\[[0-9]+\\]\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) \\|Rule\\? \\|<GndEval> \\|<PVSio> \\|yices > \\|(Y or N)\\|(Yes or No)\\|Please enter")
   (setq comint-interrupt-regexp  "^  Interactive interrupt at")
   (setq comint-continue ":continue")
-  (setq ilisp-error-regexp "^restarts (invokable by number or by possibly-abbreviated name):$")
+  (setq ilisp-error-regexp "^[ \t]restarts (invokable by number or by possibly-abbreviated name):$")
   (setq pvs-top-regexp
 	"^\\([0-9]+\\]+\\|\\*\\|[-a-zA-Z0-9]*\\[[0-9]+\\]:\\) ")
   (setq pvs-gc-end-regexp ";;; Finished GC"))
