@@ -2300,6 +2300,8 @@
 
 (defmethod typecheck-ass-args (args (type adt-type-name) maplet?)
   (let ((accs (collect-datatype-assign-arg-accessors type (caar args))))
+    (unless accs
+      (type-error (caar args) "~a is not an accessor in ~a" (caar args) type))
     (setf (resolutions (caar args)) (resolutions (car accs)))
     (setf (type (caar args)) (type (car accs)))
     (when (cdr args)
