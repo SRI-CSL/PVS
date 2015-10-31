@@ -713,8 +713,8 @@
 	    (or (when (ordering cdecl)
 		  (copy (ordering cdecl)))
 		'<))
-	   (appl1 (mk-recursive-application meas (outer-arguments cdecl)))
-	   (appl2 (mk-recursive-application meas arguments))
+	   (appl1 (make!-recursive-application meas (outer-arguments cdecl)))
+	   (appl2 (make!-recursive-application meas arguments))
 	   (relterm (beta-reduce
 		     (typecheck* (mk-application ordering appl2 appl1)
 				 *boolean* nil nil)))
