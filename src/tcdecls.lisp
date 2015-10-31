@@ -1621,6 +1621,7 @@
 	  (formal-const-decl
 	   (assert (eq (module ndecl) (current-theory)))
 	   postypes)
+	  (field-decl postypes)
 	  (t (break "Need more here"))))))
 
 (defun all-type-params (decl)
@@ -3715,24 +3716,103 @@
 
 (defmethod typecheck* ((decl expr-judgement) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (let ((*generate-tccs* 'none))
+  (let* ((*generate-tccs* 'none))
     (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
-  (set-type (declared-type decl) nil)
-  (typecheck* (formals decl) nil nil nil)
-  (let ((fmlist (formals decl)))
-    (let ((dup (duplicates? fmlist :key #'id)))
-      (when dup
-	(type-error dup
-	  "May not use duplicate bindings in expr judgements")))
-    (set-formals-types fmlist))
-  (let* ((*bound-variables* (reverse (formals decl)))
-	 (*no-conversions-allowed* t)
+  (let* ((*no-conversions-allowed* t)
+	 (*generate-tccs* 'none)
 	 (*compatible-pred-reason*
 	  (acons (expr decl) "judgement" *compatible-pred-reason*)))
-    (typecheck* (expr decl) (type decl) nil nil))
+    (cond ((forall-expr? (expr decl))
+	   ;; Note that it is not really a forall expr, as it is not boolean
+	   (typecheck* (bindings (expr decl)) nil nil nil)
+	   (let ((*bound-variables* (append (bindings (expr decl)) *bound-variables*)))
+	     (typecheck* (expression (expr decl)) (type decl) nil nil)))
+	  (t (typecheck* (expr decl) (type decl) nil nil))))
+  (if (freevars (expr decl))
+      ;; Need to decide if it should be an application-judgement
+      ;; Note that there could be ambiguity here - for example
+      ;;  judgement *(x, x) has_type nnreal
+      (let ((args-lists (arguments* (expr decl))))
+	(if (and (typep (expr decl) '(and application (not infix-application)))
+		 (every #'(lambda (args) (every #'variable? args))
+			args-lists)
+		 (not (duplicates? (apply #'append args-lists) :test #'same-declaration)))
+	    (change-expr-judgement-to-application-judgement decl)
+	    ;; Not an application-judgement, but has freevars
+	    ;; Get the freevars list, and create untyped-bind-decls
+	    ;; Append to the beginning of bindings if expr is a forall-expr
+	    ;; Set (formals decl) to this list
+	    ;; Then retypecheck expr under the new bindings
+	    (let* ((free-formals (mapcar #'(lambda (fv)
+					     (make-instance 'untyped-bind-decl
+					       :id (id fv)
+					       :type (type fv)
+					       :chain? t))
+				   (freevars (expr decl))))
+		   (formals (append free-formals
+				    (when (forall-expr? (expr decl)) (bindings (expr decl))))))
+	      (set-formals-types formals)
+	      (setf (formals decl) formals)
+	      (untypecheck-theory (declared-type decl))
+	      (let ((*bound-variables* (reverse formals)))
+		(let ((*generate-tccs* 'none))
+		  ;; Need to retypecheck, to get the bound variables set
+		  (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
+		(set-type (declared-type decl) nil))
+	      (untypecheck-theory (expr decl))
+	      (let* ((*no-conversions-allowed* t)
+		     (*compatible-pred-reason*
+		      (acons (expr decl) "judgement" *compatible-pred-reason*))
+		     (*bound-variables* (reverse formals)))
+		(if (forall-expr? (expr decl))
+		    (typecheck* (expression (expr decl)) (type decl) nil nil)
+		    (typecheck* (expr decl) (type decl) nil nil))))))
+      ;; Nothing else needed if no free variables
+      )
   (when (formals-sans-usings (current-theory))
     (generic-judgement-warning decl))
+  ;;(break "Before add-judgement-decl after change: ~a" (id decl))
   (add-judgement-decl decl))
+
+(defun change-expr-judgement-to-application-judgement (decl)
+  (let* ((formals (mapcar #'(lambda (args)
+			      (mapcar #'(lambda (arg)
+					  (change-class arg 'untyped-bind-decl
+					    :chain? t))
+				args))
+		    (arguments* (expr decl))))
+	 (fmlist (apply #'append formals)))
+    (set-formals-types fmlist)
+    ;; Now need to retypecheck the declared-type and set the type accordingly
+    ;; In order to use the bindings instead of the variables
+    (untypecheck-theory (declared-type decl))
+    (let ((*bound-variables* (reverse fmlist)))
+      (let ((*generate-tccs* 'none))
+	;; Need to retypecheck, to get the bound variables set
+	(setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
+      (set-type (declared-type decl) nil))
+    ;; Now need to retypecheck expr
+    (untypecheck-theory (expr decl))
+    (let* ((*no-conversions-allowed* t)
+	   (*compatible-pred-reason*
+	    (acons (expr decl) "judgement" *compatible-pred-reason*)))
+      (cond ((forall-expr? (expr decl))
+	     ;; Note that it is not really a forall expr, as it is not boolean
+	     (let ((*bound-variables* (append (bindings (expr decl)) *bound-variables*)))
+	       (typecheck* (expression (expr decl)) (type decl) nil nil)))
+	    (t (typecheck* (expr decl) (type decl) nil nil))))
+    (let ((jtype (make-formals-funtype formals (type decl))))
+      (assert (null (freevars jtype)))
+      (change-class decl 'application-judgement
+	:name (operator* (expr decl))
+	:formals formals
+	:judgement-type jtype))
+    (when (def-decl? (declaration (name decl)))
+      (pvs-warning
+	  "The generated TCCs for judgement ~a~%~
+             might be easier to prove using a RECURSIVE judgement.~%~
+             (for backward compatibility, this is not generated by default)."
+	(ref-to-id decl)))))
 
 (defmethod typecheck* ((decl rec-application-judgement) expected kind args)
   (declare (ignore expected kind args))
