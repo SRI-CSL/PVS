@@ -3907,13 +3907,17 @@ space")
 (defmethod constant? ((expr t))
   nil)
 
+(defmethod variable? ((expr field-decl))
+  nil)
+
 (defmethod variable? ((expr binding))
   t)
 
 (defmethod variable? ((expr name-expr))
   (with-slots (resolutions) expr
     (assert (singleton? resolutions))
-    (typep (declaration (car resolutions)) '(or var-decl binding))))
+    (typep (declaration (car resolutions))
+	   '(or var-decl (and binding (not field-decl))))))
 
 (defmethod variable? ((expr field-assignment-arg))
   nil)
