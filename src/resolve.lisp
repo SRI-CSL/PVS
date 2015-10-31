@@ -1788,7 +1788,7 @@
   (and (typep decl 'var-decl)
        (or *in-checker*
 	   (not (typep (current-declaration)
-		       '(or formula-decl subtype-judgement))))))
+		       '(or formula-decl subtype-judgement expr-judgement))))))
 
 
 ;;; Filter-preferences returns a subset of the list of decls, filtering

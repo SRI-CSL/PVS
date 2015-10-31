@@ -31,6 +31,8 @@
 
 (defvar *allowed-ids* nil)
 
+(defvar *allowed-typed-names* nil)
+
 ;;; Makes extensive use of the following functions from ERGO:
 ;;;	sim-term-op - returns the symbol which is the operator of a term
 ;;;	is-sop	    - checks whether a given symbol is the operator of a term
@@ -679,40 +681,51 @@
     decls))
 
 (defun xt-subtype-judgement* (jdecl dtype place)
-  (cond ((is-sop 'JSUBTYPEDECL jdecl)
-	 (let ((type (xt-not-enum-type-expr (term-arg0 jdecl))))
+  (cond ((is-sop 'JDECL-EXPR jdecl)
+	 (let* ((ex (xt-expr (term-arg0 jdecl)))
+		(type (xt-convert-expr-to-type-expr ex)))
 	   (make-instance 'subtype-judgement
 	     :declared-subtype type
 	     :declared-type dtype
 	     :chain? t
 	     :place place)))
-	((is-sop 'JNAMEDECL jdecl)
-	 (let ((name (xt-name (term-arg0 jdecl) nil)))
+	(t
+	 (assert (is-sop 'JDECL-TYPE jdecl))
+	 (let ((type (xt-type-expr (term-arg0 jdecl))))
 	   (make-instance 'subtype-judgement
-	     :declared-subtype (change-class name 'type-name)
+	     :declared-subtype type
 	     :declared-type dtype
 	     :chain? t
-	     :place place)))
-	((is-sop 'JAPPLDECL jdecl)
-	 (let ((name (xt-name (term-arg0 jdecl) nil))
-	       (formals (xt-pdf (term-arg1 jdecl))))
-	   (when (cdr formals)
-	     (parse-error formals "Type applications may not be Curried"))
-	   (make-instance 'subtype-judgement
-	     :declared-subtype (make-instance 'type-application
-				 :type (change-class name 'type-name)
-				 :parameters (car formals)
-				 :place (place name))
-	     :declared-type dtype
-	     :chain? t
-	     :place place)))
-	((is-number jdecl)
-	 (parse-error jdecl "type expression expected here"))
-	(t (make-instance 'subtype-judgement
-	     :declared-subtype (xt-not-enum-type-expr jdecl)
-	     :declared-type dtype
-	     :chain? t
-	     :place place))))
+	     :place place)))))
+
+(defun xt-convert-expr-to-type-expr (ex)
+  (xt-convert-expr-to-type-expr* ex))
+
+(defmethod xt-convert-expr-to-type-expr* :around ((ex expr))
+  (if (plusp (parens ex))
+      (make-instance 'expr-as-type :expr ex)
+      (call-next-method)))
+
+(defmethod xt-convert-expr-to-type-expr* ((ex name-expr))
+  (change-class ex 'type-name))
+
+(defmethod xt-convert-expr-to-type-expr* ((ex set-expr))
+  (change-class ex 'subtype
+    :predicate (copy ex)))
+
+(defmethod xt-convert-expr-to-type-expr* ((ex application))
+  (if (name-expr? (operator ex))
+      (let* ((tn (change-class (operator ex) 'type-name))
+	     (args (arguments ex)))
+	(make-instance 'type-application
+	  :type tn
+	  :parameters args
+	  :place (place ex)))
+      (parse-error (place ex) "Type application must be of the form T(a, b, ...)")))
+
+(defmethod xt-convert-expr-to-type-expr* ((ex expr))
+  (parse-error ex "Type expected here"))
+      
 
 (defun xt-const-judgement (jdecls dtype place)
   (let ((decls (mapcar #'(lambda (jdecl)
@@ -723,33 +736,100 @@
 
 (defun xt-const-judgement* (jdecl dtype place)
   (case (sim-term-op jdecl)
-    (JNAMEDECL
-     (let ((ex (xt-name (term-arg0 jdecl) nil)))
-       (if (number-expr? ex)
-	   (make-instance 'number-judgement
-	     :number-expr ex
-	     :declared-type dtype
-	     :chain? t
-	     :place place)
-	   (make-instance 'name-judgement
-	     :name (change-class ex 'name-expr)
-	     :declared-type dtype
-	     :chain? t
-	     :place place))))
-    (JAPPLDECL
-     (make-instance 'application-judgement
-       :name (change-class (xt-name (term-arg0 jdecl) nil) 'name-expr)
-       :formals (xt-pdf (term-arg1 jdecl))
-       :declared-type dtype
-       :chain? t
-       :place place))
-    (JEXPRDECL
-     (let ((jd (xt-jexprdecl jdecl)))
-       (setf (declared-type jd) dtype
-	     (chain? jd) t
-	     (place jd) place)
-       jd))
-    (t (parse-error jdecl "Types may not have HAS_TYPE judgements."))))
+    (JDECL-EXPR
+     (let* ((*allowed-typed-names* t)
+	    (ex (xt-expr (term-arg0 jdecl))))
+       (typecase ex
+	 (number-expr
+	  (assert (eq *allowed-typed-names* t))
+	  (make-instance 'number-judgement
+	    :number-expr ex
+	    :declared-type dtype
+	    :chain? t
+	    :place place))
+	 (name-expr
+	  (assert (eq *allowed-typed-names* t))
+	  (make-instance 'name-judgement
+	    :name ex
+	    :declared-type dtype
+	    :chain? t
+	    :place place))
+	 (application
+	  (if (eq *allowed-typed-names* t)
+	      ;; No typed-names found - can treat as a normal application for
+	      ;; a judgement-expr
+	      (make-instance 'expr-judgement
+		:declared-type dtype
+		:chain? t
+		:expr ex
+		:place place)
+	      ;; Found a typed-name - need to check that the formals are of the
+	      ;; right shape, and convert name-exprs to untyped-bind-decls
+	      (let ((formals (create-formals-from-arguments (arguments* ex))))
+		(if (name-expr? (operator* ex))
+		    (make-instance 'application-judgement
+		      :name (operator* ex)
+		      :formals formals
+		      :declared-type dtype
+		      :chain? t
+		      :place place)
+		    (parse-error)))))
+	 (t (make-instance 'expr-judgement
+	      :declared-type dtype
+	      :chain? t
+	      :expr ex
+	      :place place)))))))
+
+;; Arguments come from parsing decl as an expr.  Now want to convert to
+;; pdformals+
+
+;; pdformals ::= '(' adformals ')'
+;; adformals ::= adformal++','
+;; adformal ::= typed-id | '(' typed-ids ')'
+;; typed-id ::= idop [':' type-expr] ['|' expr]
+;; typed-ids ::= idops [':' type-expr] ['|' expr]
+
+;; Problems:
+;;  - allowing "idop | expr" causes problems, so must include the type
+;;  - 
+
+
+(defun create-formals-from-arguments (args-list &optional formals)
+  ;; args-list should be a list of lists
+  (if (null args-list)
+      (nreverse formals)
+      (let ((args (create-formals-from-arguments* (car args-list))))
+	(assert (consp args))
+	(create-formals-from-arguments (cdr args-list) (cons args formals)))))
+
+(defmethod create-formals-from-arguments* ((args cons) &optional formals)
+  (if (null args)
+      (nreverse formals)
+      (let ((fml (create-formal-from-argument (car args))))
+	(assert (bind-decl? fml))
+	(create-formals-from-arguments* (cdr args) (cons fml formals)))))
+
+(defmethod create-formals-from-arguments* ((args null) &optional formals)
+  (let ((fmls (nreverse formals)))
+    (xt-set-declared-types fmls)
+    fmls))
+
+(defmethod create-formals-from-arguments* ((args tuple-expr) &optional formals)
+  (break "create-formals-from-arguments* (tuple-expr)"))
+
+(defmethod create-formals-from-arguments* ((args t) &optional formals)
+  (parse-error))
+  
+
+(defmethod create-formal-from-argument ((arg name-expr))
+  (change-class arg 'untyped-bind-decl :chain? t))
+
+(defmethod create-formal-from-argument ((arg bind-decl))
+  arg)
+
+(defmethod create-formal-from-argument ((arg t))
+  (break "Bad arg in create-formal-from-argument"))
+  
 
 (defun xt-jexprdecl (jdecl)
   (when (and (> (length (term-args (term-arg0 jdecl))) 1)
@@ -769,14 +849,24 @@
 
 
 (defun xt-rec-judgement* (jdecl dtype place)
-  (if (eq (sim-term-op jdecl) 'JAPPLDECL)
-      (make-instance 'rec-application-judgement
-	:name (change-class (xt-name (term-arg0 jdecl) nil) 'name-expr)
-	:formals (xt-pdf (term-arg1 jdecl))
-	:declared-type dtype
-	:chain? t
-	:place place)
-      (parse-error jdecl "Recursive judgements are only for applications")))
+  (if (eq (sim-term-op jdecl) 'JDECL-EXPR)
+      (let* ((*allowed-typed-names* t)
+	     (ex (xt-expr (term-arg0 jdecl))))
+	(cond ((not (application? ex))
+	       (parse-error jdecl "Recursive judgements are only for applications"))
+	      ((not (name-expr? (operator* ex)))
+	       (parse-error jdecl "Recursive judgements are only for named applications"))
+	      ((eq *allowed-typed-names* t)
+	       (parse-error jdecl "Recursive judgements must have formals"))
+	      (t
+	       (let ((formals (create-formals-from-arguments (arguments* ex))))
+		 (make-instance 'rec-application-judgement
+		   :name (operator* ex)
+		   :formals formals
+		   :declared-type dtype
+		   :chain? t
+		   :place place)))))
+      (parse-error jdecl "Recursive judgements are not for types")))
 
 ;;; Conversions
 
@@ -1035,7 +1125,7 @@
 			:formula (xt-expr expr)
 			:place (term-place type-expr))))
 	  (make-instance 'pred-bind-decl
-	    :id (xt-idop idop)
+	    :id id
 	    :declared-type dtype
 	    :place (term-place typed-id))))))
 
@@ -1599,6 +1689,7 @@
     (NUMBER-EXPR (xt-number-expr expr))
     (STRING-EXPR (xt-string-expr expr))
     (NAME-EXPR (xt-name-expr expr))
+    (TYPED-NAME (xt-typed-name expr))
     (LIST-EXPR (xt-list-expr expr))
     ;;(true (xt-true expr))
     ;;(false (xt-false expr))
@@ -1848,6 +1939,38 @@
 		(progn (change-class name 'name-expr)
 		       (setf (place name) (term-place expr))
 		       name)))))))
+
+(defun xt-typed-name (expr)
+  (if *allowed-typed-names*
+      (let* ((name (xt-name (term-arg0 expr) nil))
+	     (type (xt-not-enum-type-expr (term-arg1 expr)))
+	     (pred (unless (is-sop 'NO-PRED (term-arg2 expr))
+		     (xt-expr (term-arg2 expr)))))
+	(when (eq *allowed-typed-names* t)
+	  (setq *allowed-typed-names* expr))
+	(when (or (mod-id name)
+		  (library name)
+		  (actuals name)
+		  (dactuals name)
+		  (mappings name)
+		  (target name))
+	  (parse-error expr "Typed id must be a simple id"))
+	(assert (id name))
+	(if pred
+	    (let* ((id (id name))
+		   (id-place (term-place (term-arg0 (term-arg0 expr))))
+		   (formals (xt-typed-id-bind-decl id type id-place))
+		   (dtype (make-instance 'setsubtype
+			    :supertype type
+			    :formals formals
+			    :formula pred
+			    :place (place type))))
+	      (make-instance 'pred-bind-decl
+		:id id
+		:declared-type dtype
+		:place (term-place expr)))
+	    (xt-typed-id-bind-decl (id name) type (term-place expr))))
+      (parse-error expr "Typed name not allowed here")))
 
 (defun projection? (id)
   (when (symbolp id)
