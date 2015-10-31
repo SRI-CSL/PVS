@@ -3535,13 +3535,15 @@ required a context.")
 
 (defmethod set-type* ((expr first-cond-expr) expected)
   (declare (ignore expected))
-  (call-next-method)
-  (generate-cond-tccs expr))
+  (let ((*ignore-else-part-tccs* nil))
+    (call-next-method)
+    (generate-cond-tccs expr)))
 
 (defmethod set-type* ((expr single-cond-expr) expected)
   (declare (ignore expected))
-  (call-next-method)
-  (generate-cond-tccs expr))
+  (let ((*ignore-else-part-tccs* nil))
+    (call-next-method)
+    (generate-cond-tccs expr)))
 
 (defun generate-cond-tccs (expr)
   (unless (or *generating-cond-tcc*
