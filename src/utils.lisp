@@ -1450,7 +1450,7 @@
 			     (all-decls (module decl)))))
 	(assert (memq decl same-id-decls))
 	(if (cdr same-id-decls)
-	    (let ((idx (1+ (position decl same-decl-ids))))
+	    (let ((idx (1+ (position decl same-id-decls))))
 	      (intern (format nil "~a_~a_~d" (id (module decl)) (id decl) idx)
 		      :pvs))
 	    (intern (format nil "~a_~a" (id (module decl))(id decl)))))
@@ -3907,17 +3907,13 @@ space")
 (defmethod constant? ((expr t))
   nil)
 
-(defmethod variable? ((expr field-decl))
-  nil)
-
 (defmethod variable? ((expr binding))
   t)
 
 (defmethod variable? ((expr name-expr))
   (with-slots (resolutions) expr
     (assert (singleton? resolutions))
-    (typep (declaration (car resolutions))
-	   '(or var-decl (and binding (not field-decl))))))
+    (typep (declaration (car resolutions)) '(or var-decl binding))))
 
 (defmethod variable? ((expr field-assignment-arg))
   nil)
