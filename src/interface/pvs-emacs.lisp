@@ -623,23 +623,27 @@
 ;;; *pvs* buffer.  This around method allows other displays, currently Emacs and
 ;;; XML-RPC clients
 
+(defvar *output-proofstate-p* nil)
+
 (defmethod output-proofstate :around ((ps proofstate))
   (with-slots (label comment current-goal) ps
-    (let* ((json:*lisp-identifier-name-to-json* #'identity)
-	   (ps-json (pvs2json ps))
-	   (ps-string (json:encode-json-alist-to-string ps-json)))
-      (when *pvs-emacs-interface*
-	(let* ((*output-to-emacs*
-		;; action & result & label & sequent
-		(format nil ":pvs-prfst ~a :end-pvs-prfst"
-		  (write-to-temp-file ps-string))))
-	  (to-emacs)))
-      ;;(format t "~%output-proofstate called: ~a~%" *ps-control-info*)
-      ;; *ps-control-info* is used for XML-RPC control - set when the prover
-      ;; starts or a command is given for a running proof.
-      (when *ps-control-info*
-	(add-psinfo *ps-control-info* ps-json))
-      (call-next-method))))
+    (if (not *output-proofstate-p*)
+	(call-next-method)
+	(let* ((json:*lisp-identifier-name-to-json* #'identity)
+	       (ps-json (pvs2json ps))
+	       (ps-string (json:encode-json-alist-to-string ps-json)))
+	  (when *pvs-emacs-interface*
+	    (let* ((*output-to-emacs*
+		    ;; action & result & label & sequent
+		    (format nil ":pvs-prfst ~a :end-pvs-prfst"
+		      (write-to-temp-file ps-string))))
+	      (to-emacs)))
+	  ;;(format t "~%output-proofstate called: ~a~%" *ps-control-info*)
+	  ;; *ps-control-info* is used for XML-RPC control - set when the prover
+	  ;; starts or a command is given for a running proof.
+	  (when *ps-control-info*
+	    (add-psinfo *ps-control-info* ps-json))
+	  (call-next-method)))))
 
 (defun finish-proofstate (ps)
   (let* ((proved? (and (typep ps 'top-proofstate)
