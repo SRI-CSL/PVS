@@ -450,11 +450,15 @@ BUFFER is the buffer speedbar is requesting buttons for."
     (set-face-foreground 'blue "blue")))
 
 ;;(set-face-background 'font-lock-pvs-record-parens-face "lightcyan")
+(defvar font-lock-pvs-record-parens-face 'font-lock-pvs-record-parens-face
+  "Face name for PVS record parens.")
 (defface font-lock-pvs-record-parens-face
     `()
   "Face for PVS record parens."
   :group 'pvs)
 
+(defvar font-lock-pvs-checkpoint-face 'font-lock-pvs-checkpoint-face
+  "Face name for PVS checkpoint indicators.")
 (defface font-lock-pvs-checkpoint-face
     '((((class color) (background light))
        (:background "red"))
@@ -463,71 +467,95 @@ BUFFER is the buffer speedbar is requesting buttons for."
   "Face for proof checkpoint indicators"
   :group 'pvs)
 
+(defvar font-lock-pvs-set-brace-face 'font-lock-pvs-set-brace-face
+  "Face name for PVS set braces.")
 ;;(set-face-background 'font-lock-pvs-set-brace-face "Yellow")
 (defface font-lock-pvs-set-brace-face
     `()
   "Face for PVS set braces."
   :group 'pvs)
 
+(defvar font-lock-pvs-parens-face 'font-lock-pvs-parens-face
+  "Face name for PVS parens.")
 ;;(set-face-foreground 'font-lock-pvs-parens-face "Magenta")
 (defface font-lock-pvs-parens-face
     `()
   "Face for PVS parens."
   :group 'pvs)
 
+(defvar font-lock-pvs-table-face 'font-lock-pvs-table-face
+  "Face name for PVS tables.")
 ;;(set-face-background 'font-lock-pvs-table-face "Yellow")
 (defface font-lock-pvs-table-face
     `()
   "Face for PVS tables."
   :group 'pvs)
 
+(defvar font-lock-pvs-function-type-face 'font-lock-pvs-function-type-face
+  "Face name for PVS functions.")
 ;;(set-face-background 'font-lock-pvs-function-type-face "thistle1")
 (defface font-lock-pvs-function-type-face
     `()
-  "Face for PVS tables."
+  "Face for PVS functions."
   :group 'pvs)
 
+(defvar font-lock-pvs-symbol-face 'font-lock-pvs-symbol-face
+  "Face name for PVS symbols.")
 (defface font-lock-pvs-symbol-face
     `()
   "Face for PVS symbols."
   :group 'pvs)
 
+(defvar proofstate-commentary-face 'proofstate-commentary-face
+  "Face name for PVS proofstate commentaries.")
 (defface proofstate-commentary-face
     `()
-  "Face for proofstate commentaries."
+  "Face for PVS proofstate commentaries."
   :group 'pvs)
 
+(defvar proofstate-action-face 'proofstate-action-face
+  "Face name for PVS proofstate actions.")
 (defface proofstate-action-face
     `()
-  "Face for proofstate actions."
+  "Face for PVS proofstate actions."
   :group 'pvs)
 
+(defvar proofstate-yields-face 'proofstate-yields-face
+  "Face name for PVS proofstate yields messages.")
 (defface proofstate-yields-face
     `()
-  "Face for proofstate yields messages."
+  "Face for PVS proofstate yields messages."
   :group 'pvs)
 
+(defvar proofstate-label-face 'proofstate-label-face
+  "Face name for PVS proofstate labels.")
 (defface proofstate-label-face
     `()
-  "Face for proofstate labels."
+  "Face for PVS proofstate labels."
   :group 'pvs)
 
+(defvar proofstate-formula-face 'proofstate-formula-face
+  "Face name for PVS proofstate formulas.")
 (defface proofstate-formula-face
     `()
-  "Face for proofstate formulas."
+  "Face for PVS proofstate formulas."
   :group 'pvs)
 
+(defvar proofstate-formula-changed-label-face 'proofstate-formula-changed-label-face
+  "Face name for PVS proofstate formula changed labels.")
 (defface proofstate-formula-changed-label-face
     `((((class color) (background light))
        (:foreground "red"))
       (((class color) (background dark))
        (:foreground "red")))
-  "Face for proofstate formula changed labels."
+  "Face for PVS proofstate formula changed labels."
   :group 'pvs)
 
+(defvar proofstate-formula-unchanged-label-face 'proofstate-formula-unchanged-label-face
+  "Face name for PVS proofstate formula unchanged labels.")
 (defface proofstate-formula-unchanged-label-face
     `()
-  "Face for proofstate formula unchanged labels."
+  "Face for PVS proofstate formula unchanged labels."
   :group 'pvs)
 
 ;;; PVS Font Lock support
