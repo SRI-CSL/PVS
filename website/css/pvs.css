@@ -28,6 +28,11 @@ a.active {
     min-width: 900px !important;
 }
 
+.row {
+    margin-left: 0px !important;
+    margin-right: 0px !important;
+}
+
 .container a {
     color: #3F51B5;
     font-weight: bold;
