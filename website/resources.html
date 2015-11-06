@@ -110,7 +110,7 @@
             </div>
             <div class="col" id="libraries">
                 <h5>Libraries </h5>
-                    <p>A PVS library is a directory containing PVS theories and proofs for concepts that have some wider use. Research groups have developed several libraries, but over the years most have been consolidated into either the PVS Prelude or the NASA Librarysince these are fully maintained. The PVS Prelude is the standard library built in to the PVS system. It is preloaded automatically every time PVS is executed. It provides standard definitions, ranging from common base types (bool, integer,real, etc.) to functions, set, relations, lists and many more. The NASA Library is a massive library developed and maintained by the the <a href="http://shemesh.larc.nasa.gov/fm">NASA Langley Formal Methods team</a>. It includes definitions and theorems for algebra, analysis, graphs, series, and trigonometric functions, among others.</p>
+                    <p>A PVS library is a directory containing PVS theories and proofs for concepts that have some wider use. Research groups have developed several libraries, but over the years most have been consolidated into either the PVS Prelude or the NASA Librarysince these are fully maintained. The PVS Prelude is the standard library built in to the PVS system. It is preloaded automatically every time PVS is executed. It provides standard definitions, ranging from common base types (bool, integer,real, etc.) to functions, set, relations, lists and many more. The NASA Library is a massive library developed and maintained by the the <a href="http://shemesh.larc.nasa.gov/fm" target="_blank">NASA Langley Formal Methods team</a>. It includes definitions and theorems for algebra, analysis, graphs, series, and trigonometric functions, among others.</p>
 
                     <div class="row secondarymenubar">
                         <ul class="secondarymenu right row">
@@ -142,7 +142,7 @@
 
             <div class="col" id="publications">
                 <h5>PVS Publications</h5>
-            <p>The original PVS publication is our CADE-11 paper &quot;<a href="http://pvs.csl.sri.com/papers/cade92-pvs/" target="_blank">PVS: A Prototype Verification System</a>&quot;. A list of selected PVS publications maintained by members of the PVS team can be found at the following links. For a comprehensive list of publications related to PVS, you can <a href="javascript:googlescholar()">Search PVS Publications on Google Scholar</a>.</p>
+            <p>The original PVS publication is our CADE-11 paper &quot;<a href="http://pvs.csl.sri.com/papers/cade92-pvs/" target="_blank">PVS: A Prototype Verification System</a>&quot;. A list of selected PVS publications maintained by members of the PVS team can be found at the following links. For a comprehensive list of publications related to PVS, you can <a href="javascript:usr_click('submit_scholar_query')">Search PVS Publications on Google Scholar</a>.</p>
             <ul>
               <li><a href="http://www.csl.sri.com/~rushby/biblio.html" target="_blank">John Rushby</a> (SRI International) </li>
               <li><a href="http://www.csl.sri.com/~shankar" target="_blank">N. Shankar</a> (SRI International)</li>
@@ -168,6 +168,14 @@
             </ul>
             </div>
         </div>
+        <div class="googlescholarform hidden hide">
+            <form method="get" action="http://scholar.google.com/scholar" onSubmit="googlescholarsearch(this)">
+                <input type="hidden" name="as_q" value="PVS+prototype+verification+system" id="search_pvs" />
+                <input type="hidden" name="as_ylo" value="1992" id="search_date" />
+                <input type="hidden" name="q">
+                <input type="submit" id="submit_scholar_query" value="Search PVS publications on GoogleScholar" class="button" onclick="onClick(this)" />
+            </form>
+        </div>        
     </div>
     <footer class="page-footer indigo white-text padding">
         <div class="container">
