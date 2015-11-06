@@ -411,7 +411,7 @@
 	     libloads))
 	  (t (pvs-message "Loading file ~a" file)
 	     (unwind-protect
-		 (progn #+(and allegro (not pvs6))
+		 (progn #+(and allegro (not pvs6) (not pvs7))
 			(excl:set-case-mode :case-insensitive-lower)
 			(multiple-value-bind (ignore error)
 			    (ignore-errors (load file))
@@ -421,7 +421,7 @@
 				   filestr error))
 				(t (pvs-message "~a loaded" filestr)
 				   (push file *libloads*)))))
-	       #+(and allegro (not pvs6))
+	       #+(and allegro (not pvs6) (not pvs7))
 	       (excl:set-case-mode :case-sensitive-lower)
 	       (add-lowercase-prover-ids))))))
 
@@ -1014,7 +1014,8 @@
   (or (all-declarations theory)
       (let ((decls (append (formals theory)
 			   (mapcan #'(lambda (d)
-				       (when (typep d 'formal-subtype-decl)
+				       (when (typep d '(or formal-subtype-decl
+							formal-struct-subtype-decl))
 					 (remove-if #'tcc? (generated d))))
 			     (formals theory))
 			   (when (recursive-type? theory)

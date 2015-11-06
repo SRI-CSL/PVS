@@ -37,7 +37,8 @@
 ;;(defvar *y2datatype-warning* nil)
 (defvar *y2name-hash* (make-pvs-hash-table))
 (defvar *translate-to-yices2-hash* (make-pvs-hash-table))
-(defvar *yices2-call* "yices2 --timeout=300")
+(defvar *yices2-executable* nil)
+(defvar *yices2-flags* "--timeout=300")
 (defvar *yices2-id-counter*)  ;;needs to be initialized in eproofcheck
 (defvar *yices2-conditions* nil)
 (defvar *yices2-subtype-constraints* nil)
@@ -228,12 +229,15 @@
 ;; 	(t nil)))
 
 (defmethod translate-to-yices2* ((ty type-name) bindings)
+  (declare (ignore bindings))
   (let ((yname-hash (gethash ty *y2name-hash*)))
     (or yname-hash 
 	(cond ((enum-adt? ty)
-	       (let ((constructors (constructors ty))
-		     (yname (yices2-name ty)))	;;bindings can be ignored
-		 (translate-to-yices2-scalar yname constructors) ))
+	       ;; (let ((constructors (constructors ty))
+	       ;; 	     (yname (yices2-name ty)))	;;bindings can be ignored
+		 (error "yices2 tranlation does not support scalars")
+		 ;;(translate-to-yices2-scalar yname constructors))
+	       )
 	      ((tc-eq (find-supertype ty) *boolean*)
 	       (format nil "bool"))
 	      ((tc-eq ty *number*) "real")
@@ -258,13 +262,6 @@
 ;; 	   constructors superconstructors bindings)
 ;; 	  ytypename))))
     
-
-
-(defun yices-format-tuple-list (id len)
-  (loop for i  from 0 to (1- len)
-	collect (format nil "(select ~a ~a)" id i)))
-
-
 ;;yices2 does not have predicate subtypes, so we should assert all the
 ;;subtype constraints on each subexpression.  
 (defmethod translate-to-yices2* ((ty subtype) bindings)
@@ -345,35 +342,37 @@
 ;;*bound-variables* are the bound variables in the calling context, and
 ;;*bindings* are the ones built up locally.
 (defmethod translate-to-yices2* :around ((obj type-expr) bindings)
-	   (if (or *bound-variables* *bindings*)
-	       (call-next-method)
-	       (let ((hashed-value (gethash obj *translate-to-yices2-hash*)))
-		 (or hashed-value
-		     (let ((result (call-next-method)))
-		       (setf (gethash obj *translate-to-yices2-hash*)
-			     result)
-		       result)))))
+  (declare (ignore bindings))
+  (if (or *bound-variables* *bindings*)
+      (call-next-method)
+      (let ((hashed-value (gethash obj *translate-to-yices2-hash*)))
+	(or hashed-value
+	    (let ((result (call-next-method)))
+	      (setf (gethash obj *translate-to-yices2-hash*)
+		    result)
+	      result)))))
     
 (defmethod translate-to-yices2* :around ((obj expr) bindings)
-	   (if (or *bound-variables* *bindings*)
-	       (call-next-method)
-	       (let ((hashed-value (gethash obj *translate-to-yices2-hash*)))
-		 (or hashed-value
-		     (let* ((result (call-next-method))
-			    (type-constraints (type-constraints obj :none))
-			    (rtype-constraints (loop for fmla in type-constraints
-						     nconc (and+ fmla))))
-		       (setf (gethash obj *translate-to-yices2-hash*)
-			     result)
-		       (loop for tc in rtype-constraints
-			     do (let* ((ytc (translate-to-yices2* tc bindings))
-				      (yclause (if *yices2-conditions*
-						   (format nil "(assert (implies (and ~{ ~a~}) ~a))"
-						       *yices2-conditions*
-						       ytc)
-						 (format nil "(assert ~a)" ytc))))
-				  (push yclause *yices2-subtype-constraints*)))
-		       result)))))
+
+  (if (or *bound-variables* *bindings*)
+      (call-next-method)
+      (let ((hashed-value (gethash obj *translate-to-yices2-hash*)))
+	(or hashed-value
+	    (let* ((result (call-next-method))
+		   (type-constraints (type-constraints obj :none))
+		   (rtype-constraints (loop for fmla in type-constraints
+					 nconc (and+ fmla))))
+	      (setf (gethash obj *translate-to-yices2-hash*)
+		    result)
+	      (loop for tc in rtype-constraints
+		 do (let* ((ytc (translate-to-yices2* tc bindings))
+			   (yclause (if *yices2-conditions*
+					(format nil "(assert (implies (and ~{ ~a~}) ~a))"
+					  *yices2-conditions*
+					  ytc)
+					(format nil "(assert ~a)" ytc))))
+		      (push yclause *yices2-subtype-constraints*)))
+	      result)))))
 
 
 (defmethod translate-to-yices2* ((list list) bindings)
@@ -385,9 +384,8 @@
 ;;doubt if this gets invoked
 (defun yices2-recognizer (name bindings)
   (when (recognizer? name)
-       (let ((ytype (translate-to-yices2* (type name)
-						bindings)))
-	 (format nil "~a?" (translate-to-yices2* (constructor name) bindings) ))))
+    (translate-to-yices2* (type name) bindings)
+    (format nil "~a?" (translate-to-yices2* (constructor name) bindings) )))
 
 
 (defmethod translate-to-yices2* ((expr name-expr) bindings)
@@ -421,14 +419,16 @@
 
 
 (defmethod translate-to-yices2* ((expr number-expr) bindings)
-      (number expr))
+  (declare (ignore bindings))
+  (number expr))
 
 (defmethod translate-to-yices2* ((ex string-expr) bindings)
-      (string->int (string-value ex)))
+  (declare (ignore bindings))
+  (string->int (string-value ex)))
 
 (defmethod translate-to-yices2* ((expr record-expr) bindings)
   (format nil "(mk-tuple ~{ ~a~})"
-    (translate-to-yices2* (sort-assignment (assignments expr)) bindings)))
+    (translate-to-yices2* (sort-assignments (assignments expr)) bindings)))
 
 (defmethod translate-to-yices2* ((expr tuple-expr) bindings)
   (format nil "(mk-tuple ~{ ~a~})"
@@ -573,18 +573,6 @@
 		     (format nil "(~a ~{ ~a~})" yices-op yargs)))))))))
 
 
-(defun translate-yices-bindings (bind-decls bindings prefix-string)
-      (cond ((consp bind-decls)
-	     (let ((yname (yices2-name (car bind-decls)))
-		   (ytype (translate-to-yices2* (type (car bind-decls)) bindings)))
-	       (translate-yices-bindings (cdr bind-decls)
-					 (cons (cons (car bind-decls)
-						     yname)
-					       bindings)
-					 (format nil "~a ~a::~a"
-					   prefix-string yname ytype))))
-	    (t (values bindings prefix-string))))
-
 ;;yices2 does not have binding expressions so these will be treated as
 ;;uninterpreted constants. 
 (defmethod translate-to-yices2* ((expr binding-expr) bindings)
@@ -598,8 +586,8 @@
 	  (format-if "~%Adding definition: ~a" defn)
 	  yname))))
   
-(defmethod translate-to-yices2* ((expr forall-expr) bindings)
-  (call-next-method))
+;; (defmethod translate-to-yices2* ((expr forall-expr) bindings)
+;;   (call-next-method))
 
 ;; (if *yqexpand*
 ;;       (with-slots ((expr-bindings bindings) expression) expr
@@ -641,7 +629,7 @@
 			       (type expr)
 			       bindings))
 
-(defun translate-yices-assignments (assigns 
+(defun translate-yices2-assignments (assigns 
 				    trbasis type bindings)
   (if assigns
       (translate-yices2-assignments
@@ -696,6 +684,7 @@
       (translate-to-yices2* value bindings)))
 
 (defmethod translate-yices2-assign-args (args value trbasis (type t) bindings)
+  (declare (ignore args trbasis))
   (translate-to-yices2* value bindings))
 
 
@@ -758,6 +747,31 @@
 ;;     ( . bv-sgt)
 ;;     ( . bv-sge)))
 
+(defun find-yices2-executable ()
+  (or *yices2-executable*
+      (cond ((and (pvs-context-yices2-executable)
+		  (program-version (pvs-context-yices2-executable) "1"))
+	     (setq *yices2-executable* "(pvs-context-yices2-executable)"))
+	    ((program-version "yices2 --version" "Yices 2")
+	     (setq *yices2-executable* "yices2"))
+	    ((program-version "yices --version" "Yices 2")
+	     (setq *yices2-executable* "yices"))
+	    (t (format t "~%Yices 1 cannot be found in your path")
+	       (when (program-version "yices --version" "1")
+		 (format t "~%\"yices\" is in your path, but it is version 1"))
+	       (unless (pvs-yes-or-no-p
+			"~%Use yices (i.e., \"yices\" or \"yices-with-rewrites\") instead? ")
+		 (format t "~%If necessary, download and install Yices 2 from http://yices.csl.sri.com")
+		 (let ((path (pvs-dialog "~%Please enter the path to Yices 2: ")))
+		   (get-yices2-executable-path path)))))))
+
+(defun get-yices2-executable-path (path)
+  (cond ((program-version (concatenate 'string path " --version") "Yices 2")
+	 (setq *yices-executable* path))
+	(t (format t "~%Invalid path to Yices 2 executable")
+	   (let ((npath (pvs-dialog "~%Please enter the path to Yices 2: ")))
+	     (get-yices2-executable-path npath)))))
+
 (defun yices2 (sformnums nonlinear?);;NSH(8-25-10) Added nonlinear? flag to use nlyices
   #'(lambda (ps)                   ;;this handles only arithmetic and uninterpreted
                                    ;;functions
@@ -767,6 +781,8 @@
 	     (*y2datatype-warning* nil)
 	     (*yices2-conditions* nil)
 	     (*yices2-subtype-constraints* nil))
+	(find-yices2-executable)
+	(assert *yices2-executable*)
 	(clear-yices2)
 	(let ((yices-forms
 	       (loop for sf in s-forms
@@ -799,20 +815,20 @@
 		    (t (setq status
 			     #+allegro
 			     (excl:run-shell-command
-			      (format nil "~a ~a" *yices2-call* (namestring file))
+			      (format nil "~a ~a ~a" *yices2-executable* *yices2-flags* (namestring file))
 			      :input "//dev//null"
 			      :output out
 			      :error-output :output)
 			     #+sbcl
 			     (sb-ext:run-program
-			      (format nil "~a ~a" *yices2-call* (namestring file))
+			      (format nil "~a ~a ~a" *yices2-executable* *yices2-flags* (namestring file))
 			      nil
 			      :input "//dev//null"
 			      :output out
 			      :error out)
 			     #+cmu
 			     (extensions:run-program
-			      (format nil "~a ~a" *yices2-call* (namestring file))
+			      (format nil "~a ~a ~a" *yices2-executable* *yices2-flags* (namestring file))
 			      nil
 			      :input "//dev//null"
 			      :output out

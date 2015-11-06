@@ -50,9 +50,50 @@ SHELL=/bin/sh
 
 # Should test for existence of platform dependent Makefiles
 
-ETAGS = @ETAGS@
-MKDIR = @MKDIR@
 CFLAGS = @CFLAGS@
+ETAGS = @ETAGS@
+GIT = @GIT@
+GIT_FILES := $(shell $(GIT) ls-files)
+MKDIR = @MKDIR@
+MKDIR_P = @MKDIR_P@
+PACKAGE = @PACKAGE_NAME@
+VERSION = @PACKAGE_VERSION@
+DISTDIR = $(PACKAGE)-$(VERSION)
+DIST_ARCHIVES = $(DISTDIR).tar.gz
+ALLEGRO_DISTFILES = $(SYSTEM_FILES) $(SOURCE_FILES) $(ALLEGRO_FILES) 
+SBCLISP_DISTFILES = $(SYSTEM_FILES) $(SOURCE_FILES) $(SBCLISP_FILES)
+
+SYSTEM_FILES = README.md README.GUI INSTALL LICENSE NOTICES pvs pvsio pvs-gui \
+	proveit provethem pvs-tex.sub pvs.sty bin/relocate bin/pvs-platform \
+	bin/tar-b64-mail Examples lib/prelude.pvs lib/prelude.prf lib/list_adt.pvs \
+	lib/ordstruct_adt.pvs lib/character_adt.pvs lib/union_adt.pvs lib/lift_adt.pvs \
+	lib/pvs-language.help lib/pvs-prover.help lib/pvs.help lib/pvs-unicode.help \
+	lib/pvs.grammar lib/pvs.bnf wish/pvs-support.tcl lib/pvs-style.css \
+	python doc/release-notes/pvs-release-notes.info \
+	doc/release-notes/pvs-release-notes*.html doc/release-notes/pvs-release-notes.ps \
+	doc/release-notes/pvs-release-notes.pdf \
+	doc/PVSio-2.d.pdf doc/manip-guide.pdf doc/extrategies.pdf doc/ProofLite-4.2.pdf \
+	wish/gray.xbm wish/sequent.xbm emacs lib/finite_sets lib/bitvectors
+
+ALLEGRO_FILES = $(bindir)/runtime/files.bu $(bindir)/runtime/file_utils.so \
+	$(bindir)/runtime/libacli9076.so $(bindir)/runtime/mu.so \
+	$(bindir)/runtime/pvs-allegro $(bindir)/runtime/pvs-allegro.dxl \
+	$(bindir)/runtime/pvs-allegro.lic $(bindir)/runtime/ws1s.so
+
+SBCLISP_FILES = $(bindir)/runtime/*.lisp $(bindir)/runtime/*.fasl \
+	$(bindir)/runtime/*.x8664s $(bindir)/runtime/file_utils.so \
+	$(bindir)/runtime/mu.so $(bindir)/runtime/ws1s.so \
+	$(bindir)/runtime/pvs-sbclisp $(bindir)/runtime/run-sbcl.sh
+
+SOURCE_FILES = $(pvs-emacs-src) $(pvs-make-files) $(allegro-make-files) \
+	$(ilisp-emacs-src)
+
+remove_distdir = \
+  if test -d "$(DISTDIR)"; then \
+    find "$(DISTDIR)" -type d ! -perm -200 -exec chmod u+w {} ';' \
+      && rm -rf "$(DISTDIR)" \
+      || { sleep 5 && rm -rf "$(DISTDIR)"; }; \
+  else :; fi
 
 # Check to see if we are doing something that requires Emacs and Lisp
 # If MAKECMDGOALS is empty, or has something besides clean, tar, etc.
@@ -714,6 +755,79 @@ distclean :
 	rm -rf */{$(platforms)}/*.{a,so,dylib} */*/{$(platforms)}/*.{a,so,dylib}
 	rm -f doc/langauge/Makefile doc/language/pvs-doc.el doc/prover/Makefile doc/user-guide/Makefile
 	rm -rf autom4te.cache bin/{$(platforms)}
+
+define create-distdir
+	@echo Creating $@...
+	$(remove_distdir)
+	test -d "$(DISTDIR)" || mkdir "$(DISTDIR)"
+	list='$^'; \
+	  dist_files=`for file in $$list; do echo $$file; done`; \
+	case $$dist_files in \
+	  */*) $(MKDIR_P) `echo "$$dist_files" | \
+			   sed '/\//!d;s|^|$(DISTDIR)/|;s,/[^/]*$$,,' | \
+			   sort -u` ;; \
+	esac; \
+	for file in $$dist_files; do \
+	  if test -f $$file || test -d $$file; then d=.; else d=$(srcdir); fi; \
+	  if test -d $$d/$$file; then \
+	    dir=`echo "/$$file" | sed -e 's,/[^/]*$$,,'`; \
+	    if test -d "$(DISTDIR)/$$file"; then \
+	      find "$(DISTDIR)/$$file" -type d ! -perm -700 -exec chmod u+rwx {} \;; \
+	    fi; \
+	    if test -d $(srcdir)/$$file && test $$d != $(srcdir); then \
+	      cp -fpR $(srcdir)/$$file "$(DISTDIR)$$dir" || exit 1; \
+	      find "$(DISTDIR)/$$file" -type d ! -perm -700 -exec chmod u+rwx {} \;; \
+	    fi; \
+	    cp -fpR $$d/$$file "$(DISTDIR)$$dir" || exit 1; \
+	  else \
+	    test -f "$(DISTDIR)/$$file" \
+	    || cp -p $$d/$$file "$(DISTDIR)/$$file" \
+	    || exit 1; \
+	  fi; \
+	done
+endef
+
+allegro-distdir: $(ALLEGRO_DISTFILES)
+	$(create-distdir)
+sbclisp-distdir: $(SBCLISP_DISTFILES)
+	$(create-distdir)
+
+dist-gzip: distdir
+	tardir=$(DISTDIR) && $(am__tar) | GZIP=$(GZIP_ENV) gzip -c >$(DISTDIR).tar.gz
+	$(am__post_remove_distdir)
+dist-bzip2: distdir
+	tardir=$(DISTDIR) && $(am__tar) | BZIP2=$${BZIP2--9} bzip2 -c >$(DISTDIR).tar.bz2
+	$(am__post_remove_distdir)
+
+dist-lzip: distdir
+	tardir=$(DISTDIR) && $(am__tar) | lzip -c $${LZIP_OPT--9} >$(DISTDIR).tar.lz
+	$(am__post_remove_distdir)
+dist-xz: distdir
+	tardir=$(DISTDIR) && $(am__tar) | XZ_OPT=$${XZ_OPT--e} xz -c >$(DISTDIR).tar.xz
+	$(am__post_remove_distdir)
+
+dist-tarZ: distdir
+	@echo WARNING: "Support for shar distribution archives is" \
+	               "deprecated." >&2
+	@echo WARNING: "It will be removed altogether in Automake 2.0" >&2
+	tardir=$(DISTDIR) && $(am__tar) | compress -c >$(DISTDIR).tar.Z
+	$(am__post_remove_distdir)
+
+dist-shar: distdir
+	@echo WARNING: "Support for distribution archives compressed with" \
+		       "legacy program 'compress' is deprecated." >&2
+	@echo WARNING: "It will be removed altogether in Automake 2.0" >&2
+	shar $(DISTDIR) | GZIP=$(GZIP_ENV) gzip -c >$(DISTDIR).shar.gz
+	$(am__post_remove_distdir)
+
+dist-zip: distdir
+	-rm -f $(DISTDIR).zip
+	zip -rq $(DISTDIR).zip $(DISTDIR)
+	$(am__post_remove_distdir)
+
+dist dist-all:
+	$(MAKE) $(AM_MAKEFLAGS) $(DIST_TARGETS) am__post_remove_distdir='@:'
+	$(am__post_remove_distdir)
 
 # Cute hack for printing variables, e.g.,
 #  make print-emacs-elc

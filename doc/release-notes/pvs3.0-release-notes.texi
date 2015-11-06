@@ -39,7 +39,7 @@ There are a number of new features in PVS 3.0.
 * Interpretations:: Theory Interpretations
 * Multiple Proofs:: Multiple Proofs
 * Library Support:: Improved Library Support
-* Cotuples:: Cotuples
+* Cotuples:: Cotuples                             @c Added to language
 * Coinduction:: Coinductive Definitions
 * Datatype Updates:: Datatype Updates
 * Datatype Additions:: Datatype Additions

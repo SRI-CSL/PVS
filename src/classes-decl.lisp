@@ -292,6 +292,7 @@
   saved-context
   dependent-known-subtypes ; Those that reference the theory parameters
   (macro-expressions :restore-as nil)
+  (macro-subtype-tcc-args-alist :restore-as nil)
   (tccs-tried? :restore-as nil)
   (modified-proof? :restore-as nil)
   (tcc-info :type list :initform (list 0 0 0 0) :restore-as nil)
@@ -399,11 +400,15 @@
 
 (defcl nonempty-type-eq-decl (type-eq-decl nonempty-type-def-decl))
 
-(defcl type-from-decl (type-def-decl))
+(defcl type-from-decl (type-def-decl)
+  predicate
+  supertype)
 
 (defcl nonempty-type-from-decl (type-from-decl nonempty-type-def-decl))
 
-(defcl struct-subtype-decl (type-def-decl))
+(defcl struct-subtype-decl (type-def-decl)
+  projection
+  supertype)
 
 (defcl nonempty-struct-subtype-decl (struct-subtype-decl nonempty-type-def-decl))
 

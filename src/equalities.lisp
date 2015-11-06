@@ -732,13 +732,14 @@
 			   (or (print-type adt1) adt1))))
 		    (mi2 (module-instance
 			  (resolution
-			   (or (print-type adt2) adt2))))
-		    (fmls (formals-sans-usings (adt adt1)))
-		    (ptypes (positive-types (adt adt1))))
-		(and (tc-eq-adt-op-actuals (actuals mi1) (actuals mi2) bindings
-					   fmls ptypes)
-		     (tc-eq-adt-op-actuals (dactuals mi1) (dactuals mi2) bindings
-					   fmls ptypes)))))))
+			   (or (print-type adt2) adt2)))))
+		(or (and (null (actuals mi1)) (null (actuals mi2)))
+		    (let ((fmls (formals-sans-usings (adt adt1)))
+			  (ptypes (positive-types (adt adt1))))
+		      (and (tc-eq-adt-op-actuals (actuals mi1) (actuals mi2) bindings
+						 fmls ptypes)
+			   (tc-eq-adt-op-actuals (dactuals mi1) (dactuals mi2) bindings
+						 fmls ptypes)))))))))
 
 (defun tc-eq-adt-op-actuals (acts1 acts2 bindings fmls ptypes)
   (cond ((null acts1) (null acts2))
@@ -1073,7 +1074,8 @@
       (call-next-method)))
 
 (defun declaration-outside-formals? (type-name)
-  (unless *strong-tc-eq-flag*
+  (unless (or *strong-tc-eq-flag*
+	      (type-var? type-name))
     (let ((decl (declaration (car (resolutions type-name)))))
       (and (typep decl 'formal-decl)
 	   (current-theory)
@@ -1762,7 +1764,8 @@
   (declare (ignore acts))
   (let* ((adtth (adt-theory (adt atype)))
 	 (decl (find '|every| (theory adtth) :key #'decl-id))
-	 (modname (mk-modname (id adtth) (actuals atype)))
+	 (thinst (module-instance atype))
+	 (modname (mk-modname (id adtth) (actuals atype) (library thinst)))
 	 (res (make-resolution decl modname)))
     (mk-name-expr '|every| nil nil res)))
 
@@ -1797,7 +1800,7 @@
 
 (defun actual-equality-type (atype etype)
   (unless (tc-eq atype etype)
-    (let* ((stype (compatible-type atype etype))
+    (let* ((stype (dep-binding-type (compatible-type atype etype)))
 	   (apred (nth-value 1 (subtype-preds atype stype)))
 	   (epred (nth-value 1 (subtype-preds etype stype))))
       (cond ((null apred)
@@ -2219,6 +2222,7 @@
 (defun predicate-subtype-of? (t1 t2 st)
   (or (simple-subtype-of? t1 t2)
       (and (not (simple-subtype-of? t2 t1))
+	   (strict-compatible? t1 t2)
 	   (let* ((bid '%)
 		  (bd (make!-bind-decl bid st))
 		  (bvar (make-variable-expr bd))

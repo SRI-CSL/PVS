@@ -857,16 +857,13 @@
 ;Note that set-type is used to set the type of the rhs-expr to the
 ;chosen type.
 
-(defun tc-unify-over (lhs-types  rhs-exprs rhs-typelists
-				 match)
-  (cond ((null lhs-types) (if match
-			      (if (every #'cdr match)
-				  match
-				  nil)
+(defun tc-unify-over (lhs-types rhs-exprs rhs-typelists match)
+  (cond ((null lhs-types) (if (and match
+				   (every #'cdr match))
+			      match
 			      t))
 	((null (car rhs-typelists)) nil)
-	(t (let* (
-		  (rhs1 (caar rhs-typelists))
+	(t (let* ((rhs1 (caar rhs-typelists))
 		  (first-match
 		   (if match
 		       (tc-match rhs1 (car lhs-types) match)
@@ -998,7 +995,7 @@
 		       collect
 		       (type (find x (substitutable-vars (car forms))
 				   :test #'format-equal)))
-		 (mapcar #'cdr  subalist)
+		 (mapcar #'cdr subalist)
 		 (mapcar #'(lambda (x)
 			     (if (type (cdr x))
 				 (list (type (cdr x)))
@@ -1683,53 +1680,57 @@ which should be fully instantiated. Please supply actual parameters.")
 (defun add-name-step (name expr ps)
   (let* ((name (if (stringp name) (intern name :pvs) name))
 	 ;;(*generate-tccs* 'all)
-	 (pc-name (pc-parse name 'expr))
-	 (tc-expr (internal-pc-typecheck (pc-parse expr 'expr)
-		    :tccs 'all
-		    :context *current-context*))
-	 (context (copy-prover-context)))
-    (cond ((not (valid-pvs-id* name))
-	   (error-format-if "~%Error: ~a is not a valid symbol." name)
-	   (values 'X nil nil))
-	  ((some #'(lambda (res)
-		     (compatible? (type res) (type tc-expr)))
-		 (resolve pc-name 'expr nil))
-	   (error-format-if
-	    "~%Error: ~a is already declared with the same signature." name)
-	   (values 'X nil nil))
-	  ((freevars tc-expr)
-	   (error-format-if "~%Free variables ~a in expr = name"
-			    (freevars tc-expr))
-	   (values 'X nil nil))
-	  (t (setf (declarations-hash context)
-		   (copy (declarations-hash context)))
-	     (let ((decl (make-instance 'skolem-const-decl
-			   :definition tc-expr
-			   :id name
-			   :type (car (judgement-types+ tc-expr))
-			   :module (module context))))
-	       (make-def-axiom decl)
-	       (put-decl decl (declarations-hash context)))
-	     (let* ((name (typecheck (pc-parse name 'expr)
-			    :tccs 'all
-			    :context context))
-		    (formula (make-equality tc-expr name))
-		    (references nil)
-		    (fvars (freevars formula)))
-	       (update-judgements-with-new-name name tc-expr context)
-	       (push-references-list formula references)
-	       (setf (disabled-auto-rewrites context)
-		     (push (make-instance 'auto-rewrite-minus-decl
-			     :rewrite-names (list name))
-			   (disabled-auto-rewrites context)))
-	       (values '?
-		       (list
-			(cons (copy (current-goal ps)
-				's-forms
-				(cons (make-instance 's-formula
-					:formula
-					(negate formula))
-				      (s-forms (current-goal ps))))
-			      (list 'context context)))
-		       (list 'dependent-decls
-			     references)))))))
+	 (pc-name (pc-parse name 'expr)))
+    (cond ((name-expr? pc-name)
+	   (let* ((tc-expr (internal-pc-typecheck (pc-parse expr 'expr)
+			     :tccs 'all
+			     :context *current-context*))
+		  (context (copy-prover-context)))
+	     (cond ((not (valid-pvs-id* name))
+		    (error-format-if "~%Error: ~a is not a valid symbol." name)
+		    (values 'X nil nil))
+		   ((some #'(lambda (res)
+			      (compatible? (type res) (type tc-expr)))
+			  (resolve pc-name 'expr nil))
+		    (error-format-if
+		     "~%Error: ~a is already declared with the same signature." name)
+		    (values 'X nil nil))
+		   ((freevars tc-expr)
+		    (error-format-if "~%Free variables ~a in expr = name"
+				     (freevars tc-expr))
+		    (values 'X nil nil))
+		   (t (setf (declarations-hash context)
+			    (copy (declarations-hash context)))
+		      (let ((decl (make-instance 'skolem-const-decl
+				    :definition tc-expr
+				    :id name
+				    :type (car (judgement-types+ tc-expr))
+				    :module (module context))))
+			(make-def-axiom decl)
+			(put-decl decl (declarations-hash context)))
+		      (let* ((name (typecheck (pc-parse name 'expr)
+				     :tccs 'all
+				     :context context))
+			     (formula (make-equality tc-expr name))
+			     (references nil)
+			     (fvars (freevars formula)))
+			(update-judgements-with-new-name name tc-expr context)
+			(push-references-list formula references)
+			(setf (disabled-auto-rewrites context)
+			      (push (make-instance 'auto-rewrite-minus-decl
+				      :rewrite-names (list name))
+				    (disabled-auto-rewrites context)))
+			(values '?
+				(list
+				 (cons (copy (current-goal ps)
+					 's-forms
+					 (cons (make-instance 's-formula
+						 :formula
+						 (negate formula))
+					       (s-forms (current-goal ps))))
+				       (list 'context context)))
+				(list 'dependent-decls
+				      references)))))))
+	  (t
+	   (error-format-if "~%Error: ~a is not a valid name." name)
+	   (values 'X nil nil)))))

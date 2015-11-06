@@ -7,15 +7,21 @@ stack_adt[T: TYPE]: THEORY
 
   empty?, nonempty?: [stack -> boolean]
 
-  empty: (empty?)
-
-  push: [[T, stack] -> (nonempty?)]
-
   top: [(nonempty?) -> T]
 
   pop: [(nonempty?) -> stack]
 
-  ord(x: stack): upto(1) =
+  empty: (empty?)
+
+  push: [[T, stack] -> (nonempty?)]
+
+  stack_ord: [stack -> upto(1)]
+
+  stack_ord_defaxiom: AXIOM
+    stack_ord(empty) = 0 AND
+     (FORALL (top: T, pop: stack): stack_ord(push(top, pop)) = 1);
+
+  ord(x: stack): [stack -> upto(1)] =
       CASES x OF empty: 0, push(push1_var, push2_var): 1 ENDCASES
 
   stack_empty_extensionality: AXIOM
@@ -42,10 +48,6 @@ stack_adt[T: TYPE]: THEORY
 
   stack_inclusive: AXIOM
     FORALL (stack_var: stack): empty?(stack_var) OR nonempty?(stack_var);
-
-  stack_disjoint: AXIOM
-    FORALL (stack_var: stack):
-      NOT (empty?(stack_var) AND nonempty?(stack_var));
 
   stack_induction: AXIOM
     FORALL (p: [stack -> boolean]):
@@ -78,23 +80,23 @@ stack_adt[T: TYPE]: THEORY
            push(push1_var, push2_var): p(push1_var) OR some(p, push2_var)
         ENDCASES;
 
-  subterm(x, y: stack):  boolean =
+  subterm(x: stack, y: stack):  boolean =
       x = y OR
        CASES y
          OF empty: FALSE, push(push1_var, push2_var): subterm(x, push2_var)
          ENDCASES;
 
-  <<:  (well_founded?[stack]) =
+  <<:  (strict_well_founded?[stack]) =
       LAMBDA (x, y: stack):
         CASES y
           OF empty: FALSE,
              push(push1_var, push2_var): x = push2_var OR x << push2_var
           ENDCASES;
 
-  stack_well_founded: AXIOM well_founded?[stack](<<);
+  stack_well_founded: AXIOM strict_well_founded?[stack](<<);
 
   reduce_nat(empty?_fun: nat, nonempty?_fun: [[T, nat] -> nat]):
-  [stack -> nat] =
+        [stack -> nat] =
       LAMBDA (stack_adtvar: stack):
         LET red: [stack -> nat] = reduce_nat(empty?_fun, nonempty?_fun) IN
           CASES stack_adtvar
@@ -105,7 +107,7 @@ stack_adt[T: TYPE]: THEORY
 
   REDUCE_nat(empty?_fun: [stack -> nat],
              nonempty?_fun: [[T, nat, stack] -> nat]):
-   [stack -> nat] =
+        [stack -> nat] =
       LAMBDA (stack_adtvar: stack):
         LET red: [stack -> nat] = REDUCE_nat(empty?_fun, nonempty?_fun) IN
           CASES stack_adtvar
@@ -116,7 +118,7 @@ stack_adt[T: TYPE]: THEORY
 
   reduce_ordinal(empty?_fun: ordinal,
                  nonempty?_fun: [[T, ordinal] -> ordinal]):
-   [stack -> ordinal] =
+        [stack -> ordinal] =
       LAMBDA (stack_adtvar: stack):
         LET red: [stack -> ordinal] =
               reduce_ordinal(empty?_fun, nonempty?_fun)
@@ -129,7 +131,7 @@ stack_adt[T: TYPE]: THEORY
 
   REDUCE_ordinal(empty?_fun: [stack -> ordinal],
                  nonempty?_fun: [[T, ordinal, stack] -> ordinal]):
-   [stack -> ordinal] =
+        [stack -> ordinal] =
       LAMBDA (stack_adtvar: stack):
         LET red: [stack -> ordinal] =
               REDUCE_ordinal(empty?_fun, nonempty?_fun)
@@ -159,6 +161,11 @@ stack_adt_map[T: TYPE, T1: TYPE]: THEORY
            push(push1_var, push2_var):
              push(f(push1_var), map(f, push2_var))
         ENDCASES;
+
+  every(R: [[T, T1] -> boolean])(x: stack[T], y: stack[T1]):  boolean =
+      empty?(x) AND empty?(y) OR
+       nonempty?(x) AND
+        nonempty?(y) AND R(top(x), top(y)) AND every(R)(pop(x), pop(y));
  END stack_adt_map
 
 stack_adt_reduce[T: TYPE, range: TYPE]: THEORY
@@ -167,20 +174,20 @@ stack_adt_reduce[T: TYPE, range: TYPE]: THEORY
   IMPORTING stack_adt[T]
 
   reduce(empty?_fun: range, nonempty?_fun: [[T, range] -> range]):
-  [stack -> range] =
-      LAMBDA (stack_adtvar: stack):
-        LET red: [stack -> range] = reduce(empty?_fun, nonempty?_fun) IN
+        [stack[T] -> range] =
+      LAMBDA (stack_adtvar: stack[T]):
+        LET red: [stack[T] -> range] = reduce(empty?_fun, nonempty?_fun) IN
           CASES stack_adtvar
             OF empty: empty?_fun,
                push(push1_var, push2_var):
                  nonempty?_fun(push1_var, red(push2_var))
             ENDCASES;
 
-  REDUCE(empty?_fun: [stack -> range],
-         nonempty?_fun: [[T, range, stack] -> range]):
-   [stack -> range] =
-      LAMBDA (stack_adtvar: stack):
-        LET red: [stack -> range] = REDUCE(empty?_fun, nonempty?_fun) IN
+  REDUCE(empty?_fun: [stack[T] -> range],
+         nonempty?_fun: [[T, range, stack[T]] -> range]):
+        [stack[T] -> range] =
+      LAMBDA (stack_adtvar: stack[T]):
+        LET red: [stack[T] -> range] = REDUCE(empty?_fun, nonempty?_fun) IN
           CASES stack_adtvar
             OF empty: empty?_fun(stack_adtvar),
                push(push1_var, push2_var):

@@ -13,13 +13,32 @@
 \usepackage{latexsym}
 %\usepackage{showidx} % shows index entries in the margin
 \usepackage[chapter]{tocbibind}
+\usepackage{fancyvrb}
+% redefine \VerbatimInput
+% \RecustomVerbatimCommand{\VerbatimInput}{VerbatimInput}%
+% {fontsize=\footnotesize,
+%  %
+%  frame=lines,  % top and bottom rule only
+%  framesep=2em, % separation between frame and text
+%  rulecolor=\color{Gray},
+%  %
+%  label=\fbox{\color{Black}data.txt},
+%  labelposition=topline,
+%  %
+%  commandchars=\|\(\), % escape character and argument delimiters for
+%                       % commands within the verbatim
+%  commentchar=*        % comment character
+% }
+\usepackage{unicode-math}
 \usepackage{ifpdf}
 \ifpdf
 \usepackage[pdftex,dvipsnames,usenames]{color}
-\usepackage[bookmarks=true,hyperindex=true,colorlinks=true,linkcolor=Brown,citecolor=blue,backref=page,pagebackref=true,plainpages=false,pdfpagelabels]{hyperref}
-\else
-\usepackage[bookmarks=true,hyperindex=true]{hyperref}
-\fi
+\usepackage{fontspec}
+%\setmathfont{latinmodern-math.otf}
+%\setmathfont{xits-math.otf}
+\setmathfont{xits-math.otf}
+%\setmathfont{texgyrepagella-math.otf}
+%\setmathfont{Asana-Math.otf}
 
 \input{../pvstex}
 
@@ -45,6 +64,10 @@
 \index{type correctness condition|see{TCC}}
 \makeindex
 
+\usepackage[bookmarks=true,hyperindex=true,colorlinks=true,linkcolor=Brown,citecolor=blue,backref=page,pagebackref=true,plainpages=false,pdfpagelabels]{hyperref}
+\else
+\usepackage[bookmarks=true,hyperindex=true]{hyperref}
+\fi
 
 \begin{document}
 
@@ -127,7 +150,7 @@ F49620-95-C0044, and DARPA Orders E276, A721, D431, D855, and E301.
 
 \appendix
 \include{grammar}
-\include{prelude}
+%\include{prelude}
 
 %\addcontentsline{toc}{chapter}{Bibliography}
 \bibliographystyle{plain}
@@ -141,3 +164,9 @@ F49620-95-C0044, and DARPA Orders E276, A721, D431, D855, and E301.
 }
 
 \end{document}
+
+%%% Local Variables: 
+%%% TeX-command-default: "Make"
+%%% mode: latex
+%%% TeX-master: "language"
+%%% End: 

@@ -511,7 +511,10 @@
 		      (append ejtypes jtypes)))
 	    ;; No new information
 	    (expr-judgement-types* ex (cdr expr-jdecls) jtypes ejtypes ejdecls)
-	    (let ((bindings (simple-match (expr ejdecl) ex)))
+	    (let* ((ejex (if (forall-expr? (expr ejdecl))
+			     (expression (expr ejdecl))
+			     (expr ejdecl)))
+		   (bindings (simple-match ejex ex)))
 	      (if (eq bindings 'fail)
 		  (expr-judgement-types* ex (cdr expr-jdecls)
 					 jtypes ejtypes ejdecls)
@@ -519,7 +522,7 @@
 		    (assert (null (freevars ejtype)))
 		    (expr-judgement-types* ex (cdr expr-jdecls) jtypes
 					   (cons ejtype ejtypes)
-					   (cons ejdecl ejdecls))))))))) 
+					   (cons ejdecl ejdecls)))))))))
 
 (defun valid-judgement-type-value (types)
   (if (listp types)
@@ -2099,6 +2102,13 @@
 				(make!-application cpred fldappl))
 		      (car cpreds)))
 		   opreds))))))
+
+(defmethod type-predicates* ((te struct-sub-recordtype) preds all?)
+  (let ((cpreds (mapcar #'(lambda (ct) (type-predicates* ct nil all?))
+		  (fields te))))
+    (if (every #'null cpreds)
+	preds
+	(type-predicates-recordtype cpreds (fields te) te preds all?))))
 
 (defmethod type-predicates* ((te field-decl) preds all?)
   (type-predicates* (type te) preds all?))

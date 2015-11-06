@@ -104,6 +104,7 @@ theory-formals-content =
 formal = importing-content
        | formal-type-decl-content
        | formal-subtype-decl-content
+       | formal-struct-subtype-decl-content
        | formal-const-decl-content
        | formal-theory-decl-content
 
@@ -112,7 +113,11 @@ formal-type-decl-content =
 
 formal-subtype-decl-content =
   element formal-subtype-decl
-   {commonattrs, chainattr, id, nonempty-content, type-expr, type-expr}
+   {type-decl-attrs, id, nonempty-content, typed-declaration, const-decl-content}
+
+formal-struct-subtype-decl-content =
+  element formal-struct-subtype-decl
+   {type-decl-attrs, id, nonempty-content, typed-declaration, const-decl-content}
 
 formal-const-decl-content =
   element formal-const-decl {id, typed-declaration}
@@ -264,8 +269,8 @@ application-judgement-content =
 
 expr-judgement-content =
    element expr-judgement
-   {commonattrs, chainattr, id?, decl-formals-content?, name-expr-content,
-      arg-formals-content?, expr, type-expr, type-expr}
+   {commonattrs, chainattr, id?, decl-formals-content?, bindings-content,
+      expr, type-expr, type-expr}
 
 recursive-judgement-content =
    element recursive-judgement
@@ -322,8 +327,9 @@ nonempty-content =
 
 type-from-decl-content =
    element type-from-decl
-   {type-decl-attrs, declaration-attrs, id, decl-formals-content?,
-      arg-formals-content?, type-expr, type-expr}
+   {type-decl-attrs, id, decl-formals-content?,
+      arg-formals-content?,
+      typed-declaration}
 
 var-decl-content =
   element var-decl {id, typed-declaration}

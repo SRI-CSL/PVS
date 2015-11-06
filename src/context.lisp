@@ -85,6 +85,14 @@
 	(getf (caddr *pvs-context*) :default-decision-procedure))
       'shostak))
 
+(defun pvs-context-yices-executable ()
+  (when (listp (caddr *pvs-context*))
+    (getf (caddr *pvs-context*) :yices-executable)))
+
+(defun pvs-context-yices2-executable ()
+  (when (listp (caddr *pvs-context*))
+    (getf (caddr *pvs-context*) :yices2-executable)))
+
 (defun pvs-context-entries ()
   (if (listp (caddr *pvs-context*))
       (cdddr *pvs-context*)
@@ -465,9 +473,17 @@ pvs-strategies files.")
 	  (pvs-context-entries))
     (cons *pvs-version*
 	  (cons (pvs-context-libraries)
-		(cons (list :default-decision-procedure
-			    *default-decision-procedure*)
-		      context)))))
+		(cons (context-parameters) context)))))
+
+(defun context-parameters ()
+  (nconc (when *default-decision-procedure*
+	   (list :default-decision-procedure *default-decision-procedure*))
+	 (when (and *yices-executable*
+		    (not (member *yices-executable* '("yices" "yices1") :test #'string=)))
+	   (list :yices-executable *yices-executable*))
+	 (when (and *yices2-executable*
+		    (not (member *yices2-executable* '("yices" "yices2") :test #'string=)))
+	   (list :yices2-executable *yices2-executable*))))
 
 
 ;;; update-context is called by parse-file after parsing or
@@ -2158,7 +2174,7 @@ pvs-strategies files.")
       (let ((fwd (file-write-time file)))
 	(unless (= fwd (car dates))
 	  (setf (car dates) fwd)
-	  #+(and allegro (version>= 6) (not pvs6))
+	  #+(and allegro (version>= 6) (not pvs6) (not pvs7))
 	  (unwind-protect
 	       (progn (excl:set-case-mode :case-insensitive-lower)
 		      (multiple-value-bind (v err)
@@ -2168,7 +2184,7 @@ pvs-strategies files.")
 			  (pvs-message "Error in loading ~a:~%  ~a" file err))))
 	    (excl:set-case-mode :case-sensitive-lower)
 	    (add-lowercase-prover-ids))
-	  #+(and allegro (version>= 6) pvs6)
+	  #+(and allegro (version>= 6) (or pvs6 pvs7))
 	  (unwind-protect
 	       (multiple-value-bind (v err)
 		   (ignore-errors (load file))

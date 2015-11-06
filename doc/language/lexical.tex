@@ -8,13 +8,19 @@ PVS are the identifiers, reserved words, special symbols, numbers,
 whitespace characters, and comments.
 
 Identifiers\index{identifiers} are composed of letters, digits, and the
-characters \texttt{\_} or \texttt{?}; they must begin with a letter.  They
-may be arbitrarily long, constrained only by the limits imposed by the
-underlying Common Lisp system.  Identifiers are case-sensitive;
+characters \texttt{\_} or \texttt{?}; they must begin with a letter, which
+are the usual ASCII letters, or any Unicode character that is not one of
+the ASCII non-letter characters.  Note that keywords from
+Figure~\ref{reserved-words} and operators from Figure~\ref{special-symbols} may
+be embedded in identifiers, but may not be identifiers themselves.  Thus
+\texttt{candy} is an identifier, though it contains the keyword
+\texttt{and}, and ∧∧ is an identifier, though it contains the keyword ∧.  
+
+They may be arbitrarily long.  Identifiers are case-sensitive;
 \texttt{FOO}, \texttt{Foo}, and \texttt{foo} are different identifiers.
-PVS strings contain any ASCII character: to include a \texttt{"} in the
+PVS strings contain any Unicode character: to include a \texttt{"} in the
 string, use \texttt{\char'134 "} and to include a \texttt{\char'134} use
-\texttt{\char'134\char'134}.
+\texttt{\char'134\char'134}.  For more on Unicode, see the PVS User Guide.
 
 \pvsbnf{bnf-lexical}{Lexical Syntax}
 
@@ -86,15 +92,19 @@ of a specification, the backslash may need to be doubled (or in rare
 cases, quadrupled).  This is because it is commonly used as an ``escape''
 character, and the character following may be interpreted specially.
 
-The symbol pairs \lit{[|} and \lit{|]}, \lit{(|} and \lit{|)}, and
-\lit{$\{$|} and \lit{|$\}$} are available as outfix operators.  They are
-declared using \lit{[||]}, \lit{(||)}, and \lit{$\{$||$\}$}, respectively.
-For example, with the declaration \texttt{[||]:\ [bool, int -> int]} the
+The symbol pairs \lit{[|} \lit{|]}, \lit{(|} \lit{|)}, 
+\lit{$\{$|} \lit{|$\}$}, \lit{$〈$} \lit{$〉$}, \lit{$〚$} \lit{$〛$},
+\lit{$«$} \lit{$»$}, \lit{$《$} \lit{$》$}, \lit{$⌈$} \lit{$⌉$},
+\lit{$⌊$} \lit{$⌋$}, \lit{$⌜$} \lit{$⌝$}, and \lit{$⌞$} \lit{$⌟$} are
+available as outfix operators.  They are
+declared and may be used by concatenation,
+for example, with the declaration \texttt{[||]:\ [bool, int -> int]} the
 outfix term \texttt{[| TRUE, 0 |]} is equivalent to the prefix form
 \texttt{[||](TRUE, 0)}.
 
 \begin{figure}[tb]
 \begin{center}
+\renewcommand{\arraystretch}{1.2}
 {\small\tt
 \begin{tabular}{|*{6}{@{\hspace*{.2in}}c@{\extracolsep{.4in minus .4in}}}@{\hspace*{.2in}}|}\hline
 \input{opsym-table}
@@ -103,3 +113,8 @@ outfix term \texttt{[| TRUE, 0 |]} is equivalent to the prefix form
 \end{center}
 \caption{\pvs\ Definable Symbols}\label{definable-symbols}
 \end{figure}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "language"
+%%% End: 

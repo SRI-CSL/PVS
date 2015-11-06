@@ -1,6 +1,8 @@
 [submodule "javascript/ProofExplorer"]
 	path = javascript/ProofExplorer
 	url = https://github.com/thehogfather/ProofExplorer
+	ignore = dirty
 [submodule "javascript/pvsio-web"]
 	path = javascript/pvsio-web
 	url = https://github.com/thehogfather/pvsio-web
+	ignore = dirty

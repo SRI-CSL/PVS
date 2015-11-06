@@ -623,23 +623,27 @@
 ;;; *pvs* buffer.  This around method allows other displays, currently Emacs and
 ;;; XML-RPC clients
 
+(defvar *output-proofstate-p* nil)
+
 (defmethod output-proofstate :around ((ps proofstate))
   (with-slots (label comment current-goal) ps
-    (let* ((json:*lisp-identifier-name-to-json* #'identity)
-	   (ps-json (pvs2json ps))
-	   (ps-string (json:encode-json-alist-to-string ps-json)))
-      (when *pvs-emacs-interface*
-	(let* ((*output-to-emacs*
-		;; action & result & label & sequent
-		(format nil ":pvs-prfst ~a :end-pvs-prfst"
-		  (write-to-temp-file ps-string))))
-	  (to-emacs)))
-      ;;(format t "~%output-proofstate called: ~a~%" *ps-control-info*)
-      ;; *ps-control-info* is used for XML-RPC control - set when the prover
-      ;; starts or a command is given for a running proof.
-      (when *ps-control-info*
-	(add-psinfo *ps-control-info* ps-json))
-      (call-next-method))))
+    (if (not *output-proofstate-p*)
+	(call-next-method)
+	(let* ((json:*lisp-identifier-name-to-json* #'identity)
+	       (ps-json (pvs2json ps))
+	       (ps-string (json:encode-json-alist-to-string ps-json)))
+	  (when *pvs-emacs-interface*
+	    (let* ((*output-to-emacs*
+		    ;; action & result & label & sequent
+		    (format nil ":pvs-prfst ~a :end-pvs-prfst"
+		      (write-to-temp-file ps-string))))
+	      (to-emacs)))
+	  ;;(format t "~%output-proofstate called: ~a~%" *ps-control-info*)
+	  ;; *ps-control-info* is used for XML-RPC control - set when the prover
+	  ;; starts or a command is given for a running proof.
+	  (when *ps-control-info*
+	    (add-psinfo *ps-control-info* ps-json))
+	  (call-next-method)))))
 
 (defun finish-proofstate (ps)
   (let* ((proved? (and (typep ps 'top-proofstate)
@@ -757,60 +761,67 @@
 ;;;   [proof-tcc]         |
 ;;;   proof-show          /
 ;;;  layout-proof
+
+(defstruct (prooftree-info (:conc-name pt-info-))
+  delete
+  status
+  formula-id
+  theory-id)
+  
 (defun proofstate-tree-info (ps)
-  nil
-  ;; (let* ((top-ps (or *top-proofstate* *last-proof*))
-  ;; 	 (path (path-to-subgoal (wish-top-proofstate) ps)) ; list of nats
-  ;; 	 (pathstr (format nil "top~{.~a~}" path))
-  ;; 	 (fdecl (declaration top-ps))
-  ;; 	 (fid (id fdecl))
-  ;; 	 (thid (id (module fdecl))))
-  ;;   (unless (member nil path)
-  ;;     (make-prooftree-info
-  ;;      :delete path
-  ;;      :status (proofstate-tree-status ps path)
-       
-  ;; 	(format t "delete-proof-subtree ~a ~a ~a~%" fid thid tcl-path)
-  ;; 	(write-proof-status ps path)
-  ;; 	(format t "layout-proof ~a ~a 1~%" fid thid))))
-  )
+  (when nil
+  (let* ((top-ps (or *top-proofstate* *last-proof*))
+  	 (path (path-to-subgoal (wish-top-proofstate) ps)) ; list of nats
+  	 (pathstr (format nil "top~{.~a~}" path))
+  	 (fdecl (declaration top-ps))
+  	 (fid (id fdecl))
+  	 (thid (id (module fdecl))))
+    (unless (member nil path)
+      (make-prooftree-info
+       :delete path
+       :status (proofstate-tree-status ps path)
+       :formula-id fid
+       :theory-id thid)
+      ;;(write-proof-status ps path)
+      ;;(format t "layout-proof ~a ~a 1~%" fid thid)
+      ))))
 
 ;;; From write-proof-status in wish.lisp
-;; (defun proofstate-tree-status (ps path)
-;;   (let* ((tcl-path (path-to-tcl-path path))
-;; 	 (subs (x-subgoals ps))
-;; 	 (rule (sexp-unparse (wish-current-rule ps)))
-;; 	 (sequent (path-subgoal (wish-top-proofstate) path))
-;; 	 (fdecl (declaration (or *top-proofstate* *last-proof*)))
-;; 	 (fid (id fdecl))
-;; 	 (thid (id (module fdecl))))
-;;     (if (and (null rule) (eql (length subs) 1))
-;; 	(proofstate-tree-status (car subs) path)
-;; 	(let* ((nsubs (length subs))
-;; 	       (prule (when rule
-;; 			(let ((*print-case* :downcase))
-;; 			  (format nil "~@[+~*~]~s" (null (current-rule ps))
-;; 				  rule))))
-;; 	       (seq (pvs2json sequent))
-;; 	       (done? (eq (status-flag ps) '!))
-;; 	       (tcc? (typep ps 'tcc-proofstate))
-;; 	  (t (format t "proof-num-children ~a ~a ~a ~a 1~%"
-;; 	       fid thid tcl-path (length subs))
-;; 	     (when rule
-;; 	       (format t "proof-rule ~a ~a ~a {~a} 1~%" fid thid tcl-path
-;; 		       (let ((*print-case* :downcase))
-;; 			 (format nil "~@[+~*~]~s" (null (current-rule ps))
-;; 				 rule))))
-;; 	     (when sequent
-;; 	       (format t "proof-sequent ~a ~a ~a {~a} {~a}~%"
-;; 		 fid thid tcl-path (label sequent) sequent))
-;; 	     (when (eq (status-flag ps) '!)
-;; 	       (format t "proof-done ~a ~a ~a 1~%" fid thid tcl-path))
-;; 	     (when (typep ps 'tcc-proofstate)
-;; 	       (format t "proof-tcc ~a~%" tcl-path))
-;; 	     (format t "proof-show ~a ~a ~a 1~%" fid thid tcl-path)
-;; 	     (dotimes (i (length subs))
-;; 	       (proofstate-tree-status (nth i subs) (append path (list i))))))))))
+(defun proofstate-tree-status (ps path)
+  (let* ((tcl-path (path-to-tcl-path path))
+	 (subs (x-subgoals ps))
+	 (rule (sexp-unparse (wish-current-rule ps)))
+	 (sequent (path-subgoal (wish-top-proofstate) path))
+	 (fdecl (declaration (or *top-proofstate* *last-proof*)))
+	 (fid (id fdecl))
+	 (thid (id (module fdecl))))
+    (if (and (null rule) (eql (length subs) 1))
+	(proofstate-tree-status (car subs) path)
+	(let* ((nsubs (length subs))
+	       (prule (when rule
+			(let ((*print-case* :downcase))
+			  (format nil "~@[+~*~]~s" (null (current-rule ps))
+				  rule))))
+	       (seq (pvs2json sequent))
+	       (done? (eq (status-flag ps) '!))
+	       (tcc? (typep ps 'tcc-proofstate)))
+	  (format t "proof-num-children ~a ~a ~a ~a 1~%"
+	    fid thid tcl-path (length subs))
+	  (when rule
+	    (format t "proof-rule ~a ~a ~a {~a} 1~%" fid thid tcl-path
+		    (let ((*print-case* :downcase))
+		      (format nil "~@[+~*~]~s" (null (current-rule ps))
+			      rule))))
+	  (when sequent
+	    (format t "proof-sequent ~a ~a ~a {~a} {~a}~%"
+	      fid thid tcl-path (label sequent) sequent))
+	  (when (eq (status-flag ps) '!)
+	    (format t "proof-done ~a ~a ~a 1~%" fid thid tcl-path))
+	  (when (typep ps 'tcc-proofstate)
+	    (format t "proof-tcc ~a~%" tcl-path))
+	  (format t "proof-show ~a ~a ~a 1~%" fid thid tcl-path)
+	  (dotimes (i (length subs))
+	    (proofstate-tree-status (nth i subs) (append path (list i))))))))
 
 (defun pvs-buffer (name contents &optional display? read-only? append? kind)
   (when *pvs-buffer-hook*
@@ -1140,7 +1151,10 @@
     (list (svref place 0)
 	  (svref place 1)
 	  (svref place 0)
-	  (+ (svref place 1) (length (string (id name)))))))
+	  (+ (svref place 1)
+	     (length (if (numberp (id name))
+			 (format nil "~a" (id name))
+			 (string (id name))))))))
 
 (defun merge-places (place1 place2)
   (if (and place1 place2)

@@ -549,7 +549,7 @@ PVS files (i.e., those with extension '.pvs'"
 	       (typechecked-file-p filename))
       (pvs-add-tooltips filename))))
 
-(add-hook 'find-file-hook 'pvs-find-file-hook)
+;;(add-hook 'find-file-hook 'pvs-find-file-hook)
 
 
 ;;; find-theory

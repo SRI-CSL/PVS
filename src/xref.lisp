@@ -203,7 +203,10 @@
   (generate-xref (formals d)))
 
 (defmethod generate-xref ((d expr-judgement))
-  (generate-xref (expr d))
+  (if (forall-expr? (expr d))
+      ;; It's not really a forall expr, just a place to put bindings
+      (generate-xref (expression (expr d)))
+      (generate-xref (expr d)))
   (generate-xref (declared-type d))
   (generate-xref (formals d)))
 

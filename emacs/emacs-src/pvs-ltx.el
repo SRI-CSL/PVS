@@ -33,7 +33,7 @@ These characters are from the charsets used by the `utf-8' coding
 system, including many technical ones.  Examples:
  \\and -> ∧  \\or -> ∨
  \\'a -> á  \\`{a} -> à
- \\pi -> π  \\int -> ∫  ^1 -> ¹"
+ \\pi -> π  \\int -> ∫"
 
  '(("\t" . quail-completion))
  t t nil nil nil nil nil nil nil t)
@@ -58,7 +58,7 @@ system, including many technical ones.  Examples:
       ("BREVE" . "u")
       ("TILDE" . "~")
       ("GRAVE" . "`")
-      ("CIRCUMFLEX" . "^")
+      ;("CIRCUMFLEX" . "^")
       ("DIAERESIS" . "\"")
       ("DOUBLE ACUTE" . "H")
       ("ACUTE" . "'")))
@@ -117,17 +117,17 @@ system, including many technical ones.  Examples:
  ("!`" ?¡)
  ("\\pounds" ?£) ;; ("{\\pounds}" ?£)
  ("\\S" ?§) ;; ("{\\S}" ?§)
- ("$^a$" ?ª)
+ ;;("$^a$" ?ª)
  ("$\\pm$" ?±) ("\\pm" ?±)
- ("$^2$" ?²)
- ("$^3$" ?³)
+ ;;("$^2$" ?²)
+ ;;("$^3$" ?³)
  ("\\P" ?¶) ;; ("{\\P}" ?¶)
  ;; Fixme: Yudit has the equivalent of ("\\cdot" ?⋅), for U+22C5, DOT
  ;; OPERATOR, whereas · is MIDDLE DOT.  JadeTeX translates both to
  ;; \cdot.
  ("$\\cdot$" ?·) ("\\cdot" ?·)
- ("$^1$" ?¹)
- ("$^o$" ?º)
+ ;;("$^1$" ?¹)
+ ;;("$^o$" ?º)
  ("?`" ?¿)
 
  ((lambda (name char)
@@ -178,7 +178,7 @@ system, including many technical ones.  Examples:
  ("\\u{\\i}" ?ĭ)
 
  ("\\i" ?ı) ;; ("{\\i}" ?ı)
- ("\\^{\\j}" ?ĵ)
+ ;;("\\^{\\j}" ?ĵ)
 
  ("\\L" ?Ł) ;; ("{\\L}" ?Ł)
  ("\\l" ?ł) ;; ("{\\l}" ?ł)
@@ -206,23 +206,23 @@ system, including many technical ones.  Examples:
  ("\\:" ? )
  ("\\;" ? )
 
- ((lambda (name char)
-    (let* ((base (concat (match-string 1 name) (match-string 2 name)))
-           (basechar (cdr (assoc base (ucs-names)))))
-      (when (pvs-ltx--ascii-p basechar)
-        (string ?^ basechar)))) ;; Removed ?_ and subscript
-  "\\(.*\\)SUPERSCRIPT \\(.*\\)")
+ ;; ((lambda (name char)
+ ;;    (let* ((base (concat (match-string 1 name) (match-string 2 name)))
+ ;;           (basechar (cdr (assoc base (ucs-names)))))
+ ;;      (when (pvs-ltx--ascii-p basechar)
+ ;;        (string ?^ basechar)))) ;; Removed ?_ and subscript
+ ;;  "\\(.*\\)SUPERSCRIPT \\(.*\\)")
 
- ((lambda (name _char)
-    (let* ((basename (match-string 2 name))
-           (name (if (match-end 1) (capitalize basename) (downcase basename))))
-      (concat "^" (if (> (length name) 1) "\\") name)))
-  "\\`MODIFIER LETTER \\(?:SMALL\\|CAPITA\\(L\\)\\) \\([[:ascii:]]+\\)\\'")
+ ;; ((lambda (name _char)
+ ;;    (let* ((basename (match-string 2 name))
+ ;;           (name (if (match-end 1) (capitalize basename) (downcase basename))))
+ ;;      (concat "^" (if (> (length name) 1) "\\") name)))
+ ;;  "\\`MODIFIER LETTER \\(?:SMALL\\|CAPITA\\(L\\)\\) \\([[:ascii:]]+\\)\\'")
  
  ;; ((lambda (name char) (format "^%s" (downcase (match-string 1 name))))
  ;;  "\\`MODIFIER LETTER SMALL \\(.\\)\\'")
  ;; ("^\\1" "\\`MODIFIER LETTER CAPITAL \\(.\\)\\'")
- ("^o_" ?º)
+ ;;("^o_" ?º)
  ("^{SM}" ?℠)
  ("^{TEL}" ?℡)
  ("^{TM}" ?™)

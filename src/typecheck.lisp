@@ -531,11 +531,12 @@
 		     (when (actuals imported-adt)
 		       (ldiff (actuals imported-adt)
 			      (nthcdr (length (formals-sans-usings adt))
-				      (actuals imported-adt))))))
+				      (actuals imported-adt))))
+		     (library imported-adt)))
 	     (when th2
-	       (list (mk-modname (id th2))))
+	       (list (mk-modname (id th2) nil (library imported-adt))))
 	     (when th3
-	       (list (mk-modname (id th3))))))))
+	       (list (mk-modname (id th3) nil (library imported-adt))))))))
 
 (defmethod get-immediate-usings ((adt recursive-type))
   (append (mapcar #'theory-name
@@ -899,14 +900,15 @@
 ;; 					      (free-params (current-theory))))))
 ;; 			   (actuals modinst)))
 	       ))
-      (let ((nc (lcopy c
-		  :expr (subst-mod-params (expr c) modinst theory))))
+      (let* ((nexpr (subst-mod-params (expr c) modinst theory))
+	     (nc (lcopy c :expr nexpr)))
 	(unless (eq c nc)
 	  (setf (module nc)
 		(if (fully-instantiated? modinst)
 		    (current-theory)
 		    (module c)))
-	  (add-decl nc))
+	  (unless (freevars (expr nc))
+	    (add-decl nc)))
 	nc)
       c))
 		    
@@ -958,7 +960,7 @@
      (typecase formal
        (formal-subtype-decl
 	(let ((type (subst-types (supertype (type-value formal)) assoc)))
-	  (unless (compatible? (type-value actual) type)
+	  (unless (strict-compatible? (type-value actual) type)
 	    (type-error actual "~a Should be a subtype of ~a"
 			(type-value actual) type))))
        (formal-struct-subtype-decl
@@ -1311,7 +1313,11 @@
   ;; Context has to be for the modname being imported
   ;; i.e., in importing foo[a] {{ bar := bar[b] {{ ... }} }}
   ;; foo gives context, bar[b] is the thname
-  (let ((th (get-theory thname)))
+  (let ((th (or (get-theory thname)
+		(and (declaration thname)
+		     (theory-abbreviation-decl? (declaration thname))
+		     (get-theory (theory-name (declaration thname)))))))
+    (assert th)
     (if (null (formals-sans-usings th))
 	(resolutions thname)
 	(let ((imps (nth-value 1 (all-importings th)))

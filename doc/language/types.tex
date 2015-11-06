@@ -234,6 +234,86 @@ t]} are equivalent; see Section~\ref{tuple-exprs} for more details.
 
 \index{type!tuple|)}\index{tuple types|)}
 
+\section{Cotuple Types}
+
+Cotuple types (also known as coproduct or sum types) provide a way to
+provide a disjoint union of types.  The syntax is similar to that for
+tuple types, but with the comma replaced by a \texttt{+}.  For
+example,
+
+\begin{pvsex}
+cT: TYPE = [int + bool + [int -> int]]
+\end{pvsex}
+
+Associated with a cotuple type are injections \texttt{IN\_}\textit{i},
+predicates \texttt{IN?\_}\textit{i}, and extractions \texttt{OUT\_}\textit{i}
+(none of these is case-sensitive).  For example, in this case we have
+   
+\begin{pvsex}
+IN_1:  [int -> cT]
+IN?_1: [cT -> bool]
+OUT_1: [(IN?_1) -> int]
+\end{pvsex}
+
+Thus \texttt{IN\_2(true)} creates a \texttt{cT} element, and an arbitrary
+\texttt{cT} element \texttt{c} is processed using \texttt{CASES}, e.g.,
+
+\begin{pvsex}
+CASES c OF
+  IN_1(i): i + 1,
+  IN_2(b): IF b THEN 1 ELSE 0 ENDIF,
+  IN_3(f): f(0)
+ENDCASES
+\end{pvsex}
+
+This is very similar to using the \texttt{union} datatype defined in the
+prelude, but allows for any number of arguments, and doesn't generate
+a datatype theory.
+
+Typechecking expressions such as \texttt{IN\_1(3)} requires that the
+context of its use be known.  This is similar to the problem of a
+standalone \texttt{PROJ\_1}, and both are supported:
+	 
+\begin{pvsex}
+F: [cT -> bool]
+FF: FORMULA F(IN_1(3))
+G: [[int -> [int, bool, [int -> int]]] -> bool]
+GG: FORMULA G(PROJ_1)
+\end{pvsex}
+
+This means it is easy to write terms that are ambiguous:
+	 
+\begin{pvsex}
+HH: FORMULA IN_1(3) = IN_1(4)
+HH: FORMULA PROJ_1 = PROJ_1
+\end{pvsex}
+
+This can be disambiguated by providing the type explicitly:
+	 
+\begin{pvsex}
+HH: FORMULA IN_1[cT](3) = IN_1(4)
+HH: FORMULA PROJ_1 = PROJ_1[[int, int]]
+\end{pvsex}
+
+This uses the same syntax as for actual parameters, but doesn't mean
+the same thing, as the projections, injections, etc., are builtin, and
+not provided by any theories.  Note that coercions don't work in this
+case, as \texttt{PROJ\_1::[[int, int] -> int]} is the same as
+
+\begin{pvsex}
+(LAMBDA (x: [[int, int] -> int]): x)(PROJ_1)
+\end{pvsex}
+
+and not
+
+\begin{pvsex}
+LAMBDA (x: [int, int]): PROJ_1(x)
+\end{pvsex}
+
+Note that the prover handles cotuple extensionality and reduction rules as
+expected.
+
+
 \section{Record Types}\label{record-types}
 \index{record types|(}\index{type!record|(}
 
@@ -322,3 +402,8 @@ are empty.
 \index{type!cotuple|)}\index{cotuple types|)}
 
 \index{type|)}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "language"
+%%% End: 

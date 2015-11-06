@@ -1622,8 +1622,10 @@
       (lcopy expr :actuals nacts :argument narg :type ntype))))
 
 (defmethod subst-mod-params* ((expr field-name-expr) modinst bindings)
-  (declare (ignore modinst bindings))
-  expr)
+  (let ((nres (subst-mod-params* (resolution expr) modinst bindings)))
+    (if (eq nres (resolution expr))
+	expr
+	(lcopy expr :resolutions (list nres) :type (type nres)))))
 
 (defmethod subst-mod-params* ((expr field-application) modinst bindings)
   (with-slots (argument type) expr

@@ -1,12 +1,20 @@
 @string{acm = {Association for Computing Machinery}}
+@string{cade = { International Conference on Automated Deduction (CADE)}}
+@string{cav = {Computer-Aided Verification, CAV '}}
 @string{csl = {Computer Science Laboratory, SRI International}}
+@string{ftcs = {Fault Tolerant Computing Symposium }}
 @string{gtm = {Graduate Texts in Mathematics}}
+@string{ieeecs = {IEEE Computer Society}}
+@string{ieeetse = {IEEE Transactions on Software Engineering}}
 @string{jsl = {Journal of Symbolic Logic}}
+@string{larc = {NASA Langley Research Center}}
+@string{lics = {Annual IEEE Symposium on Logic in Computer Science}}
 @string{lncs = {Lecture Notes in Computer Science}}
 @string{mp = {Menlo Park, CA}}
 @string{ny = {New York, NY}}
 @string{phiscs = {Prentice Hall International Series in Computer Science}}
 @string{popl = { ACM Symposium on Principles of Programming Languages}}
+@string{srds = { Symposium on Reliable Distributed Systems}}
 @string{sv = {Springer-Verlag}}
 @string{svwc = {Springer-Verlag Workshops in Computing}}
 
@@ -582,7 +590,7 @@ the technicalities presented elsewhere.}}
 	ADDRESS = ny
 }
 
-@techreport{Shankar:ADT97,
+@techreport{Shankar:ADT,
 	AUTHOR = {S. Owre and N. Shankar}, 
 	TITLE = {Abstract Datatypes in {PVS}},
 	INSTITUTION = csl,
@@ -669,3 +677,574 @@ comment={IEEE Computer Society Order Number 2230; Library of Congress
 Number 89-641304; IEEE Catalog Number 91CH3025-4; ISBN 0-8186-2230-X},
 source={ftp://theory.lcs.mit.edu/pub/meyer/lics.bib}
 }
+
+@inproceedings{Lincoln&Rushby93:CAV,
+	AUTHOR = {Patrick Lincoln and John Rushby},
+	TITLE = {Formal Verification of an Algorithm for Interactive
+		Consistency under a Hybrid Fault Model},
+	PAGES = {292--304},
+	CROSSREF = {CAV93}
+}
+
+@proceedings{CAV93,
+	BOOKTITLE = cav # {93},
+	TITLE = cav # {93},
+	YEAR = 1993,
+	EDITOR = {Costas Courcoubetis},
+	PUBLISHER = sv,
+	SERIES = lncs,
+	VOLUME = 697,
+	ADDRESS = {Elounda, Greece},
+	MONTH = jun # {/} # jul
+}
+
+@inproceedings{Lincoln&Rushby93:FTCS,
+	AUTHOR = {Patrick Lincoln and John Rushby},
+	TITLE = {A Formally Verified Algorithm for Interactive Consistency
+		under a Hybrid Fault Model},
+	PAGES = {402--411},
+	CROSSREF = {FTCS23},
+	NOTE = {Reprinted in~\cite[pp.\ 438--447]{FTCS-highlights}}
+}
+
+@inproceedings{Lincoln&Rushby94:FTP,
+	AUTHOR = {Patrick Lincoln and John Rushby},
+	TITLE = {Formal Verification of an Interactive Consistency Algorithm
+		for the {Draper FTP} Architecture Under a Hybrid Fault
+		Model},
+	PAGES = {107--120},
+	CROSSREF = {Compass94}
+}
+
+@inproceedings{Miller&Srivas95,
+	AUTHOR = {Steven P. Miller and Mandayam Srivas},
+	TITLE = {Formal Verification of the {AAMP5} Microprocessor: A
+		Case Study in the Industrial Use of Formal Methods},
+	BOOKTITLE = {WIFT '95: Workshop on Industrial-Strength Formal
+		Specification Techniques},
+	PAGES = {2--16},
+	DATE = apr,
+	YEAR = 1995,
+	ORGANIZATION = ieeecs,
+	ADDRESS = {Boca Raton, FL}
+}
+
+@inproceedings{Skakkebaek&Shankar94,
+	AUTHOR = {Jens U. Skakkeb{\ae}k and N. Shankar},
+	TITLE = {Towards a {Duration Calculus} Proof Assistant in {PVS}},
+	PAGES = {660--679},
+	CROSSREF = {FTRTFT94}
+}
+
+@proceedings{FTCS23,
+	KEY = {FTCS-23},
+	BOOKTITLE = ftcs # 23,
+	TITLE = ftcs # 23,
+	MONTH = jun,
+	YEAR = 1993,
+	ADDRESS = {Toulouse, France},
+	ORGANIZATION = ieeecs,
+	
+}
+
+@proceedings{Compass94,
+	KEY = {COMPASS'94},
+	BOOKTITLE = {COMPASS '94 (Proceedings of the Ninth Annual Conference
+		on Computer Assurance)},
+	TITLE = {COMPASS '94 (Proceedings of the Ninth Annual Conference
+		on Computer Assurance)},
+	YEAR = 1994,
+	ORGANIZATION = {IEEE Washington Section},
+	ADDRESS = {Gaithersburg, MD},
+	MONTH = jun
+}
+
+@proceedings{FTRTFT94,
+	TITLE = {Formal Techniques in Real-Time and Fault-Tolerant Systems},
+	BOOKTITLE = {Formal Techniques in Real-Time and Fault-Tolerant
+		Systems},
+	EDITOR = {H. Langmaack and W.-P. {de Roever} and J. Vytopil},
+	SERIES = lncs,
+	PUBLISHER = sv,
+	VOLUME = 863,
+	MONTH = sep,
+	YEAR = 1994,
+	ADDRESS = {L\"{u}beck, Germany}
+}
+
+@article{Owre95:prolegomena,
+	AUTHOR = {Sam Owre and John Rushby and Natarajan Shankar and
+		Friedrich von Henke},
+	TITLE = {Formal Verification for Fault-Tolerant Architectures:
+		Prolegomena to the Design of {PVS}},
+	JOURNAL = ieeetse,
+	VOLUME = 21,
+	NUMBER = 2,
+	PAGES = {107--125},
+	MONTH = feb,
+	YEAR = 1995,
+	NOTE = {{PVS} home page: \url{http://pvs.csl.sri.com}}
+}
+
+@inproceedings{Butler&Johnson93,
+	AUTHOR = {Ricky W. Butler and Sally C. Johnson},
+	TITLE = {Formal Methods For Life-Critical Software},
+	BOOKTITLE = {Computing in Aerospace Conference},
+	ADDRESS = {San Diego, CA},
+	MONTH = oct,
+	YEAR = 1993,
+	PAGES = {319--329}
+}
+
+@techreport{jovial:pv,
+	AUTHOR = {B. Elspas and M. Green and M. Moriconi and R. Shostak},
+	TITLE = {A {JOVIAL} Verifier},
+	INSTITUTION = {Computer Science Laboratory, SRI International},
+	MONTH = jan,
+	YEAR = 1979
+}
+
+@article{Robinson&Levitt,
+	AUTHOR = {Lawrence Robinson and Karl N. Levitt},
+	TITLE = {Proof Techniques for Hierarchically Structured Programs},
+	JOURNAL = cacm,
+	YEAR = 1976,
+	VOLUME = 20,
+	NUMBER = 4,
+	PAGES = {271--283},
+	MONTH = apr
+}
+
+@manual{HDM:Handbook,
+	AUTHOR = {L. Robinson and K. N. Levitt and B. A. Silverberg},
+	ORGANIZATION = csl,
+	TITLE = {The {HDM} Handbook},
+	YEAR = 1979,
+	MONTH = jun,
+	NOTE = {Three Volumes},
+	ADDRESS = mp
+}
+
+@inproceedings{STP,
+	AUTHOR = {R. E. Shostak and R. Schwartz and P. M. Melliar-Smith},
+	TITLE = {{STP}: A Mechanized Logic for Specification and Verification},
+	EDITOR = {D. Loveland},
+	BOOKTITLE = {6th} # cade,
+	PUBLISHER = sv,
+	SERIES = lncs,
+	VOLUME = 138,
+	ADDRESS = ny,
+	YEAR = 1982
+}
+
+@inproceedings{Melliar-Smith&Rushby,
+	AUTHOR = {P. Michael Melliar-Smith and John Rushby},
+	BOOKTITLE = {Proc.\ VerkShop III},
+	ADDRESS = {Watsonville, CA},
+	TITLE = {The {Enhanced HDM} System for Specification and Verification},
+	YEAR = 1985,
+	PAGES = {41--43},
+	MONTH = feb,
+	NOTE = {Published as ACM Software Engineering Notes, Vol.\ 10,
+		No.\ 4, Aug.\ 85}
+}
+
+@techreport{EHDM:tutorial,
+	AUTHOR = {John Rushby and Friedrich von Henke and Sam Owre},
+	INSTITUTION = csl,
+	TITLE = {An Introduction to Formal Specification and Verification
+		Using {{\sc Ehdm}}},
+	MONTH = feb,
+	YEAR = 1991,
+	NUMBER = {SRI-CSL-91-2},
+	ADDRESS = mp
+}
+
+@inproceedings{Prasad92,
+	AUTHOR = {Sanjiva Prasad},
+	TITLE = {Verification of Numerical Programs Using {Penelope/Ariel}},
+	PAGES = {11--24},
+	CROSSREF = {Compass92}
+}
+
+@article{Larch85,
+	AUTHOR = {John V. Guttag and James J. Horning and Jeannette M.
+		Wing},
+	TITLE = {The {Larch} Family of Specification Languages},
+	JOURNAL = {IEEE Software},
+	YEAR = 1985,
+	VOLUME = 2,
+	NUMBER = 5,
+	PAGES = {24--36},
+	MONTH = sep
+}
+
+@inproceedings{Clarke-etal90,
+	AUTHOR = {J. R. Burch and E. M. Clarke and K. L McMillan and
+		D. L. Dill and L. J. Hwang},
+	TITLE = {Symbolic Model Checking: $10^{20}$ States and Beyond},
+	BOOKTITLE = {5th } # lics,
+	YEAR = 1990,
+	PAGES = {428--439},
+	ORGANIZATION = ieeecs,
+	ADDRESS = {Philadelphia, PA},
+	MONTH = jun
+}
+
+@book{me-too,
+	AUTHOR = {Heather Alexander and Val Jones},
+	TITLE = {Software Design and Prototyping Using {\sl me too}},
+	PUBLISHER = {Prentice Hall International},
+	YEAR = 1990,
+	ADDRESS = {Hemel Hempstead, UK}
+}
+
+@book{Hekmatpour&Ince:prototyping,
+	AUTHOR = {Sharam Hekmatpour and Darrel Ince},
+	TITLE = {Software Prototyping, Formal Methods, and {VDM}},
+	PUBLISHER = {Addison-Wesley},
+	YEAR = 1988,
+	SERIES = {International Computer Science Series},
+	ADDRESS = {Wokingham, England}
+}
+
+@inproceedings{Shankar:ATVA08,
+	AUTHOR={Natarajan Shankar},
+	TITLE={Trust and Automation in Verification Tools},
+	CROSSREF="ATVA08",
+	PAGES={4--17}
+}
+
+@techreport{Rushby95:Movie,
+	AUTHOR = {John Rushby},
+	TITLE = {{Proof Movie II}: A Proof with {PVS}},
+	INSTITUTION = csl,
+	YEAR = 1995,
+	ADDRESS = mp,
+	NOTE = {Available, with specification files, at \url{http://www.csl.sri.com/movie.html}}
+}
+
+@inproceedings{Cyrluk94:TPCD,
+	AUTHOR = {D. Cyrluk and S. Rajan and N. Shankar and M. K. Srivas},
+	TITLE = {Effective Theorem Proving for Hardware Verification},
+	PAGES = {203--222},
+	CROSSREF = {TPCD94}
+}
+
+@inproceedings{Shankar93:CAV,
+	AUTHOR = {Natarajan Shankar},
+	TITLE = {Verification of Real-Time Systems Using {PVS}},
+	PAGES = {280--291},
+	CROSSREF = {CAV93}
+}
+
+@techreport{Sree94:TR,
+	AUTHOR = {P. Sreeranga Rajan},
+	TITLE = {Transformations in High-Level Synthesis: Formal Specification
+		and Efficient Mechanical Verification},
+	INSTITUTION = csl,
+	YEAR = 1994,
+	NUMBER = {SRI-CSL-94-10},
+	ADDRESS = mp,
+	MONTH = oct,
+	NOTE = {Revised version of Technical Report NL-TN 118/94, Philips
+		Research Laboratories, Eindhoven, The Netherlands, April
+		1994}
+}
+
+@inproceedings{Hooman94,
+	AUTHOR = {Jozef Hooman},
+	TITLE = {Correctness of Real Time Systems by Construction},
+	PAGES = {19--40},
+	CROSSREF = {FTRTFT94}
+}
+
+@techreport{Butler:PVS-tut,
+	AUTHOR = {Ricky W. Butler},
+	TITLE = {An Elementary Tutorial on Formal Specification and
+		Verification Using {PVS 2}},
+	YEAR = 1993,
+	INSTITUTION = larc,
+	TYPE = {NASA Technical Memorandum},
+	NUMBER = 108991,
+	ADDRESS = {Hampton, VA},
+	MONTH = jun,
+	NOTE = {Revised June 1995.   Available, with PVS specification files,
+		at \url{http://atb-www.larc.nasa.gov/ftp/larc/PVS-tutorial};
+		use only files marked ``revised.''}
+}
+
+@inproceedings{Johnson94:TPCD,
+	AUTHOR = {Steven D. Johnson and Paul S. Miner and Albert Camlleri},
+	TITLE = {Studies of the Single-Pulser in Various Reasoning Systems},
+	PAGES = {126--145},
+	CROSSREF = {TPCD94}
+}
+
+@inproceedings{Miner94:circuit,
+	AUTHOR = {Paul S. Miner and Shyamsundar Pullela and Steven D.
+		Johnson},
+	TITLE = {Interaction of Formal Design Systems in the Development
+		of a Fault-Tolerant Clock Synchronization Circuit},
+	BOOKTITLE = {13th} # srds,
+	YEAR = 1994,
+	ORGANIZATION = ieeecs,
+	ADDRESS = {Dana Point, CA},
+	MONTH = oct,
+	PAGES = {128--137}
+}
+
+@BOOK{Constable86, 
+        KEY="Constable86",
+	AUTHOR="R. L. {Constable,~{\it et al\/}}",
+	TITLE="Implementing Mathematics with the {Nuprl}",
+	PUBLISHER="Prentice-Hall",
+	ADDRESS="New Jersey",
+	YEAR="1986"
+}
+
+@InProceedings{Coquand-Huet85, 
+        Key= "Coquand",
+	author="T. Coquand and G. P. Huet",
+	title="Constructions: A Higher Order Proof System for
+Mechanizing Mathematics",
+	booktitle="Proceedings of EUROCAL 85, Linz (Austria)",
+	Publisher="Springer-Verlag", Year ="1985",
+        ADDRESS = {Berlin}
+}
+
+@INCOLLECTION{Gordon:HOL,
+	AUTHOR = {M.~J.~C.~Gordon},
+	TITLE = {{HOL}: A Proof Generating System for Higher-Order Logic},
+	BOOKTITLE = {VLSI Specification, Verification and Synthesis},
+	PUBLISHER = {Kluwer},
+	YEAR = {1988},
+	EDITOR = {G.~Birtwistle and P.~A.~Subrahmanyam},
+	PAGES = {73--128},
+	ADDRESS = {Dordrecht, The Netherlands}
+}
+
+@BOOK{mcallester89,
+	AUTHOR = {D.~A.~McAllester},
+	TITLE = {{ONTIC}: A Knowledge Representation System for Mathematics},
+	PUBLISHER = {MIT Press},
+	YEAR = {1989}
+}
+
+@incollection{Pase-Saaltink,
+	AUTHOR = {W.~Pase and M.~Saaltink},
+	TITLE = {Formal Verification in m-EVES},
+	BOOKTITLE = {Current Trends in Hardware Verification and Automated Theorem Proving},
+	YEAR = {1989},
+        PAGES = {268--302},
+	EDITOR = {G.~Birtwistle and P. A. Subrahmanyam},
+	PUBLISHER = {Springer-Verlag}
+}
+
+@TECHREPORT{IMPS91,
+	AUTHOR = {W. M. Farmer and J. D. Guttman and F. J. Thayer},
+	TITLE = {{IMPS}: An Interactive Mathematical Proof System},
+	INSTITUTION = {Mitre Corporation},
+	YEAR = {1991},
+	NUMBER = {M90-19}
+}
+
+@techreport{HW-Tutorial:Report,
+	AUTHOR = {Mandayam Srivas and Natarajan Shankar and Sreeranga
+		Rajan},
+	TITLE = {Hardware Verification using {PVS}: A Tutorial},
+	INSTITUTION = csl,
+	YEAR = 1995,
+	ADDRESS = mp,
+	NOTE = {Forthcoming}
+}
+
+@ARTICLE{mephisto,
+	AUTHOR = {R. Kumar and K. Schneider and T. Kropf},
+	TITLE = {Structuring and Automating Hardware Proofs in a Higher-Order Therem Proving Environment},
+	JOURNAL = {Formal Methods in System Design},
+	YEAR = {1993},
+	VOLUME = {2},
+	NUMBER = {2},
+	PAGES = {165--223}
+}
+
+@INPROCEEDINGS{HOL:super,
+	AUTHOR = {Mark D. Aagard and Miriam E. Leeser and Phillip J. Windley},
+	TITLE = {Toward a Super Duper Hardware Tactic},
+	BOOKTITLE = {Proceedings of the HOL User's Group Workshop},
+	YEAR = {1993},
+	PAGES = {401--414}
+}
+
+@TechReport{cantu:alu,
+  author = 	 "F. J. Cantu",
+  title = 	 "Verifying an {\em n-bit} Arithmetic Logic Unit",
+  institution =  "University of Edinburgh",
+  year = 	 1994,
+  type =	 "Blue Book Note 935",
+  month =	 "June"
+}
+
+@proceedings{Compass92,
+	KEY = {COMPASS'92},
+	BOOKTITLE = {COMPASS '92 (Proceedings of the Seventh Annual Conference
+		on Computer Assurance)},
+	TITLE = {COMPASS '92 (Proceedings of the Seventh Annual Conference
+		on Computer Assurance)},
+	YEAR = 1992,
+	ORGANIZATION = {IEEE Washington Section},
+	ADDRESS = {Gaithersburg, MD},
+	MONTH = jun
+}
+
+@proceedings{TPCD94,
+	EDITOR = {Ramayya Kumar and Thomas Kropf},
+	BOOKTITLE = {Theorem Provers in Circuit Design ({TPCD} '94)},
+	TITLE = {Theorem Provers in Circuit Design ({TPCD} '94)},
+	MONTH = sep,
+	YEAR = 1994,
+	ADDRESS = {Bad Herrenalb, Germany},
+	PUBLISHER = sv,
+	SERIES = lncs,
+	VOLUME = 901
+}
+
+@proceedings{FTCS-highlights,
+	KEY = {FTCS-Highlights},
+	TITLE = ftcs # 25 # {: Highlights from 25 Years},
+	BOOKTITLE = ftcs # 25 # {: Highlights from 25 Years},
+	YEAR = 1995,
+	ORGANIZATION = ieeecs,
+	PUBLISHER = ieeecs,
+	ADDRESS = {Pasadena, CA},
+	MONTH = jun
+}
+
+@INCOLLECTION{BoyerGoldschlag91,
+	AUTHOR = {Robert S. Boyer and David M. Goldschlag and Matt Kaufmann and J S. Moore}, 
+	TITLE = {Functional Instantiation in First-Order Logic},
+	BOOKTITLE = {Artificial Intelligence and Mathematical Theorem of Computation: Papers in Honor of John McCarthy},
+	PUBLISHER = {Academic Press},
+	YEAR = {1991},
+	EDITOR = {V. Lifschitz},
+	PAGES = {7--26}
+}
+
+@manual{EHDM:Language,
+	KEY = {EHDM},
+	ORGANIZATION = csl,
+	TITLE = {{\sc Ehdm} Specification and Verification System Version
+		5.0---Description of the {\sc Ehdm} Specification Language},
+	YEAR = 1990,
+	MONTH = jan,
+	ADDRESS = mp,
+	NOTE = {See~\cite{EHDM:supplement} for the updates to Version
+		5.2}
+}
+
+@manual{EHDM:supplement,
+	KEY = {EHDM},
+	ORGANIZATION = csl,
+	TITLE = {{\sc Ehdm} Specification and Verification System Version
+		5.X---Supplement to User's and Language Manuals},
+	YEAR = 1991,
+	MONTH = aug,
+	ADDRESS = mp,
+	NOTE = {Current version number is 5.2.}
+}
+
+@inproceedings{Farmer:imps-cade,
+	AUTHOR = {William M. Farmer and Joshua D. Guttman and F. Javier
+		Thayer},
+	TITLE = {{IMPS}: An Interactive Mathematical Proof System},
+	BOOKTITLE = {10th} # cade,
+	EDITOR = {Mark E. Stickel},
+	YEAR = 1990,
+	MONTH = jul,
+	PUBLISHER = sv,
+	SERIES = lncs,
+	VOLUME = 449,
+	ADDRESS = {Kaiserslautern, Germany},
+	PAGES = {653--654}
+}
+
+@INPROCEEDINGS{Farmer94,
+  author = {W. M. Farmer},
+  title = {Theory Interpretation in Simple Type Theory},
+  booktitle = {Higher-Order Algebra, Logic, and Term Rewriting},
+  year = {1994},
+  editor = {J. Heering et al.},
+  volume = {816},
+  series = {Lecture Notes in Computer Science},
+  pages = {96--123},
+  publisher = {Springer-Verlag}
+}
+
+@TECHREPORT{Kammuller:comparison,
+  author = {F. Kamm\"{u}ller},
+  title = {Comparison of {IMPS}, {PVS} and {Larch} with respect to Theory Treatment
+	and Modularization},
+  institution = {Computer Laboratory, University of Cambridge},
+  year = {1996},
+  note = {Unpublished Draft 1.0, available at \url{http://www.first.gmd.de/~florian/papers/report.ps.gz}}
+}
+
+@TECHREPORT{Maude,
+  author = {M. Clavel and F. Dur\'an and S.~Eker and P.~Lincoln and N. Mart\'{\i}-Oliet
+	and J. Meseguer and J. F. Quesada},
+  title = {Maude: Specification and Programming in Rewriting Logic},
+  institution = {Computer Science Laboratory, SRI International},
+  year = {1999},
+  number = {CDRL A005},
+  month = mar,
+  url = {http://maude.csl.sri.com/manual/}
+}
+
+@techreport{OBJ:intro,
+	AUTHOR = {Joseph A. Goguen and Timothy Winkler},
+	TITLE = {Introducing {OBJ}},
+	INSTITUTION = csl,
+	YEAR = 1988,
+	NUMBER = {SRI-CSL-88-9},
+	ADDRESS = mp,
+	MONTH = aug
+}
+
+@BOOK{ML-report,
+	AUTHOR = {R. Milner and M. Tofte and R. Harper},
+	TITLE = {The Definition of Standard {ML}},
+	PUBLISHER = {MIT Press},
+	YEAR = {1990}
+}
+
+@INPROCEEDINGS{SrinivasJullig95,
+	AUTHOR = {Yellamraju V. Srinivas and Richard J\"ullig},
+	TITLE = {Specware: {Formal} support for composing software},
+	BOOKTITLE = {Mathematics of Program Construction},
+        EDITOR = {Bernhard M\"oller},
+        publisher = sv,
+        series = lncs,
+        number = 947,
+        pages = {399--422},
+	YEAR = {1995}}
+
+@Incollection{BURSTALL&GOGUEN,
+        Author="R. M. Burstall and J. A. Goguen",
+        Key="Burstall & Goguen",
+        Title="An Informal Introduction to Specifications using {Clear}",
+	Editor="R. S. Boyer and J. S. Moore",
+        Booktitle="The Correctness Problem in Computer Science",
+        Publisher="Academic Press, London",
+        Year="1981"}
+
+@techreport{PVS-Semantics:TR,
+	TITLE = {The Formal Semantics of {PVS}},
+	AUTHOR = {Sam Owre and Natarajan Shankar},
+	NUMBER = {SRI-CSL-97-2},
+	INSTITUTION = {Computer Science Laboratory, SRI International},
+	ADDRESS = {Menlo Park, CA},
+	MONTH = aug,
+	YEAR = 1997
+}
+	

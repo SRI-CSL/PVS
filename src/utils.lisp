@@ -315,6 +315,17 @@
 		   (sys:getenv "PATH") command arguments)))
     (excl:shell string)))
 
+#+allegro
+(defun program-version (command expected)
+  (let* ((match-p nil)
+	 (errstr nil)
+	 (errno (excl.osi:with-command-output (out command
+						  :error-output
+						  #'(lambda (estr) (setq errstr estr)))
+		  (setq match-p (string= expected out :end2 (length expected)))
+		  (excl.osi:loop-exit))))
+    (and (zerop errno) match-p)))
+	
 
 #+lucid
 (defun ls ()
@@ -1136,15 +1147,17 @@
 			(cadr (memq theory
 				    (reverse
 				     *prelude-theories*)))))
-		   (copy-context (saved-context
-				  (if (datatype? prevp)
-				      (or (adt-reduce-theory prevp)
-					  (adt-map-theory prevp)
-					  (adt-theory prevp))
-				      prevp))
-				 theory
-				 (reverse rem-decls)
-				 (or (car rem-decls) decl))))
+		   (if prevp
+		       (copy-context (saved-context
+				      (if (datatype? prevp)
+					  (or (adt-reduce-theory prevp)
+					      (adt-map-theory prevp)
+					      (adt-theory prevp))
+					  prevp))
+				     theory
+				     (reverse rem-decls)
+				     (or (car rem-decls) decl))
+		       (copy-context (saved-context theory)))))
 		(t (make-new-context theory)))))
     ;;; Need to clear this hash or the known-subtypes table won't get
     ;;; updated properly - see add-to-known-subtypes.
@@ -1190,12 +1203,14 @@
 			   (list (adt-theory prevp)
 				 (adt-map-theory prevp)
 				 (adt-reduce-theory prevp)))
-			 (list prevp))))
+			 (if prevp
+			     (list prevp)
+			     (list theory)))))
 	  (dolist (pth pths)
 	    (setf (get-importings pth)
 		  (list (mk-modname (id pth)))))))
-      (setf (declaration *current-context*) decl)
       (update-context-importing-for-mapped-tcc decl))
+    (setf (declaration *current-context*) decl)
     *current-context*))
 
 (defmethod update-context-importing-for-mapped-tcc ((decl mapped-axiom-tcc))
@@ -1435,7 +1450,7 @@
 			     (all-decls (module decl)))))
 	(assert (memq decl same-id-decls))
 	(if (cdr same-id-decls)
-	    (let ((idx (1+ (position decl same-decl-ids))))
+	    (let ((idx (1+ (position decl same-id-decls))))
 	      (intern (format nil "~a_~a_~d" (id (module decl)) (id decl) idx)
 		      :pvs))
 	    (intern (format nil "~a_~a" (id (module decl))(id decl)))))
@@ -4191,10 +4206,24 @@ space")
 
 (defmethod macro-expressions ((dt recursive-type))
   nil)
-  
+
 (defmethod (setf from-macro) (ex1 (ex2 expr))
   (assert (current-theory))
   (push (cons ex2 ex1) (macro-expressions (current-theory))))
+
+(defmethod macro-subtype-tcc-args-list ((ex expr))
+  (assert (current-theory))
+  (cdr (assq ex (macro-subtype-tcc-args-alist (current-theory)))))
+
+(defmethod macro-subtype-tcc-args-alist ((dt recursive-type))
+  nil)
+
+(defmethod (setf macro-subtype-tcc-args-list) (tcc-args (ex expr))
+  (assert (current-theory))
+  (let ((tcc-args-list (assq ex (macro-subtype-tcc-args-alist (current-theory)))))
+    (if tcc-args-list
+	(push tcc-args (cdr tcc-args-list))
+	(push (cons ex (list tcc-args)) (macro-subtype-tcc-args-alist (current-theory))))))
 
 (defun collect-theory-instances (theory)
   (let ((th (get-theory theory))
@@ -4573,3 +4602,24 @@ space")
 	(multiple-value-bind (match? all2 version)
 	    (match-regexp "using (.*)" vers-line)
 	  (values source version))))))
+
+(defvar *pvs-environment-variables*
+  '(PVS_LIBRARY_PATH NLYICES_DIR PVSPATH PVSMINUSQ PVSINEMACS PVSNONINTERACTIVE
+    PVSTIMEOUT PVSVERBOSE PVSEVALLOAD PVSPORT PVSPATCHLEVEL
+
+    PVSIOFILE PVSIOTIME PVSIOTHEORY PVSIOPACK PVSIOVERB PVSIOTCCS
+    PVSIOMAIN PVSIOPROMPTIN PVSIOPROMPTOUT PVSIOVERSION
+
+    PROVEITVERSION PROVEITPVSCONTEXT PROVEITPVSFILE PROVEITLISPIMPORT
+    PROVEITLISPSCRIPTS PROVEITLISPTRACES PROVEITLISPFORCE PROVEITLISPTYPECHECK
+    PROVEITLISPTXTPROOFS PROVEITLISPTEXPROOFS PROVEITLISPPACKS PROVEITLISPTHFS
+    PROVEITLISPTHEORIES
+    ))
+
+(defun pvs-environment-variable-values ()
+  (mapcar #'(lambda (envvar) (cons (string envvar) (environment-variable (string envvar))))
+    *pvs-environment-variables*))
+
+;; (defun check-for-git ()
+;;   (with-
+;;   (zerop (run-program "git" :arguments (list "--version"))))
