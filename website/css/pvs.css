@@ -22,6 +22,11 @@ a.active {
     background-color: #312F61;
 }
 
+.container {
+    max-width: 2600px !important;
+    min-width: 900px !important;
+}
+
 .container a {
     color: #3F51B5;
     font-weight: bold;
@@ -49,18 +54,6 @@ footer.page-footer a, nav .container a{
     height: 32px;
 }
 
-/*
-li.pdf {
-    height: 30px;
-    background-image: url(../images/download-pdf.png);
-    background-size: 30px 30px;
-    background-position: -2px -3px;
-    background-repeat: no-repeat;
-    padding-left: 25px!important;
-    padding-right: 30px !important;
-}
-*/
-
 .secondarymenubar {
     border-top: 2px solid #9696c6;
     clear: both;
@@ -73,4 +66,23 @@ div.clear {
     margin-top: 5px;
     margin-bottom: 0px;
     height: 45px;
+}
+
+.pvshelp {
+    width: 100%;
+    min-height: 1200px;
+}
+
+.pvsdoc {
+    width: 50%;
+    height: 580px;
+    float: left;
+}
+.screenshot {
+    width: 100%;
+    min-height: 600px;
+}
+
+.indigo {
+    margin-bottom: 2px !important;
 }

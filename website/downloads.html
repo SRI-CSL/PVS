@@ -12,15 +12,14 @@
     <link rel="stylesheet" type="text/css" href="css/pvs.css">
     <script type="text/javascript" src="js/jquery.min.js"></script>
     <script type="text/javascript" src="js/index.js"></script>
+    <script type="text/javascript" src="js/materialize.js"></script>
 </head>
 
 <body>
     <nav id="menubar" class="indigo ">
-        <div class="nav-wrapper container">
-            <a href="#" data-activates="mobile-menu" class="button-collapse"><i class="material-icons">menu</i></a>
-            <ul id="menu" class="left hide-on-med-and-down ">
-                <li>
-                    <a href="index.html">PVS</a>
+        <div class="nav-wrapper container">           
+            <ul id="menu" class="left">
+                <li><a href="index.html">PVS</a>
                 </li>
                 <li><a class="active" href="downloads.html">Downloads</a>
                 </li>
@@ -29,32 +28,19 @@
                 <li><a href="community.html">Community</a>
                 </li>
             </ul>
-            <ul id="mobile-menu" class="side-nav">
-                <li>
-                    <a href="index.html">PVS</a>
-                </li>
-                <li><a href="downloads.html">Downloads</a>
-                </li>
-                <li><a href="resources.html">Resources</a>
-                </li>
-                <li><a href="community.html">Community</a>
-                </li>
-            </ul>
              <div id="search" class="nav-wrapper right">
-                <form method="get" action="http://www.google.com/search" onSubmit="googlesearch(this)">
+                <form method="get" action="http://www.google.com/search" onSubmit="googlesearch(this)" target="_blank">
                     <div class="input-field indigo lighten-2">
-                        <input type="search" name="search_input" id="search_input" placeholder="search this site"/>
-                        <label for="search"><i class="material-icons">search</i>
+                        <input type="search" name="search_input" id="search_input" placeholder="Search this site..."/>
+                        <label for="search"><a href="javascript:usr_click('submit_google_query')"><i class="material-icons">search</i></a>
                         </label>
                         <input type="hidden" name="q">
+                        <input type="submit" id="submit_google_query" value="Search this site" class="button" onclick="onClick(this)" style="display:none;"/>
                     </div>
                 </form>
             </div>
         </div>
-
     </nav>
-    <!--close menubar-->
-
     <div id="site_content" class="container">
       <div id="content">
         <div class="content_item  clear">
@@ -111,11 +97,6 @@
                                     VirtualBox Image
                                 </a>
                             </li>
-                            <li class="col">
-                                <a href="instructions.html" target="_blank">
-                                    <i class="material-icons">link</i>Instructions
-                                </a>
-                            </li>
                         </ul>
                     </div>
             </div>
@@ -159,7 +140,8 @@
                 <p>Coming soon....</p>
             </div>
             <div class="col s12 " id="faqs" "">
-                <p>Coming soon....</p>
+                <h5>Frequently Asked Questions</h5>
+                <p><iframe class="pvshelp" src="http://pvs-wiki.csl.sri.com/index.php/FAQ" id="pvshelp"></iframe></p>
             </div>
         </div>
       </div>
@@ -167,7 +149,7 @@
     <footer class="page-footer indigo white-text padding">
         <div class="container">
             <div class="row">
-                <div class="col l6 s12 resource">
+                <div class="col l6 s12">
                     <h5>Support</h5>
                     <p>A group of experienced PVS users have offered to provide help to other PVS users. You can ask them questions about all aspects of PVS by sending an email to <a href="mailto:pvs-help@csl.sri.com" target="_blank">pvs-help@csl.sri.com</a>.
                     </p>
@@ -176,49 +158,55 @@
                             <li><a href="http://pvs-wiki.csl.sri.com/index.php/FAQ" target="_blank">FAQs</a> related to the installation of PVS.</li>
                         </ul>
                 </div>
-                <div class="col l2 s6 resource">
+                <div class="col l2 s6">
                     <h5>Resources</h5>
-                    <li>
-                        <a href="resources.html#manuals" target="_self">Manuals</a>
-                    </li>
-                    <li>
-                        <a href="resources.html#tutorials" target="_self">Tutorials</a>
-                    </li>
-                    <li>
-                        <a href="resources.html#publications" target="_self">Publications</a>
-                    </li>
-                    <li>
-                        <a href="http://pvs-wiki.csl.sri.com/index.php/FAQ" target="_blank">FAQs</a>
-                    </li>
-                    <li>
-                        <div class="googlescholarform hidden hide">
-                            <form method="get" action="http://scholar.google.com/scholar" onsubmit="googlescholarsearch(this)">
-                                <input type="hidden" name="as_q" value="PVS+prototype+verification+system" id="search_pvs">
-                                <input type="hidden" name="as_ylo" value="1992" id="search_date">
-                                <input type="hidden" name="q">
-                                <input type="submit" id="submit_scholar_query" value="Search PVS publications on GoogleScholar" class="button" onclick="onClick(this)">
-                            </form>
-                        </div>
-                        <a href="javascript:googlescholar()">Google Scholar</a>
-                    </li>
+                    <ul>
+                        <li>
+                            <a href="resources.html#manuals" target="_self">Manuals</a>
+                        </li>
+                        <li>
+                            <a href="resources.html#tutorials" target="_self">Tutorials</a>
+                        </li>
+                        <li>
+                            <a href="resources.html#publications" target="_self">Publications</a>
+                        </li>
+                        <li>
+                            <a href="http://pvs-wiki.csl.sri.com/index.php/FAQ" target="_blank">FAQs</a>
+                        </li>
+                        <li>
+                            <div class="googlescholarform hidden hide">
+                                <form method="get" action="http://scholar.google.com/scholar" onSubmit="googlescholarsearch(this)">
+                                    <input type="hidden" name="as_q" value="PVS+prototype+verification+system" id="search_pvs" />
+                                    <input type="hidden" name="as_ylo" value="1992" id="search_date" />
+                                    <input type="hidden" name="q">
+                                    <input type="submit" id="submit_scholar_query" value="Search PVS publications on GoogleScholar" class="button" onclick="onClick(this)" />
+                                </form>
+                            </div>
+                            <a href="javascript:usr_click('submit_scholar_query')">Google Scholar</a>
+                        </li>
+
+                    </ul>
                 </div>
 
-                <div class="col l2 s6 resource">
+                <div class="col l2 s6">
                     <h5>Community</h5>
-                    <li><a href="#!" target="_blank">Facebook</a>
-                    </li>
+                    <ul>
+                        <li><a href="#!" target="_blank">PVS Users on Facebook</a>
+                    </ul>
                 </div>
-                <div class="col l2 s6 resource">
+                <div class="col l2 s6">
                     <h5>Code</h5>
-                    <li class="col">
-                        <a href="downloads.html#platforms" target="_self">PVS Binaries</a>
-                    </li>
-                    <li class="col">
-                        <a href="downloads.html#nightly" target="_self">Nightly Builds</a>
-                    </li>
-                    <li class="col">
-                        <a href="downloads.html#sources" target="_self">PVS Sources</a>
-                    </li>
+                    <ul>
+                        <li class="link col">
+                            <a href="downloads.html#platforms" target="_self">Binaries</a>
+                        </li>
+                        <li class="link col">
+                            <a href="downloads.html#nightly" target="_self">Nightly Builds</a>
+                        </li>
+                        <li class="link col">
+                            <a href="downloads.html#sources" target="_self">Sources</a>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -227,12 +215,9 @@
                   Last modified:
                     <script>
                         document.write(new Date(document.lastModified));
-                    </script>&nbsp; | &nbsp;Webmasters: <a href="mailto:paolo.masci@gmail.com">Paolo Masci</a> • <a href="mailto:dodopat@gmail.com">Patrick Oladimeji</a> • <a href="mailto:owre@csl.sri.com">Sam Owre</a>
+                    </script>&nbsp; | &nbsp;Webmasters: <a href="mailto:paolo.masci@gmail.com">Paolo Masci</a> &#149; <a href="mailto:dodopat@gmail.com">Patrick Oladimeji</a> &#149; <a href="mailto:owre@csl.sri.com">Sam Owre</a>
             </div>
         </div>
-        <!--close footer-->
     </footer>
-    <script type="text/javascript" src="js/materialize.js">
-    </script>
 </body>
 </html>
