@@ -482,7 +482,8 @@ if (ans.res) {
 
      */
     EmuchartsParser.prototype.parseTransition = function (label) {
-        label = (label === "") ? "tick" : label;
+        label = (label === "" || label.trim().indexOf("[") === 0 || label.trim().indexOf("{") === 0) ? 
+            ("tick " + label) : label;
         console.log("Parsing transition " + label);
         var ans = { err: null, res: null };
         try {

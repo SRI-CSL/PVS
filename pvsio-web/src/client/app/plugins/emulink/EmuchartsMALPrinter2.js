@@ -68,6 +68,10 @@ define(function (require, exports, module) {
         return this;
     }
     
+    function preprocessName(name) {
+        return name.replace(new RegExp("_", "g"),"");
+    }
+    
     /**
      * Prints MAL types
      */
@@ -79,7 +83,7 @@ define(function (require, exports, module) {
             ans += " MachineState = { ";
             var i = 0;
             while (i < emuchart.states.length) {
-                ans += emuchart.states[i].name;
+                ans += preprocessName(emuchart.states[i].name);
                 if (i < emuchart.states.length - 1) { ans += ", "; }
                 i++;
             }
@@ -89,51 +93,51 @@ define(function (require, exports, module) {
     };
     
 
-    /**
-     * Parser for transitions given in the form name [ condition ] { actios },
-     * where name is the transition name, and conditions and actions are optionals
-     * @returns a transition object with the following structure: 
-     *                  { name: string, // the transition label
-     *                    cond: string, // represents a boolean expression
-     *                    actions: (array of strings), // each action represents a state update
-     *                    from: (string), // source state label
-     *                    to: (string) // target state label }
-     */
-    function parseTransition(transition) {
-        var ans = {
-            name: "",
-            cond: "",
-            actions: [],
-            from: (transition.source) ? transition.source.name : null,
-            to: transition.target.name
-        };
-        function parseTransitionName(transition) {
-            var pos = transition.indexOf("[");
-            if (pos > 0) { return transition.substr(0, pos).trim(); }
-            pos = transition.indexOf("{");
-            if (pos > 0) { return transition.substr(0, pos).trim(); }
-            return transition.trim();
-        }
-        var sqOpen = transition.name.indexOf("[");
-        var sqClose = transition.name.indexOf("]");
-        var curOpen = transition.name.indexOf("{");
-        var curClose = transition.name.indexOf("}");
-        ans.name = parseTransitionName(transition.name);
-        if (sqOpen >= 0 && sqClose > sqOpen) {
-            ans.cond = transition.name.substring(sqOpen + 1, sqClose).trim();
-        }
-        if (curOpen >= 0 && curClose > curOpen) {
-            var actions = transition.name.substring(curOpen + 1, curClose).split(";");
-            actions.forEach(function (action) {
-                var a = action.trim();
-                if (a !== "") {
-                    ans.actions.push(a);
-                }
-            });
-            
-        }
-        return ans;
-    }
+//    /**
+//     * Parser for transitions given in the form name [ condition ] { actios },
+//     * where name is the transition name, and conditions and actions are optionals
+//     * @returns a transition object with the following structure: 
+//     *                  { name: string, // the transition label
+//     *                    cond: string, // represents a boolean expression
+//     *                    actions: (array of strings), // each action represents a state update
+//     *                    from: (string), // source state label
+//     *                    to: (string) // target state label }
+//     */
+//    function parseTransition(transition) {
+//        var ans = {
+//            name: "",
+//            cond: "",
+//            actions: [],
+//            from: (transition.source) ? transition.source.name : null,
+//            to: transition.target.name
+//        };
+//        function parseTransitionName(transition) {
+//            var pos = transition.indexOf("[");
+//            if (pos > 0) { return transition.substr(0, pos).trim(); }
+//            pos = transition.indexOf("{");
+//            if (pos > 0) { return transition.substr(0, pos).trim(); }
+//            return transition.trim();
+//        }
+//        var sqOpen = transition.name.indexOf("[");
+//        var sqClose = transition.name.indexOf("]");
+//        var curOpen = transition.name.indexOf("{");
+//        var curClose = transition.name.indexOf("}");
+//        ans.name = parseTransitionName(transition.name);
+//        if (sqOpen >= 0 && sqClose > sqOpen) {
+//            ans.cond = transition.name.substring(sqOpen + 1, sqClose).trim();
+//        }
+//        if (curOpen >= 0 && curClose > curOpen) {
+//            var actions = transition.name.substring(curOpen + 1, curClose).split(";");
+//            actions.forEach(function (action) {
+//                var a = action.trim();
+//                if (a !== "") {
+//                    ans.actions.push(a);
+//                }
+//            });
+//            
+//        }
+//        return ans;
+//    }
 
     /**
      * Prints MAL axioms
@@ -155,17 +159,19 @@ define(function (require, exports, module) {
      */
     EmuchartsMALPrinter.prototype.print_actions = function (emuchart) {
         var ans = " actions\n";
-        var actions = d3.set();
+        var actions = d3.map();
         
         if (emuchart.transitions && emuchart.transitions.length > 0) {
             emuchart.transitions.forEach(function (t) {
-                var transition = parseTransition(t);
-                if (!actions.has(transition.name)) {
-                    ans += "  " + transition.name + "\n";
-                    actions.add(transition.name);
+                var transition = parser.parseTransition(t.name);
+                if (transition.res) {
+                    transition = transition.res.val;
+                    actions.set(preprocessName(transition.identifier.val), transition.identifier.type);
                 }
-                // first, generate the permission
-                
+            });
+            var identifiers = actions.keys();
+            identifiers.forEach(function (identifier) {
+                ans += "  " + identifier + "\n";
             });
         }
         ans += "\n";
@@ -184,19 +190,24 @@ define(function (require, exports, module) {
         var ans = " axioms\n";
         if (emuchart.initial_transitions && emuchart.initial_transitions.length > 0) {
             emuchart.initial_transitions.forEach(function (t) {
-                var transition = parseTransition(t);
-                ans += "  [] ";
-                ans += "previous_state = " + transition.to + " & ";
-                ans += "current_state = " + transition.to;
-                //initialize variables
-                if (emuchart.variables && emuchart.variables.length > 0) {
-                    emuchart.variables.forEach(function (v) {
-                        ans += " & " + v.name + " = " + v.value;
-                    });
+                var transition = parser.parseTransition(t.name);
+                if (transition.res) {
+                    transition = transition.res.val;
+                    ans += "  [] ";
+                    ans += "previous_state = " + preprocessName(t.target.name) + " & ";
+                    ans += "current_state = " + preprocessName(t.target.name);
+                    //initialize variables
+                    if (emuchart.variables && emuchart.variables.length > 0) {
+                        emuchart.variables.forEach(function (v) {
+                            ans += " & " + preprocessName(v.name) + " = " + v.value;
+                        });
+                    }
+                    if (transition.actions) {
+                        transition.actions.forEach(function (action) {
+                            ans += " & " + action;
+                        });
+                    }
                 }
-                transition.actions.forEach(function (action) {
-                    ans += " & " + action;
-                });
             });
         }
         ans += "\n\n";
@@ -216,9 +227,9 @@ define(function (require, exports, module) {
         var res = "";
         var actions = d3.map();
         emuchart.transitions.forEach(function (mLabel) {
-            var label = mLabel.name;
-            var from = mLabel.source.name;
-            var to = mLabel.target.name;
+            var label = preprocessName(mLabel.name);
+            var from = preprocessName(mLabel.source.name);
+            var to = preprocessName(mLabel.target.name);
             
             if (!label || label === "") {
                 return { err: "Unexpected label", res: null };
@@ -251,9 +262,16 @@ define(function (require, exports, module) {
                 //The transition "Condition"
                 var cond = "";
                 if (transition.cond.val.length > 0) {
-                    cond += transition.cond.val[0].val;
-                    cond += transition.cond.val[1].val === "==" ? "=" : transition.cond.val[1].val;
-                    cond += transition.cond.val[2].val;
+                    if (transition.cond.val.length === 1) {
+                        cond += transition.cond.val[0].val;
+                    } else if (transition.cond.val.length === 2) {
+                        cond += transition.cond.val[0].val;
+                        cond += transition.cond.val[1].val;
+                    } else {
+                        cond += transition.cond.val[0].val;
+                        cond += transition.cond.val[1].val === "==" ? "=" : transition.cond.val[1].val;
+                        cond += transition.cond.val[2].val;
+                    }
                 }
                 
                 //Create pair (dest, [condition,effect]) -- Transition
@@ -365,7 +383,7 @@ define(function (require, exports, module) {
         ans += "  previous_state: MachineState\n";
         if (emuchart.variables && emuchart.variables.length > 0) {
             emuchart.variables.forEach(function (v) {
-                ans += "  " + v.name + ": " + v.type + "\n";
+                ans += "  " + preprocessName(v.name) + ": " + v.type + "\n";
             });
         }
         ans += "\n";
@@ -383,9 +401,9 @@ define(function (require, exports, module) {
         if (constants && constants.length > 0) {
             constants.forEach(function (c) {
                 if (c.value) {
-                    ans += c.name + " " + c.value + "\n";
+                    ans += preprocessName(c.name) + " " + c.value + "\n";
                 } else {
-                    ans += "# " + c.name + "\n";
+                    ans += "# " + preprocessName(c.name) + "\n";
                 }
             });
         }

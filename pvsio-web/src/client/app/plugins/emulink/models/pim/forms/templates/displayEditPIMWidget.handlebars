@@ -1,0 +1,64 @@
+<div class="form-center">
+    <div id="pimWidgetModal" class="panel panelWide panel-info shadow center">
+        <div class="panel-heading">{{header}}</div>
+        <form class="center form-inline" onsubmit="return false">
+            <div class="panel-body" style="overflow-y: auto; height: 280px;">
+                <div class="alert alert-danger hide">
+                    <a href="#" class="close" onclick="$(this).parent().addClass('hide');">&times;</a>
+                    <div id="editWidgetsError"></div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        <label class="sr-only"
+                                for="newWidgetName">{{textLabel.newWidgetName}}</label>
+                        <input id="newWidgetName"
+                                class="form-control"
+                                type="text"
+                                value=""
+                                placeholder="{{placeholder.newWidgetName}}"
+                                style="padding: 6px 12px; width: 100%;"/>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="sr-only"
+                                for="newWidgetCategory">{{textLabel.newWidgetCategory}}</label>
+                        <input id="newWidgetCategory"
+                                class="form-control"
+                                type="text"
+                                value=""
+                                placeholder="{{placeholder.newWidgetCategory}}"
+                                style="padding: 6px 12px; width: 100%;"/>
+                    </div>
+
+                    <div class="col-md-5">
+                        <label class="sr-only"
+                                for="newWidgetBehaviours">{{textLabel.newWidgetBehaviours}}</label>
+                        <input id="newWidgetBehaviours"
+                                class="form-control"
+                                type="text"
+                                value=""
+                                placeholder="{{placeholder.newWidgetBehaviours}}"
+                                style="padding: 6px 12px; width: 100%;"/>
+                    </div>
+
+                    <button type="button"
+                            class="btn btn-primary col-md-1 right"
+                            id="btnAdd">Add</button>
+                </div>
+
+                <div id="table" class="panel-body container-fluid">
+                    <div class="row" style="border-bottom: 1px solid #000; margin-bottom: 10px;"></div>
+                    <div id="pmWidgetsList"></div>
+                </div>
+            </div>
+            <div class="panel-footer">
+                <button type="button"
+                        class="btn btn-danger left"
+                        id="btnLeft2">{{buttons.[0]}}</button>
+                <button type="submit"
+                        class="btn btn-success right"
+                        id="btnRight2">{{buttons.[1]}}</button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -12,7 +12,8 @@
 define(function (require, exports, module) {
     "use strict";
 
-    var eventDispatcher = require("util/eventDispatcher");
+    var eventDispatcher = require("util/eventDispatcher"),
+        PIMs = require("plugins/emulink/models/pim/PIMs");
     var _this;
 
     var defaultValues = { x: 100, y: 100, width: 36, height: 36, fontSize: 10 };
@@ -64,12 +65,18 @@ define(function (require, exports, module) {
             this.initial_edges = emuchart.initial_edges || d3.map();
             this.constants = emuchart.constants || d3.map();
             this.variables = emuchart.variables || d3.map();
+            this.pmr = emuchart.pmr || d3.map();
+            this.isPIM = emuchart.isPIM && emuchart.isPIM === true;
+            this.pim = new PIMs(this.isPIM);
         } else {
             this.nodes = d3.map();
             this.edges = d3.map();
             this.initial_edges = d3.map();
             this.variables = d3.map();
             this.constants = d3.map();
+            this.pmr = d3.map();
+            this.isPIM = false;
+            this.pim = new PIMs();
         }
         eventDispatcher(this);
         _this = this;
@@ -166,6 +173,11 @@ define(function (require, exports, module) {
                 width : width,
                 height: defaultValues.height
             };
+
+        if (_this.getIsPIM()) {
+            newNode = _this.pim.getState(newNode);
+        }
+
         // add the new node to the diagram
         _this.nodes.set(newNode.id, newNode);
         // fire event
@@ -526,6 +538,10 @@ define(function (require, exports, module) {
      * @instance
      */
     Emucharts.prototype.getStates = function () {
+        // If this emuchart is a pim return the pim combatable transition.
+        if (_this.getIsPIM())
+            return _this.pim.getStates(this.nodes);
+        
         var states = [];
         _this.nodes.forEach(function (key) {
             var node = _this.nodes.get(key);
@@ -549,6 +565,9 @@ define(function (require, exports, module) {
      * @instance
      */
     Emucharts.prototype.getState = function (id) {
+        if (_this.getIsPIM())
+            return _this.pim.getState(this.nodes.get(id));
+        // The state should already be a PIM state if required.
         return _this.nodes.get(id);
     };
 
@@ -560,6 +579,10 @@ define(function (require, exports, module) {
      * @instance
      */
     Emucharts.prototype.getTransition = function (id) {
+        // If this emuchart is a pim return the pim combatable transition.
+        if (_this.getIsPIM())
+            return _this.pim.getTransition(this.edges.get(id));
+
         return _this.edges.get(id);
     };
 
@@ -571,6 +594,10 @@ define(function (require, exports, module) {
      * @instance
      */
     Emucharts.prototype.getTransitions = function () {
+        // If this emuchart is a pim return the pim combatable transition.
+        if (_this.getIsPIM())
+            return _this.pim.getTransitions(this.edges);
+        
         var transitions = [];
         _this.edges.forEach(function (key) {
             var trans = _this.edges.get(key);
@@ -733,6 +760,7 @@ define(function (require, exports, module) {
                 type: "emuCharts_variableRemoved",
                 variable: rem
             });
+            console.log("variable " + variableID + " deleted");
             return true;
         }
         return false;
@@ -874,6 +902,18 @@ define(function (require, exports, module) {
     };
 
     /**
+     * @function getVariable
+     * @descriptionb Returns the variable with ID given by the function argument
+     * @param variableID Variable identifier
+     * @returns The variable descriptor
+     * @memberof module:Emucharts
+     * @instance
+     */
+    Emucharts.prototype.getVariable = function (variableID) {
+        return _this.variables.get(variableID);
+    };
+    
+    /**
      * @function getInputVariables
      * @description Returns the input variables defined in the diagram.
      * @returns {Array(Object)} An array of variables descriptors.
@@ -925,6 +965,54 @@ define(function (require, exports, module) {
      */
     Emucharts.prototype.empty = function () {
         return _this.nodes.empty() && _this.edges.empty();
+    };
+
+    /** PIM **/
+
+    /**
+     * Convert the current Emuchart to a PIM (or if from a PIM).
+     * @returns {boolean} True Emuchart became a PIM or a PIM became an Emuchart.
+     */
+    Emucharts.prototype.toPIM = function (toPIM) {
+        return _this.pim && _this.pim.toPIM ? _this.pim.toPIM(toPIM) : false;
+    };
+
+    /**
+     * Returns if this emuchart is a PIM.
+     * @returns {boolean} If this emuchart is a PIM.
+     */
+    Emucharts.prototype.getIsPIM = function () {
+        return _this.pim && _this.pim.getIsPIM ? _this.pim.getIsPIM() : false;
+    };
+
+    /**
+     *
+     * @param behaviour
+     * @returns If no behaviour provided returns all PMR as a set,
+     * If behaviour could be found then returns the relation (behaviour, operation),
+     * else returns null.
+     */
+    Emucharts.prototype.getPMR = function (behaviour, isSave) {
+        return _this.pim && _this.pim.getPMR ? _this.pim.getPMR(_this.pmr, behaviour, isSave) : d3.map();
+    };
+
+    /**
+     * Add a PMR (overrites any existing PMR for the given behaviour).
+     * ({behaviour (string), operation (string)}).
+     * @param pmr
+     * @returns boolean true if successfully added.
+     */
+    Emucharts.prototype.addPMR = function (pmr) {
+        return _this.pim && _this.pim.addPMR ? _this.pim.addPMR(_this.pmr, pmr) : false;
+    };
+
+    /**
+     * Saves the new PMRs into the pool of all PMRs
+     * @param newPMRs
+     * @returns {boolean}
+     */
+    Emucharts.prototype.mergePMR = function (newPMRs) {
+        return _this.pim.mergePMR ? _this.pim.mergePMR(_this.pmr, newPMRs) : false;
     };
 
     module.exports = Emucharts;

@@ -80,7 +80,7 @@ define(function (require, exports, module) {
     });
     
     // test 2
-    txt = "inc [ display > display + 100 ] { display := display + s }";
+    txt = "[ display > display + 100 ] { display := display + s }";
     tests.push({
         description: txt,
         run: function () {
@@ -113,8 +113,8 @@ define(function (require, exports, module) {
         }
     });
     
-    // test 3
-    txt = "inc [ display > display + 100 ] { display := display + s }";
+    // test 3a
+    txt = "{ display := display + s }";
     tests.push({
         description: txt,
         run: function () {
@@ -150,7 +150,7 @@ define(function (require, exports, module) {
         }
     });
     
-    // test 3
+    // test 3b
     txt = "[ display <= (display + 100) ]";
     tests.push({
         description: txt,

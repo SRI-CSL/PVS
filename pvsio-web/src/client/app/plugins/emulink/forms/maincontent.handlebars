@@ -13,6 +13,15 @@
     <div id="EmuchartToolbar" >
         <ul class="dropdown dropdown-vertical">
             <li class='toolbar'>
+                <div id="toolbarViewExportedImage" style="display:none;">
+                    <hr>
+                    <a href="#!" class="toolbar-tooltip blink"
+                       id="btn_toolbarViewExportedImage" target="_blank">
+                        <span title="View Exported Image"
+                              class="glyphicon glyphicon-download-alt"
+                              style="font-size: 1.2em">
+                        </span></a>
+                </div>
                 <hr>
                 <a href="#!" class="toolbar-tooltip" id="btn_toolbarBrowse">
                     <span title="Browse diagram"
@@ -143,32 +152,45 @@
             <li class='active has-sub' id="menuZoom"><a href='#!'><span>Zoom</span></a>
                 <ul>
                     <li class="divider"></li>
-                    <li><a href='#!' id ="btn_menuZoomIn"><span>Zoom-in</span></a></li>
-                    <li><a href='#!' id ="btn_menuZoomOut"><span>Zoom-out</span></a></li>
-                    <li><a href='#!' id ="btn_menuZoomReset"><span>Reset zoom</span></a></li>
-
-                </ul>
-            </li>
-            <li class='active has-sub'><a href='#!'><span>Help</span></a>
-                <ul>
+					<li><a href='#!' id ="btn_menuZoomIn"><span>Zoom-in</span></a></li>
+					<li><a href='#!' id ="btn_menuZoomOut"><span>Zoom-out</span></a></li>
+					<li><a href='#!' id ="btn_menuZoomReset"><span>Reset zoom</span></a></li>
+                    
+				</ul>
+		    </li>
+            <li class='active has-sub'><a href='#!'><span>PIM</span></a>
+            <ul>
+                <li class="divider"></li>
+                <li><a href='#!' id="btn_toPIM"><span>Set Emuchart as PIM</span></a></li>
+                <li><a href='#!' id="btn_fromPIM"><span>Set PIM as Emuchart</span></a></li>
+                <li class="divider"></li>
+                <li><a href='#!' id="btn_menuTestGenerator"><span>Test Generator</span></a></li>
+                <li><a href='#!' id="btn_menuTestGeneratorFromFile"><span>Test Generator from File</span></a></li>
+                <li class="divider"></li>
+            </ul>
+        </li>
+		    <li class='active has-sub'><a href='#!'><span>Help</span></a>
+				<ul>
                     <li class="divider"></li>
                     <li><a href='#!' class="tobeimplemented"><span>Online help</span></a></li>
                     <li><a href='#!' class="tobeimplemented"><span>About</span></a></li>
                     <li class="divider"></li>
                 </ul>
             </li>
-
+		    <li class='active has-sub'><a href='#!' style="cursor:default;">
+                <input class="EmuchartsFilter" type="text" id="filter" placeholder="Filter..." /></a>
+            </li>
         </ul>
     </div>
 
-    <div id="stateMachineInfoBar" >
+    <!--<div id="stateMachineFilterBar" >
         <ul class="dropdown dropdown-horizontal">
             <li>
-                <input type="text" id="filter" placeholder="filter nodes"/>
+                <input class="EmuchartsFilter" type="text" id="filter" placeholder="Filter..." />
             </li>
-           <li class='active has-sub'><a href='#!' id="EmuchartsEditorMode"><span>Editor mode: browse diagram</span></a>
+           <li class='active has-sub'><a href='#!' id="EmuchartsEditorMode" style="display:none;"><span>Editor mode: browse diagram</span></a>
         </ul>
-    </div>
+    </div>-->
     <div id="MouseOverlay">
         <a href="#!" class="toolbar-tooltip" placeholder="addStates" id="MouseOverlayIcon">
             <span title="Add states"
@@ -198,11 +220,37 @@
     </div>
     <div id="ContainerStateMachine" ></div>
     <div id="ContainerStateMachineImage"></div>
-    <div id="state_machine_toolbar" ></div>
-        <!-- <textarea id="emulinkInfo" readonly> </textarea> -->
-        <textarea id="infoBox" readonly ></textarea>
-        <textarea id="infoBoxModifiable" readonly >This space is for the Advanced Diagram Editor (this plugin will be implemented soon!)
-        </textarea>
+    <div id="NewStateAttributes" style="display:none;">
+        <table class="table">
+          <!-- This is our clonable table line template -->
+          <tr id="StateVariableTemplate">
+            <td contenteditable="false" style="background-color:white;">Name</td>
+            <td contenteditable="false" style="background-color:white;">Value</td>
+            <td style="background-color:white;">
+              <span id="RemoveStateAttribute" class="table-remove glyphicon glyphicon-remove"></span>
+            </td>
+            <td style="background-color:white;">
+              <!--<span id="StateAttributeUP" class="table-up glyphicon glyphicon-arrow-up"></span>
+              <span id="StateAttributeDOWN" class="table-down glyphicon glyphicon-arrow-down"></span>-->
+                <span id="EditStateAttribute" class="table-up glyphicon glyphicon-pencil">
+            </td>
+          </tr>
+          <!-- -->
+        </table>
+    </div>
+    <div id="StateAttributes" class="table-editable floating-table">
+        <div class="EmuchartStateHeader"><span>Context Variables</span></div>
+        <table class="table" style="margin-bottom:0 !important;">
+          <tr id="heading" class="TableHeading">
+            <th>Name</th>
+            <th>Initial Value</th>
+            <th></th>
+            <th><span id="AddStateAttribute" class="table-add glyphicon glyphicon-plus"></span></th>
+          </tr>
+        </table>
+    </div>    
+        <!--<textarea id="infoBoxModifiable" readonly >This space is for the Advanced Diagram Editor (this plugin will be implemented soon!)
+        </textarea>-->
         <div><a href="!#" id="pngdataurl" download target="_blank"></a></div>
     </div>
 </div>

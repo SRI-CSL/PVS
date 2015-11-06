@@ -53,7 +53,8 @@ div.plugins {
     user-select: none;
 }
 #graphicalEditor{
-    position:       relative;
+    position:  relative;
+    min-width: 1200px;
 }
 
 #graphicalEditor.hidden {
@@ -324,6 +325,10 @@ div.detailsForm select, div.detailsForm textarea{
     width: 540px;
 }
 
+.overlay .panel.panelWide {
+    width: 705px;
+}
+
 .panel-footer {
     min-height:50px;
 }
@@ -432,6 +437,7 @@ div.detailsForm select, div.detailsForm textarea{
     z-index: 200;
     background: lightgray;
     overflow-y: auto;
+    position: fixed;
 }
 
 .content-body > .ljs-hcontent {

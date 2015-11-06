@@ -1,0 +1,71 @@
+<div class="form-center">
+    <div id="pimStateModal" class="panel panel-info shadow center">
+        <div class="panel-heading">{{header}}</div>
+        <form class="center form-horizontal" onsubmit="return false">
+            <div class="panel-body" style="overflow-y: auto; height: 180px;/*230px;*/">
+                <div class="form-group">
+                    <label class="control-label col-sm-4"
+                           for="newStateName">{{textLabel.newStateName}}</label>
+                    <div class="col-sm-8">
+                        <input id="newStateName"
+                               class="form-control"
+                               type="text"
+                               value="{{value.newStateName}}"
+                               placeholder="{{placeholder.newStateName}}"
+                               required="true"
+                               style="padding: 6px 12px;"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-sm-4"
+                           for="newStateWidgets">{{textLabel.newStateWidgets}}</label>
+                    <div class="col-sm-8">
+                        <input id="newStateWidgets"
+                               class="form-control"
+                               type="text"
+                               value=""
+                               placeholder="{{placeholder.newStateWidgets}}"
+                               style="padding: 6px 12px; cursor: pointer !important;"
+                               readonly="readonly"/>
+                    </div>
+                </div>
+                <!-- No yet supported (PIM within a PIM).
+                <div class="form-group">
+                    <label class="control-label col-sm-4"
+                           for="newStateComponents">{{textLabel.newStateComponents}}</label>
+                    <div class="col-sm-8">
+                        <input id="newStateComponents"
+                               class="form-control"
+                               type="text"
+                               value="{{value.newStateComponents}}"
+                               placeholder="{{placeholder.newStateComponents}}"
+                               style="padding: 6px 12px; cursor: pointer !important;"
+                               disabled/>
+                    </div>
+                </div>
+                -->
+                <div class="form-group">
+                    <label class="control-label col-sm-4"
+                           for="newStatePMR">{{textLabel.newStatePMR}}</label>
+                    <div class="col-sm-8">
+                        <input id="newStatePMR"
+                               class="form-control"
+                               type="text"
+                               value=""
+                               placeholder="{{placeholder.newStatePMR}}"
+                               style="padding: 6px 12px; cursor: pointer !important;"
+                               readonly="readonly"/>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-footer">
+                <button type="button"
+                        class="btn btn-danger left"
+                        id="btnLeft">{{buttons.[0]}}</button>
+                <button type="submit"
+                        class="btn btn-success right"
+                        id="btnRight">{{buttons.[1]}}</button>
+            </div>
+        </form>
+    </div>
+</div>

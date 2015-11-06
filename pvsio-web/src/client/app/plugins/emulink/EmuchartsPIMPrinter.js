@@ -8,61 +8,65 @@
 /*global define*/
 define(function (require, exports, module) {
     "use strict";
-
+    
+    var EmuchartsParser = require("plugins/emulink/EmuchartsParser");
+    
     var PIM_model;
+    var parser;
 
     /**
      * Constructor
      */
     function EmuchartsPIMPrinter(name) {
         PIM_model = name;
+        parser = new EmuchartsParser();
         return this;
     }
 
-    /**
-     * Parser for identifying transition names for transitions given in the
-     * form name [ condition ] { actios }, where conditions and actions are optionals
-     */
-    function parseTransitionName(transitionName) {
-        var pos = transitionName.indexOf("[");
-        if (pos > 0) { return transitionName.substr(0, pos).trim(); }
-        pos = transitionName.indexOf("{");
-        if (pos > 0) { return transitionName.substr(0, pos).trim(); }
-        return transitionName.trim();
-    }
+//    /**
+//     * Parser for identifying transition names for transitions given in the
+//     * form name [ condition ] { actios }, where conditions and actions are optionals
+//     */
+//    function parseTransitionName(transitionName) {
+//        var pos = transitionName.indexOf("[");
+//        if (pos > 0) { return transitionName.substr(0, pos).trim(); }
+//        pos = transitionName.indexOf("{");
+//        if (pos > 0) { return transitionName.substr(0, pos).trim(); }
+//        return transitionName.trim();
+//    }
 
-    /**
-     * Parser for transitions given in the form name [ condition ] { actios },
-     * where name is the transition name, and conditions and actions are optionals
-     */
-    function parseTransition(transition) {
-        var ans = {
-            name: "",
-            cond: "",
-            actions: [],
-            from: transition.source.name,
-            to: transition.target.name
-        };
-        var sqOpen = transition.name.indexOf("[");
-        var sqClose = transition.name.indexOf("]");
-        var curOpen = transition.name.indexOf("{");
-        var curClose = transition.name.indexOf("}");
-        ans.name = parseTransitionName(transition.name);
-        if (sqOpen >= 0 && sqClose > sqOpen) {
-            ans.cond = transition.name.substring(sqOpen + 1, sqClose).trim();
-        }
-        if (curOpen >= 0 && curClose > curOpen) {
-            var actions = transition.name.substring(curOpen + 1, curClose).split(";");
-            actions.forEach(function (action) {
-                var a = action.trim();
-                if (a !== "") {
-                    ans.actions.push(a);
-                }
-            });
-
-        }
-        return ans;
-    }
+//    /**
+//     * Parser for transitions given in the form name [ condition ] { actios },
+//     * where name is the transition name, and conditions and actions are optionals
+//     */
+//    function parseTransition(transition) {
+//        var ans = {
+//            name: "",
+//            cond: "",
+//            actions: [],
+//            from: transition.source.name,
+//            to: transition.target.name
+//        };
+//        var sqOpen = transition.name.indexOf("[");
+//        var sqClose = transition.name.indexOf("]");
+//        var curOpen = transition.name.indexOf("{");
+//        var curClose = transition.name.indexOf("}");
+//        ans.name = parseTransitionName(transition.name);
+//        if (sqOpen >= 0 && sqClose > sqOpen) {
+//            ans.cond = transition.name.substring(sqOpen + 1, sqClose).trim();
+//        }
+//        if (curOpen >= 0 && curClose > curOpen) {
+//            var actions = transition.name.substring(curOpen + 1, curClose).split(";");
+//            actions.forEach(function (action) {
+//                var a = action.trim();
+//                if (a !== "") {
+//                    ans.actions.push(a);
+//                }
+//            });
+//
+//        }
+//        return ans;
+//    }
 
     /**
      * Prints PIM type definitions
@@ -82,7 +86,10 @@ define(function (require, exports, module) {
         if (emuchart.transitions && emuchart.transitions.length > 0) {
             ans += "\n  Signal ::= ";
             emuchart.transitions.forEach(function (transition) {
-                ans += parseTransition(transition).name.replace(new RegExp("_", "g"), "\\_") + " | ";
+                var t = parser.parseTransition(transition.name);
+                if (t.res) {
+                    ans += t.res.val.identifier.val.replace(new RegExp("_", "g"), "\\_") + " | ";
+                }
             });
             ans = ans.substr(0, ans.lastIndexOf("|"));
         }
@@ -103,7 +110,7 @@ define(function (require, exports, module) {
             ans += "\n\\begin{schema}{Init}";
             ans += "\n  PIMSystem";
             ans += "\n\\where";
-            ans += "\n  currentState = " + initial_transitions[0].target.name;
+            ans += "\n  currentState = " + initial_transitions[0].target.name.replace(new RegExp("_", "g"), "\\_");
             ans += "\n\\end{schema}\n";
         }
         return ans;
@@ -117,14 +124,14 @@ define(function (require, exports, module) {
         var ans = "";
         if (transitions && transitions.length > 0) {
             emuchart.transitions.forEach(function (transition) {
-                var t = parseTransition(transition);
-                ans += "\n\\begin{schema}{Transition" + t.from + t.to + "}";
+                var t = parser.parseTransition(transition.name);
+                ans += "\n\\begin{schema}{Transition" + transition.source.name.replace(new RegExp("_", "g"), "\\_") + transition.target.name.replace(new RegExp("_", "g"), "\\_") + "}";
                 ans += "\n  \\Delta PIMSystem" + "\\" + "\\";
                 ans += "\n  i? : Signal";
                 ans += "\n\\where";
-                ans += "\n  i? = " + t.name.replace(new RegExp("_", "g"), "\\_") + " \\" + "\\";
-                ans += "\n  currentState = " + t.from + " \\" + "\\";
-                ans += "\n  currentState' = " + t.to;
+                ans += "\n  i? = " + t.res.val.identifier.val.replace(new RegExp("_", "g"), "\\_") + " \\" + "\\";
+                ans += "\n  currentState = " + transition.source.name.replace(new RegExp("_", "g"), "\\_") + " \\" + "\\";
+                ans += "\n  currentState' = " + transition.target.name.replace(new RegExp("_", "g"), "\\_");
                 ans += "\n\\end{schema}\n";
             });
         }

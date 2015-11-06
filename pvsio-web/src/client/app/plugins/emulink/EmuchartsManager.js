@@ -24,6 +24,8 @@ define(function (require, exports, module) {
     function EmuchartsManager() {
         _emuchartsEditors = d3.map();
         eventDispatcher(this);
+        this.newEmucharts("foo");
+        return this;
     }
 
     EmuchartsManager.prototype.installHandlers = function (editor) {
@@ -138,15 +140,30 @@ define(function (require, exports, module) {
                                 chart.constants.set(constant.id, constant);
                             });
                         }
+                        if (chart_reader.pmr) {
+                            chart.pmr = d3.map();
+                            for (var behaviour in chart_reader.pmr) {
+                                if (chart_reader.pmr.hasOwnProperty(behaviour)) {
+                                    chart.pmr.set(behaviour, chart_reader.pmr[behaviour]);
+                                }
+                            }
+                        }
                         // associate an editor to the created emuchart
                         // FIXME: Improve the constructor and this importEmuchart function
-                        var emucharts = new Emucharts({
+                        var emuchart = {
                             nodes:  chart.nodes,
                             edges: chart.edges,
                             initial_edges: chart.initial_edges,
                             variables: chart.variables,
                             constants: chart.constants
-                        });
+                        };
+                        if (chart.pmr !== 'undefined') {
+                            emuchart.pmr = chart.pmr;
+                        }
+                        if (chart_reader.isPIM && chart_reader.isPIM === true) {
+                            emuchart.isPIM = true;
+                        }
+                        var emucharts = new Emucharts(emuchart);
                         var newEmuchartsEditor = new EmuchartsEditor(emucharts);
                         _this.installHandlers(newEmuchartsEditor);
                         _emuchartsEditors.set(emuchartsFile.content.descriptor.chart_name, newEmuchartsEditor);
@@ -490,6 +507,14 @@ define(function (require, exports, module) {
     };
 
     /**
+     * Returns the descriptor of the variable whose ID is the function argument
+     * @memberof EmuchartsManager
+     */
+    EmuchartsManager.prototype.getVariable = function (variableID) {
+        return _selectedEditor.getVariable(variableID);
+    };
+    
+    /**
      * Returns an array containing the current set of input variables defined in the model
      * @memberof EmuchartsManager
      */
@@ -651,6 +676,54 @@ define(function (require, exports, module) {
 //    EmuchartsManager.prototype.d3ZoomTranslate = function (d3Scale, d3Translate) {
 //        return _selectedEditor.d3ZoomTranslate(d3Scale, d3Translate);
 //    };
+
+    /** PIM **/
+
+    /**
+     * Convert the current Emuchart to a PIM (or if from a PIM).
+     * @returns {boolean} True Emuchart became a PIM or a PIM became an Emuchart.
+     */
+    EmuchartsManager.prototype.toPIM = function (toPIM) {
+        return _selectedEditor.toPIM ? _selectedEditor.toPIM(toPIM) : false;
+    };
+
+    /**
+     * Returns if this emuchart is a PIM.
+     * @returns {boolean} If this emuchart is a PIM.
+     */
+    EmuchartsManager.prototype.getIsPIM = function () {
+        return _selectedEditor.getIsPIM ? _selectedEditor.getIsPIM() : false;
+    };
+
+    /**
+     *
+     * @param behaviour
+     * @returns If no behaviour provided returns all PMR as a set,
+     * If behaviour could be found then returns the relation (behaviour, operation),
+     * else returns null.
+     */
+    EmuchartsManager.prototype.getPMR = function (behaviour, isSave) {
+        return _selectedEditor.getPMR ? _selectedEditor.getPMR(behaviour, isSave) : d3.map();
+    };
+
+    /**
+     * Add a PMR (overrites any existing PMR for the given behaviour).
+     * ({behaviour (string), operation (string)}).
+     * @param pmr
+     * @returns boolean true if successfully added.
+     */
+    EmuchartsManager.prototype.addPMR = function (pmr) {
+        return _selectedEditor.addPMR ? _selectedEditor.addPMR(pmr) : false;
+    };
+
+    /**
+     * Saves the new PMRs into the pool of all PMRs
+     * @param newPMRs
+     * @returns {boolean}
+     */
+    EmuchartsManager.prototype.mergePMR = function (newPMRs) {
+        return _selectedEditor.mergePMR ? _selectedEditor.mergePMR(newPMRs) : false;
+    };
 
     module.exports = EmuchartsManager;
 });

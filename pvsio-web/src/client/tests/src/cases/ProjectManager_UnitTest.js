@@ -88,7 +88,7 @@ define(function (require, exports, module) {
         }
     });
     createProject.push({
-        description: "Testing createProject with overwrite option...",
+        description: "Testing createProject with overwrite option true...",
         run: function () {
             return new Promise(function (resolve, reject) {
                 txt = "createProject({ projectName: 'unit_test', overWrite: true })";
@@ -106,7 +106,7 @@ define(function (require, exports, module) {
         }
     });
     createProject.push({
-        description: "Testing createProject with overwrite option...",
+        description: "Testing createProject with overwrite option false...",
         run: function () {
             return new Promise(function (resolve, reject) {
                 txt = "createProject({ projectName: 'unit_test', overWrite: false })";
