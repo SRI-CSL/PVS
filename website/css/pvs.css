@@ -12,6 +12,7 @@ body *{
 input#search_input{
     margin: 0!important;
     width: 300px!important;
+    font-size: initial;
 }
 a.active {
     background-color: #9696c6;
