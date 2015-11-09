@@ -856,8 +856,6 @@
 	       (parse-error jdecl "Recursive judgements are only for applications"))
 	      ((not (name-expr? (operator* ex)))
 	       (parse-error jdecl "Recursive judgements are only for named applications"))
-	      ((eq *allowed-typed-names* t)
-	       (parse-error jdecl "Recursive judgements must have formals"))
 	      (t
 	       (let ((formals (create-formals-from-arguments (arguments* ex))))
 		 (make-instance 'rec-application-judgement
