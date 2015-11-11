@@ -2120,8 +2120,9 @@
 ;;; judgements.
 
 (defun subtype-of? (t1 t2)
-  (let ((*subtypes-matched* nil))
-    (subtype-of*? t1 t2)))
+  (when (strict-compatible? t1 t2)
+    (let ((*subtypes-matched* nil))
+      (subtype-of*? t1 t2))))
 
 (defun strict-subtype-of? (t1 t2)
   (and (not (tc-eq t1 t2))
