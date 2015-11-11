@@ -1097,11 +1097,7 @@
 					    (typep declared-type
 						   '(or type-application)))
 				       (print-type type)
-				   (progn (unless (typep declared-type
-							 '(or type-name expr-as-type
-							   type-application type-extension))
-					    (break "declared-type"))
-				   (subst-mod-params* declared-type modinst bindings))))
+				       (subst-mod-params* declared-type modinst bindings)))
 		'type ntype
 		'judgement-type (subst-mod-params* judgement-type modinst bindings)
 		'name nname
