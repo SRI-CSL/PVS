@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 
 <head>
-  <title>PVS Community</title>
+  <title>PVS Support Community</title>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="description" content="PVS Prototype Verification System" />
     <meta name="keywords" content="PVS Prototype Verification System" />
@@ -13,15 +13,14 @@
     <link rel="stylesheet" type="text/css" href="css/pvs.css" />
     <script type="text/javascript" src="js/jquery.min.js"></script>
     <script type="text/javascript" src="js/index.js"></script>
+    <script type="text/javascript" src="js/materialize.js"></script>
 </head>
 
 <body>
-     <nav id="menubar" class="indigo ">
-        <div class="nav-wrapper container">
-            <a href="#" data-activates="mobile-menu" class="button-collapse"><i class="material-icons">menu</i></a>
-            <ul id="menu" class="left hide-on-med-and-down ">
-                <li>
-                    <a href="index.html">PVS</a>
+    <nav id="menubar" class="indigo ">
+        <div class="nav-wrapper container">           
+            <ul id="menu" class="left">
+                <li><a href="index.html">PVS</a>
                 </li>
                 <li><a href="downloads.html">Downloads</a>
                 </li>
@@ -30,31 +29,19 @@
                 <li><a class="active" href="community.html">Community</a>
                 </li>
             </ul>
-            <ul id="mobile-menu" class="side-nav">
-                <li>
-                    <a href="index.html">PVS</a>
-                </li>
-                <li><a href="downloads.html">Downloads</a>
-                </li>
-                <li><a href="resources.html">Resources</a>
-                </li>
-                <li><a href="community.html">Community</a>
-                </li>
-            </ul>
              <div id="search" class="nav-wrapper right">
-                <form method="get" action="http://www.google.com/search" onSubmit="googlesearch(this)">
+                <form method="get" action="http://www.google.com/search" onSubmit="googlesearch(this)" target="_blank">
                     <div class="input-field indigo lighten-2">
-                        <input type="search" name="search_input" id="search_input" placeholder="search this site"/>
-                        <label for="search"><i class="material-icons">search</i>
+                        <input type="search" name="search_input" id="search_input" placeholder="Search this site..."/>
+                        <label for="search"><a href="javascript:usr_click('submit_google_query')"><i class="material-icons">search</i></a>
                         </label>
                         <input type="hidden" name="q">
+                        <input type="submit" id="submit_google_query" value="Search this site" class="button" onclick="onClick(this)" style="display:none;"/>
                     </div>
                 </form>
             </div>
         </div>
-
     </nav>
-
     <div id="site_content" class="container">
       <div id="content">
         <div class="content_item  clear">
@@ -62,13 +49,32 @@
 
             <div id="" class="row col s12 indigo-text secondarymenubar">
                 <ul class="tabs indigo-text secondarymenu">
-                    <li class="col tab s3" ><a id="mailpvshelp_li" href="#mailpvshelp">Getting help on using PVS</a>
+                    <li class="col tab s3" ><a id="pvshelp_li" href="#pvshelp">Getting help on using PVS</a>
                     </li>
+                    <li class="col tab s3" ><a id="faq_li" href="#faq">FAQs</a>
+                    </li>                    
+                    <li class="col tab s3" ><a id="askquestion_li" href="#askquestion">Ask your question</a>
+                    </li>                    
                 </ul>
             </div>
-            <div class="col s12 " id="mailpvshelp">
+            <div class="col s12 " id="pvshelp">
                 <h5>PVS-Help</h5>
-                <p>PVS-Help is a moderated mailing list for submitting questions about any aspect of the use of PVS. Messages are distributed to a group of experienced users who have offered to provide help. You can send messages to this list at any time, and do not need to subscribe.</p>
+                <p>PVS-Help is a moderated mailing list for submitting questions about any aspect of the use of PVS. Messages are distributed to a group of experienced users who have offered to provide help. You can <a href="javascript:usr_click('askquestion_li')">ask your question</a> by sending a message to this list at any time.</p>
+                <p><iframe class="pvshelp" src="http://pvs.csl.sri.com/mail-archive/pvs-help/"></iframe></p>
+                <div class="row secondarymenubar">
+                    <ul class="secondarymenu  right row">
+                        <li class="col">
+                            <a href="mailto:pvs-help-subscribe@csl.sri.com" target="_blank">
+                                <i class="material-icons">email</i>
+                                Subscribe to PVS-Help
+                            </a>
+                        </li>
+                    </ul>
+                </div>                
+            </div>
+            <div class="col s12 " id="faq">
+                <h5>Frequently Asked Questions</h5>
+                <p><iframe class="pvshelp" src="http://pvs-wiki.csl.sri.com/index.php/FAQ" id="pvshelp"></iframe></p>
                 <div class="row secondarymenubar">
                     <ul class="secondarymenu  right row">
                         <li class="col">
@@ -77,10 +83,25 @@
                                 View topics discussed in PVS-Help
                             </a>
                         </li>
+                    </ul>
+                </div>                
+            </div>
+            <div class="col s12 " id="askquestion">
+                <h5>Send a message to PVS-Help</h5>
+                <p>You can ask questions about any aspect of the use of PVS by sending an email to <a href="mailto:pvs-help@csl.sri.com" target="_blank">pvs-help@csl.sri.com</a>. Before submitting your question, please consider checking the <a href="javascript:usr_click('pvshelp_li')">PVS-Help</a> mailing list and the <a href="javascript:usr_click('faq_li')">Frequently Asked Questions</a>: you may find your answer there, as other users may have already asked similar questions.</p>
+<!--
+                <div class="row secondarymenubar">
+                    <ul class="secondarymenu  right row">
                         <li class="col">
-                            <a href="mailto:pvs-help@csl.sri.com" target="_blank">
+                            <a href="javascript:usr_click('pvshelp_li')" target="_blank">
                                 <i class="material-icons">link</i>
-                                Send a message to PVS-Help
+                                View topics discussed in PVS-Help
+                            </a>
+                        </li>
+                        <li class="col">
+                            <a href="javascript:usr_click('faq_li')" target="_blank">
+                                <i class="material-icons">link</i>
+                                View Frequently Asked Questions
                             </a>
                         </li>
                         <li class="col">
@@ -91,85 +112,25 @@
                         </li>
                     </ul>
                 </div>                
+-->
             </div>
         </div>
       </div>
     </div>
-
     <footer class="page-footer indigo white-text padding">
         <div class="container">
             <div class="row">
-                <div class="col l6 s12">
+<!--                <div class="col l6 s12">-->
                     <h5>Support</h5>
-                    <p>A group of experienced PVS users have offered to provide help to other PVS users. You can ask them questions about all aspects of PVS by sending an email to <a href="mailto:pvs-help@csl.sri.com" target="_blank">pvs-help@csl.sri.com</a>.
-                    </p>
-                        <ul>
-                            <li>Check out our <a href="http://pvs.csl.sri.com/mail-archive/pvs-help/" target="_blank">pvs-help archive</a> to see questions asked by other PVS users, and the received answers.</li>
-                            <li><a href="http://pvs-wiki.csl.sri.com/index.php/FAQ" target="_blank">FAQs</a> related to the installation of PVS.</li>
-                        </ul>
+                    <p>A group of experienced PVS users have offered to provide help to other PVS users. You can ask them questions about all aspects of PVS by sending an email to <a href="mailto:pvs-help@csl.sri.com" target="_blank">pvs-help@csl.sri.com</a>. Before sending a message, please consider checking our <a href="community.html" target="_self">PVS-Help mailing list</a> to see questions asked by other PVS users, and <a href="http://pvs-wiki.csl.sri.com/index.php/FAQ" target="_blank">FAQs related to the installation of PVS.</a></p>
+<!--
                 </div>
-                <div class="col l2 s6">
-                    <h5>Resources</h5>
-                    <ul>
-                        <li>
-                            <a href="resources.html#manuals" target="_self">Manuals</a>
-                        </li>
-                        <li>
-                            <a href="resources.html#tutorials" target="_self">Tutorials</a>
-                        </li>
-                        <li>
-                            <a href="resources.html#publications" target="_self">Publications</a>
-                        </li>
-                        <li>
-                            <a href="http://pvs-wiki.csl.sri.com/index.php/FAQ" target="_blank">FAQs</a>
-                        </li>
-                        <li>
-                            <script type="text/javascript">
-                                function googlescholarsearch(query) {
-                                    query.q.value = search_pvs.value + "&" + search_date.value;
-                                }
-
-                                function onClick(_this) {
-                                    _this.form.target = '_blank';
-                                }
-
-                                function googlescholar() {
-                                    document.getElementById("submit_scholar_query").click();
-                                }
-                            </script>
-                            <div class="googlescholarform hidden hide">
-                                <form method="get" action="http://scholar.google.com/scholar" onSubmit="googlescholarsearch(this)">
-                                    <input type="hidden" name="as_q" value="PVS+prototype+verification+system" id="search_pvs" />
-                                    <input type="hidden" name="as_ylo" value="1992" id="search_date" />
-                                    <input type="hidden" name="q">
-                                    <input type="submit" id="submit_scholar_query" value="Search PVS publications on GoogleScholar" class="button" onclick="onClick(this)" />
-                                </form>
-                            </div>
-                            <a href="javascript:googlescholar()">Google Scholar</a>
-                        </li>
-
-                    </ul>
-                </div>
-
                 <div class="col l2 s6">
                     <h5>Community</h5>
                     <ul>
-                        <li><a href="#!" target="_blank">PVS Users on Facebook</a>
+                        <li><a href="https://www.facebook.com/sri.intl/" target="_blank">SRI on Facebook</a>
                     </ul>
-                </div>
-                <div class="col l2 s6">
-                    <h5>Code</h5>
-                    <ul>
-                        <li class="link col">
-                            <a href="downloads.html#platforms" target="_self">Binaries</a>
-                        </li>
-                        <li class="link col">
-                            <a href="downloads.html#nightly" target="_self">Nightly Builds</a>
-                        </li>
-                        <li class="link col">
-                            <a href="downloads.html#sources" target="_self">Sources</a>
-                        </li>
-                    </ul>
+-->
                 </div>
             </div>
         </div>
@@ -178,12 +139,9 @@
                   Last modified:
                     <script>
                         document.write(new Date(document.lastModified));
-                    </script>&nbsp; | &nbsp;Webmasters: <a href="mailto:paolo.masci@sri.com">Paolo Masci</a> • <a href="mailto:dodopat@gmail.com">Patrick Oladimeji</a>  &#149; <a href="mailto:owre@csl.sri.com">Sam Owre</a>
+                    </script>&nbsp; | &nbsp;Webmasters: <a href="mailto:paolo.masci@gmail.com">Paolo Masci</a> &#149; <a href="mailto:dodopat@gmail.com">Patrick Oladimeji</a> &#149; <a href="mailto:owre@csl.sri.com">Sam Owre</a>
             </div>
-
         </div>
-        <!--close footer-->
     </footer>
-    <script type="text/javascript" src="js/materialize.js">
-    </script>    
+</body>
 </html>

@@ -1,0 +1,137 @@
+@charset "UTF-8";
+
+/** 
+ * Flickr Ultimate CSS Drop-Down Menu Theme
+ *
+ * @file		default.ultimate.css
+ * @name		Flickr
+ * @version		beta
+ * @type		transitional
+ * @browsers	Windows: IE7+, Opera7+, Firefox3+
+ *				Mac OS: Safari2+, Firefox3+
+ *
+ * @link		http://www.lwis.net/free-css-drop-down-menu
+ * @copyright	2009-2012 Live Web Initiatives, http://www.lwis.net
+ *
+ */
+
+@import "default.css";
+
+
+/* -- Base style extension -- */
+
+ul.dropdown a,
+ul.dropdown span {
+ display: block;
+ padding: 4px 6px;
+}
+
+ul.dropdown ul a,
+ul.dropdown ul span {
+ padding: 4px 0;
+}
+
+
+/* -- Base style override -- */
+
+ul.dropdown li {
+ padding: 0;
+ border: none;
+}
+
+
+/* -- Custom styles -- */
+
+ul.dropdown li a,
+ul.dropdown *.dir {
+ border-style: solid;
+ border-width: 1px 1px 0;
+ border-color: #fff;
+}
+
+ul.dropdown ul li a,
+ul.dropdown ul *.dir {
+ border: none;
+}
+
+ul.dropdown-vertical li a,
+ul.dropdown-vertical *.dir {
+ border-width: 1px 0 1px 1px;
+}
+
+ul.dropdown-vertical-rtl li a,
+ul.dropdown-vertical-rtl *.dir {
+ border-width: 1px 1px 1px 0;
+}
+
+
+/* -- Drop-down open -- */
+
+ul.dropdown li:hover > *.dir {
+ position: relative;
+ z-index: 600;
+ margin: -1px 0;
+ padding-top: 5px;
+ padding-bottom: 5px;
+ border-color: #f0f0f0 #666 #666 #f0f0f0;
+ background-color: #fff;
+ background-image: url(../../../../images/flickr.com/nav-arrow-down-open.png);
+ color: #0063dc;
+}
+
+ul.dropdown-horizontal li:hover > *.dir,
+ul.dropdown-upward li:hover > *.dir,
+ul.dropdown-linear li:hover > *.dir {
+ float: left;
+}
+
+ul.dropdown-vertical li:hover > *.dir {
+ margin: 0 -1px 0 0;
+ padding-top: 4px;
+ padding-bottom: 4px;
+ padding-right: 7px;
+ *position: static;
+}
+
+ul.dropdown-vertical-rtl li:hover > *.dir {
+ margin: 0 0 0 -1px;
+ padding-right: 6px;
+ padding-left: 7px;
+}
+
+ul.dropdown-vertical-rtl > li:hover > *.dir {
+ background-position: 6px 50%;
+}
+
+ul.dropdown-vertical ul li:hover > *.dir {
+ padding-right: 0;
+ padding-left: 0;
+}
+
+ul.dropdown ul li:hover > *.dir {
+ position: static;
+ z-index: 0;
+ float: none;
+ margin: 0;
+ padding-top: 4px;
+ padding-bottom: 4px;
+ border: none;
+}
+
+ul.dropdown ul li:hover > *.dir,
+ul.dropdown-vertical li:hover > *.dir {
+ background-image: url(../../../../images/flickr.com/nav-arrow-right-open.png);
+}
+
+ul.dropdown-vertical-rtl li:hover > *.dir,
+ul.dropdown-vertical-rtl ul li:hover > *.dir {
+ background-image: url(../../../../images/flickr.com/nav-arrow-left-open.png);
+}
+
+ul.dropdown-upward li:hover > *.dir {
+ background-image: url(../../../../images/flickr.com/nav-arrow-up-open.png);
+}
+
+ul.dropdown-upward ul li:hover > *.dir {
+ background-image: url(../../../../images/flickr.com/nav-arrow-right-open.png);
+}

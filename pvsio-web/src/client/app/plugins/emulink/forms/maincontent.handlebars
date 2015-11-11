@@ -1,0 +1,256 @@
+<!-- container for overlay page with Start button -->
+<!--<div id="EmuchartLogo" class="Start">-->
+<div id="EmuchartLogo" class="hidden">
+    <span class="center">Load a saved diagram, or create a new empty diagram with the buttons below</span>
+    <br/>
+    <button class="btn btn-primary" id="btnLoadEmuchart"> Load Emuchart </button>
+    <button class="btn btn-danger" id="btnNewEmuchart"> New Emuchart </button>
+</div>
+
+<!-- container for graphical editor -->
+<!--<div id="graphicalEditor" class="hidden">-->
+<div id="graphicalEditor">
+    <div id="EmuchartToolbar" >
+        <ul class="dropdown dropdown-vertical">
+            <li class='toolbar'>
+                <div id="toolbarViewExportedImage" style="display:none;">
+                    <hr>
+                    <a href="#!" class="toolbar-tooltip blink"
+                       id="btn_toolbarViewExportedImage" target="_blank">
+                        <span title="View Exported Image"
+                              class="glyphicon glyphicon-download-alt"
+                              style="font-size: 1.2em">
+                        </span></a>
+                </div>
+                <hr>
+                <a href="#!" class="toolbar-tooltip" id="btn_toolbarBrowse">
+                    <span title="Browse diagram"
+                          class="glyphicon glyphicon-arrow-right"
+                          style="font-size: 1.2em
+                                 -ms-transform:rotate(-120deg); /* IE 9 */
+                                 -moz-transform:rotate(-120deg); /* Firefox */
+                                 -webkit-transform:rotate(-120deg); /* Safari and Chrome */
+                                 -o-transform:rotate(-120deg); /* Opera */
+                                 padding-left: 1px;">
+                    </span></a>
+                <hr>
+                <a href="#!" class="toolbar-tooltip" id="btn_toolbarZoomIn">
+                    <span title="Zoom-in"
+                          class="glyphicon glyphicon-zoom-in"
+                          style="font-size: 1.2em;">
+                    </span></a>
+                <a href="#!" class="toolbar-tooltip" id="btn_toolbarZoomOut">
+                    <span title="Zoom-out"
+                          class="glyphicon glyphicon-zoom-out"
+                          style="font-size: 1.2em;">
+                    </span></a>
+                <a href="#!" class="toolbar-tooltip" id="btn_toolbarZoomReset">
+                    <span title="Zoom-reset"
+                          class="glyphicon glyphicon-fullscreen"
+                          style="font-size: 1.2em;">
+                    </span></a>
+                <hr>
+                <a href="#!" class="toolbar-tooltip" id="btn_toolbarAddState">
+                    <span title="Add states"
+                          class="glyphicon glyphicon-stop"
+                          style="font-size: 1.2em
+                                 transform: scale(1.4,1);
+                                 -ms-transform: scale(1.4,1); /* IE 9 */
+                                 -webkit-transform: scale(1.4,1); /* Safari and Chrome */
+                                 -o-transform: scale(1.4,1); /* Opera */
+                                 -moz-transform: scale(1.4,1); /* Firefox */">
+                    </span></a>
+                <a href="#!" class="toolbar-tooltip" id="btn_toolbarAddTransition">
+                    <span title="Add transitions"
+                          class="glyphicon glyphicon-new-window"
+                          style="font-size: 1.2em">
+                    </span></a>
+                <a href="#!" class="toolbar-tooltip" id="btn_toolbarRename">
+                    <span title="Rename states/transitions"
+                          class="glyphicon glyphicon-font"
+                          style="font-size: 1.2em">
+                    </span></a>
+                <a href="#!" class="toolbar-tooltip" id="btn_toolbarDelete">
+                    <span title="Delete states/transitions"
+                          class="glyphicon glyphicon-fire"
+                          style="font-size: 1.2em">
+                    </span></a>
+                <hr>
+            </li>
+        </ul>
+    </div>
+    <div id="stateMachineMenu" >
+        <ul class="dropdown dropdown-horizontal">
+            <li class="vdivider"><a href='#!' class="toolbar-tooltip">&nbsp;</a>
+            </li>
+            <li class='active has-sub' id="menuEmuchart"><a href='#!'><span>File</span></a>
+                <ul>
+                    <li class="divider"></li>
+                    <li><a href='#!' id="btn_menuNewChart"><span>New</span></a></li>
+                    <li><a href='#!' id="btn_menuOpenChart"><span>Open...</span></a></li>
+                    <li class="divider"></li>
+                    <li><a href='#!' id="btn_menuSaveChart"><span>Save</span></a></li>
+                    <li><a href='#!' id="btn_menuExportAsImage"><span>Export as Image</span></a></li>
+<!--                    <li><a href='#!Save as...' id="btn_saveChartAs"><span>Save as...</span></a></li>-->
+<!--                    <li><a href='#!' id="btn_saveAllCharts"><span>Save all</span></a></li>-->
+                    <li class="divider"></li>
+<!--                    <li><a href='#!' id="btn_menuQuitEmulink"><span>Quit</span></a></li>
+                    <li class="divider"></li>-->
+                </ul>
+            </li>
+            <li class='active has-sub' id="menuStates"><a href='#!'><span>States</span></a>
+                <ul>
+                    <li class="divider"></li>
+                    <li><a href='#!' id="btn_menuNewState"><span>New state</span></a></li>
+                    <li><a href='#!' id="btn_menuRenameState"><span>Rename state</span></a></li>
+                    <li><a href='#!' id="btn_menuDeleteState"><span>Delete state</span></a></li>
+                    <li class="divider"></li>
+                </ul>
+            </li>
+            <li class='active has-sub' id="menuTransitions"><a href='#!'><span>Transitions</span></a>
+                <ul>
+                    <li class="divider"></li>
+                    <li><a href='#!' id="btn_menuNewTransition"><span>New transition</span></a></li>
+                    <li><a href='#!' id="btn_menuRenameTransition"><span>Rename transition</span></a></li>
+                    <li><a href='#!' id="btn_menuDeleteTransition"><span>Delete transition</span></a></li>
+                    <li class="divider"></li>
+                </ul>
+            </li>
+            <li class='active has-sub' id="menuContext"><a href='#!'><span>Context</span></a>
+                <ul>
+                    <li class="divider"></li>
+                    <li><a href='#!' id="btn_menuNewVariable"><span>New variable</span></a></li>
+                    <li><a href='#!' id="btn_menuEditVariable"><span>Edit variable</span></a></li>
+                    <li><a href='#!' id="btn_menuDeleteVariable"><span>Delete variable</span></a></li>
+                    <li class="divider"></li>
+                    <li><a href='#!' id="btn_menuNewConstant"><span>New constant</span></a></li>
+                    <li><a href='#!' id="btn_menuEditConstant"><span>Edit constant</span></a></li>
+                    <li><a href='#!' id="btn_menuDeleteConstant"><span>Delete constant</span></a></li>
+                    <li class="divider"></li>
+                </ul>
+            </li>
+            <li class='active has-sub' id="menuCodeGenenerators"><a href='#!'><span>Code Generators</span></a>
+                <ul>
+                    <li class="divider"></li>
+                    <li><a href='#!' id="btn_menuPVSPrinter"><span>PVS Theory</span></a></li>
+                    <li><a href='#!' id="btn_menuPIMPrinter"><span>PIM Model</span></a></li>
+                    <li><a href='#!' id="btn_menuMALPrinter"><span>MAL Model</span></a></li>
+                    <li><a href='#!' id="btn_menuVDMPrinter"><span>VDM Model</span></a></li>
+                    <li><a href='#!' id="btn_menuBlessPrinter"><span>Bless Model</span></a></li>
+                    <li><a href='#!' id="btn_menuSALPrinter" class="tobeimplemented"><span>SAL Model</span></a></li>
+                    <li><a href='#!' id="btn_menuLustrePrinter" class="tobeimplemented"><span>Lustre Model</span></a></li>
+                    <li class="divider"></li>
+                    <li><a href='#!' id="btn_menuCPrinter" class="tobeimplemented"><span>C Code</span></a></li>
+                    <li><a href='#!' id="btn_menuCppPrinter" class="tobeimplemented"><span>C++ Code</span></a></li>
+                    <li><a href='#!' id="btn_menuJavaPrinter" class="tobeimplemented"><span>Java Code</span></a></li>
+                    <li><a href='#!' id="btn_menuJavaScriptPrinter" class="tobeimplemented"><span>JavaScript Code</span></a></li>
+                    <li><a href='#!' id="btn_menuAdaPrinter" class="tobeimplemented"><span>Ada Code</span></a></li>
+
+                    <li class="divider"></li>
+                </ul>
+            </li>
+            <li class='active has-sub' id="menuZoom"><a href='#!'><span>Zoom</span></a>
+                <ul>
+                    <li class="divider"></li>
+					<li><a href='#!' id ="btn_menuZoomIn"><span>Zoom-in</span></a></li>
+					<li><a href='#!' id ="btn_menuZoomOut"><span>Zoom-out</span></a></li>
+					<li><a href='#!' id ="btn_menuZoomReset"><span>Reset zoom</span></a></li>
+                    
+				</ul>
+		    </li>
+            <li class='active has-sub'><a href='#!'><span>PIM</span></a>
+            <ul>
+                <li class="divider"></li>
+                <li><a href='#!' id="btn_toPIM"><span>Set Emuchart as PIM</span></a></li>
+                <li><a href='#!' id="btn_fromPIM"><span>Set PIM as Emuchart</span></a></li>
+                <li class="divider"></li>
+                <li><a href='#!' id="btn_menuTestGenerator"><span>Test Generator</span></a></li>
+                <li><a href='#!' id="btn_menuTestGeneratorFromFile"><span>Test Generator from File</span></a></li>
+                <li class="divider"></li>
+            </ul>
+        </li>
+		    <li class='active has-sub'><a href='#!'><span>Help</span></a>
+				<ul>
+                    <li class="divider"></li>
+                    <li><a href='#!' class="tobeimplemented"><span>Online help</span></a></li>
+                    <li><a href='#!' class="tobeimplemented"><span>About</span></a></li>
+                    <li class="divider"></li>
+                </ul>
+            </li>
+		    <li class='active has-sub'><a href='#!' style="cursor:default;">
+                <input class="EmuchartsFilter" type="text" id="filter" placeholder="Filter..." /></a>
+            </li>
+        </ul>
+    </div>
+
+    <!--<div id="stateMachineFilterBar" >
+        <ul class="dropdown dropdown-horizontal">
+            <li>
+                <input class="EmuchartsFilter" type="text" id="filter" placeholder="Filter..." />
+            </li>
+           <li class='active has-sub'><a href='#!' id="EmuchartsEditorMode" style="display:none;"><span>Editor mode: browse diagram</span></a>
+        </ul>
+    </div>-->
+    <div id="MouseOverlay">
+        <a href="#!" class="toolbar-tooltip" placeholder="addStates" id="MouseOverlayIcon">
+            <span title="Add states"
+                  class="glyphicon glyphicon-stop"
+                  style="font-size: 1.2em
+                         transform: scale(1.4,1);
+                         -ms-transform: scale(1.4,1); /* IE 9 */
+                         -webkit-transform: scale(1.4,1); /* Safari and Chrome */
+                         -o-transform: scale(1.4,1); /* Opera */
+                         -moz-transform: scale(1.4,1); /* Firefox */">
+            </span></a>
+        <a href="#!" class="toolbar-tooltip" placeholder="addTransitions" id="MouseOverlayIcon">
+            <span title="Add transitions"
+                  class="glyphicon glyphicon-new-window"
+                  style="font-size: 1.2em">
+            </span></a>
+        <a href="#!" class="toolbar-tooltip" placeholder="rename" id="MouseOverlayIcon">
+            <span title="Rename states/transitions"
+                  class="glyphicon glyphicon-font"
+                  style="font-size: 1.2em">
+            </span></a>
+        <a href="#!" class="toolbar-tooltip" placeholder="delete" id="MouseOverlayIcon">
+            <span title="Delete states/transitions"
+                  class="glyphicon glyphicon-fire"
+                  style="font-size: 1.2em">
+            </span></a>
+    </div>
+    <div id="ContainerStateMachine" ></div>
+    <div id="ContainerStateMachineImage"></div>
+    <div id="NewStateAttributes" style="display:none;">
+        <table class="table">
+          <!-- This is our clonable table line template -->
+          <tr id="StateVariableTemplate">
+            <td contenteditable="false" style="background-color:white;">Name</td>
+            <td contenteditable="false" style="background-color:white;">Value</td>
+            <td style="background-color:white;">
+              <span id="RemoveStateAttribute" class="table-remove glyphicon glyphicon-remove"></span>
+            </td>
+            <td style="background-color:white;">
+              <!--<span id="StateAttributeUP" class="table-up glyphicon glyphicon-arrow-up"></span>
+              <span id="StateAttributeDOWN" class="table-down glyphicon glyphicon-arrow-down"></span>-->
+                <span id="EditStateAttribute" class="table-up glyphicon glyphicon-pencil">
+            </td>
+          </tr>
+          <!-- -->
+        </table>
+    </div>
+    <div id="StateAttributes" class="table-editable floating-table">
+        <div class="EmuchartStateHeader"><span>Context Variables</span></div>
+        <table class="table" style="margin-bottom:0 !important;">
+          <tr id="heading" class="TableHeading">
+            <th>Name</th>
+            <th>Initial Value</th>
+            <th></th>
+            <th><span id="AddStateAttribute" class="table-add glyphicon glyphicon-plus"></span></th>
+          </tr>
+        </table>
+    </div>    
+        <!--<textarea id="infoBoxModifiable" readonly >This space is for the Advanced Diagram Editor (this plugin will be implemented soon!)
+        </textarea>-->
+        <div><a href="!#" id="pngdataurl" download target="_blank"></a></div>
+    </div>
+</div>

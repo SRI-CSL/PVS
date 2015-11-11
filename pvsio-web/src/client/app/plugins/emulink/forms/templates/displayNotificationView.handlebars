@@ -1,0 +1,20 @@
+<div class="form-center">
+    <div class="panel panel-info shadow center">
+        <div class="panel-heading">{{header}}</div>
+        <form class="center form-horizontal" onsubmit="return false">
+            <div class="panel-body" style="overflow-y: scroll; height: 220px;">
+                <div class="form-group">
+                    <div class="col-sm-8">
+                        <textarea rows="8" cols="56" readonly
+                                  style="font-family:Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New, monospace;">{{message}}</textarea>
+                    </div>
+                </div>                
+            </div>
+            <div class="panel-footer">
+                <button type="submit"
+                        class="btn btn-success right"
+                        id="btnRight">{{buttons.[0]}}</button>
+            </div>
+        </form>
+    </div>
+</div>

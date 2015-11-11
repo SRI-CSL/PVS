@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+
+        <link href="../../client/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
+        <link href="../../client/app/plugins/graphbuilder/graph.css" rel="stylesheet" type="text/css"/>
+        <link href="../../client/css/style.css" rel="stylesheet" type="text/css"/>
+        <style>
+            img {
+                -webkit-user-select: none;
+            }
+            area {
+                cursor:pointer;
+            }
+            div#content {
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .dbg textarea {
+                background: transparent;
+                border: none;
+                resize: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="content" class="content" style="display:none;"></div>
+        <div class="error" style="display:none;">
+            <h1>Device ID already in use.</h1>
+            <h2>Please, close the other instance or change the Device ID.</h2>
+        </div>
+        <div id="controls" class="controls" style="display:none;">
+            <div id="infusion_set" style="padding: 10px 28px 10px 28px; border: steelblue; border-style: solid;">
+                <input type="button" id="btn_insert_infusionset" value="Insert infusion set" style="margin-right: 20px">
+                <span>Infusion set</span>
+                <span id="infusionset_status" value="not_inserted">NOT inserted</span>
+                <input type="button" id="btn_remove_infusionset" value="Remove infusion set" style="margin-left: 20px">
+            </div>
+            <div id="mains" style="padding: 10px 28px 10px 28px; border: lightgreen; border-style: solid;">
+                <input type="button" id="btn_plug_mains" value="Plug into Mains" style="margin-right: 20px; margin-left:10px;">
+                <span>Pump</span>
+                <span id="mains_status" value="not_inserted">connected to MAINS</span>
+                <input type="button" id="btn_unplug_mains" value="Run on Battery" style="margin-left: 20px">
+            </div>
+            <div id="battery" style="padding: 10px 28px 10px 28px; border: grey; border-style: solid;">
+                <input type="submit" id="set_battery_level" value="Set New Battery Level" style="margin-left: 10px">
+                <input type="text"
+                       id="battery_level"
+                       name="battery_level"
+                       placeholder="Enter new battery level..."
+                       size="34">
+            </div>            
+        </div>
+        <div id="splash" class="demo-splash" style="height: 800px;">
+            <div class="loader">
+                <div class="version">Alaris GP Demo</div>
+                <div class="bar">Loading<div></div><div></div><div></div><div></div></div>
+            </div>
+        </div>
+        <script type="application/javascript" src="../../client/lib/promise-0.1.1.js"></script>
+        <script type="text/javascript" src="../../client/lib/jquery.js"></script>
+        <script type="text/javascript" src="../../client/lib/underscore/underscore.js"></script>
+        <script type="text/javascript" src="../../client/lib/backbone.js"></script>
+        <script type="text/javascript" src="../../client/lib/handlebars-v1.1.0.js"></script>
+        <script type="text/javascript" src="../../client/lib/bootstrap/js/bootstrap.min.js"></script>
+        <script src="../../client/require.js" data-main="js/index.js"></script>
+    </body>
+</html>

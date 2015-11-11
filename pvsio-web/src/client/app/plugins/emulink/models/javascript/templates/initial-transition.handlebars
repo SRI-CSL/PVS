@@ -1,0 +1,11 @@
+    //initialisation function for model
+    function init() {
+        var st = {{&vars}};
+        //initialising other state properties
+        {{~#each transitions}}
+        {{~#each actions}}
+        st.{{&.}};
+        {{/each~}}
+        {{/each}}
+        return st;
+    }

@@ -1,0 +1,42 @@
+.node {
+	fill: #aaa;
+	stroke: #eee;
+}
+
+.edge {
+	stroke: #bbb;
+	stroke-width: 3px;
+}
+.node.selected {
+	stroke: #222;
+}
+
+.node.root{
+	fill: #444;
+}
+
+.graph-container {
+	overflow: hidden;
+	animation-duration: all 1s;
+	position:relative;
+}
+
+#tooltip {
+	position: absolute;
+	background: black;
+	color: white;
+	border-radius: 5px;
+	padding: 5px 8px;
+	width: 350px;
+	text-align:center;
+	z-index:40000;
+}
+
+.collapsible-panel.graph-container svg{
+	cursor: default;
+}
+
+svg rect.overlay {
+	fill: none;
+	pointer-events: all;
+}

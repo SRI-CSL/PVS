@@ -1,0 +1,38 @@
+<div class="form-center">
+    <div class="panel panel-info shadow center">
+        <div class="panel-heading">{{header}}</div>
+        <form class="center form-horizontal" onsubmit="return false">
+            <div class="panel-body" style="overflow-y: auto; height: 220px; margin-left:12px;">
+                <div class="form-group">
+<!--                    <label class="control-label col-sm-4" for="newLabel">New label</label>-->
+<!--                    <div class="col-sm-8">-->
+                        <textarea rows="8" cols="56"
+                                  style="font-family:Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New, monospace;"
+                                  id="newLabel"
+                                   type="text"
+                                   value="{{currentLabel}}"
+                                   name="newLabel"
+                                   placeholder="Please enter new label here..."
+                                  {{#if required}}
+                                   required="true"
+                                  {{/if}}>{{currentLabel}}</textarea>                        
+<!--
+                        <input id="newLabel"
+                               class="form-control"
+                               type="text"
+                               value="{{currentLabel}}"
+                               placeholder="{{currentLabel}}"
+                               name="newLabel"
+                               required="true"
+                               style="padding: 6px 12px;"/>
+-->
+<!--                    </div>-->
+                </div>
+            </div>
+            <div class="panel-footer">
+                <button type="button" class="btn btn-danger left" id="btnLeft">{{buttons.[0]}}</button>
+                <button type="submit" class="btn btn-success right" id="btnRight">{{buttons.[1]}}</button>
+            </div>
+        </form>
+    </div>
+</div>

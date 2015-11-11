@@ -1,0 +1,55 @@
+<div class="form-center">
+    <div class="panel panel-info shadow center">
+        <div class="panel-heading">{{header}}</div>
+        <form class="center form-horizontal" onsubmit="return false">
+            <div class="panel-body" style="overflow-y: scroll; height: 162px;">
+                <div class="form-group">
+                    <label class="control-label col-sm-4"
+                           for="newConstantName">{{textLabel.newConstantName}}</label>
+                    <div class="col-sm-8">
+                        <input id="newConstantName"
+                               class="form-control"
+                               type="text"
+                               value=""
+                               placeholder="{{placeholder.newConstantName}}"
+                               required="true"
+                               style="padding: 6px 12px;"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-sm-4"
+                           for="newConstantType">{{textLabel.newConstantType}}</label>
+                    <div class="col-sm-8">
+                        <input id="newConstantType"
+                               class="form-control"
+                               type="text"
+                               value=""
+                               placeholder="{{placeholder.newConstantType}}"
+                               required="true"
+                               style="padding: 6px 12px;"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-sm-4"
+                           for="newConstantValue">{{textLabel.newConstantValue}}</label>
+                    <div class="col-sm-8">
+                        <input id="newConstantValue"
+                               class="form-control"
+                               type="text"
+                               value=""
+                               placeholder="{{placeholder.newConstantValue}}"
+                               style="padding: 6px 12px;"/>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-footer">
+                <button type="button"
+                        class="btn btn-danger left"
+                        id="btnLeft">{{buttons.[0]}}</button>
+                <button type="submit"
+                        class="btn btn-success right"
+                        id="btnRight">{{buttons.[1]}}</button>
+            </div>
+        </form>
+    </div>
+</div>

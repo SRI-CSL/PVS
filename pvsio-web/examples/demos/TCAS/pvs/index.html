@@ -1,0 +1,109 @@
+<HTML>
+<HEAD>
+<TITLE>TCAS</TITLE>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+
+
+<!-- JS addition for GIP & PVSio -->
+<script type="text/javascript" src="scripts/require.js" data-main='scripts/pvsio_utils.js'></script>
+
+<STYLE TYPE="text/css">
+    #topMargin {
+        margin-top: 100px;
+    }
+<!--
+
+
+
+#pvsio_commands_log {
+	position:absolute;
+	left:2px;
+	top:1351px;
+	width:2007px;
+	height:200px;
+	overflow: scroll;
+	color: lime;
+	background: black;
+	padding: 10px;
+	font-size: small;
+	display: none;
+}
+
+
+
+#TCAS_console {
+	position:relative;
+	left:2px;
+	top:24px;
+	width:1997px;
+	height:197px;
+	overflow: scroll;
+	color: lime;
+	background: black;
+	padding-left: 4px;
+	padding-top: 4px;
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: small;
+
+}
+
+
+
+
+#console {
+	position:absolute;
+	left:1039px;
+	top:21px;
+	width:390px;
+	height:106px;
+	color: lime;
+	background:black ;
+	overflow:scroll ;
+	padding-top: 4px;
+	padding-left: 4px;
+	font: 10px Arial;
+	background-color: black;
+	z-index: 10;
+}
+
+canvas {
+	position:absolute;
+	border-radius:64px;
+	left:333px;
+	top:133px;
+	width:237px;
+	height:216px;
+}
+.style3 {color: #00FF00}
+
+-->
+</STYLE>
+<BODY>
+<img src="Tcas-image.png" alt="Tcas" width="1024" height="455" vspace="4" border="0" usemap="#Map">
+<div id='TCAS_Display' style="position:absolute; top:0; left:0; z-index:1"> 
+<!-- <canvas id="canvas_tcas" width="10000" height="10000" style="border:1px solid #000000;"></canvas> -->
+<canvas id="canvas_tcas" width="10000" height="10000"></canvas> 
+</div>
+
+<p>
+  <input id="start_demo_button" name="start_demo_button" type="button" onClick="start_TCAS_demo();" value="Start TCAS demo"; style="visibility:visible" />
+
+  <input id="pause_demo_button"  name="pause_demo_button"  type="button" onClick="pause_TCAS_demo();"  value="Pause TCAS demo"; style="visibility:visible" />
+  <input id="resume_demo_button"  name="resume_demo_button"  type="button" onClick="start_TCAS_demo();"  value="Resume TCAS demo"; style="visibility:visible" />
+</p>
+
+<p></br>
+<div id='console'>
+  <p>The TCAS-Demo backend is off-line.<br><br>
+  Please start the TCAS-Demo backend by executing <em>pvsio-web</em> in a Terminal window (<a href="screenshots/pvsio-web.png" target="_blank" class="style3">see screenshot</a>).<br><br>
+  When the TCAS-Demo backend is on-line, reload this page to start the TCAS-Demo.</p>
+</div>
+
+<div id="TCAS_console">  </div>
+<div id='pvsio_commands_log'></div>
+
+<script type="text/javascript" src="scripts/UI_mappings.js">
+
+</script>
+</BODY>
+</HTML>

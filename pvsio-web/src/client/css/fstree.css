@@ -1,0 +1,93 @@
+div.contextmenu {
+    list-style: none;
+    list-style-type: none;
+    background: white;
+    padding: 5px;
+    border-radius: 5px;
+    min-width: 150px;
+    border: 1px solid #ccc;
+    cursor:default;
+    position: absolute;
+    z-index: 2345;
+}
+
+.contextmenu li {
+    padding: 5px 15px;
+    font-size: 14px;
+    font-family: lancelot, georgia, "courier new";
+}
+
+.contextmenu li:hover{
+    background: #b4b4b4;
+    border: none;
+}
+
+ ul {
+    margin: 0;
+    padding: 0;
+    white-space: nowrap;
+}
+
+#treelist {
+    width: 350px;
+    height: 400px;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+.node {
+    width: 100%;
+    cursor: pointer;
+    border: none;
+    color: grey;
+    font-weight: normal;    
+}
+.node.dirty {
+    font-style: italic;
+}
+.node.selected {
+    color: white;
+    position: relative;
+    background: steelblue;
+}
+.node.selected .line {
+    height: 100%;
+    background: steelblue;
+    border-left: none;
+    min-width: 100%;
+}
+.node.selected:hover .line {
+    background: rgb(8, 88, 154);
+}
+.treelist .node .label {
+    color: black;
+    font-weight: normal;
+}
+.treelist .node:hover .label {
+    color: whitesmoke;
+}
+.treelist .node:hover span {
+    color: white;
+}
+.treelist .node:hover {
+    background-color: grey;
+}
+.treelist .node.selected .label {
+    color: white;
+}
+
+.node span {
+    margin-right: 5px;
+}
+.node .chevron {
+    font-size: 10px;
+    width: 24px;
+    text-align: center;
+    border-radius: 4px;
+}
+.node .chevron:hover{
+    background-color: black;
+}
+
+.node .line {
+    display: inline-block;
+}

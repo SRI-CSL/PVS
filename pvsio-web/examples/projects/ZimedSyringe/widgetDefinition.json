@@ -1,0 +1,98 @@
+{
+ "widgetMaps": [
+  {
+   "type": "display",
+   "id": "display_58f9aa5c-b14d-4c5d-cb25-3f534cf8c4aa",
+   "displayKey": "d",
+   "cursorName": "c"
+  },
+  {
+   "events": [
+    "click"
+   ],
+   "id": "button_62dde9fa-cdf4-48ae-d864-4e95e4bfded7",
+   "type": "button",
+   "recallRate": "250",
+   "functionText": "up",
+   "boundFunctions": "click_up"
+  },
+  {
+   "events": [
+    "click"
+   ],
+   "id": "button_507a79a0-6e31-4eab-8ac3-36fdb836c68c",
+   "type": "button",
+   "recallRate": "250",
+   "functionText": "dn",
+   "boundFunctions": "click_dn"
+  },
+  {
+   "events": [
+    "click"
+   ],
+   "id": "button_c44134ef-8992-4735-fbd2-b59ac293e9bc",
+   "type": "button",
+   "recallRate": "250",
+   "functionText": "lf",
+   "boundFunctions": "click_lf"
+  },
+  {
+   "events": [
+    "click"
+   ],
+   "id": "button_4260ecb6-cd35-4aa4-a9b7-f2928905a792",
+   "type": "button",
+   "recallRate": "250",
+   "functionText": "rt",
+   "boundFunctions": "click_rt"
+  },
+  {
+   "events": [
+    "click"
+   ],
+   "id": "button_dbd14fbb-433a-48d5-f31f-2b664ccdf07e",
+   "type": "button",
+   "recallRate": "250",
+   "functionText": "ON",
+   "boundFunctions": "click_ON"
+  }
+ ],
+ "regionDefs": [
+  {
+   "class": "display_58f9aa5c-b14d-4c5d-cb25-3f534cf8c4aa",
+   "shape": "rect",
+   "coords": "112.88888549804688,271.3229217529297,202.88888549804688,313.3229217529297",
+   "href": null
+  },
+  {
+   "class": "button_62dde9fa-cdf4-48ae-d864-4e95e4bfded7",
+   "shape": "rect",
+   "coords": "141,365.20001220703125,176,398.20001220703125",
+   "href": "#!"
+  },
+  {
+   "class": "button_507a79a0-6e31-4eab-8ac3-36fdb836c68c",
+   "shape": "rect",
+   "coords": "141,434,176,470",
+   "href": "#!"
+  },
+  {
+   "class": "button_c44134ef-8992-4735-fbd2-b59ac293e9bc",
+   "shape": "rect",
+   "coords": "106.92498779296875,398,138.92498779296875,440",
+   "href": "#!"
+  },
+  {
+   "class": "button_4260ecb6-cd35-4aa4-a9b7-f2928905a792",
+   "shape": "rect",
+   "coords": "179,396,212,438",
+   "href": "#!"
+  },
+  {
+   "class": "button_dbd14fbb-433a-48d5-f31f-2b664ccdf07e",
+   "shape": "rect",
+   "coords": "141.88888549804688,400.20001220703125,176.88888549804688,432.20001220703125",
+   "href": "#!"
+  }
+ ]
+}

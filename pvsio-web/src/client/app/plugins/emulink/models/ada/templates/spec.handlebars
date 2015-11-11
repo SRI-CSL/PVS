@@ -1,0 +1,26 @@
+package {{&modelName}} is
+    --declare variable and function signatures
+    TYPE bool is (true, false);
+    TYPE MachineState is (
+        {{#each states~}}
+        {{&name}}{{#unless @last}},{{/unless}}
+        {{~/each}}
+    );
+
+    TYPE State is record
+            current_state, previous_state: MachineState;
+            {{#each variables~}}
+            {{&name}} : {{type}} {{#if value}} := {{&value}}{{/if}};
+            {{/each}}
+        end record;
+
+    -- function signatures
+
+    function enter (ms: MachineState; st: in out State) return State;
+    function leave (ms: MachineState; st: in out State) return State;
+
+
+    {{#each transitions~}}
+    function {{&id}} (st: in out State) return State;
+    {{/each}}
+end {{&modelName}};

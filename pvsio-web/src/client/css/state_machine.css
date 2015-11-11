@@ -1,0 +1,258 @@
+#EmuchartToolbar {
+    float: left;
+    position: absolute;
+    margin-top: 8px;
+}
+
+#stateMachineMenu {
+    position: absolute;
+	float: left;
+    margin-left: 0px;
+    width: 1000px;
+}
+#stateMachineFilterBar {
+    position: absolute;
+    padding-left: 704px;
+    height: 28px;
+    background-color: black;
+}
+
+#ContainerStateMachine  {
+	border:         2px solid;
+	background:     white;
+ 	min-width:      934px;
+	border-radius:  4px;
+	height:         844px;
+	left:		1px;
+	cursor: default;
+	/*display:        none; */
+}
+#stateMachineToolbar {
+    margin-bottom: 10px;   
+    margin-top: 10px; 
+}
+#MouseOverlay  {
+	/*border:         1px solid;*/
+ 	width:          20px;
+    height:         20px;
+    position:       absolute;
+    opacity:        0.9;
+	/*display:        none; */
+}
+
+
+#EmuchartLogo.hidden{
+    display: none;
+}
+
+#EmuchartLogo.Start{
+	text-align: center;
+	position: relative;
+	height: 320px;
+	width: 100%;
+	z-index: 1234;
+}
+
+#EmuchartLogo.Start span{
+	display: block;
+	margin-top: 120px;
+	width: 400px;
+	font-size: 30px;
+	font-family: Times, serif;
+	line-height: 1.1;
+	text-align: center;
+}
+
+#button_state:hover	  {
+
+	cursor:		default;
+	box-shadow:     0 1px 3px rgba(0,0,0,0.8);
+	
+}
+#button_junction:hover	    {
+
+	cursor:		default;
+	box-shadow:     0 1px 3px rgba(0,0,0,0.8);
+}
+#button_deftrans:hover	    {
+
+	cursor:		default;
+	box-shadow:     0 1px 3px rgba(0,0,0,0.8);
+}
+
+#button_box:hover	{
+
+	cursor:		default;
+	box-shadow:     0 1px 3px rgba(0,0,0,0.8);
+}
+
+
+.draggable      {
+
+	cursor: move;
+}
+
+.resizable-se		{
+
+	cursor: se-resize ;
+
+}
+
+.resizable-sw		{
+
+	cursor: sw-resize ;
+
+}
+.resizable-ne		{
+
+	cursor: ne-resize ;
+
+}
+
+.resizable-nw		{
+
+	cursor: nw-resize ;
+}
+
+.arrow			{
+
+	cursor: crosshair;
+}
+
+
+ul#context-menu {
+   position: relative;
+   display: none;
+   /*sample style attributes follow*/
+   width: 100px;
+   background: #333;
+   cursor: pointer;
+   color: #fff;
+   font-size: 12px;
+}
+
+ul#context-menu li {
+   margin: 3px;
+   padding: 3px;
+   background: #000;
+}
+
+.editor_inside_chart {
+
+   position: absolute;
+   width: 330px;
+   height: 330px;
+   left: 30px;
+   top: 30px;
+   display: none;
+}
+.button_inside_svg {
+  position: absolute;
+  top: 30px;
+  width:30px;
+  height:30px;
+  border-width: 1px;
+  border-style: none;
+  border-color: white;
+  display:block;
+  background-image: url("../../img/text.png");
+}
+
+.resize_button_inside_svg {
+  position: absolute;
+}
+
+#StateAttributes {
+    position: absolute;
+    top: 0px;
+    width: 320px;
+    right: 0px;
+    margin: 1px;
+    background: rgb(8, 88, 154);
+    font-family: Tahoma, sans-serif;
+    overflow: auto;
+    float: right;
+    border: 2px solid steelblue;
+    max-height: 420px;
+}
+#modifyPropertiesToolbar{
+	width: 930px;
+	font-family: Tahoma, sans-serif; 
+	display: block;
+}
+#modifyPropertiesToolbarNode{
+ border:-style: dotted;
+ font: 20px/24px cursive; 
+ display: none;
+}
+#modifyPropertiesToolbarEdge{
+ border:-style: dotted;
+ font: 20px/24px cursive;    
+ display:none;
+}
+
+#stateMachineMenu .tobeimplemented {
+  color: gray;
+}
+
+.table-editable {
+  position: relative;
+}
+.table-editable .glyphicon {
+  font-size: 20px;
+}
+
+.table-remove {
+  color: #700;
+  cursor: pointer;
+}
+.table-remove:hover {
+  color: #f00;
+}
+
+.table-up, .table-down {
+  color: #007;
+  cursor: pointer;
+}
+.table-up:hover, .table-down:hover {
+  color: #00f;
+}
+
+.table-add {
+  color: #070;
+  cursor: pointer;
+  background-color: whitesmoke !important;
+}
+.table-add:hover {
+  color: #0b0;
+  background-color: whitesmoke !important;
+}
+
+.EmuchartStateHeader {
+    padding: 4px 4px 4px 8px;
+    color: white;
+    background-color: rgb(8, 88, 154);
+    height: 30px;
+}
+
+input#filter.EmuchartsFilter {
+    padding: 2px 0 2px 10px;
+    margin-top: -6px;
+    margin-bottom: -4px;
+    marign-left: 10px;
+    border-radius: 20px;
+    border: none !important;
+    border-color: transparent !important;
+}
+
+.floating-table {
+    position: absolute;
+    margin-right: 20px;
+}
+
+.TableHeading {
+    background-color:whitesmoke;
+}
+.TableHeading > th {
+    padding: 4px 2px 0 8px !important;
+}

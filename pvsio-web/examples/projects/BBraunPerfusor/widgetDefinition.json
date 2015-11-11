@@ -1,0 +1,98 @@
+{
+ "widgetMaps": [
+  {
+   "type": "display",
+   "id": "Display1360334885958",
+   "displayKey": "d",
+   "cursorName": "c"
+  },
+  {
+   "evts": [
+    "click"
+   ],
+   "id": "Button1360334897149",
+   "type": "button",
+   "recallRate": "250",
+   "functionText": "up",
+   "boundFunctions": "click_up"
+  },
+  {
+   "evts": [
+    "click"
+   ],
+   "id": "Button1360334906908",
+   "type": "button",
+   "recallRate": "250",
+   "functionText": "lf",
+   "boundFunctions": "click_lf"
+  },
+  {
+   "evts": [
+    "click"
+   ],
+   "id": "Button1360334916663",
+   "type": "button",
+   "recallRate": "250",
+   "functionText": "dn",
+   "boundFunctions": "click_dn"
+  },
+  {
+   "evts": [
+    "click"
+   ],
+   "id": "Button1360334930041",
+   "type": "button",
+   "recallRate": "250",
+   "functionText": "rt",
+   "boundFunctions": "click_rt"
+  },
+  {
+   "evts": [
+    "click"
+   ],
+   "id": "button_2287dcc5-2e6f-4138-e837-2780c2c267e3",
+   "type": "button",
+   "recallRate": "250",
+   "functionText": "clear",
+   "boundFunctions": "click_clear"
+  }
+ ],
+ "regionDefs": [
+  {
+   "class": "Display1360334885958",
+   "shape": "rect",
+   "coords": "84.66667175292969,231.6666717529297,308.6510314941406,295.6666717529297",
+   "href": null
+  },
+  {
+   "class": "Button1360334897149",
+   "shape": "rect",
+   "coords": "381,245.6666717529297,417.9843749999997,280.6510467529297",
+   "href": "#!"
+  },
+  {
+   "class": "Button1360334906908",
+   "shape": "rect",
+   "coords": "342.8888854980469,268.88887786865234,379.8732604980469,305.87325286865234",
+   "href": "#!"
+  },
+  {
+   "class": "Button1360334916663",
+   "shape": "rect",
+   "coords": "381.33331298828125,294.6666564941406,416.3176879882814,330.6510314941406",
+   "href": "#!"
+  },
+  {
+   "class": "Button1360334930041",
+   "shape": "rect",
+   "coords": "418,270.6666564941406,454,310.6510314941407",
+   "href": "#!"
+  },
+  {
+   "class": "button_2287dcc5-2e6f-4138-e837-2780c2c267e3",
+   "shape": "rect",
+   "coords": "461.33331298828125,244.66667175292966,502.33331298828125,284.6666564941406",
+   "href": "#!"
+  }
+ ]
+}

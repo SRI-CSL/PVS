@@ -1,0 +1,120 @@
+{
+ "descriptor": {
+  "file_type": "emdl",
+  "version": "1.1",
+  "description": "emucharts model",
+  "chart_name": "emucharts",
+  "pvs_file": "emucharts_th.pvs"
+ },
+ "chart": {
+  "states": [
+   {
+    "name": "off",
+    "id": "X1",
+    "x": 110,
+    "y": 156.4895782470703,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "on",
+    "id": "X2",
+    "x": 309.16668701171875,
+    "y": 159.32293701171875,
+    "width": 36,
+    "height": 36
+   }
+  ],
+  "transitions": [
+   {
+    "name": "click_on { isOn := true; }",
+    "id": "T1",
+    "source": {
+     "name": "off",
+     "id": "X1"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 277.6000061035156,
+     "y": 102.79061889648438
+    }
+   },
+   {
+    "name": "click_off { isOn := false; }",
+    "id": "T2",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "off",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 276.6000061035156,
+     "y": 215.79061889648438
+    }
+   },
+   {
+    "name": "dec [ display > 0 ] { display := display - 1; }",
+    "id": "T3",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 349.6666564941406,
+     "y": 214.99478149414062
+    }
+   },
+   {
+    "name": "inc [ display < 100 ] { display := display + 1; }",
+    "id": "T4",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 352.1666564941406,
+     "y": 110.82811737060547
+    }
+   }
+  ],
+  "initial_transitions": [
+   {
+    "name": "{ display := 0; }",
+    "id": "IT1",
+    "target": {
+     "name": "off",
+     "id": "X1"
+    }
+   }
+  ],
+  "constants": [],
+  "variables": [
+   {
+    "id": "VAR_display:real(Local)",
+    "name": "display",
+    "type": "real",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_isOn:bool(Local)",
+    "name": "isOn",
+    "type": "bool",
+    "scope": "Local"
+   }
+  ]
+ }
+}

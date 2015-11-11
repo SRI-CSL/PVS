@@ -1,0 +1,13 @@
+<div class="form-center">
+    <div class="panel panel-info shadow center">
+        <div class="panel-heading">{{header}}</div>
+        <div class="panel-body" style="overflow-y: scroll; height: 120px;">
+            {{#each notification}}
+            {{this}}<br/>
+            {{/each}}
+        </div>
+        <div class="panel-footer">
+            <button type="submit" class="btn btn-success right" id="btnOk">OK</button>
+        </div>
+    </div>
+</div>

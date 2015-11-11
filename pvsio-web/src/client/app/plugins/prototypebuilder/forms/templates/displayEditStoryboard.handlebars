@@ -1,0 +1,69 @@
+<div class="form-center">
+    <div class="panel panel-info shadow center dialog">
+        <div class="panel-heading">Edit Storyboard</div>
+        <div class="panel-body">
+            <form class="center form-horizontal" onsubmit="return false" role="form">
+                <label for="storyboardGroup" class="control-label">
+                    Screen Name </label>
+                <div class="form-group" id="storyboardGroup">
+                    <div class="col-sm-9">
+                        <input type="text"
+                               name="storyboard-Key"
+                               id="storyboard-Key"
+                               required
+                               class="form-control"
+                               value="{{{storyboard}}}"
+                               placeholder="{{{storyboard}}}"/>
+                    </div>
+                <input type="file"
+                       class="hide"
+                       id="btnSelectMultiplePictures"
+                       name="selectMultiplePictures"
+                       accept="image/*"
+                       multiple>
+                <a class="btn btn-link" name="btnAddStoryboardImages" id="btnAddStoryboardImages"
+                   style="float: left;">
+                    <span class="glyphicon glyphicon-film"></span> Add Images</a>
+                </div></br>
+                <div class="form-group" id="imagesNameGroup">
+                    {{#each images}}
+                    <div class="col-xs-9" style="display:inline-flex;">
+                        <div class="thumbnail">
+                            <div class="image">
+                                <img src="{{{imageData}}}"
+                                     alt="{{{imageKey}}}"
+                                     id="{{{imagePath}}}-Data"
+                                     style="cursor:default;
+                                            max-height: 150px;
+                                            max-width: 100%;
+                                            overflow: hidden;">
+                            </div>
+                        </div>
+                        <input type="text"
+                               name="{{{imagePath}}}"
+                               id="image-Key"
+                               required
+                               class="form-control"
+                               value="{{{imageKey}}}"
+                               style="display: inline; float: left; margin-left: 1px;"
+                               placeholder={{{imageKey}}}/>                        
+                    </div>
+                    <div>
+                        <a class="btn btn-link" name="btnRemoveStoryboardImages" id="btnRemoveStoryboardImages"
+                           style="float: left;" alt="Remove {{{imagePath}}}">
+                            <span style="color: red; font-size: smaller;"
+                                  class="glyphicon glyphicon-remove" ></span>
+                            <span style="color: red; font-size: small;">Remove</span></a>
+                    </div>
+                    </br>
+                    {{/each}}
+                </div>
+
+            </form>
+        </div>
+        <div class="panel-footer">
+            <button type="button" class="btn btn-danger left" id="btnCancel">Cancel</button>
+            <button type="submit" class="btn btn-success right" id="btnOk">OK</button>
+        </div>
+    </div>
+</div>

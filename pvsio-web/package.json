@@ -1,0 +1,38 @@
+{
+  "name": "pvsio-web",
+  "author": "Patrick Oladimeji <patrick@dustygem.co.uk>",
+  "contributors": [
+    {
+      "name": "Paolo Masci"
+    }
+  ],
+  "description": "A javascript library to connect to and communicate with a pvsio process using websockets",
+  "version": "2.0.0",
+  "preferGlobal": "true",
+  "dependencies": {
+    "body-parser": "~1.0.0",
+    "es6-promise": "0.1.x",
+    "express": "~4.0.0",
+    "open": "0.0.5",
+    "tracer": "0.7.1",
+    "ws": "0.4.x"
+  },
+  "devDependencies": {
+    "grunt-contrib-jshint": "^0.11.1",
+    "jasmine-node": "~1.14.3",
+    "open": "0.0.5"
+  },
+  "scripts": {
+    "test": "grunt test",
+    "local-test": "jasmine-node --verbose src/server/servertests; node client-test.js",
+    "start": "node src/server/pvssocketserver.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thehogfather/pvsio-web"
+  },
+  "license": "GPL3",
+  "engine": {
+    "node": ">=0.8"
+  }
+}

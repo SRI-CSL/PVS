@@ -1,0 +1,79 @@
+<div class="form-center">
+    <div class="panel panel-info shadow center dialog">
+        <div class="panel-heading">Create Widget</div>
+        <div class="panel-body">
+            <form class="center form-horizontal" onsubmit="return false" role="form">
+                <ul class="nav nav-tabs" id="tabHeaders">
+                    <li>
+                        <a href="#display" data-toggle="tab" id="displayTab">Display</a>
+                    </li>
+                    <li>
+                        <a href="#button" data-toggle="tab" id="buttonTab">Button</a>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane active" id="display">
+                        <div class="form-group">
+                            <label for="auditoryFeedback" class="col-sm-4 control-label">Enable Audio Feeback</label>
+                            <div class="col-sm-8">
+                                <input type="checkbox" name="auditoryFeedback" value="auditoryFeedback"/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="displayKey" class="col-sm-4 control-label">Display name</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="displayKey" id="displayKey" required class="form-control" value="" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cursorName" class="col-sm-4 control-label">Cursor name</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="cursorName" id="cursorName" class="form-control" value="" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane" id="button">
+                        <div class="form-group">
+                            <label for="functionText" class="col-sm-4 control-label">Button Name</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="functionText" id="functionText" required class="form-control" value="" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="events" class="col-sm-4 control-label">User Actions</label>
+                            <div class="col-sm-8">
+                                <label>
+                                    Click
+                                    <input type="radio" name="events" value="click" checked />
+                                </label>
+                                <label>
+                                    Press and Release
+                                    <input type="radio" name="events" value="press/release" />
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="recallRate" class="col-sm-4 control-label">Repeat Time (ms)</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="recallRate" id="recallRate" required class="form-control" value="250" pattern="\d{2,5}" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="boundFunctions" class="col-sm-4 control-label">Generated Events</label>
+                            <div class="col-sm-8">
+                                <textarea id="boundFunctions" name="boundFunctions" type="text" readonly="true" class="form-control">
+                                </textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="panel-footer">
+            <button type="button" class="btn btn-danger left" id="btnCancel">Cancel</button>
+            <button type="submit" class="btn btn-success right" id="btnOk">OK</button>
+        </div>
+    </div>
+
+</div>

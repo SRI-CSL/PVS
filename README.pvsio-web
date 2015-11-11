@@ -1,0 +1,11 @@
+== PVSio-web ==
+PVSio-web is a new graphical tool to prototype and analyse user interface software. It provides the typical functionalities of an animation environment that allows designers to load and simulate realistic user interfaces. Underneath, it uses SRI's state-of-the-art theorem prover PVS for analysis, and the pvsio component as a basis for simulation.
+
+Simulations created with PVSio-web can be watched in this youtube video https://www.youtube.com/watch?v=T0QmUe0bwL8
+
+== Running PVSio-web ==
+To run pvsio-web, run the command ./pvsio-web from a Terminal window (and leave the Terminal window open, otherwise PVSio-web will terminate the execution).
+
+The PVSio-web prototyping front-end will automatically open in your browser at the address http://localhost:8082
+Please note that Firefox 21 or greater, or Chrome 45 or greater are needed to run the PVSio-web front-end.
+
