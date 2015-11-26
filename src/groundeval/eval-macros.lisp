@@ -20,7 +20,7 @@
 
 (in-package :pvs)
 
-(defvar *eval-array-bound* 10000)    ;shouldn't be used
+(defvar *eval-array-bound* 1000000)  ;turned on for x86 memory which is on u64
 (defvar *eval-verbose* nil)          ;turn on for verbose translation trace
 
 ;; helpful macros
@@ -261,6 +261,8 @@
 	   (,vv ,v))
        (cond ((stringp ,AA)
 	      (setf (schar ,AA ,ii) ,vv))
+	     ((pvs-closure-hash-p ,AA)
+	      (pvs-function-update ,AA ,ii ,vv))
 	     ((> ,ii (fill-pointer ,AA)) nil)
 	     (t (when (eq ,ii (fill-pointer ,AA)) ;;use vector-push-extend when full
 		  (vector-push-extend ,ii ,AA))

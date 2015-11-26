@@ -288,9 +288,9 @@
 ;;in case these appear in the operator closure that is evaluated flg. the
 ;;arguments.
 ;;Modified treatment of PVSio primitives (Feb 20 2015) [CM]
-(defun pvs2cl-primitive-app (expr bindings livevars &optional pvsiosymb)
+(defun pvs2cl-primitive-app (expr bindings livevars &optional pvsiosymb expr-actuals)
   (let* ((op    (operator expr))
-	 (args  (arguments expr))
+	 (args  (append expr-actuals (arguments expr)))
 	 (nargs (length args))
 	 (fn    (cond (pvsiosymb pvsiosymb)
 		      ((> nargs 1) (pvs2cl-primitive2 op))
@@ -304,10 +304,11 @@
    (let ((op* (operator* expr)))
      (if (constant? op*);;assuming all primitive/datatype ops are
 	 ;;not curried.
-	 (let ((pvsiosymb (when (name-expr? op*)
-			    (pvsio-symbol op* (length (arguments expr))))))
+	 (let* ((actuals (expr-actuals (module-instance op*)))
+		(pvsiosymb (when (name-expr? op*)
+			     (pvsio-symbol op* (+ (length actuals)(length (arguments expr)))))))
 	   (if (or (pvs2cl-primitive? op*) pvsiosymb)
-	       (pvs2cl-primitive-app expr bindings livevars pvsiosymb)
+	       (pvs2cl-primitive-app expr bindings livevars pvsiosymb actuals)
 	     (if (datatype-constant? operator)
 		 (pvs2cl-datatype-application operator expr bindings livevars)
 	       ;; (mk-funapp (pvs2cl-resolution operator)
@@ -827,7 +828,9 @@
 			   (if bound ;;then cl-expr is an array
 			       (let ((cl-bound (pvs2cl_up* bound
 							   bindings livevars)))
-				 `(mk-fun-array ,cl-expr ,cl-bound))
+				 `(if (<= ,cl-bound ,*eval-array-bound*)
+				      (mk-fun-array ,cl-expr ,cl-bound)
+				    (make-closure-hash ,cl-expr)))
 			     `(make-closure-hash ,cl-expr)))
 			     ;;else it is a function and we make a closure-hash
 			 cl-expr))
