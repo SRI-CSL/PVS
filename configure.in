@@ -22,7 +22,7 @@ dnl --------------------------------------------------------------------
 
 dnl make sure we are using a recent autoconf version
 AC_PREREQ(2.59)
-AC_INIT([pvs],[6.1],[pvs-bugs@csl.sri.com])
+AC_INIT([pvs],[7.0],[pvs-bugs@csl.sri.com])
 
 dnl If it doesn't look like GNU Make is being used, give a friendly warning
 tem=`make --version -f /dev/null 2>&1 | grep GNU`
@@ -49,7 +49,7 @@ else
   PVSPATH=$with_pvspath
 fi
 if test -f $PVSPATH/pvs.in; then
-  AC_MSG_RESULT(found $PVSPATH/pvs.in)
+  AC_MSG_RESULT(found $PVSPATH)
 else
   AC_MSG_ERROR(Invalid pvspath)
 fi
@@ -57,29 +57,10 @@ AC_SUBST(PVSPATH)
 
 dnl Check for programs required to build PVS
 AC_PROG_CC    
-AC_MSG_CHECKING(for $CC version >= 2.95)
-
-gcc_version=`$CC --version | head -n 1 | sed -e 's,[[^0-9.]],,g'`
-maj_gcc_version=`echo $gcc_version | cut -d. -f 1`
-min_gcc_version=`echo $gcc_version | cut -d. -f 2`
-if test $maj_gcc_version -lt 2 -o \( $maj_gcc_version -eq 2 -a $min_gcc_version -lt 95 \); then
-   AC_MSG_ERROR(found $gcc_version)
-else
-   AC_MSG_RESULT(found $gcc_version)
-fi
 
 AC_CHECK_PROG(LD,ld,ld,no)
 if test "$LD" = no ; then
 	AC_MSG_ERROR(Cannot find ld)
-fi
-AC_MSG_CHECKING(for $LD version >= 2.11)
-ld_version=`$LD --version | head -n 1 | sed -e 's,[[^0-9.]],,g'`
-maj_ld_version=`echo $ld_version | cut -d. -f 1`
-min_ld_version=`echo $ld_version | cut -d. -f 2`
-if test $maj_ld_version -lt 2 -o \( $maj_ld_version -eq 2 -a $min_ld_version -lt 11 \); then
-   AC_MSG_ERROR(found $ld_version)
-else
-   AC_MSG_RESULT(found $ld_version)
 fi
 
 AC_CHECK_PROG(AR,ar,ar,no)
@@ -128,16 +109,6 @@ AC_CHECK_PROG(TAR,tar,tar,no)
 if test "$TAR" = no ; then
 	AC_MSG_ERROR(Cannot find tar)
 fi
-AC_MSG_CHECKING(for GNU $TAR version >= 1.11)
-tar_version=`$TAR --version | head -n 1 | grep GNU | sed -e 's,[[^0-9.]],,g'`
-maj_tar_version=`echo $tar_version | cut -d. -f 1`
-min_tar_version=`echo $tar_version | cut -d. -f 2`
-if test \( "x$tar_version" != "x" \) -a \( $maj_tar_version -lt 1 -o \( $maj_tar_version -eq 1 -a $min_tar_version -lt 12 \) \); then
-   AC_MSG_ERROR(found $tar_version)
-else
-   AC_MSG_RESULT(found $tar_version)
-fi
-
 
 AC_CHECK_PROG(RM,rm,rm,no)
 if test "$RM" = no ; then
