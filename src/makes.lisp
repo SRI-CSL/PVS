@@ -1315,13 +1315,24 @@
   (defun reset-equality-decl ()
     (setq equality-decl nil)))
 
+(let ((disequality-decl nil))
+  (defun disequality-decl ()
+    (or disequality-decl
+	(setq disequality-decl
+	      (find-if #'(lambda (d) (eq (id (module d)) '|notequal|))
+		(let ((*current-context* *prelude-context*))
+		  (get-declarations '/=))))))
+  (defun reset-disequality-decl ()
+    (setq disequality-decl nil)))
+
 (let ((if-decl nil))
   (defun if-declaration ()
     (or if-decl
 	(setq if-decl
 	      (find-if #'(lambda (d)
 			   (eq (id (module d)) '|if_def|))
-		(get-declarations 'IF)))))
+		(let ((*current-context* *prelude-context*))
+		  (get-declarations 'IF))))))
   (defun reset-if-declaration ()
     (setq if-decl nil)))
 
@@ -1722,7 +1733,7 @@
   (assert (and (type lhs) (type rhs)))
   (assert (compatible? (type lhs) (type rhs)))
   (let* ((type (find-supertype (type lhs)))
-	 (res (mk-resolution (equality-decl)
+	 (res (mk-resolution (disequality-decl)
 		(mk-modname '|notequal| (list (mk-actual type)))
 		(mk-funtype (list type type) *boolean*)))
 	 (diseqname (make-instance 'name-expr
