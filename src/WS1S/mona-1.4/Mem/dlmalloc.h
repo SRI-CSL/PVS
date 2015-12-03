@@ -504,6 +504,12 @@ do {                                                                          \
 
 #ifndef LACKS_UNISTD_H
 #  include <unistd.h>
+
+// on Darwin sbrk is deprecated but we need the declaration
+// anyway for dlmalloc to compile.
+#if __APPLE__
+extern void *sbrk(int);
+#endif
 #endif
 
 #ifndef malloc_getpagesize
