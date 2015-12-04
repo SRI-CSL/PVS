@@ -19,7 +19,7 @@
  */
 
 #ifndef __MEM_H
-#define __MEM_h
+#define __MEM_H
 
 #include <stdlib.h>
 

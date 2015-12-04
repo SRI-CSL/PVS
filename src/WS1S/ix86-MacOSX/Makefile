@@ -3,12 +3,21 @@ DFA = ../mona/DFA
 UTILS = ../mona/Mem
 INCLUDES = -I$(BDD) -I$(DFA) -I$(UTILS)
 # MACOSX_DEPLOYMENT_TARGET and -weak_library are needed so that dylibs work
-# for both leopard and tiger
-MACOSX_DEPLOYMENT_TARGET=10.2
+# for older versions of MacOS X
+#
+# NOTE: with my version of Xcode (on MacOS 10.11), ld does not seem able to parse
+# the option properly. If we give -macosx_version_min 10.9, it prints this warning;
+#  ld: warning: -macosx_version_min not specified, assuming 10.9
+# If we give -macosx_version_min and omit the version number, it complains that a version
+# number is required:
+#  ld: -macosx_version_min argument missing
+# So there doesn't seem to be any choice.
+# 
+MACOSX_DEPLOYMENT_TARGET=10.9
 LD = ld
-LDFLAGS = -bundle /usr/lib/bundle1.o -flat_namespace -undefined suppress -L./ -weak_library /usr/lib/libSystem.B.dylib
+LDFLAGS = -macosx_version_min $(MACOSX_DEPLOYMENT_TARGET) -bundle /usr/lib/bundle1.o -flat_namespace -undefined suppress -L./ -weak_library /usr/lib/libSystem.B.dylib
 CC = gcc
-CFLAGS += -dynamic -D_POSIX_SOURCE -DSYSV $(INCLUDES)
+CFLAGS += -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET) -dynamic -D_POSIX_SOURCE -DSYSV $(INCLUDES)
 XCFLAGS = -O
 SHELL = /bin/sh
 VPATH = ..:../mona/BDD:../mona/DFA:../mona/Mem
