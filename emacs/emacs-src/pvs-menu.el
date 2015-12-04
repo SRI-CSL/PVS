@@ -322,7 +322,9 @@
        (add-submenu nil pvs-mode-menus ""))))
 
 (unless (featurep 'xemacs)
-  (require 'json)
+  (or (let ((load-path pvs-original-load-path))
+	(require 'json nil :noerror))
+      (require 'json))
   (require 'button)
   (require 'ring)
 
