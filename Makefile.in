@@ -54,17 +54,21 @@ CFLAGS = @CFLAGS@
 ETAGS = @ETAGS@
 GIT = @GIT@
 GIT_FILES := $(shell $(GIT) ls-files)
+TAR = @TAR@
+am__tar = ${TAR} chof --exclude '\._*' - "$$tardir"
 MKDIR = @MKDIR@
 MKDIR_P = @MKDIR_P@
 PACKAGE = @PACKAGE_NAME@
 VERSION = @PACKAGE_VERSION@
 DISTDIR = $(PACKAGE)-$(VERSION)
 DIST_ARCHIVES = $(DISTDIR).tar.gz
-ALLEGRO_DISTFILES = $(SYSTEM_FILES) $(SOURCE_FILES) $(ALLEGRO_FILES) 
+ALLEGRO_DISTFILES = $(SYSTEM_FILES) $(SOURCE_FILES) $(ALLEGRO_FILES)
+ALLEGRO_DEVEL_DISTFILES = $(SYSTEM_FILES) $(SOURCE_FILES) $(ALLEGRO_DEVEL_FILES) 
 SBCLISP_DISTFILES = $(SYSTEM_FILES) $(SOURCE_FILES) $(SBCLISP_FILES)
 
 SYSTEM_FILES = README.md README.GUI INSTALL LICENSE NOTICES pvs pvsio pvs-gui \
 	proveit provethem pvs-tex.sub pvs.sty bin/relocate bin/pvs-platform \
+	$(bindir)/b64 \
 	bin/tar-b64-mail Examples lib/prelude.pvs lib/prelude.prf lib/list_adt.pvs \
 	lib/ordstruct_adt.pvs lib/character_adt.pvs lib/union_adt.pvs lib/lift_adt.pvs \
 	lib/pvs-language.help lib/pvs-prover.help lib/pvs.help lib/pvs-unicode.help \
@@ -75,13 +79,19 @@ SYSTEM_FILES = README.md README.GUI INSTALL LICENSE NOTICES pvs pvsio pvs-gui \
 	doc/PVSio-2.d.pdf doc/manip-guide.pdf doc/extrategies.pdf doc/ProofLite-4.2.pdf \
 	wish/gray.xbm wish/sequent.xbm emacs lib/finite_sets lib/bitvectors
 
-ALLEGRO_FILES = $(bindir)/runtime/files.bu $(bindir)/runtime/file_utils.so \
-	$(bindir)/runtime/libacli9076.so $(bindir)/runtime/mu.so \
+ALLEGRO_FILES = $(bindir)/runtime/file_utils.so \
+	$(wildcard $(bindir)/runtime/libacli*.so) $(bindir)/runtime/mu.so \
 	$(bindir)/runtime/pvs-allegro $(bindir)/runtime/pvs-allegro.dxl \
 	$(bindir)/runtime/pvs-allegro.lic $(bindir)/runtime/ws1s.so
 
-SBCLISP_FILES = $(bindir)/runtime/*.lisp $(bindir)/runtime/*.fasl \
-	$(bindir)/runtime/*.x8664s $(bindir)/runtime/file_utils.so \
+# This does NOT include devel.lic - that must be gotten separately 
+ALLEGRO_DEVEL_FILES = $(bindir)/devel/files.bu $(bindir)/devel/file_utils.so \
+	$(wildcard $(bindir)/devel/libacli*.so) $(bindir)/devel/mu.so \
+	$(bindir)/devel/pvs-allegro $(bindir)/devel/pvs-allegro.dxl \
+	$(bindir)/devel/pvs-allegro.lic $(bindir)/devel/ws1s.so
+
+SBCLISP_FILES = $(bindir)/runtime/*.lisp \
+	$(bindir)/runtime/file_utils.so \
 	$(bindir)/runtime/mu.so $(bindir)/runtime/ws1s.so \
 	$(bindir)/runtime/pvs-sbclisp $(bindir)/runtime/run-sbcl.sh
 
@@ -791,8 +801,25 @@ endef
 
 allegro-distdir: $(ALLEGRO_DISTFILES)
 	$(create-distdir)
+
+allegro-devel-distdir: $(ALLEGRO_DEVEL_DISTFILES)
+	$(create-distdir)
+
 sbclisp-distdir: $(SBCLISP_DISTFILES)
 	$(create-distdir)
+
+dist-gzip: dist-allegro-gzip dist-allegro-devel-gzip dist-sbcl-gzip
+
+dist-allegro-gzip: allegro-distdir
+	tardir=$(DISTDIR) && $(am__tar) | GZIP=$(GZIP_ENV) gzip -c >$(DISTDIR)-$(PLATFORM)-allegro.tgz
+	$(am__post_remove_distdir)
+
+dist-gzip: distdir
+	tardir=$(DISTDIR) && $(am__tar) | GZIP=$(GZIP_ENV) gzip -c >$(DISTDIR).tar.gz
+	$(am__post_remove_distdir)
+dist-gzip: distdir
+	tardir=$(DISTDIR) && $(am__tar) | GZIP=$(GZIP_ENV) gzip -c >$(DISTDIR).tar.gz
+	$(am__post_remove_distdir)
 
 dist-gzip: distdir
 	tardir=$(DISTDIR) && $(am__tar) | GZIP=$(GZIP_ENV) gzip -c >$(DISTDIR).tar.gz
