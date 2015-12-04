@@ -1604,7 +1604,8 @@
 	     (new-appl (make!-equation new-lhs new-rhs))
 	     (def-form (close-freevars new-appl *current-context*
 				       newbindings nil nil)))
-	(assert (null (freevars def-form)))
+	(assert (every #'(lambda (fv) (typep fv 'field-name-expr))
+		       (freevars def-form)))
 	(assert (equation? (expression def-form)))
 	def-form)))
 
