@@ -2291,6 +2291,13 @@ naturalnumbers: THEORY
     (FORALL j: (FORALL k: k < j IMPLIES p(k)) IMPLIES p(j))
        IMPLIES (FORALL i: p(i))
 
+  % Provide some intersection types, so that judgements can find a minimal type
+  even_nat: NONEMPTY_TYPE = {i| even?(i)} CONTAINING 0
+  even_posnat: NONEMPTY_TYPE = {n| even?(n)} CONTAINING 2
+  odd_posnat:  NONEMPTY_TYPE = {n| odd?(n)}  CONTAINING 1
+  even_negint: NONEMPTY_TYPE = {n: negint | even?(n)} CONTAINING -2
+  odd_negint:  NONEMPTY_TYPE = {n: negint | odd?(n)}  CONTAINING -1
+
   % This seems out of place - it is here so we can prove it by induction
   x: VAR int
   even_or_odd: THEOREM even?(x) IFF NOT odd?(x)
