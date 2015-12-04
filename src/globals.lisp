@@ -33,8 +33,9 @@
 ;; shadow
 
 (export '(*boolean* *bound-variables* *current-context* *current-theory*
-	  *even_int* *false* *generate-all-adt-axioms* *generate-tccs*
-	  *integer* *naturalnumber* *number* *number_field* *odd_int*
+	  *even_int* *even_nat* *even_posnat* *even_negint* *false*
+	  *generate-all-adt-axioms* *generate-tccs*
+	  *integer* *naturalnumber* *number* *number_field* *odd_int* *odd_posnat* *odd_negint*
 	  *posint* *negint* *posrat* *negrat* *prelude* *pvs-directories*
 	  *pvs-modules* *pvs-tmp-file* *real* *show-conversions* *tcc-conditions*
 	  *true* *typechecking-module*))
@@ -86,7 +87,7 @@ in util.lisp")
   (pushnew :pvs *features*)
   )
 
-(defparameter *binfile-version* 33)
+(defparameter *binfile-version* 34)
 
 (defvar *pvs-build-time* (get-universal-time)) ;; set on loading in operate-on-system
 
@@ -278,6 +279,11 @@ Given a pathname, returns a hash-table")
 (defvar *negrat* nil)
 (defvar *even_int* nil)
 (defvar *odd_int* nil)
+(defvar *even_nat* nil)
+(defvar *even_posnat* nil)
+(defvar *odd_posnat* nil)
+(defvar *even_negint* nil)
+(defvar *odd_negint* nil)
 (defvar *ordinal* nil)
 (defvar *character* nil)
 
@@ -522,6 +528,7 @@ Needed to generate the same dummy name for record literals.")
     (∨ . |vee|)
     (^ . |caret|)
     ;;([] . |box|)
+    (¬ . |not|)
     (<> . |diamond|)
     (◇ . |diamond|)
     (□ . |box|)
