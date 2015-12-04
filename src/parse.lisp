@@ -282,28 +282,25 @@
       (case (sim-term-op (car adtbody))
 	(ID-THEORY-DECL
 	 (if (or assuming adtcases)
-	     (error)
+	     (parse-error (car adtbody) "Cannot have assuming here")
 	     (let ((id (xt-check-periods (term-arg0 (car adtbody))))
 		   (tdecl (xt-theory-decl (term-arg1 (car adtbody)))))
 	       (setf (id tdecl) (xt-idop (xt-pidop id)))
 	       (xt-adtbody (cdr adtbody) (cons tdecl imps) assuming adtcases))))
 	(IMPORTING-ELT
 	 (if (or assuming adtcases)
-	     (error)
+	     (parse-error (car adtbody) "Cannot have assuming here")
 	     (let ((imp (xt-importing-elt (car adtbody))))
 	       (xt-adtbody (cdr adtbody) (append imp imps) assuming adtcases))))
 	(ASSUMING
 	 (if (or assuming adtcases)
-	     (error)
+	     (parse-error (car adtbody) "Cannot have assuming here")
 	     (let ((ass (xt-assumings (car adtbody))))
 	       (xt-adtbody (cdr adtbody) imps ass adtcases))))
 	(ID-ADTCASE
 	 (let ((adtcase (xt-id-adtcase (car adtbody))))
 	   (xt-adtbody (cdr adtbody) imps assuming (cons adtcase adtcases))))
 	(t (error "Huh?")))))
-
-(defun xt-adtcases (adtcases)
-  (mapcar #'xt-adtcase (term-args adtcases)))
 
 (defun xt-id-adtcase (id-adtcase)
   (let* ((constrid (term-arg0 id-adtcase))
@@ -682,7 +679,8 @@
 
 (defun xt-subtype-judgement* (jdecl dtype place)
   (cond ((is-sop 'JDECL-EXPR jdecl)
-	 (let* ((ex (xt-expr (term-arg0 jdecl)))
+	 (let* ((*allowed-typed-names* t)
+		(ex (xt-expr (term-arg0 jdecl)))
 		(type (xt-convert-expr-to-type-expr ex)))
 	   (make-instance 'subtype-judgement
 	     :declared-subtype type
@@ -755,9 +753,10 @@
 	    :chain? t
 	    :place place))
 	 (application
-	  (if (eq *allowed-typed-names* t)
-	      ;; No typed-names found - can treat as a normal application for
-	      ;; a judgement-expr
+	  (if (or (eq *allowed-typed-names* t)
+		  (not (name-expr? (operator* ex))))
+	      ;; No typed-names found or not a name-expr operator - can
+	      ;; treat as a normal application for a judgement-expr
 	      (make-instance 'expr-judgement
 		:declared-type dtype
 		:chain? t
@@ -766,14 +765,12 @@
 	      ;; Found a typed-name - need to check that the formals are of the
 	      ;; right shape, and convert name-exprs to untyped-bind-decls
 	      (let ((formals (create-formals-from-arguments (arguments* ex))))
-		(if (name-expr? (operator* ex))
-		    (make-instance 'application-judgement
-		      :name (operator* ex)
-		      :formals formals
-		      :declared-type dtype
-		      :chain? t
-		      :place place)
-		    (parse-error)))))
+		(make-instance 'application-judgement
+		  :name (operator* ex)
+		  :formals formals
+		  :declared-type dtype
+		  :chain? t
+		  :place place))))
 	 (t (make-instance 'expr-judgement
 	      :declared-type dtype
 	      :chain? t
@@ -803,22 +800,25 @@
 	(create-formals-from-arguments (cdr args-list) (cons args formals)))))
 
 (defmethod create-formals-from-arguments* ((args cons) &optional formals)
-  (if (null args)
-      (nreverse formals)
-      (let ((fml (create-formal-from-argument (car args))))
-	(assert (bind-decl? fml))
-	(create-formals-from-arguments* (cdr args) (cons fml formals)))))
+  (let ((fml (create-formal-from-argument (car args))))
+    (assert (bind-decl? fml))
+    (create-formals-from-arguments* (cdr args) (cons fml formals))))
 
 (defmethod create-formals-from-arguments* ((args null) &optional formals)
   (let ((fmls (nreverse formals)))
+    ;; chain? is t by default - reset to nil if there is no following arg
+    ;; or it is in parens
     (xt-set-declared-types fmls)
     fmls))
 
 (defmethod create-formals-from-arguments* ((args tuple-expr) &optional formals)
+  ;; Not sure this is possible - but break just in case
+  (declare (ignore formals))
   (break "create-formals-from-arguments* (tuple-expr)"))
 
 (defmethod create-formals-from-arguments* ((args t) &optional formals)
-  (parse-error))
+  (declare (ignore formals))
+  (parse-error args "Illegal formal parameter"))
   
 
 (defmethod create-formal-from-argument ((arg name-expr))
@@ -1687,6 +1687,7 @@
     (NUMBER-EXPR (xt-number-expr expr))
     (STRING-EXPR (xt-string-expr expr))
     (NAME-EXPR (xt-name-expr expr))
+    (IFAPPL (xt-ifappl expr))
     (TYPED-NAME (xt-typed-name expr))
     (LIST-EXPR (xt-list-expr expr))
     ;;(true (xt-true expr))
@@ -1938,6 +1939,16 @@
 		       (setf (place name) (term-place expr))
 		       name)))))))
 
+(defun xt-ifappl (expr)
+  (let ((if-name (mk-name-expr 'IF))
+	(args (term-arg0 expr)))
+    (unless (is-sop 'TUPLE-EXPR args)
+      (parse-error expr "Argument to IF without THEN must have parens"))
+    (make-instance 'application
+      :operator if-name
+      :argument (xt-arg-expr (term-args args))
+      :place (term-place expr))))
+
 (defun xt-typed-name (expr)
   (if *allowed-typed-names*
       (let* ((name (xt-name (term-arg0 expr) nil))
@@ -2011,7 +2022,7 @@
 	     (car exprs)))))
 
 (defun xt-fieldex (expr)
-  (multiple-value-bind (acts there?)
+  (multiple-value-bind (acts) ;; May need to deal with actuals, dactuals
       (unless (is-sop 'NOACTUALS (term-arg1 expr))
 	(xt-actuals (term-arg1 expr) t))
     (make-instance 'fieldex
@@ -2439,7 +2450,9 @@
 	   (xt-set-declared-types (cdr bindings-structure)))
 	  ((typep (car bindings-structure) 'untyped-bind-decl)
 	   (dolist (b (cdr bindings-structure))
-	     (cond ((listp b) (return))
+	     (cond ((or (listp b) (plusp (parens b)))
+		    (setf (chain? (car bindings-structure)) nil)
+		    (return))
 		   ((declared-type b)
 		    (setf (declared-type (car bindings-structure))
 			  (declared-type b))
@@ -2922,6 +2935,7 @@
     (multiple-value-bind (acts acts-there? dacts dacts-there?)
 	(unless (is-sop 'NOACTUALS actuals)
 	  (xt-actuals actuals t))
+      (declare (ignore dacts))
       (when dacts-there?
 	(parse-error (term-place modname)
 	  "Declaration actuals not allowed for theory names"))
@@ -2931,6 +2945,7 @@
 	:library (unless (is-sop 'NOLIB lib)
 		   (ds-vid lib))
 	:actuals acts
+	:acts-there? acts-there?
 	:mappings (unless (is-sop 'NOMAP mappings)
 		    (xt-mappings mappings))
 	:target (unless (is-sop 'NOTGT target)
@@ -3226,7 +3241,7 @@
 			  ;; Note that periods are allowed in identifiers
 			  ;; in general, but not in declarations - see
 			  ;; xt-check-periods
-			  (member ch '(#\_ #\?) :test #'char=)))
+			  (member ch '(#\_ #\? #\') :test #'char=)))
 		  (subseq idstr (1+ start) end)))
       (and (null end)
 	   (or (assq (intern (subseq idstr start) :pvs) *pvs-operators*)
