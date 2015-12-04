@@ -1536,7 +1536,8 @@
   (check-positive-types* (exprs ex) fargs decl postypes))
 
 (defmethod check-positive-types* ((ex binding-expr) fargs decl postypes)
-  ;; Nothing postitive here
+  (declare (ignore fargs decl))
+  ;; Nothing positive here
   (let ((fps (free-params ex)))
     (remove-if #'(lambda (pt) (memq pt fps)) postypes)))
 
@@ -1588,9 +1589,11 @@
 
 
 (defmethod check-positive-types* ((ex rational-expr) fargs decl postypes)
+  (declare (ignore fargs decl))
   postypes)
 
 (defmethod check-positive-types* ((ex field-assignment-arg) fargs decl postypes)
+  (declare (ignore fargs decl))
   postypes)
 
 (defmethod check-positive-types* ((ex name-expr) fargs decl postypes)
@@ -1660,7 +1663,7 @@
 			     (or (not (memq (car formals) cpostypes))
 				 (not (occurs-positively?
 				       (type afp) (car actuals))))))
-	   postypes)))))
+	   afps)))))
 
 (defun add-formals-to-tcc-conditions (formals &optional (conditions *tcc-conditions*))
   (if (null formals)
@@ -3281,6 +3284,7 @@
 (defun generate-uninterpreted-projtype (decl stype)
   (multiple-value-bind (dfmls dacts thinst)
       (new-decl-formals decl)
+    (declare (ignore dacts))
     (let* ((pname (makesym "~a_proj" (id decl)))
 	   (pdecl (mk-const-decl pname nil nil nil nil dfmls))
 	   (ptype (if thinst
@@ -3586,9 +3590,9 @@
 			   (cons fld1 nfields)))))
   
 
-(defmethod typecheck* ((te quant-type) expected kind args)
-  (declare (ignore expected kind arguments))
-  (break "Not yet finished"))
+;; (defmethod typecheck* ((te quant-type) expected kind args)
+;;   (declare (ignore expected kind arguments))
+;;   (break "Not yet finished"))
 
 ;;; Judgements
 
@@ -3607,7 +3611,11 @@
 	  (copy-judgement-subtype-without-types (declared-subtype decl))))
   (let ((*bound-variables*
 	 (if (typep (declared-subtype decl) 'type-application)
-	     (append (parameters (declared-subtype decl)) *bound-variables*)
+	     (append (mapcan #'(lambda (p)
+				 (when (variable? p)
+				   (list (declaration p))))
+		       (parameters (declared-subtype decl)))
+		     *bound-variables*)
 	     *bound-variables*))
 	(*generate-tccs* 'none))
     (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
@@ -3859,31 +3867,17 @@
 	 (def (rec-judgement-definition decl recdecl))
 	 (arg-bds (typecheck* (copy-untyped (formals decl)) nil nil nil))
 	 (*bound-variables* (apply #'append arg-bds))
-	 (rtype (let ((*generate-tccs* 'none))
-		  (typecheck* (declared-type decl) nil nil nil)))
-	 (jtype (make-formals-funtype (formals decl) rtype))
-	 (vid (make-new-variable '|v| (list expr def)))
-	 (vbd (make-bind-decl vid jtype))
-	 (vname (mk-name-expr vbd))
-	 (vterm (make!-applications vname
-				    (mapcar #'(lambda (x)
-						(mapcar #'mk-name-expr x))
-				      arg-bds)))
+	 ;; (rtype (let ((*generate-tccs* 'none))
+	 ;; 	  (typecheck* (declared-type decl) nil nil nil)))
+	 ;; (jtype (make-formals-funtype (formals decl) rtype))
 	 (jdecl-arg-alist (pairlis-rec-formals (formals decl) arg-bds))
 	 (rdecl-arg-alist (pairlis-rec-formals (formals recdecl) arg-bds))
 	 (subst-type (substit (type decl) jdecl-arg-alist))
 	 (precond (make!-forall-expr (mapcan #'copy-list arg-bds)
 		    (make!-conjunction*
-		     (compatible-predicates (judgement-types+ vterm)
-					    subst-type vterm))))
-	 (*bound-variables* (cons vbd *bound-variables*))
-	 (rec-alist (acons recdecl vname rdecl-arg-alist))
-	 ;; Can't use substit here, as the def is also being substituted
-	 (sdef (gensubst def
-		 #'(lambda (x)
-		     (mk-name-expr (cdr (assq (declaration x) rec-alist))))
-		 #'(lambda (x) (and (name-expr? x)
-				    (assq (declaration x) rec-alist)))))
+		     (compatible-predicates (judgement-types+ expr)
+					    subst-type expr))))
+	 (sdef (substit def rdecl-arg-alist))
 	 (jsig (rec-judgement-signature decl (type op)))
 	 (nrange (typecheck* (copy-untyped (rec-judgement-range jsig decl))
 			     nil nil nil))
@@ -3891,7 +3885,7 @@
 	 ;; Don't add directly to *tcc-conditions* as they may not be
 	 ;; needed, and make subsumption impossible (and really ugly TCCs)
 	 ;; See add-tcc-conditions in tcc-gen.lisp
-	 (*rec-judgement-extra-conditions* (list precond vbd))
+	 (*rec-judgement-extra-conditions* (list precond))
 	 (*compatible-pred-reason*
 	  (acons (name decl) "recursive-judgement"
 		 *compatible-pred-reason*)))
@@ -4362,5 +4356,10 @@
     (|negrat| (setq *negrat* type))
     (|even_int| (setq *even_int* type))
     (|odd_int| (setq *odd_int* type))
+    (|even_nat| (setq *even_nat* type))
+    (|even_posnat| (setq *even_posnat* type))
+    (|odd_posnat| (setq *odd_posnat* type))
+    (|even_negint| (setq *even_negint* type))
+    (|odd_negint| (setq *odd_negint* type))
     (|ordinal| (setq *ordinal* type))
     (|character| (setq *character* type))))
