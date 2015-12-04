@@ -49,7 +49,8 @@ Operators
 	'->' ':' '=>' '[#' '#]' '(#' '#)' '(:' ':)' '{:' ':}' '{{' '}}' '|'
         '^' '/\\' '\\/' '<>' '~' '==' '++' '**' '//' '^^' % '[]'
 	'<<' '>>' '::' '#' '@' '@@' '##' '|[' ']|' '!'
-        '<<=' '>>=' '`' '\'' '..' '||' '|-' '|=' '<|' '|>' ':->' % '<:'
+        '<<=' '>>=' '`' % '\''
+        '..' '||' '|-' '|=' '<|' '|>' ':->' % '<:'
 	 '§'
         %% Bracketing operators 
 	'[|' '|]' '[||]' '(|' '|)' '(||)' '{|' '|}' '{||}'
@@ -606,10 +607,10 @@ expr ::= string <string-expr(string)>
        | {'√' expr} <unary-term-expr(`√(),expr)>
        | {'◯' expr} <unary-term-expr(`◯(),expr)>
        | {expr '::' type-expr} <coercion(expr,type-coercion(type-expr))>
-       | {'IF' expr^c 'THEN' expr^t
+       | {'IF' expr^c ['THEN' expr^t
           {{'ELSIF' expr^ic 'THEN' expr^it} <elsif(expr^ic,expr^it)>}*
-          'ELSE' expr^e 'ENDIF'}
-          <if-expr(expr^c,expr^t,elsifs(star),expr^e)>
+          'ELSE' expr^e 'ENDIF']}
+          <[ifappl(expr^c)|if-expr(expr^c,expr^t,elsifs(star),expr^e)]>
        | {{lambda-op | forall-op | exists-op} lambda-body}
 	  <bind-expr(alt,lambda-body)>
        | {id '!' {number | lambda-body}^1}
