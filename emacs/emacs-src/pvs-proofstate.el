@@ -21,7 +21,9 @@
 ;; This is called from pvs-ilisp when the prover provides a proofstate
 
 (unless (featurep 'xemacs)
-  (require 'json))
+  (or (let ((load-path pvs-original-load-path))
+	(require 'json nil :noerror))
+      (require 'json)))
 
 (defun pvs-proofstate (fname)
   ;; proofstate is:
