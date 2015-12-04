@@ -536,20 +536,32 @@
 	       (every #'valid-judgement-type-value types)))))
 
 (defmethod judgement-types* ((ex number-expr))
+  ;; Want the least type defined in the prelude
+  ;; *even_int* *odd_int* *even_nat* *even_posnat* *odd_posnat*
+  ;; 0 - *even_nat* *even_int* ...
+  ;; 1 - *odd_posnat* *odd_int* ...
+  ;; 2 - *even_posnat*
   (let ((jdecls (cdr (assoc (number ex)
 			    (number-judgements-alist (current-judgements))
 			    :test #'=))))
     (values
      (append (mapcar #'type jdecls)
-	     (let ((antype (available-numeric-type (number ex))))
-	       (if (tc-eq antype (type ex))
-		   (when (and *even_int* *odd_int*)
-		     (list (if (evenp (number ex)) *even_int* *odd_int*)))
-		   (cons antype
-			 (when (and *even_int* *odd_int*)
-			   (list (if (evenp (number ex))
-				     *even_int* *odd_int*)))))))
+	     (list (least-available-numeric-type (number ex))))
      jdecls)))
+
+(defun least-available-numeric-type (num)
+  (assert (integerp num))
+  (if (and *even_int* *odd_int*)
+      (if (and *even_nat* *even_posnat* *odd_posnat*
+	       *even_negint* *odd_negint*)
+	  (cond ((zerop num) *even_nat*)
+		((plusp num)
+		 (if (evenp num) *even_posnat* *odd_posnat*))
+		(t (if (evenp num) *even_negint* *odd_negint*)))
+	  (if (evenp num) *even_int* *odd_int*))
+      (available-numeric-type num)))
+  
+  
 
 (defmethod judgement-types* ((ex rational-expr))
   (let ((jdecls (cdr (assoc (number ex)
@@ -1411,8 +1423,8 @@
 							    (fields stype)
 							    :key #'id)))
 					     (every #'(lambda (jty)
-							(subtype-of? jty
-								     (type fld)))
+							(and (type-expr? jty)
+							     (subtype-of? jty (type fld))))
 						    (cdr jfld))))
 				       (car jt&d)))
 			       (t (error "Something wrong here"))))
