@@ -33,6 +33,21 @@
 ;;; PVS browse mode
 
 ;;; PVS browse mode key bindings
+(defvar pvs-declarations)
+
+(defvar pvs-popup-windows nil
+  "Controls behavior of browser functions.
+nil    = use current frame
+'frame = use a (potentially new) browser frame
+'x     = use dedicated X windows popups")
+
+(defvar pvs-popup-browse-frame nil
+  "The frame to use for browse windows when pvs-popup-windows is 'frame")
+
+(defvar pvs-popup-old-window-configuration nil
+  "The window configuration to pop back to after quitting a brose window
+when pvs-popup-windows is nil")
+
 
 (defvar pvs-browse-mode-map nil)
 (if pvs-browse-mode-map ()
@@ -120,6 +135,7 @@ declaration."
 	 (file (pvs-fref-file fref))
 	 (lib (pvs-fref-library fref))
 	 (fname (pvs-fref-file fref))
+	 (theory (pvs-fref-theory fref))
 	 (buf (or file (pvs-fref-buffer fref)))
 	 (poff (pvs-fref-prelude-offset fref))
 	 (line (+ (pvs-fref-line fref) poff)))
@@ -148,8 +164,7 @@ declaration.  A `q' quits and removes the declaration buffer."
 		    "Listing..." 'listing 'list)))
     (unless pvs-decls
       (error "No declarations matching %s were found" symbol))
-    (setq *pvs-decls* pvs-decls)
-    (pvs-make-browse-buffer)))
+    (pvs-make-browse-buffer "Browse" pvs-decls)))
 
 (defpvs whereis-declaration-used browse ()
   "Search for declarations which reference the declaration at point
@@ -167,6 +182,7 @@ and removes the declaration buffer."
 	 (file (pvs-fref-file fref))
 	 (lib (pvs-fref-library fref))
 	 (fname (pvs-fref-file fref))
+	 (theory (pvs-fref-theory fref))
 	 (buf (or file (pvs-fref-buffer fref)))
 	 (poff (pvs-fref-prelude-offset fref))
 	 (line (+ (pvs-fref-line fref) poff)))
@@ -183,8 +199,7 @@ and removes the declaration buffer."
 		"Listing..." 'listing 'list)))
 	  (unless pvs-decls
 	    (error "No declarations using were found"))
-	  (setq *pvs-decls* pvs-decls)
-	  (pvs-make-browse-buffer)))))
+	  (pvs-make-browse-buffer "Browse" pvs-decls)))))
 
 (defpvs whereis-identifier-used browse (symbol)
   "Search for declarations which reference symbol
@@ -203,8 +218,7 @@ declaration buffer."
 		    "Listing..." 'listing 'list)))
     (unless pvs-decls
       (error "No declarations using %s were found" symbol))
-    (setq *pvs-decls* pvs-decls)
-    (pvs-make-browse-buffer)))
+    (pvs-make-browse-buffer "Browse" pvs-decls)))
 
 (defpvs list-declarations browse (theory)
   "Produce list of declarations in import chain
@@ -218,15 +232,14 @@ associated file and position the cursor at the declaration.  A `q' quits
 and removes the declaration buffer."
   (interactive (complete-theory-name
 		"List declarations for theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (save-some-pvs-files)
   (let ((pvs-decls (pvs-file-send-and-wait
 		    (format "(list-declarations \"%s\")" theory)
 		    "Listing..." 'listing 'list)))
     (unless pvs-decls
       (error "No declarations in theory %s were found" theory))
-    (setq *pvs-decls* pvs-decls)
-    (pvs-make-browse-buffer)))
+    (pvs-make-browse-buffer "Browse" pvs-decls)))
 
 (defpvs unusedby-proof-of-formula browse ()
   "Produce list of declarations unused by the proof of the formula at point
@@ -254,8 +267,7 @@ proofchain is still complete, if it was in the full theory."
 			  "Collecting..." 'unusedby 'list)))
 	  (unless pvs-decls
 	    (error "No unused declarations found for formula"))
-	  (setq *pvs-decls* pvs-decls)
-	  (pvs-make-browse-buffer)))))
+	  (pvs-make-browse-buffer "Browse" pvs-decls)))))
 
 (defpvs unusedby-proofs-of-formulas browse (formulas theory)
   "Produce list of declarations unused by the proofs of the given formulas
@@ -271,27 +283,26 @@ still complete, if it was in the full theory."
 	   (complete-theory-name "Root theory to use as context: ")))
   (let ((pvs-decls (pvs-file-send-and-wait
 		    (format "(unusedby-proofs-of-formulas '%s \"%s\")"
-			(mapcar '(lambda (x) (format "\"%s\"" x)) formulas)
+			(mapcar #'(lambda (x) (format "\"%s\"" x)) formulas)
 		      theory)
 		    "Collecting..." 'unusedby 'list)))
     (unless pvs-decls
       (error "No unused declarations found for given formulas"))
-    (setq *pvs-decls* pvs-decls)
-    (pvs-make-browse-buffer)))
+    (pvs-make-browse-buffer "Browse" pvs-decls)))
 
 
 ;;; Functions to support PVS browse mode
 
-(defun pvs-make-browse-buffer ()
-  (let ((buf (get-buffer-create "Browse")))
-    (save-excursion
-      (set-buffer buf)
-      (if buffer-read-only (toggle-read-only))
-      (erase-buffer)
-      (pvs-insert-declarations)
-      (goto-line 3)
-      (set-buffer-modified-p nil)
-      (toggle-read-only)
+(defun pvs-make-browse-buffer (buf-name pvs-decls)
+  (let ((buf (get-buffer-create buf-name)))
+    (with-current-buffer buf
+      (setq-local pvs-declarations pvs-decls)
+      (let ((inhibit-read-only t))
+	(erase-buffer)
+	(pvs-insert-declarations)
+	(goto-char (point-min))
+	(forward-line 2)
+	(set-buffer-modified-p nil))
       (pvs-browse-mode)
       (unless noninteractive
 	(pvs-display-browse-buffer buf))
@@ -299,7 +310,7 @@ still complete, if it was in the full theory."
 
 (defun pvs-insert-declarations ()
   (insert "Declaration               Type                      Theory\n\n")
-  (dolist (decl *pvs-decls*)
+  (dolist (decl pvs-declarations)
     (insert (car decl))
     (insert "\n")))
 
@@ -311,21 +322,19 @@ still complete, if it was in the full theory."
 	   (buffer-name)))
   (if (<= (current-line-number) 2)
       (error "Please select from list of choices below."))
-  (let* ((entry (nth (- (current-line-number) 3) *pvs-decls*))
+  (let* ((entry (nth (- (current-line-number) 3) pvs-declarations))
 	 (file (unless (member (fourth entry) '(nil NIL))
 		 (format "%s.pvs" (fourth entry))))
 	 (loc (fifth entry)))
     (if (member loc '(nil NIL))
 	(let* ((bufname (format "%s.%s" (third entry) (second entry)))
 	       (buf (get-buffer-create bufname)))
-	  (save-excursion
-	    (message "")
-	    (set-buffer buf)
-	    (if buffer-read-only (toggle-read-only))
-	    (erase-buffer)
-	    (insert (sixth entry))
-	    (set-buffer-modified-p nil)
-	    (toggle-read-only)
+	  (message "")
+	  (with-current-buffer buf
+	    (let ((inhibit-read-only t))
+	      (erase-buffer)
+	      (insert (sixth entry))
+	      (set-buffer-modified-p nil))
 	    (pvs-view-mode))
 	  (pop-to-buffer buf))
 	(pvs-browse-quit)
@@ -339,10 +348,12 @@ still complete, if it was in the full theory."
 				(- (current-line-number) 1)))))
 		 (view-prelude-theory (third entry))
 		 (when line
-		   (goto-line (- (car loc) line))
+		   (goto-char (point-min))
+		   (forward-line (1- (- (car loc) line)))
 		   (forward-char (cadr loc)))))
 	      (t (find-file file)
-		 (goto-line (car loc))
+		 (goto-char (point-min))
+		 (forward-line (1- (car loc)))
 		 (forward-char (cadr loc))))
 	(delete-other-windows)))
   (recenter))
@@ -358,15 +369,14 @@ Returns to Declaration List when done."
   (if (<= (current-line-number) 2)
       (error "Please select from list of choices below."))
   (let* ((cbuf (current-buffer))
-	 (entry (nth (- (current-line-number) 3) *pvs-decls*))
+	 (entry (nth (- (current-line-number) 3) pvs-declarations))
 	 (decl (sixth entry)))
     (let ((buf (get-buffer-create "Browse View")))
       (set-buffer buf)
-      (if buffer-read-only (toggle-read-only))
-      (erase-buffer)
-      (insert decl)
-      (set-buffer-modified-p nil)
-      (toggle-read-only)
+      (let ((inhibit-read-only t))
+	(erase-buffer)
+	(insert decl)
+	(set-buffer-modified-p nil))
       (pvs-view-mode)
       (goto-char (point-min))
       (let ((view-window (get-buffer-window-list buf)))
@@ -383,10 +393,10 @@ Returns to Declaration List when done."
   (interactive)
   (remove-buffer (current-buffer))
   (pvs-bury-output)
-  (when (and (not *pvs-popup-windows*)
-	     (window-configuration-p *pvs-popup-old-window-configuration*))
-    (set-window-configuration *pvs-popup-old-window-configuration*)
-    (setq *pvs-popup-old-window-configuration* nil)))
+  (when (and (not pvs-popup-windows)
+	     (window-configuration-p pvs-popup-old-window-configuration))
+    (set-window-configuration pvs-popup-old-window-configuration)
+    (setq pvs-popup-old-window-configuration nil)))
 
 (defun pvs-browse-help ()
   (interactive)
@@ -446,8 +456,7 @@ or the resolution determined by the typechecker for an overloaded name."
 			      (when lib (format "\"%s\"" lib)))
 			  "Listing..." 'listing 'list)))
 	  (when pvs-decls
-	    (setq *pvs-decls* pvs-decls)
-	    (pvs-make-browse-buffer))))))
+	    (pvs-make-browse-buffer "Browse" pvs-decls))))))
 
 (defvar expanded-form-face 'expanded-form-face)
 (make-face 'expanded-form-face)
@@ -464,6 +473,7 @@ argument they are expanded as well."
   (let* ((fref (pvs-formula-origin))
 	 (kind (pvs-fref-kind fref))
 	 (fname (pvs-fref-file fref))
+	 (theory (pvs-fref-theory fref))
 	 (lib (pvs-fref-library fref))
 	 (buf (pvs-fref-buffer fref))
 	 (poff (pvs-fref-prelude-offset fref))
@@ -488,42 +498,30 @@ argument they are expanded as well."
       (unless noninteractive
 	(when place
 	  (let ((tbeg (save-excursion
-			(goto-line (- (car place) poff))
+			(goto-char (point-min))
+			(forward-line (1- (- (car place) poff)))
 			(forward-char (cadr place))
 			(point)))
 		(tend (save-excursion
-			(goto-line (- (caddr place) poff))
+			(goto-char (point-min))
+			(forward-line (1- (- (caddr place) poff)))
 			(forward-char (cadddr place))
 			(point))))
 	    (setq expanded-form-overlay (make-overlay tbeg tend))
 	    (overlay-put expanded-form-overlay 'face 'expanded-form-face)))))))
 
-(defvar *pvs-popup-windows* nil
-  "Controls behavior of browser functions.
-nil    = use current frame
-'frame = use a (potentially new) browser frame
-'x     = use dedicated X windows popups")
-
-(defvar *pvs-popup-browse-frame* nil
-  "The frame to use for browse windows when *pvs-popup-windows* is 'frame")
-
-(defvar *pvs-popup-old-window-configuration* nil
-  "The window configuration to pop back to after quitting a brose window
-when *pvs-popup-windows* is nil")
-
-
 (defun pvs-display-browse-buffer (buf)
-  "Popup a top level buffer, dependent on the value of *pvs-popup-windows*"
-  (cond ((not *pvs-popup-windows*)
-	 (setq *pvs-popup-old-window-configuration* (current-window-configuration))
+  "Popup a top level buffer, dependent on the value of pvs-popup-windows"
+  (cond ((not pvs-popup-windows)
+	 (setq pvs-popup-old-window-configuration (current-window-configuration))
 	 (delete-other-windows)
 	 (let ((top-window (selected-window))
 	       (bottom-window (split-window-vertically (ilisp-desired-height buf))))
 	   (set-window-buffer top-window buf)
 	   (select-window bottom-window)))
-	 ((eq *pvs-popup-windows* 'frame)
-	 (unless (frame-live-p *pvs-popup-browse-frame*)
-	   (setq *pvs-popup-browse-frame* (make-frame))))
-	((eq *pvs-popup-windows* 'x)
-	 (error "*pvs-popup-windows* as x not yet implemented"))
-	(t (error "*pvs-popup-windows* is not one of nil, 'frame or 'x"))))
+	 ((eq pvs-popup-windows 'frame)
+	 (unless (frame-live-p pvs-popup-browse-frame)
+	   (setq pvs-popup-browse-frame (make-frame))))
+	((eq pvs-popup-windows 'x)
+	 (error "pvs-popup-windows as x not yet implemented"))
+	(t (error "pvs-popup-windows is not one of nil, 'frame or 'x"))))
