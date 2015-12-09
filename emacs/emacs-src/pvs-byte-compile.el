@@ -26,7 +26,7 @@
 (message "PVS: byte compilation starting")
 
 ; compile in the current directory
-(setq load-path (cons "." load-path))
+(setq load-path (cons "." (cons "ilisp" load-path)))
 
 ; we want *all* of the byte compilation warnings
 (setq byte-compile-warnings t)
@@ -46,6 +46,7 @@
 
 (let ((pvsfiles '(pvs-macros
 		  pvs-utils
+		  pvs-ltx
 		  pvs-load
 		  pvs-abbreviations
 		  pvs-browser
@@ -60,6 +61,7 @@
 		  pvs-prover-manip
 		  manip-debug-utils
 		  pvs-prover
+		  pvs-proofstate
 		  pvs-tcl
 		  pvs-utils
 		  pvs-view
@@ -88,66 +90,65 @@
 
 ;; Compile compatibility files
 (cond ((memq +ilisp-emacs-version-id+ '(xemacs-19 xemacs-20))
-       (byte-compile-file "ilxemacs.el"))
+       (byte-compile-file "ilisp/ilxemacs.el"))
       ((eq +ilisp-emacs-version-id+ 'fsf-19)
-       (byte-compile-file "ilfsf19.el"))
+       (byte-compile-file "ilisp/ilfsf19.el"))
       ((eq +ilisp-emacs-version-id+ 'fsf-20)
-       (byte-compile-file "ilfsf20.el"))
+       (byte-compile-file "ilisp/ilfsf20.el"))
       (t (error "ILISP Compilation: unrecogninized Emacs version %s"
 		+ilisp-emacs-version-id+)))
 
-(byte-compile-file "ilcompat.el")
-
 ;; Other files in the distribution.
 
-    (let ((files '(completer
-		   comint-ipc
-		   ;;bridge
-		   ilisp-def
-		   ilisp-sym
-		   ilisp-inp
-		   ilisp-ind
+(let ((files '(ilcompat
+	       completer
+	       comint-ipc
+	       ;;bridge
+	       ilisp-def
+	       ilisp-sym
+	       ilisp-inp
+	       ilisp-ind
 		   
-		   ilisp-prc
-		   ilisp-val
-		   ilisp-out
-		   ilisp-mov
-		   ilisp-key
-		   ilisp-prn
-		   ilisp-low
-		   ilisp-doc
-		   ilisp-ext
-		   ilisp-mod
-		   ilisp-dia
-		   ilisp-cmt
-		   ilisp-rng
-		   ilisp-hnd
-		   ilisp-utl
-		   ilisp-cmp
-		   ilisp-kil
-		   ilisp-snd
-		   ilisp-xfr
-		   ilisp-hi
-		   ilisp-aut
-		   ilisp-mnb
-		   ilisp-src
-		   ilisp-bat
+	       ilisp-prc
+	       ilisp-val
+	       ilisp-out
+	       ilisp-mov
+	       ilisp-key
+	       ilisp-prn
+	       ilisp-low
+	       ilisp-doc
+	       ilisp-ext
+	       ilisp-mod
+	       ilisp-dia
+	       ilisp-cmt
+	       ilisp-rng
+	       ilisp-hnd
+	       ilisp-utl
+	       ilisp-cmp
+	       ilisp-kil
+	       ilisp-snd
+	       ilisp-xfr
+	       ilisp-hi
+	       ilisp-aut
+	       ilisp-mnb
+	       ilisp-src
+	       ilisp-bat
 
-		   ;; Dialects.
-		   ilisp-cl
-		   ilisp-acl
-		   ilisp-cmu
-		   ilisp-xls
-		   ilisp-chs
-		   ilisp-cl-easy-menu
-		   ilisp-imenu
-		   ilisp-sbcl
-		   )))
+	       ;; Dialects.
+	       ilisp-cl
+	       ilisp-acl
+	       ilisp-cmu
+	       ilisp-xls
+	       ilisp-chs
+	       ilisp-cl-easy-menu
+	       ilisp-imenu
+	       ilisp-sbcl
+	       ilisp
+	       )))
       (while files
-	(byte-compile-file (format "%s.el" (car files)) 0)
-	(load (format "%s" (car files)))
+	(byte-compile-file (format "ilisp/%s.el" (car files)) 0)
+	(load (format "ilisp/%s" (car files)))
 	(setq files (cdr files))))
-(byte-compile-file "ilisp.el")
 
 (message "ILISP: byte compilation Done")
 
