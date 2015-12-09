@@ -910,7 +910,7 @@ If HIDDEN? is t, LABL(s) are also removed from hidden formulas."
 		  (mapcar #'(lambda (x) (cons x lfs)) lbs))))
       (then
        (unless push? (unlabel* fnums))
-       (mapstep #'(lambda(x)`(relabel__ ,(car x) ,(cdr x) :push? t)) lbfs))))
+       (mapstep #'(lambda(x)`(relabel__ ,(car x) ,(cdr x))) lbfs))))
   "[Extrategies] Labels FNUMS as LABL(s), keeping the old ones. If PAIRING? is t and
 LABL is a list of the form (LAB1 ... LABn), each LABi is paired to the i-th formula in FNUM.
 If PUSH? is t, then the new labels are added to the existing ones. Otherwise, the new labels
