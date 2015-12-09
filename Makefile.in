@@ -197,7 +197,7 @@ pvs-make-files = pvs.system src/defsystem.lisp src/closopt.lisp
 
 allegro-make-files =  src/make-pvs.lisp src/make-allegro-pvs.lisp
 
-emacs-src = $(shell $(GIT) ls-files | $(GREP) -E "*.el$$" | $(GREP) -v "^\(doc\|src\)")
+emacs-src = $(shell $(GIT) ls-files | $(GREP) -E ".*\.el$$" | $(GREP) -v "^\(doc\|src\)")
 emacs-src += emacs/emacs-src/pvs-prelude-files-and-regions.el
 
 #emacs-sub-src = $(addprefix $(PVSPATH)emacs/$(EMACSSUBDIR)/,$(notdir $(emacs-src)))
