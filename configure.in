@@ -88,6 +88,11 @@ if test "$EMACS" != no; then
 fi
 dnl Don't need to check the xemacs version
 
+AC_CHECK_PROG(GREP,grep,grep,no)
+if test "$GREP" = no ; then
+	AC_MSG_ERROR(Cannot find grep)
+fi
+
 AC_CHECK_PROG(GIT,git,git,no)
 if test "$GIT" = no ; then
 	AC_MSG_ERROR(Cannot find git)
