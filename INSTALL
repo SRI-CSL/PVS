@@ -1,26 +1,22 @@
 * Installing PVS
 
-Installation is relatively simple:
-Create a new PVS directory (name doesn't matter), cd to it, untar
-the files, run 'bin/relocate', and you should be able to run
-'./pvs'.  Copy this script to a directory in your path, or add the
-PVS directory to your path.
-
 Note that it is generally not necessary to build PVS yourself, even if you
-want to do your own development.  Simply clone the sources using
+want to do your own development.  Simply load your lisp files into a running
+PVS.
 
- git clone https://github.com/samowre/PVS.git pvs
+From a tar file, simply untar the file, cd to the pvs-VERS directory, and
+run ./install-sh you should then be able to run './pvs'.  You can then copy
+or link this script to a directory in your path, or add the PVS directory to
+your path.
 
-then cd to the 'pvs' subdirectory, and untar one of the downloaded PVS image
-files there, and run bin/locate.  You can then run PVS, and develop or
-modify lisp files and load them into the running PVS, without having to
-build the system yourself.
+Source files are included in the tar file, but if you want the latest, get
+them from Github.
 
 * Building PVS
 
 PVS is open source, get the latest sources using Git:
 
- git clone https://github.com/samowre/PVS.git pvs
+  git clone https://github.com/SRI-CSL/PVS.git
 
 The build process is described below, please feel free
 to contribute your own experiences.
@@ -59,14 +55,13 @@ Get the PVS Sources
 Get them from the download page, create a directory, cd to it, and untar the
 sources.
 
-Set either the ALLEGRO_HOME, SBCLISP_HOME, and/or CMULISP_HOME environment
-variable.  If using SBCL, you may need to chmod a+x <sbcl>/run-sbcl.sh
+Set either the ALLEGRO_HOME or SBCLISP_HOME environment variable.  If using
+SBCL, you may need to chmod a+x <sbcl>/run-sbcl.sh
 
 ----------------------------------------------------------------
 
 For Allegro, set ALLEGRO_HOME to the directory containing the license file
-(devel.lic). For CMU Lisp, set CMULISP_HOME to the directory containing the
-bin subdirectory.  SBCLISP_HOME is the directory containing run-sbcl.sh
+(devel.lic). SBCLISP_HOME is the directory containing run-sbcl.sh
 
 Note: if you have multiple lisps, you can set all desired variables and the
 make will create all images.
