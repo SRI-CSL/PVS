@@ -625,7 +625,7 @@
 		 nil)
 		((not (memq (car arguments) keywords))
 		 (error-format-if "~%~a is not a valid keyword for ~a"
-				  (car arguments) cmd)
+			       (car arguments) cmd)
 		 nil)
 		((not (cdr arguments))
 		 (error-format-if "~%Keyword ~a (of ~a) requires an argument"
@@ -992,9 +992,10 @@
 			(reverse let-value)))))
 	((rule-definition (car strat))
 	 (let* ((def (rule-definition (car strat)))
-		(subalist (pair-formals-args (formals def)
-					     (cdr strat)
-					     (car strat)))
+		(subalist (let ((*suppress-printing* nil))
+			    (pair-formals-args (formals def)
+					       (cdr strat)
+					       (car strat))))
 		(args (loop for x in (formals def)
 			    when (not (memq x '(&optional &rest)))
 			    collect
@@ -1020,9 +1021,10 @@
 	   result))
 	((step-definition (car strat))
 	 (let* ((def (step-definition (car strat)))
-		(alist (pair-formals-args (formals def)
-					  (cdr strat)
-					  (car strat)))
+		(alist (let ((*suppress-printing* nil))
+			 (pair-formals-args (formals def)
+					    (cdr strat)
+					    (car strat))))
 		(def-expr  (subst-stratexpr
 			    (defn def)
 			    alist
@@ -1111,9 +1113,10 @@
 (defun pair-formals-args* (formals args strat &optional argsec result)
   (cond ((null formals)
 	 (if args
-	     (progn (commentary "~%Too many arguments ~a for prover command ~a."
+	     (progn
+	       (error-format-if "~%Too many arguments ~a for prover command ~a."
 				args strat)
-		    (restore))
+	       (restore))
 	     (nreverse result)))
 	((memq (car formals) '(&optional &key &rest))
 	 ;; Change argsec accordingly
@@ -3633,7 +3636,8 @@
 (defun label-step (label fnums push?)
   #'(lambda (ps)
       (let* ((goalsequent (current-goal ps))
-	     (fnums (if (consp fnums) fnums (list fnums))))
+	     (fnums ;;(extract-fnums-arg fnums)
+	       (if (consp fnums) fnums (list fnums))))
 	(cond ((or (stringp label) (symbolp label))
 	       (let ((strlbl (if (stringp label) label (string label)))
 		     (symlbl (if (symbolp label) label (intern label :pvs))))
@@ -3693,9 +3697,8 @@
 	       (error-format-if "~%No formulas match ~a" (or fnums '*))
 	       (values 'X nil nil))))))
 	
-	
-	 
-			    
+(defun collect-labels-of-current-sequent ()
+  (reduce #'union (s-forms (current-goal *ps*)) :key #'label))
 
 (defun just-install-proof-step (proof ps)
   (progn (setq *context-modified* t)
