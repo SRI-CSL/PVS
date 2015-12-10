@@ -85,20 +85,26 @@ SYSTEM_FILES = README.md README.GUI INSTALL LICENSE NOTICES install-sh \
 	$(wildcard lib/bitvectors/*.pvs lib/bitvectors/*.prf) \
 	lib/bitvectors/.pvscontext lib/bitvectors/pvsbin
 
-ALLEGRO_FILES = $(bindir)/runtime/file_utils.so \
-	$(wildcard $(bindir)/runtime/libacli*.so) $(bindir)/runtime/mu.so \
+ALLEGRO_FILES = $(bindir)/runtime/file_utils.$(LOAD-FOREIGN-EXTENSION) \
+	$(wildcard $(bindir)/runtime/libacli*.$(LOAD-FOREIGN-EXTENSION)) \
+	$(bindir)/runtime/mu.$(LOAD-FOREIGN-EXTENSION) \
 	$(bindir)/runtime/pvs-allegro $(bindir)/runtime/pvs-allegro.dxl \
-	$(bindir)/runtime/pvs-allegro.lic $(bindir)/runtime/ws1s.so
+	$(bindir)/runtime/pvs-allegro.lic \
+	$(bindir)/runtime/ws1s.$(LOAD-FOREIGN-EXTENSION)
 
 # This does NOT include devel.lic - that must be gotten separately 
-ALLEGRO_DEVEL_FILES = $(bindir)/devel/files.bu $(bindir)/devel/file_utils.so \
-	$(wildcard $(bindir)/devel/libacli*.so) $(bindir)/devel/mu.so \
+ALLEGRO_DEVEL_FILES = $(bindir)/devel/files.bu \
+	$(bindir)/devel/file_utils.$(LOAD-FOREIGN-EXTENSION) \
+	$(wildcard $(bindir)/devel/libacli*.$(LOAD-FOREIGN-EXTENSION)) \
+	$(bindir)/devel/mu.$(LOAD-FOREIGN-EXTENSION) \
 	$(bindir)/devel/pvs-allegro $(bindir)/devel/pvs-allegro.dxl \
-	$(bindir)/devel/pvs-allegro.lic $(bindir)/devel/ws1s.so
+	$(bindir)/devel/pvs-allegro.lic \
+	$(bindir)/devel/ws1s.$(LOAD-FOREIGN-EXTENSION)
 
 SBCLISP_FILES = $(bindir)/runtime/*.lisp \
-	$(bindir)/runtime/file_utils.so \
-	$(bindir)/runtime/mu.so $(bindir)/runtime/ws1s.so \
+	$(bindir)/runtime/file_utils.$(LOAD-FOREIGN-EXTENSION) \
+	$(bindir)/runtime/mu.$(LOAD-FOREIGN-EXTENSION) \
+	$(bindir)/runtime/ws1s.$(LOAD-FOREIGN-EXTENSION) \
 	$(bindir)/runtime/pvs-sbclisp $(bindir)/runtime/run-sbcl.sh
 
 SOURCE_FILES = $(ess) $(lisp-files) $(emacs-src) $(pvs-make-files) $(allegro-make-files)
