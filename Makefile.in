@@ -58,7 +58,7 @@ GIT_FILES := $(shell $(GIT) ls-files)
 TAR = @TAR@
 TARFLAGS = cho --exclude='\._*' "$$tardir"
 MKDIR = @MKDIR@
-MKDIR_P = @MKDIR_P@
+MKDIR_P = $(MKDIR) -p
 PACKAGE = @PACKAGE_NAME@
 VERSION = @PACKAGE_VERSION@
 DISTDIR = $(PACKAGE)-$(VERSION)
