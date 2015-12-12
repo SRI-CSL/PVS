@@ -147,6 +147,9 @@ parsing or typechecking - used by pvs-error.")
 
 (defvar *added-recursive-defn-conversions*) ;; bound in typecheck* (def-decl)
 
+(defvar *prelude-core-context* nil
+  "Provides the context associated with the prelude")
+
 (defvar *prelude-context* nil
   "Provides the context associated with the prelude")
 
@@ -617,3 +620,12 @@ Needed to generate the same dummy name for record literals.")
     ≁ ∼ ≃ ≅ ≇ ≈ ≉ ≍ ≎ ≏ ≐ ≗ ≙ ≡ ⋈ ≤ ≥ ≦ ≧
     ≨ ≩ ≪ ≫ ≮ ≯ ≰ ≱ ≺ ≻ ◁ ▷
     ⊂ ⊃ ⊄ ⊅ ⊆ ⊇ ⊊ ⊋ ⊏ ⊐ ⊑ ⊒))
+
+(defparameter *pvs-equality-operators*
+  ;; These are operators that are allowed between boolean terms
+  ;; The idea is that it's OK to chain, e.g., "a < b > c", but not
+  ;; "a < b = c", which should not be treated as "a < b AND b = c"
+  ;; The only exception is if the equality-operators are the same, e.g.,
+  ;; "a = b = c" is "a = b AND b = c".  Remember adding parentheses
+  ;; means no chaining.
+  '(= /=))

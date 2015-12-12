@@ -5998,6 +5998,24 @@
     (NOT const-decl "[bool -> bool]" booleans nil))
    nil))
  (glb_TCC1 0
+  (glb_TCC1-3 "" 3658944916
+   (""
+    (inst 1
+     "LAMBDA (S:(bounded_below?)): epsilon! (x:real): greatest_lower_bound?(x, S)")
+    (("" (skolem-typepred)
+      (("" (use "epsilon_ax[real]")
+        (("" (assert)
+          (("" (expand "bounded_below?")
+            (("" (use "real_lower_complete")
+              (("" (assert)
+                (("" (replace 1) (("" (propax) nil nil)) nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   nil shostak)
   (glb_TCC1-2 "" 3590856346
    (""
     (inst 1
@@ -6015,7 +6033,24 @@
         nil))
       nil))
     nil)
-   nil shostak)
+   ((NOT const-decl "[bool -> bool]" booleans nil)
+    (real_lower_complete formula-decl nil bounded_real_defs nil)
+    (epsilon_ax formula-decl nil epsilons nil)
+    (epsilon const-decl "T" epsilons nil)
+    (pred type-eq-decl nil defined_types nil)
+    (greatest_lower_bound? const-decl "bool" bounded_real_defs nil)
+    (bounded_below? const-decl "bool" bounded_real_defs nil)
+    (nonempty? const-decl "bool" sets nil)
+    (set type-eq-decl nil sets nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil))
+   shostak)
   (glb_TCC1-1 nil 3237052399
    (""
     (inst 1
@@ -6037,8 +6072,7 @@
     (real_lower_complete formula-decl nil bounded_real_defs nil)
     (epsilon_ax formula-decl nil epsilons nil)
     (epsilon const-decl "T" epsilons nil)
-    (pred type-eq-decl nil defined_types nil)
-    (greatest_lower_bound? const-decl "bool" bounded_real_defs nil)
+    (pred type-eq-decl nil defined_types nil) nil
     (bounded_below? const-decl "bool" bounded_real_defs nil)
     (nonempty? const-decl "bool" sets nil)
     (set type-eq-decl nil sets nil)
@@ -7438,6 +7472,11 @@
    ("" (subtype-tcc) nil nil) nil nil))
  (upto_TCC1 0
   (upto_TCC1-1 nil 3237052399 ("" (tcc :defs !) nil nil) nil nil))
+ (succ_TCC1 0
+  (succ_TCC1-1 nil 3658943917 ("" (subtype-tcc) nil nil)
+   ((posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil))
+   shostak))
  (pred_TCC1 0
   (pred_TCC1-1 nil 3237052399 ("" (tcc :defs !) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
@@ -7457,6 +7496,8 @@
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (int_minus_int_is_int application-judgement "int" integers nil))
    nil))
+ (pred_TCC2 0
+  (pred_TCC2-1 nil 3658943917 ("" (subtype-tcc) nil nil) nil shostak))
  (tilde_TCC1 0
   (tilde_TCC1-1 nil 3237052399 ("" (tcc :defs !) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
@@ -7476,6 +7517,11 @@
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (int_minus_int_is_int application-judgement "int" integers nil))
    nil))
+ (tilde_TCC2 0
+  (tilde_TCC2-1 nil 3658943917 ("" (subtype-tcc) nil nil) nil shostak))
+ (nat_induction_TCC1 0
+  (nat_induction_TCC1-1 nil 3658943917 ("" (subtype-tcc) nil nil) nil
+   shostak))
  (nat_induction 0
   (nat_induction-1 nil 3237052399
    ("" (lemma "wf_induction[nat, (LAMBDA (m,n:nat): m < n)]")
@@ -7583,6 +7629,31 @@
     (number nonempty-type-decl nil numbers nil)
     (nat_induction formula-decl nil naturalnumbers nil))
    nil))
+ (even_nat_TCC1 0
+  (even_nat_TCC1-1 nil 3658943917 ("" (subtype-tcc) nil nil) nil
+   shostak))
+ (even_posnat_TCC1 0
+  (even_posnat_TCC1-1 nil 3658943917 ("" (subtype-tcc) nil nil) nil
+   shostak))
+ (odd_posnat_TCC1 0
+  (odd_posnat_TCC1-1 nil 3658943917 ("" (subtype-tcc) nil nil) nil
+   shostak))
+ (even_negint_TCC1 0
+  (even_negint_TCC1-1 nil 3658943917 ("" (subtype-tcc) nil nil)
+   ((minus_even_is_even application-judgement "even_int" integers nil)
+    (minus_nzint_is_nzint application-judgement "nzint" integers nil)
+    (minus_nzrat_is_nzrat application-judgement "nzrat" rationals nil)
+    (minus_nzreal_is_nzreal application-judgement "nzreal" real_types
+     nil))
+   shostak))
+ (odd_negint_TCC1 0
+  (odd_negint_TCC1-1 nil 3658943917 ("" (subtype-tcc) nil nil)
+   ((minus_odd_is_odd application-judgement "odd_int" integers nil)
+    (minus_nzint_is_nzint application-judgement "nzint" integers nil)
+    (minus_nzrat_is_nzrat application-judgement "nzrat" rationals nil)
+    (minus_nzreal_is_nzreal application-judgement "nzreal" real_types
+     nil))
+   shostak))
  (even_or_odd 0
   (even_or_odd-2 "" 3388684085
    ("" (case "FORALL (n: nat): even?(n) IFF NOT odd?(n)")
@@ -7728,6 +7799,10 @@
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (int nonempty-type-eq-decl nil integers nil))
    shostak))
+ (odd_iff_even_succ_TCC1 0
+  (odd_iff_even_succ_TCC1-1 nil 3658943918 ("" (subtype-tcc) nil nil)
+   ((int_plus_int_is_int application-judgement "int" integers nil))
+   shostak))
  (odd_iff_even_succ 0
   (odd_iff_even_succ-1 nil 3307950500
    ("" (skosimp*)
@@ -7821,6 +7896,14 @@
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (even_iff_not_odd formula-decl nil naturalnumbers nil))
    shostak))
+ (even_div2_TCC1 0
+  (even_div2_TCC1-1 nil 3658943918 ("" (subtype-tcc) nil nil)
+   ((even? const-decl "bool" integers nil)) shostak))
+ (even_div2_TCC2 0
+  (even_div2_TCC2-1 nil 3658943918 ("" (subtype-tcc) nil nil)
+   ((even? const-decl "bool" integers nil)
+    (rat_div_nzrat_is_rat application-judgement "rat" rationals nil))
+   shostak))
  (even_div2 0
   (even_div2-1 nil 3307950586
    ("" (expand "even?")
@@ -7831,6 +7914,20 @@
      nil)
     (even? const-decl "bool" integers nil)
     (rat_div_nzrat_is_rat application-judgement "rat" rationals nil))
+   shostak))
+ (odd_div2_TCC1 0
+  (odd_div2_TCC1-1 nil 3658943918 ("" (subtype-tcc) nil nil)
+   ((odd? const-decl "bool" integers nil)
+    (even_times_int_is_even application-judgement "even_int" integers
+     nil))
+   shostak))
+ (odd_div2_TCC2 0
+  (odd_div2_TCC2-1 nil 3658943918 ("" (subtype-tcc) nil nil)
+   ((even_times_int_is_even application-judgement "even_int" integers
+     nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (rat_div_nzrat_is_rat application-judgement "rat" rationals nil)
+    (odd? const-decl "bool" integers nil))
    shostak))
  (odd_div2 0
   (odd_div2-1 nil 3307950609
@@ -10461,12 +10558,12 @@
    ((= const-decl "[T, T -> boolean]" equalities nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (/= const-decl "boolean" notequal nil)
-    (nznum nonempty-type-eq-decl nil number_fields nil)
-    (/ const-decl "[numfield, nznum -> numfield]" number_fields nil)
-    (div_def formula-decl nil number_fields nil)
     (posreal_div_posreal_is_posreal application-judgement "posreal"
      real_types nil)
+    (div_def formula-decl nil number_fields nil)
+    (/ const-decl "[numfield, nznum -> numfield]" number_fields nil)
+    (nznum nonempty-type-eq-decl nil number_fields nil)
+    (/= const-decl "boolean" notequal nil)
     (real_times_real_is_real application-judgement "real" reals nil)
     (real_div_nzreal_is_real application-judgement "real" reals nil)
     (posreal nonempty-type-eq-decl nil real_types nil)
@@ -10511,12 +10608,12 @@
    ((= const-decl "[T, T -> boolean]" equalities nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (/= const-decl "boolean" notequal nil)
-    (nznum nonempty-type-eq-decl nil number_fields nil)
-    (/ const-decl "[numfield, nznum -> numfield]" number_fields nil)
-    (div_def formula-decl nil number_fields nil)
     (posreal_div_posreal_is_posreal application-judgement "posreal"
      real_types nil)
+    (div_def formula-decl nil number_fields nil)
+    (/ const-decl "[numfield, nznum -> numfield]" number_fields nil)
+    (nznum nonempty-type-eq-decl nil number_fields nil)
+    (/= const-decl "boolean" notequal nil)
     (real_times_real_is_real application-judgement "real" reals nil)
     (real_div_nzreal_is_real application-judgement "real" reals nil)
     (posreal nonempty-type-eq-decl nil real_types nil)
@@ -10561,14 +10658,14 @@
    ((= const-decl "[T, T -> boolean]" equalities nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (/= const-decl "boolean" notequal nil)
-    (nznum nonempty-type-eq-decl nil number_fields nil)
-    (/ const-decl "[numfield, nznum -> numfield]" number_fields nil)
-    (div_def formula-decl nil number_fields nil)
-    (nnreal_div_negreal_is_npreal application-judgement "npreal"
-     real_types nil)
     (nzreal_div_nzreal_is_nzreal application-judgement "nzreal"
      real_types nil)
+    (nnreal_div_negreal_is_npreal application-judgement "npreal"
+     real_types nil)
+    (div_def formula-decl nil number_fields nil)
+    (/ const-decl "[numfield, nznum -> numfield]" number_fields nil)
+    (nznum nonempty-type-eq-decl nil number_fields nil)
+    (/= const-decl "boolean" notequal nil)
     (real_times_real_is_real application-judgement "real" reals nil)
     (real_div_nzreal_is_real application-judgement "real" reals nil)
     (negreal nonempty-type-eq-decl nil real_types nil)
@@ -10613,14 +10710,14 @@
    ((= const-decl "[T, T -> boolean]" equalities nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (/= const-decl "boolean" notequal nil)
-    (nznum nonempty-type-eq-decl nil number_fields nil)
-    (/ const-decl "[numfield, nznum -> numfield]" number_fields nil)
-    (div_def formula-decl nil number_fields nil)
-    (nnreal_div_negreal_is_npreal application-judgement "npreal"
-     real_types nil)
     (nzreal_div_nzreal_is_nzreal application-judgement "nzreal"
      real_types nil)
+    (nnreal_div_negreal_is_npreal application-judgement "npreal"
+     real_types nil)
+    (div_def formula-decl nil number_fields nil)
+    (/ const-decl "[numfield, nznum -> numfield]" number_fields nil)
+    (nznum nonempty-type-eq-decl nil number_fields nil)
+    (/= const-decl "boolean" notequal nil)
     (real_times_real_is_real application-judgement "real" reals nil)
     (real_div_nzreal_is_real application-judgement "real" reals nil)
     (negreal nonempty-type-eq-decl nil real_types nil)
@@ -17077,9 +17174,9 @@
      real_props nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
     (rat nonempty-type-eq-decl nil rationals nil)
-    (div_mult_pos_lt1 formula-decl nil real_props nil)
-    (nonneg_real nonempty-type-eq-decl nil real_types nil)
     (posreal nonempty-type-eq-decl nil real_types nil)
+    (nonneg_real nonempty-type-eq-decl nil real_types nil)
+    (div_mult_pos_lt1 formula-decl nil real_props nil)
     (real_gt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (div_mult_pos_ge1 formula-decl nil real_props nil)
@@ -28222,6 +28319,16 @@
     (FALSE const-decl "bool" booleans nil))
    nil))
  (finite_subset 0
+  (finite_subset-3 "" 3658945030
+   ("" (grind :if-match nil)
+    (("" (inst 1 "N!1" "lambda (x: (s!1)): f!1(x)")
+      (("1" (skosimp) (("1" (inst? -2) (("1" (assert) nil nil)) nil))
+        nil)
+       ("2" (skolem-typepred)
+        (("2" (inst? -4) (("2" (assert) nil nil)) nil)) nil))
+      nil))
+    nil)
+   nil shostak)
   (finite_subset-2 "" 3590856476
    ("" (grind :if-match nil)
     (("" (inst 1 "N!1" "lambda (x: (s!1)): f!1(x)")
@@ -28231,7 +28338,35 @@
         (("2" (inst? -5) (("2" (assert) nil nil)) nil)) nil))
       nil))
     nil)
-   nil shostak)
+   ((s!1 skolem-const-decl "set[T]" finite_sets nil)
+    (A!1 skolem-const-decl "finite_set" finite_sets nil)
+    (below type-eq-decl nil nat_types nil)
+    (< const-decl "bool" reals nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T formal-type-decl nil finite_sets nil)
+    (set type-eq-decl nil sets nil)
+    (finite_set type-eq-decl nil finite_sets nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (injective? const-decl "bool" functions nil)
+    (subset? const-decl "bool" sets nil)
+    (member const-decl "bool" sets nil))
+   shostak)
   (finite_subset-1 nil 3243836755
    ("" (grind :if-match nil)
     (("" (inst 1 "N!1" "lambda (x: (s!1)): f!1(x)")
@@ -28248,8 +28383,7 @@
         (("2" (inst? -4) (("2" (assert) nil nil)) nil)) nil))
       nil))
     nil)
-   ((s!1 skolem-const-decl "set[T]" finite_sets nil)
-    (A!1 skolem-const-decl "finite_set" finite_sets nil)
+   (nil nil
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (number nonempty-type-decl nil numbers nil)
@@ -28291,9 +28425,8 @@
    ((intersection const-decl "set" sets nil)
     (A!1 skolem-const-decl "finite_set" finite_sets nil)
     (B!1 skolem-const-decl "finite_set" finite_sets nil)
-    (x1!1 skolem-const-decl "(intersection(A!1, B!1))" finite_sets nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
+    (< const-decl "bool" reals nil)
+    (below type-eq-decl nil nat_types nil)
     (member const-decl "bool" sets nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
@@ -28309,8 +28442,6 @@
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (int nonempty-type-eq-decl nil integers nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (< const-decl "bool" reals nil)
-    (below type-eq-decl nil nat_types nil)
     (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -28321,6 +28452,19 @@
     (injective? const-decl "bool" functions nil))
    shostak))
  (finite_add 0
+  (finite_add-3 "" 3658945447
+   ("" (grind :if-match nil)
+    ((""
+      (inst 1 "N!1 + 1"
+       "lambda (x: (add(x!1, A!1))): if x = x!1 then N!1 else f!1(x) endif")
+      (("1" (grind :if-match nil)
+        (("1" (inst -4 "x1!1" "x2!1") (("1" (assert) nil nil)) nil))
+        nil)
+       ("2" (grind :if-match nil) nil nil)
+       ("3" (grind :if-match nil) nil nil))
+      nil))
+    nil)
+   nil shostak)
   (finite_add-2 "" 3590856602
    ("" (grind :if-match nil)
     ((""
@@ -28328,19 +28472,6 @@
        "lambda (x: (add(x!1, A!1))): if x = x!1 then N!1 else f!1(x) endif")
       (("1" (grind :if-match nil)
         (("1" (inst -5 "x1!1" "x2!1") (("1" (assert) nil nil)) nil))
-        nil)
-       ("2" (grind :if-match nil) nil nil)
-       ("3" (grind :if-match nil) nil nil))
-      nil))
-    nil)
-   nil shostak)
-  (finite_add-1 nil 3243836836
-   ("" (grind :if-match nil)
-    ((""
-      (inst 1 "N!1 + 1"
-       "lambda (x: (add(x!1, A!1))): if x = x!1 then N!1 else f!1(x) endif")
-      (("1" (grind :if-match nil)
-        (("1" (inst -4 "x1!1" "x2!1") (("1" (assert) nil nil)) nil))
         nil)
        ("2" (grind :if-match nil) nil nil)
        ("3" (grind :if-match nil) nil nil))
@@ -28357,7 +28488,58 @@
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (f!1 skolem-const-decl "[(A!1) -> below[N!1]]" finite_sets nil)
+    (below type-eq-decl nil nat_types nil)
     (N!1 skolem-const-decl "nat" finite_sets nil)
+    (< const-decl "bool" reals nil)
+    (IF const-decl "[boolean, T, T -> T]" if_def nil)
+    (member const-decl "bool" sets nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T formal-type-decl nil finite_sets nil)
+    (set type-eq-decl nil sets nil)
+    (finite_set type-eq-decl nil finite_sets nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (injective? const-decl "bool" functions nil))
+   shostak)
+  (finite_add-1 nil 3243836836
+   ("" (grind :if-match nil)
+    ((""
+      (inst 1 "N!1 + 1"
+       "lambda (x: (add(x!1, A!1))): if x = x!1 then N!1 else f!1(x) endif")
+      (("1" (grind :if-match nil)
+        (("1" (inst -4 "x1!1" "x2!1") (("1" (assert) nil nil)) nil))
+        nil)
+       ("2" (grind :if-match nil) nil nil)
+       ("3" (grind :if-match nil) nil nil))
+      nil))
+    nil)
+   ((nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (nonempty? const-decl "bool" sets nil)
+    (add const-decl "(nonempty?)" sets nil) nil nil
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil) nil nil
     (IF const-decl "[boolean, T, T -> T]" if_def nil)
     (member const-decl "bool" sets nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
@@ -28706,12 +28888,8 @@
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (int nonempty-type-eq-decl nil integers nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (< const-decl "bool" reals nil)
-    (below type-eq-decl nil nat_types nil)
     (B!1 skolem-const-decl "finite_set" finite_sets nil)
     (x!1 skolem-const-decl "T" finite_sets nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (injective? const-decl "bool" functions nil)
@@ -28743,12 +28921,8 @@
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (int nonempty-type-eq-decl nil integers nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (< const-decl "bool" reals nil)
-    (below type-eq-decl nil nat_types nil)
     (A!1 skolem-const-decl "finite_set" finite_sets nil)
     (x!1 skolem-const-decl "T" finite_sets nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (injective? const-decl "bool" functions nil)
@@ -29151,9 +29325,11 @@
     (("1" (inst 1 "N!1" "g!1") (("1" (grind) nil nil)) nil)
      ("2" (inst 1 "N!1" "f!1") (("2" (grind) nil nil)) nil))
     nil)
-   ((restrict const-decl "R" restrict nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
+   ((T formal-type-decl nil finite_sets nil)
+    (set type-eq-decl nil sets nil) (fullset const-decl "set" sets nil)
+    (< const-decl "bool" reals nil)
+    (below type-eq-decl nil nat_types nil)
+    (restrict const-decl "R" restrict nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -29171,10 +29347,6 @@
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (int nonempty-type-eq-decl nil integers nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (T formal-type-decl nil finite_sets nil)
-    (set type-eq-decl nil sets nil) (fullset const-decl "set" sets nil)
-    (< const-decl "bool" reals nil)
-    (below type-eq-decl nil nat_types nil)
     (is_finite const-decl "bool" finite_sets nil)
     (is_finite_type const-decl "bool" finite_sets nil)
     (injective? const-decl "bool" functions nil))
@@ -29183,10 +29355,10 @@
   (finite_type_set-1 nil 3243836911
    ("" (grind :if-match nil)
     (("" (inst 1 "N!1" "g!1") (("" (grind) nil nil)) nil)) nil)
-   ((restrict const-decl "R" restrict nil)
-    (set type-eq-decl nil sets nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
+   ((T formal-type-decl nil finite_sets nil)
+    (set type-eq-decl nil sets nil) (< const-decl "bool" reals nil)
+    (below type-eq-decl nil nat_types nil)
+    (restrict const-decl "R" restrict nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -29204,14 +29376,19 @@
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (int nonempty-type-eq-decl nil integers nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (T formal-type-decl nil finite_sets nil)
-    (< const-decl "bool" reals nil)
-    (below type-eq-decl nil nat_types nil)
     (is_finite const-decl "bool" finite_sets nil)
     (is_finite_type const-decl "bool" finite_sets nil)
     (injective? const-decl "bool" functions nil))
    shostak))
  (finite_complement 0
+  (finite_complement-3 "" 3658945515
+   ("" (grind :if-match nil)
+    (("" (inst 1 "N!1" "g!1")
+      (("" (grind :if-match nil)
+        (("" (inst?) (("" (assert) nil nil)) nil)) nil))
+      nil))
+    nil)
+   nil shostak)
   (finite_complement-2 "" 3590856663
    ("" (grind :if-match nil)
     (("" (inst 1 "N!1" "g!1")
@@ -29219,7 +29396,34 @@
         (("" (inst? -3) (("" (assert) nil nil)) nil)) nil))
       nil))
     nil)
-   nil shostak)
+   ((T formal-type-decl nil finite_sets nil)
+    (set type-eq-decl nil sets nil)
+    (complement const-decl "set" sets nil)
+    (< const-decl "bool" reals nil)
+    (below type-eq-decl nil nat_types nil)
+    (restrict const-decl "R" restrict nil)
+    (member const-decl "bool" sets nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (is_finite_type const-decl "bool" finite_sets nil)
+    (injective? const-decl "bool" functions nil))
+   shostak)
   (finite_complement-1 nil 3243836931
    ("" (grind :if-match nil)
     (("" (inst 1 "N!1" "g!1")
@@ -30633,6 +30837,72 @@
     (Card_bijection formula-decl nil finite_sets nil))
    shostak))
  (card_bij_inv 0
+  (card_bij_inv-3 "" 3658946169
+   ("" (skosimp*)
+    (("" (lemma "card_bij[T]")
+      (("" (inst?)
+        (("" (split 1)
+          (("1" (flatten)
+            (("1" (assert)
+              (("1" (skolem-typepred)
+                (("1" (lemma "bij_inv_is_bij_alt[(S!1), below[N!1]]")
+                  (("1" (inst?)
+                    (("1"
+                      (lemma
+                       "bijective_inverse_exists[(S!1), below[N!1]]")
+                      (("1" (inst?)
+                        (("1" (expand "exists1")
+                          (("1" (flatten)
+                            (("1" (skolem-typepred)
+                              (("1"
+                                (inst -3 "x!1")
+                                (("1" (inst 1 "x!1") nil nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil)
+           ("2" (flatten)
+            (("2" (assert)
+              (("2" (hide -2)
+                (("2" (skolem-typepred)
+                  (("2"
+                    (lemma
+                     "bijective_inverse_exists[below[N!1], (S!1)]")
+                    (("2"
+                      (lemma "bij_inv_is_bij_alt[below[N!1], (S!1)]")
+                      (("2" (inst? -2)
+                        (("2" (expand "exists1")
+                          (("2" (flatten)
+                            (("2" (skolem-typepred)
+                              (("2"
+                                (inst? -)
+                                (("2"
+                                  (inst? -)
+                                  (("2" (inst 2 "x!1") nil nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   nil shostak)
   (card_bij_inv-2 "" 3590857335
    ("" (skosimp*)
     (("" (lemma "card_bij[T]")
@@ -30698,7 +30968,40 @@
         nil))
       nil))
     nil)
-   nil shostak)
+   ((T formal-type-decl nil finite_sets nil)
+    (card_bij formula-decl nil finite_sets nil)
+    (below type-eq-decl nil nat_types nil)
+    (< const-decl "bool" reals nil)
+    (bij_inv_is_bij_alt formula-decl nil function_inverse_def nil)
+    (bijective_inverse_exists formula-decl nil function_inverse_def
+     nil)
+    (exists1 const-decl "bool" exists1 nil)
+    (x!1 skolem-const-decl "[below[N!1] -> (S!1)]" finite_sets nil)
+    (inverse? const-decl "bool" function_inverse_def nil)
+    (S!1 skolem-const-decl "finite_set" finite_sets nil)
+    (N!1 skolem-const-decl "nat" finite_sets nil)
+    (bijective? const-decl "bool" functions nil)
+    (f!1 skolem-const-decl "[(S!1) -> below[N!1]]" finite_sets nil)
+    (x!1 skolem-const-decl "[(S!1) -> below[N!1]]" finite_sets nil)
+    (f!1 skolem-const-decl "[below[N!1] -> (S!1)]" finite_sets nil)
+    (finite_set type-eq-decl nil finite_sets nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (set type-eq-decl nil sets nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil))
+   shostak)
   (card_bij_inv-1 nil 3307953160
    ("" (skosimp*)
     (("" (lemma "card_bij[T]")
@@ -30830,18 +31133,12 @@
     (bij_inv_is_bij_alt formula-decl nil function_inverse_def nil)
     (bijective_inverse_exists formula-decl nil function_inverse_def
      nil)
-    (exists1 const-decl "bool" exists1 nil)
-    (x!1 skolem-const-decl "[below[N!1] -> (S!1)]" finite_sets nil)
-    (inverse? const-decl "bool" function_inverse_def nil)
-    (S!1 skolem-const-decl "finite_set" finite_sets nil)
-    (N!1 skolem-const-decl "nat" finite_sets nil)
-    (bijective? const-decl "bool" functions nil)
-    (f!1 skolem-const-decl "[(S!1) -> below[N!1]]" finite_sets nil)
+    (exists1 const-decl "bool" exists1 nil) nil
+    (inverse? const-decl "bool" function_inverse_def nil) nil nil
+    (bijective? const-decl "bool" functions nil) nil
     (below type-eq-decl nil nat_types nil)
     (< const-decl "bool" reals nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (x!1 skolem-const-decl "[(S!1) -> below[N!1]]" finite_sets nil)
-    (f!1 skolem-const-decl "[below[N!1] -> (S!1)]" finite_sets nil)
+    (NOT const-decl "[bool -> bool]" booleans nil) nil nil
     (finite_set type-eq-decl nil finite_sets nil)
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
@@ -30891,6 +31188,26 @@
     (number nonempty-type-decl nil numbers nil))
    shostak))
  (bij_TCC1 0
+  (bij_TCC1-3 "" 3658946502
+   (""
+    (inst + "(LAMBDA (S: finite_set):
+       		 choose({f: [(S) -> below(card(S))] |
+                                   bijective?(f)}))")
+    (("" (lemma "bij_exists[T]")
+      (("" (skosimp*)
+        (("" (inst?)
+          (("" (skosimp*)
+            (("" (expand "nonempty?")
+              (("" (expand "empty?")
+                (("" (expand "member") (("" (inst?) nil nil)) nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   nil shostak)
   (bij_TCC1-2 nil 3510413559
    ("" (lemma "bij_exists[T]")
     ((""
@@ -30910,46 +31227,47 @@
         nil))
       nil))
     nil)
-   ((T formal-type-decl nil finite_sets nil)
-    (boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (set type-eq-decl nil sets nil)
-    (is_finite const-decl "bool" finite_sets nil)
-    (finite_set type-eq-decl nil finite_sets nil)
-    (number nonempty-type-decl nil numbers nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (rational nonempty-type-from-decl nil rationals nil)
-    (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (int nonempty-type-eq-decl nil integers nil)
-    (>= const-decl "bool" reals nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (< const-decl "bool" reals nil)
-    (= const-decl "[T, T -> boolean]" equalities nil)
-    (Card const-decl "nat" finite_sets nil)
-    (card const-decl "{n: nat | n = Card(S)}" finite_sets nil)
-    (below type-eq-decl nil naturalnumbers nil)
-    (bijective? const-decl "bool" functions nil)
-    (nonempty? const-decl "bool" sets nil)
-    (choose const-decl "(p)" sets nil)
+   ((bij_exists formula-decl nil finite_sets nil)
     (member const-decl "bool" sets nil)
     (empty? const-decl "bool" sets nil)
-    (bij_exists formula-decl nil finite_sets nil))
+    (choose const-decl "(p)" sets nil)
+    (nonempty? const-decl "bool" sets nil)
+    (bijective? const-decl "bool" functions nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (card const-decl "{n: nat | n = Card(S)}" finite_sets nil)
+    (Card const-decl "nat" finite_sets nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (< const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (finite_set type-eq-decl nil finite_sets nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (set type-eq-decl nil sets nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (T formal-type-decl nil finite_sets nil))
    nil)
   (bij_TCC1-1 nil 3510413341 ("" (existence-tcc) nil nil) nil nil))
  (ibij_TCC1 0
   (ibij_TCC1-1 nil 3510413341 ("" (existence-tcc) nil nil)
-   ((T formal-type-decl nil finite_sets nil)
-    (boolean nonempty-type-decl nil booleans nil)
+   ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (set type-eq-decl nil sets nil) (empty? const-decl "bool" sets nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T formal-type-decl nil finite_sets nil)
+    (set type-eq-decl nil sets nil)
     (is_finite const-decl "bool" finite_sets nil)
     (finite_set type-eq-decl nil finite_sets nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
+    (empty? const-decl "bool" sets nil)
     (non_empty_finite_set type-eq-decl nil finite_sets nil)
     (number nonempty-type-decl nil numbers nil)
     (number_field_pred const-decl "[number -> boolean]" number_fields
@@ -30963,14 +31281,10 @@
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (int nonempty-type-eq-decl nil integers nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (< const-decl "bool" reals nil)
-    (below type-eq-decl nil nat_types nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
-    (injective? const-decl "bool" functions nil)
-    (member const-decl "bool" sets nil))
+    (member const-decl "bool" sets nil)
+    (injective? const-decl "bool" functions nil))
    nil))
  (bij_ibij 0
   (bij_ibij-1 nil 3510413649
@@ -31086,7 +31400,8 @@
         nil))
       nil))
     nil)
-   ((is_finite_surj formula-decl nil finite_sets nil)
+   ((T formal-type-decl nil finite_sets nil)
+    (is_finite_surj formula-decl nil finite_sets nil)
     (g!1 skolem-const-decl "[below[N!1] -> T]" finite_sets nil)
     (below type-eq-decl nil naturalnumbers nil)
     (N!1 skolem-const-decl "nat" finite_sets nil)
@@ -31109,8 +31424,7 @@
     (number nonempty-type-decl nil numbers nil)
     (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (boolean nonempty-type-decl nil booleans nil)
-    (T formal-type-decl nil finite_sets nil))
+    (boolean nonempty-type-decl nil booleans nil))
    nil))
  (finite_pred 0
   (finite_pred-1 nil 3307981117
@@ -31153,8 +31467,6 @@
   (finite_pred2-1 nil 3307981300 ("" (grind) nil nil)
    ((real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
     (below type-eq-decl nil nat_types nil)
     (< const-decl "bool" reals nil)
     (pred type-eq-decl nil defined_types nil)
@@ -31178,24 +31490,100 @@
     (is_finite const-decl "bool" finite_sets nil))
    shostak))
  (card_implies_TCC1 0
+  (card_implies_TCC1-2 "" 3658947486
+   ("" (grind :if-match nil)
+    (("" (inst 1 "N!1" "lambda (x: {x: T | P1!1(x)}): f!1(x)")
+      (("" (skeep :preds? t)
+        (("" (inst? -) (("" (assert) nil nil)) nil)) nil))
+      nil))
+    nil)
+   nil shostak)
   (card_implies_TCC1-1 nil 3307950062
    ("" (skosimp) (("" (rewrite "finite_pred") nil nil)) nil)
-   ((finite_pred formula-decl nil finite_sets nil)
-    (T formal-type-decl nil finite_sets nil)
+   ((T formal-type-decl nil finite_sets nil)
+    (pred type-eq-decl nil defined_types nil)
+    (< const-decl "bool" reals nil)
+    (below type-eq-decl nil nat_types nil)
+    (set type-eq-decl nil sets nil) (fullset const-decl "set" sets nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
     (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (pred type-eq-decl nil defined_types nil))
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (injective? const-decl "bool" functions nil))
    shostak))
  (card_implies_TCC2 0
+  (card_implies_TCC2-2 "" 3658947422
+   ("" (grind :if-match nil)
+    (("" (inst 1 "N!1" "lambda (x: {x: T | P2!1(x)}): f!1(x)")
+      (("" (skeep :preds? t) (("" (inst?) (("" (assert) nil nil)) nil))
+        nil))
+      nil))
+    nil)
+   nil shostak)
   (card_implies_TCC2-1 nil 3307950062
    ("" (skosimp) (("" (rewrite "finite_pred") nil nil)) nil)
-   ((finite_pred formula-decl nil finite_sets nil)
-    (T formal-type-decl nil finite_sets nil)
+   ((T formal-type-decl nil finite_sets nil)
+    (pred type-eq-decl nil defined_types nil)
+    (< const-decl "bool" reals nil)
+    (below type-eq-decl nil nat_types nil)
+    (set type-eq-decl nil sets nil) (fullset const-decl "set" sets nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
     (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (pred type-eq-decl nil defined_types nil))
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (injective? const-decl "bool" functions nil))
    shostak))
  (card_implies 0
+  (card_implies-2 "" 3658948213
+   ("" (skeep :preds? t)
+    (("" (use "card_subset")
+      (("1" (assert)
+        (("1" (expand "subset?")
+          (("1" (expand "member") (("1" (propax) nil nil)) nil)) nil))
+        nil)
+       ("2" (expand "is_finite")
+        (("2" (skeep :preds? t)
+          (("2" (inst 1 "N" "lambda (x: {x: T | P2(x)}): f(x)")
+            (("1" (grind) nil nil) ("2" (grind) nil nil)) nil))
+          nil))
+        nil)
+       ("3" (expand "is_finite")
+        (("3" (skeep :preds? t)
+          (("3" (inst 1 "N" "lambda (x: {x: T | P1(x)}): f(x)")
+            (("1" (grind) nil nil) ("2" (grind) nil nil)) nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   nil shostak)
   (card_implies-1 nil 3307981157
    ("" (skosimp*)
     (("" (case "subset?({x: T | P1!1(x)},{x: T | P2!1(x)})")
@@ -31213,23 +31601,41 @@
         nil))
       nil))
     nil)
-   ((pred type-eq-decl nil defined_types nil)
-    (subset? const-decl "bool" sets nil)
-    (set type-eq-decl nil sets nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (boolean nonempty-type-decl nil booleans nil)
-    (T formal-type-decl nil finite_sets nil)
-    (P1!1 skolem-const-decl "pred[T]" finite_sets nil)
-    (is_finite const-decl "bool" finite_sets nil)
-    (P2!1 skolem-const-decl "pred[T]" finite_sets nil)
+   ((card_subset formula-decl nil finite_sets nil)
     (finite_set type-eq-decl nil finite_sets nil)
-    (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
-     sets_lemmas nil)
+    (P2 skolem-const-decl "pred[T]" finite_sets nil)
+    (T formal-type-decl nil finite_sets nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (set type-eq-decl nil sets nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (pred type-eq-decl nil defined_types nil)
+    (P1 skolem-const-decl "pred[T]" finite_sets nil)
+    (subset? const-decl "bool" sets nil)
+    (member const-decl "bool" sets nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
-    (finite_pred formula-decl nil finite_sets nil)
-    (card_subset formula-decl nil finite_sets nil)
-    (member const-decl "bool" sets nil))
+    (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
+     sets_lemmas nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (injective? const-decl "bool" functions nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (below type-eq-decl nil nat_types nil)
+    (< const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (fullset const-decl "set" sets nil))
    shostak))
  (finite_induction 0
   (finite_induction-1 nil 3307981389 ("" (grind) nil nil)
@@ -31245,10 +31651,10 @@
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (int nonempty-type-eq-decl nil integers nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (< const-decl "bool" reals nil)
-    (below type-eq-decl nil nat_types nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
+    (below type-eq-decl nil nat_types nil)
+    (< const-decl "bool" reals nil)
     (finite_set type-eq-decl nil finite_sets nil)
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
@@ -31546,17 +31952,16 @@
     (int nonempty-type-eq-decl nil integers nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (T formal-type-decl nil extend_set_props nil)
-    (S_pred const-decl "[T -> boolean]" extend_set_props nil)
-    (S formal-subtype-decl nil extend_set_props nil)
-    (FALSE const-decl "bool" booleans nil)
-    (set type-eq-decl nil sets nil) (< const-decl "bool" reals nil)
-    (below type-eq-decl nil nat_types nil)
     (IFF const-decl "[bool, bool -> bool]" booleans nil)
     (IF const-decl "[boolean, T, T -> T]" if_def nil)
+    (S_pred const-decl "[T -> boolean]" extend_set_props nil)
+    (S formal-subtype-decl nil extend_set_props nil)
+    (set type-eq-decl nil sets nil)
     (a!1 skolem-const-decl "set[S]" extend_set_props nil)
+    (FALSE const-decl "bool" booleans nil)
     (AND const-decl "[bool, bool -> bool]" booleans nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
+    (< const-decl "bool" reals nil)
+    (below type-eq-decl nil nat_types nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (injective? const-decl "bool" functions nil)
@@ -32865,9 +33270,9 @@
     (posint_plus_nnint_is_posint application-judgement "posint"
      integers nil)
     (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil) nil
+    (NOT const-decl "[bool -> bool]" booleans nil)
     (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    nil (IF const-decl "[boolean, T, T -> T]" if_def nil)
+    (IF const-decl "[boolean, T, T -> T]" if_def nil)
     (NAT_induction formula-decl nil naturalnumbers nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (nnint_plus_posint_is_posint application-judgement "posint"
@@ -34053,7 +34458,25 @@
  (lex2_TCC1 0
   (lex2_TCC1-1 nil 3237052399
    ("" (subtype-tcc) (("" (grind) nil nil)) nil)
-   ((ordinal? def-decl "bool" ordinals nil)) nil))
+   ((ordinal? def-decl "bool" ordinals nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil))
+   nil))
  (lex2_TCC2 0
   (lex2_TCC2-1 nil 3237052399 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
@@ -34079,7 +34502,25 @@
  (lex2_TCC3 0
   (lex2_TCC3-1 nil 3237052399
    ("" (subtype-tcc) (("" (grind) nil nil)) nil)
-   ((ordinal? def-decl "bool" ordinals nil)) nil))
+   ((ordinal? def-decl "bool" ordinals nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil))
+   nil))
  (lex2_TCC4 0
   (lex2_TCC4-1 nil 3237052399 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
@@ -38921,20 +39362,20 @@
             nil))
           nil))
         nil)
-       ((mod_sum formula-decl nil mod nil)
-        (int_plus_int_is_int application-judgement "int" integers nil)
-        (posint_times_posint_is_posint application-judgement "posint"
-         integers nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
-        (/= const-decl "boolean" notequal nil)
-        (nonzero_integer nonempty-type-eq-decl nil integers nil)
+       ((= const-decl "[T, T -> boolean]" equalities nil)
+        (numfield nonempty-type-eq-decl nil number_fields nil)
         (- const-decl "[numfield, numfield -> numfield]" number_fields
            nil)
-        (numfield nonempty-type-eq-decl nil number_fields nil)
-        (= const-decl "[T, T -> boolean]" equalities nil)
+        (nonzero_integer nonempty-type-eq-decl nil integers nil)
+        (/= const-decl "boolean" notequal nil)
+        (mult_divides2 application-judgement "(divides(m))" divides
+         nil)
+        (mult_divides1 application-judgement "(divides(n))" divides
+         nil)
+        (posint_times_posint_is_posint application-judgement "posint"
+         integers nil)
+        (int_plus_int_is_int application-judgement "int" integers nil)
+        (mod_sum formula-decl nil mod nil)
         (mod_wrap_inj formula-decl nil mod nil)
         (posnat nonempty-type-eq-decl nil integers nil)
         (> const-decl "bool" reals nil)
@@ -39413,15 +39854,11 @@
    shostak))
  (bv2int_TCC1 0
   (bv2int_TCC1-1 nil 3364695166 ("" (subtype-tcc) nil nil)
-   ((mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (int_plus_int_is_int application-judgement "int" integers nil)
-    (minus_int_is_int application-judgement "int" integers nil)
+   ((minus_int_is_int application-judgement "int" integers nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
-    (^ const-decl "bit" bv nil) (bv2nat_rec def-decl "nat" bv_nat nil)
     (bv2nat const-decl "below(exp2(N))" bv_nat nil)
     (minint const-decl "int" bv_int_defs nil)
     (maxint const-decl "int" bv_int_defs nil)
@@ -39671,7 +40108,6 @@
     (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil)
     (overflow const-decl "bool" bv_arithmetic_defs nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
-    (bv2nat_rec def-decl "nat" bv_nat nil) (^ const-decl "bit" bv nil)
     (real_gt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (int_plus_int_is_int application-judgement "int" integers nil)
@@ -39680,8 +40116,6 @@
     (minus_int_is_int application-judgement "int" integers nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
     (minint const-decl "int" bv_int_defs nil)
     (bv2nat const-decl "below(exp2(N))" bv_nat nil)
     (maxint const-decl "int" bv_int_defs nil)
@@ -39713,7 +40147,6 @@
     (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil)
     (mult_overflow const-decl "bool" bv_arithmetic_defs nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
-    (bv2nat_rec def-decl "nat" bv_nat nil) (^ const-decl "bit" bv nil)
     (real_gt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (mult_divides2 application-judgement "(divides(m))" divides nil)
@@ -39723,7 +40156,6 @@
     (minus_int_is_int application-judgement "int" integers nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
-    (int_plus_int_is_int application-judgement "int" integers nil)
     (minint const-decl "int" bv_int_defs nil)
     (bv2nat const-decl "below(exp2(N))" bv_nat nil)
     (maxint const-decl "int" bv_int_defs nil)
@@ -39837,6 +40269,22 @@
     (infinite_set type-eq-decl nil infinite_sets_def nil))
    nil))
  (infinite_union_left 0
+  (infinite_union_left-3 "" 3658948361
+   ("" (skolem-typepred)
+    (("" (expand* "union" "member" "is_finite")
+      (("" (skolem-typepred)
+        ((""
+          (inst + "N!1"
+           "restrict[({x: T | Inf!1(x) OR S!1(x)}), (Inf!1), below[N!1]](f!1)")
+          (("" (expand* "injective?" "restrict")
+            (("" (skosimp* :preds? t)
+              (("" (inst? -) (("" (assert) nil nil)) nil)) nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   nil shostak)
   (infinite_union_left-2 "" 3590860111
    ("" (skolem-typepred)
     (("" (expand* "union" "member" "is_finite")
@@ -39852,7 +40300,34 @@
         nil))
       nil))
     nil)
-   nil shostak)
+   ((member const-decl "bool" sets nil)
+    (union const-decl "set" sets nil) (< const-decl "bool" reals nil)
+    (below type-eq-decl nil nat_types nil)
+    (OR const-decl "[bool, bool -> bool]" booleans nil)
+    (restrict const-decl "R" restrict nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (injective? const-decl "bool" functions nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (>= const-decl "bool" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (infinite_set type-eq-decl nil infinite_sets_def nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (set type-eq-decl nil sets nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (T formal-type-decl nil infinite_sets_def nil))
+   shostak)
   (infinite_union_left-1 nil 3249344193
    ("" (skolem-typepred)
     (("" (expand* "union" "member" "is_finite")
@@ -40257,7 +40732,6 @@
     (mult_divides1 application-judgement "(divides(n))" divides nil)
     (mult_divides2 application-judgement "(divides(m))" divides nil)
     (nil application-judgement "above(n)" exp2 nil)
-    (below type-eq-decl nil nat_types nil)
     (divides const-decl "bool" divides nil)
     (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
@@ -40728,7 +41202,51 @@
         nil))
       nil))
     nil)
-   nil shostak)
+   ((nonempty? const-decl "bool" sets nil)
+    (x!1 skolem-const-decl "T" finite_sets_of_sets nil)
+    (A!1 skolem-const-decl "finite_set[T]" finite_sets_of_sets nil)
+    (member const-decl "bool" sets nil)
+    (empty? const-decl "bool" sets nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (nonempty_powerset application-judgement "(nonempty?[set[T]])"
+     sets_lemmas nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (nonempty_card formula-decl nil finite_sets nil)
+    (powerset const-decl "setofsets" sets nil)
+    (setofsets type-eq-decl nil sets nil)
+    (setof type-eq-decl nil defined_types nil)
+    (bijective? const-decl "bool" functions nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
+    (upto nonempty-type-eq-decl nil naturalnumbers nil)
+    (card const-decl "{n: nat | n = Card(S)}" finite_sets nil)
+    (Card const-decl "nat" finite_sets nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (<= const-decl "bool" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (finite_set type-eq-decl nil finite_sets nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (set type-eq-decl nil sets nil)
+    (T formal-type-decl nil finite_sets_of_sets nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   shostak)
   (powerset_natfun_inj_rec_TCC2-2 "" 3332564344
    ("" (skolem-typepred)
     (("" (flatten)
@@ -40747,9 +41265,7 @@
         nil))
       nil))
     nil)
-   ((nonempty? const-decl "bool" sets nil)
-    (x!1 skolem-const-decl "T" finite_sets_of_sets nil)
-    (A!1 skolem-const-decl "finite_set[T]" finite_sets_of_sets nil)
+   ((nonempty? const-decl "bool" sets nil) nil nil
     (member const-decl "bool" sets nil)
     (empty? const-decl "bool" sets nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
@@ -41014,6 +41530,125 @@
     (empty_card formula-decl nil finite_sets nil))
    shostak))
  (powerset_natfun_inj 0
+  (powerset_natfun_inj-4 "" 3658948800
+   ("" (lemma "powerset_natfun_inj_rec")
+    (("" (skosimp)
+      (("" (skosimp)
+        (("" (expand "powerset_natfun")
+          (("" (inst? -1)
+            (("" (assert)
+              (("" (apply-extensionality)
+                (("" (expand "member")
+                  (("" (hide -2)
+                    (("" (hide 2)
+                      ((""
+                        (name-replace "f"
+                         "choose(bijective?[(A!1), below(card(A!1))])")
+                        (("1" (case "A!1(x!1)")
+                          (("1" (inst -2 "f(x!1)")
+                            (("1" (assert)
+                              (("1"
+                                (typepred "f")
+                                (("1"
+                                  (expand "inverse")
+                                  (("1"
+                                    (case-replace
+                                     "(epsilon! (x: (A!1)): f(x) = f(x!1)) = x!1")
+                                    (("1"
+                                      (iff)
+                                      (("1" (propax) nil nil))
+                                      nil)
+                                     ("2"
+                                      (hide -3 2)
+                                      (("2"
+                                        (use "epsilon_ax[(A!1)]")
+                                        (("1"
+                                          (prop)
+                                          (("1"
+                                            (expand "bijective?")
+                                            (("1"
+                                              (flatten)
+                                              (("1"
+                                                (expand "injective?")
+                                                (("1"
+                                                  (inst?)
+                                                  (("1"
+                                                    (assert)
+                                                    nil
+                                                    nil)
+                                                   ("2"
+                                                    (inst?)
+                                                    nil
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil)
+                                           ("2" (inst?) nil nil))
+                                          nil)
+                                         ("2" (inst?) nil nil))
+                                        nil))
+                                      nil)
+                                     ("3" (inst?) nil nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil)
+                             ("2" (typepred "f(x!1)")
+                              (("2" (assert) nil nil)) nil))
+                            nil)
+                           ("2" (expand "inverse")
+                            (("2" (typepred "B1!1")
+                              (("2"
+                                (typepred "B2!1")
+                                (("2"
+                                  (hide -3)
+                                  (("2" (grind) nil nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil)
+                         ("2" (hide -1 2)
+                          (("2" (lemma "Card_bijection[T]")
+                            (("2" (inst -1 "A!1" "card(A!1)")
+                              (("2"
+                                (rewrite "card_def")
+                                (("2"
+                                  (assert)
+                                  (("2"
+                                    (skosimp)
+                                    (("2"
+                                      (expand "nonempty?")
+                                      (("2"
+                                        (expand "empty?")
+                                        (("2"
+                                          (inst?)
+                                          (("2"
+                                            (expand "member")
+                                            (("2" (propax) nil nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   nil shostak)
   (powerset_natfun_inj-3 "" 3590860968
    ("" (lemma "powerset_natfun_inj_rec")
     (("" (skosimp)
@@ -41132,7 +41767,68 @@
         nil))
       nil))
     nil)
-   nil shostak)
+   ((powerset_natfun const-decl "below(exp2(card(A)))"
+     finite_sets_of_sets nil)
+    (unique_bijective_inverse application-judgement "{x: D | f(x) = y}"
+     function_inverse nil)
+    (member const-decl "bool" sets nil)
+    (below type-eq-decl nil nat_types nil)
+    (empty? const-decl "bool" sets nil)
+    (card_def formula-decl nil finite_sets nil)
+    (Card_bijection formula-decl nil finite_sets nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (inverse const-decl "D" function_inverse nil)
+    (injective? const-decl "bool" functions nil)
+    (epsilon_ax formula-decl nil epsilons nil)
+    (pred type-eq-decl nil defined_types nil)
+    (epsilon const-decl "T" epsilons nil)
+    (TRUE const-decl "bool" booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (f skolem-const-decl "(bijective?[(A!1), below(card(A!1))])"
+     finite_sets_of_sets nil)
+    (x!1 skolem-const-decl "T" finite_sets_of_sets nil)
+    (A!1 skolem-const-decl "finite_set[T]" finite_sets_of_sets nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
+     sets_lemmas nil)
+    (nonempty_powerset application-judgement "(nonempty?[set[T]])"
+     sets_lemmas nil)
+    (subset? const-decl "bool" sets nil)
+    (powerset const-decl "setofsets" sets nil)
+    (setofsets type-eq-decl nil sets nil)
+    (setof type-eq-decl nil defined_types nil)
+    (choose const-decl "(p)" sets nil)
+    (nonempty? const-decl "bool" sets nil)
+    (bijective? const-decl "bool" functions nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
+    (upto nonempty-type-eq-decl nil naturalnumbers nil)
+    (card const-decl "{n: nat | n = Card(S)}" finite_sets nil)
+    (Card const-decl "nat" finite_sets nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (<= const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (finite_set type-eq-decl nil finite_sets nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (set type-eq-decl nil sets nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (T formal-type-decl nil finite_sets_of_sets nil)
+    (powerset_natfun_inj_rec formula-decl nil finite_sets_of_sets nil))
+   shostak)
   (powerset_natfun_inj-2 "" 3342858990
    ("" (lemma "powerset_natfun_inj_rec")
     (("" (skosimp)
@@ -41268,11 +41964,7 @@
     (pred type-eq-decl nil defined_types nil)
     (epsilon const-decl "T" epsilons nil)
     (TRUE const-decl "bool" booleans nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (f skolem-const-decl "(bijective?[(A!1), below(card(A!1))])"
-     finite_sets_of_sets nil)
-    (x!1 skolem-const-decl "T" finite_sets_of_sets nil)
-    (A!1 skolem-const-decl "finite_set[T]" finite_sets_of_sets nil)
+    (NOT const-decl "[bool -> bool]" booleans nil) nil nil nil
     (real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
@@ -41745,6 +42437,8 @@
       nil))
     nil)
    ((every const-decl "bool" sets nil)
+    (below type-eq-decl nil nat_types nil)
+    (< const-decl "bool" reals nil)
     (AND const-decl "[bool, bool -> bool]" booleans nil)
     (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
     (pred type-eq-decl nil defined_types nil)
@@ -41761,6 +42455,8 @@
      finite_sets_of_sets nil)
     (a!1 skolem-const-decl "(B!1)" finite_sets_of_sets nil)
     (/= const-decl "boolean" notequal nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
     (nonneg_int nonempty-type-eq-decl nil integers nil)
     (IF const-decl "[boolean, T, T -> T]" if_def nil)
     (f!2 skolem-const-decl "[(Union(remove(b!1, B!1))) -> below[N!1]]"
@@ -41773,31 +42469,25 @@
     (B!1 skolem-const-decl "setofsets[T]" finite_sets_of_sets nil)
     (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
-    (x!2 skolem-const-decl "T" finite_sets_of_sets nil)
     (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
     (T formal-type-decl nil finite_sets_of_sets nil)
     (finite_subset formula-decl nil finite_sets nil)
     (powerset_finite judgement-tcc nil finite_sets_of_sets nil)
-    (NOT const-decl "[bool -> bool]" booleans nil)
-    (number nonempty-type-decl nil numbers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (>= const-decl "bool" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
     (number_field_pred const-decl "[number -> boolean]" number_fields
      nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (>= const-decl "bool" reals nil)
-    (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (rational nonempty-type-from-decl nil rationals nil)
-    (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (int nonempty-type-eq-decl nil integers nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (< const-decl "bool" reals nil)
-    (below type-eq-decl nil nat_types nil)
-    (x!2 skolem-const-decl "T" finite_sets_of_sets nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
+    (number nonempty-type-decl nil numbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (injective? const-decl "bool" functions nil)
@@ -42992,22 +43682,22 @@
      restrict_order_props nil)
     (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
      sets_lemmas nil)
+    (reflexive? const-decl "bool" relations nil)
+    (symmetric? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
     (restrict const-decl "R" restrict nil)
     (member const-decl "bool" sets nil)
     (EquivalenceKernel const-decl "equivalence[X1]" KernelDefinition
      nil)
     (subset? const-decl "bool" sets nil)
-    (reflexive? const-decl "bool" relations nil)
-    (symmetric? const-decl "bool" relations nil)
-    (transitive? const-decl "bool" relations nil)
     (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
     (X formal-type-decl nil QuotientSubDefinition nil)
     (PRED type-eq-decl nil defined_types nil)
-    (PreservesEq const-decl "bool" KernelDefinition nil)
     (equivalence? const-decl "bool" relations nil)
     (equivalence type-eq-decl nil relations nil)
+    (PreservesEq const-decl "bool" KernelDefinition nil)
     (X1_pred const-decl "[X -> boolean]" QuotientSubDefinition nil)
     (X1 formal-subtype-decl nil QuotientSubDefinition nil))
    shostak)))
@@ -43026,22 +43716,22 @@
      restrict_order_props nil)
     (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
      sets_lemmas nil)
+    (reflexive? const-decl "bool" relations nil)
+    (symmetric? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
     (restrict const-decl "R" restrict nil)
     (member const-decl "bool" sets nil)
     (EquivalenceKernel const-decl "equivalence[X1]" KernelDefinition
      nil)
     (subset? const-decl "bool" sets nil)
-    (reflexive? const-decl "bool" relations nil)
-    (symmetric? const-decl "bool" relations nil)
-    (transitive? const-decl "bool" relations nil)
     (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
     (X formal-type-decl nil QuotientExtensionProperties nil)
     (PRED type-eq-decl nil defined_types nil)
-    (PreservesEq const-decl "bool" KernelDefinition nil)
     (equivalence? const-decl "bool" relations nil)
     (equivalence type-eq-decl nil relations nil)
+    (PreservesEq const-decl "bool" KernelDefinition nil)
     (X1_pred const-decl "[X -> boolean]" QuotientExtensionProperties
      nil)
     (X1 formal-subtype-decl nil QuotientExtensionProperties nil)
@@ -43052,6 +43742,16 @@
     (QuotientSub type-eq-decl nil QuotientSubDefinition nil))
    shostak))
  (lift_TCC2 0
+  (lift_TCC2-3 "" 3658949058
+   ("" (grind :exclude "rep" :if-match nil)
+    (("" (use "rep_lemma[X]" :if-match all)
+      (("" (expand "EquivClass" -1 1)
+        (("" (inst -6 "(x!1, rep(S!1)(EquivClass(S!1)(x!1)))")
+          (("" (assert) nil nil)) nil))
+        nil))
+      nil))
+    nil)
+   nil shostak)
   (lift_TCC2-2 "" 3590861164
    ("" (grind :exclude "rep" :if-match nil)
     (("" (use "rep_lemma[X]" :if-match all)
@@ -43061,7 +43761,44 @@
         nil))
       nil))
     nil)
-   nil shostak)
+   ((rep_lemma formula-decl nil QuotientDefinition nil)
+    (rep const-decl "T" QuotientDefinition nil)
+    (Quotient type-eq-decl nil QuotientDefinition nil)
+    (reflexive_restrict application-judgement "(reflexive?[S])"
+     restrict_order_props nil)
+    (symmetric_restrict application-judgement "(symmetric?[S])"
+     restrict_order_props nil)
+    (transitive_restrict application-judgement "(transitive?[S])"
+     restrict_order_props nil)
+    (equivalence_restrict application-judgement "(equivalence?[S])"
+     restrict_order_props nil)
+    (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
+     sets_lemmas nil)
+    (reflexive? const-decl "bool" relations nil)
+    (symmetric? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
+    (restrict const-decl "R" restrict nil)
+    (member const-decl "bool" sets nil)
+    (EquivalenceKernel const-decl "equivalence[X1]" KernelDefinition
+     nil)
+    (subset? const-decl "bool" sets nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (X formal-type-decl nil QuotientExtensionProperties nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (equivalence? const-decl "bool" relations nil)
+    (equivalence type-eq-decl nil relations nil)
+    (PreservesEq const-decl "bool" KernelDefinition nil)
+    (X1_pred const-decl "[X -> boolean]" QuotientExtensionProperties
+     nil)
+    (X1 formal-subtype-decl nil QuotientExtensionProperties nil)
+    (Y formal-type-decl nil QuotientExtensionProperties nil)
+    (set type-eq-decl nil sets nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (EquivClass const-decl "set[T]" QuotientDefinition nil)
+    (QuotientSub type-eq-decl nil QuotientSubDefinition nil))
+   shostak)
   (lift_TCC2-1 nil 3245525012
    ("" (grind :exclude "rep" :if-match nil)
     (("" (use "rep_lemma[X]" :if-match all)
@@ -43110,6 +43847,32 @@
     (QuotientSub type-eq-decl nil QuotientSubDefinition nil))
    shostak))
  (lift_commutation 0
+  (lift_commutation-3 "" 3658949262
+   ("" (grind :exclude "rep" :if-match nil)
+    (("" (apply-extensionality :hide? t)
+      (("" (use "rep_lemma[X]")
+        (("" (expand "EquivClass" -1)
+          (("" (inst -6 "(x!1, rep(S!1)({z: X | S!1(x!1, z)}))")
+            (("1" (assert)
+              (("1" (expand "EquivClass" 1) (("1" (assert) nil nil))
+                nil))
+              nil)
+             ("2" (inst -5 "(x!1, rep(S!1)(EquivClass(S!1)(x!1)))")
+              (("2" (assert)
+                (("2" (expand "EquivClass") (("2" (propax) nil nil))
+                  nil))
+                nil))
+              nil)
+             ("3" (inst 1 "x!1")
+              (("3" (expand "EquivClass" 1) (("3" (propax) nil nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   nil shostak)
   (lift_commutation-2 "" 3590861329
    ("" (grind :exclude "rep" :if-match nil)
     (("" (apply-extensionality :hide? t)
@@ -43136,7 +43899,52 @@
         nil))
       nil))
     nil)
-   nil shostak)
+   ((set type-eq-decl nil sets nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (EquivClass const-decl "set[T]" QuotientDefinition nil)
+    (QuotientSub type-eq-decl nil QuotientSubDefinition nil)
+    (O const-decl "T3" function_props nil)
+    (lift const-decl "Y" QuotientExtensionProperties nil)
+    (quotient_sub_map const-decl "QuotientSub(S)" QuotientSubDefinition
+     nil)
+    (rep const-decl "T" QuotientDefinition nil)
+    (Quotient type-eq-decl nil QuotientDefinition nil)
+    (x!1 skolem-const-decl "X1" QuotientExtensionProperties nil)
+    (S!1 skolem-const-decl
+     "{R: equivalence[X] | PreservesEq[X, X, bool](R)(X1_pred)}"
+     QuotientExtensionProperties nil)
+    (rep_lemma formula-decl nil QuotientDefinition nil)
+    (reflexive_restrict application-judgement "(reflexive?[S])"
+     restrict_order_props nil)
+    (symmetric_restrict application-judgement "(symmetric?[S])"
+     restrict_order_props nil)
+    (transitive_restrict application-judgement "(transitive?[S])"
+     restrict_order_props nil)
+    (equivalence_restrict application-judgement "(equivalence?[S])"
+     restrict_order_props nil)
+    (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
+     sets_lemmas nil)
+    (reflexive? const-decl "bool" relations nil)
+    (symmetric? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
+    (restrict const-decl "R" restrict nil)
+    (member const-decl "bool" sets nil)
+    (EquivalenceKernel const-decl "equivalence[X1]" KernelDefinition
+     nil)
+    (subset? const-decl "bool" sets nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (X formal-type-decl nil QuotientExtensionProperties nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (equivalence? const-decl "bool" relations nil)
+    (equivalence type-eq-decl nil relations nil)
+    (PreservesEq const-decl "bool" KernelDefinition nil)
+    (X1_pred const-decl "[X -> boolean]" QuotientExtensionProperties
+     nil)
+    (X1 formal-subtype-decl nil QuotientExtensionProperties nil)
+    (Y formal-type-decl nil QuotientExtensionProperties nil))
+   shostak)
   (lift_commutation-1 nil 3243666489
    ("" (grind :exclude "rep" :if-match nil)
     (("" (apply-extensionality :hide? t)
@@ -43172,11 +43980,7 @@
     (quotient_sub_map const-decl "QuotientSub(S)" QuotientSubDefinition
      nil)
     (rep const-decl "T" QuotientDefinition nil)
-    (Quotient type-eq-decl nil QuotientDefinition nil)
-    (x!1 skolem-const-decl "X1" QuotientExtensionProperties nil)
-    (S!1 skolem-const-decl
-     "{R: equivalence[X] | PreservesEq[X, X, bool](R)(X1_pred)}"
-     QuotientExtensionProperties nil)
+    (Quotient type-eq-decl nil QuotientDefinition nil) nil nil
     (rep_lemma formula-decl nil QuotientDefinition nil)
     (reflexive_restrict application-judgement "(reflexive?[S])"
      restrict_order_props nil)
@@ -45647,6 +46451,30 @@
     (choose const-decl "(p)" sets nil))
    shostak))
  (FunExtension_TCC1 0
+  (FunExtension_TCC1-3 "" 3658949833
+   ("" (grind :exclude "rep" :if-match nil)
+    (("1" (typepred "F!1(x!2)")
+      (("1" (inst?)
+        (("1" (inst?)
+          (("1" (grind :exclude "rep" :if-match nil)
+            (("1" (forward-chain -3) nil nil)) nil))
+          nil))
+        nil))
+      nil)
+     ("2" (typepred "F!1(x!2)")
+      (("2" (grind :exclude "rep" :if-match nil)
+        (("2" (inst? -4)
+          (("2" (inst -2 "x!1(x!2)" "y!1(x!2)")
+            (("2" (assert) nil nil)) nil))
+          nil))
+        nil))
+      nil)
+     ("3" (typepred "F!1(x!2)")
+      (("3" (grind :exclude "rep" :if-match nil)
+        (("3" (inst? -1) nil nil)) nil))
+      nil))
+    nil)
+   nil shostak)
   (FunExtension_TCC1-2 "" 3590861483
    ("" (grind :exclude "rep" :if-match nil)
     (("1" (typepred "F!1(x!2)")
@@ -45672,7 +46500,18 @@
         (("3" (inst? -1) nil nil)) nil))
       nil))
     nil)
-   nil shostak)
+   ((equivalence type-eq-decl nil relations nil)
+    (X formal-type-decl nil QuotientDistributive nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (Y formal-type-decl nil QuotientDistributive nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (equivalence? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
+    (symmetric? const-decl "bool" relations nil)
+    (reflexive? const-decl "bool" relations nil))
+   shostak)
   (FunExtension_TCC1-1 nil 3245193424
    ("" (grind :exclude "rep" :if-match nil)
     (("1" (typepred "F!1(x!2)")
@@ -45707,6 +46546,37 @@
     (reflexive? const-decl "bool" relations nil))
    shostak))
  (FunExtensionPreservesEq 0
+  (FunExtensionPreservesEq-4 "" 3658950104
+   ("" (grind)
+    (("" (apply-extensionality :hide? t)
+      (("" (apply-extensionality :hide? t)
+        (("" (inst?)
+          (("" (iff)
+            (("" (typepred "F!1(x!2)")
+              (("" (expand "equivalence?")
+                (("" (flatten)
+                  (("" (hide -1)
+                    (("" (expand "symmetric?")
+                      (("" (expand "transitive?")
+                        (("" (prop)
+                          (("1" (inst -2 "x!1`1(x!2)" "x!1`2(x!2)")
+                            (("1" (assert)
+                              (("1" (forward-chain -3) nil nil)) nil))
+                            nil)
+                           ("2" (forward-chain -3) nil nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   nil shostak)
   (FunExtensionPreservesEq-3 "" 3590861688
    ("" (grind)
     (("" (apply-extensionality :hide? t)
@@ -45741,7 +46611,28 @@
         nil))
       nil))
     nil)
-   nil shostak)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (Y formal-type-decl nil QuotientDistributive nil)
+    (X formal-type-decl nil QuotientDistributive nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (set type-eq-decl nil sets nil)
+    (EquivClass const-decl "set[T]" QuotientDefinition nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (equivalence? const-decl "bool" relations nil)
+    (equivalence type-eq-decl nil relations nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (symmetric? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
+    (PreservesEq const-decl "bool" KernelDefinition nil)
+    (subset? const-decl "bool" sets nil)
+    (EquivalenceKernel const-decl "equivalence[X1]" KernelDefinition
+     nil)
+    (member const-decl "bool" sets nil)
+    (restrict const-decl "R" restrict nil)
+    (FunExtension const-decl "equivalence[[X -> Y]]"
+     QuotientDistributive nil)
+    (quotient_map const-decl "Quotient(S)" QuotientDefinition nil))
+   shostak)
   (FunExtensionPreservesEq-2 "Fix for 3.2" 3307984197
    ("" (grind)
     (("" (apply-extensionality :hide? t)
@@ -45851,6 +46742,29 @@
     (quotient_map const-decl "Quotient(S)" QuotientDefinition nil))
    shostak))
  (FunQuotientDistributive_TCC1 0
+  (FunQuotientDistributive_TCC1-4 "" 3658950169
+   ("" (grind :exclude "rep" :if-match nil)
+    (("" (apply-extensionality :hide? t)
+      (("" (inst?)
+        (("" (typepred "F!1(x!2)")
+          (("" (apply-extensionality :hide? t)
+            (("" (flatten)
+              (("" (forward-chain -2)
+                (("" (iff)
+                  (("" (prop)
+                    (("1" (forward-chain -4) nil nil)
+                     ("2" (hide -2) (("2" (forward-chain -3) nil nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   nil shostak)
   (FunQuotientDistributive_TCC1-3 "" 3590861839
    ("" (grind :exclude "rep" :if-match nil)
     (("" (hide -1)
@@ -45875,7 +46789,29 @@
         nil))
       nil))
     nil)
-   nil shostak)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (Y formal-type-decl nil QuotientDistributive nil)
+    (X formal-type-decl nil QuotientDistributive nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (set type-eq-decl nil sets nil)
+    (EquivClass const-decl "set[T]" QuotientDefinition nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (equivalence? const-decl "bool" relations nil)
+    (equivalence type-eq-decl nil relations nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (reflexive? const-decl "bool" relations nil)
+    (symmetric? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
+    (PreservesEq const-decl "bool" KernelDefinition nil)
+    (subset? const-decl "bool" sets nil)
+    (EquivalenceKernel const-decl "equivalence[X1]" KernelDefinition
+     nil)
+    (member const-decl "bool" sets nil)
+    (restrict const-decl "R" restrict nil)
+    (FunExtension const-decl "equivalence[[X -> Y]]"
+     QuotientDistributive nil)
+    (quotient_map const-decl "Quotient(S)" QuotientDefinition nil))
+   shostak)
   (FunQuotientDistributive_TCC1-2 "" 3307985072
    ("" (grind :exclude "rep" :if-match nil)
     (("" (apply-extensionality :hide? t)
@@ -51648,6 +52584,424 @@
     (PreservesEq const-decl "bool" KernelDefinition nil))
    shostak))
  (QuotientAction 0
+  (QuotientAction-3 "" 3658951612
+   ("" (skosimp*)
+    (("" (typepred "S!1" "R!1")
+      (("" (expand "bijective?")
+        (("" (prop)
+          (("1" (expand "injective?")
+            (("1" (skosimp*)
+              (("1" (expand "lift")
+                (("1" (typepred "x1!1" "x2!1")
+                  (("1"
+                    (auto-rewrite-theories "QuotientDefinition[X]"
+                     "QuotientDefinition[Quotient[X](S!1)]")
+                    (("1" (skosimp*)
+                      (("1" (replace -1)
+                        (("1" (replace -2)
+                          (("1" (hide -1 -2)
+                            (("1" (expand "rep")
+                              (("1"
+                                (name-replace
+                                 "ch1"
+                                 "choose(EquivClass[Quotient[X](S!1)](R!1)(x!1))")
+                                (("1"
+                                  (name-replace
+                                   "ch2"
+                                   "choose(EquivClass[Quotient[X](S!1)](R!1)(x!2))")
+                                  (("1"
+                                    (typepred "ch1" "ch2")
+                                    (("1"
+                                      (skosimp*)
+                                      (("1"
+                                        (replace -1)
+                                        (("1"
+                                          (replace -3)
+                                          (("1"
+                                            (hide -1 -3)
+                                            (("1"
+                                              (name-replace
+                                               "ch3"
+                                               "choose(EquivClass[X](S!1)(x!3))")
+                                              (("1"
+                                                (name-replace
+                                                 "ch4"
+                                                 "choose(EquivClass[X](S!1)(x!4))")
+                                                (("1"
+                                                  (typepred
+                                                   "ch3"
+                                                   "ch4")
+                                                  (("1"
+                                                    (stop-rewrite
+                                                     "EquivClassEq[X]")
+                                                    (("1"
+                                                      (assert)
+                                                      (("1"
+                                                        (case
+                                                         "EquivClass[X](action(S!1)(R!1))(ch3)(ch3)")
+                                                        (("1"
+                                                          (replace -6)
+                                                          (("1"
+                                                            (hide -6)
+                                                            (("1"
+                                                              (assert)
+                                                              (("1"
+                                                                (expand
+                                                                 "action")
+                                                                (("1"
+                                                                  (lemma
+                                                                   "EquivClassEq[X]")
+                                                                  (("1"
+                                                                    (inst?)
+                                                                    (("1"
+                                                                      (prop)
+                                                                      (("1"
+                                                                        (replace
+                                                                         -1)
+                                                                        (("1"
+                                                                          (hide
+                                                                           -1
+                                                                           -2)
+                                                                          (("1"
+                                                                            (lemma
+                                                                             "EquivClassEq[X]")
+                                                                            (("1"
+                                                                              (inst
+                                                                               -1
+                                                                               "S!1"
+                                                                               "ch4"
+                                                                               "x!4")
+                                                                              (("1"
+                                                                                (prop)
+                                                                                (("1"
+                                                                                  (replace
+                                                                                   -1)
+                                                                                  (("1"
+                                                                                    (hide
+                                                                                     -1
+                                                                                     -2)
+                                                                                    (("1"
+                                                                                      (hide
+                                                                                       -2
+                                                                                       -3)
+                                                                                      (("1"
+                                                                                        (expand
+                                                                                         "equivalence?")
+                                                                                        (("1"
+                                                                                          (flatten)
+                                                                                          (("1"
+                                                                                            (expand
+                                                                                             "symmetric?")
+                                                                                            (("1"
+                                                                                              (inst-cp
+                                                                                               -8
+                                                                                               "EquivClass[X](S!1)(x!4)"
+                                                                                               "EquivClass(S!1)(ch3)")
+                                                                                              (("1"
+                                                                                                (prop)
+                                                                                                (("1"
+                                                                                                  (hide
+                                                                                                   -2)
+                                                                                                  (("1"
+                                                                                                    (inst
+                                                                                                     -8
+                                                                                                     "x!2"
+                                                                                                     "EquivClass[X](S!1)(x!4)")
+                                                                                                    (("1"
+                                                                                                      (expand
+                                                                                                       "transitive?")
+                                                                                                      (("1"
+                                                                                                        (inst-cp
+                                                                                                         -9
+                                                                                                         "x!1"
+                                                                                                         "EquivClass(S!1)(ch3)"
+                                                                                                         "EquivClass[X](S!1)(x!4)")
+                                                                                                        (("1"
+                                                                                                          (assert)
+                                                                                                          (("1"
+                                                                                                            (inst-cp
+                                                                                                             -9
+                                                                                                             "x!1"
+                                                                                                             "EquivClass[X](S!1)(x!4)"
+                                                                                                             "x!2")
+                                                                                                            (("1"
+                                                                                                              (assert)
+                                                                                                              nil
+                                                                                                              nil))
+                                                                                                            nil))
+                                                                                                          nil))
+                                                                                                        nil))
+                                                                                                      nil))
+                                                                                                    nil))
+                                                                                                  nil))
+                                                                                                nil))
+                                                                                              nil))
+                                                                                            nil))
+                                                                                          nil))
+                                                                                        nil))
+                                                                                      nil))
+                                                                                    nil))
+                                                                                  nil)
+                                                                                 ("2"
+                                                                                  (expand
+                                                                                   "equivalence?")
+                                                                                  (("2"
+                                                                                    (expand
+                                                                                     "symmetric?")
+                                                                                    (("2"
+                                                                                      (flatten)
+                                                                                      (("2"
+                                                                                        (inst
+                                                                                         -7
+                                                                                         "x!4"
+                                                                                         "ch4")
+                                                                                        (("2"
+                                                                                          (assert)
+                                                                                          nil
+                                                                                          nil))
+                                                                                        nil))
+                                                                                      nil))
+                                                                                    nil))
+                                                                                  nil))
+                                                                                nil))
+                                                                              nil))
+                                                                            nil))
+                                                                          nil))
+                                                                        nil))
+                                                                      nil))
+                                                                    nil))
+                                                                  nil))
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil)
+                                                         ("2"
+                                                          (hide
+                                                           -1
+                                                           -2
+                                                           -3
+                                                           -4
+                                                           -5
+                                                           2)
+                                                          (("2"
+                                                            (expand
+                                                             "EquivClass")
+                                                            (("2"
+                                                              (expand
+                                                               "action")
+                                                              (("2"
+                                                                (expand
+                                                                 "equivalence?")
+                                                                (("2"
+                                                                  (expand
+                                                                   "reflexive?")
+                                                                  (("2"
+                                                                    (flatten)
+                                                                    (("2"
+                                                                      (inst
+                                                                       -4
+                                                                       "EquivClass(S!1)(ch3)")
+                                                                      nil
+                                                                      nil))
+                                                                    nil))
+                                                                  nil))
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil)
+           ("2" (expand "surjective?")
+            (("2" (skosimp*)
+              (("2" (typepred "y!1")
+                (("2" (skosimp*)
+                  (("2"
+                    (inst 1 "EquivClass(R!1)(EquivClass(S!1)(x!1))")
+                    (("1" (expand "lift")
+                      (("1" (expand "quotient_map")
+                        (("1" (replace -1)
+                          (("1" (lemma "EquivClassEq[X]")
+                            (("1" (inst -1 "action(S!1)(R!1)" "_" "_")
+                              (("1"
+                                (case
+                                 "nonempty?(EquivClass(R!1)(EquivClass(S!1)(x!1)))")
+                                (("1"
+                                  (expand "rep")
+                                  (("1"
+                                    (name-replace
+                                     "ch1"
+                                     "choose(EquivClass(R!1)(EquivClass(S!1)(x!1)))")
+                                    (("1"
+                                      (typepred "ch1")
+                                      (("1"
+                                        (skosimp*)
+                                        (("1"
+                                          (case "nonempty?(ch1)")
+                                          (("1"
+                                            (name-replace
+                                             "ch2"
+                                             "choose(ch1)")
+                                            (("1"
+                                              (typepred "ch2")
+                                              (("1"
+                                                (inst -6 "ch2" "x!1")
+                                                (("1"
+                                                  (assert)
+                                                  (("1"
+                                                    (hide 2)
+                                                    (("1"
+                                                      (expand
+                                                       "action"
+                                                       1)
+                                                      (("1"
+                                                        (expand
+                                                         "EquivClass"
+                                                         -3)
+                                                        (("1"
+                                                          (expand
+                                                           "equivalence?")
+                                                          (("1"
+                                                            (flatten)
+                                                            (("1"
+                                                              (expand
+                                                               "symmetric?")
+                                                              (("1"
+                                                                (inst
+                                                                 -11
+                                                                 "LAMBDA (z: X): S!1(x!1, z)"
+                                                                 "ch1")
+                                                                (("1"
+                                                                  (assert)
+                                                                  (("1"
+                                                                    (case-replace
+                                                                     "EquivClass(S!1)(ch2) = ch1")
+                                                                    (("1"
+                                                                      (expand
+                                                                       "EquivClass"
+                                                                       1)
+                                                                      (("1"
+                                                                        (replace
+                                                                         1)
+                                                                        (("1"
+                                                                          (expand
+                                                                           "EquivClass"
+                                                                           -5)
+                                                                          (("1"
+                                                                            (propax)
+                                                                            nil
+                                                                            nil))
+                                                                          nil))
+                                                                        nil))
+                                                                      nil)
+                                                                     ("2"
+                                                                      (hide
+                                                                       2)
+                                                                      (("2"
+                                                                        (replace
+                                                                         -3)
+                                                                        (("2"
+                                                                          (assert)
+                                                                          (("2"
+                                                                            (lemma
+                                                                             "EquivClassEq[X]")
+                                                                            (("2"
+                                                                              (inst
+                                                                               -1
+                                                                               "S!1"
+                                                                               "x!2"
+                                                                               "ch2")
+                                                                              (("2"
+                                                                                (assert)
+                                                                                nil
+                                                                                nil))
+                                                                              nil))
+                                                                            nil))
+                                                                          nil))
+                                                                        nil))
+                                                                      nil))
+                                                                    nil))
+                                                                  nil)
+                                                                 ("2"
+                                                                  (inst
+                                                                   1
+                                                                   "x!1")
+                                                                  (("2"
+                                                                    (apply-extensionality
+                                                                     :hide?
+                                                                     t)
+                                                                    (("2"
+                                                                      (grind)
+                                                                      nil
+                                                                      nil))
+                                                                    nil))
+                                                                  nil))
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil)
+                                           ("2"
+                                            (replace -1)
+                                            (("2"
+                                              (hide -1 -2 -3 -4 -5 2)
+                                              (("2" (grind) nil nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil)
+                                 ("2"
+                                  (hide -1 -2 2)
+                                  (("2" (grind) nil nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil)
+                     ("2" (inst 1 "EquivClass[X](S!1)(x!1)")
+                      (("2" (inst 1 "x!1") nil nil)) nil)
+                     ("3" (inst 1 "x!1") nil nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   nil shostak)
   (QuotientAction-2 "" 3590873023
    ("" (skosimp*)
     (("" (typepred "S!1" "R!1")
@@ -52075,7 +53429,39 @@
         nil))
       nil))
     nil)
-   nil shostak)
+   ((Quotient type-eq-decl nil QuotientDefinition nil)
+    (EquivClass const-decl "set[T]" QuotientDefinition nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (set type-eq-decl nil sets nil)
+    (equivalence type-eq-decl nil relations nil)
+    (equivalence? const-decl "bool" relations nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (X formal-type-decl nil QuotientIteration nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (rep const-decl "T" QuotientDefinition nil)
+    (action_equivalence_is_equivalence application-judgement
+     "equivalence[X]" QuotientIteration nil)
+    (quotient_map const-decl "Quotient(S)" QuotientDefinition nil)
+    (EquivClassEq formula-decl nil QuotientDefinition nil)
+    (reflexive? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
+    (symmetric? const-decl "bool" relations nil)
+    (action const-decl "bool" QuotientIteration nil)
+    (nonempty? const-decl "bool" sets nil)
+    (choose const-decl "(p)" sets nil)
+    (lift const-decl "Y" QuotientExtensionProperties nil)
+    (injective? const-decl "bool" functions nil)
+    (empty? const-decl "bool" sets nil)
+    (member const-decl "bool" sets nil)
+    (R!1 skolem-const-decl "equivalence[Quotient[X](S!1)]"
+     QuotientIteration nil)
+    (x!1 skolem-const-decl "X" QuotientIteration nil)
+    (S!1 skolem-const-decl "equivalence[X]" QuotientIteration nil)
+    (surjective? const-decl "bool" functions nil)
+    (bijective? const-decl "bool" functions nil))
+   shostak)
   (QuotientAction-1 nil 3243015883
    ("" (skosimp*)
     (("" (typepred "S!1" "R!1")
@@ -52595,11 +53981,7 @@
     (lift const-decl "Y" QuotientExtensionProperties nil)
     (injective? const-decl "bool" functions nil)
     (empty? const-decl "bool" sets nil)
-    (member const-decl "bool" sets nil)
-    (R!1 skolem-const-decl "equivalence[Quotient[X](S!1)]"
-     QuotientIteration nil)
-    (x!1 skolem-const-decl "X" QuotientIteration nil)
-    (S!1 skolem-const-decl "equivalence[X]" QuotientIteration nil)
+    (member const-decl "bool" sets nil) nil nil nil
     (surjective? const-decl "bool" functions nil)
     (bijective? const-decl "bool" functions nil))
    nil)))
@@ -52943,19 +54325,12 @@
     (number_field nonempty-type-from-decl nil number_fields nil)
     (real_pred const-decl "[number_field -> boolean]" reals nil)
     (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
     (rational_pred const-decl "[real -> boolean]" rationals nil)
     (rational nonempty-type-from-decl nil rationals nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (int nonempty-type-eq-decl nil integers nil)
-    (>= const-decl "bool" reals nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (< const-decl "bool" reals nil)
-    (below type-eq-decl nil nat_types nil)
-    (character type-decl nil character_adt nil)
-    (char? adt-recognizer-decl "[character -> boolean]" character_adt
-     nil)
-    (char type-eq-decl nil strings nil)
-    (string type-eq-decl nil strings nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (int_minus_int_is_int application-judgement "int" integers nil))

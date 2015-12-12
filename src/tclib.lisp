@@ -35,8 +35,13 @@
 ;;; *prelude-theories* variables
 
 (defparameter *prelude-filename* "prelude.pvs")
+(defparameter *pvsio-filename* "pvsio_prelude.pvs")
 
 (defun load-prelude ()
+  (load-core-prelude)
+  (load-pvsio-prelude))
+
+(defun load-core-prelude ()
   (assert *pvs-path*)
   (setq sbrt::*disable-caching* t)
   (setq *pvs-context* nil)
@@ -62,100 +67,171 @@
 	(*pvs-context* nil)
 	(*loading-prelude* t)
 	(*generate-tccs* 'all)
-	(mods (parse :file (format nil "~a/lib/~a"
-			     *pvs-path* *prelude-filename*))))
+	(theories (parse :file (format nil "~a/lib/~a"
+				 *pvs-path* *prelude-filename*))))
     (reset-typecheck-caches)
     (dolist (fn *load-prelude-hook*)
       (funcall fn))
     (setq *prelude-context* nil)
+    (setq *prelude-core-context* nil)
     (reset-equality-decl)
     (reset-if-declaration)
     (reset-boolean-aliases)
     (unwind-protect
-	(progn
-	  (set-working-directory (format nil "~a/lib/" *pvs-path*))
-	  (setq *pvs-context-path* (working-directory))
-	  (dolist (m mods)
-	    (let ((*current-theory* m))
-	      (format t "~%Typechecking ~a" (id m))
-	      (setf (status m) '(parsed))
-	      (setf (gethash (id m) *prelude*) m)
-	      (typecheck m)
-	      (let* ((tot (car (tcc-info m)))
-		     (prv (cadr (tcc-info m)))
-		     (mat (caddr (tcc-info m)))
-		     (obl (- tot prv mat)))
-		(if (zerop tot)
-		    (format t "~%~a typechecked: No TCCs generated" (id m))
-		    (format t "~%~a typechecked: ~d TCC~:p, ~
+	 (progn
+	   (set-working-directory (format nil "~a/lib/" *pvs-path*))
+	   (setq *pvs-context-path* (working-directory))
+	   (dolist (th theories)
+	     (let ((*current-theory* th))
+	       (format t "~%Typechecking ~a" (id th))
+	       (setf (status th) '(parsed))
+	       (setf (gethash (id th) *prelude*) th)
+	       (typecheck th)
+	       (let* ((tot (car (tcc-info th)))
+		      (prv (cadr (tcc-info th)))
+		      (mat (caddr (tcc-info th)))
+		      (obl (- tot prv mat)))
+		 (if (zerop tot)
+		     (format t "~%~a typechecked: No TCCs generated" (id th))
+		     (format t "~%~a typechecked: ~d TCC~:p, ~
                                ~d proved, ~d subsumed, ~d unproved~
                                ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
-		      (id m) tot prv mat obl
-		      (length (warnings m)) (length (info m)))))
-	      ;; No need to have saved-context set for prelude contexts
-	      (assert (typep m '(or datatype module)))
-	      (setq *prelude-theories*
-		    (nconc *prelude-theories* (cons m nil)))
-	      (let* ((th (if (typep m 'datatype)
-			     (adt-theory m)
-			     m))
-		     (ctx (saved-context th))
-		     (ndecls-hash (copy (declarations-hash ctx)))
-		     (nusing-hash (copy (using-hash ctx))))
-		(typecase m
-		  (datatype
-		   (setf (get-importings (adt-theory m) nusing-hash)
-			 (list (mk-modname (id (adt-theory m)))))
-		   (when (adt-map-theory m)
-		     (setf (get-importings (adt-map-theory m) nusing-hash)
-			   (list (mk-modname (id (adt-map-theory m)))))
-		     (dolist (decl (append (assuming (adt-map-theory m))
-					   (theory (adt-map-theory m))))
-		       (when (and (declaration? decl) (visible? decl))
-			 (put-decl decl ndecls-hash))))
-		   (when (adt-reduce-theory m)
-		     (setf (get-importings (adt-reduce-theory m) nusing-hash)
-			   (list (mk-modname (id (adt-reduce-theory m)))))
-		     (dolist (decl (append (assuming (adt-reduce-theory m))
-					   (theory (adt-reduce-theory m))))
-		       (when (and (declaration? decl) (visible? decl))
-			 (put-decl decl ndecls-hash)))))
-		  (t (setf (get-importings m nusing-hash)
-			   (list (mk-modname (id m))))))
-		(let ((changes nil))
-		  (maphash #'(lambda (id decls)
-			       (let ((rdecls
-				      (remove-if #'(lambda (d)
-						     (typep d '(or formal-decl
-								   var-decl)))
-					decls)))
-				 (unless (equal rdecls decls)
-				   (push (cons id rdecls) changes))))
-			 (lhash-table ndecls-hash))
-		  (dolist (cdecls changes)
-		    (setf (gethash (car cdecls) (lhash-table ndecls-hash))
-			  (cdr cdecls))))
-		(let ((pusing-hash (copy nusing-hash)))
-		  (setf (get-importings (theory ctx) pusing-hash)
-			(list (theory-name ctx)))
-		  (setq *prelude-context*
-			(copy ctx
-			  'declarations-hash ndecls-hash
-			  'using-hash pusing-hash))))
-	      (when (eq (id m) '|booleans|)
-		(let ((*current-context* (saved-context m)))
-		  (setq *true*
-			(typecheck* (mk-name-expr 'TRUE) *boolean* nil nil))
-		  (setq *false*
-			(typecheck* (mk-name-expr 'FALSE) *boolean* nil
-				    nil))))))
-	  (format t "~%Done typechecking the prelude")
-	  (restore-prelude-proofs)
-	  (initialize-prelude-attachments)
-	  (register-manip-type *number_field* 'pvs-type-real))
+		       (id th) tot prv mat obl
+		       (length (warnings th)) (length (info th)))))
+	       ;; No need to have saved-context set for prelude contexts
+	       (assert (typep th '(or datatype module)))
+	       (setq *prelude-theories*
+		     (nconc *prelude-theories* (cons th nil)))
+	       (setq *prelude-core-context*
+		     (update-prelude-context th))
+	       (setq *prelude-context* *prelude-core-context*)
+	       (when (eq (id th) '|booleans|)
+		 (let ((*current-context* (saved-context th)))
+		   (setq *true*
+			 (typecheck* (mk-name-expr 'TRUE) *boolean* nil nil))
+		   (setq *false*
+			 (typecheck* (mk-name-expr 'FALSE) *boolean* nil
+				     nil))))))
+	   (format t "~%Done typechecking the core prelude")
+	   (restore-prelude-proofs)
+	   ;;(initialize-prelude-attachments)
+	   (register-manip-type *number_field* 'pvs-type-real))
       (set-working-directory cdir))))
 
+(defun load-pvsio-prelude ()
+  (assert *pvs-path*)
+  (assert *prelude-core-context*)
+  (setq sbrt::*disable-caching* t)
+  (when *pvs-initialized*
+    (clear-theories t))
+  (let ((cdir (or *pvs-context-path* (working-directory)))
+	(*pvs-context-path* nil)
+	(*pvs-modules* (make-hash-table :test #'eq :size 20 :rehash-size 10))
+	(*pvs-files* (make-hash-table :test #'equal))
+	(*prelude-libraries* (make-hash-table :test #'equal))
+	(*imported-libraries* (make-hash-table :test #'equal))
+	(*pvs-context* nil)
+	(*loading-prelude* t)
+	(*generate-tccs* 'all)
+	(theories (parse :file (format nil "~a/lib/~a"
+				 *pvs-path* *pvsio-filename*))))
+    (reset-typecheck-caches)
+    (unwind-protect
+	 (progn
+	   (set-working-directory (format nil "~a/lib/" *pvs-path*))
+	   (setq *pvs-context-path* (working-directory))
+	   (dolist (th theories)
+	     (let ((*current-theory* th))
+	       (format t "~%Typechecking ~a" (id th))
+	       (setf (status th) '(parsed))
+	       (setf (gethash (id th) *prelude*) th)
+	       (typecheck th)
+	       (let* ((tot (car (tcc-info th)))
+		      (prv (cadr (tcc-info th)))
+		      (mat (caddr (tcc-info th)))
+		      (obl (- tot prv mat)))
+		 (if (zerop tot)
+		     (format t "~%~a typechecked: No TCCs generated" (id th))
+		     (format t "~%~a typechecked: ~d TCC~:p, ~
+                               ~d proved, ~d subsumed, ~d unproved~
+                               ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
+		       (id th) tot prv mat obl
+		       (length (warnings th)) (length (info th)))))
+	       ;; No need to have saved-context set for prelude contexts
+	       (assert (typep th '(or datatype module)))
+	       (setq *prelude-theories*
+		     (nconc *prelude-theories* (cons th nil)))
+	       (setq *prelude-context* (update-prelude-context th))))
+	   (format t "~%Done typechecking the prelude")
+	   (restore-pvsio-proofs)
+	   (initialize-prelude-attachments))
+      (set-working-directory cdir))))
+
+(defun update-prelude-context (th)
+  (let* ((thy (if (typep th 'datatype)
+		  (adt-theory th)
+		  th))
+	 (ctx (saved-context thy))
+	 (ndecls-hash (copy (declarations-hash ctx)))
+	 (nusing-hash (copy (using-hash ctx))))
+    (typecase th
+      (datatype
+       (setf (get-importings (adt-theory th) nusing-hash)
+	     (list (mk-modname (id (adt-theory th)))))
+       (when (adt-map-theory th)
+	 (setf (get-importings (adt-map-theory th) nusing-hash)
+	       (list (mk-modname (id (adt-map-theory th)))))
+	 (dolist (decl (append (assuming (adt-map-theory th))
+			       (theory (adt-map-theory th))))
+	   (when (and (declaration? decl) (visible? decl))
+	     (put-decl decl ndecls-hash))))
+       (when (adt-reduce-theory th)
+	 (setf (get-importings (adt-reduce-theory th) nusing-hash)
+	       (list (mk-modname (id (adt-reduce-theory th)))))
+	 (dolist (decl (append (assuming (adt-reduce-theory th))
+			       (theory (adt-reduce-theory th))))
+	   (when (and (declaration? decl) (visible? decl))
+	     (put-decl decl ndecls-hash)))))
+      (t (setf (get-importings th nusing-hash)
+	       (list (mk-modname (id th))))))
+    (let ((changes nil))
+      (maphash #'(lambda (id decls)
+		   (let ((rdecls
+			  (remove-if #'(lambda (d)
+					 (typep d '(or formal-decl
+						    var-decl)))
+			    decls)))
+		     (unless (equal rdecls decls)
+		       (push (cons id rdecls) changes))))
+	       (lhash-table ndecls-hash))
+      (dolist (cdecls changes)
+	(setf (gethash (car cdecls) (lhash-table ndecls-hash))
+	      (cdr cdecls))))
+    (let ((pusing-hash (copy nusing-hash)))
+      (setf (get-importings (theory ctx) pusing-hash)
+	    (list (theory-name ctx)))
+      (copy ctx
+	'declarations-hash ndecls-hash
+	'using-hash pusing-hash))))
+
 (defun restore-prelude-proofs ()
+  (let ((prfile (merge-pathnames (format nil "~a/lib/" *pvs-path*)
+				 "prelude.prf")))
+    (assert (file-exists-p prfile))
+    (format t "~%Restoring the prelude proofs from ~a" prfile)
+    (let ((proofs (read-pvs-file-proofs prfile)))
+      (maphash #'(lambda (id theory)
+		   (declare (ignore id))
+		   (restore-proofs prfile theory proofs)
+		   (mapc #'(lambda (decl)
+			     (if (justification decl)
+				 (setf (proof-status decl) 'proved)
+				 ;;(break "No proof for ~a?" (id decl))
+				 ))
+			 (provable-formulas theory)))
+	       *prelude*))))
+
+(defun restore-pvsio-proofs ()
   (let ((prfile (merge-pathnames (format nil "~a/lib/" *pvs-path*)
 				 "prelude.prf")))
     (assert (file-exists-p prfile))
@@ -198,10 +274,25 @@
 	      (t (format t "~%Theory ~a not in prelude, ignoring" theoryid)))
 	(restore-prelude-proofs-from-file input prfpath)))))
 
-(defun save-prelude-proofs ()
+(defun save-prelude-core-proofs ()
   (let ((prfile (namestring (merge-pathnames (format nil "~a/lib/" *pvs-path*)
-					     "prelude.prf"))))
-    (save-proofs prfile *prelude-theories*)))
+					     "prelude.prf")))
+	(theories (ldiff *prelude-theories*
+			 (cdr (memq (theory *prelude-core-context*)
+				    *prelude-theories*)))))
+    (save-proofs prfile theories)))
+
+(defun core-prelude-theories ()
+  (ldiff *prelude-theories* (pvsio-prelude-theories)))
+
+(defun pvsio-prelude-theories ()
+  (cdr (memq (theory *prelude-core-context*) *prelude-theories*)))
+
+(defun save-pvsio-prelude-proofs ()
+  (let ((prfile (namestring (merge-pathnames (format nil "~a/lib/" *pvs-path*)
+					     "pvsio_prelude.prf")))
+	(theories (pvsio-prelude-theories)))
+    (save-proofs prfile theories)))
 
 (defun prove-prelude (&optional retry? use-default-dp?)
   (let ((theories *prelude-theories*)
@@ -209,6 +300,20 @@
 	(*proving-tcc* t))
     (prove-theories "prelude" theories retry? use-default-dp?)
     (prelude-summary)))
+
+(defun prove-pvsio-prelude (&optional retry? use-default-dp?)
+  (let ((theories (pvsio-prelude-theories))
+	(*loading-prelude* t)
+	(*proving-tcc* t))
+    (prove-theories "pvsio-prelude" theories retry? use-default-dp?)
+    (pvsio-prelude-summary)))
+
+(defun pvsio-prelude-summary ()
+  (let ((theories (pvsio-prelude-theories)))
+    (pvs-buffer "PVS Status"
+      (with-output-to-string (*standard-output*)
+	(proof-summaries theories "pvsio_prelude"))
+      t)))
 
 (defun prelude-summary ()
   (let ((theories *prelude-theories*))
@@ -496,7 +601,7 @@
 		     lib-path)))
 	      (t (pvs-message "~a.pvscontext is empty~%  no PVS files loaded"
 		   lib-path)))))
-    (add-to-prelude-libraries lib-ref)
+    (add-to-prelude-libraries) ;; uses *prelude-libraries* and current context
     (when (and loaded-files
 	       (not *typechecking-module*)
 	       (not *tc-add-decl*))
@@ -507,7 +612,7 @@
 					   :defaults lib-path)))
       loaded-files)))
 
-(defun add-to-prelude-libraries (lib-ref)
+(defun add-to-prelude-libraries ()
   (setq *prelude-libraries-uselist*
 	(let ((uselist nil))
 	  (maphash #'(lambda (lref files&theories)
