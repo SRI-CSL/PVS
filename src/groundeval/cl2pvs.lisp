@@ -149,7 +149,7 @@
 (defun list-type? (type)
   (eq (id (module-instance (resolution (find-supertype type)))) '|list_adt|))
 
-(defmethod cl2pvs* (sexpr (type adt-type-name) context)
+(defmethod cl2pvs* (sexpr (type adt-type-name) context) 
   (cond ((char-list-type? type)
 	 (cl2pvs*-string (coerce sexpr 'string)))
 	((list-type? type)
@@ -157,6 +157,8 @@
 		       context))
 	((char-type? type)
 	 (cl2pvs*-char sexpr type context))
+	((enumtype? (adt type))
+	 (nth sexpr (constructors type)))
 	(t
 	 (let* ((recognizers (recognizers type))
 		(recognizer-funs (loop for rec in recognizers

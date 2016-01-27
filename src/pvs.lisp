@@ -2246,8 +2246,9 @@
 					      (col-end place))
 				      place)))))))))
   ;; This prints nothing - better than "nil"
-  (unless *noninteractive*
-    (values)))
+;;  (unless *noninteractive*
+;;    (values)))
+)
 
 (deftype unproved-formula-decl () '(and formula-decl (satisfies unproved?)))
 
