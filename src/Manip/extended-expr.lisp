@@ -77,11 +77,12 @@
 ;;; only a string component, allowing the others to be nil.
 
 (defun eval-ext-expr (expr)
-;  (cond ((stringp expr) (list (make-ee-descriptor :string expr)))
+  ;; (cond ((stringp expr) (list (make-ee-descriptor :string expr)))
   (cond ((stringp expr)
-	 (if (equal (elt expr 0) #\#)
-	     (mapcan #'fnum->descriptor-list (map-fnums-arg (subseq expr 1)))
-	     (list (make-ee-descriptor :string expr))))
+	 (cond ((equal (elt expr 0) #\#)
+		(mapcan #'fnum->descriptor-list (map-fnums-arg (subseq expr 1))))
+	       ((mapcan #'fnum->descriptor-list (map-fnums-arg expr)))
+	       (t (list (make-ee-descriptor :string expr)))))
 	((numberp expr) (fnum->descriptor-list expr))
 	((symbolp expr) (mapcan #'fnum->descriptor-list (map-fnums-arg expr)))
 	((ee-descriptor-p expr) (list expr))
