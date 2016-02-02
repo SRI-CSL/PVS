@@ -184,6 +184,7 @@
 ;; When an extraction-expr is used as a conversion
 (defcl extraction-conversion (extraction-application))
 
+;; For rational numbers
 (defcl rational-expr (expr)
   (number :type rational))
 
