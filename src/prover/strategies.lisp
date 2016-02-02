@@ -2575,13 +2575,15 @@ introduce a duplicate formula."
 
 (defstep inst (fnum &rest terms)
   (let ((terms (if (listp terms) terms (list terms)))
-	(fnum (find-sform (s-forms (current-goal *ps*)) fnum
-			  #'(lambda (sform)
-			      (if (negation? (formula sform))
-				  (check-inst-quant (args1 (formula sform))
-						    terms nil)
-				  (check-inst-quant (formula sform)
-						    terms t)))))
+	(fnums-arg (extract-fnums-arg fnum))
+	(fnums (gather-fnums (s-forms (current-goal *ps*)) fnums-arg nil
+			     #'(lambda (sform)
+				 (if (negation? (formula sform))
+				     (check-inst-quant (args1 (formula sform))
+						       terms nil)
+				     (check-inst-quant (formula sform)
+						       terms t)))))
+	(fnum (car fnums))
 	(bindings (let* ((sforms (select-seq (s-forms (current-goal *ps*))
 					     fnum))
 			 (fmla (when sforms (formula (car sforms)))))
@@ -2646,9 +2648,10 @@ See INST for a non-copying version."
 
 (defstep inst? (&optional (fnums *) subst (where *)
 			  copy? if-match polarity? (tcc? t))
-  (let ((sforms (remove-if-not #'exists-sform?
+  (let ((fnums-arg (extract-fnums-arg fnums))
+	(sforms (remove-if-not #'exists-sform?
 		  (select-seq (s-forms (current-goal *ps*))
-			      fnums)))
+			      fnums-arg)))
 	(search (find-quant-terms sforms subst where
 				  if-match polarity? tcc? *ps*))
 	(sformnum (when search (car search)))
@@ -4506,8 +4509,26 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
 
 (defstep expand* (&rest names)
   (expand1* names)
-  "Expands all the given names and simplifies. "
-  "Expanding the definition(s) of ~a")
+  "Expands all the given names in order, and simplifies. "
+  "Expanding the definition(s) in order of ~a")
+
+(defstep expand-names (&optional (fnums *) &rest names)
+  ;; Need to check for recursive names
+  (expand1-names fnums names names)
+  "Expands the set of given names in the specified fnums"
+  "Expanding the definition(s) in ~a of ~a")
+
+(defhelper expand1-names (fnums rest-names names)
+  (if (null rest-names)
+      (skip)
+      (let ((name1 (car rest-names))
+	    (cdr-names (cdr rest-names)))
+	(try (expand name1 :fnum fnums)
+	     (expand1-names fnums names names)
+	     (expand1-names fnums cdr-names names))))
+  "Expands each name in rest-names in the specified fnums, until no definitions are left.
+If one succeeds, starts again from the beginning"
+  "Expanding the definition(s) in ~a of ~a")
 
 ;; For backward compatibility
 (defhelper auto-rewrite-theory-always (thlist)
