@@ -38,6 +38,9 @@
 
 (declaim (notinline current-theory))
 
+(defun current-context ()
+  *current-context*)
+
 (defun current-theory ()
   (when *current-context*
     (theory *current-context*)))
