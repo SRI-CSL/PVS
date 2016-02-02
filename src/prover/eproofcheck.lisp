@@ -3148,10 +3148,14 @@
 ;;;gather-fnums is like gather-seq, but returns fnums
 
 (defun cleanup-fnums (fnums)
+  (let ((cfnums (cleanup-fnums* fnums)))
+    (extract-fnums-arg cfnums)))
+
+(defun cleanup-fnums* (fnums)
   (cond ((consp fnums)
 	 (if (eq (car fnums) 'quote)
-	     (cleanup-fnums (cadr fnums))
-	     (append (cleanup-fnums (car fnums)) (cleanup-fnums (cdr fnums)))))
+	     (cleanup-fnums* (cadr fnums))
+	     (append (cleanup-fnums* (car fnums)) (cleanup-fnums* (cdr fnums)))))
 	((null fnums) nil)
 	((stringp fnums) (list (intern fnums :pvs)))
 	(t (list fnums))))
@@ -3636,8 +3640,7 @@
 (defun label-step (label fnums push?)
   #'(lambda (ps)
       (let* ((goalsequent (current-goal ps))
-	     (fnums ;;(extract-fnums-arg fnums)
-	       (if (consp fnums) fnums (list fnums))))
+	     (fnums (extract-fnums-arg fnums)))
 	(cond ((or (stringp label) (symbolp label))
 	       (let ((strlbl (if (stringp label) label (string label)))
 		     (symlbl (if (symbolp label) label (intern label :pvs))))
