@@ -227,7 +227,11 @@
 	     (show-flag (memq (car real-items) '(? show)))
 	     (fnums-items (if show-flag (cdr real-items) real-items))
 	     (fnums (if (consp fnums-items) (car fnums-items) nil))
-	     (fnum-p #'(lambda (e) (or (numberp e) (memq e '(+ - *)))))
+	     (fnum-p #'(lambda (e) (or (numberp e)
+				       (memq e '(+ - *))
+				       ;; Check for labels
+				       (member e (collect-labels-of-current-sequent)
+					       :test #'string=))))
 	     (items (if (or (funcall fnum-p fnums)
 			    (and (consp fnums) (every fnum-p fnums)))
 			(cdr fnums-items)
