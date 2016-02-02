@@ -194,6 +194,20 @@
 	(format t "~%~?" ctl args)))
   nil)
 
+(defun pvs-message-with-context (obj ctl &rest args)
+  (assert *current-context*)
+  (pvs-message "~%In ~a.~a:~a:~%  ~?"
+    (id (current-theory))
+    (when (current-declaration)
+      (if (importing? (current-declaration))
+	  (format nil "IMPORTING ~a" (theory-name (current-declaration)))
+	  (id (current-declaration))))
+    (if (place obj)
+	(format nil "(at line ~d, column ~d) "
+	  (starting-row (place obj)) (starting-col (place obj)))
+	(format nil "(no place for ~a)" obj))
+    ctl args))
+
 
 ;;; Collect messages until the end of parsing/typechecking, and provide
 ;;; them to a buffer.
