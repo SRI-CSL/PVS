@@ -30,7 +30,7 @@
 (in-package :pvs)
 
 (export '(set-type set-type* kind-of-name-expr set-type-actuals
-		   subst-actual-in-remaining-formals set-lambda-dep-types
+		   subst-actuals-in-next-formal set-lambda-dep-types
 		   free-formals
 		   subst-for-formals))
 
