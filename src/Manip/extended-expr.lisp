@@ -84,6 +84,7 @@
 	       ((mapcan #'fnum->descriptor-list (map-fnums-arg expr)))
 	       (t (list (make-ee-descriptor :string expr)))))
 	((numberp expr) (fnum->descriptor-list expr))
+	((null expr) nil)
 	((symbolp expr) (mapcan #'fnum->descriptor-list (map-fnums-arg expr)))
 	((ee-descriptor-p expr) (list expr))
 	((consp expr)

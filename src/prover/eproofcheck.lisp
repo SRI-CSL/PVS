@@ -3149,7 +3149,9 @@
 
 (defun cleanup-fnums (fnums)
   (let ((cfnums (cleanup-fnums* fnums)))
-    (extract-fnums-arg cfnums)))
+    ;;(extract-fnums-arg cfnums)
+    cfnums
+    ))
 
 (defun cleanup-fnums* (fnums)
   (cond ((consp fnums)

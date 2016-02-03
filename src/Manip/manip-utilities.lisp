@@ -509,7 +509,7 @@ undoing proof attempt." just-rule)
 (defun map-fnums-arg (fnums)
   (cond ((numberp fnums) (list fnums))
 	((or (stringp fnums) (symbolp fnums))
-	 (gather-fnums (s-forms (current-goal *ps*))
+	 (simple-gather-fnums (s-forms (current-goal *ps*))
 		       fnums nil true-predicate))
 	((and (consp fnums) (member (car fnums) all-but-symbols))
 	 (let ((all-nums (map-fnums-arg
@@ -518,6 +518,12 @@ undoing proof attempt." just-rule)
 	((consp fnums) 
 	 (remove-duplicates (mapappend #'map-fnums-arg fnums) :from-end t))
 	(t nil)))
+
+(defun simple-gather-fnums (sforms yesnums nonums &optional (pred #'always-true))
+  (let ((yesnums (cleanup-fnums* yesnums))
+	(nonums (cleanup-fnums* nonums)))
+    (gather-fnums* sforms yesnums nonums pred 1 -1 nil)))
+
 
 ;;; Get list of formula numbers, converting *,-,+ as needed.  Also
 ;;; extracts fnum component from extended expression descriptors.
