@@ -473,8 +473,15 @@
        (cond ((null binding)
 	      nil)
 	     ((null (cdr binding))
-	      (setf (cdr binding) (expr act))
-	      bindings)
+	      (cond ((or (not (dependent? (car binding)))
+			 (let ((new-fml (subst-acts-in-form (car binding) bindings)))
+			   (strict-compatible? (type new-fml) (type (expr act)))))
+		     (setf (cdr binding) (expr act))
+		     bindings)
+		    (t
+		     ;;(pvs-message-with-context
+		     ;;  act "CHECKTHIS: tc-match-act would have worked before")
+		     nil)))
 	     ((tc-eq (expr act) (cdr binding))
 	      bindings))))
     (formal-theory-decl

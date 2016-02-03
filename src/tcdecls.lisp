@@ -3162,7 +3162,57 @@
       (let ((tval (mk-subtype (domain ftype)
 		    (expr type))))
 	(setf (print-type tval) type)
+	(setf (subtype-conjuncts tval) (collect-subtype-conjuncts tval))
 	tval))))
+
+(defun collect-subtype-conjuncts (subtype)
+  (collect-subtype-conjuncts* subtype nil))
+
+(defmethod collect-subtype-conjuncts* ((te subtype) conjuncts)
+  (let ((tconj (collect-subtype-conjuncts* (supertype te) conjuncts)))
+    (collect-subtype-conjuncts* (predicate te) tconj)))
+
+(defmethod collect-subtype-conjuncts* ((te type-expr) conjuncts)
+  conjuncts)
+
+(defmethod collect-subtype-conjuncts* ((ex lambda-expr) conjuncts)
+  (let ((lconj (when (and (singleton? (bindings ex))
+			  (conjunction? (expression ex)))
+		 (collect-conjuncts (expression ex)))))
+    (if (and lconj
+	     (every #'(lambda (cnj)
+			(and (application? cnj)
+			     (name-expr? (argument cnj))
+			     (eq (declaration (argument cnj)) (car (bindings ex)))))
+		    lconj))
+	(collect-subtype-conjuncts* (mapcar #'operator lconj) conjuncts)
+	(pushnew ex conjuncts :test #'tc-eq))))
+
+(defmethod collect-subtype-conjuncts* ((list cons) conjuncts)
+  (let ((aconj (collect-subtype-conjuncts* (car list) conjuncts)))
+    (collect-subtype-conjuncts* (cdr list) aconj)))
+
+(defmethod collect-subtype-conjuncts* ((ex null) conjuncts)
+  conjuncts)
+
+(defmethod collect-subtype-conjuncts* ((ex name-expr) conjuncts)
+  (assert (and (funtype? (find-supertype (type ex)))
+	       (tc-eq (find-supertype (range (find-supertype (type ex)))) *boolean*)))
+  (if (and (typep (declaration ex) '(and const-decl (not def-decl)))
+	   (def-axiom (declaration ex)))
+      (let* ((decl (declaration ex))
+	     (defn (subst-mod-params (args2 (car (last (def-axiom decl))))
+		       (module-instance ex)  (module decl) decl)))
+	(if (lambda-expr? defn)
+	    (collect-subtype-conjuncts* defn conjuncts)
+	    (pushnew ex conjuncts :test #'tc-eq)))
+      (pushnew ex conjuncts :test #'tc-eq)))
+
+(defmethod collect-subtype-conjuncts* ((ex expr) conjuncts)
+  (assert (and (funtype? (find-supertype (type ex)))
+	       (tc-eq (find-supertype (range (find-supertype (type ex)))) *boolean*)))
+  (pushnew ex conjuncts))
+	   
 
 (defmethod look-for-expected-from-conversion ((expr application))
   (and (typep (operator expr) 'name-expr)
@@ -3201,6 +3251,7 @@
 		(tval (mk-subtype stype (pseudo-normalize (predicate type)))))
 	   (setf (supertype type) stype)
 	   (setf (print-type tval) (print-type type))
+	   (setf (subtype-conjuncts tval) (collect-subtype-conjuncts tval))
 	   tval))
 	(t (let ((stype (typecheck* (supertype type) nil nil nil)))
 	     (if (named-type-expr? type)

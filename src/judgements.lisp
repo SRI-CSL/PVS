@@ -454,13 +454,12 @@
 	(gethash ex jhash)
       (if there?
 	  (when jtypes&jdecls
-	    (funcall #'remove-judgement-types-of-type (type ex)
-		     (car jtypes&jdecls) (cadr jtypes&jdecls)))
+	    (remove-judgement-types-of-type
+	     (type ex) (car jtypes&jdecls) (cadr jtypes&jdecls)))
 	  (multiple-value-bind (types jdecls)
 	      (judgement-types* ex)
-	    (let ((jlist (jdecls-list jdecls)))
-	      (setf (gethash ex jhash) (list types jlist))
-	      (values types jlist)))))))
+	    (setf (gethash ex jhash) (list types jdecls))
+	    (values types jdecls))))))
 
 (defmethod judgement-types ((ex tuple-expr))
   nil)
@@ -475,11 +474,14 @@
       (if there?
 	  (values-list jtypes&jdecls)
 	  (multiple-value-bind (njtypes njdecls)
+	      ;; This gets number, name, and application judgements
 	      (call-next-method)
 	    (multiple-value-bind (ejtypes ejdecls)
+		;; This gets expr-judgements
 		(expr-judgement-types ex njtypes)
 	      (let ((jtypes (if ejtypes (append njtypes ejtypes) njtypes))
 		    (jdecls (if ejdecls (append njdecls ejdecls) njdecls)))
+		;(when (cdr jtypes) (break "Multiple judgement-types"))
 		#+pvsdebug (assert (or (and (name-expr? ex)
 					    (skolem-const-decl? (declaration ex)))
 				       (vectorp jtypes)
@@ -549,30 +551,29 @@
 	     (list (least-available-numeric-type (number ex))))
      jdecls)))
 
-(defun least-available-numeric-type (num)
-  (assert (integerp num))
-  (if (and *even_int* *odd_int*)
-      (if (and *even_nat* *even_posnat* *odd_posnat*
-	       *even_negint* *odd_negint*)
-	  (cond ((zerop num) *even_nat*)
-		((plusp num)
-		 (if (evenp num) *even_posnat* *odd_posnat*))
-		(t (if (evenp num) *even_negint* *odd_negint*)))
-	  (if (evenp num) *even_int* *odd_int*))
-      (available-numeric-type num)))
-  
-  
-
 (defmethod judgement-types* ((ex rational-expr))
   (let ((jdecls (cdr (assoc (number ex)
 			    (number-judgements-alist (current-judgements))
 			    :test #'=))))
     (values
      (append (mapcar #'type jdecls)
-	     (let ((antype (available-numeric-type (number ex))))
-	       (when antype
-		 (list antype))))
+	     (list (least-available-numeric-type (number ex))))
      jdecls)))
+
+(defun least-available-numeric-type (num)
+  (assert (rationalp num))
+  (if (integerp num)
+      (if (and *even_int* *odd_int*)
+	  (if (and *even_nat* *even_posnat* *odd_posnat*
+		   *even_negint* *odd_negint*)
+	      (cond ((zerop num) *even_nat*)
+		    ((plusp num)
+		     (if (evenp num) *even_posnat* *odd_posnat*))
+		    (t (if (evenp num) *even_negint* *odd_negint*)))
+	      (if (evenp num) *even_int* *odd_int*))
+	  (available-numeric-type num))
+      ;; rational, but not integer
+      (available-numeric-type num)))
 
 (defmethod judgement-types* ((ex name-expr))
   (let ((entry (name-judgements ex)))
@@ -652,11 +653,13 @@
 	   ;; For lambda expressions, we get the judgement-types of the args,
 	   ;; and temporarily add new ones to the associated bindings, then
 	   ;; get the judgement types of the expression of the lambda-expr.
+	   ;; Note that this is not the same as the judgements of the beta-reduced
+	   ;; form, which loses information.
 	   (let ((jbvars nil))
 	     (unwind-protect
-		 (progn (setq jbvars
-			      (set-binding-judgements-from-arg-judgements ex))
-			(judgement-types* (expression* op)))
+		  (progn (setq jbvars
+			       (set-binding-judgements-from-arg-judgements ex))
+			 (judgement-types* (expression* op)))
 	       (dolist (jbvar jbvars)
 		 (setf (gethash (car jbvar) (judgement-types-hash
 					     (current-judgements)))
@@ -666,6 +669,14 @@
 		  (arglist (argument* ex))
 		  (sljtypes (subst-judgement-types ljtypes bndlist arglist)))
 	     (remove-judgement-types-of-type (type ex) sljtypes ljdecls))))))))
+
+;; (defmethod judgement-types* ((ex list-expr))
+;;   (let* ((list-args (list-arguments ex))
+;; 	 (etype (type-value (car (actuals (module-instance (operator ex))))))
+;; 	 (jtypes (reduce #'(lambda (t1 t2) (join-compatible-types t1 t2 etype))
+;; 			 (mapcar #'judgement-types* list-args))))
+;;     (mapcar #'(lambda (jty) 
+		
 
 (defun subst-judgement-types (jtypes bndlist arglist)
   (if (null bndlist)
@@ -800,21 +811,99 @@
     (multiple-value-bind (else-types else-jdecls)
 	(judgement-types* (else-part ex))
       (when (or then-types else-types)
-	(cond ((equal then-types else-types)
+	(cond ((tc-eq then-types else-types)
 	       (values then-types then-jdecls))
 	      ((and (vectorp then-types) (vectorp else-types))
 	       (let ((comp-types (join-compatible-vector-types
 				  then-types else-types (type ex))))
 		 (when comp-types
 		   (values comp-types
-			   (jdecls-union then-jdecls else-jdecls)))))
+			   (cond ((null then-jdecls)
+				  else-jdecls)
+				 ((null else-jdecls)
+				  then-jdecls)
+				 (t (map 'vector #'jdecls-union
+					 then-jdecls else-jdecls)))))))
 	      ;; May have to convert a vector, might be better the other way
 	      (t (let* ((ttypes (jtypes-to-types then-types (then-part ex)))
 			(etypes (jtypes-to-types else-types (else-part ex)))
 			(comp-types (join-compatible-types ttypes etypes (type ex))))
-		   (when comp-types
-		     (values comp-types
-			     (jdecls-union then-jdecls else-jdecls))))))))))
+		   (when (and comp-types
+			      (or then-jdecls else-jdecls))
+		     (let ((comp-jdecls (make-list (length comp-types))))
+		       (dotimes (i (length comp-types))
+			 (let ((pos (position (elt comp-types i)
+					      (if then-types ttypes etypes)
+					      :test #'tc-eq)))
+			   (when pos
+			     (setf (elt comp-jdecls i)
+				   (elt (if then-types then-jdecls else-jdecls) pos)))))
+		       (values comp-types comp-jdecls))))))))))
+
+;; Want the least types and corresponding judgement decls that cover all
+;; exprs in the list 
+(defmethod judgement-types* ((expr-list cons))
+  (assert (every #'expr? expr-list))
+  (multiple-value-bind (types jdecls)
+      (judgement-types* (car expr-list))
+    (judgement-types-list (cdr expr-list) (type (car expr-list)) types jdecls)))
+
+;;; Recursively determing the judgement types and corresponding judgement
+;;; decls for a list of expressions, that are intended to have a common type
+;;; Mostly for if-exprs, cond-exprs, etc.  But not tuple exprs
+
+;;; The type is the least connon actual type of the expressions so far - no
+;;; point in looking higher than this.  The types and jdecls are the
+;;; judgement types found so far.  Note that even if they are empty, we may
+;;; need judgements on the remaining expressions, in order to not go above
+;;; the type.
+(defun judgement-types-list (expr-list type types jdecls)
+  (cond ((null expr-list)
+	 (values types jdecls))
+	((null types)
+	 ;; Shouldn't produce anything smaller than type; may have to get larger
+	 (if (subtype-of? (type (car expr-list)) type)
+	     ;; No use to get judgements in this case
+	     (judgement-types-list (cdr expr-list) type nil nil)
+	     (multiple-value-bind (ntypes njdecls)
+		 (judgement-types* (car expr-list))
+	       (if (null ntypes)
+		   ;; Still no judgements available
+		   (judgement-types-list (cdr expr-list)
+					 (compatible-type type (type (car expr-list)))
+					 nil nil)
+		   ;; Look for an ntype that is tc-eq to type
+		   (let ((pos (position-if #'(lambda (nty) (tc-eq nty type)) ntypes)))
+		     (if pos
+			 (judgement-types-list
+			  (cdr expr-list)
+			  type (list (elt ntypes pos)) (list (elt njdecls pos)))
+			 ;; Ow look for all judgements that are a subtype of type
+			 
+			 (let ((stypes nil) (sjdecls nil))
+			   (dotimes (i (length ntypes))
+			     (when (subtype-of? (elt ntypes i) type)
+			       (push (elt ntypes i) stypes)
+			       (push (elt njdecls i) sjdecls)))
+			   ;; Note that stypes could be empty
+			   (if (null stypes)
+			       (judgement-types-list
+				(cdr expr-list)
+				(compatible-type type (type (car expr-list)))
+				nil nil)
+			       (judgement-types-list
+				(cdr expr-list) type (nreverse stypes) (nreverse sjdecls))))))))))
+	(t ;; Have types - this is more difficult to reconcile
+	 (multiple-value-bind (ntypes njdecls)
+	     (judgement-types* (car expr-list))
+	   (if (null ntypes)
+	       (if (some #'(lambda (ty) (subtype-of? (type (car expr-list)) ty))
+			 types)
+		   (judgement-types-list (cdr expr-list) type types jdecls)
+		   (break "types, null ntypes, not subtype"))
+	       ;; Have ntypes - if one is equal to type, keep it and remove the rest
+	       ;; else if any are subtypes of type, keep those that are
+	       (break "types, ntypes"))))))
 
 (defun jdecls-union (jdecls1 jdecls2)
   (let ((ldecls1 (jdecls-list jdecls1))
@@ -1353,7 +1442,9 @@
 	      (remove-judgement-types-of-type
 	       (type ex)
 	       (aref ajtypes (1- (index ex)))
-	       (aref ajdecls (1- (index ex))))
+	       (if (vectorp ajdecls)
+		   (aref ajdecls (1- (index ex)))
+		   (nth (1- (index ex)) ajdecls)))
 	      (remove-judgement-types-of-type
 	       (type ex)
 	       (projection-application-types ajtypes ex)

@@ -31,14 +31,14 @@
        `((";**;*.*" "/home/owre/acl82.64/")
  	   ("**;*.*" "/home/owre/acl82.64/")))
 
-#+allegro
-(defun start-ide ()
-  (setf (logical-pathname-translations "sys")
-       `((";**;*.*" "/csl/allegro/allegro8.1/")
-	 ("**;*.*" "/csl/allegro/allegro8.1/")))
-  (require :ide)
-  ;;(setq excl:*mozilla-library-path* "/homes/owre/lib/firefox-1.0.7/")
-  (ide:start-ide))
+;; #+allegro
+;; (defun start-ide ()
+;;   (setf (logical-pathname-translations "sys")
+;;        `((";**;*.*" "/csl/allegro/allegro8.1/")
+;; 	 ("**;*.*" "/csl/allegro/allegro8.1/")))
+;;   (require :ide)
+;;   ;;(setq excl:*mozilla-library-path* "/homes/owre/lib/firefox-1.0.7/")
+;;   (ide:start-ide))
 
 (defmacro cam (form)
   `(compute-applicable-methods (function ,(car form)) (list ,@(cdr form))))

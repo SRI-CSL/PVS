@@ -1520,9 +1520,17 @@
 ;;; we can recurse on both supertypes at the same time.
 
 (defmethod compatible-type* ((atype subtype) (etype subtype) bindings)
-  (cond ((simple-subtype-of? atype etype) etype)
-	((simple-subtype-of? etype atype) atype)
-	(t (compatible-type* (supertype atype) (supertype etype) bindings))))
+  (with-slots ((st1 supertype) (p1 predicate)) atype
+    (with-slots ((st2 supertype) (p2 predicate)) etype
+      (cond ((simple-subtype-of? atype etype) etype)
+	    ((simple-subtype-of? etype atype) atype)
+	    ((and (simple-subtype-of? st1 st2)
+		  (same-predicate? p1 p2 nil))
+	     etype)
+	    ((and (simple-subtype-of? st2 st1)
+		  (same-predicate? p2 p1 nil))
+	     atype)
+	    (t (compatible-type* (supertype atype) (supertype etype) bindings))))))
 
 (defun adt-compatible-type (acts1 acts2 formals type postypes compacts
 				  bindings)
@@ -2193,9 +2201,16 @@
 	(t nil)))
 
 (defmethod subtype-of*? ((t1 subtype) (t2 subtype))
-  (with-slots ((st1 supertype) (pr1 predicate)) t1
-    (with-slots ((st2 supertype) (pr2 predicate)) t2
-      (cond ((or (and (typep pr1 'recognizer-name-expr)
+  (with-slots ((st1 supertype) (pr1 predicate) (conj1 subtype-conjuncts)) t1
+    (with-slots ((st2 supertype) (pr2 predicate) (conj2 subtype-conjuncts)) t2
+      (when (null conj1)
+	(setf conj1 (collect-subtype-conjuncts t1)))
+      (when (null conj2)
+	(setf conj2 (collect-subtype-conjuncts t2)))
+      (assert (and conj1 conj2))
+      (cond ((subsetp conj2 conj1 :test #'tc-eq)
+	     t)
+	    ((or (and (typep pr1 'recognizer-name-expr)
 		      (typep pr2 'recognizer-name-expr)
 		      (tc-eq-ops pr1 pr2))
 		 (same-predicate? t1 t2 nil)

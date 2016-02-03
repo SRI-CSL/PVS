@@ -811,7 +811,8 @@
 (defcl subtype (type-expr)
   (supertype :parse t)
   (top-type :fetch-as nil :ignore t)
-  predicate)
+  predicate
+  (subtype-conjuncts :ignore t))
 
 (defcl datatype-subtype (subtype)
   declared-type)

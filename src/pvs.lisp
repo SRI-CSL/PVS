@@ -1244,7 +1244,8 @@
 	    (*current-theory* theory)
 	    (*old-tcc-names* nil))
 	(unless (typechecked? theory)
-	  (typecheck theory)
+	  (unwind-protect (typecheck theory)
+	    (reset-subst-mod-params-cache))
 	  (assert (saved-context theory))
 	  (assert (typechecked? theory) nil
 		  "Theory ~a not typechecked?" (id theory))
@@ -2246,8 +2247,10 @@
 					      (col-end place))
 				      place)))))))))
   ;; This prints nothing - better than "nil"
-  (unless *noninteractive*
-    (values)))
+  ;; Actually causes problems - will look into other solutions
+  ;; (unless *noninteractive*
+  ;;   (values))
+  nil)
 
 (deftype unproved-formula-decl () '(and formula-decl (satisfies unproved?)))
 
