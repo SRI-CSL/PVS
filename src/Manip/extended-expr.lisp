@@ -20,10 +20,6 @@
 ;;; PVS expressions using both textual pattern matching and indexed
 ;;; term referencing.
 
-(defconstant syntax-match-symb   '~  )
-(defconstant-if-unbound loc-ref-flat-symb   '!  )
-(defconstant-if-unbound loc-ref-full-symb   '!! )
-(defconstant pat-match-symb      '?  )
 (defconstant deep-wild-all       '** )
 (defconstant deep-wild-term      '-* )   ;; '<* ?
 (defconstant deep-wild-nonterm   '*- )   ;; '*< ?
@@ -36,9 +32,6 @@
 (defconstant rich-pat-char       #\@ )
 (defconstant subst-symb-char     #\$ )
 
-(defconstant-if-unbound loc-ref-symbols (list loc-ref-flat-symb loc-ref-full-symb))
-(defconstant-if-unbound ext-expr-symbols
-  (apply #'list syntax-match-symb pat-match-symb loc-ref-symbols))
 (defconstant-if-unbound deep-wild-symbols
   (list deep-wild-all deep-wild-term deep-wild-nonterm))
 (defconstant-if-unbound goto-index-symbols (list goto-index-symb goto-all-symb))

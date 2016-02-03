@@ -15,6 +15,14 @@
 
 (in-package :pvs)
 
+(defconstant pat-match-symb      '?  )
+(defconstant syntax-match-symb   '~  )
+
+(defconstant-if-unbound loc-ref-flat-symb   '!  )
+(defconstant-if-unbound loc-ref-full-symb   '!! )
+(defconstant-if-unbound loc-ref-symbols (list loc-ref-flat-symb loc-ref-full-symb))
+(defconstant-if-unbound ext-expr-symbols
+  (apply #'list syntax-match-symb pat-match-symb loc-ref-symbols))
 
 (defvar *manip-gensym-count* 0)
 
