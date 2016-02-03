@@ -1376,13 +1376,15 @@
   (let ((str (format nil "~a_~a" x counter)))
     (if (find-symbol str)
 	(mk-newsymb x (1+ counter))
-	(intern str :pvs))))
+      (intern str :pvs))))
+
+(defun init-undef (&rest x) 0);;dummy function to initialize symbol-function of a new function symbol
 
 (defun mk-newfsymb (x &optional counter)
   (let ((fsym (intern (format nil "~a~@[_~a~]" x counter) :pvs)))
-    (if (fboundp fsym)
-	(mk-newfsymb x (if counter (1+ counter) 0))
-	fsym)))
+    (cond ((fboundp fsym)
+	   (mk-newfsymb x (if counter (1+ counter) 0)))
+	  (t (setf (symbol-function fsym) #'init-undef) fsym))))
 
 (defun pvs2cl-id (x)
   (if (eq (id x) 'O)
