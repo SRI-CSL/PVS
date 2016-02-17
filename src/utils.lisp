@@ -1549,9 +1549,9 @@
 			       (module-instance res)
 			     (module decl)
 			     decl)))
-	   (assert (subsetp (freevars subst-list)
-			    (freevars (module-instance res))
-			    :test #'same-declaration))
+	   #+pvsdebug (assert (subsetp (freevars subst-list)
+				       (freevars (module-instance res))
+				       :test #'same-declaration))
 	   (copy-list subst-list)))
 	(t nil)))
 
@@ -1607,9 +1607,9 @@
 	     (new-appl (make!-equation new-lhs new-rhs))
 	     (def-form (close-freevars new-appl *current-context*
 				       newbindings nil nil)))
-	(assert (every #'(lambda (fv) (typep fv 'field-name-expr))
-		       (freevars def-form)))
-	(assert (equation? (expression def-form)))
+	#+pvsdebug (assert (every #'(lambda (fv) (typep fv 'field-name-expr))
+				  (freevars def-form)))
+	#+pvsdebug (assert (equation? (expression def-form)))
 	def-form)))
 
 ;(defmethod expression ((ex implicit-coercion))
@@ -1636,7 +1636,14 @@
 (defun make-def-axiom (decl)
   (with-current-decl decl
     (let* ((*generate-tccs* 'none)
-	   (def (make!-lambda-exprs (formals decl) (definition decl)))
+	   ;;(defexpr (expression* (definition decl)))
+	   ;;(decldeftype ;; Need to walk down (type decl) to get to defexpr
+	   ;;(ret-type (unless (subtype-of? (type defexpr) decldeftype)
+	   ;;            (let ((jtypes-def (judgement-types defexpr)))
+	   ;;               (unless (some #'(lambda (jty) (subtype-of? jty decldeftype))
+	   ;;                             jtypes-def)
+	   ;;                 (type decl)))))
+	   (def (make!-lambda-exprs (formals decl) (definition decl) (type decl)))
 	   (res (mk-resolution decl (current-theory-name) (type decl)))
 	   (name (mk-name-expr (id decl) nil nil res))
 	   (appl (make!-equation name def))
@@ -1662,13 +1669,45 @@
 	(setf (place lexpr) (place expr))
 	lexpr)))
 
-(defun make!-lambda-exprs (varslist expr)
-  (if (null varslist)
-      expr
-      (let ((lexpr (make!-lambda-expr (car varslist)
-		     (make!-lambda-exprs (cdr varslist) expr))))
-	(setf (place lexpr) (place expr))
-	lexpr)))
+(defun make!-lambda-exprs (varslist expr &optional type)
+  (let ((lex (make!-lambda-exprs* varslist expr type)))
+    #+pvsdebug (assert (null (freevars lex)))
+    #+pvsdebug (assert (null (freevars (type lex))))
+    #+pvsdebug (assert (null (freevars (judgement-types+ lex))))
+    lex))
+
+(defun make!-lambda-exprs* (varslist expr otype)
+  (let ((type (when otype (find-supertype otype))))
+    (if (null varslist)
+	(if type
+	    (let ((lex (make!-lambda-exprs-rem expr type)))
+	      lex)
+	    expr)
+	(let ((lexpr (if type
+			 (let* ((alist (when (dep-binding? (domain type))
+					 (mk-subst-alist (domain type) (car varslist))))
+				(rtype (range (find-supertype type)))
+				(ftype (substit rtype alist))
+				(lex (make!-lambda-expr (car varslist)
+				       (make!-lambda-exprs* (cdr varslist) expr ftype)
+				       ftype)))
+			   lex)
+			 (make!-lambda-expr (car varslist)
+			   (make!-lambda-exprs* (cdr varslist) expr nil)))))
+	  (setf (place lexpr) (place expr))
+	  lexpr))))
+
+(defmethod make!-lambda-exprs-rem ((expr lambda-expr) type)
+  (let* ((alist (when (dep-binding? (domain type))
+		  (mk-subst-alist (domain type) (bindings expr))))
+	 (rtype (range (find-supertype type)))
+	 (ftype (substit rtype alist)))
+    (make!-lambda-expr (bindings expr)
+      (make!-lambda-exprs-rem (expression expr) ftype)
+      ftype)))
+
+(defmethod make!-lambda-exprs-rem ((expr expr) type)
+  expr)
 
 (defun typed-lambda-vars (expr end-expr &optional vars)
   (if (eq expr end-expr)
@@ -2085,7 +2124,7 @@
 (defmethod adt ((fn recognizer-name-expr))
   (or (adt-type fn)
       (let ((adt (find-declared-adt-supertype (domain (type fn)))))
-	(assert (adt-type-name? (find-supertype adt)))
+	#+pvsdebug (assert (adt-type-name? (find-supertype adt)))
 	(setf (adt-type fn) adt))))
 
 (defmethod adt ((fn accessor-name-expr))
@@ -3049,7 +3088,7 @@
 ;; returns [# size: nat, contents: [below(R`size) -> T]#]
 (defmethod remove-dependent-type (ex (te recordtype))
   (assert *current-context*)
-  (assert (compatible? (type ex) te))
+  #+pvsdebug (assert (compatible? (type ex) te))
   (if (dependent? te)
       (let ((nfields (remove-dependent-fields ex (fields te))))
 	(mk-recordtype nfields nil))
@@ -3066,7 +3105,7 @@
 
 (defmethod remove-dependent-type (ex (te tupletype))
   (assert *current-context*)
-  (assert (compatible? (type ex) te))
+  #+pvsdebug (assert (compatible? (type ex) te))
   (let ((ntypes (remove-dependent-types ex (types te))))
     (lcopy te 'types ntypes)))
 
@@ -3086,7 +3125,7 @@
 ;; function types
 (defmethod remove-dependent-type (ex (te funtype))
   (assert *current-context*)
-  (assert (compatible? (type ex) (domain te)))
+  #+pvsdebug (assert (compatible? (type ex) (domain te)))
   (if (dep-binding? (domain te))
       (copy te
 	'range (substit (range te) (acons (domain te) ex nil)))
@@ -3494,7 +3533,7 @@ space")
   (list expr))
 
 (defmethod argument-list ((list list))
-  (assert (every #'expr? list))
+  #+pvsdebug (assert (every #'expr? list))
   list)
 
 (defmethod arguments* ((expr application) &optional accum)
