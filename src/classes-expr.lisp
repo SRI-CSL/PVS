@@ -612,7 +612,8 @@
 
 (defcl judgements ()
   (judgement-types-hash
-   :initform (make-pvs-hash-table #-cmu :weak-keys? #-cmu t)
+   ;;:initform (make-pvs-hash-table #-cmu :weak-keys? #-cmu t)
+   :initform (make-pvs-hash-table)
    :fetch-as nil)
   judgement-declarations ;;keeps track of all the judgement declarations
   number-judgements-alist
