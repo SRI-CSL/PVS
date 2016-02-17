@@ -147,7 +147,9 @@
   (cl2pvs* sexpr (type type) context))
 
 (defun list-type? (type)
-  (eq (id (module-instance (resolution (find-supertype type)))) '|list_adt|))
+  (let ((sty (find-supertype type)))
+    (and (type-name? sty)
+	 (eq (id (module-instance (resolution sty))) '|list_adt|))))
 
 (defmethod cl2pvs* (sexpr (type adt-type-name) context) 
   (cond ((char-list-type? type)
