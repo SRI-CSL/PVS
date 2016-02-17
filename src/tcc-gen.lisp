@@ -72,7 +72,7 @@
 				 (recursive-signature (current-declaration))
 				 ndecl)
 		(insert-tcc-decl 'subtype expr expected ndecl))
-	    (add-tcc-comment 'subtype expr expected)))))
+	    (add-tcc-comment 'subtype expr expected 'trivial)))))
 
 (defvar *simplify-tccs* nil)
 

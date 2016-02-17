@@ -1927,7 +1927,7 @@
 		     (dolist (decl (all-decls theory))
 		       (dolist (cmt (cdr (assq decl (tcc-comments theory))))
 			 (when (or include-trivial?
-				   (not (eq (fourth cmt) 'in-context)))
+				   (not (memq (fourth cmt) '(trivial in-context))))
 			   (write (apply #'print-tcc-comment decl cmt)
 				  :stream out :escape nil)
 			   (terpri out) (terpri out)))
