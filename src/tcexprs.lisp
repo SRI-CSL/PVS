@@ -563,12 +563,20 @@
 
 (defun all-possible-tupletypes (exprs)
   (mapcar #'mk-tupletype
-	  (cartesian-product (mapcar #'ptypes exprs))))
+    (cartesian-product (mapcar #'ptypes exprs))))
 
-(defun cartesian-product (list-of-lists &optional (result (list nil)))
+(defun cartesian-product (list-of-lists)
+  (let ((size (reduce #'* list-of-lists :key #'length :initial-value 1)))
+    (when (> size 100)
+      (pvs-message "Creating the cartesian product generates ~d elements for~%  ~a"
+	size list-of-lists)
+      (break "Too big - check this"))
+    (cartesian-product* list-of-lists (list nil))))
+
+(defun cartesian-product* (list-of-lists result)
   (if (null list-of-lists)
       result
-      (cartesian-product
+      (cartesian-product*
        (cdr list-of-lists)
        (mapcan #'(lambda (e)
 		   (mapcar #'(lambda (r)
@@ -1437,6 +1445,55 @@
 	    (arguments expr))))
       (call-next-method)))
 
+(defmethod typecheck* ((expr list-expr) expected kind arguments)
+  (if (and expected (list-type? expected)) ;; could be waiting for conversion
+      (let* ((elt-type (when expected
+			 (type-value
+			  (car (actuals (find-adt-supertype expected))))))
+	     ;;(cons-type (when elt-type (make-cons-type elt-type)))
+	     ;;(null-type (when elt-type (make-null-type elt-type)))
+	     (cons-ex (when elt-type (make-cons-name-expr elt-type)))
+	     (null-ex (when elt-type (make-null-name-expr elt-type))))
+	(typecheck-list-elt expr elt-type cons-ex null-ex)
+	expr)
+      (let ((len (list-expr-length expr)))
+	(when (> len 50)
+	  (pvs-message "Typechecking list ~a with ~d elements; slow without knowing the type"))
+	(call-next-method))))
+
+(defmethod list-expr-length ((ex list-expr) &optional (len 0))
+  (list-expr-length (args2 ex) (1+ len)))
+
+(defmethod list-expr-length ((ex null-expr) &optional (len 0))
+  len)
+  
+
+(defun typecheck-list-elt (ex elt-type cons-ex null-ex)
+  (assert (eq (id (operator ex)) '|cons|))
+  (when (ptypes ex) (break "already typechecked?"))
+  (let ((list-ex ex)
+	(prev-ex nil))
+    (loop while (list-expr? list-ex)
+       do (progn (typecheck* (args1 list-ex) elt-type nil nil)
+		 (cond (cons-ex
+			;; We don't typecheck, simply copy from the typechecked cons
+			(setf (type list-ex) (range (type cons-ex)))
+			(let ((op (operator list-ex)))
+			  (unless (type op)
+			    (setf (type op) (type cons-ex))
+			    (setf (resolutions op) (resolutions cons-ex))))
+			(setf (type (argument list-ex))
+			      (mk-tupletype (list elt-type
+						  (if (null-expr? (args2 list-ex))
+						      (type null-ex)
+						      (range (type cons-ex)))))))
+		       (t (break "no expected")))
+		 (setq list-ex (args2 list-ex))))
+    (cond (null-ex
+	   (setf (type list-ex) (type null-ex))
+	   (setf (resolutions list-ex) (resolutions null-ex)))
+	  (t "no null expected"))))
+      
 
 ;;; LET and WHERE expressions are handled specially wrt bindings without
 ;;; a declared-type.  The normal lambda expr looks for a global variable
@@ -1616,6 +1673,7 @@
   ;; XXX do something with arguments here
   (let ((*bound-variables* (append (bindings expr) *bound-variables*)))
     (when (lambda-expr-with-type? expr)
+      (assert (declared-ret-type expr))
       (setf (return-type expr)
 	    (typecheck* (declared-ret-type expr) nil nil nil))
       (set-type (declared-ret-type expr) nil))
