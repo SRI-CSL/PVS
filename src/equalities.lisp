@@ -1005,6 +1005,9 @@
 ;;; supertype.  Note that this is used during typechecking, and tends to
 ;;; succeed for types involving free parameters.
 
+(defmethod compatible? ((res1 resolution) (res2 resolution))
+  (compatible? (type res1) (type res2)))
+
 (defmethod compatible? ((atype list) (etype list))
   (cond ((null atype) (null etype))
 	((null etype) nil)
@@ -2261,7 +2264,7 @@
   (subtype-of*? (supertype t1) t2))
 
 (defmethod subtype-of*? ((t1 funtype) (t2 funtype))
-  (when (tc-eq (domain t1) (domain t2))
+  (when (tc-eq (dep-binding-type (domain t1)) (dep-binding-type (domain t2)))
     (subtype-of*? (range t1) (range t2))))
 
 (defmethod subtype-of*? ((t1 tupletype) (t2 tupletype))
