@@ -628,6 +628,18 @@
   (untypecheck-theory (operator ex))
   (untypecheck-theory (argument ex)))
 
+(defmethod untypecheck-theory ((ex list-expr))
+  (let ((list-ex ex))
+    (loop while (list-expr? list-ex)
+       do (progn (setf (type list-ex) nil)
+		 (setf (types list-ex) nil)
+		 (setf (free-variables list-ex) 'unbound)
+		 (setf (free-parameters list-ex) 'unbound)
+		 (untypecheck-theory (operator list-ex))
+		 (untypecheck-theory (args1 list-ex))
+		 (setq list-ex (args2 list-ex))))
+    (untypecheck-theory list-ex)))
+
 (defmethod untypecheck-theory ((ex argument-conversion))
   (let ((expr (operator ex)))
     (untypecheck-conversion ex expr)))
@@ -864,6 +876,11 @@
 (defmethod copy-slots ((ex1 binding-expr) (ex2 binding-expr))
   (setf (bindings ex1) (bindings ex2)
 	(expression ex1) (expression ex2)))
+
+(defmethod copy-slots ((ex1 lambda-expr-with-type) (ex2 lambda-expr-with-type))
+  (call-next-method)
+  (setf (declared-ret-type ex1) (declared-ret-type ex2)
+	(return-type ex1) (return-type ex2)))
 
 (defmethod copy-slots ((ex1 update-expr) (ex2 update-expr))
   (setf (expression ex1) (expression ex2)
