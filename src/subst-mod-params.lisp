@@ -1062,11 +1062,12 @@
 			 *subst-mod-params-theory* decl)))
 	    (unless (or (let ((ety (nonempty-formula-type ndef)))
 			  (and ety (not (possibly-empty-type? ety))))
-			(and nil
-			     (axiom? decl)
-			     (not (find-uninterpreted ndef modinst
-						      *subst-mod-params-theory*
-						      *subst-mod-params-map-bindings*))))
+			;; (and nil
+			;;      (axiom? decl)
+			;;      (not (find-uninterpreted ndef modinst
+			;; 			      *subst-mod-params-theory*
+			;; 			      *subst-mod-params-map-bindings*)))
+			)
 	      (setf (definition ndecl) ndef
 		    (generated-by ndecl) decl
 		    (newline-comment ndecl) nil)
@@ -1776,15 +1777,28 @@
 			  nebindings))
 	   (alist (unless (eq nbindings ebindings)
 		    (pairlis ebindings nbindings)))
-	   (nexpr (if alist
-		      (substit (subst-mod-params* expression modinst bindings)
-			alist)
-		      (subst-mod-params* expression modinst bindings)))
-	   (ntype (subst-mod-params* type modinst bindings)))
-      (lcopy expr
-	:bindings nbindings
-	:expression nexpr
-	:type ntype))))
+	   (nexpr (substit (subst-mod-params* expression modinst bindings)
+		    alist))
+	   (ntype (subst-mod-params* type modinst bindings))
+	   (nrettype (when (lambda-expr-with-type? expr)
+		       (substit (subst-mod-params* (return-type expr)
+						   modinst bindings)
+			 alist)))
+	   (ndrettype (when (lambda-expr-with-type? expr)
+			(substit (subst-mod-params* (declared-ret-type expr)
+						    modinst bindings)
+			  alist))))
+      (if (lambda-expr-with-type? expr)
+	  (lcopy expr
+	    :bindings nbindings
+	    :expression nexpr
+	    :type ntype
+	    :declared-ret-type ndrettype
+	    :return-type nrettype)
+	  (lcopy expr
+	    :bindings nbindings
+	    :expression nexpr
+	    :type ntype)))))
 
 (defun subst-mod-params-bindings (ebindings modinst bindings)
   (subst-mod-params-bindings* ebindings ebindings modinst bindings nil))

@@ -615,12 +615,24 @@ it is nil in the substituted binding")
 				 (eq nexpr (expression expr))))
 			(type expr)
 			(make-formals-funtype (list new-bindings)
-					      (type nexpr)))))
-	(lcopy expr
-	  'bindings new-bindings
-	  'type ntype
-	  'expression nexpr
-	  'parens 0))))
+					      (type nexpr))))
+	     (nrettype (when (lambda-expr-with-type? expr)
+			 (substit* (return-type expr) nalist)))
+	     (ndrettype (when (lambda-expr-with-type? expr)
+			  (substit* (declared-ret-type expr) alist))))
+	(if (lambda-expr-with-type? expr)
+	    (lcopy expr
+	      'bindings new-bindings
+	      'type ntype
+	      'expression nexpr
+	      'parens 0
+	      'return-type nrettype
+	      'declared-ret-type ndrettype)
+	    (lcopy expr
+	      'bindings new-bindings
+	      'type ntype
+	      'expression nexpr
+	      'parens 0)))))
 
 (defun substit-pairlis (bindings new-bindings alist)
   (if (null bindings)

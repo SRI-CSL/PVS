@@ -550,7 +550,7 @@
 	:library library
 	:target target)))
 
-(defmethod mk-name-expr ((obj bind-decl) &optional actuals mod-id res
+(defmethod mk-name-expr ((obj binding) &optional actuals mod-id res
 			 &key mappings library target)
   (if res
       (make!-name-expr (id obj) actuals mod-id res mappings library target)
@@ -730,10 +730,16 @@
 	    (cons (mk-application op (car args)(cadr args))
 		  (cddr args))))))
 
-(defun mk-lambda-expr (vars expr)
-  (make-instance 'lambda-expr
-    :bindings (mk-bindings vars)
-    :expression expr))
+(defun mk-lambda-expr (vars expr &optional ret-type)
+  (if ret-type
+      (make-instance 'lambda-expr-with-type
+	:declared-ret-type (or (print-type rettype) ret-type)
+	:return-type ret-type
+	:bindings (mk-bindings vars)
+	:expression expr)
+      (make-instance 'lambda-expr
+	:bindings (mk-bindings vars)
+	:expression expr)))
 
 (defun mk-let-expr (bindings expr)
   (change-class
@@ -1393,15 +1399,15 @@
 	(assert *current-context*)
 	(typecheck expr :expected *boolean*))))
 
-(defun make-lambda-expr (vars expr)
-  (let ((nexpr (mk-lambda-expr vars expr)))
+(defun make-lambda-expr (vars expr &optional ret-type)
+  (let ((nexpr (mk-lambda-expr vars expr ret-type)))
     (assert *current-context*)
     (cond ((and (type expr)
 		(every #'type (bindings nexpr)))
 	   (typecheck nexpr
 		      :expected (mk-funtype (mapcar #'type
 						    (bindings nexpr))
-					    (type expr))))
+					    (or ret-type (type expr)))))
 	  (t (error "Types not available in make-lambda-expr")))))
 
 (defun make-forall-expr (vars expr)
@@ -2236,13 +2242,26 @@
     :expression expr
     :type *boolean*))
 
-(defun make!-lambda-expr (bindings expr)
+(defun make!-lambda-expr (bindings expr &optional ret-type)
   (assert (every #'type bindings))
   (assert (type expr))
-  (make-instance 'lambda-expr
-    :bindings bindings
-    :expression expr
-    :type (make-formals-funtype (list bindings) (type expr))))
+  (if ret-type
+      (let* (
+	     ;; (frees (freevars ret-type))
+	     ;; (tbindings (if frees
+	     ;; 		    (mapcar #'declaration frees)
+	     ;; 		    bindings))
+	     (lex (make-instance 'lambda-expr-with-type
+		    :declared-ret-type (or (print-type ret-type) ret-type)
+		    :return-type ret-type
+		    :bindings bindings
+		    :expression expr
+		    :type (make-formals-funtype (list bindings) ret-type))))
+	lex)
+      (make-instance 'lambda-expr
+	:bindings bindings
+	:expression expr
+	:type (make-formals-funtype (list bindings) (type expr)))))
 
 (defun make!-set-expr (bindings expr)
   (assert (every #'type bindings))
@@ -2391,3 +2410,35 @@
 
 (defmethod make!-eta-equivalent* (ex type detuple?)
   ex)
+
+(defun make-cons-type (elt-type)
+  (pc-typecheck (pc-parse (format nil "(cons?[~a])" (str elt-type))
+		  'type-expr)))
+
+(defun make-null-type (elt-type)
+  (pc-typecheck (pc-parse (format nil "(null?[~a])" (str elt-type))
+		  'type-expr)))
+
+(defun make-cons-name-expr (elt-type)
+  (pc-typecheck (pc-parse (format nil "list_adt[~a].cons" (str elt-type)) 'expr)))
+
+(defun make-null-name-expr (elt-type)
+  (pc-typecheck (pc-parse (format nil "list_adt[~a].null" (str elt-type)) 'expr)))
+
+(defmethod mk-subst-alist ((bdlist list) (dty dep-binding))
+  ;; Generates subst alist from bdlist to dty
+  (assert (every #'bind-decl? bdlist))
+  (let ((dex (mk-name-expr dty)))
+    (if (singleton? bdlist)
+	(acons (car bdlist) dex nil)
+	(let ((prjs (make!-projections dex)))
+	  (assert (length= bdlist prjs))
+	  (mapcar #'cons bdlist prjs)))))
+
+(defmethod mk-subst-alist ((dty dep-binding) (bdlist list))
+  ;; Generates subst alist from dty to bdlist
+  (assert (every #'bind-decl? bdlist))
+  (let ((vnames (mapcar #'mk-name-expr bdlist)))
+    (if (singleton? vnames)
+	(acons dty (car vnames) nil)
+	(acons dty (make!-tuple-expr vnames) nil))))

@@ -80,6 +80,15 @@
 ;;; and add any parents of those nodes that should be above the new node
 ;;; to the parents of the new node, removing them from the found nodes.
 
+;; (defstruct (judgement-type (:conc-name jt-)
+;; 			   (:print-function
+;; 			    (lambda (jt stream depth)
+;; 			      (declare (ignore depth))
+;; 			      (format stream "#(JT ~a: ~a)"
+;; 				(jt-type jt) (jt-decl jt)))))
+;;   type
+;;   decl)
+
 (defvar *nodes-seen* nil)
 
 (defvar *judgements-added* nil)
@@ -412,17 +421,34 @@
 (defmethod judgement-types+ ((expr lambda-expr-with-type))
   (let ((jtypes (judgement-types expr)))
     (if (consp jtypes)
-	(if (some #'(lambda (jty) (subtype-of? jty (type expr)))
-		  jtypes)
-	    (if (some #'(lambda (jty) (subtype-of? jty (return-type expr)))
+	;; Have judgement types
+	(if (some #'(lambda (jty) (subtype-of? jty (type expr))) jtypes)
+	    ;; Don't return the expr type, deal with return-type
+	    (if (some #'(lambda (jty)
+			  (let* ((alist (when (dep-binding? (domain jty))
+					  (mk-subst-alist (domain jty) (bindings expr))))
+				 (jrtype (substit (range jty) alist)))
+			    (subtype-of? jrtype (return-type expr))))
 		      jtypes)
 		jtypes
-		(cons (return-type expr) jtypes))
-	    (if (subtype-of? (return-type expr) (type expr))
-		(cons (return-type expr) jtypes)
-		(if (subtype-of? (type expr) (return-type expr))
-		    (cons (type expr) jtypes)
-		    (cons (return-type expr) (cons (type expr) jtypes)))))
+		(let* ((alist (when (dep-binding? (domain (type expr)))
+				(mk-subst-alist (domain (type expr)) (bindings expr))))
+		       (lrtype (substit (return-type expr) alist))
+		       (ftype (mk-funtype (domain (type expr)) lrtype)))
+		  #+pvsdebug (assert (null (freevars ftype)))
+		  (cons ftype jtypes)))
+	    (let* ((alist (when (dep-binding? (domain (type expr)))
+			    (mk-subst-alist (bindings expr) (domain (type expr)))))
+		   (lrtype (substit (return-type expr) alist)))
+	      (if (subtype-of? lrtype (range (type expr)))
+		  (let ((ftype (mk-funtype (domain (type expr)) lrtype)))
+		    #+pvsdebug (assert (null (freevars ftype)))
+		    (cons ftype jtypes))
+		  (if (subtype-of? (range (type expr)) lrtype)
+		      (cons (type expr) jtypes)
+		      (let ((ftype (mk-funtype (domain (type expr)) lrtype)))
+			#+pvsdebug (assert (null (freevars ftype)))
+			(cons ftype (cons (type expr) jtypes)))))))
 	(list (type expr)))))
 
 (defmethod judgement-types ((ex expr))
@@ -476,11 +502,14 @@
 	  (multiple-value-bind (njtypes njdecls)
 	      ;; This gets number, name, and application judgements
 	      (call-next-method)
+	    (assert (length= njtypes njdecls))
 	    (multiple-value-bind (ejtypes ejdecls)
 		;; This gets expr-judgements
 		(expr-judgement-types ex njtypes)
+	      (assert (length= ejtypes ejdecls))
 	      (let ((jtypes (if ejtypes (append njtypes ejtypes) njtypes))
 		    (jdecls (if ejdecls (append njdecls ejdecls) njdecls)))
+		(assert (length= jtypes jdecls))
 		;(when (cdr jtypes) (break "Multiple judgement-types"))
 		#+pvsdebug (assert (or (and (name-expr? ex)
 					    (skolem-const-decl? (declaration ex)))
@@ -549,7 +578,9 @@
     (values
      (append (mapcar #'type jdecls)
 	     (list (least-available-numeric-type (number ex))))
-     jdecls)))
+     ;; TODO: make a judgement-decl for this
+     ;; nil is a placeholder for now
+     (append jdecls (list nil)))))
 
 (defmethod judgement-types* ((ex rational-expr))
   (let ((jdecls (cdr (assoc (number ex)
@@ -558,7 +589,7 @@
     (values
      (append (mapcar #'type jdecls)
 	     (list (least-available-numeric-type (number ex))))
-     jdecls)))
+     (append jdecls (list nil)))))
 
 (defun least-available-numeric-type (num)
   (assert (rationalp num))
@@ -642,9 +673,11 @@
 	       (multiple-value-bind (gtypes ijdecls)
 		   (compute-application-judgement-types
 		    ex (judgements-graph entry))
+		 (assert (length= gtypes ijdecls))
 		 (multiple-value-bind (jtypes jdecls)
 		     (generic-application-judgement-types
 		      ex (generic-judgements entry) gtypes ijdecls)
+		   (assert (length= jtypes jdecls))
 		   #+pvsdebug (assert (or (vectorp jtypes)
 					  (not (member (type ex) jtypes :test #'tc-eq))))
 		   (values jtypes jdecls))))))))
@@ -657,9 +690,11 @@
 	   ;; form, which loses information.
 	   (let ((jbvars nil))
 	     (unwind-protect
-		  (progn (setq jbvars
-			       (set-binding-judgements-from-arg-judgements ex))
-			 (judgement-types* (expression* op)))
+		  (let ((*bound-variables* (append (bindings (operator* ex))
+						   *bound-variables*)))
+		    (setq jbvars
+			  (set-binding-judgements-from-arg-judgements ex))
+		    (judgement-types* (expression* op)))
 	       (dolist (jbvar jbvars)
 		 (setf (gethash (car jbvar) (judgement-types-hash
 					     (current-judgements)))
@@ -843,7 +878,7 @@
 ;; Want the least types and corresponding judgement decls that cover all
 ;; exprs in the list 
 (defmethod judgement-types* ((expr-list cons))
-  (assert (every #'expr? expr-list))
+  #+pvsdebug (assert (every #'expr? expr-list))
   (multiple-value-bind (types jdecls)
       (judgement-types* (car expr-list))
     (judgement-types-list (cdr expr-list) (type (car expr-list)) types jdecls)))
@@ -878,8 +913,7 @@
 			 (judgement-types-list
 			  (cdr expr-list)
 			  type (list (elt ntypes pos)) (list (elt njdecls pos)))
-			 ;; Ow look for all judgements that are a subtype of type
-			 
+			 ;; OW look for all judgements that are a subtype of type
 			 (let ((stypes nil) (sjdecls nil))
 			   (dotimes (i (length ntypes))
 			     (when (subtype-of? (elt ntypes i) type)
@@ -932,6 +966,10 @@
 	    recfields))
 	;; otherwise tupletypes
 	(mapcar #'mk-tupletype (cartesian-product tlist)))))
+
+(defun jvector-to-decls (jdecls)
+  (let ((dlist (coerce jdecls 'list)))
+    (cartesian-product dlist)))
 
 (defun join-compatible-vector-types (types1 types2 type)
   (assert (= (length types1) (length types2)))
@@ -1016,6 +1054,7 @@
 			   compats)))))))
 
 (defun generic-application-judgement-types (ex gen-judgements jtypes jdecls)
+  (assert (length= jtypes jdecls))
   (if (null gen-judgements)
       (values jtypes jdecls)
       (let* ((jdecl (car gen-judgements))
@@ -1025,26 +1064,42 @@
 		   (argtypes (mapcar #'judgement-types* arguments))
 		   (domains (operator-domain* jtype arguments nil))
 		   (range (operator-range* jtype arguments))
-		   (rdomains (operator-domain ex))
-		   (jrange (when (length= argtypes (formals jdecl))
-			     (compute-appl-judgement-range-type
-			      arguments argtypes rdomains domains range)))
-		   (dont-add? (or (null jrange)
-				  (subtype-of? (type ex) jrange)
-				  (some #'(lambda (jty)
-					    (subtype-of? jty jrange))
-					jtypes))))
-	      (generic-application-judgement-types
-	       ex
-	       (cdr gen-judgements)
-	       (if dont-add?
-		   jtypes
-		   (cons jrange
-			 (delete-if #'(lambda (jty)
-					(subtype-of? jrange jty)) jtypes)))
-	       (if dont-add?
-		   jdecls
-		   (cons jdecl jdecls))))
+		   (rdomains (operator-domain ex)))
+	      (multiple-value-bind (jrange rjdecl)
+		  (when (length= argtypes (formals jdecl))
+		    (compute-appl-judgement-range-type
+		     arguments argtypes rdomains domains range jdecl))
+		(let* ((dont-add? (or (null jrange)
+				      (subtype-of? (type ex) jrange)
+				      (some #'(lambda (jty)
+						(subtype-of? jty jrange))
+					    jtypes)))
+		       (rtypes nil)
+		       (rdecls nil)
+		       (otypes (if dont-add?
+				   jtypes
+				   (cons jrange
+					 (remove-if #'(lambda (jty)
+							(subtype-of? jrange jty))
+					   jtypes)))))
+		  (if dont-add?
+		      (setq rtypes jtypes
+			    rdecls jdecls)
+		      (progn
+			(mapc #'(lambda (jty jd)
+				  (unless (subtype-of? jrange jty)
+				    (push jty rtypes)
+				    (push jd rdecls)))
+			      jtypes jdecls)
+			(push jrange rtypes)
+			(push rjdecl rdecls)))
+		  (assert (length= rtypes otypes))
+		  (assert (length= rtypes rdecls))
+		  (generic-application-judgement-types
+		   ex
+		   (cdr gen-judgements)
+		   rtypes
+		   rdecls))))
 	    (generic-application-judgement-types
 	     ex
 	     (cdr gen-judgements)
@@ -1161,30 +1216,48 @@
 					       &optional jtypes exclude jdecls)
   (if (null graph)
       (values (nreverse jtypes) (nreverse jdecls))
-      (let* ((excluded? (memq (caar graph) exclude))
-	     (range (unless excluded?
-		      (compute-appl-judgement-types*
-		       arguments argtypes rdomains thinst theory
-		       (caar graph))))
-	     (dont-add? (or (null range)
-			    ;; TODO: vectors@closest_approach_2D.gt_D_t1_lt_t2 doesn't
-			    ;; prove with this uncommented - not sure why
-			    ;; (subtype-of? extype range)
-			    (some #'(lambda (r) (subtype-of? r range))
-				  jtypes))))
-	(compute-appl-judgement-types
-	 arguments argtypes rdomains extype thinst theory
-	 (cdr graph)
-	 (if dont-add?
-	     jtypes
-	     (cons range
-		   (delete-if #'(lambda (r) (subtype-of? range r)) jtypes)))
-	 (if (or range excluded?)
-	     (append (car graph) exclude)
-	     exclude)
-	 (if dont-add?
-	     jdecls
-	     (cons (caar graph) jdecls))))))
+      (let* ((excluded? (memq (caar graph) exclude)))
+	(multiple-value-bind (range rjdecl)
+	    (unless excluded?
+	      (compute-appl-judgement-types*
+	       arguments argtypes rdomains thinst theory
+	       (caar graph)))
+	  (let* ((dont-add? (or (null range)
+				;; TODO: vectors@closest_approach_2D.gt_D_t1_lt_t2 doesn't
+				;; prove with this uncommented - not sure why
+				;; (subtype-of? extype range)
+				(some #'(lambda (r) (subtype-of? r range))
+				      jtypes)))
+		 (rtypes nil)
+		 (rdecls nil)
+		 (otypes (if dont-add?
+			     jtypes
+			     (cons range
+				   (remove-if #'(lambda (r) (subtype-of? range r))
+				     jtypes)))))
+	    (assert (length= jtypes jdecls))
+	    (if dont-add?
+		(setq rtypes jtypes
+		      rdecls jdecls)
+		(progn 
+		  (mapc #'(lambda (jty jd)
+			    (unless (subtype-of? range jty)
+			      (push jty rtypes)
+			      (push jd rdecls)))
+			jtypes jdecls)
+		  (push range rtypes)
+		  (push rjdecl rdecls)))
+	    (assert (length= otypes rtypes))
+	    (assert (or rtypes (null jtypes)))
+	    (assert (length= rtypes rdecls))
+	    (compute-appl-judgement-types
+	     arguments argtypes rdomains extype thinst theory
+	     (cdr graph)
+	     rtypes
+	     (if (or range excluded?)
+		 (append (car graph) exclude)
+		 exclude)
+	     rdecls))))))
 
 (defun compute-appl-judgement-types* (arguments argtypes rdomains thinst theory jdecl)
   (let* ((jtype (subst-mod-params (judgement-type jdecl)
@@ -1196,7 +1269,7 @@
       ;;(assert (length= argtypes rdomains))
       ;;(assert (length= argtypes arguments))
       (compute-appl-judgement-range-type
-       arguments argtypes rdomains domains range))))
+       arguments argtypes rdomains domains range jdecl))))
 
 
 ;;; argtypes here is a list of either
@@ -1204,9 +1277,9 @@
 ;;;  2. lists of types, otherwise
 
 (defun compute-appl-judgement-range-type (arguments argtypes rdomains domains
-						    range)
+						    range jdecl)
   (if (null arguments)
-      range
+      (values range jdecl)
       (when (judgement-arguments-match?
 	     (car arguments) (car argtypes) (car rdomains) (car domains))
 	(let* ((srdoms (if (typep (car rdomains) 'dep-binding)
@@ -1234,7 +1307,8 @@
 	   (substit sdoms bindings)
 	   (if (typep (car domains) 'dep-binding)
 	       (substit range (acons (car domains) (car arguments) bindings))
-	       (substit range bindings)))))))
+	       (substit range bindings))
+	   jdecl)))))
 
 (defun judgement-arguments-match? (argument argtypes rdomain jdomain)
   ;;(assert (fully-instantiated? rdomain))
@@ -1544,12 +1618,57 @@
 
 (defmethod judgement-types* ((ex lambda-expr))
   (multiple-value-bind (ejtypes ejdecls)
-      (judgement-types* (expression ex))
-    (when (consp ejtypes) ;; Could be a vector
-      (let ((ljtypes (mapcar #'(lambda (jty)
-				 (get-lambda-expr-funtype-for-range ex jty))
-		       ejtypes)))
-	(remove-judgement-types-of-type (type ex) ljtypes ejdecls)))))
+      (let ((*bound-variables* (append (bindings ex) *bound-variables*)))
+	(judgement-types* (expression ex)))
+    ;; Any freevars in ejtypes should refer to (bindings ex)
+    (assert (length= ejtypes ejdecls))
+    #+pvsdebug (assert (every #'(lambda (fv)
+				  (or (memq (declaration fv) (bindings ex))
+				      (memq (declaration fv) *bound-variables*)
+				      (var-decl? (declaration fv))))
+			      (freevars ejtypes)))
+    (assert (or (listp ejtypes) (vectorp ejtypes)))
+    (let* ((depbdg (cond ((dep-binding? (domain (type ex)))
+			  (domain (type ex)))
+			 ((some #'(lambda (fv) (memq (declaration fv) (bindings ex)))
+				(freevars ejtypes))
+			  (if (cdr (bindings ex))
+			      (let ((tupty (make-tupletype-from-bindings (bindings ex))))
+				(mk-dep-binding (make-new-variable '|d| ex) tupty))
+			      (mk-dep-binding
+			       (id (car (bindings ex)))
+			       (type (car (bindings ex)))
+			       (declared-type (car (bindings ex))))))))
+	   (alist (when depbdg (mk-subst-alist (bindings ex) depbdg)))
+	   (drtypes (substit (if (vectorp ejtypes)
+				 (jvector-to-types ejtypes)
+				 ejtypes)
+		      alist))
+	   (drjdecls (if (vectorp ejdecls)
+			 (jvector-to-decls ejdecls)
+			 ejdecls))
+	   (rtypes nil)
+	   (rjdecls nil))
+      (mapc #'(lambda (ety ejd)
+		(when (subtype-of? (range (type ex)) ety)
+		  (push ety rtypes)
+		  (push ejd rjdecls)))
+	   drtypes drjdecls)
+      (setq rtypes (nreverse rtypes))
+      (setq rjdecls (nreverse rjdecls))
+      (assert (length= rtypes rjdecls))
+      (let ((ftypes (mapcar #'(lambda (rty)
+				(let ((dom (if (member depbdg (freevars rty)
+						       :key #'declaration)
+					       depbdg
+					       (dep-binding-type (domain (type ex))))))
+				  (mk-funtype dom rty)))
+		      rtypes)))
+	#+pvsdebug (assert (every #'(lambda (fv)
+				      (or (memq (declaration fv) *bound-variables*)
+					  (var-decl? (declaration fv))))
+				  (freevars ftypes)))
+	(values ftypes rjdecls)))))
 
 ;; ex is a lambda expression, type is a new range type, e.g., after
 ;; substit, def expansion, etc.  If any of the lambda bindings occur in
@@ -1559,7 +1678,29 @@
 (defun get-lambda-expr-funtype-for-range (ex range)
   (assert (lambda-expr? ex))
   (assert (type-expr? range))
-  (get-lambda-expr-funtype-for-range* (bindings ex) (bindings ex) range))
+  ;; Any freevars in range type should be from the bindings of ex
+  #+pvsdebug (assert (every #'(lambda (fv) (memq (declaration fv) (bindings ex)))
+			    (freevars range)))
+  ;; (assert (and (null (cdr (freevars range)))
+  ;; 	       (dep-binding? (declaration (car (freevars range))))
+  ;; 	       (dep-binding? (domain (find-supertype (type ex))))
+  ;; 	       (eq (domain (find-supertype (type ex)))
+  ;; 		   (declaration (car (freevars range)))))))
+  (let* ((depbdg (cond ((dep-binding? (domain (type ex)))
+			(domain (type ex)))
+		       ((some #'(lambda (fv) (memq (declaration fv) (bindings ex)))
+			      (freevars range))
+			(if (cdr (bindings ex))
+			    (let ((tupty (make-tupletype-from-bindings (bindings ex))))
+			      (mk-dep-binding (make-new-variable '|d| ex) tupty))
+			    (mk-dep-binding
+			     (id (car (bindings ex)))
+			     (type (car (bindings ex)))
+			     (declared-type (car (bindings ex))))))))
+	 (alist (when depbdg (mk-subst-alist (bindings ex) depbdg)))
+	 (rtype (substit range alist))
+	 (dom (or depbdg (domain (type ex)))))
+    (mk-funtype dom rtype)))
 
 (defun get-lambda-expr-funtype-for-range* (obindings sbindings range
 					   &optional (idx 1) substs types)
@@ -1959,8 +2100,9 @@
   (let* ((jtypes (judgement-types+ ex))
 	 (*subtypes-seen* nil)
 	 (preds (type-constraints* jtypes ex nil all?)))
-    (assert (subsetp (freevars preds) (union (freevars ex) *bound-variables*)
-		     :key #'declaration))
+    #+pvsdebug (assert (subsetp (freevars preds)
+				(union (freevars ex) *bound-variables*)
+				:key #'declaration))
     (delete-duplicates preds :test #'tc-eq)))
 
 (defmethod type-constraints* ((list cons) ex preds all?)
@@ -2573,6 +2715,7 @@
 			   (aref from-vector i) theory)))
 	    (when exp-jdgs
 	      (push (cons i exp-jdgs) exp-elts))))
+	#+pvsdebug
 	(assert (not (and (= (length from-vector)
 			     (length exp-elts))
 			  (every #'(lambda (ee)
@@ -2938,17 +3081,19 @@
 			  'application-judgements-alist capplalist))))))))))
 
 (defun remove-judgement-types-of-name-type (ntype jtypes jdecls
-						  &optional njtypes njdecls)
+					    &optional njtypes njdecls)
   (if (null jtypes)
       (list (nreverse njtypes) (nreverse njdecls))
-      (if (and nil
-	       (or (subtype-of? ntype (car jtypes))
-		   (not (subtype-of? (car jtypes) ntype))))
-	  (remove-judgement-types-of-name-type
-	   ntype (cdr jtypes) (cdr jdecls) njtypes njdecls)
+      ;; (if (and nil
+      ;; 	       (or (subtype-of? ntype (car jtypes))
+      ;; 		   (not (subtype-of? (car jtypes) ntype))))
+      ;; 	  (remove-judgement-types-of-name-type
+      ;; 	   ntype (cdr jtypes) (cdr jdecls) njtypes njdecls)
 	  (remove-judgement-types-of-name-type
 	   ntype (cdr jtypes) (cdr jdecls)
-	   (cons (car jtypes) njtypes) (cons (car jdecls) njdecls)))))
+	   (cons (car jtypes) njtypes) (cons (car jdecls) njdecls))
+	  ;;)
+      ))
       
 
 ;;; Subtype judgement handling
@@ -3372,7 +3517,6 @@
 		   (uent (assoc ul histu :test #'=))
 		   (gl (length (judgements-graph aj)))
 		   (gent (assoc gl histg :test #'=)))
-	      (when (= ul 83) (setq *lll* el))
 	      (if uent
 		  (incf (cdr uent))
 		  (push (cons ul 1) histu))
