@@ -1200,7 +1200,7 @@ or supply more substitutions."
 				    dependent-decls)
 			   (when (and (null (actuals name-expr))
 				      (actuals (module-instance res)))
-			     (format t "~%Using instance~%  ~a.~a"
+			     (format-if "~%Using instance~%  ~a.~a"
 			       (module-instance res)
 			       (id (declaration res))))
 			   (values '? (list newsequent)
