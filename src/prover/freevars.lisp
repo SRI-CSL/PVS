@@ -101,6 +101,17 @@
 	 (afrees (freevars* (argument expr))))
     (fv-union ofrees afrees)))
 
+(defmethod freevars* ((expr list-expr))
+  (let ((list-ex expr)
+	(ofrees (freevars* (operator expr)))
+	(afrees nil))
+    (loop while (list-expr? list-ex)
+       do (let ((afrs (freevars* (args1 list-ex))))
+	    (dolist (afr afrs)
+	      (pushnew afr afrees :test #'same-declaration))
+	    (setq list-ex (args2 list-ex))))
+    (fv-union ofrees afrees)))
+
 (defmethod freevars* ((list list))
   (freevars-list (reverse list) nil))
 
@@ -141,6 +152,15 @@
 	 (frees-bindlist (freevars* (bindings expr)))
 	 (diff (set-difference frees-expression (bindings expr)
 			       :test #'same-declaration)))
+    (fv-union frees-bindlist diff)))
+
+(defmethod freevars* ((expr lambda-expr-with-type))
+  (let* ((frees-expression (freevars* (expression expr)))
+	 (frees-rettype (freevars* (return-type expr)))
+	 (frees-union (fv-union frees-expression frees-rettype))
+	 (frees-bindlist (freevars* (bindings expr)))
+	 (diff (set-difference frees-union (bindings expr)
+				:test #'same-declaration)))
     (fv-union frees-bindlist diff)))
 
 (defmethod freevars* ((expr name-expr))
