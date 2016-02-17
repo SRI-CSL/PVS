@@ -232,6 +232,14 @@
     (setf (free-parameters expr) efrees)
     (union efrees frees :test #'eq)))
 
+(defmethod free-params* ((expr lambda-expr-with-type) frees)
+  (let* ((efrees (free-params* (expression expr) 
+		   (free-params* (bindings expr)
+		     (free-params* (type expr)
+		       (free-params* (return-type expr) nil))))))
+    (setf (free-parameters expr) efrees)
+    (union efrees frees :test #'eq)))
+
 (defmethod free-params* ((expr name-expr) frees)
   (let ((nfrees (free-params* (type expr)
 		  (when (constant? expr)
