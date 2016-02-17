@@ -1853,25 +1853,27 @@
 	 (last-place (when place
 		       (vector (ending-row place) (ending-col place)
 			       (ending-row place) (ending-col place))))
-	 (lexpr (xt-list-expr* (term-args expr) last-place)))
+	 (nullex (make-instance 'null-expr
+		   :id '|null|
+		   :place last-place))
+	 (lexpr (xt-list-expr* (reverse (term-args expr)) nullex)))
     (setf (place lexpr) place)
     lexpr))
 
-(defun xt-list-expr* (exprs last-place)
-  (if exprs
+(defun xt-list-expr* (exprs listex)
+  (if (null exprs)
+      listex
       (let* ((ex (xt-expr (car exprs)))
-	     (list (xt-list-expr* (cdr exprs) last-place)))
-	(make-instance 'list-expr
-	  :operator (make-instance 'name-expr
-		      :id '|cons|
-		      :place (place ex))
-	  :argument (make-instance 'arg-tuple-expr
-		      :exprs (list ex list)
-		      :place (place ex))
-	  :place (place ex)))
-      (make-instance 'null-expr
-	:id '|null|
-	:place last-place)))
+	     (consex 
+	      (make-instance 'list-expr
+		:operator (make-instance 'name-expr
+			    :id '|cons|
+			    :place (place ex))
+		:argument (make-instance 'arg-tuple-expr
+			    :exprs (list ex listex)
+			    :place (place ex))
+		:place (place ex))))
+	(xt-list-expr* (cdr exprs) consex))))
 
 (defun xt-bracket-expr (expr)
   (let ((op (ds-id (term-arg0 expr)))
@@ -2117,6 +2119,7 @@
       arg))
 
 (defmethod rightmost-relation-term ((arg t) op)
+  (declare (ignore op))
   arg)
 
 (defmethod leftmost-relation-term ((arg infix-application) op)
@@ -2137,6 +2140,7 @@
       arg))
 
 (defmethod leftmost-relation-term ((arg t) op)
+  (declare (ignore op))
   arg)
 
 
