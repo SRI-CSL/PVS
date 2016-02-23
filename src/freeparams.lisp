@@ -217,7 +217,7 @@
 	(cons-list nil))
     (loop while (list-expr? list-ex)
        do (let ((afrs (free-params* (args1 list-ex) nil)))
-	    (assert (eq (free-parameters (args1 list-ex)) afrs))
+	    (assert (equal (free-parameters (args1 list-ex)) afrs))
 	    (push list-ex cons-list)
 	    (setq list-ex (args2 list-ex))))
     (assert (null-expr? list-ex))
