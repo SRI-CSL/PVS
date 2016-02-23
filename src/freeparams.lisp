@@ -211,6 +211,28 @@
     (setf (free-parameters expr) efrees)
     (union efrees frees :test #'eq)))
 
+(defmethod free-params* ((expr list-expr) frees)
+  (let ((list-ex expr)
+	(ofrees (free-params* (operator expr) nil))
+	(cons-list nil))
+    (loop while (list-expr? list-ex)
+       do (let ((afrs (free-params* (args1 list-ex) nil)))
+	    (assert (eq (free-parameters (args1 list-ex)) afrs))
+	    (push list-ex cons-list)
+	    (setq list-ex (args2 list-ex))))
+    (assert (null-expr? list-ex))
+    (setf (free-parameters list-ex) ofrees)
+    ;; Now walk down the reversed list-exprs
+    (dolist (cons-ex cons-list)
+      (let ((a1frees (free-parameters (args1 cons-ex)))
+	    (a2frees (free-parameters (args2 cons-ex))))
+	(assert (listp a1frees))
+	(assert (listp a2frees))
+	(setf (free-parameters cons-ex)
+	      (union a1frees a2frees :test #'eq))))
+    (assert (listp (free-parameters expr)))
+    (union (free-parameters expr) frees :test #'eq)))
+
 (defmethod free-params* ((list list) frees)
   (free-params-list list frees))
 

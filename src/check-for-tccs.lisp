@@ -255,6 +255,9 @@
 		(check-for-tccs* (operator expr) optype))))))
   (check-for-recursive-tcc expr))
 
+(defmethod check-for-tccs* ((ex list-expr) expected)
+  (unless (type ex) (call-next-method)))
+
 (defmethod check-for-tccs* ((ex conjunction) expected)
   (check-for-tccs* (args1 ex) *boolean*)
   (let ((*tcc-conditions* (push-tcc-condition (args1 ex) *tcc-conditions*)))
