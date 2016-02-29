@@ -47,8 +47,6 @@
 (defvar pvs-in-checker)
 (defvar pvs-reserved-words-regexp)
 
-(defvar pvs-string-positions nil)
-
 (defvar pvs-search-syntax-table nil  "Syntax table used while in search mode.")
 (if pvs-search-syntax-table ()
     (let ((st (syntax-table)))
@@ -156,10 +154,10 @@ beginning of the previous one."
 	(let ((opoint (point)))
 	  (re-search-backward-ignoring-comments ":" nil t)
 	  (backward-sexp)
-	  (while (in-comment) (backward-sexp))
+	  (while (in-pvs-comment) (backward-sexp))
 	  (when (looking-at "\\[")
 	    (backward-sexp)
-	    (while (in-comment) (backward-sexp)))
+	    (while (in-pvs-comment) (backward-sexp)))
 	  t)
 	(goto-char (or start (point)))
 	nil)))
@@ -176,7 +174,7 @@ beginning of the previous one."
 	 (found (re-search-forward "\\(\\btheory\\b\\|\\bdatatype\\b\\)"
 				   nil t)))
     (while (and found
-		(or (in-comment-or-string)
+		(or (in-pvs-comment-or-string)
 		    (in-square-braces (or start (point-min)))
 		    (in-begin-end (or start (point-min)))))
       (setq found (re-search-forward "\\(\\btheory\\b\\|\\bdatatype\\b\\)"
@@ -192,7 +190,7 @@ beginning of the previous one."
 	 (found (re-search-backward "\\(\\btheory\\b\\|\\bdatatype\\b\\)"
 				    nil t)))
     (while (and found
-		(or (in-comment-or-string)
+		(or (in-pvs-comment-or-string)
 		    (in-square-braces (or start (point-min)))
 		    (in-begin-end (or start (point-min)))))
       (setq found (re-search-backward "\\(\\btheory\\b\\|\\bdatatype\\b\\)"
@@ -283,14 +281,14 @@ beginning of the previous one."
 						   limit noerror repeat)
   (let ((case-fold-search t))
     (re-search-forward regexp limit noerror repeat)
-    (while (in-comment)
+    (while (in-pvs-comment)
       (re-search-forward regexp limit noerror repeat))))
 
 (defun re-search-backward-ignoring-comments (regexp &optional
 						    limit noerror repeat)
   (let ((case-fold-search t))
     (re-search-backward regexp limit noerror repeat)
-    (while (in-comment)
+    (while (in-pvs-comment)
       (re-search-backward regexp limit noerror repeat))))
 
 
@@ -366,26 +364,24 @@ beginning of the previous one."
     (when file
       (mapcar 'car (theory-regions)))))
 
-(defun in-comment-or-string ()
-  (or (in-comment) (in-string)))
+(defun in-pvs-comment-or-string ()
+  (or (in-pvs-comment) (in-pvs-string)))
 
-(defun in-comment ()
+(defun in-pvs-comment ()
   (let ((limit (point)))
     (save-excursion
       (beginning-of-line)
       (let ((found (search-forward comment-start limit t)))
-	(while (and found (in-string))
+	(while (and found (in-pvs-string))
 	  (setq found (search-forward comment-start limit t)))
 	found))))
 
-(defun in-string (&optional strings-computed)
-  (let ((pvs-string-positions (if strings-computed
-				  pvs-string-positions
-				  (pvs-string-positions))))
-    (some '(lambda (strpos)
-	     (and (< (car strpos) (point))
-		  (>= (cdr strpos) (point))))
-	  pvs-string-positions)))
+(defun in-pvs-string ()
+  (set-pvs-string-positions)
+  (some '(lambda (strpos)
+	  (and (< (car strpos) (point))
+	   (>= (cdr strpos) (point))))
+	pvs-string-positions))
 
 (defpvs find-unbalanced-pvs editing (arg)
   "Find unbalanced PVS delimiters
@@ -406,24 +402,31 @@ The find-unbalanced-region-pvs command goes to the point in region where
 PVS delimiters become unbalanced.  Point will be on the offending
 delimiter."
   (interactive "r")
-  (let ((pvs-string-positions (pvs-string-positions)))
-    (pvs-count-char-pairs start end "[" "]")
-    (pvs-count-char-pairs start end "(" ")")
-    (pvs-count-char-pairs start end "{" "}")
-    (pvs-count-string-pairs start end "begin" "end")))
+  (set-pvs-string-positions)
+  (pvs-count-char-pairs start end "[" "]")
+  (pvs-count-char-pairs start end "(" ")")
+  (pvs-count-char-pairs start end "{" "}")
+  (pvs-count-string-pairs start end "begin" "end"))
 
-(defun pvs-string-positions ()
-  (save-excursion
-    (goto-char (point-min))
-    (let ((string-positions nil)
-	  (string-pos nil))
-      (while (setq string-pos (pvs-next-string-position))
-	(push string-pos string-positions))
-      (nreverse string-positions))))
+(defun set-pvs-string-positions ()
+  (unless (assq 'pvs-string-positions (buffer-local-variables))
+    (save-excursion
+      (goto-char (point-min))
+      (let ((string-positions nil)
+	    (string-pos nil))
+	(while (setq string-pos (pvs-next-string-position))
+	  (push string-pos string-positions))
+	(setq-local pvs-string-positions
+		    (nreverse string-positions))))
+    (setq-local after-change-functions
+		;; Called after buffer hash been changed
+		(cons '(lambda (beg end len)
+			(makunbound 'pvs-string-positions))
+		      after-change-functions))))
 
 (defun pvs-next-string-position ()
   (let ((string-start (re-search-forward "\"" nil t)))
-    (while (and string-start (simple-in-comment))
+    (while (and string-start (simple-in-pvs-comment))
       (setq string-start (re-search-forward "\"" nil t)))
     (when string-start
       (let ((string-end (re-search-forward "\"" nil t)))
@@ -436,7 +439,7 @@ delimiter."
 	  (error "Extra \""))
 	(cons (1- string-start) (1- string-end))))))
 
-(defun simple-in-comment ()
+(defun simple-in-pvs-comment ()
   (let ((limit (point)))
     (save-excursion
       (beginning-of-line)
@@ -457,7 +460,7 @@ delimiter."
 	(while (and (not err)
 		    ;; Don't reverse sdel and edel or square braces won't work
 		    (re-search-forward (format "[%s%s]" edel sdel) end t))
-	  (unless (in-comment-or-string)
+	  (unless (in-pvs-comment-or-string)
 	    (if (equal (char-to-string (preceding-char)) sdel)
 		(push (point) pairstack)
 		(if pairstack
@@ -485,7 +488,7 @@ delimiter."
 	(goto-char start)
 	(while (and (not err)
 		    (re-search-forward regexp end t))
-	  (unless (in-comment-or-string)
+	  (unless (in-pvs-comment-or-string)
 	    (if (save-excursion
 		  (re-search-backward regexp nil t)
 		  (looking-at sdel))
@@ -503,7 +506,7 @@ delimiter."
 	  (limit (point)))
       (goto-char (or start (point-min)))
       (while (re-search-forward "[][]" limit t)
-	(unless (in-comment-or-string)
+	(unless (in-pvs-comment-or-string)
 	  (setq count
 		(+ count (if (eq (preceding-char) ?\[) 1 -1)))))
       (not (= count 0)))))
@@ -516,7 +519,7 @@ delimiter."
 	(goto-char (or start (point-min)))
 	(while (re-search-forward (format "\\b%s\\b\\|\\b%s\\b" sdel edel)
 				  limit t)
-	  (unless (in-comment-or-string)
+	  (unless (in-pvs-comment-or-string)
 	    (setq count
 		  (+ count (save-excursion
 			     (forward-word -1)
@@ -1080,8 +1083,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 (defun get-theory-modtime (theory)
   (let ((thbuf (get-theory-buffer theory)))
     (if thbuf
-	(save-excursion
-	  (set-buffer thbuf)
+	(with-current-buffer thbuf
 	  (visited-file-modtime))
 	(message "Theory %s not found" theory))))
 

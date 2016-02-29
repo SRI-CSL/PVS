@@ -766,7 +766,7 @@ buffer."
   (let ((start nil))
     (while (and (null start)
 		(re-search-forward "\"" nil t))
-      (unless (in-comment)
+      (unless (in-pvs-comment)
 	(setq start (point))))
     start))
 

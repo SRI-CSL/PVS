@@ -892,7 +892,7 @@ anything but a left paren or a \", ignoring whitespace."
 	(if (looking-at "([ \t\n\r]*[Pp][Rr][Oo][Pp][Ax][Xx][ \t\n\r]*)")
 	    (progn (forward-char 4) (pvs-prover-goto-next-step))
 	    (if (save-excursion
-		  (or (in-comment) (in-string)))
+		  (or (in-pvs-comment) (in-pvs-string)))
 		(progn (forward-char 1) (pvs-prover-goto-next-step)))))))
 
 

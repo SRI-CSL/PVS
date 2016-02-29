@@ -130,6 +130,8 @@ not normally needed; buffers with a .pvs extension and buffers created by
 PVS are automatically put in the proper mode."
   (interactive)
   (kill-all-local-variables)
+  (setq major-mode 'pvs-mode)
+  (setq mode-name "PVS")
   (use-local-map pvs-mode-map)
   ;; fix up comment handling
   (make-local-variable 'comment-start)
@@ -139,8 +141,6 @@ PVS are automatically put in the proper mode."
   (make-local-variable 'comment-start-skip)
   (setq comment-start-skip "%+ *")
   (setq require-final-newline t)
-  (setq major-mode 'pvs-mode)
-  (setq mode-name "PVS")
   (setq mode-line-process 'ilisp-status)
   (set-syntax-table pvs-mode-syntax-table)
   (setq default-input-method "PVS-TeX")
