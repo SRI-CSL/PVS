@@ -298,6 +298,25 @@
 	 (xtra  (when pvsiosymb (list (type op)))))
     (mk-funapp fn (append (pvs2cl_up* args bindings livevars) xtra))))
 
+(defmethod reverse-list-expr ((expr list-expr) accum)
+  (reverse-list-expr (args2 expr) (cons (args1 expr) accum)))
+
+(defmethod reverse-list-expr ((expr t) accum)
+  accum)
+
+(defun pvs2cl-reverse-list-expr (rlist bindings livevars accum)
+  (cond ((consp rlist)
+     (pvs2cl-reverse-list-expr (cdr rlist) bindings
+                   (append (updateable-free-formal-vars (car rlist))
+                       livevars)
+                   (cons (pvs2cl_up* (car rlist) bindings livevars)
+                     accum)))
+    (t accum)))
+
+(defmethod pvs2cl_up* ((expr list-expr) bindings livevars)
+  (let ((reverse-expr (reverse-list-expr expr nil)))
+    `(list ,@(pvs2cl-reverse-list-expr reverse-expr bindings livevars nil))))
+
 (defmethod pvs2cl_up* ((expr application) bindings livevars)
   (with-slots
    (operator argument) expr
