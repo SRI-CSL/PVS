@@ -92,4 +92,10 @@ be detected."
                      ; (0 unless kind is prelude-theory)
   )
 
+(if (not (fboundp 'setq-local))
+(defmacro setq-local (var val)
+  "Set variable VAR to value VAL in current buffer."
+  ;; Can't use backquote here, it's too early in the bootstrap.
+  (list 'set (list 'make-local-variable (list 'quote var)) val)))
+
 (provide 'pvs-macros)
