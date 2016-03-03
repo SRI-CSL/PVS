@@ -3384,6 +3384,10 @@
     :types (types te)
     :dependent? (dependent? te)))
 
+(defmethod generate-struct-subtype ((te struct-sub-recordtype) type)
+  (setf (print-type te) type)
+  te)
+
 
 ;;; Tuple Types - in the following, the f_i are optional; any that are
 ;;; missing will not be used in typechecking the following types.
