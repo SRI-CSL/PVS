@@ -534,7 +534,8 @@
 
 (defmethod untypecheck-theory ((ex adt-name-expr))
   (call-next-method)
-  (change-class ex 'name-expr))
+  (unless (null-expr? ex)
+    (change-class ex 'name-expr)))
 
 (defmethod untypecheck-theory ((ex bind-decl))
   (when (next-method-p) (call-next-method))
