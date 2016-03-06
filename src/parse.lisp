@@ -1856,24 +1856,24 @@
 	 (nullex (make-instance 'null-expr
 		   :id '|null|
 		   :place last-place))
-	 (lexpr (xt-list-expr* (reverse (term-args expr)) nullex)))
+	 (lexpr (xt-list-expr* (reverse (term-args expr)) nullex place)))
     (setf (place lexpr) place)
     lexpr))
 
-(defun xt-list-expr* (exprs listex)
+(defun xt-list-expr* (exprs listex list-place)
   (if (null exprs)
       listex
       (let* ((ex (xt-expr (car exprs)))
-	     (consex 
+	     (consex
 	      (make-instance 'list-expr
 		:operator (make-instance 'name-expr
 			    :id '|cons|
 			    :place (place ex))
 		:argument (make-instance 'arg-tuple-expr
 			    :exprs (list ex listex)
-			    :place (place ex))
-		:place (place ex))))
-	(xt-list-expr* (cdr exprs) consex))))
+			    :place (concat-places (place ex) list-place))
+		:place (concat-places (place ex) list-place))))
+	(xt-list-expr* (cdr exprs) consex list-place))))
 
 (defun xt-bracket-expr (expr)
   (let ((op (ds-id (term-arg0 expr)))
