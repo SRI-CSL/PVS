@@ -330,6 +330,7 @@
 (defun mk-cases-tcc (id expr dfmls)
   (make-instance 'cases-tcc
     :id id
+    :decl-formals dfmls
     :spelling 'OBLIGATION
     :kind 'tcc
     :definition expr
@@ -534,6 +535,7 @@
 	:id id
 	:mod-id mod-id
 	:actuals actuals
+	:dactuals dactuals
 	:mappings mappings
 	:library library
 	:target target)))
@@ -733,7 +735,7 @@
 (defun mk-lambda-expr (vars expr &optional ret-type)
   (if ret-type
       (make-instance 'lambda-expr-with-type
-	:declared-ret-type (or (print-type rettype) ret-type)
+	:declared-ret-type (or (print-type ret-type) ret-type)
 	:return-type ret-type
 	:bindings (mk-bindings vars)
 	:expression expr)
@@ -794,13 +796,26 @@
 (defun mk-null-expr ()
   (make-instance 'null-expr :id '|null|))
 
-(defun mk-list-expr (exprs)
-  (mk-list-expr* (reverse exprs) (mk-null-expr)))
+(defun mk-list-expr (elt list-ex)
+  (assert (typep list-ex '(or null-expr list-expr)))
+  (let ((list-place (concat-places (place elt) (place list-ex)))
+	(cons-op (make-instance 'name-expr
+		   :id '|cons|
+		   :place (place elt))))
+    (make-instance 'list-expr
+      :operator cons-op
+      :argument (make-instance 'arg-tuple-expr
+		  :exprs (list elt list-ex)
+		  :place list-place)
+      :place list-place)))
 
-(defun mk-list-expr* (exprs result)
+(defun mk-list-expr* (exprs)
+  (mk-list-expr** (reverse exprs) (mk-null-expr)))
+
+(defun mk-list-expr** (exprs result)
   (if (null exprs)
       result
-      (mk-list-expr*
+      (mk-list-expr**
        (cdr exprs)
        (make-instance 'list-expr
 	 :operator (make-instance 'name-expr :id '|cons|)
@@ -1427,9 +1442,9 @@
   (assert (or type
 	      (and exprs (every #'type exprs))))
   (if type
-      (typecheck* (mk-list-expr exprs) type nil nil)
+      (typecheck* (mk-list-expr* exprs) type nil nil)
       (let ((ctype (reduce #'compatible-exprs-type exprs)))
-	(typecheck* (mk-list-expr exprs) ctype nil nil))))
+	(typecheck* (mk-list-expr* exprs) ctype nil nil))))
 
 (defun compatible-exprs-type (ex1 ex2)
   (compatible-type ex1 ex2))
@@ -1638,6 +1653,27 @@
 	       (eq (id (module (declaration op))) 'list_adt))
       (change-class appl 'list-expr))
     appl))
+
+(defun make!-list-expr (elt list-ex elt-type)
+  (assert (typep list-ex '(or null-expr list-expr)))
+  (assert (type elt))
+  (assert (type list-ex))
+  (let* ((cons-op (make-cons-name-expr elt-type))
+	 (list-place (concat-places (place elt) (place list-ex))))
+    (setf (place cons-op) (place elt))
+    (make-instance 'list-expr
+      :operator cons-op
+      :argument (make-instance 'arg-tuple-expr
+		  :exprs (list elt list-ex)
+		  :type (mk-tupletype
+			 (list elt-type
+			       (if (null-expr? list-ex)
+				   (type list-ex)
+				   (range (type cons-op)))))
+		  :place list-place)
+      :type (range (type cons-op))
+      :place list-place)))
+    
 
 (defun make!-number-expr (number)
   (assert (typep number 'rational))
@@ -2392,6 +2428,7 @@
   (make!-eta-equivalent* ex (find-supertype (type ex)) detuple?))
 
 (defmethod make!-eta-equivalent* ((ex application) (type funtype) detuple?)
+  (declare (ignore detuple?))
   (if (lambda-expr? (operator ex))
       ;; Already in eta form
       ex
@@ -2409,6 +2446,7 @@
 	eta-ex)))
 
 (defmethod make!-eta-equivalent* (ex type detuple?)
+  (declare (ignore type detuple?))
   ex)
 
 (defun make-cons-type (elt-type)
