@@ -1447,30 +1447,23 @@
 
 (defmethod typecheck* ((expr list-expr) expected kind arguments)
   (if (and expected (list-type? expected)) ;; could be waiting for conversion
-      (let* ((elt-type (when expected
-			 (type-value
-			  (car (actuals (find-adt-supertype expected))))))
+      (let* ((elt-type (type-value
+			(car (actuals (find-adt-supertype expected)))))
 	     ;;(cons-type (when elt-type (make-cons-type elt-type)))
 	     ;;(null-type (when elt-type (make-null-type elt-type)))
-	     (cons-ex (when elt-type (make-cons-name-expr elt-type)))
-	     (null-ex (when elt-type (make-null-name-expr elt-type))))
+	     (cons-ex (make-cons-name-expr elt-type))
+	     (null-ex (make-null-name-expr elt-type)))
 	(typecheck-list-elt expr elt-type cons-ex null-ex)
 	expr)
+      ;; Not in a nice situation, treat as a simple application
       (let ((len (list-expr-length expr)))
 	(when (> len 50)
 	  (pvs-message "Typechecking list ~a with ~d elements; slow without knowing the type"))
 	(call-next-method))))
 
-(defmethod list-expr-length ((ex list-expr) &optional (len 0))
-  (list-expr-length (args2 ex) (1+ len)))
-
-(defmethod list-expr-length ((ex null-expr) &optional (len 0))
-  len)
-  
-
 (defun typecheck-list-elt (ex elt-type cons-ex null-ex)
   (assert (eq (id (operator ex)) '|cons|))
-  (when (ptypes ex) (break "already typechecked?"))
+  ;;(when (ptypes ex) (break "already typechecked?"))
   (let ((list-ex ex)
 	(prev-ex nil))
     (loop while (list-expr? list-ex)
