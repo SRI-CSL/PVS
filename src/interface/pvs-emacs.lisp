@@ -1178,6 +1178,14 @@
 	      (max (ending-col place1) (ending-col place2)))
       (or place1 place2)))
 
+(defun concat-places (place1 place2)
+  (if (and place1 place2)
+      (vector (starting-row place1)
+	      (starting-col place1)
+	      (ending-row place2)
+	      (ending-col place2))
+      (or place1 place2)))
+
 (defmethod place* ((ex application))
   (or (place ex)
       (place* (operator ex))))
