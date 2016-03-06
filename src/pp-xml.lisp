@@ -576,22 +576,20 @@
 
 (defmethod pp-xml* (stream (decl formal-subtype-decl) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
-  (with-slots (id type-expr supertype predicate) decl
+  (with-slots (id type-expr predicate) decl
     (xpvs-elt stream formal-subtype-decl (xml-attributes decl)
 	      id
 	      (make-xml-nonempty-type :nonempty? (nonempty-type-decl? decl))
 	      type-expr
-	      supertype
 	      predicate)))
 
 (defmethod pp-xml* (stream (decl formal-struct-subtype-decl) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
-  (with-slots (id type-expr supertype projection) decl
+  (with-slots (id type-expr projection) decl
     (xpvs-elt stream formal-struct-subtype-decl (xml-attributes decl)
 	      id
 	      (make-xml-nonempty-type :nonempty? (nonempty-type-decl? decl))
 	      type-expr
-	      supertype
 	      projection)))
 
 ;; (defmethod pp-xml* (stream (decl formal-nonempty-subtype-decl) &optional colon? atsign?)
