@@ -656,23 +656,28 @@
 (defun match-adt-ops (op1 op2 bind-alist subst)
   (if (eq (id op1) (id op2))
       (let ((adt1 (adt op1))
-	     (adt2 (adt op2)))
-	 (if (eq (adt adt1) (adt adt2))
-	      (match-adt-actuals (actuals (module-instance
-					   (resolution (or (print-type adt1)
-							   adt1))))
-				 (actuals (module-instance
-					   (resolution (or (print-type adt2)
-							   adt2))))
-				 bind-alist
-				 subst
-				 (formals-sans-usings (adt adt1))
-				 (positive-types (adt adt1)))
-	      'fail))
+	    (adt2 (adt op2)))
+	(if (eq (adt adt1) (adt adt2))
+	    (match-adt-actuals (actuals (module-instance
+					 (resolution (or (print-type adt1)
+							 adt1))))
+			       (actuals (module-instance
+					 (resolution (or (print-type adt2)
+							 adt2))))
+			       bind-alist
+			       subst
+			       (formals-sans-usings (adt adt1))
+			       (positive-types (adt adt1)))
+	    'fail))
       'fail))
 
 (defmethod match-ops ((op1 expr) (op2 expr) bind-alist subst)
-  (match* op1 op2 bind-alist subst))
+  (if (and (memq (id op1) *pvs-equality-operators*)
+	   (or (eq (id op1) (id op2))
+	       (and (memq (id op1) '(/= ≠)) (memq (id op2) '(/= ≠)))))
+      ;; Skip equality operators, as they lift to the highest types
+      nil
+      (match* op1 op2 bind-alist subst)))
 
 (defun match-adt-actuals (acts1 acts2 bind-alist substs formals postypes)
   (cond ((null acts1)
