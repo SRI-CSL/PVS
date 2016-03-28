@@ -569,14 +569,16 @@ want to set this to nil for slow terminals, or connections over a modem.")
 		 'external-debugging-output))
 	(delete-file err)
 	(setq pvs-waiting nil))
-    (let ((pos (pvs-get-place place)))
-      (when pos
-	(if (lnull dir)
-	    (pvs-display-buffer file pos)
-	  (pvs-display-file file dir pos)))
+    (let* ((pos (pvs-get-place place))
+	   (buf (when pos
+		  (if (lnull dir)
+		      (pvs-display-buffer file pos)
+		    (pvs-display-file file dir pos)))))
       (comint-display-file-output err "PVS Error")
       (delete-file err)
-      (when pos (recenter '(nil)))
+      (when pos
+	(with-selected-window (get-buffer-window buf)
+	  (recenter '(nil))))
       (message msg)
       t)))
 
@@ -894,7 +896,8 @@ window."
 	  (progn (goto-line (car pos))
 		 (forward-char (cadr pos))
 		 (setq *pvs-output-pos* (point-marker)))
-	(error (goto-line (point-min)))))))
+	(error (goto-line (point-min)))))
+    buf))
 
 (defun pvs-display-buffer (bufname pos)
   (pop-to-buffer bufname)
@@ -903,7 +906,8 @@ window."
 	  (progn (goto-line (car pos))
 		 (forward-char (cadr pos))
 		 (setq *pvs-output-pos* (point-marker)))
-	(error (goto-line (point-min))))))
+      (error (goto-line (point-min)))))
+  bufname)
 
 
 (defun parse-pvs-message (output &optional result)
