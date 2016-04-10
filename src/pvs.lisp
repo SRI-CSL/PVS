@@ -1683,6 +1683,16 @@
   (and (tcc? fdecl)
        (not (proved? fdecl))))
 
+(defun set-pvs-file-tcc-proofs (pvs-file strategy)
+  (let ((just `("" ,strategy)))
+    (multiple-value-bind (msg subjust)
+	(check-edited-justification just)
+      (when subjust
+	(justification-error subjust just msg)))
+    (dolist (theory (typecheck-file pvs-file nil nil nil t))
+      (dolist (tcc (collect-tccs theory))
+	(setf (justification tcc) just)))))
+
 (defun sizeof-proof (fdecl)
   (numberof-steps (editable-justification (justification fdecl))))
 
