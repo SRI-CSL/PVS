@@ -205,7 +205,14 @@ Given a pathname, returns a hash-table")
 (defvar *in-coercion* nil)
 
 (defvar *noninteractive* nil)
+
+;; This is set by the PVSTIMEOUT environment variable,
+;; which in turn comes from the -timeout arg
 (defvar *noninteractive-timeout* nil)
+
+(defvar *tcp-timeout* 10)
+
+;; Doesn't seem to be set anywhere, but used in eproofcheck.lisp
 (defvar *proof-timeout* nil)
 
 (defvar *use-rationals* nil)
@@ -628,4 +635,4 @@ Needed to generate the same dummy name for record literals.")
   ;; The only exception is if the equality-operators are the same, e.g.,
   ;; "a = b = c" is "a = b AND b = c".  Remember adding parentheses
   ;; means no chaining.
-  '(= /=))
+  '(= /= ≠))
