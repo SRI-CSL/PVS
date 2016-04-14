@@ -2005,35 +2005,31 @@ bind tighter.")
     (unicode '∧)
     (short '&)
     (lower '|and|)
-    (t (if (symbol-equal (id (operator ex)) 'AND)
-	   'AND
-	   (id (operator ex))))))
+    (upper 'AND)
+    (t (id (operator ex)))))
 
 (defmethod pp-infix-operator ((ex infix-disjunction))
   (case *ppcase*
     (unicode '∨)
     (lower '|or|)
-    (t (if (symbol-equal (id (operator ex)) 'OR)
-	   'OR
-	   (id (operator ex))))))
+    (upper 'OR)
+    (t (id (operator ex)))))
 
 (defmethod pp-infix-operator ((ex infix-implication))
   (case *ppcase*
     (unicode '⇒)
     (short '=>)
     (lower '|implies|)
-    (t (if (symbol-equal (id (operator ex)) 'IMPLIES)
-	   'IMPLIES
-	   (id (operator ex))))))
+    (upper 'IMPLIES)
+    (t (id (operator ex)))))
 
 (defmethod pp-infix-operator ((ex infix-iff))
   (case *ppcase*
     (unicode '⇔)
     (short '<=>)
     (lower '|iff|)
-    (t (if (symbol-equal (id (operator ex)) 'IFF)
-	   'IFF
-	   (id (operator ex))))))
+    (upper 'IFF)
+    (t (id (operator ex)))))
 
 (defmethod pp-infix-operator ((ex infix-disequation))
   (case *ppcase*
@@ -2147,15 +2143,15 @@ bind tighter.")
 	     (memq (id operator) *unary-operators*))
 	(pprint-logical-block (nil nil)
 	  (pprint-indent :current 2)
-	  (write (if (unary-negation? ex)
-		     (case *ppcase*
-		       (unicode '¬)
-		       (lower '|not|)
-		       (t 'NOT))
-		     (id operator)))
-	  (when (string-equal (string (id operator)) "NOT")
-	    (write-char #\space)
-	    (pprint-newline :miser))
+	  (if (unary-negation? ex)
+	      (progn (write (case *ppcase*
+			      (unicode '¬)
+			      (lower '|not|)
+			      (upper 'NOT)
+			      (t (id operator))))
+		     (write-char #\space)
+		     (pprint-newline :miser))
+	      (write (id operator)))
 	  (if (>= (precedence argument 'right)
 		  (or (gethash (sbst-symbol (id operator))
 			       (first *expr-prec-info*))
@@ -2344,19 +2340,22 @@ bind tighter.")
   (write (case *ppcase*
 	   (unicode 'λ)
 	   (lower '|lambda|)
-	   (t 'LAMBDA))))
+	   (upper 'LAMBDA)
+	   (t (op ex)))))
 
 (defmethod pp-binding-expr-op ((ex forall-expr))
   (write (case *ppcase*
 	   (unicode '∀)
 	   (lower '|forall|)
-	   (t 'FORALL))))
+	   (upper 'FORALL)
+	   (t (op ex)))))
 
 (defmethod pp-binding-expr-op ((ex exists-expr))
   (write (case *ppcase*
 	   (unicode '∃)
 	   (lower '|exists|)
-	   (t 'EXISTS))))
+	   (upper 'EXISTS)
+	   (t (op ex)))))
 
 (defmethod pp-unchain-binding-expr ((ex binding-expr) bindings op)
   (if (and (chain? ex)
