@@ -38,7 +38,7 @@
 (defvar *y2name-hash* (make-pvs-hash-table))
 (defvar *translate-to-yices2-hash* (make-pvs-hash-table))
 (defvar *yices2-executable* nil)
-(defvar *yices2-flags* "--timeout=300")
+(defvar *yices2-flags* "")
 (defvar *yices2-id-counter*)  ;;needs to be initialized in eproofcheck
 (defvar *yices2-conditions* nil)
 (defvar *yices2-subtype-constraints* nil)
@@ -456,7 +456,7 @@
 		(domain (find-supertype (type expr)))
 		bindings)))
   (format nil "(select ~a ~a)"
-    yid ytype yid (index expr))))
+    yid ytype yid (1+ (index expr)))))
 
 
 (defmethod translate-to-yices2* ((expr projection-application) bindings)
@@ -468,10 +468,10 @@
 	      (nth (1- index) (cdr bnd))
 	      (format nil "(select ~a ~a)"
 		(translate-to-yices2* argument bindings)
-		(index expr))))
+		(1+ (index expr)))))
 	(format nil "(select ~a ~a)"
 		(translate-to-yices2* argument bindings)
-		(index expr)))))
+		(1+ (index expr))))))
 
     
 
@@ -482,7 +482,7 @@
 		     (pos (position id sfields :key #'id)))
     (format nil "(select ~a ~a)"
       (translate-to-yices2* argument bindings)
-      pos))))
+      (1+ pos)))))
 
     ;;NSH(5.17.94): Complicated code to deal with tuple mismatch
     ;;between domain of operator and arguments.
