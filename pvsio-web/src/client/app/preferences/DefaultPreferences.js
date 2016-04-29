@@ -11,10 +11,12 @@ define(function (require, exports, module) {
     var prefs = {}, instance;
 
     function DefaultPreferences() {
-        prefs[preferenceKeys.BACKUP_INTERVAL] = 1;
+        prefs[preferenceKeys.BACKUP_INTERVAL] = 60 * 10; //in seconds
         prefs[preferenceKeys.REMEMBER_LAST_DIRECTORY] = true;
         prefs[preferenceKeys.REMEMEBER_ENABLED_PLUGINS] = true;
         prefs[preferenceKeys.LAST_DIRECTORY_VISITED] = "~";
+        prefs[preferenceKeys.WALL_CLOCK_NAME] = "tick";
+        prefs[preferenceKeys.WALL_CLOCK_INTERVAL] = 1; //seconds
     }
 
     DefaultPreferences.prototype.get = function (key) {

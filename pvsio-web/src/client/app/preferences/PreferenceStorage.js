@@ -13,8 +13,9 @@
   */
 define(function (require, exports, module) {
     "use strict";
-    var DefaultPreferences = require("preferences/DefaultPreferences").getInstance();
-    var PreferenceKeys = require("preferences/PreferenceKeys");
+    var eventDispatcher    = require("util/eventDispatcher"),
+        DefaultPreferences = require("preferences/DefaultPreferences").getInstance(),
+        PreferenceKeys     = require("preferences/PreferenceKeys");
 
     var instance;
     function PreferenceStorage() {  }
@@ -32,6 +33,7 @@ define(function (require, exports, module) {
 
     PreferenceStorage.prototype.set = function (key, value) {
         localStorage.setItem(key, JSON.stringify(value));
+        instance.fire({ type: "preferenceChanged", key: key, value: value});
     };
 
     PreferenceStorage.prototype.getAllPreferences = function () {
@@ -45,7 +47,7 @@ define(function (require, exports, module) {
 
     module.exports = {
         getInstance: function () {
-            instance = instance || new PreferenceStorage();
+            instance = instance || eventDispatcher(new PreferenceStorage());
             return instance;
         }
     };

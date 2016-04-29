@@ -12,7 +12,8 @@ define(function (require, exports, module) {
     "use strict";
     var Emucharts = require("plugins/emulink/Emucharts"),
         EmuchartsEditor = require("plugins/emulink/EmuchartsEditor"),
-        eventDispatcher = require("util/eventDispatcher");
+        eventDispatcher = require("util/eventDispatcher"),
+        Colors = require("plugins/emulink/tools/Colors");
 
     var _emuchartsEditors; // stores emucharts renderers
     var _selectedEditor; // this is the selected editor
@@ -35,7 +36,11 @@ define(function (require, exports, module) {
         editor.addListener("emuCharts_addTransition", function (event) { _this.fire(event); });
         editor.addListener("emuCharts_addInitialTransition", function (event) { _this.fire(event); });
         editor.addListener("emuCharts_constantAdded", function (event) { _this.fire(event); });
+        editor.addListener("emuCharts_constantRemoved", function (event) { _this.fire(event); });
+        editor.addListener("emuCharts_constantRenamed", function (event) { _this.fire(event); });
         editor.addListener("emuCharts_variableAdded", function (event) { _this.fire(event); });
+        editor.addListener("emuCharts_variableRemoved", function (event) { _this.fire(event); });
+        editor.addListener("emuCharts_variableRenamed", function (event) { _this.fire(event); });
         editor.addListener("emuCharts_deleteState", function (event) { _this.fire(event); });
         editor.addListener("emuCharts_deleteTransition", function (event) { _this.fire(event); });
         editor.addListener("emuCharts_deleteInitialTransition", function (event) { _this.fire(event); });
@@ -93,6 +98,7 @@ define(function (require, exports, module) {
                         var chart_reader = emuchartsFile.content.chart;
                         if (chart_reader.states) {
                             chart_reader.states.forEach(function (node) {
+                                node.color = node.color || Colors.getColor(node.id);
                                 chart.nodes.set(node.id, node);
                             });
                         }
@@ -177,7 +183,10 @@ define(function (require, exports, module) {
                     keys.forEach(function (name) {
                         var chart = { nodes: d3.map(), edges: d3.map(), initial_edges: d3.map() };
                         emuchartsFile.content[name].nodes
-                            .forEach(function (node) { chart.nodes.set(node.id, node); });
+                            .forEach(function (node) {
+                                node.color = node.color || Colors.getColor(node.id);
+                                chart.nodes.set(node.id, node);
+                            });
                         emuchartsFile.content[name].edges
                             .forEach(function (edge) { chart.edges.set(edge.id, edge); });
                         emuchartsFile.content[name].initial_edges
@@ -491,6 +500,17 @@ define(function (require, exports, module) {
     };
 
     /**
+     * Returns an array containing the current set of states
+     * @description Returns the descriptor of a state.
+     * @param id {String} The identifier of the state.
+     * @memberof EmuchartsManager
+     * @instance
+     */
+    EmuchartsManager.prototype.getState = function (id) {
+        return _selectedEditor.getState(id);
+    };
+    
+    /**
      * Returns an array containing the current set of constants defined in the model
      * @memberof EmuchartsManager
      */
@@ -555,6 +575,9 @@ define(function (require, exports, module) {
     EmuchartsManager.prototype.getTransitions = function () {
         return _selectedEditor.getTransitions();
     };
+    EmuchartsManager.prototype.getTransition = function (id) {
+        return _selectedEditor.getTransition(id);
+    };
 
     /**
      * Returns an array containing the current set of initial transitions
@@ -583,11 +606,15 @@ define(function (require, exports, module) {
     };
 
     /**
-     * Utility function to rename states
+     * Utility function to edit states
+     * @param stateID unique state identifier
+     * @param data Structured type with two fields:
+     *    - name (String)
+     *    - color (String)
      * @memberof EmuchartsManager
      */
-    EmuchartsManager.prototype.rename_state = function (stateID, newLabel) {
-        return _selectedEditor.rename_state(stateID, newLabel);
+    EmuchartsManager.prototype.edit_state = function (stateID, data) {
+        return _selectedEditor.edit_state(stateID, data);
     };
 
     /**

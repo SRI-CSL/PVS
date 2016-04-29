@@ -27,22 +27,22 @@
                        readonly
                        autofocus
                        alt="Path of the selected element">
+<!--
                 <span class="input-group-addon" id="btnUp" style="cursor:pointer;">
                     <button><span class="glyphicon glyphicon-arrow-up" alt="Up"></span></button>
                 </span>
+-->
             </div>
-            <div class="center">
-                <div id="file-browser">
-
-                </div>
-                <div id="file-preview" class="media">
+            <div class="center" style="height:320px;">
+                <div id="file-browser"></div>
+                <div id="file-preview" class="media" style="display:none;">
                     <div class="media-left">
                         <a href="#">
-                            <img id="image-preview" class="media-object" src=""/>
+                            <img id="image-preview" class="media-object" src="" style="display:none;"/>
                         </a>
                     </div>
-                    <div class="media-body">
-                        <h5 id="file-name" class="media-heading"></h5>
+                    <div id="file-details">
+                        <h5 id="file-name" class="media-heading" style="display:none"></h5>
                         <p><strong>Size </strong><span id="file-size"></span><span id="file-size-unit"></span></p>
                         <p><strong>Last Modified </strong><span id="file-last-modified"></span></p>
                     </div>

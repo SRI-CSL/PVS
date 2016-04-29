@@ -14,13 +14,13 @@ define(function (require, exports, module) {
         eventDispatcher = require("util/eventDispatcher"),
         Emucharts = require("plugins/emulink/Emucharts"),
         EditorModeUtils = require("plugins/emulink/EmuchartsEditorModes");
-
+    
     var dbg = false;
 
     // constants for drawing states
 //    var width  = 900;
 //    var height = 800;
-    var colors = d3.scale.category10();
+//    var colors = d3.scale.category10();
     var fontSize = 10;
     var defaultWidth = 32;
     var defaultHeight = 32;
@@ -30,11 +30,6 @@ define(function (require, exports, module) {
 //    var stroke_width_highlighted = "1.5px";
     var stroke_width_normal = "1px";
 
-    // mouse event vars used for identifying gestures like creating a new transition
-    var mousedown = { node: null, path: null };
-//    var mouseup = { node: null, path: null };
-    var mouseover = { node: null, path: null };
-    var mousedrag = { node: null, path: null };
     var drag_line; // drag line used when creating new transitions
     var sensitivity = { x: 8, y: 8 };
     // mouseOverControlPoint holds an edge object when the mouse is over the control point of an edge
@@ -76,7 +71,6 @@ define(function (require, exports, module) {
      * @memberof EmuchartsEditor
      */
     function EmuchartsEditor(emucharts) {
-        _this = this;
         this._nodeFilter = "";
         this.d3EventScale = 1;
         this.d3EventTranslate = [0, 0];
@@ -88,15 +82,20 @@ define(function (require, exports, module) {
         this.emucharts = emucharts || new Emucharts();
         this.emucharts.addListener("emuCharts_stateAdded", function (event) { _this.fire(event); });
         this.emucharts.addListener("emuCharts_stateRemoved", function (event) { _this.fire(event); });
-        this.emucharts.addListener("emuCharts_constantAdded", function (event) { _this.fire(event); });
-        this.emucharts.addListener("emuCharts_variableAdded", function (event) { _this.fire(event); });
-        this.emucharts.addListener("emuCharts_transitionAdded", function (event) { _this.fire(event); });
-        this.emucharts.addListener("emuCharts_transitionRenamed", function (event) { _this.fire(event); });
-        this.emucharts.addListener("emuCharts_transitionRemoved", function (event) { _this.fire(event); });
-        this.emucharts.addListener("emuCharts_initialTransitionAdded", function (event) { _this.fire(event); });
-        this.emucharts.addListener("emuCharts_initialTransitionRenamed", function (event) { _this.fire(event); });
-        this.emucharts.addListener("emuCharts_initialTransitionRemoved", function (event) { _this.fire(event); });
         this.emucharts.addListener("emuCharts_stateRenamed", function (event) { _this.fire(event); });
+        this.emucharts.addListener("emuCharts_stateColorChanged", function (event) { _this.fire(event); });
+        this.emucharts.addListener("emuCharts_constantAdded", function (event) { _this.fire(event); });
+        this.emucharts.addListener("emuCharts_constantRemoved", function (event) { _this.fire(event); });
+        this.emucharts.addListener("emuCharts_constantRenamed", function (event) { _this.fire(event); });
+        this.emucharts.addListener("emuCharts_variableAdded", function (event) { _this.fire(event); });
+        this.emucharts.addListener("emuCharts_variableRemoved", function (event) { _this.fire(event); });
+        this.emucharts.addListener("emuCharts_variableRenamed", function (event) { _this.fire(event); });
+        this.emucharts.addListener("emuCharts_transitionAdded", function (event) { _this.fire(event); });
+        this.emucharts.addListener("emuCharts_transitionRemoved", function (event) { _this.fire(event); });
+        this.emucharts.addListener("emuCharts_transitionRenamed", function (event) { _this.fire(event); });
+        this.emucharts.addListener("emuCharts_initialTransitionAdded", function (event) { _this.fire(event); });
+        this.emucharts.addListener("emuCharts_initialTransitionRemoved", function (event) { _this.fire(event); });
+        this.emucharts.addListener("emuCharts_initialTransitionRenamed", function (event) { _this.fire(event); });
 
         this.emucharts.addListener("emuCharts_nodeFilterChanged", function (event) {
             _this._nodeFilter = event.filter;
@@ -104,8 +103,13 @@ define(function (require, exports, module) {
         });
         this.dragged = false;
         this.SVGdragged = null;
+        // mouse event vars used for identifying gestures like creating a new transition or dragging nodes/transitions/canvas
+        this.mousedown = { node: null, edge: null, canvas: false };
+        this.mouseover = { node: null, edge: null, canvas: false };
+        this.mousedrag = { node: null, edge: null, canvas: false };
+        _this = this;
         resetView();
-        eventDispatcher(this);
+        eventDispatcher(_this);
     }
 
 
@@ -177,8 +181,8 @@ define(function (require, exports, module) {
      * @memberof EmuchartsEditor
      */
     function labelToString(label) {
-        if (label.length > 16) {
-            return label.substring(0, 16) + "...";
+        if (label.length > 64) {
+            return label.substring(0, 64) + "...";
         }
         return label;
     }
@@ -539,9 +543,7 @@ define(function (require, exports, module) {
                     // this is a self-edge
                     // refresh transition label
                     label = d3.select(this.parentNode).select(".tlabel");
-                    label.text(function (edge) {
-                        return labelToString(edge.name);
-                    });
+                    label.text(labelToString(edge.name));
                     // adjust text position
                     label.attr("x", function (edge) {
                         if (edge.target.id === edge.source.id) {
@@ -574,9 +576,7 @@ define(function (require, exports, module) {
                     cp = getControlPoints(edge);
                     // refresh transition label
                     label = d3.select(this.parentNode.lastChild.firstChild);
-                    label.text(function (edge) {
-                        return labelToString(edge.name);
-                    });
+                    label.text(labelToString(edge.name));
                     // clear the text of the other label
                     d3.select(this.parentNode).select(".tlabel").text(function (edge) { return ""; });
                     // refresh control points
@@ -622,9 +622,7 @@ define(function (require, exports, module) {
         transitions.selectAll(".ipath").attr("d", function (edge) {
             // refresh transition label
             var label = d3.select(this.parentNode).select(".itlabel");
-            label.text(function (edge) {
-                return labelToString(edge.name);
-            });
+            label.text(labelToString(edge.name));
             // adjust text position
             label.attr("x", function (edge) {
                 return -8;
@@ -786,45 +784,50 @@ define(function (require, exports, module) {
         d3.select("#ContainerStateMachine").select("svg").append("svg:g").attr("id", "States");
 
         var zoom = d3.behavior.zoom().scaleExtent([0.5, 4]).on("zoom", function () {
-            d3.event.sourceEvent.stopPropagation();
-            if (editor_mode === MODE.ADD_TRANSITION() && mousedrag.edge) {
-                var m = d3.mouse(d3.select("#ContainerStateMachine svg").select("#States").node());
-                // initial transition
-                drag_line.attr("d", "M" + mousedrag.edge.x + "," + mousedrag.edge.y +
-                                "L" + m[0] + "," + m[1]);
-            } else if (editor_mode !== MODE.ADD_TRANSITION() && !mousedrag.node &&
-                    editor_mode !== MODE.DELETE() && editor_mode !== MODE.RENAME()) {
+            if (_this.mousedown.canvas) {
                 d3.event.sourceEvent.stopPropagation();
-                var event = d3.event.sourceEvent;
-                if (event.type === "mousemove") {
-//                    note: movementX and movementY are not supported by all browser, therefore we are not using them for now
-//                    console.log(getMouseMovement(event));
-//                    var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
-//                    var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
-//                    _this.d3EventTranslate[0] += movementX * d3.behavior.zoom().scale();
-//                    _this.d3EventTranslate[1] += movementY * d3.behavior.zoom().scale();
-//                    console.log([movementX, movementY]);
-                    var movement = getMouseMovement(event);
-//                    console.log(movement);
-                    _this.d3EventTranslate[0] += movement.x * d3.behavior.zoom().scale();
-                    _this.d3EventTranslate[1] += movement.y * d3.behavior.zoom().scale();
-                    d3.select("#ContainerStateMachine svg").select("#States")
-                        .attr("transform", "translate(" + _this.d3EventTranslate +
-                              ") scale(" + _this.d3EventScale + ")");
-                    d3.select("#ContainerStateMachine svg").select("#Transitions")
-                        .attr("transform", "translate(" + _this.d3EventTranslate +
-                              ") scale(" + _this.d3EventScale + ")");
-                    d3.select("#ContainerStateMachine svg").select("#InitialTransitions")
-                        .attr("transform", "translate(" + _this.d3EventTranslate +
-                              ") scale(" + _this.d3EventScale + ")");
-                    d3.select("#ContainerStateMachine svg").select("#dragline")
-                        .attr("transform", "translate(" + _this.d3EventTranslate +
-                              ") scale(" + _this.d3EventScale + ")");
-                    if (_this.SVGdragged === null) {
-                        _this.SVGdragged = [_this.d3EventTranslate[0], _this.d3EventTranslate[1]];
+                if (editor_mode === MODE.ADD_TRANSITION() && _this.mousedrag.edge) {
+                    var m = d3.mouse(d3.select("#ContainerStateMachine svg").select("#States").node());
+                    // initial transition
+                    drag_line.attr("d", "M" + _this.mousedrag.edge.x + "," + _this.mousedrag.edge.y +
+                                    "L" + m[0] + "," + m[1]);
+                } else if (editor_mode !== MODE.ADD_TRANSITION() && !_this.mousedrag.node &&
+                        editor_mode !== MODE.DELETE() && editor_mode !== MODE.RENAME()) {
+                    d3.event.sourceEvent.stopPropagation();
+                    var event = d3.event.sourceEvent;
+                    if (event.type === "mousemove") {
+    //                    note: movementX and movementY are not supported by all browser, therefore we are not using them for now
+    //                    console.log(getMouseMovement(event));
+    //                    var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+    //                    var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+    //                    _this.d3EventTranslate[0] += movementX * d3.behavior.zoom().scale();
+    //                    _this.d3EventTranslate[1] += movementY * d3.behavior.zoom().scale();
+    //                    console.log([movementX, movementY]);
+                        var movement = getMouseMovement(event);
+    //                    console.log(movement);
+                        _this.d3EventTranslate[0] += movement.x * d3.behavior.zoom().scale();
+                        _this.d3EventTranslate[1] += movement.y * d3.behavior.zoom().scale();
+                        d3.select("#ContainerStateMachine svg").select("#States")
+                            .attr("transform", "translate(" + _this.d3EventTranslate +
+                                  ") scale(" + _this.d3EventScale + ")");
+                        d3.select("#ContainerStateMachine svg").select("#Transitions")
+                            .attr("transform", "translate(" + _this.d3EventTranslate +
+                                  ") scale(" + _this.d3EventScale + ")");
+                        d3.select("#ContainerStateMachine svg").select("#InitialTransitions")
+                            .attr("transform", "translate(" + _this.d3EventTranslate +
+                                  ") scale(" + _this.d3EventScale + ")");
+                        d3.select("#ContainerStateMachine svg").select("#dragline")
+                            .attr("transform", "translate(" + _this.d3EventTranslate +
+                                  ") scale(" + _this.d3EventScale + ")");
+                        if (_this.SVGdragged === null) {
+                            _this.SVGdragged = [_this.d3EventTranslate[0], _this.d3EventTranslate[1]];
+                        }
+    //                    if (dbg) { console.log("Drag canvas"); }
                     }
-//                    if (dbg) { console.log("Drag canvas"); }
                 }
+            } else {
+                // disable zoom handler, so the web page can be scrolled
+                d3.select("#ContainerStateMachine svg").on(".zoom", null);
             }
         });
         var mouseUp = function () {
@@ -835,16 +838,17 @@ define(function (require, exports, module) {
                          .style("marker-end", "")
                          .style("marker-start", "")
                          .attr("d", "M0,0L0,0");
-                if (mouseover.node && !mousedrag.node) {
+                if (_this.mouseover.node && !_this.mousedrag.node) {
                     // fire event
                     _this.fire({
                         type: "emuCharts_addInitialTransition",
                         source: null,
-                        target: mouseover.node
+                        target: _this.mouseover.node
                     });
                 }
-                mousedrag.edge = null;
+                _this.mousedrag.edge = null;
             }
+            _this.mousedown.canvas = false;
             _this.mouseMovement.ready = false;
         };
         var mouseDown = function () {
@@ -854,8 +858,8 @@ define(function (require, exports, module) {
                 // this is equivalent to drag start for default-initial transitions
                 // create an arrow from the selected node to the cursor position
                 var m = d3.mouse(d3.select("#ContainerStateMachine svg").select("#States").node());
-                if (!mousedrag.edge) {
-                    mousedrag.edge = { x: m[0], y: m[1] };
+                if (!_this.mousedrag.edge) {
+                    _this.mousedrag.edge = { x: m[0], y: m[1] };
                 }
                 drag_line.classed("hidden", false)
                     .style("marker-end", "url(#drag-arrow)")
@@ -863,10 +867,11 @@ define(function (require, exports, module) {
                     .attr("d", "M" + m[0] + "," + m[1] +
                                 "L" + m[0] + "," + m[1]);
             }
+            _this.mousedown.canvas = true;
             _this.mouseMovement.ready = false;
         };
         var mouseClick = function () {
-            if (editor_mode === MODE.ADD_STATE() && !mouseover.node && !mouseOverControlPoint) {
+            if (editor_mode === MODE.ADD_STATE() && !_this.mouseover.node && !mouseOverControlPoint) {
                 if (_this.SVGdragged === null ||
                         (Math.abs(_this.SVGdragged[0] - _this.d3EventTranslate[0]) < sensitivity.x &&
                              Math.abs(_this.SVGdragged[1] - _this.d3EventTranslate[1]) < sensitivity.y)) {
@@ -875,12 +880,13 @@ define(function (require, exports, module) {
                     _this.fire({
                         type: "emuCharts_addState",
                         mouse: m,
-                        mouseover: mouseover,
+                        mouseover: _this.mouseover,
                         preventCreation: editor_mode !== MODE.ADD_STATE()
                     });
                 }
             }
             _this.SVGdragged = null;
+            _this.mousedown.canvas = false;
             _this.mouseMovement.ready = false;
         };
         var mouseMove = function () {
@@ -898,6 +904,8 @@ define(function (require, exports, module) {
             });
             var style = "left: " + (m[0] + 20) + "px; top: " + (m[1] - 10) + "px;";
             d3.select("#MouseOverlay").attr("style", style);
+            // enable zoom handler for scrolling the svg
+            d3.select("#ContainerStateMachine svg").call(zoom);
         };
         var mouseOut = function () {
             d3.selectAll("#MouseOverlayIcon").style("display", "none");
@@ -1033,7 +1041,7 @@ define(function (require, exports, module) {
             return refreshTransitions(enteredTransitions);
         };
         var mouseOver = function (edge) {
-            if (!mousedrag.edge && (!mouseOverControlPoint || mouseOverControlPoint.id === edge)) {
+            if (!_this.mousedrag.edge && (!mouseOverControlPoint || mouseOverControlPoint.id === edge)) {
                 d3.event.stopPropagation();
                 d3.select(this.firstChild)
                     //.style("stroke-width", stroke_width_highlighted)
@@ -1107,7 +1115,7 @@ define(function (require, exports, module) {
             // stopPropagation is essential here to avoid messing up with state variables of the SVG drag/zoom events
             d3.event.stopPropagation();
             // update mouse variables
-            mousedown.edge = edge;
+            _this.mousedown.edge = edge;
             if (editor_mode === MODE.RENAME()) {
                 _this.fire({
                     type: "emuCharts_renameTransition",
@@ -1266,7 +1274,7 @@ define(function (require, exports, module) {
         };
         var mouseClick = function (edge) {
             // update mouse variables
-            mousedown.edge = edge;
+            _this.mousedown.edge = edge;
             if (editor_mode === MODE.RENAME()) {
                 _this.fire({
                     type: "emuCharts_renameInitialTransition",
@@ -1326,12 +1334,17 @@ define(function (require, exports, module) {
         states.select(".state_label").text(function (node) {
             return node.name;
         });
-        // refresh box size and position, if needed
+        // refresh box size, position, and color
         states.select(".state_box").attr("width", function (node) {
             return newBoxWidth(node.id);
         }).attr("x", function (node) {
             return -(newBoxWidth(node.id) / 2);
+        }).style("fill", function (node) {
+            return node.color;
+        }).style("stroke", function (node) { // draw a frame around the box
+            return d3.rgb(node.color).darker().toString();
         });
+
         // refresh move tool, if needed
         states.select(".state_move").attr("x", function (node) {
             return (newBoxWidth(node.id) / 2) - 18;
@@ -1370,12 +1383,11 @@ define(function (require, exports, module) {
             .attr("rx", 6).attr("ry", 6) // draw rounded corners
             .style("opacity", "0.9") // make the node slightly transparent
             .style("cursor", "pointer") // change cursor shape on mouse over
-            .style("fill", function (node) { // fill the box, avoid black
-                return (node.id === 0) ? d3.rgb(colors(node.id)).brighter().toString()
-                            : colors(node.id);
+            .style("fill", function (node) {
+                return node.color;
             })
             .style("stroke", function (node) { // draw a frame around the box
-                return d3.rgb(colors(node.id)).darker().toString();
+                return d3.rgb(node.color).darker().toString();
             });
         // draw move tool for boxes
 //        var moveTool =
@@ -1459,13 +1471,13 @@ define(function (require, exports, module) {
             // stopPropagation is essential here to avoid messing up with state variables of the SVG drag/zoom events
             d3.event.sourceEvent.stopPropagation();
             // update mouse variables
-            mousedrag.node = node;
+            _this.mousedrag.node = node;
             if (editor_mode === MODE.ADD_TRANSITION()) {
                 // create an arrow from the selected node to the cursor position
                 drag_line.classed("hidden", false)
                     .style("marker-end", "url(#drag-arrow)")
                     .attr("d", function (node) {
-                        var edge = { source: mousedrag.node, target: mousedrag.node };
+                        var edge = { source: _this.mousedrag.node, target: _this.mousedrag.node };
                         // refresh control points
                         var cp = getControlPoints_selfEdge(edge);
                         // refresh path
@@ -1517,7 +1529,7 @@ define(function (require, exports, module) {
                                 draggedEdge.source.y = draggedNode.y;
                                 draggedEdge.controlPoint = computeControlPoint(draggedEdge);
                                 _this.emucharts.edges.set(edge.id, draggedEdge);
-                                console.log("updated x,y coords of edge " + edge.id);
+                                //console.log("updated x,y coords of edge " + edge.id);
                                 return true;
                             }
                             if (edge.target.id === node.id) {
@@ -1525,7 +1537,7 @@ define(function (require, exports, module) {
                                 draggedEdge.target.y = draggedNode.y;
                                 draggedEdge.controlPoint = computeControlPoint(draggedEdge);
                                 _this.emucharts.edges.set(edge.id, draggedEdge);
-                                console.log("updated x,y coords of edge " + edge.id);
+                                //console.log("updated x,y coords of edge " + edge.id);
                                 return true;
                             }
                             return false;
@@ -1544,19 +1556,19 @@ define(function (require, exports, module) {
                             return false;
                         });
                 refreshInitialTransitions(updatedInitialTransitions);
-            } else if (editor_mode === MODE.ADD_TRANSITION() && mousedrag.node) {
-                if (mousedrag.node && mouseover.node && mousedrag.node.id === mouseover.node.id) {
+            } else if (editor_mode === MODE.ADD_TRANSITION() && _this.mousedrag.node) {
+                if (_this.mousedrag.node && _this.mouseover.node && _this.mousedrag.node.id === _this.mouseover.node.id) {
                     drag_line.attr("d", function (node) {
-                        var edge = { source: mousedrag.node, target: mousedrag.node };
+                        var edge = { source: _this.mousedrag.node, target: _this.mousedrag.node };
                         // refresh control points
                         var cp = getControlPoints_selfEdge(edge);
                         // refresh path
                         return lineFunction(cp);
                     });
                 } else {
-                    drag_line.attr("d", "M" + mousedrag.node.x + "," + mousedrag.node.y +
-                                    "L" + (mousedrag.node.x + d3.mouse(this)[0]) +
-                                    "," + (mousedrag.node.y + d3.mouse(this)[1]));
+                    drag_line.attr("d", "M" + _this.mousedrag.node.x + "," + _this.mousedrag.node.y +
+                                    "L" + (_this.mousedrag.node.x + d3.mouse(this)[0]) +
+                                    "," + (_this.mousedrag.node.y + d3.mouse(this)[1]));
                 }
             }
         };
@@ -1565,11 +1577,11 @@ define(function (require, exports, module) {
             // stopPropagation is essential here to avoid messing up with state variables of the SVG drag/zoom events
             d3.event.sourceEvent.stopPropagation();
             if (editor_mode === MODE.ADD_TRANSITION()) {
-                if (mousedrag.node && mouseover.node) {
+                if (_this.mousedrag.node && _this.mouseover.node) {
                     _this.fire({
                         type: "emuCharts_addTransition",
-                        source: mousedrag.node,
-                        target: mouseover.node
+                        source: _this.mousedrag.node,
+                        target: _this.mouseover.node
                     });
                 }
                 // hide drag arrow & reset mouse vars
@@ -1578,17 +1590,17 @@ define(function (require, exports, module) {
                          .style("marker-start", "")
                          .attr("d", "M0,0L0,0");
             } else {
-                if (mousedrag.node.x === node.x && mousedrag.node.y === node.y) {
+                if (_this.mousedrag.node.x === node.x && _this.mousedrag.node.y === node.y) {
                     // click event
                     //console.log("click");
                     if (!_this.dragged) {
-                        if (editor_mode === MODE.DELETE() && mouseover.node) {
-                            mouseover.node = null;
+                        if (editor_mode === MODE.DELETE() && _this.mouseover.node) {
+                            _this.mouseover.node = null;
                             _this.fire({
                                 type: "emuCharts_deleteState",
                                 node: node
                             });
-                        } else if (editor_mode === MODE.RENAME() && mouseover.node) {
+                        } else if (editor_mode === MODE.RENAME() && _this.mouseover.node) {
                             _this.fire({
                                 type: "emuCharts_renameState",
                                 node: node
@@ -1598,21 +1610,21 @@ define(function (require, exports, module) {
                 }
             }
             // update mouse variables
-            mousedrag.node = null;
+            _this.mousedrag.node = null;
         };
         var mouseOver = function (node) {
             if (mouseOverControlPoint === null) {
                 d3.event.stopPropagation();
                 // update mouse variables
-                mouseover.node = node;
+                _this.mouseover.node = node;
                 // highlight node
                 d3.select(this).attr("stroke-width", 2);
 //                this.setAttribute("transform", this.getAttribute("transform").replace("scale(1.0)", "scale(1.1)"));
-                if (editor_mode === MODE.ADD_TRANSITION() && mousedrag.node) {
-                    if (mousedrag.node.id !== node.id) {
+                if (editor_mode === MODE.ADD_TRANSITION() && _this.mousedrag.node) {
+                    if (_this.mousedrag.node.id !== node.id) {
                         // change colour of drag arrow to give a cue that a mouse release will trigger the creation of a new transition between nodes
-                        drag_line.style("stroke", colors(node.id));
-                        d3.select("#drag-arrow path").style("fill", colors(node.id));
+                        drag_line.style("stroke", node.color);
+                        d3.select("#drag-arrow path").style("fill", node.color);
                     } else {
                         drag_line.style("stroke", "black");
                         d3.select("#drag-arrow path").style("fill", "black");
@@ -1624,7 +1636,7 @@ define(function (require, exports, module) {
             if (mouseOverControlPoint === null) {
                 d3.event.stopPropagation();
                 // update mouse variables
-                mouseover.node = null;
+                _this.mouseover.node = null;
                 // restore node size
                 d3.select(this).attr("stroke-width", 1);
 //                this.setAttribute("transform", this.getAttribute("transform").replace("scale(1.1)", "scale(1.0)"));
@@ -1736,6 +1748,15 @@ define(function (require, exports, module) {
     };
 
     /**
+     * @description Returns the descriptor of a state.
+     * @param id {String} The identifier of the state.
+     * @memberof EmuchartsEditor
+     */
+    EmuchartsEditor.prototype.getState = function (id) {
+        return this.emucharts.getState(id);
+    };
+    
+    /**
      * Returns an array containing the current set of constants defined in the diagram
      * @memberof EmuchartsEditor
      */
@@ -1800,6 +1821,15 @@ define(function (require, exports, module) {
     EmuchartsEditor.prototype.getTransitions = function () {
         return this.emucharts.getTransitions();
     };
+    
+    /**
+     * @description Returns the descriptor of a transition.
+     * @param id {String} The identifier of the transition.
+     * @memberof EmuchartsEditor
+     */    
+    EmuchartsEditor.prototype.getTransition = function (id) {
+        return this.emucharts.getTransition(id);
+    };
 
     /**
      * Returns an array containing the current set of initial transitions in the diagram
@@ -1837,16 +1867,12 @@ define(function (require, exports, module) {
         refreshInitialTransitions(itransitions);
     };
 
-
     /**
-     * utility function to rename states
+     * utility function to edit states
      * @memberof EmuchartsEditor
      */
-    EmuchartsEditor.prototype.rename_state = function (stateID, newLabel) {
-        if (this.getIsPIM())
-            newLabel = newLabel.name;
-
-        this.emucharts.rename_node(stateID, newLabel);
+    EmuchartsEditor.prototype.edit_state = function (stateID, data) {
+        this.emucharts.edit_node(stateID, data);
         // refresh states
         var states = d3.select("#ContainerStateMachine")
             .select("#States").selectAll(".state")
@@ -1870,9 +1896,7 @@ define(function (require, exports, module) {
         transitions.selectAll(".path").attr("d", function (edge) {
             // refresh transition label
             var label = d3.select(this.parentNode).select(".tlabel");
-            label.text(function (edge) {
-                return labelToString(edge.name);
-            });
+            label.text(labelToString(edge.name));
         });
        */
     };
@@ -2055,12 +2079,12 @@ define(function (require, exports, module) {
         _this = this;
         if (this.emucharts.constants) {
             this.emucharts.constants.forEach(function (key) {
-                _this.emucharts.constants.remove(key);
+                _this.delete_constants(key);
             });
         }
         if (this.emucharts.variables) {
             this.emucharts.variables.forEach(function (key) {
-                _this.emucharts.variables.remove(key);
+                _this.delete_variable(key);
             });
         }
         var transitions = this.emucharts.getTransitions();

@@ -408,7 +408,7 @@ define(function (require, exports, module) {
                     expr += c.inExpr;
                     tmp.push(expr);
                 });
-                ans += tmp.join(",\n") + "\n    ENDCOND\n\n";
+                ans += tmp.join(",\n") + ",\n    ELSE -> st\n    ENDCOND\n\n";
             });
             ret.res = ans;
         }

@@ -5,6 +5,7 @@
  * @date 10/31/13 11:26:16 AM
  */
 /*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50*/
+/*global define*/
 define(function (require, exports, module) {
     "use strict";
     var Widget = require("widgets/Widget"),
@@ -12,6 +13,7 @@ define(function (require, exports, module) {
         property = require("util/property"),
         Timer	= require("util/Timer"),
         Recorder    = require("util/ActionRecorder"),
+        Speaker  = require("widgets/TextSpeaker"),
         ButtonActionsQueue = require("widgets/ButtonActionsQueue").getInstance();
     //define timer for sensing hold down actions on buttons
     var btnTimer = new Timer(250), timerTickFunction = null;
@@ -31,10 +33,18 @@ define(function (require, exports, module) {
         opt.functionText = opt.functionText || id;
         opt.recallRate = opt.recallRate || 250;
         opt.evts = opt.evts || ["click"];
+        opt.callback = opt.callback || function () {};
+        opt.buttonReadback = opt.buttonReadback || "";
+        opt.keyCode = opt.keyCode || "";
+        opt.keyName = opt.keyName || "";
+        coords = coords || {};
         this.evts = property.call(this, opt.evts);
         this.recallRate = property.call(this, opt.recallRate);
         this.functionText = property.call(this, opt.functionText);
         this.imageMap = property.call(this);
+        this.buttonReadback = property.call(this, opt.buttonReadback);
+        this.keyCode = property.call(this, opt.keyCode);
+        this.keyName = property.call(this, opt.keyName);
 
         Widget.call(this, id, "button");
 
@@ -49,13 +59,13 @@ define(function (require, exports, module) {
         this.width = coords.width || 32;
         this.height = coords.height || 32;
 
-        this.area = opt.area || parent.append("area")
-                        .attr("coords", this.left + "," + this.top + ","
-                              + (this.left + this.width) + "," + (this.top + this.height))
-                        .attr("id", id)
-                        .attr("class", id);
+        this.area = opt.area || parent.append("area");
+        var x2 = parseFloat(this.left) + parseFloat(this.width);
+        var x3 = parseFloat(this.top) + parseFloat(this.height);
+        this.area.attr("shape", "rect").attr("id", id).attr("class", id)
+                 .attr("coords", this.left + "," + this.top + "," + x2 + "," + x3);
 
-        this.createImageMap({area: this.area, callback: opt.callback});
+        this.createImageMap({ area: this.area, callback: opt.callback });
         return this;
     }
 
@@ -95,7 +105,10 @@ define(function (require, exports, module) {
             type: this.type(),
             recallRate: this.recallRate(),
             functionText: this.functionText(),
-            boundFunctions: this.boundFunctions()
+            boundFunctions: this.boundFunctions(),
+            buttonReadback: this.buttonReadback(),
+            keyCode: this.keyCode(),
+            keyName: this.keyName()
         };
     };
 
@@ -146,7 +159,7 @@ define(function (require, exports, module) {
     Button.prototype.pressAndHold = function (opt) {
         opt = opt || {};
         var f = this.functionText(),
-        widget = this;
+            widget = this;
         
         this.press(opt);
         timerTickFunction = function () {
@@ -160,7 +173,7 @@ define(function (require, exports, module) {
                 ts: new Date().getTime()
             });
         };
-        btnTimer.interval(this.recallRate()).start();        
+        btnTimer.interval(this.recallRate()).start();
         
         return this;
     };
@@ -180,6 +193,9 @@ define(function (require, exports, module) {
             action: "click",
             ts: new Date().getTime()
         });
+        if (this.buttonReadback() && this.buttonReadback() !== "") {
+            Speaker.speak(this.buttonReadback());
+        }
         return this;
     };
     

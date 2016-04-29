@@ -63,7 +63,7 @@ define(function (require, exports, module) {
                 //remove the halo at the end of the actions playback
                 d3.select(".animation-halo").remove();
                 d3.select(el).select(".timeLine").style("width", "100%");
-                d3.select(el).select(".scriptItem").classed("glypicon-play", true).classed("glyphicon-stop", false);
+                d3.select(el).select(".scriptItem").classed("glyphicon-play", true).classed("glyphicon-stop", false);
                 playing = false;
             }
         });
@@ -122,7 +122,7 @@ define(function (require, exports, module) {
         ScriptItemView.create(script).on("scriptClicked", function () {
             if (!playing) {
                 playing = true;
-                d3.select(this.el).select(".scriptItem").classed("glypicon-play", false).classed("glyphicon-stop", true);
+                d3.select(this.el).select(".scriptItem").classed("glyphicon-play", false).classed("glyphicon-stop", true);
                 var display = WidgetManager.getDisplayWidgets()[0];
                 ws.lastState(script.startState);
                 //render the last state

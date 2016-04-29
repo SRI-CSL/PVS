@@ -13,7 +13,7 @@ define(function (require, exports, module) {
         PreferenceKeys = require("preferences/PreferenceKeys"),
         Preferences  = require("preferences/PreferenceStorage").getInstance();
 
-    var saveInterval = Preferences.get(PreferenceKeys.BACKUP_INTERVAL) * 60 * 1000;
+    var saveInterval = Preferences.get(PreferenceKeys.BACKUP_INTERVAL) * 1000;
     function ProjectAutoSaver() {
         saveTimer = new Timer(saveInterval);
         countdownTimer = new Timer(saveInterval);

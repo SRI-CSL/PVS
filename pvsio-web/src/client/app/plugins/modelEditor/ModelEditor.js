@@ -4,7 +4,7 @@
  * @date 11/21/13 15:03:48 PM
  */
 /*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50*/
-/*global define, Promise*/
+/*global define, Promise, layoutjs*/
 define(function (require, exports, module) {
     "use strict";
     var CodeMirror          = require("cm/lib/codemirror"),
@@ -96,7 +96,7 @@ define(function (require, exports, module) {
             }
             editor.clearHistory();
         }
-        if (event.selectedItem) {
+        if (event.selectedItem && document.getElementById("editor")) {
             if (event.selectedItem.isDirectory) {
                 document.getElementById("editor").style.display = "inline-block";
                 document.getElementById("imageViewer").style.display = "none";
@@ -169,7 +169,6 @@ define(function (require, exports, module) {
                 }
             }
         };
-
         fs = new FileSystem();
     }
 
@@ -428,6 +427,7 @@ define(function (require, exports, module) {
         projectManager.renderFileTreeView();
         // bind listeners for buttons in the toolbar
         bindListeners(projectManager);
+        layoutjs({el: "#model-editor-container"});
         return Promise.resolve(true);
     };
 

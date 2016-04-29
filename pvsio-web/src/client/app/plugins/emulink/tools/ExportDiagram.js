@@ -20,11 +20,17 @@ define(function (require, exports, module) {
         var minY = (states.length > 0) ? Math.min.apply(Math, states.map(function (data) { return data.y; })) : 0;
         var maxX = (states.length > 0) ? Math.max.apply(Math, states.map(function (data) { return data.x; })) : 0;
         var maxY = (states.length > 0) ? Math.max.apply(Math, states.map(function (data) { return data.y; })) : 0;
+        
+        var transitions = diagram.emuchartsManager.getTransitions();
+        var minTX = (transitions.length > 0) ? Math.min.apply(Math, transitions.map(function (data) { return data.controlPoint.x; })) : 0;
+        var minTY = (transitions.length > 0) ? Math.min.apply(Math, transitions.map(function (data) { return data.controlPoint.y; })) : 0;
+        var maxTX = (transitions.length > 0) ? Math.max.apply(Math, transitions.map(function (data) { return data.controlPoint.x; })) : 0;
+        var maxTY = (transitions.length > 0) ? Math.max.apply(Math, transitions.map(function (data) { return data.controlPoint.y; })) : 0;
         return {
-            minX: minX,
-            maxX: maxX,
-            minY: minY,
-            maxY: maxY
+            minX: (minX < minTX) ? minX : minTX,
+            maxX: (maxX > maxTX) ? maxX : maxTX,
+            minY: (minY < minTY) ? minY : minTY,
+            maxY: (maxY > maxTY) ? maxY : maxTY
         };
     }
     
@@ -63,16 +69,17 @@ define(function (require, exports, module) {
         var padding = 4;
         var width = (opt && opt.width && opt.width > 320) ? opt.width - (padding * 2) : 320;
         var rowHeight = 32;
-        var height = variables.length * rowHeight;
+        var headerHeight = 64;
+        var height = headerHeight + variables.length * rowHeight;
         var svg = diagram.svg.append("foreignObject")
                     .attr("x", 10).attr("y", 10).attr("width", width).attr("height", height)
-                    .attr("requiredExtension", "http://www.w3.org/1999/xhtml")
-                    .append("div").attr("xmlns", "http://www.w3.org/1999/xhtml")
+                    .attr("requiredExtension", "http://www.w3.org/1999/xhtml");
+        svg.append("div").attr("xmlns", "http://www.w3.org/1999/xhtml")
                     .style("border", "1px solid steelblue");
         svg.html(
             "<div style='background-color: rgb(8, 88, 154); color: white; padding: " + padding + "px;'>Context Variables</div>" +
             variables.map(function (v) {
-                return "<div style='padding: 2px 0 2px " + padding + "px;'>" + v.name + ": " + v.type + " = " + v.value + "</div>";
+                return "<div style='padding: 2px 0 2px 4px;'>" + v.name + ": " + v.type + " = " + v.value + "</div>";
             }).join("")
         );
         return { width: width, height: height };

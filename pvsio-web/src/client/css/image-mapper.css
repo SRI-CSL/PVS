@@ -18,11 +18,12 @@ rect.corner {
     stroke: #0bc95b;
 }
 g.selected .region {
-    stroke: yellow;   
+    stroke: yellow;
+    stroke-width: 2.5px;
 }
 
 g.selected.subselected .region {
-    stroke-width: 2.5px;   
+    stroke-width: 2.5px;
 }
 .region {
     fill: rgba(35, 101, 32, 0.2);

@@ -65,7 +65,6 @@ define(function (require, exports, module) {
     function showInterface(opt) {
         return function (res) {
             return new Promise(function (resolve, reject) {
-                layoutjs({el: "#model-editor-container"});
                 console.log("Browser version: " + BrowserUtils.getVersion());
                 if (BrowserUtils.isBrowserSupported() === false) {
                     var msg = BrowserUtils.requiredBrowserWarning();

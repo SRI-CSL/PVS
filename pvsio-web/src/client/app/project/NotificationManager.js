@@ -10,7 +10,7 @@
 define(function (require, exports, module) {
     "use strict";
     var Logger = require("util/Logger");
-    var notifications = [], fadeDuration = 5000;
+    var notifications = [], fadeDuration = 10000;
     function _showSelfDestructingNotification() {
         var notifyDiv = d3.select("#project-notifications"),
             alertDiv = notifyDiv.select("div.alert");

@@ -54,7 +54,7 @@ div.plugins {
 }
 #graphicalEditor{
     position:  relative;
-    min-width: 1200px;
+/*    min-width: 1200px;*/
 }
 
 #graphicalEditor.hidden {
@@ -66,9 +66,9 @@ div.plugins {
 
 #content{
     min-width: 1200px;
-    overflow-y: scroll;
+/*    overflow-y: scroll;*/
     width: 100%;
-    height: 100%;
+    height: 100% !important;
     position: relative;
     min-width: 800px;
     -webkit-animation: fadeIn 1s; /* Chrome, Safari, Opera */
@@ -156,7 +156,7 @@ area{
     cursor: pointer;
 }
 
-#controlsContainer a.status {
+#controlsContainer a.status, #listContainer a.status {
     padding:10px;
     text-decoration: none;
     color: #555;
@@ -165,10 +165,17 @@ area{
 #imageDiv{
     position: relative;
 }
-#controlsContainer{
+#controlsContainer {
     position: relative;
     height: 50px;
     min-width: 400px;
+}
+#listContainer {
+    height: 40px;
+    width: 100%;
+    min-width: 240px;
+    padding: 2px;
+    background-color: whitesmoke;
 }
 
 div.displayWidget{
@@ -459,6 +466,7 @@ div.detailsForm select, div.detailsForm textarea{
     width: 20%;
     background: white;
     height: 480px;
+    overflow-y: auto;
 }
 
 #projectTitle {
@@ -561,25 +569,26 @@ div.detailsForm select, div.detailsForm textarea{
 .caption button {
     width: 100%;
 }
-#widgetsList {
-    overflow-y: auto;
+#widgetsList, #timersList {
+/*    overflow-y: auto;*/
     padding: 0;
-    margin: 0;
-    height: 100%;
+    margin: 4 0 2;
+    max-height: 50%;
+    margin-right: 6px;
 }
-#widgetsList li{
+#widgetsList li, #timersList li{
     cursor: pointer;
 }
 
-#widgetsList li.selected {
+#widgetsList li.selected, #timersList li.selected {
     background: rgb(8, 88, 154);
     color: white;
 }
-#widgetsList li:hover {
+#widgetsList li:hover, #timersList li:hover {
     color: white;
     background: black;
 }
-#widgetsList li.selected:hover {
+#widgetsList li.selected:hover, #timersList li.selected.hover {
     color: white;
     background: rgb(8, 88, 154);
 }
@@ -824,10 +833,12 @@ fadeOut
     background: red;
 }
 
+/*
 #content.prototypebuilder.offscreen {
     position: absolute;
     left: -2000px;
 }
+*/
 
 .PVSio-web-logo {
     width: 100%;
@@ -919,6 +930,8 @@ fadeOut
     height: 300px;
     overflow-y: auto;
     width: 100%;
+    height: 100%;
+    float:left;
 }
 
 input.input_text{
@@ -949,22 +962,32 @@ input.input_text{
     border-top: 1px solid grey;
     padding-top: 10px;
     margin-top: 0 !important;
+    height: 100%;
+    padding:20px !important;
+    border: 1px solid;
+    float:right;
 }
 #image-preview {
-    max-width: 100px;
-    width: 100px;
+    max-width: 200px;
+    max-height: 140px;
 }
 
-#btnBuilderView.active a, #btnSimulatorView.active a{
+#btnBuilderView.active a, #btnSimulatorView.active a, #btnWidgetsView.active a, #btnTimersView.active a{
     color: white;
     background-color: rgb(8, 88, 154);
     border: none;
 }
-
-#btnBuilderView.active span, #btnSimulatorView.active span{
+#btnBuilderView.active span, #btnSimulatorView.active span {
     position: absolute;
     top: 30px;
     left: 46px;
+    color: white;
+    display: inline;
+}
+#btnWidgetsView.active span, #btnTimersView.active span{
+    position: absolute;
+    top: 30px;
+    left: 36px;
     color: white;
     display: inline;
 }
@@ -972,11 +995,14 @@ input.input_text{
 #btnSimulatorView.active span {
     left: 54px;
 }
-#btnBuilderView span, #btnSimulatorView span{
+#btnTimersView.active span {
+    left: 30px;
+}
+#btnBuilderView span, #btnSimulatorView span, #btnWidgetsView span, #btnTimersView span{
     display: none;
 }
 
-#btnBuilderView a, #btnSimulatorView a{
+#btnBuilderView a, #btnSimulatorView a, #btnWidgetsView a, #btnTimersView a{
     color: #898989;
 }
 
@@ -1033,4 +1059,42 @@ input.input_text{
 input#filter {
     color: black;
     padding: 5px;
+}
+
+.widgets {
+    padding: 0px;
+    padding-left: 18px;
+    text-decoration: none;
+    color: white;
+    font-weight: bold;
+    display: block;
+     
+    border-right: 70px solid transparent;
+    border-bottom: 40px solid #4c4c4c;
+     
+    height: 0;
+    line-height: 40px;
+}
+.widgetsListHeader, .timersListHeader{
+    width: 100%;
+    color:black !important;
+    background-color: whitesmoke!important;
+}
+.widgetsListHeader:hover, .timersListHeader:hover{
+    color:white !important;
+    background-color: black !important;
+}
+.newTimer, .newWidget {
+    float:right;
+    color:white;
+    background-color:rgb(8, 88, 154);
+    margin-top:2px;
+}
+.newTimer:hover, .newWidget:hover {
+    background-color: black;
+    color: white;
+}
+.coordTable {
+    display: inline-block;
+    width: 140px;
 }
