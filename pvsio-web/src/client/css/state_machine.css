@@ -149,7 +149,6 @@ ul#context-menu li {
 .button_inside_svg {
   position: absolute;
   top: 30px;
-  width:30px;
   height:30px;
   border-width: 1px;
   border-style: none;
@@ -162,18 +161,55 @@ ul#context-menu li {
   position: absolute;
 }
 
-#StateAttributes {
-    position: absolute;
+#StateAttributes, #MachineStates, #TransitionsTable {
+    position: relative;
     top: 0px;
-    width: 320px;
-    right: 0px;
+    width: 100%;
+    left: 0px;
     margin: 1px;
-    background: rgb(8, 88, 154);
+    background: white;
     font-family: Tahoma, sans-serif;
     overflow: auto;
     float: right;
     border: 2px solid steelblue;
-    max-height: 420px;
+    height: 200px;
+}
+#EmuchartsFloatTable {
+    position: absolute;
+    top: 614px;
+    width: 100%;
+    left: 0px;
+    margin: 1px;
+    background: whitesmoke;
+    font-family: Tahoma, sans-serif;
+    overflow: auto;
+    float: right;
+}
+#btnStates.active a, #btnTransitions.active a, #btnVariables.active a {
+    color: white;
+    background-color: rgb(8, 88, 154);
+    border: none;
+}
+#btnStates a, #btnTransitions a, #btnVariables a {
+    width: 160px;
+    color: black;
+    background-color: whitesmoke;
+    border: none;
+    text-align: center;
+}
+#btnStates a:hover, #btnTransitions a:hover, #btnVariables a:hover {
+    color: white;
+    background-color: black;
+}
+#btnViewHideTable span, #btnViewRevealTable span {
+    padding: 9px 0 8px 4px;
+    width: 20px;
+}
+#btnViewHideTable, #btnViewRevealTable {
+    background-color: rgb(8, 88, 154);
+}
+#btnViewHideTable:hover, #btnViewRevealTable:hover {
+    background-color: black;
 }
 #modifyPropertiesToolbar{
 	width: 930px;
@@ -228,11 +264,15 @@ ul#context-menu li {
   background-color: whitesmoke !important;
 }
 
-.EmuchartStateHeader {
+.width32 {
+    width: 32px;
+}
+.EmuchartTableHeader {
     padding: 4px 4px 4px 8px;
     color: white;
     background-color: rgb(8, 88, 154);
     height: 30px;
+    display: none;
 }
 
 input#filter.EmuchartsFilter {

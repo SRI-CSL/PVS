@@ -381,7 +381,7 @@ define(function (require, exports, module) {
         var toRemove = find(function (node) {
             return node.path === path;
         }, self.data);
-        if (toRemove) {
+        if (toRemove && toRemove.parent) {
             var index = toRemove.parent.children ? toRemove.parent.children.indexOf(toRemove) : -1;
             if (index > -1) {
                 toRemove.parent.children.splice(index, 1);

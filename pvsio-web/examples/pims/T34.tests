@@ -1,0 +1,228 @@
+Tests for Presentation Interaction Models:
+# ---------------------------------------------------------------
+#  Tests for PIM: T34
+# ---------------------------------------------------------------
+
+State(InfusionSummary) => hasWidget(OnOffSK) Λ Visible(OnOffSK) Λ Active(OnOffSK) Λ 
+	hasWidget(DownSK) Λ Visible(DownSK) Λ Active(DownSK) Λ 
+	hasWidget(UpSK) Λ Visible(UpSK) Λ Active(UpSK) Λ 
+	hasWidget(LFwdSK) Λ Visible(LFwdSK) Λ Active(LFwdSK) Λ 
+	hasWidget(RBackSK) Λ Visible(RBackSK) Λ Active(RBackSK) Λ 
+	hasWidget(NoStopSK) Λ Visible(NoStopSK) Λ Active(NoStopSK) Λ 
+	hasWidget(YesStartSK) Λ Visible(YesStartSK) Λ Active(YesStartSK) Λ 
+	hasWidget(Display) Λ Visible(Display) Λ Active(Display) Λ 
+	hasWidget(Info) Λ Visible(Info) Λ Active(Info) 
+State(Infusing) => hasWidget(OnOffSK) Λ Visible(OnOffSK) Λ Active(OnOffSK) Λ 
+	hasWidget(DownSK) Λ Visible(DownSK) Λ Active(DownSK) Λ 
+	hasWidget(UpSK) Λ Visible(UpSK) Λ Active(UpSK) Λ 
+	hasWidget(LFwdSK) Λ Visible(LFwdSK) Λ Active(LFwdSK) Λ 
+	hasWidget(RBackSK) Λ Visible(RBackSK) Λ Active(RBackSK) Λ 
+	hasWidget(NoStopSK) Λ Visible(NoStopSK) Λ Active(NoStopSK) Λ 
+	hasWidget(YesStartSK) Λ Visible(YesStartSK) Λ Active(YesStartSK) Λ 
+	hasWidget(Display) Λ Visible(Display) Λ Active(Display) Λ 
+	hasWidget(Info) Λ Visible(Info) Λ Active(Info) 
+State(InfusionConfirm) => hasWidget(OnOffSK) Λ Visible(OnOffSK) Λ Active(OnOffSK) Λ 
+	hasWidget(DownSK) Λ Visible(DownSK) Λ Active(DownSK) Λ 
+	hasWidget(UpSK) Λ Visible(UpSK) Λ Active(UpSK) Λ 
+	hasWidget(LFwdSK) Λ Visible(LFwdSK) Λ Active(LFwdSK) Λ 
+	hasWidget(RBackSK) Λ Visible(RBackSK) Λ Active(RBackSK) Λ 
+	hasWidget(Info) Λ Visible(Info) Λ Active(Info) Λ 
+	hasWidget(NoStopSK) Λ Visible(NoStopSK) Λ Active(NoStopSK) Λ 
+	hasWidget(Display) Λ Visible(Display) Λ Active(Display) Λ 
+	hasWidget(YesStartSK) Λ Visible(YesStartSK) Λ Active(YesStartSK) 
+State(SummaryScreen) => hasWidget(OnOffSK) Λ Visible(OnOffSK) Λ Active(OnOffSK) Λ 
+	hasWidget(DownSK) Λ Visible(DownSK) Λ Active(DownSK) Λ 
+	hasWidget(UpSK) Λ Visible(UpSK) Λ Active(UpSK) Λ 
+	hasWidget(LFwdSK) Λ Visible(LFwdSK) Λ Active(LFwdSK) Λ 
+	hasWidget(RBackSK) Λ Visible(RBackSK) Λ Active(RBackSK) Λ 
+	hasWidget(Info) Λ Visible(Info) Λ Active(Info) Λ 
+	hasWidget(NoStopSK) Λ Visible(NoStopSK) Λ Active(NoStopSK) Λ 
+	hasWidget(Display) Λ Visible(Display) Λ Active(Display) Λ 
+	hasWidget(YesStartSK) Λ Visible(YesStartSK) Λ Active(YesStartSK) 
+State(ConfirmRate) => hasWidget(OnOffSK) Λ Visible(OnOffSK) Λ Active(OnOffSK) Λ 
+	hasWidget(LFwdSK) Λ Visible(LFwdSK) Λ Active(LFwdSK) Λ 
+	hasWidget(RBackSK) Λ Visible(RBackSK) Λ Active(RBackSK) Λ 
+	hasWidget(Info) Λ Visible(Info) Λ Active(Info) Λ 
+	hasWidget(NoStopSK) Λ Visible(NoStopSK) Λ Active(NoStopSK) Λ 
+	hasWidget(UpSK) Λ Visible(UpSK) Λ Active(UpSK) Λ 
+	hasWidget(DownSK) Λ Visible(DownSK) Λ Active(DownSK) Λ 
+	hasWidget(Display) Λ Visible(Display) Λ Active(Display) Λ 
+	hasWidget(YesStartSK) Λ Visible(YesStartSK) Λ Active(YesStartSK) 
+State(SetDuration) => hasWidget(OnOffSK) Λ Visible(OnOffSK) Λ Active(OnOffSK) Λ 
+	hasWidget(NoStopSK) Λ Visible(NoStopSK) Λ Active(NoStopSK) Λ 
+	hasWidget(LFwdSK) Λ Visible(LFwdSK) Λ Active(LFwdSK) Λ 
+	hasWidget(RBackSK) Λ Visible(RBackSK) Λ Active(RBackSK) Λ 
+	hasWidget(InfoSK) Λ Visible(InfoSK) Λ Active(InfoSK) Λ 
+	hasWidget(DownSK) Λ Visible(DownSK) Λ Active(DownSK) Λ 
+	hasWidget(UpSK) Λ Visible(UpSK) Λ Active(UpSK) Λ 
+	hasWidget(Display) Λ Visible(Display) Λ Active(Display) Λ 
+	hasWidget(YesStartSK) Λ Visible(YesStartSK) Λ Active(YesStartSK) 
+State(Info) => hasWidget(OnOffSK) Λ Visible(OnOffSK) Λ Active(OnOffSK) Λ 
+	hasWidget(NoStopSK) Λ Visible(NoStopSK) Λ Active(NoStopSK) Λ 
+	hasWidget(LFwdSK) Λ Visible(LFwdSK) Λ Active(LFwdSK) Λ 
+	hasWidget(RBackSK) Λ Visible(RBackSK) Λ Active(RBackSK) Λ 
+	hasWidget(Display) Λ Visible(Display) Λ Active(Display) Λ 
+	hasWidget(YesStartSK) Λ Visible(YesStartSK) Λ Active(YesStartSK) Λ 
+	hasWidget(UpSK) Λ Visible(UpSK) Λ Active(UpSK) Λ 
+	hasWidget(DownSK) Λ Visible(DownSK) Λ Active(DownSK) Λ 
+	hasWidget(InfoSK) Λ Visible(InfoSK) Λ Active(InfoSK) 
+State(ResumeInfusion) => hasWidget(OnOffSK) Λ Visible(OnOffSK) Λ Active(OnOffSK) Λ 
+	hasWidget(DownSK) Λ Visible(DownSK) Λ Active(DownSK) Λ 
+	hasWidget(UpSK) Λ Visible(UpSK) Λ Active(UpSK) Λ 
+	hasWidget(LFwdSK) Λ Visible(LFwdSK) Λ Active(LFwdSK) Λ 
+	hasWidget(RBackSK) Λ Visible(RBackSK) Λ Active(RBackSK) Λ 
+	hasWidget(Info) Λ Visible(Info) Λ Active(Info) Λ 
+	hasWidget(Display) Λ Visible(Display) Λ Active(Display) Λ 
+	hasWidget(YesStartSK) Λ Visible(YesStartSK) Λ Active(YesStartSK) Λ 
+	hasWidget(NoStopSK) Λ Visible(NoStopSK) Λ Active(NoStopSK) 
+State(Init) => hasWidget(Display) Λ Visible(Display) Λ Active(Display) Λ 
+	hasWidget(OnOffSK) Λ Visible(OnOffSK) Λ Active(OnOffSK) Λ 
+	hasWidget(NoStopSK) Λ Visible(NoStopSK) Λ Active(NoStopSK) Λ 
+	hasWidget(LFwdSK) Λ Visible(LFwdSK) Λ Active(LFwdSK) Λ 
+	hasWidget(RBackSK) Λ Visible(RBackSK) Λ Active(RBackSK) Λ 
+	hasWidget(InfoSK) Λ Visible(InfoSK) Λ Active(InfoSK) Λ 
+	hasWidget(UpSK) Λ Visible(UpSK) Λ Active(UpSK) Λ 
+	hasWidget(DownSK) Λ Visible(DownSK) Λ Active(DownSK) Λ 
+	hasWidget(YesStartSK) Λ Visible(YesStartSK) Λ Active(YesStartSK) 
+State(LoadSyringe) => hasWidget(OnOffSK) Λ Visible(OnOffSK) Λ Active(OnOffSK) Λ 
+	hasWidget(NoStopSK) Λ Visible(NoStopSK) Λ Active(NoStopSK) Λ 
+	hasWidget(LFwdSK) Λ Visible(LFwdSK) Λ Active(LFwdSK) Λ 
+	hasWidget(RBackSK) Λ Visible(RBackSK) Λ Active(RBackSK) Λ 
+	hasWidget(Display) Λ Visible(Display) Λ Active(Display) Λ 
+	hasWidget(UpSK) Λ Visible(UpSK) Λ Active(UpSK) Λ 
+	hasWidget(DownSK) Λ Visible(DownSK) Λ Active(DownSK) Λ 
+	hasWidget(YesStartSK) Λ Visible(YesStartSK) Λ Active(YesStartSK) Λ 
+	hasWidget(InfoSK) Λ Visible(InfoSK) Λ Active(InfoSK) 
+State(BatteryLevelDisplay) => hasWidget(InfoSK) Λ Visible(InfoSK) Λ Active(InfoSK) Λ 
+	hasWidget(YesStartSK) Λ Visible(YesStartSK) Λ Active(YesStartSK) Λ 
+	hasWidget(DownSK) Λ Visible(DownSK) Λ Active(DownSK) Λ 
+	hasWidget(UpSK) Λ Visible(UpSK) Λ Active(UpSK) Λ 
+	hasWidget(Display) Λ Visible(Display) Λ Active(Display) Λ 
+	hasWidget(RBackSK) Λ Visible(RBackSK) Λ Active(RBackSK) Λ 
+	hasWidget(LFwdSK) Λ Visible(LFwdSK) Λ Active(LFwdSK) Λ 
+	hasWidget(NoStopSK) Λ Visible(NoStopSK) Λ Active(NoStopSK) Λ 
+	hasWidget(OnOffSK) Λ Visible(OnOffSK) Λ Active(OnOffSK) 
+
+State(InfusionSummary) Λ Interaction(Info, I_BatteryLevelDisplay) => State(BatteryLevelDisplay)
+State(Infusing) Λ Interaction(Info, I_InfusionSummary) => State(InfusionSummary)
+State(InfusionConfirm) Λ Interaction(YesStartSK, I_Infusing) => State(Infusing)
+State(SummaryScreen) Λ Interaction(YesStartSK, I_InfusionConfirm) => State(InfusionConfirm)
+State(ConfirmRate) Λ Interaction(YesStartSK, I_SummaryScreen) => State(SummaryScreen)
+State(SetDuration) Λ Interaction(YesStartSK, I_ConfirmRate) => State(ConfirmRate)
+State(ResumeInfusion) Λ Interaction(NoStopSK, I_Init) => State(Init)
+State(Init) Λ Interaction(YesStartSK, I_SetDuration) => State(SetDuration)
+State(Init) Λ Interaction(InfoSK, I_Info) => State(Info)
+State(LoadSyringe) Λ Interaction(InfoSK, I_Info) => State(Info)
+State(LoadSyringe) Λ Interaction(YesStartSK, I_ResumeInfusion) => State(ResumeInfusion)
+State(BatteryLevelDisplay) Λ Interaction(YesStartSK, I_Infuse) => State(Infusing)
+
+State(InfusionConfirm) Λ Interaction(YesStartSK) => genBehaviour(S_StartInfusion)
+State(ConfirmRate) Λ Interaction(YesStartSK) => genBehaviour(S_ConfirmRate)
+State(ConfirmRate) Λ Interaction(YesStartSK) => genBehaviour(S_DurationWarning)
+State(ConfirmRate) Λ Interaction(YesStartSK) => genBehaviour(S_ShowSummary)
+State(ConfirmRate) Λ Interaction(DownSK) => genBehaviour(S_DecreaseRate)
+State(ConfirmRate) Λ Interaction(UpSK) => genBehaviour(S_IncreaseRate)
+State(SetDuration) Λ Interaction(YesStartSK) => genBehaviour(S_ShowRate)
+State(SetDuration) Λ Interaction(UpSK) => genBehaviour(S_IncreaseDuration)
+State(SetDuration) Λ Interaction(DownSK) => genBehaviour(S_DecreaseDuration)
+State(Info) Λ Interaction(DownSK) => genBehaviour(S_ScrollInfoListDown)
+State(Info) Λ Interaction(UpSK) => genBehaviour(S_ScrollInfoListUp)
+State(Info) Λ Interaction(YesStartSK) => genBehaviour(S_BatteryLevel)
+State(Init) Λ Interaction(YesStartSK) => genBehaviour(S_ShowDuration)
+State(Init) Λ Interaction(DownSK) => genBehaviour(S_DecreaseVTBI)
+State(Init) Λ Interaction(UpSK) => genBehaviour(S_IncreaseVTBI)
+State(LoadSyringe) Λ Interaction(YesStartSK) => genBehaviour(S_SelectSyringe)
+State(LoadSyringe) Λ Interaction(YesStartSK) => genBehaviour(S_CalculateVTBI)
+State(LoadSyringe) Λ Interaction(DownSK) => genBehaviour(S_ScrollSyringeListDown)
+State(LoadSyringe) Λ Interaction(UpSK) => genBehaviour(S_ScrollSyringeListUp)
+State(LoadSyringe) Λ Interaction(RBackSK) => genBehaviour(S_MoveActuatorBwd)
+State(LoadSyringe) Λ Interaction(LFwdSK) => genBehaviour(S_MoveActuatorFwd)
+
+State(Infusing) => respBehaviour(Display, S_ShowInfusionStatus)
+State(SummaryScreen) => respBehaviour(Display, S_ShowSummary)
+State(ConfirmRate) => respBehaviour(Display, S_IncreaseRate)
+State(ConfirmRate) => respBehaviour(Display, S_DecreaseRate)
+State(ConfirmRate) => respBehaviour(Display, S_ShowRate)
+State(ConfirmRate) => respBehaviour(Display, S_DurationWarning)
+State(SetDuration) => respBehaviour(Display, S_ShowDuration)
+State(SetDuration) => respBehaviour(Display, S_IncreaseDuration)
+State(SetDuration) => respBehaviour(Display, S_DecreaseDuration)
+State(Info) => respBehaviour(Display, S_BatteryLevel)
+State(ResumeInfusion) => respBehaviour(Display, S_ResumeOption)
+State(LoadSyringe) => respBehaviour(Display, S_SelfTest)
+State(LoadSyringe) => respBehaviour(Display, S_SyringeDisplay)
+
+State(InfusionSummary) Λ Interaction(Display) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(InfusionSummary) Λ Interaction(YesStartSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(InfusionSummary) Λ Interaction(NoStopSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(InfusionSummary) Λ Interaction(RBackSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(InfusionSummary) Λ Interaction(LFwdSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(InfusionSummary) Λ Interaction(UpSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(InfusionSummary) Λ Interaction(DownSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(InfusionSummary) Λ Interaction(OnOffSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(Infusing) Λ Interaction(YesStartSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(Infusing) Λ Interaction(NoStopSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(Infusing) Λ Interaction(RBackSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(Infusing) Λ Interaction(LFwdSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(Infusing) Λ Interaction(UpSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(Infusing) Λ Interaction(DownSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(Infusing) Λ Interaction(OnOffSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(InfusionConfirm) Λ Interaction(Display) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(InfusionConfirm) Λ Interaction(NoStopSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(InfusionConfirm) Λ Interaction(Info) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(InfusionConfirm) Λ Interaction(RBackSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(InfusionConfirm) Λ Interaction(LFwdSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(InfusionConfirm) Λ Interaction(UpSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(InfusionConfirm) Λ Interaction(DownSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(InfusionConfirm) Λ Interaction(OnOffSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(SummaryScreen) Λ Interaction(NoStopSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(SummaryScreen) Λ Interaction(Info) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(SummaryScreen) Λ Interaction(RBackSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(SummaryScreen) Λ Interaction(LFwdSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(SummaryScreen) Λ Interaction(UpSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(SummaryScreen) Λ Interaction(DownSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(SummaryScreen) Λ Interaction(OnOffSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(ConfirmRate) Λ Interaction(NoStopSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(ConfirmRate) Λ Interaction(Info) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(ConfirmRate) Λ Interaction(RBackSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(ConfirmRate) Λ Interaction(LFwdSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(ConfirmRate) Λ Interaction(OnOffSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(SetDuration) Λ Interaction(InfoSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(SetDuration) Λ Interaction(RBackSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(SetDuration) Λ Interaction(LFwdSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(SetDuration) Λ Interaction(NoStopSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(SetDuration) Λ Interaction(OnOffSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(Info) Λ Interaction(InfoSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(Info) Λ Interaction(RBackSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(Info) Λ Interaction(LFwdSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(Info) Λ Interaction(NoStopSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(Info) Λ Interaction(OnOffSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(ResumeInfusion) Λ Interaction(YesStartSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(ResumeInfusion) Λ Interaction(Info) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(ResumeInfusion) Λ Interaction(RBackSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(ResumeInfusion) Λ Interaction(LFwdSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(ResumeInfusion) Λ Interaction(UpSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(ResumeInfusion) Λ Interaction(DownSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(ResumeInfusion) Λ Interaction(OnOffSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(Init) Λ Interaction(RBackSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(Init) Λ Interaction(LFwdSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(Init) Λ Interaction(NoStopSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(Init) Λ Interaction(OnOffSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(Init) Λ Interaction(Display) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(LoadSyringe) Λ Interaction(NoStopSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(LoadSyringe) Λ Interaction(OnOffSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(BatteryLevelDisplay) Λ Interaction(OnOffSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(BatteryLevelDisplay) Λ Interaction(NoStopSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(BatteryLevelDisplay) Λ Interaction(LFwdSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(BatteryLevelDisplay) Λ Interaction(RBackSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(BatteryLevelDisplay) Λ Interaction(Display) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(BatteryLevelDisplay) Λ Interaction(UpSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(BatteryLevelDisplay) Λ Interaction(DownSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+State(BatteryLevelDisplay) Λ Interaction(InfoSK) => genBehaviour(NONE) Λ respBehaviour(NONE)
+
+
+# ---------------------------------------------------------------
+#  Tests generated using PVSio-web PIM Test Generator ver 0.1
+#  Tool freely available at http://www.pvsioweb.org
+# ---------------------------------------------------------------
+

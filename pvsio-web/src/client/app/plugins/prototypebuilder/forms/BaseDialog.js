@@ -24,11 +24,35 @@ define(function (require, exports, module) {
             "mousedown .panel-heading": "moveDialog"
         },
         focus: function () {
-            d3.select(this.el).select(".panel").attr("tabindex", 1).node().focus();
+            d3.select(".panel-heading").classed("noselect", true);
+            d3.select(this.el).select(".panel").attr("tabindex", 1).node().focus();            
         },
         moveDialog: function (event) {
-            var parent = this.el,
-                bbox = d3.select(parent).select(".panel").node().getBoundingClientRect();
+            var bbox = d3.select(".panel-heading").node().getBoundingClientRect();
+            d3.select(".panel-heading").classed("noselect", true);
+            
+//            var dragStart = function () {
+//                d3.event.sourceEvent.stopPropagation();
+//            };
+//            var dragDialog = function () {
+//                d3.event.sourceEvent.stopPropagation();
+//                var m = d3.mouse(d3.select(".panel-heading").node());
+//                console.log(m);
+//                d3.select(".panel")
+//                    .style("top", (m[1] - bbox.top - bbox.height/2) + "px")
+//                    .style("left", (m[0] - bbox.left - bbox.width/2) + "px")
+//                    .style("position", "relative");
+//            };
+//            var dragEnd = function () {
+//                d3.event.sourceEvent.stopPropagation();
+//            };
+//            var drag = d3.behavior.drag();
+//            drag.on("dragstart", dragStart)
+//                .on("drag", dragDialog)
+//                .on("dragend", dragEnd);
+//            d3.select(".panel-heading").call(drag);            
+            
+            var parent = this.el;
             var startx = bbox.left, starty = bbox.top,
                 mx = event.clientX, my = event.clientY;
             function mousemove() {
@@ -43,18 +67,21 @@ define(function (require, exports, module) {
             d3.select(parent).select(".panel-heading").on("mouseup", function () {
                 d3.select("body").on("mousemove.dialogdrag", null);
             });
+            d3.select(".panel").on("mouseout", function () {
+                d3.select("body").on("mousemove.dialogdrag", null);
+            });
         },
         keypress: function (event) {
-            switch (event.which) {
-            case 13: //enter pressed
-                this.ok(event);
-                break;
-            case 27: //esc pressed
-                this.cancel(event);
-                break;
-            default:
-                break;
-            }
+//            switch (event.which) {
+//            case 13: //enter pressed
+//                this.ok(event);
+//                break;
+//            case 27: //esc pressed
+//                this.cancel(event);
+//                break;
+//            default:
+//                break;
+//            }
         },
         ok: function (event) {
             var form = this.el,

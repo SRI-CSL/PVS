@@ -25,8 +25,11 @@ var noop = function () { "use strict"; };
 function mkdirRecursive(dirPath, cb) {
     "use strict";
 	cb = cb || noop;
-    fs.mkdir(dirPath, function (error) {
-        if (error && error.code === "ENOENT") {
+    try {
+        fs.mkdirSync(dirPath);
+        cb();
+    } catch (mkdirErr) {
+        if (mkdirErr && mkdirErr.code === "ENOENT") {
             // the callback will be invoked only by the first instance of mkdirRecursive
             var parentDirectory = dirPath.substr(0, dirPath.lastIndexOf("/"));
             mkdirRecursive(parentDirectory, function (error) {
@@ -35,16 +38,21 @@ function mkdirRecursive(dirPath, cb) {
                 // we therefore need to handle the case EEXIST (two or more instances could
                 // be competing for the creation of the same parent directories)
                 if (!error || error.code === "EEXIST") {
-                    fs.mkdir(dirPath, cb);
+                    try {
+                        fs.mkdirSync(dirPath);
+                        cb();
+                    } catch (mkdirErr2) {
+                        cb(mkdirErr2);
+                    }
                 } else {
                     cb(error);
                 }
             });
         } else {
             // if the path has been created successfully, just invoke the callback function (if any)
-            cb(error);
+            cb();
         }
-    });
+    }
 }
 /**
  * Get the stat for the file in the specified path
@@ -115,6 +123,18 @@ function writeFile(fullPath, content, fileEncoding, opt) {
         content = content.replace(/^data:image\/(\w+);base64,/, "");
     }
     return new Promise(function (resolve, reject) {
+        function fileExists(f) {
+            try {
+                var ans = fs.statSync(fullPath);
+                if (ans && ans.isFile()) {
+                    return true;
+                }
+                return false;
+            } catch (fileExistsError) {
+                return false;
+            }
+        }
+        
         if (typeof fullPath !== "string") {
             reject({ type: "writeFile_error", path: fullPath, err: "Incorrect path (" + fullPath + ")"});
         } else if (typeof content !== "string") {
@@ -122,20 +142,25 @@ function writeFile(fullPath, content, fileEncoding, opt) {
         } else {
             var folder = fullPath.substring(0, fullPath.lastIndexOf(path.sep));
             mkdirRecursive(folder, function (err) {
-                if ((!err || err.code === "EEXIST") &&
-                        (!fs.existsSync(fullPath) || (opt && opt.overWrite))) {
-                    fs.writeFile(fullPath, content, fileEncoding, function (err) {
-                        if (err) {
-                            reject(err);
-                        } else {
+                if (!err || (err && err.code === "EEXIST")) {
+                    if ((opt && opt.overWrite) || !fileExists(fullPath)) {
+                        try {
+                            fs.writeFileSync(fullPath, content, fileEncoding);
                             resolve({path: fullPath, content: content, encoding: fileEncoding});
+                        } catch (writeFileErr) {
+                            reject(writeFileErr);
                         }
-                    });
+                    } else {
+                        reject({
+                            code: "EEXIST",
+                            message: "File already exists",
+                            path: fullPath
+                        });
+                    }
                 } else {
                     reject(err);
                 }
             });
-
         }
     });
 }

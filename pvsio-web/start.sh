@@ -20,22 +20,56 @@ if [ -d "src/server/ext" ] && [ ! -d "src/server/ext/IVY" ] &&
   ./installIVY.sh
   cd ../../..
 fi
-if [ -d "pvs6.0" ] && [ -f "pvs6.0/pvs" ] && [ -f "pvs6.0/pvsio" ] && [ -f "pvs6.0/proveit" ]; then
-	if [ -d "pvs6.0/nasalib" ]; then
-		NASALIB_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )/pvs6.0/nasalib"
+if [ -d "PVS" ] && [ -f "PVS/pvs" ] && [ -f "PVS/pvsio" ] && [ -f "PVS/proveit" ]; then
+    PVS_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )/PVS"
+    echo "PVS installation found at $PVS_DIR"
+	if [ -d "PVS/nasalib" ]; then
+		NASALIB_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )/PVS/nasalib"
 		echo "NASA LIB found at $NASALIB_DIR"
 		export PVS_LIBRARY_PATH=$NASALIB_DIR
-		cd pvs6.0/nasalib
+		cd PVS/nasalib
 		./install-scripts
 		cd ../..
 	else
-		cd pvs6.0
+		cd PVS
 		bin/relocate
 		cd ..
 	fi
 	cd src/server
-	node pvssocketserver.js pvsdir:pvs6.0 start
-else
+	node pvssocketserver.js pvsdir:$PVS_DIR start
+elif [ -f "../pvs" ] && [ -f "../pvsio" ] && [ -f "../proveit" ]; then
+    PVS_DIR=${PWD%/*}
+    pvsioweb_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+    echo "PVS installation found at $PVS_DIR"
+	if [ -d "$PVS_DIR/nasalib" ]; then
+		NASALIB_DIR="$PVS_DIR/nasalib"
+		echo "NASA LIB found at $NASALIB_DIR"
+		export PVS_LIBRARY_PATH=$NASALIB_DIR
+		cd $PVS_DIR/nasalib
+		./install-scripts
+		cd $pvsioweb_DIR
+	else
+		cd $PVS_DIR
+		bin/relocate
+		cd $pvsioweb_DIR
+	fi
 	cd src/server
-	node pvssocketserver.js start
+	node pvssocketserver.js pvsdir:$PVS_DIR start
+else
+	pvsio -version
+	if [ $? -eq 0 ]; then
+		cd src/server
+		node pvssocketserver.js start
+	else
+		#FAIL
+        echo "================================================================"
+        echo "================================================================"
+		echo "====   ERROR: Failed to locate PVS executable files         ===="
+        echo "================================================================"
+        echo "====   Please install PVSio-web within the PVS folder       ===="
+        echo "====   or alternatively place the PVS executable files on   ===="
+        echo "====   your PATH (see README.md for installation details).  ===="
+        echo "================================================================"
+        echo "================================================================"
+	fi
 fi

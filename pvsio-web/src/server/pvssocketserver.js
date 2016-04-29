@@ -49,6 +49,7 @@ function run() {
         serverFuncs				= require("./serverFunctions"),
         baseProjectDir          = path.join(__dirname, "../../examples/projects/"),
         baseDemosDir			= path.join(__dirname, "../../examples/demos/"),
+        baseExamplesDir         = path.join(__dirname, "../../examples/"),
         clientDir				= path.join(__dirname, "../client");
     var clientid = 0, WebSocketServer = ws.Server;
     var fsWatchers = {};
@@ -67,37 +68,39 @@ function run() {
      * @param {Socket} socket The websocket to use to send the token
      */
     function processCallback(token, socket) {
-        //called when any data is recieved from pvs process
-        //if the type of the token is 'processExited' then send message to client if the socket is still open
-        token.time  = token.time || {server: {}};
-        token.time.server.sent = new Date().getTime();
+        try {
+            //called when any data is recieved from pvs process
+            //if the type of the token is 'processExited' then send message to client if the socket is still open
+            token.time  = token.time || {server: {}};
+            token.time.server.sent = new Date().getTime();
 
-        //always send relative directories to the client
-        if (token.name && token.name.indexOf(baseProjectDir) === 0) {
-            token.name = token.name.replace(baseProjectDir, "");
-        }
-        if (token.path && token.path.indexOf(baseProjectDir) === 0) {
-            token.path = token.path.replace(baseProjectDir, "");
-        }
-        if (token.files) {
-            token.files.forEach(function (f) {
-                if (f.path && f.path.indexOf(baseProjectDir) === 0) {
-                    f.path = f.path.replace(baseProjectDir, "");
+            //always send relative directories to the client
+            if (token.name && token.name.indexOf(baseProjectDir) === 0) {
+                token.name = token.name.replace(baseProjectDir, "");
+            }
+            if (token.path && token.path.indexOf(baseProjectDir) === 0) {
+                token.path = token.path.replace(baseProjectDir, "");
+            }
+            if (token.files) {
+                token.files.forEach(function (f) {
+                    if (f.path && f.path.indexOf(baseProjectDir) === 0) {
+                        f.path = f.path.replace(baseProjectDir, "");
+                    }
+                });
+            }
+            if (token.err) {
+                if (token.err.path) {
+                    token.err.path = token.err.path.replace(new RegExp(baseProjectDir, "g"), "");
                 }
-            });
-        }
-        if (token.err) {
-            if (token.err.path) {
-                token.err.path = token.err.path.replace(new RegExp(baseProjectDir, "g"), "");
+                if (token.err.message) {
+                    token.err.message = token.err.message.replace(new RegExp(baseProjectDir, "g"), "");
+                }
             }
-            if (token.err.message) {
-                token.err.message = token.err.message.replace(new RegExp(baseProjectDir, "g"), "");
+            if (socket && socket.readyState === 1) {
+                socket.send(JSON.stringify(token));
             }
-        }
-
-
-        if (socket && socket.readyState === 1) {
-            socket.send(JSON.stringify(token));
+        } catch (processCallbackError) {
+            console.log("WARNING: processCallbackError " + JSON.stringify(processCallbackError));
         }
     }
 
@@ -533,10 +536,13 @@ function run() {
                 pvsioProcessMap[socketid].sendCommand(token.data.command, function (data) {
                     var res = {
                         id: token.id,
+                        command: token.data.command,
                         data: [data],
                         socketId: socketid,
                         type: "commandResult",
-                        time: token.time
+                        time: token.time,
+                        err: (typeof data === "string" && data.indexOf("Expecting an expression") === 0) ?
+                                { message: data, failedCommand: token.data.command } : null
                     };
                     processCallback(res, socket);
                 });
@@ -634,7 +640,7 @@ function run() {
                 writeFile(token.path, token.content, token.encoding, token.opt)
                     .then(function () {
                         processCallback(res, socket);
-                    }, function (err) {
+                    }).catch(function (err) {
                         res.type = token.type + "_error";
                         res.err = {
                             code: err.code,
@@ -725,6 +731,7 @@ function run() {
                 initProcessMap(socketid);
                 var absPath = token.path.indexOf("~") === 0 ? path.join(process.env.HOME, token.path.substr(1))
                     : isAbsolute(token.path) ? token.path : path.join(baseProjectDir, token.path);
+                console.log("\n>> Reading folder " + absPath);
                 readDirectory(absPath)
                     .then(function (files) {
                         processCallback({
@@ -740,6 +747,30 @@ function run() {
                             id: token.id,
                             socketId: socketid,
                             err: err.toString(),
+                            time: token.time
+                        }, socket);
+                    });
+            },
+            "readExamplesFolder": function (token, socket, socketid) {
+                initProcessMap(socketid);
+                console.log("\n>> Reading examples folder " + baseExamplesDir);
+                readDirectory(baseExamplesDir)
+                    .then(function (files) {
+                        processCallback({
+                            id: token.id,
+                            type: token.type,
+                            socketId: socketid,
+                            files: files,
+                            path: baseExamplesDir,
+                            time: token.time
+                        }, socket);
+                    }).catch(function (err) {
+                        processCallback({
+                            type: token.type + "_error",
+                            id: token.id,
+                            socketId: socketid,
+                            err: err.toString(),
+                            path: baseExamplesDir,
                             time: token.time
                         }, socket);
                     });
@@ -1030,8 +1061,7 @@ function run() {
                     restart = true;
                 }
                 if (val.toLowerCase().indexOf("pvsdir:") === 0) {
-                    process.env.pvsdir = path.join(__dirname, "../../" + val.toLowerCase().split(":")[1]);
-					console.log("PVS directory is " + process.env.pvsdir);
+                    process.env.pvsdir = val.split(":")[1];
                 }
             });
         }

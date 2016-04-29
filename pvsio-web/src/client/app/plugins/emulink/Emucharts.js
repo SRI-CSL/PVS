@@ -8,15 +8,24 @@
  * @date 14/05/14 2:53:03 PM
  */
 /*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50 */
-/*global define, d3*/
+/*global define*/
 define(function (require, exports, module) {
     "use strict";
 
     var eventDispatcher = require("util/eventDispatcher"),
-        PIMs = require("plugins/emulink/models/pim/PIMs");
+        PIMs = require("plugins/emulink/models/pim/PIMs"),
+        d3 = require("d3/d3"),
+        Colors = require("plugins/emulink/tools/Colors");
     var _this;
 
-    var defaultValues = { x: 100, y: 100, width: 36, height: 36, fontSize: 10 };
+    var defaultValues = {
+            x: 100,
+            y: 100,
+            width: 36,
+            height: 36,
+            fontSize: 10,
+            color: Colors.getColor
+    };
 
     var getFreshNodeID = function () {
         function newNodeID () {
@@ -82,7 +91,7 @@ define(function (require, exports, module) {
         _this = this;
         return this;
     }
-
+    
     Emucharts.prototype.getEdges = function () {
         return _this.edges;
     };
@@ -99,19 +108,22 @@ define(function (require, exports, module) {
 
 
     /**
-     * @function rename_node
-     * @description Renames a node (i.e., a state) in the emuchart diagram.
+     * @function edit_node
+     * @description Edits a node (i.e., a state) in the emuchart diagram.
      * @param id {String} Identifier of the node that shall be renamed.
-     * @param newName {String} New name that shall be assigned to the node.
+     * @param data {Object} Structured type containing one field
+     *      - name (String), specifying the new name of the node
+     *      - color (String)
      * @returns {Boolean} true if node renamed successfully; otherwise returns false
      * @memberof module:Emucharts
      * @instance
      */
-    Emucharts.prototype.rename_node = function (id, newName) {
+    Emucharts.prototype.edit_node = function (id, data) {
         if (!id || !_this.nodes || !_this.nodes.get(id)) { return false; }
         // get node and rename it
         var node = _this.nodes.get(id);
-        node.name = newName;
+        node.name = data.name || node.name || "X" + node.id;
+        node.color = data.color || node.color || defaultValues.color(id);
         _this.nodes.set(node.id, node);
         // we need to rename also nodes cached in the edge structure
         // this can be quite expensive in term of time, but renaming is unlikely to be a frequent operation
@@ -121,11 +133,11 @@ define(function (require, exports, module) {
                 var edge = _this.edges.get(key);
                 var dirty = false;
                 if (edge.source.id === id) {
-                    edge.source.name = newName;
+                    edge.source.name = node.name;
                     dirty = true;
                 }
                 if (edge.target.id === id) {
-                    edge.target.name = newName;
+                    edge.target.name = node.name;
                     dirty = true;
                 }
                 if (dirty) { _this.edges.set(key, edge); }
@@ -135,7 +147,8 @@ define(function (require, exports, module) {
             type: "emuCharts_stateRenamed",
             state: {
                 id: node.id,
-                name: node.name
+                name: node.name,
+                color: node.color
             }
         });
         return true;
@@ -155,6 +168,7 @@ define(function (require, exports, module) {
      *           <li> y (real): node position (y coordinate).</li>
      *           <li> width (real): node width.</li>
      *           <li> height (real): node height.</li>
+     *           <li> color (String): node color.</li>
      * @memberof module:Emucharts
      * @instance
      */
@@ -171,11 +185,13 @@ define(function (require, exports, module) {
                 x: node.x || defaultValues.x,
                 y: node.y || defaultValues.y,
                 width : width,
-                height: defaultValues.height
+                height: defaultValues.height,
+                color: node.color || defaultValues.color(id)
             };
 
         if (_this.getIsPIM()) {
             newNode = _this.pim.getState(newNode);
+            newNode.color = newNode.color || defaultValues.color(newNode.id);
         }
 
         // add the new node to the diagram
@@ -184,8 +200,9 @@ define(function (require, exports, module) {
         _this.fire({
             type: "emuCharts_stateAdded",
             state: {
-                id: id,
-                name: name
+                id: newNode.id,
+                name: newNode.name,
+                color: newNode.color
             }
         });
         return newNode;
@@ -539,8 +556,13 @@ define(function (require, exports, module) {
      */
     Emucharts.prototype.getStates = function () {
         // If this emuchart is a pim return the pim combatable transition.
-        if (_this.getIsPIM())
-            return _this.pim.getStates(this.nodes);
+        if (_this.getIsPIM()) {
+            var ans = _this.pim.getStates(this.nodes) || [];
+            ans.forEach(function (state) {
+                state.color = state.color || defaultValues.color(state.id);
+            });
+            return ans;
+        }
         
         var states = [];
         _this.nodes.forEach(function (key) {
@@ -551,7 +573,8 @@ define(function (require, exports, module) {
                 x: node.x,
                 y: node.y,
                 width : node.width,
-                height: node.height
+                height: node.height,
+                color: node.color
             });
         });
         return states;
@@ -565,8 +588,13 @@ define(function (require, exports, module) {
      * @instance
      */
     Emucharts.prototype.getState = function (id) {
-        if (_this.getIsPIM())
-            return _this.pim.getState(this.nodes.get(id));
+        if (_this.getIsPIM()) {
+            var state = _this.pim.getState(this.nodes.get(id));
+            if (state) {
+                state.color = state.color || defaultValues.color(state.id);
+            }
+            return state;
+        }
         // The state should already be a PIM state if required.
         return _this.nodes.get(id);
     };
@@ -580,9 +608,9 @@ define(function (require, exports, module) {
      */
     Emucharts.prototype.getTransition = function (id) {
         // If this emuchart is a pim return the pim combatable transition.
-        if (_this.getIsPIM())
+        if (_this.getIsPIM()) {
             return _this.pim.getTransition(this.edges.get(id));
-
+        }
         return _this.edges.get(id);
     };
 
@@ -595,8 +623,9 @@ define(function (require, exports, module) {
      */
     Emucharts.prototype.getTransitions = function () {
         // If this emuchart is a pim return the pim combatable transition.
-        if (_this.getIsPIM())
+        if (_this.getIsPIM()) {
             return _this.pim.getTransitions(this.edges);
+        }
         
         var transitions = [];
         _this.edges.forEach(function (key) {
@@ -760,7 +789,6 @@ define(function (require, exports, module) {
                 type: "emuCharts_variableRemoved",
                 variable: rem
             });
-            console.log("variable " + variableID + " deleted");
             return true;
         }
         return false;

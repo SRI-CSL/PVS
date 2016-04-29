@@ -102,7 +102,7 @@
                 <ul>
                     <li class="divider"></li>
                     <li><a href='#!' id="btn_menuNewState"><span>New state</span></a></li>
-                    <li><a href='#!' id="btn_menuRenameState"><span>Rename state</span></a></li>
+                    <li><a href='#!' id="btn_menuRenameState"><span>Edit state</span></a></li>
                     <li><a href='#!' id="btn_menuDeleteState"><span>Delete state</span></a></li>
                     <li class="divider"></li>
                 </ul>
@@ -220,35 +220,122 @@
     </div>
     <div id="ContainerStateMachine" ></div>
     <div id="ContainerStateMachineImage"></div>
-    <div id="NewStateAttributes" style="display:none;">
-        <table class="table">
-          <!-- This is our clonable table line template -->
-          <tr id="StateVariableTemplate">
-            <td contenteditable="false" style="background-color:white;">Name</td>
-            <td contenteditable="false" style="background-color:white;">Value</td>
-            <td style="background-color:white;">
-              <span id="RemoveStateAttribute" class="table-remove glyphicon glyphicon-remove"></span>
-            </td>
-            <td style="background-color:white;">
-              <!--<span id="StateAttributeUP" class="table-up glyphicon glyphicon-arrow-up"></span>
-              <span id="StateAttributeDOWN" class="table-down glyphicon glyphicon-arrow-down"></span>-->
-                <span id="EditStateAttribute" class="table-up glyphicon glyphicon-pencil">
-            </td>
-          </tr>
-          <!-- -->
-        </table>
-    </div>
-    <div id="StateAttributes" class="table-editable floating-table">
-        <div class="EmuchartStateHeader"><span>Context Variables</span></div>
-        <table class="table" style="margin-bottom:0 !important;">
-          <tr id="heading" class="TableHeading">
-            <th>Name</th>
-            <th>Initial Value</th>
-            <th></th>
-            <th><span id="AddStateAttribute" class="table-add glyphicon glyphicon-plus"></span></th>
-          </tr>
-        </table>
-    </div>    
+    <div id="EmuchartsFloatTable">
+        <div id="NewStateAttributes" style="display:none;">
+            <table class="table">
+              <!-- This is our clonable table line template -->
+              <tr id="StateVariableTemplate">
+                <td contenteditable="false" style="background-color:white; cursor: default;">Name</td>
+                <td contenteditable="false" style="background-color:white; cursor: default;">Value</td>
+                <td style="background-color:white; width:48px;">
+                  <span id="RemoveStateAttribute" class="table-remove glyphicon glyphicon-remove"></span>
+                </td>
+                <td style="background-color:white;">
+                  <!--<span id="StateAttributeUP" class="table-up glyphicon glyphicon-arrow-up"></span>
+                  <span id="StateAttributeDOWN" class="table-down glyphicon glyphicon-arrow-down"></span>-->
+                    <span id="EditStateAttribute" class="table-up glyphicon glyphicon-pencil">
+                </td>
+              </tr>
+              <!-- -->
+            </table>
+        </div>
+        <div id="NewMachineState" style="display:none;">
+            <table class="table">
+              <!-- This is our clonable table line template -->
+              <tr id="MachineStateTemplate">
+                <td contenteditable="false" style="background-color:white; cursor: default;">
+                    <div id="MachineStateName" style="overflow: hidden; cursor: pointer;">Name</div>
+                </td>
+                <td style="background-color:white;">
+                    <div id="MachineStateColor" style="width:20px; border: 1px solid; cursor: pointer;">&nbsp;</div>
+                </td>
+                <td style="background-color:white; width:48px;">
+                    <span id="RemoveMachineState" class="table-remove glyphicon glyphicon-remove"></span>
+                </td>
+                <td style="background-color:white;">
+                    <span id="RenameMachineState" class="table-up glyphicon glyphicon-pencil">
+                </td>
+              </tr>
+              <!-- -->
+            </table>
+        </div>
+        <div id="EmuchartsFloatTableMenu">
+            <ul class="dropdown" role="tablist">
+                <li id="btnStates" class="active"><a href="#!">States</a>
+                </li>
+                <li id="btnTransitions"><a href="#!">Transitions</a>
+                </li>
+                <li id="btnVariables"><a href="#!">Context Variables</a>
+                </li>
+            </ul>
+            <ul class="dropdown" role="tablist" style="float:right;">
+                <li id="btnViewHideTable" style="margin-right:76px;">
+                    <span class="glyphicon glyphicon-triangle-bottom"></span>
+                </li>
+                <li id="btnViewRevealTable" style="display:none">
+                    <span class="glyphicon glyphicon-triangle-top" style="margin-left:28px; margin-right:28px;"></span>
+                </li>
+            </ul>
+        </div>
+        <div id="EmuchartsFloatTableContent">
+            <div id="NewTransition" style="display:none;">
+                <table class="table">
+                  <!-- This is our clonable table line template -->
+                  <tr id="TransitionTemplate">
+                    <td contenteditable="false" style="background-color:white; cursor: default;">
+                        <div id="TransitionLabel" style="cursor: pointer;">Name</div>
+                    </td>
+                    <td style="background-color:white;">
+                        <div id="TransitionSource" style="cursor: pointer;">&nbsp;</div>
+                    </td>
+                    <td style="background-color:white;">
+                        <div id="TransitionTarget" style="cursor: pointer;">&nbsp;</div>
+                    </td>
+                    <td style="background-color:white; width:48px;">
+                        <span id="RemoveTransition" class="table-remove glyphicon glyphicon-remove"></span>
+                    </td>
+                    <td style="background-color:white;">
+                        <span id="RenameTransition" class="table-up glyphicon glyphicon-pencil">
+                    </td>
+                  </tr>
+                  <!-- -->
+                </table>
+            </div>
+            <div id="MachineStates" class="table-editable floating-table" style="display:block;">
+                <div class="EmuchartTableHeader" style="cursor: default;"><span>Machine States</span></div>
+                <table class="table" style="margin-bottom:0 !important;">
+                  <tr id="heading" class="TableHeading">
+                    <th style="cursor: default;">Name</th>
+                    <th style="cursor: default;">Color Code</th>
+                    <th></th>
+                    <th class="width32"><span id="AddMachineState" class="table-add glyphicon glyphicon-plus"></span></th>
+                  </tr>
+                </table>
+            </div>
+            <div id="TransitionsTable" class="table-editable floating-table" style="display:none;">
+                <div class="EmuchartTableHeader" style="cursor: default;"><span>Transitions</span></div>
+                <table class="table" style="margin-bottom:0 !important;">
+                  <tr id="heading" class="TableHeading">
+                    <th style="cursor: default;">Label</th>
+                    <th style="cursor: default;">Source</th>
+                    <th style="cursor: default;">Target</th>
+                    <th></th>
+                    <th class="width32"><span id="AddTransition" class="table-add glyphicon glyphicon-plus"></span></th>
+                  </tr>
+                </table>
+            </div>
+            <div id="StateAttributes" class="table-editable floating-table" style="display:none;">
+                <div class="EmuchartTableHeader" style="cursor: default;"><span>Context Variables</span></div>
+                <table class="table" style="margin-bottom:0 !important;">
+                  <tr id="heading" class="TableHeading" style="margin-left:0">
+                    <th style="cursor: default;">Name</th>
+                    <th style="cursor: default;">Initial Value</th>
+                    <th></th>
+                    <th class="width32"><span id="AddStateAttribute" class="table-add glyphicon glyphicon-plus"></span></th>
+                  </tr>
+                </table>
+            </div>
+        </div>
         <!--<textarea id="infoBoxModifiable" readonly >This space is for the Advanced Diagram Editor (this plugin will be implemented soon!)
         </textarea>-->
         <div><a href="!#" id="pngdataurl" download target="_blank"></a></div>

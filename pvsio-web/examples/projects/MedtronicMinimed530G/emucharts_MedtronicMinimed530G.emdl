@@ -13,7 +13,8 @@
     "x": 180.99999237060547,
     "y": 161.4895782470703,
     "width": 36,
-    "height": 36
+    "height": 36,
+    "color": "#1f77b4"
    },
    {
     "name": "on",
@@ -21,12 +22,13 @@
     "x": 309.16668701171875,
     "y": 159.32293701171875,
     "width": 36,
-    "height": 36
+    "height": 36,
+    "color": "#ff7f0e"
    }
   ],
   "transitions": [
    {
-    "name": "turn_on",
+    "name": "tick",
     "id": "T1",
     "source": {
      "name": "off",
@@ -138,8 +140,11 @@
     "id": "VAR_display:real(Local)",
     "name": "display",
     "type": "real",
+    "value": "0",
     "scope": "Local"
    }
-  ]
+  ],
+  "pmr": {},
+  "isPIM": false
  }
 }
