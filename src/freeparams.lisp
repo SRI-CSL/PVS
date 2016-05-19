@@ -141,6 +141,14 @@
     (setf (free-parameters texpr) nfrees)
     (union nfrees frees :test #'eq)))
 
+(defmethod free-params* ((texpr setsubtype) frees)
+  (let ((tfrees (free-params* (formals texpr)
+		  (free-params* (formula texpr)
+		    (free-params* (supertype texpr) 
+		      (free-params* (predicate texpr) nil))))))
+    (setf (free-parameters texpr) tfrees)
+    (union tfrees frees :test #'eq)))
+
 (defmethod free-params* ((texpr subtype) frees)
   (let ((tfrees (free-params* (supertype texpr) 
 		  (free-params* (predicate texpr) nil))))
@@ -220,7 +228,9 @@
 	    (assert (equal (free-parameters (args1 list-ex)) afrs))
 	    (push list-ex cons-list)
 	    (setq list-ex (args2 list-ex))))
-    (assert (null-expr? list-ex))
+    (assert (or (null-expr? list-ex)
+		(and (constructor-name-expr? list-ex)
+		     (eq (id list-ex) '|null|))))
     (setf (free-parameters list-ex) ofrees)
     ;; Now walk down the reversed list-exprs
     (dolist (cons-ex cons-list)
