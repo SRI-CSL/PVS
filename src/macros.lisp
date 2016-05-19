@@ -637,3 +637,13 @@
 		    (setf (cdr ,%elt) ,value))
 		  ,%alist)
 	   (acons ,%akey ,value ,%alist)))))
+
+(defmacro real-timer (str &rest body)
+  (let ((%start (gentemp))
+	(%result (gentemp)))
+    `(let ((,%start (get-internal-real-time))
+	   (,%result (progn ,@body)))
+       (format t "~%~a: ~d"
+	 ,str (- (get-internal-real-time) ,%start))
+       ,%result)))
+	
