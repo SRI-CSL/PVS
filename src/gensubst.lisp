@@ -568,11 +568,22 @@
       (let ((nres (gensubst* (resolutions name) substfn testfn)))
 	(if (eq nres (resolutions name))
 	    name
-	    (copy name
-	      'resolutions nres
-	      'actuals (gensubst* (actuals name) substfn testfn)
-	      'dactuals (gensubst* (dactuals name) substfn testfn)
-	      'mappings (gensubst* (mappings name) substfn testfn))))))
+	    (if (name-expr? name)
+		(let ((ntype (when (type name)
+			       (if (singleton? nres)
+				   (type (car nres))
+				   (break "shouldn't happen")))))
+		  (copy name
+		    'resolutions nres
+		    'type ntype
+		    'actuals (gensubst* (actuals name) substfn testfn)
+		    'dactuals (gensubst* (dactuals name) substfn testfn)
+		    'mappings (gensubst* (mappings name) substfn testfn)))
+		(copy name
+		  'resolutions nres
+		  'actuals (gensubst* (actuals name) substfn testfn)
+		  'dactuals (gensubst* (dactuals name) substfn testfn)
+		  'mappings (gensubst* (mappings name) substfn testfn)))))))
 
 (defmethod gensubst* ((map mapping) substfn testfn)
   (lcopy map
@@ -1181,8 +1192,8 @@
 (defmethod copy-untyped* ((ex setsubtype))
   (with-slots (supertype predicate formals formula) ex
     (copy ex
-      'supertype (copy-untyped* supertype)
-      'predicate (copy-untyped* predicate)
+      'supertype nil
+      'predicate nil
       'formals (copy-untyped* formals)
       'formula (copy-untyped* formula)
       'print-type nil
