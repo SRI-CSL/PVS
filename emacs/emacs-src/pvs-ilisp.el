@@ -573,7 +573,8 @@ want to set this to nil for slow terminals, or connections over a modem.")
 	   (buf (when pos
 		  (if (lnull dir)
 		      (pvs-display-buffer file pos)
-		    (pvs-display-file file dir pos)))))
+		    (pvs-display-file file dir pos))
+		  (delete-other-windows))))
       (comint-display-file-output err "PVS Error")
       (delete-file err)
       (when pos
