@@ -1247,16 +1247,67 @@
       (unparse (type res) :string t))))
 
 (defun type-incompatible (expr types expected &optional argument)
-  (let ((rtypes (remove-if #'symbolp types))
+  (let ((rtypes (when types
+		  (mapcar #'(lambda (fn) (unpindent fn 12 :string t))
+		    (full-name (remove-if #'symbolp types) 1))))
+	(etype (when types
+		 (unpindent (full-name expected 1) 12 :string t)))
 	(*type-error-argument* argument))
-    (if rtypes
-	(type-error expr
-	  "Incompatible types for ~a~%     Found: ~{~a~%~^~12T~}  Expected: ~a"
-	  expr
-	  (mapcar #'(lambda (fn) (unpindent fn 12 :string t))
-		  (full-name rtypes 1))
-	  (unpindent (full-name expected 1) 12 :string t))
-	(type-error expr "Type provided where an expression is expected"))))
+    (cond (rtypes
+	   (when (some #'(lambda (rtype) (string= rtype etype)) rtypes)
+	     ;; They print the same - find the differences - hopefully in print-types
+	     (multiple-value-bind (atypes eetype)
+		 (expose-type-differences types expected)
+	       (setq rtypes (mapcar #'(lambda (fn) (unpindent fn 12 :string t))
+			      atypes))
+	       (setq etype (unpindent eetype 12 :string t))))
+	   (type-error expr
+	     "Incompatible types for ~a~%     Found: ~{~a~%~^~12T~}  Expected: ~a"
+	     expr rtypes etype))
+	  (t
+	   (type-error expr "Type provided where an expression is expected")))))
+
+(defun expose-type-differences (types etype &optional atypes eetype)
+  (if (null types)
+      (values (nreverse atypes) eetype)
+      (multiple-value-bind (atype eetype)
+	  (expose-type-diffs (car types) etype)
+	(expose-type-differences (cdr types) etype (cons atype atypes) eetype))))
+
+(defun expose-type-diffs (type etype)
+  (expose-type-diffs* type etype))
+
+(defmethod expose-type-diffs* :around ((atype type-expr) (etype type-expr))
+  (if (tc-eq atype etype)
+      (values atype etype)
+      (let ((natype (lcopy atype :print-type nil))
+	    (netype (lcopy etype :print-type nil)))
+	(if (string= (str natype) (str netype))
+	    (call-next-method)
+	    (values natype netype)))))
+
+(defmethod expose-type-diffs* ((type tupletype) (etype tupletype))
+  (multiple-value-bind (atypes etypes)
+      (expose-type-diff-typelists (types type) (types etype))
+    (values (mk-tupletype atypes) (mk-tupletype etypes))))
+
+(defun expose-type-diff-typelists (types etypes &optional atypes eetypes)
+  (if (null types)
+      (values (nreverse atypes) (nreverse eetypes))
+      (multiple-value-bind (atype etype)
+	  (expose-type-diffs* (car types) (car etypes))
+	(expose-type-diff-typelists
+	 (cdr types) (cdr etypes) (cons atype atypes) (cons etype eetypes)))))
+
+(defmethod expose-type-diffs* ((type funtype) (etype funtype))
+  (multiple-value-bind (dtype detype)
+      (expose-type-diffs* (domain type) (domain etype))
+    (multiple-value-bind (rtype retype)
+	(expose-type-diffs* (range type) (range etype))
+      (values (mk-funtype dtype rtype) (mk-funtype detype retype)))))
+
+(defmethod expose-type-diffs* (type etype)
+  (values type etype))
 
 (defun pvs-locate (theory obj &optional loc)
   (let ((place (coerce (or loc (place obj)) 'list)))
