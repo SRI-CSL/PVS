@@ -1415,6 +1415,7 @@ or supply more substitutions."
 				   context))
 	 (argtypes (domain-types type))
 	 (args (function-extensionality-args argtypes context))
+	 (*bound-variables* (append (mapcar #'declaration args) *bound-variables*))
 	 (hyp (close-freevars (make-equality
 			       (make-application* fname args)
 			       (make-application* gname args))
