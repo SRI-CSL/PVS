@@ -280,7 +280,10 @@
 		;; TBD theory-formal-decls
 		(when assuming
 		  (make-xml-assuming :list assuming))
-		theory
+		(remove-if #'(lambda (d)
+			       (and (judgement? d)
+				    (judgement? (generated-by d))))
+		  theory)
 		exporting
 		;; TBD generated-by
 		;; TBD messages (info warnings conversion-messages)
@@ -773,8 +776,8 @@
     (let* ((bindings (when (type-application? declared-subtype)
 		       (parameters declared-subtype)))
 	   (*pp-xml-bindings* (append bindings *pp-xml-bindings*)))
-      (dolist (binding bindings)
-	(increment-binding-count binding))
+      ;; (dolist (binding bindings)
+      ;; 	(increment-binding-count binding))
       (xpvs-elt stream subtype-judgement (xml-attributes decl)
 		id
 		(when decl-formals (make-xml-decl-formals :list decl-formals))
@@ -1517,11 +1520,13 @@
 
 (defmethod pp-xml* (stream (ex modname) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
-  (with-slots (id actuals dactuals) ex
+  (with-slots (id actuals dactuals library mappings) ex
     (xpvs-elt stream theory-name (xml-attributes ex)
 	      id
 	      (when actuals (make-xml-actuals :list actuals))
-	      (when dactuals (make-xml-dactuals :list dactuals)))))
+	      (when dactuals (make-xml-dactuals :list dactuals))
+	      (when library (make-xml-library-id :id library))
+	      (when mappings (make-xml-mappings :list mappings)))))
 
 (defmethod pp-xml* (stream (ex symbol) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
