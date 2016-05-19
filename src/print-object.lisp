@@ -44,7 +44,7 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod print-object ((mod library-theory) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "#<Library-theory ~a>" (id mod))))
+      (format stream "#<Library-theory ~a@~a>" (lib-ref mod) (id mod))))
 
 (defmethod print-object ((dt datatype) stream)
   (if *debugging-print-object*
