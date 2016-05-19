@@ -679,6 +679,16 @@ The save-pvs-file command saves the PVS file of the current buffer."
 		 (error "%s is not in the current context or a typechecked library file"
 			(buffer-file-name)))))))
 
+(defun associated-pvs-file (&optional buf)
+  (unless buf
+    (setq buf (current-buffer)))
+  (with-current-buffer buf
+    (or (current-pvs-file t)
+	(and (boundp 'from-pvs-theory)
+	     (cadr (assoc from-pvs-theory pvs-theories)))
+	(and (member-equal (pathname-type (buffer-name)) ("tccs" "ppe"))
+	     (cadr (assoc (pathname-name (buffer-name)) pvs-theories))))))
+
 (defun pvs-library-file-p (filename)
   (pvs-send-and-wait (format "(library-file? \"%s\")" filename)
 		     nil nil 'bool))
