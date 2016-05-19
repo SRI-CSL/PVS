@@ -118,9 +118,13 @@
 	 'predicate (beta-reduce* (predicate te))))
 
 (defmethod beta-reduce* ((te funtype))
-  (lcopy te
-    'domain (beta-reduce* (domain te))
-    'range (beta-reduce* (range te))))
+  (let ((dom (beta-reduce* (domain te)))
+	(ran (beta-reduce* (range te))))
+    (if (or (eq dom (domain te))
+	    (not (dep-binding? (domain te))))
+	(lcopy te 'domain dom 'range ran)
+	(lcopy te 'domain dom
+	       'range (substit ran (acons (domain te) dom nil))))))
 
 (defmethod beta-reduce* ((te tupletype))
   (lcopy te 'types (beta-reduce* (types te))))
@@ -162,9 +166,21 @@
 
 (defmethod beta-reduce* :around ((expr expr))
   (let ((nexpr (call-next-method)))
-    (if (typep expr '(or bind-decl number-expr))
-	nexpr
-	(lcopy nexpr 'type (beta-reduce* (type nexpr))))))
+    (typecase expr
+      ((or bind-decl number-expr)
+       nexpr)
+      (name-expr 
+       (let ((ntype (beta-reduce* (type nexpr))))
+	 (if (or (null ntype) (null (resolution expr))
+		 (eq ntype (type (resolution expr))))
+	     nexpr
+	     (let ((nres (copy (resolution expr) :type ntype)))
+	       (when (and (freevars ntype)
+			  (not (tc-eq (freevars ntype) (freevars (type expr))))
+			  (null (freevars (module-instance (resolution expr)))))
+		 (break "beta-reduce*"))
+	       (lcopy nexpr 'type ntype 'resolutions (list nres))))))
+      (t (lcopy nexpr 'type (beta-reduce* (type nexpr)))))))
 
 (defmethod beta-reduce* ((expr expr))
   expr)
