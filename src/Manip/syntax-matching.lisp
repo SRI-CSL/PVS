@@ -227,13 +227,15 @@
 	     (show-flag (memq (car real-items) '(? show)))
 	     (fnums-items (if show-flag (cdr real-items) real-items))
 	     (fnums (if (consp fnums-items) (car fnums-items) nil))
-	     (fnum-p #'(lambda (e) (or (numberp e)
-				       (memq e '(+ - *))
-				       ;; Check for labels
-				       (member e (collect-labels-of-current-sequent)
-					       :test #'string=))))
-	     (items (if (or (funcall fnum-p fnums)
-			    (and (consp fnums) (every fnum-p fnums)))
+	     ;; (fnum-p #'(lambda (e)
+	     ;; 		 (or (numberp e)
+	     ;; 		     (and (symbolp e)
+	     ;; 			  (or (memq e '(+ - *))
+	     ;; 			      ;; Check for labels
+	     ;; 			      (member e (collect-labels-of-current-sequent)
+	     ;; 				      :test #'string=))))))
+	     (items (if (or (fnum-p fnums)
+			    (and (consp fnums) (every #'fnum-p fnums)))
 			(cdr fnums-items)
 		        fnums-items))
 	     (global-fnums (if (eq items fnums-items) '* fnums))
@@ -359,10 +361,11 @@
 ;; Returns a list of triples: (... (fnum patt onum) ...).
 
 (defun parse-match-patterns (patterns)
-  (let* ((fnum-p #'(lambda (e) (or (numberp e) (memq e '(+ - *)))))
+  (let* (;; (fnum-p #'(lambda (e)
+	 ;; 	     (or (numberp e) (memq e '(+ - *)))))
 	 (fnums-option-p #'(lambda (fnums) 
-			     (or (funcall fnum-p fnums)
-				 (and (consp fnums) (every fnum-p fnums)))))
+			     (or (fnum-p fnums)
+				 (and (consp fnums) (every #'fnum-p fnums)))))
 	 (fnums-complete 		 
 	  (loop for patt in patterns
 	        collect (cond ((not (consp patt))
@@ -523,17 +526,20 @@
 
 (defun match-subexpr (expr patt global-subs)
 
- (flet ((submatches (expr-list patt-list)
-	  (when (= (length expr-list) (length patt-list))
-	    (let* ((g-subs global-subs) result
-		   (r-bind (loop for e in expr-list  for p in patt-list
-			         do (setf result (match-subexpr e p g-subs))
-			         if (null result)
-			           do (return-from match-subexpr nil)
-			         append (cdr result)
-			         do (setf g-subs (car result)))))
-	      (cons g-subs r-bind)))))
-
+  (flet ((submatches (expr-list patt-list)
+	   (let* ((ex-list (if (or (= (length expr-list) (length patt-list))
+				   (cdr patt-list))
+			       expr-list
+			       (list (make!-tuple-expr* expr-list))))
+		  (g-subs global-subs)
+		  result
+		  (r-bind (loop for e in ex-list  for p in patt-list
+			     do (setf result (match-subexpr e p g-subs))
+			     if (null result)
+			     do (return-from match-subexpr nil)
+			     append (cdr result)
+			     do (setf g-subs (car result)))))
+	     (cons g-subs r-bind))))
   (cond ;; check for pattern variables [keep this first]
 	((let ((patt-var-match (match-pattern-var expr patt global-subs)))
 	   (when (eq patt-var-match 'prev-mismatch)
