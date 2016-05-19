@@ -482,8 +482,11 @@
 		      (setq prinfo
 			    (make-default-proof decl script id
 						description)))))))
-    (setf (real-time prinfo) (- (get-internal-real-time) init-real-time))
-    (setf (run-time prinfo) (- (get-run-time) init-run-time))
+    ;; For some reason, this can go negative.  One possibility is that the proof
+    ;; starts on one core, and finishes on another, each with it's own counter
+    ;; We make sure it is not negative
+    (setf (real-time prinfo) (max (- (get-internal-real-time) init-real-time) 0))
+    (setf (run-time prinfo) (max (- (get-run-time) init-run-time) 0))
     (setf (run-date prinfo) (get-universal-time))
     (when *use-default-dp?*
       (setf (decision-procedure-used prinfo) *default-decision-procedure*))
@@ -2458,19 +2461,18 @@
 		
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun retypecheck-sexp (sexp ps)
+(defun retypecheck-sexp (sexp)
   (if (consp sexp)
       (if (eq (car sexp) 'typechecked)
 	  (typecheck (parse :string (cadr sexp) :nt 'expr)
 	    :expected
 	    (typecheck (parse :string (caddr sexp)
-			      :nt 'type-expr)
-	      :context *current-context*)
-	    :tccs 'none;;NSH(10.20.94) tccs generated
-	    ;;at rule-application       
-	    :context *current-context*)
-	  (cons (retypecheck-sexp (car sexp) ps)
-		(retypecheck-sexp (cdr sexp) ps)))
+			      :nt 'type-expr))
+	    :tccs 'none ;;NSH(10.20.94) tccs generated
+	    ;;at rule-application
+	    )
+	  (cons (retypecheck-sexp (car sexp))
+		(retypecheck-sexp (cdr sexp))))
       sexp))
 					       
 
@@ -2495,8 +2497,7 @@
 	       (rerun-step (when (subgoals justif)
 			     (car (subgoals justif)))
 			   recheck? break?)
-	       (let ((top-rule `(let ((x (retypecheck-sexp (quote ,top-rule-in)
-							   *ps*)))
+	       (let ((top-rule `(let ((x (retypecheck-sexp (quote ,top-rule-in))))
 				  x))
 		     (subgoal-strategy
 		      (loop for subjustif in
@@ -2524,7 +2525,7 @@
 ;		 #'(lambda (ps)
 ;		     (declare (ignore ps))
 ;		     (format-if "~%~a~%" (rule justif))
-;		     (retypecheck-sexp (rule justif) ps))
+;		     (retypecheck-sexp (rule justif)))
 ;		 :subgoal-strategy-function
 ;		 #'(lambda (goal)
 ;		     (rerun-step (find (label goal)
@@ -3701,6 +3702,14 @@
 	      (t
 	       (error-format-if "~%No formulas match ~a" (or fnums '*))
 	       (values 'X nil nil))))))
+
+(defun fnum-p (e)
+  (or (numberp e)
+      (and (symbolp e)
+	   (or (memq e '(+ - *))
+	       ;; Check for labels
+	       (member e (collect-labels-of-current-sequent)
+		       :test #'string=)))))
 	
 (defun collect-labels-of-current-sequent ()
   (reduce #'union (s-forms (current-goal *ps*)) :key #'label))
