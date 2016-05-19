@@ -2996,8 +2996,7 @@
 			  (is-sop 'NOMAP mappings)
 			  (is-sop 'NOTGT target)
 			  (or (is-number (term-arg0 idop))
-			      (every #'digit-char-p
-				     (string (ds-id (term-arg0 idop))))))))
+			      (valid-number? (string (ds-id (term-arg0 idop))))))))
     (multiple-value-bind (idops length)
 	(xt-name-idops pidop maybe-num?)
       ;; At this point, idops is a number or a symbol (possibly with
@@ -3026,13 +3025,19 @@
 				  (make-instance 'number-expr
 				    :number denom)))))))
 	    ((and maybe-num? (null length))
-	     (let ((num (if (is-number (term-arg0 idop))
-			    (ds-number (term-arg0 idop))
-			    (parse-integer (string (ds-id (term-arg0 idop)))))))
+	     (multiple-value-bind (num radix)
+		 (if (is-number (term-arg0 idop))
+		     (ds-number (term-arg0 idop))
+		     (parse-number (string (ds-id (term-arg0 idop)))))
 	       (assert (integerp num))
-	       (make-instance 'number-expr
-		 :number num
-		 :place (term-place name))))
+	       (if radix
+		   (make-instance 'number-expr-with-radix
+		     :number num
+		     :radix radix
+		     :place (term-place name))
+		   (make-instance 'number-expr
+		     :number num
+		     :place (term-place name)))))
 	    (t (multiple-value-bind (acts acts-there? dacts dacts-there?)
 		   (unless (is-sop 'NOACTUALS actuals)
 		     (xt-actuals actuals pidop))
@@ -3062,6 +3067,32 @@
 		   :target (unless (is-sop 'NOTGT target)
 			     (xt-modname target))
 		   :place (term-place name))))))))
+
+(defun valid-number? (str)
+  (or (every #'digit-char-p str)
+      (and (> (length str) 2)
+	   (char= (char str 0) #\0)
+	   (let ((radix (case (char str 1)
+			  ((#\x #\X) 16)
+			  ((#\o #\O) 8)
+			  ((#\b #\B) 2))))
+	     (and radix
+		  (every #'(lambda (ch) (digit-char-p ch radix))
+			 (subseq str 2)))))))
+
+(defun parse-number (str)
+  (if (every #'digit-char-p str)
+      (values (parse-integer str))
+      (if (and (> (length str) 2)
+	       (char= (char str 0) #\0))
+	  (let ((radix (case (char str 1)
+			 ((#\x #\X) 16)
+			 ((#\o #\O) 8)
+			 ((#\b #\B) 2))))
+	    (if radix
+		(values (parse-integer (subseq str 2) :radix radix) radix)
+		(error "~a is not a valid number" str)))
+	  (error "~a is not a valid number" str))))
 
 (defun xt-name-idops (term maybe-num?)
   (when term
@@ -3269,4 +3300,14 @@
 		  (subseq idstr (1+ start) end)))
       (and (null end)
 	   (or (assq (intern (subseq idstr start) :pvs) *pvs-operators*)
-	       (every #'digit-char-p (subseq idstr start))))))
+	       (if (and (> (length idstr) (1+ start))
+			(char= (char idstr start) #\0)
+			(memq (char idstr (1+ start))
+			      '(#\x #\X #\o #\O #\b #\B)))
+		   (let ((radix (case (char idstr (1+ start))
+				  ((#\x #\X) 16)
+				  ((#\o #\O) 8)
+				  ((#\b #\B) 2))))
+		     (every #'(lambda (ch) (digit-char-p ch radix))
+			    (subseq idstr (+ start 2))))
+		   (every #'digit-char-p (subseq idstr start)))))))

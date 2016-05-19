@@ -253,6 +253,9 @@ bind tighter.")
   (let ((*unparse-expanded* t))
     (unparse obj :string t :char-width nil)))
 
+(defun str= (obj string)
+  (string= (str obj) string))
+
 (defun unpindent (inst indent &key (width *default-char-width*)
 		       length level lines string comment?)
   (let* ((str (unparse inst
@@ -1521,6 +1524,12 @@ bind tighter.")
 
 (defmethod pp* ((ex rational-expr))
   (write (number ex)))
+
+(defmethod pp* ((ex number-expr-with-radix))
+  (let ((*print-base* (radix ex)))
+    (write-char #\0)
+    (write-char (case (radix ex) (2 #\b) (8 #\o) (16 #\x)))
+    (write (number ex))))
 
 (defmethod pp* ((ex floatp-expr))
   (write (exact-fp (number ex))))

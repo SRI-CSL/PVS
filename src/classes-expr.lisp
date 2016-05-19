@@ -195,6 +195,9 @@
 (defcl number-expr (rational-expr)
   (number :type integer :parse t :restore-as nil))
 
+(defcl number-expr-with-radix (number-expr)
+  radix)
+
 (defcl name-expr-from-number (name-expr)
   (number :type integer))
 
