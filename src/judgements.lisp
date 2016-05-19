@@ -454,6 +454,13 @@
 (defmethod judgement-types ((ex expr))
   (multiple-value-bind (jtypes jdecls)
       (judgement-types-expr ex)
+    (assert (and (listp jtypes) (every #'type-expr? jtypes)))
+    (assert (and (listp jdecls)
+		 (every #'(lambda (jd)
+				      (if (listp jd)
+					  (every #'judgement? jd)
+					  (judgement? jd)))
+				  jdecls)))
     ;;(when (and (consp jtypes)
     ;;   (member (type ex) jtypes :test #'tc-eq))
     ;;  (break "Why is the real type a judgement type"))
@@ -474,8 +481,23 @@
 			   (cons jdecls result)))
 	(t (jdecls-list (car jdecls) (jdecls-list (cdr jdecls) result)))))
 
+;;; Most exprs return a list of types, the result of applying judgements to
+;;; the expr But for tuple-exprs and record-exprs, the types returned is a
+;;; vector E.g., for tuple expr (e1, ..., en), if each ei returns a list of
+;;; types Ti, to return the proper list means taking the cartesian product
+;;; of the Ti, which can get big.  So we use vectors #(T1 ... Tn) until the
+;;; end.
+;;; Hence judgement-types-expr returns a form
+;;;   J := '(' T* ')' | '#(' J+ ')' | '#(' F+ ')'
+;;;   F := '(' id J+ ')'
+;;;   Where T is a type-expr, and F is of the form
+
+(defvar *jte-cnt*)
+
 (defun judgement-types-expr (ex)
-  (let ((jhash (judgement-types-hash (current-judgements))))
+  (let ((jhash (judgement-types-hash (current-judgements)))
+	(*jte-cnt* (if (boundp '*jte-cnt*) (1+ *jte-cnt*) 0)))
+    (when (> *jte-cnt* 100) (break "Why so deep?"))
     (multiple-value-bind (jtypes&jdecls there?)
 	(gethash ex jhash)
       (if there?
@@ -487,16 +509,11 @@
 	    (setf (gethash ex jhash) (list types jdecls))
 	    (values types jdecls))))))
 
-(defmethod judgement-types ((ex tuple-expr))
-  (multiple-value-bind (jtypes jdecls)
-      (call-next-method)
-    (values (jtypes-to-types jtypes nil)
-	    (jvector-to-decls jdecls))))
+;; (defmethod judgement-types ((ex tuple-expr))
+;;   (call-next-method))
 
-(defmethod judgement-types ((ex record-expr))
-  nil)
-
-(defvar *in-expr-judgement-types* nil)
+;; (defmethod judgement-types ((ex record-expr))
+;;   (call-next-method))
 
 (defmethod judgement-types* :around (ex)
   (let ((jhash (judgement-types-hash (current-judgements))))
@@ -525,18 +542,17 @@
 				       (and (vectorp njtypes)
 					    (or (null jdecls)
 						(vectorp jdecls)))))
-		(unless nil ;(memq ex *in-expr-judgement-types*)
-		  (setf (gethash ex jhash)
-			(list jtypes jdecls)))
+		(setf (gethash ex jhash)
+		      (list jtypes jdecls))
 		(values jtypes jdecls))))))))
 
+(defvar *in-expr-judgement-types* nil)
+
 (defun expr-judgement-types (ex jtypes)
-  (unless nil ;(memq ex *in-expr-judgement-types*)
-    ;; (let ((*in-expr-judgement-types* (cons ex *in-expr-judgement-types*)))
+  (unless (memq ex *in-expr-judgement-types*)
+    (let ((*in-expr-judgement-types* (cons ex *in-expr-judgement-types*)))
       (expr-judgement-types* ex (expr-judgements-alist (current-judgements))
-			     jtypes nil nil)
-      ;;    )
-  ))
+			     jtypes nil nil))))
 
 (defun expr-judgement-types* (ex expr-jdecls jtypes ejtypes ejdecls)
   (if (null expr-jdecls)
@@ -619,6 +635,10 @@
 	  (available-numeric-type num))
       ;; rational, but not integer
       (available-numeric-type num)))
+
+(defmethod judgement-types* :around ((ex name-expr))
+  (unless (variable? ex)
+    (call-next-method)))
 
 (defmethod judgement-types* ((ex name-expr))
   (let ((entry (name-judgements ex)))
@@ -967,8 +987,10 @@
     (null (when ex (list (type ex))))
     (t jtypes)))
 
+;;; Converts the internal representation of the set of judgement
+;;; types for a given expr
 (defun jvector-to-types (jtypes)
-  (let ((tlist (coerce jtypes 'list)))
+  (let ((tlist (map 'list #'(lambda (x) (coerce x 'list)) jtypes)))
     #+pvsdebug (assert (every #'consp tlist))
     (if (symbolp (caar tlist))
 	;; These are field ids - create recordtypes
@@ -985,7 +1007,7 @@
 	(mapcar #'mk-tupletype (cartesian-product tlist)))))
 
 (defun jvector-to-decls (jdecls)
-  (let ((dlist (coerce jdecls 'list)))
+  (let ((dlist (map 'list #'(lambda (x) (coerce x 'list)) jdecls)))
     (cartesian-product dlist)))
 
 (defun join-compatible-vector-types (types1 types2 type)
@@ -1550,30 +1572,80 @@
 (defmethod judgement-types* ((ex extraction-application))
   nil)
 
+(defvar *max-judgement-types-size* 20)
+
 ;;; Here we create a vector of types, rather than a set of tuple types.
 ;;; Thus if ex`i has n_i types, we create one vector where the ith element
 ;;; consists of n_i types, rather than n_1 * ... * n_m tuple types.
 (defmethod judgement-types* ((ex tuple-expr))
   (let* ((exprs (exprs ex))
-	 (jtypes&decls (mapcar #'(lambda (ex)
-				   (multiple-value-list
-				    (judgement-types* ex)))
-			 exprs)))
-    (unless (every #'(lambda (jt&d) (null (car jt&d))) jtypes&decls)
-      (let* ((len (length exprs))
-	     (tvec (make-array len :initial-element nil))
-	     (jvec (unless (every #'(lambda (jt&d) (null (cadr jt&d)))
-				  jtypes&decls)
-		     (make-array len :initial-element nil))))
-	(dotimes (i len)
-	  (setf (aref tvec i)
-		(or (car (nth i jtypes&decls))
-		    (list (type (nth i exprs)))))
-	  (when jvec
-	    (setf (aref jvec i)
-		  (cadr (nth i jtypes&decls)))))
-	#+pvsdebug (assert (valid-judgement-type-value tvec))
-	(values tvec jvec)))))
+	 (jtypes-list nil)
+	 (jdecls-list nil))
+    (dolist (expr exprs)
+      (multiple-value-bind (jtypes jdecls)
+	  (judgement-types* expr)
+	(push jtypes jtypes-list)
+	(push jdecls jdecls-list)))
+    (unless (every #'null jtypes-list)
+      (setq jtypes-list (nreverse jtypes-list))
+      (dotimes (i (length jtypes-list))
+	(when (null (nth i jtypes-list))
+	  (setf (nth i jtypes-list) (list (type (nth i exprs))))))
+      (setq jdecls-list (nreverse jdecls-list))
+      ;; Get the cardinality of the list, before constructing it
+      (let ((card (reduce #'* jtypes-list :key #'length :initial-value 1)))
+	(if (> card *max-judgement-types-size*)
+	    (pvs-message "tuple judgement types not generated for~%  ~a~%~
+                          because it would generate ~d types"
+	      ex card)
+	    (let ((jtypes (mapcar #'mk-tupletype (cartesian-product jtypes-list)))
+		  (jdecls (mapcar #'merge-jdecls-list
+			    (cartesian-product jdecls-list t))))
+	      (assert (and (listp jtypes) (every #'type-expr? jtypes)))
+	      (assert (and (listp jdecls)
+			   (every #'(lambda (jd)
+				      (or (judgement? jd)
+					  (and (listp jd)
+					       (every #'judgement? jd))))
+				  jdecls)))
+	      (assert (length= jtypes jdecls))
+	      (values jtypes jdecls)))))))
+
+(defun merge-jdecls-list (jdecls-list &optional jdecls)
+  (if (null jdecls-list)
+      (if (listp jdecls)
+	  (nreverse jdecls)
+	  jdecls)
+      (merge-jdecls-list
+       (cdr jdecls-list)
+       (if (null jdecls)
+	   (car jdecls-list)
+	   (merge-jdecls (car jdecls-list) jdecls)))))
+
+(defun merge-jdecls (jdecls1 jdecls2)
+  ;; jdecls ::= jdecl | '(' jdecl* ')'
+  (assert (or (judgement? jdecls1)
+	      (and (listp jdecls1)
+		   (every #'judgement? jdecls1))))
+  (assert (or (judgement? jdecls2)
+	      (and (listp jdecls2)
+		   (every #'judgement? jdecls2))))
+  (cond ((null jdecls1)
+	 jdecls2)
+	((null jdecls2)
+	 jdecls1)
+	((listp jdecls2)
+	 (if (listp jdecls1)
+	     (dolist (jdecl (reverse jdecls1))
+	       (pushnew jdecl jdecls2))
+	     (pushnew jdecls1 jdecls2))
+	 jdecls2)
+	(t ;; jdecsl2 is a judgement
+	 (if (listp jdecls1)
+	     (append jdecls1 (list jdecls2))
+	     (if (eq jdecls1 jdecls2)
+		 jdecls2
+		 (list jdecls1 jdecls2))))))
 
 ;;; As with tuple-exprs, we keep the types as a vector of types, one for
 ;;; each field, rather than creating the full set of recordtypes.  The only
@@ -1581,54 +1653,52 @@
 (defmethod judgement-types* ((ex record-expr))
   (let* ((exprs (mapcar #'expression (assignments ex)))
 	 (args (mapcar #'arguments (assignments ex)))
-	 (jtypes&decls (mapcar #'(lambda (ex)
-				   (multiple-value-list
-				    (judgement-types* ex)))
-			 exprs)))
-    (unless (every #'(lambda (jt&d arg)
-		       (if (vectorp (car jt&d))
-			   (let* ((fld (find (id (caar arg))
-					     (fields (find-supertype
-						      (type ex)))
-					     :key #'id))
-				  (stype (find-supertype (type fld))))
-			     (typecase stype
-			       (tupletype
-				(every #'(lambda (jtypes ty)
-					   (every #'(lambda (jty)
-						      (subtype-of? jty ty))
-						  jtypes))
-				       (car jt&d) (types stype)))
-			       (recordtype
-				(every #'(lambda (jfld)
-					   (let ((fld (find (car jfld)
-							    (fields stype)
-							    :key #'id)))
-					     (every #'(lambda (jty)
-							(and (type-expr? jty)
-							     (subtype-of? jty (type fld))))
-						    (cdr jfld))))
-				       (car jt&d)))
-			       (t (error "Something wrong here"))))
-			   (every #'(lambda (jty)
-				      (let ((fld (find (id (caar arg))
-						       (fields (find-supertype
-								(type ex)))
-						       :key #'id)))
-					(subtype-of? jty (type fld))))
-				  (car jt&d))))
-		   jtypes&decls args)
-      (let* ((len (length exprs))
-	     (tvec (make-array len :initial-element nil))
-	     (jvec (make-array len :initial-element nil)))
-	(dotimes (i len)
-	  (setf (aref tvec i)
-		(cons (id (caar (nth i args)))
-		      (or (car (nth i jtypes&decls))
-			  (list (type (nth i exprs))))))
-	  (setf (aref jvec i)
-		(cadr (nth i jtypes&decls))))
-	(values tvec jvec)))))
+	 (jtypes-list nil)
+	 (jdecls-list nil))
+    (dolist (expr exprs)
+      (multiple-value-bind (jtypes jdecls)
+	  (judgement-types* expr)
+	(push jtypes jtypes-list)
+	(push jdecls jdecls-list)))
+    (unless (every #'(lambda (jtypes arg)
+		       (every #'(lambda (jty)
+				  (let ((fld (find (id (caar arg))
+						   (fields (find-supertype
+							    (type ex)))
+						   :key #'id)))
+				    (subtype-of? jty (type fld))))
+			      jtypes))
+		   jtypes-list args)
+      (setq jtypes-list (nreverse jtypes-list))
+      (dotimes (i (length jtypes-list))
+	(when (null (nth i jtypes-list))
+	  (setf (nth i jtypes-list) (list (type (nth i exprs))))))
+      (setq jdecls-list (nreverse jdecls-list))
+      ;; Get the cardinality of the list, before constructing it
+      (let ((card (reduce #'* jtypes-list :key #'length :initial-value 1)))
+	(if (> card *max-judgement-types-size*)
+	    (pvs-message "record judgement types not generated for~%  ~a~%~
+                          because it would generate ~d types"
+	      ex card)
+	    (let ((jtypes (mapcar #'(lambda (ftypes)
+				      (mk-recordtype		
+				       (mapcar #'(lambda (a fty)
+						   (mk-field-decl (id (caar a))
+								  fty fty))
+					 args ftypes)
+				       nil))
+			    (cartesian-product jtypes-list)))
+		  (jdecls (mapcar #'merge-jdecls-list
+			    (cartesian-product jdecls-list t))))
+	      (assert (and (listp jtypes) (every #'type-expr? jtypes)))
+	      (assert (and (listp jdecls)
+			   (every #'(lambda (jd)
+				      (or (judgement? jd)
+					  (and (listp jd)
+					       (every #'judgement? jd))))
+				  jdecls)))
+	      (assert (length= jtypes jdecls))
+	      (values jtypes jdecls)))))))
 
 (defmethod judgement-types* ((ex quant-expr))
   nil)
@@ -3280,9 +3350,11 @@
 		     libid)))
       (when (fully-instantiated? thinst)
 	(values thinst th)))))
-    
+
+(defvar *simple-match-hash*)
 
 (defun simple-match (ex inst)
+  
   (simple-match* ex inst nil nil))
 
 (defmethod simple-match* ((ex type-name) (inst type-name) bindings subst)
