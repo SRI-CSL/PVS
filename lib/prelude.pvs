@@ -4641,7 +4641,7 @@ ordinals: THEORY
   i, j, k: VAR posnat
   m, n, o: VAR nat
   u, v, w, x, y, z: VAR ordstruct
-  size: [ordstruct->nat] = reduce[nat](0, (LAMBDA i, m, n: 1 + m+n));
+  size: [ordstruct->nat] = reduce_nat(0, (LAMBDA i, m, n: 1 + m+n));
 
   <(x, y): RECURSIVE bool =
      CASES x OF
