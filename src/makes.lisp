@@ -851,7 +851,7 @@
 
 (defun make-variable-expr (bd)
   (assert (typep bd 'binding))
-  (assert (current-declaration))
+  ;;(assert (current-declaration))
   (mk-name-expr bd nil nil
 		(make-resolution bd (current-theory-name)
 				 (type bd) (current-declaration))))
@@ -2462,6 +2462,36 @@
 
 (defun make-null-name-expr (elt-type)
   (pc-typecheck (pc-parse (format nil "list_adt[~a].null" (str elt-type)) 'expr)))
+
+(defun make!-cons-type (elt-type)
+  (let ((decl (find '|cons| (theory (get-theory "list_adt")) :key #'id))
+	(thinst (mk-modname '|list_adt| (list (mk-actual elt-type))))
+	(*current-context* *prelude-context*))
+    (subst-mod-params (type decl) thinst)))
+
+(defun make!-null-type (elt-type)
+  (let ((decl (find '|null| (theory (get-theory "list_adt")) :key #'id))
+	(thinst (mk-modname '|list_adt| (list (mk-actual elt-type))))
+	(*current-context* *prelude-context*))
+    (subst-mod-params (type decl) thinst)))
+
+(defun make!-cons-name-expr (elt-type)
+  (let* ((decl (find '|cons| (theory (get-theory "list_adt")) :key #'id))
+	 (acts (list (mk-actual elt-type)))
+	 (thinst (mk-modname '|list_adt| acts))
+	 (ctype (let ((*current-context* *prelude-context*))
+		  (subst-mod-params (type decl) thinst)))
+	 (res (mk-resolution decl thinst ctype)))
+    (make!-name-expr '|cons| acts nil res)))
+
+(defun make!-null-name-expr (elt-type)
+  (let* ((decl (find '|null| (theory (get-theory "list_adt")) :key #'id))
+	 (acts (list (mk-actual elt-type)))
+	 (thinst (mk-modname '|list_adt| acts))
+	 (ctype (let ((*current-context* *prelude-context*))
+		  (subst-mod-params (type decl) thinst)))
+	 (res (mk-resolution decl thinst ctype)))
+    (make!-name-expr '|null| acts nil res)))
 
 (defmethod mk-subst-alist ((bdlist list) (dty dep-binding))
   ;; Generates subst alist from bdlist to dty
