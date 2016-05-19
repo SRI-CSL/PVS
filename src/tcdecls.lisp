@@ -3780,8 +3780,6 @@
 
 (defmethod typecheck* ((decl expr-judgement) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (let* ((*generate-tccs* 'none))
-    (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
   (let* ((*no-conversions-allowed* t)
 	 (*generate-tccs* 'none)
 	 (*compatible-pred-reason*
@@ -3790,49 +3788,44 @@
 	   ;; Note that it is not really a forall expr, as it is not boolean
 	   (typecheck* (bindings (expr decl)) nil nil nil)
 	   (let ((*bound-variables* (append (bindings (expr decl)) *bound-variables*)))
+	     (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
 	     (typecheck* (expression (expr decl)) (type decl) nil nil)))
-	  (t (typecheck* (expr decl) (type decl) nil nil))))
-  (if (freevars (expr decl))
-      ;; Need to decide if it should be an application-judgement
-      ;; Note that there could be ambiguity here - for example
-      ;;  judgement *(x, x) has_type nnreal
-      (let ((args-lists (arguments* (expr decl))))
-	(if (and (typep (expr decl) '(and application (not infix-application)))
-		 (every #'(lambda (args) (every #'variable? args))
-			args-lists)
-		 (not (duplicates? (apply #'append args-lists) :test #'same-declaration)))
-	    (change-expr-judgement-to-application-judgement decl)
-	    ;; Not an application-judgement, but has freevars
-	    ;; Get the freevars list, and create untyped-bind-decls
-	    ;; Append to the beginning of bindings if expr is a forall-expr
-	    ;; Set (formals decl) to this list
-	    ;; Then retypecheck expr under the new bindings
-	    (let* ((free-formals (mapcar #'(lambda (fv)
-					     (make-instance 'untyped-bind-decl
-					       :id (id fv)
-					       :type (type fv)
-					       :chain? t))
-				   (freevars (expr decl))))
-		   (formals (append free-formals
-				    (when (forall-expr? (expr decl)) (bindings (expr decl))))))
-	      (set-formals-types formals)
-	      (setf (formals decl) formals)
-	      (untypecheck-theory (declared-type decl))
-	      (let ((*bound-variables* (reverse formals)))
-		(let ((*generate-tccs* 'none))
-		  ;; Need to retypecheck, to get the bound variables set
-		  (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
-		(set-type (declared-type decl) nil))
-	      (untypecheck-theory (expr decl))
-	      (let* ((*no-conversions-allowed* t)
-		     (*compatible-pred-reason*
-		      (acons (expr decl) "judgement" *compatible-pred-reason*))
-		     (*bound-variables* (reverse formals)))
-		(if (forall-expr? (expr decl))
-		    (typecheck* (expression (expr decl)) (type decl) nil nil)
-		    (typecheck* (expr decl) (type decl) nil nil))))))
-      ;; Nothing else needed if no free variables
-      )
+	  (t (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
+	     (typecheck* (expr decl) (type decl) nil nil))))
+  ;; Need to decide if it should be an application-judgement
+  ;; Note that there could be ambiguity here - for example
+  ;;  judgement *(x, x) has_type nnreal
+  ;; Which is why we check for duplicates
+  (if (and (typep (expr decl) '(and application (not infix-application)))
+	   (let ((args-lists (arguments* (expr decl))))
+	     (and (every #'(lambda (args) (every #'variable? args))
+			 args-lists)
+		  (not (duplicates? (apply #'append args-lists)
+				    :test #'same-declaration)))))
+      (change-expr-judgement-to-application-judgement decl)
+      ;; Not an application-judgement, but has freevars
+      ;; Get the freevars list, and create untyped-bind-decls
+      ;; Append to the beginning of bindings if expr is a forall-expr
+      ;; Set (formals decl) to this list
+      ;; Then retypecheck expr under the new bindings
+      (let* ((*no-expected* t)
+	     ;; uform is not a valid forall expr, but this gets the
+	     ;; expr and type under the same bindings
+	     (lform (if (forall-expr? (expr decl))
+			(copy (expr decl)
+			  :expression (list (expression (expr decl)) (type decl)))
+			(list (expr decl) (type decl))))
+	     (uform (universal-closure lform))
+	     (*no-conversions-allowed* t)
+	     (*compatible-pred-reason*
+	      (acons (expr decl) "judgement" *compatible-pred-reason*))
+	     (*bound-variables* (when (forall-expr? uform) (bindings uform))))
+	(if (forall-expr? uform)
+	    (let* ((*bound-variables* (bindings uform)))
+	      (assert (listp (expression uform)))
+	      (set-type (car (expression uform)) (cadr (expression uform))))
+	    (set-type (car uform) (cadr uform)))
+	(setf (closed-form decl) uform)))
   (when (formals-sans-usings (current-theory))
     (generic-judgement-warning decl))
   ;;(break "Before add-judgement-decl after change: ~a" (id decl))
@@ -4362,12 +4355,22 @@
 	      (tyy (type y)))
 	  (cond ((strict-compatible? tyx tyy)
 		 (type-error x
-		   "~a has previously been declared with type ~a, which is ambiguous"
-		   (id x) (unparse tyx :string t)))
+		   "~a has previously been declared~a with type ~a, which is ambiguous"
+		   (id x)
+		   (if (place y)
+		       (format nil " (at line ~d, column ~d)"
+			 (starting-row (place y)) (starting-col (place y)))
+		       "")
+		   (unparse tyx :string t)))
 		((tc-unifiable? x y)
 		 (type-error x
-		   "~a has previously been declared with type ~a, which may lead to ambiguity"
-		   (id x) (unparse (type y) :string t)))))
+		   "~a has previously been declared~a with type ~a, which may be ambiguous"
+		   (id x)
+		   (if (place y)
+		       (format nil " (at line ~d, column ~d)"
+			 (starting-row (place y)) (starting-col (place y)))
+		       "")
+		   (unparse (type y) :string t)))))
 	(unless (or (and (typep y 'type-def-decl)
 			 (typep (type-expr y) 'recursive-type))
 		    (and (typep y 'type-decl)
@@ -4378,7 +4381,13 @@
 			     (null (associated-decl y))
 			     (not (eq (associated-decl x) (associated-decl y))))))
 	  (type-error x
-	    "Name ~a already in use as a ~a" (id x) (kind-of x))))))
+	    "Name ~a already in use~a as a ~a"
+	    (id x)
+	    (if (place y)
+		(format nil " (at line ~d, column ~d)"
+		  (starting-row (place y)) (starting-col (place y)))
+		"")
+	    (kind-of x))))))
 
 (defmethod types-with-same-signatures ((x type-decl) (y type-decl))
   (if (formals x)

@@ -745,6 +745,12 @@
 	    :declared-type dtype
 	    :chain? t
 	    :place place))
+	 (bind-decl
+	  (make-instance 'expr-judgement
+	    :declared-type dtype
+	    :chain? t
+	    :expr ex
+	    :place place))
 	 (name-expr
 	  (assert (eq *allowed-typed-names* t))
 	  (make-instance 'name-judgement

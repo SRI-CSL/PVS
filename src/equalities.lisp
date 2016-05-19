@@ -1686,7 +1686,9 @@
 (defmethod compatible-preds* :around ((atype type-expr) (etype type-expr)
 				     aexpr incs)
   (declare (ignore aexpr))
-  (if (subtype-of? atype etype)
+  (if (or (tc-eq atype etype)
+	  (and (not (typep atype '(and tupletype)))
+	       (subtype-of? atype etype)))
       incs
       (call-next-method)))
 
@@ -1991,7 +1993,27 @@
 
 (defmethod compatible-preds* ((atype tupletype) (etype tupletype)
 			      (aexpr tuple-expr) incs)
-  incs)
+  ;; This relates
+  ;; {x:[T1, ..., Tn] | p(x)} to [{x: T1| p1(x)}, ..., {x: Tn| pn(x)}]
+  ;; The idea is that (compatible-preds* RHS LHS aexpr incs) goes through
+  ;; the (type-expr subtype) method first, p(x) is added
+  ;; to incs, then the pi(x`i) are removed.
+  (compatible-preds-tupletypes (types atype) (types etype) (exprs aexpr) incs))
+
+(defun compatible-preds-tupletypes (atypes etypes aexprs incs)
+  (cond ((null atypes)
+	 incs)
+	((or (dep-binding? (car atypes)) (dep-binding? (car etypes)))
+	 (break "compatible-preds-tupletypes dep-bindings"))
+	((tc-eq (car atypes) (car etypes))
+	 (compatible-preds-tupletypes (cdr atypes) (cdr etypes) (cdr aexprs) incs))
+	((subtype-of? (car atypes) (car etypes))
+	 (let ((aincs (compatible-preds* (car etypes) (car atypes) (car aexprs) nil)))
+	   (compatible-preds-tupletypes (cdr atypes) (cdr etypes) (cdr aexprs)
+					(remove-if #'(lambda (inc)
+						       (member inc aincs :test #'tc-eq))
+					  incs))))
+	(t (break "Something's wrong in compatible-preds-tupletypes"))))
 
 (defmethod compatible-preds* ((atype cotupletype) (etype cotupletype)
 			      (aexpr injection-application) incs)
@@ -2591,6 +2613,7 @@
 ;      (make-pvs-hash-table :hashfn #'pvs-sxhash :test #'tc-eq))
   )
 
+;; Type-canon tries to lift predicates to the top level
 (defun type-canon (te)
   (type-canon* te nil))
 
@@ -2690,7 +2713,14 @@
 ;; 	(make-new-dep-bindings (cdr types) expr id (
 	
 
-;; Should return a tupletype
+;; Should return a subtype or tupletype
+;; [{x:T1|p1(x)}, ..., {x:Tn|pn(x)}] ==>
+;;       {x: [T1, ..., Tn] | p1(x`1) ∧ ... ∧ pn(x`n)}
+;; Dependent type:
+;; [y:{x:T1|p1(x)}, {x:T2(y)|p2(x,y)}] ==>
+;;       {x: [y: T1, T2(y)] | p1(x`1) ∧ p2(x`1, x`2)}
+;;   Problem if T2 requires arg to satisfy p1 - possible if T2 a function type
+  
 (defun type-canon-tupletype (te predicates)
   (multiple-value-bind (npreds var)
       (make-preds-with-same-binding te predicates)
@@ -2699,6 +2729,7 @@
 	   (ntypes (add-tupletype-preds (types te) parts))
 	   (ntuptype (make-instance 'tupletype :types ntypes))
 	   (toppreds (cdr (assq nil parts))))
+      (break)
       (if toppreds
 	  (make-instance 'subtype
 	    :supertype ntuptype

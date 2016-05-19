@@ -488,10 +488,15 @@
 	    (values types jdecls))))))
 
 (defmethod judgement-types ((ex tuple-expr))
-  nil)
+  (multiple-value-bind (jtypes jdecls)
+      (call-next-method)
+    (values (jtypes-to-types jtypes nil)
+	    (jvector-to-decls jdecls))))
 
 (defmethod judgement-types ((ex record-expr))
   nil)
+
+(defvar *in-expr-judgement-types* nil)
 
 (defmethod judgement-types* :around (ex)
   (let ((jhash (judgement-types-hash (current-judgements))))
@@ -520,17 +525,18 @@
 				       (and (vectorp njtypes)
 					    (or (null jdecls)
 						(vectorp jdecls)))))
-		(setf (gethash ex jhash)
-		      (list jtypes jdecls))
+		(unless nil ;(memq ex *in-expr-judgement-types*)
+		  (setf (gethash ex jhash)
+			(list jtypes jdecls)))
 		(values jtypes jdecls))))))))
 
-(defvar *in-expr-judgement-types* nil)
-
 (defun expr-judgement-types (ex jtypes)
-  (unless *in-expr-judgement-types*
-    (let ((*in-expr-judgement-types* t))
+  (unless nil ;(memq ex *in-expr-judgement-types*)
+    ;; (let ((*in-expr-judgement-types* (cons ex *in-expr-judgement-types*)))
       (expr-judgement-types* ex (expr-judgements-alist (current-judgements))
-			     jtypes nil nil))))
+			     jtypes nil nil)
+      ;;    )
+  ))
 
 (defun expr-judgement-types* (ex expr-jdecls jtypes ejtypes ejdecls)
   (if (null expr-jdecls)
@@ -542,15 +548,23 @@
 		      (append ejtypes jtypes)))
 	    ;; No new information
 	    (expr-judgement-types* ex (cdr expr-jdecls) jtypes ejtypes ejdecls)
-	    (let* ((ejex (if (forall-expr? (expr ejdecl))
-			     (expression (expr ejdecl))
-			     (expr ejdecl)))
+	    (let* ((ejex (if (forall-expr? (closed-form ejdecl))
+			     (car (expression (closed-form ejdecl)))
+			     (car (closed-form ejdecl))))
+		   (ejty (if (forall-expr? (closed-form ejdecl))
+			     (cadr (expression (closed-form ejdecl)))
+			     (cadr (closed-form ejdecl))))
 		   (bindings (simple-match ejex ex)))
-	      (if (eq bindings 'fail)
+	      (if (or (eq bindings 'fail)
+		      (and (forall-expr? (closed-form ejdecl))
+			   (not (every #'(lambda (bd) (assq bd bindings))
+				       (bindings (closed-form ejdecl))))))
 		  (expr-judgement-types* ex (cdr expr-jdecls)
 					 jtypes ejtypes ejdecls)
-		  (let ((ejtype (substit (type ejdecl) bindings)))
-		    (assert (null (freevars ejtype)))
+		  (let ((ejtype (substit ejty bindings)))
+		    (assert (every #'(lambda (fv)
+				       (member fv (freevars ex) :test #'same-declaration))
+				   (freevars ejtype)))
 		    (expr-judgement-types* ex (cdr expr-jdecls) jtypes
 					   (cons ejtype ejtypes)
 					   (cons ejdecl ejdecls)))))))))
@@ -804,10 +818,13 @@
 		   (types tuptype) ajtypes-list))
 	     ajtypes-list)))))
 
-(defmethod expression* ((ex lambda-expr))
-  (expression* (expression ex)))
+(defmethod expression* ((ex binding-expr) &optional bex)
+  (if (or (null bex) (same-binding-op? ex bex))
+      (expression* (expression ex) ex)
+      ex))
 
-(defmethod expression* (ex)
+(defmethod expression* (ex &optional bex)
+  (declare (ignore bex))
   ex)
 
 ;; (defun argtypes-subtype-of-domain-type (atypes dtype)
@@ -947,7 +964,7 @@
 (defun jtypes-to-types (jtypes ex)
   (typecase jtypes
     (vector (jvector-to-types jtypes))
-    (null (list (type ex)))
+    (null (when ex (list (type ex))))
     (t jtypes)))
 
 (defun jvector-to-types (jtypes)

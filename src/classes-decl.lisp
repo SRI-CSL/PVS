@@ -638,8 +638,11 @@
   judgement-type)
 
 (defcl expr-judgement (judgement)
-  (formals :parse t)
   (expr :parse t)
+  ;; closed-form is a list, or a forall-expr, whise expression is a list
+  ;; the list consists of an expr and a type, representing the has_type relation,
+  ;; But the bindings cover all veriables of the expr and type
+  closed-form 
   judgement-type)
   
 
