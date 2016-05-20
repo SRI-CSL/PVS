@@ -445,8 +445,8 @@ dep-type-expr ::= type-expr
 %% errors because the precedence can't easily be provided
 
 expr ::= string <string-expr(string)>
-       | {name [':' type-expr]^t ['|' expr]^e}
-          <name-expr(name, [no-type()|type-expr]^t, [no-pred() | expr]^e)>
+       | {name [':' type-expr ['|' expr]^e]^t}
+          <[name-expr(name)| typed-name(name, type-expr, [no-pred() | expr]^e)]^t>
        | bracket-expr
        | {'(#' {assignment ++ ','} '#)'} <rec-expr(assignments(assignment+))>
        | {'`' {id | number} [actuals]} <{fieldex(id,[noactuals()|actuals])
