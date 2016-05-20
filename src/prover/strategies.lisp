@@ -30,81 +30,86 @@
 (in-package :pvs)
 
 (eval-when (:execute :compile-toplevel :load-toplevel)
-  (defun check-formals (formals &optional vars section)
-    "Checks that formals are well-formed:
+
+(defun check-formals (formals &optional vars section)
+  "Checks that formals are well-formed:
      {var}*
      [&optional {var | (var initform)}*]
      [&key {var | (var initform)}*]
      [&rest var]
      [&inherit {var | (var :except var+)}*]"
-    (cond ((null formals)
-	   t)
-	  ((eq (car formals) '&optional)
-	   (if (member '&optional (cdr formals))
-	       (format t "~%'&optional occurs twice")
-	       (check-formals (cdr formals) vars '&optional)))
-	  ((eq (car formals) '&key)
-	   (cond ((member '&optional (cdr formals))
-		  (format t "~%'&optional occurs after '&key"))
-		 ((member '&key (cdr formals))
-		  (format t "~%'&key occurs twice"))
-		 (t (check-formals (cdr formals) vars '&key))))
-	  ((eq (car formals) '&rest)
-	   (cond ((member '&optional (cdr formals))
-		  (format t "~%'&optional occurs after '&rest"))
-		 ((member '&key (cdr formals))
-		  (format t "~%'&key occurs after '&rest"))
-		 ((member '&rest (cdr formals))
-		  (format t "~%'&rest occurs twice"))
-		 ((not (symbolp (cadr formals)))
-		  (format t "~%'&rest argument should be a symbol."))
-		 ((member (cadr formals) vars)
-		  (format t "~%Duplicate argument symbols"))
-		 (t (check-formals (cddr formals) nil '&rest))))
-	  ((eq (car formals) '&inherit)
-	   (cond ((member '&optional (cdr formals))
-		  (format t "~%'&optional occurs after '&inherit"))
-		 ((member '&key (cdr formals))
-		  (format t "~%'&key occurs after '&inherit"))
-		 ((member '&rest (cdr formals))
-		  (format t "~%'&rest occurs after '&inherit"))
-		 ((member '&inherit (cdr formals))
-		  (format t "~%'&inherit occurs twice."))
-		 (t (if (every #'(lambda (fm)
-				   (or (symbolp fm)
-				       (and (consp fm)
-					    (eq (cadr fm) :except)
-					    (cddr fm)
-					    (every #'symbolp (cddr fm)))))
-			       (cdr formals))
-			(if (null (cdr formals))
-			    (format t "~%'&inherit has no formals.")
-			    (if (duplicates?
-				 (cdr formals)
-				 :key #'(lambda (fm)
-					  (if (consp fm) (car fm) fm)))
-				(format t "~%'&inherit args duplicated")
-				t))
-			(format t "~%'&inherit args must be symbols or of the form~%~
+  (cond ((null formals)
+	 t)
+	((eq (car formals) '&optional)
+	 (if (member '&optional (cdr formals))
+	     (format t "~%'&optional occurs twice")
+	     (check-formals (cdr formals) vars '&optional)))
+	((eq (car formals) '&key)
+	 (cond ((member '&optional (cdr formals))
+		(format t "~%'&optional occurs after '&key"))
+	       ((member '&key (cdr formals))
+		(format t "~%'&key occurs twice"))
+	       (t (check-formals (cdr formals) vars '&key))))
+	((eq (car formals) '&rest)
+	 (cond ((member '&optional (cdr formals))
+		(format t "~%'&optional occurs after '&rest"))
+	       ((member '&key (cdr formals))
+		(format t "~%'&key occurs after '&rest"))
+	       ((member '&rest (cdr formals))
+		(format t "~%'&rest occurs twice"))
+	       ((not (symbolp (cadr formals)))
+		(format t "~%'&rest argument should be a symbol."))
+	       ((member (cadr formals) vars)
+		(format t "~%Duplicate argument symbols"))
+	       (t (check-formals (cddr formals) nil '&rest))))
+	((eq (car formals) '&inherit)
+	 (cond ((member '&optional (cdr formals))
+		(format t "~%'&optional occurs after '&inherit"))
+	       ((member '&key (cdr formals))
+		(format t "~%'&key occurs after '&inherit"))
+	       ((member '&rest (cdr formals))
+		(format t "~%'&rest occurs after '&inherit"))
+	       ((member '&inherit (cdr formals))
+		(format t "~%'&inherit occurs twice."))
+	       (t (if (every #'(lambda (fm)
+				 (or (symbolp fm)
+				     (and (consp fm)
+					  (eq (cadr fm) :except)
+					  (cddr fm)
+					  (every #'symbolp (cddr fm)))))
+			     (cdr formals))
+		      (if (null (cdr formals))
+			  (format t "~%'&inherit has no formals.")
+			  (if (duplicates?
+			       (cdr formals)
+			       :key #'(lambda (fm)
+					(if (consp fm) (car fm) fm)))
+			      (format t "~%'&inherit args duplicated")
+			      t))
+		      (format t "~%'&inherit args must be symbols or of the form~%~
                                     (symbol :except symbol ...)")))))
-	  (t (cond ((symbolp (car formals))
-		    (cond ((eq section '&rest)
-			   (format t "~%Only a single formal allowed after &rest"))
-			  ((member (car formals) vars)
-			   (format t "~%Duplicate argument symbols"))
-			  (t
-			   (check-formals (cdr formals) (cons (car formals) vars)
-					  section))))
-		   ((consp (car formals))
-		    (if (member section '(&optional &key))
-			(if (symbolp (caar formals))
-			    (if (or (null (cdar formals))
-				    (cddar formals))
-				(format t "~%Optional or key formal lists must be pairs")
-				(check-formals (cdr formals) (cons (caar formals) vars)
-					       section))
-			    (format t "~%Formals must be symbols or pairs (when optional or keyword)"))
-			(format t "~%Formals are pairs only when optional or keyword")))))))
+	(t (cond ((symbolp (car formals))
+		  (cond ((eq section '&rest)
+			 (format t "~%Only a single formal allowed after &rest"))
+			((and (memq (car formals) '(type !type))
+			      section)
+			 (format t "~%\"~a\" is not allowed as a variable: ~a"
+			   (car formals) section))
+			((member (car formals) vars)
+			 (format t "~%Duplicate argument symbols"))
+			(t
+			 (check-formals (cdr formals) (cons (car formals) vars)
+					section))))
+		 ((consp (car formals))
+		  (if (member section '(&optional &key))
+		      (if (symbolp (caar formals))
+			  (if (or (null (cdar formals))
+				  (cddar formals))
+			      (format t "~%Optional or key formal lists must be pairs")
+			      (check-formals (cdr formals) (cons (caar formals) vars)
+					     section))
+			  (format t "~%Formals must be symbols or pairs (when optional or keyword)"))
+		      (format t "~%Formals are pairs only when optional or keyword")))))))
   
   (defun check-prover-macro-args (name args body doc format)
     (cond ((not (symbolp name))
@@ -989,7 +994,8 @@ AUTO-REWRITE-THEORY, or AUTO-REWRITE-THEORIES. E.g.,
 
 
 (defhelper tcc (&key (defs !) &inherit grind)
-  (grind$)
+  (let ((timeout *tcp-timeout*))
+    (apply (grind$) :timeout timeout))
   "The guts of the tcc-strategy defined as '(grind :defs defs)'.
 Does auto-rewrite-explicit, then applies skolem!, inst?, lift-if,
 bddsimp, and assert, until nothing works.  :defs is either
@@ -1296,9 +1302,7 @@ then turns off all the installed rewrites.  Examples:
 			   input)
 		     input))
 	    (dummy (setq *rule-args-alist* nil))
-	    (rule (retypecheck-sexp
-		   (unformat-rule input)
-		   *ps*)))
+	    (rule (retypecheck-sexp (unformat-rule input))))
 	(try rule (query*) (query*))))
   "The basic strategy that queries the user for the next step.")
 
@@ -2301,7 +2305,7 @@ extensionality, and hides the main formula instead of deleting it.
 See also EXTENSIONALITY, APPLY-EXTENSIONALITY."
   "Applying extensionality")
 
-(defstep apply-extensionality (&optional (fnum +) keep? hide?)
+(defstep apply-extensionality (&optional (fnum +) keep? hide? expected)
   (let ((sforms (select-seq (s-forms (current-goal *ps*))
 			    (if (memq fnum '(* + -)) fnum
 				(list fnum))))
@@ -2311,9 +2315,10 @@ See also EXTENSIONALITY, APPLY-EXTENSIONALITY."
 	(lhs (when fmla (args1 fmla)))
 	(rhs (when fmla (args2 fmla)))
 	(type (when fmla
-		(typecase (type lhs)
-		  (adt-type-name (ext-find-recognizer-subtype lhs rhs))
-		  (cotupletype (ext-find-injective?-subtype lhs rhs))))))
+		(or expected
+		    (typecase (type lhs)
+		      (adt-type-name (ext-find-recognizer-subtype lhs rhs))
+		      (cotupletype (ext-find-injective?-subtype lhs rhs)))))))
     (if fmla
 	(try (replace-extensionality$ lhs rhs :keep? keep? :expected type)
 	     (then
@@ -2448,10 +2453,10 @@ See also EXTENSIONALITY."
   (with-slots (print-type) type
     (if print-type print-type type)))
 
-(defstep replace-eta (term &optional type keep?)
-  (let ((type (if type
-		(typecheck (pc-parse type 'type-expr))
-		nil))
+(defstep replace-eta (term &optional expected keep?)
+  (let ((type (if expected
+		  (typecheck (pc-parse expected 'type-expr))
+		  nil))
 	(term (if type
 		  (pc-typecheck (pc-parse term 'expr)
 		    :expected type)
@@ -2466,7 +2471,7 @@ See also EXTENSIONALITY."
 		       (delete -1)))
 	     (skip-msg "No suitable eta axiom scheme found."))
 	(skip-msg "Please supply optional type argument.")))
-  "Instantiates eta axiom scheme for type TYPE or type of TERM with TERM
+  "Instantiates eta axiom scheme for type EXPECTED or type of TERM with TERM
 See also ETA, APPLY-ETA."
   "Applying eta axiom scheme to ~a and does replace to eta-reduce")
 
@@ -3662,7 +3667,7 @@ replaces each expri in the sequent with the corresponding namei."
   (declare (ignore expected fnums uniquely?))
   (typecheck expr))
 
-(defstep generalize (term var  &optional type (fnums *)
+(defstep generalize (term var &optional gtype (fnums *)
 			  (subterms-only? t))
   (branch (merge-fnums fnums)
 	  ((let ((sforms
@@ -3670,8 +3675,8 @@ replaces each expri in the sequent with the corresponding namei."
 		 (sform (car sforms))
 		 (form (when sform (formula sform)))
 		 (var (pc-parse var 'name))
-		 (vtype (when type
-			 (typecheck (pc-parse type 'type-expr))))
+		 (vtype (when gtype
+			 (typecheck (pc-parse gtype 'type-expr))))
 		 (term (pc-parse term 'expr))
 		 (term (pc-typecheck term :expected vtype :fnums '(1)))
 		 (vtype (if vtype vtype (type term)))
@@ -3716,7 +3721,7 @@ replaces each expri in the sequent with the corresponding namei."
 		     (skip-msg "Given variable is not a valid PVS identifier"))
 		 (skip-msg "Please supply the type argument.")))
 	     (skip)))
-  "Generalizes TERM in FNUMS by VAR of type TYPE.  By default, only the
+  "Generalizes TERM in FNUMS by VAR of type GTYPE.  By default, only the
 subterm occurrences of TERM will be generalized and not those occurrences
 in types or actuals.  If the command is invoked with the SUBTERMS-ONLY? flag
 set to the NIL, then every occurrence of TERM will be generalized.  This
@@ -3857,17 +3862,22 @@ in the given fnums."
 
 (defun disequality? (expr)(disequation? expr))
 
+(defvar *decomposable-formulas-tried*)
+
 (defun decomposable-equality? (fmla)
-  (and (or (equation? fmla)
-	   (disequality? fmla))
-       (or (typep (find-supertype (type (args1 fmla)))
-		  '(or funtype recordtype tupletype cotupletype))
-	   (adt? (find-supertype
-		  (type (args1 fmla)))))))
+  (unless (memq fmla *decomposable-formulas-tried*)
+    (prog1 (and (or (equation? fmla)
+		    (disequality? fmla))
+		(or (typep (find-supertype (type (args1 fmla)))
+			   '(or funtype recordtype tupletype cotupletype))
+		    (adt? (find-supertype
+			   (type (args1 fmla))))))
+      (push fmla *decomposable-formulas-tried*))))
 
 (defstep decompose-equality (&optional (fnum *) (hide? t)
 				       &inherit simplify replace* grind)
-  (let ((sforms (select-seq (s-forms (current-goal *ps*))
+  (let ((*decomposable-formulas-tried* nil)
+	(sforms (select-seq (s-forms (current-goal *ps*))
 			    (if (memq fnum '(* + -)) fnum
 				(list fnum))))
 	(fm (find-if
@@ -3893,28 +3903,31 @@ in the given fnums."
 			    (find-declared-adt-supertype (type lhs)))))
 	(fnum-count (length (s-forms (current-goal *ps*)))))
     (if fmla
-	(if equality?
-	    (apply-extensionality fnum :hide? hide)
-	    (branch (case comp-equalities)
-		    ((then (let ((fnums *new-fmla-nums*))
-			     (simplify fnums))
-			   (if (null *new-fmla-nums*)
-			       (let ((msg (format nil
-					      "Generated equation simplifies to true:~%  ~a"
-					    comp-equalities)))
-				 (then (skip-msg msg) (fail)))
-			       (let ((fnums (find-all-sformnums
-					     (s-forms (current-goal *ps*))
-					     '* #'(lambda (x) (eq x ffm))))
-				     (fnum (if fnums (car fnums) nil)))
-				 (if (and hide? fnum
-					  (/= (length (s-forms (current-goal *ps*)))
-					      fnum-count))
-				     (delete fnum)
-				     (skip))))
-			   (flatten))
-		     (then (flatten) (replace* :hide? nil)
-			   (grind :defs nil :if-match nil)))))
+	(try
+	 (if equality?
+	     (apply-extensionality fnum :hide? hide)
+	     (branch (case comp-equalities)
+		     ((then (let ((fnums *new-fmla-nums*))
+			      (simplify fnums))
+			    (if (null *new-fmla-nums*)
+				(let ((msg (format nil
+					       "Generated equation simplifies to true:~%  ~a"
+					     comp-equalities)))
+				  (then (skip-msg msg) (fail)))
+				(let ((fnums (find-all-sformnums
+					      (s-forms (current-goal *ps*))
+					      '* #'(lambda (x) (eq x ffm))))
+				      (fnum (if fnums (car fnums) nil)))
+				  (if (and hide? fnum
+					   (/= (length (s-forms (current-goal *ps*)))
+					       fnum-count))
+				      (delete fnum)
+				      (skip))))
+			    (flatten))
+		      (then (flatten) (replace* :hide? nil)
+			    (grind :defs nil :if-match nil)))))
+	 (skip)
+	 (decompose-equality))
 	(skip-msg "Couldn't find a suitable equation")))
   "Decomposes an equality or disequality to the component equalities.
 This only works for equalities between functions, records, or tuples.  If
@@ -4295,10 +4308,10 @@ or REL_coinduction as the NAME argument."
 (defmethod bindings* ((expr t))
   nil)
 
-(defstep apply-eta (term &optional type)
-  (let ((type (if type
-		(typecheck (pc-parse type 'type-expr))
-		nil))
+(defstep apply-eta (term &optional expected)
+  (let ((type (if expected
+		  (typecheck (pc-parse expected 'type-expr))
+		  nil))
 	(term (if type
 		  (pc-typecheck (pc-parse term 'expr)
 		    :expected type)
