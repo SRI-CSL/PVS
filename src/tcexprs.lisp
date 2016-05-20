@@ -565,24 +565,28 @@
   (mapcar #'mk-tupletype
     (cartesian-product (mapcar #'ptypes exprs))))
 
-(defun cartesian-product (list-of-lists)
+(defun cartesian-product (list-of-lists &optional nil-is-unit?)
   (let ((size (reduce #'* list-of-lists :key #'length :initial-value 1)))
     (when (> size 100)
       (pvs-message "Creating the cartesian product generates ~d elements for~%  ~a"
 	size list-of-lists)
       (break "Too big - check this"))
-    (cartesian-product* list-of-lists (list nil))))
+    (cartesian-product* list-of-lists (list nil) nil-is-unit?)))
 
-(defun cartesian-product* (list-of-lists result)
+(defun cartesian-product* (list-of-lists result nil-is-unit?)
   (if (null list-of-lists)
       result
       (cartesian-product*
        (cdr list-of-lists)
-       (mapcan #'(lambda (e)
-		   (mapcar #'(lambda (r)
-			       (append r (list e)))
-			   result))
-	       (car list-of-lists)))))
+       (if (and nil-is-unit?
+		(null (car list-of-lists)))
+	   result
+	   (mapcan #'(lambda (e)
+		       (mapcar #'(lambda (r)
+				   (append r (list e)))
+			 result))
+	     (car list-of-lists)))
+       nil-is-unit?)))
 
 
 ;;; Coercion is now handled by turning the form into an application of
@@ -1458,7 +1462,8 @@
       ;; Not in a nice situation, treat as a simple application
       (let ((len (list-expr-length expr)))
 	(when (> len 50)
-	  (pvs-message "Typechecking list ~a with ~d elements; slow without knowing the type"))
+	  (pvs-message "Typechecking list ~a with ~d elements; slow without knowing the type"
+	    expr len))
 	(call-next-method))))
 
 (defun typecheck-list-elt (ex elt-type cons-ex null-ex)
