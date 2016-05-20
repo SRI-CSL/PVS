@@ -544,7 +544,9 @@
 			(car imps))))))
 	    (car (assoc id (prelude-libraries-uselist)
 			:test #'eq :key #'id))
-	    (unless have-cc
+	    (unless (or have-cc
+			;; Don't look in library if it is in the current context
+			(file-exists-p (make-specpath id)))
 	      ;; We only allow this from top-level calls, in effect,
 	      ;; when there is no context.
 	      (let ((theories (get-imported-theories id)))
@@ -1643,7 +1645,9 @@
 	   ;;               (unless (some #'(lambda (jty) (subtype-of? jty decldeftype))
 	   ;;                             jtypes-def)
 	   ;;                 (type decl)))))
-	   (def (make!-lambda-exprs (formals decl) (definition decl) (type decl)))
+	   (def (make!-lambda-exprs (formals decl) (definition decl)
+				    (when (subtype? (type decl))
+				      (type decl))))
 	   (res (mk-resolution decl (current-theory-name) (type decl)))
 	   (name (mk-name-expr (id decl) nil nil res))
 	   (appl (make!-equation name def))
@@ -3067,8 +3071,15 @@
 	     (actuals modinst)
 	     (rectype-theory? dth)
 	     (positive-types dth)
-	     (not (every #'null (positive-types dth))))
-	(let* ((nmodinst (adt-modinst (module-instance te) dth)))
+	     (not (every #'null (positive-types dth)))
+	     (not (some #'(lambda (act fm)
+			    (and (member fm (positive-types dth)
+					 :test #'same-id
+					 :key #'(lambda (x)
+						  (or (print-type x) x)))
+				 (eq (type-value act) te)))
+			(actuals modinst) (formals-sans-usings dth))))
+	(let* ((nmodinst (adt-modinst modinst dth)))
 	  (if (tc-eq nmodinst modinst)
 	      te
 	      (let* ((res (mk-resolution (declaration te) nmodinst nil))
