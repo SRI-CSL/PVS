@@ -1684,6 +1684,8 @@
        (not (proved? fdecl))))
 
 (defun set-pvs-file-tcc-proofs (pvs-file strategy)
+  "Simple minded resetting of all TCCs to the given strategy
+Note that even proved ones get overwritten"
   (let ((just `("" ,strategy)))
     (multiple-value-bind (msg subjust)
 	(check-edited-justification just)
@@ -3698,3 +3700,19 @@
 ;;; Allows help to be used outside the prover.
 (defmacro help (&optional name)
   `(progn (funcall (funcall #'help-rule-fun ',name) nil) nil))
+
+(defun used-prelude-theory-names (theory &optional prelude-theory-names)
+  (let ((th (get-theory theory)))
+    (unless th
+      (error "Theory ~a not found - may need to typecheck first" theory))
+    (dolist (decl (all-decls th))
+      (when (typep decl '(or type-decl const-decl))
+	(dolist (d (refers-to decl))
+	  (when (and (typep d '(or type-decl const-decl))
+		     (from-prelude? d))
+	    (unless (member (module d) prelude-theory-names :test #'same-id)
+	      (setq prelude-theory-names
+		    (used-prelude-theory-names (module d)
+					       (cons (mk-modname (id (module d)))
+						     prelude-theory-names))))))))
+    prelude-theory-names))
