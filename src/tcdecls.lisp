@@ -1523,81 +1523,82 @@
 	     (ptypes (mapcar #'type-value
 		       (check-positive-types* (definition decl)
 					      (apply #'append (formals decl))
-					      decl pformals))))
+					      decl nil pformals))))
 	(setf (positive-types decl) ptypes))
       (setf (positive-types decl) nil)))
     
 
-(defmethod check-positive-types* ((ex application) fargs decl postypes)
-  (check-positive-types* (operator ex) fargs decl
-			 (check-positive-types* (argument ex) fargs decl
+(defmethod check-positive-types* ((ex application) fargs decl bindings postypes)
+  (check-positive-types* (operator ex) fargs decl bindings
+			 (check-positive-types* (argument ex) fargs decl bindings
 						postypes)))
 
-(defmethod check-positive-types* ((ex tuple-expr) fargs decl postypes)
-  (check-positive-types* (exprs ex) fargs decl postypes))
+(defmethod check-positive-types* ((ex tuple-expr) fargs decl bindings postypes)
+  (check-positive-types* (exprs ex) fargs decl bindings postypes))
 
-(defmethod check-positive-types* ((ex binding-expr) fargs decl postypes)
-  (declare (ignore fargs decl))
-  ;; Nothing positive here
-  (let ((fps (free-params ex)))
-    (remove-if #'(lambda (pt) (memq pt fps)) postypes)))
+(defmethod check-positive-types* ((ex binding-expr) fargs decl bindings postypes)
+  (let ((bps (free-params (bindings ex))))
+    (check-positive-types*
+     (expression ex) fargs decl
+     (append (bindings ex) bindings)
+     (remove-if #'(lambda (pt) (memq pt bps)) postypes))))
 
-(defmethod check-positive-types* ((ex list) fargs decl postypes)
+(defmethod check-positive-types* ((ex list) fargs decl bindings postypes)
   (if (null ex)
       postypes
       (check-positive-types*
-       (car ex) fargs decl
-       (check-positive-types* (cdr ex) fargs decl postypes))))
+       (car ex) fargs decl bindings
+       (check-positive-types* (cdr ex) fargs decl bindings postypes))))
 
-(defmethod check-positive-types* ((ex cases-expr) fargs decl postypes)
+(defmethod check-positive-types* ((ex cases-expr) fargs decl bindings postypes)
   (check-positive-types*
-   (expression ex) fargs decl
+   (expression ex) fargs decl bindings
    (check-positive-types*
-    (selections ex) fargs decl
+    (selections ex) fargs decl bindings
     (check-positive-types*
-     (else-part ex) fargs decl postypes))))
+     (else-part ex) fargs decl bindings postypes))))
 
 (defvar *ignore-bindings* nil)
 
-(defmethod check-positive-types* ((ex selection) fargs decl postypes)
+(defmethod check-positive-types* ((ex selection) fargs decl bindings postypes)
   (check-positive-types*
-   (constructor ex) fargs decl
+   (constructor ex) fargs decl bindings
    (let ((*ignore-bindings* (append (args ex) *ignore-bindings*)))
      (check-positive-types*
-      (expression ex) fargs decl postypes))))
+      (expression ex) fargs decl (append (args ex) bindings) postypes))))
 
-(defmethod check-positive-types* ((ex field-application) fargs decl postypes)
-  (check-positive-types* (argument ex) fargs decl postypes))
+(defmethod check-positive-types* ((ex field-application) fargs decl bindings postypes)
+  (check-positive-types* (argument ex) fargs decl bindings postypes))
 
-(defmethod check-positive-types* ((ex projection-application) fargs decl postypes)
-  (check-positive-types* (argument ex) fargs decl postypes))
+(defmethod check-positive-types* ((ex projection-application) fargs decl bindings postypes)
+  (check-positive-types* (argument ex) fargs decl bindings postypes))
 
-(defmethod check-positive-types* ((ex record-expr) fargs decl postypes)
-  (check-positive-types* (assignments ex) fargs decl postypes))
+(defmethod check-positive-types* ((ex record-expr) fargs decl bindings postypes)
+  (check-positive-types* (assignments ex) fargs decl bindings postypes))
 
-(defmethod check-positive-types* ((ex update-expr) fargs decl postypes)
+(defmethod check-positive-types* ((ex update-expr) fargs decl bindings postypes)
   (check-positive-types*
-   (expression ex) fargs decl
+   (expression ex) fargs decl bindings
    (check-positive-types*
-    (assignments ex) fargs decl postypes)))
+    (assignments ex) fargs decl bindings postypes)))
 
-(defmethod check-positive-types* ((ex assignment) fargs decl postypes)
+(defmethod check-positive-types* ((ex assignment) fargs decl bindings postypes)
   (check-positive-types*
-   (expression ex) fargs decl 
+   (expression ex) fargs decl bindings
    (check-positive-types*
-    (arguments ex) fargs decl postypes)))
+    (arguments ex) fargs decl bindings postypes)))
    
 
 
-(defmethod check-positive-types* ((ex rational-expr) fargs decl postypes)
+(defmethod check-positive-types* ((ex rational-expr) fargs decl bindings postypes)
   (declare (ignore fargs decl))
   postypes)
 
-(defmethod check-positive-types* ((ex field-assignment-arg) fargs decl postypes)
+(defmethod check-positive-types* ((ex field-assignment-arg) fargs decl bindings postypes)
   (declare (ignore fargs decl))
   postypes)
 
-(defmethod check-positive-types* ((ex name-expr) fargs decl postypes)
+(defmethod check-positive-types* ((ex name-expr) fargs decl bindings postypes)
   ;; if interpreted, check interpretation postypes
   ;; else any types appearing in actuals are not postypes
   ;; =, /=, if-then-else, are treated as interpreted
@@ -1626,6 +1627,9 @@
 	   (assert (eq (module ndecl) (current-theory)))
 	   postypes)
 	  (field-decl postypes)
+	  (bind-decl
+	   (assert (memq ndecl bindings))
+	   postypes)
 	  (t (break "Need more here"))))))
 
 (defun all-type-params (decl)
@@ -3678,7 +3682,7 @@
   (set-type (declared-type decl) nil)
   (if (subtype-of? (subtype decl) (type decl))
       (pvs-warning
-	  "In judgement ~:[at~;~:*~a,~] Line ~d: ~a is already known to be a subtype of~%  ~a"
+	  "In judgement ~:[at~;~:*~a,~] Line ~d:~_ ~a~_ is already known to be a subtype of~%  ~a"
 	(id decl) (line-begin (place decl))
 	(declared-subtype decl) (declared-type decl))
       (let* ((bd (make-new-bind-decl (subtype decl)))
@@ -3826,15 +3830,39 @@
 	      (set-type (car (expression uform)) (cadr (expression uform))))
 	    (set-type (car uform) (cadr uform)))
 	(setf (closed-form decl) uform)))
-  (when (formals-sans-usings (current-theory))
-    (generic-judgement-warning decl))
-  ;;(break "Before add-judgement-decl after change: ~a" (id decl))
-  (add-judgement-decl decl))
+  (cond ((and (expr-judgement? decl)
+	      (expr-judgement-useless? (closed-form decl)))
+	 (useless-judgement-warning decl))
+	(t (when (formals-sans-usings (current-theory))
+	     (generic-judgement-warning decl))
+	   ;;(break "Before add-judgement-decl after change: ~a" (id decl))
+	   (add-judgement-decl decl))))
+
+(defun expr-judgement-useless? (form)
+  (if (forall-expr? form)
+      (let ((eform (expression form)))
+	(subtype-of? (type (car eform)) (cadr eform)))
+      (subtype-of? (type (car form)) (cadr form))))
+
+(defun useless-judgement-warning (decl)
+  (let ((form (if (forall-expr? (closed-form decl))
+		  (expression (closed-form decl))
+		  (closed-form decl))))
+    (pvs-warning
+	"Expression judgement ~@[~a ~]at line ~d the expr type:~%  ~a~
+       ~% is already known to be a subtype of~%  ~a~%~
+       This judgement will not be used"
+      (id decl) (starting-row (place decl)) (type (car form)) (cadr form))))
 
 ;;; The expr-judgement expression is of the form, e.g., f(x, y)(z), where x,
 ;;; y, and z are determined to be (distinct) variables.  In this case, we
 ;;; change it to an application-judgement
 (defun change-expr-judgement-to-application-judgement (decl)
+  ;; If we don't clear the hash, causes problems in ACCoRD@bands_util.gs2v3_gs_only
+  (clrhash (judgement-types-hash (current-judgements)))
+  (untypecheck-theory (declared-type decl))
+  (untypecheck-theory (expr decl))
+  (untypecheck-theory (decl-formals decl))
   (assert (application? (expr decl)))
   (assert (name-expr? (operator* (expr decl))))
   (let* ((name (copy-untyped (operator* (expr decl))))
@@ -3846,7 +3874,6 @@
 				args))
 		    (arguments* (expr decl))))
 	 (dtype (copy-untyped (declared-type decl))))
-    (untypecheck-theory (decl-formals decl))
     (change-class decl 'application-judgement
       :name name
       :formals formals
