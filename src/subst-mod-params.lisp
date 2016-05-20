@@ -105,6 +105,10 @@
       (clrhash *all-subst-mod-params-caches*)
       (setq *all-subst-mod-params-caches*
 	    (make-pvs-hash-table :strong-eq? t)))
+  (when *subst-mod-params-cache*
+    (clrhash *subst-mod-params-cache*))
+  (when *subst-mod-params-eq-cache*
+    (clrhash *subst-mod-params-eq-cache*))
 ;  (if *subst-mod-params-cache*
 ;      (clrhash *subst-mod-params-cache*)
 ;      (setq *subst-mod-params-cache*
@@ -1333,6 +1337,11 @@
   (lcopy (call-next-method)
     :declared-type (subst-mod-params* (declared-type type) modinst bindings)))
 
+(defmethod subst-mod-params* ((type setsubtype) modinst bindings)
+  (lcopy (call-next-method)
+    :formals (subst-mod-params* (formals type) modinst bindings)
+    :formula (subst-mod-params* (formula type) modinst bindings)))
+
 (defmethod subst-mod-params* ((type subtype) modinst bindings)
   (let ((act (cdr (assoc type bindings
 			 :test #'formal-subtype-binding-match))))
@@ -1492,7 +1501,10 @@
 			       (free-params nres)))
 		   expr
 		   (let ((nacts (when (or *smp-include-actuals*
-					  (actuals expr))
+					  (actuals expr)
+					  ;; (not (tc-eq (module-instance res)
+					  ;; 	      (module-instance nres)))
+					  )
 				  (mapcar #'copy (actuals (module-instance nres)))))
 			 (ndacts (when (dactuals expr)
 				   (mapcar #'copy (dactuals (module-instance nres)))))
@@ -1865,7 +1877,10 @@
 	name
 	(copy name
 	  :actuals (when (or *smp-include-actuals*
-			     (actuals name))
+			     (actuals name)
+			     ;; (not (tc-eq (module-instance res)
+			     ;; 		 (module-instance nres)))
+			     )
 		     (mapcar #'copy (actuals (module-instance nres))))
 	  :dactuals (when (dactuals name)
 		     (mapcar #'copy (dactuals (module-instance nres))))
