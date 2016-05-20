@@ -109,7 +109,7 @@
 (defvar *store-object-hash* (make-hash-table :test #'eq))
 
 (defvar *store-object-ptr*)
-(defvar *store-object-substs*)
+(defvar *store-object-substs* (make-hash-table :test #'eq))
 (defvar *restore-object-parent*)
 (defvar *restore-object-parent-slot*)
 
@@ -163,13 +163,13 @@
     (setf (object-store 1) *store-object-ptr*)))
 
 (defun store-object-to-file (obj file)
-  (let ((*store-object-substs* nil))
-    (store-object obj)
-    (with-open-file (f file
-		       :direction :output
-		       :element-type '(unsigned-byte 32)
-		       :if-exists :supersede)
-      (write-array f *store-object-store* 0 (object-store 1))))
+  (clrhash *store-object-substs*)
+  (store-object obj)
+  (with-open-file (f file
+		     :direction :output
+		     :element-type '(unsigned-byte 32)
+		     :if-exists :supersede)
+    (write-array f *store-object-store* 0 (object-store 1)))
   t)
 
 #-allegro
@@ -193,7 +193,7 @@
     ,@body))
 
 (defun push-word (word)
-  (let ((sword (or (cdr (assoc word *store-object-substs* :test #'=))
+  (let ((sword (or (gethash word *store-object-substs*)
 		   word)))
     (setf (object-store *reserve-space-ptr*) sword))
   (incf *reserve-space-ptr*))
@@ -521,13 +521,11 @@
       (reserve-space (+ (length obj) 2)
 	(push-word (store-obj 'list))
 	(push-word (length obj))
-	(let ((i 0))
-	  (dolist (x obj)
-	    (when (and (not *saving-theory*)
-		       (typep x 'datatype-or-module))
-	      (remhash x *store-object-hash*))
-	    (push-word (store-obj x))
-	    (incf i))))
+	(dolist (x obj)
+	  (when (and (not *saving-theory*)
+		     (typep x 'datatype-or-module))
+	    (remhash x *store-object-hash*))
+	  (push-word (store-obj x))))
       (reserve-space 3
 	(push-word (store-obj 'cons))
 	(push-word (store-obj (car obj)))
