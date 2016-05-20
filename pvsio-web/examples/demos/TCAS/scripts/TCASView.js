@@ -10,7 +10,7 @@ define(function (require, exports, module) {
     var StateParser = require("util/PVSioStateParser"),
         d3 = require("d3/d3");
     
-    var h = 1200, w = 1200;
+    var h = 2000, w = 2168;
     var angleOffset = Math.PI / 2, nmi = 1852, nmiToPixel = 32;
     var colorMap = {"yellow": "rgba(255,255,0,0.5)", "transparent": "rgba(255,255,255,0)"};
     var maxRange = 180;
@@ -97,7 +97,7 @@ define(function (require, exports, module) {
             c.strokeStyle = colorMap[color];
             c.lineWidth = 20;
             c.beginPath();
-            c.arc(ownPos.x, ownPos.y, 175, first, last);
+            c.arc(ownPos.x, ownPos.y, 140, first, last);
             c.stroke();
             c.restore();
         });
@@ -132,7 +132,7 @@ define(function (require, exports, module) {
         if (!state.si || !state.so) {
             return;
         }
-        var center = {x: w / 2, y: h / 2};
+        var center = {x: 1100, y: 1100};
 
         var ipos = translate(normalisePos(state.si), center);
         var opos = translate(normalisePos(state.so), center);

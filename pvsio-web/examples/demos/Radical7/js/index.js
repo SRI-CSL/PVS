@@ -19,7 +19,7 @@ require.config({
 });
 
 require([
-        "pvsioweb/Button",
+        "widgets/Button",
         "widgets/SingleDisplay",
         "widgets/DoubleDisplay",
         "widgets/TripleDisplay",

@@ -120,6 +120,7 @@ define(function (require, exports, module) {
             }
         } else if (event.event === "rename" || event.event === "change") { //file or folder added
             if (event.isDirectory && event.name !== "pvsbin") {
+                event.subFiles = event.subFiles || [];
                 children = getFolderChildren(event.subFiles, event.path);
                 if (!pvsFilesListView.getTreeList().nodeExists(event.path)) {
                     parentFolderName = event.path.split("/").slice(0, -1).join("/");
@@ -156,7 +157,9 @@ define(function (require, exports, module) {
                     project.refreshDescriptor(f).then(function (res) {
                         if (res.content) {
                             pvsFilesListView.getTreeList().refreshSelectedItem();
-                            NotificationManager.show("Another application changed " + event.path +
+//                            NotificationManager.show("Another application changed " + event.path +
+//                                                     ". PVSio-web has reloaded the file content from disk.");
+                            console.log("Another application changed " + event.path +
                                                      ". PVSio-web has reloaded the file content from disk.");
                         }
                     }).catch(function (err) { console.log(err); });
@@ -369,6 +372,8 @@ define(function (require, exports, module) {
      */
     function fireProjectChanged(event) {
         var project = event.current;
+        document.title = "PVSio-Web -- " + event.current;
+        d3.select("#header #txtProjectName").html(event.current);        
         renderSourceFileList();
         _projectManager.selectFile(project.mainPVSFile() || project.pvsFilesList()[0] || project.name());
         _projectManager.fire(event);
@@ -504,11 +509,10 @@ define(function (require, exports, module) {
             return fs.mkDir(data.projectName, opt).then(function (res) {
                 if (PVSioWebClient.serverOnLocalhost()) {
                     project.importRemoteFiles(data.pvsSpec).then(function (res) {
-                        if (res) {
+                        if (res && res.length > 0) {
                             descriptors = descriptors.concat(res);
                             pvsiowebJSON.mainPVSFile = res[0].path.split("/").slice(1).join("/");
                         }
-                    }).then(function (res) {
                         project.importRemoteFiles(data.prototypeImage).then(function (res) {
                             if (res && res.length > 0) {
                                 descriptors = descriptors.concat(res);
@@ -517,6 +521,7 @@ define(function (require, exports, module) {
                             finalise({ project: project, descriptors: descriptors });
                         });
                     }).catch(function (err) {
+                        console.log(err);
                         finalise({ project: project, descriptors: descriptors, success: false });
                     });
                 } else {
@@ -686,12 +691,15 @@ define(function (require, exports, module) {
                                 // remove existing folder, save project and then rename folder
                                 fs.rmDir(e.data.projectName).then(function (res) {
                                     saveProject(e.data.projectName);
-                                }).catch(function (err) { reject(err); });
+                                }).catch(function (err) {
+                                    console.log("Warning: Error while trying to remove project folder. " + err);
+                                    saveProject(e.data.projectName);
+                                });
                                 view.remove();
                             }).on("cancel", function (e, view) {
                                 reject({
                                     code: "EEXISTS",
-                                    message: "Cannot save: project " + e.data.projectName + " already exists."
+                                    message: "Operation cancelled by the user"
                                 });
                             });
                     } else {

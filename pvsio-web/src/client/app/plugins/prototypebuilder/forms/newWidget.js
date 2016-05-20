@@ -28,9 +28,9 @@ define(function (require, exports, module) {
     }
     
     var NewWidgetView	= BaseDialog.extend({
-        render: function () {
+        render: function (data) {
             var t = Handlebars.compile(template);
-            this.$el.html(t());
+            this.$el.html(t(data));
             $("body").append(this.el);
             $("#tabHeaders #displayTab").tab("show");
             return this;
@@ -70,8 +70,9 @@ define(function (require, exports, module) {
     });
     
     module.exports = {
-        create: function () {
-            var form = new NewWidgetView();
+        create: function (data) {
+            data = data || { top: 10, left: 10, width: 60, height: 32 };
+            var form = new NewWidgetView(data);
             return form;
         }
     };

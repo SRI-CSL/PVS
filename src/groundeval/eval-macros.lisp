@@ -289,7 +289,7 @@
 ;;the hash-table first and then the closure. 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defstruct pvs-closure-hash
-  hash closure)
+  hash closure size) ;size can be nil to indicate that it is unbounded or not an array
 
 (defmacro mk-pvs-closure-hash (hash closure)
   `(make-pvs-closure-hash :hash ,hash

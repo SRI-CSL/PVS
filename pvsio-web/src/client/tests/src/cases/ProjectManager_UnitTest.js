@@ -231,6 +231,7 @@ define(function (require, exports, module) {
     // ----------------------------------------------------------------------------------------------------
     // ----------------------------------------------------------------------------------------------------
     var writeFile_test = [];
+    var content = "test1: THEORY\n BEGIN\n   %-- This theory is used for testing purposes!\n END test1";    
     writeFile_test.push({
         description: "Testing basic writeFile within an empty project...",
         run: function () {
@@ -273,7 +274,6 @@ define(function (require, exports, module) {
             });
         }
     });
-    var content = "test1: THEORY\n BEGIN\n   %-- This theory is used for testing purposes!\n END test1";
     writeFile_test.push({
         description: "Testing basic writeFile call with filename, content, and overwrite enabled...",
         run: function () {
@@ -323,7 +323,7 @@ define(function (require, exports, module) {
                     "').then(function (res) { writeFile('unit_test/test_overWrite', '% overwritten!'); })";
             summary += "\n\n Test " + (++fTest) + ": '" + txt + "'";
             return new Promise(function (resolve, reject) {
-                fs.writeFile('unit_test/test_overWrite.pvs', content).then(function (res) {
+                fs.writeFile('unit_test/test_overWrite.pvs', content, {overWrite: true}).then(function (res) {
                     fs.writeFile('unit_test/test_overWrite.pvs', "% overwritten!").then(function (res) {
                         addFail("File " + res.path + " erroneously overwritten");
                         reject(res.path);
@@ -337,7 +337,9 @@ define(function (require, exports, module) {
                             reject(err);
                         }
                     });
-                }).catch(function (err) { reject(err); });
+                }).catch(function (err) {
+                    reject(err);
+                });
             });
         }
     });

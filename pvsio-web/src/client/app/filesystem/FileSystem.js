@@ -510,7 +510,11 @@ define(function (require, exports, module) {
                         if (!opt || !opt.silentMode) {
                             NotificationManager.error(msg);
                         } else { Logger.log(msg); }
-                        reject(err);
+                        if (opt.overWrite && opt.overWrite === true) {
+                            resolve(new Descriptor(path, null, { isDirectory: true }));
+                        } else {
+                            reject(err);
+                        }
                     } else {
                         var notification = "Directory " + res.path + " successfully created";
                         if (!opt || !opt.silentMode) {

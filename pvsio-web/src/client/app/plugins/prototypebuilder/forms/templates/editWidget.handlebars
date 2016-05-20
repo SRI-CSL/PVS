@@ -1,25 +1,44 @@
 <div class="form-center">
+    <form class="center form-horizontal" onsubmit="return false" role="form">
     <div class="panel panel-info shadow center dialog">
         <div class="panel-heading">Edit {{type}}</div>
         <div class="panel-body">
-            <form class="center form-horizontal" onsubmit="return false" role="form">
                 {{#if isDisplay}}
-                <div class="form-group">
-                    <label for="auditoryFeedback" class="col-sm-4 control-label">Enable Audio Feeback</label>
-                    <div class="col-sm-8">
-                        <input type="checkbox" name="auditoryFeedback"/>
-                    </div>
-                </div>
                 <div class="form-group">
                     <label for="prefix" class="col-sm-4 control-label">Display name</label>
                     <div class="col-sm-8">
-                        <input type="text" name="displayKey" id="displayKey" required class="form-control" value="{{displayKey}}" />
+                        <input type="text" name="displayKey" id="displayKey" required class="form-control" value="{{displayKey}}" placeholder="Please enter display name (mandatory)"/>
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="cursorName" class="col-sm-4 control-label">Cursor name</label>
                     <div class="col-sm-8">
-                        <input type="text" name="cursorName" id="cursorName" class="form-control" value="{{cursorName}}" />
+                        <input type="text" name="cursorName" id="cursorName" class="form-control" value="{{cursorName}}" placeholder="Please enter cursor name (optional)"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="auditoryFeedback" class="col-sm-4 control-label">Voice Readback</label>
+                    <div class="col-sm-8" style="padding-top:6px;">
+                        <input type="checkbox" name="auditoryFeedback" value="auditoryFeedback"/>
+                    </div>
+                </div>
+                {{else}}{{#if isTimer}}
+                <div class="form-group">
+                    <label for="timerEvent" class="col-sm-4 control-label">Timer Name</label>
+                    <div class="col-sm-8">
+                        <input type="text" name="timerEvent" id="timerEvent" required class="form-control" value="{{timerEvent}}" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="timerRate" class="col-sm-4 control-label">Repeat Time (ms)</label>
+                    <div class="col-sm-8">
+                        <input type="text" name="timerRate" id="timerRate" required class="form-control" value="{{timerRate}}" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="timerFunction" class="col-sm-4 control-label">Generated Events</label>
+                    <div class="col-sm-8">
+                        <textarea id="timerFunction" name="timerFunction" type="text" readonly="true" class="form-control">{{timerFunction}}</textarea>
                     </div>
                 </div>
                 {{else}}
@@ -49,18 +68,31 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="boundFunction" class="col-sm-4 control-label">Generated Events</label>
+                    <label for="buttonReadback" class="col-sm-4 control-label">Voice Readback</label>
                     <div class="col-sm-8">
-                        <textarea id="boundFunction" type="text" readonly="true" class="form-control">{{boundFunctions}}</textarea>
+                        <input type="text" name="buttonReadback" id="buttonReadback" class="form-control" value="{{buttonReadback}}" />
                     </div>
                 </div>
-                {{/if}}
-
-            </form>
+                <div class="form-group">                           
+                    <label for="keyCode" class="col-sm-4 control-label">Keyboard Key</label>
+                    <div class="col-sm-8">
+                        <input onkeydown="uniKeyCode(event)" class="form-control"
+                               type="text" id="keyName" name="keyName" value="{{keyName}}" placeholder="Please choose keyboard key (optional)" />
+                        <input type="text" id="keyCode" name="keyCode" value="{{keyCode}}" readonly style="display:none"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="boundFunction" class="col-sm-4 control-label">Generated Events</label>
+                    <div class="col-sm-8">
+                        <textarea id="boundFunction" name="boundFunction" type="text" readonly="true" class="form-control">{{boundFunctions}}</textarea>
+                    </div>
+                </div>
+                {{/if}}{{/if}}
         </div>
         <div class="panel-footer">
             <button type="button" class="btn btn-danger left" id="btnCancel">Cancel</button>
             <button type="submit" class="btn btn-success right" id="btnOk">OK</button>
         </div>
     </div>
+    </form>
 </div>

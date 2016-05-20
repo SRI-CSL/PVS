@@ -1,5 +1,16 @@
 #Changelog
 
+##2.0.2 (April 2016)
+    PVSio-web goes live on UMinho servers (http://pvsioweb.lsd.di.uminho.pt)
+    Added new feature: physical keyboard keys can be linked to prototype keys
+    Added new feature: voice readback for button actions
+    Added new feature: wallclock for automatic execution of tick transitions defined in the PVS model
+    Improved Emucharts Editor
+    
+##2.0.1b (Sep 2015)
+    Added new modelling extension: Presentation Interaction Models (PIMs)
+    Added PVSio-web network controller for distributed simulations
+
 ##2.0.1 (April 2015)
     Added new Model Generators: VMD-SL (Vienna Development Method)
     Added new prototypes (full Alaris GP, Pacemaker, GPCA-Simulink)
@@ -7,7 +18,7 @@
     Added new file browser
 
 ##2.0.0 (Jan 2015)
-    PVSio-web goes live (www.pvsioweb.org) on the Heroku cloud
+    PVSio-web goes live on the Heroku cloud (http://www.pvsioweb.org)
 
 ##1.1.0 (Dec 2014)
     Added new Model Generators: MAL (Modal Action Logic), and PIM (Presentation Interaction Models)

@@ -9,9 +9,10 @@ define(function (require, exports, module) {
     "use strict";
     var d3 = require("d3/d3"),
         formTemplate = require("text!./templates/displaySelectConstant.handlebars"),
+        BaseDialog = require("pvsioweb/forms/BaseDialog"),
         FormUtils = require("./FormUtils");
 
-    var SelectConstantView = Backbone.View.extend({
+    var SelectConstantView = BaseDialog.extend({
         initialize: function (data) {
             d3.select(this.el).attr("class", "overlay").style("top", self.scrollY + "px");
             this.render(data);

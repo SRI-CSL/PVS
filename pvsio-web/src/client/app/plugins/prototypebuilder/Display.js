@@ -35,38 +35,40 @@ define(function (require, exports, module) {
      */
     Display.prototype.render = function (state) {
         var str = StateParser.resolve(state, this.displayKey());
-        var dispVal = StateParser.evaluate(str);
-        if (typeof dispVal === "string") {
-            dispVal = dispVal.replace(new RegExp("\"", "g"), "");
-        }
-        var pos = coordsToPos(this.imageMap().attr("coords").split(",").map(function (d) { return +d; }));
-        var y = pos.y,
-            x = pos.x,
-            w = pos.width,
-            h = pos.height;
-        var text = d3.select("div." + this.id());
-        if (!text.empty()) {
-            text.remove();
-        }
-        text = d3.select("#imageDiv").append("div").attr("class", this.id() + " displayWidget");
-        ///FIXME CursoredDisplay should be used as a standalone widget
-        var cursoredDisplay = (this.cursorName()) ? true : false;
-        if (!cursoredDisplay) {
-            text.html(dispVal).style("left", x + "px").style("top", y + "px").style("position", "absolute")
-                              .style("width", w + "px").style("height", h + "px").style("color", "white")
-                              .style("font-size", (parseFloat(h) * 0.8) + "px");
+        if (str) {
+            var dispVal = StateParser.evaluate(str);
+            if (typeof dispVal === "string") {
+                dispVal = dispVal.replace(new RegExp("\"", "g"), "");
+            }
+            var pos = coordsToPos(this.imageMap().attr("coords").split(",").map(function (d) { return +d; }));
+            var y = pos.y,
+                x = pos.x,
+                w = pos.width,
+                h = pos.height;
+            var text = d3.select("div." + this.id());
+            if (!text.empty()) {
+                text.remove();
+            }
+            text = d3.select("#imageDiv").append("div").attr("class", this.id() + " displayWidget");
+            ///FIXME CursoredDisplay should be used as a standalone widget
+            var cursoredDisplay = (this.cursorName()) ? true : false;
+            if (!cursoredDisplay) {
+                text.html(dispVal).style("left", x + "px").style("top", y + "px").style("position", "absolute")
+                                  .style("width", w + "px").style("height", h + "px").style("color", "white")
+                                  .style("font-size", (parseFloat(h) * 0.8) + "px");
 
-        } else {
-            text.style("left", x + "px").style("top", y + "px").style("position", "absolute")
-                .style("width", w + "px").style("height", h + "px").style("color", "white")
-                .append("canvas").attr("width", w).attr("height", h).attr("id", "display");
-            var disp = new CursoredDisplay("display", w, h);
-            // parse cursor position
-            disp.renderNumber(dispVal.toString(), +state[this.cursorName()]);
-        }
-        //read out the display if audio is enabled for this display widget
-        if (this.auditoryFeedback()) {
-            Speaker.speak(dispVal.toString());
+            } else {
+                text.style("left", x + "px").style("top", y + "px").style("position", "absolute")
+                    .style("width", w + "px").style("height", h + "px").style("color", "white")
+                    .append("canvas").attr("width", w).attr("height", h).attr("id", "display");
+                var disp = new CursoredDisplay("display", w, h);
+                // parse cursor position
+                disp.renderNumber(dispVal.toString(), +state[this.cursorName()]);
+            }
+            //read out the display if audio is enabled for this display widget
+            if (this.auditoryFeedback()) {
+                Speaker.speak(dispVal.toString());
+            }
         }
     };
 

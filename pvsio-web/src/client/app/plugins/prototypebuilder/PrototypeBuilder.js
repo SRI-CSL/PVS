@@ -15,13 +15,15 @@ define(function (require, exports, module) {
         Recorder        = require("util/ActionRecorder"),
         Prompt          = require("pvsioweb/forms/displayPrompt"),
         WidgetsListView = require("pvsioweb/forms/WidgetsListView"),
+        TimersListView  = require("pvsioweb/forms/TimersListView"),
         template		= require("text!pvsioweb/forms/templates/prototypeBuilderPanel.handlebars"),
         ScriptPlayer    = require("util/ScriptPlayer"),
 //        fs              = require("util/fileHandler"),
         FileSystem          = require("filesystem/FileSystem"),
         NotificationManager = require("project/NotificationManager"),
         SaveProjectChanges = require("project/forms/SaveProjectChanges"),
-        Descriptor      = require("project/Descriptor");
+        Descriptor      = require("project/Descriptor"),
+        MIME            = require("util/MIME").getInstance();
 
     var instance;
     var currentProject,
@@ -134,6 +136,8 @@ define(function (require, exports, module) {
                             WidgetManager.restoreWidgetDefinitions(wd);
                             //update the widget area map scales
                             WidgetManager.scaleAreaMaps(scale);
+                            //select prototype builder
+                            switchToBuilderView();
                         }
                         resolve();
                     });
@@ -172,6 +176,7 @@ define(function (require, exports, module) {
         d3.select("#btnBuilderView").classed('active', true);
         d3.selectAll("div.display,#controlsContainer button").classed("builder", true);
         d3.selectAll("div.display,#controlsContainer button").classed("simulator", false);
+        WidgetManager.stopTimers();
     }
     function onProjectChanged(event) {
         var pvsioStatus = d3.select("#lblPVSioStatus");
@@ -192,20 +197,20 @@ define(function (require, exports, module) {
             });
         }
 
-        document.title = "PVSio-Web -- " + event.current;
-        d3.select("#header #txtProjectName").html(event.current);
         switchToBuilderView();
         WidgetManager.clearWidgetAreas();
         ScriptPlayer.clearView();
         updateImageAndLoadWidgets().then(function (res) {
             WidgetsListView.create();
         }).catch(function (err) { Logger.error(err); });
+        TimersListView.create();
     }
 
     function onWidgetsFileChanged(event) {
         updateImageAndLoadWidgets().then(function (res) {
             WidgetsListView.create();
         }).catch(function (err) { Logger.error(err); });
+        TimersListView.create();
     }
 
     function onSelectedFileChanged(event) {
@@ -229,6 +234,7 @@ define(function (require, exports, module) {
         d3.select("#btnSimulatorView").classed("selected", true);
         d3.selectAll("div.display,#controlsContainer button").classed("simulator", true);
         d3.selectAll("div.display,#controlsContainer button").classed("builder", false);
+        WidgetManager.startTimers();
     }
 
     function bindListeners() {
@@ -244,12 +250,12 @@ define(function (require, exports, module) {
             var msg = "";
             if (!img || !img.attr("src") || img.attr("src") === "") {
                 msg = "Please load a user interface picture before switching to Simulator View.\n\n " +
-                        "This can be done from within the Builder View, using the \"Load Picture\" button.";
+                        "This can be done from within Builder View, using the \"Load Picture\" button.";
                 return alert(msg);
             }
             if (!projectManager.project().mainPVSFile()) {
                 msg = "Please set a Main File before switching to Simulator View.\n\n" +
-                        "This can be done using the Model Editor:\n" +
+                        "This can be done using Model Editor:\n" +
                         "  (i) select a file from the file browser shown on the right panel of the Model Editor\n" +
                         "  (ii) click on \"Set as Main File\" to set the selected file as Main File.";
                 return alert(msg);
@@ -257,10 +263,18 @@ define(function (require, exports, module) {
             switchToSimulatorView();
         });
         d3.select("#btnSaveProject").on("click", function () {
-            projectManager.saveProject();
+            projectManager.saveProject().then(function (res) {
+                // FIXME: Implement APIs to save the diagram in the EmuCharts module!
+                if (d3.select("#btn_menuSaveChart").node()) {
+                    d3.select("#btn_menuSaveChart").node().click();
+                }            
+            });
         });
 
         d3.select("#btnSaveProjectAs").on("click", function () {
+            if (d3.select("#btn_menuSaveChart").node()) {
+                d3.select("#btn_menuSaveChart").node().click();
+            }
             var name = projectManager.project().name() + "_" + (new Date().getFullYear()) + "." +
                             (new Date().getMonth() + 1) + "." + (new Date().getDate());
             projectManager.saveProjectDialog(name);
@@ -347,6 +361,12 @@ define(function (require, exports, module) {
         d3.select("#btnReconnect").on("click", function () {
             projectManager.reconnectToServer();
         });
+        d3.select("#btnAddNewTimer").on("click", function () {
+//            WidgetManager.addTimer();
+        });
+        d3.select("#btnAddNewWidget").on("click", function () {
+            
+        });
     }
 
     /////These are the api methods that the prototype builder plugin exposes
@@ -413,7 +433,11 @@ define(function (require, exports, module) {
         d3.selectAll("#btnLoadPicture").on("click", function () {
             return new Promise(function (resolve, reject) {
                 if (PVSioWebClient.getInstance().serverOnLocalhost()) {
-                    fs.readFileDialog({encoding: "base64", title: "Select a picture"}).then(function (descriptors) {
+                    fs.readFileDialog({
+                        encoding: "base64",
+                        title: "Select a picture",
+                        filter: MIME.imageFilter
+                    }).then(function (descriptors) {
                         _prototypeBuilder.changeImage(descriptors[0].name, descriptors[0].content).then(function (res) {
                             renderImage(res).then(function (res) {
                                 if (d3.select("#imageDiv svg").node() === null) {
@@ -503,7 +527,14 @@ define(function (require, exports, module) {
         projectManager.addListener("ProjectChanged", onProjectChanged);
         projectManager.addListener("WidgetsFileChanged", onWidgetsFileChanged);
         projectManager.addListener("SelectedFileChanged", onSelectedFileChanged);
-        WidgetsListView.create();
+        updateImageAndLoadWidgets().then(function (res) {
+            WidgetsListView.create();
+        }).catch(function (err) { Logger.error(err); });
+        
+        // add default tick timer
+        WidgetManager.addWallClockTimer();
+        //TimersListView.create();
+
         bindListeners();
         d3.select("#header #txtProjectName").html(projectManager.project().name());
         return updateImageAndLoadWidgets();

@@ -1459,15 +1459,15 @@
 		       (let ((*destructive?* nil))
 			 (setf (definition (ex-defn-m decl))
 			       `(defun ,id2 ,formal-ids2
-				  ,@(append (when declarations
-					      (list declarations))
-					    (list 
-					     (pvs2cl_up* defn-expr
-							 (append (pairlis
-								  defn-bindings
-								  defn-binding-ids)
-								 bindings)
-							 nil))))))
+					 ,@(append (when declarations
+						     (list declarations))
+						   (list 
+						    (pvs2cl_up* defn-expr
+								(append (pairlis
+									 defn-bindings
+									 defn-binding-ids)
+									bindings)
+								nil))))))
 		       (eval (definition (ex-defn-m decl)))
 		       (assert id2)
 		       (compile id2))
@@ -1480,7 +1480,7 @@
 				,@(append (when declarations
 					    (list declarations))
 					  (list 
-					   (pvs2cl-till-output-stable
+					    (pvs2cl-till-output-stable
 					    (ex-defn-d decl)
 					    defn-expr
 					    (append (pairlis defn-bindings
@@ -1499,7 +1499,7 @@
 			     `(defun ,id ,formal-ids
 				,@(append (when declarations
 					    (list declarations))
-					  (list 
+					  (list
 					   (pvs2cl_up* defn  bindings nil))))))
 		     (eval (definition (ex-defn decl)))
 		     (assert id)
@@ -1548,6 +1548,8 @@
 	     undef))
 	  (t (let* ((id (mk-newfsymb (format nil "~@[~a_~]~a"
 					     (generated-by decl) (pvs2cl-id decl))))
+		    (idc (mk-newfsymb (format nil "~@[~a_~]~a_c"
+					     (generated-by decl) (pvs2cl-id decl))) )
 		    (id-d (mk-newfsymb (format nil "~@[~a_~]~a!"
 					       (generated-by decl)
 					       (pvs2cl-id decl))))
@@ -1559,6 +1561,17 @@
 		    (defn-body (body* defn))
 		    (defn-binding-ids
 		      (make-binding-ids-without-dups defn-bindings nil))
+		    (d-defn-body (when (null defn-bindings)
+				   (let ((*destructive?* t)
+				       (*output-vars* nil))
+				     (pvs2cl-till-output-stable
+				      (in-defn-d decl)
+				      defn-body
+				      (pairlis defn-bindings
+					       defn-binding-ids)
+				      nil))))
+		    (defconst (when (null defn-bindings)
+				`(defconstant ,idc ,d-defn-body)))
 		    (declarations (pvs2cl-declare-vars defn-binding-ids
 						       defn-bindings)))
 	       (setf (in-name decl) id)
@@ -1571,13 +1584,14 @@
 		 (let ((*destructive?* nil))
 		   (setf (definition (in-defn-m decl))
 			 `(defun ,id2 ,defn-binding-ids
-			    ,@(append (when declarations
-					(list declarations))
-				      (list 
-				       (pvs2cl_up* defn-body
-						   (pairlis defn-bindings
-							    defn-binding-ids)
-						   nil))))))
+				   ,@(append (when declarations
+					       (list declarations))
+					     (list 
+					      (or (and defconst idc);;for constants
+						  (pvs2cl_up* defn-body
+							      (pairlis defn-bindings
+								       defn-binding-ids)
+							      nil))))))
 		 (eval (definition (in-defn-m decl)))
 		 (assert id2)
 		 (compile id2))
@@ -1591,12 +1605,13 @@
 			  ,@(append (when declarations
 				      (list declarations))
 				    (list 
-				     (pvs2cl-till-output-stable
-				      (in-defn-d decl)
-				      defn-body
-				      (pairlis defn-bindings
-					       defn-binding-ids)
-				      nil)))))
+				     (or (and defconst idc)
+					 (pvs2cl-till-output-stable
+					  (in-defn-d decl)
+					  defn-body
+					  (pairlis defn-bindings
+						   defn-binding-ids)
+					  nil)))))))
 		 ;;setf output-vars already in
 		 ;;pvs2cl-till-output-stable
 		 (setf (output-vars (in-defn-d decl))
@@ -1606,10 +1621,13 @@
 	       (compile id-d)
 	       (when *eval-verbose*
 		 (format t "~%~a <internal_0> ~a" (id decl) id))
-	       (let ((*destructive?* nil))
+	       (let* ((*destructive?* nil)
+		      (in-defn `(defun ,id ()
+				  ,(or (and defconst idc) (pvs2cl_up* defn nil nil)))))
 		 (setf (definition (in-defn decl))
-		       `(defun ,id ()
-			  ,(pvs2cl_up* defn nil nil))))
+		       (if defconst
+			   `(progn ,defconst ,in-defn)
+			 in-defn)))
 	       (eval (definition (in-defn decl)))
 	       (assert id)
 	       (compile id))))))
