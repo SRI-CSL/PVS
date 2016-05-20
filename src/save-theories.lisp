@@ -220,8 +220,8 @@
 	   (list-ex obj)
 	   (elt-type (type-value
 		      (car (actuals (find-adt-supertype (type obj))))))
-	   (cons-ex (when elt-type (make-cons-name-expr elt-type)))
-	   (null-ex (when elt-type (make-null-name-expr elt-type))))
+	   (cons-ex (when elt-type (make!-cons-name-expr elt-type)))
+	   (null-ex (when elt-type (make!-null-name-expr elt-type))))
       (loop while (list-expr? list-ex)
 	 do (progn (let ((*restore-object-parent-slot* 'argument))
 		     (restore-object* (args1 list-ex)))
@@ -347,6 +347,7 @@
 
 (defun store-declref (obj)
   (let ((module (module obj)))
+    #+pvsdebug
     (assert (or (not *saving-theory*)
 		(from-prelude? module)
 		(memq module (all-imported-theories *saving-theory*))
@@ -384,6 +385,7 @@
 
 (defmethod store-object* :around ((obj inline-recursive-type))
   (with-slots ((theory adt-theory)) obj
+    #+pvsdebug
     (assert (position obj (all-decls theory)))
     (if (not (eq theory *saving-theory*))
 	(if (external-library-reference? theory)
@@ -679,8 +681,8 @@
 	 #+pvsdebug (assert (print-type-correct? obj))
 	 (let ((val (store-obj spt)))
 	   #+pvsdebug (assert (gethash spt *store-object-hash*))
-	   (push (cons sop (gethash spt *store-object-hash*))
-		 *store-object-substs*)
+	   (setf (gethash sop *store-object-substs*)
+		 (gethash spt *store-object-hash*))
 	   val))
        (call-next-method)))
 
@@ -797,12 +799,14 @@
 (defvar *restoring-declaration*)
 
 (defmethod restore-object* :around ((obj datatype-or-module))
-  (if *restoring-theory*
-      obj
-      (let ((*restoring-theory* obj))
-	(setf (formals-sans-usings obj)
-	      (remove-if #'(lambda (ff) (typep ff 'importing)) (formals obj)))
-	(call-next-method))))
+  (if (inline-recursive-type? obj)
+      (call-next-method)
+      (if *restoring-theory*
+	  obj
+	  (let ((*restoring-theory* obj))
+	    (setf (formals-sans-usings obj)
+		  (remove-if #'(lambda (ff) (typep ff 'importing)) (formals obj)))
+	    (call-next-method)))))
 
 (defmethod restore-object* :around ((obj recursive-type))
   (call-next-method)
@@ -832,6 +836,7 @@
     (setq *current-context* (saved-context obj))
     (restore-saved-context *current-context*)
     (setq *current-context* (copy-context *current-context*))
+    #+pvsdebug
     (assert (every #'conversion-decl? (conversions (saved-context obj))))))
 
 (defun restore-saved-context (obj)
@@ -852,6 +857,7 @@
 	    (restore-using-hash (using-hash obj)))
       (setf (conversions obj)
 	    (restore-context-conversions (conversions obj)))
+      #+pvsdebug
       (assert (every #'conversion-decl? (conversions obj)))
       obj)))
 
@@ -882,12 +888,14 @@
 
 (defun restore-context-conversions (conversions &optional convs)
   (cond ((null conversions)
+	 #+pvsdebug
 	 (assert (every #'conversion-decl? convs))
 	 (nreverse convs))
 	((eq (car conversions) 'prelude-conversions)
 	 (let ((pconvs (conversions *prelude-context*)))
 	   (assert pconvs)
 	   (push pconvs *restore-objects-seen*)
+	   #+pvsdebug
 	   (assert (every #'conversion-decl? convs))
 	   (nconc (nreverse convs) pconvs)))
 	(t (restore-context-conversions
@@ -924,6 +932,7 @@
 	  (assert (listp (application-judgements-alist judgements)))
 	  (when (memq 'prelude-application-judgements
 		      (application-judgements-alist judgements))
+	    #+pvsdebug
 	    (assert
 	     (null (cdr (memq 'prelude-application-judgements
 			      (application-judgements-alist judgements)))))
@@ -1061,6 +1070,7 @@
 		       (restore-object* (type (declaration fv)))))
 	   (freevars (car known-subtypes)))
 	 (assert (every #'type-expr? (car known-subtypes)))
+	 #+pvsdebug
 	 (assert (every #'type-expr?
 			(mapcar #'(lambda (x)
 				    (type (declaration x)))
@@ -1084,6 +1094,7 @@
 				       (type (declaration fv)))))
 			  (freevars car-subtypes))
 			(assert (every #'type-expr? car-subtypes))
+			#+pvsdebug
 			(assert (every #'type-expr?
 				       (mapcar #'(lambda (x)
 						   (type (declaration x)))
@@ -1097,13 +1108,20 @@
 	(call-next-method)
 	(if (and (module obj)
 		 (eq (module obj) *restoring-theory*))
-	    (unless (boundp '*restoring-declaration*) ;; bound to nil in context
-	      (let ((*restoring-declaration* obj))
+	    (unless (and (boundp '*restoring-declaration*) ;; bound to nil in context
+			 (not (or (eq (generated-by obj) *restoring-declaration*)
+				  (typep obj 'adtdecl))))
+	      (let ((*restoring-declaration* obj)
+		    (*bound-variables* (apply #'append (formals obj))))
 		(call-next-method)
 		(when (and (eq *restoring-theory* (theory *current-context*))
 			   (not (typep obj 'adtdecl)))
 		  (put-decl obj))))
 	    (call-next-method)))))
+
+(defmethod restore-object* :around ((obj binding-expr))
+  (let ((*bound-variables* (append (bindings obj) *bound-variables*)))
+    (call-next-method)))
 
 (defmethod restore-object* :around ((obj resolution))
   (call-next-method)
@@ -1123,11 +1141,15 @@
   (call-next-method)
   (assert (not (store-print-type? (type-value obj))))
 ;;   (assert (or (not (subtype? (type-value obj)))
-;; 	      (not (store-print-type? (supertype (type-value obj))))))
+  ;; 	      (not (store-print-type? (supertype (type-value obj))))))
+  (restore-type-value obj)
+  obj)
+
+(defun restore-type-value (obj)
   (when (consp (type-value obj))
     (let* ((tn (apply #'make-instance (or (car (type-value obj))
 					  'type-name)
-		 :id (id obj) (cdr (type-value obj))))
+		      :id (id obj) (cdr (type-value obj))))
 	   (res (mk-resolution obj (mk-modname (id (module obj))) tn)))
       (setf (resolutions tn) (list res))
       (let ((ptype (if (formals obj)
@@ -1152,7 +1174,8 @@
 	    (setf (type-value obj) tn))
 	#+pvsdebug (assert (true-type-expr? (type-value obj)))
 	)))
-  obj)
+  (type-value obj))
+
 
 (defmethod restore-object* :around ((obj conversionminus-decl))
   (call-next-method)
@@ -1408,7 +1431,9 @@
 
 (defmethod type-expr-from-print-type ((te type-name))
   (let* ((decl (declaration (resolution te)))
-	 (tval (type-value decl))
+	 (tval (if (consp (type-value decl))
+		   (restore-type-value decl)
+		   (type-value decl)))
 	 (thinst (module-instance (resolution te))))
     (assert (eq (id (module decl)) (id thinst))
 	    () "Strange type-name resolution")
