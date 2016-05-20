@@ -55,7 +55,12 @@
 	*posint* nil
 	*ordinal* nil
 	*even_int* nil
-	*odd_int* nil)
+	*odd_int* nil
+	*even_nat* nil
+	*even_posnat* nil
+	*odd_posnat* nil
+	*even_negint* nil
+	*odd_negint* nil)
   (when *pvs-initialized*
     (clear-theories t))
   (let ((cdir (or *pvs-context-path* (working-directory)))
