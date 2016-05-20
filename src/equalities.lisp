@@ -2004,7 +2004,8 @@
   (cond ((null atypes)
 	 incs)
 	((or (dep-binding? (car atypes)) (dep-binding? (car etypes)))
-	 (break "compatible-preds-tupletypes dep-bindings"))
+	 ;; Could do more here, but need to substitute
+	 incs)
 	((tc-eq (car atypes) (car etypes))
 	 (compatible-preds-tupletypes (cdr atypes) (cdr etypes) (cdr aexprs) incs))
 	((subtype-of? (car atypes) (car etypes))
@@ -2013,7 +2014,7 @@
 					(remove-if #'(lambda (inc)
 						       (member inc aincs :test #'tc-eq))
 					  incs))))
-	(t (break "Something's wrong in compatible-preds-tupletypes"))))
+	(t (compatible-preds-tupletypes (cdr atypes) (cdr etypes) (cdr aexprs) incs))))
 
 (defmethod compatible-preds* ((atype cotupletype) (etype cotupletype)
 			      (aexpr injection-application) incs)
@@ -2474,7 +2475,7 @@
       (when preds
 	(values type2
 		(make!-lambda-expr (list vb)
-		  (make!-conjunction* (nreverse preds)))))
+		  (make!-conjunction* (reverse preds)))))
       (multiple-value-bind (ty cpreds)
 	  (subtype-preds (car types1) (car types2))
 	(let ((npreds (when ty (subtype-tuple-preds* cpreds var num))))
@@ -2695,13 +2696,18 @@
 
 
 (defmethod type-canon* ((te subtype) predicates)
-  (type-canon* (supertype te) (cons (predicate te)  predicates)))
+  (type-canon* (supertype te)
+	       (if (everywhere-true? (predicate te))
+		   predicates
+		   (cons (predicate te)  predicates))))
 
 (defmethod type-canon* ((te dep-binding) predicates)
   (lcopy te :type (type-canon* (type te) predicates)))
 
 (defmethod type-canon* ((te tupletype) predicates)
-  (type-canon-tupletype te predicates))
+  (if predicates
+      (type-canon-tupletype te predicates)
+      te))
 
 ;; (defun make-new-dep-bindings (types &optional expr (id '|t|) (num 1) dpbdgs)
 ;;   (if (null types)
@@ -2713,7 +2719,7 @@
 ;; 	(make-new-dep-bindings (cdr types) expr id (
 	
 
-;; Should return a subtype or tupletype
+;; Should return a subtype, with predicates lifted from the component types
 ;; [{x:T1|p1(x)}, ..., {x:Tn|pn(x)}] ==>
 ;;       {x: [T1, ..., Tn] | p1(x`1) ∧ ... ∧ pn(x`n)}
 ;; Dependent type:
@@ -2729,7 +2735,6 @@
 	   (ntypes (add-tupletype-preds (types te) parts))
 	   (ntuptype (make-instance 'tupletype :types ntypes))
 	   (toppreds (cdr (assq nil parts))))
-      (break)
       (if toppreds
 	  (make-instance 'subtype
 	    :supertype ntuptype
