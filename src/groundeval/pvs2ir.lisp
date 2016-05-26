@@ -146,6 +146,7 @@
 
 (defcl ir-lambda (ir-expr)
   ir-vartypes ; list of ir-types
+  ir-lastvars; list of marked freevars in the lambda-expr
   ir-rangetype
   ir-body)
 
@@ -259,7 +260,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defparameter *ir-primitives*
-  '(= /= TRUE FALSE IMPLIES => <=> AND & OR NOT WHEN IFF + - * /
+  '(= /= TRUE FALSE IMPLIES => <=> NOT AND & OR NOT WHEN IFF + - * /
    number_field_pred < <= > >= real_pred integer_pred integer?
    rational_pred floor ceiling rem ndiv even? odd? cons car cdr cons?
    null null? restrict length member nth append reverse))
@@ -280,16 +281,23 @@
 (defmacro new-irvars (length)
   `(loop for index from 1 to ,length collect (new-irvar)))
 
+(defun new-irvartype (ir-type)
+  (let ((ir-var (new-irvar)))
+    (mk-ir-variable ir-var ir-type)))
+	
+
 ;;this revises the definition in classes-decl.lisp and should replace it. 
 (defcl eval-info ()
   ir
   cdefn
+  c-type-info-table
   internal  ;both are eval-defn-info 
   external)
 
 (defcl eval-type-info ()
   ir-type-name
-  c-type-info)
+  c-type-info
+  c-type-info-table)
 
 
 (defun mk-eval-type-info (name)
@@ -379,9 +387,16 @@
 		 :ir-lhs lhs
 		 :ir-rhs rhs))
 
-(defun mk-ir-lambda (vartypes rangetype body)
+(defun mk-ir-lambda (vartypes rangetype body);;ir-lastvars is nil
   (make-instance 'ir-lambda
 		 :ir-vartypes vartypes
+		 :ir-rangetype rangetype
+		 :ir-body  body))
+
+(defun mk-ir-lambda-with-lastvars (vartypes lastvars rangetype body)
+  (make-instance 'ir-lambda
+		 :ir-vartypes vartypes
+		 :ir-lastvars lastvars
 		 :ir-rangetype rangetype
 		 :ir-body  body))
 
@@ -783,7 +798,7 @@
   (let ((ir-type-value (ir-type-value decl)))
     (if ir-type-value
 	(ir-type-name ir-type-value)
-      (let ((ir-type (pvs2ir-type (copy-without-print-type (type-value decl)))))
+      (let ((ir-type (pvs2ir-type (copy-without-print-type (type-value decl)))));;loops without copy
 	(if (or (ir-typename? ir-type)
 		(ir-subrange? ir-type))
 	    ir-type ;;ir-type might not be a typename
@@ -1162,9 +1177,8 @@
 		       arg-types
 			args-ir
 			(mk-ir-apply (pvs2ir-constant op) arg-vartypes)))
-      (let* ((op-name (new-irvar))
-	     (op-ir-type (pvs2ir-type (type op)))
-	     (op-var (mk-ir-variable op-name op-ir-type))
+      (let* ((op-ir-type (pvs2ir-type (type op)))
+	     (op-var (new-irvartype op-ir-type))
 	     (op-ir (pvs2ir* op bindings)))
 	(if (ir-array? op-ir-type)
 	    (mk-ir-let op-var op-ir
@@ -1173,7 +1187,21 @@
 	  (mk-ir-let op-var op-ir ;;NSH(3-14-16): Curried applications, needs to be revisited. 
 		     (mk-ir-let* arg-vartypes
 				 args-ir
-				 (mk-ir-apply op-var arg-vartypes))))))))
+				 (if (eql (length arg-vartypes) 1)
+				     (mk-ir-apply op-var arg-vartypes)
+				   (let* ((ir-fields (loop for ir-vartype in arg-vartypes
+							   as i from 1 
+							   collect
+							   (mk-ir-field (intern (format nil "project_~a" i))
+									ir-vartype)))
+					  (ir-recordtype (mk-ir-recordtype
+							  (loop for ir-vartype in arg-vartypes
+								as i from 1
+								collect (mk-ir-fieldtype (intern (format nil "project_~a" i))
+											 (ir-vtype ir-vartype)))))
+					  (ir-recordvar (new-irvartype ir-recordtype)))
+				     (mk-ir-let ir-recordvar (mk-ir-record ir-fields ir-recordtype)
+						(mk-ir-apply op-var (list ir-recordvar))))))))))))
 
 (defmethod pvs2ir* ((expr list) bindings)
   (cond ((consp expr)
@@ -1247,7 +1275,7 @@
 				       ir-var)))
 	 (ir-recordtype (mk-ir-recordtype (loop for type in ir-field-types
 						as field in ir-fields
-						collect (mk-ir-fieldtype field type)))))
+						collect (mk-ir-fieldtype (ir-fieldname field) type)))))
   (mk-ir-let* ir-field-var-types ir-assignments
 	      (mk-ir-record ir-fields ir-recordtype))))
 
@@ -1268,8 +1296,11 @@
 	      (mk-ir-recordtype (pvs2ir-expr-type (sort-assignments assignments)))))
 
 (defmethod pvs2ir-expr-type ((expr tuple-expr))
-  (with-slots (assignments) expr
-	      (mk-ir-recordtype (pvs2ir-expr-type (sort-assignments assignments)))))
+  (with-slots (exprs) expr
+	      (mk-ir-recordtype (loop for ir-type in (pvs2ir-expr-type exprs)
+				      as i from 1
+				      collect (mk-ir-fieldtype (intern (format nil "project_~a" i))
+							       ir-type)))))
 
 (defmethod pvs2ir-expr-type ((expr  list))
   (cond ((consp expr) (cons (pvs2ir-expr-type (car expr))
@@ -1497,7 +1528,7 @@
 						(mk-ir-update ir-expr-vartype1 (id lhs1) ir-new-rhsvartype)))))))
 	  (t ir-exprvar)))
 
-(defmethod pvs2ir-assignment1 ((ir-expr-type ir-adt-recordtype) lhs rhs-irvar ir-exprvar bindings)
+;(defmethod pvs2ir-assignment1 ((ir-expr-type ir-adt-recordtype) lhs rhs-irvar ir-exprvar bindings)
 
 (defmethod pvs2ir-assignment1 ((ir-expr-type ir-typename) lhs rhs-irvar ir-exprvar bindings)
   (pvs2ir-assignment1 (ir-type-defn ir-expr-type) lhs rhs-irvar ir-exprvar bindings))
@@ -1567,7 +1598,7 @@
 (defmethod pvs2ir-type* ((type type-name))
   (if (tc-eq type *boolean*)
       'bool
-    (if (tc-eq type *numfield* 
+;;remove?     (if (tc-eq type *numfield* ))
     (pvs2ir-decl (declaration type))));;returns the type name
 
 (defmethod pvs2ir-type* ((type list))
@@ -1823,23 +1854,27 @@
 		       (body-freevars (pvs2ir-freevars* ir-body))
 		       (irrelevant-args (set-difference ir-vartypes body-freevars :test #'eq))
 		       (preprocessed-body (preprocess-ir* ir-body other-livevars bindings))
-		       (preprocessed-wrapped-body
-			(if irrelevant-args
-			    (mk-ir-release (extract-reference-vars irrelevant-args)
-					   nil
-					   preprocessed-body)
-			  preprocessed-body))
-		       (preprocessed-ir (mk-ir-lambda ir-vartypes
-						      ir-rangetype
-						      preprocessed-wrapped-body)))
+		       ;; (preprocessed-wrapped-body
+		       ;; 	(if irrelevant-args
+		       ;; 	    (mk-ir-release (extract-reference-vars irrelevant-args)
+		       ;; 			   nil
+		       ;; 			   preprocessed-body)
+		       ;; 	  preprocessed-body))
+		       (preprocessed-ir (mk-ir-lambda-with-lastvars
+					 ir-vartypes
+					 last-expr-freevars
+					 ir-rangetype
+					 preprocessed-body)))
 		  ;; (format t "~%Preprocessing Lambda")
 		  ;; (format t "~%Freevars = ~s" (print-ir expr-freevars))
 		  ;; (format t "~%Irrelevant Args = ~s" (print-ir irrelevant-args))
 		  ;; (format t "~%Non-live freevars = ~s" (print-ir last-expr-freevars))
-		  (if last-expr-freevars
-		      (mk-ir-release nil (extract-reference-vars last-expr-freevars)
-				       preprocessed-ir)
-		    preprocessed-ir))))
+		  preprocessed-ir)))
+
+		  ;; (if last-expr-freevars
+		  ;;     (mk-ir-release nil (extract-reference-vars last-expr-freevars)
+		  ;; 		       preprocessed-ir)
+		  ;;   preprocessed-ir)
 
 (defun extract-reference-vars (ir-varlist)
   (loop for ir-var in ir-varlist
@@ -1878,9 +1913,13 @@
 
 (defmethod preprocess-ir* ((ir-expr ir-update) livevars bindings)
   (with-slots (ir-target ir-lhs ir-rhs) ir-expr
-	      (mk-ir-update (preprocess-ir* ir-target livevars bindings)
-			    (preprocess-ir* ir-lhs livevars bindings)
-			    (preprocess-ir* ir-rhs livevars bindings))))
+	      (let ((new-ir-target (preprocess-ir* ir-target livevars bindings))
+		    (new-ir-lhs (preprocess-ir* ir-lhs livevars bindings))
+		    (new-ir-rhs (preprocess-ir* ir-rhs livevars bindings)))
+		(unless (ir-last? new-ir-target)
+		  (format t "~%Updating an unmarked in ~s" (print-ir ir-expr)))
+	      (mk-ir-update new-ir-target new-ir-lhs new-ir-rhs))))
+
 
 (defmethod preprocess-ir* ((ir-expr ir-constructor-update) livevars bindings)
   (with-slots (ir-target ir-lhs ir-rhs) ir-expr
@@ -1965,44 +2004,95 @@
 		 :for-index for-index
 		 :for-body for-body))
 
+(defun make-c-assignment (lhs lhs-type rhs rhs-type)
+  (case lhs-type
+    (mpz (case rhs-type
+	   (mpz (format nil "mpz_set(~a, ~a)" lhs rhs))
+	   (mpq (format nil "mpz_set(~a, ~a)" lhs rhs))
+	   ((uint8 uint16 uint32 uint64 uint128)
+	    (format nil "mpz_set_ui(~a, ~a)" lhs rhs))
+	   ((int8 int16 int32 int64 int128)
+	    (format nil "mpz_set_si(~a, ~a)" lhs rhs))))
+    (mpq (case rhs-type
+	   (mpz (format nil "mpq_set_z(~a, ~a)" lhs rhs))
+	   (mpq (format nil "mpq_set(~a, ~a)" lhs rhs))
+	   ((uint8 uint16 uint32 uint64 uint128)
+	    (format nil "mpq_set_ui(~a, ~a, 1)" lhs rhs))
+	   ((int8 int16 int32 int64 int128)
+	    (format nil "mpz_set_si(~a, ~a, 1)" lhs rhs))))
+    ((uint8 uint16 uint32 uint64 uint128)
+     (case rhs-type
+       (mpz (format nil "~a = (~a_t)mpz_get_ui(~a)" lhs lhs-type rhs))
+       (t (format nil "~a = (~a_t)~a" lhs lhs-type rhs))))
+    ((int8 int16 int32 int64 int128)
+     (case rhs-type
+       (mpz (format nil "~a = (~a_t)mpz_get_si(~a)" lhs lhs-type rhs))
+       (t (format nil "~a = (~a_t)~a" lhs lhs-type rhs))))
+    (t (format nil "~a = (~a_t)~a" lhs lhs-type rhs))))
+	    
+
 (defmethod ir2c* ((ir-expr symbol) return-var return-type)
   (let ((rhs (if (eq ir-expr 'TRUE) (format nil "~a" 'true)
 	       (if (eq ir-expr 'FALSE) (format nil "~a" 'false)
-		 (format nil "~a()" ir-expr)))))
-    (list (format nil "~a = (~a_t)~a" return-var (add-c-type-definition (ir2c-type return-type)) rhs))))
+		 (format nil "~a()" ir-expr))))
+	(c-return-type (add-c-type-definition (ir2c-type return-type))))
+    (list (format nil "~a = (~a_t)~a" return-var c-return-type rhs))))
 
 
 (defmethod ir2c* ((ir-expr ir-integer) return-var return-type);;we need to handle number representations. 
   (with-slots (ir-intval) ir-expr
-	      (list (format nil "~a = (~a_t)~a" return-var (print-ir return-type) ir-intval))))
+	      (let ((c-return-type (print-ir return-type))
+		    (suffix (if (>= ir-intval 0) "_ui" "_si")))
+		(list (case c-return-type ;;this isn't correct for mpq (NSH 5-15-16)
+			(mpz (format nil "mpz_set~a(~a, ~a)" suffix return-var ir-intval))
+			(mpq (format nil "mpq_set~a(~a, ~a, 1)" suffix return-var ir-intval))
+			(t (format nil "~a = (~a_t)~a" return-var c-return-type ir-intval)))))))
 
 
 (defmethod ir2c* ((ir-expr ir-last) return-var return-type)
   (with-slots (ir-var) ir-expr
-	      (with-slots (ir-name) ir-var
-			  (let ((c-return-type (add-c-type-definition (ir2c-type return-type))))
-			    (list (format nil "~a = (~a_t)~a"  return-var c-return-type  ir-name))))))
+	      (with-slots (ir-name ir-vtype) ir-var
+			  (let ((c-return-type (add-c-type-definition (ir2c-type return-type)))
+				(c-rhs-type (add-c-type-definition (ir2c-type ir-vtype))))
+			    (cons (make-c-assignment return-var c-return-type ir-name c-rhs-type)
+				  (case c-rhs-type
+				    ((mpz mpq) (list (format nil "~a_clear(~a)" c-rhs-type ir-name)))
+				    (t nil)))))))
 
 (defmethod ir2c* ((ir-expr ir-variable) return-var return-type)
   (with-slots (ir-name ir-vtype) ir-expr
+	      (let ((c-return-type (add-c-type-definition (ir2c-type return-type))))
 	      (if (ir-reference-type? ir-vtype)
-		  (list (format nil "~a = (~a_t)~a" return-var (print-ir return-type)  ir-name) ;;assign then increment refcount
+		  (list (format nil "~a = (~a_t)~a" return-var c-return-type  ir-name) ;;assign then increment refcount
 			(format nil "~a->count++" ir-name));;ir-name contains non-NULL
-		(list (format nil  "~a = (~a_t)~a"  return-var (print-ir return-type) ir-name))) ;no reference count
-	      ))	
+		(let ((c-rhs-type (add-c-type-definition (ir2c-type ir-vtype))))
+		  (list (make-c-assignment return-var c-return-type ir-name c-rhs-type)))))))
+
+(defun gmp-type? (x) (or (eq x 'mpz)(eq x 'mpq)))
 
 (defmethod ir2c* ((ir-expr ir-record) return-var return-type)
   (with-slots (ir-fields ir-recordtype) ir-expr
 	      (let ((ctype (add-c-type-definition (ir2c-type ir-recordtype))))
 		 (cons (format nil "~a = new_~a();" return-var ctype)
 		       (loop for fld in ir-fields
+			     as fldtype in (ir-field-types ir-recordtype)
 			     append
 			     (with-slots (ir-fieldname ir-value) fld
-					 (let ((rhs-var (get-ir-last-var ir-value)))
-					   (cons (format nil "~a->~a = ~a"  return-var ir-fieldname (ir-name rhs-var))
-						 (when (and (ir-reference-type? (ir-vtype rhs-var))
-							    (not (ir-last? ir-value)))
-						   (list (format nil "~a->count++" (ir-name rhs-var))))))))))))
+					 (let* ((rhs-var (get-ir-last-var ir-value))
+						(c-rhs-type (add-c-type-definition (ir2c-type (ir-vtype rhs-var)))))
+					   (cons (make-c-assignment (format nil "~a->~a"  return-var ir-fieldname)
+								  (add-c-type-definition (ir2c-type (ir-ftype fldtype)))
+								  (ir-name rhs-var)
+								  c-rhs-type)
+						 (cond ((and (ir-reference-type? (ir-vtype rhs-var))
+							     (not (ir-last? ir-value)))
+							(list (format nil "~a->count++" (ir-name rhs-var))))
+						       ((and (ir-last? ir-value)
+							     (gmp-type? c-rhs-type))
+							(list (format nil "~a_clear(~a)" c-rhs-type
+								      (ir-name rhs-var))))
+						       (t nil))))))))))
+						      
 
 (defun ir-record-field-type (rectype field)
   (with-slots (ir-field-types) rectype
@@ -2025,12 +2115,24 @@
   ir-type)
 
 
+(defun get-field-type (ir-recordtype field)
+  (with-slots (ir-field-types) ir-recordtype
+	      (loop for ftype in ir-field-types
+		    when (eq (ir-id ftype) field)
+		    return (ir-ftype ftype))))
+
 (defmethod ir2c* ((ir-expr ir-get) return-var return-type)
   (with-slots (ir-record ir-field) ir-expr
 	      (let* ((ir-record-var (get-ir-last-var ir-record))
-		     (assign-instr (format nil "~a = (~a_t)~a->~a"  return-var (print-ir return-type)
-					       (ir-name ir-record-var)
-					       ir-field))
+		     (assign-instr
+		      (make-c-assignment return-var (add-c-type-definition (ir2c-type return-type))
+				       (format nil "~a->~a" (ir-name ir-record-var) ir-field)
+				       (add-c-type-definition
+					(ir2c-type
+					 (get-field-type
+					  (get-ir-type-value
+					   (ir-vtype ir-record-var))
+					  ir-field)))))
 		     (refcount-get-instr	;if lookup is a reference, first bump its count
 		      (when (ir-reference-type? (ir-record-field-type (get-ir-type-value (ir-vtype ir-record-var)) ir-field))
 			(list (format nil "~a->count++"  return-var))))
@@ -2088,13 +2190,30 @@
 	  (let ((instrs (ir2c-primitive-apply return-var return-type ir-function-name ir-arg-vars ir-arg-var-names)))
 	    ;(format t "~%~a" instrs)
 	    instrs)
-	(let ((arg-string (format nil "~{~a~^, ~}" ir-arg-var-names)))
-	  (list (format nil "~a = (~a_t)~a(~a)"  return-var (add-c-type-definition (ir2c-type return-type)) ir-function-name arg-string))))))
+	(let* ((arg-string (format nil "~{~a~^, ~}" ir-arg-var-names))
+	       (ir-funvar (get-ir-last-var ir-function-name))
+	       (c-return-type (add-c-type-definition (ir2c-type return-type))))
+	  (if (ir-variable? ir-funvar)
+	      (let* ((ir-fun-name (format nil "~a->fptr" (ir-name ir-funvar)))
+		     (apply-instr (case c-return-type
+				    ((mpz mpq)
+				     (format nil "~a(~a, ~a, ~a)" ir-fun-name (ir-name ir-funvar) return-var arg-string))
+				    (t (format nil "~a = (~a_t)~a(~a, ~a)"  return-var  c-return-type
+					       ir-fun-name (ir-name ir-funvar) arg-string))))
+		     (closure-release-instrs (when (ir-last? ir-function-name)
+					       (list (format nil "~a->rptr(~a)"
+							     (ir-name ir-funvar)
+							     (ir-name ir-funvar))))))
+		(cons apply-instr closure-release-instrs))
+	    (list (case c-return-type
+		    ((mpz mpq) (format nil "~a(~a, ~a)"  ir-funvar  return-var arg-string))
+		    (t (format nil "~a = (~a_t)~a(~a)"  return-var c-return-type ir-funvar arg-string)))))))))
+
 
 (defun gmp-suffix (c-type)
   (case c-type
-    (int32 "_si")
-    (uint32 "_ui")
+    ((int8 int16 int32 int64 int128) "_si")
+    ((uint8 uint16 uint32 uint64 uint128) "_ui")
     (t "")))
 
 (defun ir-primitive-op? (ir-function-name)
@@ -2117,7 +2236,7 @@
 		     (cadr ir-arg-names))))))
 
 (defun ir2c-primitive-apply (return-var return-type ir-function-name ir-args ir-arg-names)
-  (cond ((ir-primitive-arith-op? ir-function-name);
+  (cond ((ir-primitive-op? ir-function-name);
 	 (let ((c-arg-types (loop for ir-var in ir-args
 				collect (add-c-type-definition (ir2c-type (ir-vtype ir-var)))))
 	       (c-return-type (add-c-type-definition (ir2c-type return-type)))
@@ -2131,6 +2250,7 @@
 	     ((< <= > >=) (ir2c-arith-relations ir-function-name ;(tweak-equal ir-function-name)
 						  return-var
 						  ir-arg-names c-arg-types))
+	     (NOT (list (format nil "~a = !~a" return-var (car ir-arg-names) )))
 	     (OR
 	      (list (format nil "~a = ~a || ~a" return-var (car ir-arg-names) 
 		      (cadr ir-arg-names))))
@@ -2196,12 +2316,12 @@
 					     (t "true"))))
 			     (list (format nil "~a = (~a ~a (~a_t)~a)"
 					   return-var 
-					   arg1 ir-function-name arg1-c-type arg2))))
+					   arg1 ir-function-name arg1-c-type arg2)))))
 	 (mpz (let ((tmp (gentemp "tmp")))
 		      (list (format nil "int64_t ~a mpz_cmp_ui(~a, ~a)" tmp arg2 arg1)
 			    (format nil "~a = (~a ~a 0)" return-var tmp
 				    ir-function-name))))
-	 (mpq (break "mpq comparison not implemented")))))
+	 (mpq (break "mpq comparison not implemented"))))
       (mpz (let ((tmp (gentemp "tmp")))
 	     (list (format nil "int64_t ~a = mpz_cmp~a(~a, ~a)" tmp
 			   (case arg2-c-type
@@ -2234,18 +2354,18 @@
   (case  c-return-type
     (mpz (case arg1-c-type
 	   ((uint8 uint16 uint32 uint64 uint128)
-	    (case args2-c-type
+	    (case arg2-c-type
 	      ((uint8 uint16 uint32 uint64)
 	       (list (format nil "mpz_set_ui(~a, (uint64_t)~a)" return-var arg1)
 		     (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" return-var return-var arg2)))
 	      ((uint128 int128) (break "128-bit GMP arithmetic not available." ))
 	      ((int8 int16 int32 int64)
 	       (list (format nil "mpz_set_si(~a, ~a)" return-var arg2)
-		     (format nil "mpz_add_ui(~a, ~a (uint64_t)~a)" return-var return-var arg1)))
+		     (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" return-var return-var arg1)))
 	      (mpz (list (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" return-var arg2 arg1)))
 	      (mpq (break "mpq not available"))))
 	   ((int8 int16 int32 int64)
-	    (case args2-c-type
+	    (case arg2-c-type
 	      ((uint8 uint16 uint32 uint64)
 	       (list (format nil "mpz_set_si(~a, (uint64_t)~a)" return-var arg1)
 		     (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" return-var return-var arg2)))
@@ -2411,7 +2531,7 @@
     (case  c-return-type
       (mpz (case arg1-c-type
 	     ((uint8 uint16 uint32 uint64 uint128)
-	      (case args2-c-type
+	      (case arg2-c-type
 		((uint8 uint16 uint32 uint64)
 		 (list (format nil "mpz_set_ui(~a, (uint64_t)~a)" return-var arg1)
 		       (format nil "mpz_sub_ui(~a, ~a, (uint64_t)~a)" return-var return-var arg2)))
@@ -2422,7 +2542,7 @@
 		(mpz (list (format nil "mpz_ui_sub(~a, (uint64_t)~a,  ~a)" return-var arg1 arg2)))
 		(mpq (break "mpq not available"))))
 	     ((int8 int16 int32 int64)
-	      (case args2-c-type
+	      (case arg2-c-type
 		((uint8 uint16 uint32 uint64)
 		 (list (format nil "mpz_set_ui(~a, (uint64_t)~a)" return-var arg2)
 		       (format nil "mpz_si_sub(~a, (int64_t)~a, ~a)" return-var arg2 return-var)))
@@ -2431,7 +2551,7 @@
 		 (list (format nil "mpz_set_si(~a, ~a)" return-var arg2)
 		       (format nil "mpz_si_sub_si(~a, (int64_t)~a, ~a)" return-var arg1 return-var)))
 		(mpz (list (format nil "mpz_si_sub(~a, (int64_t)~a,  ~a)" return-var arg1 arg2)))
-		(mpq (break "mpq not available")))
+		(mpq (break "mpq not available"))))
 	      (mpz (case arg2-c-type
 		     ((uint8 uint16 uint32 uint64)
 		      (list (format nil "mpz_set_ui(~a, (uint64_t)~a)" return-var arg2)
@@ -2441,7 +2561,7 @@
 		      (list (format nil "mpz_set_si(~a, ~a)" return-var arg2)
 			    (format nil "mpz_sub_si(~a, ~a (uint64_t)~a)" return-var arg1 arg2)))
 		     (mpz (list (format nil "mpz_add(~a, ~a, ~a)" return-var arg2 arg1)))
-		     (mpq (break "mpq not available")))))))
+		     (mpq (break "mpq not available"))))))
     ((uint8 uint16 uint32 uint64 uint128)
      (case arg1-c-type
        ((uint8 uint16 uint32 uint64 uint128)
@@ -2579,7 +2699,7 @@
   (case  c-return-type
     (mpz (case arg1-c-type
 	   ((uint8 uint16 uint32 uint64 uint128)
-	    (case args2-c-type
+	    (case arg2-c-type
 	      ((uint8 uint16 uint32 uint64)
 	       (list (format nil "mpz_set_ui(~a, (uint64_t)~a)" return-var arg1)
 		     (format nil "mpz_mul_ui(~a, ~a, (uint64_t)~a)" return-var return-var arg2)))
@@ -2590,7 +2710,7 @@
 	      (mpz (list (format nil "mpz_mul_ui(~a, ~a, (uint64_t)~a)" return-var arg2 arg1)))
 	      (mpq (break "mpq not available"))))
 	   ((int8 int16 int32 int64)
-	    (case args2-c-type
+	    (case arg2-c-type
 	      ((uint8 uint16 uint32 uint64)
 	       (list (format nil "mpz_set_si(~a, (uint64_t)~a)" return-var arg1)
 		     (format nil "mpz_mul_ui(~a, ~a, (uint64_t)~a)" return-var return-var arg2)))
@@ -2700,7 +2820,7 @@
 					  (ir-name ir-func-var))))))
 		    (cons assign-instr (append refcount-lookup-instr release-array-instr)))
 		;;otherwise, it's a function call
-	      (let* ((invoke-instrs (ir2c-function-apply return-var return-type ir-func-var ir-args))
+	      (let* ((invoke-instrs (ir2c-function-apply return-var return-type ir-func ir-args))
 		     ;; (rhs-string (format nil "~a(~{~a~^, ~})" ir-func-var ir-arg-vars))
 		     ;; (invoke-instr (format nil "~a = ~a" return-var rhs-string))
 		     (release-instrs (loop for ir-var in ir-args ;;bump the counts of non-last references by one
@@ -2868,8 +2988,32 @@
 				      ;(format nil "~a->count = 1");;this should be done within new.
 				      (mk-for-instr (format nil "uint32_t ~a = 0; ~a < ~a; ~a++"
 					      index index size index)
-					      c-body))))
-		(error 'pvs2c-error :format-control "closures not yet implemented")))))
+						    c-body))))
+		(let* ((fvars (pvs2ir-freevars* ir-expr))
+		       (lastvars (ir-lastvars ir-expr))
+		       (closure-name (add-closure-definition ir-expr))
+		       (closure-var (gentemp "cl"))
+		       (new-instrs (list (format nil "~a_t ~a" closure-name closure-var)
+					 (format nil "~a = new_~a()" closure-var closure-name)))
+		       (fvar-instrs (loop for fvar in fvars
+					  as i from 1
+					  collect (let ((fv-type (add-c-type-definition (ir2c-type (ir-vtype fvar)))))
+						    (make-c-assignment (format nil "~a->fvar_~a"  closure-var i)
+								       fv-type
+								       (ir-name fvar)
+								       fv-type))))
+		       (return-instrs (list (format nil "~a = (~a_t)~a"
+						    return-var
+						    (add-c-type-definition return-type) closure-var)))
+		       ;;refcount isn't needed
+		       ;; (refcount-instrs (loop for fvar in fvars
+		       ;; 			      when (and (ir-reference-type? (ir-vtype fvar))
+		       ;; 					(not (memq fvar lastvars)))
+		       ;; 			      collect (format nil "~a->count++" (ir-name fvar))))
+		       )
+		  (nconc new-instrs (nconc fvar-instrs return-instrs)))))))
+							  
+		;; (break "closure alert"))))); (error 'pvs2c-error :format-control "closures not yet implemented")))))
 
 (defmethod get-arraytype ((ir-type ir-typename))
   (with-slots (ir-type-id ir-type-defn) ir-type
@@ -2967,34 +3111,70 @@
 		 :op-header op-header
 		 :op-defn op-defn))
 
-(defcl c-type-info ()
-  ir-texpr
-  tname
-  tdefn
+
+(defcl simple-c-type-info ()
+  ir-texpr tname tdefn)
+
+(defcl closure-c-type-info  (simple-c-type-info)
+  release-info)
+
+(defcl c-type-info (simple-c-type-info)
   new-info
   release-info
   copy-info
   equal-info
   update-info)
 
-(defcl simple-c-type-info ()
-  ir-texpr tname tdefn)
+
+(defcl c-closure-info ()
+  ir-lambda-expr
+  tname
+  tdefn
+  fdefn
+  hdefn
+  new-info
+  release-info)
 
 (defvar *c-type-info-table* nil) ;;a list of c-type-info
 (defvar *ir-type-info-table* nil) ;;a list of ir-typenames/doesn't seem to be used
 (defvar *copy-operations* nil);;list of type to type copy operations
 
+(defmethod type-info-texpr ((type-info c-type-info))
+  (with-slots (ir-texpr) type-info ir-texpr))
+
+(defmethod type-info-texpr ((type-info simple-c-type-info))
+  (with-slots (ir-texpr) type-info ir-texpr))
+
+(defmethod type-info-texpr ((type-info t))
+  nil)
+
+(defmethod closure-info-lambda-expr ((closure-info c-closure-info))
+  (with-slots (ir-lambda-expr) closure-info ir-lambda-expr))
+
+(defmethod closure-info-lambda-expr ((closure-info t))
+  nil)
+
 (defun get-c-type-info (ir-texpr)
-  (find ir-texpr *c-type-info-table* :key #'ir-texpr :test #'ir2c-tequal))
+  (find ir-texpr *c-type-info-table* :key #'type-info-texpr :test #'ir2c-tequal))
 
 (defun get-c-type-info-by-name (tname)
   (find tname *c-type-info-table* :key #'tname))
+
+(defun get-c-closure-info (ir-lambda-expr)
+  (find ir-lambda-expr *c-type-info-table* :key #'closure-info-lambda-expr :test #'equalp))
 
 (defun mk-simple-c-type-info (ir-texpr tname tdefn)
   (make-instance 'simple-c-type-info
 		   :ir-texpr ir-texpr
 		   :tname tname
 		   :tdefn tdefn))
+
+(defun mk-closure-c-type-info (ir-texpr tname tdefn release-info)
+  (make-instance 'closure-c-type-info
+		   :ir-texpr ir-texpr
+		   :tname tname
+		   :tdefn tdefn
+		   :release-info release-info))
 
 (defun mk-c-type-info (ir-texpr tname tdefn new-info release-info copy-info equal-info update-info)
   (make-instance 'c-type-info
@@ -3007,20 +3187,222 @@
 		   :equal-info equal-info
 		   :update-info update-info))
 
+(defun mk-c-closure-info (ir-lambda-expr tname tdefn fdefn hdefn new-info release-info)
+  (make-instance 'c-closure-info
+		 :ir-lambda-expr ir-lambda-expr
+		 :tname tname
+		 :tdefn tdefn
+		 :fdefn fdefn
+		 :hdefn hdefn
+		 :new-info new-info
+		 :release-info release-info))
+
+(defun add-closure-definition (ir-lambda-expr)
+  (let* ((closure-info (get-c-closure-info ir-lambda-expr))
+	 (closure-fdefn (when closure-info (fdefn closure-info))))
+    (or (and closure-fdefn (op-name closure fdefn))
+	(let* ((ir-freevars (pvs2ir-freevars* ir-lambda-expr))
+	       (ir-fvar-types (loop for fvar in ir-freevars collect (ir-vtype fvar)))
+	       (ir-fvar-ctypes (loop for fvtype in ir-fvar-types collect
+				     (add-c-type-definition (ir2c-type fvtype))))
+	       (ir-boundvars (ir-vartypes ir-lambda-expr))
+	       (ir-rangetype (ir-rangetype ir-lambda-expr))
+	       (ir-domaintype (if (eql (length ir-boundvars) 1)
+				   (ir-vtype (car ir-boundvars))
+				 (let ((ir-field-type (mapcar #'ir-vtype ir-boundvars)))
+				   (mk-ir-recordtype (loop for type in ir-field-type
+							   as i from 1
+							   collect (mk-ir-fieldtype (intern (format nil "project_~a" i)) type))))))
+							
+	       (c-rangetype (add-c-type-definition (ir2c-type ir-rangetype)))
+	       (c-domaintype (add-c-type-definition (ir2c-type ir-domaintype)))
+	       (c-funtype (add-c-type-definition (ir2c-type (mk-ir-funtype ir-rangetype ir-domaintype))))
+	       (ir-body (ir-body ir-lambda-expr))
+	       (closure-name-root (format nil "~a_closure_~a" *theory-id* (length *c-type-info-table*)))
+	       (closure-type-name (format nil "~a_t" closure-name-root))
+	       (closure-struct-name (format nil "~a_s" closure-name-root))
+	       (closure-type-defn ;the fptr takes the closure itself and a pointer to the lambda-args
+		(case c-rangetype
+		  ((mpq mpz)
+		   (format nil "struct ~a {uint32_t count;~%~8Tvoid (* fptr)(~a_t, ~a_t, ~a_t);~%~8T void (* rptr)(~a_t);~{~%~8T~a;~}};~%typedef struct ~a * ~a;"
+			closure-struct-name 
+			c-funtype c-rangetype
+			c-domaintype
+			c-funtype
+			(loop for fvctype in ir-fvar-ctypes as i from 1
+			      collect (format nil "~a_t fvar_~a" fvctype i))
+			closure-struct-name closure-type-name))
+		  (t 
+		(format nil "struct ~a {uint32_t count;~%~8T~a_t (* fptr)(~a_t, ~a_t);~%~8T void (* rptr)(~a_t);~{~%~8T~a;~}};~%typedef struct ~a * ~a;"
+			closure-struct-name c-rangetype
+			c-funtype
+			c-domaintype
+			c-funtype
+			(loop for fvctype in ir-fvar-ctypes as i from 1
+			      collect (format nil "~a_t fvar_~a" fvctype i))
+			closure-struct-name closure-type-name))))
+	       (closure-fptr-name (format nil "f_~a" closure-name-root))
+	       (closure-hptr-name (format nil "h_~a" closure-name-root))
+	       (closure-fptr-header (case c-rangetype
+				      ((mpq mpz)
+				       (format nil "void ~a(struct ~a * closure, ~a_t result, ~a_t bvar);"
+					    closure-fptr-name closure-struct-name c-rangetype  c-domaintype))
+				      (t (format nil "~a_t ~a(struct ~a * closure, ~a_t bvar);"
+					    c-rangetype closure-fptr-name closure-struct-name c-domaintype))))
+	       (bvar_projections
+		(when (> (length ir-boundvars) 1)
+		  (nconc (loop for ir-bvar in ir-boundvars
+			       as i from 1
+			       nconc (let ((atype (add-c-type-definition (ir2c-type (ir-vtype ir-bvar)))))
+				       (cons (format nil "~a_t bv_~a" atype i)
+					     (cons (make-c-assignment
+						    (format nil "bv_~a" i)
+						    atype
+						    (format nil "bvar->project_~a" i)
+						    atype)
+						   (when (ir-reference-type? (ir-vtype ir-bvar))
+						     (list (format nil "bvar->project_~a->count++" i)))))))
+			 (list (format nil "release_~a(bvar)" c-domaintype)))))
+	       (bvar-fvar-args (format nil "~a~{, ~a~}"
+				       (if (eql (length ir-boundvars) 1)
+					   (format nil "bvar")
+					 (format nil "~{~a~^, ~}"
+						 (loop for i from 1 to (length ir-boundvars)
+						       collect (format nil "bv_~a" i))))
+				       (loop for i from 1 to (length ir-freevars)
+					     collect (format nil "closure->fvar_~a" i))))
+	       (closure-fptr-defn
+		(case c-rangetype
+		  ((mpq mpz)
+		   (format t "bvar-fvar-args: ~a" bvar-fvar-args)
+		   (format nil "void ~a(struct ~a * closure, ~a_t result, ~a_t bvar){~{~%~8T~a;~}~%~8T~a(result, ~a);}"
+			closure-fptr-name closure-struct-name c-rangetype c-domaintype
+			bvar_projections
+			closure-hptr-name
+			bvar-fvar-args
+			))
+		   (t (format nil "~a_t ~a(struct ~a * closure, ~a_t bvar){~{~%~8T~a;~}~%~8Treturn ~a(~a);}"
+			      c-rangetype closure-fptr-name closure-struct-name c-domaintype
+			      bvar_projections
+			      closure-hptr-name
+			      bvar-fvar-args
+			      ))))
+	       (closure-fptr-definition (mk-c-defn-info closure-fptr-name closure-fptr-header
+							closure-fptr-defn))
+	       (closure-function-definition
+		(make-c-closure-defn-info ir-lambda-expr closure-hptr-name))
+	       (fptr-cast (case c-rangetype
+				 ((mpq mpz)
+				  (format nil "void (*)(~a_t, ~a_t, ~a_t)" c-funtype c-rangetype c-domaintype))
+				 (t (format nil "~a_t (*)(~a_t, ~a_t)" c-rangetype c-funtype c-domaintype))))
+	       (rptr-cast (format nil "void (*)(~a_t)" c-funtype c-domaintype))
+	       (new-info (make-closure-new-info closure-name-root fptr-cast rptr-cast));can reuse record-new-info
+	       (release-info (make-closure-release-info c-funtype closure-name-root ir-fvar-types ir-fvar-ctypes)))
+	  (push (mk-c-closure-info ir-lambda-expr closure-name-root closure-type-defn closure-fptr-definition closure-function-definition new-info release-info)
+		*c-type-info-table*)
+	  closure-name-root))))
+
+(defun make-closure-new-info (type-name-root fptr-cast rptr-cast)
+    (let* ((new-name (intern (format nil "new_~a" type-name-root)))
+	   (new-header (format nil "extern ~a_t new_~a(void);" type-name-root type-name-root))
+	   (new-defn   (format nil "~a_t new_~a(void){~%~8T~a_t tmp = (~a_t) malloc(sizeof(struct ~a_s));~%~8Ttmp->count = 1;~%~8Ttmp->fptr = (~a)&f_~a;~%~8Ttmp->rptr = (~a)&release_~a;~%~8Treturn tmp;}"
+			       type-name-root type-name-root type-name-root type-name-root type-name-root fptr-cast type-name-root rptr-cast type-name-root)))
+      (mk-c-defn-info new-name new-header new-defn)))
+
+(defun make-closure-release-info (funtype-root closure-name-root ir-fvar-types ir-fvar-ctypes)
+  (let* ((release-name (intern (format nil "release_~a" closure-name-root)))
+	 (release-header (format nil "extern void release_~a(~a_t closure);" closure-name-root funtype-root))
+	 (release-defn (let ((release-fields (loop for ft in ir-fvar-types
+						   as cft in ir-fvar-ctypes
+						   as i from 1 
+						   when (ir-reference-type? ft)
+						   collect (format nil "release_~a(x->fvar_~a)" cft i))))
+						   
+			 (format nil "void release_~a(~a_t closure){~%~8T~a_t x = (~a_t)closure;~%~8Tx->count--;~%~8Tif (x->count <= 0){~{~%~8T~8T~a;~}~%~8T//printf(\"\\nFreeing\\n\");~%~8Tfree(x);}}"
+				 closure-name-root funtype-root closure-name-root closure-name-root
+				 release-fields))))
+    (mk-c-defn-info release-name release-header release-defn)))
+
+										  
+(defmethod push-type-info-to-decl (c-type-info (decl const-decl))
+  (push c-type-info *c-type-info-table*)
+  (push c-type-info (c-type-info-table (eval-info decl))))
+
+(defmethod push-type-info-to-decl (c-type-info (decl type-decl))
+  (push c-type-info *c-type-info-table*)
+  (push c-type-info (c-type-info-table (ir-type-value decl))))
+
+(defmethod push-type-info-to-decl (c-type-info (decl t))
+  (format t "\nEmpty decl")
+  (push c-type-info *c-type-info-table*))
+
 (defmethod add-c-type-definition ((ir2c-type t) &optional tname)
   (cond (tname
 	 (let ((c-type-info (get-c-type-info-by-name tname)))
 	   ;(when (null ir2c-type) (break "add-c-type-definition"))
 	   (cond (c-type-info tname)
-		 (t (push (mk-simple-c-type-info ir2c-type tname (format nil "typedef ~a_t ~a_t;" ir2c-type tname))
-			  *c-type-info-table*)
-		    tname))))
+		 (t (let ((c-type-info (mk-simple-c-type-info ir2c-type tname (format nil "typedef ~a_t ~a_t;" ir2c-type tname))))
+		      (push-type-info-to-decl c-type-info
+						*pvs2c-current-decl*)
+		      tname)))))
 	(t ir2c-type)))
 
 (defmethod add-c-type-definition ((ir2c-type ir-typename) &optional tname) ;;tname is ignored
-  (with-slots (ir-type-id ir-type-defn) ir2c-type
+  ;;we assume that a named type already has generated code
+  (with-slots (ir-type-id) ir2c-type
+	      ir-type-id))
 	      ;(break "add-c-type-definition ir-typename")
-	     (add-c-type-definition  (ir2c-type ir-type-defn) ir-type-id)))
+;(add-c-type-definition  (ir2c-type ir-type-defn) ir-type-id)))
+
+(defmethod add-c-type-definition ((ir2c-type ir-funtype) &optional tname)
+  (with-slots (ir-domain ir-range) ir2c-type
+	      (let* ((c-type-info (get-c-type-info ir2c-type))
+		     (c-type-name (when c-type-info (tname c-type-info))))
+		(or c-type-name
+		    (let* ((type-name-root (or tname (format nil "~a_closure_~a"
+							     *theory-id*
+							     (length *c-type-info-table*))))
+			   (c-domain-root (add-c-type-definition (ir2c-type ir-domain)));remove ir2c-type
+			   (c-range-root (add-c-type-definition (ir2c-type ir-range)))
+			   (type-name (intern (format nil "~a_t" type-name-root)))
+			   (struct-name (intern (format nil "~a_s" type-name-root))))
+		      ;(break "add-c-type-definition ir-funtype")
+		      (if (ir-index? ir-domain)
+			  (let* ((size (ir-index? ir-domain))
+				 (elemtype ir-range)
+				 (type-defn (format nil "struct ~a { uint32_t count;~% ~a_t elems[~a]; };~%typedef struct ~a * ~a;"
+						    struct-name c-range-root size struct-name type-name))
+				 (new-info (make-array-new-info type-name-root size elemtype))
+				 (release-info (make-array-release-info type-name-root size elemtype c-range-root))
+				 (copy-info (make-array-copy-info type-name-root size elemtype))
+				 (equal-info (make-array-equal-info type-name-root size elemtype c-range-root))
+				 (update-info (list (make-array-update-info type-name-root elemtype))))
+			    (push-type-info-to-decl
+			     (mk-c-type-info ir2c-type type-name-root type-defn new-info release-info copy-info equal-info update-info)
+			     *pvs2c-current-decl*)
+			    type-name-root)
+			(let* ((type-defn
+				(case c-range-root
+				  ((mpq mpz)
+				   (format nil "struct ~a { uint32_t count;~%~8Tvoid (* fptr)(struct ~a *, ~a_t, ~a_t);~%~8Tvoid (* rptr)(struct ~a *);};~%typedef struct ~a * ~a;"
+						  struct-name  struct-name c-range-root c-domain-root struct-name struct-name type-name))
+				  (t (format nil "struct ~a { uint32_t count;~%~8T~a_t (* fptr)(struct ~a *, ~a_t);~%~8Tvoid (* rptr)(struct ~a *);};~%typedef struct ~a * ~a;"
+						  struct-name c-range-root struct-name c-domain-root struct-name struct-name type-name))))
+			       ;(new-info (make-function-new-info type-name-root size elemtype))
+			       (release-info (make-function-release-info type-name-root))
+				 )
+			  (push-type-info-to-decl
+			   (mk-closure-c-type-info ir2c-type type-name-root type-defn release-info)
+			   *pvs2c-current-decl*)))
+		      type-name-root)))))
+
+(defun make-function-release-info (type-name-root)
+  (let* ((name (format nil "release_~a" type-name-root))
+	  (header (format nil "void ~a(~a_t x)" name type-name-root))
+	 (body (format nil "{~%~8Tx->rptr(x);}"))
+	 (defn (format nil "~a~a" header body)))
+    (mk-c-defn-info name (format nil "extern ~a;" header) defn)))
+
 
 
 (defmethod add-c-type-definition ((ir2c-type ir-arraytype) &optional tname)
@@ -3029,7 +3411,9 @@
 		     (c-type-name (when c-type-info (tname c-type-info))))
 		(or c-type-name
 		    (let* ((c-range-root (add-c-type-definition elemtype))
-			   (type-name-root (or tname (format nil "c_array_~a" (length *c-type-info-table*))))
+			   (type-name-root (or tname (format nil "~a_array_~a"
+							     *theory-id*
+							     (length *c-type-info-table*))))
 			   (type-name (intern (format nil "~a_t" type-name-root)))
 			   (struct-name (intern (format nil "~a_s" type-name-root)))
 			   (type-defn (format nil "struct ~a { uint32_t count;~% ~a_t elems[~a]; };~%typedef struct ~a * ~a;"
@@ -3039,8 +3423,9 @@
 			     (copy-info (make-array-copy-info type-name-root size elemtype))
 			     (equal-info (make-array-equal-info type-name-root size elemtype c-range-root))
 			     (update-info (list (make-array-update-info type-name-root elemtype))))
-			(push (mk-c-type-info ir2c-type type-name-root type-defn new-info release-info copy-info equal-info update-info)
-			      *c-type-info-table*)
+			(push-type-info-to-decl
+			 (mk-c-type-info ir2c-type type-name-root type-defn new-info release-info copy-info equal-info update-info)
+			 *pvs2c-current-decl*)
 			type-name-root))))))
 
 (defun make-array-new-info (type-name-root size elemtype)
@@ -3099,11 +3484,11 @@
 ;;(releasing any connected objects) if the count falls to 0.  
 (defun make-array-release-defn (release-name type-name-root size ir-range c-range-root)
   (if (ir-reference-type? ir-range)
-      (format nil "void ~a(~a_t x){~%~8Tx->count--;~%~8T if (x->count <= 0){~%~16Tfor (int i = 0; i < ~a; i++){release_~a(x->elems[i]);};~%~8Tprintf(\"\\nFreeing\\n\");~%~8Tfree(x);}~%}"
+      (format nil "void ~a(~a_t x){~%~8Tx->count--;~%~8T if (x->count <= 0){~%~16Tfor (int i = 0; i < ~a; i++){release_~a(x->elems[i]);};~%~8T//printf(\"\\nFreeing\\n\");~%~8Tfree(x);}~%}"
 	      release-name type-name-root size c-range-root)
     ;if there are nested references, these need to be released before freeing x,
     ;;otherwise, just free x.
-    (format nil "void ~a(~a_t x){~%~8Tx->count--;~%~8T if (x->count <= 0){printf(\"\\nFreeing\\n\"); free(x);}~%}"
+    (format nil "void ~a(~a_t x){~%~8Tx->count--;~%~8T if (x->count <= 0){free(x);}~%}"
 	    release-name type-name-root)))
 
 (defun make-array-copy-header (copy-name type-name-root)
@@ -3114,8 +3499,9 @@
 			(format nil "for (uint32_t i = 0; i < ~a; i++){tmp->elems[i] = x->elems[i];~%~
                                      ~16Tx->elems[i]->count++;}"
 				size)
-		      (format nil "for (uint32_t i = 0; i < ~a; i++){tmp->elems[i] = x->elems[i];}"
-				size))))
+		      (format nil "for (uint32_t i = 0; i < ~a; i++){~a;}"
+			      size (make-c-assignment "tmp->elems[i]" elemtype
+						      "x->elems[i]" elemtype)))))
   (format nil "~a_t ~a(~a_t x){~%~8T~a_t tmp = new_~a();~%~8T~
                tmp->count = 1;~
 	       ~%~8T~a;~%~8T return tmp;}"   
@@ -3154,9 +3540,10 @@
                      if (yelems[i] != NULL){release_~a(yelems[i]);};~%~8T yelems[i] = v; if (v != NULL){v->count++;}~%~8T return y;}"
 		type-name-root update-name type-name-root range-type-name type-name-root type-name-root range-type-name range-type-name)
     (format nil "~a_t ~a(~a_t x, uint32_t i, ~a_t v){~%~8T~a_t y; ~%~8T if (x->count == 1){y = x;}~%~10T else {y = copy_~a(x);}~%~8T~
-                    y->elems[i] = v;~%~8T~
+                    ~a;~%~8T~
                     return y;}"
-	    type-name-root update-name type-name-root range-type-name type-name-root type-name-root))))
+	    type-name-root update-name type-name-root range-type-name type-name-root type-name-root
+	    (make-c-assignment "y->elems[i]" range-type-name "v" range-type-name)))))
 
 
 (defmethod add-c-type-definition ((ir2c-type ir-recordtype) &optional tname)
@@ -3166,7 +3553,9 @@
 		(or c-type-name
 		    (let* ((c-field-types (loop for ft in ir-field-types
 					       collect (add-c-type-definition (ir-ftype ft))))
-			   (type-name-root (or tname (format nil "record_~a" (length *c-type-info-table*))))
+			   (type-name-root (or tname (format nil "~a_record_~a"
+							     *theory-id*
+							     (length *c-type-info-table*))))
 			   (c-field-decls (loop for cft in c-field-types
 						as ft in ir-field-types
 						collect (format nil "~a_t ~a" cft (ir-id ft))))
@@ -3179,8 +3568,9 @@
 			     (update-info (loop for cft in c-field-types
 						as ft in ir-field-types
 						collect (make-record-field-update-info type-name-root ft cft))))
-			    (push (mk-c-type-info ir2c-type type-name-root type-defn new-info release-info copy-info equal-info update-info)
-				  *c-type-info-table*)
+			(push-type-info-to-decl
+			 (mk-c-type-info ir2c-type type-name-root type-defn new-info release-info copy-info equal-info update-info)
+			 *pvs2c-current-decl*)
 			    type-name-root))))))
 
 (defmethod add-c-type-definition ((ir2c-type ir-adt-recordtype) &optional tname)
@@ -3203,8 +3593,8 @@
 			     (update-info (loop for cft in c-field-types
 						as ft in ir-field-types
 						collect (make-record-field-update-info type-name-root ft cft))))
-			    (push (mk-c-type-info ir2c-type type-name-root type-defn new-info release-info copy-info equal-info update-info)
-				  *c-type-info-table*)
+			    (push-type-info-to-decl (mk-c-type-info ir2c-type type-name-root type-defn new-info release-info copy-info equal-info update-info)
+						    *pvs2c-current-decl*)
 			    type-name-root))))))
 
 
@@ -3239,7 +3629,7 @@
 						   when (ir-reference-type? (ir-ftype ft))
 						   collect (format nil "release_~a(x->~a)" cft (ir-id ft)))))
 						   
-			 (format nil "void release_~a(~a_t x){~%~8Tx->count--;~%~8Tif (x->count <= 0){~{~%~8T~8T~a;~}~%~8Tprintf(\"\\nFreeing\\n\");~%~8Tfree(x);}}"
+			 (format nil "void release_~a(~a_t x){~%~8Tx->count--;~%~8Tif (x->count <= 0){~{~%~8T~8T~a;~}~%~8T//printf(\"\\nFreeing\\n\");~%~8Tfree(x);}}"
 				 type-name-root type-name-root release-fields))))
     (mk-c-defn-info release-name release-header release-defn)))
 
@@ -3263,8 +3653,10 @@
 				   (ir-id ft)
 					;type-name-root
 				   (ir-id ft))
-			 (format nil "~%~8Ty->~a = x->~a"
-				    (ir-id ft)  (ir-id ft))))))
+			 (let ((lhs (format nil "y->~a" (ir-id ft)))
+			       (rhs (format nil "x->~a" (ir-id ft)))) 
+			   (format nil "~%~8T~a"
+				   (make-c-assignment lhs cft rhs cft)))))))
     (format nil "~a_t copy_~a(~a_t x){~%~8T~a_t y = new_~a();~{~a;~}~%~8Ty->count = 1;~%~8Treturn y;}"
 	    type-name-root type-name-root type-name-root type-name-root type-name-root copy-field-instrs)))
 
@@ -3321,14 +3713,18 @@
     (if (ir-reference-type? ftype)
 	(format nil "~a_t ~a(~a_t x, ~a_t v){~%~8T~a_t y;~%~8Tif (x->count == 1){y = x; if (x->~a != NULL){release_~a(x->~a);};}~%~8T~
                      else {y = copy_~a(x); y->~a->count--;};~%~8T~
-                     y->~a = v;~%~8Tif (v != NULL){v->count++;};~%~8Treturn y;}"
+                     ~a;~%~8Tif (v != NULL){v->count++;};~%~8Treturn y;}"
 		type-name-root update-name type-name-root c-field-type type-name-root fname c-field-type
-		fname type-name-root fname fname)
+		fname type-name-root fname (make-c-assignment (format nil "y->~a"fname)
+							      c-field-type
+							       "v" c-field-type))
       (format nil "~a_t ~a(~a_t x, ~a_t v){~%~8T~a_t y;~%~8Tif (x->count == 1){y = x;}~%~8T~
                      else {y = copy_~a(x);};~%~
-                     ~8Ty->~a = v;~%~8Treturn y;}"
+                     ~8T~a;~%~8Treturn y;}"
 		type-name-root update-name type-name-root c-field-type type-name-root 
-		type-name-root fname))))
+		type-name-root (make-c-assignment (format nil "y->~a"fname)
+							      c-field-type
+							       "v" c-field-type)))))
 
 ;;equality method for ir-types
 (defun ir2c-tequal (texpr1 texpr2)
@@ -3438,8 +3834,10 @@
   
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defvar *pvs2c-current-decl* nil)
 (defun pvs2c-decl (decl)
   (let ((saved-c-type-info-table *c-type-info-table*)
+	(*pvs2c-current-decl* decl);;used to save auxilliary type defns in c-type-info-table
 	(*current-context* (decl-context decl)))
     (handler-case
      (pvs2c-decl* decl)
@@ -3449,7 +3847,8 @@
 (defmethod pvs2c-decl* ((decl type-eq-decl))
   (let ((typename (pvs2ir-decl decl)))
     ;(break "type-eq-decl")
-    (when  (ir-typename? typename)
+    (when  (and (ir-typename? typename)
+		(ir-type-value decl));some type definitions translate to no-ops
       (add-c-type-definition (ir2c-type (ir-type-defn typename))(ir-type-id typename)))))
 
 (defmethod pvs2c-decl* ((decl type-decl)) ;;has to be an adt-type-decl
@@ -3460,9 +3859,11 @@
 
 ;;conversion for a definition
 (defmethod pvs2c-decl* ((decl const-decl))
-  (pvs2ir-decl decl)
-  (let ((ir (ir (eval-info decl))));(break "pvs2c-decl*/const-decl")
-    (ir2c-decl* ir decl)))
+  (unless (and (eq (id (module decl)) 'ordinals)
+	       (eq (id decl) 'size))
+    (pvs2ir-decl decl)
+    (let ((ir (ir (eval-info decl))));(break "pvs2c-decl*/const-decl")
+      (ir2c-decl* ir decl))))
 
 (defun make-c-defn-info (ir decl)
   (with-slots (ir-function-name ir-defn) ir
@@ -3471,9 +3872,10 @@
       (let* ((post-ir (preprocess-ir ir-defn))
 	     (ir-args (when (ir-lambda? post-ir)
 			(ir-vartypes post-ir)))
+;	     (ir-decl-type (add-c-type-definition (ir2c-type (pvs2ir-type (declared-type decl)))))
 	     (ir-result-type (if (ir-lambda? post-ir)
 				 (ir-rangetype post-ir) ;(pvs2ir-type (range (find-supertype (type decl))))
-			      (pvs2ir-type (type decl))))
+			       (pvs2ir-type (type decl))))
 	     (c-result-type (add-c-type-definition (ir2c-type ir-result-type)))
 	     (c-args (loop for arg in ir-args
 			   collect (format nil "~a_t ~a"
@@ -3482,18 +3884,63 @@
 	     (c-args-string (if (consp c-args)
 				(format nil "~{~a~^, ~}" c-args)
 			      (format nil "void")))
-	     (c-header (format nil "extern ~a_t ~a(~a);" c-result-type ir-function-name c-args-string))
+	     (c-header (case c-result-type
+			 ((mpz mpq)
+			  (if (consp c-args)
+			      (format nil "extern void ~a(~a_t ~a, ~a)"
+				      ir-function-name c-result-type 'result c-args-string)
+			    (format nil "extern void ~a(~a_t ~a)"
+				      ir-function-name c-result-type 'result)))
+			 (t (format nil "extern ~a_t ~a(~a)" c-result-type ir-function-name c-args-string))))
 	     (ir-body (if (ir-lambda? post-ir)
-			 (ir-body post-ir)
+			  (ir-body post-ir)
 			post-ir))
 	     (c-body (print2c (ir2c ir-body ir-result-type)))
-	     (c-defn (format nil "~a_t ~a(~a){~%~8T~a_t result;~%~a~%~8Treturn result;~%}"
-			     c-result-type ir-function-name c-args-string
+	     (c-defn (case c-result-type
+		       ((mpq mpz)
+			(format nil "~a{~%~a~%}"
+			     c-header 
+			     c-body))
+		       (t (format nil "~a{~%~8T~a_t result;~%~a~%~8Treturn result;~%}"
+			     c-header 
 			     c-result-type
-			     c-body)))
+			     c-body)))))
 	(format t "~%After preprocessing = ~%~a" (print-ir post-ir))
 	(format t "~%Generates C definition = ~%~a" c-defn)
-	(mk-c-defn-info ir-function-name c-header c-defn)))))
+	(mk-c-defn-info ir-function-name (format nil "~a;" c-header) c-defn)))))
+
+(defun make-c-closure-defn-info (ir-lambda-expr ir-function-name)
+  (let* ((ir-args (ir-vartypes ir-lambda-expr))
+	 (ir-result-type (ir-rangetype ir-lambda-expr)) ;(pvs2ir-type (range (find-supertype (type decl))))
+	 (c-result-type (add-c-type-definition (ir2c-type ir-result-type)))
+	 (fvars (pvs2ir-freevars* ir-lambda-expr))
+	 (c-args (loop for arg in (append ir-args fvars)
+		       collect (format nil "~a_t ~a"
+				       (add-c-type-definition (ir2c-type (ir-vtype arg)))
+				       (ir-name arg))))
+	 (c-args-string (if (consp c-args)
+			    (format nil "~{~a~^, ~}" c-args)
+			  (format nil "void")))
+	 (c-header (case c-result-type
+		     ((mpz mpq)
+		      (if (consp c-args)
+			  (format nil "extern void ~a(~a_t ~a, ~a)"
+			      ir-function-name c-result-type 'result c-args-string)
+			  (format nil "extern void ~a(~a_t ~a)"
+			      ir-function-name c-result-type 'result)))
+		     (t (format nil "extern ~a_t ~a(~a)" c-result-type ir-function-name c-args-string))))
+	 (ir-body (ir-body ir-lambda-expr))
+	 (c-body (print2c (ir2c ir-body ir-result-type)))
+	 (c-defn (case c-result-type
+		   ((mpq mpz)
+		    (format nil "~a{~%~a~%}" c-header c-body))
+		   (t (format nil "~a{~%~8T~a_t result;~%~a~%~8Treturn result;~%}"
+			      c-header
+			      c-result-type
+			      c-body)))))
+    (format t "~%Closure After preprocessing = ~%~a" (print-ir ir-lambda-expr))
+    (format t "~%Generates C definition = ~%~a" c-defn)
+    (mk-c-defn-info ir-function-name (format nil "~a;" c-header) c-defn)))
 
 
 (defmethod ir2c-decl* ((ir ir-accessor-defn) decl)
@@ -3562,7 +4009,12 @@
 
 (defun print-header-file (theory)
   (let* ((theory-id (id theory))
-	 (file-string (format nil "~a_c.h" (id theory))))
+	 (file-string (format nil "~a_c.h" theory-id))
+	 (preceding-theories (pvs2c-preceding-theories theory))
+	 (preceding-theories-without-formals
+	  (loop for thy in preceding-theories
+		when (null (formals (get-theory thy)))
+		collect thy)))
     (with-open-file (output file-string :direction :output
 			    :if-exists :supersede
 			    :if-does-not-exist :create)
@@ -3573,14 +4025,18 @@
 		    (format output "~%~%#include<inttypes.h>")
 		    (format output "~%~%#include<stdbool.h>")		    
 		    (format output "~%~%#include<gmp.h>")
-		    (loop for thy in (all-imported-theories theory)
-			  do (format output "~%~%#include \"~a_c.h\"" (id thy)))
+		    (loop for thy in (butlast preceding-theories-without-formals)
+			  do (format output "~%~%#include \"~a_c.h\"" thy))
+		    (format output "~%~%//cc -Wall -lgmp -o ~a" theory-id )
+		    (loop for thy in preceding-theories-without-formals
+			  do (format output " ~a_c.c" thy))
 		    (format output "~%~%typedef bool bool_t;")
 		    (print-type-info-headers-to-file output *c-type-info-table*)
 		    (loop for decl in (theory theory)
 		     	  when (and (const-decl? decl)(eval-info decl)(cdefn (eval-info decl)))
 			  do (print-header-decl decl output))
 		    (format output "~%#endif")
+		    (format t "~%Wrote ~a" file-string)
 		    (id theory))))
 
 (defun print-header-decl (decl output)
@@ -3599,6 +4055,11 @@
   (format output "~%~%~a~%~%"
 	  (tdefn type-info)))
 
+(defmethod print-type-defn-headers ((type-info closure-c-type-info) output)
+  (format output "~%~%~a~%~%"
+	  (tdefn type-info))
+  (format output "~a~%~%" (op-header (release-info type-info))))
+
 (defmethod print-type-defn-headers ((type-info c-type-info) output)
   (format output "~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%"
 	  (tdefn type-info)
@@ -3609,6 +4070,15 @@
   (loop for t-info in (update-info type-info)
 	do (format output "~a~%~%" (op-header t-info))))
 
+(defmethod print-type-defn-headers ((type-info c-closure-info) output)
+  (format output "~%~%~a~%~%~a~%~%~a~%~%~a~%~%~a~%~%"
+	  (tdefn type-info)
+	  (op-header (fdefn type-info))
+	  (op-header (hdefn type-info))	  
+	  (op-header (new-info type-info))
+	  (op-header (release-info type-info))
+	  ))
+
 (defun print-type-info-defns-to-file (output type-info-stack)
   (cond ((consp type-info-stack)
 	 (print-type-info-defns-to-file output (cdr type-info-stack))
@@ -3617,6 +4087,10 @@
 
 (defmethod print-type-defns ((type-info simple-c-type-info) output)
   nil); do nothing
+
+(defmethod print-type-defns ((type-info closure-c-type-info) output)
+  (format output "~%~%~a"
+	  (op-defn (release-info type-info))))
 
 (defmethod print-type-defns ((type-info c-type-info) output)
   (format output "~%~%~%~a~%~%~a~%~%~a~%~%~a~%~%"
@@ -3627,6 +4101,13 @@
   (loop for t-info in (update-info type-info)
 	do (format output "~a~%~%" (op-defn t-info))))
 
+(defmethod print-type-defns ((type-info c-closure-info) output)
+  (format output "~%~%~%~a~%~%~a~%~%~a~%~%~a"
+	  (op-defn (fdefn type-info))
+	  (op-defn (hdefn type-info))
+	  (op-defn (new-info type-info))
+	  (op-defn (release-info type-info))
+))
 
 (defun print-body-file (theory)
   (let* ((file-string (format nil "~a_c.c" (id theory))))
@@ -3642,6 +4123,7 @@
 				 (when (accessor-eval-info? einfo)
 				   (format output "~%~%~a" (op-defn (update-cdefn (eval-info decl)))))
 				 (format output "~%~%~a" (op-defn (cdefn (eval-info decl)))))))
+		    (format t "~%Wrote ~a" file-string)
 		    (id theory))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun adt-operation? (decl)
@@ -3658,18 +4140,68 @@
   (and (type-decl? decl)
        (adt-type-name? (type-value decl))))
 
+(defvar *theory-id* nil)
+
+(defparameter *primitive-prelude-theories*
+  '(defined_types relations orders if_def naturalnumbers reals
+ rationals integers equalities
+ notequal numbers booleans number_fields))
+
+(defvar *pvs2c-preceding-theories* nil)
+
+(defun used-prelude-theory-names (theory &optional prelude-theory-names)
+  (let ((th (get-theory theory)))
+    (unless th
+      (error "Theory ~a not found - may need to typecheck first" theory))
+    (dolist (decl (all-decls th))
+      (when (typep decl '(or type-decl const-decl))
+	(dolist (d (refers-to decl))
+	  (when (and (typep d '(or type-decl const-decl))
+		     (from-prelude? d))
+	    (unless (member (module d) prelude-theory-names :test #'same-id)
+	      (setq prelude-theory-names
+		    (used-prelude-theory-names (module d)
+					       (cons (id (module d)) ;(mk-modname (id (module d)))
+						     prelude-theory-names))))))))
+    prelude-theory-names))
+
+(defun pvs2c-preceding-theories (theory)
+  (let ((*pvs2c-preceding-theories* nil))
+    (pvs2c-preceding-theories* theory)
+    *pvs2c-preceding-theories*))
+
+(defun pvs2c-preceding-theories* (theory)
+  (let ((theory-defn (get-theory theory)))
+    (loop for thy in (used-prelude-theory-names theory)
+	  when (not (memq thy *primitive-prelude-theories*))
+	  do (pushnew thy *pvs2c-preceding-theories*))
+    (unless (eq (all-imported-theories theory-defn) 'unbound)
+      (loop for thy in (all-imported-theories theory-defn)
+	    do (pvs2c-preceding-theories* thy)))
+    (pushnew (id theory-defn) *pvs2c-preceding-theories*)))
+
 (defun pvs2c-theory (theory)
-  (let* ((theory (or (get-theory theory) *current-theory*))
-	 (*ir-type-info-table* nil)
-	 (*c-type-info-table* nil))
-    (loop for thy in (all-imported-theories theory)
-	  do (pvs2c-theory thy))
-    (loop for decl in (theory theory)
-	  when (or (and (const-decl? decl)(or (adt-operation? decl)(def-axiom decl)))
-		   (type-eq-decl? decl)(adt-type-decl? decl))
+  (pvs2c-theories (pvs2c-preceding-theories theory)))
+
+(defun pvs2c-theories (theories)
+  (cond ((consp theories)
+	 (pvs2c-theories (cdr theories));;process theories in reverse order
+	 (pvs2c-theory* (car theories)))
+	(t)))
+
+(defun pvs2c-theory* (theory)
+  (let* ((theory (or (get-theory theory) *current-theory*)))
+    (unless (formals theory)
+      (let ((*theory-id* (simple-id (id theory)))
+	    (*ir-type-info-table* nil)
+	    (*c-type-info-table* nil)
+	    (*closure-info-table* nil))
+	(loop for decl in (theory theory)
+	      when (or (and (const-decl? decl)(or (adt-operation? decl)(def-axiom decl)))
+		       (type-eq-decl? decl)(adt-type-decl? decl))
 	      do (pvs2c-decl decl))
-    (print-header-file theory)
-    (print-body-file theory)))
+	(print-header-file theory)
+	(print-body-file theory)))))
 
     
 		

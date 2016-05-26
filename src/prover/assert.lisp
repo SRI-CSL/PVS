@@ -3813,7 +3813,62 @@
 		(declare (ignore dummy))
 		(do-auto-rewrite new-expr '?))
 	      (do-auto-rewrite (lcopy expr 'expression newbody) sig)))
-	(do-auto-rewrite (lcopy expr 'expression newbody) sig))))
+      (do-auto-rewrite (lcopy expr 'expression newbody) sig))))
+
+(defun make-enum-exists-expr (bindings expr)
+  (let* ((enum-bindings (loop for bnd in bindings
+			      when (isenumtype? (find-supertype (type bnd)))
+			      collect bnd)))
+    (make-enum-exists-expr* enum-bindings bindings expr)))
+
+(defun make-enum-exists-expr* (enum-bindings bindings expr)
+  (if (consp bindings)
+      (if (and (consp enum-bindings)(eq (car enum-bindings)(car bindings)))
+	  (let ((bnd (car enum-bindings))
+		(etype (find-supertype (type bnd))))
+	    (multiple-value-bind (nbnd npreds)
+		(collect-binding-predicates bnd nil)
+	      (let* ((nvar (make-variable-expr nbnd))
+		     (enum-constructors (constructors etype))
+		     (constructor-equalities (loop for ctr in enum-constructors
+						   collect (make!-equation nvar ctr)))
+		     (eq-cases (make!-disjunction* constructor-equalities)))
+		(make!-conjunction (make!-conjunction* (cons eq-cases npreds))
+				   (make-enum-exists-expr* (cdr enum-bindings)
+							   (cdr bindings)
+							   (substit expr (acons bnd nbnd nil)))))))
+	(make!-exists-expr (list (car bindings)) (make-enum-exists-expr* enum-bindings (cdr bindings) expr)))
+    expr))
+
+(defun isenumtype? (type)
+  (and (adt-type-name? type)
+       (enumtype? (adt type))))
+
+(defun make-enum-forall-expr (bindings expr)
+  (let* ((enum-bindings (loop for bnd in bindings
+			      when (isenumtype? (find-supertype (type bnd)))
+			      collect bnd)))
+    (make-enum-forall-expr* enum-bindings bindings expr)))
+
+(defun make-enum-forall-expr* (enum-bindings bindings expr)
+  (if (consp bindings)
+      (if (and (consp enum-bindings)(eq (car enum-bindings)(car bindings)))
+	  (let* ((bnd (car enum-bindings))
+		 (etype (find-supertype (type bnd))))
+	    (multiple-value-bind (nbnd npreds)
+		(collect-binding-predicates bnd nil)
+	      (let* ((nvar (make-variable-expr nbnd))
+		     (enum-constructors (constructors etype))
+		     (constructor-equalities (loop for ctr in enum-constructors
+						   collect (make!-equation nvar ctr)))
+		     (eq-cases (make!-disjunction* constructor-equalities)))
+		(make!-implication (make!-conjunction* (cons eq-cases npreds))
+				   (make-enum-forall-expr* (cdr enum-bindings)
+							   (cdr bindings)
+							   (substit expr (acons bnd nbnd nil)))))))
+	(make!-forall-expr (list (car bindings)) (make-enum-forall-expr* enum-bindings (cdr bindings) expr)))
+    expr))
+	 
 
 (defmethod assert-if-quant ((expr forall-expr) sig newbody)
   (if (tc-eq newbody *true*)
