@@ -606,7 +606,7 @@ a		 (latex-proof1 stream terse?)))
 				 :direction :output :if-exists :supersede)
 	      (multiple-value-bind (stream errstream stat process-id)
 		  (run-program latex-viewer
-			       :arguments '("pvs-files")
+			       :arguments '("pvs-files.pdf")
 			       :output out
 			       :error-output out
 			       :wait nil
@@ -643,7 +643,7 @@ a		 (latex-proof1 stream terse?)))
 	(with-open-file (out tmp-file
 			     :direction :output :if-exists :supersede)
 	  (excl:run-shell-command
-	   (format nil "~a pvs-files" latex-viewer)
+	   (format nil "~a pvs-files.pdf" latex-viewer)
 	   :output out
 	   :error-output :output
 	   :wait nil))
@@ -681,7 +681,7 @@ a		 (latex-proof1 stream terse?)))
 			     :direction :output :if-exists :supersede)
 	  (extensions:run-program
 	   latex-viewer
-	   (list "pvs-files")
+	   (list "pvs-files.pdf")
 	   :output out
 	   :error out
 	   :wait nil))
