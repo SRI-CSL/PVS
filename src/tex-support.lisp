@@ -34,6 +34,8 @@
 
 ;;; The rudiments of a table lookup for mapping of ids and functions.
 
+(defvar *latex-program* "pdflatex")
+
 ;;; Must be filled in by user.  
 (defvar *latex-id-length-list* nil 
   "records length of translated ids, including function names when
@@ -430,7 +432,7 @@ useful if more than one specification is to be included in one document")
 	(cond ((stringp texfile)
 	       (with-open-file (stream texpath :direction :output
 				       :if-exists :supersede)
-		 (latex-proof1 stream terse?)))
+a		 (latex-proof1 stream terse?)))
 	      (t (latex-proof1 t terse?)))
 	(let ((*latex-files* (list (subseq texfile 0
 					   (search ".tex" texfile)))))
@@ -604,7 +606,7 @@ useful if more than one specification is to be included in one document")
 				 :direction :output :if-exists :supersede)
 	      (multiple-value-bind (stream errstream stat process-id)
 		  (run-program latex-viewer
-			       :arguments '("pvs-files")
+			       :arguments '("pvs-files.pdf")
 			       :output out
 			       :error-output out
 			       :wait nil
@@ -623,7 +625,7 @@ useful if more than one specification is to be included in one document")
     (with-open-file (out tmp-file
 			 :direction :output :if-exists :supersede)
       (multiple-value-bind (stream errstream stat process-id)
-	  (run-program "latex"
+	  (run-program *latex-program*
 		       :arguments (list filename)
 		       :input "//dev//null"
 		       :output out)
@@ -641,7 +643,7 @@ useful if more than one specification is to be included in one document")
 	(with-open-file (out tmp-file
 			     :direction :output :if-exists :supersede)
 	  (excl:run-shell-command
-	   (format nil "~a pvs-files" latex-viewer)
+	   (format nil "~a pvs-files.pdf" latex-viewer)
 	   :output out
 	   :error-output :output
 	   :wait nil))
@@ -656,7 +658,7 @@ useful if more than one specification is to be included in one document")
     (with-open-file (out tmp-file
 			 :direction :output :if-exists :supersede)
       (setq status (excl:run-shell-command
-		    (format nil "latex ~a" filename)
+		    (format nil "~a ~a" *latex-program* filename)
 		    :input "//dev//null"
 		    :output out
 		    :error-output :output)))
@@ -679,7 +681,7 @@ useful if more than one specification is to be included in one document")
 			     :direction :output :if-exists :supersede)
 	  (extensions:run-program
 	   latex-viewer
-	   (list "pvs-files")
+	   (list "pvs-files.pdf")
 	   :output out
 	   :error out
 	   :wait nil))
@@ -694,7 +696,7 @@ useful if more than one specification is to be included in one document")
     (with-open-file (out tmp-file
 			 :direction :output :if-exists :supersede)
       (setq status (extensions:run-program
-		    "latex"
+		    *latex-program*
 		    (list filename)
 		    :input "//dev//null"
 		    :output out

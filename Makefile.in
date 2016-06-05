@@ -208,9 +208,9 @@ emacs-src += emacs/emacs-src/pvs-prelude-files-and-regions.el
 
 #emacs-sub-src = $(addprefix $(PVSPATH)emacs/$(EMACSSUBDIR)/,$(notdir $(emacs-src)))
 
-emacs-elc = $(filter-out %ilfsf18.elc %ilfsf19.elc %ilfsf20.elc \
+emacs-elc = $(filter-out %go-pvs.elc %ilfsf18.elc %ilfsf19.elc %ilfsf20.elc \
                          %illuc19.elc %ilxemacs.elc %ilisp-menu.elc,\
-                         $(emacs-sub-src:.el=.elc))
+                         $(emacs-src:.el=.elc))
 
 ff-files = src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
            src/utils/$(PLATFORM)/b64 \
@@ -698,8 +698,8 @@ libraries : $(PVSiolib) $(bitvectorslib) $(finitesetslib)
 tar :
 	bin/make-dist
 
-lib/strategies.lisp : src/prover/strategies.lisp
-	(cd lib; ln -sf ../src/prover/strategies.lisp strategies.lisp)
+# lib/strategies.lisp : src/prover/strategies.lisp
+# 	(cd lib; ln -sf ../src/prover/strategies.lisp strategies.lisp)
 
 $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el : \
                   $(PVSPATH)emacs/emacs-src/pvs-set-prelude-info.el \
@@ -720,11 +720,15 @@ $(PVSPATH)emacs/$(EMACSSUBDIR)/%.el : $(PVSPATH)emacs/emacs-src/ilisp/%.el
 # .readme file.  It will be newer than all of the subdir source files, and
 # the byte compiled files will thne be newer than it.
 
-# $(PVSPATH)emacs/$(EMACSSUBDIR)/.readme : $(emacs-sub-src)
-# 	echo "File exists for make dependency usage" > $@
+$(PVSPATH)emacs/emacs-src/.readme : $(emacs-src)
+	echo "File exists for make dependency usage" > $@
 
-# $(emacs-elc) : $(PVSPATH)emacs/$(EMACSSUBDIR)/.readme
-# 	(cd emacs/$(EMACSSUBDIR); $(EMACS) -batch -l pvs-byte-compile.el)
+$(emacs-elc) : $(PVSPATH)emacs/emacs-src/.readme
+	(cd emacs/emacs-src; $(EMACS) -batch -l pvs-byte-compile.el)
+
+# Doesn't work - too many dependencies in ilisp
+# $(emacs-elc): %.elc: %.el
+# 	$(EMACS) --batch -Q -L emacs/emacs-src -L emacs/emacs-src/ilisp -f batch-byte-compile $<
 
 install:
 	@echo "target install is not used for PVS - see INSTALL"

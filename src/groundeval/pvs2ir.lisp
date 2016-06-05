@@ -5,108 +5,108 @@
 (in-package :pvs)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defmethod judgement-types+ ((expr lambda-expr-with-type))
-  (let ((jtypes (judgement-types expr)))
-    (if (consp jtypes)
-	(if (some #'(lambda (jty) (subtype-of? jty (type expr)))
-		  jtypes)
-	    (if (some #'(lambda (jty) (subtype-of? (range jty) (return-type expr)))
-		      jtypes)
-		jtypes
-		(let ((ftype (mk-funtype (domain (type expr)) (return-type expr))))
-		  (assert (null (freevars ftype)))
-		  (cons ftype jtypes)))
-	    (if (subtype-of? (return-type expr) (range (type expr)))
-		(let ((ftype (mk-funtype (domain (type expr)) (return-type expr))))
-		  (assert (null (freevars ftype)))
-		  (cons ftype jtypes))
-		(if (subtype-of? (range (type expr)) (return-type expr))
-		    (cons (type expr) jtypes)
-		    (let ((ftype (mk-funtype (domain (type expr)) (return-type expr))))
-		      (cons ftype (cons (type expr) jtypes))))))
-	(list (type expr)))))
+;; (defmethod judgement-types+ ((expr lambda-expr-with-type))
+;;   (let ((jtypes (judgement-types expr)))
+;;     (if (consp jtypes)
+;; 	(if (some #'(lambda (jty) (subtype-of? jty (type expr)))
+;; 		  jtypes)
+;; 	    (if (some #'(lambda (jty) (subtype-of? (range jty) (return-type expr)))
+;; 		      jtypes)
+;; 		jtypes
+;; 		(let ((ftype (mk-funtype (domain (type expr)) (return-type expr))))
+;; 		  (assert (null (freevars ftype)))
+;; 		  (cons ftype jtypes)))
+;; 	    (if (subtype-of? (return-type expr) (range (type expr)))
+;; 		(let ((ftype (mk-funtype (domain (type expr)) (return-type expr))))
+;; 		  (assert (null (freevars ftype)))
+;; 		  (cons ftype jtypes))
+;; 		(if (subtype-of? (range (type expr)) (return-type expr))
+;; 		    (cons (type expr) jtypes)
+;; 		    (let ((ftype (mk-funtype (domain (type expr)) (return-type expr))))
+;; 		      (cons ftype (cons (type expr) jtypes))))))
+;; 	(list (type expr)))))
 
-(defun mk-lambda-expr (vars expr &optional ret-type)
-  (if ret-type
-      (make-instance 'lambda-expr-with-type
-	:declared-ret-type (or (print-type rettype) ret-type)
-	:return-type ret-type
-	:bindings (mk-bindings vars)
-	:expression expr)
-      (make-instance 'lambda-expr
-	:bindings (mk-bindings vars)
-	:expression expr)))
+;; (defun mk-lambda-expr (vars expr &optional ret-type)
+;;   (if ret-type
+;;       (make-instance 'lambda-expr-with-type
+;; 	:declared-ret-type (or (print-type rettype) ret-type)
+;; 	:return-type ret-type
+;; 	:bindings (mk-bindings vars)
+;; 	:expression expr)
+;;       (make-instance 'lambda-expr
+;; 	:bindings (mk-bindings vars)
+;; 	:expression expr)))
 
-(defun make-lambda-expr (vars expr &optional ret-type)
-  (let ((nexpr (mk-lambda-expr vars expr ret-type)))
-    (assert *current-context*)
-    (cond ((and (type expr)
-		(every #'type (bindings nexpr)))
-	   (typecheck nexpr
-		      :expected (mk-funtype (mapcar #'type
-						    (bindings nexpr))
-					    (or ret-type (type expr)))))
-	  (t (error "Types not available in make-lambda-expr")))))
+;; (defun make-lambda-expr (vars expr &optional ret-type)
+;;   (let ((nexpr (mk-lambda-expr vars expr ret-type)))
+;;     (assert *current-context*)
+;;     (cond ((and (type expr)
+;; 		(every #'type (bindings nexpr)))
+;; 	   (typecheck nexpr
+;; 		      :expected (mk-funtype (mapcar #'type
+;; 						    (bindings nexpr))
+;; 					    (or ret-type (type expr)))))
+;; 	  (t (error "Types not available in make-lambda-expr")))))
 
-(defun make!-lambda-expr (bindings expr &optional ret-type)
-  (assert (every #'type bindings))
-  (assert (type expr))
-  (if ret-type
-      (make-instance 'lambda-expr-with-type
-	:declared-ret-type (or (print-type ret-type) ret-type)
-	:return-type ret-type
-	:bindings bindings
-	:expression expr
-	:type (make-formals-funtype (list bindings) (or ret-type (type expr))))
-      (make-instance 'lambda-expr
-	:bindings bindings
-	:expression expr
-	:type (make-formals-funtype (list bindings) (type expr)))))
+;; (defun make!-lambda-expr (bindings expr &optional ret-type)
+;;   (assert (every #'type bindings))
+;;   (assert (type expr))
+;;   (if ret-type
+;;       (make-instance 'lambda-expr-with-type
+;; 	:declared-ret-type (or (print-type ret-type) ret-type)
+;; 	:return-type ret-type
+;; 	:bindings bindings
+;; 	:expression expr
+;; 	:type (make-formals-funtype (list bindings) (or ret-type (type expr))))
+;;       (make-instance 'lambda-expr
+;; 	:bindings bindings
+;; 	:expression expr
+;; 	:type (make-formals-funtype (list bindings) (type expr)))))
 
-(defmethod copy-slots ((ex1 lambda-expr-with-type) (ex2 lambda-expr-with-type))
-  (call-next-method)
-  (setf (declared-ret-type ex1) (declared-ret-type ex2)
-	(return-type ex1) (return-type ex2)))
+;; (defmethod copy-slots ((ex1 lambda-expr-with-type) (ex2 lambda-expr-with-type))
+;;   (call-next-method)
+;;   (setf (declared-ret-type ex1) (declared-ret-type ex2)
+;; 	(return-type ex1) (return-type ex2)))
 
-(defun make-def-axiom (decl)
-  (with-current-decl decl
-    (let* ((*generate-tccs* 'none)
-	   (defexpr (expression* (definition decl)))
-	   (def (make!-lambda-exprs (formals decl) (definition decl) (type decl)))
-	   (res (mk-resolution decl (current-theory-name) (type decl)))
-	   (name (mk-name-expr (id decl) nil nil res))
-	   (appl (make!-equation name def))
-	   (depth (lambda-depth decl)))
-      (assert (eq (declaration name) decl))
-      (loop for i from 0 to depth
-	    do (push (create-definition-formula appl i)
-		     (def-axiom decl))))))
+;; (defun make-def-axiom (decl)
+;;   (with-current-decl decl
+;;     (let* ((*generate-tccs* 'none)
+;; 	   (defexpr (expression* (definition decl)))
+;; 	   (def (make!-lambda-exprs (formals decl) (definition decl) (type decl)))
+;; 	   (res (mk-resolution decl (current-theory-name) (type decl)))
+;; 	   (name (mk-name-expr (id decl) nil nil res))
+;; 	   (appl (make!-equation name def))
+;; 	   (depth (lambda-depth decl)))
+;;       (assert (eq (declaration name) decl))
+;;       (loop for i from 0 to depth
+;; 	    do (push (create-definition-formula appl i)
+;; 		     (def-axiom decl))))))
 
-(defun make!-lambda-exprs (varslist expr &optional type)
-  (if (null varslist)
-      (if type
-	  (make!-lambda-exprs-rem expr type)
-	  expr)
-      (let ((lexpr (if type
-		       (let ((ftype (range (find-supertype type))))
-			 (assert (null (freevars ftype)))
-			 (make!-lambda-expr (car varslist)
-			   (make!-lambda-exprs (cdr varslist) expr ftype)
-			   ftype))
-		       (make!-lambda-expr (car varslist)
-			 (make!-lambda-exprs (cdr varslist) expr)))))
-	(setf (place lexpr) (place expr))
-	lexpr)))
+;; (defun make!-lambda-exprs (varslist expr &optional type)
+;;   (if (null varslist)
+;;       (if type
+;; 	  (make!-lambda-exprs-rem expr type)
+;; 	  expr)
+;;       (let ((lexpr (if type
+;; 		       (let ((ftype (range (find-supertype type))))
+;; 			 (assert (null (freevars ftype)))
+;; 			 (make!-lambda-expr (car varslist)
+;; 			   (make!-lambda-exprs (cdr varslist) expr ftype)
+;; 			   ftype))
+;; 		       (make!-lambda-expr (car varslist)
+;; 			 (make!-lambda-exprs (cdr varslist) expr)))))
+;; 	(setf (place lexpr) (place expr))
+;; 	lexpr)))
 
-(defmethod make!-lambda-exprs-rem ((expr lambda-expr) type)
-  (let ((ftype (range (find-supertype type))))
-    (assert (null (freevars ftype)))
-    (make!-lambda-expr (bindings expr)
-      (make!-lambda-exprs-rem (expression expr) ftype)
-      ftype)))
+;; (defmethod make!-lambda-exprs-rem ((expr lambda-expr) type)
+;;   (let ((ftype (range (find-supertype type))))
+;;     (assert (null (freevars ftype)))
+;;     (make!-lambda-expr (bindings expr)
+;;       (make!-lambda-exprs-rem (expression expr) ftype)
+;;       ftype)))
 
-(defmethod make!-lambda-exprs-rem ((expr expr) type)
-  expr)
+;; (defmethod make!-lambda-exprs-rem ((expr expr) type)
+;;   expr)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defcl ir-expr ()

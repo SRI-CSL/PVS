@@ -494,7 +494,10 @@ brief, hiding many of the details."
       (error "Must first M-x set-variable `pvs-latex-viewer'")))
 
 (defun pvs-get-latex-viewer-name ()
-  (let ((viewer (read-string "What viewer should be used? " "xdvi")))
+  (let ((viewer (read-string "What viewer should be used? "
+			     (if (eq system-type 'darwin)
+				 "open"
+				 "evince"))))
     (if (or (and (pathname-directory viewer)
 		 (file-exists-p viewer))
 	    (pvs-find-file-in-exec-path viewer))
