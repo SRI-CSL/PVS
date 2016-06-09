@@ -516,7 +516,7 @@ char *D_sprintf (char *buf, Double d, int maximize_exp)
     /* Special action for mantissa == 1:
        don't output 1*, just the 2-power.
     */
-    if (!(mantissa1 = D_L_MANTISSA (d) == 1) || !D_EXP (d))
+      if (!((mantissa1 = D_L_MANTISSA (d)) == 1) || !D_EXP (d))
       /* p += sprintf (p, "%u", D_L_MANTISSA (d)); */
       sprintf (p, "%u", D_L_MANTISSA (d)); while (*p) p++;
 
