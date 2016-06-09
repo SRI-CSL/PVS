@@ -95,14 +95,17 @@
 		 (set_bdd_do_dynamic_ordering 0))
 	     (let* ((remaining-sforms (delete-seq sforms fnums))
 		    (conjuncts (bddsimp-conjuncts selected-sforms
-						  irredundant?)))
+						  irredundant?))
+		    (labels (reduce #'intersection
+				    (mapcar #'label selected-sforms))))
 	       (cond ((bdd-interrupted?)
 		      (format t "~%BDD Simplifier interrupted")
 		      (values 'X nil))
 		     (t
 		      (multiple-value-prog1
-		       (add-bdd-subgoals ps sforms conjuncts remaining-sforms)
-		       (unless *bdd-initialized* (bdd_quit))))))))))
+			  (add-bdd-subgoals ps sforms conjuncts remaining-sforms
+					    (remove-if-not #'label selected-sforms))
+			(unless *bdd-initialized* (bdd_quit))))))))))
 
 (defun bddsimp-conjuncts (selected-sforms irredundant?)
   (let* ((*pvs-bdd-hash* (make-pvs-hash-table))
@@ -202,10 +205,10 @@
 	  (replace-neg-lits-with-pos-lit
 	   (cdr conjuncts) neg-lits pos-lit (cons (car conjuncts) new)))))
 
-(defun add-bdd-subgoals (ps sforms conjuncts remaining-sforms)
+(defun add-bdd-subgoals (ps sforms conjuncts remaining-sforms labeled-sforms)
   (let ((subgoals
 	 (mapcar #'(lambda (c)
-		     (create-bdd-subgoal c ps sforms remaining-sforms))
+		     (create-bdd-subgoal c ps sforms remaining-sforms labeled-sforms))
 	   conjuncts)))
     (if (and (singleton? subgoals)
 	     (subsetp (s-forms (car subgoals)) sforms)
@@ -213,7 +216,7 @@
 	(values 'X nil nil)
 	(values '? subgoals))))
 
-(defun create-bdd-subgoal (conjunct ps sforms remaining-sforms)
+(defun create-bdd-subgoal (conjunct ps sforms remaining-sforms labeled-sforms)
   (copy (current-goal ps)
     's-forms (nconc
 	      (mapcar #'(lambda (fmla)
@@ -221,9 +224,53 @@
 					     :key #'formula :test #'tc-eq)))
 			    (if mem
 				(car mem)
-				(make-instance 's-formula 'formula fmla))))
+				(let* ((term (if (negation? fmla) (argument fmla) fmla))
+				       (labels (get-bdd-labels term labeled-sforms)))
+				  (make-instance 's-formula 'formula fmla
+						 'label labels)))))
 		conjunct)
 	      remaining-sforms)))
+
+(defun get-bdd-labels (term labeled-sforms &optional labels)
+  (if (null labeled-sforms)
+      (nreverse labels)
+      (get-bdd-labels
+       term (cdr labeled-sforms)
+       (if (bdd-use-label? term (formula (car labeled-sforms)))
+	   (append (label (car labeled-sforms)) labels)
+	   (progn (break)
+	   labels)))))
+
+(defmethod bdd-use-label? (term (ex negation))
+  (bdd-use-label? term (argument ex)))
+
+(defmethod bdd-use-label? (term (ex conjunction))
+  (or (bdd-use-label? term (args1 ex))
+      (bdd-use-label? term (args2 ex))))
+
+(defmethod bdd-use-label? (term (ex disjunction))
+  (or (bdd-use-label? term (args1 ex))
+      (bdd-use-label? term (args2 ex))))
+
+(defmethod bdd-use-label? (term (ex implication))
+  (or (bdd-use-label? term (args1 ex))
+      (bdd-use-label? term (args2 ex))))
+
+(defmethod bdd-use-label? (term (ex iff-or-boolean-equation))
+  (if (or (not *ignore-boolean-equalities?*)
+	  (iff? expr))
+      (or (bdd-use-label? term (args1 ex))
+	  (bdd-use-label? term (args2 ex)))
+      (call-next-method)))
+
+(defmethod bdd-use-label? (term (ex disequation))
+  (if (compatible? (type (args1 ex)) *boolean*)
+      (or (bdd-use-label? term (args1 ex))
+	  (bdd-use-label? term (args2 ex)))
+      (call-next-method)))
+
+(defmethod bdd-use-label? (term (ex expr))
+  (tc-eq term ex))
 
 (defun make-sforms-bdd (selected-sforms &optional bdd)
   (if (null selected-sforms)

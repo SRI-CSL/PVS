@@ -78,8 +78,8 @@ time).  Verbose? set to T provides more information."
 	 (selected-sforms (select-seq sforms fnums))
 	 (remaining-sforms (delete-seq sforms fnums))
 	 (pvs-formula (make-conjunction
-			(mapcar #'(lambda (sf) (negate (formula sf)))
-			  selected-sforms)))
+		       (mapcar #'(lambda (sf) (negate (formula sf)))
+			 selected-sforms)))
 	 (uniq-formula (uniquefy-bindings pvs-formula))
 	 (mu-uniq-formula (convert-pvs-to-mu uniq-formula))
 	 (mu-formula
@@ -87,8 +87,8 @@ time).  Verbose? set to T provides more information."
 	   mu-uniq-formula
 	   (make-mu-conjunction
 	    (loop for x in *pvs-bdd-inclusivity-formulas*
-		  when (null (freevars (car x)))
-		  collect (cdr x)))))
+	       when (null (freevars (car x)))
+	       collect (cdr x)))))
 	 (mu-output (run-pvsmu mu-formula dynamic-ordering?))
 	 (sum-of-cubes (bdd_sum_of_cubes mu-output (if irredundant? 1 0)))
 	 (list-of-conjuncts (mu-translate-from-bdd-list sum-of-cubes))
@@ -100,11 +100,12 @@ time).  Verbose? set to T provides more information."
 	   (values 'X nil))
 	  (t
 	   (multiple-value-prog1
-	    (mu-add-bdd-subgoals ps sforms lit-list remaining-sforms)
-	    (format t
-		"~%MU simplification took ~,2,-3f real, ~,2,-3f cpu seconds"
-	      (realtime-since init-real-time)
-	      (runtime-since init-run-time)))))))
+	       (mu-add-bdd-subgoals ps sforms lit-list remaining-sforms
+				    (remove-if-not #'label selected-sforms))
+	     (format t
+		 "~%MU simplification took ~,2,-3f real, ~,2,-3f cpu seconds"
+	       (realtime-since init-real-time)
+	       (runtime-since init-run-time)))))))
 
 (defun mu-from-bdd-list-to-pvs-list (list-of-conjuncts)
    (init-hash-tables) ;; definition in mu.lisp
@@ -132,10 +133,10 @@ time).  Verbose? set to T provides more information."
 )
 
 
-(defun mu-add-bdd-subgoals (ps sforms lit-list remaining-sforms)
+(defun mu-add-bdd-subgoals (ps sforms lit-list remaining-sforms labeled-sforms)
   (let ((can-decode (not (member nil lit-list))))
     (if can-decode 
-	(add-bdd-subgoals ps sforms lit-list remaining-sforms) 
+	(add-bdd-subgoals ps sforms lit-list remaining-sforms labeled-sforms)
 	(progn 	
 	  (format t "~%Failed to Model check:~%   ~
                      could not decode binary encodings of scalars.")
