@@ -46,6 +46,7 @@
 (defvar pvs-library-path)
 (defvar pvs-in-checker)
 (defvar pvs-reserved-words-regexp)
+(defvar pvs-string-positions)
 
 (defvar pvs-search-syntax-table nil  "Syntax table used while in search mode.")
 (if pvs-search-syntax-table ()
@@ -686,7 +687,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
     (or (current-pvs-file t)
 	(and (boundp 'from-pvs-theory)
 	     (cadr (assoc from-pvs-theory pvs-theories)))
-	(and (member-equal (pathname-type (buffer-name)) ("tccs" "ppe"))
+	(and (member-equal (pathname-type (buffer-name)) '("tccs" "ppe"))
 	     (cadr (assoc (pathname-name (buffer-name)) pvs-theories))))))
 
 (defun pvs-library-file-p (filename)
