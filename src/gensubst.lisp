@@ -299,6 +299,11 @@
   (let ((types (gensubst* (types te) substfn testfn)))
     (lcopy te 'types types)))
 
+(defmethod gensubst* ((te type-extension) substfn testfn)
+  (let ((type (gensubst* (type te) substfn testfn))
+	(ext (gensubst* (extension te) substfn testfn)))
+    (lcopy te 'type type 'extension ext)))
+
 ;;; Expressions
 
 (defmethod gensubst* :around ((ex expr) substfn testfn)

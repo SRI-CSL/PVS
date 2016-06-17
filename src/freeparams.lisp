@@ -202,6 +202,12 @@
     (setf (free-parameters texpr) tfrees)
     (union tfrees frees :test #'eq)))
 
+(defmethod free-params* ((texpr type-extension) frees)
+  (let ((tfrees (free-params* (type texpr)
+		  (free-params* (extension texpr) nil))))
+    (setf (free-parameters texpr) tfrees)
+    (union tfrees frees :test #'eq)))
+    
 ;;; Expressions
 
 (defmethod free-params* :around ((expr expr) frees)
