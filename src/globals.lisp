@@ -211,6 +211,7 @@ Given a pathname, returns a hash-table")
 (defvar *noninteractive-timeout* nil)
 
 (defvar *tcp-timeout* 10)
+(defvar *tcc-timeout* nil)
 
 ;; Doesn't seem to be set anywhere, but used in eproofcheck.lisp
 (defvar *proof-timeout* nil)
@@ -435,6 +436,14 @@ that gensubst does not try to pseudo-normalize inappropriately.")
 
 (defvar *use-default-dp?* nil)
 (defvar *prover-print-lines* nil)
+
+(defvar *report-mode* nil)
+
+(defvar *print-descendants* nil)
+
+(defvar *print-ancestor* nil)
+
+
 #-sbcl
 (defvar *print-lines* nil)
 
@@ -498,7 +507,7 @@ Needed to generate the same dummy name for record literals.")
 (defvar *autotypecheck* 'yes)
 ;(defvar *tctimeout* 1)
 (defvar *tcc-messages* 'no)
-(defvar *ppcase* 'upper)
+(defvar *ppcase* nil)
 (defvar *ppcomments* 'append)
 (defvar *ppstyle* ())
 (defvar *pplinelength* 78)

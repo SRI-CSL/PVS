@@ -1438,11 +1438,6 @@
 		    "You must restart the current proof to use the new default"))))
 	(pvs-message "~a is not a known decision procedure" id))))
 
-(defvar *report-mode* nil)
-(defvar *print-ancestor* nil)
-
-(defvar *print-descendants* nil)
-
 (defun non-strat-subgoal-proofstate (ps)
   (if (or (not (singleton? (done-subgoals ps)))
 	  (not (strat-proofstate? (car (done-subgoals ps)))))
@@ -3070,29 +3065,32 @@
 	 (sformnum (find-sform (s-forms goalsequent) sformnum
 			       #'(lambda (sf)(and+form? (formula sf)))))
 	 (selected-sform (select-seq (s-forms goalsequent) (list sformnum))))
-    ;;    (format t "~%conjunct = ~a" (formula selected-sform))
-    (if (or (null selected-sform)
-	    (not (and+form? (formula (car selected-sform))))
-	    (eql depth 0))
-	(values 'X nil nil)
-	(let* ((sel-sform (car selected-sform))
-	       (new-sforms (delete-seq (s-forms goalsequent) (list sformnum)))
-	       (conjuncts (and+ (formula sel-sform) depth))
-	       (conjunct-sforms
-		(mapcar #'(lambda (x)
-			    (copy sel-sform
-				  'formula x))
-			conjuncts))
-	       (labelled-conjunct-sforms
-		(label-sforms conjunct-sforms labels))
-	       (new-sequents
-		(mapcar #'(lambda (x)
-			    (copy goalsequent
-				  's-forms
-				  (cons x new-sforms)))
-			labelled-conjunct-sforms)))
-	  (values '? new-sequents;;(substitution ps)
-		  )))))
+    (cond ((not (or (null depth) (integerp depth)))
+	   (error-format-if "~%depth should be an integer, not ~a:~%  ~a~%"
+			    (type-of depth) depth)
+	   (values 'X nil nil))
+	  ((or (null selected-sform)
+	       (not (and+form? (formula (car selected-sform))))
+	       (eql depth 0))
+	   (values 'X nil nil))
+	  (t (let* ((sel-sform (car selected-sform))
+		    (new-sforms (delete-seq (s-forms goalsequent) (list sformnum)))
+		    (conjuncts (and+ (formula sel-sform) depth))
+		    (conjunct-sforms
+		     (mapcar #'(lambda (x)
+				 (copy sel-sform
+				   'formula x))
+		       conjuncts))
+		    (labelled-conjunct-sforms
+		     (label-sforms conjunct-sforms labels))
+		    (new-sequents
+		     (mapcar #'(lambda (x)
+				 (copy goalsequent
+				   's-forms
+				   (cons x new-sforms)))
+		       labelled-conjunct-sforms)))
+	       (values '? new-sequents ;;(substitution ps)
+		       ))))))
 
 (defun label-sforms (sforms labels)
   (cond ((null labels) sforms)
