@@ -1646,13 +1646,14 @@
 	   ;;                             jtypes-def)
 	   ;;                 (type decl)))))
 	   (def (make!-lambda-exprs (formals decl) (definition decl)
-				    (when (subtype? (type decl))
+				    (when (subtype? (range* (type decl)))
 				      (type decl))))
 	   (res (mk-resolution decl (current-theory-name) (type decl)))
 	   (name (mk-name-expr (id decl) nil nil res))
 	   (appl (make!-equation name def))
 	   (depth (lambda-depth decl)))
       (assert (eq (declaration name) decl))
+      (when (eq (id decl) 'columnValue) (break))
       (loop for i from 0 to depth
 	    do (push (create-definition-formula appl i)
 		     (def-axiom decl))))))
@@ -3721,6 +3722,15 @@ space")
 
 (defmethod id ((te datatype-subtype))
   (id (declared-type te)))
+
+(defmethod inlined-version ((rt recursive-type))
+  (if (inline-recursive-type? rt)
+      (type-of rt)
+      (typecase rt
+	(datatype-with-subtypes 'inline-datatype-with-subtypes)
+	(datatype 'inline-datatype)
+	(codatatype-with-subtypes 'inline-codatatype-with-subtypes)
+	(codatatype 'inline-codatatype))))
 
 (defun expr-size (expr)
   (let ((depth 0))
