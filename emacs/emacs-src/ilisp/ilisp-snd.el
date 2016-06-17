@@ -19,6 +19,8 @@
 ;;;
 ;;; 19990824 Marco Antoniotti
 
+(require 'cl)
+
 (defvar *ILISP-default-package* "COMMON-LISP-USER")
 
 (defun ilisp-add-set-package-hook ()	; Was: add-set-package-hook
@@ -89,9 +91,7 @@ or minus forms - as well as normal IN-PACKAGE or DEFPACKAGE forms."
 			 (point))
 		       (match-end 0))))
 	   
-	   (cond ((or (prog1
-                          (string-match in-package-regexp found)
-                        (setq in-package-found-p t))
+	   (cond ((or (string-match in-package-regexp found)
 		      (string-match defpackage-regexp found))
 		  (backward-char)
 		  (buffer-substring (point) (progn (forward-sexp) (point))))
@@ -134,7 +134,6 @@ Common Lisp."
 	 (defpackage-regexp (ilisp-value 'ilisp-defpackage-command-string t))
 	 (hash-in-package-forms-list nil)
 	 (hash-defpackage-forms-list nil)
-         (in-package-found-p nil)
 	 (package nil)
          (should-not-cache-p nil))
     (if (not hash-form-regexp)
@@ -155,7 +154,6 @@ Common Lisp."
                        nil)
                       (t
                        (when (and sub-expr (string-match in-package-regexp sub-expr))
-                         (setq in-package-found-p t)
                          (push hash-expr hash-in-package-forms-list))
                        (when (and sub-expr (string-match defpackage-regexp sub-expr))
                          (push hash-expr hash-defpackage-forms-list))
@@ -645,8 +643,7 @@ the process interface."
 		  (string-match "nil" (car (lisp-last-line output))))
 	     (let* ((old-buffer (get-file-buffer file))
 		    (buffer (find-file-noselect file))
-		    (string (save-excursion
-			      (set-buffer buffer)
+		    (string (with-current-buffer buffer
 			      (buffer-string))))
 	       (unless old-buffer (kill-buffer buffer))
 	       (if (string= "" string)

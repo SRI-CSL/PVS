@@ -46,6 +46,6 @@
 	   ("Descr        Describe the current sexp." describe-lisp)
 	   ("1Descr       Prompts for something to describe." (describe-lisp -4))
 	   )
-	 )))
+	 ))
 
 (provide 'ilisp-menu)
