@@ -310,12 +310,16 @@
 			 :depends-on ("defcl"))
 		  (:file "groundeval/pvs2c-utils" ; has macros
 			 :depends-on ("defcl"))
+		  ;; These should be moved at some point
 		  (:file "groundeval/pvs2c-types"
 			 :depends-on ("defcl"))
 		  (:file "groundeval/pvs2c-code"
 			 :depends-on ("defcl"))
 		  (:file "groundeval/pvs2c-analysis"
 			 :depends-on ("defcl"))
+		  (:file "groundeval/pvs2ir"
+			 :depends-on ("defcl"))
+		  ;; Above should be moved
 		  (:file "pvs-methods"
 			 :initially-do
 			 (pvs::write-deferred-methods-to-file))))
