@@ -677,7 +677,7 @@
 	   (or (eq (id op1) (id op2))
 	       (and (memq (id op1) '(/= ≠)) (memq (id op2) '(/= ≠)))))
       ;; Skip equality operators, as they lift to the highest types
-      nil
+      subst
       (match* op1 op2 bind-alist subst)))
 
 (defun match-adt-actuals (acts1 acts2 bind-alist substs formals postypes)
