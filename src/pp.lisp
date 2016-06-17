@@ -788,7 +788,8 @@ bind tighter.")
   (with-slots (id decl-formals module formals chain? semi) decl
     (when (or *unparse-expanded*
 	      *adt*
-	      (not (generated-by decl)))
+	      (not (generated-by decl))
+	      (typep decl 'adtdecl))
       (when (@decl? semi)
 	(write '@DECL)
 	(write-char #\space))
@@ -2350,21 +2351,21 @@ bind tighter.")
 	   (unicode 'λ)
 	   (lower '|lambda|)
 	   (upper 'LAMBDA)
-	   (t (op ex)))))
+	   (t (or (op ex) 'LAMBDA)))))
 
 (defmethod pp-binding-expr-op ((ex forall-expr))
   (write (case *ppcase*
 	   (unicode '∀)
 	   (lower '|forall|)
 	   (upper 'FORALL)
-	   (t (op ex)))))
+	   (t (or (op ex) 'FORALL)))))
 
 (defmethod pp-binding-expr-op ((ex exists-expr))
   (write (case *ppcase*
 	   (unicode '∃)
 	   (lower '|exists|)
 	   (upper 'EXISTS)
-	   (t (op ex)))))
+	   (t (or (op ex) 'EXISTS)))))
 
 (defmethod pp-unchain-binding-expr ((ex binding-expr) bindings op)
   (if (and (chain? ex)
