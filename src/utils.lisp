@@ -1653,7 +1653,6 @@
 	   (appl (make!-equation name def))
 	   (depth (lambda-depth decl)))
       (assert (eq (declaration name) decl))
-      (when (eq (id decl) 'columnValue) (break))
       (loop for i from 0 to depth
 	    do (push (create-definition-formula appl i)
 		     (def-axiom decl))))))
