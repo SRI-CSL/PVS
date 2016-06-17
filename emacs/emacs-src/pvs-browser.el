@@ -296,6 +296,7 @@ still complete, if it was in the full theory."
 (defun pvs-make-browse-buffer (buf-name pvs-decls)
   (let ((buf (get-buffer-create buf-name)))
     (with-current-buffer buf
+      (pvs-browse-mode)
       (setq-local pvs-declarations pvs-decls)
       (let ((inhibit-read-only t))
 	(erase-buffer)
@@ -303,7 +304,6 @@ still complete, if it was in the full theory."
 	(goto-char (point-min))
 	(forward-line 2)
 	(set-buffer-modified-p nil))
-      (pvs-browse-mode)
       (unless noninteractive
 	(pvs-display-browse-buffer buf))
       buf)))
