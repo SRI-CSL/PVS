@@ -31,6 +31,10 @@
 
 (export '(get-decl-resolutions resolve))
 
+;;; :arg-length . "Wrong number of arguments:~%  ~d provided, ~d expected"
+;;; :arg-mismatch . "~:r argument to ~a has the wrong type~
+;;;                    ~%     Found: ~{~a~%~^~12T~}  Expected: ~a"
+;;; :no-instantiation
 (defvar *resolve-error-info*)
 
 (defvar *field-records* nil)
@@ -2282,9 +2286,7 @@
     (multiple-value-bind (obj error)
 	(if (and *resolve-error-info*
 		 (or (assq :arg-mismatch *resolve-error-info*)
-		     (not (or (assq :no-instantiation *resolve-error-info*)
-			      (assq :current-theory-actuals
-				    *resolve-error-info*)))))
+		     (not (assq :no-instantiation *resolve-error-info*))))
 	    (resolution-args-error *resolve-error-info* name arguments)
 	    (values
 	     name
