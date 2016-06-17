@@ -994,8 +994,10 @@ AUTO-REWRITE-THEORY, or AUTO-REWRITE-THEORIES. E.g.,
 
 
 (defhelper tcc (&key (defs !) &inherit grind)
-  (let ((timeout *tcp-timeout*))
-    (apply (grind$) :timeout timeout))
+  (if (integerp *tcc-timeout*)
+      (let ((timeout *tcc-timeout*))
+	(apply (grind$) :timeout timeout))
+      (grind$))
   "The guts of the tcc-strategy defined as '(grind :defs defs)'.
 Does auto-rewrite-explicit, then applies skolem!, inst?, lift-if,
 bddsimp, and assert, until nothing works.  :defs is either
