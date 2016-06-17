@@ -95,7 +95,7 @@ OMEGA		id	1	\Omega
 -		2	1	{#1-#2}
 -		1	1	{-#1}
 *		2	1	{#1\times#2}
-/		2	1	{\frac{#1}{#2}}
+/		2	1	{#1 / #2}
 O		2	1	{#1\circ#2}
 sets.member		2	1	{(#1 \in #2)}
 sets.member		0	4	{(\star1 \in \star2)}
