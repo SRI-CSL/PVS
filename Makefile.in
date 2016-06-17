@@ -463,6 +463,7 @@ groundevallisp = src/groundeval/eval-macros.lisp \
 		 src/groundeval/generate-lisp-for-theory.lisp \
                  src/groundeval/random-test.lisp \
                  src/groundeval/pvs2clean.lisp \
+	         src/groundeval/pvs2ir.lisp \
 	         src/groundeval/pvs2c-utils.lisp \
 		 src/groundeval/pvs2c-types.lisp \
 		 src/groundeval/pvs2c-code.lisp \
