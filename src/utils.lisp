@@ -1849,7 +1849,8 @@
 (defun freevar-substit (form freevars-form newbindings)
   (let ((*bound-variables* (append newbindings *bound-variables*))
 	(*substit-dont-simplify* t))
-    (substit form (pairlis (mapcar #'declaration freevars-form) newbindings))))
+    (substit form (mapcar #'(lambda (ff nb) (cons (declaration ff) nb))
+		    freevars-form newbindings))))
 
 ;(defun sort-freevars (freevars)
 ;  (sort (sort (copy-list freevars) #'alphalessp

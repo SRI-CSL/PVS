@@ -454,7 +454,9 @@
 (defmethod judgement-types ((ex expr))
   (multiple-value-bind (jtypes jdecls)
       (judgement-types-expr ex)
+    #+pvsdebug
     (assert (and (listp jtypes) (every #'type-expr? jtypes)))
+    #+pvsdebug
     (assert (and (listp jdecls)
 		 (every #'(lambda (jd)
 				      (if (listp jd)
@@ -509,11 +511,11 @@
 	    (setf (gethash ex jhash) (list types jdecls))
 	    (values types jdecls))))))
 
-;; (defmethod judgement-types ((ex tuple-expr))
-;;   (call-next-method))
+(defmethod judgement-types ((ex tuple-expr))
+  nil)
 
-;; (defmethod judgement-types ((ex record-expr))
-;;   (call-next-method))
+(defmethod judgement-types ((ex record-expr))
+  nil)
 
 (defmethod judgement-types* :around (ex)
   (let ((jhash (judgement-types-hash (current-judgements))))
@@ -578,6 +580,7 @@
 		  (expr-judgement-types* ex (cdr expr-jdecls)
 					 jtypes ejtypes ejdecls)
 		  (let ((ejtype (substit ejty bindings)))
+		    #+pvsdebug
 		    (assert (every #'(lambda (fv)
 				       (member fv (freevars ex) :test #'same-declaration))
 				   (freevars ejtype)))
@@ -1572,12 +1575,34 @@
 (defmethod judgement-types* ((ex extraction-application))
   nil)
 
+(defmethod judgement-types* ((ex tuple-expr))
+  (let* ((exprs (exprs ex))
+	 (jtypes&decls (mapcar #'(lambda (ex)
+				   (multiple-value-list
+				    (judgement-types* ex)))
+			 exprs)))
+    (unless (every #'(lambda (jt&d) (null (car jt&d))) jtypes&decls)
+      (let* ((len (length exprs))
+	     (tvec (make-array len :initial-element nil))
+	     (jvec (unless (every #'(lambda (jt&d) (null (cadr jt&d)))
+				  jtypes&decls)
+		     (make-array len :initial-element nil))))
+	(dotimes (i len)
+	  (setf (aref tvec i)
+		(or (car (nth i jtypes&decls))
+		    (list (type (nth i exprs)))))
+	  (when jvec
+	    (setf (aref jvec i)
+		  (cadr (nth i jtypes&decls)))))
+	#+pvsdebug (assert (valid-judgement-type-value tvec))
+	(values tvec jvec)))))
+
 (defvar *max-judgement-types-size* 20)
 
 ;;; Here we create a vector of types, rather than a set of tuple types.
 ;;; Thus if ex`i has n_i types, we create one vector where the ith element
 ;;; consists of n_i types, rather than n_1 * ... * n_m tuple types.
-(defmethod judgement-types* ((ex tuple-expr))
+(defmethod new-judgement-types* ((ex tuple-expr))
   (let* ((exprs (exprs ex))
 	 (jtypes-list nil)
 	 (jdecls-list nil))
@@ -1598,16 +1623,22 @@
 	    (pvs-message "tuple judgement types not generated for~%  ~a~%~
                           because it would generate ~d types"
 	      ex card)
-	    (let ((jtypes (mapcar #'mk-tupletype (cartesian-product jtypes-list)))
-		  (jdecls (mapcar #'merge-jdecls-list
-			    (cartesian-product jdecls-list t))))
+	    (let* ((jtypes (mapcar #'mk-tupletype (cartesian-product jtypes-list)))
+		   (jdecls (make-list (length jtypes))
+		    ;; (mapcar #'merge-jdecls-list
+		    ;;   (cartesian-product jdecls-list t)))
+		    )
+		  )
+	      #+pvsdebug
 	      (assert (and (listp jtypes) (every #'type-expr? jtypes)))
+	      #+pvsdebug
 	      (assert (and (listp jdecls)
 			   (every #'(lambda (jd)
 				      (or (judgement? jd)
 					  (and (listp jd)
 					       (every #'judgement? jd))))
 				  jdecls)))
+	      #+pvsdebug
 	      (assert (length= jtypes jdecls))
 	      (values jtypes jdecls)))))))
 
@@ -1624,9 +1655,11 @@
 
 (defun merge-jdecls (jdecls1 jdecls2)
   ;; jdecls ::= jdecl | '(' jdecl* ')'
+  #+pvsdebug
   (assert (or (judgement? jdecls1)
 	      (and (listp jdecls1)
 		   (every #'judgement? jdecls1))))
+  #+pvsdebug
   (assert (or (judgement? jdecls2)
 	      (and (listp jdecls2)
 		   (every #'judgement? jdecls2))))
@@ -1690,13 +1723,16 @@
 			    (cartesian-product jtypes-list)))
 		  (jdecls (mapcar #'merge-jdecls-list
 			    (cartesian-product jdecls-list t))))
+	      #+pvsdebug
 	      (assert (and (listp jtypes) (every #'type-expr? jtypes)))
+	      #+pvsdebug
 	      (assert (and (listp jdecls)
 			   (every #'(lambda (jd)
 				      (or (judgement? jd)
 					  (and (listp jd)
 					       (every #'judgement? jd))))
 				  jdecls)))
+	      #+pvsdebug
 	      (assert (length= jtypes jdecls))
 	      (values jtypes jdecls)))))))
 
@@ -1915,6 +1951,7 @@
 				      (get-declarations (id nj)))
 				    :test #'add-decl-test))))
 	      (cond (oj
+		     #+pvsdebug
 		     (assert (memq oj (all-decls (current-theory))))
 		     oj)
 		    (t (setf (gethash j smphash) nj)
@@ -1949,6 +1986,7 @@
 				      (get-declarations (id nj)))
 				    :test #'add-decl-test))))
 	      (cond (oj
+		     #+pvsdebug
 		     (assert (memq oj (all-decls (current-theory))))
 		     oj)
 		    ((or (eq j nj)
@@ -1986,9 +2024,12 @@
 				      :test #'add-decl-test)))))
 	      (when nj
 		(cond (oj
+		       #+pvsdebug
 		       (assert (memq oj (all-decls (current-theory))))
 		       oj)
-		      (t (assert (or (eq nj j)
+		      (t
+		       #+pvsdebug
+		       (assert (or (eq nj j)
 				     (let ((ofp (free-params j)))
 				       (every #'(lambda (fp)
 						  (or (eq (module fp)
@@ -2000,6 +2041,7 @@
 			   (add-decl nj t t nil t)
 			   (setf (place nj) nil)
 			   (setf (refers-to nj) nil)
+			   #+pvsdebug
 			   (assert (or (null *insert-add-decl*)
 				       (memq nj (all-decls (current-theory)))))
 			   (setf (module nj)
@@ -2007,6 +2049,7 @@
 				     (current-theory)
 				     (module j)))
 			   (setf (generated-by nj) (or (generated-by j) j))
+			   #+pvsdebug
 			   (assert (eq (module nj) (current-theory))))
 			 nj))))))
       j))
