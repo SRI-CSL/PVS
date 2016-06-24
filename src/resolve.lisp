@@ -1951,6 +1951,8 @@
 	reses)
       (and (not *in-checker*)
 	   (not *in-evaluator*)
+	   ;; PVS does not generate formulas that rely on var-decls
+	   (not (generated-by (current-declaration)))
 	   (remove-if-not #'(lambda (r)
 			      (and (var-decl? (declaration r))
 				   ;;(not (fully-instantiated? (type r)))
