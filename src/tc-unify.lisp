@@ -50,7 +50,9 @@
       (lift-constructor-types obj)))
 
 (defmethod lift-constructor-type ((obj constructor-name-expr))
-  (supertype (type obj)))
+  (if (subtype? (type obj))
+      (supertype (type obj))
+      (type obj)))
 
 (defmethod lift-constructor-type ((obj application))
   (if (constructor-name-expr? (operator obj))
