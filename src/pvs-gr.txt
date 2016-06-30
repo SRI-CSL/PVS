@@ -393,14 +393,16 @@ assumption ::= {'ASSUMPTION' expr} <assumption(expr)>;
 
 formula-decl ::= {formula-name expr} <formula-decl(formula-name,expr)>;
 
-type-expr ::= {name [arguments] ['WITH' type-expr]^e}
-                <[[type-name(name)|type-appl(name,arguments)]
-                 |[extended-type-name(name,type-expr)
-                  |extended-type-appl(name,arguments,type-expr)]]^e>
-	    | {type-expr-sans-name ['WITH' type-expr]}
-                <[type-expr-sans-name
-                 |extended-type(type-expr-sans-name,type-expr)]>
-	    ;
+type-expr ::= {['GHOST'] type-ex} <[type-ex|ghost(type-ex)]>;
+
+type-ex ::= {{name [arguments] ['WITH' type-expr]^e}
+              <[[type-name(name)|type-appl(name,arguments)]
+               |[extended-type-name(name,type-expr)
+                |extended-type-appl(name,arguments,type-expr)]]^e>
+	  | {type-expr-sans-name ['WITH' type-expr]}
+              <[type-expr-sans-name
+               |extended-type(type-expr-sans-name,type-expr)]>}
+	  ;
 
 type-expr-sans-name ::= { '(' expr ')'} <expr-as-type(expr)>
 		      | {'{' set-formals ['|' expr] '}'}

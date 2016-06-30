@@ -173,7 +173,8 @@
 
 (defmethod tc-eq* :around ((t1 type-expr) (t2 type-expr) bindings)
   (or (eq t1 t2)
-      (and (call-next-method)
+      (and (eq (ghost? t1) (ghost? t2))
+	   (call-next-method)
 	   (or (not *strong-tc-eq-flag*)
 	       (let ((pt1 (print-type t1))
 		     (pt2 (print-type t2)))

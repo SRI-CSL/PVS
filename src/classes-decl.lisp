@@ -726,6 +726,7 @@
 (defcl type-expr (syntax)
   (parens :initform 0 :parse t :restore-as nil)
   print-type
+  ghost?
   from-conversion
   (free-variables :ignore t :initform 'unbound :fetch-as 'unbound)
   (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound)

@@ -1685,6 +1685,11 @@
 		:type texpr
 		:place (term-place te))))))
 
+(defun xt-ghost (te)
+  (let ((texpr (xt-type-expr (term-arg0 te))))
+    (setf (ghost? texpr) t)
+    texpr))
+
 
 ;;; Expressions
 
