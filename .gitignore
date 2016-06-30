@@ -46,6 +46,7 @@ pvsbin
 *.a
 *.so
 *.dylib
+*.elc
 .pvscontext
 *_adt.pvs
 *.out
