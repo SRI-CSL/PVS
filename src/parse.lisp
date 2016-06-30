@@ -1436,6 +1436,7 @@
      (xt-extended-type type-expr))
     (STRUCT-SUBTYPE (xt-struct-subtype type-expr))
     (QUANT-TYPE (xt-quant-type type-expr))
+    (GHOST (xt-ghost type-expr))
     (t (error "type-expr not recognized - ~a" type-expr))))
 
 (defun xt-type-name (type-name)
