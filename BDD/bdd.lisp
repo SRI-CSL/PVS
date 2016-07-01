@@ -238,8 +238,7 @@
        term (cdr labeled-sforms)
        (if (bdd-use-label? term (formula (car labeled-sforms)))
 	   (append (label (car labeled-sforms)) labels)
-	   (progn (break)
-	   labels)))))
+	   labels))))
 
 (defmethod bdd-use-label? (term (ex negation))
   (bdd-use-label? term (argument ex)))
