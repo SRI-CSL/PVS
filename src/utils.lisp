@@ -484,6 +484,14 @@
 	thinst
 	(lcopy thinst :library (lib-id res)))))
 
+;;; Gets the theory that's at the bottom of a chain of
+;;; mod-decls, abbreviations, etc.
+(defun get-theory-transitive (thname)
+  (or (get-theory thname)
+      (and (declaration thname)
+	   (importing-entity? (declaration thname))
+	   (get-theory-transitive (theory-name (declaration thname))))))
+
 (defmethod get-theory ((name modname))
   (with-slots (library id) name
     (get-theory* id library)))
