@@ -14,4 +14,5 @@ script:
   - ./configure
   - SBCLISP_HOME=$HOME/sbcl/ 2>&1 make clean >output 2>&1
   - ls -l ./src/prover/
-  - SBCLISP_HOME=$HOME/sbcl/ 2>&1 make
+  - SBCLISP_HOME=$HOME/sbcl/ 2>&1 make >output 2>&1 # Limited as lisp likes to complain and complain and complain ...
+  - tail -n 40000 output
