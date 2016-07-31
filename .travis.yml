@@ -6,6 +6,8 @@ compiler:
 env:
   matrix:
     - SBCL_VERSION=1.2.1
+    - SBCL_VERSION=1.1.18
+    - SBCL_VERSION=1.0.58
 
 install: ./.travis/install.sh
 
@@ -13,6 +15,5 @@ script:
   - autoconf
   - ./configure
   - SBCLISP_HOME=$HOME/sbcl/ 2>&1 make clean >output 2>&1
-  - ls -l ./src/prover/
   - SBCLISP_HOME=$HOME/sbcl/ 2>&1 make >output 2>&1 # Limited as lisp likes to complain and complain and complain ...
-  - tail -n 10000 output
+  - tail -n 6000 output
