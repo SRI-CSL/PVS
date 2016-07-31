@@ -744,9 +744,10 @@ platforms = ix86-Linux,ix86_64-Linux,ix86-MacOSX,powerpc-MacOSX,powerpc-MacOSX,s
 comma:= ,
 
 clean : 
-	rm -f *.{$(faslexts)} */*.{$(faslexts)} */*/*.{$(faslexts)} \
-              */*/*/*.{$(faslexts)} */*/*/*/*.{$(faslexts)} \
-              */{$(platforms)}/*.o */*/{$(platforms)}/*.o
+	for e in $(subst $(comma), ,$(faslexts)) ; do \
+		find -type f -name \*.$$e -exec rm \{\} \; ; \
+	done
+	find -type f -name \*.elc -exec rm \{\} \; ; \
 	rm -rf src/WS1S/mona
 	rm -f lib/*_adt.pvs
 	for p in $(subst $(comma), ,$(platforms)) ; do \
@@ -757,9 +758,16 @@ clean :
 	done
 
 distclean :
-	rm -f *.{$(faslexts)} */*.{$(faslexts)} */*/*.{$(faslexts)} \
-              */*/*/*.{$(faslexts)} */*/*/*/*.{$(faslexts)} \
-              */{$(platforms)}/*.o */*/{$(platforms)}/*.o
+	for e in $(subst $(comma), ,$(faslexts)) ; do \
+		find -type f -name \*.$$e -exec rm \{\} \; ; \
+	done
+	for p in $(subst $(comma), ,$(platforms)) ; do \
+		rm -rf bin/$$p; \
+		$(MAKE) -C src/utils/$$p clean; \
+		$(MAKE) -C src/WS1S/$$p clean; \
+		$(MAKE) -C BDD/$$p clean; \
+	done
+	find -type f -name \*.elc -exec rm \{\} \; ; \
 	rm -f Makefile TAGS autoloads.out config.log config.status configure \
               emacs/emacs-src/pvs-prelude-files-and-regions.el lib/*_adt.pvs \
               pvs pvsio src/WS1S/mona
