@@ -480,21 +480,33 @@
 		 (add-inherited-args-to-definition*
 		  (cdr sexp) rules-inheritance backquoted)))))
 
+(defparameter *backquote-symbols*
+  #+allegro
+  '(excl::backquote)
+  #+sbcl
+  (remove-if #'null
+    (list (find-symbol "QUASIQUOTE" :sb-int)
+	  (find-symbol "BACKQ-CONS" :sb-impl)
+	  (find-symbol "BACKQ-LIST" :sb-impl))))
+
+(defparameter *unbackquote-symbols*
+  #+allegro
+  '(excl::backquote)
+  #+sbcl
+  (remove-if #'null
+    (list (find-symbol "QUASIQUOTE" :sb-int))))
+
 (defun backquoted? (sexp)
+  (assert (boundp '*backquote-symbols*) ()
+	  "backquoted? not defined for this lisp")
   (and (consp sexp)
-       #+allegro 
-       (eq (car sexp) 'excl::backquote)
-       #+sbcl
-       (memq (car sexp) '(sb-int:quasiquote))
-       #-(or allegro sbcl)
-       (error "backquoted? not defined for this lisp")))
+       (memq (car sexp) *backquote-symbols*)))
 
 (defun unbackquoted? (sexp)
+  (assert (boundp '*unbackquote-symbols*) ()
+	  "unbackquoted? not defined for this lisp")
   (and (consp sexp)
-       (memq (car sexp)
-	     #+allegro '(excl::bq-comma excl::bq-comma-atsign)
-	     #+sbcl '(sb-int:quasiquote))))
-	   
+       (memq (car sexp) *unbackquote-symbols*)))
 
 (defun rule-rawname (rule)
   (let* ((str (string rule))
@@ -510,7 +522,8 @@
 			(list (keyword-arg-symbol ka)
 			      (if backquoted
 				  (list #+allegro 'excl::bq-comma
-					#+sbcl 'sb-int:quasiquote
+					#+sbcl (or (find-symbol "QUASIQUOTE" :sb-int)
+						   (find-symbol "BACKQ-COMMA" :sb-impl))
 					(keyword-arg-symbol ka :pvs))
 				  (keyword-arg-symbol ka :pvs))))
 	      (remove-if
