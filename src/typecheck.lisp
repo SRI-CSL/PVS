@@ -1313,10 +1313,7 @@
   ;; Context has to be for the modname being imported
   ;; i.e., in importing foo[a] {{ bar := bar[b] {{ ... }} }}
   ;; foo gives context, bar[b] is the thname
-  (let ((th (or (get-theory thname)
-		(and (declaration thname)
-		     (theory-abbreviation-decl? (declaration thname))
-		     (get-theory (theory-name (declaration thname)))))))
+  (let ((th (get-theory-transitive thname)))
     (assert th)
     (if (null (formals-sans-usings th))
 	(resolutions thname)

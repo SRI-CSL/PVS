@@ -190,7 +190,15 @@
   :binary-extension #.*pvs-binary-type*
   :initially-do (unless *pvs-system-loaded*
 		  (proclaim '(optimize (compilation-speed 0) (space 1)
-				       (safety 1) (speed 3) (debug 1)))
+			      (safety 1) (speed 3) (debug 1)))
+		  ;; Note that these do very little SBCL simply does
+		  ;; not want to shut up
+		  #+sbcl
+		  (declaim (sb-ext:muffle-conditions cl:warning))
+		  #+sbcl
+		  (declaim (sb-ext:muffle-conditions cl:style-warning))
+		  #+sbcl
+		  (declaim (sb-ext:muffle-conditions sb-ext:compiler-note))
 		  (unless (boundp '*print-pprint-dispatch*)
 		    #-gcl
 		    (load (format nil "~a/src/xp" *pvs-path*))
