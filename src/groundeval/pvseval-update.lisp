@@ -56,17 +56,31 @@
 ;if external needs actuals, then internal will crash.
 
 (defun make-eval-info (decl)
-  (unless (eval-info decl)
-    (setf (eval-info decl)
-	  (make-instance 'eval-info
-	    'internal (make-instance 'eval-defn-info
-			'unary (make-instance 'eval-defn)
-			'multiary (make-instance 'eval-defn)
-			'destructive (make-instance 'eval-defn))
-	    'external (make-instance 'eval-defn-info
-			'unary (make-instance 'eval-defn)
-			'multiary (make-instance 'eval-defn)
-			'destructive (make-instance 'eval-defn))))))
+  (cond ((eval-info decl)
+	 (unless (internal (eval-info decl))
+	   (setf (internal (eval-info decl))
+		 (make-instance 'eval-defn-info
+				'unary (make-instance 'eval-defn)
+				'multiary (make-instance 'eval-defn)
+				'destructive (make-instance 'eval-defn))))
+	 (unless (external (eval-info decl))
+	   (setf (external (eval-info decl))
+		 (make-instance 'eval-defn-info
+				'unary (make-instance 'eval-defn)
+				'multiary (make-instance 'eval-defn)
+				'destructive (make-instance 'eval-defn))))
+	 (eval-info decl))
+	(t (setf (eval-info decl)
+		 (make-instance 'eval-info
+				'internal (make-instance 'eval-defn-info
+							 'unary (make-instance 'eval-defn)
+							 'multiary (make-instance 'eval-defn)
+							 'destructive (make-instance 'eval-defn))
+				'external (make-instance 'eval-defn-info
+							 'unary (make-instance 'eval-defn)
+							 'multiary (make-instance 'eval-defn)
+							 'destructive (make-instance 'eval-defn))))
+	   (eval-info decl))))
 
 
 ;;Added function uninterpreted-fun and modified function undefined (Feb 20 2015) [CM]
@@ -81,6 +95,7 @@
 		  (string (id expr))))
 	 (ptype (when nm (print-type (type expr))))
 	 (nargs (when nm (arity expr))))
+    ;(break "undefined")
     (if (and nm (= nargs 0) ptype (type-name? ptype)
 	     (eq '|Global| (id ptype)))
 	(let* ((fname (gentemp "global"))
@@ -97,20 +112,29 @@
 			 (defattach-th-nm ,th ,(id expr) () ,doc ,fname))))
 	  (eval fbody)
 	  (makesym "pvsio_~a_~a_~a" th nm nargs))
-      (let* ((fname (gentemp "undefined"))
-	     (msg-fmt
-	      (or message
-		  "Hit uninterpreted term ~a during evaluation"))
-	     (fbody (if (and nargs (> nargs 0))
-			`(defun ,fname (&rest x)
-			   (declare (ignore x))
-			   (uninterpreted-fun ,msg-fmt ,expr))
-		      `(defun ,fname (&rest x)
-			 (declare (ignore x))
-			 (uninterpreted ,msg-fmt ,expr)))))
-	(eval fbody)
-	(compile fname)
-	fname))))
+      (let* ((modformals (loop for x in (formals (module expr))
+			      when (formal-const-decl? x)
+			      collect x))
+	     (attachment (let ((nm (string (id expr)))
+			       (th (string (id (module expr)))))
+			   (find-attachment (make-attachment :theory th :name nm
+							     :args (+ (length modformals) (arity expr))))))
+	     (pvsiosymb (when attachment (attachment-symbol attachment))))
+	(or pvsiosymb
+	    (let* ((fname (gentemp "undefined"))
+		   (msg-fmt
+		    (or message
+			"Hit uninterpreted term ~a during evaluation"))
+		   (fbody (if (and nargs (> nargs 0))
+			      `(defun ,fname (&rest x)
+				 (declare (ignore x))
+				 (uninterpreted-fun ,msg-fmt ,expr))
+			    `(defun ,fname (&rest x)
+			       (declare (ignore x))
+			       (uninterpreted ,msg-fmt ,expr)))))
+	      (eval fbody)
+	      (compile fname)
+	      fname))))))
 
 ;  lisp-function
 ;  lisp-function2
@@ -1358,29 +1382,28 @@
 	(lisp-function2 (declaration expr)))))
 
 (defun lisp-function (decl)
-  (or (in-name decl)(in-name-m decl)))
+  (and (in-info decl)(or (in-name decl)(in-name-m decl))))
 
 (defun lisp-function2 (decl)
-  (or (in-name-m decl)(in-name decl)))
+  (and (in-info decl)(or (in-name-m decl)(in-name decl))))
 
 (defun external-lisp-function (decl)
-  (or (ex-name decl)(ex-name-m decl)))
+  (and (ex-info decl)(or (ex-name decl)(ex-name-m decl))))
 
 (defun external-lisp-function2 (decl)
-  (or (ex-name-m decl)(ex-name decl)))
+  (and (ex-info decl)(or (ex-name-m decl)(ex-name decl))))
 
 (defun lisp-function-d (decl)
-  (or (in-name-d decl)(lisp-function2 decl)))
+  (and (ex-info decl)(or (in-name-d decl)(lisp-function2 decl))))
 
 (defun external-lisp-function-d (decl)
-  (or (ex-name-d decl)(external-lisp-function2 decl)))
+  (and (ex-info decl)(or (ex-name-d decl)(external-lisp-function2 decl))))
 
 (defun pvs2cl-resolution (expr)
   (let* ((decl (declaration expr))
 	 (*current-context* (saved-context (module decl)))
 	 (*current-theory* (theory *current-context*)))
-    (unless (eval-info decl)
-      (make-eval-info decl))
+    (make-eval-info decl)
     (if (datatype-constant? expr)
 	(or (lisp-function2 (declaration expr))
 	    (pvs2cl-datatype expr))
@@ -1534,7 +1557,26 @@
 	    (make-binding-ids-without-dups
 	     (cdr bindings)
 	     (cons id aux))))
-      (nreverse aux)))
+    (nreverse aux)))
+
+;;NSH(6/11/2016): pvs-defconstants can have their definitions precomputed and cached.
+(defun pvs-defconstant? (expr)
+  (and (name-expr? expr)
+       (pvs-defconstant-decl? (declaration expr))))
+
+(defun const-params (decl)
+  (loop for x in (formals (module decl))
+	when (formal-const-decl? x)
+	collect (make-constant-from-decl x)))
+
+
+(defun pvs-defconstant-decl?  (decl)
+  (let ((defax (def-axiom decl)))
+    (and (const-decl? decl)
+	 (null (const-params decl))
+	 (not (null defax))
+	 (not (lambda-expr? (args2 (car (last defax))))))))
+	 
 	
 ;;Local variable undef moved to case where defax is null (Feb 20 2015) [CM]
 (defun pvs2cl-lisp-function (decl)
@@ -1561,17 +1603,6 @@
 		    (defn-body (body* defn))
 		    (defn-binding-ids
 		      (make-binding-ids-without-dups defn-bindings nil))
-		    (d-defn-body (when (null defn-bindings)
-				   (let ((*destructive?* t)
-				       (*output-vars* nil))
-				     (pvs2cl-till-output-stable
-				      (in-defn-d decl)
-				      defn-body
-				      (pairlis defn-bindings
-					       defn-binding-ids)
-				      nil))))
-		    (defconst (when (null defn-bindings)
-				`(defconstant ,idc ,d-defn-body)))
 		    (declarations (pvs2cl-declare-vars defn-binding-ids
 						       defn-bindings)))
 	       (setf (in-name decl) id)
@@ -1587,11 +1618,10 @@
 				   ,@(append (when declarations
 					       (list declarations))
 					     (list 
-					      (or (and defconst idc);;for constants
-						  (pvs2cl_up* defn-body
-							      (pairlis defn-bindings
-								       defn-binding-ids)
-							      nil))))))
+					      (pvs2cl_up* defn-body
+							  (pairlis defn-bindings
+								   defn-binding-ids)
+							  nil))))))
 		 (eval (definition (in-defn-m decl)))
 		 (assert id2)
 		 (compile id2))
@@ -1605,16 +1635,17 @@
 			  ,@(append (when declarations
 				      (list declarations))
 				    (list 
-				     (or (and defconst idc)
-					 (pvs2cl-till-output-stable
-					  (in-defn-d decl)
-					  defn-body
-					  (pairlis defn-bindings
-						   defn-binding-ids)
-					  nil)))))))
+				     (pvs2cl-till-output-stable
+				      (in-defn-d decl)
+				      defn-body
+				      (pairlis defn-bindings
+					       defn-binding-ids)
+				      nil)))))
 		 ;;setf output-vars already in
 		 ;;pvs2cl-till-output-stable
-		 (setf (output-vars (in-defn-d decl))
+		 (when (and *eval-verbose* *output-vars*)
+		   (format t "~%~a: output-vars: ~a" (id decl) *output-vars*))
+		 (setf (output-vars (in-defn-d decl));;already done in pvs2cl-till-output-stable?
 		       *output-vars*))
 	       (eval (definition (in-defn-d decl)))
 	       (assert id-d)
@@ -1623,7 +1654,9 @@
 		 (format t "~%~a <internal_0> ~a" (id decl) id))
 	       (let* ((*destructive?* nil)
 		      (in-defn `(defun ,id ()
-				  ,(or (and defconst idc) (pvs2cl_up* defn nil nil)))))
+				  ,(pvs2cl_up* defn nil nil)))
+		      (defconst (when (null defn-bindings);same as pvs-defconstant? test
+				  `(defconstant ,idc ,(car (last (definition (in-defn-d decl))))))))
 		 (setf (definition (in-defn decl))
 		       (if defconst
 			   `(progn ,defconst ,in-defn)

@@ -202,9 +202,9 @@ It cannot be evaluated in a formal proof."
 				     (gethash theory *pvsio-attachments*))))
     (let ((body (if primitive
 		    (cons 'progn (cdr dobo))
-		  `(if *in-evaluator* 
-		       ,(cons 'progn (cdr dobo))
-		     (throw '*pvsio-inprover* ,mssg)))))
+		  `(if *in-checker* 
+		       (throw '*pvsio-inprover* ,mssg)
+		     ,(cons 'progn (cdr dobo))))))
       `(defun ,fnm ,newargs ,doc ,body))))
 
 (defmacro defattach-th-nm (theory nm args &rest body)

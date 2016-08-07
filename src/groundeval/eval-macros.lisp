@@ -234,6 +234,8 @@
 (defmacro |pvs__rational_pred| (x) `(rationalp ,x))
 (defmacro |pvs__integer_pred| (x) `(integerp ,x))
 
+(defmacro uninterpreted (str &rest args) `(throw 'uninterpreted (format t ,str ,@args)))
+
 
 (defmacro project (index tuple)
   (let ((ind (1- index)))

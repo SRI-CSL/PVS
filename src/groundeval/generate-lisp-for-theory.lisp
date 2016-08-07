@@ -30,6 +30,7 @@
 			  :if-does-not-exist :create)
     (format output ";;; Lisp file generated from PVS prelude~2%")
     (format output "(in-package :pvs)~%")
+    (load-pvs-attachments)
     (dolist (theory *prelude-theories*)
       (pvs2cl-theory theory force?)
       (dolist (decl (theory theory))
@@ -63,6 +64,7 @@
 	  "~%;;; Function names must be unique, so a number may be appended, ~
             and the type~%;;; is included for functions associated with ~
             datatypes.~%;;; For these functions, the mappings are given here.")
+      (load-pvs-attachments)
       (dolist (theory theories)
 	(pvs2cl-theory theory force?))
       (dolist (theory theories)
@@ -78,6 +80,7 @@
 
 (defun generate-lisp-for-theory (theoryname)
   (let ((theory (get-theory theoryname)))
+    (load-pvs-attachments)
     (cond ((null theory)
 	   (pvs-message "Theory ~a is not typechecked" theoryname))
 	  (t (pvs2cl-theory theory)
@@ -105,6 +108,7 @@
 (defun gqread ()
   (format t "~%<GndEval> ")
   (force-output)
+  (load-pvs-attachments)
   (let ((input (ignore-errors (read))))
     (cond ((member input '(quit q exit (quit)(exit)(q))
 		   :test #'equal)
@@ -185,6 +189,7 @@
 (defparameter *default-random-test-count* 10)
 
 (defun evaluate ()
+  (load-pvs-attachments)
   (let ((result
 	 (catch 'abort
 	   (catch 'quit
@@ -258,6 +263,7 @@
 
 (defun evaluate-tccs ()
   (let ((unproved nil))
+    (load-pvs-attachments)
     (dolist (tcc *tccforms*)
       (format t "~%~a TCC for ~a: ~a"
 	(tccinfo-kind tcc) (tccinfo-expr tcc) (tccinfo-formula tcc))
@@ -303,6 +309,7 @@
 
 (defun eval-to-file (theoryname list-of-exprs filename)
   (let ((theory (get-theory theoryname)))
+    (load-pvs-attachments)
     (cond ((null theory)
 	   (format t "~%Theory ~a is not typechecked." theoryname))
 	  (t (let ((*current-context* (saved-context theory)))
@@ -319,11 +326,13 @@
 	 (*tccforms* nil)
 	 (expr (pc-parse expr 'expr))
 	 (expr (pc-typecheck expr)))
-    (with-open-file (out filename
-			 :direction :output
-			 :if-exists :append
-			 :if-does-not-exist :create)
-      (format out "~%Evaluating: ~a" expr)
+    (with-open-file
+     (out filename
+	  :direction :output
+	  :if-exists :append
+	  :if-does-not-exist :create)
+     (load-pvs-attachments)
+     (format out "~%Evaluating: ~a" expr)
 ;;NSH: can be turned on if TCCs must be printed.      
 ;       (when *tccforms*
 ; 	(format out "~%Generated TCCs: ")

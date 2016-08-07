@@ -597,6 +597,15 @@ This is printed in reverse order.")
   (let ((name (smt-id-name "scalar")))
     (make-instance 'smt-scalar-type :name name :identifiers identifiers)))
 
+;;NSH(8/5/2016): Not defined by TimK
+(defun make-idt-constructor (name accessor-types)
+  (make-instance 'idt-constructor
+		 :constructor-name name
+		 :accessor-type-list accessor-types))
+
+(defun make-smt-inductive-datatype (name constructors)
+  (make-instance 'smt-inductive-type :name name :constructors constructors))
+
 (defun list-of-types? (elements)
   (if (null elements)
       t
@@ -661,7 +670,7 @@ This is printed in reverse order.")
   nil)
 
 (defmethod contained-types ((ty smt-type))
-  (cons ty (loop for dp in (type-direct-predessors ty)
+  (cons ty (loop for dp in (type-direct-predecessors ty)
 		 append (contained-types dp))))
 
 ;;   (let* ((dps (type-direct-predecessors ty)) ; list of types
@@ -814,7 +823,7 @@ This is printed in reverse order.")
 (defmethod smt-scalar-to-inductive-datatype ((scalart smt-scalar-type))
   (let* ((identifiers (smt-scalar-identifiers scalart))
 	 (name (smt-type-name scalart)))
-    (make-smt-inductive-datatype name (loop for id in identifiers collect (make-constructor id nil)))))
+    (make-smt-inductive-datatype name (loop for id in identifiers collect (make-idt-constructor id nil)))))
 	 
 (defun elements-to-accessors (elements)
   (if elements
@@ -827,7 +836,7 @@ This is printed in reverse order.")
   (let* ((elements (smt-tuple-elements tuplet))
 	 (accessors (elements-to-accessors elements))
 	 (constructor-name (make-name "constructor"))
-	 (constructor (make-constructor constructor-name accessors))
+	 (constructor (make-idt-constructor constructor-name accessors))
 	 (inductive-datatype-name (make-name "inductive-datatype-from-tuple")))
     (make-smt-inductive-datatype inductive-datatype-name (list constructor))))
 
@@ -835,7 +844,7 @@ This is printed in reverse order.")
   (let* ((cname (constructor-name c))
 	 (ats (accessor-type-list c))
 	 (ats-strings (loop for at in ats collect (format nil "(~a ~a)" (car at) (cdr at)))))
-    (if (nil ats)
+    (if (null ats)
 	(format nil "~a" cname)
 	(format nil "(~a ~{~a ~})" cname  ats-strings))))
 
@@ -963,6 +972,10 @@ This tool was developed by Tim King (taking@cs.nyu.edu) and Natarajan Shankar (s
 (defmethod enable-features-type ((pst smt-predicate-subtype))
   (assert (null (frozen? *smt-features*)))
   (enable-features-type (parent-type pst)))
+
+;;NSH(5/8/2016): Defined smt-function-interpreted?
+(defun smt-function-interpreted? (ft)
+  (not (smt-uninterpreted-type? ft)))
 
 (defmethod enable-features-type ((ft smt-function-type))
   (assert (null (frozen? *smt-features*)))
@@ -1326,7 +1339,6 @@ This tool was developed by Tim King (taking@cs.nyu.edu) and Natarajan Shankar (s
   (declare (ignore bindings))
   (break "smt-tc-expr* has encountered an unhandled case: ~a" unhandled))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                                         ;;
 ;;                     Translation                         ;;
@@ -1363,6 +1375,12 @@ This tool was developed by Tim King (taking@cs.nyu.edu) and Natarajan Shankar (s
 (defun debugging-output ()
   (format-if "~%ydefns = ~% ~{~a~%~}" nil))
 
+;;NSH(8/5/2016): TimK did not define select-types-for-output and type-declaration
+(defun select-types-for-output (smt-type-list)
+  smt-type-list)
+
+(defun type-declaration (smt-type)
+  "~%to be defined")
 
 (defun write-types-to-stream (stream)
   (let* ((selected-types (select-types-for-output *smt-type-declarations*))

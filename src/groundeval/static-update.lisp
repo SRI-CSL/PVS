@@ -312,22 +312,78 @@
 (defmethod contains-possible-closure? ((texpr t))
   nil) ;;It is okay to say not updateable? for uninterpreted
 ;;since these cannot be updated if nothing is known
-;;about their type.  
+;;about their type.
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defvar *defconstants*)
+(defun collect-defconstants (expr)
+  (let ((*defconstants* nil))
+    (collect-defconstants* expr)
+    *defconstants*))
+
+(defmethod collect-defconstants* ((expr name-expr))
+  (when (pvs-defconstant? expr)
+    (pushnew expr *defconstants* :test #'same-declaration)))
+
+(defmethod collect-defconstants* ((expr list))
+  (loop for x in expr
+	do (collect-defconstants* x)))
+
+(defmethod collect-defconstants* ((expr binding-expr))
+  (with-slots (expression) expr
+	      (collect-defconstants* expression)))
+
+(defmethod collect-defconstants* ((expr application))
+  (with-slots (operator argument) expr
+	      (collect-defconstants* operator)
+	      (collect-defconstants* argument)))
+
+(defmethod collect-defconstants* ((expr tuple-expr))
+  (with-slots (exprs) expr
+	      (collect-defconstants* expressions)))
+
+(defmethod collect-defconstants* ((expr record-expr))
+  (with-slots (assignments) expr
+	      (collect-defconstants* assignments)))
+
+(defmethod collect-defconstants* ((expr update-expr))
+  (with-slots (expression assignments) expr
+	      (collect-defconstants* expression)
+	      (collect-defconstants* assignments)))
+
+(defmethod collect-defconstants* ((expr assignment))
+  (with-slots (expression) expr
+	      (collect-defconstants* expression)))
+
+(defmethod collect-defconstants* ((expr field-application))
+  (with-slots (argument) expr
+	      (collect-defconstants* argument)))
+
+(defmethod collect-defconstants* ((expr projection-application))
+  (with-slots (argument) expr
+	      (collect-defconstants* argument)))
+				  
+(defmethod collect-defconstants* ((expr t))
+  nil)
+
+    
+      
+			 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;free-formal-vars returns the free variables, and when external, 
 ;;the constant theory parameters. 
 (defun free-formal-vars (expr)
-  (if *external*
-      (let* ((params (free-params expr))
-	     (const-params (loop for prm in params
-				 when (constant? prm)
-				 collect prm))
-	     )
-	(append const-params (freevars expr)))
-      (freevars expr)))
+  (let ((free-consts-and-vars (append (collect-defconstants expr)(freevars expr))))
+    (if *external*
+	(let* ((params (free-params expr))
+	       (const-params (loop for prm in params
+				   when (constant? prm)
+				   collect prm))
+	       )
+	  (append const-params free-consts-and-vars))
+      free-consts-and-vars)))
 
 ;;updateable-free-formal-vars returns the possibly updateable
 ;;variables in a term that has a possibly updateable type.

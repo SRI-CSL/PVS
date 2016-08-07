@@ -858,9 +858,10 @@
 (defun pvs2ir-adt-decl (adt-decl);;only called with ir-type-value is empty
   (let* ((adt-type (type-value adt-decl))
 	 (adt-type-id (pvs2ir-unique-decl-id adt-decl))
+	 (adt-adt-id (format nil "~a_adt" adt-type-id))
 	 (adt (adt adt-type))
 	 (constructors (constructors adt))
-	 (index-id (intern (format nil "~a_index" adt-type-id)))
+	 (index-id (intern (format nil "~a_index" adt-adt-id)))
 	 (index-type (mk-ir-subrange 0 (1- (length constructors))))
 	 (adt-enum-or-record-type
 	  (if (enumtype? adt)
@@ -871,7 +872,7 @@
 					collect (cons (pvs2ir-unique-decl-id (con-decl con))
 						      (loop for acc in (acc-decls con)
 							    collect (pvs2ir-unique-decl-id acc)))))))
-	 (adt-type-name (mk-ir-typename adt-type-id adt-enum-or-record-type)))
+	 (adt-type-name (mk-ir-typename adt-adt-id adt-enum-or-record-type)))
     (push adt-type-name *ir-type-info-table*)
     (setf (ir-type-value adt-decl)
 	  (mk-eval-type-info adt-type-name))
@@ -927,18 +928,16 @@
 	     (cargs (loop for arg in args
 			  collect (mk-ir-variable (new-irvar);;range is the same for shared accessors
 						  (pvs2ir-type (declared-type arg)))))
-	     (cbody-fields (when args
-			     (cons (mk-ir-field index-id indexvar)
+	     (cbody-fields (cons (mk-ir-field index-id indexvar)
 				   (loop for arg in args
 					 as carg in cargs
-					 collect (mk-ir-field (id arg) carg)))))
+					 collect (mk-ir-field (id arg) carg))))
 	     (accessor-types (loop for arg in args
 					      as carg in cargs 
 					      collect (mk-ir-fieldtype (id arg)
 								       (ir-vtype carg))))
-	     (cbody-field-types (when args
-				  (append (ir-field-types adt-recordtype);;add the index field
-					accessor-types)))
+	     (cbody-field-types (append (ir-field-types adt-recordtype);;add the index field
+					accessor-types))
 	     (cbody-recordtype (if args
 				   (mk-ir-adt-constructor-recordtype cbody-field-types adt-type-name)
 				 adt-recordtype));retain adt type for nullary constructors
@@ -1153,18 +1152,23 @@
 
 
 (defun pvs2ir-application (op args bindings)
+  ;(format t "pvs2ir-application")
   (let* ((arg-names (new-irvars (length args)))
-	 (arg-types (loop for arg in args 
+	 ;(dummy (format t "arg-types"))
+	 (arg-types 
+		    (loop for arg in args 
 			  collect (let ((num (pvs-integer? arg)))
 				    (if num
 					(mk-ir-subrange num num)
-					(pvs2ir-expr-type arg)))));;NSH(3-20-16): 
+				      (pvs2ir-expr-type arg)))));;NSH(3-20-16):
+	 ;(dummy (format t "op-arg-types"))
 	 (op-arg-types (if (pvs2cl-primitive? op)
 			   arg-types
 			   (loop for type in (types (domain (type op)))
 				 collect (pvs2ir-type type))))
-	 
-	 (arg-vartypes (loop for ir-var in arg-names
+	 ;(dummy (format t "arg-vartypes"))
+	 (arg-vartypes 
+		       (loop for ir-var in arg-names
 			     as ir-typ in op-arg-types
 			     collect (mk-ir-variable ir-var ir-typ)))
 	 (args-ir (pvs2ir* args bindings)))
@@ -1210,7 +1214,44 @@
 	(t nil)))
 
 (defmethod pvs2ir* ((cexpr cases-expr) bindings)
-  (pvs2ir* (translate-cases-to-if cexpr) bindings))
+  (with-slots (expression selections else-part) cexpr
+	      (pvs2ir-cases expression selections else-part bindings)))
+
+(defun pvs2ir-cases (expression selections else-part bindings)
+  (cond ((consp selections)
+	 (let* ((sel (car selections))
+		(selexpr (expression sel))
+		(stype (find-declared-adt-supertype (type selexpr)))
+		(dec-stype (declaration stype))
+		(modinst (module-instance stype))
+		(accs (subst-mod-params (accessors (constructor sel))
+					modinst
+					(module dec-stype)
+					dec-stype))
+		(accs-exprs (loop for acc in accs collect
+				  (make!-application acc expression)))
+		(arg-ir-vars (new-irvars (length (args sel))))
+		(args-ir-vtypes (loop for ir-var in arg-ir-vars
+				      as var in (args sel)
+				      collect (mk-ir-variable ir-var (pvs2ir-type (type var)))))
+		(ir-accs (pvs2ir* accs-exprs bindings))
+		(branch (mk-ir-let* args-ir-vtypes
+				    ir-accs
+				    (pvs2ir* selexpr
+					     (nconc (pairlis (args sel) args-ir-vtypes) bindings)))))
+	   (if (and (null (cdr selections))(null else-part))
+	       branch
+	     (let ((condvar (mk-ir-variable (new-irvar) 'bool)))
+	       (mk-ir-let condvar
+			  (pvs2ir* (make!-application (recognizer (constructor sel))
+						    expression)
+				 bindings)
+			(mk-ir-ift  condvar
+			    branch
+			    (pvs2ir-cases expression (cdr selections) else-part bindings)))))))
+	(t (pvs2ir* else-part bindings))))
+		
+;;  (pvs2ir* (translate-cases-to-if cexpr) bindings))
 
 ;;partial 
   ;; (with-slots (expr selections else-part) cexpr
@@ -1630,6 +1671,12 @@
 					      (if (< high1 high2) high1 high2)))))
 			    (mk-ir-subrange new-low new-high)))))
 
+(defun pvseval-integer (expr)
+  (let ((expr-value (catch 'uninterpreted (eval (pvs2cl expr)))))
+      (and (integerp expr-value) expr-value)))
+	  
+
+
 (defun pvs2ir-subrange-index (type)
   (let ((below (simple-below? type)))
     (if below
@@ -1637,14 +1684,14 @@
 		    (1- (number below))
 		    '*))
 	(let ((upto (simple-upto? type)))
-	  (or (and upto (if (number-expr? upto)
-			    (list 0 (number upto))
+	  (or (and upto (let ((val (pvseval-integer upto))) ;if (number-expr? upto)
+			  (if val (list 0 val) ;(number upto)
 			  (let ((hihi (pvs2ir-subrange-index (type upto))))
 			    (if hihi (list 0 (cadr hihi))
-			      (list 0 '*)))))
+			      (list 0 '*))))))
 	      (let ((x (simple-subrange? type)))
 		(if x
-		  (let ((lo (or (pvs-integer? (car x))
+		  (let ((lo (or (pvseval-integer (car x))
 			      (let* ((type-ir (pvs2ir-type (type (car x))))
 				     (judgement-type-irs (loop for type in (judgement-types (car x))
 							       collect (pvs2ir-type type)))
@@ -1652,7 +1699,7 @@
 							when (and (ir-subrange? ir-type)(numberp (ir-low ir-type)))
 							collect (ir-low ir-type))))
 				(if lo-subrange (apply #'min lo-subrange) '*))))
-			(hi (or (pvs-integer? (cdr x))
+			(hi (or (pvseval-integer (cdr x))
 				(let* ((type-ir (pvs2ir-type (type (car x))))
 				       (judgement-type-irs (loop for type in (judgement-types (car x))
 								 collect (pvs2ir-type type)))
@@ -2325,11 +2372,11 @@
       (mpz (let ((tmp (gentemp "tmp")))
 	     (list (format nil "int64_t ~a = mpz_cmp~a(~a, ~a)" tmp
 			   (case arg2-c-type
-			     ((int8 int16 int32 int64 __int128) 'si)
-			     ((uint8 uint16 uint32 uint64) 'ui)
+			     ((int8 int16 int32 int64 __int128) "_si")
+			     ((uint8 uint16 uint32 uint64) "_ui")
 			     (mpz "")
 			     (mpq (break "mpq not implemented")))
-			   arg2 arg1)
+			   arg1 arg2)
 		   (format nil "~a = (~a ~a 0)" return-var tmp
 			   ir-function-name))))))
 
@@ -3274,7 +3321,7 @@
 	       (closure-fptr-defn
 		(case c-rangetype
 		  ((mpq mpz)
-		   (format t "bvar-fvar-args: ~a" bvar-fvar-args)
+		   ;(format t "bvar-fvar-args: ~a" bvar-fvar-args)
 		   (format nil "void ~a(struct ~a * closure, ~a_t result, ~a_t bvar){~{~%~8T~a;~}~%~8T~a(result, ~a);}"
 			closure-fptr-name closure-struct-name c-rangetype c-domaintype
 			bvar_projections
