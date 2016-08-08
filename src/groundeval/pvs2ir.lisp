@@ -117,6 +117,14 @@
 (defcl ir-integer (ir-expr)
   ir-intval)
 
+(defcl ir-float (ir-expr)
+  ir-float-mantissa
+  ir-float-exponent)
+
+(defcl ir-double (ir-expr)
+  ir-mantissa
+  ir-exponent)
+
 (defcl ir-bool (ir-expr)
   ir-boolval)
 
@@ -208,6 +216,9 @@
 
 (defcl ir-subrange (ir-type)
   ir-low ir-high)
+
+(defcl ir-float (ir-type))
+(defcl ir-double (ir-type))
 
 ;;NSH(1/27/16): These classes are not being used. 
 ;;An ADT is a name (id) and a list of constructors.  Each constructor has a name
@@ -3871,7 +3882,7 @@
 		    (copy-type* typedef1 texpr2 lhs rhs))))
 
 (defmethod copy-type* ((texpr1 t)(texpr2 ir-typename) lhs rhs)
-  (with-slots ((id2 ir-type-id)(typedef2 ir-type-defn))
+  (with-slots ((id2 ir-type-id)(typedef2 ir-type-defn)) texpr1
 	      (copy-type* texpr1 typedef2 lhs rhs)))
 
 (defmethod copy-type* ((texpr1 t)(texpr2 t) lhs rhs)
@@ -3886,10 +3897,13 @@
   (let ((saved-c-type-info-table *c-type-info-table*)
 	(*pvs2c-current-decl* decl);;used to save auxilliary type defns in c-type-info-table
 	(*current-context* (decl-context decl)))
-    (handler-case
-     (pvs2c-decl* decl)
-     (pvs2c-error (condition) (format t "~%closures not handled")
-		  (setq *c-type-info-table* saved-c-type-info-table)))))
+    (pvs2c-decl* decl)))
+
+    ;;NSH(8/6/2016): Closures are handled now. 
+    ;; (handler-case
+    ;;  (pvs2c-decl* decl)
+    ;;  (pvs2c-error (condition) (format t "~%closures not handled")
+    ;; 		  (setq *c-type-info-table* saved-c-type-info-table)))))
   
 (defmethod pvs2c-decl* ((decl type-eq-decl))
   (let ((typename (pvs2ir-decl decl)))
