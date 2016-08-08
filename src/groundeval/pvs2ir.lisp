@@ -4086,7 +4086,8 @@
 		    (format output "~%~%#include<inttypes.h>")
 		    (format output "~%~%#include<stdbool.h>")		    
 		    (format output "~%~%#include<gmp.h>")
-		    (loop for thy in (butlast preceding-theories-without-formals)
+		    (loop for thy in  preceding-theories-without-formals
+			  when (not (eq thy theory-id))
 			  do (format output "~%~%#include \"~a_c.h\"" thy))
 		    (format output "~%~%//cc -Wall -lgmp -o ~a" theory-id )
 		    (loop for thy in preceding-theories-without-formals
