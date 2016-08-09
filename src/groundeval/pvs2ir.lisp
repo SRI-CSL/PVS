@@ -4237,7 +4237,7 @@
 (defun pvs2c-preceding-theories* (theory)
   (let ((theory-defn (get-theory theory)))
     (loop for thy in (used-prelude-theory-names theory)
-	  when (not (memq (id thy) *primitive-prelude-theories*))
+	  when (not (memq thy *primitive-prelude-theories*))
 	  do (pushnew thy *pvs2c-preceding-theories*))
     (unless (eq (all-imported-theories theory-defn) 'unbound)
       (loop for thy in (all-imported-theories theory-defn)
