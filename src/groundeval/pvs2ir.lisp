@@ -800,7 +800,8 @@
   (let* ((*current-context* (decl-context decl))
 	 (*current-theory* (theory *current-context*))
 	 (*generate-tccs* 'none))
-    (pvs2ir-decl* decl)))
+    (unless (decl-formals decl)
+      (pvs2ir-decl* decl))))
 
 (defun copy-without-print-type (type)
   (copy type 'print-type nil))
@@ -809,15 +810,16 @@
   (let ((ir-type-value (ir-type-value decl)))
     (if ir-type-value
 	(ir-type-name ir-type-value)
-      (let ((ir-type (pvs2ir-type (copy-without-print-type (type-value decl)))));;loops without copy
-	(if (or (ir-typename? ir-type)
-		(ir-subrange? ir-type))
-	    ir-type ;;ir-type might not be a typename
-	  (let ((ir-type-name (mk-ir-typename (pvs2ir-unique-decl-id decl) ir-type)))
-	    (push ir-type-name *ir-type-info-table*)
-	    (setf (ir-type-value decl)
-		  (mk-eval-type-info ir-type-name))
-	    (ir-type-name (ir-type-value decl))))))))
+      (unless (formals decl)
+	(let ((ir-type (pvs2ir-type (copy-without-print-type (type-value decl))))) ;;loops without copy
+	  (if (or (ir-typename? ir-type)
+		  (ir-subrange? ir-type))
+	      ir-type ;;ir-type might not be a typename
+	    (let ((ir-type-name (mk-ir-typename (pvs2ir-unique-decl-id decl) ir-type)))
+	      (push ir-type-name *ir-type-info-table*)
+	      (setf (ir-type-value decl)
+		    (mk-eval-type-info ir-type-name))
+	      (ir-type-name (ir-type-value decl)))))))))
 
 (defmethod pvs2ir-decl* ((decl type-decl))
   (and (or (ir-type-value decl)
@@ -4235,8 +4237,8 @@
 (defun pvs2c-preceding-theories* (theory)
   (let ((theory-defn (get-theory theory)))
     (loop for thy in (used-prelude-theory-names theory)
-	  when (not (memq thy *primitive-prelude-theories*))
-	  do (pushnew thy *pvs2c-preceding-theories*))
+	  when (not (memq (id thy) *primitive-prelude-theories*))
+	  do (progn (break "preceding")(pushnew thy *pvs2c-preceding-theories*)))
     (unless (eq (all-imported-theories theory-defn) 'unbound)
       (loop for thy in (all-imported-theories theory-defn)
 	    do (pvs2c-preceding-theories* thy)))

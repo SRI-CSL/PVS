@@ -95,7 +95,6 @@
 		  (string (id expr))))
 	 (ptype (when nm (print-type (type expr))))
 	 (nargs (when nm (arity expr))))
-    ;(break "undefined")
     (if (and nm (= nargs 0) ptype (type-name? ptype)
 	     (eq '|Global| (id ptype)))
 	(let* ((fname (gentemp "global"))
@@ -112,29 +111,20 @@
 			 (defattach-th-nm ,th ,(id expr) () ,doc ,fname))))
 	  (eval fbody)
 	  (makesym "pvsio_~a_~a_~a" th nm nargs))
-      (let* ((modformals (loop for x in (formals (module expr))
-			      when (formal-const-decl? x)
-			      collect x))
-	     (attachment (let ((nm (string (id expr)))
-			       (th (string (id (module expr)))))
-			   (find-attachment (make-attachment :theory th :name nm
-							     :args (+ (length modformals) (arity expr))))))
-	     (pvsiosymb (when attachment (attachment-symbol attachment))))
-	(or pvsiosymb
-	    (let* ((fname (gentemp "undefined"))
-		   (msg-fmt
-		    (or message
-			"Hit uninterpreted term ~a during evaluation"))
-		   (fbody (if (and nargs (> nargs 0))
-			      `(defun ,fname (&rest x)
-				 (declare (ignore x))
-				 (uninterpreted-fun ,msg-fmt ,expr))
-			    `(defun ,fname (&rest x)
-			       (declare (ignore x))
-			       (uninterpreted ,msg-fmt ,expr)))))
-	      (eval fbody)
-	      (compile fname)
-	      fname))))))
+      (let* ((fname (gentemp "undefined"))
+	     (msg-fmt
+	      (or message
+		  "Hit uninterpreted term ~a during evaluation"))
+	     (fbody (if (and nargs (> nargs 0))
+			`(defun ,fname (&rest x)
+			   (declare (ignore x))
+			   (uninterpreted-fun ,msg-fmt ,expr))
+		      `(defun ,fname (&rest x)
+			 (declare (ignore x))
+			 (uninterpreted ,msg-fmt ,expr)))))
+	(eval fbody)
+	(compile fname)
+	fname))))
 
 ;  lisp-function
 ;  lisp-function2
