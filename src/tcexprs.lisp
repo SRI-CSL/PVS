@@ -2301,7 +2301,8 @@
 				   maplet?)))
 	    ((and maplet?
 		  (null (cdr args))))
-	    (t (type-error (caar args) "Field ~a not found in ~a"
+	    (t (type-error (caar args) "Field ~a not found in ~a~%  ~
+                                        use |-> in place of := to extend"
 			   (id (caar args)) rtype))))))
 
 (defmethod typecheck-ass-args (args (tuptype tupletype) maplet?)
