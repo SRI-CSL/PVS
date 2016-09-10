@@ -83,9 +83,15 @@
     (load-pvs-attachments)
     (cond ((null theory)
 	   (pvs-message "Theory ~a is not typechecked" theoryname))
-	  (t (pvs2cl-theory theory)
-	     (print-lisp-defns theoryname (format nil "~a.lisp" theoryname)
-			       t)))))
+	  (t
+	   (with-open-file (*standard-output* (format nil "~a.complog" theoryname)
+					      :direction :output
+					      :if-exists :supersede
+					      :if-does-not-exist :create)
+	     (let ((*error-output* *standard-output*))
+	       (pvs2cl-theory theory)))
+	   (print-lisp-defns theoryname (format nil "~a.lisp" theoryname)
+			     t)))))
 
 (defun evaluation-mode (theoryname)
   (let ((theory (get-theory theoryname)))  
