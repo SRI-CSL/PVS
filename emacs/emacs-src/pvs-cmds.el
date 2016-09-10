@@ -525,7 +525,19 @@ the beginning of the specified theory."
     (setq buffer-read-only t)
     (goto-line (car (cadr library-file-and-place)))))
   
-
+(defpvs pvs-add-library-path library (libpath)
+  "Adds a path to the PVS library paths list"
+  (interactive (let ((cdir (pvs-current-directory t)))
+		 (confirm-not-in-checker)
+		 (list (read-directory-name
+			"(add library path) directory: " cdir cdir))))
+  (if (member libpath pvs-library-path)
+      (error "%s is already in the pvs-library-path" libpath)
+    (push libpath pvs-library-path)
+    (setq load-path
+	  (cons (car load-path) (cons libpath (cdr load-path))))
+    (pvs-send (format "(add-library-path \"%s\")" libpath))))
+  
 
 ;;;------------------------------------------------
 ;;; File and Theory Commands
