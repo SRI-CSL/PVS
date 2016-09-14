@@ -281,18 +281,18 @@ judgement ::= {['RECURSIVE'] 'JUDGEMENT' {jdecl++','}
                {'HAS_TYPE'|'SUBTYPE_OF'} type-expr}
 	      <{judgement(jdecls(doubleplus),
                  [{has-type()|subtype-of()}|{rec-has-type()|rec-subtype-of()}],
-                 type-expr)>;
+                 type-expr)>
+            | {'EXPRESSION' 'JUDGEMENT' expr 'HAS_TYPE' type-expr}
+              <expr-judgement(expr, type-expr)>;
 
-jdecl ::= expr <jdecl-expr(expr)>
-        | comp-type-expr <jdecl-type(comp-type-expr)>
+% jdecl ::= expr <jdecl-expr(expr)>
+%         | comp-type-expr <jdecl-type(comp-type-expr)>
+%         ;
+
+jdecl ::= type-expr-sans-name <jsubtypedecl(type-expr-sans-name)>
+        | {name [pdformals+]}
+             <[jnamedecl(name)|jappldecl(name,pdf(plus))]>
         ;
-
-%jdecl ::= type-expr-sans-name <jsubtypedecl(type-expr-sans-name)>
-%        | {name [pdformals+]}
-%             <[jnamedecl(name)|jappldecl(name,pdf(plus))]>
-%        | {[forall-op lambda-formals ':'] expr}
-%             <jexprdecl(lambda-formals, expr)>
-%        ;
 
 ename ::= {name [':' type-expr]} <ename(name,[notype()|type-expr])>;
 
@@ -447,8 +447,7 @@ dep-type-expr ::= type-expr
 %% errors because the precedence can't easily be provided
 
 expr ::= string <string-expr(string)>
-       | {name [':' type-expr ['|' expr]^e]^t}
-          <[name-expr(name)| typed-name(name, type-expr, [no-pred() | expr]^e)]^t>
+       | name <name-expr(name)>
        | bracket-expr
        | {'(#' {assignment ++ ','} '#)'} <rec-expr(assignments(assignment+))>
        | {'`' {id | number} [actuals]} <{fieldex(id,[noactuals()|actuals])
