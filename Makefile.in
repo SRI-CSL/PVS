@@ -84,7 +84,7 @@ SYSTEM_FILES = README.md README.GUI INSTALL LICENSE NOTICES install-sh \
 	lib/finite_sets/.pvscontext lib/finite_sets/pvsbin \
 	$(wildcard lib/bitvectors/*.pvs lib/bitvectors/*.prf) \
 	lib/bitvectors/.pvscontext lib/bitvectors/pvsbin \
-	$(bindir)/yices $(bindir)/yices1 $(bindir)/yices2
+	yices/$(PLATFORM) $(bindir)/yices1 $(bindir)/yices2
 
 ALLEGRO_FILES = $(bindir)/runtime/file_utils.$(LOAD-FOREIGN-EXTENSION) \
 	$(wildcard $(bindir)/runtime/libacli*.$(LOAD-FOREIGN-EXTENSION)) \
@@ -342,11 +342,6 @@ rahd = src/rahd/rahd.lisp src/rahd/polyalg.lisp \
        src/rahd/regression.lisp src/rahd/debug.lisp \
        src/rahd/prfanal.lisp src/rahd/rahd-pvs.lisp
 
-nlyices = src/nlyices/nlyices.lisp src/nlyices/polyrep-totdeglex.lisp \
-	  src/nlyices/decide3_2a.lisp src/nlyices/nlsolver.lisp \
-	  src/nlyices/named-callbacks.lisp src/nlyices/fcpo.lisp \
-          src/nlyices/vts.lisp
-
 pvs-src = src/closopt.lisp \
           src/store-object.lisp \
 	  src/defcl.lisp \
@@ -481,8 +476,7 @@ inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
 lisp-files = pvs-config.lisp $(pvs-parser-out) $(ground-prover) $(pvs-src) \
 	     $(interface) $(pvs-prover) $(bddlisp) \
 	     $(PVSiolisp) $(Maniplisp) $(Fieldlisp) $(ProofLitelisp) \
-             $(ws1slisp) $(groundevallisp) $(abstractionlisp) $(rahd) \
-	     $(nlyices)
+             $(ws1slisp) $(groundevallisp) $(abstractionlisp) $(rahd)
 
 ifneq ($(PVSPATH),)
 pvs-make-files := $(patsubst %,$(PVSPATH)%,$(pvs-make-files))
@@ -503,7 +497,6 @@ ProofLitelisp := $(patsubst %,$(PVSPATH)%,$(ProofLitelisp))
 ws1slisp := $(patsubst %,$(PVSPATH)%,$(ws1slisp))
 abstractionlisp := $(patsubst %,$(PVSPATH)%,$(abstractionlisp))
 rahd := $(patsubst %,$(PVSPATH)%,$(rahd))
-nlyices := $(patsubst %,$(PVSPATH)%,$(nlyices))
 groundevallisp := $(patsubst %,$(PVSPATH)%,$(groundevallisp))
 inst-by-unif-lisp := $(patsubst %,$(PVSPATH)%,$(inst-by-unif-lisp))
 allegrolisp := $(patsubst %,$(PVSPATH)%,$(allegrolisp))
