@@ -269,15 +269,70 @@
     (intern (format nil "~a_~a" module-id decl-id)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defparameter *pvs2ir-primitives*
+  (list (mk-name '= nil '|equalities|)
+	(mk-name '/= nil '|notequal|)
+	(mk-name 'TRUE nil '|booleans|)
+	(mk-name 'FALSE nil '|booleans|)
+	(mk-name 'IMPLIES nil '|booleans|)
+	(mk-name '=> nil '|booleans|)
+	(mk-name '<=> nil '|booleans|)
+	(mk-name 'AND nil '|booleans|)
+	(mk-name '& nil '|booleans|)
+	(mk-name 'OR nil '|booleans|)
+ 	(mk-name 'NOT nil '|booleans|)
+	(mk-name 'WHEN nil '|booleans|)
+	(mk-name 'IFF nil '|booleans|)
+	(mk-name '+ nil '|number_fields|)
+	(mk-name '- nil '|number_fields|)
+	(mk-name '* nil '|number_fields|)
+	(mk-name '/ nil '|number_fields|)
+	(mk-name '|number_field_pred| nil '|number_fields|)
+	(mk-name '< nil '|reals|)
+	(mk-name '<= nil '|reals|)
+	(mk-name '> nil '|reals|)
+	(mk-name '>= nil '|reals|)
+	(mk-name '|real_pred| nil '|reals|)
+	(mk-name '|integer_pred| nil '|integers|)
+	(mk-name '|integer?| nil '|integers|)
+	(mk-name '|rational_pred| nil '|rationals|)
+	(mk-name '|floor| nil '|floor_ceil|)
+	(mk-name '|ceiling| nil '|floor_ceil|)
+	(mk-name '|nrem| nil '|modulo_arithmetic|)
+	(mk-name '|ndiv| nil '|modulo_arithmetic|)
+	(mk-name '|even?| nil '|integers|)
+	(mk-name '|odd?| nil '|integers|)
+	(mk-name '|cons| nil '|list_adt|)
+	(mk-name '|car| nil '|list_adt|)
+	(mk-name '|cdr| nil '|list_adt|)
+	(mk-name '|cons?| nil '|list_adt|)
+	(mk-name '|null| nil '|list_adt|)
+	(mk-name '|null?| nil '|list_adt|)
+	(mk-name '|restrict| nil '|restrict|)
+	(mk-name '|length| nil '|list_props|)
+	(mk-name '|member| nil '|list_props|)
+	(mk-name '|nth| nil '|list_props|)
+	(mk-name '|append| nil '|list_props|)
+	(mk-name '|reverse| nil '|list_props|)
+	))
+
+(defmethod pvs2ir-primitive? ((expr name-expr))
+  (member expr *pvs2ir-primitives*
+	  :test #'same-primitive?))
+
+(defmethod pvs2ir-primitive? ((expr t))
+  nil)
+
+
 (defparameter *ir-primitives*
   '(= /= TRUE FALSE IMPLIES => <=> NOT AND & OR NOT WHEN IFF + - * /
    number_field_pred < <= > >= real_pred integer_pred integer?
-   rational_pred floor ceiling rem ndiv even? odd? cons car cdr cons?
+   rational_pred floor ceiling ndiv nrem even? odd? cons car cdr cons?
    null null? restrict length member nth append reverse))
 
 (defparameter *ir-arith-primitives*
   '(+ - * / number_field_pred = < <= > >= real_pred integer_pred integer?
-   rational_pred floor ceiling rem ndiv even? odd? AND OR IMPLIES WHEN))
+   rational_pred floor ceiling ndiv nrem even? odd? AND OR IMPLIES WHEN))
 
 (defvar *var-counter* nil)
 (defmacro new-irvar () ;;index this by the theory and declaration so that labels are stable
@@ -659,8 +714,20 @@
 				  collect (mk-ir-variable irvar (pvs2ir-type (type bind)))))
 		     (ir-var-bindings (pairlis expr-bindings ir-binds))
 		     (ir-rangetype (pvs2ir-type (type expression)))
-		     (ir-expr (pvs2ir* expression (append ir-var-bindings bindings))));(break "lambda")
-		(mk-ir-lambda ir-binds ir-rangetype ir-expr))))
+		     (eta-form? (and (application? expression)
+				     (not (name-expr? (operator expression)))
+				     (eql (length expr-bindings)
+					  (length (arguments expression)))
+				     (loop for bvar in expr-bindings
+					   as arg in (arguments expression)
+					   always (and (variable? arg)
+						       (same-declaration arg bvar)
+						       (not (member arg (freevars (operator expression)) :test #'same-declaration)))))) 
+		     (ir-expr (if eta-form?
+				  (pvs2ir* (operator expression) bindings)
+				(pvs2ir* expression (append ir-var-bindings bindings)))));(break "lambda")
+		(if eta-form? ir-expr 
+		  (mk-ir-lambda ir-binds ir-rangetype ir-expr)))))
 
 (defmethod pvs2ir* ((expr lambda-expr-with-type) bindings)
   (with-slots ((expr-bindings bindings) expression) expr 
@@ -769,7 +836,7 @@
 
 (defun pvs2ir-constant (expr)
   (let ((decl (declaration expr)))
-    (cond ((pvs2cl-primitive? expr) ;;borrowed from pvseval-update.lisp
+    (cond ((pvs2ir-primitive? expr) ;;borrowed from pvseval-update.lisp
 	   (id expr))
 	  (t 
 	   (if (adt-decl? decl)
@@ -1089,7 +1156,7 @@
 					(mk-ir-subrange num num)
 				      (pvs2ir-expr-type arg)))));;NSH(3-20-16):
 	 ;(dummy (format t "op-arg-types"))
-	 (op-arg-types (if (pvs2cl-primitive? op)
+	 (op-arg-types (if (pvs2ir-primitive? op)
 			   arg-types
 			   (loop for type in (types (domain (type op)))
 				 collect (pvs2ir-type type))))
@@ -1098,9 +1165,9 @@
 		       (loop for ir-var in arg-names
 			     as ir-typ in op-arg-types
 			     collect (mk-ir-variable ir-var ir-typ)))
-	 (args-ir (pvs2ir* args bindings)))
+	 (args-ir (pvs2ir* args bindings)));(break "pvs2ir-application")
     (if (constant? op)
-	(if (pvs2cl-primitive? op)
+	(if (pvs2ir-primitive? op)
 	    (mk-ir-let* arg-vartypes
 			args-ir
 			(mk-ir-apply (pvs2ir-constant op) arg-vartypes))
@@ -1627,13 +1694,15 @@
       (and (integerp expr-value) expr-value)))
 	  
 
-
+;returns a pair of the lower and upper bound
 (defun pvs2ir-subrange-index (type)
   (let ((below (simple-below? type)))
     (if below
-	(list 0 (if (number-expr? below)
-		    (1- (number below))
-		    '*))
+	(let ((val (pvseval-integer below))) ;if (number-expr? upto)
+	  (if val (list 0 (1- val)) ;(number upto)
+	    (let ((hihi (pvs2ir-subrange-index (type below))))
+	      (if hihi (list 0 (cadr hihi))
+		(list 0 '*)))))
 	(let ((upto (simple-upto? type)))
 	  (or (and upto (let ((val (pvseval-integer upto))) ;if (number-expr? upto)
 			  (if val (list 0 val) ;(number upto)
@@ -1817,20 +1886,20 @@
 								       livevars :test #'tc-eq)
 							bindings)))
 		      ;(break "preprocess ir-let: ~a" (ir-name ir-vartype))
-		    (if (and (or (ir-variable? new-ir-bind-expr)
+		    (if (and (or (ir-variable? new-ir-bind-expr);binds var to var with same type
 				 (ir-last? new-ir-bind-expr))
 			     (ir2c-tequal* (ir-vtype ir-vartype)(ir-vtype (get-ir-last-var new-ir-bind-expr))))
 			(preprocess-ir* ir-body livevars
 					(acons ir-vartype
 					       (get-assoc (get-ir-last-var new-ir-bind-expr) bindings)
 					       bindings))
-		      (let* ((new-ir-vartype
-			      (if (ir-integer? new-ir-bind-expr)
-				  (mk-ir-variable (ir-name ir-vartype)
-						  (mk-ir-subrange (ir-intval ir-bind-expr)(ir-intval ir-bind-expr)))
-				ir-vartype))
-			     (new-ir-body (preprocess-ir* ir-body livevars
-					     (acons ir-vartype new-ir-vartype bindings))))
+		      (let* ((new-ir-vartype ir-vartype)
+			      ;; (if (ir-integer? new-ir-bind-expr)
+			      ;; 	  (mk-ir-variable (ir-name ir-vartype)
+			      ;; 			  (mk-ir-subrange (ir-intval ir-bind-expr)(ir-intval ir-bind-expr)))
+			      ;; 	ir-vartype)
+			     (new-ir-body (preprocess-ir* ir-body livevars bindings)))
+			     ;;(acons ir-vartype new-ir-vartype bindings)
 			(if (ir-lett? ir-expr)
 			    (mk-ir-lett new-ir-vartype (ir-bind-type ir-expr) new-ir-bind-expr new-ir-body)
 			  (mk-ir-let new-ir-vartype new-ir-bind-expr new-ir-body)))
@@ -1847,7 +1916,7 @@
 	      (mk-ir-field ir-fieldname (preprocess-ir* ir-value livevars bindings))))
 
 (defmethod preprocess-ir* ((ir-expr ir-lambda) livevars bindings)
-    (with-slots (ir-vartypes ir-rangetype ir-body) ir-expr
+  (with-slots (ir-vartypes ir-rangetype ir-body) ir-expr
 		(let* ((expr-freevars (pvs2ir-freevars* ir-expr))
 		       (last-expr-freevars (set-difference expr-freevars livevars :test #'eq))
 		       (other-livevars (union last-expr-freevars livevars :test #'eq))
@@ -1860,11 +1929,12 @@
 		       ;; 			   nil
 		       ;; 			   preprocessed-body)
 		       ;; 	  preprocessed-body))
-		       (preprocessed-ir (mk-ir-lambda-with-lastvars
-					 ir-vartypes
-					 last-expr-freevars
-					 ir-rangetype
-					 preprocessed-body)))
+		       (preprocessed-ir
+			(mk-ir-lambda-with-lastvars
+			 ir-vartypes
+			 last-expr-freevars
+			 ir-rangetype
+			 preprocessed-body)))
 		  ;; (format t "~%Preprocessing Lambda")
 		  ;; (format t "~%Freevars = ~s" (print-ir expr-freevars))
 		  ;; (format t "~%Irrelevant Args = ~s" (print-ir irrelevant-args))
@@ -2258,6 +2328,7 @@
 	     (- (ir2c-subtraction return-var c-return-type ir-arg-names c-arg-types))
 	     (* (ir2c-multiplication  return-var c-return-type ir-arg-names c-arg-types))
 	     (= (ir2c-equality return-var c-return-type ir-arg-names c-arg-types))
+	     ((ndiv nrem) (ir2c-divrem ir-function-name return-var c-return-type ir-arg-names c-arg-types))
 	     ((< <= > >=) (ir2c-arith-relations ir-function-name ;(tweak-equal ir-function-name)
 						  return-var
 						  ir-arg-names c-arg-types))
@@ -2276,6 +2347,52 @@
 				(car ir-arg-names)  (cadr ir-arg-names)
 				(car ir-arg-names)  (cadr ir-arg-names)))))))
 	(t (break "not defined"))))
+
+(defun ir2c-divrem (op return-var c-return-type ir-arg-names c-arg-types)
+  (let ((arg1 (car ir-arg-names))
+	(arg2 (cadr ir-arg-names))
+	(arg1-c-type (car c-arg-types))
+	(arg2-c-type (cadr c-arg-types))
+	(opname (if (eq op 'nrem) 'rem 'div)))
+    (let ((arg1-type (case arg1-c-type
+		       ((uint8 uint16 uint32) 'uint32)
+		       ((int8 int16 int32) 'int32)
+		       (t arg1-c-type)))
+	  (arg2-type (case arg2-c-type
+		       ((uint8 uint16 uint32) 'uint32)
+		       (t arg2-c-type))))
+      (case c-return-type
+	(mpz
+	 (case arg1-type
+	   (mpz (case arg2-type
+		  (mpz (list (format nil "mpz_fdiv_~a(~a, ~a, ~a)"
+				     (if (eq opname 'rem) 'r 'q) return-var arg1 arg2)))
+		  (t (list (format nil "mpz_fdiv_~a_ui(~a, ~a, ~a)"
+				   (if (eq opname 'rem) 'r 'q) return-var arg1 arg2)))))
+	   ((uint32 uint64 uint128)
+	    (case arg2-type
+	      (mpz (let ((tmp (gentemp "tmp")))
+		     (list (format nil "mpz_t ~a" tmp)
+			   (format nil "mpz_init(~a)" tmp)
+			   (format nil "mpz_set_ui(~a, ~a)" tmp arg1)
+			   (format nil "mpz_fdiv_~a(~a, ~a, ~a)"
+				   (if (eq opname 'rem) 'r 'q) return-var tmp arg2)
+			   (format nil "mpz_clear(~a)" tmp))))
+		(t (list (format nil "mpz_set_ui(~a, ~a_~a_~a(~a, ~a))"
+				 return-var opname arg1-type arg2-type arg1 arg2)))))
+	   ((int32 int64 int128)
+	    (case arg2-type 
+	      (mpz (let ((tmp (gentemp "tmp")))
+		     (list (format nil "mpz_t ~a" tmp)
+			   (format nil "mpz_init(~a)" tmp)
+			   (format nil "mpz_set_ui(~a, ~a)" tmp arg1)
+			   (format nil "mpz_fdiv_~a(~a, ~a, ~a)"
+				   (if (eq opname 'rem) 'r 'q) return-var tmp arg2)
+			   (format nil "mpz_clear(~a)" tmp))))
+	      (t (list (format nil "mpz_set_si(~a, ~a_~a_~a(~a, ~a))"
+			       return-var opname arg1-type arg2-type arg1 arg2)))))))
+	(t (list (format nil "~a = (~a_t)~a_~a_~a(~a, ~a)"
+			 return-var c-return-type opname arg1-type arg2-type arg1 arg2)))))))
 
 (defun ir2c-arith-relations (ir-function-name return-var
 			      ir-arg-names c-arg-types)
@@ -2815,7 +2932,8 @@
 		     (hi-array (when (ir-variable? ir-func-var)
 				 (ir-array? (ir-vtype ir-func-var))))
 		     (ir-index-var (when hi-array (get-ir-last-var (car ir-args)))))
-	      (if hi-array;;assuming no closure invocations for now
+		;(break "ir-apply0")
+	      (if hi-array;;if operator is an array
 		  (let* ((assign-instr (format nil "~a = (~a_t)~a->elems[~a]"
 					       return-var
 					       (add-c-type-definition (ir2c-type return-type))
@@ -2829,6 +2947,7 @@
 			    (list (format nil "release_~a(~a)"
 					  (add-c-type-definition (ir2c-type (ir-vtype ir-func-var)))
 					  (ir-name ir-func-var))))))
+		    ;(break "ir-apply")
 		    (cons assign-instr (append refcount-lookup-instr release-array-instr)))
 		;;otherwise, it's a function call
 	      (let* ((invoke-instrs (ir2c-function-apply return-var return-type ir-func ir-args))
@@ -2845,11 +2964,18 @@
 	      (with-slots (ir-name ir-vtype) ir-vartype
 			  (let* ((ir2c-vtype (ir2c-type ir-vtype))
 				 (var-ctype (add-c-type-definition ir2c-vtype))
-				 (decl-instr (format nil "~a_t ~a" var-ctype ir-name));;need mpz_init/release for mpz_t
+				 (decl-instr (format nil "~a_t ~a" var-ctype ir-name))
+				 (init-instr (when (mpnumber-type? var-ctype)
+					       (format nil "~a_init(~a)" var-ctype ir-name)))
+				 (clear-instr (when (mpnumber-type? var-ctype)
+					       (format nil "~a_clear(~a)" var-ctype ir-name)))
 				 (bind-instrs (ir2c* ir-bind-expr ir-name 
 						     ir2c-vtype))  ;(ir2c-type (ir-vtype ir-vartype))
 				 (body-instrs (ir2c* ir-body return-var return-type)));(break "ir-let")
-			    (cons decl-instr (append bind-instrs body-instrs))))))
+			    (if init-instr
+				(cons decl-instr (cons init-instr
+						       (append bind-instrs (append body-instrs (list clear-instr)))))
+				(cons decl-instr (append bind-instrs body-instrs)))))))
 
 (defmethod ir2c* ((ir-expr ir-lett) return-var return-type);;assume ir-bind-expr is an ir-variable
   (with-slots (ir-vartype ir-bind-type ir-bind-expr ir-body) ir-expr
@@ -4277,12 +4403,12 @@
 			    :if-does-not-exist :create)
 		    (format output "//Code generated using pvs2ir2c")
 		    (format output "~%#ifndef _~a_h ~%#define _~a_h" theory-id theory-id)
-		    (format output "~%~%#include<stdio.h>")
-		    (format output "~%~%#include<stdlib.h>")
-		    (format output "~%~%#include<inttypes.h>")
-		    (format output "~%~%#include<stdbool.h>")
-		    (format output "~%~%#include<string.h>")		    		    
-		    (format output "~%~%#include<gmp.h>")
+		    (format output "~%~%#include <stdio.h>")
+		    (format output "~%~%#include <stdlib.h>")
+		    (format output "~%~%#include <inttypes.h>")
+		    (format output "~%~%#include <stdbool.h>")
+		    (format output "~%~%#include <string.h>")		    		    
+		    (format output "~%~%#include <gmp.h>")
 		    (format output "~%~%#include \"pvslib.h\"")
 		    (loop for thy in  preceding-theories-without-formals
 			  when (not (eq thy theory-id))
