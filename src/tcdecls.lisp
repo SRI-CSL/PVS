@@ -1188,9 +1188,13 @@
   
 
 (defmethod typecheck-inlined-theory* ((theory datatype) theory-name decl)
-  (typecheck-inlined-theory* (adt-theory theory)
+  ;; Need to inline the datatype as well
+  (let* ((*all-subst-mod-params-caches* nil)
+	 (nadt (subst-mod-params theory theory-name theory)))
+    (break)
+    (typecheck-inlined-theory* (adt-theory theory)
 			     (copy theory-name :id (id (adt-theory theory)))
-			     decl))
+			     decl)))
 
 
 (defmethod typecheck* ((decl theory-abbreviation-decl) expected kind arguments)
@@ -2878,7 +2882,9 @@
   (check-duplication decl)
   (let ((cdecl (current-declaration)))
     (setf (current-declaration) decl)
-    (typecheck* (definition decl) *boolean* nil nil)
+    (typecheck* (definition decl) nil nil nil)
+    ;; Could be "GHOST bool"
+    (set-type (definition decl) *boolean*)
     (setf (current-declaration) cdecl))
   (let ((*generate-tccs* 'none))
     (setf (closed-definition decl)
@@ -3860,6 +3866,7 @@
 (defun change-expr-judgement-to-application-judgement (decl)
   ;; If we don't clear the hash, causes problems in ACCoRD@bands_util.gs2v3_gs_only
   (clrhash (judgement-types-hash (current-judgements)))
+  (clrhash *pseudo-normalize-hash*)
   (untypecheck-theory (declared-type decl))
   (untypecheck-theory (expr decl))
   (untypecheck-theory (decl-formals decl))
@@ -3943,25 +3950,46 @@
 	 (def (rec-judgement-definition decl recdecl))
 	 (arg-bds (typecheck* (copy-untyped (formals decl)) nil nil nil))
 	 (*bound-variables* (apply #'append arg-bds))
-	 ;; (rtype (let ((*generate-tccs* 'none))
-	 ;; 	  (typecheck* (declared-type decl) nil nil nil)))
-	 ;; (jtype (make-formals-funtype (formals decl) rtype))
+	 (rtype (let ((*generate-tccs* 'none))
+		  (typecheck* (declared-type decl) nil nil nil)))
+	 (jtype (make-formals-funtype (formals decl) rtype))
+	 (vid (make-new-variable '|v| (list expr def)))
+	 (vbd (make-bind-decl vid jtype))
+	 (vname (mk-name-expr vbd))
+	 (vterm (make!-applications vname
+				    (mapcar #'(lambda (x)
+						(mapcar #'mk-name-expr x))
+				      arg-bds)))
+	 (vbody (make!-lambda-exprs
+		 arg-bds
+		 (make!-applications op
+				     (mapcar #'(lambda (x)
+						 (mapcar #'mk-name-expr x))
+				       arg-bds))))
+	 (vdef (make!-equation vname vbody))
 	 (jdecl-arg-alist (pairlis-rec-formals (formals decl) arg-bds))
 	 (rdecl-arg-alist (pairlis-rec-formals (formals recdecl) arg-bds))
 	 (subst-type (substit (type decl) jdecl-arg-alist))
 	 (precond (make!-forall-expr (mapcan #'copy-list arg-bds)
 		    (make!-conjunction*
-		     (compatible-predicates (judgement-types+ expr)
-					    subst-type expr))))
-	 (sdef (substit def rdecl-arg-alist))
+		     (compatible-predicates (judgement-types+ vterm)
+					    subst-type vterm))))
+	 (*bound-variables* (cons vbd *bound-variables*))
+	 (rec-alist (acons recdecl vname rdecl-arg-alist))
+	 ;; Can't use substit here, as the def is also being substituted
+	 (sdef (gensubst def
+		 #'(lambda (x)
+		     (mk-name-expr (cdr (assq (declaration x) rec-alist))))
+		 #'(lambda (x) (and (name-expr? x)
+				    (assq (declaration x) rec-alist)))))
 	 (jsig (rec-judgement-signature decl (type op)))
 	 (nrange (typecheck* (copy-untyped (rec-judgement-range jsig decl))
 			     nil nil nil))
-	 (*tcc-conditions* (add-formals-to-tcc-conditions arg-bds))
+	 (*tcc-conditions* (cons vdef (cons vbd (add-formals-to-tcc-conditions arg-bds))))
 	 ;; Don't add directly to *tcc-conditions* as they may not be
 	 ;; needed, and make subsumption impossible (and really ugly TCCs)
 	 ;; See add-tcc-conditions in tcc-gen.lisp
-	 (*rec-judgement-extra-conditions* (list precond))
+	 (*rec-judgement-extra-conditions* (list precond vbd))
 	 (*compatible-pred-reason*
 	  (acons (name decl) "recursive-judgement"
 		 *compatible-pred-reason*)))

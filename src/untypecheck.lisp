@@ -634,6 +634,8 @@
     (loop while (list-expr? list-ex)
        do (progn (setf (type list-ex) nil)
 		 (setf (types list-ex) nil)
+		 (setf (type (argument list-ex)) nil)
+		 (setf (types (argument list-ex)) nil)
 		 (setf (free-variables list-ex) 'unbound)
 		 (setf (free-parameters list-ex) 'unbound)
 		 (untypecheck-theory (operator list-ex))

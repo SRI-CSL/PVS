@@ -284,6 +284,17 @@
 		(nreverse libs)
 		(nreverse (cons pvs-path-lib libs)))))))
 
+;;; Called by Emacs function pvs-add-library-path
+(defun add-library-path (dir)
+  (when (string= dir "")
+    (setq dir pvs-path-lib))
+  (unless (char= (char dir (1- (length dir))) #\/)
+    (setq dir (concatenate 'string dir "/")))
+  (cond ((file-exists-p dir)
+	 (pushnew dir *pvs-library-path* :test #'file-equal))
+	(t (pushnew dir *pvs-library-path* :test #'string=)
+	   (pvs-message "Directory ~a does not exist, added anyway" dir))))
+
 ;; Splits the PVS_LIBRARY_PATH, which is a string of paths separated by colons
 ;; Note that empty colons return empty strings, i.e.,
 ;; (split-path ":bar::foo:") ==> ("" "bar" "" "foo" "")
@@ -489,10 +500,12 @@
 	   theories)
 	  ((and *in-checker*
 		(not *tc-add-decl*))
-	   (pvs-message "Must exit the prover first"))
+	   (if (pvs-yes-or-no-p "A proof is running; quit it now?")
+	       (throw 'quit nil)
+	       (pvs-error "Must exit the prover first" nil)))
 	  ((and *in-evaluator*
 		(not *tc-add-decl*))
-	   (pvs-message "Must exit the evaluator first"))
+	   (pvs-error "Must exit the evaluator first"))
 	  ((and (null theories)
 		(not forced?)
 		(check-binfiles filename)
@@ -1360,9 +1373,9 @@
 	(update-tcc-info theory (collect-tccs theory)))
       (let ((tccs (collect-tccs theory))
 	    (*justifications-changed?* nil))
-	;; tcc-info - total proved subsumed
-	(setf (cadr (tcc-info theory)) 0)
 	(unless (every #'proved? tccs)
+	  ;; tcc-info - total proved subsumed
+	  ;;(setf (cadr (tcc-info theory)) 0)
 	  (let ((*current-context* (or (saved-context theory)
 				       (context theory)))
 		(*current-theory* theory))
@@ -1376,8 +1389,7 @@
 	(when *justifications-changed?*
 	  (save-all-proofs theory))
 	(setf (tccs-tried? theory) t)
-	;;(update-tcc-info theory tccs)
-	)))
+	(update-tcc-info theory tccs))))
 
 (defun collect-tccs (theory)
   (remove-if-not #'tcc?

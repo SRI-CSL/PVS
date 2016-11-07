@@ -107,7 +107,8 @@
 (defun new-symbol (name counter)
   (intern (gen-symbol name #\$ counter) :pvs))
 
-(defun new-sko-symbol (name context &optional counter symbols &key keep-underscore?)
+(defun new-sko-symbol (name &optional (context *current-context*)
+			      counter symbols &key keep-underscore?)
   (unless counter (newcounter *skofun-counter*))
   (let* ((symb (if keep-underscore?
 		   (concatenate 'string

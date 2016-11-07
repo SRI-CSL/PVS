@@ -331,6 +331,14 @@
 		  (:file "pvs-methods"
 			 :initially-do
 			 (pvs::write-deferred-methods-to-file))))
+   (:module macros
+     :source-pathname "src/"
+     :components ((:file "macros")
+		  (:file "prover/checker-macros")
+		  (:file "prover/decision-procedure-interface")
+		  (:file "groundeval/eval-macros")
+		  (:file "globals")
+		  (:file "optimize")))
    (:module utils
      :source-pathname "src/utils"
      :components ((:file "hashfn")
@@ -353,14 +361,8 @@
      :depends-on (classes))
    (:module basic
      :source-pathname "src/"
-     :components ((:file "macros")
-		  (:file "prover/checker-macros")
-		  (:file "prover/decision-procedure-interface")
-		  (:file "groundeval/eval-macros")
-		  (:file "globals")
-		  (:file "optimize")
-		  (:file "makes" :depends-on ("macros"))
-		  (:file "parse" :depends-on ("macros"))
+     :components ((:file "makes")
+		  (:file "parse")
 		  #-(or allegro sbcl)
 		  (:file "md5")
 		  (:file "context")

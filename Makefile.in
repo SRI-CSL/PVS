@@ -83,7 +83,8 @@ SYSTEM_FILES = README.md README.GUI INSTALL LICENSE NOTICES install-sh \
 	$(wildcard lib/finite_sets/*.pvs lib/finite_sets/*.prf) \
 	lib/finite_sets/.pvscontext lib/finite_sets/pvsbin \
 	$(wildcard lib/bitvectors/*.pvs lib/bitvectors/*.prf) \
-	lib/bitvectors/.pvscontext lib/bitvectors/pvsbin
+	lib/bitvectors/.pvscontext lib/bitvectors/pvsbin \
+	yices/$(PLATFORM) $(bindir)/yices1 $(bindir)/yices2
 
 ALLEGRO_FILES = $(bindir)/runtime/file_utils.$(LOAD-FOREIGN-EXTENSION) \
 	$(wildcard $(bindir)/runtime/libacli*.$(LOAD-FOREIGN-EXTENSION)) \
@@ -341,11 +342,6 @@ rahd = src/rahd/rahd.lisp src/rahd/polyalg.lisp \
        src/rahd/regression.lisp src/rahd/debug.lisp \
        src/rahd/prfanal.lisp src/rahd/rahd-pvs.lisp
 
-nlyices = src/nlyices/nlyices.lisp src/nlyices/polyrep-totdeglex.lisp \
-	  src/nlyices/decide3_2a.lisp src/nlyices/nlsolver.lisp \
-	  src/nlyices/named-callbacks.lisp src/nlyices/fcpo.lisp \
-          src/nlyices/vts.lisp
-
 pvs-src = src/closopt.lisp \
           src/store-object.lisp \
 	  src/defcl.lisp \
@@ -480,8 +476,7 @@ inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
 lisp-files = pvs-config.lisp $(pvs-parser-out) $(ground-prover) $(pvs-src) \
 	     $(interface) $(pvs-prover) $(bddlisp) \
 	     $(PVSiolisp) $(Maniplisp) $(Fieldlisp) $(ProofLitelisp) \
-             $(ws1slisp) $(groundevallisp) $(abstractionlisp) $(rahd) \
-	     $(nlyices)
+             $(ws1slisp) $(groundevallisp) $(abstractionlisp) $(rahd)
 
 ifneq ($(PVSPATH),)
 pvs-make-files := $(patsubst %,$(PVSPATH)%,$(pvs-make-files))
@@ -502,7 +497,6 @@ ProofLitelisp := $(patsubst %,$(PVSPATH)%,$(ProofLitelisp))
 ws1slisp := $(patsubst %,$(PVSPATH)%,$(ws1slisp))
 abstractionlisp := $(patsubst %,$(PVSPATH)%,$(abstractionlisp))
 rahd := $(patsubst %,$(PVSPATH)%,$(rahd))
-nlyices := $(patsubst %,$(PVSPATH)%,$(nlyices))
 groundevallisp := $(patsubst %,$(PVSPATH)%,$(groundevallisp))
 inst-by-unif-lisp := $(patsubst %,$(PVSPATH)%,$(inst-by-unif-lisp))
 allegrolisp := $(patsubst %,$(PVSPATH)%,$(allegrolisp))
@@ -799,13 +793,13 @@ define create-distdir
 	      find "$(DISTDIR)/$$file" -type d ! -perm -700 -exec chmod u+rwx {} \;; \
 	    fi; \
 	    if test -d $(srcdir)/$$file && test $$d != $(srcdir); then \
-	      cp -fpR $(srcdir)/$$file "$(DISTDIR)$$dir" || exit 1; \
+	      cp -fpRd $(srcdir)/$$file "$(DISTDIR)$$dir" || exit 1; \
 	      find "$(DISTDIR)/$$file" -type d ! -perm -700 -exec chmod u+rwx {} \;; \
 	    fi; \
-	    cp -fpR $$d/$$file "$(DISTDIR)$$dir" || exit 1; \
+	    cp -fpRd $$d/$$file "$(DISTDIR)$$dir" || exit 1; \
 	  else \
 	    test -f "$(DISTDIR)/$$file" \
-	    || cp -p $$d/$$file "$(DISTDIR)/$$file" \
+	    || cp -pd $$d/$$file "$(DISTDIR)/$$file" \
 	    || exit 1; \
 	  fi; \
 	done

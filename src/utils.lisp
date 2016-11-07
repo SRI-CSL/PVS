@@ -2966,23 +2966,32 @@
 
 (defmethod translate-update-to-if!* ((type recordtype) ex args exprs)
   (make-record-expr
-   (mapcar #'(lambda (fld)
-	       (multiple-value-bind (fargs fexprs)
-		   (matching-update-args-and-exprs fld args exprs)
-		 (mk-assignment 'uni
-		   (list (list (make-instance 'field-assignment-arg
-				 :id (id fld))))
-		   (if fargs
-		       (if (some #'cdr args)
-			   (translate-update-to-if!*
-			    (type fld)
-			    (make-update-field-application fld ex)
-			    (mapcar #'cdr fargs)
-			    fexprs)
-			   (car (last fexprs)))
-		       (make-update-field-application fld ex)))))
-     (fields type))
+   (translate-update-to-if-fields (fields type) (dependent? type) ex args exprs)
    type))
+
+(defun translate-update-to-if-fields (fields dep? ex args exprs &optional rassns)
+  (if (null fields)
+      (nreverse rassns)
+      (let* ((rassn (translate-update-to-if-field (car fields) ex args exprs))
+	     (alist (when dep? (acons (car fields) (expression rassn) nil)))
+	     (cdr-fields (substit (cdr fields) alist)))
+	(translate-update-to-if-fields cdr-fields dep? ex args exprs
+				       (cons rassn rassns)))))
+
+(defun translate-update-to-if-field (fld ex args exprs)
+  (multiple-value-bind (fargs fexprs)
+      (matching-update-args-and-exprs fld args exprs)
+    (mk-assignment 'uni
+      (list (list (make-instance 'field-assignment-arg :id (id fld))))
+      (if fargs
+	  (if (some #'cdr args)
+	      (translate-update-to-if!*
+	       (type fld)
+	       (make-update-field-application fld ex)
+	       (mapcar #'cdr fargs)
+	       fexprs)
+	      (car (last fexprs)))
+	  (make-update-field-application fld ex)))))
 
 (defmethod make-update-field-application (fld (ex if-expr))
   (let ((then (make-update-field-application fld (then-part ex)))

@@ -441,7 +441,36 @@
   ;;(clrhash *dc-translate-id-hash*)
   ;;(clrhash *prtype-hash*)
   ;;(clrhash *local-prtype-hash*)
-  (clrhash *term-print-strings*)) 
+  (clrhash *term-print-strings*))
+
+(defun script-structure-changed? (prinfo script)
+  ;; Script of prinfo may have been installed, and not reflect
+  ;; proof structure.  E.g., prinfo has 
+  ;; ("" step1 step2 step3)
+  ;; While script is
+  ;; ("" step1 (("1" step2) ("2" step3)))
+  ;; Interactively, these are the same, but rerun treats them differently
+  (let ((scr-old (editable-justification (script prinfo)))
+	(scr-new (editable-justification script)))
+    ;; Easier to compare the editable justification, e.g.,
+    ;; As is in the Emacs Proof buffer.
+    (unless (equal scr-old scr-new)
+      (script-structure-changed?* scr-old scr-new))))
+
+(defun script-structure-changed?* (scr-old scr-new)
+  ;; A simple test - if the old one has no branching, but the new one does
+  ;; Then return t
+  ;; This may be made more elaborate later
+  (assert (equalp (car scr-old) ""))
+  (assert (equalp (car scr-new) ""))
+  (and (every #'(lambda (step)
+		  (and (listp step)
+		       (not (listp (car step)))))
+	      (cdr scr-old))
+       (not (every #'(lambda (step)
+		       (and (listp step)
+			    (not (listp (car step)))))
+		   (cdr scr-new)))))
 
 (defun save-proof-info (decl init-real-time init-run-time)
   (let ((prinfo (default-proof decl))
@@ -450,7 +479,10 @@
     (cond ((or (null (script prinfo))
 	       (equal (script prinfo) '("" (postpone) nil nil))
 	       (and (tcc-decl? decl)
-		    (equal (script prinfo) (tcc-strategy decl))))
+		    (equal (script prinfo) (tcc-strategy decl)))
+	       (and (eq (status prinfo) 'proved)
+		    (eq (status-flag *top-proofstate*) '!)
+		    (script-structure-changed? prinfo script)))
 	   (setf (script prinfo) script))
 	  ((and (not *proving-tcc*)
 		(not *noninteractive*)

@@ -38,7 +38,7 @@
 (defvar *y2name-hash* (make-pvs-hash-table))
 (defvar *translate-to-yices2-hash* (make-pvs-hash-table))
 (defvar *yices2-executable* nil)
-(defvar *yices2-flags* "")
+(defvar *yices2-flags* "--mode=one-shot")
 (defvar *yices2-id-counter*)  ;;needs to be initialized in eproofcheck
 (defvar *yices2-conditions* nil)
 (defvar *yices2-subtype-constraints* nil)
@@ -802,37 +802,42 @@
 	  (with-open-file (stream  file :direction :output
 				   :if-exists :supersede)
 	    (format stream "~{~a ~%~}" revdefns)
-	    (unless nonlinear? (format stream "~{~a ~%~}" *yices2-subtype-constraints*))
+	    (unless nil ;;nonlinear?
+	      (format stream "~{~a ~%~}" *yices2-subtype-constraints*))
 	    (format stream "~{~a ~%~}" yices-forms)
 	    (format stream "(check)~%")
 	    ;(unless nonlinear? (format stream "(status)"))
 	    )
 	  (let ((status nil)
-		(tmp-file (pvs-tmp-file)))
+		(tmp-file (pvs-tmp-file))
+		(*yices2-flags*
+		 (if nonlinear?
+		     (concatenate 'string
+		       *yices2-flags* " --logic=QF_UFNIRA")
+		     *yices2-flags*)))
 	    (with-open-file (out tmp-file
 				 :direction :output :if-exists :supersede)
-	      (cond (nonlinear? (format out (check-with-yices (namestring file) t)) (setq status 0))
-		    (t (setq status
-			     #+allegro
-			     (excl:run-shell-command
-			      (format nil "~a ~a ~a" *yices2-executable* *yices2-flags* (namestring file))
-			      :input "//dev//null"
-			      :output out
-			      :error-output :output)
-			     #+sbcl
-			     (sb-ext:run-program
-			      (format nil "~a ~a ~a" *yices2-executable* *yices2-flags* (namestring file))
-			      nil
-			      :input "//dev//null"
-			      :output out
-			      :error out)
-			     #+cmu
-			     (extensions:run-program
-			      (format nil "~a ~a ~a" *yices2-executable* *yices2-flags* (namestring file))
-			      nil
-			      :input "//dev//null"
-			      :output out
-			      :error out)))))
+	      (setq status
+		    #+allegro
+		    (excl:run-shell-command
+		     (format nil "~a ~a ~a" *yices2-executable* *yices2-flags* (namestring file))
+		     :input "//dev//null"
+		     :output out
+		     :error-output :output)
+		    #+sbcl
+		    (sb-ext:run-program
+			(format nil "~a ~a ~a" *yices2-executable* *yices2-flags* (namestring file))
+		      nil
+		      :input "//dev//null"
+		      :output out
+		      :error out)
+		    #+cmu
+		    (extensions:run-program
+			(format nil "~a ~a ~a" *yices2-executable* *yices2-flags* (namestring file))
+		      nil
+		      :input "//dev//null"
+		      :output out
+		      :error out)))
 	    (when *y2datatype-warning*
 	      (format t "~70,,,'*A" "")
 	      (format t "~%Warning: The Yices datatype theory is not currently trustworthy.
@@ -840,7 +845,7 @@ Please check your results with a proof that does not rely on Yices. ~%")
 	      (format t "~70,,,'*A" ""))
 	    (cond ((zerop status)
 		   (let ((result (file-contents tmp-file)))
-;;		     (break "yices result")
+		     ;;(break "yices result")
 		     (delete-file tmp-file)
 		     (delete-file file)
 		     (format-if "~%Result = ~a" result)

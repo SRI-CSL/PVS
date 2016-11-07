@@ -74,7 +74,9 @@
     (if *added-recursive-def-conversion*
 	(let ((*added-recursive-def-conversion* nil))
 	  (check-for-tccs ex (if (application? ex) (type ex) expected)))
-	(check-for-subtype-tcc ex expected))))
+	(check-for-subtype-tcc ex expected)))
+  (set-ghost-type ex expected)
+  )
 
 (defmethod check-for-tccs* ((ex name-expr) expected)
   (declare (ignore expected))

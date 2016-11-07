@@ -74,6 +74,11 @@
 	       (resolution name)
 	       (member (resolution name) res :test #'tc-eq))
       (setf res (copy-list (resolutions name))))
+    (when (and (type-name? name)
+	       (ghost? name))
+      (dolist (r res)
+	(unless (ghost? (type r))
+	  (setf (type r) (copy (type r) :ghost? t)))))
     (when (and (null res)
 	       args
 	       (eq k 'expr))

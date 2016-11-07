@@ -303,7 +303,7 @@
 	act
 	(mk-actual ty))))
 
-(defmethod initial-subst-mod-params-mappings ((theory module))
+(defmethod initial-subst-mod-params-mappings ((theory datatype-or-module))
   nil)
 
 
@@ -686,15 +686,20 @@
 
 (defmethod subst-mod-params-print-type ((obj type-expr) (nobj type-expr) modinst bindings)
   (assert (typep (print-type obj) '(or null type-name expr-as-type type-application)))
-  (if (and (print-type obj)
-	   (or (null (print-type nobj))
-	       (free-params (print-type nobj)))
-	   (free-params (print-type obj)))
-      (let* ((stype (subst-mod-params* (print-type obj) modinst bindings))
-	     (pte (or (print-type stype) stype)))
-	(if (tc-eq pte nobj)
-	    nobj
-	    (lcopy nobj :print-type pte)))
+  (if (print-type obj)
+      (if (or (mappings modinst)
+	      (free-params (print-type obj)))
+      	  (let* ((stype (subst-mod-params* (print-type obj) modinst bindings))
+      		 (pte (or (print-type stype) stype)))
+      	    (if (tc-eq pte nobj)
+      		nobj
+      		(if (eq obj nobj)
+      		    (lcopy nobj :print-type pte)
+      		    (progn (setf (print-type nobj) pte)
+      			   nobj))))
+      	  (if (eq obj nobj)
+      	      nobj
+      	      (lcopy nobj :print-type nil)))
       nobj))
 
 (defmethod subst-mod-params-print-type (obj nobj modinst bindings)
@@ -870,6 +875,20 @@
     :generated (subst-mod-params* (generated adt) modinst bindings)
     :generated-by adt))
 
+(defmethod subst-mod-params* ((adt recursive-type) modinst bindings)
+  (let ((cadt
+	 (copy adt
+	   :constructors (subst-mod-params* (constructors adt) modinst bindings)
+	   :adt-type-name (subst-mod-params* (adt-type-name adt) modinst bindings)
+	   ;; set :generated later
+	   :generated-by nil
+	   :place nil
+	   :formals nil
+	   :formals-sans-usings nil
+	   )))
+    (break)
+    (change-class cadt (inlined-version adt))))
+
 (defmethod subst-mod-params* ((c simple-constructor) modinst bindings)
   (lcopy c
     :recognizer (subst-mod-params* (recognizer c) modinst bindings)
@@ -877,7 +896,19 @@
     :con-decl (subst-mod-params* (con-decl c) modinst bindings)
     :rec-decl (subst-mod-params* (rec-decl c) modinst bindings)
     :acc-decls (subst-mod-params* (acc-decls c) modinst bindings)))
-    
+
+(defmethod subst-mod-params* ((decl adtdecl) modinst bindings)
+  (let* ((nbd (subst-mod-params* (bind-decl decl) modinst bindings))
+	 (alist (unless (eq nbd (bind-decl decl)) (acons (bind-decl decl) nbd nil))))
+    (copy decl
+      :module (current-theory)
+      :generated-by decl
+      :declared-type (subst-mod-params* (declared-type decl) modinst bindings)
+      :type (subst-mod-params* (type decl) modinst bindings)
+      :bind-decl nbd
+      :accessor-decl (substit (subst-mod-params* (accessor-decl decl) modinst bindings)
+		       alist))))
+
 
 (defmethod subst-mod-params* ((decl declaration) modinst bindings)
   (declare (ignore modinst bindings))

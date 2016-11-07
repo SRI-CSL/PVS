@@ -227,12 +227,14 @@
 	 (dacts (dactuals (module-instance res))))
     (or (if (and (or acts dacts)
 		 (eq (module (declaration res)) *formals-theory*))
-	    (let ((formals (formals-sans-usings (module (declaration res))))
-		  (dformals (decl-formals (declaration res))))
-	      (tc-match-actuals acts formals 
-				(or (tc-match-actuals dacts dformals nbindings)
-				    nbindings)))
-	    (tc-match* ptype farg nbindings))
+	    (let* ((formals (formals-sans-usings (module (declaration res))))
+		   (dformals (decl-formals (declaration res)))
+		   (dbdgs (when dformals
+			    (tc-match-actuals dacts dformals nbindings))))
+	      (tc-match-actuals acts formals (or dbdgs nbindings)))
+	    (if (every #'cdr nbindings)
+		nbindings
+		(tc-match* ptype farg nbindings)))
 	nbindings)))
 
 (defmethod tc-match-print-type ((ptype type-application) farg nbindings)
