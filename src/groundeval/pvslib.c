@@ -90,6 +90,14 @@ uint32_t uint32_hash(uint32_t x){
   return y;
 }
 
+void mpz_add_si(mpz_t x, mpz_t y, int64_t i){
+  if (i < 0) {
+      mpz_add_ui(x, y, -i);
+    } else {
+    mpz_sub_ui(x, y, -i);
+  }
+}
+
 uint32_t div_uint32_uint32(uint32_t x, uint32_t y){
   return x/y;
 }

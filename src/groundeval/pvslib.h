@@ -50,6 +50,7 @@ extern double get_cpu_time(void);
 extern uint32_t mpz_hash(mpz_t x);
 extern uint32_t uint64_hash(uint64_t x);
 extern uint32_t uint32_hash(uint32_t x);
+extern void mpz_add_si(mpz_t x, mpz_t y, int64_t i);
 extern uint32_t div_uint32_uint32(uint32_t x, uint32_t y);
 extern int32_t div_int32_uint32(int32_t x, uint32_t y);
 extern uint64_t div_uint64_uint64(int64_t x, uint64_t y);

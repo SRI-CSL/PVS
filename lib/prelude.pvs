@@ -3776,6 +3776,7 @@ modulo_arithmetic : THEORY
  BEGIN
   x, y, z, t, q, i : VAR int
   n0x : VAR nzint
+  nx: VAR nat
   px, py, b: VAR posnat
   n: VAR nat
 
@@ -3783,7 +3784,11 @@ modulo_arithmetic : THEORY
   %  Remainder of x/b
   %---------------------
 
-  rem(b)(x): {r: mod(b) | EXISTS q: x = b * q + r}
+%  qdiv(nx, b): {q : nat | nx >= b * q AND nx - b*q < b}
+
+  nrem(x, b):  {r: mod(b) |  EXISTS q: x = b * q + r}
+   
+  rem(b)(x): {r: mod(b) | EXISTS q: x = b * q + r} = nrem(x, b)
 
   rem_def: LEMMA
      FORALL (r : mod(b)): rem(b)(x) = r IFF EXISTS q: x = b * q + r
@@ -3878,7 +3883,7 @@ modulo_arithmetic : THEORY
      rem(b)(- x) = rem(b)(- y) IFF rem(b)(x) = rem(b)(y)
 
   % Provide a name for the function asserted to exist by euclid_int
-  ndiv(x,b) : {q: int | x = b * q + rem(b)(x)}
+  ndiv(x,b) : {q: int | x = b * q + nrem(x, b)}
 
   ndiv_lt: LEMMA ndiv(x,b) <= x/b
 
