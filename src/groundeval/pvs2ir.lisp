@@ -804,18 +804,22 @@
       (mk-ir-let vartype expr body)
     (if (and (ir-funtype? expr-type)
 	     (ir-funtype? (ir-vtype vartype)))
-	(let* ((nu-vars (new-irvartypes (ir-tuple-args (ir-domain ir-vtype))))
-	       (expr-var (new-irvartype expr-type))
+	;;The range types might not match, e.g., expr returns mpz_t but range(vartype) is uint8_t
+	;;we use eta-expansion on expr to get
+	;;(let ev expr (let vt (let earg nuv (lambda nuv->range (ev earg)))))
+	(let* ((expr-var (new-irvartype expr-type))
 	       (expr-range-type (ir-range expr-type))
 	       (apply-var (new-irvartype expr-range-type))
+	       (expr-arg-vars (new-irvartypes (ir-tuple-args (ir-domain expr-type))))
+	       (nu-vars (new-irvartypes (ir-tuple-args (ir-domain ir-vtype))))
 	       (range-type (ir-range ir-vtype))
 	       (return-var (new-irvartype range-type)))
-	  (break "make-ir-lett")
 	  (mk-ir-let expr-var expr 
 		     (mk-ir-let vartype (mk-ir-lambda nu-vars range-type;;coerce to range type
 						      (make-ir-lett apply-var expr-range-type
-								    (mk-ir-apply expr-var  nu-vars nil
-										 expr-range-type)
+								    (mk-ir-let* expr-arg-vars nu-vars
+										(mk-ir-apply expr-var  expr-arg-vars nil
+										 expr-range-type))
 								    (make-ir-lett return-var range-type
 										  apply-var
 										  return-var)))
@@ -2226,7 +2230,7 @@
 	    (format nil "mpq_set_ui(~a, ~a, 1)" lhs rhs))
 	   ((int8 int16 int32 int64 int128)
 	    (format nil "mpz_set_si(~a, ~a, 1)" lhs rhs))))
-    ((uint8 uint16 uint32 uint64 uint128) (format t "~%c-assign(uint): rhs-type = ~a" rhs-type)
+    ((uint8 uint16 uint32 uint64 uint128) 
      (case rhs-type
        (mpz (format nil "~a = (~a_t)mpz_get_ui(~a)" lhs lhs-type rhs))
        (t (format nil "~a = (~a_t)~a" lhs lhs-type rhs))))
@@ -3648,8 +3652,6 @@
 			      ))))
 	       (closure-mptr-definition (mk-c-defn-info closure-mptr-name closure-mptr-header
 							closure-mptr-defn))
-	       (closure-function-definition
-		(make-c-closure-defn-info ir-lambda-expr closure-hptr-name))
 	       (fptr-cast (case c-rangetype
 				 ((mpq mpz)
 				  (format nil "void (*)(~a_t, ~a_t, ~a_t)" c-funtype c-rangetype c-domaintype))
@@ -3662,10 +3664,16 @@
 	       (cptr-cast (format nil "~a_t (*)(~a_t)" c-funtype c-funtype))
 	       (copy-info (make-closure-copy-info closure-name-root c-funtype ir-freevars))
 	       (new-info (make-closure-new-info closure-name-root ftbl-type-name fptr-cast mptr-cast rptr-cast cptr-cast ir-freevars));can reuse record-new-info
-	       (release-info (make-closure-release-info c-funtype closure-name-root ir-fvar-types ir-fvar-ctypes)))
-	  (push (mk-c-closure-info ir-lambda-expr closure-name-root closure-type-decl closure-type-defn closure-fptr-definition closure-mptr-definition closure-function-definition new-info release-info copy-info)
+	       (release-info (make-closure-release-info c-funtype closure-name-root ir-fvar-types ir-fvar-ctypes))
+	       (closure-defn-info
+		(mk-c-closure-info ir-lambda-expr closure-name-root closure-type-decl closure-type-defn closure-fptr-definition closure-mptr-definition nil new-info release-info copy-info)))
+	  (push closure-defn-info
 		*c-type-info-table*)
-	  closure-name-root))))
+	  (let ((closure-function-definition
+		 (make-c-closure-defn-info ir-lambda-expr closure-hptr-name))
+		)
+	    (setf (hdefn closure-defn-info) closure-function-definition)
+	    closure-name-root)))))
 
 (defun make-closure-copy-info (type-name-root c-funtype ir-freevars)
   (let* ((new-name (intern (format nil "copy_~a" type-name-root)))
