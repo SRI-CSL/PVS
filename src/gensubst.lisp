@@ -1103,10 +1103,16 @@
 (defmethod copy-untyped* ((ex fieldappl))
   (with-slots (id actuals argument) ex
     (copy ex
-      'id id
       'type nil
       'actuals (copy-untyped* actuals)
       'argument (copy-untyped* argument))))
+
+(defmethod copy-untyped* ((ex fieldex))
+  (with-slots (id actuals dactuals) ex
+    (copy ex
+      'type nil
+      'actuals (copy-untyped* actuals)
+      'dactuals (copy-untyped* dactuals))))
 
 (defmethod copy-untyped* ((ex application))
   (with-slots (operator argument) ex
