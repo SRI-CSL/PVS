@@ -1158,14 +1158,14 @@
 (defmethod simplify-nested-updates ((expr update-expr) outer-assignments
 				    update-expr)
   (declare (ignore update-expr))
-  (with-slots (expression assignments) expr
+  (with-slots (expression assignments) expr 
     (let* ((new-expr-assigns
 	    (loop for assign in assignments
 		  collect (make-updated-assign assign outer-assignments)))
 	   (new-outer-assigns
 	    (collect-new-outer-assigns assignments outer-assignments))
 	   (new-merged-assignments
-	    (nconc new-expr-assigns new-outer-assigns)))
+	    (merge-inner-outer-assigns new-expr-assigns new-outer-assigns)))
       (lcopy expr
 	'assignments new-merged-assignments))))
 
@@ -1205,7 +1205,17 @@
 		   assign-expr
 		   tc-naccum-assignments
 		   (make!-update-expr assign-expr tc-naccum-assignments)))))
-	  assign-expr)))
+	assign-expr)))
+
+(defun merge-inner-outer-assigns (assignments outer-assignments)
+  (if (consp assignments)
+      (if (member (arguments (car assignments))
+		  outer-assignments
+		  :test #'(lambda (x y) (match-update-args-prefix? y x))
+		  :key #'arguments)
+	  (merge-inner-outer-assigns (cdr assignments) outer-assignments)
+	(cons (car assignments) (merge-inner-outer-assigns (cdr assignments) outer-assignments)))
+    outer-assignments))
 
 (defun collect-new-outer-assigns (assignments outer-assignments)
   (when (consp outer-assignments)
