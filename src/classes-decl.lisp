@@ -381,7 +381,8 @@
 ;;;  t: TYPE+ FROM x --> nonempty-type-from-decl
 
 (defcl type-decl (declaration)
-  (type-value :store-as ignore-self-reference-type-values))
+  (type-value :store-as ignore-self-reference-type-values)
+  ir-type-value)
 
 (#-sbcl progn #+sbcl sb-ext:without-package-locks
 (defcl nonempty-type-decl (type-decl)
@@ -397,6 +398,8 @@
 (defcl nonempty-type-def-decl (type-def-decl nonempty-type-decl))
 
 (defcl type-eq-decl (type-def-decl))
+
+(defcl mapped-type-decl (type-eq-decl))
 
 (defcl nonempty-type-eq-decl (type-eq-decl nonempty-type-def-decl))
 
@@ -496,12 +499,14 @@
 
 (defcl lib-eq-decl (lib-decl))
 
-(defcl mod-decl (declaration importing-entity)
+(defcl theory-reference (declaration importing-entity))
+
+(defcl mod-decl (theory-reference)
   (modname :parse t)
   theory-mappings
   other-mappings)
 
-(defcl theory-abbreviation-decl (declaration importing-entity)
+(defcl theory-abbreviation-decl (theory-reference)
   (theory-name :parse t))
 
 (defcl var-decl (typed-declaration))
@@ -518,6 +523,11 @@
   (eval-info :fetch-as nil))
 
 (defcl macro-decl (const-decl))
+
+;;; mapped-decls are created for mappings, e.g.,
+;;; importing th {{c := 1}} creates a mapped-decl that is added to the context
+;;; Always has a definition
+(defcl mapped-const-decl (macro-decl))
 
 (defcl adt-constructor-decl (const-decl)
   (ordnum :restore-as nil))
@@ -927,8 +937,16 @@
   output-vars) ;;These are the input vars that structure share with output.
 
 (defcl eval-info ()
+  ir
+  cdefn
+  c-type-info-table
   internal  ;both are eval-defn-info 
   external)
+
+(defcl eval-type-info ()
+  ir-type-name
+  c-type-info
+  c-type-info-table)
 
 (defcl destructive-eval-defn (eval-defn)
   side-effects) ;;alist of updated variables/live vars when updated.

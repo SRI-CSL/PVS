@@ -369,22 +369,6 @@
       (loop for irt in ir-types collect (new-irvartype irt))
     (list (new-irvartype ir-types))))
 
-	
-
-;;this revises the definition in classes-decl.lisp and should replace it. 
-(defcl eval-info ()
-  ir
-  cdefn
-  c-type-info-table
-  internal  ;both are eval-defn-info 
-  external)
-
-(defcl eval-type-info ()
-  ir-type-name
-  c-type-info
-  c-type-info-table)
-
-
 (defun mk-eval-type-info (name)
   (make-instance 'eval-type-info
 		 :ir-type-name name))
@@ -396,10 +380,6 @@
 (defcl accessor-eval-info (eval-info)
   update-cdefn)
 
-(defcl type-decl (declaration)
-  (type-value :store-as ignore-self-reference-type-values)
-  (ir-type-value))
-
 (defcl ir-defn ()
   ir-function-name
   ir-defn)
@@ -409,6 +389,9 @@
 
 (defcl ir-accessor-defn (ir-defn)
   ir-update-defn) ;this slot is itself an ir-defn
+
+(defcl ir-last (ir-expr)
+  ir-var)
 
 (defun mk-ir-variable (ir-name ir-type)
   ;(when (not ir-type) (break "mk-ir-variable"))
@@ -1950,9 +1933,6 @@
   nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defcl ir-last (ir-expr)
-  ir-var)
 
 (defun mk-ir-last (ir-var)
   (make-instance 'ir-last
@@ -4769,9 +4749,3 @@
 	    do (pvs2c-decl decl))
       (print-header-file theory)
       (print-body-file theory))))
-
-    
-		
-		    
-
-	  

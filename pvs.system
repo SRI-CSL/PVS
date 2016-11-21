@@ -318,19 +318,7 @@
 			 :depends-on ("defcl"))
 		  (:file "groundeval/pvs2c-utils" ; has macros
 			 :depends-on ("defcl"))
-		  ;; These should be moved at some point
-		  (:file "groundeval/pvs2c-types"
-			 :depends-on ("defcl"))
-		  (:file "groundeval/pvs2c-code"
-			 :depends-on ("defcl"))
-		  (:file "groundeval/pvs2c-analysis"
-			 :depends-on ("defcl"))
-		  (:file "groundeval/pvs2ir"
-			 :depends-on ("defcl"))
-		  ;; Above should be moved
-		  (:file "pvs-methods"
-			 :initially-do
-			 (pvs::write-deferred-methods-to-file))))
+		  (:file "makes")))
    (:module macros
      :source-pathname "src/"
      :components ((:file "macros")
@@ -339,6 +327,17 @@
 		  (:file "groundeval/eval-macros")
 		  (:file "globals")
 		  (:file "optimize")))
+   (:module pvs2c
+     :source-pathname "src/"
+     :components((:file "groundeval/pvs2c-types")
+		 (:file "groundeval/pvs2c-code")
+		 (:file "groundeval/pvs2c-analysis")
+		 (:file "groundeval/pvs2ir")))
+   (:module pvs-methods
+     :source-pathname "src/"
+     :components((:file "pvs-methods"
+			:initially-do
+			(pvs::write-deferred-methods-to-file))))
    (:module utils
      :source-pathname "src/utils"
      :components ((:file "hashfn")
@@ -361,7 +360,7 @@
      :depends-on (classes))
    (:module basic
      :source-pathname "src/"
-     :components ((:file "makes")
+     :components (;;(:file "makes")
 		  (:file "parse")
 		  #-(or allegro sbcl)
 		  (:file "md5")
