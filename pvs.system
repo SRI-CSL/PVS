@@ -317,8 +317,7 @@
 		  (:file "prover/estructures"
 			 :depends-on ("defcl"))
 		  (:file "groundeval/pvs2c-utils" ; has macros
-			 :depends-on ("defcl"))
-		  (:file "makes")))
+			 :depends-on ("defcl"))))
    (:module macros
      :source-pathname "src/"
      :components ((:file "macros")
@@ -326,7 +325,8 @@
 		  (:file "prover/decision-procedure-interface")
 		  (:file "groundeval/eval-macros")
 		  (:file "globals")
-		  (:file "optimize")))
+		  (:file "optimize")
+		  (:file "makes")))
    (:module pvs2c
      :source-pathname "src/"
      :components((:file "groundeval/pvs2c-types")
