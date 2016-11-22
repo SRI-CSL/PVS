@@ -383,6 +383,7 @@
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (definition decl))
   (setf (kind decl) nil)
+  (setf (proof-refers-to decl) nil)
   (setf (closed-definition decl) nil)
   (setf (default-proof decl) nil)
   (setf (proofs decl) nil))
