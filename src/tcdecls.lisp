@@ -86,7 +86,7 @@
 	(if (mod-decl? decl)
 	    (dolist (d (generated decl))
 	      (if (importing? d)
-		  (typecheck-using* (get-theory (theory-name d)) (theory-name d))
+		  (typecheck-importing* (get-theory (theory-name d)) (theory-name d))
 		  (let ((dhash (current-declarations-hash)))
 		    (dolist (id (id-suffixes (id d)))
 		      (pushnew d (get-lhash id dhash) :test #'eq)))))
@@ -396,7 +396,7 @@
 ;;       (let ((mappings (determine-implicit-mappings
 ;; 		       theory theory-name tgt-name tgt-theory)))
 ;; 	(when tgt-theory
-;; 	  (typecheck-using (target theory-name)))
+;; 	  (typecheck-importing (target theory-name)))
 ;; 	(typecheck-named-theory* theory
 ;; 				 (lcopy theory-name
 ;; 				   :mappings mappings
@@ -638,7 +638,7 @@
 			  theory thname tgt-name tgt-theory))
 	       (full-thname (lcopy thname :mappings mappings :target nil)))
 	  (when tgt-theory
-	    (typecheck-using tgt-name))
+	    (typecheck-importing tgt-name))
 	  (set-type-actuals-and-maps full-thname theory)
 	  ;; (when (mappings full-thname)
 	  ;;   (unless (fully-instantiated? full-thname)
@@ -717,7 +717,7 @@
 ;; 	    theory-name)))))
 
 (defmethod typecheck-inlined-theory* ((theory module) theory-name decl)
-  (let ((*typecheck-using* theory-name)) ;; Provide information to tcc-gen
+  (let ((*typecheck-importing* theory-name)) ;; Provide information to tcc-gen
     (when (some #'(lambda (m) (mod-decl? (declaration (lhs m))))
 		(mappings theory-name))
       (add-theory-mappings-importings theory theory-name))
@@ -1167,7 +1167,7 @@
 		    (nconc (ldiff theory-part rest) (cons decl rest)))))))
 
 (defmethod make-inlined-theory-decl ((imp importing))
-  (typecheck-using* (get-theory (theory-name imp)) (theory-name imp)))
+  (typecheck-importing* (get-theory (theory-name imp)) (theory-name imp)))
 
 (defmethod make-inlined-theory-decl ((decl declaration))
   (setf (current-declaration) decl)
@@ -1205,7 +1205,7 @@
 	     (mod (get-theory modinst)))
 	(add-exporting-with-theories mod modinst)
 	(add-to-using modinst))
-      (typecheck-using (theory-name decl)))
+      (typecheck-importing (theory-name decl)))
   (assert (resolution (theory-name decl)))
   (put-decl decl)
   (setf (saved-context decl) (copy-context *current-context*))
@@ -1673,6 +1673,14 @@
 				 (not (occurs-positively?
 				       (type afp) (car actuals))))))
 	   afps)))))
+
+(defun positive-type-in-decl? (fml decl)
+  (member fml (positive-types decl)
+	  :test #'positive-type?))
+
+(defun positive-type? (fml postype)
+  (and (formal-type-decl? fml)
+       (tc-eq (type-value fml) postype)))
 
 (defun add-formals-to-tcc-conditions (formals &optional (conditions *tcc-conditions*))
   (if (null formals)
@@ -3835,14 +3843,14 @@
 	      (assert (listp (expression uform)))
 	      (set-type (car (expression uform)) (cadr (expression uform))))
 	    (set-type (car uform) (cadr uform)))
-	(setf (closed-form decl) uform)))
-  (cond ((and (expr-judgement? decl)
-	      (expr-judgement-useless? (closed-form decl)))
-	 (useless-judgement-warning decl))
-	(t (when (formals-sans-usings (current-theory))
-	     (generic-judgement-warning decl))
-	   ;;(break "Before add-judgement-decl after change: ~a" (id decl))
-	   (add-judgement-decl decl))))
+	(setf (closed-form decl) uform)
+	(cond ((and (expr-judgement? decl)
+		    (expr-judgement-useless? (closed-form decl)))
+	       (useless-judgement-warning decl))
+	      (t (when (formals-sans-usings (current-theory))
+		   (generic-judgement-warning decl))
+		 ;;(break "Before add-judgement-decl after change: ~a" (id decl))
+		 (add-judgement-decl decl))))))
 
 (defun expr-judgement-useless? (form)
   (if (forall-expr? form)
