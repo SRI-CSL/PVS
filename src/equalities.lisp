@@ -465,7 +465,8 @@
 	(with-slots ((id2 id) (arg2 argument) (ty2 type)) e2
 	  (and (eq id1 id2)
 	       (tc-eq* arg1 arg2 bindings)
-	       (tc-eq* ty1 ty2 bindings))))))
+	       (or *in-checker*
+		   (tc-eq* ty1 ty2 bindings)))))))
 
 
 (defmethod tc-eq* ((e1 rational-expr) (e2 rational-expr) bindings)
