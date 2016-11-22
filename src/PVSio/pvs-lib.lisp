@@ -46,7 +46,7 @@
 	do (libload-attachments dir "pvs-attachments" force verbose)))
 
 (defun load-pvs-attachments (&optional force (verbose t))
-  (format t "Loading semantic attachments~%")
+  (pvs-message "Loading semantic attachments~%")
   (when force (initialize-prelude-attachments))
   (load-imported-attachments *prelude-libraries* force verbose)
   (load-imported-attachments *imported-libraries* force verbose)
