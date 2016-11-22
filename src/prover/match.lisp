@@ -672,7 +672,8 @@
       'fail))
 
 (defmethod match-ops ((op1 expr) (op2 expr) bind-alist subst)
-  (if (and (name-expr? op1) (name-expr? op2)
+  (if (and (or (not (consp *modsubst*)) (every #'cdr *modsubst*))
+	   (name-expr? op1) (name-expr? op2)
 	   (memq (id op1) *pvs-equality-operators*)
 	   (or (eq (id op1) (id op2))
 	       (and (memq (id op1) '(/= ≠)) (memq (id op2) '(/= ≠)))))
