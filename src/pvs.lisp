@@ -705,7 +705,7 @@
 				    *current-context*))
 	     (*current-theory* (theory *current-context*)))
 	(multiple-value-bind (imp-theories imp-names)
-	    (all-importings* theory lib)
+	    (all-importings* theory)
 ;; 	  (assert (every #'(lambda (th) (listp (all-imported-theories th)))
 ;; 			 imp-theories))
 	  #+pvsdebug
@@ -763,8 +763,7 @@
 			    (cons (car iths1) iths2)
 			    (cons (car inms1) inms2)))))
 
-(defun all-importings* (theory &optional lib)
-  (declare (ignore lib))
+(defun all-importings* (theory)
   (let* ((imp-theories nil)
 	 (imp-names nil)
 	 (imm-imps (get-immediate-usings theory))
