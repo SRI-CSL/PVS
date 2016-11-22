@@ -556,7 +556,8 @@
 	      (compatible-arguments? decl dthi args (current-theory)))))
 	(let* ((cinsts (decl-args-compatible? decl args mappings))
 	       (modinsts (mapcar #'(lambda (thinst)
-				     (if (actuals thinst)
+				     (if (or (actuals thinst)
+					     (same-id (current-theory) thinst))
 					 thinst
 					 (copy thinst :actuals acts)))
 			   cinsts))
