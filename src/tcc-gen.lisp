@@ -500,10 +500,10 @@
 		     (unpindent type 19 :string t :comment? t)))
 		  (termination nil)
 		  (well-founded (format nil "for ~a" (id decl))))))
-    (when (and *typecheck-using*
+    (when (and *typecheck-importing*
 	       (typep (current-declaration) 'importing))
       (setf (importing-instance ndecl)
-	    (list *typecheck-using* *set-type-formal*)))
+	    (list *typecheck-importing* *set-type-formal*)))
     (push (definition ndecl) *tccs*)
     (push ndecl *tccdecls*)
     (when *typechecking-module*
@@ -1204,7 +1204,9 @@
     (make!-forall-expr dbindings eqn)))
 
 (defun generate-mapped-axiom-tccs (modinst)
-  (let ((mod (get-theory modinst)))
+  (let ((mod (if (resolution modinst)
+		 (declaration modinst)
+		 (get-theory modinst))))
     (unless (and (not *collecting-tccs*)
 		 (eq mod (current-theory)))
       (let ((prev (find modinst (assuming-instances (current-theory))
@@ -1254,8 +1256,14 @@
 			     'mapped-axiom nil modinst))))))))))))
 
 (defmethod collect-mapping-axioms (thinst theory)
+  (assert theory)
   (append (collect-mapping-axioms* (mappings thinst))
 	  (remove-if-not #'axiom? (all-decls theory))))
+
+(defmethod collect-mapping-axioms (thinst (decl theory-reference))
+  (assert (fully-instantiated? thinst))
+  (let ((thname (theory-name decl)))
+    (break)))
 
 (defmethod collect-mapping-axioms* ((list list))
   (mapcan #'collect-mapping-axioms* list))
