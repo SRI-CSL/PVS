@@ -148,12 +148,12 @@
 (defmethod judgement-lt ((d1 number-judgement) (d2 number-judgement))
   (and (not (eq d1 d2))
        (not (tc-eq (type d1) (type d2)))
-       (simple-subtype-of? (type d1) (type d2))))
+       (subtype-of? (type d1) (type d2))))
 
 (defmethod judgement-lt ((d1 name-judgement) (d2 name-judgement))
   (and (not (eq d1 d2))
        (not (tc-eq (type d1) (type d2)))
-       (simple-subtype-of? (type d1) (type d2))))
+       (subtype-of? (type d1) (type d2))))
 
 (defmethod judgement-lt ((d1 application-judgement) (d2 application-judgement))
   (and (not (eq d1 d2))
@@ -162,8 +162,8 @@
 ;;; Should this take dependent types into account?
 (defmethod judgement-lt ((t1 funtype) (t2 funtype))
   (and (not (tc-eq t1 t2))
-       (simple-subtype-of? (range t1) (range t2))
-       (simple-subtype-of? (domain t1) (domain t2))))
+       (subtype-of? (range t1) (range t2))
+       (subtype-of? (domain t1) (domain t2))))
 
 (defmethod judgement-subsumes ((d1 application-judgement)
 			       (d2 application-judgement))
@@ -171,8 +171,8 @@
 
 ;;; Should this take dependent types into account?
 (defmethod judgement-subsumes ((t1 funtype) (t2 funtype))
-  (and (simple-subtype-of? (range t1) (range t2))
-       (simple-subtype-of? (domain t2) (domain t1))))
+  (and (subtype-of? (range t1) (range t2))
+       (subtype-of? (domain t2) (domain t1))))
 	
 
 ;;; Accessors and update functions for the above
@@ -251,7 +251,7 @@
 	 (entry (assq decl (name-judgements-alist (current-judgements)))))
     (let ((sjdecl (when entry
 		    (find-if #'(lambda (jd)
-				 (simple-subtype-of? (type jd) (type jdecl)))
+				 (subtype-of? (type jd) (type jdecl)))
 		      (minimal-judgements (cdr entry))))))
       (cond (sjdecl
 ;; 	     (pvs-warning
@@ -273,7 +273,7 @@
 				  (cons jdecl
 					(delete-if
 					    #'(lambda (jd)
-						(simple-subtype-of? (type jdecl)
+						(subtype-of? (type jdecl)
 								    (type jd)))
 					  (minimal-judgements (cdr entry)))))
 				(make-instance 'name-judgements
@@ -1319,7 +1319,7 @@
 ;;;  2. lists of types, otherwise
 
 (defun compute-appl-judgement-range-type (arguments argtypes rdomains domains
-						    range jdecl)
+					  range jdecl)
   (if (null arguments)
       (values range jdecl)
       (when (judgement-arguments-match?
@@ -1410,7 +1410,7 @@
 	      (cdr args) argflds (cdr rfields) (cdr jfields))))))
 
 (defun judgement-vector-arguments-match? (args argtypes rdomain jdomain num
-					       &optional bindings)
+					  &optional bindings)
   (or (>= num (length argtypes))
       (and (or (judgement-vector-arguments-match*?
 		(aref argtypes num) (car args)
