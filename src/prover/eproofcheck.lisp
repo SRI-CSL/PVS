@@ -461,7 +461,9 @@
   ;; A simple test - if the old one has no branching, but the new one does
   ;; Then return t
   ;; This may be made more elaborate later
-  (assert (equalp (car scr-old) ""))
+  (assert (or (equalp (car scr-old) "")
+	      (and (stringp (car scr-old))
+		   (char= (char (car scr-old) 0) #\;))))
   (assert (equalp (car scr-new) ""))
   (and (every #'(lambda (step)
 		  (and (listp step)
