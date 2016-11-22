@@ -821,7 +821,7 @@ required a context.")
                    (if (module? (declaration expr))
                        (declaration expr)
                        (module (declaration expr)))))
-         (*typecheck-using* nil)
+         (*typecheck-importing* nil)
          (*set-type-actuals-name* expr))
     (unless modinst
       (type-ambiguity expr))
@@ -898,7 +898,7 @@ required a context.")
     (let ((nmodinst (simplify-modinst modinst))
           (thry (or theory (get-theory modinst))))
       (set-type-mappings nmodinst thry)
-      ;; This is now done in typecheck-using* after doing add-to-using
+      ;; This is now done in typecheck-importing* after doing add-to-using
       ;; (when (mappings modinst)
       ;;   (generate-mapped-axiom-tccs nmodinst))
       ;; Compare the given actuals with those determined by the typechecker 
@@ -912,7 +912,7 @@ required a context.")
                    (if (module? (declaration expr))
                        (declaration expr)
                        (module (declaration expr)))))
-         (*typecheck-using* nil)
+         (*typecheck-importing* nil)
          (*set-type-actuals-name* expr))
     (when (mappings modinst)
       (set-type-mappings modinst thry)
@@ -1116,7 +1116,6 @@ required a context.")
                            (lcopy thinst :dactuals (dactuals (lhs map)))
                          (module (lhs map)) (lhs map))
                        (cdr mappings))))
-        ;;(break "set-type-mappings*")
         (set-type-mappings* smaps thinst
                             (nconc previous-mappings (list map)))))))
 
@@ -1327,32 +1326,34 @@ required a context.")
                 (when (mappings (expr rhs))
                   (set-type-mappings (name-to-modname (expr rhs))
                                      (declaration (expr rhs))))))))
-    (t (let* ((theory (module (declaration lhs)))
-              (mapthinst (if (and (rectype-theory? theory) ; Don't remember what this check was for
-                                  (not (same-id theory thinst)))
-                             (lcopy thinst
-                               :mappings (append mappings (mappings thinst))
-                               :dactuals (dactuals lhs))
-                             (lcopy thinst
-                               :mappings (append mappings (mappings thinst))
-                               :dactuals (dactuals lhs))))
-              (stype (subst-mod-params (type (declaration lhs)) mapthinst
-                       theory lhs))
-              (subst-type (subst-mod-params-all-mappings stype))
-              (subst-types (if (free-params stype)
-                               (possible-mapping-subst-types
-                                (types (expr rhs)) stype)
-                               (list stype)))
-              (etype (or (car subst-types) subst-type)))
-         (assert (fully-instantiated? etype))
-         (set-type* (expr rhs) etype)
-         (when (definition (declaration lhs))
-           (assert (def-axiom (declaration lhs)))
-           (let* ((lname-expr (mk-name-expr lhs))
-                  (slhs (subst-mod-params lname-expr mapthinst
-                          (module (declaration lhs))
-                          (declaration lname-expr))))
-             (generate-mapped-eq-def-tcc slhs (expr rhs) mapthinst)))))))
+    (t ;; May need to perform two subst-mod-params because the lhs decl may not be directly
+     ;; from the theory being mapped
+     ;; First we substitute based on the lhs, then based on the thinst
+     (let* ((theory (module (declaration lhs)))
+	    (lthinst (module-instance lhs))
+	    (ltype (subst-mod-params (type (declaration lhs)) lthinst theory lhs))
+	    (mapthinst (lcopy thinst
+			 :mappings (append mappings (mappings thinst))
+			 :dactuals (dactuals lhs)
+			 ;; resolutions
+			 ))
+	    ;; Need mapthinst to match theory
+	    (stype (subst-mod-params ltype mapthinst (declaration mapthinst) lhs))
+	    (subst-type (subst-mod-params-all-mappings stype))
+	    (subst-types (if (free-params stype)
+			     (possible-mapping-subst-types
+			      (types (expr rhs)) stype)
+			     (list stype)))
+	    (etype (or (car subst-types) subst-type)))
+       (assert (fully-instantiated? etype))
+       (set-type* (expr rhs) etype)
+       (when (definition (declaration lhs))
+	 (assert (def-axiom (declaration lhs)))
+	 (let* ((lname-expr (mk-name-expr lhs))
+		(slhs (subst-mod-params lname-expr mapthinst
+			(module (declaration lhs))
+			(declaration lname-expr))))
+	   (generate-mapped-eq-def-tcc slhs (expr rhs) mapthinst)))))))
 
 (defmethod target-mapped-theory ((decl module))
   decl)
@@ -1401,14 +1402,6 @@ required a context.")
                    (remove-if (complement #'mappings) insts))
                  thinsts)))))
 
-;;; theory-ref takes a modname and returns the expanded modname, where the
-;;; modname may refer to a theory-decl, formal-theory-parameter, etc.  These
-;;; have their own library, actuals, and mappings, and need to be taken into
-;;; account.
-
-(defmethod theory-ref ((thname modname))
-  thname)
-
 (defun merge-mappings (mapped-name thname)
   (if (mappings thname)
       (progn (when (actuals thname) (break "Actuals in merge-mappings"))
@@ -1424,6 +1417,14 @@ required a context.")
                (list (car maps2)))
        (cdr maps2)
        thname)))
+
+;;; theory-ref takes a modname and returns the expanded modname, where the
+;;; modname may refer to a theory-decl, formal-theory-parameter, etc.  These
+;;; have their own library, actuals, and mappings, and need to be taken into
+;;; account.
+
+(defmethod theory-ref ((thname modname))
+  thname)
 
 (defmethod theory-ref ((d mod-decl))
   (modname d))
@@ -1658,10 +1659,12 @@ required a context.")
                            (compatible-predicates jtypes expected ex))))
               (if incs
                   (generate-subtype-tcc ex expected incs)
-                  (when (assq ex *compatible-pred-reason*)
-                    (pvs-warning "No TCC generated for judgement ~a~%~
-                                  judgement is already known"
-                      (ref-to-id (current-declaration)))))))))))
+		  ;; A better warning is generated in judgements.lisp
+                  ;; (when (assq ex *compatible-pred-reason*)
+                  ;;   (pvs-warning "No TCC generated for judgement ~a~%~
+                  ;;                 judgement is already known"
+                  ;;     (ref-to-id (current-declaration))))
+		  )))))))
 
 (defun compatible-predicates (types expected ex &optional incs)
   (if (null types)
