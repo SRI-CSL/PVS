@@ -262,11 +262,11 @@
 
 (defmethod typecheck* ((use importing) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (typecheck-importing (theory-name use))
+  (typecheck-using (theory-name use))
   (setf (saved-context use) (copy-context *current-context*))
   use)
 
-(defun typecheck-importing (theory-inst)
+(defun typecheck-using (theory-inst)
   (let ((lib-id (library theory-inst)))
     (when lib-id
       (let ((lib-ref (get-library-reference lib-id)))
@@ -284,27 +284,32 @@
 		     :test #'equal))
     (type-error theory-inst
       "Circularity found in importings of theory ~a" theory-inst))
-  (let ( ;; Need to keep track of where we are for untypechecking
+  (let* ( ;; Need to keep track of where we are for untypechecking
 	 ;; Everything after this will be untypechecked if
 	 ;; something changed underneath
 	 (*tc-theories* (acons (current-theory) (current-declaration)
 			       *tc-theories*))
-	 (plib-context *prelude-library-context*))
-     (typecheck* theory-inst nil nil nil)
-     ;; If typecheck* ended up loading a new prelude library,
-     ;; we need to update the current context.
-     (when (context-difference? plib-context *prelude-library-context*)
-       (setf (lhash-next (using-hash *current-context*))
-	     (using-hash *prelude-library-context*))
-       (setf (lhash-next (declarations-hash *current-context*))
-	     (declarations-hash *prelude-library-context*)))
-     (when (and *tc-add-decl*
-		;; Check for circularities
-		(memq (current-theory) (all-importings (declaration theory-inst))))
-       (type-error theory-inst
-	 "Circularity found in importings of theory ~a" theory-inst))
-      ;;(assert (get-theory theory-inst))
-    (typecheck-importing* (declaration theory-inst) theory-inst)))
+	 (plib-context *prelude-library-context*)
+	 (mod (get-typechecked-theory theory-inst)))
+    (unless mod
+      (let ((*generate-tccs* 'none))
+	(typecheck* theory-inst nil nil nil)))
+    ;; If typecheck* ended up loading a new prelude library,
+    ;; we need to update the current context.
+    (assert (saved-context mod))
+    ;;(assert (or (null mod) (eq (id mod) (id (declaration theory-inst)))))
+    (when (context-difference? plib-context *prelude-library-context*)
+      (setf (lhash-next (using-hash *current-context*))
+	    (using-hash *prelude-library-context*))
+      (setf (lhash-next (declarations-hash *current-context*))
+	    (declarations-hash *prelude-library-context*)))
+    (when (and *tc-add-decl*
+	       ;; Check for circularities
+	       (memq (current-theory) (all-importings mod)))
+      (type-error theory-inst
+	"Circularity found in importings of theory ~a" theory-inst))
+    ;;(assert (get-theory theory-inst))
+    (typecheck-using* mod theory-inst)))
 
 (defun context-difference? (old-ctx new-ctx)
   (if (null old-ctx)
@@ -313,15 +318,15 @@
 
 (defvar *ignore-exportings* nil)
 
-(defvar *typecheck-importing* nil)
+(defvar *typecheck-using* nil)
 
-(defmethod typecheck-importing* (obj inst)
+(defmethod typecheck-using* (obj inst)
   (declare (ignore obj))
   (type-error inst "Theory ~a not found" (id inst)))
 
-(defmethod typecheck-importing* ((mod module) inst)
+(defmethod typecheck-using* ((mod module) inst)
   (let* ((nmodinst inst)
-	 (*typecheck-importing* inst))
+	 (*typecheck-using* inst))
     (when (actuals inst)
       (unless (length= (formals-sans-usings mod) (actuals inst))
 	(type-error inst "Wrong number of actuals in ~a" inst))
@@ -405,7 +410,7 @@
 			      mtheory))))
 	(mappings inst)))
 
-(defmethod typecheck-importing* ((adt recursive-type) inst)
+(defmethod typecheck-using* ((adt recursive-type) inst)
   (let* ((th1 (adt-theory adt))
 	 (th2 (adt-map-theory adt))
 	 (th3 (adt-reduce-theory adt))
@@ -414,26 +419,26 @@
 			       :resolutions nil)))
 	 (use3 (copy inst :id (id th3) :actuals nil :mappings nil
 		     :resolutions nil))
-	 (*typecheck-importing* inst)
+	 (*typecheck-using* inst)
 	 (*tc-theories* (remove-if #'(lambda (x)
 				       (and (eq (car x) (current-theory))
 					    (importing? (cdr x))
 					    (eq (theory-name (cdr x)) inst)))
 			  *tc-theories*)))
-    (typecheck-importing use1)
+    (typecheck-using use1)
     (assert (resolution use1))
     (setf (resolutions inst) (resolutions use1))
     (let ((*ignore-exportings* t)
 	  (supinst (adt-modinst use1)))
-      (mapc #'typecheck-importing
+      (mapc #'typecheck-using
 	    `(,@(unless (eq supinst inst) (list supinst))
 		,@(when use2 (list use2))
 		,use3)))))
 
-(defmethod typecheck-importing* ((decl theory-reference) inst)
+(defmethod typecheck-using* ((decl theory-reference) inst)
   (declare (ignore inst))
   (let ((thname (theory-name decl)))
-    (typecheck-importing* (declaration thname) thname)))
+    (typecheck-using* (declaration thname) thname)))
 
 ;;; Handles EXPORTING WITH clauses.  For example,
 ;;;
@@ -774,6 +779,23 @@
 				(pushnew decl (get-lhash id dhash) :test #'eq)))))))
 	     (lhash-table (declarations-hash (saved-context theory))))))
 
+(defmethod make-mapped-decl ((decl mod-decl) map theory theoryname)
+  (let ((mdecl (change-class
+		   (copy decl
+		     :place nil
+		     :decl-formals (when (decl-formals decl)
+				     (break "decl-formals"))
+		     :formals nil
+		     :module (current-theory)
+		     :refers-to nil
+		     :generated nil
+		     :generated-by (list decl)
+		     ;;:modname
+		     :theory-mappings nil
+		     :other-mappings nil)
+		   'mapped-type-decl)))
+    mdecl))
+
 (defmethod make-mapped-decl ((decl type-decl) map theory theoryname)
   (let* ((typeval (subst-mod-params (type-value decl) theory theoryname))
 	 (typex (type-value (rhs map)))
@@ -782,8 +804,7 @@
 		      :place nil
 		      :decl-formals (when (decl-formals decl)
 				      (break "decl-formals"))
-		      :formals (when (formals decl)
-				 (break "formals"))
+		      :formals nil
 		      :module (current-theory)
 		      :refers-to (generate-xref (type-value (rhs map)))
 		      :generated nil
@@ -804,8 +825,7 @@
 		      :place nil
 		      :decl-formals (when (decl-formals decl)
 				      (break "decl-formals"))
-		      :formals (when (formals decl)
-				 (break "formals"))
+		      :formals nil
 		      :module (current-theory)
 		      :refers-to (generate-xref (expr (rhs map)))
 		      :generated nil

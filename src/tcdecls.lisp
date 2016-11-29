@@ -86,7 +86,7 @@
 	(if (mod-decl? decl)
 	    (dolist (d (generated decl))
 	      (if (importing? d)
-		  (typecheck-importing* (get-theory (theory-name d)) (theory-name d))
+		  (typecheck-using* (get-theory (theory-name d)) (theory-name d))
 		  (let ((dhash (current-declarations-hash)))
 		    (dolist (id (id-suffixes (id d)))
 		      (pushnew d (get-lhash id dhash) :test #'eq)))))
@@ -396,7 +396,7 @@
 ;;       (let ((mappings (determine-implicit-mappings
 ;; 		       theory theory-name tgt-name tgt-theory)))
 ;; 	(when tgt-theory
-;; 	  (typecheck-importing (target theory-name)))
+;; 	  (typecheck-using (target theory-name)))
 ;; 	(typecheck-named-theory* theory
 ;; 				 (lcopy theory-name
 ;; 				   :mappings mappings
@@ -638,7 +638,7 @@
 			  theory thname tgt-name tgt-theory))
 	       (full-thname (lcopy thname :mappings mappings :target nil)))
 	  (when tgt-theory
-	    (typecheck-importing tgt-name))
+	    (typecheck-using tgt-name))
 	  (set-type-actuals-and-maps full-thname theory)
 	  ;; (when (mappings full-thname)
 	  ;;   (unless (fully-instantiated? full-thname)
@@ -717,7 +717,7 @@
 ;; 	    theory-name)))))
 
 (defmethod typecheck-inlined-theory* ((theory module) theory-name decl)
-  (let ((*typecheck-importing* theory-name)) ;; Provide information to tcc-gen
+  (let ((*typecheck-using* theory-name)) ;; Provide information to tcc-gen
     (when (some #'(lambda (m) (mod-decl? (declaration (lhs m))))
 		(mappings theory-name))
       (add-theory-mappings-importings theory theory-name))
@@ -1167,7 +1167,7 @@
 		    (nconc (ldiff theory-part rest) (cons decl rest)))))))
 
 (defmethod make-inlined-theory-decl ((imp importing))
-  (typecheck-importing* (get-theory (theory-name imp)) (theory-name imp)))
+  (typecheck-using* (get-theory (theory-name imp)) (theory-name imp)))
 
 (defmethod make-inlined-theory-decl ((decl declaration))
   (setf (current-declaration) decl)
@@ -1205,7 +1205,7 @@
 	     (mod (get-theory modinst)))
 	(add-exporting-with-theories mod modinst)
 	(add-to-using modinst))
-      (typecheck-importing (theory-name decl)))
+      (typecheck-using (theory-name decl)))
   (assert (resolution (theory-name decl)))
   (put-decl decl)
   (setf (saved-context decl) (copy-context *current-context*))

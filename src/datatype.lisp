@@ -5062,7 +5062,7 @@ generated")
 		 (assert (or (not (typep decl '(or const-decl formula-decl)))
 			     (fully-instantiated? (definition decl))))
 		 )
-    (importing (typecheck-importing (theory-name decl)))
+    (importing (typecheck-using (theory-name decl)))
     (datatype (unwind-protect
 		  (typecheck* decl nil nil nil)
 		(cleanup-datatype decl)))

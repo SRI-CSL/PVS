@@ -500,10 +500,10 @@
 		     (unpindent type 19 :string t :comment? t)))
 		  (termination nil)
 		  (well-founded (format nil "for ~a" (id decl))))))
-    (when (and *typecheck-importing*
+    (when (and *typecheck-using*
 	       (typep (current-declaration) 'importing))
       (setf (importing-instance ndecl)
-	    (list *typecheck-importing* *set-type-formal*)))
+	    (list *typecheck-using* *set-type-formal*)))
     (push (definition ndecl) *tccs*)
     (push ndecl *tccdecls*)
     (when *typechecking-module*
