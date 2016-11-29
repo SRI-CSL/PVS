@@ -213,7 +213,8 @@
 	 (*subst-mod-params-declaration* decl)
 	 (*subst-mod-params-freevars* (or *subst-mod-params-freevars*
 					  (freevars obj)))
-	 (formals (unless (eq (current-theory) *subst-mod-params-theory*)
+	 (formals (unless (or (not (datatype-or-module? *subst-mod-params-theory*))
+			      (eq (current-theory) *subst-mod-params-theory*))
 		    (formals-sans-usings *subst-mod-params-theory*)))
 	 (dformals (when decl (all-decl-formals decl)))
 	 (*subst-mod-free-params* nil))
@@ -408,12 +409,10 @@
 	 (bmappings (extended-basic-mappings (mappings thname)
 					     (when (and rhs-theory
 							(not (module? rhs-theory)))
-					       (break "implicit mappings")
 					       (theory-mappings rhs-theory))
 					     nil ;(theory-mappings lhs-theory)
 					     ))
 	 (all-mappings (extended-mappings* bmappings decl)))
-    (break "extended-mappings")
     (dolist (amap all-mappings)
       (typecase (car amap)
 	(module
@@ -433,13 +432,12 @@
 ;;; add (car . mcdr) to mappings
 (defmethod extended-mappings* (mappings (decl mod-decl))
   (nconc (mapcan #'(lambda (tmap)
-		     (unless (or (assq (car tmap) mappings) ; Already mapped
+		     (unless (or ;;(assq (car tmap) mappings) ; Already mapped
 				 (not (interpretable? (car tmap))))
 		       (let* ((mdecl (declaration (cdr tmap)))
-			      (mmap (assq mdecl mappings)))
-			 (unless mmap (break "No mmap?"))
-			 (when mmap
-			   (list (cons (car tmap) (cdr mmap)))))))
+			      (nmap (assq (car tmap) mappings)))
+			 (when nmap
+			   (list (cons mdecl (cdr nmap)))))))
 	    (theory-mappings decl))
 	  mappings))
 
@@ -602,16 +600,16 @@
 		     (actuals rhs-thinst)
 		     (mappings rhs-thinst)
 		     bindings)))
-    (assert (eq (id thname) (id lhs-theory)))
-    (assert (fully-instantiated? thname))
+    (assert (eq (id rhs-thname) (id lhs-theory)))
+    ;;(assert (fully-instantiated? rhs-thname))
     #+pvsdebug (assert (every #'(lambda (d)
 				  (typep (car d) '(or declaration module mapping-lhs)))
-			      pre-bindings))
+			      nbindings))
     (setq *subst-mod-params-map-bindings*
 	  (acons lhs-theory rhs
-		 (append pre-bindings *subst-mod-params-map-bindings*)))
+		 (append nbindings *subst-mod-params-map-bindings*)))
     (acons lhs-theory rhs
-	   (append pre-bindings bindings))))
+	   (append nbindings bindings))))
 
 (defmethod make-subst-mod-params-map-bindings* ((lhs-decl mod-decl) rhs bindings)
   (let* ((thname (if (theory-abbreviation-decl? (declaration (expr rhs)))
@@ -651,18 +649,24 @@
 ;;; The bindings already include the actuals and mappings from modinst
 ;;; Now we want to deal with modinst when it is a theory-reference
 (defun make-subst-mod-params-theoryref-bindings (modinst bindings)
-  (let ((decl (if (resolution modinst)
-		  (declaration modinst)
-		  (get-theory modinst))))
-    (assert decl)
-    (make-subst-mod-params-theoryref-bindings* decl bindings)))
+  ;; (let ((decl (if (resolution modinst)
+  ;; 		  (declaration modinst)
+  ;; 		  (get-theory modinst))))
+  ;;   (assert decl)
+  ;;   (make-subst-mod-params-theoryref-bindings* decl bindings))
+  bindings
+  )
 
 (defmethod make-subst-mod-params-theoryref-bindings* ((decl theory-reference) bindings)
   ;; Theory-reference is a mod-decl or theory-abbreviation-decl
   (let ((thinst (theory-name decl)))
-    (break)))
+    ;;(break "make-subst-mod-params-theoryref-bindings*")
+    bindings))
     
 (defmethod make-subst-mod-params-theoryref-bindings* ((decl module) bindings)
+  bindings)
+
+(defmethod make-subst-mod-params-theoryref-bindings* ((decl declaration) bindings)
   bindings)
 
 ;;; End of make-subst-mod-params-bindings functions
@@ -1410,7 +1414,9 @@
 (defmethod subst-mod-params* ((type expr-as-type) modinst bindings)
   (let* ((ntype (call-next-method))
 	 (nexpr (subst-mod-params* (expr ntype) modinst bindings)))
-    (lcopy ntype :expr nexpr)))
+    (if (everywhere-true? nexpr)
+	(domain (type nexpr))
+	(lcopy ntype :expr nexpr))))
 
 (defmethod subst-mod-params* ((type datatype-subtype) modinst bindings)
   (lcopy (call-next-method)
@@ -2152,7 +2158,7 @@
 			 (subst-mod-params (type-value decl) mi theory decl)))
 		      ((or expname typed-declaration simple-decl)
 		       (subst-mod-params (type decl) mi theory decl))))))
-    (assert (or (not (fully-instantiated? mi)) (fully-instantiated? rtype)))
+    ;;(assert (or (not (fully-instantiated? mi)) (fully-instantiated? rtype)))
     (assert (current-declaration))
     (assert theory)
     ;;(assert (get-theory mi))
