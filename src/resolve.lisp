@@ -1816,11 +1816,12 @@
   (declare (ignore name))
   (if (cdr reses)
       (let* ((dreses (remove-duplicates reses :test #'tc-eq))
+	     (mreses (filter-mapped-resolutions dreses))
 	     (res (or (remove-if
 			  #'(lambda (r)
 			      (typep (module-instance r) 'datatype-modname))
-			dreses)
-		      dreses)))
+			mreses)
+		      mreses)))
 	(if (eq kind 'expr)
 	    (if (cdr res)
 		(filter-constructor-subtypes
@@ -2042,6 +2043,13 @@
 (defun same-type-but-less-local (res1 res2)
   (and (tc-eq (type res1) (type res2))
        (< (locality res2) (locality res1))))
+
+(defun filter-mapped-resolutions (reses)
+  (or (remove-if #'(lambda (r)
+		     (typep (declaration r)
+			    '(or mapped-type-decl mapped-const-decl)))
+	reses)
+      reses))
 
 (defmethod locality ((ex name-expr))
   (assert (resolution ex))
