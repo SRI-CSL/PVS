@@ -49,6 +49,10 @@
     (setf (symbol-function '!judgement-orig!) #'!judgement!))
   (unless (fboundp '!name-expr-orig!)
     (setf (symbol-function '!name-expr-orig!) #'!name-expr!))
+  (unless (fboundp '!tuple-expr-orig!)
+    (setf (symbol-function '!tuple-expr-orig!) #'!tuple-expr!))
+  (unless (fboundp '!fun-arguments-orig!)
+    (setf (symbol-function '!fun-arguments-orig!) #'!fun-arguments!))
   ;; The following need to not change '|' to '%VBAR'
   (unless (fboundp '!type-expr-sans-name-orig!)
     (setf (symbol-function '!type-expr-sans-name-orig!) #'!type-expr-sans-name!))
@@ -66,6 +70,14 @@
 (defun !name-expr! (rbp &optional (bracket-list (empty-bracket-list)))
   (let ((*in-judgement-expr-parse* *in-judgement-parse*))
     (!name-expr-orig! rbp bracket-list)))
+
+(defun !tuple-expr! (rbp &optional (bracket-list (empty-bracket-list)))
+  (let ((*in-judgement-expr-parse* *in-judgement-parse*))
+    (!tuple-expr-orig! rbp bracket-list)))
+
+(defun !fun-arguments! (rbp &optional (bracket-list (empty-bracket-list)))
+  (let ((*in-judgement-expr-parse* *in-judgement-parse*))
+    (!fun-arguments-orig! rbp bracket-list)))
 
 (defun !type-expr-sans-name! (rbp &optional (bracket-list (empty-bracket-list)))
   (let ((*in-judgement-expr-parse* nil))

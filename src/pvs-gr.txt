@@ -290,11 +290,6 @@ jdecl ::= expr <jdecl-expr(expr)>
         | comp-type-expr <jdecl-type(comp-type-expr)>
         ;
 
-% jdecl ::= type-expr-sans-name <jsubtypedecl(type-expr-sans-name)>
-%         | {name [pdformals+]}
-%              <[jnamedecl(name)|jappldecl(name,pdf(plus))]>
-%         ;
-
 ename ::= {name [':' type-expr]} <ename(name,[notype()|type-expr])>;
 
 
@@ -636,7 +631,7 @@ expr ::= string <string-expr(string)>
 name-expr ::= {name [':' type-expr]^t ['%VBAR' expr]^e}
                <name-expr(name, [notype()|type-expr]^t, [nopred()|expr]^e)>;
 
-bracket-expr ::= {'(' {expr ** ','} ')'} <tuple-expr(expr*)>
+bracket-expr ::= tuple-expr
                | {'(:' {expr ** ','} ':)'} <list-expr(expr*)>
                | {'[|' {expr ** ','} '|]'} <bracket-expr(\[\|\|\](), btup(expr*))>
                | {'(|' {expr ** ','} '|)'} <bracket-expr(\(\|\|\)(), btup(expr*))>
@@ -654,6 +649,7 @@ bracket-expr ::= {'(' {expr ** ','} ')'} <tuple-expr(expr*)>
 	       % | {'∥' {expr ** ','} '∥'} <par-brace-expr(expr*)>
 	       ;
 
+tuple-expr ::= {'(' {expr ** ','} ')'} <tuple-expr(expr*)>;
 
 set-expr ::= {'{' set-formals ['->' type-expr] '|' expr '}'}
                   <set-expr(set-formals,[no-type-expr()|type-expr],expr)>
