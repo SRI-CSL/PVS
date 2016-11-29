@@ -364,6 +364,9 @@
   (typecheck-time :restore-as nil))
 )
 
+;; A mixin
+(defcl mapped-decl ())
+
 ;;; declared-type-string keeps the string of the declared type for
 ;;; creating the pvs context - see create-declaration-entry
 
@@ -399,7 +402,7 @@
 
 (defcl type-eq-decl (type-def-decl))
 
-(defcl mapped-type-decl (type-eq-decl))
+(defcl mapped-type-decl (type-eq-decl mapped-decl))
 
 (defcl nonempty-type-eq-decl (type-eq-decl nonempty-type-def-decl))
 
@@ -505,6 +508,8 @@
   (modname :parse t)
   theory-mappings
   other-mappings)
+
+(defcl mapped-mod-decl (mod-decl mapped-decl))
 
 (defcl theory-abbreviation-decl (theory-reference)
   (theory-name :parse t))
