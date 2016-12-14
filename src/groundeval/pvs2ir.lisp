@@ -756,13 +756,41 @@
 		     (ir-expr (pvs2ir* expression (append ir-var-bindings bindings))));(break "lambda-with")
 		(mk-ir-lambda ir-binds ir-rangetype ir-expr))))
 
+;;intersects the subranges (if any) in ir-types; returns nil, otherwise. 
+(defun best-ir-subrange-list (ir-types)
+  (cond ((consp ir-types)
+	 (if (ir-subrange? (car ir-types))
+	     (let ((cdr-subrange (best-ir-subrange-list (cdr ir-types))))
+	       (if cdr-subrange
+		   (intersect-subrange (car ir-types) cdr-subrange)
+		 (car ir-types)))
+	   (best-ir-subrange-list (cdr ir-types))))
+	(t nil)))
+
+;;intersects the subranges in type and judgement-types; returns type if there are no subranges
+(defun best-ir-subrange (type judgement-types)
+  (let* ((ir-type (pvs2ir-type type))
+	 (ir-jtypes (loop for jtype in judgement-types collect (pvs2ir-type jtype)))
+	 (ir-jsubrange (best-ir-subrange-list ir-jtypes)))
+    (if ir-jsubrange
+	(if (ir-subrange? ir-type)
+	    (intersect-subrange ir-type ir-jsubrange)
+	  ir-jsubrange)
+      ir-type)))
+			       
+
 (defmethod pvs2ir* ((expr application) bindings);(break "app")
   (with-slots (operator argument) expr
 	      (let ((val (pvs-integer? expr))
 		    (expr-type (type expr)))
 		(or (and val 
 			 (mk-ir-integer val))
-		    (pvs2ir-application operator (arguments expr) expr-type bindings)))))
+		    (let ((ir-expr-type
+			   (if (and (pvs2ir-primitive? operator)
+				    (memq (id operator) '(+ - * /)));ensures that these are arithops
+			       (best-ir-subrange expr-type (judgement-types expr))
+			     (pvs2ir-type expr-type))))
+		      (pvs2ir-application operator (arguments expr) ir-expr-type bindings))))))
 
 (defun mk-ir-let* (vartypes exprs body);;no need to add expr-types here
   (cond ((consp vartypes)
@@ -1202,7 +1230,7 @@
     (mk-ir-recordtype (cons index-fieldtype rest-fieldtypes))))
 
 
-(defun pvs2ir-application (op args expr-type bindings)
+(defun pvs2ir-application (op args ir-expr-type bindings)
   ;(format t "pvs2ir-application")
   (let* ((arg-names (new-irvars (length args)))
 	 ;(dummy (format t "arg-types"))
@@ -1217,8 +1245,7 @@
 			   arg-types
 			   (loop for type in (types (domain (find-supertype (type op))))
 				 collect (pvs2ir-type type))))
-	 (op-range-type (pvs2ir-type (range (find-supertype (type op)))))
-	 (ir-expr-type (pvs2ir-type expr-type)) ;;changed below to ir-expr-type from op-range-tye
+	 ;(op-range-type (pvs2ir-type (range (find-supertype (type op)))))
 	 (apply-return-var (new-irvartype ir-expr-type))
 	 ;(dummy (format t "arg-vartypes"))
 	 (arg-vartypes 
@@ -1265,17 +1292,17 @@
 			       (make-ir-lett* arg-vartypes
 					      arg-types
 					      args-ir
-					      (make-ir-lett apply-return-var op-range-type
+					      (mk-ir-let apply-return-var ;op-range-type
 							 (mk-ir-apply
 							  (pvs2ir-constant op) arg-vartypes
-							  (append type-ir-actuals const-ir-actuals)
-							  op-range-type)
+							  (append type-ir-actuals const-ir-actuals))
+							  ;op-range-type
 							 apply-return-var)))
 	      (make-ir-lett* arg-vartypes
 			     arg-types
 			     args-ir
-			     (make-ir-lett apply-return-var op-range-type
-					(mk-ir-apply (pvs2ir-constant op) arg-vartypes nil op-range-type)
+			     (mk-ir-let apply-return-var ;op-range-type
+					(mk-ir-apply (pvs2ir-constant op) arg-vartypes nil) ;op-range-type
 					apply-return-var)))))
       (let* ((op-ir-type (pvs2ir-type (type op)))
 	     (op-var (new-irvartype op-ir-type))
@@ -1283,7 +1310,7 @@
 	(if (ir-array? op-ir-type)
 	    (mk-ir-let op-var op-ir
 		       (mk-ir-let (car arg-vartypes)(car args-ir)
-				  (make-ir-lett apply-return-var op-range-type
+				  (mk-ir-let apply-return-var ;op-range-type
 						(mk-ir-lookup op-var (car arg-vartypes))
 					     apply-return-var)))
 	   (if (ir-lambda? op-ir);;op-var is ignored, IR is beta-reduced
@@ -1312,8 +1339,8 @@
 		     (make-ir-lett* arg-vartypes
 				  arg-types
 				  args-ir
-				  (make-ir-lett apply-return-var op-range-type
-						(mk-ir-apply op-var arg-vartypes nil op-range-type)
+				  (mk-ir-let apply-return-var ;op-range-type
+						(mk-ir-apply op-var arg-vartypes nil) ;op-range-type
 						apply-return-var)))))))))
 	  
 				 ;; (if (eql (length arg-vartypes) 1)
@@ -1479,10 +1506,13 @@
 				(pvs2ir-expr-type expression))))
 
 (defmethod pvs2ir-expr-type ((expr t))
-  (if (and (is-unary-minus? expr)(number-expr? (argument expr)))
-      (let ((val (- (number (argument expr)))))
-	(mk-ir-subrange val val))
-    (pvs2ir-type (type expr))))
+  (let ((val (pvs-integer? expr)))
+    (if val (mk-ir-subrange val val)
+      (if (and (application? expr)
+	       (pvs2ir-primitive? (operator expr))
+	       (memq (id (operator expr)) '(+ - * /)))
+	  (best-ir-subrange (type expr) (judgement-types expr))
+	(pvs2ir-type (type expr))))))
 
 (defun pvs2ir-fields (assignments bindings)
   (let* ((expressions (mapcar #'expression assignments))
@@ -1784,11 +1814,15 @@
 	((tc-eq type *integer*) (mk-ir-subrange  '* '*))
 	((tc-eq type *posint*)(mk-ir-subrange 1 '*))
 	((tc-eq type *negint*)(mk-ir-subrange '* -1))
-	((subtype-of? type *number*) ;;was *integer* but misses some subranges
+	((subtype-of? type *integer*) ;;was *number*
+	                              ;;was *integer* but misses some subranges
 	 (let ((sub (pvs2ir-subrange-index type)))
 	   (if sub 
 	       (mk-ir-subrange (car sub)(cadr sub))
 	     (mk-ir-subrange '* '*))))
+	((subtype-of? type *real*)
+	 'mpq)
+	;((subtype-of? type *number*) (break "pvs2ir-type*(subtype)"))
 	(t (pvs2ir-type* (supertype type) tbinding))))
 
 (defun intersect-subrange (sub1 sub2)
@@ -2198,7 +2232,7 @@
   (case lhs-type
     (mpz (case rhs-type
 	   (mpz (format nil "mpz_set(~a, ~a)" lhs rhs))
-	   (mpq (format nil "mpz_set(~a, ~a)" lhs rhs))
+	   (mpq (format nil "mpz_set_q(~a, ~a)" lhs rhs))
 	   ((uint8 uint16 uint32 uint64 uint128)
 	    (format nil "mpz_set_ui(~a, ~a)" lhs rhs))
 	   ((int8 int16 int32 int64 int128)
@@ -2450,6 +2484,7 @@
 	     (+ (ir2c-addition return-var c-return-type ir-arg-names c-arg-types))
 	     (- (ir2c-subtraction return-var c-return-type ir-arg-names c-arg-types))
 	     (* (ir2c-multiplication  return-var c-return-type ir-arg-names c-arg-types))
+	     (/ (ir2c-division return-var c-return-type ir-arg-names c-arg-types))
 	     (= (ir2c-equality return-var c-return-type ir-arg-names c-arg-types))
 	     ((ndiv nrem) (ir2c-divrem ir-function-name return-var c-return-type ir-arg-names c-arg-types))
 	     ((< <= > >=) (ir2c-arith-relations ir-function-name ;(tweak-equal ir-function-name)
@@ -2470,6 +2505,53 @@
 				(car ir-arg-names)  (cadr ir-arg-names)
 				(car ir-arg-names)  (cadr ir-arg-names)))))))
 	(t (break "not defined"))))
+
+(defun ir2c-division (return-var c-return-type ir-args c-arg-types)
+  (let ((arg1 (car ir-args))
+	(arg2 (cadr ir-args))
+	(arg1-c-type (car c-arg-types))
+	(arg2-c-type (cadr c-arg-types)))
+    (ir2c-division-step return-var c-return-type arg1
+			arg1-c-type arg2
+			arg2-c-type)))
+
+(defun ir2c-division-step (return-var c-return-type arg1 arg1-c-type arg2 arg2-c-type)
+  (case  c-return-type
+    (mpq (case arg1-c-type
+	   (mpq
+	    (case arg2-c-type
+	      (mpq (format nil "mpq_div(~a, ~a, ~a)" return-var arg1 arg2))
+	      (mpz (let ((arg2-mpq-var (gentemp "tmp")))
+		     (list (format nil "mpq_t ~a" arg2-mpq-var)
+			   (format nil "mpq_init(~a)" arg2-mpq-var)
+			   (format nil "mpq_set_z(~a, ~a)" arg2-mpq-var arg2)
+			   (format nil "mpq_div(~a, ~a, ~a)" return-var arg1 arg2-mpq-var)
+			   (format nil "mpq_clear(~a)" arg2-mpq-var))))
+	      (t (break "Not implemented yet"))))
+	   (mpz
+	    (case arg2-c-type
+	      (mpq (let ((arg1-mpq-var (gentemp "tmp")))
+		     (list (format nil "mpq_t ~a" arg1-mpq-var)
+			   (format nil "mpq_init(~a)" arg1-mpq-var)
+			   (format nil "mpq_set_z(~a, ~a)" arg1-mpq-var arg1)
+			   (format nil "mpq_div(~a, ~a, ~a)" return-var arg1-mpq-var arg2)
+			   (format nil "mpq_clear(~a)" arg1-mpq-var))))
+	      (mpz (let ((arg1-mpq-var (gentemp "tmp"))
+			 (arg2-mpq-var (gentemp "tmp")))
+		     (list (format nil "mpq_t ~a" arg1-mpq-var)
+			   (format nil "mpq_init(~a)" arg1-mpq-var)
+			   (format nil "mpq_set_z(~a, ~a)" arg1-mpq-var arg1)
+			   (format nil "mpq_t ~a" arg2-mpq-var)
+			   (format nil "mpq_init(~a)" arg2-mpq-var)
+			   (format nil "mpq_set_z(~a, ~a)" arg2-mpq-var arg2)
+			   (format nil "mpq_div(~a, ~a, ~a)" return-var arg1-mpq-var arg2-mpq-var)
+			   (format nil "mpq_clear(~a)" arg1-mpq-var)
+			   (format nil "mpq_clear(~a)" arg2-mpq-var))))
+	      (t (break "Not implemented yet."))))
+	   (t (break "Not implemented yet."))))
+    (t (break "Not implemented yet."))))
+	    
+
 
 (defun ir2c-divrem (op return-var c-return-type ir-arg-names c-arg-types)
   (let ((arg1 (car ir-arg-names))
@@ -2811,7 +2893,7 @@
 		     ((int8 int16 int32 int64)
 		      (list (format nil "mpz_set_si(~a, ~a)" return-var arg2)
 			    (format nil "mpz_sub_si(~a, ~a (uint64_t)~a)" return-var arg1 arg2)))
-		     (mpz (list (format nil "mpz_add(~a, ~a, ~a)" return-var arg2 arg1)))
+		     (mpz (list (format nil "mpz_sub(~a, ~a, ~a)" return-var arg1 arg2)))
 		     (mpq (break "mpq not available"))))))
     ((uint8 uint16 uint32 uint64 uint128)
      (case arg1-c-type
