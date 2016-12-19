@@ -37,22 +37,23 @@
 	      (throw '*eval-error* 
 		     (format nil 
 			     "Use option :safe? nil if TCCs are provable")))
-	    (let ((cl-input (pvs2cl tc-input)))
-	      (multiple-value-bind 
-		  (cl-eval err)
-		  (catch 'undefined (ignore-errors (eval cl-input)))
-		(cond (err 
-		       (throw '*eval-error* (format nil "~a" err)))
-		      ((and (null err) (eq cl-eval 'cant-translate))
-		       (throw '*eval-error* (format nil "Expression doesn't appear to be ground")))
-		      (t 
-		       (multiple-value-bind 
-			   (pvs-val err)
-			   (ignore-errors 
-			     (cl2pvs cl-eval (type tc-input)))
-			 (if (expr? pvs-val) pvs-val
-			   (throw '*eval-error*
-				  (format nil "Result ~a is not ground" cl-eval))))))))))))))
+	    (let ((cl-input (catch 'uninterpreted (pvs2cl tc-input))))
+	      (when cl-input
+		(multiple-value-bind 
+		      (cl-eval err)
+		    (catch 'undefined (ignore-errors (eval cl-input)))
+		  (cond (err 
+			 (throw '*eval-error* (format nil "~a" err)))
+			((and (null err) (eq cl-eval 'cant-translate))
+			 (throw '*eval-error* (format nil "Expression doesn't appear to be ground")))
+			(t 
+			 (multiple-value-bind 
+			       (pvs-val err)
+			     (ignore-errors 
+			       (cl2pvs cl-eval (type tc-input)))
+			   (if (expr? pvs-val) pvs-val
+			       (throw '*eval-error*
+				 (format nil "Result ~a is not ground" cl-eval)))))))))))))))
 
 (defrule eval-expr (expr &optional safe? (auto? t) quiet?)
   (let ((e (extra-get-expr expr)))
