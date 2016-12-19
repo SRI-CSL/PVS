@@ -93,6 +93,8 @@
 
 (defvar *judgements-added* nil)
 
+(defvar *judgement-bound-vars* nil)
+
 (defun add-appl-judgement-node (jdecl graph)
   (assert (application-judgement? jdecl))
   (add-appl-judgement-node* jdecl graph (list jdecl) nil nil))
@@ -640,7 +642,9 @@
       (available-numeric-type num)))
 
 (defmethod judgement-types* :around ((ex name-expr))
-  (unless (variable? ex)
+  (when (or (assoc (declaration ex) *judgement-bound-vars*
+		   :key #'declaration)
+	    (not (variable? ex)))
     (call-next-method)))
 
 (defmethod judgement-types* ((ex name-expr))
@@ -725,12 +729,13 @@
 	   ;; get the judgement types of the expression of the lambda-expr.
 	   ;; Note that this is not the same as the judgements of the beta-reduced
 	   ;; form, which loses information.
-	   (let ((jbvars nil))
+	   (let ((*judgement-bound-vars* *judgement-bound-vars*)
+		 (jbvars nil))
 	     (unwind-protect
 		  (let ((*bound-variables* (append (bindings (operator* ex))
 						   *bound-variables*)))
-		    (setq jbvars
-			  (set-binding-judgements-from-arg-judgements ex))
+		    (setq jbvars (set-binding-judgements-from-arg-judgements ex))
+		    (setq *judgement-bound-vars* (append jbvars *judgement-bound-vars*))
 		    (judgement-types* (expression* op)))
 	       (dolist (jbvar jbvars)
 		 (setf (gethash (car jbvar) (judgement-types-hash
@@ -1773,7 +1778,7 @@
 	   (rtypes nil)
 	   (rjdecls nil))
       (mapc #'(lambda (ety ejd)
-		(when (subtype-of? (range (type ex)) ety)
+		(unless (subtype-of? (range (type ex)) ety)
 		  (push ety rtypes)
 		  (push ejd rjdecls)))
 	   drtypes drjdecls)
