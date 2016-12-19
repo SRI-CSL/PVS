@@ -667,6 +667,17 @@
 (defmethod tc-eq* ((e1 rational-expr) (e2 application) bindings)
   (tc-eq* e2 e1 bindings))
 
+(defmethod tc-eq* ((e1 unary-application) (e2 rational-expr) bindings)
+  (declare (ignore bindings))
+  (and (name-expr? (operator e1))
+       (eq (id (operator e1)) '-)
+       (eq (id (module (declaration (operator e1)))) '|number_fields|)
+       (number-expr? (argument e1))
+       (= (number (argument e1)) (- (number e2)))))
+
+(defmethod tc-eq* ((e1 rational-expr) (e2 unary-application) bindings)
+  (tc-eq* e2 e1 bindings))
+
 (defmethod tc-eq-ops ((op1 field-name-expr) (op2 field-name-expr)
 		      &optional bindings)
   (with-slots ((id1 id) (ty1 type)) op1
