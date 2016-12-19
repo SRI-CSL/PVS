@@ -353,7 +353,6 @@ This is printed in reverse order.")
 (defvar *smt-warnings* nil)
   
 (defvar *smt-id-counter*)  ;;needs to be initialized in eproofcheck
-(newcounter *smt-id-counter*)
 
 (defparameter *smt-interpreted-names*
   '((=  (|equalities| . =))
@@ -482,19 +481,19 @@ This is printed in reverse order.")
 
 ;; All of the types:
 ;; smt-type
-;; - smt-boolean-type
-;; - smt-uninterpreted-type
-;; - smt-number-type
-;; - smt-real-type
-;; - smt-int-type
-;; - smt-bitvector-type
-;; - smt-predicate-subtype
-;; - smt-function-type
-;; - smt-array-type
-;; - smt-tuple-type
-;; - smt-record-type
-;; - smt-scalar-type
-;; - smt-inductive-datatype
+;; - smt-boolean-type: no declaration
+;; - smt-uninterpreted-type: needs declaration
+;; - smt-number-type: not available in SMTLIB2
+;; - smt-real-type: no declaration
+;; - smt-int-type: no declaration
+;; - smt-bitvector-type: no declaration
+;; - smt-predicate-subtype: not available in SMTLIB2
+;; - smt-function-type: no declaration
+;; - smt-array-type: no declaration
+;; - smt-tuple-type: need declaration
+;; - smt-record-type: need declaration
+;; - smt-scalar-type: need declaration
+;; - smt-inductive-datatype: need declaration
 
 (defclass smt-boolean-type (smt-type)
   ()
@@ -550,6 +549,13 @@ This is printed in reverse order.")
 
 (defclass smt-inductive-datatype (smt-type)
   ((constructors :accessor smt-idt-constructors :initarg :constructors))) ; list of idt-constructors
+
+(defun declarable-type? (smtt)
+  (or (smt-uninterpreted-type? smtt)
+      (smt-tuple-type? smtt)
+      (smt-record-type? smtt)
+      (smtt-scalar-type? smtt)
+      (smt-inductive-type? smtt)))
 
 (defun make-boolean-type ()
   (make-instance 'smt-boolean-type :name "Bool"))
@@ -1121,7 +1127,9 @@ This tool was developed by Tim King (taking@cs.nyu.edu) and Natarajan Shankar (s
 ;; 	    (add to hashtable phi smtt)
 ;;          smtt)))))
 
-(defun smt-tc-expr (obj &optional bindings) (smt-tc-expr* obj bindings))
+(defun smt-tc-expr (obj &optional bindings)
+    (newcounter *smt-id-counter*)
+    (smt-tc-expr* obj bindings)))
 
 (defmethod smt-tc-expr* :around ((obj expr) bindings)
   "This is for looking up cached results."
@@ -1377,10 +1385,23 @@ This tool was developed by Tim King (taking@cs.nyu.edu) and Natarajan Shankar (s
 
 ;;NSH(8/5/2016): TimK did not define select-types-for-output and type-declaration
 (defun select-types-for-output (smt-type-list)
-  smt-type-list)
+  (loop for smtt in smt-type-list
+	when (declarable-type? smtt)
+	collect smtt))
 
 (defun type-declaration (smt-type)
-  "~%to be defined")
+  (
+  (type-declaration* smt-type))
+
+(defmethod type-declaration* ((smtt smt-uninterpreted-type))
+  (with-slots (name) smtt
+	      (format nil "(declare-sort ~a 0)" (smt-id-name name))))
+
+(defmethod type-declaration* ((smtt smt-tuple-type))
+  (with-slots (element-types)
+	      (format nil "(declare-datatypes () ((tuple~a
+
+
 
 (defun write-types-to-stream (stream)
   (let* ((selected-types (select-types-for-output *smt-type-declarations*))

@@ -179,6 +179,7 @@
 (defvar *infinity* (gensym "*-infinity"))
 (defvar *quant-simp?* nil)
 (defvar *implicit-typepreds?* nil)
+(defvar *assert-eval?* nil)
 
 #+lucid
 (defmacro pvs-format (stream format-string &rest args)
