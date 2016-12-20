@@ -729,13 +729,15 @@
 
 (defmethod subst-mod-params-print-type ((obj type-expr) (nobj type-expr) modinst bindings)
   (assert (typep (print-type obj) '(or null type-name expr-as-type type-application)))
-  (if (print-type obj)
+  (if (and (print-type obj)
+	   (or (null (print-type nobj))
+	       (free-params (print-type nobj))))
       (if (or (mappings modinst)
 	      (free-params (print-type obj)))
       	  (let* ((stype (subst-mod-params* (print-type obj) modinst bindings))
       		 (pte (or (print-type stype) stype)))
-      	    (if (tc-eq pte nobj)
-      		nobj
+      	    (if (occurs-in nobj pte)
+      		(lcopy nobj :print-type nil)
       		(if (eq obj nobj)
       		    (lcopy nobj :print-type pte)
       		    (progn (setf (print-type nobj) pte)
