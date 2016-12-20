@@ -461,7 +461,8 @@
 	     (cons (id operator) args))
 	    (t (let* ((lifted-op (lift-adt operator t))
 		      (op (translate-to-prove lifted-op)))
-		 (cons (make-apply-name (type lifted-op))
+		 ;; Note that (type lifted-op) is not always right
+		 (cons (make-apply-name (type operator))
 		       (cons (if (symbolp op)
 				 (list op) op)
 			     args))))))))
@@ -490,6 +491,7 @@
       ex))
 
 (defmethod lift-adt ((ex name-expr) &optional op?)
+  (declare (ignore op?))
   (let ((decl (declaration ex)))
     (if (and (const-decl? decl)
 	     (listp (positive-types decl))
