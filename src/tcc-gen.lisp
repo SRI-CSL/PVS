@@ -1145,7 +1145,8 @@
 			(*simplify-tccs*
 			 (pseudo-normalize sform))
 			(t (beta-reduce sform)))))
-      (assert (null (freevars uform)))
+      (assert (every #'(lambda (fv) (memq (declaration fv) *keep-unbound*))
+		     (freevars uform)))
       (unless (tc-eq uform *true*)
 	(when (and *false-tcc-error-flag*
 		   (tc-eq uform *false*))
