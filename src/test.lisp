@@ -3,6 +3,51 @@
 ;;; To run the Allegro profiler:
 ;;;   (prof:with-profiling () <body>)
 ;;;   (prof:show-flat-profile) or (prof:show-call-graph) give the information
+;;; prof:*hidden-packages* and prof:*hidden-functions* control what is displayed
+;;;   note that these affect the display, not the collection
+;;; prof:reset-profiler-display-defaults 
+
+(defparameter *hidden-functions*
+  '("start_reborn_lisp" "first_lisp_thread" excl::lisp-thread-start
+    excl::run-initial-thread excl::thread-reset-catcher excl::thread-bind-and-call
+    (:internal (:effective-method 1 t t t t) 0)
+    (:internal (:effective-method 4 nil nil t t) 0)
+    (:internal (:effective-method 2 nil nil t t) 0)
+    (:internal (:effective-method 1 nil nil t t) 0)
+    every some
+    (:internal excl::effective-method-eql 0)
+    (:internal (:effective-method 2 t nil t t) 0)
+    (:internal (:effective-method 3 nil nil t t) 0)
+    (:internal (:effective-method 1 t nil t t) 0)
+    (method initialize-instance (standard-object))
+    "smp_request_gc_op"
+    (:internal refine-optype-from-expected 0)
+    (method shared-initialize (standard-object t))
+    "sem_wait" excl::sort-list excl::merge-lists* reduce "lisp_cons"
+    excl::typep-class "(lisp-trampolines)" (:discriminator (:caching (class) nil))
+    (:internal excl::compute-default-constructor 0)
+    excl::gethash_2op_1ret "new_simple_vector" "bind_one_spec"
+    excl::allocate-object-of-standard-class "restify2"
+    (:discriminator (:n-n-reader)) excl::.inv-si-slot-value
+    (:discriminator (:caching (class class t) nil))
+    intern excl::package-name-cvt-1 "q_wrapper"
+    (:internal (:effective-method 1 t t nil nil) 0)
+    pvs-sxhash-lists-a
+    (:internal (:effective-method 2 t nil nil t) 0)
+    excl::validate-make-instance-initargs
+    "qsymeval"
+    excl::fast-list-position-eq excl::list-remove-if format
+    "unbind_one_spec"))
+
+(defun hide-from-profile ()
+  (pushnew (find-package :prof) prof:*hidden-packages*)
+  (dolist (fun *hidden-functions*)
+    (pushnew fun prof:*hidden-functions*)))
+
+(defun hide-methods-from-profile (gfun)
+  (dolist (mthd (collect-method-forms gfun))
+    (pushnew mthd prof:*hidden-functions*)))
+  
 
 ;;; To get more information from Allegro compilation
 ;;;  (proclaim '(:explain :types :calls :boxing :variables :tailmerging :inlining))
@@ -28,8 +73,8 @@
 ;;       `((";**;*.*" "/csl/allegro/allegro8.0/")
 ;; 	   ("**;*.*" "/csl/allegro/allegro8.0/")))
 (setf (logical-pathname-translations "sys")
-       `((";**;*.*" "/home/owre/acl82.64/")
- 	   ("**;*.*" "/home/owre/acl82.64/")))
+       `((";**;*.*" "/home/owre/acl/")
+ 	   ("**;*.*" "/home/owre/acl/")))
 
 ;; #+allegro
 ;; (defun start-ide ()
