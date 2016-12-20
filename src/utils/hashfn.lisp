@@ -686,6 +686,22 @@
     (pvs-sxhash-+ (the positive-fixnum (pvs-sxhash-ops op1 bindings))
 		  (the positive-fixnum (pvs-sxhash* arg1 bindings)))))
 
+(defmethod pvs-sxhash* ((e1 unary-application) bindings)
+  (if (and (name-expr? (operator e1))
+	   (eq (id (operator e1)) '-)
+	   (eq (id (module (declaration (operator e1)))) '|number_fields|)
+	   (number-expr? (argument e1)))
+      (sxhash (- (number (argument e1))))
+      (call-next-method)))
+
+;; (defmethod pvs-sxhash* ((e1 list-expr) bindings)
+;;   (let ((list-ex e1)
+;; 	(ophash (pvs-sxhash-ops (operator e1) bindings))
+;; 	)
+;;     (loop while (list-expr? list-ex)
+;;        do (progn (pvs-sxhash* (args1 list-ex) bindings)
+;; 	    (setq list-ex (args2 list-ex))))
+
 ;(defmethod tc-eq-ops ((op1 field-name-expr) (op2 field-name-expr) bindings)
 ;  (with-slots ((id1 id) (ty1 type)) op1
 ;    (with-slots ((id2 id) (ty2 type)) op2
