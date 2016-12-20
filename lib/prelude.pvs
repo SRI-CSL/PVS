@@ -3883,7 +3883,7 @@ modulo_arithmetic : THEORY
      rem(b)(- x) = rem(b)(- y) IFF rem(b)(x) = rem(b)(y)
 
   % Provide a name for the function asserted to exist by euclid_int
-  ndiv(x,b) : {q: int | x = b * q + nrem(x, b)}
+  ndiv(x,b) : {q: int | x = b * q + rem(b)(x)}
 
   ndiv_lt: LEMMA ndiv(x,b) <= x/b
 
