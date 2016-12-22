@@ -279,7 +279,7 @@
 (defcl implication (propositional-application))
 (defcl infix-implication (implication infix-application))
 (defcl when-expr (implication))
-(defcl infix-when-expr (infix-implication))
+(defcl infix-when-expr (infix-implication when-expr))
 
 (defcl iff-or-boolean-equation (application))
 
