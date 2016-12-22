@@ -4523,6 +4523,18 @@ space")
 (defmethod dep-binding-type ((te type-expr))
   te)
 
+(defmethod tc-expr ((str string))
+  (pc-typecheck (pc-parse str 'expr)))
+
+(defmethod tc-expr ((ex expr))
+  (pc-typecheck ex))
+
+(defmethod tc-type ((str string))
+  (pc-typecheck (pc-parse str 'type-expr)))
+
+(defmethod tc-type ((ex type-expr))
+  (pc-typecheck ex))
+
 ;; This is the function for making hash tables
 (defun make-pvs-hash-table (&rest other-keys &key strong-eq? weak-keys?
 				  &allow-other-keys)
