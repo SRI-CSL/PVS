@@ -43,85 +43,91 @@
 
 (defun load-core-prelude ()
   (assert *pvs-path*)
-  (setq sbrt::*disable-caching* t)
-  (setq *pvs-context* nil)
-  (setq *prelude-theories* nil
-	*boolean* nil
-	*number* nil
-	*real* nil
-	*rational* nil
-	*integer* nil
-	*naturalnumber* nil
-	*posint* nil
-	*ordinal* nil
-	*even_int* nil
-	*odd_int* nil
-	*even_nat* nil
-	*even_posnat* nil
-	*odd_posnat* nil
-	*even_negint* nil
-	*odd_negint* nil)
-  (when *pvs-initialized*
-    (clear-theories t))
-  (let ((cdir (or *pvs-context-path* (working-directory)))
-	(*pvs-context-path* nil)
-	(*pvs-modules* (make-hash-table :test #'eq :size 20 :rehash-size 10))
-	(*pvs-files* (make-hash-table :test #'equal))
-	(*prelude-libraries* (make-hash-table :test #'equal))
-	(*imported-libraries* (make-hash-table :test #'equal))
-	(*pvs-context* nil)
-	(*loading-prelude* t)
-	(*generate-tccs* 'all)
-	(theories (parse :file (format nil "~a/lib/~a"
+  (let ((theories (parse :file (format nil "~a/lib/~a"
 				 *pvs-path* *prelude-filename*))))
-    (reset-typecheck-caches)
-    (dolist (fn *load-prelude-hook*)
-      (funcall fn))
-    (setq *prelude-context* nil)
-    (setq *prelude-core-context* nil)
-    (reset-equality-decl)
-    (reset-if-declaration)
-    (reset-boolean-aliases)
-    (unwind-protect
-	 (progn
-	   (set-working-directory (format nil "~a/lib/" *pvs-path*))
-	   (setq *pvs-context-path* (working-directory))
-	   (dolist (th theories)
-	     (let ((*current-theory* th))
-	       (format t "~%Typechecking ~a" (id th))
-	       (setf (status th) '(parsed))
-	       (setf (gethash (id th) *prelude*) th)
-	       (typecheck th)
-	       (let* ((tot (car (tcc-info th)))
-		      (prv (cadr (tcc-info th)))
-		      (mat (caddr (tcc-info th)))
-		      (obl (- tot prv mat)))
-		 (if (zerop tot)
-		     (format t "~%~a typechecked: No TCCs generated" (id th))
-		     (format t "~%~a typechecked: ~d TCC~:p, ~
+    (when (and *prelude-theories*
+	       (or ;;(not (length= *prelude-theories* theories))
+		   (let ((*current-context* *prelude-context*))
+		     (some #'compare *prelude-theories* theories))))
+      (format t "~%Prelude has changed - invalidating current binfiles")
+      (incf *binfile-version*))
+    (setq sbrt::*disable-caching* t)
+    (setq *pvs-context* nil)
+    (setq *prelude-theories* nil
+	  *boolean* nil
+	  *number* nil
+	  *real* nil
+	  *rational* nil
+	  *integer* nil
+	  *naturalnumber* nil
+	  *posint* nil
+	  *ordinal* nil
+	  *even_int* nil
+	  *odd_int* nil
+	  *even_nat* nil
+	  *even_posnat* nil
+	  *odd_posnat* nil
+	  *even_negint* nil
+	  *odd_negint* nil)
+    (when *pvs-initialized*
+      (clear-theories t))
+    (let ((cdir (or *pvs-context-path* (working-directory)))
+	  (*pvs-context-path* nil)
+	  (*pvs-modules* (make-hash-table :test #'eq :size 20 :rehash-size 10))
+	  (*pvs-files* (make-hash-table :test #'equal))
+	  (*prelude-libraries* (make-hash-table :test #'equal))
+	  (*imported-libraries* (make-hash-table :test #'equal))
+	  (*pvs-context* nil)
+	  (*loading-prelude* t)
+	  (*generate-tccs* 'all))
+      (reset-typecheck-caches)
+      (dolist (fn *load-prelude-hook*)
+	(funcall fn))
+      (setq *prelude-context* nil)
+      (setq *prelude-core-context* nil)
+      (reset-equality-decl)
+      (reset-if-declaration)
+      (reset-boolean-aliases)
+      (unwind-protect
+	   (progn
+	     (set-working-directory (format nil "~a/lib/" *pvs-path*))
+	     (setq *pvs-context-path* (working-directory))
+	     (dolist (th theories)
+	       (let ((*current-theory* th))
+		 (format t "~%Typechecking ~a" (id th))
+		 (setf (status th) '(parsed))
+		 (setf (gethash (id th) *prelude*) th)
+		 (typecheck th)
+		 (let* ((tot (car (tcc-info th)))
+			(prv (cadr (tcc-info th)))
+			(mat (caddr (tcc-info th)))
+			(obl (- tot prv mat)))
+		   (if (zerop tot)
+		       (format t "~%~a typechecked: No TCCs generated" (id th))
+		       (format t "~%~a typechecked: ~d TCC~:p, ~
                                ~d proved, ~d subsumed, ~d unproved~
                                ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
-		       (id th) tot prv mat obl
-		       (length (warnings th)) (length (info th)))))
-	       ;; No need to have saved-context set for prelude contexts
-	       (assert (typep th '(or datatype module)))
-	       (setq *prelude-theories*
-		     (nconc *prelude-theories* (cons th nil)))
-	       (setq *prelude-core-context*
-		     (update-prelude-context th))
-	       (setq *prelude-context* *prelude-core-context*)
-	       (when (eq (id th) '|booleans|)
-		 (let ((*current-context* (saved-context th)))
-		   (setq *true*
-			 (typecheck* (mk-name-expr 'TRUE) *boolean* nil nil))
-		   (setq *false*
-			 (typecheck* (mk-name-expr 'FALSE) *boolean* nil
-				     nil))))))
-	   (format t "~%Done typechecking the core prelude")
-	   (restore-prelude-proofs)
-	   ;;(initialize-prelude-attachments)
-	   (register-manip-type *number_field* 'pvs-type-real))
-      (set-working-directory cdir))))
+			 (id th) tot prv mat obl
+			 (length (warnings th)) (length (info th)))))
+		 ;; No need to have saved-context set for prelude contexts
+		 (assert (typep th '(or datatype module)))
+		 (setq *prelude-theories*
+		       (nconc *prelude-theories* (cons th nil)))
+		 (setq *prelude-core-context*
+		       (update-prelude-context th))
+		 (setq *prelude-context* *prelude-core-context*)
+		 (when (eq (id th) '|booleans|)
+		   (let ((*current-context* (saved-context th)))
+		     (setq *true*
+			   (typecheck* (mk-name-expr 'TRUE) *boolean* nil nil))
+		     (setq *false*
+			   (typecheck* (mk-name-expr 'FALSE) *boolean* nil
+				       nil))))))
+	     (format t "~%Done typechecking the core prelude")
+	     (restore-prelude-proofs)
+	     ;;(initialize-prelude-attachments)
+	     (register-manip-type *number_field* 'pvs-type-real))
+	(set-working-directory cdir)))))
 
 (defun load-pvsio-prelude ()
   (assert *pvs-path*)
