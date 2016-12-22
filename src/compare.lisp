@@ -201,13 +201,12 @@
        (compare* (ordering old) (ordering new))))
 
 (defmethod compare-decl ((old formula-decl) (new formula-decl))
-  (or (and ;;(call-next-method)
+  (and ;;(call-next-method)
        (or (eq (spelling old) (spelling new))
 	   (and (memq (spelling old) '(AXIOM POSTULATE))
 		(memq (spelling new) '(AXIOM POSTULATE))))
        (compare* (kind old) (kind new))
-       (compare* (definition old) (definition new)))
-      (break "diff")))
+       (compare* (definition old) (definition new))))
 
 (defmethod compare-decl ((old subtype-judgement) (new subtype-judgement))
   (and ;;(call-next-method)
