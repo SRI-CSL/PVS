@@ -58,6 +58,9 @@
   expr
   type)
 
+(defun tccinfo-eq (tcc1 tcc2)
+  (tc-eq (tccinfo-formula tcc1) (tccinfo-formula tcc2)))
+
 (defun generate-subtype-tcc (expr expected incs)
   (if (every #'(lambda (i) (member i *tcc-conditions* :test #'tc-eq))
 	     incs)
