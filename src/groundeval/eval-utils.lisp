@@ -46,7 +46,8 @@
 	 else-part)
 	(t (let* ((sel (car selections))
 		  (thinst (module-instance (find-supertype (type expr))))
-		  (rec (subst-mod-params (recognizer (constructor sel)) thinst))
+		  (theory (module (declaration (find-supertype (type expr)))))
+		  (rec (subst-mod-params (recognizer (constructor sel)) thinst theory))
 		  (cond (make!-application rec expr))
 		  (then (mk-subst-accessors-in-selection expr sel))
 		  (else (mk-translate-cases-to-if* expr (cdr selections)
@@ -57,7 +58,8 @@
 
 (defun mk-subst-accessors-in-selection (expr sel)
   (let* ((thinst (module-instance (find-supertype (type expr))))
-	 (accs (subst-mod-params (accessors (constructor sel)) thinst))
+	 (theory (module (declaration (find-supertype (type expr)))))
+	 (accs (subst-mod-params (accessors (constructor sel)) thinst theory))
 	 (vars (args sel))
 	(selexpr (expression sel)))
     (substit selexpr
