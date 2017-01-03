@@ -4615,21 +4615,32 @@ space")
 	(list (namestring file) (get-file-git-sha1 path))
 	(list (namestring file) ""))))
 
+(defun pvs-dist-file-name ()
+  (uiop:run-program
+      (format nil "git -C ~a describe" *pvs-path*)
+    :input "//dev//null"
+    :output :string))
+
+(defun git-current-commit ()
+  (if (file-exists-p (format nil "~a/.git" *pvs-path*))
+      (values-list
+       (split
+	(uiop:run-program
+	    (format nil "git -C ~a log -1 --pretty=format:%h:%H" *pvs-path*)
+	  :input "//dev//null"
+	  :output :string)
+	#\:))
+      (error "*pvs-path* has no .git directory")))
+
 (defun get-file-git-sha1 (file)
   ;; Use the Git SHA1, which is different from simple SHA1
   ;; as it includes "blob" and length of file
   ;; Advantage is that it is the same inside or outside of Git
-  (let ((stream #+allegro (excl:run-shell-command
-			   (format nil "git hash-object ~a" file)
-			   :wait nil
-			   :input "//dev//null"
-			   :output :stream
-			   :error-output :output)
-		#+sbcl (sb-ext:run-program "git hash-object" (list "-a")
-					   :input "//dev//null"
-					   :output :stream
-					   :wait nil)))
-    (format nil "~a" (read stream))))
+  (uiop:stripln
+   (uiop:run-program
+       (format nil "git hash-object ~a" file)
+     :input "//dev//null"
+     :output :string)))
 
 (defun record-file-loaded-for-pvs (file)
   (let ((elt (assq *loading-files* *files-loaded*)))
