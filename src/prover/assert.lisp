@@ -3078,7 +3078,7 @@
   (id (declaration res)))
 
 (defun auto-rewrite* (expr oldsig hashentry &optional op*)
-  ;;hashentry is a list of rewrite rules for op*
+    ;;hashentry is a list of rewrite rules for op*
   (if (null hashentry)
       (values oldsig expr)
       (let* ((hashentry1 (car hashentry)) ;;get first rewrite rule
@@ -3086,20 +3086,7 @@
 	     (res-decl (unless (consp res) (declaration res)))
 	     ;;to handle antecedent rewrites.
 	     (mod-inst (when res-decl (module-instance res)))
-	     (modsubst
-	      (if (and res-decl
-		       (typep res-decl 'formula-decl))
-		  (let* ((current-mod? (eq (module res-decl)
-					   (current-theory)))
-			 (actuals (unless current-mod? (actuals mod-inst)))
-			 (formals (unless current-mod?
-				    (formals-sans-usings
-				     (module res-decl)))))
-		    (if (or (null formals) actuals)
-			t
-			(mapcar #'(lambda (x) (list x))
-			  formals)))
-		  t))
+	     (modsubst (auto-rewrite-modsubst res-decl mod-inst))
 	     (lhs-hashentry (lhs hashentry1)))
 	(cond ((and (eq expr op*)
 		    (is-res-macro res)
@@ -3147,21 +3134,7 @@
 					 (is-res-auto-rewrite-non! res))
 				     (is-res-auto-rewrite-non! res))))
 		   (multiple-value-bind (usubst modsubst)
-		       (if defn
-			   (values
-			    (loop for vars in (arguments* lhs)
-				  as args in (arguments* expr)
-				  nconc (pairlis-args
-					 (mapcar #'declaration vars)
-					 args))
-			    t)
-			   (if lhs
-			       (let ((*modsubst* modsubst) ;;no tccs in match
-				     (*generate-tccs* 'none)
-				     (*no-match-assert-test* t))
-				 (values (match lhs expr nil nil)
-					 *modsubst*))
-			       'fail))
+		       (auto-rewrite-get-substs defn expr lhs modsubst)
 		     (let* ((psubst (if (eq usubst 'fail)
 					usubst
 					(sort-alist usubst)))
@@ -3204,7 +3177,7 @@
 				    (if (null modsubst)
 					rhs
 					(subst-mod-params rhs modsubst)))))
-		       (cond ((or (eq subst 'fail)(eq modsubst 'fail))
+		       (cond ((or (eq subst 'fail) (eq modsubst 'fail))
 			      (if lhs ;;then match must've failed.
 				  (track-rewrite-format
 				   res expr
@@ -3224,7 +3197,7 @@
 						res)))
 				    (decf *auto-rewrite-depth*)	;;NSH(5.26.95)
 				    (cond ((and if-flag (eq sigrhs 'X))
-			 ;;;then ignore current rewrite.
+					   ;;then ignore current rewrite.
 					   (track-rewrite-format
 					    res expr
 					    "RHS did not simplify.")
@@ -3265,60 +3238,102 @@
 				      (cond
 				       ((or (null hyp)
 					    (tc-eq newhyp *true*))
-					(let ((newtccs
-					       (nth-value 1
-						 (progn 
-						   (inc-rewrite-depth res)
-						   (flag-assert-if
-						    (mapcar #'tccinfo-formula
-						      tccforms))))))
-					  (decf *auto-rewrite-depth*)
-					  (cond ((every #'true-p newtccs)
-						 (multiple-value-bind
-						     (sigrhs newrhs)
-						     (top-lazy-assert-if-with-subst
-						      rhs
-						      subst
-						      if-flag
-						      res)
+					(cond ((some #'(lambda (tcc)
+							 (member tcc *auto-rewrite-tccs-seen*
+								 :test #'tccinfo-eq))
+						     tccforms)
+					       (track-rewrite-format
+						res expr
+						"TCC(s)~{~a, ~} are being generated recursively."
+						(remove-if #'(lambda (tcc)
+							       (member tcc *auto-rewrite-tccs-seen*
+								       :test #'tccinfo-eq))
+						  tccforms))
+					       (auto-rewrite* expr oldsig (cdr hashentry) op*))
+					      (t (let* ((*auto-rewrite-tccs-seen*
+							 (append tccforms *auto-rewrite-tccs-seen*))
+							(newtccs
+							 (nth-value 1
+							   (progn 
+							     (inc-rewrite-depth res)
+							     (flag-assert-if
+							      (mapcar #'tccinfo-formula
+								tccforms))))))
 						   (decf *auto-rewrite-depth*)
-						   (cond ((and if-flag (eq sigrhs 'X))
+						   (cond ((every #'true-p newtccs)
+							  (multiple-value-bind
+								(sigrhs newrhs)
+							      (top-lazy-assert-if-with-subst
+							       rhs
+							       subst
+							       if-flag
+							       res)
+							    (decf *auto-rewrite-depth*)
+							    (cond ((and if-flag (eq sigrhs 'X))
+								   (track-rewrite-format
+								    res expr
+								    "RHS did not simplify."
+								    )
+								   (auto-rewrite* expr oldsig
+										  (cdr hashentry)
+										  op*))
+								  (t (format-rewrite-msg
+								      (if (consp res)
+									  (car res)
+									  (id res-decl))
+								      expr newrhs)
+								     (when (not (consp res))
+								       (push-references-list
+									(module-instance res)
+									*dependent-decls*)
+								       (pushnew res-decl
+										*dependent-decls*
+										))
+
+								     (values '? newrhs)))))
+							 (t
 							  (track-rewrite-format
 							   res expr
-							   "RHS did not simplify."
-							   )
+							   "TCC(s)~{~a, ~} remain."
+							   (loop for x in newtccs
+							      when (not (tc-eq x *true*))
+							      collect x))
 							  (auto-rewrite* expr oldsig
-									 (cdr hashentry)
-									 op*))
-							 (t (format-rewrite-msg
-							     (if (consp res)
-								 (car res)
-								 (id res-decl))
-							     expr newrhs)
-							    (when (not (consp res))
-							      (push-references-list
-							       (module-instance res)
-							       *dependent-decls*)
-							      (pushnew res-decl
-								       *dependent-decls*
-								       ))
-
-							    (values '? newrhs)))))
-						(t
-						 (track-rewrite-format
-						  res expr
-						  "TCC(s)~{~a, ~} remain."
-						  (loop for x in newtccs
-							when (not (tc-eq x *true*))
-							collect x))
-						 (auto-rewrite* expr oldsig
-								(cdr hashentry) op*)))))
+									 (cdr hashentry) op*)))))))
 				       (t (track-rewrite-format
 					   res expr
 					   "Hypothesis ~a did not simplify."
 					   newhyp)
 					  (auto-rewrite* expr oldsig
 							 (cdr hashentry) op*))))))))))))))))
+
+(defmethod auto-rewrite-modsubst ((res-decl formula-decl) mod-inst)
+  (let* ((current-mod? (eq (module res-decl) (current-theory)))
+	 (actuals (unless current-mod? (actuals mod-inst)))
+	 (formals (unless current-mod? (formals-sans-usings (module res-decl)))))
+    (if (or (null formals) actuals)
+	t
+	(mapcar #'list formals))))
+
+(defmethod auto-rewrite-modsubst ((res-decl t) mod-inst)
+  t)
+
+(defun auto-rewrite-get-substs (defn expr lhs modsubst)
+  (if defn
+      (values
+       (loop for vars in (arguments* lhs)
+	  as args in (arguments* expr)
+	  nconc (pairlis-args
+		 (mapcar #'declaration vars)
+		 args))
+       t)
+      (if lhs
+	  (let ((*modsubst* modsubst) ;;no tccs in match
+		(*generate-tccs* 'none)
+		(*no-match-assert-test* t))
+	    (values (match lhs expr nil nil)
+		    *modsubst*))
+	  'fail)))
 
 ;;NSH(5.18.95)
 (defun gensort (list order &optional accum);;generic sorter, CLISP sort sucks!!
@@ -4931,3 +4946,15 @@ chronological order are:~3%")
 	    (collect-auto-rewrites))
 	  t t))
       (pvs-message "No current proof")))
+
+(defun all-auto-rewrites ()
+  (mapcar #'(lambda (res)
+		     (if (consp res)
+			 ;; A fnum rewrite
+			 (car res)
+			 (format nil "~a~@[[~{~a~^, ~}]~]"
+			   (id (declaration res))
+			   (actuals (module-instance res)))))
+    (append (macro-names *ps*)
+	    (auto-rewrites!-names *ps*)
+	    (auto-rewrites-names *ps*))))
