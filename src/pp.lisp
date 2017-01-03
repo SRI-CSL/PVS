@@ -226,8 +226,14 @@ bind tighter.")
 ;;; Unparse takes the following keywords:
 ;;; :string :stream :char-width :file :style
 
+(defparameter *pp-print-length* nil)
+(defparameter *pp-print-level* nil)
+(defparameter *pp-print-lines* nil)
+(defparameter *pp-print-pretty* t)
+
 (defun unparse (obj &key string stream file char-width
-		    length level lines (pretty t) no-newlines?)
+		      (length *pp-print-length*) (level *pp-print-level*)
+		      (lines *pp-print-lines*) (pretty *pp-print-pretty*) no-newlines?)
    (let ((*print-length* length)
 	 (*print-level* level)
 	 (*print-lines* lines)
