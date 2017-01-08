@@ -654,6 +654,10 @@
 		   (tc-eq* op1 op2 bindings)
 		   (tc-eq-ops op1 op2 bindings)))))))
 
+(defmethod tc-eq* ((e1 list-expr) (e2 list-expr) bindings)
+  (and (tc-eq* (args1 e1) (args1 e2) bindings)
+       (tc-eq* (args2 e1) (args2 e2) bindings)))
+
 (defmethod tc-eq* ((e1 application) (e2 rational-expr) bindings)
   (declare (ignore bindings))
   (and (not *use-rationals*) ;; Don't match if trying to convert in assert
