@@ -649,6 +649,9 @@
 		(call-next-method)
 		result)))))))
 
+(defmethod match* ((lhs list-expr) (instance list-expr) bind-alist subst)
+  (match* (argument lhs) (argument instance) bind-alist subst))
+
 (defmethod match-ops ((op1 constructor-name-expr) (op2 constructor-name-expr)
 		      bind-alist subst)
   (match-adt-ops op1 op2 bind-alist subst))
