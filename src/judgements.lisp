@@ -756,7 +756,7 @@
 		
 
 (defun subst-judgement-types (jtypes bndlist arglist)
-  (if (null bndlist)
+  (if (or (null bndlist) (null arglist))
       jtypes
       (subst-judgement-types
        (substit jtypes
