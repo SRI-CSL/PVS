@@ -2458,10 +2458,14 @@
 		  'type-expr)))
 
 (defun make-cons-name-expr (elt-type)
-  (pc-typecheck (pc-parse (format nil "list_adt[~a].cons" (str elt-type)) 'expr)))
+  (change-class
+      (pc-typecheck (pc-parse (format nil "list_adt[~a].cons" (str elt-type)) 'expr))
+      'constructor-name-expr))
 
 (defun make-null-name-expr (elt-type)
-  (pc-typecheck (pc-parse (format nil "list_adt[~a].null" (str elt-type)) 'expr)))
+  (change-class
+      (pc-typecheck (pc-parse (format nil "list_adt[~a].null" (str elt-type)) 'expr))
+      'constructor-name-expr))
 
 (defun make!-cons-type (elt-type)
   (let ((decl (find '|cons| (theory (get-theory "list_adt")) :key #'id))
@@ -2482,7 +2486,8 @@
 	 (ctype (let ((*current-context* *prelude-context*))
 		  (subst-mod-params (type decl) thinst)))
 	 (res (mk-resolution decl thinst ctype)))
-    (make!-name-expr '|cons| acts nil res)))
+    (change-class (make!-name-expr '|cons| acts nil res)
+	'constructor-name-expr)))
 
 (defun make!-null-name-expr (elt-type)
   (let* ((decl (find '|null| (theory (get-theory "list_adt")) :key #'id))
@@ -2491,7 +2496,8 @@
 	 (ctype (let ((*current-context* *prelude-context*))
 		  (subst-mod-params (type decl) thinst)))
 	 (res (mk-resolution decl thinst ctype)))
-    (make!-name-expr '|null| acts nil res)))
+    (change-class (make!-name-expr '|null| acts nil res)
+	'constructor-name-expr)))
 
 (defmethod mk-subst-alist ((bdlist list) (dty dep-binding))
   ;; Generates subst alist from bdlist to dty
