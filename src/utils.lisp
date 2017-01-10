@@ -3999,6 +3999,9 @@ space")
 (defmethod variable? ((expr field-assignment-arg))
   nil)
 
+(defmethod variable? ((expr projection-expr))
+  nil)
+
 (defmethod variable? ((expr t))
   nil)
 
