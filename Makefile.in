@@ -55,6 +55,7 @@ GREP = @GREP@
 ETAGS = @ETAGS@
 GIT = @GIT@
 GIT_FILES := $(shell $(GIT) ls-files)
+GIT_DESC := $(shell $(GIT) describe)
 TAR = @TAR@
 TARFLAGS = cho --exclude='\._*' "$$tardir"
 MKDIR = @MKDIR@
@@ -440,7 +441,7 @@ Maniplisp = src/Manip/pregexp.lisp src/Manip/manip-utilities.lisp \
 
 Fieldlisp = src/Field/extrategies.lisp src/Field/field.lisp
 
-ProofLitelisp = src/ProofLite/prooflite.lisp
+ProofLitelisp = src/ProofLite/prooflite.lisp src/ProofLite/proveit-init.lisp
 
 ws1slisp = src/WS1S/lisp/dfa-foreign.lisp src/WS1S/lisp/dfa.lisp \
            src/WS1S/lisp/pvs-utils.lisp src/WS1S/lisp/symtab.lisp \
@@ -817,13 +818,13 @@ sbclisp-distdir: $(SBCLISP_DISTFILES)
 dist-gzip: dist-allegro-gzip dist-allegro-devel-gzip dist-sbcl-gzip
 
 dist-allegro-gzip: allegro-distdir
-	tardir=$(DISTDIR) && $(TAR) $(TARFLAGS) | GZIP=$(GZIP_ENV) gzip -c >$(DISTDIR)-$(PLATFORM)-allegro.tgz
+	tardir=$(DISTDIR) && $(TAR) $(TARFLAGS) | GZIP=$(GZIP_ENV) gzip -c >$(GIT_DESC)-$(PLATFORM)-allegro.tgz
 	$(am__post_remove_distdir)
 dist-allegro-devel-gzip: allegro-devel-distdir
-	tardir=$(DISTDIR) && $(TAR) $(TARFLAGS) | GZIP=$(GZIP_ENV) gzip -c >$(DISTDIR)-$(PLATFORM)-allegro-devel.tgz
+	tardir=$(DISTDIR) && $(TAR) $(TARFLAGS) | GZIP=$(GZIP_ENV) gzip -c >$(GIT_DESC)-$(PLATFORM)-allegro-devel.tgz
 	$(am__post_remove_distdir)
 dist-sbclisp-gzip: sbclisp-distdir
-	tardir=$(DISTDIR) && $(TAR) $(TARFLAGS) | GZIP=$(GZIP_ENV) gzip -c >$(DISTDIR)-$(PLATFORM)-sbclisp.tgz
+	tardir=$(DISTDIR) && $(TAR) $(TARFLAGS) | GZIP=$(GZIP_ENV) gzip -c >$(GIT_DESC)-$(PLATFORM)-sbclisp.tgz
 	$(am__post_remove_distdir)
 
 dist-bzip2: distdir
