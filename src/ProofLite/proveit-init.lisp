@@ -159,7 +159,7 @@
     (values tot proved unfin untried time)))  
 
 (defun proveit-theories (theories retry? thfs traces 
-				  &optional txtproofs texproofs use-default-dp?)
+				  &optional txtproofs texproofs use-default-dp? save-proofs?)
   (let ((*use-default-dp?* use-default-dp?))
     (when texproofs
       (with-open-file 
@@ -198,7 +198,7 @@
 			       (format nil "pvstex/~a.tex" (id decl)))
 		  (rename-file "pvs-files.tex"
 			       (format nil "pvstex/main-~a.tex" (id decl)))))))
-	  (when *justifications-changed?*
+	  (when (and save-proofs? *justifications-changed?*)
 	    (save-all-proofs *current-theory*)))))))
 
 (defun now-today ()
