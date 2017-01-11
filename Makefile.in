@@ -57,12 +57,17 @@ GIT = @GIT@
 GIT_FILES := $(shell $(GIT) ls-files)
 GIT_DESC := $(shell $(GIT) describe)
 TAR = @TAR@
-TARFLAGS = cho --exclude='\._*' "$$tardir"
+TARFLAGS = co --exclude='\._*' "$$tardir"
 MKDIR = @MKDIR@
 MKDIR_P = $(MKDIR) -p
 PACKAGE = @PACKAGE_NAME@
 VERSION = @PACKAGE_VERSION@
-DISTDIR = $(PACKAGE)-$(VERSION)
+TAG = $(PACKAGE)$(VERSION)
+ifeq ($(shell $(GIT) tag -l $(TAG)),)
+$error("Need to add tag $(TAG), or change PACKAGE or VERSION")
+endif
+SUBVERSION = $(shell $(GIT) rev-list $(TAG).. --count)
+DISTDIR = $(PACKAGE)-$(VERSION).$(SUBVERSION)
 DIST_ARCHIVES = $(DISTDIR).tar.gz
 ALLEGRO_DISTFILES = $(SYSTEM_FILES) $(SOURCE_FILES) $(ALLEGRO_FILES)
 ALLEGRO_DEVEL_DISTFILES = $(SYSTEM_FILES) $(SOURCE_FILES) $(ALLEGRO_DEVEL_FILES) 
@@ -521,7 +526,7 @@ $(error "Must set SBCLISP_HOME, CMULISP_HOME, or ALLEGRO_HOME")
 endif
 endif
 
-all : devel runtime prelude-files-and-regions $(emacs-elc) etags
+all : devel runtime yices prelude-files-and-regions $(emacs-elc) etags
 
 devel : $(allegro-devel) # $(sbcl-devel) $(cmulisp-devel)
 
@@ -549,6 +554,27 @@ image-deps = $(fileutils) $(bddlib) $(ws1slib) $(pvs-make-files) \
              $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
 
 emacs = $(PVSPATH)emacs/$(EMACSSUBDIR)/pvs-load.elc
+
+$(PVSPATH)yices/$(PLATFORM) :
+	$(MKDIR) $@
+
+YICES1 = $(wildcard yices/$(PLATFORM)/yices-1.*)
+YICES2 = $(wildcard yices/$(PLATFORM)/yices-2.*)
+# We're not building yices, just checking if it is in the right place
+ifeq ("$(YICES1)","")
+$(error "yices1 is missing.  Download it from http://yices.csl.sri.com/ and install it in yices/$(PLATFORM)")
+endif
+ifeq ("$(YICES2)","")
+$(error "yices2 is missing.  Download it from http://yices.csl.sri.com/ and install it in yices/$(PLATFORM)")
+endif
+
+$(PVSPATH)bin/$(PLATFORM)/yices1 :
+	(cd $(PVSPATH)bin/$(PLATFORM); \
+	 ln -s ../../yices/$(PLATFORM)/$(YICES1)/bin/yices yices1)
+
+$(PVSPATH)bin/$(PLATFORM)/yices2 :
+	(cd $(PVSPATH)bin/$(PLATFORM); \
+	 ln -s ../../yices/$(PLATFORM)/$(YICES2)/bin/yices yices2)
 
 # Here are the rules for building the PVS grammar, pvs-methods file, and
 # devel and runtime images.
@@ -794,13 +820,13 @@ define create-distdir
 	      find "$(DISTDIR)/$$file" -type d ! -perm -700 -exec chmod u+rwx {} \;; \
 	    fi; \
 	    if test -d $(srcdir)/$$file && test $$d != $(srcdir); then \
-	      cp -fpRd $(srcdir)/$$file "$(DISTDIR)$$dir" || exit 1; \
+	      cp -fpR $(srcdir)/$$file "$(DISTDIR)$$dir" || exit 1; \
 	      find "$(DISTDIR)/$$file" -type d ! -perm -700 -exec chmod u+rwx {} \;; \
 	    fi; \
-	    cp -fpRd $$d/$$file "$(DISTDIR)$$dir" || exit 1; \
+	    cp -fpR $$d/$$file "$(DISTDIR)$$dir" || exit 1; \
 	  else \
 	    test -f "$(DISTDIR)/$$file" \
-	    || cp -pd $$d/$$file "$(DISTDIR)/$$file" \
+	    || cp -pR $$d/$$file "$(DISTDIR)/$$file" \
 	    || exit 1; \
 	  fi; \
 	done
