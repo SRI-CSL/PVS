@@ -141,16 +141,12 @@
 	       (t (let* ((norm-expr (normalize-name-expr-actuals expr))
 			 (id-hash (gethash norm-expr *translate-id-hash*))
 			 (newconst (or id-hash
-				       (list (intern
-					      (concatenate 'string
-							   (string (if (integerp (id expr))
-								       (format nil "~r"
-									       (id expr))
-								     (id expr)))
-							   "_"
-							   (princ-to-string
-							    (funcall
-							     *translate-id-counter*))) :pvs))))
+				       (list
+					(makesym "~a_~d"
+						 (if (integerp (id expr))
+						     (format nil "~r" (id expr))
+						     (id expr))
+						 (funcall *translate-id-counter*)))))
 			 (expr-freevars (freevars expr))
 			 (expr-bindings (intersection expr-freevars *bindings*
 						      :test #'same-declaration))
@@ -461,8 +457,8 @@
 	     (cons (id operator) args))
 	    (t (let* ((lifted-op (lift-adt operator t))
 		      (op (translate-to-prove lifted-op)))
-		 ;; Note that (type lifted-op) is not always right
-		 (cons (make-apply-name (type operator))
+		 ;; Need the lifted-op for structures@subrange_list.msrl_nat
+		 (cons (make-apply-name (type lifted-op))
 		       (cons (if (symbolp op)
 				 (list op) op)
 			     args))))))))
