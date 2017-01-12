@@ -570,11 +570,11 @@ endif
 
 $(PVSPATH)bin/$(PLATFORM)/yices1 :
 	(cd $(PVSPATH)bin/$(PLATFORM); \
-	 ln -s ../../yices/$(PLATFORM)/$(YICES1)/bin/yices yices1)
+	 ln -s ../../$(YICES1)/bin/yices yices1)
 
 $(PVSPATH)bin/$(PLATFORM)/yices2 :
 	(cd $(PVSPATH)bin/$(PLATFORM); \
-	 ln -s ../../yices/$(PLATFORM)/$(YICES2)/bin/yices yices2)
+	 ln -s ../../$(YICES2)/bin/yices yices2)
 
 # Here are the rules for building the PVS grammar, pvs-methods file, and
 # devel and runtime images.
