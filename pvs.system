@@ -27,6 +27,9 @@
 
 (in-package :common-lisp)
 
+#+sbcl
+(require :asdf)
+
 (#-(or cmu sbcl excl) progn
  #+cmu ext:without-package-locks
  #+sbcl sb-ext:without-package-locks
