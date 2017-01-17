@@ -3788,7 +3788,7 @@ modulo_arithmetic : THEORY
 
   nrem(x, b):  {r: mod(b) |  EXISTS q: x = b * q + r}
    
-  rem(b)(x): {r: mod(b) | EXISTS q: x = b * q + r} = nrem(x, b)
+  rem(b)(x): {r: mod(b) | EXISTS q: x = b * q + r} 
 
   rem_def: LEMMA
      FORALL (r : mod(b)): rem(b)(x) = r IFF EXISTS q: x = b * q + r
@@ -3798,6 +3798,8 @@ modulo_arithmetic : THEORY
 
   rem_def3: LEMMA
      FORALL (r : mod(b)): rem(b)(x) = r IFF divides(b, r - x)
+
+   rem_nrem: LEMMA rem(b)(x) = nrem(x, b)
 
 
   %------------------------
