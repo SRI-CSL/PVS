@@ -3799,6 +3799,8 @@ modulo_arithmetic : THEORY
   rem_def3: LEMMA
      FORALL (r : mod(b)): rem(b)(x) = r IFF divides(b, r - x)
 
+   rem_nrem0: LEMMA rem = LAMBDA b: LAMBDA x: nrem(x, b)
+
    rem_nrem: LEMMA rem(b)(x) = nrem(x, b)
 
 
