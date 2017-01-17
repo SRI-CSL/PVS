@@ -76,6 +76,8 @@
 (defvar *proving-tcc* nil)
 (defvar *assert-typepreds-off* nil)
 (defvar *assert-typepreds* nil)
+(defvar *auto-rewrite-tccs-seen* nil
+  "To control auto-rewrite looping, generating the same TCC over and over")
 (defvar *prover-indent* 0)
 (defvar *ignore-prover-output?* nil)
 (defvar *ignore-typepreds?* nil) ;; See assert-sform

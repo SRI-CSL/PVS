@@ -324,44 +324,58 @@
 		  (make-xml-enum-elts
 		   :list (mapcar #'id constructors)))
 	(if (datatype? rtype)
-	    (if (inline-datatype? rtype)
-		(xpvs-elt stream inline-datatype
-			  (xml-attributes rtype)
-			  id
-			  ;; Only one of formals or decl-formals should be there
-			  (when formals (make-xml-theory-formals :list formals))
-			  (when (and (inline-recursive-type? rtype)
-				     (decl-formals rtype))
-			    (make-xml-decl-formals :list (decl-formals rtype)))
-			  importings
-			  constructors)
-		(xpvs-elt stream datatype
-			  (xml-attributes rtype)
-			  id
-			  ;; Only one of formals or decl-formals should be there
-			  (when formals (make-xml-theory-formals :list formals))
-			  (when (and (inline-recursive-type? rtype)
-				     (decl-formals rtype))
-			    (make-xml-decl-formals :list (decl-formals rtype)))
-			  importings
-			  constructors))
-	    (if (inline-codatatype? rtype)
-		(xpvs-elt stream inline-codatatype (xml-attributes rtype)
-			  id
-			  (when formals (make-xml-theory-formals :list formals))
-			  (when (and (inline-recursive-type? rtype)
-				     (decl-formals rtype))
-			    (make-xml-decl-formals :list (decl-formals rtype)))
-			  importings
-			  constructors)
-		(xpvs-elt stream codatatype (xml-attributes rtype)
-			  id
-			  (when formals (make-xml-theory-formals :list formals))
-			  (when (and (inline-recursive-type? rtype)
-				     (decl-formals rtype))
-			    (make-xml-decl-formals :list (decl-formals rtype)))
-			  importings
-			  constructors))))))
+	    (cond ((inline-datatype? rtype)
+		   (xpvs-elt stream inline-datatype
+			     (xml-attributes rtype)
+			     id
+			     ;; Only one of formals or decl-formals should be there
+			     (when formals (make-xml-theory-formals :list formals))
+			     (when (and (inline-recursive-type? rtype)
+					(decl-formals rtype))
+			       (make-xml-decl-formals :list (decl-formals rtype)))
+			     importings
+			     constructors))
+		  (t
+		   (xpvs-elt stream datatype
+			     (xml-attributes rtype)
+			     id
+			     ;; Only one of formals or decl-formals should be there
+			     (when formals (make-xml-theory-formals :list formals))
+			     (when (and (inline-recursive-type? rtype)
+					(decl-formals rtype))
+			       (make-xml-decl-formals :list (decl-formals rtype)))
+			     importings
+			     constructors)
+		   (when (adt-theory rtype)
+		     (print-xml-theory (adt-theory rtype)))
+		   (when (adt-map-theory rtype)
+		     (print-xml-theory (adt-map-theory rtype)))
+		   (when (adt-reduce-theory rtype)
+		     (print-xml-theory (adt-reduce-theory rtype)))))
+	    (cond ((inline-codatatype? rtype)
+		   (xpvs-elt stream inline-codatatype (xml-attributes rtype)
+			     id
+			     (when formals (make-xml-theory-formals :list formals))
+			     (when (and (inline-recursive-type? rtype)
+					(decl-formals rtype))
+			       (make-xml-decl-formals :list (decl-formals rtype)))
+			     importings
+			     constructors))
+		  (t
+		   (xpvs-elt stream codatatype (xml-attributes rtype)
+			     id
+			     (when formals (make-xml-theory-formals :list formals))
+			     (when (and (inline-recursive-type? rtype)
+					(decl-formals rtype))
+			       (make-xml-decl-formals :list (decl-formals rtype)))
+			     importings
+			     constructors)
+		   (when (adt-theory rtype)
+		     (print-xml-theory (adt-theory rtype)))
+		   (when (adt-map-theory rtype)
+		     (print-xml-theory (adt-map-theory rtype)))
+		   (when (adt-reduce-theory rtype)
+		     (print-xml-theory (adt-reduce-theory rtype)))))))))
 
 (defmethod pp-xml* (stream (elts xml-enum-elts) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
@@ -579,11 +593,12 @@
 
 (defmethod pp-xml* (stream (decl formal-subtype-decl) &optional colon? atsign?)
   (declare (ignore colon? atsign?))
-  (with-slots (id type-expr predicate) decl
+  (with-slots (id type-expr type-value predicate) decl
     (xpvs-elt stream formal-subtype-decl (xml-attributes decl)
 	      id
 	      (make-xml-nonempty-type :nonempty? (nonempty-type-decl? decl))
 	      type-expr
+	      type-value
 	      predicate)))
 
 (defmethod pp-xml* (stream (decl formal-struct-subtype-decl) &optional colon? atsign?)

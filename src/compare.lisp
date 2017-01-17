@@ -52,9 +52,10 @@
   (compare-top old new))
 
 (defmethod compare-top :around ((old datatype-or-module) (new datatype-or-module))
-  (or (compare-decl-lists (formals old) (formals new))
-      (compare-decl-lists (assuming old) (assuming new))
-      (call-next-method)))
+  (let ((*current-context* (or (saved-context old) (context old))))
+    (or (compare-decl-lists (formals old) (formals new))
+	(compare-decl-lists (assuming old) (assuming new))
+	(call-next-method))))
 
 (defmethod compare-top ((old module) (new module))
   (assert (and (exporting old) (exporting new)))
@@ -156,10 +157,12 @@
 ;;; handled during update, since it simply copies the new stuff over.
 
 (defmethod compare-decl :around ((old declaration) (new declaration))
-  (when (and (eq (id old) (id new))
-	     (eq (type-of old) (type-of new)))
-    (and (compare* (formals old) (formals new))
-	 (call-next-method))))
+  (when (eq (id old) (id new))
+    (if (and (application-judgement? old) (expr-judgement? new))
+	(call-next-method)
+	(and (eq (type-of old) (type-of new))
+	     (compare* (formals old) (formals new))
+	     (call-next-method)))))
 
 (defmethod compare-decl ((old typed-declaration) (new typed-declaration))
   (compare* (declared-type old) (declared-type new)))
@@ -222,6 +225,13 @@
        (compare* (name old) (name new))
        (compare* (formals old) (formals new))))
 
+(defmethod compare-decl ((old application-judgement) (new expr-judgement))
+  (and (call-next-method)
+       (application? (expr new))
+       (name-expr? (operator (expr new)))
+       (compare* (name old) (operator (expr new)))
+       (compare* (formals old) (arguments* (expr new)))))
+
 (defmethod compare-decl ((old conversion-decl) (new conversion-decl))
   (and ;;(call-next-method)
        (typecase old
@@ -230,8 +240,7 @@
        (compare* (expr old) (expr new))))
 
 (defmethod compare-decl ((old auto-rewrite-decl) (new auto-rewrite-decl))
-  (and (call-next-method)
-       (typecase old
+  (and (typecase old
 	 (auto-rewrite-minus-decl (auto-rewrite-minus-decl? new))
 	 (auto-rewrite-decl (not (or (auto-rewrite-minus-decl? new)))))
        (compare* (rewrite-names old) (rewrite-names new))))

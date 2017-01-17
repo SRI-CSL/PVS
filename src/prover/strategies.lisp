@@ -2095,11 +2095,13 @@ See also SIMPLE-MEASURE-INDUCT."
 		     (if innerbvars
 			 (let 
 			     ((new-outers (make-new-bindings outerbvars nil body))
-			      (subst-list (pairlis outerbvars new-outers))
+			      (psubst-list (pairlis outerbvars new-outers))
+			      (new-innerbvars (substit innerbvars psubst-list))
+			      (subst-list (pairlis innerbvars new-innerbvars psubst-list))
 			      (new-measure-ineq (substit measure-ineq subst-list))
 			      (new-innerbody (substit innerbody subst-list))
 			      (new-ih (make-forall-expr new-outers
-					(make-forall-expr innerbvars
+					(make-forall-expr new-innerbvars
 					  (make-implication new-measure-ineq
 							    new-innerbody)))))
 			   (branch (case new-ih)
@@ -2801,6 +2803,16 @@ empty, and for the named rewrite rules, otherwise.  Behaves like (SKIP) otherwis
     (skip-msg "Turning on rewriting commentary,"))
   "Turns on list of applied auto rewrites and skips."
   "")
+
+(defrule track-all-current-rewrites ()
+  (let ((names (all-auto-rewrites))
+	(dummy (loop for name in (all-auto-rewrites)
+		  do (pushnew name *track-rewrites* :test #'same-id)))
+	(msg (format nil "Tracking all ~d current rewrites" (length names))))
+    (skip-msg msg))
+  "Tracks all the current rewrite rules during rewriting when the rule fails to
+apply.  Behaves like a (SKIP), otherwise." 
+  "Tracking ~a")
 
 (defstep auto-rewrite-defs (&optional explicit? always? exclude-theories)
   (let ((exclude-theories (if (listp exclude-theories)

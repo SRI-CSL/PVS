@@ -287,7 +287,7 @@
 ;;; Called by Emacs function pvs-add-library-path
 (defun add-library-path (dir)
   (when (string= dir "")
-    (setq dir pvs-path-lib))
+    (setq dir (concatenate 'string *pvs-path* "/lib/")))
   (unless (char= (char dir (1- (length dir))) #\/)
     (setq dir (concatenate 'string dir "/")))
   (cond ((file-exists-p dir)
@@ -505,7 +505,7 @@
 	       (pvs-error "Must exit the prover first" nil)))
 	  ((and *in-evaluator*
 		(not *tc-add-decl*))
-	   (pvs-error "Must exit the evaluator first"))
+	   (pvs-error "Must exit the evaluator first" nil))
 	  ((and (null theories)
 		(not forced?)
 		(check-binfiles filename)
@@ -696,7 +696,7 @@
 ;;; "foo") contains list, list_adt, list_adt_map, list_adt_reduce, and
 ;;; list if foo imports (an instance of) list.
 
-(defmethod all-importings ((theory datatype-or-module) &optional lib)
+(defmethod all-importings ((theory datatype-or-module))
   (assert (not *saving-theory*))
   (if (eq (all-imported-theories theory) 'unbound)
       (let* ((*current-context* (or (and (not (library-datatype-or-theory?
@@ -728,8 +728,7 @@
       (values (all-imported-theories theory)
 	      (all-imported-names theory))))
 
-(defmethod all-importings ((theories list) &optional lib)
-  (declare (ignore lib))
+(defmethod all-importings ((theories list))
   (if (null theories)
       nil
       (multiple-value-bind (imp-theories imp-names)
@@ -766,17 +765,9 @@
 (defun all-importings* (theory)
   (let* ((imp-theories nil)
 	 (imp-names nil)
-	 (imm-imps (get-immediate-usings theory))
-	 (imps (if (and nil (recursive-type? theory)
-			(adt-theory theory))
-		   (let ((th1 (adt-theory theory))
-			 (th2 (adt-map-theory theory))
-			 (th3 (adt-reduce-theory theory)))
-		     (append imm-imps
-			     (list (mk-modname (id th1)))
-			     (when th2 (list (mk-modname (id th2))))
-			     (when th3 (list (mk-modname (id th3))))))
-		   imm-imps)))
+	 (imps (get-immediate-usings theory))
+	 ;; Note that adt-generated theories are not importings
+	 )
     #+pvsdebug (assert (or (null (get-immediate-usings theory)) imps))
     (dolist (ith imps)
       (assert (modname? ith))
@@ -794,7 +785,7 @@
 	  (setq itheory (get-theory* (generated-by itheory) lib)))
 	(when itheory
 	  (multiple-value-bind (i-theories i-names)
-	      (all-importings itheory lib)
+	      (all-importings itheory)
 	    #+pvsdebug (assert (= (length i-theories) (length i-names)) ()
 			       "Not equal 1")
 	    #+pvsdebug (assert (= (length imp-theories) (length imp-names)) ()
@@ -880,17 +871,9 @@
 	 (*current-theory* (theory *current-context*))
 	 (imp-theories nil)
 	 (imp-names nil)
-	 (imm-imps (get-immediate-usings theory))
-	 (imps (if (and nil (recursive-type? theory)
-			(adt-theory theory))
-		   (let ((th1 (adt-theory theory))
-			 (th2 (adt-map-theory theory))
-			 (th3 (adt-reduce-theory theory)))
-		     (append imm-imps
-			     (list (mk-modname (id th1)))
-			     (when th2 (list (mk-modname (id th2))))
-			     (when th3 (list (mk-modname (id th3))))))
-		   imm-imps)))
+	 (imps (get-immediate-usings theory))
+	 ;; Note that adt-generated theories are not importings
+	 )
     (dolist (ith imps)
       (let* ((ith-nolib (get-theory (id ith)))
 	     (lib (unless ith-nolib
@@ -2448,32 +2431,32 @@ Note that even proved ones get overwritten"
 
 ;;; Non-interactive Proving
 
-(defun prove-theory (theoryname &optional retry? filename use-default-dp?)
+(defun prove-theory (theoryname &optional retry? filename use-default-dp? save-proofs?)
   (when filename
     (typecheck-file filename))
   (let ((theory (get-typechecked-theory theoryname)))
     (when theory
-      (prove-theories theoryname (list theory) retry? use-default-dp?)
+      (prove-theories theoryname (list theory) retry? use-default-dp? save-proofs?)
       (status-proof-theory theoryname))))
 
 
-(defun prove-pvs-file (file retry? &optional use-default-dp?)
+(defun prove-pvs-file (file retry? &optional use-default-dp? save-proofs?)
   (let ((theories (typecheck-file file))
 	(*use-default-dp?* use-default-dp?))
-    (prove-theories file theories retry? use-default-dp?)
+    (prove-theories file theories retry? use-default-dp? save-proofs?)
     (status-proof-pvs-file file)))
 
-(defun prove-pvs-theories (theory-names retry? &optional use-default-dp?)
+(defun prove-pvs-theories (theory-names retry? &optional use-default-dp? save-proofs?)
   (when theory-names
     (let ((theories (mapcar #'get-typechecked-theory theory-names))
 	  (*use-default-dp?* use-default-dp?))
-      (prove-theories "" theories retry? use-default-dp?)
+      (prove-theories "" theories retry? use-default-dp? save-proofs?)
       (status-proof-theories theories))))
 
 (defun prove-usingchain (theoryname retry? &optional exclude use-default-dp?)
   (prove-importchain theoryname retry? exclude use-default-dp?))
 
-(defun prove-importchain (theoryname retry? &optional exclude use-default-dp?)
+(defun prove-importchain (theoryname retry? &optional exclude use-default-dp? save-proofs?)
   (let ((theory (get-typechecked-theory theoryname))
 	(*use-default-dp?* use-default-dp?))
     (when theory
@@ -2486,7 +2469,8 @@ Note that even proved ones get overwritten"
 							  library-theory))))
 			  (collect-theory-usings theoryname exclude))
 			retry?
-			use-default-dp?)))
+			use-default-dp?
+			save-proofs?)))
     (status-proof-importchain theoryname)))
 
 
@@ -2500,7 +2484,7 @@ Note that even proved ones get overwritten"
 	  (t (let ((*use-default-dp?* use-default-dp?))
 	       (prove-proofchain-decl fdecl retry?))))))
 
-(defun prove-proofchain-decl (fdecl retry?)
+(defun prove-proofchain-decl (fdecl retry? &optional save-proofs?)
   (let ((decls-tried nil) (total 0) (proved 0) (unfin 0)
 	(realtime 0) (runtime 0))
     (read-strategies-files)
@@ -2513,7 +2497,7 @@ Note that even proved ones get overwritten"
 		   (incf realtime (or (real-proof-time decl) 0))
 		   (incf runtime (or (run-proof-time decl) 0))
 		   (if (unproved? decl) (incf unfin) (incf proved))
-		   (when *justifications-changed?*
+		   (when (and save-proofs? *justifications-changed?*)
 		     (save-all-proofs (module decl))))
 		 (when (justification decl)
 		   (ppds (provable-formulas (get-proofchain decl))))))
@@ -2625,7 +2609,7 @@ Note that even proved ones get overwritten"
   (declare (ignore decl))
   nil)
 
-(defun prove-theories (name theories retry? &optional use-default-dp?)
+(defun prove-theories (name theories retry? &optional use-default-dp? save-proofs?)
   (let ((total 0) (proved 0) (realtime 0) (runtime 0)
 	(*use-default-dp?* use-default-dp?))
     (read-strategies-files)
@@ -2641,7 +2625,7 @@ Note that even proved ones get overwritten"
 	  (when (run-proof-time d)
 	    (incf runtime (run-proof-time d)))
 	  (unless (unproved? d) (incf proved)))
-	(when (and (null retry?) *justifications-changed?*)
+	(when (and save-proofs? (null retry?) *justifications-changed?*)
 	  (save-all-proofs *current-theory*))))
     (pvs-message
 	"~a: ~d proofs attempted, ~d proved in ~,2,-3f real, ~,2,-3f cpu seconds"

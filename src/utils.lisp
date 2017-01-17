@@ -3999,6 +3999,9 @@ space")
 (defmethod variable? ((expr field-assignment-arg))
   nil)
 
+(defmethod variable? ((expr projection-expr))
+  nil)
+
 (defmethod variable? ((expr t))
   nil)
 
@@ -4523,6 +4526,18 @@ space")
 (defmethod dep-binding-type ((te type-expr))
   te)
 
+(defmethod tc-expr ((str string))
+  (pc-typecheck (pc-parse str 'expr)))
+
+(defmethod tc-expr ((ex expr))
+  (pc-typecheck ex))
+
+(defmethod tc-type ((str string))
+  (pc-typecheck (pc-parse str 'type-expr)))
+
+(defmethod tc-type ((ex type-expr))
+  (pc-typecheck ex))
+
 ;; This is the function for making hash tables
 (defun make-pvs-hash-table (&rest other-keys &key strong-eq? weak-keys?
 				  &allow-other-keys)
@@ -4603,21 +4618,32 @@ space")
 	(list (namestring file) (get-file-git-sha1 path))
 	(list (namestring file) ""))))
 
+(defun pvs-dist-file-name ()
+  (uiop:run-program
+      (format nil "git -C ~a describe" *pvs-path*)
+    :input "//dev//null"
+    :output :string))
+
+(defun git-current-commit ()
+  (if (file-exists-p (format nil "~a/.git" *pvs-path*))
+      (values-list
+       (split
+	(uiop:run-program
+	    (format nil "git -C ~a log -1 --pretty=format:%h:%H" *pvs-path*)
+	  :input "//dev//null"
+	  :output :string)
+	#\:))
+      (error "*pvs-path* has no .git directory")))
+
 (defun get-file-git-sha1 (file)
   ;; Use the Git SHA1, which is different from simple SHA1
   ;; as it includes "blob" and length of file
   ;; Advantage is that it is the same inside or outside of Git
-  (let ((stream #+allegro (excl:run-shell-command
-			   (format nil "git hash-object ~a" file)
-			   :wait nil
-			   :input "//dev//null"
-			   :output :stream
-			   :error-output :output)
-		#+sbcl (sb-ext:run-program "git hash-object" (list "-a")
-					   :input "//dev//null"
-					   :output :stream
-					   :wait nil)))
-    (format nil "~a" (read stream))))
+  (uiop:stripln
+   (uiop:run-program
+       (format nil "git hash-object ~a" file)
+     :input "//dev//null"
+     :output :string)))
 
 (defun record-file-loaded-for-pvs (file)
   (let ((elt (assq *loading-files* *files-loaded*)))
