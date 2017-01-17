@@ -30,6 +30,10 @@
 (defmacro ex-info (decl)
   `(external (eval-info ,decl)))
 
+;;NSH(11-18-16): Changed these because the assumption that the internal/external slots
+;;are filled if there is an eval-info no longer holds with the C code generation.
+;;This causes untypecheck to crash in remove-eval-info
+
 (defmacro in-defn (decl)
   `(unary (in-info ,decl)))
 

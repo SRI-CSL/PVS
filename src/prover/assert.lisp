@@ -43,7 +43,8 @@
 				   cases-rewrite? type-constraints?
 				   ignore-prover-output? let-reduce?
 				   quant-simp? implicit-typepreds?
-				   ignore-typepreds?)
+				   ignore-typepreds?
+				   );eval?
   #'(lambda (ps)
       (let ((*cases-rewrite* cases-rewrite?)
 	    (*false-tcc-error-flag* nil)
@@ -51,7 +52,8 @@
 	    (*ignore-typepreds?* ignore-typepreds?)
 	    (*let-reduce?* let-reduce?)
 	    (*quant-simp?* quant-simp?)
-	    (*implicit-typepreds?* implicit-typepreds?))
+	    (*implicit-typepreds?* implicit-typepreds?)
+	    (*assert-eval?* nil)) ;eval?
 	(if record?
 	    (if rewrite?
 		(assert-sformnums
@@ -757,7 +759,7 @@
 ;	(do-auto-rewrite (lcopy expr 'argument newarg) sig))))
   
 (defmethod assert-if-inside ((expr quant-expr))
-  (with-slots (expression) expr
+  (with-slots (expression) expr  ;;NSH(10.23.16)with-slots isn't used
     (multiple-value-bind (sig newexpr)
 	(assert-if-inside-sign expr t)
 	(if (eq sig 'X)
@@ -1638,6 +1640,33 @@
   (and (typep expr 'application)
        (typep (operator expr) 'accessor-name-expr)
        (typep (argument expr) 'update-expr)))
+
+(defun accessor-update-reduce (expr op arg) ;;similar to record-update-reduce
+    (declare (ignore expr))
+  (let ((updates (loop for assn in (assignments arg)
+		       when (same-decl op (caar (arguments assn)))
+		       collect assn))
+	(expr-of-arg (expression arg)))
+    (if updates
+	(if (every #'(lambda (x) (cdr (arguments x)))
+		   updates) ;;;a curried update::
+	                             ;;;a(exp WITH [((a)(i)):= e])
+	    (let ((newexpr
+		   (make!-update-expr
+		    (make-accessor-update-reduced-application
+		     op expr-of-arg)
+		    (mapcar #'(lambda (x)
+				(lcopy x 'arguments
+				       (cdr (arguments x))))
+		      updates))))
+	      (do-auto-rewrite
+	       newexpr
+	       '?));;return a(exp) WITH [(i) := e] simplified.
+	    (make-update-expr-from-updates
+	     updates))
+      (do-auto-rewrite  (make-accessor-update-reduced-application
+			   op expr-of-arg)
+			  '?))))
 
 (defun check-update-args* (updates args in-beta-reduce?)
   ;;returns a list of matching updates, or 'NOIDEA if there
@@ -3834,8 +3863,8 @@
 (defun make-enum-exists-expr* (enum-bindings bindings expr)
   (if (consp bindings)
       (if (and (consp enum-bindings)(eq (car enum-bindings)(car bindings)))
-	  (let ((bnd (car enum-bindings))
-		(etype (find-supertype (type bnd))))
+	  (let* ((bnd (car enum-bindings))
+		 (etype (find-supertype (type bnd))))
 	    (multiple-value-bind (nbnd npreds)
 		(collect-binding-predicates bnd nil)
 	      (let* ((nvar (make-variable-expr nbnd))

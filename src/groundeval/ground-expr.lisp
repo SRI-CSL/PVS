@@ -58,7 +58,8 @@
   (ground-type?* (fields type)))
 
 (defmethod ground-type?* ((type subtype))
-  (ground-type?* (find-supertype type)))
+  (or (eq type *integer*)
+      (ground-type?* (find-supertype type))))
 
 (defmethod ground-type?* ((type type-name))
   nil) ;;this must be an undefined type.
@@ -69,9 +70,12 @@
 ; No quantification
 
 (defmethod ground-expr?* ((expr quant-expr))
-  (declare (ignore expr))
-  nil)
-
+  (with-slots (bindings) expr
+	      (loop for bnd in bindings
+		    always (or (enum-adt? (find-supertype (type bnd)))
+			       (simple-subrange (type bnd)));could scan the supertypes
+		    )))
+	      
 ; No higher-order equality
 
 (defmethod ground-expr?* ((expr equation))
@@ -143,9 +147,17 @@
 (defmethod ground-expr?* ((expr list))
   (every #'ground-expr?* expr))
 
-; lambda-exprs may introduce higher-order complications
-; should check this out further....
 
+;;checks if lambda-exprs are executable
+(defmethod ground-expr?* ((expr lambda-expr))
+  (with-slots (bindings expression) expr
+	      (and (singleton? bindings)
+		   (let ((abound (array-bound (type expr))))
+		     (and abound
+			  (<= abound *eval-array-bound*)))
+		   (ground-expr?* expression))))
+
+;;this shouldn't be reachable given that quant-exprs and lambda-exprs have methods. 
 (defmethod ground-expr?* ((expr binding-expr))
   (declare (ignore expr))
   t)
