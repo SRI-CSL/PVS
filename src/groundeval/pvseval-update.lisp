@@ -303,8 +303,9 @@
 ;;arguments.
 ;;Modified treatment of PVSio primitives (Feb 20 2015) [CM]
 (defun pvs2cl-primitive-app (expr bindings livevars &optional pvsiosymb expr-actuals)
-  (let* ((op    (operator expr))
-	 (args  (append expr-actuals (arguments expr)))
+  (let* ((op    (operator* expr))
+	 (args* (arguments* expr));;NSH(1-17-17)
+	 (args  (append expr-actuals (loop for arg in args* append arg)))
 	 (nargs (length args))
 	 (fn    (cond (pvsiosymb pvsiosymb)
 		      ((> nargs 1) (pvs2cl-primitive2 op))
@@ -1877,6 +1878,7 @@
 	(mk-name '|rational_pred| nil '|rationals|)
 	(mk-name '|floor| nil '|floor_ceil|)
 	(mk-name '|ceiling| nil '|floor_ceil|)
+	(mk-name '|nrem| nil '|modulo_arithmetic|)	
 	(mk-name '|rem| nil '|modulo_arithmetic|)
 	(mk-name '|ndiv| nil '|modulo_arithmetic|)
 	(mk-name '|even?| nil '|integers|)
