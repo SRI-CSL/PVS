@@ -42,7 +42,7 @@
 				   pvsIff (&&) (&&) (||)
  not pvsWhen pvsIff (+) (-) (*) (/) pvsNumberFieldPred (<) (<=) (>)
  (>=) pvsRealPred pvsIntegerPred pvsIntegerPred pvsRationalsPred pvsFloor pvsCeiling
- rem / pvsEven? pvsOdd? pvsCons hd tl isCons [!!] isNull pvsRestrict
+ nrem rem / pvsEven? pvsOdd? pvsCons hd tl isCons [!!] isNull pvsRestrict
  length isMember (!!) (++) reverse))
 
 (defparameter *pvsclean-primitives-map*

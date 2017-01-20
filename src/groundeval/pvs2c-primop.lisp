@@ -17,7 +17,7 @@
 (defparameter *C-primitives* '(Eq Neq 1 0 pvsImplies pvsImplies == && && || 
  ! pvsWhen pvsIff pvsAdd pvsSub pvsTimes pvsDiv pvsNumberFieldPred < <= >
  >= pvsRealPred pvsIntegerPred pvsIntegerPred pvsRationalsPred pvsFloor pvsCeiling
- rem pvsNDiv isEven isOdd pvsCons hd tl isCons null isNull pvsRestrict
+ nrem rem pvsNDiv isEven isOdd pvsCons hd tl isCons null isNull pvsRestrict
  length isMember pvsNth pvsAppend reverse))
 (defparameter *pvsC-primitives-map*
   (pairlis *pvs2cl-primitives* *C-primitives*))
