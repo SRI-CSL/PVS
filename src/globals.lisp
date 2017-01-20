@@ -87,7 +87,7 @@ in util.lisp")
   (pushnew :pvs *features*)
   )
 
-(defparameter *binfile-version* 35)
+(defparameter *binfile-version* 36)
 
 (defvar *pvs-build-time* (get-universal-time)) ;; set on loading in operate-on-system
 
