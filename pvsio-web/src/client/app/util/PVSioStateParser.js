@@ -38,6 +38,7 @@ define(function (require, exports, module) {
     */
     function evaluate(str) {
         if (typeof str === "string") {
+            str = str.trim();
             var args = str.split("/");
             if (args.length === 2 && !isNaN(+args[0]) && !isNaN(+args[1])) {
                 return +args[0] / +args[1];
@@ -181,13 +182,37 @@ define(function (require, exports, module) {
             }
         } else {
             token = readUntil(value, token.index, function (ch, prev) {
-                return wordChar(ch, prev) || num(ch) || (/[\/\.\-\"\'\s\_\:]/).test(ch);
+                return wordChar(ch, prev) || num(ch) || (/[\/\.\-\"\'\s\_\:\?\!\@\$\^\&\(\)\%<>\;]/).test(ch);
             });
             return {
                 value: token.word,
                 index: token.index
             };
         }
+    }
+
+    /**
+     * Lightweight parser for simple expressions with boolean constants (true/false)
+     * and equality/inequality operators between attributes and constants, e.g., attr = const, attr != const
+     */
+    function simpleExpressionParser (expr) {
+        var ans = { res: null, err: null };
+        if (expr) {
+            if (expr.indexOf("!=") >= 0) {
+                ans.res = expr.split("!=");
+                ans.res = { type: "boolexpr", binop: "!=", attr: ans.res[0].trim(), constant: ans.res[1].trim() };
+            } else if (expr.indexOf("=") >= 0) {
+                ans.res = expr.split("=");
+                ans.res = { type: "boolexpr", binop: "=", attr: ans.res[0].trim(), constant: ans.res[1].trim() };
+            } else if (expr.toLowerCase() === "true") {
+                ans.res = { type: "constexpr", constant: "true" };
+            } else if (expr.toLowerCase() === "false") {
+                ans.res = { type: "constexpr", constant: "false" };
+            }
+            return ans;
+        }
+        ans.err = "unsupported expression " + expr;
+        return ans;
     }
 
     module.exports = {
@@ -201,6 +226,7 @@ define(function (require, exports, module) {
                 str = str.join("");
             }
             return str.trim().indexOf("(#") === 0;
-        }
+        },
+        simpleExpressionParser: simpleExpressionParser
     };
 });

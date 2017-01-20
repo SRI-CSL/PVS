@@ -7,16 +7,16 @@
 /*global define, d3*/
 define(function (require, exports, module) {
     "use strict";
-    
+
     var _this,
         eventDispatcher = require("util/eventDispatcher");
-    
+
     function ContextTable() {
         eventDispatcher(this);
         _this = this;
         return this;
     }
-    
+
     ContextTable.prototype.addContextVariables = function(tableElements) {
         function installTableHandlers() {
             d3.selectAll("#StateAttributeUP").on("click", function () {
@@ -35,7 +35,7 @@ define(function (require, exports, module) {
             d3.selectAll("#StateAttributeDOWN").on("click", function () {
                 function insertAfter(newNode, referenceNode) {
                     referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
-                }            
+                }
                 var theNode = d3.select(this.parentNode.parentNode).node();
                 var next = d3.select(this.parentNode.parentNode.nextElementSibling).node();
                 if (next) {
@@ -57,11 +57,12 @@ define(function (require, exports, module) {
             d3.selectAll("#EditStateAttribute").on("click", function () {
                 _this.editContextVariable(this.parentElement.parentElement.id);
             });
-        }        
+        }
         function addElement(e) {
             var newVariable = d3.select("#StateVariableTemplate").node().cloneNode(true);
             newVariable.children[0].innerHTML = newVariable.name = e.name;
-            newVariable.children[1].innerHTML = newVariable.value = e.value;
+            newVariable.children[1].innerHTML = newVariable.name = e.type;
+            newVariable.children[2].innerHTML = newVariable.value = e.value;
             newVariable.type = e.type;
             newVariable.id = e.id;
             newVariable.scope = e.scope;
@@ -73,7 +74,7 @@ define(function (require, exports, module) {
         installTableHandlers();
         return _this;
     };
-    
+
     ContextTable.prototype.removeContextVariable = function(elementID) {
         var table = d3.select("#StateAttributes").select("tbody").node();
         var theVariable = document.getElementById(elementID);
@@ -86,7 +87,7 @@ define(function (require, exports, module) {
         });
         return _this;
     };
-        
+
     ContextTable.prototype.editContextVariable = function(elementID) {
         var theVariable = document.getElementById(elementID);
         _this.fire({
@@ -97,7 +98,7 @@ define(function (require, exports, module) {
         });
         return _this;
     };
-    
+
     ContextTable.prototype.setContextVariables = function(tableElements) {
         function clearTable() {
             var table = d3.select("#StateAttributes").select("tbody").node();
@@ -105,11 +106,11 @@ define(function (require, exports, module) {
                 table.removeChild(table.lastChild);
             }
             return _this;
-        }        
+        }
         clearTable();
         this.addContextVariables(tableElements);
         return _this;
     };
-    
+
     module.exports = ContextTable;
 });

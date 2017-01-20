@@ -1,5 +1,5 @@
 <div class="form-center">
-    <div class="panel panel-info center dialog shadow" style="width:640px">
+    <div id="open-file-browser" class="panel panel-info center dialog shadow" style="width:840px">
         <div class="panel-heading">{{title}}</div>
         <form class="center form-horizontal" onsubmit="return false" role="form">
             <div class="input-group">
@@ -34,18 +34,41 @@
 -->
             </div>
             <div class="center" style="height:320px;">
+                <div id="file-bookmarks">
+                  <div class="title">
+                    <span class="glyphicon glyphicon-bookmark"></span>
+                    Bookmarks
+                    <hr/>
+                  </div>
+                  <ul id="bookmark-ul" class="list">
+                    {{#each bookmarks}}
+                    <div id="bookmark-list-{{inc @index}}" class="bookmark" draggable="true">
+                      <li>
+                        <span class="glyphicon glyphicon-folder-close"></span>
+                        <span class="bookmark-label">{{@key}}</span>
+                      </li>
+                    </div>
+                    {{/each}}
+                  </ul>
+                </div>
                 <div id="file-browser"></div>
-                <div id="file-preview" class="media" style="display:none;">
-                    <div class="media-left">
-                        <a href="#">
-                            <img id="image-preview" class="media-object" src="" style="display:none;"/>
-                        </a>
-                    </div>
-                    <div id="file-details">
-                        <h5 id="file-name" class="media-heading" style="display:none"></h5>
-                        <p><strong>Size </strong><span id="file-size"></span><span id="file-size-unit"></span></p>
-                        <p><strong>Last Modified </strong><span id="file-last-modified"></span></p>
-                    </div>
+                <div id="file-preview" style="display:none;" draggable="false" ondragstart="return false;">
+                  <div id="preview-zoom" style="display:none">
+                    <a href="#" id="svg-preview-zoom">
+                    </a>
+                  </div>
+                  <div class="media-left">
+                    <a href="#"><img id="image-preview" class="media-object" src="" style="display:none;"/></a>
+                  </div>
+                  <div id="image-svg-preview" class="img-thumbnail" style="margin:1px;">
+                    <a href="#" id="svg-preview" class="img-svg-preview">
+                    </a>
+                  </div>
+                  <div id="file-details">
+                    <h5 id="file-name" style="display:none"></h5>
+                    <p class="info-details"><strong>Size: </strong><span id="file-size"></span><span id="file-size-unit"></span></p>
+                    <p  class="info-details"><strong>Last Modified: </strong><span id="file-last-modified"></span></p>
+                  </div>
                 </div>
             </div>
             <div class="panel-footer">

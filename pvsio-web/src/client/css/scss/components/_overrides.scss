@@ -1,0 +1,22 @@
+// Styles specifically for overriding Bootstrap and/or browser defaults
+
+/***bootstrap overrides ***/
+select,
+input,
+textarea {
+    margin-bottom: 0;
+}
+
+#body {
+    background: $color-bg-lighter;
+}
+
+.tab-content {
+    margin-top: 20px;
+}
+
+ul {
+    margin: 0;
+    padding: 0;
+    white-space: nowrap;
+}

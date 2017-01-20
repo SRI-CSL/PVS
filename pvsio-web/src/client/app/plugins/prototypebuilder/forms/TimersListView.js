@@ -7,9 +7,8 @@
 /*global define, d3, Event*/
 define(function (require, exports, module) {
     "use strict";
-    var WidgetManager = require("pvsioweb/WidgetManager").getWidgetManager();
 
-    function TimersListView(timers) {
+    function TimersListView(timers, widgetManager) {
         var el = d3.select("#timersList").html("").append("ul");
 
         function labelFunction(timer) {
@@ -46,7 +45,7 @@ define(function (require, exports, module) {
                     event.preventDefault();
                     event.stopPropagation();
                 }).on("dblclick", function (t) {
-                    WidgetManager.editTimer(t);
+                    widgetManager.editTimer(t);
                     event.preventDefault();
                     event.stopPropagation();
                 });
@@ -57,7 +56,7 @@ define(function (require, exports, module) {
         update(timers);
         el.selectAll("li.list-group-item").classed("selected", false);
 
-        WidgetManager.addListener("TimerModified", function (event) {
+        widgetManager.on("TimerModified", function (event) {
             switch (event.action) {
             case "create":
                 timers.push(event.timer);
@@ -72,21 +71,25 @@ define(function (require, exports, module) {
                 break;
             }
             update(timers);
-        }).addListener("TimerSelected", function (event) {
+        });
+        
+        widgetManager.on("TimerSelected", function (event) {
             var e = new Event("click");
             e.shiftKey = event.event.shiftKey;
             var node = el.select("li[timer-id='" + event.timer.id() + "']").node();
             node.dispatchEvent(e);
-        }).addListener("TimerSelectionCleared", function (event) {
+        });
+        
+        widgetManager.on("TimerSelectionCleared", function (event) {
             d3.selectAll("#timersList ul li").classed("selected", false);
         });
     }
 
 
     module.exports = {
-        create: function () {
-            var timers = WidgetManager.getAllTimers();
-            return new TimersListView(timers);
+        create: function (widgetManager) {
+            var timers = widgetManager.getAllTimers();
+            return new TimersListView(timers, widgetManager);
         }
     };
 });

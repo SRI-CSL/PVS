@@ -1,0 +1,10 @@
+{{#if trans}}-- transitions{{#each trans}}
+TRANS
+{{../indent}}event = {{name}}{{#if current_state}} & current_state = {{current_state}}{{/if}}{{#if cond}} & {{cond}}{{/if}}
+{{../indent}}   -> {{#each action}}next({{identifier}}) = {{expression}}{{#unless @last}} & {{/unless}}{{/each}}{{#if keep}}
+{{../indent}}      {{#each keep}} & next({{identifier}}) = {{identifier}}{{/each}}{{/if}};{{/each}}
+
+-- additional transition necessary to ensure coverage of conditions
+TRANS{{#each trans}}
+{{../indent}}!(event = {{name}}{{#if current_state}} & current_state = {{current_state}}{{/if}}{{#if cond}} & {{cond}}{{/if}}){{#unless @last}} &{{/unless}}{{/each}}
+{{../indent}}   -> {{#each variables}}next({{name}}) = {{name}}{{#unless @last}} & {{/unless}}{{/each}};{{/if}}

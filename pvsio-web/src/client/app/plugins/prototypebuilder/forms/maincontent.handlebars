@@ -4,25 +4,28 @@
         <div id="projectTitle">
             <div class="btn txtProjectName"><span id="txtProjectName"></span></div>
             <div style="width:100%">
-                <div class="pull-right" style="display:flex">
-                    <a class="btn"
-                       id="newProject"><span class="glyphicon glyphicon-file"></span> New Project</a>
-                    <a class="btn"
-                       id="openProject">
-                        <span class="glyphicon glyphicon-folder-open"></span> Open Project</a>
+                <div class="btn-group pull-right" style="display:flex">
+                    <button type="button" class="btn btn-primary-outline" id="newProject"><span class="glyphicon glyphicon-file"></span> New Project</button>
+                    <button type="button" class="btn btn-primary-outline" id="openProject">
+                        <span class="glyphicon glyphicon-folder-open"></span> Open Project</button>
     <!--
                     <a class="btn"
                        id="btnEditStoryboard">
                         <span class="glyphicon glyphicon-film"></span> Edit Storyboard</a>
     -->
                     <input type="file" class="hide" id="btnSelectPicture" name="selectPicture" accept="image/*">
-                    <a class="btn"
-                       id="btnSaveProject"><span class="glyphicon glyphicon-floppy-save"></span> Save Project</a>
-                    <a class="btn"
-                       id="btnSaveProjectAs"><span class="glyphicon glyphicon-floppy-disk"></span> Save As...</a>
-                    <a class="btn"
-                       id="btnLoadPicture">
-                        <span class="glyphicon glyphicon-picture"></span> Change Picture</a>
+                    <div class="btn-group pull-right" style="display:flex; width:158px;">
+                        <button type="button" class="btn btn-primary-outline" id="btnSaveProject"><span class="glyphicon glyphicon-floppy-save"></span> Save Project</button>
+                           <button type="button" class="btn btn-primary-outline dropdown-toggle" data-toggle="dropdown" style="width:32px;">
+                               <span class="caret"></span>
+                           </button>
+                        <ul class="dropdown-menu" role="menu">
+                            <li><a class="btn" id="btnSaveProjectAs" style="border-radius:0; margin:-8px 0 -8px; border-color: whitesmoke;">
+                                <span class="glyphicon glyphicon-floppy-disk" style="margin-left:-30px;"></span> Save As...</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <button type="button" class="btn btn-primary-outline" id="btnLoadPicture"><span class="glyphicon glyphicon-picture"></span> Change Picture</button>
                     <div class="pull-right" style="min-width: 260px; display:inline-flex;">
 <!--
                         <a id="lblWebSocketStatus" class="btn status">WebSocket <span class="glyphicon glyphicon-ok"></span></a>
@@ -34,7 +37,7 @@
                             WebServer <span class="glyphicon glyphicon-ok"></span></a>
                         <a id="logo" class="btn status"
                            style="background:rgb(8, 88, 154); color:white; cursor:default;">
-                            <span>PVSio-web 2.0</span></a>
+                            <span>PVSio-web 2.1</span></a>
                         <div id="autoSaver" class="pull-right"></div>
                         <a id="preferences" class="btn">
                             <span class="glyphicon glyphicon-menu-hamburger"></span>
@@ -53,14 +56,39 @@
                 <div class="plugins">PVSio-web Tools</div>
                 <ul>
                     {{#each plugins}}
-                    <li class="list-group-item plugin-box"
-                        id="pluginBox_{{id}}">
-                        <input type="checkbox"
-                               name="{{label}}"
-                               id="plugin_{{id}}">
-                        <label for="{{label}}">{{label}}</label>
+                    <li class="list-group-item plugin-box" id="pluginBox_{{id}}" style="display:flex;">
+                        <div class="toggle toggle-modern plugin-toggle" style="width:80px; height:32px;" id="pluginToggle_{{id}}"></div>
+                        <label for="{{label}}" id="pluginLabel_{{id}}" style="margin: 6px 0 0 10px;">
+                            <input type="checkbox"
+                                   name="{{label}}"
+                                   id="plugin_{{id}}"
+                                   style="display:none;">
+                                   {{label}}
+                        </label>
+                        <script>
+                            $('#pluginToggle_{{id}}').on('toggle', function (e, active) {
+                                if (active) {
+                                    $('#plugin_{{id}}').get(0).checked = true;
+                                } else {
+                                    $('#plugin_{{id}}').get(0).checked = false;
+                                }
+                            });
+                            $('#plugin_{{id}}').change(function() {
+                              if (this.checked) {
+                                $('#pluginToggle_{{id}}').data('toggles').toggle(true);
+                              } else {
+                                $('#pluginToggle_{{id}}').data('toggles').toggle(false);
+                              }
+                            });
+                        </script>
                     </li>
                     {{/each}}
+                    <script>
+                        // bootstrap toggle buttons
+                        //$('[data-toggle="toggle"]').bootstrapToggle();
+                        $('.toggle').toggles();
+                        $('.toggle-inner').css("display", "flex"); // this is needed to fix a bug in jquery-toggles, which messes up the toggle when zooming in/out in the browser
+                    </script>
                 </ul>
             </div>
             <div class="expandable-panel">
@@ -106,5 +134,4 @@
         </div>
     </div>
 </div>
-<map name="prototypeMap" id="prototypeMap"></map>
 <div id="audio"></div>

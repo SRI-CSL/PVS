@@ -42,9 +42,11 @@ define(function (require, exports, module) {
         }).catch(function (err) {
             console.log(err);
         });
-
     };
 
+    ButtonActionsQueue.prototype.sendINIT = function (cb) {
+        return this.queueGUIAction("", cb);
+    };
 
     module.exports = {
         getInstance: function () {

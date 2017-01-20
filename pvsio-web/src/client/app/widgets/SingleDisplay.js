@@ -1,5 +1,5 @@
 /**
- * @module SingleDisplay
+ * @module SingleDisplay *** DEPRECATED: Replaced by BasicDisplay & NumericDisplay *****
  * @version 2.0
  * @description Renders a basic digital display.
  *              This module provide APIs for changing the look and feel of
@@ -25,6 +25,10 @@ define(function (require, exports, module) {
 
     var d3 = require("d3/d3");
     var Button = require("widgets/Button");
+    var Widget = require("widgets/Widget"),
+        StateParser = require("util/PVSioStateParser"),
+        Speaker  = require("widgets/TextSpeaker"),
+        property = require("util/property");
 
     /**
      * @function <a name="SingleDisplay">SingleDisplay</a>
@@ -35,28 +39,32 @@ define(function (require, exports, module) {
      *        Default is { top: 0, left: 0, width: 200, height: 80 }.
      * @param opt {Object} Options:
      *          <li>backgroundColor (String): background display color (default is black, "#000")</li>
-     *          <li>font (String): display font type (default is "sans-serif")</li>
+     *          <li>fontfamily (String): display font type (default is "sans-serif")</li>
      *          <li>fontColor (String): display font color (default is white, "#fff")</li>
      *          <li>align (String): text alignment (default is "center")</li>
-     *          <li>inverted (Bool): if true, the text has inverted colors, 
+     *          <li>inverted (Bool): if true, the text has inverted colors,
      *              i.e., fontColor becomes backgroundColor, and backgroundColor becomes fontColor (default is false)</li>
-     *          <li>parent (String): the HTML element where the display will be appended (default is "body")</li>                
+     *          <li>parent (String): the HTML element where the display will be appended (default is "body")</li>
      * @memberof module:SingleDisplay
      * @instance
      */
     function SingleDisplay(id, coords, opt) {
         opt = opt || {};
-        this.id = id;
+        coords = coords || {};
+        this.id = property.call(this, id);
         this.parent = (opt.parent) ? ("#" + opt.parent) : "body";
         this.top = coords.top || 0;
         this.left = coords.left || 0;
         this.width = coords.width || 200;
         this.height = coords.height || 80;
-        this.font = [this.height, "px ", (opt.font || "sans-serif")];
-        this.smallFont = (this.height * 0.8) + "px " + (opt.font || "sans-serif");
+        this.fontsize = opt.fontsize || (this.height * 0.9);
+        this.fontfamily = opt.fontfamily || "sans-serif";
+        this.font = [this.fontsize, "px ", this.fontfamily];
+        this.smallFont = [(this.fontsize * 0.7), "px ", this.fontfamily];
         this.align = opt.align || "center";
         this.backgroundColor = opt.backgroundColor || ""; //transparent
         this.fontColor = opt.fontColor || "#fff"; //white
+        this.cursor = opt.cursor || "default";
         if (opt.inverted) {
             var tmp = this.backgroundColor;
             this.backgroundColor = this.fontColor;
@@ -64,11 +72,12 @@ define(function (require, exports, module) {
         }
         this.blinking = opt.blinking || false;
         this.textBaseline = "middle";
-        var elemClass = id + " prevent_selection ";
+        var elemClass = id + " displayWidget" + " noselect ";
         if (opt.touchscreen && opt.touchscreen.classStyle) { elemClass += opt.touchscreen.classStyle; }
         if (this.blinking) { elemClass += " blink"; }
+        opt.position = opt.position || "absolute";
         this.div = d3.select(this.parent)
-                        .append("div").style("position", "absolute")
+                        .append("div").style("position", opt.position)
                         .style("top", this.top + "px").style("left", this.left + "px")
                         .style("width", this.width + "px").style("height", this.height + "px")
                         .style("margin", 0).style("padding", 0).style("border-radius", "2px")
@@ -82,32 +91,118 @@ define(function (require, exports, module) {
                         .attr("width", this.width).attr("height", this.height)
                         .style("margin", 0).style("padding", 0).style("border-radius", "2px")
                         .style("vertical-align", "top");
+        var x2 = this.left + this.width;
+        var x3 = this.top + this.height;
+        this.div.attr("coords", this.left + "," + this.top + "," + x2 + "," + x3)
+                .style("cursor", this.cursor);
+        this.txt = "";
+        opt.displayKey = opt.displayKey || id;
+        opt.cursorName = opt.cursorName || "";
+        opt.auditoryFeedback = (opt.auditoryFeedback) ? "enabled" : "disabled";
+        opt.touchscreenvisibleWhen = (opt.touchscreenvisibleWhen && opt.touchscreenvisibleWhen !== "") ? opt.touchscreenvisibleWhen : "false";
+        opt.touchscreenCommand = opt.touchscreenCommand || "";
+        this.displayKey = property.call(this, opt.displayKey);
+        this.cursorName = property.call(this, opt.cursorName);
+        this.auditoryFeedback = property.call(this, opt.auditoryFeedback);
+        this.touchscreenEnabled = property.call(this, false); // the first call to function render() will set the value of this property according to this.touchscreenvisibleWhen()
+        this.touchscreenvisibleWhen = property.call(this, opt.touchscreenvisibleWhen);
+        this.touchscreenCommand = property.call(this, opt.touchscreenCommand);
+        this.example = opt.example || ""; // this is used in the prototype builder to demonstrate the font style of the display
         if (opt.touchscreen) {
-            var touchID = id + "_touchscreen";
+            var touchID = id;
+            this.touchscreenBackgroundColor = opt.touchscreen.backgroundColor || "green";
+            this.touchscreenFontColor = opt.touchscreen.fontColor || "white";
+            this.touchscreenCursor = opt.touchscreen.cursor || "pointer";
             this.touchscreen = new Button(touchID, {
                 left: this.left, top: this.top, height: this.height, width: this.width
             }, {
                 callback: opt.touchscreen.callback || function (err, res) {},
-                evts: opt.touchscreen.events || ['click'],
-                area: this.div
+                evts: ['click'],
+                area: this.div,
+                functionText: opt.touchscreenCommand
             });
-            this.div.style("cursor", "pointer");
             var _this = this;
             this.div.on("mouseover", function() {
-                _this.div.style("background-color", "steelblue").style("color", "white");
+                if (_this.touchscreenEnabled()) {
+                    _this.div.style("cursor", _this.touchscreenCursor);
+                    _this.div.style("background-color", _this.touchscreenBackgroundColor).style("color", _this.touchscreenFontColor);
+                } else {
+                    _this.div.style("cursor", _this.cursor);
+                }
             }).on("mouseout", function() {
+                _this.div.style("cursor", _this.cursor);
                 _this.div.style("background-color", _this.backgroundColor).style("color", _this.fontColor);
-            });            
+            });
         }
-        this.txt = "";
+        Widget.call(this, id, "display");
         return this;
     }
-    
+    SingleDisplay.prototype = Object.create(Widget.prototype);
+    SingleDisplay.prototype.constructor = SingleDisplay;
+    SingleDisplay.prototype.parentClass = Widget.prototype;
+    /**
+     * Returns a JSON object representation of this Widget.
+     * @returns {object}
+     * @memberof module:SingleDisplay
+    */
+    SingleDisplay.prototype.toJSON = function () {
+        return {
+            type: this.type(),
+            id: this.id(),
+            displayKey: this.displayKey(),
+            cursorName: this.cursorName(),
+            auditoryFeedback: this.auditoryFeedback(),
+            touchscreenvisibleWhen: this.touchscreenvisibleWhen(),
+            touchscreenCommand: this.touchscreenCommand()
+        };
+    };
+    /**
+    * Updates the location and size of the widget according to the given position and size
+     */
+    SingleDisplay.prototype.updateLocationAndSize = function (pos, opt) {
+        opt = opt || {};
+        if (opt.imageMap) {
+            SingleDisplay.prototype.parentClass.updateLocationAndSize.apply(this, arguments);
+        }
+        this.top = pos.y || 0;
+        this.left = pos.x || 0;
+        this.width = pos.width || 200;
+        this.height = pos.height || 80;
+        this.fontsize = this.height * 0.9;
+        this.font = [this.fontsize, "px ", this.fontfamily];
+        this.smallFont = [(this.fontsize * 0.7), "px ", this.fontfamily];
+        d3.select("div." + this.id()).style("left", this.left + "px").style("top", this.top + "px")
+            .style("width", this.width + "px").style("height", this.height + "px").style("font-size", this.fontsize + "px");
+        d3.select("div." + this.id()).select("span").attr("width", this.width + "px").attr("height", this.height + "px");
+        d3.select("div." + this.id()).select("canvas").attr("width", this.width + "px").attr("height", this.height + "px");
+        return this.render(this.example);
+    };
+    /**
+     * Removes the widget's div
+     */
+    SingleDisplay.prototype.remove = function () {
+        SingleDisplay.prototype.parentClass.remove.apply(this);
+        d3.select("div." + this.id()).remove();
+    };
+
+
+    /**
+     * @function boundFunctions
+     * @returns {String} A comma separated string representing the PVS functions modelling actions over this button.
+     * @memberof module:SingleDisplay
+     */
+    SingleDisplay.prototype.boundFunctions = function () {
+        if (this.touchscreen) {
+            return this.touchscreen.boundFunctions();
+        }
+        return [];
+    };
+
     SingleDisplay.prototype.invertColors = function () {
         var tmp = this.backgroundColor;
         this.backgroundColor = this.fontColor;
         this.fontColor = tmp;
-        var elemIsBlinking = (document.getElementById(this.id).getAttribute("class").indexOf("blink") >= 0);
+        var elemIsBlinking = (document.getElementById(this.id()).getAttribute("class").indexOf("blink") >= 0);
         return this.render(this.txt, { blinking: elemIsBlinking });
     };
 
@@ -115,10 +210,10 @@ define(function (require, exports, module) {
         var tmp = this.backgroundColor;
         this.backgroundColor = this.fontColor;
         this.fontColor = tmp;
-        var elemIsBlinking = (document.getElementById(this.id).getAttribute("class").indexOf("blink") >= 0);
+        var elemIsBlinking = (document.getElementById(this.id()).getAttribute("class").indexOf("blink") >= 0);
         return this.renderGlyphicon(this.txt, { blinking: elemIsBlinking });
     };
-    
+
     SingleDisplay.prototype.render = function (txt, opt) {
         function renderln(data, opt) {
             opt = opt || {};
@@ -135,42 +230,191 @@ define(function (require, exports, module) {
                 data.context.fillText(data.txt, data.width / 2, data.height / 2);
             }
         }
-        opt = opt || {};
-        var _this = this;
-        this.txt = txt;
-        // set blinking
-        var elemClass = document.getElementById(this.id).getAttribute("class");
-        if (opt.blinking || this.blinking) {
-            if (elemClass.indexOf("blink") < 0) {
-                elemClass = elemClass + " blink";
+        function renderNumber(data, opt) {
+            function drawCircle(context, x, y, r, fillStyle) {
+                context.save();
+                context.fillStyle = fillStyle;
+                context.beginPath();
+                context.arc(x, y, r, 0, Math.PI * 2, true);
+                context.closePath();
+                context.stroke();
+                context.fill();
+                context.restore();
             }
-        } else {
-            elemClass = elemClass.replace(" blink", "");
+            function fontheight(font) {
+                var r = font.match(/\d+/g)[0];
+                return parseFloat(r);
+            }
+            function decRadius() {
+                return _this.smallFont[0] / 8;
+            }
+            opt = opt || {};
+            data.context.clearRect(0, 0, data.width, data.height);
+            data.context.fillStyle = opt.fontColor || _this.fontColor;
+            if (data.align === "left") {
+                data.context.textAlign = "start";
+            } else if (data.align === "right") {
+                data.context.textAlign = "end";
+            } else {
+                data.context.textAlign = "center";
+            }
+            var th = 28,
+                x,
+                y,
+                pad = 2;
+            var centerx = data.width / 2,
+                centery = data.height / 2,
+                txtmeasure;
+            var frac = data.numstr.split(".")[1],
+                whole = data.numstr.split(".")[0];
+            //pad the string if necessary
+            var i;
+            if (data.cursorpos >= whole.length - 1) {
+                for (i = data.cursorpos - (whole.length - 1); i > 0; i--) {
+                    whole = "0".concat(whole);
+                }
+            } else if (data.cursorpos < 0) {
+                frac = frac || "";
+                for (i = Math.abs(data.cursorpos) - frac.length; i > 0; i--) {
+                    frac = frac.concat("0");
+                }
+            }
+            if (frac !== undefined && frac.length > 0) {
+                drawCircle(context, centerx, centery, decRadius(), _this.fontColor);
+                x = centerx + pad + decRadius();
+                context.textAlign = "left";
+                context.fillStyle = _this.fontColor;
+                context.font = _this.smallFont.join("");
+                th = fontheight(context.font);
+                y = centery + (th * 0.5);
+                //draw the fraction bit
+                frac.split("").forEach(function (d, index) {
+                    if (data.cursorpos === (index + 1) * -1) {
+                        context.save();
+                        //draw a cursor and then the number
+                        txtmeasure = context.measureText(d);
+                        context.fillRect(x, y - th, txtmeasure.width, th);
+                        context.fillStyle = (_this.backgroundColor !== "") ? _this.backgroundColor : "#000";
+                        context.fillText(d, x, centery);
+                        x += txtmeasure.width + pad;
+                        context.restore();
+                    } else {
+                        txtmeasure = context.measureText(d);
+                        context.fillText(d, x, centery);
+                        x += txtmeasure.width + pad;
+                    }
+                });
+            }
+            context.font = _this.font.join("");
+            context.textAlign = "right";
+            context.fillStyle = _this.fontColor;
+            x = centerx - decRadius() - pad;
+            th = fontheight(context.font);
+            y = centery + (th * 0.5);
+            //draw the whole bit in reverse aligning to the right
+            whole.split("").reverse().forEach(function (d, index) {
+                if (d === "_" && index < whole.length - data.cursorpos) { d = "0"; }
+                if (data.cursorpos === index) {
+                    context.save();
+                    //draw a cursor and then the number
+                    txtmeasure = context.measureText(d);
+                    context.fillRect(x - txtmeasure.width, y - th, txtmeasure.width, th);
+                    context.fillStyle = (_this.backgroundColor !== "") ? _this.backgroundColor : "#000";
+                    context.fillText(d, x, centery);
+                    x -= (txtmeasure.width + pad);
+                    context.restore();
+                } else {
+                    txtmeasure = context.measureText(d);
+                    context.fillText(d, x, centery);
+                    x -= (txtmeasure.width + pad);
+                }
+            });
         }
-        document.getElementById(this.id).setAttribute("class", elemClass);
+
+        opt = opt || {};
+        txt = txt || "";
+        var _this = this;
+        var str = "";
+        if (typeof txt === "object") {
+            // txt in this case is a PVS state that needs to be parsed
+            str = StateParser.resolve(txt, this.displayKey());
+            if (str) {
+                this.txt = StateParser.evaluate(str);
+                if (typeof this.txt === "string") {
+                    this.txt = this.txt.replace(new RegExp("\"", "g"), "");
+                }
+                //read out the display if audio is enabled for this display widget
+                if (this.auditoryFeedback() === "enabled") {
+                    Speaker.speak(this.txt.toString());
+                }
+            }
+            str = StateParser.resolve(txt, this.cursorName());
+            this.cursorpos = StateParser.evaluate(str);
+        } else {
+            this.txt = txt;
+        }
+        this.example = this.txt;
+        // set blinking
+        var elemClass = document.getElementById(this.id()).getAttribute("class");
+        elemClass = (opt.blinking || this.blinking) ?
+                        ((elemClass.indexOf("blink") < 0) ? (elemClass + " blink") : elemClass)
+                        : elemClass.replace(" blink", "");
+        document.getElementById(this.id()).setAttribute("class", elemClass);
         // render content
-        var context = document.getElementById(this.id + "_canvas").getContext("2d");
+        var context = document.getElementById(this.id() + "_canvas").getContext("2d");
         context.textBaseline = this.textBaseline;
         var align = opt.align || this.align;
         context.font = this.font.join("");
-        renderln({ txt: txt, context: context, align: align, height: this.height, width: this.width }, opt);
-        d3.select("#" + this.id + "_canvas").style("display", "block");
-        d3.select("#" + this.id + "_span").style("display", "none");
+        if (this.cursorName() !== "" && !isNaN(parseFloat(this.txt))) {
+            renderNumber({
+                numstr: parseFloat(this.txt).toString(),
+                cursorpos: this.cursorpos,
+                context: context,
+                align: align,
+                height: this.height,
+                width: this.width
+            }, opt);
+        } else {
+            renderln({
+                txt: this.txt,
+                context: context,
+                align: align,
+                height: this.height,
+                width: this.width
+            }, opt);
+        }
+        d3.select("#" + this.id() + "_canvas").style("display", "block");
+        d3.select("#" + this.id() + "_span").style("display", "none");
+
         if (this.touchscreen) {
-            if (opt.disableTouch) {
-                this.div.style("cursor", "default");
-            } else {
-                this.div.style("cursor", "pointer");
+            this.touchscreenEnabled(false);
+            if (this.touchscreenvisibleWhen() !== "") {
+                // we need to parse the expression touchscreenvisibleWhen() to understand if the touchscreeen is enabled or not
+                var expr = StateParser.simpleExpressionParser(this.touchscreenvisibleWhen());
+                if (expr && expr.res) {
+                    if (expr.res.type === "constexpr" && expr.res.constant === "true") {
+                        this.touchscreenEnabled(true);
+                    } else if (expr.res.type === "boolexpr" && expr.res.binop) {
+                        // txt in this case is a PVS state that needs to be parsed
+                        str = StateParser.resolve(txt, expr.res.attr);
+                        if (str) {
+                            str = StateParser.evaluate(str);
+                            if ((expr.res.binop === "=" && str === expr.res.constant) ||
+                                 (expr.res.binop === "!=" && str !== expr.res.constant)) {
+                                     this.touchscreenEnabled(true);
+                            }
+                        }
+                    }
+                }
             }
         }
-        this.reveal();
-        return this;
+        return this.reveal();
     };
-    
+
     SingleDisplay.prototype.renderGlyphicon = function (icon, opt) {
         opt = opt || {};
         this.txt = icon;
-        var span = document.getElementById(this.id + "_span");
+        var span = document.getElementById(this.id() + "_span");
         if (opt.blinking || this.blinking) {
             span.setAttribute("class", "glyphicon " + icon + " blink");
         } else {
@@ -181,13 +425,13 @@ define(function (require, exports, module) {
         span.style.borderRadius = "2px";
         span.style.width = this.width;
         span.style.height = this.height;
-        span.style.fontSize = 0.8 * this.height + "px";
-        d3.select("#" + this.id + "_canvas").style("display", "none");
-        d3.select("#" + this.id + "_span").style("display", "block");        
+        span.style.fontSize = 0.7 * this.height + "px";
+        d3.select("#" + this.id() + "_canvas").style("display", "none");
+        d3.select("#" + this.id() + "_span").style("display", "block");
         this.reveal();
         return this;
     };
-    
+
     SingleDisplay.prototype.renderMultiline = function (txt, opt) {
         function clearContext(context, width, height) {
             context.save();
@@ -217,7 +461,7 @@ define(function (require, exports, module) {
         this.txt = txt;
         var backgroundColor = (_this.backgroundColor !== "") ? _this.backgroundColor
                                 : (_this.fontColor !== "#000") ? "#000" : "#fff"; //default is black
-        var context = document.getElementById(this.id + "_canvas").getContext("2d");
+        var context = document.getElementById(this.id() + "_canvas").getContext("2d");
         clearContext(context, this.width, this.height);
         context.textBaseline = this.textBaseline;
         var align = opt.align || this.align;
@@ -240,7 +484,7 @@ define(function (require, exports, module) {
             }
         }
         // set blinking
-        var elemClass = document.getElementById(this.id).getAttribute("class");        
+        var elemClass = document.getElementById(this.id()).getAttribute("class");
         if (opt.blinking || this.blinking) {
             if (elemClass.indexOf("blink") < 0) {
                 elemClass = elemClass + " blink";
@@ -248,9 +492,9 @@ define(function (require, exports, module) {
         } else {
             elemClass = elemClass.replace(" blink", "");
         }
-        document.getElementById(this.id).setAttribute("class", elemClass);        
-        d3.select("#" + this.id + "_canvas").style("display", "block");
-        d3.select("#" + this.id + "_span").style("display", "none");        
+        document.getElementById(this.id()).setAttribute("class", elemClass);
+        d3.select("#" + this.id() + "_canvas").style("display", "block");
+        d3.select("#" + this.id() + "_span").style("display", "none");
         this.reveal();
         return this;
     };

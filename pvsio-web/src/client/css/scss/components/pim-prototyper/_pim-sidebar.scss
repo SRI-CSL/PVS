@@ -1,0 +1,19 @@
+.pim-prototyper {
+    .prototype-sidebar {
+        &-heading {
+            padding: 10px 15px;
+            background: $color-bg-light;
+            border-bottom: 1px solid $color-grey-lighter;
+            font-weight: bold;
+        }
+    }
+
+    .ljs-parent {
+        // Preventing the image view from shifting down when the sidebar is resized
+        white-space: nowrap;
+
+        > * {
+            white-space: normal;
+        }
+    }
+}

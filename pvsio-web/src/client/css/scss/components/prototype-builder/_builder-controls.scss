@@ -1,0 +1,72 @@
+.prototype-sidebar.ljs-left {
+    width: 20%;
+    background: $color-bg-lighter;
+    height: 480px;
+    overflow-y: auto;
+}
+
+.prototype-list-container {
+    padding: 0;
+    max-height: 50%;
+    margin-right: 5px;
+
+    .list-group-item {
+        @extend %dark-hover;
+
+        border-left: none;
+        border-right: none;
+        border-radius: 0;
+        cursor: pointer;
+
+        &:first-child {
+            border-top: none;
+        }
+
+        &.selected {
+            background: $color-primary;
+            color: $color-fg-light;
+
+            &:hover {
+                color: $color-fg-light;
+                background: $color-primary;
+            }
+        }
+    }
+}
+
+.widgets {
+    padding: 0;
+    padding-left: 18px;
+    text-decoration: none;
+    color: $color-fg-light;
+    font-weight: bold;
+    display: block;
+
+    border-right: 70px solid transparent;
+    border-bottom: 40px solid #4c4c4c;
+
+    height: 0;
+    line-height: 40px;
+    min-width: 240px;
+}
+
+.btn-primary-outline {
+    background-color: transparent;
+    border-color: transparent;
+}
+
+// TODO: are these classes actually used?
+.newTimer,
+.newWidget {
+    @extend %dark-hover;
+
+    float: right;
+    color: $color-fg-light;
+    background-color: $color-primary;
+    margin-top: 2px;
+}
+
+.coordTable {
+    display: inline-block;
+    width: 140px;
+}

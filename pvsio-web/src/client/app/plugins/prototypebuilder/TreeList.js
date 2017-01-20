@@ -13,7 +13,7 @@ define(function (require, exports, module) {
         contextMenuItems = ["New File", "New Folder", "Rename", "Delete"];
     var globalId = 0;
     var eventDispatcher = require("util/eventDispatcher");
-
+    var lineID = 0;
 
     /**
         Find the node with the give id
@@ -107,6 +107,12 @@ define(function (require, exports, module) {
         var self = this,
             el = this.el;
         function toggleChildren(d) {
+            // Trigger expand event if we have no children shown and we're not empty, or we're empty and collapsed
+            if ((!d.children & !d.empty) || d._empty) {
+                var event = {type: "ItemExpanded", data: d};
+                self.fire(event);
+            }
+
             if (d.children) {
                 d._children = d.children;
                 d.children = null;
@@ -121,6 +127,21 @@ define(function (require, exports, module) {
                 d.empty = d._empty;
                 d._empty = null;
             }
+        }
+
+        // Updates expander chevrons based on whether the folder's children are visible
+        function updateChevrons(chevrons) {
+            chevrons.attr("class", function (d) {
+                var icon = d.children || d.empty ? " glyphicon-chevron-down"
+                    : d._children ? "glyphicon-chevron-right"
+                    : d.isDirectory ? " glyphicon-chevron-right"
+                    : "";
+                return "chevron glyphicon " + icon;
+            }).style("height", function (d) {
+                return d.isDirectory ? "90%" : "0%";
+            }).style("padding", function (d) {
+                return d.isDirectory ? "6px 0px 6px 0px" : "0px";
+            });
         }
 
         var tree = d3.layout.treelist().childIndent(childIndent).nodeHeight(listHeight);
@@ -171,33 +192,11 @@ define(function (require, exports, module) {
 
         var listWrap = enteredNodes.append("div").classed("line", true);
         var updatedNodes = nodeEls, exitedNodes = nodeEls.exit();
-        var chevron = listWrap.append("span").attr("class", function (d) {
-            var icon = d.children || d.empty ? " glyphicon-chevron-down"
-                : d._children ? "glyphicon-chevron-right"
-                : d.isDirectory ? " glyphicon-chevron-right"
-                : "";
-            return "chevron glyphicon " + icon;
-        }).style("height", function (d) {
-            return d.isDirectory ? "90%" : "0%";
-        }).style("padding", function (d) {
-            return d.isDirectory ? "6px 0px 6px 0px" : "0px";
-        });
+        var chevron = listWrap.append("span");
+        updateChevrons(chevron);
         chevron.on("click", function (d) {
             toggleChildren(d);
             self.render(d);
-            if (self._selectedData !== d) {
-                var pd = self._selectedData;
-                self._selectedData = d;
-                ul.selectAll("li.node").classed("selected", function (d) {
-                    return self._selectedData === d;
-                });
-                d.previousData = pd;
-                var event = {type: "SelectedItemChanged", data: d};
-                // clear all editable flags
-                ul.selectAll("li.node").select(".label").attr("contentEditable", false);
-                console.log(event);
-                self.fire(event);
-            }
         });
 
 
@@ -212,17 +211,7 @@ define(function (require, exports, module) {
             .html(function (d) { return d.name; });
 
         //update chevron direction and style
-        nodeEls.select("span.chevron").attr("class", function (d) {
-            var icon = d.children || d.empty ? " glyphicon-chevron-down"
-                : d._children ? "glyphicon-chevron-right"
-                : d.isDirectory ? " glyphicon-chevron-right"
-                : "";
-            return "chevron glyphicon " + icon;
-        }).style("height", function (d) {
-            return d.isDirectory ? "90%" : "0%";
-        }).style("padding", function (d) {
-            return d.isDirectory ? "6px 0px 6px 0px" : "0px";
-        });
+        updateChevrons(nodeEls.select("span.chevron"));
         //update list class
         nodeEls.attr("class", function (d, i) {
             var c = i % 2 === 0 ? "node even" : "node odd";
@@ -241,6 +230,15 @@ define(function (require, exports, module) {
         updatedNodes.selectAll(".line").style("padding-left", function (d) {
             return d.x + "px";
         });
+        // Add an ID to the line for draggable purposes
+        updatedNodes.select(".line").attr("id", function (d) {
+            return "line-" + lineID++;
+        });
+        // Set all the .line to be draggable
+        updatedNodes.selectAll(".line").attr("draggable", function(d) {
+            return d.isDirectory ? true : false;
+        });
+
         //update any label names
         updatedNodes.select("span.label").text(function (d) { return d.name; });
         //remove hidden nodes

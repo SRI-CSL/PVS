@@ -1,0 +1,2 @@
+{{{indent}}}%-- machine states
+{{{indent}}}MachineState: TYPE {{#if states}}= { {{#each states}}{{this}}{{#unless @last}}, {{/unless}}{{/each}} }{{/if}}

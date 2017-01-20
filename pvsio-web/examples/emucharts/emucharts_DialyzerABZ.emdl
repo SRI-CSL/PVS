@@ -1,0 +1,1071 @@
+{
+ "descriptor": {
+  "file_type": "emdl",
+  "version": "1.3",
+  "description": "emucharts model",
+  "chart_name": "emucharts_DialyzerABZ"
+ },
+ "chart": {
+  "states": [
+   {
+    "name": "PowerOff",
+    "id": "X1",
+    "x": -100.66665649414062,
+    "y": 140.83333146572113,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "POST",
+    "id": "X2",
+    "x": -58.142818450927734,
+    "y": 254.45240592956543,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "ConnectConcentrates",
+    "id": "X3",
+    "x": -16.023880004882812,
+    "y": 395.30956840515137,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "ALM_POST_FAILED",
+    "id": "X4",
+    "x": 90.04758858680725,
+    "y": 192.7380828857422,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "SetRinsingParams",
+    "id": "X5",
+    "x": 223.58322143554688,
+    "y": 397.6547164916992,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "InsertAVTubing",
+    "id": "X6",
+    "x": 412.76202392578125,
+    "y": 398.58338356018066,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "SetSalineBagLevels",
+    "id": "X7",
+    "x": 413.69061279296875,
+    "y": 547.6191329956055,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "InsertBloodlines",
+    "id": "X8",
+    "x": 414.4998474121094,
+    "y": 672.5952711105347,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "Priming",
+    "id": "X9",
+    "x": 417.809326171875,
+    "y": 931.9285278320312,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "InsertHeparinSyringe",
+    "id": "X10",
+    "x": 662,
+    "y": 401.47618103027344,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "VentHeparinLine",
+    "id": "X11",
+    "x": 663.5477294921875,
+    "y": 554.1190643310547,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "SetDFParams",
+    "id": "X12",
+    "x": 846.6428680419922,
+    "y": 400.4761657714844,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "SetUFParams",
+    "id": "X13",
+    "x": 846.7857632637024,
+    "y": 552.4285583496094,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "SetHeparinParams",
+    "id": "X15",
+    "x": 847.9523963928223,
+    "y": 805.1903915405273,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "ConnectDializer",
+    "id": "X16",
+    "x": 1060.000099182129,
+    "y": 402.1666564941406,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "ConnectPTArterially",
+    "id": "X17",
+    "x": 1270.023941040039,
+    "y": 403.0953063964844,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "Pumping",
+    "id": "X18",
+    "x": 1270.0475769042969,
+    "y": 544.5238037109375,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "ConnectPTVenously",
+    "id": "X20",
+    "x": 1270.6787414550781,
+    "y": 676.0594787597656,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "ReadyToPrime",
+    "id": "X22",
+    "x": 415.9999694824219,
+    "y": 806.3333129882812,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "TherapyStart",
+    "id": "X23",
+    "x": 1271.25,
+    "y": 815,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "Monitoring",
+    "id": "X21",
+    "x": 1565,
+    "y": 860,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "ALM_CHECK_VENOUS_RETURN_FLOW",
+    "id": "X24",
+    "x": 1753,
+    "y": 584.25,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "CheckAP",
+    "id": "X25",
+    "x": 1066.25,
+    "y": 523.75,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "ALM_CHECK_AP",
+    "id": "X34",
+    "x": 1067.5,
+    "y": 706.5,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "SetPressureLimits",
+    "id": "X26",
+    "x": 847,
+    "y": 673,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "CheckVP",
+    "id": "X27",
+    "x": 1752,
+    "y": 744,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "PumpHeparin",
+    "id": "X28",
+    "x": 1381,
+    "y": 992,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "PumpSaline",
+    "id": "X29",
+    "x": 1482.666748046875,
+    "y": 1057.0001220703125,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "ALM_AIR_IN_LINE",
+    "id": "X14",
+    "x": 1468,
+    "y": 679,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "Complete",
+    "id": "X30",
+    "x": 1828.333251953125,
+    "y": 861.6666870117188,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "Paused",
+    "id": "X32",
+    "x": 1188.3333740234375,
+    "y": 945,
+    "width": 36,
+    "height": 36
+   }
+  ],
+  "transitions": [
+   {
+    "name": "click_Power {\n\tMode := PREPARATION;\n    Power := ON;\n}",
+    "id": "T1",
+    "source": {
+     "name": "PowerOff",
+     "id": "X1"
+    },
+    "target": {
+     "name": "POST",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": -58.75,
+     "y": 176.25
+    }
+   },
+   {
+    "name": "PostFail",
+    "id": "T2",
+    "source": {
+     "name": "POST",
+     "id": "X2"
+    },
+    "target": {
+     "name": "ALM_POST_FAILED",
+     "id": "X4"
+    },
+    "controlPoint": {
+     "x": 80,
+     "y": 252.41063750018836
+    }
+   },
+   {
+    "name": "PostSuccess",
+    "id": "T3",
+    "source": {
+     "name": "POST",
+     "id": "X2"
+    },
+    "target": {
+     "name": "ConnectConcentrates",
+     "id": "X3"
+    },
+    "controlPoint": {
+     "x": -17,
+     "y": 289
+    }
+   },
+   {
+    "name": "click_Power",
+    "id": "T4",
+    "source": {
+     "name": "ALM_POST_FAILED",
+     "id": "X4"
+    },
+    "target": {
+     "name": "PowerOff",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 77.5,
+     "y": 142.5
+    }
+   },
+   {
+    "name": "ConcentratesConnected {\n\tConcentrates := CONNECTED;\n}",
+    "id": "T5",
+    "source": {
+     "name": "ConnectConcentrates",
+     "id": "X3"
+    },
+    "target": {
+     "name": "SetRinsingParams",
+     "id": "X5"
+    },
+    "controlPoint": {
+     "x": 105.77777862548828,
+     "y": 396.0069580078125
+    }
+   },
+   {
+    "name": "click_OK",
+    "id": "T6",
+    "source": {
+     "name": "SetRinsingParams",
+     "id": "X5"
+    },
+    "target": {
+     "name": "InsertAVTubing",
+     "id": "X6"
+    },
+    "controlPoint": {
+     "x": 322.5,
+     "y": 397.5
+    }
+   },
+   {
+    "name": "AVTubingInserted",
+    "id": "T7",
+    "source": {
+     "name": "InsertAVTubing",
+     "id": "X6"
+    },
+    "target": {
+     "name": "SetSalineBagLevels",
+     "id": "X7"
+    },
+    "controlPoint": {
+     "x": 412.06353703321884,
+     "y": 457.2398157646946
+    }
+   },
+   {
+    "name": "click_OK",
+    "id": "T8",
+    "source": {
+     "name": "SetSalineBagLevels",
+     "id": "X7"
+    },
+    "target": {
+     "name": "InsertBloodlines",
+     "id": "X8"
+    },
+    "controlPoint": {
+     "x": 414.00160721356065,
+     "y": 604.9013734417448
+    }
+   },
+   {
+    "name": "PrimeComplete",
+    "id": "T10",
+    "source": {
+     "name": "Priming",
+     "id": "X9"
+    },
+    "target": {
+     "name": "InsertHeparinSyringe",
+     "id": "X10"
+    },
+    "controlPoint": {
+     "x": 491,
+     "y": 844
+    }
+   },
+   {
+    "name": "HeparinSyringeInserted",
+    "id": "T12",
+    "source": {
+     "name": "InsertHeparinSyringe",
+     "id": "X10"
+    },
+    "target": {
+     "name": "VentHeparinLine",
+     "id": "X11"
+    },
+    "controlPoint": {
+     "x": 663,
+     "y": 470
+    }
+   },
+   {
+    "name": "click_OK",
+    "id": "T13",
+    "source": {
+     "name": "VentHeparinLine",
+     "id": "X11"
+    },
+    "target": {
+     "name": "SetDFParams",
+     "id": "X12"
+    },
+    "controlPoint": {
+     "x": 753,
+     "y": 545
+    }
+   },
+   {
+    "name": "click_OK",
+    "id": "T14",
+    "source": {
+     "name": "SetDFParams",
+     "id": "X12"
+    },
+    "target": {
+     "name": "SetUFParams",
+     "id": "X13"
+    },
+    "controlPoint": {
+     "x": 846.3824851326076,
+     "y": 488
+    }
+   },
+   {
+    "name": "click_OK",
+    "id": "T17",
+    "source": {
+     "name": "SetHeparinParams",
+     "id": "X15"
+    },
+    "target": {
+     "name": "ConnectDializer",
+     "id": "X16"
+    },
+    "controlPoint": {
+     "x": 930.4742527490919,
+     "y": 739.7778051159663
+    }
+   },
+   {
+    "name": "DializerConnected {\n\tMode := INITIATION;\n}",
+    "id": "T18",
+    "source": {
+     "name": "ConnectDializer",
+     "id": "X16"
+    },
+    "target": {
+     "name": "ConnectPTArterially",
+     "id": "X17"
+    },
+    "controlPoint": {
+     "x": 1156.6305116631952,
+     "y": 402.89673138395375
+    }
+   },
+   {
+    "name": "click_Start {\n\tPTArteryConnected := true;\n    Pumping := true;\n    APTimer := 10;\n    Mode := INITIATION;\n}",
+    "id": "T19",
+    "source": {
+     "name": "ConnectPTArterially",
+     "id": "X17"
+    },
+    "target": {
+     "name": "Pumping",
+     "id": "X18"
+    },
+    "controlPoint": {
+     "x": 1269.570671474157,
+     "y": 479
+    }
+   },
+   {
+    "name": "TubeFilled {\n\tPumping := false;\n    Mode := INITIATION;\n}",
+    "id": "T22",
+    "source": {
+     "name": "Pumping",
+     "id": "X18"
+    },
+    "target": {
+     "name": "ConnectPTVenously",
+     "id": "X20"
+    },
+    "controlPoint": {
+     "x": 1269.4805356842287,
+     "y": 605.3471261836902
+    }
+   },
+   {
+    "name": "BloodlineInserted",
+    "id": "T31",
+    "source": {
+     "name": "InsertBloodlines",
+     "id": "X8"
+    },
+    "target": {
+     "name": "ReadyToPrime",
+     "id": "X22"
+    },
+    "controlPoint": {
+     "x": 415.0022244150788,
+     "y": 739.1526130598373
+    }
+   },
+   {
+    "name": "click_Prime",
+    "id": "T9",
+    "source": {
+     "name": "ReadyToPrime",
+     "id": "X22"
+    },
+    "target": {
+     "name": "Priming",
+     "id": "X9"
+    },
+    "controlPoint": {
+     "x": 417.04331916006447,
+     "y": 861.9715556993041
+    }
+   },
+   {
+    "name": "click_Start { \n\tPTVeinConnected := true;\n}",
+    "id": "T11",
+    "source": {
+     "name": "ConnectPTVenously",
+     "id": "X20"
+    },
+    "target": {
+     "name": "TherapyStart",
+     "id": "X23"
+    },
+    "controlPoint": {
+     "x": 1271.5941986995067,
+     "y": 742.132291118498
+    }
+   },
+   {
+    "name": "{ Pumping := true; Mode := MONITORING }",
+    "id": "T21",
+    "source": {
+     "name": "TherapyStart",
+     "id": "X23"
+    },
+    "target": {
+     "name": "Monitoring",
+     "id": "X21"
+    },
+    "controlPoint": {
+     "x": 1508.333251953125,
+     "y": 818.3333129882812
+    }
+   },
+   {
+    "name": "[ APTimer > 0 ] { APTimer := APTimer - 1; }",
+    "id": "T25",
+    "source": {
+     "name": "Pumping",
+     "id": "X18"
+    },
+    "target": {
+     "name": "Pumping",
+     "id": "X18"
+    },
+    "controlPoint": {
+     "x": 1342.5,
+     "y": 481.25
+    }
+   },
+   {
+    "name": "[ APTimer = 0 ]",
+    "id": "T27",
+    "source": {
+     "name": "Pumping",
+     "id": "X18"
+    },
+    "target": {
+     "name": "CheckAP",
+     "id": "X25"
+    },
+    "controlPoint": {
+     "x": 1089.0703027117409,
+     "y": 473.9885456231334
+    }
+   },
+   {
+    "name": "APCheckOK {\n\tAPTimer := 10;\n}",
+    "id": "T28",
+    "source": {
+     "name": "CheckAP",
+     "id": "X25"
+    },
+    "target": {
+     "name": "Pumping",
+     "id": "X18"
+    },
+    "controlPoint": {
+     "x": 1218.75,
+     "y": 587.5
+    }
+   },
+   {
+    "name": "ALM_AP_OUT_OF_RANGE",
+    "id": "T29",
+    "source": {
+     "name": "CheckAP",
+     "id": "X25"
+    },
+    "target": {
+     "name": "ALM_CHECK_AP",
+     "id": "X34"
+    },
+    "controlPoint": {
+     "x": 1066.8810115482834,
+     "y": 610.3705758496568
+    }
+   },
+   {
+    "name": "click_OK",
+    "id": "T15",
+    "source": {
+     "name": "SetUFParams",
+     "id": "X13"
+    },
+    "target": {
+     "name": "SetPressureLimits",
+     "id": "X26"
+    },
+    "controlPoint": {
+     "x": 847.2875463007347,
+     "y": 613.0793515459295
+    }
+   },
+   {
+    "name": "click_OK",
+    "id": "T16",
+    "source": {
+     "name": "SetPressureLimits",
+     "id": "X26"
+    },
+    "target": {
+     "name": "SetHeparinParams",
+     "id": "X15"
+    },
+    "controlPoint": {
+     "x": 847.87130342677,
+     "y": 739.4630528162076
+    }
+   },
+   {
+    "name": "[ VPTimer = 0 ]",
+    "id": "T26",
+    "source": {
+     "name": "Monitoring",
+     "id": "X21"
+    },
+    "target": {
+     "name": "CheckVP",
+     "id": "X27"
+    },
+    "controlPoint": {
+     "x": 1730,
+     "y": 802
+    }
+   },
+   {
+    "name": "[ VPTimer > 0 AND BPVolume > 0 ] {\n\tVPTimer := VPTimer - 1;\n    BPVolume := BPVolume - BPRate * 1;\n}",
+    "id": "T30",
+    "source": {
+     "name": "Monitoring",
+     "id": "X21"
+    },
+    "target": {
+     "name": "Monitoring",
+     "id": "X21"
+    },
+    "controlPoint": {
+     "x": 1628.333251953125,
+     "y": 911.6666259765625
+    }
+   },
+   {
+    "name": "VP_OUT_OF_RANGE",
+    "id": "T32",
+    "source": {
+     "name": "CheckVP",
+     "id": "X27"
+    },
+    "target": {
+     "name": "ALM_CHECK_VENOUS_RETURN_FLOW",
+     "id": "X24"
+    },
+    "controlPoint": {
+     "x": 1752,
+     "y": 671
+    }
+   },
+   {
+    "name": "VPCheckOK {\n\tVPTimer := 10;\n}",
+    "id": "T33",
+    "source": {
+     "name": "CheckVP",
+     "id": "X27"
+    },
+    "target": {
+     "name": "Monitoring",
+     "id": "X21"
+    },
+    "controlPoint": {
+     "x": 1614,
+     "y": 797
+    }
+   },
+   {
+    "name": "click_HeparinBolus",
+    "id": "T34",
+    "source": {
+     "name": "Monitoring",
+     "id": "X21"
+    },
+    "target": {
+     "name": "PumpHeparin",
+     "id": "X28"
+    },
+    "controlPoint": {
+     "x": 1455,
+     "y": 978.3333129882812
+    }
+   },
+   {
+    "name": "",
+    "id": "T35",
+    "source": {
+     "name": "PumpHeparin",
+     "id": "X28"
+    },
+    "target": {
+     "name": "Monitoring",
+     "id": "X21"
+    },
+    "controlPoint": {
+     "x": 1503.333251953125,
+     "y": 879.9999389648438
+    }
+   },
+   {
+    "name": "click_SalineBolus",
+    "id": "T36",
+    "source": {
+     "name": "Monitoring",
+     "id": "X21"
+    },
+    "target": {
+     "name": "PumpSaline",
+     "id": "X29"
+    },
+    "controlPoint": {
+     "x": 1545,
+     "y": 1014
+    }
+   },
+   {
+    "name": "",
+    "id": "T37",
+    "source": {
+     "name": "PumpSaline",
+     "id": "X29"
+    },
+    "target": {
+     "name": "Monitoring",
+     "id": "X21"
+    },
+    "controlPoint": {
+     "x": 1539.9998779296875,
+     "y": 908.3333129882812
+    }
+   },
+   {
+    "name": "ALM_VRD",
+    "id": "T20",
+    "source": {
+     "name": "Pumping",
+     "id": "X18"
+    },
+    "target": {
+     "name": "ALM_AIR_IN_LINE",
+     "id": "X14"
+    },
+    "controlPoint": {
+     "x": 1364,
+     "y": 616
+    }
+   },
+   {
+    "name": "ALM_VRD",
+    "id": "T23",
+    "source": {
+     "name": "TherapyStart",
+     "id": "X23"
+    },
+    "target": {
+     "name": "ALM_AIR_IN_LINE",
+     "id": "X14"
+    },
+    "controlPoint": {
+     "x": 1364.8108082173037,
+     "y": 749
+    }
+   },
+   {
+    "name": "ALM_VRD",
+    "id": "T24",
+    "source": {
+     "name": "ConnectPTVenously",
+     "id": "X20"
+    },
+    "target": {
+     "name": "ALM_AIR_IN_LINE",
+     "id": "X14"
+    },
+    "controlPoint": {
+     "x": 1379.3363961596006,
+     "y": 677.5297393798828
+    }
+   },
+   {
+    "name": "[ BPVolume = 0 ] {\n\tTreatmentComplete := true;\n\tPumping := true;\n    UFRate := 50;\n    Mode := ENDING;\n}",
+    "id": "T39",
+    "source": {
+     "name": "Monitoring",
+     "id": "X21"
+    },
+    "target": {
+     "name": "Complete",
+     "id": "X30"
+    },
+    "controlPoint": {
+     "x": 1723.333251953125,
+     "y": 861.6666259765625
+    }
+   },
+   {
+    "name": "click_BYPASS {\n\tMode := BYPASS;\n    Pumping := false;\n}",
+    "id": "T40",
+    "source": {
+     "name": "Monitoring",
+     "id": "X21"
+    },
+    "target": {
+     "name": "Paused",
+     "id": "X32"
+    },
+    "controlPoint": {
+     "x": 1285.9969482421875,
+     "y": 858.9703369140625
+    }
+   },
+   {
+    "name": "click_BYPASS",
+    "id": "T38",
+    "source": {
+     "name": "Paused",
+     "id": "X32"
+    },
+    "target": {
+     "name": "TherapyStart",
+     "id": "X23"
+    },
+    "controlPoint": {
+     "x": 1193.333251953125,
+     "y": 821.6666259765625
+    }
+   }
+  ],
+  "initial_transitions": [
+   {
+    "name": "IT1",
+    "id": "IT1",
+    "target": {
+     "name": "PowerOff",
+     "id": "X1"
+    }
+   }
+  ],
+  "constants": [],
+  "variables": [
+   {
+    "id": "VAR_Power:PowerType(Local)",
+    "name": "Power",
+    "type": "PowerType",
+    "value": "OFF",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_Lamp:LampType(Local)",
+    "name": "Lamp",
+    "type": "LampType",
+    "value": "OFF",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_BPRate:BPRateType(Local)",
+    "name": "BPRate",
+    "type": "BPRateType",
+    "value": "0",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_BPVolume:BPVolumeType(Local)",
+    "name": "BPVolume",
+    "type": "BPVolumeType",
+    "value": "0",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_RinsingTime:RinsingTimeType(Local)",
+    "name": "RinsingTime",
+    "type": "RinsingTimeType",
+    "value": "0",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_RinsingRate:RinsingRateType(Local)",
+    "name": "RinsingRate",
+    "type": "RinsingRateType",
+    "value": "0",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_UFRate:UFRateType(Local)",
+    "name": "UFRate",
+    "type": "UFRateType",
+    "value": "0",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_UFVolume:UFVolumeType(Local)",
+    "name": "UFVolume",
+    "type": "UFVolumeType",
+    "value": "0",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_BPFlow:BPFlowType(Local)",
+    "name": "BPFlow",
+    "type": "BPFlowType",
+    "value": "0",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_Message:MessageType(Local)",
+    "name": "Message",
+    "type": "MessageType",
+    "value": "BLANK",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_PTArteryConnected:bool(Local)",
+    "name": "PTArteryConnected",
+    "type": "bool",
+    "value": "false",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_PTVeinConnected:bool(Local)",
+    "name": "PTVeinConnected",
+    "type": "bool",
+    "value": "false",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_Pumping:bool(Local)",
+    "name": "Pumping",
+    "type": "bool",
+    "value": "false",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_Mode:ModeType(Local)",
+    "name": "Mode",
+    "type": "ModeType",
+    "value": "OFF",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_AP:real(Local)",
+    "name": "AP",
+    "type": "real",
+    "value": "0",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_BEP:real(Local)",
+    "name": "BEP",
+    "type": "real",
+    "value": "0",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_VPTimer:int(Local)",
+    "name": "VPTimer",
+    "type": "int",
+    "value": "10",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_APTimer:int(Local)",
+    "name": "APTimer",
+    "type": "int",
+    "value": "10",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_TreatmentComplete:bool(Local)",
+    "name": "TreatmentComplete",
+    "type": "bool",
+    "value": "false",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_VP:real(Local)",
+    "name": "VP",
+    "type": "real",
+    "value": "0",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_Concentrates:ConcentratesType(Local)",
+    "name": "Concentrates",
+    "type": "ConcentratesType",
+    "value": "DISCONNECTED",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_DFFlow:DFFlowType(Local)",
+    "name": "DFFlow",
+    "type": "DFFlowType",
+    "value": "0",
+    "scope": "Local"
+   }
+  ],
+  "pmr": {},
+  "isPIM": false
+ }
+}

@@ -173,7 +173,8 @@ define(function (require, exports, module) {
                 header: "Confirm Delete",
                 question: (isMainFile) ? (path + " is currently set as Main File for the project. Are you sure you want to delete it?")
                                 : ("Are you sure you want to delete " + path + "?"),
-                buttons: ["Cancel", "Delete"]
+                buttons: ["Cancel", "Delete"],
+                primaryLevel: "danger"
             }).on("delete", function (e, view) {
                 if (isDirectory) {
                     fs.rmDir(path)

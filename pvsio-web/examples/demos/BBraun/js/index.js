@@ -1,5 +1,5 @@
 /**
- * 
+ *
  * @author Patrick Oladimeji
  * @date 11/25/13 23:10:09 PM
  */
@@ -13,15 +13,26 @@ require.config({
         "imagemapper": "../lib/imagemapper",
         "text": "../lib/text",
         "lib": "../lib",
-        "cm": "../lib/cm"
+        "cm": "../lib/cm",
+        stateParser: './util/PVSioStateParser'
     }
 });
 
-require(["widgets/CursoredDisplay", "plugins/graphbuilder/GraphBuilder", "PVSioWebClient"], function (CursoredDisplay, GraphBuilder, PVSioWebClient) {
+require([
+    "widgets/NumericDisplay",
+    "widgets/BasicDisplay",
+    "plugins/graphbuilder/GraphBuilder",
+    "stateParser",
+    "PVSioWebClient"
+],function (
+        NumericDisplay,
+        BasicDisplay,
+        GraphBuilder,
+        stateParser,
+        PVSioWebClient) {
     "use strict";
-    
     var d3 = require("d3/d3");
-    
+
     var w = 228, h = 64;
 	var client = PVSioWebClient.getInstance();
     //create a collapsible panel using the pvsiowebclient instance
@@ -33,17 +44,18 @@ require(["widgets/CursoredDisplay", "plugins/graphbuilder/GraphBuilder", "PVSioW
     }).style("position", "relative");
     //insert the html into the panel (note that this could have used templates or whatever)
     imageHolder.html('<img src="image.png" usemap="#prototypeMap"/>');
-    //append a div that will contain the canvas element
-    var content = imageHolder.append("div").style("position", "absolute").style("top", "232px").style("left", "84px")
-        .style("height", h + "px").style("width", w + "px");
-    //append the canvas element
-	var display = content.append("canvas").attr("width", w).attr("height", h).attr("id", "display");
-	//instantiate the cursored display using the id of the element we just created
-    var disp = new CursoredDisplay("display", w, h);
+	//append display
+    var disp = new NumericDisplay("display", {
+        left: 90, top: 272, width: 220, height: 56
+    }, {
+        displayKey: "d",
+        cursorName: "c",
+        fontsize: 32
+    });
 	//register the graph builder plugin -- so we can visualise the interaction
     var gb = GraphBuilder.getInstance();
 //    var gb = client.registerPlugin(GraphBuilder);
-    
+
     /**
         parse the raw state string from pvsio process into key value pairs
     */
@@ -55,7 +67,7 @@ require(["widgets/CursoredDisplay", "plugins/graphbuilder/GraphBuilder", "PVSioW
         });
         return res;
     }
-    
+
     /**
         using this (instead of encouraging the use of eval()) to evaluate the rational numbers send from the pvsio process.
     */
@@ -64,50 +76,52 @@ require(["widgets/CursoredDisplay", "plugins/graphbuilder/GraphBuilder", "PVSioW
         var args = str.split("/");
         return +args[0] / +args[1];
     }
-    
+
     /**
         function to handle when an output has been received from the server after sending a guiAction
         if the first parameter is truthy, then an error occured in the process of evaluating the gui action sent
     */
     function onMessageReceived(err, event) {
         if (!err) {
-            client.getWebSocket().lastState(event.data);
             var res = event.data.toString();
-            // FIXME: event.type === commandResult when pvsio-web was not able to evaluate the expression (e.g., because of missing pvs function)
             if (res.indexOf("(#") === 0) {
-                res = parseState(event.data.toString());
-                disp.renderNumber(evaluate(res.d).toString(), +res.c);
+                res = stateParser.parse(event.data.toString());
+                if (res) {
+                    disp.render(res);
+                }
             }
-        } else { console.log(err); }
+        } else {
+             console.log(err);
+        }
 	}
-	
+
     //bind ui elements with functions for sending messages to the server
 	d3.select('.btnUp').on("click", function () {
 		client.getWebSocket().sendGuiAction("click_up(" + client.getWebSocket().lastState() + ");", onMessageReceived);
 	});
-	
+
 	d3.select(".btnDn").on("click", function () {
 		client.getWebSocket().sendGuiAction("click_dn(" + client.getWebSocket().lastState() + ");", onMessageReceived);
 	});
-	
+
     d3.select(".btnLeft").on("click", function () {
 		client.getWebSocket().sendGuiAction("click_lf(" + client.getWebSocket().lastState() + ");", onMessageReceived);
     });
-    
+
     d3.select(".btnRight").on("click", function () {
 		client.getWebSocket().sendGuiAction("click_rt(" + client.getWebSocket().lastState() + ");", onMessageReceived);
     });
-    
+
     d3.select(".btnClear").on("click", function () {
 		client.getWebSocket().sendGuiAction("click_clear(" + client.getWebSocket().lastState() + ");", onMessageReceived);
     });
-    
+
     //register event listener for websocket connection from the client
 	client.addListener('WebSocketConnectionOpened', function (e) {
 		console.log("web socket connected");
 		//start pvs process
 		client.getWebSocket().startPVSProcess({name: "bbraun_space.pvs", demoName: "BBraun/pvs"}, function (err, event) {
-			d3.selectAll("button").style("display", null);
+			client.getWebSocket().sendGuiAction("click_clear(" + client.getWebSocket().lastState() + ");", onMessageReceived);
 		});
 	}).addListener("WebSocketConnectionClosed", function (e) {
 		console.log("web socket closed");
@@ -115,7 +129,7 @@ require(["widgets/CursoredDisplay", "plugins/graphbuilder/GraphBuilder", "PVSioW
 		var msg = "Warning!!!\r\nServer process exited. See console for details.";
 		console.log(msg);
 	});
-	
+
 	client.connectToServer();
-	
+
 });

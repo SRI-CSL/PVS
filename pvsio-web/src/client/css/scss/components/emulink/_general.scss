@@ -1,0 +1,85 @@
+#stateMachineMenu {
+    position: absolute;
+    float: left;
+    margin-left: 0;
+    width: 1200px;
+}
+
+#ContainerStateMachine  {
+    border: 2px solid;
+    background: $color-bg-lighter;
+    min-width: 934px;
+    border-radius: 4px;
+    height: 844px;
+    left: 1px;
+    cursor: default;
+}
+
+#graphicalEditor {
+    position:  relative;
+
+    &.hidden {
+        display: none;
+    }
+
+    &.block {
+        display: block;
+    }
+}
+
+.EmuchartsFilter {
+    color: $color-fg-dark;
+    padding: 2px 0 2px 10px;
+    margin-top: -6px;
+    margin-bottom: -4px;
+    margin-left: 10px;
+    border-radius: 20px;
+    border: none;
+    border-color: transparent;
+}
+
+.test {
+    display: block;
+    border: 2px solid lightblue;
+    border-radius: 5px;
+}
+
+#MouseOverlay {
+    width: 20px;
+    height: 20px;
+    position: absolute;
+    opacity: 0.9;
+}
+
+// TODO: Unused styles - not removed because the corresponding markup is only commented out, not removed
+
+#EmuchartLogo.hidden {
+    display: none;
+}
+
+#EmuchartLogo.Start {
+    text-align: center;
+    position: relative;
+    height: 320px;
+    width: 100%;
+    z-index: 1234;
+}
+
+#EmuchartLogo.Start span {
+    display: block;
+    margin-top: 120px;
+    width: 400px;
+    font-size: 30px;
+    font-family: Times, serif;
+    line-height: 1.1;
+    text-align: center;
+}
+
+#stateMachineFilterBar {
+    position: absolute;
+    padding-left: 704px;
+    height: 28px;
+    background-color: $color-bg-darker;
+}
+
+// end unused

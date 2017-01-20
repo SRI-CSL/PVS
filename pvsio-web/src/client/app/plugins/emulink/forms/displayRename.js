@@ -27,7 +27,7 @@ define(function (require, exports, module) {
             $("body").append(this.el);
             var textArea = d3.select(this.el).select("#newLabel").node();
             var size = {
-                width: textArea.getBoundingClientRect().width,
+                width: "100%",//textArea.getBoundingClientRect().width,
                 height: textArea.getBoundingClientRect().height
             };
             var editor = new EmuchartsTextEditor({

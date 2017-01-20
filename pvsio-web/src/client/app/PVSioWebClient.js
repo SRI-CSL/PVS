@@ -15,12 +15,12 @@ define(function (require, exports, module) {
 		d3						= require("d3/d3"),
 		property				= require("util/property"),
 		ws,
-		_port = (window.location.href.indexOf("pvsioweb.herokuapp.com") >= 0 ||
+		_port = (window.location.href.indexOf(".herokuapp.com") >= 0 ||
                    window.location.href.indexOf("pvsioweb.org") >= 0) ? 0 : 8082,
 		url = window.location.href.indexOf("file") === 0 ?
 				("ws://localhost") : ("ws://" + window.location.hostname),
         instance;
-	
+
 	/**
 	 * Creates a new PVSioWeb client object. This object is an event emitter and emits the following events:
 	 * @constructor
@@ -43,6 +43,21 @@ define(function (require, exports, module) {
 			}).addListener("processExited", function (e) {
 				_pvsioweb.isPVSProcessConnected(false).fire(e);
 			});
+
+        // Forward key events to the active panel. By using this instead of registering their own global key listeners,
+        // panels avoid breaking the functionality of other panels or causing behaviour that is confusing for the user.
+        d3.select("body").on("keydown.global", function () {
+            var e = d3.event;
+            if (_pvsioweb._activePanel && _pvsioweb._activePanel.handleKeyDownEvent && typeof _pvsioweb._activePanel.handleKeyDownEvent === "function") {
+                _pvsioweb._activePanel.handleKeyDownEvent(e);
+            }
+        });
+        d3.select("body").on("keyup.global", function () {
+            var e = d3.event;
+            if (_pvsioweb._activePanel && _pvsioweb._activePanel.handleKeyUpEvent && typeof _pvsioweb._activePanel.handleKeyUpEvent === "function") {
+                _pvsioweb._activePanel.handleKeyUpEvent(e);
+            }
+        });
 	}
     /**
      Get or set whether the client is connected to the server websocket
@@ -54,7 +69,7 @@ define(function (require, exports, module) {
     PVSioWeb.prototype.isPVSProcessConnected = property.call(PVSioWeb.prototype, false);
     /**get or set the port for the server connection */
 	PVSioWeb.prototype.port = property.call(PVSioWeb.prototype, _port);
-	
+
     /**
         Get or set the url for the server connection
     */
@@ -77,7 +92,7 @@ define(function (require, exports, module) {
             return ws.serverUrl(this.serverUrl()).logon();
         }
 	};
-	
+
     /**
         Disconnects from the server
     */
@@ -89,62 +104,84 @@ define(function (require, exports, module) {
         Get the websocket connection
     */
 	PVSioWeb.prototype.getWebSocket = function () { return ws; };
-	
+
     /**
         Creates a collapsible panel on the client app
-		@param {object} options 
+		@param {object} options
 			{
 			headerText: string to display in panel header
 			owner: <string> the name of the plugin that owns the panel
-			onClick: function - handler to invoke when the panel is toggled
+			ownerObject: <object> Main class of the plugin that owns the panel. Used for forwarding key events.
+			onClick: function - handler to invoke when the panel is toggled. Argument passed to the function identifies
+            whether the panel is now collapsed (true) or not (false).
 			showContent: Whether the default initial state of the panel is open (showContent == true) or closed (showContent == true or undefined)
 			parent: the html element selector for the parent i.e., where the panel should be created
 			}
         @returns {d3.selection} The div created
     */
 	PVSioWeb.prototype.createCollapsiblePanel = function (options) {
+        var _this = this;
+        var collapsed;
+
 		options = options || {};
 		options.parent = options.parent || "#body";
-		var div = d3.select(options.parent).append("div").attr("class", "collapsible-panel-parent");
-		var header = div.append("div").classed("header", true);
-		var content = div.append("div").attr("class", "collapsible-panel");
-		
-        if (!options.isDemo) {
-            header.on("click", function () {
-                var icon = d3.select(this.firstChild);
-                var label = d3.select(this.lastChild);
-                if (content.attr("style") === null) {
-                    content.attr("style", "display: none");
-                    label.node().textContent += " (click to expand)";
-                    icon.classed("glyphicon-plus-sign", true).classed("glyphicon-minus-sign", false);
-                } else {
-                    content.attr("style", null);
-                    label.node().textContent = label.node().textContent.replace(" (click to expand)", "");
-                    icon.classed("glyphicon-minus-sign", true).classed("glyphicon-plus-sign", false);
-                }
-                if (options.onClick && typeof options.onClick === "function") {
-                    options.onClick();
-                }
-            });
-        }
-		header.append("span")
+        var _div = d3.select(options.parent).append("div").attr("class", "collapsible-panel-parent"); // use this to append
+		// var _div = d3.select(options.parent).insert("div",":first-child").attr("class", "collapsible-panel-parent"); // use this to pre-pend
+		var _header = _div.append("div").classed("header", true);
+		var _content = _div.append("div").attr("class", "collapsible-panel");
+
+        _header.append("span")
 			.attr("class", function () {
 				return options.showContent === true ? "toggle-collapse glyphicon glyphicon-minus-sign" :
 						"toggle-collapse glyphicon glyphicon-plus-sign";
             });
+
+        if (!options.isDemo && _header.node() && _header.node().firstChild) {
+            d3.select(_header.node().firstChild).on("click", function () {
+                var icon = d3.select(this.parentNode.firstChild);
+                var label = d3.select(this.parentNode.lastChild);
+
+                if (_content.attr("style") === null) {
+                    _content.attr("style", "display: none");
+                    label.node().textContent += " (click to expand)";
+                    icon.classed("glyphicon-plus-sign", true).classed("glyphicon-minus-sign", false);
+                    collapsed = true;
+                } else {
+                    _content.attr("style", null);
+                    label.node().textContent = label.node().textContent.replace(" (click to expand)", "");
+                    icon.classed("glyphicon-minus-sign", true).classed("glyphicon-plus-sign", false);
+                    collapsed = false;
+                }
+                if (options.onClick && typeof options.onClick === "function") {
+                    options.onClick(collapsed);
+                }
+            });
+        }
+
+        if (options.ownerObject) {
+            _div.on("mouseover", function () {
+                _this._activePanel = options.ownerObject;
+            });
+        }
+
+        if (options.width) {
+            _div.style("width", options.width + "px");
+        }
+
 		if (options.owner) {
-			div.attr("plugin-owner", options.owner);
+			_div.attr("plugin-owner", options.owner);
+            _header.attr("id", options.owner); //this is useful for scrolling the page to the panel
 		}
 		if (options.headerText) {
-			header.append("span").html(options.headerText).attr("class", "header");
+			_header.append("span").html(options.headerText).attr("class", "header");
 		}
 		if (!options.showContent && !options.isDemo) {
-            header.node().lastChild.textContent += " (click to expand)";
-            content.style("display", "none");
+            _header.node().lastChild.textContent += " (click to expand)";
+            _content.style("display", "none");
         }
-		return content;
+		return _content;
 	};
-    
+
     /**
         Removes the collapsible specified in the parameter.
         @param {d3.selection} container The div returned from a call to createCollapsiblePanel
@@ -157,7 +194,7 @@ define(function (require, exports, module) {
             }
         }
     };
-    
+
     /**
         Adds a stylesheet with the specified url to the page
      */
@@ -170,7 +207,7 @@ define(function (require, exports, module) {
             cb("error");
         });
     };
-	
+
 	module.exports = {
         getInstance: function () {
             if (!instance) {

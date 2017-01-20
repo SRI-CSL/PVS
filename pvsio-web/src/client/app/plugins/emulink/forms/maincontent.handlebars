@@ -9,23 +9,43 @@
 
 <!-- container for graphical editor -->
 <!--<div id="graphicalEditor" class="hidden">-->
-<div id="graphicalEditor">
+<div id="graphicalEditor" class="emuchart">
+    <div id="EmuchartsSelector" style="display:none;">
+        <ul class="dropdown dropdown-vertical" id="emuchartsTab-NEXT">
+            <li>
+                <a href="#!" id="btw_emucharts_PREV">
+                    <span title="Browse diagram"
+                          class="glyphicon glyphicon-triangle-top">
+                </a>
+                <a href="#!" style="text-align:center;" id="btn_emucharts_1">1</a>
+                <a href="#!" style="text-align:center;" id="btn_emucharts_2">2</a>
+                <a href="#!" style="text-align:center;" id="btn_emucharts_3">3</a>
+                <a href="#!" style="text-align:center;" id="btn_emucharts_1">4</a>
+                <a href="#!" style="text-align:center;" id="btn_emucharts_2">5</a>
+                <a href="#!" style="text-align:center;" id="btn_emucharts_3">6</a>
+                <a href="#!" style="text-align:center;" id="btn_emucharts_1">7</a>
+                <a href="#!" style="text-align:center;" id="btn_emucharts_2">8</a>
+                <a href="#!" id="btw_emucharts_PREV">
+                    <span title="Browse diagram"
+                          class="glyphicon glyphicon-triangle-bottom">
+                </a>
+            </li>
+        </ul>
+    </div>
     <div id="EmuchartToolbar" >
         <ul class="dropdown dropdown-vertical">
             <li class='toolbar'>
                 <div id="toolbarViewExportedImage" style="display:none;">
                     <hr>
-                    <a href="#!" class="toolbar-tooltip blink"
+                    <a href="#!" data-toggle="tooltip" data-placement="right" title="View Exported Image"
                        id="btn_toolbarViewExportedImage" target="_blank">
-                        <span title="View Exported Image"
-                              class="glyphicon glyphicon-download-alt"
+                        <span class="glyphicon glyphicon-download-alt"
                               style="font-size: 1.2em">
                         </span></a>
                 </div>
                 <hr>
-                <a href="#!" class="toolbar-tooltip" id="btn_toolbarBrowse">
-                    <span title="Browse diagram"
-                          class="glyphicon glyphicon-arrow-right"
+                <a href="#!" data-toggle="tooltip" data-placement="right" title="Browse diagram" id="btn_toolbarBrowse">
+                    <span class="glyphicon glyphicon-arrow-right"
                           style="font-size: 1.2em
                                  -ms-transform:rotate(-120deg); /* IE 9 */
                                  -moz-transform:rotate(-120deg); /* Firefox */
@@ -34,25 +54,21 @@
                                  padding-left: 1px;">
                     </span></a>
                 <hr>
-                <a href="#!" class="toolbar-tooltip" id="btn_toolbarZoomIn">
-                    <span title="Zoom-in"
-                          class="glyphicon glyphicon-zoom-in"
+                <a href="#!" data-toggle="tooltip" data-placement="right" title="Zoom-in" id="btn_toolbarZoomIn">
+                    <span class="glyphicon glyphicon-zoom-in"
                           style="font-size: 1.2em;">
                     </span></a>
-                <a href="#!" class="toolbar-tooltip" id="btn_toolbarZoomOut">
-                    <span title="Zoom-out"
-                          class="glyphicon glyphicon-zoom-out"
+                <a href="#!" data-toggle="tooltip" data-placement="right" title="Zoom-out" id="btn_toolbarZoomOut">
+                    <span class="glyphicon glyphicon-zoom-out"
                           style="font-size: 1.2em;">
                     </span></a>
-                <a href="#!" class="toolbar-tooltip" id="btn_toolbarZoomReset">
-                    <span title="Zoom-reset"
-                          class="glyphicon glyphicon-fullscreen"
+                <a href="#!" data-toggle="tooltip" data-placement="right" title="Zoom-reset" id="btn_toolbarZoomReset">
+                    <span class="glyphicon glyphicon-fullscreen"
                           style="font-size: 1.2em;">
                     </span></a>
                 <hr>
-                <a href="#!" class="toolbar-tooltip" id="btn_toolbarAddState">
-                    <span title="Add states"
-                          class="glyphicon glyphicon-stop"
+                <a href="#!" data-toggle="tooltip" data-placement="right" title="Add states" id="btn_toolbarAddState">
+                    <span class="glyphicon glyphicon-stop"
                           style="font-size: 1.2em
                                  transform: scale(1.4,1);
                                  -ms-transform: scale(1.4,1); /* IE 9 */
@@ -60,19 +76,16 @@
                                  -o-transform: scale(1.4,1); /* Opera */
                                  -moz-transform: scale(1.4,1); /* Firefox */">
                     </span></a>
-                <a href="#!" class="toolbar-tooltip" id="btn_toolbarAddTransition">
-                    <span title="Add transitions"
-                          class="glyphicon glyphicon-new-window"
+                <a href="#!" data-toggle="tooltip" data-placement="right" title="Add transitions" id="btn_toolbarAddTransition">
+                    <span class="glyphicon glyphicon-new-window"
                           style="font-size: 1.2em">
                     </span></a>
-                <a href="#!" class="toolbar-tooltip" id="btn_toolbarRename">
-                    <span title="Rename states/transitions"
-                          class="glyphicon glyphicon-font"
+                <a href="#!" data-toggle="tooltip" data-placement="right" title="Rename states/transitions" id="btn_toolbarRename">
+                    <span class="glyphicon glyphicon-font"
                           style="font-size: 1.2em">
                     </span></a>
-                <a href="#!" class="toolbar-tooltip" id="btn_toolbarDelete">
-                    <span title="Delete states/transitions"
-                          class="glyphicon glyphicon-fire"
+                <a href="#!" data-toggle="tooltip" data-placement="right" title="Delete states/transitions" id="btn_toolbarDelete">
+                    <span class="glyphicon glyphicon-remove"
                           style="font-size: 1.2em">
                     </span></a>
                 <hr>
@@ -105,6 +118,8 @@
                     <li><a href='#!' id="btn_menuRenameState"><span>Edit state</span></a></li>
                     <li><a href='#!' id="btn_menuDeleteState"><span>Delete state</span></a></li>
                     <li class="divider"></li>
+                    <li><a href='#!' id="btn_menuLayOutStates"><span>Lay out states</span></a></li>
+                    <li class="divider"></li>
                 </ul>
             </li>
             <li class='active has-sub' id="menuTransitions"><a href='#!'><span>Transitions</span></a>
@@ -127,20 +142,25 @@
                     <li><a href='#!' id="btn_menuEditConstant"><span>Edit constant</span></a></li>
                     <li><a href='#!' id="btn_menuDeleteConstant"><span>Delete constant</span></a></li>
                     <li class="divider"></li>
+                    <li><a href='#!' id="btn_menuNewDatatype"><span>New datatype</span></a></li>
+                    <li><a href='#!' id="btn_menuEditDatatype"><span>Edit datatype</span></a></li>
+                    <li><a href='#!' id="btn_menuDeleteDatatype"><span>Delete datatype</span></a></li>
+                    <li class="divider"></li>
                 </ul>
             </li>
             <li class='active has-sub' id="menuCodeGenenerators"><a href='#!'><span>Code Generators</span></a>
                 <ul>
                     <li class="divider"></li>
                     <li><a href='#!' id="btn_menuPVSPrinter"><span>PVS Theory</span></a></li>
+                    <li><a href='#!' id="btn_menuNuXMVPrinter"><span>NuXMV Model</span></a></li>
                     <li><a href='#!' id="btn_menuPIMPrinter"><span>PIM Model</span></a></li>
                     <li><a href='#!' id="btn_menuMALPrinter"><span>MAL Model</span></a></li>
                     <li><a href='#!' id="btn_menuVDMPrinter"><span>VDM Model</span></a></li>
                     <li><a href='#!' id="btn_menuBlessPrinter"><span>Bless Model</span></a></li>
-                    <li><a href='#!' id="btn_menuSALPrinter" class="tobeimplemented"><span>SAL Model</span></a></li>
-                    <li><a href='#!' id="btn_menuLustrePrinter" class="tobeimplemented"><span>Lustre Model</span></a></li>
+<!--                    <li><a href='#!' id="btn_menuSALPrinter" class="tobeimplemented"><span>SAL Model</span></a></li>
+                    <li><a href='#!' id="btn_menuLustrePrinter" class="tobeimplemented"><span>Lustre Model</span></a></li>-->
                     <li class="divider"></li>
-                    <li><a href='#!' id="btn_menuCPrinter" class="tobeimplemented"><span>C Code</span></a></li>
+                    <li><a href='#!' id="btn_menuMisraCPrinter"><span>MISRA C Code</span></a></li>
                     <li><a href='#!' id="btn_menuCppPrinter" class="tobeimplemented"><span>C++ Code</span></a></li>
                     <li><a href='#!' id="btn_menuJavaPrinter" class="tobeimplemented"><span>Java Code</span></a></li>
                     <li><a href='#!' id="btn_menuJavaScriptPrinter" class="tobeimplemented"><span>JavaScript Code</span></a></li>
@@ -149,25 +169,36 @@
                     <li class="divider"></li>
                 </ul>
             </li>
+            <li class='active has-sub'><a href='#!'><span>Testing</span></a>
+            <ul>
+                <li class="divider"></li>
+                <li><a href='#!' id="btn_toPIM"><span>Set Emuchart as PIM</span></a></li>
+                <li><a href='#!' id="btn_fromPIM"><span>Set PIM as Emuchart</span></a></li>
+                <li class="divider"></li>
+                <li><a href='#!' id="btn_menuTestGenerator"><span>Test Generation</span></a></li>
+                <li><a href='#!' id="btn_menuTestGeneratorFromFile"><span>Test Generation from File</span></a></li>
+                <li class="divider"></li>
+                <li><a href='#!' id="btn_menuPMTextGenerator"><span>PM Text Generator</span></a></li>
+                <li class="divider"></li>
+            </ul>
+            <li class='active has-sub' id="menuVerification"><a href='#!'><span>Verification</span></a>
+                <ul>
+                    <li class="divider"></li>
+					<li><a href='#!' id ="btn_menuConsistencyOfActions"><span>Consistency of actions</span></a></li>
+                    <li><a href='#!' id ="btn_menuReversibilityOfActions"><span>Reversibility of actions</span></a></li>
+					<li><a href='#!' id ="btn_menuVisibilityOfModes"><span>Visibility of modes</span></a></li>
+
+				</ul>
+		    </li>
             <li class='active has-sub' id="menuZoom"><a href='#!'><span>Zoom</span></a>
                 <ul>
                     <li class="divider"></li>
 					<li><a href='#!' id ="btn_menuZoomIn"><span>Zoom-in</span></a></li>
 					<li><a href='#!' id ="btn_menuZoomOut"><span>Zoom-out</span></a></li>
 					<li><a href='#!' id ="btn_menuZoomReset"><span>Reset zoom</span></a></li>
-                    
+
 				</ul>
 		    </li>
-            <li class='active has-sub'><a href='#!'><span>PIM</span></a>
-            <ul>
-                <li class="divider"></li>
-                <li><a href='#!' id="btn_toPIM"><span>Set Emuchart as PIM</span></a></li>
-                <li><a href='#!' id="btn_fromPIM"><span>Set PIM as Emuchart</span></a></li>
-                <li class="divider"></li>
-                <li><a href='#!' id="btn_menuTestGenerator"><span>Test Generator</span></a></li>
-                <li><a href='#!' id="btn_menuTestGeneratorFromFile"><span>Test Generator from File</span></a></li>
-                <li class="divider"></li>
-            </ul>
         </li>
 		    <li class='active has-sub'><a href='#!'><span>Help</span></a>
 				<ul>
@@ -214,7 +245,7 @@
             </span></a>
         <a href="#!" class="toolbar-tooltip" placeholder="delete" id="MouseOverlayIcon">
             <span title="Delete states/transitions"
-                  class="glyphicon glyphicon-fire"
+                  class="glyphicon glyphicon-remove"
                   style="font-size: 1.2em">
             </span></a>
     </div>
@@ -226,6 +257,7 @@
               <!-- This is our clonable table line template -->
               <tr id="StateVariableTemplate">
                 <td contenteditable="false" style="background-color:white; cursor: default;">Name</td>
+                <td contenteditable="false" style="background-color:white; cursor: default;">Type</td>
                 <td contenteditable="false" style="background-color:white; cursor: default;">Value</td>
                 <td style="background-color:white; width:48px;">
                   <span id="RemoveStateAttribute" class="table-remove glyphicon glyphicon-remove"></span>
@@ -234,6 +266,39 @@
                   <!--<span id="StateAttributeUP" class="table-up glyphicon glyphicon-arrow-up"></span>
                   <span id="StateAttributeDOWN" class="table-down glyphicon glyphicon-arrow-down"></span>-->
                     <span id="EditStateAttribute" class="table-up glyphicon glyphicon-pencil">
+                </td>
+              </tr>
+              <!-- -->
+            </table>
+        </div>
+        <div id="NewConstant" style="display:none;">
+            <table class="table">
+              <!-- This is our clonable table line template -->
+              <tr id="ConstantsTemplate">
+                <td contenteditable="false" style="background-color:white; cursor: default;">Name</td>
+                <td contenteditable="false" style="background-color:white; cursor: default;">Type</td>
+                <td contenteditable="false" style="background-color:white; cursor: default;">Value</td>
+                <td style="background-color:white; width:48px;">
+                  <span id="RemoveConstant" class="table-remove glyphicon glyphicon-remove"></span>
+                </td>
+                <td style="background-color:white;">
+                    <span id="EditConstant" class="table-up glyphicon glyphicon-pencil">
+                </td>
+              </tr>
+              <!-- -->
+            </table>
+        </div>
+        <div id="NewDatatype" style="display:none;">
+            <table class="table">
+              <!-- This is our clonable table line template -->
+              <tr id="DatatypeTemplate">
+                <td contenteditable="false" style="background-color:white; cursor: default;">Name</td>
+                <td contenteditable="false" style="background-color:white; cursor: default;">Constructors</td>
+                <td style="background-color:white; width:48px;">
+                  <span id="RemoveDatatype" class="table-remove glyphicon glyphicon-remove"></span>
+                </td>
+                <td style="background-color:white;">
+                    <span id="EditDatatype" class="table-up glyphicon glyphicon-pencil">
                 </td>
               </tr>
               <!-- -->
@@ -260,19 +325,23 @@
             </table>
         </div>
         <div id="EmuchartsFloatTableMenu">
-            <ul class="dropdown" role="tablist">
-                <li id="btnStates" class="active"><a href="#!">States</a>
+            <ul class="table-tab-container" role="tablist">
+                <li id="btnStates" class="active table-tab"><a href="#!">States</a>
                 </li>
-                <li id="btnTransitions"><a href="#!">Transitions</a>
+                <li id="btnTransitions" class="table-tab"><a href="#!">Transitions</a>
                 </li>
-                <li id="btnVariables"><a href="#!">Context Variables</a>
+                <li id="btnVariables" class="table-tab"><a href="#!">Context Variables</a>
+                </li>
+                <li id="btnConstants" class="table-tab"><a href="#!">Constants</a>
+                </li>
+                <li id="btnDatatypes" class="table-tab"><a href="#!">Datatypes</a>
                 </li>
             </ul>
-            <ul class="dropdown" role="tablist" style="float:right;">
-                <li id="btnViewHideTable" style="margin-right:76px;">
+            <ul class="table-toggle-container" role="tablist">
+                <li id="btnViewHideTable" class="table-toggle-visible" style="margin-right:76px;">
                     <span class="glyphicon glyphicon-triangle-bottom"></span>
                 </li>
-                <li id="btnViewRevealTable" style="display:none">
+                <li id="btnViewRevealTable" class="table-toggle-visible" style="display:none">
                     <span class="glyphicon glyphicon-triangle-top" style="margin-left:28px; margin-right:28px;"></span>
                 </li>
             </ul>
@@ -316,7 +385,7 @@
                 <div class="EmuchartTableHeader" style="cursor: default;"><span>Transitions</span></div>
                 <table class="table" style="margin-bottom:0 !important;">
                   <tr id="heading" class="TableHeading">
-                    <th style="cursor: default;">Label</th>
+                    <th style="cursor: default;">Transition Label</th>
                     <th style="cursor: default;">Source</th>
                     <th style="cursor: default;">Target</th>
                     <th></th>
@@ -328,10 +397,34 @@
                 <div class="EmuchartTableHeader" style="cursor: default;"><span>Context Variables</span></div>
                 <table class="table" style="margin-bottom:0 !important;">
                   <tr id="heading" class="TableHeading" style="margin-left:0">
-                    <th style="cursor: default;">Name</th>
+                    <th style="cursor: default;">Variable Name</th>
+                    <th style="cursor: default;">Variable Type</th>
                     <th style="cursor: default;">Initial Value</th>
                     <th></th>
                     <th class="width32"><span id="AddStateAttribute" class="table-add glyphicon glyphicon-plus"></span></th>
+                  </tr>
+                </table>
+            </div>
+            <div id="ConstantsTable" class="table-editable floating-table" style="display:none;">
+                <div class="EmuchartTableHeader" style="cursor: default;"><span>Constants</span></div>
+                <table class="table" style="margin-bottom:0 !important;">
+                  <tr id="heading" class="TableHeading" style="margin-left:0">
+                    <th style="cursor: default;">Constant Name</th>
+                    <th style="cursor: default;">Constant Type</th>
+                    <th style="cursor: default;">Initial Value</th>
+                    <th></th>
+                    <th class="width32"><span id="AddConstant" class="table-add glyphicon glyphicon-plus"></span></th>
+                  </tr>
+                </table>
+            </div>
+            <div id="DatatypesTable" class="table-editable floating-table" style="display:none;">
+                <div class="EmuchartTableHeader" style="cursor: default;"><span>Datatypes</span></div>
+                <table class="table" style="margin-bottom:0 !important;">
+                  <tr id="heading" class="TableHeading" style="margin-left:0">
+                    <th style="cursor: default;">Datatype Name</th>
+                    <th style="cursor: default;">Datatype Constants</th>
+                    <th></th>
+                    <th class="width32"><span id="AddDatatype" class="table-add glyphicon glyphicon-plus"></span></th>
                   </tr>
                 </table>
             </div>

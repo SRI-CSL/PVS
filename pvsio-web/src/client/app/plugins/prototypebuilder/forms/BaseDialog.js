@@ -25,12 +25,12 @@ define(function (require, exports, module) {
         },
         focus: function () {
             d3.select(".panel-heading").classed("noselect", true);
-            d3.select(this.el).select(".panel").attr("tabindex", 1).node().focus();            
+            d3.select(this.el).select(".panel").attr("tabindex", 1).node().focus();
         },
         moveDialog: function (event) {
             var bbox = d3.select(".panel-heading").node().getBoundingClientRect();
             d3.select(".panel-heading").classed("noselect", true);
-            
+
 //            var dragStart = function () {
 //                d3.event.sourceEvent.stopPropagation();
 //            };
@@ -50,8 +50,8 @@ define(function (require, exports, module) {
 //            drag.on("dragstart", dragStart)
 //                .on("drag", dragDialog)
 //                .on("dragend", dragEnd);
-//            d3.select(".panel-heading").call(drag);            
-            
+//            d3.select(".panel-heading").call(drag);
+
             var parent = this.el;
             var startx = bbox.left, starty = bbox.top,
                 mx = event.clientX, my = event.clientY;

@@ -1,0 +1,5 @@
+{{{functionName}}}(st: State): State{{#if transitions}} =
+ COND
+   {{#each transitions}}per_{{{this}}}(st) -> {{{this}}}(st),
+   {{/each}}ELSE -> st
+ ENDCOND{{/if}}

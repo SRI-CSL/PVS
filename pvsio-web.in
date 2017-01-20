@@ -1,24 +1,3 @@
 #!/bin/bash
-if [ -d "pvsio-web/src/server/lib" ] && [ -f "pvsio-web/src/server/lib/glassfish-4-1.zip.partaa" ] && 
-	[ -f "pvsio-web/src/server/lib/glassfish-4-1.zip.partab" ] && 
-	[ -f "pvsio-web/src/server/lib/glassfish-4-1.zip.partac" ] && 
-	[ -f "pvsio-web/src/server/lib/glassfish-4-1.zip.partad" ] && 
-	[ -f "pvsio-web/src/server/lib/glassfish-4-1.zip.partae" ] && 
-	[ -f "pvsio-web/src/server/lib/glassfish-4-1.zip.partaf" ] && 
-	[ -f "pvsio-web/src/server/lib/glassfish-4-1.zip.partag" ] && 
-	[ ! -d "pvsio-web/src/server/lib/glassfish4" ]; then
-  cd pvsio-web/src/server/lib/
-  ./installNC.sh
-  cd ../../../..
-fi
-if [ -d "pvsio-web/src/server/ext" ] && [ ! -d "pvsio-web/src/server/ext/IVY" ] &&
-    [ -f "pvsio-web/src/server/ext/IVY.zip.partaa" ] && 
-	[ -f "pvsio-web/src/server/ext/IVY.zip.partab" ] && 
-	[ -f "pvsio-web/src/server/ext/IVY.zip.partac" ]; then
-  cd pvsio-web/src/server/ext/
-  ./installIVY.sh
-  cd ../../../..
-fi
-cd pvsio-web/src/server
-node pvssocketserver.js start pvsdir:..
-
+cd pvsio-web
+./start.sh

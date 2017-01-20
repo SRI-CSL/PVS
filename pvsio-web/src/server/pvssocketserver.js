@@ -155,24 +155,28 @@ function run() {
     webserver.use("/client", express.static(clientDir));
 
     function typeCheck(file, cb) {
+        console.log("typechecking file " + file + " ...");
         if (process.env.PORT) { // this is for the PVSio-web version installed on the heroku cloud
+            console.log("/app/PVS/proveit -T -l -v " + file);
             procWrapper().exec({
-                command: "/app/pvs6.0/proveit -T -l -v " + file,
+                command: "/app/PVS/proveit -T -l -v " + file,
                 callBack: cb
             });
         } else if (process.env.pvsdir) {
+            console.log(path.join(process.env.pvsdir, "proveit") + " -T -l -v " + file);
             procWrapper().exec({
                 command: path.join(process.env.pvsdir, "proveit") + " -T -l -v " + file,
                 callBack: cb
-            });        
+            });
         } else {
+            console.log("proveit -T -l -v " + file);
             procWrapper().exec({
                 command: "proveit -T -l -v " + file,
                 callBack: cb
             });
         }
     }
-    
+
     function startSapereEE(cb) {
         var cmd = __dirname + "/lib/glassfish4/bin/asadmin restart-domain --force=true";
         procWrapper().exec({
@@ -180,7 +184,7 @@ function run() {
             callBack: cb
         });
     }
-    
+
     function stopSapereEE(cb) {
         var cmd = __dirname + "/lib/glassfish4/bin/asadmin stop-domain";
         procWrapper().exec({
@@ -188,7 +192,7 @@ function run() {
             callBack: cb
         });
     }
-    
+
     function startIVY(cb) {
         var cmd = "cd " + __dirname + "/ext/IVY" +
                   " && " +
@@ -205,7 +209,7 @@ function run() {
         });
         delayedCallback();
     }
-    
+
     /**
         Creates a function that updates the path of the parameter object such that it is relative to the
         basePath specified
@@ -596,6 +600,7 @@ function run() {
                 initProcessMap(socketid);
                 var encoding = token.encoding || "utf8";
                 token.path = isAbsolute(token.path) ? token.path : path.join(baseProjectDir, token.path);
+                console.log("reading file " + token.path);
                 readFile(token.path, encoding)
                     .then(function (content) {
                         var res = {
@@ -948,7 +953,7 @@ function run() {
                     if (err.code === 1 && err.killed === false) {
                         // glassfish is already running, it's not an error
                         res.stdout = "PVSio-web Network Controller already started.";
-                    } else {                    
+                    } else {
                         res.type = token.type + "_error";
                         res.err = err.message;
                     }

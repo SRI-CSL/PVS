@@ -1,0 +1,148 @@
+{{&descriptor}}
+#include "{{filename}}.h"
+#include <assert.h>
+
+#ifdef DEBUG
+#include <stdio.h>
+#define debug_print(fmt, args...) \
+        do { fprintf(stderr, "%s:%d:%s(): " fmt, \
+                __FILE__, __LINE__, __FUNCTION__, ##args); } while (0)
+#endif
+
+{{~#if constants}}
+/* constants variables */
+{{~#each constants}}
+const {{type}} {{name}}{{#if value}} = {{&value}}{{/if}};{{/each}}
+{{~/if}}
+{{#if transitions}}
+/* definition of auxiliary functions */
+void enter(MachineState newStateLabel, state *st) {
+#ifdef DEBUG
+    debug_print("Entering state nr. '%u'.\n", newStateLabel);
+#endif
+    st->current_state = newStateLabel;
+}
+void leave(MachineState currentStateLabel, state *st) {
+#ifdef DEBUG    
+    debug_print("Leaving state nr. '%u'.\n", currentStateLabel);
+#endif    
+    st->previous_state = currentStateLabel;
+}{{/if}}
+
+{{#if initial_transitions}}/* definition of initialisation function */
+state init(state *st){
+#ifdef DEBUG    
+    debug_print("Initialisation of state variables.\n");
+#endif    
+    {{#each ../local_variables}}{{#if value}}{{#if isstring}}{{&value}}{{else}}st->{{name}} = {{&value}}{{/if}};
+    {{/if}}{{/each}}
+    {{~#each ../input_variables}}{{#if value}}st->{{name}} = {{&value}};
+    {{/if}}{{/each}}
+    {{~#each ../output_variables}}{{#if value}}st->{{name}} = {{&value}};
+    {{/if}}{{/each}}
+    {{~#each initial_transitions}}
+    {{~#if condition}}if ({{&condition}}) {
+        enter({{target.name}}, st);
+        {{#each actions}}{{&.}};
+#ifdef DEBUG        
+        debug_print("Action {{&.}} issued.\n");
+#endif{{/each}}
+        assert ( st->current_state == {{target.name}} );
+        return *st;
+    }
+    {{else}}enter({{target.name}}, st);
+    {{#each actions}}{{&.}};
+#ifdef DEBUG    
+    debug_print("Action {{&.}} issued.\n");
+#endif{{/each}}
+    assert ( st->current_state == {{target.name}} );
+    return *st;{{/if}}{{/each}}
+}{{/if}}
+
+{{#if transitions}}/* definition of transition functions */
+{{#each transitions}}{{#if id}}state {{id}}(state *st) {
+    assert( st->current_state == {{source.name}});
+{{~#if condition}}
+    if ({{&condition}}) {
+        leave({{source.name}}, st);
+        {{~#each actions}}
+        {{&.}};
+#ifdef DEBUG        
+        debug_print("Action {{&.}} issued.\n");
+#endif{{/each}}       
+        enter({{target.name}}, st);
+    }
+{{~else}}
+    leave({{source.name}}, st);
+    {{~#each actions}}
+    {{&.}};
+#ifdef DEBUG    
+    debug_print("Action {{&.}} issued.\n");
+#endif{{~/each}}
+  
+    enter({{target.name}}, st);
+{{~/if}}
+    assert( st->current_state == {{target.name}} );
+    return *st;
+}
+{{else}}state {{0.id}}(state *st) {
+    assert( {{#each 0.listSources}}st->current_state ==  {{&.}} {{#unless @last}}|| {{/unless}}{{/each}});
+{{#each .}}
+{{~#if condition}}
+    if ( (st->current_state == {{source.name}}) && ({{&condition}}) ) {
+        leave({{source.name}}, st);
+        {{~#each actions}}
+        {{&.}};
+#ifdef DEBUG        
+        debug_print("Action {{&.}} issued.\n");
+#endif {{/each}}      
+        enter({{target.name}}, st);
+        assert( st->current_state == {{target.name}} );
+        return *st;
+    }{{~else}}
+    if (current_state == {{source.name}}) {
+        leave({{source.name}}, st);
+        {{~#each actions}}
+        {{&.}};
+#ifdef DEBUG        
+        debug_print("Action {{&.}} issued.\n");
+#endif{{~/each}}       
+        enter({{target.name}}, st);
+        assert( st->current_state == {{target.name}} );
+        return *st;
+{{~/if}}{{/each}}
+    return *st;
+}
+{{/if}}
+{{/each}}{{/if}}
+{{#if transitions}}/* definition of permission function for transition functions */
+{{#each transitions}}{{#if id}}UC_8 per_{{id}}(const state *st) {
+    if (st->current_state == {{source.name}}){
+        return true;
+    }
+    return false;
+}
+{{else}}UC_8 per_{{0.id}}(const state *st) {
+    if ({{#each 0.listSources}}st->current_state ==  {{&.}} {{#unless @last}}|| {{/unless}}{{/each}}){
+        return true;
+    }
+    return false;
+}
+{{/if}}
+{{/each}}{{/if}}
+/**
+ * \example {{filename}}.c
+ * \example main.c
+ * An example to test the C code generated.
+ */
+ 
+/*! \page table_transitions Table of transitions
+<table>
+<tr><th>Transition name<th>Current state<th>Next state<th>Condition<th>Action
+{{#each transitions}}{{#if id}}<tr><td>{{id}}<td>{{source.name}}<td>{{target.name}}<td>{{&condition}}<td>{{#each actions}}{{&.}}<br> {{/each}}
+{{else}}<tr><td rowspan="{{length}}">{{0.id}}{{~#each .}}{{#unless @first}}<tr>{{/unless}}<td>{{source.name}}<td>{{target.name}}<td>{{&condition}}<td>{{#each actions}}{{&.}}<br> {{/each}}
+{{/each}}{{/if}}{{/each}}
+</table>
+*/
+
+{{&disclaimer}}

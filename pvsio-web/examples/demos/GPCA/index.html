@@ -1,0 +1,463 @@
+<HTML>
+<HEAD>
+<TITLE>GPCA-UI</TITLE>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+
+
+<!-- JS addition for GIP & PVSio -->
+    <script type="application/javascript" src="../../client/lib/promise-0.1.1.js"></script>
+    <script type="text/javascript" src="../../client/lib/jquery.js"></script>
+    <script type="text/javascript" src="../../client/lib/underscore/underscore.js"></script>
+    <script type="text/javascript" src="../../client/lib/backbone.js"></script>
+    <script type="text/javascript" src="../../client/lib/handlebars-v1.1.0.js"></script>
+    <script type="text/javascript" src="../../client/lib/bootstrap/js/bootstrap.min.js"></script>
+    <script src="../../client/require.js" data-main="NavKeys/scripts/pvsio_utils.js"></script>
+
+    <!--<script type="text/javascript" src="scripts/require.js" data-main='scripts/pvsio_utils.js'></script>-->
+
+<STYLE TYPE="text/css">
+    #topMargin {
+        margin-top: 100px;
+    }
+<!--
+
+.invertedcolor {
+  color: white;
+  background-color: gray;
+}
+
+.decimaldigit {
+	font: bold 36px Arial;
+}
+
+.decimaldigitSMALL {
+	font: bold 22px Arial;
+}
+
+#GIP-instructions {
+	position:absolute;
+	float: right;
+	text-align: justify;
+	left:38px;
+	top:355px;
+	font: 20px Arial;
+	z-index: 1;
+	width: 1228px;
+	height: 70px;
+}
+
+
+#GIP-PowerLed {
+	position:absolute;
+	float: right;
+	text-align: center;
+	left:951px;
+	top:90px;
+	font: 16px Arial;
+	z-index: 2;
+	width: 30px;
+	height: 16px;
+	background: transparent;
+	color: white;
+}
+
+#GIP-displayONE-topline {
+	z-index: 1;
+	position:absolute;
+	float: right;
+	text-align: center;
+	left:62px;
+	top:66px;
+	font: 16px Arial;
+	width: 392px;
+	height: 22px;
+	padding-top: 2px;
+}
+#GIP-displayTWO-topline {
+	z-index: 2;
+	position:absolute;
+	float: right;
+	text-align: center;
+	left:62px;
+	top:66px;
+	font: 14px Arial;
+	width: 392px;
+	height: 22px;
+	padding-top: 2px;
+}
+#GIP-displayTHREE-topline {
+	z-index: 3;
+	position:absolute;
+	float: right;
+	text-align: center;
+	left:62px;
+	top:66px;
+	font: 16px Arial;
+	width: 392px;
+	height: 22px;
+	padding-top: 2px;
+}
+#GIP-displayFOUR-topline {
+	z-index: 4;
+	position:absolute;
+	float: right;
+	text-align: center;
+	left:62px;
+	top:66px;
+	font: bold 20px Arial;
+	width: 392px;
+	height: 22px;
+	padding-top: 2px;
+}
+
+
+
+#GIP-displayONE-primary {
+	z-index: 1;
+	position:absolute;
+	float: right;
+	text-align: left;
+	left: 260px;
+	top: 90px;
+	font: bold 50px Arial;
+	width: 194px;
+	height: 64px;
+}
+#GIP-displayTWO-primary {
+	z-index: 2;
+	position:absolute;
+	float: right;
+	text-align: left;
+	left: 260px;
+	top: 90px;
+	font: 16px Arial;
+	width: 194px;
+	height: 64px;
+}
+#GIP-displayTHREE-primary {
+	z-index: 3;
+	position:absolute;
+	float: right;
+	text-align: right;
+	left: 62px;
+	top: 90px;
+	font: bold 50px Arial;
+	width: 392px;
+	height: 64px;
+}
+#GIP-displayFOUR-primary {
+	z-index: 4;
+	position:absolute;
+	float: right;
+	text-align: center;
+	left: 62px;
+	top: 90px;
+	font: bold 16px Arial;
+	width: 392px;
+	height: 44px;
+}
+
+
+#GIP-displayONE-secondary {
+	z-index: 1;
+	position:absolute;
+	float: right;
+	text-align: right;
+	left: 62px;
+	top: 90px;
+	font: bold 50px Arial;
+	width: 198px;
+	height: 64px;
+}
+#GIP-displayTWO-secondary {
+	z-index: 2;
+	position:absolute;
+	float: right;
+	text-align: right;
+	left: 62px;
+	top: 90px;
+	font: 14px Arial;
+	width: 198px;
+	height: 64px;
+}
+#GIP-displayTHREE-secondary {
+	z-index: 3;
+	position:absolute;
+	float: right;
+	text-align: right;
+	left: 62px;
+	top: 154px;
+	font: bold 26px Arial;
+	width: 392px;
+	height: 24px;
+}
+#GIP-displayFOUR-secondary {
+	z-index: 4;
+	position:absolute;
+	float: right;
+	text-align: center;
+	left: 62px;
+	top: 132px;
+	font: 16px Arial;
+	width: 392px;
+	height: 44px;
+	background: transparent;
+	color: white;
+}
+
+
+#GIP-displayONE-botline {
+	z-index: 1;
+	position:absolute;
+	float: right;
+	text-align: center;
+	left: 62px;
+	top: 152px;
+	font: 16px Arial;
+	width: 392px;
+	height: 24px;
+}
+#GIP-displayTWO-botline {
+	z-index: 2;
+	position:absolute;
+	float: right;
+	text-align: center;
+	left: 62px;
+	top: 152px;
+	font: 14px Arial;
+	width: 392px;
+	height: 24px;
+}
+#GIP-displayTHREE-botline {
+	z-index: 3;
+	position:absolute;
+	float: right;
+	text-align: center;
+	left: 62px;
+	top: 174px;
+	font: 16px Arial;
+	width: 392px;
+	height: 0px;
+}
+#GIP-displayFOUR-botline {
+	z-index: 4;
+	position:absolute;
+	float: right;
+	text-align: center;
+	left: 62px;
+	top: 172px;
+	font: 14px Arial;
+	width: 392px;
+	height: 0px;
+}
+
+
+
+#GIP-cmd {
+	position:absolute;
+	float: right;
+	text-align: right;
+	left:55px;
+	top:217px;
+	font: bold 12px Arial;
+	z-index: 2;
+	width: 119px;
+	color: #FFFFFF;
+	height: 21px;
+}
+
+
+#pvsio_commands_log_h2 {
+	position:absolute;
+	left:9px;
+	top:1303px;
+}
+
+#pvsio_commands_log {
+	position:absolute;
+	left:2px;
+	top:1351px;
+	width:2007px;
+	height:200px;
+	overflow: scroll;
+	color: lime;
+	background: black;
+	padding: 10px;
+	font-size: small;
+	display: none;
+}
+
+
+#pvsio_response_log_h2 {
+	position:absolute;
+	left:7px;
+	top:1021px;
+	width: 280px;
+}
+
+#pvsio_response_log {
+	position:absolute;
+	left:6px;
+	top:1072px;
+	width:2009px;
+	height:173px;
+	overflow: scroll;
+	color: lime;
+	background: black;
+	padding-left: 4px;
+	padding-top: 4px;
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: small;
+	display: none;
+}
+
+#specification_log_h2 {
+	position:absolute;
+	left:9px;
+	top:1617px;
+}
+
+#specification_log {
+	position:absolute;
+	left:6px;
+	top:1681px;
+	width:2007px;
+	height:638px;
+	overflow: scroll;
+	color: lime;
+	background: black;
+	padding: 10px;
+}
+
+#GIP_h2 {
+	position:absolute;
+	left:37px;
+	top:465px;
+	width: 597px;
+}
+
+#GIP-Controller_console {
+	position:relative;
+	left:2px;
+	top:14px;
+	width:1997px;
+	height:220px;
+	overflow: scroll;
+	color: lime;
+	background: black;
+	padding-left: 4px;
+	padding-top: 4px;
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: small;
+	display: none;
+}
+
+#UI_h2 {
+	position:absolute;
+	left:6px;
+	top:690px;
+	width: 248px;
+}
+
+#GIP-UI_console {
+	position:relative;
+	left:2px;
+	top:24px;
+	width:1997px;
+	height:197px;
+	overflow: scroll;
+	color: lime;
+	background: black;
+	padding-left: 4px;
+	padding-top: 4px;
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: small;
+	display: none;
+}
+
+
+#consoleH2 {
+	position:absolute;
+	left:1040px;
+	top:31px;
+	width:196px;
+	height:129px;
+}
+
+
+#console_demo {
+	position:absolute;
+	left:62px;
+	top:66px;
+	width:390px;
+	height:106px;
+	color: white;
+	background: white;
+	padding-top: 4px;
+	padding-left: 4px;
+	font: 10px Arial;
+	background-color: black;
+	z-index: 10;
+}
+.style3 {color: #00FF00}
+
+-->
+</STYLE>
+<BODY>
+<img src="NavKeys/GPCA-UI.png" alt="GPCA-UI V2" width="1024" height="220" vspace="4" border="0" usemap="#Map">
+<map name="Map">
+  <area shape="rect" coords="674,122,728,168" id="btnOk">
+  <area shape="rect" coords="745,123,799,169" id="btnEdit">
+  <area shape="rect" coords="817,124,871,170" id="btnStart">
+  <area shape="rect" coords="816,52,870,98" id="btnStop">
+  <area shape="rect" coords="744,51,798,97" id="btnBolus">
+  <area shape="rect" coords="502,85,561,134" id="btnLeft">
+  <area shape="rect" coords="615,87,668,134" id="btnRight">
+  <area shape="rect" coords="563,27,612,81"  id="btnUp">
+  <area shape="rect" coords="564,137,612,190"  id="btnDown">
+  <area shape="rect" coords="931,93,987,136" id="btnOn">
+  <area shape="rect" coords="673,50,727,96" id="btnCancel">
+</map>
+<div id='pvsio_commands_log'></div>
+
+
+<p><strong>Advanced GPCA-UI demo:</strong> the user interface of the pump is connected to a PVS formal model of the original GPCA Controller developed at the FDA's Office of Science and Engineering Laboratories.</p>
+<input id="show_controller_state_button" name="show_controller_state_button" type="button" onClick="show_controller_state();" value="Show controller state"/>
+<input id="show_ui_state_button" name="show_ui_state_button" type="button" onClick="show_ui_state();" value="Show user interface state"/>
+
+<div id='console_demo'>
+  <p>The GPCA-UI backend is off-line.<br><br>
+  Please start the GPCA-UI backend by executing <em>pvsio-web</em> in a Terminal window (<a href="screenshots/pvsio-web.png" target="_blank" class="style3">see screenshot</a>).<br><br>
+  When the GPCA-UI backend is on-line, reload this page to start the GPCA-UI demo.</p>
+</div>
+<canvas id='GIP-PowerLed' name="GIP-PowerLed"></canvas>
+<div id="GIP-Controller_console"> </div>
+<div id="GIP-UI_console"> </div>
+<div id='pvsio_response_log'></div>
+<DIV ID="GIP-cmd"> </DIV>
+<DIV ID="GIP-status"> </DIV>
+
+<DIV ID="GIP-displayFOUR-topline"> </DIV>
+<DIV ID="GIP-displayFOUR-primary"> </DIV>
+<DIV ID="GIP-displayFOUR-secondary"> </DIV>
+<DIV ID="GIP-displayFOUR-botline"> </DIV>
+
+<DIV ID="GIP-displayTHREE-topline"> </DIV>
+<DIV ID="GIP-displayTHREE-primary"> </DIV>
+<DIV ID="GIP-displayTHREE-secondary"> </DIV>
+<DIV ID="GIP-displayTHREE-botline"> </DIV>
+
+<DIV ID="GIP-displayTWO-topline"> </DIV>
+<DIV ID="GIP-displayTWO-primary"> </DIV>
+<DIV ID="GIP-displayTWO-secondary"> </DIV>
+<DIV ID="GIP-displayTWO-botline"> </DIV>
+
+<DIV ID="GIP-displayONE-topline"> </DIV>
+<DIV ID="GIP-displayONE-primary"> </DIV>
+<DIV ID="GIP-displayONE-secondary"> </DIV>
+<DIV ID="GIP-displayONE-botline"> </DIV>
+
+
+<script type="text/javascript" src="NavKeys/scripts/UI_mappings.js"></script>
+</BODY>
+</HTML>

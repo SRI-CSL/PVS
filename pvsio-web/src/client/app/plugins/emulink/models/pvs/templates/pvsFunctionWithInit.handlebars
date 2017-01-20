@@ -1,0 +1,5 @@
+init?(st: State): bool = (st = init(0))
+trans(pre, post: State): bool{{#if transitions}} =
+   {{#each transitions}}(per_{{{this}}}(pre) AND post = {{{this}}}(pre)){{#unless @last}} OR{{/unless}}
+   {{/each}}
+{{/if}}

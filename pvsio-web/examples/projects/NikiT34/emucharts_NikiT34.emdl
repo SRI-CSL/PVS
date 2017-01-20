@@ -1,0 +1,637 @@
+{
+ "descriptor": {
+  "file_type": "emdl",
+  "version": "1.3",
+  "description": "emucharts model",
+  "chart_name": "emucharts_NikiT34"
+ },
+ "chart": {
+  "states": [
+   {
+    "name": "ask_resume",
+    "id": "X9",
+    "x": 1283.22216796875,
+    "y": 201.4335174560547,
+    "width": 36,
+    "height": 36,
+    "color": "#2ca02c"
+   },
+   {
+    "name": "check_syringe",
+    "id": "X8",
+    "x": 1130.879638671875,
+    "y": -172.68238830566406,
+    "width": 36,
+    "height": 36,
+    "color": "#2ca02c"
+   },
+   {
+    "name": "info",
+    "id": "X4",
+    "x": 622,
+    "y": -181.75,
+    "width": 36,
+    "height": 36,
+    "color": "#2ca02c"
+   },
+   {
+    "name": "infusing",
+    "id": "X11",
+    "x": 729.3408813476562,
+    "y": 501.3480529785156,
+    "width": 36,
+    "height": 36,
+    "color": "steelblue"
+   },
+   {
+    "name": "infusing_disp_syringe",
+    "id": "X13",
+    "x": 730.272705078125,
+    "y": 876.2926635742188,
+    "width": 36,
+    "height": 36,
+    "color": "steelblue"
+   },
+   {
+    "name": "infusion_complete",
+    "id": "X14",
+    "x": 335.7727355957031,
+    "y": 679.7926635742188,
+    "width": 36,
+    "height": 36,
+    "color": "#2ca02c"
+   },
+   {
+    "name": "new_regime",
+    "id": "X10",
+    "x": 1672.97216796875,
+    "y": 202.6835174560547,
+    "width": 36,
+    "height": 36,
+    "color": "#2ca02c"
+   },
+   {
+    "name": "off",
+    "id": "X1",
+    "x": 111.99999237060547,
+    "y": 188.9895782470703,
+    "width": 36,
+    "height": 36,
+    "color": "gray"
+   },
+   {
+    "name": "on",
+    "id": "X5",
+    "x": 619,
+    "y": 199,
+    "width": 36,
+    "height": 36,
+    "color": "#2ca02c"
+   },
+   {
+    "name": "preloading",
+    "id": "X7",
+    "x": 1016.75,
+    "y": 197,
+    "width": 36,
+    "height": 36,
+    "color": "#2ca02c"
+   },
+   {
+    "name": "ready",
+    "id": "X12",
+    "x": 1158.8409423828125,
+    "y": 502.3480529785156,
+    "width": 36,
+    "height": 36,
+    "color": "#2ca02c"
+   },
+   {
+    "name": "set_rate",
+    "id": "X2",
+    "x": 2181.6666870117188,
+    "y": 219.82293701171875,
+    "width": 36,
+    "height": 36,
+    "color": "#ff7f0e"
+   }
+  ],
+  "transitions": [
+   {
+    "name": "[ !syringe_loaded && time_to_load = 0 ]\n{ syringe_loaded := true; }",
+    "id": "T21",
+    "source": {
+     "name": "preloading",
+     "id": "X7"
+    },
+    "target": {
+     "name": "preloading",
+     "id": "X7"
+    },
+    "controlPoint": {
+     "x": 1095.3409423828125,
+     "y": 289.6537780761719
+    }
+   },
+   {
+    "name": "[ !syringe_loaded && time_to_load > 0 ]\n{ time_to_load := time_to_load - 1; }",
+    "id": "T20",
+    "source": {
+     "name": "preloading",
+     "id": "X7"
+    },
+    "target": {
+     "name": "preloading",
+     "id": "X7"
+    },
+    "controlPoint": {
+     "x": 1107.8409423828125,
+     "y": 265.9037780761719
+    }
+   },
+   {
+    "name": "[ syringe_loaded ]\n{ display := \"10ml BD Plastipak\"; \n  topline := \"\";\n  disp_message_1 := \"\";\n  disp_message_1 := \"\";\n  botline := \"Press YES\"; }",
+    "id": "T16",
+    "source": {
+     "name": "preloading",
+     "id": "X7"
+    },
+    "target": {
+     "name": "check_syringe",
+     "id": "X8"
+    },
+    "controlPoint": {
+     "x": 1057.866311418309,
+     "y": -88.7687075392688
+    }
+   },
+   {
+    "name": "[ volume = 0 ]\n{ display := \"Infusion Complete!\";\n  disp_message_1 := \"\";\n  disp_message_2 := \"\";\n  topline := \"\";\n  botline := \"Press OFF\"; }",
+    "id": "T26",
+    "source": {
+     "name": "infusing",
+     "id": "X11"
+    },
+    "target": {
+     "name": "infusion_complete",
+     "id": "X14"
+    },
+    "controlPoint": {
+     "x": 544.0908813476562,
+     "y": 584.4389038085938
+    }
+   },
+   {
+    "name": "[ volume = 0 ]\n{ display := \"Infusion Complete!\";\n  disp_message_1 := \"\";\n  disp_message_2 := \"\";\n  topline := \"\";\n  botline := \"Press OFF\"; }",
+    "id": "T27",
+    "source": {
+     "name": "infusing_disp_syringe",
+     "id": "X13"
+    },
+    "target": {
+     "name": "infusion_complete",
+     "id": "X14"
+    },
+    "controlPoint": {
+     "x": 531.5908813476562,
+     "y": 776.9389038085938
+    }
+   },
+   {
+    "name": "[ volume > 0 ]\n{ volume := volume - (rate * timetick);\n  botline := \"<<<<< Pump Delivering\"; }",
+    "id": "T25",
+    "source": {
+     "name": "infusing_disp_syringe",
+     "id": "X13"
+    },
+    "target": {
+     "name": "infusing",
+     "id": "X11"
+    },
+    "controlPoint": {
+     "x": 730.6819427281442,
+     "y": 674.5801963442264
+    }
+   },
+   {
+    "name": "[ volume > 0 ]\n{ volume := volume - (rate * timetick);\n  botline := \"10ml BD Plastipak\"; }",
+    "id": "T24",
+    "source": {
+     "name": "infusing",
+     "id": "X11"
+    },
+    "target": {
+     "name": "infusing_disp_syringe",
+     "id": "X13"
+    },
+    "controlPoint": {
+     "x": 827.0929262276854,
+     "y": 791.9877900350723
+    }
+   },
+   {
+    "name": "click_down [ disp_numeric = 0 ] { disp_numeric := 0 }",
+    "id": "T7",
+    "source": {
+     "name": "set_rate",
+     "id": "X2"
+    },
+    "target": {
+     "name": "set_rate",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 2231.8333435058594,
+     "y": 277.8333282470703
+    }
+   },
+   {
+    "name": "click_down [ disp_numeric > 0 && disp_numeric <= 100 ] { disp_numeric := disp_numeric - 0.1; }",
+    "id": "T3",
+    "source": {
+     "name": "set_rate",
+     "id": "X2"
+    },
+    "target": {
+     "name": "set_rate",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 2222.8333435058594,
+     "y": 305.8333282470703
+    }
+   },
+   {
+    "name": "click_down [ disp_numeric > 100 && disp_numeric <= 1000 ] { disp_numeric := disp_numeric - 1; }",
+    "id": "T13",
+    "source": {
+     "name": "set_rate",
+     "id": "X2"
+    },
+    "target": {
+     "name": "set_rate",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 2071.5,
+     "y": 336.5
+    }
+   },
+   {
+    "name": "click_info\n{ display := \"Battery Level: 50%\";\n  topline := \"\";\n  disp_message_1 := \"\";\n  disp_message_2 := \"\";\n  botline := \"Press YES\"; }",
+    "id": "T9",
+    "source": {
+     "name": "on",
+     "id": "X5"
+    },
+    "target": {
+     "name": "info",
+     "id": "X4"
+    },
+    "controlPoint": {
+     "x": 530.137060335553,
+     "y": -84.3334562945655
+    }
+   },
+   {
+    "name": "click_no\n{ display := \"Ready!\";\n  topline := \"\";\n  disp_message_1 := \"\";\n  disp_message_2 := \"\";\n  botline := \"Press YES\"; }",
+    "id": "T12",
+    "source": {
+     "name": "preloading",
+     "id": "X7"
+    },
+    "target": {
+     "name": "on",
+     "id": "X5"
+    },
+    "controlPoint": {
+     "x": 719.2522483065175,
+     "y": 257.4362260644198
+    }
+   },
+   {
+    "name": "click_no\n{ topline := \"Volume  12.0 ml\";\n  disp_message_1 := \"Duration 24:00\";\n  disp_message_2 := \"Rate     0.50ml/h\";\n  botline := \"Confirm Press YES\";\n  display := \"\"; }",
+    "id": "T19",
+    "source": {
+     "name": "ask_resume",
+     "id": "X9"
+    },
+    "target": {
+     "name": "new_regime",
+     "id": "X10"
+    },
+    "controlPoint": {
+     "x": 1539.407069923821,
+     "y": 203.50981423778885
+    }
+   },
+   {
+    "name": "click_no\n{ topline := \"Volume  12.0 ml\";\n  disp_message_1 := \"Duration 24:00\";\n  disp_message_2 := \"Rate     0.50ml/h\";\n  botline := \"Confirm, Press YES\";\n  display := \"\"; }",
+    "id": "T29",
+    "source": {
+     "name": "ready",
+     "id": "X12"
+    },
+    "target": {
+     "name": "new_regime",
+     "id": "X10"
+    },
+    "controlPoint": {
+     "x": 1595.272705078125,
+     "y": 309.546875
+    }
+   },
+   {
+    "name": "click_on_off",
+    "id": "T28",
+    "source": {
+     "name": "infusion_complete",
+     "id": "X14"
+    },
+    "target": {
+     "name": "off",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 122.84090423583984,
+     "y": 334.4389343261719
+    }
+   },
+   {
+    "name": "click_on_off",
+    "id": "T15",
+    "source": {
+     "name": "on",
+     "id": "X5"
+    },
+    "target": {
+     "name": "off",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 252.84091186523438,
+     "y": 74.43893432617188
+    }
+   },
+   {
+    "name": "click_on_off\n{ display := \"\";\n  topline := \"Event No. : 2635\";\n  disp_message_1 := \"04.03.2005 17:08\";\n  disp_message_2 := \"Switched ON\";\n  botline := \"Press INFO - Details\"; }",
+    "id": "T1",
+    "source": {
+     "name": "off",
+     "id": "X1"
+    },
+    "target": {
+     "name": "on",
+     "id": "X5"
+    },
+    "controlPoint": {
+     "x": 340.3409118652344,
+     "y": 191.93893432617188
+    }
+   },
+   {
+    "name": "click_up [ disp_numeric < 100 ] { disp_numeric := disp_numeric + 0.1; }",
+    "id": "T4",
+    "source": {
+     "name": "set_rate",
+     "id": "X2"
+    },
+    "target": {
+     "name": "set_rate",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 2244.8333435058594,
+     "y": 165.8333282470703
+    }
+   },
+   {
+    "name": "click_up [ disp_numeric = 1000 ] { disp_numeric := 1000 }",
+    "id": "T8",
+    "source": {
+     "name": "set_rate",
+     "id": "X2"
+    },
+    "target": {
+     "name": "set_rate",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 2235.8333435058594,
+     "y": 132.8333282470703
+    }
+   },
+   {
+    "name": "click_up [ disp_numeric >= 100 && disp_numeric < 1000 ] { disp_numeric := disp_numeric + 1; }",
+    "id": "T14",
+    "source": {
+     "name": "set_rate",
+     "id": "X2"
+    },
+    "target": {
+     "name": "set_rate",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 2104.5,
+     "y": 81.5
+    }
+   },
+   {
+    "name": "click_yes\n[ !end_program_reached ]\n{ disp_message_1 := \"Press YES to Resume\";\n  disp_message_2 := \"NO for New Program\";\n  display := \"\";\n  topline := \"\";\n  botline := \"\"; }",
+    "id": "T17",
+    "source": {
+     "name": "check_syringe",
+     "id": "X8"
+    },
+    "target": {
+     "name": "ask_resume",
+     "id": "X9"
+    },
+    "controlPoint": {
+     "x": 1200.5233959489576,
+     "y": -25.403231337173853
+    }
+   },
+   {
+    "name": "click_yes\n[ end_program_reached ]\n{ topline := \"Volume  12.0 ml\";\n  disp_message_1 := \"Duration 24:00\";\n  disp_message_2 := \"Rate     0.50ml/h\";\n  botline := \"Confirm Press YES\";\n  display := \"\"; }",
+    "id": "T18",
+    "source": {
+     "name": "check_syringe",
+     "id": "X8"
+    },
+    "target": {
+     "name": "new_regime",
+     "id": "X10"
+    },
+    "controlPoint": {
+     "x": 1266.6649817317011,
+     "y": -123.6058752007044
+    }
+   },
+   {
+    "name": "click_yes\n{ display := \"Pre-Loading\";\n  topline := \"\";\n  disp_message_1 := \"\";\n  disp_message_2 := \"\";\n  botline := \"Use NO to Interrupt...\";\n  time_to_load := 1; }",
+    "id": "T11",
+    "source": {
+     "name": "on",
+     "id": "X5"
+    },
+    "target": {
+     "name": "preloading",
+     "id": "X7"
+    },
+    "controlPoint": {
+     "x": 716.5849105660814,
+     "y": 199.62890625
+    }
+   },
+   {
+    "name": "click_yes\n{ display := \"Ready!\";\n  topline := \"\";\n  disp_message_1 := \"\";\n  disp_message_2 := \"\";\n  botline := \"Press YES\"; }",
+    "id": "T10",
+    "source": {
+     "name": "info",
+     "id": "X4"
+    },
+    "target": {
+     "name": "on",
+     "id": "X5"
+    },
+    "controlPoint": {
+     "x": 620.0030045315604,
+     "y": -65.15863654855859
+    }
+   },
+   {
+    "name": "click_yes\n{ display := \"Start infusion?\";\n  topline := \"\";\n  botline := \"\";\n  disp_message_1 := \"\";\n  disp_message_2 := \"\";\n  end_program_reached := false; }",
+    "id": "T22",
+    "source": {
+     "name": "new_regime",
+     "id": "X10"
+    },
+    "target": {
+     "name": "ready",
+     "id": "X12"
+    },
+    "controlPoint": {
+     "x": 1410.3409423828125,
+     "y": 346.9389343261719
+    }
+   },
+   {
+    "name": "click_yes\n{ topline := \"Time Remaining: 23:57\";\n  display := \"Rate 0.5ml/hr\";\n  botline := \"<<<<< Pump Delivering\";\n  disp_message_1 := \"\";\n  disp_message_2 := \"\"; }",
+    "id": "T23",
+    "source": {
+     "name": "ready",
+     "id": "X12"
+    },
+    "target": {
+     "name": "infusing",
+     "id": "X11"
+    },
+    "controlPoint": {
+     "x": 949.0908813476562,
+     "y": 502.734375
+    }
+   }
+  ],
+  "initial_transitions": [
+   {
+    "name": "",
+    "id": "IT1",
+    "target": {
+     "name": "off",
+     "id": "X1"
+    }
+   }
+  ],
+  "constants": [],
+  "variables": [
+   {
+    "id": "VAR_botline:string(Local)",
+    "name": "botline",
+    "type": "string",
+    "value": "\"\"",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_disp_message_1:string(Local)",
+    "name": "disp_message_1",
+    "type": "string",
+    "value": "\"\"",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_disp_message_2:string(Local)",
+    "name": "disp_message_2",
+    "type": "string",
+    "value": "\"\"",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_disp_numeric:real(Local)",
+    "name": "disp_numeric",
+    "type": "real",
+    "value": "0",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_display:string(Local)",
+    "name": "display",
+    "type": "string",
+    "value": "\"\"",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_end_program_reached:bool(Local)",
+    "name": "end_program_reached",
+    "type": "bool",
+    "value": "true",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_rate:real(Local)",
+    "name": "rate",
+    "type": "real",
+    "value": "0.5",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_syringe_loaded:bool(Local)",
+    "name": "syringe_loaded",
+    "type": "bool",
+    "value": "false",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_time_to_load:int(Local)",
+    "name": "time_to_load",
+    "type": "int",
+    "value": "2",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_timetick:real(Local)",
+    "name": "timetick",
+    "type": "real",
+    "value": "1",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_topline:string(Local)",
+    "name": "topline",
+    "type": "string",
+    "value": "\"\"",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_volume:real(Local)",
+    "name": "volume",
+    "type": "real",
+    "value": "12",
+    "scope": "Local"
+   }
+  ],
+  "pmr": {},
+  "isPIM": false
+ }
+}

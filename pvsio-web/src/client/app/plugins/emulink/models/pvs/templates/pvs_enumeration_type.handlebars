@@ -1,0 +1,3 @@
+{{{indent}}}%-- {{comment}}
+{{#each datatypes}}{{{../indent}}}{{name}}: TYPE {{#if constructors}}= { {{#each constructors}}{{this}}{{#unless @last}}, {{/unless}}{{/each}} }{{/if}}
+{{/each}}

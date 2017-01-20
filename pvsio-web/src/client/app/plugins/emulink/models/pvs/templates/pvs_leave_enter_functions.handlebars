@@ -1,0 +1,3 @@
+{{{indent}}}%-- utility functions
+{{{indent}}}enter_into(ms: {{{current_state.type}}})(st: State): State = st WITH [ {{{current_state.name}}} := ms ];
+{{{indent}}}leave_state(ms: {{{previous_state.type}}})(st: State): State = st WITH [ {{{previous_state.name}}} := ms ];

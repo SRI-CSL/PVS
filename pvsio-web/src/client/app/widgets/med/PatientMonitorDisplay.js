@@ -2,7 +2,7 @@
  * @module PatientMonitorDisplay
  * @version 1.0
  * @description Renders a basic patient monitor display, including: current value, label, alarms, max/min values, tracings.
- *              This module provide APIs for changing the look and feel of the display element, such as position, 
+ *              This module provide APIs for changing the look and feel of the display element, such as position,
  *              font color, size, and tracings speed.
  * @author Paolo Masci
  * @date May 10, 2015
@@ -41,9 +41,9 @@ define(function (require, exports, module) {
      *          <li>font (String): display font type (default is "sans-serif")</li>
      *          <li>fontColor (String): display font color (default is white, "#fff")</li>
      *          <li>align (String): text alignment (default is "center")</li>
-     *          <li>inverted (Bool): if true, the text has inverted colors, 
+     *          <li>inverted (Bool): if true, the text has inverted colors,
      *              i.e., fontColor becomes backgroundColor, and backgroundColor becomes fontColor (default is false)</li>
-     *          <li>parent (String): the HTML element where the display will be appended (default is "body")</li>                
+     *          <li>parent (String): the HTML element where the display will be appended (default is "body")</li>
      * @memberof module:PatientMonitorDisplay
      * @instance
      */
@@ -93,7 +93,7 @@ define(function (require, exports, module) {
                         .style("margin", 0).style("padding", 0)
                         .style("background-color", this.backgroundColor)
                         .style("display", "block").attr("id", id).attr("class", id);
-        
+
         opt.tracings = opt.tracings || {};
         opt.tracings.labels = opt.tracings.labels || {};
         opt.tracings.labels.width = opt.tracings.labels.width || this.width * 0.07;
@@ -101,11 +101,11 @@ define(function (require, exports, module) {
         opt.tracings.height = opt.tracings.height || this.height * 0.8;
         opt.tracings.width = opt.tracings.width || this.width * 0.62;
         opt.tracings.left = opt.tracings.left || opt.tracings.labels.width + this.width * 0.01;
-        
+
         opt.value = opt.value || {};
         opt.value.height = opt.value.height || this.height * 0.6;
         opt.value.width = opt.value.width || this.width * 0.3;
-        
+
         opt.range = opt.range || {};
         opt.range.max = opt.range.max || 100;
         opt.range.min = opt.range.min || 0;
@@ -189,7 +189,7 @@ define(function (require, exports, module) {
         }
         this.disp_alarm_min.render(this._alarm.min);
         if (val >= this.range.min && val <= this.range.max) {
-            this.disp_tracings.render(val);
+            this.disp_tracings.render(val * 100 / (this.range.max - this.range.min));
         } else {
             // display warning Out Of Range
         }
@@ -199,7 +199,7 @@ define(function (require, exports, module) {
         this.div.style("display", "block");
         return this;
     };
-    
+
     PatientMonitorDisplay.prototype.hide = function () {
         this.disp_value.hide();
         this.disp_fail.hide();
@@ -226,14 +226,14 @@ define(function (require, exports, module) {
             }
         }
     };
-    
+
     PatientMonitorDisplay.prototype.set_alarm = function (data) {
         if (data) {
             this._alarm.max = data.max || this._alarm.max;
             this._alarm.min = data.min || this._alarm.min;
         }
     };
-    
+
     PatientMonitorDisplay.prototype.set_range = function (data) {
         if (data) {
             this.range.max = data.max || this.range.max;
@@ -241,7 +241,7 @@ define(function (require, exports, module) {
             this.range.med = (this.range.max + this.range.min) / 2;
         }
     };
-    
+
     PatientMonitorDisplay.prototype.fail = function (msg) {
         this.disp_fail.render("FAIL", { fontColor: "red" });
         this.disp_value.hide();
@@ -250,7 +250,7 @@ define(function (require, exports, module) {
         this.tracings_label_max.render(this.range.max);
         this.tracings_label_med.render(this.range.med);
         this.tracings_label_min.render(this.range.min);
-        return this;        
+        return this;
     };
 
     PatientMonitorDisplay.prototype.move = function (data) {

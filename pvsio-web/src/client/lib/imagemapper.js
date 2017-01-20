@@ -1,6 +1,7 @@
 /**
  * Utility library for creating image map regions for interactive prototyping
  * @author Patrick Oladimeji
+ * @contributors Paolo Masci
  * @date 10/21/13 21:42:17 PM
  */
 /*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50 */
@@ -35,8 +36,30 @@
         } else { return 1; }
     }
 
+    function select(region, svg, add, dispatcher) {
+        var g = d3.select(region.node().parentNode);
+
+        // correct handling of mouse events requires moving the selected region on top of the others
+        d3.selection.prototype.moveToFront = function() {
+          return this.each(function(){
+            this.parentNode.appendChild(this);
+          });
+        };
+        g.moveToFront();
+
+        //remove previous selections if shift key wasnt pressed and we are not selecting a previously selected region
+        if (!add && !g.classed("selected")) {
+            svg.selectAll("g.selected").classed("selected", false);
+        } else if (g.classed("selected")) {
+            svg.selectAll("g.subselected").classed("subselected", false);
+            g.classed("subselected", true);
+        }
+        //higlight the region show it has been selected
+        g.classed("selected", true);
+        dispatcher.select({region: region, event: d3.event});
+    }
+
     function updateRegion(r, d) {
-        var svg = d3.select("svg.image-map-layer");
         d.width = isNaN(d.width) || d.width === null ? parseFloat(r.attr("width")) : d.width;
         d.height = isNaN(d.height) || d.height === null ? parseFloat(r.attr("height")) : d.height;
 
@@ -53,8 +76,7 @@
             .attr("y", function (d) {return d.y - cornerOffset; });
     }
 
-    function enableRegionDrag(region, dispatcher) {
-        var g = d3.select(region.node().parentNode), svg = d3.select("svg.image-map-layer");
+    function enableRegionDrag(region, svg, dispatcher) {
         region.on("mousedown", function () {
             var _scale = scale(svg.select("g"));
             var mdPos = {x: d3.mouse(this)[0], y: d3.mouse(this)[1]},
@@ -62,7 +84,7 @@
                 ryStart = +region.attr("y");
             region.attr("startx", rxStart).attr("starty", ryStart);
             //cache the start pos in each element
-            d3.selectAll("g.selected .region").attr("startx", function () {
+            svg.selectAll("g.selected .region").attr("startx", function () {
                 return d3.select(this).attr("x");
             }).attr("starty", function () {
                 return d3.select(this).attr("y");
@@ -73,7 +95,7 @@
             svg.on("mousemove.region", function () {
                 var e = {x: d3.mouse(this)[0] / _scale, y: d3.mouse(this)[1] / _scale};
                 var delta = {x: (e.x - mdPos.x), y: (e.y - mdPos.y)};
-                d3.selectAll("g.selected .region").each(function (d) {
+                svg.selectAll("g.selected .region").each(function (d) {
                     var r = d3.select(this);
                     updateRegion(r, {x: (+r.attr("startx") + delta.x), y: (+r.attr("starty") + delta.y)}, false);
                 });
@@ -83,23 +105,15 @@
                 svg.on("mousemove.region", null);
                 dispatcher.move({region: region, pos: pos(region), scale: _scale});
             });
-            //remove previous selections if shift key wasnt pressed and we are not selecting a previously selected region
-            if (!d3.event.shiftKey && !g.classed("selected")) {
-                svg.selectAll("g.selected").classed("selected", false);
-            } else if (g.classed("selected")) {
-                svg.selectAll("g.subselected").classed("subselected", false);
-                g.classed("subselected", true);
-            }
-            //higlight the region show it has been selected
-            g.classed("selected", true);
-            dispatcher.select({region: region, event: d3.event});
+
+            select(region, svg, d3.event.shiftKey, dispatcher);
         });
     }
 
-    function enableRegionResize(region, dispatcher) {
-        var g = d3.select(region.node().parentNode), corners = g.selectAll("rect.corner"),
-            svg = d3.select("svg.image-map-layer");
+    function enableRegionResize(region, svg, dispatcher) {
+        var g = d3.select(region.node().parentNode), corners = g.selectAll("rect.corner");
         corners.on("mousedown", function (d, i) {
+            select(region, svg, d3.event.shiftKey, dispatcher);
             var _scale = scale(svg.select("g"));
             d3.event.preventDefault();
             d3.event.stopPropagation();
@@ -182,18 +196,18 @@
         });
 
         //create move listener for region
-        enableRegionDrag(region, dispatcher);
+        enableRegionDrag(region, svg, dispatcher);
         //create listener for corners
-        enableRegionResize(region, dispatcher);
+        enableRegionResize(region, svg, dispatcher);
         return region;
     }
 
     function booya(config) {
-        if (!config || !config.element) { throw new Error("element prpoerty of config must be set"); }
+        if (!config || !config.element) { throw new Error("element property of config must be set"); }
         config.parent = config.parent || "body";
         config.scale = config.scale || 1;
         //clear any previous svgs
-        d3.select(config.parent + " svg").remove();
+        d3.select(config.parent).select("svg").remove();
         var imageEl = d3.select(config.element), props, mapLayer, svg,
             ed = d3.dispatch("create", "remove", "resize", "move", "select", "clearselection"), initTimer;
         props = cr(imageEl);
@@ -228,12 +242,38 @@
             return r;
         }
 
+        function selectRegion(element, add) {
+            select(element, svg, add, ed);
+        }
+
+        function clearRegions() {
+            mapLayer.html("");
+        }
+
+        /**
+         * Handles the given keyboard event, performing the appropriate action on the selected area.
+         * Classes creating an imagemapper should listen for key events and call this function when an event occurs.
+         * The imagemapper itself does not register key listeners on the page to allow for flexibility in when they are
+         * triggered and to avoid collisions between multiple imagemapper instances.
+         * @param {event} e JavaScript event for the key press
+         */
+        function handleKeyDownEvent(e) {
+            if ((e.which === 46 || e.which === 8) && e.target === d3.select("body").node()) {
+                ed.remove({regions: mapLayer.selectAll("g.selected rect.region")});
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }
+
         var res = {
             clear: function () {
-                d3.select(config.parent + " svg").remove();
+                d3.select(config.parent).select("svg").remove();
             },
             restoreRectRegion: restoreRectRegion,
             getImageMapData: getImageMapData,
+            selectRegion: selectRegion,
+            clearRegions: clearRegions,
+            handleKeyDownEvent: handleKeyDownEvent,
             on: function (type, f) {
                 ed.on(type, f);
                 return this;
@@ -254,15 +294,6 @@
             }
         };
         loadImage();
-
-        d3.select("body").on("keydown", function () {
-            var e = d3.event;
-            if ((e.which === 46 || e.which === 8) && e.target === this) {
-                ed.remove({regions: mapLayer.selectAll("g.selected rect.region")});
-                e.preventDefault();
-                e.stopPropagation();
-            }
-        });
     }
 
     if (typeof define === "function") {

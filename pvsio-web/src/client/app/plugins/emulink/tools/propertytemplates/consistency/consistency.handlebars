@@ -1,0 +1,4 @@
+consistency(st: State): bool ={{#each actions}}
+    (LET post = {{{this}}}(st)
+      IN per_{{{this}}}(st) IMPLIES
+         (post`{{{../s}}} {{{../R}}} st`{{{../s}}})){{#unless @last}} AND{{/unless}}{{/each}}

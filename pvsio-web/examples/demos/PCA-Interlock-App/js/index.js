@@ -23,8 +23,8 @@ require([
     "widgets/TripleDisplay",
     "widgets/SingleDisplay",
     "widgets/ButtonActionsQueue",
-    "widgets/TouchScreenButton"
-], function (PVSioWebClient, stateParser, NCDevice, NCMonitorCore, PatientMonitorDisplay, PumpMonitorDisplay, TripleDisplay, SingleDisplay, ButtonActionsQueue, TouchScreenButton) {
+    "widgets/TouchscreenButton"
+], function (PVSioWebClient, stateParser, NCDevice, NCMonitorCore, PatientMonitorDisplay, PumpMonitorDisplay, TripleDisplay, SingleDisplay, ButtonActionsQueue, TouchscreenButton) {
 
     var deviceID = "Supervisor";
     var deviceType = "Supervisor";
@@ -572,7 +572,8 @@ require([
                 }).catch(function (err) {
                     console.log(err);
                     d3.select(".error_monitor").style("display", "block");
-
+                    start_tick();
+                    d3.select(".content").style("display", "block");
                 });
             } else {
                 console.log(err);

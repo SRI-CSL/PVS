@@ -17,7 +17,7 @@ define(function (require, exports, module) {
 		var state = StateParser.parse(stateString);
         display.render(state);
     }
-    
+
     function getButtonPos(id) {
         var coords = d3.select("." + id).attr("coords");
         coords = coords.split(",");
@@ -28,14 +28,14 @@ define(function (require, exports, module) {
         var w = pos.x2 - pos.x1, hrad = w / 2, h = pos.y2 - pos.y1, vrad = h / 2, brad = hrad + "px " + vrad + "px";
         var mark = d3.select(".animation-halo");
         if (mark.empty()) {
-            mark = d3.select("#imageDiv").append("div").attr("class", "animation-halo");
+            mark = d3.select("#imageDiv  .prototype-image-inner").append("div").attr("class", "animation-halo");
         }
         mark.style("top", pos.y1 + "px").style("left", pos.x1 + "px")
             .style("width", (pos.x2 - pos.x1) + "px").style("height", (pos.y2 - pos.y1) + "px")
             .style("border-top-left-radius", brad).style("border-top-right-radius", brad)
             .style("border-bottom-left-radius", brad).style("border-bottom-right-radius", brad);
     }
-    
+
     /**
         recursively call play until all actions have been triggered. The next action in the list
         is called only after a sucessful callback from the server process.
@@ -67,7 +67,7 @@ define(function (require, exports, module) {
                 playing = false;
             }
         });
-        
+
     }
 
     function runTest(test) {
@@ -79,12 +79,12 @@ define(function (require, exports, module) {
 				});
 			});
 		}
-		
+
 		ws.lastState(test.init);
 		var sequence = test.keySequence.map(function (k) {
-			return "click_" + k;	
+			return "click_" + k;
 		}), lastResult;
-		
+
 		function verifySafety(state) {
 			var stateStr = state.data[0].toString();
 			var command = test.designIssue.replace("$", stateStr);
@@ -96,18 +96,18 @@ define(function (require, exports, module) {
 				});
 			});
 		}
-		
+
 		function _runTest() {
 			var key = sequence.shift();
 			return key ? sendPVSaction(key).then(function (res) {
 				lastResult = res;
-				return _runTest();	
+				return _runTest();
 			}): verifySafety(lastResult);
 		}
-		
+
 		return _runTest();
 	}
-	
+
     /**
         Adds the specified script to the list view
     */
@@ -123,7 +123,7 @@ define(function (require, exports, module) {
             if (!playing) {
                 playing = true;
                 d3.select(this.el).select(".scriptItem").classed("glyphicon-play", false).classed("glyphicon-stop", true);
-                var display = WidgetManager.getDisplayWidgets()[0];
+                var display = WidgetManager.getAllDisplays()[0];
                 ws.lastState(script.startState);
                 //render the last state
                 if (script.startState !== "init(0)") {
@@ -137,7 +137,7 @@ define(function (require, exports, module) {
             }
         });
     }
-    
+
     module.exports = {
         play: play,
         addScriptToView: addScriptToView,

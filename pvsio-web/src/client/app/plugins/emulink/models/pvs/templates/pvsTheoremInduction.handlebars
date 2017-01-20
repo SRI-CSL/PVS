@@ -1,0 +1,9 @@
+%-- {{{property}}} predicate
+{{{property_definition}}}
+
+%-- PVS theorem based on the {{{property}}} predicate, formulated using structural induction
+{{name}}: THEOREM
+  FORALL (pre, post: {{{State}}}):
+    (init?(pre) IMPLIES {{{property}}}(pre))
+       AND
+    (({{{property}}}(pre) AND {{{trans}}}(pre, post)) IMPLIES {{{property}}}(post))

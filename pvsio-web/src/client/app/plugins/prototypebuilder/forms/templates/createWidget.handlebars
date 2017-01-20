@@ -2,87 +2,78 @@
     <form class="center form-horizontal" onsubmit="return false" role="form">
     <div class="panel panel-info shadow center dialog">
         <div class="panel-heading">Create Widget</div>
-        <div class="panel-body">
+        <div class="panel-body" style="min-height:420px">
                 <ul class="nav nav-tabs" id="tabHeaders">
                     <li>
-                        <a href="#display" data-toggle="tab" id="displayTab">Display</a>
+                        <a href="#button" data-toggle="tab" id="buttonTab" widgetType="button">Button</a>
                     </li>
                     <li>
-                        <a href="#button" data-toggle="tab" id="buttonTab">Button</a>
+                        <a href="#display" data-toggle="tab" id="displayTab" widgetType="display">Basic Display</a>
+                    </li>
+                    <li>
+                        <a href="#numericdisplay" data-toggle="tab" id="numericdisplayTab" widgetType="numericdisplay">Numeric Display</a>
+                    </li>
+                    <li>
+                        <a href="#touchscreendisplay" data-toggle="tab" id="touchscreendisplayTab" widgetType="touchscreendisplay">Touchscreen Display</a>
+                    </li>
+                    <li>
+                        <a href="#touchscreenbutton" data-toggle="tab" id="touchscreenbuttonTab" widgetType="touchscreenbutton">Touchscreen Button</a>
+                    </li>
+                    <li>
+                        <a href="#led" data-toggle="tab" id="ledTab" widgetType="led">LED</a>
                     </li>
                 </ul>
-                <div class="tab-content">
-                    <div class="tab-pane active" id="display">
+                <div class="tab-content col-sm-4 noselect">
+                    <div class="widgetPreview img-thumbnail" id="widgetPreview"></div>
+                    <div class="img-thumbnail" id="navkeys"><img src="projects/navkeys.png" usemap="#widgetPreviewMap"></img></div>
+                </div>
+                <div class="tab-content col-sm-8">
+                    <div class="tab-pane active" id="button">
                         <div class="form-group">
-                            <label for="displayKey" class="col-sm-4 control-label">Display Name</label>
+                            <label for="functionText" class="col-sm-4 control-label noselect">Button Name</label>
                             <div class="col-sm-8">
-                                <input type="text" name="displayKey" id="displayKey" required class="form-control" placeholder="Please enter display name (mandatory)" value="" />
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="cursorName" class="col-sm-4 control-label">Cursor Name</label>
-                            <div class="col-sm-8">
-                                <input type="text" name="cursorName" id="cursorName" class="form-control" placeholder="Please enter cursor name (optional)" value="" />
-                            </div>
-                        </div>
-<!--
-                        <div class="form-group">
-                            <label for="margin" class="col-sm-4 control-label" style="padding-top:30px;">Position (px)</label>
-                            <div class="col-sm-8" style="padding-top:6px;" name="margin">
-                                <div class="coordTable">Top corner: <input type="text" name="top" id="top" class="form-control numField" placeholder="{{top}}" value="{{top}}"/></div>
-                                <div class="coordTable">Left corner: <input type="text" name="left" id="left" class="form-control numField" placeholder="{{left}}" value="{{left}}"/></div>
-                            </div>
-                            <label for="size" class="col-sm-4 control-label" style="padding-top:30px;">Dimensions (px)</label>
-                            <div class="col-sm-8" style="padding-top:6px;" name="size">
-                                <div class="coordTable">Width: <input type="text" name="width" id="width" class="form-control numField" placeholder="{{width}}" value="{{width}}"/></div>
-                                <div class="coordTable">Height: <input type="text" name="height" id="height" class="form-control numField" placeholder="{{height}}" value="{{height}}"/></div>
-                            </div>
-                        </div>
--->
-                        <div class="form-group">
-                            <label for="auditoryFeedback" class="col-sm-4 control-label">Voice Readback</label>
-                            <div class="col-sm-8" style="padding-top:6px;">
-                                <input type="checkbox" name="auditoryFeedback" value="auditoryFeedback"/>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tab-pane" id="button">
-                        <div class="form-group">
-                            <label for="functionText" class="col-sm-4 control-label">Button Name</label>
-                            <div class="col-sm-8">
-                                <input type="text" name="functionText" id="functionText" required class="form-control" 
+                                <input type="text" name="functionText" id="functionText" required class="form-control"
                                        value="" placeholder="Please enter button name (mandatory)"/>
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="events" class="col-sm-4 control-label">User Actions</label>
+                            <label for="visibleWhen" class="col-sm-4 control-label noselect">Active when...</label>
                             <div class="col-sm-8">
+                                <input type="text" name="visibleWhen" id="visibleWhen" class="form-control" placeholder="always active" value="{{visibleWhen}}" />
+                            </div>
+                        </div>                        
+                        <div class="form-group">
+                            <label for="events" class="col-sm-4 control-label noselect">User Actions</label>
+                            <div class="col-sm-8" id="events" style="padding-top:5px;">
                                 <label>
                                     Click
-                                    <input type="radio" name="events" value="click" checked />
+                                    <input type="radio" name="button_events" value="click" checked />
                                 </label>
-                                <label>
+                                <label style="padding-left:25px;">
                                     Press and Release
-                                    <input type="radio" name="events" value="press/release" />
+                                    <input type="radio" name="button_events" value="press/release" />
+                                </label>
+                                <label style="padding-left:25px;">
+                                    Custom
+                                    <input type="radio" name="button_events" id="custom_event" value="custom" />
                                 </label>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label for="recallRate" class="col-sm-4 control-label">Repeat Time (ms)</label>
+<!--                        <div class="form-group">
+                            <label for="recallRate" class="col-sm-4 control-label noselect">Repeat Time (ms)</label>
                             <div class="col-sm-8">
                                 <input type="text" name="recallRate" id="recallRate" required class="form-control" value="250" pattern="\d{2,5}" />
                             </div>
-                        </div>
+                        </div>-->
                         <div class="form-group">
-                            <label for="buttonReadback" class="col-sm-4 control-label">Voice Readback</label>
+                            <label for="buttonReadback" class="col-sm-4 control-label noselect">Voice Readback</label>
                             <div class="col-sm-8">
-                                <input type="text" name="buttonReadback" id="buttonReadback" class="form-control" 
+                                <input type="text" name="buttonReadback" id="buttonReadback" class="form-control"
                                        value="{{buttonReadback}}" placeholder="Please enter readback text (optional)"/>
                             </div>
                         </div>
-                        <div class="form-group">                           
-                            <label for="keyCode" class="col-sm-4 control-label">Keyboard Key</label>
+                        <div class="form-group">
+                            <label for="keyCode" class="col-sm-4 control-label noselect">Keyboard Key</label>
                             <div class="col-sm-8">
                                 <input onkeydown="uniKeyCode(event)" class="form-control"
                                        type="text" id="keyName" name="keyName" value="{{keyName}}" placeholder="Please choose keyboard key (optional)" />
@@ -90,10 +81,230 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="boundFunctions" class="col-sm-4 control-label">Generated Events</label>
+                            <label for="boundFunctions" class="col-sm-4 control-label noselect">Generated Events</label>
                             <div class="col-sm-8">
-                                <textarea id="boundFunctions" name="boundFunctions" type="text" readonly="true" class="form-control">
-                                </textarea>
+                                <textarea id="boundFunctions" name="boundFunctions" type="text" readonly="true" class="form-control" style="resize:none;"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane" id="display">
+                        <div class="form-group">
+                            <label for="displayKey" class="col-sm-4 control-label noselect">Display Name</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="displayKey" id="displayKey" required class="form-control" placeholder="Please enter display name (mandatory)" value="" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="visibleWhen" class="col-sm-4 control-label noselect">Visible when...</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="visibleWhen" id="visibleWhen" class="form-control" placeholder="always visible" value="{{visibleWhen}}" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="auditoryFeedback" class="col-sm-4 control-label noselect">Voice Readback</label>
+                            <div class="col-sm-8" style="padding-top:6px;">
+                                <input type="checkbox" name="auditoryFeedback" id="auditoryFeedback" value="{{auditoryFeedback}}"/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="fontsize" class="col-sm-4 control-label noselect">Font size</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="fontsize" id="fontsize" class="form-control" placeholder="Please enter font size (default: 20)" value="20" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="fontColor" class="col-sm-4 control-label noselect">Font color</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="fontColor" id="fontColor" class="form-control" placeholder="Please enter font color (default: white)" value="{{fontColor}}" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="backgroundColor" class="col-sm-4 control-label noselect">Background color</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="backgroundColor" id="backgroundColor" class="form-control" placeholder="Please enter background color (default: black)" value="black" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane" id="numericdisplay">
+                        <div class="form-group">
+                            <label for="displayKey" class="col-sm-4 control-label noselect">Display Name</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="displayKey" id="displayKey" required class="form-control" placeholder="Please enter display name (mandatory)" value="" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cursorName" class="col-sm-4 control-label noselect">Cursor Name</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="cursorName" id="cursorName" class="form-control" placeholder="Please enter cursor name (optional)" value="" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="visibleWhen" class="col-sm-4 control-label noselect">Visible when...</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="visibleWhen" id="visibleWhen" class="form-control" placeholder="always visible" value="{{visibleWhen}}" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="auditoryFeedback" class="col-sm-4 control-label noselect">Voice Readback</label>
+                            <div class="col-sm-8" style="padding-top:6px;">
+                                <input type="checkbox" name="auditoryFeedback" id="auditoryFeedback" value="{{auditoryFeedback}}"/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="fontsize" class="col-sm-4 control-label noselect">Font size</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="fontsize" id="fontsize" class="form-control" placeholder="Please enter font size (default: 20)" value="20" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="fontColor" class="col-sm-4 control-label noselect">Font color</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="fontColor" id="fontColor" class="form-control" placeholder="Please enter font color (default: white)" value="white" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="backgroundColor" class="col-sm-4 control-label noselect">Background color</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="backgroundColor" id="backgroundColor" class="form-control" placeholder="Please enter background color (default: black)" value="black" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane" id="touchscreendisplay">
+                        <div class="form-group">
+                            <label for="displayKey" class="col-sm-4 control-label noselect">Display Name</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="displayKey" id="displayKey" required class="form-control" placeholder="Please enter display name (mandatory)" value="" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cursorName" class="col-sm-4 control-label noselect">Cursor Name</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="cursorName" id="cursorName" class="form-control" placeholder="Please enter cursor name (optional)" value="" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="visibleWhen" class="col-sm-4 control-label noselect">Visible when...</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="visibleWhen" id="visibleWhen" class="form-control" placeholder="always visible" value="{{visibleWhen}}" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="functionText" class="col-sm-4 control-label noselect">Function</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="functionText" id="functionText"
+                                       class="form-control" placeholder="Please enter function name" value="{{functionText}}" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="auditoryFeedback" class="col-sm-4 control-label noselect">Voice Readback</label>
+                            <div class="col-sm-8" style="padding-top:6px;">
+                                <input type="checkbox" name="auditoryFeedback" id="auditoryFeedback" value="{{auditoryFeedback}}"/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="fontsize" class="col-sm-4 control-label noselect">Font size</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="fontsize" id="fontsize" class="form-control" placeholder="Please enter font size (default: 20)" value="20" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="fontColor" class="col-sm-4 control-label noselect">Font color</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="fontColor" id="fontColor" class="form-control" placeholder="Please enter font color (default: white)" value="white" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="backgroundColor" class="col-sm-4 control-label noselect">Background color</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="backgroundColor" id="backgroundColor" class="form-control" placeholder="Please enter background color (default: black)" value="black" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane" id="touchscreenbutton">
+                        <div class="form-group">
+                            <label for="functionText" class="col-sm-4 control-label noselect">Soft Button Name</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="functionText" id="functionText" required class="form-control"
+                                       value="" placeholder="Please enter button name (mandatory)"/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="softLabel" class="col-sm-4 control-label noselect">Soft Button Label</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="softLabel" id="softLabel" class="form-control"
+                                       value="{{softLabel}}" placeholder="Soft button label (optional)"/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="visibleWhen" class="col-sm-4 control-label noselect">Visible when...</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="visibleWhen" id="visibleWhen" class="form-control" placeholder="always visible" value="{{visibleWhen}}" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="buttonReadback" class="col-sm-4 control-label noselect">Voice Readback</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="buttonReadback" id="buttonReadback" class="form-control"
+                                       value="{{buttonReadback}}" placeholder="Please enter readback text (optional)"/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="fontsize" class="col-sm-4 control-label noselect">Font size</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="fontsize" id="fontsize" class="form-control" placeholder="Please enter font size (default: 20)" value="20" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="fontColor" class="col-sm-4 control-label noselect">Font color</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="fontColor" id="fontColor" class="form-control" placeholder="Please enter font color (default: white)" value="white" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="backgroundColor" class="col-sm-4 control-label noselect">Background color</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="backgroundColor" id="backgroundColor" class="form-control" placeholder="Please enter background color (default: black)" value="black" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="events" class="col-sm-4 control-label noselect">User Actions</label>
+                            <div class="col-sm-8" id="events" style="padding-top:5px;">
+                                <label>
+                                    Click
+                                    <input type="radio" name="touchscreenbutton_events" value="click" checked />
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="boundFunctions" class="col-sm-4 control-label noselect">Generated Events</label>
+                            <div class="col-sm-8">
+                                <textarea id="boundFunctions" name="boundFunctions" type="text" readonly="true" class="form-control" style="resize:none;">{{boundFunctions}}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane" id="led">
+                        <div class="form-group">
+                            <label for="ledKey" class="col-sm-4 control-label noselect">LED Name</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="ledKey" id="ledKey" required class="form-control"
+                                       value="" placeholder="Please enter LED name (mandatory)"/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="visibleWhen" class="col-sm-4 control-label noselect">Visible when...</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="visibleWhen" id="visibleWhen" class="form-control" placeholder="always visible" value="{{visibleWhen}}" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="ledColor" class="col-sm-4 control-label noselect">Color</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="ledColor" id="ledColor" class="form-control" placeholder="Please enter LED color (default: lightgreen)" value="{{ledColor}}" />
                             </div>
                         </div>
                     </div>

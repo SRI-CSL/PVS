@@ -175,6 +175,11 @@ define(function (require, exports, module) {
     ModelEditor.prototype.getName = function () {
         return "Model Editor";
     };
+
+    ModelEditor.prototype.getId = function () {
+        return "ModelEditor";
+    };
+
     /////These are the api methods that the prototype builder plugin exposes
     ModelEditor.prototype.getDependencies = function () { return []; };
 
@@ -262,7 +267,7 @@ define(function (require, exports, module) {
                                 notification: msg.split("\n")
                             }).on("ok", function (e, view) { view.remove(); });
                         } else {
-                            var logFile = projectManager.project().name() + "/" + fp.substring(0, fp.length - 4) + ".log";
+                            var logFile = fp.substring(0, fp.length - 4) + ".log";
                             var header = "Compilation error";
                             ws.getFile(logFile, function (err, res) {
                                 if (!err) {
@@ -270,8 +275,10 @@ define(function (require, exports, module) {
                                     msg = msg.replace("Parsing", "Error while parsing");
                                 } else {
                                     msg = msg.substring(msg.indexOf("Writing output to file"));
-                                    header += ", please check the PVS output file for details.";
+//                                    header += ", please check the PVS output file for details.";
                                 }
+                                msg = msg.replace(/\\n/g,". ");
+                                msg = msg.split("{").join(" ").split("}").join(" ");
                                 Notification.create({
                                     header: header,
                                     notification: msg.split("\n")
@@ -323,12 +330,12 @@ define(function (require, exports, module) {
     */
     ModelEditor.prototype.initialise = function () {
         editorContainer = pvsioWebClient.createCollapsiblePanel({
-            headerText: "Model Editor",
+            headerText: this.getName(),
             showContent: true,
             onClick: function () {
                 editor.refresh();
             },
-            owner: this.getName()
+            owner: this.getId()
         });
         editorContainer.append("div").html(sourceCodeTemplate);
 
@@ -403,7 +410,7 @@ define(function (require, exports, module) {
                 markDirty(selectedData);
             }
         });
-        editor.setSize("100%", "400px"); // width, height
+        editor.setSize("100%", "600px"); // width, height
         projectManager.addListener("SelectedFileChanged", onSelectedFileChanged);
 
         document.getElementById("model-editor-search-input").addEventListener("click", function () {

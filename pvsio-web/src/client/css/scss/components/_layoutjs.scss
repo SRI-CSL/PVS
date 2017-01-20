@@ -1,0 +1,75 @@
+// General styling for the resizable areas
+
+.ljs-parent {
+    clear: both;
+    border-radius: 5px;
+}
+
+.ljs-resizing {
+    cursor: col-resize;
+}
+
+.ljs-vcontent {
+    width: 100%;
+    height: 50%;
+}
+
+.ljs-hcontent {
+    display: inline-block;
+}
+
+.ljs-resizer.ljs-right {
+    right: 0;
+    top: 0;
+}
+
+.ljs-resizer.ljs-left {
+    top: 0;
+    left: 0;
+}
+
+.ljs-resizer.ljs-bottom {
+    width: 100%;
+    height: 3px;
+    bottom: 0;
+    cursor: row-resize;
+}
+
+.ljs-resizer.ljs-top {
+    width: 100%;
+    height: 3px;
+    top: 0;
+    cursor: row-resize;
+}
+
+.ljs-left {
+    float: left;
+}
+
+.ljs-right {
+    float: right;
+}
+
+.ljs-left,
+.ljs-right {
+    width: 50%;
+    height: 100%;
+    display: inline-block;
+    position: relative;
+}
+
+.ljs-top,
+.ljs-bottom {
+    height: 50%;
+    width: 100%;
+    position: relative;
+    background: #ffbbdd;
+}
+
+.ljs-resizer {
+    width: 3px;
+    background: #fff;
+    height: 100%;
+    cursor: col-resize;
+    position: absolute;
+}

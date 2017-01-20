@@ -10,7 +10,9 @@ define(function (require, exports, module) {
     var ModelEditor = require("plugins/modelEditor/ModelEditor"),
         Emulink = require("plugins/emulink/Emulink"),
 //        SafetyTest = require("plugins/safetyTest/SafetyTest"),
+        // PropertyTemplates = require("plugins/propertytemplates/PropertyTemplates"),
         GraphBuilder = require("plugins/graphbuilder/GraphBuilder"),
+        PIMPrototyper = require("plugins/pimPrototyper/PIMPrototyper"),
         PrototypeBuilder = require("plugins/prototypebuilder/PrototypeBuilder"),
         Logger	= require("util/Logger"),
         PluginManager = require("plugins/PluginManager"),
@@ -150,22 +152,26 @@ define(function (require, exports, module) {
             return this;
         },
         events: {
-            "change input[type='checkbox']": "checkboxClicked",
+            "change input[type='checkbox']": "checkboxChanged",
             "click .plugin-box": "pluginClicked",
             "click .plugin-box label": "pluginLabelClicked",
             "click a#preferences": "preferencesClicked"
         },
-        checkboxClicked: function (event) {
+        checkboxChanged: function (event) {
             this.trigger("pluginToggled", event);
         },
         pluginClicked: function (event) {
             if (event.target.tagName.toLowerCase() === "li") {
-                d3.select(event.target).select("input[type='checkbox']").node().click();
+                PluginManager.getInstance().selectPlugin(event.target.id.split("_")[1]);
+            } else if (event.target.tagName.toLowerCase() === "div") {
+                event.target.id = d3.select(event.target).node().parentNode.parentNode.parentNode.id;
+                event.target.checked = d3.select(d3.select(event.target).node().parentNode.parentNode.parentNode.parentNode).select("input").node().checked;
+                this.trigger("pluginToggled", event);
             }
         },
         pluginLabelClicked: function (event) {
-            if (event.target.tagName.toLowerCase() === "label") {
-                d3.select(event.target.parentNode).select("input[type='checkbox']").node().click();
+            if (event && event.target && typeof event.target.id === "string" && event.target.id.split("_").length === 2) {
+                PluginManager.getInstance().selectPlugin(event.target.id.split("_")[1]);
             }
         },
         scriptClicked: function (event) {
@@ -193,22 +199,31 @@ define(function (require, exports, module) {
         init: function (data) {
             var plugins = [
                     PrototypeBuilder.getInstance(),
+                    PIMPrototyper.getInstance(),
                     ModelEditor.getInstance(),
                     Emulink.getInstance(),
+//                    PropertyTemplates.getInstance(),
                     GraphBuilder.getInstance()
             ];
             data = data || {
                 plugins: plugins.map(function (p) {
-                    var label = p.getName ? p.getName() : p.constructor.name;
-                    return {label: label, id: label.replace(/\s/g, ""), plugin: p};
+                    var label = (typeof p.getName === "function") ? p.getName() : p.constructor.name;
+                    var id =  (typeof p.getId === "function") ? p.getId() : p.constructor.name;
+                    return { label: label, id: id, plugin: p };
                 })
             };
 
             PluginManager.getInstance().init();
             PluginManager.getInstance().addListener("PluginEnabled", function (event) {
-                d3.select("input[name='" + event.plugin.getName() + "']").property("checked", true);
+                if (d3.select("#plugin_" + event.plugin.getId()).node() &&
+                        !document.getElementById("plugin_" + event.plugin.getId()).checked) {
+                    d3.select("#plugin_" + event.plugin.getId()).node().click();
+                }
             }).addListener("PluginDisabled", function (event) {
-                d3.select("input[name='" + event.plugin.getName() + "']").property("checked", false);
+                if (d3.select("#plugin_" + event.plugin.getId()).node() &&
+                        document.getElementById("plugin_" + event.plugin.getId()).checked) {
+                    d3.select("#plugin_" + event.plugin.getId()).node().click();
+                }
             });
             if (this._view) { this.unload(); }
             this._view = createHtmlElements(data);

@@ -161,13 +161,15 @@ define(function (require, exports, module) {
             return new Promise(function (resolve, reject) {
                 txt = "saveProject()";
                 summary += "\n\n Test " + (++cTest) + ": '" + txt + "'";
-                pm.openProject("unit_test/test").then(function (res) {
-                    pm.saveProject().then(function (res) {
-                        addSuccess(res.name() + " saved successfully\n" + res);
-                        resolve(res);
-                    }).catch(function (err) {
-                        addFail(JSON.stringify(err));
-                        reject(err);
+                pm.createProject({ projectName: 'unit_test/test', overWrite: true }).then(function (res) {
+                    pm.openProject("unit_test/test").then(function (res) {
+                        pm.saveProject().then(function (res) {
+                            addSuccess(res.name() + " saved successfully\n" + res);
+                            resolve(res);
+                        }).catch(function (err) {
+                            addFail(JSON.stringify(err));
+                            reject(err);
+                        });
                     });
                 }).catch(function (err) {
                     addFail(JSON.stringify(err));
@@ -182,16 +184,18 @@ define(function (require, exports, module) {
             return new Promise(function (resolve, reject) {
                 txt = "saveProjectDialog()";
                 summary += "\n\n Test " + (++cTest) + ": '" + txt + "'";
-                pm.openProject("unit_test/test").then(function (res) {
-                    pm.saveProjectDialog("unit_test/saveTest").then(function (res) {
-                        addSuccess(res.name() + " saved successfully\n");
-                        resolve(res);
-                    }).catch(function (err) {
-                        addFail(JSON.stringify(err));
-                        reject(err);
+                pm.createProject({ projectName: 'unit_test/test', overWrite: true }).then(function (res) {
+                    pm.openProject("unit_test/test").then(function (res) {
+                        pm.saveProjectDialog("unit_test/saveTest").then(function (res) {
+                            addSuccess(res.name() + " saved successfully\n");
+                            resolve(res);
+                        }).catch(function (err) {
+                            addFail(JSON.stringify(err));
+                            reject(err);
+                        });
+                        //click the ok button
+                        click(".overlay #btnOk");
                     });
-                    //click the ok button
-                    click(".overlay #btnOk");
                 }).catch(function (err) {
                     addFail(JSON.stringify(err));
                     reject(err);
@@ -231,7 +235,7 @@ define(function (require, exports, module) {
     // ----------------------------------------------------------------------------------------------------
     // ----------------------------------------------------------------------------------------------------
     var writeFile_test = [];
-    var content = "test1: THEORY\n BEGIN\n   %-- This theory is used for testing purposes!\n END test1";    
+    var content = "test1: THEORY\n BEGIN\n   %-- This theory is used for testing purposes!\n END test1";
     writeFile_test.push({
         description: "Testing basic writeFile within an empty project...",
         run: function () {

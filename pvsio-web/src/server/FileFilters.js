@@ -2,14 +2,17 @@ var imageExts = [".jpg", ".jpeg", ".png"],
     filesFilter = [".pvs",  //-- PVS
                    ".muz",  //-- PIM
                    ".tex",  //-- PIM/Z
-                   ".txt", 
+                   ".txt",
                    ".i",    //-- IVY
-                   ".json", 
+                   ".json",
                    ".emdl", //-- Emucharts
-                   ".vdmsl", 
+                   ".vdmsl",
                    ".aadl", //-- Bless/AADL
                    ".adb",  //-- ADA
-                   ".ads"   //-- ADA
+                   ".ads",  //-- ADA
+                   ".c",    //-- C
+                   ".h",    //-- C
+                   ".smv"   //-- NuXMV
                   ].concat(imageExts);
 
 module.exports = filesFilter;

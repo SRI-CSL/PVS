@@ -7,10 +7,10 @@
 /*global define, d3*/
 define(function (require, exports, module) {
     "use strict";
-    
+
     var _this,
         eventDispatcher = require("util/eventDispatcher");
-    
+
     function MachineStatesTable() {
         d3.select("#AddMachineState").on("click", function () {
             d3.select("#btn_menuNewState").node().click();
@@ -19,7 +19,7 @@ define(function (require, exports, module) {
         _this = this;
         return this;
     }
-    
+
     MachineStatesTable.prototype.addMachineStates = function(tableElements) {
         function installTableHandlers() {
             d3.selectAll("#RemoveMachineState").on("click", function () {
@@ -34,7 +34,7 @@ define(function (require, exports, module) {
             d3.selectAll("#MachineStateColor").on("click", function () {
                 _this.changeStateColor(this.parentElement.parentElement.id);
             });
-        }        
+        }
         function addElement(e) {
             var newState = d3.select("#MachineStateTemplate").node().cloneNode(true);
             newState.name = e.name;
@@ -51,7 +51,7 @@ define(function (require, exports, module) {
         installTableHandlers();
         return _this;
     };
-    
+
     MachineStatesTable.prototype.removeMachineState = function(elementID) {
         var table = d3.select("#MachineStates").select("tbody").node();
         var theState = d3.select("#MachineStates").select("#" + elementID).node();
@@ -64,7 +64,7 @@ define(function (require, exports, module) {
         });
         return _this;
     };
-        
+
     MachineStatesTable.prototype.renameMachineState = function(elementID) {
         var theState = d3.select("#MachineStates").select("#" + elementID).node();
         _this.fire({
@@ -75,7 +75,7 @@ define(function (require, exports, module) {
         });
         return _this;
     };
-    
+
     MachineStatesTable.prototype.changeStateColor = function(elementID) {
         var theState = d3.select("#MachineStates").select("#" + elementID).node();
         _this.fire({
@@ -86,7 +86,7 @@ define(function (require, exports, module) {
         });
         return _this;
     };
-    
+
     MachineStatesTable.prototype.setMachineStates = function(tableElements) {
         function clearTable() {
             var table = d3.select("#MachineStates").select("tbody").node();
@@ -94,12 +94,12 @@ define(function (require, exports, module) {
                 table.removeChild(table.lastChild);
             }
             return _this;
-        }        
+        }
         clearTable();
         this.addMachineStates(tableElements);
         return _this;
     };
-    
-    
+
+
     module.exports = MachineStatesTable;
 });
