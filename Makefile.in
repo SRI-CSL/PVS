@@ -64,7 +64,7 @@ PACKAGE = @PACKAGE_NAME@
 VERSION = @PACKAGE_VERSION@
 TAG = $(PACKAGE)$(VERSION)
 ifeq ($(shell $(GIT) tag -l $(TAG)),)
-$error("Need to add tag $(TAG), or change PACKAGE or VERSION")
+$(error "Need to add tag $(TAG), or change PACKAGE or VERSION")
 endif
 SUBVERSION = $(shell $(GIT) rev-list $(TAG).. --count)
 DISTDIR = $(PACKAGE)-$(VERSION).$(SUBVERSION)

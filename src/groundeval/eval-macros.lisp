@@ -504,12 +504,10 @@
 	(aref (pvs-array-contents ,arr) ,ind))))))
 
 (defmacro pvs2cl_tuple (&rest args)
-  (let ((protected-args (loop for x in args collect `(trap-undefined ,x))))
-    `(vector ,@protected-args)))
+    `(vector ,@args))
 
 (defmacro pvs2cl_record (&rest args)
-  (let ((protected-args (loop for x in args collect `(trap-undefined ,x))))
-    `(vector ,@protected-args)))
+    `(vector ,@args))
 
 (defmacro nd-rec-tup-update (rec fieldnum newval)
   `(let ((val ,newval)
