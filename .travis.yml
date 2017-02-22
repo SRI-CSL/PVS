@@ -13,6 +13,7 @@ install: ./.travis/install.sh
 
 script:
   - autoconf
+  - git fetch --all
   - git tag -l
   - ./configure
   - SBCLISP_HOME=$HOME/sbcl/ EMACS=`which emacs` 2>&1 make >output 2>&1 # Limited as SBCL likes to complain and complain and complain ...
