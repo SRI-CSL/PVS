@@ -518,7 +518,7 @@ bitvectorslib = $(PVSPATH)lib/bitvectors/pvsbin/top.bin
 
 finitesetslib = $(PVSPATH)lib/finite_sets/pvsbin/top.bin
 
-.PHONY : all devel runtime parser emacs prelude-files-and-regions etags
+.PHONY : all devel runtime parser yices emacs prelude-files-and-regions etags
 
 ifneq ($(buildcmds),)
 ifeq ($(SBCLISP_HOME)$(CMULISP_HOME)$(ALLEGRO_HOME),)
@@ -526,7 +526,7 @@ $(error "Must set SBCLISP_HOME, CMULISP_HOME, or ALLEGRO_HOME")
 endif
 endif
 
-all : devel runtime yices prelude-files-and-regions $(emacs-elc) etags
+all : devel runtime yices prelude-files-and-regions $(emacs-elc) etags yices
 
 devel : $(allegro-devel) # $(sbcl-devel) $(cmulisp-devel)
 
@@ -562,19 +562,39 @@ YICES1 = $(wildcard yices/$(PLATFORM)/yices-1.*)
 YICES2 = $(wildcard yices/$(PLATFORM)/yices-2.*)
 # We're not building yices, just checking if it is in the right place
 ifeq ("$(YICES1)","")
-$(error "yices1 is missing.  Download it from http://yices.csl.sri.com/ and install it in yices/$(PLATFORM)")
+$(info yices1 is missing.  Download the binaries from http://yices.csl.sri.com/)
+$(info and install in yices/$(PLATFORM).)
+$(info It is not needed to build PVS, only needed for the yices proof rule.)
 endif
 ifeq ("$(YICES2)","")
-$(error "yices2 is missing.  Download it from http://yices.csl.sri.com/ and install it in yices/$(PLATFORM)")
+$(info yices2 is missing.  Download the binaries from http://yices.csl.sri.com/)
+$(info and install in yices/$(PLATFORM).)
+$(info It is not needed to build PVS, only needed for the yices2 proof rule.)
 endif
 
-$(PVSPATH)bin/$(PLATFORM)/yices1 :
+ifneq ("$(YICES1)","")
+$(PVSPATH)bin/$(PLATFORM)/yices1 : $(YICES1)
 	(cd $(PVSPATH)bin/$(PLATFORM); \
 	 ln -s ../../$(YICES1)/bin/yices yices1)
+	touch $(YICES1)/bin/yices
+endif
 
-$(PVSPATH)bin/$(PLATFORM)/yices2 :
+ifneq ("$(YICES2)","")
+$(PVSPATH)bin/$(PLATFORM)/yices2 : $(YICES2)
 	(cd $(PVSPATH)bin/$(PLATFORM); \
 	 ln -s ../../$(YICES2)/bin/yices yices2)
+	touch $(YICES2)/bin/yices
+endif
+
+ifneq ("$(YICES1)","")
+ifneq ("$(YICES2)","")
+yices : $(PVSPATH)bin/$(PLATFORM)/yices1 $(PVSPATH)bin/$(PLATFORM)/yices2
+else
+yices :
+endif
+else
+yices :
+endif
 
 # Here are the rules for building the PVS grammar, pvs-methods file, and
 # devel and runtime images.
