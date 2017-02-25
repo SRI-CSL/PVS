@@ -1166,7 +1166,20 @@
   (declare (ignore obj))
   nil)
 
-(defun id-place-list (name &optional nplace)
+(defmethod id-place-list ((ex fieldappl) &optional nplace)
+  ;; id is first in name, but after the backquote in fieldappls
+  ;; We basically go from the end
+  (let ((place (or nplace (place ex))))
+    (list (svref place 2) ; End row
+	  (- (svref place 3)
+	     (length (if (numberp (id ex))
+			 (format nil "~a" (id ex))
+			 (string (id ex)))))
+	  (svref place 2)
+	  (svref place 3))))
+
+
+(defmethod id-place-list (name &optional nplace)
   (let ((place (or nplace (place name))))
     (list (svref place 0)
 	  (svref place 1)
