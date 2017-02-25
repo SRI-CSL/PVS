@@ -90,14 +90,15 @@
 
 (defmethod copy-lex* :around ((old syntax) (new syntax))
   (cond (*copy-lex-view-string*
-	 (let ((new-node
-		(make-view-node
-		 :place (place new)
-		 :term (if (and (name? new)
-				(name? old)
-				(not (eq (id new) (id old))))
-			   (copy old :id (id new))
-			   old))))
+	 (let* ((term (if (and (name? new)
+			       (name? old)
+			       (not (eq (id new) (id old))))
+			  (copy old :id (id new))
+			  old))
+		(new-node
+		 (make-view-node
+		  :place (place new)
+		  :term term)))
 	   (if *copy-lex-view-tree*
 	       (setf (vnode-children *copy-lex-view-tree*)
 		     (nconc (vnode-children *copy-lex-view-tree*)
@@ -186,6 +187,9 @@
 (defmethod copy-lex* ((old typed-declaration) (new typed-declaration))
   )
 
+(defmethod copy-lex* ((old type-decl) (new type-decl))
+  )
+
 (defmethod copy-lex* ((old formal-type-decl) (new formal-type-decl))
   (call-next-method)
   (when (type old)
@@ -267,7 +271,7 @@
   (copy-lex* (parameters old) (parameters new)))
 
 (defmethod copy-lex* ((old subtype) (new subtype))
-  (when (supertype new)
+  (when (and (supertype old) (supertype new))
     (copy-lex* (supertype old) (supertype new)))
   (copy-lex* (predicate old) (predicate new)))
 
@@ -283,6 +287,9 @@
 	 (copy-lex* (formals old) (formals new))
 	 (copy-lex* (formula old) (formula new)))
 	(t (copy-lex* (predicate old) (predicate new)))))
+
+(defmethod copy-lex* ((old subtype) (new expr-as-type))
+  (copy-lex* (predicate old) (expr new)))
 
 (defmethod copy-lex* ((old expr-as-type) (new expr-as-type))
   (copy-lex* (expr old) (expr new)))
@@ -431,9 +438,9 @@
     (copy-lex* (actuals old) (actuals new))))
 
 (defmethod copy-lex* ((old actual) (new actual))
-  (copy-lex (expr old) (expr new))
+  (copy-lex* (expr old) (expr new))
   (when (and (type-value old) (type-value new))
-    (copy-lex (type-value old) (type-value new))))
+    (copy-lex* (type-value old) (type-value new))))
 
 (defmethod copy-lex* ((old list) (new list))
   (when old
@@ -442,4 +449,5 @@
 
 (defmethod copy-lex* (old new)
   (declare (ignore old new))
+  ;;(break "Huh?")
   nil)
