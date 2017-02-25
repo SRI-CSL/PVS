@@ -1122,7 +1122,7 @@
     (push (make-decl-info
 	   :id (id fappl)
 	   :place (id-place-list fappl place)
-	   :decl (format nil "FieldAccess: ~a" (type fappl)))
+	   :decl (format nil "FieldAccess: ~a: ~a" (id fappl) (type fappl)))
 	  *visible-decl-info*)))
 
 (defvar *tooltip-char-width* *default-char-width*)
@@ -1149,10 +1149,9 @@
 				 (id (declaration obj))
 				 (with-output-to-string (*standard-output*)
 				   (pp-theory-formals (formals (declaration obj)))))
-			       (concatenate 'string
-				 (if (skolem-constant? obj)
-				     "Skolem Constant: " "")
-				 (str (declaration obj)))))
+			       (if (skolem-constant? obj)
+				   (format nil "Skolem Constant: ~a" (type obj))
+				   (str (declaration obj)))))
 		       (if (and (declared-type obj)
 				(not (untyped-bind-decl? obj)))
 			   (str obj)
