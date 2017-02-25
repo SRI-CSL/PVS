@@ -1700,7 +1700,7 @@
     (STRING-EXPR (xt-string-expr expr))
     (NAME-EXPR (xt-name-expr expr))
     (IFAPPL (xt-ifappl expr))
-    (TYPED-NAME (xt-typed-name expr))
+    ;;(TYPED-NAME (xt-typed-name expr))
     (LIST-EXPR (xt-list-expr expr))
     ;;(true (xt-true expr))
     ;;(false (xt-false expr))
