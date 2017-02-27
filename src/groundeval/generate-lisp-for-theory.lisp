@@ -105,6 +105,7 @@
 		  (*pvs-eval-do-timing* t)
 		  (*destructive?* t)
 		  (*convert-back-to-pvs* t))
+	      (load-pvs-attachments)
 	      (format t "~%~%PVS Ground Evaluation.~%Enter a ground expression in quotes at the <GndEval> prompt.~%Type help for a list of commands.~%")
 	      (format t "~%*CAVEAT*: evaluation of expressions which depend on unproven TCCs may be~%unsound, and result in the evaluator crashing into lisp, running out of~%stack, or worse.  If you crash into lisp, type (restore) to resume.~%")
 	      (evaluate))
@@ -112,7 +113,7 @@
       (pvs-emacs-eval "(pvs-evaluator-ready)"))))
 
 (defun gqread ()
-  (load-pvs-attachments)
+  ;(load-pvs-attachments)
   (format t "~%<GndEval> ")
   (force-output)
   (let ((input (ignore-errors (read))))
@@ -123,7 +124,7 @@
 	       (gqread)))
 	  ((and (consp input)
 		(member (car input) '(lisp pvs::lisp)))  ;; allow for us to be interrupted
-	   (format t "~%~s~%" (eval (cadr input)))
+	   (format t "~%~s~%" (catch 'abort (catch 'restore (eval (cadr input)))))
 	   (gqread))
 	  ((member input '(h help)
 		   :test #'equal)
@@ -195,7 +196,7 @@
 (defparameter *default-random-test-count* 10)
 
 (defun evaluate ()
-  (load-pvs-attachments)
+;  (load-pvs-attachments)
   (let ((result
 	 (catch 'abort
 	   (catch 'quit
