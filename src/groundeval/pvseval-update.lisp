@@ -1646,12 +1646,13 @@
 	       (let* ((*destructive?* nil)
 		      (in-defn `(defun ,id ()
 				  ,(pvs2cl_up* defn nil nil)))
-		      (defconst (when (null defn-bindings);same as pvs-defconstant? test
-				  `(defconstant ,idc ,(car (last (definition (in-defn-d decl))))))))
+		      ;; (defconst (when (null defn-bindings);same as pvs-defconstant? test
+		      ;; 		  `(defconstant ,idc ,(car (last (definition (in-defn-d decl)))))))
+		      )
 		 (setf (definition (in-defn decl))
-		       (if defconst
-			   `(progn ,defconst ,in-defn)
-			 in-defn)))
+		       ;; (if defconst
+		       ;; 	   `(progn ,defconst ,in-defn)
+			 in-defn))
 	       (eval (definition (in-defn decl)))
 	       (assert id)
 	       (compile id))))))
