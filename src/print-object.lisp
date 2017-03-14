@@ -275,6 +275,12 @@ print object produces an error, and won't allow inspection of the object.")
 	(id prinfo) (if (description prinfo)
 			(description prinfo)))))
 
+(defmethod print-object ((tcc-orig tcc-origin) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (format stream "<#TCC-ORIGIN ~a TCC from ~a>"
+	(kind tcc-orig) (root tcc-orig))))
+
 (defmethod print-object ((pt store-print-type) stream)
   (if *debugging-print-object*
       (call-next-method)
