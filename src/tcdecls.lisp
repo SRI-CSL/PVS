@@ -3883,9 +3883,11 @@
   (let* ((name (copy-untyped (operator* (expr decl))))
 	 (formals (mapcar #'(lambda (args)
 			      (mapcar #'(lambda (arg)
-					  (make-instance 'untyped-bind-decl
-					    :id (id arg)
-					    :place (place arg)))
+					  (if (bind-decl? arg)
+					      arg
+					      (make-instance 'untyped-bind-decl
+						:id (id arg)
+						:place (place arg))))
 				args))
 		    (arguments* (expr decl))))
 	 (dtype (copy-untyped (declared-type decl))))
