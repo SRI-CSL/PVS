@@ -711,6 +711,10 @@
     (setf (types nexpr) nil)
     (setf (operator ex)
 	  (raise-actuals (copy (expr (from-conversion ctype))) 1))
+    (when (and (zerop (parens (operator ex)))
+	       (< (precedence (operator ex) 'left)
+		  (precedence (car (arguments ex)) 'right)))
+      (setf (parens (operator ex)) 1))
     (typecheck* ex nil nil nil)))
 
 (defun find-best-type-conversion (types expected &optional best type)
