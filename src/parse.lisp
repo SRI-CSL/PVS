@@ -626,11 +626,14 @@
 			   (make-instance 'theory-abbreviation-decl
 			     :id (ds-id (term-arg1 item))
 			     :theory-name (xt-modname (term-arg0 item))
-			     :place place)
+			     :place place
+			     :chain? t)
 			   (make-instance 'importing
 			     :theory-name (xt-modname item)
-			     :place place))))
+			     :place place
+			     :chain? t))))
 	   (term-args (term-arg1 importing)))))
+    (setf (chain? (car (last importings))) nil)
     (if lib-decl
 	(cons lib-decl importings)
 	importings)))
@@ -1753,7 +1756,8 @@
 
 (defun xt-string-to-charlist* (codes place)
   (if (null codes)
-      (add-place (mk-name-expr '|null|)
+      (add-place (make-instance 'null-expr
+		   :id '|null|)
 		 (vector (ending-row place) (ending-col place)
 			 (ending-row place) (ending-col place)))
       (let* ((code (caar codes))
@@ -1765,7 +1769,7 @@
 		      (add-place (mk-number-expr code) cplace))
 		    cplace))
 	     (scdr (xt-string-to-charlist* (cdr codes) place)))
-	 (make-instance 'application
+	 (make-instance 'list-expr
 	   :operator (add-place (mk-name-expr '|cons|) cplace)
 	   :argument (make-instance 'arg-tuple-expr
 		       :exprs (list scar scdr)
