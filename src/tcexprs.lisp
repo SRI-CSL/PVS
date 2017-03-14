@@ -1449,6 +1449,12 @@
 	    (arguments expr))))
       (call-next-method)))
 
+(defmethod typecheck* ((expr string-expr) expected kind arguments)
+  "A string-expr \"foo\" is internally list2finseq((: char(102), char(111), char(111) :))"
+  (let ((list-char (tc-type "list[char]")))
+    (typecheck* (argument expr) list-char nil nil)
+    (call-next-method)))
+
 (defmethod typecheck* ((expr list-expr) expected kind arguments)
   (if (and expected (list-type? expected)) ;; could be waiting for conversion
       (let* ((elt-type (type-value
