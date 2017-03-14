@@ -46,8 +46,7 @@
   (unless (compatible? (type expr) expected)
     (type-incompatible expr (list (type expr)) expected))
   (let ((*no-conversions-allowed* (not (memq expr *conversions-allowed*)))
-	(*skip-tcc-check-exprs* skip-exprs)
-	(*checked-actuals-for-tccs* nil))
+	(*skip-tcc-check-exprs* skip-exprs))
     (check-for-tccs* expr expected)))
 
 (defvar *inner-check-for-tccs* nil)
@@ -111,9 +110,11 @@
       (check-type-actuals* (cdr actuals) (cdr formals) theory nalist))))
 
 (defmethod check-type-actual (act (formal formal-type-decl) theory)
+  (declare (ignore theory))
   (check-for-tccs* (type-value act) nil))
 
 (defmethod check-type-actual (act (formal formal-subtype-decl) theory)
+  (declare (ignore theory))
   (call-next-method)
   (let* ((tact (type-value act))
 	 (texp (type-value formal))
@@ -125,6 +126,7 @@
     (check-for-subtype-tcc svar (supertype texp))))
 
 (defmethod check-type-actual (act (formal formal-const-decl) theory)
+  (declare (ignore theory))
   (check-for-tccs* (expr act) (type formal)))
 
 (defmethod check-type-actual (act (formal formal-theory-decl) theory)
@@ -224,6 +226,7 @@
     (check-for-tccs* (argument expr) (type argument))))
 
 (defmethod check-for-tccs* :around ((expr implicit-conversion) expected)
+  (declare (ignore expected))
   (let ((*checking-implicit-conversion* expr))
     (call-next-method)))
 
@@ -258,20 +261,24 @@
   (check-for-recursive-tcc expr))
 
 (defmethod check-for-tccs* ((ex list-expr) expected)
+  (declare (ignore expected))
   (unless (type ex) (call-next-method)))
 
 (defmethod check-for-tccs* ((ex conjunction) expected)
+  (declare (ignore expected))
   (check-for-tccs* (args1 ex) *boolean*)
   (let ((*tcc-conditions* (push-tcc-condition (args1 ex) *tcc-conditions*)))
     (check-for-tccs* (args2 ex) *boolean*)))
 
 (defmethod check-for-tccs* ((ex disjunction) expected)
+  (declare (ignore expected))
   (check-for-tccs* (args1 ex) *boolean*)
   (let ((*tcc-conditions* (push-tcc-condition (make!-negation (args1 ex))
 					     *tcc-conditions*)))
     (check-for-tccs* (args2 ex) *boolean*)))
 
 (defmethod check-for-tccs* ((ex implication) expected)
+  (declare (ignore expected))
   (check-for-tccs* (args1 ex) *boolean*)
   (let ((*tcc-conditions* (push-tcc-condition (args1 ex) *tcc-conditions*)))
     (check-for-tccs* (args2 ex) *boolean*)))
@@ -335,9 +342,8 @@
 	   (assert (bindings ex))
 	   (assert (expression ex))
 	   (assert (type ex)))
-	  (t (let ((ctype (type ex)))
-	       (dolist (e (exprs ex))
-		 (check-for-tccs* e (domain est))))))))
+	  (t (dolist (e (exprs ex))
+	       (check-for-tccs* e (domain est)))))))
 
 (defun check-for-binding-expr-tccs (bindings expected-types)
   (assert (every #'(lambda (x) (or (not (consp x))
@@ -416,7 +422,7 @@
 (defmethod check-for-tccs* ((expr update-expr) (expected funtype))
   (with-slots (expression assignments) expr
     (check-for-tccs* expression (type expression))
-    (let ((atype (find-supertype (type expr)))
+    (let (;;(atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
       (check-assignment-arg-types args-list values expression expected))))
