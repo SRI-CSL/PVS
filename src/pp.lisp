@@ -231,33 +231,53 @@ bind tighter.")
 (defparameter *pp-print-lines* nil)
 (defparameter *pp-print-pretty* t)
 
-(defun unparse (obj &key string stream file char-width
+(defun unparse (obj &key string stream file (char-width nil cw-given)
 		      (length *pp-print-length*) (level *pp-print-level*)
-		      (lines *pp-print-lines*) (pretty *pp-print-pretty*) no-newlines?)
-   (let ((*print-length* length)
-	 (*print-level* level)
-	 (*print-lines* lines)
-	 (*print-pretty* pretty)
-	 (*print-escape* nil)
-	 (*print-readably* nil)
-	 (*print-right-margin* (or char-width *default-char-width*))
-	 (*pp-no-newlines?* no-newlines?))
-     (cond (string
-	    (decf *print-right-margin* 4)
-	    (with-output-to-string (*standard-output*)
-	      (pp obj)))
-	   (stream
-	    (let ((*standard-output* stream))
-	      (pp obj)))
-	   (file
-	    (with-open-file (*standard-output* file :direction :output)
-	      (pp obj)))
-	   (t (decf *print-right-margin* 4)
-	      (pp obj)))))
+		      (lines *pp-print-lines*) (pretty *pp-print-pretty*) no-newlines?
+		      (case nil case-given))
+  "Given an obj, convert it to pretty-printed text, in a string, file, or stream.
 
-(defun str (obj)
+obj - roughly any Lisp entity that's printable, though this specializes to PVS instances
+:string - if not nil, return a string
+:stream - prettyprint to the specified stream
+:file - prettyprint to the specified file
+:char-width - the character width (right margin) to use
+:length - see *print-length*
+:level - see *print-level*
+:lines - see *print-lines*
+:pretty - see *print-pretty*
+:no-newlines? - suppresses newlines for exporting, conversion-decl, and auto-rewrite-decl
+:case - unicode, short, upper, lower, or nil
+        See *ppcase*
+"
+  (let ((*print-length* length)
+	(*print-level* level)
+	(*print-lines* lines)
+	(*print-pretty* pretty)
+	(*print-escape* nil)
+	(*print-readably* nil)
+	(*print-right-margin* (if (or (eq char-width t)
+				      (and cw-given (null char-width)))
+				  most-positive-fixnum
+				  (or char-width *default-char-width*)))
+	(*pp-no-newlines?* no-newlines?)
+	(*ppcase* (if case-given case *ppcase*)))
+    (cond (string
+	   (decf *print-right-margin* 4)
+	   (with-output-to-string (*standard-output*)
+	     (pp obj)))
+	  (stream
+	   (let ((*standard-output* stream))
+	     (pp obj)))
+	  (file
+	   (with-open-file (*standard-output* file :direction :output)
+	     (pp obj)))
+	  (t (decf *print-right-margin* 4)
+	     (pp obj)))))
+
+(defun str (obj &key char-width)
   (let ((*unparse-expanded* t))
-    (unparse obj :string t :char-width nil)))
+    (unparse obj :string t :char-width char-width)))
 
 (defun str= (obj string)
   (string= (str obj) string))
@@ -331,7 +351,9 @@ bind tighter.")
     (values termstr view)))
 
 (defun pp-string (term &optional (indent 0)
-		       (width *default-char-width*))
+			 (width *default-char-width*))
+  "Unparses the term into a string sterm, with the given width,
+then uses unpindent* to add the indent to each line"
   (let* ((sterm (unparse term
 		  :string t
 		  :char-width (- width indent)))
@@ -642,12 +664,12 @@ bind tighter.")
 (defun pp-theory (theory)
   (when theory
     (let ((*pretty-printing-decl-list* t)
+	  (*pretty-printed-prefix* nil)
 	  (last-one (car (last theory))))
       (pprint-logical-block (nil (check-chained-syntax theory))
 	(pprint-indent :block 0)
 	(pprint-newline :mandatory)
-	(loop (let ((*pretty-printed-prefix* nil)
-		    (decl (pprint-pop)))
+	(loop (let ((decl (pprint-pop)))
 		(if (typep decl '(or importing theory-abbreviation-decl))
 		    (let ((imps (list decl)))
 		      (loop while (chain? (car imps))
@@ -800,10 +822,11 @@ bind tighter.")
 	(write '@DECL)
 	(write-char #\space))
       (cond ((theory-abbreviation-decl? decl)
-	     (call-next-method))
+	     (call-next-method)
+	     (when (semic? semi) (write-char #\;)))
 	    ((and chain?
 		  *pretty-printing-decl-list*)
-	     (write id)
+	     (write (if (eq id 'O) '|o| id))
 	     (unless (typep decl '(or formal-decl adtdecl))
 	       (write-char #\,)
 	       (write-char #\space)
@@ -816,7 +839,7 @@ bind tighter.")
 			  (tcc? decl))
 		 (format t "  % ~a~%" (proof-status-string decl)))
 	       ;;(pprint-indent :block 2)
-	       (write id)
+	       (write (if (eq id 'O) '|o| id))
 	       (when decl-formals
 		 (pp-theory-formals decl-formals))
 	       (pprint-indent :block 6)
@@ -1055,18 +1078,17 @@ bind tighter.")
 
 (defmethod pp* :around ((decl name-judgement))
   (with-slots (id name chain? declared-type semi) decl
-    (when (or (not *pretty-printing-decl-list*)
-	      (not *pretty-printed-prefix*))
-      (when *pretty-printing-decl-list*
-	(setq *pretty-printed-prefix* t))
-      (when id
-	(write id)
-	(write-char #\:)
+    (when *pretty-printing-decl-list*
+      (unless *pretty-printed-prefix*
+	(when id
+	  (write id)
+	  (write-char #\:)
+	  (write-char #\space)
+	  (pprint-newline :miser))
+	(write 'JUDGEMENT)
 	(write-char #\space)
-	(pprint-newline :miser))
-      (write 'JUDGEMENT)
-      (write-char #\space)
-      (pprint-newline :miser))
+	(pprint-newline :miser)))
+    (setq *pretty-printed-prefix* (chain? decl))
     (pp* name)
     (cond ((and chain?
 		*pretty-printing-decl-list*)
@@ -1085,18 +1107,17 @@ bind tighter.")
 
 (defmethod pp* :around ((decl application-judgement))
   (with-slots (id name formals chain? declared-type semi) decl
-    (when (or (not *pretty-printing-decl-list*)
-	      (not *pretty-printed-prefix*))
-      (when *pretty-printing-decl-list*
-	(setq *pretty-printed-prefix* t))
-      (when id
-	(write id)
-	(write-char #\:)
+    (when *pretty-printing-decl-list*
+      (unless *pretty-printed-prefix*
+	(when id
+	  (write id)
+	  (write-char #\:)
+	  (write-char #\space)
+	  (pprint-newline :miser))
+	(write 'JUDGEMENT)
 	(write-char #\space)
-	(pprint-newline :miser))
-      (write 'JUDGEMENT)
-      (write-char #\space)
-      (pprint-newline :miser))
+	(pprint-newline :miser)))
+    (setq *pretty-printed-prefix* (chain? decl))
     (pp* name)
     (pp-decl-formals formals)
     (cond ((and chain?
@@ -1116,18 +1137,17 @@ bind tighter.")
 
 (defmethod pp* :around ((decl number-judgement))
   (with-slots (id number-expr chain? declared-type semi) decl
-    (when (or (not *pretty-printing-decl-list*)
-	      (not *pretty-printed-prefix*))
-      (when *pretty-printing-decl-list*
-	(setq *pretty-printed-prefix* t))
-      (when id
-	(write id)
-	(write-char #\:)
+    (when *pretty-printing-decl-list*
+      (unless *pretty-printed-prefix*
+	(when id
+	  (write id)
+	  (write-char #\:)
+	  (write-char #\space)
+	  (pprint-newline :miser))
+	(write 'JUDGEMENT)
 	(write-char #\space)
-	(pprint-newline :miser))
-      (write 'JUDGEMENT)
-      (write-char #\space)
-      (pprint-newline :miser))
+	(pprint-newline :miser)))
+    (setq *pretty-printed-prefix* (chain? decl))
     (pp* number-expr)
     (cond ((and chain?
 		*pretty-printing-decl-list*)
@@ -1145,18 +1165,17 @@ bind tighter.")
 
 (defmethod pp* :around ((decl subtype-judgement))
   (with-slots (id declared-subtype chain? declared-type semi) decl
-    (when (or (not *pretty-printing-decl-list*)
-	      (not *pretty-printed-prefix*))
-      (when *pretty-printing-decl-list*
-	(setq *pretty-printed-prefix* t))
-      (when id
-	(write id)
-	(write-char #\:)
+    (when *pretty-printing-decl-list*
+      (unless *pretty-printed-prefix*
+	(when id
+	  (write id)
+	  (write-char #\:)
+	  (write-char #\space)
+	  (pprint-newline :miser))
+	(write 'JUDGEMENT)
 	(write-char #\space)
-	(pprint-newline :miser))
-      (write 'JUDGEMENT)
-      (write-char #\space)
-      (pprint-newline :miser))
+	(pprint-newline :miser)))
+    (setq *pretty-printed-prefix* (chain? decl))
     (pp* declared-subtype)
     (cond ((and chain?
 		*pretty-printing-decl-list*)
@@ -1174,18 +1193,17 @@ bind tighter.")
 
 (defmethod pp* :around ((decl expr-judgement))
   (with-slots (id formals expr chain? declared-type semi) decl
-    (when (or (not *pretty-printing-decl-list*)
-	      (not *pretty-printed-prefix*))
-      (when *pretty-printing-decl-list*
-	(setq *pretty-printed-prefix* t))
-      (when id
-	(write id)
-	(write-char #\:)
+    (when *pretty-printing-decl-list*
+      (unless *pretty-printed-prefix*
+	(when id
+	  (write id)
+	  (write-char #\:)
+	  (write-char #\space)
+	  (pprint-newline :miser))
+	(write 'JUDGEMENT)
 	(write-char #\space)
-	(pprint-newline :miser))
-      (write 'JUDGEMENT)
-      (write-char #\space)
-      (pprint-newline :fill))
+	(pprint-newline :fill)))
+    (setq *pretty-printed-prefix* (chain? decl))
     (pprint-indent :block 0)
     (when formals
       (write 'FORALL)
@@ -1208,37 +1226,33 @@ bind tighter.")
     (setq *pretty-printed-prefix* nil)))
 
 (defmethod pp* :around ((decl conversion-decl))
-  (with-slots (expr chain?) decl
-    (when (or (not *pretty-printing-decl-list*)
-	      (not *pretty-printed-prefix*))
-      (when *pretty-printing-decl-list*
-	(setq *pretty-printed-prefix* t))
-      (write 'CONVERSION)
-      (typecase decl
-	(conversionplus-decl (write '+))
-	(conversionminus-decl (write '-)))
-      (write-char #\space)
-      (pprint-newline :miser))
+  (with-slots (expr chain? semi) decl
+    (when *pretty-printing-decl-list*
+      (unless *pretty-printed-prefix*
+	(write 'CONVERSION)
+	(typecase decl
+	  (conversionplus-decl (write '+))
+	  (conversionminus-decl (write '-)))
+	(write-char #\space)
+	(pprint-newline :miser)))
+    (setq *pretty-printed-prefix* (chain? decl))
     (pp* expr)
     (when (and chain?
 	       *pretty-printing-decl-list*)
       (write-char #\,)
       (write-char #\space))
+    (when (semic? semi) (write-char #\;))
     (unless *pp-no-newlines?*
       (pprint-newline :mandatory))))
 
 (defmethod pp* :around ((decl auto-rewrite-decl))
   (with-slots (rewrite-names semi) decl
-    (when (or (not *pretty-printing-decl-list*)
-	      (not *pretty-printed-prefix*))
-      (when *pretty-printing-decl-list*
-	(setq *pretty-printed-prefix* t))
-      (write 'AUTO_REWRITE)
-      (typecase decl
-	(auto-rewrite-plus-decl (write '+))
-	(auto-rewrite-minus-decl (write '-)))
-      (write-char #\space)
-      (pprint-newline :miser))
+    (write 'AUTO_REWRITE)
+    (typecase decl
+      (auto-rewrite-plus-decl (write '+))
+      (auto-rewrite-minus-decl (write '-)))
+    (write-char #\space)
+    (pprint-newline :miser)
     (pp-rewrite-names rewrite-names)
     (when (semic? semi)
       (write-char #\;))
@@ -2020,44 +2034,76 @@ bind tighter.")
       (pp* ex)))
 
 (defmethod pp-infix-operator ((ex infix-conjunction))
+  (pp-and-operator (id (operator ex))))
+
+(defun pp-and-operator (id)
   (case *ppcase*
-    (unicode '∧)
-    (short '&)
-    (lower '|and|)
-    (upper 'AND)
-    (t (id (operator ex)))))
+    ((unicode :unicode) '∧)
+    ((short :short) '&)
+    ((lower :lower) '|and|)
+    ((upper :upper) 'AND)
+    ;; Default is upcase, but keep form given by user
+    (t (intern (string-upcase id) :pvs))))
 
 (defmethod pp-infix-operator ((ex infix-disjunction))
+  (pp-or-operator (id (operator ex))))
+
+(defun pp-or-operator (id)
   (case *ppcase*
-    (unicode '∨)
-    (lower '|or|)
-    (upper 'OR)
-    (t (id (operator ex)))))
+    ((unicode :unicode) '∨)
+    ((lower :lower) '|or|)
+    ((upper :upper short :short) 'OR)
+    (t (intern (string-upcase id) :pvs))))
 
 (defmethod pp-infix-operator ((ex infix-implication))
+  (pp-implies-operator (id (operator ex))))
+
+(defun pp-implies-operator (id)
   (case *ppcase*
-    (unicode '⇒)
-    (short '=>)
-    (lower '|implies|)
-    (upper 'IMPLIES)
-    (t (id (operator ex)))))
+    ((unicode :unicode) '⇒)
+    ((short :short) '=>)
+    ((lower :lower) '|implies|)
+    ((upper :upper) 'IMPLIES)
+    (t (intern (string-upcase id) :pvs))))
 
 (defmethod pp-infix-operator ((ex infix-iff))
+  (pp-iff-operator (id (operator ex))))
+
+(defun pp-iff-operator (id)
   (case *ppcase*
-    (unicode '⇔)
-    (short '<=>)
-    (lower '|iff|)
-    (upper 'IFF)
-    (t (id (operator ex)))))
+    ((unicode :unicode) '⇔)
+    ((short :short) '<=>)
+    ((lower :lower) '|iff|)
+    ((upper :upper) 'IFF)
+    (t (intern (string-upcase id) :pvs))))
 
 (defmethod pp-infix-operator ((ex infix-disequation))
+  (pp-disequation-operator (id (operator ex))))
+
+(defun pp-disequation-operator (id)
   (case *ppcase*
-    (unicode '≠)
-    (t '/=)))
+    ((unicode :unicode) '≠)
+    ((short :short lower :lower upper :upper) '/=)
+    (t id)))
 
 (defmethod pp-infix-operator ((ex infix-application))
   (with-slots (operator) ex
     (if (eq (id operator) 'O) '|o| (id operator))))
+
+(defmethod pp-unary-operator ((ex unary-negation))
+  (with-slots (operator) ex
+    (pp-not-operator (id operator))))
+
+(defun pp-not-operator (id)
+  (case *ppcase*
+    ((unicode :unicode) '¬)
+    ((lower :lower) '|not|)
+    ((upper :upper short :short) 'NOT)
+    (t (intern (string-upcase id) :pvs))))
+
+(defmethod pp-unary-operator ((ex unary-application))
+  (with-slots (operator) ex
+    (id operator)))
 
 (defmethod pp* ((ex infix-when-expr))
   (with-slots (argument) ex
@@ -2112,7 +2158,20 @@ bind tighter.")
 	    (write "   ")
 	    (when (symbol-equal op 'AND)
 	      (write "  "))
-	    (loop (pp* (pprint-pop))
+	    (loop (let ((conj (pprint-pop)))
+		    (if (and (zerop (parens conj))
+			     (or (and (not (eq conj (car (last conjuncts))))
+				      (< (precedence conj 'left)
+					 (or (gethash op (second *expr-prec-info*))
+					     180)))
+				 (and (not (eq conj (car conjuncts)))
+				      (< (precedence conj 'right)
+					 (or (gethash op (third *expr-prec-info*))
+					     180)))))
+			(progn (write-char #\()
+			       (pp* conj)
+			       (write-char #\)))
+			(pp* conj)))
 		  (pprint-exit-if-list-exhausted)
 		  (pprint-newline :fill)
 		  (write " ")
@@ -2128,7 +2187,20 @@ bind tighter.")
 	    (write "   ")
 	    (when (symbol-equal op 'OR)
 	      (write "  "))
-	    (loop (pp* (pprint-pop))
+	    (loop (let ((disj (pprint-pop)))
+		    (if (and (zerop (parens disj))
+			     (or (and (not (eq disj (car (last disjuncts))))
+				      (< (precedence disj 'left)
+					 (or (gethash op (second *expr-prec-info*))
+					     180)))
+				 (and (not (eq disj (car disjuncts)))
+				      (< (precedence disj 'right)
+					 (or (gethash op (third *expr-prec-info*))
+					     180)))))
+			(progn (write-char #\()
+			       (pp* disj)
+			       (write-char #\)))
+			(pp* disj)))
 	       (pprint-exit-if-list-exhausted)
 	       (pprint-newline :fill)
 	       (write " ")
@@ -2136,15 +2208,19 @@ bind tighter.")
 	       (write " ")))))))
 
 (defmethod collect-infix-conjuncts ((ex infix-conjunction))
-  (nconc (collect-infix-conjuncts (args1 ex))
-	 (collect-infix-conjuncts (args2 ex))))
+  (if (= (parens ex) 0)
+      (nconc (collect-infix-conjuncts (args1 ex))
+	     (collect-infix-conjuncts (args2 ex)))
+      (list ex)))
 
 (defmethod collect-infix-conjuncts (ex)
   (list ex))
 
 (defmethod collect-infix-disjuncts ((ex infix-disjunction))
-  (nconc (collect-infix-disjuncts (args1 ex))
-	 (collect-infix-disjuncts (args2 ex))))
+  (if (= (parens ex) 0)
+      (nconc (collect-infix-disjuncts (args1 ex))
+	     (collect-infix-disjuncts (args2 ex)))
+      (list ex)))
 
 (defmethod collect-infix-disjuncts (ex)
   (list ex))
@@ -2162,13 +2238,7 @@ bind tighter.")
 	     (memq (id operator) *unary-operators*))
 	(pprint-logical-block (nil nil)
 	  (pprint-indent :current 2)
-	  (let ((op (if (unary-negation? ex)
-			(case *ppcase*
-			  (unicode '¬)
-			  (lower '|not|)
-			  (upper 'NOT)
-			  (t (id operator)))
-			(id operator))))
+	  (let ((op (pp-unary-operator ex)))
 	    (write op)
 	    (when (string-equal op "NOT")
 	      (write-char #\space)
@@ -2359,23 +2429,23 @@ bind tighter.")
 
 (defmethod pp-binding-expr-op ((ex lambda-expr))
   (write (case *ppcase*
-	   (unicode 'λ)
-	   (lower '|lambda|)
-	   (upper 'LAMBDA)
+	   ((unicode :unicode) 'λ)
+	   ((lower :lower) '|lambda|)
+	   ((upper :upper short :short) 'LAMBDA)
 	   (t (or (op ex) 'LAMBDA)))))
 
 (defmethod pp-binding-expr-op ((ex forall-expr))
   (write (case *ppcase*
-	   (unicode '∀)
-	   (lower '|forall|)
-	   (upper 'FORALL)
+	   ((unicode :unicode) '∀)
+	   ((lower :lower) '|forall|)
+	   ((upper :upper short :short) 'FORALL)
 	   (t (or (op ex) 'FORALL)))))
 
 (defmethod pp-binding-expr-op ((ex exists-expr))
   (write (case *ppcase*
-	   (unicode '∃)
-	   (lower '|exists|)
-	   (upper 'EXISTS)
+	   ((unicode :unicode) '∃)
+	   ((lower :lower) '|exists|)
+	   ((upper :upper short :short) 'EXISTS)
 	   (t (or (op ex) 'EXISTS)))))
 
 (defmethod pp-unchain-binding-expr ((ex binding-expr) bindings op)
@@ -2807,18 +2877,14 @@ bind tighter.")
 	       (pprint-newline :fill)
 	       (pp* target))
 	     (write-char #\.)
-	     (if (eq id 'O)
-		 (write '|o|)
-		 (write id))
+	     (write (ppcase-id ex))
 	     (when (or dactuals dacts-there?)
 	       (pprint-newline :fill)
 	       (pp-actuals dactuals)))
 	    (t
 	     (unless (or library (not (memq id '(|#| |##|))))
 	       (write " "))
-	     (if (eq id 'O)
-		 (write '|o|)
-		 (write id))
+	     (write (ppcase-id ex))
 	     (when (or actuals acts-there?)
 	       (if (< (length (string id)) 6)
 		   (pprint-newline :miser)
@@ -2837,6 +2903,35 @@ bind tighter.")
 	     (when (or dactuals dacts-there?)
 	       (pprint-newline :fill)
 	       (pp-actuals dactuals)))))))
+
+(defun ppcase-id (name)
+  ;; Note that this cannot perform substitutions, e.g. ⋀ for AND, unless
+  ;; name has a resolution that can determine these are the same.
+  (if (eq (id name) 'O)
+      '|o|
+      (if (member (id name) *pvs-keywords* :test #'string=)
+	  (if (resolution name)
+	      (cond ((tc-eq name (and-operator))
+		     (pp-and-operator (id name)))
+		    ((tc-eq name (or-operator))
+		     (pp-or-operator (id name)))
+		    ((tc-eq name (implies-operator))
+		     (pp-implies-operator (id name)))
+		    ((tc-eq name (iff-operator))
+		     (pp-iff-operator (id name)))
+		    ((tc-eq name (not-operator))
+		     (pp-not-operator (id name)))
+		    ((and (memq (id name) '(/= ≠))
+			  (eq (id (module (declaration name))) '|notequal|))
+		     (pp-disequation-operator (id name)))
+		    (t 
+		     (case *ppcase*
+		       ((:lower lower) (intern (string-downcase (id name)) :pvs))
+		       (t (intern (string-upcase (id name)) :pvs)))))
+	      (case *ppcase*
+		((:lower lower) (intern (string-downcase (id name)) :pvs))
+		(t (intern (string-upcase (id name)) :pvs))))
+	  (id name))))
 
 (defun pp-mappings (mappings)
   (pprint-logical-block (nil mappings :prefix "{{ " :suffix " }}")
@@ -3258,9 +3353,7 @@ bind tighter.")
     (left (or (gethash (sbst-symbol '|\||)
 		       (third *expr-prec-info*))
 	      21))
-    (right (or (gethash (sbst-symbol '|\||)
-			(second *expr-prec-info*))
-	       20))))
+    (right 200)))
     
 (defmethod precedence ((expr let-expr) ctx)
   (case ctx
