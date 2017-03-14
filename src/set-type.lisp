@@ -3542,7 +3542,10 @@ required a context.")
         (t (nearest-bound-variable (cdr reses) (car reses)))))
 
 (defmethod set-type* ((ex list-expr) expected)
-  (unless (type ex) (call-next-method)))
+  (unless (type ex)
+    (typecheck* ex expected nil nil))
+  (or (type ex)
+      (call-next-method)))
 
 (defmethod set-type* ((ex string-expr) expected)
   (let ((*generate-tccs* (if (tc-eq expected (string-type))
