@@ -172,7 +172,8 @@
   (call-next-method)
   (assert (or *copy-lex-view-string*
 	      (equalp (place old) (place new))))
-  (copy-lex* (formals old) (formals new))
+  (when (formals new)
+    (copy-lex* (formals old) (formals new)))
   (unless *copy-lex-view-string*
     (setf (chain? old) (chain? new))
     (setf (semi old) (semi new))))
@@ -236,6 +237,26 @@
   (copy-lex* (name old) (name new))
   (copy-lex* (formals old) (formals new)))
 
+(defmethod copy-lex* ((old expr-judgement) (new expr-judgement))
+  (call-next-method)
+  (copy-lex* (expr old) (expr new)))
+
+(defmethod copy-lex* ((old application-judgement) (new expr-judgement))
+  ;; (call-next-method)
+  ;; old was converted from an expr-judgement
+  (copy-lex* (name old) (operator* (expr new)))
+  (let ((nformals (mapcar #'(lambda (args)
+			      (mapcar #'(lambda (arg)
+					  (if (bind-decl? arg)
+					      arg
+					      (make-instance 'untyped-bind-decl
+						:id (id arg)
+						:place (place arg))))
+				args))
+		    (arguments* (expr new)))))
+    (copy-lex* (formals old) nformals))
+  (copy-lex* (declared-type old) (declared-type new)))
+
 (defmethod copy-lex* ((old conversion-decl) (new conversion-decl))
   (unless (eq (class-of old) (class-of new))
     (change-class old (class-of new)))
@@ -270,6 +291,12 @@
   (copy-lex* (type old) (type new))
   (copy-lex* (parameters old) (parameters new)))
 
+;; Typechecking actuals could lead to an application becoming a
+;; type-application
+(defmethod copy-lex* ((old type-application) (new application))
+  (copy-lex* (type old) (operator new))
+  (copy-lex* (parameters old) (arguments new)))
+
 (defmethod copy-lex* ((old subtype) (new subtype))
   (when (and (supertype old) (supertype new))
     (copy-lex* (supertype old) (supertype new)))
@@ -293,6 +320,9 @@
 
 (defmethod copy-lex* ((old expr-as-type) (new expr-as-type))
   (copy-lex* (expr old) (expr new)))
+
+(defmethod copy-lex* ((old expr-as-type) (new expr))
+  (copy-lex* (expr old) new))
 
 (defmethod copy-lex* ((old funtype) (new funtype))
   (unless (eq (class-of old) (class-of new))
@@ -376,16 +406,29 @@
 
 (defmethod copy-lex* ((old when-expr) (new application))
   (copy-lex* (operator old) (operator new))
-  (copy-lex* (argument old) (reverse (exprs (argument new)))))
+  (copy-lex* (argument old) (mk-tuple-expr (reverse (exprs (argument new))))))
 
 (defmethod copy-lex* ((old implicit-conversion) (new expr))
-  (copy-lex* (args1 old) new))
+  ;; It's possible that the new has the conversion in it, but not
+  ;; necessarily typechecked, so we can't use tc-eq to check.
+  ;; The operator can be any expr, not necessarily name-expr
+  (if (and (application? new)
+	   (ps-eq (operator old) (operator new)))
+      (call-next-method)
+      (copy-lex* (args1 old) new)))
 
 (defmethod copy-lex* ((old argument-conversion) (new expr))
-  (copy-lex* (operator old) new))
+  (if (and (application? new)
+	   (ps-eq old new))
+      (call-next-method)
+      (copy-lex* (operator old) new)))
 
 (defmethod copy-lex* ((old lambda-conversion) (new expr))
-  (copy-lex* (expression old) new))
+  ;; It's possible that the new is a lambda of the same form
+  (if (and (lambda-expr? new)
+	   (ps-eq (bindings old) (bindings new)))
+      (call-next-method)
+      (copy-lex* (expression old) new)))
 
 (defmethod copy-lex* ((old table-expr) (new table-expr))
   (copy-lex* (row-expr old) (row-expr new))
@@ -447,7 +490,11 @@
     (copy-lex* (car old) (car new))
     (copy-lex* (cdr old) (cdr new))))
 
+(defmethod copy-lex* ((old symbol) (new symbol))
+  )
+
 (defmethod copy-lex* (old new)
   (declare (ignore old new))
   ;;(break "Huh?")
   nil)
+
