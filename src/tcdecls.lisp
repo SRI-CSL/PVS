@@ -226,6 +226,7 @@
 (defmethod new-decl-formal ((fml decl-formal-type) &optional id)
   (let ((nfml (copy fml
 		'id (or id (id fml))
+		'module (current-theory)
 		'typechecked? nil
 		'type nil
 		'type-value nil
@@ -880,8 +881,8 @@
     (setf (declared-type decl)
 	  (subst-new-map-decls* (substit (declared-type decl) bindings)))
     (when (definition decl)
-      (setf (def-axiom decl) nil)
-      (make-def-axiom decl))
+      (setf (def-axiom decl)
+	    (subst-new-map-decls* (substit (def-axiom decl) bindings))))
     (setf (generated-by decl) nil)
     (setf (eval-info decl) nil)
     (when (def-decl? decl)
