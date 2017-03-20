@@ -1786,22 +1786,23 @@ required a context.")
   (assert (fully-instantiated? (constructor sel)))
   (assert (fully-instantiated? (args sel)))
   (assert (fully-instantiated? (expression expr)))
-  (make-equation
+  (make!-equation
    (expression expr)
-   (typecheck* (if (args sel)
-                   (if (injection-expr? (constructor sel))
-                       (make-instance 'injection-application
-                         :id (id (constructor sel))
-                         :index (index (constructor sel))
-                         :argument (if (cdr (args sel))
-                                       (make-instance 'arg-tuple-expr
-                                         :exprs (mapcar #'mk-name-expr
-                                                  (args sel)))
-                                       (mk-name-expr (car (args sel)))))
-                       (mk-application* (copy (constructor sel))
-                         (mapcar #'mk-name-expr (args sel))))
-                   (copy (constructor sel)))
-               (find-supertype (type (expression expr))) nil nil)))
+   (if (args sel)
+       (if (injection-expr? (constructor sel))
+	   (typecheck*
+	    (make-instance 'injection-application
+	      :id (id (constructor sel))
+	      :index (index (constructor sel))
+	      :argument (if (cdr (args sel))
+			    (make-instance 'arg-tuple-expr
+			      :exprs (mapcar #'mk-name-expr
+				       (args sel)))
+			    (mk-name-expr (car (args sel)))))
+	    (find-supertype (type (expression expr))) nil nil)
+	   (make!-applications (copy (constructor sel))
+	     (mapcar #'mk-name-expr (args sel))))
+       (copy (constructor sel)))))
 
 (defun make-else-cases-conditions (expr)
   (typecase (find-supertype (type (expression expr)))
