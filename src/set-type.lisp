@@ -1800,7 +1800,7 @@ required a context.")
 				       (args sel)))
 			    (mk-name-expr (car (args sel)))))
 	    (find-supertype (type (expression expr))) nil nil)
-	   (make!-applications (copy (constructor sel))
+	   (make!-application* (copy (constructor sel))
 	     (mapcar #'mk-name-expr (args sel))))
        (copy (constructor sel)))))
 
