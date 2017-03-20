@@ -783,8 +783,10 @@
   (let ((mdecl (change-class
 		   (copy decl
 		     :place nil
-		     :decl-formals (when (decl-formals decl)
-				     (break "decl-formals"))
+		     :decl-formals (mapcar #'(lambda (df)
+						(make-mapped-decl
+						 df map theory theoryname))
+				      (decl-formals decl))
 		     :formals nil
 		     :module (current-theory)
 		     :refers-to nil
@@ -794,6 +796,8 @@
 		     :theory-mappings nil
 		     :other-mappings nil)
 		   'mapped-type-decl)))
+    (dolist (df (decl-formals mdecl))
+      (setf (associated-decl df) mdecl))
     mdecl))
 
 (defmethod make-mapped-decl ((decl type-decl) map theory theoryname)
@@ -802,8 +806,10 @@
 	 (mdecl (change-class
 		    (copy decl
 		      :place nil
-		      :decl-formals (when (decl-formals decl)
-				      (break "decl-formals"))
+		      :decl-formals (mapcar #'(lambda (df)
+						(make-mapped-decl
+						 df map theory theoryname))
+				      (decl-formals decl))
 		      :formals nil
 		      :module (current-theory)
 		      :refers-to (generate-xref (type-value (rhs map)))
@@ -812,7 +818,14 @@
 		      :type-value typeval
 		      :type typex)
 		    'mapped-type-decl)))
+    (dolist (df (decl-formals mdecl))
+      (setf (associated-decl df) mdecl))
     mdecl))
+
+(defmethod make-mapped-decl ((decl decl-formal-type) map theory theoryname)
+  (let ((fdecl (new-decl-formal decl)))
+    (setf (place fdecl) nil)
+    fdecl))
 
 (defmethod make-mapped-decl ((decl const-decl) map theoryname theory)
   (let* ((rhs (expr (rhs map)))
@@ -823,8 +836,10 @@
 	 (mdecl (change-class
 		    (copy decl
 		      :place nil
-		      :decl-formals (when (decl-formals decl)
-				      (break "decl-formals"))
+		      :decl-formals (mapcar #'(lambda (df)
+						(make-mapped-decl
+						 df map theory theoryname))
+				      (decl-formals decl))
 		      :formals nil
 		      :module (current-theory)
 		      :refers-to (generate-xref (expr (rhs map)))
@@ -834,6 +849,8 @@
 		      :type type
 		      :definition (expr (rhs map)))
 		    'mapped-const-decl)))
+    (dolist (df (decl-formals mdecl))
+      (setf (associated-decl df) mdecl))
     (assert (fully-instantiated? type))
     (make-def-axiom mdecl)
     mdecl))
