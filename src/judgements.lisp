@@ -546,8 +546,9 @@
 				       (and (vectorp njtypes)
 					    (or (null jdecls)
 						(vectorp jdecls)))))
-		(setf (gethash ex jhash)
-		      (list jtypes jdecls))
+		(when jtypes
+		  (setf (gethash ex jhash)
+			(list jtypes jdecls)))
 		(values jtypes jdecls))))))))
 
 (defvar *in-expr-judgement-types* nil)
@@ -642,9 +643,9 @@
       (available-numeric-type num)))
 
 (defmethod judgement-types* :around ((ex name-expr))
-  (when (or (assoc (declaration ex) *judgement-bound-vars*
-		   :key #'declaration)
-	    (not (variable? ex)))
+  (when (or (not (variable? ex))
+	    (assoc (declaration ex) *judgement-bound-vars*
+		   :key #'declaration))
     (call-next-method)))
 
 (defmethod judgement-types* ((ex name-expr))
@@ -3402,7 +3403,6 @@
 (defvar *simple-match-hash*)
 
 (defun simple-match (ex inst)
-  
   (simple-match* ex inst nil nil))
 
 (defmethod simple-match* ((ex type-name) (inst type-name) bindings subst)
@@ -3411,11 +3411,22 @@
       'fail))
 
 (defmethod simple-match* ((ex subtype) (inst subtype) bindings subst)
-  (let ((nsubst (simple-match* (supertype ex) (supertype inst)
-			       bindings subst)))
+  (let* ((stype (substit (supertype ex) subst))
+	 (boundable-var? (and (variable? (predicate ex))
+			      (null (freevars stype))
+			      (or (tc-eq inst stype)
+				  (tc-eq (supertype inst) stype))))
+	 (nsubst (if boundable-var?
+		     subst
+		     (simple-match* stype (supertype inst) bindings subst))))
     (if (eq nsubst 'fail)
 	'fail
-	(simple-match* (predicate ex) (predicate inst) bindings nsubst))))
+	(if boundable-var?
+	    (if (tc-eq (supertype inst) stype)
+		(acons (declaration (predicate ex)) (predicate inst) nsubst)
+		(acons (declaration (predicate ex))
+		       (mk-everywhere-true-function inst) nsubst))
+	    (simple-match* (predicate ex) (predicate inst) bindings nsubst)))))
 
 (defmethod simple-match* ((ex funtype) (inst funtype) bindings subst)
   (let ((nsubst (simple-match* (domain ex) (domain inst) bindings subst)))
@@ -3478,11 +3489,12 @@
 		      'fail)
 		  (if (assq (declaration ex) bindings)
 		      subst
-		      (if (some #'(lambda (jty)
-				    (subtype-of? jty (type (declaration ex))))
-				(judgement-types+ inst))
-			  (acons (declaration ex) inst subst)
-			  'fail))))))
+		      (let ((stype (substit (type (declaration ex)) subst)))
+			(if (some #'(lambda (jty)
+				      (subtype-of? jty stype))
+				  (judgement-types+ inst))
+			    (acons (declaration ex) inst subst)
+			    'fail)))))))
       (if (and (typep inst 'name-expr)
 	       (eq (declaration ex) (declaration inst)))
 	  (simple-match* (module-instance ex) (module-instance inst)
@@ -3615,7 +3627,7 @@
       (let ((amatch (simple-match* (actuals ex) (actuals inst) bindings subst)))
 	(if (eq amatch 'fail)
 	    'fail
-	    (simple-match* (mappings ex) (mappings inst) bindings subst)))
+	    (simple-match* (mappings ex) (mappings inst) bindings amatch)))
       'fail))
 
 (defmethod simple-match* ((ex actual) (inst actual) bindings subst)
