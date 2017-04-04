@@ -288,6 +288,15 @@
   (generate-xref (operator e))
   (generate-xref (argument e)))
 
+(defmethod generate-xref ((ex list-expr))
+  (generate-xref (operator ex))
+  (generate-xref-list-expr ex))
+
+(defun generate-xref-list-expr (ex)
+  (when (list-expr? ex)
+    (generate-xref (args1 ex))
+    (generate-xref-list-expr (args2 ex))))
+
 (defmethod generate-xref ((e binding-expr))
   (assert (type e))
   (mapc #'generate-xref (bindings e))
@@ -463,6 +472,7 @@
       (gethash id *prelude*)
       (let ((found nil))
 	(maphash #'(lambda (path hts)
+		     (declare (ignore path))
 		     (when (or found (gethash id (cadr hts)))
 		       (setq found t)))
 		 *prelude-libraries*))
