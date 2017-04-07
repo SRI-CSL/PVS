@@ -884,7 +884,7 @@
 	   (let ((type-value (type-value decl)))
 	     (and type-value
 		  (adt type-value)
-		  (pvs2ir-adt-decl decl))))
+		  (pvs2ir-adt-decl decl))))  ;;Should check that the ir-type-value slot is set
        (ir-type-name (ir-type-value decl))))
 
 (defmethod pvs2ir-decl* ((decl formal-type-decl))
@@ -2041,12 +2041,13 @@
 												body-freevars)
 								       livevars :test #'tc-eq)
 							bindings)))
-		      ;(break "preprocess ir-let: ~a" (ir-name ir-vartype))
+		      (break "preprocess ir-let: ~a" (ir-name ir-vartype))
 		    (if (and (or (ir-variable? new-ir-bind-expr) ;;bind var to var
 				 (ir-last? new-ir-bind-expr))
 			     (ir2c-tequal (ir-vtype ir-vartype)(ir-vtype (get-ir-last-var new-ir-bind-expr)))
-			     (format t "substituting ~a for ~a" (ir-name (get-ir-last-var new-ir-bind-expr))
-				     (ir-name ir-vartype)))
+			     (or (format t "substituting ~a for ~a" (ir-name (get-ir-last-var new-ir-bind-expr))
+					 (ir-name ir-vartype))
+				 t))
 			    ;binds var to var with same type
 			(preprocess-ir* ir-body livevars
 					(acons ir-vartype
@@ -4770,7 +4771,7 @@
 
 ;;conversion for a definition
 (defmethod pvs2c-decl* ((decl const-decl))
-  (unless (and (eq (id (module decl)) 'ordinals)
+  (unless (and (eq (id (module decl)) 'ordinals);this can be removed since we have closures
 	       (eq (id decl) 'size))
     (pvs2ir-decl decl)
     (let ((ir (ir (eval-info decl))));(break "pvs2c-decl*/const-decl")
