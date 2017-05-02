@@ -2041,7 +2041,7 @@
 												body-freevars)
 								       livevars :test #'tc-eq)
 							bindings)))
-		      (break "preprocess ir-let: ~a" (ir-name ir-vartype))
+		      ;(break "preprocess ir-let: ~a" (ir-name ir-vartype))
 		    (if (and (or (ir-variable? new-ir-bind-expr) ;;bind var to var
 				 (ir-last? new-ir-bind-expr))
 			     (ir2c-tequal (ir-vtype ir-vartype)(ir-vtype (get-ir-last-var new-ir-bind-expr)))
