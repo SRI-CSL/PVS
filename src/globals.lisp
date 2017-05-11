@@ -38,7 +38,7 @@
 	  *integer* *naturalnumber* *number* *number_field* *odd_int* *odd_posnat* *odd_negint*
 	  *posint* *negint* *posrat* *negrat* *prelude* *pvs-directories*
 	  *pvs-modules* *pvs-tmp-file* *real* *show-conversions* *tcc-conditions*
-	  *true* *typechecking-module*))
+	  *true* *typechecking-module* *prelude-context*))
 
 (export '(all none))
 
@@ -87,7 +87,7 @@ in util.lisp")
   (pushnew :pvs *features*)
   )
 
-(defparameter *binfile-version* 36)
+(defparameter *binfile-version* 37)
 
 (defvar *pvs-build-time* (get-universal-time)) ;; set on loading in operate-on-system
 
