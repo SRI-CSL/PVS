@@ -646,3 +646,5 @@
 	 ,str (- (get-internal-real-time) ,%start))
        ,%result)))
 	
+(defmacro cam (form)
+  `(compute-applicable-methods (function ,(car form)) (list ,@(cdr form))))
