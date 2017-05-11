@@ -260,6 +260,11 @@ instance.  No longer used - use prettyprint-expanded instead"
 				 ""))
 	    nil nil nil nil nil default))))
 
+(defpvs set-prettyprint-case prettyprint (case)
+  "Set the case for printing keywords."
+  (interactive (finish-this))
+  )
+
 ;;; prettyprint-expanded
 
 
