@@ -231,6 +231,7 @@
     (call-next-method)))
 
 (defmethod check-for-tccs* ((expr application) expected)
+  #+pvsdebug
   (assert (every #'(lambda (x) (or (not (consp x))
 				   (and (bind-decl? (car x))
 					(memq (car x) *tcc-conditions*))))
@@ -346,6 +347,7 @@
 	       (check-for-tccs* e (domain est)))))))
 
 (defun check-for-binding-expr-tccs (bindings expected-types)
+  #+pvsdebug
   (assert (every #'(lambda (x) (or (not (consp x))
 				   (and (bind-decl? (car x))
 					(memq (car x) *tcc-conditions*))))
@@ -358,6 +360,7 @@
 	(check-for-tccs* (car bindings) etype)
 	(let ((*bound-variables* (cons (car bindings) *bound-variables*))
 	      (*tcc-conditions* (cons (car bindings) *tcc-conditions*)))
+	  #+pvsdebug
 	  (assert (every #'(lambda (x) (or (not (consp x))
 					   (and (bind-decl? (car x))
 						(memq (car x) *tcc-conditions*))))
@@ -370,6 +373,7 @@
 	       (cdr expected-types)))))
       (let ((*tcc-conditions*
 	     (append (car *appl-tcc-conditions*) *tcc-conditions*)))
+	#+pvsdebug
 	(assert (every #'(lambda (x) (or (not (consp x))
 					 (and (bind-decl? (car x))
 					      (memq (car x) *tcc-conditions*))))
