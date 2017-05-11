@@ -724,7 +724,7 @@
 	(let ((mi1 (module-instance (resolution op1)))
 	      (mi2 (module-instance (resolution op2)))
 	      (fmls (formals-sans-usings (module decl)))
-	      (ptypes (positive-types decl)))
+	      (ptypes (unless *strong-tc-eq-flag* (positive-types decl))))
 	  (and (tc-eq-adt-op-actuals (actuals mi1) (actuals mi2) bindings
 				     fmls ptypes)
 	       (tc-eq-adt-op-actuals (dactuals mi1) (dactuals mi2) bindings
@@ -751,7 +751,8 @@
 			   (or (print-type adt2) adt2)))))
 		(or (and (null (actuals mi1)) (null (actuals mi2)))
 		    (let ((fmls (formals-sans-usings (adt adt1)))
-			  (ptypes (positive-types (adt adt1))))
+			  (ptypes (unless *strong-tc-eq-flag*
+				    (positive-types (adt adt1)))))
 		      (and (tc-eq-adt-op-actuals (actuals mi1) (actuals mi2) bindings
 						 fmls ptypes)
 			   (tc-eq-adt-op-actuals (dactuals mi1) (dactuals mi2) bindings
@@ -965,11 +966,8 @@
 			     (null (library mi2))
 			     (eq (library mi1) (library mi2)))
 			 (tc-eq* (actuals mi1) (actuals mi2) bindings)
-			 (or ;;(null (dactuals mi1)) (null (dactuals mi2))
-			     (tc-eq* (dactuals mi1) (dactuals mi2) bindings))
-			 (or ;;(null (mappings mi1))
-			     ;;(null (mappings mi2))
-			     (tc-eq* (mappings mi1) (mappings mi2) bindings)))
+			 (tc-eq* (dactuals mi1) (dactuals mi2) bindings)
+			 (tc-eq* (mappings mi1) (mappings mi2) bindings))
 		    (null mi2))
 		(or *in-tc-eq-resolution*
 		    (null *strong-tc-eq-flag*)
