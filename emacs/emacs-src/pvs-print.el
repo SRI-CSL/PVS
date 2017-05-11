@@ -431,6 +431,23 @@ example for including <theory>.tex in a document."
 		  theoryname (when file (format "\"%s\"" file)))
 	      "LaTeX-printing..." 'lti)))
 
+(defpvs latex-prelude latex (dir)
+  "LaTeX-prints the prelude.  As it has a large number of theories, by
+default it will print in a 'prelude-tex' subdirectory of the current context"
+  (interactive (let* ((cdir (pvs-current-directory t))
+		      (defdir (concat cdir "prelude-tex")))
+		 (confirm-not-in-checker)
+		 (list (if (fboundp 'read-directory-name)
+			   (read-directory-name
+			    "(latex-prelude into) directory path: " defdir defdir)
+			   (read-file-name
+			    "(latex-prelude into) directory path: " defdir defdir)))))
+  (unless (file-exists-p dir)
+    (if (and (fboundp 'make-directory)
+	     (yes-or-no-p (format "%s does not exist - create it? " dir)))
+	(make-directory dir t)
+	(error "Directory %s does not exist" dir)))
+  (pvs-send (format "(latex-prelude \"%s\")" dir) "LaTeX-printing prelude..."))
 
 ;;; LaTeX Print View
 
