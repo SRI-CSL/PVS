@@ -1682,7 +1682,7 @@
     (if (lambda-expr? argument)
 	(pprint-logical-block (nil nil)
 	  (pprint-indent :current 2)
-	  (pp-tex-keyword 'LAMBDA)
+	  (pp-tex-id (id operator))
 	  (write-char #\!)
 	  (write-char #\space)
 	  (pprint-newline :miser)
