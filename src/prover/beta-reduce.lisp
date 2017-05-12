@@ -176,7 +176,8 @@
 	     nexpr
 	     (let ((nres (copy (resolution expr) :type ntype)))
 	       (when (and (freevars ntype)
-			  (not (tc-eq (freevars ntype) (freevars (type expr))))
+			  (not (subsetp (freevars ntype) (freevars (type expr))
+					:test #'tc-eq))
 			  (null (freevars (module-instance (resolution expr)))))
 		 (break "beta-reduce*"))
 	       (lcopy nexpr 'type ntype 'resolutions (list nres))))))
