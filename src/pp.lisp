@@ -2440,21 +2440,21 @@ then uses unpindent* to add the indent to each line"
 	   ((unicode :unicode) 'λ)
 	   ((lower :lower) '|lambda|)
 	   ((upper :upper short :short) 'LAMBDA)
-	   (t (or (op ex) 'LAMBDA)))))
+	   (t 'LAMBDA))))
 
 (defmethod pp-binding-expr-op ((ex forall-expr))
   (write (case *ppcase*
 	   ((unicode :unicode) '∀)
 	   ((lower :lower) '|forall|)
 	   ((upper :upper short :short) 'FORALL)
-	   (t (or (op ex) 'FORALL)))))
+	   (t 'FORALL))))
 
 (defmethod pp-binding-expr-op ((ex exists-expr))
   (write (case *ppcase*
 	   ((unicode :unicode) '∃)
 	   ((lower :lower) '|exists|)
 	   ((upper :upper short :short) 'EXISTS)
-	   (t (or (op ex) 'EXISTS)))))
+	   (t 'EXISTS))))
 
 (defmethod pp-unchain-binding-expr ((ex binding-expr) bindings op)
   (if (and (chain? ex)
