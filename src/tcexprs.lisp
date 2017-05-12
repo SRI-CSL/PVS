@@ -1485,7 +1485,8 @@
 			(let ((op (operator list-ex)))
 			  (unless (type op)
 			    (setf (type op) (type cons-ex))
-			    (setf (resolutions op) (resolutions cons-ex))))
+			    (setf (resolutions op) (resolutions cons-ex))
+			    (change-class op 'constructor-name-expr)))
 			(setf (type (argument list-ex))
 			      (mk-tupletype (list elt-type
 						  (if (null-expr? (args2 list-ex))
