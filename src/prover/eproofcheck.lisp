@@ -349,7 +349,7 @@
       (call-x-show-proof)))
   (when (or (not *proving-tcc*)
 	    *noninteractive*)
-    (pvs-emacs-eval "(setq pvs-in-checker t)")))
+    (pvs-emacs-eval "(pvs-checker-busy)")))
 
 (defun initialize-auto-rewrites ()
   (let* ((rewrites+ (mapappend #'get-rewrite-names
@@ -399,7 +399,7 @@
   (unless *recursive-prove-decl-call*
     (when (or (not *proving-tcc*)
 	      *noninteractive*)
-      (pvs-emacs-eval "(setq pvs-in-checker nil)")
+      (pvs-emacs-eval "(pvs-checker-ready)")
       (display-proofstate nil))
     (when *dump-sequents-to-file*
       (dump-sequents-to-file *top-proofstate*)))
@@ -1924,7 +1924,7 @@
 ;				      rule-args)
 ;				     ps)
 ;			    :strategy-input rule))
-;	   (t )
+					;	   (t )
 
 (defun assert-tccforms (tccforms ps)
   (when tccforms
@@ -2064,39 +2064,14 @@
 				     (failure-strategy step))
 			       ps)
 			      (t (let* ((tcc-subgoals
-					 (mapcar
-					     #'(lambda (x)
-						 (let ((y 
-							(change-class
-							    (copy (current-goal ps)
-							      's-forms
-							      (cons
-							       (make-instance
-								   's-formula
-								 :formula
-								 (tccinfo-formula x))
-							       (s-forms
-								(current-goal ps))))
-							    'tcc-sequent)))
-						   (setf (tcc y)
-							 (tccinfo-formula x)
-							 (reason y)
-							 (tccinfo-reason x)
-							 (expr y)
-							 (tccinfo-expr x)
-							 (kind y)
-							 (tccinfo-kind x)
-							 (type y)
-							 (tccinfo-type x))
-						   y))
-					   tccforms))
+					 (make-tcc-subgoals tccforms ps))
 					(subgoal-proofstates
 					 (make-subgoal-proofstates
 					  ps
 					  (subgoal-strategy step)
 					  subgoals
 					  tcc-subgoals
-					;updates;must be attached to subgoals.
+					  ;;updates;must be attached to subgoals.
 					  )))
 				   ;;cleaning up (NSH 7.27.94)
 				   ;;1. convert main subgoals of tccs into
@@ -2191,6 +2166,26 @@
 		   (strategy ps)
 		   (failure-strategy (strategy ps)))
 	     ps))))
+
+(defun make-tcc-subgoals (tccforms ps)
+  (mapcar #'(lambda (x)
+	      (let ((y (change-class
+			   (copy (current-goal ps)
+			     's-forms (cons
+				       (make-instance
+					   's-formula
+					 :formula
+					 (tccinfo-formula x))
+				       (s-forms
+					(current-goal ps))))
+			   'tcc-sequent)))
+		(setf (tcc y) (tccinfo-formula x)
+		      (reason y) (tccinfo-reason x)
+		      (expr y) (tccinfo-expr x)
+		      (kind y) (tccinfo-kind x)
+		      (type y) (tccinfo-type x))
+		y))
+    tccforms))
 
 (defun assert-test-list (fmla-list ps)
   (let* ((dp-state (dp-state ps)))
