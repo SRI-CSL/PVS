@@ -292,6 +292,20 @@ print object produces an error, and won't allow inspection of the object.")
       (call-next-method)
       (format stream "<#conversion-result ~a>" (expr cr))))
 
+(defmethod print-object ((jdgmts judgements) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (format stream "<#judgements: judgement-types-hash: ~d,~
+                      ~%              judgement-declarations: ~d,~
+                      ~%              number-judgements-alist: ~d,~
+                      ~%              name-judgements-alist: ~d,~
+                      ~%              application-judgements-alist: ~d>"
+	(hash-table-count (judgement-types-hash jdgmts))
+	(length (judgement-declarations jdgmts))
+	(length (number-judgements-alist jdgmts))
+	(length (name-judgements-alist jdgmts))
+	(length (application-judgements-alist jdgmts)))))
+
 (defmethod print-object ((jdgs application-judgements) stream)
   (if *debugging-print-object*
       (call-next-method)
