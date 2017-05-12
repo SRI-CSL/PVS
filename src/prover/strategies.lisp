@@ -5014,166 +5014,235 @@ ground prover until they are exposed."
 	     (cons (car args) subexprs)
 	     subexprs)))))
 
-;; Eventually does case-replace, name-replace, and beta, but can't inherit
+
 (defstep let-name-replace (&optional (fnum *) hide? (where top))
-  (let ((sformnum (find-sform (s-forms (current-goal *ps*)) fnum
-			      #'(lambda (x)
-				  (contains-let-expr? x where)))))
-    (if sformnum
-	(let ((namesteps (get-let-replace-forms sformnum hide? where))
-	      (step `(then ,@namesteps)))
-	  step)
+  (let ((step (let-name-replace-step fnum hide? where)))
+    (if step
+	step
 	(if (eq where 'top)
 	    (skip-msg "No top-level LETs found")
-	    (skip-msg "No LETs found occuring outside a binding"))))
-  "Replaces the LET variables by names in LET expressions in FNUM that do
-not occur in a binding.  It attempts to use the names given by the LET, then
-appends \"_1\", etc. until a new name is generated.  If HIDE? is t, the
-names are hidden.  WHERE may be one of:
-  top - for only a top-level LET expession,
-  first - for the first LET expression not inside a binding
-  all - for all LET expressions not inside a binding.
-See name-replace."
+	    (skip-msg "No LET exprs found occurring outside a binding"))))
+  "Selects LET expressions of the current sequent based on FNUM and WHERE.
+For each one, creates local definitions corresponding to the LET bindings
+using the NAME strategy, substituting these names into the rest of the LET
+expr.  The names must be new, if the LHS of the LET binding is in the
+context, then \"_1\", etc. are appended till a new name is found.
+
+If HIDE? is t, the names are hidden, though they may still be expanded, etc.
+
+FNUM and WHERE control which LET expressions are selected.  LET expression
+may come from anywhere in the sequent, but it doesn't include LET
+expressions that have a binding whose body has a reference to a binding of a
+containing expression, e.g., \"∀ (x: int): LET y = f(x) IN e(x,y)\" 
+WHERE is one of:
+  top - for only a top-level LET expression,
+  first - for the first valid LET expression
+  all - for all valid LET expressions.
+
+Examples:
+  {-1}  LET (x, u, v) = ns, y = x * x * x, z = y * y * x IN z = x * y
+  [-2]  (1, 2, 3) = ns
+    |-------
+  Rule? (let-name-replace)
+  {-1}  x = ns`1
+  {-2}  u = ns`2
+  {-3}  v = ns`3
+  {-4}  y = x * x * x
+  {-5}  z = y * y * x
+  {-6}  (z = x * y)
+  [-7]  (1, 2, 3) = ns
+    |-------
+Or:
+  Rule? (let-name-replace :hide? t)
+  {-1}  (z = x * y)
+  [-2]  (1, 2, 3) = ns
+    |-------
+"
   "Replacing the LET variables with names")
 
-(defun get-let-replace-forms (sformnum hide? where)
-  (let ((let-exprs (collect-let-exprs (select-seq (s-forms (current-goal *ps*))
-						  (list sformnum))
-				      where)))
-    (create-let-replace-forms let-exprs hide?)))
+(defun let-name-replace-step (fnum hide? where)
+  (let* ((sforms (select-seq (s-forms (current-goal *ps*)) fnum))
+	 (let-exprs (liftable-let-exprs sforms where)))
+    (when let-exprs
+      (create-let-name-replace-step let-exprs hide?))))
 
-;;; The names-alist gives the old-name to new-name mapping
-;;;     let-alist gives the old-name to argument mapping, as given by the let
-(defun create-let-replace-forms (let-exprs hide? &optional names-alist steps)
+;;; collect all let-exprs of the current sequent depending on where:
+;;; all - all let-exprs that do not reference a bound variable in their RHSs
+;;;       Note that chained-let-expr instances are excluded
+;;; first - the first such let-expr
+;;; top - only collect top-level let-exprs
+(defun liftable-let-exprs (s-forms where)
+  (let* ((forms (mapcar #'formula s-forms))
+	 (pforms (mapcar #'(lambda (form)
+			     (if (negation? form) (argument form) form))
+		   forms)))
+    (if (eq where 'top)
+	(remove-if-not #'let-expr? pforms)
+	(let ((*bound-variables* nil)
+	      (let-exprs nil))
+	  (mapobject #'(lambda (ex)
+			 (or (and (eq where 'first)
+				  let-exprs)
+			     (typecase (ex)
+			       (binding-expr
+				(let ((*bound-variables*
+				       (append (bindings ex) *bound-variables*)))
+				  t))
+			       (chained-let-expr
+				;; Skip inside these
+				t)
+			       (let-expr
+				(let ((rhs-freevars (freevars (let-rhs-exprs ex))))
+				  (when (every #'(lambda (fv)
+						   (member fv *bound-variables*
+							   :test #'same-declaration))
+					       rhs-freevars)
+				    (push ex let-exprs)))))))
+		     expr)
+	  let-exprs))))
+
+;; Given:
+;;  LET x1 = e1, x2 = e2(x1), ... xn = en(x1,...,xn-1) IN e(x1,...,xn)
+;; Generate:
+;; (name "n1" "e1")
+;; (branch
+;;   (case-replace "(LET x1 = e1, x2 = e2(x1), ... xn = en(x1,...,xn-1) IN e(x1,...,xn))
+;;     = LET x2 = e2(n1), ... xn = en(n1,x2,...,xn-1) IN e(n1,x2,...,xn)" :hide? t)
+;;   ((then
+;;     (name "n2" "e2(n1)")
+;;     (branch
+;;       (case-replace "(LET x2 = e2(n1), ... xn = en(n1,x2,...,xn-1) IN e(n1,x2,...,xn))
+;;         = LET x3 = e3(n1,n2), ..., xn = en(n1,n2,x3,...,xn-1) IN e(n1,n2,x3,...xn)" :hide? t)
+;;       ((then ...)
+;;        (assert))))
+;;     (assert)))
+(defun create-let-name-replace-step (let-exprs hide? &optional names-alist steps)
   (if (null let-exprs)
-      (nreverse steps)
-      (multiple-value-bind (lnames-alist lsteps let-alist)
-	  (create-let-replace-form (car let-exprs) names-alist hide?)
-	(create-let-replace-forms (let-reduce-subst (cdr let-exprs)
-						    lnames-alist
-						    let-alist)
-				  hide?
-				  (append lnames-alist names-alist)
-				  (append lsteps steps)))))
+      (if (cdr steps)
+	  (cons 'then (nreverse steps))
+	  (car steps))
+      (multiple-value-bind (new-names-alist step)
+	  (create-let-name-replace-step* (car let-exprs) hide? names-alist)
+	(create-let-name-replace-step (cdr let-exprs) hide? new-names-alist
+				      (cons step steps)))))
 
-(defun create-let-replace-form (let-expr names-alist hide?)
-  (let ((bindings (bindings (operator let-expr))))
-    (create-let-replace-form*
-     (substit let-expr names-alist)
-     bindings
-     (if (singleton? bindings)
-	 (list (argument let-expr))
-	 (if (tuple-expr? (argument let-expr))
-	     (arguments let-expr)
-	     (make!-projections (argument let-expr))))
-     names-alist
-     hide?)))
+(defun create-let-name-replace-step* (let-expr hide?
+				      &optional names-alist names-steps case-steps
+					else-steps commutes-steps)
+  ;; Names-alist is for substitution in the rest of the let-exprs
+  ;; step parts are pairs ((name "nn" "ee") (case-replace ...))
+  ;; At the end, these will be put into the step above
+  (let* ((bindings (bindings (operator let-expr)))
+	 (expr (substit (expression (operator let-expr)) names-alist))
+	 (arg (substit (argument let-expr) names-alist))
+	 (args (if (cdr bindings)
+		   (if (tuple-expr? arg)
+		       (exprs arg)
+		       (make-projections arg))
+		   (list arg)))
+	 (new-names (create-let-replace-names bindings names-alist))
+	 (new-labels (create-new-labels new-names))
+	 ;; Note that the new-names are name-exprs, whose type matches the
+	 ;; corresponding binding, but the declaration is bogus This is used
+	 ;; to substitute the name in creating the next-expr, which is then
+	 ;; printed as a string anyway, and when the steps are actually run,
+	 ;; the name will be available.
+	 (new-names-alist (pairlis bindings new-names))
+	 (name-steps (mapcar #'(lambda (name arg label)
+				 (let ((sname (string (id name)))
+				       (sarg (str arg)))
+				   (if hide?
+				       `(then (name ,sname ,sarg) (hide -1))
+				       `(with-labels (name ,sname ,sarg) ,label))))
+		       new-names args new-labels))
+	 (commute-steps (unless hide?
+			  (mapcar #'(lambda (name arg label)
+				      (let* ((sname (string (id name)))
+					     (sarg (str arg))
+					     (eqn (format nil "~a = ~a" sname sarg)))
+					`(branch (case ,eqn)
+						 ((hide ,label) (expand ,sname)))))
+			    new-names args new-labels)))
+	 (next-expr (substit expr new-names-alist))
+	 (case-step (list 'case-replace
+			  (format nil "(~a) = (~a)" let-expr next-expr)
+			  :hide? t))
+	 (else-step (cons 'expand* (mapcar #'(lambda (nn) (string (id nn))) new-names))))
+    (if (chained-let-expr? expr)
+	(create-let-name-replace-step*
+	 next-expr hide? (append new-names-alist names-alist)
+	 (cons name-steps names-steps)
+	 (cons case-step case-steps)
+	 (cons else-step else-steps)
+	 (nconc (nreverse commute-steps) commutes-steps))
+	(let ((step (finish-let-name-replace-step
+		     (cons name-steps names-steps)
+		     (cons case-step case-steps)
+		     (cons else-step else-steps)
+		     (nconc (nreverse commute-steps) commutes-steps))))
+	  (values names-alist step)))))
 
-(defun create-let-replace-form* (let-expr bindings args names-alist hide?
-					  &optional let-alist steps)
+(defun finish-let-name-replace-step (names-steps case-steps else-steps commute-steps
+				     &optional (step '(skip)))
+  (if (null names-steps)
+      (if commute-steps
+	  `(then ,step ,@commute-steps)
+	  step)
+      (finish-let-name-replace-step
+       (cdr names-steps)
+       (cdr case-steps)
+       (cdr else-steps)
+       commute-steps
+       `(then ,@(car names-steps)
+	      (branch ,(car case-steps) (,step ,(car else-steps)))))))
+
+(defun create-let-replace-names (bindings names-alist &optional names)
   (if (null bindings)
-      (values names-alist steps let-alist)
-      (let* ((name (create-let-replace-name (car bindings) names-alist 1))
-	     (arg (substit (car args) names-alist))
-	     (argstr (unparse arg :string t))
-	     (new-names-alist (acons (car bindings) name names-alist)))
-	(multiple-value-bind (red-ex let-alist1)
-	    (let-reduce1 let-expr)
-	  (let* ((eqn (make!-equation let-expr red-ex))
-		 (eqnstr (unparse (expose-binding-types eqn) :string t)))
-	    (create-let-replace-form*
-	     (let-reduce1 let-expr new-names-alist)
-	     (cdr bindings)
-	     (substit (cdr args) new-names-alist)
-	     new-names-alist hide?
-	     (append let-alist let-alist1)
-	     (cons `(branch
-		     (case-replace$ ,eqnstr :hide? t)
-		     ((name-replace$ ,(id name) ,argstr :hide? ,hide?)
-		      (beta)))
-		   steps)))))))
-
-(defun let-reduce1 (let-expr &optional names-alist)
-  (let ((lex (operator let-expr)))
-    (if (cdr (bindings lex))
-	(let* ((arguments (arguments let-expr))
-	       (args (if (singleton? arguments)
-			 ;; create projections
-			 (make!-projections (car arguments))
-			 arguments))
-	       (alist (acons (car (bindings lex)) (car args) nil)))
-	  (values (copy let-expr
-		    'operator (copy lex
-				'bindings (substit (cdr (bindings lex)) alist)
-				'expression (substit (expression lex) alist))
-		    'argument (make!-arg-tuple-expr* (cdr args)))
-		  alist))
-	(let ((alist (acons (car (bindings lex)) (argument let-expr) nil)))
-	  (values (substit (expression lex) (append alist names-alist))
-		  alist)))))
-
-(defun let-reduce-subst (ex names-alist let-alist)
-  (let ((ex1 (substit ex let-alist))
-	(*replace-cache* (make-hash-table :test #'eq)))
-    (replace-expr (cdar let-alist) (cdar names-alist) ex1)))
+      (nreverse names)
+      (let ((name (create-let-replace-name (car bindings) names-alist)))
+	(create-let-replace-names (cdr bindings) names-alist (cons name names)))))
 
 (defun create-let-replace-name (binding names-alist &optional num)
   (let ((nid (if num (makesym "~a_~d" (id binding) num) (id binding))))
     (if (or (resolve nid 'expr nil)
 	    (member nid names-alist :key #'cdr :test #'same-id))
 	(create-let-replace-name binding names-alist (if num (1+ num) 1))
-      (let ((bd (lcopy binding 'id nid)))
-	(make-variable-expr bd)))))
+	(let ((bd (lcopy binding 'id nid)))
+	  (make-variable-expr bd)))))
 
-(defun contains-let-expr? (expr where)
-  (case where
-    ((all first)
-     (let ((foundit nil))
-       (mapobject #'(lambda (ex)
-		      (or foundit
-			  (when (let-expr? ex)
-			    (setq foundit t))
-			  (binding-expr? ex)))
-		  expr)
-       foundit))
-    (top (let-expr? expr))
-    (t (error-format-if "Illegal :where value - ~a" where))))
-
-(defun collect-let-exprs (expr where)
-  (case where
-    (all (let ((let-exprs nil))
-	   (mapobject #'(lambda (ex)
-			  (when (let-expr? ex)
-			    (let ((lexprs (collect-let-exprs
-					   (expression (operator ex))
-					   where)))
-			      (setq let-exprs (nconc let-exprs
-						     (cons ex lexprs)))))
-			  (binding-expr? ex))
-		      expr)
-	   let-exprs))
-    (first (let ((let-exprs nil))
-	     (mapobject #'(lambda (ex)
-			    (or let-exprs
-				(when (let-expr? ex)
-				  (setq let-exprs
-					(collect-chained-let-exprs ex)))
-				(binding-expr? ex)))
-			expr)
-	     let-exprs))
-    (t (collect-chained-let-exprs expr))))
-
-(defmethod collect-chained-let-exprs ((ex let-expr) &optional (first? t))
+(defmethod let-rhs-exprs ((ex let-expr) &optional (first? t))
   (if first?
-      (cons ex (collect-chained-let-exprs (expression (operator ex))))))
+      (cons (argument ex) (let-rhs-exprs (expression (operator ex))))))
 
-(defmethod collect-chained-let-exprs ((ex chained-let-expr) &optional first?)
+(defmethod let-rhs-exprs ((ex chained-let-expr) &optional first?)
   (declare (ignore first?))
-  (cons ex (collect-chained-let-exprs (expression (operator ex)))))
+  (cons (argument ex) (let-rhs-exprs (expression (operator ex)))))
 
-(defmethod collect-chained-let-exprs (ex &optional first?)
+(defmethod let-rhs-exprs (ex &optional first?)
   (declare (ignore ex first?))
   nil)
+
+(defun create-new-labels (names)
+  (let ((cur-labels (collect-labels-of-current-sequent)))
+    (create-new-labels* names cur-labels)))
+
+(defun create-new-labels* (names cur-labels &optional new-labels)
+  (if (null names)
+      (nreverse new-labels)
+      (let ((new-label (create-new-label (car names) cur-labels)))
+	(create-new-labels* (cdr names) cur-labels (cons new-label new-labels)))))
+
+(defun create-new-label (name &optional
+				(cur-labels (collect-labels-of-current-sequent))
+				num)
+  (let* ((id (ref-to-id name))
+	 (nlab (if num (makesym "~a_~d" id num) id)))
+    (if (memq nlab cur-labels)
+	(create-new-label id cur-labels (if num (1+ num) 1))
+	nlab)))
+
+
+;;;;;;;  end of let-name-replace
 
 (defstep inst! (&optional (fnums *) copy? (relativize? t))
   (skip-msg "inst! does not work for now.")
