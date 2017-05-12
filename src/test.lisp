@@ -21,7 +21,6 @@
     (:internal (:effective-method 1 t nil t t) 0)
     (method initialize-instance (standard-object))
     "smp_request_gc_op"
-    (:internal refine-optype-from-expected 0)
     (method shared-initialize (standard-object t))
     "sem_wait" excl::sort-list excl::merge-lists* reduce "lisp_cons"
     excl::typep-class "(lisp-trampolines)" (:discriminator (:caching (class) nil))
@@ -47,7 +46,12 @@
 (defun hide-methods-from-profile (gfun)
   (dolist (mthd (collect-method-forms gfun))
     (pushnew mthd prof:*hidden-functions*)))
-  
+
+(defun get-current-backtrace ()
+  (handler-case (error "foo")
+    (error (cond)
+      (with-output-to-string (stream)
+	(top-level.debug:zoom stream)))))
 
 ;;; To get more information from Allegro compilation
 ;;;  (proclaim '(:explain :types :calls :boxing :variables :tailmerging :inlining))
@@ -84,9 +88,6 @@
 ;;   (require :ide)
 ;;   ;;(setq excl:*mozilla-library-path* "/homes/owre/lib/firefox-1.0.7/")
 ;;   (ide:start-ide))
-
-(defmacro cam (form)
-  `(compute-applicable-methods (function ,(car form)) (list ,@(cdr form))))
 
 #+allegro
 (defun show-unreferenced-functions ()
