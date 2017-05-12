@@ -929,11 +929,11 @@
       (judgement-types* (car expr-list))
     (judgement-types-list (cdr expr-list) (type (car expr-list)) types jdecls)))
 
-;;; Recursively determing the judgement types and corresponding judgement
+;;; Recursively determine the judgement types and corresponding judgement
 ;;; decls for a list of expressions, that are intended to have a common type
 ;;; Mostly for if-exprs, cond-exprs, etc.  But not tuple exprs
 
-;;; The type is the least connon actual type of the expressions so far - no
+;;; The type is the least common actual type of the expressions so far - no
 ;;; point in looking higher than this.  The types and jdecls are the
 ;;; judgement types found so far.  Note that even if they are empty, we may
 ;;; need judgements on the remaining expressions, in order to not go above
@@ -974,16 +974,26 @@
 			       (judgement-types-list
 				(cdr expr-list) type (nreverse stypes) (nreverse sjdecls))))))))))
 	(t ;; Have types - this is more difficult to reconcile
-	 (multiple-value-bind (ntypes njdecls)
-	     (judgement-types* (car expr-list))
+	 (let ((ntypes (judgement-types* (car expr-list))) ; ignore the jdecls
+	       (rtypes nil)
+	       (rjdecls nil))
 	   (if (null ntypes)
-	       (if (some #'(lambda (ty) (subtype-of? (type (car expr-list)) ty))
-			 types)
-		   (judgement-types-list (cdr expr-list) type types jdecls)
-		   (break "types, null ntypes, not subtype"))
-	       ;; Have ntypes - if one is equal to type, keep it and remove the rest
-	       ;; else if any are subtypes of type, keep those that are
-	       (break "types, ntypes"))))))
+	       (mapc #'(lambda (ty jd)
+			 (when (subtype-of? (type (car expr-list)) ty)
+			   (push ty rtypes)
+			   (push jd rjdecls)))
+		     types jdecls)
+	       (mapc #'(lambda (ty jd)
+			 (when (some #'(lambda (nty)
+					 (subtype-of? nty ty))
+				     ntypes)
+			   (push ty rtypes)
+			   (push jd rjdecls)))
+		     types jdecls))
+	   ;; FIXME This isn't quite right - e.g., S1, S2 subtype of S
+	   ;; which is a judgement type of the first argument, this
+	   ;; then ignores that.
+	   (values rtypes rjdecls)))))
 
 (defun jdecls-union (jdecls1 jdecls2)
   (let ((ldecls1 (jdecls-list jdecls1))
