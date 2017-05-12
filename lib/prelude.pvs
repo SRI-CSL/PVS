@@ -4892,9 +4892,9 @@ filters[T: TYPE]: THEORY
 
 list2finseq[T: TYPE]: THEORY
  BEGIN
-  l: VAR list[T]
+  l, l1, l2: VAR list[T]
   fs: VAR finseq[T]
-  n: VAR nat
+  n, i: VAR nat
 
   list2finseq(l): finseq[T] =
     (# length := length(l),
@@ -4911,6 +4911,29 @@ list2finseq[T: TYPE]: THEORY
   finseq2list(fs): list[T] = finseq2list_rec(fs, length(fs))
 
   CONVERSION list2finseq, finseq2list
+
+  finseq2list_length_rec: LEMMA
+    n <= fs`length IMPLIES length(finseq2list_rec(fs, n)) = n
+
+  finseq2list_length: LEMMA
+    length(finseq2list(fs)) = fs`length
+
+  finseq2list_nth_rec: LEMMA
+    n <= fs`length AND i < n IMPLIES
+      nth(finseq2list_rec(fs, n), i) = fs`seq(fs`length - n + i)
+
+  finseq2list_nth: LEMMA
+    FORALL (i: below(fs`length)):
+      nth(finseq2list(fs), i) = fs`seq(i)
+
+  list2finseq_finseq2list: LEMMA
+    list2finseq(finseq2list(fs)) = fs
+
+  list2finseq_inj: LEMMA
+    (list2finseq(l1) = list2finseq(l2)) = (l1 = l2)
+
+  finseq2list_list2finseq: LEMMA
+    finseq2list(list2finseq(l)) = l
 
  END list2finseq
 

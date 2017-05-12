@@ -34857,7 +34857,44 @@
    nil))
  (finseq2list_TCC1 0
   (finseq2list_TCC1-1 nil 3237052399 ("" (tcc :defs explicit) nil nil)
-   nil nil)))
+   nil nil))
+ (finseq2list_length_rec 0
+  (finseq2list_length_rec-1 nil 3703275952
+   ("" (induct n) (("1" (grind) nil nil) ("2" (grind) nil nil)) nil)
+   ((posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (nat_induction formula-decl nil naturalnumbers nil)
+    (finseq2list_rec def-decl "list[T]" list2finseq nil)
+    (length def-decl "nat" list_props nil)
+    (list type-decl nil list_adt nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (<= const-decl "bool" reals nil)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (finseq type-eq-decl nil finite_sequences nil)
+    (T formal-type-decl nil list2finseq_extra nil)
+    (below type-eq-decl nil nat_types nil)
+    (pred type-eq-decl nil defined_types nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil))
+   shostak)))
 (list2set
  (list2set_TCC1 0
   (list2set_TCC1-1 nil 3237052399 ("" (tcc :defs !) nil nil)
