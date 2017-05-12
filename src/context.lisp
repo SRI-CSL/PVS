@@ -225,8 +225,8 @@ pvs-strategies files.")
 (defun pushc (directory)
   (push-context directory))
 
-(defun popc (directory)
-  (pop-context directory))
+(defun popc ()
+  (pop-context))
 
 
 ;;; Change-context checks that the specified directory exists, prompting
@@ -1246,12 +1246,19 @@ pvs-strategies files.")
 	       (get-context-formula-entry fdecl t))))))
 
 (defun context-file-of (theoryref)
-  (context-file-of* (ref-to-id theoryref) (pvs-context-entries)))
+  (let ((thid (ref-to-id theoryref)))
+    (if (member thid *prelude-theories* :key #'id)
+	(if (member thid (core-prelude-theories) :key #'id)
+	    "prelude" "pvsio_prelude")
+	(context-file-of*  thid (pvs-context-entries)))))
 
 (defun pvs-file-of (theoryref)
   (multiple-value-bind (file ext)
       (context-file-of theoryref)
-    (shortname (make-specpath file (or ext "pvs")))))
+    (if (or (equal file "prelude")
+	    (equal file "pvsio_prelude"))
+	(format t "~a/~a.pvs" *pvs-path* file)
+	(shortname (make-specpath file (or ext "pvs"))))))
 
 (defun context-file-of* (theoryid entries)
   (when entries
@@ -1275,7 +1282,7 @@ pvs-strategies files.")
     (pvs-context-entries)))
 
 
-;;; Called from typecheck-theories in pvs.lisp and from
+;;; Called from typecheck-theories, typecheck-top-level-adt, and
 ;;; update-restored-theories (module)
 
 (defun restore-from-context (filename theory &optional proofs)
@@ -1592,98 +1599,185 @@ pvs-strategies files.")
 			proofs
 			(nconc proofs (list (car oldproofs)))))))
 
-(defun restore-proofs (filename theory &optional proofs)
-  (if proofs
-      (let ((tproofs (cdr (assq (id theory) proofs))))
-	(restore-theory-proofs theory tproofs))
-      (let ((prfpath (make-prf-pathname filename)))
-	(when (file-exists-p prfpath)
-	  (multiple-value-bind (ignore error)
-	      (ignore-lisp-errors
-		(with-open-file (input prfpath :direction :input)
-		  (restore-theory-proofs-from-file input prfpath theory)))
-	    (declare (ignore ignore))
-	    (when error
-	      (pvs-message "Error reading proof file ~a"
-		(namestring prfpath))
-	      (pvs-log (format nil "  ~a" error))))))))
+;;; Top level, called from restore-from-context and install-pvs-proof-file
 
-(defun restore-theory-proofs-from-file (input filestring theory)
-  (let ((theory-proofs (read input nil nil)))
-    (when theory-proofs
-      (let* ((theoryid (car theory-proofs))
-	     (proofs (cdr theory-proofs)))
-	(unless (every #'consp proofs)
-	  (pvs-message "Proofs file ~a is corrupted, will try to keep going."
-	    filestring)
-	  (setq proofs (remove-if-not #'consp proofs)))
-	(if (eq theoryid (id theory))
-	    (restore-theory-proofs theory proofs)
-	    (restore-theory-proofs-from-file input filestring theory))))))
+(defun restore-proofs (filename theory &optional proofs)
+  (let* ((aproofs (or proofs (read-pvs-file-proofs filename)))
+	 (tproofs (cdr (assq (id theory) aproofs))))
+    (when tproofs
+      (restore-theory-proofs theory tproofs))))
+
+;;; Proofs currently are of the form
+;;;  (declid index prfinfo ...)
+;;; where each proofinfo is of the form
+;;;  (prfid description create-date script refers-to decision-procedure-used [origin])
+;;; The origin is only there for TCCs, and is of the form
+;;;  (root kind expr type)
+
+;;; Proofs were stored in files in various forms over the years
+;;; Before multiple proofs, a proof for a declid was of the form
+;;;  (declid script)
+;;;  (declid (...) script)  ;; I don't remember what the second field had in it
+;;; After multiple proofs only the prfinfo is different
+;;;  (prfid description create-date run-date script status refers-to
+;;;	    real-time run-time interactive? decision-procedure-used)
+;;; but rerunning could change the run-date, status, real-time, run-time, and interactive?
+;;; slots, causing proof files to be saved unnecessarily
+
+;;; We still try to accomodate old .prf files, as seen below
 
 (defun restore-theory-proofs (theory proofs)
-  (let ((te (get-context-theory-entry (id theory)))
-	(restored (mapcar #'(lambda (decl)
-			      (restore-theory-proofs* decl proofs))
-		    (append (assuming theory)
-			    (theory theory)))))
+  (assert (every #'(lambda (prf)
+		     (and (listp prf) (integerp (cadr prf))))
+		 proofs))
+  (let* ((have-tcc-origins?
+	  (some #'(lambda (prf) (= (length (car (cddr prf))) 7)) proofs))
+	 (te (get-context-theory-entry (id theory)))
+	 (rem-proofs (restore-decls-proofs
+		      ;; Note that formal parameters cannot have formulas,
+		      ;; even TCCs are put in the assuming or theory parts
+		      (append (assuming theory) (theory theory))
+		      proofs
+		      have-tcc-origins?)))
     (when (and te (memq 'invalid-proofs (te-status te)))
       (invalidate-proofs theory))
-    (copy-proofs-to-orphan-file
-     (id theory) (set-difference proofs restored :test #'equal))))
+    (copy-proofs-to-orphan-file (id theory) rem-proofs)))
 
-(defun restore-theory-proofs* (decl proofs)
-  (when (formula-decl? decl)
-    (let ((prf-entry (find-associated-proof-entry decl proofs)))
-      (cond ((integerp (cadr prf-entry))
-	     ;; Already in multiple-proof form, but may need to be lower-cased
-	     (let ((wrong-case? #+allegro
-				(let ((ent1 (car (cddr prf-entry))))
-				  (memq (nth (if (> (length ent1) 6) 9 5) ent1)
-					'(T SHOSTAK NIL)))
-				#-allegro nil))
-	       (setf (proofs decl)
-		     (mapcar #'(lambda (pr)
-				 (let ((p (get-smaller-proof-info pr)))
-				   (apply #'mk-proof-info
-				     (if wrong-case?
-					 (cons (car p)
-					       (convert-proof-form-to-lowercase
-						(cdr p)))
-					 p))))
-		       (cddr prf-entry))))
+(defun restore-decls-proofs (decls proofs have-tcc-origins?)
+  (cond ((null decls)
+	 proofs)
+	((and have-tcc-origins? (tcc-decl? (car decls)))
+	 ;; Note that TCCs generated from the formal parameters will all be
+	 ;; put in either the assuming part, if it exists, or the theory
+	 ;; part It's the only exception to TCCs appearing before the
+	 ;; declaration that generated them
+	 (multiple-value-bind (tccs rem-decls)
+	     (decl-tccs (car decls) (cdr decls))
+	   (let ((rem-proofs (restore-tcc-proofs tccs proofs)))
+	     (restore-decls-proofs rem-decls rem-proofs have-tcc-origins?))))
+	((formula-decl? (car decls))
+	 (let ((rem-proofs (restore-formula-proofs (car decls) proofs)))
+	   (restore-decls-proofs (cdr decls) rem-proofs have-tcc-origins?)))
+	(t (restore-decls-proofs (cdr decls) proofs have-tcc-origins?))))
+
+(defun restore-formula-proofs (decl proofs)
+  ;; decl is a formula-decl, but either not a TCC, or the proofs don't have
+  ;; origins
+  (let ((prf-entry (assq (id decl) proofs)))
+    (cond (prf-entry
+	   (let ((dproofs (make-proof-infos-from-sexp decl prf-entry)))
+	     (setf (proofs decl) dproofs)
 	     (setf (default-proof decl)
-		   (nth (cadr prf-entry) (proofs decl)))
-	     (let ((fe (get-context-formula-entry decl)))
-	       (setf (status (default-proof decl))
-		     (if fe
-			 (fe-status fe)
-			 'unchecked))))
-	    (prf-entry
-	     ;; Need to convert from old form
-	     (let ((proof (if (consp (car (cdr prf-entry)))
-			      (cddr prf-entry)
-			      (cdr prf-entry))))
-	       (unless (some #'(lambda (prinfo)
-				 (equal (script prinfo) proof))
-			   (proofs decl))
-		 (let ((prinfo (make-proof-info
-				#+allegro (convert-proof-form-to-lowercase
-					   proof)
-				#-allegro proof
-				(next-proof-id decl)))
-		       (fe (get-context-formula-entry decl)))
-		   (when fe
-		     (dolist (dref (fe-proof-refers-to fe))
-		       (pushnew (get-declaration-entry-decl dref)
-				(refers-to prinfo)))
-		     (setf (status prinfo) (fe-status fe)))
-		   (push prinfo (proofs decl))
-		   (setf (default-proof decl) prinfo))))))
-      prf-entry)))
+		   (nth (cadr prf-entry) (proofs decl))))
+	   (let ((fe (get-context-formula-entry decl)))
+	     (setf (status (default-proof decl))
+		   (if fe
+		       (fe-status fe)
+		       'unchecked)))
+	   (remove prf-entry proofs))
+	  (t ;; Decl has no associated proof in file
+	   proofs))))
+
+(defmethod make-proof-infos-from-sexp ((decl tcc-decl) prf-entry)
+  (mapcar #'(lambda (prf)
+	      (assert (or (= (length prf) 6)
+			  (= (length prf) 7)))
+	      (let ((prinfo (apply #'mk-tcc-proof-info prf)))
+		(setf (origin prinfo) (origin decl))
+		prinfo))
+    (cddr prf-entry)))
+  
+(defmethod make-proof-infos-from-sexp ((decl formula-decl) prf-entry)
+  (mapcar #'(lambda (prf)
+	      (assert (= (length prf) 6))
+	      (apply #'mk-proof-info prf))
+    (cddr prf-entry)))
+
+(defun decl-tccs (tcc-decl decls &optional tccs)
+  "Collect all TCCs following the given one that are for the same root
+declaration"
+  (if (and (tcc-decl? (car decls))
+	   (eq (root (origin tcc-decl))
+	       (root (origin (car decls)))))
+      (decl-tccs tcc-decl (cdr decls) (cons (car decls) tccs))
+      (values (cons tcc-decl (nreverse tccs)) decls)))
+
+(defun restore-tcc-proofs (tccs proofs)
+  "Analogous to restore-formula-proofs, but works with lists of TCCs, rather
+than a single formula.  Tries to associate by origin, rather than id.  This
+is only caled if the proofs have the origin available."
+  (multiple-value-bind (rem-tccs rem-proofs)
+      (restore-tcc-proofs-same-origin tccs proofs)
+    (if (or (null rem-tccs) (null rem-proofs))
+	rem-proofs
+	(multiple-value-bind (rtccs rproofs)
+	    (restore-tcc-proofs-same-kind rem-tccs rem-proofs)
+	  ;; What's left will be orphaned
+	  (declare (ignore rtccs))
+	  rproofs))))
+
+;;; The TCCs all come from the same declaration/importing
+;;; The proofs are all the proofs of the theory
+(defun restore-tcc-proofs-same-origin (tccs proofs &optional rem-tccs)
+  (if (null tccs)
+      (values (nreverse rem-tccs) proofs)
+      (let* ((tcc (car tccs))
+	     (tcc-orig (origin tcc))
+	     (mproof (find-if #'(lambda (prf)
+				  ;; prf ~ (declid index prfinfo prfinfo ...)
+				  (let* ((prfinfo (car (cddr prf)))
+					 (prf-orig (nth 6 prfinfo)))
+				    ;; proof-orig ~ (root kind expr type)
+
+				    ;; Note that we're assuming each of
+				    ;; the multiple-proofs shares the
+				    ;; same origin
+				    (and (eq (root tcc-orig) (car prf-orig))
+					 (eq (kind tcc-orig) (cadr prf-orig))
+					 (string= (expr tcc-orig) (caddr prf-orig))
+					 (string= (type tcc-orig) (cadddr prf-orig)))))
+		       proofs)))
+	(if mproof
+	    (let ((tcc-proofs (mapcar #'(lambda (mprf)
+					  (apply #'mk-tcc-proof-info mprf))
+				(cddr mproof))))
+	      (setf (proofs tcc) tcc-proofs)
+	      (setf (default-proof tcc) (nth (cadr mproof) tcc-proofs))
+	      (restore-tcc-proofs-same-origin (cdr tccs) (remove mproof proofs) rem-tccs))
+	    (restore-tcc-proofs-same-origin (cdr tccs) proofs
+					    (cons (car tccs) rem-tccs))))))
+
+(defun restore-tcc-proofs-same-kind (tccs proofs &optional rem-tccs)
+  (if (null tccs)
+      (values (nreverse rem-tccs) proofs)
+      (let* ((tcc (car tccs))
+	     (tcc-orig (origin tcc))
+	     (mproof (find-if #'(lambda (prf)
+				  ;; prf ~ (declid index prfinfo prfinfo ...)
+				  (and (= (length (car (cddr prf))) 7)
+				       (let* ((prfinfo (car (cddr prf)))
+					      (prf-orig (nth 6 prfinfo)))
+					 ;; proof-orig ~ (root kind expr type)
+
+					 ;; Note that we're assuming each of
+					 ;; the multiple-proofs shares the
+					 ;; same origin
+					 (and (eq (root tcc-orig) (car prf-orig))
+					      (eq (kind tcc-orig) (cadr prf-orig))))))
+		       proofs)))
+	(if mproof
+	    (let ((tcc-proofs (mapcar #'(lambda (mprf)
+					  (apply #'mk-tcc-proof-info mprf))
+				(cddr mproof))))
+	      (setf (proofs tcc) tcc-proofs)
+	      (setf (default-proof tcc) (nth (cadr mproof) tcc-proofs))
+	      (restore-tcc-proofs-same-origin (cdr tccs) (remove mproof proofs) rem-tccs))
+	    (restore-tcc-proofs-same-kind (cdr tccs) proofs
+					  (cons (car tccs) rem-tccs))))))
 
 (defun get-smaller-proof-info (pr)
-  (if (> (length pr) 6)
+  ;; Older proofs had long lists
+  (if (> (length pr) 7)
       (list (nth 0 pr) (nth 1 pr) (nth 2 pr) (nth 4 pr) (nth 6 pr) (nth 10 pr))
       pr))
 
@@ -1695,21 +1789,48 @@ pvs-strategies files.")
 	       (convert-proof-form-to-lowercase (cdr proof-form))))
 	(t proof-form)))
 
-(defmethod find-associated-proof-entry ((decl tcc-decl) proofs)
-  (or (assq (id decl) proofs)
-      (let ((old-id (cdr (assq (id decl) *old-tcc-names*))))
-	(when old-id
-	  (assq old-id proofs)))))
+(defvar *pvs-class-names* nil)
 
-(defmethod find-associated-proof-entry ((decl declaration) proofs)
-  (assq (id decl) proofs))
+(defun pvs-class-names ()
+  (unless *pvs-class-names*
+    (all-subclasses (find-class 'syntax)))
+  *pvs-class-names*)
+
+(defun all-subclasses (class)
+  (let ((cname (class-name class)))
+    (unless (memq cname *pvs-class-names*)
+      (push cname *pvs-class-names*)
+      (dolist (subclass (class-direct-subclasses class))
+	(all-subclasses subclass)))))
+
+(defun convert-refersto-to-lowercase (refers-to)
+  ;; refers-to is a list of lists of the form
+  ;; ((decl-id class type theory-id) ...)
+  (mapcar #'convert-refersto-to-lowercase* refers-to))
+
+(defun convert-refersto-to-lowercase* (ref)
+  (unless (memq ref '(nil NIL))
+    (let ((id (car ref))		; could check it exists
+	  (class (if (find-class (cadr ref) nil)
+		     (cadr ref)
+		     (or (find-if #'(lambda (x) (string-equal x (cadr ref)))
+			   (pvs-class-names))
+			 (break "CLASS not found, proof file probably corrupt"))))
+	  (type (unless (eq (caddr ref) 'NIL) (caddr ref)))		; a string
+	  (theory-id (unless (eq (cadddr ref) 'NIL) (cadddr ref))))
+      (list id class type theory-id))))
 
 (defun copy-theory-proofs-to-orphan-file (theoryref)
-  (when *pvs-context-writable*
-    (let ((filename (context-file-of theoryref))
-	  (tid (ref-to-id theoryref))
-	  (tproofs (read-theory-proofs theoryref))
-	  (oproofs (read-orphaned-proofs)))
+  (when (if *loading-prelude*
+	    (write-permission? (format nil "~a/lib" *pvs-path*))
+	    *pvs-context-writable*)
+    (let* ((tid (ref-to-id theoryref))
+	   (filename (if *loading-prelude*
+			 (if (member tid (core-prelude-theories) :key #'id)
+			     "prelude" "pvsio_prelude")
+			 (context-file-of theoryref)))
+	   (tproofs (read-theory-proofs theoryref))
+	   (oproofs (read-orphaned-proofs)))
       (ignore-file-errors
        (with-open-file (orph "orphaned-proofs.prf"
 			     :direction :output
@@ -1729,7 +1850,10 @@ pvs-strategies files.")
 	       (cdr tproofs)))))))
 
 (defun copy-proofs-to-orphan-file (theoryid proofs)
-  (when (and *pvs-context-writable* proofs)
+  (when (and proofs
+	     (if *loading-prelude*
+		 (write-permission? (format nil "~a/lib" *pvs-path*))
+		 *pvs-context-writable*))
     (let ((oproofs (read-orphaned-proofs))
 	  (filename (context-file-of theoryid))
 	  (count 0))
@@ -1781,15 +1905,14 @@ pvs-strategies files.")
   (let ((prf-file (make-prf-pathname filename dir)))
     (when (file-exists-p prf-file)
       (multiple-value-bind (proofs error)
-	  (ignore-lisp-errors
+	  (ignore-file-errors
 	    (with-open-file (input prf-file :direction :input)
 	      (labels ((reader (proofs)
 			       (let ((nproof (read-proof input 'eof)))
 				 (if (eq nproof 'eof)
 				     (nreverse proofs)
-				     (let ((cproof
-					    (convert-proof-case-if-needed
-					     nproof)))
+				     (let ((cproof (convert-proof-case-if-needed
+						    nproof)))
 				       (reader (if (member cproof proofs
 							   :test #'equal)
 						   proofs
@@ -1800,7 +1923,40 @@ pvs-strategies files.")
 		 (namestring prf-file))
 	       (pvs-log (format nil "  ~a" error))
 	       nil)
-	      (t proofs))))))
+	      (t (make-current-proofs-sexps proofs)))))))
+
+(defun make-current-proofs-sexps (proofs)
+  ;; proofs of form ((thid (declid index prf prf ...) ...) ...)
+  ;; Look at the first nonempty proof, see if it has the right form
+  (let* ((tprf (find-if #'cdr proofs))
+	 (fprf (cadr tprf)))
+    (if (and (integerp (cadr fprf))
+	     (or (= (length (caddr fprf)) 6)
+		 (= (length (caddr fprf)) 7)))
+	;; First one is OK, assume the rest are also
+	proofs
+	(make-current-proofs-sexps* proofs))))
+
+(defun make-current-proofs-sexps* (proofs &optional fproofs)
+  (if (null proofs)
+      (nreverse fproofs)
+      (let* ((proof (car proofs))
+	     (fproof (cons (car proof)
+			   (mapcar #'make-current-proof-sexps
+			     (cdr proof)))))
+	(make-current-proofs-sexps* (cdr proofs) (cons fproof fproofs)))))
+
+(defun make-current-proof-sexps (decl-proof)
+  (if (integerp (cadr decl-proof))
+      (cons (car decl-proof)
+	    (cons (cadr decl-proof)
+		  (mapcar #'make-current-prfinfo-sexp (cddr decl-proof))))
+      (cons (car decl-proof)
+	    (cons 0 (make-current-prfinfo-sexp (cdr decl-proof))))))
+
+(defun make-current-prfinfo-sexp (prf)
+  (assert (= (length prf) 11))
+  (list (first prf) (second prf) (third prf) (fifth prf) (seventh prf) (nth 10 prf)))
 
 #+allegro
 (defun read-proof (stream eof-value)
@@ -1873,7 +2029,7 @@ pvs-strategies files.")
 (defun read-proofs-of-decls (stream &optional proofs)
   (let ((char (read-to-paren stream)))
     (if (char= char #\()
-	;; Old proof had 11 entries; now 6
+	;; Old proof had 11 entries; now 6 or 7
 	;; Old:                         New:
 	;; ------------------------     ------------------------
 	;; id                           id
@@ -1887,35 +2043,26 @@ pvs-strategies files.")
 	;; run-time
 	;; interactive?
 	;; decision-procedure-used      decision-procedure-used
+	;;                              origin   (only for TCCs)
+	;; No longer supporting the old form
 	(let* ((proofid (read-case-sensitive stream))
 	       (description (read stream nil))
 	       (create-date (read stream nil))
-	       ;; May not have a run date anymore - check if a number
-	       ;; for old form of proof-info.  Problem if nil, as this
-	       ;; is both a valid run-date and script.
-	       (run-date? (read stream nil))
-	       (script? (read stream nil))
-	       (status? (read-proofs-refers-to stream))
+	       (script (read stream nil))
+	       (refers-to (read-proofs-refers-to stream))
+	       (dp (read stream nil))
 	       ;; At this point, we may have read everything - check if next
 	       ;; char is #\)
 	       (more? (let ((ch (read-char stream)))
 			(unread-char ch stream)
 			(not (char= ch #\)))))
-	       (run-date (when more? run-date?))
-	       (script (if more? script? run-date?))
-	       (status (when more? status?))
-	       (refers-to (if more?
-			      (read-proofs-refers-to stream)
-			      script?))
-	       (real-time (when more? (read stream nil)))
-	       (run-time (when more? (read stream nil)))
-	       (interactive? (when more? (read stream)))
-	       (dp (if more? (read stream) status?)))
+	       (origin (when more?
+			 (read-case-sensitive stream))))
 	  (read-to-right-paren stream)
 	  (read-proofs-of-decls
 	   stream
-	   (cons (list proofid description create-date run-date script status
-		       refers-to real-time run-time interactive? dp)
+	   (cons (list proofid description create-date script
+		       refers-to dp )
 		 proofs)))
 	(nreverse proofs))))
 
@@ -1979,22 +2126,82 @@ pvs-strategies files.")
   theory-proofs)
 
 ;;; proofs is the proofs for a theory
+;;; Note that only very old proofs need this
 #+allegro
 (defun convert-proof-case-if-needed (theory-proofs)
-  (if (integerp (cadr (car (cdr theory-proofs))))
-      theory-proofs
-      (cons (car theory-proofs)
-	    (mapcar #'convert-proof-case-if-needed* (cdr theory-proofs)))))
+  ;; This may be a problem when proof is generated by SBCL and read in
+  ;; Allegro, or vice-versa
+  (cons (car theory-proofs)
+	(mapcar #'convert-proof-case-if-needed* (cdr theory-proofs))))
 
 ;;; Proof for a formula
 (defun convert-proof-case-if-needed* (formula-proof)
-  (let* ((script (if (consp (car (cdr formula-proof)))
+  (if (integerp (cadr formula-proof))
+      (cons (car formula-proof)
+	    (cons (cadr formula-proof)
+		  (mapcar #'convert-proof-case-if-needed** (cddr formula-proof))))
+      (let* ((script (if (consp (cadr formula-proof))
 		     (cddr formula-proof)
 		     (cdr formula-proof)))
-	 (prinfo (make-proof-info (convert-proof-form-to-lowercase script)
-				  (makesym "~a-1" (car formula-proof)))))
-    (cons (car formula-proof)
-	  (cons 0 (list (sexp prinfo))))))
+	     (prinfo (make-proof-info (convert-proof-form-to-lowercase script)
+				      (makesym "~a-1" (car formula-proof)))))
+	(cons (car formula-proof)
+	      (cons 0 (list (sexp prinfo)))))))
+
+(defun convert-proof-case-if-needed** (mprf)
+  (if (> (length mprf) 7)
+      ;; Older proof
+      (multiple-value-bind (id description create-date run-date script
+			       status refers-to real-time run-time
+			       interactive? decision-procedure-used)
+	  (values-list mprf)
+	(declare (ignore run-date status real-time run-time interactive?))
+	(assert (or (stringp description) (memq description '(nil NIL))))
+	(assert (listp script))
+	(assert (or (listp refers-to) (memq refers-to '(nil NIL))))
+	(assert (symbolp decision-procedure-used))
+	(let ((desc (unless (eq description 'NIL) description))
+	      (scr (convert-proof-form-to-lowercase script))
+	      ;; refers-to should be fixed for Allegro/SBCL
+	      (ref (unless (eq refers-to 'NIL)
+		     (convert-refersto-to-lowercase refers-to)))
+	      (dec (unless (eq decision-procedure-used 'NIL)
+		     (if (eq decision-procedure-used 'SHOSTAK)
+			 'shostak
+			 decision-procedure-used))))
+	  (list id desc create-date scr ref dec)))
+      (multiple-value-bind (id description create-date script refers-to
+			       decision-procedure-used origin)
+	  (values-list mprf)
+	(assert (or (stringp description) (memq description '(nil NIL))))
+	(assert (listp script))
+	(assert (or (listp refers-to) (memq refers-to '(nil NIL))))
+	(assert (symbolp decision-procedure-used))
+	(let* ((check (check-if-case-change-needed script))
+	       (desc (unless (eq description 'NIL) description))
+	       (scr (if check
+			(convert-proof-form-to-lowercase script)
+			script))
+	       ;; refers-to should be fixed for Allegro/SBCL
+	       (ref (if check
+			(unless (eq refers-to 'NIL)
+			  (convert-refersto-to-lowercase refers-to))
+			refers-to))
+	       (dec (unless (eq decision-procedure-used 'NIL) decision-procedure-used)))
+	  (if origin
+	      (list id desc create-date scr ref dec origin)
+	      (list id desc create-date scr ref dec))))))
+
+#+allegro
+(defun check-if-case-change-needed (script)
+  (assert (and (listp script) (stringp (car script))))
+  (assert (and (listp (cadr script)) (symbolp (caadr script))))
+  (every #'upper-case-p (string (caadr script))))
+
+#-allegro
+(defun check-if-case-change-needed (script)
+  nil)
+       
 
 (defun transfer-orphaned-proofs (from-theory to-theory)
   (let* ((th (get-typechecked-theory to-theory))
@@ -2013,21 +2220,23 @@ pvs-strategies files.")
 	      (format t "~%Couldn't find proof for ~a" (id fdecl))))))))
 
 (defun read-orphaned-proofs (&optional theoryref)
-  (when (file-exists-p "orphaned-proofs.prf")
-    (ignore-file-errors
-     (with-open-file (orph "orphaned-proofs.prf"
-			   :direction :input)
-       (let ((proofs nil)
-	     (tid (when theoryref (ref-to-id theoryref))))
-	 (labels ((readprf ()
-			   (let ((prf (read orph nil 'eof)))
-			     (unless (eq prf 'eof)
-			       (when (or (null tid)
-					 (eq tid (cadr prf)))
-				 (pushnew prf proofs :test #'equal))
-			       (readprf)))))
-	   (readprf))
-	 proofs)))))
+  (let ((orph-file (if *loading-prelude*
+		       (format nil "~a/lib/orphaned-proofs.prf" *pvs-path*)
+		       "orphaned-proofs.prf")))
+    (when (file-exists-p orph-file)
+      (ignore-file-errors
+       (with-open-file (orph orph-file :direction :input)
+	 (let ((proofs nil)
+	       (tid (when theoryref (ref-to-id theoryref))))
+	   (labels ((readprf ()
+		      (let ((prf (read orph nil 'eof)))
+			(unless (eq prf 'eof)
+			  (when (or (null tid)
+				    (eq tid (cadr prf)))
+			    (pushnew prf proofs :test #'equal))
+			  (readprf)))))
+	     (readprf))
+	   proofs))))))
 
 (defvar *displayed-proofs* nil
   "The proofs currently being displayed in the Proofs buffer")
@@ -2318,6 +2527,7 @@ pvs-strategies files.")
 			  *pvs-modules*)))
 	   *pvs-modules*))
 
+;;; Called from Emacs
 (defun install-pvs-proof-file (filename)
   (let ((prf-file (make-prf-pathname filename))
 	(theories (get-theories filename)))
@@ -2406,21 +2616,21 @@ pvs-strategies files.")
 		  proofs))
 	t t))))
 
-(defun check-pvs-context ()
-  (dolist (ce (pvs-context-entries))
-    (check-pvs-context-entry ce))
-  (maphash #'check-pvs-context-files *pvs-files*))
+;; (defun check-pvs-context ()
+;;   (dolist (ce (pvs-context-entries))
+;;     (check-pvs-context-entry ce))
+;;   (maphash #'check-pvs-context-files *pvs-files*))
 
-(defun check-pvs-context-entry (ce)
-  (let ((file (make-specpath (ce-file ce))))
-    (and (file-exists-p file)
-	 (= (file-write-time file) (ce-write-date ce))
-	 ;; proofs-date
-	 ;; object-date
-	 ;; dependencies
-	 ;; theories
-	 ;; extension
-	 )))
+;; (defun check-pvs-context-entry (ce)
+;;   (let ((file (make-specpath (ce-file ce))))
+;;     (and (file-exists-p file)
+;; 	 (= (file-write-time file) (ce-write-date ce))
+;; 	 ;; proofs-date
+;; 	 ;; object-date
+;; 	 ;; dependencies
+;; 	 ;; theories
+;; 	 ;; extension
+;; 	 )))
 
 (defun restore-proofs-from-split-file (file)
   (let ((prfpath (make-prf-pathname file)))
@@ -2599,6 +2809,11 @@ pvs-strategies files.")
 				th-entries))))
 	  (push (list file-info ok? spec-file) *binfiles-checked*)
 	  ok?))))
+
+(defun remove-binfiles ()
+  (dolist (file (directory "pvsbin/"))
+    (when (equal (pathname-type file) "bin")
+      (delete-file file))))
 
 ;; (defun check-proof-file-is-current (&optional file)
 ;;   (if file

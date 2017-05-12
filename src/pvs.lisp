@@ -1306,11 +1306,11 @@
 
 (defun set-default-proof (tcc-decl)
   (setf (proofs tcc-decl)
-	(list (mk-proof-info
+	(list (mk-tcc-proof-info
 	       (makesym "~a-1" (id tcc-decl))
 	       nil (get-universal-time)
 	       (list "" (list (default-tcc-proof tcc-decl)) nil nil)
-	       nil)))
+	       nil nil (origin tcc-decl))))
   (setf (default-proof tcc-decl) (car (proofs tcc-decl))))
 
 (defmethod default-tcc-proof (tcc-decl)
@@ -2717,14 +2717,25 @@ Note that even proved ones get overwritten"
 			 (pvs-message "Proof already found on ~a as ~a"
 			   (id fdecl) (id prinfo))
 			 t))
-		      (t (let ((prinfo (make-proof-info
-					just
-					(next-proof-id fdecl)
-					(when (default-proof
-						(car *edit-proof-info*))
-					  (description
-					   (default-proof
-					     (car *edit-proof-info*)))))))
+		      (t (let ((prinfo
+				(if (tcc-decl? fdecl)
+				    (make-tcc-proof-info
+				     just
+				     (next-proof-id fdecl)
+				     (when (default-proof
+					       (car *edit-proof-info*))
+				       (description
+					(default-proof
+					    (car *edit-proof-info*))))
+				     (origin fdecl))
+				    (make-proof-info
+				     just
+				     (next-proof-id fdecl)
+				     (when (default-proof
+					       (car *edit-proof-info*))
+				       (description
+					(default-proof
+					    (car *edit-proof-info*))))))))
 			   (push prinfo (proofs fdecl))
 			   (setf (default-proof fdecl) prinfo)
 			   (unless (from-prelude? (module fdecl))
@@ -3381,10 +3392,14 @@ Note that even proved ones get overwritten"
 	(if skoconsts
 	    (pvs-buffer "Proof Display"
 	      (with-output-to-string (*standard-output*)
-		(format t "~%Skolem-constant: type")
-		(format t "~%---------------------")
+		(format t "~%Skolem-constant: type [= defn]")
+		(format t "~%------------------------------")
 		(dolist (sc skoconsts)
-		  (format t "~%~a: ~a" (id sc) (type sc))))
+		  (let* ((decl (format nil "~a: ~a" (id sc) (type sc)))
+			 (def (when (definition sc)
+				(unpindent (definition sc) (+ (length decl) 3)
+					   :string t))))
+		  (format t "~%~a~@[ = ~a~]" decl def))))
 	      t)
 	    (pvs-message "No Skolem Constants on this branch of the proof")))
       (pvs-message "Not in the prover")))

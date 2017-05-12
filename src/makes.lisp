@@ -439,6 +439,11 @@
 		 :declared-type (or dtype type)
 		 :type type))
 
+(defun mk-dep-binding-name (dtype)
+  (assert (dep-binding? dtype))
+  (mk-name-expr (id dtype) nil nil
+		(make-resolution dtype (current-theory-name) (type dtype))))
+
 (defun mk-subtype (supertype predicate)
   (make-instance 'subtype
     :supertype supertype
@@ -1016,29 +1021,39 @@
 (defmethod mk-mapping-rhs ((ex mapping-rhs))
   ex)
 
-(defun mk-proof-info (id description create-date
-			 ;;run-date
-			 script ;;status
-			 refers-to ;;real-time run-time interactive?
+(defun mk-proof-info (id description create-date script refers-to
 			 &optional decision-procedure)
   (make-instance 'proof-info
     :id id
     :description description
     :create-date create-date
-    ;;:run-date run-date
     :script (if (= (length script) 3)
 		(append script (list nil))
 		script)
-    ;;:status status
     :refers-to (typecase (car refers-to)
 		 (declaration refers-to)
 		 (declaration-entry
 		  (mapcar #'get-declaration-entry-decl refers-to))
 		 (t (mapcar #'get-referenced-declaration
 		      (remove-if #'null refers-to))))
-    ;;:real-time real-time
-    ;;:run-time run-time
-    ;;:interactive? interactive?
+    :decision-procedure-used decision-procedure))
+
+(defun mk-tcc-proof-info (id description create-date script refers-to
+			  &optional decision-procedure origin)
+  (make-instance 'tcc-proof-info
+    :id id
+    :description description
+    :create-date create-date
+    :script (if (= (length script) 3)
+		(append script (list nil))
+		script)
+    :refers-to (typecase (car refers-to)
+		 (declaration refers-to)
+		 (declaration-entry
+		  (mapcar #'get-declaration-entry-decl refers-to))
+		 (t (mapcar #'get-referenced-declaration
+		      (remove-if #'null refers-to))))
+    :origin (make-tcc-origin origin)
     :decision-procedure-used decision-procedure))
 
 (defun make-proof-info (script &optional id description)
@@ -1053,6 +1068,29 @@
 		(append script (list nil))
 		script)
     :create-date (get-universal-time)))
+
+(defun make-tcc-proof-info (script &optional id description origin)
+  (assert (symbolp id))
+  (assert (or (null description) (stringp description)))
+  (assert (typep script '(or list justification)))
+  ;;(assert (not (null script)))
+  (make-instance 'tcc-proof-info
+    :id id
+    :description description
+    :script (if (= (length script) 3)
+		(append script (list nil))
+		script)
+    :create-date (get-universal-time)
+    :origin (make-tcc-origin origin)))
+
+(defun make-tcc-origin (origin)
+  (if (tcc-origin? origin)
+      origin
+      (make-instance 'tcc-origin
+       :root (car origin)
+       :kind (cadr origin)
+       :expr (caddr origin)
+       :type (cadddr origin))))
 
 (defun make-recordtype (fields)
   #+pvsdebug (assert (every@ #'(lambda (fd)
@@ -1650,7 +1688,8 @@
     (change-application-class-if-needed appl)
     (when (and (name-expr? op)
 	       (eq (id op) 'cons)
-	       (eq (id (module (declaration op))) 'list_adt))
+	       (eq (id (module (declaration op))) 'list_adt)
+	       (typep (args2 appl) '(or list-expr null-expr)))
       (change-class appl 'list-expr))
     appl))
 
