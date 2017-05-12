@@ -628,6 +628,7 @@ expr ::= string <string-expr(string)>
        | table-expr
        ;
 
+% '%VBAR' becomes '|' when in judgement-decls - see pvs-parse-fixes.lisp
 name-expr ::= {name [':' type-expr]^t ['%VBAR' expr]^e}
                <name-expr(name, [notype()|type-expr]^t, [nopred()|expr]^e)>;
 
