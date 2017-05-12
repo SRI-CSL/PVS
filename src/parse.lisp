@@ -29,6 +29,8 @@
 
 (in-package :pvs)
 
+(export '(theory-elt expr type-expr))
+
 (defvar *allowed-ids* nil)
 
 (defvar *allowed-typed-names* nil)
@@ -680,9 +682,41 @@
     (setf (chain? (car (last decls))) nil)
     decls))
 
+(defun appl-judgement-form? (expr-term)
+  (cond ((is-sop 'APPLICATION expr-term)
+	 (and (cond ((is-sop 'NAME-EXPR (term-arg0 expr-term))
+		     (and (is-sop 'NOTYPE (term-arg1 (term-arg0 expr-term)))
+			  (is-sop 'NOPRED (term-arg2 (term-arg0 expr-term)))))
+		    ((is-sop 'APPLICATION (term-arg0 expr-term))
+		     (appl-judgement-form? (term-arg0 expr-term)))
+		    (t nil))
+	      (is-sop 'FUN-ARGUMENTS (term-arg1 expr-term))
+	      (term-args (term-arg1 expr-term))
+	      (every #'(lambda (fa)
+			 (or (is-sop 'NAME-EXPR fa)
+			     (and (is-sop 'TUPLE-EXPR fa)
+				  (and (term-args fa)
+				       (every #'(lambda (tu) (is-sop 'NAME-EXPR tu))
+					      (term-args fa))))))
+		     (term-args (term-arg1 expr-term)))))
+	((is-sop 'UNARY-TERM-EXPR expr-term)
+	 (and (cond ((is-sop 'TUPLE-EXPR (term-arg1 expr-term))
+		     (every #'(lambda (fa)
+				(or (is-sop 'NAME-EXPR fa)
+				    (and (is-sop 'TUPLE-EXPR fa)
+					 (and (term-args fa)
+					      (every #'(lambda (tu) (is-sop 'NAME-EXPR tu))
+						     (term-args fa))))))
+			    (term-args (term-arg1 expr-term))))
+		    (t nil))))
+	((is-sop 'TERM-EXPR expr-term)
+	 )))
+	 
+
 (defun xt-subtype-judgement* (jdecl dtype place)
   (cond ((is-sop 'JDECL-EXPR jdecl)
-	 (let* ((*allowed-typed-names* t)
+	 (let* ((*allowed-typed-names*
+		 (appl-judgement-form? (term-arg0 jdecl)))
 		(ex (xt-expr (term-arg0 jdecl)))
 		(type (xt-convert-expr-to-type-expr ex)))
 	   (make-instance 'subtype-judgement
@@ -738,11 +772,11 @@
 (defun xt-const-judgement* (jdecl dtype place)
   (case (sim-term-op jdecl)
     (JDECL-EXPR
-     (let* ((*allowed-typed-names* t)
+     (let* ((*allowed-typed-names*
+	     (appl-judgement-form? (term-arg0 jdecl)))
 	    (ex (xt-expr (term-arg0 jdecl))))
        (typecase ex
 	 (number-expr
-	  (assert (eq *allowed-typed-names* t))
 	  (make-instance 'number-judgement
 	    :number-expr ex
 	    :declared-type dtype
@@ -755,31 +789,32 @@
 	    :expr ex
 	    :place place))
 	 (name-expr
-	  (assert (eq *allowed-typed-names* t))
 	  (make-instance 'name-judgement
 	    :name ex
 	    :declared-type dtype
 	    :chain? t
 	    :place place))
 	 (application
-	  (if (or (eq *allowed-typed-names* t)
-		  (not (name-expr? (operator* ex))))
-	      ;; No typed-names found or not a name-expr operator - can
-	      ;; treat as a normal application for a judgement-expr
-	      (make-instance 'expr-judgement
-		:declared-type dtype
-		:chain? t
-		:expr ex
-		:place place)
-	      ;; Found a typed-name - need to check that the formals are of the
-	      ;; right shape, and convert name-exprs to untyped-bind-decls
+	  (if (and *allowed-typed-names*
+		   ;; Have an application, possibly curried, check if every
+		   ;; argument is a name-expr that is not a binding
+		   (some #'(lambda (args)
+			     (some #'bind-decl? args))
+			 (arguments* ex)))
+	      ;; Found a typed-name need to convert other name-exprs to
+	      ;; untyped-bind-decls
 	      (let ((formals (create-formals-from-arguments (arguments* ex))))
 		(make-instance 'application-judgement
 		  :name (operator* ex)
 		  :formals formals
 		  :declared-type dtype
 		  :chain? t
-		  :place place))))
+		  :place place))
+	      (make-instance 'expr-judgement
+		:declared-type dtype
+		:chain? t
+		:expr ex
+		:place place)))
 	 (t (make-instance 'expr-judgement
 	      :declared-type dtype
 	      :chain? t
@@ -859,20 +894,23 @@
 
 (defun xt-rec-judgement* (jdecl dtype place)
   (if (eq (sim-term-op jdecl) 'JDECL-EXPR)
-      (let* ((*allowed-typed-names* t)
-	     (ex (xt-expr (term-arg0 jdecl))))
-	(cond ((not (application? ex))
-	       (parse-error jdecl "Recursive judgements are only for applications"))
-	      ((not (name-expr? (operator* ex)))
-	       (parse-error jdecl "Recursive judgements are only for named applications"))
-	      (t
-	       (let ((formals (create-formals-from-arguments (arguments* ex))))
-		 (make-instance 'rec-application-judgement
-		   :name (operator* ex)
-		   :formals formals
-		   :declared-type dtype
-		   :chain? t
-		   :place place)))))
+      (let ((*allowed-typed-names*
+	     (appl-judgement-form? (term-arg0 jdecl))))
+	(unless *allowed-typed-names*
+	  (parse-error jdecl "Recursive judgements are only for applications"))
+	(let ((ex (xt-expr (term-arg0 jdecl))))
+	  (cond ((not (application? ex))
+		 (parse-error jdecl "Recursive judgements are only for applications"))
+		((not (name-expr? (operator* ex)))
+		 (parse-error jdecl "Recursive judgements are only for named applications"))
+		(t
+		 (let ((formals (create-formals-from-arguments (arguments* ex))))
+		   (make-instance 'rec-application-judgement
+		     :name (operator* ex)
+		     :formals formals
+		     :declared-type dtype
+		     :chain? t
+		     :place place))))))
       (parse-error jdecl "Recursive judgements are not for types")))
 
 ;;; Conversions
@@ -1964,7 +2002,7 @@
 
 (defun xt-typed-name (expr name type pred)
   (unless *allowed-typed-names*
-    (parse-error expr "Typed name not allowed here"))
+    (parse-error expr "Binding not allowed here"))
   (when (eq *allowed-typed-names* t)
     (setq *allowed-typed-names* expr))
   (when (or (mod-id name)
@@ -1973,7 +2011,7 @@
 	    (dactuals name)
 	    (mappings name)
 	    (target name))
-    (parse-error expr "Typed id must be a simple id"))
+    (parse-error expr "Binding id must be a simple id"))
   (assert (id name))
   (if pred
       (let* ((id (id name))
@@ -2276,7 +2314,7 @@
       :operator (make-instance 'name-expr
 		  :id (ds-id op)
 		  :place (term-place op))
-      :argument (make-xt-bind-expr 'lambda body nil)
+      :argument (make-xt-bind-expr 'LAMBDA body nil)
       :place (term-place bexpr))))
 
 (defun xt-skovar (expr)
