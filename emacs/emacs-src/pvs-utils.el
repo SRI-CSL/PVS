@@ -1356,7 +1356,8 @@ The save-pvs-file command saves the PVS file of the current buffer."
       (let ((config (car window-configurations)))
 	(setq window-configurations (cdr window-configurations))
 	(set-window-configuration config))
-    (princ "nothing to restore")))
+    ;;(princ "nothing to restore")
+    ))
 
 ;;; restore top of stack without deleting it
 (defun setw ()
@@ -1366,8 +1367,8 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	(set-window-configuration config)
 	(setq window-configurations
 	      (cons (current-window-configuration) window-configurations)))
-    (princ "nothing to restore"))
-  )
+    ;;(princ "nothing to restore")
+    ))
 
 ;;; delete top of stack without restoring it
 (defun tossw ()
