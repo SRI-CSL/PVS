@@ -2194,9 +2194,15 @@ is only caled if the proofs have the origin available."
 
 #+allegro
 (defun check-if-case-change-needed (script)
-  (assert (and (listp script) (stringp (car script))))
-  (assert (and (listp (cadr script)) (symbolp (caadr script))))
-  (every #'upper-case-p (string (caadr script))))
+  (every #'upper-case-p (string (find-first-symbol script))))
+
+(defun find-first-symbol (obj)
+  (typecase obj
+    (null nil)
+    (string nil)
+    (symbol obj)
+    (cons (or (find-first-symbol (car obj))
+	      (find-first-symbol (cdr obj))))))
 
 #-allegro
 (defun check-if-case-change-needed (script)
