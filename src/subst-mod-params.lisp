@@ -743,6 +743,7 @@
       		(if (eq obj nobj)
       		    (lcopy nobj :print-type pte)
       		    (progn (setf (print-type nobj) pte)
+			   (setf (free-parameters nobj) 'unbound)
       			   nobj))))
       	  (if (eq obj nobj)
       	      nobj
