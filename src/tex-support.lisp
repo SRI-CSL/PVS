@@ -34,7 +34,7 @@
 
 ;;; The rudiments of a table lookup for mapping of ids and functions.
 
-(defvar *latex-program* "pdflatex")
+(defvar *latex-program* "lualatex")
 
 ;;; Must be filled in by user.  
 (defvar *latex-id-length-list* nil 
