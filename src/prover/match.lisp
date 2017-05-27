@@ -656,6 +656,20 @@
 		      bind-alist subst)
   (match-adt-ops op1 op2 bind-alist subst))
 
+(defmethod match-ops ((op1 name-expr) (op2 name-expr) bind-alist subst)
+  (let ((decl (declaration op1)))
+    (if (and (eq decl (declaration op2))
+	     (const-decl? decl)
+	     (listp (positive-types decl))
+	     (not (every #'null (positive-types decl))))
+	(let ((mi1 (module-instance (resolution op1)))
+	      (mi2 (module-instance (resolution op2)))
+	      (fmls (formals-sans-usings (module decl)))
+	      (ptypes (positive-types decl)))
+	  (match-adt-actuals (actuals mi1) (actuals mi2) bind-alist subst
+			     fmls ptypes))
+	(call-next-method))))
+
 (defun match-adt-ops (op1 op2 bind-alist subst)
   (if (eq (id op1) (id op2))
       (let ((adt1 (adt op1))
