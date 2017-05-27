@@ -659,6 +659,11 @@
   (declare (ignore substfn testfn))
   obj)
 
+(defmethod gensubst* ((obj s-formula) substfn testfn)
+  (let ((nfmla (gensubst* (formula obj) substfn testfn)))
+    (lcopy obj
+      'formula nfmla)))
+
 
 ;;; Mapobject - maps a function fn down the abstract syntax.
 ;;;             Returns the object

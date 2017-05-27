@@ -1751,3 +1751,102 @@
 	     (definition (declaration obj)))
     (pushnew (declaration obj) *visible-defs*)))
 
+;;; Collect names
+
+(defvar *collected-names* nil)
+
+(defun create-distinct-names (obj)
+  (let* ((dnames (distinct-names-with-same-id obj))
+	 (names-alist (create-distinct-names-alist dnames)))
+    (gensubst obj
+      #'(lambda (x) (cdr (assoc x names-alist :test #'tc-eq)))
+      #'(lambda (x) (assoc x names-alist :test #'tc-eq)))))
+
+(defun create-distinct-names-alist (dnames &optional names-alist)
+  (if (null dnames)
+      names-alist
+      (create-distinct-names-alist
+       (cdr dnames)
+       (create-distinct-names-alist* (cdar dnames) names-alist))))
+
+(defun create-distinct-names-alist* (names names-alist)
+  (let ((name-strings (mapcar #'str names)))
+    (if (duplicates? name-strings :test #'string=)
+	;; At least two names print the same - need to make them all unique
+	;; This means finding the differences in the module instances to
+	;; pull up to the name.  The relevant slots are the mod-id library
+	;; actuals dactuals mappings and target
+	(let* ((mi (module-instance (car names)))
+	       (thid? (or (some #'mod-id names)
+			  (some #'(lambda (nm)
+				    (not (eq (mod-id (module-instance nm))
+					     (mod-id mi))))
+				(cdr names))))
+	       (lib? (or (some #'library names)
+			 (some #'(lambda (nm)
+				   (not (eq (library (module-instance nm))
+					    (library mi))))
+			       (cdr names))))
+	       (acts? (or (some #'actuals names)
+			  (some #'(lambda (nm)
+				    (not (tc-eq (actuals (module-instance nm))
+						(actuals mi))))
+				(cdr names))))
+	       (dacts? (or (some #'dactuals names)
+			   (some #'(lambda (nm)
+				     (not (tc-eq (dactuals (module-instance nm))
+						 (dactuals mi))))
+				 (cdr names))))
+	       (mappings? (or (some #'mappings names)
+			      (some #'(lambda (nm)
+					(not (tc-eq (mappings (module-instance nm))
+						    (mappings mi))))
+				    (cdr names)))))
+	  (dolist (nm names)
+	    (unless (and (or (null thid?) (mod-id nm))
+			 (or (null lib?) (library nm))
+			 (or (null acts?) (actuals nm))
+			 (or (null dacts?) (dactuals nm))
+			 (or (null mappings?) (mappings nm)))
+	      (let ((nmi (module-instance nm)))
+		(push (cons nm
+			    (copy nm
+			      :mod-id (or (mod-id nm)
+					  (and thid? (mod-id nmi)))
+			      :library (or (library nm)
+					   (and lib? (library nmi)))
+			      :actuals (or (actuals nm)
+					   (and acts? (actuals nmi)))
+			      :dactuals (or (dactuals nm)
+					    (and dacts? (dactuals nmi)))
+			      :mappings (or (mappings nm)
+					    (and mappings? (mappings nmi)))))
+		      names-alist))))
+	  names-alist)
+	names-alist)))
+	
+(defun distinct-names-with-same-id (obj)
+  (let ((names nil))
+    (mapobject #'(lambda (x)
+		   (when (and (name? x)
+			      (resolution x))
+		     (let ((same-id-names (assq (id x) names)))
+		       (if same-id-names
+			   (unless (some #'(lambda (nm) (tc-eq x nm))
+					 (cdr same-id-names))
+			     (push x (cdr same-id-names)))
+			   (push (list (id x) x) names)))))
+	       obj)
+    (remove-if #'(lambda (entry) (= (length entry) 2)) names)))
+
+(defun collect-names (obj)
+  (let ((*collected-names* nil))
+    (mapobject #'(lambda (x)
+		   (when (and (name? x)
+			      (resolution x)
+			      (not (member x *collected-names*
+					   :test #'tc-eq)))
+		     (push x *collected-names*)
+		     nil))
+	       obj)
+    *collected-names*))

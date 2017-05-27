@@ -3367,11 +3367,21 @@ Note that even proved ones get overwritten"
 	(pvs-buffer "Expanded Sequent"
 	  (with-output-to-string (*standard-output*)
 	    (unless all?
-	      (format t ";;; Prelude names not expanded; ")
-	      (format t "C-u M-x show-expanded-sequent shows all~%"))
-	    (write (expanded-sequent all?)))
+	      (format t ";;; Expanding up to differences (e.g., actuals or theory); ")
+	      (format t "C-u M-x show-expanded-sequent fully expands~%"))
+	    (let ((exp-seq (if all?
+			       (expanded-sequent all?)
+			       (create-distinct-names-sequent)))) 
+	      (write exp-seq)))
 	  t))
       (pvs-message "Not in prover")))
+
+(defun create-distinct-names-sequent ()
+  (copy *ps*
+    'current-goal
+    (copy (current-goal *ps*)
+      's-forms (create-distinct-names
+		(s-forms (current-goal *ps*))))))
 
 (defun expanded-sequent (&optional all?)
   (let ((*current-theory* (unless all? *current-theory*))
@@ -3726,3 +3736,18 @@ Note that even proved ones get overwritten"
 					       (cons (mk-modname (id (module d)))
 						     prelude-theory-names))))))))
     prelude-theory-names))
+
+(defun collect-prelude-decls-if (pred)
+  (let ((decls nil))
+    (dolist (th *prelude-theories*)
+      (dolist (decl (all-decls th))
+	(when (funcall pred decl)
+	  (push decl decls))))
+    (nreverse decls)))
+
+(defun proof-refers-to? (decl id)
+  (when (and (formula-decl? decl)
+	     (default-proof decl))
+    (and (member id (refers-to (default-proof decl))
+		 :test #'same-id)
+	 t)))
