@@ -3423,6 +3423,9 @@ space")
   (and (definition c)
        (k-combinator? (args2 (car (last (def-axiom c)))))))
 
+(defmethod k-combinator? ((c formal-const-decl))
+  nil)
+
 (defmethod k-combinator? ((e lambda-expr))
   (and (singleton? (bindings e))
        (let ((ee (expression e)))
