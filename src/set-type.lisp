@@ -4957,16 +4957,29 @@ required a context.")
 (defmethod dependent? ((a accessor-name-expr))
   (dependent? (type a)))
 
+(defun subst-rec-dep-type (expr fld fields)
+  (let ((sub (list expr fld fields)))
+    (or (let ((hres (gethash sub *subst-fields-hash*)))
+	  ;; This assert isn't quite right - nested records will have different
+	  ;; field-decls, which are not tc-eq
+	  ;; (assert (or (null hres)
+	  ;; 	      (every #'(lambda (fld1 fld2)
+	  ;; 			 (tc-eq (type fld1) (type fld2)))
+	  ;; 		     hres (subst-rec-dep-type* expr fld fields))))
+	  hres)
+	(let ((result (subst-rec-dep-type* expr fld fields)))
+	  (setf (gethash sub *subst-fields-hash*) result)
+	  result))))
 
-(defun subst-rec-dep-type (expr fld fields &optional bindings result)
+(defun subst-rec-dep-type* (expr fld fields &optional bindings result)
   (if (null fields)
       (nreverse result)
       (let ((nfld (substit (car fields) (acons fld expr bindings))))
-        (subst-rec-dep-type expr fld (cdr fields)
-                         (if (eq nfld (car fields))
-                             bindings
-                             (acons (car fields) nfld bindings))
-                         (cons nfld result)))))
+        (subst-rec-dep-type* expr fld (cdr fields)
+			     (if (eq nfld (car fields))
+				 bindings
+				 (acons (car fields) nfld bindings))
+			     (cons nfld result)))))
 
 (defun maybe-instantiate-from-decl-formals (ex)
   (maybe-instantiate-from-decl-formals* (resolutions ex) ex))

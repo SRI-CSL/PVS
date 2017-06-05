@@ -2089,7 +2089,10 @@
   (let ((rtype (find-supertype type)))
     (assert (typep rtype '(or recordtype struct-sub-recordtype)))
     (if (dependent? rtype)
-	(make!-field-application-type* (fields rtype) field-id arg)
+	(let ((sub (list (fields rtype) field-id arg)))
+	  (or (gethash sub *subst-fields-hash*)
+	      (setf (gethash sub *subst-fields-hash*)
+		    (make!-field-application-type* (fields rtype) field-id arg))))
 	(type (find field-id (fields rtype) :test #'eq :key #'id)))))
 
 (defun make!-field-application-type* (fields field-id arg)

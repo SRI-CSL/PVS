@@ -472,6 +472,8 @@ current proof is suspect.")
 
 (defvar *subtypes-matched* nil)
 
+(defvar *subst-fields-hash*)
+
 (defvar *named-exprs* nil
   "A list of (expr . gensym) pairs, where expr is a binding-expr in which
 a connective occurs.")

@@ -428,8 +428,8 @@
 		 :kind kind
 		 :expr (if (eq kind 'existence)
 			   ""
-			   (str expr :char-width nil))
-		 :type (str type :char-width nil))))
+			   (str (raise-actuals expr t t) :char-width nil))
+		 :type (str (raise-actuals type t t) :char-width nil))))
     (if (or *in-checker* *in-evaluator* *collecting-tccs*)
 	(add-tcc-info kind expr type ndecl origin)
 	(insert-tcc-decl1 kind expr type ndecl origin))))
