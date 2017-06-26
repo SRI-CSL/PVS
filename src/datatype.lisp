@@ -5379,14 +5379,16 @@ function, tuple, or record type")
   nil)
 
 (defmethod everywhere-true? ((expr lambda-expr))
-  (tc-eq (expression expr) *true*))
+  (and (name-expr? (expression expr))
+       (eq (declaration (expression expr)) (declaration *true*))))
 
 (defmethod everywhere-false? (expr)
   (declare (ignore expr))
   nil)
 
 (defmethod everywhere-false? ((expr lambda-expr))
-  (tc-eq (expression expr) *false*))
+  (and (name-expr? (expression expr))
+       (eq (declaration (expression expr)) (declaration *false*))))
 
 (defun mk-identity-fun (te)
   (let ((act (mk-actual te)))
