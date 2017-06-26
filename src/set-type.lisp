@@ -1677,6 +1677,13 @@ required a context.")
                   ;;     (ref-to-id (current-declaration))))
 		)))))))
 
+;;; Loop through the types (the judgement-types of the ex). Each of these is
+;;; a minimal type, we want the one that leads to the most provable TCC.
+;;; Since this is hard, we simply keep the first one we hit, unless one of
+;;; the others returns nil.
+;;; When types is nil (recursively), and we are in the prover, then we remove
+;;; the incs that are in the current sequent.  Otherwise we simply return them.
+
 (defun compatible-predicates (types expected ex &optional incs)
   (if (null types)
       (if *ps*
@@ -1698,11 +1705,10 @@ required a context.")
                                    (or (member x *tcc-conditions* :test #'tc-eq)
                                        (member x incs :test #'tc-eq)))
                       npreds)))
-          (when npreds
-            (compatible-predicates
-             (cdr types) expected ex
-             (uappend incs nincs :test #'tc-eq)
-             )))))
+	(when nincs
+	  (compatible-predicates
+	   (cdr types) expected ex
+	   (or incs nincs))))))
 
 (defun uappend (list1 list2 &key (test #'eq))
   ;; returns the append of list1 and list2, without duplicates
