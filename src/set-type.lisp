@@ -1702,8 +1702,7 @@ required a context.")
                      nil)))
       (let* ((npreds (compatible-preds (car types) expected ex))
              (nincs (remove-if #'(lambda (x)
-                                   (or (member x *tcc-conditions* :test #'tc-eq)
-                                       (member x incs :test #'tc-eq)))
+                                   (member x *tcc-conditions* :test #'tc-eq))
                       npreds)))
 	(when nincs
 	  (compatible-predicates
