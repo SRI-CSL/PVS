@@ -1972,7 +1972,7 @@
 			   (cdr types))))
 	(make-projections* cdrtypes arg (1+ index) (cons projappl projapps)))))
 
-(defun make!-projection-application (index arg &optional actuals)
+(defun make!-projection-application (index arg &optional actuals dactuals)
   (assert (type arg))
   (if (tuple-expr? arg)
       (nth (1- index) (exprs arg))
@@ -1982,6 +1982,7 @@
 	  :id (makesym "PROJ_~d" index)
 	  :index index
 	  :actuals actuals
+	  :dactuals dactuals
 	  :argument arg
 	  :type projtype))))
 
@@ -2092,7 +2093,7 @@
 	(let ((sub (list (fields rtype) field-id arg)))
 	  (or (gethash sub *subst-fields-hash*)
 	      (setf (gethash sub *subst-fields-hash*)
-		    (make!-field-application-type* (fields rtype) field-id arg))))
+	  	    (make!-field-application-type* (fields rtype) field-id arg))))
 	(type (find field-id (fields rtype) :test #'eq :key #'id)))))
 
 (defun make!-field-application-type* (fields field-id arg)
