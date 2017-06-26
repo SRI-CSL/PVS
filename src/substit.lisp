@@ -184,7 +184,7 @@ it is nil in the substituted binding")
 	(substit-possible*? (cdr freevars) alist))))
 
 (defmethod substit* ((expr name-expr) alist)
-  (with-slots (resolutions type actuals) expr
+  (with-slots (resolutions type actuals dactuals) expr
     (let* ((decl (declaration (car resolutions)))
 	   (binding (assq decl alist)))
       (cond ((null binding)
@@ -193,6 +193,7 @@ it is nil in the substituted binding")
 		    (nexpr (lcopy expr
 			     'type ntype
 			     'actuals (substit* actuals alist)
+			     'dactuals (substit* dactuals alist)
 			     'resolutions res)))
 	       #+pvsdebug
 	       (assert (or (eq nexpr expr)
@@ -229,31 +230,35 @@ it is nil in the substituted binding")
 	(copy nex 'adt-type (substit* (adt-type expr) alist)))))
 
 (defmethod substit* ((expr projection-expr) alist)
-  (with-slots (actuals type index) expr
+  (with-slots (actuals dactuals type index) expr
     (lcopy expr
       'actuals (substit* actuals alist)
+      'dactuals (substit* dactuals alist)
       'type (substit* type alist))))
 
 (defmethod substit* ((expr injection-expr) alist)
-  (with-slots (actuals type index) expr
+  (with-slots (actuals dactuals type index) expr
     (lcopy expr
       'actuals (substit* actuals alist)
+      'dactuals (substit* dactuals alist)
       'type (substit* type alist))))
 
 (defmethod substit* ((expr injection?-expr) alist)
-  (with-slots (actuals type index) expr
+  (with-slots (actuals dactuals type index) expr
     (lcopy expr
       'actuals (substit* actuals alist)
+      'dactuals (substit* dactuals alist)
       'type (substit* type alist))))
 
 (defmethod substit* ((expr extraction-expr) alist)
-  (with-slots (actuals type index) expr
+  (with-slots (actuals dactuals type index) expr
     (lcopy expr
       'actuals (substit* actuals alist)
+      'dactuals (substit* dactuals alist)
       'type (substit* type alist))))
 
 (defmethod substit* ((expr projection-application) alist)
-  (with-slots (argument actuals type index) expr
+  (with-slots (argument actuals dactuals type index) expr
     (let ((narg (substit* argument alist)))
       (cond ((and (not *substit-dont-simplify*)
 		  (tuple-expr? narg))
@@ -264,33 +269,37 @@ it is nil in the substituted binding")
 		 (lcopy expr
 		   'argument narg
 		   'actuals (substit* actuals alist)
+		   'dactuals (substit* dactuals alist)
 		   'type ntype)))))))
 
 (defmethod substit* ((expr injection-application) alist)
-  (with-slots (argument actuals type index) expr
+  (with-slots (argument actuals dactuals type index) expr
     (let ((narg (substit* argument alist))
 	  (ntype (substit* type alist)))
       (lcopy expr
 	'argument narg
 	'actuals (substit* actuals alist)
+	'dactuals (substit* dactuals alist)
 	'type ntype))))
 
 (defmethod substit* ((expr injection?-application) alist)
-  (with-slots (argument actuals type index) expr
+  (with-slots (argument actuals dactuals type index) expr
     (let ((narg (substit* argument alist))
 	  (ntype (substit* type alist)))
       (lcopy expr
 	'argument narg
 	'actuals (substit* actuals alist)
+	'dactuals (substit* dactuals alist)
 	'type ntype))))
 
 (defmethod substit* ((expr extraction-application) alist)
-  (with-slots (argument actuals type index) expr
+  (with-slots (argument actuals dactuals type index) expr
     (let ((narg (substit* argument alist))
 	  (ntype (substit* type alist)))
       (lcopy expr
 	'argument narg
 	'actuals (substit* actuals alist)
+	'dactuals (substit* dactuals alist)
 	'type ntype))))
 
 (defmethod substit* ((expr field-application) alist)
@@ -319,7 +328,9 @@ it is nil in the substituted binding")
       nres)))
 
 (defmethod substit* ((expr modname) alist)
-  (lcopy expr 'actuals (substit* (actuals expr) alist)))
+  (lcopy expr
+    'actuals (substit* (actuals expr) alist)
+    'dactuals (substit* (dactuals expr) alist)))
 
 
 (defmethod substit* ((act actual) alist)
@@ -827,14 +838,17 @@ it is nil in the substituted binding")
 ;;NSH:8-21-91: substit* for type-expressions.
 (defmethod substit* ((texpr type-name) alist)
   (let ((nacts (substit* (actuals texpr) alist))
+	(dacts (substit* (dactuals texpr) alist))
 	(ptype (substit* (print-type texpr) alist))
 	(mi (substit* (module-instance (resolution texpr)) alist)))
     (if (and (eq nacts (actuals texpr))
+	     (eq dacts (dactuals texpr))
 	     (eq ptype (print-type texpr))
 	     (eq mi (module-instance (resolution texpr))))
 	texpr
 	(let ((nte (copy texpr
 		     'actuals nacts
+		     'dactuals dacts
 		     'print-type ptype)))
 	  (setf (get-substit-hash texpr) nte)
 	  (setf (resolutions nte)
