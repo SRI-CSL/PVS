@@ -428,8 +428,8 @@
 		 :kind kind
 		 :expr (if (eq kind 'existence)
 			   ""
-			   (str (raise-actuals expr t t) :char-width nil))
-		 :type (str (raise-actuals type t t) :char-width nil))))
+			   (str (raise-actuals expr t :all) :char-width nil))
+		 :type (str (raise-actuals type t :all) :char-width nil))))
     (if (or *in-checker* *in-evaluator* *collecting-tccs*)
 	(add-tcc-info kind expr type ndecl origin)
 	(insert-tcc-decl1 kind expr type ndecl origin))))
@@ -944,7 +944,7 @@
 		   :root (tcc-root-name type)
 		   :kind 'existence
 		   :expr ""
-		   :type (str type :char-width nil))))
+		   :type (str (raise-actuals type t :all) :char-width nil))))
     (setf (origin decl) origin)
     (setf (spelling decl) 'ASSUMPTION)
     (unless (member decl (assuming (current-theory))
