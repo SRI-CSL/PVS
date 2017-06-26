@@ -706,7 +706,12 @@
 	(t (match-adt-actuals
 	    (cdr acts1) (cdr acts2)
 	    bind-alist
-	    (cond ((member (car formals) postypes :test #'same-id)
+	    (cond ((member (car formals) postypes
+			   :test #'(lambda (fm pt)
+				     (same-id fm
+					      (if (subtype? pt)
+						  (print-type pt)
+						  pt))))
 		   (let ((asubsts (match* (type-value (car acts1))
 					  (type-value (car acts2))
 					  bind-alist substs)))
