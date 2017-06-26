@@ -1792,6 +1792,21 @@ Note that the lists might not be the same length."
 		   ;; (mapcar #'(lambda (prf) (nth 6 (caddr prf))) proofs)
 		   (restore-tcc-proofs* (cdr tccs) proofs (cons (car tccs) rem-tccs))))))))
 
+(defun tcc-expr-matches (tcc proofs)
+  (let ((tcc-orig (origin tcc)))
+    (remove-if #'(lambda (prf)
+		   ;; prf ~ (declid index prfinfo prfinfo ...)
+		   (let* ((prfinfo (car (cddr prf)))
+			  (prf-orig (nth 6 prfinfo)))
+		     ;; proof-orig ~ (root kind expr type)
+		     ;; Note that we're assuming each of the multiple-proofs
+		     ;; shares the same origin, so we only need to look at
+		     ;; the first one
+		     (assert (eq (root tcc-orig) (car prf-orig)))
+		     (or (not (eq (kind tcc-orig) (cadr prf-orig)))
+			 (not (string= (expr tcc-orig) (caddr prf-orig))))))
+      proofs)))
+
 (defun restore-proof-to-tcc (tcc mproof)
   (let ((tcc-proofs (mapcar #'(lambda (mprf)
 				(apply #'mk-tcc-proof-info mprf))
