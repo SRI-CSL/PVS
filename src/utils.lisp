@@ -2617,8 +2617,9 @@
 		(null (mod-id x))
 		(declaration x)
 		(module? (module (declaration x)))
-		(not (from-prelude? (module (declaration x))))
-		(not (eq (id (module-instance x)) (id (current-theory))))))))
+		(or (eq *raise-actuals-theory-ids* :all)
+		    (and (not (from-prelude? (module (declaration x))))
+			 (not (eq (id (module-instance x)) (id (current-theory))))))))))
 
 (defmethod raise-actuals? ((x type-expr))
   (or (call-next-method)
