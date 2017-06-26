@@ -116,11 +116,11 @@
 ;; 		(null yhash)
 ;; 		(= xhash yhash))
 ;; 	(call-next-method)))))
-    
+
 
 (defmethod tc-eq* (x y bindings)
-  (declare (ignore bindings))
-  (eq x y))
+  (or (eq x y)
+      (values nil x y bindings)))
 
 (defmethod tc-eq* ((l1 cons) (l2 cons) bindings)
   (and (tc-eq* (car l1) (car l2) bindings)
@@ -286,7 +286,7 @@
 
 (defmethod tc-eq-bindings ((b1 field-decl) (b2 field-decl) bindings)
   (and (eq (id b1) (id b2))
-	   (tc-eq* (type b1) (type b2) bindings)))
+       (tc-eq* (type b1) (type b2) bindings)))
 
 (defmethod tc-eq-bindings (e1 e2 bindings)
   (tc-eq* e1 e2 bindings))
@@ -465,9 +465,7 @@
 	(with-slots ((id2 id) (arg2 argument) (ty2 type)) e2
 	  (and (eq id1 id2)
 	       (tc-eq* arg1 arg2 bindings)
-	       (or (and *in-checker*
-			(not *strong-tc-eq-flag*))
-		   (tc-eq* ty1 ty2 bindings)))))))
+	       (tc-eq* ty1 ty2 bindings))))))
 
 
 (defmethod tc-eq* ((e1 rational-expr) (e2 rational-expr) bindings)
@@ -949,7 +947,8 @@
 			(tc-eq* dact1 dact2 bindings)
 			(tc-eq* m1 m2 bindings)
 			(tc-eq* t1 t2 bindings)))
-	       (tc-eq* (car res1) (car res2) bindings))))))
+	       (tc-eq* (car res1) (car res2) bindings))
+	  (values nil n1 n2 bindings)))))
 
 (defvar *in-tc-eq-resolution* nil)
 
