@@ -1551,6 +1551,14 @@ pvs-strategies files.")
 
 
 (defun collect-theories-proofs (theories)
+  "Given a list of theories (usually associated with a pvs file), generates
+   a list of theory-proofs-sexp of the form
+   ((thid (declid index prfinfo prfinfo ...) ...) ...)
+   The index is the 0-based index to the default proof for the decl.
+   Each prfinfo is of the form
+   (prfid description create-date script refers-to decision-procedure-used [tcc-origin])
+   The tcc-origin is only for TCCs, and has the form
+   (root kind expr type)"
   (let ((curproofs (collect-theories-proofs* theories nil)))
     curproofs))
 
@@ -1646,15 +1654,17 @@ pvs-strategies files.")
 (defun restore-decls-proofs (decls proofs have-tcc-origins?)
   (cond ((null decls)
 	 proofs)
-	((and have-tcc-origins? (tcc-decl? (car decls)))
+	((and have-tcc-origins? (tcc? (car decls)))
 	 ;; Note that TCCs generated from the formal parameters will all be
 	 ;; put in either the assuming part, if it exists, or the theory
 	 ;; part It's the only exception to TCCs appearing before the
 	 ;; declaration that generated them
-	 (multiple-value-bind (tccs rem-decls)
-	     (decl-tccs (car decls) (cdr decls))
-	   (let ((rem-proofs (restore-tcc-proofs tccs proofs)))
-	     (restore-decls-proofs rem-decls rem-proofs have-tcc-origins?))))
+	 (multiple-value-bind (tccs rem-decls tcc-proofs rem-proofs)
+	     (decl-tccs-and-proofs decls proofs)
+	   ;; (mapcar #'(lambda (tcc) (sexp (origin tcc))) tccs)
+	   ;; (mapcar #'(lambda (prf) (nth 6 (caddr prf))) tcc-proofs)
+	   (restore-tcc-proofs tccs tcc-proofs)
+	   (restore-decls-proofs rem-decls rem-proofs have-tcc-origins?)))
 	((formula-decl? (car decls))
 	 (let ((rem-proofs (restore-formula-proofs (car decls) proofs)))
 	   (restore-decls-proofs (cdr decls) rem-proofs have-tcc-origins?)))
@@ -1693,87 +1703,101 @@ pvs-strategies files.")
 	      (apply #'mk-proof-info prf))
     (cddr prf-entry)))
 
-(defun decl-tccs (tcc-decl decls &optional tccs)
+(defun decl-tccs-and-proofs (decls proofs)
+  (assert (tcc? (car decls)))
+  (multiple-value-bind (tcc-decls rem-decls)
+      (decl-tccs (car decls) (cdr decls))
+    (multiple-value-bind (tcc-proofs rem-proofs)
+	(collect-tcc-proofs (car decls) proofs)
+      (values tcc-decls rem-decls tcc-proofs rem-proofs))))
+
+(defun decl-tccs (tcc-decl decls &optional tccs rem-decls)
   "Collect all TCCs following the given one that are for the same root
 declaration"
-  (if (and (tcc-decl? (car decls))
-	   (eq (root (origin tcc-decl))
-	       (root (origin (car decls)))))
-      (decl-tccs tcc-decl (cdr decls) (cons (car decls) tccs))
-      (values (cons tcc-decl (nreverse tccs)) decls)))
+  (if (null decls)
+      (values (cons tcc-decl (nreverse tccs)) (nreverse rem-decls))
+      (if (and (tcc-decl? (car decls))
+	       (eq (root (origin tcc-decl))
+		   (root (origin (car decls)))))
+	  (decl-tccs tcc-decl (cdr decls) (cons (car decls) tccs) rem-decls)
+	  (decl-tccs tcc-decl (cdr decls) tccs (cons (car decls) rem-decls)))))
+
+(defun collect-tcc-proofs (tcc proofs &optional tcc-proofs rem-proofs)
+  ;; Each elt of proofs has form (declid index prfinfo ...)
+  ;; All should have the same origin info - redundant, but trying to keep
+  ;; things backward compatible
+  (if (null proofs)
+      (values (sort tcc-proofs #'string< :key #'car) (nreverse rem-proofs))
+      (let* ((prfinfo (caddr (car proofs)))
+	     (prf-origin (nth 6 prfinfo)))
+	(if (eq (root (origin tcc)) (car prf-origin))
+	    (collect-tcc-proofs tcc (cdr proofs)
+				(cons (car proofs) tcc-proofs) rem-proofs)
+	    (collect-tcc-proofs tcc (cdr proofs)
+				tcc-proofs (cons (car proofs) rem-proofs))))))
 
 (defun restore-tcc-proofs (tccs proofs)
-  "Analogous to restore-formula-proofs, but works with lists of TCCs, rather
-than a single formula.  Tries to associate by origin, rather than id.  This
-is only caled if the proofs have the origin available."
-  (multiple-value-bind (rem-tccs rem-proofs)
-      (restore-tcc-proofs-same-origin tccs proofs)
-    (if (or (null rem-tccs) (null rem-proofs))
-	rem-proofs
-	(multiple-value-bind (rtccs rproofs)
-	    (restore-tcc-proofs-same-kind rem-tccs rem-proofs)
-	  ;; What's left will be orphaned
-	  (declare (ignore rtccs))
-	  rproofs))))
+  "Restores proofs to TCCs, by trying to associate them based on origin.
+tccs is a list of tcc-decls, and proofs are proofs with the same origin root.
+Note that the lists might not be the same length."
+  (restore-tcc-proofs* tccs proofs))
 
 ;;; The TCCs all come from the same declaration/importing
-;;; The proofs are all the proofs of the theory
-(defun restore-tcc-proofs-same-origin (tccs proofs &optional rem-tccs)
-  (if (null tccs)
-      (values (nreverse rem-tccs) proofs)
-      (let* ((tcc (car tccs))
-	     (tcc-orig (origin tcc))
-	     (mproof (find-if #'(lambda (prf)
-				  ;; prf ~ (declid index prfinfo prfinfo ...)
-				  (let* ((prfinfo (car (cddr prf)))
-					 (prf-orig (nth 6 prfinfo)))
-				    ;; proof-orig ~ (root kind expr type)
+;;; The proofs are all the ones with the same root (i.e., from the same declaration)
 
-				    ;; Note that we're assuming each of
-				    ;; the multiple-proofs shares the
-				    ;; same origin
-				    (and (eq (root tcc-orig) (car prf-orig))
-					 (eq (kind tcc-orig) (cadr prf-orig))
-					 (string= (expr tcc-orig) (caddr prf-orig))
-					 (string= (type tcc-orig) (cadddr prf-orig)))))
-		       proofs)))
-	(if mproof
-	    (let ((tcc-proofs (mapcar #'(lambda (mprf)
-					  (apply #'mk-tcc-proof-info mprf))
-				(cddr mproof))))
-	      (setf (proofs tcc) tcc-proofs)
-	      (setf (default-proof tcc) (nth (cadr mproof) tcc-proofs))
-	      (restore-tcc-proofs-same-origin (cdr tccs) (remove mproof proofs) rem-tccs))
-	    (restore-tcc-proofs-same-origin (cdr tccs) proofs
-					    (cons (car tccs) rem-tccs))))))
+(defun restore-tcc-proofs* (tccs proofs &optional rem-tccs)
+  (when proofs
+    (if (null tccs)
+	;; Deal with remaining TCCs
+	(if (null rem-tccs)
+	    proofs ;; these will be orphaned
+	    (when proofs
+	      ;; Whatever is left, we match the first by kind
+	      (setf rem-tccs (nreverse rem-tccs))
+	      #+pvs-tcc-test (when rem-tccs (break "match by kind only"))
+	      (dolist (tcc rem-tccs)
+		(let ((mproof (find-if #'(lambda (prf)
+					   (let* ((prfinfo (car (cddr prf)))
+						  (prf-orig (nth 6 prfinfo)))
+					     (eq (kind (origin tcc))
+						 (cadr prf-orig))))
+				proofs)))
+		  (when mproof
+		    #+pvs-tcc-test (unless (eq (car prf) (id tcc)) (break "maybe wrong TCC"))
+		    (restore-proof-to-tcc tcc mproof)
+		    (setf proofs (remove mproof proofs)))))
+	      (let ((unassigned-tccs (remove-if #'(lambda (tcc) (proofs tcc))
+				       rem-tccs)))
+		(when (and proofs unassigned-tccs)
+		  (break "Why are there unassigned-tccs with proofs left?")))
+	      proofs))
+	(let* ((mproofs (tcc-expr-matches (car tccs) proofs))
+	       (mproof (when mproofs
+			 (if (cdr mproofs)
+			     (or (find-if #'(lambda (prf)
+					      (let* ((prfinfo (car (cddr prf)))
+						     (prf-orig (nth 6 prfinfo)))
+						(string= (type (origin (car tccs)))
+							 (cadddr prf-orig))))
+				   mproofs)
+				 (car mproofs))
+			     (car mproofs)))))
+	  (cond (mproof
+		 #+pvs-tcc-test
+		 (unless (eq (car mproof) (id (car tccs))) (break "maybe wrong TCC 2"))
+		 (restore-proof-to-tcc (car tccs) mproof)
+		 (restore-tcc-proofs* (cdr tccs) (remove mproof proofs) rem-tccs))
+		(t #+pvs-tcc-test (break "mproof not found")
+		   ;; (mapcar #'(lambda (tcc) (sexp (origin tcc))) tccs)
+		   ;; (mapcar #'(lambda (prf) (nth 6 (caddr prf))) proofs)
+		   (restore-tcc-proofs* (cdr tccs) proofs (cons (car tccs) rem-tccs))))))))
 
-(defun restore-tcc-proofs-same-kind (tccs proofs &optional rem-tccs)
-  (if (null tccs)
-      (values (nreverse rem-tccs) proofs)
-      (let* ((tcc (car tccs))
-	     (tcc-orig (origin tcc))
-	     (mproof (find-if #'(lambda (prf)
-				  ;; prf ~ (declid index prfinfo prfinfo ...)
-				  (and (= (length (car (cddr prf))) 7)
-				       (let* ((prfinfo (car (cddr prf)))
-					      (prf-orig (nth 6 prfinfo)))
-					 ;; proof-orig ~ (root kind expr type)
-
-					 ;; Note that we're assuming each of
-					 ;; the multiple-proofs shares the
-					 ;; same origin
-					 (and (eq (root tcc-orig) (car prf-orig))
-					      (eq (kind tcc-orig) (cadr prf-orig))))))
-		       proofs)))
-	(if mproof
-	    (let ((tcc-proofs (mapcar #'(lambda (mprf)
-					  (apply #'mk-tcc-proof-info mprf))
-				(cddr mproof))))
-	      (setf (proofs tcc) tcc-proofs)
-	      (setf (default-proof tcc) (nth (cadr mproof) tcc-proofs))
-	      (restore-tcc-proofs-same-origin (cdr tccs) (remove mproof proofs) rem-tccs))
-	    (restore-tcc-proofs-same-kind (cdr tccs) proofs
-					  (cons (car tccs) rem-tccs))))))
+(defun restore-proof-to-tcc (tcc mproof)
+  (let ((tcc-proofs (mapcar #'(lambda (mprf)
+				(apply #'mk-tcc-proof-info mprf))
+		      (cddr mproof))))
+    (setf (proofs tcc) tcc-proofs)
+    (setf (default-proof tcc) (nth (cadr mproof) tcc-proofs))))
 
 (defun get-smaller-proof-info (pr)
   ;; Older proofs had long lists
