@@ -1824,12 +1824,15 @@
 		      names-alist))))
 	  names-alist)
 	names-alist)))
-	
+
 (defun distinct-names-with-same-id (obj)
-  (let ((names nil))
+  (let ((names nil)
+	(*parsing-or-unparsing* t))
     (mapobject #'(lambda (x)
 		   (when (and (name? x)
-			      (resolution x))
+			      (resolution x)
+			      (not (eq (declaration x) (equality-decl)))
+			      (not (eq (declaration x) (disequality-decl))))
 		     (let ((same-id-names (assq (id x) names)))
 		       (if same-id-names
 			   (unless (some #'(lambda (nm) (tc-eq x nm))
