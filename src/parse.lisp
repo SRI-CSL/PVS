@@ -2339,7 +2339,7 @@
 			       'set-expr-with-type)
 	      :op op
 	      :declared-ret-type lambda-type
-	      :bindings (xt-flatten-bindings (car bindings) (if set-expr? 1 0))
+	      :bindings (xt-flatten-bindings (car bindings) 0)
 	      :expression (make-xt-bind-expr* (cdr bindings) class expr)
 	      :commas? commas?
 	      :place (term-place save-as))
@@ -2347,7 +2347,7 @@
 	      "Return type only allowed for lambda expressions"))
 	(make-instance class
 	  :op op
-	  :bindings (xt-flatten-bindings (car bindings) (if set-expr? 1 0))
+	  :bindings (xt-flatten-bindings (car bindings) 0)
 	  :expression (make-xt-bind-expr* (cdr bindings) class expr)
 	  :commas? commas?
 	  :place (term-place save-as)))))
