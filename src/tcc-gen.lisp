@@ -224,6 +224,8 @@
 
 (defvar *substitute-let-bindings* nil)
 
+(defvar *tcc-make-let-exprs* nil)
+
 (defun add-tcc-conditions (expr)
   (multiple-value-bind (conditions srec-expr vdecl ch?)
       (subst-var-for-recs (remove-duplicates *tcc-conditions* :test #'equal)
@@ -275,18 +277,25 @@
 	 ;; bindings from a lambda-expr application (e.g., let-expr)
 	 (assert (and (bind-decl? (caar conditions))
 		      (memq (caar conditions) (cdr conditions))))
-	 (add-tcc-conditions*
-	  expr
-	  (cdr conditions)
-	  (if *substitute-let-bindings*
-	      (cons (car conditions) substs)
-	      substs)
-	  (if *substitute-let-bindings*
-	      antes
-	      (let ((eqn (make!-equation
-			  (mk-name-expr (caar conditions))
-			  (cdar conditions))))
-		(cons eqn antes)))))
+	 (cond (*substitute-let-bindings*
+		(add-tcc-conditions*
+		 expr
+		 (cdr conditions)
+		 (cons (car conditions) substs)
+		 antes))
+	       (*tcc-make-let-exprs*
+		(let* ((pos (position-if-not #'consp conditions))
+		       (rem-conditions (when pos (nthcdr pos conditions)))
+		       (let-bindings (ldiff conditions rem-conditions)))
+		  (break "Need to convert to let-expr")))
+	       (t (add-tcc-conditions*
+		   expr
+		   (cdr conditions)
+		   substs
+		   (let ((eqn (make!-equation
+			       (mk-name-expr (caar conditions))
+			       (cdar conditions))))
+		     (cons eqn antes))))))
 	((typep (car conditions) 'bind-decl)
 	 ;; Binding from a binding-expr
 	 (add-tcc-bindings expr conditions substs antes))
