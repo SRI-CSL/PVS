@@ -3328,8 +3328,7 @@ required a context.")
       (and (or (not (decl-formal? (car formals)))
                (null decl)
                (eq (associated-decl (car formals)) decl)
-               (memq (car formals) (decl-formals (current-declaration)))
-               (break))
+               (memq (car formals) (decl-formals (current-declaration))))
            (all-formals-from-same-decls
             (cdr formals)
             (or decl
@@ -4120,7 +4119,10 @@ required a context.")
                       (instantiate-from stype expected expr)))
            (args-list (mapcar #'arguments assignments))
            (values (mapcar #'expression assignments)))
-      (set-type* expression (contract-expected expr atype))
+      (set-type* expression
+		 (if (some #'maplet? assignments)
+		     (contract-expected expr atype)
+		     expected))
       (set-assignment-arg-types args-list values expression expected)
       (setf (type expr) atype))))
 
@@ -4141,7 +4143,10 @@ required a context.")
                       (instantiate-from stype expected expr)))
            (args-list (mapcar #'arguments assignments))
            (values (mapcar #'expression assignments)))
-      (set-type* expression (contract-expected expr atype))
+      (set-type* expression
+		 (if (some #'maplet? assignments)
+		     (contract-expected expr atype)
+		     expected))
       (set-assignment-arg-types args-list values expression expected)
       (setf (type expr) atype))))
 
@@ -4161,7 +4166,8 @@ required a context.")
                          (instantiate-from sxtype expected expr)))
              (args-list (mapcar #'arguments assignments))
              (values (mapcar #'expression assignments)))
-        (set-type* expression axtype)
+        (set-type* expression
+		   (if (some #'maplet? assignments) axtype expected))
         (set-assignment-arg-types args-list values expression expected)
         (setf (type expr) atype)))))
 
@@ -4186,12 +4192,17 @@ required a context.")
                       (car dtypes)
                       (instantiate-from (car dtypes) expected
                                         (expression expr)))))
-      (set-type* (expression expr) dtype)
+      (set-type* (expression expr)
+		 (if (some #'maplet? (assignments expr))
+		     dtype
+		     expected))
       (set-assignment-arg-types args-list values (expression expr) atype)
       (setf (type expr) atype))))
 
 (defmethod set-type* ((expr update-expr) (expected subtype))
   (let ((stype (find-update-supertype expected)))
+    ;; Find-update-supertype walks up subtypes, until a datatype-subtype or
+    ;; non-subtype is reached, e.g., list[int] rather than list[number]
     (set-type* expr stype)
     (unless (eq *generate-tccs* 'none)
       (let* ((id (make-new-variable '|x| (list expr expected)))
@@ -4398,6 +4409,12 @@ required a context.")
              (cdr constrs) args-list values ex cpreds
              (cons tcc tccs) (cons (recognizer c) recs)))))))
 
+;;; Set the assignment types.  This is complicated by 
+;;; updates such as "x with [`f := lambda y: x`f(y) + 1, `f(0) := 0]"
+;;; Where the "f" field is used more than once.
+;;; args-list and values are expanded from the original update-expr,
+;;; to include dependencies.
+
 (defun set-assignment-rec-arg-types (args-list values ex fields
                                                &optional cargs cvalues)
   (when args-list
@@ -4413,7 +4430,9 @@ required a context.")
            (done-with-field? (not (member (car fields) rem-args
                                           :test #'same-id :key #'caar)))
            (cdr-args (when done-with-field?
-                       (mapcar #'cdr (nreverse (cons args cargs))))))
+                       (mapcar #'cdr (nreverse (cons args cargs)))))
+	   (cdr-vals (when done-with-field?
+                       (nreverse (cons value cvalues)))))
       (when args
         (unless (field-assignment-arg? (caar args))
           (if (id-assign? (caar args))
@@ -4422,7 +4441,7 @@ required a context.")
         (when done-with-field?
           (set-assignment-arg-types*
            cdr-args
-           (nreverse (cons value cvalues))
+           cdr-vals
            (when (and ex (some (complement #'null) cdr-args))
              (make!-field-application (car fields) ex))
            (type (car fields)))))
@@ -4433,7 +4452,7 @@ required a context.")
                                    fields)
                              (if (and ex (some (complement #'null) cdr-args))
                                  (let* ((fapp (make!-field-application (car fields) ex))
-                                        (ass (make-assignment (car cdr-args) value))
+                                        (ass (make-assignment (car cdr-args) (car cdr-vals)))
                                         (val (make-update-expr fapp (list ass))))
                                    (subst-rec-dep-type val (car fields) (cdr fields)))
                                  (subst-rec-dep-type value (car fields) (cdr fields)))
