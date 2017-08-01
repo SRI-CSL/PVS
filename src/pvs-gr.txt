@@ -688,15 +688,6 @@ set-formals ::= {set-formal [[',']^c set-formals]}
 		<[set-formal|
 		  set-formals(set-formal,[nocomma()|comma()]^c,set-formals)]>;
 
-%set-formals ::= {set-formal [set-formals-rest]}
-%		<set-formals([no-set-formals()|set-formals-rest])>;
-%
-%set-formals-rest ::= {',' set-formal++','}
-%			<set-formals-rest-commas(doubleplus)>
-%		 |   {set-formal+}
-%			<set-formals-rest(plus)>
-%		 ;
-
 set-formal ::= {{idop [':' type-expr]} | pdformals}
 	       <{set-id(idop,[notype()|type-expr])|pdformals}>;
 
