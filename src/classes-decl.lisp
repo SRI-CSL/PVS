@@ -837,6 +837,18 @@ restored, the TCCs are checked")
   predicate
   (subtype-conjuncts :ignore t))
 
+;;; datatype-subtypes are for datatypes with positive type parameters.
+;;; For example, the type list[int], when typechecked, has the predicate
+;;; LAMBDA (x: list[number]):
+;;;   every(LAMBDA (x: number):
+;;;           number_field_pred(x) AND real_pred(x) AND
+;;;           rational_pred(x) AND integer_pred(x))
+;;;     (x)
+;;; which has supertype list[number].  So we create a datatype-subtype with
+;;; declared-type list[int] (an adt-type-name), so we have access to it.
+
+;;; datatype-subtypes are created by adt-expand-positive-subtypes as part of
+;;; subst-mod-params.
 (defcl datatype-subtype (subtype)
   declared-type)
 
