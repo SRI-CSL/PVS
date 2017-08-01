@@ -2366,6 +2366,12 @@
       :expression dj
       :type (mk-funtype type *boolean*))))
 
+(defun make!-let-expr (bind-alist expr)
+  (make-instance 'let-expr
+    :operator (make!-lambda-expr (mapcar #'car bind-alist) expr)
+    :argument (make-arg-tuple-expr (mapcar #'cdr bind-alist))
+    :type (type expr)))
+
 (defmethod make!-bind-decl (id (type type-expr))
   (mk-bind-decl id (or (print-type type) type) type))
 
