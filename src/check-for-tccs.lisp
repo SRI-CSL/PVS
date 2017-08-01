@@ -404,7 +404,10 @@
     (let ((atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
-      (check-for-tccs* expression (contract-expected expr atype))
+      (check-for-tccs* expression
+		       (if (some #'maplet? assignments)
+			   (contract-expected expr atype)
+			   expected))
       (check-assignment-arg-types args-list values expression expected))))
 
 (defmethod check-for-tccs* ((expr update-expr) (expected struct-sub-recordtype))
@@ -412,12 +415,18 @@
     (let ((atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
-      (check-for-tccs* expression (contract-expected expr atype))
+      (check-for-tccs* expression
+		       (if (some #'maplet? assignments)
+			   (contract-expected expr atype)
+			   expected))
       (check-assignment-arg-types args-list values expression expected))))
 
 (defmethod check-for-tccs* ((expr update-expr) (expected tupletype))
   (with-slots (expression assignments) expr
-    (check-for-tccs* expression (type expression))
+    (check-for-tccs* expression
+		     (if (some #'maplet? assignments)
+			 (type expression)
+			 expected))
     (let ((atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
@@ -425,7 +434,9 @@
 
 (defmethod check-for-tccs* ((expr update-expr) (expected funtype))
   (with-slots (expression assignments) expr
-    (check-for-tccs* expression (type expression))
+    (check-for-tccs* expression (if (some #'maplet? assignments)
+				    (type expression)
+				    expected))
     (let (;;(atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
@@ -433,7 +444,10 @@
 
 (defmethod check-for-tccs* ((expr update-expr) (expected datatype-subtype))
   (with-slots (expression assignments) expr
-    (check-for-tccs* expression (type expression))
+    (check-for-tccs* expression
+		     (if (some #'maplet? assignments)
+			 (type expression)
+			 expected))
     (let ((atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
