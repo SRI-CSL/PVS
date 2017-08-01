@@ -2233,7 +2233,13 @@ Note that the lists might not be the same length."
 
 #+allegro
 (defun check-if-case-change-needed (script)
-  (every #'upper-case-p (string (find-first-symbol script))))
+  (let ((sym (find-first-symbol script)))
+    (when (eq sym 'SUBTYPE-TCC) (break "check-if-case-change-needed"))
+    (every #'upper-or-not-alpha-p (string sym))))
+
+(defun upper-or-not-alpha-p (char)
+  (or (not (alpha-char-p char))
+      (upper-case-p char)))
 
 (defun find-first-symbol (obj)
   (typecase obj
