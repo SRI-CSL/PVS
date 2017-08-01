@@ -1674,7 +1674,8 @@
 
 (defmethod typecheck* ((expr lambda-expr) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (typecheck* (bindings expr) nil nil nil)
+  (let ((*generate-tccs* 'none))
+    (typecheck* (bindings expr) nil nil nil))
   ;; XXX do something with arguments here
   (let ((*bound-variables* (append (bindings expr) *bound-variables*)))
     (when (lambda-expr-with-type? expr)
