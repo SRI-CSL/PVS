@@ -370,8 +370,12 @@
       (parenthesize rhs lastopinfix?)
       (let* ((*bound-variables* (append (bindings expr) *bound-variables*))
 	     (nexpr (replace-expr* lhs rhs (expression expr) nil))
-	     (new-bindings (unless (eq nexpr (expression expr))
-			     (make-nonclashing-bindings (bindings expr) rhs)))
+	     (rep-bindings (when *replace-in-actuals?*
+			     (replace-expr* lhs rhs (bindings expr) lastopinfix?)))
+	     (new-bindings (unless (and (eq nexpr (expression expr))
+					(null rep-bindings))
+			     (or (make-nonclashing-bindings rep-bindings rhs)
+				 rep-bindings)))
 	     (nalist (when new-bindings
 		       (substit-pairlis (bindings expr) new-bindings nil))))
 	(if new-bindings
@@ -379,6 +383,13 @@
 	      'bindings new-bindings
 	      'expression (substit nexpr nalist))
 	    (lcopy expr 'expression nexpr)))))
+
+(defmethod replace-expr* (lhs rhs (expr binding) lastopinfix?)
+  (if *replace-in-actuals?*
+      (let ((rtype (replace-expr* lhs rhs (type expr) lastopinfix?))
+	    (rdtype (replace-expr* lhs rhs (declared-type expr) lastopinfix?)))
+	(lcopy expr :type rtype :declared-type rdtype))
+      expr))
 
 (defun make-nonclashing-bindings (bindings expr)
   (let ((free-ids (collect-free-ids expr)))
