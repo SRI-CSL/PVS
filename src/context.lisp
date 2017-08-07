@@ -1727,7 +1727,8 @@ declaration"
   ;; All should have the same origin info - redundant, but trying to keep
   ;; things backward compatible
   (if (null proofs)
-      (values (sort tcc-proofs #'string< :key #'car) (nreverse rem-proofs))
+      (values (sort tcc-proofs #'< :key #'(lambda (prf) (numeric-suffix (car prf))))
+	      (nreverse rem-proofs))
       (let* ((prfinfo (caddr (car proofs)))
 	     (prf-origin (nth 6 prfinfo)))
 	(if (eq (root (origin tcc)) (car prf-origin))
@@ -1735,6 +1736,12 @@ declaration"
 				(cons (car proofs) tcc-proofs) rem-proofs)
 	    (collect-tcc-proofs tcc (cdr proofs)
 				tcc-proofs (cons (car proofs) rem-proofs))))))
+
+(defun numeric-suffix (obj)
+  (let* ((str (string obj))
+	 (pos (position-if-not #'digit-char-p str :from-end t)))
+    (assert (and pos (not (= (1+ pos) (length str)))))
+    (parse-integer str :start (1+ pos))))
 
 (defun restore-tcc-proofs (tccs proofs)
   "Restores proofs to TCCs, by trying to associate them based on origin.
@@ -1763,7 +1770,7 @@ Note that the lists might not be the same length."
 						 (cadr prf-orig))))
 				proofs)))
 		  (when mproof
-		    #+pvs-tcc-test (unless (eq (car prf) (id tcc)) (break "maybe wrong TCC"))
+		    #+pvs-tcc-test (unless (eq (car mproof) (id tcc)) (break "maybe wrong TCC"))
 		    (restore-proof-to-tcc tcc mproof)
 		    (setf proofs (remove mproof proofs)))))
 	      (let ((unassigned-tccs (remove-if #'(lambda (tcc) (proofs tcc))
