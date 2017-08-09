@@ -3036,17 +3036,21 @@ Note that even proved ones get overwritten"
 	       (let ((pmod (get-theory theoryref)))
 		 (or pmod
 		     (type-error theoryref
-		        "Can't find file for theory ~a" theoryref))))))))
+		       "Can't find file for theory ~a" theoryref))))))))
 
 (defun look-for-theory-in-directory-files (theoryref)
-  (let ((pvs-files (directory "*.pvs"))
-	(files-with-clashes nil)
-	(files-with-theoryref nil))
+  (let* ((grep-form (format nil "grep -l ~a *.pvs" (ref-to-id theoryref)))
+	 (grep-files
+	  (uiop:run-program grep-form
+	    :output '(:string :stripped t)
+	    :ignore-error-status t))
+	 (pvs-files (uiop:split-string grep-files :separator (list #\newline)))
+	 (files-with-clashes nil)
+	 (files-with-theoryref nil))
     (dolist (file pvs-files)
       (let ((fname (pathname-name file)))
 	(unless (parsed-file? fname)
-	  (let ((theories (ignore-errors (with-no-parse-errors
-					  (parse :file file)))))
+	  (let ((theories (with-no-parse-errors (parse :file file))))
 	    (when (member (ref-to-id theoryref) theories :key #'id)
 	      ;; Make sure we're not introducing a name clash
 	      ;; E.g., file1 has theories th1 and th2
