@@ -462,14 +462,13 @@
 	  frees))))
 
 (defmethod free-params-res (decl (mi modname) type frees)
-  ;(declare (ignore type))
+  ;; Should mappings be here?
   (with-slots (actuals dactuals) mi
     (let* ((afrees (if actuals
 		       (free-params-acts actuals mi)
 		       (free-params-from-theory mi decl)))
-	   (dafrees (if dactuals
-			(free-params-dacts dactuals)
-			(free-params-from-decl decl)))
+	   (dafrees (when dactuals
+		      (free-params-dacts dactuals)))
 	   (tfrees (free-params type))
 	   (ufrees (union dafrees
 			  (union afrees
