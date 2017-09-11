@@ -255,7 +255,7 @@ obj - roughly any Lisp entity that's printable, though this specializes to PVS i
 :lines - see *print-lines*
 :pretty - see *print-pretty*
 :no-newlines? - suppresses newlines for exporting, conversion-decl, and auto-rewrite-decl
-:case - unicode, short, upper, lower, or nil
+:case - :unicode, :short, :upper, :lower, or nil
         See *ppcase*
 "
   (let ((*print-length* length)
@@ -3287,16 +3287,16 @@ then uses unpindent* to add the indent to each line"
 		   0))
 	 (pl (make-string pnum :initial-element #\())
 	 (pr (make-string pnum :initial-element #\)))
-	 (ptype (or (and (not (and (chain? bd) next-bds))
-			 (declared-type bd))
-		    (and *current-context*
-			 (type bd)
-			 (let ((vardecls (remove-if-not #'var-decl?
-					   (get-declarations (id bd)))))
-			   (unless (some #'(lambda (vd)
-					     (tc-eq (type vd) (type bd)))
-					 vardecls)
-			     (type bd)))))))
+	 (ptype (and (not (and (chain? bd) next-bds))
+		     (or (declared-type bd)
+			 (and *current-context*
+			      (type bd)
+			      (let ((vardecls (remove-if-not #'var-decl?
+						(get-declarations (id bd)))))
+				(unless (some #'(lambda (vd)
+						  (tc-eq (type vd) (type bd)))
+					      vardecls)
+				  (type bd))))))))
     (pprint-logical-block (nil nil :prefix pl :suffix pr)
       (write (id bd))
       (when ptype
