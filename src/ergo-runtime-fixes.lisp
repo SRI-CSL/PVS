@@ -483,17 +483,17 @@ with the comment so as to put it in the proper place")
 		  (= length 1)
 		  (char= (char str 0) #\0)
 		  (memq (char str 1) '(#\x #\X #\o #\O #\b #\B)))
-	     (let ((radix (case (char str 1)
-			    ((#\x #\X) 16)
-			    ((#\o #\O) 8)
-			    ((#\b #\B) 2))))
-	       (multiple-value-bind (int len)
-		   (parse-integer str :junk-allowed t :radix radix :start 2)
-		 (cond ((and integer
-			     (= len (length str)))
-			(intern str *sbst-package*))
-		       (t (format t "Error: integer contains illegal characters.~%")
-			  :illegal-token)))))
+	     (let* ((radix (case (char str 1)
+			     ((#\x #\X) 16)
+			     ((#\o #\O) 8)
+			     ((#\b #\B) 2)))
+		    (len (nth-value 1
+			   (parse-integer str :junk-allowed t :radix radix :start 2))))
+	       (cond ((and integer
+			   (= len (length str)))
+		      (intern str *sbst-package*))
+		     (t (format t "Error: integer contains illegal characters.~%")
+			:illegal-token))))
 	    (integer
 	     (format t "Error: integer contains illegal characters.~%")
 	     :illegal-token)
@@ -666,20 +666,22 @@ with the comment so as to put it in the proper place")
 (defun initial-error (fs-list &aux (formatstr
 				    "~&Initial error.~%~
 				    Found ~A when looking for ~A here:~%~A"))
-  (clet* (((first ignore place) (peek-first))
-	  (temp (assoc first fs-list)))
-	 (if (null temp)
-	     (do-syntax-error formatstr
-			      first
-			      (parse-error-list-string
-			       (mapcar #'(lambda (x) (car x)) fs-list))
-			      place)
-	     (multiple-value-bind (second name place) (peek-second)
-	       (declare (ignore name))
-	       (do-syntax-error formatstr
-				second
-				(parse-error-list-string (cdr temp))
-				place)))))
+  (let* ((peek (multiple-value-list (peek-first)))
+	 (first (nth 0 peek))
+	 (place (nth 2 peek))
+	 (temp (assoc first fs-list)))
+    (if (null temp)
+	(do-syntax-error formatstr
+	  first
+	  (parse-error-list-string
+	   (mapcar #'(lambda (x) (car x)) fs-list))
+	  place)
+	(multiple-value-bind (second name place) (peek-second)
+	  (declare (ignore name))
+	  (do-syntax-error formatstr
+	    second
+	    (parse-error-list-string (cdr temp))
+	    place)))))
 
 (defun lam-error (fs-list)
   (multiple-value-bind (type name place) (peek-first)
