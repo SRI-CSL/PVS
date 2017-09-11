@@ -334,7 +334,7 @@
 	     (if (and (null (freevars expr))(tc-eq expr instance))
 		 subst
 		 (let ((ans (call-next-method)))
-		   (if (and (eq ans 'fail) ;;(null bind-alist)
+		   (if (and (eq ans 'fail)	    ;;(null bind-alist)
 			    (not (bind-decl? expr)) ;;NSH(12.1.94)
 			    (type expr) (type instance)
 			    ;; NSH(9.19.97)fixes Wilding's rewriting
@@ -346,17 +346,17 @@
 		       (let* ((*keep-unbound* *bound-variables*)
 			      (subst-bind-alist
 			       (loop for x in bind-alist
-				     collect
-				     (if (consp (cdr x))
-					 (cons (car x)
-					       (make!-tuple-expr
-						(mapcar #'(lambda (z)
-							    (make!-name-expr
-							     (id z) nil nil
-							     (make-resolution z
-							       nil (type z))))
-						  (cdr x))))
-					 x)))
+				  collect
+				    (if (consp (cdr x))
+					(cons (car x)
+					      (make!-tuple-expr
+					       (mapcar #'(lambda (z)
+							   (make!-name-expr
+							    (id z) nil nil
+							    (make-resolution z
+							      nil (type z))))
+						 (cdr x))))
+					x)))
 			      (substituted-expr
 			       (substit expr (append subst-bind-alist subst)))
 			      (lhs (if (eq expr substituted-expr)
@@ -375,7 +375,7 @@
 			      )
 			 (if (true-p result)  subst ;;NSH(4.10.97) was 'fail
 			     (multiple-value-bind
-				 (sig lhs-terms rhs-terms)
+				   (sig lhs-terms rhs-terms)
 				 (light-cancel-terms (addends lhs)
 						     (addends instance))
 			       (if (and (null lhs-terms)(null rhs-terms))
@@ -706,23 +706,21 @@
 	(t (match-adt-actuals
 	    (cdr acts1) (cdr acts2)
 	    bind-alist
-	    (cond ((member (car formals) postypes
-			   :test #'(lambda (fm pt)
-				     (same-id fm
-					      (if (subtype? pt)
-						  (print-type pt)
-						  pt))))
-		   (let ((asubsts (match* (type-value (car acts1))
-					  (type-value (car acts2))
-					  bind-alist substs)))
-		     (if (eq asubsts 'fail)
-			 (match* (find-supertype (type-value (car acts1)))
-				 (find-supertype (type-value (car acts2)))
-				 bind-alist substs)
-			 asubsts)))
-		  ((tc-eq (car acts1) (car acts2))
-		   substs)
-		  (t 'fail))
+	    (if (member (car formals) postypes
+			:test #'(lambda (fm pt)
+				  (same-id fm
+					   (if (subtype? pt)
+					       (print-type pt)
+					       pt))))
+		(let ((asubsts (match* (type-value (car acts1))
+				       (type-value (car acts2))
+				       bind-alist substs)))
+		  (if (eq asubsts 'fail)
+		      (match* (find-supertype (type-value (car acts1)))
+			      (find-supertype (type-value (car acts2)))
+			      bind-alist substs)
+		      asubsts))
+		(match* (car acts1) (car acts2) bind-alist substs))
 	    formals
 	    postypes))))
 
@@ -976,8 +974,8 @@
     (with-slots ((bind2 bindings)(expr2 expression))
 	instance
       (cond				;((eq subst 'fail) 'fail)
-       ( (same-binding-op? lhs instance);;(break "match-bind")
-	     ;(equal (length bind1)(length bind2)))
+       ((same-binding-op? lhs instance)
+	;;(equal (length bind1)(length bind2)))
 	;;the above is not enough, the type must match as well
 	;;do this later...(nsh:5/25)
 	(let ((*bound-variables* 
