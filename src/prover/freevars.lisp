@@ -249,6 +249,12 @@
 (defmethod no-freevars? ((map mapping))
   (no-freevars? (rhs map)))
 
+(defmethod freevars* ((lhs mapping-lhs))
+  nil)
+
+(defmethod no-freevars? ((lhs mapping-lhs))
+  t)
+
 (defmethod freevars* ((map mapping-rhs))
   (if (type-value map)
       (freevars* (type-value map))

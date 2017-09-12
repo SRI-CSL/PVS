@@ -77,6 +77,22 @@
   (set-ghost-type ex expected)
   )
 
+(defmethod check-for-tccs* ((ex modname) expected)
+  (declare (ignore expected))
+  (check-type-actuals-and-maps ex))
+
+(defun check-type-actuals-and-maps (thinst)
+  (let* ((theory (declaration thinst))
+	 (acts (actuals thinst)))
+    (unless (memq thinst *exprs-generating-actual-tccs*)
+      (when acts
+	(unless (or *in-checker* *in-evaluator*)
+	  (push thinst *exprs-generating-actual-tccs*))
+	(check-type-actuals* acts (formals-sans-usings theory) theory)
+	(generate-assuming-tccs thinst thinst theory)
+	(generate-actuals-tccs (actuals thinst) acts))))
+  (check-type-maps thinst))
+
 (defmethod check-for-tccs* ((ex name-expr) expected)
   (declare (ignore expected))
   (check-set-type-recursive-name ex)
@@ -132,6 +148,92 @@
 (defmethod check-type-actual (act (formal formal-theory-decl) theory)
   (set-type-actuals-and-maps (expr act) theory))
 
+(defun check-type-maps (name)
+  (when (mappings name)
+    (check-type-mappings name (get-theory name))))
+
+(defun check-type-mappings (thinst theory)
+  (when (mappings thinst)
+    (let* ((athinst (if (recursive-type? theory)
+                        (typecheck* (copy thinst
+                                      :id (id (adt-theory theory))
+                                      :resolutions nil)
+                                    nil 'module nil)
+                        thinst))
+           (cthinst (copy athinst :mappings nil)))
+      ;;(check-type-lhs-mappings (mappings thinst) cthinst) ; Not needed, can't generate TCCs
+      (let* ((smappings (sort-mappings (mappings thinst)))
+             (entry (get-importings theory))
+             (there? (member thinst entry :test #'tc-eq))
+             (*current-context* (if there?
+                                    (copy-context *current-context*)
+                                    *current-context*)))
+;;      (unless there?
+;;        (add-to-using thinst theory))
+        (check-type-mappings* smappings cthinst)))))
+
+(defun check-type-mappings* (mappings thinst &optional previous-mappings)
+  (when mappings
+    (let ((map (car mappings)))
+      (check-type-mapping map thinst previous-mappings)
+      (let ((smaps (cdr mappings)))
+        (check-type-mappings* smaps thinst
+                              (nconc previous-mappings (list map)))))))
+
+(defmethod check-type-mapping ((map mapping) thinst previous-mappings)
+  (let ((lhs (lhs map))
+        (rhs (rhs map)))
+    (assert (resolutions lhs))
+    ;;(assert (ptypes (expr rhs)))
+    ;;(determine-best-mapping-lhs lhs rhs)
+    (if (decl-formals lhs)
+        (let* ((ctn (current-theory-name))
+               (cthinst (lcopy ctn :dactuals (dactuals lhs))))
+          (setf (current-theory-name) cthinst)
+          (unwind-protect 
+              (with-current-decl lhs
+                (check-type-mapping-rhs rhs lhs thinst previous-mappings))
+            (setf (current-theory-name) ctn)))
+        (check-type-mapping-rhs rhs lhs thinst previous-mappings))))
+
+(defun check-type-mapping-rhs (rhs lhs thinst mappings)
+  (typecase (declaration lhs)
+    (type-decl
+     (assert (type-value rhs))
+     (check-for-tccs* (type-value rhs) nil))
+    ((or mod-decl module)
+     (when (or (actuals (expr rhs)) (mappings (expr rhs)))
+       (check-type-actuals-and-maps (expr rhs))))
+    (t ;; May need to perform two subst-mod-params because the lhs decl may not be directly
+     ;; from the theory being mapped
+     ;; First we substitute based on the lhs, then based on the thinst
+     (let* ((theory (module (declaration lhs)))
+	    (lthinst (module-instance lhs))
+	    (ltype (subst-mod-params (type (declaration lhs)) lthinst theory lhs))
+	    (mapthinst (lcopy thinst
+			 :mappings (append mappings (mappings thinst))
+			 :dactuals (dactuals lhs)))
+	    ;; Need mapthinst to match theory
+	    (stype (subst-mod-params ltype mapthinst (module (declaration mapthinst)) lhs))
+	    (subst-type (subst-mod-params-all-mappings stype))
+	    (subst-types (if (free-params stype)
+			     (possible-mapping-subst-types
+			      (ptypes (expr rhs)) stype)
+			     (list stype)))
+	    (etype (or (car subst-types) subst-type)))
+       (assert (fully-instantiated? etype))
+       (check-for-tccs* (expr rhs) etype)
+       (when (definition (declaration lhs))
+	 (assert (def-axiom (declaration lhs)))
+	 (let* ((lname-expr (mk-name-expr lhs))
+		(slhs (subst-mod-params lname-expr mapthinst
+			(module (declaration lhs))
+			(declaration lname-expr))))
+	   (generate-mapped-eq-def-tcc slhs (expr rhs) mapthinst)))))))
+
+(defmethod check-type-mapping ((map mapping-rename) thinst previous-mappings)
+  (declare (ignore thinst previous-mappings))
+  nil)
 
 (defmethod check-for-tccs* ((expr number-expr) expected)
   (declare (ignore expected))

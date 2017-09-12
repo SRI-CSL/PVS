@@ -1175,6 +1175,11 @@
 	  (typecheck-let-bindings (bindings (operator expr)) (argument expr)))
 	(typecheck* (bindings (operator expr)) nil nil nil)))
   (unless (ptypes (operator expr))
+    (when (and expected
+	       (lambda-expr? (operator expr))
+	       (list-expr? (expression (operator expr))))
+      ;;(break "let-expr with list-exprs and expected")
+      (typecheck* (expression (operator expr)) expected nil nil))
     (typecheck* (operator expr) nil nil (argument-list (argument expr))))
   (set-possible-argument-types (operator expr) (argument expr))
   (unless (or (type (operator expr))
@@ -1468,8 +1473,9 @@
       ;; Not in a nice situation, treat as a simple application
       (let ((len (list-expr-length expr)))
 	(when (> len 50)
-	  (pvs-message "Typechecking list ~a with ~d elements; slow without knowing the type"
-	    expr len))
+	  (let ((*print-length* 5))
+	    (pvs-message "Typechecking list ~a with ~d elements; slow without knowing the type"
+	      expr len)))
 	(call-next-method))))
 
 (defun typecheck-list-elt (ex elt-type cons-ex null-ex)

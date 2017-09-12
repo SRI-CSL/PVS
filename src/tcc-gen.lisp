@@ -224,7 +224,7 @@
 
 (defvar *substitute-let-bindings* nil)
 
-(defvar *tcc-make-let-exprs* nil)
+;;(defvar *tcc-make-let-exprs* nil)
 
 (defun add-tcc-conditions (expr)
   (multiple-value-bind (conditions srec-expr vdecl ch?)
@@ -248,7 +248,6 @@
 			(insert-var-into-conditions vdecl conditions)
 			conditions)
 		    substs nil)))
-	;;(break)
 	(universal-closure tform)))))
 
 (defun insert-var-into-conditions (vdecl conditions)
@@ -283,11 +282,11 @@
 		 (cdr conditions)
 		 (cons (car conditions) substs)
 		 antes))
-	       (*tcc-make-let-exprs*
-		(let* ((pos (position-if-not #'consp conditions))
-		       (rem-conditions (when pos (nthcdr pos conditions)))
-		       (let-bindings (ldiff conditions rem-conditions)))
-		  (break "Need to convert to let-expr")))
+	       ;; (*tcc-make-let-exprs*
+	       ;; 	(let* ((pos (position-if-not #'consp conditions))
+	       ;; 	       (rem-conditions (when pos (nthcdr pos conditions)))
+	       ;; 	       (let-bindings (ldiff conditions rem-conditions)))
+	       ;; 	  (break "Need to convert to let-expr")))
 	       (t (add-tcc-conditions*
 		   expr
 		   (cdr conditions)
@@ -398,7 +397,6 @@
 	     (nexpr (if nbindings
 			(make!-forall-expr nbindings nbody)
 			nbody)))
-	;;(break "add-tcc-bindings")
 	(add-tcc-conditions* nexpr conditions substs nil))))
 
 
@@ -1276,16 +1274,23 @@
 		    (if (and ndecl
 			     (or (null netype)
 				 (possibly-empty-type? netype)))
-			(let ((unint (find-uninterpreted
-				      (definition ndecl)
-				      modinst mod mappings-alist)))
-			  (if unint
+			(let ((needs-interp (find-needs-interpretation
+					     (definition ndecl)
+					     modinst mod mappings-alist)))
+			  (if needs-interp
 			      (unless *collecting-tccs*
 				(pvs-warning
 				    "Axiom ~a is not a TCC because~%  ~?~% ~
                                      ~:[is~;are~] not interpreted."
-				  (id axiom) *andusingctl* unint (cdr unint)))
-			      (insert-tcc-decl 'mapped-axiom modinst axiom ndecl)))
+				  (id axiom) *andusingctl* needs-interp (cdr needs-interp)))
+			      (if (and nil
+				       (every #'(lambda (elt)
+						  (let ((rhs-val (or (type-value (cdr elt)) (expr (cdr elt)))))
+						    (when (name? rhs-val)
+						      (interpretable? (declaration rhs-val)))))
+					      mappings-alist))
+				  (generate-mapped-axiom modinst axiom (definition ndecl))
+				  (insert-tcc-decl 'mapped-axiom modinst axiom ndecl))))
 			(if ndecl
 			    (add-tcc-comment
 			     'mapped-axiom nil modinst
@@ -1296,6 +1301,23 @@
 				     (unpindent netype 2 :string t :comment? t))))
 			    (add-tcc-comment
 			     'mapped-axiom nil modinst))))))))))))
+
+;; (defun generate-mapped-axiom (modinst axiom-decl mapped-axiom-defn)
+;;   (unless (some #'(lambda (decl)
+;; 		    (and (formula-decl? decl)
+;; 			 (eq (id decl) (id axiom-decl))))
+;; 		(all-decls (current-theory)))
+;;     (multiple-value-bind (dfmls dacts thinst)
+;; 	(new-decl-formals axiom-decl)
+;;       (declare (ignore dacts))
+;;       (let* ((id (id axiom-decl))
+;; 	     (mdecl (mk-formula-decl id nil 'AXIOM nil dfmls)))
+	
+;; 	(setf (definition mdecl) tform)
+;;       (typecheck* edecl nil nil nil)
+;;       (pvs-info "Added existence AXIOM for ~a:~%~a"
+;; 	(id decl) (unparse edecl :string t))
+;;       (add-decl edecl))))
 
 (defmethod collect-mapping-axioms (thinst theory)
   (assert theory)
@@ -1336,8 +1358,8 @@
 	  :test #'tc-eq))
 
 
-(defun find-uninterpreted (expr thinst theory mappings-alist)
-  (declare (ignore thinst mappings-alist))
+(defun find-needs-interpretation (expr thinst theory mappings-alist)
+  (declare (ignore thinst theory mappings-alist))
   (let ((needs-interp nil))
     (mapobject #'(lambda (ex)
 		   (or (member ex needs-interp :test #'tc-eq)
@@ -1350,10 +1372,11 @@
 				    |number_fields| |reals|
 				    |character_adt|)))
 		       (adt-name-expr? ex)
+		       (adt-type-name? ex)
 		       (let ((decl (when (name? ex) (declaration ex))))
 			 (when (and (declaration? decl)
 				    (not (eq (module decl) (current-theory)))
-				    (eq (module decl) theory)
+				    ;;(eq (module decl) theory)
 				    (interpretable? decl))
 			   (push ex needs-interp)))))
 	       expr)

@@ -826,6 +826,7 @@
     mdecl))
 
 (defmethod make-mapped-decl ((decl decl-formal-type) map theory theoryname)
+  (declare (ignore map theory theoryname))
   (let ((fdecl (new-decl-formal decl)))
     (setf (place fdecl) nil)
     fdecl))
@@ -836,13 +837,11 @@
 	 (dtype (or (print-type type) type))
 	 ;;(dtype (subst-mod-params (declared-type decl) theoryname theory))
 	 ;;(type (subst-mod-params (type decl) theoryname theory))
+	 (dformals (decl-formals (lhs map)))
 	 (mdecl (change-class
 		    (copy decl
 		      :place nil
-		      :decl-formals (mapcar #'(lambda (df)
-						(make-mapped-decl
-						 df map theory theoryname))
-				      (decl-formals decl))
+		      :decl-formals dformals
 		      :formals nil
 		      :module (current-theory)
 		      :refers-to (generate-xref (expr (rhs map)))
@@ -854,7 +853,7 @@
 		    'mapped-const-decl)))
     (dolist (df (decl-formals mdecl))
       (setf (associated-decl df) mdecl))
-    (assert (fully-instantiated? type))
+    (assert (with-current-decl mdecl (fully-instantiated? type)))
     (make-def-axiom mdecl)
     mdecl))
 				
