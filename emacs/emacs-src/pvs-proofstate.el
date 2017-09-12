@@ -57,7 +57,6 @@
 		   )
 	      (pvs-proofstate-display)
 	      ;;(select-frame prframe)
-	      (setq ppp ps)
 	      (display-proofstate-commentary commentary)
 	      (when (get-buffer "Proofstate")
 		(with-current-buffer "Proofstate"
@@ -138,7 +137,6 @@
 	     (formula (cdr (assq 'formula s-fmla)))
 	     (names-info (cdr (assq 'names-info s-fmla))))
 	(insert "\n")
-	(setq iii names-info)
 	(let ((labelstr (concat (if changed "{" "[")
 				(format "%s" (elt labels 0)))))
 	  (when (> (length labels) 1)
@@ -456,7 +454,7 @@ windows are displayed properly."
 	      ))))
       (setq current-proofstate-display-style '2-frame))))
 
-(defpvs pvs-proofstate-3-frame prove ()
+(defpvs pvs-proofstate-3-frame prove (&optional reset)
   (interactive)
   (when pvs-in-checker
     (let* ((frame-names-alist (make-frame-names-alist))
@@ -465,8 +463,9 @@ windows are displayed properly."
 	   (cmd-frame (cdr (assoc "Proofcommand" frame-names-alist)))
 	   (scr-frame (cdr (assoc "Proofscript" frame-names-alist))))
       (when scr-frame (delete-frame scr-frame))
-      (unless (and (eq current-proofstate-display-style '3-frame)
-		   ps-frame com-frame cmd-frame)
+      (unless (or reset
+		  (and (eq current-proofstate-display-style '3-frame)
+		       ps-frame com-frame cmd-frame))
 	(setq com-frame (or com-frame (make-proofcommentary-frame)))
 	(setq ps-frame (or ps-frame (make-proofstate-frame)))
 	(setq cmd-frame (or cmd-frame (make-proofcommand-frame)))
@@ -501,7 +500,7 @@ windows are displayed properly."
 	(select-frame-set-input-focus cmd-frame)))
     (setq current-proofstate-display-style '2-frame)))
 
-(defpvs pvs-proofstate-4-frame prove ()
+(defpvs pvs-proofstate-4-frame prove (&optional reset)
   (interactive)
   (when pvs-in-checker
     (let* ((frame-names-alist (make-frame-names-alist))
@@ -509,8 +508,9 @@ windows are displayed properly."
 	   (com-frame (cdr (assoc "Proofcommentary" frame-names-alist)))
 	   (cmd-frame (cdr (assoc "Proofcommand" frame-names-alist)))
 	   (scr-frame (cdr (assoc "Proofscript" frame-names-alist))))
-      (unless (and (eq current-proofstate-display-style '4-frame)
-		   ps-frame com-frame cmd-frame)
+      (unless (or reset
+		  (and (eq current-proofstate-display-style '4-frame)
+		       ps-frame com-frame cmd-frame))
 	(setq com-frame (or com-frame (make-proofcommentary-frame)))
 	(setq ps-frame (or ps-frame (make-proofstate-frame)))
 	(setq cmd-frame (or cmd-frame (make-proofcommand-frame)))

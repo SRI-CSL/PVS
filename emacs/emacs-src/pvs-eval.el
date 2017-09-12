@@ -23,7 +23,7 @@
 (defpvs pvs-lisp-theory typecheck (theoryname)
   "Generates the Lisp code for a given theory and displays it in a buffer"
   (interactive (complete-theory-name "Generate lisp for theory: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
   (message "Generating Lisp for theory...")
   (pvs-send-and-wait (format "(generate-lisp-for-theory \"%s\")"
@@ -31,8 +31,7 @@
   (let ((buf (pvs-find-lisp-file theoryname)))
     (when buf
       (message "")
-      (save-excursion
-	(set-buffer buf)
+      (with-current-buffer buf
 	(set (make-local-variable 'pvs-context-sensitive) t)
 	(lisp-mode)))))
 
@@ -47,7 +46,7 @@
 (defpvs pvs-C-theory typecheck (theoryname)
   "Generates the C code for a given theory and displays it in a buffer"
   (interactive (complete-theory-name "Generate C code for theory: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
   (message "Generating C code for theory...")
   (pvs-send-and-wait (format "(pvs2c-theory \"%s\")"
@@ -55,15 +54,14 @@
   (let ((buf (pvs-find-C-file (format "%s_c" theoryname))))
     (when buf
       (message "")
-      (save-excursion
-	(set-buffer buf)
+      (with-current-buffer buf
 	(set (make-local-variable 'pvs-context-sensitive) t)
 	(lisp-mode)))))
 
 (defpvs pvs-C-file find-file (filename)
   "Generates the C code for a given file and displays it in a buffer"
   (interactive (pvs-complete-file-name "Generate C for file: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
   (message (format "Generating C for file %s ..." filename))
   (pvs-send-and-wait (format "(generate-C-for-pvs-file \"%s\")"
@@ -72,8 +70,7 @@
   (let ((buf (pvs-find-C-file (pathname-name filename))))
     (when buf
       (message "")
-      (save-excursion
-	(set-buffer buf)
+      (with-current-buffer buf
 	(set (make-local-variable 'pvs-context-sensitive) t)
 	(lisp-mode)))))
 
@@ -90,7 +87,7 @@
 (defpvs pvs-ground-evaluator prove (theory)
   "Invokes the ground evaluator in the context of the given PVS theory"
   (interactive (complete-theory-name "Use context of theory: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (confirm-not-in-checker)
   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" theory)
 			     nil 'tc nil)

@@ -97,8 +97,7 @@ the formula is already proved."
   
 (defun prooflite-buffer (&optional mssg)
   (let ((buffer (get-buffer "ProofLite")))
-    (save-excursion
-      (set-buffer buffer)
+    (with-current-buffer buffer
       (goto-char (point-min))
       (when mssg 
 	(insert mssg)
@@ -135,9 +134,10 @@ to (moving forward) the current cursor position into the working theory."
 		     nil nil 'list)))
 	  (when line
 	    (prooflite-buffer)
-	    (goto-line (+ (car line) 1))
+	    (goto-char (point-min))
+	    (forward-line (car line))
 	    (newline)
-	    (insert-buffer "ProofLite")))))))
+	    (insert-buffer-substring "ProofLite")))))))
 
 (defun complete-formula-name ()
   (let* ((formulas (pvs-send-and-wait 
