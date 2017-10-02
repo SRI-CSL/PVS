@@ -4623,7 +4623,7 @@ more_finseq [T: TYPE]: THEORY
 
    add(x, rr): finseq[T] =
      rr WITH [`length := rr`length + 1,
-              `seq(rr`length) := x]
+              `seq(rr`length) |-> x]
 
   END more_finseq
 
