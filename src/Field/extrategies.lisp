@@ -857,7 +857,7 @@ arguments ARGS. ARGS can only have constant values.")
 	(let ((lbl     (flatten-labels label))
 	      (qhidden (list 'quote hidden?))
 	      (qfs     (list 'quote fs)))
-	  (mapstep #'(lambda(x)`(unlabel ,qfs ,x :hidden? ,qhidden)) lbl))
+	  (mapstep #'(lambda(x) (list 'unlabel qfs x :hidden? qhidden)) lbl))
       (unlabel fs :hidden? hidden?)))
   "[Extrategies] Removes specified LABEL(s) (or all labels if LABEL is nil) from FNUMS.
 FNUMS are considered to be hidden formulas when hidden? is set to t."
@@ -871,7 +871,7 @@ FNUMS are considered to be hidden formulas when hidden? is set to t."
 	    (when hide? (hide fnums)))
 	  (when seqfs
 	    (let ((lbs (flatten-labels labl)))
-	      (mapstep #'(lambda(x)`(unlabel :label ,x :hidden? t)) lbs)))))
+	      (mapstep #'(lambda(x) (list 'unlabel :label x :hidden? t)) lbs)))))
   "[Extrategies] Removes LABL(s). If HIDE? is t, hides the delabeled formulas.
 If HIDDEN? is t, LABL(s) are also removed from hidden formulas."
   "Removing label(s) ~a")
@@ -896,7 +896,7 @@ If HIDDEN? is t, LABL(s) are also removed from hidden formulas."
   (when labl
     (let ((labs   (flatten-labels labl))
 	  (qfnums (list 'quote fnums)))
-      (mapstep #'(lambda(x)`(label ,x ,qfnums :push? t)) labs)))
+      (mapstep #'(lambda(x) (list 'label x qfnums :push? t)) labs)))
   "[Extrategies] Internal strategy." "")
 
 (defstep relabel (labl fnums &optional pairing? (push? t))
