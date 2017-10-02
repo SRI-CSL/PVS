@@ -668,40 +668,41 @@ window."
 		    (goto-char (point-max)))))
 	      (if (= (point-min) (point-max))
 		  (message "PVS sent an empty buffer")
-		(case (intern display)
-		  ((nil NIL) nil)
-		  ((popto POPTO)
-		   (pop-to-buffer buf)
-		   (cond (append-p
-			  (when at-end
-			    (goto-char (point-max))))
-			 (t (goto-char cpoint)
-			    (beginning-of-line))))
-		  ((temp TEMP)
-		   (with-output-to-temp-buffer bufname
-		     (set-buffer bufname)
-		     (insert-file-contents file nil))
-		   (ilisp-show-output buf)
-		   (pvs-add-to-buffer-list bufname)
-		   (let ((rh (substitute-command-keys "\\[pvs-bury-output]")) 
-			 (s (substitute-command-keys "\\[ilisp-scroll-output]")))
-		     (message
-		      (format 
-			  "%s removes help window, %s scrolls, M-- %s scrolls back"
-			  rh s s))))
-		  (t
-		   (when (member (intern display) '(t T))
+		  (case (intern display)
+		    ((nil NIL) nil)
+		    ((popto POPTO)
 		     (pop-to-buffer buf)
-		     (ilisp-show-output buf)
 		     (cond (append-p
 			    (when at-end
 			      (goto-char (point-max))))
-			   (t (goto-char (point-min)) ;was cpoint
-			      (beginning-of-line)))
-		     (sit-for 0)
-		     ;;(pop-to-buffer obuf)
-		     )))))
-	    (delete-file file)))))
+			   (t (goto-char cpoint)
+			      (beginning-of-line))))
+		    ((temp TEMP)
+		     (with-output-to-temp-buffer bufname
+		       (set-buffer bufname)
+		       (insert-file-contents file nil))
+		     (ilisp-show-output buf)
+		     (pvs-add-to-buffer-list bufname)
+		     (let ((rh (substitute-command-keys "\\[pvs-bury-output]")) 
+			   (s (substitute-command-keys "\\[ilisp-scroll-output]")))
+		       (message
+			(format 
+			    "%s removes help window, %s scrolls, M-- %s scrolls back"
+			    rh s s))))
+		    (t
+		     (when (member (intern display) '(t T))
+		       (pop-to-buffer buf)
+		       (ilisp-show-output buf)
+		       (cond (append-p
+			      (when at-end
+				(goto-char (point-max))))
+			     (t (goto-char (point-min)) ;was cpoint
+				(beginning-of-line)))
+		       (sit-for 0)
+		       ;;(pop-to-buffer obuf)
+		       ))))))))
+  (when (file-exists-p file)
+    (delete-file file)))
 
 (defun pvs-buffer-noninteractive (bufname file display read-only append kind)
   (when (not (lnull file))
