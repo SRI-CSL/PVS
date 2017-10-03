@@ -82,7 +82,10 @@
   (check-type-actuals-and-maps ex))
 
 (defun check-type-actuals-and-maps (thinst)
-  (let* ((theory (declaration thinst))
+  (let* ((decl (declaration thinst))
+	 (theory (if (declaration? decl)
+		     (module decl)
+		     decl))
 	 (acts (actuals thinst)))
     (unless (memq thinst *exprs-generating-actual-tccs*)
       (when acts
