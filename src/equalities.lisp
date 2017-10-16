@@ -914,6 +914,28 @@
 	  (and (tc-eq* args1 args2 bindings)
 	       (tc-eq* ex1 ex2 bindings))))))
 
+;;; The name prover command introduces a skolem constant with
+;;; a definition.  We check this in the next two methods
+;;; However, when in replace, we don't want to do this, since
+;;; the replace is not done if the replacement is tc-eq to the
+;;; original.  Using *replace-cache* as a proxy for being in
+;;; replace.  rewrite doesn't seem to do this, so no check for
+;;; in rewrite.
+
+(defmethod tc-eq* ((n1 name-expr) (e2 expr) bindings)
+  (if (name-expr? e2)
+      (call-next-method)
+      (when (and nil (not *replace-cache*)
+		 (skolem-const-decl? (declaration n1)))
+	(tc-eq* (definition (declaration n1)) e2 bindings))))
+
+(defmethod tc-eq* ((e1 expr) (n2 name-expr) bindings)
+  (if (name-expr? e1)
+      (call-next-method)
+      (when (and nil (not *replace-cache*)
+		 (skolem-const-decl? (declaration n2)))
+	(tc-eq* e1 (definition (declaration n2)) bindings))))
+
 ;;; Make sure we don't allow bindings and names to be tc-eq*
 
 (defmethod tc-eq* ((n1 binding) (n2 name) bindings)

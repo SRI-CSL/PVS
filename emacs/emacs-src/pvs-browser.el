@@ -37,9 +37,9 @@
 
 (defvar pvs-popup-windows nil
   "Controls behavior of browser functions.
-nil    = use current frame
-'frame = use a (potentially new) browser frame
-'x     = use dedicated X windows popups")
+  nil    = use current frame
+  'frame = use a (potentially new) browser frame
+  'x     = use dedicated X windows popups")
 
 (defvar pvs-popup-browse-frame nil
   "The frame to use for browse windows when pvs-popup-windows is 'frame")
@@ -60,19 +60,20 @@ when pvs-popup-windows is nil")
     (define-key pvs-browse-mode-map "\M-," 'find-declaration)
     (define-key pvs-browse-mode-map "\M-;" 'whereis-declaration-used)
     (define-key pvs-browse-mode-map "\M-:" 'list-declarations)
-    (define-key pvs-browse-mode-map (kbd "C-.") 'show-expanded-form)
-    (define-key pvs-browse-mode-map (kbd "C-M-.")  'goto-declaration)
-    (define-key pvs-browse-mode-map (kbd "C-M-;") 'whereis-identifier-used)
+    (define-key pvs-browse-mode-map [(control ?.)] 'show-expanded-form)
+    (define-key pvs-browse-mode-map [(control meta ?.)]  'goto-declaration)
+    (define-key pvs-browse-mode-map
+	  [(control meta ?;)] 'whereis-identifier-used)
     (define-key pvs-browse-mode-map " " 'next-line)
     (define-key pvs-browse-mode-map "n" 'next-line)
     (define-key pvs-browse-mode-map "p" 'previous-line)
     (define-key pvs-browse-mode-map "\177" 'previous-line)
     (define-key pvs-browse-mode-map "h" 'describe-mode)
-    (define-key pvs-browse-mode-map (kbd "?") 'describe-mode))
+    (define-key pvs-browse-mode-map "?" 'describe-mode))
 
 
-(define-derived-mode pvs-browse-mode pvs-mode "Browse"
-  "Major mode for browsing a list of PVS declarations
+(defun pvs-browse-mode ()
+  "Major mode for browsing a list of declarations
 Each line describes one of the declarations in the current context.
 The most useful key bindings for this mode are:
   s -- pvs-browse-select
@@ -82,9 +83,12 @@ The most useful key bindings for this mode are:
 
 The complete set of bindings is:
 \\{pvs-browse-mode-map}"
-  :group 'pvs
-  (setq-local truncate-lines t)
-  (setq-local buffer-read-only t))
+  (kill-all-local-variables)
+  (use-local-map pvs-browse-mode-map)
+  (setq truncate-lines t)
+  (setq buffer-read-only t)
+  (setq major-mode 'pvs-browse-mode)
+  (setq mode-name "Browse"))
 
 
 ;;; show-declaration, find-declaration, whereis-declaration-used, and
@@ -521,3 +525,5 @@ argument they are expanded as well."
 	((eq pvs-popup-windows 'x)
 	 (error "pvs-popup-windows as x not yet implemented"))
 	(t (error "pvs-popup-windows is not one of nil, 'frame or 'x"))))
+
+	   

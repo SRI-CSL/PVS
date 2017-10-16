@@ -87,9 +87,11 @@ in util.lisp")
   (pushnew :pvs *features*)
   )
 
+(defvar *pvs-git-describe*)
+
 (defparameter *binfile-version* 37)
 
-(defvar *pvs-build-time* (get-universal-time)) ;; set on loading in operate-on-system
+(defvar *pvs-build-time* (get-universal-time))
 
 (defparameter *context-name* ".pvscontext")
 

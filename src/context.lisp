@@ -1451,35 +1451,42 @@ pvs-strategies files.")
 	  (when (and (file-exists-p filestring)
 		     (> *number-of-proof-backups* 0))
 	    (backup-proof-file filestring))
-	  (multiple-value-bind (value condition)
-	      (ignore-file-errors
-	       (with-open-file (out filestring :direction :output
-				    :if-exists :supersede)
-		 (mapc #'(lambda (prf)
-			   (write prf :length nil :level nil :escape t
-				  :pretty *save-proofs-pretty*
-				  :stream out)
-			   (when *save-proofs-pretty* (terpri out)))
-		       curproofs)
-		 (terpri out)))
-	    (declare (ignore value))
-	    (cond ((or condition
-		       (setq condition
-			     (and *validate-saved-proofs*
-				  (invalid-proof-file filestring curproofs))))
-		   (if (pvs-yes-or-no-p
-			"Error writing out proof file:~%  ~a~%Try again?"
-			condition)
-		       (save-proofs filestring theories)))
-		  (t (dolist (th theories)
-		       (let ((te (get-context-theory-entry (id th))))
-			 (when (and te (memq 'invalid-proofs (te-status te)))
-			   (setf (te-status te)
-				 (delete 'invalid-proofs (te-status te))))))
-		     (pvs-log "Wrote proof file ~a"
-			      (file-namestring filestring)))))))
+	  (when (save-proofs-to-file filestring curproofs)
+	    (dolist (th theories)
+	      (let ((te (get-context-theory-entry (id th))))
+		(when (and te (memq 'invalid-proofs (te-status te)))
+		  (setf (te-status te)
+			(delete 'invalid-proofs (te-status te))))))
+	    (pvs-log "Wrote proof file ~a"
+		     (file-namestring filestring)))))
       (pvs-message
 	  "Do not have write permission for saving proof files")))
+
+(defun save-proofs-to-file (filestring theory-proofs)
+  (let ((prf-file (make-prf-pathname filestring)))
+    (multiple-value-bind (value condition)
+	(ignore-file-errors
+	 (with-open-file (out prf-file :direction :output
+			      :if-exists :supersede)
+	   (mapc #'(lambda (prf)
+		     (write prf :length nil :level nil :escape t
+			    :pretty *save-proofs-pretty*
+			    :stream out)
+		     (when *save-proofs-pretty* (terpri out)))
+		 theory-proofs)
+	   (terpri out)))
+      (declare (ignore value))
+      (unless condition
+	(setq condition
+	      (and *validate-saved-proofs*
+		   (invalid-proof-file prf-file theory-proofs))))
+      (or (not condition)
+	  (and (pvs-yes-or-no-p
+		"Error writing out proof file:~%  ~a~%Try again?"
+		condition)
+	       (save-proofs-to-file prf-file theory-proofs)
+	       (pvs-message "Proof not saved"))))))
+
 
 (defun backup-proof-file (file)
   (let ((filestring (namestring file)))
@@ -2362,7 +2369,7 @@ Note that the lists might not be the same length."
     (if proof
 	(pvs-buffer "View Proof"
 	  (with-output-to-string (out)
-	    (write (editable-justification (cdddr proof))
+	    (write (get-editable-justification (cddr proof))
 		   :stream out :pretty t :escape t :level nil :length nil
 		   :pprint-dispatch *proof-script-pprint-dispatch*))
 	  t)

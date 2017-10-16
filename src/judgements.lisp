@@ -2115,7 +2115,8 @@
   (subtype-wrt?* te1 te2 (type reltype) arg bindings))
 
 (defmethod subtype-wrt?* ((te1 funtype) (te2 funtype) reltype arg bindings)
-  (let* ((id (gentemp))
+  (let* ((*generate-tccs* 'none)
+	 (id (gentemp))
 	 (bd (make-bind-decl id (dep-binding-type (domain te1))))
 	 (var (make-variable-expr bd))
 	 (app (make!-application arg var)))

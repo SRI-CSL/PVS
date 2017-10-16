@@ -4638,7 +4638,7 @@ space")
   (uiop:run-program
       (format nil "git -C ~a describe" *pvs-path*)
     :input "//dev//null"
-    :output :string))
+    :output '(:string :stripped t)))
 
 (defun git-current-commit ()
   (if (file-exists-p (format nil "~a/.git" *pvs-path*))
@@ -4647,7 +4647,7 @@ space")
 	(uiop:run-program
 	    (format nil "git -C ~a log -1 --pretty=format:%h:%H" *pvs-path*)
 	  :input "//dev//null"
-	  :output :string)
+	  :output '(:string :stripped t))
 	#\:))
       (error "*pvs-path* has no .git directory")))
 
@@ -4655,11 +4655,10 @@ space")
   ;; Use the Git SHA1, which is different from simple SHA1
   ;; as it includes "blob" and length of file
   ;; Advantage is that it is the same inside or outside of Git
-  (uiop:stripln
-   (uiop:run-program
-       (format nil "git hash-object ~a" file)
-     :input "//dev//null"
-     :output :string)))
+  (uiop:run-program
+      (format nil "git hash-object ~a" file)
+    :input "//dev//null"
+    :output '(:string :stripped t)))
 
 (defun record-file-loaded-for-pvs (file)
   (let ((elt (assq *loading-files* *files-loaded*)))

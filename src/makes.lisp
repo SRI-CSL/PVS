@@ -1592,24 +1592,30 @@
 (defun mk-implies-operator ()
   (implies-operator))
 
-(defmethod make-assignment ((arg expr) expression)
-  (mk-assignment 'uni (list (list arg)) expression))
+(defmethod make-assignment ((arg expr) expression &optional maplet?)
+  (if maplet?
+      (mk-maplet 'uni (list (list arg)) expression)
+      (mk-assignment 'uni (list (list arg)) expression)))
 
-(defmethod make-assignment ((arg name-expr) expression)
+(defmethod make-assignment ((arg name-expr) expression &optional maplet?)
   (if (and (typep (declaration arg) 'field-decl)
 	   (typep arg '(not field-assignment-arg)))
       (call-next-method (change-class (copy arg) 'field-assign)
-			expression)
+			expression maplet?)
       (call-next-method)))
 
-(defmethod make-assignment ((args list) expression)
+(defmethod make-assignment ((args list) expression &optional maplet?)
   (if (every #'(lambda (a) (typep a 'expr)) args)
-      (mk-assignment (unless (cdr args) 'uni) (list args) expression)
+      (if maplet?
+	  (mk-maplet (unless (cdr args) 'uni) (list args) expression)
+	  (mk-assignment (unless (cdr args) 'uni) (list args) expression))
       (if (every #'(lambda (arg)
 		     (and (listp arg)
 			  (every #'(lambda (a) (typep a 'expr)) arg)))
 		 args)
-	  (mk-assignment nil args expression)
+	  (if maplet?
+	      (mk-maplet nil args expression)
+	      (mk-assignment nil args expression))
 	  (error "make-assignment bad arguments: must be expression, list of exprs, or list of list of exprs"))))
 
 (defun make-update-expr (expression assignments &optional expected)
@@ -2110,12 +2116,13 @@
 
 (defun make!-update-expr (expression assignments)
   (assert (type expression))
-  (assert (every #'(lambda (ass) (typep ass '(and assignment (not maplet))))
-		 assignments))
-  (make-instance 'update-expr
-    :expression expression
-    :assignments assignments
-    :type (find-supertype (type expression))))
+  (if (every #'(lambda (ass) (typep ass '(and assignment (not maplet))))
+	     assignments)
+      (make-instance 'update-expr
+	:expression expression
+	:assignments assignments
+	:type (find-supertype (type expression)))
+      (make-update-expr expression assignments)))
 
 (defun make!-recognizer-name-expr (rec-id adt-type-name)
   (let* ((adt (adt adt-type-name))

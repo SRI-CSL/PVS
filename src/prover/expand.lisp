@@ -488,7 +488,11 @@ list of positive numbers" occurrence)
 	   (same-expand-name tgt-name (cdr pat-names)))))
 
 (defun same-expand-name* (tgt-name pat-name)
-  (and (or (eq (id tgt-name) (id pat-name))
+  (and (or (if (or (resolution pat-name)
+		   (not (simple-name? pat-name)))
+	       (eq (id tgt-name) (id pat-name))
+	       ;; Otherwise, could be from a symbol, ignore case
+	       (string-equal (id tgt-name) (id pat-name)))
 	   (and (memq (id tgt-name) '(/= ≠))
 		(memq (id pat-name) '(/= ≠))))
        (or (null (library pat-name))

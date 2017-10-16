@@ -1175,34 +1175,39 @@
   (with-slots (arguments expression) assignment
     (lcopy assignment
       'expression (make-updated-assign-expr arguments expression
-					    outer-assignment nil))))
+					    outer-assignment nil nil))))
 
 ;;checks if assign-args are reassigned in outer-assignments and
 ;;returns the updated or overridden assign-expr.
 (defun make-updated-assign-expr (assign-args assign-expr outer-assignments
-					     accum-assignments)
+				 accum-assignments maplet?-list)
   (if (consp outer-assignments)
       (let* ((outer-args1 (arguments (car outer-assignments)))
 	     (outer-assgn1 (expression (car outer-assignments)))
+	     (maplet? (maplet? (car outer-assignments)))
 	     (match (match-update-args-prefix? assign-args outer-args1)))
 	(if match
 	    (make-updated-assign-expr assign-args assign-expr
 				      (cdr outer-assignments)
 				      (cons (cons match outer-assgn1)
-					    accum-assignments))
+					    accum-assignments)
+				      (cons maplet? maplet?-list))
 	    (make-updated-assign-expr assign-args assign-expr
 				      (cdr outer-assignments)
-				      accum-assignments)))
+				      accum-assignments
+				      maplet?-list)))
       (if accum-assignments
 	  (let ((final-override
-		 (some #'(lambda (x)
-			   (and (eq (car x) t) x)) accum-assignments)))
+		 (some #'(lambda (x) (and (eq (car x) t) x))
+		       accum-assignments)))
 	    (if final-override
 		(cdr final-override)
 		(let* ((naccum-assignments (nreverse accum-assignments))
+		       (nmaplet?-list (nreverse maplet?-list))
 		       (tc-naccum-assignments
 			(loop for (x . y) in naccum-assignments
-			      collect (make-assignment x y))))
+			     as maplet? in nmaplet?-list
+			   collect (make-assignment x y maplet?))))
 		  (simplify-nested-updates
 		   assign-expr
 		   tc-naccum-assignments

@@ -1954,11 +1954,13 @@ then uses unpindent* to add the indent to each line"
       (values x exp)))
 
 (defmethod simple-name? ((ex name))
-  (and (not (and (id ex) (mod-id ex)))
-       (not (actuals ex))
-       (not (library ex))
-       (null (mappings ex))
-       (null (target ex))))
+  (with-slots (id mod-id actuals dactuals library mappings target) ex
+    (not (or (and id mod-id)
+	     actuals
+	     dactuals
+	     library
+	     mappings
+	     target))))
 
 (defmethod simple-name? (ex)
   (declare (ignore ex))

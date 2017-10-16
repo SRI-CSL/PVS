@@ -1270,6 +1270,7 @@
 	      (dolist (axiom (collect-mapping-axioms modinst mod))
 		(multiple-value-bind (ndecl mappings-alist)
 		    (make-mapped-axiom-tcc-decl axiom modinst mod)
+		  ;; ndecl is nil if mapped axion simplifies to *true*
 		  (let ((netype (when ndecl (nonempty-formula-type ndecl))))
 		    (if (and ndecl
 			     (or (null netype)
@@ -1280,17 +1281,10 @@
 			  (if needs-interp
 			      (unless *collecting-tccs*
 				(pvs-warning
-				    "Axiom ~a is not a TCC because~%  ~?~% ~
+				    "Axiom ~a is not mapped to a TCC because~%  ~?~% ~
                                      ~:[is~;are~] not interpreted."
 				  (id axiom) *andusingctl* needs-interp (cdr needs-interp)))
-			      (if (and nil
-				       (every #'(lambda (elt)
-						  (let ((rhs-val (or (type-value (cdr elt)) (expr (cdr elt)))))
-						    (when (name? rhs-val)
-						      (interpretable? (declaration rhs-val)))))
-					      mappings-alist))
-				  (generate-mapped-axiom modinst axiom (definition ndecl))
-				  (insert-tcc-decl 'mapped-axiom modinst axiom ndecl))))
+			      (insert-tcc-decl 'mapped-axiom modinst axiom ndecl)))
 			(if ndecl
 			    (add-tcc-comment
 			     'mapped-axiom nil modinst
@@ -1412,24 +1406,34 @@
 	  (subst-mod-params (closed-definition axiom)
 	      (lcopy modinst :dactuals dacts)
 	    mod axiom)
-	(let* ((tform expr) ;(add-tcc-conditions expr)
-	       (xform (if *simplify-tccs*
-			  (pseudo-normalize tform)
-			  (beta-reduce tform)))
-	       (sform (raise-actuals (expose-binding-types
-				      (universal-closure xform))
-				     t))
-	       (uform (if thinst
-			  (subst-mod-params sform thinst cth axiom) ;cdecl
-			  sform)))
-	  (setf (definition tccdecl) uform)
-	  (unless (tc-eq uform *true*)
-	    (when (and *false-tcc-error-flag*
-		       (tc-eq uform *false*))
-	      (type-error axiom
-		"Mapped axiom TCC for this expression simplifies to false:~2%  ~a"
-		tform))
-	    (values (typecheck* tccdecl nil nil nil) mappings-alist)))))))
+	;; Check for mappings to uninterpreted RHS names, don't do anything in this case
+	(if (every #'(lambda (elt)
+		       (let ((rhs-val (or (type-value (cdr elt)) (expr (cdr elt)))))
+			 (when (name? rhs-val)
+			   (interpretable? (declaration rhs-val)))))
+		   mappings-alist)
+	    (unless *collecting-tccs*
+	      (pvs-warning
+		  "Axiom ~a is not a mapped to a TCC because all all RHS exprs are interpretable names."
+		(id axiom)))
+	    (let* ((tform expr)		;(add-tcc-conditions expr)
+		   (xform (if *simplify-tccs*
+			      (pseudo-normalize tform)
+			      (beta-reduce tform)))
+		   (sform (raise-actuals (expose-binding-types
+					  (universal-closure xform))
+					 t))
+		   (uform (if thinst
+			      (subst-mod-params sform thinst cth axiom) ;cdecl
+			      sform)))
+	      (setf (definition tccdecl) uform)
+	      (unless (tc-eq uform *true*)
+		(when (and *false-tcc-error-flag*
+			   (tc-eq uform *false*))
+		  (type-error axiom
+		    "Mapped axiom TCC for this expression simplifies to false:~2%  ~a"
+		    tform))
+		(values (typecheck* tccdecl nil nil nil) mappings-alist))))))))
 
 (defun generate-selections-tccs (expr constructors adt)
   (when (and constructors

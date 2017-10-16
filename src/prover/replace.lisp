@@ -391,7 +391,7 @@
       (let ((rtype (replace-expr* lhs rhs (type expr) lastopinfix?))
 	    (rdtype (replace-expr* lhs rhs (declared-type expr) lastopinfix?)))
 	(lcopy expr :type rtype :declared-type rdtype))
-      expr))
+      (call-next-method)))
 
 (defun make-nonclashing-bindings (bindings expr)
   (let ((free-ids (collect-free-ids expr)))

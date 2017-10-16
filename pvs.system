@@ -273,8 +273,8 @@
   :finally-do (progn
 		#-(or cmu sbcl)
 		(pvs::BDD_bdd_init)
-		(when *pvs-has-libyices*
-		  (pvs::nlyices-init))
+		;;(when *pvs-has-libyices*
+		  ;;(pvs::nlyices-init))
 		(when *load-pvs-prelude*
 		  (pvs::load-prelude)
 		  ;;(load (format nil "~a/src/PVSio/prelude-attachments" *pvs-path*))
@@ -287,7 +287,8 @@
 		  (load optfile))
 		(pvs::remove-typecheck-caches)
 		(assert (every #'fboundp pvs::*untypecheck-hook*))
-		;;(setq *pvs-build-time* (get-universal-time))
+		(setq *pvs-build-time* (get-universal-time))
+		(setq *pvs-git-describe* (pvs::pvs-dist-file-name))
 		)
   :components
   ((:module ground-prover

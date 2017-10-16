@@ -467,8 +467,9 @@
     (let* ((afrees (if actuals
 		       (free-params-acts actuals mi)
 		       (free-params-from-theory mi decl)))
-	   (dafrees (when dactuals
-		      (free-params-dacts dactuals)))
+	   (dafrees (if dactuals
+			(free-params-dacts dactuals)
+			(free-params-from-decl decl)))
 	   (tfrees (free-params type))
 	   (ufrees (union dafrees
 			  (union afrees
