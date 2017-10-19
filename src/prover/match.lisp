@@ -187,8 +187,12 @@
 	    (dact1 (dactuals expr))
 	    (dact2 (dactuals instance)))
 	(if (eq id1 id2)
-	    (let ((asubst (match-actuals act1 act2 bind-alist subst theory)))
-	      (match-actuals dact1 dact2 bind-alist asubst nil))
+	    ;; equalities and notequal automatically lift to top type, don't
+	    ;; use for matching
+	    (if (memq id1 '(equalities notequal))
+		subst
+		(let ((asubst (match-actuals act1 act2 bind-alist subst theory)))
+		  (match-actuals dact1 dact2 bind-alist asubst nil)))
 	    'fail))))
 
 (defun match-actuals (act1 act2 bind-alist subst theory)
