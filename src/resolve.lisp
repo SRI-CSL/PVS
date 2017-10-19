@@ -586,8 +586,7 @@
 	      (compatible-arguments? decl dthi args (current-theory)))))
 	(let* ((cinsts (decl-args-compatible? decl args mappings))
 	       (modinsts (mapcar #'(lambda (thinst)
-				     (if (or (actuals thinst)
-					     (same-id (current-theory) thinst))
+				     (if (actuals thinst)
 					 thinst
 					 (copy thinst :actuals acts)))
 			   cinsts))
@@ -2352,18 +2351,15 @@
 		       (list kind))))))
     (multiple-value-bind (obj error)
 	(if (and *resolve-error-info*
-		 (or (assq :arg-mismatch *resolve-error-info*)
-		     (not (assq :no-instantiation *resolve-error-info*))))
+		 (or (assq :arg-length *resolve-error-info*)
+		     (assq :arg-mismatch *resolve-error-info*)))
 	    (resolution-args-error *resolve-error-info* name arguments)
 	    (values
 	     name
 	     (format nil
 		 "~v%Expecting a~a~%No resolution for ~a~
                   ~@[ with arguments of possible types: ~:{~%  ~a~3i : ~{~:_~a~^,~}~}~]~
-                  ~@[~2% Check the actual parameters; the following ~
-                        instances are visible,~% but don't match the ~
-                        given actuals:~%   ~:I~{~a~^, ~_~}~]~
-                  ~:[~;~2% May not instantiate the current theory~]~
+                  ~@[~2% ~a~]~
                   ~:[~;~2% There is a variable declaration with this name,~% ~
                           but free variables are not allowed here.~]~
                   ~:[~;~2% There is a mapping for this name, but once mapped ~
@@ -2383,12 +2379,18 @@
 	       name
 	       (mapcar #'(lambda (a) (list a (full-name (ptypes a) 1)))
 		 arguments)
-	       (mapcar #'(lambda (r)
-			   (mk-name (id (declaration r))
-			     (actuals (module-instance r))
-			     (id (module-instance r))))
-		 reses)
-	       (assq :current-theory-actuals *resolve-error-info*)
+	       (if (assq :current-theory-actuals *resolve-error-info*)
+                   "May not instantiate the current theory"
+		   (when reses
+		     (format nil
+			 "Check the actual parameters; the following ~
+                        instances are visible,~% but don't match the ~
+                        given actuals:~%   ~:I~{~a~^, ~_~}"
+		       (mapcar #'(lambda (r)
+				   (mk-name (id (declaration r))
+				     (actuals (module-instance r))
+				     (id (module-instance r))))
+			 reses))))
 	       (some #'var-decl?
 		     (get-declarations (id name)))
 	       (some-matching-mapping-element? name)
