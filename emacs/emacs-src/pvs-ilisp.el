@@ -700,9 +700,9 @@ window."
 				(beginning-of-line)))
 		       (sit-for 0)
 		       ;;(pop-to-buffer obuf)
-		       ))))))))
-  (when (file-exists-p file)
-    (delete-file file))
+		       )))))
+	    (when (file-exists-p file)
+	      (delete-file file))))))
 
 (defun pvs-buffer-noninteractive (bufname file display read-only append kind)
   (when (not (lnull file))
