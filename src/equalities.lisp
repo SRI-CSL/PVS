@@ -1125,7 +1125,8 @@
 (defun actuals-are-outside-formals? (actuals)
   (unless *strong-tc-eq-flag*
     (let* ((ex (actual-value (car actuals)))
-	   (decl (when (typep ex 'name)
+	   (decl (when (and (typep ex 'name)
+			    (resolutions ex))
 		   (declaration (car (resolutions ex))))))
       (and (typep decl 'formal-decl)
 	   (not (or (memq decl (formals (current-theory)))
