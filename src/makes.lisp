@@ -995,6 +995,20 @@
 	(type-value (when (resolutions arg) (lcopy arg :from-conversion nil))))
     (make-instance 'actual :expr expr :type-value type-value)))
 
+(defmethod mk-actual ((arg type-var))
+  (let ((expr (make-instance 'name-expr
+		:id (id arg)
+		:mod-id (mod-id arg)
+		:actuals (actuals arg)
+		:dactuals (dactuals arg)
+		:acts-there? (acts-there? arg)
+		:dacts-there? (dacts-there? arg)
+		:type (when (resolution arg) (type (resolution arg)))
+		:resolutions (resolutions arg)))
+	(type-value (lcopy arg :from-conversion nil)))
+    (make-instance 'actual :expr expr :type-value type-value)))
+  
+
 (defmethod mk-actual ((arg name-expr))
   (make-instance 'actual
     :expr arg
