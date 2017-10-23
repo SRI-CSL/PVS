@@ -385,7 +385,7 @@
 
 (defcl type-decl (declaration)
   (type-value :store-as ignore-self-reference-type-values)
-  ir-type-value)
+  (ir-type-value :store-as nil :fetch-as nil))
 
 (#-sbcl progn #+sbcl sb-ext:without-package-locks
 (defcl nonempty-type-decl (type-decl)
@@ -485,7 +485,8 @@
 				       formal-nonempty-type-appl-decl))
 
 (defcl formal-const-decl (formal-decl typed-declaration)
-  (possibly-empty-type? :restore-as nil))
+  (possibly-empty-type? :restore-as nil)
+  (eval-info :fetch-as nil))
 
 (defcl formal-theory-decl (formal-decl importing-entity)
   (theory-name :parse t)
