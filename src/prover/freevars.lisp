@@ -168,19 +168,18 @@
     (let ((tfrees (freevars* type)))
       (if (variable? expr)
 	  (cons (copy expr) tfrees)
-	  (fv-union (freevars* (actuals (module-instance (car resolutions))))
+	  (fv-union (freevars* (module-instance (car resolutions)))
 		    tfrees)))))
 
 (defmethod freevars* ((res resolution))
   (with-slots (module-instance) res
-    (freevars* (actuals module-instance))))
+    (freevars* module-instance)))
 
 (defmethod freevars* ((expr field-name-expr))
   (if (variable? expr)
       (let ((tfrees (freevars* (type expr))))
 	(cons expr tfrees))
-      (let* ((afrees (freevars* (actuals (module-instance
-					  (resolution expr)))))
+      (let* ((afrees (freevars* (module-instance (resolution expr))))
 	     (tfrees (freevars* (type expr))))
 	(fv-union afrees tfrees))))
 
@@ -250,6 +249,12 @@
 (defmethod no-freevars? ((map mapping))
   (no-freevars? (rhs map)))
 
+(defmethod freevars* ((lhs mapping-lhs))
+  nil)
+
+(defmethod no-freevars? ((lhs mapping-lhs))
+  t)
+
 (defmethod freevars* ((map mapping-rhs))
   (if (type-value map)
       (freevars* (type-value map))
@@ -266,13 +271,15 @@
   (every #'no-freevars? list))
 
 (defmethod freevars* ((mn modname))
-  (freevars* (actuals mn)))
+  (let* ((afrees (freevars* (actuals mn)))
+	 (dfrees (freevars* (dactuals mn))))
+    (fv-union afrees dfrees)))
 
 (defmethod freevars* ((texpr type-var))
   nil)
 
 (defmethod freevars* ((texpr type-name))
-  (freevars* (actuals (module-instance (resolution texpr)))))
+  (freevars (module-instance (resolution texpr))))
 
 (defmethod freevars* ((texpr type-application))
   (let* ((tfrees (freevars* (type texpr)))

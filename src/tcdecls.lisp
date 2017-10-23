@@ -29,7 +29,8 @@
 
 (in-package :pvs)
 
-(export '(typecheck-decls typecheck-decl set-visibility add-judgement-decl))
+(export '(typecheck-decls typecheck-decl set-visibility add-judgement-decl
+	  make-formals-funtype))
 
 ;;; Typecheck* methods for declarations - all of these methods have a
 ;;; declaration instance and a context for input, and they all check for
@@ -226,6 +227,7 @@
 (defmethod new-decl-formal ((fml decl-formal-type) &optional id)
   (let ((nfml (copy fml
 		'id (or id (id fml))
+		'module (current-theory)
 		'typechecked? nil
 		'type nil
 		'type-value nil
@@ -880,8 +882,8 @@
     (setf (declared-type decl)
 	  (subst-new-map-decls* (substit (declared-type decl) bindings)))
     (when (definition decl)
-      (setf (def-axiom decl) nil)
-      (make-def-axiom decl))
+      (setf (def-axiom decl)
+	    (subst-new-map-decls* (substit (def-axiom decl) bindings))))
     (setf (generated-by decl) nil)
     (setf (eval-info decl) nil)
     (when (def-decl? decl)
@@ -1191,7 +1193,7 @@
   ;; Need to inline the datatype as well
   (let* ((*all-subst-mod-params-caches* nil)
 	 (nadt (subst-mod-params theory theory-name theory)))
-    (break)
+    (break "Need to deal with ~a" nadt)
     (typecheck-inlined-theory* (adt-theory theory)
 			     (copy theory-name :id (id (adt-theory theory)))
 			     decl)))
@@ -1595,11 +1597,11 @@
 
 
 (defmethod check-positive-types* ((ex rational-expr) fargs decl bindings postypes)
-  (declare (ignore fargs decl))
+  (declare (ignore fargs decl bindings))
   postypes)
 
 (defmethod check-positive-types* ((ex field-assignment-arg) fargs decl bindings postypes)
-  (declare (ignore fargs decl))
+  (declare (ignore fargs decl bindings))
   postypes)
 
 (defmethod check-positive-types* ((ex name-expr) fargs decl bindings postypes)
@@ -1692,80 +1694,82 @@
 
 ;;; formals are generally of the form ((d11 ... d1n)...(dm1 ... dmk)),
 ;;; which generates a function type of the form
-;;; [t11,...,t1n -> [... -> [tm1,...,tmn -> rtype] ...]]
+;;; [t11,...,t1n -> [... -> [tm1,...,tmk -> rtype] ...]]
 ;;; where the tij are the types of the dij.  Of course, dependencies
-;;; have to be handled as well.
-
-;(defun make-formals-funtype (formals rtype)
-;  (if (null formals)
-;      rtype
-;      (let ((typeslist (mapcar #'(lambda (fm) (mapcar #'type fm)) formals)))
-;	(make-formals-funtype* (car formals) (cdr formals) rtype
-;			       (car typeslist) (cdr typeslist)
-;			       nil nil))))
+;;; have to be handled properly.  If a tij depends on an earlier dkl, then the
+;;; dkl corresponds to a dep-binding, not just a type.
 
 (defun make-formals-funtype (formals range)
-  (let ((*generate-tccs* 'none))
-    (if (null formals)
-	range
-	(let* ((nrange (make-formals-funtype (cdr formals) range))
-	       (ft (make-formals-funtype* (car formals) nrange)))
-	  ft))))
+  ;; formals is a list of lists, range is a type, possibly dependent on the
+  ;; formals
+  (let* ((*generate-tccs* 'none)
+	 (domtypes (mapcar #'make-formals-domtype formals))
+	 (bound-formals (remove-if #'(lambda (fv)
+				       (not (some #'(lambda (fmlist)
+						      (memq (declaration fv) fmlist))
+						  formals)))
+			  (mapcar #'declaration (freevars (cons range domtypes)))))
+	 (dtypes (if bound-formals
+		     (mapcar #'(lambda (dt fmls)
+				 (if (some #'(lambda (fm)
+					       (member fm bound-formals :key #'declaration))
+					   fmls)
+				     (let* ((base (if (cdr fmls) '|d| (id (car fmls))))
+					    (newid (make-new-variable base
+						     (cons range domtypes) nil
+						     :exceptions bound-formals)))
+				       (mk-dep-binding newid dt))
+				     dt))
+		       domtypes formals)
+		     domtypes))
+	 (ftype (make-formals-ftype dtypes range formals bound-formals)))
+    ftype))
 
-(defun make-formals-funtype* (formals range)
-  (if (some #'(lambda (ff)
-		(member ff (freevars range) :test #'same-declaration))
-	    formals)
-      (let* ((ndom (make-formals-domain formals))
-	     (nvar (if (cdr formals)
-		       (make-new-variable '|d| range)
-		       (id (car formals))))
-	     (ndep (mk-dep-binding nvar ndom))
-	     (nvar (mk-name-expr nvar nil nil
-				 (make-resolution ndep
-				   (theory-name *current-context*) ndom)))
-	     (*bound-variables* (cons ndep *bound-variables*))
-	     (nrange (subst-formals-funtype formals range ndep nvar)))
-	(mk-funtype ndep nrange))
-      (mk-funtype (make-formals-domain formals) range)))
-
-(defun subst-formals-funtype (formals range ndep nvar)
-  (if (cdr formals)
-      (subst-formals-funtype* formals range ndep nvar)
-      (substit range (acons (car formals) nvar nil))))
-
-(defun subst-formals-funtype* (formals range ndep nvar &optional (index 1))
+(defun make-formals-domtype (formals &optional substs types)
+  ;; Now we just have a simple list of formals, i.e. bind-decls
   (if (null formals)
-      range
-      (if (member (car formals) (freevars range) :key #'declaration)
-	  (let* ((nproj (make-projection-application index nvar))
-		 (alist (acons (car formals) nproj nil))
-		 (nrange (substit range alist)))
-	    (subst-formals-funtype* (cdr formals) nrange ndep nvar (1+ index)))
-	  (subst-formals-funtype* (cdr formals) range ndep nvar (1+ index)))))
+      (if (cdr types)
+	  (mk-tupletype (nreverse types))
+	  (car types))
+      (let* ((domtype (substit (type (car formals)) substs))
+	     (in-rest? (member (car formals) (freevars (cdr formals))
+			       :key #'declaration))
+	     (newid (when in-rest? 
+		      (make-new-variable (id (car formals)) (cdr formals) nil
+					 :exceptions (list (car formals)))))
+	     (dtype (if in-rest?
+			(mk-dep-binding newid domtype)
+			domtype))
+	     (nsubsts (if in-rest?
+			  (let ((dep-name (mk-name-expr newid nil nil
+							(make-resolution dtype
+							  (current-theory-name)
+							  domtype))))
+			    (acons (car formals) dep-name substs))
+			  substs)))
+	(assert (type-expr? domtype))
+	(make-formals-domtype (cdr formals) nsubsts (cons dtype types)))))
 
-(defun make-formals-domain (formals)
-  (if (cdr formals)
-      (make-formals-domain* formals)
-      (type (car formals))))
-
-(defun make-formals-domain* (formals &optional domtypes)
-  (if (null formals)
-      (mk-tupletype (nreverse domtypes))
-      (if (occurs-in (car formals) (cdr formals))
-	  (let* ((dbinding (mk-dep-binding (id (car formals))
-					   (type (car formals))
-					   (declared-type (car formals))))
-		 (nvar (mk-name-expr (id (car formals)) nil nil
-				     (make-resolution dbinding
-				       (theory-name *current-context*)
-				       (type (car formals))))))
-	    (make-formals-domain* (substit (cdr formals)
-				   (acons (car formals) nvar nil))
-				 (cons dbinding domtypes)))
-	  (make-formals-domain* (cdr formals)
-			       (cons (type (car formals)) domtypes)))))
-
+(defun make-formals-ftype (dtypes range formals bound-formals &optional domains substs)
+  (if (null dtypes)
+      (let ((srange (substit range substs)))
+	(mk-funtype* domains srange))
+      (let ((dtype (substit (car dtypes) substs)))
+	(if (dep-binding? dtype)
+	    (let* ((fmls (car formals))
+		   (dname (mk-dep-binding-name dtype)))
+	      ;; update substs
+	      (if (cdr fmls)
+		  (dotimes (i (length fmls))
+		    (when (memq (nth i fmls) bound-formals)
+		      (let ((proj (make-projection-application (1+ i) dname)))
+			(push (cons (nth i fmls) proj) substs))))
+		  (push (cons (car fmls) dname) substs))
+	      (make-formals-ftype (cdr dtypes) range (cdr formals) bound-formals
+				  (cons dtype domains) substs))
+	    (make-formals-ftype (cdr dtypes) range (cdr formals) bound-formals
+				(cons dtype domains) substs)))))
+			       
 
 ;;; Def-decl - this is the class for recursive definitions.  Checks that
 ;;; the type is a function type, typechecks the measure and checks that
@@ -3299,13 +3303,9 @@
 		    (mk-funtype (mapcar #'type bindings) (copy *boolean*))
 		    nil nil)
 	(setf (predicate type)
-	      (let ((expr (make-instance 'lambda-expr
-			    :bindings bindings
-			    :expression (formula type)))
-		    (*bound-variables* (append bindings *bound-variables*)))
-		(typecheck* expr (mk-funtype (mapcar #'type (bindings expr))
-					     (copy *boolean*))
-			    nil nil))))
+	      (let* ((*bound-variables* (append bindings *bound-variables*))
+		     (form (typecheck* (formula type) *boolean* nil nil)))
+		(make!-lambda-expr bindings form))))
     (let ((tval (if (and stype
 			 (eq stype (supertype type)))
 		    type
@@ -3814,43 +3814,44 @@
   ;; Note that there could be ambiguity here - for example
   ;;  judgement *(x, x) has_type nnreal
   ;; Which is why we check for duplicates
-  (if (and (typep (expr decl) '(and application (not infix-application)))
-	   (let ((args-lists (arguments* (expr decl))))
-	     (and (every #'(lambda (args) (every #'variable? args))
-			 args-lists)
-		  (not (duplicates? (apply #'append args-lists)
+  (let ((mexpr (or (from-macro (expr decl)) (expr decl))))
+    (if (and (typep mexpr '(and application (not infix-application)))
+	     (let ((args-lists (arguments* mexpr)))
+	       (and (every #'(lambda (args) (every #'variable? args))
+			   args-lists)
+		    (not (duplicates? (apply #'append args-lists)
 				    :test #'same-declaration)))))
-      (change-expr-judgement-to-application-judgement decl)
-      ;; Not an application-judgement, but has freevars
-      ;; Get the freevars list, and create untyped-bind-decls
-      ;; Append to the beginning of bindings if expr is a forall-expr
-      ;; Set (formals decl) to this list
-      ;; Then retypecheck expr under the new bindings
-      (let* ((*no-expected* t)
-	     ;; uform is not a valid forall expr, but this gets the
-	     ;; expr and type under the same bindings
-	     (lform (if (forall-expr? (expr decl))
-			(copy (expr decl)
-			  :expression (list (expression (expr decl)) (type decl)))
-			(list (expr decl) (type decl))))
-	     (uform (universal-closure lform))
-	     (*no-conversions-allowed* t)
-	     (*compatible-pred-reason*
-	      (acons (expr decl) "judgement" *compatible-pred-reason*))
-	     (*bound-variables* (when (forall-expr? uform) (bindings uform))))
-	(if (forall-expr? uform)
-	    (let* ((*bound-variables* (bindings uform)))
-	      (assert (listp (expression uform)))
-	      (set-type (car (expression uform)) (cadr (expression uform))))
-	    (set-type (car uform) (cadr uform)))
-	(setf (closed-form decl) uform)
-	(cond ((and (expr-judgement? decl)
-		    (expr-judgement-useless? (closed-form decl)))
-	       (useless-judgement-warning decl))
-	      (t (when (formals-sans-usings (current-theory))
-		   (generic-judgement-warning decl))
-		 ;;(break "Before add-judgement-decl after change: ~a" (id decl))
-		 (add-judgement-decl decl))))))
+	(change-expr-judgement-to-application-judgement decl)
+	;; Not an application-judgement, but has freevars
+	;; Get the freevars list, and create untyped-bind-decls
+	;; Append to the beginning of bindings if expr is a forall-expr
+	;; Set (formals decl) to this list
+	;; Then retypecheck expr under the new bindings
+	(let* ((*no-expected* t)
+	       ;; uform is not a valid forall expr, but this gets the
+	       ;; expr and type under the same bindings
+	       (lform (if (forall-expr? (expr decl))
+			  (copy (expr decl)
+			    :expression (list (expression (expr decl)) (type decl)))
+			  (list (expr decl) (type decl))))
+	       (uform (universal-closure lform))
+	       (*no-conversions-allowed* t)
+	       (*compatible-pred-reason*
+		(acons (car (expression uform)) "judgement" *compatible-pred-reason*))
+	       (*bound-variables* (when (forall-expr? uform) (bindings uform))))
+	  (if (forall-expr? uform)
+	      (let* ((*bound-variables* (bindings uform)))
+		(assert (listp (expression uform)))
+		(set-type (car (expression uform)) (cadr (expression uform))))
+	      (set-type (car uform) (cadr uform)))
+	  (setf (closed-form decl) uform)
+	  (cond ((and (expr-judgement? decl)
+		      (expr-judgement-useless? (closed-form decl)))
+		 (useless-judgement-warning decl))
+		(t (when (formals-sans-usings (current-theory))
+		     (generic-judgement-warning decl))
+		   ;;(break "Before add-judgement-decl after change: ~a" (id decl))
+		   (add-judgement-decl decl)))))))
 
 (defun expr-judgement-useless? (form)
   (if (forall-expr? form)
@@ -3883,9 +3884,11 @@
   (let* ((name (copy-untyped (operator* (expr decl))))
 	 (formals (mapcar #'(lambda (args)
 			      (mapcar #'(lambda (arg)
-					  (make-instance 'untyped-bind-decl
-					    :id (id arg)
-					    :place (place arg)))
+					  (if (bind-decl? arg)
+					      arg
+					      (make-instance 'untyped-bind-decl
+						:id (id arg)
+						:place (place arg))))
 				args))
 		    (arguments* (expr decl))))
 	 (dtype (copy-untyped (declared-type decl))))

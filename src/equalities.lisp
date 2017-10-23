@@ -116,11 +116,11 @@
 ;; 		(null yhash)
 ;; 		(= xhash yhash))
 ;; 	(call-next-method)))))
-    
+
 
 (defmethod tc-eq* (x y bindings)
-  (declare (ignore bindings))
-  (eq x y))
+  (or (eq x y)
+      (values nil x y bindings)))
 
 (defmethod tc-eq* ((l1 cons) (l2 cons) bindings)
   (and (tc-eq* (car l1) (car l2) bindings)
@@ -286,7 +286,7 @@
 
 (defmethod tc-eq-bindings ((b1 field-decl) (b2 field-decl) bindings)
   (and (eq (id b1) (id b2))
-	   (tc-eq* (type b1) (type b2) bindings)))
+       (tc-eq* (type b1) (type b2) bindings)))
 
 (defmethod tc-eq-bindings (e1 e2 bindings)
   (tc-eq* e1 e2 bindings))
@@ -465,8 +465,7 @@
 	(with-slots ((id2 id) (arg2 argument) (ty2 type)) e2
 	  (and (eq id1 id2)
 	       (tc-eq* arg1 arg2 bindings)
-	       (or *in-checker*
-		   (tc-eq* ty1 ty2 bindings)))))))
+	       (tc-eq* ty1 ty2 bindings))))))
 
 
 (defmethod tc-eq* ((e1 rational-expr) (e2 rational-expr) bindings)
@@ -724,7 +723,7 @@
 	(let ((mi1 (module-instance (resolution op1)))
 	      (mi2 (module-instance (resolution op2)))
 	      (fmls (formals-sans-usings (module decl)))
-	      (ptypes (positive-types decl)))
+	      (ptypes (unless *strong-tc-eq-flag* (positive-types decl))))
 	  (and (tc-eq-adt-op-actuals (actuals mi1) (actuals mi2) bindings
 				     fmls ptypes)
 	       (tc-eq-adt-op-actuals (dactuals mi1) (dactuals mi2) bindings
@@ -751,7 +750,8 @@
 			   (or (print-type adt2) adt2)))))
 		(or (and (null (actuals mi1)) (null (actuals mi2)))
 		    (let ((fmls (formals-sans-usings (adt adt1)))
-			  (ptypes (positive-types (adt adt1))))
+			  (ptypes (unless *strong-tc-eq-flag*
+				    (positive-types (adt adt1)))))
 		      (and (tc-eq-adt-op-actuals (actuals mi1) (actuals mi2) bindings
 						 fmls ptypes)
 			   (tc-eq-adt-op-actuals (dactuals mi1) (dactuals mi2) bindings
@@ -914,6 +914,28 @@
 	  (and (tc-eq* args1 args2 bindings)
 	       (tc-eq* ex1 ex2 bindings))))))
 
+;;; The name prover command introduces a skolem constant with
+;;; a definition.  We check this in the next two methods
+;;; However, when in replace, we don't want to do this, since
+;;; the replace is not done if the replacement is tc-eq to the
+;;; original.  Using *replace-cache* as a proxy for being in
+;;; replace.  rewrite doesn't seem to do this, so no check for
+;;; in rewrite.
+
+(defmethod tc-eq* ((n1 name-expr) (e2 expr) bindings)
+  (if (name-expr? e2)
+      (call-next-method)
+      (when (and nil (not *replace-cache*)
+		 (skolem-const-decl? (declaration n1)))
+	(tc-eq* (definition (declaration n1)) e2 bindings))))
+
+(defmethod tc-eq* ((e1 expr) (n2 name-expr) bindings)
+  (if (name-expr? e1)
+      (call-next-method)
+      (when (and nil (not *replace-cache*)
+		 (skolem-const-decl? (declaration n2)))
+	(tc-eq* e1 (definition (declaration n2)) bindings))))
+
 ;;; Make sure we don't allow bindings and names to be tc-eq*
 
 (defmethod tc-eq* ((n1 binding) (n2 name) bindings)
@@ -947,7 +969,8 @@
 			(tc-eq* dact1 dact2 bindings)
 			(tc-eq* m1 m2 bindings)
 			(tc-eq* t1 t2 bindings)))
-	       (tc-eq* (car res1) (car res2) bindings))))))
+	       (tc-eq* (car res1) (car res2) bindings))
+	  (values nil n1 n2 bindings)))))
 
 (defvar *in-tc-eq-resolution* nil)
 
@@ -965,11 +988,8 @@
 			     (null (library mi2))
 			     (eq (library mi1) (library mi2)))
 			 (tc-eq* (actuals mi1) (actuals mi2) bindings)
-			 (or ;;(null (dactuals mi1)) (null (dactuals mi2))
-			     (tc-eq* (dactuals mi1) (dactuals mi2) bindings))
-			 (or ;;(null (mappings mi1))
-			     ;;(null (mappings mi2))
-			     (tc-eq* (mappings mi1) (mappings mi2) bindings)))
+			 (tc-eq* (dactuals mi1) (dactuals mi2) bindings)
+			 (tc-eq* (mappings mi1) (mappings mi2) bindings))
 		    (null mi2))
 		(or *in-tc-eq-resolution*
 		    (null *strong-tc-eq-flag*)

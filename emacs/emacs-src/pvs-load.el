@@ -47,12 +47,18 @@
        the environment variable PVSIMAGE, set by the pvs shell script")
     (error "PVSIMAGE environment variable must be set"))
 
-(require 'cl)
+(require 'cl-lib)
 (require 'comint)
 (setq comint-log t)
 
 (unless (fboundp 'comint-mem)
   (fset 'comint-mem 'member))
+
+(defvar-local pvs-context-sensitive nil)
+(defvar-local from-pvs-theory nil)
+(defvar-local pvs-theory-modtime nil)
+(defvar-local pvs-prelude nil)
+(defvar-local pvs-buffer-kind nil)
 
 (load "ilisp" nil noninteractive)
 (load "pvs-ilisp" nil noninteractive)
@@ -97,10 +103,10 @@
 
 (defvar pvs-library-path nil)
 (if (pvs-getenv "PVS_LIBRARY_PATH")
-    (let ((dirs (mapcar '(lambda (dir)
-			   (if (= (aref dir (1- (length dir))) ?/)
-			       (substring dir 0 (1- (length dir)))
-			       dir))
+    (let ((dirs (mapcar #'(lambda (dir)
+			    (if (= (aref dir (1- (length dir))) ?/)
+				(substring dir 0 (1- (length dir)))
+				dir))
 		  (string-split ?: (pvs-getenv "PVS_LIBRARY_PATH")))))
       (setq pvs-library-path dirs)
       (setq load-path
@@ -132,7 +138,7 @@
 	(cpoint (point-min)))
     (set-buffer buf)
     (setq fill-column (window-width))
-    (if buffer-read-only (toggle-read-only))    
+    (if buffer-read-only (read-only-mode 0))
     (erase-buffer)
     (if (boundp 'pvs-logo)
 	(progn
@@ -207,7 +213,7 @@
     (set-buffer-modified-p nil)
     (text-mode)
     (cd cdir)
-    (toggle-read-only)
+    (read-only-mode 1)
     (goto-char (point-min))
     (if display
        (switch-to-buffer buf)
@@ -239,8 +245,7 @@ get to the same state."
 	      (setenv "PVSPATCHLEVEL" num)
 	      (message "Illegal patchlevel number - %s" num)))
 	(setq current-prefix-arg nil))
-      (save-excursion
-	(set-buffer (get-buffer-create "PVS Log"))
+      (with-current-buffer (get-buffer-create "PVS Log")
 	(pvs-view-mode))
       (unless noninteractive
 	(message "Initializing PVS: please wait..."))
@@ -253,8 +258,7 @@ get to the same state."
       (unless (equal (process-status (ilisp-process)) 'run)
 	(switch-to-buffer "*pvs*")
 	(error "Could not run PVS"))
-      (save-excursion
-	(set-buffer (get-buffer "*pvs*"))
+      (with-current-buffer (get-buffer "*pvs*")
 	(make-local-variable 'kill-buffer-hook)
 	(setq kill-buffer-hook (list 'dont-kill-pvs-buffer))
 	(set-syntax-table pvs-mode-syntax-table)
@@ -275,9 +279,6 @@ get to the same state."
       (unless noninteractive
 	(pvs-auto-set-linelength (selected-frame))
 	(pvs-welcome (equal (buffer-name) "*scratch*")))
-      (when (boundp 'save-options-file)
-	(setq save-options-file "~/.pvsxemacs-options")
-	(setq save-options-init-file "~/.pvsemacs"))
       (when (and (file-exists-p "~/.pvsemacs")
 		 (not (pvs-getenv "PVSMINUSQ")))
 	(load "~/.pvsemacs"))

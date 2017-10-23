@@ -54,6 +54,7 @@
 (defstruct tccinfo
   formula
   reason
+  origin
   kind
   expr
   type)
@@ -62,20 +63,26 @@
   (tc-eq (tccinfo-formula tcc1) (tccinfo-formula tcc2)))
 
 (defun generate-subtype-tcc (expr expected incs)
-  (if (every #'(lambda (i) (member i *tcc-conditions* :test #'tc-eq))
-	     incs)
-      (add-tcc-comment 'subtype expr expected 'in-context)
-      (let* ((*old-tcc-name* nil)
-	     (*use-rationals* *in-checker*)
-	     (ndecl (make-subtype-tcc-decl expr incs)))
-	(if ndecl
-	    (if (termination-tcc? ndecl)
-		(insert-tcc-decl 'termination-subtype
-				 expr
-				 (recursive-signature (current-declaration))
-				 ndecl)
-		(insert-tcc-decl 'subtype expr expected ndecl))
-	    (add-tcc-comment 'subtype expr expected 'trivial)))))
+  (unless (and (not *in-checker*)
+	       (tcc-evaluates-to-true* incs))
+    ;; We do this in the checker, because the heuristic for choosing
+    ;; the "best" instantiation for inst? is based on the length of
+    ;; the tccs generated.  See the "use" in bugs/600
+    (let ((exp (dep-binding-type expected)))
+      (if (every #'(lambda (i) (member i *tcc-conditions* :test #'tc-eq))
+		 incs)
+	  (add-tcc-comment 'subtype expr exp 'in-context)
+	  (let* ((*old-tcc-name* nil)
+		 (*use-rationals* *in-checker*)
+		 (ndecl (make-subtype-tcc-decl expr incs)))
+	    (if ndecl
+		(if (termination-tcc? ndecl)
+		    (insert-tcc-decl 'termination-subtype
+				     expr
+				     (recursive-signature (current-declaration))
+				     ndecl)
+		    (insert-tcc-decl 'subtype expr exp ndecl))
+		(add-tcc-comment 'subtype expr exp 'trivial)))))))
 
 (defvar *simplify-tccs* nil)
 
@@ -217,6 +224,8 @@
 
 (defvar *substitute-let-bindings* nil)
 
+;;(defvar *tcc-make-let-exprs* nil)
+
 (defun add-tcc-conditions (expr)
   (multiple-value-bind (conditions srec-expr vdecl ch?)
       (subst-var-for-recs (remove-duplicates *tcc-conditions* :test #'equal)
@@ -239,7 +248,6 @@
 			(insert-var-into-conditions vdecl conditions)
 			conditions)
 		    substs nil)))
-	;;(break)
 	(universal-closure tform)))))
 
 (defun insert-var-into-conditions (vdecl conditions)
@@ -268,18 +276,25 @@
 	 ;; bindings from a lambda-expr application (e.g., let-expr)
 	 (assert (and (bind-decl? (caar conditions))
 		      (memq (caar conditions) (cdr conditions))))
-	 (add-tcc-conditions*
-	  expr
-	  (cdr conditions)
-	  (if *substitute-let-bindings*
-	      (cons (car conditions) substs)
-	      substs)
-	  (if *substitute-let-bindings*
-	      antes
-	      (let ((eqn (make!-equation
-			  (mk-name-expr (caar conditions))
-			  (cdar conditions))))
-		(cons eqn antes)))))
+	 (cond (*substitute-let-bindings*
+		(add-tcc-conditions*
+		 expr
+		 (cdr conditions)
+		 (cons (car conditions) substs)
+		 antes))
+	       ;; (*tcc-make-let-exprs*
+	       ;; 	(let* ((pos (position-if-not #'consp conditions))
+	       ;; 	       (rem-conditions (when pos (nthcdr pos conditions)))
+	       ;; 	       (let-bindings (ldiff conditions rem-conditions)))
+	       ;; 	  (break "Need to convert to let-expr")))
+	       (t (add-tcc-conditions*
+		   expr
+		   (cdr conditions)
+		   substs
+		   (let ((eqn (make!-equation
+			       (mk-name-expr (caar conditions))
+			       (cdar conditions))))
+		     (cons eqn antes))))))
 	((typep (car conditions) 'bind-decl)
 	 ;; Binding from a binding-expr
 	 (add-tcc-bindings expr conditions substs antes))
@@ -382,7 +397,6 @@
 	     (nexpr (if nbindings
 			(make!-forall-expr nbindings nbody)
 			nbody)))
-	;;(break "add-tcc-bindings")
 	(add-tcc-conditions* nexpr conditions substs nil))))
 
 
@@ -416,22 +430,32 @@
 
 
 (defun insert-tcc-decl (kind expr type ndecl)
-  (if (or *in-checker* *in-evaluator* *collecting-tccs*)
-      (add-tcc-info kind expr type ndecl)
-      (insert-tcc-decl1 kind expr type ndecl)))
+  (let ((origin (make-instance 'tcc-origin
+		 :root (tcc-root-name expr)
+		 :kind kind
+		 :expr (if (eq kind 'existence)
+			   ""
+			   (str (raise-actuals expr t :all) :char-width nil))
+		 :type (str (raise-actuals type t :all) :char-width nil))))
+    (if (or *in-checker* *in-evaluator* *collecting-tccs*)
+	(add-tcc-info kind expr type ndecl origin)
+	(insert-tcc-decl1 kind expr type ndecl origin))))
 
-(defun add-tcc-info (kind expr type ndecl)
+(defun add-tcc-info (kind expr type ndecl origin)
   (pushnew (make-tccinfo
 	    :formula (definition ndecl)
 	    :reason (cdr (assq expr *compatible-pred-reason*))
+	    :origin origin
 	    :kind kind
 	    :expr expr
 	    :type type)
 	   *tccforms*
 	   :test #'tc-eq :key #'tccinfo-formula))
 
-(defun insert-tcc-decl1 (kind expr type ndecl)
+(defun insert-tcc-decl1 (kind expr type ndecl origin)
   (let ((*generate-tccs* 'none))
+    (when *typechecking-module*
+      (setf (origin ndecl) origin))
     (setf (tcc-disjuncts ndecl) (get-tcc-disjuncts ndecl))
     (let ((match (car (member ndecl *tccdecls* :test #'tcc-subsumed-by)))
 	  (decl (current-declaration)))
@@ -487,6 +511,12 @@
 	(t (list formula))))
 
 (defun insert-tcc-decl* (kind expr type decl ndecl)
+  ;; Depends on
+  ;;     *current-context* *typechecking-module*
+  ;;     *typecheck-using* *set-type-formal*
+  ;;     *set-type-actuals-name* *compatible-pred-reason*
+  ;;     *old-tcc-name*
+  ;; *compatible-pred-reason* is of the form ((expr . "judgement"))
   (let ((submsg (case kind
 		  (actuals nil)
 		  (assuming (format nil "generated from assumption ~a.~a"
@@ -916,7 +946,13 @@
 	 (form (mk-exists-expr (list (mk-bind-decl var type)) *true*))
 	 (tform (typecheck* form *boolean* nil nil))
 	 (id (make-tcc-name))
-	 (decl (typecheck* (mk-existence-tcc id tform) nil nil nil)))
+	 (decl (typecheck* (mk-existence-tcc id tform) nil nil nil))
+	 (origin (make-instance 'tcc-origin
+		   :root (tcc-root-name type)
+		   :kind 'existence
+		   :expr ""
+		   :type (str (raise-actuals type t :all) :char-width nil))))
+    (setf (origin decl) origin)
     (setf (spelling decl) 'ASSUMPTION)
     (unless (member decl (assuming (current-theory))
 		    :test #'(lambda (d1 d2)
@@ -1234,19 +1270,20 @@
 	      (dolist (axiom (collect-mapping-axioms modinst mod))
 		(multiple-value-bind (ndecl mappings-alist)
 		    (make-mapped-axiom-tcc-decl axiom modinst mod)
+		  ;; ndecl is nil if mapped axion simplifies to *true*
 		  (let ((netype (when ndecl (nonempty-formula-type ndecl))))
 		    (if (and ndecl
 			     (or (null netype)
 				 (possibly-empty-type? netype)))
-			(let ((unint (find-uninterpreted
-				      (definition ndecl)
-				      modinst mod mappings-alist)))
-			  (if unint
+			(let ((needs-interp (find-needs-interpretation
+					     (definition ndecl)
+					     modinst mod mappings-alist)))
+			  (if needs-interp
 			      (unless *collecting-tccs*
 				(pvs-warning
-				    "Axiom ~a is not a TCC because~%  ~?~% ~
+				    "Axiom ~a is not mapped to a TCC because~%  ~?~% ~
                                      ~:[is~;are~] not interpreted."
-				  (id axiom) *andusingctl* unint (cdr unint)))
+				  (id axiom) *andusingctl* needs-interp (cdr needs-interp)))
 			      (insert-tcc-decl 'mapped-axiom modinst axiom ndecl)))
 			(if ndecl
 			    (add-tcc-comment
@@ -1258,6 +1295,23 @@
 				     (unpindent netype 2 :string t :comment? t))))
 			    (add-tcc-comment
 			     'mapped-axiom nil modinst))))))))))))
+
+;; (defun generate-mapped-axiom (modinst axiom-decl mapped-axiom-defn)
+;;   (unless (some #'(lambda (decl)
+;; 		    (and (formula-decl? decl)
+;; 			 (eq (id decl) (id axiom-decl))))
+;; 		(all-decls (current-theory)))
+;;     (multiple-value-bind (dfmls dacts thinst)
+;; 	(new-decl-formals axiom-decl)
+;;       (declare (ignore dacts))
+;;       (let* ((id (id axiom-decl))
+;; 	     (mdecl (mk-formula-decl id nil 'AXIOM nil dfmls)))
+	
+;; 	(setf (definition mdecl) tform)
+;;       (typecheck* edecl nil nil nil)
+;;       (pvs-info "Added existence AXIOM for ~a:~%~a"
+;; 	(id decl) (unparse edecl :string t))
+;;       (add-decl edecl))))
 
 (defmethod collect-mapping-axioms (thinst theory)
   (assert theory)
@@ -1298,8 +1352,8 @@
 	  :test #'tc-eq))
 
 
-(defun find-uninterpreted (expr thinst theory mappings-alist)
-  (declare (ignore thinst mappings-alist))
+(defun find-needs-interpretation (expr thinst theory mappings-alist)
+  (declare (ignore thinst theory mappings-alist))
   (let ((needs-interp nil))
     (mapobject #'(lambda (ex)
 		   (or (member ex needs-interp :test #'tc-eq)
@@ -1312,10 +1366,11 @@
 				    |number_fields| |reals|
 				    |character_adt|)))
 		       (adt-name-expr? ex)
+		       (adt-type-name? ex)
 		       (let ((decl (when (name? ex) (declaration ex))))
 			 (when (and (declaration? decl)
 				    (not (eq (module decl) (current-theory)))
-				    (eq (module decl) theory)
+				    ;;(eq (module decl) theory)
 				    (interpretable? decl))
 			   (push ex needs-interp)))))
 	       expr)
@@ -1351,24 +1406,34 @@
 	  (subst-mod-params (closed-definition axiom)
 	      (lcopy modinst :dactuals dacts)
 	    mod axiom)
-	(let* ((tform expr) ;(add-tcc-conditions expr)
-	       (xform (if *simplify-tccs*
-			  (pseudo-normalize tform)
-			  (beta-reduce tform)))
-	       (sform (raise-actuals (expose-binding-types
-				      (universal-closure xform))
-				     t))
-	       (uform (if thinst
-			  (subst-mod-params sform thinst cth axiom) ;cdecl
-			  sform)))
-	  (setf (definition tccdecl) uform)
-	  (unless (tc-eq uform *true*)
-	    (when (and *false-tcc-error-flag*
-		       (tc-eq uform *false*))
-	      (type-error axiom
-		"Mapped axiom TCC for this expression simplifies to false:~2%  ~a"
-		tform))
-	    (values (typecheck* tccdecl nil nil nil) mappings-alist)))))))
+	;; Check for mappings to uninterpreted RHS names, don't do anything in this case
+	(if (every #'(lambda (elt)
+		       (let ((rhs-val (or (type-value (cdr elt)) (expr (cdr elt)))))
+			 (when (name? rhs-val)
+			   (interpretable? (declaration rhs-val)))))
+		   mappings-alist)
+	    (unless *collecting-tccs*
+	      (pvs-warning
+		  "Axiom ~a is not a mapped to a TCC because all all RHS exprs are interpretable names."
+		(id axiom)))
+	    (let* ((tform expr)		;(add-tcc-conditions expr)
+		   (xform (if *simplify-tccs*
+			      (pseudo-normalize tform)
+			      (beta-reduce tform)))
+		   (sform (raise-actuals (expose-binding-types
+					  (universal-closure xform))
+					 t))
+		   (uform (if thinst
+			      (subst-mod-params sform thinst cth axiom) ;cdecl
+			      sform)))
+	      (setf (definition tccdecl) uform)
+	      (unless (tc-eq uform *true*)
+		(when (and *false-tcc-error-flag*
+			   (tc-eq uform *false*))
+		  (type-error axiom
+		    "Mapped axiom TCC for this expression simplifies to false:~2%  ~a"
+		    tform))
+		(values (typecheck* tccdecl nil nil nil) mappings-alist))))))))
 
 (defun generate-selections-tccs (expr constructors adt)
   (when (and constructors
@@ -1418,6 +1483,34 @@
       (when unselected
 	(break "generate-coselections-tccs")))))
 
+;;; The tcc-root-name is used to collect all TCCs associated with a given declaration
+;;; and stored in the reason for tcc-decls and tcc-proof-info
+(defun tcc-root-name (expr)
+  (tcc-root-name* (current-declaration) expr))
+
+(defmethod tcc-root-name* ((decl declaration) expr)
+  (declare (ignore expr))
+  (op-to-id
+   (or (if (declaration? (generated-by decl))
+	   (generated-by decl)
+	   decl))))
+
+(defmethod tcc-root-name* ((decl mapping-lhs) expr)
+  (declare (ignore expr))
+  (op-to-id decl))
+
+(defmethod tcc-root-name* ((decl judgement) expr)
+  ;; The 
+  (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
+	(id decl))
+      ;; name the TCCs apart from the judgement TCC
+      (let ((jid (call-next-method)))
+	(intern (format nil "~a_" jid) :pvs))))
+
+(defmethod tcc-root-name* ((imp importing) expr)
+  (declare (ignore expr))
+  (make-tcc-importing-id))
+  
 (defun make-tcc-name (&optional expr extra-id)
   (assert *current-context*)
   (if (or *in-checker* *in-evaluator*)
@@ -1445,38 +1538,11 @@
 		     extra-id
 		     1)))
 
-(defmethod make-tcc-name* ((decl subtype-judgement) expr extra-id)
+(defmethod make-tcc-name* ((decl judgement) expr extra-id)
   (declare (ignore extra-id))
   (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
 	(id decl))
       (call-next-method)))
-
-(defmethod make-tcc-name* ((decl number-judgement) expr extra-id)
-  (declare (ignore extra-id))
-  (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
-	(id decl))
-      (call-next-method)))
-
-(defmethod make-tcc-name* ((decl name-judgement) expr extra-id)
-  (declare (ignore extra-id))
-  (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
-	(id decl))
-      (call-next-method)))
-
-(defmethod make-tcc-name* ((decl application-judgement) expr extra-id)
-  (declare (ignore extra-id))
-  (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
-	(id decl))
-      (call-next-method)))
-
-(defmethod make-tcc-name* ((decl expr-judgement) expr extra-id)
-  (declare (ignore extra-id))
-  (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
-	(id decl))
-      (call-next-method)))
-
-;; (defmethod make-tcc-name* ((decl rec-application-judgement) expr extra-id)
-;;   (call-next-method))
 
 (defmethod make-tcc-name* ((imp importing) expr extra-id)
   (declare (ignore expr))
@@ -1573,10 +1639,17 @@
     #'(lambda (x) (and (name-expr? x)
 		       (eq (declaration x) recdecl)))))
 
-(defun make-new-variable (base expr &optional num)
+(defun make-new-variable (base expr &optional num &key exceptions)
+  "Create a new id starting from the 'base' symbol and adding numbers till
+an id is found that isn't in expr.  exceptions is a list of decls, the idea
+is that we are building, e.g., dep-bindings from bind-decls, and we can use
+the same id for the substitution."
   (let ((vid (if num (makesym "~a~d" base num) base)))
-    (if (or (member vid *bound-variables* :key #'id)
-	    (id-occurs-in vid expr))
+    (if (or (some #'(lambda (bv)
+		      (and (eq vid (id bv))
+			   (not (memq bv exceptions))))
+		  *bound-variables*)
+	    (id-occurs-in vid expr :exceptions exceptions))
 	(make-new-variable base expr (if num (1+ num) 1))
 	vid)))
 

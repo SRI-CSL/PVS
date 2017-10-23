@@ -43,12 +43,12 @@
   (cond ((and (eq *generate-tccs* 'none)
 	      (type ex)))
 	((type ex)
-	 (when (and expected
-		    (not (eq *generate-tccs* 'none)))
+	 (unless (eq *generate-tccs* 'none)
 	   (let ((*no-conversions-allowed* t))
 	     (if (eq *generate-tccs* 'all)
-		 (check-for-tccs ex expected)
-		 (check-for-subtype-tcc ex expected)))))
+		 (check-for-tccs ex (or expected (type ex)))
+		 (when expected
+		   (check-for-subtype-tcc ex expected))))))
 	(t (call-next-method)
 	   (when expected
 	     (set-type ex expected))))
@@ -1175,6 +1175,11 @@
 	  (typecheck-let-bindings (bindings (operator expr)) (argument expr)))
 	(typecheck* (bindings (operator expr)) nil nil nil)))
   (unless (ptypes (operator expr))
+    (when (and expected
+	       (lambda-expr? (operator expr))
+	       (list-expr? (expression (operator expr))))
+      ;;(break "let-expr with list-exprs and expected")
+      (typecheck* (expression (operator expr)) expected nil nil))
     (typecheck* (operator expr) nil nil (argument-list (argument expr))))
   (set-possible-argument-types (operator expr) (argument expr))
   (unless (or (type (operator expr))
@@ -1449,6 +1454,12 @@
 	    (arguments expr))))
       (call-next-method)))
 
+(defmethod typecheck* ((expr string-expr) expected kind arguments)
+  "A string-expr \"foo\" is internally list2finseq((: char(102), char(111), char(111) :))"
+  (let ((list-char (tc-type "list[char]")))
+    (typecheck* (argument expr) list-char nil nil)
+    (call-next-method)))
+
 (defmethod typecheck* ((expr list-expr) expected kind arguments)
   (if (and expected (list-type? expected)) ;; could be waiting for conversion
       (let* ((elt-type (type-value
@@ -1462,8 +1473,9 @@
       ;; Not in a nice situation, treat as a simple application
       (let ((len (list-expr-length expr)))
 	(when (> len 50)
-	  (pvs-message "Typechecking list ~a with ~d elements; slow without knowing the type"
-	    expr len))
+	  (let ((*print-length* 5))
+	    (pvs-message "Typechecking list ~a with ~d elements; slow without knowing the type"
+	      expr len)))
 	(call-next-method))))
 
 (defun typecheck-list-elt (ex elt-type cons-ex null-ex)
@@ -1479,7 +1491,8 @@
 			(let ((op (operator list-ex)))
 			  (unless (type op)
 			    (setf (type op) (type cons-ex))
-			    (setf (resolutions op) (resolutions cons-ex))))
+			    (setf (resolutions op) (resolutions cons-ex))
+			    (change-class op 'constructor-name-expr)))
 			(setf (type (argument list-ex))
 			      (mk-tupletype (list elt-type
 						  (if (null-expr? (args2 list-ex))
@@ -1667,7 +1680,8 @@
 
 (defmethod typecheck* ((expr lambda-expr) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (typecheck* (bindings expr) nil nil nil)
+  (let ((*generate-tccs* 'none))
+    (typecheck* (bindings expr) nil nil nil))
   ;; XXX do something with arguments here
   (let ((*bound-variables* (append (bindings expr) *bound-variables*)))
     (when (lambda-expr-with-type? expr)
@@ -2413,12 +2427,12 @@
   (if (declared-type decl)
       (let* ((*generate-tccs* 'none)
 	     (type (typecheck* (declared-type decl) nil nil nil)))
-	(assert (fully-instantiated? type))
+	#+pvsdebug (assert (fully-instantiated? type))
 	(unless (fully-instantiated? type)
 	  (type-error (declared-type decl)
 	    "Could not determine the full theory instance"))
 	(set-type (declared-type decl) nil)
-	(assert (fully-instantiated? (declared-type decl)))
+	#+pvsdebug (assert (fully-instantiated? (declared-type decl)))
 	(setf (type decl) type))
       (let ((vdecls (remove-if-not #'(lambda (d)
 				       (and (var-decl? d)

@@ -659,6 +659,11 @@
   (declare (ignore substfn testfn))
   obj)
 
+(defmethod gensubst* ((obj s-formula) substfn testfn)
+  (let ((nfmla (gensubst* (formula obj) substfn testfn)))
+    (lcopy obj
+      'formula nfmla)))
+
 
 ;;; Mapobject - maps a function fn down the abstract syntax.
 ;;;             Returns the object
@@ -666,7 +671,8 @@
 ;;;                subcomponents.
 ;;;  Notes: 1. If the type-value of an actual is set, will not go down
 ;;;            the expr.
-;;;         2. Caches the result for each call to mapobject.
+;;;         2. Caches the result for each call to mapobject in *mapobject-cache*
+;;;         3. *parsing-or-unparsing* controls whether to go down types, etc.
 
 (defvar *mapobject-cache* (make-hash-table :test #'eq :size 37))
 

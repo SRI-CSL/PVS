@@ -162,6 +162,9 @@
 	  (*bound-variables* *bound-variables*))
       (reset-pseudo-normalize-caches)
       (reset-beta-cache)
+      (if (boundp '*subst-fields-hash*)
+	  (clrhash *subst-fields-hash*)
+	  (setq *subst-fields-hash* (make-pvs-hash-table)))
       (tcdebug "~%Typecheck ~a" (id m))
       (setf (formals-sans-usings m)
 	    (remove-if #'importing-param? (formals m)))
@@ -783,8 +786,10 @@
   (let ((mdecl (change-class
 		   (copy decl
 		     :place nil
-		     :decl-formals (when (decl-formals decl)
-				     (break "decl-formals"))
+		     :decl-formals (mapcar #'(lambda (df)
+						(make-mapped-decl
+						 df map theory theoryname))
+				      (decl-formals decl))
 		     :formals nil
 		     :module (current-theory)
 		     :refers-to nil
@@ -794,6 +799,8 @@
 		     :theory-mappings nil
 		     :other-mappings nil)
 		   'mapped-type-decl)))
+    (dolist (df (decl-formals mdecl))
+      (setf (associated-decl df) mdecl))
     mdecl))
 
 (defmethod make-mapped-decl ((decl type-decl) map theory theoryname)
@@ -802,8 +809,10 @@
 	 (mdecl (change-class
 		    (copy decl
 		      :place nil
-		      :decl-formals (when (decl-formals decl)
-				      (break "decl-formals"))
+		      :decl-formals (mapcar #'(lambda (df)
+						(make-mapped-decl
+						 df map theory theoryname))
+				      (decl-formals decl))
 		      :formals nil
 		      :module (current-theory)
 		      :refers-to (generate-xref (type-value (rhs map)))
@@ -812,7 +821,15 @@
 		      :type-value typeval
 		      :type typex)
 		    'mapped-type-decl)))
+    (dolist (df (decl-formals mdecl))
+      (setf (associated-decl df) mdecl))
     mdecl))
+
+(defmethod make-mapped-decl ((decl decl-formal-type) map theory theoryname)
+  (declare (ignore map theory theoryname))
+  (let ((fdecl (new-decl-formal decl)))
+    (setf (place fdecl) nil)
+    fdecl))
 
 (defmethod make-mapped-decl ((decl const-decl) map theoryname theory)
   (let* ((rhs (expr (rhs map)))
@@ -820,11 +837,11 @@
 	 (dtype (or (print-type type) type))
 	 ;;(dtype (subst-mod-params (declared-type decl) theoryname theory))
 	 ;;(type (subst-mod-params (type decl) theoryname theory))
+	 (dformals (decl-formals (lhs map)))
 	 (mdecl (change-class
 		    (copy decl
 		      :place nil
-		      :decl-formals (when (decl-formals decl)
-				      (break "decl-formals"))
+		      :decl-formals dformals
 		      :formals nil
 		      :module (current-theory)
 		      :refers-to (generate-xref (expr (rhs map)))
@@ -834,7 +851,9 @@
 		      :type type
 		      :definition (expr (rhs map)))
 		    'mapped-const-decl)))
-    (assert (fully-instantiated? type))
+    (dolist (df (decl-formals mdecl))
+      (setf (associated-decl df) mdecl))
+    (assert (with-current-decl mdecl (fully-instantiated? type)))
     (make-def-axiom mdecl)
     mdecl))
 				

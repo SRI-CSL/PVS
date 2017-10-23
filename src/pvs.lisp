@@ -208,6 +208,7 @@
   (setq *translate-to-prove-hash* (make-pvs-hash-table))
   (setq *translate-id-hash* (make-pvs-hash-table))
   (setq *create-formulas-cache* (make-pvs-hash-table))
+  (setq *subst-fields-hash* (make-pvs-hash-table))
   (setq *pvs-initialized* t)
   (when *pvs-emacs-interface*
     (pvs-emacs-eval "(setq pvs-initialized t)")))
@@ -1306,11 +1307,11 @@
 
 (defun set-default-proof (tcc-decl)
   (setf (proofs tcc-decl)
-	(list (mk-proof-info
+	(list (mk-tcc-proof-info
 	       (makesym "~a-1" (id tcc-decl))
 	       nil (get-universal-time)
 	       (list "" (list (default-tcc-proof tcc-decl)) nil nil)
-	       nil)))
+	       nil nil (origin tcc-decl))))
   (setf (default-proof tcc-decl) (car (proofs tcc-decl))))
 
 (defmethod default-tcc-proof (tcc-decl)
@@ -1943,6 +1944,11 @@ Note that even proved ones get overwritten"
 			 (unparse decl :stream out)
 			 (terpri out) (terpri out)
 			 (setq unparsed-a-tcc? t))))))
+	     ;; json form:
+	     ;; pvsfile := [ theory+ ]
+	     ;; theory := {id: Id, decls: [decl]}
+	     ;; decl := importing | typed-decl | formula-decl
+	     ;; importing := 
 	     (buffer (format nil "~a.tccs" (id theory))))
 	(cond ((not (string= str ""))
 	       (let ((*valid-id-check* nil))
@@ -2717,14 +2723,25 @@ Note that even proved ones get overwritten"
 			 (pvs-message "Proof already found on ~a as ~a"
 			   (id fdecl) (id prinfo))
 			 t))
-		      (t (let ((prinfo (make-proof-info
-					just
-					(next-proof-id fdecl)
-					(when (default-proof
-						(car *edit-proof-info*))
-					  (description
-					   (default-proof
-					     (car *edit-proof-info*)))))))
+		      (t (let ((prinfo
+				(if (tcc-decl? fdecl)
+				    (make-tcc-proof-info
+				     just
+				     (next-proof-id fdecl)
+				     (when (default-proof
+					       (car *edit-proof-info*))
+				       (description
+					(default-proof
+					    (car *edit-proof-info*))))
+				     (origin fdecl))
+				    (make-proof-info
+				     just
+				     (next-proof-id fdecl)
+				     (when (default-proof
+					       (car *edit-proof-info*))
+				       (description
+					(default-proof
+					    (car *edit-proof-info*))))))))
 			   (push prinfo (proofs fdecl))
 			   (setf (default-proof fdecl) prinfo)
 			   (unless (from-prelude? (module fdecl))
@@ -3024,30 +3041,40 @@ Note that even proved ones get overwritten"
 	       (let ((pmod (get-theory theoryref)))
 		 (or pmod
 		     (type-error theoryref
-		        "Can't find file for theory ~a" theoryref))))))))
+		       "Can't find file for theory ~a" theoryref))))))))
 
 (defun look-for-theory-in-directory-files (theoryref)
-  (let ((pvs-files (directory "*.pvs"))
-	(files-with-clashes nil)
-	(files-with-theoryref nil))
+  (let* ((thname (ref-to-id theoryref))
+	 (grep-form (format nil "grep -l -w ~a *.pvs" thname))
+	 (grep-files
+	  (uiop:run-program grep-form
+	    :output '(:string :stripped t)
+	    :ignore-error-status t))
+	 (pvs-files (uiop:split-string grep-files :separator (list #\newline)))
+	 (files-with-clashes nil)
+	 (files-with-theoryref nil))
     (dolist (file pvs-files)
       (let ((fname (pathname-name file)))
 	(unless (parsed-file? fname)
-	  (let ((theories (ignore-errors (with-no-parse-errors
-					  (parse :file file)))))
-	    (when (member (ref-to-id theoryref) theories :key #'id)
-	      ;; Make sure we're not introducing a name clash
-	      ;; E.g., file1 has theories th1 and th2
-	      ;;       file2 has theories th2 and th3
-	      ;; and we're looking for th3 from file1.
-	      (if (some #'(lambda (th)
-			    (let ((cth (gethash (id th) *pvs-modules*)))
-			      (and cth
-				   (filename cth)
-				   (not (string= fname (filename cth))))))
-			theories)
-		  (push fname files-with-clashes)
-		  (push fname files-with-theoryref)))))))
+	  ;; More refined search - strips comments first
+	  (let* ((sed-grep-form (format nil "sed 's/%.*//g' ~a | grep -q -w ~a" file thname))
+		 (found (zerop (nth-value 2
+				 (uiop:run-program sed-grep-form :ignore-error-status t)))))
+	    (when found
+	      (let ((theories (with-no-parse-errors (parse :file file))))
+		(when (member thname theories :key #'id)
+		  ;; Make sure we're not introducing a name clash
+		  ;; E.g., file1 has theories th1 and th2
+		  ;;       file2 has theories th2 and th3
+		  ;; and we're looking for th3 from file1.
+		  (if (some #'(lambda (th)
+				(let ((cth (gethash (id th) *pvs-modules*)))
+				  (and cth
+				       (filename cth)
+				       (not (string= fname (filename cth))))))
+			    theories)
+		      (push fname files-with-clashes)
+		      (push fname files-with-theoryref)))))))))
     (cond ((null files-with-theoryref)
 	   (when files-with-clashes
 	     (type-error theoryref
@@ -3356,11 +3383,21 @@ Note that even proved ones get overwritten"
 	(pvs-buffer "Expanded Sequent"
 	  (with-output-to-string (*standard-output*)
 	    (unless all?
-	      (format t ";;; Prelude names not expanded; ")
-	      (format t "C-u M-x show-expanded-sequent shows all~%"))
-	    (write (expanded-sequent all?)))
+	      (format t ";;; Expanding up to differences (e.g., actuals or theory); ")
+	      (format t "C-u M-x show-expanded-sequent fully expands~%"))
+	    (let ((exp-seq (if all?
+			       (expanded-sequent all?)
+			       (create-distinct-names-sequent)))) 
+	      (write exp-seq)))
 	  t))
       (pvs-message "Not in prover")))
+
+(defun create-distinct-names-sequent ()
+  (copy *ps*
+    'current-goal
+    (copy (current-goal *ps*)
+      's-forms (create-distinct-names
+		(s-forms (current-goal *ps*))))))
 
 (defun expanded-sequent (&optional all?)
   (let ((*current-theory* (unless all? *current-theory*))
@@ -3381,10 +3418,14 @@ Note that even proved ones get overwritten"
 	(if skoconsts
 	    (pvs-buffer "Proof Display"
 	      (with-output-to-string (*standard-output*)
-		(format t "~%Skolem-constant: type")
-		(format t "~%---------------------")
+		(format t "~%Skolem-constant: type [= defn]")
+		(format t "~%------------------------------")
 		(dolist (sc skoconsts)
-		  (format t "~%~a: ~a" (id sc) (type sc))))
+		  (let* ((decl (format nil "~a: ~a" (id sc) (type sc)))
+			 (def (when (definition sc)
+				(unpindent (definition sc) (+ (length decl) 3)
+					   :string t))))
+		  (format t "~%~a~@[ = ~a~]" decl def))))
 	      t)
 	    (pvs-message "No Skolem Constants on this branch of the proof")))
       (pvs-message "Not in the prover")))
@@ -3711,3 +3752,18 @@ Note that even proved ones get overwritten"
 					       (cons (mk-modname (id (module d)))
 						     prelude-theory-names))))))))
     prelude-theory-names))
+
+(defun collect-prelude-decls-if (pred)
+  (let ((decls nil))
+    (dolist (th *prelude-theories*)
+      (dolist (decl (all-decls th))
+	(when (funcall pred decl)
+	  (push decl decls))))
+    (nreverse decls)))
+
+(defun proof-refers-to? (decl id)
+  (when (and (formula-decl? decl)
+	     (default-proof decl))
+    (and (member id (refers-to (default-proof decl))
+		 :test #'same-id)
+	 t)))

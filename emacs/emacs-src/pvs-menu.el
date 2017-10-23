@@ -311,17 +311,20 @@
   (defvar easy-menu-fast-menus nil)
 
   (let ((easy-menu-fast-menus t))
-    (easy-menu-define PVS global-map "PVS menus" pvs-mode-menus)
-    (easy-menu-add PVS global-map))
+    (easy-menu-define pvs-menus global-map "PVS menus" pvs-mode-menus)
+    (easy-menu-add pvs-menus global-map))
   )
 
 (when (featurep 'xemacs)
   (add-submenu nil pvs-mode-menus "")
   (add-hook 'pvs-mode-hook
     '(lambda ()
-       (add-submenu nil pvs-mode-menus ""))))
+      (add-submenu nil pvs-mode-menus ""))))
+
+(defvar-local pvs-tooltip-time :unbound)
 
 (unless (featurep 'xemacs)
+  
   (or (let ((load-path pvs-original-load-path))
 	(require 'json nil :noerror))
       (require 'json))
@@ -347,7 +350,8 @@
       (find-file file)
       (let ((row (elt place 0))
 	    (col (elt place 1)))
-	(goto-line row)
+	(goto-char (point-min))
+	(forward-line (1- row))
 	(forward-char col))))
 
   (defun pvs-backto-last-location ()
@@ -380,8 +384,7 @@
 		(make-text-button
 		 (car region) (cdr region)
 		 'type 'pvs-decl 'decl-file decl-file 'decl-place decl-place)
-		(make-local-variable 'pvs-tooltip-time)
-		(setf pvs-tooltip-time (visited-file-modtime))))
+		(setq pvs-tooltip-time (visited-file-modtime))))
 	    ;;(message "Tooltips set")
 	    )
 	  (message "Tooltips not set - is file typechecked?"))))
@@ -391,8 +394,7 @@
       (with-current-buffer buf
 	(let ((fname (current-pvs-file t)))
 	  (when (and fname
-		     (not (and (boundp 'pvs-tooltip-time)
-			       (equal pvs-tooltip-time (visited-file-modtime))))
+		     (equal pvs-tooltip-time (visited-file-modtime))
 		     (typechecked-file-p fname))
 	    (pvs-add-tooltips fname))))))
 
@@ -409,7 +411,8 @@
 
   (defun row-col-to-point (row col)
     (save-excursion
-      (goto-line row)
+      (goto-char (point-min))
+      (forward-line (1- row))
       (forward-char col)
       (point)))
 

@@ -724,7 +724,9 @@
 	      (format nil "~,2,-3f" (run-proof-time decl))
 	      (format nil "n/a")))
 	(write (get-editable-justification
-		(convert-proof-form-to-lowercase prf))
+		#+allegro
+		(convert-proof-form-to-lowercase prf)
+		#-allegro prf)
 	       :stream outstr :pretty t :escape t :level nil
 	       :length nil :pprint-dispatch *proof-script-pprint-dispatch*)))))
 

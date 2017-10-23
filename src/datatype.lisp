@@ -4859,9 +4859,11 @@ generated")
   (cond ((tc-eq te adtname)
 	 (let ((bd (mk-bind-decl (make-new-variable '|z| te) te)))
 	   (mk-lambda-expr (list bd)
-	     (mk-application 'OR
-	       (mk-application '= (copy xvar) (mk-name-expr (id bd)))
-	       (mk-application '<< (copy xvar) (mk-name-expr (id bd)))))))
+	     (let ((disj (mk-application 'OR
+			   (mk-application '= (copy xvar) (mk-name-expr (id bd)))
+			   (mk-application '<< (copy xvar) (mk-name-expr (id bd))))))
+	       (setf (parens disj) 1)
+	       disj))))
 	((adt? te)
 	 (let ((subs (mapcar #'(lambda (act)
 				 (acc-<<-selection* (type-value act)
@@ -5377,14 +5379,16 @@ function, tuple, or record type")
   nil)
 
 (defmethod everywhere-true? ((expr lambda-expr))
-  (tc-eq (expression expr) *true*))
+  (and (name-expr? (expression expr))
+       (eq (declaration (expression expr)) (declaration *true*))))
 
 (defmethod everywhere-false? (expr)
   (declare (ignore expr))
   nil)
 
 (defmethod everywhere-false? ((expr lambda-expr))
-  (tc-eq (expression expr) *false*))
+  (and (name-expr? (expression expr))
+       (eq (declaration (expression expr)) (declaration *false*))))
 
 (defun mk-identity-fun (te)
   (let ((act (mk-actual te)))

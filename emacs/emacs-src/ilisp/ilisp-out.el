@@ -176,8 +176,9 @@
 		(ilisp-needed-buffer-height buffer-or-window))
 	       ((windowp buffer-or-window)
                 (ilisp-needed-buffer-height (window-buffer buffer-or-window))))))
-    (min (/ (frame-height) 2)
-	 height)))
+    (if height
+	(min (/ (frame-height) 2) height)
+	(/ (frame-height) 2))))
 
 ;; A first guess at the height needed to display this buffer.
 (defun ilisp-needed-buffer-height (buffer)

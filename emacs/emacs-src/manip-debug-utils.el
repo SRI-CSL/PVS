@@ -34,8 +34,7 @@
     (unless editprfbuf
       (error "Must have a Proof Buffer."))
     (when pvs-in-checker
-      (save-excursion
-	(set-buffer editprfbuf)
+      (with-current-buffer editprfbuf
 	(pvs-prover-goto-next-step)
 	(let ((beg (point))
 	      (end (progn (forward-sexp 1) (point))))
@@ -44,7 +43,7 @@
 	    (if editprfwin
 		(set-window-point editprfwin (point))))
 	  (setq cmd (buffer-substring beg end))))
-      (end-of-buffer)
+      (goto-char (point-max))
       (insert cmd)
       (pvs-prover-trace-strat depth)
       (return-ilisp)

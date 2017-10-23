@@ -53,7 +53,7 @@
       '(lambda () (interactive) (remove-buffer (current-buffer)))))
 
 
-(defun pvs-file-list-mode ()
+(define-derived-mode pvs-file-list-mode pvs-mode "Files"
   "Major mode for editing a list of files.
 Each line describes one of the files in context.
 Letters do not insert themselves; instead, they are commands.
@@ -62,13 +62,8 @@ v -- view file
 n - new file
 q - quit
 Precisely,\\{pvs-file-list-mode-map}"
-  (kill-all-local-variables)
-  (use-local-map pvs-file-list-mode-map)
-  (setq truncate-lines t)
-  (setq buffer-read-only t)
-  (setq major-mode 'pvs-file-list-mode)
-  (setq mode-name "Files")
-  (set-syntax-table pvs-mode-syntax-table))
+  (setq-local truncate-lines t)
+  (setq-local buffer-read-only t))
 
 ;;; list-pvs-files
 
@@ -117,12 +112,11 @@ theory from the list of theories will import the associated file."
     (if tnames
 	(let ((buf (get-buffer-create "PVS Theories")))
 	  (set-buffer buf)
-	  (if buffer-read-only (toggle-read-only))
-	  (erase-buffer)
-	  (insert (make-files-listing tnames))
+	  (let ((inhibit-read-only t))
+	    (erase-buffer)
+	    (insert (make-files-listing tnames)))
 	  (goto-char (point-min))
           (set-buffer-modified-p nil)
-	  (toggle-read-only)
 	  (pop-to-buffer buf)
 	  (use-local-map pvs-file-list-mode-map)
 	  (message "Theories of %s" context))
@@ -152,13 +146,11 @@ theory from the list of theories will import the associated file."
 
 (defun make-pvs-file-list-buffer (buffer-name contents)
   (let ((buf (get-buffer-create buffer-name)))
-    (save-excursion
-      (set-buffer buf)
-      (if buffer-read-only (toggle-read-only))
-      (erase-buffer)
-      (insert contents)
+    (with-current-buffer buf
+      (let ((inhibit-read-only t))
+	(erase-buffer)
+	(insert contents))
       (goto-char (point-min))
-      (toggle-read-only)
       buf)))
 
 (defun make-files-listing (files)

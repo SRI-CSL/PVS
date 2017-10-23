@@ -448,16 +448,6 @@
   #-allegro (abort)
   #+allegro (tpl::reset-command))
 
-(defmacro y-or-n-p-with-prompt (msg args)
-  (clear-input)
-  #+lucid `(y-or-n-p ,msg ,args)
-  #-lucid `(y-or-n-p (format nil "~?(Y or N): " ,msg ,args)))
-
-(defmacro yes-or-no-p-with-prompt (msg args)
-  (clear-input)
-  #+lucid `(apply #'yes-or-no-p ,msg ,args)
-  #-lucid `(yes-or-no-p (format nil "~?(Yes or No) " ,msg ,args)))
-
 (defun pvs-y-or-n-p (msg &rest args)
   (pvs-yn (apply #'format nil msg args) nil nil))
 
@@ -479,7 +469,8 @@
 	 (let* ((*print-pretty* nil)
 		(*output-to-emacs*
 		 (format nil ":pvs-yn ~a&~a&~a :end-pvs-yn"
-		   (protect-emacs-output msg)
+		   (protect-emacs-output
+		    (protect-format-string msg))
 		   (if full? "t" "nil")
 		   (if timeout? "t" "nil"))))
 	   (to-emacs)
@@ -488,8 +479,9 @@
 	       (pvs-message "Aborting")
 	       (pvs-abort))
 	     val)))
-	(full? (yes-or-no-p-with-prompt msg nil))
-	(t (y-or-n-p-with-prompt msg nil))))
+	(full? (yes-or-no-p
+		(concatenate 'string (protect-format-string msg) "(Yes or No) ")))
+	(t (y-or-n-p (concatenate 'string (protect-format-string msg) "(Y or N) ")))))
 
 (defun pvs-dialog (prompt &rest args)
   (cond (*pvs-dialog-hook*
@@ -1166,7 +1158,20 @@
   (declare (ignore obj))
   nil)
 
-(defun id-place-list (name &optional nplace)
+(defmethod id-place-list ((ex fieldappl) &optional nplace)
+  ;; id is first in name, but after the backquote in fieldappls
+  ;; We basically go from the end
+  (let ((place (or nplace (place ex))))
+    (list (svref place 2) ; End row
+	  (- (svref place 3)
+	     (length (if (numberp (id ex))
+			 (format nil "~a" (id ex))
+			 (string (id ex)))))
+	  (svref place 2)
+	  (svref place 3))))
+
+
+(defmethod id-place-list (name &optional nplace)
   (let ((place (or nplace (place name))))
     (list (svref place 0)
 	  (svref place 1)

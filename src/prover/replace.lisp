@@ -176,6 +176,7 @@
     'formula (replace-expr* lhs rhs (formula s-formula) nil)))
 
 (defmethod replace-expr* :around (lhs rhs (expr expr) lastopinfix?)
+  (declare (ignore lhs rhs lastopinfix?))
   (or (gethash expr *replace-cache*)
       (let ((rexpr (call-next-method)))
 	(setf (gethash expr *replace-cache*) rexpr))))
@@ -370,8 +371,13 @@
       (parenthesize rhs lastopinfix?)
       (let* ((*bound-variables* (append (bindings expr) *bound-variables*))
 	     (nexpr (replace-expr* lhs rhs (expression expr) nil))
-	     (new-bindings (unless (eq nexpr (expression expr))
-			     (make-nonclashing-bindings (bindings expr) rhs)))
+	     (rep-bindings (when *replace-in-actuals?*
+			     (replace-expr* lhs rhs (bindings expr) lastopinfix?)))
+	     (new-bindings (unless (and (eq nexpr (expression expr))
+					(null rep-bindings))
+			     (or (make-nonclashing-bindings
+				  (or rep-bindings (bindings expr)) rhs)
+				 rep-bindings)))
 	     (nalist (when new-bindings
 		       (substit-pairlis (bindings expr) new-bindings nil))))
 	(if new-bindings
@@ -379,6 +385,13 @@
 	      'bindings new-bindings
 	      'expression (substit nexpr nalist))
 	    (lcopy expr 'expression nexpr)))))
+
+(defmethod replace-expr* (lhs rhs (expr binding) lastopinfix?)
+  (if *replace-in-actuals?*
+      (let ((rtype (replace-expr* lhs rhs (type expr) lastopinfix?))
+	    (rdtype (replace-expr* lhs rhs (declared-type expr) lastopinfix?)))
+	(lcopy expr :type rtype :declared-type rdtype))
+      (call-next-method)))
 
 (defun make-nonclashing-bindings (bindings expr)
   (let ((free-ids (collect-free-ids expr)))
@@ -491,6 +504,7 @@
 ;;; Type exprs may be triggered in actuals if *replace-in-actuals?* is set
 
 (defmethod replace-expr* (lhs rhs (expr type-name) lastopinfix?)
+  (declare (ignore lastopinfix?))
   (if *replace-in-actuals?* ;; Probably not needed - can't get here unless set
       (lcopy expr
 	'actuals (replace-expr* lhs rhs (actuals expr) nil)
@@ -498,6 +512,7 @@
       expr))
 
 (defmethod replace-expr* (lhs rhs (expr subtype) lastopinfix?)
+  (declare (ignore lastopinfix?))
   (let ((ntype (replace-expr* lhs rhs (supertype expr) nil))
 	(npred (replace-expr* lhs rhs (predicate expr) nil)))
     (if (and (eq ntype (supertype expr))
@@ -510,6 +525,7 @@
 	  'print-type nil))))
 
 (defmethod replace-expr* (lhs rhs (expr type-application) lastopinfix?)
+  (declare (ignore lastopinfix?))
   (let ((ntype (replace-expr* lhs rhs (type expr) nil))
 	(nparms (replace-expr* lhs rhs (parameters expr) nil)))
     (if (and (eq ntype (type expr))
@@ -521,6 +537,7 @@
 	  'print-type nil))))
 
 (defmethod replace-expr* (lhs rhs (expr funtype) lastopinfix?)
+  (declare (ignore lastopinfix?))
   (let* ((ndom (replace-expr* lhs rhs (domain expr) nil))
 	 (*bound-variables* (if (dep-binding? (domain expr))
 				(cons (domain expr) *bound-variables*)
@@ -536,6 +553,7 @@
     (lcopy expr 'domain ndom 'range nrng 'print-type ptype)))
 
 (defmethod replace-expr* (lhs rhs (expr tupletype) lastopinfix?)
+  (declare (ignore lastopinfix?))
   (let ((ntypes (replace-expr-types lhs rhs (types expr))))
     (lcopy expr
       'types ntypes
@@ -543,6 +561,7 @@
 		    (replace-expr-types lhs rhs (list (print-type expr)))))))
 
 (defmethod replace-expr* (lhs rhs (expr cotupletype) lastopinfix?)
+  (declare (ignore lastopinfix?))
   (let ((ntypes (replace-expr-types lhs rhs (types expr))))
     (lcopy expr
       'types ntypes
@@ -571,6 +590,7 @@
 	 (cons ncar result)))))
 
 (defmethod replace-expr* (lhs rhs (expr recordtype) lastopinfix?)
+  (declare (ignore lastopinfix?))
   (let ((nfields (replace-expr-types lhs rhs (fields expr))))
     (lcopy expr
       'fields nfields
@@ -578,10 +598,12 @@
 		    (replace-expr-types lhs rhs (list (print-type expr)))))))
 
 (defmethod replace-expr* (lhs rhs (expr dep-binding) lastopinfix?)
+  (declare (ignore lastopinfix?))
   (let ((ntype (replace-expr* lhs rhs (type expr) nil)))
     (lcopy expr 'type ntype)))
 
 (defmethod replace-expr* (lhs rhs (expr field-decl) lastopinfix?)
+  (declare (ignore lastopinfix?))
   (let ((ntype (replace-expr* lhs rhs (type expr) nil)))
     (lcopy expr
       'type ntype

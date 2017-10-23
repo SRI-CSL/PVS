@@ -28,7 +28,7 @@
 ;; --------------------------------------------------------------------
 
 (eval-when-compile (require 'pvs-macros))
-(require 'cl) ;; This generates warnings - with-no-warnings doesn't help
+(require 'cl-lib) ;; This generates warnings - with-no-warnings doesn't help
               ;; Emacs 24 uses cl-lib instead, but all functions need
               ;; to be prefixed with cl- so this isn't a good solution
               ;;for PVS (at least not now).
@@ -379,10 +379,10 @@ beginning of the previous one."
 
 (defun in-pvs-string ()
   (set-pvs-string-positions)
-  (some '(lambda (strpos)
-	  (and (< (car strpos) (point))
-	   (>= (cdr strpos) (point))))
-	pvs-string-positions))
+  (cl-some #'(lambda (strpos)
+	       (and (< (car strpos) (point))
+		    (>= (cdr strpos) (point))))
+	   pvs-string-positions))
 
 (defpvs find-unbalanced-pvs editing (arg)
   "Find unbalanced PVS delimiters
@@ -647,18 +647,15 @@ The save-pvs-file command saves the PVS file of the current buffer."
   (with-current-buffer buffer
     (erase-buffer)))
 
-(defvar current-pvs-file)
-(defvar pvs-lib-p)
+(defvar-local current-pvs-file nil)
+(defvar-local pvs-lib-p nil)
 
 (defun current-pvs-file (&optional no-error)
-  (make-local-variable 'current-pvs-file)
-  (make-local-variable 'pvs-lib-p)
   (if (and no-error
-	   (boundp 'current-pvs-file)
-	   (boundp 'pvs-lib-p))
+	   current-pvs-file)
       current-pvs-file
       (pvs-current-directory)
-      (setq pvs-lib-p nil)
+      (setq-local pvs-lib-p nil)
       (cond ((or (not (buffer-file-name))
 		 (not (member-equal (pathname-type (buffer-file-name))
 				    *pvs-file-extensions*)))
@@ -666,15 +663,15 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	       (error "%s is not a valid PVS file" (buffer-name))))
 	    ((file-equal (buffer-file-name)
 			 (format "%s/lib/prelude.pvs" pvs-path))
-	     (setq current-pvs-file (pathname-name (buffer-file-name))))
+	     (setq-local current-pvs-file (pathname-name (buffer-file-name))))
 	    ((file-equal (buffer-file-name)
 			 (format "%s%s"
 			     pvs-current-directory
 			   (file-name-nondirectory (buffer-file-name))))
-	     (setq current-pvs-file (pathname-name (buffer-file-name))))
+	     (setq-local current-pvs-file (pathname-name (buffer-file-name))))
 	    ((pvs-library-file-p (buffer-file-name))
-	     (setq current-pvs-file (pathname-name (buffer-file-name)))
-	     (setq pvs-lib-p t)
+	     (setq-local current-pvs-file (pathname-name (buffer-file-name)))
+	     (setq-local pvs-lib-p t)
 	     current-pvs-file)
 	    (t (unless no-error
 		 (error "%s is not in the current context or a typechecked library file"
@@ -898,8 +895,8 @@ The save-pvs-file command saves the PVS file of the current buffer."
   (pvs-bury-output)
   (let* ((lfiles (relativize-pvs-filenames
 		  (pvs-send-and-wait "(library-files)" nil nil 'list)))
-	 (ldirs (delete-duplicates (mapcar 'file-name-directory lfiles)
-				   :test 'string-equal))
+	 (ldirs (cl-delete-duplicates (mapcar #'file-name-directory lfiles)
+				      :test 'string-equal))
 	 (dfiles (when distributed-p
 		   (collect-all-distributed-library-files ldirs)))
 	 (allfiles (append lfiles dfiles)))
@@ -1117,8 +1114,8 @@ The save-pvs-file command saves the PVS file of the current buffer."
     (setq pvs-current-directory (car dir-and-theories))
     (setq pvs-theories
 	  (append current-theories
-		  (remove-if '(lambda (x)
-				(assoc (car x) current-theories))
+		  (cl-remove-if #'(lambda (x)
+				    (assoc (car x) current-theories))
 		    (cdr dir-and-theories))))))
 
 (defun pvs-current-theories ()
@@ -1163,10 +1160,10 @@ The save-pvs-file command saves the PVS file of the current buffer."
 				   nil nil 'list)))
     (if libraries-p
 	(relativize-pvs-filenames (remove-distributed-pvs-libraries fnames))
-	(remove-if 'file-name-directory fnames))))
+	(cl-remove-if #'file-name-directory fnames))))
 
 (defun remove-distributed-pvs-libraries (fnames)
-  (remove-if 'in-distributed-pvs-library-p fnames))
+  (cl-remove-if #'in-distributed-pvs-library-p fnames))
 
 (defun in-distributed-pvs-library-p (fname)
   (let ((match-p nil)
@@ -1194,8 +1191,8 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	      (concat reldir file)
 	      (let* ((dchain1 (pvs-directory-chain (short-file-name dir)))
 		     (dchain2 (pvs-directory-chain))
-		     (mdir (find-if '(lambda (d)
-				       (member-pvs-file-equal d dchain2))
+		     (mdir (cl-find-if #'(lambda (d)
+					   (member-pvs-file-equal d dchain2))
 			     dchain1))
 		     (rdir (if mdir
 			       (let ((dist (1- (length (member-pvs-file-equal
@@ -1305,7 +1302,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 
 (defun pvs-abbreviate (cmd abbrevs)
-  (let ((abbrs (remove-if 'fboundp
+  (let ((abbrs (cl-remove-if #'fboundp
 		 (if (listp abbrevs)
 		     abbrevs
 		     (list abbrevs)))))
@@ -1356,7 +1353,8 @@ The save-pvs-file command saves the PVS file of the current buffer."
       (let ((config (car window-configurations)))
 	(setq window-configurations (cdr window-configurations))
 	(set-window-configuration config))
-    (princ "nothing to restore")))
+    ;;(princ "nothing to restore")
+    ))
 
 ;;; restore top of stack without deleting it
 (defun setw ()
@@ -1366,8 +1364,8 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	(set-window-configuration config)
 	(setq window-configurations
 	      (cons (current-window-configuration) window-configurations)))
-    (princ "nothing to restore"))
-  )
+    ;;(princ "nothing to restore")
+    ))
 
 ;;; delete top of stack without restoring it
 (defun tossw ()

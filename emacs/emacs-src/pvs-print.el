@@ -104,24 +104,24 @@ rotated output, add the following to your ~/.emacs file:
   (let ((name (or pvs-print-name (concat (buffer-name) " Emacs buffer")))
 	(width tab-width))
     (save-excursion
-     (message "Spooling...")
-     (if (/= tab-width 8)
-	 (let ((oldbuf (current-buffer)))
-	  (set-buffer (get-buffer-create " *spool temp*"))
-	  (widen) (erase-buffer)
-	  (insert-buffer-substring oldbuf start end)
-	  (setq tab-width width)
-	  (untabify (point-min) (point-max))
-	  (setq start (point-min) end (point-max))))
-     (apply 'call-process-region
-	    (nconc (list start end pvs-print-command
-			 nil (get-buffer-create "pvs-print") nil)
-		   (nconc (apply 'nconc
-				 (mapcar '(lambda (ts)
-					   (list ts name))
-					 pvs-print-title-switches))
-			  switches)))
-     (message "Spooling...done"))))
+      (message "Spooling...")
+      (if (/= tab-width 8)
+	  (let ((oldbuf (current-buffer)))
+	    (set-buffer (get-buffer-create " *spool temp*"))
+	    (widen) (erase-buffer)
+	    (insert-buffer-substring oldbuf start end)
+	    (setq tab-width width)
+	    (untabify (point-min) (point-max))
+	    (setq start (point-min) end (point-max))))
+      (apply 'call-process-region
+	(nconc (list start end pvs-print-command
+		     nil (get-buffer-create "pvs-print") nil)
+	       (nconc (apply 'nconc
+			(mapcar #'(lambda (ts)
+				    (list ts name))
+			  pvs-print-title-switches))
+		      switches)))
+      (message "Spooling...done"))))
 
 ;;;---------------------------------------------
 ;;; Printing Commands
@@ -134,15 +134,14 @@ rotated output, add the following to your ~/.emacs file:
 The print-theory command prints the specified theory using the
 pvs-print-region command."
   (interactive (complete-theory-name "Print theory named: " nil t))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (let* ((filename (cadr (assoc theoryname pvs-theories))))
     (cond (filename
-	   (save-excursion
-	     (set-buffer (get-theory-buffer theoryname))
+	   (with-current-buffer (get-theory-buffer theoryname)
 	     (let ((pvs-print-name (format "Theory %s" theoryname)))
 	       (apply 'pvs-print-region (cdr (theory-region theoryname))))))
 	  ((print-prelude-theory theoryname))
-	  (message "No theories found."))))
+	  (t (message "No theories found.")))))
 
 (defun print-prelude-theory (theoryname)
   (let* ((freg (get-prelude-file-and-region theoryname))
@@ -152,17 +151,15 @@ pvs-print-region command."
 	     (region (cdr freg)))
 	(when region
 	  (let ((pbuf (get-buffer-create theoryname)))
-	    (save-excursion
-	      (set-buffer pbuf)
+	    (with-current-buffer pbuf
 	      (set (make-local-variable 'pvs-prelude)
-		   (save-excursion
-		     (set-buffer buf)
+		   (with-current-buffer buf
 		     (goto-char (car region))
 		     (- (current-line-number) 1)))
-	      (when buffer-read-only (toggle-read-only))
-	      (erase-buffer)
-	      (insert-buffer-substring buf (car region) (cadr region))
-	      (unless buffer-read-only (toggle-read-only))
+	      (let ((inhibit-read-only t))
+		(erase-buffer)
+		(insert-buffer-substring buf (car region) (cadr region)))
+	      (setq buffer-read-only t)
 	      (pvs-print-buffer))))))))
 
 
@@ -177,8 +174,7 @@ pvs-print-buffer command."
 				       nil nil t t))
   (let ((buf (get-pvs-file-buffer filename)))
     (if buf
-	(save-excursion
-	  (set-buffer buf)
+	(with-current-buffer buf
 	  (save-pvs-file filename)
 	  (let ((pvs-print-name (format "PVS File %s" filename)))
 	    (pvs-print-buffer)))
@@ -186,10 +182,9 @@ pvs-print-buffer command."
 	  (let ((fname (format "%s/lib/prelude.pvs" pvs-path)))
 	    (if (not (file-exists-p fname))
 		(error "%s does not exist." fname)
-		(save-excursion
-		  (set-buffer (find-file-noselect fname))
+		(with-current-buffer (find-file-noselect fname)
 		  (set (make-local-variable 'pvs-prelude) 0)
-		  (unless buffer-read-only (toggle-read-only))
+		  (setq buffer-read-only t)
 		  (pvs-mode)
 		  (pvs-print-buffer))))))))
 
@@ -202,7 +197,7 @@ pvs-print-buffer command."
 The print-pvs-importchain command prints the importchain of the specified
 theory using the pvs-print-buffer command."
   (interactive (complete-theory-name "Print theories in imports of: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (let ((print-buffer (get-buffer-create " *pvs-temp-buffer*"))
 	(theories
 	 (pvs-send-and-wait
@@ -235,27 +230,34 @@ The alltt-theory command generates a LaTeX file in alltt format for the
 specified theory.  If the theory name is foo, the name of the generated
 file is foo-alltt.tex."
   (interactive (complete-theory-name "Generate alltt file for theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (let* ((buf (get-theory-buffer theoryname))
-	 (reg (save-excursion (set-buffer buf) (theory-region theoryname)))
+	 (reg (with-current-buffer buf (theory-region theoryname)))
 	 (file (format "%s%s-alltt.tex" pvs-current-directory theoryname))
 	 (nbuf (find-file-noselect file)))
-    (save-excursion
-      (set-buffer nbuf)
+    (with-current-buffer nbuf
       (erase-buffer)
       (message "Generating %s..." file)
-      (insert-buffer-substring buf (cadr reg) (min (caddr reg)
-						   (save-excursion
-						     (set-buffer buf)
-						     (point-max))))
+      (insert-buffer-substring buf (cadr reg)
+			       (min (caddr reg)
+				    (with-current-buffer buf
+				      (point-max))))
       (goto-char (point-min))
-      (replace-regexp "{\\|}" "\\\\\\&")
+      ;;(replace-regexp "{\\|}" "\\\\\\&")
+      (while (re-search-forward "{\\|}" nil t)
+	(replace-match "\\\\\\&" nil nil))
       (goto-char (point-min))
-      (replace-string "^" "\\verb|^|")
+      ;;(replace-string "^" "\\verb|^|")
+      (while (search-forward "^" nil t)
+	(replace-match "\\verb|^|" nil t))
       (goto-char (point-min))
-      (replace-string "\\/" "\\verb|\\/|")
+      ;;(replace-string "\\/" "\\verb|\\/|")
+      (while (search-forward "\\/" nil t)
+	(replace-match "\\verb|\\/|" nil t))
       (goto-char (point-min))
-      (replace-string "/\\" "\\verb|/\\|")
+      ;;(replace-string "/\\" "\\verb|/\\|")
+      (while (search-forward "/\\" nil t)
+	(replace-match "\\verb|/\\|" nil t))
       (untabify (point-min) (point-max))
       (goto-char (point-max))
       (delete-blank-lines)
@@ -274,11 +276,10 @@ theory of the specified PVS file.  If a theory name is foo, the name of
 the corresponding generated file is foo-alltt.tex."
   (interactive (complete-pvs-file-name
 		"Generate alltt file for PVS file named: "))
-  (save-excursion
-    (set-buffer (get-pvs-file-buffer filename))
+  (with-current-buffer (get-pvs-file-buffer filename)
     (let ((tregs (theory-regions)))
       (setq pvs-theories
-	    (mapcar '(lambda (treg)
+	    (mapcar #'(lambda (treg)
 			(list (car treg) filename))
 		    tregs))
       (dolist (treg tregs)
@@ -299,13 +300,14 @@ the corresponding generated file is foo-alltt.tex."
 	(let* ((file (format "%s%s-alltt.tex" pvs-current-directory
 		       (car treg)))
 	       (nbuf (find-file-noselect file)))
-	  (save-excursion
-	    (set-buffer nbuf)
+	  (with-current-buffer nbuf
 	    (erase-buffer)
 	    (message "Generating %s..." file)
 	    (apply 'insert-buffer-substring buf (cdr treg))
 	    (goto-char (point-min))
-	    (replace-regexp "{\\|}" "\\\\\\&")
+	    ;;(replace-regexp "{\\|}" "\\\\\\&")
+	    (while (re-search-forward "{\\|}" nil t)
+	      (replace-match "\\\\\\&" nil nil))
 	    (untabify (point-min) (point-max))
 	    (goto-char (point-max))
 	    (delete-blank-lines)
@@ -325,7 +327,7 @@ each theory in the importchain of the specified theory.  If a theory name
 is foo, the name of the corresponding generated file is foo-alltt.tex."
   (interactive (complete-theory-name
 		"Generate alltt file for IMPORT chain of theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (let ((theories (pvs-send-and-wait
 		   (format "(context-usingchain \"%s\")" theoryname)
 		   nil nil 'list)))
@@ -368,8 +370,7 @@ C-u), will provide a brief output, hiding many of the details."
       (if (not (file-exists-p texfile))
 	  (error "Alltt file %s not generated" texfile)
 	  (let ((buf (find-file-noselect texfile)))
-	    (save-excursion
-	      (set-buffer buf)
+	    (with-current-buffer buf
 	      (goto-char (point-min))
 	      (while (search-forward "{" nil t)
 		(replace-match "\\{" nil t))
@@ -391,7 +392,7 @@ pvs-files.tex file in the current directory.  This file may be LaTeXed and
 printed or viewed, or it may serve as an example for including
 THEORYNAME.tex in a document."
   (interactive (complete-theory-name "Generate LaTeX for theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (let ((file (when (member-equal theoryname (buffer-theories))
 		(current-pvs-file))))
     (pvs-send (format "(latex-theory \"%s\" %s)"
@@ -424,13 +425,30 @@ file.  Automatically generates pvs-files.tex in the current directory.
 This file may be LaTeXed and printed or viewed, or it may serve as an
 example for including <theory>.tex in a document."
   (interactive (complete-theory-name "Name of root theory: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (let ((file (when (member-equal theoryname (buffer-theories))
 		(current-pvs-file))))
     (pvs-send (format "(latex-usingchain \"%s\" %s)"
 		  theoryname (when file (format "\"%s\"" file)))
 	      "LaTeX-printing..." 'lti)))
 
+(defpvs latex-prelude latex (dir)
+  "LaTeX-prints the prelude.  As it has a large number of theories, by
+default it will print in a 'prelude-tex' subdirectory of the current context"
+  (interactive (let* ((cdir (pvs-current-directory t))
+		      (defdir (concat cdir "prelude-tex")))
+		 (confirm-not-in-checker)
+		 (list (if (fboundp 'read-directory-name)
+			   (read-directory-name
+			    "(latex-prelude into) directory path: " defdir defdir)
+			   (read-file-name
+			    "(latex-prelude into) directory path: " defdir defdir)))))
+  (unless (file-exists-p dir)
+    (if (and (fboundp 'make-directory)
+	     (yes-or-no-p (format "%s does not exist - create it? " dir)))
+	(make-directory dir t)
+	(error "Directory %s does not exist" dir)))
+  (pvs-send (format "(latex-prelude \"%s\")" dir) "LaTeX-printing prelude..."))
 
 ;;; LaTeX Print View
 
@@ -445,7 +463,7 @@ theory, LaTeXs it, and previews it using the viewer given by the Emacs
 variable pvs-latex-viewer.  If this is not set, you will be prompted for a
 viewer."
   (interactive (complete-theory-name "LaTeX and view theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (unless (and pvs-latex-viewer
 	       (or (and (pathname-directory pvs-latex-viewer)
 			(file-exists-p pvs-latex-viewer))

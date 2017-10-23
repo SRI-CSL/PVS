@@ -562,7 +562,9 @@
   (every #'(lambda (bd)
 	     (typecase (car bd)
 	       ((or type-decl formal-type-decl)
-		(or (type-decl? (cdr bd))
+		(or (and (current-declaration) ;; may not be set when restoring
+			 (memq (car bd) (decl-formals (current-declaration))))
+		    (type-decl? (cdr bd))
 		    (and (actual? (cdr bd)) (type-value (cdr bd)))
 		    (break "No binding for type ~a" (car bd))))
 	       ((or const-decl formal-const-decl)
@@ -741,6 +743,7 @@
       		(if (eq obj nobj)
       		    (lcopy nobj :print-type pte)
       		    (progn (setf (print-type nobj) pte)
+			   (setf (free-parameters nobj) 'unbound)
       			   nobj))))
       	  (if (eq obj nobj)
       	      nobj
@@ -1313,7 +1316,7 @@
 		       (if (eq (id mi) (id modinst))
 			   ;; mi is useless after this
 			   (subst-mod-params-type-name type modinst bindings modinst)
-			   type))))))))
+			   (lcopy type :print-type pt)))))))))
 
 (defmethod mapped-theory-value ((th module) type modinst bindings)
   (declare (ignore type modinst bindings))

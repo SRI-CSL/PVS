@@ -34,9 +34,15 @@
 (export '(argument* copy-all copy-context current-declarations-hash
 	  current-theory current-theory-name current-using-hash file-older
 	  find-supertype get-theory lf make-new-context mapappend operator*
-	  put-decl pvs-current-directory resolution show assq))
+	  put-decl pvs-current-directory resolution show assq tc-term formals))
 
 (declaim (notinline current-theory))
+
+(defun flatten-list (obj)
+  (cond ((null obj) obj)
+	((consp obj) (nconc (flatten-list (car obj))
+			    (flatten-list (cdr obj))))
+	(t (list obj))))
 
 (defun current-context ()
   *current-context*)
@@ -2611,8 +2617,9 @@
 		(null (mod-id x))
 		(declaration x)
 		(module? (module (declaration x)))
-		(not (from-prelude? (module (declaration x))))
-		(not (eq (id (module-instance x)) (id (current-theory))))))))
+		(or (eq *raise-actuals-theory-ids* :all)
+		    (and (not (from-prelude? (module (declaration x))))
+			 (not (eq (id (module-instance x)) (id (current-theory))))))))))
 
 (defmethod raise-actuals? ((x type-expr))
   (or (call-next-method)
@@ -3417,6 +3424,9 @@ space")
   (and (definition c)
        (k-combinator? (args2 (car (last (def-axiom c)))))))
 
+(defmethod k-combinator? ((c formal-const-decl))
+  nil)
+
 (defmethod k-combinator? ((e lambda-expr))
   (and (singleton? (bindings e))
        (let ((ee (expression e)))
@@ -4142,8 +4152,27 @@ space")
 	  (sexp refers-to) ;;real-time run-time interactive?
 	  decision-procedure-used)))
 
+(defmethod sexp ((prinfo tcc-proof-info))
+  (with-slots (id description create-date ;;run-date
+		  script ;;status
+		  refers-to ;;real-time run-time interactive?
+		  decision-procedure-used
+		  origin)
+      prinfo
+    (list id description create-date ;;run-date
+	  script ;;status
+	  (sexp refers-to) ;;real-time run-time interactive?
+	  decision-procedure-used
+	  (sexp origin))))
+
 (defmethod sexp ((list list))
   (mapcar #'sexp list))
+
+(defmethod sexp ((origin tcc-origin))
+  (list (root origin)
+	(kind origin)
+	(expr origin)
+	(type origin)))
 
 (defmethod sexp ((dref decl-reference))
   (with-slots (id class type theory-id library) dref
@@ -4166,23 +4195,6 @@ space")
   (list (id theory)
 	'module))
 
-(defmethod update-instance-for-redefined-class :before
-  ((fdecl formula-decl) added deleted plist &rest initargs)
-  (declare (ignore added deleted))
-  (when (and plist
-	     (getf plist 'justification))
-    (let ((prinfo (make-proof-info (getf plist 'justification)
-				   (next-proof-id fdecl))))
-      (setf (refers-to prinfo) (getf plist 'proof-refers-to))
-      (when (getf plist 'proof-time)
-	(setf (run-time prinfo) (car (getf plist 'proof-time)))
-	(setf (real-time prinfo) (cadr (getf plist 'proof-time)))
-	(setf (interactive? prinfo) (caddr (getf plist 'proof-time))))
-      (setf (status prinfo) (getf plist 'proof-status))
-      (setf (proofs fdecl) (list prinfo))
-      (setf (default-proof fdecl) prinfo)
-      (setf (decision-procedure-used prinfo)
-	    (if (getf plist 'new-ground?) 'cyrluk 'shostak)))))
 
 (defmethod justification ((decl formula-decl))
   (when (proofs decl)
@@ -4249,8 +4261,11 @@ space")
 
 (defun make-default-proof (fdecl script &optional id description)
   (let* ((pid (or id (next-proof-id fdecl)))
-	 (prinfo (make-proof-info (or script (tcc-strategy fdecl))
-				  pid description)))
+	 (prinfo (if (tcc-decl? fdecl)
+		     (make-tcc-proof-info (or script (tcc-strategy fdecl))
+					  pid description (origin fdecl))
+		     (make-proof-info (or script (tcc-strategy fdecl))
+				      pid description))))
     (setf (decision-procedure-used prinfo) *default-decision-procedure*)
     (push prinfo (proofs fdecl))
     (setf (default-proof fdecl) prinfo)))
@@ -4526,17 +4541,18 @@ space")
 (defmethod dep-binding-type ((te type-expr))
   te)
 
-(defmethod tc-expr ((str string))
-  (pc-typecheck (pc-parse str 'expr)))
+(defun tc-term (obj &optional (nt 'expr))
+  (assert *current-context*)
+  (let ((term (if (stringp obj)
+		  (pc-parse obj nt)
+		  obj)))
+    (pc-typecheck term)))
 
-(defmethod tc-expr ((ex expr))
-  (pc-typecheck ex))
+(defun tc-expr (ex)
+  (tc-term ex 'expr))
 
-(defmethod tc-type ((str string))
-  (pc-typecheck (pc-parse str 'type-expr)))
-
-(defmethod tc-type ((ex type-expr))
-  (pc-typecheck ex))
+(defun tc-type (ty)
+  (tc-term ty 'type-expr))
 
 ;; This is the function for making hash tables
 (defun make-pvs-hash-table (&rest other-keys &key strong-eq? weak-keys?
@@ -4622,7 +4638,7 @@ space")
   (uiop:run-program
       (format nil "git -C ~a describe" *pvs-path*)
     :input "//dev//null"
-    :output :string))
+    :output '(:string :stripped t)))
 
 (defun git-current-commit ()
   (if (file-exists-p (format nil "~a/.git" *pvs-path*))
@@ -4631,7 +4647,7 @@ space")
 	(uiop:run-program
 	    (format nil "git -C ~a log -1 --pretty=format:%h:%H" *pvs-path*)
 	  :input "//dev//null"
-	  :output :string)
+	  :output '(:string :stripped t))
 	#\:))
       (error "*pvs-path* has no .git directory")))
 
@@ -4639,11 +4655,10 @@ space")
   ;; Use the Git SHA1, which is different from simple SHA1
   ;; as it includes "blob" and length of file
   ;; Advantage is that it is the same inside or outside of Git
-  (uiop:stripln
-   (uiop:run-program
-       (format nil "git hash-object ~a" file)
-     :input "//dev//null"
-     :output :string)))
+  (uiop:run-program
+      (format nil "git hash-object ~a" file)
+    :input "//dev//null"
+    :output '(:string :stripped t)))
 
 (defun record-file-loaded-for-pvs (file)
   (let ((elt (assq *loading-files* *files-loaded*)))

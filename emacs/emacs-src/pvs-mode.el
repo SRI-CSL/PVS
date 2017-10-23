@@ -95,16 +95,15 @@
     (define-key pvs-mode-map "\C-x\C-s"  'save-pvs-file)
     (define-key pvs-mode-map "\M-,"      'find-declaration)
     (define-key pvs-mode-map "\M-."      'show-declaration)
-	(define-key pvs-mode-map [(control meta ?.)]  'goto-declaration)
-    (define-key pvs-mode-map "\M-;"      'whereis-declaration-used)
-	(define-key pvs-mode-map
-	  [(control meta ?;)] 'whereis-identifier-used)
-    (define-key pvs-mode-map "\M-:"      'list-declarations)
-    (define-key pvs-mode-map [(control ?.)] 'show-expanded-form)
+    (define-key pvs-mode-map (kbd "C-M-.")   'goto-declaration)
+    (define-key pvs-mode-map (kbd "M-;") 'whereis-declaration-used)
+    (define-key pvs-mode-map (kbd "C-M-;") 'whereis-identifier-used)
+    (define-key pvs-mode-map (kbd "M-:") 'list-declarations)
+    (define-key pvs-mode-map (kbd "C-.") 'show-expanded-form)
     (define-key pvs-mode-map "\M-{"      'backward-theory)
     (define-key pvs-mode-map "\M-}"      'forward-theory)
-    (define-key pvs-mode-map "\e\034"    'prettyprint-region)
-    (define-key pvs-mode-map "\e\C-q"    'prettyprint-declaration)
+    (define-key pvs-mode-map (kbd "C-M-\\") 'prettyprint-region)
+    (define-key pvs-mode-map (kbd "C-M-q") 'prettyprint-declaration)
     (define-key pvs-mode-map "\C-c\C-c"  'pvs-interrupt-subjob)
     (if (featurep 'xemacs)
 	(define-key pvs-mode-map [(shift button2)] 'mouse-show-declaration)
@@ -122,40 +121,36 @@
     st)
   "Syntax table for PVS mode.")
 
-(defpvs pvs-mode environment ()
-  "Major mode for PVS specification files.
-
-The pvs-mode command puts the current buffer in PVS mode.  This command is
-not normally needed; buffers with a .pvs extension and buffers created by
-PVS are automatically put in the proper mode."
-  (interactive)
-  (kill-all-local-variables)
-  (setq major-mode 'pvs-mode)
-  (setq mode-name "PVS")
-  (use-local-map pvs-mode-map)
-  ;; fix up comment handling
-  (make-local-variable 'comment-start)
-  (setq comment-start "%")
-  (make-local-variable 'comment-end)
-  (setq comment-end "")
-  (make-local-variable 'comment-start-skip)
-  (setq comment-start-skip "%+ *")
-  (setq require-final-newline t)
+(define-derived-mode pvs-mode prog-mode "PVS"
+  "Major mode for editing PVS specification files."
+  :group 'pvs
+  :syntax-table pvs-mode-syntax-table
+  :after-hook 'pvs-mode-hook
+  ;; (setq-local indent-line-function #'pvs-indent-line)
+  (setq-local comment-start "%")
+  (setq-local comment-end "")
+  (setq-local comment-start-skip "%+ *")
+  (setq-local require-final-newline t)
   (setq mode-line-process 'ilisp-status)
-  (set-syntax-table pvs-mode-syntax-table)
   (setq default-input-method "PVS-TeX")
   (activate-input-method "PVS-TeX")
   (setq parse-sexp-ignore-comments t)
-  (run-hooks 'pvs-mode-hook))
+  (setq-local open-paren-in-column-0-is-defun-start nil)
+  (setq-local font-lock-defaults
+              (list pvs-font-lock-keywords nil t nil nil
+                    '(font-lock-syntactic-face-function
+                      . pvs-font-lock-syntactic-face-function)))
+  )
+
+(defun pvs-font-lock-syntactic-face-function (state)
+  "Return syntactic face given STATE."
+  (if (nth 3 state)
+      font-lock-string-face
+      font-lock-comment-face))
 
 ;;; Each item is a (string . value) pair.
 
 (defun pvs-menu (query items)
-  (case pvs-menu-type
-    (simple (pvs-simple-menu query items))
-    (x-menu (pvs-x-menu query items))))
-
-(defun pvs-simple-menu (query items)
   (save-excursion
     (let ((buf (get-buffer-create "*PVS-menu*")))
       (set-buffer buf)
@@ -166,7 +161,7 @@ PVS are automatically put in the proper mode."
       (pop-to-buffer buf)
       (optimize-window-height)
       (let ((v (completing-read query
-				(mapcar '(lambda (x) (list (cdr x))) items)
+				(mapcar #'(lambda (x) (list (cdr x))) items)
 				nil t)))
 	(pvs-bury-output)
 	v))))
@@ -190,8 +185,7 @@ PVS are automatically put in the proper mode."
 (defun remove-buffer (buf)
   (when (equal buf (process-buffer (ilisp-process)))
     (error "Attempting to remove *pvs* buffer"))
-  (save-excursion
-    (set-buffer buf)
+  (with-current-buffer buf
     (delete-current-window)
     (kill-buffer buf))
   (other-window 1)
@@ -208,6 +202,20 @@ PVS are automatically put in the proper mode."
 ;;; Speedbar - patterned after Info-speedbar
 
 (eval-when-compile (require 'speedbar))
+
+;;; Suppress warnings from byte-compile
+(declare-function speedbar-disable-update "speedbar" ())
+(declare-function speedbar-make-specialized-keymap "speedbar" ())
+(declare-function speedbar-add-expansion-list "speedbar" (new-list))
+(declare-function speedbar-change-initial-expansion-list "speedbar" (new-default))
+(declare-function speedbar-make-tag-line "speedbar"
+		  (exp-button-type exp-button-char exp-button-function
+				   exp-button-data tag-button
+				   tag-button-function tag-button-data
+				   tag-button-face depth))
+(declare-function speedbar-change-expand-button-char "speedbar" (char))
+(declare-function speedbar-delete-subblock "speedbar" (indent))
+(declare-function speedbar-center-buffer-smartly "speedbar" ())
 
 (defvar pvs-speedbar-key-map nil
   "Keymap used when in the pvs display mode.")
@@ -356,7 +364,7 @@ INDENT is the current indentation depth."
 (defun pvs-library-subdir-files (dirname-path)
   (let ((dir (concat (cdr dirname-path) "/" (car dirname-path))))
     (assert (file-directory-p dir))
-    (mapcar '(lambda (file) (cons file dir))
+    (mapcar #'(lambda (file) (cons file dir))
       (directory-files dir nil ".*\.pvs$"))))
 
 (defun pvs-speedbar-goto-file (text fileinfo indent)
@@ -364,7 +372,7 @@ INDENT is the current indentation depth."
     (if (not (file-exists-p fname))
 	(error "%s does not exist." fname)
 	(find-file-other-window fname)
-	(unless buffer-read-only (toggle-read-only))
+	(unless buffer-read-only (read-only-mode 1))
 	(pvs-mode))))
 
 (defun pvs-speedbar-expand-declarations (text token indent)
@@ -562,44 +570,39 @@ BUFFER is the buffer speedbar is requesting buttons for."
 
 (require 'font-lock)
 
-(defvar pvs-keywords
-  '("AND" "ANDTHEN" "ARRAY" "AS" "ASSUMING" "ASSUMPTION" "AUTO_REWRITE"
-    "AUTO_REWRITE+" "AUTO_REWRITE-" "AXIOM" "BEGIN" "BUT" "BY" "CASES"
-    "CHALLENGE" "CLAIM" "CLOSURE" "CODATATYPE" "COINDUCTIVE" "COND"
-    "CONJECTURE" "CONTAINING" "CONVERSION" "CONVERSION+" "CONVERSION-"
-    "COROLLARY" "DATATYPE" "ELSE" "ELSIF" "END" "ENDASSUMING" "ENDCASES"
-    "ENDCOND" "ENDIF" "ENDTABLE" "EXISTS" "EXPORTING" "FACT" "FALSE"
-    "FORALL" "FORMULA" "FROM" "FUNCTION" "HAS_TYPE" "IF" "IFF" "IMPLIES"
-    "IMPORTING" "IN" "INDUCTIVE" "JUDGEMENT" "LAMBDA" "LAW" "LEMMA" "LET"
-    "LIBRARY" "MACRO" "MEASURE" "NONEMPTY_TYPE" "NOT" "O" "OBLIGATION" "OF"
-    "OR" "ORELSE" "POSTULATE" "PROPOSITION" "RECURSIVE" "SUBLEMMA" "SUBTYPES"
-    "SUBTYPE_OF" "TABLE" "THEN" "THEOREM" "THEORY" "TRUE" "TYPE" "TYPE+"
-    "VAR" "WHEN" "WHERE" "WITH" "XOR"))
+(defun pvs-regexp-opt (list)
+  "Like `regexp-opt', but surround the result with `\\\\_<' and `\\\\_>'."
+  (concat "\\_<" (regexp-opt list t) "\\_>"))
 
-(defvar pvs-operators
-  '(;;"!" "!!"
+(defconst pvs-keyword-re
+  (pvs-regexp-opt
+   '("and" "andthen" "array" "as" "assuming" "assumption" "auto_rewrite"
+    "auto_rewrite+" "auto_rewrite-" "axiom" "begin" "but" "by" "cases"
+    "challenge" "claim" "closure" "codatatype" "coinductive" "cond"
+    "conjecture" "containing" "conversion" "conversion+" "conversion-"
+    "corollary" "datatype" "else" "elsif" "end" "endassuming" "endcases"
+    "endcond" "endif" "endtable" "exists" "exporting" "fact" "false"
+    "forall" "formula" "from" "function" "has_type" "if" "iff" "implies"
+    "importing" "in" "inductive" "judgement" "lambda" "law" "lemma" "let"
+    "library" "macro" "measure" "nonempty_type" "not" "o" "obligation" "of"
+    "or" "orelse" "postulate" "proposition" "recursive" "sublemma" "subtypes"
+    "subtype_of" "table" "then" "theorem" "theory" "true" "type" "type+"
+    "var" "when" "where" "with" "xor")))
+
+(defconst pvs-operators-re
+  (pvs-regexp-opt
+   '(;;"!" "!!"
     "#" "##" "\\$" "\\$\\$" "&" "&&"
     "\\*" "\\*\\*" "\\+" "\\+\\+" "-" "/"
     "//" "/=" "/\\\\" "::" ":=" "<" "<-" "<<" "<<=" "<="
     "<=>" "<>" "<|" "=" "==" "==>" "=>" ">" ">=" ">>" ">>=" "@" "@@"
-    "\\[\\]" "\\\\/" "\\^" "\\^\\^" "|-" "|->" "|=" "|>" "~"))
-
-(defun pvs-keyword-match (keyword)
-  (let ((regexp "")
-	(index 0)
-	(len (length keyword)))
-    (while (< index len)
-      (let ((c (aref keyword index)))
-	(setq regexp
-	      (concat regexp (format "[%c%c]" (downcase c) (upcase c))))
-	(setq index (+ index 1))))
-    (format "\\b%s\\b" regexp)))
+    "\\[\\]" "\\\\/" "\\^" "\\^\\^" "|-" "|->" "|=" "|>" "~")))
 
 (unless (featurep 'xemacs)
   (add-hook 'pvs-mode-hook
     '(lambda ()
-       (make-local-variable 'font-lock-defaults)
-       (setq font-lock-defaults '(pvs-font-lock-keywords nil t))))
+      (setq-local font-lock-defaults
+       (list pvs-font-lock-keywords nil t nil nil))))
   (add-hook 'pvs-view-mode-hook
     '(lambda ()
       (make-local-variable 'font-lock-defaults)
@@ -615,78 +618,65 @@ BUFFER is the buffer speedbar is requesting buttons for."
   (interactive)
   (setq pvs-font-lock-keywords pvs-font-lock-keywords-2))
 
+(defconst pvs-font-lock-keywords
+  '(pvs-font-lock-keywords-1 pvs-font-lock-keywords-2))
+
 (defconst pvs-font-lock-keywords-1
-  (purecopy
-   (list
-    (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
-    ;; These have to come first or they will match too soon.
-    (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
-	  1 'font-lock-function-name-face)
-    (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-keyword-face)
-    (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-keyword-face)
-    (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-keyword-face)
-    (list "\\({\\||\\|}\\)" 1 'font-lock-keyword-face)
-    (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-keyword-face)
-    (list (concat "\\("
-		  (mapconcat 'identity pvs-operators "\\|")
-		  "\\)")
-	  1 'font-lock-function-name-face)))
+  (list
+   (list pvs-keyword-re 1 'font-lock-keyword-face)
+   ;; These have to come first or they will match too soon.
+   (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
+	 1 'font-lock-function-name-face)
+   (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-keyword-face)
+   (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-keyword-face)
+   (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-keyword-face)
+   (list "\\({\\||\\|}\\)" 1 'font-lock-keyword-face)
+   (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-keyword-face)
+   (list pvs-operators-re 1 'font-lock-function-name-face))
   "Additional expressions to highlight in PVS mode.")
 
 (defconst pvs-font-lock-keywords-2
-  (purecopy
-   (list
-    (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
-    ;; These have to come first or they will match too soon.
-    (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
-	  1 'font-lock-function-name-face)
-    (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-pvs-record-parens-face)
-    (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-pvs-parens-face)
-    (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-pvs-table-face)
-    (list "\\({\\||\\|}\\)" 1 'font-lock-pvs-set-brace-face)
-    (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-pvs-function-type-face)
-    (list (concat "\\("
-		  (mapconcat 'identity pvs-operators "\\|")
-		  "\\)")
-	  1 'font-lock-function-name-face)))
+  (list
+   (list pvs-keyword-re 1 'font-lock-keyword-face)
+   ;; These have to come first or they will match too soon.
+   (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
+	 1 'font-lock-function-name-face)
+   (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-pvs-record-parens-face)
+   (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-pvs-parens-face)
+   (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-pvs-table-face)
+   (list "\\({\\||\\|}\\)" 1 'font-lock-pvs-set-brace-face)
+   (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-pvs-function-type-face)
+   (list pvs-operators-re 1 'font-lock-function-name-face))
   "Additional expressions to highlight in PVS mode.")
 
 (defconst pvs-sequent-font-lock-keywords-1
-  (purecopy
-   (list
-    (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
-    '("\\({[^}]*}\\)" 1 font-lock-warning-face)
-    '("\\(\\[[^]]*\\]\\)" 1 font-lock-comment-face)
-    ;; These have to come first or they will match others too soon.
-    '("\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
-      1 font-lock-function-name-face)
-    '("\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 font-lock-keyword-face)
-    '("\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 font-lock-keyword-face)
-    '("\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 font-lock-keyword-face)
-    '("\\({\\||\\|}\\)" 1 font-lock-keyword-face)
-    '("\\(\\[\\|->\\|\\]\\)" 1 font-lock-keyword-face)
-    (list (concat "\\("
-		  (mapconcat 'identity pvs-operators "\\|")
-		  "\\)")
-	  1 'font-lock-function-name-face)))
+  (list
+   (list pvs-keyword-re 1 'font-lock-keyword-face)
+   '("\\({[^}]*}\\)" 1 font-lock-warning-face)
+   '("\\(\\[[^]]*\\]\\)" 1 font-lock-comment-face)
+   ;; These have to come first or they will match others too soon.
+   '("\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
+     1 font-lock-function-name-face)
+   '("\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 font-lock-keyword-face)
+   '("\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 font-lock-keyword-face)
+   '("\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 font-lock-keyword-face)
+   '("\\({\\||\\|}\\)" 1 font-lock-keyword-face)
+   '("\\(\\[\\|->\\|\\]\\)" 1 font-lock-keyword-face)
+   (list pvs-operators-re 1 'font-lock-function-name-face))
   "Additional expressions to highlight in PVS mode.")
 
 (defconst pvs-sequent-font-lock-keywords-2
-  (purecopy
-   (list
-    (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
-    ;; These have to come first or they will match too soon.
-    (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
-	  1 'font-lock-function-name-face)
-    (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-pvs-record-parens-face)
-    (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-pvs-parens-face)
-    (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-pvs-table-face)
-    (list "\\({\\||\\|}\\)" 1 'font-lock-pvs-set-brace-face)
-    (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-pvs-function-type-face)
-    (list (concat "\\("
-		  (mapconcat 'identity pvs-operators "\\|")
-		  "\\)")
-	  1 'font-lock-function-name-face)))
+  (list
+   (list pvs-keyword-re 1 'font-lock-keyword-face)
+   ;; These have to come first or they will match too soon.
+   (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
+	 1 'font-lock-function-name-face)
+   (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-pvs-record-parens-face)
+   (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-pvs-parens-face)
+   (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-pvs-table-face)
+   (list "\\({\\||\\|}\\)" 1 'font-lock-pvs-set-brace-face)
+   (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-pvs-function-type-face)
+   (list pvs-operators-re 1 'font-lock-function-name-face))
   "Additional expressions to highlight in PVS mode.")
 
 (defvar pvs-sequent-font-lock-keywords pvs-sequent-font-lock-keywords-1)
@@ -694,7 +684,7 @@ BUFFER is the buffer speedbar is requesting buttons for."
 (defconst pvs-lisp-font-lock-keywords-1
   (append
    `((("^  |-------$") 0 info-title-1))
-   lisp-font-lock-keywords-1))
+   lisp-el-font-lock-keywords-1))
 
 (defconst pvs-lisp-font-lock-keywords-2
   (append pvs-lisp-font-lock-keywords-1

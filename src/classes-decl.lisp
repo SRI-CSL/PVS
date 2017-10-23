@@ -587,6 +587,10 @@
   original-definition)
 
 (defcl tcc-decl (formula-decl)
+  (origin :type list
+	  :documentation "list of root-id, kind, expr, expected, and place,
+saved by TCC generation, and with proof files.  Later, whenever the proof file is
+restored, the TCCs are checked")
   (tcc-disjuncts
    :documentation "The disjuncts of the definition used for TCCs"
    :restore-as nil)
@@ -834,6 +838,18 @@
   predicate
   (subtype-conjuncts :ignore t))
 
+;;; datatype-subtypes are for datatypes with positive type parameters.
+;;; For example, the type list[int], when typechecked, has the predicate
+;;; LAMBDA (x: list[number]):
+;;;   every(LAMBDA (x: number):
+;;;           number_field_pred(x) AND real_pred(x) AND
+;;;           rational_pred(x) AND integer_pred(x))
+;;;     (x)
+;;; which has supertype list[number].  So we create a datatype-subtype with
+;;; declared-type list[int] (an adt-type-name), so we have access to it.
+
+;;; datatype-subtypes are created by adt-expand-positive-subtypes as part of
+;;; subst-mod-params.
 (defcl datatype-subtype (subtype)
   declared-type)
 
@@ -976,12 +992,35 @@
   create-date
   run-date ;; Not saved
   script
+  status ;; Not saved - in the .pvscontext
   refers-to
   real-time ;; Not saved
   run-time ;; Not saved
   interactive? ;; Not saved
-  decision-procedure-used
-  status) ;; Not saved in the proof file, but in the .pvscontext
+  decision-procedure-used)
+
+;; subtype expr expected
+;; termination-subtype expr expected
+;; recursive name arguments ex
+;; well-founded decl mtype
+;; existence type expr
+;; assuming modinst expr
+;; mapped-eq-def lhs rhs mapthinst
+;; mapped-axiom modinst
+;; cases constructors expr adt
+;; actuals act mact
+;; cond-disjoint expr conditions values
+;; cond-coverage expr conditions
+;;
+
+(defcl tcc-origin ()
+  root
+  kind
+  expr
+  type)
+
+(defcl tcc-proof-info (proof-info)
+  origin)
 
 (
  #-sbcl progn

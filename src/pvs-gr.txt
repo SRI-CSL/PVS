@@ -628,6 +628,7 @@ expr ::= string <string-expr(string)>
        | table-expr
        ;
 
+% '%VBAR' becomes '|' when in judgement-decls - see pvs-parse-fixes.lisp
 name-expr ::= {name [':' type-expr]^t ['%VBAR' expr]^e}
                <name-expr(name, [notype()|type-expr]^t, [nopred()|expr]^e)>;
 
@@ -686,15 +687,6 @@ lambda-formal ::= idop-not-number | pdformals ;
 set-formals ::= {set-formal [[',']^c set-formals]}
 		<[set-formal|
 		  set-formals(set-formal,[nocomma()|comma()]^c,set-formals)]>;
-
-%set-formals ::= {set-formal [set-formals-rest]}
-%		<set-formals([no-set-formals()|set-formals-rest])>;
-%
-%set-formals-rest ::= {',' set-formal++','}
-%			<set-formals-rest-commas(doubleplus)>
-%		 |   {set-formal+}
-%			<set-formals-rest(plus)>
-%		 ;
 
 set-formal ::= {{idop [':' type-expr]} | pdformals}
 	       <{set-id(idop,[notype()|type-expr])|pdformals}>;

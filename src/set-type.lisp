@@ -159,8 +159,11 @@ required a context.")
   (unless (type ex)
     (type-incompatible ex (types ex) expected)))
 
+(defvar *testing-ghosts* nil)
+
 (defun set-ghost-type (ex expected)
-  (set-ghost-type* ex expected))
+  (when *testing-ghosts*
+    (set-ghost-type* ex expected)))
 
 (defmethod set-ghost-type* :around ((ex expr) expected)
   (call-next-method)
@@ -170,6 +173,7 @@ required a context.")
 		(ghost? (type ex)) (ghost? expected) ex (type ex) expected)))
 
 (defmethod set-ghost-type* ((ex name-expr) expected)
+  (declare (ignore expected))
   (when (and (ghost? (type ex))
 	     (not (variable? ex)))
     (setf (type ex) (copy (type ex) :ghost? nil))))
@@ -181,30 +185,37 @@ required a context.")
 ;;; extraction-expr
 
 (defmethod set-ghost-type* ((ex projection-application) expected)
+  (declare (ignore expected))
   (when (ghost? (type (argument ex)))
     (setf (type ex) (copy (type ex) :ghost? t))))
 
 (defmethod set-ghost-type* ((ex injection-application) expected)
+  (declare (ignore expected))
   (when (ghost? (type (argument ex)))
     (setf (type ex) (copy (type ex) :ghost? t))))
 
 (defmethod set-ghost-type* ((ex injection?-application) expected)
+  (declare (ignore expected))
   (when (ghost? (type (argument ex)))
     (setf (type ex) (copy (type ex) :ghost? t))))
 
 (defmethod set-ghost-type* ((ex extraction-application) expected)
+  (declare (ignore expected))
   (when (ghost? (type (argument ex)))
     (setf (type ex) (copy (type ex) :ghost? t))))
 
 (defmethod set-ghost-type* ((ex field-application) expected)
+  (declare (ignore expected))
   (when (ghost? (type (argument ex)))
     (setf (type ex) (copy (type ex) :ghost? t))))
 
 (defmethod set-ghost-type* ((ex lambda-expr) expected)
+  (declare (ignore expected))
   (when (ghost? (type ex))
     (setf (type ex) (copy (type ex) :ghost? nil))))
 
 (defmethod set-ghost-type* ((ex application) expected)
+  (declare (ignore expected))
   (let* ((op (operator ex))
 	 (optype (type op))
 	 (dom (domain optype))
@@ -219,23 +230,29 @@ required a context.")
 		       (ghost? (range optype))))
 	  (setf (type ex) (copy (type ex) :ghost? t))))))
 
+(defmethod set-ghost-type* ((ex cases-expr) expected)
+  (break "set-ghost-type* cases-expr"))
+
 (defmethod set-ghost-type* ((ex table-expr) expected)
+  (declare (ignore expected))
   (break "set-ghost-type* table-expr")
   (when (or (ghost? (type (row-expr ex)))
 	    (and (col-expr ex) (ghost? (type (col-expr ex))))
 	    (some #'(lambda (rh) (ghost? (type rh))) (row-headings ex))
-	    (some #'(lambda (ch) (ghost? (type rh))) (col-headings ex))
+	    (some #'(lambda (ch) (ghost? (type ch))) (col-headings ex))
 	    ;;; more thought needed here
 	    )
     ))
   
 (defmethod set-ghost-type* ((ex record-expr) expected)
+  (declare (ignore expected))
   (when (some #'(lambda (assn)
 		  (ghost? (type (expression assn))))
 	      (assignments ex))
     (setf (type ex) (copy (type ex) :ghost? t))))
 
 (defmethod set-ghost-type* ((ex t) expected)
+  (declare (ignore expected))
   nil)
 
 (defun reset-types (ex)
@@ -1111,11 +1128,7 @@ required a context.")
   (when mappings
     (let ((map (car mappings)))
       (set-type-mapping map thinst previous-mappings)
-      (let ((smaps (if nil ;(decl-formals (lhs map))
-                       (subst-mod-params (cdr mappings)
-                           (lcopy thinst :dactuals (dactuals (lhs map)))
-                         (module (lhs map)) (lhs map))
-                       (cdr mappings))))
+      (let ((smaps (cdr mappings)))
         (set-type-mappings* smaps thinst
                             (nconc previous-mappings (list map)))))))
 
@@ -1134,6 +1147,7 @@ required a context.")
         (type (type map)))
     (assert (resolutions lhs))
     ;;(assert (ptypes (expr rhs)))
+    ;; :Picks the best resolution
     (determine-best-mapping-lhs lhs rhs type thinst)
     (when (memq (id (module-instance (resolution lhs)))
                 '(equalities notequal))
@@ -1329,6 +1343,7 @@ required a context.")
     (t ;; May need to perform two subst-mod-params because the lhs decl may not be directly
      ;; from the theory being mapped
      ;; First we substitute based on the lhs, then based on the thinst
+     (assert (declaration lhs))
      (let* ((theory (module (declaration lhs)))
 	    (lthinst (module-instance lhs))
 	    (ltype (subst-mod-params (type (declaration lhs)) lthinst theory lhs))
@@ -1338,7 +1353,10 @@ required a context.")
 			 ;; resolutions
 			 ))
 	    ;; Need mapthinst to match theory
-	    (stype (subst-mod-params ltype mapthinst (declaration mapthinst) lhs))
+	    (mtheory (if (declaration mapthinst)
+			 (module (declaration mapthinst))
+			 theory))
+	    (stype (subst-mod-params ltype mapthinst mtheory lhs))
 	    (subst-type (subst-mod-params-all-mappings stype))
 	    (subst-types (if (free-params stype)
 			     (possible-mapping-subst-types
@@ -1657,14 +1675,21 @@ required a context.")
                              (judgement-types+ ex)))
                    (incs (let ((*generate-tccs* 'none))
                            (compatible-predicates jtypes expected ex))))
-              (if incs
-                  (generate-subtype-tcc ex expected incs)
+              (when incs
+		(generate-subtype-tcc ex expected incs)
 		  ;; A better warning is generated in judgements.lisp
                   ;; (when (assq ex *compatible-pred-reason*)
                   ;;   (pvs-warning "No TCC generated for judgement ~a~%~
                   ;;                 judgement is already known"
                   ;;     (ref-to-id (current-declaration))))
-		  )))))))
+		)))))))
+
+;;; Loop through the types (the judgement-types of the ex). Each of these is
+;;; a minimal type, we want the one that leads to the most provable TCC.
+;;; Since this is hard, we simply keep the first one we hit, unless one of
+;;; the others returns nil.
+;;; When types is nil (recursively), and we are in the prover, then we remove
+;;; the incs that are in the current sequent.  Otherwise we simply return them.
 
 (defun compatible-predicates (types expected ex &optional incs)
   (if (null types)
@@ -1684,14 +1709,12 @@ required a context.")
                      nil)))
       (let* ((npreds (compatible-preds (car types) expected ex))
              (nincs (remove-if #'(lambda (x)
-                                   (or (member x *tcc-conditions* :test #'tc-eq)
-                                       (member x incs :test #'tc-eq)))
+                                   (member x *tcc-conditions* :test #'tc-eq))
                       npreds)))
-          (when npreds
-            (compatible-predicates
-             (cdr types) expected ex
-             (uappend incs nincs :test #'tc-eq)
-             )))))
+	(when nincs
+	  (compatible-predicates
+	   (cdr types) expected ex
+	   (or incs nincs))))))
 
 (defun uappend (list1 list2 &key (test #'eq))
   ;; returns the append of list1 and list2, without duplicates
@@ -1751,9 +1774,30 @@ required a context.")
         (if adt
             (generate-selections-tccs expr (constructors adt) adt)
             (generate-coselections-tccs expr))))
-  (setf (type expr) expected)
-  ;;(setf (types expr) nil)
-  )
+  (let* ((comptypes (if (cdr (ptypes expr))
+			(remove-if #'(lambda (ty)
+				       (not (compatible? ty expected)))
+			  (ptypes expr))
+			(ptypes expr)))
+	 (fitypes (if (cdr comptypes)
+		      (or (remove-if #'(lambda (ty)
+					 (not (fully-instantiated? ty)))
+			    comptypes)
+			  comptypes)
+		      comptypes))
+	 (ctypes (if (cdr fitypes)
+		     (let ((ctype (reduce #'compatible-type fitypes)))
+		       (if ctype (list ctype) fitypes))
+		     fitypes)))
+    (cond ((singleton? ctypes)
+	   (setf (type expr)
+		 (if (fully-instantiated? (car ctypes))
+		     (car ctypes)
+		     (instantiate-from (car ctypes) expected expr))))
+	  ((null ctypes)
+	   (type-incompatible expr (ptypes expr) expected))
+	  (t (type-ambiguity expr)))
+    (assert (type expr))))
 
 (defun set-type-selections (selections expr atype expected)
   (when selections
@@ -1786,22 +1830,23 @@ required a context.")
   (assert (fully-instantiated? (constructor sel)))
   (assert (fully-instantiated? (args sel)))
   (assert (fully-instantiated? (expression expr)))
-  (make-equation
-   (expression expr)
-   (typecheck* (if (args sel)
-                   (if (injection-expr? (constructor sel))
-                       (make-instance 'injection-application
-                         :id (id (constructor sel))
-                         :index (index (constructor sel))
-                         :argument (if (cdr (args sel))
-                                       (make-instance 'arg-tuple-expr
-                                         :exprs (mapcar #'mk-name-expr
-                                                  (args sel)))
-                                       (mk-name-expr (car (args sel)))))
-                       (mk-application* (copy (constructor sel))
-                         (mapcar #'mk-name-expr (args sel))))
-                   (copy (constructor sel)))
-               (find-supertype (type (expression expr))) nil nil)))
+  (let ((*generate-tccs* 'none))
+    (make-equation
+     (expression expr)
+     (typecheck* (if (args sel)
+		     (if (injection-expr? (constructor sel))
+			 (make-instance 'injection-application
+			   :id (id (constructor sel))
+			   :index (index (constructor sel))
+			   :argument (if (cdr (args sel))
+					 (make-instance 'arg-tuple-expr
+					   :exprs (mapcar #'mk-name-expr
+						    (args sel)))
+					 (mk-name-expr (car (args sel)))))
+			 (mk-application* (copy (constructor sel))
+			   (mapcar #'mk-name-expr (args sel))))
+		     (copy (constructor sel)))
+		 (find-supertype (type (expression expr))) nil nil))))
 
 (defun make-else-cases-conditions (expr)
   (typecase (find-supertype (type (expression expr)))
@@ -2050,16 +2095,19 @@ required a context.")
 (defmethod set-type* ((expr field-application) expected)
   (unless (typed? expr)
     (let ((ptypes (remove-if-not
-                      #'(lambda (pty)
-                          (let ((fields (fields (find-supertype pty))))
-                            (compatible? (type (find expr fields
-                                                     :test #'same-id))
-                                         expected)))
-                    (ptypes (argument expr)))))
+		      #'(lambda (pty)
+			  (let ((fields (fields (find-supertype pty))))
+			    (compatible? (type (find expr fields
+						     :test #'same-id))
+					 expected)))
+		    (ptypes (argument expr)))))
       (cond ((null ptypes)
              (type-incompatible
               expr
-              (field-application-types (ptypes (argument expr)) expr)
+              (mapcar #'(lambda (pty)
+			  (type (find expr (fields (find-supertype pty))
+				      :test #'same-id)))
+		(ptypes (argument expr)))
               expected))
             ((and (cdr ptypes)
                   ;;(not (every #'(lambda (x) (compatible? x (car ptypes))) (cdr ptypes)))
@@ -3294,8 +3342,7 @@ required a context.")
       (and (or (not (decl-formal? (car formals)))
                (null decl)
                (eq (associated-decl (car formals)) decl)
-               (memq (car formals) (decl-formals (current-declaration)))
-               (break))
+               (memq (car formals) (decl-formals (current-declaration))))
            (all-formals-from-same-decls
             (cdr formals)
             (or decl
@@ -3542,7 +3589,11 @@ required a context.")
         (t (nearest-bound-variable (cdr reses) (car reses)))))
 
 (defmethod set-type* ((ex list-expr) expected)
-  (unless (type ex) (call-next-method)))
+  (let ((etype (dep-binding-type expected)))
+    (unless (type ex)
+      (typecheck* ex etype nil nil))
+    (or (type ex)
+	(call-next-method))))
 
 (defmethod set-type* ((ex string-expr) expected)
   (let ((*generate-tccs* (if (tc-eq expected (string-type))
@@ -4082,7 +4133,10 @@ required a context.")
                       (instantiate-from stype expected expr)))
            (args-list (mapcar #'arguments assignments))
            (values (mapcar #'expression assignments)))
-      (set-type* expression (contract-expected expr atype))
+      (set-type* expression
+		 (if (some #'maplet? assignments)
+		     (contract-expected expr atype)
+		     expected))
       (set-assignment-arg-types args-list values expression expected)
       (setf (type expr) atype))))
 
@@ -4103,7 +4157,10 @@ required a context.")
                       (instantiate-from stype expected expr)))
            (args-list (mapcar #'arguments assignments))
            (values (mapcar #'expression assignments)))
-      (set-type* expression (contract-expected expr atype))
+      (set-type* expression
+		 (if (some #'maplet? assignments)
+		     (contract-expected expr atype)
+		     expected))
       (set-assignment-arg-types args-list values expression expected)
       (setf (type expr) atype))))
 
@@ -4123,7 +4180,8 @@ required a context.")
                          (instantiate-from sxtype expected expr)))
              (args-list (mapcar #'arguments assignments))
              (values (mapcar #'expression assignments)))
-        (set-type* expression axtype)
+        (set-type* expression
+		   (if (some #'maplet? assignments) axtype expected))
         (set-assignment-arg-types args-list values expression expected)
         (setf (type expr) atype)))))
 
@@ -4148,12 +4206,17 @@ required a context.")
                       (car dtypes)
                       (instantiate-from (car dtypes) expected
                                         (expression expr)))))
-      (set-type* (expression expr) dtype)
+      (set-type* (expression expr)
+		 (if (some #'maplet? (assignments expr))
+		     dtype
+		     expected))
       (set-assignment-arg-types args-list values (expression expr) atype)
       (setf (type expr) atype))))
 
 (defmethod set-type* ((expr update-expr) (expected subtype))
   (let ((stype (find-update-supertype expected)))
+    ;; Find-update-supertype walks up subtypes, until a datatype-subtype or
+    ;; non-subtype is reached, e.g., list[int] rather than list[number]
     (set-type* expr stype)
     (unless (eq *generate-tccs* 'none)
       (let* ((id (make-new-variable '|x| (list expr expected)))
@@ -4360,6 +4423,12 @@ required a context.")
              (cdr constrs) args-list values ex cpreds
              (cons tcc tccs) (cons (recognizer c) recs)))))))
 
+;;; Set the assignment types.  This is complicated by 
+;;; updates such as "x with [`f := lambda y: x`f(y) + 1, `f(0) := 0]"
+;;; Where the "f" field is used more than once.
+;;; args-list and values are expanded from the original update-expr,
+;;; to include dependencies.
+
 (defun set-assignment-rec-arg-types (args-list values ex fields
                                                &optional cargs cvalues)
   (when args-list
@@ -4375,7 +4444,9 @@ required a context.")
            (done-with-field? (not (member (car fields) rem-args
                                           :test #'same-id :key #'caar)))
            (cdr-args (when done-with-field?
-                       (mapcar #'cdr (nreverse (cons args cargs))))))
+                       (mapcar #'cdr (nreverse (cons args cargs)))))
+	   (cdr-vals (when done-with-field?
+                       (nreverse (cons value cvalues)))))
       (when args
         (unless (field-assignment-arg? (caar args))
           (if (id-assign? (caar args))
@@ -4384,7 +4455,7 @@ required a context.")
         (when done-with-field?
           (set-assignment-arg-types*
            cdr-args
-           (nreverse (cons value cvalues))
+           cdr-vals
            (when (and ex (some (complement #'null) cdr-args))
              (make!-field-application (car fields) ex))
            (type (car fields)))))
@@ -4395,7 +4466,7 @@ required a context.")
                                    fields)
                              (if (and ex (some (complement #'null) cdr-args))
                                  (let* ((fapp (make!-field-application (car fields) ex))
-                                        (ass (make-assignment (car cdr-args) value))
+                                        (ass (make-assignment (car cdr-args) (car cdr-vals)))
                                         (val (make-update-expr fapp (list ass))))
                                    (subst-rec-dep-type val (car fields) (cdr fields)))
                                  (subst-rec-dep-type value (car fields) (cdr fields)))
@@ -4924,16 +4995,29 @@ required a context.")
 (defmethod dependent? ((a accessor-name-expr))
   (dependent? (type a)))
 
+(defun subst-rec-dep-type (expr fld fields)
+  (let ((sub (list expr fld fields)))
+    (or (let ((hres (gethash sub *subst-fields-hash*)))
+	  ;; This assert isn't quite right - nested records will have different
+	  ;; field-decls, which are not tc-eq
+	  ;; (assert (or (null hres)
+	  ;; 	      (every #'(lambda (fld1 fld2)
+	  ;; 			 (tc-eq (type fld1) (type fld2)))
+	  ;; 		     hres (subst-rec-dep-type* expr fld fields))))
+	  hres)
+	(let ((result (subst-rec-dep-type* expr fld fields)))
+	  (setf (gethash sub *subst-fields-hash*) result)
+	  result))))
 
-(defun subst-rec-dep-type (expr fld fields &optional bindings result)
+(defun subst-rec-dep-type* (expr fld fields &optional bindings result)
   (if (null fields)
       (nreverse result)
       (let ((nfld (substit (car fields) (acons fld expr bindings))))
-        (subst-rec-dep-type expr fld (cdr fields)
-                         (if (eq nfld (car fields))
-                             bindings
-                             (acons (car fields) nfld bindings))
-                         (cons nfld result)))))
+        (subst-rec-dep-type* expr fld (cdr fields)
+			     (if (eq nfld (car fields))
+				 bindings
+				 (acons (car fields) nfld bindings))
+			     (cons nfld result)))))
 
 (defun maybe-instantiate-from-decl-formals (ex)
   (maybe-instantiate-from-decl-formals* (resolutions ex) ex))
@@ -5037,11 +5121,7 @@ required a context.")
     (set-type* (supertype te) expected))
   (when (predicate te)
     (if (type (predicate te))
-        (when (and (eq *generate-tccs* 'all)
-;;                 (null (cdr (assoc (type (predicate te))
-;;                                   (tcc-status (predicate te))
-;;                                   :test #'tc-eq)))
-                   )
+        (when (eq *generate-tccs* 'all)
           (check-for-tccs (predicate te) (type (predicate te))))
         (set-type* (predicate te)
                    (mk-funtype (list (typecheck* (supertype te) nil 'type nil))

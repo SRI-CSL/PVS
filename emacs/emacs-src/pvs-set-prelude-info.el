@@ -41,18 +41,18 @@
   (let* ((files (directory-files (concat pvs-path "/lib")
 				 t "^prelude\\.pvs$\\|.*_adt\\.pvs$"))
 	 (files-and-regions
-	  (mapcar '(lambda (file)
-		     (save-excursion
-		       (let ((noninteractive t)) ;; Shut up about read-only
-			 (set-buffer (find-file-noselect file)))
-		       (cons (file-name-nondirectory file) (theory-regions* t))))
+	  (mapcar #'(lambda (file)
+		      (save-excursion
+			(let ((noninteractive t)) ;; Shut up about read-only
+			  (set-buffer (find-file-noselect file)))
+			(cons (file-name-nondirectory file) (theory-regions* t))))
 	    files)))
     (set-buffer (find-file-noselect (concat pvs-path "/" region-file)))
     (erase-buffer)
     (insert ";;; Generated from pvs-set-prelude-info.el - do not edit
 (defvar *prelude-files-and-regions*
   (mapcar
-      '(lambda (x)
+      #'(lambda (x)
 	 (cons (format \"%s/lib/%s\" pvs-path (car x)) (cdr x)))
     '")
     (insert (format "%S" files-and-regions))

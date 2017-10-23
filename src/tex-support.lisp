@@ -34,7 +34,7 @@
 
 ;;; The rudiments of a table lookup for mapping of ids and functions.
 
-(defvar *latex-program* "pdflatex")
+(defvar *latex-program* "lualatex")
 
 ;;; Must be filled in by user.  
 (defvar *latex-id-length-list* nil 
@@ -76,6 +76,36 @@ useful if more than one specification is to be included in one document")
 
 ;;; Called by Emacs
 
+(defun latex-prelude (&optional dir)
+  (let ((pdir (if dir
+		  (pathname dir)
+		  (make-pathname :defaults *pvs-context-path* :name "prelude-tex")))
+	(mkdir-err nil))
+    (unless (file-exists-p pdir)
+      (multiple-value-bind (success? err)
+	  (ignore-file-errors #+allegro (excl:make-directory pdir)
+			      #+cmu (unix:unix-mkdir (namestring pdir) #o777)
+			      #+sbcl
+			      (sb-unix:unix-mkdir (namestring pdir) #o777))
+	(setq mkdir-err err)))
+    (cond (mkdir-err
+	   (pvs-message "~a could not be created: ~a" mkdir-err))
+	  ((not (directory-p pdir))
+	   (pvs-message "~a is not a directory" pdir))
+	  ((not (write-permission? pdir))
+	   (pvs-message "You do not have write permission in ~a" dir))
+	  (t (let ((orig-dir (working-directory))
+		   ;;(*default-pathname-defaults* dir)
+		   )
+	       (unwind-protect
+		    (progn (set-working-directory dir)
+			   (latex-print-theories *prelude-theories*)
+			   (pvs-message
+			       "Created LaTeX files for prelude in ~a ~
+                         ~%pvsfiles.tex can be run with lualatex or xelatex in that directory"
+			     dir))
+		 (set-working-directory orig-dir)))))))
+
 (defun latex-theory (theoryname filename &optional show-subst)
   (declare (ignore filename))
   (let ((theory (get-theory theoryname)))
@@ -112,7 +142,7 @@ useful if more than one specification is to be included in one document")
   (maplist #'(lambda (thlist)
 	       (latex-print-theory (car thlist) show-subst (cadr thlist)))
 	   theories)
-  (latex-print-finish))
+  (latex-print-finish t))
 
 (defvar *latex-linelength* 100)
 
@@ -170,6 +200,9 @@ useful if more than one specification is to be included in one document")
 
 \\documentclass[fleqn,12pt]{article}
 \\usepackage{fullpage,supertabular,alltt,latexsym,amsfonts,~a/pvs}
+\\usepackage{fontspec}
+\\setmainfont{FreeSerif}
+\\setmonofont{FreeMono}
 \\begin{document}
 ~{\\input{~a}~%~}
 ~:{\\markright{~a}\\label{~a}~:*\\input{~a}\\newpage

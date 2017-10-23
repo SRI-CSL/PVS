@@ -711,6 +711,10 @@
     (setf (types nexpr) nil)
     (setf (operator ex)
 	  (raise-actuals (copy (expr (from-conversion ctype))) 1))
+    (when (and (zerop (parens (operator ex)))
+	       (< (precedence (operator ex) 'left)
+		  (precedence (car (arguments ex)) 'right)))
+      (setf (parens (operator ex)) 1))
     (typecheck* ex nil nil nil)))
 
 (defun find-best-type-conversion (types expected &optional best type)
@@ -1026,7 +1030,7 @@
 				 (strict-compatible? (range ctype) etype)))))
 		   nconvs))
 	 (fid (make-new-variable '|f| (list atype etype)))
-	 (fbd (make-bind-decl fid atype))
+	 (fbd (make!-bind-decl fid atype))
 	 (fvar (make-variable-expr fbd))
 	 (datype (if (dep-binding? (domain atype))
 		     (type (domain atype))
@@ -1035,7 +1039,7 @@
 		     (type (domain etype))
 		     (domain etype)))
 	 (daid (make-new-variable '|x| (list atype etype)))
-	 (dabd (make-bind-decl daid detype))
+	 (dabd (make!-bind-decl daid detype))
 	 (davar (make-variable-expr dabd))
 	 (dconv (unless (tc-eq datype detype)
 		  (find-most-recent-conversion
@@ -1501,6 +1505,7 @@
 	     reses)))))
 
 (defun make-recordtype-conversion-resolution (conv ex field-id)
+  (declare (ignore ex))
   (let* ((rtype (range (type (expr conv))))
 	 (fdecl (find field-id (fields rtype) :key #'id))
 	 (ftype

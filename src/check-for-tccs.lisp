@@ -46,8 +46,7 @@
   (unless (compatible? (type expr) expected)
     (type-incompatible expr (list (type expr)) expected))
   (let ((*no-conversions-allowed* (not (memq expr *conversions-allowed*)))
-	(*skip-tcc-check-exprs* skip-exprs)
-	(*checked-actuals-for-tccs* nil))
+	(*skip-tcc-check-exprs* skip-exprs))
     (check-for-tccs* expr expected)))
 
 (defvar *inner-check-for-tccs* nil)
@@ -77,6 +76,25 @@
 	(check-for-subtype-tcc ex expected)))
   (set-ghost-type ex expected)
   )
+
+(defmethod check-for-tccs* ((ex modname) expected)
+  (declare (ignore expected))
+  (check-type-actuals-and-maps ex))
+
+(defun check-type-actuals-and-maps (thinst)
+  (let* ((decl (declaration thinst))
+	 (theory (if (declaration? decl)
+		     (module decl)
+		     decl))
+	 (acts (actuals thinst)))
+    (unless (memq thinst *exprs-generating-actual-tccs*)
+      (when acts
+	(unless (or *in-checker* *in-evaluator*)
+	  (push thinst *exprs-generating-actual-tccs*))
+	(check-type-actuals* acts (formals-sans-usings theory) theory)
+	(generate-assuming-tccs thinst thinst theory)
+	(generate-actuals-tccs (actuals thinst) acts))))
+  (check-type-maps thinst))
 
 (defmethod check-for-tccs* ((ex name-expr) expected)
   (declare (ignore expected))
@@ -111,9 +129,11 @@
       (check-type-actuals* (cdr actuals) (cdr formals) theory nalist))))
 
 (defmethod check-type-actual (act (formal formal-type-decl) theory)
+  (declare (ignore theory))
   (check-for-tccs* (type-value act) nil))
 
 (defmethod check-type-actual (act (formal formal-subtype-decl) theory)
+  (declare (ignore theory))
   (call-next-method)
   (let* ((tact (type-value act))
 	 (texp (type-value formal))
@@ -125,11 +145,98 @@
     (check-for-subtype-tcc svar (supertype texp))))
 
 (defmethod check-type-actual (act (formal formal-const-decl) theory)
+  (declare (ignore theory))
   (check-for-tccs* (expr act) (type formal)))
 
 (defmethod check-type-actual (act (formal formal-theory-decl) theory)
   (set-type-actuals-and-maps (expr act) theory))
 
+(defun check-type-maps (name)
+  (when (mappings name)
+    (check-type-mappings name (get-theory name))))
+
+(defun check-type-mappings (thinst theory)
+  (when (mappings thinst)
+    (let* ((athinst (if (recursive-type? theory)
+                        (typecheck* (copy thinst
+                                      :id (id (adt-theory theory))
+                                      :resolutions nil)
+                                    nil 'module nil)
+                        thinst))
+           (cthinst (copy athinst :mappings nil)))
+      ;;(check-type-lhs-mappings (mappings thinst) cthinst) ; Not needed, can't generate TCCs
+      (let* ((smappings (sort-mappings (mappings thinst)))
+             (entry (get-importings theory))
+             (there? (member thinst entry :test #'tc-eq))
+             (*current-context* (if there?
+                                    (copy-context *current-context*)
+                                    *current-context*)))
+;;      (unless there?
+;;        (add-to-using thinst theory))
+        (check-type-mappings* smappings cthinst)))))
+
+(defun check-type-mappings* (mappings thinst &optional previous-mappings)
+  (when mappings
+    (let ((map (car mappings)))
+      (check-type-mapping map thinst previous-mappings)
+      (let ((smaps (cdr mappings)))
+        (check-type-mappings* smaps thinst
+                              (nconc previous-mappings (list map)))))))
+
+(defmethod check-type-mapping ((map mapping) thinst previous-mappings)
+  (let ((lhs (lhs map))
+        (rhs (rhs map)))
+    (assert (resolutions lhs))
+    ;;(assert (ptypes (expr rhs)))
+    ;;(determine-best-mapping-lhs lhs rhs)
+    (if (decl-formals lhs)
+        (let* ((ctn (current-theory-name))
+               (cthinst (lcopy ctn :dactuals (dactuals lhs))))
+          (setf (current-theory-name) cthinst)
+          (unwind-protect 
+              (with-current-decl lhs
+                (check-type-mapping-rhs rhs lhs thinst previous-mappings))
+            (setf (current-theory-name) ctn)))
+        (check-type-mapping-rhs rhs lhs thinst previous-mappings))))
+
+(defun check-type-mapping-rhs (rhs lhs thinst mappings)
+  (typecase (declaration lhs)
+    (type-decl
+     (assert (type-value rhs))
+     (check-for-tccs* (type-value rhs) nil))
+    ((or mod-decl module)
+     (when (or (actuals (expr rhs)) (mappings (expr rhs)))
+       (check-type-actuals-and-maps (expr rhs))))
+    (t ;; May need to perform two subst-mod-params because the lhs decl may not be directly
+     ;; from the theory being mapped
+     ;; First we substitute based on the lhs, then based on the thinst
+     (let* ((theory (module (declaration lhs)))
+	    (lthinst (module-instance lhs))
+	    (ltype (subst-mod-params (type (declaration lhs)) lthinst theory lhs))
+	    (mapthinst (lcopy thinst
+			 :mappings (append mappings (mappings thinst))
+			 :dactuals (dactuals lhs)))
+	    ;; Need mapthinst to match theory
+	    (stype (subst-mod-params ltype mapthinst (module (declaration mapthinst)) lhs))
+	    (subst-type (subst-mod-params-all-mappings stype))
+	    (subst-types (if (free-params stype)
+			     (possible-mapping-subst-types
+			      (ptypes (expr rhs)) stype)
+			     (list stype)))
+	    (etype (or (car subst-types) subst-type)))
+       (assert (fully-instantiated? etype))
+       (check-for-tccs* (expr rhs) etype)
+       (when (definition (declaration lhs))
+	 (assert (def-axiom (declaration lhs)))
+	 (let* ((lname-expr (mk-name-expr lhs))
+		(slhs (subst-mod-params lname-expr mapthinst
+			(module (declaration lhs))
+			(declaration lname-expr))))
+	   (generate-mapped-eq-def-tcc slhs (expr rhs) mapthinst)))))))
+
+(defmethod check-type-mapping ((map mapping-rename) thinst previous-mappings)
+  (declare (ignore thinst previous-mappings))
+  nil)
 
 (defmethod check-for-tccs* ((expr number-expr) expected)
   (declare (ignore expected))
@@ -224,10 +331,12 @@
     (check-for-tccs* (argument expr) (type argument))))
 
 (defmethod check-for-tccs* :around ((expr implicit-conversion) expected)
+  (declare (ignore expected))
   (let ((*checking-implicit-conversion* expr))
     (call-next-method)))
 
 (defmethod check-for-tccs* ((expr application) expected)
+  #+pvsdebug
   (assert (every #'(lambda (x) (or (not (consp x))
 				   (and (bind-decl? (car x))
 					(memq (car x) *tcc-conditions*))))
@@ -258,20 +367,24 @@
   (check-for-recursive-tcc expr))
 
 (defmethod check-for-tccs* ((ex list-expr) expected)
+  (declare (ignore expected))
   (unless (type ex) (call-next-method)))
 
 (defmethod check-for-tccs* ((ex conjunction) expected)
+  (declare (ignore expected))
   (check-for-tccs* (args1 ex) *boolean*)
   (let ((*tcc-conditions* (push-tcc-condition (args1 ex) *tcc-conditions*)))
     (check-for-tccs* (args2 ex) *boolean*)))
 
 (defmethod check-for-tccs* ((ex disjunction) expected)
+  (declare (ignore expected))
   (check-for-tccs* (args1 ex) *boolean*)
   (let ((*tcc-conditions* (push-tcc-condition (make!-negation (args1 ex))
 					     *tcc-conditions*)))
     (check-for-tccs* (args2 ex) *boolean*)))
 
 (defmethod check-for-tccs* ((ex implication) expected)
+  (declare (ignore expected))
   (check-for-tccs* (args1 ex) *boolean*)
   (let ((*tcc-conditions* (push-tcc-condition (args1 ex) *tcc-conditions*)))
     (check-for-tccs* (args2 ex) *boolean*)))
@@ -335,11 +448,11 @@
 	   (assert (bindings ex))
 	   (assert (expression ex))
 	   (assert (type ex)))
-	  (t (let ((ctype (type ex)))
-	       (dolist (e (exprs ex))
-		 (check-for-tccs* e (domain est))))))))
+	  (t (dolist (e (exprs ex))
+	       (check-for-tccs* e (domain est)))))))
 
 (defun check-for-binding-expr-tccs (bindings expected-types)
+  #+pvsdebug
   (assert (every #'(lambda (x) (or (not (consp x))
 				   (and (bind-decl? (car x))
 					(memq (car x) *tcc-conditions*))))
@@ -352,6 +465,7 @@
 	(check-for-tccs* (car bindings) etype)
 	(let ((*bound-variables* (cons (car bindings) *bound-variables*))
 	      (*tcc-conditions* (cons (car bindings) *tcc-conditions*)))
+	  #+pvsdebug
 	  (assert (every #'(lambda (x) (or (not (consp x))
 					   (and (bind-decl? (car x))
 						(memq (car x) *tcc-conditions*))))
@@ -364,6 +478,7 @@
 	       (cdr expected-types)))))
       (let ((*tcc-conditions*
 	     (append (car *appl-tcc-conditions*) *tcc-conditions*)))
+	#+pvsdebug
 	(assert (every #'(lambda (x) (or (not (consp x))
 					 (and (bind-decl? (car x))
 					      (memq (car x) *tcc-conditions*))))
@@ -394,7 +509,10 @@
     (let ((atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
-      (check-for-tccs* expression (contract-expected expr atype))
+      (check-for-tccs* expression
+		       (if (some #'maplet? assignments)
+			   (contract-expected expr atype)
+			   expected))
       (check-assignment-arg-types args-list values expression expected))))
 
 (defmethod check-for-tccs* ((expr update-expr) (expected struct-sub-recordtype))
@@ -402,12 +520,18 @@
     (let ((atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
-      (check-for-tccs* expression (contract-expected expr atype))
+      (check-for-tccs* expression
+		       (if (some #'maplet? assignments)
+			   (contract-expected expr atype)
+			   expected))
       (check-assignment-arg-types args-list values expression expected))))
 
 (defmethod check-for-tccs* ((expr update-expr) (expected tupletype))
   (with-slots (expression assignments) expr
-    (check-for-tccs* expression (type expression))
+    (check-for-tccs* expression
+		     (if (some #'maplet? assignments)
+			 (type expression)
+			 expected))
     (let ((atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
@@ -415,15 +539,20 @@
 
 (defmethod check-for-tccs* ((expr update-expr) (expected funtype))
   (with-slots (expression assignments) expr
-    (check-for-tccs* expression (type expression))
-    (let ((atype (find-supertype (type expr)))
+    (check-for-tccs* expression (if (some #'maplet? assignments)
+				    (type expression)
+				    expected))
+    (let (;;(atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
       (check-assignment-arg-types args-list values expression expected))))
 
 (defmethod check-for-tccs* ((expr update-expr) (expected datatype-subtype))
   (with-slots (expression assignments) expr
-    (check-for-tccs* expression (type expression))
+    (check-for-tccs* expression
+		     (if (some #'maplet? assignments)
+			 (type expression)
+			 expected))
     (let ((atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))

@@ -113,7 +113,6 @@
       (pvs-emacs-eval "(pvs-evaluator-ready)"))))
 
 (defun gqread ()
-  ;(load-pvs-attachments)
   (format t "~%<GndEval> ")
   (force-output)
   (let ((input (ignore-errors (read))))

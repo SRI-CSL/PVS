@@ -37,7 +37,7 @@
 ;; Judgements want exprs to allow "f(x|p(x))", but this clashes with
 ;; table-exprs use of '|'.  In pvs-gr.txt, we changed name-expr to use
 ;; '%VBAR' instead, and when we're parsing judgements, when we see a '|',
-;; we spit out a '%VBAR'
+;; we spit out a '%VBAR' - the user should not see this.
 
 (defvar *in-judgement-parse* nil)
 (defvar *in-judgement-expr-parse* nil)

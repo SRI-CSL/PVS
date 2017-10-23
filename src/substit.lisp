@@ -92,6 +92,7 @@ it is nil in the substituted binding")
 	(get-substit-hash* obj (cdr hashes)))))
 
 (defsetf get-substit-hash (obj) (sobj)
+  ;;(assert (or (eq obj sobj) (not (strong-tc-eq obj sobj))))
   `(setf (gethash ,obj (car *substit-hash-list*)) ,sobj))
 
 (defun substit (obj alist)
@@ -131,10 +132,15 @@ it is nil in the substituted binding")
 	    (setf (get-substit-hash expr) nex)))))
 
 (defmethod substit* :around ((expr type-expr) alist)
-  (if (freevars expr)
+  (if (some #'(lambda (fv)
+		(assq (declaration fv) alist))
+	    (freevars expr))
       (if *subst-type-hash*
 	  (let ((result (lookup-subst-hash expr alist *subst-type-hash*)))
-	    (if result result
+	    (if result
+		(if (strong-tc-eq result expr)
+		    expr
+		    result)
 		(let ((result (call-next-method)))
 		  (install-subst-hash expr alist result *subst-type-hash*)
 		  result)))
@@ -178,17 +184,24 @@ it is nil in the substituted binding")
 	(substit-possible*? (cdr freevars) alist))))
 
 (defmethod substit* ((expr name-expr) alist)
-  (with-slots (resolutions type actuals) expr
+  (with-slots (resolutions type actuals dactuals) expr
     (let* ((decl (declaration (car resolutions)))
 	   (binding (assq decl alist)))
       (cond ((null binding)
 	     (let* ((res (substit* resolutions alist))
-		    (ntype (type (car res))))
-	       (assert (tc-eq ntype (substit* type alist)))
-	       (lcopy expr
-		 'type ntype
-		 'actuals (substit* actuals alist)
-		 'resolutions res)))
+		    (ntype (type (car res)))
+		    (nexpr (lcopy expr
+			     'type ntype
+			     'actuals (substit* actuals alist)
+			     'dactuals (substit* dactuals alist)
+			     'resolutions res)))
+	       #+pvsdebug
+	       (assert (or (eq nexpr expr)
+			   ;; nexpr and expr could be tc-eq, if constructor-name-exprs
+			   (not (tc-eq (resolution nexpr) (resolution expr)))
+			   (not (tc-eq (type (resolution nexpr))
+				       (type (resolution expr))))))
+	       nexpr))
 	    ((typep (cdr binding) 'binding)
 	     (if (eq (car binding) (cdr binding))
 		 expr
@@ -202,8 +215,13 @@ it is nil in the substituted binding")
 			 (list (mk-resolution (cdr binding)
 				 (current-theory-name)
 				 (type (cdr binding)))))
+		   #+pvsdebug
+		   (assert (or (eq nex expr) (not (tc-eq nex expr))))
 		   nex)))
-	    (t (cdr binding))))))
+	    (t (let ((nex (cdr binding)))
+		 (if (strong-tc-eq nex expr)
+		     expr
+		     nex)))))))
 
 (defmethod substit* ((expr adt-name-expr) alist)
   (let ((nex (call-next-method)))
@@ -212,31 +230,35 @@ it is nil in the substituted binding")
 	(copy nex 'adt-type (substit* (adt-type expr) alist)))))
 
 (defmethod substit* ((expr projection-expr) alist)
-  (with-slots (actuals type index) expr
+  (with-slots (actuals dactuals type index) expr
     (lcopy expr
       'actuals (substit* actuals alist)
+      'dactuals (substit* dactuals alist)
       'type (substit* type alist))))
 
 (defmethod substit* ((expr injection-expr) alist)
-  (with-slots (actuals type index) expr
+  (with-slots (actuals dactuals type index) expr
     (lcopy expr
       'actuals (substit* actuals alist)
+      'dactuals (substit* dactuals alist)
       'type (substit* type alist))))
 
 (defmethod substit* ((expr injection?-expr) alist)
-  (with-slots (actuals type index) expr
+  (with-slots (actuals dactuals type index) expr
     (lcopy expr
       'actuals (substit* actuals alist)
+      'dactuals (substit* dactuals alist)
       'type (substit* type alist))))
 
 (defmethod substit* ((expr extraction-expr) alist)
-  (with-slots (actuals type index) expr
+  (with-slots (actuals dactuals type index) expr
     (lcopy expr
       'actuals (substit* actuals alist)
+      'dactuals (substit* dactuals alist)
       'type (substit* type alist))))
 
 (defmethod substit* ((expr projection-application) alist)
-  (with-slots (argument actuals type index) expr
+  (with-slots (argument actuals dactuals type index) expr
     (let ((narg (substit* argument alist)))
       (cond ((and (not *substit-dont-simplify*)
 		  (tuple-expr? narg))
@@ -247,33 +269,37 @@ it is nil in the substituted binding")
 		 (lcopy expr
 		   'argument narg
 		   'actuals (substit* actuals alist)
+		   'dactuals (substit* dactuals alist)
 		   'type ntype)))))))
 
 (defmethod substit* ((expr injection-application) alist)
-  (with-slots (argument actuals type index) expr
+  (with-slots (argument actuals dactuals type index) expr
     (let ((narg (substit* argument alist))
 	  (ntype (substit* type alist)))
       (lcopy expr
 	'argument narg
 	'actuals (substit* actuals alist)
+	'dactuals (substit* dactuals alist)
 	'type ntype))))
 
 (defmethod substit* ((expr injection?-application) alist)
-  (with-slots (argument actuals type index) expr
+  (with-slots (argument actuals dactuals type index) expr
     (let ((narg (substit* argument alist))
 	  (ntype (substit* type alist)))
       (lcopy expr
 	'argument narg
 	'actuals (substit* actuals alist)
+	'dactuals (substit* dactuals alist)
 	'type ntype))))
 
 (defmethod substit* ((expr extraction-application) alist)
-  (with-slots (argument actuals type index) expr
+  (with-slots (argument actuals dactuals type index) expr
     (let ((narg (substit* argument alist))
 	  (ntype (substit* type alist)))
       (lcopy expr
 	'argument narg
 	'actuals (substit* actuals alist)
+	'dactuals (substit* dactuals alist)
 	'type ntype))))
 
 (defmethod substit* ((expr field-application) alist)
@@ -288,13 +314,23 @@ it is nil in the substituted binding")
 	  (let ((ntype (substit* type alist)))
 	    (lcopy expr 'argument narg 'type ntype))))))
 
-(defmethod substit* ((expr resolution) alist)
-  (let ((new-modinst (substit* (module-instance expr) alist)))
-    (mk-resolution (declaration expr) new-modinst
-		   (substit* (type expr) alist))))
+(defmethod substit* ((res resolution) alist)
+  (with-slots (module-instance declaration type) res
+    (let* ((smodinst (substit* module-instance alist))
+	   (stype (substit* type alist))
+	   ;; Don't touch the declaration, even if a binding
+	   (nres (if (and (eq smodinst module-instance)
+			  (eq stype type))
+		     res
+		     (mk-resolution declaration smodinst stype))))
+      #+pvsdebug
+      (assert (or (eq res nres) (not (tc-eq type stype)) (not (tc-eq res nres))))
+      nres)))
 
 (defmethod substit* ((expr modname) alist)
-  (lcopy expr 'actuals (substit* (actuals expr) alist)))
+  (lcopy expr
+    'actuals (substit* (actuals expr) alist)
+    'dactuals (substit* (dactuals expr) alist)))
 
 
 (defmethod substit* ((act actual) alist)
@@ -330,7 +366,7 @@ it is nil in the substituted binding")
 		  (eq arg argument))
 	     expr)
 	    ((typep op '(or projection-expr injection-expr injection?-expr
-			    extraction-expr))
+			 extraction-expr))
 	     (typecase op
 	       (projection-expr
 		(make!-projection-application (index op) arg (actuals op)))
@@ -352,9 +388,12 @@ it is nil in the substituted binding")
 				(range stype)))))
 		 ;; Note: the copy :around (application) method takes care of
 		 ;; changing the class if it is needed.
-		 nex))))))
+		 (if (strong-tc-eq nex expr)
+		     expr
+		     nex)))))))
 
 (defmethod substit* :around ((expr let-expr) alist)
+  (declare (ignore alist))
   (let ((*let-operators* (cons (operator expr) *let-operators*)))
     (call-next-method)))
 
@@ -593,10 +632,13 @@ it is nil in the substituted binding")
 		       (if (eq (print-type (type expr)) (print-type newtype))
 			   (declared-type expr)
 			   (print-type newtype))
-		       (substit* (declared-type expr) alist))))
-    (lcopy expr
-      'type newtype
-      'declared-type newdtype)))
+		       (substit* (declared-type expr) alist)))
+	 (nbind (lcopy expr
+		  'type newtype
+		  'declared-type newdtype)))
+    #+pvsdebug
+    (assert (or (eq nbind expr) (not (tc-eq nbind expr))))
+    nbind))
 
 (defmethod substit* ((expr binding-expr) alist)
   (if (not (substit-possible? expr alist))
@@ -619,20 +661,23 @@ it is nil in the substituted binding")
 	     (nrettype (when (lambda-expr-with-type? expr)
 			 (substit* (return-type expr) nalist)))
 	     (ndrettype (when (lambda-expr-with-type? expr)
-			  (substit* (declared-ret-type expr) alist))))
-	(if (lambda-expr-with-type? expr)
-	    (lcopy expr
-	      'bindings new-bindings
-	      'type ntype
-	      'expression nexpr
-	      'parens 0
-	      'return-type nrettype
-	      'declared-ret-type ndrettype)
-	    (lcopy expr
-	      'bindings new-bindings
-	      'type ntype
-	      'expression nexpr
-	      'parens 0)))))
+			  (substit* (declared-ret-type expr) alist)))
+	     (nbexpr (if (lambda-expr-with-type? expr)
+			 (lcopy expr
+			   'bindings new-bindings
+			   'type ntype
+			   'expression nexpr
+			   'parens 0
+			   'return-type nrettype
+			   'declared-ret-type ndrettype)
+			 (lcopy expr
+			   'bindings new-bindings
+			   'type ntype
+			   'expression nexpr
+			   'parens 0))))
+	(if (strong-tc-eq expr nbexpr)
+	    expr
+	    nbexpr))))
 
 (defun substit-pairlis (bindings new-bindings alist)
   (if (null bindings)
@@ -651,11 +696,14 @@ it is nil in the substituted binding")
 		       expr)))
 
 (defun make-new-bindings-internal (old-bindings alist expr)
-  (make-new-bindings* old-bindings
-		      (alist-freevars alist)
-		      (alist-boundvars alist)
-		      alist
-		      expr))
+  (let ((nbindings (make-new-bindings* old-bindings
+				       (alist-freevars alist)
+				       (alist-boundvars alist)
+				       alist
+				       expr)))
+    (if (equal nbindings old-bindings)
+	old-bindings
+	nbindings)))
 
 (defun alist-freevars (alist)
   (if (eq *alist-freevars* 'unbound)
@@ -704,18 +752,7 @@ it is nil in the substituted binding")
 					  (and (not (eq x (declaration y)))
 					       (eq (id x) (id y)))))
 			(member (id bind) boundvars :key #'id)
-			(bindings-subst-clash bind alist)
-;; 			(some #'(lambda (fv)
-;; 				  (let ((bval (cdr (assq (declaration fv)
-;; 							 alist))))
-;; 				    (and bval
-;; 					 (member bind (collect-references bval)
-;; 						 :test #'(lambda (x y)
-;; 							   (and (eq (id x)
-;; 								    (id y))
-;; 								(not (eq x y))))))))
-;; 			      (freevars expr))
-			))
+			(bindings-subst-clash bind expr alist)))
 	     (stype (substit* btype alist))
 	     (dec-type (declared-type bind))
 	     (new-binding
@@ -736,24 +773,14 @@ it is nil in the substituted binding")
 	 (add-alist-freevars new-binding freevars)
 	 boundvars
 	 (acons bind new-binding alist)
-	 (cons new-binding expr)
+	 (list new-binding expr)
 	 (cons new-binding nbindings)))))
 
-(defun bindings-subst-clash (bind alist)
-  (var-occurs-in (id bind) (mapcar #'cdr alist)))
-;;   (let ((found-one nil))
-;;     (declare (special found-one))
-;;     (mapobject #'(lambda (x) 
-;; 		   (or found-one
-;; 		       (type-expr? x)
-;; 		       (when (name-expr? x)
-;; 			 (when (and (eq (id x) (id bind))
-;; 				    (not (eq (declaration x) bind)))
-;; 			   (setq found-one t))
-;; 			 t)))
-;; 	       (mapcar #'cdr alist))
-;;     found-one))
-
+(defun bindings-subst-clash (bind expr alist)
+  (some #'(lambda (fv)
+	    (let ((abd (assq (declaration fv) alist)))
+	      (and abd (var-occurs-in (id bind) (cdr abd)))))
+	(freevars expr)))
 
 (defmethod substit* ((expr cases-expr) alist)
   (let* ((ntype (substit* (type expr) alist))
@@ -761,25 +788,39 @@ it is nil in the substituted binding")
     (if (or *gensubst-subst-types*
 	    (eq nexpr (expression expr))
 	    (compatible? (type nexpr) (type (expression expr))))
-	(lcopy expr
-	  'expression nexpr
-	  'selections (mapcar #'(lambda (s) (substit* s alist))
-			(selections expr))
-	  'else-part (substit* (else-part expr) alist)
-	  'type ntype)
+	(let* ((nsels (mapcar #'(lambda (s) (substit* s alist))
+		       (selections expr)))
+	       (nex (lcopy expr
+		      'expression nexpr
+		      'selections (if (equal nsels (selections expr))
+				      (selections expr)
+				      nsels)
+		      'else-part (substit* (else-part expr) alist)
+		      'type ntype)))
+	  #+pvsdebug
+	  (assert (or (eq nex expr) (not (tc-eq nex expr))))
+	  nex)
 	(substit* (translate-cases-to-if expr) alist))))
 
 (defmethod substit* ((expr selection) alist)
-  (let ((new-bindings (make-new-bindings-internal
-		       (args expr) alist (expression expr))))
-    (lcopy expr
-      'constructor (substit* (constructor expr) alist)
-      'args new-bindings
-      'expression (add-substit-hash
-		   (substit* (expression expr)
-			     (nconc (pairlis (args expr)
-					     new-bindings)
-				    alist))))))
+  (if (freevars expr)
+      (let* ((new-bindings (make-new-bindings-internal
+			    (args expr) alist (expression expr)))
+	     (nexpr (add-substit-hash
+		     (substit* (expression expr)
+			       (nconc (pairlis (args expr)
+					       new-bindings)
+				      alist))))
+	     (nsel (lcopy expr
+		     'constructor (substit* (constructor expr) alist)
+		     'args (if (eq (expression expr) nexpr)
+			       (args expr)
+			       new-bindings)
+		     'expression nexpr)))
+	#+pvsdebug
+	(assert (or (eq nsel expr) (not (tc-eq nsel expr))))
+	nsel)
+      expr))
 
 ;(defmethod substit* ((expr coercion) alist)
 ;  (lcopy expr
@@ -797,14 +838,17 @@ it is nil in the substituted binding")
 ;;NSH:8-21-91: substit* for type-expressions.
 (defmethod substit* ((texpr type-name) alist)
   (let ((nacts (substit* (actuals texpr) alist))
+	(dacts (substit* (dactuals texpr) alist))
 	(ptype (substit* (print-type texpr) alist))
 	(mi (substit* (module-instance (resolution texpr)) alist)))
     (if (and (eq nacts (actuals texpr))
+	     (eq dacts (dactuals texpr))
 	     (eq ptype (print-type texpr))
 	     (eq mi (module-instance (resolution texpr))))
 	texpr
 	(let ((nte (copy texpr
 		     'actuals nacts
+		     'dactuals dacts
 		     'print-type ptype)))
 	  (setf (get-substit-hash texpr) nte)
 	  (setf (resolutions nte)
@@ -825,11 +869,14 @@ it is nil in the substituted binding")
 	  texpr
 	  (let* ((spred (pseudo-normalize npred))
 		 (stype (domain (find-supertype (type spred))))
-		 (ptype (substit* print-type alist)))
-	    (lcopy texpr
-	      'supertype stype
-	      'predicate spred
-	      'print-type ptype))))))
+		 (ptype (substit* print-type alist))
+		 (ntexpr (lcopy texpr
+			   'supertype stype
+			   'predicate spred
+			   'print-type ptype)))
+	    #+pvsdebug
+	    (assert (or (eq texpr ntexpr) (not (strong-tc-eq texpr ntexpr))))
+	    ntexpr)))))
 
 (defmethod substit* ((texpr setsubtype) alist)
   (declare (ignore alist))
@@ -853,11 +900,15 @@ it is nil in the substituted binding")
 
 (defmethod substit* ((texpr funtype) alist)
   (let* ((typelist (list (domain texpr) (range texpr)))
-	 (ntypelist (substit* typelist alist)))
-    (lcopy texpr
-      'domain (car ntypelist)
-      'range (cadr ntypelist)
-      'print-type (substit* (print-type texpr) alist))))
+	 (ntypelist (substit* typelist alist))
+	 (nptype (substit* (print-type texpr) alist))
+	 (nftype (lcopy texpr
+		   'domain (car ntypelist)
+		   'range (cadr ntypelist)
+		   'print-type nptype)))
+    #+pvsdebug
+    (assert (or (eq texpr nftype) (not (tc-eq texpr nftype))))
+    nftype))
 
 (defmethod substit* ((texpr tupletype) alist)
   (lcopy texpr
@@ -870,10 +921,15 @@ it is nil in the substituted binding")
     'print-type (substit* (print-type texpr) alist)))
 
 (defmethod substit* ((te recordtype) alist)
-  (let ((fields (substit* (fields te) alist)))
-    (lcopy te
-      'fields (sort-fields fields (dependent-fields? fields))
-      'print-type (substit* (print-type te) alist))))
+  (let* ((fields (substit* (fields te) alist))
+	 (sfields (sort-fields fields (dependent-fields? fields)))
+	 (ptype (substit* (print-type te) alist))
+	 (nte (lcopy te
+		'fields (if (equal sfields fields) fields sfields)
+		'print-type ptype)))
+    #+pvsdebug
+    (assert (or (eq te nte) (not (strong-tc-eq te nte))))
+    nte))
 
 (defmethod substit* ((te type-application) alist)
   (lcopy te
@@ -890,8 +946,14 @@ it is nil in the substituted binding")
     (lcopy fd 'type ntype 'declared-type dtype)))
 
 (defmethod substit* ((db dep-binding) alist)
-  (let ((ntype (substit* (type db) alist)))
-    (lcopy db 'type ntype)))
+  (let ((ntype (substit* (type db) alist))
+	(ndtype (substit* (declared-type db) alist)))
+    (lcopy db 'type ntype 'declared-type ndtype)))
+
+(defmethod substit* ((bd binding) alist)
+  (let ((ntype (substit* (type bd) alist))
+	(ndtype (substit* (declared-type bd) alist)))
+    (lcopy bd 'type ntype 'declared-type ndtype)))
 
 (defmethod substit* ((seq vector) alist)
   (let* ((list (coerce seq 'list))

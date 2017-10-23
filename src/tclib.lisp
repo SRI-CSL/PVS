@@ -233,6 +233,7 @@
     (let ((proofs (read-pvs-file-proofs prfile)))
       (maphash #'(lambda (id theory)
 		   (declare (ignore id))
+		   (format t "restoring for ~a" (id theory))
 		   (restore-proofs prfile theory proofs)
 		   (mapc #'(lambda (decl)
 			     (if (justification decl)

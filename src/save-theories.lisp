@@ -152,11 +152,15 @@
 (defmethod store-object* :around ((obj adt-type-name))
   (if (inline-recursive-type? (adt obj))
       (call-next-method)
-      (call-next-method (copy obj
-			  'adt (if (external-library-reference? (adt obj))
-				   (cons (lib-ref (adt obj))
-					 (id (adt obj)))
-				   (id (adt obj)))))))
+      (progn
+	(when (symbolp (adt obj))
+	  ;; May happen after restoring from bin files
+	  (restore-adt-slot obj))
+	(call-next-method (copy obj
+			    'adt (if (external-library-reference? (adt obj))
+				     (cons (lib-ref (adt obj))
+					   (id (adt obj)))
+				     (id (adt obj))))))))
 
 (defmethod external-library-reference? ((obj library-datatype-or-theory))
   (not (eq obj (gethash (id obj) *pvs-modules*))))

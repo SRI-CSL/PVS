@@ -97,8 +97,8 @@
   (res :initform nil))
 
 (defmethod print-object ((rew rewrite) stream)
-  (format stream "~@<rewrite lhs: ~a~%~i~8trhs: ~a~%~i~8thyp: ~a~%~i~8tres: ~a~:>"
-    (lhs rew) (rhs rew) (hyp rew) (res rew)))
+  (format stream "~@<#<rewrite ~a ==> ~a ~@[WHEN ~a~]>~:>"
+    (lhs rew) (rhs rew) (hyp rew)))
 
 (defcl auto-rewrites-info () %fills current-auto-rewrites slot.
   rewrites

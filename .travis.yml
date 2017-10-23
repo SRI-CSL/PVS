@@ -15,7 +15,6 @@ install:
 
 script:
   - autoconf
-  - git tag -l
   - ./configure
-  - SBCLISP_HOME=$HOME/sbcl/ EMACS=`which emacs` 2>&1 make >output 2>&1 # Limited as SBCL likes to complain and complain and complain ...
+  - make SBCLISP_HOME=$HOME/sbcl/ EMACS=`which emacs` >output 2>&1 # Limited as SBCL likes to complain and complain and complain ...
   - tail -n 4000 output

@@ -546,8 +546,9 @@
 				       (and (vectorp njtypes)
 					    (or (null jdecls)
 						(vectorp jdecls)))))
-		(setf (gethash ex jhash)
-		      (list jtypes jdecls))
+		(when jtypes
+		  (setf (gethash ex jhash)
+			(list jtypes jdecls)))
 		(values jtypes jdecls))))))))
 
 (defvar *in-expr-judgement-types* nil)
@@ -642,9 +643,9 @@
       (available-numeric-type num)))
 
 (defmethod judgement-types* :around ((ex name-expr))
-  (when (or (assoc (declaration ex) *judgement-bound-vars*
-		   :key #'declaration)
-	    (not (variable? ex)))
+  (when (or (not (variable? ex))
+	    (assoc (declaration ex) *judgement-bound-vars*
+		   :key #'declaration))
     (call-next-method)))
 
 (defmethod judgement-types* ((ex name-expr))
@@ -928,11 +929,11 @@
       (judgement-types* (car expr-list))
     (judgement-types-list (cdr expr-list) (type (car expr-list)) types jdecls)))
 
-;;; Recursively determing the judgement types and corresponding judgement
+;;; Recursively determine the judgement types and corresponding judgement
 ;;; decls for a list of expressions, that are intended to have a common type
 ;;; Mostly for if-exprs, cond-exprs, etc.  But not tuple exprs
 
-;;; The type is the least connon actual type of the expressions so far - no
+;;; The type is the least common actual type of the expressions so far - no
 ;;; point in looking higher than this.  The types and jdecls are the
 ;;; judgement types found so far.  Note that even if they are empty, we may
 ;;; need judgements on the remaining expressions, in order to not go above
@@ -973,16 +974,26 @@
 			       (judgement-types-list
 				(cdr expr-list) type (nreverse stypes) (nreverse sjdecls))))))))))
 	(t ;; Have types - this is more difficult to reconcile
-	 (multiple-value-bind (ntypes njdecls)
-	     (judgement-types* (car expr-list))
+	 (let ((ntypes (judgement-types* (car expr-list))) ; ignore the jdecls
+	       (rtypes nil)
+	       (rjdecls nil))
 	   (if (null ntypes)
-	       (if (some #'(lambda (ty) (subtype-of? (type (car expr-list)) ty))
-			 types)
-		   (judgement-types-list (cdr expr-list) type types jdecls)
-		   (break "types, null ntypes, not subtype"))
-	       ;; Have ntypes - if one is equal to type, keep it and remove the rest
-	       ;; else if any are subtypes of type, keep those that are
-	       (break "types, ntypes"))))))
+	       (mapc #'(lambda (ty jd)
+			 (when (subtype-of? (type (car expr-list)) ty)
+			   (push ty rtypes)
+			   (push jd rjdecls)))
+		     types jdecls)
+	       (mapc #'(lambda (ty jd)
+			 (when (some #'(lambda (nty)
+					 (subtype-of? nty ty))
+				     ntypes)
+			   (push ty rtypes)
+			   (push jd rjdecls)))
+		     types jdecls))
+	   ;; FIXME This isn't quite right - e.g., S1, S2 subtype of S
+	   ;; which is a judgement type of the first argument, this
+	   ;; then ignores that.
+	   (values rtypes rjdecls)))))
 
 (defun jdecls-union (jdecls1 jdecls2)
   (let ((ldecls1 (jdecls-list jdecls1))
@@ -2104,7 +2115,8 @@
   (subtype-wrt?* te1 te2 (type reltype) arg bindings))
 
 (defmethod subtype-wrt?* ((te1 funtype) (te2 funtype) reltype arg bindings)
-  (let* ((id (gentemp))
+  (let* ((*generate-tccs* 'none)
+	 (id (gentemp))
 	 (bd (make-bind-decl id (dep-binding-type (domain te1))))
 	 (var (make-variable-expr bd))
 	 (app (make!-application arg var)))
@@ -3402,7 +3414,6 @@
 (defvar *simple-match-hash*)
 
 (defun simple-match (ex inst)
-  
   (simple-match* ex inst nil nil))
 
 (defmethod simple-match* ((ex type-name) (inst type-name) bindings subst)
@@ -3411,11 +3422,22 @@
       'fail))
 
 (defmethod simple-match* ((ex subtype) (inst subtype) bindings subst)
-  (let ((nsubst (simple-match* (supertype ex) (supertype inst)
-			       bindings subst)))
+  (let* ((stype (substit (supertype ex) subst))
+	 (boundable-var? (and (variable? (predicate ex))
+			      (null (freevars stype))
+			      (or (tc-eq inst stype)
+				  (tc-eq (supertype inst) stype))))
+	 (nsubst (if boundable-var?
+		     subst
+		     (simple-match* stype (supertype inst) bindings subst))))
     (if (eq nsubst 'fail)
 	'fail
-	(simple-match* (predicate ex) (predicate inst) bindings nsubst))))
+	(if boundable-var?
+	    (if (tc-eq (supertype inst) stype)
+		(acons (declaration (predicate ex)) (predicate inst) nsubst)
+		(acons (declaration (predicate ex))
+		       (mk-everywhere-true-function inst) nsubst))
+	    (simple-match* (predicate ex) (predicate inst) bindings nsubst)))))
 
 (defmethod simple-match* ((ex funtype) (inst funtype) bindings subst)
   (let ((nsubst (simple-match* (domain ex) (domain inst) bindings subst)))
@@ -3478,11 +3500,12 @@
 		      'fail)
 		  (if (assq (declaration ex) bindings)
 		      subst
-		      (if (some #'(lambda (jty)
-				    (subtype-of? jty (type (declaration ex))))
-				(judgement-types+ inst))
-			  (acons (declaration ex) inst subst)
-			  'fail))))))
+		      (let ((stype (substit (type (declaration ex)) subst)))
+			(if (some #'(lambda (jty)
+				      (subtype-of? jty stype))
+				  (judgement-types+ inst))
+			    (acons (declaration ex) inst subst)
+			    'fail)))))))
       (if (and (typep inst 'name-expr)
 	       (eq (declaration ex) (declaration inst)))
 	  (simple-match* (module-instance ex) (module-instance inst)
@@ -3615,7 +3638,7 @@
       (let ((amatch (simple-match* (actuals ex) (actuals inst) bindings subst)))
 	(if (eq amatch 'fail)
 	    'fail
-	    (simple-match* (mappings ex) (mappings inst) bindings subst)))
+	    (simple-match* (mappings ex) (mappings inst) bindings amatch)))
       'fail))
 
 (defmethod simple-match* ((ex actual) (inst actual) bindings subst)

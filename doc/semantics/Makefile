@@ -1,29 +1,15 @@
+LATEXMK = latexmk
+LATEXMKFLAGS = -pdf -pdflatex='lualatex -file-line-error -synctex=1'
+
 sources = semantics.tex
 
-all : semantics.dvi semantics.ps semantics.ps.gz semantics.pdf
-
-semantics.dvi: $(sources)
-	latex $<;
-	makeindex -c semantics.idx
-	bibtex semantics || echo
-	latex $<
-	latex $<
-
-semantics.ps.gz : semantics.ps
-	gzip -c $< > $@
-
-semantics.ps : semantics.dvi
-	dvips -o $@ $<
+all : semantics.pdf
 
 semantics.pdf : ${sources}
-	pdflatex $<
-	makeindex -c semantics.idx
-	bibtex semantics || echo
-	pdflatex $<
-	pdflatex $<
+	$(LATEXMK) $(LATEXMKFLAGS) $<
 
 .PHONY: clean
 clean :
-	rm -f Makefile semantics.dvi semantics.pdf semantics.ps semantics.ps.gz \
+	rm -f semantics.pdf \
               *.log *.bbl *.ind *.ilg *.blg *.bbl *.aux \
               *.toc *.idx *.brf 

@@ -8,14 +8,29 @@ features provided by PVS, but it can lead to a lot of redundant TCCs.
 \emph{Judgements}\footnote{We prefer this spelling, though many spell
 checkers do not.} provide a means for controlling this by allowing
 properties of operators on subtypes to be made available to the
-typechecker.  There are two kinds of judgements available in PVS\@.  The
-\emph{constant judgement}\index{constant judgement} states that a
+typechecker.  There are several kinds of judgements available in PVS\@. 
+Most of them indicate that an expression belongs to a given type, but the
+\emph{subtype judgement} indicates that two types are in the subtype
+relation.
+\begin{description}
+\item[Number judgement] - 
+\item[Name judgement]
+\item[Application judgement]
+\item[Recursive judgement]
+\item[Expression judgement]
+\item[Subtype judgement]
+\end{description}
+
+
+The \emph{constant judgement}\index{constant judgement} states that a
 particular constant (or number) has a type more specific than its declared
 type.  The \emph{subtype judgement}\index{subtype judgement} states that
 one type is a subtype of another.
 
-\subsection{Constant Judgements}
-\index{constant judgement}
+\subsection{Number and Name Judgements}
+\index{number-name-judgement}
+
+Number and name judgements 
 
 There are two kinds of constant judgements.  The simpler kind 
 states that a constant or number belongs to a type different than its

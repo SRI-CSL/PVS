@@ -38,7 +38,7 @@
 	  *integer* *naturalnumber* *number* *number_field* *odd_int* *odd_posnat* *odd_negint*
 	  *posint* *negint* *posrat* *negrat* *prelude* *pvs-directories*
 	  *pvs-modules* *pvs-tmp-file* *real* *show-conversions* *tcc-conditions*
-	  *true* *typechecking-module*))
+	  *true* *typechecking-module* *prelude-context*))
 
 (export '(all none))
 
@@ -87,9 +87,11 @@ in util.lisp")
   (pushnew :pvs *features*)
   )
 
-(defparameter *binfile-version* 36)
+(defvar *pvs-git-describe*)
 
-(defvar *pvs-build-time* (get-universal-time)) ;; set on loading in operate-on-system
+(defparameter *binfile-version* 37)
+
+(defvar *pvs-build-time* (get-universal-time))
 
 (defparameter *context-name* ".pvscontext")
 
@@ -472,6 +474,8 @@ current proof is suspect.")
 
 (defvar *subtypes-matched* nil)
 
+(defvar *subst-fields-hash*)
+
 (defvar *named-exprs* nil
   "A list of (expr . gensym) pairs, where expr is a binding-expr in which
 a connective occurs.")
@@ -507,7 +511,14 @@ Needed to generate the same dummy name for record literals.")
 (defvar *autotypecheck* 'yes)
 ;(defvar *tctimeout* 1)
 (defvar *tcc-messages* 'no)
-(defvar *ppcase* nil)
+(defvar *ppcase* nil
+  "Indicates the prefered prettyprinting for PVS terms.
+Allowed values are:
+ :unicode - try to use the unicode symbol, if available
+ :short - try to use short ascii forms, e.g. &, => rather than AND, IMPLIES
+ :upper - use uppercase keywords
+ :lower - use lowercase keywords
+ nil - use the form given in the term originally, but uppercase")
 (defvar *ppcomments* 'append)
 (defvar *ppstyle* ())
 (defvar *pplinelength* 78)
@@ -632,7 +643,7 @@ Needed to generate the same dummy name for record literals.")
   ;; Operators that can be chained, e.g., "1 < x <= 2",
   ;; which is translated as "1 < x and x <= 2"
   ;; This is basically all relational operators
-  '(= /= < <= > >= == << >> <<= >>= <| |>
+  '(= /= < <= > >= == << >> <| |>
     ≁ ∼ ≃ ≅ ≇ ≈ ≉ ≍ ≎ ≏ ≐ ≗ ≙ ≡ ⋈ ≤ ≥ ≦ ≧
     ≨ ≩ ≪ ≫ ≮ ≯ ≰ ≱ ≺ ≻ ◁ ▷
     ⊂ ⊃ ⊄ ⊅ ⊆ ⊇ ⊊ ⊋ ⊏ ⊐ ⊑ ⊒))

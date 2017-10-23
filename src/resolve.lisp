@@ -123,29 +123,33 @@
 
 (defmethod typecheck* ((name modname) expected kind argument)
   (declare (ignore expected))
-  (if (not (or (null kind) (eq kind 'module)))
-      (type-error name "Theory name ~a used where ~a expected" name kind)
-      (let* ((*resolve-error-info* nil)
-	     (res (resolve* name 'module nil)))
-	(cond ((cdr res)
-	       (type-ambiguity name))
-	      ((null res)
-	       (resolution-error name 'module argument))
-	      (t (let ((theory (declaration (car res))))
-		   (setf (resolutions name) res)
-		   (when (decl-formals (declaration (car res)))
-		     (break "decl params may be a problem here"))
-		   (when (actuals name)
-		     (unless (length= (formals-sans-usings theory)
-				      (actuals name))
-		       (type-error name "Wrong number of actuals in ~a" name)))
-		   (unless (every #'typed? (actuals name))
-		     (typecheck-actuals name))
-		   (when (mappings name)
-		     (typecheck-mappings (mappings name) name))
-		   (unless (member name (get-importings theory) :test #'tc-eq)
-		     (set-type-actuals-and-maps name theory))
-		   name))))))
+  (cond ((resolution name)
+	 (unless (eq *generate-tccs* 'none)
+	   (check-type-actuals-and-maps name))
+	 name)
+	((not (or (null kind) (eq kind 'module)))
+	 (type-error name "Theory name ~a used where ~a expected" name kind))
+	(t (let* ((*resolve-error-info* nil)
+		  (res (resolve* name 'module nil)))
+	     (cond ((cdr res)
+		    (type-ambiguity name))
+		   ((null res)
+		    (resolution-error name 'module argument))
+		   (t (let ((theory (declaration (car res))))
+			(setf (resolutions name) res)
+			(when (decl-formals (declaration (car res)))
+			  (break "decl params may be a problem here"))
+			(when (actuals name)
+			  (unless (length= (formals-sans-usings theory)
+					   (actuals name))
+			    (type-error name "Wrong number of actuals in ~a" name)))
+			(unless (every #'typed? (actuals name))
+			  (typecheck-actuals name))
+			(when (mappings name)
+			  (typecheck-mappings (mappings name) name))
+			(unless (member name (get-importings theory) :test #'tc-eq)
+			  (set-type-actuals-and-maps name theory))
+			name)))))))
 
 
 (defmethod module ((binding binding))
@@ -244,20 +248,21 @@
     (let ((mod-decls (remove-if-not #'(lambda (d)
 					(typep d 'theory-abbreviation-decl))
 		       (get-declarations (mod-id name)))))
-      (get-theory-aliases* mod-decls))))
+      (get-theory-aliases* mod-decls name))))
 
 (defmethod get-theory-aliases ((name modname))
   (let ((mod-decls (remove-if-not #'(lambda (d)
 				      (typep d 'theory-abbreviation-decl))
 		     (get-declarations (id name)))))
-    (get-theory-aliases* mod-decls)))
+    (get-theory-aliases* mod-decls name)))
 
-(defun get-theory-aliases* (mod-decls &optional modnames)
+(defun get-theory-aliases* (mod-decls name &optional modnames)
   (if (null mod-decls)
       (delete-duplicates modnames :test #'tc-eq)
       (get-theory-aliases*
        (cdr mod-decls)
-       (let ((thname (theory-name (car mod-decls)))
+       name
+       (let ((thname (merge-names (theory-name (car mod-decls)) name))
 	     (theory (module (car mod-decls))))
 	 (if (eq theory (current-theory))
 	     (nconc (list thname) modnames)
@@ -268,6 +273,30 @@
 				      (subst-mod-params thname inst theory)
 				      thname))
 			instances))))))))
+
+(defmethod merge-names ((nm1 modname) (nm2 modname))
+  (lcopy nm1
+    :actuals (or (actuals nm1) (actuals nm2))
+    :dactuals nil
+    :library (or (library nm1) (library nm2))
+    :mappings (or (mappings nm1) (mappings nm2))))
+
+(defmethod merge-names ((nm1 modname) (nm2 name))
+  (lcopy nm1
+    :actuals (or (actuals nm1) (actuals nm2))
+    :dactuals nil
+    :library (or (library nm1) (library nm2))
+    :mappings (or (mappings nm1) (mappings nm2))))
+
+(defmethod merge-names ((nm1 name) (nm2 name))
+  (lcopy nm1
+    :mod-id (or (mod-id nm1) (mod-id nm2))
+    :actuals (or (actuals nm1) (actuals nm2))
+    :dactuals (or (dactuals nm1) (dactuals nm2))
+    :library (or (library nm1) (library nm2))
+    :mappings (or (mappings nm1) (mappings nm2))))
+    
+  
 
 (defmethod get-binding-resolutions ((name name) kind args)
   (with-slots (mod-id library actuals dactuals id) name
@@ -537,7 +566,8 @@
 
 (defun resolve-theory-actuals (decl acts dacts dth args mappings)
   (let* ((thinsts (get-importings dth))
-	 (genthinst (find-if-not #'actuals thinsts)))
+	 (genthinst (when (formals-sans-usings dth)
+		      (find-if-not #'actuals thinsts))))
     (if genthinst
 	(let* ((nacts (compatible-parameters?
 		       acts (formals-sans-usings dth)))
@@ -556,8 +586,7 @@
 	      (compatible-arguments? decl dthi args (current-theory)))))
 	(let* ((cinsts (decl-args-compatible? decl args mappings))
 	       (modinsts (mapcar #'(lambda (thinst)
-				     (if (or (actuals thinst)
-					     (same-id (current-theory) thinst))
+				     (if (actuals thinst)
 					 thinst
 					 (copy thinst :actuals acts)))
 			   cinsts))
@@ -713,13 +742,10 @@
       (compatible-arguments? decl (current-theory-name) args (current-theory))
       (let* ((idecls (when mappings
 		       (interpretable-declarations (module decl))))
-	     (thinsts (when (or (null mappings)
-				(every #'(lambda (m)
-					   (or (module? (declaration (lhs m)))
-					       (member (id (lhs m)) idecls
-						       :key #'id
-						       :test #'id-suffix)))
-				       mappings))
+	     (thinsts (when (every #'(lambda (m)
+				       (or (module? (declaration (lhs m)))
+					   (memq (declaration (lhs m)) idecls)))
+				   mappings)
 			(get-importings (module decl))))
 	     (mthinsts (if mappings
 			   (create-theorynames-with-name-mappings
@@ -753,7 +779,9 @@
 			     'mappings (append (mappings (car thinsts))
 					       nmappings))))
 	     (typecheck-mappings nmappings nthinst)
-	     (cons nthinst mthinsts))
+	     (if (member nthinst mthinsts :test #'tc-eq) ;; From instantiating generic importing
+		 mthinsts
+		 (cons nthinst mthinsts)))
 	   mthinsts))))
 
       
@@ -2193,6 +2221,28 @@
 				       (and (const-decl? (declaration r))
 					    (null (definition (declaration r)))))
 			  (resolve name 'expr nil)))))
+    (unless (or reses
+		(not (simple-name? name)))
+      ;; Try to find a case-insensitive match
+      (let ((mdecls nil))
+	(map-lhash #'(lambda (id decls)
+		       (when (string-equal id (id name))
+			 (dolist (decl decls)
+			   (when (visible? decl)
+			     (cond ((formula-decl? decl)
+				    (let ((*resolve-error-info* nil)) ;; shadow original
+				      (setq reses
+					    (nconc (resolve (copy name 'id id)
+							    'formula nil)
+						   reses))))
+				   ((and (const-decl? decl)
+					 (definition decl))
+				    (let ((*resolve-error-info* nil)) ;; shadow original
+				      (setq reses
+					    (nconc (resolve (copy name 'id id)
+							    'expr nil)
+						   reses)))))))))
+		   (current-declarations-hash))))
     (or reses
 	(resolution-error name 'expr-or-formula nil nil))))
 
@@ -2301,18 +2351,15 @@
 		       (list kind))))))
     (multiple-value-bind (obj error)
 	(if (and *resolve-error-info*
-		 (or (assq :arg-mismatch *resolve-error-info*)
-		     (not (assq :no-instantiation *resolve-error-info*))))
+		 (or (assq :arg-length *resolve-error-info*)
+		     (assq :arg-mismatch *resolve-error-info*)))
 	    (resolution-args-error *resolve-error-info* name arguments)
 	    (values
 	     name
 	     (format nil
 		 "~v%Expecting a~a~%No resolution for ~a~
                   ~@[ with arguments of possible types: ~:{~%  ~a~3i : ~{~:_~a~^,~}~}~]~
-                  ~@[~2% Check the actual parameters; the following ~
-                        instances are visible,~% but don't match the ~
-                        given actuals:~%   ~:I~{~a~^, ~_~}~]~
-                  ~:[~;~2% May not instantiate the current theory~]~
+                  ~@[~2% ~a~]~
                   ~:[~;~2% There is a variable declaration with this name,~% ~
                           but free variables are not allowed here.~]~
                   ~:[~;~2% There is a mapping for this name, but once mapped ~
@@ -2332,12 +2379,18 @@
 	       name
 	       (mapcar #'(lambda (a) (list a (full-name (ptypes a) 1)))
 		 arguments)
-	       (mapcar #'(lambda (r)
-			   (mk-name (id (declaration r))
-			     (actuals (module-instance r))
-			     (id (module-instance r))))
-		 reses)
-	       (assq :current-theory-actuals *resolve-error-info*)
+	       (if (assq :current-theory-actuals *resolve-error-info*)
+                   "May not instantiate the current theory"
+		   (when reses
+		     (format nil
+			 "Check the actual parameters; the following ~
+                        instances are visible,~% but don't match the ~
+                        given actuals:~%   ~:I~{~a~^, ~_~}"
+		       (mapcar #'(lambda (r)
+				   (mk-name (id (declaration r))
+				     (actuals (module-instance r))
+				     (id (module-instance r))))
+			 reses))))
 	       (some #'var-decl?
 		     (get-declarations (id name)))
 	       (some-matching-mapping-element? name)

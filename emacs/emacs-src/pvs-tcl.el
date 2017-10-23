@@ -77,9 +77,9 @@
 
 (defun pvs-check-tcl-tk-versions ()
   (pvs-check-versions "Tcl" (tcl-eval "info tclversion")
-		      pvs-tcl-tested-versions)
+		      pvs-tested-tcl-versions)
   (pvs-check-versions "Tk" (tcl-eval "set tk_version")
-		      pvs-tk-tested-versions))
+		      pvs-tested-tk-versions))
 
 (defun pvs-check-versions (program-name version expected)
   (if (not (member-equal version expected))
@@ -207,8 +207,7 @@
 (defvar tcl-eval-output nil)
 
 (defun tcl-eval (string)
-  (save-excursion
-    (set-buffer inferior-tcl-buffer)
+  (with-current-buffer inferior-tcl-buffer
     (let* ((proc (get-buffer-process inferior-tcl-buffer))
 	   (tcl-eval-output "")
 	   ;; This one is used outside of Emacs19

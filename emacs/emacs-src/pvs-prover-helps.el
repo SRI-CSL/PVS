@@ -182,12 +182,12 @@ Also, typing \\C-j (LFD) alone will invoke pvs-prover-wrap-with-parens.
   (interactive)
   (let ((buf (get-buffer-create "Prover Emacs Help")))
     (set-buffer buf)
-    (if buffer-read-only (toggle-read-only))
-    (erase-buffer)
-    (insert (documentation 'help-pvs-prover-emacs))
+    (let ((inhibit-read-only t))
+      (erase-buffer)
+      (insert (documentation 'help-pvs-prover-emacs)))
     (goto-char (point-min))
     (set-buffer-modified-p nil)
-    (unless buffer-read-only (toggle-read-only))
+    (setq buffer-read-only t)
     (pop-to-buffer buf)
     (pvs-view-mode)))
 
@@ -708,8 +708,7 @@ even if you give a prefix argument"
     (return-ilisp)))
 
 (defun at-pvs-rule-prompt ()
-  (save-excursion
-    (set-buffer "*pvs*")
+  (with-current-buffer "*pvs*"
     (beginning-of-line)
     (looking-at "Rule\?")))
 
@@ -778,8 +777,7 @@ Assumes that a Proof buffer exists."
     (unless editprfbuf
       (error "Must have a Proof Buffer."))
     (while (and pvs-in-checker (> num 0))
-      (save-excursion
-	(set-buffer editprfbuf)
+      (with-current-buffer editprfbuf
 	(pvs-prover-goto-next-step)
 	(let ((beg (point))
 	      (end (progn (forward-sexp 1) (point))))
@@ -811,8 +809,7 @@ Assumes that an Proof buffer exists."
 	(cmd nil))
     (unless editprfbuf
       (error "Must have an Edit Proof Buffer."))
-    (save-excursion
-      (set-buffer editprfbuf)
+    (with-current-buffer editprfbuf
       (if (< num 0)
 	  (dotimes (i (- num))
 	    (pvs-prover-goto-prev-step))
@@ -981,8 +978,7 @@ anything but a left paren or a \", ignoring whitespace."
 
 (defun hilit-next-prover-command ()
   (let ((editprfbuf (get-buffer "Proof")))
-    (save-excursion
-      (set-buffer editprfbuf)
+    (with-current-buffer editprfbuf
       (unless (= (buffer-size) 0)
 	(cond ((featurep 'xemacs)
 	       (let ((beg (point))

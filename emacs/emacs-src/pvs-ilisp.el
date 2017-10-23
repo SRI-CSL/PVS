@@ -28,8 +28,9 @@
 ;; --------------------------------------------------------------------
 
 (eval-when-compile (require 'comint))
-(require 'cl)
+(require 'cl-lib)
 (require 'ilisp)
+(require 'completion)
 (eval-when-compile (require 'pvs-macros))
 
 ;;; FIXME - this may be related to changes in easymenu.el ???
@@ -118,8 +119,7 @@ intervenes."
     (cmulisp (pvscmulisp "pvs" nil))
     (sbclisp (pvssbclisp "pvs" nil))
     (t (error "Unknown lisp - %s" (getenv "PVSLISP"))))
-  (save-excursion
-    (set-buffer (ilisp-buffer))
+  (with-current-buffer (ilisp-buffer)
     (setq ilisp-package-command "(pvs::lisp (let ((*package* *package*)) %s (package-name *package*)))"
 	  ilisp-package-name-command "(pvs::lisp (package-name *package*))"
 	  ilisp-in-package-command "(pvs::lisp (in-package \"%s\"))"
@@ -271,7 +271,7 @@ intervenes."
 	 (buf (find-file-noselect file))
 	 (raw-value (read buf))
 	 (value (unless (member raw-value '(nil NIL)) raw-value)))
-    (unless (typep value expected)
+    (unless (cl-typep value expected)
       (pop-to-buffer buf)
       (error "Expect %s return values in file %s" expected file))
     (delete-file file)
@@ -309,8 +309,7 @@ intervenes."
   (sit-for 1))
 
 (defun pvs-send* (string &optional message status and-go)
-  (save-excursion
-    (set-buffer (ilisp-buffer))
+  (with-current-buffer (ilisp-buffer)
     (setq buffer-read-only nil))
   (let (*pvs-output-pos*)
     (comint-log (ilisp-process) (format "\nsent:{%s}\n" string))
@@ -348,60 +347,62 @@ want to set this to nil for slow terminals, or connections over a modem.")
 ;;; out of order.  Instead, it appends the output to the string
 ;;; which is currently being processed by the top-level pvs-process-filter.
 
+(defvar pvs-process-output)
+
 (defun pvs-process-filter (process output)
   (when comint-log-verbose
     (comint-log (ilisp-process) (format "\nrec:{%s}\n" output)))
   (setq output (pvs-process-gc-messages output))
   (if pvs-recursive-process-filter
       (setq pvs-process-output (concat pvs-process-output output))
-    (let ((pvs-recursive-process-filter t))
-      (setq output (concat (ilisp-value 'pvs-partial-line) output))
-      (let ((pvs-process-output output)
-	    line-end)
-	(while (string-match "\n" pvs-process-output)
-	  (setq line-end (match-end 0))
-	  ;; Note that pvs-process-output can get longer
-	  ;; during this next call.
-	  (let ((pvs-output (pvs-output-filter
-			     (substring pvs-process-output 0 line-end))))
-	    (when (and noninteractive
-		       pvs-in-checker
-		       (not (string-match "^\\(nil\\|NIL\\)$" pvs-output)))
-	      (when pvs-validating
-		(princ pvs-output))
-	      (when (> pvs-verbose 2)
-		(princ pvs-output 'external-debugging-output)))
-	    (comint-process-filter process pvs-output))
-	  (setq pvs-process-output
-		(substring pvs-process-output line-end)))
-	(if (string-match (ilisp-value 'comint-prompt-regexp)
-			  pvs-process-output)
-	    (progn
+      (let ((pvs-recursive-process-filter t))
+	(setq output (concat (ilisp-value 'pvs-partial-line) output))
+	(let ((pvs-process-output output)
+	      line-end)
+	  (while (string-match "\n" pvs-process-output)
+	    (setq line-end (match-end 0))
+	    ;; Note that pvs-process-output can get longer
+	    ;; during this next call.
+	    (let ((pvs-output (pvs-output-filter
+			       (substring pvs-process-output 0 line-end))))
 	      (when (and noninteractive
-			 (string-match "(Y or N):\\|(Yes or No)"
-				       pvs-process-output))
-		(pvs-message "Answering yes to\n  %s" pvs-process-output)
-		(process-send-string
-		 (ilisp-process)
-		 (if (string-match "(Y or N):" pvs-process-output)
-		     "y\n" "yes\n")))
-	      (set-ilisp-value 'comint-fix-error
-			       (if pvs-in-checker "(restore)" pvs-fix-error))
-	      (when (and (string-match "(Y or N):\\|(Yes or No)"
-				       pvs-process-output)
-			 (not (eq (current-buffer) (ilisp-buffer))))
-		(switch-to-lisp t)
-		(message "Please answer Yes or No"))
-	      (comint-process-filter process pvs-process-output)
-	      (set-ilisp-value 'pvs-partial-line "")
-	      (when (and *pvs-maximize-proof-display*
-			 (eq (current-buffer) (ilisp-buffer))
-			 (string-match "Rule\\? " pvs-process-output))
-		(save-selected-window
-		  (switch-to-buffer "*pvs*")
-		  (recenter -1))))
-	  (set-ilisp-value 'pvs-partial-line
-			   pvs-process-output))))))
+			 pvs-in-checker
+			 (not (string-match "^\\(nil\\|NIL\\)$" pvs-output)))
+		(when pvs-validating
+		  (princ pvs-output))
+		(when (> pvs-verbose 2)
+		  (princ pvs-output 'external-debugging-output)))
+	      (comint-process-filter process pvs-output))
+	    (setq pvs-process-output
+		  (substring pvs-process-output line-end)))
+	  (if (string-match (ilisp-value 'comint-prompt-regexp)
+			    pvs-process-output)
+	      (progn
+		(when (and noninteractive
+			   (string-match "(Y or N):\\|(Yes or No)"
+					 pvs-process-output))
+		  (pvs-message "Answering yes to\n  %s" pvs-process-output)
+		  (process-send-string
+		   (ilisp-process)
+		   (if (string-match "(Y or N):" pvs-process-output)
+		       "y\n" "yes\n")))
+		(set-ilisp-value 'comint-fix-error
+				 (if pvs-in-checker "(restore)" pvs-fix-error))
+		(when (and (string-match "(Y or N):\\|(Yes or No)"
+					 pvs-process-output)
+			   (not (eq (current-buffer) (ilisp-buffer))))
+		  (switch-to-lisp t)
+		  (message "Please answer Yes or No"))
+		(comint-process-filter process pvs-process-output)
+		(set-ilisp-value 'pvs-partial-line "")
+		(when (and *pvs-maximize-proof-display*
+			   (eq (current-buffer) (ilisp-buffer))
+			   (string-match "Rule\\? " pvs-process-output))
+		  (save-selected-window
+		    (switch-to-buffer "*pvs*")
+		    (recenter -1))))
+	      (set-ilisp-value 'pvs-partial-line
+			       pvs-process-output))))))
 
 (defun pvs-output-filter (output)
   (if (string-match
@@ -540,8 +541,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
       (set-buffer buf))))
 
 (defun pvs-warning (msg)
-  (save-excursion
-    (set-buffer (get-buffer-create " *pvs-warn*"))
+  (with-current-buffer (get-buffer-create " *pvs-warn*")
     (define-pvs-key-bindings (current-buffer))
     (goto-char (point-max))
     (insert (format "(%s): %s\n"
@@ -557,13 +557,11 @@ want to set this to nil for slow terminals, or connections over a modem.")
   (if noninteractive
       (progn
 	(when pvs-validating
-	  (princ (save-excursion
-		   (set-buffer (find-file-noselect err))
+	  (princ (with-current-buffer (find-file-noselect err)
 		   (prog1 (format "%s: %s\n" msg (buffer-string))
 		     (kill-buffer (current-buffer))))))
 	(when (> pvs-verbose 0)
-	  (princ (save-excursion
-		   (set-buffer (find-file-noselect err))
+	  (princ (with-current-buffer (find-file-noselect err)
 		   (prog1 (format "%s: %s\n" msg (buffer-string))
 		     (kill-buffer (current-buffer))))
 		 'external-debugging-output))
@@ -587,8 +585,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
   (when (and noninteractive
 	     (not (equal file "NIL")))
     (let* ((buf (get-buffer-create "temp"))
-	   (bufstr (save-excursion
-		     (set-buffer buf)
+	   (bufstr (with-current-buffer buf
 		     (erase-buffer)
 		     (insert-file-contents file nil)
 		     (buffer-string))))
@@ -606,8 +603,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
 window."
   (setq buffer (or buffer ilisp-output-buffer))
   (with-output-to-temp-buffer buffer
-    (save-excursion
-      (set-buffer buffer)
+    (with-current-buffer buffer
       (insert-file-contents file)
       (set-buffer-modified-p nil)))
   (save-excursion
@@ -629,8 +625,7 @@ window."
                                 "PVS Messages"
 				"*Completions*"))
 
-(defvar pvs-buffer-kind nil)
-;;(make-variable-buffer-local 'pvs-buffer-kind)
+(defvar-local pvs-buffer-kind nil)
 
 (defun pvs-buffer (output)
   (apply 'pvs-buffer* (parse-pvs-message output)))
@@ -644,15 +639,13 @@ window."
 	      (delete-windows-on bufname)
 	      (kill-buffer bufname))
 	    (let* ((buf (get-buffer-create bufname))
-		   (cpoint (save-excursion (set-buffer buf) (point)))
+		   (cpoint (with-current-buffer buf (point)))
 		   (append-p (not (lnull append)))
-		   (at-end (save-excursion (set-buffer buf)
-					   (= (point) (point-max)))))
-	      (save-excursion
-		(set-buffer buf)
+		   (at-end (with-current-buffer buf
+			     (= (point) (point-max)))))
+	      (with-current-buffer buf
 		(unless (lnull kind)
-		  (make-local-variable 'pvs-buffer-kind)
-		  (setq pvs-buffer-kind kind))
+		  (setq-local pvs-buffer-kind kind))
 		(define-pvs-key-bindings buf)
 		(let ((at-end (= (point) (point-max)))
 		      (contents (buffer-string)))
@@ -669,59 +662,57 @@ window."
 		  (when (not (lnull read-only))
 		    (set-buffer-modified-p nil)
 		    (setq buffer-read-only t))
-		  (when (or (eq major-mode default-major-mode)
-			    (eq major-mode 'fundamental-mode))
+		  (when (eq major-mode 'fundamental-mode)
 		    (pvs-view-mode))
 		  (when (and append-p at-end)
 		    (goto-char (point-max)))))
 	      (if (= (point-min) (point-max))
 		  (message "PVS sent an empty buffer")
-		(case (intern display)
-		  ((nil NIL) nil)
-		  ((popto POPTO)
-		   (pop-to-buffer buf)
-		   (cond (append-p
-			  (when at-end
-			    (goto-char (point-max))))
-			 (t (goto-char cpoint)
-			    (beginning-of-line))))
-		  ((temp TEMP)
-		   (with-output-to-temp-buffer bufname
-		     (set-buffer bufname)
-		     (insert-file-contents file nil))
-		   (ilisp-show-output buf)
-		   (pvs-add-to-buffer-list bufname)
-		   (let ((rh (substitute-command-keys "\\[pvs-bury-output]")) 
-			 (s (substitute-command-keys "\\[ilisp-scroll-output]")))
-		     (message
-		      (format 
-			  "%s removes help window, %s scrolls, M-- %s scrolls back"
-			  rh s s))))
-		  (t
-		   (when (member (intern display) '(t T))
+		  (case (intern display)
+		    ((nil NIL) nil)
+		    ((popto POPTO)
 		     (pop-to-buffer buf)
-		     (ilisp-show-output buf)
 		     (cond (append-p
 			    (when at-end
 			      (goto-char (point-max))))
-			   (t (goto-char (point-min)) ;was cpoint
-			      (beginning-of-line)))
-		     (sit-for 0)
-		     ;;(pop-to-buffer obuf)
-		     )))))
-	    (delete-file file)))))
+			   (t (goto-char cpoint)
+			      (beginning-of-line))))
+		    ((temp TEMP)
+		     (with-output-to-temp-buffer bufname
+		       (set-buffer bufname)
+		       (insert-file-contents file nil))
+		     (ilisp-show-output buf)
+		     (pvs-add-to-buffer-list bufname)
+		     (let ((rh (substitute-command-keys "\\[pvs-bury-output]")) 
+			   (s (substitute-command-keys "\\[ilisp-scroll-output]")))
+		       (message
+			(format 
+			    "%s removes help window, %s scrolls, M-- %s scrolls back"
+			    rh s s))))
+		    (t
+		     (when (member (intern display) '(t T))
+		       (pop-to-buffer buf)
+		       (ilisp-show-output buf)
+		       (cond (append-p
+			      (when at-end
+				(goto-char (point-max))))
+			     (t (goto-char (point-min)) ;was cpoint
+				(beginning-of-line)))
+		       (sit-for 0)
+		       ;;(pop-to-buffer obuf)
+		       )))))
+	    (when (file-exists-p file)
+	      (delete-file file))))))
 
 (defun pvs-buffer-noninteractive (bufname file display read-only append kind)
   (when (not (lnull file))
     (let* ((buf (get-buffer-create bufname))
-	   (bufstr (save-excursion
-		     (set-buffer buf)
+	   (bufstr (with-current-buffer buf
 		     (erase-buffer)
 		     (insert-file-contents file nil)
 		     (define-pvs-key-bindings buf)
 		     (pvs-set-buffer-mode)
-		     (when (or (eq major-mode default-major-mode)
-			       (eq major-mode 'fundamental-mode))
+		     (when (eq major-mode 'fundamental-mode)
 		       (pvs-view-mode))
 		     (buffer-string))))
       (when pvs-validating
@@ -772,7 +763,6 @@ window."
   (apply 'pvs-sequent* (parse-pvs-message output)))
 
 (defun pvs-sequent* (printout result label comment sequent-file)
-  (setq sss (list printout result label comment sequent-file))
   (let* ((sqtbuf (get-buffer-create "Current Goal")))
     (set-buffer sqtbuf)
     (erase-buffer)
@@ -788,8 +778,7 @@ window."
       (insert (format "\n%s" comment)))
     (goto-char (point-max))
     (insert-file-contents sequent-file nil)
-    (make-local-variable 'font-lock-defaults)
-    (setq font-lock-defaults '(pvs-sequent-font-lock-keywords nil t))
+    (setq-local font-lock-defaults '(pvs-sequent-font-lock-keywords nil t))
     (goto-char (point-max))
     (unless pvs-proof-window-configuration
       (set-pvs-proof-window-configuration t))
@@ -869,11 +858,13 @@ window."
 	(width (1- (window-width)))
 	(num 0))
     (save-excursion
+      (goto-char (point-min))
       (dotimes (i lines)
-	(goto-line (1+ i))
 	(end-of-line)
 	(when (> (current-column) width)
-	  (incf num))))
+	  (incf num))
+	(beginning-of-line)
+	(forward-line 1)))
     (+ lines num)))
 
 (defun pvs-get-place (place)
@@ -894,20 +885,22 @@ window."
     (pop-to-buffer buf)
     (when pos
       (condition-case ()
-	  (progn (goto-line (car pos))
+	  (progn (goto-char (point-min))
+		 (forward-line (1- (car pos)))
 		 (forward-char (cadr pos))
 		 (setq *pvs-output-pos* (point-marker)))
-	(error (goto-line (point-min)))))
+	(error (goto-char (point-min)))))
     buf))
 
 (defun pvs-display-buffer (bufname pos)
   (pop-to-buffer bufname)
   (when pos
     (condition-case ()
-	  (progn (goto-line (car pos))
-		 (forward-char (cadr pos))
-		 (setq *pvs-output-pos* (point-marker)))
-      (error (goto-line (point-min)))))
+	(progn (goto-char (point-min))
+	       (forward-line (1- (car pos)))
+	       (forward-char (cadr pos))
+	       (setq *pvs-output-pos* (point-marker)))
+      (error (goto-char (point-min)))))
   bufname)
 
 
@@ -942,7 +935,7 @@ window."
 
 (defun pvs-query* (prompt)
   (if noninteractive
-      (progn (message msg)
+      (progn (message prompt)
 	     (comint-simple-send (ilisp-process) "t")
 	     t)
       (let ((inhibit-quit nil)
@@ -953,7 +946,7 @@ window."
 	 (case query (?! ":auto") (?y "t") (t "nil"))))))
 
 (defun pvs-make-items (item-list)
-  (mapcar '(lambda (x) (cons (cadr x) (caddr x)))
+  (mapcar #'(lambda (x) (cons (cadr x) (caddr x)))
 	  (car (read-from-string item-list))))
 
 (defun pvs-handler (error-p wait-p message output prompt)
@@ -995,8 +988,7 @@ let the user decide what to do."
 			  (view-buffer buffer))
 		      (pvs-bury-output))
 		  t)
-		(save-excursion
-		  (set-buffer (get-buffer-create "*Errors*"))
+		(with-current-buffer (get-buffer-create "*Errors*")
 		  (define-pvs-key-bindings (current-buffer))
 		  (if clear (delete-region (point-min) (point-max)))
 		  (goto-char (point-max))
@@ -1026,8 +1018,7 @@ let the user decide what to do."
       t))
 
 (defun simple-status-pvs ()
-  (save-excursion
-    (set-buffer (ilisp-buffer))
+  (with-current-buffer (ilisp-buffer)
     (comint-send-description (car comint-send-queue))))
 
 (defpvs pvs-status environment ()
@@ -1035,8 +1026,7 @@ let the user decide what to do."
 
 This displays information about the PVS command queue in the minibuffer."
   (interactive)
-  (save-excursion
-    (set-buffer (ilisp-buffer))
+  (with-current-buffer (ilisp-buffer)
     (let* ((queue (pvs-queued-commands comint-send-queue))
 	   (stat (comint-send-description (car comint-send-queue))))
       (cond ((string= stat "Done")
@@ -1078,14 +1068,6 @@ This displays information about the PVS command queue in the minibuffer."
     (quit  (comint-simple-send (ilisp-process) ":abort")
 	   (keyboard-quit))))
 
-(defun pvs-locate (output)
-  (apply 'pvs-locate* (parse-pvs-message output)))
-
-(defun pvs-locate* (dir file place)
-  (let ((pos (pvs-get-place place)))
-    (pvs-log-message 'LOCATE (format "%s%s %s" dir file place)) 
-    (pvs-display-file file dir pos)))
-
 
 ;;; pvs-modify-buffer takes a directory, a name, a place, and a contents
 ;;; and modifies the specified buffer accordingly.  If the directory is
@@ -1107,8 +1089,7 @@ This displays information about the PVS command queue in the minibuffer."
 (defun pvs-modify-buffer* (dir file pos textfile)
   (let ((place (car (read-from-string pos))))
     (cond ((lnull dir)
-	   (save-excursion
-	     (set-buffer file)
+	   (with-current-buffer file
 	     (apply 'kill-region (pvs-region place))
 	     (unless (lnull textfile)
 	       (insert-file-contents textfile))
@@ -1153,18 +1134,16 @@ This displays information about the PVS command queue in the minibuffer."
 	 (value (cadddr out))
 	 (buffer-name (format "*status-%s*" proof))
 	 (buffer (get-buffer-create buffer-name)))
-    (save-excursion
-      (set-buffer buffer)
+    (with-current-buffer buffer
       (define-pvs-key-bindings buffer)
       (outline-mode)
-      (make-local-variable 'outline-regexp)
-      (setq outline-regexp "[^ \n\r]+")
+      (setq-local outline-regexp "[^ \n\r]+")
       (cond ((string-equal type "CREATE")
 	     (erase-buffer)
 	     (insert "\n" proof " (    )" value)
-	     (delete-backward-char 1)
+	     (delete-char -1)
 	     (goto-char (point-min))
-	     (hide-body))
+	     (outline-hide-body))
 	    ((string-equal type "NEW-STATE")
 	     (goto-char (point-min))
 	     (re-search-forward (format "[\n\r]%s ([^\)]*)"
@@ -1178,7 +1157,7 @@ This displays information about the PVS command queue in the minibuffer."
 		 (delete-region (point) end)
 		 (let ((beg (point)))
 		   (insert "\n Current state:" value)
-		   (delete-backward-char 1)
+		   (delete-char -1)
 		   (if hidden
 		       (subst-char-in-region beg (point) ?\n ?\r t))))))
 	    ((string-equal type "STATUS")
@@ -1214,12 +1193,12 @@ This displays information about the PVS command queue in the minibuffer."
 		     (insert "\n"))
 		 (let ((beg (point)))
 		   (insert instance " (    )" value)
-		   (delete-backward-char 1)
+		   (delete-char -1)
 		   (if body-hidden
 		       (subst-char-in-region beg (point) ?\n ?\r t))))))
 	    ((string-equal type "HIDE-ALL")
 	     (goto-char (1+ (point-min)))
-	     (hide-subtree))
+	     (outline-hide-subtree))
 	    ((string-equal type "SHOW")
 	     (goto-char (point-min))
 	     (re-search-forward (format "[\n\r]%s (\\([^\)]*\\))"
@@ -1227,7 +1206,7 @@ This displays information about the PVS command queue in the minibuffer."
 	     (goto-char (match-beginning 0))
 	     (subst-char-in-region (point) (1+ (point)) ?\r ?\n t)
 	     (forward-char 1)
-	     (show-entry))
+	     (outline-show-entry))
 	    (t (error "Unknown display type %s" type))))))	   
 
 (defun pvs-locate (output)
@@ -1273,38 +1252,46 @@ for the interactive function."
 a complete sexp, send it.  Otherwise, indent appropriately."
   (interactive)
   (let ((proc (get-buffer-process (current-buffer))))
-    (if (not proc)
-	(error "Current buffer has no process")
+    (if (not proc) (error "Current buffer has no process")
 	(let* ((pmark (process-mark proc))
 	       (input1 (ilisp-get-old-input))
 	       (input (protect-backslash-for-lisp input1)))
-	  (if input
-	      (let ((input-ring (ilisp-get-input-ring)))
-		(if (>= (point) pmark)
-		    (goto-char (point-max))
-		    (goto-char pmark)
-		    (insert input))
-		(if (not ilisp-no-newline) (insert ?\n))
-		(if (and (funcall comint-input-filter input)
-			 (or (ring-empty-p input-ring)
-			     (not (string= (ring-ref input-ring 0) input))))
-		    (ring-insert-new input-ring input))
-		(run-hook-with-args 'comint-input-filter-functions input)
-		;; Nuke symbol table
-		(setq ilisp-original nil)
-		(funcall comint-input-sender proc input)
+	(if input
+	    (progn 
+	      (if (>= (point) pmark)
+		  (goto-char (point-max))
+		(goto-char pmark)
+		(insert input))
+	      (if (not ilisp-no-newline) (insert ?\n))
+	      (if (and (funcall comint-input-filter input)
+		       (or (ring-empty-p (ilisp-get-input-ring))
+			   (not (string= (ring-ref (ilisp-get-input-ring) 0)
+					 input))))
+		  (ilisp-ring-insert (ilisp-get-input-ring) input))
+	      (run-hook-with-args 'comint-input-filter-functions input)
+	      ;; Ugh, comint changing under my feet....
+	      ;; Note: This used to be
+	      ;;        (eq ilisp-emacs-version-id 'gnu-19)
+	      ;;       25/11/94 Marco Antoniotti
+	      (when (or (eq +ilisp-emacs-version-id+ 'fsf-19)
+			  (eq +ilisp-emacs-version-id+ 'fsf-20)
+			  (eq +ilisp-emacs-version-id+ 'fsf-21))
+		  (setq comint-input-ring-index nil))
+	      ;; Nuke symbol table
+	      (setq ilisp-original nil)
+	      (funcall comint-input-sender proc input)
+	      (set-marker (process-mark proc) (point))
+	      (set-marker comint-last-input-end (point))
+	      (goto-char (point-max)))
+	  (if (= pmark (point-max)) 
+	      (let ((comint-send-newline t))
+		(when (not ilisp-no-newline) (insert ?\n))
 		(set-marker (process-mark proc) (point))
-		(set-marker comint-last-input-end (point))
-		(goto-char (point-max)))
-	      (if (= pmark (point-max)) 
-		  (let ((comint-send-newline t))
-		    (if (not ilisp-no-newline) (insert ?\n))
-		    (set-marker (process-mark proc) (point))
-		    (funcall comint-input-sender proc ""))
-		  (insert ?\n)
-		  (save-restriction
-		    (narrow-to-region pmark (point-max))
-		    (funcall indent-line-function))))))))
+		(funcall comint-input-sender proc ""))
+	    (insert ?\n)
+	    (save-restriction
+	      (narrow-to-region pmark (point-max))
+	      (funcall indent-line-function))))))))
 
 (defun protect-backslash-for-lisp (string)
   (let ((pos (- (length string) 1))
@@ -1345,8 +1332,7 @@ is emptied."
 	  (comint-send (ilisp-process) ":reset")
  	  (sleep-for 1)
 	  (interrupt-process (ilisp-process))
-	  (save-excursion
-	    (set-buffer (ilisp-buffer))
+	  (with-current-buffer (ilisp-buffer)
 	    (comint-setup-ipc t)
 	    (goto-char (point-max))
 	    (set-marker (process-mark (ilisp-process)) (point))
@@ -1368,8 +1354,7 @@ is emptied."
   (when *pvs-is-garbage*
     (message "PVS disallows interrupts during GC in lucid4.0"))
   (unless *pvs-is-garbage*;; PDL nov94 to stop interrupt during gc
-    (save-excursion
-      (set-buffer (ilisp-buffer))
+    (with-current-buffer (ilisp-buffer)
       (comint-interrupt-subjob)
       (setq comint-send-queue 
 	    (list (list nil nil nil 'run "Top Level"
@@ -1379,169 +1364,6 @@ is emptied."
       (lisp-pop-to-buffer (ilisp-buffer))
       (goto-char (point-max))))
   t)
-
-;;; The following functions fix a problem with completion.el
-;;; distributed with Emacs prior to 19.31
-
-;;; DSC - I don't know what the bug is, but it can't do any
-;;; harm to leave this here for the moment.  Was in pvs-ilisp-mods.
-
-(when (and (not (featurep 'xemacs))
-	   (boundp 'emacs-major-version)
-	   (= emacs-major-version 19)
-	   (< emacs-minor-version 31))
-(defun pvs-symbol-under-point ()
-  "Returns the symbol that the point is currently on.
-But only if it is longer than `completion-min-length'."
-  (setq cmpl-saved-syntax (syntax-table))
-  (set-syntax-table cmpl-syntax-table)
-  (condition-case nil
-      (cond 
-       ;; Cursor is on following-char and after preceding-char
-       ((memq (char-syntax (following-char)) '(?w ?_))     
-	(setq cmpl-saved-point (point)
-	      cmpl-symbol-start (scan-sexps (1+ cmpl-saved-point) -1)
-	      cmpl-symbol-end (scan-sexps cmpl-saved-point 1))
-	;; remove chars to ignore at the start
-	(cond ((= (char-syntax (char-after cmpl-symbol-start)) ?w)
-	       (goto-char cmpl-symbol-start)
-	       (forward-word 1)
-	       (setq cmpl-symbol-start (point))
-	       (goto-char cmpl-saved-point)
-	       ))
-	;; remove chars to ignore at the end
-	(cond ((= (char-syntax (char-after (1- cmpl-symbol-end))) ?w)
-	       (goto-char cmpl-symbol-end)
-	       (forward-word -1)
-	       (setq cmpl-symbol-end (point))
-	       (goto-char cmpl-saved-point)
-	       ))
-	;; restore state
-	(set-syntax-table cmpl-saved-syntax)
-	;; Return completion if the length is reasonable
-	(if (and (<= (cmpl-read-time-eval completion-min-length)
-		     (- cmpl-symbol-end cmpl-symbol-start))
-		 (<= (- cmpl-symbol-end cmpl-symbol-start)
-		     (cmpl-read-time-eval completion-max-length)))
-	    (buffer-substring cmpl-symbol-start cmpl-symbol-end))
-	)
-       (t ;; restore table if no symbol
-	(set-syntax-table cmpl-saved-syntax)
-	nil))
-      (error ;; restore table if no symbol
-       (set-syntax-table cmpl-saved-syntax)
-       nil)))
-
-(defun pvs-symbol-before-point ()
-  "Returns a string of the symbol immediately before point.
-Returns nil if there isn't one longer than `completion-min-length'."       
-  ;; This is called when a word separator is typed so it must be FAST !
-  (setq cmpl-saved-syntax (syntax-table))
-  (set-syntax-table cmpl-syntax-table)
-  (condition-case nil
-      ;; Cursor is on following-char and after preceding-char
-      (cond
-       ((= (setq cmpl-preceding-syntax (char-syntax (preceding-char))) ?_)
-	;; No chars. to ignore at end
-	(setq cmpl-symbol-end (point)
-	      cmpl-symbol-start (scan-sexps (1+ cmpl-symbol-end) -1)
-	      )
-	;; remove chars to ignore at the start
-	(cond ((= (char-syntax (char-after cmpl-symbol-start)) ?w)
-	       (goto-char cmpl-symbol-start)
-	       (forward-word 1)
-	       (setq cmpl-symbol-start (point))
-	       (goto-char cmpl-symbol-end)
-	       ))
-	;; restore state
-	(set-syntax-table cmpl-saved-syntax)
-	;; return value if long enough
-	(if (>= cmpl-symbol-end
-		(+ cmpl-symbol-start
-		   (cmpl-read-time-eval completion-min-length)))
-	    (buffer-substring cmpl-symbol-start cmpl-symbol-end))
-	)
-       ((= cmpl-preceding-syntax ?w)
-	;; chars to ignore at end
-	(setq cmpl-saved-point (point)
-	      cmpl-symbol-start (scan-sexps (1+ cmpl-saved-point) -1))
-	;; take off chars. from end
-	(forward-word -1)
-	(setq cmpl-symbol-end (point))
-	;; remove chars to ignore at the start
-	(cond ((= (char-syntax (char-after cmpl-symbol-start)) ?w)
-	       (goto-char cmpl-symbol-start)
-	       (forward-word 1)
-	       (setq cmpl-symbol-start (point))
-	       ))
-	;; restore state
-	(goto-char cmpl-saved-point)
-	(set-syntax-table cmpl-saved-syntax)
-	;; Return completion if the length is reasonable
-	(if (and (<= (cmpl-read-time-eval completion-min-length)
-		     (- cmpl-symbol-end cmpl-symbol-start))
-		 (<= (- cmpl-symbol-end cmpl-symbol-start)
-		     (cmpl-read-time-eval completion-max-length)))
-	    (buffer-substring cmpl-symbol-start cmpl-symbol-end))
-	)
-       (t 
-	;; restore table if no symbol
-	(set-syntax-table cmpl-saved-syntax)
-	nil))
-      (error ;; restore table if no symbol
-        (set-syntax-table cmpl-saved-syntax)
-	nil)))
-
-(defun pvs-symbol-before-point-for-complete ()
-  ;; "Returns a string of the symbol immediately before point
-  ;; or nil if there isn't one.  Like symbol-before-point but doesn't trim the
-  ;; end chars."
-  ;; Cursor is on following-char and after preceding-char
-  (setq cmpl-saved-syntax (syntax-table))
-  (set-syntax-table cmpl-syntax-table)
-  (condition-case nil
-      (cond ((memq (setq cmpl-preceding-syntax (char-syntax (preceding-char)))
-		   '(?_ ?w))
-	     (setq cmpl-symbol-end (point)
-		   cmpl-symbol-start (scan-sexps (1+ cmpl-symbol-end) -1)
-		   )
-	     ;; remove chars to ignore at the start
-	     (cond ((= (char-syntax (char-after cmpl-symbol-start)) ?w)
-		    (goto-char cmpl-symbol-start)
-		    (forward-word 1)
-		    (setq cmpl-symbol-start (point))
-		    (goto-char cmpl-symbol-end)
-		    ))
-	     ;; restore state
-	     (set-syntax-table cmpl-saved-syntax)
-	     ;; Return completion if the length is reasonable
-	     (if (and (<= (cmpl-read-time-eval
-			   completion-prefix-min-length)
-			  (- cmpl-symbol-end cmpl-symbol-start))
-		      (<= (- cmpl-symbol-end cmpl-symbol-start)
-			  (cmpl-read-time-eval completion-max-length)))
-		 (buffer-substring cmpl-symbol-start cmpl-symbol-end))
-	     )
-	    (t 
-	     ;; restore table if no symbol
-	     (set-syntax-table cmpl-saved-syntax)
-	     nil)
-	    )
-    (error;; restore table if no symbol
-     (set-syntax-table cmpl-saved-syntax)
-     nil)
-    ))
-
-(defun pvs-set-completion-functions ()
-  (fset 'symbol-before-point 'pvs-symbol-before-point)
-  (fset 'symbol-under-point 'pvs-symbol-under-point)
-  (fset 'symbol-before-point-for-complete
-	'pvs-symbol-before-point-for-complete)
-  nil)
-
-(eval-after-load "completion" '(pvs-set-completion-functions))
-
-(pvs-set-completion-functions))
 
 (defun pvs-bury-output ()
   "Bury all temporary windows"

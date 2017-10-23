@@ -78,7 +78,7 @@
 ;; pvs-do-write-bin-files  - N/A
 ;; pvs-remove-bin-files    - N/A
 
-(require 'cl)
+(require 'cl-lib)
 (eval-when-compile (require 'pvs-macros))
 (provide 'pvs-cmds)
 
@@ -200,7 +200,7 @@ The prettyprint-theory command prettyprints the specified theory and
 replaces the old theory in the current buffer.  Can use undo (C-x u or
 C-_) or M-x revert-buffer to return to the old version."
   (interactive (complete-theory-name "Prettyprint theory name: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
   (save-some-pvs-buffers t)
   (let ((file (when (member-equal theoryname (buffer-theories))
@@ -260,6 +260,16 @@ instance.  No longer used - use prettyprint-expanded instead"
 				 ""))
 	    nil nil nil nil nil default))))
 
+
+(defpvs pvs-set-prettyprint-case prettyprint (case)
+  "Set the case for printing keywords.  One of unicode, short, lower, upper, nil"
+  (interactive (list (completing-read "Enter case: " '("unicode" "short" "lower" "upper" "nil")
+				      nil t)))
+  
+  (let ((lcase (car (cl-member case '("unicode" "short" "lower" "upper" "nil")
+			       :test #'cl-equalp))))
+    (pvs-send (format "(setq *ppcase* :%s)" lcase))))
+
 ;;; prettyprint-expanded
 
 
@@ -286,7 +296,7 @@ displayed TCCs or other formulas may be initiated in the usual way, simply
 by moving the cursor to the formula to be proved and invoking the prove
 command."
   (interactive (complete-theory-name "Prettyprint-expanded theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
   (message "Creating the %s.ppe buffer..." theory)
   (pvs-send-and-wait (format "(prettyprint-expanded \"%s\")" theory)
@@ -295,8 +305,7 @@ command."
   (message "")
   (let ((buf (get-buffer (format "%s.ppe" theory))))
     (when buf
-      (save-excursion
-	(set-buffer buf)
+      (with-current-buffer buf
 	(set (make-local-variable 'pvs-context-sensitive) t)
 	(set (make-local-variable 'from-pvs-theory) theory)
 	(let ((mtime (get-theory-modtime theory)))
@@ -319,7 +328,7 @@ trivial TCCs."
 			     (list (when current-prefix-arg
 				     (prefix-numeric-value current-prefix-arg)))))
 	(save-some-pvs-buffers)
-	(unless (interactive-p) (pvs-collect-theories))
+	(unless (called-interactively-p 'interactive) (pvs-collect-theories))
 	(message "Creating the %s.tccs buffer..." theory)
 	(pvs-send-and-wait (format "(show-tccs \"%s\" %s)" theory arg)
 			   nil (pvs-get-abbreviation 'show-tccs)
@@ -373,7 +382,7 @@ the prove command."
 (defpvs show-theory-warnings theory-status (theoryname)
   "Displays the warnings associated with THEORYNAME"
   (interactive (complete-theory-name "Show warnings of theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
   (pvs-send-and-wait (format "(show-theory-warnings \"%s\")" theoryname) nil
 		     (pvs-get-abbreviation 'show-theory-warnings)
@@ -390,7 +399,7 @@ the prove command."
 (defpvs show-theory-messages theory-status (theoryname)
   "Displays the informational messages associated with THEORYNAME"
   (interactive (complete-theory-name "Show messages of theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
   (pvs-send-and-wait (format "(show-theory-messages \"%s\")" theoryname) nil
 		     (pvs-get-abbreviation 'show-theory-warnings)
@@ -407,7 +416,7 @@ the prove command."
 (defpvs show-theory-conversions theory-status (theoryname)
   "Displays the conversions associated with THEORYNAME"
   (interactive (complete-theory-name "Show conversions of theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
   (pvs-send-and-wait (format "(show-theory-conversions \"%s\")" theoryname) nil
 		     (pvs-get-abbreviation 'show-theory-conversions)
@@ -436,7 +445,7 @@ and invoking the prove command."
     (if (not (file-exists-p fname))
 	(error "%s does not exist." fname)
 	(find-file fname)
-	(unless buffer-read-only (toggle-read-only))
+	(setq buffer-read-only t)
 	(pvs-mode)
 	(set (make-local-variable 'pvs-prelude) 0))))
 
@@ -459,14 +468,13 @@ formula and invoking the prove command."
 	      (let ((pbuf (get-buffer-create theoryname))
 		    (poff nil))
 		(set-buffer pbuf)
-		(setq poff (save-excursion
-			     (set-buffer buf)
+		(setq poff (with-current-buffer buf
 			     (goto-char (car region))
 			     (- (current-line-number) 1)))
-		(when buffer-read-only (toggle-read-only))
-		(erase-buffer)
-		(insert-buffer-substring buf (car region) (cadr region))
-		(unless buffer-read-only (toggle-read-only))
+		(let ((inhibit-read-only t))
+		  (erase-buffer)
+		  (insert-buffer-substring buf (car region) (cadr region)))
+		(setq buffer-read-only t)
 		(goto-char (point-min))
 		(pop-to-buffer pbuf)
 		(pvs-mode)
@@ -523,7 +531,8 @@ the beginning of the specified theory."
 		       (concat (car library-file-and-place) ".pvs")))
     (set-buffer-modified-p nil)
     (setq buffer-read-only t)
-    (goto-line (car (cadr library-file-and-place)))))
+    (goto-char (point-min))
+    (forward-line (1- (car (cadr library-file-and-place))))))
   
 (defpvs pvs-add-library-path library (libpath)
   "Adds a path to the PVS library paths list"
@@ -573,7 +582,7 @@ The find-theory command finds the PVS file associated with the specified
 theory, and reads in that file."
   (interactive (complete-theory-name
 		"Find PVS file containing theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (let ((tbuf (get-theory-buffer theoryname)))
     (if (null tbuf)
 	(message "%s is not in the current context" theoryname)
@@ -679,16 +688,14 @@ than a '.pvs' buffer."
 	 (fromfile (read-file-name "Import theory from file: "
 				   pvs-last-import-dir nil t))
 	 (fbuf (find-file-noselect fromfile))
-	 (theoryname (save-excursion
-		       (set-buffer fbuf)
+	 (theoryname (with-current-buffer fbuf
 		       (car (complete-theory-name-in-buffer
 			     "Import theory named: ")))))
     (save-excursion
       (unless (forward-theory t)
 	(goto-char (point-max))
 	(insert "\n\n"))
-      (let ((treg (save-excursion
-		    (set-buffer fbuf)
+      (let ((treg (with-current-buffer fbuf
 		    (theory-region-from-buffer theoryname))))
 	(apply 'insert-buffer-substring fbuf (cdr treg))))))
 	
@@ -721,10 +728,9 @@ deleted from the directory."
 The delete-theory command deletes the specified theory from the current
 buffer, which must be associated with a PVS file."
   (interactive (complete-theory-name "Delete theory named: " t))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (let ((tbuf (get-theory-buffer theoryname)))
-    (save-excursion
-      (set-buffer tbuf)
+    (with-current-buffer tbuf
       (let ((treg (theory-region theoryname)))
 	(apply 'kill-region (cdr treg)))
       (pvs-send-and-wait (format "(delete-theory \"%s\")" theoryname)
@@ -751,7 +757,7 @@ exiting PVS, buffers not saved will be deleted."
 	       (and thname
 		    (or arg
 			(y-or-n-p (format "Save theory %s? " thname)))
-		    (save-excursion (set-buffer buf) (save-buffer)))))
+		    (with-current-buffer buf (save-buffer)))))
       (error nil))))
 
 
@@ -857,7 +863,7 @@ pvs-tex.sub files from your home directory."
 
 (defun pvs-home-directory-files ()
   (let* ((default-directory (expand-file-name "~")))
-    (remove-if '(lambda (ff) (not (file-exists-p ff)))
+    (cl-remove-if '(lambda (ff) (not (file-exists-p ff)))
       '(".pvsemacs" "pvs-strategies" "pvs-tex.sub" ".pvs.lisp"))))
 
 (defun pvs-create-local-home-directory-name (&optional num)
@@ -889,8 +895,7 @@ PVS file.  If given an argument, includes library files as well."
     (when (or (not (file-exists-p dump-file))
 	      (yes-or-no-p (format "File %s exists - overwrite? " dump-file)))
       (let ((dump-buffer (get-buffer-create "*pvs-temp-buffer*")))
-	(save-excursion
-	  (set-buffer dump-buffer)
+	(with-current-buffer dump-buffer
 	  (erase-buffer)
 	  (dump-pvs-files-to-current-buffer pvs-file libraries-p)
 	  (write-file dump-file)
@@ -907,7 +912,7 @@ making use of outline mode."
   (find-file dump-file)
   (setq outline-regexp "\\$")
   (outline-mode)
-  (hide-body)
+  (outline-hide-body)
   (message "You are in outline-mode; type C-h m for help"))
 
 (defun dump-pvs-files-to-current-buffer (pvs-file libraries-p)
@@ -961,6 +966,7 @@ making use of outline mode."
       (dolist (lib prelude-libs)
 	(insert (format "\n(load-prelude-library \"%s\")" lib))))))
 
+(let ((pvs-libdirs nil))
 (defpvs undump-pvs-files dump-files (filename directory)
   "Break dump files into separate PVS files.
 
@@ -972,12 +978,10 @@ e.g., C-u or M-0."
   (interactive "fUndump file: \nDInto directory: ")
   (let ((buf (find-file-noselect filename))
 	(dname (file-name-as-directory directory))
-	(pvs-libdirs nil)
 	(overwrite nil))
     (unless (file-name-absolute-p dname)
       (error "Directory to undump into must be absolute, not relative"))
-    (save-excursion
-      (set-buffer buf)
+    (with-current-buffer buf
       (setq default-directory dname)
       (goto-char (point-min))
       (while (re-search-forward "^(load-prelude-library \\(.*\\))$" nil t)
@@ -1086,13 +1090,15 @@ ESC or `q' to not overwrite any of the remaining files,
 		   (setq ldir nil))))
 	  (push (cons dir ldir) pvs-libdirs)
 	  ldir))))
+)
 
-(defpvs report-pvs-bug help ()
-  "Sets up mail buffer for reporting PVS bugs."
-  (interactive)
+(defpvs report-pvs-bug help (subject)
+  "Report a bug in PVS."
+  (interactive "sPVS Subject: ")
   (mail)
   (mail-to) (insert "pvs-bugs@csl.sri.com")
-  (mail-subject))
+  (mail-subject) (insert (format "PVS Bugs: %s" subject))
+  )
 
 ;;;---------------------------------------------
 ;;; Context Commands
@@ -1150,8 +1156,7 @@ for any reason, then the current PVS context is not changed."
 
 (defun pvs-remove-old-context-buffers ()
   (dolist (b (buffer-list))
-    (save-excursion
-      (set-buffer b)
+    (with-current-buffer b
       (when (and (boundp 'pvs-context-sensitive)
 		 pvs-context-sensitive)
 	(set-buffer-modified-p nil)
@@ -1216,7 +1221,7 @@ extended.  Thus the next time this context is entered, the prelude will
 automatically be extended (by typechecking the libraries if necessary)."
   (interactive (list (pvs-complete-library-path
 		      "(Load prelude library from) directory: ")))
-  (unless (interactive-p)
+  (unless (called-interactively-p 'interactive)
     (setq dir (pvs-get-library-path dir)))
   (let ((default-directory (pvs-current-directory t)))
     (unless (file-directory-p dir)
@@ -1302,11 +1307,11 @@ by the key sequence that invokes the command."
   (interactive)
   (let ((buf (get-buffer-create "PVS Help")))
     (set-buffer buf)
-    (if buffer-read-only (toggle-read-only))
-    (erase-buffer)
-    (insert-file-contents (concat pvs-path "/lib/pvs.help"))
-    (goto-char (point-min))
-    (unless buffer-read-only (toggle-read-only))
+    (let ((inhibit-read-only t))
+      (erase-buffer)
+      (insert-file-contents (concat pvs-path "/lib/pvs.help"))
+      (goto-char (point-min)))
+    (setq buffer-read-only t)
     (pop-to-buffer buf)
     (pvs-view-mode)))
 
@@ -1317,11 +1322,11 @@ Provides an example specification, along with the PVS grammar."
   (interactive)
   (let ((buf (get-buffer-create "Language Help")))
     (set-buffer buf)
-    (if buffer-read-only (toggle-read-only))
-    (erase-buffer)
-    (insert-file-contents (concat pvs-path "/lib/pvs-language.help"))
-    (goto-char (point-min))
-    (unless buffer-read-only (toggle-read-only))
+    (let ((inhibit-read-only t))
+      (erase-buffer)
+      (insert-file-contents (concat pvs-path "/lib/pvs-language.help"))
+      (goto-char (point-min)))
+    (setq buffer-read-only t)
     (pop-to-buffer buf)
     (pvs-view-mode)))
 
@@ -1330,11 +1335,11 @@ Provides an example specification, along with the PVS grammar."
   (interactive)
   (let ((buf (get-buffer-create "PVS bnf")))
     (set-buffer buf)
-    (if buffer-read-only (toggle-read-only))
-    (erase-buffer)
-    (insert-file-contents (concat pvs-path "/lib/pvs.bnf"))
-    (goto-char (point-min))
-    (unless buffer-read-only (toggle-read-only))
+    (let ((inhibit-read-only t))
+      (erase-buffer)
+      (insert-file-contents (concat pvs-path "/lib/pvs.bnf"))
+      (goto-char (point-min)))
+    (setq buffer-read-only t)
     (pop-to-buffer buf)
     (pvs-view-mode)))
 
@@ -1345,11 +1350,11 @@ Provides an example specification, the Unicode operators, and Emacs help."
   (interactive)
   (let ((buf (get-buffer-create "Unicode Help")))
     (set-buffer buf)
-    (if buffer-read-only (toggle-read-only))
-    (erase-buffer)
-    (insert-file-contents (concat pvs-path "/lib/pvs-unicode.help"))
-    (goto-char (point-min))
-    (unless buffer-read-only (toggle-read-only))
+    (let ((inhibit-read-only t))
+      (erase-buffer)
+      (insert-file-contents (concat pvs-path "/lib/pvs-unicode.help"))
+      (goto-char (point-min)))
+    (setq buffer-read-only t)
     (pop-to-buffer buf)
     (pvs-view-mode)))
   
@@ -1371,9 +1376,7 @@ Has no effect under X windows."
       (error "Cannot suspend Emacs running in X-windows")
       (when (y-or-n-p "Save context first? ")
 	(save-context))
-      (if (pvs-getenv "IN_EMACSTOOL")		; Set by emacstool
-	  (suspend-emacstool)
-	  (suspend-emacs))))
+      (suspend-emacs)))
 
 ;;; exit-pvs
 
@@ -1508,7 +1511,7 @@ buffer."
 The status-theory command provides a description of the status of the
 specified theory in the minibuffer."
   (interactive (complete-theory-name "Status of theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-bury-output)
   (pvs-send-and-wait (format "(status-theory \"%s\")" theory) nil
 		     (pvs-get-abbreviation 'status-theory)
@@ -1535,7 +1538,7 @@ The status-importchain command provides description of the status of each
 theory within the importchain of the specified theory in the PVS Status
 buffer.  With an argument, displays just the theory names."
   (interactive (complete-theory-name "Importchain for theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-send (format "(status-importchain \"%s\" %s)"
 		theory (and current-prefix-arg t))
 	    nil (pvs-get-abbreviation 'show-importchain)))
@@ -1548,7 +1551,7 @@ The status-importchain command provides description of the status of each
 theory which imports the specified theory in the current context in the
 PVS Status buffer.  With an argument, displays just the theory names."
   (interactive (complete-theory-name "Importbychain for theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-send (format "(status-importbychain \"%s\" %s)"
 		theory (and current-prefix-arg t))
 	    nil (pvs-get-abbreviation 'show-importbychain)))
@@ -1583,7 +1586,7 @@ that some changes have been made that may invalidate the proof."
 The status-proof-theory command provides a summary of the status of the
 proofs in the current theory in the PVS Status buffer."
   (interactive (complete-theory-name "Proof status for theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-send-and-wait (format "(status-proof-theory \"%s\")" theoryname)
 		     nil (pvs-get-abbreviation 'status-proof-theory)
 		     'dont-care))
@@ -1606,7 +1609,7 @@ the proofs of the importchain of the current theory in the PVS Status
 buffer."
   (interactive (complete-theory-name
 		"Proof status for import chain of theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-send-and-wait (format "(status-proof-importchain \"%s\")" theoryname)
 		     nil (pvs-get-abbreviation 'status-proof-importchain)
 		     'dont-care))
@@ -1645,7 +1648,7 @@ no circularities."
 The status-proofchain-theory command provide a proofchain analysis for
 each formula of the specified theory in the PVS Status buffer."
   (interactive (complete-theory-name "Proofchain status for theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-send-and-wait (format "(status-proofchain-theory \"%s\")"
 			 theoryname)
 		     nil (pvs-get-abbreviation 'status-proofchain-theory)
@@ -1671,7 +1674,7 @@ for each formula of the import chain of the specified theory in the PVS
 Status buffer."
   (interactive (complete-theory-name
 		"Proofchain status for import chain of theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-send (format "(status-proofchain-importchain \"%s\")"
 		theoryname)
 	     nil (pvs-get-abbreviation 'status-proofchain-importchain)))
@@ -1717,7 +1720,7 @@ processing other commands."
 ;;   (interactive (list (complete-declaration-name "Change name: ")
 ;; 		     (complete-symbol "To id: ")
 ;; 		     (complete-theory-name "Root Theory: ")))
-;;   (unless (interactive-p) (pvs-collect-theories))
+;;   (unless (called-interactively-p 'interactive) (pvs-collect-theories))
 ;;   (let ((change-info (pvs-send-file-and-wait
 ;; 		      (format "(change-declaration-name \"%s\" \"%s\" \"%s\")"
 ;; 			  from-name to-id root-theory)
@@ -1737,7 +1740,7 @@ are not included; give an argument to include them.  The display uses
 Tcl/Tk, click on the Help button at the bottom of the display for more
 information."
   (interactive (complete-theory-name "Show theory hierarchy from theory:"))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (if (wish-possible-p)
       (pvs-send (format "(x-module-hierarchy \"%s\" %s)"
 		    theoryname (and current-prefix-arg t)))
@@ -1820,10 +1823,10 @@ context."
     (dolist (dir (list "src" "src/prover" "src/utils" "ground-prover" "MU" ""))
       (setq files-alist
 	    (nconc files-alist
-		   (pairlis (directory-files (format "%s/%s" pvs-path dir)
-					     nil ".*\.lisp$")
-			    (directory-files (format "%s/%s" pvs-path dir)
-					     t ".*\.lisp$")))))
+		   (cl-pairlis (directory-files (format "%s/%s" pvs-path dir)
+						nil ".*\.lisp$")
+			       (directory-files (format "%s/%s" pvs-path dir)
+						t ".*\.lisp$")))))
     (let ((file (completing-read "Find lisp file: " files-alist)))
       (cdr (assoc file files-alist)))))
 

@@ -439,6 +439,11 @@
 		 :declared-type (or dtype type)
 		 :type type))
 
+(defun mk-dep-binding-name (dtype)
+  (assert (dep-binding? dtype))
+  (mk-name-expr (id dtype) nil nil
+		(make-resolution dtype (current-theory-name) (type dtype))))
+
 (defun mk-subtype (supertype predicate)
   (make-instance 'subtype
     :supertype supertype
@@ -1016,29 +1021,39 @@
 (defmethod mk-mapping-rhs ((ex mapping-rhs))
   ex)
 
-(defun mk-proof-info (id description create-date
-			 ;;run-date
-			 script ;;status
-			 refers-to ;;real-time run-time interactive?
+(defun mk-proof-info (id description create-date script refers-to
 			 &optional decision-procedure)
   (make-instance 'proof-info
     :id id
     :description description
     :create-date create-date
-    ;;:run-date run-date
     :script (if (= (length script) 3)
 		(append script (list nil))
 		script)
-    ;;:status status
     :refers-to (typecase (car refers-to)
 		 (declaration refers-to)
 		 (declaration-entry
 		  (mapcar #'get-declaration-entry-decl refers-to))
 		 (t (mapcar #'get-referenced-declaration
 		      (remove-if #'null refers-to))))
-    ;;:real-time real-time
-    ;;:run-time run-time
-    ;;:interactive? interactive?
+    :decision-procedure-used decision-procedure))
+
+(defun mk-tcc-proof-info (id description create-date script refers-to
+			  &optional decision-procedure origin)
+  (make-instance 'tcc-proof-info
+    :id id
+    :description description
+    :create-date create-date
+    :script (if (= (length script) 3)
+		(append script (list nil))
+		script)
+    :refers-to (typecase (car refers-to)
+		 (declaration refers-to)
+		 (declaration-entry
+		  (mapcar #'get-declaration-entry-decl refers-to))
+		 (t (mapcar #'get-referenced-declaration
+		      (remove-if #'null refers-to))))
+    :origin (make-tcc-origin origin)
     :decision-procedure-used decision-procedure))
 
 (defun make-proof-info (script &optional id description)
@@ -1053,6 +1068,29 @@
 		(append script (list nil))
 		script)
     :create-date (get-universal-time)))
+
+(defun make-tcc-proof-info (script &optional id description origin)
+  (assert (symbolp id))
+  (assert (or (null description) (stringp description)))
+  (assert (typep script '(or list justification)))
+  ;;(assert (not (null script)))
+  (make-instance 'tcc-proof-info
+    :id id
+    :description description
+    :script (if (= (length script) 3)
+		(append script (list nil))
+		script)
+    :create-date (get-universal-time)
+    :origin (make-tcc-origin origin)))
+
+(defun make-tcc-origin (origin)
+  (if (tcc-origin? origin)
+      origin
+      (make-instance 'tcc-origin
+       :root (car origin)
+       :kind (cadr origin)
+       :expr (caddr origin)
+       :type (cadddr origin))))
 
 (defun make-recordtype (fields)
   #+pvsdebug (assert (every@ #'(lambda (fd)
@@ -1554,24 +1592,30 @@
 (defun mk-implies-operator ()
   (implies-operator))
 
-(defmethod make-assignment ((arg expr) expression)
-  (mk-assignment 'uni (list (list arg)) expression))
+(defmethod make-assignment ((arg expr) expression &optional maplet?)
+  (if maplet?
+      (mk-maplet 'uni (list (list arg)) expression)
+      (mk-assignment 'uni (list (list arg)) expression)))
 
-(defmethod make-assignment ((arg name-expr) expression)
+(defmethod make-assignment ((arg name-expr) expression &optional maplet?)
   (if (and (typep (declaration arg) 'field-decl)
 	   (typep arg '(not field-assignment-arg)))
       (call-next-method (change-class (copy arg) 'field-assign)
-			expression)
+			expression maplet?)
       (call-next-method)))
 
-(defmethod make-assignment ((args list) expression)
+(defmethod make-assignment ((args list) expression &optional maplet?)
   (if (every #'(lambda (a) (typep a 'expr)) args)
-      (mk-assignment (unless (cdr args) 'uni) (list args) expression)
+      (if maplet?
+	  (mk-maplet (unless (cdr args) 'uni) (list args) expression)
+	  (mk-assignment (unless (cdr args) 'uni) (list args) expression))
       (if (every #'(lambda (arg)
 		     (and (listp arg)
 			  (every #'(lambda (a) (typep a 'expr)) arg)))
 		 args)
-	  (mk-assignment nil args expression)
+	  (if maplet?
+	      (mk-maplet nil args expression)
+	      (mk-assignment nil args expression))
 	  (error "make-assignment bad arguments: must be expression, list of exprs, or list of list of exprs"))))
 
 (defun make-update-expr (expression assignments &optional expected)
@@ -1650,7 +1694,8 @@
     (change-application-class-if-needed appl)
     (when (and (name-expr? op)
 	       (eq (id op) 'cons)
-	       (eq (id (module (declaration op))) 'list_adt))
+	       (eq (id (module (declaration op))) 'list_adt)
+	       (typep (args2 appl) '(or list-expr null-expr)))
       (change-class appl 'list-expr))
     appl))
 
@@ -1933,7 +1978,7 @@
 			   (cdr types))))
 	(make-projections* cdrtypes arg (1+ index) (cons projappl projapps)))))
 
-(defun make!-projection-application (index arg &optional actuals)
+(defun make!-projection-application (index arg &optional actuals dactuals)
   (assert (type arg))
   (if (tuple-expr? arg)
       (nth (1- index) (exprs arg))
@@ -1943,6 +1988,7 @@
 	  :id (makesym "PROJ_~d" index)
 	  :index index
 	  :actuals actuals
+	  :dactuals dactuals
 	  :argument arg
 	  :type projtype))))
 
@@ -2050,7 +2096,10 @@
   (let ((rtype (find-supertype type)))
     (assert (typep rtype '(or recordtype struct-sub-recordtype)))
     (if (dependent? rtype)
-	(make!-field-application-type* (fields rtype) field-id arg)
+	(let ((sub (list (fields rtype) field-id arg)))
+	  (or (gethash sub *subst-fields-hash*)
+	      (setf (gethash sub *subst-fields-hash*)
+	  	    (make!-field-application-type* (fields rtype) field-id arg))))
 	(type (find field-id (fields rtype) :test #'eq :key #'id)))))
 
 (defun make!-field-application-type* (fields field-id arg)
@@ -2067,12 +2116,13 @@
 
 (defun make!-update-expr (expression assignments)
   (assert (type expression))
-  (assert (every #'(lambda (ass) (typep ass '(and assignment (not maplet))))
-		 assignments))
-  (make-instance 'update-expr
-    :expression expression
-    :assignments assignments
-    :type (find-supertype (type expression))))
+  (if (every #'(lambda (ass) (typep ass '(and assignment (not maplet))))
+	     assignments)
+      (make-instance 'update-expr
+	:expression expression
+	:assignments assignments
+	:type (find-supertype (type expression)))
+      (make-update-expr expression assignments)))
 
 (defun make!-recognizer-name-expr (rec-id adt-type-name)
   (let* ((adt (adt adt-type-name))
@@ -2322,6 +2372,12 @@
       :bindings (list bd)
       :expression dj
       :type (mk-funtype type *boolean*))))
+
+(defun make!-let-expr (bind-alist expr)
+  (make-instance 'let-expr
+    :operator (make!-lambda-expr (mapcar #'car bind-alist) expr)
+    :argument (make-arg-tuple-expr (mapcar #'cdr bind-alist))
+    :type (type expr)))
 
 (defmethod make!-bind-decl (id (type type-expr))
   (mk-bind-decl id (or (print-type type) type) type))

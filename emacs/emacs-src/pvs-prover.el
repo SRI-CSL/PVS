@@ -59,7 +59,7 @@
 ;; step-proof           -
 
 (eval-when-compile (require 'pvs-macros))
-(require 'cl)
+(require 'cl-lib)
 
 (defvar pvs-in-checker nil
   "Indicates whether the proof checker is currently running.
@@ -164,6 +164,7 @@ the formula.  With an argument, runs the proof in the background."
 		 (format "(rerun-proof-at? \"%s\" %s %d \"%s\" %s %s)"
 		     (or fname theory) fmlastr line kind rerun-proof unproved)
 		 nil nil "t\\|T\\|no\\|NO")))
+    (pushw)
     (ilisp-send
      (format "(prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s %s)"
 	 (or fname theory) fmlastr line (if (memq rerun '(t T)) t) kind buf
@@ -224,7 +225,7 @@ including those already proved."
       (confirm-not-in-checker)
       (save-some-pvs-buffers)
       (pvs-send (format "(prove-pvs-theories '%s %s)"
-		    (mapcar '(lambda (x) (format "\"%s\"" x)) theories)
+		    (mapcar #'(lambda (x) (format "\"%s\"" x)) theories)
 		  (and current-prefix-arg t))
 		nil 'prts)))
 
@@ -273,7 +274,7 @@ proved."
   (save-some-pvs-buffers)
   (pvs-send (format "(prove-usingchain \"%s\" %s '%s)"
 		theory (and current-prefix-arg t)
-		(mapcar '(lambda (x) (format "\"%s\"" x)) exclude))
+		(mapcar #'(lambda (x) (format "\"%s\"" x)) exclude))
 	    nil 'pri))
 
 
@@ -324,7 +325,7 @@ including those already proved."
       (confirm-not-in-checker)
       (save-some-pvs-buffers)
       (pvs-send (format "(prove-pvs-theories '%s %s t)"
-		    (mapcar '(lambda (x) (format "\"%s\"" x)) theories)
+		    (mapcar #'(lambda (x) (format "\"%s\"" x)) theories)
 		  (and current-prefix-arg t))
 		nil 'prts)))
 
@@ -373,7 +374,7 @@ proved."
   (save-some-pvs-buffers)
   (pvs-send (format "(prove-usingchain \"%s\" %s '%s t)"
 		theory (and current-prefix-arg t)
-		(mapcar '(lambda (x) (format "\"%s\"" x)) exclude))
+		(mapcar #'(lambda (x) (format "\"%s\"" x)) exclude))
 	    nil 'pri))
 
 (defpvs prove-proofchain-using-default-dp prove ()
@@ -411,7 +412,7 @@ proof scripts, including those already proved."
 	 (line (current-line-number))
 	 (fref (make-pvs-formula-reference
 		:buffer buf :file fname :line line
-		:library (when pvs-lib-p
+		:library (when (with-current-buffer buf pvs-lib-p)
 			   (pathname-directory (buffer-file-name))))))
     (cond ((or (equal pvs-buffer-kind "Declaration")
 	       (equal buf "Declaration"))
@@ -419,7 +420,7 @@ proof scripts, including those already proved."
 	  ((file-equal (format "%s/lib/prelude.pvs" pvs-path)
 		       (buffer-file-name))
 	   (setf (pvs-fref-kind fref) 'prelude))
-	  ((boundp 'pvs-prelude)
+	  (pvs-prelude
 	   (setf (pvs-fref-kind fref) 'prelude-theory
 		 (pvs-fref-prelude-offset fref) pvs-prelude))
 	  (file (setf (pvs-fref-kind fref) 'pvs))
@@ -446,10 +447,10 @@ proof scripts, including those already proved."
 	  ((equal ext "tccs")
 	   (cond ((equal pvs-theory-modtime (get-theory-modtime from-pvs-theory))
 		  (setf (pvs-fref-kind fref) 'tccs)
-		  (let ((dotpos (position ?. fname)))
+		  (let ((dotpos (cl-position ?. fname)))
 		    (when dotpos
-		      (setf (pvs-fref-theory fref) (substring name 0 dotpos)
-			    (pvs-fref-formula fref) (substring name (1+ dotpos))))))
+		      (setf (pvs-fref-theory fref) (substring fname 0 dotpos)
+			    (pvs-fref-formula fref) (substring fname (1+ dotpos))))))
 		 ((yes-or-no-p "TCC buffer is stale (PVS file was modified) regenerate?")
 		  (show-tccs from-pvs-theory)
 		  (error "TCC buffer was stale, has been updated"))
@@ -466,17 +467,18 @@ proof scripts, including those already proved."
 	  (t (error "Cannot determine formula from this buffer")))
     fref))
 
+(defvar-local pvs-valid-formula-buffer :unbound)
 
 (defun pvs-valid-formula-buffer ()
-  (if (not (boundp 'pvs-valid-formula-buffer))
+  (if (eq pvs-valid-formula-buffer :unbound)
       (let ((file (current-pvs-file t))
 	    (ext (pathname-type (buffer-name))))
-	(set (make-local-variable 'pvs-valid-formula-buffer)
-	     (or (boundp 'pvs-prelude)
-		 (file-equal (format "%s/lib/prelude.pvs" pvs-path)
-			     (buffer-file-name))
-		 file
-		 (member-equal ext '("ppe" "tccs")))))
+	(setq-local pvs-valid-formula-buffer
+		    (or (boundp 'pvs-prelude)
+			(file-equal (format "%s/lib/prelude.pvs" pvs-path)
+				    (buffer-file-name))
+			file
+			(member-equal ext '("ppe" "tccs")))))
       pvs-valid-formula-buffer))
 
 ;;; Editing proofs
@@ -597,9 +599,8 @@ commands are available.
 			       (format "(collect-strategy-names %s)"
 				   (and current-prefix-arg t))
 			       nil nil 'list)))
-	  (purecopy
-	   (list
-	    (mapconcat 'pvs-keyword-match strategy-names "\\|"))))))
+	  (list
+	   (list (pvs-regexp-opt strategy-names) 1 'font-lock-keyword-face)))))
 
 (defpvs edit-proof edit-proof ()
   "Edit a proof in the \"Proof\" buffer
@@ -651,7 +652,7 @@ documentation for edit-proof-mode for more information."
 			  (overlay-put (make-overlay (- (point) 3) (point))
 				       'face 'font-lock-pvs-checkpoint-face)))))
 	       (fix-edit-proof-comments)
-	       (setq buffer-modified-p nil)
+	       (set-buffer-modified-p nil)
 	       (goto-char (point-min))
 	       (pvs-prover-goto-next-step)
 	       (hilit-next-prover-command)
@@ -1021,8 +1022,7 @@ declarations will not be installed."
 			     nil nil 'bool)
       (setq add-decl-window-config (current-window-configuration))
       (let ((buf (get-buffer-create "Add Declaration")))
-	(save-excursion
-	  (set-buffer buf)
+	(with-current-buffer buf
 	  (erase-buffer)
 	  (set-buffer-modified-p nil)
 	  (add-declaration-mode))
@@ -1033,8 +1033,7 @@ declarations will not be installed."
   "Installs the edited declarations."
   (pvs-bury-output)
   (cond ((get-buffer "Add Declaration")
-	 (save-excursion
-	   (set-buffer "Add Declaration")
+	 (with-current-buffer "Add Declaration"
 	   (goto-char (point-min))
 	   (delete-initial-blank-lines)
 	   (add-final-newline)
@@ -1045,13 +1044,13 @@ declarations will not be installed."
 
 (defun add-declaration-to-file (file placestr)
   (let* ((place (car (read-from-string placestr)))
-	 (decls (save-excursion
-		  (set-buffer "Add Declaration")
+	 (decls (with-current-buffer "Add Declaration"
 		  (goto-char (point-max))
 		  (delete-blank-lines)
 		  (substring (buffer-string) 0 -1))))
     (find-pvs-file file)
-    (goto-line (car place))
+    (goto-char (point-min))
+    (forward-line (1- (car place)))
     (insert-decls decls (cadr place) t)
     (save-buffer)
     (pvs-send (format "(reset-parsed-date \"%s\")" file))
@@ -1115,8 +1114,7 @@ will replace the original when C-c C-c is typed."
 			     nil nil 'bool)
       (setq add-decl-window-config (current-window-configuration))
       (let ((buf (get-buffer-create "Modify Declaration")))
-	(save-excursion
-	  (set-buffer buf)
+	(with-current-buffer buf
 	  (set-buffer-modified-p nil)
 	  (modify-declaration-mode))
 	(pop-to-buffer buf)
@@ -1126,8 +1124,7 @@ will replace the original when C-c C-c is typed."
   "Installs the modified declaration"
   (pvs-bury-output)
   (cond ((get-buffer "Modify Declaration")
-	 (save-excursion
-	   (set-buffer "Modify Declaration")
+	 (with-current-buffer "Modify Declaration"
 	   (add-final-newline)
 	   (delete-initial-blank-lines)
 	   (write-region (point-min) (point-max)
@@ -1139,16 +1136,17 @@ will replace the original when C-c C-c is typed."
 	   (when (and ret (consp ret))
 	     (let* ((file (car ret))
 		    (place (cadr ret))
-		    (decl (save-excursion
-			    (set-buffer "Modify Declaration")
+		    (decl (with-current-buffer "Modify Declaration"
 			    (goto-char (point-max))
 			    (delete-blank-lines)
 			    (substring (buffer-string) 0 -1))))
 	       (find-pvs-file file)
-	       (goto-line (car place))
+	       (goto-char (point-min))
+	       (forward-line (1- (car place)))
 	       (forward-char (cadr place))
 	       (let ((start (point)))
-		 (goto-line (caddr place))
+		 (goto-char (point-min))
+		 (forward-line (1- (caddr place)))
 		 (end-of-line)
 		 ;;(forward-char (+ (cadddr place) 1))
 		 (delete-region start (point)))
@@ -1343,6 +1341,7 @@ The step-proof command invokes the prover and sets up proof stepping
 through using the edit-proof command."
   (interactive)
   (confirm-not-in-checker)
+  (pushw)
   (delete-other-windows)
   (let* ((fref (pvs-formula-origin))
 	 (kind (pvs-fref-kind fref))
@@ -1362,6 +1361,7 @@ through using the edit-proof command."
 	  ((member kind '(ppe tccs))
 	   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" fname)
 				      nil 'tc nil)
+	     (popw)
 	     (error "%s is not typechecked" fname))))
     (unless pvs-error
       (when (get-buffer "Proof")
@@ -1375,7 +1375,7 @@ through using the edit-proof command."
       (when (get-buffer "Proof")
 	(pop-to-buffer (get-buffer "Proof"))
 	(fix-edit-proof-comments)
-	(setq buffer-modified-p nil)
+	(set-buffer-modified-p nil)
 	(goto-char (point-min))
 	(pvs-prover-goto-next-step)
 	(hilit-next-prover-command))
@@ -1456,7 +1456,7 @@ invocation of a prove-untried- command."
   (save-some-pvs-buffers)
   (pvs-send (format "(prove-untried-importchain \"%s\" '%s %s %s)"
 		theory strategy (and current-prefix-arg t)
-		(mapcar '(lambda (x) (format "\"%s\"" x)) exclude))
+		(mapcar #'(lambda (x) (format "\"%s\"" x)) exclude))
 	    nil))
 
 (defpvs prove-untried-pvs-file prove (file &optional strategy)
@@ -1572,7 +1572,7 @@ default for the next invocation of a prove-formulas- command."
   (save-some-pvs-buffers)
   (pvs-send (format "(prove-formulas-importchain \"%s\" '%s %s %s)"
 		theory strategy (and current-prefix-arg t)
-		(mapcar '(lambda (x) (format "\"%s\"" x)) exclude))
+		(mapcar #'(lambda (x) (format "\"%s\"" x)) exclude))
 	    nil))
 
 (defpvs prove-formulas-pvs-file prove (file &optional strategy)
@@ -1688,7 +1688,7 @@ command."
   (save-some-pvs-buffers)
   (pvs-send (format "(prove-tccs-importchain \"%s\" '%s %s %s)"
 		theory strategy (and current-prefix-arg t)
-		(mapcar '(lambda (x) (format "\"%s\"" x)) exclude))
+		(mapcar #'(lambda (x) (format "\"%s\"" x)) exclude))
 	    nil))
 
 (defpvs prove-tccs-pvs-file prove (file &optional strategy)
@@ -1743,6 +1743,15 @@ for the next invocation of a prove-tccs- command."
 		  (format "\"%s\"" (current-pvs-file t))))
 	    nil))
 
+;; (defpvs prove-parallel prove (pvs-path)
+;;   "Proves the given formula in parallel with another version of PVS.
+
+;; Starts the proof of the given formula in the current PVS, as well as another version.
+;; Prompts for the path to the other version of PVS.  Starts a new emacsserver"
+;;   (interactive (list (get-other-pvs-path)))
+  
+;;    emacs --eval "(setq server-name \"foo\")" --daemon
+  
 
 ;;; These all pertain only to a proof in progress
 
@@ -2030,7 +2039,7 @@ Letters do not insert themselves; instead, they are commands:
 (defpvs pvs-sizeof-proofs-theory proof-status (theoryname)
   "Display the number of steps of the proofs in the given theory"
   (interactive (complete-theory-name "Proof sizes for theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-send-and-wait (format "(sizeof-proofs-theory \"%s\")" theoryname)
 		     nil (pvs-get-abbreviation 'pvs-sizeof-proofs-theory)
 		     'dont-care))
@@ -2046,7 +2055,7 @@ Letters do not insert themselves; instead, they are commands:
   "Display the number of steps of the proofs in the import chain."
   (interactive (complete-theory-name
 		"Proof sizes for import chain of theory named: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (pvs-send-and-wait (format "(sizeof-proofs-importchain \"%s\")" theoryname)
 		     nil (pvs-get-abbreviation 'pvs-sizeof-proofs-importchain)
 		     'dont-care))
@@ -2153,8 +2162,7 @@ Letters do not insert themselves; instead, they are commands:
 ;;     (ilisp-send (format "(prove-with-checkpoint %s)" proof))))
 
 (defun install-proof* (name declname origin &optional step)
-  (save-excursion
-    (set-buffer "Proof")
+  (with-current-buffer "Proof"
     (goto-char (point-min))
     (while (search-forward "!!!" nil t)
       (replace-match "(checkpoint)" nil t))
@@ -2167,7 +2175,7 @@ Letters do not insert themselves; instead, they are commands:
     (while (search-forward "(checkpoint)" nil t)
       (replace-match "!!!" nil t)))
   (let* ((pvs-error nil)
-	 (prelude-offset (if (boundp 'pvs-prelude) pvs-prelude 0))
+	 (prelude-offset (or pvs-prelude 0))
 	 (line (+ (current-line-number) prelude-offset))
 	 (installed (pvs-send-and-wait
 		     (format "(install-proof \"%s\" %s %s %d %s \"%s\" %d)"
@@ -2187,7 +2195,7 @@ Letters do not insert themselves; instead, they are commands:
       (when step
 	(pop-to-buffer (get-buffer "Proof"))
 	(fix-edit-proof-comments)
-	(setq buffer-modified-p nil)
+	(set-buffer-modified-p nil)
 	(goto-char (point-min))
 	(pvs-prover-goto-next-step)
 	(hilit-next-prover-command))
@@ -2303,5 +2311,6 @@ Sets the default description string for interactive proofs."
   (pvs-busy))
 
 (defun pvs-checker-ready ()
+  (popw)
   (setq pvs-in-checker nil)
   (pvs-ready))

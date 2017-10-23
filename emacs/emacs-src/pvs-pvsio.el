@@ -20,7 +20,7 @@
   (interactive (progn (confirm-not-in-checker)
 		      (complete-theory-name "Use context of theory: ")))
   (confirm-not-in-checker)
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" theory)
 			     nil 'tc nil)
     (error "%s is not typechecked" theory)) 
@@ -34,7 +34,7 @@
 (defpvs pvs-ground-evaluator prove (theory)
   "Invokes the ground evaluator in the context of the given PVS theory"
   (interactive (complete-theory-name "Use context of theory: "))
-  (unless (interactive-p) (pvs-collect-theories))
+  (unless (called-interactively-p 'interactive) (pvs-collect-theories))
   (confirm-not-in-checker)
   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" theory)
 			     nil 'tc nil)
@@ -58,8 +58,7 @@
 (defun print-info-buffer (name info)
   (when info
     (let ((buffer (get-buffer-create name)))
-      (save-excursion
-	(set-buffer buffer)
+      (with-current-buffer buffer
 	(erase-buffer)
 	(insert info)
 	(fill-region (point-min) (point-max))

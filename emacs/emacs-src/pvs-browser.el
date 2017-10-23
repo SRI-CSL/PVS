@@ -37,9 +37,9 @@
 
 (defvar pvs-popup-windows nil
   "Controls behavior of browser functions.
-nil    = use current frame
-'frame = use a (potentially new) browser frame
-'x     = use dedicated X windows popups")
+  nil    = use current frame
+  'frame = use a (potentially new) browser frame
+  'x     = use dedicated X windows popups")
 
 (defvar pvs-popup-browse-frame nil
   "The frame to use for browse windows when pvs-popup-windows is 'frame")
@@ -525,3 +525,5 @@ argument they are expanded as well."
 	((eq pvs-popup-windows 'x)
 	 (error "pvs-popup-windows as x not yet implemented"))
 	(t (error "pvs-popup-windows is not one of nil, 'frame or 'x"))))
+
+	   

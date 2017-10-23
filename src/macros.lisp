@@ -139,8 +139,7 @@
 
 #+(not lucid)
 (defmacro ignore-file-errors (&rest body)
-  `(ignore-errors
-    ,@body))
+  `(handler-case (progn ,@body) (file-error (condition) (values nil condition))))
 
 (defvar *ignore-lisp-errors* t)
 
@@ -647,3 +646,5 @@
 	 ,str (- (get-internal-real-time) ,%start))
        ,%result)))
 	
+(defmacro cam (form)
+  `(compute-applicable-methods (function ,(car form)) (list ,@(cdr form))))
