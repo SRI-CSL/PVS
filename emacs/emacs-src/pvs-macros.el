@@ -79,7 +79,7 @@ be detected."
 	with-timeout-value))))
 )
 
-(defstruct (pvs-formula-reference (:conc-name pvs-fref-))
+(cl-defstruct (pvs-formula-reference (:conc-name pvs-fref-))
   "Created by pvs-formula-origin"
   kind    ; symbol: pvs, prelude, prelude-theory, proof-status, tccs, ppe
   formula ; string: name of formula (or decl)

@@ -385,7 +385,7 @@
 
 (defcl type-decl (declaration)
   (type-value :store-as ignore-self-reference-type-values)
-  (ir-type-value :store-as nil :fetch-as nil))
+  (ir-type-value :restore-as nil :fetch-as nil))
 
 (#-sbcl progn #+sbcl sb-ext:without-package-locks
 (defcl nonempty-type-decl (type-decl)

@@ -1604,6 +1604,10 @@
   (declare (ignore fargs decl bindings))
   postypes)
 
+(defmethod check-positive-types* ((ex projection-expr) fargs decl bindings postypes)
+  (declare (ignore fargs decl bindings))
+  postypes)
+
 (defmethod check-positive-types* ((ex name-expr) fargs decl bindings postypes)
   ;; if interpreted, check interpretation postypes
   ;; else any types appearing in actuals are not postypes

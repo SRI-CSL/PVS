@@ -254,6 +254,11 @@
   ir-adt-name
   ir-adt-constructors)
 
+;;The ir-array is a class
+(defcl ir-arraytype (ir-type)
+  size
+  elemtype);later on, we could add an offset
+
 
 ;;other types are char, bool, int32_t, int64_t, uint32_t, uint64_t, mpi, and mpz
 ;;we'll add floats later on.
@@ -1957,8 +1962,8 @@
     (if (formal-type-decl? (declaration type))
 	(mk-ir-formal-typename (pvs2ir-unique-decl-id (declaration type)))
 	(let ((tbind (assoc (declaration type) tbindings)))
-	  (if tbind (cdr tbind) (pvs2ir-decl (declaration type))))
-    (pvs2ir-decl (declaration type)))));;returns the type name
+	  (if tbind (cdr tbind) (pvs2ir-decl (declaration type)))))))
+    ;;(pvs2ir-decl (declaration type)))));;returns the type name
 
 (defmethod pvs2ir-type* ((type list) tbinding)
   (cond ((consp type)
@@ -3802,11 +3807,6 @@
 			    (<= ir-high *max-C-uli*))
 		       (and (>= ir-low *min-C-int*)
 			    (<= ir-high *max-C-int*))))))
-
-;;The ir-array is a class
-(defcl ir-arraytype (ir-type)
-  size
-  elemtype);later on, we could add an offset
 
 (defun mk-ir-arraytype (size elemtype)
   (make-instance 'ir-arraytype
