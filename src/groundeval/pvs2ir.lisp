@@ -372,6 +372,7 @@
 	(mk-name '|ceiling| nil '|floor_ceil|)
 	(mk-name '|nrem| nil '|modulo_arithmetic|)
 	(mk-name '|ndiv| nil '|modulo_arithmetic|)
+	(mk-name '|sqrt| nil '|sqrt|)
 	(mk-name '|even?| nil '|integers|)
 	(mk-name '|odd?| nil '|integers|)
 	(mk-name '|restrict| nil '|restrict|)
@@ -400,12 +401,12 @@
 (defparameter *ir-primitives*
   '(= /= TRUE FALSE IMPLIES => <=> NOT AND & OR NOT WHEN IFF + - * /
    number_field_pred < <= > >= real_pred integer_pred integer?
-   rational_pred floor ceiling ndiv nrem even? odd? cons car cdr cons?
+   rational_pred floor ceiling ndiv nrem sqrt even? odd? cons car cdr cons?
    null null? restrict length member nth append reverse))
 
 (defparameter *ir-arith-primitives*
   '(+ - * / number_field_pred = < <= > >= real_pred integer_pred integer?
-   rational_pred floor ceiling ndiv nrem even? odd? AND OR IMPLIES WHEN))
+   rational_pred floor ceiling ndiv nrem sqrt even? odd? AND OR IMPLIES WHEN))
 
 (defvar *var-counter* nil)
 (defmacro new-irvar () ;;index this by the theory and declaration so that labels are stable
@@ -2838,7 +2839,17 @@
 			(format nil "mpq_clear(~a)" mpz-return-var)))))))
 
 	    
-
+(defun ir2c-sqrt (return-var arg);both have to be of type mpq
+  (let ((tmp1 (gentemp "tmp"))
+	(tmp2 (gentemp "tmp")))
+    (list  (format nil  "mpf_t ~a, ~a" tmp1, tmp2)
+	   (format nil "mpf_init(~a)" tmp1)
+	   (format nil "mpf_init(~a)" tmp2)
+	   (format nil "mpf_set_q(~a, ~a)" tmp1 arg)
+	   (format nil "mpf_sqrt(~a, ~a)" tmp2 tmp1)
+	   (format nil "mpz_set_f(~a, ~a)" return-var tmp2)
+	   (format nil "mpf_clear(~a)" tmp1)
+	   (format nil "mpf_clear(~a)" tmp2))))
 
 (defun ir2c-divrem (op return-var c-return-type ir-arg-names c-arg-types)
   (let ((arg1 (car ir-arg-names))
@@ -3461,6 +3472,18 @@
 			arg1-c-type arg2
 			arg2-c-type)))
 
+(defun mpq-ui-or-si (ctype)
+  (or (and (eq ctype 'mpq) 'q)
+      (gmp-ui-or-si ctype)))
+
+(defun mpq-set (ctype qvar var)
+  (if (eq ctype 'mpz)
+      (format nil "mpq_set_z(~a, ~a)" qvar var)
+    (format nil "mpq_set_~a(~a, (~a64_t)~a)"
+	    (gmp-ui-or-si ctype)
+	    (uint-or-int ctype)
+	    qvar var)))
+
 (defun ir2c-multiplication-step (return-var c-return-type arg1 arg1-c-type arg2 arg2-c-type)
   (case  c-return-type
     (mpz (case arg1-c-type
@@ -3611,6 +3634,34 @@
     (mpq (case arg1-c-type
 	   (mpq (case arg2-c-type
 		  (mpq (list (format nil "mpq_mul(~a, ~a, ~a)" c-return-type arg1 arg2)))
+		  ((uint8 uint16 uint32 uint64 int8 int16 int32 int64 mpq)
+		   (let ((tmp (gentemp "tmp")))
+		     (list (format nil "mpq_t ~a" tmp)
+			   (format nil "mpq_init(~a)" tmp)
+			   (mpq-set arg2-c-type tmp arg2)
+			   (format nil "mpq_mul(~a, ~a, ~a)" return-var arg1 tmp)
+			   (format nil "mpq_clear(~a)" tmp))))
+		  ((uint128 int128)
+		   (break "128-bit GMP arithmetic not available." ))))
+	   ((uint8 uint16 uint32 uint64 int8 int16 int32 int64 mpq)
+	    (case arg2-c-type
+	      (mpq (let ((tmp (gentemp "tmp")))
+		     (list (format nil "mpq_t ~a" tmp)
+			   (format nil "mpq_init(~a)" tmp)
+			   (mpq-set arg1-c-type tmp arg1)
+			   (format nil "mpq_mul(~a, ~a, ~a)" return-var tmp arg2)
+			   (format nil "mpq_clear(~a)" tmp))))
+	      ((uint8 uint16 uint32 uint64 int8 int16 int32 int64 mpq)
+	       (let ((tmp1 (gentemp "tmp"))
+		     (tmp2 (gentemp "tmp")))
+		 (list (format nil "mpq_t ~a, ~a" tmp1 tmp2)
+		       (format nil "mpq_init(~a)" tmp1)
+		       (format nil "mpq_init(~a)" tmp2)
+		       (mpq-set arg1-c-type tmp1 arg1)
+		       (mpq-set arg2-c-type tmp2 arg2)
+		       (format nil "mpq_mul(~a, ~a, ~a)" return-var tmp1 tmp2)
+		       (format nil "mpq_clear(~a)" tmp1)
+		       (format nil "mpq_clear(~a)" tmp2))))
 		  (t (break "Not implemented"))))
 	   (t (break "Not implemented"))))))
 
