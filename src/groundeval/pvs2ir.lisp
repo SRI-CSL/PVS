@@ -2847,7 +2847,7 @@
 (defun ir2c-sqrt (return-var arg);both have to be of type mpq
   (let ((tmp1 (gentemp "tmp"))
 	(tmp2 (gentemp "tmp")))
-    (list  (format nil  "mpf_t ~a, ~a" tmp1, tmp2)
+    (list  (format nil  "mpf_t ~a, ~a" tmp1 tmp2)
 	   (format nil "mpf_init(~a)" tmp1)
 	   (format nil "mpf_init(~a)" tmp2)
 	   (format nil "mpf_set_q(~a, ~a)" tmp1 arg)
