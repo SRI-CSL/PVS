@@ -19,7 +19,7 @@
  * USA.
  */
 
-#include <iostream.h>
+#include <iostream>
 #include "code.h"
 #include "offsets.h"
 #include "symboltable.h"

@@ -21,7 +21,7 @@
 #ifndef __STRING_H
 #define __STRING_H
 
-#include <iostream.h>
+#include <iostream>
 #include <string.h>
 #include <stdio.h>
 

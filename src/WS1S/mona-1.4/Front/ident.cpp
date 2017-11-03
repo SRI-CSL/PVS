@@ -18,7 +18,7 @@
  * USA.
  */
 
-#include <iostream.h>
+#include <iostream>
 #include "ident.h"
 #include "offsets.h"
 #include "symboltable.h"

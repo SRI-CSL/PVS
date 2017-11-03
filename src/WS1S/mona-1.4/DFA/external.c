@@ -102,68 +102,121 @@ DFA *dfaImport(char* filename, char ***vars, int **orders)
   char ts[100];
   int ti;
 
+  fprintf(stderr, "IN dfaImport\n");
+  fflush(stderr);
+  
   /* Read file */
   if ((file = fopen(filename, "r")) == 0) 
-    return 0;
+    return NULL;
 
-  fscanf(file,
-	 "MONA DFA\n"
-	 "number of variables: %u\n"
-	 "variables: ", &numvars);
+  /*
+   * BD: we should check the return value of every call to fscanf.
+   */
+  if (fscanf(file,
+	     "MONA DFA\n"
+	     "number of variables: %u\n"
+	     "variables: ", &numvars) != 1) {
+    return NULL;
+  }
+
+  /*
+   * BD: allocate vars and order arrays here if needed.
+   * Also initialize a and table to NULL in case we need to clean up.
+   */
+  a = NULL;
+  table = NULL;
   if (vars) {
     *vars = (char **) mem_alloc(sizeof(char *) * (numvars + 1));
-    (*vars)[numvars] = 0;
+    // BD: initialize all to NULL so that we can release memory
+    // in case of a read or format error.
+    //    (*vars)[numvars] = 0;
+    for (i=0; i<= numvars; i++) {
+      (*vars)[i] = NULL;
+    }
+  }
+  if (orders) {
+    *orders = (int *) mem_alloc(sizeof(int) * numvars);
+  }
+
+
+  if (vars) {
     for (i = 0; i < numvars; i++) {
       (*vars)[i] = (char *) mem_alloc(100);
-      fscanf(file, " %s ", (*vars)[i]);
+      if (fscanf(file, " %s ", (*vars)[i]) != 1) {
+	goto cleanup;
+      }
     }
   }
   else {
-    for (i = 0; i < numvars; i++)
-      fscanf(file, " %s ", ts);
+    for (i = 0; i < numvars; i++) {
+      if (fscanf(file, " %s ", ts) != 1) {
+	goto cleanup;
+      }
+    }
   }
-  fscanf(file,
-	 "orders: ");
+  if (fscanf(file, "orders: ") != 0) {
+    goto cleanup;
+  }
   if (orders) {
-    *orders = (int *) mem_alloc(sizeof(int) * numvars);
     for (i = 0; i < numvars; i++)
-      fscanf(file, " %d ", &((*orders)[i]));
+      if (fscanf(file, " %d ", &((*orders)[i])) != 1) {
+	goto cleanup;
+      }
   }
-  else
-    for (i = 0; i < numvars; i++)
-      fscanf(file, " %d ", &ti);
+  else {
+    for (i = 0; i < numvars; i++) {
+      if (fscanf(file, " %d ", &ti) != 1) {
+	goto cleanup;
+      }
+    }
+  }
+
   if (fscanf(file,
              "states: %u\n"
              "initial: %u\n"
              "bdd nodes: %u\n"
              "final:", 
-             &ns, &s, &bdd_nodes) != 3) 
-    return 0;
+             &ns, &s, &bdd_nodes) != 3) {
+    goto cleanup;
+  }
+
   a = dfaMake(ns);
   a->s = s;
 
-  for (i = 0; i<a->ns; i++)
-    fscanf(file, " %d", &a->f[i]);
+  for (i = 0; i<a->ns; i++) {
+    if (fscanf(file, " %d", &a->f[i]) != 1) {
+      goto cleanup;
+    }
+  }
 
-  fscanf(file, "\nbehaviour:");
-  for (i = 0; i < a->ns; i++)
-    fscanf(file, " %u", &a->q[i]);
+  if (fscanf(file, "\nbehaviour:") != 0) {
+    goto cleanup;
+  }
+  for (i = 0; i < a->ns; i++) {
+    if (fscanf(file, " %u", &a->q[i]) != 1) {
+      goto cleanup;
+    }
+  }
 
-  fscanf(file, "\nbdd:\n");
+  if (fscanf(file, "\nbdd:\n") != 0) {
+    goto cleanup;
+  }
   table = (BddNode *) mem_alloc(sizeof(BddNode)*bdd_nodes);
   
   for (i = 0; i < bdd_nodes; i++) {
     table[i].p = -1;
-    fscanf(file, "%i %u %u\n", 
-           &table[i].idx,
-           &table[i].lo,
-           &table[i].hi);
+    if (fscanf(file, "%i %u %u\n", 
+	       &table[i].idx,
+	       &table[i].lo,
+	       &table[i].hi) != 3) {
+      goto cleanup;
+    }
   }
   
-  if (fgetc(file) != 'e' ||
-      fgetc(file) != 'n' ||
-      fgetc(file) != 'd') 
-    return 0;
+  if (fgetc(file) != 'e' || fgetc(file) != 'n' || fgetc(file) != 'd') {
+    goto cleanup;
+  }
+
   fclose(file);
 
   /* fill bdd-manager */
@@ -173,4 +226,26 @@ DFA *dfaImport(char* filename, char ***vars, int **orders)
 
   mem_free(table);
   return a;
+
+ cleanup:
+  fclose(file);
+  if (table != NULL) {
+    mem_free(table);
+  }
+  if (a != NULL) {
+    dfaFree(a);
+  }
+  if (orders) {
+    mem_free(*orders);
+  }
+  if (vars) {
+    i = 0;
+    while ((*vars)[i] != NULL) {
+      mem_free((*vars)[i]);
+      i ++;
+    }
+    mem_free(*vars);
+  }
+
+  return NULL;
 }

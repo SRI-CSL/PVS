@@ -18,7 +18,7 @@
  * USA.
  */
 
-#include <iostream.h>
+#include <iostream>
 #include "st_gta.h"
 #include "printline.h"
 #include "env.h"

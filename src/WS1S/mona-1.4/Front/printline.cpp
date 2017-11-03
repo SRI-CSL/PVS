@@ -19,7 +19,7 @@
  */
 
 #include <string.h>
-#include <iostream.h>
+#include <iostream>
 
 #include "printline.h"
 

@@ -4225,7 +4225,7 @@ BDDPTR *bdd_restore_from_chars_vec (unsigned char *b, BDDPTR *f_vec, int *len)
   unsigned char *store = b;
   int i;
   int size;
-  int nr_vars;
+  //  int nr_vars;
   int nr_nodes;
   BDDPTR *nodes;
 
@@ -4235,7 +4235,8 @@ BDDPTR *bdd_restore_from_chars_vec (unsigned char *b, BDDPTR *f_vec, int *len)
   size = bdd_restore_int (store);
   store += sizeof (int);
 
-  nr_vars = bdd_restore_int (store);
+  // BD: nr_vars is not used
+  // nr_vars = bdd_restore_int (store); 
   store += sizeof (int);
 
   check_mem_limit ((nr_nodes+3) * sizeof (BDDPTR));

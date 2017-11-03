@@ -20,7 +20,7 @@
 
 #define _LANGUAGE_C_PLUS_PLUS
 
-#include <iostream.h>
+#include <iostream>
 #include <new.h>
 #include <sys/time.h>
 #include <sys/resource.h>

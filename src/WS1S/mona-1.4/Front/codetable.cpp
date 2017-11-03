@@ -19,7 +19,7 @@
  */
 
 #include <unistd.h>
-#include <iostream.h>
+#include <iostream>
 #include <signal.h>
 #include "codetable.h"
 #include "env.h"

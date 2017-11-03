@@ -21,7 +21,7 @@
 #ifndef __LIB_H
 #define __LIB_H
 
-#include <iostream.h>
+#include <iostream>
 #include "ident.h"
 #include "signature.h"
 #include "symboltable.h"

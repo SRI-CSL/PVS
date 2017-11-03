@@ -18,7 +18,7 @@
  * USA.
  */
 
-#include <iostream.h>
+#include <iostream>
 
 #include "st_dfa.h"
 #include "printline.h"
