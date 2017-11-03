@@ -329,6 +329,7 @@
     (t accum)))
 
 (defmethod pvs2cl_up* ((expr list-expr) bindings livevars)
+;;  (format t "IN PVS2CL_UP*: expr is ~a~%" expr)
   (let ((reverse-expr (reverse-list-expr expr nil)))
     `(list ,@(pvs2cl-reverse-list-expr reverse-expr bindings livevars nil))))
 
@@ -1568,7 +1569,28 @@
 	 (not (null defax))
 	 (not (lambda-expr? (args2 (car (last defax))))))))
 	 
-	
+
+;;
+;; BD: allegro goes nuts if we try to compile things like 
+;;  (define x () <long-list of pairs of integers>)
+;; but it takes no time to evaluate 'x'.
+;;
+;; This code tries to detect when a pvs definition looks like
+;; a long list and prevents compilation in this case.
+;; This is a temporary hack for the DoubleHelix project.
+;;
+(defmethod expr_is_long_list ((expr list-expr) len_so_far)
+  (or (>= len_so_far 200) (expr_is_long_list (args2 expr) (+ len_so_far 1))))
+
+(defmethod expr_is_long_list ((expr t) len_so_far)
+  (>= len_so_far 200))
+
+(defun skip_compile (bindings defn) 
+  (expr_is_long_list defn 0))
+;;
+;; End of Hack
+;;
+
 ;;Local variable undef moved to case where defax is null (Feb 20 2015) [CM]
 (defun pvs2cl-lisp-function (decl)
   (let* ((defax (def-axiom decl))
@@ -1592,6 +1614,7 @@
 					   (bindings* defn)
 					   append bnd)))
 		    (defn-body (body* defn))
+		    (skip-compile (skip_compile defn-bindings defn-body))
 		    (defn-binding-ids
 		      (make-binding-ids-without-dups defn-bindings nil))
 		    (declarations (pvs2cl-declare-vars defn-binding-ids
@@ -1615,7 +1638,10 @@
 							  nil))))))
 		 (eval (definition (in-defn-m decl)))
 		 (assert id2)
-		 (compile id2))
+		 (format t "~%IN pvs2cl-lisp-function: compile ~a, args = ~a, long-list: ~a~%"
+			 id2 defn-binding-ids (expr_is_long_list defn-body 0))
+		 (or skip-compile (compile id2)))
+	       ;;		 (compile id2))
 	       (when *eval-verbose*
 		 (format t "~%~a <internal_dest> ~a" (id decl) id-d))
 	       (setf (in-name-d decl) id-d)
@@ -1640,7 +1666,8 @@
 		       *output-vars*))
 	       (eval (definition (in-defn-d decl)))
 	       (assert id-d)
-	       (compile id-d)
+	       (or skip-compile (compile id-d))
+	       ;;	       (compile id-d)
 	       (when *eval-verbose*
 		 (format t "~%~a <internal_0> ~a" (id decl) id))
 	       (let* ((*destructive?* nil)
@@ -1655,7 +1682,8 @@
 			 in-defn))
 	       (eval (definition (in-defn decl)))
 	       (assert id)
-	       (compile id))))))
+	       (or skip-compile (compile id)))))))
+;;	       (compile id))))))
 
 (defun pvs2cl-theory (theory &optional force?)
   (let* ((theory (get-theory theory))
