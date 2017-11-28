@@ -229,14 +229,14 @@
 
 ;;; Status Proof Theory
 
-(defun status-proof-theory (theoryname)
+(defun status-proof-theory (theoryname &optional unproved?)
   (let ((theory (or (get-theory theoryname)
 		    (get-context-theory-entry theoryname)))
 	(*disable-gc-printout* t))
     (if theory
 	(pvs-buffer "PVS Status"
 	  (with-output-to-string (*standard-output*)
-	    (proof-summary (id theory)))
+	    (proof-summary (id theory) unproved?))
 	  t)
 	(pvs-message "Theory ~a is not in the current context."
 	  theoryname))))
@@ -244,48 +244,48 @@
 
 ;;; Status Proof PVS File
 
-(defun status-proof-pvs-file (filename)
+(defun status-proof-pvs-file (filename &optional unproved?)
   (let ((theories (get-context-theory-names filename))
 	(*disable-gc-printout* t))
     (if theories
 	(pvs-buffer "PVS Status"
 	  (with-output-to-string (*standard-output*)
-	    (proof-summaries theories))
+	    (proof-summaries theories unproved?))
 	  t)
 	(pvs-message "File ~a.pvs is not in the current context"
 	  filename))))
 
-(defun status-proof-theories (theories)
+(defun status-proof-theories (theories &optional unproved?)
   (if theories
       (let ((*disable-gc-printout* t))
 	(pvs-buffer "PVS Status"
 	  (with-output-to-string (*standard-output*)
-	    (proof-summaries theories))
+	    (proof-summaries theories unproved?))
 	  t))
       (pvs-message "No theories given")))
 
 ;;; Status Proof Importchain
 
-(defun status-proof-importchain (theoryname)
-  (update-pvs-context)
+(defun status-proof-importchain (theoryname &optional unproved?)
+  ;;(update-pvs-context)
   (let ((theories (context-usingchain theoryname))
 	(*disable-gc-printout* t))
     (if theories
 	(pvs-buffer "PVS Status"
 	  (with-output-to-string (*standard-output*)
-	    (proof-summaries theories))
+	    (proof-summaries theories nil unproved?))
 	  t)
 	(pvs-message "Theory ~a is not in the current context"
 	  theoryname))))
 
 
-(defun proof-summaries (theory-ids &optional filename)
+(defun proof-summaries (theory-ids &optional filename unproved?)
   (let ((tot 0) (proved 0) (unfin 0) (untried 0) (time 0))
     (when filename
       (format t "~2%Proof summary for file ~a.pvs" filename))
     (dolist (theory theory-ids)
       (multiple-value-bind (to pr uf ut tm)
-	  (proof-summary theory (when filename 2))
+	  (proof-summary theory (when filename 2) unproved?)
 	(incf tot to) (incf proved pr) (incf unfin uf) (incf untried ut)
 	(incf time tm)))
     (if filename
@@ -295,7 +295,7 @@
       tot (+ proved unfin) proved time)
     (values tot proved unfin untried time)))
 
-(defun proof-summary (theory-id &optional (indent 0))
+(defun proof-summary (theory-id &optional (indent 0) unproved?)
   (format t "~2%~vTProof summary for theory ~a" indent (ref-to-id theory-id))
   (let* ((tot 0) (proved 0) (unfin 0) (untried 0) (time 0)
 	 (theory (get-theory theory-id))
@@ -328,16 +328,17 @@
 		    ((justification decl) (incf unfin))
 		    (t (incf untried)))
 	      (incf time tm)
-	      (format t "~%    ~v,1,0,'.a...~19a [~a](~a s)"
-		idlength
-		(id decl)
-		(proof-status-string decl)
-		(if (justification decl)
-		    (decision-procedure-used decl)
-		    "Untried")
-		(if (run-proof-time decl)
-		    (format nil "~v,2f" timelength tm)
-		    (format nil "~v<n/a~>" timelength))))))
+	      (when (or (null unproved?) (unproved? decl))
+		(format t "~%    ~v,1,0,'.a...~19a [~a](~a s)"
+		  idlength
+		  (id decl)
+		  (proof-status-string decl)
+		  (if (justification decl)
+		      (decision-procedure-used decl)
+		      "Untried")
+		  (if (run-proof-time decl)
+		      (format nil "~v,2f" timelength tm)
+		      (format nil "~v<n/a~>" timelength)))))))
 	(let ((te (get-context-theory-entry theory-id)))
 	  (mapc #'(lambda (fe)
 		    (let ((status (fe-status fe)))
@@ -354,9 +355,9 @@
 			 (incf unfin))
 			(t (incf untried)))))
 		(te-formula-info te))))
-    (format t "~%    Theory totals: ~d formulas, ~d attempted, ~d succeeded ~
+    (format t "~%    Theory ~a totals: ~d formulas, ~d attempted, ~d succeeded ~
                (~,2f s)"
-	tot (+ proved unfin) proved
+	(ref-to-id theory-id) tot (+ proved unfin) proved
 	(/ (reduce #'+ (provable-formulas theory)
 		    :key #'(lambda (d) (or (run-proof-time d) 0))
 		    :initial-value 0)
@@ -933,6 +934,7 @@
 ;;   (if (generated-by jdecl)
 ;;       (get-judgement-tcc (generated-by jdecl) decls)
 ;;       (find-if #'judgement-tcc? (generated jdecl)))
+  (declare (ignore decl))
   )
 
 (defmethod get-judgement-tcc ((jdecl name-judgement) decl)
@@ -942,6 +944,7 @@
 ;; 	(get-judgement-tcc (generated-by jdecl) decls)
 ;; 	(when (memq (declaration (name jdecl)) decls)
 ;; 	  (find-if #'judgement-tcc? (generated jdecl)))))
+  (declare (ignore decl))
   )
 
 (defmethod get-judgement-tcc ((jdecl application-judgement) decl)
@@ -949,6 +952,7 @@
 ;;     (if (generated-by jdecl)
 ;; 	(get-judgement-tcc (generated-by jdecl) decls)
 ;; 	(find-if #'judgement-tcc? (generated jdecl))))
+  (declare (ignore decl))
   )
 
 (defmethod get-judgement-tcc ((jtcc judgement-tcc) decl)
