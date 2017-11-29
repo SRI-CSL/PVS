@@ -306,11 +306,25 @@ char-by-char, breaking Unicode of more than two bytes."
   (write-json-escaped-pieces s stream)
   nil)
 
+(defparameter *json-lisp-escaped-chars*
+  '((#\" . #\")
+    (#\\ . #\\)
+    (#\/ . #\/)
+    (#\Backspace . #\b)
+    (#\^L . #\f)
+    (#\Newline . #\n)
+    (#\Return . #\r)
+    (#\Tab . #\t)))
+
 (defun write-json-escaped-pieces (s stream &optional pos)
-  (let ((npos (position-if #'(lambda (ch) (member ch '(#\\ #\")))
-			   s :start (if pos (1+ pos) 0))))
+  (let* ((special nil)
+	 (npos (position-if #'(lambda (ch)
+				(setq special
+				      (cdr (assoc ch *json-lisp-escaped-chars*))))
+			    s :start (if pos (1+ pos) 0))))
     (cond (npos
 	   (format stream "~a" (subseq s (or pos 0) npos))
 	   (write-char #\\ stream)
-	   (write-json-escaped-pieces s stream npos))
+	   (write-char special stream)
+	   (write-json-escaped-pieces s stream (1+ npos)))
 	  (t (format stream "~a" (subseq s (or pos 0)))))))
