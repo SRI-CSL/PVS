@@ -72,7 +72,8 @@
      :include-xcw nil
      :internal-debug nil
      #-x86-64 :lisp-heap-size #-x86-64 300000000
-;;     #-(or macosx x86-64) :lisp-heap-start #-(or macosx x86-64) #x20000000
+     ;;#-(or macosx x86-64) :lisp-heap-start #-(or macosx x86-64) #x20000000
+     #+(or macosx x86-64) :aclmalloc-heap-start #+(or macosx x86-64) #xa0000000000
      :load-local-names-info nil
      :load-source-file-info (not runtime?)
      :load-xref-info (not runtime?)
