@@ -108,7 +108,7 @@
   (unless *pvs-path*
     (error "PVSPATH environment variable should be set to the PVS directory"))
   #+(or cmu sbcl)
-  (let ((exepath (directory-namestring (car (sys:command-line-arguments)))))
+  (let ((exepath (directory-namestring (car (uiop:raw-command-line-arguments)))))
     (pushnew exepath *pvs-directories*)
     (#+cmu ext:load-foreign #+sbcl sb-alien:load-shared-object
 		      (format nil "~a/mu.~a" exepath
