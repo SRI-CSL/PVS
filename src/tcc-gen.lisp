@@ -46,10 +46,6 @@
 
 (defvar *old-tcc-name* nil)
 
-(defmacro total-tccs () '(car (tcc-info (current-theory))))
-(defmacro tccs-proved () '(cadr (tcc-info (current-theory))))
-(defmacro tccs-matched () '(caddr (tcc-info (current-theory))))
-(defmacro tccs-simplified () '(cadddr (tcc-info (current-theory))))
 
 (defstruct tccinfo
   formula
@@ -459,8 +455,6 @@
     (setf (tcc-disjuncts ndecl) (get-tcc-disjuncts ndecl))
     (let ((match (car (member ndecl *tccdecls* :test #'tcc-subsumed-by)))
 	  (decl (current-declaration)))
-      (when (eq (spelling ndecl) 'OBLIGATION)
-	(incf (total-tccs)))
       (cond
        ((and match
 	     (not (and (declaration? decl)
@@ -2011,19 +2005,30 @@ the same id for the substitution."
 	   (aname (or *set-type-actuals-name* expr))
 	   (tcc-comment (list kind aname type reason place preason))
 	   (decl-tcc-comments (assq decl (tcc-comments theory))))
-      (cond ((member tcc-comment (cdr decl-tcc-comments) :test #'equal)
-	     (when in-insert?
-	       (decf (total-tccs))))
-	    (t
-	     (if decl-tcc-comments
-		 (nconc decl-tcc-comments (list tcc-comment))
-		 (push (list decl tcc-comment) (tcc-comments theory)))
-	     (cond (subsumed-by
-		    (incf (tccs-matched))
-		    (push subsumed-by (refers-to (current-declaration))))
-		   (t (if (numberp (tccs-simplified))
-			  (incf (tccs-simplified))
-			  (setf (tccs-simplified) 1)))))))))
+      (unless (member tcc-comment (cdr decl-tcc-comments) :test #'equal)
+	(if decl-tcc-comments
+	    (nconc decl-tcc-comments (list tcc-comment))
+	    (push (list decl tcc-comment) (tcc-comments theory)))
+	(when subsumed-by
+	  (push subsumed-by (refers-to (current-declaration))))))))
+
+(defun numbers-of-tccs (theory)
+  (let ((total 0) (proved 0) (unproved 0) (subsumed 0) (simplified 0))
+    (dolist (elt (all-decls theory))
+      (when (tcc? elt)
+	(incf total)
+	(if (proved? elt)
+	    (incf proved)
+	    (incf unproved))))
+    (dolist (decl-tcc-comments (tcc-comments theory))
+      ;; decl tcc-comment alist
+      (dolist (tcc-comment (cdr decl-tcc-comments))
+	(incf total)
+	(if (and (consp (fourth tcc-comment))
+		 (eq (car (fourth tcc-comment)) 'subsumed))
+	    (incf subsumed)
+	    (incf simplified))))
+    (values total proved unproved subsumed simplified)))
 
 (defun print-tcc-comment (decl kind expr type reason place preason)
   (let* ((submsg (case kind

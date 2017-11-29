@@ -295,7 +295,6 @@
   (macro-subtype-tcc-args-alist :restore-as nil)
   (tccs-tried? :restore-as nil)
   (modified-proof? :restore-as nil)
-  (tcc-info :type list :initform (list 0 0 0 0) :restore-as nil)
   (ppe-form :fetch-as nil)
   (tcc-form :fetch-as nil)
   (typecheck-time :restore-as nil))

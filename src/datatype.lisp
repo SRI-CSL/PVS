@@ -247,10 +247,8 @@ generated")
       (copy-lex adt-theories ntheories t)
       (assert (every #'place (theory (car adt-theories)))))
     (dolist (th adt-theories)
-      (let* ((tot (car (tcc-info th)))
-	     (prv (cadr (tcc-info th)))
-	     (mat (caddr (tcc-info th)))
-	     (obl (- tot prv mat)))
+      (multiple-value-bind (tot prv unprv sub simp)
+	  (numbers-of-tccs th)
 	(if (zerop tot)
 	    (pvs-message "In ~aDATATYPE theory ~a: No TCCs generated~
                           ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
@@ -261,7 +259,7 @@ generated")
                      ~d subsumed, ~d unproved~
                      ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
 	      (if (codatatype? adt) "CO" "")
-	      (id th) tot prv mat obl
+	      (id th) tot prv sub unprv
 	      (length (warnings th)) (length (info th))))))
     (let ((fdate (file-write-time adt-path))
 	  (ce2 (get-context-file-entry adt-file)))
