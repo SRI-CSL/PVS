@@ -486,11 +486,11 @@ pvs-strategies files.")
 	   (list :yices2-executable *yices2-executable*))))
 
 
-;;; update-context is called by parse-file after parsing or
-;;; typechecking a file.  It compares the context-entry of the file
-;;; with the write-date of the file.  If the context entry is missing,
-;;; or the write-date is different, then the *pvs-context* is updated,
-;;; and the *pvs-context-changed* variable is set.  Note that this
+;;; update-context writes the .pvscontext file.  It is called by parse-file
+;;; after parsing or typechecking a file.  It compares the context-entry of
+;;; the file with the write-date of the file.  If the context entry is
+;;; missing, or the write-date is different, then the *pvs-context* is
+;;; updated, and the *pvs-context-changed* variable is set.  Note that this
 ;;; doesn't actually write out the .pvscontext file.
 
 (defun update-context (filename)
@@ -1416,6 +1416,11 @@ pvs-strategies files.")
 
 ;;; Proof handling functions - originally provided by Shankar.
 
+;;; Should check that
+;;; (save-all-proofs theory)
+;;; (restore-proofs pvsfile theory)
+;;; Gives the same proofs
+
 (defun save-all-proofs (&optional theory)
   (unless (or *loading-prelude*
 	      (and theory (from-prelude? theory)))
@@ -1617,7 +1622,9 @@ pvs-strategies files.")
 ;;; Top level, called from restore-from-context and install-pvs-proof-file
 
 (defun restore-proofs (filename theory &optional proofs)
-  (let* ((aproofs (or proofs (read-pvs-file-proofs filename)))
+  (let* ((*current-context* (context theory))
+	 (*generate-tccs* 'none)
+	 (aproofs (or proofs (read-pvs-file-proofs filename)))
 	 (tproofs (cdr (assq (id theory) aproofs))))
     (when tproofs
       (restore-theory-proofs theory tproofs))))
@@ -1801,7 +1808,8 @@ Note that the lists might not be the same length."
 		 (unless (eq (car mproof) (id (car tccs))) (break "maybe wrong TCC 2"))
 		 (restore-proof-to-tcc (car tccs) mproof)
 		 (restore-tcc-proofs* (cdr tccs) (remove mproof proofs) rem-tccs))
-		(t #+pvs-tcc-test (break "mproof not found")
+		(t #+pvs-tcc-test
+		 (break "mproof not found")
 		   ;; (mapcar #'(lambda (tcc) (sexp (origin tcc))) tccs)
 		   ;; (mapcar #'(lambda (prf) (nth 6 (caddr prf))) proofs)
 		   (restore-tcc-proofs* (cdr tccs) proofs (cons (car tccs) rem-tccs))))))))
@@ -1823,7 +1831,9 @@ Note that the lists might not be the same length."
 
 (defun restore-proof-to-tcc (tcc mproof)
   (let ((tcc-proofs (mapcar #'(lambda (mprf)
-				(apply #'mk-tcc-proof-info mprf))
+				(let ((pinfo (apply #'mk-tcc-proof-info mprf)))
+				  (setf (origin pinfo) (origin tcc))
+				  pinfo))
 		      (cddr mproof))))
     (setf (proofs tcc) tcc-proofs)
     (setf (default-proof tcc) (nth (cadr mproof) tcc-proofs))))

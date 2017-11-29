@@ -1918,6 +1918,7 @@
   (if (null exprs)
       listex
       (let* ((ex (xt-expr (car exprs)))
+	     (cplace (concat-places (place ex) list-place))
 	     (consex
 	      (make-instance 'list-expr
 		:operator (make-instance 'name-expr
@@ -1925,8 +1926,8 @@
 			    :place (place ex))
 		:argument (make-instance 'arg-tuple-expr
 			    :exprs (list ex listex)
-			    :place (concat-places (place ex) list-place))
-		:place (concat-places (place ex) list-place))))
+			    :place cplace)
+		:place cplace)))
 	(xt-list-expr* (cdr exprs) consex list-place))))
 
 (defun xt-bracket-expr (expr)

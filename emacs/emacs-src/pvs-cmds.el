@@ -1584,10 +1584,12 @@ that some changes have been made that may invalidate the proof."
   "Returns a summary of the status of the proofs in the current theory
 
 The status-proof-theory command provides a summary of the status of the
-proofs in the current theory in the PVS Status buffer."
+proofs in the current theory in the PVS Status buffer.  With an argument (C-u),
+only lists the unproved decls, though the totals include all the formulas."
   (interactive (complete-theory-name "Proof status for theory named: "))
   (unless (called-interactively-p 'interactive) (pvs-collect-theories))
-  (pvs-send-and-wait (format "(status-proof-theory \"%s\")" theoryname)
+  (pvs-send-and-wait (format "(status-proof-theory \"%s\" %s)"
+			 theoryname (and current-prefix-arg t))
 		     nil (pvs-get-abbreviation 'status-proof-theory)
 		     'dont-care))
 
@@ -1595,9 +1597,11 @@ proofs in the current theory in the PVS Status buffer."
   "Returns a summary of the status of the proofs in the current file
 
 The status-proof-pvs-file command provides a summary of the status of the
-proofs in the current PVS file in the PVS Status buffer."
+proofs in the current PVS file in the PVS Status buffer.  With an argument (C-u),
+only lists the unproved decls, though the totals include all the formulas."
   (interactive (list (current-pvs-file)))
-  (pvs-send-and-wait (format "(status-proof-pvs-file \"%s\")" filename)
+  (pvs-send-and-wait (format "(status-proof-pvs-file \"%s\" %s)"
+			 filename (and current-prefix-arg t))
 		     nil (pvs-get-abbreviation 'status-proof-pvs-file)
 		     'dont-care))
 
@@ -1606,11 +1610,13 @@ proofs in the current PVS file in the PVS Status buffer."
 
 The status-proof-importchain command provides a summary of the status of
 the proofs of the importchain of the current theory in the PVS Status
-buffer."
+buffer.  With an argument (C-u), only lists the unproved decls, though
+the totals include all the formulas."
   (interactive (complete-theory-name
 		"Proof status for import chain of theory named: "))
   (unless (called-interactively-p 'interactive) (pvs-collect-theories))
-  (pvs-send-and-wait (format "(status-proof-importchain \"%s\")" theoryname)
+  (pvs-send-and-wait (format "(status-proof-importchain \"%s\" %s)"
+			 theoryname (and current-prefix-arg t))
 		     nil (pvs-get-abbreviation 'status-proof-importchain)
 		     'dont-care))
 

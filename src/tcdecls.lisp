@@ -3509,7 +3509,44 @@
 
 (defun dependent-on? (fld1 fld2)
   (member fld2 (freevars (type fld1)) :test #'same-declaration))
-	  
+
+(defmethod dependencies ((fld field-decl) (rtype recordtype))
+  "Return the fields in rtype that depend on fld, or that fld depends on
+  E.g., if we have R = [# a, b(a), c(b) #], then (dependencies a R) = {b},
+  (dependencies b R) = {a, c}, and (dependencies c R) = {b}"
+  (assert (memq fld (fields rtype)))
+  (remove-if #'(lambda (fd)
+		 (or (eq fd fld)
+		     (and (not (dependent-on? fd fld))
+			  (not (dependent-on? fld fd)))))
+    (fields rtype)))
+
+(defmethod dependencies ((db dep-binding) (ttype tupletype))
+  (assert (memq db (types ttype)))
+  (let ((idx 0)
+	(indices nil))
+    (dolist (ty (types ttype))
+      (incf idx)
+      (when (and (not (eq ty db))
+		 (or (member db (freevars ty)
+			     :test #'same-declaration)
+		     (and (dep-binding? ty)
+			  (member ty (freevars db)
+				  :test #'same-declaration))))
+	(push idx indices)))
+    (nreverse indices)))
+
+(defmethod dependencies ((type type-expr) (ttype tupletype))
+  (assert (memq type (types ttype)))
+  (let ((idx 0)
+	(indices nil))
+    (dolist (ty (types ttype))
+      (incf idx)
+      (when (and (dep-binding? ty)
+		 (member ty (freevars type)
+			 :test #'same-declaration))
+	(push idx indices)))
+    (nreverse indices)))
 
 (defun dependent-fields? (fields)
   (some #'(lambda (fld)

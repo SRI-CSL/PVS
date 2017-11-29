@@ -764,6 +764,32 @@
 
 (defvar *max-row* nil)
 
+;;; names-info returns the tooltip information for a pvs-file in JSON form
+;;; For each declaration, and each identifier in the body of the declaration,
+;;; it returns JSON of the form '{"id": id, "place": [sr, sc, er, ec], "decl": decl,
+;;;                               "decl-file": file, "decl-place": [sr, sc, er, ec]}'
+
+;;; The JSON string can get quite large, if there's an error in Emacs reading the result,
+;;; it can be difficult debug.  The following breaks it up into individual declarations,
+;;; making debugging much easier.  First 'rm /tmp/pvs-*', then in *pvs* run something like
+
+;; (dolist (decl (theory (get-theory "itranslation")))
+;;   (let* ((info (collect-visible-decl-info decl))
+;; 	(json:*lisp-identifier-name-to-json* #'identity)
+;;     (jstr (json:encode-json-to-string info)))
+;;     (write-to-temp-file jstr t)))
+
+;;; which creates a /tmp file for each declaration.  In *ielm* (Emacs), run the following,
+;;; and look in *Messages* to see the last file read if it hits an error.
+
+;; (dolist (file (directory-files "/tmp" t "pvs-.*"))
+;;   (message "checking %s" file)
+;;   (let* ((buf (find-file-noselect file))
+;; 	 (raw-value (read buf))
+;; 	 (value (unless (member raw-value '(nil NIL)) raw-value)))
+;;     (when value
+;;       (json-read-from-string value))))
+
 (defun names-info (pvs-file)
   (let ((info (collect-pvs-file-decls-info pvs-file))
 	(json:*lisp-identifier-name-to-json* #'identity))
@@ -1151,10 +1177,11 @@
 				   (pp-theory-formals (formals (declaration obj)))))
 			       (if (skolem-constant? obj)
 				   (format nil "Skolem Constant: ~a" (type obj))
-				   (str (declaration obj)))))
+				   (str (declaration obj)
+					:char-width *tooltip-char-width*))))
 		       (if (and (declared-type obj)
 				(not (untyped-bind-decl? obj)))
-			   (str obj)
+			   (str obj :char-width *tooltip-char-width*)
 			   (format nil "~a: ~a" (id obj) (type obj)))))
 	   :decl-file (unless (skolem-constant? obj)
 			(let* ((decl (declaration obj))

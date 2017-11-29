@@ -4312,7 +4312,7 @@ REL_coinduction."
 		     ;;note rule-induct recursively, not rule-induct-step
 		     ;;to deal with embedded induction predicates.
 		     (rule-induct$ rel :fnum * :name name))
-		   (rule-induct-step$ rel :fnum * :name name)))
+		   (else (rule-induct-step$ rel :fnum * :name name) (fail))))
 	(skip-msg "Expected the name of an (co)inductive relation for the REL argument to rule-induct")))
   "Applies rule (co)induction over an inductive relation REL in order to
 prove a sequent of the form

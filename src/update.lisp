@@ -112,7 +112,6 @@
    ;; all-usings
    ;; used-by
    (theory omod)    (update-decls (theory omod) (theory nmod) diffs)
-   ;; tcc-info
    )
   omod)
 

@@ -98,16 +98,14 @@
 		 (setf (status th) '(parsed))
 		 (setf (gethash (id th) *prelude*) th)
 		 (typecheck th)
-		 (let* ((tot (car (tcc-info th)))
-			(prv (cadr (tcc-info th)))
-			(mat (caddr (tcc-info th)))
-			(obl (- tot prv mat)))
+		 (multiple-value-bind (tot prv unprv sub simp)
+		     (numbers-of-tccs th)
 		   (if (zerop tot)
 		       (format t "~%~a typechecked: No TCCs generated" (id th))
 		       (format t "~%~a typechecked: ~d TCC~:p, ~
                                ~d proved, ~d subsumed, ~d unproved~
                                ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
-			 (id th) tot prv mat obl
+			 (id th) tot prv sub unprv
 			 (length (warnings th)) (length (info th)))))
 		 ;; No need to have saved-context set for prelude contexts
 		 (assert (typep th '(or datatype module)))
@@ -157,16 +155,14 @@
 	       (setf (status th) '(parsed))
 	       (setf (gethash (id th) *prelude*) th)
 	       (typecheck th)
-	       (let* ((tot (car (tcc-info th)))
-		      (prv (cadr (tcc-info th)))
-		      (mat (caddr (tcc-info th)))
-		      (obl (- tot prv mat)))
+	       (multiple-value-bind (tot prv unprv sub simp)
+		   (numbers-of-tccs th)
 		 (if (zerop tot)
 		     (format t "~%~a typechecked: No TCCs generated" (id th))
 		     (format t "~%~a typechecked: ~d TCC~:p, ~
                                ~d proved, ~d subsumed, ~d unproved~
                                ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
-		       (id th) tot prv mat obl
+		       (id th) tot prv sub unprv
 		       (length (warnings th)) (length (info th)))))
 	       ;; No need to have saved-context set for prelude contexts
 	       (assert (typep th '(or datatype module)))
@@ -327,11 +323,11 @@
 	(proof-summaries theories "pvsio_prelude"))
       t)))
 
-(defun prelude-summary ()
+(defun prelude-summary (&optional unproved?)
   (let ((theories *prelude-theories*))
     (pvs-buffer "PVS Status"
       (with-output-to-string (*standard-output*)
-	(proof-summaries theories "prelude"))
+	(proof-summaries theories "prelude" unproved?))
       t)))
 
 (defun prelude-proofchain ()
