@@ -638,69 +638,70 @@ window."
 	    (when (get-buffer bufname)
 	      (delete-windows-on bufname)
 	      (kill-buffer bufname))
-	    (let* ((buf (get-buffer-create bufname))
-		   (cpoint (with-current-buffer buf (point)))
-		   (append-p (not (lnull append)))
-		   (at-end (with-current-buffer buf
-			     (= (point) (point-max)))))
-	      (with-current-buffer buf
-		(unless (lnull kind)
-		  (setq-local pvs-buffer-kind kind))
-		(define-pvs-key-bindings buf)
-		(let ((at-end (= (point) (point-max)))
-		      (contents (buffer-string)))
-		  (pvs-set-buffer-mode)
-		  (setq buffer-read-only nil)
-		  (unless append-p
-		    (erase-buffer))
-		  (goto-char (point-max))
-		  (insert-file-contents file nil)
-		  (let ((same (equal (buffer-string) contents)))
-		    (delete-initial-blank-lines)
-		    (when same
-		      (set-buffer-modified-p nil)))
-		  (when (not (lnull read-only))
-		    (set-buffer-modified-p nil)
-		    (setq buffer-read-only t))
-		  (when (eq major-mode 'fundamental-mode)
-		    (pvs-view-mode))
-		  (when (and append-p at-end)
-		    (goto-char (point-max)))))
-	      (if (= (point-min) (point-max))
-		  (message "PVS sent an empty buffer")
-		  (case (intern display)
-		    ((nil NIL) nil)
-		    ((popto POPTO)
-		     (pop-to-buffer buf)
-		     (cond (append-p
-			    (when at-end
-			      (goto-char (point-max))))
-			   (t (goto-char cpoint)
-			      (beginning-of-line))))
-		    ((temp TEMP)
-		     (with-output-to-temp-buffer bufname
-		       (set-buffer bufname)
-		       (insert-file-contents file nil))
-		     (ilisp-show-output buf)
-		     (pvs-add-to-buffer-list bufname)
-		     (let ((rh (substitute-command-keys "\\[pvs-bury-output]")) 
-			   (s (substitute-command-keys "\\[ilisp-scroll-output]")))
-		       (message
-			(format 
-			    "%s removes help window, %s scrolls, M-- %s scrolls back"
-			    rh s s))))
-		    (t
-		     (when (member (intern display) '(t T))
+	    (save-excursion
+	      (let* ((buf (get-buffer-create bufname))
+		     (cpoint (with-current-buffer buf (point)))
+		     (append-p (not (lnull append)))
+		     (at-end (with-current-buffer buf
+			       (= (point) (point-max)))))
+		(with-current-buffer buf
+		  (unless (lnull kind)
+		    (setq-local pvs-buffer-kind kind))
+		  (define-pvs-key-bindings buf)
+		  (let ((at-end (= (point) (point-max)))
+			(contents (buffer-string)))
+		    (pvs-set-buffer-mode)
+		    (setq buffer-read-only nil)
+		    (unless append-p
+		      (erase-buffer))
+		    (goto-char (point-max))
+		    (insert-file-contents file nil)
+		    (let ((same (equal (buffer-string) contents)))
+		      (delete-initial-blank-lines)
+		      (when same
+			(set-buffer-modified-p nil)))
+		    (when (not (lnull read-only))
+		      (set-buffer-modified-p nil)
+		      (setq buffer-read-only t))
+		    (when (eq major-mode 'fundamental-mode)
+		      (pvs-view-mode))
+		    (when (and append-p at-end)
+		      (goto-char (point-max)))))
+		(if (= (point-min) (point-max))
+		    (message "PVS sent an empty buffer")
+		    (case (intern display)
+		      ((nil NIL) nil)
+		      ((popto POPTO)
 		       (pop-to-buffer buf)
-		       (ilisp-show-output buf)
 		       (cond (append-p
 			      (when at-end
 				(goto-char (point-max))))
-			     (t (goto-char (point-min)) ;was cpoint
-				(beginning-of-line)))
-		       (sit-for 0)
-		       ;;(pop-to-buffer obuf)
-		       )))))
+			     (t (goto-char cpoint)
+				(beginning-of-line))))
+		      ((temp TEMP)
+		       (with-output-to-temp-buffer bufname
+			 (set-buffer bufname)
+			 (insert-file-contents file nil))
+		       (ilisp-show-output buf)
+		       (pvs-add-to-buffer-list bufname)
+		       (let ((rh (substitute-command-keys "\\[pvs-bury-output]")) 
+			     (s (substitute-command-keys "\\[ilisp-scroll-output]")))
+			 (message
+			  (format 
+			      "%s removes help window, %s scrolls, M-- %s scrolls back"
+			      rh s s))))
+		      (t
+		       (when (member (intern display) '(t T))
+			 (pop-to-buffer buf)
+			 (ilisp-show-output buf)
+			 (cond (append-p
+				(when at-end
+				  (goto-char (point-max))))
+			       (t (goto-char (point-min)) ;was cpoint
+				  (beginning-of-line)))
+			 (sit-for 0)
+			 ;;(pop-to-buffer obuf)
+			 ))))))
 	    (when (file-exists-p file)
 	      (delete-file file))))))
 
