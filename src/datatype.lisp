@@ -256,10 +256,10 @@ generated")
 	      (id th) (length (warnings th)) (length (info th)))
 	    (pvs-message
 		    "In ~aDATATYPE theory ~a: ~d TCC~:p, ~d proved, ~
-                     ~d subsumed, ~d unproved~
+                     ~d subsumed, ~d unproved, ~d trivial~
                      ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
 	      (if (codatatype? adt) "CO" "")
-	      (id th) tot prv sub unprv
+	      (id th) tot prv sub unprv simp
 	      (length (warnings th)) (length (info th))))))
     (let ((fdate (file-write-time adt-path))
 	  (ce2 (get-context-file-entry adt-file)))

@@ -103,9 +103,9 @@
 		   (if (zerop tot)
 		       (format t "~%~a typechecked: No TCCs generated" (id th))
 		       (format t "~%~a typechecked: ~d TCC~:p, ~
-                               ~d proved, ~d subsumed, ~d unproved~
+                               ~d proved, ~d subsumed, ~d unproved, ~d trivial~
                                ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
-			 (id th) tot prv sub unprv
+			 (id th) tot prv sub unprv simp
 			 (length (warnings th)) (length (info th)))))
 		 ;; No need to have saved-context set for prelude contexts
 		 (assert (typep th '(or datatype module)))
@@ -160,9 +160,9 @@
 		 (if (zerop tot)
 		     (format t "~%~a typechecked: No TCCs generated" (id th))
 		     (format t "~%~a typechecked: ~d TCC~:p, ~
-                               ~d proved, ~d subsumed, ~d unproved~
+                               ~d proved, ~d subsumed, ~d unproved, ~d trivial~
                                ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
-		       (id th) tot prv sub unprv
+		       (id th) tot prv sub unprv simp
 		       (length (warnings th)) (length (info th)))))
 	       ;; No need to have saved-context set for prelude contexts
 	       (assert (typep th '(or datatype module)))

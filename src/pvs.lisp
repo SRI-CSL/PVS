@@ -1247,9 +1247,9 @@
 		    (length (info theory)))
 		  (pvs-message
 		      "~a typechecked in ~,2,-3fs: ~d TCC~:p, ~
-                       ~d proved, ~d subsumed, ~d unproved~
+                       ~d proved, ~d subsumed, ~d unproved, ~d trivial~
                        ~[~:;; ~:*~d conversion~:p~]~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
-		    (id theory) time tot prv sub unprv
+		    (id theory) time tot prv sub unprv simp
 		    (length (conversion-messages theory))
 		    (length (warnings theory)) (length (info theory)))))))))
     (unless *current-context*
@@ -1306,11 +1306,11 @@
 	(pvs-message "File ~a typechecked: No TCCs to prove~a"
 	  (filename (car theories)) (if importchain? "on importchain" ""))
 	(pvs-message
-	    "File ~a typechecked:~a ~d TCCs, ~d proved, ~d subsumed, ~d unproved~
+	    "File ~a typechecked:~a ~d TCCs, ~d proved, ~d subsumed, ~d unproved, ~d trivial~
              ~[~:;; ~:*~d conversion~:p~]~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
 	  (filename (car theories))
 	  (if importchain? " importchain has" "")
-	  totals proved subsumed unproved
+	  totals proved subsumed unproved simplified
 	  (reduce #'+ (mapcar #'(lambda (th) (length (conversion-messages th))) theories))
 	  (reduce #'+ (mapcar #'(lambda (th) (length (warnings th))) theories))
 	  (reduce #'+ (mapcar #'(lambda (th) (length (info th))) theories))))))
