@@ -3900,7 +3900,8 @@ required a context.")
                                        (if (lambda-expr-with-type? ex)
                                            (list (return-type ex) erange)
                                            (list erange))))
-        (let ((atype (make-formals-funtype (list (bindings ex))
+        (let* ((*bound-variables* (append (bindings ex) *bound-variables*))
+	       (atype (make-formals-funtype (list (bindings ex))
                                            (if (lambda-expr-with-type? ex)
                                                (return-type ex)
                                                (type (expression ex))))))
@@ -4300,6 +4301,11 @@ required a context.")
         (set-assignment-arg-types-recordtype fields args-list values
                                              ex expected))))
 
+;; Dependent record types are tricky
+;; R: type = [# a: [nat -> nat], b: #]
+;; r: R
+;; r with [`a(0) := 3, `b
+
 (defun set-assignment-arg-types-recordtype (fields args-list values ex expected)
   (mapc #'(lambda (a v)
             (unless a (set-type* v expected)))
@@ -4310,7 +4316,8 @@ required a context.")
   ;; `a`x := e`x, etc.
   (multiple-value-bind (cargs-list cvalues)
       (complete-assignments args-list values ex expected)
-    (set-assignment-rec-arg-types cargs-list cvalues ex fields)))
+    (set-assignment-rec-arg-types cargs-list cvalues ex fields fields
+				  (mapcar #'(lambda (a) (id (caar a))) args-list))))
 
 (defmethod set-assignment-arg-types* (args-list values ex (expected tupletype))
   (with-slots (types) expected
@@ -4429,7 +4436,7 @@ required a context.")
 ;;; args-list and values are expanded from the original update-expr,
 ;;; to include dependencies.
 
-(defun set-assignment-rec-arg-types (args-list values ex fields
+(defun set-assignment-rec-arg-types (args-list values ex fields orig-fields changed-fields
                                                &optional cargs cvalues)
   (when args-list
     (let* ((pos (position (car fields) args-list :test #'same-id :key #'caar))
@@ -4453,12 +4460,18 @@ required a context.")
               (change-class (caar args) 'field-assign)
               (change-class (caar args) 'field-assignment-arg)))
         (when done-with-field?
-          (set-assignment-arg-types*
-           cdr-args
-           cdr-vals
-           (when (and ex (some (complement #'null) cdr-args))
-             (make!-field-application (car fields) ex))
-           (type (car fields)))))
+	  (let ((fappl (when (and ex (some (complement #'null) cdr-args))
+			 (make!-field-application (car fields) ex)))
+		(ftype (type (car fields))))
+            (set-assignment-arg-types* cdr-args cdr-vals fappl ftype)
+	    ;; (when (and cdr-args
+	    ;; 	       (some #'(lambda (fv)
+	    ;; 			 (and (field-decl? (declaration fv))
+	    ;; 			      (memq (id fv) changed-fields)))
+	    ;; 		     (freevars (car orig-fields))))
+	    ;;   (break "Generate TCC for /= args")
+	    ;;   (generate-dependent-update-tcc cdr-args))
+	    )))
       (let ((nfields (if done-with-field?
                          (if (some #'(lambda (fld)
                                        (member (car fields) (freevars fld)
@@ -4474,6 +4487,8 @@ required a context.")
                          fields)))
         (if nfields
             (set-assignment-rec-arg-types rem-args rem-values ex nfields
+					  (if done-with-field? (cdr orig-fields) orig-fields)
+					  changed-fields
                                           (unless done-with-field?
                                             (cons args cargs))
                                           (unless done-with-field?
