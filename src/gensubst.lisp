@@ -980,9 +980,6 @@
 (defmethod copy-untyped* ((ex adt-name-expr))
   (change-class (call-next-method) 'name-expr))
 
-(defmethod copy-untyped* ((ex constructor-name-expr))
-  (change-class (call-next-method) 'name-expr))
-
 (defmethod copy-untyped* ((ex null-expr))
   (with-slots (actuals dactuals) ex
     (copy ex
@@ -1011,7 +1008,7 @@
       'declared-type (copy-untyped* declared-type)
       'resolutions nil)))
 
-(defmethod copy-untyped* ((ex number-expr))
+(defmethod copy-untyped* ((ex rational-expr))
   (copy ex
     'type nil))
 
