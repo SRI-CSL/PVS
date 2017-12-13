@@ -411,7 +411,8 @@
   (generate-cond-tccs expr))
 
 (defmethod check-for-tccs* ((ex lambda-expr) expected)
-  (let* ((sexpected (find-supertype expected))
+  (let* ((*bound-variables* (append (bindings ex) *bound-variables*))
+	 (sexpected (find-supertype expected))
 	 (edomain (if (dep-binding? (domain sexpected))
 		      (type (domain sexpected))
 		      (domain sexpected)))
