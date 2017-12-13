@@ -966,7 +966,8 @@ making use of outline mode."
       (dolist (lib prelude-libs)
 	(insert (format "\n(load-prelude-library \"%s\")" lib))))))
 
-(let ((pvs-libdirs nil))
+(defvar pvs-libdirs nil)
+
 (defpvs undump-pvs-files dump-files (filename directory)
   "Break dump files into separate PVS files.
 
@@ -1090,7 +1091,6 @@ ESC or `q' to not overwrite any of the remaining files,
 		   (setq ldir nil))))
 	  (push (cons dir ldir) pvs-libdirs)
 	  ldir))))
-)
 
 (defpvs report-pvs-bug help (subject)
   "Report a bug in PVS."
