@@ -643,7 +643,8 @@ it is nil in the substituted binding")
 (defmethod substit* ((expr binding-expr) alist)
   (if (not (substit-possible? expr alist))
       expr
-      (let* ((*leave-bindings-undeclared* (memq expr *let-operators*))
+      (let* ((*bound-variables* (append (bindings expr) *bound-variables*))
+	     (*leave-bindings-undeclared* (memq expr *let-operators*))
 	     (new-bindings-i (make-new-bindings-internal
 			      (bindings expr) alist (expression expr)))
 	     (new-bindings (if (equal new-bindings-i (bindings expr))
@@ -696,11 +697,12 @@ it is nil in the substituted binding")
 		       expr)))
 
 (defun make-new-bindings-internal (old-bindings alist expr)
-  (let ((nbindings (make-new-bindings* old-bindings
-				       (alist-freevars alist)
-				       (alist-boundvars alist)
-				       alist
-				       expr)))
+  (let* ((*bound-variables* (append (alist-boundvars alist) *bound-variables*))
+	 (nbindings (make-new-bindings* old-bindings
+					(alist-freevars alist)
+					(alist-boundvars alist)
+					alist
+					expr)))
     (if (equal nbindings old-bindings)
 	old-bindings
 	nbindings)))
