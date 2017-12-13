@@ -2456,12 +2456,15 @@
        (values (car (fourth info))
 	       (format nil
 		   "~:r argument to ~a has the wrong type~
-                    ~%     Found: ~{~a~%~^~12T~}  Expected: ~a"
+                    ~%     Found: ~{~a~%~^~12T~}  Expected: ~a~
+                    ~%   ~:r argument is ~a"
 		 (third info)
 		 name
 		 (mapcar #'(lambda (fn) (unpindent fn 12 :string t))
 		   (full-name (ptypes (car (fourth info))) 1))
-		 (full-name (car (fifth info)) 1)))))))
+		 (full-name (car (fifth info)) 1)
+		 (third info)
+		 (fourth info)))))))
 
 (defun best-guess-resolution-error (infolist arguments)
   (if (cdr infolist)
