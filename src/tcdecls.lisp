@@ -3548,6 +3548,38 @@
 	(push idx indices)))
     (nreverse indices)))
 
+;; (defmethod dependencies ((constructor constructor-name-expr) constructor-list)
+;;   "Return the constructors in constructor-list that depend on constructor, or that constructor depends on"
+;;   (assert (memq constructor constructor-list))
+;;   (remove-if #'(lambda (constr)
+;; 		 (or (eq constr constructor-list)
+;; 		     (and (not (dependent-on? constr constructor))
+;; 			  (not (dependent-on? constructor constr)))))
+;;     constructor-list))
+
+;; (defmethod dependencies ((constructor constructor-name-expr) (rt recursive-type))
+;;   "Return the constructors in constructor-list that depend on constructor, or that constructor depends on"
+;;   (dependencies constructor (constructors rt)))
+
+;; (defmethod dependencies ((constructor constructor-name-expr) (type adt-type-name))
+;;   "Return the constructors in constructor-list that depend on constructor, or that constructor depends on"
+;;   (dependencies constructor (constructors type)))
+
+(defmethod dependencies ((accessor accessor-name-expr) (constructor constructor-name-expr))
+  (dependencies accessor (accessor-names constructor)))
+
+(defmethod dependencies ((accessor accessor-name-expr) accessor-names)
+  "Return the accessors in accessor-names that depend on accessor, or that accessor depends on"
+  (assert (member accessor accessor-names :test #'tc-eq))
+  (remove-if #'(lambda (acc)
+		 (or (tc-eq acc accessor)
+		     (and (not (acc-dependent-on? acc accessor))
+			  (not (acc-dependent-on? accessor acc)))))
+    accessor-names))
+
+(defun acc-dependent-on? (accname1 accname2)
+  (occurs-in accname2 (type accname1)))
+
 (defun dependent-fields? (fields)
   (some #'(lambda (fld)
 	    (some #'(lambda (fv)
