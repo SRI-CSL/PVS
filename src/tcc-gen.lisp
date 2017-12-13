@@ -109,7 +109,9 @@
 			  (t (mk-subtype-tcc id nil dfmls))))
 	   (conc (make!-conjunction* incs))
 	   (*no-expected* nil)
-	   (*bound-variables* *keep-unbound*)
+	   (*bound-variables* (if *in-checker*
+				  *keep-unbound*
+				  *bound-variables*))
 	   (true-conc? (tcc-evaluates-to-true conc))
 	   (tform (unless true-conc?
 		    (add-tcc-conditions conc)))
