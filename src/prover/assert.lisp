@@ -1648,10 +1648,15 @@
 
 (defun accessor-update-reduce (expr op arg) ;;similar to record-update-reduce
     (declare (ignore expr))
-  (let ((updates (loop for assn in (assignments arg)
-		       when (same-decl op (caar (arguments assn)))
-		       collect assn))
-	(expr-of-arg (expression arg)))
+    (let* ((assignments (assignments arg))
+	   (updates (loop for assn in (assignments arg)
+			  when (same-declaration op (caar (arguments assn)))
+			  collect assn))
+	   (expr-of-arg (expression arg))
+	   (dependencies (dependencies op (type expr-of-arg)))
+	   (updated-dependencies
+	    (loop for assgn in assignments
+		  thereis (member (id (caar (arguments assgn))) dependencies :key #'id))))
     (if updates
 	(if (every #'(lambda (x) (cdr (arguments x)))
 		   updates) ;;;a curried update::
@@ -1661,14 +1666,19 @@
 		    (make-accessor-update-reduced-application
 		     op expr-of-arg)
 		    (mapcar #'(lambda (x)
-				(lcopy x 'arguments
-				       (cdr (arguments x))))
+				(let* ((new-assign
+					(lcopy x 'arguments
+					       (cdr (arguments x))))
+				       (new-assign (if updated-dependencies
+						       (change-class new-assign 'maplet)
+						     new-assign)))
+				  new-assign))
 		      updates))))
 	      (do-auto-rewrite
 	       newexpr
 	       '?));;return a(exp) WITH [(i) := e] simplified.
 	    (make-update-expr-from-updates
-	     updates))
+	     updates updated-dependencies))
       (do-auto-rewrite  (make-accessor-update-reduced-application
 			   op expr-of-arg)
 			  '?))))
@@ -1826,37 +1836,51 @@
   (let* ((new-application (make!-application op arg)))
     (if (accessor-update-redex? new-application)
 	(nth-value 1 (accessor-update-reduce new-application op arg))
-	new-application)))
+      new-application)))
+
+(defmethod dependencies ((id symbol) (rectype recordtype))
+  "variant of dependencies with field id instead of field-decl"
+  (dependencies (find id (fields rectype) :key #'id) rectype))
 
 
 (defun record-update-reduce (expr op arg);;NSH(7.15.94):removed sig
   ;;expr applies record-access to record-update: a(exp WITH [..])
   ;;new-application ensures that any newly created redexes are reduced.
   (declare (ignore expr))
-  (let ((updates
-	 (loop for assn in (assignments arg)
+  (let* ((assignments (assignments arg))
+	 (updates
+	  (loop for assn in assignments
 	       when (eq op (id (caar (arguments assn))))
 	       collect assn))
-	(expr-of-arg (expression arg)))
+	 (expr-of-arg (expression arg)))
     (if updates
-	(if (every #'(lambda (x) (cdr (arguments x)))
-		   updates) ;;;a curried update::
-	                             ;;;a(exp WITH [((a)(i)):= e])
-	    (let ((newexpr;;NSH(9.15.94): otherwise TCCs
-		   ;;are generated when domain is subtype.
-		   ;;(let ((*generate-tccs* 'none)))
-		   (make!-update-expr
-		    (make-record-update-reduced-application
-		     op expr-of-arg)
-		    (mapcar #'(lambda (x)
-				(lcopy x 'arguments
-				       (cdr (arguments x))))
-		      updates))))
-	      (do-auto-rewrite
-	       newexpr
-	       '?));;return a(exp) WITH [(i) := e] simplified.
+	(let* ((dependencies (dependencies op (find-supertype (type expr-of-arg))))
+	       (updated-dependencies
+		(loop for assgn in assignments
+		      thereis (member (id (caar (arguments assgn))) dependencies :key #'id))))
+	  (if (every #'(lambda (x) (cdr (arguments x)))
+		     updates) ;;;a curried update::
+;;;a(exp WITH [((a)(i)):= e])
+	      (let ((newexpr ;;NSH(9.15.94): otherwise TCCs
+		     ;;are generated when domain is subtype.
+		     ;;(let ((*generate-tccs* 'none)))
+		     (make!-update-expr
+		      (make-record-update-reduced-application
+		       op expr-of-arg)
+		      (mapcar #'(lambda (x)
+				  (let* ((new-assign
+					  (lcopy x 'arguments
+						 (cdr (arguments x))))
+					 (new-assign (if updated-dependencies
+							 (change-class new-assign 'maplet)
+						       new-assign)))
+				    new-assign))
+			      updates))))
+		(do-auto-rewrite
+		 newexpr
+		 '?)) ;;return a(exp) WITH [(i) := e] simplified.
 	    (make-update-expr-from-updates
-	     updates))
+	     updates updated-dependencies)))
 	(do-auto-rewrite  (make-record-update-reduced-application
 			   op expr-of-arg)
 			  '?))))
@@ -1865,7 +1889,7 @@
 ;;invoked from record-update-reduce.  Makes sure that all
 ;;previous updates from last single update are irrelevant.
 ;;NSH(10.10.07) moved values '? in here and added do-auto-rewrite
-(defun make-update-expr-from-updates (updates)
+(defun make-update-expr-from-updates (updates &optional maplet?)
   (if (and (consp updates)
 	   (null (cdr (arguments (car updates))))
 	   (every #'(lambda (x) (cdr (arguments x)))
@@ -1875,8 +1899,13 @@
 	  (do-auto-rewrite
 	   (make!-update-expr
 	    (expression (car updates))
-	    (mapcar #'(lambda (x) (lcopy x 'arguments
-					 (cdr (arguments x))))
+	    (mapcar #'(lambda (x)
+			(let* ((new-assign (lcopy x 'arguments
+						 (cdr (arguments x))))
+			       (new-assign (if maplet?
+					       (change-class new-assign 'maplet)
+					     new-assign)))
+			  new-assign))
 	      (cdr updates)))
 	   '?))
       (make-update-expr-from-updates (cdr updates))))
@@ -2669,8 +2698,9 @@
 (defun simplify-accessor-update-redex (expr)
   (let* ((op (operator expr))
 	 (arg (argument expr))
+	 (assignments (assignments arg))
 	 (updates
-	  (loop for assn in (assignments arg)
+	  (loop for assn in assignments
 		when (eq (id op) (id (caar (arguments assn))))
 		collect assn))
 	 (expr-of-arg (expression arg)))
@@ -2749,33 +2779,46 @@
 			       (make!-projection-application index newarg))))
 	     (do-auto-rewrite new-expr sig)))))
 
+(defmethod dependencies ((index number)(tuptype tupletype))
+  (dependencies (nth (1- index) (types tuptype)) tuptype))
+
 (defun tuple-update-reduce (index arg)
-  (let ((updates (loop for assn in (assignments arg)
-		 when (eql index (number (caar (arguments assn))))
-		 collect assn))
-	(expr-of-arg (expression arg)));(break)
+  (let* ((assignments (assignments arg))
+	 (updates (loop for assn in assignments
+			when (eql index (number (caar (arguments assn))))
+			collect assn))
+	 (expr-of-arg (expression arg))) ;(break)
     (if updates
-	(if (every #'(lambda (x) (cdr (arguments x)))
+	(let* ((dependencies (dependencies index (find-supertype (type expr-of-arg))))
+	       (updated-dependencies
+		(loop for assgn in assignments ;dependencies is a list of indices
+		      thereis (member (number (caar (arguments assgn))) dependencies))))
+	  (if (every #'(lambda (x) (cdr (arguments x)))
 		     updates) ;;;a curried update::
-	                             ;;;PROJ_n(exp WITH [(n)(i):= e])
-	    (let ((newexpr (make!-update-expr
-			    (make-tuple-update-reduced-projection
-			     index expr-of-arg)
-			    (mapcar #'(lambda (x)
-				    (lcopy x 'arguments
-					   (cdr (arguments x))))
-			      updates)
-;			    (list (lcopy update 'arguments
-;					 (cdr (arguments update)))
-			    ;;(type (make!-projection-application index arg))
-			    )))
-	      (do-auto-rewrite
-	       newexpr
-	       '?));;return a(exp) WITH [(i) := e] simplified.
-	    (make-update-expr-from-updates updates))
-	(do-auto-rewrite (make-tuple-update-reduced-projection
-			  index expr-of-arg)
-			 '?))))
+;;;PROJ_n(exp WITH [(n)(i):= e])
+	      (let ((newexpr (make!-update-expr
+			      (make-tuple-update-reduced-projection
+			       index expr-of-arg)
+			      (mapcar #'(lambda (x)
+					  (let* ((new-assign
+						  (lcopy x 'arguments
+							 (cdr (arguments x))))
+						 (new-assign (if updated-dependencies
+								 (change-class new-assign 'maplet)
+							       new-assign)))
+					    new-assign))
+				      updates)
+					;			    (list (lcopy update 'arguments
+					;					 (cdr (arguments update)))
+			      ;;(type (make!-projection-application index arg))
+			      )))
+		(do-auto-rewrite
+		 newexpr
+		 '?)) ;;return a(exp) WITH [(i) := e] simplified.
+	    (make-update-expr-from-updates updates updated-dependencies)))
+      (do-auto-rewrite (make-tuple-update-reduced-projection
+			index expr-of-arg)
+		       '?))))
 
 (defun make-tuple-update-reduced-projection (index expr)
   (let ((new-application (make!-projection-application index expr)))
