@@ -47,6 +47,10 @@
 (defun current-context ()
   *current-context*)
 
+(defun current-pvs-file ()
+  (when *current-context*
+    (filename (theory *current-context*))))
+
 (defun current-theory ()
   (when *current-context*
     (theory *current-context*)))
