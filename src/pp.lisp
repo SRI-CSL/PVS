@@ -80,7 +80,7 @@
 	(expr sbst::<> 0 200) (expr sbst::◇ 0 200) (expr sbst::□ 0 200)
 	(expr sbst::+ 0 170) (expr sbst::- 0 170)
 	(expr sbst::⊕ 0 170) (expr sbst::⊖ 0 170)
-        (expr sbst::~ 0 95) (expr sbst::NOT 0 95) (expr sbst::¬ 0 95)
+        (expr sbst::~ 0 80) (expr sbst::NOT 0 80) (expr sbst::¬ 0 80)
         (expr jux 1 230) (expr sbst::|`| 1 220)
         (expr sbst::^^ 1 210) (expr sbst::^ 1 210)
         (expr sbst::HAS_TYPE 1 190) (expr sbst::|::| 1 190)

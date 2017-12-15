@@ -98,13 +98,13 @@ Precedence Information
 		'XOR' medial right, 'ORELSE' medial right
 	'AND' medial right, '&' medial right, '∧' medial right,
 		'/\\' medial right, '&&' medial right, 'ANDTHEN' medial right
+	'NOT' initial, '~' initial, '¬' initial
 	'=' medial left, '/=' medial left, '≠' medial left, '==' medial left
         '<' medial left, '<=' medial left,
 		'>' medial left, '>=' medial left,
 		'<<' medial left, '>>' medial left,
                 '<<=' medial left, '>>=' medial left,
 		'<|' medial left, '|>' medial left
-	'NOT' initial, '~' initial, '¬' initial
 	'WITH' medial left
 	'WHERE' medial left, 'IN' medial left
 	'@' medial left, '#' medial left 
