@@ -1247,7 +1247,7 @@
 		    (length (info theory)))
 		  (pvs-message
 		      "~a typechecked in ~,2,-3fs: ~d TCC~:p, ~
-                       ~d proved, ~d subsumed, ~d unproved, ~d trivial~
+                       ~d proved, ~d subsumed, ~d unproved~[~:;, ~:*~d trivial~]~
                        ~[~:;; ~:*~d conversion~:p~]~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
 		    (id theory) time tot prv sub unprv simp
 		    (length (conversion-messages theory))
@@ -1306,7 +1306,7 @@
 	(pvs-message "File ~a typechecked: No TCCs to prove~a"
 	  (filename (car theories)) (if importchain? "on importchain" ""))
 	(pvs-message
-	    "File ~a typechecked:~a ~d TCCs, ~d proved, ~d subsumed, ~d unproved, ~d trivial~
+	    "File ~a typechecked:~a ~d TCCs, ~d proved, ~d subsumed, ~d unproved~[~:;, ~:*~d trivial~]~
              ~[~:;; ~:*~d conversion~:p~]~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
 	  (filename (car theories))
 	  (if importchain? " importchain has" "")
