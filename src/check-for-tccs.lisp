@@ -661,12 +661,23 @@
       (when args
 	(assert (field-assignment-arg? (caar args)))
 	(when done-with-field?
-	  (check-assignment-arg-types*
-	   cdr-args
-	   (nreverse (cons value cvalues))
-	   (when (and ex (some (complement #'null) cdr-args))
-	     (make!-field-application (car fields) ex))
-	   (type (car fields)))))
+	  (let ((fappl (when (and ex (some (complement #'null) cdr-args))
+			 (make!-field-application (car fields) ex)))
+		(ftype (type (car fields))))
+	    (check-assignment-arg-types*
+	     cdr-args (nreverse (cons value cvalues)) fappl ftype)
+	    (when fappl
+	      (let* ((bid (make-new-variable '|x| (cons ex cdr-args)))
+		     (bd (make-bind-decl bid (type (caaar cdr-args))))
+		     (bvar (make-variable-expr bd))
+		     (deqn (make!-disequation bvar (caaar cdr-args)))
+		     (*tcc-conditions* (cons deqn (cons bd *tcc-conditions*)))
+		     (app (make!-application fappl bvar))
+		     (expected (if (dep-binding? (domain ftype))
+				   (substit (range ftype)
+				     (acons (domain ftype) bvar nil))
+				   (range ftype))))
+		(check-for-tccs* app expected))))))
       (let ((nfields (if done-with-field?
 			 (if (some #'(lambda (fld)
 				       (member (car fields) (freevars fld)
