@@ -525,10 +525,11 @@
 		    (generated formal))
 		  (make-instance 'actual
 		    :expr spred))))
-	(let ((spred (subtype-pred subtype
-				   (subst-mod-params* 
-				    (supertype (type-value formal))
-				    modinst bindings))))
+	(let* ((fstype (subst-mod-params* 
+			(supertype (type-value formal))
+			modinst bindings))
+	       (spred (when (compatible? subtype fstype)
+			(subtype-pred subtype fstype))))
 	  (when spred
 	    (cons (find-if #'(lambda (c) (typep c 'const-decl))
 		    (generated formal))
