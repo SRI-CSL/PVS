@@ -449,6 +449,12 @@
     (setf (types expr)
 	  (cons (or *real* *number_field*) (mapcar #'type reses)))))
 
+(defmethod typecheck* ((expr rational-expr) expected kind arguments)
+  (declare (ignore expected kind))
+  ;;(assert (typep *number* 'type-expr))
+  (assert *number_field*)
+  (setf (types expr) (list (or *real* *number_field*))))
+
 (defun available-numeric-type (num)
   ;; Note that this may be used when compiling the prelude, and not all
   ;; types will be available
