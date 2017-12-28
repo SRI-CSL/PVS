@@ -4545,18 +4545,23 @@ space")
 (defmethod dep-binding-type ((te type-expr))
   te)
 
-(defun tc-term (obj &optional (nt 'expr))
+(defun tc-term (obj &key (nt 'expr) expected)
   (assert *current-context*)
   (let ((term (if (stringp obj)
 		  (pc-parse obj nt)
-		  obj)))
-    (pc-typecheck term)))
+		  obj))
+	(type (if (stringp expected)
+		  (tc-term expected :nt 'type-expr)
+		  expected)))
+    (if type
+	(pc-typecheck term :expected type)
+	(pc-typecheck term))))
 
-(defun tc-expr (ex)
-  (tc-term ex 'expr))
+(defun tc-expr (ex &key expected)
+  (tc-term ex :expected expected))
 
 (defun tc-type (ty)
-  (tc-term ty 'type-expr))
+  (tc-term ty :nt 'type-expr))
 
 ;; This is the function for making hash tables
 (defun make-pvs-hash-table (&rest other-keys &key strong-eq? weak-keys?
