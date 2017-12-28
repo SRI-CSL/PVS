@@ -38,6 +38,9 @@
 ;;Removed *pvsio2cl-primitives* since PVSio primitives are handled differently (Feb 20 2015) [CM]
 ;;(defvar *pvsio2cl-primitives* nil)
 
+(defvar *pvs2cl-decl* nil
+  "Tracks the current declaration being compiled, for help in debugging undefined, etc.")
+
 ;;lisp-id generates a Lisp identifier for a PVS identifier that
 ;;doesn't clash with existing Lisp constants and globals.
 
@@ -678,7 +681,10 @@
 		(t (let ((undef (undefined
 				 bind1
 				 (format nil
-				     "Hit non-scalar/subrange variable ~a in ~% ~a"
+				     "In ~@[~a.~]~a: Hit non-scalar/subrange variable ~a in ~% ~a"
+				   (when (and *pvs2cl-decl* (module *pvs2cl-decl*))
+				     (id (module *pvs2cl-decl*)))
+				   (when *pvs2cl-decl* (id *pvs2cl-decl*))
 				   bind1 expr))))
 		   `(funcall ',undef)))))
 	(pvs2cl_up* body bindings livevars))))
@@ -1429,7 +1435,8 @@
 (defun pvs2cl-external-lisp-function (decl)
   (let* ((defax (def-axiom decl))
 	 (*external* (module decl))
-	 (*current-theory* (module decl)))
+	 (*current-theory* (module decl))
+	 (*pvs2cl-decl* decl))
     (cond ((null defax)
 	   (let ((undef (undefined decl)))
 	     (make-eval-info decl)
@@ -1594,7 +1601,8 @@
 ;;Local variable undef moved to case where defax is null (Feb 20 2015) [CM]
 (defun pvs2cl-lisp-function (decl)
   (let* ((defax (def-axiom decl))
-	 (*external* nil))
+	 (*external* nil)
+	 (*pvs2cl-decl* decl))
     (cond ((null defax)
 	   (let ((undef (undefined decl)))
 	     (setf (in-name decl) undef
@@ -1638,7 +1646,7 @@
 							  nil))))))
 		 (eval (definition (in-defn-m decl)))
 		 (assert id2)
-		 (format t "~%IN pvs2cl-lisp-function: compile ~a, args = ~a, long-list: ~a~%"
+		 (format t "~%IN pvs2cl-lisp-function: compile ~a,~_   args = ~a,~_   long-list: ~a~%"
 			 id2 defn-binding-ids (expr_is_long_list defn-body 0))
 		 (or skip-compile (compile id2)))
 	       ;;		 (compile id2))
@@ -2126,8 +2134,8 @@
 	      (cons (mk-number-expr 0) upto)
 	      (let ((below (simple-below? type)))
 		(when below
-		  (cons (mk-number-expr 0)
-			(make!-difference below (make!-number-expr 1))))))))))
+		  (cons (make!-number-expr 0)
+			(make!-number-expr (1- (number below)))))))))))
 
 (defun simple-above? (type)
   (let* ((bindings (make-empty-bindings (free-params (above-subtype))))
