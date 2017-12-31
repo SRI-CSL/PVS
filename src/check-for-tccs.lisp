@@ -666,7 +666,7 @@
 		 (fldtype (type (car fields)))
 		 (ftype (find-supertype fldtype)))
 	    (check-assignment-arg-types*
-	     cdr-args (nreverse (cons value cvalues)) fappl ftype)
+	     cdr-args (nreverse (cons value cvalues)) fappl fldtype)
 	    (when (and fappl
 		       (funtype? (find-supertype ftype)))
 	      (let* ((bid (make-new-variable '|x| (cons ex cdr-args)))
