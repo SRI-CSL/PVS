@@ -4464,7 +4464,7 @@ required a context.")
 			  (make!-field-application (car fields) ex)))
 		 (fldtype (type (car fields)))
 		 (ftype (find-supertype fldtype)))
-            (set-assignment-arg-types* cdr-args cdr-vals fappl ftype)
+            (set-assignment-arg-types* cdr-args cdr-vals fappl fldtype)
 	    (when (and fappl
 		       (funtype? ftype))
 	      (let* ((bid (make-new-variable '|x| (cons ex cdr-args)))
