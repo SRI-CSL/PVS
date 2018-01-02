@@ -5863,6 +5863,21 @@ BEGIN
   bv_stimes(bv1, (bv2 | NOT mult_overflow(bv1, bv2))): bvec[N] =
     int2bv(bv2int(bv1) * bv2int(bv2))
 
+  % Executable version of nat2bv (named bv for short)
+  nat2bv_rec(n: below(exp2(N)), bv: bvec[N], idx: below(N)): recursive bvec[N] =
+    let nbv = bv WITH [(idx) := mod(n, 2) = 1]
+     in if idx = 0
+        then nbv
+        else nat2bv_rec(ndiv(n, 2), nbv, idx - 1)
+        endif
+   measure idx
+
+  % The bv conversion allows easy creation of literal bitvectors, e.g., bv[8](0b11001010)
+  % It is also the form output by the ground evaluator.
+  bv(n: below(exp2(N))): bvec[N] = nat2bv_rec(n, lambda (i: below(N)): false, N-1)
+
+  CONVERSION+ bv
+
 END bv_arithmetic_defs
 
 

@@ -89,7 +89,7 @@ in util.lisp")
 
 (defvar *pvs-git-describe*)
 
-(defparameter *binfile-version* 37)
+(defparameter *binfile-version* 38)
 
 (defvar *pvs-build-time* (get-universal-time))
 
