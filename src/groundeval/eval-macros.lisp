@@ -339,7 +339,7 @@
 (defun insert-array-diffs* (diffs array)  
       (if (consp diffs)
 	  (let ((array (insert-array-diffs* (cdr diffs) array)))
-	    (setf (svref array (caar diffs))(cdar diffs))
+	    (setf (aref array (caar diffs))(cdar diffs))
 	    array)
 	  array))
 
@@ -348,7 +348,7 @@
 	((simple-vector-p array)
 	 (let ((arr (make-array arraysize :initial-element 0)))
 	   (loop for i from 0 to (1- arraysize) do
-		 (setf (svref arr i)(svref array i)))
+		 (setf (svref arr i)(svref array i)));;svref is okay
 	   (make-pvs-array :contents arr :size 0)))
 	(t (make-pvs-array
 	    :contents (mk-fun-array array arraysize)
@@ -367,7 +367,7 @@
 	 (let ((arr (make-array arraysize :initial-element 0)))
 	   (loop for i from 0 to (1- arraysize)
 		 when (not (eql i update-index))
-		 do (setf (svref arr i)(svref array i)))
+		 do (setf (aref arr i)(aref array i)))
 	   (make-pvs-outer-array
 	    :inner-array (make-pvs-array :contents arr :size 0)
 	    :offset 0
