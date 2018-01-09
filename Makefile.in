@@ -188,7 +188,11 @@ ifneq ($(buildcmds),)
 
 # Need an emacs to work with
 ifndef EMACS
+ifdef PVSEMACS
+EMACS = $(PVSEMACS)
+else
 EMACS = $(shell which emacs 2> /dev/null)
+endif
 endif
 ifeq ($(EMACS),)
 EMACS = $(shell which xemacs 2> /dev/null)
