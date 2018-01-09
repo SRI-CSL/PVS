@@ -98,30 +98,29 @@ it is nil in the substituted binding")
 (defun substit (obj alist)
   ;; At some point, should verify that car of every element of the
   ;; alist is a declaration.
-  (cond ((or (null obj) (null alist))
-	 obj)
-	(t #+pvsdebug
-	   (assert (every #'(lambda (a)
-			      (and (typep (car a)
-					  '(or simple-decl declaration))
-				   (eq (declaration (car a)) (car a))))
-			  alist))
-	   (let* ((fvars (freevars obj))
-		  (nalist (remove-if
-			      (complement
-			       #'(lambda (a)
-				   (and (not (eq (car a) (cdr a)))
-					;;(not (and (name-expr? (cdr a))
-					;; (eq (declaration (cdr a))
-					;;   (car a))))
-					(member (declaration (car a)) fvars
-						:key #'declaration :test #'eq))))
-			    alist)))
-	     (if (null nalist)
-		 obj
-		 (new-substit-hash
-		  (let ((sobj (substit* obj nalist)))
-		    sobj)))))))
+  #+pvsdebug
+  (assert (every #'(lambda (a)
+		     (and (typep (car a)
+				 '(or simple-decl declaration))
+			  (eq (declaration (car a)) (car a))))
+		 alist))
+  (if (or (null obj) (null alist))
+      obj
+      (let* ((fvars (freevars obj))
+	     (nalist (remove-if
+			 #'(lambda (a)
+			     (or (eq (car a) (cdr a))
+				 ;;(not (and (name-expr? (cdr a))
+				 ;; (eq (declaration (cdr a))
+				 ;;   (car a))))
+				 (not (member (declaration (car a)) fvars
+					      :key #'declaration :test #'eq))))
+		       alist)))
+	(if (null nalist)
+	    obj
+	    (new-substit-hash
+	     (let ((sobj (substit* obj nalist)))
+	       sobj))))))
 
 (defmethod substit* :around ((expr expr) alist)
   (declare (ignore alist))
@@ -643,13 +642,13 @@ it is nil in the substituted binding")
 (defmethod substit* ((expr binding-expr) alist)
   (if (not (substit-possible? expr alist))
       expr
-      (let* ((*bound-variables* (append (bindings expr) *bound-variables*))
-	     (*leave-bindings-undeclared* (memq expr *let-operators*))
+      (let* ((*leave-bindings-undeclared* (memq expr *let-operators*))
 	     (new-bindings-i (make-new-bindings-internal
 			      (bindings expr) alist (expression expr)))
 	     (new-bindings (if (equal new-bindings-i (bindings expr))
 			       (bindings expr)
 			       new-bindings-i))
+	     (*bound-variables* (append new-bindings *bound-variables*))
 	     (nalist (substit-pairlis (bindings expr) new-bindings alist))
 	     (nexpr (add-substit-hash
 		     (substit* (expression expr) nalist)))
@@ -688,6 +687,8 @@ it is nil in the substituted binding")
 			   alist
 			   (acons (car bindings) (car new-bindings) alist)))))
 
+;; Creates new bindings from old.
+
 (defun make-new-bindings (old-bindings alist expr)
   (new-substit-hash
    (make-new-bindings* old-bindings
@@ -696,9 +697,9 @@ it is nil in the substituted binding")
 		       alist
 		       expr)))
 
+;; Uses existing substit-hash
 (defun make-new-bindings-internal (old-bindings alist expr)
-  (let* ((*bound-variables* (append (alist-boundvars alist) *bound-variables*))
-	 (nbindings (make-new-bindings* old-bindings
+  (let* ((nbindings (make-new-bindings* old-bindings
 					(alist-freevars alist)
 					(alist-boundvars alist)
 					alist
@@ -741,7 +742,8 @@ it is nil in the substituted binding")
 	(setq *alist-boundvars* bvars))
       *alist-boundvars*))
 
-;;freevars must be the free variables in alist.
+;; freevars are the free variables in the alist RHSs.
+;; boundvars are the bindings found walking down the alist RHSs, excluding subtypes
 
 (defun make-new-bindings* (old-bindings freevars boundvars alist expr
 					&optional nbindings)
