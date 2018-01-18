@@ -1562,6 +1562,7 @@ then uses unpindent* to add the indent to each line"
   (write (number ex)))
 
 (defmethod pp* ((ex number-expr-with-radix))
+  (assert (integerp (radix ex)))
   (let ((*print-base* (radix ex)))
     (write-char #\0)
     (write-char (case (radix ex) (2 #\b) (8 #\o) (16 #\x)))
@@ -1613,6 +1614,16 @@ then uses unpindent* to add the indent to each line"
   (write-char #\.)
   (dotimes (i (fractional-length ex))
     (write-char #\0)))
+
+(defmethod pp* ((ex bitvector))
+  (let ((nbits-ex (expr (car (actuals (module-instance (operator ex)))))))
+    (if (and (number-expr? nbits-ex)
+	     (number-expr? (argument ex)))
+	(let ((nbits (number nbits-ex)))
+	  (if (typep ex 'bitvector-conversion)
+	      (format t "0b~v,'0b" nbits (number (argument ex)))
+	      (format t "bv[~d~:*](0b~v,'0b)" nbits (number (argument ex)))))
+	(call-next-method))))
 
 (defmethod pp* ((ex string-expr))
   (unless (string-value ex)

@@ -300,6 +300,11 @@
 ;; (/ 31416 10000) 
 (defcl decimal (application))
 
+;; And this is for bitvectors constructed with bv
+(defcl bitvector (application))
+
+(defcl bitvector-conversion (bitvector implicit-conversion))
+
   
 (defcl if-expr (application))
 
