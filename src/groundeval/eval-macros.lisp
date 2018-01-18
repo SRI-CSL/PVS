@@ -178,14 +178,24 @@
 		    (return nil))))))
         ((vectorp x)
          (let ((length (length x)))
-           (and (vectorp y)
-                (= length (length y))
-                (dotimes (i length t)
-                  (let ((x-el (aref x i))
-                        (y-el (aref y i)))
-                    (unless (pvs_equalp x-el y-el);;(NSH:4/25/2013)
-		      ;;removed redundant eq test
-                      (return nil)))))))
+           (cond ((vectorp y)
+                  (= length (length y))
+                  (dotimes (i length t)
+                    (let ((x-el (aref x i))
+                          (y-el (aref y i)))
+                      (unless (pvs_equalp x-el y-el) ;;(NSH:4/25/2013)
+			;;removed redundant eq test
+			(return nil)))))
+		 ;; Vectors may be compared to closures
+		 ((functionp y)
+		  ;; Can't test the length of a closure, but it should be OK
+		  (dotimes (i length t)
+		    (let ((x-el (aref x i))
+                          (y-el (funcall y i)))
+                      (unless (pvs_equalp x-el y-el) ;;(NSH:4/25/2013)
+			;;removed redundant eq test
+			(return nil)))))
+		 (t nil))))
         ((arrayp x)
          (and (arrayp y)
               (= (array-rank x) (array-rank y))
@@ -199,6 +209,10 @@
                   (unless (or (eq x-el y-el)
                               (pvs_equalp x-el y-el))
                     (return nil))))))
+	((functionp x)
+	 (when (vectorp y)
+	   ;; Rather than repeat the code above, just flip arguments
+	   (pvs_equalp y x)))
         (t nil)))
 
 (defmacro |pvs__IMPLIES| (x y) `(or (not ,x) ,y))
@@ -243,7 +257,7 @@
 (defmacro |pvs__rational_pred| (x) `(rationalp ,x))
 (defmacro |pvs__integer_pred| (x) `(integerp ,x))
 
-(defmacro uninterpreted (str &rest args) `(throw 'undefined (format t ,str ,@args)))
+(defmacro uninterpreted (str &rest args) `(error 'undefined (format t ,str ,@args)))
 
 
 (defmacro project (index tuple)

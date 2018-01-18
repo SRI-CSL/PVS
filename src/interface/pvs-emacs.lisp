@@ -991,6 +991,8 @@
 (defvar *type-error-argument* nil)
 (defvar *skip-all-conversion-checks* nil)
 
+(define-condition tcerror (simple-condition) ())
+
 (#+cmu ext:without-package-locks
  #+sbcl sb-ext:without-package-locks
  #-(or cmu sbcl) progn
@@ -1029,7 +1031,7 @@
 	  ((and *in-evaluator* (not *evaluator-debug*))
 	   (format t "~%~a" errmsg)
 	   (format t "~%Try again.")
-	   (throw 'tcerror t))
+	   (error 'tcerror ()))
 	  ((null *pvs-emacs-interface*)
 	   (format t "~%<pvserror msg=\"type error\">~%\"~a\"~%</pvserror>"
 	     (protect-emacs-output errmsg))

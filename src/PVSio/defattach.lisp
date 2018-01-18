@@ -203,7 +203,7 @@ It cannot be evaluated in a formal proof."
     (let ((body (if primitive
 		    (cons 'progn (cdr dobo))
 		  `(if *in-checker* 
-		       (throw '*pvsio-inprover* ,mssg)
+		       (error 'pvsio-inprover ,mssg)
 		     ,(cons 'progn (cdr dobo))))))
       `(defun ,fnm ,newargs ,doc ,body))))
 

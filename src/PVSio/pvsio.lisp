@@ -19,6 +19,22 @@
 (defparameter *pvsio-promptin* "<PVSio> ")
 (defparameter *pvsio-promptout* "==>~%")
 
+;;; Keeps track of wrappers associated with a given PVS name and lisp
+;;; function Bound in PVSio.  All wrappers should be turned off (funwrap)
+;;; when PVSio exits, though the wrappers themelves are still defined.
+;;; (((nexpr . wrapped-fun) . wrap-id) ... )
+(defvar *pvstrace-wrappers* nil)
+
+;;; Collects all wrapper/wrapped pairs for clearing them out
+;;; Not bound in PVSio, but it's just symbols, not likely to be a memory leak
+(defvar *pvstrace-all-wrappers* nil)
+
+(defvar *pvstrace-level* 0)
+
+;;; Keep the untranslatable forms here, an alist from Lisp form to
+;;; PVS names.
+(defvar *eval-untranslatable* nil)
+
 (defun help-pvsio ()
   (format 
    t 
@@ -62,20 +78,23 @@ To change output prompt '~a':
 	:direction :output 
 	:if-does-not-exist :create
 	:if-exists (if *pvs-emacs-interface* :supersede :append))
-       (unwind-protect
-	   (let ((*current-theory* theory)
-		 (*generate-tccs* (if tccs? 'all 'none))
-		 (*current-context* (or (saved-context theory) (context nil)))
-		 (*suppress-msg* t)
-		 (*in-evaluator* t)
-		 (*destructive?* t)
-		 (*eval-verbose* nil)
-		 (*compile-verbose* nil)
-		 (*convert-back-to-pvs* t)
-		 (*disable-gc-printout* t)
-		 (input-stream (when input (make-string-input-stream input))))
-	     (if banner?
-		 (format t "
+	(let ((*pvstrace-wrappers* nil))
+	  (unwind-protect
+	       (let ((*current-theory* theory)
+		     (*generate-tccs* (if tccs? 'all 'none))
+		     (*current-context* (or (saved-context theory) (context nil)))
+		     (*suppress-msg* t)
+		     (*in-evaluator* t)
+		     (*destructive?* t)
+		     (*eval-verbose* nil)
+		     (*compile-verbose* nil)
+		     (*convert-back-to-pvs* t)
+		     (*disable-gc-printout* t)
+		     (*pvstrace-level* 0)
+		     (*eval-untranslatable* nil)
+		     (input-stream (when input (make-string-input-stream input))))
+		 (if banner?
+		     (format t "
 +---- 
 | ~a
 |
@@ -90,116 +109,122 @@ To change output prompt '~a':
 | stack, or worse. If you crash into Lisp, type (restore) to resume.
 |
 +----~%" *pvsio-version* *pvsio-promptin* *pvsio-promptin*)
-	       (format t "Starting pvsio script~%"))
-	     (evaluate-pvsio input-stream))
-	 (when *pvs-emacs-interface*
-	   (pvs-emacs-eval "(pvs-evaluator-ready)")))))))
+		     (format t "Starting pvsio script~%"))
+		 (evaluate-pvsio input-stream))
+	    ;; unwind-protected forms
+	    (when *pvs-emacs-interface*
+	      (pvs-emacs-eval "(pvs-evaluator-ready)"))
+	    (delete-all-trace-wrappers)))))))
 
 (defun read-expr (input-stream)
-  (catch '*pvsio-command*
-    (do ((have-real-char nil)
-	 (have-first-space nil)
-	 (instr nil)
-	 (fstr  (make-string-output-stream))
-	 (c     (read-char input-stream nil nil)
-		(read-char input-stream nil nil)))
-	((and (eq c #\;)
-	      (not instr))
-	 (string-trim '(#\Space #\Tab #\Newline)
-		      (get-output-stream-string fstr)))
-      (when (null c) (throw '*pvsio-quit* nil))
-      (when (and (not instr)
-		 have-real-char
-		 (not have-first-space)
-		 (member c '(#\Space #\Newline #\Tab) :test #'char=))
-	(let ((pref (get-output-stream-string fstr)))
-	  (cond ((member pref '("(lisp" "(pvs::lisp")
-			 :test #+allegro #'string= #-allegro #'string-equal)
-		 (let ((input (read input-stream nil nil)))
-		   (format t "~%~s~2%~a" (eval input) *pvsio-promptin*))
-		 (loop until (or (null c) (char= c #\)))
-		       do (setq c (read-char-no-hang input-stream nil nil)))
-		 (setq c #\Space)
-		 (setq have-real-char nil
-		       have-first-space nil))
-		(t (loop for ch across pref do (write-char ch fstr))
-		   (setq havespace t)))))
-      (when (and (eq c #\!) (not instr))
-	(clear-input)
-	(throw '*pvsio-command* 
-	       (read-from-string 
-		(get-output-stream-string fstr))))
-      (if have-real-char
+  (do ((have-real-char nil)
+       (have-first-space nil)
+       (instr nil)
+       (fstr  (make-string-output-stream))
+       (c     (read-char input-stream nil nil)
+	      (read-char input-stream nil nil)))
+      ((and (eq c #\;)
+	    (not instr))
+       (string-trim '(#\Space #\Tab #\Newline)
+		    (get-output-stream-string fstr)))
+    (when (null c) (error 'pvsio-quit))
+    (when (and (not instr)
+	       have-real-char
+	       (not have-first-space)
+	       (member c '(#\Space #\Newline #\Tab) :test #'char=))
+      (let ((pref (get-output-stream-string fstr)))
+	(cond ((member pref '("(lisp" "(pvs::lisp")
+		       :test #+allegro #'string= #-allegro #'string-equal)
+	       (let ((input (read input-stream nil nil)))
+		 (format t "~%~s~2%~a" (eval input) *pvsio-promptin*))
+	       (loop until (or (null c) (char= c #\)))
+		  do (setq c (read-char-no-hang input-stream nil nil)))
+	       (setq c #\Space)
+	       (setq have-real-char nil
+		     have-first-space nil))
+	      (t (loop for ch across pref do (write-char ch fstr))
+		 (setq havespace t)))))
+    (when (and (eq c #\!) (not instr))
+      (clear-input)
+      (return
+	(read-from-string 
+	 (get-output-stream-string fstr))))
+    (if have-real-char
+	(write-char c fstr)
+	(unless (member c '(#\Space #\Newline #\Tab) :test #'char=)
 	  (write-char c fstr)
-	  (unless (member c '(#\Space #\Newline #\Tab) :test #'char=)
-	    (write-char c fstr)
-	    (setq have-real-char t)))
-      (when (eq c #\") (setq instr (not instr))))))
+	  (setq have-real-char t)))
+    (when (eq c #\") (setq instr (not instr)))))
+
+(define-condition pvsio-error (simple-condition) ())
+
+(define-condition pvsio-quit (simple-condition) ())
 
 (defun evaluate-pvsio (input-stream)
-  (let ((result
-	 (multiple-value-bind 
-	  (val err)
-	  (ignore-errors ;; Change to progn for debugging
-	   (catch '*pvsio-error*
-	     (catch '*pvsio-quit*
-	       (catch 'tcerror
-		 (let* ((input (read-pvsio input-stream))
-			(pr-input (pc-parse input 'expr))
-			(*tccforms* nil)
-			(tc-input (pc-typecheck pr-input))
-			(isvoid (and tc-input 
-				     (type-name? (type tc-input))
-				     (string= "void" 
-					      (format 
-					       nil "~a" 
-					       (print-type (type tc-input)))))))
-		   (when *evaluator-debug*
-		     (format t "~%Expression ~a typechecks to: ~%" pr-input)
-		     (show tc-input))
-		   (when *tccforms*
-		     (format t "~%Typechecking ~a produced the following TCCs:~%" pr-input)
-		     (evaluator-print-tccs *tccforms*)
-		     (format 
-		      t 
-		      "~%~%Evaluating in the presence of unproven TCCs may be unsound~%")
-		     (clear-input)
-		     (unless (pvs-y-or-n-p "Do you wish to proceed with evaluation? ")
-		       (throw '*pvsio-error* t)))
-		   (let ((cl-input (pvs2cl tc-input)))
-		     (when *evaluator-debug*
-		       (format t "~%PVS expression ~a translates to Common Lisp expression:~%~a~%" 
-			       tc-input cl-input))
-		     (multiple-value-bind 
-			 (cl-eval err)
-			 (catch 'undefined
-			   (ignore-errors 
-			     (if *pvs-eval-do-timing*
-				 (time (eval cl-input))
-			       (eval cl-input))))
-		       (when *evaluator-debug*
-			 (format t "~%Common Lisp expression ~a evaluates to:~%~a~%" cl-input cl-eval))
-		       (cond ((and err (null cl-eval))
-			      (format t "~%Error: ~a" err))
-			     (err (format t "~%Error (~a): ~a" cl-eval err))
-			     ((eq cl-eval 'cant-translate)
-			      (format t "~%Error: Expression doesn't appear to be ground"))
-			     (*convert-back-to-pvs*
-			      (unless isvoid
-				(let ((pvs-val 
-				       (catch 'cant-translate (cl2pvs cl-eval (type tc-input)))))
-				  (if (expr? pvs-val)
-				      (progn 
-					(format t *pvsio-promptout*)
-					(force-output)
-					(unparse pvs-val))
-				    (format t "~%Error: Result ~a is not ground" cl-eval)))))
-			     (t (format t "~a" cl-eval)))))
-		   t)))))
-	  (if err (null input-stream) val))))
-    (when result
-      (format t "~%")
-      (evaluate-pvsio input-stream))))
+  (handler-case
+      (progn
+	(handler-case
+	    (restart-case
+		(evaluate-pvsio* input-stream)
+	      (return-to-pvsio ()
+		:report "Return to PVSio"))
+	  (pvsio-error () nil))
+	(evaluate-pvsio input-stream))
+    (pvsio-quit () nil)))
+
+(defun evaluate-pvsio* (input-stream)
+  (let* ((input (read-pvsio input-stream))
+	 (pr-input (pc-parse input 'expr))
+	 (*tccforms* nil)
+	 (tc-input (pc-typecheck pr-input))
+	 (isvoid (and tc-input 
+		      (type-name? (type tc-input))
+		      (string= "void" 
+			       (format 
+				   nil "~a" 
+				 (print-type (type tc-input)))))))
+    (when *evaluator-debug*
+      (format t "~%Expression ~a typechecks to: ~%" pr-input)
+      (show tc-input))
+    (when *tccforms*
+      (format t "~%Typechecking ~a produced the following TCCs:~%" pr-input)
+      (evaluator-print-tccs *tccforms*)
+      (format 
+	  t 
+	  "~%~%Evaluating in the presence of unproven TCCs may be unsound~%")
+      (clear-input)
+      (unless (pvs-y-or-n-p "Do you wish to proceed with evaluation? ")
+	(error 'pvsio-error)))
+    (let ((cl-input (pvs2cl tc-input)))
+      (when *evaluator-debug*
+	(format t "~%PVS expression ~a translates to Common Lisp expression:~%~a~%" 
+	  tc-input cl-input))
+      (multiple-value-bind 
+	    (cl-eval err)
+	  (catch 'undefined
+	    (progn ;;ignore-errors 
+	      (if *pvs-eval-do-timing*
+		  (time (eval cl-input))
+		  (eval cl-input))))
+	(when *evaluator-debug*
+	  (format t "~%Common Lisp expression ~a evaluates to:~%~a~%" cl-input cl-eval))
+	(cond ((and err (null cl-eval))
+	       (format t "~%Error: ~a" err))
+	      (err (format t "~%Error (~a): ~a" cl-eval err))
+	      ((eq cl-eval 'cant-translate)
+	       (format t "~%Error: Expression doesn't appear to be ground"))
+	      (*convert-back-to-pvs*
+	       (unless isvoid
+		 (let ((pvs-val 
+			(catch 'cant-translate (cl2pvs cl-eval (type tc-input)))))
+		   (if (expr? pvs-val)
+		       (progn 
+			 (format t *pvsio-promptout*)
+			 (force-output)
+			 (unparse pvs-val))
+		       (format t "~%Error: Result ~a is not ground" cl-eval)))))
+	      (t (format t "~a" cl-eval)))))
+    (format t "~%")))
 
 (defun read-pvsio (input-stream)
   (when (not input-stream)
@@ -209,10 +234,10 @@ To change output prompt '~a':
     (cond ((member input '(quit (quit) "quit") :test #'equal)
 	   (clear-input)
 	   (when (pvs-y-or-n-p "Do you really want to quit? ")
-	     (throw '*pvsio-quit* nil))
+	     (error 'pvsio-quit))
 	   (read-pvsio input-stream))
 	  ((member input '(exit (exit) "exit") :test #'equal)
-	   (throw '*pvsio-quit* nil))
+	   (error 'pvsio-quit))
 	  ((member input '(help "help") :test #'equal)
 	   (help-pvsio)
 	   (read-pvsio input-stream))
@@ -249,11 +274,234 @@ To change output prompt '~a':
 	  ((stringp input) input)
 	  (t  (multiple-value-bind 
 		  (val err)
-		  (ignore-errors (eval input))
+		  (progn ;ignore-errors
+		    (eval input))
 		(if err (format t "ERROR (lisp): ~a" err)
 		  (format t "~a" val))
 		(fresh-line)
 		(read-pvsio input-stream))))))
+
+#+allegro
+(defmacro pvstrace (&rest specs)
+  "Specs is similar Allegro's trace, i.e., a name or a list with a name
+followed by keyword-value pairs.  The name is a symbol or string, and must
+fully resolve to a PVS definition.  For each one an fwrapper is created,
+which uses the type of the name to convert the arguments to PVS expression
+strings. "
+  (if (null specs)
+      (let ((traced-names nil))
+	(dolist (elt *pvstrace-wrappers*)
+	  (unless (member (caar elt) traced-names :test #'tc-eq)
+	    (push (caar elt) traced-names)))
+	(format t "~%~{~a ~}" traced-names))
+      (dolist (spec specs)
+	(let* ((name (if (listp spec) (car spec) spec))
+	       (name-str (typecase name
+			   (name-expr name)
+			   (string name)
+			   (symbol (string name))
+			   (t (error "~a of type ~a given where a symbol or string is expected"
+				     name (type name)))))
+	       (nexpr (tc-expr name-str)))
+	  (cond ((not (name-expr? nexpr))
+		 (error "~a is not a name expr" nexpr))
+		((not (fully-instantiated? nexpr))
+		 (error "~a is not fully instantiated" nexpr))
+		((not (and (typep (declaration nexpr)
+				  '(or formal-const-decl const-decl))
+			   (definition (declaration nexpr))))
+		 (error "~a is not a defined constant"))
+		((not (eval-info (declaration nexpr)))
+		 (catch 'undefined (pvs2cl nexpr))
+		 (unless (eval-info (declaration nexpr))
+		   (error "~a could not be compiled" nexpr))))
+	  (let ((info-defs (eval-info-defs nexpr)))
+	    (when (null info-defs)
+	      (error "~a has not been compiled" nexpr))
+	    ;; (excl:def-fwrapper foo-wrap (args) ... )
+	    ;; (excl:fwrap 'foo 'foo-wrap1 'foo-wrap) ; second arg is indicator
+	    ;; (excl:call-next-fwrapper)
+	    ;; (excl:funwrap 'foo 'foo-wrap1) ;
+	    ;; (excl:fwrap-order 'foo) ; lists the order of active fwraps
+	    ;; *pvsio-wrappers* is an alist: (((nexpr . wrapped-fun) . wrapper-id) ...)
+	    (dolist (info-def info-defs)
+	      (let* ((wrapped-fun (name (car info-def)))
+		     (wrap-args (caddr (definition (car info-def))))
+		     ;; Note that wrap-args includes formal-const-decls
+		     (wrap-id
+		      (if (null wrap-args)
+			  (get-pvsio-wrapper nexpr wrapped-fun (cdr info-def) nil nil nil)
+			  (let* ((const-acts (get-const-decl-actuals nexpr))
+				 (fun-args (if const-acts
+					       (nthcdr (length const-acts) wrap-args)
+					       wrap-args))
+				 (ntype (find-supertype (type nexpr)))
+				 (pvs-arg-types
+				  (cond ((length= fun-args (types (domtype ntype)))
+					 (types (domtype ntype)))
+					((singleton? wrap-args)
+					 (list (domtype ntype)))
+					(t (break "Look into this"))))
+				 (rantype (range (find-supertype (type nexpr)))))
+			    (get-pvsio-wrapper
+			     nexpr wrapped-fun (cdr info-def) wrap-args
+			     (append (mapcar #'(lambda (a) (type (expr a))) const-acts)
+				     pvs-arg-types)
+			     rantype)))))
+		(excl:fwrap wrapped-fun wrap-id wrap-id)
+		(pushnew (cons wrap-id wrapped-fun) *pvstrace-all-wrappers*))))))))
+
+#+allegro
+(defmacro pvsuntrace (&rest names)
+  (if (null names)
+      '(delete-all-trace-wrappers)
+      (dolist (name names)
+	(let* ((name-str (typecase name
+			   (name-expr name)
+			   (string name)
+			   (symbol (string name))
+			   (t (error "~a of type ~a given where a symbol, string, or name-expr is expected"
+				     name (type name)))))
+	       (nexpr (tc-expr name-str)))
+	  (cond ((not (name-expr? nexpr))
+		 (error "~a is not a name expr" nexpr))
+		((not (fully-instantiated? nexpr))
+		 (error "~a is not fully instantiated" nexpr))
+		((not (and (typep (declaration nexpr)
+				  '(or formal-const-decl const-decl))
+			   (definition (declaration nexpr))))
+		 (error "~a is not a defined constant")))
+	  `(delete-trace-wrapper ,nexpr)))))
+
+#+allegro
+(defun delete-trace-wrapper (nexpr)
+  (let ((fnelt (find nexpr *pvstrace-wrappers* :key #'caar)))
+    (when fnelt
+      ;; ((nexpr . wrapped-fun) . wrap-id)
+      (excl:funwrap (cdar fnelt) (cdr fnelt))
+      ;; Undefine the wrapper here
+      (fmakunbound (cdr fnelt))
+      ;; Remove it
+      (setq *pvstrace-wrappers* (delete fnelt *pvstrace-wrappers*))
+      ;; And take it out of *pvstrace-all-wrappers*
+      (setq *pvstrace-all-wrappers*
+	    (delete (cons (cdr fnelt) (cdar fnelt)) *pvstrace-all-wrappers*
+		    :test #'tc-eq))
+      (delete-trace-wrapper nexpr))))
+
+#+allegro
+(defun delete-all-trace-wrappers ()
+  (dolist (fnelt *pvstrace-wrappers*)
+    ;; ((nexpr . wrapped-fun) . wrap-id)
+    (excl:funwrap (cdar fnelt) (cdr fnelt))
+    ;; Undefine the wrapper here
+    (fmakunbound (cdr fnelt))
+    ;; Remove it
+    (setq *pvstrace-wrappers* (delete fnelt *pvstrace-wrappers*))
+    ;; And take it out of *pvstrace-all-wrappers*
+    (setq *pvstrace-all-wrappers*
+	  (delete (cons (cdr fnelt) (cdar fnelt)) *pvstrace-all-wrappers*
+		  :test #'tc-eq))))
+
+(defun get-const-decl-actuals (nexpr)
+  (let ((fmls (formals-sans-usings (module (declaration nexpr))))
+	(acts (actuals (module-instance nexpr))))
+    (assert (length= fmls acts))
+    (get-const-decl-actuals* fmls acts)))
+
+(defun get-const-decl-actuals* (formals actuals &optional cacts)
+  (if (null formals)
+      (nreverse cacts)
+      (get-const-decl-actuals* (cdr formals) (cdr actuals)
+			       (if (formal-const-decl? (car formals))
+				   (cons (car actuals) cacts)
+				   cacts))))
+
+#+allegro
+(defun get-pvsio-wrapper (nexpr wrapped-fun kind args arg-types rantype)
+  (let* ((index (cons nexpr wrapped-fun))
+	 (fwrap (cdr (assoc index *pvstrace-wrappers* :test #'tc-eq))))
+    (or fwrap
+	(let* ((nid (gentemp (string (id nexpr))))
+	       (wrap-form
+		(if (null args)
+		    `(excl:def-fwrapper ,nid ()
+		       (format t "~%~d[~a]: ~a" *pvstrace-level* ,kind ,nexpr)
+		       (incf *pvstrace-level*)
+		       (let* ((result (excl:call-next-fwrapper))
+			      (pvs-result (cl2pvs result (type ,nexpr))))
+			 (decf *pvstrace-level*)
+			 (format t "~%~d: ~a returns ~a"
+			   *pvstrace-level* ,nexpr pvs-result)
+			 result))
+		    `(excl:def-fwrapper ,nid ,args
+		       (multiple-value-bind (pvs-args rtype)
+			   (pvsio-arg-values ,(cons 'list args)
+					     ,(cons 'list arg-types)
+					     ,rantype)
+			 (let ((pvs-appl (when pvs-args
+					   (make!-application* ,nexpr pvs-args))))
+			   (format t "~%~d[~a]: ~a" *pvstrace-level* ,kind pvs-appl)
+			   (incf *pvstrace-level*)
+			   (let* ((result (excl:call-next-fwrapper))
+				  (pvs-result (or (catch 'cant-translate
+						    (cl2pvs result rtype))
+						  "untranslatable result")))
+			     (decf *pvstrace-level*)
+			     (format t "~%~d[~a]: ~a returns ~a"
+			       *pvstrace-level* ,kind ,nexpr pvs-result)
+			     result)))))))
+	  (eval wrap-form)
+	  (push (cons index nid) *pvstrace-wrappers*)
+	  nid))))
+
+(defun pvsio-arg-values (args atypes rtype &optional pvs-args)
+  ;; Walks through the arguments, creating pvs expressions for each
+  (if (null args)
+      (values (nreverse pvs-args) rtype)
+      (let* ((atype (domtype* (car atypes)))
+	     (pvs-arg (or (catch 'cant-translate
+			    (cl2pvs (car args) atype))
+			  ;; Create a new skolem constant of this type
+			  ;; as a proxy for the real arg
+			  (or (cdr (assq (car args) *eval-untranslatable*))
+			      (let* ((nid (gentemp "cant_translate"))
+				     (nex (mk-name-expr nid)))
+				(push (cons (car args) nex) *eval-untranslatable*)
+				(makeskoconst nex atype *current-context*)))))
+	     (slist (when (dep-binding? (car atypes))
+		      (acons (car atypes) pvs-arg nil)))
+	     (stypes (if slist (substit (cdr atypes) slist) (cdr atypes)))
+	     (srtype (if slist (substit rtype slist) rtype)))
+	(typecheck pvs-arg :expected atype)
+	(pvsio-arg-values (cdr args) stypes srtype (cons pvs-arg pvs-args)))))
+
+(defun eval-info-defs (nexpr)
+  (let ((decl (declaration nexpr))
+	(info-defs nil))
+    (when (eval-info decl)
+      (when (internal (eval-info decl))
+	(when (and (unary (internal (eval-info decl)))
+		   (name (unary (internal (eval-info decl)))))
+	  (push (cons (unary (internal (eval-info decl))) :i1) info-defs))
+	(when (and (multiary (internal (eval-info decl)))
+		   (name (multiary (internal (eval-info decl)))))
+	  (push (cons (multiary (internal (eval-info decl))) :im) info-defs))
+	(when (and (destructive (internal (eval-info decl)))
+		   (name (destructive (internal (eval-info decl)))))
+	  (push (cons (destructive (internal (eval-info decl))) :i!) info-defs)))
+      (when (external (eval-info decl))
+	(when (and (unary (external (eval-info decl)))
+		   (name (unary (external (eval-info decl)))))
+	  (push (cons (unary (external (eval-info decl))) :e1) info-defs))
+	(when (and (multiary (external (eval-info decl)))
+		   (name (multiary (external (eval-info decl)))))
+	  (push (cons (multiary (external (eval-info decl))) :em) info-defs))
+	(when (and (destructive (external (eval-info decl)))
+		   (name (destructive (external (eval-info decl)))))
+	  (push (cons (destructive (external (eval-info decl))) :e!) info-defs))))
+    info-defs))
+
 
 (defun run-pvsio ()
   (let* ((file (environment-variable "PVSIOFILE"))

@@ -200,71 +200,72 @@
 	 (catch 'abort
 	   (catch 'quit
 	     (catch 'restore
-	       (catch 'tcerror
-		 (let* ((raw-input (ignore-errors (gqread)))
-			(test? (and (consp raw-input)
-				    (eq (car raw-input) 'test)))
-			(input (if test?
-				   (cadr raw-input)
-				 raw-input))
-			(pr-input (pc-parse input 'expr))
-			(*tccforms* nil)
-			(tc-input (pc-typecheck pr-input)))
-		   (when *evaluator-debug*
-		     (format t "typechecks to:~%")
-		     (show tc-input))
-		   (when *tccforms*
-		     (format t "~%Typechecking ~s produced the following TCCs:~%"
-			     input)
-		     (let ((unproved-tccs (evaluate-tccs)))
-		       (when unproved-tccs
-			 (format t "~%~%Evaluating in the presence of unproven TCCs may be unsound~%")
-			 (unless (pvs-y-or-n-p "Do you wish to proceed with evaluation? ")
-			   (throw 'abort t)))))
-		   (when test?
-		     (unless (or (null (cddr raw-input))
-				 (posnat? (caddr raw-input)))
-		       (format t "test count must be a positive integer")
-		       (throw 'abort t))
-		     (unless (or (null (cdddr raw-input))
-				 (posnat? (cadddr raw-input)))
-		       (format t "test size must be a positive integer")
-		       (throw 'abort t)))
-		   (if test?
-		       (run-random-test
-			tc-input
-			(or (third raw-input) *default-random-test-count*)
-			(or (fourth raw-input) *default-random-test-size*)
-			(or (fifth raw-input) *default-random-test-dtsize*)
-			(sixth raw-input) ;; all?
-			(seventh raw-input) ;; verbose?
-			(eighth raw-input)) ;; instance
-		     (multiple-value-bind (cl-input error)
-			 (catch 'undefined (pvs2cl tc-input))
-		       (when (eq cl-input 'cant-translate)
-			 (format t "~s could not be translated:~%~a" input error)
+	       (handler-case
+		   (let* ((raw-input (ignore-errors (gqread)))
+			  (test? (and (consp raw-input)
+				      (eq (car raw-input) 'test)))
+			  (input (if test?
+				     (cadr raw-input)
+				     raw-input))
+			  (pr-input (pc-parse input 'expr))
+			  (*tccforms* nil)
+			  (tc-input (pc-typecheck pr-input)))
+		     (when *evaluator-debug*
+		       (format t "typechecks to:~%")
+		       (show tc-input))
+		     (when *tccforms*
+		       (format t "~%Typechecking ~s produced the following TCCs:~%"
+			 input)
+		       (let ((unproved-tccs (evaluate-tccs)))
+			 (when unproved-tccs
+			   (format t "~%~%Evaluating in the presence of unproven TCCs may be unsound~%")
+			   (unless (pvs-y-or-n-p "Do you wish to proceed with evaluation? ")
+			     (throw 'abort t)))))
+		     (when test?
+		       (unless (or (null (cddr raw-input))
+				   (posnat? (caddr raw-input)))
+			 (format t "test count must be a positive integer")
 			 (throw 'abort t))
-		       (when *evaluator-debug*
-			 (format t "~a translates to~% ~s~%" tc-input cl-input))
-		       (multiple-value-bind (cl-eval error)
-			   (catch 'undefined
-			     (if *pvs-eval-do-timing*
-				 (time (eval cl-input))
-			       (eval cl-input)))
-			 (if (not error)
-			     (let ((clval (if *convert-back-to-pvs*
-					      (catch 'cant-translate
-						(cl2pvs cl-eval (type tc-input)))
-					    cl-eval)))
-			       (format t "~%==> ~%")
-			       (cond ((and clval *convert-back-to-pvs*)
-				      (unparse clval))
-				     (t
-				      (when *convert-back-to-pvs*
-					(format t "Result not ground.  Cannot convert back to PVS."))
-				      (format t "~%~a" cl-eval))))
-			   (format t "~%~a" error)))))
-		   t)))))))
+		       (unless (or (null (cdddr raw-input))
+				   (posnat? (cadddr raw-input)))
+			 (format t "test size must be a positive integer")
+			 (throw 'abort t)))
+		     (if test?
+			 (run-random-test
+			  tc-input
+			  (or (third raw-input) *default-random-test-count*)
+			  (or (fourth raw-input) *default-random-test-size*)
+			  (or (fifth raw-input) *default-random-test-dtsize*)
+			  (sixth raw-input) ;; all?
+			  (seventh raw-input) ;; verbose?
+			  (eighth raw-input)) ;; instance
+			 (multiple-value-bind (cl-input error)
+			     (catch 'undefined (pvs2cl tc-input))
+			   (when (eq cl-input 'cant-translate)
+			     (format t "~s could not be translated:~%~a" input error)
+			     (throw 'abort t))
+			   (when *evaluator-debug*
+			     (format t "~a translates to~% ~s~%" tc-input cl-input))
+			   (multiple-value-bind (cl-eval error)
+			       (catch 'undefined
+				 (if *pvs-eval-do-timing*
+				     (time (eval cl-input))
+				     (eval cl-input)))
+			     (if (not error)
+				 (let ((clval (if *convert-back-to-pvs*
+						  (catch 'cant-translate
+						    (cl2pvs cl-eval (type tc-input)))
+						  cl-eval)))
+				   (format t "~%==> ~%")
+				   (cond ((and clval *convert-back-to-pvs*)
+					  (unparse clval))
+					 (t
+					  (when *convert-back-to-pvs*
+					    (format t "Result not ground.  Cannot convert back to PVS."))
+					  (format t "~%~a" cl-eval))))
+				 (format t "~%~a" error)))))
+		     t)
+		 (tcerror)))))))
     (when result
       (evaluate))))
 
