@@ -310,7 +310,7 @@ strings. "
 		((not (and (typep (declaration nexpr)
 				  '(or formal-const-decl const-decl))
 			   (definition (declaration nexpr))))
-		 (error "~a is not a defined constant"))
+		 (error "~a is not a defined constant" nexpr))
 		((not (eval-info (declaration nexpr)))
 		 (catch 'undefined (pvs2cl nexpr))
 		 (unless (eval-info (declaration nexpr))
@@ -331,23 +331,29 @@ strings. "
 		     (wrap-id
 		      (if (null wrap-args)
 			  (get-pvsio-wrapper nexpr wrapped-fun (cdr info-def) nil nil nil)
-			  (let* ((const-acts (get-const-decl-actuals nexpr))
-				 (fun-args (if const-acts
-					       (nthcdr (length const-acts) wrap-args)
-					       wrap-args))
-				 (ntype (find-supertype (type nexpr)))
-				 (pvs-arg-types
-				  (cond ((length= fun-args (types (domtype ntype)))
-					 (types (domtype ntype)))
-					((singleton? wrap-args)
-					 (list (domtype ntype)))
-					(t (break "Look into this"))))
-				 (rantype (range (find-supertype (type nexpr)))))
-			    (get-pvsio-wrapper
-			     nexpr wrapped-fun (cdr info-def) wrap-args
-			     (append (mapcar #'(lambda (a) (type (expr a))) const-acts)
-				     pvs-arg-types)
-			     rantype)))))
+			  (let* ((ntype (find-supertype (type nexpr)))
+				 (rantype (range ntype)))
+			    (if (length= wrap-args (types (domtype ntype)))
+				(get-pvsio-wrapper
+				 nexpr wrapped-fun (cdr info-def) wrap-args
+				 (types (domtype ntype))
+				 rantype)
+				(let* ((const-acts (get-const-decl-actuals nexpr))
+				       (fun-args (if const-acts
+						     (nthcdr (length const-acts) wrap-args)
+						     wrap-args))
+				     
+				       (pvs-arg-types
+					(cond ((length= fun-args (types (domtype ntype)))
+					       (types (domtype ntype)))
+					      ((singleton? wrap-args)
+					       (list (domtype ntype)))
+					      (t (break "Look into this")))))
+				  (get-pvsio-wrapper
+				   nexpr wrapped-fun (cdr info-def) wrap-args
+				   (append (mapcar #'(lambda (a) (type (expr a))) const-acts)
+					   pvs-arg-types)
+				   rantype)))))))
 		(excl:fwrap wrapped-fun wrap-id wrap-id)
 		(pushnew (cons wrap-id wrapped-fun) *pvstrace-all-wrappers*))))))))
 
@@ -393,7 +399,8 @@ strings. "
 (defun delete-all-trace-wrappers ()
   (dolist (fnelt *pvstrace-wrappers*)
     ;; ((nexpr . wrapped-fun) . wrap-id)
-    (excl:funwrap (cdar fnelt) (cdr fnelt))
+    (when (fboundp (cdar fnelt))
+      (excl:funwrap (cdar fnelt) (cdr fnelt)))
     ;; Undefine the wrapper here
     (fmakunbound (cdr fnelt))
     ;; Remove it

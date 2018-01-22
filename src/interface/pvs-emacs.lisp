@@ -1029,9 +1029,7 @@
 	   (format t "~%Restoring the state.")
 	   (restore))
 	  ((and *in-evaluator* (not *evaluator-debug*))
-	   (format t "~%~a" errmsg)
-	   (format t "~%Try again.")
-	   (error 'tcerror ()))
+	   (error 'tcerror :format-control errmsg))
 	  ((null *pvs-emacs-interface*)
 	   (format t "~%<pvserror msg=\"type error\">~%\"~a\"~%</pvserror>"
 	     (protect-emacs-output errmsg))
