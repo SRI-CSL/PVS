@@ -20,6 +20,14 @@
 
 (in-package :pvs)
 
+(define-condition equality-unknown (simple-error)
+  ((lhs :initarg :lhs :reader lhs)
+   (rhs :initarg :rhs :reader rhs))
+  (:report (lambda (condition stream)
+             (format stream "Equality unknown between ~a and ~a."
+                     (lhs condition) (rhs condition)))))
+
+
 (defvar *eval-array-bound* 1000000)  ;turned on for x86 memory which is on u64
 (defvar *eval-verbose* nil)          ;turn on for verbose translation trace
 
@@ -141,6 +149,7 @@
 (defun pvs_equalp (x y)
   "From CMULisp's equalp definition - adds pvs-array-closure-p test"
   (cond ((eq x y) t)
+        ((and (symbolp x) (symbolp y)) nil)
         ((characterp x) (and (characterp y) (char-equal x y)))
         ((numberp x) (and (numberp y) (= x y)))
         ((consp x)
@@ -169,13 +178,8 @@
 		(= x-size y-size)
 		(pvs_equalp (mk-fun-array (pvs-array-closure-closure x) x-size)
 			    (mk-fun-array (pvs-array-closure-closure y) y-size)))))
-	((typep x 'structure-object)
-	 (and (typep y 'structure-object)
-	      (eq (class-of x) (class-of y))
-	      (dolist (slotd (class-slots (class-of x)) t)
-		(let ((slotn (slot-definition-name slotd)))
-		  (unless (pvs_equalp (slot-value x slotn) (slot-value y slotn))
-		    (return nil))))))
+	;; These are pvs-funcallable
+	;;(typep x '(or array pvs-outer-array pvs-closure-hash function))
         ((vectorp x)
          (let ((length (length x)))
            (cond ((vectorp y)
@@ -187,33 +191,47 @@
 			;;removed redundant eq test
 			(return nil)))))
 		 ;; Vectors may be compared to closures
-		 ((functionp y)
+		 ((typep y '(or array pvs-outer-array pvs-closure-hash function))
 		  ;; Can't test the length of a closure, but it should be OK
 		  (dotimes (i length t)
 		    (let ((x-el (aref x i))
-                          (y-el (funcall y i)))
-                      (unless (pvs_equalp x-el y-el) ;;(NSH:4/25/2013)
-			;;removed redundant eq test
+                          (y-el (pvs-funcall y i)))
+                      (unless (pvs_equalp x-el y-el)
 			(return nil)))))
-		 (t nil))))
+		 (t (error 'equality-unknown :lhs x :rhs y)))))
         ((arrayp x)
-         (and (arrayp y)
-              (= (array-rank x) (array-rank y))
-              (dotimes (axis (array-rank x) t)
-                (unless (= (array-dimension x axis)
-                           (array-dimension y axis))
-                  (return nil)))
-              (dotimes (index (array-total-size x) t)
-                (let ((x-el (row-major-aref x index))
-                      (y-el (row-major-aref y index)))
-                  (unless (or (eq x-el y-el)
-                              (pvs_equalp x-el y-el))
-                    (return nil))))))
+         (cond ((arrayp y)
+		(and (= (array-rank x) (array-rank y))
+		     (dotimes (axis (array-rank x) t)
+                       (unless (= (array-dimension x axis)
+				  (array-dimension y axis))
+			 (return nil)))
+		     (dotimes (index (array-total-size x) t)
+                       (let ((x-el (row-major-aref x index))
+			     (y-el (row-major-aref y index)))
+			 (when (or (eq x-el y-el)
+				   (pvs_equalp x-el y-el))
+			   t)))))
+	       ((typep y '(or pvs-outer-array pvs-closure-hash function))
+		;; Can't test the length of a closure, but it should be OK
+		(dotimes (i (array-total-size x) t)
+		  (let ((x-el (aref x i))
+                        (y-el (pvs-funcall y i)))
+                    (unless (pvs_equalp x-el y-el)
+		      (return nil)))))
+	       (t (error 'equality-unknown :lhs x :rhs y))))
 	((functionp x)
 	 (when (vectorp y)
 	   ;; Rather than repeat the code above, just flip arguments
 	   (pvs_equalp y x)))
-        (t nil)))
+	((typep x 'structure-object)
+	 (and (typep y 'structure-object)
+	      (eq (class-of x) (class-of y))
+	      (dolist (slotd (class-slots (class-of x)) t)
+		(let ((slotn (slot-definition-name slotd)))
+		  (unless (pvs_equalp (slot-value x slotn) (slot-value y slotn))
+		    (return nil))))))
+        (t (error 'equality-unknown :lhs x :rhs y))))
 
 (defmacro |pvs__IMPLIES| (x y) `(or (not ,x) ,y))
 (defmacro |pvs__WHEN| (x y) `(or (not ,y) ,x))
