@@ -505,7 +505,7 @@ required a context.")
               (let* ((def (subst-mod-params
                               (args2 (car (last (def-axiom (declaration op)))))
                               (module-instance op)
-                            (module (declaration op))))
+                            (module (declaration op)) (declaration op)))
                      (dappl (make!-applications def (argument* ex)))
                      (appl (beta-reduce dappl nil))
                      (orig (copy ex)))
