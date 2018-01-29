@@ -63,7 +63,7 @@ when pvs-popup-windows is nil")
     (define-key pvs-browse-mode-map [(control ?.)] 'show-expanded-form)
     (define-key pvs-browse-mode-map [(control meta ?.)]  'goto-declaration)
     (define-key pvs-browse-mode-map
-	  [(control meta ?;)] 'whereis-identifier-used)
+	  [(control meta ?\;)] 'whereis-identifier-used)
     (define-key pvs-browse-mode-map " " 'next-line)
     (define-key pvs-browse-mode-map "n" 'next-line)
     (define-key pvs-browse-mode-map "p" 'previous-line)
