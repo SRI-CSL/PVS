@@ -104,8 +104,13 @@
   ;;(setf (symbol-function 'ilisp::ilisp-restore) #'pvs-ilisp-restore)
   #+allegro (setq top-level::*print-length* nil
 		  top-level::*print-level* nil)
-  (setq *pvs-path* (or (environment-variable "PVSPATH") path))
-  (unless *pvs-path*
+  (setq *pvs-path* (or (environment-variable "PVSPATH")
+		       (let* ((dirp (truename (car (uiop/image:raw-command-line-arguments))))
+			      (dirs (when dirp (pathname-directory dirp))))
+			 (when dirs
+			   (namestring (make-pathname :directory (butlast dirs 3)))))
+		       path))
+  (unless (and *pvs-path* (directory-p *pvs-path*))
     (error "PVSPATH environment variable should be set to the PVS directory"))
   #+(or cmu sbcl)
   (let ((exepath (directory-namestring (car (uiop:raw-command-line-arguments)))))
