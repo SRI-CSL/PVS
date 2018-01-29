@@ -52,8 +52,7 @@
 			     (setf (assuming (current-theory))
 				   (delete d (assuming (current-theory))))
 			     (setf (theory (current-theory))
-				   (delete d (theory (current-theory)))))
-			 (decf (total-tccs))))
+				   (delete d (theory (current-theory)))))))
 		     (setf (generated decl) nil)
 		     (let ((*generating-adt* nil))
 		       (unwind-protect
@@ -80,41 +79,57 @@
   (when (or (symbolp (generated-by decl))
 	    (and (declaration? (generated-by decl))
 		 (typechecked? (generated-by decl))))
-    (if (and (typechecked? decl)
-	     (not (typep decl '(or theory-abbreviation-decl
-				   conversion-decl auto-rewrite-decl ;;mod-decl
-				   judgement))))
-	(if (mod-decl? decl)
-	    (dolist (d (generated decl))
-	      (if (importing? d)
-		  (typecheck-using* (get-theory (theory-name d)) (theory-name d))
-		  (let ((dhash (current-declarations-hash)))
-		    (dolist (id (id-suffixes (id d)))
-		      (pushnew d (get-lhash id dhash) :test #'eq)))))
-	    (progn
-	      (mapc #'(lambda (d)
-			(let ((*insert-add-decl* t))
-			  (add-decl d nil)
-			  (when (tcc? d) (push d *tccdecls*))))
-		    (generated decl))
-	      (regenerate-xref decl)))
-	(unwind-protect
-	    (progn
-	      (reset-beta-cache)
-	      (assert (typep (current-theory) '(or module recursive-type)))
-	      (setf (module decl) (current-theory))
-	      (assert (module decl))
-	      (tcdebug "~%    Typechecking ~a" decl)
-	      (let ((stime (get-internal-real-time)))
-		(typecheck* decl nil nil nil)
-		(setf (typecheck-time decl) (realtime-since stime))
-		(tcdebug " - ~d msec" (typecheck-time decl)))
-	      (setf (typechecked? decl) t)
-	      (remove-pseudo-normalize-freevar-entries))
-	  (unless (or *loading-prelude*
-		      (typechecked? decl))
-	    (cleanup-typecheck-decls decl))))
-    (put-decl decl)))
+    (cond ((typechecked? decl)
+	   (typecase decl
+	     (mod-decl
+	      (dolist (d (generated decl))
+		(if (importing? d)
+		    (typecheck-using* (get-theory (theory-name d)) (theory-name d))
+		    (let ((dhash (current-declarations-hash)))
+		      (dolist (id (id-suffixes (id d)))
+			(pushnew d (get-lhash id dhash) :test #'eq)))))
+	      (put-decl decl))
+	     (theory-abbreviation-decl
+	      (let* ((modinst (theory-name decl))
+		     (mod (get-theory modinst)))
+		(add-exporting-with-theories mod modinst)
+		(add-to-using modinst)))
+	     (conversion-decl
+	      (push decl (current-conversions)))
+	     (judgement
+	      (add-judgement-decl decl))
+	     (auto-rewrite-decl
+	      (add-auto-rewrite-to-context decl)))
+	   (unless (mod-decl? decl)
+	     (put-decl-and-generated decl)))
+	  (t (unwind-protect
+		  (progn
+		    (reset-beta-cache)
+		    (assert (typep (current-theory) '(or module recursive-type)))
+		    (setf (module decl) (current-theory))
+		    (assert (module decl))
+		    (tcdebug "~%    Typechecking ~a" decl)
+		    (let ((stime (get-internal-real-time)))
+		      (typecheck* decl nil nil nil)
+		      (setf (typecheck-time decl) (realtime-since stime))
+		      (tcdebug " - ~d msec" (typecheck-time decl)))
+		    (setf (typechecked? decl) t)
+		    (put-decl decl)
+		    (remove-pseudo-normalize-freevar-entries))
+	       (unless (or *loading-prelude*
+			   (typechecked? decl))
+		 (cleanup-typecheck-decls decl)))))))
+
+;;; When a declaration is not changed by retypechecking, the generated
+;;; declarations still need to be added to the symbol-table, i.e.,
+;;; (current-declarations-hash)
+(defun put-decl-and-generated (decl)
+  (dolist (d (generated decl))
+    (let ((*insert-add-decl* t))
+      (add-decl d nil)
+      (when (tcc? d) (push d *tccdecls*))))
+  (put-decl decl)
+  (regenerate-xref decl))
 
 (defun cleanup-datatype (adt)
   (unless (typechecked? adt)
@@ -1202,12 +1217,7 @@
 (defmethod typecheck* ((decl theory-abbreviation-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (check-duplication decl)
-  (if (typechecked? decl)
-      (let* ((modinst (theory-name decl))
-	     (mod (get-theory modinst)))
-	(add-exporting-with-theories mod modinst)
-	(add-to-using modinst))
-      (typecheck-using (theory-name decl)))
+  (typecheck-using (theory-name decl))
   (assert (resolution (theory-name decl)))
   (put-decl decl)
   (setf (saved-context decl) (copy-context *current-context*))
@@ -3743,12 +3753,6 @@
 
 ;;; Judgements
 
-(defmethod typecheck* :around ((decl judgement) expected kind arguments)
-  (declare (ignore expected kind arguments))
-  (if (typechecked? decl)
-      (add-judgement-decl decl)
-      (call-next-method)))
-
 (defmethod typecheck* ((decl subtype-judgement) expected kind arguments)
   (declare (ignore expected kind arguments))
   (setf (subtype decl) (typecheck* (declared-subtype decl) nil nil nil))
@@ -4400,8 +4404,7 @@
 
 (defmethod typecheck* ((decl auto-rewrite-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (unless (typechecked? decl)
-    (typecheck* (rewrite-names decl) nil nil nil))
+  (typecheck* (rewrite-names decl) nil nil nil)
   (add-auto-rewrite-to-context decl)
   decl)
 
