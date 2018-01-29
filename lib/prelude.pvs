@@ -4799,9 +4799,19 @@ list_props [T: TYPE]: THEORY
 
   length_reverse: LEMMA length(reverse(l)) = length(l)
 
+  member_nth: LEMMA member(x, l) IFF EXISTS (i: below(length(l))): x = nth(l, i)
+
+  nth_append: LEMMA
+    FORALL (i: below(length(append(l1, l2)))):
+      nth(append(l1, l2), i)
+          = IF i < length(l1) THEN nth(l1, i) ELSE nth(l2, i - length(l1)) ENDIF
+
   a, b, c: VAR T
 
   list_rep: LEMMA (: a, b, c :) = cons(a, cons(b, cons(c, null)))
+
+  every_unc_eq_cur: LEMMA
+    every(P, l) = every(P)(l)
 
   every_append: LEMMA
     every(P)(append(l1, l2)) IFF (every(P)(l1) AND every(P)(l2))
@@ -4845,13 +4855,21 @@ map_props [T1, T2, T3: TYPE]: THEORY
 more_map_props [T1, T2: TYPE]: THEORY
  BEGIN
   f: VAR [T1 -> T2]
-  l: VAR list[T1]
+  l, l1, l2: VAR list[T1]
+  g: VAR [T1 -> list[T2]]
+  P: VAR pred[list[T2]]
 
   map_length: LEMMA length(map(f)(l)) = length(l)
 
   map_nth_rw: LEMMA
     FORALL (i: below(length(l))):
       nth(map(f)(l), i) = f(nth(l, i))
+
+  map_unc_eq_cur: LEMMA map(f, l) = map(f)(l)
+
+  every_map: LEMMA every(P)(map(g)(l)) = every(P o g)(l)
+
+  map_append: LEMMA map(f)(append(l1, l2)) = append(map(f)(l1), map(f)(l2))
 
 END more_map_props
 
