@@ -864,6 +864,10 @@
 (defmethod copy-slots ((ex1 rational-expr) (ex2 rational-expr))
   (setf (number ex1) (number ex2)))
 
+(defmethod copy-slots ((ex1 number-expr-with-radix) (ex2 number-expr-with-radix))
+  (setf (number ex1) (number ex2)
+	(radix ex1) (radix ex2)))
+
 (defmethod copy-slots ((ex1 tuple-expr) (ex2 tuple-expr))
   (setf (exprs ex1) (exprs ex2)))
 
