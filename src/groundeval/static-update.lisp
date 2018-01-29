@@ -340,7 +340,7 @@
 
 (defmethod collect-defconstants* ((expr tuple-expr))
   (with-slots (exprs) expr
-	      (collect-defconstants* expressions)))
+	      (collect-defconstants* exprs)))
 
 (defmethod collect-defconstants* ((expr record-expr))
   (with-slots (assignments) expr
@@ -503,6 +503,7 @@
 	always (check-update-argument x updated-variables)))
 
 (defmethod check-update-argument ((expr name-expr) updated-variables)
+  (declare (ignore updated-variables))
   t)
 
 (defmethod check-update-argument ((expr t) updated-variables)
