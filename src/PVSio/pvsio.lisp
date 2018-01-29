@@ -332,30 +332,33 @@ strings. "
 		      (if (null wrap-args)
 			  (get-pvsio-wrapper nexpr wrapped-fun (cdr info-def) nil nil nil)
 			  (let* ((ntype (find-supertype (type nexpr)))
-				 (rantype (range ntype)))
-			    (if (length= wrap-args (types (domtype ntype)))
-				(get-pvsio-wrapper
-				 nexpr wrapped-fun (cdr info-def) wrap-args
-				 (types (domtype ntype))
-				 rantype)
-				(let* ((const-acts (get-const-decl-actuals nexpr))
-				       (fun-args (if const-acts
-						     (nthcdr (length const-acts) wrap-args)
-						     wrap-args))
-				     
-				       (pvs-arg-types
-					(cond ((length= fun-args (types (domtype ntype)))
-					       (types (domtype ntype)))
-					      ((singleton? wrap-args)
-					       (list (domtype ntype)))
-					      (t (break "Look into this")))))
+				 (rantype (range ntype))
+				 (const-acts (get-const-decl-actuals nexpr)))
+ 			    (unless (and const-acts (eq (cdr info-def) :e1))
+			      (if (length= wrap-args (types (domtype ntype)))
 				  (get-pvsio-wrapper
 				   nexpr wrapped-fun (cdr info-def) wrap-args
-				   (append (mapcar #'(lambda (a) (type (expr a))) const-acts)
-					   pvs-arg-types)
-				   rantype)))))))
-		(excl:fwrap wrapped-fun wrap-id wrap-id)
-		(pushnew (cons wrap-id wrapped-fun) *pvstrace-all-wrappers*))))))))
+				   (types (domtype ntype))
+				   rantype)
+				  (let* ((fun-args (if const-acts
+						       ;; In this case, the "real" arguments
+						       ;; are inside a closure
+						       (nthcdr (length const-acts) wrap-args)
+						       wrap-args))
+					 (pvs-arg-types
+					  (cond ((length= fun-args (types (domtype ntype)))
+						 (types (domtype ntype)))
+						((singleton? wrap-args)
+						 (list (domtype ntype)))
+						(t (break "Look into this")))))
+				    (get-pvsio-wrapper
+				     nexpr wrapped-fun (cdr info-def) wrap-args
+				     (append (mapcar #'(lambda (a) (type (expr a))) const-acts)
+					     pvs-arg-types)
+				     rantype))))))))
+		(when wrap-id
+		  (excl:fwrap wrapped-fun wrap-id wrap-id)
+		  (pushnew (cons wrap-id wrapped-fun) *pvstrace-all-wrappers*)))))))))
 
 #+allegro
 (defmacro pvsuntrace (&rest names)
