@@ -74,7 +74,7 @@
       (let* ((rty (if depbnd
 		      (substit rtype (acons depbnd (make!-number-expr lower)))
 		      rtype))
-	     (val (cl2pvs* (aref sexpr idx) rty context))
+	     (val (cl2pvs* (pvs-funcall sexpr idx) rty context))
 	     (cnd (format nil "~a=~d -> ~a" nvar lower val)))
 	(make-subrange-conds (1+ lower) upper nvar sexpr (1+ idx)
 			     (cons cnd conds) type context))))
