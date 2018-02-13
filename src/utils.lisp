@@ -81,6 +81,19 @@
 	  (copy thname :dactuals dactuals))
 	thname)))
 
+(define-condition need-current-context (simple-condition) ())
+
+;;; Experiment with this for need-current-context condition handling
+(defun user-request-theory-name ()
+  (format t "~%Enter a theory name to use for context: ~%")
+  (let ((thstr (read-line)))
+    (multiple-value-bind (th err)
+	(ignore-errors (get-typechecked-theory thstr))
+      (cond (err
+	     (format t #'(lambda (c) (format t "~%~a" c) nil))
+	     (user-request-theory-name))
+	    (t th)))))
+
 (defun current-declaration ()
   (assert *current-context*)
   (declaration *current-context*))
@@ -330,14 +343,11 @@
 
 #+allegro
 (defun program-version (command expected)
-  (let* ((match-p nil)
-	 (errstr nil)
-	 (errno (excl.osi:with-command-output (out command
-						  :error-output
-						  #'(lambda (estr) (setq errstr estr)))
-		  (setq match-p (string= expected out :end2 (length expected)))
-		  (excl.osi:loop-exit))))
-    (and (zerop errno) match-p)))
+  (let* ((version (uiop:run-program command
+		    :output '(:string :stripped t)
+		    :ignore-error-status t))
+	 (match-p (string= expected version :end2 (length expected))))
+    match-p))
 	
 
 #+lucid
@@ -1458,35 +1468,60 @@
   (theory ctx))
 
 
-;;; Generates a unique id for a given typechecked decl
-;;; Currently assumes the decl id is unique except for const-decls
-;;; If the const-decl is unique already, simply returns it.
-;;; Otherwise creates, e.g., the symbol 'c_2' for the second decl
-;;; with id 'c' in the list of all declarations for the theory
-;;; the decl occurs in.
-(defun unique-decl-id (decl)
-  (if (const-decl? decl)
-      (let ((same-id-decls (remove-if
-			       (complement #'(lambda (d)
-					       (and (const-decl? d)
-						    (eq (id d) (id decl)))))
-			     (all-decls (module decl)))))
-	(assert (memq decl same-id-decls))
-	(if (cdr same-id-decls)
-	    (let ((idx (1+ (position decl same-id-decls))))
-	      (intern (format nil "~a_~a_~d" (id (module decl)) (id decl) idx)
-		      :pvs))
-	    (intern (format nil "~a_~a" (id (module decl))(id decl)))))
-      (intern (format nil "~a_~a" (id (module decl))(id decl)))))
+(defun set-unique-ids (theory)
+    (let ((elts (all-decls theory)))
+      (when (some #'(lambda (elt) (eq (unique-id elt) :unbound)) elts)
+	;; Clear all unique-ids
+	(dolist (elt elts)
+	  (setf (unique-id elt) :unbound))
+	(set-unique-ids* elts)
+	(assert (not (some #'(lambda (elt) (eq (unique-id elt) :unbound)) elts))))))
 
-(defun unique-const-id* (cid num decls)
-  (let ((ncid (makesym "~a_~d" cid num)))
-    (if (member ncid decls
-		:test #'(lambda (x y)
-			  (and (const-decl? y)
-			       (eq x (id y)))))
-	(unique-const-id* cid (1+ num) decls)
-	ncid)))
+(defun set-unique-ids* (th-elts)
+  (when th-elts
+    (when (eq (unique-id (car th-elts)) :unbound)
+      (let* ((elt (car th-elts))
+	     (rid (id-root elt))
+	     (same-root-elts (remove-if-not
+				 #'(lambda (e) (eq (id-root e) rid))
+			       th-elts)))
+	(when (eq rid '==) (break))
+	(if (cdr same-root-elts)
+	    (let ((cnt 1))
+	      ;; First the user defined elements - makes it more predictable
+	      (dolist (e same-root-elts)
+		(unless (generated-by e)
+		  (setf (unique-id e) (makesym "~a_~d" rid cnt))
+		  (incf cnt)))
+	      ;; Then the generated elements
+	      (dolist (e same-root-elts)
+		(when (generated-by e)
+		  (setf (unique-id e) (makesym "~a_~d" rid cnt))
+		  (incf cnt))))
+	    ;; Use the root id - no need to add a number
+	    (setf (unique-id elt) rid))))
+    (set-unique-ids* (cdr th-elts))))
+
+(defmethod id-root ((imp importing-entity))
+  (makesym "IMP_~a" (op-to-id (theory-name imp))))
+
+(defmethod id-root ((conv conversion-decl))
+  (if (conversionminus-decl? conv)
+      (makesym "CONV-~@[_~a~]" (op-to-id conv))
+      (makesym "CONV+~@[_~a~]" (op-to-id conv))))
+
+(defmethod id-root ((jdg judgement))
+  (op-to-id jdg))
+
+(defmethod id-root ((rew auto-rewrite-decl))
+  (if (auto-rewrite-minus-decl? rew)
+      (makesym "AUTOREWRITE-~@[_~a~]"
+	       (op-to-id (car (rewrite-names rew))))
+      (makesym "AUTOREWRITE+~@[_~a~]"
+	       (op-to-id (car (rewrite-names rew))))))
+
+(defmethod id-root ((decl declaration))
+  (op-to-id decl))
 
 
 ;;; lambda-depth - returns the number of lambdas in the
@@ -1514,6 +1549,23 @@
 (defmethod lambda-depth (obj)
   (declare (ignore obj))
   nil)
+
+(defun pp-theory-element (thid eltid)
+  (let ((th (get-theory thid)))
+    (cond ((null th)
+	   (pvs-message "Typechecked theory ~a not found" thid))
+	  ((not (module th))
+	   (pvs-message "~a is a (co)datatype" thid))
+	  (t
+	   (let* ((adecls (all-decls th))
+		  (thelt (or (find-if #'(lambda (thelt)
+					  (and (declaration? thelt)
+					       (string= (id thelt) eltid)))
+			       adecls)
+			     (find eltid adecls :test #'string= :key #'unique-id))))
+	     (if thelt
+		 (unparse thelt :string t)
+		 (pvs-message "~a not found in theory ~a" eltid thid)))))))
 
 
 ;;; create-formula - creates a formula for a given const-decl or def-decl.
@@ -1729,6 +1781,7 @@
       ftype)))
 
 (defmethod make!-lambda-exprs-rem ((expr expr) type)
+  (declare (ignore type))
   expr)
 
 (defun typed-lambda-vars (expr end-expr &optional vars)
@@ -4677,6 +4730,7 @@ space")
 
 #+allegro
 (excl:def-fwrapper load-wrap (file &rest args)
+  (declare (ignore args))
   (excl:call-next-fwrapper)
   (record-file-loaded-for-pvs file))
 
