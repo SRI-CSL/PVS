@@ -195,6 +195,13 @@
   ;;(places :restore-as nil)
   )
 
+;; The theory-element class is a mixin for top-level components of theories.
+;; Inherited by classes declaration, exporting, and importing-element.  Every
+;; element in the union of formals, assumings, and theory values of a theory
+;; should be a theory-element.
+(defcl theory-element (syntax)
+  ;; Use :unbound instead of 'unbound, since the latter is a valid PVS id
+  (unique-id :type symbol :initform :unbound))
 
 ;;; Datatypes and related classes
 
@@ -310,7 +317,7 @@
 
 (defcl library-rectype-theory (library-theory rectype-theory))
 
-(defcl exporting (syntax)
+(defcl exporting (theory-element)
   (names :documentation "a list of names and absexpnames" :parse t)
   (but-names :documentation "a list of names and absexpnames" :parse t)
   (kind :documentation "One of NIL, ALL, CLOSURE, or DEFAULT" :parse t)
@@ -325,7 +332,7 @@
 ;; A wrapper for entities that import (explicitly or implicitly)
 ;; Currently importing, formal-theory-decl, mod-decl, theory-abbreviation-decl
 ;; The saved-context is the context including the imported theories.
-(defcl importing-entity (syntax)
+(defcl importing-entity (theory-element)
   saved-context)
 
 (defcl importing (importing-entity)
@@ -345,7 +352,7 @@
 (
  #-sbcl progn
  #+sbcl sb-ext:without-package-locks
-(defcl declaration (syntax)
+(defcl declaration (theory-element)
   (newline-comment :restore-as nil)
   (id :type (or symbol number) :parse t :restore-as nil)
   (decl-formals :type list :parse t)
