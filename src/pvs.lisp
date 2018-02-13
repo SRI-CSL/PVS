@@ -3204,6 +3204,7 @@ Note that even proved ones get overwritten"
   (tcc-conclusion* (expression ex) last-impl))
 
 (defmethod tcc-conclusion* ((ex implication) last-impl)
+  (declare (ignore last-impl))
   (tcc-conclusion* (args2 ex) (args2 ex)))
 
 (defmethod tcc-conclusion* ((ex expr) last-impl)
