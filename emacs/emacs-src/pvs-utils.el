@@ -1074,6 +1074,18 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	      (error "Must specify a theory name")
 	      (list theory))))))
 
+(defun complete-theory-element-id (prompt thid)
+  "Perform completion on PVS theory element id within the given theory."
+  (let ((eltids (pvs-send-and-wait (format "(collect-element-ids \"%s\")" thid))))
+    (if (null eltids)
+	(error (format "Empty list of element ids - might need to typecheck %s."
+		   thid))
+	(let ((eltid (completing-read prompt (mapcar 'list eltids) nil t)))
+	  (if (equal eltid "")
+	      (error "Must specify an element id")
+	      (list eltid))))))
+  
+
 (defun current-theory ()
   (let ((file (current-pvs-file t)))
     (if file
