@@ -69,15 +69,15 @@
 	      (throw 'cant-translate nil))))))
 
 (defun make-subrange-conds (lower upper nvar sexpr rtype depbnd context &optional (idx 0) conds)
-  (if (= lower upper)
+  (if (> lower upper)
       (nreverse conds)
       (let* ((rty (if depbnd
-		      (substit rtype (acons depbnd (make!-number-expr lower)))
+		      (substit rtype (acons depbnd (make!-number-expr lower) nil))
 		      rtype))
 	     (val (cl2pvs* (pvs-funcall sexpr idx) rty context))
 	     (cnd (format nil "~a=~d -> ~a" nvar lower val)))
-	(make-subrange-conds (1+ lower) upper nvar sexpr (1+ idx)
-			     (cons cnd conds) type context))))
+	(make-subrange-conds (1+ lower) upper nvar sexpr rtype depbnd
+			       context (1+ idx) (cons cnd conds)))))
 
 (defmethod cl2pvs* (sexpr (type subtype) context)
   (cl2pvs* sexpr (find-supertype type) context))

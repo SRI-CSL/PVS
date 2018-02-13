@@ -208,18 +208,17 @@
     (if *destructive?*
 	(let* (;;(decl (declaration op))
 	       (module-formals
-		(when actuals
-		  (loop for x in (formals (module decl))
+		(loop for x in (formals (module decl))
 			when (formal-const-decl? x)
-			collect x)))
+			collect x))
 	       ;; (defn (args2 (car (last (def-axiom decl)))))
 	       ;; (def-formals (when (lambda-expr? defn)
 	       ;;                (bindings defn)))
-	       (formals (if actuals
+	       (formals (if (or actuals *external*)
 			    (append module-formals
 				    def-formals)
 			    def-formals))
-	       (eval-defn (if actuals
+	       (eval-defn (if (or actuals *external*)
 			      (ex-defn-d (declaration op))
 			      (in-defn-d (declaration op))))
 	       (output-vars (output-vars eval-defn))
@@ -227,7 +226,7 @@
 		       output-vars 
 		       (pairlis
 			formals
-			(append actuals
+			(append (or actuals module-formals)
 				arguments))
 		       livevars)))
 	  (when (and (null check)
