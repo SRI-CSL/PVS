@@ -192,6 +192,14 @@ M-x revert-buffer to return to the old version."
 	       (if declp "declaration" "region"))
 	      (message "No changes were made"))))))
 
+(defpvs theory-element-string prettyprint (thid eltid)
+  "Gets the string associated with a theory element (e.g., declaration or importing)"
+  (interactive (let* ((thid (car (complete-theory-name "Theory id: ")))
+		      (eltid (complete-theory-element-id
+			      "Element (e.g., declaration) id: " thid)))
+		 (list thid eltid)))
+  (pvs-send-and-wait (format "(pp-theory-element \"%s\" \"%s\")" thid eltid)))
+
 
 (defpvs prettyprint-theory prettyprint (theoryname)
   "Prettyprints the specified theory
