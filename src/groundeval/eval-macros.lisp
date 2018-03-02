@@ -24,8 +24,8 @@
   ((lhs :initarg :lhs :reader lhs)
    (rhs :initarg :rhs :reader rhs))
   (:report (lambda (condition stream)
-             (format stream "Equality unknown between ~a and ~a."
-                     (lhs condition) (rhs condition)))))
+             (format stream "Equality unknown between types ~a and ~a."
+               (type-of (lhs condition)) (type-of (rhs condition))))))
 
 
 (defvar *eval-array-bound* 1000000)  ;turned on for x86 memory which is on u64
@@ -283,7 +283,7 @@
 		      (return nil)))))
 	       (t (error 'equality-unknown :lhs x :rhs y))))
 	((pvs-outer-array-p x)
-	 (if (typep y '(or array pvs-outer-array pvs-closure-hash))
+	 (if (typep y '(or array pvs-outer-array pvs-closure-hash function))
 	     (let ((length (pvs-array-length x)))
 	       (dotimes (i length t)
 		    (let ((x-el (pvs-funcall x i))
