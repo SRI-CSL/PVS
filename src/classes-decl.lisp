@@ -539,7 +539,7 @@
 ;;; mapped-decls are created for mappings, e.g.,
 ;;; importing th {{c := 1}} creates a mapped-decl that is added to the context
 ;;; Always has a definition
-(defcl mapped-const-decl (macro-decl))
+(defcl mapped-const-decl (macro-decl mapped-decl))
 
 (defcl adt-constructor-decl (const-decl)
   (ordnum :restore-as nil))
