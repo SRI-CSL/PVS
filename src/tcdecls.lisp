@@ -1589,6 +1589,15 @@
 (defmethod check-positive-types* ((ex projection-application) fargs decl bindings postypes)
   (check-positive-types* (argument ex) fargs decl bindings postypes))
 
+(defmethod check-positive-types* ((ex injection-application) fargs decl bindings postypes)
+  (check-positive-types* (argument ex) fargs decl bindings postypes))
+
+(defmethod check-positive-types* ((ex injection?-application) fargs decl bindings postypes)
+  (check-positive-types* (argument ex) fargs decl bindings postypes))
+
+(defmethod check-positive-types* ((ex extraction-application) fargs decl bindings postypes)
+  (check-positive-types* (argument ex) fargs decl bindings postypes))
+
 (defmethod check-positive-types* ((ex record-expr) fargs decl bindings postypes)
   (check-positive-types* (assignments ex) fargs decl bindings postypes))
 
@@ -1615,6 +1624,10 @@
   postypes)
 
 (defmethod check-positive-types* ((ex projection-expr) fargs decl bindings postypes)
+  (declare (ignore fargs decl bindings))
+  postypes)
+
+(defmethod check-positive-types* ((ex injection-expr) fargs decl bindings postypes)
   (declare (ignore fargs decl bindings))
   postypes)
 
