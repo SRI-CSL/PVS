@@ -382,6 +382,7 @@
 	     (push-word (store-obj (id module)))
 	     (push-word apos)
 	     (push-word fpos))))
+	(mapped-decl nil)
 	(t (reserve-space 3
 	     (push-word (store-obj 'declref))
 	     (push-word (store-obj (id module)))
