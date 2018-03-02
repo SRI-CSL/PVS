@@ -672,7 +672,11 @@
 	      (let* ((bid (make-new-variable '|x| (cons ex cdr-args)))
 		     (bd (make-bind-decl bid (domtype ftype)))
 		     (bvar (make-variable-expr bd))
-		     (deqn (make!-disequation bvar (caaar cdr-args)))
+		     (deqn (if (cdr (caar cdr-args))
+			       ;; Should have a tuple domtype with matching length
+			       (let ((tup (make!-tuple-expr* (caar cdr-args))))
+				 (make!-disequation bvar tup))
+			       (make!-disequation bvar (caaar cdr-args))))
 		     (*tcc-conditions* (cons deqn (cons bd *tcc-conditions*)))
 		     (app (make!-application fappl bvar))
 		     (expected (if (dep-binding? (domain ftype))
