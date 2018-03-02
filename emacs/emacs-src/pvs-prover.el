@@ -420,6 +420,9 @@ proof scripts, including those already proved."
 	  ((file-equal (format "%s/lib/prelude.pvs" pvs-path)
 		       (buffer-file-name))
 	   (setf (pvs-fref-kind fref) 'prelude))
+	  ((file-equal (format "%s/lib/pvsio_prelude.pvs" pvs-path)
+		       (buffer-file-name))
+	   (setf (pvs-fref-kind fref) 'pvsio_prelude))
 	  (pvs-prelude
 	   (setf (pvs-fref-kind fref) 'prelude-theory
 		 (pvs-fref-prelude-offset fref) pvs-prelude))
