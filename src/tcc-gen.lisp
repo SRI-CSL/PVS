@@ -1349,7 +1349,7 @@
 
 
 (defun find-needs-interpretation (expr thinst theory mappings-alist)
-  (declare (ignore thinst theory mappings-alist))
+  (declare (ignore thinst theory))
   (let ((needs-interp nil))
     (mapobject #'(lambda (ex)
 		   (or (member ex needs-interp :test #'tc-eq)
@@ -1365,6 +1365,7 @@
 		       (adt-type-name? ex)
 		       (let ((decl (when (name? ex) (declaration ex))))
 			 (when (and (declaration? decl)
+				    (not (assq decl mappings-alist))
 				    (not (eq (module decl) (current-theory)))
 				    ;;(eq (module decl) theory)
 				    (interpretable? decl))
@@ -1410,7 +1411,7 @@
 		   mappings-alist)
 	    (unless *collecting-tccs*
 	      (pvs-warning
-		  "Axiom ~a is not a mapped to a TCC because all all RHS exprs are interpretable names."
+		  "Axiom ~a is not a mapped to a TCC because all RHS exprs are interpretable names."
 		(id axiom)))
 	    (let* ((tform expr)		;(add-tcc-conditions expr)
 		   (xform (if *simplify-tccs*
