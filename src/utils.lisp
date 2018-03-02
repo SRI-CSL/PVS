@@ -4058,6 +4058,9 @@ space")
 (defmethod variable? ((expr binding))
   t)
 
+(defmethod variable? ((expr adt-name-expr))
+  nil)
+
 (defmethod variable? ((expr name-expr))
   (with-slots (resolutions) expr
     (assert (singleton? resolutions))
