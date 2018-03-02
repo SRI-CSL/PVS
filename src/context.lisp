@@ -2237,7 +2237,7 @@ Note that the lists might not be the same length."
 			       decision-procedure-used origin)
 	  (values-list mprf)
 	(assert (or (stringp description) (memq description '(nil NIL))))
-	(assert (listp script))
+	(assert (or (listp script) (memq description '(nil NIL))))
 	(assert (or (listp refers-to) (memq refers-to '(nil NIL))))
 	(assert (symbolp decision-procedure-used))
 	(let* ((check (check-if-case-change-needed script))
