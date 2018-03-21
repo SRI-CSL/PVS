@@ -2463,7 +2463,7 @@
 
 (defun ir2c (ir-expr return-type);;this is called on a whole definition with a result
   (when (null return-type) ;(break "ir2c"))
-  (ir2c* ir-expr 'result (ir2c-type return-type)))
+    (ir2c* ir-expr 'result (ir2c-type return-type))))
 
 (defcl if-instr ()
   if-cond
@@ -2729,7 +2729,7 @@
 			       ir-arg-var-names))
 		   
 		    (arg-string (format nil "~{~a~^, ~}" arg-pairs)))
-	      (when (ir-function? ir-function-name) ;(break "ir-function"))
+	      ;;(when (ir-function? ir-function-name) (break "ir-function"))
 	      (list (case c-return-type
 		      ((mpz mpq) (format nil "~a(~a, ~a)"  ir-function-name  return-var arg-string))
 		      (t (format nil "~a = (~a_t)~a(~a)"  return-var c-return-type ir-function-name arg-string))))))))))
