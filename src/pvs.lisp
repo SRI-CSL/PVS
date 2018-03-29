@@ -1129,59 +1129,64 @@
 
 (defun typecheck-file (filename &optional forced? prove-tccs? importchain?
 				  nomsg? outside-call?)
-  (let ((*parsing-files* (when (boundp '*parsing-files*) *parsing-files*)))
-    (multiple-value-bind (theories restored? changed-theories)
-	(parse-file filename forced? t)
-      (let ((*current-file* filename)
-	    (*typechecking-module* nil))
-	(unless theories
-	  (let ((err (format nil "~a not found" filename)))
-	    (pvs-error err err)))
-	(cond ((and (not forced?)
-		    theories
-		    (every #'(lambda (th)
-			       (let ((*current-context* (saved-context th))
-				     (*current-theory* th))
-				 (typechecked? th)))
-			   theories))
-	       (unless (or nomsg? restored?)
-		 (pvs-message
-		     "~a ~:[is already typechecked~;is typechecked~]~a"
-		   filename
-		   restored?
-		   (if (and prove-tccs? (not *in-checker*))
-		       " - attempting proofs of TCCs" ""))))
-	      ((and *in-checker*
-		    (not *tc-add-decl*))
-	       (pvs-message "Must exit the prover first"))
-	      ((and *in-evaluator*
-		    (not *tc-add-decl*))
-	       (pvs-message "Must exit the evaluator first"))
-	      (t (pvs-message "Typechecking ~a" filename)
-		 (when forced?
-		   (delete-generated-adt-files theories))
-		 (typecheck-theories filename theories)
-		 #+pvsdebug (assert (every #'typechecked? theories))
-		 (update-context filename)))
-	(when prove-tccs?
-	  (if *in-checker*
-	      (pvs-message
-		  "Must exit the prover before running typecheck-prove")
-	      (if importchain?
-		  (prove-unproved-tccs
-		   (delete-duplicates
-		    (mapcan #'(lambda (th)
-				(let* ((*current-theory* th)
-				       (*current-context* (saved-context th)))
-				  (collect-theory-usings th)))
-		      theories)
-		    :test #'eq)
-		   t)
-		  (prove-unproved-tccs theories))))
-	(if outside-call?
-	    ;; Emacs expects t or nil - error will not get here
-	    (and changed-theories t)
-	    (values theories changed-theories))))))
+  (cond ((string= filename "prelude")
+	 (ldiff *prelude-theories* (member 'stdlang *prelude-theories* :key #'id)))
+	((string= filename "pvsio_prelude")
+	 (member 'stdlang *prelude-theories* :key #'id))
+	(t
+	 (let ((*parsing-files* (when (boundp '*parsing-files*) *parsing-files*)))
+	   (multiple-value-bind (theories restored? changed-theories)
+	       (parse-file filename forced? t)
+	     (let ((*current-file* filename)
+		   (*typechecking-module* nil))
+	       (unless theories
+		 (let ((err (format nil "~a not found" filename)))
+		   (pvs-error err err)))
+	       (cond ((and (not forced?)
+			   theories
+			   (every #'(lambda (th)
+				      (let ((*current-context* (saved-context th))
+					    (*current-theory* th))
+					(typechecked? th)))
+				  theories))
+		      (unless (or nomsg? restored?)
+			(pvs-message
+			    "~a ~:[is already typechecked~;is typechecked~]~a"
+			  filename
+			  restored?
+			  (if (and prove-tccs? (not *in-checker*))
+			      " - attempting proofs of TCCs" ""))))
+		     ((and *in-checker*
+			   (not *tc-add-decl*))
+		      (pvs-message "Must exit the prover first"))
+		     ((and *in-evaluator*
+			   (not *tc-add-decl*))
+		      (pvs-message "Must exit the evaluator first"))
+		     (t (pvs-message "Typechecking ~a" filename)
+			(when forced?
+			  (delete-generated-adt-files theories))
+			(typecheck-theories filename theories)
+			#+pvsdebug (assert (every #'typechecked? theories))
+			(update-context filename)))
+	       (when prove-tccs?
+		 (if *in-checker*
+		     (pvs-message
+			 "Must exit the prover before running typecheck-prove")
+		     (if importchain?
+			 (prove-unproved-tccs
+			  (delete-duplicates
+			   (mapcan #'(lambda (th)
+				       (let* ((*current-theory* th)
+					      (*current-context* (saved-context th)))
+					 (collect-theory-usings th)))
+			     theories)
+			   :test #'eq)
+			  t)
+			 (prove-unproved-tccs theories))))
+	       (if outside-call?
+		   ;; Emacs expects t or nil - error will not get here
+		   (and changed-theories t)
+		   (values theories changed-theories))))))))
 
 (defvar *etb-typechecked-theories*)
 
