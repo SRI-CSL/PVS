@@ -734,6 +734,7 @@
   (assert (typep (print-type obj) '(or null type-name expr-as-type type-application)))
   (if (and (print-type obj)
 	   (or (null (print-type nobj))
+	       (mappings modinst)
 	       (free-params (print-type nobj))))
       (if (or (mappings modinst)
 	      (free-params (print-type obj)))

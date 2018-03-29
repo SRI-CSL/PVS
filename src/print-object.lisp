@@ -253,6 +253,11 @@ print object produces an error, and won't allow inspection of the object.")
 	    (*print-length* 3))
 	(format stream "#<DPINFO: ~w>" (dpinfo-findalist alists)))))
 
+(defmethod print-object ((strat strategy) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (format stream "#<STRATEGY: ~s>" (rule-input (topstep strat)))))
+
 (defmethod print-object ((rule rule-instance) stream)
   (if *debugging-print-object*
       (call-next-method)
