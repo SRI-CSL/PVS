@@ -32,6 +32,7 @@
 (defvar *count-occurrences* 0)
 (defvar *if-simplifies*)
 (defvar *expand-in-actuals?* nil)
+(defvar *names-from-symbols*)
 ;(defvar *dependent-decls*)
 
 
@@ -55,11 +56,17 @@
 		       (list sformnum)))
 	 (sforms (s-forms goalsequent))
 	 (lnames (if (listp name) name (list name)))
+	 (*names-from-symbols* nil)
 	 (nnames (mapcar #'(lambda (n)
 			     (let ((nn (pc-parse n 'bname)))
-			       (if (number-expr? nn)
-				   (change-class nn 'name-expr 'id (number nn))
-				   nn)))
+			       (when (number-expr? nn)
+				 (change-class nn 'name-expr 'id (number nn)))
+			       (when (symbolp n)
+				 ;; Symbols are accepted for names, but SBCL
+				 ;; will read/store them in uppercase.
+				 ;; See same-expand-name*
+				 (push nn *names-from-symbols*))
+			       nn))
 		   lnames))
 	 (occurrence (if (numberp occurrence)
 			 (list occurrence)
@@ -488,11 +495,12 @@ list of positive numbers" occurrence)
 	   (same-expand-name tgt-name (cdr pat-names)))))
 
 (defun same-expand-name* (tgt-name pat-name)
-  (and (or (if (or (resolution pat-name)
-		   (not (simple-name? pat-name)))
-	       (eq (id tgt-name) (id pat-name))
-	       ;; Otherwise, could be from a symbol, ignore case
-	       (string-equal (id tgt-name) (id pat-name)))
+  (and (or (eq (id tgt-name) (id pat-name))
+	   (when (and (null (resolution pat-name))
+		      (memq pat-name *names-from-symbols*)
+		      (simple-name? pat-name))
+	     ;; Otherwise, could be from a symbol, ignore case
+	     (string-equal (id tgt-name) (id pat-name)))
 	   (and (memq (id tgt-name) '(/= ≠))
 		(memq (id pat-name) '(/= ≠))))
        (or (null (library pat-name))
