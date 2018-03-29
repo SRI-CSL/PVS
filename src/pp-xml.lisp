@@ -1772,6 +1772,7 @@
 
 ;;; Parsing XML
 
+#+allegro
 (defun parse-xml (file)
   (with-open-file (fxml file)
     (let ((lxml (net.xml.parser:parse-xml fxml :content-only t)))
