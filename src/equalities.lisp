@@ -1801,7 +1801,7 @@
 	 (ctype (compatible-type atype etype))
 	 (subtype? (subtype-of? etype ctype))
 	 (stype (find-supertype ctype))
-	 (preds (when subtype? (nth-value 1 (subtype-preds etype stype)))))
+	 (preds (when subtype? (nth-value 1 (subtype-preds etype ctype)))))
     (if subtype?
 	(values incs (cons (cons (mk-actual stype) preds) pospreds))
 	(values (cons (make-actuals-equality aact eact) incs) pospreds))))
