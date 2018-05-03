@@ -100,6 +100,19 @@
 (defun pvs-init (&optional dont-load-patches dont-load-user-lisp path)
   (start-load-watching)
   #+allegro (setq excl:*enclose-printer-errors* nil)
+  ;; The uiop/stream:*temporary-directory* can be set wrong on the Mac
+  ;; Possible we want to use TMPDIR value regardless
+  (let ((tmpdir (environment-variable "TMPDIR")))
+    (when tmpdir
+      (unless (and (directory-p tmpdir)
+		   (write-permission? tmpdir))
+	(pvs-message "environment variable TMPDIR is not a writable directory:~%  ~a"
+	  tmpdir)
+	(pvs-message "Please fix this and try again")
+	(cl-user:bye 1))
+      (pvs-message "Setting tmp dir to value of environment variable TMPDIR:~%  ~a"
+	tmpdir)
+      (setq uiop/stream:*temporary-directory* tmpdir)))
   (setq *print-pretty* t)
   ;;(setf (symbol-function 'ilisp::ilisp-restore) #'pvs-ilisp-restore)
   #+allegro (setq top-level::*print-length* nil
@@ -164,6 +177,11 @@
   (unless *pvs-context-path*
     ;; Need to make sure this is set to something
     (setq *pvs-context-path* (shortpath (working-directory))))
+  ;; Quicklisp
+  (let ((quicklisp-init (merge-pathnames "quicklisp/setup.lisp"
+					 (directory-p *pvs-path*))))
+    (load quicklisp-init))
+  ;; Load files specified on the command line
   (let ((evalload (environment-variable "PVSEVALLOAD")))
     (when evalload
       (multiple-value-bind (ignore error)
@@ -2363,7 +2381,8 @@ Note that even proved ones get overwritten"
 	       'no))
 	  (unproved? (pvs-message "No more unproved formulas below"))
 	  (t (pvs-message
-		 "Not at a formula declaration~@[ - ~a buffer may be invalid~]"
+		 "Not at a formula declaration (line ~d)~@[ - ~a buffer may be invalid~]"
+	       line
 	       (car (member (intern #+allegro (string-downcase origin)
 				    #-allegro (string-upcase origin)
 				    :pvs)
