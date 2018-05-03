@@ -2028,7 +2028,9 @@ then uses unpindent* to add the indent to each line"
 	(call-next-method))))
 
 (defmethod pp* ((ex chained-relation))
-  (if *pp-print-parens*
+  (if (or *pp-print-parens*
+	  (not (infix-application? (args1 ex)))
+	  (not (infix-application? (args2 ex))))
       (call-next-method)
       (pp-chained-relation ex)))
 
@@ -2054,7 +2056,7 @@ then uses unpindent* to add the indent to each line"
       (pp* ex)))
 
 (defmethod pp-chained-relation (ex &optional rhs?)
-  (if rhs?
+  (if nil ;rhs? 
       (pp* (args2 ex))
       (pp* ex)))
 
