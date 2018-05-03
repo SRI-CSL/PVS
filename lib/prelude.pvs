@@ -742,6 +742,24 @@ epsilons [T: NONEMPTY_TYPE]: THEORY
  END epsilons
 
 
+% The axiom below deals with nonempty types in decl parameters.
+
+% Theory parameters add an existence assumption, but there's No way to do
+% this with declaration parameters.  Note that this relies on the way PVS
+% tracks nonempty types.  In general, this is only useful for types declared
+% to be nonempty,  For example, in a declaration such as
+
+%   f[T: TYPE+, S: TYPE](x: T, y: S): int = ...
+
+% nonempty_ax[T] can be used as a lemma.  nonempty_ax[S] can also be tried,
+% but since S is not known to be nonempty in this example, it will generate
+% a TCC that looks circular.
+
+decl_params: THEORY
+ BEGIN
+  nonempty_ax[T: TYPE+]: AXIOM EXISTS (x: T): TRUE
+ END decl_params
+
 % sets provides the polymorphic set type, along with the usual set
 % operations.  It is important to bear in mind that a set is just
 % a predicate.
@@ -4036,7 +4054,7 @@ nat_fun_props : THEORY
 %------------------------------------------------------------------------
 %      Author:  Bruno Dutertre 
 %
-%      Special properties of injective/surgective functions over nats
+%      Special properties of injective/surjective functions over nats
 %------------------------------------------------------------------------
 
 BEGIN
@@ -4805,6 +4823,10 @@ list_props [T: TYPE]: THEORY
     FORALL (i: below(length(append(l1, l2)))):
       nth(append(l1, l2), i)
           = IF i < length(l1) THEN nth(l1, i) ELSE nth(l2, i - length(l1)) ENDIF
+
+  nth_reverse: LEMMA
+    FORALL (i: below(length(l1))):
+      nth(reverse(l1), i) = nth(l1, length(l1) - i - 1)
 
   a, b, c: VAR T
 
