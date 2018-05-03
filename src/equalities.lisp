@@ -1761,7 +1761,7 @@
   (adt-compatible-pred-actuals (actuals (module-instance atype))
 			       (actuals (module-instance etype))
 			       (formals-sans-usings (adt atype))
-			       (find-supertype atype)
+			       (compatible-type atype etype)
 			       (positive-types (adt atype))
 			       aexpr
 			       incs))
