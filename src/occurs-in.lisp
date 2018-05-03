@@ -516,7 +516,7 @@ ignore.  The idea is that we are building, e.g., ~dep-binding~s from
 
 ;;; var-occurs-in checks whether the variable id occurs in the term y
 ;;; Unlike id-occurs-in, it uses eq test and does not go into types and
-;;; ignores lambda bound variables.
+;;; ignores variables bound by binding-exprs
 
 (defvar *var-occurs-in-bindings*)
 
@@ -582,13 +582,9 @@ ignore.  The idea is that we are building, e.g., ~dep-binding~s from
   (or (var-occurs-in* id (operator ex))
       (var-occurs-in* id (argument ex))))
 
-(defmethod var-occurs-in* (id (ex lambda-expr))
+(defmethod var-occurs-in* (id (ex binding-expr))
   (let ((*var-occurs-in-bindings* (append (bindings ex) *var-occurs-in-bindings*)))
     (var-occurs-in* id (expression ex))))
-
-(defmethod var-occurs-in* (id (ex binding-expr))
-  (or (var-occurs-in* id (bindings ex))
-      (var-occurs-in* id (expression ex))))
 
 (defmethod var-occurs-in* (id (ex cases-expr))
   (or (var-occurs-in* id (expression ex))
