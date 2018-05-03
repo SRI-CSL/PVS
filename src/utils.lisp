@@ -238,6 +238,14 @@
 	nex
 	(change-class nex 'infix-boolean-equation))))
 
+(defmethod copy :around ((ex chained-relation) &rest args)
+  (declare (ignore args))
+  (let ((nex (call-next-method)))
+    (if (and (infix-application? (args1 nex))
+	     (infix-application? (args2 nex)))
+	nex
+	(change-class nex 'infix-conjunction))))
+
 ;; Function composition
 
 (defun compose (&rest fns)
@@ -2646,7 +2654,9 @@
   (let ((*raise-actuals-of-actuals* actuals-also?)
 	(*raise-actuals-theory-ids* theory-ids?)
 	(*pseudo-normalizing* t)
-	(*visible-only* t))
+	(*generate-tccs* 'none)
+	(*visible-only* t)
+	)
     (gensubst obj #'raise-actuals! #'raise-actuals?)))
 
 (defmethod raise-actuals? (obj)
