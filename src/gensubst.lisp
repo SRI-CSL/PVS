@@ -624,10 +624,11 @@
 
 (defmethod gensubst* ((act actual) substfn testfn)
   (if (and (not *parsing-or-unparsing*)
-	   (not *visible-only*)
+	   ;;(not *visible-only*)
 	   (type-value act))
       (let ((ntype (gensubst* (type-value act) substfn testfn)))
-	(if (eq ntype (type-value act))
+	(if (and (eq ntype (type-value act))
+		 (not *visible-only*))
 	    act
 	    (mk-actual ntype)))
       (let ((nexpr (gensubst* (expr act) substfn testfn)))
