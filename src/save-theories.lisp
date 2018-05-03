@@ -85,6 +85,7 @@
 		   (floor (- load-time start-time) millisecond-factor))
 		 theory))
 	      (fetch-error
+	       ;;(break "Error in fetching ~a - ~a" filename fetch-error)
 	       (pvs-message "Error in fetching ~a - ~a" filename fetch-error)
 	       (ignore-lisp-errors (delete-file file))
 	       (dolist (thid *bin-theories-set*)
@@ -621,6 +622,7 @@
     (let* ((decl-pos (stored-word 2))
 	   (decl (nth decl-pos (all-decls theory))))
       (unless decl
+	;;(break "No decl?")
 	(error "Declaration was not found"))
       decl)))
 
