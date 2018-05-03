@@ -1687,8 +1687,8 @@ Point will be on the offending delimiter."
 			       (re-search-forward exp nil t))
 			 (when foundit (setq last-point foundit)))
 		       (if foundit
-			   (pvs-message "Found expected output")
-			   (pvs-message "ERROR: %s: expected output not found"
+			   (pvs-message "[32;1mFound expected output[0m")
+			   (pvs-message "[31;1mERROR: %s: expected output not found[0m"
 			     logfile))))))
 	       (when pvs-unexpected-output
 		 (let ((standard-output logbuf)
