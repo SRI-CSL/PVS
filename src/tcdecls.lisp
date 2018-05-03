@@ -196,7 +196,8 @@
 (defun decl-formal-existence-assumption (dfml)
   (when (nonempty-type-decl? dfml)
     (let* ((type (type-value dfml))
-	   (var (make-new-variable '|x| type)))
+	   (var (make-new-variable '|x| type))
+	   (*generate-tccs* 'none))
       (make!-exists-expr (list (make-bind-decl var type)) *true*))))
   
 
