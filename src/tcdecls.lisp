@@ -1185,7 +1185,11 @@
 		    (nconc (ldiff theory-part rest) (cons decl rest)))))))
 
 (defmethod make-inlined-theory-decl ((imp importing))
-  (typecheck-using* (get-theory (theory-name imp)) (theory-name imp)))
+  (let* ((thname (theory-name imp))
+	 (th (if (resolution thname)
+		 (declaration thname)
+		 (get-theory thname))))
+    (typecheck-using* th thname)))
 
 (defmethod make-inlined-theory-decl ((decl declaration))
   (setf (current-declaration) decl)
