@@ -351,7 +351,7 @@ still complete, if it was in the full theory."
 		   (goto-char (point-min))
 		   (forward-line (1- (- (car loc) line)))
 		   (forward-char (cadr loc)))))
-	      (t (find-file file)
+	      (t (find-pvs-file file)
 		 (goto-char (point-min))
 		 (forward-line (1- (car loc)))
 		 (forward-char (cadr loc))))
