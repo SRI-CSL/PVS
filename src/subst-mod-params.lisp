@@ -603,7 +603,10 @@
 		     (actuals rhs-thinst)
 		     (mappings rhs-thinst)
 		     bindings)))
-    (assert (eq (id rhs-thname) (id lhs-theory)))
+    (assert (or (eq (id rhs-thname) (id lhs-theory))
+		(and (resolution rhs-thname)
+		     (mod-decl? (declaration rhs-thname))
+		     (eq (id (theory-name (declaration rhs-thname))) (id lhs-theory)))))
     ;;(assert (fully-instantiated? rhs-thname))
     #+pvsdebug (assert (every #'(lambda (d)
 				  (typep (car d) '(or declaration module mapping-lhs)))
@@ -621,7 +624,8 @@
 	 (rdecl (declaration (expr rhs)))
 	 (theory (if (module? rdecl)
 		     rdecl
-		     (get-theory (theory-name lhs-decl))))
+		     (or (get-theory (theory-name lhs-decl))
+			 (module rdecl))))
 	 (pre-bindings (make-subst-mod-params-bindings
 			thname (formals-sans-usings theory)
 			(actuals thname)
@@ -874,8 +878,10 @@
 
 (defmethod subst-mod-params* ((imp importing) modinst bindings)
   (with-slots (theory-name) imp
-    (lcopy imp
-      :theory-name (subst-mod-params* theory-name modinst bindings))))
+    (assert (resolution theory-name))
+    (unless (assq (declaration theory-name) bindings)
+      (lcopy imp
+	:theory-name (subst-mod-params* theory-name modinst bindings)))))
 
 (defmethod subst-mod-params* ((decl theory-abbreviation-decl) modinst bindings)
   (with-slots (theory-name) decl
@@ -1055,7 +1061,7 @@
 	       decl))
 	    ((let ((map (assoc decl bindings :key #'declaration)))
 	       (and map
-		    (multiple-value-bind (dfmls dacts)
+		    (multiple-value-bind (dfmls dacts dthinst)
 			(new-decl-formals decl)
 		      (let ((ndecl (copy decl
 				     :decl-formals dfmls
@@ -1066,25 +1072,34 @@
 			  (setf (associated-decl dfml) ndecl
 				(module dfml) (current-theory)))
 			(with-current-decl ndecl
-			  (let* ((nmodinst (copy modinst :dactuals dacts))
+			  (let* ((mexpr (expr (cdr map)))
+				 (mdecl (when (name-expr? mexpr) (declaration mexpr)))
+				 (mthinst (when (name-expr? mexpr) (module-instance mexpr)))
+				 (nmodinst (copy modinst :dactuals dacts))
+				 (mdef (when (and mdecl (definition mdecl))
+					 (subst-mod-params (definition mdecl)
+					     (or dthinst mthinst)
+					   *subst-mod-params-theory* mdecl)))
 				 (nformals (subst-mod-params formals nmodinst
 					     *subst-mod-params-theory* decl))
-				 (nexpr (subst-mod-params (expr (cdr map))
-					    nmodinst *subst-mod-params-theory* (car map)))
+				 (ndef (subst-mod-params (or mdef mexpr)
+					   nmodinst *subst-mod-params-theory* (car map)))
 				 (ntype (subst-mod-params type nmodinst
 					  *subst-mod-params-theory* decl)))
 			    ;;(assert (fully-instantiated? nformals))
 			    ;;(assert (fully-instantiated? nexpr))
 			    ;;(assert (fully-instantiated? ntype))
+			    (assert (or (null ndef)
+					(every #'(lambda (fp) (memq fp dfmls)) (free-params ndef))))
 			    (setf (formals ndecl) nformals)
 			    (setf (definition ndecl)
 				  (if nformals
 				      (make-applications
-				       nexpr
+				       ndef
 				       (mapcar #'(lambda (fms)
 						   (mapcar #'mk-name-expr fms))
 					 nformals))
-				      nexpr))
+				      ndef))
 			    (setf (type ndecl) ntype)
 			    (setf (declared-type ndecl)
 				  (subst-mod-params* declared-type modinst bindings))
