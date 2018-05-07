@@ -504,7 +504,7 @@ list of positive numbers" occurrence)
 	   (same-expand-name tgt-name (cdr pat-names)))))
 
 (defun same-expand-name* (tgt-name pat-name)
-  (and (or (eq (id tgt-name) (id pat-name))
+  (and (or (id-suffix pat-name tgt-name)
 	   (when (and (null (resolution pat-name))
 		      (memq pat-name *names-from-symbols*)
 		      (simple-name? pat-name))
