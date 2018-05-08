@@ -91,7 +91,7 @@ SYSTEM_FILES = README.md README.GUI INSTALL LICENSE NOTICES install-sh \
 	$(wildcard lib/bitvectors/*.pvs lib/bitvectors/*.prf) \
 	lib/bitvectors/.pvscontext lib/bitvectors/pvsbin \
 	yices/$(PLATFORM) $(bindir)/yices1 $(bindir)/yices2 \
-	quicklisp
+	quicklisp emacs/configured-for-x
 
 ALLEGRO_FILES = $(bindir)/runtime/file_utils.$(LOAD-FOREIGN-EXTENSION) \
 	$(wildcard $(bindir)/runtime/libacli*.$(LOAD-FOREIGN-EXTENSION)) \
