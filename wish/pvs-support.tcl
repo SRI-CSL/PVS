@@ -636,6 +636,8 @@ proc undo-to-sequent {proofwin} {
 
 proc show-sequent {proofwin top} {    
     global pathtolabel
+    global fontsize
+    set fontsize 10
     upvar #0 dag-$proofwin dag
 
     set path $dag(idtotag,[$proofwin find withtag current])
@@ -671,7 +673,7 @@ proc show-sequent {proofwin top} {
     toplevel $seqwin -class Sequent -borderwidth 2
     frame $seqwin.fr
     pack $seqwin.fr -expand yes -fill both
-    text $seqwin.fr.text -bd 2 -relief raised -height 2 -width 80 -setgrid true
+    text $seqwin.fr.text -bd 2 -relief raised -height 2 -width 80 -setgrid true -font "TkFixedFont $fontsize"
     set text [string range $text 1 [expr [string length $text]-2]]
     $seqwin.fr.text insert end $text
     set height [lindex [split [$seqwin.fr.text index end] .] 0]
@@ -706,6 +708,9 @@ proc show-sequent {proofwin top} {
     pack $seqwin.stick -side left -padx 2 -pady 2
     button $seqwin.help -text Help -bd 2 -command "help-sequent" -underline 0
     bind $seqwin <Alt-h> "$seqwin.help invoke"
+    #bind $seqwin <Control-plus> "font-inc"
+    #bind $seqwin <Control-minus> "font-dec"
+    #bind $seqwin <Control-0> "font-reset"
     pack $seqwin.help -side right -padx 2 -pady 2
     bind $seqwin <Destroy> "catch {$proofwin delete $path.label$label}"
     bind $seqwin <Destroy> "+catch {unset pathtolabel($path)}"
@@ -718,6 +723,21 @@ proc show-sequent {proofwin top} {
     dag-add-destroy-cb $proofwin $path "destroy-sequent $seqwin"
     set pathtolabel($path) $label
 }
+
+# proc font-inc {} {
+#     global fontsize
+#     set fontsize [expr $fontsize * 1.2]
+# }    
+
+# proc font-dec {} {
+#     global fontsize
+#     set fontsize [expr $fontsize / 1.2]
+# }    
+
+# proc font-reset {} {
+#     global fontsize
+#     set fontsize 10
+# }    
 
 proc print-text {textwin} {
     set text [$textwin get 1.0 end]
