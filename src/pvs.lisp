@@ -110,7 +110,7 @@
 	  tmpdir)
 	(pvs-message "Please fix this and try again")
 	(cl-user:bye 1))
-      (pvs-message "Setting tmp dir to value of environment variable TMPDIR:~%  ~a"
+      (pvs-message "Setting tmp dir to value of environment variable TMPDIR:~%  ~a~%"
 	tmpdir)
       (setq uiop/stream:*temporary-directory* tmpdir)))
   (setq *print-pretty* t)
@@ -177,10 +177,6 @@
   (unless *pvs-context-path*
     ;; Need to make sure this is set to something
     (setq *pvs-context-path* (shortpath (working-directory))))
-  ;; Quicklisp
-  (let ((quicklisp-init (merge-pathnames "quicklisp/setup.lisp"
-					 (directory-p *pvs-path*))))
-    (load quicklisp-init))
   ;; Load files specified on the command line
   (let ((evalload (environment-variable "PVSEVALLOAD")))
     (when evalload
