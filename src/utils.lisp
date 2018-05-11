@@ -401,26 +401,36 @@
 (defun set-working-directory (dir)
   (system::change-directory dir))
 
-#+allegro
 (defun environment-variable (string)
-  (sys:getenv string))
-
-#+cmu
-(defun environment-variable (string)
-  (tools:getenv string))
-
-#+sbcl
-(defun environment-variable (string)
-  (sb-posix:getenv string))
-
-#+harlequin-common-lisp
-(defun environment-variable (string)
+  #+allegro
+  (sys:getenv string)
+  #+cmu
+  (tools:getenv string)
+  #+sbcl
+  (sb-posix:getenv string)
+  #+harlequin-common-lisp
   ;; This didn't work before
-  (getenv string))
+  (getenv string)
+  #+gcl
+  (si:getenv string)
+  #-(or allegro cmu sbcl harlequin-common-lisp gcl)
+  (error "environment-variable not defined for this lisp"))
 
-#+gcl
-(defun environment-variable (string)
-  (si:getenv string))
+;; Doesn't work in SBCL.  Isn't really needed, just trying some tests
+;; (defun setenv (string value)
+;;   #+allegro
+;;   (excl.osi:setenv string value t)
+;;   #+cmu
+;;   (tools:setenv string value)
+;;   #+sbcl
+;;   (sb-posix:setenv string value)
+;;   #+harlequin-common-lisp
+;;   ;; This didn't work before
+;;   (setenv string value)
+;;   #+gcl
+;;   (si:setenv string value)
+;;   #-(or allegro cmu sbcl harlequin-common-lisp gcl)
+;;   (error "setenv not defined for this lisp"))
 
 #+lucid
 (defun chmod (prot file)
