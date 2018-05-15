@@ -744,7 +744,8 @@
 	      (free-params (print-type obj)))
       	  (let* ((stype (subst-mod-params* (print-type obj) modinst bindings))
       		 (pte (or (print-type stype) stype)))
-      	    (if (occurs-in nobj pte)
+      	    (if (or (occurs-in nobj pte)
+		    (not (compatible? obj nobj)))
       		(lcopy nobj :print-type nil)
       		(if (eq obj nobj)
       		    (lcopy nobj :print-type pte)
@@ -1812,7 +1813,17 @@
 (defmethod subst-mod-params* ((expr tuple-expr) modinst bindings)
   (let ((nexprs (subst-mod-params* (exprs expr) modinst bindings))
 	(ntype (subst-mod-params* (type expr) modinst bindings)))
-    (lcopy expr :exprs nexprs :type ntype)))
+    (if (and (equal nexprs (exprs expr))
+	     (eq ntype (type expr)))
+	expr
+	;; Mappings may affect the nexprs, without changing the type
+	;; Need to recognize this case, and not do the mapping
+	;; bugs/835 maps number to complex, and 0 to (0, 0),
+	;; But then "x > 0" maps to "x > (0, 0)",
+	(if (or t (every #'(lambda (a ty) (compatible? (type a) ty))
+			 nexprs (types (find-supertype ntype))))
+	    (lcopy expr :exprs nexprs :type ntype)
+	    expr))))
 
 (defmethod subst-mod-params* ((expr cases-expr) modinst bindings)
   (if (some #'(lambda (sel) (assq (declaration (constructor sel))
@@ -2113,12 +2124,17 @@
 		       ;; (assert (or (mappings modinst)
 		       ;; 		   (subsetp (free-params ntype) (free-params modinst)))
 		       ;; 	       () "res4")
-		       (if (and (strong-tc-eq type ntype)
-				(strong-tc-eq nacts acts)
-				(strong-tc-eq ndacts dacts)
-				(not (memq (id mi) '(|equalities| |notequal|)))
-				(not (library-datatype-or-theory?
-				      (module decl))))
+		       (if (or (and (strong-tc-eq type ntype)
+				    (strong-tc-eq nacts acts)
+				    (strong-tc-eq ndacts dacts)
+				    (not (memq (id mi) '(|equalities| |notequal|)))
+				    (not (library-datatype-or-theory? (module decl))))
+			       ;; If mappings are present, the resolution may be
+			       ;; mapped inconsistently with the declaration type
+			       ;; bugs/835 shows this, mapping "i /= 0" to "i /= (0, 0)"
+			       (and (mappings modinst)
+				    ;; Note that compatible? allows for formals matching actuals
+				    (not (compatible? type ntype))))
 			   (progn #+pvsdebug
 				  (assert (or (mappings modinst)
 					      (subsetp (free-params res)
