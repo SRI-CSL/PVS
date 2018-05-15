@@ -799,6 +799,7 @@
 		     :theory-mappings nil
 		     :other-mappings nil)
 		   'mapped-type-decl)))
+    ;; (generate-xref mdecl)
     (dolist (df (decl-formals mdecl))
       (setf (associated-decl df) mdecl))
     mdecl))
@@ -815,12 +816,13 @@
 				      (decl-formals decl))
 		      :formals nil
 		      :module (current-theory)
-		      :refers-to (generate-xref (type-value (rhs map)))
 		      :generated nil
 		      :generated-by (list decl)
 		      :type-value typeval
 		      :type typex)
 		    'mapped-type-decl)))
+    (let ((*generate-xref-declaration* mdecl))
+      (generate-xref mdecl))
     (dolist (df (decl-formals mdecl))
       (setf (associated-decl df) mdecl))
     mdecl))
@@ -844,13 +846,14 @@
 		      :decl-formals dformals
 		      :formals nil
 		      :module (current-theory)
-		      :refers-to (generate-xref (expr (rhs map)))
 		      :generated nil
 		      :generated-by (list decl)
 		      :declared-type dtype
 		      :type type
 		      :definition (expr (rhs map)))
 		    'mapped-const-decl)))
+    (let ((*generate-xref-declaration* mdecl))
+      (generate-xref mdecl))
     (dolist (df (decl-formals mdecl))
       (setf (associated-decl df) mdecl))
     (assert (with-current-decl mdecl (fully-instantiated? type)))
