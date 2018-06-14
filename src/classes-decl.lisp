@@ -443,6 +443,8 @@
 
 (defcl units-name (type-name units-expr))
 
+;;; Mixin for mod-decl, theory-abbreviation-decl, and formal-theory-decl
+(defcl theory-reference (declaration importing-entity))
 
 ;;; Formal theory parameter declarations
 
@@ -494,7 +496,7 @@
   (possibly-empty-type? :restore-as nil)
   (eval-info :fetch-as nil))
 
-(defcl formal-theory-decl (formal-decl importing-entity)
+(defcl formal-theory-decl (formal-decl theory-reference)
   (theory-name :parse t)
   theory-mappings
   other-mappings)
@@ -508,8 +510,6 @@
   (lib-ref :restore-as nil))
 
 (defcl lib-eq-decl (lib-decl))
-
-(defcl theory-reference (declaration importing-entity))
 
 (defcl mod-decl (theory-reference)
   (modname :parse t)
