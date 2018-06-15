@@ -99,8 +99,11 @@
 (defvar *ruletracedepth* 0)
 (defvar *template-num* 0)
 (defvar *translate-to-prove-hash*)
-(defvar *prover-print-depth* nil)
+;; These control how prover output is displayed
+(defvar *prover-print-depth* nil) ;; Corresponds to *print-level*
 (defvar *prover-print-length* nil)
+(defvar *prover-print-lines* nil)
+(defvar *prover-print-right-margin* nil)
 (defvar *translate-id-hash*)
 (defvar *translate-id-counter* nil)
 (defvar *process-output* nil)
@@ -325,8 +328,8 @@
   `(unless (or *proving-tcc* *rewrite-msg-off*)
      (let* ((*suppress-printing* nil)
 	    (id-string (format nil "~a" ,id))
-	    (*sb-print-depth* *rewrite-print-depth*)
-	    (*sb-print-length* *rewrite-print-length*))
+	    (*pp-print-depth* *rewrite-print-depth*)
+	    (*pp-print-length* *rewrite-print-length*))
        (cond ((eq *rewrite-print-depth* 0)
 	      (commentary "~%Rewriting with ~a" id-string))
 	     (t (commentary "~%~a rewrites " id-string)
@@ -569,14 +572,20 @@
     value))
 
 (defmacro print-proofstate (ps)
-  `(let ((*sb-print-depth* *prover-print-depth*)
-	 (*sb-print-length* *prover-print-length*))
+  `(let ((*pp-print-depth* *prover-print-depth*)
+	 (*pp-print-length* *prover-print-length*)
+	 (*pp-print-lines* *prover-print-lines*)
+	 (*default-char-width* (or *prover-print-right-margin*
+				   *default-char-width*)))
     (commentary "~a" ,ps)))
 
 
 (defmacro print-proofstate-if (ps)
-  `(let ((*sb-print-depth* *prover-print-depth*)
-	 (*sb-print-length* *prover-print-length*))
+  `(let ((*pp-print-depth* *prover-print-depth*)
+	 (*pp-print-length* *prover-print-length*)
+	 (*pp-print-lines* *prover-print-lines*)
+	 (*default-char-width* (or *prover-print-right-margin*
+				   *default-char-width*)))
      (unless (and (consp (current-input ,ps))
 		  (eq (car (current-input ,ps)) 'lisp))
        (format-if "~a" ,ps))))

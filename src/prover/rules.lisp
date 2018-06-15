@@ -952,6 +952,19 @@ which eliminates all top-level disjuncts in the indicated FNUMS."
   "Sets the print depth."
   "~%Setting print depth to ~a")
 
+(addrule 'set-right-margin () (margin)
+  #'(lambda (ps)
+      (declare (ignore ps))
+      (unless (or (null margin) (and (integerp margin) (>= margin 0)))
+	(error-format-if
+	 "~%Illegal right margin: ~a; must be a positive number or nil" margin))
+      (setq *prover-print-right-margin*
+	    (unless (zerop margin)
+	      margin))
+      (values 'X nil nil))
+  "Sets the print right margin."
+  "~%Setting print right margin to ~a")
+
 (addrule 'decide () ((fnums *))
   (invoke-decide fnums)
   "Invokes the decision procedure, without simplification."

@@ -231,16 +231,39 @@ left (medial), right (medial), and aggregate operators.  Each of these
 hash tables gives a binding number for a given operator; higher numbers
 bind tighter.")
 
-;;; Unparse takes the following keywords:
-;;; :string :stream :char-width :file :style
+;;; Some examples below are illustrated for the term (and this is unparsed
+;;; with default settings):
+;;;  FORALL a:
+;;;    (nonempty?(a) AND FORALL x, y: a(x) AND a(y) IMPLIES (x = y)) IMPLIES
+;;;     singleton?(a)
 
+;;; Controls the depth (level) of print: replacing terms below a given level in
+;;; the abstract syntax tree with "#".  In this case, set to 5 it yields
+;;;   FORALL a: (## AND FORALL #: #) IMPLIES singleton?#
+;;; the "##" corresponds to "nonempty?" and "(a)", not to a special symbol
+(defparameter *pp-print-depth* nil) ;; Corresponds to *print-level*
+
+;;; *pp-print-length* controls the length of print: replacing arguments beyond
+;;; this length with "...".  For example, set to 3 with 
+;;;   f(x, y, z, u, v)
+;;; yields
+;;;   f(x, y, z, ...)
 (defparameter *pp-print-length* nil)
-(defparameter *pp-print-level* nil)
+
+;;; *pp-print-lines* controls the number of lines printed.  Adds " .." to the
+;;; end of the last line printed.  Set to 2 yields
+;;;   FORALL a:
+;;;     (nonempty?(a) AND FORALL x, y: a(x) AND a(y) IMPLIES (x = y)) IMPLIES ..
 (defparameter *pp-print-lines* nil)
+
+;;; *default-char-width* controls where the right margin is - defaults to 80
+;;; Probably should be renamed to *pp-print-right-margin*
+
 (defparameter *pp-print-pretty* t)
 
-(defun unparse (obj &key string stream file (char-width nil cw-given)
-		      (length *pp-print-length*) (level *pp-print-level*)
+(defun unparse (obj &key string stream file
+		      (char-width nil cw-given)
+		      (length *pp-print-length*) (level *pp-print-depth*)
 		      (lines *pp-print-lines*) (pretty *pp-print-pretty*) no-newlines?
 		      (case nil case-given))
   "Given an obj, convert it to pretty-printed text, in a string, file, or stream.
@@ -255,8 +278,7 @@ obj - roughly any Lisp entity that's printable, though this specializes to PVS i
 :lines - see *print-lines*
 :pretty - see *print-pretty*
 :no-newlines? - suppresses newlines for exporting, conversion-decl, and auto-rewrite-decl
-:case - :unicode, :short, :upper, :lower, or nil
-        See *ppcase*
+:case - :unicode, :short, :upper, :lower, or nil.  See *ppcase*
 "
   (let ((*print-length* length)
 	(*print-level* level)

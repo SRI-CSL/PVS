@@ -3433,7 +3433,9 @@
 	     :string t
 	     :length *prover-print-length*
 	     :level *prover-print-depth*
-	     :lines *prover-print-lines*))
+	     :lines *prover-print-lines*
+	     :width (or *prover-print-right-margin*
+			*default-char-width*)))
 
 (defun in-every-print-descendant? (sform)
   (every #'(lambda (ps)

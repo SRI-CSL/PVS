@@ -1316,6 +1316,26 @@ If it is 0 (zero), then the whole formula is printed."
     (pvs-send (format "(setq *prover-print-lines* %s)"
 		  (when (plusp dep) dep)))))
 
+(defpvs set-print-right-margin edit-proof (margin)
+  "Set the print right margin for formulas displayed in a sequent
+
+The set-print-right-margin command sets the right margin value to use for formulas
+in a sequent.  MARGIN should be a whole number or nil.  If it is a positive number,
+then it is used as a bound on the length of each line.  A value of nil means to
+use the value of *default-char-width*."
+  (interactive "sEnter a number (default: nil = use value of *default-char-width*): ")
+  (let ((dep (cond ((natnump margin)
+		    margin)
+		   ((and (stringp margin)
+			 (string-match "^[ \t]*$" margin))
+		    nil)
+		   ((and (stringp margin)
+			 (string-match "^[ \t]*[0-9]+[ \t]*$" margin))
+		    (string-to-number margin))
+		   (t (error "set-print-margin: %s is not an integer" margin)))))
+    (pvs-send (format "(setq *prover-print-right-margin* %s)"
+		  (when (plusp dep) dep)))))
+
 (defun pvs-get-prove-input ()
   "Gets the proof input of the prove command.  This is used primarily for
 debugging."
