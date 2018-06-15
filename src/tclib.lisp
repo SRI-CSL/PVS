@@ -68,7 +68,11 @@
 	  *even_posnat* nil
 	  *odd_posnat* nil
 	  *even_negint* nil
-	  *odd_negint* nil)
+	  *odd_negint* nil
+	  *negrat* nil
+	  *posrat* nil
+	  *negint* nil)
+    (makunbound '*manip-supported-types*)
     (when *pvs-initialized*
       (clear-theories t))
     (let ((cdir (or *pvs-context-path* (working-directory)))
