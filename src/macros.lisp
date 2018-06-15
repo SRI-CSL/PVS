@@ -500,8 +500,8 @@
 	       (setf (get-lhash (car ,gdecl) (current-declarations-hash))
 		     (cdr ,gdecl))))))))
 
-(defmacro with-context (theory &rest body)
-  `(let ((*current-context* (saved-context (get-theory ,theory)))
+(defmacro with-context (obj &rest body)
+  `(let ((*current-context* (context ,obj))
 	 (*generate-tccs* 'all))
      ,@body))
 
@@ -636,6 +636,23 @@
 		    (setf (cdr ,%elt) ,value))
 		  ,%alist)
 	   (acons ,%akey ,value ,%alist)))))
+
+;;; Finds the item in list using test, applies fn to item and the found
+;;; element.  If it is not nil, returns the item and the fn
+;;; result. Otherwise it goes on to the next item.  Returns nil if no item
+;;; satisfies both.  Just returning the fn result would not say which item
+;;; led to it, and returning just the item would mean needing to call fn
+;;; twice.
+(defmacro find-and-apply (item fn list &key (test #'eq) key)
+  (let ((item_ (gentemp))
+	(key_ (gentemp)))
+    `(let ((,item_ ,item)
+	   (,key_ ,key))
+       (dolist (elt ,list)
+	 (when (funcall ,test ,item_ (if ,key_ (funcall ,key_ elt) elt))
+	   (let ((result (funcall ,fn ,item_ elt)))
+	     (when result
+	       (return (values elt result)))))))))
 
 (defmacro real-timer (str &rest body)
   (let ((%start (gentemp))

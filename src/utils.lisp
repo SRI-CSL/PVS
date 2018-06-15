@@ -1150,6 +1150,33 @@
   nil)
 
 
+(defmethod context ((name-str string))
+  (context (pc-parse name-str 'name)))
+
+(defmethod context ((name name))
+  (if (mod-id name)
+      (let ((th (get-theory (mod-id name))))
+	(unless th
+	  (error "Could not find theory ~a" (mod-id name)))
+	(let ((decl (find (id name) (all-decls th) :key #'ref-to-id)))
+	  (unless decl
+	    (error "Could not find declaration ~a in theory ~a"
+		   (id name) (mod-id name)))
+	  (context decl)))
+      (let ((th (get-theory (id name))))
+	(if th
+	    (context th)
+	    (let ((decls (get-decls (id name))))
+	      (cond ((null decls)
+		     (error "Could not find theory nor declaration for ~a"
+			    (id name)))
+		    ((cdr decls)
+		     (error "Declaration id ~a ambiguous:~{~%  ~a.~a~}"
+			    (id name)
+			    (mapcar #'(lambda (d) (list (id (module d)) (id d)))
+			      decls)))
+		    (t (context (car decls)))))))))
+
 (defmethod context ((theory module))
   (if (saved-context theory)
       (copy-context (saved-context theory))
@@ -3249,10 +3276,10 @@
 ;;; gensubst, this function may only be used when the object has been
 ;;; typechecked, and *current-context* must be set.
 
-(defun copy-all (obj &optional not-parsing)
+(defun copy-all (obj &optional parsing)
   (let ((*copy-print-type* t)
 	;;(*gensubst-cache* nil)
-	(*parsing-or-unparsing* (not not-parsing)))
+	(*parsing-or-unparsing* (or parsing (not (fully-typed? obj)))))
     (gensubst obj #'copy-all! #'copy-all?)))
 
 (defmethod copy-all? ((ex name))
@@ -3269,7 +3296,9 @@
   nil)
 
 (defmethod copy-all! ((ex name))
-  (copy ex 'actuals (mapcar #'copy-all (actuals ex))))
+  (copy ex 'actuals
+	(mapcar #'(lambda (act) (copy-all act *parsing-or-unparsing*))
+	  (actuals ex))))
 
 (defmethod copy-all! ((ex bind-decl))
   (let ((nex (copy ex)))
@@ -3280,7 +3309,7 @@
 
 (defmethod copy-all! ((ex binding))
   (copy ex
-    'declared-type (copy-all (declared-type ex))))
+    'declared-type (copy-all (declared-type ex) *parsing-or-unparsing*)))
 
 (defmethod copy-all! ((ex number-expr))
   (copy ex))
@@ -3770,8 +3799,8 @@ space")
 
 (defun print-string (x)
   (or (gethash x *term-print-strings*)
-      (let ((*sb-print-depth* nil)
-	    (*sb-print-length* nil))
+      (let ((*pp-print-depth* nil)
+	    (*pp-print-length* nil))
 	(setf (gethash x *term-print-strings*)
 	      (format nil "~a" x)))))
 
