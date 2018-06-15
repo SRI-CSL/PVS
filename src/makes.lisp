@@ -1210,7 +1210,7 @@
   (let* ((stype (find-supertype (type arg)))
 	 (projtype (projection-type* (types stype) index 1 arg (type arg))))
     (make-instance 'projappl
-      :id (makesym "PROJ_~d" index)
+      :id nil ;(makesym "PROJ_~d" index)
       :index index
       :argument arg
       :type projtype)))
@@ -1255,7 +1255,7 @@
 				    nil))
 			   (cdr types)))
 	     (projappl (make-instance 'projappl
-			 :id (makesym "PROJ_~d" index)
+			 :id nil ;(makesym "PROJ_~d" index)
 			 :index index
 			 :argument arg
 			 :type cartypes)))
@@ -1982,7 +1982,7 @@
 			  (type (car types))
 			  (car types)))
 	     (projappl (make-instance 'projappl
-			 :id (makesym "PROJ_~d" index)
+			 :id nil ;(makesym "PROJ_~d" index)
 			 :index index
 			 :argument arg
 			 :type cartype))
@@ -1999,7 +1999,7 @@
       (let* ((stype (find-supertype (type arg)))
 	     (projtype (make!-projection-type* (types stype) index 1 arg)))
 	(make-instance 'projappl
-	  :id (makesym "PROJ_~d" index)
+	  :id nil ;(makesym "PROJ_~d" index)
 	  :index index
 	  :actuals actuals
 	  :dactuals dactuals
@@ -2014,7 +2014,7 @@
     (if (= index ctr)
 	cartype
 	(let* ((proj (make-instance 'projappl
-		       :id (makesym "PROJ_~d" index)
+		       :id nil ;(makesym "PROJ_~d" index)
 		       :index ctr
 		       :argument arg
 		       :type cartype))
