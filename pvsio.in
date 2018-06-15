@@ -143,6 +143,7 @@ do
             PARAM="$PARAM,$1"
             shift
           done
+	  break
   esac
   shift
 done
