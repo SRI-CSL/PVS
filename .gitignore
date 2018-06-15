@@ -11,7 +11,7 @@
 /pvs
 /pvsio
 /TAGS
-pvs-patches
+pvs-patches/patch*
 autom4te.cache
 bin/*
 Examples/*
