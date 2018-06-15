@@ -779,7 +779,12 @@ restored, the TCCs are checked")
   (type :parse t)
   (parameters :parse t))
 
-
+;; tup-type-variable
+;; proj-type-variable
+;; rec-type-variable
+;; field-type-variable
+;; cotup-type-variable
+;; out-type-variable
 (defcl type-var (type-name)) ;; The mixin
 
 ;; projection-expr proj_i (or `i) is of type [tupT -> T_i]
