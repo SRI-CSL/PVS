@@ -230,8 +230,8 @@ required a context.")
 		       (ghost? (range optype))))
 	  (setf (type ex) (copy (type ex) :ghost? t))))))
 
-(defmethod set-ghost-type* ((ex cases-expr) expected)
-  (break "set-ghost-type* cases-expr"))
+;; (defmethod set-ghost-type* ((ex cases-expr) expected)
+;;   (break "set-ghost-type* cases-expr"))
 
 (defmethod set-ghost-type* ((ex table-expr) expected)
   (declare (ignore expected))
@@ -811,8 +811,7 @@ required a context.")
 
 (defmethod set-type-actuals ((thinst modname) &optional th)
   (assert (or (resolution thinst) th))
-  (let* ((res (resolution thinst))
-	 (decl (declaration thinst))
+  (let* ((decl (declaration thinst))
 	 (theory (if decl
 		     (if (declaration? decl) (module decl) decl)
 		     th))
@@ -834,6 +833,7 @@ required a context.")
 	nthinst))))
 
 (defmethod set-type-actuals ((expr name) &optional th)
+  (declare (ignore th))
   #+bad-assert (assert (null *set-type-actuals-name*))
   (unless (module-instance expr)
     (type-ambiguity expr))
@@ -1133,7 +1133,8 @@ required a context.")
 (defun map-depends-on (map1 map2)
   (let ((d1 (declaration (lhs map1))))
     ;; uninterpreted type declarations can't possibly depend on anything
-    (unless (typep d1 '(or type-decl datatype-or-module mod-decl))
+    (unless (typep d1 '(or type-decl datatype-or-module mod-decl
+			theory-abbreviation-decl))
       (let ((d2 (declaration (lhs map2)))
             (refs (collect-references (type d1))))
         (and (memq d2 refs) t)))))
@@ -1282,9 +1283,9 @@ required a context.")
           (setf (current-theory-name) cthinst)
           (unwind-protect 
               (with-current-decl lhs
-                (set-type-mapping-rhs rhs lhs thinst previous-mappings))
+                (set-type-mapping-rhs lhs rhs thinst previous-mappings))
             (setf (current-theory-name) ctn)))
-        (set-type-mapping-rhs rhs lhs thinst previous-mappings))))
+        (set-type-mapping-rhs lhs rhs thinst previous-mappings))))
 
 (defmethod set-type-mapping ((map mapping-rename) thinst previous-mappings)
   (with-slots (lhs rhs) map
@@ -1317,76 +1318,81 @@ required a context.")
                           (module ldecl))))
            (setf (modname rdecl) nmodname)))))))
 
-(defun set-type-mapping-rhs (rhs lhs thinst mappings)
-  (typecase (declaration lhs)
-    (type-decl
-     (unless (type-value rhs)
-       (typecheck* rhs nil 'type nil))
-     (if (type-value rhs)
-         (set-type* (type-value rhs) nil)
-         (type-error (expr rhs) "Type expected here")))
-    ((or mod-decl module)
-     (let* ((thid (if (module? (declaration lhs))
-                      (id (declaration lhs))
-                      (id (modname (declaration lhs)))))
-            (threses (remove-if
-                         (complement
-                          #'(lambda (r)
-                              (and (typep (declaration r)
-                                          '(or module mod-decl
-                                               formal-theory-decl
-                                               theory-abbreviation-decl))
-                                   ;;(eq (id (target-mapped-theory (declaration r)))
-                                     ;;  thid)
-                                   )))
-                       (resolutions (expr rhs)))))
-       (cond ((cdr threses)
-              (type-error (expr rhs)
-                "Theory name ~a is ambiguous" (expr rhs)))
-             ((null threses)
-              (type-error (expr rhs)
-                "~a is not an instance of ~a"
-                (expr rhs) thid))
-             (t (change-class (expr rhs) 'theory-name-expr)
-                (setf (resolutions (expr rhs)) threses)
-                (when (actuals (expr rhs))
-                  (set-type-actuals-and-maps (change-class (copy (expr rhs)) 'modname)
-                                             (declaration (car threses))))
-                (when (mappings (expr rhs))
-                  (set-type-mappings (name-to-modname (expr rhs))
-                                     (declaration (expr rhs))))))))
-    (t ;; May need to perform two subst-mod-params because the lhs decl may not be directly
-     ;; from the theory being mapped
-     ;; First we substitute based on the lhs, then based on the thinst
-     (assert (declaration lhs))
-     (let* ((theory (module (declaration lhs)))
-	    (lthinst (module-instance lhs))
-	    (ltype (subst-mod-params (type (declaration lhs)) lthinst theory lhs))
-	    (mapthinst (lcopy thinst
-			 :mappings (append mappings (mappings thinst))
-			 :dactuals (dactuals lhs)
-			 ;; resolutions
-			 ))
-	    ;; Need mapthinst to match theory
-	    (mtheory (if (declaration mapthinst)
-			 (module (declaration mapthinst))
-			 theory))
-	    (stype (subst-mod-params ltype mapthinst mtheory lhs))
-	    (subst-type (subst-mod-params-all-mappings stype))
-	    (subst-types (if (free-params stype)
-			     (possible-mapping-subst-types
-			      (types (expr rhs)) stype)
-			     (list stype)))
-	    (etype (or (car subst-types) subst-type)))
-       (assert (fully-instantiated? etype))
-       (set-type* (expr rhs) etype)
-       (when (definition (declaration lhs))
-	 (assert (def-axiom (declaration lhs)))
-	 (let* ((lname-expr (mk-name-expr lhs))
-		(slhs (subst-mod-params lname-expr mapthinst
-			(module (declaration lhs))
-			(declaration lname-expr))))
-	   (generate-mapped-eq-def-tcc slhs (expr rhs) mapthinst)))))))
+(defun set-type-mapping-rhs (lhs rhs thinst mappings)
+  (set-type-mapping-rhs* (declaration lhs) lhs rhs thinst mappings))
+
+(defmethod set-type-mapping-rhs* ((ldecl type-decl) lhs rhs thinst mappings)
+  (declare (ignore lhs thinst mappings))
+  (unless (type-value rhs)
+    (typecheck* rhs nil 'type nil))
+  (if (type-value rhs)
+      (set-type* (type-value rhs) nil)
+      (type-error (expr rhs) "Type expected here")))
+
+(defmethod set-type-mapping-rhs* ((ldecl module) lhs rhs thinst mappings)
+  (set-type-mapping-rhs*-theoryref (id ldecl) lhs rhs thinst mappings))
+
+(defmethod set-type-mapping-rhs* ((ldecl theory-reference) lhs rhs thinst mappings)
+  (set-type-mapping-rhs*-theoryref (id (theory-name ldecl)) lhs rhs thinst mappings))
+
+(defun set-type-mapping-rhs*-theoryref (thid lhs rhs thinst mappings)
+  (declare (ignore lhs thinst mappings))
+  (let ((threses (remove-if
+                     (complement
+                      #'(lambda (r)
+                          (and (typep (declaration r)
+                                      '(or module theory-reference)))))
+                   (resolutions (expr rhs)))))
+    (cond ((cdr threses)
+           (type-error (expr rhs)
+             "Theory name ~a is ambiguous" (expr rhs)))
+          ((null threses)
+           (type-error (expr rhs)
+             "~a is not an instance of ~a"
+             (expr rhs) thid))
+          (t (change-class (expr rhs) 'theory-name-expr)
+             (setf (resolutions (expr rhs)) threses)
+             (when (actuals (expr rhs))
+               (set-type-actuals-and-maps (change-class (copy (expr rhs)) 'modname)
+                                          (declaration (car threses))))
+             (when (mappings (expr rhs))
+               (set-type-mappings (name-to-modname (expr rhs))
+                                  (declaration (expr rhs))))))))
+  
+(defmethod set-type-mapping-rhs* ((ldecl const-decl) lhs rhs thinst mappings)
+  ;; May need to perform two subst-mod-params because the lhs decl may not be directly
+  ;; from the theory being mapped
+  ;; First we substitute based on the lhs, then based on the thinst
+  (let* ((ltheory (module ldecl))
+	 (lthinst (module-instance lhs))
+	 ;; First subst for lhs type (does this do anything?
+	 (ltype (subst-mod-params (type ldecl) lthinst ltheory lhs))
+	 ;; Add mappings to thinst
+	 (mapthinst (lcopy thinst
+		      :mappings (append mappings (mappings thinst))
+		      :dactuals (dactuals lhs)
+		      ;; resolutions
+		      ))
+	 ;; Need mapthinst to match ltheory
+	 (mtheory (if (declaration mapthinst)
+		      (module (declaration mapthinst))
+		      ltheory))
+	 ;; Now subst using mapthinst and mtheory
+	 (stype (subst-mod-params ltype mapthinst mtheory lhs))
+	 (subst-type (subst-mod-params-all-mappings stype))
+	 (subst-types (if (free-params stype)
+			  (possible-mapping-subst-types
+			   (types (expr rhs)) stype)
+			  (list stype)))
+	 (etype (or (car subst-types) subst-type)))
+    (assert (fully-instantiated? etype))
+    (set-type* (expr rhs) etype)
+    (when (definition ldecl)
+      (assert (def-axiom ldecl))
+      (let* ((lname-expr (mk-name-expr lhs))
+	     (slhs (subst-mod-params lname-expr mapthinst ltheory
+				     (declaration lname-expr))))
+	(generate-mapped-eq-def-tcc slhs (expr rhs) mapthinst)))))
 
 (defmethod target-mapped-theory ((decl module))
   decl)

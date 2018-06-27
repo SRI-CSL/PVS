@@ -185,6 +185,11 @@
 	(declare (ignore ignore))
 	(when error
 	  (pvs-message "Error executing ~a:~% ~a" evalload error)))))
+  ;; Fix ASDF absolute pathnames
+  (let ((uname #+allegro (sys:user-name)
+	       #+sbcl (tools:user-name)))
+    (unless (string= uname "owre")
+      (lf "asdf-patch")))
   ;; If port is set, start the XML-RPC server
   (let ((port (environment-variable "PVSPORT")))
     (when port
@@ -469,7 +474,16 @@
 	(when (fboundp 'get-patch-exp-version)
 	  (get-patch-exp-version))
 	(lisp-implementation-type)
-	(lisp-implementation-version)))
+	(lisp-implementation-version)
+	(get-pvs-version)))
+
+(defun get-pvs-version ()
+  (cond ((file-exists-p (format nil "~a/pvs-version.lisp" *pvs-path*))
+	 (with-open-file (vers (format nil "~a/pvs-version.lisp" *pvs-path*))
+	   (read vers)))
+	((file-exists-p (format t "~a/.git" *pvs-path*))
+	 (format t "~a.~d" *pvs-version* (pvs-git-count-since)))
+	(t *pvs-version*)))
 
 (defun pvs-image-suffix ()
   (let* ((lisp (environment-variable "PVSLISP"))

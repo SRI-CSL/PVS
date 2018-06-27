@@ -791,7 +791,7 @@
 	(setf (id sd) nid)
 	(setf (module sd) (current-theory))
 	(typecase sd
-	  ((or type-def-decl const-decl mod-decl)
+	  ((or type-def-decl const-decl theory-reference)
 	   (subst-new-map-decl-type sd dalist owlist)
 	   (let* ((res (make-resolution sd
 			 (current-theory-name)))
@@ -834,7 +834,7 @@
 (defvar *subst-new-map-decls*)
 (defvar *subst-new-other-decls*)
 
-(defmethod subst-new-map-decl-type ((sd mod-decl) dalist owlist)
+(defmethod subst-new-map-decl-type ((sd theory-reference) dalist owlist)
   (declare (ignore dalist owlist))
   nil)
 
