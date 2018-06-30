@@ -501,7 +501,7 @@
 		     (cdr ,gdecl))))))))
 
 (defmacro with-context (theory &rest body)
-  `(let ((*current-context* (saved-context ,theory))
+  `(let ((*current-context* (saved-context (get-theory ,theory)))
 	 (*generate-tccs* 'all))
      ,@body))
 

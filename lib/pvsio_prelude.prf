@@ -2,15 +2,18 @@
 (stdexc)
 (stdcatch
  (catch_list_lift_TCC1 0
-  (catch_list_lift_TCC1-1 nil 3505059411 ("" (termination-tcc) nil nil)
+  (catch_list_lift_TCC1-1 nil 3729453539 ("" (termination-tcc) nil nil)
    ((<< adt-def-decl "(strict_well_founded?[list])" list_adt nil))
-   shostak)))
+   shostak
+   (catch_list_lift termination
+    "stdcatch.catch_list_lift(stdcatch.r, stdcatch.f1, stdcatch.f2)"
+    "nil"))))
 (stdprog)
 (stdglobal)
 (stdpvs)
 (stdstr
  (pad_TCC1 0
-  (pad_TCC1-1 nil 3505059411 ("" (subtype-tcc) nil nil)
+  (pad_TCC1-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -29,46 +32,33 @@
     (int_minus_int_is_int application-judgement "int" integers nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil))
-   shostak))
+   shostak (pad subtype "(number_fields.-)(stdstr.n, 1)" "nat")))
  (pad_TCC2 0
-  (pad_TCC2-1 nil 3505059411 ("" (termination-tcc) nil nil) nil
-   shostak)))
+  (pad_TCC2-1 nil 3729453539 ("" (termination-tcc) nil nil) nil shostak
+   (pad termination
+    "stdstr.pad((number_fields.-)(stdstr.n, 1), stdstr.s)" "nil"))))
 (stdio)
 (stdmath
  (SIN_TCC1 0
-  (SIN_TCC1-2 "" 3505099343
-   ("" (existence-tcc) (("" (inst 1 "lambda (x: real): 0") nil nil))
-    nil)
-   ((number nonempty-type-decl nil numbers nil)
-    (boolean nonempty-type-decl nil booleans nil)
+  (SIN_TCC1-1 nil 3729453539
+   ("" (inst 1 "lambda (x: real): 0") nil nil)
+   ((- const-decl "[numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (<= const-decl "bool" reals nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
     (number_field_pred const-decl "[number -> boolean]" number_fields
      nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (AND const-decl "[bool, bool -> bool]" booleans nil)
-    (<= const-decl "bool" reals nil)
-    (numfield nonempty-type-eq-decl nil number_fields nil)
-    (- const-decl "[numfield -> numfield]" number_fields nil))
-   shostak)
-  (SIN_TCC1-1 nil 3505059411
-   ("" (existence-tcc) (("" (postpone) nil nil)) nil)
-   ((number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (AND const-decl "[bool, bool -> bool]" booleans nil)
-    (<= const-decl "bool" reals nil)
-    (numfield nonempty-type-eq-decl nil number_fields nil)
-    (- const-decl "[numfield -> numfield]" number_fields nil))
-   shostak))
+    (number nonempty-type-decl nil numbers nil))
+   shostak
+   (SIN existence ""
+    "[real -> {x: reals.real | booleans.AND(reals.<=(, x), reals.<=(x, 1))}]")))
  (RANDOM_TCC1 0
-  (RANDOM_TCC1-2 "" 3505099366 ("" (inst 1 "0") nil nil)
+  (RANDOM_TCC1-1 nil 3729453539 ("" (inst 1 "0") nil nil)
    ((<= const-decl "bool" reals nil)
     (nnreal type-eq-decl nil real_types nil)
     (>= const-decl "bool" reals nil)
@@ -80,24 +70,11 @@
      nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil))
-   shostak)
-  (RANDOM_TCC1-1 nil 3505059411
-   ("" (existence-tcc) (("" (postpone) nil nil)) nil)
-   ((<= const-decl "bool" reals nil)
-    (nnreal type-eq-decl nil real_types nil)
-    (>= const-decl "bool" reals nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (boolean nonempty-type-decl nil booleans nil)
-    (number nonempty-type-decl nil numbers nil))
-   shostak))
+   shostak
+   (RANDOM existence "" "{y: real_types.nnreal | reals.<=(y, 1)}")))
  (NRANDOM_TCC1 0
-  (NRANDOM_TCC1-2 "" 3505099423
-   ("" (inst 1 "lambda (n: posnat): 0") nil nil)
+  (NRANDOM_TCC1-1 nil 3729453539
+   ("" (inst 1 "lambda (x: posnat): 0") nil nil)
    ((< const-decl "bool" reals nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (posnat nonempty-type-eq-decl nil integers nil)
@@ -116,30 +93,11 @@
      nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil))
-   shostak)
-  (NRANDOM_TCC1-1 nil 3505059411
-   ("" (existence-tcc) (("" (postpone) nil nil)) nil)
-   ((< const-decl "bool" reals nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
-    (> const-decl "bool" reals nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (>= const-decl "bool" reals nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (int nonempty-type-eq-decl nil integers nil)
-    (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (rational nonempty-type-from-decl nil rationals nil)
-    (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (boolean nonempty-type-decl nil booleans nil)
-    (number nonempty-type-decl nil numbers nil))
-   shostak))
+   shostak
+   (NRANDOM existence ""
+    "[n: posnat -> {y: naturalnumbers.nat | reals.<(y, n)}]")))
  (SQRT_TCC1 0
-  (SQRT_TCC1-1 nil 3505059411 ("" (subtype-tcc) nil nil)
+  (SQRT_TCC1-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -153,9 +111,9 @@
      real_props nil)
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil))
-   shostak))
+   shostak (SQRT subtype "stdmath.x" "nnreal")))
  (LOG_TCC1 0
-  (LOG_TCC1-1 nil 3505059411 ("" (subtype-tcc) nil nil)
+  (LOG_TCC1-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -169,9 +127,9 @@
      real_props nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil))
-   shostak))
+   shostak (LOG subtype "stdmath.x" "posreal")))
  (TAN_TCC1 0
-  (TAN_TCC1-1 nil 3505059411 ("" (subtype-tcc) nil nil)
+  (TAN_TCC1-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -186,10 +144,10 @@
     (- const-decl "[numfield -> numfield]" number_fields nil)
     (AND const-decl "[bool, bool -> bool]" booleans nil)
     (/= const-decl "boolean" notequal nil))
-   shostak)))
+   shostak (TAN subtype "stdmath.COS(stdmath.x)" "nznum"))))
 (stdfmap
  (fmap_TCC1 0
-  (fmap_TCC1-1 nil 3505059411 ("" (subtype-tcc) nil nil)
+  (fmap_TCC1-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -211,9 +169,9 @@
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (int_minus_int_is_int application-judgement "int" integers nil))
-   shostak))
+   shostak (fmap subtype "(number_fields.-)(stdfmap.n, 1)" "nat")))
  (fmap_TCC2 0
-  (fmap_TCC2-1 nil 3505059411 ("" (termination-tcc) nil nil)
+  (fmap_TCC2-1 nil 3729453539 ("" (termination-tcc) nil nil)
    ((length def-decl "nat" list_props nil)
     (list2finseq const-decl "finseq[T]" list2finseq nil)
     (ClosedStream const-decl "ExceptionTag[string]" stdio nil)
@@ -221,20 +179,28 @@
     (fname const-decl "string" stdio nil)
     (make_exc const-decl "Exception" stdexc nil)
     (eof? const-decl "bool" stdio nil))
-   shostak)))
+   shostak
+   (fmap termination
+    "stdfmap.fmap(stdfmap.f, stdfmap.fread, stdfmap.nt, stdfmap.st, (number_fields.-)(stdfmap.n, 1))"
+    "nil"))))
 (stdindent)
 (stdtokenizer
  (set_error_TCC1 0
-  (set_error_TCC1-1 nil 3505059411 ("" (subtype-tcc) nil nil) nil
-   shostak))
+  (set_error_TCC1-1 nil 3729453539 ("" (subtype-tcc) nil nil) nil
+   shostak
+   (set_error subtype
+    "stdtokenizer.t WITH [`error := stdtokenizer.code]"
+    "stdtokenizer.TokenizerOfLength(stdtokenizer.t`length)")))
  (last_token_TCC1 0
-  (last_token_TCC1-1 nil 3505059411 ("" (subtype-tcc) nil nil)
+  (last_token_TCC1-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((int_minus_int_is_int application-judgement "int" integers nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil))
-   shostak))
+   shostak
+   (last_token subtype "(number_fields.-)(stdtokenizer.t`pos, 1)"
+    "nat")))
  (peek_TCC1 0
-  (peek_TCC1-1 nil 3505059411 ("" (subtype-tcc) nil nil)
+  (peek_TCC1-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -259,11 +225,17 @@
     (int_minus_int_is_int application-judgement "int" integers nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
      integers nil))
-   shostak))
+   shostak
+   (peek subtype
+    "(number_fields.-)((number_fields.+)(stdtokenizer.t`pos, stdtokenizer.n), 1)"
+    "nat")))
  (tostr_TCC1 0
-  (tostr_TCC1-1 nil 3505059411 ("" (subtype-tcc) nil nil) nil shostak))
+  (tostr_TCC1-1 nil 3729453539 ("" (subtype-tcc) nil nil) nil shostak
+   (tostr subtype
+    "(number_fields.-)(stdtokenizer.t`length, stdtokenizer.i)"
+    "naturalnumber")))
  (tostr_TCC2 0
-  (tostr_TCC2-1 nil 3505059411 ("" (subtype-tcc) nil nil)
+  (tostr_TCC2-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -288,13 +260,18 @@
      real_props nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
      integers nil))
-   shostak))
+   shostak
+   (tostr subtype "(number_fields.+)(stdtokenizer.i, 1)"
+    "naturalnumbers.upto(stdtokenizer.t`length)")))
  (tostr_TCC3 0
-  (tostr_TCC3-1 nil 3505059411 ("" (termination-tcc) nil nil)
+  (tostr_TCC3-1 nil 3729453539 ("" (termination-tcc) nil nil)
    ((int_minus_int_is_int application-judgement "int" integers nil))
-   shostak))
+   shostak
+   (tostr termination
+    "stdtokenizer.tostr(stdtokenizer.t, (number_fields.+)(stdtokenizer.i, 1))"
+    "nil")))
  (tostr_TCC4 0
-  (tostr_TCC4-1 nil 3505059411 ("" (subtype-tcc) nil nil)
+  (tostr_TCC4-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -318,13 +295,18 @@
      integers nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil))
-   shostak))
+   shostak
+   (tostr subtype "(number_fields.+)(stdtokenizer.i, 1)"
+    "naturalnumbers.upto(stdtokenizer.t`length)")))
  (tostr_TCC5 0
-  (tostr_TCC5-1 nil 3505059411 ("" (termination-tcc) nil nil)
+  (tostr_TCC5-1 nil 3729453539 ("" (termination-tcc) nil nil)
    ((int_minus_int_is_int application-judgement "int" integers nil))
-   shostak))
+   shostak
+   (tostr termination
+    "stdtokenizer.tostr(stdtokenizer.t, (number_fields.+)(stdtokenizer.i, 1))"
+    "nil")))
  (add_token_TCC1 0
-  (add_token_TCC1-1 nil 3505059411 ("" (subtype-tcc) nil nil)
+  (add_token_TCC1-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -346,9 +328,11 @@
      real_props nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
      integers nil))
-   shostak))
+   shostak
+   (add_token subtype "stdtokenizer.t`pos"
+    "naturalnumbers.upto((number_fields.+)(1, stdtokenizer.n))")))
  (line_tokenizer_TCC1 0
-  (line_tokenizer_TCC1-1 nil 3505059412 ("" (subtype-tcc) nil nil)
+  (line_tokenizer_TCC1-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -374,9 +358,11 @@
     (IStream_pred const-decl "[Stream -> boolean]" stdio nil)
     (IStream nonempty-type-from-decl nil stdio nil)
     (fopenin const-decl "IStream" stdio nil))
-   shostak))
+   shostak
+   (line_tokenizer subtype "stdtokenizer.myt`pos"
+    "naturalnumbers.upto((number_fields.+)(1, stdtokenizer.n))")))
  (line_tokenizer_TCC2 0
-  (line_tokenizer_TCC2-1 nil 3505059412 ("" (subtype-tcc) nil nil)
+  (line_tokenizer_TCC2-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((fopenin const-decl "IStream" stdio nil)
     (skip const-decl "void" stdlang nil)
     (fclose const-decl "void" stdio nil)
@@ -385,9 +371,12 @@
      stdprog nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
      integers nil))
-   shostak))
+   shostak
+   (line_tokenizer subtype
+    "stdprog[[Tokenizer, numfield]].prog(stdio.fclose(stdtokenizer.g), (stdtokenizer.nt, (number_fields.+)(stdtokenizer.l, 1)))"
+    "[Tokenizer, nat]")))
  (consume_TCC1 0
-  (consume_TCC1-1 nil 3505059412 ("" (subtype-tcc) nil nil)
+  (consume_TCC1-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -413,15 +402,20 @@
      "(strict_total_order?[real])" real_props nil)
     (eot? const-decl "bool" stdtokenizer nil)
     (NoError const-decl "nat" stdtokenizer nil))
-   shostak))
+   shostak
+   (consume subtype
+    "(number_fields.+)(stdtokenizer.t`pos, stdtokenizer.n)"
+    "naturalnumbers.upto(stdtokenizer.t`length)")))
  (go_back_TCC1 0
-  (go_back_TCC1-1 nil 3505059412 ("" (subtype-tcc) nil nil)
+  (go_back_TCC1-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((int_minus_int_is_int application-judgement "int" integers nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil))
-   shostak))
+   shostak
+   (go_back subtype "(number_fields.-)(stdtokenizer.t`pos, 1)"
+    "naturalnumbers.upto(stdtokenizer.t`length)")))
  (pos_go_next 0
-  (pos_go_next-1 nil 3505099588 ("" (grind) nil nil)
+  (pos_go_next-1 nil 3729458312 ("" (grind) nil nil)
    ((NoError const-decl "nat" stdtokenizer nil)
     (eot? const-decl "bool" stdtokenizer nil)
     (EndOfTokenizer const-decl "nat" stdtokenizer nil)
@@ -429,16 +423,18 @@
      nil))
    shostak))
  (accept_word_TCC1 0
-  (accept_word_TCC1-1 nil 3505059412 ("" (subtype-tcc) nil nil)
+  (accept_word_TCC1-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((posint_plus_nnint_is_posint application-judgement "posint"
      integers nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (eot? const-decl "bool" stdtokenizer nil)
     (NoError const-decl "nat" stdtokenizer nil))
-   shostak))
+   shostak
+   (accept_word subtype "(number_fields.+)(stdtokenizer.t`pos, 1)"
+    "naturalnumbers.upto(stdtokenizer.t`length)")))
  (pos_accept_word 0
-  (pos_accept_word-1 nil 3505099622 ("" (grind) nil nil)
+  (pos_accept_word-1 nil 3729458331 ("" (grind) nil nil)
    ((NoError const-decl "nat" stdtokenizer nil)
     (eot? const-decl "bool" stdtokenizer nil)
     (EndOfTokenizer const-decl "nat" stdtokenizer nil)
@@ -448,7 +444,7 @@
      nil))
    shostak))
  (accept_int_TCC1 0
-  (accept_int_TCC1-1 nil 3505059412 ("" (subtype-tcc) nil nil)
+  (accept_int_TCC1-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((posint_plus_nnint_is_posint application-judgement "posint"
      integers nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
@@ -468,9 +464,11 @@
     (boolean nonempty-type-decl nil booleans nil)
     (eot? const-decl "bool" stdtokenizer nil)
     (NoError const-decl "nat" stdtokenizer nil))
-   shostak))
+   shostak
+   (accept_int subtype "(number_fields.+)(stdtokenizer.t`pos, 1)"
+    "naturalnumbers.upto(stdtokenizer.t`length)")))
  (pos_accept_int 0
-  (pos_accept_int-1 nil 3505099649 ("" (grind) nil nil)
+  (pos_accept_int-1 nil 3729458350 ("" (grind) nil nil)
    ((NoError const-decl "nat" stdtokenizer nil)
     (eot? const-decl "bool" stdtokenizer nil)
     (EndOfTokenizer const-decl "nat" stdtokenizer nil)
@@ -480,7 +478,7 @@
      nil))
    shostak))
  (accept_real_TCC1 0
-  (accept_real_TCC1-1 nil 3505059412 ("" (subtype-tcc) nil nil)
+  (accept_real_TCC1-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((posint_plus_nnint_is_posint application-judgement "posint"
      integers nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
@@ -498,9 +496,11 @@
     (boolean nonempty-type-decl nil booleans nil)
     (eot? const-decl "bool" stdtokenizer nil)
     (NoError const-decl "nat" stdtokenizer nil))
-   shostak))
+   shostak
+   (accept_real subtype "(number_fields.+)(stdtokenizer.t`pos, 1)"
+    "naturalnumbers.upto(stdtokenizer.t`length)")))
  (pos_accept_real 0
-  (pos_accept_real-1 nil 3505099668 ("" (grind) nil nil)
+  (pos_accept_real-1 nil 3729458358 ("" (grind) nil nil)
    ((NoError const-decl "nat" stdtokenizer nil)
     (eot? const-decl "bool" stdtokenizer nil)
     (EndOfTokenizer const-decl "nat" stdtokenizer nil)
@@ -510,7 +510,7 @@
      nil))
    shostak))
  (std_mssg_TCC1 0
-  (std_mssg_TCC1-1 nil 3505059412 ("" (subtype-tcc) nil nil)
+  (std_mssg_TCC1-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -529,9 +529,12 @@
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (FileNotFound const-decl "nat" stdtokenizer nil))
-   shostak))
+   shostak
+   (std_mssg subtype
+    "(number_fields.-)((number_fields.+)(stdtokenizer.t`pos, 1), 1)"
+    "nat")))
  (std_mssg_TCC2 0
-  (std_mssg_TCC2-1 nil 3505059413 ("" (subtype-tcc) nil nil)
+  (std_mssg_TCC2-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -552,9 +555,12 @@
     (InvalidToken const-decl "nat" stdtokenizer nil)
     (EndOfTokenizer const-decl "nat" stdtokenizer nil)
     (FileNotFound const-decl "nat" stdtokenizer nil))
-   shostak))
+   shostak
+   (std_mssg subtype
+    "(number_fields.-)((number_fields.+)(stdtokenizer.t`pos, 1), 1)"
+    "nat")))
  (std_mssg_TCC3 0
-  (std_mssg_TCC3-1 nil 3505059413 ("" (subtype-tcc) nil nil)
+  (std_mssg_TCC3-1 nil 3729453539 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -576,9 +582,12 @@
     (InvalidToken const-decl "nat" stdtokenizer nil)
     (EndOfTokenizer const-decl "nat" stdtokenizer nil)
     (FileNotFound const-decl "nat" stdtokenizer nil))
-   shostak))
+   shostak
+   (std_mssg subtype
+    "(number_fields.-)((number_fields.+)(stdtokenizer.t`pos, 1), 1)"
+    "nat")))
  (std_mssg_TCC4 0
-  (std_mssg_TCC4-1 nil 3505059413 ("" (subtype-tcc) nil nil)
+  (std_mssg_TCC4-1 nil 3729453540 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -601,9 +610,12 @@
     (InvalidToken const-decl "nat" stdtokenizer nil)
     (EndOfTokenizer const-decl "nat" stdtokenizer nil)
     (FileNotFound const-decl "nat" stdtokenizer nil))
-   shostak))
+   shostak
+   (std_mssg subtype
+    "(number_fields.-)((number_fields.+)(stdtokenizer.t`pos, 1), 1)"
+    "nat")))
  (std_mssg_TCC5 0
-  (std_mssg_TCC5-1 nil 3505059413 ("" (subtype-tcc) nil nil)
+  (std_mssg_TCC5-1 nil 3729453540 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -627,9 +639,12 @@
     (InvalidToken const-decl "nat" stdtokenizer nil)
     (EndOfTokenizer const-decl "nat" stdtokenizer nil)
     (FileNotFound const-decl "nat" stdtokenizer nil))
-   shostak))
+   shostak
+   (std_mssg subtype
+    "(number_fields.-)((number_fields.+)(stdtokenizer.t`pos, 1), 1)"
+    "nat")))
  (std_mssg_TCC6 0
-  (std_mssg_TCC6-1 nil 3505059413 ("" (subtype-tcc) nil nil)
+  (std_mssg_TCC6-1 nil 3729453540 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -654,9 +669,12 @@
     (InvalidToken const-decl "nat" stdtokenizer nil)
     (EndOfTokenizer const-decl "nat" stdtokenizer nil)
     (FileNotFound const-decl "nat" stdtokenizer nil))
-   shostak))
+   shostak
+   (std_mssg subtype
+    "(number_fields.-)((number_fields.+)(stdtokenizer.t`pos, 1), 1)"
+    "nat")))
  (std_mssg_TCC7 0
-  (std_mssg_TCC7-1 nil 3505059413 ("" (subtype-tcc) nil nil)
+  (std_mssg_TCC7-1 nil 3729453540 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -682,9 +700,12 @@
     (InvalidToken const-decl "nat" stdtokenizer nil)
     (EndOfTokenizer const-decl "nat" stdtokenizer nil)
     (FileNotFound const-decl "nat" stdtokenizer nil))
-   shostak))
+   shostak
+   (std_mssg subtype
+    "(number_fields.-)((number_fields.+)(stdtokenizer.t`pos, 1), 1)"
+    "nat")))
  (std_mssg_TCC8 0
-  (std_mssg_TCC8-1 nil 3505059413 ("" (subtype-tcc) nil nil)
+  (std_mssg_TCC8-1 nil 3729453540 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
@@ -711,12 +732,17 @@
     (InvalidToken const-decl "nat" stdtokenizer nil)
     (EndOfTokenizer const-decl "nat" stdtokenizer nil)
     (FileNotFound const-decl "nat" stdtokenizer nil))
-   shostak))
+   shostak
+   (std_mssg subtype
+    "(number_fields.-)((number_fields.+)(stdtokenizer.t`pos, 1), 1)"
+    "nat")))
  (tokenizer2str_TCC1 0
-  (tokenizer2str_TCC1-1 nil 3505059413 ("" (subtype-tcc) nil nil)
+  (tokenizer2str_TCC1-1 nil 3729453540 ("" (subtype-tcc) nil nil)
    ((real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil))
-   shostak)))
+   shostak
+   (tokenizer2str subtype "0"
+    "naturalnumbers.upto(stdtokenizer.t`length)"))))
 (stdpvsio)
 (stdsys)
 

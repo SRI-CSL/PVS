@@ -59,7 +59,7 @@
 ;;expressions in bound context can have their translation reused if they
 ;;have no free variables. 
 (defmethod translate-to-prove :around ((obj name-expr))
-  (if (and (free-variables obj)(or *bound-variables* *bindings*))
+  (if (and (freevars obj) (or *bound-variables* *bindings*))
       (call-next-method)
       (let ((hashed-value (gethash obj *translate-to-prove-hash*)))
 	(or hashed-value
@@ -69,7 +69,7 @@
 	      result)))))
 
 (defmethod translate-to-prove :around ((obj binding-expr))
-  (if (and (free-variables obj)(or *bound-variables* *bindings*))
+  (if (and (freevars obj) (or *bound-variables* *bindings*))
       (call-next-method)
       (let ((hashed-value
 	     (gethash obj *translate-to-prove-hash*)))
@@ -457,8 +457,7 @@
 	     (cons (id operator) args))
 	    (t (let* ((lifted-op (lift-adt operator t))
 		      (op (translate-to-prove lifted-op)))
-		 ;; Need the lifted-op for structures@subrange_list.msrl_nat
-		 (cons (make-apply-name (type lifted-op))
+		 (cons (make-apply-name (type operator))
 		       (cons (if (symbolp op)
 				 (list op) op)
 			     args))))))))
@@ -789,8 +788,7 @@
   (let* ((type (find-supertype te))
 	 (prtype (prover-type (range type)))
 	 (name (make-apply-symbol (length (domain-types type))
-				  prtype))
-	 )
+				  prtype)))
     name))
 
 (defmethod prover-type ((type type-expr))

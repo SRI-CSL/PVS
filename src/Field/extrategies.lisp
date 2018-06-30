@@ -222,7 +222,8 @@
 (defun is-var-decl-expr (expr)
   (and (name-expr? expr)
        (let ((decl (declaration (resolution expr))))
-	 (or (bind-decl? decl) (skolem-const-decl? decl) (formal-const-decl? decl)
+	 (or (var-decl? decl)
+	     (bind-decl? decl) (skolem-const-decl? decl) (formal-const-decl? decl)
 	     (and (const-decl? decl) (null (def-axiom decl)))))))
 
 ;; Constants that are uninterpreted are considered to be variables
@@ -391,7 +392,8 @@
 	 (let ((e (pc-parse expr 'expr)))
 	   (if tc (pc-typecheck e) e)))
 	((and (listp expr) (equal (car expr) '!))
-	 (let ((e (ee-pvs-obj (car (eval-ext-expr expr)))))
+	 (let* ((ecar (car (eval-ext-expr expr)))
+		(e    (when ecar (ee-pvs-obj ecar))))
 	   (when (expr? e) e)))))
 
 (defun extra-get-expstr (expr &optional (tc t))
@@ -857,7 +859,7 @@ arguments ARGS. ARGS can only have constant values.")
 	(let ((lbl     (flatten-labels label))
 	      (qhidden (list 'quote hidden?))
 	      (qfs     (list 'quote fs)))
-	  (mapstep #'(lambda(x) (list 'unlabel qfs x :hidden? qhidden)) lbl))
+	  (mapstep #'(lambda(x)`(unlabel ,qfs ,x :hidden? ,qhidden)) lbl))
       (unlabel fs :hidden? hidden?)))
   "[Extrategies] Removes specified LABEL(s) (or all labels if LABEL is nil) from FNUMS.
 FNUMS are considered to be hidden formulas when hidden? is set to t."
@@ -871,7 +873,7 @@ FNUMS are considered to be hidden formulas when hidden? is set to t."
 	    (when hide? (hide fnums)))
 	  (when seqfs
 	    (let ((lbs (flatten-labels labl)))
-	      (mapstep #'(lambda(x) (list 'unlabel :label x :hidden? t)) lbs)))))
+	      (mapstep #'(lambda(x)`(unlabel :label ,x :hidden? t)) lbs)))))
   "[Extrategies] Removes LABL(s). If HIDE? is t, hides the delabeled formulas.
 If HIDDEN? is t, LABL(s) are also removed from hidden formulas."
   "Removing label(s) ~a")
@@ -896,7 +898,7 @@ If HIDDEN? is t, LABL(s) are also removed from hidden formulas."
   (when labl
     (let ((labs   (flatten-labels labl))
 	  (qfnums (list 'quote fnums)))
-      (mapstep #'(lambda(x) (list 'label x qfnums :push? t)) labs)))
+      (mapstep #'(lambda(x)`(label ,x ,qfnums :push? t)) labs)))
   "[Extrategies] Internal strategy." "")
 
 (defstep relabel (labl fnums &optional pairing? (push? t))
@@ -1735,19 +1737,20 @@ names of the bounded variables."
        (try-branch
 	(discriminate (name-label* retexpr :fnums nil :dir rl :tcc-step tcc-step) !old)
 	((then (branch (discriminate (case casestr) !skd)
-		       ((if consq (then (replaces !old :hide? nil) (beta (!skl !skd)))
-			  (then (when old (hide !old) (reveal !old))
-				(beta !skd :let-reduce? nil)))
+		       ((if consq (then (replaces$ !old :hide? nil) (beta (!skl !skd)))
+			      (then (when old (hide !old) (reveal !old))
+				    (beta !skd :let-reduce? nil)))
 			(if consq (then (when old (hide !old) (reveal !old))
-					(beta !skd :let-reduce? nil))
-			  (then (replaces !old :hide? nil) (beta (!skl !skd))))
-			(then (replaces !old :hide? nil) (finalize tcc-step))))
+					  (beta !skd :let-reduce? nil))
+			      (then (replaces$ !old :hide? nil)
+				    (beta (!skl !skd))))
+			(then (replaces$ !old :hide? nil) (finalize tcc-step))))
 	       (relabel flabels !skd)
 	       (delete !skl)
 	       (if hide?
 		   (hide !old)
-		 (unlabel !old)))
-	 (then (replaces !old :hide? nil)
+		   (unlabel !old)))
+	 (then (replaces$ !old :hide? nil)
 	       (delete !skl)
 	       (finalize (assert))))
 	(skip)))))
@@ -1795,7 +1798,7 @@ LET x:posreal = 2 IN 1/x."
 (defstep skoletin* (&optional (fnum *) postfix hide? (tcc-step (extra-tcc-step)) n old?)
   (with-fresh-labels
    (!sks fnum)
-   (for@ n (skoletin !sks :postfix postfix :hide? hide? :tcc-step tcc-step :old? old?)))
+   (for@ n (skoletin$ !sks :postfix postfix :hide? hide? :tcc-step tcc-step :old? old?)))
   "[Extrategies] Iterates N times skoletin (or until it does nothing if N is nil) in FNUM.
 
 CAVEAT: The order in which formulas are introduced by skoletin in version 6.0 is different
@@ -2166,6 +2169,14 @@ name of the quantified variable that encodes the recursive call.")
   (or (implication? expr)
       (is-function-expr expr '(IMPLIES =>))))
 
+(defun extra-equivalence (expr)
+  (or (iff? expr)
+      (is-function-expr expr '(IFF <=>))))
+
+(defun extra-conditional (expr)
+  (or (branch? expr)
+      (is-function-expr expr '(IF))))
+
 ;; Get list of conjunctions (disjunctions when is-and is false)
 (defun get-ands-expr (expr &optional (is-and t))
   (cond ((or (and is-and (extra-conjunction expr))
@@ -2363,4 +2374,3 @@ name of the quantified variable that encodes the recursive call.")
       (if (numberp e) e
 	(copy expr 'exprs e))))
    (t n)))
-

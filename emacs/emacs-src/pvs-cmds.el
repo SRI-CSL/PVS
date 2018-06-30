@@ -192,6 +192,14 @@ M-x revert-buffer to return to the old version."
 	       (if declp "declaration" "region"))
 	      (message "No changes were made"))))))
 
+(defpvs theory-element-string prettyprint (thid eltid)
+  "Gets the string associated with a theory element (e.g., declaration or importing)"
+  (interactive (let* ((thid (car (complete-theory-name "Theory id: ")))
+		      (eltid (complete-theory-element-id
+			      "Element (e.g., declaration) id: " thid)))
+		 (list thid eltid)))
+  (pvs-send-and-wait (format "(pp-theory-element \"%s\" \"%s\")" thid eltid)))
+
 
 (defpvs prettyprint-theory prettyprint (theoryname)
   "Prettyprints the specified theory
@@ -333,17 +341,49 @@ trivial TCCs."
 	(pvs-send-and-wait (format "(show-tccs \"%s\" %s)" theory arg)
 			   nil (pvs-get-abbreviation 'show-tccs)
 			   'dont-care)
-	(let ((buf (get-buffer (format "%s.tccs" theory))))
+	(let ((pvs-file (buffer-file-name))
+	      (buf (get-buffer (format "%s.tccs" theory))))
 	  (when buf
 	    (let ((mtime (get-theory-modtime theory)))
 	      (save-excursion
 		(message "")
 		(set-buffer buf)
 		(set (make-local-variable 'pvs-context-sensitive) t)
+		(set (make-local-variable 'from-pvs-file) pvs-file)
 		(set (make-local-variable 'from-pvs-theory) theory)
 		(set (make-local-variable 'pvs-theory-modtime) mtime)
+		(set-tcc-buttons)
 		(pvs-view-mode)
 		(use-local-map pvs-show-formulas-map))))))
+
+(define-button-type 'tcc-cause-button
+    'action 'pvs-mouse-goto-tcc-cause
+    'follow-link t
+    'help-echo "mouse-2: go to the cause of this TCC"
+    'tcc-cause-location nil)
+
+(defun set-tcc-buttons ()
+  (let ((inhibit-read-only t))
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward "(at line \\([[:digit:]]+\\), column \\([[:digit:]]+\\))" nil t)
+	(let ((start (match-beginning 0))
+	      (end (match-end 0))
+	      (row (string-to-number (match-string 1)))
+	      (col (string-to-number (match-string 2))))
+	  (make-button start end
+		       :type 'tcc-cause-button
+		       :tcc-cause-location (cons row col)))))))
+
+;; This should bound to <RET> and mouse-2
+(defun pvs-mouse-goto-tcc-cause (button)
+  "In TCC buffer, go to the cause of the TCC when clicked."
+  (setq bbb button)
+  (let ((loc (overlay-get button :tcc-cause-location)))
+    (with-current-buffer (find-file-other-window from-pvs-file)
+      (goto-char (point-min))
+      (forward-line (1- (car loc)))
+      (forward-char (cdr loc)))))
 
 (defpvs show-declaration-tccs tcc ()
   "Shows the TCCs of the declaration at the current-cursor position

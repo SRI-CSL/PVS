@@ -1005,13 +1005,15 @@ let the user decide what to do."
 		      (comint-abort-sends)
 		      t)
 		    (if (= key ?b)
-			(progn 
+			(progn
 			  (comint-insert
 			   (concat comment-start comment-start comment-start
 				   message "\n"
 				   output "\n" prompt))
 			  (if noninteractive
-			      (error out)
+			      (if pvs-validating
+				  (progn (pvs-message "ERROR: %s" out) t)
+				  (error out))
 			      (message "Preserve break") nil))
 			(message "Keep error in *Errors* and continue")
 			t))))

@@ -1271,16 +1271,7 @@
 		    (if (and ndecl
 			     (or (null netype)
 				 (possibly-empty-type? netype)))
-			(let ((needs-interp (find-needs-interpretation
-					     (definition ndecl)
-					     modinst mod mappings-alist)))
-			  (if needs-interp
-			      (unless *collecting-tccs*
-				(pvs-warning
-				    "Axiom ~a is not mapped to a TCC because~%  ~?~% ~
-                                     ~:[is~;are~] not interpreted."
-				  (id axiom) *andusingctl* needs-interp (cdr needs-interp)))
-			      (insert-tcc-decl 'mapped-axiom modinst axiom ndecl)))
+			(insert-tcc-decl 'mapped-axiom modinst axiom ndecl)
 			(if ndecl
 			    (add-tcc-comment
 			     'mapped-axiom nil modinst
@@ -1347,31 +1338,6 @@
   (member name *prelude-interpreted-types*
 	  :test #'tc-eq))
 
-
-(defun find-needs-interpretation (expr thinst theory mappings-alist)
-  (declare (ignore thinst theory mappings-alist))
-  (let ((needs-interp nil))
-    (mapobject #'(lambda (ex)
-		   (or (member ex needs-interp :test #'tc-eq)
-		       (prelude-interpreted-type ex)
-		       (and (name-expr? ex)
-			    (resolution ex)
-			    (module (declaration ex))
-			    (memq (id (module (declaration ex)))
-				  '(|booleans| |equalities| |if_def|
-				    |number_fields| |reals|
-				    |character_adt|)))
-		       (adt-name-expr? ex)
-		       (adt-type-name? ex)
-		       (let ((decl (when (name? ex) (declaration ex))))
-			 (when (and (declaration? decl)
-				    (not (eq (module decl) (current-theory)))
-				    ;;(eq (module decl) theory)
-				    (interpretable? decl))
-			   (push ex needs-interp)))))
-	       expr)
-    needs-interp))
-
 (defmethod nonempty-formula-type ((decl formula-decl))
   (nonempty-formula-type (definition decl)))
 
@@ -1410,7 +1376,7 @@
 		   mappings-alist)
 	    (unless *collecting-tccs*
 	      (pvs-warning
-		  "Axiom ~a is not a mapped to a TCC because all all RHS exprs are interpretable names."
+		  "Axiom ~a is not mapped to a TCC because all RHS exprs are interpretable names."
 		(id axiom)))
 	    (let* ((tform expr)		;(add-tcc-conditions expr)
 		   (xform (if *simplify-tccs*

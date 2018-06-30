@@ -256,7 +256,8 @@ beginning of the previous one."
 	      (setq opoint (point))
 	      (goto-char tpoint)
 	      (looking-at "\\w+")
-	      (setq pname (buffer-substring (match-beginning 0) (match-end 0)))
+	      (setq pname (buffer-substring-no-properties
+			   (match-beginning 0) (match-end 0)))
 	      (when verbose (princ pname) (princ " "))
 	      (find-theory-or-datatype-forward (point))))
 	  (when pname
@@ -663,6 +664,9 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	       (error "%s is not a valid PVS file" (buffer-name))))
 	    ((file-equal (buffer-file-name)
 			 (format "%s/lib/prelude.pvs" pvs-path))
+	     (setq-local current-pvs-file (pathname-name (buffer-file-name))))
+	    ((file-equal (buffer-file-name)
+			 (format "%s/lib/pvsio_prelude.pvs" pvs-path))
 	     (setq-local current-pvs-file (pathname-name (buffer-file-name))))
 	    ((file-equal (buffer-file-name)
 			 (format "%s%s"
@@ -1073,6 +1077,18 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	  (if (equal theory "")
 	      (error "Must specify a theory name")
 	      (list theory))))))
+
+(defun complete-theory-element-id (prompt thid)
+  "Perform completion on PVS theory element id within the given theory."
+  (let ((eltids (pvs-send-and-wait (format "(collect-element-ids \"%s\")" thid))))
+    (if (null eltids)
+	(error (format "Empty list of element ids - might need to typecheck %s."
+		   thid))
+	(let ((eltid (completing-read prompt (mapcar 'list eltids) nil t)))
+	  (if (equal eltid "")
+	      (error "Must specify an element id")
+	      (list eltid))))))
+  
 
 (defun current-theory ()
   (let ((file (current-pvs-file t)))
@@ -1671,8 +1687,8 @@ Point will be on the offending delimiter."
 			       (re-search-forward exp nil t))
 			 (when foundit (setq last-point foundit)))
 		       (if foundit
-			   (pvs-message "Found expected output")
-			   (pvs-message "ERROR: %s: expected output not found"
+			   (pvs-message "[32;1mFound expected output[0m")
+			   (pvs-message "[31;1mERROR: %s: expected output not found[0m"
 			     logfile))))))
 	       (when pvs-unexpected-output
 		 (let ((standard-output logbuf)
@@ -1818,8 +1834,8 @@ Point will be on the offending delimiter."
 	   (pvs-valid-output-regexps (cdr output-regexps)))))
 
 (defun pvs-validate-handler (error-p wait-p message output prompt)
-  ;;(message "pvs-validate-handler called: %s %s %s %s %s"
- 	;;   error-p wait-p message output prompt)
+  ;; (message "pvs-validate-handler called: %s %s %s %s %s"
+  ;; 	   error-p wait-p message output prompt)
   (cond ((and (stringp output)
 	      (string-match (ilisp-value 'ilisp-error-regexp) output))
 	 (pvs-message "Lisp ERROR: %s\n" (comint-remove-whitespace output))
@@ -1996,6 +2012,7 @@ existence and time differences to be whitespace")
 		 (buffer-file-name buf))
 	(set-buffer buf)
 	(save-buffer)))))
+  
 
 ;;; Can't use kill-emacs-hook instead, as in batch mode the hook is ignored.
 ;; (defadvice kill-emacs (before pvs-batch-control activate)

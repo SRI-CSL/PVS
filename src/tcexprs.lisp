@@ -1289,8 +1289,8 @@
 
 ;;; Application-range-types takes an application and returns the list of
 ;;; possible types of that application.  In the simple cases, this is just
-;;; the range of the possible types of the operator.  However,
-;;; dependencies ruin this utopia.
+;;; the range of the possible types of the operator.  However, dependencies
+;;; ruin this utopia.  In addition, expr may not be fully typechecked yet.
 
 (defmethod application-range-types ((expr application))
   (with-slots (operator argument) expr

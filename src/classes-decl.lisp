@@ -195,6 +195,13 @@
   ;;(places :restore-as nil)
   )
 
+;; The theory-element class is a mixin for top-level components of theories.
+;; Inherited by classes declaration, exporting, and importing-element.  Every
+;; element in the union of formals, assumings, and theory values of a theory
+;; should be a theory-element.
+(defcl theory-element (syntax)
+  ;; Use :unbound instead of 'unbound, since the latter is a valid PVS id
+  (unique-id :type symbol :initform :unbound))
 
 ;;; Datatypes and related classes
 
@@ -310,7 +317,7 @@
 
 (defcl library-rectype-theory (library-theory rectype-theory))
 
-(defcl exporting (syntax)
+(defcl exporting (theory-element)
   (names :documentation "a list of names and absexpnames" :parse t)
   (but-names :documentation "a list of names and absexpnames" :parse t)
   (kind :documentation "One of NIL, ALL, CLOSURE, or DEFAULT" :parse t)
@@ -325,7 +332,7 @@
 ;; A wrapper for entities that import (explicitly or implicitly)
 ;; Currently importing, formal-theory-decl, mod-decl, theory-abbreviation-decl
 ;; The saved-context is the context including the imported theories.
-(defcl importing-entity (syntax)
+(defcl importing-entity (theory-element)
   saved-context)
 
 (defcl importing (importing-entity)
@@ -345,7 +352,7 @@
 (
  #-sbcl progn
  #+sbcl sb-ext:without-package-locks
-(defcl declaration (syntax)
+(defcl declaration (theory-element)
   (newline-comment :restore-as nil)
   (id :type (or symbol number) :parse t :restore-as nil)
   (decl-formals :type list :parse t)
@@ -436,6 +443,8 @@
 
 (defcl units-name (type-name units-expr))
 
+;;; Mixin for mod-decl, theory-abbreviation-decl, and formal-theory-decl
+(defcl theory-reference (declaration importing-entity))
 
 ;;; Formal theory parameter declarations
 
@@ -487,7 +496,7 @@
   (possibly-empty-type? :restore-as nil)
   (eval-info :fetch-as nil))
 
-(defcl formal-theory-decl (formal-decl importing-entity)
+(defcl formal-theory-decl (formal-decl theory-reference)
   (theory-name :parse t)
   theory-mappings
   other-mappings)
@@ -501,8 +510,6 @@
   (lib-ref :restore-as nil))
 
 (defcl lib-eq-decl (lib-decl))
-
-(defcl theory-reference (declaration importing-entity))
 
 (defcl mod-decl (theory-reference)
   (modname :parse t)
@@ -532,7 +539,7 @@
 ;;; mapped-decls are created for mappings, e.g.,
 ;;; importing th {{c := 1}} creates a mapped-decl that is added to the context
 ;;; Always has a definition
-(defcl mapped-const-decl (macro-decl))
+(defcl mapped-const-decl (macro-decl mapped-decl))
 
 (defcl adt-constructor-decl (const-decl)
   (ordnum :restore-as nil))

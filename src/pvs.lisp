@@ -100,6 +100,19 @@
 (defun pvs-init (&optional dont-load-patches dont-load-user-lisp path)
   (start-load-watching)
   #+allegro (setq excl:*enclose-printer-errors* nil)
+  ;; The uiop/stream:*temporary-directory* can be set wrong on the Mac
+  ;; Possible we want to use TMPDIR value regardless
+  (let ((tmpdir (environment-variable "TMPDIR")))
+    (when tmpdir
+      (unless (and (directory-p tmpdir)
+		   (write-permission? tmpdir))
+	(pvs-message "environment variable TMPDIR is not a writable directory:~%  ~a"
+	  tmpdir)
+	(pvs-message "Please fix this and try again")
+	(cl-user:bye 1))
+      (pvs-message "Setting tmp dir to value of environment variable TMPDIR:~%  ~a~%"
+	tmpdir)
+      (setq uiop/stream:*temporary-directory* tmpdir)))
   (setq *print-pretty* t)
   ;;(setf (symbol-function 'ilisp::ilisp-restore) #'pvs-ilisp-restore)
   #+allegro (setq top-level::*print-length* nil
@@ -164,6 +177,7 @@
   (unless *pvs-context-path*
     ;; Need to make sure this is set to something
     (setq *pvs-context-path* (shortpath (working-directory))))
+  ;; Load files specified on the command line
   (let ((evalload (environment-variable "PVSEVALLOAD")))
     (when evalload
       (multiple-value-bind (ignore error)
@@ -171,6 +185,11 @@
 	(declare (ignore ignore))
 	(when error
 	  (pvs-message "Error executing ~a:~% ~a" evalload error)))))
+  ;; Fix ASDF absolute pathnames
+  (let ((uname #+allegro (sys:user-name)
+	       #+sbcl (tools:user-name)))
+    (unless (string= uname "owre")
+      (lf "asdf-patch")))
   ;; If port is set, start the XML-RPC server
   (let ((port (environment-variable "PVSPORT")))
     (when port
@@ -455,7 +474,16 @@
 	(when (fboundp 'get-patch-exp-version)
 	  (get-patch-exp-version))
 	(lisp-implementation-type)
-	(lisp-implementation-version)))
+	(lisp-implementation-version)
+	(get-pvs-version)))
+
+(defun get-pvs-version ()
+  (cond ((file-exists-p (format nil "~a/pvs-version.lisp" *pvs-path*))
+	 (with-open-file (vers (format nil "~a/pvs-version.lisp" *pvs-path*))
+	   (read vers)))
+	((file-exists-p (format t "~a/.git" *pvs-path*))
+	 (format t "~a.~d" *pvs-version* (pvs-git-count-since)))
+	(t *pvs-version*)))
 
 (defun pvs-image-suffix ()
   (let* ((lisp (environment-variable "PVSLISP"))
@@ -1129,59 +1157,64 @@
 
 (defun typecheck-file (filename &optional forced? prove-tccs? importchain?
 				  nomsg? outside-call?)
-  (let ((*parsing-files* (when (boundp '*parsing-files*) *parsing-files*)))
-    (multiple-value-bind (theories restored? changed-theories)
-	(parse-file filename forced? t)
-      (let ((*current-file* filename)
-	    (*typechecking-module* nil))
-	(unless theories
-	  (let ((err (format nil "~a not found" filename)))
-	    (pvs-error err err)))
-	(cond ((and (not forced?)
-		    theories
-		    (every #'(lambda (th)
-			       (let ((*current-context* (saved-context th))
-				     (*current-theory* th))
-				 (typechecked? th)))
-			   theories))
-	       (unless (or nomsg? restored?)
-		 (pvs-message
-		     "~a ~:[is already typechecked~;is typechecked~]~a"
-		   filename
-		   restored?
-		   (if (and prove-tccs? (not *in-checker*))
-		       " - attempting proofs of TCCs" ""))))
-	      ((and *in-checker*
-		    (not *tc-add-decl*))
-	       (pvs-message "Must exit the prover first"))
-	      ((and *in-evaluator*
-		    (not *tc-add-decl*))
-	       (pvs-message "Must exit the evaluator first"))
-	      (t (pvs-message "Typechecking ~a" filename)
-		 (when forced?
-		   (delete-generated-adt-files theories))
-		 (typecheck-theories filename theories)
-		 #+pvsdebug (assert (every #'typechecked? theories))
-		 (update-context filename)))
-	(when prove-tccs?
-	  (if *in-checker*
-	      (pvs-message
-		  "Must exit the prover before running typecheck-prove")
-	      (if importchain?
-		  (prove-unproved-tccs
-		   (delete-duplicates
-		    (mapcan #'(lambda (th)
-				(let* ((*current-theory* th)
-				       (*current-context* (saved-context th)))
-				  (collect-theory-usings th)))
-		      theories)
-		    :test #'eq)
-		   t)
-		  (prove-unproved-tccs theories))))
-	(if outside-call?
-	    ;; Emacs expects t or nil - error will not get here
-	    (and changed-theories t)
-	    (values theories changed-theories))))))
+  (cond ((string= filename "prelude")
+	 (ldiff *prelude-theories* (member 'stdlang *prelude-theories* :key #'id)))
+	((string= filename "pvsio_prelude")
+	 (member 'stdlang *prelude-theories* :key #'id))
+	(t
+	 (let ((*parsing-files* (when (boundp '*parsing-files*) *parsing-files*)))
+	   (multiple-value-bind (theories restored? changed-theories)
+	       (parse-file filename forced? t)
+	     (let ((*current-file* filename)
+		   (*typechecking-module* nil))
+	       (unless theories
+		 (let ((err (format nil "~a not found" filename)))
+		   (pvs-error err err)))
+	       (cond ((and (not forced?)
+			   theories
+			   (every #'(lambda (th)
+				      (let ((*current-context* (saved-context th))
+					    (*current-theory* th))
+					(typechecked? th)))
+				  theories))
+		      (unless (or nomsg? restored?)
+			(pvs-message
+			    "~a ~:[is already typechecked~;is typechecked~]~a"
+			  filename
+			  restored?
+			  (if (and prove-tccs? (not *in-checker*))
+			      " - attempting proofs of TCCs" ""))))
+		     ((and *in-checker*
+			   (not *tc-add-decl*))
+		      (pvs-message "Must exit the prover first"))
+		     ((and *in-evaluator*
+			   (not *tc-add-decl*))
+		      (pvs-message "Must exit the evaluator first"))
+		     (t (pvs-message "Typechecking ~a" filename)
+			(when forced?
+			  (delete-generated-adt-files theories))
+			(typecheck-theories filename theories)
+			#+pvsdebug (assert (every #'typechecked? theories))
+			(update-context filename)))
+	       (when prove-tccs?
+		 (if *in-checker*
+		     (pvs-message
+			 "Must exit the prover before running typecheck-prove")
+		     (if importchain?
+			 (prove-unproved-tccs
+			  (delete-duplicates
+			   (mapcan #'(lambda (th)
+				       (let* ((*current-theory* th)
+					      (*current-context* (saved-context th)))
+					 (collect-theory-usings th)))
+			     theories)
+			   :test #'eq)
+			  t)
+			 (prove-unproved-tccs theories))))
+	       (if outside-call?
+		   ;; Emacs expects t or nil - error will not get here
+		   (and changed-theories t)
+		   (values theories changed-theories))))))))
 
 (defvar *etb-typechecked-theories*)
 
@@ -2257,23 +2290,27 @@ Note that even proved ones get overwritten"
 						      (eq (id d) (id decl))))
 			    (all-decls theory))
 			  (place decl)))))
-	(prelude (let* ((theory (get-theory name))
-			(theories (if (and theory (generated-by theory))
-				      (list theory)
-				      (remove-if #'generated-by
-					*prelude-theories*)))
-			(typespec (formula-typespec unproved?))
-			(decl-at (get-decl-at line typespec theories))
-			(decl (if (judgement? decl-at)
-				  (let ((jtcc (find-if #'(lambda (d)
-							   (eq (id d)
-							       (id decl-at)))
-						(generated decl-at))))
-				    (unless (place jtcc)
-				      (setf (place jtcc) (place decl-at)))
-				    jtcc)
-				  decl-at)))
-		   (values decl (place decl))))
+	((prelude pvsio_prelude)
+	 (let* ((theory (get-theory name))
+		(theories (if (and theory (generated-by theory))
+			      (list theory)
+			      (remove-if #'generated-by
+				(if (string= name "pvsio_prelude")
+				    (member '|stdlang| *prelude-theories*
+					    :key #'id)
+				    *prelude-theories*))))
+		(typespec (formula-typespec unproved?))
+		(decl-at (get-decl-at line typespec theories))
+		(decl (if (judgement? decl-at)
+			  (let ((jtcc (find-if #'(lambda (d)
+						   (eq (id d)
+						       (id decl-at)))
+					(generated decl-at))))
+			    (unless (place jtcc)
+			      (setf (place jtcc) (place decl-at)))
+			    jtcc)
+			  decl-at)))
+	   (values decl (place decl))))
 	(proof-status
 	 (let* ((theory (get-theory name))
 		(fdecl (find-if #'(lambda (d)
@@ -2354,7 +2391,8 @@ Note that even proved ones get overwritten"
 	       'no))
 	  (unproved? (pvs-message "No more unproved formulas below"))
 	  (t (pvs-message
-		 "Not at a formula declaration~@[ - ~a buffer may be invalid~]"
+		 "Not at a formula declaration (line ~d)~@[ - ~a buffer may be invalid~]"
+	       line
 	       (car (member (intern #+allegro (string-downcase origin)
 				    #-allegro (string-upcase origin)
 				    :pvs)
@@ -3204,6 +3242,7 @@ Note that even proved ones get overwritten"
   (tcc-conclusion* (expression ex) last-impl))
 
 (defmethod tcc-conclusion* ((ex implication) last-impl)
+  (declare (ignore last-impl))
   (tcc-conclusion* (args2 ex) (args2 ex)))
 
 (defmethod tcc-conclusion* ((ex expr) last-impl)

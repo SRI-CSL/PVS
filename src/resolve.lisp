@@ -95,7 +95,15 @@
       (dolist (r res)
 	(when (eq (declaration r) (current-declaration))
 	  (change-class r 'recursive-function-resolution
-			'type (recursive-signature (current-declaration))))))
+	    'type (recursive-signature (current-declaration))))))
+    (when (and (eq k 'expr)
+	       (null res)
+     	       (null args))
+      (let ((fres (resolve* name 'formula nil)))
+	(when fres
+	  (dolist (frs fres)
+	    (setf (type frs) *boolean*))
+	  (setq res fres))))
     (cond ((null res)
 	   (resolution-error name k args))
 	  ((and (cdr res)

@@ -2120,7 +2120,8 @@
 	   (subst (tc-match type (below-subtype) bindings)))
       (cdr (assoc '|m| subst :test #'same-id)))))
 
-; here we want to treat below and upto as special cases of subranges
+;;; Here we want to treat below and upto as special cases of subranges
+;;; Note that from and to are not necessarily number-exprs.
 (defun simple-subrange? (type)
   (let* ((bindings (make-empty-bindings (free-params (subrange-subtype))))
 	 (subst (tc-match type (subrange-subtype) bindings))
@@ -2134,7 +2135,9 @@
 	      (let ((below (simple-below? type)))
 		(when below
 		  (cons (make!-number-expr 0)
-			(make!-number-expr (1- (number below)))))))))))
+			(if (number-expr? below)
+			    (make!-number-expr (1- (number below)))
+			    (make!-difference below (make!-number-expr 1)))))))))))
 
 (defun simple-above? (type)
   (let* ((bindings (make-empty-bindings (free-params (above-subtype))))

@@ -91,6 +91,8 @@
 (defpackage :ilisp (:nicknames :ILISP) (:use :common-lisp #+:CMU :conditions))
 (defpackage :bvec)
 
+#+sbcl ;; Needed in order to use quicklisp
+(require 'sb-bsd-sockets)
 
 (unless (find-package :asdf)
   (require :asdf))

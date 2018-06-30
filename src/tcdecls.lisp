@@ -196,7 +196,8 @@
 (defun decl-formal-existence-assumption (dfml)
   (when (nonempty-type-decl? dfml)
     (let* ((type (type-value dfml))
-	   (var (make-new-variable '|x| type)))
+	   (var (make-new-variable '|x| type))
+	   (*generate-tccs* 'none))
       (make!-exists-expr (list (make-bind-decl var type)) *true*))))
   
 
@@ -790,7 +791,7 @@
 	(setf (id sd) nid)
 	(setf (module sd) (current-theory))
 	(typecase sd
-	  ((or type-def-decl const-decl mod-decl)
+	  ((or type-def-decl const-decl theory-reference)
 	   (subst-new-map-decl-type sd dalist owlist)
 	   (let* ((res (make-resolution sd
 			 (current-theory-name)))
@@ -833,7 +834,7 @@
 (defvar *subst-new-map-decls*)
 (defvar *subst-new-other-decls*)
 
-(defmethod subst-new-map-decl-type ((sd mod-decl) dalist owlist)
+(defmethod subst-new-map-decl-type ((sd theory-reference) dalist owlist)
   (declare (ignore dalist owlist))
   nil)
 
@@ -897,8 +898,10 @@
     (setf (declared-type decl)
 	  (subst-new-map-decls* (substit (declared-type decl) bindings)))
     (when (definition decl)
-      (setf (def-axiom decl)
-	    (subst-new-map-decls* (substit (def-axiom decl) bindings))))
+      (if (def-axiom decl)
+	  (setf (def-axiom decl)
+		(subst-new-map-decls* (substit (def-axiom decl) bindings)))
+	  (make-def-axiom decl)))
     (setf (generated-by decl) nil)
     (setf (eval-info decl) nil)
     (when (def-decl? decl)
@@ -1184,7 +1187,11 @@
 		    (nconc (ldiff theory-part rest) (cons decl rest)))))))
 
 (defmethod make-inlined-theory-decl ((imp importing))
-  (typecheck-using* (get-theory (theory-name imp)) (theory-name imp)))
+  (let* ((thname (theory-name imp))
+	 (th (if (resolution thname)
+		 (declaration thname)
+		 (get-theory thname))))
+    (typecheck-using* th thname)))
 
 (defmethod make-inlined-theory-decl ((decl declaration))
   (setf (current-declaration) decl)
@@ -1589,6 +1596,15 @@
 (defmethod check-positive-types* ((ex projection-application) fargs decl bindings postypes)
   (check-positive-types* (argument ex) fargs decl bindings postypes))
 
+(defmethod check-positive-types* ((ex injection-application) fargs decl bindings postypes)
+  (check-positive-types* (argument ex) fargs decl bindings postypes))
+
+(defmethod check-positive-types* ((ex injection?-application) fargs decl bindings postypes)
+  (check-positive-types* (argument ex) fargs decl bindings postypes))
+
+(defmethod check-positive-types* ((ex extraction-application) fargs decl bindings postypes)
+  (check-positive-types* (argument ex) fargs decl bindings postypes))
+
 (defmethod check-positive-types* ((ex record-expr) fargs decl bindings postypes)
   (check-positive-types* (assignments ex) fargs decl bindings postypes))
 
@@ -1615,6 +1631,10 @@
   postypes)
 
 (defmethod check-positive-types* ((ex projection-expr) fargs decl bindings postypes)
+  (declare (ignore fargs decl bindings))
+  postypes)
+
+(defmethod check-positive-types* ((ex injection-expr) fargs decl bindings postypes)
   (declare (ignore fargs decl bindings))
   postypes)
 

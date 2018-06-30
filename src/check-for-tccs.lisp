@@ -81,19 +81,26 @@
   (declare (ignore expected))
   (check-type-actuals-and-maps ex))
 
+;; Only for theory instances - see check-type-actuals for expr and type names
 (defun check-type-actuals-and-maps (thinst)
+  (assert (resolution thinst))
   (let* ((decl (declaration thinst))
-	 (theory (if (declaration? decl)
-		     (module decl)
-		     decl))
-	 (acts (actuals thinst)))
-    (unless (memq thinst *exprs-generating-actual-tccs*)
-      (when acts
+	 (theory (if (module? decl) decl (module decl)))
+	 (fmls (formals-sans-usings theory))
+	 (dfmls (decl-formals decl))
+	 (acts (actuals thinst))
+	 (dacts (dactuals thinst)))
+    (assert (or (null acts) (length= fmls acts)))
+    (assert (or (null dacts) (length= dfmls dacts)))
+    (when (or acts dacts)
+      (unless (memq thinst *exprs-generating-actual-tccs*)
 	(unless (or *in-checker* *in-evaluator*)
 	  (push thinst *exprs-generating-actual-tccs*))
-	(check-type-actuals* acts (formals-sans-usings theory) theory)
-	(generate-assuming-tccs thinst thinst theory)
-	(generate-actuals-tccs (actuals thinst) acts))))
+	(check-type-actuals* (if dacts (append acts dacts) acts)
+			     (if dfmls (append fmls dfmls) fmls)
+			     theory)
+	(when acts
+	  (generate-assuming-tccs thinst thinst theory)))))
   (check-type-maps thinst))
 
 (defmethod check-for-tccs* ((ex name-expr) expected)
@@ -104,23 +111,39 @@
       (check-type-actuals ex)
       (check-for-tccs* ex (type ex))))
 
+;;; Similar to check-type-actuals-and-maps, but for arbitrary type and expr
+;;; names, which can have actuals/dactuals both in the modinst and the expr
+;;; itself, and they are not necessarily the same because of importings, etc.
 (defun check-type-actuals (expr)
   (let* ((modinst (module-instance expr))
-	 (theory (module (declaration expr)))
+	 (decl (declaration expr))
+	 (theory (module decl))
 	 (acts (actuals modinst))
 	 (dacts (dactuals modinst)))
     (unless (memq expr *exprs-generating-actual-tccs*)
       (when (or acts dacts)
 	(unless (or *in-checker* *in-evaluator*)
 	  (push expr *exprs-generating-actual-tccs*)))
-      (when acts
-	(check-type-actuals* acts (formals-sans-usings theory) theory)
-	(generate-assuming-tccs modinst expr theory)
-	(generate-actuals-tccs (actuals expr) acts))
-      (when dacts
-	(check-type-actuals* dacts (decl-formals (declaration expr)) theory)
-	(generate-actuals-tccs (dactuals expr) dacts)))))
+      (when (or acts dacts)
+	(check-type-actuals* (append acts dacts)
+			     (append (formals-sans-usings theory)
+				     (decl-formals decl))
+			     theory)
+	(when acts
+	  ;; Generate TCCs as instances of assumings dacts are not involved
+	  (generate-assuming-tccs modinst expr theory)
+	  ;; Finally, the expr may have actuals that differ from the
+	  ;; module-instance actuals, deal with them here.
+	  (generate-actuals-tccs (actuals expr) acts))
+	(when dacts
+	  (generate-actuals-tccs (dactuals expr) dacts))))))
 
+;;; Run through the actuals and formals, substituting and generating TCCs
+;;; accordingly.  For example, given a theory "th[T: TYPE, S: TYPE FROM T,
+;;; c: S]" and an instance "th[int, nat, -1]", will substitute int for T,
+;;; check that nat is a subtype of int and substitute nat for S, and finally
+;;; check that -1 is a nat, generating a TCC.  Note that the actuals and
+;;; formals include both theory and decl parameters
 (defun check-type-actuals* (actuals formals theory &optional alist)
   (when actuals
     (multiple-value-bind (nform nalist)
@@ -130,7 +153,11 @@
 
 (defmethod check-type-actual (act (formal formal-type-decl) theory)
   (declare (ignore theory))
-  (check-for-tccs* (type-value act) nil))
+  (check-for-tccs* (type-value act) nil)
+  (when (nonempty-type-decl? formal)
+    (unless (eq *generate-tccs* 'none)
+      ;; May need to generate existence TCC
+      (check-nonempty-type (type-value act) (current-declaration)))))
 
 (defmethod check-type-actual (act (formal formal-subtype-decl) theory)
   (declare (ignore theory))
@@ -672,7 +699,11 @@
 	      (let* ((bid (make-new-variable '|x| (cons ex cdr-args)))
 		     (bd (make-bind-decl bid (domtype ftype)))
 		     (bvar (make-variable-expr bd))
-		     (deqn (make!-disequation bvar (caaar cdr-args)))
+		     (deqn (if (cdr (caar cdr-args))
+			       ;; Should have a tuple domtype with matching length
+			       (let ((tup (make!-tuple-expr* (caar cdr-args))))
+				 (make!-disequation bvar tup))
+			       (make!-disequation bvar (caaar cdr-args))))
 		     (*tcc-conditions* (cons deqn (cons bd *tcc-conditions*)))
 		     (app (make!-application fappl bvar))
 		     (expected (if (dep-binding? (domain ftype))

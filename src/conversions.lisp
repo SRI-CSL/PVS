@@ -971,7 +971,7 @@
 	    ;; Create a conversion of the form
 	    ;; LAMBDA (x: atype): (conv(x`1) ... )
 	    (let* ((aid (make-new-variable '|x| (list atype etype)))
-		   (abd (make-bind-decl aid atype))
+		   (abd (make!-bind-decl aid atype))
 		   (avar (make-variable-expr abd)))
 	      (multiple-value-bind (args convs)
 		  (find-tupletype-conversions

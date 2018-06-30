@@ -741,6 +741,8 @@
 		     (qread prompt))
 	         input)))))
 
+(defvar *proof-strategy-stack* nil)
+
 (defmethod proofstepper ((proofstate proofstate))
 
 ;;The key part of the proofstate for the stepper is the strategy field.
@@ -797,7 +799,9 @@
 				 (if (strategy proofstate)
 				     (strategy proofstate)
 				     '(postpone t)) ;;if no strat, move on.
-				 proofstate)))
+				 proofstate))
+			       (*proof-strategy-stack*
+				(cons strategy *proof-strategy-stack*)))
 			  (setf (strategy proofstate) strategy)
 			  (rule-apply strategy proofstate))))))))
        ;;rule-apply returns a revised proofstate.

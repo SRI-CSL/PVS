@@ -39,7 +39,7 @@
 (defun set-prelude-files-and-regions ()
   (pvs-message "Creating pvs-prelude-files-and-regions.el")
   (let* ((files (directory-files (concat pvs-path "/lib")
-				 t "^prelude\\.pvs$\\|.*_adt\\.pvs$"))
+				 t "^prelude\\.pvs$\\|^pvsio_prelude\\.pvs$\\|.*_adt\\.pvs$"))
 	 (files-and-regions
 	  (mapcar #'(lambda (file)
 		      (save-excursion

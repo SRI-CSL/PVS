@@ -2237,7 +2237,7 @@ Note that the lists might not be the same length."
 			       decision-procedure-used origin)
 	  (values-list mprf)
 	(assert (or (stringp description) (memq description '(nil NIL))))
-	(assert (listp script))
+	(assert (or (listp script) (memq description '(nil NIL))))
 	(assert (or (listp refers-to) (memq refers-to '(nil NIL))))
 	(assert (symbolp decision-procedure-used))
 	(let* ((check (check-if-case-change-needed script))
@@ -2577,7 +2577,17 @@ Note that the lists might not be the same length."
       (mapcar #'(lambda (te)
 		  (list (string (te-id te))
 			file))
-	      (ce-theories fe)))))
+	(ce-theories fe)))))
+
+(defun collect-element-ids (thid)
+  (let ((th (get-theory thid)))
+    (when th
+      (let ((eltids nil))
+	(dolist (elt (all-decls th))
+	  (when (declaration? elt)
+	    (pushnew (id elt) eltids))
+	  (pushnew (unique-id elt) eltids))
+	(sort eltids #'string<)))))
 
 (defun find-all-usedbys (theoryref)
   (let ((tid (ref-to-id theoryref))

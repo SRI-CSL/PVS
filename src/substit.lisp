@@ -110,12 +110,19 @@ it is nil in the substituted binding")
 	     (nalist (remove-if
 			 #'(lambda (a)
 			     (or (eq (car a) (cdr a))
-				 ;;(not (and (name-expr? (cdr a))
-				 ;; (eq (declaration (cdr a))
-				 ;;   (car a))))
+				 (and (name-expr? (cdr a))
+				      (eq (declaration (cdr a)) (car a)))
 				 (not (member (declaration (car a)) fvars
 					      :key #'declaration :test #'eq))))
 		       alist)))
+	#+pvsdebug ; Not quite right - dependent bindings are handled below
+	(assert (every #'(lambda (a)
+			   (every #'(lambda (fv)
+				      (let ((fvelt (assq (declaration fv) nalist)))
+					(or (null fvelt)
+					    (eq fvelt a))))
+				  (freevars (cdr a))))
+		       nalist))
 	(if (null nalist)
 	    obj
 	    (new-substit-hash
@@ -360,7 +367,8 @@ it is nil in the substituted binding")
       (cond ((and (not *substit-dont-simplify*)
 		  (lambda-expr? op)
 		  (not (let-expr? expr)))
-	     (make!-reduced-application* op arg))
+	     (let ((appl (make!-reduced-application* op arg)))
+	       appl))
 	    ((and (eq op operator)
 		  (eq arg argument))
 	     expr)
@@ -691,72 +699,24 @@ it is nil in the substituted binding")
 
 (defun make-new-bindings (old-bindings alist expr)
   (new-substit-hash
-   (make-new-bindings* old-bindings
-		       (alist-freevars alist)
-		       (alist-boundvars alist)
-		       alist
-		       expr)))
+   (make-new-bindings* old-bindings alist expr)))
 
 ;; Uses existing substit-hash
 (defun make-new-bindings-internal (old-bindings alist expr)
-  (let* ((nbindings (make-new-bindings* old-bindings
-					(alist-freevars alist)
-					(alist-boundvars alist)
-					alist
-					expr)))
+  (let ((nbindings (make-new-bindings* old-bindings alist expr)))
     (if (equal nbindings old-bindings)
 	old-bindings
 	nbindings)))
 
-(defun alist-freevars (alist)
-  (if (eq *alist-freevars* 'unbound)
-      (setq *alist-freevars*
-	    (delete-duplicates (mapappend #'alist-freevars* alist)))
-      *alist-freevars*))
-
-(defun alist-freevars* (alist-pair)
-  (freevars (cdr alist-pair)))
-
-(defun add-alist-freevars (expr alist-freevars)
-  (add-alist-freevars* (freevars expr) alist-freevars))
-
-(defun add-alist-freevars* (freevars alist-freevars)
-  (if (null freevars)
-      alist-freevars
-      (add-alist-freevars*
-       (cdr freevars)
-       (if (memq (car freevars) alist-freevars)
-	   alist-freevars
-	   (cons (declaration (car freevars)) alist-freevars)))))
-
-(defun alist-boundvars (alist)
-  (if (eq *alist-boundvars* 'unbound)
-      (let ((bvars nil))
-	(dolist (acons alist)
-	  (mapobject #'(lambda (ex)
-			 (or (subtype? ex)
-			     (when (binding-expr? ex)
-			       (dolist (bd (bindings ex)) (pushnew bd bvars))
-			       nil)))
-		     (cdr acons)))
-	(setq *alist-boundvars* bvars))
-      *alist-boundvars*))
-
 ;; freevars are the free variables in the alist RHSs.
 ;; boundvars are the bindings found walking down the alist RHSs, excluding subtypes
 
-(defun make-new-bindings* (old-bindings freevars boundvars alist expr
-					&optional nbindings)
+(defun make-new-bindings* (old-bindings alist expr &optional nbindings)
   (if (null old-bindings)
       (nreverse nbindings)
       (let* ((bind (car old-bindings))
 	     (btype (type bind))
-	     (check (or (member bind freevars
-				:test #'(lambda (x y)
-					  (and (not (eq x (declaration y)))
-					       (eq (id x) (id y)))))
-			(member (id bind) boundvars :key #'id)
-			(bindings-subst-clash bind expr alist)))
+	     (check (bindings-subst-clash bind expr alist))
 	     (stype (substit* btype alist))
 	     (dec-type (declared-type bind))
 	     (new-binding
@@ -774,17 +734,33 @@ it is nil in the substituted binding")
 	  (setf (declared-type new-binding) (or (print-type stype) stype)))
 	(make-new-bindings*
 	 (cdr old-bindings)
-	 (add-alist-freevars new-binding freevars)
-	 boundvars
 	 (acons bind new-binding alist)
 	 (list new-binding expr)
 	 (cons new-binding nbindings)))))
 
 (defun bindings-subst-clash (bind expr alist)
-  (some #'(lambda (fv)
-	    (let ((abd (assq (declaration fv) alist)))
-	      (and abd (var-occurs-in (id bind) (cdr abd)))))
-	(freevars expr)))
+  "Check if =bind= will clash with alist substition.  It clashes if there is
+a free variable in =expr=, which is the car of an elt of =alist= (so it will
+be substituted in =expr=), and the id of =bind= occurs unbound in the cdr of
+that elt."
+  (or (some #'(lambda (fv)
+		(let ((abd (assq (declaration fv) alist)))
+		  (and abd (var-occurs-in (id bind) (cdr abd)))))
+	    (freevars expr))
+      (member (id bind) (alist-boundvars alist) :key #'id)))
+
+(defun alist-boundvars (alist)
+  (if (eq *alist-boundvars* 'unbound)
+      (let ((bvars nil))
+	(dolist (acons alist)
+	  (mapobject #'(lambda (ex)
+			 (or (subtype? ex)
+			     (when (binding-expr? ex)
+			       (dolist (bd (bindings ex)) (pushnew bd bvars))
+			       nil)))
+		     (cdr acons)))
+	(setq *alist-boundvars* bvars))
+      *alist-boundvars*))
 
 (defmethod substit* ((expr cases-expr) alist)
   (let* ((ntype (substit* (type expr) alist))

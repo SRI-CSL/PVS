@@ -85,6 +85,7 @@
 		   (floor (- load-time start-time) millisecond-factor))
 		 theory))
 	      (fetch-error
+	       ;;(break "Error in fetching ~a - ~a" filename fetch-error)
 	       (pvs-message "Error in fetching ~a - ~a" filename fetch-error)
 	       (ignore-lisp-errors (delete-file file))
 	       (dolist (thid *bin-theories-set*)
@@ -382,6 +383,7 @@
 	     (push-word (store-obj (id module)))
 	     (push-word apos)
 	     (push-word fpos))))
+	(mapped-decl nil)
 	(t (reserve-space 3
 	     (push-word (store-obj 'declref))
 	     (push-word (store-obj (id module)))
@@ -620,6 +622,7 @@
     (let* ((decl-pos (stored-word 2))
 	   (decl (nth decl-pos (all-decls theory))))
       (unless decl
+	;;(break "No decl?")
 	(error "Declaration was not found"))
       decl)))
 
@@ -673,6 +676,10 @@
 		  (delete atns *adt-type-name-pending*)))
 	  (add-to-alist (adt obj) obj *adt-type-name-pending*)))))
 
+;; This is the only place that store-print-types are created.
+;; Whenever the print-type of a type-expr is not null or a type-name
+;; pointing back to the current declaration, the store-print-type replaces
+;; the full type, optimizing on space and time.
 (defmethod store-object* :around ((obj type-expr))
    (if (and (print-type obj)
 	    (not (and (type-name? (print-type obj))

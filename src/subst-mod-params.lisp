@@ -238,6 +238,7 @@
 					  (when (dactuals modinst)
 					    dformals))
 			  (append (actuals modinst)
+				  ;; if decl is a mapping-lhs, include its dactuals
 				  (all-dactuals decl modinst))
 			  (mappings modinst) nil))
 	       (nobj (subst-mod-params* obj modinst bindings)))
@@ -313,7 +314,8 @@
   (cond ((null formals)
 	 (assert (check-smp-bindings bindings))
 	 (let ((mbindings (make-subst-mod-params-map-bindings modinst mappings bindings)))
-	   (make-subst-mod-params-theoryref-bindings modinst mbindings)))
+	   ;;(make-subst-mod-params-theoryref-bindings modinst mbindings)
+	   mbindings))
 	(t (let ((pred-binding (make-subst-mod-params-pred-binding
 				modinst (car formals) (car actuals) bindings))
 		 (nbindings (make-subst-mod-params-binding
@@ -332,41 +334,45 @@
 		  (cons pred-binding nbindings)
 		  nbindings))))))
 
+;;; In most cases, this is simply adding (formal . actual)  to bindings
+;;; But when the formal is a theory-decl, its bindings need to be included
+;;; Note that this is before doing the mappings of the original modinst.
 (defmethod make-subst-mod-params-binding ((formal formal-theory-decl) actual
 					  bindings)
   (acons formal actual
-	 (let* ((thname (if (typep (declaration (expr actual))
-				   '(or theory-abbreviation-decl mod-decl
-					formal-theory-decl))
-			    (get-theory-alias (expr actual))
-			    (expr actual)))
-		(amappings (when (typep (declaration (expr actual))
-					'(or mod-decl formal-theory-decl))
-			     (theory-mappings (declaration (expr actual)))))
-		(decl (declaration (expr actual)))
-		(theory (if (module? decl)
-			    decl
-			    (get-theory (theory-name decl))))
-		(pre-bindings (make-subst-mod-params-bindings
-			       thname
-			       (formals-sans-usings theory)
-			       (actuals thname)
-			       nil
-			       (extended-mappings thname theory decl)))
-		(inv-mappings
-		 (mapcar #'(lambda (da)
-			     (cons (declaration (expr (cdr da))) (car da)))
-		   (theory-mappings formal)))
-		;; Now we compose the inverses of the mappings of the
-		;; interpreted theory and the source
-		(comp (append (compose-mappings inv-mappings pre-bindings)
-			      (compose-mappings inv-mappings amappings)
-			      pre-bindings
-			      bindings)))
-	   (dolist (imap inv-mappings)
-	     (unless (assq (car imap) comp)
-	       (push imap comp)))
-	   comp)))
+	 (make-subst-mod-params-theory-decl-bindings formal actual bindings)))
+
+(defun make-subst-mod-params-theory-decl-bindings (formal actual bindings)
+  (let* ((thname (if (typep (declaration (expr actual)) 'theory-reference)
+		     (get-theory-alias (expr actual))
+		     (expr actual)))
+	 (amappings (when (typep (declaration (expr actual))
+				 '(or mod-decl formal-theory-decl))
+		      (theory-mappings (declaration (expr actual)))))
+	 (decl (declaration (expr actual)))
+	 (theory (if (module? decl)
+		     decl
+		     (get-theory (theory-name decl))))
+	 (pre-bindings (make-subst-mod-params-bindings
+			thname
+			(formals-sans-usings theory)
+			(actuals thname)
+			nil
+			(extended-mappings thname theory decl)))
+	 (inv-mappings
+	  (mapcar #'(lambda (da)
+		      (cons (declaration (expr (cdr da))) (car da)))
+	    (theory-mappings formal)))
+	 ;; Now we compose the inverses of the mappings of the
+	 ;; interpreted theory and the source
+	 (comp (append (compose-mappings inv-mappings pre-bindings)
+		       (compose-mappings inv-mappings amappings)
+		       pre-bindings
+		       bindings)))
+    (dolist (imap inv-mappings)
+      (unless (assq (car imap) comp)
+	(push imap comp)))
+    comp))
 
 (defun get-theory-alias (thabbr)
   (let* ((thabbr-decl (declaration thabbr))
@@ -406,10 +412,10 @@
   (declare (ignore lhs-theory))
   (let* ((rhs-theory (declaration thname))
 	 ;; extended-basic-mappings deals with explicit and implicit th mappings
-	 (bmappings (extended-basic-mappings (mappings thname)
-					     (when (and rhs-theory
-							(not (module? rhs-theory)))
-					       (theory-mappings rhs-theory))
+	 (rhs-mappings (when (and rhs-theory
+				  (not (module? rhs-theory)))
+			 (theory-mappings rhs-theory)))
+	 (bmappings (extended-basic-mappings (mappings thname) rhs-mappings
 					     nil ;(theory-mappings lhs-theory)
 					     ))
 	 (all-mappings (extended-mappings* bmappings decl)))
@@ -455,8 +461,7 @@
 (defmethod extended-mappings* (mappings (decl module))
   mappings)
 
-(defun extended-basic-mappings (mappings rthmappings lthmappings
-					 &optional bmappings)
+(defun extended-basic-mappings (mappings rthmappings lthmappings &optional bmappings)
   (if (null mappings)
       (if (null rthmappings)
 	  (if (null lthmappings)
@@ -574,7 +579,7 @@
 			 (null (type-value (cdr bd)))
 			 (expr? (expr (cdr bd))))
 		    (break "const")))
-	       ((or formal-theory-decl mod-decl module)
+	       ((or formal-theory-decl module theory-reference)
 		(or (and (actual? (cdr bd))
 			 (null (type-value (cdr bd)))
 			 (name-expr? (expr (cdr bd))))
@@ -603,7 +608,10 @@
 		     (actuals rhs-thinst)
 		     (mappings rhs-thinst)
 		     bindings)))
-    (assert (eq (id rhs-thname) (id lhs-theory)))
+    (assert (or (eq (id rhs-thname) (id lhs-theory))
+		(and (resolution rhs-thname)
+		     (mod-decl? (declaration rhs-thname))
+		     (eq (id (theory-name (declaration rhs-thname))) (id lhs-theory)))))
     ;;(assert (fully-instantiated? rhs-thname))
     #+pvsdebug (assert (every #'(lambda (d)
 				  (typep (car d) '(or declaration module mapping-lhs)))
@@ -614,23 +622,27 @@
     (acons lhs-theory rhs
 	   (append nbindings bindings))))
 
-(defmethod make-subst-mod-params-map-bindings* ((lhs-decl mod-decl) rhs bindings)
+(defmethod make-subst-mod-params-map-bindings* ((lhs-decl theory-reference) rhs bindings)
   (let* ((thname (if (theory-abbreviation-decl? (declaration (expr rhs)))
 		     (get-theory-alias (expr rhs))
 		     (expr rhs)))
 	 (rdecl (declaration (expr rhs)))
 	 (theory (if (module? rdecl)
 		     rdecl
-		     (get-theory (theory-name lhs-decl))))
+		     (or (get-theory (theory-name lhs-decl))
+			 (module rdecl))))
+	 (extmaps (extended-mappings thname theory lhs-decl))
 	 (pre-bindings (make-subst-mod-params-bindings
 			thname (formals-sans-usings theory)
 			(actuals thname)
 			nil
-			(extended-mappings thname theory lhs-decl)))
+			extmaps))
 	 (inv-mappings
 	  (mapcar #'(lambda (da)
 		      (cons (declaration (expr (cdr da))) (car da)))
-	    (theory-mappings lhs-decl))))
+	    (if (mod-decl? lhs-decl)
+		(theory-mappings lhs-decl)
+		(mappings (theory-name lhs-decl))))))
     #+pvsdebug (assert (every #'(lambda (d)
 				  (typep (car d) '(or declaration module mapping-lhs)))
 			      pre-bindings))
@@ -651,26 +663,26 @@
 
 ;;; The bindings already include the actuals and mappings from modinst
 ;;; Now we want to deal with modinst when it is a theory-reference
-(defun make-subst-mod-params-theoryref-bindings (modinst bindings)
-  ;; (let ((decl (if (resolution modinst)
-  ;; 		  (declaration modinst)
-  ;; 		  (get-theory modinst))))
-  ;;   (assert decl)
-  ;;   (make-subst-mod-params-theoryref-bindings* decl bindings))
-  bindings
-  )
+;; (defun make-subst-mod-params-theoryref-bindings (modinst bindings)
+;;   ;; (let ((decl (if (resolution modinst)
+;;   ;; 		  (declaration modinst)
+;;   ;; 		  (get-theory modinst))))
+;;   ;;   (assert decl)
+;;   ;;   (make-subst-mod-params-theoryref-bindings* decl bindings))
+;;   bindings
+;;   )
 
-(defmethod make-subst-mod-params-theoryref-bindings* ((decl theory-reference) bindings)
-  ;; Theory-reference is a mod-decl or theory-abbreviation-decl
-  (let ((thinst (theory-name decl)))
-    ;;(break "make-subst-mod-params-theoryref-bindings*")
-    bindings))
+;; (defmethod make-subst-mod-params-theoryref-bindings* ((decl theory-reference) bindings)
+;;   ;; Theory-reference is a mod-decl or theory-abbreviation-decl
+;;   (let ((thinst (theory-name decl)))
+;;     ;;(break "make-subst-mod-params-theoryref-bindings*")
+;;     bindings))
     
-(defmethod make-subst-mod-params-theoryref-bindings* ((decl module) bindings)
-  bindings)
+;; (defmethod make-subst-mod-params-theoryref-bindings* ((decl module) bindings)
+;;   bindings)
 
-(defmethod make-subst-mod-params-theoryref-bindings* ((decl declaration) bindings)
-  bindings)
+;; (defmethod make-subst-mod-params-theoryref-bindings* ((decl declaration) bindings)
+;;   bindings)
 
 ;;; End of make-subst-mod-params-bindings functions
 
@@ -734,12 +746,14 @@
   (assert (typep (print-type obj) '(or null type-name expr-as-type type-application)))
   (if (and (print-type obj)
 	   (or (null (print-type nobj))
+	       (mappings modinst)
 	       (free-params (print-type nobj))))
       (if (or (mappings modinst)
 	      (free-params (print-type obj)))
       	  (let* ((stype (subst-mod-params* (print-type obj) modinst bindings))
       		 (pte (or (print-type stype) stype)))
-      	    (if (occurs-in nobj pte)
+      	    (if (or (occurs-in nobj pte)
+		    (not (compatible? obj nobj)))
       		(lcopy nobj :print-type nil)
       		(if (eq obj nobj)
       		    (lcopy nobj :print-type pte)
@@ -873,14 +887,20 @@
 
 (defmethod subst-mod-params* ((imp importing) modinst bindings)
   (with-slots (theory-name) imp
-    (lcopy imp
-      :theory-name (subst-mod-params* theory-name modinst bindings))))
+    (assert (resolution theory-name))
+    (unless (assq (declaration theory-name) bindings)
+      (lcopy imp
+	:theory-name (subst-mod-params* theory-name modinst bindings)))))
 
 (defmethod subst-mod-params* ((decl theory-abbreviation-decl) modinst bindings)
   (with-slots (theory-name) decl
-    (lcopy decl
-      :theory-name (subst-mod-params* theory-name modinst bindings)
-      :generated-by decl)))
+    (let* ((th-rhs (cdr (assq decl bindings)))
+	   (thname (if th-rhs
+		       (expr th-rhs)
+		       (subst-mod-params* theory-name modinst bindings))))
+      (lcopy decl
+	:theory-name thname
+	:generated-by decl))))
 
 (defmethod subst-mod-params* ((mn modname) modinst bindings)
   (with-slots (id actuals dactuals mappings) mn
@@ -1054,7 +1074,7 @@
 	       decl))
 	    ((let ((map (assoc decl bindings :key #'declaration)))
 	       (and map
-		    (multiple-value-bind (dfmls dacts)
+		    (multiple-value-bind (dfmls dacts dthinst)
 			(new-decl-formals decl)
 		      (let ((ndecl (copy decl
 				     :decl-formals dfmls
@@ -1065,25 +1085,34 @@
 			  (setf (associated-decl dfml) ndecl
 				(module dfml) (current-theory)))
 			(with-current-decl ndecl
-			  (let* ((nmodinst (copy modinst :dactuals dacts))
+			  (let* ((mexpr (expr (cdr map)))
+				 (mdecl (when (name-expr? mexpr) (declaration mexpr)))
+				 (mthinst (when (name-expr? mexpr) (module-instance mexpr)))
+				 (nmodinst (copy modinst :dactuals dacts))
+				 (mdef (when (and mdecl (definition mdecl))
+					 (subst-mod-params (definition mdecl)
+					     (or dthinst mthinst)
+					   *subst-mod-params-theory* mdecl)))
 				 (nformals (subst-mod-params formals nmodinst
 					     *subst-mod-params-theory* decl))
-				 (nexpr (subst-mod-params (expr (cdr map))
-					    nmodinst *subst-mod-params-theory* (car map)))
+				 (ndef (subst-mod-params (or mdef mexpr)
+					   nmodinst *subst-mod-params-theory* (car map)))
 				 (ntype (subst-mod-params type nmodinst
 					  *subst-mod-params-theory* decl)))
 			    ;;(assert (fully-instantiated? nformals))
 			    ;;(assert (fully-instantiated? nexpr))
 			    ;;(assert (fully-instantiated? ntype))
+			    (assert (or (null ndef)
+					(every #'(lambda (fp) (memq fp dfmls)) (free-params ndef))))
 			    (setf (formals ndecl) nformals)
 			    (setf (definition ndecl)
 				  (if nformals
 				      (make-applications
-				       nexpr
+				       ndef
 				       (mapcar #'(lambda (fms)
 						   (mapcar #'mk-name-expr fms))
 					 nformals))
-				      nexpr))
+				      ndef))
 			    (setf (type ndecl) ntype)
 			    (setf (declared-type ndecl)
 				  (subst-mod-params* declared-type modinst bindings))
@@ -1134,7 +1163,7 @@
       :generated-by decl)))
 
 (defmethod subst-mod-params* ((decl tcc-decl) modinst bindings)
-  (declare (ignore bindings))
+  (declare (ignore modinst bindings))
   nil)
 
 (defmethod subst-mod-params* ((decl formula-decl) modinst bindings)
@@ -1262,66 +1291,71 @@
 	  ((and *subst-mod-params-module?*
 	  	(eq (module decl) *subst-mod-params-module?*))
 	   type)
-	  (t (or (mapped-theory-value (module decl) type modinst bindings)
-		 (let* ((mi (module-instance res))
-			(nacts (cond ((actuals mi)
-				      (subst-mod-params*
-				       (actuals mi) modinst bindings))
-				     ((eq (id mi) (id modinst))
-				      (actuals modinst))))
-			(ndacts (cond ((dactuals mi)
-				       (subst-mod-params*
-					(dactuals mi) modinst bindings))
-				      ((eq decl *subst-mod-params-declaration*)
-				       (dactuals modinst))))
-			(pt (subst-mod-params* (print-type type) modinst bindings)))
-		   #+pvsdebug (assert (not (and nacts
-						(eq (id mi) (id modinst)))))
-		   #+pvsdebug (assert (fully-instantiated? nacts))
-		   #+pvsdebug
-		   (assert (or (mappings modinst)
-			       (not (fully-instantiated? modinst))
-			       (and (every #'(lambda (fp) (not (assq fp bindings)))
-					   (free-params nacts))
-				    (every #'(lambda (fp) (not (assq fp bindings)))
-					   (free-params ndacts)))))
-		   (if (or nacts ndacts)
-		       (if (and (eq (actuals mi) nacts)
-				(eq (dactuals mi) ndacts))
-			   (lcopy type :print-type pt)
-			   ;; If modinst has a library, but mi does not, we
-			   ;; may have to add a library to mi.  If (module
-			   ;; decl) is a library theory, definitely need it,
-			   ;; but how do we know it is the same library?
-			   (let* ((lib
-				   (when (and (library-datatype-or-theory?
-					       (module decl))
-					      (not (library-datatype-or-theory?
-						    (current-theory))))
-				     (car (rassoc (lib-ref (module decl))
-						  (current-library-alist)
-						  :test #'equal))))
-				  (nmi (copy mi :actuals nacts
-					     :dactuals ndacts
-					     :library lib)))
-			     #+pvsdebug
-			     (assert (or lib
-					 (not (library-datatype-or-theory?
-					       (module decl)))
-					 (from-prelude-library? decl)
-					 (library-datatype-or-theory?
-					  (current-theory))
-					 (file-equal (lib-ref (module decl))
-						     *pvs-context-path*)))
-			     (subst-mod-params-type-name type nmi bindings modinst)))
-		       (if (eq (id mi) (id modinst))
-			   ;; mi is useless after this
-			   (subst-mod-params-type-name type modinst bindings modinst)
+	  (t (let* ((mi (module-instance res))
+		    (nacts (cond ((actuals mi)
+				  (subst-mod-params*
+				   (actuals mi) modinst bindings))
+				 ((eq (id mi) (id modinst))
+				  (actuals modinst))))
+		    (ndacts (cond ((dactuals mi)
+				   (subst-mod-params*
+				    (dactuals mi) modinst bindings))
+				  ((eq decl *subst-mod-params-declaration*)
+				   (dactuals modinst))))
+		    (pt (subst-mod-params* (print-type type) modinst bindings)))
+	       #+pvsdebug (assert (not (and nacts
+					    (eq (id mi) (id modinst)))))
+	       #+pvsdebug (assert (fully-instantiated? nacts))
+	       #+pvsdebug
+	       (assert (or (mappings modinst)
+			   (not (fully-instantiated? modinst))
+			   (and (every #'(lambda (fp) (not (assq fp bindings)))
+				       (free-params nacts))
+				(every #'(lambda (fp) (not (assq fp bindings)))
+				       (free-params ndacts)))))
+	       (if (or nacts ndacts)
+		   (if (and (eq (actuals mi) nacts)
+			    (eq (dactuals mi) ndacts))
+		       (lcopy type :print-type pt)
+		       ;; If modinst has a library, but mi does not, we
+		       ;; may have to add a library to mi.  If (module
+		       ;; decl) is a library theory, definitely need it,
+		       ;; but how do we know it is the same library?
+		       (let* ((lib
+			       (when (and (library-datatype-or-theory?
+					   (module decl))
+					  (not (library-datatype-or-theory?
+						(current-theory))))
+				 (car (rassoc (lib-ref (module decl))
+					      (current-library-alist)
+					      :test #'equal))))
+			      (nmi (copy mi :actuals nacts
+					 :dactuals ndacts
+					 :library lib)))
+			 #+pvsdebug
+			 (assert (or lib
+				     (not (library-datatype-or-theory?
+					   (module decl)))
+				     (from-prelude-library? decl)
+				     (library-datatype-or-theory?
+				      (current-theory))
+				     (file-equal (lib-ref (module decl))
+						 *pvs-context-path*)))
+			 (subst-mod-params-type-name type nmi bindings modinst)))
+		   (if (eq (id mi) (id modinst))
+		       ;; mi is useless after this
+		       (subst-mod-params-type-name type modinst bindings modinst)
+		       (if (possibly-mapped-theory? (module decl) bindings)
+			   (let ((tname (copy-untyped type)))
+			     ;; Not sure about this.  Works for Cesar 2018-06-05
+			     (typecheck tname))
 			   (lcopy type :print-type pt)))))))))
 
-(defmethod mapped-theory-value ((th module) type modinst bindings)
-  (declare (ignore type modinst bindings))
-  nil)
+(defun possibly-mapped-theory? (th bindings)
+  (some #'(lambda (bdg)
+	    (and (theory-reference? (car bdg))
+		 (eq th (declaration (theory-name (car bdg))))))
+	bindings))
 
 ;;; In the simple case,  copies the type with the new module
 ;;; instance in the newly created resolution
@@ -1796,7 +1830,18 @@
 (defmethod subst-mod-params* ((expr tuple-expr) modinst bindings)
   (let ((nexprs (subst-mod-params* (exprs expr) modinst bindings))
 	(ntype (subst-mod-params* (type expr) modinst bindings)))
-    (lcopy expr :exprs nexprs :type ntype)))
+    (if (and (equal nexprs (exprs expr))
+	     (eq ntype (type expr)))
+	expr
+	;; Mappings may affect the nexprs, without changing the type
+	;; Need to recognize this case, and not do the mapping
+	;; bugs/835 maps number to complex, and 0 to (0, 0),
+	;; But then "x > 0" maps to "x > (0, 0)",
+	;; (if (or t (every #'(lambda (a ty) (compatible? (type a) ty))
+	;; 		 nexprs (types (find-supertype ntype))))
+	;;     (lcopy expr :exprs nexprs :type ntype)
+	;;     expr)
+	(lcopy expr :exprs nexprs :type ntype))))
 
 (defmethod subst-mod-params* ((expr cases-expr) modinst bindings)
   (if (some #'(lambda (sel) (assq (declaration (constructor sel))
@@ -2101,8 +2146,13 @@
 				(strong-tc-eq nacts acts)
 				(strong-tc-eq ndacts dacts)
 				(not (memq (id mi) '(|equalities| |notequal|)))
-				(not (library-datatype-or-theory?
-				      (module decl))))
+				(not (library-datatype-or-theory? (module decl))))
+			       ;; If mappings are present, the resolution may be
+			       ;; mapped inconsistently with the declaration type
+			       ;; bugs/835 shows this, mapping "i /= 0" to "i /= (0, 0)"
+			       ;;(and (mappings modinst)
+				;;    ;; Note that compatible? allows for formals matching actuals
+				;;    (not (compatible? type ntype))))
 			   (progn #+pvsdebug
 				  (assert (or (mappings modinst)
 					      (subsetp (free-params res)

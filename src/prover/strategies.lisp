@@ -3952,7 +3952,7 @@ in the given fnums."
 				      (skip))))
 			    (flatten))
 		      (then (flatten) (replace* :hide? nil)
-			    (grind :defs nil :if-match nil)))))
+			    (grind :defs nil :if-match nil :hide? nil)))))
 	 (skip)
 	 (decompose-equality))
 	(skip-msg "Couldn't find a suitable equation")))

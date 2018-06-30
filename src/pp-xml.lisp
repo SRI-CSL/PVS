@@ -1769,3 +1769,26 @@
 	       (and (consp (current-input ps))
 		    (eq (car (current-input ps)) 'lisp))
 	     (current-input ps)))))
+
+;;; Parsing XML
+
+#+allegro
+(defun parse-xml (file)
+  (with-open-file (fxml file)
+    (let ((lxml (net.xml.parser:parse-xml fxml :content-only t)))
+      (remove-empty-strings lxml))))
+
+(defun empty-string? (str)
+  (and (stringp str)
+       (every #'(lambda (c) (member c '(#\Space #\Tab #\Newline #\Return))) str)))
+
+(defun remove-empty-strings (lxml)
+  (cond ((null lxml) nil)
+	((consp lxml)
+	 (mapcan #'(lambda (elt)
+		     (unless (empty-string? elt)
+		       (list (remove-empty-strings elt))))
+	   lxml))
+	((symbolp lxml)
+	 (intern (string lxml) :pvs))
+	(t lxml)))
