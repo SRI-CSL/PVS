@@ -27,7 +27,6 @@
 
 (in-package :common-lisp)
 
-#+sbcl
 (require :asdf)
 
 (#-(or cmu sbcl excl) progn
@@ -94,18 +93,9 @@
 #+sbcl ;; Needed in order to use quicklisp
 (require 'sb-bsd-sockets)
 
-(unless (find-package :asdf)
-  (require :asdf))
-
 (assert (find-package :asdf))
-#+allegro
-(asdf:initialize-source-registry (format nil "~a/src/cl-json/" *pvs-path*))
-    
-#-allegro
-(load (format nil "~a/src/cl-json/cl-json.asd" *pvs-path*))
 
-(in-package :asdf)  
-(load-system :cl-json)
+(asdf:load-system :cl-json)
 
 (in-package :cl-user)
 
@@ -289,8 +279,9 @@
 		  (load optfile))
 		(pvs::remove-typecheck-caches)
 		(assert (every #'fboundp pvs::*untypecheck-hook*))
+		(asdf:clear-configuration)
 		(setq *pvs-build-time* (get-universal-time))
-		(setq *pvs-git-describe* (pvs::pvs-dist-file-name))
+		(setq *pvs-git-describe* (pvs::pvs-git-description))
 		)
   :components
   ((:module ground-prover
