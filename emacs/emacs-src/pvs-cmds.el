@@ -344,17 +344,18 @@ trivial TCCs."
 	(let ((pvs-file (buffer-file-name))
 	      (buf (get-buffer (format "%s.tccs" theory))))
 	  (when buf
-	    (let ((mtime (get-theory-modtime theory)))
-	      (save-excursion
-		(message "")
-		(set-buffer buf)
-		(set (make-local-variable 'pvs-context-sensitive) t)
-		(set (make-local-variable 'from-pvs-file) pvs-file)
-		(set (make-local-variable 'from-pvs-theory) theory)
-		(set (make-local-variable 'pvs-theory-modtime) mtime)
-		(set-tcc-buttons)
-		(pvs-view-mode)
-		(use-local-map pvs-show-formulas-map))))))
+	    (save-excursion
+	      (let ((mtime (get-theory-modtime theory)))
+		(with-current-buffer buf
+		  (message "")
+		  (set (make-local-variable 'pvs-context-sensitive) t)
+		  (set (make-local-variable 'from-pvs-file) pvs-file)
+		  (set (make-local-variable 'from-pvs-theory) theory)
+		  (set (make-local-variable 'pvs-theory-modtime) mtime)
+		  (set-tcc-buttons)
+		  (pvs-view-mode)
+		  (use-local-map pvs-show-formulas-map))))
+	    (switch-to-buffer-other-window buf))))
 
 (define-button-type 'tcc-cause-button
     'action 'pvs-mouse-goto-tcc-cause
@@ -1508,14 +1509,7 @@ underlying Lisp in the minibuffer."
 (defun get-pvs-version-information ()
   (or *pvs-version-information*
       (let ((vlist (pvs-send-and-wait
-		    "(list *pvs-version*
-                           (get-patch-version)
-                           (when (fboundp 'get-patch-test-version)
-                             (get-patch-test-version))
-                           (when (fboundp 'get-patch-exp-version)
-                             (get-patch-exp-version))
-                           (lisp-implementation-type)
-                           (lisp-implementation-version))"
+		    "(get-pvs-version-information)"
 		    nil nil 'list)))
 	(if (consp vlist)
 	    (setq *pvs-version-information* vlist)
