@@ -42,7 +42,35 @@
 (defun no-free-params? (obj)
   (null (free-params obj)))
 
+(defmethod formal-not-in-context? ((act actual))
+  (formal-not-in-context? (actual-value act)))
+
+(defmethod formal-not-in-context? ((ex name))
+  nil)
+
+(defmethod formal-not-in-context? ((decl formal-decl))
+  (assert (current-theory))
+  (not (memq decl (formals-sans-usings (current-theory)))))
+
+(defmethod formal-not-in-context? ((decl decl-formal))
+  (assert (current-declaration))
+  (not (memq decl (decl-formals (current-declaration)))))
+
+(defmethod formal-not-in-context? ((decl declaration))
+  nil)
+
+(defmethod formal-not-in-context? ((ex expr))
+  nil)
+
+(defun formals-not-in-context (obj)
+  (remove-if-not #'formal-not-in-context? (free-params obj)))
+
 (defun fully-instantiated? (obj)
+  (when *decl-bound-parameters*
+    (break "Check *decl-bound-parameters*"))
+  (not (some #'formal-not-in-context? (free-params obj))))
+
+(defun old-fully-instantiated? (obj)
   (let ((frees (free-params obj)))
     (declare (type list frees))
     (or (null frees)
