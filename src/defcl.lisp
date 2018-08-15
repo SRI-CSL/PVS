@@ -28,9 +28,13 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
-(in-package :pvs)
+(cl:eval-when (:execute :compile-toplevel :load-toplevel)
+  (cl:unless (cl:find-package :pvs)
+    (cl:defpackage :pvs
+      (:use :cl)
+      (:export :copy :defcl :lcopy :memq :write-deferred-methods-to-file))))
 
-(export '(defcl copy write-deferred-methods))
+(in-package :pvs)
 
 #+(or cmu sbcl)
 (defmethod slot-exists-p-using-class (c o s)
@@ -42,6 +46,10 @@
   (defmacro ignore-errors (&body forms)
     `(progn ,@forms)))
 
+(eval-when (:execute :compile-toplevel :load-toplevel)
+  (unless (fboundp 'memq)
+    (defun memq (elt list)
+      (member elt list :test #'eq))))
 
 (defvar *slot-info* nil
   "An association list mapping classes to superclasses, immediate
@@ -79,8 +87,9 @@ unignored slots, saved-slots, and unsaved-slots.")
 				   :initarg (car a))
 			   (unless (memq :initform a)
 			     (list :initform nil))))
-	       args))
-    (declare-make-instance ,name)
+	 args))
+    (when (fboundp 'declare-make-instance)
+      (declare-make-instance ,name))
     (proclaim '(inline ,(intern (format nil "~a?" name) :pvs)))
     (defun ,(intern (format nil "~a?" name) :pvs) (obj)
       (typep obj ',name))
@@ -327,14 +336,14 @@ unignored slots, saved-slots, and unsaved-slots.")
 ;(defmethod eequal (obj1 obj2)
 ;  (equal obj1 obj2))
 
-(eval-when (:execute :compile-toplevel :load-toplevel)
-  (unless (fboundp 'memq)
-    (defun memq (elt list)
-      (member elt list :test #'eq))))
-
 (defun file-older (file1 file2)
   (let ((time1 (file-write-date file1))
 	(time2 (file-write-date file2)))
     (or (null time1)
 	(null time2)
 	(<= time1 time2))))
+
+;; Same as describe, but returns the object, rather than nil
+(defun show (obj)
+  (describe obj)
+  obj)
