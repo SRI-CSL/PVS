@@ -34,7 +34,8 @@
 (export '(argument* copy-all copy-context current-declarations-hash
 	  current-theory current-theory-name current-using-hash file-older
 	  find-supertype get-theory lf make-new-context mapappend operator*
-	  put-decl pvs-current-directory resolution show assq tc-term formals))
+	  put-decl pvs-current-directory resolution show assq tc-term formals
+	  pvs-git-description))
 
 (declaim (notinline current-theory))
 
@@ -318,11 +319,6 @@
   (lf "pvs-sorts")
   (lf "pvs-parse-fixes")
   (lf "ergo-runtime-fixes"))
-
-;; Same as describe, but returns the object, rather than nil
-(defun show (obj)
-  (describe obj)
-  obj)
 
 (defun special-variable-p (obj)
   (and (symbolp obj)
@@ -4748,11 +4744,21 @@ space")
 	(list (namestring file) (get-file-git-sha1 path))
 	(list (namestring file) ""))))
 
-(defun pvs-dist-file-name ()
-  (uiop:run-program
-      (format nil "git -C ~a describe" *pvs-path*)
-    :input "//dev//null"
-    :output '(:string :stripped t)))
+(defun pvs-git-description ()
+  "E.g., pvs7.0-647-g8c1572bb"
+  (values
+   (uiop:run-program
+       (format nil "git -C ~a describe" *pvs-path*)
+     :input "//dev//null"
+     :output '(:string :stripped t))))
+
+(defun pvs-git-count-since ()
+  "Returns the number of commits since the pvs-version number tag"
+  (values
+   (uiop:run-program
+       (format nil "git -C ~a rev-list ~a..HEAD --count" *pvs-path* *pvs-version*)
+     :input "//dev//null"
+     :output '(:string :stripped t))))
 
 (defun git-current-commit ()
   (if (file-exists-p (format nil "~a/.git" *pvs-path*))
