@@ -33,63 +33,56 @@
 
 ;;; resolve
 (defun argument-conversion (name arguments)
-  (let ((*found-one* nil)
-	(reses (remove-if-not #'(lambda (r)
+  (let ((reses (remove-if-not #'(lambda (r)
 				  (typep (find-supertype (type r)) 'funtype))
 		 (resolve name 'expr nil))))
-    (declare (special *found-one*))
     (when (let ((*ignored-conversions*
 		 (cons "K_conversion" *ignored-conversions*)))
 	    (argument-conversions (mapcar #'type reses) arguments))
       (resolve name 'expr arguments))))
 
 (defun argument-k-conversion (name arguments)
-  (let ((*found-one* nil)
-	(reses (remove-if-not #'(lambda (r)
+  (let ((reses (remove-if-not #'(lambda (r)
 				  (typep (find-supertype (type r)) 'funtype))
 		 (resolve name 'expr nil))))
-    (declare (special *found-one*))
     (unless (member "K_conversion" *ignored-conversions* :test #'string=)
       (let ((*only-use-conversions* (list "K_conversion")))
 	(when (argument-conversions (mapcar #'type reses) arguments)
 	  (resolve name 'expr arguments))))))
 
-(defun argument-conversions (optypes arguments)
-  (declare (special *found-one*))
+;; Returns t if some arg in arguments had a conversion added
+(defun argument-conversions (optypes arguments &optional conv-added?)
   (if optypes
       (let* ((rtype (find-supertype (car optypes)))
 	     (dtypes (when (typep rtype 'funtype)
 		       (domain-types rtype)))
-	     (dtypes-list (all-possible-instantiations dtypes arguments)))
-	(when (length= arguments dtypes)
-	  (argument-conversions* arguments dtypes-list))
-	(argument-conversions (cdr optypes) arguments))
-      *found-one*))
+	     (dtypes-list (all-possible-instantiations dtypes arguments))
+	     (aconversions (when (length= arguments dtypes)
+			     (argument-conversions* arguments dtypes-list))))
+	(argument-conversions (cdr optypes) arguments
+			      (or conv-added? (not (null aconversions)))))
+      conv-added?))
 
-(defun argument-conversions* (arguments dtypes-list &optional aconversions)
-  (declare (special *found-one*))
+;; Returns t if some arg in arguments had a conversion added
+(defun argument-conversions* (arguments dtypes-list &optional conv-added?)
   (if (null dtypes-list)
-      aconversions
+      conv-added?
       (let ((conversions (argument-conversions1 arguments (car dtypes-list)))
-	    (found-one nil))
+	    (aconv-added? nil))
 	(when conversions
 	  (mapc #'(lambda (arg convs)
 		    (when convs
-		      (setq found-one t)
-		      (setq *found-one* t)
-		      (setf (types arg)
-			    (remove-duplicates
-				(append (types arg)
-					(mapcar #'(lambda (c)
-						    (get-conversion-range-type
-						     c arg))
-					  convs))
-			      :test #'tc-eq :from-end t))))
+		      (let ((actypes
+			     (mapcar #'(lambda (c)
+					 (get-conversion-range-type c arg))
+			       convs)))
+			(unless (subsetp actypes (types arg) :test #'tc-eq)
+			  (setf (types arg)
+				(remove-duplicates (append (types arg) actypes)
+				  :test #'tc-eq :from-end t))
+			  (setq aconv-added? t)))))
 		arguments conversions))
-	(argument-conversions* arguments (cdr dtypes-list)
-			       (if found-one
-				   (cons conversions aconversions)
-				   aconversions)))))
+	(argument-conversions* arguments (cdr dtypes-list) (or conv-added? aconv-added?)))))
 
 (defun argument-conversions1 (arguments dtypes &optional result)
   (if (null arguments)
@@ -315,7 +308,7 @@
        (append (get-k-conversions (car atypes)) result))))
 
 (defun simple-function-conversion (name arguments)
-  (let ((reses (resolve name 'expr nil))
+  (let ((reses (resolve name 'expr nil)) ; resolve ignoring arguments
 	(creses nil))
     (mapc #'(lambda (r)
 	      (dolist (conv (get-resolution-conversions r arguments))
@@ -422,9 +415,7 @@
 (defun find-application-conversion (expr)
   (let* ((op (operator expr))
 	 (arg (argument expr))
-	 (args (arguments expr))
-	 (*found-one* nil))
-    (declare (special *found-one*))
+	 (args (arguments expr)))
     (if (or (argument-conversions (types op) args)
 	    (argument-conversions (types op) (list arg)))
 	(set-possible-argument-types op (argument expr))
@@ -465,9 +456,12 @@
     (nreverse conversions)))
 
 (defun compatible-operator-conversion (conversion optype args)
+  ;; The conversion is declared in a particular theory, but the expr may have
+  ;; formals from various theories.
   (let* ((theory (module conversion))
 	 (ctype (find-supertype (type (expr conversion))))
 	 (fmls (formals-sans-usings theory)))
+    ;; The conversion expression may have free parameters not in fmls
     (and (typep ctype 'funtype)
 	 (typep (find-supertype (range ctype)) 'funtype)
 	 (if (and (remove-if #'(lambda (fp)
@@ -1390,6 +1384,57 @@
 			 (ptypes ex))
 	       conversion)))))
 
+(defun compatible-tupletype-conversion* (types conversion ex index)
+  (when types
+    (let* ((theory (module conversion))
+	   (lib (when (library-datatype-or-theory? theory) (lib-ref theory)))
+	   (ctype (find-supertype (type (expr conversion))))
+	   (fmls (formals-sans-usings theory))
+	   (dfmls (decl-formals conversion))
+	   (fbds (mapcar #'list fmls))
+	   (dbds (mapcar #'list dfmls))
+	   (bindings (tc-match (car types) (domain ctype) (append fbds dbds))))
+      (if (and bindings (every #'cdr bindings))
+	  (let* ((acts (mapcar #'(lambda (bdg)
+				   (mk-res-actual (cdr bdg) theory))
+			 fbds))
+		 (dacts (mapcar #'(lambda (bdg)
+				   (mk-res-actual (cdr bdg) theory))
+			  dbds))
+		 (nmi (mk-modname (id theory) acts lib nil dacts))
+		 (cdecl (when (with-no-type-errors
+				  (and (check-compatible-params fmls acts nil)
+				       (check-compatible-params dfmls dacts nil)))
+			  (subst-params-decl conversion nmi theory))))
+	    (if cdecl
+		(make-instance 'conversion-result
+		  :expr (expr cdecl)
+		  :conversion cdecl)
+		(compatible-tupletype-conversion*
+		 (cdr types) conversion ex index)))
+	  (compatible-tupletype-conversion*
+	   (cdr types) conversion ex index)))))
+
+(defun compatible-recordtype-conversion (conversion ex field-id)
+  (let* ((theory (module conversion))
+	 (ctype (find-supertype (type (expr conversion))))
+	 (fmls (formals-sans-usings theory)))
+    (and (typep ctype 'funtype)
+	 (typep (find-supertype (range ctype)) 'recordtype)
+	 (member field-id (fields (find-supertype (range ctype))) :key #'id)
+	 (if (and fmls
+		  (not (eq theory (current-theory)))
+		  (remove-if #'(lambda (fp)
+				 (memq fp (formals-sans-usings
+					   (current-theory))))
+		    (free-params conversion)))
+	     (compatible-recordtype-conversion*
+	      (ptypes ex) conversion ex field-id)
+	     (when (some #'(lambda (atype)
+			     (compatible? atype (domain ctype)))
+			 (ptypes ex))
+	       conversion)))))
+
 (defun compatible-recordtype-conversion* (types conversion ex index)
   (when types
     (let* ((theory (module conversion))
@@ -1444,45 +1489,6 @@
 	  (find-field-application-conversion*
 	   (cdr conversions) ex field-id)))))
 
-(defun compatible-recordtype-conversion (conversion ex field-id)
-  (let* ((theory (module conversion))
-	 (ctype (find-supertype (type (expr conversion))))
-	 (fmls (formals-sans-usings theory)))
-    (and (typep ctype 'funtype)
-	 (typep (find-supertype (range ctype)) 'recordtype)
-	 (member field-id (fields (find-supertype (range ctype))) :key #'id)
-	 (if (and fmls
-		  (not (eq theory (current-theory)))
-		  (remove-if #'(lambda (fp)
-				 (memq fp (formals-sans-usings
-					   (current-theory))))
-		    (free-params conversion)))
-	     (compatible-recordtype-conversion*
-	      (ptypes ex) conversion ex field-id)
-	     (when (some #'(lambda (atype)
-			     (compatible? atype (domain ctype)))
-			 (ptypes ex))
-	       conversion)))))
-
-;; (defun compatible-recordtype-conversion* (types conversion ex field-id)
-;;   (when types
-;;     (let* ((theory (module conversion))
-;; 	   (ctype (find-supertype (type (expr conversion))))
-;; 	   (fmls (formals-sans-usings theory))
-;; 	   (bindings (tc-match (car types) (domain ctype)
-;; 			       (mapcar #'list fmls))))
-;;       (if (and bindings (every #'cdr bindings))
-;; 	  (let* ((acts (mapcar #'(lambda (a)
-;; 				   (mk-res-actual (cdr a) theory))
-;; 			 bindings))
-;; 		 (nmi (mk-modname (id theory) acts)))
-;; 	    (when (with-no-type-errors
-;; 		   (check-compatible-params
-;; 		    (formals-sans-usings theory) acts nil))
-;; 	      (subst-params-decl conversion nmi theory) (car types)))
-;; 	  (compatible-recordtype-conversion*
-;; 	   (cdr types) conversion ex field-id)))))
-
 (defun get-recordtype-conversion-resolutions (name arguments)
   (when (and (null (library name))
 	     (null (mod-id name))
@@ -1534,7 +1540,7 @@
   (assert (update-expr? expr))
   (let* ((conversions (current-conversions))
 	 (assns (assignments expr))
-	 (rfields (fields rtype))
+	 ;;(rfields (fields rtype))
 	 (conv (find-record-update-conversion conversions rtype assns)))
     (if conv
 	(break "Need to finish this")
@@ -1547,9 +1553,10 @@
 	(find-record-update-conversion (cdr convs) rtype assns))))
 
 (defun compatible-record-update-conversion (conv rtype assns)
-  (let* ((theory (module conv))
+  (let* (;;(theory (module conv))
 	 (ctype (find-supertype (type (expr conv))))
-	 (fmls (formals-sans-usings theory)))
+	 ;;(fmls (formals-sans-usings theory))
+	 )
     (and (typep ctype 'funtype)
 	 (compatible? (domain ctype) rtype)
 	 (recordtype? (find-supertype (range ctype)))
@@ -1557,4 +1564,3 @@
 		    (member (caar (arguments nassn))
 			    (fields rtype) :test #'same-id))
 		assns))))
-  
