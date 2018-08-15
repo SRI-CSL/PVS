@@ -195,7 +195,7 @@
     (injective? const-decl "bool" functions nil))
    nil
    (restrict_of_inj_is_inj subtype "restrict.restrict(restrict.f)"
-    "(functions[restrict.S, restrict.R].injective?)"))))
+    "(functions[S, restrict.R].injective?)"))))
 (restrict_props
  (restrict_full 0
   (restrict_full-1 nil 3245191654
@@ -255,7 +255,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (surjective_extend subtype
-    "extend[extend_func_props.T, extend_func_props.S, extend_func_props.R, extend_func_props.d].extend(extend_func_props.f)"
+    "extend[extend_func_props.T, S, extend_func_props.R, extend_func_props.d].extend(extend_func_props.f)"
     "(functions[extend_func_props.T, extend_func_props.R].surjective?)"))))
 (K_conversion)
 (K_props
@@ -390,7 +390,7 @@
    nil
    (reflexive_restrict subtype
     "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
-    "(relations[restrict_order_props.S].reflexive?)")))
+    "(relations[S].reflexive?)")))
  (irreflexive_restrict 0
   (irreflexive_restrict-1 nil 3249347110 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
@@ -405,7 +405,7 @@
    nil
    (irreflexive_restrict subtype
     "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
-    "(relations[restrict_order_props.S].irreflexive?)")))
+    "(relations[S].irreflexive?)")))
  (symmetric_restrict 0
   (symmetric_restrict-1 nil 3249347110
    ("" (skolem-typepred)
@@ -426,7 +426,7 @@
    nil
    (symmetric_restrict subtype
     "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
-    "(relations[restrict_order_props.S].symmetric?)")))
+    "(relations[S].symmetric?)")))
  (antisymmetric_restrict 0
   (antisymmetric_restrict-1 nil 3249347110 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
@@ -441,7 +441,7 @@
    nil
    (antisymmetric_restrict subtype
     "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
-    "(relations[restrict_order_props.S].antisymmetric?)")))
+    "(relations[S].antisymmetric?)")))
  (connected_restrict 0
   (connected_restrict-1 nil 3249347110 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
@@ -457,7 +457,7 @@
    nil
    (connected_restrict subtype
     "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
-    "(relations[restrict_order_props.S].connected?)")))
+    "(relations[S].connected?)")))
  (transitive_restrict 0
   (transitive_restrict-1 nil 3249347110
    ("" (skolem-typepred)
@@ -479,7 +479,7 @@
    nil
    (transitive_restrict subtype
     "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
-    "(relations[restrict_order_props.S].transitive?)")))
+    "(relations[S].transitive?)")))
  (equivalence_restrict 0
   (equivalence_restrict-1 nil 3249347110
    ("" (grind :if-match nil)
@@ -497,7 +497,7 @@
    nil
    (equivalence_restrict subtype
     "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
-    "(relations[restrict_order_props.S].equivalence?)")))
+    "(relations[S].equivalence?)")))
  (preorder_restrict 0
   (preorder_restrict-1 nil 3249347110
    ("" (grind :if-match nil)
@@ -512,7 +512,7 @@
    nil
    (preorder_restrict subtype
     "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
-    "(orders[restrict_order_props.S].preorder?)")))
+    "(orders[S].preorder?)")))
  (partial_order_restrict 0
   (partial_order_restrict-1 nil 3249347110
    ("" (grind :if-match nil)
@@ -528,7 +528,7 @@
    nil
    (partial_order_restrict subtype
     "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
-    "(orders[restrict_order_props.S].partial_order?)")))
+    "(orders[S].partial_order?)")))
  (strict_order_restrict 0
   (strict_order_restrict-1 nil 3249347110
    ("" (grind :if-match nil)
@@ -545,7 +545,7 @@
    nil
    (strict_order_restrict subtype
     "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
-    "(orders[restrict_order_props.S].strict_order?)")))
+    "(orders[S].strict_order?)")))
  (dichotomous_restrict 0
   (dichotomous_restrict-1 nil 3249347110 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
@@ -560,7 +560,7 @@
    nil
    (dichotomous_restrict subtype
     "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
-    "(orders[restrict_order_props.S].dichotomous?)")))
+    "(orders[S].dichotomous?)")))
  (total_order_restrict 0
   (total_order_restrict-1 nil 3249347110
    ("" (grind :if-match nil)
@@ -577,7 +577,7 @@
    nil
    (total_order_restrict subtype
     "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
-    "(orders[restrict_order_props.S].total_order?)")))
+    "(orders[S].total_order?)")))
  (trichotomous_restrict 0
   (trichotomous_restrict-1 nil 3249347110 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
@@ -592,7 +592,7 @@
    nil
    (trichotomous_restrict subtype
     "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
-    "(orders[restrict_order_props.S].trichotomous?)")))
+    "(orders[S].trichotomous?)")))
  (strict_total_order_restrict 0
   (strict_total_order_restrict-1 nil 3249347110
    ("" (grind :if-match nil)
@@ -608,7 +608,7 @@
    nil
    (strict_total_order_restrict subtype
     "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
-    "(orders[restrict_order_props.S].strict_total_order?)")))
+    "(orders[S].strict_total_order?)")))
  (well_founded_restrict 0
   (well_founded_restrict-1 nil 3249347110
    ("" (skolem-typepred)
@@ -656,7 +656,7 @@
    nil
    (well_founded_restrict subtype
     "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
-    "(orders[restrict_order_props.S].well_founded?)")))
+    "(orders[S].well_founded?)")))
  (well_ordered_restrict 0
   (well_ordered_restrict-1 nil 3249347110
    ("" (grind :if-match nil)
@@ -679,7 +679,7 @@
    nil
    (well_ordered_restrict subtype
     "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
-    "(orders[restrict_order_props.S].well_ordered?)"))))
+    "(orders[S].well_ordered?)"))))
 (extend_order_props
  (irreflexive_extend 0
   (irreflexive_extend-1 nil 3249327215
@@ -699,7 +699,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (irreflexive_extend subtype
-    "extend[[extend_order_props.T, extend_order_props.T], [extend_order_props.S, extend_order_props.S], booleans.bool, booleans.FALSE].extend(extend_order_props.R)"
+    "extend[[extend_order_props.T, extend_order_props.T], [S, S], booleans.boolean, booleans.FALSE].extend(extend_order_props.R)"
     "(relations[extend_order_props.T].irreflexive?)")))
  (symmetric_extend 0
   (symmetric_extend-1 nil 3249327215
@@ -721,7 +721,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (symmetric_extend subtype
-    "extend[[extend_order_props.T, extend_order_props.T], [extend_order_props.S, extend_order_props.S], booleans.bool, booleans.FALSE].extend(extend_order_props.R)"
+    "extend[[extend_order_props.T, extend_order_props.T], [S, S], booleans.boolean, booleans.FALSE].extend(extend_order_props.R)"
     "(relations[extend_order_props.T].symmetric?)")))
  (antisymmetric_extend 0
   (antisymmetric_extend-1 nil 3249327215
@@ -743,7 +743,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (antisymmetric_extend subtype
-    "extend[[extend_order_props.T, extend_order_props.T], [extend_order_props.S, extend_order_props.S], booleans.bool, booleans.FALSE].extend(extend_order_props.R)"
+    "extend[[extend_order_props.T, extend_order_props.T], [S, S], booleans.boolean, booleans.FALSE].extend(extend_order_props.R)"
     "(relations[extend_order_props.T].antisymmetric?)")))
  (transitive_extend 0
   (transitive_extend-1 nil 3249327215
@@ -767,7 +767,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (transitive_extend subtype
-    "extend[[extend_order_props.T, extend_order_props.T], [extend_order_props.S, extend_order_props.S], booleans.bool, booleans.FALSE].extend(extend_order_props.R)"
+    "extend[[extend_order_props.T, extend_order_props.T], [S, S], booleans.boolean, booleans.FALSE].extend(extend_order_props.R)"
     "(relations[extend_order_props.T].transitive?)")))
  (strict_order_extend 0
   (strict_order_extend-1 nil 3249327215
@@ -796,7 +796,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (strict_order_extend subtype
-    "extend[[extend_order_props.T, extend_order_props.T], [extend_order_props.S, extend_order_props.S], booleans.bool, booleans.FALSE].extend(extend_order_props.R)"
+    "extend[[extend_order_props.T, extend_order_props.T], [S, S], booleans.boolean, booleans.FALSE].extend(extend_order_props.R)"
     "(orders[extend_order_props.T].strict_order?)"))))
 (wf_induction
  (wf_induction 0
@@ -904,6 +904,7 @@
     (m formal-const-decl "[T -> M]" measure_induction nil))
    nil)))
 (epsilons)
+(decl_params)
 (sets
  (singleton_TCC1 0
   (singleton_TCC1-1 nil 3237052399
@@ -940,6 +941,7 @@
     (member const-decl "bool" sets nil)
     (empty? const-decl "bool" sets nil)
     (epsilon_ax formula-decl nil epsilons nil)
+    (TRUE const-decl "bool" booleans nil)
     (epsilon const-decl "T" epsilons nil)
     (pred type-eq-decl nil defined_types nil)
     (nonempty? const-decl "bool" sets nil)
@@ -983,6 +985,7 @@
     nil)
    ((NOT const-decl "[bool -> bool]" booleans nil)
     (epsilon_ax formula-decl nil epsilons nil)
+    (TRUE const-decl "bool" booleans nil)
     (epsilon const-decl "T" epsilons nil)
     (pred type-eq-decl nil defined_types nil)
     (singleton? const-decl "bool" sets nil)
@@ -1003,7 +1006,50 @@
       nil))
     nil)
    nil nil (the existence "" "[p: (sets.singleton?) -> (p)]")))
+ (the_lem_TCC1 0
+  (the_lem_TCC1-1 nil 3737147868 ("" (existence-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T formal-type-decl nil sets nil) (set type-eq-decl nil sets nil)
+    (singleton? const-decl "bool" sets nil))
+   shostak (the_lem existence "" "sets.T")))
  (the_lem 0
+  (the_lem-2 "" 3737148469
+   ("" (skolem-typepred)
+    (("" (expand "singleton?")
+      (("" (skolem-typepred)
+        (("" (typepred "the(p!1)")
+          (("" (lemma "epsilon_ax[T]")
+            (("1" (inst -1 "p!1")
+              (("1" (split)
+                (("1" (inst-cp -4 "the(p!1)")
+                  (("1" (inst -4 "epsilon(p!1)")
+                    (("1" (assert) nil nil)
+                     ("2" (inst 1 "x!1") nil nil))
+                    nil))
+                  nil)
+                 ("2" (inst 1 "x!1") nil nil))
+                nil))
+              nil)
+             ("2" (inst 1 "x!1") nil nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   ((the const-decl "(p)" sets nil)
+    (pred type-eq-decl nil defined_types nil)
+    (epsilon const-decl "T" epsilons nil)
+    (p!1 skolem-const-decl "(singleton?)" sets nil)
+    (TRUE const-decl "bool" booleans nil)
+    (epsilon_ax formula-decl nil epsilons nil)
+    (singleton? const-decl "bool" sets nil)
+    (set type-eq-decl nil sets nil) (T formal-type-decl nil sets nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil))
+   shostak)
   (the_lem-1 nil 3425282612
    ("" (skolem-typepred)
     (("" (expand "singleton?")
@@ -1026,8 +1072,8 @@
     nil)
    ((the const-decl "(p)" sets nil)
     (pred type-eq-decl nil defined_types nil)
-    (epsilon const-decl "T" epsilons nil)
-    (p!1 skolem-const-decl "(singleton?)" sets nil)
+    (epsilon const-decl "T" epsilons nil) nil
+    (TRUE const-decl "bool" booleans nil)
     (epsilon_ax formula-decl nil epsilons nil)
     (singleton? const-decl "bool" sets nil)
     (set type-eq-decl nil sets nil) (T formal-type-decl nil sets nil)
@@ -1095,6 +1141,53 @@
     (nonempty? const-decl "bool" sets nil))
    shostak))
  (singleton_elt_lem 0
+  (singleton_elt_lem-3 "" 3737148573
+   ("" (skosimp*)
+    (("" (expand "singleton_elt")
+      (("" (expand "singleton?")
+        (("" (skosimp*)
+          (("" (rewrite "the_lem")
+            (("1" (expand "member")
+              (("1" (use "epsilon_ax[T]")
+                (("1" (prop)
+                  (("1" (inst-cp -2 "epsilon(LAMBDA x: a!1(x))")
+                    (("1" (inst -2 "x!1") (("1" (assert) nil nil)) nil)
+                     ("2" (inst 1 "x!1") nil nil))
+                    nil)
+                   ("2" (inst?) nil nil))
+                  nil)
+                 ("2" (inst?) nil nil))
+                nil))
+              nil)
+             ("2" (expand "member")
+              (("2" (expand "singleton?")
+                (("2" (inst 1 "x!2")
+                  (("2" (assert)
+                    (("2" (skosimp*) (("2" (inst -1 "y!1") nil nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   ((singleton_elt const-decl "T" sets nil)
+    (x!1 skolem-const-decl "T" sets nil)
+    (epsilon const-decl "T" epsilons nil)
+    (a!1 skolem-const-decl "set" sets nil)
+    (pred type-eq-decl nil defined_types nil)
+    (epsilon_ax formula-decl nil epsilons nil)
+    (TRUE const-decl "bool" booleans nil)
+    (member const-decl "bool" sets nil) (set type-eq-decl nil sets nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (T formal-type-decl nil sets nil)
+    (the_lem formula-decl nil sets nil)
+    (singleton? const-decl "bool" sets nil))
+   shostak)
   (singleton_elt_lem-2 "" 3425350335
    ("" (skosimp*)
     (("" (expand "singleton_elt")
@@ -1127,12 +1220,11 @@
         nil))
       nil))
     nil)
-   ((singleton_elt const-decl "T" sets nil)
-    (x!1 skolem-const-decl "T" sets nil)
-    (epsilon const-decl "T" epsilons nil)
-    (a!1 skolem-const-decl "set" sets nil)
+   ((singleton_elt const-decl "T" sets nil) nil
+    (epsilon const-decl "T" epsilons nil) nil
     (pred type-eq-decl nil defined_types nil)
     (epsilon_ax formula-decl nil epsilons nil)
+    (TRUE const-decl "bool" booleans nil)
     (member const-decl "bool" sets nil) (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -1175,6 +1267,55 @@
     (nonempty? const-decl "bool" sets nil))
    shostak (singleton_elt_def subtype "sets.a" "(sets.nonempty?)")))
  (singleton_elt_def 0
+  (singleton_elt_def-3 "" 3737148743
+   ("" (skosimp*)
+    (("" (expand "singleton_elt")
+      (("" (expand "singleton?")
+        (("" (rewrite "the_lem")
+          (("1" (expand "member")
+            (("1" (skosimp*)
+              (("1" (use "epsilon_ax[T]")
+                (("1" (prop)
+                  (("1" (inst-cp -2 "epsilon(LAMBDA x: a!1(x))")
+                    (("1" (inst -2 "choose(a!1)")
+                      (("1" (assert) nil nil)) nil)
+                     ("2" (inst 1 "x!1") nil nil))
+                    nil)
+                   ("2" (assert)
+                    (("2" (inst 1 "x!1") (("2" (assert) nil nil)) nil))
+                    nil))
+                  nil)
+                 ("2" (inst 1 "x!1") nil nil))
+                nil))
+              nil))
+            nil)
+           ("2" (expand "member")
+            (("2" (expand "singleton?")
+              (("2" (skosimp*)
+                (("2" (inst 1 "x!1")
+                  (("2" (skosimp*) (("2" (inst?) nil nil)) nil)) nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   ((singleton_elt const-decl "T" sets nil)
+    (the_lem formula-decl nil sets nil)
+    (T formal-type-decl nil sets nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (set type-eq-decl nil sets nil) (member const-decl "bool" sets nil)
+    (choose const-decl "(p)" sets nil)
+    (nonempty? const-decl "bool" sets nil)
+    (epsilon const-decl "T" epsilons nil)
+    (a!1 skolem-const-decl "set" sets nil)
+    (pred type-eq-decl nil defined_types nil)
+    (epsilon_ax formula-decl nil epsilons nil)
+    (TRUE const-decl "bool" booleans nil)
+    (singleton? const-decl "bool" sets nil))
+   shostak)
   (singleton_elt_def-2 "" 3425350533
    ("" (skosimp*)
     (("" (expand "singleton_elt")
@@ -1213,10 +1354,10 @@
     (set type-eq-decl nil sets nil) (member const-decl "bool" sets nil)
     (choose const-decl "(p)" sets nil)
     (nonempty? const-decl "bool" sets nil)
-    (epsilon const-decl "T" epsilons nil)
-    (a!1 skolem-const-decl "set" sets nil)
+    (epsilon const-decl "T" epsilons nil) nil
     (pred type-eq-decl nil defined_types nil)
     (epsilon_ax formula-decl nil epsilons nil)
+    (TRUE const-decl "bool" booleans nil)
     (singleton? const-decl "bool" sets nil))
    shostak)
   (singleton_elt_def-1 nil 3412877903
@@ -1271,6 +1412,36 @@
     (boolean nonempty-type-decl nil booleans nil))
    shostak))
  (singleton_rew 0
+  (singleton_rew-3 "" 3737176775
+   ("" (skosimp*)
+    (("" (expand "singleton")
+      (("" (expand "singleton_elt")
+        (("" (rewrite "the_lem")
+          (("1" (expand "member")
+            (("1" (use "epsilon_ax[T]")
+              (("1" (prop) (("1" (inst 1 "x!1") nil nil)) nil)
+               ("2" (inst?) nil nil))
+              nil))
+            nil)
+           ("2" (grind) nil nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   ((singleton const-decl "(singleton?)" sets nil)
+    (the_lem formula-decl nil sets nil)
+    (T formal-type-decl nil sets nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (set type-eq-decl nil sets nil)
+    (singleton? const-decl "bool" sets nil)
+    (member const-decl "bool" sets nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (TRUE const-decl "bool" booleans nil)
+    (epsilon_ax formula-decl nil epsilons nil)
+    (pred type-eq-decl nil defined_types nil)
+    (singleton_elt const-decl "T" sets nil))
+   shostak)
   (singleton_rew-2 "" 3425350586
    ("" (skosimp*)
     (("" (expand "singleton")
@@ -1294,6 +1465,7 @@
     (singleton? const-decl "bool" sets nil)
     (member const-decl "bool" sets nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
+    (TRUE const-decl "bool" booleans nil)
     (epsilon_ax formula-decl nil epsilons nil)
     (pred type-eq-decl nil defined_types nil)
     (singleton_elt const-decl "T" sets nil))
@@ -1600,7 +1772,7 @@
     (member const-decl "bool" sets nil))
    nil
    (subset_is_partial_order subtype "sets[sets_lemmas.T].subset?"
-    "(orders[sets[sets_lemmas.T].set].partial_order?)")))
+    "(orders[set[T]].partial_order?)")))
  (strict_subset_irreflexive 0
   (strict_subset_irreflexive-1 nil 3253512777 ("" (grind) nil nil)
    ((member const-decl "bool" sets nil)
@@ -1654,7 +1826,7 @@
    nil
    (strict_subset_is_strict_order subtype
     "sets[sets_lemmas.T].strict_subset?"
-    "(orders[sets[sets_lemmas.T].set].strict_order?)")))
+    "(orders[set[T]].strict_order?)")))
  (union_idempotent 0
   (union_idempotent-1 nil 3237052399
    ("" (skosimp)
@@ -2886,7 +3058,7 @@
    shostak
    (nonempty_powerset subtype
     "sets[sets_lemmas.T].powerset(sets_lemmas.a)"
-    "(sets[sets[sets_lemmas.T].set].nonempty?)")))
+    "(sets[set[T]].nonempty?)")))
  (powerset_union 0
   (powerset_union-1 nil 3253513413
    ("" (grind) (("" (apply-extensionality) (("" (grind) nil nil)) nil))
@@ -3014,7 +3186,7 @@
     (surjective? const-decl "bool" functions nil))
    nil
    (Union_surjective subtype "sets[sets_lemmas.T].Union"
-    "(functions[sets[sets_lemmas.T].setofsets, sets[sets_lemmas.T].set].surjective?)")))
+    "(functions[setofsets[T], set[T]].surjective?)")))
  (Union_emptyset_rew 0
   (Union_emptyset_rew-1 nil 3397715037
    ("" (apply-extensionality :hide? t) (("" (grind) nil nil)) nil)
@@ -3212,7 +3384,7 @@
     (surjective? const-decl "bool" functions nil))
    nil
    (Intersection_surjective subtype "sets[sets_lemmas.T].Intersection"
-    "(functions[sets[sets_lemmas.T].setofsets, sets[sets_lemmas.T].set].surjective?)")))
+    "(functions[setofsets[T], set[T]].surjective?)")))
  (Intersection_intersection_rew 0
   (Intersection_intersection_rew-1 nil 3397617277
    ("" (skosimp)
@@ -3345,12 +3517,12 @@
     (T formal-type-decl nil sets_lemmas nil)
     (member const-decl "bool" sets nil)
     (intersection const-decl "set" sets nil)
-    (Intersection const-decl "set" sets nil)
     (a!1 skolem-const-decl "(rest(A!1))" sets_lemmas nil)
     (remove const-decl "set" sets nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
     (A!1 skolem-const-decl "setofsets[T]" sets_lemmas nil)
     (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (Intersection const-decl "set" sets nil)
     (Intersection_surjective name-judgement
      "(surjective?[setofsets[T], set[T]])" sets_lemmas nil)
     (OR const-decl "[bool, bool -> bool]" booleans nil)
@@ -3495,7 +3667,7 @@
     (injective? const-decl "bool" functions nil))
    nil
    (Complement_bijective subtype "sets_lemmas.Complement"
-    "(functions[sets[sets_lemmas.T].setofsets, sets[sets_lemmas.T].setofsets].bijective?)")))
+    "(functions[setofsets[T], setofsets[T]].bijective?)")))
  (Demorgan1 0
   (Demorgan1-1 nil 3253515330
    ("" (skolem!)
@@ -6509,9 +6681,9 @@
       (("" (inst?) (("" (assert) nil nil)) nil)) nil))
     nil)
    ((posreal_mult_closed formula-decl nil real_axioms nil)
-    (nnreal_times_nnreal_is_nnreal application-judgement "nnreal"
-     real_types nil)
     (nzreal_times_nzreal_is_nzreal application-judgement "nzreal"
+     real_types nil)
+    (nnreal_times_nnreal_is_nnreal application-judgement "nnreal"
      real_types nil)
     (posreal nonempty-type-eq-decl nil real_types nil)
     (> const-decl "bool" reals nil)
@@ -6572,9 +6744,9 @@
       nil))
     nil)
    ((posreal_mult_closed formula-decl nil real_axioms nil)
-    (npreal_times_npreal_is_nnreal application-judgement "nnreal"
-     real_types nil)
     (nzreal_times_nzreal_is_nzreal application-judgement "nzreal"
+     real_types nil)
+    (npreal_times_npreal_is_nnreal application-judgement "nnreal"
      real_types nil)
     (negreal nonempty-type-eq-decl nil real_types nil)
     (< const-decl "bool" reals nil)
@@ -6702,9 +6874,9 @@
     (rational_pred const-decl "[real -> boolean]" rationals nil)
     (rational nonempty-type-from-decl nil rationals nil)
     (nonneg_rat nonempty-type-eq-decl nil rationals nil)
+    (rat_times_rat_is_rat application-judgement "rat" rationals nil)
     (nnreal_times_nnreal_is_nnreal application-judgement "nnreal"
-     real_types nil)
-    (rat_times_rat_is_rat application-judgement "rat" rationals nil))
+     real_types nil))
    nil
    (nnrat_times_nnrat_is_nnrat subtype
     "number_fields.*(rationals.nnx, rationals.nny)" "nonneg_rat")))
@@ -6726,9 +6898,9 @@
     (nonneg_rat nonempty-type-eq-decl nil rationals nil)
     (> const-decl "bool" reals nil)
     (posrat nonempty-type-eq-decl nil rationals nil)
+    (rat_div_nzrat_is_rat application-judgement "rat" rationals nil)
     (nnreal_div_posreal_is_nnreal application-judgement "nnreal"
-     real_types nil)
-    (rat_div_nzrat_is_rat application-judgement "rat" rationals nil))
+     real_types nil))
    nil
    (nnrat_div_posrat_is_nnrat subtype
     "number_fields./(rationals.nnx, rationals.py)" "nonneg_rat")))
@@ -6752,9 +6924,9 @@
     (nonpos_rat nonempty-type-eq-decl nil rationals nil)
     (< const-decl "bool" reals nil)
     (negrat nonempty-type-eq-decl nil rationals nil)
+    (rat_div_nzrat_is_rat application-judgement "rat" rationals nil)
     (nnreal_div_negreal_is_npreal application-judgement "npreal"
-     real_types nil)
-    (rat_div_nzrat_is_rat application-judgement "rat" rationals nil))
+     real_types nil))
    nil
    (nnrrat_div_negrat_is_nprat subtype
     "number_fields./(rationals.nnx, rationals.ny)" "nprat")))
@@ -6779,9 +6951,9 @@
     (rational_pred const-decl "[real -> boolean]" rationals nil)
     (rational nonempty-type-from-decl nil rationals nil)
     (nonpos_rat nonempty-type-eq-decl nil rationals nil)
+    (rat_times_rat_is_rat application-judgement "rat" rationals nil)
     (npreal_times_npreal_is_nnreal application-judgement "nnreal"
-     real_types nil)
-    (rat_times_rat_is_rat application-judgement "rat" rationals nil))
+     real_types nil))
    nil
    (nprat_times_nprat_is_nnrat subtype
     "number_fields.*(rationals.npx, rationals.npy)" "nnrat")))
@@ -6805,9 +6977,9 @@
     (nonneg_rat nonempty-type-eq-decl nil rationals nil)
     (> const-decl "bool" reals nil)
     (posrat nonempty-type-eq-decl nil rationals nil)
+    (rat_div_nzrat_is_rat application-judgement "rat" rationals nil)
     (npreal_div_posreal_is_npreal application-judgement "npreal"
-     real_types nil)
-    (rat_div_nzrat_is_rat application-judgement "rat" rationals nil))
+     real_types nil))
    nil
    (nprat_div_posrat_is_nprat subtype
     "number_fields./(rationals.npx, rationals.py)" "nprat")))
@@ -6829,9 +7001,9 @@
     (nonpos_rat nonempty-type-eq-decl nil rationals nil)
     (< const-decl "bool" reals nil)
     (negrat nonempty-type-eq-decl nil rationals nil)
+    (rat_div_nzrat_is_rat application-judgement "rat" rationals nil)
     (npreal_div_negreal_is_nnreal application-judgement "nnreal"
-     real_types nil)
-    (rat_div_nzrat_is_rat application-judgement "rat" rationals nil))
+     real_types nil))
    nil
    (nprat_div_negrat_is_nnrat subtype
     "number_fields./(rationals.npx, rationals.ny)" "nnrat")))
@@ -6865,10 +7037,10 @@
     (posrat nonempty-type-eq-decl nil rationals nil)
     (nzrat_times_nzrat_is_nzrat application-judgement "nzrat" rationals
      nil)
-    (posreal_times_posreal_is_posreal application-judgement "posreal"
-     real_types nil)
     (nnrat_times_nnrat_is_nnrat application-judgement "nonneg_rat"
-     rationals nil))
+     rationals nil)
+    (posreal_times_posreal_is_posreal application-judgement "posreal"
+     real_types nil))
    nil
    (posrat_times_posrat_is_posrat subtype
     "number_fields.*(rationals.px, rationals.py)" "posrat")))
@@ -6892,10 +7064,10 @@
     (posrat nonempty-type-eq-decl nil rationals nil)
     (nzrat_div_nzrat_is_nzrat application-judgement "nzrat" rationals
      nil)
-    (posreal_div_posreal_is_posreal application-judgement "posreal"
-     real_types nil)
     (nnrat_div_posrat_is_nnrat application-judgement "nonneg_rat"
-     rationals nil))
+     rationals nil)
+    (posreal_div_posreal_is_posreal application-judgement "posreal"
+     real_types nil))
    nil
    (posrat_div_posrat_is_posrat subtype
     "number_fields./(rationals.px, rationals.py)" "posrat")))
@@ -6924,10 +7096,10 @@
     (negrat nonempty-type-eq-decl nil rationals nil)
     (nzrat_times_nzrat_is_nzrat application-judgement "nzrat" rationals
      nil)
-    (negreal_times_negreal_is_posreal application-judgement "posreal"
-     real_types nil)
     (nprat_times_nprat_is_nnrat application-judgement "nnrat" rationals
-     nil))
+     nil)
+    (negreal_times_negreal_is_posreal application-judgement "posreal"
+     real_types nil))
    nil
    (negrat_times_negrat_is_posrat subtype
     "number_fields.*(rationals.nx, rationals.ny)" "posrat")))
@@ -6951,10 +7123,10 @@
     (negrat nonempty-type-eq-decl nil rationals nil)
     (nzrat_div_nzrat_is_nzrat application-judgement "nzrat" rationals
      nil)
-    (negreal_div_negreal_is_posreal application-judgement "posreal"
-     real_types nil)
     (nprat_div_negrat_is_nnrat application-judgement "nnrat" rationals
-     nil))
+     nil)
+    (negreal_div_negreal_is_posreal application-judgement "posreal"
+     real_types nil))
    nil
    (negrat_div_negrat_is_posrat subtype
     "number_fields./(rationals.nx, rationals.ny)" "posrat"))))
@@ -7043,9 +7215,9 @@
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (int nonempty-type-eq-decl nil integers nil)
     (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (nnrat_times_nnrat_is_nnrat application-judgement "nonneg_rat"
-     rationals nil)
-    (int_times_int_is_int application-judgement "int" integers nil))
+     rationals nil))
    nil
    (nnint_times_nnint_is_nnint subtype
     "number_fields.*(integers.nni, integers.nnj)" "nonneg_int")))
@@ -7072,9 +7244,9 @@
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (int nonempty-type-eq-decl nil integers nil)
     (nonpos_int nonempty-type-eq-decl nil integers nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (nprat_times_nprat_is_nnrat application-judgement "nnrat" rationals
-     nil)
-    (int_times_int_is_int application-judgement "int" integers nil))
+     nil))
    nil
    (npint_times_npint_is_nnint subtype
     "number_fields.*(integers.npi, integers.npj)" "nonneg_int")))
@@ -7110,10 +7282,10 @@
     (posint nonempty-type-eq-decl nil integers nil)
     (nzint_times_nzint_is_nzint application-judgement "nzint" integers
      nil)
-    (posrat_times_posrat_is_posrat application-judgement "posrat"
-     rationals nil)
     (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
-     integers nil))
+     integers nil)
+    (posrat_times_posrat_is_posrat application-judgement "posrat"
+     rationals nil))
    nil
    (posint_times_posint_is_posint subtype
     "number_fields.*(integers.pi, integers.pj)" "posint")))
@@ -7144,10 +7316,10 @@
     (negint nonempty-type-eq-decl nil integers nil)
     (nzint_times_nzint_is_nzint application-judgement "nzint" integers
      nil)
-    (negrat_times_negrat_is_posrat application-judgement "posrat"
-     rationals nil)
     (npint_times_npint_is_nnint application-judgement "nonneg_int"
-     integers nil))
+     integers nil)
+    (negrat_times_negrat_is_posrat application-judgement "posrat"
+     rationals nil))
    nil
    (negint_times_negint_is_posint subtype
     "number_fields.*(integers.ni, integers.nj)" "posint")))
@@ -8079,7 +8251,7 @@
     (number nonempty-type-decl nil numbers nil))
    nil
    (min existence ""
-        "[S: (sets[min_nat.T].nonempty?) -> {a | booleans.AND(S(min_nat.a), FORALL x: booleans.IMPLIES(S(min_nat.x), reals.<=(min_nat.a, min_nat.x)))}]")))
+        "[S: (sets[T].nonempty?) -> {a | booleans.AND(S(min_nat.a), FORALL x: booleans.IMPLIES(S(min_nat.x), reals.<=(min_nat.a, min_nat.x)))}]")))
  (min_def 0
   (min_def-1 nil 3237052399
    ("" (skolem!)
@@ -10776,9 +10948,9 @@
    ((= const-decl "[T, T -> boolean]" equalities nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (nnreal_div_negreal_is_npreal application-judgement "npreal"
-     real_types nil)
     (nzreal_div_nzreal_is_nzreal application-judgement "nzreal"
+     real_types nil)
+    (nnreal_div_negreal_is_npreal application-judgement "npreal"
      real_types nil)
     (div_def formula-decl nil number_fields nil)
     (/ const-decl "[numfield, nznum -> numfield]" number_fields nil)
@@ -10828,9 +11000,9 @@
    ((= const-decl "[T, T -> boolean]" equalities nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (nnreal_div_negreal_is_npreal application-judgement "npreal"
-     real_types nil)
     (nzreal_div_nzreal_is_nzreal application-judgement "nzreal"
+     real_types nil)
+    (nnreal_div_negreal_is_npreal application-judgement "npreal"
      real_types nil)
     (div_def formula-decl nil number_fields nil)
     (/ const-decl "[numfield, nznum -> numfield]" number_fields nil)
@@ -11778,9 +11950,9 @@
       (("" (inst -1 "nz!1" "py!1" "px!1") (("" (grind) nil nil)) nil))
       nil))
     nil)
-   ((nzreal_div_nzreal_is_nzreal application-judgement "nzreal"
+   ((npreal_div_posreal_is_npreal application-judgement "npreal"
      real_types nil)
-    (npreal_div_posreal_is_npreal application-judgement "npreal"
+    (nzreal_div_nzreal_is_nzreal application-judgement "nzreal"
      real_types nil)
     (posreal nonempty-type-eq-decl nil real_types nil)
     (> const-decl "bool" reals nil)
@@ -11829,9 +12001,9 @@
       (("" (inst -1 "ny!1" "nx!1" "pz!1") (("" (grind) nil nil)) nil))
       nil))
     nil)
-   ((nzreal_div_nzreal_is_nzreal application-judgement "nzreal"
+   ((nnreal_div_negreal_is_npreal application-judgement "npreal"
      real_types nil)
-    (nnreal_div_negreal_is_npreal application-judgement "npreal"
+    (nzreal_div_nzreal_is_nzreal application-judgement "nzreal"
      real_types nil)
     (posreal nonempty-type-eq-decl nil real_types nil)
     (> const-decl "bool" reals nil)
@@ -12614,9 +12786,9 @@
       (("" (inst -1 "nz!1" "py!1" "px!1") (("" (grind) nil nil)) nil))
       nil))
     nil)
-   ((nzreal_div_nzreal_is_nzreal application-judgement "nzreal"
+   ((npreal_div_posreal_is_npreal application-judgement "npreal"
      real_types nil)
-    (npreal_div_posreal_is_npreal application-judgement "npreal"
+    (nzreal_div_nzreal_is_nzreal application-judgement "nzreal"
      real_types nil)
     (posreal nonempty-type-eq-decl nil real_types nil)
     (> const-decl "bool" reals nil)
@@ -12665,9 +12837,9 @@
       (("" (inst -1 "ny!1" "nx!1" "pz!1") (("" (grind) nil nil)) nil))
       nil))
     nil)
-   ((nzreal_div_nzreal_is_nzreal application-judgement "nzreal"
+   ((nnreal_div_negreal_is_npreal application-judgement "npreal"
      real_types nil)
-    (nnreal_div_negreal_is_npreal application-judgement "npreal"
+    (nzreal_div_nzreal_is_nzreal application-judgement "nzreal"
      real_types nil)
     (posreal nonempty-type-eq-decl nil real_types nil)
     (> const-decl "bool" reals nil)
@@ -13199,9 +13371,9 @@
     (= const-decl "[T, T -> boolean]" equalities nil)
     (nonzero_real nonempty-type-eq-decl nil reals nil)
     (div_times formula-decl nil real_props nil)
-    (odd_times_odd_is_odd application-judgement "odd_int" integers nil)
     (posint_times_posint_is_posint application-judgement "posint"
      integers nil)
+    (odd_times_odd_is_odd application-judgement "odd_int" integers nil)
     (nzreal_times_nzreal_is_nzreal application-judgement "nzreal"
      real_types nil)
     (eq1_ge formula-decl nil real_props nil)
@@ -13664,7 +13836,7 @@
     (strict_total_order? const-decl "bool" orders nil))
    shostak
    (real_lt_is_strict_total_order subtype "reals.<"
-    "(orders[reals.real].strict_total_order?)")))
+    "(orders[real].strict_total_order?)")))
  (real_le_is_total_order 0
   (real_le_is_total_order-1 nil 3252221044 ("" (grind) nil nil)
    ((real nonempty-type-from-decl nil reals nil)
@@ -13685,7 +13857,7 @@
     (total_order? const-decl "bool" orders nil))
    shostak
    (real_le_is_total_order subtype "reals.<="
-    "(orders[reals.real].total_order?)")))
+    "(orders[real].total_order?)")))
  (real_gt_is_strict_total_order 0
   (real_gt_is_strict_total_order-1 nil 3252221044 ("" (grind) nil nil)
    ((real nonempty-type-from-decl nil reals nil)
@@ -13704,7 +13876,7 @@
     (strict_total_order? const-decl "bool" orders nil))
    shostak
    (real_gt_is_strict_total_order subtype "reals.>"
-    "(orders[reals.real].strict_total_order?)")))
+    "(orders[real].strict_total_order?)")))
  (real_ge_is_total_order 0
   (real_ge_is_total_order-1 nil 3252221044 ("" (grind) nil nil)
    ((real nonempty-type-from-decl nil reals nil)
@@ -13725,7 +13897,7 @@
     (total_order? const-decl "bool" orders nil))
    shostak
    (real_ge_is_total_order subtype "reals.>="
-    "(orders[reals.real].total_order?)"))))
+    "(orders[real].total_order?)"))))
 (extra_real_props
  (pos_neg_split 0
   (pos_neg_split-1 nil 3505061062
@@ -15755,8 +15927,8 @@
     (nonempty? const-decl "bool" sets nil))
    nil
    (lub_nat subtype
-    "extend[reals.real, naturalnumbers.nat, booleans.bool, booleans.FALSE].extend(integer_props.N)"
-    "(sets[reals.real].nonempty?)")))
+    "extend[real, nat, booleans.boolean, booleans.FALSE].extend(integer_props.N)"
+    "(sets[real].nonempty?)")))
  (lub_nat 0
   (lub_nat-2 "" 3299954571
    ("" (induct "m")
@@ -15920,9 +16092,9 @@
     (real_plus_real_is_real application-judgement "real" reals nil)
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
-    (s!2 skolem-const-decl "(extend[real, nat, bool, FALSE](N!1))"
+    (s!2 skolem-const-decl "(extend[real, nat, boolean, FALSE](N!1))"
      integer_props nil)
-    (s!1 skolem-const-decl "(extend[real, nat, bool, FALSE](N!1))"
+    (s!1 skolem-const-decl "(extend[real, nat, boolean, FALSE](N!1))"
      integer_props nil)
     (N!1 skolem-const-decl "(nonempty?[nat])" integer_props nil)
     (AND const-decl "[bool, bool -> bool]" booleans nil)
@@ -16125,8 +16297,8 @@
     (nonempty? const-decl "bool" sets nil))
    nil
    (lub_int subtype
-    "extend[reals.real, integers.int, booleans.bool, booleans.FALSE].extend(integer_props.I)"
-    "(sets[reals.real].nonempty?)")))
+    "extend[real, int, booleans.boolean, booleans.FALSE].extend(integer_props.I)"
+    "(sets[real].nonempty?)")))
  (lub_int 0
   (lub_int-1 nil 3237052399
    ("" (skosimp*)
@@ -16322,13 +16494,13 @@
     (int_plus_int_is_int judgement-tcc nil integers nil)
     (rat_plus_rat_is_rat judgement-tcc nil rationals nil)
     (s!1 skolem-const-decl
-     "(extend[real, nat, bool, FALSE]({n | I!1(n + x!1)}))"
+     "(extend[real, nat, boolean, FALSE]({n | I!1(n + x!1)}))"
      integer_props nil)
     (real_plus_real_is_real application-judgement "real" reals nil)
     (real_minus_real_is_real application-judgement "real" reals nil)
     (FALSE const-decl "bool" booleans nil)
     (extend const-decl "R" extend nil)
-    (s!1 skolem-const-decl "(extend[real, int, bool, FALSE](I!1))"
+    (s!1 skolem-const-decl "(extend[real, int, boolean, FALSE](I!1))"
      integer_props nil)
     (rat nonempty-type-eq-decl nil rationals nil)
     (rat_minus_rat_is_rat judgement-tcc nil rationals nil)
@@ -16439,13 +16611,13 @@
     (least_upper_bound? const-decl "bool" bounded_real_defs nil)
     (IF const-decl "[boolean, T, T -> T]" if_def nil)
     (AND const-decl "[bool, bool -> bool]" booleans nil)
-    (s!1 skolem-const-decl "(extend[real, nat, bool, FALSE](N!1))"
+    (s!1 skolem-const-decl "(extend[real, nat, boolean, FALSE](N!1))"
      integer_props nil)
     (minus_rat_is_rat judgement-tcc nil rationals nil)
     (rat nonempty-type-eq-decl nil rationals nil)
     (minus_int_is_int judgement-tcc nil integers nil)
-    (s!1 skolem-const-decl "(extend[real, int, bool, FALSE]
-     (extend[int, nonpos_int, bool, FALSE]({i: nonpos_int | N!1(-i)})))"
+    (s!1 skolem-const-decl "(extend[real, int, boolean, FALSE]
+     (extend[int, nonpos_int, boolean, FALSE]({i: nonpos_int | N!1(-i)})))"
      integer_props nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
@@ -16590,7 +16762,7 @@
     (AND const-decl "[bool, bool -> bool]" booleans nil)
     (FALSE const-decl "bool" booleans nil)
     (extend const-decl "R" extend nil)
-    (s!1 skolem-const-decl "(extend[real, int, bool, FALSE](I!1))"
+    (s!1 skolem-const-decl "(extend[real, int, boolean, FALSE](I!1))"
      integer_props nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
@@ -16599,11 +16771,11 @@
     (minus_rat_is_rat judgement-tcc nil rationals nil)
     (rat nonempty-type-eq-decl nil rationals nil)
     (s!1 skolem-const-decl
-     "(extend[real, int, bool, FALSE]({i: int | I!1(-i)}))"
+     "(extend[real, int, boolean, FALSE]({i: int | I!1(-i)}))"
      integer_props nil)
     (TRUE const-decl "bool" booleans nil)
     (s!1 skolem-const-decl
-     "(extend[real, int, bool, FALSE]({i: int | I!1(-i)}))"
+     "(extend[real, int, boolean, FALSE]({i: int | I!1(-i)}))"
      integer_props nil)
     (number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -17675,18 +17847,18 @@
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil)
     (floor_div formula-decl nil floor_ceil nil)
-    (even_plus_odd_is_odd application-judgement "odd_int" integers nil)
     (nnint_plus_posint_is_posint application-judgement "posint"
      integers nil)
-    (odd_times_odd_is_odd application-judgement "odd_int" integers nil)
+    (even_plus_odd_is_odd application-judgement "odd_int" integers nil)
     (posint_times_posint_is_posint application-judgement "posint"
      integers nil)
+    (odd_times_odd_is_odd application-judgement "odd_int" integers nil)
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
-    (int_times_even_is_even application-judgement "even_int" integers
-     nil)
     (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
+    (int_times_even_is_even application-judgement "even_int" integers
+     nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (real_div_nzreal_is_real application-judgement "real" reals nil))
@@ -18056,8 +18228,8 @@
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
-    (nnrat_expt application-judgement "nnrat" exponentiation nil)
-    (int_expt application-judgement "int" exponentiation nil))
+    (int_expt application-judgement "int" exponentiation nil)
+    (nnrat_expt application-judgement "nnrat" exponentiation nil))
    nil
    (nat_expt subtype
     "exponentiation.expt(exponentiation.x, exponentiation.n)" "nat")))
@@ -18085,8 +18257,8 @@
      real_props nil)
     (real_gt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
-    (posrat_expt application-judgement "posrat" exponentiation nil)
-    (nat_expt application-judgement "nat" exponentiation nil))
+    (nat_expt application-judgement "nat" exponentiation nil)
+    (posrat_expt application-judgement "posrat" exponentiation nil))
    nil
    (posnat_expt subtype
     "exponentiation.expt(exponentiation.x, exponentiation.n)"
@@ -18298,10 +18470,10 @@
     (minus_int_is_int application-judgement "int" integers nil)
     (nzrat_div_nzrat_is_nzrat application-judgement "nzrat" rationals
      nil)
-    (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
-     integers nil)
     (even_times_int_is_even application-judgement "even_int" integers
      nil)
+    (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
+     integers nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
     (quotient_pos_gt formula-decl nil real_props nil)
     (nzreal_div_nzreal_is_nzreal application-judgement "nzreal"
@@ -18644,12 +18816,12 @@
       nil))
     nil)
    ((posreal_expt application-judgement "posreal" exponentiation nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
     (posreal_div_posreal_is_posreal application-judgement "posreal"
      real_types nil)
     (div_mult_pos_gt2 formula-decl nil extra_real_props nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
-    (posint_plus_nnint_is_posint application-judgement "posint"
-     integers nil)
     (odd_plus_even_is_odd application-judgement "odd_int" integers nil)
     (both_sides_times_pos_gt1 formula-decl nil real_props nil)
     (real_gt_is_strict_total_order name-judgement
@@ -18775,13 +18947,13 @@
         nil))
       nil))
     nil)
-   ((posreal_expt application-judgement "posreal" exponentiation nil)
+   ((posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (posreal_expt application-judgement "posreal" exponentiation nil)
     (real_gt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (div_mult_pos_gt1 formula-decl nil extra_real_props nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
-    (posint_plus_nnint_is_posint application-judgement "posint"
-     integers nil)
     (odd_plus_even_is_odd application-judgement "odd_int" integers nil)
     (div_mult_pos_lt2 formula-decl nil real_props nil)
     (real_lt_is_strict_total_order name-judgement
@@ -20547,9 +20719,9 @@
       nil))
     nil)
    ((div_times formula-decl nil real_props nil)
+    (odd_times_odd_is_odd application-judgement "odd_int" integers nil)
     (posint_times_posint_is_posint application-judgement "posint"
      integers nil)
-    (odd_times_odd_is_odd application-judgement "odd_int" integers nil)
     (posreal_mult_closed formula-decl nil real_axioms nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
@@ -20579,6 +20751,9 @@
     (posreal_times_posreal_is_posreal application-judgement "posreal"
      real_types nil)
     (nat_induction formula-decl nil naturalnumbers nil)
+    (nzreal_div_nzreal_is_nzreal application-judgement "nzreal"
+     real_types nil)
+    (nzreal_expt application-judgement "nzreal" exponentiation nil)
     (expt def-decl "real" exponentiation nil)
     (/ const-decl "[numfield, nznum -> numfield]" number_fields nil)
     (nznum nonempty-type-eq-decl nil number_fields nil)
@@ -20606,9 +20781,6 @@
      nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil)
-    (nzreal_expt application-judgement "nzreal" exponentiation nil)
-    (nzreal_div_nzreal_is_nzreal application-judgement "nzreal"
-     real_types nil)
     (posreal_expt application-judgement "posreal" exponentiation nil))
    nil))
  (expt_x0_TCC1 0
@@ -20745,9 +20917,9 @@
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (expt def-decl "real" exponentiation nil)
+    (even_plus_odd_is_odd application-judgement "odd_int" integers nil)
     (nnint_plus_posint_is_posint application-judgement "posint"
      integers nil)
-    (even_plus_odd_is_odd application-judgement "odd_int" integers nil)
     (real_gt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (posnat nonempty-type-eq-decl nil integers nil)
@@ -23592,7 +23764,7 @@
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (posrat_exp application-judgement "posrat" exponentiation nil)
-    (posrat_plus_nnrat_is_posrat application-judgement "posrat"
+    (nnrat_plus_posrat_is_posrat application-judgement "posrat"
      rationals nil)
     (int_plus_int_is_int application-judgement "int" integers nil)
     (expt_x1 formula-decl nil exponentiation nil)
@@ -23768,7 +23940,7 @@
     (j!1 skolem-const-decl "({i | b!1 ^ i <= py!1})" exponentiation
      nil)
     (s!1 skolem-const-decl
-     "(extend[real, int, bool, FALSE]({i | b!1 ^ i <= py!1}))"
+     "(extend[real, int, boolean, FALSE]({i | b!1 ^ i <= py!1}))"
      exponentiation nil)
     (minus_odd_is_odd application-judgement "odd_int" integers nil)
     (py!1 skolem-const-decl "posreal" exponentiation nil)
@@ -23790,7 +23962,7 @@
     (nnrat_exp application-judgement "nnrat" exponentiation nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (s!1 skolem-const-decl
-     "(extend[real, int, bool, FALSE]({i | b!1 ^ i <= py!1}))"
+     "(extend[real, int, boolean, FALSE]({i | b!1 ^ i <= py!1}))"
      exponentiation nil)
     (AND const-decl "[bool, bool -> bool]" booleans nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
@@ -23909,14 +24081,14 @@
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (nat_induction formula-decl nil naturalnumbers nil)
-    (int_times_even_is_even application-judgement "even_int" integers
-     nil)
     (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
-    (even_plus_even_is_even application-judgement "even_int" integers
+    (int_times_even_is_even application-judgement "even_int" integers
      nil)
     (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
+    (even_plus_even_is_even application-judgement "even_int" integers
+     nil)
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
@@ -24178,7 +24350,7 @@
     nil)
    ((divides const-decl "bool" divides nil)
     (divides const-decl "bool" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (int nonempty-type-eq-decl nil integers nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (rational nonempty-type-from-decl nil rationals nil)
@@ -24204,8 +24376,7 @@
       nil))
     nil)
    ((divides const-decl "bool" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (int nonempty-type-eq-decl nil integers nil)
@@ -24244,8 +24415,7 @@
     (int nonempty-type-eq-decl nil integers nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (divides_opposite 0
   (divides_opposite-1 nil 3237052399
@@ -24261,8 +24431,7 @@
         nil))
       nil))
     nil)
-   ((mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+   ((int_times_int_is_int application-judgement "int" integers nil)
     (- const-decl "[numfield -> numfield]" number_fields nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (int nonempty-type-eq-decl nil integers nil)
@@ -24293,8 +24462,7 @@
     nil)
    ((minus_int_is_int application-judgement "int" integers nil)
     (divides const-decl "bool" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (- const-decl "[numfield -> numfield]" number_fields nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (int nonempty-type-eq-decl nil integers nil)
@@ -24318,8 +24486,7 @@
       nil))
     nil)
    ((divides const-decl "bool" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number_field_pred const-decl "[number -> boolean]" number_fields
@@ -24344,8 +24511,7 @@
       nil))
     nil)
    ((divides const-decl "bool" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number_field_pred const-decl "[number -> boolean]" number_fields
@@ -24373,8 +24539,7 @@
         nil))
       nil))
     nil)
-   ((mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
+   ((int_times_int_is_int application-judgement "int" integers nil)
     (divides const-decl "bool" divides nil)
     (int nonempty-type-eq-decl nil integers nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
@@ -24397,8 +24562,7 @@
       nil))
     nil)
    ((divides_prod_elim1 formula-decl nil divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (nzint nonempty-type-eq-decl nil integers nil)
     (/= const-decl "boolean" notequal nil)
     (int nonempty-type-eq-decl nil integers nil)
@@ -24420,8 +24584,7 @@
       (("" (inst 1 "1") (("" (assert) nil nil)) nil)) nil))
     nil)
    ((divides const-decl "bool" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (int nonempty-type-eq-decl nil integers nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (rational nonempty-type-from-decl nil rationals nil)
@@ -24443,8 +24606,7 @@
       nil))
     nil)
    ((divides const-decl "bool" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number_field_pred const-decl "[number -> boolean]" number_fields
@@ -24531,8 +24693,7 @@
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (- const-decl "[numfield -> numfield]" number_fields nil)
     (minus_int_is_int application-judgement "int" integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (minus_odd_is_odd application-judgement "odd_int" integers nil)
@@ -24604,8 +24765,7 @@
     (nonzero_real nonempty-type-eq-decl nil reals nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
@@ -24658,8 +24818,7 @@
     (rational nonempty-type-from-decl nil rationals nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (int nonempty-type-eq-decl nil integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (divides const-decl "bool" divides nil))
    nil))
  (divides_zero 0
@@ -24677,10 +24836,8 @@
     (rational nonempty-type-from-decl nil rationals nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (int nonempty-type-eq-decl nil integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
     (int_times_even_is_even application-judgement "even_int" integers
      nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
     (divides const-decl "bool" divides nil))
    nil))
  (zero_div_zero 0
@@ -24698,10 +24855,8 @@
     (rational nonempty-type-from-decl nil rationals nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (int nonempty-type-eq-decl nil integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
     (even_times_int_is_even application-judgement "even_int" integers
      nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
     (divides const-decl "bool" divides nil))
    nil))
  (divisors_of_one 0
@@ -24730,8 +24885,7 @@
     (minus_odd_is_odd application-judgement "odd_int" integers nil)
     (one_divides formula-decl nil divides nil)
     (opposite_divides formula-decl nil divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (product_one formula-decl nil divides nil)
     (divides const-decl "bool" divides nil))
    nil))
@@ -24797,8 +24951,7 @@
      integers nil)
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (divides const-decl "bool" divides nil))
@@ -24851,8 +25004,7 @@
     (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (int_plus_int_is_int application-judgement "int" integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (divides const-decl "bool" divides nil))
    shostak))
@@ -24942,8 +25094,7 @@
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil)
     (int_plus_int_is_int application-judgement "int" integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    shostak
    (nrem existence ""
     "[d: [int, posnat] -> {r: euclidean_division.mod(d`2) | EXISTS q: d`1 = (number_fields.+)(r, number_fields.*(d`2, modulo_arithmetic.q))}]")))
@@ -25000,8 +25151,7 @@
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil)
     (int_plus_int_is_int application-judgement "int" integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil
    (rem existence ""
         "[b: posnat -> [x: int -> {r: euclidean_division.mod(b) | EXISTS q: x = (number_fields.+)(r, number_fields.*(b, modulo_arithmetic.q))}]]")))
@@ -25052,8 +25202,7 @@
     (NOT const-decl "[bool -> bool]" booleans nil)
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (rem_def2 0
   (rem_def2-1 nil 3237052399
@@ -25092,8 +25241,7 @@
     (int_plus_int_is_int application-judgement "int" integers nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
     (divides const-decl "bool" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (rem_def3 0
   (rem_def3-1 nil 3237052399
@@ -25127,11 +25275,10 @@
     (mod nonempty-type-eq-decl nil euclidean_division nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
     (minus_int_is_int application-judgement "int" integers nil)
-    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (numfield nonempty-type-eq-decl nil number_fields nil)
     (divides_opposite formula-decl nil divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (rem_nrem0 0
   (rem_nrem0-1 nil 3728617532
@@ -25187,8 +25334,7 @@
      nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    shostak))
  (rem_nrem 0
   (rem_nrem-1 nil 3728764938
@@ -25199,15 +25345,13 @@
       nil))
     nil)
    ((rem_nrem0 formula-decl nil modulo_arithmetic nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    shostak))
  (rem_mod 0
   (rem_mod-1 nil 3237052399
    ("" (auto-rewrite "divides_zero")
     (("" (skolem!) (("" (rewrite "rem_def2") nil nil)) nil)) nil)
-   ((mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+   ((int_times_int_is_int application-judgement "int" integers nil)
     (mod nonempty-type-eq-decl nil euclidean_division nil)
     (< const-decl "bool" reals nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
@@ -25262,26 +25406,23 @@
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (AND const-decl "[bool, bool -> bool]" booleans nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (rem_zero 0
   (rem_zero-1 nil 3237052399
    ("" (auto-rewrite "divides_zero" "rem_def2")
     (("" (skolem!) (("" (assert) nil nil)) nil)) nil)
-   ((mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
+   ((int_times_int_is_int application-judgement "int" integers nil)
+    (divides_zero formula-decl nil divides nil)
     (rem_def2 formula-decl nil modulo_arithmetic nil)
-    (divides_zero formula-decl nil divides nil))
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
    nil))
  (rem_self 0
   (rem_self-1 nil 3237052399
    ("" (auto-rewrite "divides_reflexive" "rem_def2")
     (("" (skolem!) (("" (assert) nil nil)) nil)) nil)
-   ((mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+   ((int_times_int_is_int application-judgement "int" integers nil)
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
@@ -25294,14 +25435,13 @@
     (auto-rewrite "divides_prod1" "divides_prod2" "divides_reflexive"
                   "rem_def2")
     (("" (skolem!) (("" (assert) nil nil)) nil)) nil)
-   ((mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (int_minus_int_is_int application-judgement "int" integers nil)
-    (rem_def2 formula-decl nil modulo_arithmetic nil)
+   ((int_times_int_is_int application-judgement "int" integers nil)
+    (divides_reflexive formula-decl nil divides nil)
     (divides_prod1 formula-decl nil divides nil)
-    (divides_reflexive formula-decl nil divides nil))
+    (rem_def2 formula-decl nil modulo_arithmetic nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
    nil))
  (rem_multiple2 0
   (rem_multiple2-1 nil 3237052399
@@ -25309,14 +25449,13 @@
     (auto-rewrite "divides_prod1" "divides_prod2" "divides_reflexive"
                   "rem_def2")
     (("" (skolem!) (("" (assert) nil nil)) nil)) nil)
-   ((mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (real_lt_is_strict_total_order name-judgement
-     "(strict_total_order?[real])" real_props nil)
-    (int_minus_int_is_int application-judgement "int" integers nil)
-    (rem_def2 formula-decl nil modulo_arithmetic nil)
+   ((int_times_int_is_int application-judgement "int" integers nil)
+    (divides_reflexive formula-decl nil divides nil)
     (divides_prod2 formula-decl nil divides nil)
-    (divides_reflexive formula-decl nil divides nil))
+    (rem_def2 formula-decl nil modulo_arithmetic nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
    nil))
  (rem_one 0
   (rem_one-1 nil 3237052399
@@ -25346,12 +25485,11 @@
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (< const-decl "bool" reals nil)
     (mod nonempty-type-eq-decl nil euclidean_division nil)
-    (int_times_even_is_even application-judgement "even_int" integers
-     nil)
     (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil))
+    (int_times_even_is_even application-judgement "even_int" integers
+     nil)
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (rem_minus_one 0
   (rem_minus_one-1 nil 3237052399
@@ -25392,8 +25530,7 @@
     (nzint_times_nzint_is_nzint application-judgement "nzint" integers
      nil)
     (int_plus_int_is_int application-judgement "int" integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (same_remainder 0
   (same_remainder-1 nil 3237052399
@@ -25443,8 +25580,7 @@
     (divides_diff formula-decl nil divides nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
     (rem_def2 formula-decl nil modulo_arithmetic nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (rem_rem 0
   (rem_rem-1 nil 3237052399
@@ -25482,8 +25618,7 @@
          modulo_arithmetic nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
     (rem_def3 formula-decl nil modulo_arithmetic nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (rem_sum 0
   (rem_sum-1 nil 3237052399
@@ -25495,8 +25630,7 @@
         nil))
       nil))
     nil)
-   ((mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
+   ((int_times_int_is_int application-judgement "int" integers nil)
     (divides_sum formula-decl nil divides nil)
     (number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -25555,8 +25689,7 @@
          modulo_arithmetic nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
     (rem_def3 formula-decl nil modulo_arithmetic nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (rem_sum2 0
   (rem_sum2-1 nil 3237052399
@@ -25582,8 +25715,7 @@
     (>= const-decl "bool" reals nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (int_plus_int_is_int application-judgement "int" integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (rem_diff 0
   (rem_diff-1 nil 3237052399
@@ -25595,8 +25727,7 @@
         nil))
       nil))
     nil)
-   ((mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
+   ((int_times_int_is_int application-judgement "int" integers nil)
     (divides_diff formula-decl nil divides nil)
     (number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -25655,8 +25786,7 @@
     (rem const-decl "{r: mod(b) | EXISTS q: x = b * q + r}"
          modulo_arithmetic nil)
     (rem_def3 formula-decl nil modulo_arithmetic nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (rem_diff2 0
   (rem_diff2-1 nil 3237052399
@@ -25693,8 +25823,7 @@
     (rem const-decl "{r: mod(b) | EXISTS q: x = b * q + r}"
          modulo_arithmetic nil)
     (rem_def2 formula-decl nil modulo_arithmetic nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (rem_prod1 0
   (rem_prod1-1 nil 3237052399
@@ -25735,8 +25864,7 @@
     (rem_def3 formula-decl nil modulo_arithmetic nil)
     (divides_prod1 formula-decl nil divides nil)
     (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (rem_prod2 0
   (rem_prod2-1 nil 3237052399
@@ -25761,8 +25889,7 @@
     (nonneg_int nonempty-type-eq-decl nil integers nil)
     (>= const-decl "bool" reals nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (rem_prod 0
   (rem_prod-1 nil 3237052399
@@ -25804,8 +25931,7 @@
     (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (rem const-decl "{r: mod(b) | EXISTS q: x = b * q + r}"
          modulo_arithmetic nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (rem_expt 0
   (rem_expt-1 nil 3237052399
@@ -25850,8 +25976,7 @@
     (nnint_plus_posint_is_posint application-judgement "posint"
      integers nil)
     (rem_prod formula-decl nil modulo_arithmetic nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (rem_expt1 0
   (rem_expt1-1 nil 3237052399
@@ -25887,15 +26012,13 @@
     (int_expt application-judgement "int" exponentiation nil)
     (nat_expt application-judgement "nat" exponentiation nil)
     (rem_rem formula-decl nil modulo_arithmetic nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (rem_sum_elim1 0
   (rem_sum_elim1-1 nil 3237052399
    ("" (auto-rewrite "same_remainder")
     (("" (skolem!) (("" (assert) nil nil)) nil)) nil)
-   ((mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+   ((int_times_int_is_int application-judgement "int" integers nil)
     (int_plus_int_is_int application-judgement "int" integers nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
     (same_remainder formula-decl nil modulo_arithmetic nil))
@@ -25904,8 +26027,7 @@
   (rem_sum_elim2-1 nil 3237052399
    ("" (auto-rewrite "same_remainder")
     (("" (skolem!) (("" (assert) nil nil)) nil)) nil)
-   ((mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+   ((int_times_int_is_int application-judgement "int" integers nil)
     (int_plus_int_is_int application-judgement "int" integers nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
     (same_remainder formula-decl nil modulo_arithmetic nil))
@@ -25924,8 +26046,7 @@
         nil))
       nil))
     nil)
-   ((mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+   ((int_times_int_is_int application-judgement "int" integers nil)
     (minus_int_is_int application-judgement "int" integers nil)
     (posnat nonempty-type-eq-decl nil integers nil)
     (> const-decl "bool" reals nil)
@@ -25953,8 +26074,7 @@
   (rem_diff_elim2-1 nil 3237052399
    ("" (auto-rewrite "same_remainder")
     (("" (skolem!) (("" (assert) nil nil)) nil)) nil)
-   ((mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+   ((int_times_int_is_int application-judgement "int" integers nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
     (same_remainder formula-decl nil modulo_arithmetic nil))
    nil))
@@ -25968,8 +26088,7 @@
         nil))
       nil))
     nil)
-   ((mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+   ((int_times_int_is_int application-judgement "int" integers nil)
     (divides_opposite formula-decl nil divides nil)
     (number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -26053,8 +26172,7 @@
      nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (int_plus_int_is_int application-judgement "int" integers nil))
    nil
    (ndiv existence ""
@@ -26131,8 +26249,7 @@
     (minus_odd_is_odd application-judgement "odd_int" integers nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
     (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil))
  (ndiv_TCC2 0
   (ndiv_TCC2-1 nil 3237052399
@@ -26186,10 +26303,10 @@
     (int_plus_int_is_int application-judgement "int" integers nil)
     (rem_mod2 formula-decl nil modulo_arithmetic nil)
     (both_sides_times_pos_ge1 formula-decl nil real_props nil)
-    (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
-     integers nil)
     (even_times_int_is_even application-judgement "even_int" integers
      nil)
+    (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
+     integers nil)
     (nonneg_real nonempty-type-eq-decl nil real_types nil)
     (posreal nonempty-type-eq-decl nil real_types nil)
     (ndiv const-decl "{q: int | x = b * q + rem(b)(x)}"
@@ -26224,8 +26341,7 @@
      nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    nil
    (ndiv_ subtype
     "modulo_arithmetic.ndiv(modulo_arithmetic.n, modulo_arithmetic.b)"
@@ -26297,8 +26413,7 @@
     (rat_times_rat_is_rat application-judgement "rat" rationals nil)
     (div_mult_pos_lt1 formula-decl nil real_props nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    shostak))
  (rem_base 0
   (rem_base-3 "" 3471680077
@@ -26382,7 +26497,6 @@
     (NOT const-decl "[bool -> bool]" booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
-    (divides const-decl "bool" divides nil)
     (commutative_mult formula-decl nil number_fields nil)
     (rem_floor formula-decl nil modulo_arithmetic nil)
     (real_lt_is_strict_total_order name-judgement
@@ -26399,8 +26513,7 @@
     (int_minus_int_is_int application-judgement "int" integers nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
      integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (int_plus_int_is_int application-judgement "int" integers nil))
    shostak)
   (rem_base-2 "" 3458163989
@@ -26585,8 +26698,7 @@
     (rat_times_rat_is_rat application-judgement "rat" rationals nil)
     (div_mult_pos_lt1 formula-decl nil real_props nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (int_plus_int_is_int application-judgement "int" integers nil))
    shostak))
  (rem_sum_assoc 0
@@ -26660,8 +26772,7 @@
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    shostak))
  (rem_add_one 0
   (rem_add_one-2 "" 3458164037
@@ -26722,8 +26833,7 @@
     (nnint_plus_posint_is_posint application-judgement "posint"
      integers nil)
     (int_plus_int_is_int application-judgement "int" integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    shostak)
   (rem_add_one-1 nil 3252309454
    ("" (skolem!)
@@ -26789,10 +26899,10 @@
      integers nil)
     (even_times_int_is_even application-judgement "even_int" integers
      nil)
-    (posint_plus_nnint_is_posint application-judgement "posint"
-     integers nil)
     (odd_plus_odd_is_even application-judgement "even_int" integers
      nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
     (floor_val formula-decl nil floor_ceil nil)
     (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
@@ -26820,8 +26930,7 @@
     (real_gt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (rem_sum_assoc formula-decl nil modulo_arithmetic nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    shostak))
  (rem_wrap_eq 0
   (rem_wrap_eq-1 nil 3252309534
@@ -26864,8 +26973,7 @@
      "(strict_total_order?[real])" real_props nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
     (same_remainder formula-decl nil modulo_arithmetic nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (int_times_int_is_int application-judgement "int" integers nil))
    shostak)))
 (subrange_inductions
  (subrange_induction_TCC1 0
@@ -28982,7 +29090,6 @@
     (x1!1 skolem-const-decl "(union[T](A!1, B!1))" finite_sets nil)
     (x2!1 skolem-const-decl "(union[T](A!1, B!1))" finite_sets nil)
     (IF const-decl "[boolean, T, T -> T]" if_def nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
     (f!2 skolem-const-decl "[(B!1) -> below[N!2]]" finite_sets nil)
     (union const-decl "set" sets nil)
     (A!1 skolem-const-decl "finite_set" finite_sets nil)
@@ -29907,8 +30014,8 @@
     (nonempty? const-decl "bool" sets nil))
    shostak
    (inj_set subtype
-    "{n | EXISTS (f: [(finite_sets.S) -> nat_types[finite_sets.n].below]): functions[(finite_sets.S), nat_types[finite_sets.n].below].injective?(f)}"
-    "(sets[naturalnumbers.nat].nonempty?)")))
+    "{n | EXISTS (f: [(finite_sets.S) -> nat_types[finite_sets.n].below]): functions[(finite_sets.S), below[n]].injective?(f)}"
+    "(sets[nat].nonempty?)")))
  (inj_Card 0
   (inj_Card-1 nil 3243836968
    ("" (skosimp)
@@ -30380,7 +30487,6 @@
     (finite_intersection2 application-judgement "finite_set"
      finite_sets nil)
     (IF const-decl "[boolean, T, T -> T]" if_def nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
     (f!1 skolem-const-decl "[(S2!1) -> below[N2]]" finite_sets nil)
     (NOT const-decl "[bool -> bool]" booleans nil)
     (union const-decl "set" sets nil)
@@ -30861,7 +30967,7 @@
     (card_disj_union formula-decl nil finite_sets nil)
     (nnint_plus_posint_is_posint application-judgement "posint"
      integers nil)
-    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
     (number_field_pred const-decl "[number -> boolean]" number_fields
      nil)
     (number nonempty-type-decl nil numbers nil)
@@ -30879,8 +30985,8 @@
     (rational_pred const-decl "[real -> boolean]" rationals nil)
     (real nonempty-type-from-decl nil reals nil)
     (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
     (member_add formula-decl nil sets_lemmas nil)
     (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
@@ -31777,14 +31883,26 @@
    ("" (skosimp*)
     (("" (expand "ibij")
       (("" (lemma "comp_inverse_right[(S!1),below(card(S!1))]")
-        (("" (inst?) nil nil)) nil))
+        (("1" (inst?) nil nil)
+         ("2" (typepred "S!1")
+          (("2" (expand "empty?")
+            (("2" (skosimp*)
+              (("2" (expand "member") (("2" (inst?) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil))
       nil))
     nil)
    ((ibij const-decl "{f: [below(card(S)) -> (S)] | bijective?(f)}"
      finite_sets nil)
+    (x!1 skolem-const-decl "T" finite_sets nil)
+    (S!1 skolem-const-decl "non_empty_finite_set" finite_sets nil)
+    (member const-decl "bool" sets nil)
     (bij const-decl "{f: [(S) -> below(card(S))] | bijective?(f)}"
      finite_sets nil)
     (bijective? const-decl "bool" functions nil)
+    (TRUE const-decl "bool" booleans nil)
     (comp_inverse_right formula-decl nil function_inverse nil)
     (T formal-type-decl nil finite_sets nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -31820,7 +31938,9 @@
       (("" (expand "ibij")
         (("" (assert)
           (("" (lemma "bijective_inverse[(S!1),below(card(S!1))]")
-            (("" (inst?) (("" (assert) nil nil)) nil)) nil))
+            (("1" (inst?) (("1" (assert) nil nil)) nil)
+             ("2" (inst?) nil nil))
+            nil))
           nil))
         nil))
       nil))
@@ -31832,6 +31952,7 @@
     (bij const-decl "{f: [(S) -> below(card(S))] | bijective?(f)}"
      finite_sets nil)
     (bijective? const-decl "bool" functions nil)
+    (TRUE const-decl "bool" booleans nil)
     (bijective_inverse formula-decl nil function_inverse nil)
     (T formal-type-decl nil finite_sets nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -32300,7 +32421,7 @@
     (T formal-type-decl nil restrict_set_props nil))
    nil
    (finite_restrict subtype
-    "restrict[restrict_set_props.T, restrict_set_props.S, booleans.bool].restrict(restrict_set_props.a)"
+    "restrict[restrict_set_props.T, S, booleans.boolean].restrict(restrict_set_props.a)"
     "finite_set[S]")))
  (empty_restrict 0
   (empty_restrict-1 nil 3249347110 ("" (subtype-tcc) nil nil)
@@ -32316,8 +32437,8 @@
     (empty? const-decl "bool" sets nil))
    nil
    (empty_restrict subtype
-    "restrict[restrict_set_props.T, restrict_set_props.S, booleans.bool].restrict(restrict_set_props.a)"
-    "(sets[restrict_set_props.S].empty?)")))
+    "restrict[restrict_set_props.T, S, booleans.boolean].restrict(restrict_set_props.a)"
+    "(sets[S].empty?)")))
  (card_restrict 0
   (card_restrict-2 "Fix for 3.2" 3307984009
    ("" (skolem!)
@@ -32567,7 +32688,7 @@
     (finite_extension formula-decl nil extend_set_props nil))
    nil
    (finite_extend subtype
-    "extend[extend_set_props.T, extend_set_props.S, booleans.bool, booleans.FALSE].extend(extend_set_props.a)"
+    "extend[extend_set_props.T, S, booleans.boolean, booleans.FALSE].extend(extend_set_props.a)"
     "finite_set[T]")))
  (empty_extend 0
   (empty_extend-1 nil 3249327215
@@ -32587,7 +32708,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (empty_extend subtype
-    "extend[extend_set_props.T, extend_set_props.S, booleans.bool, booleans.FALSE].extend(extend_set_props.a)"
+    "extend[extend_set_props.T, S, booleans.boolean, booleans.FALSE].extend(extend_set_props.a)"
     "(sets[extend_set_props.T].empty?)")))
  (nonempty_extend 0
   (nonempty_extend-1 nil 3249327215
@@ -32610,7 +32731,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (nonempty_extend subtype
-    "extend[extend_set_props.T, extend_set_props.S, booleans.bool, booleans.FALSE].extend(extend_set_props.a)"
+    "extend[extend_set_props.T, S, booleans.boolean, booleans.FALSE].extend(extend_set_props.a)"
     "(sets[extend_set_props.T].nonempty?)")))
  (singleton_extend 0
   (singleton_extend-1 nil 3249327215
@@ -32638,7 +32759,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (singleton_extend subtype
-    "extend[extend_set_props.T, extend_set_props.S, booleans.bool, booleans.FALSE].extend(extend_set_props.a)"
+    "extend[extend_set_props.T, S, booleans.boolean, booleans.FALSE].extend(extend_set_props.a)"
     "(sets[extend_set_props.T].singleton?)")))
  (card_extend 0
   (card_extend-1 nil 3249389673
@@ -33711,10 +33832,8 @@
      nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
     (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
-     integers nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+     integers nil))
    shostak)
   (iterate_mult-1 nil 3237052399
    ("" (induct "m")
@@ -34284,8 +34403,7 @@
     (O const-decl "finseq" finite_sequences nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (int_plus_int_is_int application-judgement "int" integers nil)
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
@@ -34430,21 +34548,34 @@
    nil
    (lessp termination "(ordinals.<(ordinals.v, ordinals.w))" "nil")))
  (ordinal?_TCC1 0
-  (ordinal?_TCC1-1 nil 3237052399
-   ("" (skeep)
-    (("" (replace -1)
-      (("" (expand "size")
-        (("" (expand "reduce_nat" 1 2) (("" (assert) nil nil)) nil))
-        nil))
-      nil))
-    nil)
-   ((posint_plus_nnint_is_posint application-judgement "posint"
-     integers nil)
-    (reduce_nat adt-def-decl "[ordstruct -> nat]" ordstruct_adt nil)
+  (ordinal?_TCC1-1 nil 3743354465 ("" (termination-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (> const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
-    (size const-decl "[ordstruct -> nat]" ordinals nil))
-   nil (ordinal? termination "ordinals.ordinal?(ordinals.u)" "nil")))
+    (reduce_nat adt-def-decl "[ordstruct -> nat]" ordstruct_adt nil)
+    (size const-decl "[ordstruct -> nat]" ordinals nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil))
+   shostak
+   (ordinal? termination "ordinals.ordinal?(ordinals.u)" "nil")))
  (ordinal?_TCC2 0
   (ordinal?_TCC2-1 nil 3237052399
    ("" (skeep)
@@ -35813,6 +35944,130 @@
     (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (int_minus_int_is_int application-judgement "int" integers nil))
    shostak))
+ (nth_reverse_TCC1 0
+  (nth_reverse_TCC1-1 nil 3737147970
+   ("" (skeep)
+    (("" (rewrite "length_reverse") (("" (assert) nil nil)) nil)) nil)
+   ((length_reverse formula-decl nil list_props nil)
+    (T formal-type-decl nil list_props nil)
+    (list type-decl nil list_adt nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   shostak
+   (nth_reverse subtype "list_props.i" "below[length(reverse(l1))]")))
+ (nth_reverse_TCC2 0
+  (nth_reverse_TCC2-1 nil 3737147970 ("" (subtype-tcc) nil nil)
+   ((int_minus_int_is_int application-judgement "int" integers nil))
+   shostak
+   (nth_reverse subtype
+    "(number_fields.-)((number_fields.-)(list_props.length(list_props.l1), list_props.i), 1)"
+    "below[length(l1)]")))
+ (nth_reverse 0
+  (nth_reverse-1 nil 3743356767
+   ("" (induct "l1")
+    (("1" (skeep :preds? t)
+      (("1" (expand "length" -) (("1" (assert) nil nil)) nil)) nil)
+     ("2" (skeep)
+      (("2" (skeep :preds? t)
+        (("2" (expand "reverse" 1)
+          (("2" (expand "length" -1)
+            (("2" (expand "length" 1)
+              (("2" (expand "nth" 1 2)
+                (("2" (lift-if)
+                  (("2" (assert)
+                    (("2" (split 1)
+                      (("1" (flatten)
+                        (("1" (use "nth_append")
+                          (("1" (replace -1 :hide? t)
+                            (("1" (rewrite "length_reverse")
+                              (("1"
+                                (assert)
+                                (("1"
+                                  (expand "nth" +)
+                                  (("1" (propax) nil nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil)
+                       ("2" (flatten)
+                        (("2" (inst -2 "i")
+                          (("1" (use "nth_append")
+                            (("1" (replace -1 :hide? t)
+                              (("1"
+                                (assert)
+                                (("1"
+                                  (lift-if)
+                                  (("1"
+                                    (rewrite "length_reverse")
+                                    (("1" (assert) nil nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil)
+                           ("2" (assert) nil nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil)
+     ("3" (hide 2)
+      (("3" (skeep)
+        (("3" (rewrite "length_reverse") (("3" (assert) nil nil)) nil))
+        nil))
+      nil))
+    nil)
+   ((nth_append formula-decl nil list_props nil)
+    (append def-decl "list[T]" list_props nil)
+    (null adt-constructor-decl "(null?)" list_adt nil)
+    (null? adt-recognizer-decl "[list -> boolean]" list_adt nil)
+    (cons adt-constructor-decl "[[T, list] -> (cons?)]" list_adt nil)
+    (cons? adt-recognizer-decl "[list -> boolean]" list_adt nil)
+    (length_reverse formula-decl nil list_props nil)
+    (i skolem-const-decl "below(length(cons(cons1_var, cons2_var)))"
+       list_props nil)
+    (cons2_var skolem-const-decl "list[T]" list_props nil)
+    (cons1_var skolem-const-decl "T" list_props nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (list_induction formula-decl nil list_adt nil)
+    (T formal-type-decl nil list_props nil)
+    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (nth def-decl "T" list_props nil)
+    (below type-eq-decl nil nat_types nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (list type-decl nil list_adt nil)
+    (number nonempty-type-decl nil numbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (>= const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
+    (length def-decl "nat" list_props nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (reverse def-decl "list[T]" list_props nil)
+    (int_minus_int_is_int application-judgement "int" integers nil))
+   shostak))
  (list_rep 0 (list_rep-1 nil 3237052399 ("" (assert) nil nil) nil nil))
  (every_unc_eq_cur 0
   (every_unc_eq_cur-1 nil 3726081149
@@ -36935,17 +37190,17 @@
        ("2" (rewrite list2finseq_finseq2list) nil nil))
       nil))
     nil)
-   ((list2finseq_finseq2list formula-decl nil list2finseq nil)
-    (list2finseq_inj formula-decl nil list2finseq nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (below type-eq-decl nil nat_types nil)
-    (T formal-type-decl nil list2finseq nil)
-    (finseq type-eq-decl nil finite_sequences nil)
-    (boolean nonempty-type-decl nil booleans nil)
-    (= const-decl "[T, T -> boolean]" equalities nil)
-    (list type-decl nil list_adt nil)
+   ((finseq2list const-decl "list[T]" list2finseq nil)
     (list2finseq const-decl "finseq[T]" list2finseq nil)
-    (finseq2list const-decl "list[T]" list2finseq nil))
+    (list type-decl nil list_adt nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (finseq type-eq-decl nil finite_sequences nil)
+    (T formal-type-decl nil list2finseq nil)
+    (below type-eq-decl nil nat_types nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (list2finseq_inj formula-decl nil list2finseq nil)
+    (list2finseq_finseq2list formula-decl nil list2finseq nil))
    shostak)))
 (list2set
  (list2set_TCC1 0
@@ -37394,12 +37649,10 @@
     (real_gt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (even_times_int_is_even application-judgement "even_int" integers
-     nil)
     (posint_times_posint_is_posint application-judgement "posint"
      integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (even_times_int_is_even application-judgement "even_int" integers
+     nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
      integers nil)
     (nnint_plus_posint_is_posint application-judgement "posint"
@@ -37439,12 +37692,10 @@
     (posnat_expt application-judgement "posnat" exponentiation nil)
     (expt def-decl "real" exponentiation nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (even_times_int_is_even application-judgement "even_int" integers
-     nil)
     (posint_times_posint_is_posint application-judgement "posint"
      integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (even_times_int_is_even application-judgement "even_int" integers
+     nil)
     (nnint_plus_posint_is_posint application-judgement "posint"
      integers nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
@@ -37476,12 +37727,10 @@
      "(strict_total_order?[real])" real_props nil)
     (nil application-judgement "above(n)" exp2 nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (even_times_int_is_even application-judgement "even_int" integers
-     nil)
     (posint_times_posint_is_posint application-judgement "posint"
      integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (even_times_int_is_even application-judgement "even_int" integers
+     nil)
     (nnint_plus_posint_is_posint application-judgement "posint"
      integers nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
@@ -37517,12 +37766,10 @@
     (nat_induction formula-decl nil naturalnumbers nil)
     (nil application-judgement "above(n)" exp2 nil)
     (even_plus_odd_is_odd application-judgement "odd_int" integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (posint_times_posint_is_posint application-judgement "posint"
-     integers nil)
     (even_times_int_is_even application-judgement "even_int" integers
      nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (posint_times_posint_is_posint application-judgement "posint"
+     integers nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
      integers nil))
@@ -37555,10 +37802,8 @@
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (nat_induction formula-decl nil naturalnumbers nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
     (posint_times_posint_is_posint application-judgement "posint"
      integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
     (nil application-judgement "above(n)" exp2 nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
     (even_times_int_is_even application-judgement "even_int" integers
@@ -37589,12 +37834,10 @@
     (upto_induction formula-decl nil bounded_nat_inductions nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (nil application-judgement "above(n)" exp2 nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (posint_times_posint_is_posint application-judgement "posint"
-     integers nil)
     (even_times_int_is_even application-judgement "even_int" integers
      nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (posint_times_posint_is_posint application-judgement "posint"
+     integers nil)
     (posrat_div_posrat_is_posrat application-judgement "posrat"
      rationals nil)
     (int_plus_int_is_int application-judgement "int" integers nil)
@@ -37657,12 +37900,10 @@
     (real_gt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (even_times_int_is_even application-judgement "even_int" integers
-     nil)
     (posint_times_posint_is_posint application-judgement "posint"
      integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (even_times_int_is_even application-judgement "even_int" integers
+     nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
      integers nil)
     (nil application-judgement "above(n)" exp2 nil)
@@ -37680,12 +37921,10 @@
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (even_times_int_is_even application-judgement "even_int" integers
-     nil)
     (posint_times_posint_is_posint application-judgement "posint"
      integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (even_times_int_is_even application-judgement "even_int" integers
+     nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
      integers nil)
     (nil application-judgement "above(n)" exp2 nil)
@@ -37742,10 +37981,8 @@
     (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
     (nil application-judgement "above(n)" exp2 nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
     (posint_times_posint_is_posint application-judgement "posint"
      integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
     (nonneg_real nonempty-type-eq-decl nil real_types nil)
     (> const-decl "bool" reals nil)
@@ -37761,6 +37998,7 @@
      integers nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (both_sides_times_pos_le1 formula-decl nil real_props nil))
    shostak)))
 (bv_concat_def
@@ -37960,15 +38198,13 @@
     nil)
    ((bv_lem formula-decl nil bv_nat nil) (^ const-decl "bit" bv nil)
     (b2n const-decl "nbit" bit nil)
-    (even_times_int_is_even application-judgement "even_int" integers
-     nil)
     (posint_times_posint_is_posint application-judgement "posint"
      integers nil)
+    (even_times_int_is_even application-judgement "even_int" integers
+     nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
     (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
     (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
@@ -38093,10 +38329,8 @@
       nil))
     nil)
    ((nil application-judgement "above(n)" exp2 nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
     (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
     (bv_lem formula-decl nil bv_nat nil)
     (bv2nat_rec_bound formula-decl nil bv_nat nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
@@ -38208,10 +38442,10 @@
     (jt!1 skolem-const-decl "upto(N)" bv_nat nil)
     (y!1 skolem-const-decl "below(exp2(1 + jt!1))" bv_nat nil)
     (^ const-decl "bit" bv nil) (b2n const-decl "nbit" bit nil)
-    (posint_times_posint_is_posint application-judgement "posint"
-     integers nil)
     (even_times_int_is_even application-judgement "even_int" integers
      nil)
+    (posint_times_posint_is_posint application-judgement "posint"
+     integers nil)
     (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
@@ -38221,10 +38455,8 @@
     (real_gt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (below_induction formula-decl nil bounded_nat_inductions nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
     (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (real_lt_is_strict_total_order name-judgement
@@ -38402,10 +38634,8 @@
     (^ const-decl "bit" bv nil) (b2n const-decl "nbit" bit nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
     (nil application-judgement "above(n)" exp2 nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
     (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
     (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
@@ -38423,14 +38653,12 @@
     nil)
    ((even_minus_odd_is_odd application-judgement "odd_int" integers
      nil)
-    (posint_times_posint_is_posint application-judgement "posint"
-     integers nil)
     (even_times_int_is_even application-judgement "even_int" integers
      nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (posint_times_posint_is_posint application-judgement "posint"
+     integers nil)
     (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
     (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
@@ -38664,8 +38892,7 @@
     (^ const-decl "bit" bv nil)
     (nil application-judgement "above(n)" exp2 nil)
     (bv2nat_rec def-decl "nat" bv_nat nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (int_plus_int_is_int application-judgement "int" integers nil)
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
@@ -39243,10 +39470,7 @@
         (real_lt_is_strict_total_order name-judgement
          "(strict_total_order?[real])" real_props nil)
         (both_sides_times_pos_lt1 formula-decl nil real_props nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
+        (int_times_int_is_int application-judgement "int" integers nil)
         (int_minus_int_is_int application-judgement "int" integers
          nil))
        shostak))
@@ -39308,10 +39532,7 @@
          "(strict_total_order?[real])" real_props nil)
         (both_sides_times_pos_lt1 formula-decl nil real_props nil)
         (minus_int_is_int application-judgement "int" integers nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
+        (int_times_int_is_int application-judgement "int" integers nil)
         (int_plus_int_is_int application-judgement "int" integers nil))
        shostak))
      (mod_TCC1 0
@@ -39372,10 +39593,7 @@
          nil)
         (minus_int_is_int application-judgement "int" integers nil)
         (int_plus_int_is_int application-judgement "int" integers nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
+        (int_times_int_is_int application-judgement "int" integers nil)
         (int_minus_int_is_int application-judgement "int" integers
          nil))
        nil
@@ -39442,10 +39660,7 @@
         (minus_int_is_int application-judgement "int" integers nil)
         (rat_div_nzrat_is_rat application-judgement "rat" rationals
          nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
+        (int_times_int_is_int application-judgement "int" integers nil)
         (int_minus_int_is_int application-judgement "int" integers nil)
         (int_abs_is_nonneg application-judgement
          "{j: nonneg_int | j >= i}" real_defs nil)
@@ -39482,10 +39697,7 @@
           (("" (rewrite "floor_int") (("" (assert) nil nil)) nil))
           nil))
         nil)
-       ((mult_divides1 application-judgement "(divides(n))" divides
-         nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
+       ((int_times_int_is_int application-judgement "int" integers nil)
         (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
         (rat_times_rat_is_rat application-judgement "rat" rationals
          nil)
@@ -39536,10 +39748,7 @@
        ((minus_int_is_int application-judgement "int" integers nil)
         (rat_div_nzrat_is_rat application-judgement "rat" rationals
          nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
+        (int_times_int_is_int application-judgement "int" integers nil)
         (int_minus_int_is_int application-judgement "int" integers nil)
         (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
         (floor_neg formula-decl nil floor_ceil nil)
@@ -39615,10 +39824,7 @@
          nil)
         (rat_div_nzrat_is_rat application-judgement "rat" rationals
          nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
+        (int_times_int_is_int application-judgement "int" integers nil)
         (int_minus_int_is_int application-judgement "int" integers nil)
         (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
         (integer nonempty-type-from-decl nil integers nil)
@@ -39741,18 +39947,13 @@
          rationals nil)
         (int_minus_int_is_int application-judgement "int" integers nil)
         (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
+        (int_times_int_is_int application-judgement "int" integers
          nil))
        shostak))
      (mod_lt 0
       (mod_lt-1 nil 3341425485
        ("" (grind :rewrites ("floor_small" "pos_div_ge")) nil nil)
-       ((mult_divides2 application-judgement "(divides(m))" divides
-         nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
+       ((int_times_int_is_int application-judgement "int" integers nil)
         (sgn const-decl "int" real_defs nil)
         (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
         (abs const-decl "{n: nonneg_real | n >= m AND n >= -m}"
@@ -39885,10 +40086,7 @@
             nil))
           nil))
         nil)
-       ((mult_divides1 application-judgement "(divides(n))" divides
-         nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
+       ((int_times_int_is_int application-judgement "int" integers nil)
         (int_plus_int_is_int application-judgement "int" integers nil)
         (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
         (rat_div_nzrat_is_rat application-judgement "rat" rationals
@@ -39937,18 +40135,14 @@
         (int_minus_int_is_int application-judgement "int" integers nil)
         (real_lt_is_strict_total_order name-judgement
          "(strict_total_order?[real])" real_props nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
         (nzint_times_nzint_is_nzint application-judgement "nzint"
          integers nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
         (nil application-judgement "below(m)" mod nil)
         (real_le_is_total_order name-judgement "(total_order?[real])"
          real_props nil)
-        (posint_times_posint_is_posint application-judgement "posint"
-         integers nil)
         (even_times_int_is_even application-judgement "even_int"
+         integers nil)
+        (posint_times_posint_is_posint application-judgement "posint"
          integers nil)
         (minus_nzint_is_nzint application-judgement "nzint" integers
          nil)
@@ -39991,10 +40185,7 @@
             nil))
           nil))
         nil)
-       ((mult_divides1 application-judgement "(divides(n))" divides
-         nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
+       ((int_times_int_is_int application-judgement "int" integers nil)
         (int_plus_int_is_int application-judgement "int" integers nil)
         (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
         (rat_div_nzrat_is_rat application-judgement "rat" rationals
@@ -40039,12 +40230,8 @@
           nil))
         nil)
        ((mod_sum formula-decl nil mod nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
         (nzint_times_nzint_is_nzint application-judgement "nzint"
          integers nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
         (real_ge_is_total_order name-judgement "(total_order?[real])"
          real_props nil)
         (* const-decl "[numfield, numfield -> numfield]" number_fields
@@ -40106,12 +40293,8 @@
           nil))
         nil)
        ((mod_sum formula-decl nil mod nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
         (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
          integers nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
         (mod_lt formula-decl nil mod nil)
         (nil application-judgement "below(m)" mod nil)
         (nzint_abs_is_pos application-judgement "{j: posint | j >= i}"
@@ -40163,18 +40346,13 @@
         (rat_div_nzrat_is_rat application-judgement "rat" rationals
          nil)
         (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
+        (int_times_int_is_int application-judgement "int" integers
          nil))
        shostak))
      (mod_one 0
       (mod_one-1 nil 3341426091
        ("" (grind :rewrites ("floor_small" "pos_div_ge")) nil nil)
-       ((mult_divides2 application-judgement "(divides(m))" divides
-         nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
+       ((int_times_int_is_int application-judgement "int" integers nil)
         (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
         (abs const-decl "{n: nonneg_real | n >= m AND n >= -m}"
              real_defs nil)
@@ -40249,10 +40427,7 @@
         (nil application-judgement "below(m)" mod nil)
         (rat_div_nzrat_is_rat application-judgement "rat" rationals
          nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
+        (int_times_int_is_int application-judgement "int" integers nil)
         (int_minus_int_is_int application-judgement "int" integers nil)
         (minus_int_is_int application-judgement "int" integers nil)
         (int_plus_int_is_int application-judgement "int" integers nil)
@@ -40302,10 +40477,7 @@
         (nil application-judgement "below(m)" mod nil)
         (rat_div_nzrat_is_rat application-judgement "rat" rationals
          nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
+        (int_times_int_is_int application-judgement "int" integers nil)
         (int_minus_int_is_int application-judgement "int" integers nil)
         (numfield nonempty-type-eq-decl nil number_fields nil)
         (- const-decl "[numfield, numfield -> numfield]" number_fields
@@ -40369,14 +40541,10 @@
         (int_minus_int_is_int application-judgement "int" integers nil)
         (real_le_is_total_order name-judgement "(total_order?[real])"
          real_props nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
-        (even_times_int_is_even application-judgement "even_int"
-         integers nil)
         (posint_times_posint_is_posint application-judgement "posint"
          integers nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
+        (even_times_int_is_even application-judgement "even_int"
+         integers nil)
         (int_plus_int_is_int application-judgement "int" integers nil))
        shostak))
      (mod_inj_minus 0
@@ -40394,10 +40562,7 @@
           nil))
         nil)
        ((int_minus_int_is_int application-judgement "int" integers nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
+        (int_times_int_is_int application-judgement "int" integers nil)
         (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
         (nzint_times_nzint_is_nzint application-judgement "nzint"
          integers nil)
@@ -40454,12 +40619,8 @@
          integers nil)
         (nonneg_floor_is_nat application-judgement "nat" floor_ceil
          nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
         (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
          integers nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
         (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
         (even_times_int_is_even application-judgement "even_int"
          integers nil)
@@ -40467,6 +40628,7 @@
          integers nil)
         (nzint_times_nzint_is_nzint application-judgement "nzint"
          integers nil)
+        (int_times_int_is_int application-judgement "int" integers nil)
         (int_minus_int_is_int application-judgement "int" integers nil)
         (real_ge_is_total_order name-judgement "(total_order?[real])"
          real_props nil)
@@ -40476,10 +40638,10 @@
          "(strict_total_order?[real])" real_props nil)
         (nnrat_div_posrat_is_nnrat application-judgement "nonneg_rat"
          rationals nil)
+        (nnint_plus_posint_is_posint application-judgement "posint"
+         integers nil)
         (odd_plus_odd_is_even application-judgement "even_int" integers
          nil)
-        (posint_plus_nnint_is_posint application-judgement "posint"
-         integers nil)
         (numfield nonempty-type-eq-decl nil number_fields nil)
         (+ const-decl "[numfield, numfield -> numfield]" number_fields
            nil)
@@ -40527,12 +40689,8 @@
          integers nil)
         (nonneg_floor_is_nat application-judgement "nat" floor_ceil
          nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
         (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
          integers nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
         (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
         (floor_plus_int formula-decl nil floor_ceil nil)
         (floor_small formula-decl nil floor_ceil nil)
@@ -40614,12 +40772,8 @@
          integers nil)
         (nonneg_floor_is_nat application-judgement "nat" floor_ceil
          nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
         (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
          integers nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
         (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
         (posnat nonempty-type-eq-decl nil integers nil)
         (> const-decl "bool" reals nil)
@@ -40661,11 +40815,9 @@
          integers nil)
         (posint_times_posint_is_posint application-judgement "posint"
          integers nil)
-        (nnint_plus_posint_is_posint application-judgement "posint"
-         integers nil)
         (even_plus_odd_is_odd application-judgement "odd_int" integers
          nil)
-        (posint_plus_nnint_is_posint application-judgement "posint"
+        (nnint_plus_posint_is_posint application-judgement "posint"
          integers nil)
         (odd_plus_odd_is_even application-judgement "even_int" integers
          nil)
@@ -40686,10 +40838,7 @@
           nil))
         nil)
        ((int_minus_int_is_int application-judgement "int" integers nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
+        (int_times_int_is_int application-judgement "int" integers nil)
         (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
         (nzint_times_nzint_is_nzint application-judgement "nzint"
          integers nil)
@@ -40817,12 +40966,8 @@
            nil)
         (nonzero_integer nonempty-type-eq-decl nil integers nil)
         (/= const-decl "boolean" notequal nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
         (posint_times_posint_is_posint application-judgement "posint"
          integers nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
         (int_plus_int_is_int application-judgement "int" integers nil)
         (mod_sum formula-decl nil mod nil)
         (mod_wrap_inj formula-decl nil mod nil)
@@ -40939,12 +41084,8 @@
           nil))
         nil)
        ((even? const-decl "bool" integers nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
         (even_times_int_is_even application-judgement "even_int"
          integers nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil)
         (odd? const-decl "bool" integers nil)
         (- const-decl "[numfield, numfield -> numfield]" number_fields
            nil)
@@ -40981,7 +41122,9 @@
         (int_minus_int_is_int application-judgement "int" integers nil)
         (odd_plus_even_is_odd application-judgement "odd_int" integers
          nil)
-        (mod const-decl "{k | abs(k) < abs(j)}" mod nil))
+        (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
+        (int_times_int_is_int application-judgement "int" integers
+         nil))
        shostak))
      (even_mod 0
       (even_mod-1 nil 3388687032
@@ -41032,7 +41175,8 @@
             nil))
           nil))
         nil)
-       ((int_minus_int_is_int application-judgement "int" integers nil)
+       ((int_times_int_is_int application-judgement "int" integers nil)
+        (int_minus_int_is_int application-judgement "int" integers nil)
         (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
         (minus_int_is_int application-judgement "int" integers nil)
         (rat_div_nzrat_is_rat application-judgement "rat" rationals
@@ -41071,12 +41215,8 @@
         (rat_plus_rat_is_rat application-judgement "rat" rationals nil)
         (int_plus_int_is_int application-judgement "int" integers nil)
         (floor_plus_int formula-decl nil floor_ceil nil)
-        (mult_divides1 application-judgement "(divides(n))" divides
-         nil)
         (posint_times_posint_is_posint application-judgement "posint"
-         integers nil)
-        (mult_divides2 application-judgement "(divides(m))" divides
-         nil))
+         integers nil))
        shostak)))
 (bv_arith_nat_defs
  (plus_TCC1 0
@@ -41125,7 +41265,7 @@
     (nil application-judgement "above(n)" exp2 nil))
    shostak
    (plus existence ""
-    "[d: [bvec[N], int] -> {bvn: bv[bv_arith_nat_defs.N].bvec | bv_nat[bv_arith_nat_defs.N].bv2nat(bvn) = mod.mod((number_fields.+)(bv_nat[bv_arith_nat_defs.N].bv2nat(d`1), d`2), exp2.exp2(bv_arith_nat_defs.N))}]")))
+    "[d: [bvec[N], int] -> {bvn: bv[bv_arith_nat_defs.N].bvec | bv_nat[bv_arith_nat_defs.N].bv2nat(bvn) = mod.mod((number_fields.+)(d`2, bv_nat[bv_arith_nat_defs.N].bv2nat(d`1)), exp2.exp2(bv_arith_nat_defs.N))}]")))
  (bv_plus 0
   (bv_plus-1 nil 3364699615 ("" (skolem!) (("" (assert) nil nil)) nil)
    ((int_plus_int_is_int application-judgement "int" integers nil)
@@ -41273,10 +41413,8 @@
      nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
     (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
     (even_times_int_is_even application-judgement "even_int" integers
      nil))
    shostak
@@ -41336,10 +41474,8 @@
     (int_minus_int_is_int application-judgement "int" integers nil)
     (maxint const-decl "int" bv_int_defs nil)
     (exp2 def-decl "posnat" exp2 nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
     (even_times_int_is_even application-judgement "even_int" integers
      nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
@@ -41453,10 +41589,8 @@
     (real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (minus_int_is_int application-judgement "int" integers nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
     (even_times_int_is_even application-judgement "even_int" integers
      nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
     (bv2nat_surj formula-decl nil bv_nat nil)
     (surjective? const-decl "bool" functions nil)
     (bijective_inverse formula-decl nil function_inverse nil)
@@ -41514,8 +41648,8 @@
     (int2bv const-decl "{bv: bvec[N] | bv2int(bv) = iv}" bv_int_defs
      nil)
     (- const-decl "[numfield -> numfield]" number_fields nil)
-    (IF const-decl "[boolean, T, T -> T]" if_def nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
+    (IF const-decl "[boolean, T, T -> T]" if_def nil)
     (bv2int const-decl "rng_2s_comp" bv_int_defs nil)
     (rng_2s_comp type-eq-decl nil bv_int_defs nil)
     (maxint const-decl "int" bv_int_defs nil)
@@ -41617,8 +41751,7 @@
     (NOT const-decl "[bool -> bool]" booleans nil)
     (real_gt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (minus_int_is_int application-judgement "int" integers nil)
@@ -41657,6 +41790,7 @@
     (exp2 def-decl "posnat" exp2 nil)
     (N formal-const-decl "posnat" bv_arithmetic_defs nil)
     (below type-eq-decl nil naturalnumbers nil)
+    (int_times_int_is_int application-judgement "int" integers nil)
     (nil application-judgement "upto(n)" modulo_arithmetic nil)
     (nnrat_div_posrat_is_nnrat application-judgement "nonneg_rat"
      rationals nil)
@@ -41666,12 +41800,10 @@
      "(strict_total_order?[real])" real_props nil)
     (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
     (nonneg_floor_is_nat application-judgement "nat" floor_ceil nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
-     integers nil)
     (even_times_int_is_even application-judgement "even_int" integers
      nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
+     integers nil))
    shostak
    (nat2bv_rec subtype
     "modulo_arithmetic.ndiv(bv_arithmetic_defs.n, 2)"
@@ -41710,24 +41842,20 @@
      "(strict_total_order?[real])" real_props nil)
     (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
     (nonneg_floor_is_nat application-judgement "nat" floor_ceil nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
-     integers nil)
     (even_times_int_is_even application-judgement "even_int" integers
      nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil))
+    (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
+     integers nil))
    shostak
    (nat2bv_rec subtype "(number_fields.-)(bv_arithmetic_defs.idx, 1)"
     "naturalnumbers.below(bv_arithmetic_defs.N)")))
  (nat2bv_rec_TCC3 0
   (nat2bv_rec_TCC3-1 nil 3726081087 ("" (termination-tcc) nil nil)
    ((nonneg_floor_is_nat application-judgement "nat" floor_ceil nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
-    (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
-     integers nil)
     (even_times_int_is_even application-judgement "even_int" integers
      nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
+     integers nil)
     (mod const-decl "{k | abs(k) < abs(j)}" mod nil))
    shostak
    (nat2bv_rec termination
@@ -42232,10 +42360,10 @@
     (setof type-eq-decl nil defined_types nil)
     (setofsets type-eq-decl nil sets nil)
     (powerset const-decl "setofsets" sets nil)
-    (divides const-decl "bool" divides nil)
     (injective? const-decl "bool" functions nil)
     (surjective? const-decl "bool" functions nil)
     (subset? const-decl "bool" sets nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
@@ -42244,15 +42372,6 @@
      sets_lemmas nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
-    (int_minus_int_is_int application-judgement "int" integers nil)
-    (nil application-judgement "above(n)" exp2 nil)
-    (divides const-decl "bool" divides nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (> const-decl "bool" reals nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
-    (exp2 def-decl "posnat" exp2 nil)
-    (numfield nonempty-type-eq-decl nil number_fields nil)
-    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (inverse const-decl "D" function_inverse nil)
     (member const-decl "bool" sets nil))
    shostak
@@ -42382,10 +42501,7 @@
     (setof type-eq-decl nil defined_types nil)
     (setofsets type-eq-decl nil sets nil)
     (powerset const-decl "setofsets" sets nil)
-    (divides const-decl "bool" divides nil)
-    (injective? const-decl "bool" functions nil)
-    (surjective? const-decl "bool" functions nil)
-    (subset? const-decl "bool" sets nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
     (int_plus_int_is_int application-judgement "int" integers nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
@@ -42395,15 +42511,16 @@
      sets_lemmas nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
-    (int_minus_int_is_int application-judgement "int" integers nil)
-    (nil application-judgement "above(n)" exp2 nil)
-    (divides const-decl "bool" divides nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (> const-decl "bool" reals nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
-    (exp2 def-decl "posnat" exp2 nil)
-    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (injective? const-decl "bool" functions nil)
+    (surjective? const-decl "bool" functions nil)
+    (subset? const-decl "bool" sets nil)
+    (A!1 skolem-const-decl "finite_set[T]" finite_sets_of_sets nil)
+    (TRUE const-decl "bool" booleans nil)
     (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (epsilon const-decl "T" epsilons nil)
+    (pred type-eq-decl nil defined_types nil)
+    (nil application-judgement "above(n)" exp2 nil)
     (inverse const-decl "D" function_inverse nil)
     (member const-decl "bool" sets nil))
    shostak
@@ -42576,19 +42693,17 @@
      integers nil)
     (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
     (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
     (int_minus_int_is_int application-judgement "int" integers nil)
     (unique_bijective_inverse application-judgement "{x: D | f(x) = y}"
      function_inverse nil)
     (bijective_inverse_is_bijective application-judgement
      "(bijective?[R, D])" function_inverse nil)
-    (posint_times_posint_is_posint application-judgement "posint"
-     integers nil)
     (even_times_int_is_even application-judgement "even_int" integers
      nil)
+    (posint_times_posint_is_posint application-judgement "posint"
+     integers nil)
     (nil application-judgement "above(n)" exp2 nil)
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
@@ -42684,7 +42799,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    shostak
    (powerset_natfun subtype
-    "functions[(finite_sets_of_sets.A), below(finite_sets[finite_sets_of_sets.T].card(finite_sets_of_sets.A))].bijective?"
+    "functions[(finite_sets_of_sets.A), naturalnumbers.below(finite_sets[finite_sets_of_sets.T].card(finite_sets_of_sets.A))].bijective?"
     "(sets[[(finite_sets_of_sets.A) -> naturalnumbers.below(finite_sets[finite_sets_of_sets.T].card(finite_sets_of_sets.A))]].nonempty?)"))
   (powerset_natfun_TCC1-1 nil 3242843042
    ("" (skosimp)
@@ -42740,7 +42855,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    shostak
    (powerset_natfun subtype
-    "functions[(finite_sets_of_sets.A), below(finite_sets[finite_sets_of_sets.T].card(finite_sets_of_sets.A))].bijective?"
+    "functions[(finite_sets_of_sets.A), naturalnumbers.below(finite_sets[finite_sets_of_sets.T].card(finite_sets_of_sets.A))].bijective?"
     "(sets[[(finite_sets_of_sets.A) -> naturalnumbers.below(finite_sets[finite_sets_of_sets.T].card(finite_sets_of_sets.A))]].nonempty?)")))
  (powerset_natfun_TCC2 0
   (powerset_natfun_TCC2-1 nil 3242843103 ("" (grind) nil nil) nil
@@ -43207,10 +43322,8 @@
      integers nil)
     (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
-    (mult_divides1 application-judgement "(divides(n))" divides nil)
     (nnint_times_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
-    (mult_divides2 application-judgement "(divides(m))" divides nil)
     (nil application-judgement "above(n)" exp2 nil)
     (unique_bijective_inverse application-judgement "{x: D | f(x) = y}"
      function_inverse nil)
@@ -44177,7 +44290,77 @@
         nil))
       nil))
     nil)
-   nil shostak)
+   ((every const-decl "bool" sets nil)
+    (below type-eq-decl nil nat_types nil)
+    (< const-decl "bool" reals nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (pred type-eq-decl nil defined_types nil)
+    (nat_induction formula-decl nil naturalnumbers nil)
+    (TRUE const-decl "bool" booleans nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (remove const-decl "set" sets nil)
+    (b!2 skolem-const-decl "(remove(b!1, B!1))" finite_sets_of_sets
+     nil)
+    (j!1 skolem-const-decl "nat" finite_sets_of_sets nil)
+    (f!1 skolem-const-decl "[(B!1) -> below[1 + j!1]]"
+     finite_sets_of_sets nil)
+    (a!1 skolem-const-decl "(B!1)" finite_sets_of_sets nil)
+    (/= const-decl "boolean" notequal nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (IF const-decl "[boolean, T, T -> T]" if_def nil)
+    (f!2 skolem-const-decl "[(Union(remove(b!1, B!1))) -> below[N!1]]"
+     finite_sets_of_sets nil)
+    (N!1 skolem-const-decl "nat" finite_sets_of_sets nil)
+    (f!3 skolem-const-decl "[(b!1) -> below[N!2]]" finite_sets_of_sets
+     nil)
+    (N!2 skolem-const-decl "nat" finite_sets_of_sets nil)
+    (b!1 skolem-const-decl "(B!1)" finite_sets_of_sets nil)
+    (B!1 skolem-const-decl "setofsets[T]" finite_sets_of_sets nil)
+    (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
+     integers nil)
+    (set type-eq-decl nil sets nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (T formal-type-decl nil finite_sets_of_sets nil)
+    (finite_subset formula-decl nil finite_sets nil)
+    (powerset_finite judgement-tcc nil finite_sets_of_sets nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (>= const-decl "bool" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (injective? const-decl "bool" functions nil)
+    (subset? const-decl "bool" sets nil)
+    (member const-decl "bool" sets nil)
+    (subset_is_partial_order name-judgement "(partial_order?[set[T]])"
+     sets_lemmas nil)
+    (finite_set type-eq-decl nil finite_sets nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (setof type-eq-decl nil defined_types nil)
+    (setofsets type-eq-decl nil sets nil)
+    (powerset const-decl "setofsets" sets nil)
+    (Union const-decl "set" sets nil)
+    (SS!1 skolem-const-decl "setofsets[T]" finite_sets_of_sets nil)
+    (nonempty_powerset application-judgement "(nonempty?[set[T]])"
+     sets_lemmas nil)
+    (Union_surjective name-judgement
+     "(surjective?[setofsets[T], set[T]])" sets_lemmas nil))
+   shostak)
   (Union_finite-1 nil 3252521570
    ("" (skolem!)
     (("" (expand "every")
@@ -44364,8 +44547,7 @@
         nil))
       nil))
     nil)
-   ((every const-decl "bool" sets nil)
-    (below type-eq-decl nil nat_types nil)
+   ((below type-eq-decl nil nat_types nil)
     (< const-decl "bool" reals nil)
     (AND const-decl "[bool, bool -> bool]" booleans nil)
     (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
@@ -44376,25 +44558,11 @@
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (remove const-decl "set" sets nil)
-    (b!2 skolem-const-decl "(remove(b!1, B!1))" finite_sets_of_sets
-     nil)
-    (j!1 skolem-const-decl "nat" finite_sets_of_sets nil)
-    (f!1 skolem-const-decl "[(B!1) -> below[1 + j!1]]"
-     finite_sets_of_sets nil)
-    (a!1 skolem-const-decl "(B!1)" finite_sets_of_sets nil)
     (/= const-decl "boolean" notequal nil)
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (nonneg_int nonempty-type-eq-decl nil integers nil)
     (IF const-decl "[boolean, T, T -> T]" if_def nil)
-    (f!2 skolem-const-decl "[(Union(remove(b!1, B!1))) -> below[N!1]]"
-     finite_sets_of_sets nil)
-    (N!1 skolem-const-decl "nat" finite_sets_of_sets nil)
-    (f!3 skolem-const-decl "[(b!1) -> below[N!2]]" finite_sets_of_sets
-     nil)
-    (N!2 skolem-const-decl "nat" finite_sets_of_sets nil)
-    (b!1 skolem-const-decl "(B!1)" finite_sets_of_sets nil)
-    (B!1 skolem-const-decl "setofsets[T]" finite_sets_of_sets nil)
     (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
      integers nil)
     (set type-eq-decl nil sets nil)
@@ -44429,7 +44597,6 @@
     (setofsets type-eq-decl nil sets nil)
     (powerset const-decl "setofsets" sets nil)
     (Union const-decl "set" sets nil)
-    (SS!1 skolem-const-decl "setofsets[T]" finite_sets_of_sets nil)
     (nonempty_powerset application-judgement "(nonempty?[set[T]])"
      sets_lemmas nil)
     (Union_surjective name-judgement
@@ -45408,8 +45575,8 @@
     (restrict_extend formula-decl nil extend nil))
    nil
    (quotient_map_is_Quotient_EqivalenceRespecting subtype
-    "QuotientDefinition[QuotientKernelProperties.X1].quotient_map(QuotientKernelProperties.S)"
-    "(KernelDefinition[QuotientKernelProperties.X, QuotientKernelProperties.X1, Quotient(QuotientKernelProperties.S)].PreservesEq(extend[[QuotientKernelProperties.X, QuotientKernelProperties.X], [X1, X1], booleans.bool, booleans.FALSE].extend(QuotientKernelProperties.S)))"))
+    "QuotientDefinition[X1].quotient_map(QuotientKernelProperties.S)"
+    "(KernelDefinition[QuotientKernelProperties.X, X1, QuotientDefinition[X1].Quotient(QuotientKernelProperties.S)].PreservesEq(extend[[QuotientKernelProperties.X, QuotientKernelProperties.X], [X1, X1], booleans.boolean, booleans.FALSE].extend(QuotientKernelProperties.S)))"))
   (quotient_map_is_Quotient_EqivalenceRespecting-2 nil 3244167419
    ("" (skosimp*)
     (("" (expand "PreservesEq")
@@ -45423,8 +45590,8 @@
     nil)
    nil nil
    (quotient_map_is_Quotient_EqivalenceRespecting subtype
-    "QuotientDefinition[QuotientKernelProperties.X1].quotient_map(QuotientKernelProperties.S)"
-    "(KernelDefinition[QuotientKernelProperties.X, QuotientKernelProperties.X1, Quotient(QuotientKernelProperties.S)].PreservesEq(extend[[QuotientKernelProperties.X, QuotientKernelProperties.X], [X1, X1], booleans.bool, booleans.FALSE].extend(QuotientKernelProperties.S)))"))
+    "QuotientDefinition[X1].quotient_map(QuotientKernelProperties.S)"
+    "(KernelDefinition[QuotientKernelProperties.X, X1, QuotientDefinition[X1].Quotient(QuotientKernelProperties.S)].PreservesEq(extend[[QuotientKernelProperties.X, QuotientKernelProperties.X], [X1, X1], booleans.boolean, booleans.FALSE].extend(QuotientKernelProperties.S)))"))
   (quotient_map_is_Quotient_EqivalenceRespecting-1 nil 3243663394
    ("" (skosimp*)
     (("" (expand "PreservesEq")
@@ -45456,8 +45623,8 @@
     (subset? const-decl "bool" sets nil))
    shostak
    (quotient_map_is_Quotient_EqivalenceRespecting subtype
-    "QuotientDefinition[QuotientKernelProperties.X1].quotient_map(QuotientKernelProperties.S)"
-    "(KernelDefinition[QuotientKernelProperties.X, QuotientKernelProperties.X1, Quotient(QuotientKernelProperties.S)].PreservesEq(extend[[QuotientKernelProperties.X, QuotientKernelProperties.X], [X1, X1], booleans.bool, booleans.FALSE].extend(QuotientKernelProperties.S)))")))
+    "QuotientDefinition[X1].quotient_map(QuotientKernelProperties.S)"
+    "(KernelDefinition[QuotientKernelProperties.X, X1, QuotientDefinition[X1].Quotient(QuotientKernelProperties.S)].PreservesEq(extend[[QuotientKernelProperties.X, QuotientKernelProperties.X], [X1, X1], booleans.boolean, booleans.FALSE].extend(QuotientKernelProperties.S)))")))
  (Kernel_ECquotient_map_TCC1 0
   (Kernel_ECquotient_map_TCC1-1 nil 3243663394
    ("" (skosimp)
@@ -45485,8 +45652,8 @@
     (X1 formal-subtype-decl nil QuotientKernelProperties nil))
    shostak
    (Kernel_ECquotient_map subtype
-    "QuotientDefinition[QuotientKernelProperties.X1].quotient_map(QuotientKernelProperties.S)"
-    "[X1 -> QuotientDefinition[QuotientKernelProperties.X1].ECQuotient(QuotientKernelProperties.S)]")))
+    "QuotientDefinition[X1].quotient_map(QuotientKernelProperties.S)"
+    "[X1 -> QuotientDefinition[X1].ECQuotient(QuotientKernelProperties.S)]")))
  (Kernel_ECquotient_map 0
   (Kernel_ECquotient_map-1 nil 3243666194
    ("" (skosimp)
@@ -45628,8 +45795,8 @@
     (PreservesEq const-decl "bool" KernelDefinition nil))
    shostak
    (quotient_map_is_ECQuotient_EqivalenceRespecting subtype
-    "QuotientDefinition[QuotientKernelProperties.X1].quotient_map(QuotientKernelProperties.S)"
-    "(KernelDefinition[QuotientKernelProperties.X, QuotientKernelProperties.X1, ECQuotient(QuotientKernelProperties.S)].PreservesEq(extend[[QuotientKernelProperties.X, QuotientKernelProperties.X], [X1, X1], booleans.bool, booleans.FALSE].extend(QuotientKernelProperties.S)))"))))
+    "QuotientDefinition[X1].quotient_map(QuotientKernelProperties.S)"
+    "(KernelDefinition[QuotientKernelProperties.X, X1, QuotientDefinition[X1].ECQuotient(QuotientKernelProperties.S)].PreservesEq(extend[[QuotientKernelProperties.X, QuotientKernelProperties.X], [X1, X1], booleans.boolean, booleans.FALSE].extend(QuotientKernelProperties.S)))"))))
 (QuotientSubDefinition
  (quotient_sub_map_TCC1 0
   (quotient_sub_map_TCC1-1 nil 3245525335
@@ -46267,7 +46434,7 @@
    shostak
    (QuotientDistributive subtype
     "QuotientDistributive.EqualityExtension(QuotientDistributive.S)"
-    "{R: relations[[QuotientDistributive.X, QuotientDistributive.Y]].equivalence | KernelDefinition[[QuotientDistributive.X, QuotientDistributive.Y], [QuotientDistributive.X, QuotientDistributive.Y], booleans.bool].PreservesEq(R)(LAMBDA (x: [QuotientDistributive.X, QuotientDistributive.Y]): booleans.TRUE)}")))
+    "{R: relations[[QuotientDistributive.X, QuotientDistributive.Y]].equivalence | KernelDefinition[[QuotientDistributive.X, QuotientDistributive.Y], [QuotientDistributive.X, QuotientDistributive.Y], booleans.boolean].PreservesEq(R)(LAMBDA (x: [QuotientDistributive.X, QuotientDistributive.Y]): booleans.TRUE)}")))
  (QuotientDistributive 0
   (QuotientDistributive-2 "" 3458173920
    ("" (skosimp*)
@@ -47511,7 +47678,7 @@
    shostak
    (RelQuotientDistributive subtype
     "QuotientDistributive.RelExtension(QuotientDistributive.S, QuotientDistributive.R)"
-    "{R: relations[[QuotientDistributive.X, QuotientDistributive.Y]].equivalence | KernelDefinition[[QuotientDistributive.X, QuotientDistributive.Y], [QuotientDistributive.X, QuotientDistributive.Y], booleans.bool].PreservesEq(R)(LAMBDA (x: [QuotientDistributive.X, QuotientDistributive.Y]): booleans.TRUE)}")))
+    "{R: relations[[QuotientDistributive.X, QuotientDistributive.Y]].equivalence | KernelDefinition[[QuotientDistributive.X, QuotientDistributive.Y], [QuotientDistributive.X, QuotientDistributive.Y], booleans.boolean].PreservesEq(R)(LAMBDA (x: [QuotientDistributive.X, QuotientDistributive.Y]): booleans.TRUE)}")))
  (RelQuotientDistributive 0
   (RelQuotientDistributive-1 nil 3245194514
    ("" (skosimp*)
@@ -49052,7 +49219,7 @@
    shostak
    (FunQuotientDistributive subtype
     "QuotientDistributive.FunExtension(QuotientDistributive.F)"
-    "{R: relations[[QuotientDistributive.X -> QuotientDistributive.Y]].equivalence | KernelDefinition[[QuotientDistributive.X -> QuotientDistributive.Y], [QuotientDistributive.X -> QuotientDistributive.Y], booleans.bool].PreservesEq(R)(LAMBDA (x: [QuotientDistributive.X -> QuotientDistributive.Y]): booleans.TRUE)}")))
+    "{R: relations[[QuotientDistributive.X -> QuotientDistributive.Y]].equivalence | KernelDefinition[[QuotientDistributive.X -> QuotientDistributive.Y], [QuotientDistributive.X -> QuotientDistributive.Y], booleans.boolean].PreservesEq(R)(LAMBDA (x: [QuotientDistributive.X -> QuotientDistributive.Y]): booleans.TRUE)}")))
  (FunQuotientDistributive 0
   (FunQuotientDistributive-3 "" 3342937949
    ("" (skosimp)
@@ -54231,7 +54398,7 @@
    nil
    (QuotientAction subtype
     "QuotientDefinition[QuotientIteration.X].quotient_map(QuotientIteration.action(QuotientIteration.S)(QuotientIteration.R))"
-    "(KernelDefinition[QuotientIteration.X, QuotientIteration.X, Quotient(QuotientIteration.action(QuotientIteration.S)(QuotientIteration.R))].PreservesEq(QuotientIteration.S))")))
+    "(KernelDefinition[QuotientIteration.X, QuotientIteration.X, QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.action(QuotientIteration.S)(QuotientIteration.R))].PreservesEq(QuotientIteration.S))")))
  (QuotientAction_TCC2 0
   (QuotientAction_TCC2-1 nil 3243015883
    ("" (skosimp*)
@@ -54381,7 +54548,7 @@
     (subset? const-decl "bool" sets nil))
    nil
    (QuotientAction subtype "QuotientIteration.S"
-    "{R: relations[QuotientIteration.X].equivalence | KernelDefinition[QuotientIteration.X, QuotientIteration.X, booleans.bool].PreservesEq(R)(LAMBDA (x: QuotientIteration.X): booleans.TRUE)}")))
+    "{R: relations[QuotientIteration.X].equivalence | KernelDefinition[QuotientIteration.X, QuotientIteration.X, booleans.boolean].PreservesEq(R)(LAMBDA (x: QuotientIteration.X): booleans.TRUE)}")))
  (QuotientAction_TCC3 0
   (QuotientAction_TCC3-2 "Fix for 3.2" 3307986379
    ("" (skosimp*)
@@ -54559,8 +54726,8 @@
     (subset? const-decl "bool" sets nil))
    shostak
    (QuotientAction subtype
-    "QuotientExtensionProperties[QuotientIteration.X, QuotientIteration.X, Quotient(QuotientIteration.action(QuotientIteration.S)(QuotientIteration.R))].lift(QuotientIteration.S)(QuotientDefinition[QuotientIteration.X].quotient_map(QuotientIteration.action(QuotientIteration.S)(QuotientIteration.R)))"
-    "(KernelDefinition[Quotient(QuotientIteration.S), Quotient(QuotientIteration.S), Quotient(QuotientIteration.action(QuotientIteration.S)(QuotientIteration.R))].PreservesEq(QuotientIteration.R))"))
+    "QuotientExtensionProperties[QuotientIteration.X, QuotientIteration.X, QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.action(QuotientIteration.S)(QuotientIteration.R))].lift(QuotientIteration.S)(QuotientDefinition[QuotientIteration.X].quotient_map(QuotientIteration.action(QuotientIteration.S)(QuotientIteration.R)))"
+    "(KernelDefinition[QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.S), QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.S), QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.action(QuotientIteration.S)(QuotientIteration.R))].PreservesEq(QuotientIteration.R))"))
   (QuotientAction_TCC3-1 nil 3245193427
    ("" (skosimp*)
     (("" (expand "PreservesEq")
@@ -54715,8 +54882,8 @@
     (subset? const-decl "bool" sets nil))
    shostak
    (QuotientAction subtype
-    "QuotientExtensionProperties[QuotientIteration.X, QuotientIteration.X, Quotient(QuotientIteration.action(QuotientIteration.S)(QuotientIteration.R))].lift(QuotientIteration.S)(QuotientDefinition[QuotientIteration.X].quotient_map(QuotientIteration.action(QuotientIteration.S)(QuotientIteration.R)))"
-    "(KernelDefinition[Quotient(QuotientIteration.S), Quotient(QuotientIteration.S), Quotient(QuotientIteration.action(QuotientIteration.S)(QuotientIteration.R))].PreservesEq(QuotientIteration.R))")))
+    "QuotientExtensionProperties[QuotientIteration.X, QuotientIteration.X, QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.action(QuotientIteration.S)(QuotientIteration.R))].lift(QuotientIteration.S)(QuotientDefinition[QuotientIteration.X].quotient_map(QuotientIteration.action(QuotientIteration.S)(QuotientIteration.R)))"
+    "(KernelDefinition[QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.S), QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.S), QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.action(QuotientIteration.S)(QuotientIteration.R))].PreservesEq(QuotientIteration.R))")))
  (QuotientAction_TCC4 0
   (QuotientAction_TCC4-1 nil 3245525352
    ("" (grind :exclude "rep" :if-match nil) nil nil)
@@ -54728,7 +54895,7 @@
     (PreservesEq const-decl "bool" KernelDefinition nil))
    shostak
    (QuotientAction subtype "QuotientIteration.R"
-    "{R: relations[Quotient(QuotientIteration.S)].equivalence | KernelDefinition[Quotient(QuotientIteration.S), Quotient(QuotientIteration.S), booleans.bool].PreservesEq(R)(LAMBDA (x: QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.S)): booleans.TRUE)}")))
+    "{R: relations[QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.S)].equivalence | KernelDefinition[QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.S), QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.S), booleans.boolean].PreservesEq(R)(LAMBDA (x: QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.S)): booleans.TRUE)}")))
  (QuotientAction 0
   (QuotientAction-3 "" 3658951612
    ("" (skosimp*)
