@@ -1730,10 +1730,19 @@ Point will be on the offending delimiter."
 	   (fset 'ask-user-about-lock 'ask-user-about-lock-orig)))))
 
 (defun validation-log-file ()
-  (let ((pvs-platform (car (process-lines "pvs-platform")))
-	(pvs-lisp (getenv "PVSLISP")))
-    (format "validation-%s-%s.log" pvs-platform pvs-lisp)))
+  (format "%s-%s-%s.log"
+      (pvs-git-description)
+    (car (process-lines "pvs-platform"))
+    (getenv "PVSLISP")))
 
+(defun pvs-git-description ()
+  "E.g., pvs7.0-647-g8c1572bb"
+  (car (split-string (call-process-to-string "git" "-C" pvs-path "describe"))))
+  
+(defun call-process-to-string (program &rest args)
+  (with-temp-buffer
+    (apply #'call-process program nil (current-buffer) nil args)
+    (buffer-string)))
 
 ;;; This function provides the most basic form of test, removing bin
 ;;; files, typechecking a file, then running prove-importchain on it.
