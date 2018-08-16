@@ -92,6 +92,7 @@ To change output prompt '~a':
 		     (*disable-gc-printout* t)
 		     (*pvstrace-level* 0)
 		     (*eval-untranslatable* nil)
+		     (*pvs2cl-mappings* nil)
 		     (input-stream (when input (make-string-input-stream input))))
 		 (if banner?
 		     (format t "
