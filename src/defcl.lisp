@@ -31,10 +31,18 @@
 (cl:eval-when (:execute :compile-toplevel :load-toplevel)
   (cl:unless (cl:find-package :pvs)
     (cl:defpackage :pvs
-      (:use :cl)
-      (:export :copy :defcl :lcopy :memq :write-deferred-methods-to-file))))
+      (:use :cl-user :lisp)
+      (:export :copy :defcl :lcopy :memq :write-deferred-methods-to-file)
+      )))
 
 (in-package :pvs)
+
+(eval-when (:execute :compile-toplevel :load-toplevel)
+  (unless (fboundp 'memq)
+    (defun memq (elt list)
+      (member elt list :test #'eq))))
+
+(export '(defcl copy write-deferred-methods))
 
 #+(or cmu sbcl)
 (defmethod slot-exists-p-using-class (c o s)
@@ -46,10 +54,10 @@
   (defmacro ignore-errors (&body forms)
     `(progn ,@forms)))
 
-(eval-when (:execute :compile-toplevel :load-toplevel)
-  (unless (fboundp 'memq)
-    (defun memq (elt list)
-      (member elt list :test #'eq))))
+;; (eval-when (:execute :compile-toplevel :load-toplevel)
+;;   (unless (fboundp 'memq)
+;;     (defun memq (elt list)
+;;       (member elt list :test #'eq))))
 
 (defvar *slot-info* nil
   "An association list mapping classes to superclasses, immediate

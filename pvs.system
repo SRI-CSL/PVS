@@ -95,7 +95,16 @@
 
 (assert (find-package :asdf))
 
-(asdf:load-system :cl-json)
+;;; Load cl-json.  First try from asdf, which should use the asdf location
+;;; set by the user.  If that fails, use pvs/src/cl-json.
+(handler-case
+    (asdf:load-system :cl-json)
+  (asdf:missing-component ()
+    #+allegro
+    (asdf:initialize-source-registry (format nil "~a/src/cl-json/" *pvs-path*))
+    #-allegro
+    (load (format nil "~a/src/cl-json/cl-json.asd" *pvs-path*))
+    (asdf:load-system :cl-json)))
 
 (in-package :cl-user)
 
@@ -124,9 +133,9 @@
 (defvar *load-pvs-prelude* t)
 
 #-(or gcl cmu sbcl)
-(defpackage pvs (:use :cl-user :lisp :clos :make))
+(defpackage :pvs (:use :cl-user :lisp :clos :make))
 #-(or gcl cmu sbcl)
-(defpackage pvs-xml-rpc
+(defpackage :pvs-xml-rpc
   (:use :cl-user :lisp :clos :make)
   (:export "pvs-server"))
 

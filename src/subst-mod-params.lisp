@@ -1879,7 +1879,7 @@
 			   (not (valid-infix-application? expr)))))
 		 (subst-mod-params* operator modinst bindings)))
 	   (arg (subst-mod-params* argument modinst bindings)))
-      #+badassert # bugs/887
+      #+badassert ;; bugs/887
       (assert (or (mappings modinst)
 		  (compatible? (domain (find-supertype (type op))) (type arg))))
       (cond ((or (and (eq op operator)
