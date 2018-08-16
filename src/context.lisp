@@ -1790,7 +1790,9 @@ Note that the lists might not be the same length."
 	      (let ((unassigned-tccs (remove-if #'(lambda (tcc) (proofs tcc))
 				       rem-tccs)))
 		(when (and proofs unassigned-tccs)
-		  (break "Why are there unassigned-tccs with proofs left?")))
+		  #+pvsdebug
+		  (break "Why are there unassigned-tccs with proofs left?")
+		  (mapc #'restore-proof-to-tcc unassigned-tccs proofs)))
 	      proofs))
 	(let* ((mproofs (tcc-expr-matches (car tccs) proofs))
 	       (mproof (when mproofs
