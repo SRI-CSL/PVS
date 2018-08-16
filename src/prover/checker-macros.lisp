@@ -478,7 +478,9 @@
 (defmacro restore ()
   `(progn (when *in-evaluator*
 	    (clear-dependent-theories *current-theory*))
-	  (throw 'abort *in-evaluator*)))
+	  (if (find-restart 'return-to-pvsio)
+	      (invoke-restart 'return-to-pvsio)
+	      (throw 'abort *in-evaluator*))))
 ;NSH(8.22.94): modified catch-restore to catch only outside apply.
 ;  `(if *in-apply*
 ;    (throw 'abort-in-apply nil)
