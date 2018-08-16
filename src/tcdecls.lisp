@@ -125,6 +125,8 @@
 ;;; (current-declarations-hash)
 (defun put-decl-and-generated (decl)
   (dolist (d (generated decl))
+    #+pvsdebug
+    (assert (memq d (all-decls (current-theory))))
     (let ((*insert-add-decl* t))
       (add-decl d nil)
       (when (tcc? d) (push d *tccdecls*))))
@@ -884,14 +886,16 @@
   (let* ((nfmls (subst-new-map-decls* (formals decl)))
 	 (odecl (car (rassoc decl *subst-new-map-decls*
 			     :test #'eq :key #'declaration)))
-	 (bindings (pairlis (apply #'append (formals odecl))
-			    (apply #'append nfmls)))
+	 (bindings (when nfmls
+		     (pairlis (apply #'append (formals odecl))
+			      (apply #'append nfmls))))
 	 (ntype (subst-new-map-decls* (substit (type decl) bindings)))
 	 (ndef (subst-new-map-decls* (substit (definition decl) bindings))))
+    #+pvsdebug
     (assert (or (null ndef)
 		(compatible? ntype
 			     (make-formals-funtype nfmls (type ndef))))
-	    () "incompat")
+	    () "subst-new-map-decl: incompatible types")
     (setf (formals decl) nfmls)
     (setf (definition decl) ndef)
     (setf (type decl) ntype)
@@ -918,6 +922,7 @@
 
 (defmethod subst-new-map-decl ((decl formula-decl))
   (change-to-mapped-formula-decl decl)
+  (setf (place decl) nil)
   (setf (kind decl) nil)
   (let ((fdecl (car (rassoc decl *subst-new-other-decls* :test #'eq))))
     (assert fdecl)
@@ -1256,10 +1261,13 @@
 	  ;; ;; If there are decl-formals, the dactuals need to be typechecked
 	  ;; (when (dactuals tn)
 	  ;;   (typecheck* (dactuals tn) nil nil nil))
-	  (let ((thinst (copy (current-theory-name))))
-	    (change-class thinst 'declparam-modname
-	      'dactuals (dactuals tn)
-	      'declaration decl)
+	  (let ((thinst (if dacts ; Slight optimization
+			    (current-theory-name)
+			    (copy (current-theory-name)))))
+	    (when dacts
+	      (change-class thinst 'declparam-modname
+		:dactuals (dactuals tn)
+		:declaration decl))
 	    (setf (resolutions tn) (list (mk-resolution decl thinst tn))))
 	  tn))
   (when *loading-prelude*
@@ -1529,6 +1537,12 @@
 	  (typecheck* (definition decl) rtype nil nil)
 	  (check-positive-types decl)
 	  #+pvsdebug (assert (fully-instantiated? (definition decl)))
+	  #+pvsdebug
+	  (assert (every #'(lambda (fv)
+			     (let ((fdecl (declaration fv)))
+			       (or (field-decl? fdecl)
+				   (memq fdecl *bound-variables*))))
+			 (freevars (definition decl))))
 	  (put-decl decl)
 	  (make-def-axiom decl))
 	(setf (positive-types decl) nil)))
@@ -1785,10 +1799,17 @@
 	(make-formals-domtype (cdr formals) nsubsts (cons dtype types)))))
 
 (defun make-formals-ftype (dtypes range formals bound-formals &optional domains substs)
+  "Given a declaration of the form
+  f(x:X, y:Y(x))(z: Z(x, y)): R(x, y, z)
+make-formal-ftype creates the funtype
+  [d: [x: X, Y(x)] -> [d1: Z(d`1, d`2) -> R(d`1, d`2, d1)]]
+The dependent types are created only when needed."
   (if (null dtypes)
-      (let ((srange (substit range substs)))
+      (let* ((*pseudo-normalizing* t)
+	     (srange (substit range substs)))
 	(mk-funtype* domains srange))
-      (let ((dtype (substit (car dtypes) substs)))
+      (let ((dtype (let ((*pseudo-normalizing* t))
+		     (substit (car dtypes) substs))))
 	(if (dep-binding? dtype)
 	    (let* ((fmls (car formals))
 		   (dname (mk-dep-binding-name dtype)))
@@ -3382,6 +3403,11 @@
       (setf (dactuals pexpr) dacts)
       (typecheck* pexpr ftype nil nil)
       (mk-subtype stype pexpr))))
+
+(defun formal-subtype? (type)
+  (and (subtype? type)
+       (type-name? (print-type type))
+       (formal-subtype-decl? (declaration (print-type type)))))
 
 ;;; Generates a new uninterpreted type and an uninterpreted projection
 ;;; function from that type to the given stype.
