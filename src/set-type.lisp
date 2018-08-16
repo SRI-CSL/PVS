@@ -1378,7 +1378,9 @@ required a context.")
 		      (module (declaration mapthinst))
 		      ltheory))
 	 ;; Now subst using mapthinst and mtheory
-	 (stype (subst-mod-params ltype mapthinst mtheory lhs))
+	 (stype (if (eq (id mapthinst) (id mtheory))
+		    (subst-mod-params ltype mapthinst mtheory lhs)
+		    ltype))
 	 (subst-type (subst-mod-params-all-mappings stype))
 	 (subst-types (if (free-params stype)
 			  (possible-mapping-subst-types
@@ -1410,7 +1412,7 @@ required a context.")
   (if (null types)
       (nreverse stypes)
       (let* ((bindings (tc-match stype (car types) 
-                                 (mapcar #'list (free-params stype)))))
+                                 (mapcar #'list (formals-not-in-context stype)))))
         (possible-mapping-subst-types
          (cdr types) stype
          (if (and bindings
@@ -3164,11 +3166,8 @@ required a context.")
   (declare (ignore op))
   (or (fully-instantiated? optype)
       *dont-worry-about-full-instantiations*
-      (let* ((frees (free-params optype))
-             (bindings ;;(instantiate-operator-bindings frees)
-              (mapcar #'list (remove-if #'(lambda (x)
-                                        (eq (module x) (current-theory)))
-                           frees)))
+      (let* ((bindings ;;(instantiate-operator-bindings frees)
+              (mapcar #'list (formals-not-in-context optype)))
              (domain (if (singleton? args)
                          (domain optype)
                          (domain-types optype)))
@@ -3397,13 +3396,7 @@ required a context.")
        (cdr theory-decls))))
 
 (defun instantiate-operator-type (optype op args expected)
-  (let* ((frees (free-params optype))
-         (bindings
-          (mapcar #'list (remove-if #'(lambda (x)
-                                        (or (memq x (formals (current-theory)))
-                                            (memq x (decl-formals
-                                                     (current-declaration)))))
-                           frees)))
+  (let* ((bindings (mapcar #'list (formals-not-in-context optype)))
          (domain (if (singleton? args)
                      (list (domain optype))
                      (domain-types optype)))
@@ -5278,11 +5271,10 @@ required a context.")
 
 (defun find-parameter-instantiation (type expected)
   (let* ((bindings (tc-match expected type
-                             (instantiate-operator-bindings
-                              (free-params type)))))
+			     (instantiate-operator-bindings
+			      (free-params type)))))
     (when (every #'cdr bindings)
       (instantiate-operator-from-bindings type bindings))))
-
 
 (defun free-formals (obj)
   (let ((frees nil))
