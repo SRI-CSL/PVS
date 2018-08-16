@@ -222,12 +222,13 @@
 			      (ex-defn-d (declaration op))
 			      (in-defn-d (declaration op))))
 	       (output-vars (output-vars eval-defn))
+	       (fargs (if (length= formals arguments)
+			  arguments
+			  (append (or actuals module-formals)
+				  arguments)))
 	       (check (check-output-vars
 		       output-vars 
-		       (pairlis
-			formals
-			(append (or actuals module-formals)
-				arguments))
+		       (pairlis formals fargs)
 		       livevars)))
 	  (when (and (null check)
 		     *eval-verbose*)
@@ -344,6 +345,8 @@
 	 (let* ((actuals (expr-actuals (module-instance op*)))
 		(pvsiosymb (when (name-expr? op*)
 			     (pvsio-symbol op* (+ (length actuals)(length (arguments expr)))))))
+	   (when (mappings (module-instance op*))
+	     (pvs2cl-mappings (mappings (module-instance op*))))
 	   (if (or (pvs2cl-primitive? op*) pvsiosymb)
 	       (pvs2cl-primitive-app expr bindings livevars pvsiosymb actuals)
 	     (if (datatype-constant? operator)
@@ -744,8 +747,11 @@
 
 (defmethod pvs2cl_up* ((expr name-expr) bindings livevars)
   (let* ((decl (declaration expr))
-	 (bnd (assoc  decl bindings :key #'declaration)))
+	 (thinst (module-instance expr))
+	 (bnd (assoc decl bindings :key #'declaration)))
     (assert (not (and bnd (const-decl? decl))))
+    (when (mappings thinst)
+      (pvs2cl-mappings (mappings thinst)))
     (if bnd
 	(if (const-decl? decl)
 	    (mk-funapp (cdr bnd)
@@ -1306,6 +1312,8 @@
 	     `(function ,(pvs2cl-primitive expr))))
 	((lazy-random-function? expr)
 	 (generate-lazy-random-lisp-function expr))
+	((pvs2cl-mapped? expr)
+	 (generate-pvs2cl-mapped-function expr))
 	(t 
 	 (let* ((nargs (if (funtype? (type expr)) (arity expr) 0))
 		(pvsiosymb (pvsio-symbol expr nargs)))
@@ -1365,6 +1373,28 @@
 	  (cons (pvs2cl_up* (expr (car actuals)) bindings livevars)
 		(pvs2cl-actuals (cdr actuals) bindings livevars)))
       nil))
+
+(defvar *pvs2cl-mappings*)
+
+(defun pvs2cl-mappings (mappings)
+  (when mappings
+    (let* ((lhs (lhs (car mappings)))
+	   (rhs (rhs (car mappings)))
+	   (pmap (assoc lhs *pvs2cl-mappings* :test #'tc-eq)))
+      (cond ((null pmap)
+	     (push (cons lhs rhs) *pvs2cl-mappings*))
+	    ((not (tc-eq (cdr pmap) rhs))
+	     (break "~a mapped in more than one way" lhs)))
+      (pvs2cl-mappings (cdr mappings)))))
+
+(defun pvs2cl-mapped? (expr)
+  (and (boundp '*pvs2cl-mappings*)
+       (assoc expr *pvs2cl-mappings* :test #'tc-eq)))
+
+(defun generate-pvs2cl-mapped-function (expr)
+  (let ((body (expr (cdr (assoc expr *pvs2cl-mappings* :test #'tc-eq)))))
+    (assert (null (type-value body)))
+    (break "generate-pvs2cl-mapped-function")))
 
 (defun datatype-constant? (expr)
   (adt-name-expr? expr))
