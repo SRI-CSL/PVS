@@ -1992,8 +1992,8 @@
 
 (defmethod is-unary-minus? ((expr application))
   (with-slots ((op operator) (arg argument)) expr
-    (and (is-minus? op)
-	 (not (tuple-expr? arg)))))
+    (and (is-minus? op)(eql (arity op) 1))))
+
 
 (defmethod is-unary-minus? ((expr t))
   nil)
