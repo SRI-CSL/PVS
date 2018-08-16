@@ -220,7 +220,7 @@
 	 (*subst-mod-free-params* nil))
     (assert (typep *subst-mod-params-theory*
 		   '(or module mod-decl theory-abbreviation-decl
-		     formal-theory-decl)))
+		     datatype formal-theory-decl)))
     (if (or (module? obj)
 	    (actuals modinst)
 	    (dactuals modinst)
@@ -312,6 +312,7 @@
 
 (defun make-subst-mod-params-bindings (modinst formals actuals mappings bindings)
   (cond ((null formals)
+	 #+pvsdebug
 	 (assert (check-smp-bindings bindings))
 	 (let ((mbindings (make-subst-mod-params-map-bindings modinst mappings bindings)))
 	   ;;(make-subst-mod-params-theoryref-bindings modinst mbindings)
@@ -320,9 +321,11 @@
 				modinst (car formals) (car actuals) bindings))
 		 (nbindings (make-subst-mod-params-binding
 			     (car formals) (car actuals) bindings)))
+	     #+pvsdebug
 	     (assert (check-smp-bindings nbindings))
 	     (push (caar nbindings) *subst-mod-free-params*)
 	     (when pred-binding
+	       #+pvsdebug
 	       (assert (check-smp-bindings (cons pred-binding nil)))
 	       (push (car pred-binding) *subst-mod-free-params*))
 	     (make-subst-mod-params-bindings
@@ -378,6 +381,7 @@
   (let* ((thabbr-decl (declaration thabbr))
 	 (thname (theory-name thabbr-decl))
 	 (containing-theory (module thabbr-decl)))
+    #+pvsdebug
     (assert (fully-instantiated? (module-instance thabbr)))
     (subst-mod-params thname (module-instance thabbr) containing-theory)))
 
@@ -558,6 +562,7 @@
 	     (rhs (rhs (car mappings)))
 	     (nbindings (make-subst-mod-params-map-bindings*
 			 ldecl rhs bindings)))
+	#+pvsdebug
 	(assert (check-smp-bindings nbindings))
 	(make-subst-mod-params-map-bindings
 	 modinst
@@ -608,6 +613,7 @@
 		     (actuals rhs-thinst)
 		     (mappings rhs-thinst)
 		     bindings)))
+    #+pvsdebug
     (assert (or (eq (id rhs-thname) (id lhs-theory))
 		(and (resolution rhs-thname)
 		     (mod-decl? (declaration rhs-thname))
@@ -657,6 +663,7 @@
   (setq *subst-mod-params-map-bindings*
 	(acons decl rhs *subst-mod-params-map-bindings*))
   (assert (typep decl '(or declaration module mapping-lhs)))
+  #+pvsdebug
   (assert (every #'(lambda (d) (typep (car d) '(or declaration module mapping-lhs)))
 		 bindings))
   (acons decl rhs bindings))
@@ -753,7 +760,8 @@
       	  (let* ((stype (subst-mod-params* (print-type obj) modinst bindings))
       		 (pte (or (print-type stype) stype)))
       	    (if (or (occurs-in nobj pte)
-		    (not (compatible? obj nobj)))
+		    (and (mappings modinst)
+			 (not (compatible? obj nobj))))
       		(lcopy nobj :print-type nil)
       		(if (eq obj nobj)
       		    (lcopy nobj :print-type pte)
@@ -1087,32 +1095,33 @@
 			(with-current-decl ndecl
 			  (let* ((mexpr (expr (cdr map)))
 				 (mdecl (when (name-expr? mexpr) (declaration mexpr)))
+				 (mdef (when mdecl (definition mdecl)))
+				 ;; We will either have mdef, in which case we use nformals
+				 ;; Or we just use mexpr
 				 (mthinst (when (name-expr? mexpr) (module-instance mexpr)))
 				 (nmodinst (copy modinst :dactuals dacts))
-				 (mdef (when (and mdecl (definition mdecl))
-					 (subst-mod-params (definition mdecl)
+				 (nformals (when mdef
+					     (subst-mod-params formals nmodinst
+					       *subst-mod-params-theory* decl)))
+				 (alist (when mdef
+					  (pairlis (apply #'append (formals mdecl))
+						   (apply #'append nformals))))
+				 (sdef (when mdef
+					 (subst-mod-params (substit mdef alist)
 					     (or dthinst mthinst)
 					   *subst-mod-params-theory* mdecl)))
-				 (nformals (subst-mod-params formals nmodinst
-					     *subst-mod-params-theory* decl))
-				 (ndef (subst-mod-params (or mdef mexpr)
+				 (ndef (subst-mod-params (or sdef mexpr)
 					   nmodinst *subst-mod-params-theory* (car map)))
-				 (ntype (subst-mod-params type nmodinst
+				 (ntype (subst-mod-params (substit type alist) nmodinst
 					  *subst-mod-params-theory* decl)))
 			    ;;(assert (fully-instantiated? nformals))
 			    ;;(assert (fully-instantiated? nexpr))
 			    ;;(assert (fully-instantiated? ntype))
+			    #+pvsdebug
 			    (assert (or (null ndef)
 					(every #'(lambda (fp) (memq fp dfmls)) (free-params ndef))))
 			    (setf (formals ndecl) nformals)
-			    (setf (definition ndecl)
-				  (if nformals
-				      (make-applications
-				       ndef
-				       (mapcar #'(lambda (fms)
-						   (mapcar #'mk-name-expr fms))
-					 nformals))
-				      ndef))
+			    (setf (definition ndecl) ndef)
 			    (setf (type ndecl) ntype)
 			    (setf (declared-type ndecl)
 				  (subst-mod-params* declared-type modinst bindings))
@@ -1222,10 +1231,13 @@
 				      (print-type type))
 				     (t (subst-mod-params*
 					 declared-type modinst bindings)))))
+	      #+pvsdebug
 	      (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
 			     (freevars (substit ndecl-type alist))))
+	      #+pvsdebug
 	      (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
 			     (freevars (substit ntype alist))))
+	      #+pvsdebug
 	      (assert (every #'(lambda (fv) (memq (declaration fv) nlist))
 			     (freevars (subst-mod-params*
 					judgement-type modinst bindings))))
@@ -1594,6 +1606,7 @@
 ;;; Expressions
 
 (defmethod subst-mod-params* ((expr name-expr) modinst bindings)
+  #+pvsdebug
   (assert (tc-eq (type expr) (type (resolution expr))))
   (let* ((decl (declaration expr))
 	 (act (cdr (assq decl bindings)))
@@ -1610,6 +1623,7 @@
 			       (type act)))
 	       (expr act)))
 	  (lhsmatch
+	   #+pvsdebug
 	   (assert (or (null (decl-formals (car lhsmatch)))
 		       (dactuals (module-instance expr))))
 	   (let ((sexpr (subst-for-formals
@@ -1865,39 +1879,43 @@
 			   (not (valid-infix-application? expr)))))
 		 (subst-mod-params* operator modinst bindings)))
 	   (arg (subst-mod-params* argument modinst bindings)))
-      (if (and (eq op operator)
-	       (eq arg argument))
-	  expr
-	  (if (and (implicit-conversion? expr)
-		   (name-expr? op)
-		   (or (and (eq (id op) '|extend|)
-			    (eq (id (module-instance (resolution op)))
-				'|extend|))
-		       (and (eq (id op) '|restrict|)
-			    (eq (id (module-instance (resolution op)))
-				'|restrict|)))
-		   (tc-eq (car (actuals (module-instance (resolution op))))
-			  (cadr (actuals (module-instance (resolution op))))))
-	      arg
-	      (let* ((nop (if (and (implicit-conversion? op)
-				   (name-expr? (operator op))
-				   (eq (id (operator op)) '|restrict|)
-				   (eq (id (module-instance
-					    (resolution (operator op))))
-				       '|restrict|))
-			      (argument op)
-			      op))
-		     (optype (find-supertype (type op)))
-		     (rtype (if (and (or (not (eq arg argument))
-					 (not (eq op operator)))
-				     (typep (domain optype) 'dep-binding))
-				(substit (range optype)
-				  (acons (domain optype) arg nil))
-				(range optype)))
-		     (nex (lcopy expr :operator nop :argument arg :type rtype)))
-		;; Note: the copy :around (application) method takes care of
-		;; changing the class if it is needed.
-		nex))))))
+      #+badassert # bugs/887
+      (assert (or (mappings modinst)
+		  (compatible? (domain (find-supertype (type op))) (type arg))))
+      (cond ((or (and (eq op operator)
+		      (eq arg argument))
+		 (not (compatible? (domain (find-supertype (type op))) (type arg))))
+	     expr)
+	    ((and (implicit-conversion? expr)
+		  (name-expr? op)
+		  (or (and (eq (id op) '|extend|)
+			   (eq (id (module-instance (resolution op)))
+			       '|extend|))
+		      (and (eq (id op) '|restrict|)
+			   (eq (id (module-instance (resolution op)))
+			       '|restrict|)))
+		  (tc-eq (car (actuals (module-instance (resolution op))))
+			 (cadr (actuals (module-instance (resolution op))))))
+	     arg)
+	    (t (let* ((nop (if (and (implicit-conversion? op)
+				    (name-expr? (operator op))
+				    (eq (id (operator op)) '|restrict|)
+				    (eq (id (module-instance
+					     (resolution (operator op))))
+					'|restrict|))
+			       (argument op)
+			       op))
+		      (optype (find-supertype (type op)))
+		      (rtype (if (and (or (not (eq arg argument))
+					  (not (eq op operator)))
+				      (typep (domain optype) 'dep-binding))
+				 (substit (range optype)
+				   (acons (domain optype) arg nil))
+				 (range optype)))
+		      (nex (lcopy expr :operator nop :argument arg :type rtype)))
+		 ;; Note: the copy :around (application) method takes care of
+		 ;; changing the class if it is needed.
+		 nex))))))
 
 (defmethod subst-mod-params* :around ((expr table-expr) modinst bindings)
   (let ((nexpr (call-next-method)))
