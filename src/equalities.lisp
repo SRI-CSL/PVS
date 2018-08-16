@@ -1,16 +1,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; equalities.lisp -- 
+;; equalities.lisp -- Gives various relations between PVS terms
 ;; Author          : Sam Owre
-;; Created On      : Wed Nov  3 00:37:50 1993
-;; Last Modified By: Sam Owre
-;; Last Modified On: Sun Apr  5 00:03:50 1998
-;; Update Count    : 77
-;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; --------------------------------------------------------------------
 ;; PVS
-;; Copyright (C) 2006, SRI International.  All Rights Reserved.
+;; Copyright (C) 2006-2018, SRI International.  All Rights Reserved.
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
@@ -27,26 +22,77 @@
 ;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 ;; --------------------------------------------------------------------
 
-;;; This file provides the various equalities needed by the type system.
-;;;  ps-eq is used to check for syntactic equality - useful when the
-;;;        expressions have not yet been typechecked
-;;;  tc-eq checks for equality, handling dependent bindings and alpha
-;;;        equivalence
-;;;  compatible? is a quick check whether two types are compatible
-;;;  compatible-type is the least common supertype for compatible? types
-;;;  compatible-preds is the list of predicates needed to coerce an
-;;;                   element of the first type to the second type
+;;; This file provides various term relations for PVS:
+
+;;; ps-eq - checks for syntactic equality. This is useful when the
+;;;    expressions have not yet been typechecked.  In general, it's
+;;;    better to typecheck first, and use tc-eq.
+;;; tc-eq - checks for equality, handling dependent bindings and alpha
+;;;    equivalence.  It is the primary equality relation for PVS terms.  It
+;;;    assumes the terms are typechecked and fully instantiated.
+;;; strong-tc-eq - a stricter test than tc-eq, in that it checks tc-eq on the
+;;;    print-types of type-exprs, and the parts of names (actuals, etc.)
+;;;    instead of just their resolutions.
+;;; tc-eq-with-bindings - tc-eq internally uses a bindings argument, used
+;;;    for dealing with alpha-equivalence.  This gives the API to methods
+;;;    that keep track of their own bindings.  The bindings must be an alist
+;;;    with elements "(expr . expr)"  For example tc-eq between
+;;;      λ (x: T, y: T'): f(x, y)
+;;;      λ (z: [T, T']): f(z`1, z`2)
+;;;    yields bindings of the form
+;;;      (((x, y) . z) (y . z`2) (x . z`1))
+;;;    Most of the functions described below use bindings in this way.
+;;; compatible? - checks whether two types are compatible.  This is weaker
+;;;    than whether they have a common supertype, as it allows for the
+;;;    possibility that conversions or TCCs could allow these types to be
+;;;    compared.  This is mostly in function domain types, and actual
+;;;    parameters.
+;;; strict-compatible? - like compatible? but requires domain types to be tc-eq.
+;;; disjoint-types? - checks if two types are known to be disjoint.
+;;; compatible-type - tries to return the compatible type.  If there is a
+;;;    common supertype, it generally returns the least one.  But with the
+;;;    caveats of compatible?.  And it tends to prefer the first
+;;;    argument, e.g.,
+;;;      (compatible-type set[T] set[(a)]) ==> set[T]
+;;;      (compatible-type set[(a)] set[T]) ==> set[(a)]
+;;;    and the result is eq to the first arg.
+;;; compatible-preds is the list of predicates needed to coerce an
+;;;    element of the first type to the second type.  Used primarily for TCC
+;;;    generation.
+;;; subtype-of? - checks whether one type is a subtype of another.  Uses
+;;;    subtype judgements, but otherwise it's essentially syntactic, e.g.,
+;;;    there is no relation between {i: int | i > 0} and {i: int | 0 < i}.
+;;;    Though types are kept in canonical form (as given by
+;;;    pseudonormalize); this example isn't taking that into account.
+;;; strict-subtype-of? - like subtype-of?, but the types cannot be tc-eq.
+;;; subtype-preds - returns the list of predicates that would have to hold
+;;;    of an element of the second type in order for it to belong to the
+;;;    first type.  For example,
+;;;     (subtype-preds nat int) ==> ({i: int | i >= 0})
+;;; subtype-pred - makes a single conjunction of the subtype-preds.
+;;; type-canon - tries to canonicalize the types, by lifting predicates as
+;;;    high as possible.  For example, [y: real, {x: real | x < y}] is
+;;;    canonicalized to {z: [real, real] | z`1 < z`2}.  Note that predicates
+;;;    cannot be lifted from domains of function types.  This function is
+;;;    not yet completed.
+;;; intersection-type - returns the largest type contained in the given types,
+;;;    which must be compatible.  It can return the empty type.  Note that
+;;;    this never returns a dep-binding.
 
 (in-package :pvs)
 
-(export '(tc-eq tc-eq* compatible? compatible?*))
+(export '(ps-eq tc-eq tc-eq-with-bindings compatible? strict-compatible? compatible-type
+	  compatible-preds subtype-of? strict-subtype-of? subtype-preds subtype-pred
+	  type-canon intersection-type))
 
-;;; ps-eq is used to determine whether two entities are syntactically
-;;; equal; the types and resolutions are ignored.
-;;; This is not generally a good test, as the typechecker can modify the
-;;; parse tree by adding conversions and macros, making it difficult to
-;;; compare something that's merely parsed with something that's
-;;; typechecked.  If both terms are tyechecked, use tc-eq instead.
+;;; ps-eq is used to determine whether two entities are syntactically equal;
+;;; the types and resolutions are ignored.  This is not generally a good
+;;; test, especially between a typed term and an untyped one, as the
+;;; typechecker can modify the parse tree by adding conversions and macros,
+;;; making it difficult to compare something that's merely parsed with
+;;; something that's typechecked.  If both terms are typechecked, use tc-eq
+;;; instead.  ps-eq basically just unparses both terms to strings, and
+;;; compares them.
 
 (defun ps-eq (x y)
   (string= (unparse x :string t :char-width most-positive-fixnum)
@@ -815,6 +861,13 @@
 	  (bindings-to-types (cdr bindings) (cdr types)
 			     (cons (type (car bindings)) result)))))
 
+;;; make-compatible-bindings takes two bindings lists b1 and b2 (e.g., from
+;;; two lambda exprs) and a bindings alist, and updates the bindings alist
+;;; accordingly.  The trickiness here is with things like
+;;;   "λ (x: T, y: T'): f(x, y)", which is tc-eq to
+;;;   "λ (z: [T, T']): f(z`1, z`2)".
+;;; Dependent types 
+
 (defun make-compatible-bindings (b1 b2 bindings)
   (declare (list b1 b2))
   (if (and (singleton? b1)
@@ -923,19 +976,20 @@
 ;;; replace.  rewrite doesn't seem to do this, so no check for
 ;;; in rewrite.
 
-(defmethod tc-eq* ((n1 name-expr) (e2 expr) bindings)
-  (if (name-expr? e2)
-      (call-next-method)
-      (when (and nil (not *replace-cache*)
-		 (skolem-const-decl? (declaration n1)))
-	(tc-eq* (definition (declaration n1)) e2 bindings))))
+;; (defmethod tc-eq* ((n1 name-expr) (e2 expr) bindings)
+;;   (if (name-expr? e2)
+;;       (call-next-method)
+;;       ;; (when (and (not *replace-cache*)
+;;       ;; 		 (skolem-const-decl? (declaration n1)))
+;;       ;; 	(tc-eq* (definition (declaration n1)) e2 bindings))
+;;       ))
 
-(defmethod tc-eq* ((e1 expr) (n2 name-expr) bindings)
-  (if (name-expr? e1)
-      (call-next-method)
-      (when (and nil (not *replace-cache*)
-		 (skolem-const-decl? (declaration n2)))
-	(tc-eq* e1 (definition (declaration n2)) bindings))))
+;; (defmethod tc-eq* ((e1 expr) (n2 name-expr) bindings)
+;;   (if (name-expr? e1)
+;;       (call-next-method)
+;;       (when (and (not *replace-cache*)
+;; 		 (skolem-const-decl? (declaration n2)))
+;; 	(tc-eq* e1 (definition (declaration n2)) bindings))))
 
 ;;; Make sure we don't allow bindings and names to be tc-eq*
 
@@ -1040,9 +1094,11 @@
 	       (tc-eq* ex1 ex2 bindings))))))
 
 
-;;; Compatible? for types checks whether two types have a common
-;;; supertype.  Note that this is used during typechecking, and tends to
-;;; succeed for types involving free parameters.
+;;; Compatible? for types checks whether two types have a common supertype.
+;;; Note that this is used during typechecking, and tends to succeed for
+;;; types involving free parameters.  It doesn't check for consistency, so
+;;; compatible-type may fail even when this succeeds, unless both types are
+;;; fully-instantiated.
 
 (defmethod compatible? ((res1 resolution) (res2 resolution))
   (compatible? (type res1) (type res2)))
@@ -1053,7 +1109,16 @@
 	(t (and (compatible? (car atype) (car etype))
 		(compatible? (cdr atype) (cdr etype))))))
 
-(defmethod compatible? (atype etype)
+(defmethod compatible? ((atype type-expr) (etype type-expr))
+  (compatible?* (find-supertype atype) (find-supertype etype)))
+
+(defmethod compatible? ((atype dep-binding) (etype type-expr))
+  (compatible?* (find-supertype atype) (find-supertype etype)))
+
+(defmethod compatible? ((atype type-expr) (etype dep-binding))
+  (compatible?* (find-supertype atype) (find-supertype etype)))
+
+(defmethod compatible? ((atype dep-binding) (etype dep-binding))
   (compatible?* (find-supertype atype) (find-supertype etype)))
 
 (defmethod compatible? ((atype actual) (etype actual))
@@ -1072,7 +1137,7 @@
 (defmethod compatible?* ((atype dep-binding) etype)
   (compatible?* (type atype) etype))
 
-(defmethod compatible?* (atype (etype dep-binding))
+(defmethod compatible?* ((atype type-expr) (etype dep-binding))
   (compatible?* atype (type etype)))
 
 ;;; We would like to use tc-eq for type-names, but since this can be
@@ -1081,8 +1146,8 @@
 
 (defmethod compatible?* ((atype type-name) (etype type-name))
   #+pvsdebug (assert (and (resolution atype) (resolution etype)))
-  (or (declaration-outside-formals? atype)
-      (declaration-outside-formals? etype)
+  (or (declaration-is-not-in-context etype)
+      (declaration-is-not-in-context atype)
       (let* ((mi1 (module-instance atype))
 	     (mi2 (module-instance etype))
 	     (a1 (actuals mi1))
@@ -1094,63 +1159,56 @@
 	     ;;(tc-eq (module-instance atype) (module-instance etype))
 	     (or (null a1)
 		 (null a2)
-		 (actuals-are-outside-formals? a1)
-		 (actuals-are-outside-formals? a2)
+		 (actuals-are-not-in-context a2)
+		 (actuals-are-not-in-context a1)
 		 (compatible?* a1 a2))
 	     (or (null da1)
 		 (null da2)
+		 (actuals-are-not-in-context da2)
+		 (actuals-are-not-in-context da1)
 		 (compatible?* da1 da2))))))
 
 (defmethod compatible?* ((atype type-name) etype)
   (declare (ignore etype))
-  (or (declaration-outside-formals? atype)
+  (or (formal-not-in-context? (declaration atype))
       (call-next-method)))
 
 (defmethod compatible?* ((atype type-expr) (etype type-name))
-  (or (declaration-outside-formals? etype)
+  (or (formal-not-in-context? (declaration etype))
       (call-next-method)))
 
 (defmethod compatible?* (atype (etype type-name))
   (declare (ignore atype))
-  (or (declaration-outside-formals? etype)
+  (or (formal-not-in-context? (declaration etype))
       (call-next-method)))
 
-(defun declaration-outside-formals? (type-name)
+(defun declaration-is-not-in-context (type-name)
   (unless (or *strong-tc-eq-flag*
 	      (type-var? type-name))
-    (let ((decl (declaration (car (resolutions type-name)))))
-      (and (typep decl 'formal-decl)
-	   (current-theory)
-	   (not (memq decl (formals (current-theory))))
-	   (current-declaration)
-	   (not (memq decl (decl-formals (current-declaration))))))))
+    (formal-not-in-context? (declaration type-name))))
 
-(defun actuals-are-outside-formals? (actuals)
+(defun actuals-are-not-in-context (actuals)
   (unless *strong-tc-eq-flag*
-    (let* ((ex (actual-value (car actuals)))
-	   (decl (when (and (typep ex 'name)
-			    (resolutions ex))
-		   (declaration (car (resolutions ex))))))
-      (and (typep decl 'formal-decl)
-	   (not (or (memq decl (formals (current-theory)))
-		    (memq decl (decl-formals (current-declaration)))))))))
+    (actuals-are-not-in-context* actuals)))
 
-(defmethod compatible?* ((atype type-var) (etype type-expr))
-  t)
+(defun actuals-are-not-in-context* (actuals)
+  (or (null actuals)
+      (and (formals-not-in-context (car actuals))
+	   (actuals-are-not-in-context* (cdr actuals)))))
 
-(defmethod compatible?* ((etype type-expr) (atype type-var))
-  t)
-
-(defmethod compatible?* ((etype type-name) (atype type-var))
-  t)
-
-(defmethod compatible?* ((etype type-var) (atype type-name))
-  t)
+(defmethod compatible?* ((atype type-var) (etype dep-binding))
+  (compatible?* atype (type etype)))
 
 (defmethod compatible?* ((atype rec-type-variable) (etype recordtype))
   t)
 
 (defmethod compatible?* ((etype recordtype) (atype rec-type-variable))
+  t)
+
+(defmethod compatible?* ((atype field-type-variable) (etype type-expr))
+  t)
+
+(defmethod compatible?* :around ((etype type-expr) (atype field-type-variable))
   t)
 
 (defmethod compatible?* ((atype tup-type-variable) (etype tupletype))
@@ -1159,10 +1217,22 @@
 (defmethod compatible?* ((etype tupletype) (atype tup-type-variable))
   t)
 
+(defmethod compatible?* ((atype proj-type-variable) (etype type-expr))
+  t)
+
+(defmethod compatible?* :around ((etype type-expr) (atype proj-type-variable))
+  t)
+
 (defmethod compatible?* ((atype cotup-type-variable) (etype cotupletype))
   t)
 
 (defmethod compatible?* ((etype cotupletype) (atype cotup-type-variable))
+  t)
+
+(defmethod compatible?* ((atype out-type-variable) (etype type-expr))
+  t)
+
+(defmethod compatible?* :around ((etype type-expr) (atype out-type-variable))
   t)
 
 (defmethod compatible?* ((l1 list) (l2 list))
@@ -1280,20 +1350,27 @@
 
 (defmethod strict-compatible?* ((atype type-name) (etype type-name) bindings)
   #+pvsdebug (assert (and (resolution atype) (resolution etype)))
-  (or (declaration-outside-formals? atype)
-      (declaration-outside-formals? etype)
+  (or (declaration-is-not-in-context etype)
+      (declaration-is-not-in-context atype)
       (let* ((mi1 (module-instance atype))
 	     (mi2 (module-instance etype))
 	     (a1 (actuals mi1))
-	     (a2 (actuals mi2)))
+	     (a2 (actuals mi2))
+	     (da1 (dactuals mi1))
+	     (da2 (dactuals mi2)))
 	(and (eq (id atype) (id etype))
 	     (eq (id mi1) (id mi2))
 	     ;;(tc-eq (module-instance atype) (module-instance etype))
 	     (or (null a1)
 		 (null a2)
-		 (actuals-are-outside-formals? a1)
-		 (actuals-are-outside-formals? a2)
-		 (strict-compatible?* a1 a2 bindings))))))
+		 (actuals-are-not-in-context a2)
+		 (actuals-are-not-in-context a1)
+		 (strict-compatible?* a1 a2 bindings))
+	     (or (null da1)
+		 (null da2)
+		 (actuals-are-not-in-context da2)
+		 (actuals-are-not-in-context da1)
+		 (strict-compatible?* da1 da2 bindings))))))
 
 (defmethod strict-compatible?* ((l1 list) (l2 list) bindings)
   (and (length= l1 l2)
@@ -1411,18 +1488,26 @@
 
 
 ;;; Compatible-Type for types checks whether two types have a common
-;;; supertype.  It returns the (least) common supertype.
+;;; supertype.  In simple cases, it returns the least common supertype, but
+;;; when that involves dependent types, etc. it tends to return the first
+;;; argument.
 
 (defun compatible-type (t1 t2 &optional bindings)
   (when (compatible? t1 t2)
-    (compatible-type* t1 t2 bindings)))
+    (let ((ctype (compatible-type* t1 t2 bindings)))
+      ;; This isn't true; subtype-of? is strict on function domain types,
+      ;; while this returns the largest domain type.
+      ;; (assert (or (null ctype)
+      ;; 		  (and (subtype-of? t1 ctype)
+      ;; 		       (subtype-of? t2 ctype))))
+      ctype)))
 
 (defmethod compatible-type* :around ((atype type-expr) (etype type-expr)
 				     bindings)
   (if (tc-eq-with-bindings atype etype bindings)
       atype
       (call-next-method)))
-  
+
 (defmethod compatible-type* ((atype dep-binding) etype bindings)
   (let ((stype (compatible-type* (type atype) etype bindings)))
     (if (tc-eq-with-bindings stype (type atype) bindings)
@@ -1431,24 +1516,6 @@
 
 (defmethod compatible-type* (atype (etype dep-binding) bindings)
   (compatible-type* atype (type etype) bindings))
-
-
-(defmethod compatible-type* ((atype type-var) (etype type-expr) bindings)
-  (declare (ignore bindings))
-  etype)
-
-(defmethod compatible-type* ((atype type-expr) (etype type-var) bindings)
-  (declare (ignore bindings))
-  atype)
-
-(defmethod compatible-type* ((atype dep-binding) (etype type-var)
-			     bindings)
-  (declare (ignore bindings))
-  atype)
-
-(defmethod compatible-type* ((atype subtype) (etype type-var) bindings)
-  (declare (ignore bindings))
-  atype)
 
 (defmethod compatible-type* ((atype rec-type-variable) (etype recordtype)
 			     bindings)
@@ -1460,8 +1527,13 @@
   (declare (ignore bindings))
   atype)
 
-(defmethod compatible-type* ((atype dep-binding) (etype rec-type-variable)
+(defmethod compatible-type* ((atype field-type-variable) (etype type-expr)
 			     bindings)
+  (declare (ignore bindings))
+  etype)
+
+(defmethod compatible-type* :around ((atype type-expr) (etype field-type-variable)
+				     bindings)
   (declare (ignore bindings))
   atype)
 
@@ -1475,8 +1547,13 @@
   (declare (ignore bindings))
   atype)
 
-(defmethod compatible-type* ((atype dep-binding) (etype tup-type-variable)
+(defmethod compatible-type* ((atype proj-type-variable) (etype type-expr)
 			     bindings)
+  (declare (ignore bindings))
+  etype)
+
+(defmethod compatible-type* :around ((atype type-expr) (etype proj-type-variable)
+				     bindings)
   (declare (ignore bindings))
   atype)
 
@@ -1490,50 +1567,186 @@
   (declare (ignore bindings))
   atype)
 
-(defmethod compatible-type* ((atype dep-binding) (etype cotup-type-variable)
+(defmethod compatible-type* ((atype out-type-variable) (etype type-expr)
 			     bindings)
+  (declare (ignore bindings))
+  etype)
+
+(defmethod compatible-type* :around ((atype type-expr) (etype out-type-variable)
+				     bindings)
   (declare (ignore bindings))
   atype)
 
 (defmethod compatible-type* ((atype struct-sub-tupletype)
+			     (etype tuple-or-struct-subtype) bindings)
+  (declare (ignore bindings))
+  etype)
+
+(defmethod compatible-type* ((atype tuple-or-struct-subtype)
 			     (etype struct-sub-tupletype) bindings)
   (declare (ignore bindings))
   atype)
 
 (defmethod compatible-type* ((atype struct-sub-recordtype)
-			     (etype struct-sub-recordtype) bindings)
+			     (etype record-or-struct-subtype) bindings)
   (declare (ignore bindings))
   atype)
 
-;;; Note that we return the instantiated type, if there is one.
+(defmethod compatible-type* ((atype record-or-struct-subtype)
+			     (etype struct-sub-recordtype) bindings)
+  (declare (ignore bindings))
+  etype)
 
 (defmethod compatible-type* ((atype type-name) (etype type-name) bindings)
-  (declare (ignore bindings))
-  (let* ((a1 (actuals atype))
-	 (a2 (actuals etype)))
-    (cond ((and a1 a2)
-	   (if (fully-instantiated? atype)
-	       atype
-	       etype))
-	  ((or a1 a2)
-	   (if a1 atype etype))
-	  ((declaration-outside-formals? atype)
-	   (if (declaration-outside-formals? etype)
-	       atype
-	       etype))
-	  (t atype))))
+  (assert (resolution atype))
+  (assert (resolution etype))
+  (if (or (eq atype (type (resolution atype)))
+	  (eq etype (type (resolution etype))))
+      (let* ((a1 (actuals atype))
+	     (a2 (actuals etype)))
+	(cond ((and a1 a2)
+	       (if (fully-instantiated? atype)
+		   atype
+		   etype))
+	      ((or a1 a2)
+	       (if a1 atype etype))
+	      ((declaration-is-not-in-context atype)
+	       (if (declaration-is-not-in-context etype)
+		   atype
+		   etype))
+	      (t atype)))
+      (let ((cres (compatible-type* (resolution atype) (resolution etype) bindings)))
+	(cond ((eq cres (resolution atype))
+	       atype)
+	      ((eq cres (resolution etype))
+	       etype)
+	      (t (lcopy atype
+		   :actuals (actuals (module-instance cres))
+		   :dactuals (dactuals (module-instance cres))
+		   :mappings (mappings (module-instance cres))
+		   :resolutons (list cres)))))))
+
+(defmethod compatible-type* ((ares resolution) (eres resolution) bindings)
+  (let ((adecl (declaration ares))
+	(edecl (declaration eres)))
+    (cond ((declaration-is-not-in-context edecl)
+	   ares)
+	  ((declaration-is-not-in-context adecl)
+	   eres)
+	  (t (let* ((athinst (module-instance ares))
+		    (ethinst (module-instance eres))
+		    (cthinst (compatible-type* athinst ethinst bindings)))
+	       (assert (eq adecl edecl))
+	       (if (eq cthinst athinst)
+		   ares
+		   (let ((ctype (compatible-type* (type ares) (type eres) bindings)))
+		     (lcopy ares
+		       :declaration adecl
+		       :module-instance cthinst
+		       :type ctype))))))))
+
+(defmethod compatible-type* ((aname modname) (ename modname) bindings)
+  (assert (eq (id aname) (id ename)))
+  #+pvsdebug
+  (assert (tc-eq (mappings aname) (mappings ename)))
+  (when (or (resolution aname) (resolution ename))
+    (break "Deal with resolutions"))
+  (let* ((a1 (actuals aname))
+	 (a2 (actuals ename))
+	 (da1 (dactuals aname))
+	 (da2 (dactuals ename))
+	 (cact (if (null a1)
+		   a2
+		   (if (null a2)
+		       a1
+		       (compatible-type* a1 a2 bindings))))
+	 (cdact (if (null da1)
+		    da2
+		    (if (null da2)
+			da1
+			(compatible-type* da1 da2 bindings)))))
+    (cond ((and (equal cact a1) (equal cdact da1))
+	   aname)
+	  ((and (equal cact a2) (equal cdact da2))
+	   ename)
+	  (t (lcopy aname :actuals cact :dactuals cdact)))))
+
+(defmethod compatible-type* ((alist list) (elist list) bindings)
+  #+pvsdebug
+  (assert (= (length alist) (length elist)))
+  (let ((clist (compatible-type*-list alist elist bindings)))
+    ;; Make sure unchanged results are eq
+    (cond ((equal clist alist)
+	   alist)
+	  ((equal clist elist)
+	   elist)
+	  (t clist))))
+
+(defun compatible-type*-list (alist elist bindings &optional clist)
+  (if (null alist)
+      (nreverse clist)
+      (let ((celt (compatible-type* (car alist) (car elist) bindings)))
+	(compatible-type*-list (cdr alist) (cdr elist) bindings
+			       (cons celt clist)))))
+
+(defmethod compatible-type* ((act1 actual) (act2 actual) bindings)
+  ;; Note that if the type-values are null compatible, only returns t
+  ;; if the actuals are tc-eq
+  (let ((ty1 (type-value act1))
+	(ty2 (type-value act2)))
+    (assert (iff ty1 ty2))
+    (cond ((or ty1 ty2)
+	   #+pvsdebug
+	   (assert (or ty1
+		       (tc-eq act1 act2)
+		       ;; FIXME - Not quite right; acts could be expressions
+		       ;; that have formals inside, e.g., act1 = f(3), act2 = f(C)
+		       ;; where C is a formal parameter.
+		       ;; Probably need to define compatible-expr for this
+		       (formal-not-in-context? act1)
+		       (formal-not-in-context? act2)))
+	   (if (null ty1)
+	       (cond ((formal-not-in-context? act2)
+		      act1)
+		     ((formal-not-in-context? act1)
+		      act2)
+		     (t (let ((cty (compatible-type* ty1 ty2 bindings)))
+			  (cond ((eq cty ty1) act1)
+				((eq cty ty2) act2)
+				(t (mk-actual cty))))))))
+	  (t act1))))
+
+(defmethod compatible-type* ((atype type-name) (etype subtype) bindings)
+  (compatible-type* atype (supertype etype) bindings))
+
+(defmethod compatible-type* ((atype type-name) (etype expr-as-type) bindings)
+  (compatible-type* atype
+		    (or (supertype etype)
+			(domain (type (expr etype))))
+		    bindings))
 
 (defmethod compatible-type* ((atype type-name) etype bindings)
   (declare (ignore bindings))
-  (if (declaration-outside-formals? atype)
-      etype
-      (call-next-method)))
+  #+pvsdebug
+  (assert (or (not (formal-decl? (declaration atype)))
+	      (declaration-is-not-in-context atype)))
+  etype)
 
 (defmethod compatible-type* (atype (etype type-name) bindings)
   (declare (ignore bindings))
-  (if (declaration-outside-formals? etype)
-      atype
-      (call-next-method)))
+  #+pvsdebug
+  (assert (or (not (formal-decl? (declaration etype)))
+	      (declaration-is-not-in-context etype)))
+  atype)
+
+(defmethod compatible-type* ((atype subtype) (etype type-name) bindings)
+  (declare (ignore bindings))
+  (if (tc-eq (top-type atype) etype)
+      (top-type atype)
+      ;;(when (declaration-is-not-in-context etype)
+      etype
+      ;;)
+      ))
 
 
 ;;; These two simply recurse up the supertype.  This will find the least
@@ -1556,24 +1769,63 @@
 (defmethod compatible-type* ((atype type-expr) (etype subtype) bindings)
   (compatible-type* atype (supertype etype) bindings))
 
-;;; This is the tricky one, since we don't want to go higher than
-;;; necessary.  For example, given posint as a subtype of nat, we don't
-;;; want to return int as the least common supertype.  So we first do a
-;;; direct check whether one is a subtype of the other.  If that fails,
-;;; we can recurse on both supertypes at the same time.
+(defmethod compatible-type* ((atype expr-as-type) (etype subtype) bindings)
+  (if (tc-eq (expr atype) (predicate etype))
+      etype
+      (compatible-type* (supertype atype) (supertype etype) bindings)))
+
+(defmethod compatible-type* ((atype subtype) (etype expr-as-type) bindings)
+  (if (tc-eq (predicate atype) (expr etype))
+      atype
+      (compatible-type* (supertype atype) (supertype etype) bindings)))
+
+(defmethod compatible-type* ((atype expr-as-type) (etype expr-as-type) bindings)
+  (if (tc-eq (predicate atype) (predicate etype))
+      atype
+      (compatible-type* (supertype atype) (supertype etype) bindings)))
+
+;;; This is the tricky one, since we don't want to go higher than necessary.
+;;; For example, given posint and nat, we don't want to return int or higher
+;;; as the least common supertype.  But this is a trivial case.  In general,
+;;; subtypes can include free parameters, etc. on one side or the other.
+
+;;; But in general, they must have matching predicates at some point, or go
+;;; up to the top type on both sides.  Even then it's not simple, since if
+;;; the top type is a formal not in context, it matches the given subtype.
 
 (defmethod compatible-type* ((atype subtype) (etype subtype) bindings)
-  (with-slots ((st1 supertype) (p1 predicate)) atype
-    (with-slots ((st2 supertype) (p2 predicate)) etype
-      (cond ((simple-subtype-of? atype etype) etype)
-	    ((simple-subtype-of? etype atype) atype)
-	    ((and (simple-subtype-of? st1 st2)
-		  (same-predicate? p1 p2 nil))
-	     etype)
-	    ((and (simple-subtype-of? st2 st1)
-		  (same-predicate? p2 p1 nil))
-	     atype)
-	    (t (compatible-type* (supertype atype) (supertype etype) bindings))))))
+  (with-slots ((st1 supertype) (p1 predicate) (top1 top-type)) atype
+    (with-slots ((st2 supertype) (p2 predicate) (top2 top-type)) etype
+      (let ((tv1? (or (type-var? top1)
+		      (and (type-name? top1)
+			   (declaration-is-not-in-context top1))))
+	    (tv2? (or (type-var? top2)
+		      (and (type-name? top2)
+			   (declaration-is-not-in-context top2)))))
+	(if (or tv1? tv2?)
+	    (break "check")
+	    (let ((adepth (subtype-depth atype))
+		  (edepth (subtype-depth etype)))
+	      ;; Tops must be of the same class
+	      ;; First get them to where they could match
+	      (cond ((> adepth edepth)
+		     (compatible-type* (supertype atype) etype bindings))
+		    ((< adepth edepth)
+		     (compatible-type* atype (supertype etype) bindings))
+		    (t ;; Now we go up the two in parallel, till we find matching predicates
+		     ;; same-predicate uses tc-eq - won't work unless atype and etype are
+		     ;; fully instantiated.
+		     (compatible-type* (supertype atype) (supertype etype) bindings)))))))))
+
+(defmethod subtype-depth ((ty subtype) &optional (depth 0))
+  (subtype-depth (supertype ty) (1+ depth)))
+
+(defmethod subtype-depth ((ty type-expr) &optional (depth 0))
+  depth)
+
+(defun nth-supertype (ty n)
+  (assert (subtype? ty))
+  (if (<= n 0) ty (nth-supertype (supertype ty) (- n 1))))
 
 (defun adt-compatible-type (acts1 acts2 formals type postypes compacts
 				  bindings)
@@ -1615,8 +1867,10 @@
 (defmethod compatible-type* ((atype funtype) (etype funtype) bindings)
   (with-slots ((adom domain) (arng range)) atype
     (with-slots ((edom domain) (erng range)) etype
+      ;; Should we try to instantiate if adom is not fully-instantiated?
       (let* ((ainst? (fully-instantiated? adom))
 	     (einst? (fully-instantiated? edom))
+	     (used-edom? nil)
 	     (dom (cond ((or (type-var? adom) (type-var? edom))
 			 (compatible-type* adom edom bindings))
 			((and ainst? einst?)
@@ -1624,17 +1878,17 @@
 			   adom))
 			((not einst?)
 			 adom)
-			(t edom))))
-	(when dom
-	  (let ((nbindings (if (and (dep-binding? adom)
-				    (dep-binding? edom))
-			       (acons adom edom bindings)
-			       bindings)))
-	    (if ainst?
-		(lcopy atype 'domain dom
-		       'range (compatible-type* arng erng nbindings))
-		(lcopy etype 'domain dom
-		       'range (compatible-type* arng erng nbindings)))))))))
+			(t (setq used-edom? t) edom)))
+	     (nbindings (if (and (dep-binding? adom)
+				 (dep-binding? edom))
+			    (acons adom edom bindings)
+			    bindings))
+	     (ran (if used-edom?
+		      (compatible-type* erng arng nbindings)
+		      (compatible-type* arng erng nbindings))))
+	(if used-edom?
+	    (lcopy etype 'domain dom 'range ran)
+	    (lcopy atype 'domain dom 'range ran))))))
 
 (defmethod compatible-type* ((atype tupletype) (etype tupletype) bindings)
   (compatible-tupletypes (types atype) (types etype) nil bindings))
@@ -1675,12 +1929,17 @@
 
 (defun compatible-recordtypes (afields efields atype fields bindings)
   (if (null afields)
-      (let ((nfields (nreverse fields)))
-	(if (equal nfields (fields atype))
-	    atype
-	    (make-instance 'recordtype
-	      :fields nfields
-	      :dependent? (dependent? atype))))
+      (let* ((nfields (nreverse fields))
+	     (rtype (if (equal nfields (fields atype))
+			atype
+			(make-instance 'recordtype
+			  :fields nfields
+			  :dependent? (dependent? atype)))))
+	#+pvsdebug
+	(assert (every #'(lambda (fv)
+			   (member fv (freevars atype) :test #'same-declaration))
+		       (freevars rtype)))
+	rtype)
       (let* ((afld (car afields))
 	     (efld (find afld efields :test #'same-id))
 	     (stype (compatible-type* (type afld) (type efld) bindings))
@@ -1756,23 +2015,31 @@
 				 (actuals (module-instance etype)))
 	      incs)))
 
+
+;;; (adt-compatible-preds list[int] list[nat] x nil) ==>
+;;;   ( every(lambda (i: int): i >= 0, x) )
+
+;;; Note the use of find-supertype, rather than compatible-type
+;;; AgExample.mTerm generates uprovable TCCs otherwise.
+;;; Could find lub based on predicates on positive types, but this
+;;; is more expensive.
 (defun adt-compatible-preds (atype etype aexpr incs)
   #+pvsdebug (assert (adt? etype))
   (adt-compatible-pred-actuals (actuals (module-instance atype))
 			       (actuals (module-instance etype))
 			       (formals-sans-usings (adt atype))
-			       (compatible-type atype etype)
+			       (find-supertype atype)
 			       (positive-types (adt atype))
 			       aexpr
 			       incs))
 
 (defun adt-compatible-pred-actuals (aacts eacts formals atype postypes
-					  aexpr incs &optional pospreds)
+				    aexpr incs &optional pospreds)
   (cond ((null aacts)
 	 (if (some #'cdr pospreds)
-	     (cons (make-compatible-every-pred (reverse pospreds)
-					       atype aacts aexpr)
-		   incs)
+	     (let ((epred (make-compatible-every-pred
+			   (reverse pospreds) atype aacts aexpr)))
+	       (cons epred incs))
 	     incs))
 	((null eacts) nil)
 	((member (car formals) postypes
@@ -1799,11 +2066,13 @@
   (let* ((atype (type-value aact))
 	 (etype (type-value eact))
 	 (ctype (compatible-type atype etype))
-	 (subtype? (subtype-of? etype ctype))
-	 (stype (find-supertype ctype))
-	 (preds (when subtype? (nth-value 1 (subtype-preds etype ctype)))))
+	 (subtype? (subtype-of? etype ctype)))
     (if subtype?
-	(values incs (cons (cons (mk-actual stype) preds) pospreds))
+	(let* ((stype (find-supertype ctype))
+	       (preds (nth-value 1 (subtype-preds etype stype))))
+	  ;; Note that we use the supertype here; otherwise it could lead to
+	  ;; Unprovable TCCs
+	  (values incs (cons (cons (mk-actual stype) preds) pospreds)))
 	(values (cons (make-actuals-equality aact eact) incs) pospreds))))
 
 ;;; pospreds are of the form ((act p1 .. pn) ...)
@@ -2342,7 +2611,16 @@
 (defun subtype-of-list (t1 t2)
   (or (null t1)
       (and (subtype-of*? (car t1) (car t2))
-	   (subtype-of-list (cdr t1) (cdr t2)))))
+	   (let* ((dep? (and (dep-binding? (car t1))
+			     (dep-binding? (car t2))))
+		  (*bound-variables*
+		   (if dep?
+		       (cons (car t2) *bound-variables*)
+		       *bound-variables*))
+		  (st1cdr (if dep?
+			      (substit (cdr t1) (acons (car t1) (car t2) nil))
+			      (cdr t1))))
+	     (subtype-of-list st1cdr (cdr t2))))))
 
 (defmethod subtype-of*? ((r1 recordtype) (r2 recordtype))
   (when (length= (fields r1) (fields r2))
@@ -2790,7 +3068,6 @@
 ;;         (ntypes (add-tupletype-preds (types te) parts))
 ;;         (ntuptype (make-instance 'tupletype :types ntypes))
 ;;         (toppreds (cdr (assq nil parts))))
-;;    (break)
 ;;    (if toppreds
 ;;        (make-instance 'subtype
 ;;          :supertype ntuptype
@@ -2956,6 +3233,7 @@
 ;;; never returns a dep-binding.
 
 (defun intersection-type (t1 t2)
+  #+pvsdebug
   (assert (compatible? t1 t2))
   (cond ((subtype-of? t1 t2)
 	 (dep-binding-type t1))
