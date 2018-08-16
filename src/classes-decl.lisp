@@ -779,10 +779,10 @@ restored, the TCCs are checked")
   (type :parse t)
   (parameters :parse t))
 
-;; tup-type-variable
-;; proj-type-variable
 ;; rec-type-variable
 ;; field-type-variable
+;; tup-type-variable
+;; proj-type-variable
 ;; cotup-type-variable
 ;; out-type-variable
 (defcl type-var (type-name)) ;; The mixin
