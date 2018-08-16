@@ -868,9 +868,10 @@
     (collect-visible-decl-info* (cdr list))))
 
 (defmethod collect-visible-decl-info* :around ((obj datatype-or-module))
-  (collect-visible-decl-info* (formals obj))
-  (collect-visible-decl-info* (assuming obj))
-  (call-next-method))
+  (let ((*current-context* (context obj)))
+    (collect-visible-decl-info* (formals obj))
+    (collect-visible-decl-info* (assuming obj))
+    (call-next-method)))
 
 (defmethod collect-visible-decl-info* ((obj module))
   (collect-visible-decl-info* (theory obj)))
