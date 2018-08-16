@@ -641,8 +641,7 @@
 
 (defmethod resolve-decl-actuals* ((decl type-decl) dacts thinst args)
   (declare (ignore args))
-  (assert (or (null dacts) (decl-formals decl)))
-  (assert (length= dacts (decl-formals decl)))
+  (assert (and dacts (length= dacts (decl-formals decl))))
   (let* ((nthinst (change-class (copy thinst) 'declparam-modname
 		    'dactuals dacts 'declaration decl))
 	 (stype (subst-mod-params (type-value decl) nthinst (module decl) decl)))
@@ -651,8 +650,7 @@
 
 (defmethod resolve-decl-actuals* ((decl formula-decl) dacts thinst args)
   (declare (ignore args))
-  (assert (or (null dacts) (decl-formals decl)))
-  (assert (length= dacts (decl-formals decl)))
+  (assert (and dacts (length= dacts (decl-formals decl))))
   (let* ((nthinst (change-class (copy thinst) 'declparam-modname
 		    'dactuals dacts 'declaration decl)))
     (list (make-resolution decl nthinst nil))))
@@ -1725,10 +1723,12 @@
 			  (mapcar #'list
 			    (formals-sans-usings (module decl))))))
 	 (dbindings (mapcar #'list (decl-formals decl)))
-	 (bindings (find-compatible-bindings
-		    args
-		    dtypes
-		    (nconc mbindings dbindings))))
+	 (abindings (nconc mbindings dbindings))
+	 #+badassert
+	 (fml-bindings (formals-not-in-context decl))
+	 (bindings (find-compatible-bindings args dtypes abindings)))
+    #+badassert
+    (subsetp (mapcar #'car abindings) fml-bindings)
     (or (create-compatible-modinsts modinst decl bindings nil)
 	(progn (push (list :no-instantiation decl)
 		     *resolve-error-info*)
