@@ -450,7 +450,7 @@
 	  (cons (or *real* *number_field*) (mapcar #'type reses)))))
 
 (defmethod typecheck* ((expr rational-expr) expected kind arguments)
-  (declare (ignore expected kind))
+  (declare (ignore expected kind arguments))
   ;;(assert (typep *number* 'type-expr))
   (assert *number_field*)
   (setf (types expr) (list (or *real* *number_field*))))
@@ -617,7 +617,9 @@
 ;;; specified).
 
 (defmethod typecheck* ((expr cases-expr) expected kind arguments)
-  (declare (ignore expected kind))
+  (declare (ignore kind))
+  #+pvsdebug
+  (assert (or (null expected) (fully-instantiated? expected)))
   (unless (type (expression expr))
     (typecheck* (expression expr) nil nil nil))
   (let ((atypes	(remove-if-not #'(lambda (ty)
@@ -631,11 +633,12 @@
 	    "Expression type must be a cotuple or datatype")))
     (setf (types (expression expr)) atypes)
     (let* ((type (car atypes))
-	   (stype (find-supertype type)))
+	   (stype (find-supertype type))
+	   ;; {x: list[nat] | length(x) = 3} has stype list[number], dtype list[nat]
+	   (dtype (find-declared-adt-supertype type)))
       (if (adt? stype)
-	  (typecheck-selections expr (adt (find-supertype type))
-				(find-declared-adt-supertype type) arguments)
-	  (typecheck-coselections expr stype arguments))))
+	  (typecheck-selections expr (adt stype) dtype arguments expected)
+	  (typecheck-coselections expr stype arguments expected))))
   (setf (types expr)
 	(compatible-types
 	 (nconc (mapcar #'(lambda (s) (ptypes (expression s)))
@@ -677,65 +680,113 @@
 (defmethod find-declared-adt-supertype (te)
   te)
 
-(defun compatible-types (list-of-types)
-  (compatible-types* (cdr list-of-types) (car list-of-types)))
+;;; Given a list of types, e.g., the list of possible types (ptypes) for a
+;;; list of expressions, returns the compatible types list.  Each ptypes
+;;; list may contain instantiated and uninstantiated types.  We internally
+;;; build two lists of compatible types: ictypes for instantiated, and
+;;; uctypes for uninstantiated types, initialized by the first ptypes list.
+;;; After that, we walk through each ptype in the rest of the ptypes list,
+;;; find a match in either ictypes or uctypes, and recurse, putting the
+;;; compatible type of the match in the appropriate list.
 
-(defun compatible-types* (list-of-types types)
-  (if (null list-of-types)
-      (remove-duplicates types :test #'tc-eq)
-      (compatible-types* (cdr list-of-types)
-			 (compatible-types** (car list-of-types) types))))
+(defun compatible-types (ptypes-list &optional (ictypes :unbound) (uctypes :unbound))
+  (if (null ptypes-list)
+      (nconc ictypes uctypes)
+      (multiple-value-bind (nictypes nuctypes)
+	  ;; Check for :unbound to initialize.
+	  ;; Can't use nil as that is a valid result of compatible-types*
+	  (if (eq ictypes :unbound)
+	      (split-on #'fully-instantiated? (car ptypes-list))
+	      (compatible-types* (car ptypes-list) ictypes uctypes))
+	(when (or nictypes nuctypes)
+	  (compatible-types (cdr ptypes-list) nictypes nuctypes)))))
 
-(defun compatible-types** (types1 types2)
-  (mapcan #'(lambda (t1)
-	      (mapcan #'(lambda (t2)
-			  (when (compatible? t1 t2)
-			    (let ((ty (compatible-type-match t1 t2)))
-			      (when ty (list ty)))))
-		      types2))
-	  types1))
+;;; Each ptype is matched against ictypes and uctypes.  If a match is found,
+;;; the corresponding compatible type is added to either nictypes or nuctypes
+;;; In the end, these are returned as the values for the next round.
+;;; This means the lists cannot get longer.  If a given ptypes list matches nothing,
+;;; this will return nil.
+
+(defun compatible-types* (ptypes ictypes uctypes &optional nictypes nuctypes)
+  (if (null ptypes)
+      (values (nreverse nictypes) (nreverse nuctypes))
+      (if (fully-instantiated? (car ptypes))
+	  (multiple-value-bind (ity cty)
+	      (find-and-apply (car ptypes) #'compatible-type ictypes :test #'compatible?)
+	    (if ity
+		(compatible-types* (cdr ptypes) ictypes uctypes
+				   (cons cty nictypes)
+				   nuctypes)
+		(multiple-value-bind (uty cty)
+		    (dolist (uty uctypes)
+		      (let* ((ity (get-tc-match-instance (car ptypes) uty))
+			     (cty (when ity
+				    (compatible-type (car ptypes) ity))))
+			(when cty
+			  (return (values uty cty)))))
+		  (compatible-types* (cdr ptypes) ictypes uctypes
+				     (if uty (cons cty nictypes) nictypes)
+				     nuctypes))))
+	  (multiple-value-bind (uty ucty)
+	      (find-and-apply (car ptypes) #'compatible-type-match uctypes :test #'compatible?)
+	    (if uty
+		(compatible-types* (cdr ptypes) ictypes uctypes
+				   nictypes (cons ucty nuctypes))
+		;; Need to find a matching ictype
+		(multiple-value-bind (ity icty)
+		    (dolist (ty ictypes)
+		      (assert (fully-instantiated? ty))
+		      (let ((mty (get-tc-match-instance ty (car ptypes))))
+			(when mty
+			  (return (values ty mty)))))
+		  (compatible-types* (cdr ptypes) ictypes uctypes
+				     (if ity (cons icty nictypes) nictypes)
+				     nuctypes)))))))
 
 
 (defun compatible-type-match (t1 t2)
   (if (fully-instantiated? t1)
       (if (fully-instantiated? t2)
 	  (compatible-type t1 t2)
-	  (let ((type (find-parameter-instantiation t2 t1)))
-	    (assert (fully-instantiated? type))
+	  (let ((type (get-tc-match-instance t1 t2)))
+	    #+pvsdebug
+	    (assert (or (null type) (fully-instantiated? type)))
 	    (when (and type (compatible? type t1))
 	      (compatible-type t1 type))))
       (if (fully-instantiated? t2)
-	  (let ((type (find-parameter-instantiation t1 t2)))
-	    (assert (fully-instantiated? type))
+	  (let ((type (get-tc-match-instance t2 t1)))
+	    #+pvsdebug
+	    (assert (or (null type) (fully-instantiated? type)))
 	    (when (and type (compatible? type t2))
 	      (compatible-type t2 type)))
-	  (ignore-lisp-errors (compatible-type t1 t2)))))
+	  ;;; This used to be under ignore-lisp-errors
+	  (compatible-type t1 t2))))
 
 ;;; expr is a cases-expr, adt is recursive-type, type is the type instance,
 ;;; and args are the arguments to the expr
 ;;;  e.g., the x in (cases l of null: f, cons(a, b): g)(x)
 
-(defun typecheck-selections (expr adt type args)
+(defun typecheck-selections (expr adt type args expected)
   (when (duplicates? (selections expr) :test #'same-id :key #'constructor)
     (type-error expr "Selections must have a unique id"))
   (when (and (length= (selections expr) (constructors adt))
 	     (else-part expr))
     (type-error-noconv (else-part expr) "ELSE part will never be evaluated"))
-  (typecheck-selections* (selections expr) adt type args)
+  (typecheck-selections* (selections expr) adt type args expected)
   (when (else-part expr)
-    (typecheck* (else-part expr) nil nil args)))
+    (typecheck* (else-part expr) expected nil args)))
 
-(defmethod typecheck-coselections (expr (type cotupletype) args)
+(defmethod typecheck-coselections (expr (type cotupletype) args expected)
   (when (duplicates? (selections expr) :test #'same-id :key #'constructor)
     (type-error expr "Selections must have a unique id"))
   (when (and (length= (selections expr) (types type))
 	     (else-part expr))
     (type-error (else-part expr) "ELSE part will never be evaluated"))
-  (typecheck-coselections* (selections expr) type args)
+  (typecheck-coselections* (selections expr) type args expected)
   (when (else-part expr)
-    (typecheck* (else-part expr) nil nil args)))
+    (typecheck* (else-part expr) expected nil args)))
 
-(defmethod typecheck-coselections* (selections (type cotupletype) args)
+(defmethod typecheck-coselections* (selections (type cotupletype) args expected)
   (when selections
     (let* ((sel (car selections))
 	   (constr (constructor sel))
@@ -756,8 +807,8 @@
 	(setf (type constr) ctype
 	      (types constr) (list ctype)))
       (let* ((*bound-variables* (append (args sel) *bound-variables*)))
-	(typecheck* (expression sel) nil nil args)))
-    (typecheck-coselections* (cdr selections) type args)))
+	(typecheck* (expression sel) expected nil args)))
+    (typecheck-coselections* (cdr selections) type args expected)))
 
 (defun get-injection-number (name)
   (let ((strid (string (id name))))
@@ -770,7 +821,7 @@
 ;;; and args are the arguments to the expr
 ;;;  e.g., the x in (cases l of null: f, cons(a, b): g)(x)
 
-(defun typecheck-selections* (selections adt type args)
+(defun typecheck-selections* (selections adt type args expected)
   (when selections
     (let* ((sel (car selections))
 	   (constr (constructor sel))
@@ -791,11 +842,12 @@
 				     (actuals type))
 			:dactuals (or (dactuals constr)
 				      (and (type-name? type)
-					   (dactuals type))))))
-	(typecheck* nconstr nil nil (cond ((null (args sel)) nil)
-					  ((cdr (args sel)) 
-					   (mk-tuple-expr (args sel)))
-					  ((car (args sel)))))
+					   (dactuals type)))))
+	     (sel-args (cond ((null (args sel)) nil)
+			     ((cdr (args sel)) 
+			      (mk-tuple-expr (args sel)))
+			     ((car (args sel))))))
+	(typecheck* nconstr nil nil sel-args)
 	(let ((reses (remove-if-not #'(lambda (r)
 					(eq (declaration r) (con-decl c)))
 		       (resolutions nconstr))))
@@ -805,8 +857,9 @@
 	      (type-error-noconv sel
 		  "No matching constructor found for ~a in datatype ~a"
 		  (constructor sel) (id adt))))
-	(typecheck* (expression sel) nil nil args)))
-    (typecheck-selections* (cdr selections) adt type args)))
+	(let ((*generate-tccs* 'none))
+	  (typecheck* (expression sel) expected nil args))))
+    (typecheck-selections* (cdr selections) adt type args expected)))
 
 (defun set-selection-types (selargs type arg-decls)
   (when selargs
@@ -828,12 +881,8 @@
 	   ;;  (mapcar #'type-value (dactuals (module-instance type)))))
 	   ;;(stype (subst-for-formals atype dbindings))
 	   (dtype (subst-mod-params prtype (module-instance type)
-				    (module accdecl) accdecl)))
+		    (module accdecl) accdecl)))
       (unless (fully-instantiated? dtype)
-	(let* ((frees (free-params dtype))
-	       (bindings (mapcar #'list frees))
-	       (nbindings (tc-match type dtype bindings)))
-	  (break "set-selection-types"))
 	(type-error (declared-type (car selargs))
 	    "Could not determine the full theory instance"))
       (let ((type (if (typep dtype 'datatype-subtype)
@@ -1167,7 +1216,7 @@
 ;;; to the possible return types of the operator.
 
 (defmethod typecheck* ((expr application) expected kind arguments)
-  (declare (ignore expected kind arguments))
+  (declare (ignore kind arguments))
   ;; Can't do operator first - breaks when a field application is involved
   ;;(unless (ptypes (operator expr))
     ;;(typecheck* (operator expr) nil nil nil))
@@ -1393,10 +1442,10 @@
   (if (or (fully-instantiated? range)
 	  (not (fully-instantiated? argtype)))
       range
-      (let ((theories (delete (current-theory)
-			      (delete-duplicates (mapcar #'module
-						   (free-params range)))))
-	    (srange range))
+      (let* ((rfrees (formals-not-in-context range))
+	     (theories (delete (current-theory)
+			       (delete-duplicates (mapcar #'module rfrees))))
+	     (srange range))
 	(dolist (th theories)
 	  (let ((bindings (tc-match argtype domain
 				    (mapcar #'(lambda (x) (cons x nil))
@@ -1462,11 +1511,13 @@
 
 (defmethod typecheck* ((expr string-expr) expected kind arguments)
   "A string-expr \"foo\" is internally list2finseq((: char(102), char(111), char(111) :))"
+  (declare (ignore expected kind arguments))
   (let ((list-char (tc-type "list[char]")))
     (typecheck* (argument expr) list-char nil nil)
     (call-next-method)))
 
 (defmethod typecheck* ((expr list-expr) expected kind arguments)
+  (declare (ignore kind arguments))
   (if (and expected (list-type? expected)) ;; could be waiting for conversion
       (let* ((elt-type (type-value
 			(car (actuals (find-adt-supertype expected)))))
@@ -1487,8 +1538,7 @@
 (defun typecheck-list-elt (ex elt-type cons-ex null-ex)
   (assert (eq (id (operator ex)) '|cons|))
   ;;(when (ptypes ex) (break "already typechecked?"))
-  (let ((list-ex ex)
-	(prev-ex nil))
+  (let ((list-ex ex))
     (loop while (list-expr? list-ex)
        do (progn (typecheck* (args1 list-ex) elt-type nil nil)
 		 (cond (cons-ex
@@ -2295,9 +2345,9 @@
 (defun typecheck-assignments (assigns type)
   (or (null assigns)
       (let ((assign (car assigns)))
-	(when (and nil (maplet? assign)
-		   (cdr (arguments assign)))
-	  (type-error assign "Maplet assignment may not be nested"))
+	;; (when (and (maplet? assign)
+	;; 	   (cdr (arguments assign)))
+	;;   (type-error assign "Maplet assignment may not be nested"))
 	(typecheck-ass-args (arguments assign) type (typep assign 'maplet))
 	(typecheck* (expression assign) nil nil nil)
 	(typecheck-assignments (cdr assigns) type))))
@@ -2385,12 +2435,13 @@
       (typecheck-ass-args (cdr args) (range (type (car accs))) maplet?))))
 
 (defun collect-datatype-assign-arg-accessors (dtype arg)
-  (let ((accs nil))
-    (dolist (constr (constructors dtype))
-      (let ((acc (find (id arg) (accessors constr) :key #'id)))
-	(when acc
-	  (pushnew acc accs :test #'tc-eq))))
-    (nreverse accs)))
+  (when (name? arg)
+    (let ((accs nil))
+      (dolist (constr (constructors dtype))
+	(let ((acc (find (id arg) (accessors constr) :key #'id)))
+	  (when acc
+	    (pushnew acc accs :test #'tc-eq))))
+      (nreverse accs))))
 
 (defmethod typecheck-ass-args (args (rtype struct-sub-recordtype) maplet?)
   (when args
