@@ -3790,3 +3790,18 @@ Note that even proved ones get overwritten"
     (and (member id (refers-to (default-proof decl))
 		 :test #'same-id)
 	 t)))
+
+(defun get-theory-api (theory)
+  "Simply lists all the declarations of a given theory, along with their
+types."
+  (let* ((th (get-theory theory))
+	 (decls (remove-if-not #'(lambda (te)
+				   (and (declaration? te) (visible? te)
+					(not (formula-decl? te))))
+		  (all-decls th))))
+    (dolist (d decls)
+      (format t "~%~a: ~a" (id d)
+	      (typecase d
+		(type-decl "TYPE")
+		(typed-declaration (type d))
+		(t (break "more needed")))))))
