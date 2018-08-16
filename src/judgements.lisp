@@ -161,20 +161,38 @@
   (and (not (eq d1 d2))
        (judgement-lt (judgement-type d1) (judgement-type d2))))
 
-;;; Should this take dependent types into account?
 (defmethod judgement-lt ((t1 funtype) (t2 funtype))
   (and (not (tc-eq t1 t2))
-       (subtype-of? (range t1) (range t2))
-       (subtype-of? (domain t1) (domain t2))))
+       (judgement-subsumes t1 t2)))
 
 (defmethod judgement-subsumes ((d1 application-judgement)
 			       (d2 application-judgement))
   (judgement-subsumes (judgement-type d1) (judgement-type d2)))
 
-;;; Should this take dependent types into account?
 (defmethod judgement-subsumes ((t1 funtype) (t2 funtype))
-  (and (subtype-of? (range t1) (range t2))
-       (subtype-of? (domain t2) (domain t1))))
+  (and (subtype-of? (domain t2) (domain t1))
+       (let* ((dep1? (dep-binding? (domain t1)))
+	      (dep2? (dep-binding? (domain t2)))
+	      (*bound-variables*
+	       (if (and dep1? dep2?)
+		   (cons (domain t2) *bound-variables*)
+		   *bound-variables*))
+	      (ran1 (cond ((and dep1? dep2?)
+			   ;; Safe to substitute t2 dep var into t1
+			   (substit (range t1) (acons (domain t1) (domain t2) nil)))
+			  (dep1?
+			   (find-supertype-without-freevars (range t1)))
+			  (t (range t1))))
+	      (ran2 (if (and (not dep1?) dep2?)
+			(find-supertype-without-freevars (range t2))
+			(range t2))))
+	 #+pvsdebug
+	 (assert (every #'(lambda (fv) (memq (declaration fv) *bound-variables*))
+			(freevars ran1)))
+	 #+pvsdebug
+	 (assert (every #'(lambda (fv) (memq (declaration fv) *bound-variables*))
+			(freevars ran2)))
+	 (subtype-of? ran1 ran2))))
 	
 
 ;;; Accessors and update functions for the above
@@ -528,14 +546,14 @@
 	  (multiple-value-bind (njtypes njdecls)
 	      ;; This gets number, name, and application judgements
 	      (call-next-method)
-	    (assert (length= njtypes njdecls))
+	    #+pvsdebug (assert (length= njtypes njdecls))
 	    (multiple-value-bind (ejtypes ejdecls)
 		;; This gets expr-judgements
 		(expr-judgement-types ex njtypes)
-	      (assert (length= ejtypes ejdecls))
+	      #+pvsdebug (assert (length= ejtypes ejdecls))
 	      (let ((jtypes (if ejtypes (append njtypes ejtypes) njtypes))
 		    (jdecls (if ejdecls (append njdecls ejdecls) njdecls)))
-		(assert (length= jtypes jdecls))
+		#+pvsdebug (assert (length= jtypes jdecls))
 		;(when (cdr jtypes) (break "Multiple judgement-types"))
 		#+pvsdebug (assert (or (and (name-expr? ex)
 					    (skolem-const-decl? (declaration ex)))
@@ -715,11 +733,11 @@
 	       (multiple-value-bind (gtypes ijdecls)
 		   (compute-application-judgement-types
 		    ex (judgements-graph entry))
-		 (assert (length= gtypes ijdecls))
+		 #+pvsdebug (assert (length= gtypes ijdecls))
 		 (multiple-value-bind (jtypes jdecls)
 		     (generic-application-judgement-types
 		      ex (generic-judgements entry) gtypes ijdecls)
-		   (assert (length= jtypes jdecls))
+		   #+pvsdebug (assert (length= jtypes jdecls))
 		   #+pvsdebug (assert (or (vectorp jtypes)
 					  (not (member (type ex) jtypes :test #'tc-eq))))
 		   (values jtypes jdecls))))))))
@@ -1030,7 +1048,7 @@
     (cartesian-product dlist)))
 
 (defun join-compatible-vector-types (types1 types2 type)
-  (assert (= (length types1) (length types2)))
+  #+pvsdebug (assert (= (length types1) (length types2)))
   (let ((ntypes (make-array (length types1) :initial-element nil)))
     (dotimes (i (length types1))
       (let ((t1 (svref types1 i)))
@@ -1105,14 +1123,15 @@
       (let ((ctype (compatible-type type (car types))))
 	(join-compatible-types*
 	 type (cdr types)
-	 (if (some #'(lambda (ty) (subtype-of? ty ctype)) compats)
+	 (if (or (null ctype)
+		 (some #'(lambda (ty) (subtype-of? ty ctype)) compats))
 	     compats
 	     (cons ctype (delete-if #'(lambda (ty)
 					(subtype-of? ty ctype))
 			   compats)))))))
 
 (defun generic-application-judgement-types (ex gen-judgements jtypes jdecls)
-  (assert (length= jtypes jdecls))
+  #+pvsdebug (assert (length= jtypes jdecls))
   (if (null gen-judgements)
       (values jtypes jdecls)
       (let* ((jdecl (car gen-judgements))
@@ -1151,8 +1170,8 @@
 			      jtypes jdecls)
 			(push jrange rtypes)
 			(push rjdecl rdecls)))
-		  (assert (length= rtypes otypes))
-		  (assert (length= rtypes rdecls))
+		  #+pvsdebug (assert (length= rtypes otypes))
+		  #+pvsdebug (assert (length= rtypes rdecls))
 		  (generic-application-judgement-types
 		   ex
 		   (cdr gen-judgements)
@@ -1293,7 +1312,7 @@
 			     (cons range
 				   (remove-if #'(lambda (r) (subtype-of? range r))
 				     jtypes)))))
-	    (assert (length= jtypes jdecls))
+	    #+pvsdebug (assert (length= jtypes jdecls))
 	    (if dont-add?
 		(setq rtypes jtypes
 		      rdecls jdecls)
@@ -1305,9 +1324,9 @@
 			jtypes jdecls)
 		  (push range rtypes)
 		  (push rjdecl rdecls)))
-	    (assert (length= otypes rtypes))
+	    #+pvsdebug (assert (length= otypes rtypes))
 	    (assert (or rtypes (null jtypes)))
-	    (assert (length= rtypes rdecls))
+	    #+pvsdebug (assert (length= rtypes rdecls))
 	    (compute-appl-judgement-types
 	     arguments argtypes rdomains extype thinst theory
 	     (cdr graph)
@@ -1760,13 +1779,13 @@
       (let ((*bound-variables* (append (bindings ex) *bound-variables*)))
 	(judgement-types* (expression ex)))
     ;; Any freevars in ejtypes should refer to (bindings ex)
-    (assert (length= ejtypes ejdecls))
+    #+pvsdebug (assert (length= ejtypes ejdecls))
     #+pvsdebug (assert (every #'(lambda (fv)
 				  (or (memq (declaration fv) (bindings ex))
 				      (memq (declaration fv) *bound-variables*)
 				      (var-decl? (declaration fv))))
 			      (freevars ejtypes)))
-    (assert (or (listp ejtypes) (vectorp ejtypes)))
+    #+pvsdebug (assert (or (listp ejtypes) (vectorp ejtypes)))
     (let* ((depbdg (cond ((dep-binding? (domain (type ex)))
 			  (domain (type ex)))
 			 ((some #'(lambda (fv) (memq (declaration fv) (bindings ex)))
@@ -1795,7 +1814,7 @@
 	   drtypes drjdecls)
       (setq rtypes (nreverse rtypes))
       (setq rjdecls (nreverse rjdecls))
-      (assert (length= rtypes rjdecls))
+      #+pvsdebug (assert (length= rtypes rjdecls))
       (let ((ftypes (mapcar #'(lambda (rty)
 				(let ((dom (if (member depbdg (freevars rty)
 						       :key #'declaration)
@@ -3289,7 +3308,6 @@
 ;;; Called from update-current-context, merges the theory instances of
 ;;; the known-subtypes into the *current-context*
 (defun update-known-subtypes (theory theoryname)
-  (assert (saved-context theory))
   (let ((theory-known-subtypes (known-subtypes (saved-context theory))))
     (dolist (elt theory-known-subtypes)
       (when t ;(safe-mappings? elt theory theoryname)
@@ -3338,13 +3356,27 @@
 	(let ((*subtypes-seen* (cons it *subtypes-seen*)))
 	  (check-known-subtypes t1 t2))))))
 
-(defmethod simple-subtype-of? ((t1 subtype) t2)
+(defgeneric simple-subtype-of? (t1 t2)
+  (:documentation
+   "subtype-of? simply walks up t1 till it reaches a supertype that is tc-eq
+  to t2, returning nil if it fails.  Use subtype-of? if subtype judgements
+  should also be considered."))
+
+(defmethod simple-subtype-of? ((t1 subtype) (t2 type-expr))
   (or (tc-eq t1 t2)
       (simple-subtype-of? (supertype t1) t2)))
 
-(defmethod simple-subtype-of? (t1 t2)
-  (declare (ignore t1 t2))
-  nil)
+(defmethod simple-subtype-of? ((t1 dep-binding) (t2 type-expr))
+  (simple-subtype-of? (type t1) t2))
+
+(defmethod simple-subtype-of? ((t1 type-expr) (t2 dep-binding))
+  (simple-subtype-of? t1 (type t2)))
+
+(defmethod simple-subtype-of? ((t1 dep-binding) (t2 dep-binding))
+  (simple-subtype-of? (type t1) (type t2)))
+
+(defmethod simple-subtype-of? ((t1 type-expr) (t2 type-expr))
+  (tc-eq t1 t2))
 
 (defun check-known-subtypes (t1 t2)
   (check-known-subtypes* t1 t2 (known-subtypes *current-context*)))
