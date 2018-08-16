@@ -40,7 +40,9 @@
 (defvar *gensubst-subst-types* nil)
 
 (defun gensubst (obj substfn testfn)
-  (unwind-protect (gensubst* obj substfn testfn)
+  (unwind-protect (let ((gobj (gensubst* obj substfn testfn)))
+		    ;; Return eq obj if possible
+		    (if (tc-eq obj gobj) obj gobj))
     (clrhash *gensubst-cache*)))
 
 (defmethod gensubst* :around (obj substfn testfn)
