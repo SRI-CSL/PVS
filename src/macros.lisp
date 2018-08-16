@@ -500,7 +500,38 @@
 	       (setf (get-lhash (car ,gdecl) (current-declarations-hash))
 		     (cdr ,gdecl))))))))
 
+(defvar *default-context*)
+
+(defmacro with-default-context (&rest body)
+  (let ((theory (gensym))
+	(decl (gensym))
+	(id (gensym)))
+    `(progn
+       (unless (boundp '*default-context*)
+	 (let* ((,id (gentemp "default_theory"))
+		(,theory (pc-parse "default_theory: theory begin default_t: type end default_theory"
+			   'adt-or-theory)))
+	   (typecheck ,theory)
+	   (setq *default-context* (make-new-context ,theory))
+	   (setf (declaration *default-context*) (car (theory ,theory)))))
+       (let ((*current-context* *default-context*)
+	     (*generate-tccs* 'all))
+	 ,@body))))
+
 (defmacro with-context (obj &rest body)
+  "The macro with-context executes the body in the specified context.
+obj may be of type:
+  declaration: must have :module set to a theory, in which it appears
+               the resuting context is just before the declaration
+  string: parsed as a name, which see below
+          e.g., \"finite_sets[int].is_finite\"
+  name: tries to interpret the name as a unique declaration or theory
+        setting context accordingly
+  theory: (aka module) last declaration (inclusive) of the theory is
+          the context
+  recursive-type: treated as a declaration if inline
+                  otherwise uses the main generated theory
+  importing: same as a declaration"
   `(let ((*current-context* (context ,obj))
 	 (*generate-tccs* 'all))
      ,@body))
