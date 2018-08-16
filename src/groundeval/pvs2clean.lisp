@@ -223,40 +223,44 @@
 
 (defun pvs2clean-declaration (op-decl)
   (let ((nd-hashentry (gethash op-decl *clean-nondestructive-hash*))
-	;(d-hashentry (gethash op-decl *clean-destructive-hash*))
-	;enough to check one hash-table. 
+	;;(d-hashentry (gethash op-decl *clean-destructive-hash*))
+	;;enough to check one hash-table. 
 	)
     (when (null nd-hashentry)
-      (let ((op-id (gentemp (format nil "pvs_~a" (id op-decl))))
-	    (op-d-id (gentemp (format nil "pvs_d_~a" (id op-decl)))))
-      (setf (gethash op-decl *clean-nondestructive-hash*)
-	    (make-clean-info :id op-id))
-      (setf (gethash op-decl *clean-destructive-hash*)
-	    (make-clean-info :id op-d-id))
-      (let* ((defns (def-axiom op-decl))
-	     (defn (when defns (args2 (car (last (def-axiom op-decl))))))
-	     (def-formals (when (lambda-expr? defn)
-			    (bindings defn)))
-	     (def-body (if (lambda-expr? defn) (expression defn) defn))
-	     (module-formals (constant-formals (module op-decl)))
-	     (range-type (if def-formals (range (type op-decl))
-			     (type op-decl))))
-	(pvs2clean-resolution-nondestructive op-decl (append module-formals def-formals)
-					     def-body range-type)
-	(pvs2clean-resolution-destructive op-decl (append module-formals def-formals)
-					  def-body range-type))))))
+      (let ((op-id (gentemp (format nil "pvs_~a" (simple-id (id op-decl)))))
+	    (op-d-id (gentemp (format nil "pvs_d_~a" (simple-id (id op-decl))))))
+	(setf (gethash op-decl *clean-nondestructive-hash*)
+	      (make-clean-info :id op-id))
+	(setf (gethash op-decl *clean-destructive-hash*)
+	      (make-clean-info :id op-d-id))
+	(let* ((defns (def-axiom op-decl))
+	       (defn (when defns (args2 (car (last (def-axiom op-decl))))))
+	       (def-formals (when (lambda-expr? defn)
+			      (bindings defn)))
+	       (def-body (if (lambda-expr? defn) (expression defn) defn))
+	       (module-formals (constant-formals (module op-decl)))
+	       (range-type (if def-formals (range (type op-decl))
+			       (type op-decl))))
+	  (pvs2clean-resolution-nondestructive op-decl (append module-formals def-formals)
+					       def-body range-type)
+	  (pvs2clean-resolution-destructive op-decl (append module-formals def-formals)
+					    def-body range-type))))))
 
 (defun pvs2clean-resolution-nondestructive (op-decl formals body range-type)
   (let* ((*destructive?* nil)
 	 (bind-ids (pvs2cl-make-bindings formals nil))
 	 (cl-body (pvs2clean* body
-			   (pairlis formals bind-ids)
-			   nil))
-	 (cl-type (format nil "~{~a ~} -> ~a"
-		  (loop for var in formals
-			collect (format nil "!~a" (pvs2clean-type (type var))))
-		  (pvs2clean-type range-type)))
-	 (cl-defn (format nil "~a ~{~a ~} -> ~a" "\\" bind-ids cl-body))
+			      (pairlis formals bind-ids)
+			      nil))
+	 (cl-type (if (null formals)
+		      (format nil "~a" (pvs2clean-type range-type))
+		      (format nil "~{~a ~} -> ~a"
+			(loop for var in formals
+			   collect (format nil "!~a" (pvs2clean-type (type var))))
+			(pvs2clean-type range-type))))
+	 (cl-defn (if (null bind-ids)
+		      (format nil "~a" cl-body)
+		      (format nil "~a ~{~a ~} -> ~a" "\\" bind-ids cl-body)))
 	 (hash-entry (gethash op-decl *clean-nondestructive-hash*)))
     (format t "~%Defining (nondestructively) ~a with ~%type ~a ~%as ~a" (id op-decl) cl-type cl-defn)
     (setf (clean-info-type hash-entry)
@@ -270,19 +274,23 @@
 	 (*output-vars* nil)
 	 (bind-ids (pvs2cl-make-bindings formals nil))
 	 (cl-body (pvs2clean* body
-			   (pairlis formals bind-ids)
-			   nil))
-	 (cl-type (format nil "~{~a ~} -> ~a"
-		  (loop for var in formals
-			collect (if (assoc (declaration var) *output-vars*
-					   :key #'declaration)
-				    (format nil "!*~a" (pvs2clean-type (type var)))
-				    (format nil "!~a" (pvs2clean-type (type var)))))
-		  (pvs2clean-type range-type)))
-	 (cl-defn  (format nil "~a ~{~a ~} -> ~a" "\\" bind-ids cl-body))
+			      (pairlis formals bind-ids)
+			      nil))
+	 (cl-type (if (null formals)
+		      (format nil "~a" (pvs2clean-type range-type))
+		      (format nil "~{~a ~} -> ~a"
+			(loop for var in formals
+			   collect (if (assoc (declaration var) *output-vars*
+					      :key #'declaration)
+				       (format nil "!*~a" (pvs2clean-type (type var)))
+				       (format nil "!~a" (pvs2clean-type (type var)))))
+			(pvs2clean-type range-type))))
+	 (cl-defn (if (null bind-ids)
+		      (format nil "~a" cl-body)
+		      (format nil "~a ~{~a ~} -> ~a" "\\" bind-ids cl-body)))
 	 (hash-entry (gethash op-decl *clean-destructive-hash*))
 	 (old-output-vars (clean-info-analysis hash-entry)))
-        (format t "~%Defining (destructively) ~a with ~%type ~a ~%as ~a" (id op-decl) cl-type cl-defn)
+    (format t "~%Defining (destructively) ~a with ~%type ~a ~%as ~a" (id op-decl) cl-type cl-defn)
     (setf (clean-info-type hash-entry)
 	  cl-type
 	  (clean-info-definition hash-entry)
@@ -359,7 +367,7 @@
 	(t (call-next-method))))
 
 (defmethod pvs2clean* ((expr cases-expr) bindings livevars)
-  (format nil "case ~a of ~{~%~a~}"
+  (format nil "case ~a of ~{~%  ~a~}"
     (pvs2clean* (expression expr) bindings livevars)
     (pvs2clean-cases (selections expr)(else-part expr) bindings livevars)))
 
@@ -487,22 +495,21 @@
 
 ;;recursion over nested update arguments in a single update.
 (defun pvs2clean-update-nd-type (type expr newexprvar args assign-expr
-					   bindings livevars accum)
+				 bindings livevars accum)
   (if (consp args)
       (pvs2clean-update-nd-type* type expr newexprvar (car args) (cdr args) assign-expr
-			      bindings livevars accum)
+				 bindings livevars accum)
       (cons (list newexprvar assign-expr) accum)))
 
 (defmethod pvs2clean-update-nd-type* ((type funtype) expr newexprvar arg1 restargs
-				   assign-expr bindings livevars accum)
+				      assign-expr bindings livevars accum)
   (let* ((arg1var (gentemp "L"))
 	 (clean-arg1 (pvs2clean*  (car arg1) bindings
-				 (append (updateable-vars restargs)
-					 livevars))))
+				  (append (updateable-vars restargs)
+					  livevars))))
     (push (list arg1var clean-arg1) *lhs-args*)
     (if (consp restargs)
-	(let* (
-	       (exprvar (gentemp "E"))
+	(let* ((exprvar (gentemp "E"))
 	       (exprval (format nil "pvsSelect ~a ~a" expr arg1var))
 	       (newexprvar2 (gentemp "N"))
 	       (newaccum
@@ -511,46 +518,60 @@
 		 restargs assign-expr bindings livevars
 		 (cons (list exprvar exprval) accum))))
 	  (cons (list newexprvar (pvsclean_update expr arg1var newexprvar2))
-		newaccum)
-	  )
+		newaccum))
 	(cons (list newexprvar (pvsclean_update expr arg1var assign-expr))
 	      accum))))
 
 
-
 (defmethod pvs2clean-update-nd-type* ((type recordtype) expr newexprvar arg1 restargs
-				   assign-expr bindings livevars accum)
+				      assign-expr bindings livevars accum)
   (let ((id (id (car arg1))))
-	(if (consp restargs)
-	    (let* (
-		   (exprvar (gentemp "E"))
-		   (new-expr (format nil "~a.~a" expr id))
-		   (field-type (type (find id (fields type) :key #'id) ))
-		   (newexprvar2 (gentemp "N"))
-		   (newaccum (pvs2clean-update-nd-type field-type exprvar newexprvar2
-						       restargs assign-expr bindings
-						       livevars
-						       (cons (list exprvar new-expr) accum))))
-	      (cons (list newexprvar (format nil "{~a & ~a = ~a}" expr id newexprvar2)) newaccum))
-	    (cons (list newexprvar (format nil "{~a & ~a = ~a}" expr id assign-expr))
-		  accum))))
+    (if (consp restargs)
+	(let* ((exprvar (gentemp "E"))
+	       (new-expr (format nil "~a.~a" expr id))
+	       (field-type (type (find id (fields type) :key #'id) ))
+	       (newexprvar2 (gentemp "N"))
+	       (newaccum (pvs2clean-update-nd-type field-type exprvar newexprvar2
+						   restargs assign-expr bindings
+						   livevars
+						   (cons (list exprvar new-expr) accum))))
+	  (cons (list newexprvar (format nil "{~a & ~a = ~a}" expr id newexprvar2)) newaccum))
+	(cons (list newexprvar (format nil "{~a & ~a = ~a}" expr id assign-expr))
+	      accum))))
 
-(defmethod pvs2clean-update-nd-type* ((type subtype)  expr newexprvar arg1 restargs
-				   assign-expr bindings livevars accum)
+(defmethod pvs2clean-update-nd-type* ((type adt-type-name) expr newexprvar arg1 restargs
+				      assign-expr bindings livevars accum)
+  (let ((id (id (car arg1))))
+    (break "This code is from recordtype - FIXME")
+    (if (consp restargs)
+	(let* ((exprvar (gentemp "E"))
+	       (new-expr (format nil "~a.~a" expr id))
+	       (field-type (type (find id (fields type) :key #'id) ))
+	       (newexprvar2 (gentemp "N"))
+	       (newaccum (pvs2clean-update-nd-type field-type exprvar newexprvar2
+						   restargs assign-expr bindings
+						   livevars
+						   (cons (list exprvar new-expr) accum))))
+	  (cons (list newexprvar (format nil "{~a & ~a = ~a}" expr id newexprvar2)) newaccum))
+	(cons (list newexprvar (format nil "{~a & ~a = ~a}" expr id assign-expr))
+	      accum))))
+
+(defmethod pvs2clean-update-nd-type* ((type subtype) expr newexprvar arg1 restargs
+				      assign-expr bindings livevars accum)
   (pvs2clean-update-nd-type* (find-supertype type) expr newexprvar arg1 restargs
-			  assign-expr bindings livevars accum))
+			     assign-expr bindings livevars accum))
 
 (defmethod pvs2clean-type ((type recordtype) &optional tbindings)
   (with-slots (print-type) type
     (if (type-name? print-type)
 	(let ((entry (assoc (declaration print-type) *clean-record-defns*)))
-	  (if entry (cadr entry) ;return the clean-rectype-name
+	  (if entry (cadr entry)	;return the clean-rectype-name
 	      (let* ((formatted-fields (loop for fld in (fields type)
-				  collect
-				  (format nil "~a :: !~a" (id fld)
-						(pvs2clean-type (type fld)))))
-		    (clean-rectype (format nil "{ ~{~a~^, ~} }" formatted-fields))
-		    (clean-rectype-name (gentemp (format nil "pvs~a" (id print-type)))))
+					  collect
+					    (format nil "~a :: !~a" (id fld)
+						    (pvs2clean-type (type fld)))))
+		     (clean-rectype (format nil "{ ~{~a~^, ~} }" formatted-fields))
+		     (clean-rectype-name (gentemp (format nil "pvs~a" (simple-id (id print-type))))))
 		(push (list (declaration print-type) clean-rectype-name clean-rectype)
 		      *clean-record-defns*)
 		clean-rectype-name)))
