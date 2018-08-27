@@ -50,25 +50,24 @@
 	(when (argument-conversions (mapcar #'type reses) arguments)
 	  (resolve name 'expr arguments))))))
 
-;; Returns t if some arg in arguments had a conversion added
-(defun argument-conversions (optypes arguments &optional conv-added?)
-  (if optypes
+;; Returns list of args for which conversions were added
+(defun argument-conversions (optypes arguments &optional conv-args)
+  (if (null optypes)
+      conv-args
       (let* ((rtype (find-supertype (car optypes)))
 	     (dtypes (when (typep rtype 'funtype)
 		       (domain-types rtype)))
 	     (dtypes-list (all-possible-instantiations dtypes arguments))
-	     (aconversions (when (length= arguments dtypes)
-			     (argument-conversions* arguments dtypes-list))))
-	(argument-conversions (cdr optypes) arguments
-			      (or conv-added? (not (null aconversions)))))
-      conv-added?))
+	     (aconv-args (if (length= arguments dtypes)
+			     (argument-conversions* arguments dtypes-list conv-args)
+			     conv-args)))
+	(argument-conversions (cdr optypes) arguments aconv-args))))
 
-;; Returns t if some arg in arguments had a conversion added
-(defun argument-conversions* (arguments dtypes-list &optional conv-added?)
+;; Returns list of args for which conversions were added
+(defun argument-conversions* (arguments dtypes-list conv-args)
   (if (null dtypes-list)
-      conv-added?
-      (let ((conversions (argument-conversions1 arguments (car dtypes-list)))
-	    (aconv-added? nil))
+      conv-args
+      (let ((conversions (argument-conversions1 arguments (car dtypes-list))))
 	(when conversions
 	  (mapc #'(lambda (arg convs)
 		    (when convs
@@ -80,9 +79,9 @@
 			  (setf (types arg)
 				(remove-duplicates (append (types arg) actypes)
 				  :test #'tc-eq :from-end t))
-			  (setq aconv-added? t)))))
+			  (pushnew arg conv-args)))))
 		arguments conversions))
-	(argument-conversions* arguments (cdr dtypes-list) (or conv-added? aconv-added?)))))
+	(argument-conversions* arguments (cdr dtypes-list) conv-args))))
 
 (defun argument-conversions1 (arguments dtypes &optional result)
   (if (null arguments)
@@ -415,10 +414,13 @@
 (defun find-application-conversion (expr)
   (let* ((op (operator expr))
 	 (arg (argument expr))
-	 (args (arguments expr)))
-    (if (or (argument-conversions (types op) args)
-	    (argument-conversions (types op) (list arg)))
-	(set-possible-argument-types op (argument expr))
+	 (args (arguments expr))
+	 (arg-convs (or (argument-conversions (types op) args)
+			(argument-conversions (types op) (list arg)))))
+    (if arg-convs
+	(unless (memq arg arg-convs)
+	  (setf (types arg)
+		(all-possible-tupletypes args)))
 	(let ((conversions (unless *no-conversions-allowed*
 			     (find-operator-conversions (types op) args))))
 	  (if conversions

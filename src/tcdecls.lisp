@@ -632,7 +632,7 @@
     (when (and th (get-importings th))
       (type-error decl
 	"Identifier ~a is already in use as a theory" (id decl))))
-  ;;(typecheck-named-theory decl)
+  (typecheck-using (modname decl))
   (typecheck-inlined-theory decl)
   (unless (fully-instantiated? (modname decl))
     (type-error (modname decl)

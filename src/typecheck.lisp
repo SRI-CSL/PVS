@@ -798,7 +798,29 @@
 		     ;;:modname
 		     :theory-mappings nil
 		     :other-mappings nil)
-		   'mapped-type-decl)))
+		   'mapped-mod-decl)))
+    ;; (generate-xref mdecl)
+    (dolist (df (decl-formals mdecl))
+      (setf (associated-decl df) mdecl))
+    mdecl))
+
+(defmethod make-mapped-decl ((decl theory-abbreviation-decl) map theory theoryname)
+  (let ((mdecl (change-class
+		   (copy decl
+		     :place nil
+		     :decl-formals (mapcar #'(lambda (df)
+						(make-mapped-decl
+						 df map theory theoryname))
+				      (decl-formals decl))
+		     :module (current-theory)
+		     :refers-to nil
+		     :generated nil
+		     :generated-by (list decl)
+		     ;;:theory-name
+		     :saved-context nil
+		     :theory-mappings nil
+		     :other-mappings nil)
+		   'mapped-theory-abbreviation-decl)))
     ;; (generate-xref mdecl)
     (dolist (df (decl-formals mdecl))
       (setf (associated-decl df) mdecl))

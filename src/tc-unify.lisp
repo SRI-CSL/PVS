@@ -684,6 +684,7 @@ returns the updated bindings."
 (defun tc-match-subtypes (arg farg bindings)
   (let ((asup (find-adt-supertype arg))
 	(fsup (find-adt-supertype farg)))
+    (assert (and asup fsup))
     (if (or (and (formal-type-name? fsup)
 		 (not (tc-eq asup fsup)))
 	    (formal-type-name? asup))

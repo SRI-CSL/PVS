@@ -231,7 +231,7 @@
     (type-decl
      (assert (type-value rhs))
      (check-for-tccs* (type-value rhs) nil))
-    ((or mod-decl module)
+    ((or theory-reference module)
      (when (or (actuals (expr rhs)) (mappings (expr rhs)))
        (check-type-actuals-and-maps (expr rhs))))
     (t ;; May need to perform two subst-mod-params because the lhs decl may not be directly

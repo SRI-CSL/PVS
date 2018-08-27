@@ -46,7 +46,8 @@
   (formal-not-in-context? (actual-value act)))
 
 (defmethod formal-not-in-context? ((ex name))
-  nil)
+  (when (resolution ex)
+    (formal-not-in-context? (declaration ex))))
 
 (defmethod formal-not-in-context? ((decl formal-decl))
   (assert (current-theory))
@@ -60,6 +61,9 @@
   nil)
 
 (defmethod formal-not-in-context? ((ex expr))
+  nil)
+
+(defmethod formal-not-in-context? ((te type-expr))
   nil)
 
 (defun formals-not-in-context (obj)

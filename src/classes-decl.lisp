@@ -521,6 +521,8 @@
 (defcl theory-abbreviation-decl (theory-reference)
   (theory-name :parse t))
 
+(defcl mapped-theory-abbreviation-decl (theory-abbreviation-decl mapped-decl))
+
 (defcl var-decl (typed-declaration))
 
 ;; if from-object-decl? = t then the declaration is an object-decl.

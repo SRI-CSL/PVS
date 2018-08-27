@@ -1065,7 +1065,7 @@
   ;; Must be a reference to a lib-decl, a subdirectory of the current context,
   ;; or a library in *pvs-path*/lib/
   (assert *current-context*)
-  (or (cdr (assq libid (library-alist *current-context*)))
+  (or (cdr (assq libid (current-library-alist)))
       (let* ((lib-decls (get-lib-decls libid))
 	     (librefs (mapcar #'get-library-reference lib-decls))
 	     (csubdir (format nil "./~a/" libid))
@@ -1084,8 +1084,9 @@
 			  (when csubref (list csubref))
 			  (when lsubref (list lsubref)))))
 	(when refs
-	  (push (cons libid (car refs)) (library-alist *current-context*)))
+	  (push (cons libid (car refs)) (current-library-alist)))
 	(or (car refs)
+	    (break "bad libref")
 	    (values nil (format nil "Library id ~a cannot be resolved to a library declaration, a subdirectory of the current context, a subdirectory of PVS_LIBRARY_PATH, nor a subdirectory of ~a/lib/"
 			  libid *pvs-path*))))))
 
@@ -1209,9 +1210,7 @@
 ;;; This function is goes from a lib-ref to a library id, suitable for
 ;;; building a theory name.
 (defun libref-to-libid (lib-ref)
-  (assert *current-context*)
-  (car (rassoc lib-ref (library-alist *current-context*)
-	       :test #'string=)))
+  (car (rassoc lib-ref (current-library-alist) :test #'string=)))
 
 (defun libref-to-lib-decl-id (lib-ref)
   (let ((lib-decls nil))

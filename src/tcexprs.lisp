@@ -662,6 +662,11 @@
 (defmethod find-adt-supertype ((te subtype))
   (find-adt-supertype (supertype te)))
 
+(defmethod find-adt-supertype ((te expr-as-type))
+  (if (supertype te)
+      (find-adt-supertype (supertype te))
+      (find-adt-supertype (domain (type (expr te))))))
+
 (defmethod find-adt-supertype ((te datatype-subtype))
   te)
 

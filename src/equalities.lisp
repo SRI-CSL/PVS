@@ -341,13 +341,13 @@
   (with-slots ((fields1 fields)) t1
     (with-slots ((fields2 fields)) t2
       (or (eq t1 t2)
-	  (tc-eq-types fields1 fields2 bindings)))))
+	  (tc-eq-fields-type fields1 fields2 bindings)))))
 
 (defmethod tc-eq* ((t1 struct-sub-recordtype) (t2 struct-sub-recordtype) bindings)
   (with-slots ((fields1 fields)) t1
     (with-slots ((fields2 fields)) t2
       (or (eq t1 t2)
-	  (tc-eq-types fields1 fields2 bindings)))))
+	  (tc-eq-fields-type fields1 fields2 bindings)))))
 
 (defun tc-eq-fields-type (flds1 flds2 bindings)
   (declare (list flds1 flds2))
@@ -1705,15 +1705,15 @@
 		       ;; Probably need to define compatible-expr for this
 		       (formal-not-in-context? act1)
 		       (formal-not-in-context? act2)))
-	   (if (null ty1)
-	       (cond ((formal-not-in-context? act2)
-		      act1)
-		     ((formal-not-in-context? act1)
-		      act2)
-		     (t (let ((cty (compatible-type* ty1 ty2 bindings)))
-			  (cond ((eq cty ty1) act1)
-				((eq cty ty2) act2)
-				(t (mk-actual cty))))))))
+	   (cond ((formal-not-in-context? act2)
+		  act1)
+		 ((formal-not-in-context? act1)
+		  act2)
+		 (t (let ((cty (compatible-type* ty1 ty2 bindings)))
+		      (assert cty)
+		      (cond ((eq cty ty1) act1)
+			    ((eq cty ty2) act2)
+			    (t (mk-actual cty)))))))
 	  (t act1))))
 
 (defmethod compatible-type* ((atype type-name) (etype subtype) bindings)
@@ -1803,7 +1803,7 @@
 		      (and (type-name? top2)
 			   (declaration-is-not-in-context top2)))))
 	(if (or tv1? tv2?)
-	    (break "check")
+	    (if tv2? top1 top2)
 	    (let ((adepth (subtype-depth atype))
 		  (edepth (subtype-depth etype)))
 	      ;; Tops must be of the same class
@@ -1820,12 +1820,23 @@
 (defmethod subtype-depth ((ty subtype) &optional (depth 0))
   (subtype-depth (supertype ty) (1+ depth)))
 
+(defmethod subtype-depth ((ty expr-as-type) &optional (depth 0))
+  (subtype-depth (or (supertype ty)
+		     (domain (type (expr ty))))
+		 (1+ depth)))
+
 (defmethod subtype-depth ((ty type-expr) &optional (depth 0))
   depth)
 
-(defun nth-supertype (ty n)
-  (assert (subtype? ty))
+(defmethod nth-supertype ((ty subtype) n)
   (if (<= n 0) ty (nth-supertype (supertype ty) (- n 1))))
+
+(defmethod nth-supertype ((ty expr-as-type) n)
+  (if (<= n 0)
+      ty
+      (nth-supertype (or (supertype ty)
+			 (domain (type (expr ty))))
+		     (- n 1))))
 
 (defun adt-compatible-type (acts1 acts2 formals type postypes compacts
 				  bindings)
