@@ -4756,7 +4756,7 @@ space")
   "Returns the number of commits since the pvs-version number tag"
   (values
    (uiop:run-program
-       (format nil "git -C ~a rev-list ~a..HEAD --count" *pvs-path* *pvs-version*)
+       (format nil "git -C ~a rev-list pvs~a..HEAD --count" *pvs-path* *pvs-version*)
      :input "//dev//null"
      :output '(:string :stripped t))))
 
