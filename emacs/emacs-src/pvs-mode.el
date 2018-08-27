@@ -199,7 +199,20 @@
   (ilisp-shrink-wrap-window (selected-window))
   (goto-char (point-min)))
 
+;;; Header line
+
+;; (defun pvs-header-line ()
+;;   (interactive)
+;;   (setq header-line-format
+;; 	(:eval
+;; 	 (get-text-property
+;; 	  (point-min)
+;; 	  'header-line))))
+
 ;;; Speedbar - patterned after Info-speedbar
+
+;;; (add-hook 'buffer-list-update-hook 'set-speedbar-mode)
+;;;     if we want to have foo invoked when an Emacs window gets focus
 
 (eval-when-compile (require 'speedbar))
 
