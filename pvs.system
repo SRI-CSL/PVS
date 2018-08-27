@@ -30,6 +30,9 @@
 #+sbcl (require :sb-posix)
 #+sbcl (require :sb-md5)
 
+#+sbcl ;; Needed in order to use quicklisp
+(require 'sb-bsd-sockets)
+
 (require :asdf)
 
 (#-(or cmu sbcl excl) progn
@@ -89,9 +92,6 @@
 
 (defpackage :ilisp (:nicknames :ILISP) (:use :common-lisp #+:CMU :conditions))
 (defpackage :bvec)
-
-#+sbcl ;; Needed in order to use quicklisp
-(require 'sb-bsd-sockets)
 
 (assert (find-package :asdf))
 
