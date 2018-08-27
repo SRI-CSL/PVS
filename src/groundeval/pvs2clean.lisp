@@ -147,7 +147,7 @@
 
 (defmethod pvs2clean*  ((expr field-application) bindings livevars)
   (let* ((clarg (pvs2clean* (argument expr) bindings livevars))
-	 (id (id expr)))
+	 (id (simple-id (id expr))))
     (format nil "~a.~a" clarg id)))
 
 (defmethod pvs2clean* ((expr list) bindings livevars)
@@ -197,7 +197,8 @@
     (let* ((actuals (expr-actuals (module-instance operator)))
 	   (op-decl (declaration operator))
 	   (args (arguments expr))
-	   (clean-args (pvs2clean* (append actuals args) bindings livevars)))
+	   (clean-args (pvs2clean* (append actuals args) bindings livevars))
+	   (op-bound-id (cdr (assoc op-decl bindings :key #'declaration))))
       (if *destructive?*
 	  (let* ((defns (def-axiom op-decl))
 		 (defn (when defns (args2 (car (last (def-axiom op-decl))))))
@@ -209,13 +210,19 @@
 				(when def-formals
 				  (pairlis def-formals args))))
 		 (analysis (clean_analysis operator))
-		 (check (check-output-vars analysis alist livevars)))
-	    (format nil "(~a ~{ ~a~})" (if check (clean_id operator)
-					   (clean_nondestructive_id operator))
-		    clean-args)
+		 (check (unless op-bound-id
+			  (check-output-vars analysis alist livevars))))
+	    (format nil "(~a ~{ ~a~})"
+	      (or op-bound-id
+		  (if check
+		      (clean_id operator)
+		      (clean_nondestructive_id operator)))
+	      clean-args)
 	    )
-	  (format nil "(~a ~{ ~a~})" (clean_id operator) clean-args))))) ;;this should be
-;;clean_nondestructive_id?
+	  (format nil "(~a ~{ ~a~})"
+	    ;;should this be clean_nondestructive_id ?
+	    (or op-bound-id (clean_id operator)) clean-args)))))
+
 
 (defun pvs2clean-resolution (op)
   (let* ((op-decl (declaration op)))
@@ -248,7 +255,7 @@
 
 (defun pvs2clean-resolution-nondestructive (op-decl formals body range-type)
   (let* ((*destructive?* nil)
-	 (bind-ids (pvs2cl-make-bindings formals nil))
+	 (bind-ids (pvs2clean-make-bindings formals nil))
 	 (cl-body (pvs2clean* body
 			      (pairlis formals bind-ids)
 			      nil))
@@ -259,10 +266,11 @@
 			   collect (format nil "!~a" (pvs2clean-type (type var))))
 			(pvs2clean-type range-type))))
 	 (cl-defn (if (null bind-ids)
-		      (format nil "~a" cl-body)
-		      (format nil "~a ~{~a ~} -> ~a" "\\" bind-ids cl-body)))
+		      (format nil " = ~a" cl-body)
+		      (format nil "~{ ~a~} = ~a" bind-ids cl-body)))
 	 (hash-entry (gethash op-decl *clean-nondestructive-hash*)))
-    (format t "~%Defining (nondestructively) ~a with ~%type ~a ~%as ~a" (id op-decl) cl-type cl-defn)
+    (format t "~%Defining (nondestructively) ~a with ~%type ~a ~%as ~a"
+      (simple-id (id op-decl)) cl-type cl-defn)
     (setf (clean-info-type hash-entry)
 	  cl-type
 	  (clean-info-definition hash-entry)
@@ -272,7 +280,7 @@
 (defun pvs2clean-resolution-destructive (op-decl formals body range-type)
   (let* ((*destructive?* t)
 	 (*output-vars* nil)
-	 (bind-ids (pvs2cl-make-bindings formals nil))
+	 (bind-ids (pvs2clean-make-bindings formals nil))
 	 (cl-body (pvs2clean* body
 			      (pairlis formals bind-ids)
 			      nil))
@@ -286,11 +294,12 @@
 				       (format nil "!~a" (pvs2clean-type (type var)))))
 			(pvs2clean-type range-type))))
 	 (cl-defn (if (null bind-ids)
-		      (format nil "~a" cl-body)
-		      (format nil "~a ~{~a ~} -> ~a" "\\" bind-ids cl-body)))
+		      (format nil " = ~a" cl-body)
+		      (format nil "~{ ~a~} = ~a" bind-ids cl-body)))
 	 (hash-entry (gethash op-decl *clean-destructive-hash*))
 	 (old-output-vars (clean-info-analysis hash-entry)))
-    (format t "~%Defining (destructively) ~a with ~%type ~a ~%as ~a" (id op-decl) cl-type cl-defn)
+    (format t "~%Defining (destructively) ~a with ~%type ~a ~%as ~a"
+      (simple-id (id op-decl)) cl-type cl-defn)
     (setf (clean-info-type hash-entry)
 	  cl-type
 	  (clean-info-definition hash-entry)
@@ -336,7 +345,7 @@
 
 (defun pvs2clean-lambda (bind-decls expr bindings) ;;removed livevars
   (let* ((*destructive?* nil)
-	 (bind-ids (pvs2cl-make-bindings bind-decls bindings))
+	 (bind-ids (pvs2clean-make-bindings bind-decls bindings))
 	 (cl-body (pvs2clean* expr
 			   (append (pairlis bind-decls bind-ids)
 				   bindings)
@@ -376,7 +385,7 @@
 	 (loop for entry in selections
 	       collect
 	       (let* ((bind-decls (args entry))
-		      (bind-ids (pvs2cl-make-bindings bind-decls bindings)))
+		      (bind-ids (pvs2clean-make-bindings bind-decls bindings)))
 		 (format nil "~a ~{~a ~} -> ~a"
 			 (pvs2clean* (constructor entry) bindings livevars)
 			 bind-ids
@@ -525,7 +534,7 @@
 
 (defmethod pvs2clean-update-nd-type* ((type recordtype) expr newexprvar arg1 restargs
 				      assign-expr bindings livevars accum)
-  (let ((id (id (car arg1))))
+  (let ((id (simple-id (id (car arg1)))))
     (if (consp restargs)
 	(let* ((exprvar (gentemp "E"))
 	       (new-expr (format nil "~a.~a" expr id))
@@ -541,7 +550,7 @@
 
 (defmethod pvs2clean-update-nd-type* ((type adt-type-name) expr newexprvar arg1 restargs
 				      assign-expr bindings livevars accum)
-  (let ((id (id (car arg1))))
+  (let ((id (simple-id (id (car arg1)))))
     (break "This code is from recordtype - FIXME")
     (if (consp restargs)
 	(let* ((exprvar (gentemp "E"))
@@ -568,7 +577,7 @@
 	  (if entry (cadr entry)	;return the clean-rectype-name
 	      (let* ((formatted-fields (loop for fld in (fields type)
 					  collect
-					    (format nil "~a :: !~a" (id fld)
+					    (format nil "~a :: !~a" (simple-id (id fld))
 						    (pvs2clean-type (type fld)))))
 		     (clean-rectype (format nil "{ ~{~a~^, ~} }" formatted-fields))
 		     (clean-rectype-name (gentemp (format nil "pvs~a" (simple-id (id print-type))))))
@@ -597,9 +606,20 @@
 
 (defmethod pvs2clean-type ((type type-name) &optional tbindings)
   (or (cdr (assoc type tbindings :test #'tc-eq))
-      (id type)))
+      (simple-id (id type))))
 
-
+;;; Note that bindings is an assoc-list, used to check if id is already
+;;; in use.
+(defun pvs2clean-make-bindings (bind-decls bindings &optional nbindids)
+  (if (null bind-decls)
+      (nreverse nbindids)
+      (let* ((bb (car bind-decls))
+	     (id (simple-id (id bb)))
+	     (newid (if (rassoc (id bb) bindings)
+			(pvs2cl-newid id bindings)
+			id)))
+	(pvs2clean-make-bindings (cdr bind-decls)
+				 bindings (cons newid nbindids)))))
 
 ;;clean-updateable? is used to check if the type of an updated expression
 ;;is possibly destructively. 
@@ -673,15 +693,15 @@
 			(constructors dt) dt
 			(mapcar #'cons (formals dt) typevars))))
     (format nil "::~a~{ ~a~} = ~{~a~^ | ~}"
-      (id dt) typevars constructors)))
+      (simple-id (id dt)) typevars constructors)))
 
 (defun pvs2clean-datatype-formal (formal dt)
   (if (formal-type-decl? formal)
-      (let ((id-str (string (id formal))))
+      (let ((id-str (string (simple-id (id formal)))))
 	(if (lower-case-p (char id-str 0))
-	    (id formal)
+	    (simple-id (id formal))
 	    (make-new-variable (string-downcase id-str :end 1) dt)))
-      (break "What to di with constant formals?")))
+      (break "What to do with constant formals?")))
 
 (defun pvs2clean-constructors (constrs datatype tvars)
   (pvs2clean-constructors* constrs datatype tvars))
@@ -693,7 +713,7 @@
 
 ;;; Maps to ConstructorDef
 (defun pvs2clean-constructor (constr datatype tvars)
-  (format nil "~a~{ ~a~}" (id constr)
+  (format nil "~a~{ ~a~}" (simple-id (id constr))
 	  (mapcar #'(lambda (arg) (pvs2clean-type (type arg) tvars))
 	    (arguments constr))))
 
@@ -702,6 +722,7 @@
   (clrhash *clean-destructive-hash*))
 
 (defun generate-clean-for-pvs-file (filename &optional force?)
+  (when force? (clear-clean-hash))
   (let ((theories (cdr (gethash filename *pvs-files*))))
     ;; Sets the hash-tables
     (dolist (theory theories)
@@ -738,10 +759,10 @@
 		;; First the signature
 		(format output "~%~a:: ~a" id (clean-info-type ndes-info))
 		;; Then the defn
-		(format output "~%~a = ~a" id (clean-info-definition ndes-info))))
+		(format output "~%~a ~a" id (clean-info-definition ndes-info))))
 	    (when des-info
 	      (let ((id (clean-info-id des-info)))
 		;; First the signature
 		(format output "~%~a:: ~a" id (clean-info-type des-info))
 		;; Then the defn
-		(format output "~%~a = ~a" id (clean-info-definition des-info))))))))))
+		(format output "~%~a ~a" id (clean-info-definition des-info))))))))))
