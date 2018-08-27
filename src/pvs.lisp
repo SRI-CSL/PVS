@@ -481,8 +481,8 @@
   (cond ((file-exists-p (format nil "~a/pvs-version.lisp" *pvs-path*))
 	 (with-open-file (vers (format nil "~a/pvs-version.lisp" *pvs-path*))
 	   (read vers)))
-	((file-exists-p (format t "~a/.git" *pvs-path*))
-	 (format t "~a.~d" *pvs-version* (pvs-git-count-since)))
+	((file-exists-p (format nil "~a/.git" *pvs-path*))
+	 (format nil "~a.~d" *pvs-version* (pvs-git-count-since)))
 	(t *pvs-version*)))
 
 (defun pvs-image-suffix ()
