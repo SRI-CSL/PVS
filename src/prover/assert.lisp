@@ -104,6 +104,13 @@
 	(clrhash *subst-type-hash*)))))
 
 (defun assert-sequent (sequent sformnums &optional rewrite-flag)
+  "Given a sequent and a list of sformnums, first partitions the sformnums
+into those with top-level quantifiers (quant-sformnums), those with a
+propositional (including if and cases) connective (simplifiable-sformnums),
+and all others.  It then applies sequent-reduce to the others, then the
+quant-sformnums, and finally to the simplifiable-sformnums.  In each case,
+if the signal returned is '!', it returns that signal to the caller (the
+subgoal is proved)."
   (let* ((quant-sformnums
 	  (find-all-sformnums (s-forms sequent) sformnums
 			      #'top-quant?))
@@ -246,9 +253,9 @@
   (let ((*assert-typepreds* nil)
 	(*auto-rewrite-depth* 0)
 	(*use-rationals* t))
-    (multiple-value-bind (signal sform)
+    (multiple-value-bind (signal asform)
 	(assert-sform* sform rewrite-flag simplifiable?)
-      (cond ((eq signal '!)(values signal sform))
+      (cond ((eq signal '!) (values signal asform))
 	    ((and (null *ignore-typepreds?*)
 		  (or (eq signal '?) *assert-typepreds*))
 	     ;; For some formulas (e.g., large, with lots of arithmetic)
@@ -257,8 +264,8 @@
 	     (let ((newsig (process-assert-typepreds *assert-typepreds* signal)))
 	       ;; should be signal, but fails for the example
 	       ;; from Cesar 2012-12-10/aaaa.pvs
-	       (values newsig sform)))
-	    (t (values signal sform))))))
+	       (values newsig asform)))
+	    (t (values signal asform))))))
 
 (defun process-assert-typepreds (assert-typepreds signal)
   (if (null assert-typepreds)
@@ -361,7 +368,6 @@
 	  (t				;(break "1")
 	   (multiple-value-bind (sig newfmla)
 	       (assert-if-inside fmla)
-					;(break "2")
 	     (if (or (connective-occurs? newfmla)
 		     (memq *assert-flag* '(simplify rewrite)))
 		 (values sig (if (eq sig '?) (copy sform
@@ -496,9 +502,9 @@
 (defmethod quant-occurs? ((expr expr))
   nil)
 
-;;connective-occurs? tests if there are any propositional
-;;connectives or IF-exprs in the expression that the decision
-;;procedure could be used to simplify.
+;; connective-occurs? tests if there are any propositional
+;; connectives or IF-exprs in the expression that the decision
+;; procedure could be used to simplify.
 
 (defun connective-occurs? (expr)
   (connective-occurs?* expr nil))

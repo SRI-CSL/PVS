@@ -2533,13 +2533,29 @@ See also CASE, CASE*.  Hides FORMULA when HIDE? is T."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;NSH(12.16.93): replace* strategy does LR replacement on fnums.
 
+(defun non-self-looping-replace (fmla &optional direction)
+  (let* ((lhs (when (and (negation? fmla)
+			 (or (equation? (args1 fmla))
+			     (iff-or-boolean-equation? (args1 fmla))))
+		(if (string-equal direction 'rl)
+		    (args2 (args1 fmla))
+		    (args1 (args1 fmla)))))
+	 (rhs (when lhs
+		(if (string-equal direction 'rl)
+		    (args1 (args1 fmla))
+		    (args2 (args1 fmla))))))
+    (or (null lhs)
+	(not (occurs-in lhs rhs)))))
+
 (defstep replace* (&rest fnums &inherit replace)
   (let ((fnums (find-all-sformnums (s-forms *goal*)
 				   (if (null fnums) '* fnums)
-				   #'always-true))
+				   #'(lambda (fmla)
+				       (non-self-looping-replace fmla dir))))
 	(x `(then* ,@(loop for y in fnums collect `(replace ,y)))))
     x)
-  "Apply left-to-right replacement with formulas in FNUMS."
+  "Apply left-to-right replacement with formulas in FNUMS, but only for
+those formulas that don't introduce self-loops."
   "Repeatedly applying the replace rule")
 
 (defstep skolem! (&optional (fnum *) keep-underscore? &inherit skolem)
