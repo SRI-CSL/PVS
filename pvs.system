@@ -27,6 +27,9 @@
 
 (in-package :common-lisp)
 
+#+sbcl (require :sb-posix)
+#+sbcl (require :sb-md5)
+
 (require :asdf)
 
 (#-(or cmu sbcl excl) progn
@@ -39,9 +42,6 @@
  (export 'defconstant-if-unbound))
 
 (in-package :cl-user)
-
-#+sbcl (require :sb-posix)
-#+sbcl (require :sb-md5)
 
 #+allegro
 (defun startup-pvs ()
