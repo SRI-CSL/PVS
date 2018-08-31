@@ -373,8 +373,9 @@
 	     (nexpr (replace-expr* lhs rhs (expression expr) nil))
 	     (rep-bindings (when *replace-in-actuals?*
 			     (replace-expr* lhs rhs (bindings expr) lastopinfix?)))
-	     (rep-type (when *replace-in-actuals?*
-			 (replace-expr* lhs rhs (type expr) nil)))
+	     (rep-type (if *replace-in-actuals?*
+			   (replace-expr* lhs rhs (type expr) nil)
+			   (type expr)))
 	     (new-bindings (unless (and (eq nexpr (expression expr))
 					(null rep-bindings))
 			     (or (make-nonclashing-bindings
