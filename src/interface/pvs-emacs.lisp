@@ -598,6 +598,7 @@
     ;;(format t "~%add-psinfo: opening res-gate~%")
     (mp:open-gate (psinfo-res-gate psi))))
 
+;;; Support for displaying proofs
 (defmethod prover-read :around ()
   (cond (*ps-control-info*
 	 #+allegro
@@ -682,12 +683,15 @@
 				 (format-printout pps t))))
 	  (num-subgoals (proofstate-num-subgoals ps))
 	  (sequent (pvs2json-seq current-goal pps))
+	  (prev-cmd (when (parent-proofstate ps)
+		      (current-rule (parent-proofstate ps))))
 	  (prooftree-info (proofstate-tree-info ps)))
       `(,@(when *prover-commentary*
 		`(("commentary" . ,(reverse *prover-commentary*))))
 	  ,@(when action `(("action" . ,action)))
 	  ,@(when num-subgoals `(("num-subgoals" . ,num-subgoals)))
 	  ("label" . ,label)
+	  ,@(when prev-cmd '(("prev-cmd" . ,prev-cmd)))
 	  ,@(when comment `(("comment" . ,comment)))
 	  ("sequent" . ,sequent)))))
 
