@@ -423,7 +423,7 @@
 	      (*in-typechecker* (or *in-typechecker*
 				    (if (or *in-checker* *in-evaluator*)
 					(if (syntax? ,obj)
-					    (copy-all ,obj)
+					    (str ,obj)
 					    ,obj)
 					t))))
 	  ,@forms)
