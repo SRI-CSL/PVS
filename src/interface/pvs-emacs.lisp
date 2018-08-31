@@ -691,7 +691,7 @@
 	  ,@(when action `(("action" . ,action)))
 	  ,@(when num-subgoals `(("num-subgoals" . ,num-subgoals)))
 	  ("label" . ,label)
-	  ,@(when prev-cmd '(("prev-cmd" . ,prev-cmd)))
+	  ,@(when prev-cmd `(("prev-cmd" . ,prev-cmd)))
 	  ,@(when comment `(("comment" . ,comment)))
 	  ("sequent" . ,sequent)))))
 
