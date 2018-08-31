@@ -274,8 +274,8 @@ importing-elt ::= {importing [semic]}
 importing ::= {'IMPORTING' {importing-item++ ','}}
               <importing(importing-item+)>;
 
-importing-item ::= {modname ['AS' id]}
-                  <[modname|theory-abbreviation-decl(modname,id)]>;
+importing-item ::= {modname ['AS' pidop]}
+                  <[modname|theory-abbreviation-decl(modname,pidop)]>;
 
 judgement ::= {['RECURSIVE'] 'JUDGEMENT' {jdecl++','}
                {'HAS_TYPE'|'SUBTYPE_OF'} type-expr}

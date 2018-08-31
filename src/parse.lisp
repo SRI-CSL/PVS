@@ -595,7 +595,7 @@
 					    (ending-col it-place))))
 			(if (is-sop 'THEORY-ABBREVIATION-DECL item)
 			    (make-instance 'theory-abbreviation-decl
-			      :id (ds-id (term-arg1 item))
+			      :id (xt-idop (xt-pidop (term-arg1 item)))
 			      :theory-name (xt-modname (term-arg0 item))
 			      :place place
 			      :semi (when (is-sop 'SEMIC
