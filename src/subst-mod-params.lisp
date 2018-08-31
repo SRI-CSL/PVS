@@ -554,9 +554,9 @@
 
 (defun make-subst-mod-params-map-bindings (modinst mappings bindings)
   (if (null mappings)
-      (reverse (remove-if #'null bindings :key #'cdr))
+      (nreverse (remove-if #'null bindings :key #'cdr))
       (let* ((lhs (lhs (car mappings)))
-	     (ldecl (if (mapping-lhs? lhs)
+	     (ldecl (if (mapping-lhs? lhs) ;; Has decl-formals, otherwise just a name
 			lhs
 			(declaration (car (resolutions lhs)))))
 	     (rhs (rhs (car mappings)))
@@ -597,6 +597,10 @@
 		    (break "mapping")))
 	       (t (break "whats this?"))))
 	 bindings))
+
+;;; The lhs is generally a name, with optional declaration parameters.
+;;; If declaration parameters are there, it is a mapping-lhs
+;;; else the declaration of the name, which can be a module, 
 
 (defmethod make-subst-mod-params-map-bindings* ((lhs-theory module) rhs bindings)
   ;; th := thref[a1,...]{{e := e1,...}}
@@ -659,14 +663,21 @@
 	    (append sbindings *subst-mod-params-map-bindings*))
       (append sbindings bindings))))
 
-(defmethod make-subst-mod-params-map-bindings* (decl rhs bindings)
+(defmethod make-subst-mod-params-map-bindings* ((decl declaration) rhs bindings)
   (setq *subst-mod-params-map-bindings*
 	(acons decl rhs *subst-mod-params-map-bindings*))
-  (assert (typep decl '(or declaration module mapping-lhs)))
   #+pvsdebug
   (assert (every #'(lambda (d) (typep (car d) '(or declaration module mapping-lhs)))
 		 bindings))
   (acons decl rhs bindings))
+
+(defmethod make-subst-mod-params-map-bindings* ((lhs mapping-lhs) rhs bindings)
+  (setq *subst-mod-params-map-bindings*
+	(acons lhs rhs *subst-mod-params-map-bindings*))
+  #+pvsdebug
+  (assert (every #'(lambda (d) (typep (car d) '(or declaration module mapping-lhs)))
+		 bindings))
+  (acons lhs rhs bindings))
 
 ;;; The bindings already include the actuals and mappings from modinst
 ;;; Now we want to deal with modinst when it is a theory-reference
