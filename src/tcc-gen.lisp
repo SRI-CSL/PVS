@@ -473,7 +473,7 @@
 	  ;; To make certain that subsumption is correct, run
 	  ;; simplify-expression with :interactive? t
 	  (break "Something may be wrong with subsumes"))
-	(add-tcc-comment kind expr type (list 'subsumed match) match t))
+	(add-tcc-comment kind expr type (list 'subsumed match) match))
        (t (when match
 	    (pvs-warning "The judgement TCC generated for and named ~a ~
                           is subsumed by ~a,~%  ~
@@ -1267,6 +1267,7 @@
 		(multiple-value-bind (ndecl mappings-alist)
 		    (make-mapped-axiom-tcc-decl axiom modinst mod)
 		  ;; ndecl is nil if mapped axion simplifies to *true*
+		  (declare (ignore mappings-alist))
 		  (let ((netype (when ndecl (nonempty-formula-type ndecl))))
 		    (if (and ndecl
 			     (or (null netype)
@@ -1307,8 +1308,7 @@
 
 (defmethod collect-mapping-axioms (thinst (decl theory-reference))
   (assert (fully-instantiated? thinst))
-  (let ((thname (theory-name decl)))
-    (break)))
+  (error "Need to fix this - please send your PVS specs to pvs-bugs@csl.sri.com"))
 
 (defmethod collect-mapping-axioms* ((list list))
   (mapcan #'collect-mapping-axioms* list))
@@ -1963,7 +1963,7 @@ the same id for the substitution."
 		(get-arithmetic-value (car exprs)))
 	   (tcc-evaluates-to-true* (cdr exprs)))))
 
-(defun add-tcc-comment (kind expr type &optional reason subsumed-by in-insert?)
+(defun add-tcc-comment (kind expr type &optional reason subsumed-by)
   (unless (or *in-checker* *in-evaluator* *collecting-tccs*)
     (let* ((decl (current-declaration))
 	   (theory (current-theory))
