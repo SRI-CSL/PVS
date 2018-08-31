@@ -633,6 +633,7 @@
       (type-error decl
 	"Identifier ~a is already in use as a theory" (id decl))))
   (typecheck-using (modname decl))
+  ;;(break "typecheck* mod-decl ~a" decl)
   (typecheck-inlined-theory decl)
   (unless (fully-instantiated? (modname decl))
     (type-error (modname decl)
@@ -644,6 +645,7 @@
   )
 
 (defun typecheck-inlined-theory (thdecl)
+  (assert (typep thdecl '(or mod-decl formal-theory-decl)))
   (let ((theory-name (theory-name thdecl)))
     (when (and (null (library (theory-name thdecl)))
 	       (eq (id (theory-name thdecl)) (id (current-theory))))
@@ -668,6 +670,7 @@
 	  (unless (fully-instantiated? full-thname)
 	    (type-error theory-name
 	      "Theory name ~a must be fully instantiated" theory-name))
+	  ;;(break "typecheck-inlined-theory ~a" thdecl)
 	  (typecheck-inlined-theory* theory full-thname thdecl))))))
 
 (defun inlined-theory-info (thdecl theory thname)
@@ -763,6 +766,7 @@
     (multiple-value-bind (theory-part dalist owlist)
 	;; Continues the substitutions done by subst-mod-params
 	(subst-new-map-inline-theory-decls (theory stheory) decl)
+      ;;(break "make-inlined-theory ~a" decl)
       (setf (theory stheory)
 	    (remove-if #'var-decl? theory-part))
       (setf (theory-mappings decl) dalist)
@@ -799,8 +803,13 @@
 			 (current-theory-name)))
 		  (nm (mk-name-expr nid nil nil res))
 		  (act (make-instance 'actual :expr nm)))
-	     (when (type-decl? sd)
-	       (setf (type-value act) (type-value sd)))
+	     (typecase sd
+	       (type-decl
+		(setf (type-value act) (type-value sd)))
+	       (theory-abbreviation-decl
+		(let ((tadecl (declaration (theory-name sd))))
+		  (when (typep tadecl '(or mod-decl formal-theory-decl))
+		    (setq dalist (append (theory-mappings tadecl) dalist))))))
 	     (push (cons d act) dalist)))
 	  (type-decl
 	   ;; This one is tricky, because often
