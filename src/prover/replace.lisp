@@ -373,6 +373,8 @@
 	     (nexpr (replace-expr* lhs rhs (expression expr) nil))
 	     (rep-bindings (when *replace-in-actuals?*
 			     (replace-expr* lhs rhs (bindings expr) lastopinfix?)))
+	     (rep-type (when *replace-in-actuals?*
+			 (replace-expr* lhs rhs (type expr) nil)))
 	     (new-bindings (unless (and (eq nexpr (expression expr))
 					(null rep-bindings))
 			     (or (make-nonclashing-bindings
@@ -383,7 +385,8 @@
 	(if new-bindings
 	    (lcopy expr
 	      'bindings new-bindings
-	      'expression (substit nexpr nalist))
+	      'expression (substit nexpr nalist)
+	      'type rep-type)
 	    (lcopy expr 'expression nexpr)))))
 
 (defmethod replace-expr* (lhs rhs (expr binding) lastopinfix?)
