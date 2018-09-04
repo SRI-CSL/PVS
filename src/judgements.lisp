@@ -3347,7 +3347,7 @@
        (pushnew (car new-elts) elts :test #'tc-eq))))
 
 (defun known-subtype-of? (t1 t2)
-  (unless (or (simple-subtype-of? t2 t1)
+  (unless (or ;;(simple-subtype-of? t2 t1)
 	      (and (null (free-params t1))
 		   (null (free-params t2))
 		   (not (strict-compatible? t1 t2))))
