@@ -632,8 +632,7 @@
     (when (and th (get-importings th))
       (type-error decl
 	"Identifier ~a is already in use as a theory" (id decl))))
-  (typecheck-using (modname decl))
-  ;;(break "typecheck* mod-decl ~a" decl)
+  (typecheck* (modname decl) nil nil nil)
   (typecheck-inlined-theory decl)
   (unless (fully-instantiated? (modname decl))
     (type-error (modname decl)
@@ -670,7 +669,6 @@
 	  (unless (fully-instantiated? full-thname)
 	    (type-error theory-name
 	      "Theory name ~a must be fully instantiated" theory-name))
-	  ;;(break "typecheck-inlined-theory ~a" thdecl)
 	  (typecheck-inlined-theory* theory full-thname thdecl))))))
 
 (defun inlined-theory-info (thdecl theory thname)
@@ -758,15 +756,14 @@
     (assert (or (null (all-decls theory)) (not (eq stheory theory))))
     ;; Might be better to subst-mod-params declarations separately, but then
     ;; the substitution alist must be remade for each one.
-    ;; So we do the whole theory for, then just grab the decls from
+    ;; So we do the whole theory first, then just grab the decls from
     ;; the theory part - the theory-name is fully-instantiated,
     ;; so formals can be ignored.  Make sure assumings are handled somehow.
-	    
+    
     ;; Make sure substituted decls are all new.
     (multiple-value-bind (theory-part dalist owlist)
 	;; Continues the substitutions done by subst-mod-params
 	(subst-new-map-inline-theory-decls (theory stheory) decl)
-      ;;(break "make-inlined-theory ~a" decl)
       (setf (theory stheory)
 	    (remove-if #'var-decl? theory-part))
       (setf (theory-mappings decl) dalist)
@@ -896,8 +893,9 @@
 	 (odecl (car (rassoc decl *subst-new-map-decls*
 			     :test #'eq :key #'declaration)))
 	 (bindings (when nfmls
-		     (pairlis (apply #'append (formals odecl))
-			      (apply #'append nfmls))))
+		     (mapcar #'cons
+		       (apply #'append (formals odecl))
+		       (apply #'append nfmls))))
 	 (ntype (subst-new-map-decls* (substit (type decl) bindings)))
 	 (ndef (subst-new-map-decls* (substit (definition decl) bindings))))
     #+pvsdebug

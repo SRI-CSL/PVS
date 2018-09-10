@@ -880,6 +880,7 @@
       (setf (associated-decl df) mdecl))
     (assert (with-current-decl mdecl (fully-instantiated? type)))
     (make-def-axiom mdecl)
+    (pushnew mdecl (generated decl))
     mdecl))
 				
 

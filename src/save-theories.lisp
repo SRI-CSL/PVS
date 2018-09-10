@@ -376,13 +376,14 @@
 	 (let* ((adecl (associated-decl obj))
 		(apos (position adecl (all-decls module)))
 		(fpos (position obj (decl-formals adecl))))
-	   (assert apos () "no apos?")
-	   (assert fpos () "no fpos?")
-	   (reserve-space 4
-	     (push-word (store-obj 'declformal-declref))
-	     (push-word (store-obj (id module)))
-	     (push-word apos)
-	     (push-word fpos))))
+	   (unless (mapped-decl? adecl)
+	     (assert apos () "no apos?")
+	     (assert fpos () "no fpos?")
+	     (reserve-space 4
+	       (push-word (store-obj 'declformal-declref))
+	       (push-word (store-obj (id module)))
+	       (push-word apos)
+	       (push-word fpos)))))
 	(mapped-decl nil)
 	(t (reserve-space 3
 	     (push-word (store-obj 'declref))

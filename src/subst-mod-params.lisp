@@ -419,10 +419,12 @@
 	 (rhs-mappings (when (and rhs-theory
 				  (not (module? rhs-theory)))
 			 (theory-mappings rhs-theory)))
-	 (bmappings (extended-basic-mappings (mappings thname) rhs-mappings
-					     nil ;(theory-mappings lhs-theory)
-					     ))
-	 (all-mappings (extended-mappings* bmappings decl)))
+	 ;; (bmappings (extended-basic-mappings (mappings thname) rhs-mappings
+	 ;; 				     nil ;(theory-mappings lhs-theory)
+	 ;; 				     ))
+	 (emappings (extended-mappings* rhs-mappings decl))
+	 (all-mappings (make-subst-mod-params-map-bindings
+			thname (mappings thname) emappings)))
     (dolist (amap all-mappings)
       (typecase (car amap)
 	(module
@@ -633,7 +635,7 @@
 	   (append nbindings bindings))))
 
 (defmethod make-subst-mod-params-map-bindings* ((lhs-decl theory-reference) rhs bindings)
-  (let* ((thname (if (theory-abbreviation-decl? (declaration (expr rhs)))
+  (let* ((rthname (if (theory-abbreviation-decl? (declaration (expr rhs)))
 		     (get-theory-alias (expr rhs))
 		     (expr rhs)))
 	 (rdecl (declaration (expr rhs)))
@@ -641,10 +643,10 @@
 		     rdecl
 		     (or (get-theory (theory-name lhs-decl))
 			 (module rdecl))))
-	 (extmaps (extended-mappings thname theory lhs-decl))
+	 (extmaps (extended-mappings rthname theory lhs-decl))
 	 (pre-bindings (make-subst-mod-params-bindings
-			thname (formals-sans-usings theory)
-			(actuals thname)
+			rthname (formals-sans-usings theory)
+			(actuals rthname)
 			nil
 			extmaps))
 	 (inv-mappings
@@ -657,11 +659,13 @@
 				  (typep (car d) '(or declaration module mapping-lhs)))
 			      pre-bindings))
     (let ((sbindings (acons lhs-decl rhs
-			    (append (compose-mappings inv-mappings pre-bindings)
-				    pre-bindings))))
+			    (union (compose-mappings inv-mappings pre-bindings)
+				   pre-bindings
+				   :test #'tc-eq))))
       (setq *subst-mod-params-map-bindings*
-	    (append sbindings *subst-mod-params-map-bindings*))
-      (append sbindings bindings))))
+	    (union sbindings *subst-mod-params-map-bindings* :test #'tc-eq))
+      (let ((result (union sbindings bindings :test #'tc-eq)))
+	result))))
 
 (defmethod make-subst-mod-params-map-bindings* ((decl declaration) rhs bindings)
   (setq *subst-mod-params-map-bindings*
@@ -1085,14 +1089,17 @@
       (cond ((mapping-rename? map)
 	     ;; Reuse the declaration created in the rhs
 	     (assert (resolution (expr (rhs map))))
-	     (let ((decl (declaration (expr (rhs map)))))
-	       (setf (formals decl) (subst-mod-params* formals modinst bindings))
-	       (setf (type decl) (subst-mod-params* type modinst bindings))
-	       (setf (declared-type decl) (subst-mod-params* declared-type modinst bindings))
-	       (setf (semi decl) t)
-	       decl))
+	     (let ((rdecl (declaration (expr (rhs map)))))
+	       (setf (formals rdecl) (subst-mod-params* formals modinst bindings))
+	       (setf (type rdecl) (subst-mod-params* type modinst bindings))
+	       (setf (declared-type rdecl) (subst-mod-params* declared-type modinst bindings))
+	       (setf (semi rdecl) t)
+	       rdecl))
 	    ((let ((map (assoc decl bindings :key #'declaration)))
 	       (and map
+		    ;; If the rhs is a name-expr with a definition, we use that
+		    ;; for the new declaration, otherwise the rhs expr is used
+		    ;; directly.
 		    (multiple-value-bind (dfmls dacts dthinst)
 			(new-decl-formals decl)
 		      (let ((ndecl (copy decl
@@ -1106,28 +1113,34 @@
 			(with-current-decl ndecl
 			  (let* ((mexpr (expr (cdr map)))
 				 (mdecl (when (name-expr? mexpr) (declaration mexpr)))
-				 (mdef (when mdecl (definition mdecl)))
+				 (ldecl (find-if #'mapped-const-decl? (generated decl)))
 				 ;; We will either have mdef, in which case we use nformals
 				 ;; Or we just use mexpr
 				 (mthinst (when (name-expr? mexpr) (module-instance mexpr)))
+				 (dbindings (append (pairlis (decl-formals decl) dacts)
+						    bindings))
+				 (lbindings (if ldecl
+						(append (pairlis (decl-formals ldecl) dacts)
+							dbindings)
+						dbindings))
+				 (mbindings (if mdecl
+						(append (pairlis (decl-formals mdecl) dacts)
+							lbindings)
+						lbindings))
 				 (nmodinst (copy modinst :dactuals dacts))
-				 (nformals (when mdef
-					     (subst-mod-params formals nmodinst
-					       *subst-mod-params-theory* decl)))
-				 (alist (when mdef
-					  (pairlis (apply #'append (formals mdecl))
-						   (apply #'append nformals))))
-				 (sdef (when mdef
-					 (subst-mod-params (substit mdef alist)
-					     (or dthinst mthinst)
-					   *subst-mod-params-theory* mdecl)))
-				 (ndef (subst-mod-params (or sdef mexpr)
-					   nmodinst *subst-mod-params-theory* (car map)))
-				 (ntype (subst-mod-params (substit type alist) nmodinst
-					  *subst-mod-params-theory* decl)))
+				 (nformals (when mdecl
+					     (subst-mod-params* (formals mdecl)
+								nmodinst mbindings)))
+				 (ndef (subst-mod-params* (if mdecl
+							      (definition mdecl)
+							      mexpr)
+							  nmodinst mbindings))
+				 (ntype (subst-mod-params* type nmodinst mbindings)))
 			    ;;(assert (fully-instantiated? nformals))
 			    ;;(assert (fully-instantiated? nexpr))
-			    ;;(assert (fully-instantiated? ntype))
+			    (assert (fully-instantiated? ntype))
+			    (assert (fully-instantiated? nformals))
+			    (assert (fully-instantiated? ndef))
 			    #+pvsdebug
 			    (assert (or (null ndef)
 					(every #'(lambda (fp) (memq fp dfmls)) (free-params ndef))))
@@ -1135,7 +1148,7 @@
 			    (setf (definition ndecl) ndef)
 			    (setf (type ndecl) ntype)
 			    (setf (declared-type ndecl)
-				  (subst-mod-params* declared-type modinst bindings))
+				  (subst-mod-params* declared-type modinst mbindings))
 			    ndecl)))))))
 	    (t (multiple-value-bind (dfmls dacts)
 		   (new-decl-formals decl)
