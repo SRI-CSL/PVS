@@ -58,7 +58,7 @@
 	  (tc-expr (format nil "bv[~d](0b~b)" ubnum num)))
 	(let ((bnds (simple-subrange? (domtype type))))
 	  (if bnds
-	      (let* ((nvar (make-new-variable '|ii| funtype))
+	      (let* ((nvar (make-new-variable '|ii| type))
 		     (conds (make-subrange-conds (number (car bnds)) (number (cdr bnds))
 						 nvar sexpr (range type)
 						 (when (dep-binding? (domain type))
