@@ -909,7 +909,7 @@ required a context.")
           (if (and (eq theory (current-theory))
                    (actuals expr)
                    (null (actuals nthinst)))
-              (check-local-actuals (actuals expr) fmls)
+              (check-local-actuals (actuals expr) (formals-sans-usings theory))
               (generate-actuals-tccs (actuals expr) (actuals nthinst))))
 	nthinst))))
 
