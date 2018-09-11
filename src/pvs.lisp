@@ -3097,26 +3097,30 @@ Note that even proved ones get overwritten"
 	  (t (pvs-message "~a has not been parsed." theoryref)))))
 
 (defun get-typechecked-theory (theoryref &optional theories quiet?)
-  (let ((theoryname (if (modname? theoryref)
-			theoryref
-			(pc-parse theoryref 'modname))))
-    (or (and (or *in-checker*
-		 *generating-adt*
-		 (and *current-context*
-		      (eq *current-context* *working-current-context*)))
-	     (get-theory theoryname))
-	(let ((theory (get-parsed-theory theoryname quiet?)))
-	  (when theory
-	    (unless (or *in-checker*
-			(typechecked? theory)
-			(memq theory theories))
-	      (let ((*generating-adt* nil)
-		    (*insert-add-decl* t))
-		(if (library theoryname)
-		    (load-imported-library (library theoryname) theoryname)
-		    (typecheck-file (filename theory))))))
-	  #+pvsdebug (assert (typechecked? theory))
-	  theory))))
+  (if (and (modname? theoryref)
+	   (resolution theoryref)
+	   (theory-reference? (declaration theoryref)))
+      (get-typechecked-theory (theory-name (declaration theoryref)))
+      (let ((theoryname (if (modname? theoryref)
+			    theoryref
+			    (pc-parse theoryref 'modname))))
+	(or (and (or *in-checker*
+		     *generating-adt*
+		     (and *current-context*
+			  (eq *current-context* *working-current-context*)))
+		 (get-theory theoryname))
+	    (let ((theory (get-parsed-theory theoryname quiet?)))
+	      (when theory
+		(unless (or *in-checker*
+			    (typechecked? theory)
+			    (memq theory theories))
+		  (let ((*generating-adt* nil)
+			(*insert-add-decl* t))
+		    (if (library theoryname)
+			(load-imported-library (library theoryname) theoryname)
+			(typecheck-file (filename theory))))))
+	      #+pvsdebug (assert (typechecked? theory))
+	      theory)))))
 
 (defun parsed-date (filename)
   (car (gethash (pathname-name filename) *pvs-files*)))
