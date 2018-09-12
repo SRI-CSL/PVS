@@ -1131,8 +1131,8 @@
 				 (nformals (when mdecl
 					     (subst-mod-params* (formals mdecl)
 								nmodinst mbindings)))
-				 (ndef (subst-mod-params* (if mdecl
-							      (definition mdecl)
+				 (ndef (subst-mod-params* (or (and mdecl
+								   (definition mdecl))
 							      mexpr)
 							  nmodinst mbindings))
 				 (ntype (subst-mod-params* type nmodinst mbindings)))
