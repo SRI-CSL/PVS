@@ -4463,6 +4463,9 @@ space")
 (defmethod expose-binding-types? ((ex untyped-bind-decl))
   t)
 
+(defmethod expose-binding-types? ((ex expr-as-type))
+  nil)
+
 (defmethod expose-binding-types! ((ex type-application))
   ex)
 
