@@ -2071,19 +2071,22 @@ existence and time differences to be whitespace")
 
 (cond ((featurep 'xemacs)
        (defun pvs-update-window-titles ()
-	 (let ((title (pvs-title-string)))
-	   (when title
-	     (setq frame-title-format title)
-	     (setq frame-icon-title-format title)))))
+	 (unless noninteractive
+	   (let ((title (pvs-title-string)))
+	     (when title
+	       (setq frame-title-format title)
+	       (setq frame-icon-title-format title))))))
       (t
        (defun pvs-update-window-titles ()
-	 (let ((title (pvs-title-string)))
-	   (when (and title
-		      (not (equal (frame-parameter (car (frame-list)) 'title)
-				  "Proofstate")))
-	     (modify-frame-parameters (car (frame-list))
-				      (list (cons 'icon-name title)
-					    (cons 'title title))))))))
+	 (unless noninteractive
+	   (let ((title (pvs-title-string))
+		 (pvs-frame (get-a-frame "pvs")))
+	     (when (and title
+			(not (equal (frame-parameter pvs-frame 'title)
+				    "Proofstate")))
+	       (modify-frame-parameters pvs-frame
+					(list (cons 'icon-name title)
+					      (cons 'title title)))))))))
 
 (add-hook 'change-context-hook 'pvs-update-window-titles)
 
