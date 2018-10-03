@@ -531,8 +531,9 @@ obj may be of type:
           the context
   recursive-type: treated as a declaration if inline
                   otherwise uses the main generated theory
-  importing: same as a declaration"
-  `(let ((*current-context* (context ,obj))
+  importing: same as a declaration
+  :prelude uses the prelude context."
+  `(let ((*current-context* (if (eq ,obj :prelude) *prelude-context* (context ,obj)))
 	 (*generate-tccs* 'all))
      ,@body))
 
