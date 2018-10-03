@@ -146,8 +146,9 @@
 
 
 (defmethod pvs2clean*  ((expr field-application) bindings livevars)
+  "Create a FieldName"
   (let* ((clarg (pvs2clean* (argument expr) bindings livevars))
-	 (id (simple-id (id expr))))
+	 (id (pvs2clean-id (id expr) :lower)))
     (format nil "~a.~a" clarg id)))
 
 (defmethod pvs2clean* ((expr list) bindings livevars)
@@ -234,8 +235,8 @@
 	;;enough to check one hash-table. 
 	)
     (when (null nd-hashentry)
-      (let ((op-id (gentemp (format nil "pvs_~a" (simple-id (id op-decl)))))
-	    (op-d-id (gentemp (format nil "pvs_d_~a" (simple-id (id op-decl))))))
+      (let ((op-id (gentemp (format nil "pvs_~a" (pvs2clean-id (id op-decl)))))
+	    (op-d-id (gentemp (format nil "pvs_d_~a" (pvs2clean-id (id op-decl))))))
 	(setf (gethash op-decl *clean-nondestructive-hash*)
 	      (make-clean-info :id op-id))
 	(setf (gethash op-decl *clean-destructive-hash*)
@@ -270,7 +271,7 @@
 		      (format nil "~{ ~a~} = ~a" bind-ids cl-body)))
 	 (hash-entry (gethash op-decl *clean-nondestructive-hash*)))
     (format t "~%Defining (nondestructively) ~a with ~%type ~a ~%as ~a"
-      (simple-id (id op-decl)) cl-type cl-defn)
+      (pvs2clean-id (id op-decl)) cl-type cl-defn)
     (setf (clean-info-type hash-entry)
 	  cl-type
 	  (clean-info-definition hash-entry)
@@ -299,7 +300,7 @@
 	 (hash-entry (gethash op-decl *clean-destructive-hash*))
 	 (old-output-vars (clean-info-analysis hash-entry)))
     (format t "~%Defining (destructively) ~a with ~%type ~a ~%as ~a"
-      (simple-id (id op-decl)) cl-type cl-defn)
+      (pvs2clean-id (id op-decl)) cl-type cl-defn)
     (setf (clean-info-type hash-entry)
 	  cl-type
 	  (clean-info-definition hash-entry)
@@ -534,7 +535,7 @@
 
 (defmethod pvs2clean-update-nd-type* ((type recordtype) expr newexprvar arg1 restargs
 				      assign-expr bindings livevars accum)
-  (let ((id (simple-id (id (car arg1)))))
+  (let ((id (pvs2clean-id (id (car arg1)))))
     (if (consp restargs)
 	(let* ((exprvar (gentemp "E"))
 	       (new-expr (format nil "~a.~a" expr id))
@@ -550,7 +551,7 @@
 
 (defmethod pvs2clean-update-nd-type* ((type adt-type-name) expr newexprvar arg1 restargs
 				      assign-expr bindings livevars accum)
-  (let ((id (simple-id (id (car arg1)))))
+  (let ((id (pvs2clean-id (id (car arg1)))))
     (break "This code is from recordtype - FIXME")
     (if (consp restargs)
 	(let* ((exprvar (gentemp "E"))
@@ -577,10 +578,10 @@
 	  (if entry (cadr entry)	;return the clean-rectype-name
 	      (let* ((formatted-fields (loop for fld in (fields type)
 					  collect
-					    (format nil "~a :: !~a" (simple-id (id fld))
+					    (format nil "~a :: !~a" (pvs2clean-id (id fld))
 						    (pvs2clean-type (type fld)))))
 		     (clean-rectype (format nil "{ ~{~a~^, ~} }" formatted-fields))
-		     (clean-rectype-name (gentemp (format nil "pvs~a" (simple-id (id print-type))))))
+		     (clean-rectype-name (gentemp (format nil "pvs~a" (pvs2clean-id (id print-type))))))
 		(push (list (declaration print-type) clean-rectype-name clean-rectype)
 		      *clean-record-defns*)
 		clean-rectype-name)))
@@ -604,9 +605,35 @@
 	 "Rational")
 	(t (pvs2clean-type (find-supertype type)))))
 
+(defun pvs2clean-id (id &optional (case :all))
+  "Create valid Clean identifier from a given id, as defined in the Clean
+Language Report.  case is :all, :lower, or :upper, with the following
+correspondence:
+  :all   - LowerCaseId | UpperCaseId | FunnyId
+  :lower - LowerCaseId
+  :upper - UpperCaseId | FunnyId
+ LowerCaseId: starts with [a-z] followed by letter, digit, _ or `
+ UpperCaseId: same, starts with [A-Z]
+ FunnyId: one or more of ~, @, #, $, %, ^, ?, !, +, -, *, <, >, \, /, |, &, =
+FunnyId is not currently used, just documented here just in case."
+  (let ((idstr (substitute #\p #\? (string (op-to-id id)))))
+    (intern
+     (case case
+       (:lower (string-downcase idstr :start 0 :end 1))
+       (:upper (string-upcase idstr :start 0 :end 1))
+       (t idstr)))))
+
 (defmethod pvs2clean-type ((type type-name) &optional tbindings)
   (or (cdr (assoc type tbindings :test #'tc-eq))
-      (simple-id (id type))))
+      (let ((decl (declaration type)))
+	(if (formal-type-decl? decl)
+	    (pvs2clean-id (id type) :lower)
+	    (case (id decl)
+	      (integer '|Int|)
+	      (real '|Real|)
+	      (character '|Char|)
+	      (boolean '|Bool|)
+	      (t (pvs2clean-id (id type) :upper)))))))
 
 ;;; Note that bindings is an assoc-list, used to check if id is already
 ;;; in use.
@@ -614,7 +641,7 @@
   (if (null bind-decls)
       (nreverse nbindids)
       (let* ((bb (car bind-decls))
-	     (id (simple-id (id bb)))
+	     (id (pvs2clean-id (id bb)))
 	     (newid (if (rassoc (id bb) bindings)
 			(pvs2cl-newid id bindings)
 			id)))
@@ -693,13 +720,13 @@
 			(constructors dt) dt
 			(mapcar #'cons (formals dt) typevars))))
     (format nil "::~a~{ ~a~} = ~{~a~^ | ~}"
-      (simple-id (id dt)) typevars constructors)))
+      (pvs2clean-id (id dt)) typevars constructors)))
 
 (defun pvs2clean-datatype-formal (formal dt)
   (if (formal-type-decl? formal)
-      (let ((id-str (string (simple-id (id formal)))))
+      (let ((id-str (string (pvs2clean-id (id formal)))))
 	(if (lower-case-p (char id-str 0))
-	    (simple-id (id formal))
+	    (pvs2clean-id (id formal))
 	    (make-new-variable (string-downcase id-str :end 1) dt)))
       (break "What to do with constant formals?")))
 
@@ -713,7 +740,7 @@
 
 ;;; Maps to ConstructorDef
 (defun pvs2clean-constructor (constr datatype tvars)
-  (format nil "~a~{ ~a~}" (simple-id (id constr))
+  (format nil "~a~{ ~a~}" (pvs2clean-id (id constr))
 	  (mapcar #'(lambda (arg) (pvs2clean-type (type arg) tvars))
 	    (arguments constr))))
 
