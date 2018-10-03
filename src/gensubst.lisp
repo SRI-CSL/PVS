@@ -630,7 +630,10 @@
 	(if (and (eq ntype (type-value act))
 		 (not *visible-only*))
 	    act
-	    (mk-actual ntype)))
+	    (let ((nact (mk-actual ntype)))
+	      (when (typep (expr act) 'expr-as-type)
+		(setf (expr nact) (gensubst* (expr act) substfn testfn)))
+	      nact)))
       (let ((nexpr (gensubst* (expr act) substfn testfn)))
 	(lcopy act
 	  'expr (if (or *parsing-or-unparsing*
