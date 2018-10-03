@@ -802,8 +802,8 @@ pvs-strategies files.")
 (defun circular-file-dependencies* (theories &optional deps circs)
   (if (null theories)
       circs
-      (let* ((th (car theories))
-	     (fname (dep-filename th)))
+      (let* ((theory (car theories))
+	     (fname (dep-filename theory)))
 	(unless (assoc fname *circular-file-dependencies* :test #'equal)
 	  (if (and (cdr deps)
 		   (equal fname (dep-filename (car (last deps))))
@@ -812,17 +812,18 @@ pvs-strategies files.")
 			 deps))
 	      ;; Found a circularity
 	      (circular-file-dependencies* (cdr theories) deps
-					   (cons (reverse (cons th deps))
+					   (cons (reverse (cons theory deps))
 						 circs))
 	      (append (circular-file-dependencies*
 		       (delete-if #'(lambda (ith)
 				      (or (null ith) (from-prelude? ith)))
-			 (if (generated-by th)
-			     (list (get-theory (generated-by th)))
-			     (delete-if #'library-theory?
-			       (mapcar #'(lambda (th) (get-theory th))
-				 (get-immediate-usings th)))))
-		       (cons th deps))
+			 (let ((*current-context* (saved-context theory)))
+			   (if (generated-by theory)
+			       (list (get-theory (generated-by theory)))
+			       (delete-if #'library-theory?
+				 (mapcar #'(lambda (th) (get-theory th))
+				   (get-immediate-usings theory))))))
+		       (cons theory deps))
 		      (circular-file-dependencies* (cdr theories)
 						   deps circs)))))))
 
