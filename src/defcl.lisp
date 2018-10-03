@@ -233,18 +233,17 @@ unignored slots, saved-slots, and unsaved-slots.")
 	   :stream out :level nil :length nil :pretty t)
     (format out "~2%")
     (write `(defmethod store-object* ((obj ,name))
-	      (reserve-space ,(+ (length saved-slots) (length stored-slots) 1)
-		(with-slots ,(mapcar #'car (append saved-slots stored-slots))
-		    obj
-		  (push-word (store-obj ',name))
-		  ,@(mapcar #'(lambda (a)
-				`(push-word (store-obj ,(car a))))
-		      saved-slots)
-		  ,@(mapcar #'(lambda (a)
-				`(push-word
-				  (store-obj
-				   (,(getf (cdr a) :store-as) obj))))
-		      stored-slots))))
+	      (with-slots ,(mapcar #'car (append saved-slots stored-slots)) obj
+		  (reserve-space ,(+ (length saved-slots) (length stored-slots) 1)
+		    (push-word (store-obj ',name))
+		    ,@(mapcar #'(lambda (a)
+				  `(push-word (store-obj ,(car a))))
+			saved-slots)
+		    ,@(mapcar #'(lambda (a)
+				  `(push-word
+				    (store-obj
+				     (,(getf (cdr a) :store-as) obj))))
+			stored-slots))))
 	   :stream out :level nil :length nil :pretty t)
     (format out "~2%")
     (write `(defmethod update-fetched ((obj ,name))
@@ -272,8 +271,8 @@ unignored slots, saved-slots, and unsaved-slots.")
 	   :stream out :level nil :length nil :pretty t)
     (format out "~2%")
     (write `(defmethod restore-object* ((obj ,name))
-	      (let ((*restore-object-parent* obj))
-		(with-slots ,(mapcar #'car restored-slots) obj
+	      (with-slots ,(mapcar #'car restored-slots) obj
+		(let ((*restore-object-parent* obj))
 		  ,@(mapcar #'(lambda (a)
 				`(when ,(car a)
 				   (let ((*restore-object-parent-slot*
