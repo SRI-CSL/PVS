@@ -1085,7 +1085,12 @@
     (let ((map (find decl *smp-mappings*
 		     :key #'(lambda (m)
 			      (and (mapping-rename? m)
-				   (declaration (lhs m)))))))
+				   (declaration (lhs m))))))
+	  ;; FIXME - This is overkill - but if 2 different LHS mappings map
+	  ;; to the same RHS, the cache will give the wrong answer, and this
+	  ;; is a quick fix.  See Cesar/2018-09-12/library4/bigops.pvs
+	  (*subst-mod-params-cache* (make-pvs-hash-table :strong-eq? t))
+	  (*subst-mod-params-eq-cache* (make-hash-table :test 'eq)))
       (cond ((mapping-rename? map)
 	     ;; Reuse the declaration created in the rhs
 	     (assert (resolution (expr (rhs map))))
@@ -1136,8 +1141,6 @@
 							      mexpr)
 							  nmodinst mbindings))
 				 (ntype (subst-mod-params* type nmodinst mbindings)))
-			    ;;(assert (fully-instantiated? nformals))
-			    ;;(assert (fully-instantiated? nexpr))
 			    (assert (fully-instantiated? ntype))
 			    (assert (fully-instantiated? nformals))
 			    (assert (fully-instantiated? ndef))
@@ -2088,7 +2091,9 @@
 	    :expr (if ntype
 		      (if (eq ntype type-value)
 			  expr
-			  (or (print-type ntype) ntype))
+			  (or (print-type ntype)
+			      (subst-mod-params* expr modinst bindings)
+			      ntype))
 		      (let ((nexpr (subst-mod-params* expr modinst bindings)))
 			(if (eq nexpr expr)
 			    expr
@@ -2167,7 +2172,11 @@
 				(free-params modinst)) () "res2.5")
 	       nres))
 	    (t (let ((nacts (subst-mod-params* acts modinst bindings))
-		     (ndacts (subst-mod-params* dacts modinst bindings)))
+		     (ndacts (when (decl-formals decl)
+			       (if dacts
+				   (subst-mod-params* dacts modinst bindings)
+				   (when (length= (decl-formals decl) (dactuals modinst))
+				     (dactuals modinst))))))
 		 (assert (every #'actual? nacts))
 		 (if (and (eq nacts acts)
 			  (eq ndacts dacts)
@@ -2206,22 +2215,32 @@
 						      '(|equalities| |notequal|))
 					    (find-supertype
 					     (type-value (car nacts)))))
+				  (imps (get-importings (module (declaration res))))
+				  (imp-mi (cond ((null imps) mi)
+						((cdr imps)
+						 (if (some #'(lambda (imp) (tc-eq imp mi)) imps)
+						     mi
+						     ;; Could possibly refine this.
+						     (car imps)))
+						(t (car imps))))
+				  (nmi (mk-modname (id imp-mi)
+					 (if eqtype
+					     (list (mk-actual eqtype))
+					     nacts)
+					 (when (library-datatype-or-theory?
+						(module decl))
+					   (get-lib-id (module decl)))
+					 (or nmappings
+					     (mappings imp-mi)
+					     (unless (or (eq type ntype)
+							 (not (eq (id mi) (id modinst)))
+							 (not (eq (library mi)
+								  (library modinst))))
+					       (mappings modinst)))
+					 ndacts
+					 decl))
 				  (nres (mk-resolution decl
-					  (mk-modname (id mi)
-					    (if eqtype
-						(list (mk-actual eqtype))
-						nacts)
-					    (when (library-datatype-or-theory?
-						   (module decl))
-					      (get-lib-id (module decl)))
-					    (or nmappings
-						(unless (or (eq type ntype)
-							    (not (eq (id mi) (id modinst)))
-							    (not (eq (library mi)
-								     (library modinst))))
-						  (mappings modinst)))
-					    ndacts
-					    decl)
+					  nmi
 					  (if eqtype
 					      (mk-funtype (list eqtype eqtype) *boolean*)
 					      ntype))))

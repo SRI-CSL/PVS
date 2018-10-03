@@ -537,11 +537,11 @@
   (rhs :parse t)
   (kind :parse t :restore-as nil)
   (declared-type :parse t)
-  type)
+  type
+  (mapped-decl :restore-as nil))
 
 (defcl mapping-subst (mapping))
-(defcl mapping-rename (mapping)
-  mapped-decl)
+(defcl mapping-rename (mapping))
 
 ;;; Mapping-with-formals is used for mappings of the form
 ;;;  f(a,b:int)(x:bool) = g(a,x,b)

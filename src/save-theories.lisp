@@ -51,13 +51,16 @@
 (defmethod get-theories-to-save ((adt datatype))
   (append (adt-generated-theories adt) (list adt)))
 
+
 ;;; Called from restore-theory in context.lisp
-(defun get-theory-from-binfile (filename)
+(defun get-theory-from-binfile (filename &optional (dont-ignore-errors t))
   (let ((file (make-binpath filename))
 	(start-time (get-internal-real-time))
 	(*bin-theories-set* nil))
     (multiple-value-bind (vtheory fetch-error)
-	(ignore-lisp-errors (fetch-object-from-file file))
+	(if dont-ignore-errors
+	    (fetch-object-from-file file)
+	    (ignore-lisp-errors (fetch-object-from-file file)))
       (let ((load-time (get-internal-real-time)))
 	(cond ((and (consp vtheory)
 		    (integerp (car vtheory))
@@ -154,7 +157,7 @@
   (if (inline-recursive-type? (adt obj))
       (call-next-method)
       (progn
-	(when (symbolp (adt obj))
+	(unless (recursive-type? (adt obj))
 	  ;; May happen after restoring from bin files
 	  (restore-adt-slot obj))
 	(call-next-method (copy obj
@@ -281,13 +284,12 @@
     arr))
 
 (defmethod store-object* :around ((obj resolution))
-  (reserve-space 4
-                 (with-slots (declaration module-instance type)
-                   obj
-                   (push-word (store-obj 'resolution))
-                   (push-word (store-obj declaration))
-                   (push-word (store-obj (lcopy module-instance :resolutions nil)))
-                   (push-word (store-obj type)))))
+  (with-slots (declaration module-instance type) obj
+    (reserve-space 4
+      (push-word (store-obj 'resolution))
+      (push-word (store-obj declaration))
+      (push-word (store-obj (lcopy module-instance :resolutions nil)))
+      (push-word (store-obj type)))))
 
 (setf (get 'moduleref 'fetcher) 'fetch-moduleref)
 (defun fetch-moduleref ()
@@ -367,28 +369,28 @@
 		(assq (get-theory (id module))
 		      (all-usings *saving-theory*)))
 	    () "Attempt to store declaration in illegal theory")
-      (typecase obj
-	(number-declaration
-	 (reserve-space 2
-	   (push-word (store-obj 'number-declref))
-	   (push-word (store-obj (id obj)))))
-	(decl-formal
-	 (let* ((adecl (associated-decl obj))
-		(apos (position adecl (all-decls module)))
-		(fpos (position obj (decl-formals adecl))))
-	   (unless (mapped-decl? adecl)
-	     (assert apos () "no apos?")
-	     (assert fpos () "no fpos?")
-	     (reserve-space 4
-	       (push-word (store-obj 'declformal-declref))
-	       (push-word (store-obj (id module)))
-	       (push-word apos)
-	       (push-word fpos)))))
-	(mapped-decl nil)
-	(t (reserve-space 3
+    (typecase obj
+      (number-declaration
+       (reserve-space 2
+	 (push-word (store-obj 'number-declref))
+	 (push-word (store-obj (id obj)))))
+      (decl-formal
+       (let* ((adecl (associated-decl obj))
+	      (apos (position adecl (all-decls module)))
+	      (fpos (position obj (decl-formals adecl))))
+	 (assert apos () "no apos?")
+	 (assert fpos () "no fpos?")
+	 (reserve-space 4
+	   (push-word (store-obj 'declformal-declref))
+	   (push-word (store-obj (id module)))
+	   (push-word apos)
+	   (push-word fpos))))
+      (t (let ((dpos (position obj (all-decls module))))
+	   (assert dpos () "no dpos?")
+	   (reserve-space 3
 	     (push-word (store-obj 'declref))
 	     (push-word (store-obj (id module)))
-	     (push-word (position obj (all-decls module))))))))
+	     (push-word dpos)))))))
 
 (defmethod store-object* :around ((obj inline-recursive-type))
   (with-slots ((theory adt-theory)) obj
@@ -473,13 +475,14 @@
 	  (all-usings (adt-theory obj)))))
 
 (defmethod store-object* :around ((obj context))
-  (reserve-space 13
-    (with-slots (theory theory-name declaration
-			declarations-hash using-hash
-			library-alist
-			judgements known-subtypes
-			conversions disabled-conversions
-			auto-rewrites disabled-auto-rewrites) obj
+  (with-slots (theory theory-name declaration
+		      declarations-hash using-hash
+		      library-alist
+		      judgements known-subtypes
+		      conversions disabled-conversions
+		      auto-rewrites disabled-auto-rewrites)
+      obj
+    (reserve-space 13
       (push-word (store-obj 'context))
       (push-word (store-obj theory))
       (push-word (store-obj theory-name))
@@ -861,12 +864,12 @@
       ;; Restoring known-subtypes requires judgements, and vice-versa
       ;; So we partially restore the judgements first
       (prerestore-context-judgements (judgements obj))
+      (setf (using-hash obj)
+	    (restore-using-hash (using-hash obj)))
       (setf (known-subtypes obj)
 	    (restore-context-known-subtypes (known-subtypes obj)))
       (setf (judgements obj)
 	    (restore-context-judgements (judgements obj)))
-      (setf (using-hash obj)
-	    (restore-using-hash (using-hash obj)))
       (setf (conversions obj)
 	    (restore-context-conversions (conversions obj)))
       #+pvsdebug
@@ -1464,6 +1467,7 @@
 (defmethod type-expr-from-print-type ((te expr-as-type))
   (let* ((suptype (find-supertype (type (expr te))))
 	 (subtype (mk-subtype (domain suptype) (expr te))))
+    ;; Make sure to set the slot, not call any methods
     (with-slots (print-type) subtype
       (setf print-type te))
     subtype))
@@ -1489,6 +1493,7 @@
 			      (pairlis (car (formals decl)) (parameters te)))))))
       #+pvsdebug (assert (true-type-expr? type-expr))
       (unless (eq type-expr (type-value decl))
+	;; Make sure to set the slot, not call any methods
 	(with-slots (print-type) type-expr
 	  (setf print-type te)))
       type-expr)))

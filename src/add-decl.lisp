@@ -264,9 +264,10 @@
 ;;;   (declarations (theory *current-context*))
 
 (defun add-decl (decl &optional (insert? t) (generated? t) (assuming? nil)
-		      (after? nil))
+			(after? nil))
   (when (or (adt-def-decl? decl)
 	    (importing? decl)
+	    (mapped-decl? decl)
 	    (not (member decl
 			 (remove-if-not #'(lambda (d)
 					    (eq (module d) (current-theory)))

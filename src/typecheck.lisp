@@ -776,10 +776,13 @@
 				      :key #'(lambda (m)
 					       (declaration (lhs m))))))
 		       (cond ((mapping-subst? map)
-			      (let ((mdecl (make-mapped-decl decl map theoryname theory)))
-				(pushnew mdecl (get-lhash id dhash) :test #'eq)))
-			     (t (check-for-importing-conflicts decl)
-				(pushnew decl (get-lhash id dhash) :test #'eq)))))))
+			      (unless (or (null map) (mapped-decl map))
+				(let ((mdecl (make-mapped-decl decl map theoryname theory)))
+				  ;;(pushnew mdecl (get-lhash id dhash) :test #'eq)
+				  (add-decl mdecl)
+				  (assert (memq mdecl (all-decls (current-theory)))))))
+			      (t (check-for-importing-conflicts decl)
+				 (pushnew decl (get-lhash id dhash) :test #'eq)))))))
 	     (lhash-table (declarations-hash (saved-context theory))))))
 
 (defmethod make-mapped-decl ((decl mod-decl) map theory theoryname)
@@ -794,7 +797,7 @@
 		     :module (current-theory)
 		     :refers-to nil
 		     :generated nil
-		     :generated-by (list decl)
+		     :generated-by decl
 		     ;;:modname
 		     :theory-mappings nil
 		     :other-mappings nil)
@@ -802,6 +805,7 @@
     ;; (generate-xref mdecl)
     (dolist (df (decl-formals mdecl))
       (setf (associated-decl df) mdecl))
+    (setf (mapped-decl map) mdecl)
     mdecl))
 
 (defmethod make-mapped-decl ((decl theory-abbreviation-decl) map theory theoryname)
@@ -815,7 +819,7 @@
 		     :module (current-theory)
 		     :refers-to nil
 		     :generated nil
-		     :generated-by (list decl)
+		     :generated-by decl
 		     ;;:theory-name
 		     :saved-context nil
 		     :theory-mappings nil
@@ -824,6 +828,7 @@
     ;; (generate-xref mdecl)
     (dolist (df (decl-formals mdecl))
       (setf (associated-decl df) mdecl))
+    (setf (mapped-decl map) mdecl)
     mdecl))
 
 (defmethod make-mapped-decl ((decl type-decl) map theory theoryname)
@@ -839,7 +844,7 @@
 		      :formals nil
 		      :module (current-theory)
 		      :generated nil
-		      :generated-by (list decl)
+		      :generated-by decl
 		      :type-value typeval
 		      :type typex)
 		    'mapped-type-decl)))
@@ -847,6 +852,7 @@
       (generate-xref mdecl))
     (dolist (df (decl-formals mdecl))
       (setf (associated-decl df) mdecl))
+    (setf (mapped-decl map) mdecl)
     mdecl))
 
 (defmethod make-mapped-decl ((decl decl-formal-type) map theory theoryname)
@@ -856,6 +862,7 @@
     fdecl))
 
 (defmethod make-mapped-decl ((decl const-decl) map theoryname theory)
+  (declare (ignore theoryname theory))
   (let* ((rhs (expr (rhs map)))
 	 (type (type rhs))
 	 (dtype (or (print-type type) type))
@@ -869,7 +876,7 @@
 		      :formals nil
 		      :module (current-theory)
 		      :generated nil
-		      :generated-by (list decl)
+		      :generated-by decl
 		      :declared-type dtype
 		      :type type
 		      :definition (expr (rhs map)))
@@ -880,7 +887,7 @@
       (setf (associated-decl df) mdecl))
     (assert (with-current-decl mdecl (fully-instantiated? type)))
     (make-def-axiom mdecl)
-    (pushnew mdecl (generated decl))
+    (setf (mapped-decl map) mdecl)
     mdecl))
 				
 
@@ -1296,7 +1303,7 @@
 
 (defmethod mapping-lhs-theory-context ((thname modname))
   (unless (every #'typed? (actuals thname))
-    (set-type-actuals thname theory))
+    (set-type-actuals thname (get-theory thname)))
   (assert (every #'typed? (actuals thname)))
   ;;(assert (null (resolutions thname)))
   (let ((res (resolve* (lcopy thname :mappings nil) 'module nil)))
