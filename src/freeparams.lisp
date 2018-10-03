@@ -161,6 +161,14 @@
 	  (pushnew pf free-parameters :test #'eq))))
     (union free-parameters frees :test #'eq)))
 
+(defmethod free-params* ((texpr dep-binding) frees)
+  (with-slots (type) texpr
+    (let ((tfrees (free-params* type nil)))
+      (union tfrees frees :test #'eq))))
+
+(defmethod free-parameters ((texpr dep-binding))
+  (free-parameters (type texpr)))
+    
 (defmethod free-params* ((texpr type-application) frees)
   (let ((nfrees (free-params* (type texpr)
 		  (free-params* (parameters texpr) nil))))
