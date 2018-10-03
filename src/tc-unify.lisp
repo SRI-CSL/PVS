@@ -272,6 +272,7 @@ wrt the initial bindings."
 (defun tc-match-set-binding (binding arg)
   "Sets the binding to the arg.  Mostly to aid debugging, as this is done in
 a number of places in tc-match."
+  ;;(break "tc-match-set-binding ~a to ~a" (car binding) arg)
   (setf (cdr binding) arg))
   
 (defmethod tc-match* ((arg type-expr) (farg type-name) bindings)
@@ -621,7 +622,9 @@ returns the updated bindings."
 	    #+badassert
       	    (assert (fully-instantiated? cdrb))
 	    (tc-match-set-binding b cdrb))))
-      (unless (every #'cdr nbindings)
+      (unless (every #'(lambda (fp)
+			 (cdr (assq fp nbindings)))
+		     (free-params farg))
 	(call-next-method))
       nbindings)))
 
