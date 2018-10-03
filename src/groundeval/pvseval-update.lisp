@@ -1204,6 +1204,10 @@
   (pvs2cl-update-nd-type* (find-supertype type) expr arg1 restargs
 			  assign-expr bindings livevars))
 
+(defmethod pvs2cl-update-nd-type* ((type adt-type-name) expr arg1 restargs
+				   assign-expr bindings livevars)
+  (break "Need to fix this"))
+
 
 ;;assign-arg-livevars can be ignored since args are evaluated before
 ;;expression and have no updateable results. 		 
