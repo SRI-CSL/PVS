@@ -21,7 +21,7 @@
 (in-package :pvs)
 
 (defun cl2pvs (sexpr type &optional context)
-  (let* ((context (or context *current-context*))
+  (let* ((*current-context* (or context *current-context*))
 	 (pexpr (cl2pvs* sexpr type context)))
     pexpr))
 
@@ -63,21 +63,22 @@
 						 nvar sexpr (range type)
 						 (when (dep-binding? (domain type))
 						   (domain type))
-						 context)))
+						 0 nil)))
 		(tc-expr (format nil "LAMBDA (~a: ~a): COND ~{~a~^, ~} ENDCOND"
 			   nvar (domtype type) conds)))
 	      (throw 'cant-translate nil))))))
 
-(defun make-subrange-conds (lower upper nvar sexpr rtype depbnd context &optional (idx 0) conds)
+(defun make-subrange-conds (lower upper nvar sexpr rtype depbnd idx conds)
+  (declare (:explain :tailmerging))
   (if (> lower upper)
       (nreverse conds)
       (let* ((rty (if depbnd
 		      (substit rtype (acons depbnd (make!-number-expr lower) nil))
 		      rtype))
-	     (val (cl2pvs* (pvs-funcall sexpr idx) rty context))
+	     (val (cl2pvs* (pvs-funcall sexpr idx) rty *current-context*))
 	     (cnd (format nil "~a=~d -> ~a" nvar lower val)))
 	(make-subrange-conds (1+ lower) upper nvar sexpr rtype depbnd
-			       context (1+ idx) (cons cnd conds)))))
+			       (1+ idx) (cons cnd conds)))))
 
 (defmethod cl2pvs* (sexpr (type subtype) context)
   (cl2pvs* sexpr (find-supertype type) context))
