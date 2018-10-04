@@ -1384,11 +1384,7 @@
 		   (if (eq (id mi) (id modinst))
 		       ;; mi is useless after this
 		       (subst-mod-params-type-name type modinst bindings modinst)
-		       (if (possibly-mapped-theory? (module decl) bindings)
-			   (let ((tname (copy-untyped type)))
-			     ;; Not sure about this.  Works for Cesar 2018-06-05
-			     (typecheck tname))
-			   (lcopy type :print-type pt)))))))))
+		       (lcopy type :print-type pt))))))))
 
 (defun possibly-mapped-theory? (th bindings)
   (some #'(lambda (bdg)
