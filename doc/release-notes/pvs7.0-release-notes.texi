@@ -1,0 +1,579 @@
+@node PVS 7.0 Release Notes
+@unnumbered PVS 7.0 Release Notes
+
+PVS 7.0 introduces a new GUI based on wxPython with PVS acting as an
+XML-RPC server.  A few enhancements were made to PVS to support more GUI
+features, and most of these were added to the Emacs GUI as well.
+
+In addition, the prover command definition forms were generalized in order
+to make it easier to add new arguments, declaration information is now
+readily available as tooltips, positive type parameters are now used beyond
+datatypes, and the typepred command has been extended to include function
+ranges.
+
+@ifnottex
+@menu
+* 7.0 Installation Notes::
+* 7.0 New Features::
+* 7.0 Incompatibilities::
+@end menu
+@end ifnottex
+
+
+@node    7.0 Installation Notes
+@section Installation Notes
+
+The system is most easily installed by getting a tar file from 
+@url{http://pvs.csl.sri.com/download.shtml}.  Untar it in a directory of
+your choice (it will create a subdirectory), cd to the subdirectory, and
+run @code{sh install.sh}.
+
+We strongly suggest getting a pre-built Allegro version, unless you have
+concerns with the Allegro runtime click-though license, in which case get
+one of the SBCL Lisp images.  It is possible to build from sources, but it
+can be sensitive to the platform environment.  If you decide to try it and
+run into problems, let us know at @email{pvs-bugs@@csl.sri.com}.
+PVS 7.0 is built with Allegro CL 10.0 and SBCL 1.0.47.  It is available for
+Linux 64-bit machines, and Mac 64-bit.
+
+Note that the XML-RPC server is not (yet) available in SBCL.
+
+The latest PVS includes a preliminary version of a PVS client, written in
+wxPython.  To use, you will need to have Python 2.7, along with @code{wx}
+(@url{http://www.wxpython.org/}), @code{pyparsing}
+(@url{http://pyparsing.wikispaces.com/}), and optionally @code{jsonschema}
+(@url{https://github.com/Julian/jsonschema}) and @code{requests}
+(@url{http://www.wxpython.org/}).  If missing, the latter will give
+warnings - these can be ignored.  These packages may often be gotten
+through Linux package managers, or using easy_install or pip.
+
+@node    7.0 New Features
+@section New Features
+
+@menu
+* PVS Language Changes::
+* TCC Formulas and Associated Proofs::
+* PVS XML-RPC server::
+* GUI::
+* Prover GUI::
+* PVS Identifier Tooltips::
+* Proof Command Definitions::
+* Positive Type Parameters::
+* Typepred Extension::
+* TCC Ordering::
+* Yices::
+@end menu
+
+@node PVS Language Changes
+@subsection PVS Language Changes
+Prime is allowed in names, e.g., @code{x'}.  Allowed anywhere except the
+first character, which must be alphabetic.
+
+(Co)Datatypes may now have ASSUMING parts and theory declarations in
+addition to IMPORTINGs, which may appear interleaved in the constructor
+declarations.
+
+Expression judgements have been improved.
+
+IF can be given as an application, e.g., IF(b,a,c)
+
+LAMBDA expressions may be given a result type, e.g.,
+@code{LAMBDA (x: int) -> int: f(x)}
+
+CASES selections may be given as bindings, rather than just ids, e.g.,
+@code{CASES e OF c(x: int | p(x)), ...}
+
+@node TCC Formulas and Associated Proofs
+@subsection TCC Formulas and Associated Proofs
+
+
+@node PVS XML-RPC server
+@subsection PVS XML-RPC server
+@subsubsection Introduction
+
+The PVS GUI is an API for the Prototype Verification System (PVS).
+In the past, the PVS GUI was based on a modified version of the Emacs
+Inferior Lisp Mode (@url{http://ilisp.cons.org/}) interface.  This
+generally works well, but there are some issues:
+@itemize @bullet
+@item
+Many new users of PVS are inexperienced not only in formal methods, but
+also in the use of Emacs, which has a steep learning curve
+@item
+Many new users have only been exposed to mouse-and-menu interfaces, such
+as Eclipse
+@item
+ILISP is no longer maintained, and has largely been replaced by Slime
+@item
+The interface to ILISP is not very flexible, making it difficult to
+extend with new features
+@end itemize
+
+For these reasons, we decided to create a new API for a PVS GUI.  We have
+several constraints we want to satisfy:
+@itemize @bullet
+@item
+PVS should act as a server, with potentially many clients
+@item
+The interface should be "RESTful", in the same way the internet is,
+i.e., there are no heartbeats, simply requests that are answered by PVS
+@item
+There should be no restriction on the language used to implement a
+client
+@end itemize
+
+We started to create an Eclipse plugin for PVS, but found this to be
+difficult; there is really nothing in Eclipse to support things like proof
+windows, or the various popup buffers that PVS normally does through
+Emacs.  Note that there is an @code{eclipse} subdirectory in the PVS Git
+sources, for anyone who wants to continue this work.
+
+But we took a step back, and started fresh with wxPython, which so far has
+proved more flexible, and quicker for prototyping.
+
+The basic architecture consists of a PVS server, with any number of
+clients.  A client can make a request to the PVS URI, and PVS will return
+a response to that client.  In addition, a client can start an XML-RPC
+server and include that URI with the request, which allows PVS to send
+requests to the client, e.g., to answer questions, provide file names, or
+simply get notifications.
+
+In the long run, we expect to make Emacs an XML-RPC client as well, but
+for now, it uses the same ILISP interface.  However, as each JSON method
+is defined (often based on the corresponding Emacs command), the same
+JSON will be returned to Emacs.  This allows testing at the Emacs level,
+and provides an incremental way to move toward making Emacs an XML-RPC
+client.
+
+Although PVS allows any number of clients, there is currently only one
+main PVS thread.  This means that all clients would share the same proof
+session, etc.  This may be useful for collaboration, or for switching
+between clients (i.e., different GUIs that provide different features).
+In the future we will explore the possibility of having separate threads
+associated with different clients, allowing different clients to
+simultaneously run different proofs, possibly in different contexts. 
+
+PVS provides an XML-RPC server when started with a @code{-port} value,
+e.g., @code{pvs -port 22334}, normally an unused port between 1024 and 65535.
+XML-RPC was chosen because it is supported by most modern languages, and
+we chose to implement the JSON-RPC 2.0 protocol within XML-RPC.  Directly
+using JSON-RPC is possible, but it is not yet widely supported.
+
+There is a single XML-RPC method provided by the PVS server,
+@code{pvs.request}, that takes a JSON-RPC request string, and an optional
+client URI, which is used to send requests to the client, providing a
+2-way communication.  Note that PVS does not keep the client URI after
+answering the request, thus clients may be killed and restarted at any
+time.  In like manner, PVS can be restarted without needing
+to restart any clients, though it may be necessary to change context,
+retypecheck, etc.  At the XML-RPC level, the return value includes the
+JSON-RPC response, the current PVS context, and the mode (@code{lisp},
+@code{prover}, or @code{evaluator}).  Thus if a given client has changed
+the context and started a proof, that information is included in the next
+request from a different client.
+
+We chose JSON as the data interchange format over XML since it is more
+compact, and supported by most languages.  In addition, there is a JSON
+Schema available, which we use to describe the API.
+
+Error handling is done as follows.  When an XML-RPC request comes in, PVS
+sets up a condition handler to catch any errors that may happen as a
+result of processing the request.  If the request is badly formed, for
+a nonexistent method, or if the JSON-RPC request does not include an id,
+then a response is returned of the form  
+@verbatim
+{"xmlrpc-error": string, "mode": string, "context": string}
+@end verbatim
+If the request is well formed and includes an id, the method is invoked
+under a new condition handler, and the normal JSON-RPC response is given.
+This means that errors are returned even if the JSON-RPC request is a
+notification (without an id).  Of course, the client is free to ignore
+such errors.
+
+@subsubsection PVS JSON-RPC methods
+
+There are only a few methods currently supported by PVS; a lot of effort
+was needed to implement the infrastructure.  In particular, the prover was
+not really designed for a different API, and it was necessary to create
+hooks for generating a JSON representation of the current goal of a given
+proof.
+
+The methods currently supported are listed below.  Note that details about
+the possible return values are in the JSON Schema provided with PVS.
+
+@deffn method  list-methods
+This method simply lists the currently available methods.
+@end deffn
+
+@deffn method  list-client-methods
+As described above, PVS may provide information or make requests to the
+client.  This method lists all the JSON-RPC requests that PVS will invoke
+if it is given a URI at the XML-RPC level.  Currently it consists of
+@code{info}, @code{warning}, @code{debug}, @code{buffer}, @code{yes-no},
+and @code{dialog}.  The JSON Schema gives details about the format.
+@end deffn
+
+@deffn method  help
+Gives help for any given method returned by @code{list-methods}.
+@end deffn
+
+@deffn method  lisp
+Simply sends a string to be evaluated by the PVS lisp interpreter, and
+returns a string with the result.  Certainly an aid to debugging, but may
+also be useful for other purposes.
+@end deffn
+
+@deffn method  change-context
+Changes the current context as with the Emacs @code{change-context} command.
+@end deffn
+
+@deffn method  typecheck
+Typechecks a specified file.  This returns a list of theories, each of
+which includes the declarations of that theory, as well as their
+locations.
+@end deffn
+
+@deffn method  names-info
+This is a new method; given a PVS file, it returns an array of PVS
+identifiers, their location, the associated declaration (as a string), and
+the file and location where the declaration can be found.  This can be
+used by the client to provide information about a given identifier when
+the mouse is hovering over that identifier.  Clicking on that identifier
+could bring up the corresponding file and location.
+@end deffn
+
+@deffn method  reset
+This interrupts any running process, and resets the system to the state
+where no proof or ground evaluator sessions are running.  This may not
+clear up low-level server/client problems, as those are on a separate
+thread and more difficult to reset.  We're waiting for a situation where
+this is an issue.
+@end deffn
+
+@deffn method  prove-formula
+Given a formula and a theory name, this starts an interactive proof.  The
+result is the current goal consisting of a sequent and other fields, 
+see the JSON schema for details.
+@end deffn
+
+@deffn method  proof-command
+This sends the specified proof command to PVS, returning the current goal.
+Currently the proof needs to be started with @code{prove-formula}, though in
+principle any client (e.g., Emacs) could start the proof and a different
+client continue.  It's possible for this to allow collaboration on a
+single proof.
+@end deffn
+
+@node GUI
+@subsection GUI
+
+As described above, the new GUI is built on wxPython.  The executable is
+@code{pvs-gui} in the top level PVS directory.  Starting it with no
+arguments creates a client with port 22335, and expects the PVS server to
+be at port 22334.  Currently you have to start up both, but they can be
+started in either order, and if one crashes it can be restarted without
+directly affecting the other.  For starting pvs include @code{-port 22334}
+with any other arguments you might want.  In principle, pvs can be started
+with -raw, meaning no Emacs, but it is easier for debugging to have the
+Emacs ILISP interface available.  Run @code{pvs-gui -h} for details on how
+to set the ports and debug levels.
+
+The GUI configuration by default is in the file
+@code{PVS/python/src/pvside.cfg}, where @code{PVS} is the pvs installation
+directory.  At startup, this file is read, then the @code{~/pvside.cfg}
+file is read, if it exists.  This has the same syntax as the default
+file (with sections and attributes), 
+but should include only those sections and attributes that you wish to
+overwrite.  This includes things like the default ports, fonts, colors, etc.
+
+Once started, it should be fairly easy to explore and find files, change
+context, typecheck, and start proofs.  There is a Help menu that gives
+more details.  This is very much an early prototype, and suggestions are
+welcome.  Note that the sources are available on GitHub with the rest of
+PVS in the python subdirectory.  Please let us know if you would like to
+get involved in development of the GUI.
+
+@node Prover GUI
+@subsection Prover Emacs UI
+
+The prover has been significantly modified to generate structures suitable
+for sending to the GUI.  As a means to test this, a new capability was
+added to PVS Emacs, making use of the same JSON forms as those
+sent to the GUI.  By default, PVS uses the old display, simply printing
+the sequent in the @code{*pvs*} buffer, displaying the @code{Rule?}
+prompt, and reading the next prover command.
+
+There are new proof displays available.  These are new, and not well
+tested, please send feedback if you try them out.  Keep in mind the
+distinction Emacs makes between frames, windows, and buffers.  A frame is 
+what most systems call a window; each frame can be moved around on the
+desktop, closed, resized, etc.  Frames may be subdivided into windows, and
+each window displays a buffer.  Note that buffers are there, even if they
+are not currently displayed; there are separate commands for listing
+buffers, killing buffers, etc.
+
+There are 6 proof display styles available; @code{no-frame},
+@code{0-frame}, @code{1-frame}, @code{2-frame}, @code{3-frame}, and
+@code{4-frame}.  As you might guess, the names say how many frames are
+involved.  @code{no-frame}, the default, works as in the past.
+The rest create separate windows and frames for different parts of a proof
+session: the current goal, the command input, the proof commentary, and
+optionally the proof script.
+
+The @code{0-frame} uses the same frame as the PVS startup frame, and
+splits it into separate windows.  The @code{1-frame} creates a new frame
+for this purpose.  The @code{2-frame} puts the commentary in a separate
+frame, the @code{3-frame} puts the commentary and proof script in separate
+frames, and the @code{4-frame} puts all four parts in separate frames.
+
+The commentary is used for the running commentary of a proof; information
+that is part of the proof session, but not really part of a given proof
+step.  The command input is currently just a window into the @code{*pvs*}
+buffer, which still has the proof as before, even when displays are
+active.  The sequent buffer has the feature that hovering the mouse over
+an identifier shows the corresponding declaration; this can be very
+helpful in proofs.
+
+The different parts of the proof display have associated faces, and can be
+customized.  Do @code{M-x customize} and search for @code{pvs} to find all
+customizable faces.
+
+@node PVS Identifier Tooltips
+@subsection PVS Identifier Tooltips
+
+A new feature of PVS, developed partly for the new GUI, is the ability to
+associate tooltips with each PVS identifier of a PVS file or proof
+sequent.  These tooltips are only available in typechecked files.  They
+are automatically available in the GUI after typechecking; in Emacs, run
+@code{M-x pvs-add-tooltips} in any typechecked buffer (including the
+prelude) and then move the mouse over identifiers in the buffer to see
+their types.  Clicking middle takes you to the file with the cursor at the
+declaration.
+
+
+@node Proof Command Definitions
+@subsection Proof Command Definitions
+
+The proof command facility has been revamped, primarily in the argument
+handling.  This section is for those who write strategies.
+
+Just to review, strategy definitions such as @code{defstep} have required,
+optional, and rest arguments, e.g.,
+@example
+(defstep foo (a &optional b c &rest d) ...)
+@end example
+Invocations of @code{foo} require the first argument; if there is a second
+argument it is bound to @code{b}, a third argument to @code{c}, and any
+remaining arguments are bound to @code{d}.  This is similar to Common
+Lisp, but in PVS the optional and rest arguments may also be given as
+keywords, so @code{foo} could be invoked as either of the equivalent forms
+@example
+(foo 3 5 7 11 13)
+(foo 3 5 :d (11 13) :c 7)
+@end example
+
+In order to add a new argument to a low-level command, (e.g., the
+@code{let-reduce?} flag was added to @code{assert}), then to make this
+available to other commands such as @code{grind} meant adding it and the
+corresponding documentation to those commands.  This is obviously
+error-prone.  Recently we wanted to add the @code{actuals?} argument of
+replace to @code{grind}, in order to allow @code{grind} to work in type
+and actual expressions.  The problem is that @code{grind} invokes
+@code{replace*}, which has a @code{&rest fnums} argument; this does not
+allow new arguments to be added without modifying existing proofs.
+
+To solve this immediate problem we added the @code{&key} indicator.  It
+is similar to the @code{&optional} indicator, but the arguments must be
+provided as keywords.  Hence @code{replace*} could now be rewritten from
+@example
+(defstep replace* (&rest fnums) ...
+@end example
+to
+@example
+(defstep replace* (&key actuals? &rest fnums) ...
+@end example
+Existing proofs would not break, but new proofs could invoke
+@code{replace*} with an @code{:actuals? t} argument to have
+replacement happen inside of types and actuals.
+
+But this only solves part of the problem; propagating this argument to
+strategies such as @code{grind} is still error-prone.  To deal with this,
+we added another indicator: @code{&inherit}.  With this, @code{replace*}
+can be defined as
+@example
+(defstep replace* (&rest fnums &inherit replace) ...)
+@end example
+And now replace* automatically inherits all keyword arguments from
+@code{replace}.  Not only that, but any invocations of @code{replace}
+within the body of the defstep automatically include keyword invocations
+of the @code{replace} call.  In effect, where the body was written simply
+as @code{(replace y)}, it is replaced in the actual command by
+@example
+(replace y :dir dir :hide? hide? :actuals? actuals?
+           :dont-delete? dont-delete?)
+@end example
+Note that this inherited not just the @code{actuals?} argument, but all
+the others as well.  Note also that if a new argument is added to
+@code{replace}, it will be automatically inherited by @code{replace*}.
+
+@subsubsection Future Work
+There is still work to be done; currently optional and key arguments allow
+a default, but we want to in addition allow @code{:documentation} and
+@code{:kind} keywords, even for required arguments.  The documentation
+will be used to document the arguments, rather than have them in the main
+documentation of the proof command.  For optional and key arguments, this
+documentation will then propagate, so that, e.g., the documentation for
+@code{replace*} directly explains the @code{actuals?} argument, without
+having to look up @code{replace}.
+
+The @code{:kind} will be used to support refactoring (among other
+possibilities).  One problem with refactoring currently is that proofs are
+kept as proof scripts, and any types, expressions, etc. are given as
+strings.  Thus, for example, a command such as @code{(expand "foo")} will
+resolve the name @code{foo}, and expand occurrences of it within the
+current sequent.  This is the case even if @code{foo} is overloaded, and
+has three definitions in the sequent.  Note that @code{foo} is resolved by
+the prover, and the resolutions are used in the subsequent expansions, but
+then discarded.  If now the user decides that overloaded @code{foo} is
+confusing, and wants to name them apart, there is no way to know which
+ones to name apart in proof scripts without rerunning them.
+
+The @code{:kind} keyword will be used to associate a kind with each
+argument, which in cases such as above would invoke functions that
+generate the resolutions and cache the resolution information with the
+proof, in a way that it may be used subsequently for refactoring, etc.
+
+@subsubsection Detailed Description
+
+The basic idea and motivation are above, the rest of this section goes
+into more details for those wanting to write new strategies.
+
+The formal arguments list for a new prover command is in a specific order:
+required, optional, key, rest, and optional.  The actual syntax is
+@verbatim
+prover-args ::= {var}*
+                [&optional {var | (var initform)}*]
+                [&key {var | (var initform)}*]
+                [&rest var]
+                [&inherit {cmd | (cmd :except var+)}*]
+@end verbatim
+Required, optional, and rest arguments work exactly as detailed in the
+prover guide.  Key arguments are similar to optional arguments, but may
+only be specified by keyword, not by position.
+
+The inherit argument is fundamentally different.  A proof command inherits
+arguments from other proof commands.  This can only be done for proof
+commands that are directly referenced in the body; for example,
+@code{grind} inherits from @code{replace*}, not @code{replace}, because
+it does not directly call the latter.  There are two aspects to inheriting
+arguments from a command.  The first is that the command being defined
+takes the union of all the arguments of its own and inherited commands.
+The second, is that these inherited arguments are propagated to any calls
+of inherited commands.
+
+The inherited arguments are always either optional or key arguments; they
+are always treated as key.  Hence the order of inherited arguments is not
+an issue, though there is a possible issue if the names of arguments clash
+with different meanings.  This can be controlled to some extent by using
+the @code{:except} form, specifying the arguments to be ignored of an
+inherited command.  If there are more than one unignored arguments with
+the same name and different default values, the first is taken as default.
+Again, this can easily be controlled, for example, if we have the forms
+@example
+(defstep foo (x &optional (a 3) &key (b 5) (c 7)) ...)
+(defstep bar (y &optional (b 7) &key (a 11) (c 13)) ...)
+(defstep baz (z &key (a 13) &inherit (foo :except c) bar) ...)
+@end example
+Then @code{baz} gives its own default to @code{a}, and takes @code{foo}s
+default for @code{b} and @code{bar}s default for @code{c}.
+
+Propagating the arguments to calls is relatively straightforward.  Using
+the above as examples, if the body of @code{baz} has an occurrence of
+@code{(bar m)}, it is simply replace by @code{(bar m :b b :a a :c c)}
+and @code{(foo n)} is replaced by @code{(foo n :a a :b b)}.
+Note that multiple invocations may be made to, e.g., @code{foo}, and all
+of them are replaced.  Note also that, e.g., one could be as above, while
+the second invocation is @code{(foo :c 31 :a 37)}, which gets expanded to
+@code{(foo :c 31 :a 37 :b b)}.
+
+The PVS Emacs command @code{M-x help-pvs-prover-strategy} (@code{C-c C-h
+s}) now includes the expanded argument list and definitions, as well as
+the original forms.  This can be helpful in understanding how the
+prover arguments work.
+
+This change has little impact on existing proofs, though in the regression
+tests it was found that a couple of strategies defined in the NASA
+libraries were not quite correct, but the old strategy mechanism simply
+ignored extra arguments.  Now those generate an error.
+
+@node Positive Type Parameters
+@subsection Positive Type Parameters
+PVS treats positive type parameters specially in datatypes, so that, e.g.,
+@code{cons[int](1, null) = cons[nat](1, null)}, but this did not extend
+beyond constructors and accessors.  Now PVS treats all definitions
+accordingly.  The basic idea is that if a given definition does not depend
+directly on the type, and only on the values, then it is safe to ignore
+the type parameter - though typechecking may still generate a TCC.
+
+Thus, for example, @code{length[T]((: 2, 3, 5 :))} is 3, regardless of
+which numeric subtype T may be, though unprovable TCCs may result (e.g.,
+if @code{T} is @code{even}).  Similarly, @code{nth} and @code{every}
+depend only on the arguments, not on the types.  An example of a
+definition that depends on the types, not merely the arguments, is
+@example
+th[T: type from int]: theory
+ ...
+ foo(x: T): int = if (exists (y: T): y > x) then x else 0 endif
+ ...
+end th
+@end example
+
+This change can have an impact on existing proofs, though mostly it makes
+them more direct - some proofs involving recursive functions, e.g.,
+@code{length[int](x) = length[nat](x)} require convoluted proofs.
+
+@node Typepred Extension
+@subsection Typepred Extension
+
+The @code{typepred} prover command was extended to include functional
+typepreds.  Thus if @code{f} has type @code{[D -> @{x: R | p(x)@}]}, then
+the proof command @code{(typepred "f")} would generate a hypothesis of the
+form @code{FORALL (x: D): p(f(x))}.  Note that some commands such as
+@code{skolem}, take a flag that causes typepreds to be generated - this
+would also include these functional typepreds.
+
+@node TCC Ordering
+@subsection TCC Ordering
+
+TCCs that depended on conjunctive forms were generated in some cases in
+reverse.  This has no bearing on soundness or correctness, but some
+meta-analysis of PVS was made more difficult because of this, so it was
+fixed.
+
+@node Yices
+@subsection Yices
+
+The yices prover commands have been fully integrated into PVS, and Yices
+versions 1 and 2 are included in the distribution.
+
+@node    7.0 Incompatibilities
+@section Incompatibilities
+
+There are three primary sources of incompatibilities with this release.
+This first is due to more rigorous checking of arguments in proof
+commands.  In the past, if there were left over arguments after pairing
+command arguments with their invocation, they were simply ignored.  Now an
+error is invoked.  Generally these are easy to debug, and they usually
+indicate a programming error to begin with.
+
+TCC ordering can affect formula numbering (e.g. @code{foo_TCC1} and
+@code{foo_TCC2} could be swapped, and within a proof, the branches may be
+swapped.  In the regression tests, this was fairly rare.
+
+The addition of more typepred information in proofs leads to additional
+hypotheses, and this can cause formula numbers to be shifted.
+
+In the past, the typechecker was a little strict in creating new variables
+when a formula change was made (e.g., expanding a definition).  It tends
+to keep the existing variable name more often.  Occasionally, this means a
+reference to, e.g., ``i_1'' should be changed to ``i''.
