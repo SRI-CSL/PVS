@@ -19,7 +19,7 @@ Copyright 2002 SRI International
 @title PVS Release Notes
 @author Sam Owre <owre@@csl.sri.com>
 @author SRI International
-@author July 20, 2008
+@author October 5, 2018
 @page
 @end titlepage
 
@@ -44,7 +44,7 @@ are available in the @code{doc/release-notes} subdirectory of the PVS
 distribution.
 
 @menu
-* PVS 6.1 Release Notes::
+* PVS 7.0 Release Notes::
 * PVS 6.0 Release Notes::
 * PVS 5.0 Release Notes::
 * PVS 4.2 Release Notes::
@@ -55,7 +55,7 @@ distribution.
 * PVS 3.0 Release Notes::
 @end menu
 
-@include pvs6.1-release-notes.texi
+@include pvs7.0-release-notes.texi
 @include pvs6.0-release-notes.texi
 @include pvs5.0-release-notes.texi
 @include pvs4.2-release-notes.texi
