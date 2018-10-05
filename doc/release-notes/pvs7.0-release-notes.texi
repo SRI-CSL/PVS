@@ -61,7 +61,7 @@ through Linux package managers, or using easy_install or pip.
 * Positive Type Parameters::
 * Typepred Extension::
 * TCC Ordering::
-* Yices::
+* Yices in 7.0::
 @end menu
 
 @node PVS Language Changes
@@ -550,7 +550,7 @@ reverse.  This has no bearing on soundness or correctness, but some
 meta-analysis of PVS was made more difficult because of this, so it was
 fixed.
 
-@node Yices
+@node Yices in 7.0
 @subsection Yices
 
 The yices prover commands have been fully integrated into PVS, and Yices
