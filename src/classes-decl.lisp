@@ -191,6 +191,8 @@
   (all-declarations :fetch-as nil)
   (all-imported-theories :fetch-as 'unbound :initform 'unbound)
   (all-imported-names :fetch-as 'unbound :initform 'unbound)
+  (theory-mappings :documentation
+		   "Mappings alist for the theory, as produced by subst-mod-params")
   ;; places is restored, but after the theory part - see save-theories.lisp
   ;;(places :restore-as nil)
   )

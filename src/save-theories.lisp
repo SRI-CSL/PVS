@@ -1118,6 +1118,10 @@
 		  ksubtypes)))))
 
 (defmethod restore-object* :around ((obj declaration))
+  #+badassert
+  (assert (every #'(lambda (fdecl)
+		     (not (memq fdecl (get-declarations (id fdecl)))))
+		 (decl-formals obj)) () "recursive declaration restore?")
   (with-current-decl obj
     (if (gethash obj *restore-object-hash*)
 	(call-next-method)
@@ -1132,7 +1136,11 @@
 		(when (and (eq *restoring-theory* (theory *current-context*))
 			   (not (typep obj 'adtdecl)))
 		  (put-decl obj))))
-	    (call-next-method)))))
+	    (call-next-method))))
+  #+badassert
+  (assert (every #'(lambda (fdcl)
+		     (not (memq fdcl (get-declarations (id fdcl)))))
+		 (decl-formals obj))))
 
 (defmethod restore-object* :around ((obj binding-expr))
   (let ((*bound-variables* (append (bindings obj) *bound-variables*)))

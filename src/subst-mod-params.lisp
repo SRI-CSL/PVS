@@ -413,12 +413,11 @@
 ;;; the given bindings, any bindings coming (recursively) from th, th1 and th2
 
 (defun extended-mappings (thname lhs-theory decl)
+  ;; Shouldn't lhs-theory and rhs-theory be the same?
   (declare (ignore lhs-theory))
   (let* ((rhs-theory (declaration thname))
 	 ;; extended-basic-mappings deals with explicit and implicit th mappings
-	 (rhs-mappings (when (and rhs-theory
-				  (not (module? rhs-theory)))
-			 (theory-mappings rhs-theory)))
+	 (rhs-mappings (when rhs-theory (theory-mappings rhs-theory)))
 	 ;; (bmappings (extended-basic-mappings (mappings thname) rhs-mappings
 	 ;; 				     nil ;(theory-mappings lhs-theory)
 	 ;; 				     ))

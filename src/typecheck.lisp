@@ -374,6 +374,13 @@
     ;;     (when (some #'formal-theory-decl? (formals mod))
     ;;       (add-theory-parameters-importings mod nmodinst))
     (when (mappings nmodinst)
+      (let* ((*subst-mod-params-map-bindings* (mappings nmodinst))
+	     (map-alist (make-subst-mod-params-map-bindings
+			 inst (mappings inst) nil)))
+	;; Note that we're simply appending here - should deal with
+	;; duplicates somehow...
+	(setf (theory-mappings (current-theory))
+	      (append map-alist (theory-mappings (current-theory)))))
       (generate-mapped-axiom-tccs nmodinst))
     (unless *ignore-exportings*
       (add-exporting-with-theories mod nmodinst t))

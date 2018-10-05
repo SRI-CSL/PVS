@@ -474,31 +474,37 @@
 (defmacro with-added-decls (decls &rest body)
   (let ((gdecls (gensym))
 	(gdecl (gensym))
-	(restore (gensym)))
-    `(let ((,gdecls ,decls)
-	   (,restore nil))
+	(assoc-decls (gensym))
+	(dfmls (gensym)))
+    `(let ((,gdecls ,decls))
+       ;; We want to push new decl-formals into the current-declarations-hash
+       ;; But there may already be some there (recursively)
+       ;; We remove any clashing ones, and restore after executing body
        (if (null ,gdecls)
 	   (progn ,@body)
 	   (unwind-protect
-		(progn (dolist (,gdecl ,gdecls)
-			 (let ((assoc-decls (get-declarations (id ,gdecl))))
-			   (unless (memq ,gdecl assoc-decls)
-			     (setf ,restore (acons (id ,gdecl) assoc-decls ,restore))
-			     (let ((fml (find-if #'decl-formal? assoc-decls)))
-			       ;; There should be at most one
-			       (assert (or (null fml)
-					   (not (find-if #'decl-formal?
-						  (cdr (memq fml assoc-decls))))))
-			       (setf (get-lhash (id ,gdecl)
-						(current-declarations-hash))
-				     (cons ,gdecl
-					   (if fml
-					       (remove fml assoc-decls)
-					       assoc-decls)))))))
+		;; Might have a problem here, if there are decl-formals
+		;; already in the declarations hash
+		(progn (add-decl-formals-to-declarations-hash ,gdecls)
 		       ,@body)
-	     (dolist (,gdecl ,restore)
-	       (setf (get-lhash (car ,gdecl) (current-declarations-hash))
-		     (cdr ,gdecl))))))))
+	     (remove-decl-formals-from-declarations-hash ,gdecls))))))
+
+(defun remove-decl-formals-from-declarations-hash (dfmls)
+  (dolist (dfml dfmls)
+    ;; Don't use get-declarations - it appends the lhash values
+    ;; Just take the lhash-table
+    (let* ((ht (lhash-table (current-declarations-hash)))
+	   (assoc-decls (gethash (id dfml) ht)))
+      (when (memq dfml assoc-decls)
+	(setf (gethash (id dfml) ht) (remove dfml assoc-decls))))))
+
+(defun add-decl-formals-to-declarations-hash (dfmls)
+  (dolist (dfml dfmls)
+    (let* ((ht (lhash-table (current-declarations-hash)))
+	   (assoc-decls (gethash (id dfml) ht)))
+      #+badassert (assert (not (memq dfml assoc-decls)))
+      (unless (memq dfml assoc-decls)
+	(setf (gethash (id dfml) ht) (cons dfml assoc-decls))))))
 
 (defvar *default-context*)
 
@@ -545,17 +551,25 @@ obj may be of type:
 		   ,@body)
 	 (setf (current-theory) ,cth)))))
 
+(defvar *current-declaration-stack* nil)
+
 (defmacro with-current-decl (decl &rest body)
   (let ((cdecl (gensym))
 	(gdecl (gensym)))
     `(let* ((,cdecl (current-declaration))
+	    (*current-declaration-stack* (cons ,cdecl *current-declaration-stack*))
 	    (*current-top-declaration* (or *current-top-declaration* ,cdecl))
 	    (,gdecl ,decl))
        (unwind-protect
 	    (progn (setf (current-declaration) ,gdecl)
-		   (with-added-decls (decl-formals ,gdecl)
-		     ,@body))
-	 (setf (current-declaration) ,cdecl)))))
+		   (when ,cdecl
+		     (remove-decl-formals-from-declarations-hash (decl-formals ,cdecl)))
+		   (add-decl-formals-to-declarations-hash (decl-formals ,gdecl))
+		   ,@body)
+	 (remove-decl-formals-from-declarations-hash (decl-formals ,gdecl))
+	 (setf (current-declaration) ,cdecl)
+	 (when ,cdecl
+	   (add-decl-formals-to-declarations-hash (decl-formals ,cdecl)))))))
 
 (defmacro with-bound-declparams (decls &rest body)
   (let ((gdecls (gensym)))
