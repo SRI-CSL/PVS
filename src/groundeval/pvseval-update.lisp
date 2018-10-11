@@ -615,7 +615,7 @@
 
 (defmethod pvs2cl_up* ((expr cases-expr) bindings livevars)
   (with-slots (expression selections else-part) expr
-    ;;NSH(10/10/18: modified to let-lift expression to avoid duplicated computation
+    ;;NSH(10/10/18): modified to let-lift expression to avoid duplicated computation
     (if (variable? expression)
 	(pvs2cl_up* (mk-translate-cases-to-if expr) bindings livevars)
       (let* ((newbd (make-new-bind-decl (type expression)))
