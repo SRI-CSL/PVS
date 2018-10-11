@@ -623,7 +623,6 @@
 	     (new-cases-expr (mk-cases-expr newvar selections else-part))
 	     (new-body (mk-translate-cases-to-if new-cases-expr))
 	     (new-let-expr (make!-let-expr (list (cons newbd expression)) new-body)))
-	(format t "~%~a" new-let-expr)
 	(pvs2cl_up* new-let-expr bindings livevars)))))
 
 (defmethod pvs2cl_up* ((expr lambda-expr) bindings livevars)
