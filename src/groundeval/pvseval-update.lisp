@@ -614,7 +614,16 @@
 	(t (call-next-method))))
 
 (defmethod pvs2cl_up* ((expr cases-expr) bindings livevars)
-  (pvs2cl_up* (mk-translate-cases-to-if expr) bindings livevars))
+  (with-slots (expression selections else-part) expr
+    ;;NSH(10/10/18): modified to let-lift expression to avoid duplicated computation
+    (if (variable? expression)
+	(pvs2cl_up* (mk-translate-cases-to-if expr) bindings livevars)
+      (let* ((newbd (make-new-bind-decl (type expression)))
+	     (newvar (make-variable-expr newbd))
+	     (new-cases-expr (mk-cases-expr newvar selections else-part))
+	     (new-body (mk-translate-cases-to-if new-cases-expr))
+	     (new-let-expr (make!-let-expr (list (cons newbd expression)) new-body)))
+	(pvs2cl_up* new-let-expr bindings livevars)))))
 
 (defmethod pvs2cl_up* ((expr lambda-expr) bindings livevars)
   (with-slots ((expr-bindings bindings) expression) expr
