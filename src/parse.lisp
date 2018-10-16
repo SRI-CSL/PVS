@@ -3173,6 +3173,7 @@
       (if single?
 	  (parse-error (term-arg1 actuals)
 	    "Cannot have two sets of actuals here")
+	  ;; Possibilities: f[], f[][], f[a], f[a][], f[][b], f[a][b]
 	  (let* ((acts1 (mapcar #'xt-actual (term-args (term-arg0 actuals))))
 		 (acts2 (mapcar #'xt-actual (term-args (term-arg1 actuals))))
 		 (there1 (and (null acts1)
