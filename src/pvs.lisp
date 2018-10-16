@@ -110,6 +110,8 @@
 	  tmpdir)
 	(pvs-message "Please fix this and try again")
 	(cl-user:bye 1))
+      (unless (char= (char tmpdir (1- (length tmpdir))) #\/)
+	(setq tmpdir (format nil "~a/" tmpdir)))
       (pvs-message "Setting tmp dir to value of environment variable TMPDIR:~%  ~a~%"
 	tmpdir)
       (setq uiop/stream:*temporary-directory* tmpdir)))
@@ -1195,7 +1197,9 @@
 			  (delete-generated-adt-files theories))
 			(typecheck-theories filename theories)
 			#+pvsdebug (assert (every #'typechecked? theories))
-			(update-context filename)))
+			;; .pvscontext
+			(update-context filename)
+			(update-info-file filename theories)))
 	       (when prove-tccs?
 		 (if *in-checker*
 		     (pvs-message
@@ -1215,6 +1219,14 @@
 		   ;; Emacs expects t or nil - error will not get here
 		   (and changed-theories t)
 		   (values theories changed-theories))))))))
+
+;; This is intended to create a JSON file with information for external use.
+;; Mostly a list of theories, which have declarations and place information.
+(defun update-info-file (filename theories)
+  ;; (let* ((info-file (make-infopath filename)))
+  ;;   (break))
+  )
+    
 
 (defvar *etb-typechecked-theories*)
 
