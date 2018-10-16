@@ -808,8 +808,23 @@
 (defmethod typecheck* ((act actual) expected kind arguments)
   #+pvsdebug (assert (not (type (expr act))) () "Type set already???")
   (unless (typed? act)
-    (typecheck-actual (expr act) act expected kind arguments))
+    (typecheck-actual (expr act) act expected kind arguments)
+    #+badassert (assert (typed? act)))
   act)
+
+;;; Actuals are ambiguous, the context says whether it's an expr or a type-expr
+;;; Typechecking allows for both
+;;;   name-expr => type-name
+;;;   application => type-application
+;;;   set-expr => subtype
+;;;   (expr) => expr-as-type
+
+;;; Each (expr act) is typechecked, if it could also be a type-expr, a new
+;;; type is created as above, which is then typechecked.  The typechecking
+;;; allows for failure, If it fails as an expr, the expr is left as first
+;;; parsed.  If the type instance typechecks, the (type-value act) is set.
+;;; In general, the (expr act) and (type-value act) can both be set;
+;;; set-type-actual decides which is kept.
 
 (defmethod typecheck-actual ((name name-expr) act expected kind arguments)
   (let* ((*resolve-error-info* nil)
