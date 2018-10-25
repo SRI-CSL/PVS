@@ -901,53 +901,54 @@ pvs-strategies files.")
   (let ((ctx-file (merge-pathnames *context-name*
 				   *default-pathname-defaults*)))
     (if (file-exists-p ctx-file)
-	(multiple-value-bind (context error)
-	    (if (with-open-file (in ctx-file)
-		  (and (char= (read-char in) #\()
-		       (char= (read-char in) #\")))
-		(ignore-lisp-errors (with-open-file (in ctx-file) (read in)))
-		(ignore-lisp-errors (fetch-object-from-file ctx-file)))
-	  (cond (error
-		 (pvs-message "PVS context unreadable - resetting")
-		 (pvs-log "  ~a" error)
-		 (setq *pvs-context* (list *pvs-version*))
-		 (write-context))
-		((duplicate-theory-entries?)
-		 (pvs-message "PVS context has duplicate entries - resetting")
-		 (setq *pvs-context* (list *pvs-version*))
-		 (write-context))
-		(t ;;(same-major-version-number (car context) *pvs-version*)
-		 ;; Hopefully we are backward compatible between versions
-		 ;; 3 and 4.
-		 (setq *pvs-context* context)
-		 (setf (cadr *pvs-context*)
-		       (delete "PVSio/"
-			       (delete "Manip/"
-				       (delete "Field/" (cadr *pvs-context*)
-					       :test #'string=)
-				       :test #'string=)
-			       :test #'string=))
-		 (cond ((and (listp (cadr context))
-			     (listp (caddr context))
-			     (every #'context-entry-p (cdddr context)))
-			(load-prelude-libraries (cadr context))
-			(setq *default-decision-procedure*
-			      (or (when (listp (caddr context))
-				    (getf (caddr context)
-					  :default-decision-procedure))
-				  'shostak))
-			(dolist (ce (cdddr context))
-			  (unless (listp (ce-object-date ce))
-			    (setf (ce-object-date ce) nil))))
-		       ((every #'context-entry-p (cdr context))
-			(setq *pvs-context*
-			      (cons (car *pvs-context*)
-				    (cons nil
-					  (cons nil (cdr *pvs-context*))))))
-		       (t (pvs-message "PVS context is not quite right ~
+	(handler-case 
+	    (let ((context
+		   (if (with-open-file (in ctx-file)
+			 (and (char= (read-char in) #\()
+			      (char= (read-char in) #\")))
+		       (with-open-file (in ctx-file) (read in))
+		       (fetch-object-from-file ctx-file))))
+	      (cond ((duplicate-theory-entries?)
+		     (pvs-message "PVS context has duplicate entries - resetting")
+		     (setq *pvs-context* (list *pvs-version*))
+		     (write-context))
+		    (t ;;(same-major-version-number (car context) *pvs-version*)
+		     ;; Hopefully we are backward compatible between versions
+		     ;; 3 and 4.
+		     (setq *pvs-context* context)
+		     (setf (cadr *pvs-context*)
+			   (delete "PVSio/"
+				   (delete "Manip/"
+					   (delete "Field/" (cadr *pvs-context*)
+						   :test #'string=)
+					   :test #'string=)
+				   :test #'string=))
+		     (cond ((and (listp (cadr context))
+				 (listp (caddr context))
+				 (every #'context-entry-p (cdddr context)))
+			    (load-prelude-libraries (cadr context))
+			    (setq *default-decision-procedure*
+				  (or (when (listp (caddr context))
+					(getf (caddr context)
+					      :default-decision-procedure))
+				      'shostak))
+			    (dolist (ce (cdddr context))
+			      (unless (listp (ce-object-date ce))
+				(setf (ce-object-date ce) nil))))
+			   ((every #'context-entry-p (cdr context))
+			    (setq *pvs-context*
+				  (cons (car *pvs-context*)
+					(cons nil
+					      (cons nil (cdr *pvs-context*))))))
+			   (t (pvs-message "PVS context is not quite right ~
                                       - resetting")
-			  (pvs-log "  ~a" error)
-			  (setq *pvs-context* (list *pvs-version*)))))))
+			      (pvs-log "  ~a" error)
+			      (setq *pvs-context* (list *pvs-version*)))))))
+	  (error (err)
+	    (pvs-message "PVS context problem - resetting")
+	    (pvs-log "  ~a" err)
+	    (setq *pvs-context* (list *pvs-version*))
+	    (write-context)))
 	(setq *pvs-context* (list *pvs-version*))))
   nil)
 
