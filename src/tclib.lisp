@@ -1086,7 +1086,6 @@
 	(when refs
 	  (push (cons libid (car refs)) (current-library-alist)))
 	(or (car refs)
-	    (break "bad libref")
 	    (values nil (format nil "Library id ~a cannot be resolved to a library declaration, a subdirectory of the current context, a subdirectory of PVS_LIBRARY_PATH, nor a subdirectory of ~a/lib/"
 			  libid *pvs-path*))))))
 

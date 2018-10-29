@@ -533,7 +533,8 @@
   type-value)
 
 (defcl mapping (syntax)
-  (lhs :parse t)
+  (lhs ;; :type (or name mapping-lhs)
+       :parse t)
   (rhs :parse t)
   (kind :parse t :restore-as nil)
   (declared-type :parse t)
@@ -557,6 +558,8 @@
   (decl-formals :parse t :type list)
   (module :type datatype-or-module)
   (refers-to :type list)
+  type
+  declared-type
   generated-by
   generated)
 

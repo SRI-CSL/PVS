@@ -1236,55 +1236,55 @@
     ;;; Need to clear this hash or the known-subtypes table won't get
     ;;; updated properly - see add-to-known-subtypes.
     (clrhash *subtype-of-hash*)
-    (with-current-decl decl
-      (dolist (d (reverse rem-decls))
-	(typecase d
-	  (lib-decl
-	   (check-for-importing-conflicts d)
-	   (put-decl d))
-	  ((or mod-decl theory-abbreviation-decl formal-theory-decl)
-	   (put-decl d)
-	   (let* ((thname (theory-name d))
-		  (th (get-theory thname)))
-	     (add-usings-to-context* th thname))
-	   (setf (saved-context d) (copy-context *current-context*)))
-	  (importing
-	   (let* ((thname (theory-name d))
-		  (th (get-theory* (id thname)
-				   (or (library thname)
-				       (and (library-datatype-or-theory? theory)
-					    (car (rassoc (lib-ref theory) libalist
-							 :test #'string=)))))))
-	     (assert th)
-	     (add-usings-to-context* th thname))
-	   (setf (saved-context d) (copy-context *current-context*)))
-	  ;;(subtype-judgement (add-to-known-subtypes (subtype d) (type d)))
-	  (judgement (add-judgement-decl d t))
-	  (conversionminus-decl (disable-conversion d))
-	  (conversion-decl (push d (conversions *current-context*)))
-	  (auto-rewrite-minus-decl (push d (disabled-auto-rewrites
-					    *current-context*)))
-	  (auto-rewrite-decl (add-auto-rewrite-to-context  d))
-	  (type-def-decl (unless (enumtype? (type-expr d))
-			   (put-decl d)))
-	  (declaration (put-decl d))
-	  (datatype nil)))
-      (when (from-prelude? decl)
-	(let* ((prevp (cadr (memq theory
-				  (reverse *prelude-theories*))))
-	       (pths (if (datatype? prevp)
-			 (delete-if #'null
-			   (list (adt-theory prevp)
-				 (adt-map-theory prevp)
-				 (adt-reduce-theory prevp)))
-			 (if prevp
-			     (list prevp)
-			     (list theory)))))
-	  (dolist (pth pths)
-	    (setf (get-importings pth)
-		  (list (mk-modname (id pth)))))))
-      (update-context-importing-for-mapped-tcc decl))
     (setf (declaration *current-context*) decl)
+    (dolist (d (reverse rem-decls))
+      (typecase d
+	(lib-decl
+	 (check-for-importing-conflicts d)
+	 (put-decl d))
+	((or mod-decl theory-abbreviation-decl formal-theory-decl)
+	 (put-decl d)
+	 (let* ((thname (theory-name d))
+		(th (get-theory thname)))
+	   (add-usings-to-context* th thname))
+	 (setf (saved-context d) (copy-context *current-context*)))
+	(importing
+	 (let* ((thname (theory-name d))
+		(th (get-theory* (id thname)
+				 (or (library thname)
+				     (and (library-datatype-or-theory? theory)
+					  (car (rassoc (lib-ref theory) libalist
+						       :test #'string=)))))))
+	   (assert th)
+	   (add-usings-to-context* th thname))
+	 (setf (saved-context d) (copy-context *current-context*)))
+	;;(subtype-judgement (add-to-known-subtypes (subtype d) (type d)))
+	(judgement (add-judgement-decl d t))
+	(conversionminus-decl (disable-conversion d))
+	(conversion-decl (push d (conversions *current-context*)))
+	(auto-rewrite-minus-decl (push d (disabled-auto-rewrites
+					  *current-context*)))
+	(auto-rewrite-decl (add-auto-rewrite-to-context  d))
+	(type-def-decl (unless (enumtype? (type-expr d))
+			 (put-decl d)))
+	(decl-formal nil)
+	(declaration (put-decl d))
+	(datatype nil)))
+    (when (from-prelude? decl)
+      (let* ((prevp (cadr (memq theory
+				(reverse *prelude-theories*))))
+	     (pths (if (datatype? prevp)
+		       (delete-if #'null
+			 (list (adt-theory prevp)
+			       (adt-map-theory prevp)
+			       (adt-reduce-theory prevp)))
+		       (if prevp
+			   (list prevp)
+			   (list theory)))))
+	(dolist (pth pths)
+	  (setf (get-importings pth)
+		(list (mk-modname (id pth)))))))
+    (update-context-importing-for-mapped-tcc decl)
     *current-context*))
 
 (defmethod update-context-importing-for-mapped-tcc ((decl mapped-axiom-tcc))

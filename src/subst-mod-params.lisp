@@ -1081,77 +1081,59 @@
 
 (defmethod subst-mod-params* ((decl const-decl) modinst bindings)
   (with-slots (decl-formals formals declared-type type definition def-axiom) decl
-    (let ((map (find decl *smp-mappings*
-		     :key #'(lambda (m)
-			      (and (mapping-rename? m)
-				   (declaration (lhs m))))))
-	  ;; FIXME - This is overkill - but if 2 different LHS mappings map
-	  ;; to the same RHS, the cache will give the wrong answer, and this
-	  ;; is a quick fix.  See Cesar/2018-09-12/library4/bigops.pvs
-	  (*subst-mod-params-cache* (make-pvs-hash-table :strong-eq? t))
-	  (*subst-mod-params-eq-cache* (make-hash-table :test 'eq)))
-      (cond ((mapping-rename? map)
+    (let ((mapping (find decl *smp-mappings* :key #'lhs :test #'same-declaration)))
+      (cond ((mapping-rename? mapping)
 	     ;; Reuse the declaration created in the rhs
-	     (assert (resolution (expr (rhs map))))
-	     (let ((rdecl (declaration (expr (rhs map)))))
+	     (assert (resolution (expr (rhs mapping))))
+	     (let ((rdecl (declaration (expr (rhs mapping))))
+		   ;; FIXME - This is overkill - but if 2 different LHS mappings map
+		   ;; to the same RHS, the cache will give the wrong answer, and this
+		   ;; is a quick fix.  See Cesar/2018-09-12/library4/bigops.pvs
+		   (*subst-mod-params-cache* (make-pvs-hash-table :strong-eq? t))
+		   (*subst-mod-params-eq-cache* (make-hash-table :test 'eq)))
 	       (setf (formals rdecl) (subst-mod-params* formals modinst bindings))
 	       (setf (type rdecl) (subst-mod-params* type modinst bindings))
 	       (setf (declared-type rdecl) (subst-mod-params* declared-type modinst bindings))
 	       (setf (semi rdecl) t)
 	       rdecl))
-	    ((let ((map (assoc decl bindings :key #'declaration)))
-	       (and map
-		    ;; If the rhs is a name-expr with a definition, we use that
-		    ;; for the new declaration, otherwise the rhs expr is used
-		    ;; directly.
-		    (multiple-value-bind (dfmls dacts dthinst)
-			(new-decl-formals decl)
-		      (let ((ndecl (copy decl
-				     :decl-formals dfmls
-				     :module (current-theory)
-				     :generated-by decl
-				     :semi t)))
-			(dolist (dfml dfmls)
-			  (setf (associated-decl dfml) ndecl
-				(module dfml) (current-theory)))
-			(with-current-decl ndecl
-			  (let* ((mexpr (expr (cdr map)))
-				 (mdecl (when (name-expr? mexpr) (declaration mexpr)))
-				 (ldecl (find-if #'mapped-const-decl? (generated decl)))
-				 ;; We will either have mdef, in which case we use nformals
-				 ;; Or we just use mexpr
-				 (mthinst (when (name-expr? mexpr) (module-instance mexpr)))
-				 (dbindings (append (pairlis (decl-formals decl) dacts)
-						    bindings))
-				 (lbindings (if ldecl
-						(append (pairlis (decl-formals ldecl) dacts)
-							dbindings)
-						dbindings))
-				 (mbindings (if mdecl
-						(append (pairlis (decl-formals mdecl) dacts)
-							lbindings)
-						lbindings))
-				 (nmodinst (copy modinst :dactuals dacts))
-				 (nformals (when mdecl
-					     (subst-mod-params* (formals mdecl)
-								nmodinst mbindings)))
-				 (ndef (subst-mod-params* (or (and mdecl
-								   (definition mdecl))
-							      mexpr)
-							  nmodinst mbindings))
-				 (ntype (subst-mod-params* type nmodinst mbindings)))
-			    (assert (fully-instantiated? ntype))
-			    (assert (fully-instantiated? nformals))
-			    (assert (fully-instantiated? ndef))
-			    #+pvsdebug
-			    (assert (or (null ndef)
-					(every #'(lambda (fp) (memq fp dfmls)) (free-params ndef))))
-			    (setf (formals ndecl) nformals)
-			    (setf (definition ndecl) ndef)
-			    (setf (type ndecl) ntype)
-			    (setf (declared-type ndecl)
-				  (subst-mod-params* declared-type modinst mbindings))
-			    ndecl)))))))
+	    (mapping
+	     (let* ((map (assoc decl bindings :key #'declaration))
+		    ;; FIXME - This is overkill - but if 2 different LHS mappings map
+		    ;; to the same RHS, the cache will give the wrong answer, and this
+		    ;; is a quick fix.  See Cesar/2018-09-12/library4/bigops.pvs
+		    (*subst-mod-params-cache* (make-pvs-hash-table :strong-eq? t))
+		    (*subst-mod-params-eq-cache* (make-hash-table :test 'eq)))
+	       (assert map)
+	       (multiple-value-bind (dfmls dacts)
+		   (new-decl-formals decl)
+		 (let ((ndecl (copy decl
+				:decl-formals dfmls
+				:module (current-theory)
+				:generated-by decl
+				:semi t)))
+		   (dolist (dfml dfmls)
+		     (setf (associated-decl dfml) ndecl
+			   (module dfml) (current-theory)))
+		   (with-current-decl ndecl
+		     (let* ((mbindings (append (pairlis (decl-formals mapping) dacts)
+					       bindings))
+			    (nmodinst (copy modinst :dactuals dacts))
+			    (ltype (if (mapping-lhs? (lhs mapping))
+				       (type (lhs mapping))
+				       (type (resolution (lhs mapping)))))
+			    (ntype (subst-mod-params* ltype nmodinst mbindings))
+			    (rexpr (expr (rhs mapping)))
+			    (ndef (subst-mod-params* rexpr nmodinst mbindings)))
+		       (assert (fully-instantiated? ntype))
+		       (assert (fully-instantiated? ndef))
+		       #+pvsdebug
+		       (assert (or (null ndef)
+				   (every #'(lambda (fp) (memq fp dfmls)) (free-params ndef))))
+		       (setf (type ndecl) ntype)
+		       (setf (definition ndecl) ndef)
+		       ;; (setf (declared-type ndecl)
+		       ;; 	  (subst-mod-params* declared-type modinst mbindings))
+		       ndecl))))))
 	    (t (multiple-value-bind (dfmls dacts)
 		   (new-decl-formals decl)
 		 (let ((ndecl (copy decl
@@ -2210,7 +2192,9 @@
 						      '(|equalities| |notequal|))
 					    (find-supertype
 					     (type-value (car nacts)))))
-				  (imps (get-importings (module (declaration res))))
+				  ;;(imps (get-importings (module (declaration res))))
+				  (imps (gethash (module (declaration res))
+						 (lhash-table (current-using-hash))))
 				  (imp-mi (cond ((null imps) mi)
 						((cdr imps)
 						 (if (some #'(lambda (imp) (tc-eq imp mi)) imps)

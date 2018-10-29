@@ -300,11 +300,11 @@
 ;; (defmethod json:encode-json ((obj syntax) &optional (stream *json-output*))
 ;;   (json:encode-json (list "foo") stream))
 
-(defun json::write-json-chars (s stream)
-  "Overrides the function in encoder.lisp, which tries to go
-char-by-char, breaking Unicode of more than two bytes."
-  (write-json-escaped-pieces s stream)
-  nil)
+;; (defun json::write-json-chars (s stream)
+;;   "Overrides the function in encoder.lisp, which tries to go
+;; char-by-char, breaking Unicode of more than two bytes."
+;;   (write-json-escaped-pieces s stream)
+;;   nil)
 
 (defparameter *json-lisp-escaped-chars*
   '((#\" . #\")

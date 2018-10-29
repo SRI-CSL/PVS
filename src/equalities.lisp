@@ -1160,13 +1160,9 @@
 	     ;;(tc-eq (module-instance atype) (module-instance etype))
 	     (or (null a1)
 		 (null a2)
-		 (actuals-are-not-in-context a2)
-		 (actuals-are-not-in-context a1)
 		 (compatible?* a1 a2))
 	     (or (null da1)
 		 (null da2)
-		 (actuals-are-not-in-context da2)
-		 (actuals-are-not-in-context da1)
 		 (compatible?* da1 da2))))))
 
 (defmethod compatible?* ((atype type-name) etype)
@@ -1187,15 +1183,6 @@
   (unless (or *strong-tc-eq-flag*
 	      (type-var? type-name))
     (formal-not-in-context? (declaration type-name))))
-
-(defun actuals-are-not-in-context (actuals)
-  (unless *strong-tc-eq-flag*
-    (actuals-are-not-in-context* actuals)))
-
-(defun actuals-are-not-in-context* (actuals)
-  (or (null actuals)
-      (and (formals-not-in-context (car actuals))
-	   (actuals-are-not-in-context* (cdr actuals)))))
 
 (defmethod compatible?* ((atype type-var) (etype dep-binding))
   (compatible?* atype (type etype)))
@@ -1364,13 +1351,9 @@
 	     ;;(tc-eq (module-instance atype) (module-instance etype))
 	     (or (null a1)
 		 (null a2)
-		 (actuals-are-not-in-context a2)
-		 (actuals-are-not-in-context a1)
 		 (strict-compatible?* a1 a2 bindings))
 	     (or (null da1)
 		 (null da2)
-		 (actuals-are-not-in-context da2)
-		 (actuals-are-not-in-context da1)
 		 (strict-compatible?* da1 da2 bindings))))))
 
 (defmethod strict-compatible?* ((l1 list) (l2 list) bindings)

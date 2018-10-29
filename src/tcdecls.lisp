@@ -634,6 +634,8 @@
 	"Identifier ~a is already in use as a theory" (id decl))))
   (let ((*generate-tccs* 'none))
     (typecheck* (modname decl) nil nil nil))
+  ;; Note that this updates the declarations-hash, before creating the
+  ;; inlined theory.
   (typecheck-using (modname decl))
   (typecheck-inlined-theory decl)
   (unless (fully-instantiated? (modname decl))
@@ -652,26 +654,26 @@
 	       (eq (id (theory-name thdecl)) (id (current-theory))))
       (type-error (theory-name thdecl)
 	"Formal theory declarations may not refer to the containing theory"))
-    (multiple-value-bind (thname theory)
-	(expanded-theory-name theory-name)
-      (let* ((tgt-name (target thname))
-	     (tgt-theory (when tgt-name (get-typechecked-theory tgt-name))))
-	(inlined-theory-info thdecl theory thname)
-	(let* ((mappings (determine-implicit-mappings
-			  theory thname tgt-name tgt-theory))
-	       (full-thname (lcopy thname :mappings mappings :target nil)))
-	  (when tgt-theory
-	    (typecheck-using tgt-name))
-	  (set-type-actuals-and-maps full-thname theory)
-	  ;; (when (mappings full-thname)
-	  ;;   (unless (fully-instantiated? full-thname)
-	  ;;     (type-error theory-name
-	  ;; 	"Theory name ~a must be fully instantiated when mappings are given"
-	  ;; 	theory-name)))
-	  (unless (fully-instantiated? full-thname)
-	    (type-error theory-name
-	      "Theory name ~a must be fully instantiated" theory-name))
-	  (typecheck-inlined-theory* theory full-thname thdecl))))))
+    (let* ((thname (expanded-theory-name theory-name))
+	   (theory (declaration thname))
+	   (tgt-name (target thname))
+	   (tgt-theory (when tgt-name (get-typechecked-theory tgt-name))))
+      (inlined-theory-info thdecl theory thname)
+      (let* ((mappings (determine-implicit-mappings
+			theory thname tgt-name tgt-theory))
+	     (full-thname (lcopy thname :mappings mappings :target nil)))
+	(when tgt-theory
+	  (typecheck-using tgt-name))
+	(set-type-actuals-and-maps full-thname theory)
+	;; (when (mappings full-thname)
+	;;   (unless (fully-instantiated? full-thname)
+	;;     (type-error theory-name
+	;; 	"Theory name ~a must be fully instantiated when mappings are given"
+	;; 	theory-name)))
+	(unless (fully-instantiated? full-thname)
+	  (type-error theory-name
+	    "Theory name ~a must be fully instantiated" theory-name))
+	(typecheck-inlined-theory* theory full-thname thdecl)))))
 
 (defun inlined-theory-info (thdecl theory thname)
   (let ((abbr-info
@@ -710,15 +712,32 @@
   ;; If no error from typecheck*, then res should be a singleton
   ;; In the above, it would be B[int].A1[int]{{assn2}}
   (assert (resolution thname))
-  (if (datatype-or-module? (declaration thname))
-      (values thname (declaration thname))
-      (let ((next-thname (theory-name (declaration thname))))
-	(expanded-theory-name
-	 (mk-modname (id next-thname)
-	   (actuals (module-instance next-thname))
-	   (library (module-instance next-thname))
-	   (append (mappings next-thname)
-		   (mappings (module-instance thname))))))))
+  (expanded-theory-name* (declaration thname) thname))
+
+(defmethod expanded-theory-name* ((thref datatype-or-module) thname)
+  (assert (eq (declaration thname) thref))
+  thname)
+
+(defmethod expanded-theory-name* ((thref theory-reference) thname)
+  (let* ((next-thname (theory-name thref))
+	 (rmappings (create-new-lhs-decls (mappings thname) next-thname))
+	 (nmappings (append (mappings next-thname) rmappings)))
+    (expanded-theory-name
+     (lcopy next-thname :mappings nmappings))))
+
+;;; From expanded-theory-name*; given th{{...}}, thname is the declaration
+(defun create-new-lhs-decls (mappings thname)
+  (let* ((thref (declaration thname))
+	 (thinst (lcopy thname :mappings nil))
+	 (decls (interpretable-declarations thref)))
+    (mapcan #'(lambda (map)
+		(let* ((decl (find (lhs map) decls :test #'same-id))
+		       (nres (when decl (make-resolution decl thinst))))
+		  (unless decl (break "No match for ~a" map))
+		  (when decl
+		    (list (copy map :lhs (copy (lhs map)
+					   :resolutions (list nres)))))))
+      mappings)))
 
 ;; (defun get-named-theory (theory-name)
 ;;   (or (get-theory theory-name)

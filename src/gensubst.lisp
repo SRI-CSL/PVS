@@ -643,7 +643,9 @@
 			(and (name-expr? (expr act))
 			     (module? (declaration (expr act)))))
 		    nexpr
-		    (pseudo-normalize nexpr))))))
+		    (pseudo-normalize nexpr))
+	  ;;'type-value (unless *parsing-or-unparsing* (type-value act))
+	  ))))
 
 (defmethod gensubst* ((name modname) substfn testfn)
   (let ((nacts (gensubst* (actuals name) substfn testfn))
@@ -1149,10 +1151,10 @@
       'expression (copy-untyped* expression))))
 
 (defmethod copy-untyped* ((ex actual))
-  (with-slots (expr) ex
+  (with-slots (expr type-value) ex
     (copy ex
       'expr (copy-untyped* expr)
-      'type-value nil)))
+      'type-value (unless expr (copy-untyped* type-value)))))
 
 (defmethod copy-untyped* ((ex table-expr))
   (with-slots (row-expr col-expr row-headings col-headings table-entries) ex

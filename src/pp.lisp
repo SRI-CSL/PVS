@@ -3122,8 +3122,8 @@ then uses unpindent* to add the indent to each line"
 	    (pprint-newline :fill)))))
 
 (defmethod pp* ((act actual))
-  (with-slots (expr) act
-    (pp* expr)))
+  (with-slots (expr type-value) act
+    (pp* (or type-value expr))))
 
 ;;; Utility functions for unparsing
 

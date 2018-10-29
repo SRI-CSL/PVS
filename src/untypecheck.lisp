@@ -793,6 +793,7 @@
   nil)
 
 (defmethod untypecheck* ((act actual))
+  (untypecheck* (expr act))
   (setf (type-value act) nil)
   nil)
 

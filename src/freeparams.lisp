@@ -559,10 +559,7 @@
       (free-params* (lhs decl) (free-params* (rhs decl) frees))))
 
 (defmethod free-params* ((act actual) frees)
-  (with-slots (expr type-value) act
-    (if type-value
-	(free-params* type-value frees)
-	(free-params* expr frees))))
+  (free-params* (actual-value act) frees))
 
 (defmethod free-params* ((s symbol) frees)
   frees)

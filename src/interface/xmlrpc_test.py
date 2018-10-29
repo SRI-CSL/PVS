@@ -13,7 +13,7 @@ The advantage of using XML-RPC is that it is ubiquitous.
 
 import sys
 import os
-import wx
+# import wx
 import json
 import xmlrpclib
 import threading
@@ -45,7 +45,7 @@ class PVS_XMLRPC(object):
 
     def __init__(self, host='localhost', port=22335):
         # Create server
-        print 'Initializing gui_server with ({0}, {1})'.format(host,port)
+        print('Initializing gui_server with ({0}, {1})'.format(host,port))
         self.ctr = 0
         self.gui_url = 'http://{0}:{1}/RPC2'.format(host, port)
         self.gui_server = SimpleXMLRPCServer((host, port),
@@ -70,7 +70,7 @@ class PVS_XMLRPC(object):
         else:
             request = {'method': method, 'params': params, 'id': reqid}
         result_str = self.pvs_proxy.pvs.request(json.dumps(request), self.gui_url)
-        # print 'result_str = {0}'.format(result_str)
+        # print('result_str = {0}'.format(result_str))
         result = json.loads(result_str)
         return result
 
@@ -116,7 +116,7 @@ class PVS_XMLRPC(object):
             params = []
         if method in self.json_methods:
             try:
-                print '\nCalling method {}\n'.format(method)
+                print('\nCalling method {}\n'.format(method))
                 mthd = self.json_methods[method]
                 result = self.json_methods[method](*params)
                 if id is not None:

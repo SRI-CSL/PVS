@@ -283,6 +283,38 @@
 		 (setq list-ex (args2 list-ex))))
     arr))
 
+(defvar *mappings-formals* nil)
+
+(defmethod store-object* :around ((obj mapping-with-formals))
+  (with-slots (place lhs rhs kind declared-type type mapped-decl formals)
+      obj
+    (reserve-space 9
+      (push-word (store-obj 'mapping-with-formals))
+      (push-word (store-obj formals))
+      (let ((*mappings-formals* (append formals *mappings-formals*)))
+	(push-word (store-obj place))
+	(push-word (store-obj lhs))
+	(push-word (store-obj rhs))
+	(push-word (store-obj kind))
+	(push-word (store-obj declared-type))
+	(push-word (store-obj type))
+	(push-word (store-obj mapped-decl))))))
+
+(defmethod update-fetched ((obj mapping-with-formals))
+  (with-slots (place lhs rhs kind declared-type type mapped-decl
+                     formals pvs-sxhash-value)
+    obj
+    (setf formals (fetch-obj (stored-word 1)))
+    (let ((*mappings-formals* (append formals *mappings-formals*)))
+      (setf place (fetch-obj (stored-word 2)))
+      (setf lhs (fetch-obj (stored-word 3)))
+      (setf rhs (fetch-obj (stored-word 4)))
+      (setf kind (fetch-obj (stored-word 5)))
+      (setf declared-type (fetch-obj (stored-word 6)))
+      (setf type (fetch-obj (stored-word 7)))
+      (setf mapped-decl (fetch-obj (stored-word 8)))
+      (setf pvs-sxhash-value nil))))
+
 (defmethod store-object* :around ((obj resolution))
   (with-slots (declaration module-instance type) obj
     (reserve-space 4
@@ -341,7 +373,7 @@
     (assert *saving-theory*)
     (if (and module
 	     (not (eq module *saving-theory*))
-	     (not (typep obj 'skolem-const-decl)))
+	     (not (typep obj '(or skolem-const-decl decl-formal))))
 	(if (external-library-reference? module)
 	    (reserve-space 4
 	      (push-word (store-obj 'decllibref))
@@ -351,6 +383,14 @@
 	    (store-declref obj))
 	(let ((*saving-declaration* obj))
 	  (call-next-method)))))
+
+(defmethod store-object* :around ((obj decl-formal))
+  (let ((pos (position obj *mappings-formals*)))
+    (if pos
+	(reserve-space 4
+	  (push-word (store-obj 'declformal-declref))
+	  (push-word (store-obj pos)))
+	(call-next-method))))
 
 (defun store-declref (obj)
   (let ((module (module obj)))
@@ -374,17 +414,6 @@
        (reserve-space 2
 	 (push-word (store-obj 'number-declref))
 	 (push-word (store-obj (id obj)))))
-      (decl-formal
-       (let* ((adecl (associated-decl obj))
-	      (apos (position adecl (all-decls module)))
-	      (fpos (position obj (decl-formals adecl))))
-	 (assert apos () "no apos?")
-	 (assert fpos () "no fpos?")
-	 (reserve-space 4
-	   (push-word (store-obj 'declformal-declref))
-	   (push-word (store-obj (id module)))
-	   (push-word apos)
-	   (push-word fpos))))
       (t (let ((dpos (position obj (all-decls module))))
 	   (assert dpos () "no dpos?")
 	   (reserve-space 3
@@ -632,20 +661,11 @@
 
 (setf (get 'declformal-declref 'fetcher) 'fetch-declformal-declref)
 (defun fetch-declformal-declref ()
-  ;; modid, associated-decl pos, formal pos
-  (let* ((mod-name (fetch-obj (stored-word 1)))
-	 (theory (get-theory mod-name)))
-    (unless theory
-      (error "Attempt to fetch declaration from unknown theory ~s" mod-name))
-    (let* ((adecl-pos (stored-word 2))
-	   (adecl (nth adecl-pos (all-decls theory))))
-      (unless adecl
-	(error "Associated declaration was not found"))
-      (let* ((fdecl-pos (stored-word 3))
-	     (fdecl (nth fdecl-pos (decl-formals adecl))))
-	(unless fdecl
-	  (error "Decl formal was not found"))
-	fdecl))))
+  (let* ((fdecl-pos (fetch-obj (stored-word 1)))
+	 (fdecl (nth fdecl-pos *mappings-formals*)))
+    (unless fdecl
+      (error "Decl formal was not found"))
+    fdecl))
 
 (setf (get 'decllibref 'fetcher) 'fetch-decllibref)
 (defun fetch-decllibref ()

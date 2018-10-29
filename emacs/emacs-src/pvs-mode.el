@@ -127,6 +127,7 @@
   :syntax-table pvs-mode-syntax-table
   :after-hook 'pvs-mode-hook
   ;; (setq-local indent-line-function #'pvs-indent-line)
+  (setq-local electric-indent-inhibit t)
   (setq-local comment-start "%")
   (setq-local comment-end "")
   (setq-local comment-start-skip "%+ *")
@@ -200,6 +201,8 @@
   (goto-char (point-min)))
 
 ;;; Header line
+;;; label prev-cmd num-left
+;;; foo.1 (expand "foo") 3
 
 ;; (defun pvs-header-line ()
 ;;   (interactive)

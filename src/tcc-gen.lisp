@@ -1306,6 +1306,12 @@
   (append (collect-mapping-axioms* (mappings thinst))
 	  (remove-if-not #'axiom? (all-decls theory))))
 
+(defmethod collect-mapping-axioms (thinst (decl mod-decl))
+  (assert (fully-instantiated? thinst))
+  (append (collect-mapping-axioms* (mappings thinst))
+	  ;;(remove-if-not #'axiom? (generated decl))
+	  ))
+
 (defmethod collect-mapping-axioms (thinst (decl theory-reference))
   (assert (fully-instantiated? thinst))
   (error "Need to fix this - please send your PVS specs to pvs-bugs@csl.sri.com"))
