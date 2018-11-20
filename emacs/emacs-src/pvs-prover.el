@@ -94,7 +94,7 @@ prover to overwrite it at the end of the proof session."
 	  ((member kind '(ppe tccs))
 	   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" fname)
 				      nil 'tc nil)
-	     (error "%s is not typechecked" fname))))
+	     (error "%s needs (re)typechecking" fname))))
     (unless pvs-error
       (pvs-prove-formula fref rerun nil pvs-x-show-proofs)
       (unless pvs-error
