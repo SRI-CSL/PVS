@@ -151,9 +151,39 @@
 
 (defvar *tc-match-boundvars* nil) ;;NSH: see below.
 
+(defvar *tc-matching-domains* nil)
+
+(defvar *tc-match-fixed-bindings* nil)
+
 (defun find-compatible-binding (types formals binding)
-  (let ((*tc-strict-matches* nil))
-    (find-compatible-binding* types formals binding)))
+  (let* ((*tc-strict-matches* nil)
+	 (dbindings (tc-match-domains types formals (copy-tree binding))))
+    ;; note that tc-match-domains doesn't check for consistent bindings;
+    ;; still need to run find-compatible-binding* over the whole thing but
+    ;; we make sure bindings set during tc-match-domain are not allowed to
+    ;; change.
+    (let ((*tc-match-fixed-bindings*
+	   (delete-if-not #'cdr dbindings)))
+      (find-compatible-binding* types formals binding))))
+
+(defun external-formal-reference? (obj)
+  (some #'(lambda (fp)
+	    (and (not (memq fp (formals-sans-usings (current-theory))))
+		 (not (memq fp (decl-formals (current-declaration))))))
+	(free-params obj)))
+
+(defun tc-match-domains (t1 t2 bindings)
+  (let ((*tc-matching-domains* t)
+	(dom-pairs (collect-domain-types t1 t2)))
+    (values (tc-match-domains* dom-pairs bindings)
+	    dom-pairs)))
+
+(defun tc-match-domains* (dom-pairs bindings)
+  (if (null dom-pairs)
+      bindings
+      (let ((nbindings (tc-match* (caar dom-pairs) (cdar dom-pairs) bindings)))
+	(when nbindings
+	  (tc-match-domains* (cdr dom-pairs) nbindings)))))
 
 (defun find-compatible-binding* (types formals binding)
   (if (or (null types) (null binding))
@@ -179,11 +209,12 @@
     ;; This assertion is not true in general - conversion declarations may
     ;; have free params that do not belong to the theory in which it was
     ;; declared.
-    ;; (assert (every #'(lambda (b) (formal-not-in-context? (car b))) bindings))
+    #+badassert (assert (every #'(lambda (b) (formal-not-in-context? (car b))) bindings))
     (let* ((*tc-strict-matches* strict-matches)
-	   (nbindings (tc-match* t1 t2 bindings)))
-      (values nbindings
-	      *tc-strict-matches*))))
+	   (dbindings (tc-match-domains t1 t2 (copy-tree bindings))))
+      (let* ((*tc-match-fixed-bindings* (delete-if-not #'cdr dbindings))
+	     (nbindings (tc-match* t1 t2 bindings)))
+	(values nbindings *tc-strict-matches*)))))
 
 ;;; Don't call this with each tc-match, as it's possible to compose tc-matches, as
 ;;; in instantiate-operator-type.
@@ -312,31 +343,43 @@ returns the updated bindings."
   (if (tc-eq arg barg)
       bindings
       (when (compatible? arg barg)
-	(let* ((ainst? (fully-instantiated? arg))
-	       (binst? (fully-instantiated? barg))
-	       (iarg (if (or ainst? (not binst?))
-			 arg
-			 (or (get-tc-match-instance barg arg)
-			     arg)))
-	       (ibarg (if (or binst? (not ainst?))
-			  barg
-			  (or (get-tc-match-instance arg barg)
-			      barg)))
-	       (dtype (if (or (fully-instantiated? ibarg)
-			      (not (fully-instantiated? iarg)))
-			  (compatible-type ibarg iarg)
-			  (compatible-type iarg ibarg))))
-	  (when dtype
-	    (unless (or (tc-eq dtype barg)
-			(and (member barg *tc-strict-matches* :test #'tc-eq)
-			     ;; This is suspicious - check
-			     (or (has-type-vars? arg)
-				 (not (has-type-vars? barg)))
-			     (or binst? (not ainst?))))
-	      ;; (when (member barg *tc-strict-matches* :test #'tc-eq)
-	      ;; 	(break "check this"))
-	      (tc-match-set-binding binding dtype))
-	    bindings)))))
+	(cond (*tc-matching-domains*
+	       (if (subtype-of? barg arg)
+		   (tc-match-set-binding binding barg)
+		   (tc-match-set-binding binding arg))
+	       bindings)
+	      ((assq (car binding) *tc-match-fixed-bindings*)
+	       (let ((fixed (cdr (assq (car binding) *tc-match-fixed-bindings*))))
+		 (if (tc-eq fixed barg)
+		     bindings
+		     (when (compatible? fixed barg)
+		       (tc-match-set-binding binding fixed)
+		       bindings))))
+	      (t (let* ((ainst? (fully-instantiated? arg))
+			(binst? (fully-instantiated? barg))
+			(iarg (if (or ainst? (not binst?))
+				  arg
+				  (or (get-tc-match-instance barg arg)
+				      arg)))
+			(ibarg (if (or binst? (not ainst?))
+				   barg
+				   (or (get-tc-match-instance arg barg)
+				       barg)))
+			(dtype (if (or (fully-instantiated? ibarg)
+				       (not (fully-instantiated? iarg)))
+				   (compatible-type ibarg iarg)
+				   (compatible-type iarg ibarg))))
+		   (when dtype
+		     ;; (when (member barg *tc-strict-matches* :test #'tc-eq)
+		     ;;   (break "check on *tc-strict-matches*"))
+		     (unless (or (tc-eq dtype barg)
+				 (and (member barg *tc-strict-matches* :test #'tc-eq)
+				      ;; This is suspicious - check
+				      (or (has-type-vars? arg)
+					  (not (has-type-vars? barg)))
+				      (or binst? (not ainst?))))
+		       (tc-match-set-binding binding dtype))
+		     bindings)))))))
 
 ;;; Assuming either atype or etype is fully-instantiated,
 ;;; Instantiates the other, if necessary, and returns the compatible-type
@@ -1189,3 +1232,70 @@ returns the updated bindings."
 		     (pushnew (declaration ex) formals)))
 	       expr)
     (mapcar #'(lambda (f) (list (id f))) formals)))
+
+(defun collect-domain-types (arg farg)
+  (collect-domain-types* arg farg nil))
+
+(defmethod collect-domain-types* ((arg funtype) (farg funtype) domain-pairs)
+  (acons (domain arg) (domain farg) domain-pairs))
+
+(defmethod collect-domain-types* ((arg subtype) (farg subtype) domain-pairs)
+  (let* ((asuptype1 (find-adt-supertype arg))
+	 (asuptype2 (find-adt-supertype farg))
+	 (suptype1 (if (subtype? asuptype1) (find-supertype arg) asuptype1))
+	 (suptype2 (if (subtype? asuptype2) (find-supertype farg) asuptype2)))
+    (collect-domain-types* suptype1 suptype2 domain-pairs)))
+
+(defmethod collect-domain-types* ((arg subtype) (farg type-expr) domain-pairs)
+  (collect-domain-types* (supertype arg) farg domain-pairs))
+
+(defmethod collect-domain-types* ((arg type-expr) (farg subtype) domain-pairs)
+  (collect-domain-types* arg (supertype farg) domain-pairs))
+  
+(defmethod collect-domain-types* ((arg tuple-or-struct-subtype)
+				  (farg tuple-or-struct-subtype) domain-pairs)
+  (collect-domain-types* (types arg) (types farg) domain-pairs))
+
+(defmethod collect-domain-types* ((arg cotupletype) (farg cotupletype) domain-pairs)
+  (collect-domain-types* (types arg) (types farg) domain-pairs))
+
+(defmethod collect-domain-types* ((arg list) (farg list) domain-pairs)
+  (if (or (null arg) (null farg))
+      domain-pairs
+      (collect-domain-types*
+       (cdr arg) (cdr farg)
+       (collect-domain-types* (car arg) (car farg) domain-pairs))))
+
+(defmethod collect-domain-types* ((arg record-or-struct-subtype)
+				  (farg record-or-struct-subtype) domain-pairs)
+  (collect-domain-field-types (fields arg) (fields farg) domain-pairs))
+
+(defun collect-domain-field-types (arg farg domain-pairs)
+  (if (or (null arg) (null farg))
+      domain-pairs
+      (let* ((fld1 (car arg))
+	     (fld2 (find (id fld1) farg :key #'id)))
+	(if fld2
+	    (collect-domain-field-types
+	     (cdr arg) (remove fld2 (cdr farg))
+	     (collect-domain-types* (type fld1) (type fld2) domain-pairs))
+	    (collect-domain-field-types
+	     (cdr arg) farg domain-pairs)))))
+
+(defmethod collect-domain-types* ((arg dep-binding) (farg type-expr) domain-pairs)
+  (collect-domain-types* (type arg) farg domain-pairs))
+
+(defmethod collect-domain-types* ((arg type-expr) (farg dep-binding) domain-pairs)
+  (collect-domain-types* arg (type farg) domain-pairs))
+
+(defmethod collect-domain-types* ((arg dep-binding) (farg dep-binding) domain-pairs)
+  (collect-domain-types* (type arg) (type farg) domain-pairs))
+
+(defmethod collect-domain-types* ((arg type-expr) (farg type-expr) domain-pairs)
+  domain-pairs)
+
+(defmethod collect-domain-types* ((arg expr) (farg expr) domain-pairs)
+  domain-pairs)
+
+(defmethod collect-domain-types* ((arg actual) (farg actual) domain-pairs)
+  domain-pairs)
