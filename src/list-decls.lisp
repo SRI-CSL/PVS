@@ -796,7 +796,7 @@
     (json:encode-json-to-string info)))
 
 (defun collect-pvs-file-decls-info (pvs-file)
-  (if (string= pvs-file "prelude")
+  (if (member pvs-file '("prelude" "pvsio_prelude") :test #'string=)
       (collect-visible-decl-info *prelude-theories*)
       (let* ((file (make-specpath pvs-file))
 	     (theories (get-theories pvs-file))
