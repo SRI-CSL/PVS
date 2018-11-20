@@ -23,7 +23,7 @@
 (defvar *pvs-eval-do-timing* nil)
 (defvar *convert-back-to-pvs* nil)
 
-(defun generate-lisp-for-prelude (&optional force?)
+(defun generate-lisp-for-prelude ()
   (with-open-file (output (format nil "~a/lib/prelude.lisp" *pvs-path*)
 			  :direction :output
 			  :if-exists :supersede
@@ -32,7 +32,7 @@
     (format output "(in-package :pvs)~%")
     (load-pvs-attachments)
     (dolist (theory *prelude-theories*)
-      (pvs2cl-theory theory force?)
+      (pvs2cl-theory theory)
       (dolist (decl (theory theory))
 	(when (and (const-decl? decl) (eval-info decl))
 	  (write-decl-symbol-table decl output)))
@@ -40,7 +40,7 @@
 	(when (and (const-decl? decl) (eval-info decl))
 	  (write-decl-defns decl output))))))
 
-(defun generate-lisp-for-pvs-file (filename &optional force?)
+(defun generate-lisp-for-pvs-file (filename)
   (let ((theories (cdr (gethash filename *pvs-files*))))
     (with-open-file (output (format nil "~a.lisp" filename)
 			    :direction :output
@@ -66,7 +66,7 @@
             datatypes.~%;;; For these functions, the mappings are given here.")
       (load-pvs-attachments)
       (dolist (theory theories)
-	(pvs2cl-theory theory force?))
+	(pvs2cl-theory theory))
       (dolist (theory theories)
 	(dolist (decl (theory theory))
 	  (when (and (const-decl? decl) (eval-info decl))
@@ -239,32 +239,29 @@
 			  (sixth raw-input) ;; all?
 			  (seventh raw-input) ;; verbose?
 			  (eighth raw-input)) ;; instance
-			 (multiple-value-bind (cl-input error)
-			     (catch 'undefined (pvs2cl tc-input))
-			   (when (eq cl-input 'cant-translate)
-			     (format t "~s could not be translated:~%~a" input error)
-			     (throw 'abort t))
+			 (let ((cl-input (pvs2cl tc-input)))
 			   (when *evaluator-debug*
 			     (format t "~a translates to~% ~s~%" tc-input cl-input))
-			   (multiple-value-bind (cl-eval error)
-			       (catch 'undefined
-				 (if *pvs-eval-do-timing*
-				     (time (eval cl-input))
-				     (eval cl-input)))
-			     (if (not error)
-				 (let ((clval (if *convert-back-to-pvs*
-						  (catch 'cant-translate
-						    (cl2pvs cl-eval (type tc-input)))
-						  cl-eval)))
-				   (format t "~%==> ~%")
-				   (cond ((and clval *convert-back-to-pvs*)
-					  (unparse clval))
-					 (t
-					  (when *convert-back-to-pvs*
-					    (format t "Result not ground.  Cannot convert back to PVS."))
-					  (format t "~%~a" cl-eval))))
-				 (format t "~%~a" error)))))
+			   (let* ((cl-eval (if *pvs-eval-do-timing*
+					       (time (eval cl-input))
+					       (eval cl-input)))
+				  (clval (if *convert-back-to-pvs*
+					     (cl2pvs cl-eval (type tc-input))
+					     cl-eval)))
+			     (format t "~%==> ~%")
+			     (cond ((and clval *convert-back-to-pvs*)
+				    (unparse clval))
+				   (t
+				    (when *convert-back-to-pvs*
+				      (format t "Result not ground.  Cannot convert back to PVS."))
+				    (format t "~%~a" cl-eval))))))
 		     t)
+		 (pvs2cl-error (condition)
+		   (format t "~%~a" condition)
+		   (throw 'abort t))
+		 (cl2pvs-error (condition)
+		   (format t "~%~a" condition)
+		   (throw 'abort t))
 		 (tcerror)))))))
     (when result
       (evaluate))))
@@ -275,29 +272,22 @@
     (dolist (tcc *tccforms*)
       (format t "~%~a TCC for ~a: ~a"
 	(tccinfo-kind tcc) (tccinfo-expr tcc) (tccinfo-formula tcc))
-      (multiple-value-bind (tcc-input error)
-	  (catch 'undefined (pvs2cl (tccinfo-formula tcc)))
-	(cond ((eq tcc-input 'cant-translate)
-	       (push tcc unproved)
-	       (format t "TCC could not be translated:~%~a" error))
-	      (t (when *evaluator-debug*
-		   (format t "~a translates to~% ~s~%"
-		     (tccinfo-formula tcc) tcc-input))
-		 (multiple-value-bind (tcc-eval error)
-		     (catch 'undefined (eval tcc-input))
-		   (cond ((not error)
-			  (let ((tccval (catch 'cant-translate
-					  (cl2pvs tcc-eval *boolean*))))
-			    (format t "~%==> ~%")
-			    (unparse tccval)
-			    (unless (tc-eq tccval *true*)
-			      (push tcc unproved))))
-			 ((eq tcc-eval 'cant-translate)
-			  (push tcc unproved)
-			  (format t "~%TCC could not be translated:~%~a"
-			    error))
-			 (t (format t "~%~a" error)
-			    (push tcc unproved))))))))
+      ;; Note that pvs2cl does not signal a groundeval error, it embeds
+      ;; code that signals when evaluated.
+      (let ((tcc-input (pvs2cl (tccinfo-formula tcc))))
+	(when *evaluator-debug*
+	  (format t "~a translates to~% ~s~%"
+	    (tccinfo-formula tcc) tcc-input))
+	(handler-case
+	    (let* ((tcc-eval (eval tcc-input))
+		   (tccval (cl2pvs tcc-eval *boolean*)))
+	      (format t "~%==> ~%")
+	      (unparse tccval)
+	      (unless (tc-eq tccval *true*)
+		(push tcc unproved)))
+	  (groundeval-error (condition)
+	    (format t "~%~a" condition)))
+	(push tcc unproved)))
     unproved))
 
 (defun evaluator-print-tccs (tccforms)
@@ -335,28 +325,27 @@
 	 (expr (pc-parse expr 'expr))
 	 (expr (pc-typecheck expr)))
     (with-open-file
-     (out filename
-	  :direction :output
-	  :if-exists :append
-	  :if-does-not-exist :create)
-     (load-pvs-attachments)
-     (format out "~%Evaluating: ~a" expr)
-;;NSH: can be turned on if TCCs must be printed.      
-;       (when *tccforms*
-; 	(format out "~%Generated TCCs: ")
-; 	(evaluator-print-tccs *tccforms*))
-      (multiple-value-bind (cl-input error)
-	  (catch 'undefined (pvs2cl expr))
-	(cond ((eq cl-input 'cant-translate)
-	       (format out "~%Expression ~s could not be translated: ~%~a"
-		 expr error))
-	      (t (multiple-value-bind (cl-eval error)
-		     (eval cl-input)
-		   (if (not error)
-		       (let ((pvsval (catch 'cant-translate
-				       (cl2pvs cl-eval (type expr)))))
-			 (cond (pvsval
-				(format out "~%Value: ~a~%~%" pvsval))
-			       (t (format out "~%Can't convert back to PVS.")
-				  (format out "Common Lisp value: ~s" cl-eval))))
-		       (format out "~%~a" error)))))))))
+	(out filename
+	     :direction :output
+	     :if-exists :append
+	     :if-does-not-exist :create)
+      (load-pvs-attachments)
+      (format out "~%Evaluating: ~a" expr)
+      ;;NSH: can be turned on if TCCs must be printed.      
+      ;; (when *tccforms*
+      ;;  (format out "~%Generated TCCs: ")
+      ;;  (evaluator-print-tccs *tccforms*))
+      (handler-case 
+	  (let* ((cl-input (pvs2cl expr))
+		 (cl-eval (eval cl-input))
+		 (pvsval (handler-case (cl2pvs cl-eval (type expr))
+			   ;; Handle here, so cl-eval is available
+			   (cl2pvs-error (condition)
+			     (format out "~%Can't convert back to PVS.")
+			     (format out "Common Lisp value: ~s" cl-eval)
+			     (format out "~%~a" error)
+			     :no-value))))
+	    (unless (eq pvsval :no-value)
+	      (format out "~%Value: ~a~%~%" pvsval)))
+	(groundeval-error (condition)
+	  (format t "~%~a" condition))))))

@@ -2134,9 +2134,10 @@
 			    (mk-ir-subrange new-low new-high)))))
 
 (defun pvseval-integer (expr)
-  (let ((expr-value (catch 'undefined (eval (pvs2cl expr)))))
-      (and (integerp expr-value) expr-value)))
-	  
+  (handler-case
+      (let ((expr-value (eval (pvs2cl expr))))
+	(and (integerp expr-value) expr-value))
+    (pvseval-error (condition) nil)))
 
 ;returns a pair of the lower and upper bound
 (defun pvs2ir-subrange-index (type)

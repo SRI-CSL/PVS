@@ -200,31 +200,23 @@ To change output prompt '~a':
       (when *evaluator-debug*
 	(format t "~%PVS expression ~a translates to Common Lisp expression:~%~a~%" 
 	  tc-input cl-input))
-      (multiple-value-bind 
-	    (cl-eval err)
-	  (catch 'undefined
-	    (progn ;;ignore-errors 
-	      (if *pvs-eval-do-timing*
-		  (time (eval cl-input))
-		  (eval cl-input))))
-	(when *evaluator-debug*
-	  (format t "~%Common Lisp expression ~a evaluates to:~%~a~%" cl-input cl-eval))
-	(cond ((and err (null cl-eval))
-	       (format t "~%Error: ~a" err))
-	      (err (format t "~%Error (~a): ~a" cl-eval err))
-	      ((eq cl-eval 'cant-translate)
-	       (format t "~%Error: Expression doesn't appear to be ground"))
-	      (*convert-back-to-pvs*
-	       (unless isvoid
-		 (let ((pvs-val 
-			(catch 'cant-translate (cl2pvs cl-eval (type tc-input)))))
-		   (if (expr? pvs-val)
-		       (progn 
-			 (format t *pvsio-promptout*)
-			 (force-output)
-			 (unparse pvs-val))
-		       (format t "~%Error: Result ~a is not ground" cl-eval)))))
-	      (t (format t "~a" cl-eval)))))
+      (handler-case
+	  (let ((cl-eval
+		 (progn ;;ignore-errors 
+		   (if *pvs-eval-do-timing*
+		       (time (eval cl-input))
+		       (eval cl-input)))))
+	    (when *evaluator-debug*
+	      (format t "~%Common Lisp expression ~a evaluates to:~%~a~%" cl-input cl-eval))
+	    (format t "~a" cl-eval)
+	    (when (and *convert-back-to-pvs* (not isvoid))
+	      (let ((pvs-val (cl2pvs cl-eval (type tc-input))))
+		(assert (expr? pvs-val))
+		(format t *pvsio-promptout*)
+		(force-output)
+		(unparse pvs-val))))
+	(groundeval-error (condition)
+	  (format t "~%~a" condition))))
     (format t "~%")))
 
 (defun read-pvsio (input-stream)
@@ -313,9 +305,11 @@ strings. "
 			   (definition (declaration nexpr))))
 		 (error "~a is not a defined constant" nexpr))
 		((not (eval-info (declaration nexpr)))
-		 (catch 'undefined (pvs2cl nexpr))
-		 (unless (eval-info (declaration nexpr))
-		   (error "~a could not be compiled" nexpr))))
+		 (handler-case
+		     (progn (pvs2cl nexpr)
+			    (assert (eval-info (declaration nexpr))))
+		   (pvseval-error (condition)
+		     (error "~a could not be compiled" nexpr)))))
 	  (let ((info-defs (eval-info-defs nexpr)))
 	    (when (null info-defs)
 	      (error "~a has not been compiled" nexpr))
@@ -455,9 +449,9 @@ strings. "
 			   (format t "~%~d[~a]: ~a" *pvstrace-level* ,kind pvs-appl)
 			   (incf *pvstrace-level*)
 			   (let* ((result (excl:call-next-fwrapper))
-				  (pvs-result (or (catch 'cant-translate
-						    (cl2pvs result rtype))
-						  "untranslatable result")))
+				  (pvs-result (handler-case (cl2pvs result rtype)
+						(cl2pvs-error (condition)
+						  "untranslatable result"))))
 			     (decf *pvstrace-level*)
 			     (format t "~%~d[~a]: ~a returns ~a"
 			       *pvstrace-level* ,kind ,nexpr pvs-result)
@@ -471,15 +465,19 @@ strings. "
   (if (null args)
       (values (nreverse pvs-args) rtype)
       (let* ((atype (domtype* (car atypes)))
-	     (pvs-arg (or (catch 'cant-translate
-			    (cl2pvs (car args) atype))
+	     ;; Basic exception handling, catches cl2pvs translation errors,
+	     ;; mostly things like closures, which can only be translated if
+	     ;; the domain is of a known finite bound.
+	     (pvs-arg (handler-case
+			  (cl2pvs (car args) atype)
+			(cl2pvs-error (condition)
 			  ;; Create a new skolem constant of this type
 			  ;; as a proxy for the real arg
 			  (or (cdr (assq (car args) *eval-untranslatable*))
 			      (let* ((nid (gentemp "cant_translate"))
 				     (nex (mk-name-expr nid)))
 				(push (cons (car args) nex) *eval-untranslatable*)
-				(makeskoconst nex atype *current-context*)))))
+				(makeskoconst nex atype *current-context*))))))
 	     (slist (when (dep-binding? (car atypes))
 		      (acons (car atypes) pvs-arg nil)))
 	     (stypes (if slist (substit (cdr atypes) slist) (cdr atypes)))

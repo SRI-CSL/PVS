@@ -20,7 +20,10 @@
 
 (in-package :pvs)
 
-(define-condition equality-unknown (simple-error)
+;;; The top-level condition for ground evaluator errors
+(define-condition groundeval-error (simple-error) ())
+
+(define-condition equality-unknown (groundeval-error)
   ((lhs :initarg :lhs :reader lhs)
    (rhs :initarg :rhs :reader rhs))
   (:report (lambda (condition stream)
@@ -188,8 +191,6 @@
 (defmacro |pvs__rational_pred| (x) `(rationalp ,x))
 (defmacro |pvs__integer_pred| (x) `(integerp ,x))
 
-(defmacro uninterpreted (str &rest args) `(throw 'undefined (format t ,str ,@args)))
-
 
 (defmacro project (index tuple)
   (let ((ind (1- index)))
@@ -322,9 +323,6 @@
 		  (vector-push-extend ,ii ,AA))
 		(setf (aref ,AA ,ii) ,vv))) ;;setf, otherwise.
        ,AA)))
-
-(defmacro trap-undefined (expr)
-  `(catch 'undefined ,expr))
 
 (defstruct pvs-array-closure
   size closure)

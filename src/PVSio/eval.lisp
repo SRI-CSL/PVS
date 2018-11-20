@@ -37,27 +37,15 @@
 	    (format t "~%Typechecking ~s produced TCCs:~%" expr)
 	    (evaluator-print-tccs *tccforms*)
 	    (error 'eval-error "Use option :safe? nil if TCCs are provable"))
-	  (let ((cl-input (catch 'uninterpreted (pvs2cl tc-input))))
-	    (when cl-input
-	      (multiple-value-bind 
-		    (cl-eval err)
-		  (catch 'undefined (ignore-errors (eval cl-input)))
-		(cond (err 
-		       (error 'eval-error err))
-		      ((and (null err) (eq cl-eval 'cant-translate))
-		       (error 'eval-error "Expression doesn't appear to be ground"))
-		      (t 
-		       (multiple-value-bind 
-			     (pvs-val err)
-			   (ignore-errors 
-			     (cl2pvs cl-eval (type tc-input)))
-			 (if (expr? pvs-val) pvs-val
-			     (error 'eval-error "Result ~a is not ground" cl-eval)))))))))
-      (pvsio-inprover (condition)
-	(format t "~%~a" condition))
-      (eval-error (condition)
-	(format t "~%~a" condition))
-      (tcerror ()))))
+	  (let* ((cl-input (handler-case (pvs2cl tc-input)
+			     (pvseval-error (condition) nil)))
+		 (cl-eval (eval cl-input))
+		 (pvs-val (cl2pvs cl-eval (type tc-input))))
+	    (assert (expr? pvs-val))
+	    pvs-val))
+      ;; At the moment, all errors simply print the condition, and evalexpr returns nil
+      (groundeval-error (condition) (format t "~%~a" condition))
+      (pvsio-inprover (condition) (format t "~%~a" condition)))))
 
 (defrule eval-expr (expr &optional safe? (auto? t) quiet?)
   (let ((e (extra-get-expr expr)))

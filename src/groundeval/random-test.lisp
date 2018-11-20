@@ -172,17 +172,14 @@
 		#'(lambda (e)
 		    (or (gethash e ht)
 			(let* ((dtype (domain (type expr)))
-			       (pe (catch 'cant-translate
-				     (cl2pvs e (type dtype)))))
-			  (cond (pe
-				 (typecheck pe :expected (type dtype))
-				 (let* ((ran (substit (range (type expr))
-					       (acons dtype pe nil)))
-					(pv (apply (random-generator ran)
-					      (cdr ex.i.d)))
-					(val (eval (pvs2cl pv))))
-				   (setf (gethash e ht) val)))
-				(t (error "Can't untranslate")))))))
+			       (pe (cl2pvs e (type dtype))))
+			  (typecheck pe :expected (type dtype))
+			  (let* ((ran (substit (range (type expr))
+					(acons dtype pe nil)))
+				 (pv (apply (random-generator ran)
+				       (cdr ex.i.d)))
+				 (val (eval (pvs2cl pv))))
+			    (setf (gethash e ht) val))))))
 	  (setf (symbol-value (id (car ex.i.d))) ht)
 	  (id expr))
 	(let ((gen (random-generator (range (type expr)))))
@@ -259,18 +256,11 @@
 	      (ground-number (car bds)) (ground-number (cdr bds)) ran i d))))
 	(t (let ((pairs (random-funtype-values (supertype dom) ran i d)))
 	     (remove-if #'(lambda (elt)
-			    (let ((pred (make!-application (predicate dom)
-					  (car elt))))
-			      (multiple-value-bind (stval error)
-				  (catch 'undefined (pvs2cl pred))
-				(when (eq stval 'cant-translate)
-				  (error "~s could not be translated:~%~a"
-					 pred error))
-				(multiple-value-bind (pval error)
-				    (catch 'undefined (eval stval))
-				  (when error
-				    (error "~%~a" error))
-				  (not pval)))))
+			    (let* ((pred (make!-application (predicate dom)
+					   (car elt)))
+				   (stval (pvs2cl pred))
+				   (pval (eval stval)))
+			      (not pval)))
 	       pairs)))))
 
 ;; (defmethod random-funtype-values ((dom dep-binding) ran i d)
@@ -334,17 +324,10 @@
 		       (error "Could not generate random element for subtype ~%~a of size ~d after ~d attempts"
 			 te i *random-subtype-gen-bound*))
 	     (let* ((stran (random-generator* (supertype te) i d))
-		    (pred (make!-application (predicate te) stran)))
-	       (multiple-value-bind (stval error)
-		   (catch 'undefined (pvs2cl pred))
-		 (when (eq stval 'cant-translate)
-		   (error "~s could not be translated:~%~a" pred error))
-		 (multiple-value-bind (pval error)
-		     (catch 'undefined (eval stval))
-		   (when error
-		     (error "~%~a" error))
-		   (when pval
-		     (return stran)))))))))
+		    (pred (make!-application (predicate te) stran))
+		    (stval (pvs2cl pred))
+		    (pval (eval stval)))
+	       (return stran))))))
 
 (defun available-random-generator (subtype i d)
   ;; Hook for specific random generators to be provided for subtypes.
@@ -541,62 +524,55 @@ The current theory may also be instantiated this way.")
 	      (subst (create-random-test-subst vars size dtsize))
 	      (sbody (substit body subst)))
 	 (when subst
-	   (multiple-value-bind (cl-input error)
-	       (catch 'undefined (pvs2cl sbody))
-	     (when (eq cl-input 'cant-translate)
-	       (format t "~s could not be translated:~%~a" expr error)
-	       (throw 'abort t))
-	     (when verbose?
-	       (format t "~%Testing ~{~a:=~a~^, ~}:"
-		 (mapcan #'(lambda (s)
-			     (let ((sk (rassoc (car s) skomap
-					       :key #'declaration))
-				   (lf (when (name-expr? (cdr s))
-					 (assoc (cdr s)
-						*lazy-random-functions*))))
-			       (list (if sk
-					 (id (car sk))
-					 (id (car s)))
-				     (if lf
-					 (lazy-function-values lf)
-					 (cdr s)))))
-		   subst)))
-	     (multiple-value-bind (cl-eval error)
-		 (ignore-lisp-errors (catch 'undefined (eval cl-input)))
-	       (if (not error)
-		   (let ((clval (catch 'cant-translate
-				  (cl2pvs cl-eval (type expr)))))
-		     (cond (clval
-			    (cond
-			     ((tc-eq clval *false*)
-			      (format t
-				  "~%The formula is falsified with the substitutions: ~{~% ~a ==> ~{~a~^, ~}~}"
-				(mapcan
-				    #'(lambda (s)
-					(let ((sk (rassoc (car s) skomap
-							  :key #'declaration))
-					      (lf (when (name-expr? (cdr s))
-						    (assoc (cdr s)
-							   *lazy-random-functions*))))
-					  (list (if sk
-						    (id (car sk))
-						    (id (car s)))
-						(if lf
-						    (lazy-function-values lf)
-						    (list (cdr s))))))
-				  subst))
-			      (unless all?
-				(setq terminated? t)
-				(return)))
-			     (verbose? (format t " Formula is valid"))))
-			   (t
-			    (format t "Result not ground.  Cannot convert back to PVS.")
-			    (format t "~%~a" cl-eval))))
-		   (format t "~%~a" error)))))))
-     (terminate-random-loop (fmt &rest args)
-			    (setq terminated? t)
-			    (format t "~%~?~%Terminating random test"
-			      fmt args)))
+	   (handler-case
+	       (let ((cl-input (pvs2cl sbody)))
+		 (when verbose?
+		   (format t "~%Testing ~{~a:=~a~^, ~}:"
+		     (mapcan #'(lambda (s)
+				 (let ((sk (rassoc (car s) skomap
+						   :key #'declaration))
+				       (lf (when (name-expr? (cdr s))
+					     (assoc (cdr s)
+						    *lazy-random-functions*))))
+				   (list (if sk
+					     (id (car sk))
+					     (id (car s)))
+					 (if lf
+					     (lazy-function-values lf)
+					     (cdr s)))))
+		       subst)))
+		 (let* ((cl-eval (eval cl-input))
+			(clval (cl2pvs cl-eval (type expr))))
+		   (cond
+		     ((tc-eq clval *false*)
+		      (format t
+			  "~%The formula is falsified with the substitutions: ~{~% ~a ==> ~{~a~^, ~}~}"
+			(mapcan
+			    #'(lambda (s)
+				(let ((sk (rassoc (car s) skomap
+						  :key #'declaration))
+				      (lf (when (name-expr? (cdr s))
+					    (assoc (cdr s)
+						   *lazy-random-functions*))))
+				  (list (if sk
+					    (id (car sk))
+					    (id (car s)))
+					(if lf
+					    (lazy-function-values lf)
+					    (list (cdr s))))))
+			  subst))
+		      (unless all?
+			(setq terminated? t)
+			(return)))
+		     (verbose? (format t " Formula is valid")))))
+	     (groundeval-error (condition)
+	       (format t "Result not ground.  Cannot convert back to PVS.")
+	       (format t "~%~a" cl-eval)
+	       (format t "~%~a" condition))))))
+      (terminate-random-loop (fmt &rest args)
+	(setq terminated? t)
+	(format t "~%~?~%Terminating random test"
+	  fmt args)))
     (unless terminated?
       (format t "~%No counter-examples found in ~d attempts" count))))
 

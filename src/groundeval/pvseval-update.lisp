@@ -26,10 +26,36 @@
   (let ((tc-expr (pc-typecheck (pc-parse expr 'expr)))
 	(cl-expr (let ((*destructive?* destructive?))
 		   (pvs2cl tc-expr)))
-	(val (time (catch 'undefined (eval cl-expr)))))
+	(val (time (handler-case (eval cl-expr)
+		     (pvseval-error (condition) (format t "~%~a" condition))))))
     (printf "~%~a ~%translates to ~s~%evaluates to ~%~a" expr cl-expr val))
   "Ground evaluation of expression EXPR."
   "Ground evaluating ~a")
+
+;;; Instead of (throw 'undefined), use (error 'pvs2cl-error :expr expr :fmt-str str)
+;;; Note that the error happens at evaluation time, so the use is something like
+;;;   (let ((cl-form (pvs2cl expr)))
+;;;     (handler-case (eval cl-form)
+;;;       (pvs2cl-error (condition) (format t "~%~a" condition))))
+
+(define-condition pvseval-error (groundeval-error)
+  ((expr :accessor expr :initarg :expr)
+   (fmt-str :accessor fmt-str :initarg :fmt-str))
+  (:report
+   (lambda (condition stream)
+     (format stream
+	 (or (fmt-str condition)
+	     "Hit uninterpreted term ~a during evaluation")
+       (expr condition)))))
+
+(defun uninterpreted (expr fmt-str)
+  (error 'pvseval-error :expr expr :fmt-str fmt-str))
+
+;;Added function uninterpreted-fun and modified function undefined (Feb 20 2015) [CM]
+(defun uninterpreted-fun (expr &optional fmt-str)
+  #'(lambda (&rest x)
+      (declare (ignore x))
+      (uninterpreted-fun expr fmt-str)))
 
 ;;These variables are special
 (defvar *destructive?* nil)  ;;tracks if the translation is in the destructive mode
@@ -86,11 +112,12 @@
 	   (eval-info decl))))
 
 
-;;Added function uninterpreted-fun and modified function undefined (Feb 20 2015) [CM]
-(defun uninterpreted-fun (msg-fmt expr)
-  #'(lambda (&rest x) (declare (ignore x))(uninterpreted msg-fmt expr)))
 
 (defun undefined (expr &optional message)
+  "Creates and compiles a new function, returning the name.  If the expr is
+a const-decl, of type 'Global', creates an attachment instance (part of
+PVSio).  Otherwise creates an 'undefined' function, which invokes an error
+if called."
   (let* ((th    (string (if (declaration? expr)
 			    (id (module expr))
 			    (id (current-theory)))))
@@ -121,10 +148,10 @@
 	     (fbody (if (and nargs (> nargs 0))
 			`(defun ,fname (&rest x)
 			   (declare (ignore x))
-			   (uninterpreted-fun ,msg-fmt ,expr))
+			   (uninterpreted-fun ,expr ,msg-fmt))
 		      `(defun ,fname (&rest x)
 			 (declare (ignore x))
-			 (uninterpreted ,msg-fmt ,expr)))))
+			 (uninterpreted ,expr ,msg-fmt)))))
 	(eval fbody)
 	(compile fname)
 	fname))))
@@ -199,7 +226,9 @@
 ;;String literals are translated directly to strings. 
 (defmethod pvs2cl_up* ((expr string-expr) bindings livevars)
   (declare (ignore bindings livevars))
-  (string-value expr))
+  (string-value expr)
+  ;;(concatenate 'string "\"" (string-value expr) "\"")
+  )
   
 (defun pvs2cl-operator2 (op actuals arguments def-formals livevars bindings)
   (declare (ignore bindings))
@@ -332,7 +361,8 @@
     (t accum)))
 
 (defmethod pvs2cl_up* ((expr list-expr) bindings livevars)
-;;  (format t "IN PVS2CL_UP*: expr is ~a~%" expr)
+  (when *eval-verbose*
+    (format t "IN PVS2CL_UP*: expr is ~a~%" expr))
   (let ((reverse-expr (reverse-list-expr expr nil)))
     `(list ,@(pvs2cl-reverse-list-expr reverse-expr bindings livevars nil))))
 
@@ -1634,7 +1664,8 @@
 (defmethod expr_is_long_list ((expr t) len_so_far)
   (>= len_so_far 200))
 
-(defun skip_compile (bindings defn) 
+(defun skip_compile (bindings defn)
+  (declare (ignore bindings))
   (expr_is_long_list defn 0))
 ;;
 ;; End of Hack
@@ -1653,8 +1684,8 @@
 	     undef))
 	  (t (let* ((id (mk-newfsymb (format nil "~@[~a_~]~a"
 					     (generated-by decl) (pvs2cl-id decl))))
-		    (idc (mk-newfsymb (format nil "~@[~a_~]~a_c"
-					     (generated-by decl) (pvs2cl-id decl))) )
+		    ;; (idc (mk-newfsymb (format nil "~@[~a_~]~a_c"
+		    ;; 			     (generated-by decl) (pvs2cl-id decl))) )
 		    (id-d (mk-newfsymb (format nil "~@[~a_~]~a!"
 					       (generated-by decl)
 					       (pvs2cl-id decl))))
@@ -1688,8 +1719,9 @@
 							  nil))))))
 		 (eval (definition (in-defn-m decl)))
 		 (assert id2)
-		 (format t "~%IN pvs2cl-lisp-function: compile ~a,~_   args = ~a,~_   long-list: ~a~%"
-			 id2 defn-binding-ids (expr_is_long_list defn-body 0))
+		 (when *eval-verbose*
+		   (format t "~%IN pvs2cl-lisp-function: compile ~a,~_   args = ~a,~_   long-list: ~a~%"
+		     id2 defn-binding-ids (expr_is_long_list defn-body 0)))
 		 (or skip-compile (compile id2)))
 	       ;;		 (compile id2))
 	       (when *eval-verbose*
@@ -1735,19 +1767,17 @@
 	       (or skip-compile (compile id)))))))
 ;;	       (compile id))))))
 
-(defun pvs2cl-theory (theory &optional force?)
-  (let* ((theory (get-theory theory))
-	 (*current-theory* theory)
-	 (*current-context* (context theory)))
-    (cond ((datatype? theory)
-	   (let ((adt (adt-type-name theory)))
+(defun pvs2cl-theory (theory)
+  (with-context theory
+    (cond ((datatype? (current-theory))
+	   (let ((adt (adt-type-name (current-theory))))
 	     (pvs2cl-constructors (constructors adt) adt))
-	   (pvs2cl-theory (adt-theory theory))
-	   (let ((map-theory (adt-map-theory theory))
-		 (reduce-theory (adt-reduce-theory theory)))
-	     (when map-theory (pvs2cl-theory (adt-map-theory theory)))
-	     (when reduce-theory (pvs2cl-theory (adt-reduce-theory theory)))))
-	  (t (loop for decl in (theory theory)
+	   (pvs2cl-theory (adt-theory (current-theory)))
+	   (let ((map-theory (adt-map-theory (current-theory)))
+		 (reduce-theory (adt-reduce-theory (current-theory))))
+	     (when map-theory (pvs2cl-theory (adt-map-theory (current-theory))))
+	     (when reduce-theory (pvs2cl-theory (adt-reduce-theory (current-theory))))))
+	  (t (loop for decl in (theory (current-theory))
 		   do (cond ((type-eq-decl? decl)
 			     (let ((dt (find-supertype (type-value decl))))
 			       (when (adt-type-name? dt)
@@ -1863,7 +1893,7 @@
 					     (list (id (car accessors)) xvar))))
 			  ;;NSH(2-4-2014): delay co-constructor arguments
 			  (unary-form (when accessors
-					`(lambda (,xvar) (let ,unary-binding
+					`(lambda (,xvar) (let (,unary-binding)
 							   (,constructor-symbol
 							    ,@(loop for ac in accessors
 								    collect (id ac)))))))

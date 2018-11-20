@@ -33,14 +33,24 @@
 ;;    (typecheck pexpr :expected type :context context
 ;;	       :tccs 'none)))
 
+(define-condition cl2pvs-error (groundeval-error)
+  ((sexpr :accessor :sexpr :initarg :sexpr)
+   (type :accessor :type :initarg :type))
+  (:report (lambda (condition stream)
+	     (with-slots (sexpr type) condition
+	       (format stream
+		   "'~a' (of type '~a') can't be translated to PVS"
+		 sexpr type)))))
   
 (defmethod cl2pvs* (sexpr (type type-name) context)
   (declare (ignore context))
   (if (tc-eq type *number*)
-      (mk-number-expr sexpr)
+      (if (rationalp sexpr)
+	  (mk-number-expr sexpr)
+	  (error 'cl2pvs-error :sexpr sexpr :type type))
       (if (tc-eq (find-supertype type) *boolean*)
 	  (if sexpr *true* *false*)
-	  (throw 'cant-translate nil))))
+	  (error 'cl2pvs-error :sexpr sexpr :type type))))
 
 (defmethod cl2pvs* (sexpr (type funtype) context)
   (declare (ignore context))
@@ -66,7 +76,7 @@
 						 0 nil)))
 		(tc-expr (format nil "LAMBDA (~a: ~a): COND ~{~a~^, ~} ENDCOND"
 			   nvar (domtype type) conds)))
-	      (throw 'cant-translate nil))))))
+	      (error 'cl2pvs-error :sexpr sexpr :type type))))))
 
 (defun make-subrange-conds (lower upper nvar sexpr rtype depbnd idx conds)
   (declare (:explain :tailmerging))
@@ -138,6 +148,7 @@
 	   (range type)))))
   
 (defmethod get-seq-range-type ((type t) domaindep)
+  (declare (ignore domaindep))
   nil)
 
 (defun char-type? (type)
@@ -214,7 +225,7 @@
 				       (lisp-function (declaration acc))))
 		  (args (if (and (co-constructor? constructor)
 				 accessors);;NSH(2-9-2014)
-			    (throw 'cant-translate nil)
+			    (error 'cl2pvs-error :sexpr sexpr :type type)
 			    (loop for accfn in accessor-funs
 			      as acc in accessors
 			      collect 
