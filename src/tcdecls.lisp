@@ -828,6 +828,7 @@
 		(let ((tadecl (declaration (theory-name sd))))
 		  (when (typep tadecl '(or mod-decl formal-theory-decl))
 		    (setq dalist (append (theory-mappings tadecl) dalist))))))
+	     (assert (with-context sd (fully-instantiated? act)))
 	     (push (cons d act) dalist)))
 	  (type-decl
 	   ;; This one is tricky, because often
