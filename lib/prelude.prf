@@ -389,7 +389,7 @@
     (reflexive? const-decl "bool" relations nil))
    nil
    (reflexive_restrict subtype
-    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
+    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.bool].restrict(restrict_order_props.R)"
     "(relations[S].reflexive?)")))
  (irreflexive_restrict 0
   (irreflexive_restrict-1 nil 3249347110 ("" (subtype-tcc) nil nil)
@@ -404,7 +404,7 @@
     (irreflexive? const-decl "bool" relations nil))
    nil
    (irreflexive_restrict subtype
-    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
+    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.bool].restrict(restrict_order_props.R)"
     "(relations[S].irreflexive?)")))
  (symmetric_restrict 0
   (symmetric_restrict-1 nil 3249347110
@@ -425,7 +425,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (symmetric_restrict subtype
-    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
+    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.bool].restrict(restrict_order_props.R)"
     "(relations[S].symmetric?)")))
  (antisymmetric_restrict 0
   (antisymmetric_restrict-1 nil 3249347110 ("" (subtype-tcc) nil nil)
@@ -440,7 +440,7 @@
     (antisymmetric? const-decl "bool" relations nil))
    nil
    (antisymmetric_restrict subtype
-    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
+    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.bool].restrict(restrict_order_props.R)"
     "(relations[S].antisymmetric?)")))
  (connected_restrict 0
   (connected_restrict-1 nil 3249347110 ("" (subtype-tcc) nil nil)
@@ -456,7 +456,7 @@
     (connected? const-decl "bool" relations nil))
    nil
    (connected_restrict subtype
-    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
+    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.bool].restrict(restrict_order_props.R)"
     "(relations[S].connected?)")))
  (transitive_restrict 0
   (transitive_restrict-1 nil 3249347110
@@ -478,7 +478,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (transitive_restrict subtype
-    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
+    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.bool].restrict(restrict_order_props.R)"
     "(relations[S].transitive?)")))
  (equivalence_restrict 0
   (equivalence_restrict-1 nil 3249347110
@@ -496,7 +496,7 @@
     (equivalence? const-decl "bool" relations nil))
    nil
    (equivalence_restrict subtype
-    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
+    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.bool].restrict(restrict_order_props.R)"
     "(relations[S].equivalence?)")))
  (preorder_restrict 0
   (preorder_restrict-1 nil 3249347110
@@ -511,7 +511,7 @@
     (preorder? const-decl "bool" orders nil))
    nil
    (preorder_restrict subtype
-    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
+    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.bool].restrict(restrict_order_props.R)"
     "(orders[S].preorder?)")))
  (partial_order_restrict 0
   (partial_order_restrict-1 nil 3249347110
@@ -527,7 +527,7 @@
     (partial_order? const-decl "bool" orders nil))
    nil
    (partial_order_restrict subtype
-    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
+    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.bool].restrict(restrict_order_props.R)"
     "(orders[S].partial_order?)")))
  (strict_order_restrict 0
   (strict_order_restrict-1 nil 3249347110
@@ -544,7 +544,7 @@
     (strict_order? const-decl "bool" orders nil))
    nil
    (strict_order_restrict subtype
-    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
+    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.bool].restrict(restrict_order_props.R)"
     "(orders[S].strict_order?)")))
  (dichotomous_restrict 0
   (dichotomous_restrict-1 nil 3249347110 ("" (subtype-tcc) nil nil)
@@ -559,7 +559,7 @@
     (dichotomous? const-decl "bool" orders nil))
    nil
    (dichotomous_restrict subtype
-    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
+    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.bool].restrict(restrict_order_props.R)"
     "(orders[S].dichotomous?)")))
  (total_order_restrict 0
   (total_order_restrict-1 nil 3249347110
@@ -576,7 +576,7 @@
     (total_order? const-decl "bool" orders nil))
    nil
    (total_order_restrict subtype
-    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
+    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.bool].restrict(restrict_order_props.R)"
     "(orders[S].total_order?)")))
  (trichotomous_restrict 0
   (trichotomous_restrict-1 nil 3249347110 ("" (subtype-tcc) nil nil)
@@ -591,7 +591,7 @@
     (trichotomous? const-decl "bool" orders nil))
    nil
    (trichotomous_restrict subtype
-    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
+    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.bool].restrict(restrict_order_props.R)"
     "(orders[S].trichotomous?)")))
  (strict_total_order_restrict 0
   (strict_total_order_restrict-1 nil 3249347110
@@ -607,7 +607,7 @@
     (strict_total_order? const-decl "bool" orders nil))
    nil
    (strict_total_order_restrict subtype
-    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
+    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.bool].restrict(restrict_order_props.R)"
     "(orders[S].strict_total_order?)")))
  (well_founded_restrict 0
   (well_founded_restrict-1 nil 3249347110
@@ -655,7 +655,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (well_founded_restrict subtype
-    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
+    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.bool].restrict(restrict_order_props.R)"
     "(orders[S].well_founded?)")))
  (well_ordered_restrict 0
   (well_ordered_restrict-1 nil 3249347110
@@ -678,7 +678,7 @@
     (well_ordered? const-decl "bool" orders nil))
    nil
    (well_ordered_restrict subtype
-    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.boolean].restrict(restrict_order_props.R)"
+    "restrict[[restrict_order_props.T, restrict_order_props.T], [S, S], booleans.bool].restrict(restrict_order_props.R)"
     "(orders[S].well_ordered?)"))))
 (extend_order_props
  (irreflexive_extend 0
@@ -699,7 +699,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (irreflexive_extend subtype
-    "extend[[extend_order_props.T, extend_order_props.T], [S, S], booleans.boolean, booleans.FALSE].extend(extend_order_props.R)"
+    "extend[[extend_order_props.T, extend_order_props.T], [S, S], booleans.bool, booleans.FALSE].extend(extend_order_props.R)"
     "(relations[extend_order_props.T].irreflexive?)")))
  (symmetric_extend 0
   (symmetric_extend-1 nil 3249327215
@@ -721,7 +721,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (symmetric_extend subtype
-    "extend[[extend_order_props.T, extend_order_props.T], [S, S], booleans.boolean, booleans.FALSE].extend(extend_order_props.R)"
+    "extend[[extend_order_props.T, extend_order_props.T], [S, S], booleans.bool, booleans.FALSE].extend(extend_order_props.R)"
     "(relations[extend_order_props.T].symmetric?)")))
  (antisymmetric_extend 0
   (antisymmetric_extend-1 nil 3249327215
@@ -743,7 +743,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (antisymmetric_extend subtype
-    "extend[[extend_order_props.T, extend_order_props.T], [S, S], booleans.boolean, booleans.FALSE].extend(extend_order_props.R)"
+    "extend[[extend_order_props.T, extend_order_props.T], [S, S], booleans.bool, booleans.FALSE].extend(extend_order_props.R)"
     "(relations[extend_order_props.T].antisymmetric?)")))
  (transitive_extend 0
   (transitive_extend-1 nil 3249327215
@@ -767,7 +767,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (transitive_extend subtype
-    "extend[[extend_order_props.T, extend_order_props.T], [S, S], booleans.boolean, booleans.FALSE].extend(extend_order_props.R)"
+    "extend[[extend_order_props.T, extend_order_props.T], [S, S], booleans.bool, booleans.FALSE].extend(extend_order_props.R)"
     "(relations[extend_order_props.T].transitive?)")))
  (strict_order_extend 0
   (strict_order_extend-1 nil 3249327215
@@ -796,7 +796,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (strict_order_extend subtype
-    "extend[[extend_order_props.T, extend_order_props.T], [S, S], booleans.boolean, booleans.FALSE].extend(extend_order_props.R)"
+    "extend[[extend_order_props.T, extend_order_props.T], [S, S], booleans.bool, booleans.FALSE].extend(extend_order_props.R)"
     "(orders[extend_order_props.T].strict_order?)"))))
 (wf_induction
  (wf_induction 0
@@ -1072,7 +1072,7 @@
     nil)
    ((the const-decl "(p)" sets nil)
     (pred type-eq-decl nil defined_types nil)
-    (epsilon const-decl "T" epsilons nil) nil
+    (epsilon const-decl "T" epsilons nil)
     (TRUE const-decl "bool" booleans nil)
     (epsilon_ax formula-decl nil epsilons nil)
     (singleton? const-decl "bool" sets nil)
@@ -1220,8 +1220,8 @@
         nil))
       nil))
     nil)
-   ((singleton_elt const-decl "T" sets nil) nil
-    (epsilon const-decl "T" epsilons nil) nil
+   ((singleton_elt const-decl "T" sets nil)
+    (epsilon const-decl "T" epsilons nil)
     (pred type-eq-decl nil defined_types nil)
     (epsilon_ax formula-decl nil epsilons nil)
     (TRUE const-decl "bool" booleans nil)
@@ -1354,7 +1354,7 @@
     (set type-eq-decl nil sets nil) (member const-decl "bool" sets nil)
     (choose const-decl "(p)" sets nil)
     (nonempty? const-decl "bool" sets nil)
-    (epsilon const-decl "T" epsilons nil) nil
+    (epsilon const-decl "T" epsilons nil)
     (pred type-eq-decl nil defined_types nil)
     (epsilon_ax formula-decl nil epsilons nil)
     (TRUE const-decl "bool" booleans nil)
@@ -15927,7 +15927,7 @@
     (nonempty? const-decl "bool" sets nil))
    nil
    (lub_nat subtype
-    "extend[real, nat, booleans.boolean, booleans.FALSE].extend(integer_props.N)"
+    "extend[real, nat, booleans.bool, booleans.FALSE].extend(integer_props.N)"
     "(sets[real].nonempty?)")))
  (lub_nat 0
   (lub_nat-2 "" 3299954571
@@ -16092,9 +16092,9 @@
     (real_plus_real_is_real application-judgement "real" reals nil)
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
-    (s!2 skolem-const-decl "(extend[real, nat, boolean, FALSE](N!1))"
+    (s!2 skolem-const-decl "(extend[real, nat, bool, FALSE](N!1))"
      integer_props nil)
-    (s!1 skolem-const-decl "(extend[real, nat, boolean, FALSE](N!1))"
+    (s!1 skolem-const-decl "(extend[real, nat, bool, FALSE](N!1))"
      integer_props nil)
     (N!1 skolem-const-decl "(nonempty?[nat])" integer_props nil)
     (AND const-decl "[bool, bool -> bool]" booleans nil)
@@ -16297,7 +16297,7 @@
     (nonempty? const-decl "bool" sets nil))
    nil
    (lub_int subtype
-    "extend[real, int, booleans.boolean, booleans.FALSE].extend(integer_props.I)"
+    "extend[real, int, booleans.bool, booleans.FALSE].extend(integer_props.I)"
     "(sets[real].nonempty?)")))
  (lub_int 0
   (lub_int-1 nil 3237052399
@@ -16494,13 +16494,13 @@
     (int_plus_int_is_int judgement-tcc nil integers nil)
     (rat_plus_rat_is_rat judgement-tcc nil rationals nil)
     (s!1 skolem-const-decl
-     "(extend[real, nat, boolean, FALSE]({n | I!1(n + x!1)}))"
+     "(extend[real, nat, bool, FALSE]({n | I!1(n + x!1)}))"
      integer_props nil)
     (real_plus_real_is_real application-judgement "real" reals nil)
     (real_minus_real_is_real application-judgement "real" reals nil)
     (FALSE const-decl "bool" booleans nil)
     (extend const-decl "R" extend nil)
-    (s!1 skolem-const-decl "(extend[real, int, boolean, FALSE](I!1))"
+    (s!1 skolem-const-decl "(extend[real, int, bool, FALSE](I!1))"
      integer_props nil)
     (rat nonempty-type-eq-decl nil rationals nil)
     (rat_minus_rat_is_rat judgement-tcc nil rationals nil)
@@ -16611,13 +16611,13 @@
     (least_upper_bound? const-decl "bool" bounded_real_defs nil)
     (IF const-decl "[boolean, T, T -> T]" if_def nil)
     (AND const-decl "[bool, bool -> bool]" booleans nil)
-    (s!1 skolem-const-decl "(extend[real, nat, boolean, FALSE](N!1))"
+    (s!1 skolem-const-decl "(extend[real, nat, bool, FALSE](N!1))"
      integer_props nil)
     (minus_rat_is_rat judgement-tcc nil rationals nil)
     (rat nonempty-type-eq-decl nil rationals nil)
     (minus_int_is_int judgement-tcc nil integers nil)
-    (s!1 skolem-const-decl "(extend[real, int, boolean, FALSE]
-     (extend[int, nonpos_int, boolean, FALSE]({i: nonpos_int | N!1(-i)})))"
+    (s!1 skolem-const-decl "(extend[real, int, bool, FALSE]
+     (extend[int, nonpos_int, bool, FALSE]({i: nonpos_int | N!1(-i)})))"
      integer_props nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
@@ -16762,7 +16762,7 @@
     (AND const-decl "[bool, bool -> bool]" booleans nil)
     (FALSE const-decl "bool" booleans nil)
     (extend const-decl "R" extend nil)
-    (s!1 skolem-const-decl "(extend[real, int, boolean, FALSE](I!1))"
+    (s!1 skolem-const-decl "(extend[real, int, bool, FALSE](I!1))"
      integer_props nil)
     (real_le_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
@@ -16771,11 +16771,11 @@
     (minus_rat_is_rat judgement-tcc nil rationals nil)
     (rat nonempty-type-eq-decl nil rationals nil)
     (s!1 skolem-const-decl
-     "(extend[real, int, boolean, FALSE]({i: int | I!1(-i)}))"
+     "(extend[real, int, bool, FALSE]({i: int | I!1(-i)}))"
      integer_props nil)
     (TRUE const-decl "bool" booleans nil)
     (s!1 skolem-const-decl
-     "(extend[real, int, boolean, FALSE]({i: int | I!1(-i)}))"
+     "(extend[real, int, bool, FALSE]({i: int | I!1(-i)}))"
      integer_props nil)
     (number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
@@ -20751,9 +20751,6 @@
     (posreal_times_posreal_is_posreal application-judgement "posreal"
      real_types nil)
     (nat_induction formula-decl nil naturalnumbers nil)
-    (nzreal_div_nzreal_is_nzreal application-judgement "nzreal"
-     real_types nil)
-    (nzreal_expt application-judgement "nzreal" exponentiation nil)
     (expt def-decl "real" exponentiation nil)
     (/ const-decl "[numfield, nznum -> numfield]" number_fields nil)
     (nznum nonempty-type-eq-decl nil number_fields nil)
@@ -20781,6 +20778,9 @@
      nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil)
+    (nzreal_expt application-judgement "nzreal" exponentiation nil)
+    (nzreal_div_nzreal_is_nzreal application-judgement "nzreal"
+     real_types nil)
     (posreal_expt application-judgement "posreal" exponentiation nil))
    nil))
  (expt_x0_TCC1 0
@@ -23940,7 +23940,7 @@
     (j!1 skolem-const-decl "({i | b!1 ^ i <= py!1})" exponentiation
      nil)
     (s!1 skolem-const-decl
-     "(extend[real, int, boolean, FALSE]({i | b!1 ^ i <= py!1}))"
+     "(extend[real, int, bool, FALSE]({i | b!1 ^ i <= py!1}))"
      exponentiation nil)
     (minus_odd_is_odd application-judgement "odd_int" integers nil)
     (py!1 skolem-const-decl "posreal" exponentiation nil)
@@ -23962,7 +23962,7 @@
     (nnrat_exp application-judgement "nnrat" exponentiation nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (s!1 skolem-const-decl
-     "(extend[real, int, boolean, FALSE]({i | b!1 ^ i <= py!1}))"
+     "(extend[real, int, bool, FALSE]({i | b!1 ^ i <= py!1}))"
      exponentiation nil)
     (AND const-decl "[bool, bool -> bool]" booleans nil)
     (real_ge_is_total_order name-judgement "(total_order?[real])"
@@ -30923,6 +30923,25 @@
     (T formal-type-decl nil finite_sets nil))
    shostak))
  (card_add 0
+  (card_add-2 "" 3750013914
+   ("" (skosimp*)
+    (("" (lift-if)
+      (("" (prop)
+        (("1" (rewrite "member_add")
+          (("1" (assert) nil nil)
+           ("2" (expand "member") (("2" (propax) nil nil)) nil))
+          nil)
+         ("2" (rewrite "add_as_union")
+          (("2" (rewrite "card_disj_union")
+            (("1" (rewrite "card_singleton") (("1" (assert) nil nil))
+              nil)
+             ("2" (grind) nil nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   nil shostak)
   (card_add-1 nil 3242965190
    ("" (skosimp*)
     (("" (lift-if)
@@ -30957,36 +30976,19 @@
      "non_empty_finite_set" finite_sets nil)
     (nonempty_finite_union2 application-judgement
      "non_empty_finite_set" finite_sets nil)
-    (union_commutative formula-decl nil sets_lemmas nil)
-    (nonempty_finite_union1 application-judgement
-     "non_empty_finite_set" finite_sets nil)
-    (singleton_disjoint formula-decl nil sets_lemmas nil)
+    (finite_intersection2 application-judgement "finite_set"
+     finite_sets nil)
+    (disjoint? const-decl "bool" sets nil)
+    (empty? const-decl "bool" sets nil)
+    (intersection const-decl "set" sets nil)
     (card_singleton formula-decl nil finite_sets nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
      integers nil)
-    (card_disj_union formula-decl nil finite_sets nil)
     (nnint_plus_posint_is_posint application-judgement "posint"
      integers nil)
-    (number_field nonempty-type-from-decl nil number_fields nil)
-    (number_field_pred const-decl "[number -> boolean]" number_fields
-     nil)
-    (number nonempty-type-decl nil numbers nil)
     (singleton const-decl "(singleton?)" sets nil)
     (singleton? const-decl "bool" sets nil)
-    (union const-decl "set" sets nil)
-    (card const-decl "{n: nat | n = Card(S)}" finite_sets nil)
-    (Card const-decl "nat" finite_sets nil)
-    (= const-decl "[T, T -> boolean]" equalities nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (>= const-decl "bool" reals nil)
-    (int nonempty-type-eq-decl nil integers nil)
-    (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (rational nonempty-type-from-decl nil rationals nil)
-    (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (real nonempty-type-from-decl nil reals nil)
-    (real_pred const-decl "[number_field -> boolean]" reals nil)
-    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
-    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (card_disj_union formula-decl nil finite_sets nil)
     (member_add formula-decl nil sets_lemmas nil)
     (boolean nonempty-type-decl nil booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
@@ -32421,7 +32423,7 @@
     (T formal-type-decl nil restrict_set_props nil))
    nil
    (finite_restrict subtype
-    "restrict[restrict_set_props.T, S, booleans.boolean].restrict(restrict_set_props.a)"
+    "restrict[restrict_set_props.T, S, booleans.bool].restrict(restrict_set_props.a)"
     "finite_set[S]")))
  (empty_restrict 0
   (empty_restrict-1 nil 3249347110 ("" (subtype-tcc) nil nil)
@@ -32437,7 +32439,7 @@
     (empty? const-decl "bool" sets nil))
    nil
    (empty_restrict subtype
-    "restrict[restrict_set_props.T, S, booleans.boolean].restrict(restrict_set_props.a)"
+    "restrict[restrict_set_props.T, S, booleans.bool].restrict(restrict_set_props.a)"
     "(sets[S].empty?)")))
  (card_restrict 0
   (card_restrict-2 "Fix for 3.2" 3307984009
@@ -32688,7 +32690,7 @@
     (finite_extension formula-decl nil extend_set_props nil))
    nil
    (finite_extend subtype
-    "extend[extend_set_props.T, S, booleans.boolean, booleans.FALSE].extend(extend_set_props.a)"
+    "extend[extend_set_props.T, S, booleans.bool, booleans.FALSE].extend(extend_set_props.a)"
     "finite_set[T]")))
  (empty_extend 0
   (empty_extend-1 nil 3249327215
@@ -32708,7 +32710,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (empty_extend subtype
-    "extend[extend_set_props.T, S, booleans.boolean, booleans.FALSE].extend(extend_set_props.a)"
+    "extend[extend_set_props.T, S, booleans.bool, booleans.FALSE].extend(extend_set_props.a)"
     "(sets[extend_set_props.T].empty?)")))
  (nonempty_extend 0
   (nonempty_extend-1 nil 3249327215
@@ -32731,7 +32733,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (nonempty_extend subtype
-    "extend[extend_set_props.T, S, booleans.boolean, booleans.FALSE].extend(extend_set_props.a)"
+    "extend[extend_set_props.T, S, booleans.bool, booleans.FALSE].extend(extend_set_props.a)"
     "(sets[extend_set_props.T].nonempty?)")))
  (singleton_extend 0
   (singleton_extend-1 nil 3249327215
@@ -32759,7 +32761,7 @@
     (boolean nonempty-type-decl nil booleans nil))
    nil
    (singleton_extend subtype
-    "extend[extend_set_props.T, S, booleans.boolean, booleans.FALSE].extend(extend_set_props.a)"
+    "extend[extend_set_props.T, S, booleans.bool, booleans.FALSE].extend(extend_set_props.a)"
     "(sets[extend_set_props.T].singleton?)")))
  (card_extend 0
   (card_extend-1 nil 3249389673
@@ -34544,7 +34546,10 @@
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (reduce_nat adt-def-decl "[ordstruct -> nat]" ordstruct_adt nil)
-    (size const-decl "[ordstruct -> nat]" ordinals nil))
+    (size const-decl "[ordstruct -> nat]" ordinals nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (TRUE const-decl "bool" booleans nil))
    nil
    (lessp termination "(ordinals.<(ordinals.v, ordinals.w))" "nil")))
  (ordinal?_TCC1 0
@@ -36026,16 +36031,16 @@
       nil))
     nil)
    ((nth_append formula-decl nil list_props nil)
-    (append def-decl "list[T]" list_props nil)
-    (null adt-constructor-decl "(null?)" list_adt nil)
-    (null? adt-recognizer-decl "[list -> boolean]" list_adt nil)
-    (cons adt-constructor-decl "[[T, list] -> (cons?)]" list_adt nil)
     (cons? adt-recognizer-decl "[list -> boolean]" list_adt nil)
+    (cons adt-constructor-decl "[[T, list] -> (cons?)]" list_adt nil)
+    (null? adt-recognizer-decl "[list -> boolean]" list_adt nil)
+    (null adt-constructor-decl "(null?)" list_adt nil)
+    (append def-decl "list[T]" list_props nil)
     (length_reverse formula-decl nil list_props nil)
+    (cons1_var skolem-const-decl "T" list_props nil)
+    (cons2_var skolem-const-decl "list[T]" list_props nil)
     (i skolem-const-decl "below(length(cons(cons1_var, cons2_var)))"
        list_props nil)
-    (cons2_var skolem-const-decl "list[T]" list_props nil)
-    (cons1_var skolem-const-decl "T" list_props nil)
     (posint_plus_nnint_is_posint application-judgement "posint"
      integers nil)
     (real_lt_is_strict_total_order name-judgement
@@ -37131,7 +37136,9 @@
         nil))
       nil))
     nil)
-   ((l2 skolem-const-decl "list[T]" list2finseq nil)
+   ((bool nonempty-type-eq-decl nil booleans nil)
+    (TRUE const-decl "bool" booleans nil)
+    (l2 skolem-const-decl "list[T]" list2finseq nil)
     (cons adt-constructor-decl "[[T, list] -> (cons?)]" list_adt nil)
     (list_cons_extensionality formula-decl nil list_adt nil)
     (cons? adt-recognizer-decl "[list -> boolean]" list_adt nil)
@@ -37140,7 +37147,6 @@
     (real_lt_is_strict_total_order name-judgement
      "(strict_total_order?[real])" real_props nil)
     (< const-decl "bool" reals nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
     (real nonempty-type-from-decl nil reals nil)
     (real_pred const-decl "[number_field -> boolean]" reals nil)
     (number_field nonempty-type-from-decl nil number_fields nil)
@@ -45576,7 +45582,7 @@
    nil
    (quotient_map_is_Quotient_EqivalenceRespecting subtype
     "QuotientDefinition[X1].quotient_map(QuotientKernelProperties.S)"
-    "(KernelDefinition[QuotientKernelProperties.X, X1, QuotientDefinition[X1].Quotient(QuotientKernelProperties.S)].PreservesEq(extend[[QuotientKernelProperties.X, QuotientKernelProperties.X], [X1, X1], booleans.boolean, booleans.FALSE].extend(QuotientKernelProperties.S)))"))
+    "(KernelDefinition[QuotientKernelProperties.X, X1, QuotientDefinition[X1].Quotient(QuotientKernelProperties.S)].PreservesEq(extend[[QuotientKernelProperties.X, QuotientKernelProperties.X], [X1, X1], booleans.bool, booleans.FALSE].extend(QuotientKernelProperties.S)))"))
   (quotient_map_is_Quotient_EqivalenceRespecting-2 nil 3244167419
    ("" (skosimp*)
     (("" (expand "PreservesEq")
@@ -45591,7 +45597,7 @@
    nil nil
    (quotient_map_is_Quotient_EqivalenceRespecting subtype
     "QuotientDefinition[X1].quotient_map(QuotientKernelProperties.S)"
-    "(KernelDefinition[QuotientKernelProperties.X, X1, QuotientDefinition[X1].Quotient(QuotientKernelProperties.S)].PreservesEq(extend[[QuotientKernelProperties.X, QuotientKernelProperties.X], [X1, X1], booleans.boolean, booleans.FALSE].extend(QuotientKernelProperties.S)))"))
+    "(KernelDefinition[QuotientKernelProperties.X, X1, QuotientDefinition[X1].Quotient(QuotientKernelProperties.S)].PreservesEq(extend[[QuotientKernelProperties.X, QuotientKernelProperties.X], [X1, X1], booleans.bool, booleans.FALSE].extend(QuotientKernelProperties.S)))"))
   (quotient_map_is_Quotient_EqivalenceRespecting-1 nil 3243663394
    ("" (skosimp*)
     (("" (expand "PreservesEq")
@@ -45624,7 +45630,7 @@
    shostak
    (quotient_map_is_Quotient_EqivalenceRespecting subtype
     "QuotientDefinition[X1].quotient_map(QuotientKernelProperties.S)"
-    "(KernelDefinition[QuotientKernelProperties.X, X1, QuotientDefinition[X1].Quotient(QuotientKernelProperties.S)].PreservesEq(extend[[QuotientKernelProperties.X, QuotientKernelProperties.X], [X1, X1], booleans.boolean, booleans.FALSE].extend(QuotientKernelProperties.S)))")))
+    "(KernelDefinition[QuotientKernelProperties.X, X1, QuotientDefinition[X1].Quotient(QuotientKernelProperties.S)].PreservesEq(extend[[QuotientKernelProperties.X, QuotientKernelProperties.X], [X1, X1], booleans.bool, booleans.FALSE].extend(QuotientKernelProperties.S)))")))
  (Kernel_ECquotient_map_TCC1 0
   (Kernel_ECquotient_map_TCC1-1 nil 3243663394
    ("" (skosimp)
@@ -45796,7 +45802,7 @@
    shostak
    (quotient_map_is_ECQuotient_EqivalenceRespecting subtype
     "QuotientDefinition[X1].quotient_map(QuotientKernelProperties.S)"
-    "(KernelDefinition[QuotientKernelProperties.X, X1, QuotientDefinition[X1].ECQuotient(QuotientKernelProperties.S)].PreservesEq(extend[[QuotientKernelProperties.X, QuotientKernelProperties.X], [X1, X1], booleans.boolean, booleans.FALSE].extend(QuotientKernelProperties.S)))"))))
+    "(KernelDefinition[QuotientKernelProperties.X, X1, QuotientDefinition[X1].ECQuotient(QuotientKernelProperties.S)].PreservesEq(extend[[QuotientKernelProperties.X, QuotientKernelProperties.X], [X1, X1], booleans.bool, booleans.FALSE].extend(QuotientKernelProperties.S)))"))))
 (QuotientSubDefinition
  (quotient_sub_map_TCC1 0
   (quotient_sub_map_TCC1-1 nil 3245525335
@@ -46434,7 +46440,7 @@
    shostak
    (QuotientDistributive subtype
     "QuotientDistributive.EqualityExtension(QuotientDistributive.S)"
-    "{R: relations[[QuotientDistributive.X, QuotientDistributive.Y]].equivalence | KernelDefinition[[QuotientDistributive.X, QuotientDistributive.Y], [QuotientDistributive.X, QuotientDistributive.Y], booleans.boolean].PreservesEq(R)(LAMBDA (x: [QuotientDistributive.X, QuotientDistributive.Y]): booleans.TRUE)}")))
+    "{R: relations[[QuotientDistributive.X, QuotientDistributive.Y]].equivalence | KernelDefinition[[QuotientDistributive.X, QuotientDistributive.Y], [QuotientDistributive.X, QuotientDistributive.Y], booleans.bool].PreservesEq(R)(LAMBDA (x: [QuotientDistributive.X, QuotientDistributive.Y]): booleans.TRUE)}")))
  (QuotientDistributive 0
   (QuotientDistributive-2 "" 3458173920
    ("" (skosimp*)
@@ -47678,7 +47684,7 @@
    shostak
    (RelQuotientDistributive subtype
     "QuotientDistributive.RelExtension(QuotientDistributive.S, QuotientDistributive.R)"
-    "{R: relations[[QuotientDistributive.X, QuotientDistributive.Y]].equivalence | KernelDefinition[[QuotientDistributive.X, QuotientDistributive.Y], [QuotientDistributive.X, QuotientDistributive.Y], booleans.boolean].PreservesEq(R)(LAMBDA (x: [QuotientDistributive.X, QuotientDistributive.Y]): booleans.TRUE)}")))
+    "{R: relations[[QuotientDistributive.X, QuotientDistributive.Y]].equivalence | KernelDefinition[[QuotientDistributive.X, QuotientDistributive.Y], [QuotientDistributive.X, QuotientDistributive.Y], booleans.bool].PreservesEq(R)(LAMBDA (x: [QuotientDistributive.X, QuotientDistributive.Y]): booleans.TRUE)}")))
  (RelQuotientDistributive 0
   (RelQuotientDistributive-1 nil 3245194514
    ("" (skosimp*)
@@ -49219,7 +49225,7 @@
    shostak
    (FunQuotientDistributive subtype
     "QuotientDistributive.FunExtension(QuotientDistributive.F)"
-    "{R: relations[[QuotientDistributive.X -> QuotientDistributive.Y]].equivalence | KernelDefinition[[QuotientDistributive.X -> QuotientDistributive.Y], [QuotientDistributive.X -> QuotientDistributive.Y], booleans.boolean].PreservesEq(R)(LAMBDA (x: [QuotientDistributive.X -> QuotientDistributive.Y]): booleans.TRUE)}")))
+    "{R: relations[[QuotientDistributive.X -> QuotientDistributive.Y]].equivalence | KernelDefinition[[QuotientDistributive.X -> QuotientDistributive.Y], [QuotientDistributive.X -> QuotientDistributive.Y], booleans.bool].PreservesEq(R)(LAMBDA (x: [QuotientDistributive.X -> QuotientDistributive.Y]): booleans.TRUE)}")))
  (FunQuotientDistributive 0
   (FunQuotientDistributive-3 "" 3342937949
    ("" (skosimp)
@@ -54548,7 +54554,7 @@
     (subset? const-decl "bool" sets nil))
    nil
    (QuotientAction subtype "QuotientIteration.S"
-    "{R: relations[QuotientIteration.X].equivalence | KernelDefinition[QuotientIteration.X, QuotientIteration.X, booleans.boolean].PreservesEq(R)(LAMBDA (x: QuotientIteration.X): booleans.TRUE)}")))
+    "{R: relations[QuotientIteration.X].equivalence | KernelDefinition[QuotientIteration.X, QuotientIteration.X, booleans.bool].PreservesEq(R)(LAMBDA (x: QuotientIteration.X): booleans.TRUE)}")))
  (QuotientAction_TCC3 0
   (QuotientAction_TCC3-2 "Fix for 3.2" 3307986379
    ("" (skosimp*)
@@ -54895,7 +54901,7 @@
     (PreservesEq const-decl "bool" KernelDefinition nil))
    shostak
    (QuotientAction subtype "QuotientIteration.R"
-    "{R: relations[QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.S)].equivalence | KernelDefinition[QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.S), QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.S), booleans.boolean].PreservesEq(R)(LAMBDA (x: QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.S)): booleans.TRUE)}")))
+    "{R: relations[QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.S)].equivalence | KernelDefinition[QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.S), QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.S), booleans.bool].PreservesEq(R)(LAMBDA (x: QuotientDefinition[QuotientIteration.X].Quotient(QuotientIteration.S)): booleans.TRUE)}")))
  (QuotientAction 0
   (QuotientAction-3 "" 3658951612
    ("" (skosimp*)
