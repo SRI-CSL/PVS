@@ -2244,29 +2244,27 @@
 				       (and (const-decl? (declaration r))
 					    (null (definition (declaration r)))))
 			  (resolve name 'expr nil)))))
-    (unless (or reses
-		(not (simple-name? name)))
-      ;; Try to find a case-insensitive match
-      (let ((mdecls nil))
-	(map-lhash #'(lambda (id decls)
-		       (when (string-equal id (id name))
-			 (dolist (decl decls)
-			   (when (visible? decl)
-			     (cond ((formula-decl? decl)
-				    (let ((*resolve-error-info* nil)) ;; shadow original
-				      (setq reses
-					    (nconc (resolve (copy name 'id id)
-							    'formula nil)
-						   reses))))
-				   ((and (const-decl? decl)
-					 (definition decl))
-				    (let ((*resolve-error-info* nil)) ;; shadow original
-				      (setq reses
-					    (nconc (resolve (copy name 'id id)
-							    'expr nil)
-						   reses)))))))))
-		   (current-declarations-hash))))
     (or reses
+	(when (simple-name? name)
+	  ;; Try to find a case-insensitive match
+	  (map-lhash #'(lambda (id decls)
+			 (when (string-equal id (id name))
+			   (dolist (decl decls)
+			     (when (visible? decl)
+			       (cond ((formula-decl? decl)
+				      (let ((*resolve-error-info* nil)) ;; shadow original
+					(setq reses
+					      (nconc (resolve (copy name 'id id)
+							      'formula nil)
+						     reses))))
+				     ((and (const-decl? decl)
+					   (definition decl))
+				      (let ((*resolve-error-info* nil)) ;; shadow original
+					(setq reses
+					      (nconc (resolve (copy name 'id id)
+							      'expr nil)
+						     reses)))))))))
+		     (current-declarations-hash)))
 	(resolution-error name 'expr-or-formula nil nil))))
 
 (defun definition-resolutions (name)
