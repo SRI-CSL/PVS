@@ -53,7 +53,7 @@
 
 
 ;;; Called from restore-theory in context.lisp
-(defun get-theory-from-binfile (filename &optional (dont-ignore-errors t))
+(defun get-theory-from-binfile (filename &optional (dont-ignore-errors nil))
   (let ((file (make-binpath filename))
 	(start-time (get-internal-real-time))
 	(*bin-theories-set* nil))
