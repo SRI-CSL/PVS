@@ -1613,6 +1613,7 @@
   #+pvsdebug
   (assert (tc-eq (type expr) (type (resolution expr))))
   (let* ((decl (declaration expr))
+	 (dacts (dactuals (module-instance expr)))
 	 (act (cdr (assq decl bindings)))
 	 (lhsmatch (unless act
 		     (assoc decl bindings
@@ -1625,18 +1626,40 @@
 			     (mk-resolution act
 			       (mk-modname (id (module act)))
 			       (type act)))
-	       (expr act)))
+	       (let* ((ex (expr act))
+		      (adecl (when dacts
+			       (if (name-expr? ex)
+				   (declaration ex)
+				   (break "dacts1a"))))
+		      (dfmls (when dacts (decl-formals adecl)))
+		      (sdacts (subst-mod-params* dacts modinst bindings))
+		      (nex (if dacts
+			       (subst-for-formals
+				ex
+				(mapcar #'(lambda (x y) (cons x (type-value y)))
+				  dfmls sdacts))
+			       ex)))
+		 #+badassert
+		 (assert (every #'(lambda (fp)
+				    (or (memq fp (decl-formals (current-declaration)))
+					(memq fp (decl-formals *subst-mod-params-declaration*))))
+				(free-params nex)))
+		 nex)))
 	  (lhsmatch
 	   #+pvsdebug
 	   (assert (or (null (decl-formals (car lhsmatch)))
 		       (dactuals (module-instance expr))))
-	   (let ((sexpr (subst-for-formals
-			 (expr (cdr lhsmatch))
-			 (mapcar #'(lambda (x y)
-				     (cons x (type-value y)))
-			   (decl-formals (car lhsmatch))
-			   (dactuals (module-instance expr))))))
-	     (subst-mod-params* sexpr modinst bindings)))
+	   (let* ((lexpr (subst-for-formals
+			  (expr (cdr lhsmatch))
+			  (mapcar #'(lambda (x y)
+				      (cons x (type-value y)))
+			    (decl-formals (car lhsmatch))
+			    dacts)))
+		  (sexpr (subst-mod-params* lexpr modinst bindings)))
+	     #+badassert
+	     (assert (with-context *subst-mod-params-declaration*
+		       (fully-instantiated? sexpr)))
+	     sexpr))
 	  (t (let* ((res (car (resolutions expr)))
 		    (nres (subst-mod-params* res modinst bindings)))
 	       (if (and (eq res nres)
