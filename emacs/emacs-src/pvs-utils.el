@@ -2080,7 +2080,7 @@ existence and time differences to be whitespace")
        (defun pvs-update-window-titles ()
 	 (unless noninteractive
 	   (let ((title (pvs-title-string))
-		 (pvs-frame (find-if #'(lambda (fr)
+		 (pvs-frame (cl-find-if #'(lambda (fr)
 					 (string= (get-frame-name fr) "pvs"))
 			      (frame-list))))
 	     (when (and pvs-frame title
