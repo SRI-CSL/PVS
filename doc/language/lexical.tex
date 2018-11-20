@@ -48,7 +48,10 @@ separate identifiers, numbers, and reserved words.
 
 \begin{figure}[tb]
 \begin{center}
-{\small\tt
+  {\small\tt
+    % \fontspec{Cambria Math}
+    \fontspec{TeX Gyre Pagella Math}
+    % \fontspec{Latin Modern Math}
 \begin{tabular}{|*{6}{@{\hspace*{.2in}}c@{\extracolsep{.5in}}}@{\hspace*{.25in}}|}\hline
 \input{operator-table}
 \hline
@@ -93,9 +96,13 @@ cases, quadrupled).  This is because it is commonly used as an ``escape''
 character, and the character following may be interpreted specially.
 
 The symbol pairs \lit{[|} \lit{|]}, \lit{(|} \lit{|)}, 
-\lit{$\{$|} \lit{|$\}$}, \lit{$〈$} \lit{$〉$}, \lit{$〚$} \lit{$〛$},
-\lit{$«$} \lit{$»$}, \lit{$《$} \lit{$》$}, \lit{$⌈$} \lit{$⌉$},
-\lit{$⌊$} \lit{$⌋$}, \lit{$⌜$} \lit{$⌝$}, and \lit{$⌞$} \lit{$⌟$} are
+\lit{$\{$|} \lit{|$\}$}, {\lit{$〈$} \lit{$〉$}, \lit{$⟦$} \lit{$⟧$},
+  \lit{$«$} \lit{$»$},
+  {\fontspec{TeX Gyre Pagella Math}⟪⟫},
+  {\fontspec{TeX Gyre Pagella Math}⌈⌉},
+  {\fontspec{TeX Gyre Pagella Math}⌊⌋},
+  {\fontspec{TeX Gyre Pagella Math}⌜⌝}, and
+  {\fontspec{TeX Gyre Pagella Math}⌞⌟} are
 available as outfix operators.  They are
 declared and may be used by concatenation,
 for example, with the declaration \texttt{[||]:\ [bool, int -> int]} the
@@ -106,6 +113,7 @@ outfix term \texttt{[| TRUE, 0 |]} is equivalent to the prefix form
 \begin{center}
 \renewcommand{\arraystretch}{1.2}
 {\small\tt
+    \fontspec{Latin Modern Math}
 \begin{tabular}{|*{6}{@{\hspace*{.2in}}c@{\extracolsep{.4in minus .4in}}}@{\hspace*{.2in}}|}\hline
 \input{opsym-table}
 \hline

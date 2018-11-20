@@ -1,16 +1,14 @@
 % Document Type: LaTeX
 % Master File: language.tex
 \documentclass[12pt]{book}
-
 \usepackage{alltt}
 \usepackage{makeidx}
 \usepackage{relsize}
 \usepackage{boxedminipage}
-\usepackage{fancyhdr}
-%\usepackage{../../pvs}
 \usepackage{url}
+\usepackage{../../pvs}
 \usepackage{makebnf}
-\usepackage{latexsym}
+%\usepackage{latexsym}
 %\usepackage{showidx} % shows index entries in the margin
 \usepackage[chapter]{tocbibind}
 \usepackage{fancyvrb}
@@ -29,18 +27,16 @@
 %                       % commands within the verbatim
 %  commentchar=*        % comment character
 % }
-\usepackage{unicode-math}
-\usepackage{ifpdf}
-\ifpdf
-\usepackage[pdftex,dvipsnames,usenames]{color}
-\usepackage{fontspec}
-%\setmathfont{latinmodern-math.otf}
-%\setmathfont{xits-math.otf}
-\setmathfont{xits-math.otf}
-%\setmathfont{texgyrepagella-math.otf}
-%\setmathfont{Asana-Math.otf}
+%\usepackage[pdftex,dvipsnames,usenames]{color}
+\usepackage[dvipsnames,usenames]{color}
+%\usepackage{fontspec}
+% \usepackage{unicode-math}
+% \setmainfont{xits}
+% \setmathfont{xits math}
 
-\input{../pvstex}
+\usepackage{fontspec}
+\setmainfont[Ligatures=TeX]{Linux Libertine O}
+
 
 \topmargin -10pt
 \textheight 8.5in
@@ -56,6 +52,8 @@
 \setcounter{totalnumber}{10}
 \renewcommand{\textfraction}{.5}
 \renewcommand{\floatpagefraction}{.1}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
 
 \raggedbottom
 
@@ -65,9 +63,8 @@
 \makeindex
 
 \usepackage[bookmarks=true,hyperindex=true,colorlinks=true,linkcolor=Brown,citecolor=blue,backref=page,pagebackref=true,plainpages=false,pdfpagelabels]{hyperref}
-\else
-\usepackage[bookmarks=true,hyperindex=true]{hyperref}
-\fi
+
+\input{../pvstex}
 
 \begin{document}
 
@@ -99,13 +96,12 @@ D.~W.~J.~Stringer-Calvert\\
 Computer Science Laboratory $\bullet$ 333 Ravenswood Avenue $\bullet$ Menlo Park CA 94025\hfil}}}
 \end{titlepage}
 
-\pagestyle{fancy}
 \renewcommand{\chaptermark}[1]{\markboth{{\em #1}}{}\markright{{\em #1}}}
 \renewcommand{\sectionmark}[1]{\markright{\thesection \em \ #1}}
-\lhead[\thepage]{\rightmark}
+%\lhead[\thepage]{\rightmark}
 %\cfoot{\protect\small\bf \fbox{PVS 2.3 DRAFT}}
-\cfoot{}
-\rhead[\leftmark]{\thepage}
+%\cfoot{}
+%\rhead[\leftmark]{\thepage}
 \thispagestyle{empty}
 
 \newpage
