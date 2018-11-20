@@ -1374,6 +1374,7 @@
 	  (subst-mod-params (closed-definition axiom)
 	      (lcopy modinst :dactuals dacts)
 	    mod axiom)
+	(assert (every #'(lambda (fp) (memq fp dfmls)) (free-params expr)))
 	;; Check for mappings to uninterpreted RHS names, don't do anything in this case
 	(if (every #'(lambda (elt)
 		       (let ((rhs-val (or (type-value (cdr elt)) (expr (cdr elt)))))
