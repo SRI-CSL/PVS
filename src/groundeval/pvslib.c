@@ -3,6 +3,7 @@
  *************************************/
 
 #include <assert.h>
+#include <gmp.h>
 #include "pvslib.h"
 
 /*
@@ -132,6 +133,19 @@ int64_t div_int64_uint64(int64_t x, uint64_t y){
   return x/y;
 }
 
+int64_t div_int64_uint32(int64_t x, uint32_t y){
+  if (x < 0){
+    int64_t q;
+    q = -x/y;
+    if (q*y < -x){
+      return (-q)-1;
+    } else {
+      return -q;
+    }
+  }
+  return x/y;
+}
+
 uint128_t div_uint128_uint128(int128_t x, uint128_t y){
   return x/y;
 }
@@ -172,6 +186,20 @@ uint64_t rem_uint64_uint64(int64_t x, uint64_t y){
 }
 
 int64_t rem_int64_uint64(int64_t x, uint64_t y){
+  if (x < 0){
+    int64_t r;
+    r = (-x)%y;
+    if (r == 0){
+      return r;
+    } else {
+      return y - r;
+    }
+  }
+  return x%y;
+}
+
+
+int64_t rem_int64_uint32(int64_t x, uint32_t y){
   if (x < 0){
     int64_t r;
     r = (-x)%y;
