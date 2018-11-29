@@ -256,7 +256,7 @@
 				      (format t "Result not ground.  Cannot convert back to PVS."))
 				    (format t "~%~a" cl-eval))))))
 		     t)
-		 (pvs2cl-error (condition)
+		 (pvseval-error (condition)
 		   (format t "~%~a" condition)
 		   (throw 'abort t))
 		 (cl2pvs-error (condition)
