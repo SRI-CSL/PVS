@@ -818,11 +818,12 @@
 
 (defmethod pvs2ir* ((expr formal-type-decl) bindings)
   (let ((bnd (assoc expr bindings)))
-    (cdr bnd)))
+    (if bnd (cdr bnd) (pvs2ir-decl* expr))))
 
 (defmethod pvs2ir* ((expr formal-const-decl) bindings)
   (let ((bnd (assoc expr bindings)))
-    (cdr bnd)))
+    (if bnd (cdr bnd)
+      (pvs2ir-decls* expr))))
 
 (defmethod pvs2ir* ((expr name-expr) bindings)
     (let* ((decl (declaration expr))
@@ -1122,8 +1123,8 @@
 			       (ir-vartypes ir-defn-with-tformals))))
 		     (returntype (if (and (null defn) formals)
 				     (ir-range (pvs2ir-type (type decl)))
-				   (or (and(ir-lambda? ir-defn-with-tformals)
-					   (ir-rangetype ir-defn-with-tformals))
+				   (or (and (ir-lambda? ir-defn-with-tformals)
+					    (ir-rangetype ir-defn-with-tformals))
 				       (pvs2ir-type (type decl)))))
 		     (body (if (ir-lambda? ir-defn-with-tformals)
 			       (ir-body ir-defn-with-tformals)
@@ -1735,8 +1736,12 @@
 	(t (call-next-method))))
 
 (defmethod pvs2ir* ((expr let-expr) bindings)
-  (let ((let-bindings (bindings (operator expr)))
-	(args (arguments expr))
+  (let* ((let-bindings (bindings (operator expr)))
+	 (args (arguments expr))
+	 (args (if (= (length let-bindings)(length args)) args
+		 (loop for bnd in let-bindings
+		       as i from 1
+		       collect (make-projection-application i (car args)))))
 	(expression (expression (operator expr))))
     (pvs2ir-let-expr let-bindings args expression bindings)))
 
@@ -1852,6 +1857,14 @@
 			   ir-argument
 			   (mk-ir-get argvar id)))))
 
+(defmethod pvs2ir* ((expr projappl) bindings)
+  (with-slots (index argument) expr
+	      (let ((ir-argument (pvs2ir* argument bindings))
+		    (argvar (mk-ir-variable (new-irvar)(pvs2ir-type (type argument)))))
+		(mk-ir-let argvar
+			   ir-argument
+			   (mk-ir-get argvar (intern (format nil "project_~a" index)))))))
+
 (defmethod pvs2ir* ((expr update-expr) bindings)
   (with-slots (type expression assignments) expr
 	      (let ((ir-expression (pvs2ir* expression bindings)))
@@ -1893,26 +1906,28 @@
 ;;evaluates the right-hand sides; creates bindings; and then constructs the
 ;;updates over the assignments
 (defun pvs2ir-update (assignments ir-expression expression-type bindings)
+  (let ((maplet? (loop for assgn in assignments thereis (maplet? assgn))))
+    (error 'pvs2c-error :format-control "Maplets not supported")
   (let ((rhs-list (mapcar #'expression assignments))
 	(lhs-list (mapcar #'arguments assignments)))
     (let* ((rhs-irvar-list (loop for i from 1 to (length rhs-list)
 				 collect (new-irvar)))
 	   (ir-rhs-types (loop for lhs in lhs-list
-			    collect (get-component-ir-type expression-type lhs)))
+			       collect (get-component-ir-type expression-type lhs)))
 	   (ir-rhs-vartypes (mk-vartype-list rhs-irvar-list ir-rhs-types))
 	   (ir-rhs-list (loop for rhs in rhs-list
 			      collect
 			      (pvs2ir* rhs bindings)))
-	   (ir-exprvar (mk-ir-variable (new-irvar) expression-type)))	;binds the ir-expression value
+	   (ir-exprvar (mk-ir-variable (new-irvar) expression-type))) ;binds the ir-expression value
       (let ((ir-update-expr (pvs2ir-assignments lhs-list ;build updates
-					       ir-rhs-vartypes
-					       ir-exprvar
-					       expression-type
-					       bindings)))
+						ir-rhs-vartypes
+						ir-exprvar
+						expression-type
+						bindings)))
 	(mk-ir-let* ir-rhs-vartypes ir-rhs-list
 		    (mk-ir-let ir-exprvar 
 			       ir-expression
-			       ir-update-expr))))))
+			       ir-update-expr)))))))
 
 ;;iterates through the assignments constructing updates.  
 (defun pvs2ir-assignments (lhs-list rhs-irvar-list
@@ -5175,18 +5190,22 @@
 
 										  
 (defmethod push-type-info-to-decl (c-type-info (decl const-decl))
+  (when (consp c-type-info) (break "push-type-info-to-decl"))
   (push c-type-info *c-type-info-table*)
   (push c-type-info (c-type-info-table (eval-info decl))))
 
 (defmethod push-type-info-to-decl (c-type-info (decl formal-const-decl))
+  (when (consp c-type-info) (break "push-type-info-to-decl"))  
   (push c-type-info *c-type-info-table*)
   (push c-type-info (c-type-info-table (eval-info decl))))
 
 (defmethod push-type-info-to-decl (c-type-info (decl type-decl))
+  (when (consp c-type-info) (break "push-type-info-to-decl"))  
   (push c-type-info *c-type-info-table*)
   (push c-type-info (c-type-info-table (ir-type-value decl))))
 
 (defmethod push-type-info-to-decl (c-type-info (decl t))
+  (when (consp c-type-info) (break "push-type-info-to-decl"))  
   (format t "\nEmpty decl")
   (push c-type-info *c-type-info-table*))
 
@@ -6011,6 +6030,7 @@
        (let* ((ir-function-name (ir-fname ir-function-name))
 	      (ir-result-type ir-return-type) ;(pvs2ir-type (type decl))
 	      (c-result-type (add-c-type-definition (ir2c-type ir-result-type)))
+	      (dummy (when (null c-result-type (break "make-c-defn-info"))))
 	      ;might need to adjust c-header when result type is gmp
 	      (c-header (format nil "extern ~a_t ~a(~a)" (mppointer-type c-result-type) ir-function-name
 				(c-args-string ir-args))))
