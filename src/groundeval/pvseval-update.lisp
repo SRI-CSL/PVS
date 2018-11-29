@@ -32,11 +32,11 @@
   "Ground evaluation of expression EXPR."
   "Ground evaluating ~a")
 
-;;; Instead of (throw 'undefined), use (error 'pvs2cl-error :expr expr :fmt-str str)
+;;; Instead of (throw 'undefined), use (error 'pvseval-error :expr expr :fmt-str str)
 ;;; Note that the error happens at evaluation time, so the use is something like
 ;;;   (let ((cl-form (pvs2cl expr)))
 ;;;     (handler-case (eval cl-form)
-;;;       (pvs2cl-error (condition) (format t "~%~a" condition))))
+;;;       (pvseval-error (condition) (format t "~%~a" condition))))
 
 (define-condition pvseval-error (groundeval-error)
   ((expr :accessor expr :initarg :expr)
