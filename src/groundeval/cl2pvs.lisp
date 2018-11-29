@@ -39,7 +39,7 @@
   (:report (lambda (condition stream)
 	     (with-slots (sexpr type) condition
 	       (format stream
-		   "'~a' (of type '~a') can't be translated to PVS"
+		   "~@<'~a' (of type '~a')~_  can't be translated to PVS syntax~:>"
 		 sexpr type)))))
   
 (defmethod cl2pvs* (sexpr (type type-name) context)
