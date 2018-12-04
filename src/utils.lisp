@@ -1242,10 +1242,11 @@
 	(lib-decl
 	 (check-for-importing-conflicts d)
 	 (put-decl d))
-	((or mod-decl theory-abbreviation-decl formal-theory-decl)
+	(theory-reference ;(or mod-decl theory-abbreviation-decl formal-theory-decl)
 	 (put-decl d)
 	 (let* ((thname (theory-name d))
-		(th (get-theory thname)))
+		(th (get-theory-transitive thname)))
+	   (assert th)
 	   (add-usings-to-context* th thname))
 	 (setf (saved-context d) (copy-context *current-context*)))
 	(importing
@@ -3269,8 +3270,7 @@
 
 
 ;;; copy-all makes copies all the way down the object.  Because it uses
-;;; gensubst, this function may only be used when the object has been
-;;; typechecked, and *current-context* must be set.
+;;; gensubst, *current-context* must be set.
 
 (defun copy-all (obj &optional parsing)
   (let ((*copy-print-type* t)
@@ -3504,6 +3504,10 @@ space")
 
 (defmethod untyped* ((expr name-expr))
   (values (not (and (type expr) (resolution expr)))
+	  expr))
+
+(defmethod untyped* ((expr theory-name-expr))
+  (values (not (resolution expr))
 	  expr))
 
 (defmethod untyped* ((expr field-assignment-arg))
@@ -4869,3 +4873,10 @@ space")
 ;; (defun check-for-git ()
 ;;   (with-
 ;;   (zerop (run-program "git" :arguments (list "--version"))))
+
+
+#+allegro
+(eval-when (:execute :load-toplevel)
+  (top-level:alias "et" ()
+		   "my alias for :eval :context t"
+		   (apply #'top-level:do-command "evalmode" (list :context t))))
