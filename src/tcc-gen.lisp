@@ -1263,26 +1263,29 @@
 				*tcc-conditions*))
 		(push (list modinst nil (current-declaration))
 		      (assuming-instances (current-theory))))
-	      (dolist (axiom (collect-mapping-axioms modinst mod))
-		(multiple-value-bind (ndecl mappings-alist)
-		    (make-mapped-axiom-tcc-decl axiom modinst mod)
-		  ;; ndecl is nil if mapped axion simplifies to *true*
-		  (declare (ignore mappings-alist))
-		  (let ((netype (when ndecl (nonempty-formula-type ndecl))))
-		    (if (and ndecl
-			     (or (null netype)
-				 (possibly-empty-type? netype)))
-			(insert-tcc-decl 'mapped-axiom modinst axiom ndecl)
-			(if ndecl
-			    (add-tcc-comment
-			     'mapped-axiom nil modinst
-			     (cons 'map-to-nonempty 
-				   (format nil
-				       "%~a~%  % was not generated because ~a is non-empty"
-				     (unpindent ndecl 2 :string t :comment? t)
-				     (unpindent netype 2 :string t :comment? t))))
-			    (add-tcc-comment
-			     'mapped-axiom nil modinst))))))))))))
+	      (dolist (axpair (collect-mapping-axioms modinst mod))
+		(let ((axiom (car axpair))
+		      (defn (cdr axpair)))
+		  (assert (axiom? axiom))
+		  (multiple-value-bind (ndecl mappings-alist)
+		      (make-mapped-axiom-tcc-decl axiom defn modinst mod)
+		    ;; ndecl is nil if mapped axion simplifies to *true*
+		    (declare (ignore mappings-alist))
+		    (let ((netype (when ndecl (nonempty-formula-type ndecl))))
+		      (if (and ndecl
+			       (or (null netype)
+				   (possibly-empty-type? netype)))
+			  (insert-tcc-decl 'mapped-axiom modinst axiom ndecl)
+			  (if ndecl
+			      (add-tcc-comment
+			       'mapped-axiom nil modinst
+			       (cons 'map-to-nonempty 
+				     (format nil
+					 "%~a~%  % was not generated because ~a is non-empty"
+				       (unpindent ndecl 2 :string t :comment? t)
+				       (unpindent netype 2 :string t :comment? t))))
+			      (add-tcc-comment
+			       'mapped-axiom nil modinst)))))))))))))
 
 ;; (defun generate-mapped-axiom (modinst axiom-decl mapped-axiom-defn)
 ;;   (unless (some #'(lambda (decl)
@@ -1301,14 +1304,20 @@
 ;; 	(id decl) (unparse edecl :string t))
 ;;       (add-decl edecl))))
 
+;; Returns ((ax . def) ...) pairs.  The defs are the fully-instantiated form
+;; of the closed-definitions of the axioms
 (defmethod collect-mapping-axioms (thinst theory)
   (assert theory)
-  (append (collect-mapping-axioms* (mappings thinst))
-	  (remove-if-not #'axiom? (all-decls theory))))
+  (append (collect-mapping-axioms* (mappings thinst) thinst theory)
+	  (mapcan #'(lambda (d)
+		      (when (axiom? d)
+			(ensure-closed-definition d)
+			(list (cons d (closed-definition d)))))
+	    (all-decls theory))))
 
 (defmethod collect-mapping-axioms (thinst (decl mod-decl))
   (assert (fully-instantiated? thinst))
-  (append (collect-mapping-axioms* (mappings thinst))
+  (append (collect-mapping-axioms* (sort-mappings (mappings thinst)) thinst decl)
 	  ;;(remove-if-not #'axiom? (generated decl))
 	  ))
 
@@ -1316,20 +1325,101 @@
   (assert (fully-instantiated? thinst))
   (error "Need to fix this - please send your PVS specs to pvs-bugs@csl.sri.com"))
 
-(defmethod collect-mapping-axioms* ((list list))
-  (mapcan #'collect-mapping-axioms* list))
+;;; collect-mapping-axioms* walks down mappings, looking for theory
+;;; references.  Then collects axioms from the RHS, and tries to instantiate
+;;; them.  If successful they are returned.
 
-(defmethod collect-mapping-axioms* ((map mapping))
-  (collect-mapping-axioms* (lhs map)))
+(defun collect-mapping-axioms* (mappings thinst theory &optional axpairs)
+  (if (null mappings)
+      (nreverse axpairs)
+      (let ((map-axpairs (collect-map-axioms (car mappings) thinst theory axpairs)))
+	(collect-mapping-axioms* (cdr mappings) thinst theory
+				 (append map-axpairs axpairs)))))
 
-(defmethod collect-mapping-axioms* ((n name))
-  (collect-mapping-axioms* (declaration n)))
+(defun collect-map-axioms (map thinst theory axpairs)
+  (let ((ldecl (declaration (lhs map))))
+    (when (typep ldecl '(or module theory-reference))
+      (let ((lhs-axioms (collect-lhs-map-axioms (lhs map) thinst theory))
+	    (rdecl (declaration (expr (rhs map)))))
+	(typecase rdecl
+	  (theory-reference
+	   (nconc (mapcan #'(lambda (ax)
+			      (unless (some #'(lambda (gtcc)
+						(and (mapped-axiom-tcc? gtcc)
+						     (eq ax (generating-axiom gtcc))))
+					    (generated rdecl))
+				(ensure-closed-definition ax)
+				(list (cons ax (subst-mod-params
+						   (closed-definition ax) thinst theory)))))
+		    lhs-axioms)
+		  axpairs))
+	  (module
+	   (nconc (mapcan #'(lambda (ax)
+			      (unless (some #'(lambda (gtcc)
+						(and (mapped-axiom-tcc? gtcc)
+						     (eq ax (generating-axiom gtcc))))
+					    (all-decls rdecl))
+				(ensure-closed-definition ax)
+				(list (cons ax (subst-mod-params
+						   (closed-definition ax) thinst theory)))))
+		    lhs-axioms)
+		  axpairs)))))))
 
-(defmethod collect-mapping-axioms* ((theory module))
-  (remove-if-not #'axiom? (all-decls theory)))
+(defmethod collect-lhs-map-axioms ((lhs name) thinst theory)
+  (collect-lhs-map-axioms (declaration lhs) thinst theory))
 
-(defmethod collect-mapping-axioms* ((decl declaration))
-  nil)
+(defmethod collect-lhs-map-axioms ((lhs theory-reference) thinst theory)
+  (collect-lhs-map-axioms (theory-name lhs) thinst theory))
+
+(defmethod collect-lhs-map-axioms ((lhs module) thinst theory)
+  (remove-if-not #'axiom? (all-decls lhs)))
+
+;; (defmethod collect-mapping-axioms* ((map mapping) thinst theory)
+;;   (let ((ldecl (declaration (lhs map))))
+;;     (when (typep ldecl '(or module theory-reference))
+;;       (let ((
+;;   (collect-mapping-axioms* (lhs map) thinst theory))
+
+;; (defmethod collect-mapping-axioms* ((n mapping-lhs) thinst theory)
+;;   (when (typep (declaration n) '(or module theory-reference))
+;;     (break "collect-mapping-axioms* mapping-lhs formals")
+;;     (collect-mapping-axioms* (declaration n) thinst theory)))
+
+;; ;; lhs without formals is just a name
+;; (defmethod collect-mapping-axioms* ((n name) thinst theory)
+;;   (let ((decl (declaration n))
+;; 	(dthinst (module-instance n)))
+;;     (when (fully-instantiated? dthinst)
+;;       (collect-mapping-axioms* decl dthinst (module decl)))))
+
+;; (defmethod collect-mapping-axioms* ((th module) thinst theory)
+;;   (let ((axioms (remove-if-not #'axiom? (all-decls th))))
+;;     (mapcar #'(lambda (ax)
+;; 		(ensure-closed-definition ax)
+;; 		(let ((cdef (subst-mod-params (closed-definition ax)
+;; 				thinst theory ax)))
+;; 		  (assert (fully-instantiated? cdef))
+;; 		  (cons ax cdef)))
+;;       axioms)))
+
+(defun ensure-closed-definition (decl)
+  (assert (formula-decl? decl))
+  (unless (or (closed-definition decl)
+	      (null (definition decl)))
+    (let* ((*in-checker* nil)
+	   (*current-context* (context decl)))
+      (setf (closed-definition decl)
+	    (universal-closure (definition decl))))))
+  
+;; (defmethod collect-mapping-axioms* ((thref theory-reference) thinst theory)
+;;   (let* ((thname (theory-name thref))
+;; 	 (decl (declaration thname)))
+;;     (break "collect-mapping-axioms* theory-reference")
+;;     (remove-if-not #'axiom? (all-decls theory))))
+
+;; (defmethod collect-mapping-axioms* ((decl declaration) thinst theory)
+;;   nil)
+
 
 ;;; Types which are treated as having interpretations
 ;;; See mapping-interpreted-types
@@ -1355,7 +1445,7 @@
 (defmethod nonempty-formula-type ((ex expr))
   nil)
 
-(defun make-mapped-axiom-tcc-decl (axiom modinst mod)
+(defun make-mapped-axiom-tcc-decl (axiom defn modinst mod)
   (multiple-value-bind (dfmls dacts thinst)
       (unless (or *in-checker* *in-evaluator*)
 	(new-decl-formals axiom))
@@ -1365,26 +1455,14 @@
 	   (cth (module cdecl))
 	   (id (make-tcc-name nil (id axiom)))
 	   (tccdecl (mk-mapped-axiom-tcc id nil modinst axiom dfmls)))
-      (unless (closed-definition axiom)
-	(let* ((*in-checker* nil)
-	       (*current-context* (context axiom)))
-	  (setf (closed-definition axiom)
-		(universal-closure (definition axiom)))))
       (multiple-value-bind (expr mappings-alist)
-	  (subst-mod-params (closed-definition axiom)
+	  (subst-mod-params defn
 	      (lcopy modinst :dactuals dacts)
 	    mod axiom)
-	(assert (every #'(lambda (fp) (memq fp dfmls)) (free-params expr)))
-	;; Check for mappings to uninterpreted RHS names, don't do anything in this case
-	(if (every #'(lambda (elt)
-		       (let ((rhs-val (or (type-value (cdr elt)) (expr (cdr elt)))))
-			 (when (name? rhs-val)
-			   (interpretable? (declaration rhs-val)))))
-		   mappings-alist)
-	    (unless *collecting-tccs*
-	      (pvs-warning
-		  "Axiom ~a is not mapped to a TCC because all RHS exprs are interpretable names."
-		(id axiom)))
+	(if (every #'(lambda (fp)
+		       (or (memq fp dfmls)
+			   (memq fp (formals-sans-usings cth))))
+		   (free-params expr))
 	    (let* ((tform expr)		;(add-tcc-conditions expr)
 		   (xform (if *simplify-tccs*
 			      (pseudo-normalize tform)
@@ -1402,7 +1480,11 @@
 		  (type-error axiom
 		    "Mapped axiom TCC for this expression simplifies to false:~2%  ~a"
 		    tform))
-		(values (typecheck* tccdecl nil nil nil) mappings-alist))))))))
+		(values (typecheck* tccdecl nil nil nil) mappings-alist)))
+	    (pvs-warning
+		"Axiom ~a is not mapped to a TCC because it is not fully instantiated."
+	      (id axiom))
+	    )))))
 
 (defun generate-selections-tccs (expr constructors adt)
   (when (and constructors

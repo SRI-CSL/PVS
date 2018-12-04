@@ -651,6 +651,7 @@
 
 (defun update-current-context (theory theoryname)
   (assert (saved-context theory))
+  (assert (fully-typed? theoryname))
   (update-library-alist theory)
   (update-usings-hash theory theoryname)
   (update-declarations-hash theory theoryname)
@@ -1224,68 +1225,70 @@
 expr, number, or theory reference.  They are appended together, set-type
 sorts it all out.  Note that the mapping may have a declared-type; this will
 be typechecked when set-type selects a resolution."
-  (let ((*current-theory* lhs-theory)
-	(*current-context* lhs-context)
-	(*generate-tccs* 'none))
-    (let* ((dfmls (decl-formals mapping))
-	   (tres (unless (and (kind mapping)
-			      (not (eq (kind mapping) 'type)))
-		   (let ((tr (delete-if-not
-				 #'(lambda (r)
-				     (and (interpretable? (declaration r))
-					  ;;(memq (declaration r) lhs-theory-decls)
-					  (length= (decl-formals (declaration r)) dfmls)))
-			       (with-no-type-errors
-				   (resolve* (lhs mapping) 'type nil)))))
-		     (if (cdr tr)
-			 (or (remove-if-not
-				 #'(lambda (r)
-				     (id-prefix (id thinst) (id (declaration r))))
-			       tr)
+  (let* ((*current-theory* lhs-theory)
+	 (*current-context* lhs-context)
+	 (*generate-tccs* 'none)
+	 (dfmls (decl-formals mapping))
+	 (tres (unless (and (kind mapping)
+			    (not (eq (kind mapping) 'type)))
+		 (let ((tr (delete-if-not
+			       #'(lambda (r)
+				   (and (interpretable? (declaration r))
+					;;(memq (declaration r) lhs-theory-decls)
+					(length= (decl-formals (declaration r)) dfmls)))
+			     (with-no-type-errors
+				 (resolve* (lhs mapping) 'type nil)))))
+		   (if (cdr tr)
+		       (or (remove-if-not
+			       #'(lambda (r)
+				   (id-prefix (id thinst) (id (declaration r))))
 			     tr)
-			 tr))))
-	   (eres (unless (and (kind mapping)
-			      (not (eq (kind mapping) 'expr)))
-		   (let ((res (with-no-type-errors (resolve* (lhs mapping) 'expr nil))))
-		     (delete-if-not
-			 #'(lambda (r)
-			     (and (interpretable? (declaration r))
-				  ;; Need to make sure it's not already mapped
-				  ;; This may already be done
-				  (length= (decl-formals (declaration r)) dfmls)))
-		       res))))
-	   (nres (unless (or eres
-			     (and (kind mapping)
-				  (not (eq (kind mapping) 'expr))))
-		   (when (and (or (integerp (id (lhs mapping)))
-				  (every #'digit-char-p
-					 (string (id (lhs mapping)))))
-			      (or (null (mod-id (lhs mapping)))
-				  (eq (mod-id (lhs mapping))
-				      '|numbers|)))
-		     (list (mk-resolution
-			       (number-declaration
-				(if (integerp (id (lhs mapping)))
-				    (id (lhs mapping))
-				    (parse-integer
-				     (string (id (lhs mapping))))))
-			     (mk-modname '|numbers|) *number*)))))
-	   (thres (unless (and (kind mapping)
-			       (not (eq (kind mapping) 'theory)))
-		    (delete-if-not
-			#'(lambda (r)
-			    (or (module? (declaration r))
-				(length= (decl-formals (declaration r)) dfmls)
-				(interpretable? (declaration r))
-				;;(memq (declaration r) lhs-theory-decls)
-				))
-		      (with-no-type-errors
-			  (resolve* (lhs mapping) 'module nil))))))
+			   tr)
+		       tr))))
+	 (eres (unless (and (kind mapping)
+			    (not (eq (kind mapping) 'expr)))
+		 (let ((res (with-no-type-errors (resolve* (lhs mapping) 'expr nil))))
+		   (delete-if-not
+		       #'(lambda (r)
+			   (and (interpretable? (declaration r))
+				;; Need to make sure it's not already mapped
+				;; This may already be done
+				(length= (decl-formals (declaration r)) dfmls)))
+		     res))))
+	 (nres (unless (or eres
+			   (and (kind mapping)
+				(not (eq (kind mapping) 'expr))))
+		 (when (and (or (integerp (id (lhs mapping)))
+				(every #'digit-char-p
+				       (string (id (lhs mapping)))))
+			    (or (null (mod-id (lhs mapping)))
+				(eq (mod-id (lhs mapping))
+				    '|numbers|)))
+		   (list (mk-resolution
+			     (number-declaration
+			      (if (integerp (id (lhs mapping)))
+				  (id (lhs mapping))
+				  (parse-integer
+				   (string (id (lhs mapping))))))
+			   (mk-modname '|numbers|) *number*)))))
+	 (thres (unless (and (kind mapping)
+			     (not (eq (kind mapping) 'theory)))
+		  (delete-if-not
+		      #'(lambda (r)
+			  (or (module? (declaration r))
+			      (length= (decl-formals (declaration r)) dfmls)
+			      (interpretable? (declaration r))
+			      ;;(memq (declaration r) lhs-theory-decls)
+			      ))
+		    (with-no-type-errors
+			(resolve* (lhs mapping) 'module nil))))))
     (unless (or eres nres tres thres)
       (type-error (lhs mapping)
 	"Map lhs~%  ~a~%does not resolve to an uninterpreted ~
-                   type, constant, or theory within theory:~%  ~a"
-	(lhs mapping) (id lhs-theory)))
+                   type, constant, or theory within theory:~%  ~a~
+          ~@[~%Note: ~a is not allowed to be interpreted~]"
+	(lhs mapping) (id lhs-theory)
+	(car (memq (id (lhs mapping)) '(boolean number)))))
     (if (cdr tres)
 	(cond ((or eres nres)
 	       (setf (resolutions (lhs mapping)) (nconc eres nres)))
@@ -1299,7 +1302,7 @@ be typechecked when set-type selects a resolution."
 	  (check-duplication (copy (declaration
 				    (car (resolutions (lhs mapping))))
 			       :id (id (expr (rhs mapping)))
-			       :module 'unbound)))))))
+			       :module 'unbound))))))
 
 (defmethod decl-formals ((map mapping))
   (decl-formals (lhs map)))
@@ -1536,7 +1539,8 @@ be typechecked when set-type selects a resolution."
 
 (defmethod interpretable? ((d type-decl))
   ;;(not (adt-type-name? (type-value d)))
-  t)
+  (not (memq d (list (declaration *boolean*)
+		     (declaration *number*)))))
 
 (defmethod interpretable? ((d type-def-decl))
   nil)
