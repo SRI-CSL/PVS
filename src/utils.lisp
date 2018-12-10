@@ -1198,6 +1198,7 @@
 
 (defun decl-context (decl &optional include?)
   (let* ((*generate-tccs* 'none)
+	 (*ignore-exportings* t)
 	 (theory (module decl))
 	 (libalist (when *current-context*
 		     (library-alist *current-context*))) ;; Before we change
@@ -1244,10 +1245,11 @@
 	 (put-decl d))
 	(theory-reference ;(or mod-decl theory-abbreviation-decl formal-theory-decl)
 	 (put-decl d)
-	 (let* ((thname (theory-name d))
-		(th (get-theory-transitive thname)))
-	   (assert th)
-	   (add-usings-to-context* th thname))
+	 (unless (mapped-decl? d)
+	   (let* ((thname (theory-name d))
+		  (th (get-theory-transitive thname)))
+	     (assert th)
+	     (add-usings-to-context* th thname)))
 	 (setf (saved-context d) (copy-context *current-context*)))
 	(importing
 	 (let* ((thname (theory-name d))
@@ -1476,7 +1478,8 @@
 
 (defmethod add-usings-to-context* ((theory module) inst)
   (add-to-using inst theory)
-  (add-exporting-with-theories theory inst))
+  (unless *ignore-exportings*
+    (add-exporting-with-theories theory inst)))
 
 (defmethod add-usings-to-context* ((adt recursive-type) inst)
   (let ((acts (actuals inst)))
@@ -2786,6 +2789,9 @@
       (ref-to-id (id ref))
       (error "No id slot for <# ~a - ~a #>" (class-name (class-of ref)) ref)))
 
+(defmethod ref-to-id ((ref importing))
+  (id-root ref))
+
 (defmethod ref-to-id ((ref subtype-judgement))
   (or (id ref)
       '|subtype|))
@@ -3270,7 +3276,7 @@
 
 
 ;;; copy-all makes copies all the way down the object.  Because it uses
-;;; gensubst, *current-context* must be set.
+;;; gensubst, *current-context* should be set.
 
 (defun copy-all (obj &optional parsing)
   (let ((*copy-print-type* t)
