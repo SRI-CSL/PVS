@@ -1873,16 +1873,16 @@
 			      (typep (module-instance r) 'datatype-modname))
 			mreses)
 		      mreses)))
-	(if (eq kind 'expr)
-	    (if (cdr res)
-		(filter-constructor-subtypes
-		 (filter-equality-resolutions
-		  (filter-nonlocal-module-instances
-		   (filter-local-expr-resolutions
-		    (filter-bindings res args))))
-		 args nil)
-		res)
-	    (remove-mapping-resolutions
+	(most-refined-mapping-resolutions
+	 (if (eq kind 'expr)
+	     (if (cdr res)
+		 (filter-constructor-subtypes
+		  (filter-equality-resolutions
+		   (filter-nonlocal-module-instances
+		    (filter-local-expr-resolutions
+		     (filter-bindings res args))))
+		  args nil)
+		 res)
 	     (remove-outsiders (remove-generics res)))))
       reses))
 
@@ -1955,14 +1955,28 @@
 		    (append ureses imm-reses))))))
       mreses))
 
-(defun remove-mapping-resolutions (reses)
-  (remove-if #'(lambda (res)
-		 (and (mappings (module-instance res))
-		      (some #'(lambda (r)
-				(and (not (mappings (module-instance r)))
-				     (eq (declaration r) (declaration res))))
-			    reses)))
-    reses))
+(defun most-refined-mapping-resolutions (reses &optional ref-reses)
+  "Returns the resolutions that have the most refined mappings.
+This forms a lattice, and we return the top ones."
+  (if (null reses)
+      ref-reses
+      (if (or (some #'(lambda (r) (more-refined-mapping? r (car reses)))
+		    ref-reses)
+	      (some #'(lambda (r) (more-refined-mapping? r (car reses)))
+		    (cdr reses)))
+	  (most-refined-mapping-resolutions (cdr reses) ref-reses)
+	  (most-refined-mapping-resolutions (cdr reses) (cons (car reses) ref-reses)))))
+
+(defun more-refined-mapping? (res1 res2)
+  (let ((maps1 (mappings (module-instance res1)))
+	(maps2 (mappings (module-instance res2))))
+    (and (> (length maps1) (length maps2))
+	 (every #'(lambda (map)
+		    (member map maps1
+			    :test #'(lambda (m1 m2)
+				      (eq (declaration (lhs m1))
+					  (declaration (lhs m2))))))
+		maps2))))
 
 (defun filter-equality-resolutions (reses)
   (if (and (cdr reses)
