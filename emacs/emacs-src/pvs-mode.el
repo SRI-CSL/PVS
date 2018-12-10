@@ -143,6 +143,15 @@
                       . pvs-font-lock-syntactic-face-function)))
   )
 
+(defvar pvs-minor-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map "\C-c\C-f" 'find-pvs-file)
+    map))
+
+(define-minor-mode pvs-minor-mode
+    "Allows PVS key-bindings to take precedence when enabled."
+  nil nil pvs-minor-mode-map)
+
 (defun pvs-font-lock-syntactic-face-function (state)
   "Return syntactic face given STATE."
   (if (nth 3 state)
