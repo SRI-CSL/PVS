@@ -436,7 +436,7 @@
   (assert (or dtype type))
   (make-instance 'dep-binding
 		 :id id
-		 :declared-type (or dtype type)
+		 :declared-type (or dtype (print-type type) type)
 		 :type type))
 
 (defun mk-dep-binding-name (dtype)
