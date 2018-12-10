@@ -722,51 +722,50 @@
 
 (defmethod subst-mod-params* :around (obj modinst bindings)
   (declare (type hash-table *subst-mod-params-cache* *subst-mod-params-eq-cache*))
-  (if (member obj (list *boolean* *number* *number_field*
-			*real* *rational* *integer* *naturalnumber*)
-	      :test #'tc-eq)
-      obj
-      (or (gethash obj *subst-mod-params-eq-cache*)
-	  (gethash obj *subst-mod-params-cache*)
-	  (let ((nobj
-		 (if (and (null (mappings modinst))
-			  (not (typep obj '(or module declaration
-					    inline-recursive-type list)))
-			  (not (some #'(lambda (b)
-					 (typep (car b)
-						'(or formal-theory-decl
-						  decl-formal)))
-				     bindings))
-			  (no-matching-free-params
-			   obj *subst-mod-free-params*))
-		     obj
-		     (call-next-method))))
-	    (when (and (typep obj 'type-expr)
-		       (typep nobj 'type-expr))
-	      (setq nobj (subst-mod-params-print-type obj nobj modinst bindings))
-	      (when (from-conversion obj)
-		(let ((fconv (subst-mod-params* (from-conversion obj)
-						modinst bindings)))
-		  (setq nobj (lcopy nobj :from-conversion fconv)))))
-	    (unless (some #'(lambda (fv) (member fv *subst-mod-params-freevars*
-						 :test #'same-declaration))
-			  (freevars nobj))
-	      (if (and (not (some #'decl-formal? (free-params nobj)))
-		       (relatively-fully-instantiated? nobj))
-		  (setf (gethash obj *subst-mod-params-cache*) nobj)
-		  (setf (gethash obj *subst-mod-params-eq-cache*) nobj)))
-	    #+pvsdebug
-	    (assert (every #'(lambda (fv)
-			       (or (binding? fv)
-				   (member fv (freevars obj)
-					   :test #'same-declaration)
-				   (member fv (freevars modinst)
-					   :test #'same-declaration)))
-			   (freevars nobj)))
-	    #+pvsdebug
-	    (when (actual? obj)
-	      (assert (actual? nobj)))
-	    nobj))))
+  (or (car (member obj (list *boolean* *number* *number_field*
+			     *real* *rational* *integer* *naturalnumber*)
+		   :test #'tc-eq))
+      (gethash obj *subst-mod-params-eq-cache*)
+      (gethash obj *subst-mod-params-cache*)
+      (let ((nobj
+	     (if (and (null (mappings modinst))
+		      (not (typep obj '(or module declaration
+					inline-recursive-type list)))
+		      (not (some #'(lambda (b)
+				     (typep (car b)
+					    '(or formal-theory-decl
+					      decl-formal)))
+				 bindings))
+		      (no-matching-free-params
+		       obj *subst-mod-free-params*))
+		 obj
+		 (call-next-method))))
+	(when (and (typep obj 'type-expr)
+		   (typep nobj 'type-expr))
+	  (setq nobj (subst-mod-params-print-type obj nobj modinst bindings))
+	  (when (from-conversion obj)
+	    (let ((fconv (subst-mod-params* (from-conversion obj)
+					    modinst bindings)))
+	      (setq nobj (lcopy nobj :from-conversion fconv)))))
+	(unless (some #'(lambda (fv) (member fv *subst-mod-params-freevars*
+					     :test #'same-declaration))
+		      (freevars nobj))
+	  (if (and (not (some #'decl-formal? (free-params nobj)))
+		   (relatively-fully-instantiated? nobj))
+	      (setf (gethash obj *subst-mod-params-cache*) nobj)
+	      (setf (gethash obj *subst-mod-params-eq-cache*) nobj)))
+	#+pvsdebug
+	(assert (every #'(lambda (fv)
+			   (or (binding? fv)
+			       (member fv (freevars obj)
+				       :test #'same-declaration)
+			       (member fv (freevars modinst)
+				       :test #'same-declaration)))
+		       (freevars nobj)))
+	#+pvsdebug
+	(when (actual? obj)
+	  (assert (actual? nobj)))
+	nobj)))
 
 (defmethod subst-mod-params-print-type ((obj type-expr) (nobj type-expr) modinst bindings)
   "subst-mod-params-print-type is called with the original obj, and nobj:
@@ -2235,13 +2234,7 @@ type-name, datatype-subtype, type-application, expr-as-type"
 				  ;;(imps (get-importings (module (declaration res))))
 				  (imps (gethash (module (declaration res))
 						 (lhash-table (current-using-hash))))
-				  (imp-mi (cond ((null imps) mi)
-						((cdr imps)
-						 (if (some #'(lambda (imp) (tc-eq imp mi)) imps)
-						     mi
-						     ;; Could possibly refine this.
-						     (car imps)))
-						(t (car imps))))
+				  (imp-mi (best-module-instance imps mi))
 				  (nmi (mk-modname (id imp-mi)
 					 (if eqtype
 					     (list (mk-actual eqtype))
@@ -2262,9 +2255,24 @@ type-name, datatype-subtype, type-application, expr-as-type"
 					      (mk-funtype (list eqtype eqtype) *boolean*)
 					      ntype))
 				  (nres (mk-resolution decl nmi nrtype)))
-				   ;; (assert (subsetp (free-params nres) (free-params modinst))
-				   ;; 	     () "res6")
-				   nres))))))))))
+			     ;; (assert (subsetp (free-params nres) (free-params modinst))
+			     ;; 	     () "res6")
+			     nres))))))))))
+
+(defun best-module-instance (imps thinst)
+  "Finds the most mapped instance that includes any mappings from thinst"
+  (if (null imps)
+      thinst
+      (let ((imp (car imps)))
+	(if (and (> (length (mappings imp)) (length (mappings thinst)))
+		 (every #'(lambda (map)
+			    (member map (mappings imp)
+				    :test #'(lambda (m1 m2)
+					      (eq (declaration (lhs m1))
+						  (declaration (lhs m2))))))
+			(mappings thinst)))
+	    (best-module-instance (cdr imps) imp)
+	    (best-module-instance (cdr imps) thinst)))))
 
 (defmethod make-resolution (decl modinst &optional type
 				 (sdecl (current-declaration)))
