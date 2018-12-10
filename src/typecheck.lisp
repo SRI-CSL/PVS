@@ -333,63 +333,70 @@
   (declare (ignore obj))
   (type-error inst "Theory ~a not found" (id inst)))
 
-(defmethod typecheck-using* ((mod module) inst)
-  (let* ((nmodinst inst)
+(defmethod typecheck-using* ((th module) inst)
+  "Typechecks the modname inst which should be an instance of module th.
+inst has form lib@thid[acts]{{mappings}}:->target
+
+First the actuals are typechecked, then the target and mappings are merged
+and the resulting list is typechecked.  The resolution is set, and the inst
+is added to the context importings.  When there are mappings, mapped axiom
+TCCs are generated, and finally exportings are updated."
+  (let* ((nthinst inst)
 	 (*typecheck-using* inst))
     (when (actuals inst)
-      (unless (length= (formals-sans-usings mod) (actuals inst))
+      (unless (length= (formals-sans-usings th) (actuals inst))
 	(type-error inst "Wrong number of actuals in ~a" inst))
       (typecheck-actuals inst)
       ;; typecheck-mappings done by determine-implicit-mappings
       ;;(typecheck-mappings (mappings inst) inst)
-      (setq nmodinst (set-type-actuals inst mod))
+      (setq nthinst (set-type-actuals inst th))
       (unless (if (actuals inst)
 		  (fully-instantiated? (actuals inst))
 		  (fully-instantiated? (copy inst :mappings nil)))
 	(type-error inst "Importing actuals must be fully instantiated"))
       ;; set-type-actuals already does this
-      ;;(check-compatible-params (formals-sans-usings mod)
+      ;;(check-compatible-params (formals-sans-usings th)
       ;;		    (actuals inst) nil)
       )
     (let* ((tgt-name (target inst))
 	   (tgt-theory (when tgt-name (get-typechecked-theory tgt-name)))
 	   (tgt-mappings (determine-implicit-mappings
-			  mod inst tgt-name tgt-theory)))
+			  th inst tgt-name tgt-theory)))
       (when (or tgt-mappings (mappings inst))
 	(if tgt-mappings
 	    ;; Note that tgt-mappings includes the (mappings inst)
-	    (setq nmodinst (set-type-maps (lcopy inst
+	    (setq nthinst (set-type-maps (lcopy inst
 					    :mappings tgt-mappings
 					    :target nil)
-					  mod))
-	    (setq nmodinst (set-type-maps inst mod)))))
+					  th))
+	    (setq nthinst (set-type-maps inst th)))))
     (unless (resolution inst)
-      (setf (resolutions inst) (list (make-resolution mod inst))))
-    (unless (resolution nmodinst)
-      (setf (resolutions nmodinst) (list (make-resolution mod nmodinst))))
-    (add-to-using nmodinst mod)
-    (unless (eq nmodinst inst)
+      (setf (resolutions inst) (list (make-resolution th inst))))
+    (unless (resolution nthinst)
+      (setf (resolutions nthinst) (list (make-resolution th nthinst))))
+    (add-to-using nthinst th)
+    (unless (eq nthinst inst)
       (let ((theory (get-theory inst)))
 	(assert (or (not (library-datatype-or-theory? theory))
 		    (library inst)))
 	(put-importing inst theory)
-	(setf (resolutions inst) (list (make-resolution mod nmodinst)))))
+	(setf (resolutions inst) (list (make-resolution th nthinst)))))
     ;;     (when (some #'(lambda (m) (mod-decl? (declaration (lhs m))))
-    ;; 		(mappings nmodinst))
-    ;;       (add-theory-mappings-importings mod nmodinst))
-    ;;     (when (some #'formal-theory-decl? (formals mod))
-    ;;       (add-theory-parameters-importings mod nmodinst))
-    (when (mappings nmodinst)
-      (let* ((*subst-mod-params-map-bindings* (mappings nmodinst))
+    ;; 		(mappings nthinst))
+    ;;       (add-theory-mappings-importings th nthinst))
+    ;;     (when (some #'formal-theory-decl? (formals th))
+    ;;       (add-theory-parameters-importings th nthinst))
+    (when (mappings nthinst)
+      (let* ((*subst-mod-params-map-bindings* (mappings nthinst))
 	     (map-alist (make-subst-mod-params-map-bindings
 			 inst (mappings inst) nil)))
 	;; Note that we're simply appending here - should deal with
 	;; duplicates somehow...
 	(setf (theory-mappings (current-theory))
 	      (append map-alist (theory-mappings (current-theory)))))
-      (generate-mapped-axiom-tccs nmodinst))
+      (generate-mapped-axiom-tccs nthinst))
     (unless *ignore-exportings*
-      (add-exporting-with-theories mod nmodinst t))
+      (add-exporting-with-theories th nthinst t))
     (assert (resolution inst))))
 
 (defun add-theory-parameters-importings (theory inst)
