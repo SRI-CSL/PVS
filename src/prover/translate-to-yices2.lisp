@@ -267,8 +267,8 @@
 (defmethod translate-to-yices2* ((ty subtype) bindings)
   (with-slots (supertype predicate) ty
     (cond ;;((tc-eq ty *naturalnumber*) 'nat) ;;there is no nat
-	  ((tc-eq ty *integer*) 'int)
-	  ((tc-eq ty *real*) 'real)
+	  ((tc-eq ty *integer*) "int")
+	  ((tc-eq ty *real*) "real")
 	  (t (translate-to-yices2* supertype bindings)))))
 
 (defmethod translate-to-yices2* ((ty tupletype) bindings)
@@ -808,59 +808,40 @@
 	    (format stream "(check)~%")
 	    ;(unless nonlinear? (format stream "(status)"))
 	    )
-	  (let ((status nil)
-		(tmp-file (pvs-tmp-file))
-		(*yices2-flags*
+	  (let ((*yices2-flags*
 		 (if nonlinear?
 		     (concatenate 'string
 		       *yices2-flags* " --logic=QF_UFNIRA")
 		     *yices2-flags*)))
-	    (with-open-file (out tmp-file
-				 :direction :output :if-exists :supersede)
-	      (setq status
-		    #+allegro
-		    (excl:run-shell-command
-		     (format nil "~a ~a ~a" *yices2-executable* *yices2-flags* (namestring file))
-		     :input "//dev//null"
-		     :output out
-		     :error-output :output)
-		    #+sbcl
-		    (sb-ext:run-program
-			(format nil "~a ~a ~a" *yices2-executable* *yices2-flags* (namestring file))
-		      nil
-		      :input "//dev//null"
-		      :output out
-		      :error out)
-		    #+cmu
-		    (extensions:run-program
-			(format nil "~a ~a ~a" *yices2-executable* *yices2-flags* (namestring file))
-		      nil
-		      :input "//dev//null"
-		      :output out
-		      :error out)))
-	    (when *y2datatype-warning*
-	      (format t "~70,,,'*A" "")
-	      (format t "~%Warning: The Yices datatype theory is not currently trustworthy.
+	    (multiple-value-bind (output err-output status)
+		(uiop:run-program
+		    (format nil "~a ~a ~a"
+		      *yices2-executable*
+		      *yices2-flags*
+		      (namestring file))
+		  :input "//dev//null"
+		  :output '(:string :stripped t)
+		  :ignore-error-status t)
+	      (when *y2datatype-warning*
+		(format t "~70,,,'*A" "")
+		(format t "~%Warning: The Yices datatype theory is not currently trustworthy.
 Please check your results with a proof that does not rely on Yices. ~%")
-	      (format t "~70,,,'*A" ""))
-	    (cond ((zerop status)
-		   (let ((result (file-contents tmp-file)))
+		(format t "~70,,,'*A" ""))
+	      (cond ((zerop status)
 		     ;;(break "yices result")
-		     (delete-file tmp-file)
-		     (delete-file file)
-		     (format-if "~%Result = ~a" result)
-		     (cond ((search "unsat"  result :from-end t)
+		     (format-if "~%Result = ~a" output)
+		     (cond ((search "unsat"  output :from-end t)
 			    (format-if "~%Yices translation of negation is unsatisfiable")
 			    (values '! nil nil))
 			   (t (format-if "~%Yices translation of negation is not known to be satisfiable or unsatisfiable")
-			      (values 'X nil nil)))))
-		  (t (format t
-			 "~%Error running yices - you may need to do one or more of:~
+			      (values 'X nil nil))))
+		    (t (format t
+			   "~%Error running yices - you may need to do one or more of:~
                           ~% 1. Download yices from http://yices.csl.sri.com~
                           ~% 2. add yices to your path and restart PVS.
                           ~%The error message is:~% ~a"
-		       (file-contents tmp-file))
-		     (values 'X nil))))))))
+			 err-output)
+		       (values 'X nil)))))))))
 
 	
 (addrule 'yices2 () ((fnums *) nonlinear?)
