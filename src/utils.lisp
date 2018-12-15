@@ -345,14 +345,15 @@
 		   (sys:getenv "PATH") command arguments)))
     (excl:shell string)))
 
-#+allegro
 (defun program-version (command expected)
-  (let* ((version (uiop:run-program command
-		    :output '(:string :stripped t)
-		    :ignore-error-status t))
-	 (match-p (string= expected version :end2 (length expected))))
-    match-p))
-	
+  (and command
+       (let* ((version (uiop:run-program command
+			 :output '(:string :stripped t)
+			 :ignore-error-status t))
+	      (match-p (and (stringp version)
+			    (string= expected version
+				     :end2 (length expected)))))
+	 match-p)))
 
 #+lucid
 (defun ls ()
