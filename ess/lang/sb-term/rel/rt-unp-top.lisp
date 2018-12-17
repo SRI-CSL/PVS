@@ -266,7 +266,7 @@
 		   (filep
 		    (with-open-file (s file
 				       :direction :output
-				       :if-exists :overwrite)
+				       :if-exists :supersede)
 		      (write-string unp-str s)
 		      t))
 		   (t
