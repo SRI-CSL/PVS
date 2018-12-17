@@ -447,7 +447,7 @@ and SUFFIX (without the file type)."
 ;;; Generate an info file and give it the name info.
 (defun generate-info-file (info)
   (with-open-file (s info
-		     :direction :output :if-exists :new-version)
+		     :direction :output :if-exists :overwrite)
     (format t "   writing file ~S.~%" info)
     (sb-write
      (format s "~S~%~S~%~S~%~S~%~S~%~S~%"
@@ -460,7 +460,7 @@ and SUFFIX (without the file type)."
 ;;; Generate a sorts file and give it the name sorts.
 (defun generate-sorts-file (sorts)
   (with-open-file (s sorts
-		     :direction :output :if-exists :new-version)
+		     :direction :output :if-exists :overwrite)
     (format t "   writing file ~S.~%" sorts)
     (initialize-file s :sorts)
     (sb-write
