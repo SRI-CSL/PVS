@@ -789,7 +789,8 @@ platforms = ix86-Linux,ix86_64-Linux,ix86-MacOSX,powerpc-MacOSX,powerpc-MacOSX,s
 # comma cannot appear in a makefile function argument.
 comma:= ,
 
-clean : 
+clean :
+	rm $(pvs-parser-out) \
 	for e in $(subst $(comma), ,$(faslexts)) ; do \
 		find . -type f -name \*.$$e -exec rm \{\} \; ; \
 	done
