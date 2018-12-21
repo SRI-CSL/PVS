@@ -722,50 +722,57 @@
 
 (defmethod subst-mod-params* :around (obj modinst bindings)
   (declare (type hash-table *subst-mod-params-cache* *subst-mod-params-eq-cache*))
-  (or (car (member obj (list *boolean* *number* *number_field*
-			     *real* *rational* *integer* *naturalnumber*)
-		   :test #'tc-eq))
-      (gethash obj *subst-mod-params-eq-cache*)
-      (gethash obj *subst-mod-params-cache*)
-      (let ((nobj
-	     (if (and (null (mappings modinst))
-		      (not (typep obj '(or module declaration
-					inline-recursive-type list)))
-		      (not (some #'(lambda (b)
-				     (typep (car b)
-					    '(or formal-theory-decl
-					      decl-formal)))
-				 bindings))
-		      (no-matching-free-params
-		       obj *subst-mod-free-params*))
-		 obj
-		 (call-next-method))))
-	(when (and (typep obj 'type-expr)
-		   (typep nobj 'type-expr))
-	  (setq nobj (subst-mod-params-print-type obj nobj modinst bindings))
-	  (when (from-conversion obj)
-	    (let ((fconv (subst-mod-params* (from-conversion obj)
-					    modinst bindings)))
-	      (setq nobj (lcopy nobj :from-conversion fconv)))))
-	(unless (some #'(lambda (fv) (member fv *subst-mod-params-freevars*
-					     :test #'same-declaration))
-		      (freevars nobj))
-	  (if (and (not (some #'decl-formal? (free-params nobj)))
-		   (relatively-fully-instantiated? nobj))
-	      (setf (gethash obj *subst-mod-params-cache*) nobj)
-	      (setf (gethash obj *subst-mod-params-eq-cache*) nobj)))
-	#+pvsdebug
-	(assert (every #'(lambda (fv)
-			   (or (binding? fv)
-			       (member fv (freevars obj)
-				       :test #'same-declaration)
-			       (member fv (freevars modinst)
-				       :test #'same-declaration)))
-		       (freevars nobj)))
-	#+pvsdebug
-	(when (actual? obj)
-	  (assert (actual? nobj)))
-	nobj)))
+  (let ((fixed-type (car (member obj (list *boolean* *number* *number_field*
+					   *real* *rational* *integer* *naturalnumber*)
+				 :test #'tc-eq))))
+    (cond (fixed-type
+	   (if (or (null (print-type obj))
+		   (null (free-params (print-type obj))))
+	       obj
+	       (let ((pt (subst-mod-params* (print-type obj) modinst bindings)))
+		 (lcopy obj :print-type pt))))
+	  (t
+	   (or (gethash obj *subst-mod-params-eq-cache*)
+	       (gethash obj *subst-mod-params-cache*)
+	       (let ((nobj
+		      (if (and (null (mappings modinst))
+			       (not (typep obj '(or module declaration
+						 inline-recursive-type list)))
+			       (not (some #'(lambda (b)
+					      (typep (car b)
+						     '(or formal-theory-decl
+						       decl-formal)))
+					  bindings))
+			       (no-matching-free-params
+				obj *subst-mod-free-params*))
+			  obj
+			  (call-next-method))))
+		 (when (and (typep obj 'type-expr)
+			    (typep nobj 'type-expr))
+		   (setq nobj (subst-mod-params-print-type obj nobj modinst bindings))
+		   (when (from-conversion obj)
+		     (let ((fconv (subst-mod-params* (from-conversion obj)
+						     modinst bindings)))
+		       (setq nobj (lcopy nobj :from-conversion fconv)))))
+		 (unless (some #'(lambda (fv) (member fv *subst-mod-params-freevars*
+						      :test #'same-declaration))
+			       (freevars nobj))
+		   (if (and (not (some #'decl-formal? (free-params nobj)))
+			    (relatively-fully-instantiated? nobj))
+		       (setf (gethash obj *subst-mod-params-cache*) nobj)
+		       (setf (gethash obj *subst-mod-params-eq-cache*) nobj)))
+		 #+pvsdebug
+		 (assert (every #'(lambda (fv)
+				    (or (binding? fv)
+					(member fv (freevars obj)
+						:test #'same-declaration)
+					(member fv (freevars modinst)
+						:test #'same-declaration)))
+				(freevars nobj)))
+		 #+pvsdebug
+		 (when (actual? obj)
+		   (assert (actual? nobj)))
+		 nobj))))))
 
 (defmethod subst-mod-params-print-type ((obj type-expr) (nobj type-expr) modinst bindings)
   "subst-mod-params-print-type is called with the original obj, and nobj:
@@ -1123,6 +1130,7 @@ type-name, datatype-subtype, type-application, expr-as-type"
 		   (new-decl-formals decl)
 		 (let ((ndecl (copy decl
 				:decl-formals dfmls
+				:formals nil ; they are in the RHS expr
 				:module (current-theory)
 				:generated-by decl
 				:semi t)))
