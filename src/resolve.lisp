@@ -190,11 +190,15 @@
 	 (ldecls (if (library name)
 		     (let ((libref (get-library-reference (library name))))
 		       (if libref
-			   (remove-if-not
-			       #'(lambda (d)
-				   (and (library-theory? (module d))
-					(string= libref (lib-ref (module d)))))
-			     adecls)
+			   (if (eq kind 'module)
+			       (let ((th (get-typechecked-theory name)))
+				 (assert th)
+				 (list th))
+			       (remove-if-not
+				   #'(lambda (d)
+				       (and (library-theory? (module d))
+					    (string= libref (lib-ref (module d)))))
+				 adecls))
 			   (type-error name "~a is an unknown library"
 				       (library name))))
 		     adecls))
@@ -460,6 +464,7 @@
   (let ((dth (module decl)))
     (when (and (kind-match (kind-of decl) kind)
 	       (or (eq dth (current-theory))
+		   (eq kind 'module)
 		   (visible? decl))
 	       (not (disallowed-free-variable? decl))
 	       (or (null args)
