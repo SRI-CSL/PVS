@@ -1237,7 +1237,14 @@ returns the updated bindings."
   (collect-domain-types* arg farg nil))
 
 (defmethod collect-domain-types* ((arg funtype) (farg funtype) domain-pairs)
-  (acons (domain arg) (domain farg) domain-pairs))
+  (let ((adom (find-supertype-without-freevars (domain arg)))
+	(fdom (find-supertype-without-freevars (domain farg))))
+    ;; (unless (and (tc-eq adom (domain arg))
+    ;; 		 (tc-eq fdom (domain farg)))
+    ;;   (break "check this"))
+    (if (assoc adom domain-pairs :test #'tc-eq)
+	domain-pairs
+	(acons adom fdom domain-pairs))))
 
 (defmethod collect-domain-types* ((arg subtype) (farg subtype) domain-pairs)
   (let* ((asuptype1 (find-adt-supertype arg))

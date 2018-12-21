@@ -1405,40 +1405,78 @@
       argtype
       (find-parameter-instantiation argtype domain)))
 
-(defmethod find-supertype-without-freevars ((type type-name))
+(defun find-supertype-without-freevars (type)
+  "Returns the supertype of type going past freevars.  Vars in
+*bound-variables* are not considered free, as well as dep-bindings,
+field-decls, etc."
+  (find-supertype-without-freevars* type *bound-variables*))
+
+(defmethod find-supertype-without-freevars* ((type type-name) boundvars)
+  (declare (ignore boundvars))
   type)
 
-(defmethod find-supertype-without-freevars ((type funtype))
-  (if (freevars type)
-      (mk-funtype (find-supertype-without-freevars (domain type))
-		  (find-supertype-without-freevars (range type)))
+(defmethod find-supertype-without-freevars* ((type funtype) boundvars)
+  (if (unbound-freevars? type boundvars)
+      (let ((tylist (find-supertype-without-freevars*
+		     (list (domain type) (range type)) boundvars)))
+	(mk-funtype (car tylist) (cadr tylist)))
       type))
 
-(defmethod find-supertype-without-freevars ((type dep-binding))
-  (find-supertype-without-freevars (type type)))
-
-(defmethod find-supertype-without-freevars ((type subtype))
-  (find-supertype-without-freevars (supertype type)))
-
-(defmethod find-supertype-without-freevars ((type tupletype))
-  (if (freevars type)
-      (mk-tupletype (mapcar #'find-supertype-without-freevars (types type)))
+(defmethod find-supertype-without-freevars* ((type dep-binding) boundvars)
+  (if (unbound-freevars? type boundvars)
+      (mk-dep-binding (id type)
+		      (find-supertype-without-freevars* (type type) boundvars))
       type))
 
-(defmethod find-supertype-without-freevars ((type cotupletype))
-  (if (freevars type)
-      (mk-cotupletype (mapcar #'find-supertype-without-freevars (types type)))
+(defmethod find-supertype-without-freevars* ((type subtype) boundvars)
+  (if (unbound-freevars? type boundvars)
+      (find-supertype-without-freevars* (supertype type) boundvars)
       type))
 
-(defmethod find-supertype-without-freevars ((type recordtype))
-  (if (freevars type)
-      (mk-recordtype (mapcar #'find-supertype-without-freevars (fields type))
-		     nil)
+(defmethod find-supertype-without-freevars* ((types list) boundvars)
+  (find-supertype-without-freevars-types types boundvars nil))
+
+(defun find-supertype-without-freevars-types (types boundvars stypes)
+  (if (null types)
+      (nreverse stypes)
+      (let ((stype (find-supertype-without-freevars* (car types) boundvars)))
+	(find-supertype-without-freevars-types
+	 (if (dep-binding? stype)
+	     (substit (cdr types) (acons (car types) stype nil))
+	     (cdr types))
+	 (if (dep-binding? stype)
+	     (cons stype boundvars)
+	     boundvars)
+	 (cons stype stypes)))))
+
+(defmethod find-supertype-without-freevars* ((type tupletype) boundvars)
+  (if (unbound-freevars? type boundvars)
+      (find-supertype-without-freevars* (types type) boundvars)
       type))
 
-(defmethod find-supertype-without-freevars ((fld field-decl))
-  (if (freevars (type fld))
-      (mk-field-decl (id fld) (find-supertype-without-freevars (type fld)))
+(defmethod find-supertype-without-freevars* ((type cotupletype) boundvars)
+  (if (unbound-freevars? type boundvars)
+      (mk-cotupletype (mapcar #'find-supertype-without-freevars* (types type) boundvars))
+      type))
+
+(defmethod find-supertype-without-freevars* ((type recordtype) boundvars)
+  (if (unbound-freevars? type boundvars)
+      (let ((sflds (find-supertype-without-freevars-fields (fields type) boundvars nil)))
+	(mk-recordtype sflds nil))
+      type))
+
+(defun find-supertype-without-freevars-fields (fields boundvars sfields)
+  (if (null fields)
+      (nreverse sfields)
+      (let ((sfld (find-supertype-without-freevars* (car fields) boundvars)))
+	(find-supertype-without-freevars-fields
+	 (substit (cdr fields) (acons (car fields) sfld nil))
+	 (cons sfld boundvars)
+	 (cons sfld sfields)))))
+
+(defmethod find-supertype-without-freevars* ((fld field-decl) boundvars)
+  (if (unbound-freevars? (type fld) boundvars)
+      (mk-field-decl (id fld) (find-supertype-without-freevars* (type fld) boundvars))
       fld))
 
 
