@@ -1146,6 +1146,14 @@
   (declare (ignore te))
   nil)
 
+(defmethod valid-context-ref? ((name-str string))
+  (context-ref? (pc-parse name-str 'name)))
+
+(defmethod valid-context-ref? ((name name))
+  (if (mod-id name)
+      (let ((th (get-theory (mod-id name))))
+	(and th (find (id name) (all-decls th) :key #'ref-to-id)))
+      (get-theory (id name))))
 
 (defmethod context ((name-str string))
   (context (pc-parse name-str 'name)))
@@ -2523,7 +2531,8 @@
 (defvar *exclude-prelude-names* nil)
 
 (defun full-name (obj &optional depth prelude?)
-  (if (and depth (zerop depth))
+  (if (or (not (typep obj '(or list syntax)))
+	  (and depth (zerop depth)))
       obj
       (let ((*full-name-depth* depth)
 	    (*exclude-prelude-names* (or prelude? *exclude-prelude-names*)))
@@ -2595,11 +2604,11 @@
 			    (library-datatype-or-theory?
 			     (module (declaration x))))
 		   (libref-to-libid (lib-ref (module (declaration x))))))
-    'actuals (full-name (mapcar #'(lambda (act)
-				    (lcopy act :type-value nil))
-			  (actuals (module-instance (resolution x))))
-			(when *full-name-depth*
-			  (1- *full-name-depth*)))
+    'actuals (mapcar #'(lambda (act)
+			 (full-name (lcopy act :type-value nil)
+				    (when *full-name-depth*
+				      (1- *full-name-depth*))))
+	       (actuals (module-instance (resolution x))))
     'mappings (mappings (module-instance (resolution x)))))
 
 (defmethod full-name! ((x adt-name-expr))
