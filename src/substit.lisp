@@ -849,7 +849,13 @@ that elt."
 	  texpr
 	  (let* ((spred (pseudo-normalize npred))
 		 (stype (domain (find-supertype (type spred))))
-		 (ptype (substit* print-type alist))
+		 (subst-ptype (substit* print-type alist))
+		 (cand-ptype (when subst-ptype
+			       (or (print-type subst-ptype) subst-ptype)))
+		 (ptype (when (typep cand-ptype
+				     '(or null type-name expr-as-type
+				       type-application))
+			  cand-ptype))
 		 (ntexpr (lcopy texpr
 			   'supertype stype
 			   'predicate spred
@@ -871,7 +877,9 @@ that elt."
   (let* ((sexpr (substit* (expr texpr) alist))
 	 (bexpr (beta-reduce sexpr)))
     (if (everywhere-true? bexpr)
-	(domain (type bexpr))
+	(let* ((dty (domain (type bexpr)))
+	       (pty (or (print-type dty) dty)))
+	  pty)
 	(lcopy texpr :expr bexpr))))
 
 (defmethod substit* ((texpr datatype-subtype) alist)
