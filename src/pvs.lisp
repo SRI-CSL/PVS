@@ -2410,22 +2410,34 @@ Note that even proved ones get overwritten"
 				    :pvs)
 			    '(tccs ppe))))))))
 
-(defun prove-formula (theoryname formname rerun?)
-  (let ((theory (get-typechecked-theory theoryname)))
-    (if theory
-	(let* ((fid (intern formname :pvs))
-	       (fdecl (find-if #'(lambda (d) (and (formula-decl? d)
-						  (eq (id d) fid)))
-			(all-decls theory)))
-	       (strat (when rerun? '(rerun)))
-	       (*current-theory* theory)
-	       (*current-context* (when fdecl (context fdecl)))
-	       (*please-interrupt* t))
-	  (read-strategies-files)
-	  (if fdecl
-	      (prove formname :strategy strat)
-	      (pvs-message "Formula ~a not found" formname)))
-	(pvs-message "No such theory: ~a" theoryname))))
+(defun prove-formula (formref &optional formname rerun?)
+  "Starts a proof with formula given by formref.  If formname is provided,
+it is the name of the formula, and formref should be a theoryname.  If
+formname is nil, then formref should resolve to a unique name."
+  (if formname
+      (let ((theory (get-typechecked-theory formref)))
+	(if theory
+	    (let* ((fid (intern formname :pvs))
+		   (fdecl (find-if #'(lambda (d) (and (formula-decl? d)
+						      (eq (id d) fid)))
+			    (all-decls theory)))
+		   (strat (when rerun? '(rerun)))
+		   (*current-theory* theory)
+		   (*current-context* (when fdecl (context fdecl)))
+		   (*please-interrupt* t))
+	      (read-strategies-files)
+	      (if fdecl
+		  (prove formname :strategy strat)
+		  (pvs-message "Formula ~a not found" formname)))
+	    (pvs-message "No such theory: ~a" theoryname)))
+      (with-context formref
+	(if (formula-decl? (current-declaration))
+	    (let ((strat (when rerun? '(rerun)))
+		  (*please-interrupt* t))
+	      (read-strategies-files)
+	      (prove (current-declaration) :strategy strat))
+	    (pvs-message "~a is not a formula declaration" formref)))))
+	  
 
 (defun rerun-proof-of? (modname formname)
   (setq *current-theory* (get-theory modname))
@@ -3462,9 +3474,8 @@ Note that even proved ones get overwritten"
 		(dolist (sc skoconsts)
 		  (let* ((decl (format nil "~a: ~a" (id sc) (type sc)))
 			 (def (when (definition sc)
-				(unpindent (definition sc) (+ (length decl) 3)
-					   :string t))))
-		  (format t "~%~a~@[ = ~a~]" decl def))))
+				(unpindent (definition sc) 5 :string t))))
+		    (format t "~%~a~@[~%   = ~a~]" decl def))))
 	      t)
 	    (pvs-message "No Skolem Constants on this branch of the proof")))
       (pvs-message "Not in the prover")))
