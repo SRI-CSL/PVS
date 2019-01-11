@@ -3435,7 +3435,7 @@ type of the lhs."
           (if *dont-worry-about-full-instantiations*
               optype
               (type-error op
-                "Could not determine the full theory instance for ~a~
+                "Could not determine the full theory instance for~_ ~a~
                  ~:[~;~%  May be a problem with splitting dependent types~]~
                  ~@[~%  Theory instance: ~a~]"
                 op
@@ -5104,10 +5104,12 @@ type of the lhs."
 
 (defmethod set-type* :around ((te type-expr) expected)
   (declare (ignore expected))
-  (call-next-method)
   (when (print-type te)
+    (unless (place (print-type te))
+      (setf (place (print-type te)) (place te)))
     (let ((*generate-tccs* 'none))
-      (set-type* (print-type te) nil))))
+      (set-type* (print-type te) nil)))
+  (call-next-method))
 
 (defmethod set-type* ((te type-name) expected)
   (declare (ignore expected))
