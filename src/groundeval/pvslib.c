@@ -6,6 +6,7 @@
 #include <gmp.h>
 #include "pvslib.h"
 
+
 /*
  * Fatal error: out of memory
  */
@@ -99,9 +100,35 @@ void mpz_add_si(mpz_t x, mpz_t y, int64_t i){
   }
 }
 
+void mpz_sub_si(mpz_t x, mpz_t y, int64_t i){
+  if (i < 0) {
+      mpz_add_ui(x, y, -i);
+    } else {
+    mpz_sub_ui(x, y, -i);
+  }
+}
+
+void mpz_si_sub(mpz_t x, int64_t i, mpz_t y){
+    mpz_set_si(x, i);
+    mpz_sub(x, x, y);
+}
+
+
+
+//-------------------------------------------------------
+
 uint32_t div_uint32_uint32(uint32_t x, uint32_t y){
   return x/y;
 }
+
+uint64_t div_uint64_uint32(uint64_t x, uint32_t y){
+  return x/y;
+}
+
+uint32_t div_uint32_uint64(uint32_t x, uint64_t y){
+  return x/y;
+}
+
 
 int32_t div_int32_uint32(int32_t x, uint32_t y){
   if (x < 0){
@@ -181,7 +208,7 @@ uint32_t rem_int32_uint32(int32_t x, uint32_t y){
   return x%y;
 }
 
-uint64_t rem_uint64_uint64(int64_t x, uint64_t y){
+uint64_t rem_uint64_uint64(uint64_t x, uint64_t y){
   return x%y;
 }
 
@@ -197,7 +224,6 @@ int64_t rem_int64_uint64(int64_t x, uint64_t y){
   }
   return x%y;
 }
-
 
 int64_t rem_int64_uint32(int64_t x, uint32_t y){
   if (x < 0){
@@ -228,5 +254,201 @@ int128_t rem_int128_uint128(int128_t x, uint128_t y){
   }
   return x%y;
 }
+
+mpz_ptr_t pvsfloor_q_z(mpq_t x){
+        mpz_ptr_t result;
+        result = safe_malloc(sizeof(mpz_t));
+        mpz_init(result);
+        mpz_set_q(result, x);
+
+        return result;
+}
+
+mpq_ptr_t pvsfloor_q_q(mpq_t x){
+        mpq_ptr_t result;
+        result = safe_malloc(sizeof(mpq_t));
+        mpq_init(result);
+	mpz_ptr_t tmp;
+	tmp = pvsfloor_q_z(x);
+	mpq_set_z(result, tmp);
+	mpz_clear(tmp);
+        return result;
+}
+
+int64_t pvsfloor_q_i64(mpq_t x){
+        int64_t result;
+	mpz_ptr_t tmp;
+	tmp = pvsfloor_q_z(x);
+	result = mpz_get_si(tmp);
+	mpz_clear(tmp);
+        return result;
+}
+
+uint64_t pvsfloor_q_u64(mpq_t x){
+        uint64_t result;
+	mpz_ptr_t tmp;
+	tmp = pvsfloor_q_z(x);
+	result = mpz_get_si(tmp);
+	mpz_clear(tmp);
+        return result;
+}
+
+
+mpz_ptr_t pvsceiling_q_z(mpq_t x){
+  mpz_ptr_t result;
+  result = safe_malloc(sizeof(mpz_t));
+  mpz_init(result);
+  mpz_cdiv_q(result, mpq_numref(x), mpq_denref(x));
+  return result;
+}
+
+mpq_ptr_t pvsceiling_q_q(mpq_t x){
+  mpq_ptr_t result;
+  result = safe_malloc(sizeof(mpq_t));
+  mpq_init(result);
+  mpz_ptr_t tmp = pvsceiling_q_z(x);
+  mpq_set_z(result, tmp);
+  mpz_clear(tmp);
+  return result;
+}
+
+int64_t pvsceiling_q_i64(mpq_t x){
+  int64_t result;
+  mpz_ptr_t tmp = pvsceiling_q_z(x);
+  result = mpz_get_si(tmp);
+  mpz_clear(tmp);
+  return result;
+}
+
+uint64_t pvsceiling_q_u64(mpq_t x){
+  uint64_t result;
+  mpz_ptr_t tmp = pvsceiling_q_z(x);
+  result = mpz_get_ui(tmp);
+  mpz_clear(tmp);
+  return result;
+}
+
+uint64_t mpq_get_ui(mpq_t x){
+  uint64_t result;
+  mpz_t tmp;
+  mpz_init(tmp);
+  mpz_set_q(tmp, x);
+  result =  mpz_get_ui(tmp);
+  mpz_clear(tmp);
+  return result;
+}
+
+uint64_t mpq_get_si(mpq_t x){
+  uint64_t result;
+  mpz_t tmp;
+  mpz_init(tmp);
+  mpz_set_q(tmp, x);
+  result =  mpz_get_si(tmp);
+  mpz_clear(tmp);
+  return result;
+}
+
+mpz_ptr_t mpz_add_q(mpz_t ret, mpz_t x, mpq_t y){
+  mpz_set_q(ret, y);
+  mpz_add(ret, ret, x);
+  return ret;
+}
+
+mpz_ptr_t mpz_sub_q(mpz_t ret, mpz_t x, mpq_t y){
+  mpz_set_q(ret, y);
+  mpz_sub(ret, x, ret);
+  return ret;
+}
+
+mpz_ptr_t mpz_mul_q(mpz_t ret, mpz_t x, mpq_t y){
+  mpz_set_q(ret, y);
+  mpz_mul(ret, ret, x);
+  return ret;
+}
+
+mpq_ptr_t mpq_add_si(mpq_t ret, mpq_t x, int64_t y){
+  mpq_set_si(ret, y, 1);
+  mpq_add(ret, ret, x);
+  return ret;
+}
+
+mpq_ptr_t mpq_sub_si(mpq_t ret, mpq_t x, int64_t y){
+  mpq_set_si(ret, -y, 1);
+  mpq_add(ret, ret, x);
+  return ret;
+}
+
+mpq_ptr_t mpq_mul_si(mpq_t ret, mpq_t x, int64_t y){
+  mpq_set_si(ret, y, 1);
+  mpq_mul(ret, ret, x);
+  return ret;
+}
+
+mpq_ptr_t mpq_add_ui(mpq_t ret, mpq_t x, uint64_t y){
+  mpq_set_ui(ret, y, 1);
+  mpq_add(ret, ret, x);
+  return ret;
+}
+
+mpq_ptr_t mpq_sub_ui(mpq_t ret, mpq_t x, uint64_t y){
+  mpq_t tmp;
+  mpq_init(tmp);
+  mpq_set_ui(tmp, y, 1);
+  mpq_sub(ret, x, tmp);
+  return ret;
+}
+
+mpq_ptr_t mpq_mul_ui(mpq_t ret, mpq_t x, uint64_t y){
+  mpq_set_ui(ret, y, 1);
+  mpq_mul(ret, ret, x);
+  return ret;
+}
+
+mpq_ptr_t mpq_add_z(mpq_t ret, mpq_t x, mpz_t y){
+  mpq_set_z(ret, y);
+  mpq_add(ret, ret, x);
+  return ret;
+}
+
+mpq_ptr_t mpq_sub_z(mpq_t ret, mpq_t x, mpz_t y){
+  mpq_set_z(ret, y);
+  mpq_sub(ret, x, ret);
+  return ret;
+}
+
+mpq_ptr_t mpq_mul_z(mpq_t ret, mpq_t x, mpz_t y){
+  mpq_set_z(ret, y);
+  mpq_mul(ret, ret, x);
+  return ret;
+}
+
+
+
+//---------------------------------------------------------------
+
+
+
+
+
+
+struct type_actuals;
+typedef struct type_actual_s * type_actual_t;
+
+struct type_actual_s {
+  char tag;  //type tag: either `z' (mpz), `q' (mpq), `i' (uint_64 or int64_t),
+            //`p' (pointer, the only one for which the release pointer isn't NULL)
+  void (* release_ptr)(void *, type_actual_t[]);
+  bool_t (* eq_ptr)(void *, void *, type_actual_t[]);
+  uint32_t numparams; //This could fail if the number of parameters exceeds 2^32-1!
+  type_actual_t params[];//These are the further free parameters in the type of the actual.  
+};
+
+void do_release(type_actual_t t, void * arg, type_actual_t * params){
+  t->release_ptr(arg, params);
+};
+
+bool_t do_equal(type_actual_t t, void * arg1, void * arg2, type_actual_t * params){
+  return t->eq_ptr(arg1, arg2, params);
+};
 
 

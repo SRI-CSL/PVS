@@ -1140,8 +1140,8 @@
 (defun pvs2ir-constant (expr)
   (let ((decl (declaration expr)))
     (cond ((pvs2ir-primitive? expr) ;;borrowed from pvseval-update.lisp
-	   (cond ((eq (id expr) 'TRUE) 'TRUE)
-		 ((eq (id expr) 'FALSE) 'FALSE)
+	   (cond ((eq (id expr) 'TRUE) (mk-ir-bool t))
+		 ((eq (id expr) 'FALSE) (mk-ir-bool nil))
 		 (t (mk-ir-function (id expr) decl))));for primitives, types are derived from args
 	  (t 
 	   (if (adt-decl? decl)
@@ -1907,7 +1907,7 @@
 ;;updates over the assignments
 (defun pvs2ir-update (assignments ir-expression expression-type bindings)
   (let ((maplet? (loop for assgn in assignments thereis (maplet? assgn))))
-    (error 'pvs2c-error :format-control "Maplets not supported")
+    (when maplet? (error 'pvs2c-error :format-control "Maplets not supported")))
   (let ((rhs-list (mapcar #'expression assignments))
 	(lhs-list (mapcar #'arguments assignments)))
     (let* ((rhs-irvar-list (loop for i from 1 to (length rhs-list)
@@ -1927,7 +1927,7 @@
 	(mk-ir-let* ir-rhs-vartypes ir-rhs-list
 		    (mk-ir-let ir-exprvar 
 			       ir-expression
-			       ir-update-expr)))))))
+			       ir-update-expr))))))
 
 ;;iterates through the assignments constructing updates.  
 (defun pvs2ir-assignments (lhs-list rhs-irvar-list
@@ -2617,6 +2617,10 @@
   (declare (ignore livevars bindings))
   ir-expr)
 
+(defmethod preprocess-ir* ((ir-expr ir-bool) livevars bindings)
+  (declare (ignore livevars bindings))
+  ir-expr) 
+
 (defmethod preprocess-ir* ((ir-expr ir-lookup) livevars bindings)
     (with-slots (ir-array ir-index) ir-expr
 		(mk-ir-lookup (preprocess-ir* ir-array livevars bindings)
@@ -2751,31 +2755,58 @@
        (t (list (format nil "~a = (~a_t)~a" lhs lhs-type rhs)))))
     (mpz (case rhs-type
 	   ((uint8 uint16 uint32 uint64); __uint128)
-	    (list (format nil "mpz_set_ui(~a, ~a)" lhs rhs)))
+	    (list (format nil "mpz_mk_set_ui(~a, ~a)" lhs rhs)))
 	   ((int8 int16 int32 int64); __int128)
-	    (list (format nil "mpz_set_si(~a, ~a)" lhs rhs)))
+	    (list (format nil "mpz_mk_set_si(~a, ~a)" lhs rhs)))
 	   (mpq (let ((tmp (gentemp "tmp")))
-		  (list (format nil "~a = (~a_t)~a" tmp "mpq_ptr" rhs)
-			(format nil "mpz_set_q(~a, ~a)" lhs tmp)
-			(format nil "mpq_clear(~a)" tmp))))
-	   (t (let ((tmp (gentemp "tmp")))
-		  (list (format nil "~a = (~a_t)~a" tmp "mpz_ptr" rhs)
-			(format nil "mpz_set(~a, ~a)" lhs tmp)
-			(format nil "mpz_clear(~a)" tmp))))))
+		  (list (format nil "mpz_mk_set_q(~a, ~a)" lhs rhs)
+			)))
+	   (t (list ;; (format nil "mpz_ptr_t ~a" tmp)
+		 (format nil "~a = (~a_t)~a" lhs "mpz_ptr" rhs)
+		      ;;(format nil "~a = (mpz_t) safe_malloc(sizeof(mpz_t))" lhs)
+		      ;; (format nil "mpz_init(~a)" lhs)
+		      ;; (format nil "mpz_set(~a, ~a)" lhs tmp)
+		      ;; (format nil "mpz_clear(~a)" tmp)
+		      ))))
     (mpq (case rhs-type
 	   ((uint8 uint16 uint32 uint64); __uint128)
-	    (list (format nil "mpq_set_ui(~a, ~a, 1)" lhs rhs)))
+	    (list (format nil "~a = (mpq_t) safe_malloc(sizeof(mpq_t))" lhs)
+		  (format nil "mpq_init(~a)" lhs)
+		  (format nil "mpq_set_ui(~a, ~a, 1)" lhs rhs)))
 	   ((int8 int16 int32 int64); __int128)
-	    (list (format nil "mpq_set_si(~a, ~a, 1)" lhs rhs)))
-	   (mpz (let ((tmp (gentemp "tmp")))
-		  (list (format nil "~a = (~a_t)~a" tmp "mpz_ptr" rhs)
-			(format nil "mpq_setz(~a, ~a)" lhs tmp)
-			(format nil "mpz_clear(~a)" tmp))))
-	   (t (let ((tmp (gentemp "tmp")))
-		  (list (format nil "~a = (~a_t)~a" tmp "mpq_ptr" rhs)
-			(format nil "mpq_set_(~a, ~a)" lhs tmp)
-			(format nil "mpq_clear(~a)" tmp))))))
+	    (list (format nil "mpq_mk_set_si(~a, ~a, 1)" lhs rhs)))
+	   (mpz  (list (format nil "mpq_mk_set_z(~a, ~a)" lhs rhs)
+			))
+	   (t (list (format nil "~a = (~a_t)~a" lhs "mpq_ptr" rhs)))))
     (t (list (format nil "~a = (~a_t)~a" lhs (mppointer-type lhs-type) rhs))))))
+
+(defun mk-c-assignment (lhs lhs-type rhs rhs-type);;mallocs lhs for gmp
+  (case lhs-type
+    (mpz (case rhs-type
+	   (mpz (format nil "mpz_mk_set(~a, ~a)" lhs rhs))
+	   (mpq (format nil "mpz_mk_set_q(~a, ~a)" lhs rhs))
+	   ((uint8 uint16 uint32 uint64); __uint128)
+	    (format nil "mpz_mk_set_ui(~a, ~a)" lhs rhs))
+	   ((int8 int16 int32 int64); __int128)
+	    (format nil "mpz_mk_set_si(~a, ~a)" lhs rhs))))
+    (mpq (case rhs-type
+	   (mpz (format nil "mpq_mk_set_z(~a, ~a)" lhs rhs))
+	   (mpq (format nil "mpq_mk_set(~a, ~a)" lhs rhs))
+	   ((uint8 uint16 uint32 uint64); __uint128)
+	    (format nil "mpq_mk_set_ui(~a, ~a, 1)" lhs rhs))
+	   ((int8 int16 int32 int64); __int128)
+	    (format nil "mpq_mk_set_si(~a, ~a, 1)" lhs rhs))))
+    ((uint8 uint16 uint32 uint64); __uint128) 
+     (case rhs-type
+       (mpz (format nil "~a = (~a_t)mpz_get_ui(~a)" lhs lhs-type rhs))
+       (mpq (format nil "~a = (~a_t)mpq_get_ui(~a)" lhs lhs-type rhs))
+       (t (format nil "~a = (~a_t)~a" lhs (mppointer-type lhs-type) rhs))))
+    ((int8 int16 int32 int64); __int128)
+     (case rhs-type
+       (mpz (format nil "~a = (~a_t)mpz_get_si(~a)" lhs lhs-type rhs))
+       (mpq (format nil "~a = (~a_t)mpq_get_si(~a)" lhs lhs-type rhs))       
+       (t (format nil "~a = (~a_t)~a" lhs lhs-type rhs))))
+    (t (format nil "~a = (~a_t)~a" lhs lhs-type rhs))))
 
 (defun make-c-assignment (lhs lhs-type rhs rhs-type)
   (case lhs-type
@@ -2804,6 +2835,8 @@
        (mpq (format nil "~a = (~a_t)mpq_get_si(~a)" lhs lhs-type rhs))       
        (t (format nil "~a = (~a_t)~a" lhs lhs-type rhs))))
     (t (format nil "~a = (~a_t)~a" lhs lhs-type rhs))))
+
+
 	    
 
 ;;deprecated pvs2ir now generates ir-function symbols as below
@@ -2820,17 +2853,19 @@
 	      (let ((rhs (format nil "~a()" ir-fname))
 		    (c-return-type (add-c-type-definition (ir2c-type return-type)))
 		    (rhs-type (add-c-type-definition (ir2c-type (type declaration)))))
-		(make-c-assignment return-var c-return-type rhs rhs-type))))
+		(list (mk-c-assignment return-var c-return-type rhs rhs-type)))))
 
 
-
+(defmethod ir2c* ((ir-expr ir-bool) return-var return-type)
+  (with-slots (ir-boolval) ir-expr
+    (list (format nil "~a = (bool_t) ~a" return-var (if ir-boolval "true" "false")))))
 
 (defmethod ir2c* ((ir-expr ir-integer) return-var return-type);;we need to handle number representations. 
   (with-slots (ir-intval) ir-expr
 	      (let* ((ir-value-type (mk-ir-subrange ir-intval ir-intval))
 		     (c-value-type (ir2c-type ir-value-type))
 		     (c-return-type (print-ir return-type))
-		     (c-assignment (make-c-assignment return-var c-return-type
+		     (c-assignment (mk-c-assignment return-var c-return-type
 						      ir-intval c-value-type)))
 		(case c-return-type
 		  ((mpz mpq)
@@ -2851,7 +2886,7 @@
 	      (with-slots (ir-name ir-vtype) ir-var
 			  (let* ((c-return-type (add-c-type-definition (ir2c-type return-type)))
 				 (c-rhs-type (add-c-type-definition (ir2c-type ir-vtype)))
-				 (c-assignment (make-c-assignment return-var c-return-type ir-name c-rhs-type)))
+				 (c-assignment (mk-c-assignment return-var c-return-type ir-name c-rhs-type)))
 			    ;(format t "~% last: ~a, return-var: ~a, c-return-type:~a, c-rhs-type: ~a" (print-ir ir-var)(print-ir return-var) c-return-type c-rhs-type)
 			    (case c-return-type
 			      ((mpq mpz)
@@ -2883,7 +2918,7 @@
   (with-slots (ir-name ir-vtype) ir-expr
 	      (let* ((c-return-type (add-c-type-definition (ir2c-type return-type)))
 		     (c-rhs-type (add-c-type-definition (ir2c-type ir-vtype)))
-		     (c-assignment (make-c-assignment return-var c-return-type ir-name c-rhs-type)))
+		     (c-assignment (mk-c-assignment return-var c-return-type ir-name c-rhs-type)))
 		(case c-return-type
 		  ((mpq mpz)
 		   (list (format nil "~a = safe_malloc(sizeof(~a_t))"
@@ -2901,7 +2936,7 @@
   (with-slots (ir-actual-type) ir-expr
 	      (let ((c-return-type (add-c-type-definition (ir2c-type return-type)))
 		    (c-type (add-c-type-definition (ir2c-type ir-actual-type))));(break "ir2c*(actual)")
-		(list (make-c-assignment return-var c-return-type
+		(list (mk-c-assignment return-var c-return-type
 					 (format nil "actual_~a" c-type)
 					 c-type)))))
 
@@ -3049,11 +3084,13 @@
 	   (ir-function-name (when (ir-function? ir-function)(ir-fname ir-function))))
       (if (ir-primitive-op? ir-function-name)
 	  (let ((instrs (ir2c-primitive-apply return-var return-type ir-function-name ir-arg-vars ir-arg-var-names)))
-	    ;(format t "~%~a" instrs)
-	    (if (mpnumber-type? return-type)
-		(cons (format nil "~a = safe_malloc(sizeof(~a_t))" return-var  return-type)
-		      (cons (format nil "~a_init(~a)" return-type return-var) instrs))
-	      instrs))
+					;(format t "~%~a" instrs)
+	    instrs
+	    ;; (if (mpnumber-type? return-type)
+	    ;; 	(cons (format nil "~a = safe_malloc(sizeof(~a_t))" return-var  return-type)
+	    ;; 	      (cons (format nil "~a_init(~a)" return-type return-var) instrs))
+	    ;;   instrs)
+	    )
 	(let* ((ir-funvar (get-ir-last-var ir-function))
 	       (c-return-type (add-c-type-definition (ir2c-type return-type))))
 	  (if (ir-variable? ir-funvar)
@@ -3215,14 +3252,14 @@
 		     (list (format nil "mpq_t ~a" arg2-mpq-var)
 			   (format nil "mpq_init(~a)" arg2-mpq-var)
 			   (format nil "mpq_set_z(~a, ~a)" arg2-mpq-var arg2)
-			   (format nil "mpq_div(~a, ~a, ~a)" return-var arg1 arg2-mpq-var)
+			   (format nil "mpq_mk_div(~a, ~a, ~a)" return-var arg1 arg2-mpq-var)
 			   (format nil "mpq_clear(~a)" arg2-mpq-var)
 			   )))
 	      ((uint8 uint16 uint32 uint64 int8 int16 int32 int64)
 	       (list (format nil "mpq_set_~a(~a, (~a64_t)~a, 1)"
 			     (gmp-ui-or-si arg2-c-type)
 			     return-var (uint-or-int arg2-c-type) arg2)
-		     (format nil "mpq_div(~a, ~a, ~a)" return-var arg1 return-var)))
+		     (format nil "mpq_mk_div(~a, ~a, ~a)" return-var arg1 return-var)))
 	      (t (break "Not implemented yet"))))
 	   (mpz
 	    (case arg2-c-type
@@ -3230,7 +3267,7 @@
 		     (list (format nil "mpq_t ~a" arg1-mpq-var)
 			   (format nil "mpq_init(~a)" arg1-mpq-var)
 			   (format nil "mpq_set_z(~a, ~a)" arg1-mpq-var arg1)
-			   (format nil "mpq_div(~a, ~a, ~a)" return-var arg1-mpq-var arg2)
+			   (format nil "mpq_mk_div(~a, ~a, ~a)" return-var arg1-mpq-var arg2)
 			   (format nil "mpq_clear(~a)" arg1-mpq-var)
 			   )))
 	      (mpz (let ((arg1-mpq-var (gentemp "tmp"))
@@ -3241,7 +3278,7 @@
 			   (format nil "mpq_t ~a" arg2-mpq-var)
 			   (format nil "mpq_init(~a)" arg2-mpq-var)
 			   (format nil "mpq_set_z(~a, ~a)" arg2-mpq-var arg2)
-			   (format nil "mpq_div(~a, ~a, ~a)" return-var arg1-mpq-var arg2-mpq-var)
+			   (format nil "mpq_mk_div(~a, ~a, ~a)" return-var arg1-mpq-var arg2-mpq-var)
 			   (format nil "mpq_clear(~a)" arg1-mpq-var)
 			   (format nil "mpq_clear(~a)" arg2-mpq-var)
 			   )))
@@ -3250,7 +3287,7 @@
 		 (list (format nil "mpq_t ~a" arg1-mpq-var)
 		       (format nil "mpq_init(~a)" arg1-mpq-var)
 		       (format nil "mpq_set_z(~a, ~a)" arg1-mpq-var arg1)
-		       (format nil "mpq_set_~a(~a, (~a_t)~a, 1)"
+		       (format nil "mpq_mk_set_~a(~a, (~a_t)~a, 1)"
 			       (gmp-ui-or-si arg1-c-type)
 			       return-var (uint-or-int arg1-c-type) arg2)
 		       (format nil "mpq_div(~a, ~a, ~a)" return-var
@@ -3266,7 +3303,7 @@
 			    (format nil "mpq_set_~a(~a, (~a64_t)~a, 1)"
 				  (gmp-ui-or-si arg1-c-type)
 				  tmp (uint-or-int arg1-c-type) arg1)
-			  (format nil "mpq_div(~a, ~a, ~a)" return-var tmp arg2))))
+			  (format nil "mpq_mk_div(~a, ~a, ~a)" return-var tmp arg2))))
 	       (mpz (let ((arg1-mpq-var (gentemp "tmp"))
 			  (arg2-mpq-var (gentemp "tmp")))
 		      (list (format nil "mpq_t ~a" arg1-mpq-var)
@@ -3276,7 +3313,7 @@
 			    (format nil "mpq_set_~a(~a, (~a64_t)~a, 1)" (gmp-ui-or-si arg1-c-type)
 				    arg1-mpq-var (uint-or-int arg1-c-type) arg1)
 			    (format nil "mpq_set_z(~a, ~a)" arg2-mpq-var arg2)
-			    (format nil "mpq_div(~a, ~a, ~a)" return-var arg1-mpq-var
+			    (format nil "mpq_mk_div(~a, ~a, ~a)" return-var arg1-mpq-var
 				    arg2-mpq-var)
 			    (format nil "mpq_clear(~a)" arg1-mpq-var)
 			    (format nil "mpq_clear(~a)" arg2-mpq-var)
@@ -3292,7 +3329,7 @@
 				arg1-mpq-var (uint-or-int arg1-c-type) arg1)
 			(format nil "mpq_set_~a(~a, ~a, 1)" (gmp-ui-or-si arg2-c-type)
 				arg2-mpq-var arg2)
-			(format nil "mpq_div(~a, ~a, ~a)" return-var arg1-mpq-var
+			(format nil "mpq_mk_div(~a, ~a, ~a)" return-var arg1-mpq-var
 				arg2-mpq-var)
 			(format nil "mpq_clear(~a)" arg1-mpq-var)
 			(format nil "mpq_clear(~a)" arg2-mpq-var)
@@ -3304,7 +3341,7 @@
 		(mpq-instrs (ir2c-division-step mpq-return-var "mpq" arg1 arg1-c-type arg1 arg2-c-type)))
 	   (cons (format nil "mpq_t ~a" mpq-return-var)
 		 (nconc mpq-instrs
-			(list (format nil "mpz_set_q(~a, ~a)" return-var mpq-return-var)
+			(list (format nil "mpz_mk_set_q(~a, ~a)" return-var mpq-return-var)
 			      (format nil "mpq_clear(~a)" mpq-return-var)
 			      )))))
     ((uint8 uint16 uint32 uint64 int8 int16 int32 int64)
@@ -3312,7 +3349,7 @@
 	    (mpz-instrs (ir2c-division-step mpz-return-var "mpz" arg1 arg1-c-type arg1 arg2-c-type)))
        (cons (format nil "mpz_t ~a" mpz-return-var)
 	     (nconc mpz-instrs
-		    (list (format nil "mpz_set_q(~a, ~a)" return-var mpz-return-var)
+		    (list (format nil "mpz_mk_set_q(~a, ~a)" return-var mpz-return-var)
 			  (format nil "mpq_clear(~a)" mpz-return-var)
 			  )))))
     (t (break "Not implemented."))))
@@ -3347,9 +3384,9 @@
 	(mpz
 	 (case arg1-type
 	   (mpz (case arg2-type
-		  (mpz (list (format nil "mpz_fdiv_~a(~a, ~a, ~a)"
+		  (mpz (list (format nil "mpz_mk_fdiv_~a(~a, ~a, ~a)"
 				     (if (eq opname 'rem) 'r 'q) return-var arg1 arg2)))
-		  (t (list (format nil "mpz_fdiv_~a_ui(~a, ~a, ~a)"
+		  (t (list (format nil "mpz_mk_fdiv_~a_ui(~a, ~a, ~a)"
 				   (if (eq opname 'rem) 'r 'q) return-var arg1 arg2)))))
 	   ((uint32 uint64); __uint128)
 	    (case arg2-type
@@ -3357,11 +3394,11 @@
 		     (list (format nil "mpz_t ~a" tmp)
 			   (format nil "mpz_init(~a)" tmp)
 			   (format nil "mpz_set_ui(~a, ~a)" tmp arg1)
-			   (format nil "mpz_fdiv_~a(~a, ~a, ~a)"
+			   (format nil "mpz_mk_fdiv_~a(~a, ~a, ~a)"
 				   (if (eq opname 'rem) 'r 'q) return-var tmp arg2)
 			   (format nil "mpz_clear(~a)" tmp)
 			   )))
-		(t (list (format nil "mpz_set_ui(~a, ~a_~a_~a(~a, ~a))"
+		(t (list (format nil "mpz_mk_set_ui(~a, ~a_~a_~a(~a, ~a))"
 				 return-var opname arg1-type arg2-type arg1 arg2)))))
 	   ((int32 int64); __int128)
 	    (case arg2-type 
@@ -3369,11 +3406,11 @@
 		     (list (format nil "mpz_t ~a" tmp)
 			   (format nil "mpz_init(~a)" tmp)
 			   (format nil "mpz_set_si(~a, ~a)" tmp arg1)
-			   (format nil "mpz_fdiv_~a(~a, ~a, ~a)"
+			   (format nil "mpz_mk_fdiv_~a(~a, ~a, ~a)"
 				   (if (eq opname 'rem) 'r 'q) return-var tmp arg2)
 			   (format nil "mpz_clear(~a)" tmp)
 			   )))
-	      (t (list (format nil "mpz_set_si(~a, ~a_~a_~a(~a, ~a))"
+	      (t (list (format nil "mpz_mk_set_si(~a, ~a_~a_~a(~a, ~a))"
 			       return-var opname arg1-type arg2-type arg1 arg2)))))))
 	(t (list (format nil "~a = (~a_t)~a_~a_~a(~a, ~a)"
 			 return-var c-return-type opname arg1-type arg2-type arg1 arg2)))))))
@@ -3509,41 +3546,41 @@
 	   ((uint8 uint16 uint32 uint64);  __uint128
 	    (case arg2-c-type
 	      ((uint8 uint16 uint32 uint64)
-	       (list (format nil "mpz_set_ui(~a, (uint64_t)~a)" return-var arg1)
+	       (list (format nil "mpz_mk_set_ui(~a, (uint64_t)~a)" return-var arg1)
 		     (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" return-var return-var arg2)))
 	      ((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
 	      ((int8 int16 int32 int64)
-	       (list (format nil "mpz_set_si(~a, ~a)" return-var arg2)
+	       (list (format nil "mpz_mk_set_si(~a, ~a)" return-var arg2)
 		     (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" return-var return-var arg1)))
-	      (mpz (list (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" return-var arg2 arg1)))
-	      (mpq (list (format nil "mpz_set_q(~a, ~a)" return-var arg2)
-			 (format nil "mpz_add_ui(~a, ~a)" return-var arg1)))))
+	      (mpz (list (format nil "mpz_mk_add_ui(~a, ~a, (uint64_t)~a)" return-var arg2 arg1)))
+	      (mpq (list (format nil "mpz_mk_set_q(~a, ~a)" return-var arg2)
+			 (format nil "mpz_add_ui(~a, ~a, ~a)" return-var return-var arg1)))))
 	   ((int8 int16 int32 int64)
 	    (case arg2-c-type
 	      ((uint8 uint16 uint32 uint64)
-	       (list (format nil "mpz_set_si(~a, (uint64_t)~a)" return-var arg1)
+	       (list (format nil "mpz_mk_set_si(~a, (uint64_t)~a)" return-var arg1)
 		     (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" return-var return-var arg2)))
 	      ((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
 	      ((int8 int16 int32 int64)
-	       (list (format nil "mpz_set_si(~a, ~a)" return-var arg1)
+	       (list (format nil "mpz_mk_set_si(~a, ~a)" return-var arg1)
 		     (format nil "mpz_add_si(~a, ~a (int64_t)~a)" return-var return-var arg2)))
-	      (mpz (list (format nil "mpz_add_si(~a, ~a, (int64_t)~a)" return-var arg2 arg1)))
-	      (mpq (list (format nil "mpz_set_q(~a, ~a)" return-var arg2)
-			 (format nil "mpz_add_si(~a, ~a)" return-var arg1)))))
+	      (mpz (list (format nil "mpz_mk_add_si(~a, ~a, (int64_t)~a)" return-var arg2 arg1)))
+	      (mpq (list (format nil "mpz_mk_set_q(~a, ~a)" return-var arg2)
+			 (format nil "mpz_add_si(~a, ~a, ~a)" return-var return-var arg1)))))
 	   (mpz (case arg2-c-type
 		  ((uint8 uint16 uint32 uint64)
-		   (list (format nil "mpz_set_ui(~a, (uint64_t)~a)" return-var arg2)
+		   (list (format nil "mpz_mk_set_ui(~a, (uint64_t)~a)" return-var arg2)
 			 (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" return-var arg1 arg2)))
 		  ((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
 		  ((int8 int16 int32 int64)
-		   (list (format nil "mpz_set_si(~a, ~a)" return-var arg2)
+		   (list (format nil "mpz_mk_set_si(~a, ~a)" return-var arg2)
 			 (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" return-var arg2 arg1)))
-		  (mpz (list (format nil "mpz_add(~a, ~a, ~a)" return-var arg2 arg1)))
+		  (mpz (list (format nil "mpz_mk_add(~a, ~a, ~a)" return-var arg2 arg1)))
 		  (mpq (let ((tmp (gentemp "tmp")))
 			 (list (format nil "mpz_t ~a" tmp)
 			       (format nil "mpz_init(~a)" tmp)
 			       (format nil "mpz_set_q(~a, ~a)" tmp arg2)
-			       (format nil "mpz_add(~a, ~a, ~a)" return-var arg1 tmp)
+			       (format nil "mpz_mk_add(~a, ~a, ~a)" return-var arg1 tmp)
 			       (format nil "mpz_clear(~a)" tmp)
 			       )))))
 	   (t (break "Not implemented."))))
@@ -3773,12 +3810,13 @@
     ((mpz mpq)
      (case arg1-c-type
        ((mpz mpq)
-	(list (format nil "~a_set~a(~a, ~a)" c-return-type (if (eq c-return-type arg1-c-type) ""
+	(list (format nil "~a_mk_set~a(~a, ~a)" c-return-type (if (eq c-return-type arg1-c-type) ""
 							     (if (eq arg1-c-type 'mpz) "_z" "_q"))
 		      return-var arg1)
 	      (format nil "~a_neg(~a, ~a)" c-return-type return-var return-var)))
-       (t (list (format nil "~a_~a_sub(~a, 0, ~a)" c-return-type (gmp-ui-or-si arg1-c-type)
-			return-var arg1)))))
+       (t (list (format nil "~a_mk_set_~a(~a, ~a)" c-return-type (gmp-ui-or-si arg1-c-type)
+			return-var arg1)
+		(format nil "~a_neg(~a, ~a)" c-return-type return-var return-var)))))
     (t (case arg1-c-type
 	 ((mpz mpq)
 	  (list (format nil "~a = (~a_t) ~a_get_si(~a)"  return-var c-return-type arg1-c-type arg1)))
@@ -3791,12 +3829,12 @@
 	     ((uint8 uint16 uint32 uint64); __uint128)
 	      (case arg2-c-type
 		((uint8 uint16 uint32 uint64)
-		 (list (format nil "mpz_set_ui(~a, (uint64_t)~a)" return-var arg1)
+		 (list (format nil "mpz_mk_set_ui(~a, (uint64_t)~a)" return-var arg1)
 		       (format nil "mpz_sub_ui(~a, ~a, (uint64_t)~a)" return-var return-var arg2)))
 		((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
 		((int8 int16 int32 int64)
-		 (list (format nil "mpz_set_si(~a, ~a)" return-var arg2)
-		       (format nil "mpz_ui_sub(~a, ~a (uint64_t)~a)" return-var arg1 return-var)))
+		 (list (format nil "mpz_mk_set_si(~a, -~a)" return-var arg2)
+		       (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" return-var return-var  arg1)))
 		(mpz (list (format nil "mpz_ui_sub(~a, (uint64_t)~a,  ~a)" return-var arg1 arg2)))
 		(mpq (let ((tmp1 (gentemp "tmp"))
 			   (tmp2 (gentemp "tmp")))
@@ -3806,44 +3844,45 @@
 			     (format nil "mpq_init(~a)" tmp2)
 			     (format nil "mpq_set_ui(~a, ~a, 1)" tmp1 arg1)
 			     (format nil "mpq_sub(~a, ~a, ~a)" tmp2 tmp1 arg2)
-			     (format nil "mpz_set_q(~a, ~a)" return-var tmp2)
+			     (format nil "mpz_mk_set_q(~a, ~a)" return-var tmp2)
 			     (format nil "mpq_clear(~a)" tmp1)
 			     (format nil "mpq_clear(~a)" tmp2)
 			     )))))
 	     ((int8 int16 int32 int64)
 	      (case arg2-c-type
 		((uint8 uint16 uint32 uint64)
-		 (list (format nil "mpz_set_ui(~a, (uint64_t)~a)" return-var arg2)
+		 (list (format nil "mpz_mk_set_ui(~a, (uint64_t)~a)" return-var arg2)
 		       (format nil "mpz_si_sub(~a, (int64_t)~a, ~a)" return-var arg1 return-var)))
 		((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
 		((int8 int16 int32 int64)
-		 (list (format nil "mpz_set_si(~a, ~a)" return-var arg2)
+		 (list (format nil "mpz_mk_set_si(~a, ~a)" return-var arg2)
 		       (format nil "mpz_si_sub_si(~a, (int64_t)~a, ~a)" return-var arg1 return-var)))
-		(mpz (list (format nil "mpz_si_sub(~a, (int64_t)~a,  ~a)" return-var arg1 arg2)))
+		(mpz (list (format nil "mpz_mk_set_si(~a, (int64_t)~a)" return-var arg1)
+			   (format nil "mpz_sub(~a, ~a, ~a)" return-var return-var arg2)))
 		(mpq (let ((tmp1 (gentemp "tmp"))
 			   (tmp2 (gentemp "tmp")))
 		       (list (format nil "mpq_t ~a" tmp1)
 			     (format nil "mpq_t ~a" tmp2)
 			     (format nil "mpq_set_si(~a, ~a, 1)" tmp1 arg1)
 			     (format nil "mpq_sub(~a, ~a, ~a)" tmp2 tmp1 arg2)
-			     (format nil "mpz_set_q(~a, ~a)" return-var tmp2)
+			     (format nil "mpz_mk_set_q(~a, ~a)" return-var tmp2)
 			     (format nil "mpq_clear(~a)" tmp1)
 			     (format nil "mpq_clear(~a)" tmp2)
 			     )))))
 	      (mpz (case arg2-c-type
 		     ((uint8 uint16 uint32 uint64)
-		      (list (format nil "mpz_sub_ui(~a, ~a, (uint64_t)~a)" return-var arg1 arg2)))
+		      (list (format nil "mpz_mk_sub_ui(~a, ~a, (uint64_t)~a)" return-var arg1 arg2)))
 		     ((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
 		     ((int8 int16 int32 int64)
-		      (list (format nil "mpz_sub_si(~a, ~a (int64_t)~a)" return-var arg1 arg2)))
-		     (mpz (list (format nil "mpz_sub(~a, ~a, ~a)" return-var arg1 arg2)))
+		      (list (format nil "mpz_mk_sub_si(~a, ~a (int64_t)~a)" return-var arg1 arg2)))
+		     (mpz (list (format nil "mpz_mk_sub(~a, ~a, ~a)" return-var arg1 arg2)))
 		     (mpq (let ((tmp1 (gentemp "tmp"))
 				(tmp2 (gentemp "tmp")))
 		       (list (format nil "mpq_t ~a" tmp1)
 			     (format nil "mpq_t ~a" tmp2)
 			     (format nil "mpq_set_z(~a, ~a)" tmp1 arg1)
 			     (format nil "mpq_sub(~a, ~a, ~a)" tmp2 tmp1 arg2)
-			     (format nil "mpz_set_q(~a, ~a)" return-var tmp2)
+			     (format nil "mpz_mk_set_q(~a, ~a)" return-var tmp2)
 			     (format nil "mpq_clear(~a)" tmp1)
 			     (format nil "mpq_clear(~a)" tmp2)
 			     )))))
@@ -3853,7 +3892,7 @@
 			(list (format nil "mpz_t ~a" tmp)
 			      (format nil "mpz_init(~a)" tmp)
 			      (format nil "mpz_set_q(~a, ~a)" tmp arg1)
-			      (format nil "mpz_sub_ui(~a, ~a, (uint64_t)~a)" return-var tmp arg2)
+			      (format nil "mpz_mk_sub_ui(~a, ~a, (uint64_t)~a)" return-var tmp arg2)
 			      (format nil "mpz_clear(~a)" tmp))))
 		     ((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
 		     ((int8 int16 int32 int64)
@@ -3861,19 +3900,19 @@
 			(list (format nil "mpz_t ~a" tmp)
 			      (format nil "mpz_init(~a)" tmp)
 			      (format nil "mpz_set_q(~a, ~a)" tmp arg1)
-			      (format nil "mpz_sub_si(~a, ~a (int64_t)~a)" return-var tmp arg2)
+			      (format nil "mpz_mk_sub_si(~a, ~a (int64_t)~a)" return-var tmp arg2)
 			      (format nil "mpz_clear(~a)" tmp))))
 		     (mpz (let ((tmp (gentemp "tmp")))
 			    (list (format nil "mpz_t ~a" tmp)
 				  (format nil "mpz_init(~a)" tmp)
 				  (format nil "mpz_set_q(~a, ~a)" tmp arg1)
-				  (format nil "mpz_sub(~a, ~a, ~a)" return-var tmp arg2)
+				  (format nil "mpz_mk_sub(~a, ~a, ~a)" return-var tmp arg2)
 				  (format nil "mpz_clear(~a)" tmp))))
 		     (mpq (let ((tmp (gentemp "tmp")))
 		       (list (format nil "mpq_t ~a" tmp)
 			     (format nil "mpq_init(~a)" tmp)
 			     (format nil "mpq_sub(~a, ~a, ~a)" tmp arg1 arg2)
-			     (format nil "mpz_set_q(~a, ~a)" return-var tmp)
+			     (format nil "mpz_mk_set_q(~a, ~a)" return-var tmp)
 			     (format nil "mpq_clear(~a)" tmp)
 			     )))))
 	      (t (break "Not implemented"))))
@@ -3886,7 +3925,7 @@
 			 (format nil "mpz_init(~a)" tmp)
 			 (format nil "mpz_set_ui(~a, (uint64_t)~a)" tmp arg1)
 			 (format nil "mpz_sub_ui(~a, ~a, (uint64_t)~a)" tmp tmp arg2)
-			 (format nil "mpq_set_z(~a, ~a)" return-var tmp)
+			 (format nil "mpq_mk_set_z(~a, ~a)" return-var tmp)
 			 (format nil "mpz_clear(~a)" tmp))))
 		((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
 		((int8 int16 int32 int64)
@@ -3895,19 +3934,19 @@
 			 (format nil "mpz_init(~a)" tmp)
 			 (format nil "mpz_set_ui(~a, (uint64_t)~a, 1)" tmp arg1)
 			 (format nil "mpz_sub_si(~a, ~a, (int64_t)~a)" tmp tmp arg2)
-			 (format nil "mpq_set_z(~a, ~a)" return-var tmp)
+			 (format nil "mpq_mk_set_z(~a, ~a)" return-var tmp)
 			 (format nil "mpz_clear(~a)" tmp))))
 		(mpz (let ((tmp (gentemp "tmp")))
 		       (list (format nil "mpz_t ~a" tmp)
 			     (format nil "mpz_init(~a)" tmp)
 			     (format nil "mpz_ui_sub(~a, (uint64_t)~a,  ~a)" tmp arg1 arg2)
-			     (format nil "mpq_set_z(~a, ~a)" return-var tmp)
+			     (format nil "mpq_mk_set_z(~a, ~a)" return-var tmp)
 			     (format nil "mpz_clear(~a)" tmp))))
 		(mpq (let ((tmp (gentemp "tmp")))
 		       (list (format nil "mpq_t ~a" tmp)
 			     (format nil "mpq_init(~a)" tmp)
 			     (format nil "mpq_set_ui(~a, ~a, 1)" tmp arg1)
-			     (format nil "mpq_sub(~a, ~a, ~a)" return-var tmp arg2)
+			     (format nil "mpq_mk_sub(~a, ~a, ~a)" return-var tmp arg2)
 			     (format nil "mpq_clear(~a)" tmp)
 			     )))
 		(t (break "Not implemented"))))
@@ -3919,7 +3958,7 @@
 			 (format nil "mpz_init(~a)" tmp)
 			 (format nil "mpz_set_ui(~a, (uint64_t)~a)" tmp arg2)
 			 (format nil "mpz_si_sub(~a, (int64_t)~a, ~a)" tmp arg1 tmp)
-			 (format nil "mpq_set_z(~a, ~a)" return-var tmp)
+			 (format nil "mpq_mk_set_z(~a, ~a)" return-var tmp)
 			 (format nil "mpz_clear(~a)" tmp))))
 		((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
 		((int8 int16 int32 int64)
@@ -3928,55 +3967,45 @@
 			 (format nil "mpz_init(~a)" tmp)
 			 (format nil "mpz_set_si(~a, ~a)" tmp arg2)
 			 (format nil "mpz_si_sub_si(~a, (int64_t)~a, ~a)" tmp arg1 tmp)
-			 (format nil "mpq_set_z(~a, ~a)" return-var tmp)
+			 (format nil "mpq_mk_set_z(~a, ~a)" return-var tmp)
 			 (format nil "mpz_clear(~a)" tmp))))
 		(mpz (let ((tmp (gentemp "tmp")))
 		       (list (format nil "mpz_t ~a" tmp)
 			     (format nil "mpz_init(~a)" tmp)
 			     (format nil "mpz_si_sub(~a, (int64_t)~a,  ~a)" tmp arg1 arg2)
-			     (format nil "mpq_set_z(~a, ~a)" return-var tmp)
+			     (format nil "mpq_mk_set_z(~a, ~a)" return-var tmp)
 			     (format nil "mpz_clear(~a)" tmp))))
 		(mpq (let ((tmp (gentemp "tmp")))
 		       (list (format nil "mpq_t ~a" tmp)
 			     (format nil "mpq_init(~a)" tmp)
 			     (format nil "mpq_set_si(~a, ~a, 1)" tmp arg1)
-			     (format nil "mpq_sub(~a, ~a, ~a)" return-var tmp arg2)
+			     (format nil "mpq_mk_sub(~a, ~a, ~a)" return-var tmp arg2)
 			     (format nil "mpq_clear(~a)" tmp))))
 		))
 	      (mpz (case arg2-c-type
 		     ((uint8 uint16 uint32 uint64)
-		      (let ((tmp (gentemp "tmp")))
-			(list (format nil "mpz_t ~a" tmp)
-			      (format nil "mpz_init(~a)" tmp)
-			      (format nil "mpz_sub_ui(~a, ~a, (uint64_t)~a)" tmp arg1 arg2)
-			      (format nil "mpq_set_z(~a, ~a)" return-var tmp)
-			      (format nil "mpz_clear(~a)" tmp))))
+		      (list (format nil "mpz_mk_sub_ui(~a, ~a, (uint64_t)~a)" return-var arg1 arg2)))
 		     ((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
 		     ((int8 int16 int32 int64)
-		      (let ((tmp (gentemp "tmp")))
-			(list (format nil "mpz_t ~a" tmp)
-			      (format nil "mpz_init(~a)" tmp)
-			      (format nil "mpz_sub_si(~a, ~a, (int64_t)~a)" tmp arg1 arg2)
-			      (format nil "mpq_set_z(~a, ~a)" return-var tmp)
-			      (format nil "mpz_clear(~a)" tmp))))
+		      (list  (format nil "mpz_mk_sub_si(~a, ~a, (int64_t)~a)" return-var arg1 arg2)))
 		     (mpz (list (format nil "mpz_sub(~a, ~a, ~a)" return-var arg1 arg2)))
 		     (mpq (let ((tmp1 (gentemp "tmp"))
 				(tmp2 (gentemp "tmp")))
-		       (list (format nil "mpq_t ~a" tmp1)
-			     (format nil "mpq_t ~a" tmp2)
-			     (format nil "mpq_set_z(~a, ~a)" tmp1 arg1)
-			     (format nil "mpq_sub(~a, ~a, ~a)" tmp2 tmp1 arg2)
-			     (format nil "mpz_set_q(~a, ~a)" return-var tmp2)
-			     (format nil "mpq_clear(~a)" tmp1)
-			     (format nil "mpq_clear(~a)" tmp2)
-			     )))))
+			    (list (format nil "mpq_t ~a" tmp1)
+				  (format nil "mp1_t ~a" tmp2)
+				  (format nil "mpq_set_z(~a, ~a)" tmp1 arg1)
+				  (format nil "mpq_sub(~a, ~a, ~a)" tmp2 tmp1 arg2)
+				  (format nil "mpz_mk_set_q(~a, ~a)" return-var tmp2)
+				  (format nil "mpq_clear(~a)" tmp1)
+				  (format nil "mpq_clear(~a)" tmp2)
+				  )))))
 	      (mpq (case arg2-c-type
 		     ((uint8 uint16 uint32 uint64)
 		      (let ((tmp (gentemp "tmp")))
 			(list (format nil "mpq_t ~a" tmp)
 			      (format nil "mpq_init(~a)" tmp)
 			      (format nil "mpq_set_ui(~a, ~a, 1)" tmp arg2)
-			      (format nil "mpq_sub(~a, ~a, ~a)" return-var arg1 tmp)
+			      (format nil "mpq_mk_sub(~a, ~a, ~a)" return-var arg1 tmp)
 			      (format nil "mpq_clear(~a)" tmp))))
 		     ((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
 		     ((int8 int16 int32 int64)
@@ -3984,15 +4013,15 @@
 			(list (format nil "mpq_t ~a" tmp)
 			      (format nil "mpq_init(~a)" tmp)
 			      (format nil "mpq_set_si(~a, ~a, 1)" tmp arg2)
-			      (format nil "mpq_sub(~a, ~a, ~a)" return-var arg1 tmp)
+			      (format nil "mpq_mk_sub(~a, ~a, ~a)" return-var arg1 tmp)
 			      (format nil "mpq_clear(~a)" tmp))))
 		     (mpz (let ((tmp (gentemp "tmp")))
 			    (list (format nil "mpq_t ~a" tmp)
 				  (format nil "mpq_init(~a)" tmp)
 				  (format nil "mpq_set_z(~a, ~a)" tmp arg2)
-				  (format nil "mpq_sub(~a, ~a, ~a)" return-var arg1 tmp)
+				  (format nil "mpq_mk_sub(~a, ~a, ~a)" return-var arg1 tmp)
 				  (format nil "mpq_clear(~a)" tmp))))
-		     (mpq (list (format nil "mpq_sub(~a, ~a, ~a)" return-var arg1 arg2)))
+		     (mpq (list (format nil "mpq_mk_sub(~a, ~a, ~a)" return-var arg1 arg2)))
 		     ))
 	      (t (break "Not implemented"))))
       ((uint8 uint16 uint32 uint64); __uint128)
@@ -4180,12 +4209,12 @@
 		       (format nil "mpz_init(~a)" tmp)
 		       (format nil "mpz_set_~a(~a, (~a64_t)~a)" (gmp-ui-or-si arg1-c-type)
 			       tmp (uint-or-int arg1-c-type) arg1)
-		       (format nil "mpz_mul_~a(~a, ~a, (~a64_t)~a)" (gmp-ui-or-si arg2-c-type)
+		       (format nil "mpz_mk_mul_~a(~a, ~a, (~a64_t)~a)" (gmp-ui-or-si arg2-c-type)
 			       return-var tmp (uint-or-int arg2-c-type) arg2)
 		       (format nil "mpz_clear(~a)" tmp)
 		       )))
 	      ((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
-	      (mpz (list (format nil "mpz_mul_~a(~a, ~a, (~a64_t)~a)"
+	      (mpz (list (format nil "mpz_mk_mul_~a(~a, ~a, (~a64_t)~a)"
 				 (gmp-ui-or-si arg1-c-type)
 				 return-var arg2 (uint-or-int arg1-c-type) arg1)))
 	      (mpq (let ((tmp (gentemp "tmp")))
@@ -4193,23 +4222,23 @@
 			   (format nil "mpq_init(~a)" tmp)
 			   (format nil "mpz_set_q(~a, ~a)" 
 				   tmp arg2)
-			   (format nil "mpz_mul_~a(~a, ~a, ~a)"
+			   (format nil "mpz_mk_mul_~a(~a, ~a, ~a)"
 				   (gmp-ui-or-si arg1-c-type)
 				   return-var tmp arg1)
 			   (format nil "mpq_clear(~a)" tmp)
 			   )))))
 	   (mpz (case arg2-c-type
 		  ((uint8 uint16 uint32 uint64 int8 int16 int32 int64)
-		   (list (format nil "mpz_mul_~a(~a, ~a, (~a64_t)~a)" (gmp-ui-or-si arg2-c-type)
+		   (list (format nil "mpz_mk_mul_~a(~a, ~a, (~a64_t)~a)" (gmp-ui-or-si arg2-c-type)
 				 return-var arg1 (uint-or-int arg2-c-type) arg2)))
 		  ((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
-		  (mpz (list (format nil "mpz_mul(~a, ~a, ~a)" return-var arg2 arg1)))
+		  (mpz (list (format nil "mpz_mk_mul(~a, ~a, ~a)" return-var arg2 arg1)))
 		  (mpq (let ((tmp (gentemp "tmp")))
 			 (list (format nil "mpz_t ~a" tmp)
 			       (format nil "mpz_init(~a)" tmp)
 			       (format nil "mpz_set_q(~a, ~a)" 
 				       tmp arg2)
-			       (format nil "mpz_mul(~a, ~a, ~a)" return-var arg1 tmp)
+			       (format nil "mpz_mk_mul(~a, ~a, ~a)" return-var arg1 tmp)
 			       (format nil "mpz_clear(~a)" tmp)
 			       
 			       )))))
@@ -4345,12 +4374,12 @@
      ;;   (t (break "Not implemented.")))
     (mpq (case arg1-c-type
 	   (mpq (case arg2-c-type
-		  (mpq (list (format nil "mpq_mul(~a, ~a, ~a)" return-var arg1 arg2)))
+		  (mpq (list (format nil "mpq_mk_mul(~a, ~a, ~a)" return-var arg1 arg2)))
 		  (mpz (let ((tmp (gentemp "tmp")))
 			 (list (format nil "mpq_t ~a" tmp)
 			       (format nil "mpq_init(~a)" tmp)
 			       (format nil "mpq_set_z(~a, ~a)" tmp arg2)
-			       (format nil "mpq_mul(~a, ~a, ~a)" return-var arg1 tmp)
+			       (format nil "mpq_mk_mul(~a, ~a, ~a)" return-var arg1 tmp)
 			       (format nil "mpq_clear(~a)" tmp))))
 		  ((uint8 uint16 uint32 uint64 int8 int16 int32 int64 mpq)
 		   (let ((tmp (gentemp "tmp")))
@@ -4367,13 +4396,13 @@
 			 (list (format nil "mpq_t ~a" tmp)
 			       (format nil "mpq_init(~a)" tmp)
 			       (format nil "mpq_set_z(~a, ~a)" tmp arg1)
-			       (format nil "mpq_mul(~a, ~a, ~a)" return-var tmp arg2)
+			       (format nil "mpq_mk_mul(~a, ~a, ~a)" return-var tmp arg2)
 			       (format nil "mpq_clear(~a)" tmp))))
 		  (mpz (let ((tmp (gentemp "tmp")))
 			 (list (format nil "mpq_t ~a" tmp)
 			       (format nil "mpq_init(~a)" tmp)
 			       (format nil "mpq_mul(~a, ~a, ~a)" tmp arg1 arg2)
-			       (format nil "mpq_set_z(~a, ~a)" return-var tmp))))
+			       (format nil "mpq_mk_set_z(~a, ~a)" return-var tmp))))
 		  ((uint8 uint16 uint32 uint64 int8 int16 int32 int64 mpq)
 		   (let ((tmp1 (gentemp "tmp"))
 			 (tmp2 (gentemp "tmp")))
@@ -4381,7 +4410,7 @@
 			   (format nil "mpq_init(~a)" tmp1)
 			   (mpq-set arg2-c-type tmp1 arg2)
 			   (format nil "mpz_mul(~a, ~a, ~a)" tmp2 arg1 tmp1)
-			   (format nil "mpq_set_z(~a, ~a)" return-var tmp2)
+			   (format nil "mpq_mk_set_z(~a, ~a)" return-var tmp2)
 			   (format nil "mpq_clear(~a)" tmp1)
 			   (format nil "mpq_clear(~a)" tmp2)
 			   )))
@@ -4393,7 +4422,7 @@
 		     (list (format nil "mpq_t ~a" tmp)
 			   (format nil "mpq_init(~a)" tmp)
 			   (mpq-set arg1-c-type tmp arg1)
-			   (format nil "mpq_mul(~a, ~a, ~a)" return-var tmp arg2)
+			   (format nil "mpq_mk_mul(~a, ~a, ~a)" return-var tmp arg2)
 			   (format nil "mpq_clear(~a)" tmp)
 			   )))
 	      ((uint8 uint16 uint32 uint64 int8 int16 int32 int64 mpq)
@@ -4404,7 +4433,7 @@
 		       (format nil "mpq_init(~a)" tmp2)
 		       (mpq-set arg1-c-type tmp1 arg1)
 		       (mpq-set arg2-c-type tmp2 arg2)
-		       (format nil "mpq_mul(~a, ~a, ~a)" return-var tmp1 tmp2)
+		       (format nil "mpq_mk_mul(~a, ~a, ~a)" return-var tmp1 tmp2)
 		       (format nil "mpq_clear(~a)" tmp1)
 		       (format nil "mpq_clear(~a)" tmp2)
 		       )))
@@ -4431,7 +4460,7 @@
 				       (list (format nil "~a = safe_malloc(sizeof(~a_t))"
 						     return-var c-return-type)
 					     (format nil "~a_init(~a)" c-return-type return-var)
-					     (make-c-assignment return-var c-return-type
+					     (mk-c-assignment return-var c-return-type
 								rhs c-elem-type)))
 				      (t (list (format nil "~a = (~a_t)~a"  return-var
 						       c-return-type rhs)))))
@@ -4500,33 +4529,38 @@
 
 (defmethod ir2c* ((ir-expr ir-let) return-var return-type)
   (with-slots (ir-vartype ir-bind-expr ir-body) ir-expr
-	      (with-slots (ir-name ir-vtype) ir-vartype
-			  (let* ((ir2c-vtype (ir2c-type ir-vtype))
-				 (var-ctype (add-c-type-definition ir2c-vtype))
-				 (decl-var-ctype (mppointer-type var-ctype))
-				 (decl-instr (format nil "~a_t ~a" decl-var-ctype ir-name))
-				 (init-instrs
-				  (when (mpnumber-type? var-ctype)
-				    (list (format nil "~a_init(~a)" var-ctype ir-name)
-				  	  (format nil "~a = (~a_t)safe_malloc(sizeof(~a_t))"
-				  		  ir-name decl-var-ctype var-ctype))))
-				 ;;This is done when (last var) is encountered
-				 ;; (clear-instr (when (mpnumber-type? var-ctype)
-				 ;; 	       (format nil "~a_clear(~a)" var-ctype ir-name)))
-				 (bind-instrs (ir2c* ir-bind-expr ir-name 
-						     ir2c-vtype))  ;(ir2c-type (ir-vtype ir-vartype))
-				 (body-instrs (ir2c* ir-body return-var return-type));(break "ir-let")
-				 ;; (body-with-mp-clear-instrs
-				 ;;  (if (mpnumber-type? var-ctype)
-				 ;;      (append body-instrs
-				 ;; 	      (list (format nil "~a_clear(~a)" var-ctype ir-name)
-				 ;; 		    (format nil "safe_free(~a)" ir-name)))
-				 ;;    body-instrs))
-				 )
-			     (if init-instrs
-			     	(cons decl-instr (append init-instrs
-			     				 (append bind-instrs body-instrs)))
-			       (cons decl-instr (append bind-instrs body-instrs)))))))
+    (with-slots (ir-name ir-vtype) ir-vartype
+;;      (when (ir-lvariable? ir-body)(break "variable body"))
+      (cond ((and (ir-lvariable? ir-body)
+		  (equal return-type (ir2c-type ir-vtype)))
+	     (ir2c* ir-bind-expr return-var return-type))
+	    (t (let* ((ir2c-vtype (ir2c-type ir-vtype))
+		      (var-ctype (add-c-type-definition ir2c-vtype))
+		      (decl-var-ctype (mppointer-type var-ctype))
+		      (decl-instr (format nil "~a_t ~a" decl-var-ctype ir-name))
+		      (init-instrs nil)
+		       ;; (when (mpnumber-type? var-ctype)
+		       ;;   (list (format nil "~a = (~a_t)safe_malloc(sizeof(~a_t))"
+		       ;; 		       ir-name decl-var-ctype var-ctype)
+		       ;; 	       (format nil "~a_init(~a)" var-ctype ir-name)
+		       ;; 	       ))
+		      ;;This is done when (last var) is encountered
+		      ;; (clear-instr (when (mpnumber-type? var-ctype)
+		      ;; 	       (format nil "~a_clear(~a)" var-ctype ir-name)))
+		      (bind-instrs (ir2c* ir-bind-expr ir-name 
+					  ir2c-vtype)) ;(ir2c-type (ir-vtype ir-vartype))
+		      (body-instrs (ir2c* ir-body return-var return-type)) ;(break "ir-let")
+		      ;; (body-with-mp-clear-instrs
+		      ;;  (if (mpnumber-type? var-ctype)
+		      ;;      (append body-instrs
+		      ;; 	      (list (format nil "~a_clear(~a)" var-ctype ir-name)
+		      ;; 		    (format nil "safe_free(~a)" ir-name)))
+		      ;;    body-instrs))
+		      )
+		 (if init-instrs
+		     (cons decl-instr (append init-instrs
+			     		      (append bind-instrs body-instrs)))
+		   (cons decl-instr (append bind-instrs body-instrs)))))))))
 
 (defmethod ir2c* ((ir-expr ir-lett) return-var return-type);;assume ir-bind-expr is an ir-variable
   (with-slots (ir-vartype ir-bind-type ir-bind-expr ir-body) ir-expr
@@ -4537,11 +4571,13 @@
 				 (decl-var-ctype (mppointer-type var-ctype))
 				 (var-btype (add-c-type-definition ir2c-btype))
 				 (decl-instr (format nil "~a_t ~a" decl-var-ctype ir-name));;need mpz_init/release for mpz_t
-				 (init-instrs (when (and (mpnumber-type? var-ctype);init mpvar when bound to a var
-							 (ir-lvariable? ir-bind-expr))
-				 		(list (format nil "~a = (~a_t)safe_malloc(sizeof(~a_t))"
-				 			      ir-name decl-var-ctype var-ctype)
-				 		      (format nil "~a_init(~a)" var-ctype ir-name))))
+				 (init-instrs nil
+					      ;; (when (and (mpnumber-type? var-ctype);init mpvar when bound to a var
+					      ;; 		 (ir-lvariable? ir-bind-expr))
+				 	      ;; 	(list (format nil "~a = (~a_t)safe_malloc(sizeof(~a_t))"
+				 	      ;; 		      ir-name decl-var-ctype var-ctype)
+				 	      ;; 	      (format nil "~a_init(~a)" var-ctype ir-name)))
+					      )
 				 (bind-instrs (copy-type ir2c-vtype ir2c-btype ir-name
 							 (ir-name (get-ir-last-var ir-bind-expr))))
 				 (all-bind-instrs (cons decl-instr (append init-instrs bind-instrs))
@@ -5029,6 +5065,14 @@
 			 (list (format nil "release_~a(bvar~{, ~a~})" c-domaintype
 				       (loop for ir-formal in (free-ir-formals ir-domaintype)
 					     collect (ir-type-id ir-formal)))))))
+	       (release-bvar-projections
+		(when (> (length ir-boundvars) 1)
+		  (loop for ir-bvar in ir-boundvars
+			as i from 1
+			when (or (ir-reference-type? (ir-vtype ir-bvar))
+				 (gmp-type? (ir2c-type (ir-vtype ir-bvar))))
+			collect (let ((atype (add-c-type-definition (ir2c-type (ir-vtype ir-bvar)))))
+				  (format nil "release_~a(bvar_~a)" atype i)))))
 	       (bvar-fvar-args (format nil "~{~a~^, ~}~{, ~a~}"
 				       bvar-cvars
 				       (loop for i from 1 to (length ir-freevars)
@@ -5053,12 +5097,14 @@
 			    closure-hptr-name bvar-fvar-args
 			    closure-hptr-name bvar-fvar-args)
 		  
-		(format nil "~a_t ~a(struct ~a * closure, ~a_t bvar){~{~%~8T~a;~}~%~8Treturn ~a(~a);}"
+		(format nil "~a_t ~a(struct ~a * closure, ~a_t bvar){~{~%~8T~a;~}~%~8T~a_t result = ~a(~a); ~{~%~8T~a;~}~%~8Treturn result;}"
 			(mppointer-type c-rangetype)
 			closure-fptr-name closure-struct-name c-domaintype
 			bvar_projections
+			(mppointer-type c-rangetype)
 			closure-hptr-name
 			bvar-fvar-args
+			release-bvar-projections
 			)
 		;; (case c-rangetype
 		;;   ((mpq mpz)
@@ -5950,7 +5996,7 @@
 	      (copy-type* texpr1 typedef2 lhs rhs)))
 
 (defmethod copy-type* ((texpr1 t)(texpr2 t) lhs rhs)
-  (list (make-c-assignment lhs texpr1 rhs texpr2)))
+  (list (mk-c-assignment lhs texpr1 rhs texpr2)))
 
 
 
@@ -6030,7 +6076,7 @@
        (let* ((ir-function-name (ir-fname ir-function-name))
 	      (ir-result-type ir-return-type) ;(pvs2ir-type (type decl))
 	      (c-result-type (add-c-type-definition (ir2c-type ir-result-type)))
-	      (dummy (when (null c-result-type (break "make-c-defn-info"))))
+	      (dummy (when (null c-result-type) (break "make-c-defn-info")))
 	      ;might need to adjust c-header when result type is gmp
 	      (c-header (format nil "extern ~a_t ~a(~a)" (mppointer-type c-result-type) ir-function-name
 				(c-args-string ir-args))))
@@ -6076,7 +6122,12 @@
 			  (ir-body post-ir)
 			post-ir))
 	     (c-body (print2c (ir2c ir-body ir-result-type)))
-	     (c-result-decl (format nil "~a_t result;" (mppointer-type c-result-type)))
+	     (c-result-decl (if (mpnumber-type? c-result-type)
+				(let ((mptype (mppointer-type c-result-type)))
+				  (format nil "~a_t result;" ; = safe_malloc(sizeof(~a_t)); ~a_init(result);"
+					  mptype; c-result-type c-result-type
+					  ))
+			      (format nil "~a_t result;" c-result-type)))
 	     (c-defn  (format nil "~a{~%~8T~a~%~a~%~8Treturn result;~%}"
 				 c-header 
 				 c-result-decl
@@ -6139,8 +6190,9 @@
 	 (c-body (print2c (ir2c ir-body ir-result-type)))
 	 (c-result-decl (case c-result-type
 			  ((mpq mpz)
-			   (format nil "~a_t result;"
-				   (mppointer-type c-result-type) c-result-type))
+			   (format nil "~a_t result;" ; = safe_malloc(sizeof(~a_t)); ~a_init(result);"
+				   (mppointer-type c-result-type); c-result-type c-result-type
+				   ))
 			  (t (format nil "~a_t result;" c-result-type))))
 	 (c-defn  (format nil "~a{~%~8T~a~%~a~%~8Treturn result;~%}"
 			  c-header 
@@ -6406,21 +6458,21 @@
 (defvar *ir-theory-formals* nil)
 (defvar *ir-theory-tbindings* nil)
 
-(defun used-prelude-theory-names (theory &optional prelude-theory-names)
-  (let ((th (get-theory theory)))
-    (unless th
-      (error "Theory ~a not found - may need to typecheck first" theory))
-    (dolist (decl (all-decls th))
-      (when (typep decl '(or type-decl const-decl))
-	(dolist (d (refers-to decl))
-	  (when (and (typep d '(or type-decl const-decl))
-		     (from-prelude? d))
-	    (unless (member (module d) prelude-theory-names :test #'same-id)
-	      (setq prelude-theory-names
-		    (used-prelude-theory-names (module d)
-					       (cons (id (module d)) ;(mk-modname (id (module d)))
-						     prelude-theory-names))))))))
-    prelude-theory-names))
+;; (defun used-prelude-theory-names (theory &optional prelude-theory-names)
+;;   (let ((th (get-theory theory)))
+;;     (unless th
+;;       (error "Theory ~a not found - may need to typecheck first" theory))
+;;     (dolist (decl (all-decls th))
+;;       (when (typep decl '(or type-decl const-decl))
+;; 	(dolist (d (refers-to decl))
+;; 	  (when (and (typep d '(or type-decl const-decl))
+;; 		     (from-prelude? d))
+;; 	    (unless (member (module d) prelude-theory-names :test #'same-id)
+;; 	      (setq prelude-theory-names
+;; 		    (used-prelude-theory-names (module d)
+;; 					       (cons (id (module d)) ;(mk-modname (id (module d)))
+;; 						     prelude-theory-names))))))))
+;;     prelude-theory-names))
 
 (defun pvs2c-preceding-theories (theory)
   (let ((*pvs2c-preceding-theories* nil))
@@ -6430,7 +6482,7 @@
 (defun pvs2c-preceding-theories* (theory)
   (let ((theory-defn (get-theory theory)))
     (loop for thy in (used-prelude-theory-names theory)
-	  when (not (memq thy *primitive-prelude-theories*))
+	  when (not (memq (id thy) *primitive-prelude-theories*))
 	  do (pushnew thy *pvs2c-preceding-theories*))
     (unless (eq (all-imported-theories theory-defn) 'unbound)
       (loop for thy in (all-imported-theories theory-defn)
