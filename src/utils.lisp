@@ -345,14 +345,15 @@
 		   (sys:getenv "PATH") command arguments)))
     (excl:shell string)))
 
-#+allegro
 (defun program-version (command expected)
-  (let* ((version (uiop:run-program command
-		    :output '(:string :stripped t)
-		    :ignore-error-status t))
-	 (match-p (string= expected version :end2 (length expected))))
-    match-p))
-	
+  (and command
+       (let* ((version (uiop:run-program command
+			 :output '(:string :stripped t)
+			 :ignore-error-status t))
+	      (match-p (and (stringp version)
+			    (string= expected version
+				     :end2 (length expected)))))
+	 match-p)))
 
 #+lucid
 (defun ls ()
@@ -1198,6 +1199,7 @@
 
 (defun decl-context (decl &optional include?)
   (let* ((*generate-tccs* 'none)
+	 (*ignore-exportings* t)
 	 (theory (module decl))
 	 (libalist (when *current-context*
 		     (library-alist *current-context*))) ;; Before we change
@@ -1242,11 +1244,13 @@
 	(lib-decl
 	 (check-for-importing-conflicts d)
 	 (put-decl d))
-	((or mod-decl theory-abbreviation-decl formal-theory-decl)
+	(theory-reference ;(or mod-decl theory-abbreviation-decl formal-theory-decl)
 	 (put-decl d)
-	 (let* ((thname (theory-name d))
-		(th (get-theory thname)))
-	   (add-usings-to-context* th thname))
+	 (unless (mapped-decl? d)
+	   (let* ((thname (theory-name d))
+		  (th (get-theory-transitive thname)))
+	     (assert th)
+	     (add-usings-to-context* th thname)))
 	 (setf (saved-context d) (copy-context *current-context*)))
 	(importing
 	 (let* ((thname (theory-name d))
@@ -1475,7 +1479,8 @@
 
 (defmethod add-usings-to-context* ((theory module) inst)
   (add-to-using inst theory)
-  (add-exporting-with-theories theory inst))
+  (unless *ignore-exportings*
+    (add-exporting-with-theories theory inst)))
 
 (defmethod add-usings-to-context* ((adt recursive-type) inst)
   (let ((acts (actuals inst)))
@@ -2531,10 +2536,11 @@
 (defmethod full-name? ((x name))
   (and (resolution x)
        (not (variable? x))
+       (not (skolem-constant? x))
        (module-instance (resolution x))
-       (or (not (current-theory))
+       (or (not *current-theory*)
 	   (not (eq (module (declaration (resolution x)))
-		    (current-theory)))
+		    *current-theory*))
 	   (not (eq (id x) (id (resolution x))))
 	   (actuals (module-instance (resolution x)))
 	   (integerp (id x))
@@ -2548,9 +2554,9 @@
   (and (adt x)
        (resolution (adt x))
        (module-instance (resolution (adt x)))
-       (or (not (current-theory))
+       (or (not *current-theory*)
 	   (not (eq (module (declaration (resolution (adt x))))
-		    (current-theory)))
+		    *current-theory*))
 	   (not (eq (id x) (id (resolution (adt x)))))
 	   (actuals (module-instance (resolution (adt x))))
 	   (integerp (id x))
@@ -2568,7 +2574,7 @@
 (defmethod full-name? ((x type-name))
   (and (resolution x)
        (module-instance (resolution x))
-       (let ((cth (current-theory)))
+       (let ((cth *current-theory*))
 	 (or (not cth)
 	     (not (eq (id (module-instance (resolution x))) (id cth)))
 	     (not (type-name? (type (resolution x))))
@@ -2578,10 +2584,10 @@
 (defmethod full-name! ((x name))
   (copy x
     'id (id (resolution x))
-    'mod-id (when (or (not (current-theory))
+    'mod-id (when (or (not *current-theory*)
 		      (integerp (id x))
 		      (not (eq (id (module-instance (resolution x)))
-			       (id (current-theory)))))
+			       (id *current-theory*))))
 	      (id (module-instance (resolution x))))
     'library (or (library x)
 		 (library (module-instance (resolution x)))
@@ -2589,7 +2595,9 @@
 			    (library-datatype-or-theory?
 			     (module (declaration x))))
 		   (libref-to-libid (lib-ref (module (declaration x))))))
-    'actuals (full-name (actuals (module-instance (resolution x)))
+    'actuals (full-name (mapcar #'(lambda (act)
+				    (lcopy act :type-value nil))
+			  (actuals (module-instance (resolution x))))
 			(when *full-name-depth*
 			  (1- *full-name-depth*)))
     'mappings (mappings (module-instance (resolution x)))))
@@ -2597,10 +2605,10 @@
 (defmethod full-name! ((x adt-name-expr))
   (copy x
     'id (id (resolution x))
-    'mod-id (when (or (not (current-theory))
+    'mod-id (when (or (not *current-theory*)
 		      (integerp (id x))
 		      (not (eq (id (module-instance (resolution (adt x))))
-			       (id (current-theory)))))
+			       (id *current-theory*))))
 	      (id (module-instance (resolution (adt x)))))
     'library (or (library x)
 		 (library (module-instance (resolution (adt x))))
@@ -2624,8 +2632,8 @@
     (copy x
       'mod-id (when (and (or (not *exclude-prelude-names*)
 			     (not (gethash modid *prelude*)))
-			 (or (not (current-theory))
-			     (not (eq modid (id (current-theory))))))
+			 (or (not *current-theory*)
+			     (not (eq modid (id *current-theory*)))))
 		modid)
       'library (or (library x)
 		   (library (module-instance (resolution x)))
@@ -2784,6 +2792,9 @@
   (if (slot-exists-p ref 'id)
       (ref-to-id (id ref))
       (error "No id slot for <# ~a - ~a #>" (class-name (class-of ref)) ref)))
+
+(defmethod ref-to-id ((ref importing))
+  (id-root ref))
 
 (defmethod ref-to-id ((ref subtype-judgement))
   (or (id ref)
@@ -3269,8 +3280,7 @@
 
 
 ;;; copy-all makes copies all the way down the object.  Because it uses
-;;; gensubst, this function may only be used when the object has been
-;;; typechecked, and *current-context* must be set.
+;;; gensubst, *current-context* should be set.
 
 (defun copy-all (obj &optional parsing)
   (let ((*copy-print-type* t)
@@ -3504,6 +3514,10 @@ space")
 
 (defmethod untyped* ((expr name-expr))
   (values (not (and (type expr) (resolution expr)))
+	  expr))
+
+(defmethod untyped* ((expr theory-name-expr))
+  (values (not (resolution expr))
 	  expr))
 
 (defmethod untyped* ((expr field-assignment-arg))
@@ -4869,3 +4883,10 @@ space")
 ;; (defun check-for-git ()
 ;;   (with-
 ;;   (zerop (run-program "git" :arguments (list "--version"))))
+
+
+#+allegro
+(eval-when (:execute :load-toplevel)
+  (top-level:alias "et" ()
+		   "my alias for :eval :context t"
+		   (apply #'top-level:do-command "evalmode" (list :context t))))

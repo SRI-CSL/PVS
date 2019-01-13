@@ -31,7 +31,11 @@
 
 (export '(argument-conversions))
 
-;;; resolve
+;;; tcexprs calls find-application-conversion
+;;; resolve calls argument-conversion, argument-k-conversion, function-conversion
+;;; set-type calls look-for-conversion, find-funtype-conversion
+
+;;; Called by typecheck* (name)
 (defun argument-conversion (name arguments)
   (let ((reses (remove-if-not #'(lambda (r)
 				  (typep (find-supertype (type r)) 'funtype))
@@ -41,6 +45,7 @@
 	    (argument-conversions (mapcar #'type reses) arguments))
       (resolve name 'expr arguments))))
 
+;;; Called by typecheck* (name)
 (defun argument-k-conversion (name arguments)
   (let ((reses (remove-if-not #'(lambda (r)
 				  (typep (find-supertype (type r)) 'funtype))
@@ -450,11 +455,12 @@
 (defun find-operator-conversion* (optype args)
   (let ((conversions nil))
     (dolist (conv (current-conversions))
-      (let ((nconv (compatible-operator-conversion conv optype args)))
-	(when (and nconv
-		   (not (member nconv (disabled-conversions *current-context*)
-				:key #'expr :test #'tc-eq)))
-	  (push nconv conversions))))
+      (unless (eq (id conv) 'K_conversion) ; K_conversions only trigger lambda-conversions
+	(let ((nconv (compatible-operator-conversion conv optype args)))
+	  (when (and nconv
+		     (not (member nconv (disabled-conversions *current-context*)
+				  :key #'expr :test #'tc-eq)))
+	    (push nconv conversions)))))
     (nreverse conversions)))
 
 (defun compatible-operator-conversion (conversion optype args)

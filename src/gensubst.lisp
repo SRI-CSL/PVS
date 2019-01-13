@@ -40,6 +40,16 @@
 (defvar *gensubst-subst-types* nil)
 
 (defun gensubst (obj substfn testfn)
+  "gensubst takes a pvs abstract term obj, and a subst and test fn.  It
+basically walks down the obj, and replacing those subterms that satisfy
+testfn by invoking substfn.  Various global variables control the detailed
+behavior:
+   *dont-expand-adt-subtypes*
+   *gensubst-subst-types*
+   *gensubst-reset-types*
+   *parsing-or-unparsing*
+   *visible-only*
+   "
   (unwind-protect (gensubst* obj substfn testfn)
     (clrhash *gensubst-cache*)))
 
@@ -634,18 +644,20 @@
 	      (when (typep (expr act) 'expr-as-type)
 		(setf (expr nact) (gensubst* (expr act) substfn testfn)))
 	      nact)))
-      (let ((nexpr (gensubst* (expr act) substfn testfn)))
-	(lcopy act
-	  'expr (if (or *parsing-or-unparsing*
-			*visible-only*
-			(eq nexpr (expr act))
-			(not (typep nexpr 'expr))
-			(and (name-expr? (expr act))
-			     (module? (declaration (expr act)))))
-		    nexpr
-		    (pseudo-normalize nexpr))
-	  ;;'type-value (unless *parsing-or-unparsing* (type-value act))
-	  ))))
+      (let* ((gexpr (gensubst* (expr act) substfn testfn))
+	     (nexpr (if (or *parsing-or-unparsing*
+			    *visible-only*
+			    (eq gexpr (expr act))
+			    (not (typep gexpr 'expr))
+			    (and (name-expr? (expr act))
+				 (module? (declaration (expr act)))))
+			gexpr
+			(pseudo-normalize gexpr))))
+	;; type-value shouldn't matter - but setting it to nil causes
+	;; problems for bugs/1999-01-29_EllenMunthe-Kass
+	(lcopy act 'expr nexpr
+	       ;; 'type-value nil
+	       ))))
 
 (defmethod gensubst* ((name modname) substfn testfn)
   (let ((nacts (gensubst* (actuals name) substfn testfn))

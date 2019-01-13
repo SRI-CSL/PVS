@@ -828,7 +828,7 @@
 		(let ((tadecl (declaration (theory-name sd))))
 		  (when (typep tadecl '(or mod-decl formal-theory-decl))
 		    (setq dalist (append (theory-mappings tadecl) dalist))))))
-	     (assert (with-context sd (fully-instantiated? act)))
+	     (assert (with-current-decl sd (fully-instantiated? act)))
 	     (push (cons d act) dalist)))
 	  (type-decl
 	   ;; This one is tricky, because often
@@ -956,8 +956,8 @@
   (let ((fdecl (car (rassoc decl *subst-new-other-decls* :test #'eq))))
     (assert fdecl)
     (setf (from-formula decl) fdecl))
-  (setf (definition decl) (subst-new-map-decls* (definition decl)))
-  (setf (closed-definition decl) nil)
+  (setf (definition decl) (subst-new-map-decls* (closed-definition decl)))
+  (setf (closed-definition decl) (definition decl))
   (setf (default-proof decl) nil)
   (setf (proofs decl) nil)
   (setf (generated-by decl) nil))

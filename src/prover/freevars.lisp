@@ -52,6 +52,16 @@
 	       ,efv1)
 	   ,efv2))))
 
+(defun unbound-freevars (obj &optional (boundvars *bound-variables*))
+  (let ((fvars (freevars obj)))
+    (remove-if #'(lambda (fv) (member fv boundvars :test #'same-declaration))
+      fvars)))
+
+(defun unbound-freevars? (obj &optional (boundvars *bound-variables*))
+  (let ((fvars (freevars obj)))
+    (some #'(lambda (fv) (not (member fv boundvars :test #'same-declaration)))
+      fvars)))
+
 (defun freevars (obj)
 ;;  (sort (freevars* obj  frees)
 ;;	#'(lambda (x y) (occurs-in x (type y))))

@@ -115,7 +115,7 @@
 	   (write-string "Not writing file...errors") (terpri))
 	  (t
 	   (setq temp (open file-spec :direction :output
-			    :if-exists :new-version))
+			    :if-exists :supersede))
 	   (format t "   writing file ~S.~%" file-spec)
 	   (initialize-file temp :parser)
 	   (build-parse gram-struct)

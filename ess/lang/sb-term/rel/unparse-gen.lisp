@@ -134,7 +134,7 @@
   (setq *unparser-gen-error* nil)
   (clet* ((*grammar-term* grammar)      ;; defined elsewhere, but no problem.
 	  (output-file (open file-spec
-			     :direction :output :if-exists :new-version)
+			     :direction :output :if-exists :supersede)
 		       (close output-file)))
     (format t "   writing file ~S.~%" file-spec)
     (initialize-file output-file :unparser)

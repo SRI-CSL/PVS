@@ -71,7 +71,7 @@
       (parse-op-tree parsed-oplist))
     (setf *global-operator-list* operator-list)
     (with-open-file (s lexer-file-spec :direction :output :if-exists
-		       		       :new-version)
+		       		       :supersede)
       (sb-write
        (format t "   writing file ~S.~%" lexer-file-spec)
        (initialize-file s :lexer)

@@ -2299,7 +2299,8 @@ then uses unpindent* to add the indent to each line"
 			    180)))
 		(pp* argument)
 		(pprint-logical-block (nil nil :prefix "(" :suffix ")")
-		  (pp* argument))))))))
+		  (pp* argument)))))
+	(call-next-method))))
 
 (defmethod pp* ((ex binding-application))
   (with-slots (operator argument) ex
@@ -3123,7 +3124,7 @@ then uses unpindent* to add the indent to each line"
 
 (defmethod pp* ((act actual))
   (with-slots (expr type-value) act
-    (pp* (or type-value expr))))
+    (pp* (if (or (null type-value) (type-expr? expr)) expr type-value))))
 
 ;;; Utility functions for unparsing
 
