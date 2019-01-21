@@ -90,22 +90,26 @@
 
 (defmethod copy-lex* :around ((old syntax) (new syntax))
   (cond (*copy-lex-view-string*
-	 (let* ((term (if (and (name? new)
-			       (name? old)
-			       (not (eq (id new) (id old))))
-			  (copy old :id (id new))
-			  old))
-		(new-node
-		 (make-view-node
-		  :place (place new)
-		  :term term)))
-	   (if *copy-lex-view-tree*
-	       (setf (vnode-children *copy-lex-view-tree*)
-		     (nconc (vnode-children *copy-lex-view-tree*)
-			    (list new-node)))
-	       (setq *copy-lex-view-tree* new-node))
-	   (let ((*copy-lex-view-tree* new-node))
-	     (call-next-method))))
+	 (if (place new)
+	     (let* ((term (if (and (name? new)
+				   (name? old)
+				   (not (eq (id new) (id old))))
+			      (copy old :id (id new))
+			      old))
+		    (new-node
+		     (make-view-node
+		      :place (place new)
+		      :term term)))
+	       (if *copy-lex-view-tree*
+		   (setf (vnode-children *copy-lex-view-tree*)
+			 (sort (cons new-node
+				     (copy-list (vnode-children
+						 *copy-lex-view-tree*)))
+			       #'place< :key #'(lambda (v) (vnode-place v))))
+		   (setq *copy-lex-view-tree* new-node))
+	       (let ((*copy-lex-view-tree* new-node))
+		 (call-next-method)))
+	     (call-next-method)))
 	(t (call-next-method)
 	   (setf (place old) (place new)))))
 
