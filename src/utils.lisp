@@ -1147,7 +1147,10 @@
   nil)
 
 (defmethod valid-context-ref? ((name-str string))
-  (context-ref? (pc-parse name-str 'name)))
+  (valid-context-ref? (pc-parse name-str 'name)))
+
+(defmethod valid-context-ref? ((name-sym symbol))
+  (valid-context-ref? (string name-sym)))
 
 (defmethod valid-context-ref? ((name name))
   (if (mod-id name)
@@ -1157,6 +1160,9 @@
 
 (defmethod context ((name-str string))
   (context (pc-parse name-str 'name)))
+
+(defmethod context ((name-sym symbol))
+  (context (string name-sym)))
 
 (defmethod context ((name name))
   (if (mod-id name)
