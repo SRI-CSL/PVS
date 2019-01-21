@@ -145,7 +145,7 @@
 	     (let ((theory (subseq thnms 0 pos))
 		   (name   (subseq thnms (+ pos 1))))
 	       (pvs-message "Loading semantic attachment: ~a.~a [~a]" 
-			    theory name (length args))
+		 theory name (length args))
 	       (defattach-aux theory name args body)))))))
 
 ;; semantic primitives are TRUSTED
@@ -176,7 +176,7 @@
 	 (argstr    (if args (format nil "(~{~a~^, ~})" args) ""))
 	 (dobo      (if (and body (cdr body) (stringp (car body))) 
 			body
-		      (cons "" body)))
+			(cons "" body)))
 	 (doc       (format nil "
 Attachment: ~a.~a~% 
 Usage: ~a~a~%
@@ -184,27 +184,27 @@ Documentation: ~a~%
 Lisp name : ~a~%
 Lisp definition: ~%
 ~s~%~%" 
-			   theory (attachment-name-prim attachmnt)
-                           name argstr
-			   (car dobo) 
-			   fnm 
-			   (cons 'progn (cdr dobo))))
+		      theory (attachment-name-prim attachmnt)
+                      name argstr
+		      (car dobo) 
+		      fnm 
+		      (cons 'progn (cdr dobo))))
 	 (mssg   
 	  (format 
-	   nil 
-	   "Function ~a.~a is defined as a semantic attachment. 
+	      nil 
+	      "Function ~a.~a is defined as a semantic attachment. 
 It cannot be evaluated in a formal proof." 
-	   theory name)))
+	    theory name)))
     (when (find-attachment attachmnt)
       (pvs-message "Redefining ~a.~a" theory (attachment-name-prim attachmnt)))
     (setf (gethash theory *pvsio-attachments*)
 	  (cons attachmnt (remove-if #'(lambda (x) (same-attachment attachmnt x))
-				     (gethash theory *pvsio-attachments*))))
+			    (gethash theory *pvsio-attachments*))))
     (let ((body (if primitive
 		    (cons 'progn (cdr dobo))
-		  `(if *in-checker* 
-		       (error 'pvsio-inprover ,mssg)
-		     ,(cons 'progn (cdr dobo))))))
+		    `(if *in-checker* 
+			 (error 'pvsio-inprover :format-control ,mssg)
+			 ,(cons 'progn (cdr dobo))))))
       `(defun ,fnm ,newargs ,doc ,body))))
 
 (defmacro defattach-th-nm (theory nm args &rest body)
@@ -228,7 +228,74 @@ It cannot be evaluated in a formal proof."
   (cond ((not (symbolp th))
 	 (pvs-message "Error: ~a is not a valid theory name" th))
 	(t 
-	 (let ((theory (symbol-name th))) 
+	 (let ((theory (symbol-name th)))
 	   (pvs-message "Loading semantic attachments in theory ~a" theory)
 	   (cons 'progn (reattach theory macros))))))
 
+;; Definition of macro "using". Contributed by Mariano Moscato (NIA)
+(defun make-eval-const (decl)
+  ;; This function is based on pvs2cl-theory (src/groundeval/pvseval-update.lisp:1617)
+  (unless (eval-info decl)
+    (progn
+      (make-eval-info decl)
+      (or (external-lisp-function decl)
+          (pvs2cl-external-lisp-function decl))
+      (or (lisp-function decl)
+          (pvs2cl-lisp-function decl)))))
+
+(defun pvs-lisp-decl (string)
+  "Returns the lisp representation of the element referenced by the parameter (string). It adheres to the same precedency order than PVSio: the semantic attachment will be returned if it exists, the lisp translation of the PVS declaration if not."
+  (let ((attchs (find-attachments string)))
+    (if attchs
+        `(function ,(attachment-symbol (car attchs)))
+	(let* ((expr (pc-parse string 'expr))
+	       (nm (typecase expr
+		     (coercion (argument expr))
+		     (name expr)
+		     (t (error "pvs-lisp-decl used on ~a of class ~a"
+			       string (type-of expr)))))
+	       (thid (or (mod-id nm) (id nm))))
+	  (if (valid-context-ref? thid)
+	      (with-context thid
+		(let* ((typed-expr (tc-expr expr))
+		       (name (if (coercion? typed-expr)
+				 (argument typed-expr)
+				 typed-expr))
+		       (decl (declaration (car (resolutions name)))))
+		  (make-eval-const decl)
+		  (let ((def (definition (in-defn-m decl))))
+		    (if def
+			def
+			`(function ,(car (pvs2cl-constant typed-expr nil nil)))))))
+	      (pvs-message "~a is not typechecked, or declaration can't be found" string))))))
+
+;; how to filter overloaded ids: requesting a coerced expression
+
+(defmacro using (defs . body)
+  `((lambda ,(mapcar (lambda (x) (if (listp x) (car x) x)) defs)
+      ,@body)
+    ,@(mapcar (lambda (x) (if (listp x) (pvs-lisp-decl (cadr x)))) defs)))
+
+;; Reports running-time errors in attachments
+(defmacro attach-error (&optional msg)
+  "Reports an error in the execution of the semantic attachment. It returns to the PVSio prompt, when running interactively."
+  `(throw '*pvsio-error* (or (when ,msg (format t "~%ERROR: ~a" ,msg)) t)))
+
+;; Macros to access global variables by name
+
+(defmacro pvsio_set_gvar (pvsio-global-var value)
+  "Sets a value ('value') to a PVSio global variable ('pvsio-global-var')."
+  `(progn (when (cdr ,pvsio-global-var) (setf (cdr ,pvsio-global-var) nil))
+          (setf (car ,pvsio-global-var) ,value)))
+
+(defmacro pvsio_get_gvar (pvsio-global-var)
+  "Gets the value of a PVSio global variable ('pvsio-global-var')."
+  `(car ,pvsio-global-var))
+
+(defmacro pvsio_get_gvar_by_name (name-str)
+  "Returns the current value of a PVSio Global variable. It assumes the variable is defined."
+  `(using ((rec ,name-str)) (pvsio_get_gvar (funcall rec))))
+
+(defmacro pvsio_set_gvar_by_name (name-str value)
+  "Sets a value to a PVSio Global variable."
+  `(using ((rec ,name-str)) (pvsio_set_gvar (funcall rec) ,value)))
