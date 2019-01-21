@@ -89,7 +89,7 @@
 		 theory))
 	      (fetch-error
 	       ;;(break "Error in fetching ~a - ~a" filename fetch-error)
-	       (pvs-message "Error in fetching ~a - ~a" filename fetch-error)
+	       (pvs-message "Error in fetching ~a -~_ ~a" filename fetch-error)
 	       (ignore-lisp-errors (delete-file file))
 	       (dolist (thid *bin-theories-set*)
 		 (remhash thid *pvs-modules*))
