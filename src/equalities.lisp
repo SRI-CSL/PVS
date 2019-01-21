@@ -1012,6 +1012,14 @@
 	     (resolution n2))
     (tc-eq* (resolution n1) (resolution n2) bindings)))
 
+(defmethod tc-eq* ((n1 name-expr) (n2 type-name) bindings)
+  (declare (ignore bindings))
+  nil)
+
+(defmethod tc-eq* ((n1 type-name) (n2 name-expr) bindings)
+  (declare (ignore bindings))
+  nil)
+
 (defmethod tc-eq* ((n1 name) (n2 name) bindings)
   (with-slots ((id1 id) (res1 resolutions) (mi1 mod-id) (l1 library)
 	       (act1 actuals) (dact1 dactuals) (m1 mappings) (t1 target)) n1
@@ -2470,7 +2478,8 @@
 
 (defmethod subtype-of*? :around (t1 t2)
   (or (tc-eq t1 t2)
-      (if *subtype-of-hash*
+      (if (and *subtype-of-hash*
+	       (not *checking-conversions*))
 	  (let ((pair (cons t1 t2)))
 	    (multiple-value-bind (st? there?)
 		(gethash pair (the hash-table *subtype-of-hash*))
