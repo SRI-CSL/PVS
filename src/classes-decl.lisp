@@ -222,7 +222,7 @@
 (defcl recursive-type-with-subtypes (recursive-type)
   subtypes)
 
-(defcl inline-recursive-type (recursive-type)
+(defcl inline-recursive-type (recursive-type theory-element)
   (decl-formals :parse t)
   module
   (generated :restore-as nil)
