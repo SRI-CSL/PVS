@@ -4648,4 +4648,5 @@ The dependent types are created only when needed."
     (|even_negint| (setq *even_negint* type))
     (|odd_negint| (setq *odd_negint* type))
     (|ordinal| (setq *ordinal* type))
+    (|string| (setq *string-type* type))
     (|character| (setq *character* type))))

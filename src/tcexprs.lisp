@@ -70,7 +70,7 @@
   (declare (ignore expected kind arguments))
   (call-next-method)			; This will set the resolutions
   (setf (types expr)
-	(delete-duplicates (mapcar #'type (resolutions expr)) :test #'tc-eq))
+	(delete-duplicates (mapcar #'type (resolutions expr)) :test #'strong-tc-eq))
   (assert (types expr)))
 
 
@@ -1555,9 +1555,8 @@ field-decls, etc."
 (defmethod typecheck* ((expr string-expr) expected kind arguments)
   "A string-expr \"foo\" is internally list2finseq((: char(102), char(111), char(111) :))"
   (declare (ignore expected kind arguments))
-  (let ((list-char (tc-type "list[char]")))
-    (typecheck* (argument expr) list-char nil nil)
-    (call-next-method)))
+  (typecheck* (argument expr) *string-type* nil nil)
+  (call-next-method))
 
 (defmethod typecheck* ((expr list-expr) expected kind arguments)
   (declare (ignore kind arguments))
