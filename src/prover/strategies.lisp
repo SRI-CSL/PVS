@@ -1130,11 +1130,11 @@ defined, it looks for 'context-strategy', and if that is not found, it
 invokes 'grind'."
   "")
 
-(defstep bash (&key (if-match t) polarity? (instantiator inst?) (cases-rewrite? t)
+(defstep bash (&key (if-match t) polarity? (instantiator inst?) (cases-rewrite? t) (where *)
 		    &inherit (assert :except fnums) (lift-if :except fnums))
   (then (assert) (bddsimp)
 	(if if-match (let ((command (generate-instantiator-command
-				     if-match polarity? instantiator)))
+				     if-match polarity? instantiator nil where)))
 		       command)(skip))
 	(repeat (then (skolem-typepred) (flatten)))
 	(lift-if))
@@ -1145,12 +1145,13 @@ If the UPDATES? option is NIL, update applications are not if-lifted.
 When the POLARITY? flag is T, INST? matches templates against
 complementary subexpressions.
 The INSTANTIATOR argument can be used to specify use of an alternative
-instantiation mechanism.  This defaults to the (INST?) strategy."
+instantiation mechanism.  This defaults to the (INST?) strategy.
+WHERE tells the instantiator where to look for a match."
   "Simplifying with decision procedures, rewriting, propositional
 reasoning, quantifier instantiation, skolemization, if-lifting.")
 
 
-(defun generate-instantiator-command (if-match polarity? instantiator &optional fnum)
+(defun generate-instantiator-command (if-match polarity? instantiator &optional fnum where)
   (let* ((instcmd (if (consp instantiator)
 		      (car instantiator)
 		      instantiator))
@@ -1165,8 +1166,11 @@ reasoning, quantifier instantiation, skolemization, if-lifting.")
 				      (not (memq :if-match givenargs)))
 			     (list :if-match if-match))
 			   (when (and (memq :polarity? okargs)
-				      (not (memq :if-match givenargs)))
-			     (list :polarity? polarity?))))
+				      (not (memq :polarity? givenargs)))
+			     (list :polarity? polarity?))
+			   (when (and (memq :where okargs)
+				      (not (memq :where givenargs)))
+			     (list :where where))))
 	 (fnum    (when fnum (list fnum)))
 	 (command (append (list instcmd) fnum givenargs instargs)))
     (if (check-arguments command)
@@ -1802,7 +1806,7 @@ as the optional NAME argument.
   "Inducting on ~a~@[ on formula ~a~]~@[ using induction scheme ~a~]")
 
 (defstep induct-and-simplify (var &optional (fnum 1) name &key (defs t)
-				  (if-match best) (instantiator inst?)
+				  (if-match best) (instantiator inst?) (where *)
 				  &inherit assert install-rewrites)
   (then
    (install-rewrites$)
@@ -1817,7 +1821,8 @@ as the optional NAME argument.
 			(bddsimp)
 			(skosimp*)
 			(if if-match
-			    (let ((command (generate-instantiator-command if-match nil instantiator)))
+			    (let ((command (generate-instantiator-command
+					    if-match nil instantiator nil where)))
 			      command)
 			    (skip))
 			(lift-if))))
@@ -1838,6 +1843,7 @@ from THEORIES and REWRITES.
           AUTO-REWRITE-THEORY,
  REWRITES is a list of rewrite rules in AUTO-REWRITE format.
  EXCLUDE is a list of rewrite rules on which rewriting must be stopped.
+ WHERE tells the instantiator where to look for a match.
 The INSTANTIATOR argument can be used to specify use of an alternative
 instantiation mechanism.  This defaults to the (INST?) strategy.
 
@@ -2140,13 +2146,9 @@ Example:  (measure-induct+ \"length(x) + length(y)\" (\"x\" \"y\"))."
   "Inducting on measure: ~a, ~% with variables: ~a" )
 
 (defstep measure-induct-and-simplify
-  (measure vars &optional (fnum 1) order expand (defs t)
-	   (if-match best)
-	   theories
-	   rewrites
-	   exclude
-	   (instantiator inst?)
-	   skolem-typepreds?)
+    (measure vars &optional (fnum 1) order expand (defs t)
+	     (if-match best) theories rewrites exclude
+	     (instantiator inst?) skolem-typepreds? (where *))
   (then
    (install-rewrites$ :defs defs :theories theories
 		      :rewrites rewrites :exclude exclude)
@@ -2155,13 +2157,13 @@ Example:  (measure-induct+ \"length(x) + length(y)\" (\"x\" \"y\"))."
 	 (let ((expands
 		(if (consp expand)
 		    (loop for x in expand
-			  collect `(expand ,x :fnum +))
+		       collect `(expand ,x :fnum +))
 		    `((expand ,expand :fnum +))))
 	       (command `(then ,@expands)))
 	   command)
 	 (skosimp* skolem-typepreds?)
-	 (assert);;To expand the functions in the induction conclusion
-	 (repeat (lift-if));;To lift the embedded ifs,
+	 (assert) ;;To expand the functions in the induction conclusion
+	 (repeat (lift-if)) ;;To lift the embedded ifs,
 	 ;;then simplify, split, then instantiate
 	 ;;the induction hypothesis.  
 	 (repeat* (then (assert)
@@ -2169,7 +2171,7 @@ Example:  (measure-induct+ \"length(x) + length(y)\" (\"x\" \"y\"))."
 			(skosimp* skolem-typepreds?)
 			(if if-match
 			    (let ((command (generate-instantiator-command
-					    if-match nil instantiator)))
+					    if-match nil instantiator nil where)))
 			      command)
 			    (skip))
 			(lift-if))))
@@ -2199,6 +2201,7 @@ REWRITES, instantiates, and lifts IFs.
        instantiation mechanism.  This defaults to the (INST?) strategy.
  SKOLEM-TYPEPREDS? when T indicates that typepreds should be generated for
        the introduced skolem constants.
+ WHERE tells the instantiator where to look for a match.
 
 Example:
     (measure-induct-and-simplify \"size(x)\" (\"x\") :expand \"unfold\" :if-match all)."
@@ -3589,11 +3592,11 @@ replaces each expri in the sequent with the corresponding namei."
 ;;NSH(5.27.95) : From JMR
 ;;added exclude argument to grind and if-match argument to use.
 (defstep use (lemma-name &optional subst (if-match best) (instantiator inst?)
-		    polarity? let-reduce?)
+		    polarity? let-reduce? (where *))
   (try-branch (lemma lemma-name subst)
 	      ((let ((fnum (car *new-fmla-nums*))
 		     (command (generate-instantiator-command
-			       if-match polarity? instantiator fnum)))
+			       if-match polarity? instantiator fnum where)))
 		 (then 
 		  (beta fnum :let-reduce? let-reduce?)
 		  (repeat command)))
@@ -3601,7 +3604,7 @@ replaces each expri in the sequent with the corresponding namei."
 	      (skip))
   "Introduces lemma LEMMA-NAME, then does BETA and INST? (repeatedly) on
  the lemma.  The INSTANTIATOR argument may be used to specify an alternative
- to INST?."
+ to INST?.  WHERE tells the instantiator where to look for a match."
   "Using lemma ~a")
 
 (defstep use* (&rest names &inherit use)
