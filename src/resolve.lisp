@@ -552,30 +552,43 @@
 
 (defun resolve-with-actuals (decl acts dacts dth args mappings)
   ;; If dacts is there, or if decl has no decl-formals, no ambiguity
-  (let ((dparams (decl-formals decl)))
-    (if dacts
-	(when (and dparams
-		   (length= dacts dparams)
-		   (or (null acts)
-		       (and (not (eq dth (current-theory)))
-			    (length= acts (formals-sans-usings dth)))))
-	  (let* ((thinsts (resolve-theory-actuals decl acts dacts dth args mappings))
-		 (reses (resolve-decl-actuals decl dacts thinsts args)))
-	    reses))
-	(let ((thinsts (when (length= acts (formals-sans-usings dth))
-			 (resolve-theory-actuals decl acts dacts dth args mappings)))
-	      (dreses (when (and (decl-formals decl)
-				 (length= acts dparams))
-			(resolve-decl-actuals
-			 decl acts
-			 (if (eq dth (current-theory))
-			     (list (current-theory-name))
-			     (get-importings dth))
-			 args))))
-	  (append (mapcar #'(lambda (thinst)
-			      (make-resolution decl thinst))
-		    thinsts)
-		  dreses)))))
+  (if (or (null acts)
+	  (and (length= acts (formals-sans-usings dth))
+	       (or (not (eq dth (current-theory)))
+		   (every #'(lambda (act fml)
+			      (and (name? (actual-value act))
+				   (some #'(lambda (res)
+					     (eq (declaration res) fml))
+					 (resolutions (actual-value act)))))
+			  acts (formals-sans-usings dth))))
+	  ;; Possible that acts are really dacts
+	  (and (null dacts)
+	       (length= acts (decl-formals (current-declaration)))
+	       (or (not (eq decl (current-declaration)))
+		   (every #'(lambda (act fml)
+			      (and (name? (actual-value act))
+				   (some #'(lambda (res)
+					     (eq (declaration res) fml))
+					 (resolutions (actual-value act)))))
+			  acts (decl-formals (current-declaration))))))
+      (let ((thinsts (resolve-theory-actuals decl acts dacts dth args mappings))
+	    (dparams (decl-formals decl)))
+	(if dacts
+	    (when (and dparams (length= dacts dparams))
+	      (let ((reses (resolve-decl-actuals decl dacts thinsts args)))
+		reses))
+	    (let ((dreses (when (and (decl-formals decl)
+				     (length= acts dparams))
+			    (resolve-decl-actuals
+			     decl acts
+			     (if (eq dth (current-theory))
+				 (list (current-theory-name))
+				 (get-importings dth))
+			     args))))
+	      (append (mapcar #'(lambda (thinst)
+				  (make-resolution decl thinst))
+			thinsts)
+		      dreses))))))
 
 (defun resolve-theory-actuals (decl acts dacts dth args mappings)
   (let* ((thinsts (get-importings dth))
@@ -749,6 +762,8 @@
 	
 
 (defun decl-args-compatible? (decl args mappings)
+  "Attempts to create theory instances of (module decl) compatible with decl, args, and mappings.
+The "
   (if (eq (module decl) (current-theory))
       (compatible-arguments? decl (current-theory-name) args (current-theory))
       (let* ((idecls (when mappings
