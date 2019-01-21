@@ -163,7 +163,11 @@
     ;; we make sure bindings set during tc-match-domain are not allowed to
     ;; change.
     (let ((*tc-match-fixed-bindings*
-	   (delete-if-not #'cdr dbindings)))
+	   (delete-if #'(lambda (db)
+	   		  (or (null (cdr db))
+	   		      (and (type-name? (cdr db))
+	   			   (not (fully-instantiated? (cdr db))))))
+	     dbindings)))
       (find-compatible-binding* types formals binding))))
 
 (defun external-formal-reference? (obj)
@@ -172,9 +176,9 @@
 		 (not (memq fp (decl-formals (current-declaration))))))
 	(free-params obj)))
 
-(defun tc-match-domains (t1 t2 bindings)
+(defun tc-match-domains (types formals bindings)
   (let ((*tc-matching-domains* t)
-	(dom-pairs (collect-domain-types t1 t2)))
+	(dom-pairs (collect-domain-types types formals)))
     (values (tc-match-domains* dom-pairs bindings)
 	    dom-pairs)))
 
@@ -201,7 +205,7 @@
   (tc-match t1 t2 bindings))
 
 ;;; tc-match takes two terms, and a formal-decls bindings alist, and matches
-;;; the two terms, setting the bindings accordingly.
+;;; the two terms, destructively updating the bindings accordingly.
 
 (defun tc-match (t1 t2 bindings &optional strict-matches)
   (declare (type list bindings))
@@ -211,8 +215,14 @@
     ;; declared.
     #+badassert (assert (every #'(lambda (b) (formal-not-in-context? (car b))) bindings))
     (let* ((*tc-strict-matches* strict-matches)
-	   (dbindings (tc-match-domains t1 t2 (copy-tree bindings))))
-      (let* ((*tc-match-fixed-bindings* (delete-if-not #'cdr dbindings))
+	   (dbindings (let ((*tc-match-fixed-bindings* nil))
+			(tc-match-domains t1 t2 (copy-tree bindings)))))
+      (let* ((*tc-match-fixed-bindings*
+	      (remove-if #'(lambda (db)
+	   		     (or (null (cdr db))
+	   			 (and (type-name? (cdr db))
+	   			      (not (fully-instantiated? (cdr db))))))
+		dbindings))
 	     (nbindings (tc-match* t1 t2 bindings)))
 	(values nbindings *tc-strict-matches*)))))
 
@@ -300,11 +310,20 @@ wrt the initial bindings."
   (declare (ignore ptype farg))
   nbindings)
 
-(defun tc-match-set-binding (binding arg)
+(defun tc-match-set-binding (binding arg bindings)
   "Sets the binding to the arg.  Mostly to aid debugging, as this is done in
-a number of places in tc-match."
-  ;;(break "tc-match-set-binding ~a to ~a" (car binding) arg)
-  (setf (cdr binding) arg))
+a number of places in tc-match.  Checks the arg against
+*tc-match-fixed-bindings*, and sets it only if tc-eq.  Returns bidnings,
+unless arg is not compatible? with *tc-match-fixed-bindings* entry."
+  (let ((fb (assq (car binding) *tc-match-fixed-bindings*)))
+    (cond ((or (null fb)
+	       (tc-eq arg (cdr fb)))
+	   ;;(break "tc-match-set-binding ~a to ~a" (car binding) arg)
+	   (setf (cdr binding) arg)
+	   bindings)
+	  ((compatible? arg (cdr fb))
+	   bindings)
+	  (t nil))))
   
 (defmethod tc-match* ((arg type-expr) (farg type-name) bindings)
   ;; More specialized methods for type-name and subtype have been called,
@@ -312,15 +331,14 @@ a number of places in tc-match."
   (declare (type list bindings))
   (let ((binding (assq (declaration farg) bindings)))
     (declare (type list binding))
-    (cond ((null binding)
-	   nil)
+    (cond ((null binding) nil)
 	  ((null (cdr binding))
-	   (unless (and (dependent-type? arg)
-			(not (formal-type-appl-decl? (declaration farg))))
-	     (when *tc-match-strictly*
-	       (push arg *tc-strict-matches*))
-	     (tc-match-set-binding binding arg))
-	   bindings)
+	   (cond ((and (dependent-type? arg)
+		       (not (formal-type-appl-decl? (declaration farg))))
+		  bindings)
+		 (t (when *tc-match-strictly*
+		      (push arg *tc-strict-matches*))
+		    (tc-match-set-binding binding arg bindings))))
 	  ;; ((and (fully-instantiated? arg)
 	  ;; 	(fully-instantiated? (cdr binding)))
 	  ;;  (when (compatible? (cdr binding) arg)
@@ -343,43 +361,38 @@ returns the updated bindings."
   (if (tc-eq arg barg)
       bindings
       (when (compatible? arg barg)
-	(cond (*tc-matching-domains*
-	       (if (subtype-of? barg arg)
-		   (tc-match-set-binding binding barg)
-		   (tc-match-set-binding binding arg))
-	       bindings)
-	      ((assq (car binding) *tc-match-fixed-bindings*)
-	       (let ((fixed (cdr (assq (car binding) *tc-match-fixed-bindings*))))
-		 (if (tc-eq fixed barg)
-		     bindings
-		     (when (compatible? fixed barg)
-		       (tc-match-set-binding binding fixed)
-		       bindings))))
-	      (t (let* ((ainst? (fully-instantiated? arg))
-			(binst? (fully-instantiated? barg))
-			(iarg (if (or ainst? (not binst?))
-				  arg
-				  (or (get-tc-match-instance barg arg)
-				      arg)))
-			(ibarg (if (or binst? (not ainst?))
-				   barg
-				   (or (get-tc-match-instance arg barg)
-				       barg)))
-			(dtype (if (or (fully-instantiated? ibarg)
-				       (not (fully-instantiated? iarg)))
-				   (compatible-type ibarg iarg)
-				   (compatible-type iarg ibarg))))
-		   (when dtype
-		     ;; (when (member barg *tc-strict-matches* :test #'tc-eq)
-		     ;;   (break "check on *tc-strict-matches*"))
-		     (unless (or (tc-eq dtype barg)
-				 (and (member barg *tc-strict-matches* :test #'tc-eq)
-				      ;; This is suspicious - check
-				      (or (has-type-vars? arg)
-					  (not (has-type-vars? barg)))
-				      (or binst? (not ainst?))))
-		       (tc-match-set-binding binding dtype))
-		     bindings)))))))
+	(if *tc-matching-domains*
+	    (if (subtype-of? barg arg)
+		(tc-match-set-binding binding barg bindings)
+		(tc-match-set-binding binding arg bindings))
+	    (let ((fb (assq (car binding) *tc-match-fixed-bindings*)))
+	      (if fb
+		  (if (tc-eq arg (cdr fb))
+		      (tc-match-set-binding binding arg bindings)
+		      bindings)
+		  (let* ((ainst? (fully-instantiated? arg))
+			 (binst? (fully-instantiated? barg))
+			 (iarg (if (or ainst? (not binst?))
+				   arg
+				   (or (get-tc-match-instance barg arg)
+				       arg)))
+			 (ibarg (if (or binst? (not ainst?))
+				    barg
+				    (or (get-tc-match-instance arg barg)
+					barg)))
+			 (dtype (if (or (fully-instantiated? ibarg)
+					(not (fully-instantiated? iarg)))
+				    (compatible-type ibarg iarg)
+				    (compatible-type iarg ibarg))))
+		    (when dtype
+		      (if (or (tc-eq dtype barg)
+			      (and (member barg *tc-strict-matches* :test #'tc-eq)
+				   ;; This is suspicious - check
+				   (or (has-type-vars? arg)
+				       (not (has-type-vars? barg)))
+				   (or binst? (not ainst?))))
+			  bindings
+			  (tc-match-set-binding binding dtype bindings))))))))))
 
 ;;; Assuming either atype or etype is fully-instantiated,
 ;;; Instantiates the other, if necessary, and returns the compatible-type
@@ -456,25 +469,6 @@ returns the updated bindings."
   (declare (ignore bnd arg))
   bindings)
 
-;; If arg1 or arg2 is fully-instantiated, try to tc-match that way
-;; 
-(defun tc-match-last-attempt (arg1 arg2 binding bindings)
-  (declare (type list bindings))
-  (if (fully-instantiated? arg1)
-      (unless (fully-instantiated? arg2)
-	(tc-match-last-attempt* arg1 arg2 binding bindings))
-      (when (fully-instantiated? arg2)
-	(tc-match-last-attempt* arg2 arg1 binding bindings))))
-
-(defun tc-match-last-attempt* (arg1 arg2 binding bindings)
-  (declare (type list bindings))
-  (let ((nbindings (tc-match arg1 arg2 (mapcar #'list (free-params arg2)))))
-    (declare (type list nbindings))
-    (when (and nbindings (every #'cdr nbindings))
-      (break "Is tc-match-last-attempt really needed?")
-      (tc-match-set-binding binding arg1)
-      bindings)))
-
 (defun dependent-type? (type)
   (some #'(lambda (fv)
 	    (and (typep (declaration fv) 'dep-binding)
@@ -532,7 +526,15 @@ returns the updated bindings."
   (declare (type list bindings))
   (or (cond ((and a1 a2)
 	     (or (tc-match* a1 a2 bindings)
-		 bindings))
+		 ;;; Might be a better test
+		 (when (every #'(lambda (act)
+				  (let* ((aval (actual-value act))
+					 (adecl (when (name? aval)
+						  (declaration aval))))
+				    (and (formal-decl? adecl)
+					 (not (assq adecl bindings)))))
+			      a2)
+		   bindings)))
 	    (a1
 	     (tc-match-acts1
 	      a1 (formals-sans-usings
@@ -606,8 +608,7 @@ returns the updated bindings."
 			   (strict-compatible? (type new-fml) (type (expr act)))))
 		     #+pvsdebug
 		     (assert (fully-instantiated? (expr act)))
-		     (tc-match-set-binding binding (expr act))
-		     bindings)
+		     (tc-match-set-binding binding (expr act) bindings))
 		    (t
 		     ;;(pvs-message-with-context
 		     ;;  act "CHECKTHIS: tc-match-act would have worked before")
@@ -623,8 +624,7 @@ returns the updated bindings."
 	       ((null (cdr bindings))
 		#+pvsdebug
 		(assert (fully-instantiated? (expr act)))
-		(tc-match-set-binding binding (expr act))
-		bindings)
+		(tc-match-set-binding binding (expr act) bindings))
 	       ((tc-eq (expr act) (cdr binding))
 		bindings)
 	       (t (tc-match* (expr act) formal bindings))))))
@@ -656,6 +656,7 @@ returns the updated bindings."
   (let ((nbindings (tc-match* (declared-type arg) farg bindings)))
     (declare (type list nbindings))
     (when nbindings
+      ;; Fix the declared-type to match
       (dolist (b nbindings)
       	(let ((cdrb (gensubst (cdr b)
       		      #'(lambda (ex) (declare (ignore ex)) arg)
@@ -664,12 +665,12 @@ returns the updated bindings."
       	  (unless (tc-eq cdrb (cdr b))
 	    #+badassert
       	    (assert (fully-instantiated? cdrb))
-	    (tc-match-set-binding b cdrb))))
-      (unless (every #'(lambda (fp)
-			 (cdr (assq fp nbindings)))
-		     (free-params farg))
-	(call-next-method))
-      nbindings)))
+	    (unless (tc-match-set-binding b cdrb nbindings)
+	      (break "Something wrong here")))))
+      (if (every #'(lambda (fp) (cdr (assq fp nbindings)))
+		 (free-params farg))
+	  nbindings
+	  (call-next-method arg farg nbindings)))))
 
 (defmethod tc-match* (arg (farg subtype) bindings)
   (declare (type list bindings))
@@ -689,13 +690,13 @@ returns the updated bindings."
 	     ;; This test catches the situation where arg is a formal-type
 	     ;; of the current theory, and farg is a subtype of a ground
 	     ;; type.
-	     (unless (and (fully-instantiated? (find-supertype farg))
-			  (not (compatible? arg (find-supertype farg))))
-	       (when *tc-match-strictly*
-		 (push arg *tc-strict-matches*))
-	       ;;(assert (fully-instantiated? arg))
-	       (tc-match-set-binding fsubtype-binding arg)
-	       bindings))
+	     (cond ((and (fully-instantiated? (find-supertype farg))
+			 (not (compatible? arg (find-supertype farg))))
+		    bindings)
+		   (t (when *tc-match-strictly*
+			(push arg *tc-strict-matches*))
+		      ;;(assert (fully-instantiated? arg))
+		      (tc-match-set-binding fsubtype-binding arg bindings))))
 	    ((tc-eq arg (cdr fsubtype-binding))
 	     bindings)))))
 
@@ -713,8 +714,7 @@ returns the updated bindings."
 		     (push arg *tc-strict-matches*))
 		   #+badassert
 		   (assert (fully-instantiated? arg))
-		   (tc-match-set-binding binding arg)
-		   bindings)
+		   (tc-match-set-binding binding arg bindings))
 		  (t (set-tc-match-binding arg (cdr binding) binding bindings)))
 	    (let (;;(orig-bds (tc-match-subtypes-orig arg farg (copy-tree bindings)))
 		  (bds (tc-match-subtypes arg farg bindings)))
@@ -865,8 +865,7 @@ returns the updated bindings."
 	       (push arg *tc-strict-matches*))
 	     #+pvsdebug
 	     (assert (fully-instantiated? arg))
-	     (tc-match-set-binding fbinding arg)
-	     bindings)
+	     (tc-match-set-binding fbinding arg bindings))
 	    ((tc-eq arg (cdr fbinding))
 	     bindings)))))
 
@@ -923,8 +922,7 @@ returns the updated bindings."
 	       (push arg *tc-strict-matches*))
 	     #+pvsdebug
 	     (assert (fully-instantiated? arg))
-	     (tc-match-set-binding fbinding arg)
-	     bindings)
+	     (tc-match-set-binding fbinding arg bindings))
 	    ((tc-eq arg (cdr fbinding))
 	     bindings)))))
 
@@ -984,38 +982,46 @@ returns the updated bindings."
   (let ((binding (assq (declaration farg) bindings)))
     (declare (type list binding))
     (cond ((null binding)
-	   (when (and (typep arg 'name-expr)
-		      (eq (declaration arg) (declaration farg))
-		      (actuals (module-instance  arg))
-		      (null (actuals (module-instance  farg))))
-	     (mapc #'(lambda (act frm)
-		       (unless (null bindings)
-			 (let ((bind (assq frm bindings))
-			       (type? (formal-type-decl? frm)))
-			   (cond ((null bind)
-				  (setq bindings nil))
-				 ((null (cdr bind))
-				  #+pvsdebug
-				  (assert (fully-instantiated?
-					   (if type? (type-value act) act)))
-				  (tc-match-set-binding bind
-							(if type?
-							    (type-value act)
-							    act)))
-				 ((and type?
-				       (tc-eq (cdr bind) (type-value act))))
-				 ((and (not type?)
-				       (tc-eq (cdr bind) act)))
-				 (t (setq bindings nil))))))
-		   (actuals (module-instance arg))
-		   (formals-sans-usings (module (declaration arg))))
-	     bindings))
+	   (if (and (typep arg 'name-expr)
+		    (eq (declaration arg) (declaration farg))
+		    (actuals (module-instance  arg))
+		    (null (actuals (module-instance  farg))))
+	       (tc-match-name-expr-actuals
+		(actuals (module-instance arg))
+		(formals-sans-usings (module (declaration arg)))
+		bindings)
+	       bindings))
 	  ((null (cdr binding))
-	   #+badassert
-	   (assert (fully-instantiated? arg))
-	   (tc-match-set-binding binding arg)
+	   (let ((nbindings (tc-match* (type arg) (type farg) bindings)))
+	     #+badassert (assert (fully-instantiated? arg))
+	     (when nbindings
+	       (tc-match-set-binding binding arg nbindings))))
+	  ((tc-eq arg (cdr binding))
 	   bindings)
-	  (t (if (tc-eq arg (cdr binding)) bindings nil)))))
+	  (t nil))))
+
+(defun tc-match-name-expr-actuals (actuals formals bindings)
+  (if (or (null bindings) (null actuals))
+      bindings
+      (let* ((act (car actuals))
+	     (frm (car formals))
+	     (bind (assq frm bindings))
+	     (type? (formal-type-decl? frm)))
+	(cond ((null bind)
+	       nil)
+	      ((null (cdr bind))
+	       #+pvsdebug
+	       (assert (fully-instantiated?
+			(if type? (type-value act) act)))
+	       (tc-match-name-expr-actuals
+		(cdr actuals) (cdr formals)
+		(tc-match-set-binding
+		 bind (if type? (type-value act) act) bindings)))
+	      ((tc-eq (cdr bind)
+		      (if type? (type-value act) (expr act)))
+	       (tc-match-name-expr-actuals
+		(cdr actuals) (cdr formals) bindings))
+	      (t nil)))))
 
 (defmethod tc-match* ((arg record-expr) (farg record-expr) bindings)
   (tc-match* (assignments arg) (assignments farg) bindings))
@@ -1189,20 +1195,18 @@ returns the updated bindings."
     (tc-match-actuals* actuals formals bindings)))
 
 (defun tc-match-actuals* (actuals formals bindings)
-  (if (null actuals)
+  (if (or (null actuals) (null bindings))
       bindings
-      (let ((binding (assq (car formals) bindings)))
+      (let ((val (actual-value (car actuals)))
+	    (binding (assq (car formals) bindings)))
 	(cond ((null binding)
 	       nil)
 	      ((null (cdr binding))
-	       (let ((val (or (type-value (car actuals)) (expr (car actuals)))))
-		 #+pvsdebug
-		 (assert (fully-instantiated? val))
-		 (tc-match-set-binding binding val))
-	       (tc-match-actuals* (cdr actuals) (cdr formals) bindings))
-	      (t (when (if (type-value (car actuals))
-			   (tc-eq (type-value (car actuals)) (cdr binding))
-			   (tc-eq (expr (car actuals)) (cdr binding)))
+	       #+pvsdebug
+	       (assert (fully-instantiated? val))
+	       (tc-match-actuals* (cdr actuals) (cdr formals)
+				  (tc-match-set-binding binding val bindings)))
+	      (t (when (tc-eq val (cdr binding))
 		   (tc-match-actuals* (cdr actuals) (cdr formals) bindings)))))))
 
 ;;; tc-unify* is used when formals not in context occur on both sides.  The
@@ -1242,7 +1246,7 @@ returns the updated bindings."
     ;; (unless (and (tc-eq adom (domain arg))
     ;; 		 (tc-eq fdom (domain farg)))
     ;;   (break "check this"))
-    (if (assoc adom domain-pairs :test #'tc-eq)
+    (if (rassoc fdom domain-pairs :test #'tc-eq)
 	domain-pairs
 	(acons adom fdom domain-pairs))))
 
