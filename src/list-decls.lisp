@@ -75,23 +75,32 @@
 	(let ((decl (get-decl-associated-with object)))
 	  (if decl
 	      (let ((thname (format nil "~@[~a@~]~a"
-			      (when (library-datatype-or-theory? (module decl))
-				(let ((*current-context* (context theory)))
+			      (when (library-datatype-or-theory? theory)
+				(with-context theory
 				  (assert *current-context*)
-				  (get-lib-id (lib-ref (module decl)))))
-			      (id (module decl)))))
+				  (get-lib-id (lib-ref theory))))
+			      (id theory))))
 		(multiple-value-bind (declstr place-hash)
-		    (unparse-with-places
-		     decl (decl-nt decl)
+		    (pp-string-with-view
+		     decl
+		     :precomments
 		     (format nil "% From theory ~a:" thname)
-		     (when *containing-type*
-		       (let ((kind (typecase decl
-				     (field-decl "field")
-				     (dep-binding "declaration"))))
-			 (when kind
-			   (format nil "% (~a in ~a)" kind
-				   *containing-type*)))))
-		  (let ((dname (format nil "~a.~a" thname (id decl))))
+		     :postcomments
+		     (if *containing-type*
+			 (let ((kind (typecase decl
+				       (field-decl "field")
+				       (dep-binding "declaration"))))
+			   (when kind
+			     (format nil "% (~a in ~a)" kind
+				     *containing-type*)))
+			 (unless (slot-exists-p decl 'id)
+			   (format nil "% of type: ~a"
+			     (typecase decl
+			       (string-expr "string")
+			       (t (type decl)))))))
+		  (let ((dname (format nil "~a.~a"
+				 thname
+				 (if (slot-exists-p decl 'id) (id decl) decl))))
 		    (setf *show-declarations-alist*
 			  (acons dname (list decl place-hash)
 				 (remove dname *show-declarations-alist*
@@ -185,52 +194,74 @@
   (if (and *containing-type*
 	   (recordtype? *containing-type*))
       (find (id obj) (fields *containing-type*) :key #'id)
-      (progn (pvs-message "Can't find associated record type")
-	     nil)))
+      obj))
 
 (defmethod get-decl-associated-with ((obj projection-expr))
-  (pvs-message "Projections do not have an associated declaration")
-  nil)
+  obj)
 
 (defmethod get-decl-associated-with ((obj injection-expr))
-  (pvs-message "Injections do not have an associated declaration")
-  nil)
+  obj)
 
 (defmethod get-decl-associated-with ((obj injection?-expr))
-  (pvs-message "Injection recognizers do not have an associated declaration")
-  nil)
+  obj)
 
 (defmethod get-decl-associated-with ((obj extraction-expr))
-  (pvs-message "Extractions do not have an associated declaration")
-  nil)
+  obj)
 
 (defmethod get-decl-associated-with ((obj projection-application))
-  (pvs-message "Projections do not have an associated declaration")
-  nil)
+  obj)
 
 (defmethod get-decl-associated-with ((obj injection-application))
-  (pvs-message "Injections do not have an associated declaration")
-  nil)
+  obj)
 
 (defmethod get-decl-associated-with ((obj injection?-application))
-  (pvs-message "Injection recognizers do not have an associated declaration")
-  nil)
+  obj)
 
 (defmethod get-decl-associated-with ((obj extraction-application))
-  (pvs-message "Extractions do not have an associated declaration")
-  nil)
+  obj)
+
+(defmethod get-decl-associated-with ((obj string-expr))
+  obj)
 
 (defmethod get-decl-associated-with ((obj null))
   (pvs-message "Not at a valid id")
   nil)
 
-(defun get-object-at (oname origin pos1 pos2 &optional libpath)
+(defun get-term-at (oname origin pos1 &key (pos2 pos1) libpath)
   (multiple-value-bind (objects theories)
       (get-syntactic-objects-for oname origin libpath)
     (let ((theory (find-element-containing-pos theories pos1)))
       (if (or (equal pos1 pos2)
 	      (within-place pos2 (place theory)))
-	  (let ((object (get-object-in-theory-at objects theory pos1 pos2)))
+	  (get-term-at* theories pos1 pos2)))))
+
+(defun get-term-in-theory-at* (objects theory pos1 pos2)
+  (let* ((decls (all-decls theory))
+	 (decl (or (find-element-containing-pos decls pos1)
+		   (find-decl-after-pos decls pos1))))
+    (if (or (equal pos1 pos2)
+	    (within-place pos2 (place decl)))
+	(or decl
+	    (get-object-in-declaration-at objects pos1 pos2))
+	(let ((decl2 (find-element-containing-pos decls pos2)))
+	  (unless decl2
+	    (setq decl2
+		  (find-decl-before-pos decls pos2)))
+	  (or (when (and decl decl2)
+		(ldiff (memq decl decls) (cdr (memq decl2 decls))))
+	      (when decl
+		(list decl))
+	      (when decl2
+		(list decl2)))))))
+
+(defun get-object-at (oname origin pos1 pos2 &optional libpath)
+  (multiple-value-bind (objects theories)
+      (get-syntactic-objects-for oname origin libpath)
+    (let ((theory (find-element-containing-pos theories pos1))
+	  (npos2 (or pos2 pos1)))
+      (if (or (equal pos1 npos2)
+	      (within-place npos2 (place theory)))
+	  (let ((object (get-object-in-theory-at objects theory pos1 npos2)))
 	    (values object theory))
 	  (pvs-message "Region may not cross theory boundaries")))))
 
@@ -308,6 +339,13 @@
 	       decl)
     (values object objects)))
 
+(defun terminal? (obj)
+  "PVS terms which have no subterms"
+  (typep obj '(or name simple-decl rational-expr string-expr fieldex
+	       field-application projection-application
+	       injection-application injection?-application
+	       extraction-application)))
+
 (defun get-id-object-at (oname origin pos &optional libpath)
   (multiple-value-bind (objects theories)
       (get-syntactic-objects-for oname origin libpath)
@@ -321,19 +359,22 @@
 			      (not (eq ex objects))
 			      ;;(or (place ex) (break "Place not set"))
 			      (place ex)
-			      (slot-exists-p ex 'id)
+			      (terminal? ex)
 			      (if (hash-table-p theories)
 				  (let ((epos (gethash ex theories)))
 				    (and epos
 					 (within-place pos epos)))
-				  (within-place pos (id-place ex)))
+				  (within-place pos (if (slot-exists-p ex 'id)
+							(id-place ex)
+							(place ex))))
 			      (setq object ex)
 			      t)
 			 (when (and (typep ex '(and syntax
-						    (not assignment)
-						    (or funtype
-							tupletype
-							recordtype)))
+						   (not assignment)
+						   (or funtype
+						       tupletype
+						       recordtype
+						       string-expr)))
 				    (if (hash-table-p theories)
 					(let ((epos (gethash ex theories)))
 					  (and epos
@@ -352,7 +393,14 @@
       (values object containing-type theory))))
 
 (defun get-syntactic-objects-for (name origin &optional libpath)
-  (case (intern (#+allegro string-downcase #-allegro string-upcase origin)
+  "Given a name, an origin, and a libath, returns two list values, depending
+on the origin:
+ ppe:  name is a theoryref, returns ppe-form and theory
+ tccs: name is a theoryref, returns tcc-form and theory
+ declaration: name is member of last M-x show-declarations result
+"
+  (case (intern #+allegro (string-downcase origin)
+		#-allegro (string-upcase origin)
 		:pvs)
     (ppe (let ((theory (get-theory name)))
 	   (when theory
