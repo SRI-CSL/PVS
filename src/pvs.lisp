@@ -3404,6 +3404,13 @@ formname is nil, then formref should resolve to a unique name."
 	   (<= (cadr pos) (starting-col place))
 	   t)))
 
+(defun follows-place (pos place)
+  (assert (vectorp place))
+  (and (>= (car pos) (ending-row place))
+       (if (= (car pos) (ending-row place))
+	   (>= (cadr pos) (ending-col place))
+	   t)))
+
 (defun within-place (pos place)
   (assert (vectorp place))
   (and (<= (starting-row place) (car pos) (ending-row place))
