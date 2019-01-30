@@ -731,9 +731,9 @@ returns the updated bindings."
   (let ((asup (find-adt-supertype arg))
 	(fsup (find-adt-supertype farg)))
     (assert (and asup fsup))
-    (if (or (and (formal-type-name? fsup)
-		 (not (tc-eq asup fsup)))
-	    (formal-type-name? asup))
+    (if nil ;;(or (and (formal-type-name? fsup)
+	;;	 (not (tc-eq asup fsup)))
+	;;  (formal-type-name? asup))
 	;; In this case, ignore the predicates, just match the formal-type to the arg
 	(if (formal-type-name? fsup)
 	    (tc-match* arg fsup bindings)
