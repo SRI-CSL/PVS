@@ -65,6 +65,12 @@
   ;;  (comint-setup-ipc)
   ;; (pvs-check-tcl-tk-versions)
   (tcl-load-file (concat pvs-path "/wish/pvs-support.tcl"))
+  ;; This doesn't seem to do anything even with sleep-for 10
+  ;; (x-focus-frame nil)
+  ;; Nor does this
+  ;; (let ((winid (cdr (assoc 'outer-window-id
+  ;; 			   (frame-parameters (selected-frame))))))
+  ;;   (shell-command (concat "wmctrl -i -a" winid) "wmctrl-out" "wmctrl-err"))
   inferior-tcl-buffer)
 
 

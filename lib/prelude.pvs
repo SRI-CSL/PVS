@@ -5977,6 +5977,141 @@ BEGIN
 
 END bv_extend_defs
 
+% Support for the C code generator
+
+inttypes: THEORY
+ BEGIN
+     uint8: TYPE = below(exp2(8))
+     uint16: TYPE = upto(exp2(16) - 1) 
+     uint32: TYPE = upto(exp2(32) - 1) 
+     uint64: TYPE = upto(exp2(64) - 1) 
+
+     max8:  uint8 = 255
+     max16: uint16 = 65535
+     max32: uint32 = 4294967295
+     max64: uint64 = 18446744073709551615
+
+     int8: TYPE = subrange(-exp2(7), exp2(7) - 1)
+     int16: TYPE = subrange(-exp2(15), exp2(15) - 1)
+     int32: TYPE = subrange(-exp2(31), exp2(31) - 1)
+     int64: TYPE = subrange(-exp2(63), exp2(63) - 1)
+
+     ux8, uy8, uz8: VAR uint8
+     ux16, uy16, uz16: VAR uint16
+     ux32, uy32, uz32: VAR uint32
+     ux64, uy64, uz64: VAR uint64
+
+     x8, y8, z8: VAR int8
+     x16, y16, z16: VAR int16
+     x32, y32, z32: VAR int32
+     x64, y64, z64: VAR int64
+
+     u8plus(ux8, uy8): uint8 =
+       LET gap:uint8 = max8 - ux8
+        IN IF uy8 <= gap THEN ux8 + uy8 ELSE uy8 - gap - 1 ENDIF
+
+     u16plus(ux16, uy16): uint16 =
+       LET gap:uint16 = max16 - ux16
+        IN IF uy16 <= gap THEN ux16 + uy16 ELSE uy16 - gap - 1 ENDIF
+
+     u32plus(ux32, uy32): uint32 =
+       LET gap:uint32 = max32 - ux32
+        IN IF uy32 <= gap THEN ux32 + uy32 ELSE uy32 - gap - 1 ENDIF
+
+     u64plus(ux64, uy64): uint64 =
+       LET gap:uint64 = max64 - ux64
+        IN IF uy64 <= gap THEN ux64 + uy64 ELSE uy64 - gap - 1 ENDIF
+
+      u8minus(ux8, uy8): uint8 =
+       IF uy8 <= ux8 THEN ux8 - uy8 ELSE max8 - uy8 + ux8 + 1 ENDIF
+
+      u16minus(ux16, uy16): uint16 =
+       IF uy16 <= ux16 THEN ux16 - uy16 ELSE max16 - uy16 + ux16 + 1 ENDIF
+
+      u32minus(ux32, uy32): uint32 =
+       IF uy32 <= ux32 THEN ux32 - uy32 ELSE max32 - uy32 + ux32 + 1 ENDIF
+
+      u64minus(ux64, uy64): uint64 =
+       IF uy64 <= ux64 THEN ux64 - uy64 ELSE max64 - uy64 + ux64 + 1 ENDIF
+
+      u8pow2(n: below(8)): uint8 =
+       exp2(n)
+
+      u16pow2(n: below(16)): uint16 =
+       exp2(n)
+
+      u32pow2(n: below(32)): uint32 =
+       exp2(n)
+
+      u64pow2(n: below(64)): uint64 =
+       exp2(n)
+
+      u8lshift(ux8, (n: upto(8))): uint8 =
+       LET x: below(exp2(8-n)) = nrem(ux8, exp2(8-n))
+           IN x * exp2(n)
+
+      u16lshift(ux16, (n: upto(16))): uint16 =
+       LET x: below(exp2(16-n)) = nrem(ux16, exp2(16-n))
+           IN x * exp2(n)
+
+      u32lshift(ux32, (n: upto(32))): uint32 =
+       LET x: below(exp2(32-n)) = nrem(ux32, exp2(32-n))
+           IN x * exp2(n)
+
+      u64lshift(ux64, (n: upto(64))): uint64 =
+       LET x: below(exp2(64-n)) = nrem(ux64, exp2(64-n))
+           IN x * exp2(n)
+
+      u8rshift(ux8, (n: upto(8))): uint8 =
+       ndiv(ux8, exp2(n))
+
+      u16rshift(ux16, (n: upto(16))): uint16 =
+       ndiv(ux16, exp2(n))
+
+      u32rshift(ux32, (n: upto(32))): uint32 =
+       ndiv(ux32, exp2(n))
+
+      u64rshift(ux64, (n: upto(64))): uint64 =
+       ndiv(ux64, exp2(n))    
+
+      u8times(ux8, uy8): uint8 =
+       LET ux16 = ux8 * uy8 IN nrem(ux16, exp2(8))
+
+      u16times(ux16, uy16): uint16 =
+       LET ux32 = ux16 * uy16 IN nrem(ux32, exp2(16))
+
+      u32times(ux32, uy32): uint32 =
+       LET ux64 = ux32 * uy32 IN nrem(ux64, exp2(32))
+
+      u64times(ux64, uy64): uint64 =
+       nrem(ux64 * uy64, exp2(64))
+
+      u8div(ux8, (uy8 | uy8 /= 0)): uint8 =
+       ndiv(ux8, uy8)
+
+      u16div(ux16, (uy16 | uy16 /= 0)): uint16 =
+       ndiv(ux16, uy16)
+
+      u32div(ux32, (uy32 | uy32 /= 0)): uint32 =
+       ndiv(ux32, uy32)
+
+      u64div(ux64, (uy64 | uy64 /= 0)): uint64 =
+       ndiv(ux64, uy64)
+
+      u8rem(ux8, (uy8 | uy8 /= 0)): uint8 =
+       nrem(ux8, uy8)
+
+      u16rem(ux16, (uy16 | uy16 /= 0)): uint16 =
+       nrem(ux16, uy16)
+
+      u32rem(ux32, (uy32 | uy32 /= 0)): uint32 =
+       nrem(ux32, uy32)
+
+      u64rem(ux64, (uy64 | uy64 /= 0)): uint64 =
+       nrem(ux64, uy64)
+
+END inttypes
+
 
 %-------------------------------------------------------------------------
 %

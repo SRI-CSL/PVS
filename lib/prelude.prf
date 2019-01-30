@@ -167,7 +167,31 @@
    ("" (skolem!) (("" (apply-extensionality) nil nil)) nil)
    ((D formal-type-decl nil functions nil)
     (R formal-type-decl nil functions nil))
-   nil)))
+   nil))
+ (bij_is_inj 0
+  (bij_is_inj-1 nil 3755267854 ("" (judgement-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (D formal-type-decl nil functions nil)
+    (R formal-type-decl nil functions nil)
+    (bijective? const-decl "bool" functions nil)
+    (surjective? const-decl "bool" functions nil)
+    (injective? const-decl "bool" functions nil))
+   shostak
+   (bij_is_inj subtype "functions.x" "(functions.injective?)")))
+ (bij_is_surj 0
+  (bij_is_surj-1 nil 3755267854 ("" (judgement-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (D formal-type-decl nil functions nil)
+    (R formal-type-decl nil functions nil)
+    (bijective? const-decl "bool" functions nil)
+    (injective? const-decl "bool" functions nil)
+    (surjective? const-decl "bool" functions nil))
+   shostak
+   (bij_is_surj subtype "functions.x" "(functions.surjective?)"))))
 (functions_alt)
 (transpose)
 (restrict
@@ -296,8 +320,111 @@
    ((identity const-decl "(bijective?[T, T])" identity nil)) nil
    (identity_preserves subtype
     "identity[identity_props.T].identity(identity_props.x)" "S"))))
-(relations)
+(relations
+ (equiv_is_reflexive 0
+  (equiv_is_reflexive-1 nil 3755267854 ("" (judgement-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T formal-type-decl nil relations nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (equivalence? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
+    (symmetric? const-decl "bool" relations nil)
+    (reflexive? const-decl "bool" relations nil))
+   shostak
+   (equiv_is_reflexive subtype "relations.x"
+    "(relations.reflexive?)")))
+ (equiv_is_symmetric 0
+  (equiv_is_symmetric-1 nil 3755267855
+   ("" (skeep :preds? t)
+    (("" (expand "equivalence?") (("" (flatten) nil nil)) nil)) nil)
+   ((equivalence? const-decl "bool" relations nil)) shostak
+   (equiv_is_symmetric subtype "relations.x"
+    "(relations.symmetric?)")))
+ (equiv_is_transitive 0
+  (equiv_is_transitive-1 nil 3755267855
+   ("" (skeep :preds? t)
+    (("" (expand "equivalence?") (("" (flatten) nil nil)) nil)) nil)
+   ((equivalence? const-decl "bool" relations nil)) shostak
+   (equiv_is_transitive subtype "relations.x"
+    "(relations.transitive?)"))))
 (orders
+ (preorder_is_reflexive 0
+  (preorder_is_reflexive-1 nil 3755267855 ("" (judgement-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T formal-type-decl nil orders nil)
+    (pred type-eq-decl nil defined_types nil)
+    (preorder? const-decl "bool" orders nil)
+    (transitive? const-decl "bool" relations nil)
+    (reflexive? const-decl "bool" relations nil))
+   shostak
+   (preorder_is_reflexive subtype "orders.x"
+    "(relations[orders.T].reflexive?)")))
+ (preorder_is_transitive 0
+  (preorder_is_transitive-1 nil 3755267855
+   ("" (skeep :preds? t)
+    (("" (expand "preorder?") (("" (flatten) nil nil)) nil)) nil)
+   ((preorder? const-decl "bool" orders nil)) shostak
+   (preorder_is_transitive subtype "orders.x"
+    "(relations[orders.T].transitive?)")))
+ (equiv_is_preorder 0
+  (equiv_is_preorder-1 nil 3755267855 ("" (judgement-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T formal-type-decl nil orders nil)
+    (PRED type-eq-decl nil defined_types nil)
+    (equivalence? const-decl "bool" relations nil)
+    (symmetric? const-decl "bool" relations nil)
+    (reflexive? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
+    (preorder? const-decl "bool" orders nil))
+   shostak
+   (equiv_is_preorder subtype "orders.x" "(orders.preorder?)")))
+ (po_is_preorder 0
+  (po_is_preorder-1 nil 3755267855 ("" (judgement-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T formal-type-decl nil orders nil)
+    (pred type-eq-decl nil defined_types nil)
+    (partial_order? const-decl "bool" orders nil)
+    (antisymmetric? const-decl "bool" relations nil)
+    (reflexive? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
+    (preorder? const-decl "bool" orders nil))
+   shostak (po_is_preorder subtype "orders.x" "(orders.preorder?)")))
+ (po_is_antisymmetric 0
+  (po_is_antisymmetric-1 nil 3755267855 ("" (judgement-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T formal-type-decl nil orders nil)
+    (pred type-eq-decl nil defined_types nil)
+    (partial_order? const-decl "bool" orders nil)
+    (reflexive? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
+    (preorder? const-decl "bool" orders nil)
+    (antisymmetric? const-decl "bool" relations nil))
+   shostak
+   (po_is_antisymmetric subtype "orders.x"
+    "(relations[orders.T].antisymmetric?)")))
+ (strict_is_irreflexive 0
+  (strict_is_irreflexive-1 nil 3755267855 ("" (judgement-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T formal-type-decl nil orders nil)
+    (pred type-eq-decl nil defined_types nil)
+    (strict_order? const-decl "bool" orders nil)
+    (transitive? const-decl "bool" relations nil)
+    (irreflexive? const-decl "bool" relations nil))
+   shostak
+   (strict_is_irreflexive subtype "orders.x"
+    "(relations[orders.T].irreflexive?)")))
  (strict_order_is_antisymmetric 0
   (strict_order_is_antisymmetric-1 nil 3252220963
    ("" (grind :if-match nil)
@@ -316,6 +443,34 @@
    shostak
    (strict_order_is_antisymmetric subtype "orders.x"
     "(relations[orders.T].antisymmetric?)")))
+ (strict_is_transitive 0
+  (strict_is_transitive-1 nil 3755267855
+   ("" (skeep :preds? t)
+    (("" (expand "strict_order?") (("" (flatten) nil nil)) nil)) nil)
+   ((strict_order? const-decl "bool" orders nil)) shostak
+   (strict_is_transitive subtype "orders.x"
+    "(relations[orders.T].transitive?)")))
+ (total_is_po 0
+  (total_is_po-1 nil 3755267855 ("" (judgement-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T formal-type-decl nil orders nil)
+    (pred type-eq-decl nil defined_types nil)
+    (total_order? const-decl "bool" orders nil)
+    (dichotomous? const-decl "bool" orders nil)
+    (reflexive? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
+    (preorder? const-decl "bool" orders nil)
+    (antisymmetric? const-decl "bool" relations nil)
+    (partial_order? const-decl "bool" orders nil))
+   shostak (total_is_po subtype "orders.x" "(orders.partial_order?)")))
+ (total_is_dichotomous 0
+  (total_is_dichotomous-1 nil 3755267855
+   ("" (skeep :preds? t)
+    (("" (expand "total_order?") (("" (flatten) nil nil)) nil)) nil)
+   ((total_order? const-decl "bool" orders nil)) shostak
+   (total_is_dichotomous subtype "orders.x" "(orders.dichotomous?)")))
  (linear_is_total 0
   (linear_is_total-1 nil 3237052399 ("" (subtype-tcc) nil nil)
    ((linear_order? const-decl "bool" orders nil)
@@ -335,7 +490,98 @@
  (total_is_linear 0
   (total_is_linear-1 nil 3237052399 ("" (subtype-tcc) nil nil)
    ((linear_order? const-decl "bool" orders nil)) nil
-   (total_is_linear subtype "orders.x" "(orders.linear_order?)"))))
+   (total_is_linear subtype "orders.x" "(orders.linear_order?)")))
+ (strict_total_is_strict 0
+  (strict_total_is_strict-1 nil 3755267855 ("" (judgement-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T formal-type-decl nil orders nil)
+    (pred type-eq-decl nil defined_types nil)
+    (strict_total_order? const-decl "bool" orders nil)
+    (trichotomous? const-decl "bool" orders nil)
+    (irreflexive? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
+    (strict_order? const-decl "bool" orders nil))
+   shostak
+   (strict_total_is_strict subtype "orders.x"
+    "(orders.strict_order?)")))
+ (strict_total_is_trichotomous 0
+  (strict_total_is_trichotomous-1 nil 3755267855
+   ("" (skeep :preds? t)
+    (("" (expand "strict_total_order?") (("" (flatten) nil nil)) nil))
+    nil)
+   ((strict_total_order? const-decl "bool" orders nil)) shostak
+   (strict_total_is_trichotomous subtype "orders.x"
+    "(orders.trichotomous?)")))
+ (strict_well_founded_is_strict 0
+  (strict_well_founded_is_strict-1 nil 3755267855
+   ("" (judgement-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T formal-type-decl nil orders nil)
+    (pred type-eq-decl nil defined_types nil)
+    (strict_well_founded? const-decl "bool" orders nil)
+    (well_founded? const-decl "bool" orders nil)
+    (irreflexive? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
+    (strict_order? const-decl "bool" orders nil))
+   shostak
+   (strict_well_founded_is_strict subtype "orders.x"
+    "(orders.strict_order?)")))
+ (strict_well_founded_is_well_founded 0
+  (strict_well_founded_is_well_founded-1 nil 3755267855
+   ("" (judgement-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T formal-type-decl nil orders nil)
+    (pred type-eq-decl nil defined_types nil)
+    (strict_well_founded? const-decl "bool" orders nil)
+    (irreflexive? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
+    (strict_order? const-decl "bool" orders nil)
+    (well_founded? const-decl "bool" orders nil))
+   shostak
+   (strict_well_founded_is_well_founded subtype "orders.x"
+    "(orders.well_founded?)")))
+ (well_ordered_is_strict_total 0
+  (well_ordered_is_strict_total-1 nil 3755267855
+   ("" (judgement-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T formal-type-decl nil orders nil)
+    (pred type-eq-decl nil defined_types nil)
+    (well_ordered? const-decl "bool" orders nil)
+    (well_founded? const-decl "bool" orders nil)
+    (irreflexive? const-decl "bool" relations nil)
+    (transitive? const-decl "bool" relations nil)
+    (strict_order? const-decl "bool" orders nil)
+    (trichotomous? const-decl "bool" orders nil)
+    (strict_total_order? const-decl "bool" orders nil))
+   shostak
+   (well_ordered_is_strict_total subtype "orders.x"
+    "(orders.strict_total_order?)")))
+ (well_ordered_is_well_founded 0
+  (well_ordered_is_well_founded-1 nil 3755267855
+   ("" (judgement-tcc) nil nil)
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (T formal-type-decl nil orders nil)
+    (pred type-eq-decl nil defined_types nil)
+    (well_ordered? const-decl "bool" orders nil)
+    (strict_total_order? const-decl "bool" orders nil)
+    (trichotomous? const-decl "bool" orders nil)
+    (strict_order? const-decl "bool" orders nil)
+    (transitive? const-decl "bool" relations nil)
+    (irreflexive? const-decl "bool" relations nil)
+    (well_founded? const-decl "bool" orders nil))
+   shostak
+   (well_ordered_is_well_founded subtype "orders.x"
+    "(orders.well_founded?)"))))
 (orders_alt
  (least_upper_bound_is_upper_bound 0
   (least_upper_bound_is_upper_bound-1 nil 3237052399
@@ -5848,7 +6094,7 @@
   (minus_real_is_real-1 nil 3242538196
    ("" (lemma "closed_neg") (("" (propax) nil nil)) nil)
    ((closed_neg formula-decl nil reals nil)) shostak
-   (minus_real_is_real subtype "" "real")))
+   (minus_real_is_real subtype "(number_fields.-)(reals.x)" "real")))
  (reals_totally_ordered 0
   (reals_totally_ordered-1 nil 3237052399 ("" (grind) nil nil)
    ((real nonempty-type-from-decl nil reals nil)
@@ -6449,7 +6695,9 @@
     "number_fields./(real_types.nzx, real_types.nzy)" "nzreal")))
  (minus_nzreal_is_nzreal 0
   (minus_nzreal_is_nzreal-1 nil 3237052399 ("" (subtype-tcc) nil nil)
-   nil nil (minus_nzreal_is_nzreal subtype "" "nzreal")))
+   nil nil
+   (minus_nzreal_is_nzreal subtype "(number_fields.-)(real_types.nzx)"
+    "nzreal")))
  (nnreal_plus_nnreal_is_nnreal 0
   (nnreal_plus_nnreal_is_nnreal-1 nil 3237052399
    ("" (subtype-tcc) nil nil) nil nil
@@ -6833,7 +7081,7 @@
   (minus_rat_is_rat-1 nil 3237052399
    ("" (lemma "closed_neg") (("" (propax) nil nil)) nil)
    ((closed_neg formula-decl nil rationals nil)) nil
-   (minus_rat_is_rat subtype "" "rat")))
+   (minus_rat_is_rat subtype "(number_fields.-)(rationals.x)" "rat")))
  (posrat_is_nzrat 0
   (posrat_is_nzrat-1 nil 3237052399 ("" (subtype-tcc) nil nil) nil nil
    (posrat_is_nzrat subtype "rationals.x" "nzrat")))
@@ -6852,7 +7100,9 @@
     "number_fields./(rationals.n0x, rationals.n0y)" "nzrat")))
  (minus_nzrat_is_nzrat 0
   (minus_nzrat_is_nzrat-1 nil 3237052399 ("" (subtype-tcc) nil nil) nil
-   nil (minus_nzrat_is_nzrat subtype "" "nzrat")))
+   nil
+   (minus_nzrat_is_nzrat subtype "(number_fields.-)(rationals.n0x)"
+    "nzrat")))
  (nnrat_plus_nnrat_is_nnrat 0
   (nnrat_plus_nnrat_is_nnrat-1 nil 3237052399
    ("" (subtype-tcc) nil nil) nil nil
@@ -7177,10 +7427,12 @@
   (minus_int_is_int-1 nil 3237052399
    ("" (lemma "closed_neg") (("" (propax) nil nil)) nil)
    ((closed_neg formula-decl nil integers nil)) nil
-   (minus_int_is_int subtype "" "int")))
+   (minus_int_is_int subtype "(number_fields.-)(integers.i)" "int")))
  (minus_nzint_is_nzint 0
   (minus_nzint_is_nzint-1 nil 3237052399 ("" (subtype-tcc) nil nil) nil
-   nil (minus_nzint_is_nzint subtype "" "nzint")))
+   nil
+   (minus_nzint_is_nzint subtype "(number_fields.-)(integers.n0i)"
+    "nzint")))
  (posint_is_nzint 0
   (posint_is_nzint-1 nil 3237052399 ("" (subtype-tcc) nil nil) nil nil
    (posint_is_nzint subtype "integers.x" "nzint")))
@@ -7714,7 +7966,9 @@
     (even_int nonempty-type-eq-decl nil integers nil)
     (minus_int_is_int application-judgement "int" integers nil)
     (even? const-decl "bool" integers nil))
-   nil (minus_even_is_even subtype "" "even_int")))
+   nil
+   (minus_even_is_even subtype "(number_fields.-)(integers.e1)"
+    "even_int")))
  (minus_odd_is_odd 0
   (minus_odd_is_odd-1 nil 3237052399
    ("" (grind :if-match nil)
@@ -7742,7 +7996,9 @@
      nil)
     (minus_nzint_is_nzint application-judgement "nzint" integers nil)
     (odd? const-decl "bool" integers nil))
-   nil (minus_odd_is_odd subtype "" "odd_int"))))
+   nil
+   (minus_odd_is_odd subtype "(number_fields.-)(integers.o1)"
+    "odd_int"))))
 (naturalnumbers
  (upfrom_nat_is_nat 0
   (upfrom_nat_is_nat-1 nil 3237052399 ("" (subtype-tcc) nil nil) nil
@@ -8306,8 +8562,8 @@
     (real nonempty-type-from-decl nil reals nil)
     (minus_real_is_real application-judgement "real" reals nil))
    nil
-   (abs subtype ""
-        "{n: real_types.nonneg_real | booleans.AND(reals.>=(n, real_defs.m), reals.>=(n, ))}")))
+   (abs subtype "(number_fields.-)(real_defs.m)"
+        "{n: real_types.nonneg_real | booleans.AND(reals.>=(n, real_defs.m), reals.>=(n, (number_fields.-)(real_defs.m)))}")))
  (abs_TCC2 0
   (abs_TCC2-1 nil 3237052399 ("" (grind) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
@@ -8321,7 +8577,7 @@
     (real nonempty-type-from-decl nil reals nil))
    nil
    (abs subtype "real_defs.m"
-        "{n: real_types.nonneg_real | booleans.AND(reals.>=(n, real_defs.m), reals.>=(n, ))}")))
+        "{n: real_types.nonneg_real | booleans.AND(reals.>=(n, real_defs.m), reals.>=(n, (number_fields.-)(real_defs.m)))}")))
  (nonzero_abs_is_pos 0
   (nonzero_abs_is_pos-1 nil 3237052399 ("" (subtype-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
@@ -16976,17 +17232,17 @@
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (rational nonempty-type-from-decl nil rationals nil)
     (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (real nonempty-type-from-decl nil reals nil)
     (real_pred const-decl "[number_field -> boolean]" reals nil)
     (number_field nonempty-type-from-decl nil number_fields nil)
     (number_field_pred const-decl "[number -> boolean]" number_fields
      nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil)
+    (real nonempty-type-from-decl nil reals nil)
     (int_plus_int_is_int application-judgement "int" integers nil))
    nil
    (floor existence ""
-          "[x: real -> {i | booleans.&(reals.<=(floor_ceil.i, x), reals.<(x, (number_fields.+)(1, floor_ceil.i)))}]")))
+          "[x: reals.real -> {i | booleans.&(reals.<=(floor_ceil.i, x), reals.<(x, (number_fields.+)(1, floor_ceil.i)))}]")))
  (fractional_TCC1 0
   (fractional_TCC1-1 nil 3237052399 ("" (tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
@@ -17044,17 +17300,17 @@
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (rational nonempty-type-from-decl nil rationals nil)
     (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (real nonempty-type-from-decl nil reals nil)
     (real_pred const-decl "[number_field -> boolean]" reals nil)
     (number_field nonempty-type-from-decl nil number_fields nil)
     (number_field_pred const-decl "[number -> boolean]" number_fields
      nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil)
+    (real nonempty-type-from-decl nil reals nil)
     (real_plus_real_is_real application-judgement "real" reals nil))
    nil
    (ceiling existence ""
-            "[x: real -> {i | booleans.&(reals.<=(x, floor_ceil.i), reals.<(floor_ceil.i, (number_fields.+)(1, x)))}]")))
+            "[x: reals.real -> {i | booleans.&(reals.<=(x, floor_ceil.i), reals.<(floor_ceil.i, (number_fields.+)(1, x)))}]")))
  (floor_def 0
   (floor_def-1 nil 3237052399 ("" (grind) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
@@ -17206,11 +17462,11 @@
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (rational nonempty-type-from-decl nil rationals nil)
     (rational_pred const-decl "[real -> boolean]" rationals nil)
-    (real nonempty-type-from-decl nil reals nil)
     (real_pred const-decl "[number_field -> boolean]" reals nil)
     (number_field nonempty-type-from-decl nil number_fields nil)
     (number_field_pred const-decl "[number -> boolean]" number_fields
      nil)
+    (real nonempty-type-from-decl nil reals nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil)
@@ -17340,11 +17596,11 @@
     (integer nonempty-type-from-decl nil integers nil)
     (minus_int_is_int application-judgement "int" integers nil)
     (minus_real_is_real application-judgement "real" reals nil)
-    (rat nonempty-type-eq-decl nil rationals nil)
-    (closed_neg formula-decl nil rationals nil)
-    (integer? const-decl "bool" integers nil)
     (int nonempty-type-eq-decl nil integers nil)
     (closed_neg formula-decl nil integers nil)
+    (integer? const-decl "bool" integers nil)
+    (rat nonempty-type-eq-decl nil rationals nil)
+    (closed_neg formula-decl nil rationals nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (- const-decl "[numfield -> numfield]" number_fields nil))
    nil))
@@ -18284,7 +18540,7 @@
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil)
     (minus_int_is_int application-judgement "int" integers nil))
-   nil (caret subtype "" "nat")))
+   nil (caret subtype "(number_fields.-)(exponentiation.i)" "nat")))
  (caret_TCC2 0
   (caret_TCC2-1 nil 3237052399
    ("" (skolem!)
@@ -18316,7 +18572,9 @@
     (real_ge_is_total_order name-judgement "(total_order?[real])"
      real_props nil))
    nil
-   (caret subtype "exponentiation.expt(exponentiation.r, )" "nznum")))
+   (caret subtype
+    "exponentiation.expt(exponentiation.r, (number_fields.-)(exponentiation.i))"
+    "nznum")))
  (expt_pos_TCC1 0
   (expt_pos_TCC1-1 nil 3237052399 ("" (tcc :defs !) nil nil) nil nil
    (expt_pos subtype "exponentiation.i"
@@ -21502,7 +21760,7 @@
    nil nil))
  (expt_inverse_TCC1 0
   (expt_inverse_TCC1-1 nil 3237052399 ("" (grind) nil nil) nil nil
-   (expt_inverse subtype "()"
+   (expt_inverse subtype "((number_fields.-)(exponentiation.i))"
     "{i: integers.int | booleans.OR(exponentiation.n0x /= 0, reals.>=(i, 0))}")))
  (expt_inverse 0
   (expt_inverse-1 nil 3237052399
@@ -22758,7 +23016,7 @@
  (expt_gt1_neg_TCC1 0
   (expt_gt1_neg_TCC1-1 nil 3237052399 ("" (subtype-tcc) nil nil) nil
    nil
-   (expt_gt1_neg subtype "()"
+   (expt_gt1_neg subtype "((number_fields.-)(exponentiation.pm))"
     "{i: integers.int | booleans.OR(exponentiation.gt1x /= 0, reals.>=(i, 0))}")))
  (expt_gt1_neg 0
   (expt_gt1_neg-1 nil 3237052399
@@ -22826,7 +23084,7 @@
  (expt_gt1_nonpos_TCC1 0
   (expt_gt1_nonpos_TCC1-1 nil 3237052399 ("" (subtype-tcc) nil nil) nil
    nil
-   (expt_gt1_nonpos subtype "()"
+   (expt_gt1_nonpos subtype "((number_fields.-)(exponentiation.m))"
     "{i: integers.int | booleans.OR(exponentiation.gt1x /= 0, reals.>=(i, 0))}")))
  (expt_gt1_nonpos 0
   (expt_gt1_nonpos-1 nil 3237052399
@@ -25132,14 +25390,12 @@
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
     (mod nonempty-type-eq-decl nil euclidean_division nil)
-    (< const-decl "bool" reals nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
     (> const-decl "bool" reals nil)
     (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (< const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (int nonempty-type-eq-decl nil integers nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (rational nonempty-type-from-decl nil rationals nil)
     (rational_pred const-decl "[real -> boolean]" rationals nil)
@@ -25150,11 +25406,13 @@
      nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
     (int_plus_int_is_int application-judgement "int" integers nil)
     (int_times_int_is_int application-judgement "int" integers nil))
    nil
    (rem existence ""
-        "[b: posnat -> [x: int -> {r: euclidean_division.mod(b) | EXISTS q: x = (number_fields.+)(r, number_fields.*(b, modulo_arithmetic.q))}]]")))
+        "[b: integers.posnat -> [x: integers.int -> {r: euclidean_division.mod(b) | EXISTS q: x = (number_fields.+)(r, number_fields.*(b, modulo_arithmetic.q))}]]")))
  (rem_def 0
   (rem_def-1 nil 3237052399
    ("" (skolem!)
@@ -25316,14 +25574,12 @@
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
     (mod nonempty-type-eq-decl nil euclidean_division nil)
-    (< const-decl "bool" reals nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
     (> const-decl "bool" reals nil)
     (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (< const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
     (bool nonempty-type-eq-decl nil booleans nil)
-    (int nonempty-type-eq-decl nil integers nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (rational nonempty-type-from-decl nil rationals nil)
     (rational_pred const-decl "[real -> boolean]" rationals nil)
@@ -25334,6 +25590,8 @@
      nil)
     (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
     (int_times_int_is_int application-judgement "int" integers nil))
    shostak))
  (rem_nrem 0
@@ -25552,6 +25810,8 @@
    ((number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
     (number_field_pred const-decl "[number -> boolean]" number_fields
      nil)
     (number_field nonempty-type-from-decl nil number_fields nil)
@@ -25560,14 +25820,12 @@
     (rational_pred const-decl "[real -> boolean]" rationals nil)
     (rational nonempty-type-from-decl nil rationals nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (int nonempty-type-eq-decl nil integers nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (>= const-decl "bool" reals nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (> const-decl "bool" reals nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (< const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
     (mod nonempty-type-eq-decl nil euclidean_division nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
@@ -25909,6 +26167,8 @@
     (number nonempty-type-decl nil numbers nil)
     (boolean nonempty-type-decl nil booleans nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
     (number_field_pred const-decl "[number -> boolean]" number_fields
      nil)
     (number_field nonempty-type-from-decl nil number_fields nil)
@@ -25917,14 +26177,12 @@
     (rational_pred const-decl "[real -> boolean]" rationals nil)
     (rational nonempty-type-from-decl nil rationals nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (int nonempty-type-eq-decl nil integers nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (>= const-decl "bool" reals nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (> const-decl "bool" reals nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (< const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
     (mod nonempty-type-eq-decl nil euclidean_division nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
@@ -25958,10 +26216,10 @@
     (pred type-eq-decl nil defined_types nil)
     (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (> const-decl "bool" reals nil)
     (posnat nonempty-type-eq-decl nil integers nil)
     (< const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
     (mod nonempty-type-eq-decl nil euclidean_division nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
@@ -26213,12 +26471,12 @@
          modulo_arithmetic nil)
     (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (mod nonempty-type-eq-decl nil euclidean_division nil)
-    (< const-decl "bool" reals nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
     (> const-decl "bool" reals nil)
     (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (< const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (int nonempty-type-eq-decl nil integers nil)
@@ -26478,15 +26736,15 @@
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
     (mod nonempty-type-eq-decl nil euclidean_division nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
     (> const-decl "bool" reals nil)
     (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
-    (int nonempty-type-eq-decl nil integers nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (rational nonempty-type-from-decl nil rationals nil)
     (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
     (< const-decl "bool" reals nil)
     (real nonempty-type-from-decl nil reals nil)
     (real_pred const-decl "[number_field -> boolean]" reals nil)
@@ -26658,15 +26916,15 @@
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
     (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
     (rational_pred const-decl "[real -> boolean]" rationals nil)
     (rational nonempty-type-from-decl nil rationals nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
-    (int nonempty-type-eq-decl nil integers nil)
-    (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (> const-decl "bool" reals nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (< const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
     (mod nonempty-type-eq-decl nil euclidean_division nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
     (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
@@ -26735,15 +26993,15 @@
     (numfield nonempty-type-eq-decl nil number_fields nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
     (mod nonempty-type-eq-decl nil euclidean_division nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
-    (posnat nonempty-type-eq-decl nil integers nil)
     (> const-decl "bool" reals nil)
     (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
-    (int nonempty-type-eq-decl nil integers nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (rational nonempty-type-from-decl nil rationals nil)
     (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
     (< const-decl "bool" reals nil)
     (real nonempty-type-from-decl nil reals nil)
     (real_pred const-decl "[number_field -> boolean]" reals nil)
@@ -30509,9 +30767,13 @@
   (card_TCC1-1 nil 3243832508
    ("" (inst 1 "(LAMBDA S: Card(S))") nil nil)
    ((Card const-decl "nat" finite_sets nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (set type-eq-decl nil sets nil)
+    (T formal-type-decl nil finite_sets nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
     (int nonempty-type-eq-decl nil integers nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (rational nonempty-type-from-decl nil rationals nil)
@@ -30521,16 +30783,12 @@
     (number_field nonempty-type-from-decl nil number_fields nil)
     (number_field_pred const-decl "[number -> boolean]" number_fields
      nil)
-    (number nonempty-type-decl nil numbers nil)
-    (finite_set type-eq-decl nil finite_sets nil)
-    (is_finite const-decl "bool" finite_sets nil)
-    (set type-eq-decl nil sets nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
-    (T formal-type-decl nil finite_sets nil))
+    (number nonempty-type-decl nil numbers nil)
+    (finite_set type-eq-decl nil finite_sets nil))
    shostak
    (card existence ""
-    "[S: finite_set -> {n: naturalnumbers.nat | n = finite_sets.Card(S)}]")))
+    "[S: finite_sets.finite_set -> {n: naturalnumbers.nat | n = finite_sets.Card(S)}]")))
  (card_def 0
   (card_def-1 nil 3243837211
    ("" (skosimp*) (("" (assert) nil nil)) nil) nil shostak))
@@ -30941,7 +31199,37 @@
         nil))
       nil))
     nil)
-   nil shostak)
+   ((add_as_union formula-decl nil sets_lemmas nil)
+    (nonempty_singleton_finite application-judgement
+     "non_empty_finite_set" finite_sets nil)
+    (nonempty_finite_union2 application-judgement
+     "non_empty_finite_set" finite_sets nil)
+    (finite_intersection2 application-judgement "finite_set"
+     finite_sets nil)
+    (intersection const-decl "set" sets nil)
+    (empty? const-decl "bool" sets nil)
+    (disjoint? const-decl "bool" sets nil)
+    (card_singleton formula-decl nil finite_sets nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (nnint_plus_posint_is_posint application-judgement "posint"
+     integers nil)
+    (singleton const-decl "(singleton?)" sets nil)
+    (singleton? const-decl "bool" sets nil)
+    (card_disj_union formula-decl nil finite_sets nil)
+    (member_add formula-decl nil sets_lemmas nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (set type-eq-decl nil sets nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (finite_set type-eq-decl nil finite_sets nil)
+    (T formal-type-decl nil finite_sets nil)
+    (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
+     integers nil)
+    (nonempty_add_finite application-judgement "non_empty_finite_set"
+     finite_sets nil)
+    (member const-decl "bool" sets nil))
+   shostak)
   (card_add-1 nil 3242965190
    ("" (skosimp*)
     (("" (lift-if)
@@ -31726,11 +32014,11 @@
    ((card_bij formula-decl nil finite_sets nil)
     (card const-decl "{n: nat | n = Card(S)}" finite_sets nil)
     (Card const-decl "nat" finite_sets nil)
-    (= const-decl "[T, T -> boolean]" equalities nil)
-    (finite_set type-eq-decl nil finite_sets nil)
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
     (T formal-type-decl nil finite_sets nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (finite_set type-eq-decl nil finite_sets nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
     (bool nonempty-type-eq-decl nil booleans nil)
@@ -31789,15 +32077,15 @@
     (number_field_pred const-decl "[number -> boolean]" number_fields
      nil)
     (number nonempty-type-decl nil numbers nil)
-    (finite_set type-eq-decl nil finite_sets nil)
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
-    (T formal-type-decl nil finite_sets nil))
+    (T formal-type-decl nil finite_sets nil)
+    (finite_set type-eq-decl nil finite_sets nil))
    shostak
    (bij existence ""
-    "[S: finite_set -> {f: [(S) -> naturalnumbers.below(finite_sets.card(S))] | functions[(S), naturalnumbers.below(finite_sets.card(S))].bijective?(f)}]"))
+    "[S: finite_sets.finite_set -> {f: [(S) -> naturalnumbers.below(finite_sets.card(S))] | functions[(S), naturalnumbers.below(finite_sets.card(S))].bijective?(f)}]"))
   (bij_TCC1-2 nil 3510413559
    ("" (lemma "bij_exists[T]")
     ((""
@@ -31848,10 +32136,10 @@
     (T formal-type-decl nil finite_sets nil))
    nil
    (bij existence ""
-    "[S: finite_set -> {f: [(S) -> naturalnumbers.below(finite_sets.card(S))] | functions[(S), naturalnumbers.below(finite_sets.card(S))].bijective?(f)}]"))
+    "[S: finite_sets.finite_set -> {f: [(S) -> naturalnumbers.below(finite_sets.card(S))] | functions[(S), naturalnumbers.below(finite_sets.card(S))].bijective?(f)}]"))
   (bij_TCC1-1 nil 3510413341 ("" (existence-tcc) nil nil) nil nil
    (bij existence ""
-    "[S: finite_set -> {f: [(S) -> naturalnumbers.below(finite_sets.card(S))] | functions[(S), naturalnumbers.below(finite_sets.card(S))].bijective?(f)}]")))
+    "[S: finite_sets.finite_set -> {f: [(S) -> naturalnumbers.below(finite_sets.card(S))] | functions[(S), naturalnumbers.below(finite_sets.card(S))].bijective?(f)}]")))
  (ibij_TCC1 0
   (ibij_TCC1-1 nil 3510413341 ("" (existence-tcc) nil nil)
    ((boolean nonempty-type-decl nil booleans nil)
@@ -33231,10 +33519,10 @@
     (R formal-type-decl nil function_image_aux nil)
     (card const-decl "{n: nat | n = Card(S)}" finite_sets nil)
     (Card const-decl "nat" finite_sets nil)
-    (= const-decl "[T, T -> boolean]" equalities nil)
-    (finite_set type-eq-decl nil finite_sets nil)
     (is_finite const-decl "bool" finite_sets nil)
     (set type-eq-decl nil sets nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (finite_set type-eq-decl nil finite_sets nil)
     (D formal-type-decl nil function_image_aux nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
@@ -39003,13 +39291,12 @@
     (bv2nat const-decl "below(exp2(N))" bv_nat nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
     (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil)
-    (below type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
     (N formal-const-decl "nat" bv_nat nil)
     (exp2 def-decl "posnat" exp2 nil)
     (posnat nonempty-type-eq-decl nil integers nil)
     (> const-decl "bool" reals nil)
     (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (< const-decl "bool" reals nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
     (bool nonempty-type-eq-decl nil booleans nil)
@@ -39023,7 +39310,8 @@
     (number_field_pred const-decl "[number -> boolean]" number_fields
      nil)
     (boolean nonempty-type-decl nil booleans nil)
-    (number nonempty-type-decl nil numbers nil))
+    (number nonempty-type-decl nil numbers nil)
+    (below type-eq-decl nil naturalnumbers nil))
    shostak
    (nat2bv existence ""
     "[val: naturalnumbers.below(exp2.exp2(bv_nat.N)) -> {bv: bv[bv_nat.N].bvec | bv_nat.bv2nat(bv) = val}]"))
@@ -39161,13 +39449,12 @@
     (bv2nat const-decl "below(exp2(N))" bv_nat nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
     (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil)
-    (below type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
     (N formal-const-decl "nat" bv_nat nil)
     (exp2 def-decl "posnat" exp2 nil)
     (posnat nonempty-type-eq-decl nil integers nil)
     (> const-decl "bool" reals nil)
     (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (< const-decl "bool" reals nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
     (bool nonempty-type-eq-decl nil booleans nil)
@@ -39181,7 +39468,8 @@
     (number_field_pred const-decl "[number -> boolean]" number_fields
      nil)
     (boolean nonempty-type-decl nil booleans nil)
-    (number nonempty-type-decl nil numbers nil))
+    (number nonempty-type-decl nil numbers nil)
+    (below type-eq-decl nil naturalnumbers nil))
    shostak))
  (nat2bv_bij 0
   (nat2bv_bij-1 nil 3242703876
@@ -40802,11 +41090,11 @@
         (integer_pred const-decl "[rational -> boolean]" integers nil)
         (rational nonempty-type-from-decl nil rationals nil)
         (rational_pred const-decl "[real -> boolean]" rationals nil)
-        (real nonempty-type-from-decl nil reals nil)
         (real_pred const-decl "[number_field -> boolean]" reals nil)
         (number_field nonempty-type-from-decl nil number_fields nil)
         (number_field_pred const-decl "[number -> boolean]"
          number_fields nil)
+        (real nonempty-type-from-decl nil reals nil)
         (= const-decl "[T, T -> boolean]" equalities nil)
         (number nonempty-type-decl nil numbers nil)
         (OR const-decl "[bool, bool -> bool]" booleans nil)
@@ -41603,6 +41891,10 @@
     (bijective? const-decl "bool" functions nil)
     (inverse const-decl "D" function_inverse nil)
     (bv2int const-decl "rng_2s_comp" bv_int_defs nil)
+    (maxint const-decl "int" bv_int_defs nil)
+    (minint const-decl "int" bv_int_defs nil)
+    (<= const-decl "bool" reals nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
     (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil)
     (below type-eq-decl nil naturalnumbers nil)
@@ -41613,11 +41905,6 @@
     (< const-decl "bool" reals nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
-    (rng_2s_comp type-eq-decl nil bv_int_defs nil)
-    (maxint const-decl "int" bv_int_defs nil)
-    (minint const-decl "int" bv_int_defs nil)
-    (<= const-decl "bool" reals nil)
-    (AND const-decl "[bool, bool -> bool]" booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (int nonempty-type-eq-decl nil integers nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
@@ -41629,10 +41916,11 @@
     (number_field_pred const-decl "[number -> boolean]" number_fields
      nil)
     (boolean nonempty-type-decl nil booleans nil)
-    (number nonempty-type-decl nil numbers nil))
+    (number nonempty-type-decl nil numbers nil)
+    (rng_2s_comp type-eq-decl nil bv_int_defs nil))
    shostak
    (int2bv existence ""
-    "[iv: rng_2s_comp -> {bv: bv[bv_int_defs.N].bvec | bv_int_defs.bv2int(bv) = iv}]"))))
+    "[iv: bv_int_defs.rng_2s_comp -> {bv: bv[bv_int_defs.N].bvec | bv_int_defs.bv2int(bv) = iv}]"))))
 (bv_arithmetic_defs
  (difference_TCC1 0
   (difference_TCC1-1 nil 3364695167
@@ -41663,14 +41951,15 @@
     (<= const-decl "bool" reals nil)
     (AND const-decl "[bool, bool -> bool]" booleans nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
-    (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil)
+    (bit type-eq-decl nil bit nil)
     (below type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (bvec type-eq-decl nil bv nil)
     (N formal-const-decl "posnat" bv_arithmetic_defs nil)
     (posnat nonempty-type-eq-decl nil integers nil)
     (> const-decl "bool" reals nil)
     (nonneg_int nonempty-type-eq-decl nil integers nil)
-    (< const-decl "bool" reals nil)
-    (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (int nonempty-type-eq-decl nil integers nil)
@@ -41687,7 +41976,7 @@
     (minus_int_is_int application-judgement "int" integers nil))
    shostak
    (difference existence ""
-    "[bv: bvec[N] -> {bvn: bv[bv_arithmetic_defs.N].bvec | bv_int_defs[bv_arithmetic_defs.N].bv2int(bvn) = IF bv_int_defs[bv_arithmetic_defs.N].bv2int(bv) = bv_int_defs[bv_arithmetic_defs.N].minint THEN bv_int_defs[bv_arithmetic_defs.N].bv2int(bv) ELSE  ENDIF}]")))
+    "[bv: bv[bv_arithmetic_defs.N].bvec -> {bvn: bv[bv_arithmetic_defs.N].bvec | bv_int_defs[bv_arithmetic_defs.N].bv2int(bvn) = IF bv_int_defs[bv_arithmetic_defs.N].bv2int(bv) = bv_int_defs[bv_arithmetic_defs.N].minint THEN bv_int_defs[bv_arithmetic_defs.N].bv2int(bv) ELSE (number_fields.-)((bv_int_defs[bv_arithmetic_defs.N].bv2int(bv))) ENDIF}]")))
  (bv_splus_TCC1 0
   (bv_splus_TCC1-1 nil 3369463698 ("" (subtype-tcc) nil nil)
    ((number nonempty-type-decl nil numbers nil)
@@ -42715,12 +43004,9 @@
      "(strict_total_order?[real])" real_props nil)
     (upto_induction formula-decl nil bounded_nat_inductions nil)
     (T formal-type-decl nil finite_sets_of_sets nil)
-    (boolean nonempty-type-decl nil booleans nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (set type-eq-decl nil sets nil)
-    (is_finite const-decl "bool" finite_sets nil)
     (finite_set type-eq-decl nil finite_sets nil)
     (number nonempty-type-decl nil numbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
     (number_field_pred const-decl "[number -> boolean]" number_fields
      nil)
     (number_field nonempty-type-from-decl nil number_fields nil)
@@ -42730,9 +43016,12 @@
     (rational nonempty-type-from-decl nil rationals nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (int nonempty-type-eq-decl nil integers nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
     (>= const-decl "bool" reals nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
+    (set type-eq-decl nil sets nil)
+    (is_finite const-decl "bool" finite_sets nil)
     (Card const-decl "nat" finite_sets nil)
     (card const-decl "{n: nat | n = Card(S)}" finite_sets nil)
     (exp2 def-decl "posnat" exp2 nil)
@@ -43300,9 +43589,12 @@
     (inverse const-decl "D" function_inverse nil)
     (card const-decl "{n: nat | n = Card(S)}" finite_sets nil)
     (Card const-decl "nat" finite_sets nil)
+    (is_finite const-decl "bool" finite_sets nil)
+    (set type-eq-decl nil sets nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
     (nat nonempty-type-eq-decl nil naturalnumbers nil)
     (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
     (int nonempty-type-eq-decl nil integers nil)
     (integer_pred const-decl "[rational -> boolean]" integers nil)
     (rational nonempty-type-from-decl nil rationals nil)
@@ -43312,12 +43604,9 @@
     (number_field nonempty-type-from-decl nil number_fields nil)
     (number_field_pred const-decl "[number -> boolean]" number_fields
      nil)
+    (boolean nonempty-type-decl nil booleans nil)
     (number nonempty-type-decl nil numbers nil)
     (finite_set type-eq-decl nil finite_sets nil)
-    (is_finite const-decl "bool" finite_sets nil)
-    (set type-eq-decl nil sets nil)
-    (bool nonempty-type-eq-decl nil booleans nil)
-    (boolean nonempty-type-decl nil booleans nil)
     (T formal-type-decl nil finite_sets_of_sets nil)
     (upto_induction formula-decl nil bounded_nat_inductions nil)
     (powerset_natfun_rec_bound formula-decl nil finite_sets_of_sets
@@ -44105,9 +44394,9 @@
     (posnat nonempty-type-eq-decl nil integers nil)
     (exp2 def-decl "posnat" exp2 nil)
     (T formal-type-decl nil finite_sets_of_sets nil)
-    (set type-eq-decl nil sets nil)
     (finite_set type-eq-decl nil finite_sets nil)
     (= const-decl "[T, T -> boolean]" equalities nil)
+    (set type-eq-decl nil sets nil)
     (Card const-decl "nat" finite_sets nil)
     (card const-decl "{n: nat | n = Card(S)}" finite_sets nil)
     (setof type-eq-decl nil defined_types nil)

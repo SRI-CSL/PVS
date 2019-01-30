@@ -147,6 +147,9 @@
       (and (tc-eq (name d1) (name d2))
 	   (tc-eq (type d1) (type d2)))))
 
+(defmethod judgement-eq ((d1 judgement) (d2 judgement))
+  (eq d1 d2))
+
 (defmethod judgement-lt ((d1 number-judgement) (d2 number-judgement))
   (and (not (eq d1 d2))
        (not (tc-eq (type d1) (type d2)))
@@ -402,6 +405,8 @@
 ;;; Called from add-to-using -> update-current-context
 
 (defun update-judgements-of-current-context (theory theoryname)
+  ;; We clear out the various hash tables here, rather than with each
+  ;; added judgement, which gets expensive.
   (merge-imported-judgements (judgements (saved-context theory))
 			     theory theoryname)
 ;;   (assert (judgements-all-visible? *current-context*) ()
@@ -1962,11 +1967,11 @@
 				(get-declarations (id nj)))
 			      :test #'add-decl-test))))
 	(cond (oj oj)
-	      (t
-	       (add-decl nj t t nil t)
-	       (unless (eq j nj) (setf (place nj) nil))
-	       (setf (generated-by nj) (or (generated-by j) j))
-	       nj)))
+	      (t (let ((*insert-add-decl* nil))
+		   (add-decl nj nil))
+		 (unless (eq j nj) (setf (place nj) nil))
+		 (setf (generated-by nj) (or (generated-by j) j))
+		 nj)))
       j))
 
 (defmethod subst-params-decl ((j number-judgement) thname theory)
@@ -1991,7 +1996,8 @@
 		     oj)
 		    (t (setf (gethash j smphash) nj)
 		       (unless (eq j nj)
-			 (add-decl nj t t nil t)
+			 (let ((*insert-add-decl* nil))
+			   (add-decl nj nil))
 			 (setf (place nj) nil)
 			 (setf (generated-by nj) (or (generated-by j) j))
 			 (setf (module nj)
@@ -2030,7 +2036,8 @@
 		     (cond ((judgement-eq j nj)
 			    ;;(break "judgement-eq")
 			    j)
-			   (t (add-decl nj t t nil t)
+			   (t (let ((*insert-add-decl* nil))
+				(add-decl nj nil))
 			      (setf (place nj) nil)
 			      (setf (refers-to nj) nil)
 			      (setf (module nj)
@@ -2073,7 +2080,8 @@
 					      (free-params nj)))))
 			 (setf (gethash j smphash) nj)
 			 (unless (eq j nj)
-			   (add-decl nj t t nil t)
+			   (let ((*insert-add-decl* nil))
+			     (add-decl nj nil))
 			   (setf (place nj) nil)
 			   (setf (refers-to nj) nil)
 			   #+pvsdebug
@@ -3395,14 +3403,16 @@
 ;;; T.  If it does match, then for each Ti the same substitution is done,
 ;;; and it is checked if this is a subtype-of*? tt2.
 (defun subtype-of-test (tt1 tt2 ksubtypes)
-  (when (compatible? tt1 (car ksubtypes))
+  (when (and (compatible? tt1 (car ksubtypes))
+	     (or (subtype? tt1)
+		 (not (subtype? (car ksubtypes)))))
     (let* ((fparams (when (fully-instantiated? tt1)
 		      (free-params (car ksubtypes))))
 	   (theory (when fparams (module (car fparams))))
 	   (frees (unless (or (null fparams)
 			      (eq theory (current-theory)))
-		    (mapcan #'(lambda (x) (list (list x)))
-		      (formals-sans-usings (module (car fparams))))))
+		    (mapcar #'list (formals-sans-usings
+				    (module (car fparams))))))
 	   (bindings (when frees (tc-match tt1 (car ksubtypes) frees)))
 	   (thinst (subst-theory-inst-from-free-params theory bindings))
 	   (kt (if frees

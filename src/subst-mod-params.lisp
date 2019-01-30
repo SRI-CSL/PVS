@@ -1434,10 +1434,8 @@ type-name, datatype-subtype, type-application, expr-as-type"
 ;;;  {x: list[number] | every(...)(x)}
 
 (defun adt-expand-positive-subtypes (type)
-  (if (fully-instantiated? type)
-      (gensubst type
-	#'adt-expand-positive-subtypes!
-	#'adt-expand-positive-subtypes?)
+  (if (adt-expand-positive-subtypes? type)
+      (adt-expand-positive-subtypes! type)
       type))
 
 (defmethod adt-expand-positive-subtypes? ((ex type-name))

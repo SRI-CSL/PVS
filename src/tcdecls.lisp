@@ -1795,7 +1795,7 @@
 					    (newid (make-new-variable base
 						     (cons range domtypes) nil
 						     :exceptions bound-formals)))
-				       (mk-dep-binding newid dt))
+				       (mk-dep-binding newid dt (print-type dt)))
 				     dt))
 		       domtypes formals)
 		     domtypes))
@@ -3746,9 +3746,10 @@ The dependent types are created only when needed."
 
 (defmethod typecheck* ((db dep-binding) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (let ((*generate-tccs* 'none))
-    (setf (type db) (typecheck* (declared-type db) nil nil nil)))
-  (set-type (declared-type db) nil)
+  (unless (type db)
+    (let ((*generate-tccs* 'none))
+      (setf (type db) (typecheck* (declared-type db) nil nil nil)))
+    (set-type (declared-type db) nil))
   db)
 
 (defmethod typecheck* ((te type-extension) expected kind arguments)
@@ -3846,29 +3847,30 @@ The dependent types are created only when needed."
 	(*generate-tccs* 'none))
     (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
   (set-type (declared-type decl) nil)
-  (if (subtype-of? (subtype decl) (type decl))
-      (pvs-warning
-	  "In judgement ~:[at~;~:*~a,~] Line ~d:~_ ~a~_ is already known to be a subtype of~%  ~a"
-	(id decl) (line-begin (place decl))
-	(declared-subtype decl) (declared-type decl))
-      (let* ((bd (make-new-bind-decl (subtype decl)))
-	     (bvar (make-variable-expr bd)))
-	(setf (place bvar) (place (declared-subtype decl)))
-	(unless (compatible? (subtype decl) (type decl))
-	  (type-error decl
-	    "~@[In judgement ~a: ~]subtype ~a is incompatible with ~a"
-	    (id decl) (declared-subtype decl) (declared-type decl)))
-	(let* ((*compatible-pred-reason*
-		(acons bvar "judgement" *compatible-pred-reason*))
-	       (incs (compatible-preds (subtype decl) (type decl) bvar)))
-	  (cond (incs
-		 (unless (eq *generate-tccs* 'none)
-		   (generate-subtype-tcc bvar (type decl) incs))
-		 (add-judgement-decl decl))
-		(t (pvs-warning
-		       "Subtype judgement is superfluous~@[ (on line ~d)~]:~
+  (let ((*checking-conversions* t)) ;; Disable optimization using subtype-conjuncts
+    (if (subtype-of? (subtype decl) (type decl))
+	(pvs-warning
+	    "In judgement ~:[at~;~:*~a,~] Line ~d:~_ ~a~_ is already known to be a subtype of~%  ~a"
+	  (id decl) (line-begin (place decl))
+	  (declared-subtype decl) (declared-type decl))
+	(let* ((bd (make-new-bind-decl (subtype decl)))
+	       (bvar (make-variable-expr bd)))
+	  (setf (place bvar) (place (declared-subtype decl)))
+	  (unless (compatible? (subtype decl) (type decl))
+	    (type-error decl
+	      "~@[In judgement ~a: ~]subtype ~a is incompatible with ~a"
+	      (id decl) (declared-subtype decl) (declared-type decl)))
+	  (let* ((*compatible-pred-reason*
+		  (acons bvar "judgement" *compatible-pred-reason*))
+		 (incs (compatible-preds (subtype decl) (type decl) bvar)))
+	    (cond (incs
+		   (unless (eq *generate-tccs* 'none)
+		     (generate-subtype-tcc bvar (type decl) incs))
+		   (add-judgement-decl decl))
+		  (t (pvs-warning
+			 "Subtype judgement is superfluous~@[ (on line ~d)~]:~
                         ~%  ~a"
-		     (line-begin (place decl)) (unparse-decl decl))))))))
+		       (line-begin (place decl)) (unparse-decl decl)))))))))
 
 (defmethod copy-judgement-subtype-without-types ((te type-application))
   (lcopy te
@@ -4027,7 +4029,9 @@ The dependent types are created only when needed."
 (defun change-expr-judgement-to-application-judgement (decl)
   ;; If we don't clear the hash, causes problems in ACCoRD@bands_util.gs2v3_gs_only
   (clrhash (judgement-types-hash (current-judgements)))
-  (clrhash *pseudo-normalize-hash*)
+  (clrhash *subtype-of-hash*)
+  (reset-subst-mod-params-cache)
+  (reset-pseudo-normalize-caches)
   (untypecheck-theory (declared-type decl))
   (untypecheck-theory (expr decl))
   (untypecheck-theory (decl-formals decl))
@@ -4644,4 +4648,5 @@ The dependent types are created only when needed."
     (|even_negint| (setq *even_negint* type))
     (|odd_negint| (setq *odd_negint* type))
     (|ordinal| (setq *ordinal* type))
+    (|string| (setq *string-type* type))
     (|character| (setq *character* type))))

@@ -351,12 +351,16 @@
 	    *noninteractive*)
     (pvs-emacs-eval "(pvs-checker-busy)")))
 
-(defun initialize-auto-rewrites ()
+(defun current-auto-rewrite-names ()
   (let* ((rewrites+ (mapappend #'get-rewrite-names
 			       (auto-rewrites *current-context*)))
 	 (rewrites- (mapappend #'get-rewrite-names
 			       (disabled-auto-rewrites *current-context*)))
 	 (rewrites (set-difference rewrites+ rewrites- :test #'tc-eq)))
+    rewrites))
+
+(defun initialize-auto-rewrites ()
+  (let ((rewrites (current-auto-rewrite-names)))
     (catch 'abort
       (auto-rewrite rewrites *top-proofstate*)))
   (make-instance 'auto-rewrites-info

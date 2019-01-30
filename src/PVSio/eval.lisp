@@ -36,7 +36,8 @@
 	  (when (and *tccforms* safe)
 	    (format t "~%Typechecking ~s produced TCCs:~%" expr)
 	    (evaluator-print-tccs *tccforms*)
-	    (error 'eval-error "Use option :safe? nil if TCCs are provable"))
+	    (error 'eval-error
+		   :format-control "Use option :safe? nil if TCCs are provable"))
 	  (let* ((cl-input (handler-case (pvs2cl tc-input)
 			     (pvseval-error (condition) nil)))
 		 (cl-eval (eval cl-input))
@@ -44,8 +45,8 @@
 	    (assert (expr? pvs-val))
 	    pvs-val))
       ;; At the moment, all errors simply print the condition, and evalexpr returns nil
-      (groundeval-error (condition) (format t "~%~a" condition))
-      (pvsio-inprover (condition) (format t "~%~a" condition)))))
+      (groundeval-error (condition) (when *eval-verbose* (format t "~%~a" condition)))
+      (pvsio-inprover (condition) (format t "~%error2: ~a" condition)))))
 
 (defrule eval-expr (expr &optional safe? (auto? t) quiet?)
   (let ((e (extra-get-expr expr)))

@@ -64,6 +64,9 @@ behavior:
 	    (setf (gethash obj *gensubst-cache*) nobj)
 	    nobj))))
 
+(defmethod gensubst* ((obj string) substfn testfn)
+  obj)
+
 (defmethod gensubst* ((obj module) substfn testfn)
   (let* ((formals (gensubst* (formals obj) substfn testfn))
 	 (formals-sans-usings (if (eq formals (formals obj))

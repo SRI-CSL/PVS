@@ -55,7 +55,7 @@
 (defun uninterpreted-fun (expr &optional fmt-str)
   #'(lambda (&rest x)
       (declare (ignore x))
-      (uninterpreted-fun expr fmt-str)))
+      (uninterpreted expr fmt-str)))
 
 ;;These variables are special
 (defvar *destructive?* nil)  ;;tracks if the translation is in the destructive mode
@@ -367,31 +367,30 @@ if called."
     `(list ,@(pvs2cl-reverse-list-expr reverse-expr bindings livevars nil))))
 
 (defmethod pvs2cl_up* ((expr application) bindings livevars)
-  (with-slots
-   (operator argument) expr
-   (let ((op* (operator* expr)))
-     (if (constant? op*);;assuming all primitive/datatype ops are
-	 ;;not curried.
-	 (let* ((actuals (expr-actuals (module-instance op*)))
-		(pvsiosymb (when (name-expr? op*)
-			     (pvsio-symbol op* (+ (length actuals)(length (arguments expr)))))))
-	   (when (mappings (module-instance op*))
-	     (pvs2cl-mappings (mappings (module-instance op*))))
-	   (if (or (pvs2cl-primitive? op*) pvsiosymb)
-	       (pvs2cl-primitive-app expr bindings livevars pvsiosymb actuals)
-	     (if (datatype-constant? operator)
-		 (pvs2cl-datatype-application operator expr bindings livevars)
-	       ;; (mk-funapp (pvs2cl-resolution operator)
-	       ;;	  (pvs2cl_up* (arguments expr) bindings livevars))
-	       (pvs2cl-defn-application op* expr bindings livevars))))
-       (mk-funcall (pvs2cl_up* operator bindings
-			       (append (updateable-vars
-					argument)
-				       livevars))
-		   (list (pvs2cl_up* argument bindings
-				     (append
-				      (updateable-free-formal-vars operator)
-				      livevars))))))))
+  (with-slots (operator argument) expr
+    (let ((op* (operator* expr)))
+      (if (constant? op*) ;;assuming all primitive/datatype ops are
+	  ;;not curried.
+	  (let* ((actuals (expr-actuals (module-instance op*)))
+		 (pvsiosymb (when (name-expr? op*)
+			      (pvsio-symbol op* (+ (length actuals)(length (arguments expr)))))))
+	    (when (mappings (module-instance op*))
+	      (pvs2cl-mappings (mappings (module-instance op*))))
+	    (if (or (pvs2cl-primitive? op*) pvsiosymb)
+		(pvs2cl-primitive-app expr bindings livevars pvsiosymb actuals)
+		(if (datatype-constant? operator)
+		    (pvs2cl-datatype-application operator expr bindings livevars)
+		    ;; (mk-funapp (pvs2cl-resolution operator)
+		    ;;	  (pvs2cl_up* (arguments expr) bindings livevars))
+		    (pvs2cl-defn-application op* expr bindings livevars))))
+	  (mk-funcall (pvs2cl_up* operator bindings
+				  (append (updateable-vars
+					   argument)
+					  livevars))
+		      (list (pvs2cl_up* argument bindings
+					(append
+					 (updateable-free-formal-vars operator)
+					 livevars))))))))
 
 (defmethod pvs2cl_up* ((expr equation) bindings livevars)
   (cond ((and (set-list-expr? (args1 expr))
@@ -1397,9 +1396,9 @@ if called."
 					  (lisp-function (declaration expr)))
 				      (pvs2cl-operator2 expr actuals nil nil
 							livevars bindings))
-				  (if internal-actuals
-				      (external-lisp-function (declaration expr))
-				   (lisp-function (declaration expr))))))
+				    (if internal-actuals
+					(external-lisp-function (declaration expr))
+					(lisp-function (declaration expr))))))
 		      (assert fun)
 		      (mk-funapp fun (pvs2cl_up* internal-actuals
 						 bindings livevars))))))))))
