@@ -89,7 +89,7 @@
 		 theory))
 	      (fetch-error
 	       ;;(break "Error in fetching ~a - ~a" filename fetch-error)
-	       (pvs-message "Error in fetching ~a -~_ ~a" filename fetch-error)
+	       (pvs-message "~I~<Error in fetching ~a -~_ ~a~:>" filename fetch-error)
 	       (ignore-lisp-errors (delete-file file))
 	       (dolist (thid *bin-theories-set*)
 		 (remhash thid *pvs-modules*))
@@ -373,7 +373,8 @@
     (assert *saving-theory*)
     (if (and module
 	     (not (eq module *saving-theory*))
-	     (not (typep obj '(or skolem-const-decl decl-formal))))
+	     (not (typep obj '(or skolem-const-decl decl-formal)))
+	     (not (and (judgement? obj) (generated-by obj))))
 	(if (external-library-reference? module)
 	    (reserve-space 4
 	      (push-word (store-obj 'decllibref))
@@ -1149,7 +1150,7 @@
 		 (eq (module obj) *restoring-theory*))
 	    (unless (and (boundp '*restoring-declaration*) ;; bound to nil in context
 			 (not (or (eq (generated-by obj) *restoring-declaration*)
-				  (typep obj 'adtdecl))))
+				  (typep obj '(or adtdecl judgement)))))
 	      (let ((*restoring-declaration* obj)
 		    (*bound-variables* (apply #'append (formals obj))))
 		(call-next-method)
