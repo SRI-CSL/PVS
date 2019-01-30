@@ -552,25 +552,37 @@
 
 (defun resolve-with-actuals (decl acts dacts dth args mappings)
   ;; If dacts is there, or if decl has no decl-formals, no ambiguity
-  (if (or (null acts)
-	  (and (length= acts (formals-sans-usings dth))
-	       (or (not (eq dth (current-theory)))
-		   (every #'(lambda (act fml)
-			      (and (name? (actual-value act))
-				   (some #'(lambda (res)
-					     (eq (declaration res) fml))
-					 (resolutions (actual-value act)))))
-			  acts (formals-sans-usings dth))))
-	  ;; Possible that acts are really dacts
-	  (and (null dacts)
-	       (length= acts (decl-formals (current-declaration)))
-	       (or (not (eq decl (current-declaration)))
-		   (every #'(lambda (act fml)
-			      (and (name? (actual-value act))
-				   (some #'(lambda (res)
-					     (eq (declaration res) fml))
-					 (resolutions (actual-value act)))))
-			  acts (decl-formals (current-declaration))))))
+  (assert (or acts dacts))
+  (let* ((acts-ok
+	  (or (null acts)
+	      (and (length= acts (formals-sans-usings dth))
+		   (or (not (eq dth (current-theory)))
+		       (every #'(lambda (act fml)
+				  (let ((aval (actual-value act)))
+				    (typecase aval
+				      (name (some #'(lambda (res)
+						      (eq (declaration res) fml))
+						  (resolutions aval)))
+				      (subtype (and (name? (print-type aval))
+						    (some #'(lambda (res)
+							      (eq (declaration res) fml))
+							  (resolutions (print-type aval))))))))
+			      acts (formals-sans-usings dth))
+		       (progn (push (list :current-theory-actuals acts)
+				    *resolve-error-info*)
+			      nil)))))
+	 (ndacts (or dacts (unless acts-ok acts)))
+	 (dacts-ok
+	  (or (null ndacts)
+	      (and (length= ndacts (decl-formals decl))
+		   (or (not (eq decl (current-declaration)))
+		       (every #'(lambda (act fml)
+				  (and (name? (actual-value act))
+				       (some #'(lambda (res)
+						 (eq (declaration res) fml))
+					     (resolutions (actual-value act)))))
+			      ndacts (decl-formals decl)))))))
+    (when dacts-ok
       (let ((thinsts (resolve-theory-actuals decl acts dacts dth args mappings))
 	    (dparams (decl-formals decl)))
 	(if dacts
@@ -588,18 +600,22 @@
 	      (append (mapcar #'(lambda (thinst)
 				  (make-resolution decl thinst))
 			thinsts)
-		      dreses))))))
+		      dreses)))))))
 
 (defun resolve-theory-actuals (decl acts dacts dth args mappings)
   (let* ((thinsts (get-importings dth))
-	 (genthinst (when (formals-sans-usings dth)
-		      (find-if-not #'actuals thinsts))))
-    (if genthinst
+	 (generic? (and (not (eq dth (current-theory)))
+			(when (formals-sans-usings dth)
+			  (find-if-not #'actuals thinsts)))))
+    (if generic?
 	(let* ((nacts (compatible-parameters?
 		       acts (formals-sans-usings dth)))
 	       (dthi (when nacts
-		       (mk-modname-no-tccs
-			(id dth) nacts (library genthinst))))
+		       (let ((libid
+			      (when (library-datatype-or-theory? dth)
+				(libref-to-libid (lib-ref dth)))))
+			 (mk-modname-no-tccs
+			  (id dth) nacts libid))))
 	       (*generate-tccs* 'none))
 	  (when dthi
 	    (when dacts
@@ -762,8 +778,8 @@
 	
 
 (defun decl-args-compatible? (decl args mappings)
-  "Attempts to create theory instances of (module decl) compatible with decl, args, and mappings.
-The "
+  "Attempts to create theory instances of (module decl) compatible with
+decl, args, and mappings."
   (if (eq (module decl) (current-theory))
       (compatible-arguments? decl (current-theory-name) args (current-theory))
       (let* ((idecls (when mappings
@@ -2331,7 +2347,7 @@ This forms a lattice, and we return the top ones."
 ;;;             ELSE return nil
 
 (defun resolve-theory-name (modname)
-  (if (eq (id modname) (id (theory *current-context*)))
+  (if (eq (id modname) (id (current-theory)))
       (if (actuals modname)
 	  (type-error modname "May not instantiate the current theory")
 	  modname)
@@ -2435,7 +2451,7 @@ This forms a lattice, and we return the top ones."
 	       (mapcar #'(lambda (a) (list a (full-name (ptypes a) 1)))
 		 arguments)
 	       (if (assq :current-theory-actuals *resolve-error-info*)
-                   "May not instantiate the current theory"
+                   "May not instantiate the current theory except with corresponding formals"
 		   (when reses
 		     (format nil
 			 "Check the actual parameters; the following ~
