@@ -354,7 +354,7 @@ obj - roughly any Lisp entity that's printable, though this specializes to PVS i
 
 (defmethod get-nt ((n name)) 'name)
 
-(defmethod get-nt ((sd simple-decl)) 'bind)
+(defmethod get-nt ((sd simple-decl)) 'simplebind)
 
 (defmethod get-nt ((act actual)) 'actual)
 
