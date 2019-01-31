@@ -1291,8 +1291,8 @@
 	  ;; (when (dactuals tn)
 	  ;;   (typecheck* (dactuals tn) nil nil nil))
 	  (let ((thinst (if dacts ; Slight optimization
-			    (current-theory-name)
-			    (copy (current-theory-name)))))
+			    (copy (current-theory-name))
+			    (current-theory-name))))
 	    (when dacts
 	      (change-class thinst 'declparam-modname
 		:dactuals (dactuals tn)
