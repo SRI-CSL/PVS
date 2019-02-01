@@ -604,18 +604,20 @@
 
 (defun resolve-theory-actuals (decl acts dacts dth args mappings)
   (let* ((thinsts (get-importings dth))
-	 (generic? (and (not (eq dth (current-theory)))
-			(when (formals-sans-usings dth)
-			  (find-if-not #'actuals thinsts)))))
+	 (generic? (or (eq dth (current-theory))
+		       (when (formals-sans-usings dth)
+			 (find-if-not #'actuals thinsts)))))
     (if generic?
 	(let* ((nacts (compatible-parameters?
 		       acts (formals-sans-usings dth)))
-	       (dthi (when nacts
-		       (let ((libid
-			      (when (library-datatype-or-theory? dth)
-				(libref-to-libid (lib-ref dth)))))
-			 (mk-modname-no-tccs
-			  (id dth) nacts libid))))
+	       (dthi (if (eq (current-theory) dth)
+			 (copy (current-theory-name))
+			 (when nacts
+			   (let ((libid
+				  (when (library-datatype-or-theory? dth)
+				    (libref-to-libid (lib-ref dth)))))
+			     (mk-modname-no-tccs
+			      (id dth) nacts libid)))))
 	       (*generate-tccs* 'none))
 	  (when dthi
 	    (when dacts
