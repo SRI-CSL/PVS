@@ -167,7 +167,8 @@ inferior LISP.  PARENT is the name of the parent dialect."
     (when binary (setq ilisp-binary-extension binary))
     (when init (setq ilisp-init-binary-extension init)))
   ;; Comint defaults
-  (set-ilisp-input-ring-size 200)
+  (unless (>= (ilisp-input-ring-size) 500)
+    (set-ilisp-input-ring-size 500))
   (setq comint-prompt-regexp "^[^<> ]*>+:? *"
 	comint-use-prompt-regexp t ; Emacs 21 fields don't seem to work with comint-ipc (?)
 	comint-get-old-input 'ilisp-get-old-input
