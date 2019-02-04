@@ -54,13 +54,17 @@
 
 (defun unbound-freevars (obj &optional (boundvars *bound-variables*))
   (let ((fvars (freevars obj)))
-    (remove-if #'(lambda (fv) (member fv boundvars :test #'same-declaration))
-      fvars)))
+    (remove-if-not #'(lambda (fv) (unbound-freevars-test fv boundvars)) fvars)))
 
 (defun unbound-freevars? (obj &optional (boundvars *bound-variables*))
   (let ((fvars (freevars obj)))
-    (some #'(lambda (fv) (not (member fv boundvars :test #'same-declaration)))
-      fvars)))
+    (some #'(lambda (fv) (unbound-freevars-test fv boundvars)) fvars)))
+
+(defun unbound-freevars-test (fv boundvars)
+  (not (or (member fv boundvars :test #'same-declaration)
+	   (and (formula-decl? (current-declaration))
+		(resolution fv)
+		(var-decl? (declaration (resolution fv)))))))
 
 (defun freevars (obj)
 ;;  (sort (freevars* obj  frees)

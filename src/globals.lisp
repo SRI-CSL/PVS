@@ -298,6 +298,7 @@ Given a pathname, returns a hash-table")
 (defvar *even_negint* nil)
 (defvar *odd_negint* nil)
 (defvar *ordinal* nil)
+(defvar *string-type* nil)
 (defvar *character* nil)
 
 (defvar *tcdebug* nil)

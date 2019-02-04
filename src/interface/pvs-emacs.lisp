@@ -1058,7 +1058,9 @@
 		 (if args
 		     message
 		     (protect-format-string message))
-		 args *type-error* *in-coercion*))
+		 (let ((*visible-only* t))
+		   (mapcar #'full-name args))
+		 *type-error* *in-coercion*))
 	(obj-conv? (unless *skip-all-conversion-checks*
 		     (conversion-occurs-in? obj))))
     (cond ((and *typechecking-module*

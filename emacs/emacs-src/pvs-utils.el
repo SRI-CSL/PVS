@@ -2069,6 +2069,13 @@ existence and time differences to be whitespace")
 (defun pvs-title-string ()
   nil)
 
+(defun get-frame-name (&optional frame)
+  "Return the string that names FRAME (a frame).  Default is selected frame."
+  (unless frame (setq frame  (selected-frame)))
+  (if (framep frame)
+      (cdr (assq 'name (frame-parameters frame)))
+      (error "Function `get-frame-name': Argument not a frame: `%s'" frame)))
+
 (cond ((featurep 'xemacs)
        (defun pvs-update-window-titles ()
 	 (unless noninteractive

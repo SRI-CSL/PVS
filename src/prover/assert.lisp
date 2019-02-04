@@ -1869,7 +1869,11 @@ subgoal is proved)."
 
 (defmethod dependencies ((id symbol) (rectype recordtype))
   "variant of dependencies with field id instead of field-decl"
-  (dependencies (find id (fields rectype) :key #'id) rectype))
+  (let ((fld (find id (fields rectype) :key #'id)))
+    ;; fld may not be there if this is from a record update with a new field
+    ;; but in that case there is no dependency
+    (when fld
+      (dependencies fld rectype))))
 
 
 (defun record-update-reduce (expr op arg);;NSH(7.15.94):removed sig
@@ -2808,7 +2812,7 @@ subgoal is proved)."
 			       (make!-projection-application index newarg))))
 	     (do-auto-rewrite new-expr sig)))))
 
-(defmethod dependencies ((index number)(tuptype tupletype))
+(defmethod dependencies ((index number) (tuptype tupletype))
   (dependencies (nth (1- index) (types tuptype)) tuptype))
 
 (defun tuple-update-reduce (index arg)

@@ -145,9 +145,9 @@ BEGIN
   % The next lemma will probably not often work because of the representation
   % of bitvectors, namely as:  (x o (x o (x o (x...))))
 
-  narrow_concat : LEMMA %-)
-    FORALL (bv1,bv2 : bvec[N]):
-      narrow[2*N](bv1 o bv2) = bv2
+  % narrow_concat : LEMMA %-)
+  %   FORALL (bv1,bv2 : bvec[N]):
+  %     narrow[2*N](bv1 o bv2) = bv2
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
