@@ -136,6 +136,9 @@
   ir-fname
   declaration);; the declaration is optional; it can be used to access other eval-info
 
+(defcl ir-primitive-function (ir-function)
+  )
+
 (defcl ir-apply (ir-expr)
   ir-func
   ir-params ;both type and const actuals
@@ -399,8 +402,10 @@
 ;; 	(mk-name '|reverse| nil '|list_props|)
 
 (defmethod pvs2ir-primitive? ((expr name-expr))
-  (member expr *pvs2ir-primitives*
-	  :test #'same-primitive?))
+  (or (member expr *pvs2ir-primitives*
+	      :test #'same-primitive?)
+      (same-id (module (declaration expr)) '|inttypes|)))
+	   
 
 (defmethod pvs2ir-primitive? ((expr t))
   nil)
@@ -476,6 +481,11 @@
 
 (defun mk-ir-function (fname &optional decl)
   (make-instance 'ir-function
+		 :ir-fname fname
+		 :declaration decl))
+
+(defun mk-ir-primitive-function (fname &optional decl)
+  (make-instance 'ir-primitive-function
 		 :ir-fname fname
 		 :declaration decl))
 
@@ -1142,7 +1152,7 @@
     (cond ((pvs2ir-primitive? expr) ;;borrowed from pvseval-update.lisp
 	   (cond ((eq (id expr) 'TRUE) (mk-ir-bool t))
 		 ((eq (id expr) 'FALSE) (mk-ir-bool nil))
-		 (t (mk-ir-function (id expr) decl))));for primitives, types are derived from args
+		 (t (mk-ir-primitive-function (id expr) decl))));for primitives, types are derived from args
 	  (t 
 	   (if (adt-decl? decl)
 	       (let ((adt (adt expr)))
@@ -3082,7 +3092,7 @@
 	   (ir-arg-var-names (loop for ir-var in ir-arg-vars
 				   collect (ir-name ir-var)))
 	   (ir-function-name (when (ir-function? ir-function)(ir-fname ir-function))))
-      (if (ir-primitive-op? ir-function-name)
+      (if (ir-primitive-function? ir-function)
 	  (let ((instrs (ir2c-primitive-apply return-var return-type ir-function-name ir-arg-vars ir-arg-var-names)))
 					;(format t "~%~a" instrs)
 	    instrs
@@ -3150,7 +3160,7 @@
     (t "")))
 
 (defun ir-primitive-op? (ir-function-name)
-  (memq ir-function-name *ir-primitives*))
+  (or (memq ir-function-name *ir-primitives*))
 
 (defun ir-primitive-arith-op? (ir-function-name)
   (memq ir-function-name *ir-arith-primitives*))
@@ -3177,49 +3187,51 @@
     (t "")))
 
 (defun ir2c-primitive-apply (return-var return-type ir-function-name ir-args ir-arg-names)
-  (cond ((ir-primitive-op? ir-function-name);
-	 (let ((c-arg-types (loop for ir-var in ir-args
-				collect (add-c-type-definition (ir2c-type (ir-vtype ir-var)))))
-	       (c-return-type (add-c-type-definition (ir2c-type return-type)))
+;  (cond ((ir-primitive-function-name? ir-function-name);
+  (let ((c-arg-types (loop for ir-var in ir-args
+			   collect (add-c-type-definition (ir2c-type (ir-vtype ir-var)))))
+	(c-return-type (add-c-type-definition (ir2c-type return-type)))
 					;(arity (length ir-args))
-	       )
-	   ;(format t "~%c-arg-types: ~a" c-arg-types)
-	   (case ir-function-name
-	     (+ (ir2c-addition return-var c-return-type ir-arg-names c-arg-types))
-	     (- (ir2c-subtraction return-var c-return-type ir-arg-names c-arg-types))
-	     (* (ir2c-multiplication  return-var c-return-type ir-arg-names c-arg-types))
-	     (/ (ir2c-division return-var c-return-type ir-arg-names c-arg-types))
-	     (= (ir2c-equality return-var c-return-type ir-arg-names c-arg-types))
-	     (/= (ir2c-arith-relations '!= return-var ir-arg-names c-arg-types))
-	     ((ndiv nrem) (ir2c-divrem ir-function-name return-var c-return-type ir-arg-names c-arg-types))
-	     ((< <= > >=) (ir2c-arith-relations ir-function-name ;(tweak-equal ir-function-name)
-						  return-var
-						  ir-arg-names c-arg-types))
-	     (floor (list (format nil "~a = (~a_t)pvsfloor_~a_~a(~a)"
-				  return-var (mppointer-type return-type)
-				  (numtype-abbrev (car c-arg-types))
-				  (numtype-abbrev return-type)
-				  (car ir-arg-names))))
-	     (ceiling (list (format nil "~a = (~a_t)pvsceiling_~a_~a(~a)"
-				  return-var (mppointer-type return-type)
-				  (numtype-abbrev (car c-arg-types))
-				  (numtype-abbrev return-type)
-				  (car ir-arg-names))))	     
-	     (NOT (list (format nil "~a = !~a" return-var (car ir-arg-names) )))
-	     (OR
-	      (list (format nil "~a = ~a || ~a" return-var (car ir-arg-names) 
-		      (cadr ir-arg-names))))
-	     (AND
-	      (list (format nil "~a = ~a && ~a" return-var (car ir-arg-names) 
-			    (cadr ir-arg-names))))
-	     (IMPLIES (list (format nil "~a = (!~a) ||  ~a" return-var (car ir-arg-names)
-				    (cadr ir-arg-names))))
-	     (WHEN (list (format nil "~a = ~a || ! ~a" return-var (car ir-arg-names)
-				 (cadr ir-arg-names))))
-	     (IFF (list (format nil "~a = (~a || ! ~a) && ((!~a) ||  ~a)" return-var
-				(car ir-arg-names)  (cadr ir-arg-names)
-				(car ir-arg-names)  (cadr ir-arg-names)))))))
-	(t (break "not defined"))))
+	)
+					;(format t "~%c-arg-types: ~a" c-arg-types)
+    (case ir-function-name
+      (+ (ir2c-addition return-var c-return-type ir-arg-names c-arg-types))
+      (- (ir2c-subtraction return-var c-return-type ir-arg-names c-arg-types))
+      (* (ir2c-multiplication  return-var c-return-type ir-arg-names c-arg-types))
+      (/ (ir2c-division return-var c-return-type ir-arg-names c-arg-types))
+      (= (ir2c-equality return-var c-return-type ir-arg-names c-arg-types))
+      (/= (ir2c-arith-relations '!= return-var ir-arg-names c-arg-types))
+      ((ndiv nrem) (ir2c-divrem ir-function-name return-var c-return-type ir-arg-names c-arg-types))
+      ((< <= > >=) (ir2c-arith-relations ir-function-name ;(tweak-equal ir-function-name)
+					 return-var
+					 ir-arg-names c-arg-types))
+      (floor (list (format nil "~a = (~a_t)pvsfloor_~a_~a(~a)"
+			   return-var (mppointer-type return-type)
+			   (numtype-abbrev (car c-arg-types))
+			   (numtype-abbrev return-type)
+			   (car ir-arg-names))))
+      (ceiling (list (format nil "~a = (~a_t)pvsceiling_~a_~a(~a)"
+			     return-var (mppointer-type return-type)
+			     (numtype-abbrev (car c-arg-types))
+			     (numtype-abbrev return-type)
+			     (car ir-arg-names))))	     
+      (NOT (list (format nil "~a = !~a" return-var (car ir-arg-names) )))
+      (OR
+       (list (format nil "~a = ~a || ~a" return-var (car ir-arg-names) 
+		     (cadr ir-arg-names))))
+      (AND
+       (list (format nil "~a = ~a && ~a" return-var (car ir-arg-names) 
+		     (cadr ir-arg-names))))
+      (IMPLIES (list (format nil "~a = (!~a) ||  ~a" return-var (car ir-arg-names)
+			     (cadr ir-arg-names))))
+      (WHEN (list (format nil "~a = ~a || ! ~a" return-var (car ir-arg-names)
+			  (cadr ir-arg-names))))
+      (IFF (list (format nil "~a = (~a || ! ~a) && ((!~a) ||  ~a)" return-var
+			 (car ir-arg-names)  (cadr ir-arg-names)
+			 (car ir-arg-names)  (cadr ir-arg-names))))
+      (t (list (format nil "~a = ~a(~{~a~^, ~})" return-var ir-function-name ir-arg-names)))
+      )))
+	;(t (break "not defined"))))
 
 (defun ir2c-division (return-var c-return-type ir-args c-arg-types)
   (let ((arg1 (car ir-args))
@@ -6451,7 +6463,7 @@
 
 (defparameter *primitive-prelude-theories*
   '(defined_types relations orders if_def naturalnumbers reals
- rationals integers equalities
+ rationals integers equalities inttypes floor_ceil
  notequal numbers booleans number_fields))
 
 (defvar *pvs2c-preceding-theories* nil)
@@ -6486,6 +6498,7 @@
 	  do (pushnew thy *pvs2c-preceding-theories*))
     (unless (eq (all-imported-theories theory-defn) 'unbound)
       (loop for thy in (all-imported-theories theory-defn)
+	    unless (eq (id thy) 'inttypes)
 	    do (pvs2c-preceding-theories* thy)))
     (pushnew (id theory-defn) *pvs2c-preceding-theories*)))
 
