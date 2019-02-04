@@ -3160,7 +3160,7 @@
     (t "")))
 
 (defun ir-primitive-op? (ir-function-name)
-  (or (memq ir-function-name *ir-primitives*))
+  (memq ir-function-name *ir-primitives*))
 
 (defun ir-primitive-arith-op? (ir-function-name)
   (memq ir-function-name *ir-arith-primitives*))
