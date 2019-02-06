@@ -451,4 +451,54 @@ bool_t do_equal(type_actual_t t, void * arg1, void * arg2, type_actual_t * param
   return t->eq_ptr(arg1, arg2, params);
 };
 
+//------------------------------------------------------------------
+
+
+uint8_t u8plus(x, y: uint8_t){return (uint8_t)(x + y);};
+uint16_t u16plus(x, y: uint16_t){return (uint16_t)(x + y);};
+uint32_t u32plus(x, y: uint32_t){return (uint32_t)(x + y);};
+uint64_t u64plus(x, y: uint64_t){return (uint64_t)(x + y);};
+
+uint8_t u8minus(x, y: uint8_t){return (uint8_t)(x - y);};
+uint16_t u16minus(x, y: uint16_t){return (uint16_t)(x - y);};
+uint32_t u32minus(x, y: uint32_t){return (uint32_t)(x - y);};
+uint64_t u64minus(x, y: uint64_t){return (uint64_t)(x - y);};
+
+uint8_t u8times(x, y: uint8_t){return (uint8_t)(x * y);};
+uint16_t u16times(x, y: uint16_t){return (uint16_t)(x * y);};
+uint32_t u32times(x, y: uint32_t){return (uint32_t)(x * y);};
+uint64_t u64times(x, y: uint64_t){return (uint64_t)(x * y);};
+
+uint8_t u8div(x, y: uint8_t){return (uint8_t)(x/y);};
+uint16_t u16div(x, y: uint16_t){return (uint16_t)(x/y);};
+uint32_t u32div(x, y: uint32_t){return (uint32_t)(x/y);};
+uint64_t u64div(x, y: uint64_t){return (uint64_t)(x/y);};
+
+uint8_t u8rem(x, y: uint8_t){return (uint8_t)(x%y);};
+uint16_t u16rem(x, y: uint16_t){return (uint16_t)(x%y);};
+uint32_t u32rem(x, y: uint32_t){return (uint32_t)(x%y);};
+uint64_t u64rem(x, y: uint64_t){return (uint64_t)(x%y);};
+
+
+
+
+
+uint8_t u8pow2(x: uint8_t){return (uint8_t)1<<x;};
+uint16_t u16pow2(x: uint16_t){return (uint16_t)1<<x;};
+uint32_t u32pow2(x: uint32_t){return (uint32_t)1<<x;};
+uint64_t u64pow2(x: uint64_t){return (uint64_t)(1<<x);};
+
+uint8_t u8lshift(x, n: uint8_t){return (uint8_t)x<<n;};
+uint16_t u16lshift(x: uint16_t, n: uint8_t){return (uint16_t)x<<n;};
+uint32_t u32lshift(x: uint32_t, n: uint8_t){return (uint32_t)x<<n;};
+uint64_t u64lshift(x: uint64_t, n: uint8_t){return (uint64_t)(x<<n);};
+
+uint8_t u8rshift(x, n: uint8_t){return (uint8_t)x>>n;};
+uint16_t u16rshift(x: uint16_t, n: uint8_t){return (uint16_t)x>>n;};
+uint32_t u32rshift(x: uint32_t, n: uint8_t){return (uint32_t)x>>n;};
+uint64_t u64rshift(x: uint64_t, n: uint8_t){return (uint64_t)(x>>n);};
+
+
+
+
 

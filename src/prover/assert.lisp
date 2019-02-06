@@ -1166,16 +1166,19 @@ subgoal is proved)."
 (defmethod simplify-nested-updates ((expr update-expr) outer-assignments
 				    update-expr)
   (declare (ignore update-expr))
-  (with-slots (expression assignments) expr 
-    (let* ((new-expr-assigns
-	    (loop for assign in assignments
-		  collect (make-updated-assign assign outer-assignments)))
-	   (new-outer-assigns
-	    (collect-new-outer-assigns assignments outer-assignments))
-	   (new-merged-assignments
-	    (merge-inner-outer-assigns new-expr-assigns new-outer-assigns)))
-      (lcopy expr
-	'assignments new-merged-assignments))))
+  (with-slots (expression assignments) expr
+    (let ((merged-assignments (merge-assignments (append assignments outer-assignments))))
+      (lcopy expr 'assignments merged-assignments))))
+    
+    ;; (let* ((new-expr-assigns
+    ;; 	    (loop for assign in assignments
+    ;; 		  collect (make-updated-assign assign outer-assignments)))
+    ;; 	   (new-outer-assigns
+    ;; 	    (collect-new-outer-assigns assignments outer-assignments))
+    ;; 	   (new-merged-assignments
+    ;; 	    (merge-inner-outer-assigns new-expr-assigns new-outer-assigns)))
+    ;;   (lcopy expr
+    ;; 	'assignments new-merged-assignments))
 
 (defun make-updated-assign (assignment outer-assignment)
   (with-slots (arguments expression) assignment
@@ -1251,6 +1254,26 @@ subgoal is proved)."
 	   (tc-eq (car args1)(car args2)))
     (match-update-args-prefix? (cdr args1)(cdr args2))
     (when (null args1) (if (null args2) t args2))))
+
+(defun merge-assignments (assignments)
+  (if (consp assignments)
+      (merge-assignment (car assignments)(cdr assignments))
+    nil))
+
+;; (defun match-assignment-args (args1 args2)
+;;   (if (and (consp args1)(consp args2))
+;;       (if (tc-eq (car args1)(car args2))
+;; 	  (match-assignment (cdr args1)(cdr args2))
+
+
+(defun merge-assignment (assgn1 assignments)
+  (with-slots (arguments expr) assgn1
+    (let ((override (loop for assignment in assignments
+			  thereis (match-update-args-prefix? (arguments assignment) arguments))))
+      (if override
+	  (merge-assignments assignments)
+	(cons assgn1 (merge-assignments assignments))))))
+
 
 (defmethod simplify-nested-updates
     (expr outer-assignments update-expr)
