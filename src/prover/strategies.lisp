@@ -1390,14 +1390,16 @@ then turns off all the installed rewrites.  Examples:
 	      (when (eql goalnum 1)
 		(cond ((> (1+ (length (remaining-subgoals par-ps)))
 			  (length steplist))
-		       (format t "~%***Warning: ~
-                                  Fewer subproofs (~s) than subgoals (~s)"
+		       (format t "~%***Warning: ~a has ~
+                                  fewer subproofs (~s) than subgoals (~s)"
+			 (label par-ps)
 			 (length steplist)
 			 (1+ (length (remaining-subgoals par-ps)))))
 		      ((< (1+ (length (remaining-subgoals par-ps)))
 			  (length steplist))
-		       (format t "~%***Warning: ~
-                                  Fewer subgoals (~s) than subproofs (~s)"
+		       (format t "~%***Warning: ~a has ~
+                                  fewer subgoals (~s) than subproofs (~s)"
+			 (label par-ps)
 			 (1+ (length (remaining-subgoals par-ps)))
 			 (length steplist))))))
 	     (x (if (consp steplist)
