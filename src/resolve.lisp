@@ -1997,13 +1997,24 @@ decl, args, and mappings."
   "Returns the resolutions that have the most refined mappings.
 This forms a lattice, and we return the top ones."
   (if (null reses)
-      (nreverse ref-reses)
+      (if (cdr ref-reses)
+	  (prefer-instances ref-reses)
+	  ref-reses)
       (if (or (some #'(lambda (r) (more-refined-mapping? r (car reses)))
 		    ref-reses)
 	      (some #'(lambda (r) (more-refined-mapping? r (car reses)))
 		    (cdr reses)))
 	  (most-refined-mapping-resolutions (cdr reses) ref-reses)
 	  (most-refined-mapping-resolutions (cdr reses) (cons (car reses) ref-reses)))))
+
+(defun prefer-instances (reses &optional inst-reses gen-reses)
+  (if (null reses)
+      (nconc inst-reses gen-reses)
+      (let ((finst? (fully-instantiated? (car reses))))
+	(prefer-instances
+	 (cdr reses)
+	 (if finst? (cons (car reses) inst-reses) inst-reses)
+	 (if finst? gen-reses (cons (car reses) gen-reses))))))
 
 (defun more-refined-mapping? (res1 res2)
   (let ((maps1 (mappings (module-instance res1)))
