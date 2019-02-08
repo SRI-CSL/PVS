@@ -1583,16 +1583,61 @@
 	  (decl-formals decl))
       ;; check-positive-types* essentially filters out those postypes
       ;; that are found to not be positive
-      (let* ((pformals (append (remove-if-not #'formal-type-decl?
+      (let* ((aformals (append (remove-if-not #'formal-type-decl?
 				 (formals-sans-usings (current-theory)))
 			       (decl-formals decl)))
+	     (dformals (apply #'append (formals decl)))
+	     ;; Check the arg types
+	     (pformals (check-positive-types* (mapcar #'type dformals)
+					      dformals
+					      decl nil aformals))
+	     ;; Then the definition
 	     (ptypes (mapcar #'type-value
 		       (check-positive-types* (definition decl)
-					      (apply #'append (formals decl))
+					      dformals
 					      decl nil pformals))))
 	(setf (positive-types decl) ptypes))
       (setf (positive-types decl) nil)))
-    
+
+(defmethod check-positive-types* ((te type-name) fargs decl bindings postypes)
+  postypes)
+
+(defmethod check-positive-types* ((te dep-binding) fargs decl bindings postypes)
+  (check-positive-types* (type te) fargs decl bindings postypes))
+
+(defmethod check-positive-types* ((te subtype) fargs decl bindings postypes)
+  (check-positive-types*
+   (predicate te) fargs decl bindings
+   (check-positive-types* (supertype te) fargs decl bindings postypes)))
+
+(defmethod check-positive-types* ((te funtype) fargs decl bindings postypes)
+  (check-positive-types*
+   (range te) fargs decl
+   (if (dep-binding? (domain te))
+       (cons (domain te) bindings)
+       bindings)
+   (remove-if #'(lambda (pt)
+		  (occurs-in pt (domain te)))
+     postypes)))
+
+(defmethod check-positive-types* ((te tupletype) fargs decl bindings postypes)
+  (check-positive-types* (types te) fargs decl bindings postypes))
+
+(defmethod check-positive-types* ((te cotupletype) fargs decl bindings postypes)
+  (check-positive-types* (types te) fargs decl bindings postypes))
+
+(defmethod check-positive-types* ((te recordtype) fargs decl bindings postypes)
+  (check-positive-types* (fields te) fargs decl bindings postypes))
+
+(defmethod check-positive-types* ((te field-decl) fargs decl bindings postypes)
+  (check-positive-types* (type te) fargs decl bindings postypes))
+
+(defmethod check-positive-types* ((te struct-sub-recordtype) fargs decl bindings postypes)
+  (break))
+
+(defmethod check-positive-types* ((te struct-sub-tupletype) fargs decl bindings postypes)
+  (break))
+
 
 (defmethod check-positive-types* ((ex application) fargs decl bindings postypes)
   (check-positive-types* (operator ex) fargs decl bindings
@@ -1614,7 +1659,11 @@
       postypes
       (check-positive-types*
        (car ex) fargs decl bindings
-       (check-positive-types* (cdr ex) fargs decl bindings postypes))))
+       (check-positive-types* (cdr ex) fargs decl
+			      (if (binding? (car ex))
+				  (cons (car ex) bindings)
+				  bindings)
+			      postypes))))
 
 (defmethod check-positive-types* ((ex cases-expr) fargs decl bindings postypes)
   (check-positive-types*
@@ -1697,7 +1746,7 @@
 	postypes
 	(typecase ndecl
 	  (const-decl
-	   (let ((cpostypes (positive-types ndecl)))
+	   (let ((cpostypes (mapcar #'declaration (positive-types ndecl))))
 	     (unless (listp cpostypes) (break "Not a list?"))
 	     ;; Find actuals corresponding to cpostypes, and check positivity
 	     ;; relative to that.  For example, T may be positive, but the
@@ -1711,6 +1760,9 @@
 	   postypes)
 	  (field-decl postypes)
 	  (bind-decl
+	   (assert (memq ndecl bindings))
+	   postypes)
+	  (dep-binding
 	   (assert (memq ndecl bindings))
 	   postypes)
 	  (t (break "Need more here"))))))

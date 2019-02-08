@@ -143,13 +143,13 @@
 				 do (typecheck y))
 			   temp-subst)
 			 in-subst))
-	   (res-params (external-free-params res))
-	   (*modsubst* (if res-params
-			   (mapcar #'list res-params)
-			   t)))
+	   (res-params (external-free-params res)))
       (multiple-value-bind (subst modsubst)
 	  (if (not check) 'fail
 	      (let ((lhs (split-rewrite (car forms) subvars dir))
+		    (*modsubst* (if res-params
+				    (mapcar #'list res-params)
+				    t))
 		    (*no-match-assert-test* t))
 		(find-match lhs
 			    (formula (car sforms)) nil

@@ -106,6 +106,7 @@
 			 'fail
 			 (match-remaining-actuals
 			  *remaining-actuals-matches* res))))
+	       ;;(break "match ~a to ~a : ~a" expr instance result)
 	       (when (and (null subst)
 			  (null *dont-cache-match?*)
 			  (null *no-bound-variables-in-match*))
