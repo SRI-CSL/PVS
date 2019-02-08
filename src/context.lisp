@@ -2116,7 +2116,7 @@ Note that the lists might not be the same length."
 	       (description (read stream nil))
 	       (create-date (read stream nil))
 	       (script (read stream nil))
-	       (refers-to (read-proofs-refers-to stream))
+	       (refers-to (ignore-errors (read-proofs-refers-to stream)))
 	       (dp (read stream nil))
 	       ;; At this point, we may have read everything - check if next
 	       ;; char is #\)
