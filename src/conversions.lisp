@@ -620,6 +620,8 @@
 	 (ctype (if (fully-instantiated? ctype1)
 		    ctype1
 		    (instantiate-from ctype1 expected expr))))
+    ;; Note that ctype will not be a K conversion unless that's all that is
+    ;; available.
     (assert ctype)
     (cond
      ((and (typep expr 'application)
@@ -637,12 +639,17 @@
       (change-to-lambda-conversion expr ctype)
       (set-type expr expected)
       expr)
-     (t
+     (t ;(not (k-combinator? (from-conversion ctype)))
+      ;; The above causes type-error in prelude ctlops.EF
+      ;; But without it, 2001-07-30_DaveStringer-Calvert typechecks
+      ;; Need to refine this better.
       #+pvsdebug (assert (typep (expr (from-conversion ctype)) 'expr))
       (add-conversion-info (from-conversion ctype) expr)
       (make-implicit-conversion (expr (from-conversion ctype)) ctype expr)
       ;; expr now has been modified to have the conversion applied
-      (typecheck* expr expected nil nil)))))
+      (typecheck* expr expected nil nil))
+     ;;(t (break "change-to-conversion"))
+     )))
 
 ;;; make-implicit-conversion converts the ex according to the following table:
 ;;;  field-name-expr --> field-conversion (fieldappl)
@@ -720,6 +727,9 @@
     (typecheck* ex nil nil nil)))
 
 (defun find-best-type-conversion (types expected &optional best type)
+  "Given a list of types, some with from-conversion set, chooses essentially
+the ones closest to the current declaration.  But always prefers conversions
+that are not the K_covnersion."
   (cond ((null types)
 	 (assert type)
 	 type)
@@ -728,6 +738,8 @@
 		   (and conv
 			(compatible? (car types) expected)
 			(or (null best)
+			    (and (k-combinator? best)
+				 (not (k-combinator? conv)))
 			    (memq (conversion best)
 				  (memq (conversion conv)
 					(current-conversions)))))))
