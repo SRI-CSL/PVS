@@ -92,7 +92,8 @@
 				(multiple-value-list (build-cmd e)))
 			    expr))
 		   (t expr))))
-    (handler-case (build-cmd cmd) (error (c) nil))))
+    (handler-case (build-cmd cmd)
+      (error (c) (format t "~a")))))
 
 ;; Embedded extended expressions are allowed in strings using the form
 ;; "%! ...%".  Extract these, convert to (! ...) form, evaluate them,
@@ -566,37 +567,35 @@ undoing proof attempt." just-rule)
 (defun percent-subst (pattern str-values)
   (let ((result (copy-seq pattern)) (n 1))
     (dolist (v str-values)
-      (let* ((p (percent-to-tilde n result))
-	     (vals (make-list (car p) :initial-element v)))
-	(setf result (apply #'format nil (cadr p) vals)))
+      (multiple-value-bind (npat num-repl)
+	  (percent-to-tilde n result)
+	(let ((vals (make-list num-repl :initial-element v)))
+	  (setf result (apply #'format nil npat vals))))
       (incf n))
     result))
 
 (defun percent-to-tilde (index str)
   (let* ((match-str (format nil "%~A" index)))
-    (do ((done nil) (result str) (n 0 (1+ n)))
-	(done (list (- n 1) result))
-      (let ((posn (search match-str result)))
-	(if posn
-	    (setf result (replace result "~A" :start1 posn))
-	    (setf done t))))))
+    (replace-all str match-str "~A")))
 
 ;; Same as above except replaces "%*" by all values, and "%," by all
 ;; values with comma-space delimiters.
 
 (defun percent-subst-all (pattern str-values)
-  (let ((p (percent-to-tilde "*" pattern)))
-    (if (zerop (car p))
-	(progn (setf p (percent-to-tilde "," pattern))
-	       (if (zerop (car p))
-		   pattern
-		   (let ((delim-values
-			  (append (mapcar #'(lambda (s) (format nil "~A, " s))
-					  (butlast str-values 1))
-				  (last str-values))))
-		     (format nil (cadr p)
-			     (apply #'concatenate 'string delim-values)))))
-        (format nil (cadr p) (apply #'concatenate 'string str-values)))))
+  (multiple-value-bind (npat num-repl)
+      (percent-to-tilde "*" pattern)
+    (if (zerop num-repl)
+	(multiple-value-bind (npat2 num-repl2)
+	    (percent-to-tilde "," pattern)
+	  (if (zerop num-repl2)
+	      pattern
+	      (let ((delim-values
+		     (append (mapcar #'(lambda (s) (format nil "~A, " s))
+			       (butlast str-values 1))
+			     (last str-values))))
+		(format nil npat2
+		  (apply #'concatenate 'string delim-values)))))
+        (format nil npat (apply #'concatenate 'string str-values)))))
 
 ;; Map a string into another of arbitrary length.  Argument func must take
 ;; a char and return a list of chars.
