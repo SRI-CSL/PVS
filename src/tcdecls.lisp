@@ -1633,10 +1633,10 @@
   (check-positive-types* (type te) fargs decl bindings postypes))
 
 (defmethod check-positive-types* ((te struct-sub-recordtype) fargs decl bindings postypes)
-  (break))
+  (check-positive-types* (fields te) fargs decl bindings postypes))
 
 (defmethod check-positive-types* ((te struct-sub-tupletype) fargs decl bindings postypes)
-  (break))
+  (check-positive-types* (types te) fargs decl bindings postypes))
 
 
 (defmethod check-positive-types* ((ex application) fargs decl bindings postypes)
@@ -1746,7 +1746,12 @@
 	postypes
 	(typecase ndecl
 	  (const-decl
-	   (let ((cpostypes (mapcar #'declaration (positive-types ndecl))))
+	   (let ((cpostypes (mapcar #'(lambda (pt)
+					(cond ((type-name? pt) (declaration pt))
+					      ((type-name? (print-type pt))
+					       (declaration (print-type pt)))
+					      (t (break "check"))))
+			      (positive-types ndecl))))
 	     (unless (listp cpostypes) (break "Not a list?"))
 	     ;; Find actuals corresponding to cpostypes, and check positivity
 	     ;; relative to that.  For example, T may be positive, but the

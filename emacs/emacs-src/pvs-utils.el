@@ -28,10 +28,13 @@
 ;; --------------------------------------------------------------------
 
 (eval-when-compile (require 'pvs-macros))
-(require 'cl-lib) ;; This generates warnings - with-no-warnings doesn't help
-              ;; Emacs 24 uses cl-lib instead, but all functions need
-              ;; to be prefixed with cl- so this isn't a good solution
-              ;;for PVS (at least not now).
+(or (require 'cl-lib nil :noerr)
+    (require 'cl nil :noerr)
+    (error "This Emacs does not have cl-lib or cl package installed."))
+;; This generates warnings - with-no-warnings doesn't help
+;; Emacs 24 uses cl-lib instead, but all functions need
+;; to be prefixed with cl- so this isn't a good solution
+;;for PVS (at least not now).
 (require 'compare-w)
 
 (defvar comint-status)

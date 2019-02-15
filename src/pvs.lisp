@@ -3803,7 +3803,8 @@ formname is nil, then formref should resolve to a unique name."
 	(dolist (d (refers-to decl))
 	  (when (and (typep d '(or type-decl const-decl))
 		     (from-prelude? d))
-	    (unless (member (module d) prelude-theory-names :test #'same-id)
+	    (unless (or (eq (module d) th)
+			(member (module d) prelude-theory-names :test #'same-id))
 	      (setq prelude-theory-names
 		    (used-prelude-theory-names (module d)
 					       (cons (mk-modname (id (module d)))
