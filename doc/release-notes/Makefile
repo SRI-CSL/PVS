@@ -21,7 +21,7 @@ pvs-release-notes.info: $(src)
 	$(MAKEINFO) $<
 
 pvs-release-notes/pvs-release-notes.html: $(src)
-	$(TEXI2HTML) --nonumber --nosec-nav --split=chapter $<
+	$(TEXI2HTML) --nonumber-sections --nosec-nav --split=chapter $<
 
 pvs-release-notes.pdf: $(src)
 	$(TEXI2PDF) $<
