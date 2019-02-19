@@ -31,6 +31,9 @@
 
 (export '(argument-conversions))
 
+(defvar *only-use-conversions* nil)
+(defvar *ignored-conversions* nil)
+
 ;;; tcexprs calls find-application-conversion
 ;;; resolve calls argument-conversion, argument-k-conversion, function-conversion
 ;;; set-type calls look-for-conversion, find-funtype-conversion
@@ -40,9 +43,10 @@
   (let ((reses (remove-if-not #'(lambda (r)
 				  (typep (find-supertype (type r)) 'funtype))
 		 (resolve name 'expr nil))))
-    (when (let ((*ignored-conversions*
-		 (cons "K_conversion" *ignored-conversions*)))
-	    (argument-conversions (mapcar #'type reses) arguments))
+    (when ;;(let ((*ignored-conversions*
+		;; (cons "K_conversion" *ignored-conversions*)))
+	    (argument-conversions (mapcar #'type reses) arguments)
+	    ;; )
       (resolve name 'expr arguments))))
 
 ;;; Called by typecheck* (name)
@@ -1124,9 +1128,6 @@ that are not the K_covnersion."
 
 (defmethod expr ((ex funtype-conversion))
   ex)
-
-(defvar *only-use-conversions* nil)
-(defvar *ignored-conversions* nil)
 
 (defmethod conversions :around ((context context))
   (let ((convs (call-next-method)))
