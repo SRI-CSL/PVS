@@ -57,7 +57,7 @@ GIT = @GIT@
 GIT_FILES := $(shell $(GIT) ls-files)
 GIT_DESC := $(shell $(GIT) describe)
 TAR = @TAR@
-TARFLAGS = co --exclude='\._*' "$$tardir"
+TARFLAGS = co --group=0 --owner=0 --exclude='\._*' "$$tardir"
 MKDIR = @MKDIR@
 MKDIR_P = $(MKDIR) -p
 PACKAGE = @PACKAGE_NAME@
