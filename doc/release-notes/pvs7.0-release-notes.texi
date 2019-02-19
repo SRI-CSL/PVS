@@ -62,6 +62,7 @@ through Linux package managers, or using easy_install or pip.
 * Typepred Extension::
 * TCC Ordering::
 * Yices in 7.0::
+* 7.0 Development Notes::
 @end menu
 
 @node PVS Language Changes
@@ -82,6 +83,8 @@ LAMBDA expressions may be given a result type, e.g.,
 
 CASES selections may be given as bindings, rather than just ids, e.g.,
 @code{CASES e OF c(x: int | p(x)), ...}
+
+Chained relations: a < b /= c > 4
 
 @node TCC Formulas and Associated Proofs
 @subsection TCC Formulas and Associated Proofs
@@ -555,6 +558,11 @@ fixed.
 
 The yices prover commands have been fully integrated into PVS, and Yices
 versions 1 and 2 are included in the distribution.
+
+@node 7.0 Development Notes
+@subsection Development Notes
+
+with-context, cam
 
 @node    7.0 Incompatibilities
 @section Incompatibilities

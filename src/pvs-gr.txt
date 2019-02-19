@@ -637,7 +637,7 @@ bracket-expr ::= tuple-expr
                | {'[|' {expr ** ','} '|]'} <bracket-expr(\[\|\|\](), btup(expr*))>
                | {'(|' {expr ** ','} '|)'} <bracket-expr(\(\|\|\)(), btup(expr*))>
                | {'{|' {expr ** ','} '|}'} <bracket-expr(\{\|\|\}(), btup(expr*))>
-               | {'〈' {expr ** ','} '〉'} <bracket-expr(〈〉(), btup(expr*))>
+               | {'⟨' {expr ** ','} '⟩'} <bracket-expr(〈〉(), btup(expr*))>
  	       | {'⟦' {expr ** ','} '⟧'} <bracket-expr(⟦⟧(), btup(expr*))>
 	       | {'«' {expr ** ','} '»'} <bracket-expr(«»(), btup(expr*))>
 	       | {'⟪' {expr ** ','} '⟫'} <bracket-expr(⟪⟫(), btup(expr*))>

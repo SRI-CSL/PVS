@@ -309,6 +309,9 @@ system, including many technical ones.  Examples:
  ("\\bigcap" ?⋂)
  ("\\bigcirc" ?◯)
  ("\\bigcup" ?⋃)
+ ("\\bigodot" ?⨀)
+ ("\\bigoplus" ?⨁)
+ ("\\bigotimes" ?⨂)
  ("\\bigstar" ?★)
  ("\\bigtriangledown" ?▽)
  ("\\bigtriangleup" ?△)
@@ -718,6 +721,10 @@ system, including many technical ones.  Examples:
  ;; ("\\lbag" ?\〚) 			; fuzz
  ;; ("\\rbag" ?\〛)
  ("\\ldata" ?\《) 			; fuzz/zed
+ ("\\mlbracket" ?\⟦)
+ ("\\mrbracket" ?\⟧)
+ ("\\mldata" ?\⟪)
+ ("\\mrdata" ?\⟫)
  ("\\rdata" ?\》)
  ;; From Karl Eichwalder.
  ("\\glq"  ?‚)

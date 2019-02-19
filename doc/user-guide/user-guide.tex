@@ -12,15 +12,33 @@
 \usepackage{../../pvs}
 \usepackage{url}
 \usepackage{latexsym}
-\usepackage{amsfonts}
+%\usepackage{amsfonts}
 \usepackage[chapter]{tocbibind}
+% \usepackage{ctable}
+\usepackage{array}
+\usepackage{xtab}
+
+\usepackage{fancyvrb}
 \usepackage{ifpdf}
-\ifpdf
-\usepackage[pdftex,dvipsnames,usenames]{color}
+\usepackage[dvipsnames,usenames]{color}
 \usepackage[bookmarks=true,hyperindex=true,colorlinks=true,linkcolor=Brown,citecolor=blue,backref=page,pagebackref=true,plainpages=false,pdfpagelabels]{hyperref}
-\else
-\usepackage[bookmarks=true,hyperindex=true]{hyperref}
-\fi
+
+\usepackage{amssymb}
+\usepackage{fontspec}
+%\setmainfont[Ligatures=TeX]{Linux Libertine O}
+%\setsansfont{Computer Modern Bright}
+%\setmonofont{DejaVu Sans Mono}
+% \fontspec{Cambria Math}
+% \fontspec{TeX Gyre Pagella Math}
+% \fontspec{Latin Modern Math}
+\usepackage[math-style=ISO]{unicode-math}
+
+\setmainfont[Numbers=OldStyle, Ligatures=TeX]{TeX Gyre Termes}
+
+\setmathfont[Numbers=Lining]{TeX Gyre Termes Math}
+\setmathfont[range=\bigstar]{XITS Math}
+\setmathfont[range=\leadsto]{XITS Math}
+\setmathfont[range=\int]{TeX Gyre Termes Math} % just to get parameters from this font
 
 \topmargin -10pt
 \textheight 8.5in
@@ -36,6 +54,8 @@
 \setcounter{totalnumber}{10}
 \renewcommand{\textfraction}{0}
 \renewcommand{\floatpagefraction}{.01}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
 
 \raggedbottom
 

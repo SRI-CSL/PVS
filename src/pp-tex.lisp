@@ -2542,7 +2542,11 @@
 		     (get-pp-tex-id* (subseq str 0 pos)))
 		   *in-tex-math-mode*)
 		 (format nil "\\pvsid{~a}" (latex-protect str)))))
-	  (t (format nil "\\pvsid{~a}" (latex-protect str))))))
+	  ((every #'standard-char-p str)
+	   (format nil "\\pvsid{~a}" (latex-protect str)))
+	  (t (if *in-tex-math-mode*
+		 str
+		 (format nil "\\(~a\\)" (latex-protect str)))))))
 
 (defmethod get-pp-tex-funsym ((op name-expr) arglengths &optional theory-id)
   (get-pp-tex-funsym (id op) arglengths
