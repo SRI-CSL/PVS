@@ -78,7 +78,9 @@
 ;; pvs-do-write-bin-files  - N/A
 ;; pvs-remove-bin-files    - N/A
 
-(require 'cl-lib)
+(or (require 'cl-lib nil :noerr)
+    (require 'cl nil :noerr)
+    (error "This Emacs does not have cl-lib or cl package installed."))
 (eval-when-compile (require 'pvs-macros))
 (provide 'pvs-cmds)
 
@@ -1148,6 +1150,8 @@ ESC or `q' to not overwrite any of the remaining files,
 
 ;;; change-context
 
+(defvar pvs-context-history nil)
+
 (defpvs change-context context (dir)
   "Switch to a new PVS context
 
@@ -1158,13 +1162,19 @@ the requested directory does not exist, and the Emacs you are running
 supports \texttt{make-directory}, then PVS offers to make a new one,
 including parent directories if they do not exist.  If the command fails
 for any reason, then the current PVS context is not changed."
-  (interactive (let ((cdir (pvs-current-directory t)))
-		 (confirm-not-in-checker)
-		 (list (if (fboundp 'read-directory-name)
-			   (read-directory-name
-			    "(Change context to) directory path: " cdir cdir)
-			   (read-file-name
-			    "(Change context to) directory path: " cdir cdir)))))
+  (interactive
+   (let ((cdir (pvs-current-directory t)))
+     (confirm-not-in-checker)
+     (list (cond ((fboundp 'icicle-read-file-name)
+		  (icicle-read-file-name "Change context to: "
+					 nil nil t nil
+					 'file-directory-p
+					 'pvs-context-history))
+		 ((fboundp 'read-directory-name)
+		  (read-directory-name
+		   "(Change context to) directory path: " cdir cdir))
+		 (t (read-file-name
+		     "(Change context to) directory path: " cdir cdir))))))
   (unless (file-exists-p dir)
     (if (and (fboundp 'make-directory)
 	     (yes-or-no-p (format "%s does not exist - create it? " dir)))

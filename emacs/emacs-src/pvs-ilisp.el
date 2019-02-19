@@ -28,7 +28,9 @@
 ;; --------------------------------------------------------------------
 
 (eval-when-compile (require 'comint))
-(require 'cl-lib)
+(or (require 'cl-lib nil :noerr)
+    (require 'cl nil :noerr)
+    (error "This Emacs does not have cl-lib or cl package installed."))
 (require 'ilisp)
 (require 'completion)
 (eval-when-compile (require 'pvs-macros))

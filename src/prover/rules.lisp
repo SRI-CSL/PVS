@@ -707,11 +707,11 @@ effect:
 
 (addrule 'auto-rewrite () (&rest names)
   (auto-rewrite-step names)
-  "Installs automatic rewrite rules given in the NAMES list.  The rewrites
-are applied by the ASSERT and DO-REWRITE commands.  Each entry in the list
-NAMES is either an antecedent formula number or names a definition,
-assumption or formula.  The complete syntax is
-  rewrite-name-or-fnum ::= fnum | rewrite-name
+  "Installs automatic rewrite rules given in the NAMES list.  See
+STOP-REWRITE to uninstall.  The rewrites are applied by the ASSERT and
+DO-REWRITE commands.  Each entry in the list NAMES is either an antecedent
+formula number or names a definition, assumption or formula.  The complete
+syntax is rewrite-name-or-fnum ::= fnum | rewrite-name
 
   fnum ::= ['-'] number ['!' ['!']]
 

@@ -47,7 +47,10 @@
        the environment variable PVSIMAGE, set by the pvs shell script")
     (error "PVSIMAGE environment variable must be set"))
 
-(require 'cl-lib)
+(or (require 'cl-lib nil :noerr)
+    (require 'cl nil :noerr)
+    (error "This Emacs does not have cl-lib or cl package installed."))
+
 (require 'comint)
 (setq comint-log t)
 
