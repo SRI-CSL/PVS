@@ -5979,7 +5979,7 @@ END bv_extend_defs
 
 % Support for the C code generator
 
-inttypes: THEORY
+integertypes: THEORY
  BEGIN
      uint8: TYPE = below(exp2(8))
      uint16: TYPE = upto(exp2(16) - 1) 
@@ -6110,7 +6110,7 @@ inttypes: THEORY
       u64rem(ux64, (uy64 | uy64 /= 0)): uint64 =
        nrem(ux64, uy64)
 
-END inttypes
+END integertypes
 
 
 %-------------------------------------------------------------------------
