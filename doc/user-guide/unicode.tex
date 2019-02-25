@@ -1,0 +1,272 @@
+% Document Type: LaTeX
+% Master File: user-guide.tex
+\chapter{Unicode}
+\label{unicode}
+
+Unicode may be used in PVS specifications.  For example,
+Figure~\ref{unicode-ex} is a valid PVS theory.
+
+\pvstheory{unicode-ex.pvs}{Example Unicode Theory}{unicode-ex}
+
+Most characters may be used in identifiers; a few are recognized as
+operators and, like \texttt{+}, will always be separate tokens.  These are
+discussed below.
+
+The inclusion of Unicode has several aspects:
+\begin{itemize}
+\item PVS Grammar: Where are Unicode characters allowed?
+\item Display: How to render Unicode characters
+\item Input: How to insert Unicode characters
+\item LaTeX: How to include PVS specs in LaTeX
+\end{itemize}
+
+\section{Unicode in PVS Syntax}
+
+Most Unicode characters are treated the same as alpha-numeric characters.
+The exceptions are listed below.
+
+\section{Unicode Operators}
+
+These are the operators specially recognized by PVS, as either special,
+unary, binary infix, or bracketing operators.  All other Unicode
+characters are treated as letters within identifiers.  Unary and binary
+operators have precedence; most are grouped and are in the same precedence
+as similar existing PVS operators.  Rather than repeat the precedence
+information in the PVS Language manual, we simply indicate one of the
+operators that share the precedence.  Of course, when in doubt, it's
+easiest to add parentheses.
+
+Note that most of these operators have no definition, they are provided
+for making new definitions that are more readable or closer to standard
+mathematical usage.  Those that have definitions in the PVS prelude are
+indicated, but even those can be redefined, as PVS supports overloading.
+
+\subsection{Alias Symbols}
+
+\begin{center}
+\smaller
+\topcaption{Unicode Aliases} \label{unicode:aliases}
+\tablehead{\rmfamily\bfseries Uni & Input & Equiv & \larger{Unicode Name} \\ \hline}
+\begin{xtabular}{|ll>{\ttfamily}l>{\smaller\ttfamily}l|}\hline
+  $λ$ & \verb|\lambda| & LAMBDA & GREEK SMALL LETTER LAMDA \\
+  $∀$ & \verb|\forall| & FORALL & FOR ALL \\
+  $∃$ & \verb|\exists| & EXISTS & THERE EXISTS \\
+  $⇔$ & \verb|\iff| & IFF & LEFT RIGHT DOUBLE ARROW \\
+  $⇒$ & \verb|\implies| & IMPLIES & RIGHTWARDS DOUBLE ARROW \\
+  $∨$ & \verb|\or| & OR & LOGICAL OR \\
+  $∧$ & \verb|\and| & AND & LOGICAL AND \\
+  $¬$ & \verb|\not| & NOT & NOT SIGN \\
+  $≠$ & \verb|\neq| & /= & NOT EQUAL TO \\
+  $∘$ & \verb|\circ| & o & RING OPERATOR \\
+  $§$ & \verb|\section| & ; & SECTION SIGN \\ \hline
+\end{xtabular}
+\end{center}
+  
+Note that capital lambda Λ is not the same as λ, and is available for
+identifiers.
+
+§ (input \verb|\section|) is used as an alternative to semi-colon (;) as a
+way of separating declarations.
+
+\subsection{Unary operators}
+
+Unary operators may be used without parentheses, e.g., ``□φ'' is a valid
+term, and equivalent to ``□(φ)''.
+
+\begin{center}
+\smaller
+\topcaption{Unicode Unary Operators} \label{unicode:unaryops}
+\tablehead{\textrm{\textbf{Uni}} & \textrm{\textbf{Input}} & %
+  \textrm{\textbf{\larger{Unicode Name}}} \\ \hline}
+\begin{xtabular}{|ll>{\smaller\ttfamily}l|}\hline
+  \multicolumn{3}{|l|}{\bfseries Precedence same as for \texttt{<>}} \\ \hline
+  $□$ & \verb|\Box| & WHITE SQUARE \\
+  $◇\Diamond$ & \verb|\Diamond| & WHITE DIAMOND \\ \hline
+  \multicolumn{3}{|l|}{\bfseries Precedence same as for \texttt{+}} \\ \hline
+  $◯$ & \verb|\bigcirc| & LARGE CIRCLE \\
+  $√$ & \verb|\surd| & SQUARE ROOT \\ \hline
+\end{xtabular}
+\end{center}
+
+Note that because of declaration parameters, the old '[]' operator is no
+longer allowed.
+
+¬ is equivalent to NOT, unless redeclared
+
+◯ is both unary and binary — much like '+' and '-'.  It is unary because
+it is useful as a possible 'next' operator.
+
+√ is also both unary and binary and has the same precedence
+as unary '+' and '-'.  It's an obvious candidate for the 'sqrt' operator.
+
+\subsection{Binary (infix) operators}
+
+The first ones have declarations in the prelude, and are intended as
+symbolic equivalents for the given operator, and have the same precedence.
+
+The rest are not declared in the prelude and are shown listed from lowest
+to highest precedence.  Precedence is indicated with relative to an existing
+operator, given in square brackets.
+
+\begin{center}
+\smaller
+\topcaption{Unicode Binary Operators} \label{unicode:binops}
+\tablehead{\textrm{\textbf{Uni}} & \textrm{\textbf{Input}} & %
+  \textrm{\textbf{\larger{Unicode Name}}} \\ \hline}
+\begin{xtabular}{|ll>{\smaller\ttfamily}l|}\hline
+  \multicolumn{3}{|l|}{\bfseries Precedence same as for \texttt{|-}} \\ \hline
+  $⊢$ & \verb|\vdash| & RIGHT TACK \\
+  $⊨$ & \verb|\vDash| & TRUE \\ \hline
+  \multicolumn{3}{|l|}{\bfseries Precedence between \texttt{@@} and \texttt{+}} \\ \hline
+  $≁$ & \verb|\nsim| & NOT TILDE \\
+  $≃$ & \verb|\simeq| & ASYMPTOTICALLY EQUAL TO \\
+  $≅$ & \verb|\cong| & APPROXIMATELY EQUAL TO \\
+  $≇$ & \verb|\ncong|& NEITHER APPROXIMATELY NOR ACTUALLY EQUAL TO \\
+  $≈$ & \verb|\approx| & ALMOST EQUAL TO \\
+  $≉$ & \verb|\napprox| & NOT ALMOST EQUAL TO \\
+  $≍$ & \verb|\asymp| & EQUIVALENT TO \\
+  $≎$ & \verb|\Bumpeq| & GEOMETRICALLY EQUIVALENT TO \\
+  $≏$ & \verb|\bumpeq| & DIFFERENCE BETWEEN \\
+  $≐$ & \verb|\doteq| & APPROACHES THE LIMIT \\
+  $≗$ & \verb|\circeq| & RING EQUAL TO \\
+  $≙$ & \verb|\defs| & ESTIMATES \\
+  $≡$ & \verb|\equiv| & IDENTICAL TO \\
+  $⋈$ & \verb|\Join| & BOWTIE \\
+  $≤$ & \verb|\leq| & LESS-THAN OR EQUAL TO \\
+  $≥$ & \verb|\geq| & GREATER-THAN OR EQUAL TO \\
+  $≦$ & \verb|\leqq| & LESS-THAN OVER EQUAL TO \\
+  $≧$ & \verb|\geqq| & GREATER-THAN OVER EQUAL TO \\
+  $≨$ & \verb|\lneq| & LESS-THAN BUT NOT EQUAL TO \\
+  $≩$ & \verb|\gneq| & GREATER-THAN BUT NOT EQUAL TO \\
+  $≪$ & \verb|\ll| & MUCH LESS-THAN \\
+  $≫$ & \verb|\gg| & MUCH GREATER-THAN \\
+  $≮$ & \verb|\nless| & NOT LESS-THAN \\
+  $≯$ & \verb|\ngtr| & NOT GREATER-THAN \\
+  $≰$ & \verb|\nleq| & NEITHER LESS-THAN NOR EQUAL TO \\
+  $≱$ & \verb|\ngeq| & NEITHER GREATER-THAN NOR EQUAL TO \\
+  $≺$ & \verb|\prec| & PRECEDES \\
+  $≻$ & \verb|\succ| & SUCCEEDS \\
+  $▷$ & \verb|\rhd| & WHITE RIGHT-POINTING TRIANGLE \\
+  $◁$ & \verb|\lhd| & WHITE LEFT-POINTING TRIANGLE \\
+  $∈$ & \verb|\in| & ELEMENT OF \\
+  $∉$ & \verb|\notin| & NOT AN ELEMENT OF \\
+  $∋$ & \verb|\ni| & CONTAINS AS MEMBER \\
+  $⊂$ & \verb|\subset| & SUBSET OF \\
+  $⊃$ & \verb|\supset| & SUPERSET OF \\
+  $⊄$ & \verb|\nsubset| & NOT A SUBSET OF \\
+  $⊅$ & \verb|\nsupset| & NOT A SUPERSET OF \\
+  $⊆$ & \verb|\subseteq| & SUBSET OF OR EQUAL TO \\
+  $⊇$ & \verb|\supseteq| & SUPERSET OF OR EQUAL TO \\
+  $⊊$ & \verb|\subsetneq| & SUBSET OF WITH NOT EQUAL TO \\
+  $⊋$ & \verb|\supsetneq| & SUPERSET OF WITH NOT EQUAL TO \\
+  $⊏$ & \verb|\sqsubset| & SQUARE IMAGE OF \\
+  $⊐$ & \verb|\sqsupset| & SQUARE ORIGINAL OF \\
+  $•$ & \verb|\bullet| & BULLET \\
+  $←$ & \verb|\leftarrow| & LEFTWARDS ARROW \\
+  $↑$ & \verb|\uparrow| & UPWARDS ARROW \\
+  $→$ & \verb|\rightarrow| & RIGHTWARDS ARROW \\
+  $↓$ & \verb|\downarrow| & DOWNWARDS ARROW \\
+  $↝\leadsto$ & \verb|\leadsto| & RIGHTWARDS WAVE ARROW \\
+  $↦$ & \verb|\mapsto| & RIGHTWARDS ARROW FROM BAR \\
+  $⇐$ & \verb|\Leftarrow| & LEFTWARDS DOUBLE ARROW \\
+  $⇑$ & \verb|\Uparrow| & UPWARDS DOUBLE ARROW \\
+  $⇓$ & \verb|\Downarrow| & DOWNWARDS DOUBLE ARROW \\
+  $∇$ & \verb|\nabla| & NABLA \\
+  $⊣$ & \verb|\dashv| & LEFT TACK \\
+  $⊥$ & \verb|\perp| & UP TACK \\
+  $⊩$ & \verb|\Vdash| & FORCES \\
+  $◯$ & \verb|\bigcirc| & LARGE CIRCLE \\
+  $★$ & \verb|\bigstar| & BLACK STAR \\
+  $✠$ & \verb|\maltese| & MALTESE CROSS \\ \hline
+  \multicolumn{3}{|l|}{\bfseries Precedence same as for \texttt{+}} \\ \hline
+  $⊕$ & \verb|\oplus| & CIRCLED PLUS \\
+  $⊖$ & \verb|\ominus| & CIRCLED MINUS \\
+  $⨁$ & \verb|\bigoplus| & N-ARY CIRCLED PLUS OPERATOR \\
+  $±$ & \verb|\pm| & PLUS-MINUS SIGN \\
+  $∓$ & \verb|\mp| & MINUS-OR-PLUS SIGN \\
+  $∔$ & \verb|\dotplus| & DOT PLUS \\
+  $⊞$ & \verb|\boxplus| & SQUARED PLUS \\
+  $⊟$ & \verb|\boxminus| & SQUARED MINUS \\
+  $⊎$ & \verb|\uplus| & MULTISET UNION \\
+  $∪$ & \verb|\cup| & UNION \\
+  $⊔$ & \verb|\sqcup| & SQUARE CUP \\
+  $⋁$ & \verb|\bigvee| & N-ARY LOGICAL OR \\
+  $⋃$ & \verb|\bigcup| & N-ARY UNION \\ \hline
+  \multicolumn{3}{|l|}{\bfseries Precedence same as for \texttt{*}} \\ \hline
+  $⊘$ & \verb|\oslash| & CIRCLED DIVISION SLASH \\
+  $⊗$ & \verb|\otimes| & CIRCLED TIMES \\
+  $⊙$ & \verb|\odot| & CIRCLED DOT OPERATOR \\
+  $⊛$ & \verb|\circledast| & CIRCLED ASTERISK OPERATOR \\
+  $⨂$ & \verb|\bigotimes| & N-ARY CIRCLED TIMES OPERATOR \\
+  $⨀$ & \verb|\bigodot| & N-ARY CIRCLED DOT OPERATOR \\
+  $×$ & \verb|\times| & MULTIPLICATION SIGN \\
+  $÷$ & \verb|\div| & DIVISION SIGN \\
+  $⊠$ & \verb|\boxtimes| & SQUARED TIMES \\
+  $∩$ & \verb|\cap| & INTERSECTION \\
+  $⊓$ & \verb|\sqcap| & SQUARE CAP \\
+  $⋀$ & \verb|\bigwedge| & N-ARY LOGICAL AND \\
+  $⋂$ & \verb|\bigcap| & N-ARY INTERSECTION \\
+\end{xtabular}
+\end{center}
+
+\subsection{Bracketing Operators}
+
+To use these, the left/right pair must be given a declaration (no space
+between), then they can be used as brackets.  For example:
+\begin{alltt}
+  ⌊⌋(x: real): int = floor(x)
+  floorex: formula ⌊5.3⌋ = 5
+\end{alltt}
+
+\begin{center}
+\smaller
+\topcaption{Unicode Bracketing Operators} \label{unicode:brackets}
+\tablehead{\textrm{\textbf{Uni}} & \textrm{\textbf{Input}} & %
+  \textrm{\textbf{\larger{Unicode Name}}} \\ \hline}
+\begin{xtabular}{|ll>{\smaller\ttfamily}l|}\hline
+$⟨ ⟩$ & \verb|\langle \rangle|) & MATHEMATICAL LEFT/RIGHT ANGLE BRACKET \\
+$⟦ ⟧$ & \verb|\mlbracket \mrbracket| & MATHEMATICAL LEFT/RIGHT WHITE SQUARE BRACKET \\
+$« »$ & \verb|\"< \">| & LEFT/RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK\\
+$⟪ ⟫$ & \verb|\mldata \mrdata| & MATHEMATICAL LEFT/RIGHT DOUBLE ANGLE BRACKET \\
+$⌈ ⌉$ & \verb|\lceil \rceil| & LEFT/RIGHT CEILING \\
+$⌊ ⌋$ & \verb|\lfloor \rfloor| & LEFT/RIGHT FLOOR \\
+$⌜ ⌝$ & \verb|\ulcorner \urcorner| & TOP LEFT/RIGHT CORNER \\
+$⌞ ⌟$ & \verb|\llcorner \lrcorner| & BOTTOM LEFT/RIGHT CORNER \\
+\end{xtabular}
+\end{center}
+
+\section{Emacs and Unicode}
+
+In Emacs, non-ASCII characters are normally inserted using an input
+method.  The \texttt{PVS-TeX} input method is modified from the
+\texttt{TeX} input method, which uses backslash followed by the character
+name, and uses TeX names.
+
+See the last section of this for more on Emacs and Unicode.
+
+Summary:
+  M-x describe-char — describes the character under the cursor
+  M-x set-input-method (C-x RET C-\\) — sets the input method
+  M-x toggle-input-method (C-\\) — toggles between input methods
+  M-x describe-input-method (C-h I) — shows the input sequences
+         for all the characters handled by the method
+
+The first thing to do is to get a font that supports Unicode.  If you're
+reading this in Emacs, and the symbols are rendered correctly, then you're
+set.  Otherwise, both Mac and Linux have a wide range of fonts available -
+search on the internet for options.  Even if the symbols do render
+correctly, another font may do a better job.
+
+If the display is right, you can find out information about any character
+by putting the cursor on that character and typing 'M-x describe-char',
+which brings up a buffer containing information about the character,
+including its Unicode name and input sequences.
+
+To input a particular Unicode character, you can use 'C-x 8 RET' and type in
+the name or hex value — the internet can be used to find the character
+you're looking for.  However, it is usually easier to use an input
+method.  Most input methods are for particular languages; the most useful
+one for the mathematical fonts described above is TeX, which mostly
+follows the TeX commands for the same character.  Use M-x set-input-method
+to select an input method, and M-x toggle-input-method to switch between
+it and the previous one.
