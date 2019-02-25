@@ -1,0 +1,15 @@
+Θ: THEORY
+BEGIN
+ ℝ: TYPE = real
+ ℝ⁺: TYPE = posreal
+ ℚ: TYPE = rat
+ ℚ⁺: TYPE = posrat
+ ℤ: TYPE = int
+ ℤ⁺: TYPE = posint
+ ℕ: TYPE = nat
+ ℕ⁺: TYPE = posnat
+ ε, δ: VAR ℝ⁺
+ α: FORMULA ∀ ε: ∃ δ: ε ≠ δ;
+ ⊕: [ℕ, ℕ -> ℕ]
+ β: FORMULA ⊕(3 ⊕ 4, 2) = 1
+END Θ
