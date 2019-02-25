@@ -233,4 +233,46 @@ typedef struct funtable_s * funtable_t;
 
 typedef void * any_t;
 
+//------------------------------------------------------------------
+/* static inline uint8_t u8plus(uint8_t x, uint8_t y){return (uint8_t)(x + y);}; */
+/* static inline uint16_t u16plus(uint16_t x, uint16_t y){return (uint16_t)(x + y);}; */
+/* static inline uint32_t u32plus(uint32_t x, uint32_t y){return (uint32_t)(x + y);}; */
+/* static inline uint64_t u64plus(uint64_t x, uint64_t y){return (uint64_t)(x + y);}; */
+
+/* static inline uint8_t u8minus(uint8_t x, uint8_t y){return (uint8_t)(x - y);}; */
+/* static inline uint16_t u16minus(uint16_t x, uint16_t y){return (uint16_t)(x - y);}; */
+/* static inline uint32_t u32minus(uint32_t x, uint32_t y){return (uint32_t)(x - y);}; */
+/* static inline uint64_t u64minus(uint64_t x, uint64_t y){return (uint64_t)(x - y);}; */
+
+/* static inline  uint8_t u8times(uint8_t x, uint8_t y){return (uint8_t)(x * y);}; */
+/* static inline uint16_t u16times(uint16_t x, uint16_t y){return (uint16_t)(x * y);}; */
+/* static inline uint32_t u32times(uint32_t x, uint32_t y){return (uint32_t)(x * y);}; */
+/* static inline uint64_t u64times(uint64_t x, uint64_t y){return (uint64_t)(x * y);}; */
+
+/* static inline uint8_t u8div(uint8_t x, uint8_t y){return (uint8_t)(x/y);}; */
+/* static inline uint16_t u16div(uint16_t x, uint16_t y){return (uint16_t)(x/y);}; */
+/* static inline uint32_t u32div(uint32_t x, uint32_t y){return (uint32_t)(x/y);}; */
+/* static inline uint64_t u64div(uint64_t x, uint64_t y){return (uint64_t)(x/y);}; */
+
+/* static inline uint8_t u8rem(uint8_t x, uint8_t y){return (uint8_t)(x%y);}; */
+/* static inline uint16_t u16rem(uint16_t x, uint16_t y){return (uint16_t)(x%y);}; */
+/* static inline uint32_t u32rem(uint32_t x, uint32_t y){return (uint32_t)(x%y);}; */
+/* static inline uint64_t u64rem(uint64_t x, uint64_t y){return (uint64_t)(x%y);}; */
+
+/* static inline uint8_t u8pow2(uint8_t x){return (uint8_t)1<<x;}; */
+/* static inline uint16_t u16pow2(uint16_t x){return (uint16_t)1<<x;}; */
+/* static inline uint32_t u32pow2(uint32_t x){return (uint32_t)1<<x;}; */
+/* static inline uint64_t u64pow2(uint64_t x){return (uint64_t)(1<<x);}; */
+
+/* static inline uint8_t u8lshift(uint8_t x, uint8_t n){return (uint8_t)x<<n;}; */
+/* static inline uint16_t u16lshift(uint16_t x, uint8_t n){return (uint16_t)x<<n;}; */
+/* static inline uint32_t u32lshift(uint32_t x, uint8_t n){return (uint32_t)x<<n;}; */
+/* static inline uint64_t u64lshift(uint64_t x, uint8_t n){return (uint64_t)(x<<n);}; */
+
+/* static inline uint8_t u8rshift(uint8_t x, uint8_t n){return (uint8_t)x>>n;}; */
+/* static inline uint16_t u16rshift(uint16_t x, uint8_t n){return (uint16_t)x>>n;}; */
+/* static inline uint32_t u32rshift(uint32_t x, uint8_t n){return (uint32_t)x>>n;}; */
+/* static inline uint64_t u64rshift(uint64_t x, uint8_t n){return (uint64_t)(x>>n);}; */
+
+
 #endif

@@ -402,9 +402,9 @@
 ;; 	(mk-name '|reverse| nil '|list_props|)
 
 (defmethod pvs2ir-primitive? ((expr name-expr))
-  (or (member expr *pvs2ir-primitives*
-	      :test #'same-primitive?)
-      (same-id (module (declaration expr)) '|inttypes|)))
+  (member expr *pvs2ir-primitives*
+	  :test #'same-primitive?))
+
 	   
 
 (defmethod pvs2ir-primitive? ((expr t))
@@ -843,7 +843,7 @@
 	  (cdr bnd)
 	(if (const-decl? decl)
 	    (let* ((actuals (or (actuals (module-instance expr))
-				(free-parameters expr)))
+				(free-params expr)))
 		   (ir-actuals (when actuals
 				 (pvs2ir* actuals ;;needs to be fixed when handling actuals
 					bindings)))
@@ -2784,7 +2784,7 @@
 		  (format nil "mpq_init(~a)" lhs)
 		  (format nil "mpq_set_ui(~a, ~a, 1)" lhs rhs)))
 	   ((int8 int16 int32 int64); __int128)
-	    (list (format nil "mpq_mk_set_si(~a, ~a, 1)" lhs rhs)))
+	    (list (format nil "mpq_mk_set_si(~a, ~a)" lhs rhs)))
 	   (mpz  (list (format nil "mpq_mk_set_z(~a, ~a)" lhs rhs)
 			))
 	   (t (list (format nil "~a = (~a_t)~a" lhs "mpq_ptr" rhs)))))
@@ -2803,7 +2803,7 @@
 	   (mpz (format nil "mpq_mk_set_z(~a, ~a)" lhs rhs))
 	   (mpq (format nil "mpq_mk_set(~a, ~a)" lhs rhs))
 	   ((uint8 uint16 uint32 uint64); __uint128)
-	    (format nil "mpq_mk_set_ui(~a, ~a, 1)" lhs rhs))
+	    (format nil "mpq_mk_set_ui(~a, ~a)" lhs rhs))
 	   ((int8 int16 int32 int64); __int128)
 	    (format nil "mpq_mk_set_si(~a, ~a, 1)" lhs rhs))))
     ((uint8 uint16 uint32 uint64); __uint128) 
@@ -3259,7 +3259,7 @@
     (mpq (case arg1-c-type
 	   (mpq
 	    (case arg2-c-type
-	      (mpq (list (format nil "mpq_div(~a, ~a, ~a)" return-var arg1 arg2)))
+	      (mpq (list (format nil "mpq_mk_div(~a, ~a, ~a)" return-var arg1 arg2)))
 	      (mpz (let ((arg2-mpq-var (gentemp "tmp")))
 		     (list (format nil "mpq_t ~a" arg2-mpq-var)
 			   (format nil "mpq_init(~a)" arg2-mpq-var)
@@ -3302,7 +3302,7 @@
 		       (format nil "mpq_mk_set_~a(~a, (~a_t)~a, 1)"
 			       (gmp-ui-or-si arg1-c-type)
 			       return-var (uint-or-int arg1-c-type) arg2)
-		       (format nil "mpq_div(~a, ~a, ~a)" return-var
+		       (format nil "mpq_mk_div(~a, ~a, ~a)" return-var
 			       arg1-mpq-var return-var)
 		       (format nil "mpq_clear(~a)" arg1-mpq-var)
 		       )))
@@ -6055,16 +6055,24 @@
   (let ((ir (ir (eval-info decl))))
     (ir2c-decl* ir decl)))
   
-
+(defvar *c-primitive-attachments-hash* (make-hash-table :test #'eq))
 ;;conversion for a definition
 (defmethod pvs2c-decl* ((decl const-decl))
-  ;; (unless (and (eq (id (module decl)) 'ordinals);this can be removed since we have closures
-  ;; 	       (eq (id decl) 'size))
-  (let ((*var-counter* nil))
-    (newcounter *var-counter*)
-    (pvs2ir-decl decl)
-    (let ((ir (ir (eval-info decl))));(break "pvs2c-decl*/const-decl")
-	  (ir2c-decl* ir decl))))
+  (let* ((thid (id (module decl)))
+	 (declid (id decl))
+	 (hashentry (gethash (intern (format nil "~a_~a" thid declid)) *c-primitive-attachments-hash*)))
+    (if hashentry
+	(let ((einfo (or (eval-info decl)
+			 (let ((new-einfo (make-instance 'eval-info)))
+			   (setf (eval-info decl) new-einfo)
+			   new-einfo))))
+	  (setf (cdefn einfo) hashentry)
+	  (op-name hashentry))
+      (let ((*var-counter* nil))
+	(newcounter *var-counter*)
+	(pvs2ir-decl decl)
+	(let ((ir (ir (eval-info decl)))) ;(break "pvs2c-decl*/const-decl")
+	  (ir2c-decl* ir decl))))))
 
 (defun c-args-string (ir-vars)
   (let* ((c-arg-types (loop for arg in ir-vars
@@ -6078,6 +6086,17 @@
 			    (format nil "~{~a~^, ~}" c-args)
 			  (format nil "void"))))
     c-args-string))
+
+
+(defun def-c-attach-primitive (theory name return-type args header-defn &optional definition)
+  (let* ((thname (make-c-name theory name))
+	 (header (if definition (format nil "extern ~a_t ~a~a;" return-type thname args)
+		   (format nil "static inline ~a_t ~a~a~a" return-type thname args header-defn)))
+	 (c-definition (when definition (format nil "~a_t ~a~a~a" return-type thname args definition)))
+	 (c-defn-info (mk-c-defn-info thname header c-definition)))
+    (setf (gethash thname *c-primitive-attachments-hash* ) c-defn-info)
+    thname))
+
 
 (defun make-c-defn-info (ir pvs-return-type)
   (with-slots
@@ -6318,7 +6337,7 @@
 		    (format output "~%~%#include <gmp.h>")
 		    (format output "~%~%#include \"pvslib.h\"")
 		    (loop for thy in  preceding-theories-without-formals
-			  when (not (eq thy theory-id))
+			  when (not (same-id thy theory-id))
 			  do (format output "~%~%#include \"~a_c.h\"" thy))
 		    (format output "~%~%//cc -Wall -o ~a" theory-id )
 		    (format output " pvslib.c ")
@@ -6463,7 +6482,7 @@
 
 (defparameter *primitive-prelude-theories*
   '(defined_types relations orders if_def naturalnumbers reals
- rationals integers equalities inttypes floor_ceil
+ rationals integers equalities floor_ceil
  notequal numbers booleans number_fields))
 
 (defvar *pvs2c-preceding-theories* nil)
@@ -6492,15 +6511,16 @@
     *pvs2c-preceding-theories*))
 
 (defun pvs2c-preceding-theories* (theory)
-  (let ((theory-defn (get-theory theory)))
+  (let* ((theory-defn (get-theory theory))
+	 (thid (id theory-defn))
+	 (thname (mk-modname thid)))
     (loop for thy in (used-prelude-theory-names theory)
 	  when (not (memq (id thy) *primitive-prelude-theories*))
-	  do (pushnew thy *pvs2c-preceding-theories*))
+	  do (pushnew thy *pvs2c-preceding-theories* :test #'same-id))
     (unless (eq (all-imported-theories theory-defn) 'unbound)
       (loop for thy in (all-imported-theories theory-defn)
-	    unless (eq (id thy) 'inttypes)
 	    do (pvs2c-preceding-theories* thy)))
-    (pushnew (id theory-defn) *pvs2c-preceding-theories*)))
+    (pushnew thname *pvs2c-preceding-theories* :test #'same-id)))
 
 (defun pvs2c-theory (theory)
   (pvs2c-theories (pvs2c-preceding-theories theory)))
