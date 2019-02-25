@@ -5989,7 +5989,8 @@ integertypes: THEORY
      max8:  uint8 = 255
      max16: uint16 = 65535
      max32: uint32 = 4294967295
-     max64: uint64 = 18446744073709551615
+     max64: uint64 = (+ (* 9223372036854775807 2) 1)
+                     % = 18446744073709551615, but C compiler won't accept this
 
      int8: TYPE = subrange(-exp2(7), exp2(7) - 1)
      int16: TYPE = subrange(-exp2(15), exp2(15) - 1)
