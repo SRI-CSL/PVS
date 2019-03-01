@@ -156,7 +156,7 @@ intervenes."
   (setq ilisp-init-binary-extension ilisp-binary-extension)
   (setq ilisp-load-inits nil)
   (setq ilisp-program (format "%s -qq" (pvs-program)))
-  (let* ((prompt-pre "\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\)?")
+  (let* ((prompt-pre "\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\|\\[ldb.*\\] \\)?")
 	 (old-prompt "\\(<?[-A-Za-z]* ?[0-9]*>\\)") ;  'yices >', '<PVSio>', etc
 	 (new-prompt "\\([-A-Za-z0-9]+([0-9]+):\\)")
 	 (pvs-added "Rule\\?\\|.*(Y or N)\\|.*(Yes or No)\\|.*process\\?\\|Please enter.*:"))
