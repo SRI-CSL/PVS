@@ -1664,10 +1664,10 @@ Point will be on the offending delimiter."
 		 (condition-case err
 		     (progn ,@body)
 		   (error (pvs-message "ERROR: Emacs: %s %s"
-			    (car err) (cdr err)))))
-	       (pvs-wait-for-it)
-	       (pvs-message "Finished in %d seconds"
-		 (round (time-to-seconds (time-since start-time))))
+			    (car err) (cdr err))))
+		 (pvs-wait-for-it)
+		 (pvs-message "Validation completed in %.2f seconds"
+		   (time-to-seconds (time-since start-time))))
 	       ;;(save-buffer 0) ;writes a message-use the following 3 lines
 	       (set-buffer logbuf)	; body may have changed active buffer
 	       (when pvs-expected-output
