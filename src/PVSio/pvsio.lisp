@@ -115,6 +115,7 @@ To change output prompt '~a':
 	    ;; unwind-protected forms
 	    (when *pvs-emacs-interface*
 	      (pvs-emacs-eval "(pvs-evaluator-ready)"))
+	    #+allegro
 	    (delete-all-trace-wrappers)))))))
 
 (defun read-expr (input-stream)
@@ -208,7 +209,7 @@ To change output prompt '~a':
 		       (eval cl-input)))))
 	    (when *evaluator-debug*
 	      (format t "~%Common Lisp expression ~a evaluates to:~%~a~%" cl-input cl-eval))
-	    (format t "~a" cl-eval)
+	    ;;(format t "~a" cl-eval)
 	    (when (and *convert-back-to-pvs* (not isvoid))
 	      (let ((pvs-val (cl2pvs cl-eval (type tc-input))))
 		(assert (expr? pvs-val))
