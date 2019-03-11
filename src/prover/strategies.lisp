@@ -2605,8 +2605,12 @@ x_1!n rather than x!n, for some number n."
 	       (if (subsetp new-sforms rest
 			    :test #'tc-eq
 			    :key #'formula)
-		   (then (skip-msg
-			  "Avoiding instantiation leading to duplicate formulas")
+		   (then (let ((msg (format nil
+					"Avoiding instantiation leading to duplicate ~
+                                         formulas ~:[~;(due to TCCs)~]:~
+                                         ~{~%  ~a~}"
+				      (tcc-proofstate? *ps*) new-sforms)))
+			   (skip-msg msg))
 			 (fail))
 		   (skip)))
 	     (skip))
