@@ -1,0 +1,246 @@
+{
+    "$schema": "http://json-schema.org/schema#",
+    "description": "JSON schema for the abstract syntax of the PVS language",
+    "definitions": {
+	"pvs.context": {
+	    "description": "The current PVS context",
+	    "type": "object"
+	    "required": ["pathname", "pvs-files"],
+	    "properties": {
+		"pathname": {
+		    "description": "Pathname for the current PVS context",
+		    "type": "string"
+		}
+		"pvs-files": {
+		    "description": "The currently typechecked PVS files in the context",
+		    "type": "array",
+		    "items": {"$ref": "#/definitions/pvs.file"}
+		}
+	    }
+	},
+	"pvs.file": {
+	    "description": "A PVS file consists of a list of theories",
+	    "type": "object",
+	    "required": [ "filename", "theories" ],
+	    "properties": {
+		"filename": {
+		    "type": "string"
+		},
+		"theories": {
+		    "description": "Pathname for the current PVS context",
+		    "type": "array"
+		    "items": {
+			"type": "object",
+			"oneOf": [{"$ref": "#/definitions/pvs.theory"),
+				  {"$ref": "#/definitions/pvs.datatype")]
+		    }
+		}
+	    }
+	},
+	"pvs.theory": {
+	    "description": "A PVS theory",
+	    "type": "object",
+	    "required": [ "id" ],
+	    "properties": {
+		"id": { "type": "string" },
+		"theory-formals": {
+		    "type": "array",
+		    "items": {"$ref": "#/definitions/pvs.theory-formal-decl"}
+		},
+		"theory-assumings": {
+		    "type": "array",
+		    "items": {"$ref": "#/definitions/pvs.assuming-decl"}
+		},
+		"theory-decls": {
+		    "type": "array",
+		    "items": {"$ref": "#/definitions/pvs.theory-decl"}
+		},
+		"exporting-part": {
+		    "type": "array",
+		    "items": {"$ref": "#/definitions/pvs.exporting-decl"}
+		}
+	    }
+	}
+	"pvs.recursive-type": {
+	    "type": "object",
+	    "oneOf": [{"$ref": "#/definitions/pvs.datatype"},
+		      {"$ref": "#/definitions/pvs.codatatype"}]
+	},
+	"pvs.datatype": {
+	    {"$ref": "#/definitions/pvs.recursive-type-decl"}
+	},
+	"pvs.codatatype": {
+	    {"$ref": "#/definitions/pvs.recursive-type-decl"}
+	},
+	"pvs.recursive-type-decl": {
+	    "type": "object",
+	    "required": ["id"],
+	    "properties": {
+		"id": { "type": "string" },
+		"theory-formals": {
+		    "type": "array",
+		    "items": {"$ref": "#/definitions/pvs.theory-formal-decl"}
+		},
+		"theory-assumings": {
+		    "type": "array",
+		    "items": {"$ref": "#/definitions/pvs.assuming-decl"}
+		},
+		"theory-decls": {
+		    "type": "array",
+		    "items": {"$ref": "#/definitions/pvs.theory-decl"}
+		},
+		"exporting-part": {
+		    "type": "array",
+		    "items": {"$ref": "#/definitions/pvs.exporting-decl"}
+		}
+	    }
+
+	}
+	"pvs.theory-formal-decl": {
+	    "type": "object",
+	    "oneOf": [{"$ref": "#/definitions/pvs.formal-type-decl"},
+		      {"$ref": "#/definitions/pvs.formal-subtype-decl"},
+		      {"$ref": "#/definitions/pvs.formal-const-decl"},
+		      {"$ref": "#/definitions/pvs.formal-theory-decl"}]
+	}
+	"importing": {
+	    "type": "object",
+	    "properties": {
+		"kind": {"enum": ["importing"]},
+		"importing": {"type": "string"},
+		"place": {"$ref": "#/definitions/place"}
+	    }
+	},
+	"typed-decl": {
+	    "type": "object",
+	    "properties": {
+		"id": {"type": "string"},
+		"kind": {"enum": ["module", "type", "expr", "datatype",
+				  "library", "judgement", "conversion",
+				  "auto-rewrite"]},
+		"type": {"type": "string"},
+		"place": {"$ref": "#/definitions/place"}
+	    }
+	},
+	"formula-decl": {
+	    "type": "object",
+	    "properties": {
+		"id": {"type": "string"},
+		"kind": {"enum": ["formula"]},
+		"place": {"$ref": "#/definitions/place"}
+	    }
+	},
+	"prove-formula-request": {
+	    "type": "object",
+	    "properties": {
+		"method": { "enum": ["prove-formula"] },
+		"params": {
+		    "type" : "array",
+		    "minItems": 1,
+		    "maxItems": 1,
+		    "items": { "type": "string" }
+		}
+	    }
+	},
+	"prove-formula-result": {
+	    "type": "object",
+	    "properties": {
+		"result": {
+		    "type" : "object"
+		}
+	    }
+	},
+	"proof-command-request": {
+	    "type": "object",
+	    "properties": {
+		"method": { "enum": ["proof-command"] },
+		"params": {
+		    "type" : "array",
+		    "minItems": 1,
+		    "maxItems": 1,
+		    "items": { "type": "string" }
+		}
+	    }
+	},
+	"proof-command-result": {
+	    "type": "object",
+	    "properties": {
+		"result": {
+		    "type" : "object"
+		}
+	    }
+	},
+	"proofstate": {
+	    "type": "object",
+	    "required": [ "current-goal", "tree-delta" ],
+	    "properties": {
+		"children": { "type": "array",
+			      "items": {"$ref": "#/definitions/proofstate-node"}},
+		"current-goal": { "type": "string" },
+		"tree-delta": { "type": "string" }
+	    }
+	},
+	"proofstate-node": {
+	    "type": "object",
+	    "required": [ "label", "sequent" ],
+	    "properties": {
+		"commentary": { "type": "array",
+				"items": "string" },
+		"action": { "type": "string" },
+		"num-subgoals": { "type": "integer" },
+		"label": { "type": "string" },
+		"comment": { "type": "string" },
+		"sequent": {
+		    "type": "object",
+		    "properties": {
+			"antecedents": {"$ref": "#/definitions/s-formulas"},
+			"succedents": {"$ref": "#/definitions/s-formulas"},
+			"hidden-antecedents": {"$ref": "#/definitions/s-formulas"},
+			"hidden-succedents": {"$ref": "#/definitions/s-formulas"}
+		    }
+		}
+	    }
+	},
+	"s-formulas": {
+	    "type": "array",
+	    "items": {
+		"type": "object",
+		"required": ["labels", "changed", "formula"],
+		"properties": {
+		    "labels": {
+			"type": "array",
+			"minItems": 1,
+			"items": {"type": "string"}
+		    },
+		    "changed": {"type": "boolean"},
+		    "formula": {"type": "string"},
+		    "names-info": {"type": "names-info"}
+		}
+	    }
+	},
+	"names-info": {
+	    "type": "array",
+	    "items": {
+		"type": "object",
+		"properties": {
+		    "result": {
+			"type": "object",
+			"properties": {
+			    "id": {"type": "string"},
+			    "place": {"$ref": "#/definitions/place"},
+			    "decl": {"type": "string"},
+			    "decl-file": {"type": "string"},
+			    "decl-place": {"$ref": "#/definitions/place"}
+			}
+		    }
+		}
+	    }
+	},
+	"place": {
+	    "type": "array",
+	    "minItems": 2,
+	    "maxItems": 4,
+	    "items": {"type": "integer"}
+	}
+    }
+}
