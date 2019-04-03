@@ -934,11 +934,11 @@
   ;;(assert (or *in-checker* *current-file*))
   (cond (*parse-error-catch*
 	 (throw *parse-error-catch*
-		(values nil
-			(if args
-			    (format nil "~?" message args)
-			    message)
-			obj)))
+	   (values nil
+		   (if args
+		       (format nil "~?" message args)
+		       message)
+		   obj)))
 	((or *pvs-error-hook*
 	     (and (or *to-emacs*
 		      (null *pvs-emacs-interface*))
@@ -946,48 +946,39 @@
 		      (not *in-evaluator*)
 		      *tc-add-decl*)))
 	 (pvs-error "Parser error"
-	   (if args
-	       (format nil "~?" message args)
-	       message)
-	   *current-file*
-	   (place obj)))
+	   (format nil "~?~@[~%In file ~a~]~@[~a~]"
+	     message args
+	     (when *current-file* (pathname-name *current-file*))
+	     (when (place obj)
+	       (format nil " (line ~a, col ~a)"
+		 (line-begin (place obj))
+		 (col-begin (place obj)))))))
 	((and (or *in-checker*
 		  *in-evaluator*)
 	      (not *tcdebug*))
-	 (if args
-	     (format t "~%~?" message args)
-	     (format t "~%~a" message))
+	 (format t "~%~?~@[~a~]" message args
+		 (when (place obj)
+		   (format nil " (line ~a, col ~a)"
+		     (line-begin (place obj))
+		     (col-begin (place obj)))))
 	 (format t "~%Restoring the state.")
 	 (restore))
 	((null *pvs-emacs-interface*)
-	 (format t "~%<pvserror msg=\"parse-error\">~%\"~a\"~%</pvserror>"
-	   (protect-emacs-output
-	    (if args
-		(format t "~%~?" message args)
-		(format t "~%~a" message))))
+	 (format t "~%<pvserror msg=\"parse-error\">~%\"~?~@[~%In file ~a~]~@[~a~]\"~%</pvserror>"
+	   message args
+	   (when *current-file* (pathname-name *current-file*))
+	   (when (place obj)
+	     (format nil " (line ~a, col ~a)"
+	       (line-begin (place obj))
+	       (col-begin (place obj)))))
 	 (pvs-abort))
-	(t (if args
-	       (format t "~%~?~a~a"
-		 message
-		 args
-		 (if *current-file*
-		     (format nil "~%In file ~a" (pathname-name *current-file*))
-		     "")
-		 (if (place obj)
-		     (format nil " (line ~a, col ~a)"
-		       (line-begin (place obj))
-		       (col-begin (place obj)))
-		     ""))
-	       (format t "~%~a~a~a"
-		 message
-		 (if *current-file*
-		     (format nil "~%In file ~a" (pathname-name *current-file*))
-		     "")
-		 (if (place obj)
-		     (format nil " (line ~a, col ~a)"
-		       (line-begin (place obj))
-		       (col-begin (place obj)))
-		     "")))
+	(t (format t "~%~?~@[~%In file ~a~]~@[~a~]"
+	     message args
+	     (when *current-file* (pathname-name *current-file*))
+	     (when (place obj)
+	       (format nil " (line ~a, col ~a)"
+		 (line-begin (place obj))
+		 (col-begin (place obj)))))
 	   (error "Parse error"))))
 )
 
