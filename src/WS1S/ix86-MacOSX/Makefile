@@ -13,12 +13,12 @@ INCLUDES = -I$(BDD) -I$(DFA) -I$(UTILS)
 #  ld: -macosx_version_min argument missing
 # So there doesn't seem to be any choice.
 # 
-MACOSX_DEPLOYMENT_TARGET=10.9
+MACOSX_DEPLOYMENT_TARGET=10.11
 LD = ld
-LDFLAGS = -macosx_version_min $(MACOSX_DEPLOYMENT_TARGET) -bundle /usr/lib/bundle1.o -flat_namespace -undefined suppress -L./ -weak_library /usr/lib/libSystem.B.dylib
+LDFLAGS = -bundle -flat_namespace -undefined suppress
 CC = gcc
-CFLAGS += -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET) -dynamic -D_POSIX_SOURCE -DSYSV $(INCLUDES)
-XCFLAGS = -O
+CFLAGS += -fPIC -dynamic -D_POSIX_SOURCE -DSYSV $(INCLUDES)
+XCFLAGS = -O2
 SHELL = /bin/sh
 VPATH = ..:../mona/BDD:../mona/DFA:../mona/Mem
 

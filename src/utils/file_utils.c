@@ -27,34 +27,34 @@
 static struct stat finfo;
 
 int
-file_exists_p(char *filename)
+file_exists_p(const char *filename)
 {
   return(access(filename, F_OK));
 }
 
 int
-directory_p(char *filename)
+directory_p(const char *filename)
 {
   if (stat(filename,&finfo) == -1) return(0);
   return(S_ISDIR(finfo.st_mode));
 }
 
 int
-read_permission_p(char *filename)
+read_permission_p(const char *filename)
 {
   if (access(filename, R_OK) == 0) return(0);
   return(errno);
 }  
 
 int
-write_permission_p(char *filename)
+write_permission_p(const char *filename)
 {
   if (access(filename, W_OK) == 0) return(0);
   return(errno);
 }
 
 long int
-file_write_time(char *filename)
+file_write_time(const char *filename)
 {
   if (!(stat(filename,&finfo))) {
     return((long) finfo.st_mtime);
@@ -63,7 +63,7 @@ file_write_time(char *filename)
 }
 
 int
-getfileinfo(char *filename, int *i)
+getfileinfo(const char *filename, int *i)
 {
   if (!(stat(filename,&finfo))) {
     i[0] = (int) finfo.st_dev;
