@@ -1,0 +1,1358 @@
+{
+ "descriptor": {
+  "file_type": "emdl",
+  "version": "1.4",
+  "description": "emucharts model",
+  "chart_name": "emucharts_t34-pim-full"
+ },
+ "chart": {
+  "states": [
+   {
+    "name": "BatteryStatus",
+    "id": "BatteryStatus",
+    "x": 241.41530874368505,
+    "y": 592.7004672760215,
+    "width": 50,
+    "height": 50,
+    "widgets": [],
+    "color": "#1f77b4"
+   },
+   {
+    "name": "ConfirmSettings",
+    "id": "ConfirmSettings",
+    "x": 646.3586898850274,
+    "y": 547.91751463815,
+    "width": 50,
+    "height": 50,
+    "widgets": [],
+    "color": "#ff7f0e"
+   },
+   {
+    "name": "Info",
+    "id": "Info",
+    "x": 442.63638887212784,
+    "y": 386.79952691630444,
+    "width": 50,
+    "height": 50,
+    "widgets": [],
+    "color": "#2ca02c"
+   },
+   {
+    "name": "Infusing",
+    "id": "Infusing",
+    "x": 70.59435378118502,
+    "y": 645.8641858852858,
+    "width": 50,
+    "height": 50,
+    "widgets": [],
+    "color": "#d62728"
+   },
+   {
+    "name": "InfusionSummary",
+    "id": "InfusionSummary",
+    "x": -111.02232462032305,
+    "y": 391.3409171402202,
+    "width": 50,
+    "height": 50,
+    "widgets": [],
+    "color": "#9467bd"
+   },
+   {
+    "name": "Init",
+    "id": "Init",
+    "x": 260.1985108595085,
+    "y": 44.99237399970923,
+    "width": 50,
+    "height": 50,
+    "widgets": [],
+    "color": "#8c564b"
+   },
+   {
+    "name": "LoadSyringe",
+    "id": "LoadSyringe",
+    "x": -232.04967551642972,
+    "y": -90.52042429868415,
+    "width": 50,
+    "height": 50,
+    "widgets": [],
+    "color": "#e377c2"
+   },
+   {
+    "name": "Paused",
+    "id": "Paused",
+    "x": 23.075087704247533,
+    "y": 291.3951111172496,
+    "width": 50,
+    "height": 50,
+    "widgets": [],
+    "color": "#7f7f7f"
+   },
+   {
+    "name": "RateConfirm",
+    "id": "RateConfirm",
+    "x": 724.2956802617518,
+    "y": 272.85438185801564,
+    "width": 50,
+    "height": 50,
+    "widgets": [],
+    "color": "#bcbd22"
+   },
+   {
+    "name": "RateSet",
+    "id": "RateSet",
+    "x": 225.37200191566092,
+    "y": 477.1585977710657,
+    "width": 50,
+    "height": 50,
+    "widgets": [],
+    "color": "#17becf"
+   },
+   {
+    "name": "SetDuration",
+    "id": "SetDuration",
+    "x": 616.7343579503774,
+    "y": 35.645338864979124,
+    "width": 50,
+    "height": 50,
+    "widgets": [],
+    "color": "#1f77b4"
+   },
+   {
+    "name": "SetVolume",
+    "id": "SetVolume",
+    "x": 386.58812444455737,
+    "y": -96.5129621535975,
+    "width": 50,
+    "height": 50,
+    "widgets": [],
+    "color": "#ff7f0e"
+   },
+   {
+    "name": "StartInfusionConfirm",
+    "id": "StartInfusionConfirm",
+    "x": 391.99407976065964,
+    "y": 682.4860408849166,
+    "width": 50,
+    "height": 50,
+    "widgets": [],
+    "color": "#2ca02c"
+   },
+   {
+    "name": "Timeout",
+    "id": "Timeout",
+    "x": 17.401070513708333,
+    "y": 145.70808562764333,
+    "width": 50,
+    "height": 50,
+    "widgets": [],
+    "color": "#d62728"
+   }
+  ],
+  "transitions": [
+   {
+    "name": "IBatteryStatus",
+    "id": "IBatteryStatus35",
+    "source": {
+     "name": "InfusionSummary",
+     "id": "InfusionSummary",
+     "x": -111.02232462032305,
+     "y": 391.3409171402202,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "BatteryStatus",
+     "id": "BatteryStatus",
+     "x": 241.41530874368505,
+     "y": 592.7004672760215,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 60.13761555668008,
+     "y": 541.5051329066735
+    },
+    "start_state": "InfusionSummary",
+    "end_state": "BatteryStatus",
+    "i_behaviour": "IBatteryStatus"
+   },
+   {
+    "name": "IConfirmSettings",
+    "id": "IConfirmSettings27",
+    "source": {
+     "name": "StartInfusionConfirm",
+     "id": "StartInfusionConfirm",
+     "x": 391.99407976065964,
+     "y": 682.4860408849166,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "ConfirmSettings",
+     "id": "ConfirmSettings",
+     "x": 646.3586898850274,
+     "y": 547.91751463815,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 643,
+     "y": 674
+    },
+    "start_state": "StartInfusionConfirm",
+    "end_state": "ConfirmSettings",
+    "i_behaviour": "IConfirmSettings"
+   },
+   {
+    "name": "IConfirmSettings",
+    "id": "IConfirmSettings22",
+    "source": {
+     "name": "RateConfirm",
+     "id": "RateConfirm",
+     "x": 724.2956802617518,
+     "y": 272.85438185801564,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "ConfirmSettings",
+     "id": "ConfirmSettings",
+     "x": 646.3586898850274,
+     "y": 547.91751463815,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 765.7805921939078,
+     "y": 442.72580862017213
+    },
+    "start_state": "RateConfirm",
+    "end_state": "ConfirmSettings",
+    "i_behaviour": "IConfirmSettings"
+   },
+   {
+    "name": "IConfirmStart",
+    "id": "IConfirmStart23",
+    "source": {
+     "name": "ConfirmSettings",
+     "id": "ConfirmSettings",
+     "x": 646.3586898850274,
+     "y": 547.91751463815,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "StartInfusionConfirm",
+     "id": "StartInfusionConfirm",
+     "x": 391.99407976065964,
+     "y": 682.4860408849166,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 556,
+     "y": 607
+    },
+    "start_state": "ConfirmSettings",
+    "end_state": "StartInfusionConfirm",
+    "i_behaviour": "IConfirmStart"
+   },
+   {
+    "name": "IInfo",
+    "id": "IInfo20",
+    "source": {
+     "name": "ConfirmSettings",
+     "id": "ConfirmSettings",
+     "x": 646.3586898850274,
+     "y": 547.91751463815,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Info",
+     "id": "Info",
+     "x": 442.63638887212784,
+     "y": 386.79952691630444,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 569.5125682669997,
+     "y": 460.47164547601244
+    },
+    "start_state": "ConfirmSettings",
+    "end_state": "Info",
+    "i_behaviour": "IInfo"
+   },
+   {
+    "name": "IInfo",
+    "id": "IInfo2",
+    "source": {
+     "name": "LoadSyringe",
+     "id": "LoadSyringe",
+     "x": -232.04967551642972,
+     "y": -90.52042429868415,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Info",
+     "id": "Info",
+     "x": 442.63638887212784,
+     "y": 386.79952691630444,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": -59,
+     "y": 185
+    },
+    "start_state": "LoadSyringe",
+    "end_state": "Info",
+    "i_behaviour": "IInfo"
+   },
+   {
+    "name": "IInfo",
+    "id": "IInfo13",
+    "source": {
+     "name": "RateSet",
+     "id": "RateSet",
+     "x": 225.37200191566092,
+     "y": 477.1585977710657,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Info",
+     "id": "Info",
+     "x": 442.63638887212784,
+     "y": 386.79952691630444,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 365.6595665817055,
+     "y": 487.06731588811135
+    },
+    "start_state": "RateSet",
+    "end_state": "Info",
+    "i_behaviour": "IInfo"
+   },
+   {
+    "name": "IInfo",
+    "id": "IInfo24",
+    "source": {
+     "name": "StartInfusionConfirm",
+     "id": "StartInfusionConfirm",
+     "x": 391.99407976065964,
+     "y": 682.4860408849166,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Info",
+     "id": "Info",
+     "x": 442.63638887212784,
+     "y": 386.79952691630444,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 505.29929918401564,
+     "y": 557.7959225706031
+    },
+    "start_state": "StartInfusionConfirm",
+    "end_state": "Info",
+    "i_behaviour": "IInfo"
+   },
+   {
+    "name": "IInfo",
+    "id": "IInfo25",
+    "source": {
+     "name": "StartInfusionConfirm",
+     "id": "StartInfusionConfirm",
+     "x": 391.99407976065964,
+     "y": 682.4860408849166,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Info",
+     "id": "Info",
+     "x": 442.63638887212784,
+     "y": 386.79952691630444,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 433.0851081784621,
+     "y": 561.1983159794369
+    },
+    "start_state": "StartInfusionConfirm",
+    "end_state": "Info",
+    "i_behaviour": "IInfo"
+   },
+   {
+    "name": "IInfo",
+    "id": "IInfo9",
+    "source": {
+     "name": "SetVolume",
+     "id": "SetVolume",
+     "x": 386.58812444455737,
+     "y": -96.5129621535975,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Info",
+     "id": "Info",
+     "x": 442.63638887212784,
+     "y": 386.79952691630444,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 409.61770224706197,
+     "y": 133.21560086339062
+    },
+    "start_state": "SetVolume",
+    "end_state": "Info",
+    "i_behaviour": "IInfo"
+   },
+   {
+    "name": "IInfo",
+    "id": "IInfo14",
+    "source": {
+     "name": "SetDuration",
+     "id": "SetDuration",
+     "x": 616.7343579503774,
+     "y": 35.645338864979124,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Info",
+     "id": "Info",
+     "x": 442.63638887212784,
+     "y": 386.79952691630444,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 572.834452795516,
+     "y": 230.0132909415304
+    },
+    "start_state": "SetDuration",
+    "end_state": "Info",
+    "i_behaviour": "IInfo"
+   },
+   {
+    "name": "IInfo",
+    "id": "IInfo6",
+    "source": {
+     "name": "Init",
+     "id": "Init",
+     "x": 260.1985108595085,
+     "y": 44.99237399970923,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Info",
+     "id": "Info",
+     "x": 442.63638887212784,
+     "y": 386.79952691630444,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 331.55409018803175,
+     "y": 232.03389693258052
+    },
+    "start_state": "Init",
+    "end_state": "Info",
+    "i_behaviour": "IInfo"
+   },
+   {
+    "name": "IInfo",
+    "id": "IInfo4",
+    "source": {
+     "name": "Timeout",
+     "id": "Timeout",
+     "x": 17.401070513708333,
+     "y": 145.70808562764333,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Info",
+     "id": "Info",
+     "x": 442.63638887212784,
+     "y": 386.79952691630444,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 248.41318338290853,
+     "y": 243.91925472767178
+    },
+    "start_state": "Timeout",
+    "end_state": "Info",
+    "i_behaviour": "IInfo"
+   },
+   {
+    "name": "IInfo",
+    "id": "IInfo18",
+    "source": {
+     "name": "RateConfirm",
+     "id": "RateConfirm",
+     "x": 724.2956802617518,
+     "y": 272.85438185801564,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Info",
+     "id": "Info",
+     "x": 442.63638887212784,
+     "y": 386.79952691630444,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 608.9975727886023,
+     "y": 353.36207024751474
+    },
+    "start_state": "RateConfirm",
+    "end_state": "Info",
+    "i_behaviour": "IInfo"
+   },
+   {
+    "name": "IInfo",
+    "id": "IInfo32",
+    "source": {
+     "name": "Paused",
+     "id": "Paused",
+     "x": 23.075087704247533,
+     "y": 291.3951111172496,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Info",
+     "id": "Info",
+     "x": 442.63638887212784,
+     "y": 386.79952691630444,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 226.6593086924561,
+     "y": 354.9739775333639
+    },
+    "start_state": "Paused",
+    "end_state": "Info",
+    "i_behaviour": "IInfo"
+   },
+   {
+    "name": "IInfusing",
+    "id": "IInfusing36",
+    "source": {
+     "name": "InfusionSummary",
+     "id": "InfusionSummary",
+     "x": -111.02232462032305,
+     "y": 391.3409171402202,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Infusing",
+     "id": "Infusing",
+     "x": 70.59435378118502,
+     "y": 645.8641858852858,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": -89,
+     "y": 625
+    },
+    "start_state": "InfusionSummary",
+    "end_state": "Infusing",
+    "i_behaviour": "IInfusing"
+   },
+   {
+    "name": "IInfusing",
+    "id": "IInfusing37",
+    "source": {
+     "name": "BatteryStatus",
+     "id": "BatteryStatus",
+     "x": 241.41530874368505,
+     "y": 592.7004672760215,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Infusing",
+     "id": "Infusing",
+     "x": 70.59435378118502,
+     "y": 645.8641858852858,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 165.23566236716616,
+     "y": 636.6073948710289
+    },
+    "start_state": "BatteryStatus",
+    "end_state": "Infusing",
+    "i_behaviour": "IInfusing"
+   },
+   {
+    "name": "IInfusing",
+    "id": "IInfusing28",
+    "source": {
+     "name": "StartInfusionConfirm",
+     "id": "StartInfusionConfirm",
+     "x": 391.99407976065964,
+     "y": 682.4860408849166,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Infusing",
+     "id": "Infusing",
+     "x": 70.59435378118502,
+     "y": 645.8641858852858,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 252.91446637077718,
+     "y": 713.8355050372664
+    },
+    "start_state": "StartInfusionConfirm",
+    "end_state": "Infusing",
+    "i_behaviour": "IInfusing"
+   },
+   {
+    "name": "IInfusing",
+    "id": "IInfusing33",
+    "source": {
+     "name": "Paused",
+     "id": "Paused",
+     "x": 23.075087704247533,
+     "y": 291.3951111172496,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Infusing",
+     "id": "Infusing",
+     "x": 70.59435378118502,
+     "y": 645.8641858852858,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": -9.383147696110436,
+     "y": 437.6932439907964
+    },
+    "start_state": "Paused",
+    "end_state": "Infusing",
+    "i_behaviour": "IInfusing"
+   },
+   {
+    "name": "IInfusionSummary",
+    "id": "IInfusionSummary30",
+    "source": {
+     "name": "Infusing",
+     "id": "Infusing",
+     "x": 70.59435378118502,
+     "y": 645.8641858852858,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "InfusionSummary",
+     "id": "InfusionSummary",
+     "x": -111.02232462032305,
+     "y": 391.3409171402202,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": -61.24905459393126,
+     "y": 589.5299445072702
+    },
+    "start_state": "Infusing",
+    "end_state": "InfusionSummary",
+    "i_behaviour": "IInfusionSummary"
+   },
+   {
+    "name": "IInit",
+    "id": "IInit31",
+    "source": {
+     "name": "Paused",
+     "id": "Paused",
+     "x": 23.075087704247533,
+     "y": 291.3951111172496,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Init",
+     "id": "Init",
+     "x": 260.1985108595085,
+     "y": 44.99237399970923,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 107.89063051880434,
+     "y": 143.55827864943817
+    },
+    "start_state": "Paused",
+    "end_state": "Init",
+    "i_behaviour": "IInit"
+   },
+   {
+    "name": "IInit",
+    "id": "IInit39",
+    "source": {
+     "name": "ConfirmSettings",
+     "id": "ConfirmSettings",
+     "x": 646.3586898850274,
+     "y": 547.91751463815,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Init",
+     "id": "Init",
+     "x": 260.1985108595085,
+     "y": 44.99237399970923,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 475.7413721407276,
+     "y": 281.8037688399162
+    },
+    "start_state": "ConfirmSettings",
+    "end_state": "Init",
+    "i_behaviour": "IInit"
+   },
+   {
+    "name": "IInit",
+    "id": "IInit0",
+    "source": {
+     "name": "Info",
+     "id": "Info",
+     "x": 442.63638887212784,
+     "y": 386.79952691630444,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Init",
+     "id": "Init",
+     "x": 260.1985108595085,
+     "y": 44.99237399970923,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 394.2106350465978,
+     "y": 194.49546216401257
+    },
+    "start_state": "Info",
+    "end_state": "Init",
+    "i_behaviour": "IInit"
+   },
+   {
+    "name": "IInit",
+    "id": "IInit5",
+    "source": {
+     "name": "Timeout",
+     "id": "Timeout",
+     "x": 17.401070513708333,
+     "y": 145.70808562764333,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Init",
+     "id": "Init",
+     "x": 260.1985108595085,
+     "y": 44.99237399970923,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 153.57348618871254,
+     "y": 57.68063268846118
+    },
+    "start_state": "Timeout",
+    "end_state": "Init",
+    "i_behaviour": "IInit"
+   },
+   {
+    "name": "IInit",
+    "id": "IInit16",
+    "source": {
+     "name": "SetDuration",
+     "id": "SetDuration",
+     "x": 616.7343579503774,
+     "y": 35.645338864979124,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Init",
+     "id": "Init",
+     "x": 260.1985108595085,
+     "y": 44.99237399970923,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 425.6784480617553,
+     "y": -0.7100664099292688
+    },
+    "start_state": "SetDuration",
+    "end_state": "Init",
+    "i_behaviour": "IInit"
+   },
+   {
+    "name": "IInit",
+    "id": "IInit10",
+    "source": {
+     "name": "SetVolume",
+     "id": "SetVolume",
+     "x": 386.58812444455737,
+     "y": -96.5129621535975,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Init",
+     "id": "Init",
+     "x": 260.1985108595085,
+     "y": 44.99237399970923,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 251,
+     "y": -98
+    },
+    "start_state": "SetVolume",
+    "end_state": "Init",
+    "i_behaviour": "IInit"
+   },
+   {
+    "name": "IInit",
+    "id": "IInit26",
+    "source": {
+     "name": "StartInfusionConfirm",
+     "id": "StartInfusionConfirm",
+     "x": 391.99407976065964,
+     "y": 682.4860408849166,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Init",
+     "id": "Init",
+     "x": 260.1985108595085,
+     "y": 44.99237399970923,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 325.64229325345104,
+     "y": 361.494834908053
+    },
+    "start_state": "StartInfusionConfirm",
+    "end_state": "Init",
+    "i_behaviour": "IInit"
+   },
+   {
+    "name": "IInit",
+    "id": "IInit3",
+    "source": {
+     "name": "LoadSyringe",
+     "id": "LoadSyringe",
+     "x": -232.04967551642972,
+     "y": -90.52042429868415,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Init",
+     "id": "Init",
+     "x": 260.1985108595085,
+     "y": 44.99237399970923,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 86.62647218134667,
+     "y": -66.28197085980904
+    },
+    "start_state": "LoadSyringe",
+    "end_state": "Init",
+    "i_behaviour": "IInit"
+   },
+   {
+    "name": "IInit",
+    "id": "IInit12",
+    "source": {
+     "name": "RateSet",
+     "id": "RateSet",
+     "x": 225.37200191566092,
+     "y": 477.1585977710657,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Init",
+     "id": "Init",
+     "x": 260.1985108595085,
+     "y": 44.99237399970923,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 160.45327529398992,
+     "y": 234.29755772440254
+    },
+    "start_state": "RateSet",
+    "end_state": "Init",
+    "i_behaviour": "IInit"
+   },
+   {
+    "name": "IInit",
+    "id": "IInit40",
+    "source": {
+     "name": "RateConfirm",
+     "id": "RateConfirm",
+     "x": 724.2956802617518,
+     "y": 272.85438185801564,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Init",
+     "id": "Init",
+     "x": 260.1985108595085,
+     "y": 44.99237399970923,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 509.986615081588,
+     "y": 125.40657152342959
+    },
+    "start_state": "RateConfirm",
+    "end_state": "Init",
+    "i_behaviour": "IInit"
+   },
+   {
+    "name": "IPaused",
+    "id": "IPaused29",
+    "source": {
+     "name": "Infusing",
+     "id": "Infusing",
+     "x": 70.59435378118502,
+     "y": 645.8641858852858,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Paused",
+     "id": "Paused",
+     "x": 23.075087704247533,
+     "y": 291.3951111172496,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 71.66878364334633,
+     "y": 467.2307484490401
+    },
+    "start_state": "Infusing",
+    "end_state": "Paused",
+    "i_behaviour": "IPaused"
+   },
+   {
+    "name": "IPaused",
+    "id": "IPaused38",
+    "source": {
+     "name": "BatteryStatus",
+     "id": "BatteryStatus",
+     "x": 241.41530874368505,
+     "y": 592.7004672760215,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Paused",
+     "id": "Paused",
+     "x": 23.075087704247533,
+     "y": 291.3951111172496,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 150.2140785905108,
+     "y": 403.9826289366156
+    },
+    "start_state": "BatteryStatus",
+    "end_state": "Paused",
+    "i_behaviour": "IPaused"
+   },
+   {
+    "name": "IPaused",
+    "id": "IPaused34",
+    "source": {
+     "name": "InfusionSummary",
+     "id": "InfusionSummary",
+     "x": -111.02232462032305,
+     "y": 391.3409171402202,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Paused",
+     "id": "Paused",
+     "x": 23.075087704247533,
+     "y": 291.3951111172496,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": -29,
+     "y": 336
+    },
+    "start_state": "InfusionSummary",
+    "end_state": "Paused",
+    "i_behaviour": "IPaused"
+   },
+   {
+    "name": "IRateConfirm",
+    "id": "IRateConfirm17",
+    "source": {
+     "name": "SetDuration",
+     "id": "SetDuration",
+     "x": 616.7343579503774,
+     "y": 35.645338864979124,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "RateConfirm",
+     "id": "RateConfirm",
+     "x": 724.2956802617518,
+     "y": 272.85438185801564,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 742.750732046287,
+     "y": 119.7704327111717
+    },
+    "start_state": "SetDuration",
+    "end_state": "RateConfirm",
+    "i_behaviour": "IRateConfirm"
+   },
+   {
+    "name": "IRateConfirm",
+    "id": "IRateConfirm21",
+    "source": {
+     "name": "ConfirmSettings",
+     "id": "ConfirmSettings",
+     "x": 646.3586898850274,
+     "y": 547.91751463815,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "RateConfirm",
+     "id": "RateConfirm",
+     "x": 724.2956802617518,
+     "y": 272.85438185801564,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 703.1880160040653,
+     "y": 412.6534662025551
+    },
+    "start_state": "ConfirmSettings",
+    "end_state": "RateConfirm",
+    "i_behaviour": "IRateConfirm"
+   },
+   {
+    "name": "IRateSet",
+    "id": "IRateSet1",
+    "source": {
+     "name": "Info",
+     "id": "Info",
+     "x": 442.63638887212784,
+     "y": 386.79952691630444,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "RateSet",
+     "id": "RateSet",
+     "x": 225.37200191566092,
+     "y": 477.1585977710657,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 335.0427918549612,
+     "y": 558.8961205946832
+    },
+    "start_state": "Info",
+    "end_state": "RateSet",
+    "i_behaviour": "IRateSet"
+   },
+   {
+    "name": "ISetDuration",
+    "id": "ISetDuration19",
+    "source": {
+     "name": "RateConfirm",
+     "id": "RateConfirm",
+     "x": 724.2956802617518,
+     "y": 272.85438185801564,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "SetDuration",
+     "id": "SetDuration",
+     "x": 616.7343579503774,
+     "y": 35.645338864979124,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 671.7327176353251,
+     "y": 155.03265507841238
+    },
+    "start_state": "RateConfirm",
+    "end_state": "SetDuration",
+    "i_behaviour": "ISetDuration"
+   },
+   {
+    "name": "ISetDuration",
+    "id": "ISetDuration11",
+    "source": {
+     "name": "SetVolume",
+     "id": "SetVolume",
+     "x": 386.58812444455737,
+     "y": -96.5129621535975,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "SetDuration",
+     "id": "SetDuration",
+     "x": 616.7343579503774,
+     "y": 35.645338864979124,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 507.10689328792216,
+     "y": -35.83741458029059
+    },
+    "start_state": "SetVolume",
+    "end_state": "SetDuration",
+    "i_behaviour": "ISetDuration"
+   },
+   {
+    "name": "ISetVolume",
+    "id": "ISetVolume8",
+    "source": {
+     "name": "Init",
+     "id": "Init",
+     "x": 260.1985108595085,
+     "y": 44.99237399970923,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "SetVolume",
+     "id": "SetVolume",
+     "x": 386.58812444455737,
+     "y": -96.5129621535975,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 288.81567465700715,
+     "y": -54.330692463265414
+    },
+    "start_state": "Init",
+    "end_state": "SetVolume",
+    "i_behaviour": "ISetVolume"
+   },
+   {
+    "name": "ISetVolume",
+    "id": "ISetVolume15",
+    "source": {
+     "name": "SetDuration",
+     "id": "SetDuration",
+     "x": 616.7343579503774,
+     "y": 35.645338864979124,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "SetVolume",
+     "id": "SetVolume",
+     "x": 386.58812444455737,
+     "y": -96.5129621535975,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 543.0584161390824,
+     "y": -99.25269806369339
+    },
+    "start_state": "SetDuration",
+    "end_state": "SetVolume",
+    "i_behaviour": "ISetVolume"
+   },
+   {
+    "name": "ITimeOut",
+    "id": "ITimeOut7",
+    "source": {
+     "name": "Init",
+     "id": "Init",
+     "x": 260.1985108595085,
+     "y": 44.99237399970923,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "target": {
+     "name": "Timeout",
+     "id": "Timeout",
+     "x": 17.401070513708333,
+     "y": 145.70808562764333,
+     "width": 50,
+     "height": 50,
+     "widgets": []
+    },
+    "controlPoint": {
+     "x": 90.31952363682407,
+     "y": -5.34941464451574
+    },
+    "start_state": "Init",
+    "end_state": "Timeout",
+    "i_behaviour": "ITimeOut"
+   }
+  ],
+  "initial_transitions": [
+   {
+    "name": "INIT_LoadSyringe",
+    "id": "INIT_LoadSyringe",
+    "target": {
+     "name": "LoadSyringe",
+     "id": "LoadSyringe"
+    }
+   }
+  ],
+  "datatypes": [],
+  "constants": [],
+  "variables": [],
+  "pmr": {},
+  "isPIM": true
+ }
+}

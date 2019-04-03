@@ -1,0 +1,21 @@
+#EmuchartToolbar {
+    float: left;
+    position: absolute;
+    margin-top: 8px;
+    z-index: 0;
+}
+
+#stateMachineMenu .tobeimplemented {
+    color: $color-fg-disabled;
+}
+
+#EmuchartsSelector {
+    position:absolute;
+    right:16px;
+    top:29px;
+    opacity:0.9;
+    ul li :hover {
+        background: #76b900;
+        color: black;
+    }
+}

@@ -1,0 +1,17 @@
+.pim-screen-controls {
+    clear: both;
+
+    .btn-screen-dropdown {
+        &_label {
+            width: 200px;
+            display: inline-block;
+            float: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    }
+
+    .screen-controls-buttons {
+        float: right;
+    }
+}

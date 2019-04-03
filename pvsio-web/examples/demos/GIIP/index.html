@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <link href="../../client/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
+        <link href="../../client/app/plugins/graphbuilder/graph.css" rel="stylesheet" type="text/css"/>
+        <link href="../../client/css/style.css" rel="stylesheet" type="text/css"/>
+        <link href="../../client/css/animate.css" rel="stylesheet" type="text/css"/>
+        <link href="../../client/lib/jquery-toggles/css/toggles.css" rel="stylesheet">
+        <link href="../../client/lib/jquery-toggles/css/themes/toggles-modern.css" rel="stylesheet">
+        <link href="../../client/lib/bootstrap/css/bootstrap-slider.css" rel="stylesheet" type="text/css"/>
+
+        <link href="css/GIIP.css" rel="stylesheet">
+        <link href="css/font-awesome.min.css" rel="stylesheet">
+    </head>
+    <body class="noselect">
+        <div id="content" class="content" style="display:none;">
+            <div id="device" class="device">
+                <div style="position:absolute; top:0px; left:0px;">
+                     <img src="insulin-pump-frame.png"></img>
+                </div>
+                <div id="topline_display" style="display:none;">
+                    <div id="battery" class="screen longbutton center" style="left:20px;top:40px;">
+                        <i id="battery-full" class="battery-icon fa fa-2x fa-battery-full fa-inverse" aria-hidden="true" style="display:none;"></i>
+                        <i id="battery-three-quarters" class="battery-icon fa fa-2x fa-battery-three-quarters fa-inverse" aria-hidden="true" style="display:none;"></i>
+                        <i id="battery-half" class="battery-icon fa fa-2x fa-battery-half fa-inverse" aria-hidden="true" style="display:none;"></i>
+                        <i id="battery-quarter" class="battery-icon fa fa-2x fa-battery-quarter fa-inverse" aria-hidden="true" style="display:none;color:red;"></i>
+                        <i id="battery-empty" class="battery-icon fa fa-2x fa-battery-empty fa-inverse" aria-hidden="true" style="display:none;color:red;"></i>
+                    </div>
+                    <div id="div_clock" class="screen longbutton center" style="left:200px;top:40px;width:240px;">
+                        <span id="div_hour" style="font-size:20px;font-family: sans-serif;"></span>
+                        <span id="div_am_pm" style="font-size:14px;margin-left:4px;font-family: sans-serif;"></span><br>
+                        <span id="div_date" style="font-size:14px;font-family: sans-serif;"></span>
+                    </div>
+                </div>
+                <div id="power_on_screen" class="screen center v-center">
+                    <span style="font-size:32px;">Generic Insulin Infusion Pump</span><br>
+                    <span style="font-size:12px;">Version 0.32-2017</span>
+                </div>
+                <div id="post_screen" class="screen center v-center">
+                    <span style="font-size:32px;">Self Test</span><br>
+                </div>
+                <div id="prime_screen" class="screen center v-center">
+                    <span style="font-size:32px;">Priming...</span><br>
+                </div>
+                <div id="ready_screen" class="screen carousel slide" data-interval="false" wrap="false" style="left:76px;top:114px;width:472px;height:260px">
+                      <!-- Indicators -->
+                      <ol class="carousel-indicators" style="bottom:-10px;">
+                        <li data-target="#ready_screen" class="active" style="pointer-events:none;"></li>
+                        <li data-target="#ready_screen" style="pointer-events:none;"></li>
+                        <li data-target="#ready_screen" style="pointer-events:none;"></li>
+                        <li data-target="#ready_screen" style="pointer-events:none;"></li>
+                        <li data-target="#ready_screen" style="pointer-events:none;"></li>
+                      </ol>
+
+                      <!-- Wrapper for slides -->
+                      <div class="carousel-inner">
+                        <div id="home_screen" class="item active center" style="height:262px;width:480px;">
+                            <div class="carousel-caption" style="top:200px;">Home</div>
+                        </div>
+
+                        <div id="basal_management_screen" class="item center" style="height:262px;width:480px;">
+                            <div class="carousel-caption" style="top:200px;">Basal Management</div>
+                        </div>
+
+                        <div id="bolus_management_screen" class="item center" style="height:262px;width:480px;">
+                            <div class="carousel-caption" style="top:200px;">Bolus Management</div>
+                        </div>
+
+                        <div id="pump_configuration_screen" class="item center" style="height:262px;width:480px;">
+                            <div class="carousel-caption" style="top:200px;">Pump Configuration</div>
+                        </div>
+
+                        <div id="event_data_management_screen" class="item center" style="height:262px;width:480px;">
+                            <div class="carousel-caption" style="top:200px;">Event Data Management</div>
+                        </div>
+                      </div>
+
+                      <!-- Left and right controls -->
+                      <a class="left carousel-control" href="#ready_screen" style="height:50px;top:210px;background-color:black;border-radius:4px;">
+                        <span class="glyphicon glyphicon-chevron-left"></span>
+                        <span class="sr-only">Previous</span>
+                      </a>
+                      <a class="right carousel-control" href="#ready_screen" style="height:50px;top:210px;background-color:black;border-radius:4px;">
+                        <span class="glyphicon glyphicon-chevron-right"></span>
+                        <span class="sr-only">Next</span>
+                      </a>
+                </div>
+
+                <div id="basal_subscreens" class="screen" style="left:76px;top:114px;width:472px;height:270px">
+                    <div id="edit_basal_profiles_screen" style="display:none;">
+                        <div id="basal_profiles_list" class="basal_subscreen"></div>
+                        <div id="basal_pager" style="margin-top:220px; padding:0 10px 0 10px;">
+                            <ul class="pager">
+                                <li><a href="#" class="pager_button">Done</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <div id="div_splash" class="demo-splash" style="display:none;">
+            <div class="loader">
+                <div class="version">GIIP Demo</div>
+                <div class="bar">
+                    Loading
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+            </div>
+        </div>
+        <script type="application/javascript" src="../../client/lib/layout.js"></script>
+        <script type="application/javascript" src="../../client/lib/promise-0.1.1.js"></script>
+        <!-- <script type="application/javascript" src="../../client/lib/speakClient.js"></script> -->
+        <script type="application/javascript" src="../../client/lib/keys.js"></script>
+        <script type="text/javascript" src="../../client/lib/jquery.js"></script>
+        <script type="text/javascript" src="../../client/lib/underscore/underscore.js"></script>
+        <script type="text/javascript" src="../../client/lib/d3/d3.js"></script>
+        <script type="text/javascript" src="../../client/lib/backbone.js"></script>
+        <script type="text/javascript" src="../../client/lib/handlebars-v1.3.0.js"></script>
+        <script type="text/javascript" src="../../client/lib/bootstrap/js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="../../client/lib/jquery-toggles/toggles.min.js"></script>
+        <!-- Recently included files -->
+        <script type="text/javascript" src="../../client/lib/bootstrap/js/bootstrap-slider.js"></script>
+        <script type="text/javascript" src="../../client/require.js" data-main="js/index.js"></script>
+
+        <!-- <script src='https://code.responsivevoice.org/responsivevoice.js'></script> -->
+        <!-- <script src='js/responsivevoice.js'></script> -->
+    </body>
+</html>

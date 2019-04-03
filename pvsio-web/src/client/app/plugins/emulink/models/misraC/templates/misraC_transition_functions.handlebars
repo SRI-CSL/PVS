@@ -1,0 +1,40 @@
+{{#if template_description}}
+%
+%   Description: This template translates emucharts triggers into MISRA-C functions.
+%                Each function is in the form
+%                  State* foo(st* State) {
+%                    if (COND1) { .. } else if (COND2) { .. } ..
+%                    return st;
+%                  }
+%                Predicate per_foo is the permission function. It is used to restrict the domain of the function to the subset of
+%                states/conditions for which foo is defined.
+%                A flag in this template (full_coverage) enables the introduction of the ELSE case in COND-ENDCOND. This is useful for
+%                safer evaluation of the PVS functions in PVSio (which produces a random evaluation if the actual value of a function argument
+%                is not covered by any case in the COND-ENDCOND construct.) With the full_coverage flag enabled, however, the typechecker
+%                won't be able to check coverage of conditions.
+%
+{{/if}}{{#if comment}}/**
+ * {{comment}}
+ */{{/if}}
+{{#each functions}}bool per_{{name}}(State* st){{#if ../is_header_file}};{{else}} {
+    return {{#each cases}}({{cond}}){{#unless @last}}
+            || {{/unless}}{{/each}};
+}{{/if}}
+State* {{name}}(State* st){{#if ../is_header_file}};{{else}} {
+    assert( per_{{name}}(st) );
+    {{#each cases}}if ({{cond}}) {
+        #ifdef DBG
+        _dbg_print_condition("{{cond}}");
+        #endif
+        {{../../../leave}}({{from}}, st);{{#if actions}}{{#each actions}}{{#if local_binding}}
+        __TYPE__ {{variable_name}} = {{value}}; // local binding{{else}}
+        st->{{variable_name}}{{#if variable_name_l2}}.{{variable_name_l2}}{{/if}} = {{value}};{{/if}}{{/each}}{{/if}}
+        {{../../../enter}}({{to}}, st);
+    }{{#unless @last}} else {{/unless}}{{/each}}
+    #ifdef DBG
+    _dbg_print_state(st);
+    #endif
+    return st;
+}
+{{/if}}
+{{/each}}

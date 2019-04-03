@@ -71,5 +71,8 @@ else
         echo "====   your PATH (see README.md for installation details).  ===="
         echo "================================================================"
         echo "================================================================"
+		#start in any case the UI, this is useful for developing additional PVSio-web UI components even without PVS
+		cd src/server
+		node pvssocketserver.js restart
 	fi
 fi

@@ -38,7 +38,7 @@ define(function (require, exports, module) {
      * Constructor
      */
     function EmuchartsParser_UnitTest() {
-        parser = new EmuchartsParser();
+        parser = EmuchartsParser.getInstance();
         success = fail = 0;
         header = "\n------ Console log for EmuchartsParser UnitTest -------------------";
         summary = "\n------ Unit test for EmuchartsParser --------------------";
@@ -52,8 +52,8 @@ define(function (require, exports, module) {
         console.log(summary);
         return summary;
     }
-    
-    
+
+
     // test 1
     txt = "inc [ display > display + 100 ] { display := display + s }";
     tests.push({
@@ -78,7 +78,7 @@ define(function (require, exports, module) {
             });
         }
     });
-    
+
     // test 2
     txt = "[ display > display + 100 ] { display := display + s }";
     tests.push({
@@ -112,7 +112,7 @@ define(function (require, exports, module) {
             });
         }
     });
-    
+
     // test 3a
     txt = "{ display := display + s }";
     tests.push({
@@ -149,7 +149,7 @@ define(function (require, exports, module) {
             });
         }
     });
-    
+
     // test 3b
     txt = "[ display <= (display + 100) ]";
     tests.push({
@@ -193,9 +193,9 @@ define(function (require, exports, module) {
             });
         }
     });
-    
+
     // test 4
-    txt = "{ display := display + 100; step := step * 10; }";    
+    txt = "{ display := display + 100; step := step * 10; }";
     tests.push({
         description: txt,
         run: function () {
@@ -295,7 +295,7 @@ define(function (require, exports, module) {
     });
 
     // test 6
-    txt = "[ display != (display && -100 => 2.3) ]";    
+    txt = "[ display != (display && -100 => 2.3) ]";
     tests.push({
         description: txt,
         run: function () {
@@ -334,13 +334,13 @@ define(function (require, exports, module) {
                     summary += "[FAIL]";
                     fail++;
                     reject(true);
-                }                
+                }
             });
         }
     });
 
     // test 7
-    txt = "[ not display = !display ]";    
+    txt = "[ not display = !display ]";
     tests.push({
         description: txt,
         run: function () {
@@ -375,7 +375,7 @@ define(function (require, exports, module) {
     });
 
     // test 8
-    txt = "[ f(x) = !display ]";    
+    txt = "[ f(x) = !display ]";
     tests.push({
         description: txt,
         run: function () {
@@ -410,7 +410,7 @@ define(function (require, exports, module) {
     });
 
     // test 9
-    txt = "[ f(x,y) = !display ]";    
+    txt = "[ f(x,y) = !display ]";
     tests.push({
         description: txt,
         run: function () {
@@ -482,7 +482,7 @@ define(function (require, exports, module) {
                     summary += "[FAIL]";
                     fail++;
                     reject(true);
-                }                
+                }
             });
         }
     });
@@ -516,7 +516,7 @@ define(function (require, exports, module) {
                     summary += "[FAIL]";
                     fail++;
                     reject(true);
-                }                
+                }
             });
         }
     });
@@ -602,7 +602,7 @@ define(function (require, exports, module) {
             });
         }
     });
-        
+
     // test 14
     txt = "click_off";
     tests.push({
@@ -613,7 +613,7 @@ define(function (require, exports, module) {
                 ans = parser.parseTransition(txt);
                 console.log(ans);
                 summary += "\n  Parsing transition... ";
-                if (ans.res && ans.res.type === "transition" && 
+                if (ans.res && ans.res.type === "transition" &&
                         ans.res.val.identifier.type === "identifier" &&
                         ans.res.val.identifier.val === "click_off") {
                     summary += "[ok]";
@@ -624,7 +624,7 @@ define(function (require, exports, module) {
                     summary += "[FAIL]";
                     fail++;
                     reject(true);
-                }                
+                }
             });
         }
     });
@@ -990,7 +990,7 @@ define(function (require, exports, module) {
                     summary += "[FAIL]";
                     fail++;
                     reject(true);
-                }                
+                }
             });
         }
     });
@@ -1038,7 +1038,7 @@ define(function (require, exports, module) {
             printSummary();
         });
     }
-    
+
     EmuchartsParser_UnitTest.prototype.run = function () {
         return runAllTests();
     };
@@ -1052,6 +1052,6 @@ define(function (require, exports, module) {
         },
         run: EmuchartsParser_UnitTest.run
     };
-    
-    
+
+
 });

@@ -1,0 +1,10 @@
+{
+"interactive-widgets": [
+  { "name": "Button", "main": "core/ButtonEVO" },
+  { "name": "Display", "main": "core/BasicDisplayEVO" },
+  { "name": "Numeric", "main": "core/NumericDisplayEVO" },
+  { "name": "Touchscreen", "main": "core/TouchScreenEVO" },
+  { "name": "LED", "main": "core/LedEVO" }
+],
+"shapes": []
+}

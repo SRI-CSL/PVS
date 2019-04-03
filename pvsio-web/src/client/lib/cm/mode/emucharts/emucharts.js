@@ -16,12 +16,12 @@
     }
 }(function (CodeMirror) {
     "use strict";
-    
+
     var dbg = true;
-    
+
     CodeMirror.defineMode("emucharts", function () {
         var EmuchartsParser = require("plugins/emulink/EmuchartsParser");
-        var parser = new EmuchartsParser();
+        var parser = EmuchartsParser.getInstance();
         var rules = parser.getLexerRules();
         rules.push({ regex: new RegExp("."), type: "error" });
         var tokenLexer = function (stream, state) {

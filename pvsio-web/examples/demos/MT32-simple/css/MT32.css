@@ -1,0 +1,255 @@
+.r1 {
+    position: absolute;
+    top:74px;
+    left:556px;
+}
+.r1a {
+    position: absolute;
+    top:120px;
+    left:556px;
+}
+.r2 {
+    position: absolute;
+    top:164px;
+    left:556px;
+}
+.r3 {
+    position: absolute;
+    top:254px;
+    left:556px;
+}
+.r4 {
+    position: absolute;
+    top:343px;
+    left:556px;
+}
+.r5 {
+    position: absolute;
+    top:433px;
+    left:556px;
+}
+.r6 {
+    position: absolute;
+    top:523px !important;
+    left:556px;
+    height: 94px !important;
+}
+.fontwhitesmoke {
+    color: whitesmoke;
+}
+.fontwhite {
+    color: white;
+}
+.center {
+    padding-top: 34px;
+    text-align: center
+}
+.halfpadding {
+    padding-top: 17px !important;
+}
+.nopadding {
+    padding: 0;
+}
+.scroll {
+    overflow: auto;
+}
+.modeblock {
+    width: 180px;
+    height: 180px;
+
+}
+.logosmall {
+    max-width: 80px;
+    padding-left: 10px;
+    padding-top: 30px;
+}
+.padleft {
+    padding-left: 4px;
+}
+.lbl {
+    color: cyan;
+    font-size: larger;
+    padding-top: 10px;
+}
+.c0 {
+    left:505px;
+}
+.c1a {
+    left:601px;
+}
+.c2 {
+    left:646px;
+}
+.c3 {
+    left:736px;
+}
+.c3a {
+    left:778px;
+}
+.c4 {
+    left:825px;
+    width: 91px !important;
+}
+.halfheigthblock {
+    height:45px !important;
+}
+.tinyblock {
+    width:45px;
+    height:90px;
+}
+.smallblock {
+    width:90px;
+    height:90px;
+}
+.mediumblock {
+    width:180px;
+    height:90px;
+}
+.longblock {
+    width:270px;
+    height:90px;
+}
+.full {
+    width: 360px;
+    height: 362px;
+}
+.fullplus {
+    width: 360px;
+    height: 404px;
+}
+.max {
+    max-width: 358px;
+    max-height: 363px;
+}
+
+.brightborder {
+    border: solid 2px #0066ff;
+}
+
+.brightbackground {
+    background: #0066ff !important;
+}
+
+.longbutton {
+    position: absolute;
+    width: 174px;
+    top: 80px;
+    left:560px;
+    color: white;
+}
+
+.lbr3 {
+    top:288px !important;
+}
+.lbr4 {
+    top:350px !important;
+}
+.lbr5 {
+    top:475px !important;
+}
+
+.logo2 {
+    position: absolute;
+    left:864px;
+    top:585px;
+    margin-top: -16px;
+}
+
+.screenframe {
+    position:absolute;
+    top:71px;
+    left:503px;
+    height:550px;
+    width: 414px;
+}
+
+.tracing {
+    position:absolute;
+    top:120px;
+    left:566px;
+    height:418px;
+    width: 344px;
+    overflow: hidden;
+}
+
+.leftpanel_background {
+    background-color: #0066ff;
+    left: 505px;
+    top: 73px;
+    position: absolute;
+    width: 50px;
+    height: 546px;
+    border: solid 2px #000066;
+}
+
+.signal_background {
+    position: absolute;
+    border:solid 2px #000066;
+    width: 50px;
+    height: 91px;
+    margin-top: -2px;
+    margin-left: -2px;
+}
+
+.wireless_background {
+    position: absolute;
+    border:solid 2px #000066;
+    width: 50px;
+    height: 93px;
+    margin-top: 87px;
+    margin-left: -2px;
+}
+
+.bluetooth_background {
+    position: absolute;
+    border:solid 2px #000066;
+    width: 50px;
+    height: 91px;
+    margin-top: 178px;
+    margin-left: -2px;
+}
+
+.battery_background {
+    position: absolute;
+    border:solid 2px #000066;
+    width: 50px;
+    height: 91px;
+    margin-top: 268px;
+    margin-left: -2px;
+}
+
+.info_background {
+    position: absolute;
+    border:solid 2px #000066;
+    width: 50px;
+    height: 93px;
+    margin-top: 358px;
+    margin-left: -2px;
+}
+
+.back_background {
+    position: absolute;
+    border:solid 2px #000066;
+    width: 50px;
+    height: 96px;
+    margin-top: 448px;
+    margin-left: -2px;
+}
+
+.mainscreen_background {
+    background-color: #000066;
+    position: absolute;
+    width: 410px;
+    height: 546px;
+}
+
+.logo {
+    position: absolute;
+    left:755px;
+    top:126px;
+}
+.logo img {
+    max-width: 140px;
+    max-height: 140px;
+}
+

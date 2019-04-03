@@ -1,0 +1,6 @@
+%-- PVS predicate defining the property to be analysed
+consistency(st: State): bool{{#if actions}} ={{#each actions}}
+    (per_{{{this}}}(st) IMPLIES
+     LET post = {{{this}}}(st)
+      IN (post`{{{../s}}} {{{../R}}} st`{{{../s}}})){{#unless @last}} AND{{/unless}}{{/each}}
+{{/if}}

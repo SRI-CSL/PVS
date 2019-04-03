@@ -1,0 +1,223 @@
+(main
+ (state_TCC1 0
+  (state_TCC1-1 nil 3709704022 ("" (subtype-tcc) nil nil)
+   ((MAX_DIGITS const-decl "posnat" main nil)
+    (MAX_LEN1 const-decl "posnat" main nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   nil))
+ (init_TCC1 0
+  (init_TCC1-1 nil 3705346664 ("" (subtype-tcc) nil nil)
+   ((MAX_DISP2 const-decl "posnat" main nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   nil))
+ (init_TCC2 0
+  (init_TCC2-1 nil 3706185671 ("" (subtype-tcc) nil nil)
+   ((MAX_DISP3 const-decl "posnat" main nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   nil))
+ (init_TCC3 0
+  (init_TCC3-1 nil 3707293135 ("" (subtype-tcc) nil nil)
+   ((MAX_LEN2 const-decl "posnat" main nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   nil))
+ (click_shift_left_TCC1 0
+  (click_shift_left_TCC1-1 nil 3707293135 ("" (subtype-tcc) nil nil)
+   ((MAX_DIGITS const-decl "posnat" main nil)
+    (MAX_LEN2 const-decl "posnat" main nil)
+    (reset_bell const-decl "state" main nil)
+    (MAX_LEN1 const-decl "posnat" main nil))
+   nil))
+ (click_shift_left_TCC2 0
+  (click_shift_left_TCC2-1 nil 3709705801 ("" (subtype-tcc) nil nil)
+   ((real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (posint_plus_nnint_is_posint application-judgement "posint"
+     integers nil)
+    (MAX_DIGITS const-decl "posnat" main nil)
+    (MAX_LEN2 const-decl "posnat" main nil)
+    (reset_bell const-decl "state" main nil))
+   nil))
+ (click_shift_right_TCC1 0
+  (click_shift_right_TCC1-1 nil 3707244995
+   ("" (skosimp*)
+    (("" (assert)
+      (("" (expand "MAX_DIGITS")
+        (("" (expand "MAX_LEN1") (("" (assert) nil nil)) nil)) nil))
+      nil))
+    nil)
+   ((real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (MAX_LEN1 const-decl "posnat" main nil)
+    (MAX_DIGITS const-decl "posnat" main nil))
+   nil))
+ (click_shift_right_TCC2 0
+  (click_shift_right_TCC2-1 nil 3709705801
+   ("" (skosimp*)
+    (("" (expand "MAX_LEN2")
+      (("" (grind) (("" (all-typepreds) (("" (assert) nil nil)) nil))
+        nil))
+      nil))
+    nil)
+   ((MAX_LEN2 const-decl "posnat" main nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (> const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (even? const-decl "bool" integers nil)
+    (odd? const-decl "bool" integers nil)
+    (<= const-decl "bool" reals nil)
+    (total_order? const-decl "bool" orders nil)
+    (pred type-eq-decl nil defined_types nil)
+    (>= const-decl "bool" reals nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (MAX_DISP3 const-decl "posnat" main nil)
+    (MAX_DISP2 const-decl "posnat" main nil)
+    (MAX_DIGITS const-decl "posnat" main nil)
+    (MAX_LEN1 const-decl "posnat" main nil)
+    (state type-eq-decl nil main nil)
+    (upto nonempty-type-eq-decl nil naturalnumbers nil)
+    (Display type-eq-decl nil display nil)
+    (Direction type-eq-decl nil main nil)
+    (strict_total_order? const-decl "bool" orders nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (reset_bell const-decl "state" main nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil))
+   nil))
+ (click_mul_TCC1 0
+  (click_mul_TCC1-1 nil 3707244995
+   ("" (skosimp*) (("" (assert) nil nil)) nil)
+   ((real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
+     integers nil)
+    (nil application-judgement "below(m)" mod nil)
+    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (int_plus_int_is_int application-judgement "int" integers nil))
+   nil))
+ (click_mul_TCC2 0
+  (click_mul_TCC2-1 nil 3707498618
+   ("" (skosimp*) (("" (assert) nil nil)) nil)
+   ((real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_lt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (nnint_plus_nnint_is_nnint application-judgement "nonneg_int"
+     integers nil)
+    (nil application-judgement "below(m)" mod nil)
+    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (int_plus_int_is_int application-judgement "int" integers nil))
+   nil))
+ (click_sub_TCC1 0
+  (click_sub_TCC1-1 nil 3707245105
+   ("" (skosimp*) (("" (grind) nil nil)) nil)
+   ((pow10 def-decl "posnat" utils nil)
+    (mod const-decl "{k | abs(k) < abs(j)}" mod nil)
+    (MAX_DISP3 const-decl "posnat" main nil)
+    (MAX_DISP2 const-decl "posnat" main nil)
+    (real_gt_is_strict_total_order name-judgement
+     "(strict_total_order?[real])" real_props nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (rat_div_nzrat_is_rat application-judgement "rat" rationals nil)
+    (even_times_int_is_even application-judgement "even_int" integers
+     nil)
+    (int_times_even_is_even application-judgement "even_int" integers
+     nil)
+    (posint_times_posint_is_posint application-judgement "posint"
+     integers nil)
+    (nil application-judgement "below(m)" mod nil)
+    (mult_divides2 application-judgement "(divides(m))" divides nil)
+    (mult_divides1 application-judgement "(divides(n))" divides nil)
+    (int_minus_int_is_int application-judgement "int" integers nil))
+   nil))
+ (click_shift_max_TCC1 0
+  (click_shift_max_TCC1-1 nil 3707498884
+   ("" (skosimp*)
+    (("" (typepred "disp1(st!1)`len")
+      (("" (expand "MAX_LEN1")
+        (("" (expand "MAX1") (("" (assert) nil nil)) nil)) nil))
+      nil))
+    nil)
+   ((state type-eq-decl nil main nil)
+    (MAX_LEN2 const-decl "posnat" main nil)
+    (MAX_DISP3 const-decl "posnat" main nil)
+    (MAX_DISP2 const-decl "posnat" main nil)
+    (upto nonempty-type-eq-decl nil naturalnumbers nil)
+    (Display type-eq-decl nil display nil)
+    (MAX_DIGITS const-decl "posnat" main nil)
+    (MAX_LEN1 const-decl "posnat" main nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (Direction type-eq-decl nil main nil)
+    (<= const-decl "bool" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (int_minus_int_is_int application-judgement "int" integers nil)
+    (real_ge_is_total_order name-judgement "(total_order?[real])"
+     real_props nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   nil))
+ (click_shift_max_TCC2 0
+  (click_shift_max_TCC2-1 nil 3709704022 ("" (subtype-tcc) nil nil)
+   ((MAX_DIGITS const-decl "posnat" main nil)
+    (MAX_LEN1 const-decl "posnat" main nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   nil))
+ (click_shift_max_TCC3 0
+  (click_shift_max_TCC3-1 nil 3709705801 ("" (subtype-tcc) nil nil)
+   ((MAX_LEN2 const-decl "posnat" main nil)
+    (real_le_is_total_order name-judgement "(total_order?[real])"
+     real_props nil))
+   nil)))
+

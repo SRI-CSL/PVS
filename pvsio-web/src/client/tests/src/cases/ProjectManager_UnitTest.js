@@ -9,23 +9,20 @@
 /*global define, describe, expect, it, Promise, d3, beforeAll, afterAll*///, xdescribe*/
 define(function (require, exports, module) {
     "use strict";
-    var FileSystem = require("filesystem/FileSystem");
-    var instance;
-    var main;
-    var pm;
-    var fs;
+    var fs = require("filesystem/FileSystem").getInstance();
+    var main = require("main");
+    var pm = require("project/ProjectManager").getInstance();
 
+    var instance;
     var success, fail, cTest, fTest;
     var header, summary;
     var txt;
 
     function ProjectManager_UnitTest() {
-        main = require("main");
-        pm = require("project/ProjectManager").getInstance();
         pm.addListener("ProjectChanged", function (event) {
-            console.log("Intercepted new ProjectChanged event " + JSON.stringify(event));
+            //console.log("Intercepted new ProjectChanged event " + JSON.stringify(event));
+            console.log("Intercepted new ProjectChanged event " + event.type);
         });
-        fs = new FileSystem();
         success = fail = cTest = fTest = 0;
         header = "\n------ Console log for ProjectManager UnitTest -------------------";
         summary = "\n------ Unit test for ProjectManager --------------------";
@@ -161,13 +158,15 @@ define(function (require, exports, module) {
             return new Promise(function (resolve, reject) {
                 txt = "saveProject()";
                 summary += "\n\n Test " + (++cTest) + ": '" + txt + "'";
-                pm.openProject("unit_test/test").then(function (res) {
-                    pm.saveProject().then(function (res) {
-                        addSuccess(res.name() + " saved successfully\n" + res);
-                        resolve(res);
-                    }).catch(function (err) {
-                        addFail(JSON.stringify(err));
-                        reject(err);
+                pm.createProject({ projectName: 'unit_test/test', overWrite: true }).then(function (res) {
+                    pm.openProject("unit_test/test").then(function (res) {
+                        pm.saveProject().then(function (res) {
+                            addSuccess(res.name() + " saved successfully\n" + res);
+                            resolve(res);
+                        }).catch(function (err) {
+                            addFail(JSON.stringify(err));
+                            reject(err);
+                        });
                     });
                 }).catch(function (err) {
                     addFail(JSON.stringify(err));
@@ -182,16 +181,18 @@ define(function (require, exports, module) {
             return new Promise(function (resolve, reject) {
                 txt = "saveProjectDialog()";
                 summary += "\n\n Test " + (++cTest) + ": '" + txt + "'";
-                pm.openProject("unit_test/test").then(function (res) {
-                    pm.saveProjectDialog("unit_test/saveTest").then(function (res) {
-                        addSuccess(res.name() + " saved successfully\n");
-                        resolve(res);
-                    }).catch(function (err) {
-                        addFail(JSON.stringify(err));
-                        reject(err);
+                pm.createProject({ projectName: 'unit_test/test', overWrite: true }).then(function (res) {
+                    pm.openProject("unit_test/test").then(function (res) {
+                        pm.saveProjectDialog("unit_test/saveTest").then(function (res) {
+                            addSuccess(res.name() + " saved successfully\n");
+                            resolve(res);
+                        }).catch(function (err) {
+                            addFail(JSON.stringify(err));
+                            reject(err);
+                        });
+                        //click the ok button
+                        click(".overlay #btnOk");
                     });
-                    //click the ok button
-                    click(".overlay #btnOk");
                 }).catch(function (err) {
                     addFail(JSON.stringify(err));
                     reject(err);
@@ -231,7 +232,7 @@ define(function (require, exports, module) {
     // ----------------------------------------------------------------------------------------------------
     // ----------------------------------------------------------------------------------------------------
     var writeFile_test = [];
-    var content = "test1: THEORY\n BEGIN\n   %-- This theory is used for testing purposes!\n END test1";    
+    var content = "test1: THEORY\n BEGIN\n   %-- This theory is used for testing purposes!\n END test1";
     writeFile_test.push({
         description: "Testing basic writeFile within an empty project...",
         run: function () {

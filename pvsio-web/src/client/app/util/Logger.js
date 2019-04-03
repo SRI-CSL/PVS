@@ -13,7 +13,7 @@ define(function (require, exports, module) {
         @private
      */
     function log(msg) {
-        console.log(msg);
+        // console.log(msg);
         try {
             d3.select("#console").insert('p', 'p').html(typeof msg === "object" ? JSON.stringify(msg) : msg);
         } catch (err) {
@@ -22,7 +22,7 @@ define(function (require, exports, module) {
     }
 
 	function error(msg) {
-		console.log(msg);
+		console.error(msg);
         try {
             d3.select("#console").insert('p', 'p').style("color", "red")
                 .html(typeof msg === "object" ? JSON.stringify(msg) : msg);
@@ -58,7 +58,7 @@ define(function (require, exports, module) {
         var c = document.getElementById('specification_log');
         c.innerHTML = msg + "<br>" + c.innerHTML;
     }
-    
+
 	module.exports = {
 		log: log,
 		error: error,

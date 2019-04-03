@@ -1,0 +1,25 @@
+%|-----------------------------------------------------------------
+%|- Proof strategy for proving {{theorem}}.
+%|- Performs skolemization, expansions, case-splitting, then grind.
+%|- To install the proof strategy in PVS Emacs, type in Emacs:
+%|-       M-x install-prooflite-scripts-theory!
+%|- To run the proofs in batch mode, type from the command line:
+%|-       proveit consistency
+%|-----------------------------------------------------------------
+%|- {{theorem}}: PROOF
+%|-   (then
+%|-     (rewrite-msg-off)
+%|-     (skosimp*)
+%|-     (branch (prop)
+%|- 	 ((then (comment "induction base")
+%|- 	        (try (grind :if-match nil) (propax) (postpone)))
+%|- 	  (then (comment "inductive step")
+%|- 	        (expand "{{transition_relation}}"){{#each transition_names}}
+%|- 	        (expand "per_{{this}}"){{/each}}
+%|- 	        (prop)
+%|- 	        (try (grind :if-match nil) (propax) (postpone))))))
+%|- QED
+%|-----------------------------------------------------------------
+%|- Date = yyyy.mm.dd
+%|- Run time = xxx secs
+%|-----------------------------------------------------------------

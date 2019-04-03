@@ -1,0 +1,93 @@
+<div class="form-center">
+    <div class="panel panel-info shadow center">
+        <div class="panel-heading">{{header}}</div>
+        <form class="center form-horizontal" onsubmit="return false">
+            <div class="panel-body" style="overflow-y:scroll; max-height:720px; min-width:800px;">
+                <div class="form-group" style="margin-bottom: 0 !important">
+
+					<div id="PropertyTemplates">
+						<div id="ReversibilityTemplate">
+							<div id="templateFormula" class="templateFormula">
+								<div id="templateDescription" style="margin-left:10px;">
+									<ul style="white-space:normal"><b>Description: </b>An action <em>act</em> is reversible
+										if the effect of the action on relevant state variables can be undone by some next action.</ul><br>
+									<ul style="white-space:normal"><b>Example: </b><em>click_off(click_on(power(st)))</em>&nbsp;
+										This formula checks that the effect of action <em>click_on</em> on state variable <em>power</em> can always be undone by <em>click_off</em>.
+									</ul><br>
+									<ul style="white-space:normal"><b>Intent: </b>Users may perform incorrect actions, and the device needs to provide them with functions that
+                                        can be used to reverse the effect of the incorrect action. (NHS/NPSA Guidelines, Section 2.6: Error recovery).</ul>
+								</div>
+								<hr>
+								<div id="templatePameters" style="margin-left:10px; margin-top:20px;">
+									<ul style="white-space:normal"><b>Actions</b></ul>
+									<select multiple size="8" id="transitions" name="transitions" style="width:300px">
+										<!-- <option value="">Please choose an action</option> -->
+										{{#each transitions}}
+										  <option value={{this}}>{{this}}</option>
+										{{/each}}
+									</select><br>
+                                    <em>(Hold down the Ctrl (Linux/Windows) / Command (Mac) button to select multiple actions)</em><br><br>
+									<ul style="white-space:normal"><b>Reversing Action</b></ul>
+                                    <select id="reversingAction" name="reversingAction" style="width:300px">
+										<option value="">Please choose a reversing action</option>
+										{{#each transitions}}
+										  <option value={{this}}>{{this}}</option>
+										{{/each}}
+									</select><br><br>
+									<ul style="white-space:normal"><b>State Variable</b></ul>
+									<select id="stateVariable" name="stateVariable" style="width:300px">
+										<option value="">Please choose a state variable</option>
+										{{#each stateVariables}}
+										  <option value={{this}}>{{this}}</option>
+										{{/each}}
+									</select><br>
+									<hr>
+                                    <ul style="white-space:normal"><b>PVS PROPERTY</b></ul>
+                                    <div>
+                                        <textarea
+                                            rows="8" cols="102" id="pvs_property"
+                                            style="resize:vertical; font-family:Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New, monospace;"
+                                            type ="text"
+                                            value=""
+                                            name ="pvs_property"
+                                            <!--  -->
+                                        </textarea>
+                                    </div><br>
+									<ul style="white-space:normal"><b>PVS THEOREM</b></ul>
+									<!-- <div id="pvs_property" style="margin-left:10px;"> -->
+                                    <div>
+                                        <textarea
+                                            rows="7" cols="88" id="pvs_theorem"
+                                            style="resize:vertical; font-family:Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New, monospace;"
+                                            type ="text"
+                                            value=""
+                                            name ="pvs_theorem"
+                                            <!--  -->
+                                        </textarea>
+                                    </div><br>
+                                    <ul style="white-space:normal"><b>PVS STRATEGY (ProofLite)</b></ul>
+                                    <div>
+                                        <textarea
+                                            rows="8" cols="102" id="prooflite_strategy"
+                                            style="resize:vertical; font-family:Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New, monospace;"
+                                            type ="text"
+                                            value=""
+                                            name ="prooflite_strategy"
+                                            <!--  -->
+                                        </textarea>
+                                    </div>
+                                    <hr>
+								</div>
+							</div>
+						</div>
+					</div>
+
+                </div>
+            </div>
+            <div class="panel-footer">
+                <button type="button" class="btn btn-danger left" id="btnLeft">{{buttons.[0]}}</button>
+                <button type="submit" class="btn btn-success right" id="btnRight">{{buttons.[1]}}</button>
+            </div>
+        </form>
+    </div>
+</div>

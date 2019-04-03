@@ -13,7 +13,7 @@ define(function (require, exports, module) {
         Logger				= require("util/Logger"),
         PVSioStateParser	= require("util/PVSioStateParser"),
         wsSingleton,
-        keepAlive = true;
+        keepAlive = false;
 
     function createWebSocket() {
         var wscBase = wsclient();
@@ -38,7 +38,7 @@ define(function (require, exports, module) {
             }
             return wscBase.port();
         };
-        
+
         /**
             Get or set the last state of the model being executed in pvsio
         */
@@ -88,6 +88,57 @@ define(function (require, exports, module) {
                 console.log("ERROR: Failed to load pvs file " + data.demoName + "/" + data.name);
             }
         };
+
+        /**
+         * @function java
+         * @desc Executes a java command
+         * @param {Function} cb Callback function invoked when the command execution completes
+         */
+        o.java = function (javaFile, data, cb) {
+            if (javaFile) {
+                wscBase.send({
+                    type: "java",
+                    data: {
+                        javaFile: javaFile,
+                        argv: data.argv,
+                        javaOptions: data.javaOptions,
+                        basePath: data.basePath
+                    }
+                }, function (err, res) {
+                    if (err) {
+                        console.log(err);
+                    } else {
+                        console.log(res);
+                        if (cb && typeof cb === "function") {
+                            cb(res.stderr, res.stdout);
+                        }
+                    }
+                });
+            }
+        };
+
+
+        /**
+         * @function ctrl
+         * @desc Sends input control commands
+         * @param {Function} cb Callback function invoked when the command execution completes
+         */
+        o.ctrl = function (data, cb) {
+            wscBase.send({
+                type: "ctrl",
+                data: data
+            }, function (err, res) {
+                if (err) {
+                    console.error(err);
+                } else {
+                    // console.log(res);
+                    if (cb && typeof cb === "function") {
+                        cb(res.stderr, res.stdout);
+                    }
+                }
+            });
+        };
+
         /**
             Closes the pvsio process attributed to this websocket connection if there is one
             @param {function} cb The function to invoke when process has been closed
@@ -102,23 +153,52 @@ define(function (require, exports, module) {
             @param {callback} cb The function to invoke with the results of performing the passed action on the process
         */
         o.sendGuiAction = function (action, cb) {
-            wscBase.send({type: "sendCommand", data: {command: action}}, function (err, res) {
-                //do stuff to update the explored state graph and invoke the callback with the same parameters
-                wscBase.fire({type: "GraphUpdate", transition: action, target: res.data, source: o.lastState()});
-                //update the lastState if it was a valid pvsio state
-                if (PVSioStateParser.isState(res.data)) {
-                    o.lastState(res.data);
-                } else {
-                    Logger.log("Warning: PVSio was not able to execute " + action);
-                    Logger.log(res.data);
-                    //update res.data with previous valid state
-                    res.data = o.lastState();
-                }
-                if (cb && typeof cb === "function") { cb(err, res); }
-            });
+            if (action === "<ping>" || action === "<pong>") {
+                var type = action.replace(/</,"").replace(/>/,"");
+                wscBase.send({type: type, data: { command: action }}, function (err, res) {
+                    if (cb && typeof cb === "function") {
+                        cb(err, res);
+                    }
+                });
+            } else {
+                wscBase.send({type: "sendCommand", data: {command: action}}, function (err, res) {
+                    console.log("data received: ", res);
+                    if (res) {
+                        if (res.json) {
+                            console.log("json data: ", res.json);
+                        } 
+                        if (res.data && res.data !== "") {
+                            //do stuff to update the explored state graph and invoke the callback with the same parameters
+                            wscBase.fire({type: "GraphUpdate", transition: action, target: res.data, source: o.lastState()});
+                            //update the lastState if it was a valid pvsio state
+                            if (PVSioStateParser.isState(res.data)) {
+                                o.lastState(res.data);
+                            }
+                        } else {
+                            console.error("Warning: expression received from PVS is invalid: ", res);
+                        }
+                        if (cb && typeof cb === "function") {
+                            cb(err, res);
+                        }
+                    } else {
+                        Logger.log("Warning: PVSio was not able to evalute expression ", action);
+                        Logger.log(res.data);
+                        //update res.data with previous valid state
+                        res.data = o.lastState();
+                    }
+                });
+            }
             wscBase.fire({type: "InputUpdated", data: action});
             return o;
         };
+        o.send = function (action, cb) {
+            return o.sendGuiAction(action, cb);
+        };
+
+        o.registerReceiver = function (channelID, cb) {
+            return wscBase.registerReceiver(channelID, cb);
+        };
+
         /**
             Gets the content of the file passed in the parameter
             @param {string} path The relative path (from the base project dir) to the file whose content is desired

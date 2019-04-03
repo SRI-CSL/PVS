@@ -3,47 +3,72 @@
   {
    "type": "display",
    "id": "Display1357494252462",
-   "displayKey": "left_display"
+   "displayKey": "left_display",
+   "auditoryFeedback": "disabled",
+   "visibleWhen": "true",
+   "fontsize": "42",
+   "fontColor": "white",
+   "backgroundColor": "transparent"
   },
   {
-   "events": [
-    "click"
-   ],
    "id": "Button1357494276363",
    "type": "button",
-   "recallRate": "250",
-   "functionText": "UP",
-   "boundFunctions": "click_UP"
-  },
-  {
-   "events": [
+   "evts": [
     "click"
    ],
+   "recallRate": 250,
+   "functionText": "UP",
+   "customFunctionText": null,
+   "boundFunctions": "click_UP",
+   "buttonReadback": "",
+   "keyCode": "33",
+   "keyName": "page up",
+   "visibleWhen": "true"
+  },
+  {
    "id": "Button1357494286330",
    "type": "button",
-   "recallRate": "250",
-   "functionText": "up",
-   "boundFunctions": "click_up"
-  },
-  {
-   "events": [
+   "evts": [
     "click"
    ],
+   "recallRate": 250,
+   "functionText": "up",
+   "customFunctionText": null,
+   "boundFunctions": "click_up",
+   "buttonReadback": "",
+   "keyCode": "38",
+   "keyName": "up arrow",
+   "visibleWhen": "true"
+  },
+  {
    "id": "Button1357494295183",
    "type": "button",
-   "recallRate": "250",
-   "functionText": "dn",
-   "boundFunctions": "click_dn"
-  },
-  {
-   "events": [
+   "evts": [
     "click"
    ],
+   "recallRate": 250,
+   "functionText": "dn",
+   "customFunctionText": null,
+   "boundFunctions": "click_dn",
+   "buttonReadback": "",
+   "keyCode": "40",
+   "keyName": "down arrow",
+   "visibleWhen": "true"
+  },
+  {
    "id": "Button1357494307176",
    "type": "button",
-   "recallRate": "250",
+   "evts": [
+    "click"
+   ],
+   "recallRate": 250,
    "functionText": "DN",
-   "boundFunctions": "click_DN"
+   "customFunctionText": null,
+   "boundFunctions": "click_DN",
+   "buttonReadback": "",
+   "keyCode": "34",
+   "keyName": "page down",
+   "visibleWhen": "true"
   }
  ],
  "regionDefs": [
@@ -57,25 +82,25 @@
    "class": "Button1357494276363",
    "shape": "rect",
    "coords": "181.15623474121094,170,231.15623474121094,205.328125",
-   "href": "#!"
+   "href": null
   },
   {
    "class": "Button1357494286330",
    "shape": "rect",
    "coords": "235,168,281,206",
-   "href": "#!"
+   "href": null
   },
   {
    "class": "Button1357494295183",
    "shape": "rect",
-   "coords": "298.15625,170,345.15625,208",
-   "href": "#!"
+   "coords": "300.15625,170,347.15625,208",
+   "href": null
   },
   {
    "class": "Button1357494307176",
    "shape": "rect",
    "coords": "351,167,398,212",
-   "href": "#!"
+   "href": null
   }
  ]
 }

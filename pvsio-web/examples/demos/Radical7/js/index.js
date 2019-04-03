@@ -19,25 +19,15 @@ require.config({
 });
 
 require([
-        "widgets/Button",
-        "widgets/SingleDisplay",
-        "widgets/DoubleDisplay",
-        "widgets/TripleDisplay",
+        "widgets/core/ButtonEVO",
         "widgets/LED",
-        "widgets/TracingsDisplay",
-        "widgets/med/PatientMonitorDisplay",
-        "plugins/graphbuilder/GraphBuilder",
+        "widgets/medical/PatientMonitorDisplay",
         "stateParser",
         "PVSioWebClient",
         "NCDevice"],
     function (Button,
-              SingleDisplay,
-              DoubleDisplay,
-              TripleDisplay,
               LED,
-              TracingsDisplay,
               PatientMonitorDisplay,
-              GraphBuilder,
               stateParser,
               PVSioWebClient,
               NCDevice) {
@@ -99,19 +89,9 @@ require([
         var serverLogs = [], maxLogSize = 40;
 
         var client = PVSioWebClient.getInstance();
-        //create a collapsible panel using the pvsiowebclient instance
-        var imageHolder = client.createCollapsiblePanel({
-            parent: "#content",
-            headerText: "Simulation of Masimo Radical 7 PulseOximeter",
-            showContent: true,
-            isDemo: true
-        }).style("position", "relative").style("width", "1200px");
-        //insert the html into the panel (note that this could have used templates or whatever)
-        imageHolder.html('<img src="radical-7.png" usemap="#prototypeMap"/>').attr("id", "prototype");
 
-        // append control panel
-        // FIXME: create a library with APIs to create SAPERE control panels -- i.e., something similar to client.createCollapsiblePanel
-        var content = imageHolder.append("div").style("width", "600px").style("float", "right");
+        // FIXME: create a library with APIs to create SAPERE control panels
+        var content = d3.select("#content").append("div").style("width", "600px").style("padding", "20px").style("display", "none");
         content.append("div").attr("style", "margin-bottom: 10px;").append("input").attr("type", "button")
             .attr("id", "btnShowPanel").attr("value", "Show Advanced Controls");
         var controlPanel = content.append("div").attr("id", "controlPanel").style("display", "none");
@@ -151,11 +131,14 @@ require([
         // append displays
         var radical = {};
         radical.spo2_display = new PatientMonitorDisplay("spo2_display",
-            {top: 54, left: 150, height: 34, width: 160},
-            {parent: "prototype", font: "Times", label: "%SpO2"});
+            {top: 56, left: 150, height: 34, width: 160},
+            {parent: "prototype", label: "%SpO2"});
         radical.rra_display = new PatientMonitorDisplay("rra_display",
-            {top: 100, left: 150, height: 34, width: 160},
-            {parent: "prototype", font: "Times", label: "RRa", fontColor: "aqua"});
+            {top: 102, left: 150, height: 34, width: 160},
+            {parent: "prototype", label: "RRa", fontColor: "aqua"});
+        radical.btn_on = new Button("btn_on", {
+            top: 112, left: 364
+        }, { callback: onMessageReceived });
 
         // utility function
         function evaluate(str) {
@@ -278,6 +261,7 @@ require([
                         render_spo2(res);
                         render_rra(res);
                         render_alarms(res);
+                        radical.btn_on.render(res);
                     }
                 }
             } else {

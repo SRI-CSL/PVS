@@ -4,10 +4,11 @@
  * @date 28/10/15
  */
 /*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50*/
-/*global define, d3*/
+/*global define*/
 define(function (require, exports, module) {
     "use strict";
     
+    var d3 = require("d3/d3");
     var colors = d3.scale.category10();
     
     module.exports = {

@@ -15,8 +15,9 @@ define(function (require, exports, module) {
 
     var OpenProjectView = BaseDialog.extend({
         render: function (data) {
-            var t = Handlebars.compile(template);
-            this.$el.html(t(data));
+            data.origin = window.location.origin + "/";
+            var htmlContent = Handlebars.compile(template)(data);
+            this.$el.html(htmlContent);
             $("body").append(this.el);
             return this;
         },

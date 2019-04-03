@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: WidgetEVO.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="../styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="../styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: WidgetEVO.js</h1>
+
+
+
+
+
+
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * @module WidgetEVO
+ * @version 1.0
+ * @description Base class for EVO widgets.
+ * @author Paolo Masci
+ * @date Dec 11, 2017
+ *
+ */
+/*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50, esnext: true */
+/*global define */
+define(function (require, exports, module) {
+    "use strict";
+    var d3 = require("d3/d3");
+    var StateParser = require("util/PVSioStateParser"),
+        widget_template = require("text!widgets/templates/generic_widget_template.handlebars");
+    const MAX_COORDINATES_ACCURACY = 3; // max 3 decimal digits for coordinates
+
+    const normalised = {
+        backgroundcolor: "backgroundColor",
+        fontsize: "fontSize",
+        fontfamily: "fontFamily",
+        fontcolor: "fontColor",
+        borderwidth: "borderWidth",
+        borderstyle: "borderStyle",
+        borderradius: "borderRadius",
+        bordercolor: "borderColor",
+        zindex: "zIndex"
+    };
+    function normalise_options(data) {
+        var opt = {};
+        if (data) {
+            let norm_key = null;
+            for (let key in data) {
+                norm_key = normalised[key] || key;
+                opt[norm_key] = data[key];
+            }
+        }
+        return opt;
+    }
+    const html_attributes = {
+        backgroundColor: "background-color",
+        backgroundcolor: "background-color",
+        fontSize: "font-size",
+        fontsize: "font-size",
+        fontFamily: "font-family",
+        fontfamily: "font-family",
+        fontColor: "color",
+        fontcolor: "color",
+        align: "text-align",
+        borderWidth: "border-width",
+        borderwidth: "border-width",
+        borderStyle: "border-style",
+        borderstyle: "border-style",
+        borderRadius: "border-radius",
+        borderradius: "border-radius",
+        borderColor: "border-color",
+        bordercolor: "border-color",
+        zIndex: "z-index"
+    };
+    function normalise_style(data) {
+        var style = {};
+        if (data) {
+            data = normalise_options(data);
+            let html_key = null;
+            for (let key in data) {
+                html_key = html_attributes[key] || key;
+                style[html_key] = data[key];
+            }
+        }
+        return style;
+    }
+
+    /**
+     * @function &lt;a name="ButtonEVO">ButtonEVO&lt;/a>
+     * @description Constructor.
+     * @param id {String} The ID of the touchscreen button.
+     * @param coords {Object} The four coordinates (top, left, width, height) of the display, specifying
+     *        the left, top corner, and the width and height of the (rectangular) widget.
+     * @param opt {Object} Style options defining the visual appearance of the widget.
+     *                     Options can be given either as standard html style attributes or using the following widget attributes:
+     *          &lt;li>blinking (bool): whether the button is blinking (default is false, i.e., does not blink)&lt;/li>
+     *          &lt;li>align (String): text align: "center", "right", "left", "justify" (default is "center")&lt;/li>
+     *          &lt;li>backgroundColor (String): background display color (default is "transparent")&lt;/li>
+     *          &lt;li>borderColor (String): border color, must be a valid HTML5 color (default is "steelblue")&lt;/li>
+     *          &lt;li>borderRadius (Number|String): border radius, must be a number or a valid HTML5 border radius, e.g., 2, "2px", etc. (default is 0, i.e., square border)&lt;/li>
+     *          &lt;li>borderStyle (String): border style, must be a valid HTML5 border style, e.g., "solid", "dotted", "dashed", etc. (default is "none")&lt;/li>
+     *          &lt;li>borderWidth (Number): border width (if option borderColor !== null then the default border is 2px, otherwise 0px, i.e., no border)&lt;/li>
+     *          &lt;li>fontColor (String): font color, must be a valid HTML5 color (default is "white", i.e., "#fff")&lt;/li>
+     *          &lt;li>fontFamily (String): font family, must be a valid HTML5 font name (default is "sans-serif")&lt;/li>
+     *          &lt;li>fontSize (Number): font size (default is (coords.height - opt.borderWidth) / 2 )&lt;/li>
+     *          &lt;li>opacity (Number): opacity of the button. Valid range is [0..1], where 0 is transparent, 1 is opaque (default is 0.9, i.e., semi-opaque)&lt;/li>
+     *          &lt;li>parent (String): the HTML element where the display will be appended (default is "body")&lt;/li>
+     *          &lt;li>position (String): standard HTML position attribute indicating the position of the widget with respect to the parent, e.g., "relative", "absolute" (default is "absolute")&lt;/li>
+     *          &lt;li>visibleWhen (String): boolean expression indicating when the display is visible. The expression can use only simple comparison operators (=, !=) and boolean constants (true, false). Default is true (i.e., always visible).&lt;/li>
+     *          &lt;li>zIndex (String): z-index property of the widget (default is 1)&lt;/li>
+     */
+    function WidgetEVO(id, coords, opt) {
+        opt = normalise_options(opt);
+        this.id = id;
+        this.parent = (opt.parent) ? ("#" + opt.parent) : "body";
+        this.top = coords.top || 0;
+        this.left = coords.left || 0;
+        this.width = (isNaN(parseFloat(coords.width))) ? 32 : coords.width;
+        this.height = (isNaN(parseFloat(coords.height))) ? 32 : coords.height;
+        this.zIndex = opt.zIndex || 0;
+        this.blinking = opt.blinking || false;
+        this.opacity = (isNaN(parseFloat(opt.opacity))) ? 0.9 : opt.opacity;
+        this.visibleWhen = opt.visibleWhen || "true"; // default: always enabled/visible
+        this.widget = true; // this flag can be used to identify whether an object is a widget
+        this.position = opt.position || "absolute";
+
+        // visual style
+        opt.borderRadius = (opt.borderRadius) ?
+                                ((typeof opt.borderRadius === "string" &amp;&amp; opt.borderRadius.indexOf("px") >= 0) ? opt.borderRadius : opt.borderRadius.toString() + "px")
+                                : 0;
+        opt.borderStyle = (opt.borderStyle) ? opt.borderStyle : (opt.borderRadius || opt.borderWidth) ? "solid" : "none";
+        opt.borderWidth = (!isNaN(parseFloat(opt.borderWidth))) ? opt.borderWidth : (opt.borderColor) ? 2 : 0;
+        this.style = this.style || {};
+        this.style["background-color"] = opt.backgroundColor || "transparent";
+        this.style["font-size"] = (opt.fontSize || (this.height - opt.borderWidth) / 2) + "pt";
+        this.style["font-family"] = opt.fontFamily || "sans-serif";
+        this.style.color = opt.fontColor || "white";
+        this.style["text-align"] = opt.align || "center";
+        this.style["border-width"] = opt.borderWidth + "px";
+        this.style["border-style"] = opt.borderStyle;
+        this.style["border-radius"] = opt.borderRadius;
+        this.style["border-color"] = opt.borderColor || "steelblue";
+        // this.style.overflow = opt.overflow || "hidden";
+        this.style["white-space"] = "nowrap";
+        this.style.opacity = this.opacity;
+        this.cursor = opt.cursor || "default";
+
+        this.widget_template = this.widget_template || widget_template;
+        var res = Handlebars.compile(this.widget_template, { noEscape: true })(this);
+        if (!d3.select(this.parent).node()) { console.error("Error: " + this.parent + " does not exist. Widget '" + id + "' cannot be attached to DOM :(("); }
+
+        d3.select(this.parent).append("div").html(res);
+        this.div = d3.select("#" + this.id);
+        this.base = d3.select("#" + this.id + "_base");
+        this.overlay = d3.select("#" + this.id + "_overlay");
+        this.setStyle(this.style);
+
+        this.hide();
+        return this;
+    }
+
+    /**
+     * @function &lt;a name="render">render&lt;/a>
+     * @description Basic rendering function (reveals the widget). Widgets need to override this function when rendering involves additional/different logic.
+     * @memberof module:WidgetEVO
+     * @instance
+     */
+    WidgetEVO.prototype.render = function (res) {
+        return this.reveal();
+    };
+
+    /**
+     * @function &lt;a name="reveal">reveal&lt;/a>
+     * @description Reveals the widget
+     * @memberof module:WidgetEVO
+     * @instance
+     */
+    WidgetEVO.prototype.reveal = function () {
+        if (this.div &amp;&amp; this.div.node()) {
+            this.div.style("display", "block");
+        }
+        return this;
+    };
+
+    /**
+     * @function &lt;a name="hide">hide&lt;/a>
+     * @description Hides the widget
+     * @memberof module:WidgetEVO
+     * @instance
+     */
+    WidgetEVO.prototype.hide = function () {
+        if (this.div &amp;&amp; this.div.node()) {
+            this.div.style("display", "none");
+        }
+        return this;
+    };
+
+    /**
+     * @function &lt;a name="move">move&lt;/a>
+     * @description Changes the position of the widget according to the coordinates given as parameter.
+     * @param coords {Object} Coordinates indicating the new position of the widget. The coordinates are given in the form { top: (number), left: (number) }
+     * @param opt {Object}
+     *         &lt;li> duration (Number): duration in milliseconds of the move transition (default is 0, i.e., instantaneous) &lt;/li>
+     *         &lt;li> transitionTimingFunction (String): HTML5 timing function (default is "ease-out") &lt;/li>
+     * @memberof module:WidgetEVO
+     * @instance
+     */
+    WidgetEVO.prototype.move = function (coords, opt) {
+        // console.log(coords);
+        if (this.div &amp;&amp; this.div.node()) {
+            coords = coords || {};
+            opt = normalise_options(opt);
+            opt.duration = opt.duration || 0;
+            opt.transitionTimingFunction = opt.transitionTimingFunction || "ease-out";
+            this.top = (isNaN(parseFloat(coords.top))) ? this.top : parseFloat(parseFloat(coords.top).toFixed(MAX_COORDINATES_ACCURACY));
+            this.left = (isNaN(parseFloat(coords.left))) ? this.left : parseFloat(parseFloat(coords.left).toFixed(MAX_COORDINATES_ACCURACY));
+            this.div.transition().duration(opt.duration).style("top", this.top + "px").style("left", this.left + "px")
+                        .style("transition-timing-function", opt.transitionTimingFunction);
+        }
+        return this.reveal();
+    };
+
+    /**
+     * @function &lt;a name="rotate">rotate&lt;/a>
+     * @description Rotates the widget of the degree given as parameter.
+     * @param deg {Number | String} Degrees by which the widget will be rotated. Positive degrees are for clock-wise rotations, negative degrees are for counter-clock-wise rotations.
+     * @param opt {Object}
+     *         &lt;li> duration (Number): duration in milliseconds of the move transition (default is 0, i.e., instantaneous) &lt;/li>
+     *         &lt;li> transitionTimingFunction (String): HTML5 timing function (default is "ease-in") &lt;/li>
+     *         &lt;li> transformOrigin (String): rotation pivot, e.g., "top", "bottom", "center" (default is "center") &lt;/li>
+     * @memberof module:WidgetEVO
+     * @instance
+     */
+    WidgetEVO.prototype.rotate = function (deg, opt) {
+        if (this.div &amp;&amp; this.div.node()) {
+            deg = (isNaN(parseFloat(deg))) ? 0 : parseFloat(deg);
+            opt = normalise_options(opt);
+            opt.duration = opt.duration || 0;
+            opt.transitionTimingFunction = opt.transitionTimingFunction || "ease-in";
+            opt.transformOrigin = opt.transformOrigin || "center";
+            this.div.transition().duration(opt.duration)
+                        .style("transform", "rotate(" + deg + "deg)")
+                        .style("transform-origin", opt.transformOrigin)
+                        .style("transition-timing-function", opt.transitionTimingFunction);
+        }
+        return this.reveal();
+    };
+
+    /**
+     * @function &lt;a name="remove">remove&lt;/a>
+     * @description Removes the div elements of the widget from the html page -- useful to programmaticaly remove widgets from a page.
+     * @memberof module:WidgetEVO
+     * @instance
+     */
+    WidgetEVO.prototype.remove = function () {
+        if (this.div &amp;&amp; this.div.node()) {
+            this.div.remove();
+        }
+        return this;
+    };
+
+    /**
+     * @function &lt;a name="evalViz">evalViz&lt;/a>
+     * @description Evaluates the visibility of the widget based on the state attrbutes (passed as function parameter) and the expression stored in this.visibleWhen
+     * @param state {Object} JSON object with the current value of the state attributes of the modelled system
+     * @return {bool} true if the state attributes indicate widget visible, otherwise false.
+     * @memberof module:WidgetEVO
+     * @instance
+     */
+    WidgetEVO.prototype.evalViz = function (state) {
+        var vizAttribute = true;
+        if (state &amp;&amp; typeof state === "object") {
+            vizAttribute = false;
+            var expr = StateParser.simpleExpressionParser(this.visibleWhen);
+            if (expr &amp;&amp; expr.res) {
+                if (expr.res.type === "constexpr" &amp;&amp; expr.res.constant === "true") {
+                    vizAttribute = true;
+                } else if (expr.res.type === "boolexpr" &amp;&amp; expr.res.binop) {
+                    var str = StateParser.resolve(state, expr.res.attr);
+                    if (str) {
+                        str = StateParser.evaluate(str);
+                        if ((expr.res.binop === "=" &amp;&amp; str === expr.res.constant) ||
+                             (expr.res.binop === "!=" &amp;&amp; str !== expr.res.constant)) {
+                                 vizAttribute = true;
+                        }
+                    }
+                }
+            }
+        }
+        return vizAttribute;
+    };
+
+    /**
+     * @function &lt;a name="evaluate">evaluate&lt;/a>
+     * @description Evaluates the visibility of the widget based on the state attrbutes (passed as function parameter) and the expression stored in this.visibleWhen
+     * @param attr {String} Name of the state attribute to be evaluated
+     * @param state {Object} JSON object with the current value of the state attributes of the modelled system
+     * @return {String} Text representing the current evaluation of the state attribute associated with the widget
+     * @memberof module:WidgetEVO
+     * @instance
+     */
+    WidgetEVO.prototype.evaluate = function (attr, state) {
+        if (attr &amp;&amp; state &amp;&amp; typeof state === "object") {
+            var disp = StateParser.resolve(state, attr);
+            if (disp) {
+                return StateParser.evaluate(disp).replace(new RegExp("\"", "g"), "");
+            } else {
+                console.log("Warning: WidgetEVO.evaluate could not find state attribute " + attr + " requested by " + this.id);
+            }
+        }
+        return "";
+    };
+
+
+    /**
+     * @function &lt;a name="getVizExpression">getVizExpression&lt;/a>
+     * @description Returns the expression defining the visibility of the widget.
+     * @memberof module:WidgetEVO
+     * @instance
+     */
+    WidgetEVO.prototype.getVizExpression = function () {
+        return this.visibleWhen;
+    };
+
+
+    /**
+     * @function &lt;a name="setStyle">setStyle&lt;/a>
+     * @description Sets the font color and background color.
+     * @param style {Object} Style attributes characterising the visual appearance of the widget.
+     *                      Attributes can be either standard HTML5 attributes, or the following widgets attributes:
+     *          &lt;li>blinking (bool): whether the button is blinking (default is false, i.e., does not blink)&lt;/li>
+     *          &lt;li>align (String): text align: "center", "right", "left", "justify" (default is "center")&lt;/li>
+     *          &lt;li>backgroundColor (String): background display color (default is "transparent")&lt;/li>
+     *          &lt;li>borderColor (String): border color, must be a valid HTML5 color (default is "steelblue")&lt;/li>
+     *          &lt;li>borderStyle (String): border style, must be a valid HTML5 border style, e.g., "solid", "dotted", "dashed", etc. (default is "none")&lt;/li>
+     *          &lt;li>borderWidth (Number): border width (if option borderColor !== null then the default border is 2px, otherwise 0px, i.e., no border)&lt;/li>
+     *          &lt;li>fontColor (String): font color, must be a valid HTML5 color (default is "white", i.e., "#fff")&lt;/li>
+     *          &lt;li>fontFamily (String): font family, must be a valid HTML5 font name (default is "sans-serif")&lt;/li>
+     *          &lt;li>fontSize (Number): font size (default is (coords.height - opt.borderWidth) / 2 )&lt;/li>
+     *          &lt;li>opacity (Number): opacity of the button. Valid range is [0..1], where 0 is transparent, 1 is opaque (default is 0.9, i.e., semi-opaque)&lt;/li>
+     *          &lt;li>zIndex (String): z-index property of the widget (default is 1)&lt;/li>
+     * @memberof module:WidgetEVO
+     * @instance
+     */
+    WidgetEVO.prototype.setStyle = function (style) {
+        style = normalise_style(style);
+        for(var key in style) {
+            this.base.style(key, style[key]);
+        }
+        if (style.blinking) { this.base.classed("blinking", true); }
+        return this;
+    };
+    /**
+     * @function &lt;a name="invertColors">invertColors&lt;/a>
+     * @description Inverts the colors of the display (as in a negative film).
+     * @memberof module:WidgetEVO
+     * @instance
+     */
+    WidgetEVO.prototype.invertColors = function () {
+        this.base.style("background-color", this.style["font-color"]);
+        this.base.style("color", this.style["background-color"]);
+        return this;
+    };
+
+    /**
+     * @function &lt;a name="select">select&lt;/a>
+     * @description Selects the widget -- useful to highlight the widget programmaticaly.
+     * @param style {Object} Set of valid HTML5 attributes characterising the visual appearance of the widget.
+     * @memberof module:WidgetEVO
+     * @instance
+     */
+    WidgetEVO.prototype.select = function (opt) {
+        opt = normalise_options(opt);
+        opt.opacity = (isNaN(parseFloat(opt.opacity))) ? 0.5 : opt.opacity;
+        this.setStyle(opt);
+        if (opt.overlayColor) { this.overlay.style("background-color", opt.overlayColor); }
+        if (opt.classed) { this.base.classed(opt.classed, true); }
+        var borderColor = opt.borderColor || this.style["border-color"];
+        // the following is for enhancing visibility of the selected areas
+        this.div.style("border", "solid 2px");
+        this.div.style("border-radius", this.style["border-radius"]);
+        this.div.style("border-color", borderColor);
+        return this.reveal();
+    };
+
+    /**
+     * @function &lt;a name="deselect">deselect&lt;/a>
+     * @description Deselects the widget.
+     * @memberof module:WidgetEVO
+     * @instance
+     */
+    WidgetEVO.prototype.deselect = function () {
+        this.div.style("border", "");
+        this.div.style("border-radius", "");
+        this.div.style("border-color", "");
+        this.overlay.style("background-color", this.style["overlay-color"]);
+        this.setStyle(this.style);
+        return this.reveal();
+    };
+
+    /**
+     * @function &lt;a name="getPosition">getPosition&lt;/a>
+     * @description Returns the position of the widget
+     * @return {Object} Coordinates of the widget, in the form { left: x, top: y }, where x and y are real numbers
+     * @memberof module:WidgetEVO
+     * @instance
+     */
+    WidgetEVO.prototype.getPosition = function () {
+        return { left: this.left, top: this.top };
+    };
+
+    /**
+     * @function &lt;a name="getSize">getSize&lt;/a>
+     * @description Returns the size of the widget
+     * @return {Object} Size of the widget, in the form { width: x, height: y }, where x and y are real numbers
+     * @memberof module:WidgetEVO
+     * @instance
+     */
+    WidgetEVO.prototype.getSize = function () {
+        return { width: this.width, height: this.height };
+    };
+
+    /**
+     * @function &lt;a name="normaliseOptions">normaliseOptions&lt;/a>
+     * @description Utility function for normalising options names (e.g., fontsize -> fontSize)
+     * @param opt {Object} Widget options
+     * @return {Object} Normalised options or {} if function argument is null
+     * @memberof module:WidgetEVO
+     * @instance
+     */
+    WidgetEVO.prototype.normaliseOptions = function (opt) {
+        return normalise_options(opt);
+    };
+
+    /**
+     * @function &lt;a name="toHtmlAttributes">toHtmlAttributes&lt;/a>
+     * @description Utility function for translating widget style attributes into standard html5 style attributes (e.g., fontSize -> font-size)
+     * @param opt {Object} Style attributes (e.g., { fontSize: 10 })
+     * @return {Object} HTML5 style attributes or {} if funciton argument is null
+     * @memberof module:WidgetEVO
+     * @instance
+     */
+    WidgetEVO.prototype.toHtmlAttributes = function (opt) {
+        return normalise_style(opt);
+    };
+    module.exports = WidgetEVO;
+});
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-BasicDisplayEVO.html">BasicDisplayEVO</a></li><li><a href="module-ButtonEVO.html">ButtonEVO</a></li><li><a href="module-NumericDisplayEVO.html">NumericDisplayEVO</a></li><li><a href="module-WidgetEVO.html">WidgetEVO</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.6.0-dev</a> on Mon Jan 15 2018 14:35:04 GMT+0000 (WET)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

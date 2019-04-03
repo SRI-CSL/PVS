@@ -1,0 +1,16 @@
+{{#each attributes}}
+{{#if box}}
+    <td style="background-color:white;">
+        <div id="{{table_name}}_{{this}}"
+             style="{{#if width}}width:{{width}}; {{/if}}{{#if border}}border: {{border}} solid; {{/if}}{{#if cursor}}cursor: {{cursor}}; {{/if}}{{#if backgroundColor}}background-color: {{backgroundColor}}{{/if}}">&nbsp;</div>
+    </td>
+{{else}}
+    <td contenteditable="false" style="background-color: {{#if backgroundColor}}{{backgroundColor}}{{else}}white{{/if}}; cursor: default;">{{name}}</td>
+{{/if}}
+{{/each}}
+<td style="background-color:white; width:48px;">
+<span id="Remove{{table_name}}" class="table-remove glyphicon glyphicon-remove"></span>
+</td>
+<td style="background-color:white;">
+<span id="Edit{{table_name}}" class="table-up glyphicon glyphicon-pencil">
+</span></td>

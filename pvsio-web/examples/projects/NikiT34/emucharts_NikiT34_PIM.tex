@@ -1,0 +1,197 @@
+% --------------------------------------------------------------
+%  PIM: emucharts_NikiT34_PIM
+%  Author: <author name>
+%          <affiliation>
+%          <contact>
+% ---------------------------------------------------------------
+
+\begin{zed}
+  State ::= ask_resume | check_syringe | error | info | new_regime | off | post | preloading | ready | set_rate \\
+  Signal ::= tick | tick | tick | tick | tick | click\_down | click\_down | click\_down | click\_info | click\_no | click\_no | click\_on\_off | click\_on\_off | click\_on\_off | click\_up | click\_up | click\_up | click\_yes | click\_yes 
+\end{zed}
+
+\begin{schema}{PIMSystem}
+  currentState : State
+\end{schema}
+
+\begin{schema}{Init}
+  PIMSystem
+\where
+  currentState = off
+\end{schema}
+
+\begin{schema}{Transitioncheck\_syringeask\_resume}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = tick \\
+  currentState = check\_syringe \\
+  currentState' = ask\_resume
+\end{schema}
+
+\begin{schema}{Transitionpostready}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = tick \\
+  currentState = post \\
+  currentState' = ready
+\end{schema}
+
+\begin{schema}{Transitioncheck\_syringenew\_regime}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = tick \\
+  currentState = check\_syringe \\
+  currentState' = new\_regime
+\end{schema}
+
+\begin{schema}{Transitionposterror}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = tick \\
+  currentState = post \\
+  currentState' = error
+\end{schema}
+
+\begin{schema}{Transitionpreloadingcheck\_syringe}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = tick \\
+  currentState = preloading \\
+  currentState' = check\_syringe
+\end{schema}
+
+\begin{schema}{Transitionset\_rateset\_rate}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = click\_down \\
+  currentState = set\_rate \\
+  currentState' = set\_rate
+\end{schema}
+
+\begin{schema}{Transitionset\_rateset\_rate}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = click\_down \\
+  currentState = set\_rate \\
+  currentState' = set\_rate
+\end{schema}
+
+\begin{schema}{Transitionset\_rateset\_rate}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = click\_down \\
+  currentState = set\_rate \\
+  currentState' = set\_rate
+\end{schema}
+
+\begin{schema}{Transitionreadyinfo}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = click\_info \\
+  currentState = ready \\
+  currentState' = info
+\end{schema}
+
+\begin{schema}{Transitionpreloadingready}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = click\_no \\
+  currentState = preloading \\
+  currentState' = ready
+\end{schema}
+
+\begin{schema}{Transitionask\_resumenew\_regime}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = click\_no \\
+  currentState = ask\_resume \\
+  currentState' = new\_regime
+\end{schema}
+
+\begin{schema}{Transitionreadyoff}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = click\_on\_off \\
+  currentState = ready \\
+  currentState' = off
+\end{schema}
+
+\begin{schema}{Transitionerroroff}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = click\_on\_off \\
+  currentState = error \\
+  currentState' = off
+\end{schema}
+
+\begin{schema}{Transitionoffpost}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = click\_on\_off \\
+  currentState = off \\
+  currentState' = post
+\end{schema}
+
+\begin{schema}{Transitionset\_rateset\_rate}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = click\_up \\
+  currentState = set\_rate \\
+  currentState' = set\_rate
+\end{schema}
+
+\begin{schema}{Transitionset\_rateset\_rate}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = click\_up \\
+  currentState = set\_rate \\
+  currentState' = set\_rate
+\end{schema}
+
+\begin{schema}{Transitionset\_rateset\_rate}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = click\_up \\
+  currentState = set\_rate \\
+  currentState' = set\_rate
+\end{schema}
+
+\begin{schema}{Transitionreadypreloading}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = click\_yes \\
+  currentState = ready \\
+  currentState' = preloading
+\end{schema}
+
+\begin{schema}{Transitioninfoready}
+  \Delta PIMSystem\\
+  i? : Signal
+\where
+  i? = click\_yes \\
+  currentState = info \\
+  currentState' = ready
+\end{schema}
+
+% ---------------------------------------------------------------
+%  PIM model generated using PVSio-web PIMPrinter ver 0.1
+%  Tool freely available at http://www.pvsioweb.org
+% ---------------------------------------------------------------

@@ -51,7 +51,7 @@ define(function (require, exports, module) {
             this.fontColor = tmp;
         }
         this.blinking = opt.blinking || false;
-        var elemClass = id + " prevent_selection ";
+        var elemClass = id + " noselect ";
         if (opt.blinking) { elemClass += " blink "; }
         if (opt.touchscreen && opt.touchscreen.classStyle) { elemClass += opt.touchscreen.classStyle; }
         this.div = d3.select(this.parent)
@@ -82,7 +82,7 @@ define(function (require, exports, module) {
             top: (opt.right_display && opt.right_display.top)
                     ? opt.right_display.top : 0,
             left: (opt.right_display && opt.right_display.left)
-                    ? (coords_center.left + coords_center.width) + opt.right_display.left 
+                    ? (coords_center.left + coords_center.width) + opt.right_display.left
                     : (coords_center.left + coords_center.width),
             width: (opt.right_display && opt.right_display.width)
                     ? opt.right_display.width : (this.width - coords_center.width - coords_left.width),
@@ -124,8 +124,8 @@ define(function (require, exports, module) {
                 _this.div.style("background-color", "steelblue").style("color", "white");
             }).on("mouseout", function() {
                 _this.div.style("background-color", _this.backgroundColor).style("color", _this.fontColor);
-            });            
-        }        
+            });
+        }
         return this;
     }
 

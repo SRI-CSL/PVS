@@ -11,13 +11,13 @@
 							<div class="thumbnail">
 								<div class="image">
                                     {{#if this.image}}
-                                    <img src="projects/{{this.name}}/{{this.image}}"
-                                         onclick="document.getElementById('{{this.name}}').click();"/
+                                    <img src="{{../../origin}}projects/{{this.name}}/{{this.image}}"
+                                         onclick="document.getElementById('{{this.name}}').click();"
                                          style="cursor:pointer;">
                                     {{else}}
-                                    <img src="projects/cry.png"
-                                         onclick="document.getElementById('{{this.name}}').click();"/
-                                         style="cursor:pointer; max-height:120px; padding-top:32px;",
+                                    <img src="{{../../origin}}projects/cry.png"
+                                         onclick="document.getElementById('{{this.name}}').click();"
+                                         style="cursor:pointer; max-height:120px; padding-top:32px;"
                                          alt="No Image Available">
                                     No Image Available
                                     {{/if}}
@@ -27,13 +27,13 @@
 									<button type="button" class="btn btn-primary" data-project="{{this.name}}" id="{{this.name}}">Open</button>
 								</div>
 							</div>
-							
+
 						</div>
 						{{/each}}
 					</div>
 				</div>
             </div>
-            <div class="panel-footer"> 
+            <div class="panel-footer">
                 <button type="button" class="btn btn-danger left" id="btnCancel">Cancel</button>
 <!--                <button type="submit" class="btn btn-success right" id="btnOk">OK</button>-->
             </div>

@@ -28,35 +28,19 @@
   ],
   "transitions": [
    {
-    "name": "tick",
-    "id": "T1",
+    "name": "click_DOWN [ display = 0 ] { display := 10 }",
+    "id": "T7",
     "source": {
-     "name": "off",
-     "id": "X1"
+     "name": "on",
+     "id": "X2"
     },
     "target": {
      "name": "on",
      "id": "X2"
     },
     "controlPoint": {
-     "x": 270.3333435058594,
-     "y": 128.3333282470703
-    }
-   },
-   {
-    "name": "turn_off",
-    "id": "T2",
-    "source": {
-     "name": "on",
-     "id": "X2"
-    },
-    "target": {
-     "name": "off",
-     "id": "X1"
-    },
-    "controlPoint": {
-     "x": 273.3333435058594,
-     "y": 193.3333282470703
+     "x": 359.3333435058594,
+     "y": 217.3333282470703
     }
    },
    {
@@ -92,22 +76,6 @@
     }
    },
    {
-    "name": "click_DOWN [ display = 0 ] { display := 10 }",
-    "id": "T7",
-    "source": {
-     "name": "on",
-     "id": "X2"
-    },
-    "target": {
-     "name": "on",
-     "id": "X2"
-    },
-    "controlPoint": {
-     "x": 359.3333435058594,
-     "y": 217.3333282470703
-    }
-   },
-   {
     "name": "click_UP [ display = 10 ] { display := 0 }",
     "id": "T8",
     "source": {
@@ -121,6 +89,38 @@
     "controlPoint": {
      "x": 363.3333435058594,
      "y": 72.33332824707031
+    }
+   },
+   {
+    "name": "tick",
+    "id": "T1",
+    "source": {
+     "name": "off",
+     "id": "X1"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 270.3333435058594,
+     "y": 128.3333282470703
+    }
+   },
+   {
+    "name": "turn_off",
+    "id": "T2",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "off",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 273.3333435058594,
+     "y": 193.3333282470703
     }
    }
   ],

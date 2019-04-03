@@ -210,7 +210,7 @@ define(function (require, exports, module) {
                 if (handle.constructor === Array) {
                     if (typeof handle[0] === 'string')
                         rhs = handle[0].trim().split(' ');
-                    else 
+                    else
                         rhs = handle[0].slice(0);
 
                     for (i=0; her = her || rhs[i] === 'error',i<rhs.length; i++) if (!symbols_[rhs[i]]) {
@@ -364,7 +364,7 @@ define(function (require, exports, module) {
                 for (var i=0,t;t=production.handle[i];++i) {
                     if (!nonterminals[t]) continue;
 
-                    // for Simple LALR algorithm, self.go_ checks if 
+                    // for Simple LALR algorithm, self.go_ checks if
                     if (ctx)
                         q = self.go_(production.symbol, production.handle.slice(0, i));
                     var bool = !ctx || q === parseInt(self.nterms_[t]);
@@ -542,7 +542,7 @@ define(function (require, exports, module) {
         constructor: function Item(production, dot, f, predecessor) {
             this.production = production;
             this.dotPosition = dot || 0;
-            this.follows = f || []; 
+            this.follows = f || [];
             this.predecessor = predecessor;
             this.id = parseInt(production.id+'a'+this.dotPosition, 36);
             this.markedSymbol = this.production.handle[this.dotPosition];
@@ -579,8 +579,8 @@ define(function (require, exports, module) {
             for (var i=a.length-1;i >=0;i--) {
                 this.hash_[a[i].id] = true; //i;
             }
-            this._items.push.apply(this._items, a); 
-            return this; 
+            this._items.push.apply(this._items, a);
+            return this;
         },
         push: function (item) {
             this.hash_[item.id] = true;
@@ -685,7 +685,7 @@ define(function (require, exports, module) {
             if (i === -1 || typeof i === 'undefined') {
                 states.has[gv] = states.size();
                 itemSet.edges[symbol] = states.size(); // store goto transition for table
-                states.push(g); 
+                states.push(g);
                 g.predecessors[symbol] = [stateNum];
             } else {
                 itemSet.edges[symbol] = i; // store goto transition for table
@@ -718,7 +718,7 @@ define(function (require, exports, module) {
                         if (nonterminals[stackSymbol]) {
                             // store state to go to after a reduce
                             //self.trace(k, stackSymbol, 'g'+gotoState);
-                            state[self.symbols_[stackSymbol]] = gotoState; 
+                            state[self.symbols_[stackSymbol]] = gotoState;
                         } else {
                             //self.trace(k, stackSymbol, 's'+gotoState);
                             state[self.symbols_[stackSymbol]] = [s,gotoState];
@@ -731,7 +731,7 @@ define(function (require, exports, module) {
             itemSet.forEach(function (item, j) {
                 if (item.markedSymbol == self.EOF) {
                     // accept
-                    state[self.symbols_[self.EOF]] = [a]; 
+                    state[self.symbols_[self.EOF]] = [a];
                     //self.trace(k, self.EOF, state[self.EOF]);
                 }
             });
@@ -934,7 +934,7 @@ define(function (require, exports, module) {
         p.yy = {};
 
         p.init({
-            table: this.table, 
+            table: this.table,
             productions_: this.productions_,
             symbols_: this.symbols_,
             terminals_: this.terminals_,
@@ -1015,7 +1015,7 @@ define(function (require, exports, module) {
         };
 
         var symbol, preErrorSymbol, state, action, a, r, yyval={},p,len,newState, expected, recovered = false;
-        symbol = lex(); 
+        symbol = lex();
         while (true) {
             // set first input
             state = stack[stack.length-1];
@@ -1050,7 +1050,7 @@ define(function (require, exports, module) {
                     yyleng = this.lexer.yyleng;
                     yytext = this.lexer.yytext;
                     yylineno = this.lexer.yylineno;
-                    symbol = lex(); 
+                    symbol = lex();
                 }
 
                 // try to recover from error
@@ -1078,7 +1078,7 @@ define(function (require, exports, module) {
                 throw new Error('Parse Error: multiple actions possible at state: '+state+', token: '+symbol);
             }
 
-            a = action; 
+            a = action;
 
             switch (a[0]) {
 
@@ -1092,7 +1092,7 @@ define(function (require, exports, module) {
                         yyleng = this.lexer.yyleng;
                         yytext = this.lexer.yytext;
                         yylineno = this.lexer.yylineno;
-                        symbol = lex(); 
+                        symbol = lex();
                         if (recovering > 0)
                             recovering--;
                     } else { // error just occurred, resume old lookahead f/ before error
@@ -1302,7 +1302,7 @@ define(function (require, exports, module) {
         }
     };
 
-    /* 
+    /*
      * Lookahead parser definitions
      *
      * Define base type
@@ -1496,6 +1496,6 @@ define(function (require, exports, module) {
 //        stream.print(source);
 //        stream.close();
 //    };
-    
+
     module.exports = Jison.Parser;
 });

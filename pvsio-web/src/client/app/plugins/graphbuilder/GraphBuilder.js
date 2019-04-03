@@ -3,17 +3,18 @@
  * @author Patrick Oladimeji
  * @date 11/22/13 9:03:14 AM
  */
-/*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50 */
+/*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50, esnext: true */
 /*global define, Promise*/
 define(function (require, exports, module) {
     "use strict";
-    var d3 = require("d3/d3"),
-        PVSioWebClient = require("PVSioWebClient"),
-        PluginManager = require("plugins/PluginManager").getInstance(),
-        ProjectManager = require("project/ProjectManager");
+    const d3 = require("d3/d3");
+    const PVSioWebClient = require("PVSioWebClient");
+    const PluginManager = require("plugins/PluginManager").getInstance();
+    const ProjectManager = require("project/ProjectManager");
+    const normalize = require("util/Normalize").getInstance();
 
-    var instance;
-    var ws,
+    let instance;
+    let ws,
         nodesHash = {},
         edgesHash = {},
         w = 1130,
@@ -25,12 +26,13 @@ define(function (require, exports, module) {
 
     function GraphBuilder() {
         var pvsioWebClient = PVSioWebClient.getInstance();
-
         ws  = pvsioWebClient.getWebSocket();
     }
 
+    var name = "Interaction Log";
+
     GraphBuilder.prototype._init = function () {
-        canvas = PVSioWebClient.getInstance().createCollapsiblePanel({headerText: "State Transitions Logger", owner: this.getName()});
+        canvas = PVSioWebClient.getInstance().createCollapsiblePanel({ headerText: name, owner: this.getId(), showContent: true });
         canvas.classed("graph-container", true);
         var svg = canvas.append("svg").attr("width", w).attr("height", h).append("g")
             .call(d3.behavior.zoom().scaleExtent([0.4, 10]).on("zoom", function () {
@@ -122,7 +124,11 @@ define(function (require, exports, module) {
 
 
     GraphBuilder.prototype.getName = function () {
-        return "Graph Builder";
+        return name;
+    };
+
+    GraphBuilder.prototype.getId = function () {
+        return normalize.removeSpaceDash(name);
     };
 
     GraphBuilder.prototype.reInitialise = function () {

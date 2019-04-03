@@ -37,15 +37,15 @@ define(function (require, exports, module) {
 
     EmuchartsEditorModes.prototype.modeTooltip = function (mode) {
         if (mode === MODE.BROWSE) {
-            return "Use the toolbar to create or edit states and transitions.";
+            return "Use the toolbar to create or edit modes and triggers.";
         } else if (mode === MODE.ADD_TRANSITION) {
-            return "Drag mouse between two states to create a new transition between the states.";
+            return "Drag mouse between two states to create a new trigger between modes.";
         } else if (mode === MODE.ADD_STATE) {
-            return "Click on an empty area of the diagram to create a new state.";
+            return "Click on an empty area of the diagram to create a new mode.";
         } else if (mode === MODE.RENAME) {
-            return "Double click on states and transitions to rename them.";
+            return "Double click on modes and trigger to rename them.";
         } else if (mode === MODE.DELETE) {
-            return "Click on states and transitions to delete them.";
+            return "Click on modes and triggers to delete them.";
         } else { return "Error: unexpected editor mode -- please report a bug."; }
     };
 

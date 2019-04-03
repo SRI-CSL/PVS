@@ -1,0 +1,30 @@
+{{#if template_description}}
+%
+%   Description: This template generates utility functions for entering and exiting modes,
+%                including the execution of actions performed when entering or exiting a mode
+%
+{{/if}}     /**
+     * leave/enter functions
+     */
+    function {{enter}}(m, st) { {{#if entry_actions}}
+        st.{{current_mode.name}} = m;
+        //-- entry actions
+        switch(st->{{current_mode.name}}) { {{#each entry_actions}}
+             case {{state}}:{{#each action_sequence}}
+                st.{{l1_name}}{{#if l2_name}}.{{l2_name}}{{/if}} = {{value}};{{/each}}
+                break;{{/each}}{{#if ../full_coverage}}
+             default: st;{{/if}}
+        }{{else}}
+        st.{{current_mode.name}} = m;
+    }{{/if}}
+    function {{leave}}(m, st) { {{#if exit_actions}}
+        //-- exit actions
+        switch(st.{{previous_mode.name}}) { {{#each exit_actions}}
+            case {{state}}:{{#each action_sequence}}
+                st.{{l1_name}}{{#if l1_name}}.{{l2_name}}{{/if}} = {{value}};{{/each}}
+                break;{{/each}}{{#if ../full_coverage}}
+             default: st;{{/if}}
+        }{{/if}}{{#if previous_mode}}
+        st.{{{previous_mode.name}}} = m;{{else}}
+        //-- nothing to do, previous state is not part of the state variables{{/if}}
+    }

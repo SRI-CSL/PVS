@@ -1,0 +1,624 @@
+{
+ "descriptor": {
+  "file_type": "emdl",
+  "version": "1.3",
+  "description": "emucharts model",
+  "chart_name": "emucharts_FCUDataEntry"
+ },
+ "chart": {
+  "states": [
+   {
+    "name": "ENTERING_DECIMALS",
+    "id": "X2",
+    "x": 896,
+    "y": 318,
+    "width": 36,
+    "height": 36,
+    "color": "#ff7f0e"
+   },
+   {
+    "name": "ENTERING_UNITS",
+    "id": "X1",
+    "x": 265,
+    "y": 208,
+    "width": 36,
+    "height": 36,
+    "color": "#1f77b4"
+   },
+   {
+    "name": "VALIDATION",
+    "id": "X5",
+    "x": 752,
+    "y": 592,
+    "width": 36,
+    "height": 36,
+    "color": "#2ca02c"
+   }
+  ],
+  "transitions": [
+   {
+    "name": "processKey_KEY_0\n[ NOT pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ integerDigits := integerDigits + 1;\n  dispVal := dispval * 10 + 0;\n  display := dispval * 10 + 0;\n  msg := dispmsg(dispval * 10 + 0); }",
+    "id": "T7",
+    "source": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 396,
+     "y": -98
+    }
+   },
+   {
+    "name": "processKey_KEY_0\n[ pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ decimalDigits := decimalDigits + 1; }",
+    "id": "T14",
+    "source": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "target": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 1027,
+     "y": 14
+    }
+   },
+   {
+    "name": "processKey_KEY_1\n[ NOT pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ integerDigits := integerDigits + 1;\n  dispVal := dispval * 10 + 1;\n  display := dispval * 10 + 1;\n  msg := dispmsg(dispval * 10 + 1); }",
+    "id": "T3",
+    "source": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 463,
+     "y": 105
+    }
+   },
+   {
+    "name": "processKey_KEY_1\n[ pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ decimalDigits := decimalDigits + 1;\n  dispVal := dispval + 1 * pow(-1 * (decimalDigits + 1));\n  display := dispval + 1 * pow(-1 * (decimalDigits + 1));\n  msg := dispmsg(dispval + 1 * pow(-1 * (decimalDigits + 1))); }",
+    "id": "T2",
+    "source": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "target": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 1103,
+     "y": 231
+    }
+   },
+   {
+    "name": "processKey_KEY_2\n[ NOT pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ integerDigits := integerDigits + 1;\n  dispVal := dispval * 10 + 2;\n  display := dispval * 10 + 2;\n  msg := dispmsg(dispval * 10 + 2); }",
+    "id": "T6",
+    "source": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 454,
+     "y": 89
+    }
+   },
+   {
+    "name": "processKey_KEY_2\n[ pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ decimalDigits := decimalDigits + 1;\n  dispVal := dispval + 2 * pow(-1 * (decimalDigits + 1));\n  display := dispval + 2 * pow(-1 * (decimalDigits + 1));\n  msg := dispmsg(dispval + 2 * pow(-1 * (decimalDigits + 1))); }",
+    "id": "T13",
+    "source": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "target": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 1095,
+     "y": 210
+    }
+   },
+   {
+    "name": "processKey_KEY_3\n[ NOT pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ integerDigits := integerDigits + 1;\n  dispVal := dispval * 10 + 3;\n  display := dispval * 10 + 3;\n  msg := dispmsg(dispval * 10 + 3); }",
+    "id": "T5",
+    "source": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 448,
+     "y": 71
+    }
+   },
+   {
+    "name": "processKey_KEY_3\n[ pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ decimalDigits := decimalDigits + 1;\n  dispVal := dispval + 3 * pow(-1 * (decimalDigits + 1));\n  display := dispval + 3 * pow(-1 * (decimalDigits + 1));\n  msg := dispmsg(dispval + 3 * pow(-1 * (decimalDigits + 1))); }",
+    "id": "T21",
+    "source": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "target": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 1087,
+     "y": 191
+    }
+   },
+   {
+    "name": "processKey_KEY_4\n[ NOT pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ integerDigits := integerDigits + 1;\n  dispVal := dispval * 10 + 4;\n  display := dispval * 10 + 4;\n  msg := dispmsg(dispval * 10 + 4); }",
+    "id": "T4",
+    "source": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 440,
+     "y": 53
+    }
+   },
+   {
+    "name": "processKey_KEY_4\n[ pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ decimalDigits := decimalDigits + 1;\n  dispVal := dispval + 4 * pow(-1 * (decimalDigits + 1));\n  display := dispval + 4 * pow(-1 * (decimalDigits + 1));\n  msg := dispmsg(dispval + 4 * pow(-1 * (decimalDigits + 1))); }",
+    "id": "T20",
+    "source": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "target": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 1078,
+     "y": 168
+    }
+   },
+   {
+    "name": "processKey_KEY_5\n[ NOT pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ integerDigits := integerDigits + 1;\n  dispVal := dispval * 10 + 5;\n  display := dispval * 10 + 5;\n  msg := dispmsg(dispval * 10 + 5); }",
+    "id": "T12",
+    "source": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 430,
+     "y": 35
+    }
+   },
+   {
+    "name": "processKey_KEY_5\n[ pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ decimalDigits := decimalDigits + 1;\n  dispVal := dispval + 5 * pow(-1 * (decimalDigits + 1));\n  display := dispval + 5 * pow(-1 * (decimalDigits + 1));\n  msg := dispmsg(dispval + 5 * pow(-1 * (decimalDigits + 1))); }",
+    "id": "T19",
+    "source": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "target": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 1069,
+     "y": 146
+    }
+   },
+   {
+    "name": "processKey_KEY_6\n[ NOT pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ integerDigits := integerDigits + 1;\n  dispVal := dispval * 10 + 6;\n  display := dispval * 10 + 6;\n  msg := dispmsg(dispval * 10 + 6); }",
+    "id": "T11",
+    "source": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 422,
+     "y": 15
+    }
+   },
+   {
+    "name": "processKey_KEY_6\n[ pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ decimalDigits := decimalDigits + 1;\n  dispVal := dispval + 6 * pow(-1 * (decimalDigits + 1));\n  display := dispval + 6 * pow(-1 * (decimalDigits + 1));\n  msg := dispmsg(dispval + 6 * pow(-1 * (decimalDigits + 1))); }",
+    "id": "T18",
+    "source": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "target": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 1060,
+     "y": 125
+    }
+   },
+   {
+    "name": "processKey_KEY_7\n[ NOT pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ integerDigits := integerDigits + 1;\n  dispVal := dispval * 10 + 7;\n  display := dispval * 10 + 7;\n  msg := dispmsg(dispval * 10 + 7); }",
+    "id": "T10",
+    "source": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 417,
+     "y": -8
+    }
+   },
+   {
+    "name": "processKey_KEY_7\n[ pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ decimalDigits := decimalDigits + 1;\n  dispVal := dispval + 7 * pow(-1 * (decimalDigits + 1));\n  display := dispval + 7 * pow(-1 * (decimalDigits + 1));\n  msg := dispmsg(dispval + 7 * pow(-1 * (decimalDigits + 1))); }",
+    "id": "T17",
+    "source": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "target": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 1052,
+     "y": 101
+    }
+   },
+   {
+    "name": "processKey_KEY_8\n[ NOT pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ integerDigits := integerDigits + 1;\n  dispVal := dispval * 10 + 8;\n  display := dispval * 10 + 8;\n  msg := dispmsg(dispval * 10 + 8); }",
+    "id": "T9",
+    "source": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 408,
+     "y": -35
+    }
+   },
+   {
+    "name": "processKey_KEY_8\n[ pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ decimalDigits := decimalDigits + 1;\n  dispVal := dispval + 8 * pow(-1 * (decimalDigits + 1));\n  display := dispval + 8 * pow(-1 * (decimalDigits + 1));\n  msg := dispmsg(dispval + 8 * pow(-1 * (decimalDigits + 1))); }",
+    "id": "T16",
+    "source": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "target": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 1045,
+     "y": 74
+    }
+   },
+   {
+    "name": "processKey_KEY_9\n[ NOT pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ integerDigits := integerDigits + 1;\n  dispVal := dispval * 10 + 9;\n  display := dispval * 10 + 9;\n  msg := dispmsg(dispval * 10 + 9); }",
+    "id": "T8",
+    "source": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 401,
+     "y": -66
+    }
+   },
+   {
+    "name": "processKey_KEY_9\n[ pointEntered AND\n  integerDigits < MAX_INTEGER_DIGITS AND \n  decimalDigits < MAX_DECIMAL_DIGITS ]\n{ decimalDigits := decimalDigits + 1;\n  dispVal := dispval + 9 * pow(-1 * (decimalDigits + 1));\n  display := dispval + 9 * pow(-1 * (decimalDigits + 1));\n  msg := dispmsg(dispval + 9 * pow(-1 * (decimalDigits + 1))); }",
+    "id": "T15",
+    "source": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "target": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 1036,
+     "y": 46
+    }
+   },
+   {
+    "name": "processKey_KEY_CLR\n{ dispval := 0;\n  display := \"0\";\n  pointEntered := FALSE;\n  decimalDigits := 0;\n  integerDigits := 0;\n  msg := \"\" }",
+    "id": "T30",
+    "source": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 500.27269613489955,
+     "y": 203.52027505617505
+    }
+   },
+   {
+    "name": "processKey_KEY_CLR\n{ dispval := 0;\n  display := \"0\";\n  pointEntered := FALSE;\n  decimalDigits := 0;\n  integerDigits := 0;\n  msg := \"\" }",
+    "id": "T29",
+    "source": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 386,
+     "y": -132
+    }
+   },
+   {
+    "name": "processKey_KEY_ESC\n{ dispval := programmedValue;\n  display := trim(programmedValue);\n  pointEntered := FALSE;\n  decimalDigits := 0;\n  integerDigits := 0;\n  msg := \"\" }",
+    "id": "T24",
+    "source": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 375,
+     "y": -169
+    }
+   },
+   {
+    "name": "processKey_KEY_ESC\n{ dispval := programmedValue;\n  display := trim(programmedValue);\n  pointEntered := FALSE;\n  decimalDigits := 0;\n  integerDigits := 0;\n  msg := \"\" }",
+    "id": "T32",
+    "source": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 424.8362770550137,
+     "y": 219.60802468494475
+    }
+   },
+   {
+    "name": "processKey_KEY_POINT\n{ pointEntered := true;\n  display := strcat(display,\".\"); }",
+    "id": "T1",
+    "source": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "target": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 708.1460876013579,
+     "y": 310.5681188834471
+    }
+   },
+   {
+    "name": "processKey_OK",
+    "id": "T23",
+    "source": {
+     "name": "ENTERING_DECIMALS",
+     "id": "X2"
+    },
+    "target": {
+     "name": "VALIDATION",
+     "id": "X5"
+    },
+    "controlPoint": {
+     "x": 865.267819523176,
+     "y": 490.453508394117
+    }
+   },
+   {
+    "name": "processKey_OK",
+    "id": "T22",
+    "source": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "target": {
+     "name": "VALIDATION",
+     "id": "X5"
+    },
+    "controlPoint": {
+     "x": 526.0651741253034,
+     "y": 421.80558256249464
+    }
+   },
+   {
+    "name": "tick\n[ (units = hPa AND dispval >= MIN_hPa AND dispval <= MAX_hPa) OR\n    (units = inHg AND dispval >= MIN_inHg AND dispval <= MAX_inHg) ]\n{  programmedValue := dispval; }",
+    "id": "T31",
+    "source": {
+     "name": "VALIDATION",
+     "id": "X5"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 265.39408812231824,
+     "y": 543.253721089477
+    }
+   },
+   {
+    "name": "tick\n[ units = hPa AND dispval < MIN_hPa ]\n{ dispval := MIN_hPa;\n  display := MIN_hPa;\n  programmedValue := MIN_hPa; }",
+    "id": "T28",
+    "source": {
+     "name": "VALIDATION",
+     "id": "X5"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 299.9620908654459,
+     "y": 515.937007936294
+    }
+   },
+   {
+    "name": "tick\n[ units = hPa AND dispval > MAX_hPa ]\n{ dispval := MAX_hPa;\n  display := MAX_hPa;\n  programmedValue := MAX_hPa; }",
+    "id": "T27",
+    "source": {
+     "name": "VALIDATION",
+     "id": "X5"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 316.3324559114024,
+     "y": 501.52200084378615
+    }
+   },
+   {
+    "name": "tick\n[ units = inHg AND dispval < MIN_inHg ]\n{ dispval := MIN_inHg;\n  display := MIN_inHg;\n  programmedValue := MIN_inHg; }",
+    "id": "T25",
+    "source": {
+     "name": "VALIDATION",
+     "id": "X5"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 250.0462918324196,
+     "y": 559.5714418869662
+    }
+   },
+   {
+    "name": "tick\n[ units = inHg AND dispval > MAX_inHg ]\n{ dispval := MAX_inHg;\n  display := MAX_inHg;\n  programmedValue := MAX_inHg; }",
+    "id": "T26",
+    "source": {
+     "name": "VALIDATION",
+     "id": "X5"
+    },
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 283.6304512196219,
+     "y": 528.2234978953405
+    }
+   }
+  ],
+  "initial_transitions": [
+   {
+    "name": "",
+    "id": "IT1",
+    "target": {
+     "name": "ENTERING_UNITS",
+     "id": "X1"
+    }
+   }
+  ],
+  "constants": [],
+  "variables": [
+   {
+    "id": "VAR_decimalDigits:nat(Local)",
+    "name": "decimalDigits",
+    "type": "nat",
+    "value": "0",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_display:string(Local)",
+    "name": "display",
+    "type": "string",
+    "value": "\"\"",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_dispval:double(Local)",
+    "name": "dispval",
+    "type": "double",
+    "value": "0",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_integerDigits:nat(Local)",
+    "name": "integerDigits",
+    "type": "nat",
+    "value": "0",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_msg:string(Local)",
+    "name": "msg",
+    "type": "string",
+    "value": "\"\"",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_pointEntered:bool(Local)",
+    "name": "pointEntered",
+    "type": "bool",
+    "value": "FALSE",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_programmedValue:double(Local)",
+    "name": "programmedValue",
+    "type": "double",
+    "value": "0",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_units:UnitsType(Local)",
+    "name": "units",
+    "type": "UnitsType",
+    "value": "inHg",
+    "scope": "Local"
+   }
+  ],
+  "pmr": {},
+  "isPIM": false
+ }
+}
