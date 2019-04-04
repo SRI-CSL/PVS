@@ -595,10 +595,13 @@ ifneq ("$(YICES1)","")
 ifneq ("$(YICES2)","")
 yices : $(PVSPATH)bin/$(PLATFORM)/yices1 $(PVSPATH)bin/$(PLATFORM)/yices2
 else
-yices :
+yices : $(PVSPATH)bin/$(PLATFORM)/yices1
 endif
 else
-yices :
+ifneq ("$(YICES2)","")
+yices : $(PVSPATH)bin/$(PLATFORM)/yices2
+else
+endif
 endif
 
 # Here are the rules for building the PVS grammar, pvs-methods file, and
