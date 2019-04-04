@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <link href="../../client/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
+        <link href="../../client/app/plugins/graphbuilder/graph.css" rel="stylesheet" type="text/css"/>
+        <link href="../../client/css/style.css" rel="stylesheet" type="text/css"/>
+        <link href="../../client/css/animate.css" rel="stylesheet" type="text/css"/>
+        <link href="../../client/lib/jquery-toggles/css/toggles.css" rel="stylesheet">
+        <link href="../../client/lib/jquery-toggles/css/themes/toggles-modern.css" rel="stylesheet">
+        <link href="../../client/lib/bootstrap/css/bootstrap-slider.css" rel="stylesheet" type="text/css"/>
+
+        <link href="css/MT32.css" rel="stylesheet">
+    </head>
+    <body class="noselect">
+        <div id="content" class="content" style="display:none;">
+            <div class="device" style="transform:translateX(-400px)">
+                <div class="MT32-front"
+                     style="position:absolute; top:0px; left:400px;">
+                     <img src="MT32-front.png"></img>
+                </div>
+                <div id="homeScreen" style="display:block;color:white;">
+                    <div class="screenframe">
+                        <img src="screens/home_screen.png">
+                    </div>
+                    <div id="div_logo" class="logo">
+                        <img src="logo.png">
+                    </div>
+                    <div id="div_clock" class="longbutton center halfpadding">
+                        <span id="div_hour" style="font-size:20px;"></span><br>
+                        <span id="div_date"></span>
+                    </div>
+                    <div id="div_new_exam">
+                        <span style="position:absolute;left:634px;top:305px;">Nuovo esame</span>
+                    </div>
+                    <div id="div_server">
+                        <span style="position:absolute;left:720px;top:398px;">Centrale</span>
+                    </div>
+                    <div id="div_settings">
+                        <span style="position:absolute;left:808px;top:490px;">Impostazioni</span>
+                    </div>
+                    <div>
+                        <span style="position:absolute;left:568px;top:532px;">Modalit&agrave; operativa</span>
+                        <span style="position:absolute;left:568px;top:552px;font-size:30px;">ECG12D - HUB</span>
+                    </div>
+                </div>
+
+                <div id="examsScreen" style="display:none;color:white;font-size:18px;">
+                    <div class="screenframe">
+                        <img src="screens/exams_screen.png">
+                    </div>
+                    <div id="div_ecg12d">
+                        <span style="position:absolute;left:617px;top:308px;">ECG12D</span>
+                    </div>
+                    <div id="div_testelectrodes">
+                        <span style="position:absolute;left:617px;top:488px;">Test elettrodi</span>
+                    </div>
+                </div>
+
+                <div id="centralScreen" style="display:none;color:white;font-size:18px;">
+                    <div class="screenframe">
+                        <img src="screens/central_screen.png">
+                    </div>
+                    <div id="div_download_updates">
+                        <span style="position:absolute;left:644px;top:290px;">Scarica</span>
+                        <span style="position:absolute;left:628px;top:312px;">aggiornam.</span>
+                    </div>
+                    <div id="div_n_results">
+                        <span style="position:absolute;left:840px;top:262px;font-size:24px;">(2)</span>
+                    </div>
+                    <div id="div_upload_results">
+                        <span style="position:absolute;left:804px;top:312px;">Invio risultati</span>
+                    </div>
+                    <div id="div_quit_central">
+                        <span style="position:absolute;left:642px;top:380px;">Termina</span>
+                        <span style="position:absolute;left:636px;top:402px;">modalit&agrave;</span>
+                    </div>
+                </div>
+
+                <div id="settingsScreen" style="display:none;color:white;font-size:18px;">
+                    <div class="screenframe">
+                        <img src="screens/settings_screen.png">
+                    </div>
+                    <div id="div_connection_status">
+                        <span style="position:absolute;left:630px;top:312px;">Connettiv.</span>
+                    </div>
+                    <div id="div_ecg_settings">
+                        <span style="position:absolute;left:815px;top:290px;">Impostaz.</span>
+                        <span style="position:absolute;left:838px;top:312px;">ECG</span>
+                    </div>
+                    <div id="div_security">
+                        <span style="position:absolute;left:632px;top:402px;">Sicurezza</span>
+                    </div>
+                    <div id="div_system">
+                        <span style="position:absolute;left:820px;top:402px;">Sistema</span>
+                    </div>
+                    <div id="div_info">
+                        <span style="position:absolute;left:658px;top:492px;">Info</span>
+                    </div>
+                </div>
+
+                <div id="testScreen" style="display:none;color:white;font-size:18px;">
+                    <div class="screenframe">
+                        <img src="screens/electrodes_screen.png">
+                    </div>
+                    <div id="div_electrodes_status">
+                        <span style="position:absolute;left:558px;top:544px;font-size:24px;">Cavo ECG12D protetto</span>
+                        <span style="position:absolute;left:558px;top:572px;font-size:24px;">correttamente collegato</span>
+                    </div>
+                </div>
+
+
+                <div id="checkPatientScreen" style="display:none;color:white;font-size:18px;">
+                    <div class="screenframe">
+                        <img src="screens/patient_details_screen.png">
+                    </div>
+                    <div style="position:absolute;left:558px;top:165px;height:356px;width:354px;overflow:auto;">
+                        <div style="font-size:24px;color:#77c5e8">Nome</div>Mario
+                        <div style="font-size:24px;color:#77c5e8;padding-top:8px;">Cognome</div>Rossi
+                        <div style="font-size:24px;color:#77c5e8;padding-top:8px;">C.F.</div>RSSMRA30A01A000A
+                        <div style="font-size:24px;color:#77c5e8;padding-top:8px;">Nato il [gg / MM / aaaa] </div>1 / 1 / 1930
+                        <div style="font-size:24px;color:#77c5e8;padding-top:8px;">Sesso </div>M
+                        <div style="font-size:24px;color:#77c5e8;padding-top:8px;">Numero telefonico </div>+39 123 456 789
+                        <div style="font-size:24px;color:#77c5e8;padding-top:8px;">Indirizzo </div>Via Ripafratta 14, 00000, TR
+                    </div>
+                    <div id="div_edit_btn">
+                        <span style="position:absolute;left:656px;top:560px;">Modifica</span>
+                    </div>
+                    <div id="div_new_btn">
+                        <span style="position:absolute;left:752px;top:560px;">Nuova</span>
+                    </div>
+                    <div id="div_confirm_btn">
+                        <span style="position:absolute;left:830px;top:560px;">Conferma</span>
+                    </div>
+                </div>
+
+                <div id="monitoringScreen" style="display:none;color:white;font-size:18px;">
+                    <div class="screenframe">
+                        <img src="screens/run_screen.png">
+                        <div id="div_run_trace" style="position:absolute;margin-top:-500px;margin-left:62px;max-width:340px;overflow:hidden;">
+                            <img src="screens/run_trace.png">
+                        </div>
+                        <div id="div_run_trace_alt" style="position:absolute;margin-top:-500px;margin-left:62px;max-width:340px;overflow:hidden;width:0px;">
+                            <img src="screens/run_trace.png" style="margin-left:-35px;">
+                        </div>
+                    </div>
+                    <div class="tracing">
+                        <div id="div_run_trace_cursor"
+                            style="position:absolute;width:8px;height:100%;background-color:steelblue;opacity:0.6;overflow:hidden;
+                                    border:solid 2px #77c5e8; border-radius:4px;">
+                            <img src="screens/run_grid.png">
+                        </div>
+                    </div>
+                    <div id="div_patient_name" style="position:absolute;left:552px;top:80px;max-width:200px;">
+                        Mario Rossi
+                    </div>
+                    <div id="div_clock" style="position:absolute;left:830px;top:80px;">
+                        <span id="div_hhmmss"></span>
+                    </div>
+                    <div id="div_recording_progress" style="position:absolute;left:508px;top:404px;max-width:48px;">
+                        <!-- 81% -->
+                    </div>
+                    <div id="div_bpm" style="position:absolute;left:536px;top:540px;font-size:30px;">
+                        59
+                    </div>
+                    <div id="div_bpm_label" style="position:absolute;left:536px;top:592px;">
+                        bpm
+                    </div>
+                    <div id="div_sensitivity" style="position:absolute;left:640px;top:540px;font-size:30px;">
+                        20
+                    </div>
+                    <div id="div_sensitivity_label" style="position:absolute;left:628px;top:592px;">
+                        mm/mV
+                    </div>
+                    <div id="div_speed" style="position:absolute;left:742px;top:540px;font-size:30px;">
+                        25
+                    </div>
+                    <div id="div_speed_label" style="position:absolute;left:736px;top:592px;">
+                        mm/s
+                    </div>
+                </div>
+
+                <div id="leftPanel" class="leftpanel" style="display:none;"></div>
+            </div>
+        </div>
+        <div id="div_splash" class="demo-splash" style="display:none;">
+            <div class="loader">
+                <div class="version">MT32 Demo</div>
+                <div class="bar">
+                    Loading
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+            </div>
+        </div>
+        <script type="application/javascript" src="../../client/lib/layout.js"></script>
+        <script type="application/javascript" src="../../client/lib/promise-0.1.1.js"></script>
+        <!-- <script type="application/javascript" src="../../client/lib/speakClient.js"></script> -->
+        <script type="application/javascript" src="../../client/lib/keys.js"></script>
+        <script type="text/javascript" src="../../client/lib/jquery.js"></script>
+        <script type="text/javascript" src="../../client/lib/underscore/underscore.js"></script>
+        <script type="text/javascript" src="../../client/lib/d3/d3.js"></script>
+        <script type="text/javascript" src="../../client/lib/backbone.js"></script>
+        <script type="text/javascript" src="../../client/lib/handlebars-v1.3.0.js"></script>
+        <script type="text/javascript" src="../../client/lib/bootstrap/js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="../../client/lib/jquery-toggles/toggles.min.js"></script>
+        <!-- Recently included files -->
+        <script type="text/javascript" src="../../client/lib/bootstrap/js/bootstrap-slider.js"></script>
+        <script type="text/javascript" src="../../client/require.js" data-main="js/index.js"></script>
+    </body>
+</html>

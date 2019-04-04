@@ -25,7 +25,6 @@ require([
         "widgets/DoubleDisplay",
         "widgets/TripleDisplay",
         "widgets/LED",
-        "widgets/CursoredDisplay",
         "plugins/graphbuilder/GraphBuilder",
         "stateParser",
         "PVSioWebClient",
@@ -36,7 +35,6 @@ require([
               DoubleDisplay,
               TripleDisplay,
               LED,
-              CursoredDisplay,
               GraphBuilder,
               stateParser,
               PVSioWebClient,
@@ -139,8 +137,8 @@ require([
             {
                 parent: "prototype",
                 left_display: {height: 8, width: 118, align: "center"},
-                center_display: {height: 22, width: 74, top: +14, align: "right"},
-                right_display: {height: 12, width: 20, top: +22, left: +74}
+                center_display: {height: 22, width: 74, top: +14, align: "right", left: -4},
+                right_display: {height: 12, width: 20, top: +22, left: +14}
             });
         alaris.middisp_dvtbi = new TripleDisplay("middisp_dvtbi", {top: 168, left: 94, height: 12, width: 118},
             {
@@ -151,8 +149,8 @@ require([
         alaris.middisp_dvol = new TripleDisplay("middisp_dvol", {top: 186, left: 94, height: 12, width: 118},
             {
                 parent: "prototype",
-                left_display: {height: 8, width: 34, align: "left"},
-                center_display: {width: 62, align: "right"}
+                left_display: {height: 8, width: 62, align: "left"},
+                center_display: {width: 34, align: "right"}
             });
         alaris.middisp_dtime = new TripleDisplay("middisp_dtime", {top: 204, left: 94, height: 12, width: 118},
             {
@@ -325,7 +323,7 @@ require([
                 x = (x - min) * 60;
                 var sec = parseInt(x);
                 return hour + "h " + min + "m " + sec + "s";
-            }            
+            }
             if (res.middisp_dtime === "TRUE") {
                 alaris.middisp_dtime.getLeftDisplay().renderGlyphicon("glyphicon-time");
                 alaris.middisp_dtime.renderValue(evaluateTime(res.device.time));

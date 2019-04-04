@@ -1,0 +1,34 @@
+.console_log{
+    text-align: left;
+    height: 120px;
+    overflow: auto;
+    color: lime;
+    background: black;
+    font-size: small;
+    padding-left: 10px;
+    white-space: pre-wrap;
+    margin: 10px 0 10px 0;
+}
+
+.pvsio {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    border: steelblue;
+    border-style: solid;
+}
+
+.dbg {
+    background-color: black;
+    overflow: auto;
+}
+
+body{
+    font-family: 'Andale Mono', AndaleMono, monospace;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+

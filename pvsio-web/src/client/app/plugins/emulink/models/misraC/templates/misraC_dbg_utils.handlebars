@@ -1,0 +1,24 @@
+{{#if template_description}}
+%
+%   Description: This template generates debug functions for printing the state of the system.
+%
+{{/if}}/**
+ * debug functions
+ */
+{{#if is_header_file}}#ifndef _misraC_dbg_utils_
+#define _misraC_dbg_utils_
+#include "{{model_name}}.h"
+{{else}}#include <stdio.h>
+#include "dbg_utils.h"
+{{/if}}
+//- print condition
+void _dbg_print_condition(UC_8* const cond){{#if is_header_file}};{{else}} {
+    printf("Condition: %s/n", cond);
+}{{/if}}
+//- print state //-- FIXME: we need to define function toString for each variable type
+void _dbg_print_state(State* const st){{#if is_header_file}};{{else}} {
+    printf("----------------------------------------\n");{{#each variables}}
+    printf("{{name}}: %s\n", st->{{name}});{{/each}}
+    printf("----------------------------------------\n\n");
+}{{/if}}{{#if is_header_file}}
+#endif{{/if}}

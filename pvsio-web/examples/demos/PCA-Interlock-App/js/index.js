@@ -6,10 +6,16 @@ require.config({
     paths: {
         d3: '../lib/d3',
         stateParser: './util/PVSioStateParser',
+        pvsioweb: "plugins/prototypebuilder",
+        imagemapper: "../lib/imagemapper",
+        text: "../lib/text",
+        lib: "../lib",
+        cm: "../lib/cm",
         NCDevice: 'plugins/networkController/NCDevice',
         NCMonitorCore: 'plugins/networkController/NCMonitorCore'
     }
 });
+
 /**
  * Loading the module PVSioWebClient.
  */
@@ -18,13 +24,13 @@ require([
     'stateParser',
     'NCDevice',
     'NCMonitorCore',
-    "widgets/med/PatientMonitorDisplay",
-    "widgets/med/PumpMonitorDisplay",
+    "widgets/medical/PatientMonitorDisplay",
+    "widgets/medical/PumpMonitorDisplay",
     "widgets/TripleDisplay",
     "widgets/SingleDisplay",
     "widgets/ButtonActionsQueue",
-    "widgets/TouchScreenButton"
-], function (PVSioWebClient, stateParser, NCDevice, NCMonitorCore, PatientMonitorDisplay, PumpMonitorDisplay, TripleDisplay, SingleDisplay, ButtonActionsQueue, TouchScreenButton) {
+    "widgets/TouchscreenButton"
+], function (PVSioWebClient, stateParser, NCDevice, NCMonitorCore, PatientMonitorDisplay, PumpMonitorDisplay, TripleDisplay, SingleDisplay, ButtonActionsQueue, TouchscreenButton) {
 
     var deviceID = "Supervisor";
     var deviceType = "Supervisor";
@@ -572,7 +578,8 @@ require([
                 }).catch(function (err) {
                     console.log(err);
                     d3.select(".error_monitor").style("display", "block");
-
+                    start_tick();
+                    d3.select(".content").style("display", "block");
                 });
             } else {
                 console.log(err);

@@ -1,0 +1,44 @@
+.image-map-layer {
+    z-index: 190;
+
+    rect.corner {
+        fill: transparent;
+        opacity: 0.5;
+        stroke: #0bc95b;
+    }
+
+    .tr {
+        cursor: ne-resize;
+    }
+
+    .tl {
+        cursor: nw-resize;
+    }
+
+    .br {
+        cursor: se-resize;
+    }
+
+    .bl {
+        cursor: sw-resize;
+    }
+
+    g.selected .region {
+        stroke: #ffff00;
+        stroke-width: 2.5px;
+    }
+
+    g.selected.subselected .region {
+        stroke-width: 2.5px;
+    }
+
+    .region {
+        fill: rgba(35, 101, 32, 0.3);
+        stroke: rgba(35, 101, 32, 0.7);
+        cursor: move;
+        &:hover {
+            fill: rgba(#0bc829, 0.5);
+        }
+    }
+
+}

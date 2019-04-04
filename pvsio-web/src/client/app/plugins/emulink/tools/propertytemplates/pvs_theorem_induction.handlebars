@@ -1,0 +1,6 @@
+%-- PVS theorem formulated using structural induction
+{{theorem_name}}: THEOREM
+  FORALL (pre, post: {{state}}):
+    (init?(pre) IMPLIES {{property}}(pre))
+       AND
+    (({{property}}(pre) AND {{#if guard}}{{guard}}(pre, post) AND {{/if}}{{transition_relation}}(pre, post)) IMPLIES {{property}}(post))

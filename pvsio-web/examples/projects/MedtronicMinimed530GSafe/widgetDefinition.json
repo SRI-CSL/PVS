@@ -1,45 +1,46 @@
 {
  "widgetMaps": [
   {
-   "type": "display",
-   "id": "display_711ce43f-fb45-4d2a-9c2e-02b2afa04aed",
-   "displayKey": "display",
-   "cursorName": "c"
-  },
-  {
+   "id": "button_62606785-939b-4f87-99d2-5f4d7179898b",
+   "type": "button",
    "evts": [
     "click"
    ],
-   "id": "button_62606785-939b-4f87-99d2-5f4d7179898b",
-   "type": "button",
-   "recallRate": "250",
+   "recallRate": 250,
    "functionText": "UP",
    "boundFunctions": "click_UP",
    "buttonReadback": "",
    "keyCode": "38",
-   "keyName": "up arrow"
+   "keyName": "up arrow",
+   "visibleWhen": "true"
   },
   {
+   "id": "button_24b88be8-e2db-4268-bfb9-70a10533cbec",
+   "type": "button",
    "evts": [
     "click"
    ],
-   "id": "button_24b88be8-e2db-4268-bfb9-70a10533cbec",
-   "type": "button",
-   "recallRate": "250",
+   "recallRate": 250,
    "functionText": "DOWN",
    "boundFunctions": "click_DOWN",
    "buttonReadback": "",
    "keyCode": "40",
-   "keyName": "down arrow"
+   "keyName": "down arrow",
+   "visibleWhen": "true"
+  },
+  {
+   "type": "numericdisplay",
+   "id": "numericdisplay_91b4335e-a18e-43f1-d054-495ccc55ee49",
+   "displayKey": "display",
+   "cursorName": "",
+   "auditoryFeedback": "disabled",
+   "visibleWhen": "true",
+   "fontsize": "32",
+   "fontColor": "black",
+   "backgroundColor": "transparent"
   }
  ],
  "regionDefs": [
-  {
-   "class": "display_711ce43f-fb45-4d2a-9c2e-02b2afa04aed",
-   "shape": "rect",
-   "coords": "49.921875,25,192.921875,80",
-   "href": null
-  },
   {
    "class": "button_62606785-939b-4f87-99d2-5f4d7179898b",
    "shape": "rect",
@@ -50,6 +51,12 @@
    "class": "button_24b88be8-e2db-4268-bfb9-70a10533cbec",
    "shape": "rect",
    "coords": "203.140625,86,246.140625,127",
+   "href": null
+  },
+  {
+   "class": "numericdisplay_91b4335e-a18e-43f1-d054-495ccc55ee49",
+   "shape": "rect",
+   "coords": "58,36,188,68",
    "href": null
   }
  ]

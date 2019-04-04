@@ -1,0 +1,7 @@
+[
+{ "id": "Prototype Builder", "main": "prototypebuilder/PrototypeBuilder", "autoload": true },
+{ "id": "Storyboard Editor", "main": "pimPrototyper/PIMPrototyper" },
+{ "id": "Emucharts Editor", "main": "emulink/Emulink" },
+{ "id": "Model Editor", "main": "modelEditor/ModelEditor" },
+{ "id": "Interaction Log", "main": "graphbuilder/GraphBuilder" }
+]

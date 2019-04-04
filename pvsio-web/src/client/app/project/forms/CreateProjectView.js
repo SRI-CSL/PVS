@@ -7,22 +7,11 @@
 /*global define, Handlebars, $*/
 define(function (require, exports, module) {
     "use strict";
-    var d3			= require("d3/d3"),
+    var d3 = require("d3/d3"),
         createProjectTemplate = require("text!./templates/createProject.handlebars"),
-        FileSystem      = require("filesystem/FileSystem"),
+        fs = require("filesystem/FileSystem").getInstance(),
         BaseDialog  = require("pvsioweb/forms/BaseDialog"),
-//        MIME        = require("util/MIME"),
-        PVSioWebClient        = require("PVSioWebClient").getInstance();
-
-//    function imageFilter(d) {
-//        var mime = MIME.getInstance();
-//        return !mime.isHiddenFile(d.path) && (d.isDirectory || mime.isImage(d.path));
-//    }
-//
-//    function pvsFilter(d) {
-//        var mime = MIME.getInstance();
-//        return !mime.isHiddenFile(d.path) && (d.isDirectory || mime.isPVS(d.path));
-//    }
+        PVSioWebClient = require("PVSioWebClient").getInstance();
 
     function choose(_title, _encoding) {
         function fileList2Array(fl) {
@@ -31,7 +20,6 @@ define(function (require, exports, module) {
             return ans;
         }
         var el_remote = (_encoding === "base64") ? "#prototypeImage" : "#pvsSpec";
-        var fs = new FileSystem();
         if (PVSioWebClient.serverOnLocalhost()) {
             fs.readFileDialog({
                 encoding: _encoding,

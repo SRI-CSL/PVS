@@ -39,9 +39,9 @@ define(function (require, exports, module) {
             "Ctrl-Space": "autocomplete"
         }
     };
-    
+
     var editor;
-           
+
     /**
      * @par obj is a structure { textArea, size }, where textArea is a DOM object of type textArea,
      *          and size is a structure { width, height } specifying the desired size of the editor

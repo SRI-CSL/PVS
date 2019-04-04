@@ -1,0 +1,10 @@
+{{#if template_description}}
+%
+%   Description: This template generates JavaScript enumerated types:
+%                - var enum_type_name { c1:0, c2:1, ... };
+%
+{{/if}}{{#if comment}}    /**
+     * {{comment}}
+     */{{/if}}{{#each enumtype}}{{#if modes}}
+    var {{type}} = { {{#each modes}}{{this}}: {{@index}}{{#unless @last}}, {{/unless}}{{/each}} };{{/if}}{{#if datatypes}}{{#each datatypes}}
+    var {{name}} = { {{#each constructors}}{{this}}: {{@index}}{{#unless @last}}, {{/unless}}{{/each}} };{{/each}}{{/if}}{{/each}}

@@ -55,6 +55,11 @@ function speak(text, args, cb) {
       return ret;
     }
 
+    if (!document.getElementById("audio")) {
+        var el = document.createElement("div");
+        el.setAttribute("id", "audio");
+        document.body.appendChild(el);
+    }
     document.getElementById("audio").innerHTML=("<audio id=\"player\" src=\"data:audio/x-wav;base64,"+encode64(wav)+"\">");
     if (typeof cb === "function") {
         document.getElementById("player").addEventListener("ended", cb);
@@ -105,4 +110,3 @@ function speak(text, args, cb) {
     speakWorker.postMessage({ text: text, args: args });
   }
 }
-

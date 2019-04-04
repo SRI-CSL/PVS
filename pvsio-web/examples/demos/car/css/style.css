@@ -1,0 +1,84 @@
+.console_log{
+    text-align: left;
+    height: 120px;
+    overflow: auto;
+    color: lime;
+    background: black;
+    font-size: small;
+    padding-left: 10px;
+    white-space: pre-wrap;
+    margin: 10px 0 10px 0;
+}
+
+.pvsio, .sapere {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    border: steelblue;
+    border-style: solid;
+}
+
+.dbg {
+    background-color: black;
+    overflow: auto;
+}
+
+body{
+    font-family: 'Andale Mono', AndaleMono, monospace;
+}
+
+#sapere_controls{
+    margin: 10px 0 10px 0;
+}
+
+#sapere_dbg{
+    margin: 10px 0 10px 0;
+}
+
+
+/* Added CSS */
+div.version {
+    text-align: center;
+}
+
+div.dashboard-container {
+    margin-top: 15%;
+}
+
+/* Current shift styling */
+#current-shift {
+    padding: 1px 7px;
+    border: 2px solid white;
+}
+
+
+div#clock-div, div#env-temp-div {
+    font-size: 20px;
+}
+
+
+/* Control panel stuff */
+div#control-panel-container {
+    background-color: black;
+    color: white;
+    padding: 0;
+}
+
+div#odometer-container {
+    padding: 10px 0;
+}
+
+
+div.dash-top-container {
+    border-bottom: 2px solid white;
+}
+
+div.dash-bottom-container, div.dash-central-container {
+    padding: 20px 0;
+}
+
+/* Global helper classes */
+.font-xl {
+    font-weight: bold;
+    font-size: 25px;
+    color: white;
+}

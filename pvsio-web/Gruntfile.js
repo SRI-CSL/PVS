@@ -7,6 +7,7 @@
 /*global module */
 module.exports = function (grunt) {
     "use strict";
+
     grunt.initConfig({
         pkg: grunt.file.readJSON("package.json"),
         uglify: {
@@ -37,9 +38,53 @@ module.exports = function (grunt) {
             }
         },
         jshint: {
-            all: ["src/client/app/**/*.js", "src/server/**/*.js", '!src/server/lib/**/*.js'],
+            all: ["src/client/app/**/*.js", "src/client/tests/**/*.js", "src/server/**/*.js", "examples/tutorials/**/*.js", "!examples/tutorials/**/styles/**/*.js", "!src/server/lib/**/*.js", "!src/client/tests/lib/**/*.js"],
             options: {
-                jshintrc: ".jshintrc"
+                jshintrc: true // search for .jshintrc files relative to the files being linted
+            }
+        },
+        sass: {
+            options: {
+                sourceMap: true
+            },
+            dist: {
+                files: {
+                    "src/client/css/style.css": "src/client/css/scss/style.scss"
+                }
+            }
+        },
+        postcss: {
+            options: {
+                map: {
+                    inline: false // save sourcemaps as separate files
+                },
+
+                processors: [
+                    require('autoprefixer')({browsers: 'last 4 versions'}), // add vendor prefixes
+                ]
+            },
+            dist: {
+                src: 'src/client/css/style.css'
+            }
+        },
+        watch: {
+            source: {
+                files: ["src/client/css/scss/**/*.scss", "src/client/css/scss/**/*.css"],
+                tasks: ["sass", "postcss"]
+            }
+        },
+        run: {
+            options: {
+                    wait: true
+                },
+                server: {
+                    cmd: "./start.sh"
+                }
+        },
+        concurrent: {
+            dev: ['run:server', 'watch'],
+            options: {
+                logConcurrentOutput: true
             }
         }
     });
@@ -48,6 +93,12 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks("grunt-contrib-requirejs");
     grunt.loadNpmTasks("grunt-contrib-copy");
     grunt.loadNpmTasks("grunt-contrib-jshint");
+    grunt.loadNpmTasks("grunt-contrib-watch");
+    grunt.loadNpmTasks("grunt-concurrent");
+    grunt.loadNpmTasks("grunt-sass");
+    grunt.loadNpmTasks("grunt-run");
+    grunt.loadNpmTasks('grunt-postcss');
     grunt.registerTask("test", ["jshint:all"]);
     grunt.registerTask("default", ["test"]);
+    grunt.registerTask("dev", ["sass", "postcss", "concurrent:dev"]);
 };

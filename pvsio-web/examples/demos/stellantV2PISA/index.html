@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+
+        <link href="../../client/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
+        <link href="../../client/app/plugins/graphbuilder/graph.css" rel="stylesheet" type="text/css"/>
+        <link href="../../client/css/style.css" rel="stylesheet" type="text/css"/>
+        <link href="js/stellant.css" rel="stylesheet" type="text/css"/>
+    </head>
+    <body class="noselect">
+        <!-- IMPORTANT: div content must be the first one from the top, otherwise the coordinates of the buttons are not computed correctly -->
+        <div id="content" class="content" style="display:none;">
+            <map id="prototypeMap" name="prototypeMap"></map>
+            <div style="display:block; z-index:-1; margin-right:-460px;">
+                <img src="background.png"/>
+            </div>
+            <div id="stellant" style="display:block; z-index:0;">
+                <img src="injector.png" usemap="#prototypeMap" id="stellant_device" style="margin-top:260px;"/>
+                <div id="display_saline" style="position: absolute; left: 114px; top: 534px; width: 100px; height: 50px">
+                  <canvas id="vol_saline" width="90" height="32"></canvas>
+                </div>
+                <div id="display_contrast" style="position: absolute; left: 260px; top: 534px; width: 100px; height: 50px">
+                  <canvas id="vol_contrast" width="90" height="32"></canvas>
+                </div>
+                <div id="infusion_contrast_LED" style="position: absolute; left:223px; top:1124px; opacity:0;">
+                  <img src="contrast_LED.png"></img>
+                </div>
+                <div id="infusion_saline_LED" style="position: absolute; left:39px; top:1112px; opacity:0;">
+                  <img src="saline_LED.png"></img>
+                </div>
+            </div>
+            <div>
+                <div id="simulation_control_panel" class="simulation_control_panel">
+                    <div class="sim_panel">
+                        <div style="margin-left:70px;margin-top:50px;width:100px;">Simulation Controls</div>
+                        <div style="position:absolute; left:260px; top:10px; width:200px;">
+                            <button id="plug_syringe_saline" type="button" class="btn btn-primary simcontrol" style="opacity:0.1;">Plug Syringe</button>
+                            <button id="spike_saline_bag" type="button" class="btn btn-primary simcontrol" style="opacity:0.1;">Spike Saline Bag</button>
+                            <!-- <button id="remove_saline_fittings" type="button" class="btn btn-warning" style="width:200px;">Remove Saline Fittings</button> -->
+                        </div>
+                        <div style="position:absolute; left:500px; top:10px; width:200px;">
+                            <button id="plug_syringe_contrast" type="button" class="btn btn-success simcontrol" style="opacity:0.1;">Plug Syringe</button>
+                            <button id="spike_contrast_bag" type="button" class="btn btn-success simcontrol" style="opacity:0.1;">Spike Contrast Bag</button>
+                            <!-- <button id="remove_contrast_fittings" type="button" class="btn btn-warning" style="width:200px;">Remove Contrast Fittings</button> -->
+                        </div>
+                        <div style="position:absolute; left:260px; top:95px; width:420px;">
+                            <button id="connect_infusion_set" type="button" class="btn btn-primary simcontrol-2" style="opacity:0.1;">Connect Infusion Set</button>
+                        </div>
+                        <div style="position: absolute; left:1150px; display:none;">
+                            <button id="restart_simulation" type="button" class="btn btn-danger" style="width:200px;">Restart simulation</button><br><br>
+                        </div>
+                        <div style="position: absolute; left:260px; top:-100px; width: 420px;">
+                            <button id="rotate_injector" type="button" class="btn btn-danger" style="width:440px;">Rotate injector</button><br><br>
+                        </div>
+                    </div>
+                </div>
+                    <div id="stellant_console_screen" style="margin:25px; height: 600px; width: 880px; z-index:1; border:solid 6px; background-color:whitesmoke;">
+                        <div id="security_screen" class="security_screen">
+                            <div style="margin:5px;">
+                                <div style="margin-bottom:20px; margin-top:15px;">
+                                    <span class="glyphicon glyphicon-warning-sign" style="margin-left:5px; display:inline-block;transform:scale(1.6,1.5);"></span>
+                                    <span class="glyphicon glyphicon-warning-sign" style="margin-left:265px; display:inline-block;transform:scale(1.6,1.5);"></span>
+                                </div>
+                                <b>Funzionamento sicuro</b>
+                                <div>Leggere le avvertenze, i messaggi di attenzione e le procedure raccomandate nel manuale d'uso.</div><br>
+                                <b>Aria</b>
+                                <div>Espellere l'aria dalle siringhe e dalla linea del fluido immendiatamente dopo il caricamento.</div><br>
+                                <b>Stravaso</b>
+                                <div>Per ridurre al minimo la possibilita' di stravasi, attenersi alle buone procedure cliniche comunemente accettate.</div><br>
+                                <b>Aspirazione accidentale</b>
+                                <div>Per ridurre al minimo la possibilita' di aspirazione e/or di iniezione accidentale, assicurarsi che il paziente sia scollegato dall'iniettore quando si utilizzano i controlli di avanzamento/arretramento del pistone.</div><br>
+                                <b>Iniettore</b>
+                                <div>Prima di iniettare, verificare le impostazioni dell'iniettore.</div><br>
+                            </div>
+                        </div>
+                        <div id="protocol_screen" class="protocol_screen" style="display:none;">
+                            <div id="labels" class="labels">
+                                <div id="source_label" class="label" style="left:10px;"><b>Sorgente fluido</b><br>ml</div>
+                                <div id="rate_label" class="label" style="left:214px;"><b>Flusso</b><br>ml/s</div>
+                                <div id="vol_label" class="label" style="left:300px;"><b>Volume</b><br>ml</div>
+                                <div id="time_label" class="label" style="left:380px;"><b>Durata</b><br>mm:ss</div>
+                                <div id="date" class="label" style="top:475px; left:20px;"></div>
+                            </div>
+                            <div id="protocol_background" class="labels-background" style="left:700px; top:415px; width:470px; opacity:0.9; background-color:whitesmoke; z-index:0;">
+                                <span class="glyphicon glyphicon-list" style="margin:10px; display:inline-block;transform:scale(1.6,1.5);"></span>
+                            </div>
+                            <div id="steps">
+                                <div class="label" id="step1" style="top:506px; left:850px; width:62px; opacity=0.8;">
+                                    <div class="line1" style="background-color:#7FE817; border:none;"></div>
+                                    <div class="line2" style="background-color:#7FE817; border:none;">A</div>
+                                </div>
+                                <div class="label" id="step2" style="top:545px; left:850px; width:62px; opacity=0.8;">
+                                    <div class="line1" style="background-color:cyan; border:none;"></div>
+                                    <div class="line2" style="background-color:cyan; border:none;">B</div>
+                                </div>
+                                <div class="label" id="step3" style="top:583px; left:850px; width:62px; opacity=0.8;">
+                                    <div class="line1" style="background-color:silver; border:none;"></div>
+                                    <div class="line2" style="background-color:silver; border:none;">?</div>
+                                </div>
+                            </div>
+                            <div id="source_background" class="labels-background" style="left:700px; width:145px;"></div>
+                            <div id="tubes_background" class="step" style="left:700px; width:145px; top:500px; height:430px;"></div>
+                            <div id="labels_background" class="labels-background"></div>
+                            <div id="labels_background_steps" class="step" style="top:500px; height:470px;"></div>
+                            <div id="labels_background_step1" class="step" style="top:500px;"></div>
+                            <div id="labels_background_step2" class="step" style="top:539px;"></div>
+                            <div id="labels_background_step3" class="step" style="top:578px;"></div>
+                            <div id="time_contrast_background" class="time" style="top:505px;"></div>
+                            <div id="time_saline_background" class="time" style="top:544px;"></div>
+                            <div id="date_background" class="step" style="top:935px; left:700px; width:145px; height:35px;"></div>
+                        </div>
+                        <div id="dialogs" style="position:absolute; top:408px; z-index:3;">
+                            <div id="confirm_air_check_dialog" class="small_dialog" style="display:none;">
+                                <div style="margin:15px 5px;">
+                                    <b>Confermare che il controllo aria e' stato eseguito?</b>
+                                </div>
+                            </div>
+                            <div id="insufficient_volume_dialog" class="large_dialog" style="display:none;">
+                                <div style="margin:15px 5px;">
+                                    <b>Volume insufficiente</b>
+                                    <div style="height:350px;">
+                                        <div id="prot_orig"></div>
+                                        <div id="new_prot"></div>
+                                    </div>
+                                    <div>Accettare le modifiche al protocollo?</div>
+                                </div>
+                            </div>
+                            <div id="infusion_complete_dialog" class="small_dialog" style="display:none; background-color:greenyellow;">
+                                <div style="margin:15px 5px;">
+                                    <b>Infusion complete!</b>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="stellant_console_base" style="margin-left:230px; width:468px; height:148px; z-index:1; border:solid; background-color:darkgray;">
+                        <img src="stellant-console-base.jpg" usemap="#prototypeMap" id="stellant_console_base_image"/>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="splash" class="demo-splash">
+            <div class="loader"  style="background-color:black;">
+                <div class="version" style="font-size:40px; margin-left:30%;">Stellant Demo v2.1</div>
+                <div class="bar">Loading<div></div><div></div><div></div><div></div></div>
+            </div>
+        </div>
+		<script type="application/javascript" src="../../client/lib/promise-0.1.1.js"></script>
+		<script type="text/javascript" src="../../client/lib/jquery.js"></script>
+		<script type="text/javascript" src="../../client/lib/underscore/underscore.js"></script>
+		<script type="text/javascript" src="../../client/lib/backbone.js"></script>
+		<script type="text/javascript" src="../../client/lib/handlebars-v1.1.0.js"></script>
+		<script type="text/javascript" src="../../client/lib/bootstrap/js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="../../client/lib/keys.js"></script>
+        <script src="../../client/require.js" data-main="js/index.js"></script>
+
+        <script type="text/javascript" src="js/lib/segment-display.js"></script>
+    </body>
+</html>

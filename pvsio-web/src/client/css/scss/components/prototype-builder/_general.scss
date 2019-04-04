@@ -1,0 +1,16 @@
+.prototype-controls-container a.status,
+#listContainer a.status {
+    padding: 10px;
+    text-decoration: none;
+    color: #555;
+}
+
+.prototype-controls-container {
+    position: relative;
+    height: 50px;
+    min-width: 400px;
+}
+
+label[for=selectPicture] {
+    display: inline;
+}

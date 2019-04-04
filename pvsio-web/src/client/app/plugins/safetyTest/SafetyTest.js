@@ -81,6 +81,15 @@ define(function (require, exports, module) {
         return [PrototypeBuilder.getInstance()];
     };
 
+
+    SafetyTest.prototype.getName = function () {
+        return "Safety Test";
+    };
+
+    SafetyTest.prototype.getId = function () {
+        return "SafetyTest";
+    };
+
     module.exports = {
         getInstance: function () {
             instance = instance || new SafetyTest();

@@ -6,13 +6,14 @@
  * This module provides api access to interact with the filesystem. This includes
  * reading, writing and deleting files, as well as creating and removing directories.
  */
+/*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50, esnext: true */
 define(function (require, exports, module) {
 
     var eventDispatcher       = require("util/eventDispatcher"),
         FileHandler           = require("filesystem/FileHandler");
     var PreferenceStorage     = require("preferences/PreferenceStorage").getInstance(),
         PreferenceKeys        = require("preferences/PreferenceKeys"),
-        RemoteFileBrowser     = require("pvsioweb/RemoteFileBrowser"),
+        RemoteFileBrowser     = require("./RemoteFileBrowser"),
         Logger                = require("util/Logger"),
         openFilesForm         = require("pvsioweb/forms/openFiles"),
         displayQuestion       = require("pvsioweb/forms/displayQuestion"),
@@ -21,8 +22,11 @@ define(function (require, exports, module) {
         Descriptor            = require("project/Descriptor"),
         WSManager             = require("websockets/pvs/WSManager");
 
+    var instance;
+
     function FileSystem() {
         eventDispatcher(this);
+        return this;
     }
 
     /**
@@ -63,7 +67,6 @@ define(function (require, exports, module) {
      *
      */
     FileSystem.prototype.writeFile = function (path, content, opt) {
-        var fs = this;
         return new Promise(function (resolve, reject) {
             if (!path) {
                 reject({
@@ -72,7 +75,7 @@ define(function (require, exports, module) {
                     path: path
                 });
             } else {
-                var token = {
+                let token = {
                     path: path,
                     name: path.split("/").slice(-1).join(""),
                     content: content || "",
@@ -81,13 +84,12 @@ define(function (require, exports, module) {
                 };
                 WSManager.getWebSocket().writeFile(token, function (err, res) {
                     if (err || res.path !== token.path) { return reject(err); }
-                    var notification = "File " + res.path + " correctly written to disk";
+                    let notification = "File " + res.path + " correctly written to disk";
                     if (opt && opt.silentMode) {
                         Logger.log(notification);
                     } else {
                         NotificationManager.show(notification);
-                        var event = {type: "filewritten", path: path};
-                        fs.fire(event);
+                        this.fire({ type: "filewritten", path: path });
                         //pvsFilesListView.selectItem(path);
                     }
                     return resolve(new Descriptor(token.path, token.content, { encoding: token.encoding }));
@@ -238,16 +240,19 @@ define(function (require, exports, module) {
             new RemoteFileBrowser(opt.filter)
                 .open(opt.path, { title: opt.title || "Select files (use shift key to select multiple files)" })
                 .then(function (files) {
-                    var paths = files.map(function (f) {
-                        return f.path;
-                    });
-                    var promises = [];
-                    paths.forEach(function (path) {
-                        promises.push(fs.readFile(path, opt));
-                    });
-                    return Promise.all(promises).then(function (res) {
-                        resolve(res);
-                    });
+                    if (files) {
+                        var paths = files.map(function (f) {
+                            return f.path;
+                        });
+                        var promises = [];
+                        paths.forEach(function (path) {
+                            promises.push(fs.readFile(path, opt));
+                        });
+                        return Promise.all(promises).then(function (res) {
+                            resolve(res);
+                        });
+                    }
+                    Promise.resolve();
                 }).catch(function (err) {
                     reject(err);
                 });
@@ -332,10 +337,9 @@ define(function (require, exports, module) {
 
     /**
      * @function <hr><a name="deleteFile">deleteFile</a>
-     * @description Deletes a file from disk.
+     * @description Deletes a file from a project folder.
      * @param path {!String} The path of the file that shall be deleted.
-     *              The provided file path is used as a relative path from the project folder
-     *              of the PVSio-web installation (i.e., pvsio-web/examples/projects/).
+     *              The provided path must start with the name of the project folder (e.g., "AlarisGP/alaris.pvs").
      * @returns {Promise(String)} A Promise that resolves to the name of the deleted file.
      * @memberof module:FileSystem
      * @instance
@@ -380,22 +384,21 @@ define(function (require, exports, module) {
 
     /**
      * @function <hr><a name="deleteFileDialog">deleteFileDialog</a>
-     * @description Deletes a file from disk. This function is a variant of <a href="#deleteFile">deleteFile</a>
+     * @description Deletes a file from the projects folder. This function is a variant of <a href="#deleteFile">deleteFile</a>
      *              designed to show a confirmation dialog before deleting files.
      * @param path {!String} The path of the file that shall be deleted.
-     *              The provided file path is used as a relative path from the project folder
-     *              of the PVSio-web installation (i.e., pvsio-web/examples/projects/).
+     *              The provided path must start with the name of the project folder (e.g., "AlarisGP/alaris.pvs").
      * @returns {Promise(String)} A Promise that resolves to the name of the deleted file.
      * @memberof module:FileSystem
      * @instance
      *
      */
-    FileSystem.prototype.deleteFileDialog = function (path, content, opt) {
+    FileSystem.prototype.deleteFileDialog = function (path) {
         var fs = this;
         return new Promise(function (resolve, reject) {
             displayQuestion.create({question: "Delete file " + path + "?"})
                 .on("ok", function (e, view) {
-                    fs.deleteFile(path, content, opt).then(function (res) {
+                    fs.deleteFile(path).then(function (res) {
                         resolve(res);
                     }).catch(function (err) { reject(err); });
                     view.remove();
@@ -589,5 +592,12 @@ define(function (require, exports, module) {
         });
     };
 
-    module.exports = FileSystem;
+    module.exports = {
+        getInstance: function () {
+            if (!instance) {
+                instance = new FileSystem();
+            }
+            return instance;
+        }
+    };
 });

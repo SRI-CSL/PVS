@@ -9,7 +9,7 @@ pvsio-web is free software: you can redistribute it and/or modify it under the t
 
 pvsio-web is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+You should have received a copy of the GNU General Public License along with pvsio-web.  If not, see <http://www.gnu.org/licenses/>.
 */
 /**
  * This file creates a connection to a pvsio process run locally or at specified host.
@@ -24,13 +24,13 @@ You should have received a copy of the GNU General Public License along with Foo
  *
  */
 /*jshint undef: true*/
-/*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50, undef: true, node: true*/
+/*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50, undef: true, node: true, esnext:true*/
 /*global __dirname*/
 
 function run() {
     "use strict";
 
-    var pvsio                   = require("./pvsprocess"),
+    let pvsio                   = require("./pvsprocess"),
         path                    = require("path"),
         ws                      = require("ws"),
         http                    = require("http"),
@@ -49,11 +49,12 @@ function run() {
         serverFuncs				= require("./serverFunctions"),
         baseProjectDir          = path.join(__dirname, "../../examples/projects/"),
         baseDemosDir			= path.join(__dirname, "../../examples/demos/"),
+        baseTutorialsDir		= path.join(__dirname, "../../examples/tutorials/"),
         baseExamplesDir         = path.join(__dirname, "../../examples/"),
         clientDir				= path.join(__dirname, "../client");
-    var clientid = 0, WebSocketServer = ws.Server;
-    var fsWatchers = {};
-    var writeFile = serverFuncs.writeFile,
+    let clientid = 0, WebSocketServer = ws.Server;
+    let fsWatchers = {};
+    let writeFile = serverFuncs.writeFile,
         stat = serverFuncs.stat,
         renameFile = serverFuncs.renameFile,
         mkdirRecursive = serverFuncs.mkdirRecursive,
@@ -61,6 +62,7 @@ function run() {
         listProjects = serverFuncs.listProjects,
         getFolderTree = serverFuncs.getFolderTree,
         readFile = serverFuncs.readFile;
+    let socketRegistry = {};
 
     /**
      * Utility function that dispatches responses to websocket clients
@@ -97,10 +99,19 @@ function run() {
                 }
             }
             if (socket && socket.readyState === 1) {
+                // console.log("sending data back to client...");
                 socket.send(JSON.stringify(token));
+                // console.log("data sent!");
             }
         } catch (processCallbackError) {
             console.log("WARNING: processCallbackError " + JSON.stringify(processCallbackError));
+        }
+    }
+
+    function broadcast(token) {
+        let keys = Object.keys(socketRegistry);
+        for(let k in keys) {
+            processCallback(token, socketRegistry[k]);
         }
     }
 
@@ -112,7 +123,7 @@ function run() {
      * @returns {Promise} a promise that is resolved when the settings file has been written.
     */
     function changeProjectSetting(projectName, key, value) {
-        var file = path.join(baseProjectDir, projectName, "/pvsioweb.json"),
+        let file = path.join(baseProjectDir, projectName, "/pvsioweb.json"),
             props = {};
         return new Promise(function (resolve, reject) {
             //if file does not exist, create it. Else read the property file and update just the key value specified
@@ -142,7 +153,9 @@ function run() {
 
     //create logger
     webserver.use("/demos", function (req, res, next) {
-        logger.log('Method: %s,  Url: %s, IP: %s', req.method, req.url, req.connection.remoteAddress);
+	if (req.method !== "GET") {
+        	logger.log('Method: %s,  Url: %s, IP: %s', req.method, req.url, req.connection.remoteAddress);
+	}
         next();
     });
 
@@ -150,47 +163,79 @@ function run() {
     //create the express static server serve contents in the client directory and the demos directory
     webserver.use(express.static(clientDir));
     webserver.use("/demos", express.static(baseDemosDir));
+    webserver.use("/tutorials", express.static(baseTutorialsDir));
     webserver.use("/projects", express.static(baseProjectDir));
     //creating a pathname prefix for client so that demo css and scripts can be loaded from the client dir
     webserver.use("/client", express.static(clientDir));
 
     function typeCheck(file, cb) {
+        console.log("typechecking file " + file + " ...");
         if (process.env.PORT) { // this is for the PVSio-web version installed on the heroku cloud
+            console.log("/app/PVS/proveit -T -l -v " + file);
             procWrapper().exec({
-                command: "/app/pvs6.0/proveit -T -l -v " + file,
+                command: "/app/PVS/proveit -T -l -v " + file,
                 callBack: cb
             });
         } else if (process.env.pvsdir) {
+            console.log(path.join(process.env.pvsdir, "proveit") + " -T -l -v " + file);
             procWrapper().exec({
                 command: path.join(process.env.pvsdir, "proveit") + " -T -l -v " + file,
                 callBack: cb
-            });        
+            });
         } else {
+            console.log("proveit -T -l -v " + file);
             procWrapper().exec({
                 command: "proveit -T -l -v " + file,
                 callBack: cb
             });
         }
     }
-    
+
+    /**
+     * @function java
+     * @desc Executes a java program on the server
+     * @param {Array[String]} options Command options. Includes argv (i.e., command options), basePath, javaOptions
+     * @param {Function} cb Callback function invoked when the command execution completes
+     */
+    function java(javaFile, options, cb) {
+        // console.log(javaFile, options, argv);
+        options = options || {};
+        try {
+            let basePath = (options.basePath && isAbsolute(options.basePath)) ? options.basePath : path.join(baseExamplesDir, options.basePath);
+            let argv = options.argv || [];
+            let javaOptions = options.javaOptions || [];
+            // console.log(javaFile, argv, basePath);
+            let command = "cd " + basePath +
+                            " && " +
+                            "java " + javaOptions.join(" ") + " " + javaFile + " " + argv.join(" ");
+            console.log("Executing command: ", command);
+            procWrapper().exec({
+                command: command,
+                callBack: cb
+            });
+        } catch (execError) {
+            console.error(execError);
+        }
+    }
+
     function startSapereEE(cb) {
-        var cmd = __dirname + "/lib/glassfish4/bin/asadmin restart-domain --force=true";
+        let cmd = __dirname + "/lib/glassfish4/bin/asadmin restart-domain --force=true";
         procWrapper().exec({
             command: cmd,
             callBack: cb
         });
     }
-    
+
     function stopSapereEE(cb) {
-        var cmd = __dirname + "/lib/glassfish4/bin/asadmin stop-domain";
+        let cmd = __dirname + "/lib/glassfish4/bin/asadmin stop-domain";
         procWrapper().exec({
             command: cmd,
             callBack: cb
         });
     }
-    
+
     function startIVY(cb) {
-        var cmd = "cd " + __dirname + "/ext/IVY" +
+        let cmd = "cd " + __dirname + "/ext/IVY" +
                   " && " +
                   "java -Dlog4j.configuration=file:log4j.properties -jar lib/jpf-boot.jar -interactive";
         console.log(cmd);
@@ -205,7 +250,7 @@ function run() {
         });
         delayedCallback();
     }
-    
+
     /**
         Creates a function that updates the path of the parameter object such that it is relative to the
         basePath specified
@@ -238,13 +283,13 @@ function run() {
             fs.readdir(folderPath, function (err, files) {
                 if (!err) {
                     //get stat attributes for all the files using an async call
-                    var promises = files.map(function (f) {
+                    let promises = files.map(function (f) {
                         return new Promise(function (resolve, reject) {
                             fs.stat(path.join(folderPath, f), function (err, res) {
                                 if (err) {
                                     reject(err);
                                 } else {
-                                     var fileStats = {
+                                     let fileStats = {
                                         created: res.birthtime,
                                         modified: res.mtime,
                                         size: res.size,
@@ -258,7 +303,7 @@ function run() {
 
                     Promise.all(promises)
                         .then(function (res) {
-                            var result = res.map(function (d, i) {
+                            let result = res.map(function (d, i) {
                                 return {
                                     name: files[i],
                                     path: path.join(folderPath, files[i]),
@@ -278,7 +323,7 @@ function run() {
     }
 
     function unregisterFolderWatcher(folderPath) {
-        var watcher = fsWatchers[folderPath];
+        let watcher = fsWatchers[folderPath];
         if (watcher) {
             watcher.close();
             delete fsWatchers[folderPath];
@@ -306,19 +351,19 @@ function run() {
                             JSON.stringify(folderPath) + ", socket: " + JSON.stringify(socket) + ")");
             return;
         }
-        var notificationDelay = 200;
+        const notificationDelay = 200;
 
         unregisterFolderWatcher(folderPath);
         if (folderPath.indexOf("pvsbin") > -1) { return; }
 
-        var watch = function (folder) {
+        let watch = function (folder) {
             if (folder.indexOf("pvsbin") > -1) { return; }
 //            logger.debug("watching changes to .. " + folder);
             return fs.watch(folder, {persistent: false}, function (event, name) {
-                var extension = path.extname(name).toLowerCase();
+                let extension = path.extname(name).toLowerCase();
                 if (name && name !== ".DS_Store" && (event === "rename" || event === "change")) {
-                    var fullPath = path.join(folder, name);
-                    var token = {
+                    let fullPath = path.join(folder, name);
+                    let token = {
                         type: "FileSystemUpdate",
                         name: name,
                         path: fullPath,
@@ -368,7 +413,7 @@ function run() {
             fsWatchers[folderPath] = watch(folderPath);
             // watch the sub-directories too
             getFolderTree(folderPath).then(function (data) {
-                var subFolders = data.filter(function (f) {
+                let subFolders = data.filter(function (f) {
                     return f.isDirectory;
                 });
                 // watch all subfolders
@@ -385,7 +430,7 @@ function run() {
 
     function readFolderContent(token, socket) {
         return new Promise(function (resolve, reject) {
-            var res = {
+            let res = {
                 type: "FileSystemUpdate",
                 event: "refresh",
                 name: token.path,
@@ -421,18 +466,18 @@ function run() {
         get function maps for client sockets
     */
     function createClientFunctionMaps() {
-        var initProcessMap = function (socketid) {
+        let initProcessMap = function (socketid) {
             pvsioProcessMap[socketid] = pvsioProcessMap[socketid] || pvsio();
 //            logger.debug(socketid);
         };
-        var map = {
+        const map = {
             "keepAlive": function (token, socket, socketid) {
                 // do nothing
                 // console.log("Receiving keepAlive message...");
             },
             "setMainFile": function (token, socket, socketid) {
                 initProcessMap(socketid);
-                var mainFile = token.path.split("/").slice(1).join("/");
+                let mainFile = token.path.split("/").slice(1).join("/");
                 if (mainFile !== "") {
                     changeProjectSetting(token.projectName, "mainPVSFile", mainFile)
                         .then(function (res) {
@@ -464,7 +509,7 @@ function run() {
                             processCallback(res, socket);
                         });
                 } else {
-                    var res = {
+                    let res = {
                         type: token.type + "_error",
                         id: token.id,
                         socketId: socketid,
@@ -480,7 +525,7 @@ function run() {
             },
             "listProjects": function (token, socket, socketid) {
                 initProcessMap(socketid);
-                var result = {
+                let result = {
                     type: token.type,
                     id: token.id,
                     socketId: socketid,
@@ -498,7 +543,7 @@ function run() {
             },
             "openProject": function (token, socket, socketid) {
                 initProcessMap(socketid);
-                var res = {
+                let res = {
                     id: token.id,
                     type: token.type,
                     socketId: socketid,
@@ -519,7 +564,7 @@ function run() {
             "typeCheck": function (token, socket, socketid) {
                 initProcessMap(socketid);
                 typeCheck(path.join(baseProjectDir, token.path), function (err, stdout, stderr) {
-                    var res = {
+                    let res = {
                         id: token.id,
                         type: token.type,
                         err: err,
@@ -532,25 +577,57 @@ function run() {
                 });
             },
             "sendCommand": function (token, socket, socketid) {
+                // console.log("received command: ", token);
                 initProcessMap(socketid);
                 pvsioProcessMap[socketid].sendCommand(token.data.command, function (data) {
-                    var res = {
+                    // console.log("callback");
+                    if (data) {
+                        processCallback({
+                            id: token.id,
+                            command: token.data.command,
+                            data: [data.pvsioOut],
+                            json: data.jsonOut,
+                            socketId: socketid,
+                            type: "commandResult",
+                            time: token.time,
+                            err: (data.pvsioOut && typeof data.pvsioOut === "string" && data.pvsioOut.indexOf("Expecting an expression") === 0) ?
+                                    { message: data.pvsioOut, failedCommand: token.data.command } : null
+                        }, socket);
+                    }
+                });
+            },
+            "ping": function (token, socket, socketid) {
+                setTimeout(function () {
+                    initProcessMap(socketid);
+                    console.log("..sending pong response..");
+                    let res = {
                         id: token.id,
-                        command: token.data.command,
-                        data: [data],
+                        data: ["<pong>"],
                         socketId: socketid,
-                        type: "commandResult",
-                        time: token.time,
-                        err: (typeof data === "string" && data.indexOf("Expecting an expression") === 0) ?
-                                { message: data, failedCommand: token.data.command } : null
+                        type: "pong",
+                        time: token.time
                     };
                     processCallback(res, socket);
-                });
+                }, 500);
+            },
+            "pong": function (token, socket, socketid) {
+                setTimeout(function () {
+                    initProcessMap(socketid);
+                    console.log("..sending ping response..");
+                    let res = {
+                        id: token.id,
+                        data: ["<ping>"],
+                        socketId: socketid,
+                        type: "ping",
+                        time: token.time
+                    };
+                    processCallback(res, socket);
+                }, 500);
             },
             "startProcess": function (token, socket, socketid) {
                 initProcessMap(socketid);
                 logger.info("Calling start process for client... " + socketid);
-                var root = token.data.projectName ?
+                let root = token.data.projectName ?
                             path.join(baseProjectDir, token.data.projectName)
                             : token.data.demoName ? path.join(baseDemosDir, token.data.demoName) : "";
                 //close the process if it exists and recreate it
@@ -574,7 +651,7 @@ function run() {
             },
             "closeProcess": function (token, socket, socketid) {//closes pvs process
                 initProcessMap(socketid);
-                var res = {
+                let res = {
                     id: token.id,
                     type: token.type,
                     socketId: socketid,
@@ -594,11 +671,18 @@ function run() {
             },
             "readFile": function (token, socket, socketid) {
                 initProcessMap(socketid);
-                var encoding = token.encoding || "utf8";
-                token.path = isAbsolute(token.path) ? token.path : path.join(baseProjectDir, token.path);
+                let encoding = token.encoding || "utf8";
+                if (isAbsolute(token.path)) {
+                    // remove all ../ to avoid writing in arbitrary parts of the file system
+                    token.path = token.path.replace(/\.\./g, "");
+                    token.path = path.join(baseExamplesDir, token.path);
+                } else {
+                    token.path = path.join(baseProjectDir, token.path);
+                }
+                console.log("reading file " + token.path);
                 readFile(token.path, encoding)
                     .then(function (content) {
-                        var res = {
+                        let res = {
                             id: token.id,
                             type: token.type,
                             encoding: encoding,
@@ -610,7 +694,7 @@ function run() {
                         };
                         processCallback(res, socket);
                     }).catch(function (err) {
-                        var tokenErr = {
+                        let tokenErr = {
                             type: token.type + "_error",
                             id: token.id,
                             socketId: socketid,
@@ -628,7 +712,7 @@ function run() {
             },
             "writeFile": function (token, socket, socketid) {
                 initProcessMap(socketid);
-                var res = {
+                let res = {
                     id: token.id,
                     type: token.type,
                     socketId: socketid,
@@ -636,7 +720,14 @@ function run() {
                     name: token.name,
                     path: token.path
                 };
-                token.path = isAbsolute(token.path) ? token.path : path.join(baseProjectDir, token.path);
+                if (isAbsolute(token.path)) {
+                    // remove all ../ to avoid writing in arbitrary parts of the file system
+                    token.path = token.path.replace(/\.\./g, "");
+                    token.path = path.join(baseExamplesDir, token.path);
+                } else {
+                    token.path = path.join(baseProjectDir, token.path);
+                }
+                console.log("writing file " + token.path);
                 writeFile(token.path, token.content, token.encoding, token.opt)
                     .then(function () {
                         processCallback(res, socket);
@@ -653,7 +744,7 @@ function run() {
             "deleteFile": function (token, socket, socketid) {
                 initProcessMap(socketid);
                 token.path = path.join(baseProjectDir, token.path);
-                var res = {
+                let res = {
                     id: token.id,
                     type: token.type,
                     socketId: socketid,
@@ -691,7 +782,7 @@ function run() {
                         time: token.time
                     }, socket);
                 }).catch(function (err) {
-                    var msg = "Error while renaming " + token.oldPath + " into " + token.newPath;
+                    let msg = "Error while renaming " + token.oldPath + " into " + token.newPath;
                     if (err === "ENOTEMPTY") {
                         msg += " (file with same name already exists)";
                     } else { msg += " (" + err + ")"; }
@@ -714,7 +805,7 @@ function run() {
             "fileExists": function (token, socket, socketid) {
                 initProcessMap(socketid);
                 token.path = path.join(baseProjectDir, token.path);
-                var res = {
+                let res = {
                     id: token.id,
                     type: token.type,
                     socketId: socketid,
@@ -729,7 +820,7 @@ function run() {
             },
             "readDirectory": function (token, socket, socketid) {
                 initProcessMap(socketid);
-                var absPath = token.path.indexOf("~") === 0 ? path.join(process.env.HOME, token.path.substr(1))
+                let absPath = token.path.indexOf("~") === 0 ? path.join(process.env.HOME, token.path.substr(1))
                     : isAbsolute(token.path) ? token.path : path.join(baseProjectDir, token.path);
                 console.log("\n>> Reading folder " + absPath);
                 readDirectory(absPath)
@@ -808,7 +899,7 @@ function run() {
                                 mkdirRecursive(token.path, function (err) {
                                     if (!err) {
                                         // and watch its content
-                                        var callBackToken = {
+                                        let callBackToken = {
                                             id: token.id,
                                             type: token.type,
                                             path: token.path,
@@ -864,7 +955,7 @@ function run() {
             },
             "deleteDirectory": function (token, socket, socketid) {
                 initProcessMap(socketid);
-                var res = {
+                let res = {
                     id: token.id,
                     type: token.type,
                     socketId: socketid,
@@ -894,8 +985,8 @@ function run() {
             },
             "renameProject": function (token, socket, socketid) {
                 initProcessMap(socketid);
-                var oldProjectPath = path.join(baseProjectDir, token.oldPath);
-                var newProjectPath = path.join(baseProjectDir, token.newPath);
+                let oldProjectPath = path.join(baseProjectDir, token.oldPath);
+                let newProjectPath = path.join(baseProjectDir, token.newPath);
                 unregisterFolderWatcher(oldProjectPath, socket);
                 renameFile(token.oldPath, token.newPath).then(function (res) {
                     registerFolderWatcher(newProjectPath, socket);
@@ -907,7 +998,7 @@ function run() {
                     }, socket);
                 }).catch(function (err) {
                     registerFolderWatcher(oldProjectPath, socket);
-                    var msg = "Error while renaming " + token.oldPath + " into " + token.newPath;
+                    let msg = "Error while renaming " + token.oldPath + " into " + token.newPath;
                     if (err === "ENOTEMPTY") {
                         msg += " (directory with same name already exists)";
                     } else { msg += " (" + err + ")"; }
@@ -927,9 +1018,66 @@ function run() {
                     }, socket);
                 });
             },
+            "ctrl": function (token, socket, socketid) {
+                console.log(token);
+                initProcessMap(socketid);
+                let res = {
+                    id: token.id,
+                    type: token.type,
+                    time: token.time,
+                    data: token.data
+                };
+                broadcast(res);
+                // try {
+                //     let opts = {
+                //         argv: token.data.argv,
+                //         basePath: token.data.basePath
+                //     };
+                //     java(token.data.javaFile, opts, function (err, stdout, stderr) {
+                //         res.stdout = stdout;
+                //         res.stderr = stderr;
+                //         console.log("java err:" + err);
+                //         console.log("java stderr:" + stderr);
+                //         console.log("java stdout:" + stdout);
+                //         processCallback(res, socket);
+                //     });
+                // } catch (err) {
+                //     res.type = token.type + "_error";
+                //     res.err = err.message;
+                //     processCallback(res, socket);
+                // }
+            },
+            "java": function (token, socket, socketid) {
+                // console.log(token);
+                initProcessMap(socketid);
+                let res = {
+                    id: token.id,
+                    type: token.type,
+                    socketId: socketid,
+                    time: token.time
+                };
+                try {
+                    let opts = {
+                        argv: token.data.argv,
+                        basePath: token.data.basePath
+                    };
+                    java(token.data.javaFile, opts, function (err, stdout, stderr) {
+                        res.stdout = stdout;
+                        res.stderr = stderr;
+                        console.log("java err:" + err);
+                        console.log("java stderr:" + stderr);
+                        console.log("java stdout:" + stdout);
+                        processCallback(res, socket);
+                    });
+                } catch (err) {
+                    res.type = token.type + "_error";
+                    res.err = err.message;
+                    processCallback(res, socket);
+                }
+            },
             "startSapereEE": function (token, socket, socketid) {
                 initProcessMap(socketid);
-                var res = {
+                let res = {
                     id: token.id,
                     type: token.type,
                     socketId: socketid,
@@ -940,15 +1088,15 @@ function run() {
                         res.stdout = stdout;
                         res.stderr = stderr;
                         console.log("glassfish err:" + err);
-                        console.log("glassfish stdout:" + stdout);
                         console.log("glassfish stderr:" + stderr);
+                        console.log("glassfish stdout:" + stdout);
                         processCallback(res, socket);
                     });
                 } catch (err) {
                     if (err.code === 1 && err.killed === false) {
                         // glassfish is already running, it's not an error
                         res.stdout = "PVSio-web Network Controller already started.";
-                    } else {                    
+                    } else {
                         res.type = token.type + "_error";
                         res.err = err.message;
                     }
@@ -957,7 +1105,7 @@ function run() {
             },
             "startIVY": function (token, socket, socketid) {
                 initProcessMap(socketid);
-                var res = {
+                let res = {
                     id: token.id,
                     type: token.type,
                     socketId: socketid,
@@ -968,8 +1116,8 @@ function run() {
                         res.stdout = stdout;
                         res.stderr = stderr;
                         console.log("IVY err:" + err);
-                        console.log("IVY stdout:" + stdout);
                         console.log("IVY stderr:" + stderr);
+                        console.log("IVY stdout:" + stdout);
                         processCallback(res, socket);
                     });
                 } catch (err) {
@@ -980,7 +1128,7 @@ function run() {
             },
             "stopSapereEE": function (token, socket, socketid) {
                 initProcessMap(socketid);
-                var res = {
+                let res = {
                     id: token.id,
                     type: token.type,
                     socketId: socketid,
@@ -1010,34 +1158,62 @@ function run() {
         return map;
     }
 
-    var wsServer = new WebSocketServer({server: httpServer});
+    const wsServer = new WebSocketServer({server: httpServer});
     wsServer.on("connection", function (socket) {
-        var socketid =  clientid++;
-        var functionMaps = createClientFunctionMaps();
+        let socketid =  clientid++;
+        socketRegistry[socketid] = socket;
+        const functionMaps = createClientFunctionMaps();
         logger.info("opening websocket client " + socketid);
         socket.on("message", function (m) {
             try {
-                var token = JSON.parse(m);
-                token.time.server = {received: new Date().getTime()};
-                var f = functionMaps[token.type];
+                let token = JSON.parse(m);
+                token.time = token.time || {};
+                token.time.server = { received: new Date().getTime() };
+                let f = functionMaps[token.type];
                 if (f && typeof f === 'function') {
                     //call the function with token and socket as parameter
-                    f(token, socket, socketid);
+                    try {
+                        f(token, socket, socketid);
+                    } catch (eval_error) {
+                        let cmd = (token && token.data && token.data.command)? token.data.command : JSON.stringify(token);
+                        logger.error("unable to evaluate command " + cmd + " in PVSio (" + eval_error + ")");
+                        let res = {
+                            type: token.type + "_error",
+                            err: eval_error
+                        };
+                        processCallback(res, socket);
+                    }
                 } else {
                     logger.warn("f is something unexpected -- I expected a function but got type " + typeof f);
                 }
             } catch (error) {
                 logger.error(error.message);
-                logger.warn("Unexpected error while processing token " + JSON.stringify(m));
+                logger.error(m);
+                logger.warn("Error while parsing token " + JSON.stringify(m).replace(/\\/g,""));
+                let res = {
+                    type: token.type + "_error",
+                    err: error
+                };
+                processCallback(res, socket);
             }
         });
 
         socket.on("close", function () {
             logger.info("closing websocket client " + socketid);
-            var _p = pvsioProcessMap[socketid];
+            let _p = pvsioProcessMap[socketid];
             if (_p) {
                 _p.close();
             }
+            delete pvsioProcessMap[socketid];
+        });
+
+        socket.on("error", function (err) {
+            logger.info("abrupt websocket close operation from client " + socketid);
+            let _p = pvsioProcessMap[socketid];
+            if (_p) {
+                _p.close();
+            }
+            logger.error(err);
             delete pvsioProcessMap[socketid];
         });
     });
@@ -1054,7 +1230,7 @@ function run() {
     httpServer.listen(port, function () {
         console.log("PVSio-web server ready!");
         console.log("----------------------------------------------");
-        var restart = false;
+        let restart = false;
         if (process.argv) {
             process.argv.forEach(function (val, index, array) {
                 if (val.toLowerCase() === "restart") {

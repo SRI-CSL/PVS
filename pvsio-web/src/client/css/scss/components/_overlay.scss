@@ -1,0 +1,69 @@
+// Dialogs and general overlay styling
+
+.dialog {
+    background: $color-bg-lighter;
+    width: 500px;
+}
+
+.panel.scrollable-dialog {
+    width: 700px;
+}
+
+.scrollable-dialog {
+    .panel-body {
+        max-height: 600px;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .thumbnail {
+        text-align: center;
+    }
+
+    .thumbnail > .image {
+        height: 150px;
+        overflow: hidden;
+    }
+
+    .thumbnail img {
+        max-height: 150px;
+        max-width: 100%;
+        overflow-y: hidden;
+    }
+
+    .caption button {
+        width: 100%;
+    }
+}
+
+.form-center {
+    display: table-cell;
+    vertical-align: middle;
+}
+
+.overlay {
+    display: table;
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    z-index: 2000000;
+
+    .panel {
+        width: 920px;
+    }
+
+    .panel.panelWide {
+        width: 705px;
+    }
+
+    .panel-heading {
+        cursor: move;
+    }
+
+    .panel-footer {
+        @extend %clearfix;
+        width: 100%;
+    }
+}

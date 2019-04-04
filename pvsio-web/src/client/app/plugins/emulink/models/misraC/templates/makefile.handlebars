@@ -1,0 +1,73 @@
+{{#if makefile_descriptor}}{{&makefile_descriptor}}
+{{/if}}NAME = main.exe
+CC = gcc
+CFLAGS = -Wall -O2 -Werror -Wmissing-noreturn -Wpacked -Wunreachable-code
+LDFLAGS= -lm
+DEBUG = -Wall -O2 -Werror -Wmissing-noreturn -Wpacked -Wunreachable-code -D DEBUG
+HEAD = {{filename}}.h
+SOURCES = {{filename}}.c main.c
+OBJ = $(SOURCES:.c=.o)
+DEBUGFILES = main.dSYM
+
+.PHONY : clean help install uninstall
+
+%.o: %.c $(HEAD)
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+build: $(NAME)
+
+debug:$(OBJ)
+	@$(CC) $(DEBUG) -g $(SOURCES) -o $(NAME) $(LDFLAGS)
+	-@rm -r main.o
+	@echo " "
+	@echo "\033[1m$(OBJ)\033[0m compiled successfully in debug mode"
+	@echo "You can execute ./main.exe for testing the generated code."
+
+$(NAME): $(OBJ)
+	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	-@rm -r main.o
+	@echo " "
+	@echo "\033[1m$(OBJ)\033[0m compiled successfully!"
+	@echo "You can execute ./main.exe for testing the generated code."
+
+install:
+	-@cp ./$(OBJ) /usr/bin
+	@echo $(OBJ) "installed in /usr/bin"
+
+uninstall:
+	-@rm /usr/bin/$(OBJ)
+	@echo $(OBJ) "uninstalled from /usr/bin"
+
+clean:
+	-@rm -f -r ./*.o $(NAME) $(DEBUGFILES)
+	@echo $(OBJ) "removed successfully!"
+
+android:
+	@sed -i-e 's/st->//' Android_{{filename}}.c
+	@sed -i-e 's/st->//' Android_{{filename}}.h
+	@sed -i-e 's/JNICALL /JNICALL $(PROJECT)/' Android_{{filename}}.c
+	@sed -i-e 's/JNICALL /JNICALL $(PROJECT)/' Android_{{filename}}.h
+	@sed rm Android_{{filename}}.c-e
+	@sed rm Android_{{filename}}.h-e
+	@echo "Edited 'Android_{{filename}}.c' and 'Android_{{filename}}.h' in order to use them with NDK."
+
+help:
+	@echo
+	@echo "Makefile"
+	@echo
+	@echo "make/make build  : build all"
+	@echo "debug 			: enable and compile in debug mode"
+	@echo "install          : install tool in the system. Root permission required"
+	@echo "uninstall        : remove tool from system. Root permission required"
+	@echo "clean            : remove all .o files and executable file"
+	@echo "NAME=yourname    : change program name, default is: 'main' "
+	@echo "android		    : edit Android files for an utilization with NDK"
+	@echo "PROJECT=your_android_project_path_and_activity"
+	@echo
+	@echo  "-------------------------------------------------------------"
+	@echo  "  Makefile generated using PVSio-web MisraCPrinter ver {{version}}"
+	@echo  "  Tool freely available at http:##www.pvsioweb.org"
+	@echo  "-------------------------------------------------------------"
+	@echo
+
+{{&makefile_disclaimer}}

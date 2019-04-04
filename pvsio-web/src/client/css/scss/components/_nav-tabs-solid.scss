@@ -1,0 +1,33 @@
+// Extension to Bootstrap's `nav-tabs` that gives the selected tab a solid background and arrow indicator
+
+.nav-tabs-solid {
+    li {
+        &.active {
+            a,
+            a:hover,
+            a:focus,
+            a:active {
+                color: $color-fg-light;
+                background-color: $color-primary;
+                border: none;
+            }
+
+            &:after {
+                $arrow-size: 6px;
+
+                content: "";
+                display: block;
+                position: absolute;
+                bottom: 0;
+                left: 50%;
+                margin-left: -$arrow-size;
+                border: $arrow-size solid transparent;
+                border-bottom-color: $color-fg-light;
+            }
+        }
+
+        a {
+            color: $color-fg-inactive;
+        }
+    }
+}

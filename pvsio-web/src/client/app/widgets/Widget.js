@@ -59,6 +59,15 @@ define(function (require, exports, module) {
         }
     };
     /**
+     * Removes the widget from the interface
+     * @memberof Widget
+     */
+    Widget.prototype.updateStyle = function (data) {
+        // this function is overloaded by widgets supporting style attributes, e.g., displays
+        // for widgets without style (e.g. buttons), the function does nothing
+        return this;
+    };
+    /**
         Gets the <g> or group layer on which this widget is drawn
         @memberof Widget
      */
@@ -78,14 +87,18 @@ define(function (require, exports, module) {
     /**
         Creats and image map area for this widget using its position for the coords of the area.
         Adds the created area to the widget's imageMap property.
+        @param {(Element|String)} opt.map Element to use as the image map
         @returns {object} the area element created
         @memberof Widget
      */
-    Widget.prototype.createImageMap = function () {
+    Widget.prototype.createImageMap = function (opt) {
+        opt = opt || {};
+        opt.map = opt.map || d3.select("map#prototypeMap");
         var coords = getCoords(this.element());
         var widget = this, href = this.type() === "button" ? "#!" : null;
-        var area = d3.select("map#prototypeMap").append("area");
+        var area = opt.map.append("area");
         area.attr("class", this.id())
+            .attr("id", this.id())
             .attr("shape", "rect")
             .attr("coords", coords)
             .attr("href", href);
@@ -102,7 +115,7 @@ define(function (require, exports, module) {
     Widget.prototype.updateWithProperties = function (props) {
         var w = this;
         _.each(props, function (val, key) {
-            if (w[key]) {
+            if (typeof w[key] === "function") {
                 w[key](val);
             }
         });
@@ -115,7 +128,10 @@ define(function (require, exports, module) {
         @memberof Widget
     */
     Widget.prototype.updateLocationAndSize = function (pos) {
-        this.imageMap().attr("coords", [pos.x, pos.y, pos.x + pos.width, pos.y + pos.height].join(","));
+        if (this.needsImageMap()) {
+            this.createImageMap();
+        }
+        return this.imageMap().attr("coords", [pos.x, pos.y, pos.x + pos.width, pos.y + pos.height].join(","));
     };
 
     module.exports = Widget;

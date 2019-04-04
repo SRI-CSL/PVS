@@ -43,7 +43,7 @@ define(function (require, exports, module) {
             return this;
         };
         that.fire = fire;
-        
+
         var on = function (type, method, parameters) {
             // Register an event. Make a handler record. Put it  in a handler
             // array, making one if it doesn't yet exist for this type.
@@ -53,12 +53,12 @@ define(function (require, exports, module) {
             } else {
                 registry[type] = [ handler ];
             }
-            
+
             return this;
         };
-        
+
         that.addListener = on;
-        
+
         var removeListener = function (type, method) {
             var array, i, handler;
             if (registry.hasOwnProperty(type)) {
@@ -74,13 +74,13 @@ define(function (require, exports, module) {
             return this;
         };
         that.removeListener = removeListener;
-        
+
         var clearListeners = function () {
             registry = {};
             return this;
         };
         that.clearListeners = clearListeners;
-        
+
         return that;
     };
 });

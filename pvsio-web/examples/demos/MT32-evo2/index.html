@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <link href="../../client/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
+        <link href="../../client/app/plugins/graphbuilder/graph.css" rel="stylesheet" type="text/css"/>
+        <link href="../../client/css/style.css" rel="stylesheet" type="text/css"/>
+        <link href="../../client/css/animate.css" rel="stylesheet" type="text/css"/>
+        <link href="../../client/lib/jquery-toggles/css/toggles.css" rel="stylesheet">
+        <link href="../../client/lib/jquery-toggles/css/themes/toggles-modern.css" rel="stylesheet">
+        <link href="../../client/lib/bootstrap/css/bootstrap-slider.css" rel="stylesheet" type="text/css"/>
+
+        <link href="css/MT32.css" rel="stylesheet">
+        <link href="css/font-awesome.min.css" rel="stylesheet">
+    </head>
+    <body class="noselect" style="background:#dedfdd";>
+    <!-- overflow:hidden;"  -->
+        <div id="content" class="content" style="display:none;top:74px;">
+
+            <div id="CT64" class="central" style="display:block">
+                <div class="CT64-front"
+                     style="position:absolute; top:100px; left:1000px;">
+                     <img src="CT64_front.png"></img>
+                </div>
+                <!-- enable this to see the navbar -->
+                <div class="browser-navbar" id="browser-navbar" style="position:absolute; top:54px; left:1000px; display:none;">
+                     <img src="browser-navbar.png"></img>
+                     <div id="browser-input" style="position:absolute;margin-top:-26px; margin-left:89px;font-size:14pt;z-index:1;">
+                         <input id="ct64_address" value="" class="form-control" type="text" name="user-email" style="height:22px;width:1290px;padding-top:0;padding-bottom:0">
+                     </div>
+                </div>
+                <!--  -->
+                <div id="CT64-screens" style="-moz-transform:scale(1,1);">
+                    <div id="ct64AccessHomePage" style="display:none;">
+                        <div class="CT64frame" id="ct64LoginScreen">
+                            <div id="forms" style="position:absolute;margin-top:205px; margin-left:379px;font-size:14pt;z-index:1;">
+                                <input id="email" value="" class="form-control" type="text" name="user-email" style="height:36px;width:600px;">
+                                <input id="password" value="" class="form-control" type="password" name="user-pwd" style="height:36px;width:600px;margin-top:41px;">
+                            </div>
+                            <img class="CT64screen" src="screens/ct64/01 - CT64 Autenticazione.jpg">
+                        </div>
+                        <div class="CT64frame" id="ct64google" style="display:block;">
+                            <img src="google.png" style="margin-top:165px; margin-left:320px;">
+                        </div>
+                        <!-- <div class="CT64frame" id="ct64homePage" style="display:none;">
+                            <img class="CT64screen" src="screens/ct64/02 - CT64 Pazienti-EMPTY.jpg">
+                        </div> -->
+                    </div>
+
+                    <div id="ct64-navigation-bar" class="CT64frame">
+                    </div>
+
+                    <div id="PATIENT_SCREENS" class="CT64frame scrollable" style="display:none;">
+                        <div id="patientMenu" class="CT64Menu" style="display:none;"></div>
+                        <div class="CT64frame_inner" id="patientsScreen" style="display:none;">
+                            <img class="CT64screen" src="screens/ct64/02 - CT64 Pazienti.jpg">
+                            <div style="position:absolute;top:-124px;left:-1022px;">
+                                <div class="ptData" id="pt-name" style="position:absolute; top:412px; left:1043px; font-size:15px; color:gray;">
+                                    <span>Maria</span>
+                                </div>
+                                <div class="ptData" id="pt-surname" style="position:absolute; top:412px; left:1130px; font-size:15px; color:gray;">
+                                    <span>Bianchi</span>
+                                </div>
+                                <div class="ptData" id="pt-id" style="position:absolute; top:412px; left:1256px; font-size:15px; color:gray;">
+                                    <span>BNCMRA71P52H612T</span>
+                                </div>
+                                <div class="ptData" id="pt-dob" style="position:absolute; top:412px; left:1460px; font-size:15px; color:gray;">
+                                    <span>12/09/1971</span>
+                                </div>
+                                <div class="ptData" id="pt-sex" style="position:absolute; top:412px; left:1612px; font-size:15px; color:gray;">
+                                    <span>F</span>
+                                </div>
+                                <div class="ptData" id="pt-mobile" style="position:absolute; top:412px; left:1686px; font-size:15px; color:gray; white-space:nowrap">
+                                    <span>0464 456789</span>
+                                </div>
+                                <div class="ptData" id="pt-email" style="position:absolute; top:412px; left:1814px; font-size:15px; color:gray;">
+                                    <span>maria.bianchi@dominio.it</span>
+                                </div>
+                                <div class="ptData" id="doc-surname" style="position:absolute; top:412px; left:2043px; font-size:15px; color:gray;">
+                                    <span>Rossi</span>
+                                </div>
+                                <div class="ptData" id="doc-name" style="position:absolute; top:412px; left:2224px; font-size:15px; color:gray;">
+                                    <span>Mario</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="CT64frame_inner" id="patientMGMScreen" style="display:none;">
+                            <img class="CT64screen" src="screens/ct64/05 - CT64 Gestione paziente.jpg">
+                        </div>
+                        <div class="CT64frame_inner" id="inserimentoAnamnesiScreen" style="display:none;">
+                            <img class="CT64screen" src="screens/ct64/NEW-Inserimento anamnesi.jpg" style="margin-top:66px">
+                            <input class="form-control today" type="text" style="position:absolute;top:204px;;left:264px;width:1043px;" disabled value="12/01/2018">
+                            <input class="form-control" id="peso" type="text" style="position:absolute;top:256px;;left:264px;width:1043px;">
+                            <input class="form-control" id="altezza" type="text" style="position:absolute;top:307px;;left:264px;width:1043px;">
+                            <input class="form-control" id="pressione_max" type="text" style="position:absolute;top:358px;;left:264px;width:1043px;">
+                            <input class="form-control" id="pressione_min" type="text" style="position:absolute;top:415px;;left:264px;width:1043px;">
+                            <input id="fumatore" type="checkbox" style="position:absolute;top:716px;;left:264px;">
+                        </div>
+                        <div class="CT64frame_inner" id="medicalReportScreen" style="display:none;">
+                            <img class="CT64screen" src="screens/ct64/20 - CT64 Consultazione anamnesi (NON DEFINITIVO).jpg" style="margin-top:68px">
+                        </div>
+                        <div class="CT64frame_inner" id="archiveMedicalReportsScreen" style="display:none;">
+                            <img class="CT64screen" src="screens/ct64/19 - CT64 Archivio anamnesi (NON DEFINITIVO).jpg" style="margin-top:-37px">
+                        </div>
+                        <div class="CT64frame_inner" id="paziente-esami" style="display:none;">
+                            <img class="CT64screen" src="screens/ct64/paziente-esami.jpg" style="margin-top:-37px">
+                        </div>
+                        <div class="CT64frame_inner" id="createNewPatientScreen" style="display:none;">
+                            <!-- <img class="CT64screen" src="screens/ct64/21 - Account utente.jpg" style="margin-top:-37px"> -->
+                            <img class="CT64screen" src="screens/ct64/Scheda nuovo paziente.jpg" style="margin-top:-37px">
+                        </div>
+                        <div class="CT64frame_inner" id="uploadExamsScreen" style="display:none;">
+                            <!-- <input type="file"> -->
+                            <img class="CT64screen" src="screens/ct64/22 - Invio esami.jpg" style="margin-top:-37px">
+                            <div id="ct64-file-browser" style="position:absolute;">
+                                <img id="dir-53a" src="screens/ct64/file_browser.png" style="margin-left:300px;margin-top:-435px;z-index:3;border-radius:8px;border:1px solid steelblue;">
+                                <img id="file-53a" src="screens/ct64/file_browser-1.png" style="margin-left:300px;margin-top:-435px;z-index:3;border-radius:8px;border:1px solid steelblue;display:none;">
+                                <div style="position:absolute;left:896px;top:97px;">Cancella</div>
+                                <div style="position:absolute;left:1000px;top:97px;">Apri</div>
+                            </div>
+                            <div id="uploading" style="display:none;position:absolute;top:234px;">
+                                <span style="margin-left:30px;">4f6f3a59-5b9e-1599-f841-abc1700000001.ecgexam</span>
+                                <div class="progress" style="position:absolute; width:1300px; margin-left:30px;">
+                                    <div id="upload-progress-bar" class="progress-bar progress-bar-success progress-bar-striped" role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" style="width:100%">100%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="CT64frame" id="ct64-monitoringScreen" style="display:none;">
+                        <img class="CT64screen" src="screens/ct64/04 - CT64 Monitoraggi.jpg" style="margin-top:-37px">
+                        <div id="results_line1" style="position:absolute; top:234px; left:21px; font-size:15px; color:black;">
+                            <span id="results_line1-start" style="position:absolute;white-space:nowrap;">21/11/2017 14:41:23</span>
+                            <span id="results_line1-stop" style="position:absolute;left:248px;white-space:nowrap;">21/11/2017 14:42:42</span>
+                            <span id="results_line1-type" style="position:absolute;left:495px;">Holter</span>
+                            <span style="position:absolute;left:612px;">Maria</span>
+                            <span style="position:absolute;left:812px;">Bianchi</span>
+                            <span style="position:absolute;left:1062px;">BNCMRA71P52H612T</span>
+                        </div>
+                        <div id="results_line2" style="position:absolute; top:266px; left:21px; font-size:15px; color:black;">
+                            <span id="results_line2-date-start" style="position:absolute;white-space:nowrap;">21/11/2017 12:54:29</span>
+                            <span id="results_line2-date-stop" style="position:absolute;left:248px;white-space:nowrap;">21/11/2017 12:56:19</span>
+                            <span id="results_line2-type" style="position:absolute;left:495px;">ECG12D</span>
+                            <span style="position:absolute;left:612px;">Maria</span>
+                            <span style="position:absolute;left:812px;">Bianchi</span>
+                            <span style="position:absolute;left:1062px;">BNCMRA71P52H612T</span>
+                        </div>
+                    </div>
+                    <div class="CT64frame" id="newMonitoringSessionScreen" style="display:none;">
+                        <img id="selectDevice" class="CT64screen" src="screens/ct64/07 - CT64 Selezione dispositivo.jpg">
+                        <div id="deviceDataNotAvailable" class="overlay" style="position:absolute;top:433px;left:65px;width:1227px;height:30px;background-color:white;text-align:center;font-weight:bold;padding-top:6px;">
+                            nessun risultato trovato.
+                        </div>
+                    </div>
+                    <div class="CT64frame" id="waitingResultsScreen" style="display:none;">
+                        <img class="CT64screen" src="screens/ct64/06 - CT64 Attesa collegamento dispositivo.jpg">
+                    </div>
+                    <div class="CT64frame" id="holterConfigScreen" style="display:none;">
+                        <img class="CT64screen" src="screens/ct64/16 - CT64 Holter - Configurazione.jpg" style="margin-top:-37px">
+                    </div>
+
+                    <div class="CT64frame" id="newMonSessionScreen" style="display:none;">
+                        <div id="the_visit" style="position:absolute; margin-top:223px; margin-left:282px; font-size:14pt; z-index:1; display:none;">
+                            Ecg12D Senza Anagrafica
+                        </div>
+                        <div id="yes_no" style="position:absolute; margin-top:280px; margin-left:1135px; z-index:1;">
+                            <button type="button" class="btn">Annulla</button>
+                            <button type="button" class="btn btn-info">Continua</button>
+                        </div>
+                        <div id="visits_menu" style="position:absolute; margin-top:256px; margin-left:275px; font-size:14pt; z-index:1; width:1020px; display:none;">
+                            <ul id="selectVisitMenu" class="list-group">
+                              <li class="list-group-item">Ecg12D Con Anagrafica</li>
+                              <li class="list-group-item">Ecg12D Senza Anagrafica</li>
+                              <li class="list-group-item">Holter</li>
+                              <li class="list-group-item">TeleHolter</li>
+                            </ul>
+                        </div>
+                        <img class="CT64screen" src="screens/ct64/23 - Nuova sessione di monitoraggio.jpg" style="margin-top:-1px">
+                    </div>
+
+
+                    <div id="MONITORING_SCREENS" class="CT64frame scrollable">
+                        <div id="ecgMonitoringMenu" class="CT64Menu" style="display:none;"></div>
+                        <div class="CT64frame_inner" id="compileReportScreen" style="display:none;">
+                            <img class="CT64screen" src="screens/ct64/14 - CT64 Specialista - Stesura referto.jpg" style="margin-top:47px">
+                            <div style="position:absolute;padding-left:226px;top:390px;left:50px;">
+                                <textarea id="diagnosis" class="form-control" type="text" name="diagnosis" rows="20" style="margin: 0px; width: 1012px; height: 240px;"></textarea>
+                            </div>
+                            <div style="position:absolute;padding-left:226px;top:649px;left:50px;">
+                                <textarea id="therapy" class="form-control" type="text" name="diagnosis" rows="20" style="margin: 0px; width: 1012px; height: 240px;"></textarea>
+                            </div>
+                            <div style="position:absolute;padding-left:226px;top:905px;left:50px;">
+                                <textarea id="recommended_exams" class="form-control" type="text" name="diagnosis" rows="20" style="margin: 0px; width: 1012px; height: 240px;"></textarea>
+                            </div>
+                        </div>
+                        <div class="CT64frame_inner" id="viewReportScreen" style="display:none;">
+                            <img class="CT64screen" src="screens/ct64/CT64 Referto.jpg" style="margin-top:-36px">
+                        </div>
+                        <div class="CT64frame_inner" id="ecgAnalysisResultsScreen" style="display:none;">
+                            <!-- <img class="CT64screen" src="screens/ct64/09 - CT64 ECG12D - Analisi monitoraggio.jpg" style="margin-top:135px"> -->
+                            <img id="ct64-ecg" class="CT64screen" src="screens/ct64/CT64 ECG.jpg" style="margin-top:135px">
+                            <img id="ct64-ecg-0" class="CT64screen" src="screens/ct64/CT64 Tool misura - 0 click mouse.jpg" style="margin-top:135px;display:none;">
+                            <img id="ct64-ecg-0-1" class="CT64screen" src="screens/ct64/CT64 Tool misura - 0-1 click mouse.jpg" style="margin-top:135px;display:none;">
+                            <img id="ct64-ecg-1" class="CT64screen" src="screens/ct64/CT64 Tool misura - 1 click mouse.jpg" style="margin-top:135px;display:none;">
+                            <img id="ct64-ecg-2" class="CT64screen" src="screens/ct64/CT64 Tool misura - 2 click mouse.jpg" style="margin-top:135px;display:none;">
+                            <img id="ct64-ecg-popup" class="CT64screen" src="screens/ct64/ct64-ecg-popup.png" style="top:532px;left:373px;z-index:1;display:none;position:absolute;width:125px;">
+                            <img id="ct64-ecg-nota" class="CT64screen" src="screens/ct64/CT64 Annotazione.jpg" style="margin-top:157px;display:none;">
+                            <div id="ct64-ecg-nota-dialog" style="display:none;position:absolute;top:0;left:0;">
+                                <img class="CT64screen" src="screens/ct64/ct64-blue-overlay.png" style="top:32px;left:286px;z-index:1;position:absolute;">
+                                <img class="CT64screen" src="screens/ct64/ct64-ecg-nota.png" style="top:32px;left:383px;z-index:1;position:absolute;width:425px;">
+                                <div style="z-index:2;position:absolute;top:0;left:0;">
+                                    <textarea id="input-nota" class="CT64screen form-control" type="text" style="margin-top:108px;margin-left:390px;width:411px;height:96px;z-index:2;font-size:11px;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="CT64frame_inner" id="ecgResultsInterpretationScreen" style="display:none;">
+                            <img class="CT64screen" src="screens/ct64/10 - CT64 ECG12D - Interpretativo.jpg" style="margin-top:206px">
+                        </div>
+                        <div class="CT64frame_inner" id="holterAnalysisResultsScreen" style="display:none;">
+                            <img class="CT64screen" src="screens/ct64/18 - CT64 Holter - Analisi monitoraggio (NON DEFINITIVO).jpg" style="margin-top:70px">
+                        </div>
+                        <div class="CT64frame_inner" id="ecgResultsPhysioScreen" style="display:none;">
+                            <img class="CT64screen" src="screens/ct64/11 - CT64 ECG12D - Dati fisiologici.jpg" style="margin-top:-37px">
+                        </div>
+                        <div class="CT64frame_inner" id="reportSavedScreen" style="display:none;">
+                            <img class="CT64screen" src="screens/ct64/15 - CT64 Referto.jpg" style="margin-top:-37px">
+                        </div>
+
+                    </div>
+
+                    <div id="SECONDARY_SCREENS" style="position:absolute;left:3000px;">
+                        <div style="z-index:1;position:absolute;top:100px;width:3000px;">
+                             <img src="CT64_front.png"></img>
+                        </div>
+                        <div id="secondary_new_message" style="position:absolute;z-index:1;top:122px;overflow:hidden;left:20px;overflow-y:scroll;height:770px;width:1382px;">
+                            <img src="screens/ct64/inbox.png">
+                            <button class="btn btn-default" style="width:1090px;height:180px;text-align:center;vertical-align:middle;left:190px;position:absolute;top:184px;">
+                                <span style="color:#d85f5b;">
+                                    <i class="fa fa-heartbeat fa-5x"></i><br><br>
+                                    Messaggi ricevuti da operatore CT64<br>
+                                    <span class="msg-received blink"><i class="fa fa-envelope-o"></i> (1 nuovo messaggio)</span>
+                                </span>
+                            </button>
+                        </div>
+                        <div id="secondary_ecgAnalysisResultsScreen" style="position:absolute;display:none;z-index:1;top:122px;overflow:hidden;left:20px;overflow-y:scroll;height:770px;width:1382px;">
+                            <!-- <img class="CT64screen" src="screens/ct64/09 - CT64 ECG12D - Analisi monitoraggio.jpg" style="margin-top:135px"> -->
+                            <img src="screens/ct64/CT64 ECG 2.jpg" style="margin-top:12px;margin-left:-302px;">
+                        </div>
+                        <div id="secondary_compileReportScreen" style="display:none;position:absolute;z-index:1;top:122px;overflow:hidden;left:20px;overflow-y:scroll;height:770px;">
+                            <img class="CT64screen" src="screens/ct64/14 - CT64 Specialista - Stesura referto.jpg" style="margin-top:47px">
+                            <div style="position:absolute;padding-left:226px;top:390px;left:50px;">
+                                <textarea id="secondary_diagnosis" class="form-control" type="text" rows="20" style="margin: 0px; width: 1012px; height: 240px;"></textarea>
+                            </div>
+                            <div style="position:absolute;padding-left:226px;top:649px;left:50px;">
+                                <textarea id="secondary_therapy" class="form-control" type="text" rows="20" style="margin: 0px; width: 1012px; height: 240px;"></textarea>
+                            </div>
+                            <div style="position:absolute;padding-left:226px;top:905px;left:50px;">
+                                <textarea id="secondary_recommended_exams" class="form-control" type="text" rows="20" style="margin: 0px; width: 1012px; height: 240px;"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="CT64frame" id="devicesScreen" style="display:none;">
+                        <img class="CT64screen" src="screens/ct64/03 - CT64 Dispositivi.jpg" style="margin-top:-7px">
+                    </div>
+                    <div class="CT64frame" id="waitingConnectionScreen" style="display:none;">
+                        <img class="CT64screen" src="screens/ct64/06 - CT64 Attesa collegamento dispositivo.jpg">
+                    </div>
+                    <div class="CT64frame" id="requestReportScreen" style="display:none;">
+                        <img class="CT64screen" src="screens/ct64/12 - CT64 Richiesta referto.jpg" style="margin-top:-37px">
+                    </div>
+
+                    <div class="CT64frame" id="managephydataScreen" style="display:none;">
+                        <img class="CT64screen" src="screens/ct64/13 - CT64 Specialista - Gestione nuovo referto.jpg" style="margin-top:-37px">
+                    </div>
+                    <div class="CT64frame" id="configHolterScreen" style="display:none;">
+                        <img class="CT64screen" src="screens/ct64/16 - CT64 Holter - Configurazione.jpg" style="margin-top:-37px">
+                    </div>
+                    <div class="CT64frame" id="holterWaitingConnScreen" style="display:none;">
+                        <img class="CT64screen" src="screens/ct64/17 - CT64 Holter - Attesa collegamento dispositivo.jpg" style="margin-top:-37px">
+                    </div>
+                    <div class="CT64frame" id="analysisMonScreen" style="display:none;">
+                        <img class="CT64screen" src="screens/ct64/18 - CT64 Holter - Analisi monitoraggio (NON DEFINITIVO).jpg" style="margin-top:70px">
+                    </div>
+
+                    <div class="monitorData" id="knownPT-ECG12D" style="position:absolute; top:276px; left:1400px; font-size:15px; color:gray;">
+                        <span>Ecg12D con Anagrafica</span>
+                    </div>
+                    <div class="monitorData" id="knownPT-HOLTER" style="position:absolute; top:276px; left:1400px; font-size:15px; color:gray;">
+                        <span>Holter</span>
+                    </div>
+                    <div class="monitorData" id="newPT" style="position:absolute; top:276px; left:1400px; font-size:15px; color:gray;">
+                        <span>Ecg12D senza Anagrafica</span>
+                    </div>
+                    <div class="monitorData" id="hub_mode" style="position:absolute; top:318px; left:1400px; font-size:15px; color:gray;">
+                        <span>Nessun parametro: modalità Hub.</span>
+                    </div>
+                    <div class="monitorData" id="holter_mode" style="position:absolute; top:318px; left:1400px; font-size:15px; color:gray;">
+                        <span><b>durata</b>: 24 ore <b>derivazione precordiale</b>: V1 <b>accelerometro</b>: si</span>
+                    </div>
+                    <div class="monitorData" id="mariabianchi" style="position:absolute; top:360px; left:1400px; font-size:15px; color:gray;">
+                        <span>Maria Bianchi BNCMRA71P52H612T</span>
+                    </div>
+                    <div class="monitorData" id="deviceID" style="position:absolute; top:402px; left:1400px; font-size:15px; color:gray;">
+                        <span>170102031 170102031</span>
+                    </div>
+                    <div class="monitorData" id="waiting_device" style="position:absolute; top:487px; left:1555px; font-size:18px; color:gray;">
+                        <i class="fa fa-spinner fa-pulse fa-2x fa-fw" aria-hidden="true"></i>
+                        <span>Attesa collegamento dispositivo</span>
+                    </div>
+                    <div class="monitorData animated flash" id="waiting_results" style="position:absolute; top:487px; left:1555px; font-size:18px; color:gray;">
+                        <i class="fa fa-spinner fa-pulse fa-2x fa-fw" aria-hidden="true"></i>
+                        <span>Attesa risultati esame</span>
+                    </div>
+
+                    <!-- <div class="ptData" id="pt-name" style="position:absolute; top:412px; left:1043px; font-size:15px; color:gray;">
+                        <span>Maria</span>
+                    </div>
+                    <div class="ptData" id="pt-surname" style="position:absolute; top:412px; left:1130px; font-size:15px; color:gray;">
+                        <span>Bianchi</span>
+                    </div>
+                    <div class="ptData" id="pt-id" style="position:absolute; top:412px; left:1256px; font-size:15px; color:gray;">
+                        <span>BNCMRA71P52H612T</span>
+                    </div>
+                    <div class="ptData" id="pt-dob" style="position:absolute; top:412px; left:1460px; font-size:15px; color:gray;">
+                        <span>12/09/1971</span>
+                    </div>
+                    <div class="ptData" id="pt-sex" style="position:absolute; top:412px; left:1612px; font-size:15px; color:gray;">
+                        <span>F</span>
+                    </div>
+                    <div class="ptData" id="pt-mobile" style="position:absolute; top:412px; left:1686px; font-size:15px; color:gray;">
+                        <span>0464 456789</span>
+                    </div>
+                    <div class="ptData" id="pt-email" style="position:absolute; top:412px; left:1814px; font-size:15px; color:gray;">
+                        <span>maria.bianchi@dominio.it</span>
+                    </div>
+                    <div class="ptData" id="doc-surname" style="position:absolute; top:412px; left:2043px; font-size:15px; color:gray;">
+                        <span>Rossi</span>
+                    </div>
+                    <div class="ptData" id="doc-name" style="position:absolute; top:412px; left:2224px; font-size:15px; color:gray;">
+                        <span>Mario</span>
+                    </div> -->
+
+                </div>
+                <div id="ct64_mouse" class="CT64mouse" style="z-index:3;position:absolute;opacity:0.9;">
+                    <!-- <img src="screens/cursor_icon.png"> -->
+                </div>
+                <div id="ct64_mouse_secondary_screen" class="CT64mouse_secondary_screen" style="z-index:3;position:absolute;opacity:0.9;">
+                    <!-- <img src="screens/cursor_icon.png"> -->
+                </div>
+            </div>
+
+            <div class="device" id="device" style="perspective:1000px; perspective-origin:-22%;">
+                <div id="record_voice" style="position:absolute;top:0px;left:250px; display:none;">
+                    <img src="voice-01.png" class="animated pulse_bak infinite" style="width:90px;">
+                </div>
+                <div id="MT32-left-bottom" class="MT32-case-leftside MT32-case-leftside-upper MT32-case"
+                    style="position:absolute; top:60px; left:72px; transform:rotateY(22deg)translateZ(-90px)translateY(180px)translateX(140px)skewY(0deg)scaleY(1.2);">
+                     <img src="case/MT32-case-leftside-1.png"></img>
+                </div>
+                <div id="MT32-left-bottom" class="MT32-case-leftside MT32-case-leftside-lower MT32-case"
+                    style="position:absolute; top:60px; left:72px; transform:rotateY(22deg)translateZ(-90px)translateY(180px)translateX(140px)skewY(30deg)scaleY(0.92);">
+                     <img src="case/MT32-case-leftside-2.png"></img>
+                </div>
+                <div class="card-reader MT32-case" style="position:absolute; top:1045px; left:822px; display:none; z-index:2;">
+                     <img src="case/card_reader_hub-lower.png"></img>
+                </div>
+                <div id="MT32-sdcard" class="MT32-sdcard MT32-case"
+                    style="position:absolute; top:776px; left:130px; transform: translateX(-50px); display: none;">
+                     <img src="microSD.png"></img>
+                </div>
+                <div class="card-reader MT32-case" style="position:absolute; top:1045px; left:822px; display:none; z-index:2; opacity:0.8;">
+                     <img src="case/card_reader_hub-upper.png"></img>
+                </div>
+                <div id="MT32-left-bottom" class="MT32-case-leftside MT32-case-leftside-upper MT32-case"
+                    style="position:absolute; top:60px; left:72px; transform:rotateY(22deg)translateZ(-90px)translateY(180px)translateX(140px)skewY(0deg)scaleY(1.2);">
+                     <img src="case/MT32-case-leftside-3.png"></img>
+                </div>
+                <div id="MT32-left-bottom" class="MT32-case-leftside MT32-case-leftside-lower MT32-case"
+                    style="position:absolute; top:60px; left:72px; transform:rotateY(22deg)translateZ(-90px)translateY(180px)translateX(140px)skewY(30deg)scaleY(0.92);">
+                     <img src="case/MT32-case-leftside-4.png"></img>
+                </div>
+                <div id="MT32-right" class="MT32-case-rightside MT32-case"
+                    style="position:absolute; top:75px; left:526px; display:none;">
+                     <img src="case/MT32-case-rightside.png"></img>
+                </div>
+                <div id="MT32-sdcard-cover" class="MT32-sdcard MT32-case"
+                    style="position:absolute; top:780px; left:135px; transform: rotateY(22deg)translateZ(-55px)translateY(108px)translateX(140px)skewY(30deg)scaleY(1.2);">
+                     <img id="MT32-sdcard-cover" src="case/microSD-cover.png"></img>
+                </div>
+                <div id="MT32-cable10" style="position:absolute;z-index:0;top:1320px;left:268px;opacity:0;">
+                     <img id="MT32-sdcard-cover" src="case/cp10.png"></img>
+                </div>
+                <div id="MT32-cable5" style="position:absolute;z-index:0;top:1320px;left:268px;opacity:0;">
+                     <img id="MT32-sdcard-cover" src="case/cp5.png"></img>
+                </div>
+
+                <div id="MT32-screens">
+                    <div id="offScreen">
+                        <div class="screenframe">
+                            <img src="screens/off_screen.png">
+                            <div id="poweron_spinner" style="position:absolute; top:200px; left: 156px; color:white; display:none;">
+                                <i class="fa fa-spinner fa-pulse fa-4x fa-fw" aria-hidden="true"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="MT32-front" class="MT32-front" style="position:absolute; top:60px; left:122px;">
+                         <img src="DSC3489_front_transparent.png"></img>
+                         <img id="mt32_off" class="led" src="leds/grey.png"></img>
+                         <img id="mt32_charging" class="led" src="leds/orange.png"></img>
+                         <img id="mt32_fully_charged" class="led" src="leds/green.png"></img>
+                         <img id="mt32_charging_error" class="led blink-img" src="leds/orange.png"></img>
+                         <img id="mt32_on" class="led blink-img" src="leds/blue.png"></img>
+                    </div>
+                    <div id="homeScreen" class="MT32frame" style="display:block;color:white;">
+    		            <div class="screenframe">
+    		                <img src="screens/home_screen.png">
+    		            </div>
+                        <div id="home_battery_empty" class="screenframe" style="display:none;">
+    		                <img src="screens/home_screen_battery_empty.png">
+    		            </div>
+    		            <div id="div_logo" class="logo">
+    		                <img src="logo.png">
+    		            </div>
+    		            <div id="div_clock" class="longbutton center halfpadding">
+    		                <span id="div_hour" style="font-size:20px;"></span><br>
+    		                <span id="div_date"></span>
+    		            </div>
+    		            <div id="div_new_exam">
+    		                <span style="position:absolute;left:355px;top:362px;">Nuovo esame</span>
+    		            </div>
+    		            <div id="div_server">
+    		                <span style="position:absolute;left:450px;top:455px;">Centrale</span>
+    		            </div>
+    		            <div id="div_settings">
+    		                <span style="position:absolute;left:534px;top:544px;">Impostazioni</span>
+    		            </div>
+    		            <div>
+    		                <span style="position:absolute;left:288px;top:596px;">Modalit&agrave; operativa</span>
+                            <span id="mode_hub" style="position:absolute;left:288px;top:612px;font-size:30px; display:none;">ECG12D - HUB</span>
+    		                <span id="mode_none" style="position:absolute;left:288px;top:612px;font-size:30px; display:none;">nessuna</span>
+                            <span id="mode_holter" style="position:absolute;left:288px;top:612px;font-size:30px; display:none;">HOLTER</span>
+    		            </div>
+    		        </div>
+
+    		        <div id="examsScreen" class="MT32frame" style="display:none;color:white;font-size:18px;">
+    		            <div class="screenframe">
+    		                <img id="examsHUB" src="screens/exams_screen.png">
+                            <img id="examsHOLTER" src="screens/exams_screen_holter.png">
+                            <img id="examsDISABLED" src="screens/exams_screen_DISABLED.png">
+    		            </div>
+    		            <div id="div_ecg12d">
+    		                <span style="position:absolute;left:357px;top:366px;">ECG12D</span>
+    		            </div>
+                        <div id="div_holter">
+    		                <span style="position:absolute;left:520px;top:366px;">HOLTER</span>
+    		            </div>
+    		            <div id="div_testelectrodes">
+    		                <span style="position:absolute;left:340px;top:544px;">Test elettrodi</span>
+    		            </div>
+    		        </div>
+
+                    <div id="confirmHolterScreen" class="MT32frame" style="display:none;color:white;font-size:18px;">
+    		            <div class="screenframe">
+    		                <img src="screens/confirm_holter.png">
+    		            </div>
+    		        </div>
+
+                    <div id="notifyHolterCompleteScreen" class="MT32frame" style="display:none;color:white;font-size:18px;">
+    		            <div class="screenframe">
+    		                <img src="screens/22 - MT32 Esito conclusione esame.png">
+    		            </div>
+    		        </div>
+
+                    <div id="confirmPowerOffScreen" class="MT32frame" style="display:none;color:white;font-size:18px;">
+    		            <div class="screenframe">
+    		                <img src="screens/richiesta_spegnimento.png">
+    		            </div>
+    		        </div>
+
+                    <div id="poweringOffScreen" class="MT32frame" style="display:none;color:white;font-size:18px;">
+    		            <div class="screenframe">
+    		                <img src="screens/spegnimento_in_corso.png">
+    		            </div>
+    		        </div>
+
+    		        <div id="centralScreen" class="MT32frame" style="display:none;color:white;font-size:18px;">
+    		            <div class="screenframe">
+    		                <img src="screens/central_screen.png">
+                            <div id="operating_mode_btn_disabled" class="overlay" style="top:274px;left:51px;">
+                                <img src="screens/buttons/operating_mode_btn_disabled.png">
+                            </div>
+                            <div id="send_results_btn_disabled" class="overlay" style="top:183px;left:232px;">
+                                <img src="screens/buttons/send_results_btn_disabled.png">
+                            </div>
+    		            </div>
+    		            <div id="div_download_updates">
+    		                <span style="position:absolute;left:360px;top:345px;">Scarica</span>
+    		                <span style="position:absolute;left:350px;top:365px;">aggiornam.</span>
+    		            </div>
+    		            <div id="div_n_results">
+    		                <span id="nresults" style="position:absolute;left:550px;top:320px;font-size:24px;"></span>
+    		            </div>
+    		            <div id="div_upload_results">
+    		                <span style="position:absolute;left:530px;top:365px;">Invio risultati</span>
+    		            </div>
+    		            <div id="div_quit_central">
+    		                <span style="position:absolute;left:362px;top:438px;">Termina</span>
+    		                <span style="position:absolute;left:360px;top:458px;">modalit&agrave;</span>
+    		            </div>
+    		        </div>
+
+    		        <div id="settingsScreen" class="MT32frame" style="display:none;color:white;font-size:18px;">
+    		            <div class="screenframe">
+    		                <img src="screens/settings_screen.png">
+    		            </div>
+    		            <div id="div_connection_status">
+    		                <span style="position:absolute;left:352px;top:357px;">Connettiv.</span>
+    		            </div>
+    		            <div id="div_ecg_settings">
+    		                <span style="position:absolute;left:537px;top:335px;">Impostaz.</span>
+    		                <span style="position:absolute;left:537px;top:357px;">ECG</span>
+    		            </div>
+    		            <div id="div_security">
+    		                <span style="position:absolute;left:354px;top:447px;">Sicurezza</span>
+    		            </div>
+    		            <div id="div_system">
+    		                <span style="position:absolute;left:542px;top:447px;">Sistema</span>
+    		            </div>
+    		            <div id="div_info">
+    		                <span style="position:absolute;left:380px;top:537px;">Info</span>
+    		            </div>
+    		        </div>
+
+    		        <div id="testScreen" class="MT32frame" style="display:none;color:white;font-size:18px;">
+    		            <div id="testHUB" class="screenframe">
+    		                <img src="screens/electrodes_screen.png">
+                            <div style="position:absolute;border-radius:20px;background-color:black;height:30px;width:30px;top:96px;left:377px;opacity:0.8;display:none;"
+                                 class="defective_electrode blink"></div>
+                             <div style="position:absolute;border-radius:16px;background-color:black;height:30px;width:30px;top:117px;left:79px;opacity:0.8;display:none;"
+                                  class="defective_electrode blink"></div>
+    		            </div>
+                        <div id="testHOLTER" class="screenframe">
+    		                <img src="screens/electrodes_screen_holter.png">
+    		            </div>
+    		            <div id="div_electrodes_status">
+    		                <span style="position:absolute;left:290px;top:590px;font-size:22px;">Cavo ECG12D protetto</span>
+    		                <span style="position:absolute;left:290px;top:612px;font-size:22px;">correttamente collegato</span>
+    		            </div>
+                        <div id="div_electrodes_status_holter">
+    		                <span style="position:absolute;left:290px;top:590px;font-size:22px;">Cavo Holter</span>
+    		                <span style="position:absolute;left:290px;top:612px;font-size:22px;">correttamente collegato</span>
+    		            </div>
+    		        </div>
+
+
+    		        <div id="checkPatientScreen" class="MT32frame" style="display:none;color:white;font-size:18px;">
+    		            <div class="screenframe">
+    		                <img class="hub_scr" src="screens/patient_details_screen.png">
+                            <img class="holter_scr" src="screens/patient_details_screen_holter.png" style="display:none;">
+    		            </div>
+    		            <div style="position:absolute;left:282px;top:225px;height:356px;width:354px;overflow:auto;">
+    		                <div style="font-size:24px;color:#77c5e8">Nome</div>Maria
+    		                <div style="font-size:24px;color:#77c5e8;padding-top:8px;">Cognome</div>Bianchi
+    		                <div style="font-size:24px;color:#77c5e8;padding-top:8px;">C.F.</div>BNCMRA71P52H612T
+    		                <div style="font-size:24px;color:#77c5e8;padding-top:8px;">Nata il [gg / MM / aaaa] </div>12 / 09 / 1971
+    		                <div style="font-size:24px;color:#77c5e8;padding-top:8px;">Sesso </div>F
+    		                <div style="font-size:24px;color:#77c5e8;padding-top:8px;">Numero telefonico </div>0464 456789
+    		                <div style="font-size:24px;color:#77c5e8;padding-top:8px;">Indirizzo </div>Via Ripafratta 14, 00000, TR
+    		            </div>
+    		            <div id="div_edit_btn">
+    		                <span class="hub_scr" style="position:absolute;left:380px;top:618px;">Modifica</span>
+    		            </div>
+    		            <div id="div_new_btn">
+    		                <span class="hub_scr" style="position:absolute;left:475px;top:618px;">Nuova</span>
+    		            </div>
+    		            <div id="div_confirm_btn">
+    		                <span style="position:absolute;left:553px;top:618px;">Conferma</span>
+    		            </div>
+    		        </div>
+
+                    <div id="interpretationScreen" class="MT32frame" style="display:none;color:white;font-size:18px;">
+    		            <div class="screenframe">
+    		                <img src="screens/24 - MT32 Interpretativo.png">
+    		            </div>
+    		            <div style="position:absolute;left:227px;top:225px;height:358px;width:412px;overflow:auto;">
+    		                <div style="font-size:24px;color:#77c5e8">Measurements (duration and frontal vector)</div>
+                            FC: 80bpm<br>
+                            P: 96ms<br>
+                            PR: 150ms<br>
+                            QRS: 92ms<br>
+                            QT/QTc: 380/439ms<br>
+                            P/QRS/T: 40/50/42 deg<br>
+    		                <div style="font-size:24px;color:#77c5e8;padding-top:8px;">Bottom line statement</div>
+                            Normal ECG<br>
+    		                <div style="font-size:24px;color:#77c5e8;padding-top:8px;">Version of HES-EKG</div>
+                            HES EKG 73.25 - 07 a<br>
+    		                <div style="font-size:24px;color:#77c5e8;padding-top:8px;">Technical hints (electrode, ...)</div>...
+    		            </div>
+    		            <div id="div_confirm_int_btn" style="position:absolute;top:589px;left:370px;width:268px;height:89px;text-align:center;padding-top:32px;">
+    		                Conferma
+    		            </div>
+    		        </div>
+
+                    <div id="mt32EditPatientScreen" class="MT32frame screenframe" style="display:none;color:white;font-size:18px;" >
+		                <img src="screens/12 - MT32 Modifica anagrafica.png">
+                        <div id="leftpanel_mt32EditPatientScreen" style="position:absolute;top:-130px;left:-226px;">
+                        </div>
+                        <div id="edit_mariabianchi">
+                            <input value="Maria" class="form-control" type="text" autofocus style="position:absolute;top:134px;left:5px;height:34px;width:404px;padding-top:0;padding-bottom:0;background-color:transparent;border-color:black;color:white;font-size:20pt;">
+                            <!-- <div style="position:absolute;top:134px;left:8px;width:2px;height:20px;margin-top:4px;background-color:black;" class="blink"></div> -->
+                            <input value="Bianchi" class="form-control" type="text" style="position:absolute;top:220px;left:5px;height:34px;width:404px;padding-top:0;padding-bottom:0;background-color:transparent;border-color:black;color:white;font-size:20pt;">
+                            <input value="BNCMRA71P52H612T" class="form-control" type="text" style="position:absolute;top:306px;left:5px;height:34px;width:404px;padding-top:0;padding-bottom:0;background-color:transparent;border-color:black;color:white;font-size:20pt;">
+                        </div>
+                        <div id="blankPT">
+                            <input value="" class="form-control" type="text" autofocus style="position:absolute;top:134px;left:5px;height:34px;width:404px;padding-top:0;padding-bottom:0">
+                            <!-- <div style="position:absolute;top:134px;left:8px;width:2px;height:20px;margin-top:4px;background-color:black;" class="blink"></div> -->
+                            <input value="" class="form-control" type="text" style="position:absolute;top:220px;left:5px;height:34px;width:404px;padding-top:0;padding-bottom:0">
+                            <input value="" class="form-control" type="text" style="position:absolute;top:306px;left:5px;height:34px;width:404px;padding-top:0;padding-bottom:0">
+                        </div>
+                    </div>
+
+                    <div id="downloadingUpdatesScreen" class="MT32frame" style="display:none;color:white;font-size:20px;">
+    		            <div class="screenframe">
+    		                <img src="screens/Invio risultati.png">
+    		            </div>
+                        <div id="div_confirm_downloadingupdates" style="position:absolute;top:588px;left:278px;height:89px;width:357px;text-align:center;padding-top:30px;">
+                            Conferma
+                        </div>
+                        <div id="div_abort_downloadingupdates" style="position:absolute;top:588px;left:278px;height:89px;width:357px;text-align:center;padding-top:30px;">
+                            Annulla
+                        </div>
+    		            <div style="position:absolute;left:282px;top:225px;height:356px;width:354px;overflow:auto;">
+    		                <div id="send_1" style="height:20px;"></div>
+    		                <div id="send_2" style="height:20px;"></div>
+                            <div id="send_3" style="height:20px;"></div>
+                            <div id="send_4" style="height:20px;"></div>
+    		                <div id="send_5" style="height:20px;"></div>
+                            <div id="send_6" style="height:20px;"></div>
+                            <div id="send_7" style="height:20px;"></div>
+                            <div id="send_8" style="height:20px;"></div>
+                            <div id="send_9" style="height:20px;"></div>
+    		            </div>
+                        <div id="spinnerWaitingConnection" style="display:none;">
+                            <div style="position:absolute;left:400px;top:354px;height:356px;width:354px;overflow:auto;">
+        		                <img src="screens/spinner-logo.png">
+        		            </div>
+                            <div style="position:absolute;left:404px;top:354px;height:356px;width:354px;overflow:auto;">
+        		                <img src="screens/spinner.png" class="rotating">
+        		            </div>
+                        </div>
+    		        </div>
+
+
+                    <div id="sendingResultsScreen" class="MT32frame" style="display:none;color:white;font-size:20px;">
+    		            <div class="screenframe">
+    		                <img src="screens/Invio risultati.png">
+    		            </div>
+                        <div id="div_confirm_cancel_send" style="position:absolute;top:588px;left:278px;height:89px;width:357px;text-align:center;padding-top:30px;">
+                        </div>
+    		            <div style="position:absolute;left:282px;top:225px;height:356px;width:354px;overflow:auto;">
+    		                <div id="res_send_1" style="height:20px;white-space:nowrap;"></div>
+    		                <div id="res_send_2" style="height:20px;white-space:nowrap;"></div>
+                            <div id="res_send_3" style="height:20px;white-space:nowrap;"></div>
+                            <div id="res_send_4" style="height:20px;white-space:nowrap;"></div>
+    		                <div id="res_send_5" style="height:20px;white-space:nowrap;"></div>
+                            <div id="res_send_6" style="height:20px;white-space:nowrap;"></div>
+                            <div id="res_send_7" style="height:20px;white-space:nowrap;"></div>
+                            <div id="res_send_8" style="height:20px;white-space:nowrap;"></div>
+                            <div id="res_send_9" style="height:20px;white-space:nowrap;"></div>
+                            <div id="res_send_10" style="height:20px;white-space:nowrap;"></div>
+    		            </div>
+                        <div id="send_spinner">
+                            <div style="position:absolute;left:400px;top:354px;height:356px;width:354px;overflow:auto;">
+        		                <img src="screens/spinner-logo.png">
+        		            </div>
+                            <div style="position:absolute;left:404px;top:355px;height:356px;width:354px;overflow:auto;">
+        		                <img src="screens/spinner.png" class="rotating">
+        		            </div>
+                        </div>
+    		        </div>
+
+    		        <div id="monitoringScreen" class="MT32frame" style="display:none;color:white;font-size:18px;">
+    		            <div class="screenframe">
+    		                <img src="screens/run_screen.png">
+                            <div class="runtrace" id="div_run_trace_5-LP" style="display:none;position:absolute;margin-left:62px;">
+                                <div class="mainrun" style="overflow:hidden;margin-top:-500px;max-width:340px;">
+                                    <img src="screens/run_trace_5-25-LP.png" style="z-index:inherit;">
+                                </div>
+    		                </div>
+                            <div class="runtrace" id="div_run_trace_10-LP" style="display:none;position:absolute;margin-left:62px;">
+                                <div class="mainrun" style="overflow:hidden;margin-top:-500px;max-width:340px;">
+                                    <img src="screens/run_trace_10-25-LP.png" style="z-index:inherit;">
+                                </div>
+    		                </div>
+                            <div class="runtrace" id="div_run_trace_20-LP" style="display:none;position:absolute;margin-left:62px;">
+                                <div class="mainrun" style="overflow:hidden;margin-top:-500px;max-width:340px;">
+                                    <img src="screens/run_trace_20-25-LP.png" style="z-index:inherit;">
+                                </div>
+    		                </div>
+                            <div class="runtrace" id="div_run_trace_20-V2" style="display:none;position:absolute;margin-left:62px;">
+                                <div class="mainrun" style="overflow:hidden;margin-top:-500px;max-width:340px;">
+                                    <img src="screens/run_trace_20-25-V2.png" style="z-index:inherit;">
+                                </div>
+    		                </div>
+                            <div class="runtrace" id="div_run_trace_20-V1V2V3" style="display:none;position:absolute;margin-left:62px;">
+                                <div class="mainrun" style="overflow:hidden;margin-top:-500px;max-width:340px;">
+                                    <img src="screens/run_trace_20-25-V1V2V3.png" style="z-index:inherit;">
+                                </div>
+    		                </div>
+                            <div class="runtrace" id="div_run_trace_20" style="display:none;position:absolute;margin-left:62px;">
+                                <div class="mainrun" style="overflow:hidden;margin-top:-500px;max-width:340px;">
+                                    <img src="screens/run_trace_20-25.png" style="z-index:inherit;">
+                                </div>
+    		                </div>
+                            <div class="runtrace" id="div_run_trace_init" style="position:absolute;margin-left:62px;">
+                                <div class="mainrun" style="overflow:hidden;margin-top:-500px;max-width:340px;">
+                                    <img src="screens/run_trace_20-25-init.png" style="z-index:inherit;">
+                                </div>
+    		                </div>
+    		            </div>
+    		            <div class="tracing">
+    		                <div id="div_run_trace_cursor"
+    		                    style="position:absolute;width:8px;height:100%;background-color:steelblue;opacity:0.6;overflow:hidden;
+    		                            border:solid 2px #77c5e8; border-radius:4px;">
+    		                    <img src="screens/run_grid.png">
+    		                </div>
+    		            </div>
+    		            <div id="div_patient_name" style="position:absolute;left:285px;top:142px;max-width:200px;">
+    		                Maria Bianchi
+    		            </div>
+    		            <div id="div_clock" style="position:absolute;left:554px;top:142px;">
+    		                <span id="div_hhmmss"></span>
+    		            </div>
+    		            <div id="div_recording_progress" style="position:absolute;left:508px;top:469px;max-width:48px;">
+    		                <!-- 81% -->
+    		            </div>
+    		            <div id="div_bpm" style="position:absolute;left:258px;top:605px;font-size:30px;">
+    		                59
+    		            </div>
+    		            <div id="div_bpm_label" style="position:absolute;left:258px;top:645px;">
+    		                bpm
+    		            </div>
+    		            <div id="div_gain" style="position:absolute;left:362px;top:605px;font-size:30px;">
+    		                20
+    		            </div>
+    		            <div id="div_gain_label" style="position:absolute;left:350px;top:645px;">
+    		                mm/mV
+    		            </div>
+    		            <div id="div_speed" style="position:absolute;left:464px;top:605px;font-size:30px;">
+    		                25
+    		            </div>
+    		            <div id="div_speed_label" style="position:absolute;left:458px;top:645px;">
+    		                mm/s
+    		            </div>
+                        <div id="div_trace_label" style="position:absolute;left:556px;top:619px;transform:scale(1.6);">
+                            <img id="traceOneTwoThree" src="screens/traceOneTwoThree.png" style="display:none;">
+                            <img id="traceV1V2V3" src="screens/traceV1V2V3.png" style="display:none;">
+                            <img id="traceV2" src="screens/traceV2.png" style="display:none;">
+    		            </div>
+                        <div id="filter_warning" style="position:absolute;top:130px;left:494px;">
+                            <img src="screens/buttons/filter_warning.png">
+                        </div>
+                        <div id="filters">
+                            <img id="lowpassfilter_on" src="screens/buttons/lowpassfilter_on.png" style="position:absolute;top:177px;left:230px;z-index:1;">
+                            <img id="hipassfilter_on" src="screens/buttons/hipassfilter_on.png" style="position:absolute;top:284px;left:230px;z-index:1;">
+                        </div>
+    		        </div>
+
+                    <div id="resultsScreen" class="MT32frame" style="color:white;font-size:18px;">
+                        <div class="screenframe">
+                            <img src="screens/results_screen.png">
+                        </div>
+                        <div style="position:absolute;top:353px;left:295px;">
+                            Disponibile
+                        </div>
+                        <div id="hasphysio" style="position:absolute;top:431px;left:295px;">
+                            Assenti
+                        </div>
+                    </div>
+
+                    <div id="editPhysioScreen" class="MT32frame" style="color:white;font-size:18px;">
+                        <div class="screenframe">
+                            <img src="screens/26 - MT32 Immissione dato fisiologico.png">
+                            <img id="menu-physio" src="screens/menu-physio.png" style="position:absolute;top:73px;left:0px;z-index:1;">
+                            <input id="dataentry_val" value="" class="form-control" type="text" autofocus
+                                    style="position:absolute;top:129px;left:1px;height:100px;width:275px;padding-top:0;padding-bottom:0;background-color:transparent;border-color:black;color:black;font-size:26pt;text-align:center;">
+                            <input value="°C" class="form-control" type="text"
+                                    style="position:absolute;top:129px;left:275px;height:100px;width:135px;padding-top:0;padding-bottom:0;background-color:transparent;border-color:black;color:black;font-size:26pt;text-align:center;">
+                        </div>
+                    </div>
+
+                    <div id="saveResultsScreen" class="MT32frame" style="color:white;font-size:18px;">
+                        <div class="screenframe">
+                            <img src="screens/27 - MT32 Conclusione esame.png">
+                            <div style="position:absolute;left:182px;top:222px;height:356px;width:354px;overflow:auto;">
+        		                <img src="screens/spinner-logo.png">
+        		            </div>
+                            <div style="position:absolute;left:186px;top:222px;height:356px;width:354px;overflow:auto;">
+        		                <img src="screens/spinner.png" class="rotating">
+        		            </div>
+                        </div>
+                    </div>
+
+                    <div id="viewAlertsScreen" class="MT32frame" style="display:none;color:white;font-size:18px;">
+                        <div class="screenframe">
+                            <img src="screens/segnalazioni.png">
+                        </div>
+                    </div>
+
+    		        <div id="leftPanel" class="leftpanel MT32frame" style="display:none;">
+                        <img id="umts_tx" src="screens/buttons/umts_tx.png" style="position:absolute;top:130px;left:226px;z-index:0;">
+                        <img id="umts_on" src="screens/buttons/umts_on.png" style="position:absolute;top:130px;left:226px;z-index:0;">
+                        <img id="umts_off" src="screens/buttons/umts_off.png" style="position:absolute;top:130px;left:226px;z-index:0;">
+                    </div>
+
+                    <div id="mt32_stylus" class="MT32stylus" style="z-index:3;position:absolute;opacity:0.9;">
+                        <!-- <img src="case/stylus-white.png" style="z-index:inherit;"> -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <div id="div_splash" class="demo-splash" style="display:none;">
+            <div class="loader">
+                <div class="version">MT32 Demo</div>
+                <div class="bar">
+                    Loading
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+            </div>
+        </div>
+        <script type="application/javascript" src="../../client/lib/layout.js"></script>
+        <script type="application/javascript" src="../../client/lib/promise-0.1.1.js"></script>
+        <!-- <script type="application/javascript" src="../../client/lib/speakClient.js"></script> -->
+        <script type="application/javascript" src="../../client/lib/keys.js"></script>
+        <script type="text/javascript" src="../../client/lib/jquery.js"></script>
+        <script type="text/javascript" src="../../client/lib/underscore/underscore.js"></script>
+        <script type="text/javascript" src="../../client/lib/d3/d3.js"></script>
+        <script type="text/javascript" src="../../client/lib/backbone.js"></script>
+        <script type="text/javascript" src="../../client/lib/handlebars-v1.3.0.js"></script>
+        <script type="text/javascript" src="../../client/lib/bootstrap/js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="../../client/lib/jquery-toggles/toggles.min.js"></script>
+        <!-- Recently included files -->
+        <script type="text/javascript" src="../../client/lib/bootstrap/js/bootstrap-slider.js"></script>
+        <script type="text/javascript" src="../../client/require.js" data-main="js/index.js"></script>
+
+        <!-- <script src='https://code.responsivevoice.org/responsivevoice.js'></script> -->
+        <!-- <script src='js/responsivevoice.js'></script> -->
+    </body>
+</html>

@@ -6,27 +6,21 @@
         <title></title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width">
-        
+
         <link href="../../client/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
         <link href="../../client/app/plugins/graphbuilder/graph.css" rel="stylesheet" type="text/css"/>
         <link href="../../client/css/style.css" rel="stylesheet" type="text/css"/>
 
         <link href="css/style.css" rel="stylesheet" type="text/css"/>
         <link href="css/960.css" rel="stylesheet" type="text/css"/>
-
-
-        <style>
-            area {
-                cursor:pointer;
-            }
-            div#content {
-                margin-left: auto;
-                margin-right: auto;
-            }
-        </style>
     </head>
     <body>
         <div id="content" class="content" style="display:none;">
+            <div id="prototype">
+                <img src="radical-7.jpg" style="width:580px;"/>
+                <div style="margin:20px; margin-left:30px;">Simulation of Masimo Radical 7 PulseOximeter</div>
+            </div>
+
             <div id="spo2sensor" style="padding: 10px 28px 10px 28px; border: lightgreen; border-style: solid;">
                 Simulation of the SPO2 Sensor:
                 <input type="text"
@@ -56,34 +50,6 @@
                 <div class="bar">Loading<div></div><div></div><div></div><div></div></div>
             </div>
         </div>
-        <map name="prototypeMap" id="prototypeMap">
-	       <area class="btn_on" shape="rect" coords="368,110,400,134" href="#!">
-        </map>
-
-<!--
-        <div style="padding: 0px 28px 0px 28px; border: grey; border-style: solid; ">
-            <div id="sapere_controls">
-                <script>
-                    function toggleDebug() {
-                        if (document.getElementById("sapere_dbg").style.display === "none") {
-                            document.getElementById("sapere_dbg").style.display = "block";
-                            document.getElementById("btnShowDebug").value = "Hide Advanced Controls";
-                        } else {
-                            document.getElementById("sapere_dbg").style.display = "none";
-                            document.getElementById("btnShowDebug").value = "Show Advanced Controls";
-                        }
-                    }
-                </script>
-                <input type="button" id="btnShowDebug" value="Show Advanced Controls" onclick="toggleDebug()"/>
-            </div>
-            <div id="sapere_dbg" style="display:none">
-                <input type="button" class="btnAddDevice" value="Add New Radical7 Monitor" />
-                <div id="sapere_response_log" class="console_log"></div>
-                <input type="button" class="btnUpdateDevice" value="SendMessage!"/>
-                <input type="text" name="address" value="Message" id="updateMessage"/>
-            </div>
-        </div>
--->
         <script type="application/javascript" src="../../client/lib/promise-0.1.1.js"></script>
 		<script type="text/javascript" src="../../client/lib/jquery.js"></script>
 		<script type="text/javascript" src="../../client/lib/underscore/underscore.js"></script>

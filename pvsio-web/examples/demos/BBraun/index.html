@@ -6,38 +6,33 @@
         <title></title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width">
-        
         <link href="../../client/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
         <link href="../../client/app/plugins/graphbuilder/graph.css" rel="stylesheet" type="text/css"/>
         <link href="../../client/css/style.css" rel="stylesheet" type="text/css"/>
-        <style>
-            area {
-                cursor:pointer;
-            }
-            
-            div#content {
-                margin-left: auto;
-                margin-right: auto;
-            }
-        </style>
+        <link href="../../client/css/animate.css" rel="stylesheet" type="text/css"/>
+        <link href="../../client/lib/jquery-toggles/css/toggles.css" rel="stylesheet">
+        <link href="../../client/lib/jquery-toggles/css/themes/toggles-modern.css" rel="stylesheet">
+        <link href="../../client/lib/bootstrap/css/bootstrap-slider.css" rel="stylesheet" type="text/css"/>
     </head>
-    <body>
-        <div id="content">
-        </div>
-        <map name="prototypeMap" id="prototypeMap">
-	    <area class="Display" shape="rect" coords="84,232,308,296">
-            <area class="btnUp" shape="rect" coords="381,245,418,280" href="#!">
-            <area class="btnLeft" shape="rect" coords="342,270,380,305" href="#!">
-            <area class="btnDn" shape="rect" coords="382,294,416,330" href="#!">
-            <area class="btnRight" shape="rect" coords="418,270,454,310" href="#!">
-	    <area class="btnClear" shape="rect" coords="460,244,502,284" href="#!">
-        </map>
-		<script type="application/javascript" src="../../client/lib/promise-0.1.1.js"></script>
-		<script type="text/javascript" src="../../client/lib/jquery.js"></script>
-		<script type="text/javascript" src="../../client/lib/underscore/underscore.js"></script>
-		<script type="text/javascript" src="../../client/lib/backbone.js"></script>
-		<script type="text/javascript" src="../../client/lib/handlebars-v1.1.0.js"></script>
-		<script type="text/javascript" src="../../client/lib/bootstrap/js/bootstrap.min.js"></script>
+    <body class="noselect">
+        <script type="application/javascript" src="../../client/lib/layout.js"></script>
+        <script type="application/javascript" src="../../client/lib/promise-0.1.1.js"></script>
+        <!-- <script type="application/javascript" src="../../client/lib/speakClient.js"></script> -->
+        <script type="application/javascript" src="../../client/lib/keys.js"></script>
+        <script type="text/javascript" src="../../client/lib/jquery.js"></script>
+        <script type="text/javascript" src="../../client/lib/underscore/underscore.js"></script>
+        <script type="text/javascript" src="../../client/lib/d3/d3.js"></script>
+        <script type="text/javascript" src="../../client/lib/backbone.js"></script>
+        <script type="text/javascript" src="../../client/lib/handlebars-v1.3.0.js"></script>
+        <script type="text/javascript" src="../../client/lib/bootstrap/js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="../../client/lib/jquery-toggles/toggles.min.js"></script>
+        <script type="text/javascript" src="../../client/lib/d3-gauge-plus/d3-gauge-plus.js"></script>
+        <script type="text/javascript" src="../../client/lib/bootstrap/js/bootstrap-slider.js"></script>
         <script src="../../client/require.js" data-main="js/index.js"></script>
+
+        <div id="device">
+            <img src="image.png"/>
+        </div>
+        <div>Simulation of a medical infusion pump (greyed out keys are disabled in this simulation).</div>
     </body>
 </html>
