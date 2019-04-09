@@ -395,6 +395,7 @@ mpq_ptr_t mpq_sub_ui(mpq_t ret, mpq_t x, uint64_t y){
   mpq_init(tmp);
   mpq_set_ui(tmp, y, 1);
   mpq_sub(ret, x, tmp);
+  mpq_clear(tmp);
   return ret;
 }
 
