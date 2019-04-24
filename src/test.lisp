@@ -1,5 +1,24 @@
 (in-package :pvs)
 
+;;; (xref:get-relation rel name1 name2)
+;;;  rel is one of:
+;;;   :direct-calls: true if name1 directly calls name2.
+;;;   :indirect-calls: true if name1 indirectly calls name2 (i.e. refs #'bar for function bar).
+;;;   :macro-calls: true if name1 calls the macro identified by name2.
+;;;   :calls: true if any of the three previous relations is true.
+;;;   :binds: true if name1 binds the global variable identified by name2.
+;;;   :references: true if name1 references the global variable identified by name2.
+;;;   :sets: true if name1 sets the global variable identified by name2.
+;;;   :uses: true if any of the three previous relations are true.
+
+;;; Example usage: find all files which have functions that call a given macro
+;;; Useful when a macro is modified.
+(defun source-files-using-macro (mname)
+  (mapcar #'pathname-name
+    (remove-duplicates
+	(mapcar #'excl:source-file
+	  (xref:get-relation :macro-calls :wild 'with-current-decl)))))
+
 ;;; To run the Allegro profiler:
 ;;;   (prof:with-profiling () <body>)
 ;;;   (prof:show-flat-profile) or (prof:show-call-graph) give the information
@@ -76,6 +95,8 @@
 ;; (setf (logical-pathname-translations "sys")
 ;;       `((";**;*.*" "/csl/allegro/allegro8.0/")
 ;; 	   ("**;*.*" "/csl/allegro/allegro8.0/")))
+(setf (excl:bundle-pathname) #P"/home/owre/acl/files.bu")
+
 (setf (logical-pathname-translations "sys")
        `((";**;*.*" "/home/owre/acl/")
  	   ("**;*.*" "/home/owre/acl/")))
