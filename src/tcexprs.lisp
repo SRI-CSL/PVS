@@ -779,7 +779,8 @@
     (type-error-noconv (else-part expr) "ELSE part will never be evaluated"))
   (typecheck-selections* (selections expr) adt type args expected)
   (when (else-part expr)
-    (typecheck* (else-part expr) expected nil args)))
+    (let ((*generate-tccs* 'none))
+      (typecheck* (else-part expr) expected nil args))))
 
 (defmethod typecheck-coselections (expr (type cotupletype) args expected)
   (when (duplicates? (selections expr) :test #'same-id :key #'constructor)
@@ -789,7 +790,8 @@
     (type-error (else-part expr) "ELSE part will never be evaluated"))
   (typecheck-coselections* (selections expr) type args expected)
   (when (else-part expr)
-    (typecheck* (else-part expr) expected nil args)))
+    (let ((*generate-tccs* 'none))
+      (typecheck* (else-part expr) expected nil args))))
 
 (defmethod typecheck-coselections* (selections (type cotupletype) args expected)
   (when selections
