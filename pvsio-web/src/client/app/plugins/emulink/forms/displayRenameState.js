@@ -10,6 +10,7 @@ define(function (require, exports, module) {
         formTemplate = require("text!./templates/displayEditState.handlebars"),
         BaseDialog = require("pvsioweb/forms/BaseDialog"),
         FormUtils = require("./FormUtils");
+        // EmuchartsTextEditor = require("plugins/emulink/EmuchartsTextEditor");
 
     var AddStateView = BaseDialog.extend({
         initialize: function (data) {
@@ -22,6 +23,21 @@ define(function (require, exports, module) {
             this.$el.html(template(data));
             $("body").append(this.el);
             d3.select(this.el).select("#newStateName").node().focus();
+            /*
+            var textArea = d3.select(this.el).select("#newStateEnter").node();
+            var size = {
+                width: "100%",//textArea.getBoundingClientRect().width,
+                height: textArea.getBoundingClientRect().height
+            };
+            var editor = new EmuchartsTextEditor({
+                textArea: textArea,
+                size: size
+            });
+            if (d3.select(".overlay").select(".CodeMirror-code").select("pre").node()) {
+                d3.select(".overlay").select(".CodeMirror-code").select("pre").node().focus();
+            } else {
+                textArea.focus();
+            }*/
             return this;
         },
         events: {
@@ -32,7 +48,7 @@ define(function (require, exports, module) {
         right: function (event) {
             var form = this.el;
             if (FormUtils.validateForm(form)) {
-                var selectors = [ "newStateName", "newStateColor" ];
+                var selectors = [ "newStateName", "newStateColor", "newStateEnter", "newStateExit" ];
                 var formdata = FormUtils.serializeForm(form, selectors);
                 this.trigger(this._data.buttons[1].toLowerCase().replace(new RegExp(" ", "g"), "_"),
                              {data: formdata, el: this.el}, this);

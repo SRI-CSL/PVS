@@ -46,6 +46,10 @@ define(function (require, exports, module) {
         return "Project Auto Saver";
     };
 
+    ProjectAutoSaver.prototype.getId = function () {
+        return "ProjectAutoSaver";
+    };
+
     ProjectAutoSaver.prototype.initialise = function () {
         if (saveInterval > 0) {
             ProjectManager.getInstance().addListener("ProjectSaved", function (e) {

@@ -1,0 +1,14 @@
+{{#if template_description}}
+%
+%   Description: This template generates the JavaScript constructor for initialising the state of the system.
+%
+{{/if}}{{#if comment}}        /**
+         * {{comment}}
+         */{{/if}}
+        {{name}}: function ({{#if args}}{{#each args}}, {{name}}{{/each}}{{/if}}) { {{#each variables}}
+            st.{{name}} = {{#if userDefinedType}}{{type}}.{{/if}}{{value}};{{/each}}{{#if override}}
+            // overrides{{#each override}}{{#each actions}}
+            st.{{variable_name}}{{#if variable_name_l2}}.{{variable_name_l2}}{{/if}} = {{override_expression}};{{/each}}{{/each}}{{/if}}
+            if (__DBG__) { console.log("initial state: " + JSON.stringify(st, null, "")); }
+            return st;
+        }

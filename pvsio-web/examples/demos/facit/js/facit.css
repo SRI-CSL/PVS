@@ -1,0 +1,113 @@
+.handle {
+    opacity: 0.5;
+    cursor: default;
+}
+.handle:hover {
+    opacity: 1;
+    cursor: pointer;
+}
+
+.security_screen {
+    margin-top:25px;
+    margin-left:480px;
+    height:545px;
+    width:365px;
+    z-index:2;
+    border:solid;
+    background-color:gold;
+}
+.protocol_screen {
+    height: 100%;
+    z-index:2;
+    border:solid;
+    background-color:steelblue;
+}
+.step {
+    position:absolute;
+    width:320px;
+    height:40px;
+    left:850px;
+    z-index:2;
+    border: solid;
+    border-width:1px;
+    opacity:0.2;
+}
+.label {
+    position:absolute;
+    color:white;
+    width:80px;
+    text-align:left;
+}
+.labels {
+    position:absolute;
+    left:700px;
+    top:470px;
+    height:28px;
+    width: 308px;
+    z-index: 2;
+}
+.labels-background {
+    position:absolute;
+    width:320px;
+    height:40px;
+    left:850px;
+    top:461px;
+    z-index: 2;
+    background-color:white;
+    border:solid;
+    border-width:1px;
+    opacity:0.2;
+}
+.time {
+    position:absolute;
+    left:1085px;
+    height:30px;
+    width: 80px;
+    z-index: 2;
+    background-color:white;
+    opacity:0.2;
+}
+.line1 {
+    width: 23px;
+    height: 23px;
+    left: 34px;
+    border-radius: 4px;
+    transform: rotate(45deg)translateX(1px);;
+    position: absolute;
+    color: black;
+}
+.line2 {
+    width: 40px;
+    height: 31px;
+    border-radius: 2px;
+    position: absolute;
+    top: -1.5px;
+    left: 8px;
+    font-size:2em;
+    padding-top:6px;
+    padding-left:8px;
+    color: black;
+}
+.simcontrol {
+    width: 200px;
+    margin-bottom: 8px;
+}
+.simcontrol-2 {
+    width: 440px;
+}
+.simulation_control_panel {
+    margin:25px;
+    z-index:1;
+    display:inline-flex;
+    height:320px;
+}
+.sim_panel {
+    border:solid 1px;
+    position:absolute;
+    height:145px;
+    width:880px;
+    left:485px;
+    top:230px;
+    border-radius:6px;
+    background-color:whitesmoke;
+}

@@ -1,0 +1,41 @@
+@import "image-mapper";
+
+.prototype-image-container {
+    position: relative;
+}
+
+.prototype-image-inner {
+    margin: 0 auto; // center the prototype
+    position: relative;
+}
+
+.dndcontainer {
+    background: $color-bg-lighter;
+    text-align: center;
+    //position: absolute;
+    border: 4px dashed teal;
+    height: 100%;
+    width: 100%;
+    z-index: 191;
+    min-height: 480px;
+    min-width: 600px;
+
+    span {
+        display: block;
+        margin-top: 150px;
+        width: 400px;
+        font-size: 30px;
+        font-family: Times, serif;
+        line-height: 1.1;
+        text-align: center;
+    }
+}
+
+// Unscoped styles - kept for compatibilty
+svg.image-map-layer {
+    background: transparent;
+}
+
+area {
+    cursor: pointer;
+}

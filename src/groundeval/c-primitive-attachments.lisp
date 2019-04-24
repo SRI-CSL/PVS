@@ -1,100 +1,156 @@
-
+(clrhash *c-primitive-attachments-hash*)
 (def-c-attach-primitive "integertypes" "u8plus" 
-  "uint8" "(uint8_t x, uint8_t y)" "{return (uint8_t)(x + y);}")
+  "uint8" '(x y) '(uint8 uint8) "{return (uint8_t)(x + y);}")
 
 (def-c-attach-primitive "integertypes" "u16plus" 
-  "uint16" "(uint16_t x, uint16_t y)" "{return (uint16_t)(x + y);}")
+  "uint16" '(x y) '(uint16 uint16) "{return (uint16_t)(x + y);}")
 
 (def-c-attach-primitive "integertypes" "u32plus" 
-  "uint32"  "(uint32_t x, uint32_t y)" "{return (uint32_t)(x + y);}")
+  "uint32"  '(x y) '(uint32 uint32) "{return (uint32_t)(x + y);}")
 
 (def-c-attach-primitive "integertypes" "u64plus" 
-  "uint64"  "(uint64_t x, uint64_t y)" "{return (uint64_t)(x + y);}")
+  "uint64"  '(x y) '(uint64 uint64) "{return (uint64_t)(x + y);}")
 
 (def-c-attach-primitive "integertypes" "u8minus"
-  "uint8" "(uint8_t x, uint8_t y)" "{return (uint8_t)(x - y);}")
+  "uint8" '(x y) '(uint8 uint8) "{return (uint8_t)(x - y);}")
 
 (def-c-attach-primitive "integertypes" "u16minus"
-  "uint16" "(uint16_t x, uint16_t y)" "{return (uint16_t)(x - y);}")
+  "uint16" '(x y) '(uint16 uint16) "{return (uint16_t)(x - y);}")
 
 (def-c-attach-primitive "integertypes" "u32minus" 
-  "uint32" "(uint32_t x, uint32_t y)" "{return (uint32_t)(x - y);}")
+  "uint32" '(x y) '(uint32 uint32) "{return (uint32_t)(x - y);}")
 
 (def-c-attach-primitive "integertypes" "u64minus"
-  "uint64" "(uint64_t x, uint64_t y)" "{return (uint64_t)(x - y);}")
+  "uint64" '(x y) '(uint64 uint64) "{return (uint64_t)(x - y);}")
 
 (def-c-attach-primitive "integertypes" "u8times" 
-  "uint8" "(uint8_t x, uint8_t y)" "{return (uint8_t)(x * y);}")
+  "uint8" '(x y) '(uint8 uint8) "{return (uint8_t)(x * y);}")
 
 (def-c-attach-primitive "integertypes" "u16times"
-  "uint16" "(uint16_t x, uint16_t y)" "{return (uint16_t)(x * y);}")
+  "uint16" '(x y) '(uint16 uint16) "{return (uint16_t)(x * y);}")
 
 (def-c-attach-primitive "integertypes" "u32times" 
-  "uint32" "(uint32_t x, uint32_t y)" "{return (uint32_t)(x * y);}")
+  "uint32" '(x y) '(uint32 uint32) "{return (uint32_t)(x * y);}")
 
 (def-c-attach-primitive "integertypes" "u64times" 
-  "uint64" "(uint64_t x, uint64_t y)" "{return (uint64_t)(x * y);}")
+  "uint64" '(x y) '(uint64 uint64) "{return (uint64_t)(x * y);}")
 
 (def-c-attach-primitive "integertypes" "u8div" 
-  "uint8" "(uint8_t x, uint8_t y)" "{return (uint8_t)(x/y);}")
+  "uint8"  '(x y) '(uint8 uint8) "{return (uint8_t)(x/y);}")
 
 (def-c-attach-primitive "integertypes" "u16div" 
-  "uint16" "(uint16_t x, uint16_t y)" "{return (uint16_t)(x/y);}")
+  "uint16" '(x y) '(uint16 uint16) "{return (uint16_t)(x/y);}")
 
-(def-c-attach-primitive "integertypes" "u32div" 
-  "uint32"  "(uint32_t x, uint32_t y)" "{return (uint32_t)(x/y);}")
+(def-c-attach-primitive "integertypes" "u32dixv" 
+  "uint32" '(x y)  '(uint32 uint32) "{return (uint32_t)(x/y);}")
 
 (def-c-attach-primitive "integertypes" "u64div" 
-  "uint64" "(uint64_t x, uint64_t y)" "{return (uint64_t)(x/y);}")
+  "uint64" '(x y) '(uint64 uint64) "{return (uint64_t)(x/y);}")
 
 (def-c-attach-primitive "integertypes" "u8rem" 
-  "uint8"  "(uint8_t x, uint8_t y)" "{return (uint8_t)(x%y);}")
+  "uint8" '(x y)  '(uint8 uint8) "{return (uint8_t)(x%y);}")
 
 (def-c-attach-primitive "integertypes" "u16rem" 
-  "uint16" "(uint16_t x, uint16_t y)" "{return (uint16_t)(x%y);}")
+  "uint16" '(x y) '(uint16 uint16) "{return (uint16_t)(x%y);}")
 
 (def-c-attach-primitive "integertypes" "u32rem"
-  "uint32" "(uint32_t x, uint32_t y)" "{return (uint32_t)(x%y);}")
+  "uint32" '(x y) '(uint32 uint32) "{return (uint32_t)(x%y);}")
 
 (def-c-attach-primitive "integertypes" "u64rem"
-  "uint64" "(uint64_t x, uint64_t y)" "{return (uint64_t)(x%y);}")
+  "uint64" '(x y) '(uint64 uint64) "{return (uint64_t)(x%y);}")
 
 (def-c-attach-primitive "integertypes" "u8pow2"
-  "uint8"  "(uint8_t x)" "{return (uint8_t)1<<x;}")
+  "uint8"  '(x) '(uint8) "{return (uint8_t)1<<x;}")
 
 (def-c-attach-primitive "integertypes" "u16pow2" 
-  "uint16" "(uint16_t x)" "{return (uint16_t)1<<x;}")
+  "uint16" '(x) '(uint16) "{return (uint16_t)1<<x;}")
 
 (def-c-attach-primitive "integertypes" "u32pow2"
-  "uint32" "(uint32_t x)" "{return (uint32_t)1<<x;}")
+  "uint32" '(x) '(uint32) "{return (uint32_t)1<<x;}")
 
 (def-c-attach-primitive "integertypes" "u64pow2"
-  "uint64" "(uint64_t x)" "{return (uint64_t)1<<x;}")
+  "uint64" '(x) '(uint64) "{return (uint64_t)1<<x;}")
 
 (def-c-attach-primitive "integertypes" "u8lshift"
-  "uint8" "(uint8_t x, uint8_t n)" "{return (uint8_t)x<<n;}")
+  "uint8" '(x n) '(uint8  uint8) "{return (uint8_t)x<<n;}")
 
 (def-c-attach-primitive "integertypes" "u16lshift"
-  "uint16" "(uint16_t x, uint16_t n)" "{return (uint16_t)x<<n;}")
+  "uint16" '(x n) '(uint16 uint16) "{return (uint16_t)x<<n;}")
 
 (def-c-attach-primitive "integertypes" "u32lshift"
-  "uint32" "(uint32_t x, uint32_t n)" "{return (uint32_t)x<<n;}")
+  "uint32" '(x n) '(uint32 uint32) "{return (uint32_t)x<<n;}")
 
 (def-c-attach-primitive "integertypes" "u64lshift"
-  "uint64" "(uint64_t x, uint64_t n)" "{return (uint64_t)x<<n;}")
+  "uint64" '(x n) '(uint64 uint64) "{return (uint64_t)x<<n;}")
 
 (def-c-attach-primitive "integertypes" "u8rshift"
-  "uint8"  "(uint8_t x, uint8_t n)" "{return (uint8_t)x>>n;}")
+  "uint8"  '(x n) '(uint8 uint8) "{return (uint8_t)x>>n;}")
 
 (def-c-attach-primitive "integertypes" "u16rshift" 
-  "uint16" "(uint16_t x, uint16_t n)" "{return (uint16_t)x>>n;}")
+  "uint16" '(x n) '(uint16 uint16) "{return (uint16_t)x>>n;}")
 
 (def-c-attach-primitive "integertypes" "u32rshift"
-  "uint32" "(uint32_t x, uint32_t n)" "{return (uint32_t)x>>n;}")
+  "uint32" '(x n) '(uint32 uint32) "{return (uint32_t)x>>n;}")
 
 (def-c-attach-primitive "integertypes" "u64rshift"
-  "uint64" "(uint64_t x, uint64_t n)" "{return (uint64_t)x>>n;}")
+  "uint64" '(x n) '(uint64 uint64) "{return (uint64_t)x>>n;}")
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;Floating point attachments using NASA's ieee754_double.pvs
 
+(def-c-attach-primitive "ieee754_double" "pInf" "double" nil nil  "{return (double_t)INFINITY;}")
+
+(def-c-attach-primitive "ieee754_double" "nInf" "double" nil nil  "{return (double_t)-INFINITY;}")
+
+(def-c-attach-primitive "ieee754_double" "finite?" "bool" '(x) '(double)
+  "{return (bool_t)isfinite(x);}")
+
+(def-c-attach-primitive "ieee754_double" "NaN?" "bool" '(x) '(double)
+  "{return (bool_t)isnan(x);}")
+
+(def-c-attach-primitive "ieee754_double" "pZero" "double" nil nil
+  "{return (double_t)0.0;}")
+
+(def-c-attach-primitive "ieee754_double" "nZero" "double" nil nil
+  "{return (double_t)-0.0;}")
+
+(def-c-attach-primitive "ieee754_double" "DtoR" "mpq_ptr" '(x)  '(double)
+  "{mpq_ptr_t result; result = safe_malloc(sizeof(mpq_t)); mpq_init(result); mpq_set_d(result, x); return result;}")
+
+(def-c-attach-primitive "ieee754_double" "RtoD" "double" '(x) '(mpq)
+  "{return mpq_get_d(x);}")
+
+(def-c-attach-primitive "ieee754_double" "nzfinite?" "bool" '(x) '(double)
+  "{return (isfinite(x) && x != 0.0 && x != -0.0);}")
+
+(def-c-attach-primitive "ieee754_double" "pfinite?" "bool" '(x) '(double)
+  "{return (isfinite(x) && x > 0.0);}")
+
+(def-c-attach-primitive "ieee754_double" "nfinite?" "bool" '(x) '(double)
+  "{return (isfinite(x) && x <= -0.0);}")
+
+(def-c-attach-primitive "ieee754_double" "add" "double" '(x y) '(double double)
+  "{return (double_t)(x + y);}")
+
+(def-c-attach-primitive "ieee754_double" "sub" "double" '(x y) '(double double)
+  "{return (double_t)(x - y);}")
+
+(def-c-attach-primitive "ieee754_double" "mul" "double" '(x y) '(double double)
+  "{return (double_t)(x * y);}")
+
+(def-c-attach-primitive "ieee754_double" "div" "double" '(x y) '(double double)
+  "{return (double_t)(x / y);}")
+
+(def-c-attach-primitive "ieee754_double" "min" "double" '(x y) '(double double)
+  "{return (double_t)fmin(x, y);}")
+
+(def-c-attach-primitive "ieee754_double" "max" "double" '(x y) '(double double)
+  "{return (double_t)fmax(x, y);}")
+
+(def-c-attach-primitive "ieee754_double" "abs" "double" '(x y) '(double)
+  "{return (double_t)fabs(x);}")
+
+(def-c-attach-primitive "ieee754_double" "sqrt" "double" '(x y) '(double)
+  "{return (double_t)sqrt(x);}")
 
 

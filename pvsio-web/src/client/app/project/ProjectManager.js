@@ -47,7 +47,7 @@ define(function (require, exports, module) {
     var property              = require("util/property"),
         eventDispatcher       = require("util/eventDispatcher"),
         Project               = require("project/Project"),
-        FileTreeView          = require("pvsioweb/FileTreeView"),
+        FileTreeView          = require("filesystem/FileTreeView"),
         Descriptor            = require("project/Descriptor"),
         WSManager             = require("websockets/pvs/WSManager"),
         displayQuestion       = require("pvsioweb/forms/displayQuestion"),
@@ -58,11 +58,10 @@ define(function (require, exports, module) {
         Constants             = require("util/Constants"),
         MIME                  = require("util/MIME"),
         PVSioWebClient        = require("PVSioWebClient").getInstance(),
-        FileSystem            = require("filesystem/FileSystem");
+        fs                    = require("filesystem/FileSystem").getInstance();
 
     var pvsFilesListView; // This is the PVSio-web file browser instance ** TODO: create a separate module **
     var _projectManager; // Project Manager instance ("this" pointer)
-    var fs;
 
     //----------------------------------------------------------------------------------------
     //     These are the APIs of the pvsio-web file browser embedded within ProjectManager
@@ -78,6 +77,9 @@ define(function (require, exports, module) {
         function getFolderChildren(files, parentPath) {
             var tree = {};
             files.forEach(function (f) {
+                if (f.path.startsWith("/")) {
+                    f.path = f.path.substring(1, f.length);
+                }
                 var args = f.path.split("/");
                 var ptr = tree;
                 args.forEach(function (a) {
@@ -157,10 +159,7 @@ define(function (require, exports, module) {
                     project.refreshDescriptor(f).then(function (res) {
                         if (res.content) {
                             pvsFilesListView.getTreeList().refreshSelectedItem();
-//                            NotificationManager.show("Another application changed " + event.path +
-//                                                     ". PVSio-web has reloaded the file content from disk.");
-                            console.log("Another application changed " + event.path +
-                                                     ". PVSio-web has reloaded the file content from disk.");
+                            // console.log("File " + event.path + " automatically reloaded from disk.");
                         }
                     }).catch(function (err) { console.log(err); });
                 }
@@ -250,6 +249,8 @@ define(function (require, exports, module) {
          * The current project can be accessed as using _projectManager.project()
          */
         this.project = property.call(this, project).addListener("PropertyChanged", function (e) {
+            e.old.cleanup();
+            e.fresh.setUpListeners();
             registerFSUpdateEvents(e.fresh);
         });
         window.onbeforeunload =  function () {
@@ -269,7 +270,6 @@ define(function (require, exports, module) {
                 console.log("Project saved!");
             }
         };
-        fs = new FileSystem();
         return this;
     }
 
@@ -355,6 +355,10 @@ define(function (require, exports, module) {
     ProjectManager.prototype.selectFile = function (file) {
         // select item in filetree
         if (file) {
+            // FIXME: in the current implementation of FileTreeView, filenames should always start with the project name
+            if (typeof file === "string" && file.indexOf(_projectManager.project().name()) < 0) {
+                file = _projectManager.project().name() + "/" + file;
+            }
             return pvsFilesListView.selectItem(file);
         }
         console.log("Warning: " + file + " parameter passed to PrototypeManager.selectFile(...)");
@@ -373,7 +377,7 @@ define(function (require, exports, module) {
     function fireProjectChanged(event) {
         var project = event.current;
         document.title = "PVSio-Web -- " + event.current;
-        d3.select("#header #txtProjectName").html(event.current);        
+        d3.select("#header #txtProjectName").html(event.current);
         renderSourceFileList();
         _projectManager.selectFile(project.mainPVSFile() || project.pvsFilesList()[0] || project.name());
         _projectManager.fire(event);
@@ -477,13 +481,14 @@ define(function (require, exports, module) {
      * @instance
      */
     ProjectManager.prototype.createProject = function (data) {
+        data = data || {};
         return new Promise(function (resolve, reject) {
             var success = true;
             var descriptors = [];
             var pvsiowebJSON = {};
-            pvsiowebJSON.version = "2.0";
+            pvsiowebJSON.version = "2.1";
             function finalise(p) {
-                descriptors.push(project.addDescriptor("pvsioweb.json", JSON.stringify(pvsiowebJSON, null, " ")));
+                descriptors.push(project.addDescriptor(new Descriptor("pvsioweb.json", JSON.stringify(pvsiowebJSON, null, " "))));
                 var previous = _projectManager.project();
                 p.project.initFromJSON(p.descriptors);
                 _projectManager.project(p.project);
@@ -525,24 +530,28 @@ define(function (require, exports, module) {
                         finalise({ project: project, descriptors: descriptors, success: false });
                     });
                 } else {
-                    project.importLocalFiles(data.localPVSSpec).then(function (res) {
-                        if (res) { descriptors = res; }
-                        return project.importLocalFiles(data.localPrototypeImage).then(function (res) {
-                            if (res && res.length > 0) {
-                                descriptors = descriptors.concat(res);
-                                descriptors.push(
-                                    project.addDescriptor(
-                                        new Descriptor(
-                                            "pvsioweb.json",
-                                            JSON.stringify({ prototypeImage: res[0].name })
+                    if (data.localPVSSpec) {
+                        project.importLocalFiles(data.localPVSSpec).then(function (res) {
+                            if (res) { descriptors = res; }
+                            return project.importLocalFiles(data.localPrototypeImage).then(function (res) {
+                                if (res && res.length > 0) {
+                                    descriptors = descriptors.concat(res);
+                                    descriptors.push(
+                                        project.addDescriptor(
+                                            new Descriptor(
+                                                "pvsioweb.json",
+                                                JSON.stringify({ prototypeImage: res[0].name })
+                                            )
                                         )
-                                    )
-                                );
-                            }
-                            finalise(project, descriptors);
-                            resolve(project);
+                                    );
+                                }
+                                finalise({ project: project, descriptors: descriptors, success: true });
+                                resolve(project);
+                            }).catch(function (err) { finalise(project, descriptors); console.log(err); reject(err); });
                         }).catch(function (err) { finalise(project, descriptors); console.log(err); reject(err); });
-                    }).catch(function (err) { finalise(project, descriptors); console.log(err); reject(err); });
+                    } else {
+                        finalise({ project: project, descriptors: descriptors, success: true });
+                    }
                 }
             }).catch(function (err) { reject(err); });
         });
@@ -610,15 +619,17 @@ define(function (require, exports, module) {
      * @memberof module:ProjectManager
      * @instance
      */
-    ProjectManager.prototype.saveProject = function () {
+    ProjectManager.prototype.saveProject = function (opt) {
         return new Promise(function (resolve, reject) {
-            _projectManager.project().saveProject().then(function (res) {
+            _projectManager.project().saveProject(opt).then(function (res) {
                 _projectManager.fire({type: "ProjectSaved", project: _projectManager.project()});
                 var notification = "Project " + _projectManager.project().name() + " saved successfully!";
                 NotificationManager.show(notification);
                 resolve(res);
             }).catch(function (err) {
-                var msg = "There was an error saving the project: " + JSON.stringify(err);
+                var msg = "There was an error saving the project: ";
+                msg += (err.message) ? err.message : JSON.stringify(err);
+                console.log(err);
                 NotificationManager.error(msg);
                 reject(err);
             });
@@ -626,10 +637,33 @@ define(function (require, exports, module) {
     };
 
     /**
-     * @function <a name="saveProjectDialog">saveProjectDialog</a>
+     * @function <a name="saveProjectAs">saveProjectAs</a>
      * @description This function is a variant of <a href="#saveProject">saveProject</a>
+     *              that allows users to specify a name for the project that shall be saved.
+     * @param projectName {?String} New name for the project.
+     * @returns {Promise(Project)} A Promise that resolves to the descriptor of the saved project.
+     *    The descriptor has the following format:
+     *    <li> projectName is a String defining the project name. </li>
+     *    <li> prototypeImage is an Array of Strings; each string is the path of an image filename ?? </li>
+     *    <li> pvsSpec is an Array of Strings; each string is the path of a txt file containing a model.</li>
+     * @memberof module:ProjectManager
+     * @instance
+     */
+    ProjectManager.prototype.saveProjectAs = function (projectName) {
+        return _projectManager.backupProject(projectName, { overWrite: true }).then(function (res) {
+            _projectManager.openProject(projectName);
+        }).catch(function (err) {
+            var msg = "Error: project could not be saved as " + projectName;
+            console.log(msg + err);
+            window.alert(msg);
+        });
+    };
+
+    /**
+     * @function <a name="saveProjectDialog">saveProjectDialog</a>
+     * @description This function is a variant of <a href="#saveProjectAs">saveProjectAs</a>
      *              that shows a dialog that allows users to enter the details of the project that shall be saved.
-     * @param projectName {?String} Default name for the project. If this parameter is non-null,
+     * @param projectName {?String} New name for the project. If this parameter is non-null,
      *                             the name is shown in the dialog presented to the user.
      * @returns {Promise(Project)} A Promise that resolves to the descriptor of the saved project.
      *    The descriptor has the following format:
@@ -641,32 +675,6 @@ define(function (require, exports, module) {
      */
     ProjectManager.prototype.saveProjectDialog = function (projectName) {
         return new Promise(function (resolve, reject) {
-            function saveProject(newName) {
-                _projectManager.saveProject().then(function (res) {
-                    var oldName = _projectManager.project().name();
-                    res.renameProject(newName, function (err, res) {
-                        if (err) {
-                            // alert user
-                            if (err.message === "ENOTEMPTY") {
-                                alert("Error: the folder could not be renamed into " +
-                                      err.newPath + " (another folder with the same name already exists)." +
-                                      " Please choose a different name");
-                            } else { alert(err.message); }
-                            reject(err);
-                        } else {
-                            _projectManager.project(res);
-                            //fire project changed event -- this will trigger updates in the UI
-                            var evt = {
-                                type: "ProjectChanged",
-                                current: _projectManager.project(),
-                                previous: oldName
-                            };
-                            fireProjectChanged(evt);
-                            resolve(_projectManager.project());
-                        }
-                    });
-                }).catch(function (err) { reject(err); });
-            }
             WSManager.getWebSocket().send({type: "listProjects"}, function (err, res) {
                 var projects = [];
                 if (!err) {
@@ -686,24 +694,35 @@ define(function (require, exports, module) {
                     if (projects.indexOf(e.data.projectName) >= 0) {
                         displayQuestion.create({question: "Project " + e.data.projectName +
                                                 " already exists. Overwrite project?"})
-                            .on("ok", function (e, view) {
-                                e.data.overWrite = true;
-                                // remove existing folder, save project and then rename folder
-                                fs.rmDir(e.data.projectName).then(function (res) {
-                                    saveProject(e.data.projectName);
-                                }).catch(function (err) {
-                                    console.log("Warning: Error while trying to remove project folder. " + err);
-                                    saveProject(e.data.projectName);
-                                });
+                            .on("ok", function (ev, view) {
+                                if (e.data.projectName === _projectManager.project().name()) {
+                                    _projectManager.saveProject();
+                                } else {
+                                    e.data.overWrite = true;
+                                    fs.rmDir(e.data.projectName).then(function (res) {
+                                        _projectManager.saveProjectAs(e.data.projectName);
+                                    }).catch(function (err) {
+                                        view.remove();
+                                        var msg = "Error: project could not be saved as " + e.data.projectName;
+                                        console.log(msg + err);
+                                        window.alert(msg);
+                                        reject({
+                                            code: "EEXISTS",
+                                            message: msg
+                                        });
+                                    });
+                                }
                                 view.remove();
-                            }).on("cancel", function (e, view) {
+                                resolve(_projectManager.project());
+                            }).on("Cancel", function (ev, view) {
                                 reject({
                                     code: "EEXISTS",
                                     message: "Operation cancelled by the user"
                                 });
                             });
                     } else {
-                        saveProject(e.data.projectName);
+                        _projectManager.saveProjectAs(e.data.projectName);
+                        resolve(_projectManager.project());
                     }
                     formView.remove();
                 });
@@ -861,10 +880,13 @@ define(function (require, exports, module) {
                 overWrite: false, // we don't delete the content of the folder, but re-use it.
                 silentMode: true
             }).then(function (res) {
-                resolve(res);
+                finalise(res);
             }).catch(function (err) {
                 if (err.code === "EEXIST") {
-                    finalise(new Project(Constants.defaultProjectName));
+                    //finalise(new Project(Constants.defaultProjectName));
+                    _projectManager.openProject(Constants.defaultProjectName).then(function(res) {
+                        finalise(res);
+                    });
                 } else {
                     reject(err);
                 }

@@ -1,0 +1,155 @@
+/**
+ * @module TouchscreenButton
+ * @version 2.0
+ * @description Emulates a soft button using a (non-transparent) touchscreen display element.
+ *              This module provide APIs for changing the look and feel of
+ *              the rendered text, including: cursors, background color, font, size, alignment.
+ * @author Paolo Masci, Patrick Oladimeji
+ * @date Sep 11, 2016
+ *
+ * @example <caption>Typical use of TouchscreenButton APIs within a PVSio-web plugin module.</caption>
+ * // Example module that uses TouchscreenButton.
+ * define(function (require, exports, module) {
+ *     "use strict";
+ *     var device = {};
+ *     device.disp = new TouchscreenButton("fndisp",
+            { top: 222, left: 96, height: 8, width: 38 }
+            { touchscreen : { callback: renderResponse }); FIXME: explain how to implement function renderResponse
+ *     device.disp.render(10); // the display renders 10
+ * });
+ *
+ */
+/*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50 */
+/*global define, document */
+
+define(function (require, exports, module) {
+    "use strict";
+
+    var d3 = require("d3/d3");
+    var SingleDisplay = require("widgets/SingleDisplay");
+    var Widget = require("widgets/Widget");
+
+    /**
+     * @function <a name="TouchscreenButton">TouchscreenButton</a>
+     * @description Constructor.
+     * @param id {String} The ID of the display.
+     * @param coords {Object} The four coordinates (top, left, width, height) of the display, specifying
+     *        the left, top corner, and the width and height of the (rectangular) display.
+     *        Default is { top: 0, left: 0, width: 200, height: 80 }.
+     * @param opt {Object} Options:
+     *          <li>backgroundColor (String): background display color (default is black, "#000")</li>
+     *          <li>fontfamily (String): display font type (default is "sans-serif")</li>
+     *          <li>fontColor (String): display font color (default is white, "#fff")</li>
+     *          <li>align (String): text alignment (default is "center")</li>
+     *          <li>inverted (Bool): if true, the text has inverted colors,
+     *              i.e., fontColor becomes backgroundColor, and backgroundColor becomes fontColor (default is false)</li>
+     *          <li>parent (String): the HTML element where the display will be appended (default is "body")</li>
+     * @memberof module:TouchscreenButton
+     * @instance
+     */
+     var d3 = require("d3/d3");
+     var Button = require("widgets/Button");
+     var Widget = require("widgets/Widget"),
+         StateParser = require("util/PVSioStateParser"),
+         Speaker  = require("widgets/TextSpeaker"),
+         property = require("util/property");
+
+     /**
+      * @function <a name="SingleDisplay">SingleDisplay</a>
+      * @description Constructor.
+      * @param id {String} The ID of the display.
+      * @param coords {Object} The four coordinates (top, left, width, height) of the display, specifying
+      *        the left, top corner, and the width and height of the (rectangular) display.
+      *        Default is { top: 0, left: 0, width: 200, height: 80 }.
+      * @param opt {Object} Options:
+      *          <li>backgroundColor (String): background display color (default is black, "#000")</li>
+      *          <li>fontfamily (String): display font type (default is "sans-serif")</li>
+      *          <li>fontColor (String): display font color (default is white, "#fff")</li>
+      *          <li>align (String): text alignment (default is "center")</li>
+      *          <li>inverted (Bool): if true, the text has inverted colors,
+      *              i.e., fontColor becomes backgroundColor, and backgroundColor becomes fontColor (default is false)</li>
+      *          <li>parent (String): the HTML element where the display will be appended (default is "body")</li>
+      * @memberof module:SingleDisplay
+      * @instance
+      */
+     function TouchscreenButton(id, coords, opt) {
+         opt = opt || {};
+         coords = coords || {};
+         Widget.call(this, id, "touchscreenbutton");
+         opt.evts = opt.evts || ["click"];
+         opt.functionText = opt.functionText || id;
+         opt.softLabel = opt.softLabel || opt.functionText;
+         opt.auditoryFeedback = (opt.auditoryFeedback) ? "enabled" : "disabled";
+         opt.recallRate = opt.recallRate || 250;
+         opt.backgroundColor = opt.backgroundColor || "black";
+         opt.touchscreen = {
+             callback: opt.callback, functionText: opt.functionText,
+             backgroundColor: "green", highlightOnMouseClick: true
+         };
+         this.evts = property.call(this, opt.evts);
+         this.functionText = property.call(this, opt.functionText);
+         this.softLabel = property.call(this, opt.softLabel);
+         this.buttonReadback = property.call(this, opt.buttonReadback);
+         this.recallRate = property.call(this, opt.recallRate);
+         this.example = opt.example || ""; // this is used in the prototype builder to demonstrate the font style of the widget
+         this.touchscreenButton = new SingleDisplay(id, coords, opt);
+         return this;
+    }
+    TouchscreenButton.prototype = Object.create(Widget.prototype);
+    TouchscreenButton.prototype.constructor = TouchscreenButton;
+    TouchscreenButton.prototype.parentClass = Widget.prototype;
+
+    /**
+     * Returns a JSON object representation of this Widget.
+     * @returns {object}
+     * @memberof module:TouchscreenButton
+    */
+    TouchscreenButton.prototype.toJSON = function () {
+        return {
+            id: this.id(),
+            type: this.type(),
+            evts: this.evts(),
+            recallRate: this.recallRate(),
+            functionText: this.functionText(),
+            boundFunctions: (this.touchscreenButton) ? this.touchscreenButton.boundFunctions() : [],
+            buttonReadback: this.buttonReadback(),
+            softLabel: this.softLabel(),
+            style: (this.touchscreenButton) ? {
+                visibleWhen: this.touchscreenButton.visibleWhen(),
+                backgroundColor: this.touchscreenButton.backgroundColor,
+                fontsize: this.touchscreenButton.fontsize
+            } : {}
+        };
+    };
+
+
+    /**
+    * Updates the location and size of the widget according to the given position and size
+     */
+    TouchscreenButton.prototype.updateLocationAndSize = function (pos) {
+        TouchscreenButton.prototype.parentClass.updateLocationAndSize.apply(this, arguments);
+        if (this.touchscreenButton) {
+            if (!this.touchscreenButton.element()) {
+                this.touchscreenButton.element(this.element());
+            }
+            this.touchscreenButton.updateLocationAndSize(pos);
+        }
+        return this.render(this.example);
+    };
+    /**
+     * Removes the widget's div
+     */
+    TouchscreenButton.prototype.remove = function () {
+        if (this.touchscreenButton) {
+            this.touchscreenButton.remove();
+        }
+    };
+
+    TouchscreenButton.prototype.render = function (txt, opt) {
+        if (this.touchscreenButton) {
+            this.touchscreenButton.render(this.softLabel());
+        }
+    };
+
+    module.exports = TouchscreenButton;
+});

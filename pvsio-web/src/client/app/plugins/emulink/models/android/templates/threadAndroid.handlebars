@@ -1,0 +1,167 @@
+{{&descriptor}}
+#include "Android_{{filename}}.h"
+#include <assert.h>
+
+#ifdef DEBUG
+#include <stdio.h>
+#define debug_print(fmt, args...) \
+        do { fprintf(stderr, "%s:%d:%s(): " fmt, \
+                __FILE__, __LINE__, __FUNCTION__, ##args); } while (0)
+#endif
+
+{{~#if constants}}
+/* constants variables */
+{{~#each constants}}
+const {{type}} {{name}}{{#if value}} = {{&value}}{{/if}};{{/each}}
+{{~/if}}
+/**
+ * Global variables
+ */
+{{#each structureVar}}
+static {{&.}}{{/each}}
+{{~#if input_variables}}
+    //input variables
+{{~#each input_variables}}
+static {{type}} {{name}};{{/each}}{{~/if}}{{~#if output_variables}}
+    //output variables
+{{~#each output_variables}}
+static {{type}} {{name}};{{/each}}{{~/if}}
+
+{{#if transitions}}
+/* definition of auxiliary functions */
+void enter(const MachineState newStateLabel) {
+#ifdef DEBUG
+    debug_print("Entering state nr. '%u'.\n", newStateLabel);
+#endif
+    current_state = newStateLabel;
+}
+void leave(const MachineState currentStateLabel) {
+#ifdef DEBUG    
+    debug_print("Leaving state nr. '%u'.\n", currentStateLabel);
+#endif    
+    previous_state = currentStateLabel;
+}{{/if}}
+
+{{#if initial_transitions}}/* definition of initialisation function */
+JNIEXPORT void JNICALL init(JNIEnv *env,jobject callingObject,jobject obj){
+#ifdef DEBUG    
+    debug_print("Initialisation of state variables.\n");
+#endif    
+    {{#each ../local_variables}}{{#if value}}{{#if isstring}}{{&value}}{{else}}{{name}} = {{&value}}{{/if}};
+    {{/if}}{{/each}}
+    {{~#each ../input_variables}}{{#if value}}{{name}} = {{&value}};
+    {{/if}}{{/each}}
+    {{~#each ../output_variables}}{{#if value}}{{name}} = {{&value}};
+    {{/if}}{{/each}}
+    {{~#each initial_transitions}}
+    {{~#if condition}}if ({{&condition}}) {
+        enter({{target.name}}, st);
+        {{#each actions}}{{&.}};
+#ifdef DEBUG        
+        debug_print("Action {{&.}} issued.\n");
+#endif{{/each}}
+        assert ( current_state == {{target.name}} );
+        return;
+    }
+    {{else}}enter({{target.name}}, st);
+    {{#each actions}}{{&.}};
+#ifdef DEBUG    
+    debug_print("Action {{&.}} issued.\n");
+#endif{{/each}}
+    assert ( current_state == {{target.name}} );
+    return;{{/if}}{{/each}}
+}{{/if}}
+
+{{#if transitions}}/* definition of transition functions */
+{{#each transitions}}{{#if id}}JNIEXPORT void JNICALL {{id}}(JNIEnv *env, jobject callingObject, jobject obj) {
+    assert( current_state == {{source.name}});
+{{~#if condition}}
+    if ({{&condition}}) {
+        leave({{source.name}}, st);
+        {{~#each actions}}
+        {{&.}};
+#ifdef DEBUG        
+        debug_print("Action {{&.}} issued.\n");
+#endif{{/each}}       
+        enter({{target.name}}, st);
+    }
+{{~else}}
+    leave({{source.name}}, st);
+    {{~#each actions}}
+    {{&.}};
+#ifdef DEBUG    
+    debug_print("Action {{&.}} issued.\n");
+#endif{{~/each}}
+  
+    enter({{target.name}}, st);
+{{~/if}}
+    assert( current_state == {{target.name}} );
+    return;
+}
+{{else}}JNIEXPORT void JNICALL {{0.id}}(JNIEnv *env, jobject callingObject, jobject obj) {
+    assert( {{#each 0.listSources}}current_state ==  {{&.}} {{#unless @last}}|| {{/unless}}{{/each}});
+{{#each .}}
+{{~#if condition}}
+    if ( (current_state == {{source.name}}) && ({{&condition}}) ) {
+        leave({{source.name}}, st);
+        {{~#each actions}}
+        {{&.}};
+#ifdef DEBUG        
+        debug_print("Action {{&.}} issued.\n");
+#endif {{/each}}      
+        enter({{target.name}}, st);
+        assert( current_state == {{target.name}} );
+        return;
+    }{{~else}}
+    if (current_state == {{source.name}}) {
+        leave({{source.name}}, st);
+        {{~#each actions}}
+        {{&.}};
+#ifdef DEBUG        
+        debug_print("Action {{&.}} issued.\n");
+#endif{{~/each}}       
+        enter({{target.name}}, st);
+        assert( current_state == {{target.name}} );
+        return;
+{{~/if}}{{/each}}
+    return;
+}
+{{/if}}
+{{/each}}{{/if}}
+{{#if transitions}}/* definition of permission function for transition functions */
+{{#each transitions}}{{#if id}}JNIEXPORT jboolean JNICALL per_{{id}}(JNIEnv *env, jobject callingObject, jobject obj) {
+    if (current_state == {{source.name}}){
+        return true;
+    }
+    return false;
+}
+{{else}}JNIEXPORT jboolean JNICALL per_{{0.id}}(JNIEnv *env, jobject callingObject, jobject obj) {
+    if ({{#each 0.listSources}} current_state ==  {{&.}} {{#unless @last}}|| {{/unless}}{{/each}}){
+        return true;
+    }
+    return false;
+}
+{{/if}}
+{{/each}}{{/if}}
+
+{{~#if local_variables}}
+/* definition of utility functions */
+{{~#each local_variables}}
+JNIEXPORT {{type}} JNICALL Get_1{{name}}(JNIEnv *env, jobject callingObject)
+{
+    return {{name}};
+}{{/each}}{{~/if}}
+{{~#if input_variables}}
+{{~#each input_variables}}
+JNIEXPORT {{type}} JNICALL Get_1{{name}}(JNIEnv *env, jobject callingObject)
+{
+    return {{name}};
+}{{/each}}{{~/if}}
+{{~#if output_variables}}
+{{~#each output_variables}}
+JNIEXPORT {{type}} JNICALL Get_1{{name}}(JNIEnv *env, jobject callingObject)
+{
+    return {{name}};
+}{{/each}}{{~/if}}
+
+{{&disclaimer}}

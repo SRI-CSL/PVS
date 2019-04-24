@@ -1,0 +1,27 @@
+<div class="form-center">
+    <div class="panel panel-info dialog shadow center">
+        <div class="panel-heading">{{heading}}</div>
+        <form class="center form-horizontal" onsubmit="return false" role="form">
+            <div class="panel-body">
+                <div class="form-group">
+                    <label for="name" class="col-sm-4 control-label">{{label}}</label>
+                    <div class="col-sm-8" id="saveas">
+                        <input id="name"
+                               class="form-control"
+                               type="text"
+                               value={{name}}
+                               placeholder={{placeholder}}
+                               name="name"
+                               required="true"
+                               style="padding: 6px 12px;"/>
+                    </div>
+                    <script>document.getElementById("saveas").focus();</script>
+                </div>
+            </div>
+            <div class="panel-footer">
+                <button type="button" class="btn btn-danger left" id="btnCancel">Cancel</button>
+                <button type="submit" class="btn btn-success right" id="btnOk">OK</button>
+            </div>
+        </form>
+    </div>
+</div>

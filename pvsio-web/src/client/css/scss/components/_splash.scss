@@ -1,0 +1,66 @@
+.PVSio-web-logo {
+    width: 100%;
+    float:left;
+    position: absolute;
+    z-index: 99999;
+    margin-top: 120px;
+    margin-left: auto;
+    animation: fadeOut;
+}
+
+.demo-splash {
+    height: 800px;
+    width: 100%;
+    opacity: 0.8;
+    float:left;
+    position: absolute;
+    z-index: 99999;
+    margin-top: 120px;
+    margin-left: auto;
+    animation: fadeOut;
+}
+
+.loader {
+    width: 600px;
+    height: 400px;
+    display: table;
+    margin: 0 auto;
+    font-size: 52pt;
+    background: midnightblue;
+    color: white;
+    border-radius: 20pt;
+}
+
+.loader .version {
+    margin-left: 10%;
+    padding-top: 16%;
+}
+.loader .bar {
+    margin-left: 34%;
+    width: 90%;
+    height: 64px;
+    font-size: 24pt;
+    color: $color-primary;
+    display: inline-flex;
+}
+
+.loader .bar div {
+    height: 54px;
+    width: 16px;
+    margin-left: 6px;
+    display:inline-flex;
+    background-color: $color-primary;
+    display: inline-block;
+    animation: wave 1.2s infinite ease-in-out;
+}
+
+@for $i from 2 through 5 {
+	.loader div:nth-child(#{$i}) {
+	    animation-delay: -1.3s + ($i * 0.1s);
+	}
+}
+
+@keyframes wave {
+    0%, 40%, 100% { transform: scaleY(0.4); }
+    20% { transform: scaleY(1.0); }
+}

@@ -1,0 +1,8 @@
+{{#if template_description}}
+%
+%   Description: This template generates PVS constants. They can be either symbolic constants or instantiated constants.
+%                - Symbolic constants are in the form:     constant_name: constant_type
+%                - Instantiated constants are in the form: constant_name: constant_type = value
+%
+{{/if}}{{#if comment}}  %-- {{comment}}{{/if}}{{#each constants}}
+  {{name}}: {{type}}{{#if value}} = {{value}}{{/if}}{{/each}}

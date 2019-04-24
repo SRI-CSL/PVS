@@ -6,7 +6,7 @@
  *
  */
 /*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50*/
-/*global define, describe, expect, it, Promise, d3, beforeAll, afterAll*///, xdescribe*/
+/*global define, describe, expect, it, Promise, beforeAll, afterAll*///, xdescribe*/
 define(function (require, exports, module) {
     "use strict";
     var instance;

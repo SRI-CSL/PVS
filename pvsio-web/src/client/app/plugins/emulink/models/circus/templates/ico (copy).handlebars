@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<obcs xmlns="http://www.irit.fr/ICS/OBCS/7.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" copyright="Equipe ICS - IRIT Universite Toulouse Paul Sabatier http://www.irit.fr/recherches/ICS/" name="IcoTemplate" version="7" package="" xsi:schemaLocation="http://www.irit.fr/ICS/OBCS/7.0 https://www.irit.fr/recherches/ICS/xsd/petshop/v7/v7.xsd">
+    <operationclusters>
+        <operationcluster title="Default" position="1"/>
+    </operationclusters>
+    <layers>
+        <layer name="CREATION" custom="false">
+            <properties>
+                <property name="visibility" value="true"/>
+                <property name="description" value="Creation Layer"/>
+            </properties>
+        </layer>
+        <layer name="DEFAULT" custom="false">
+            <properties>
+                <property name="visibility" value="true"/>
+                <property name="description" value="Default Layer"/>
+            </properties>
+        </layer>
+        <layer name="PARAM_SERVICES" custom="false">
+            <properties>
+                <property name="visibility" value="true"/>
+                <property name="description" value="Param's services Layer"/>
+            </properties>
+        </layer>
+        <layer name="PARAM_TEST_ARC" custom="false">
+            <properties>
+                <property name="visibility" value="true"/>
+                <property name="description" value="Param's TestArcs Layer"/>
+            </properties>
+        </layer>
+        <layer name="STATIC_PLACE" custom="false">
+            <properties>
+                <property name="visibility" value="true"/>
+                <property name="description" value="NO ACTION NAME"/>
+            </properties>
+        </layer>
+    </layers>
+    <places>
+        <place kind="SIMPLE" name="p0">
+            <graphics>
+                <graphic layer="DEFAULT" show_marking="true" show_name="true">
+                    <center center_x="350" center_y="198"/>
+                </graphic>
+            </graphics>
+            <token multiplicity="1"/>
+        </place>
+        <place kind="SIMPLE" name="p1">
+            <graphics>
+                <graphic layer="DEFAULT" show_marking="true" show_name="true">
+                    <center center_x="720" center_y="198"/>
+                </graphic>
+            </graphics>
+        </place>
+    </places>
+    <transitions>
+        <transition kind="SIMPLE" name="t0" synchronized="true">
+            <graphics>
+                <graphic allintitle="true" eventvisible="false" layer="DEFAULT" show_action="false" show_name="true" show_precondition="false" show_time="false">
+                    <center center_x="551" center_y="198"/>
+                </graphic>
+            </graphics>
+            <action></action>
+            <precondition>true</precondition>
+            <time></time>
+            <eventextension eventname="event" eventsourcename="">
+                <preconditionextension>true</preconditionextension>
+                <eventparameters/>
+            </eventextension>
+        </transition>
+    </transitions>
+    <arcs>
+        <arc kind="INPUT" place="p0" transition="t0" weight="1">
+            <graphics>
+                <graphic shape="LINE">
+                    <label_origin x="0" y="0"/>
+                </graphic>
+            </graphics>
+        </arc>
+        <arc kind="OUTPUT" place="p1" transition="t0" weight="1">
+            <graphics>
+                <graphic shape="LINE">
+                    <label_origin x="0" y="0"/>
+                </graphic>
+            </graphics>
+        </arc>
+    </arcs>
+</obcs>

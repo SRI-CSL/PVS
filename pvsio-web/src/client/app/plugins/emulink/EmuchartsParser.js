@@ -1,6 +1,6 @@
 /**
  * @module EmuchartsParser
- * @version 0.3
+ * @version 0.4
  * @description
  * EmuchartsParser is a parser for the Emucharts language.
  * The main API of the parser is function parseTransition(label); it can be used to parse
@@ -50,16 +50,18 @@ define(function (require, exports, module) {
  *       about the parsed tokens
  *   $1, $2, $3, etc... can be used in the production rules to obtain the value of the tokens specified in the rules
  *       alternatively, the name of the token preceded by $ can be used for the same purpose (i.e., the value
- *       or a token t is $t)
+ *       of a token t is $t)
  */
 define(function (require, exports, module) {
     "use strict";
 
     var Parser = require("lib/jison/jison");
 
+    var instance;
+
     var lexerRules = [
         { rule: ["\\s+",                    "/* skip whitespace */"], type: "whitespace" },
-        { rule: ["(?!(?:IMPLIES|implies|AND|and|OR|or|NOT|not|TRUE|true|FALSE|false))"
+        { rule: ["(?!(?:IMPLIES|implies|AND|and|OR|or|NOT|not|TRUE|true|FALSE|false|MOD|mod|RETURN|return))"
                  + // keywords shall not be used as identifiers
                 "([a-zA-Z][a-zA-Z0-9_]*)",  "return 'IDENTIFIER'"],   type: "variable" },
         { rule: ["[0-9]+(?:\\.[0-9]+)?\\b", "return 'NUMBER'"],       type: "number"  },
@@ -85,6 +87,8 @@ define(function (require, exports, module) {
         { rule: ["(OR|\\|\\|)",             "return 'OR'"],           type: "builtin" },
         { rule: ["(TRUE|true)",             "return 'TRUE'"],         type: "builtin" },
         { rule: ["(FALSE|false)",           "return 'FALSE'"],        type: "builtin" },
+        { rule: ["(MOD|mod)",               "return 'MOD'"],          type: "builtin" },
+        { rule: ["(RETURN|return)",         "return 'return'"],       type: "builtin" },
         { rule: ["\\(",                     "return '('"],            type: "builtin" },
         { rule: ["\\)",                     "return ')'"],            type: "builtin" },
         { rule: ["\\[",                     "return '['"],            type: "builtin" },
@@ -116,6 +120,15 @@ define(function (require, exports, module) {
                    " });" +
                    " $$ = $$.concat($3)";
         }
+        function exprModOp() {
+            return " if (!Array.isArray($$)) { $$ = []; }" +
+                   " Array.isArray($1) ? $$.concat($1) : $$.push($1);" +
+                   " $$.push({" +
+                   "      type: 'modop'," +
+                   "      val:  $2.toUpperCase()" +
+                   " });" +
+                   " $$ = $$.concat($3)";
+        }
         function exprWithUnaryOp() {
             return " if (!Array.isArray($$)) { $$ = []; }" +
                    " $$.push({" +
@@ -137,6 +150,14 @@ define(function (require, exports, module) {
                    "       identifier: $1," +
                    "       binop: { type: 'binop', val: $2 }," +
                    "       expression: $3 " +
+                   "    }" +
+                   " };";
+        }
+        function returnExpr() {
+            return " $$ = {" +
+                   "    type: 'return'," +
+                   "    val: {" +
+                   "       expression: $2 " +
                    "    }" +
                    " };";
         }
@@ -183,6 +204,7 @@ define(function (require, exports, module) {
                 ["e <= e",      exprWithBinaryOp()],
                 ["e AND e",     exprWithBinaryOp()],
                 ["e OR e",      exprWithBinaryOp()],
+                ["e MOD e",     exprModOp()],
                 ["e IMPLIES e", exprWithBinaryOp()],
                 ["term",           "$$ = [$term]"]
             ];
@@ -197,7 +219,7 @@ define(function (require, exports, module) {
             "operators": [
                 ["left", "+", "-", "*", "/"], // left means left-to-right
                 ["left", "=", "!=", ">", "<", "<=", ">="],
-                ["left", "IMPLIES", "AND", "OR"],
+                ["left", "IMPLIES", "AND", "OR", "MOD"],
                 ["right", ":="],
                 ["right", ";", ","],
                 ["right", "UMINUS", "NOT"] // unary negation, not
@@ -237,10 +259,15 @@ define(function (require, exports, module) {
                 "a": [
                     ["assignment",     "if (!Array.isArray($$)) { $$ = []; } $$.push($assignment);"],
                     ["assignment ;",   "if (!Array.isArray($$)) { $$ = []; } $$.push($assignment);"],
-                    ["assignment ; a", "if (!Array.isArray($$)) { $$ = []; } $$.push($1); $$ = $$.concat($3);"]
+                    ["assignment ; a", "if (!Array.isArray($$)) { $$ = []; } $$.push($1); $$ = $$.concat($3);"],
+                    ["r",         "if (!Array.isArray($$)) { $$ = []; } $$.push($r);"],
+                    ["r ;",       "if (!Array.isArray($$)) { $$ = []; } $$.push($r);"]
                 ],
                 "assignment": [
                     ["id := expression", assignmentExpr()]
+                ],
+                "r": [
+                    ["return expression", returnExpr()]
                 ],
                 "id": [
                     ["IDENTIFIER", "$$ = { type: 'identifier', val: $IDENTIFIER }"],
@@ -256,7 +283,7 @@ define(function (require, exports, module) {
                     ["NUMBER", "$$ = { type: 'number', val: $NUMBER }"]
                 ],
                 "string": [
-                    ["STRING", "$$ = { type: 'constant', val: $STRING }"]
+                    ["STRING", "$$ = { type: 'string', val: $STRING }"]
                 ],
                 "true_false": [
                     ["TRUE", "$$ = { type: 'constant', val: $TRUE }"],
@@ -292,7 +319,7 @@ define(function (require, exports, module) {
             return this;
         }
     }
-    
+
     /**
      * @function getParserCode
      * @memberof module:EmuchartsParser
@@ -363,7 +390,7 @@ define(function (require, exports, module) {
      * <li><h6>Expression</h6></br>
      * {<ul>
      *     type: "expression",</br>
-     *     val: (Array of objects of type "identifier"|"number"|"binop"|"unaryop"|"function"|"par")</ul>}</li>
+     *     val: (Array of objects of type "identifier"|"number"|"binop"|"modop"|unaryop"|"function"|"par")</ul>}</li>
      * <li><h6>Action</h6>
      * {<ul>
      *     type: "action",</br>
@@ -385,6 +412,10 @@ define(function (require, exports, module) {
      * {<ul>
      *     type: "binop",</br>
      *     val: (String)</ul>}</li>
+     * <li><h6>Modulus operator</h6>
+     * {<ul>
+     *     type: "modop",</br>
+     *     val: (String)</ul>}</li>
      * <li><h6>Unary operator</h6>
      * {<ul>
      *     type: "unaryop",</br>
@@ -396,7 +427,7 @@ define(function (require, exports, module) {
      * <li><h6>Function</h6>
      * {<ul>
      *     type: "function",</br>
-     *     val: (Array of objects of type "identifier"|"number"|"binop"|"unaryop"|"function"|"par").
+     *     val: (Array of objects of type "identifier"|"number"|"binop"|"modop"|unaryop"|"function"|"par").
      *           <em>Note: the first array element is always an identifier, and it represents the function name.</em>)</ul>}</li>
      * <li><h6>Parenthesis</h6>
      * {<ul>
@@ -482,14 +513,19 @@ if (ans.res) {
 
      */
     EmuchartsParser.prototype.parseTransition = function (label) {
-        label = (label === "" || label.trim().indexOf("[") === 0 || label.trim().indexOf("{") === 0) ? 
-            ("tick " + label) : label;
-        console.log("Parsing transition " + label);
         var ans = { err: null, res: null };
-        try {
-            ans.res = this.parser.parse(label);
-        } catch (e) {
-            ans.err = e.message;
+        if (typeof label === "string") {
+            label = (label === "" || label.trim().indexOf("[") === 0 || label.trim().indexOf("{") === 0) ?
+                ("tick " + label) : label;
+            console.log("Parsing transition " + label);
+            try {
+                ans.res = this.parser.parse(label);
+            } catch (e) {
+                ans.err = e.message;
+            }
+        } else {
+            ans.err = "Erroneous argument type for string label: " + (typeof label);
+            console.error(ans.err);
         }
         return ans;
     };
@@ -618,5 +654,27 @@ if (ans.res) {
         return ans;
     };
 
-    module.exports = EmuchartsParser;
+    EmuchartsParser.prototype.printFunction = function(f) {
+        var ans = "";
+        var _this = this;
+        if (f.type === "function") {
+            f.val.forEach(function (v) {
+                if (v.type === "function") {
+                    _this.printFunction(v);
+                } else {
+                    ans += v.val;
+                }
+            });
+        }
+        return ans;
+    };
+
+    module.exports = {
+        getInstance: function () {
+            if (!instance) {
+                instance = new EmuchartsParser();
+            }
+            return instance;
+        }
+    };
 });

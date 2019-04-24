@@ -11,9 +11,9 @@ pvsio-web is distributed in the hope that it will be useful, but WITHOUT ANY WAR
 You should have received a copy of the GNU General Public License along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 */
 /**
- * 
- * A generic wrapper for spawning a process, sending messages to a process and shutting down a process 
- * 
+ *
+ * A generic wrapper for spawning a process, sending messages to a process and shutting down a process
+ *
  * @author Patrick Oladimeji
  * @date Dec 2, 2012 : 10:28:48 PM
  */
@@ -27,7 +27,7 @@ module.exports = function () {
     "use strict";
     var proc, _dataProcessor;
     var o = {}, cbQueue = [];
-    
+
     /**
      * Starts an interactive process with the specified parameters. The opt variable should contain
      * at least the name of the process to start
@@ -37,7 +37,7 @@ module.exports = function () {
      *      onDataReceived: function to be called when the process sends something to its stdout
             onErrorReceived: function to be called when the process encounters an error
      *      onProcessExited: function to be called when the process exits
-     *  
+     *
      * @returns {___anonymous325_326}
      */
     o.start = function (opt) {
@@ -108,18 +108,20 @@ module.exports = function () {
         }
         return o;
     };
-	
+
 	function write(msg, cb) {
 		cbQueue.push(cb);
-		var ok = proc.stdin.write(msg);
-		if (!ok) {
-			//wait for drain event before trying to write the command again
-			proc.stdin.once("drain", (function (m) {
-				write(m);
-			}(msg)));
-		}
+        //msg = msg.replace(/\s+/g, ""); // this reduces the message size -- this may create issues when using string constants tho
+		//var ok =
+        proc.stdin.write(msg);
+		// if (!ok) {
+			// wait for drain event before writing another command
+			// proc.stdin.once("drain", (function (m) {
+			// 	write(m);
+			// }(msg)));
+		// }
 	}
-		
+
     /**
      * send a command to the running process
      * @param command

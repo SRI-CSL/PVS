@@ -12,6 +12,7 @@ define(function (require, exports, module) {
 
     var QuestionView = BaseDialog.extend({
         render: function (data) {
+            data.primaryLevel = data.primaryLevel || "success";
             var template = Handlebars.compile(formTemplate);
             this.$el.html(template(data));
             $("body").append(this.el);
@@ -27,7 +28,8 @@ define(function (require, exports, module) {
         /**
          * creates a new form view to display questions. Renders two buttons for
          * taking positive or negative responses to the question posed.
-         * @param {header: {string}, question: {string}} data Data to use to render the form
+         * @param {header: {string}, question: {string}, primaryLevel: {string}} data Data to use to render the form
+         * @param {string} data.primaryLevel Bootstrap importance level for the primary button within the dialog
          */
         create: function (data) {
             return new QuestionView(data);

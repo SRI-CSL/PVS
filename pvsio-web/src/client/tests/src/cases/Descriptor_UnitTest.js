@@ -9,40 +9,55 @@
 define(function (require, exports, module) {
     "use strict";
     var Descriptor = require("project/Descriptor");
-    
-	module.exports = {
-		run: function () {
-			describe("Descriptor", function () {
-				var f, spec = "Documents/main.pvs", image = "Documents/image.png",
-					specname = "main.pvs", imagename = "image.png";
 
-				beforeEach(function () {
-					f = new Descriptor(spec, "");
-				});
+    module.exports = {
+        run: function () {
+            describe("Descriptor", function () {
+                var f, spec = "Documents/main.pvs", image = "Documents/image.png",
+                    specname = "main.pvs", imagename = "image.png";
 
-				afterEach(function () {
-					f = null;
-				});
+                beforeEach(function () {
+                    f = new Descriptor(spec, "");
+                });
 
-				it("has a .pvs extension", function () {
-					expect(f.extension).toEqual(".pvs");
-				});
-				it("has the correct name", function () {
-					expect(f.name).toEqual(specname);
-				});
+                afterEach(function () {
+                    f = null;
+                });
 
-				it("spec is not an image", function () {
-					expect(f.isImage()).toBeFalsy();
-					expect(f.isPVSFile()).toBeTruthy();
-				});
+                it("has a .pvs extension", function () {
+                    expect(f.extension).toEqual(".pvs");
+                });
+                it("has the correct name", function () {
+                    expect(f.name).toEqual(specname);
+                });
 
-				it("has a toString method", function () {
+                it("spec is not an image", function () {
+                    expect(f.isImage()).toBeFalsy();
+                    expect(f.isPVSFile()).toBeTruthy();
+                });
+
+                it("has a toString method", function () {
                     var obj = JSON.parse(f.toString());
-					expect(obj.path).toEqual(spec);
+                    expect(obj.path).toEqual(spec);
                     expect(obj.encoding).toEqual("utf8");
-				});
-			});
-		}
-	};
-   
+                });
+
+                it("uses the provided function to generate its text content", function (done) {
+                    var content = "test";
+
+                    f.content = "{}";
+
+                    f.setContentGenerator(function () {
+                        return content;
+                    });
+
+                    f.getContent().then(function (res) {
+                        expect(res).toEqual(content);
+                        done();
+                    });
+                });
+            });
+        }
+    };
+
 });

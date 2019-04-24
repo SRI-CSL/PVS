@@ -1,0 +1,6 @@
+{{#if comment}}  %-- {{comment}}{{/if}}{{#each recordtype}}
+  {{state_type}}: TYPE {{#if variables}}= [#{{#each variables}}
+    {{name}}: {{#if children}}[#{{#each children}}
+      {{name}}: {{type}}{{#unless @last}},{{/unless}}{{/each}} #]{{
+                 else}}{{type}}{{/if}}{{#unless @last}},{{/unless}}{{/each}}
+  #]{{/if}}{{/each}}

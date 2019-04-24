@@ -1,0 +1,28 @@
+{{#if template_description}}
+%
+%   Description: This template generates a library of MISRA-C utility functions.
+%
+{{/if}}/**
+ * utility functions
+ */
+{{#if is_header_file}}#include <math.h>
+#include <time.h>
+#include "misraC_basic_types.h"
+{{else}}
+#include "pvsioweb_utils.h"
+{{/if}}
+//- get today's date and time in compact format DD.MM.YYYY hh:mm
+UC_8* get_todays_date(){{#if is_header_file}};{{else}} {
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    return tm.tm_mday + "." + (tm.tm_mon + 1) + "." + (tm.tm_year + 1900) + " " + tm.tm_hour + ":" + tm.tm_min;
+}
+{{/if}}
+//- C has a built-in function pow10, which computes 10^i -- no need to define it
+//- trims the fractional number to the number of digits indicated as argument
+D_64 trim(double x, int n){{#if is_header_file}};{{else}} {
+    if (n == 0) { return floor(x); }
+    D_64 div = pow10(n);
+    return floor(x * div) / div;
+}
+{{/if}}

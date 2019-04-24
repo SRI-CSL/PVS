@@ -1297,7 +1297,7 @@
 	(let* ((rid (pvs2ir-unique-decl-id rdecl))
 	       (rarg  (mk-ir-variable (new-irvar) adt-type-name))
 	       (index-var (mk-ir-variable (new-irvar) index-type))
-	       (check-expr (mk-ir-apply (mk-ir-function '=) (list rarg index-var)))
+	       (check-expr (mk-ir-apply (mk-ir-primitive-function '=) (list rarg index-var)))
 	       (rbody (mk-ir-let index-var (mk-ir-integer index)
 				 check-expr))
 	       (recognizer-name (mk-ir-function (intern (format nil "r_~a" rid)) rdecl)))
@@ -1319,7 +1319,7 @@
 	       (index-expr (mk-ir-get (car rargs) index-id))
 	       (index-expr-var (mk-ir-variable (new-irvar) index-type))
 	       (index-var (mk-ir-variable (new-irvar) index-type))
-	       (check-expr (mk-ir-apply (mk-ir-function '=) (list index-expr-var index-var)))
+	       (check-expr (mk-ir-apply (mk-ir-primitive-function '=) (list index-expr-var index-var)))
 	       (rbody (mk-ir-let index-var (mk-ir-integer index)
 				 (mk-ir-let index-expr-var index-expr
 					    check-expr)))
@@ -1437,7 +1437,7 @@
 			      (mk-ir-let indvar
 					 (mk-ir-get aargvar index-id)
 					 (mk-ir-let intvar (mk-ir-integer cindex)
-						    (mk-ir-apply (mk-ir-function '=) (list indvar intvar))))
+						    (mk-ir-apply (mk-ir-primitive-function '=) (list indvar intvar))))
 			      (mk-ir-ift condvar
 					 cbranch
 					 (pvs2ir-accessor-body adecl-id aargvar (cdr acc-constructor-index-decls) index-id))))
@@ -1462,7 +1462,7 @@
 			      (mk-ir-let indvar
 					 (mk-ir-get aargvar index-id)
 					 (mk-ir-let intvar (mk-ir-integer cindex)
-						    (mk-ir-apply (mk-ir-function '=) (list indvar intvar))))
+						    (mk-ir-apply (mk-ir-primitive-function '=) (list indvar intvar))))
 			      (mk-ir-ift condvar
 					 cbranch
 					 (pvs2ir-accessor-update-body adecl-id aargvar new-value-var (cdr acc-constructor-index-decls) index-id))))
@@ -2805,7 +2805,7 @@
 	   ((uint8 uint16 uint32 uint64); __uint128)
 	    (format nil "mpq_mk_set_ui(~a, ~a)" lhs rhs))
 	   ((int8 int16 int32 int64); __int128)
-	    (format nil "mpq_mk_set_si(~a, ~a, 1)" lhs rhs))))
+	    (format nil "mpq_mk_set_si(~a, ~a)" lhs rhs))))
     ((uint8 uint16 uint32 uint64); __uint128) 
      (case rhs-type
        (mpz (format nil "~a = (~a_t)mpz_get_ui(~a)" lhs lhs-type rhs))
@@ -2862,7 +2862,7 @@
   (with-slots (ir-fname declaration) ir-expr ;;emulating the symbol method
 	      (let ((rhs (format nil "~a()" ir-fname))
 		    (c-return-type (add-c-type-definition (ir2c-type return-type)))
-		    (rhs-type (add-c-type-definition (ir2c-type (type declaration)))))
+		    (rhs-type (add-c-type-definition (ir2c-type (pvs2ir-type (type declaration))))))
 		(list (mk-c-assignment return-var c-return-type rhs rhs-type)))))
 
 
@@ -3524,6 +3524,7 @@
 
 (defun arith-relation-inverse (ir-relation)
   (case ir-relation
+    (== '==)
     (< '>=)
     (<= '>)
     (> '<=)
@@ -3582,11 +3583,11 @@
 	   (mpz (case arg2-c-type
 		  ((uint8 uint16 uint32 uint64)
 		   (list (format nil "mpz_mk_set_ui(~a, (uint64_t)~a)" return-var arg2)
-			 (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" return-var arg1 arg2)))
+			 (format nil "mpz_add(~a, ~a, ~a)" return-var return-var arg1)))
 		  ((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
 		  ((int8 int16 int32 int64)
 		   (list (format nil "mpz_mk_set_si(~a, ~a)" return-var arg2)
-			 (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" return-var arg2 arg1)))
+			 (format nil "mpz_add(~a, ~a, ~a)" return-var return-var arg1)))
 		  (mpz (list (format nil "mpz_mk_add(~a, ~a, ~a)" return-var arg2 arg1)))
 		  (mpq (let ((tmp (gentemp "tmp")))
 			 (list (format nil "mpz_t ~a" tmp)
@@ -3595,6 +3596,108 @@
 			       (format nil "mpz_mk_add(~a, ~a, ~a)" return-var arg1 tmp)
 			       (format nil "mpz_clear(~a)" tmp)
 			       )))))
+	   (mpq (case arg2-c-type
+		  ((uint8 uint16 uint32 uint64)
+		   (list (format nil "mpz_mk_set_q(~a, ~a)" return-var arg1)
+			 (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" return-var return-var arg2)))
+		  ((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
+		  ((int8 int16 int32 int64)
+		   (list (format nil "mpz_mk_set_si(~a, ~a)" return-var arg2)
+			 (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" return-var arg2 arg1)))
+		  (mpz (list (format nil "mpz_mk_add(~a, ~a, ~a)" return-var arg2 arg1)))
+		  (mpq (let ((tmp (gentemp "tmp")))
+			 (list (format nil "mpq_t ~a" tmp)
+			       (format nil "mpq_init(~a)" tmp)
+			       (format nil "mpq_mk_add(~a, ~a, ~a)" tmp arg1 arg2)
+			       (format nil "mpz_mk_set_q(~a, ~a)" return-var tmp)
+			       (format nil "mpq_clear(~a)" tmp))
+			       ))))
+	   (t (break "Not implemented."))))
+    ;;;working on this 
+    (mpq (case arg1-c-type
+	   ((uint8 uint16 uint32 uint64);  __uint128
+	    (case arg2-c-type
+	      ((uint8 uint16 uint32 uint64)
+	       (let ((tmp (gentemp "tmp")))
+		 (list (format nil "mpz_t ~a" tmp)
+		       (format nil "mpz_mk_set_ui(~a, (uint64_t)~a)" tmp arg1)
+		       (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" tmp tmp arg2)
+		       (format nil "mpq_mk_set_z(~a, ~a)" return-var tmp)
+		       (format nil "mpz_clear(~a)" tmp))))
+	      ((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
+	      ((int8 int16 int32 int64)
+	       (let ((tmp (gentemp "tmp")))
+		 (list (format nil "mpz_t ~a" tmp)
+		       (format nil "mpz_mk_set_ui(~a, (uint64_t)~a)" tmp arg1)
+		       (format nil "mpz_add_si(~a, ~a, (int64_t)~a)" tmp tmp arg2)
+		       (format nil "mpq_mk_set_z(~a, ~a)" return-var tmp)
+		       (format nil "mpz_clear(~a)" tmp))))
+	      (mpz (let ((tmp (gentemp "tmp")))
+		     (list (format nil "mpz_mk_set(~a, ~a)" tmp arg2)
+			   (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" tmp tmp arg1)
+			   (format nil "mpq_mk_set_z(~a, ~a)" return-var tmp)
+			   (format nil "mpz_clear(~a)" tmp))))
+	      (mpq (list (format nil "mpq_mk_set_ui(~a, ~a)" return-var arg1)
+			 (format nil "mpq_add(~a, ~a, ~a)" return-var return-var arg2)))))
+	   ((int8 int16 int32 int64)
+	    (case arg2-c-type
+	      ((uint8 uint16 uint32 uint64)
+	       (let ((tmp (gentemp "tmp")))
+		 (list (format nil "mpz_t ~a" tmp)
+		       (format nil "mpz_mk_set_si(~a, (int64_t)~a)" tmp arg1)
+		       (format nil "mpz_add_ui(~a, ~a, (uint64_t)~a)" tmp tmp arg2)
+		       (format nil "mpq_mk_set_z(~a, ~a)" return-var tmp)
+		       (format nil "mpz_clear(~a)" tmp))))
+	      ((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
+	      ((int8 int16 int32 int64)
+	       (let ((tmp (gentemp "tmp")))
+		 (list (format nil "mpz_t ~a" tmp)
+		       (format nil "mpz_mk_set_si(~a, (int64_t)~a)" tmp arg1)
+		       (format nil "mpz_add_si(~a, ~a, (int64_t)~a)" tmp tmp arg2)
+		       (format nil "mpq_mk_set_z(~a, ~a)" return-var tmp)
+		       (format nil "mpz_clear(~a)" tmp))))
+	      (mpz (let ((tmp (gentemp "tmp")))
+		     (list (format nil "mpz_mk_set(~a, ~a)" tmp arg2)
+			   (format nil "mpz_add_si(~a, ~a, (int64_t)~a)" tmp tmp arg1)
+			   (format nil "mpq_mk_set_z(~a, ~a)" return-var tmp)
+			   (format nil "mpz_clear(~a)" tmp))))
+	      (mpq (list (format nil "mpq_mk_set_si(~a, ~a)" return-var arg1)
+			 (format nil "mpq_add(~a, ~a, ~a)" return-var return-var arg2)))))
+	   (mpz (case arg2-c-type
+		  ((uint8 uint16 uint32 uint64)
+		   (let ((tmp (gentemp "tmp")))
+		     (list (format nil "mpz_mk_set_ui(~a, (uint64_t)~a)" tmp arg2)
+			   (format nil "mpz_add(~a, ~a, ~a)" tmp tmp arg1)
+			   (format nil "mpq_mk_set_z(~a, ~a)" return-var tmp)
+			   (format nil "mpz_clear(~a)" tmp))))
+		  ((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
+		  ((int8 int16 int32 int64)
+		   (let ((tmp (gentemp "tmp")))
+		     (list (format nil "mpz_mk_set_si(~a, (int64_t)~a)" tmp arg2)
+			   (format nil "mpz_add(~a, ~a, ~a)" tmp tmp arg1)
+			   (format nil "mpq_mk_set_z(~a, ~a)" return-var tmp)
+			   (format nil "mpz_clear(~a)" tmp))))
+		  (mpz (let ((tmp (gentemp "tmp")))
+			 (list (format nil "mpz_mk_set(~a, (int64_t)~a)" tmp arg1)
+			       (format nil "mpz_add(~a, ~a, ~a)" tmp tmp arg2)
+			       (format nil "mpq_mk_set_z(~a, ~a)" return-var tmp)
+			       (format nil "mpz_clear(~a)" tmp))))
+		  (mpq (list (format nil "mpq_mk_set_z(~a ~a)" return-var arg1)
+			     (format nil "mpq_add(~a, ~a, ~a)" return-var return-var arg2)))
+		  ))
+	   (mpq (case arg2-c-type
+		  ((uint8 uint16 uint32 uint64)
+		   (list (format nil "mpq_mk_set_ui(~a, (uint64_t)~a)" return-var arg2)
+			 (format nil "mpq_add(~a, ~a, ~a)" return-var return-var arg1)))
+		  ((__uint128 __int128) (break "128-bit GMP arithmetic not available." ))
+		  ((int8 int16 int32 int64)
+		   (list (format nil "mpq_mk_set_si(~a, (int64_t)~a)" return-var arg2)
+			 (format nil "mpq_add(~a, ~a, ~a)" return-var return-var arg1)))
+		  (mpz (list (format nil "mpq_mk_set_z(~a, (int64_t)~a)" return-var arg2)
+			 (format nil "mpq_add(~a, ~a, ~a)" return-var return-var arg1)))
+		  (mpq (list (format nil "mpq_mk_set(~a ~a)" return-var arg1)
+			     (format nil "mpq_add(~a, ~a, ~a)" return-var return-var arg2)))
+			       ))
 	   (t (break "Not implemented."))))
     ((uint8 uint16 uint32 uint64); __uint128)
      (case arg1-c-type
@@ -5248,22 +5351,22 @@
 
 										  
 (defmethod push-type-info-to-decl (c-type-info (decl const-decl))
-  (when (consp c-type-info) (break "push-type-info-to-decl"))
+;  (when (consp c-type-info) (break "push-type-info-to-decl"))
   (push c-type-info *c-type-info-table*)
   (push c-type-info (c-type-info-table (eval-info decl))))
 
 (defmethod push-type-info-to-decl (c-type-info (decl formal-const-decl))
-  (when (consp c-type-info) (break "push-type-info-to-decl"))  
+;  (when (consp c-type-info) (break "push-type-info-to-decl"))  
   (push c-type-info *c-type-info-table*)
   (push c-type-info (c-type-info-table (eval-info decl))))
 
 (defmethod push-type-info-to-decl (c-type-info (decl type-decl))
-  (when (consp c-type-info) (break "push-type-info-to-decl"))  
+;  (when (consp c-type-info) (break "push-type-info-to-decl"))  
   (push c-type-info *c-type-info-table*)
   (push c-type-info (c-type-info-table (ir-type-value decl))))
 
 (defmethod push-type-info-to-decl (c-type-info (decl t))
-  (when (consp c-type-info) (break "push-type-info-to-decl"))  
+;  (when (consp c-type-info) (break "push-type-info-to-decl"))  
   (format t "\nEmpty decl")
   (push c-type-info *c-type-info-table*))
 
@@ -6037,15 +6140,24 @@
 		(ir-type-value decl));some type definitions translate to no-ops
       (add-c-type-definition (ir2c-type (ir-type-defn typename))(ir-type-id typename)))))
 
+(defvar *c-primitive-type-attachments-hash* (make-hash-table :test #'eq))
 (defmethod pvs2c-decl* ((decl type-decl)) ;;has to be an adt-type-decl
-  (let ((typename (pvs2ir-decl* decl)))
-    (if (adt (type-value decl))
-	(add-c-type-definition (ir2c-type (ir-type-defn typename))(ir-type-id typename))
-      (let* ((ir-type-id (ir-type-id typename))
-	     (c-type-info (mk-simple-c-type-info nil ir-type-id
-						 (format nil "//uninterpreted type~%typedef void * ~a_t" ir-type-id) nil)))
-	(push-type-info-to-decl c-type-info decl)
-	ir-type-id))))
+  (let* ((thid (simple-id (id (module decl))))
+	 (declid (simple-id (id decl)))
+	 (thname (intern (format nil "~a_~a" thid declid)))
+	 (hashentry (gethash  thname *c-primitive-type-attachments-hash*)))
+    (cond (hashentry
+	   (format t "~% attaching definition for type ~a" declid)
+	   (push-type-info-to-decl hashentry decl)
+	   thname)
+	  (t (let ((typename (pvs2ir-decl* decl)))
+	       (if (adt (type-value decl))
+		   (add-c-type-definition (ir2c-type (ir-type-defn typename))(ir-type-id typename))
+		 (let* ((ir-type-id (ir-type-id typename))
+			(c-type-info (mk-simple-c-type-info nil ir-type-id
+							    (format nil "//uninterpreted type~%typedef void * ~a_t" ir-type-id) nil)))
+		   (push-type-info-to-decl c-type-info decl)
+		   ir-type-id)))))))
 
 (defmethod pvs2c-decl* ((decl formal-type-decl))
    (pvs2ir-decl decl))
@@ -6058,8 +6170,8 @@
 (defvar *c-primitive-attachments-hash* (make-hash-table :test #'eq))
 ;;conversion for a definition
 (defmethod pvs2c-decl* ((decl const-decl))
-  (let* ((thid (id (module decl)))
-	 (declid (id decl))
+  (let* ((thid (simple-id (id (module decl))))
+	 (declid (simple-id (id decl)))
 	 (hashentry (gethash (intern (format nil "~a_~a" thid declid)) *c-primitive-attachments-hash*)))
     (if hashentry
 	(let ((einfo (or (eval-info decl)
@@ -6088,12 +6200,27 @@
     c-args-string))
 
 
-(defun def-c-attach-primitive (theory name return-type args header-defn &optional definition)
-  (let* ((thname (make-c-name theory name))
-	 (header (if definition (format nil "extern ~a_t ~a~a;" return-type thname args)
-		   (format nil "static inline ~a_t ~a~a~a" return-type thname args header-defn)))
-	 (c-definition (when definition (format nil "~a_t ~a~a~a" return-type thname args definition)))
-	 (c-defn-info (mk-c-defn-info thname header c-definition)))
+(defun def-c-attach-primitive-type (theory name header-defn)
+  (let* ((thname (make-c-name (simple-id theory) (simple-id name)))
+	 (header (format nil "typedef ~a ~a_t;" header-defn thname))
+	 (c-type-info (mk-simple-c-type-info nil thname header nil) ))
+    (setf (gethash thname *c-primitive-type-attachments-hash*) c-type-info)
+    thname))
+    
+	 
+
+(defun def-c-attach-primitive (theory name return-type args arg-types header-defn &optional definition)
+  (let* ((thname (make-c-name (simple-id theory)(simple-id name)))
+	 (arg-type-pairs (loop for arg in args as
+			       arg-type in arg-types
+			       collect (format nil "~a_t ~a" arg-type arg)))
+	 (arg-string (if (null arg-type-pairs)
+			 (format nil "(void)")
+		       (format nil "(~{~a~^, ~})" arg-type-pairs)))
+	 (header (if definition (format nil "extern ~a_t ~a~a;" return-type thname arg-string)
+		   (format nil "static inline ~a_t ~a~a~a" return-type thname arg-string header-defn)))
+	 (c-definition (when definition (format nil "~a_t ~a~a~a" return-type thname arg-string definition)))
+	 (c-defn-info (mk-c-defn-info thname header c-definition arg-types return-type)))
     (setf (gethash thname *c-primitive-attachments-hash* ) c-defn-info)
     thname))
 
@@ -6107,7 +6234,7 @@
        (let* ((ir-function-name (ir-fname ir-function-name))
 	      (ir-result-type ir-return-type) ;(pvs2ir-type (type decl))
 	      (c-result-type (add-c-type-definition (ir2c-type ir-result-type)))
-	      (dummy (when (null c-result-type) (break "make-c-defn-info")))
+;	      (dummy (when (null c-result-type) (break "make-c-defn-info")))
 	      ;might need to adjust c-header when result type is gmp
 	      (c-header (format nil "extern ~a_t ~a(~a)" (mppointer-type c-result-type) ir-function-name
 				(c-args-string ir-args))))
@@ -6333,7 +6460,8 @@
 		    (format output "~%~%#include <stdlib.h>")
 		    (format output "~%~%#include <inttypes.h>")
 		    (format output "~%~%#include <stdbool.h>")
-		    (format output "~%~%#include <string.h>")		    		    
+		    (format output "~%~%#include <string.h>")
+		    (format output "~%~%#include <math.h>")
 		    (format output "~%~%#include <gmp.h>")
 		    (format output "~%~%#include \"pvslib.h\"")
 		    (loop for thy in  preceding-theories-without-formals
@@ -6483,7 +6611,7 @@
 (defparameter *primitive-prelude-theories*
   '(defined_types relations orders if_def naturalnumbers reals
  rationals integers equalities floor_ceil
- notequal numbers booleans number_fields))
+ notequal numbers booleans number_fields ieee754_defs ieee754_double))
 
 (defvar *pvs2c-preceding-theories* nil)
 (defvar *ir-theory-formals* nil)

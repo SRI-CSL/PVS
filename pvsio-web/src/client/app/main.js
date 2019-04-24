@@ -4,30 +4,27 @@
  * @date 4/19/13 17:23:31 PM
  */
 /*jshint unused: false*/
-/*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50*/
+/*jslint vars: true, plusplus: true, devel: true, nomen: true, indent: 4, maxerr: 50, esnext: true*/
 /*global define, d3, layoutjs, Promise*/
 define(function (require, exports, module) {
     "use strict";
-    var PVSioWebClient = require("PVSioWebClient"),
-        Logger         = require("util/Logger"),
-        ui             = require("plugins/prototypebuilder/interface"),
-        PrototypeBuilder = require("plugins/prototypebuilder/PrototypeBuilder"),
-        ProjectManager = require("project/ProjectManager"),
-        ModelEditor    = require("plugins/modelEditor/ModelEditor"),
-        Emulink        = require("plugins/emulink/Emulink"),
-        SafetyTest     = require("plugins/safetyTest/SafetyTest"),
-        GraphBuilder   = require("plugins/graphbuilder/GraphBuilder"),
-        ProjectAutoSaver = require("plugins/autoSaver/ProjectAutoSaver"),
-        PluginManager  = require("plugins/PluginManager"),
-        Constants      = require("util/Constants"),
-        displayQuestion = require("pvsioweb/forms/displayQuestion"),
-        BrowserUtils   = require("util/BrowserUtils");
+    const PVSioWebClient = require("PVSioWebClient");
+    const Logger = require("util/Logger");
+    const ui = require("util/toolkitInterface");
+    const ProjectManager = require("project/ProjectManager").getInstance();
+    const PluginManager  = require("plugins/PluginManager");
+    const Constants = require("util/Constants");
+    const displayQuestion = require("pvsioweb/forms/displayQuestion");
+    const ProjectAutoSaver = require("plugins/autoSaver/ProjectAutoSaver");
+    const BrowserUtils   = require("util/BrowserUtils");
+    const NotificationManager = require("project/NotificationManager");
+    const SaveProjectChanges  = require("project/forms/SaveProjectChanges");
 
-    var client = PVSioWebClient.getInstance(),
-        pluginManager = PluginManager.getInstance(),
-        splashTimeout = null,
-        reconnectOptions = (window.location.href.indexOf("pvsioweb.herokuapp.com") >= 0 ||
-                   window.location.href.indexOf("pvsioweb.org") >= 0) ? { silentMode: true} : null;
+    let client = PVSioWebClient.getInstance();
+    let pluginManager = PluginManager.getInstance();
+    let splashTimeout = null;
+    let reconnectOptions = (window.location.href.indexOf(".herokuapp.com") >= 0 
+                            || window.location.href.indexOf("pvsioweb.org") >= 0) ? { silentMode: true} : null;
 
     //register event listeners
     client.addListener('WebSocketConnectionOpened', function (e) {
@@ -38,34 +35,26 @@ define(function (require, exports, module) {
     }).addListener("processExited", function (e) {
         ui.pvsProcessDisconnected();
     });
-    ProjectManager.getInstance().addListener("PVSProcessReady", function (event) {
+    ProjectManager.addListener("PVSProcessReady", function (event) {
         ui.pvsProcessConnected();
     }).addListener("PVSProcessDisconnected", function (event) {
         ui.pvsProcessDisconnected();
     });
 
 
-    function enablePlugin(plugin) {
-        return function () {
-            return pluginManager.enablePlugin(plugin);
-        };
-    }
-
-    function createDefaultProject() {
-        return function () {
-            return ProjectManager.getInstance().createDefaultProject();
-        };
-    }
-
     function hideSplash() {
-        d3.select("#PVSio-web-logo").style("display", "none");
-        d3.select("#content").classed("offscreen", false);
+        setTimeout(function () {
+            d3.select("#PVSio-web-logo").style("display", "none");
+        }, 500);
+        d3.select("#PVSio-web-logo").transition().duration(500).style("opacity", 0);
+        d3.selectAll(".toolkit-body").transition().duration(1000).style("opacity", 1);
     }
 
     function showInterface(opt) {
         return function (res) {
             return new Promise(function (resolve, reject) {
                 console.log("Browser version: " + BrowserUtils.getVersion());
+                console.log("Toolkit version: PVSio-web " + client.version());
                 if (BrowserUtils.isBrowserSupported() === false) {
                     var msg = BrowserUtils.requiredBrowserWarning();
                     d3.select(".warnings").style("display", "block").append("p").html(msg);
@@ -74,6 +63,65 @@ define(function (require, exports, module) {
                     });
                     console.log(msg);
                 }
+                d3.select("#btnSaveProject").on("click", function () {
+                    ProjectManager.saveProject({ filter: function (desc) { return desc.name.indexOf(".emdl") !== (desc.name.length - 5); }});
+                    // FIXME: implement API plugin.saveAll in all plugins that saves all files relevant to each plugin, and invoke the APIs here.
+                    var emulink = require("plugins/PluginManager").getInstance()
+                                    .getEnabledPlugins().filter(function (p) {
+                                        return p.getId() === "EmuChartsEditor";
+                                    });
+                    if (emulink && emulink[0]) {
+                        emulink[0].saveAllCharts();
+                    }
+                });
+                d3.select("#btnSaveProjectAs").on("click", function () {
+                    if (d3.select("#btn_menuSaveChart").node()) {
+                        d3.select("#btn_menuSaveChart").node().click();
+                    }
+                    var name = ProjectManager.project().name();
+                    var date = (new Date().getFullYear()) + "." +
+                                    (new Date().getMonth() + 1) + "." + (new Date().getDate());
+                    if (!name.endsWith(date)) {
+                        name += "_" + date;
+                    }
+                    ProjectManager.saveProjectDialog(name);
+                });
+                d3.select("#openProject").on("click", function () {
+                    function openProject() {
+                        ProjectManager.openProjectDialog().then(function (project) {
+                            var notification = "Project " + project.name() + " opened successfully!";
+                            Logger.log(notification);
+                        }).catch(function (err) {
+                            if (err && err.error) {
+                                NotificationManager.error(err.error);
+                            } else {
+                                Logger.log(JSON.stringify(err));
+                            }
+                        });
+                    }
+                    var currentProject = ProjectManager.project();
+                    if (currentProject && currentProject._dirty()) {
+                        //show save project dialog for the current project
+                        SaveProjectChanges.create(currentProject)
+                            .on("yes", function (e, view) {
+                                view.remove();
+                                ProjectManager.saveProject().then(function (res) {
+                                    openProject();
+                                }).catch(function (err) { alert(err); });
+                            }).on("no", function (e, view) {
+                                view.remove();
+                                openProject();
+                            });
+                    } else {
+                        openProject();
+                    }
+                });
+                d3.select("#newProject").on("click", function () {
+                    ProjectManager.createProjectDialog().then(function (res) {
+                        var notification = "Project " + res.project().name() + "created!";
+                        Logger.log(notification);
+                    });
+                });                
                 //hide pvsio-web loading screen if noSplash is set in opt and make the tool visible
                 if (opt && opt.noSplash) {
                     hideSplash();
@@ -85,36 +133,8 @@ define(function (require, exports, module) {
         };
     }
 
-    function registerPluginEvents() {
-        return function (ws) {
-            ui.init()
-                .on("pluginToggled", function (event) {
-                    var plugin;
-                    switch (event.target.getAttribute("name")) {
-                    case "EmuCharts Editor":
-                        plugin = Emulink.getInstance();
-                        break;
-                    case "Graph Builder":
-                        plugin = GraphBuilder.getInstance();
-                        break;
-                    case "Safety Test":
-                        plugin = SafetyTest.getInstance();
-                        break;
-                    case "Model Editor":
-                        plugin = ModelEditor.getInstance();
-                        break;
-                    case "Prototype Builder":
-                        plugin = PrototypeBuilder.getInstance();
-                        break;
-                    }
-                    if (event.target.checked) {
-                        pluginManager.enablePlugin(plugin);
-                    } else {
-                        pluginManager.disablePlugin(plugin);
-                    }
-                });
-            return Promise.resolve(true);
-        };
+    function loadUI() {
+        ui.init();
     }
 
     module.exports = {
@@ -122,27 +142,20 @@ define(function (require, exports, module) {
             clearTimeout(splashTimeout);
             return new Promise(function (resolve, reject) {
                 client.connectToServer()
-                    .then(registerPluginEvents())
-                    .then(enablePlugin(ProjectAutoSaver.getInstance()))
-                    .then(enablePlugin(PrototypeBuilder.getInstance()))
-                    .then(createDefaultProject())
+                    .then(loadUI)
+                    .then(pluginManager.loadPlugins)
+                    .then(ProjectManager.createDefaultProject)
                     .then(showInterface(opt))
                     .then(function (res) {
                     //we have finished loading pvsio-web related things so hide the splash screen and show the tool -- we can also use this promise chain to show real updates to the user about what has been loaded
                         hideSplash();
+                        pluginManager.enablePlugin(ProjectAutoSaver.getInstance());
                         resolve(res);
                     }).catch(function (err) {
-                        console.log(err);
+                        console.error(err);
                         reject(err);
                     });
             });
-        },
-        reset: function () {///This function is not tested
-            //client.disconnectFromServer();
-            if (pluginManager.isLoaded(PrototypeBuilder.getInstance())) {
-                pluginManager.disablePlugin(PrototypeBuilder.getInstance());
-                ui.unload();
-            }
         }
     };
 });

@@ -1,0 +1,15 @@
+{{#if template_description}}
+%
+%   Description: This template generates a descriptor for the PVS theory. It includes the following elements:
+%                - Theory name
+%                - Author name, affiliation, contact (optional)
+%                - Description (optional)
+%
+{{/if}}% ---------------------------------------------------------------
+% Theory: {{name}}{{#if author}}
+% Author: {{author.name}}
+%         {{author.affiliation}}
+%         {{author.contact}}{{/if}}{{#if description}}
+% ---------------------------------------------------------------
+% {{description}}{{/if}}
+% ---------------------------------------------------------------

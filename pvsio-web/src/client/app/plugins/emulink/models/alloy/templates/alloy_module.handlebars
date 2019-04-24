@@ -1,0 +1,16 @@
+{{#if template_description}}
+%
+%   Description: This template generates the overall structure of an Alloy module.
+%
+{{/if}}{{#if comment}}/**
+ * {{comment}}
+ */{{/if}}module {{name}}
+open util/ordering[State] as S0
+{{#if datatypes}}{{datatypes}}
+{{/if}}{{#if modes}}{{modes}}
+{{/if}}{{#if variables}}{{variables}}
+{{/if}}{{#if init}}{{init}}
+{{/if}}{{#if enter_leave}}{{enter_leave}}
+{{/if}}{{#if triggers}}{{triggers}}
+{{/if}}{{#if disclaimer}}
+{{disclaimer}}{{/if}}

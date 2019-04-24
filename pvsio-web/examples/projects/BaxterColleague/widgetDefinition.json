@@ -1,178 +1,196 @@
 {
  "widgetMaps": [
   {
+   "id": "button_63dc1550-6787-4bd4-df4d-440bdc1c9e39",
+   "type": "button",
    "evts": [
     "click"
    ],
-   "id": "button_63dc1550-6787-4bd4-df4d-440bdc1c9e39",
-   "type": "button",
-   "recallRate": "250",
+   "recallRate": 250,
    "functionText": "btn7",
    "boundFunctions": "click_btn7",
    "buttonReadback": "",
    "keyCode": "55",
-   "keyName": "key 7"
+   "keyName": "key 7",
+   "visibleWhen": "true"
   },
   {
    "type": "display",
    "id": "display_7b8effe2-55cd-485b-f7a3-3377082b3cea",
-   "displayKey": "display"
+   "displayKey": "display",
+   "auditoryFeedback": "disabled",
+   "visibleWhen": "true",
+   "fontsize": "28",
+   "fontColor": "white",
+   "backgroundColor": "transparent"
   },
   {
+   "id": "button_fb8c8b1b-3b6a-428f-e2b1-144949a34bf9",
+   "type": "button",
    "evts": [
     "click"
    ],
-   "id": "button_fb8c8b1b-3b6a-428f-e2b1-144949a34bf9",
-   "type": "button",
-   "recallRate": "250",
+   "recallRate": 250,
    "functionText": "btn8",
    "boundFunctions": "click_btn8",
    "buttonReadback": "",
    "keyCode": "56",
-   "keyName": "key 8"
+   "keyName": "key 8",
+   "visibleWhen": "true"
   },
   {
+   "id": "button_3f41eea4-7c4a-49e5-88e9-41dccc37d7a1",
+   "type": "button",
    "evts": [
     "click"
    ],
-   "id": "button_3f41eea4-7c4a-49e5-88e9-41dccc37d7a1",
-   "type": "button",
-   "recallRate": "250",
+   "recallRate": 250,
    "functionText": "btn9",
    "boundFunctions": "click_btn9",
    "buttonReadback": "",
    "keyCode": "57",
-   "keyName": "key 9"
+   "keyName": "key 9",
+   "visibleWhen": "true"
   },
   {
+   "id": "button_1da3bbec-ba88-4815-e930-5e364f5455a8",
+   "type": "button",
    "evts": [
     "click"
    ],
-   "id": "button_1da3bbec-ba88-4815-e930-5e364f5455a8",
-   "type": "button",
-   "recallRate": "250",
+   "recallRate": 250,
    "functionText": "btn4",
    "boundFunctions": "click_btn4",
    "buttonReadback": "",
    "keyCode": "52",
-   "keyName": "key 4"
+   "keyName": "key 4",
+   "visibleWhen": "true"
   },
   {
+   "id": "button_2a83fb96-adf6-49c4-e5ed-8a3d46c58014",
+   "type": "button",
    "evts": [
     "click"
    ],
-   "id": "button_2a83fb96-adf6-49c4-e5ed-8a3d46c58014",
-   "type": "button",
-   "recallRate": "250",
+   "recallRate": 250,
    "functionText": "btn5",
    "boundFunctions": "click_btn5",
    "buttonReadback": "",
    "keyCode": "53",
-   "keyName": "key 5"
+   "keyName": "key 5",
+   "visibleWhen": "true"
   },
   {
+   "id": "button_63438dfe-29d1-4fb1-ed5c-a25556ec20f9",
+   "type": "button",
    "evts": [
     "click"
    ],
-   "id": "button_63438dfe-29d1-4fb1-ed5c-a25556ec20f9",
-   "type": "button",
-   "recallRate": "250",
+   "recallRate": 250,
    "functionText": "btn6",
    "boundFunctions": "click_btn6",
    "buttonReadback": "",
    "keyCode": "54",
-   "keyName": "key 6"
+   "keyName": "key 6",
+   "visibleWhen": "true"
   },
   {
+   "id": "button_0c3a4d02-5f95-429c-9f79-1fb25a7be9ea",
+   "type": "button",
    "evts": [
     "click"
    ],
-   "id": "button_0c3a4d02-5f95-429c-9f79-1fb25a7be9ea",
-   "type": "button",
-   "recallRate": "250",
+   "recallRate": 250,
    "functionText": "btn1",
    "boundFunctions": "click_btn1",
    "buttonReadback": "",
    "keyCode": "49",
-   "keyName": "key 1"
+   "keyName": "key 1",
+   "visibleWhen": "true"
   },
   {
+   "id": "button_96d50c82-a837-4914-e408-88fa8d5997e4",
+   "type": "button",
    "evts": [
     "click"
    ],
-   "id": "button_96d50c82-a837-4914-e408-88fa8d5997e4",
-   "type": "button",
-   "recallRate": "250",
+   "recallRate": 250,
    "functionText": "btn2",
    "boundFunctions": "click_btn2",
    "buttonReadback": "",
    "keyCode": "50",
-   "keyName": "key 2"
+   "keyName": "key 2",
+   "visibleWhen": "true"
   },
   {
+   "id": "button_f4ae2413-12cb-4870-9b79-15b2d061783c",
+   "type": "button",
    "evts": [
     "click"
    ],
-   "id": "button_f4ae2413-12cb-4870-9b79-15b2d061783c",
-   "type": "button",
-   "recallRate": "250",
+   "recallRate": 250,
    "functionText": "btn3",
    "boundFunctions": "click_btn3",
    "buttonReadback": "",
    "keyCode": "51",
-   "keyName": "key 3"
+   "keyName": "key 3",
+   "visibleWhen": "true"
   },
   {
+   "id": "button_a0404d26-c3c6-437a-c86e-6ca0682d5484",
+   "type": "button",
    "evts": [
     "click"
    ],
-   "id": "button_a0404d26-c3c6-437a-c86e-6ca0682d5484",
-   "type": "button",
-   "recallRate": "250",
+   "recallRate": 250,
    "functionText": "btn0",
    "boundFunctions": "click_btn0",
    "buttonReadback": "",
    "keyCode": "48",
-   "keyName": "key 0"
+   "keyName": "key 0",
+   "visibleWhen": "true"
   },
   {
+   "id": "button_5c00b075-d734-4264-b675-f685711d7992",
+   "type": "button",
    "evts": [
     "click"
    ],
-   "id": "button_5c00b075-d734-4264-b675-f685711d7992",
-   "type": "button",
-   "recallRate": "250",
+   "recallRate": 250,
    "functionText": "btnCLR",
    "boundFunctions": "click_btnCLR",
    "buttonReadback": "",
    "keyCode": "46",
-   "keyName": "delete"
+   "keyName": "delete",
+   "visibleWhen": "true"
   },
   {
+   "id": "button_ba3751b9-739c-418a-bab4-7b73f9bb4a83",
+   "type": "button",
    "evts": [
     "click"
    ],
-   "id": "button_ba3751b9-739c-418a-bab4-7b73f9bb4a83",
-   "type": "button",
-   "recallRate": "250",
+   "recallRate": 250,
    "functionText": "btnPOINT",
    "boundFunctions": "click_btnPOINT",
    "buttonReadback": "",
    "keyCode": "190",
-   "keyName": "."
+   "keyName": ".",
+   "visibleWhen": "true"
   },
   {
+   "id": "button_c85f6b39-0891-4950-952c-9ad40a17cfdf",
+   "type": "button",
    "evts": [
     "click"
    ],
-   "id": "button_c85f6b39-0891-4950-952c-9ad40a17cfdf",
-   "type": "button",
-   "recallRate": "250",
+   "recallRate": 250,
    "functionText": "btnOK",
    "boundFunctions": "click_btnOK",
    "buttonReadback": "",
    "keyCode": "13",
-   "keyName": "enter"
+   "keyName": "enter",
+   "visibleWhen": "true"
   }
  ],
  "regionDefs": [

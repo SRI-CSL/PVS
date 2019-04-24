@@ -35,7 +35,7 @@ define(function (require, exports, module) {
          * file or directory path
          */
         this.path = path;
-        
+
         /**
          * file or directory name
          */
@@ -100,14 +100,19 @@ define(function (require, exports, module) {
      * rather than reading field content --- field content can be null because the server does not always pass the file
      * content to optimise communication, and this function automatically handles this situation as follows:
      * if the descriptor's field content is non-null, then the value of field content is returned;
-     * otherwise, the a request is sent to the server to retrieve the file content from disk.
+     * otherwise, the a request is sent to the server to retrieve the file content from disk. The exception to this is
+     * if a content generator has been set for the Descriptor, in which case the generator function will always be used.
      * @memberof module:Descriptor
      * @instance
      */
     Descriptor.prototype.getContent = function () {
         var _this = this;
         return new Promise(function (resolve, reject) {
-            if (_this.content) {
+            if (_this.content || _this.contentGenerator) {
+                // Generate the content if we have been provided with a generator function
+                if (_this.contentGenerator) {
+                    _this.content = _this.contentGenerator();
+                }
                 resolve(_this.content);
             } else {
                 _this.encoding = (_this.isImage()) ? "base64" : "utf8";
@@ -125,6 +130,18 @@ define(function (require, exports, module) {
                 });
             }
         });
+    };
+
+    /**
+     * @function setContentGenerator
+     * @description Sets the function that should be used to lazily generate the descriptor's content. This can be used
+     * with descriptors that represent content that is expensive to serialise, allowing the content to only be generated
+     * when it is requested (when #getContent is called).
+     * @param {function} generator Function that will be used to lazily generate the descriptor's content. Should return
+     * a string.
+     */
+    Descriptor.prototype.setContentGenerator = function (generator) {
+        this.contentGenerator = generator;
     };
 
     /**

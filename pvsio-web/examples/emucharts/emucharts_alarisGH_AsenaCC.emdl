@@ -1,0 +1,438 @@
+{
+ "descriptor": {
+  "file_type": "emdl",
+  "version": "1.3",
+  "description": "emucharts model",
+  "chart_name": "emucharts_AlarisGH_AsenaCC"
+ },
+ "chart": {
+  "states": [
+   {
+    "name": "off",
+    "id": "X1",
+    "x": 115.99999237060547,
+    "y": 160.4895782470703,
+    "width": 36,
+    "height": 36
+   },
+   {
+    "name": "on",
+    "id": "X2",
+    "x": 309.16668701171875,
+    "y": 160.4895782470703,
+    "width": 36,
+    "height": 36
+   }
+  ],
+  "transitions": [
+   {
+    "name": "turn_on",
+    "id": "T1",
+    "source": {
+     "name": "off",
+     "id": "X1"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 218,
+     "y": 104
+    }
+   },
+   {
+    "name": "turn_off",
+    "id": "T2",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "off",
+     "id": "X1"
+    },
+    "controlPoint": {
+     "x": 221,
+     "y": 217
+    }
+   },
+   {
+    "name": "click_alaris_dn [ val = min ] { val := min }",
+    "id": "T3",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 369.58331298828125,
+     "y": 396.33333587646484
+    }
+   },
+   {
+    "name": "click_alaris_up [ val = max ] { val := max }",
+    "id": "T4",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 369.58331298828125,
+     "y": -76.45833587646484
+    }
+   },
+   {
+    "name": "click_alaris_up [val < 10] { floor := ((val * 100) + step)- (((val * 100) + step) mod 1); val:= floor / 100;}",
+    "id": "T5",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 382.08331298828125,
+     "y": -62.708335876464844
+    }
+   },
+   {
+    "name": "click_alaris_up [val >= 10 && val < 100] {floor := ((val * 10) + step)- (((val * 10) + step) mod 1); val:= floor / 10;}",
+    "id": "T6",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 396.45831298828125,
+     "y": -46.458335876464844
+    }
+   },
+   {
+    "name": "click_alaris_up [val >= 100 && val < 1000] {floor := (val + step)- ((val + step) mod 1); val:= floor}",
+    "id": "T7",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 411.95831298828125,
+     "y": -30.83333396911621
+    }
+   },
+   {
+    "name": "click_alaris_up [val >= 1000] {floor := (val / 10) - ((val / 10) mod 1); val:= (floor + step) * 10}",
+    "id": "T8",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 425.3333435058594,
+     "y": -18.333335876464844
+    }
+   },
+   {
+    "name": "click_alaris_UP [ val = max ] { val := max }",
+    "id": "T9",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 438.95831298828125,
+     "y": 29.791664123535156
+    }
+   },
+   {
+    "name": "click_alaris_UP [val < 10] { floor := ((val * 10) + step)- (((val * 10) + step) mod 1); val:= floor / 10;}",
+    "id": "T10",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 453.95831298828125,
+     "y": 44.791664123535156
+    }
+   },
+   {
+    "name": "click_alaris_UP [val >= 10 && val < 100] {floor := (val - (val mod 1)); val:= floor + step;}",
+    "id": "T11",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 467.08331298828125,
+     "y": 61.666664123535156
+    }
+   },
+   {
+    "name": "click_alaris_UP [val >= 100 && val < 1000] {floor := (val / 10) - ((val / 10) mod 1); val:= (floor + step) * 10}",
+    "id": "T12",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 479.58331298828125,
+     "y": 77.29166412353516
+    }
+   },
+   {
+    "name": "click_alaris_UP [val >= 1000] {floor := (val / 100) - ((val / 100) mod 1); val:= (floor + step) * 100}",
+    "id": "T13",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 495.3333435058594,
+     "y": 92.66666412353516
+    }
+   },
+   {
+    "name": "click_alaris_dn [ val < 10] {ceil := (val * 100) + 1 - ((val * 100) mod 1); val := (ceil - step ) / 100;}",
+    "id": "T14",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 382.08331298828125,
+     "y": 384.6666564941406
+    }
+   },
+   {
+    "name": "click_alaris_dn [ val >= 10 && val < 100] {ceil := (val * 10) + 1 - ((val * 10) mod 1); val := (ceil - step ) / 10;}",
+    "id": "T15",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 396.45831298828125,
+     "y": 369.6666564941406
+    }
+   },
+   {
+    "name": "click_alaris_dn [ val >= 100 && val < 1000] {ceil := (val - step) + 1 - ((val - step) mod 1); val := ceil;}",
+    "id": "T16",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 410.95831298828125,
+     "y": 355.6666564941406
+    }
+   },
+   {
+    "name": "click_alaris_dn [ val >= 1000] {ceil := (val / 10) + 1 - ((val / 10) mod 1); val := (ceil - step ) * 10;}",
+    "id": "T17",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 425.3333435058594,
+     "y": 340.6666564941406
+    }
+   },
+   {
+    "name": "click_alaris_DN [ val = min ] { val := min }",
+    "id": "T18",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 438.95831298828125,
+     "y": 287.6666564941406
+    }
+   },
+   {
+    "name": "click_alaris_DN [ val < 10] {ceil := (val * 10) + 1 - ((val * 10) mod 1); val := (ceil - step) / 10;}",
+    "id": "T19",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 453.95831298828125,
+     "y": 273.6666564941406
+    }
+   },
+   {
+    "name": "click_alaris_DN [ val >= 10 && val < 100] {ceil := val + 1 - (val mod 1); val := ceil - step;}",
+    "id": "T20",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 467.08331298828125,
+     "y": 258.3333435058594
+    }
+   },
+   {
+    "name": "click_alaris_DN [ val >= 100 && val < 1000] {ceil := (val / 10) + 1 - ((val / 10) mod 1); val := (ceil - step) * 10;}",
+    "id": "T21",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 479.58331298828125,
+     "y": 243.3333282470703
+    }
+   },
+   {
+    "name": "click_alaris_DN [ val >= 1000] {ceil := (val / 100) + 1 - ((val / 100) mod 1); val := (ceil - step) * 100;}",
+    "id": "T22",
+    "source": {
+     "name": "on",
+     "id": "X2"
+    },
+    "target": {
+     "name": "on",
+     "id": "X2"
+    },
+    "controlPoint": {
+     "x": 495.3333435058594,
+     "y": 229.04762268066406
+    }
+   }
+  ],
+  "initial_transitions": [
+   {
+    "name": "",
+    "id": "IT1",
+    "target": {
+     "name": "off",
+     "id": "X1"
+    }
+   }
+  ],
+  "constants": [
+   {
+    "id": "CONST_max:real",
+    "name": "max",
+    "type": "real",
+    "value": "1200"
+   },
+   {
+    "id": "CONST_min:real",
+    "name": "min",
+    "type": "real",
+    "value": "0"
+   }
+  ],
+  "variables": [
+   {
+    "id": "VAR_step:real(Local)",
+    "name": "step",
+    "type": "real",
+    "value": "10",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_ceil:real(Local)",
+    "name": "ceil",
+    "type": "real",
+    "value": "0",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_floor:real(Local)",
+    "name": "floor",
+    "type": "real",
+    "value": "0",
+    "scope": "Local"
+   },
+   {
+    "id": "VAR_val:real(Output)",
+    "name": "val",
+    "type": "real",
+    "value": "0",
+    "scope": "Output"
+   }
+  ],
+  "pmr": {},
+  "isPIM": false
+ }
+}
