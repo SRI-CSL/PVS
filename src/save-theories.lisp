@@ -54,6 +54,10 @@
 
 ;;; Called from restore-theory in context.lisp
 (defun get-theory-from-binfile (filename &optional (dont-ignore-errors nil))
+  "Gets a theory from the binfile, by fetching, then restoring.  Fetching
+basically creates the instances, and fills in some slots.  Restoring fills
+in the remaining slots, in particular, those that may reference other
+instances, e.g., other declarations within the theory, or self-references."
   (let ((file (make-binpath filename))
 	(start-time (get-internal-real-time))
 	(*bin-theories-set* nil))
@@ -568,8 +572,10 @@
 	 (eqname? (eq (name-judgements-alist pjudgements)
 		      (name-judgements-alist judgements)))
 	 (eqapp? (eq (application-judgements-alist pjudgements)
-		     (application-judgements-alist judgements))))
-    (if (and eqnum? eqname? eqapp?)
+		     (application-judgements-alist judgements)))
+	 (eqexpr? (eq (expr-judgements-alist pjudgements)
+		      (expr-judgements-alist judgements))))
+    (if (and eqnum? eqname? eqapp? eqexpr?)
 	'prelude-judgements
 	(let ((num-judgements (create-store-number-judgements
 			       (number-judgements-alist judgements)
@@ -579,12 +585,16 @@
 				(name-judgements-alist pjudgements)))
 	      (appl-judgements (create-store-application-judgements
 				(application-judgements-alist judgements)
-				(application-judgements-alist pjudgements))))
+				(application-judgements-alist pjudgements)))
+	      (expr-judgements (create-store-expr-judgements
+				(expr-judgements-alist judgements)
+				(expr-judgements-alist pjudgements))))
 	  (make-instance 'judgements
 	    :judgement-types-hash nil
 	    :number-judgements-alist num-judgements
 	    :name-judgements-alist name-judgements
-	    :application-judgements-alist appl-judgements)))))
+	    :application-judgements-alist appl-judgements
+	    :expr-judgements-alist expr-judgements)))))
 
 (defun create-store-number-judgements (num-judgements pnum-judgements
 						      &optional numjs)
@@ -624,6 +634,19 @@
 	      (cdr appl-judgements)
 	      pappl-judgements
 	      (cons (or pos (car appl-judgements)) appljs))))))
+
+(defun create-store-expr-judgements (expr-judgements pexpr-judgements
+				     &optional exprjs)
+  (cond ((null expr-judgements)
+	 (nreverse exprjs))
+	((eq expr-judgements pexpr-judgements)
+	 (nreverse (cons 'prelude-expr-judgements exprjs)))
+	(t (let ((pos (position (car expr-judgements) pexpr-judgements
+				:test #'eq)))
+	     (create-store-expr-judgements
+	      (cdr expr-judgements)
+	      pexpr-judgements
+	      (cons (or pos (car expr-judgements)) exprjs))))))
 	     
 
 (defun create-store-known-subtypes (known-subtypes &optional store-subtypes)
@@ -977,7 +1000,15 @@
 	  ;;(prerestore-application-judgements-alist
 	  ;; (application-judgements-alist judgements)
 	  ;; (application-judgements-alist pjudgements))
-	  ))))
+	  (assert (listp (expr-judgements-alist judgements)))
+	  (when (memq 'prelude-expr-judgements
+		      (expr-judgements-alist judgements))
+	    #+pvsdebug
+	    (assert
+	     (null (cdr (memq 'prelude-expr-judgements
+			      (expr-judgements-alist judgements)))))
+	    (nconc (nbutlast (expr-judgements-alist judgements))
+		   (expr-judgements-alist pjudgements)))))))
 
 (defun prerestore-name-judgements-alist (name-judgements pname-judgements
 							 &optional namejs)
@@ -1005,11 +1036,11 @@
 	   (when (number-judgements-alist pjudgements)
 	     (push (number-judgements-alist pjudgements)
 		   *restore-objects-seen*))
-	   (assert (name-judgements-alist pjudgements))
 	   (push (name-judgements-alist pjudgements)
 		 *restore-objects-seen*)
-	   (assert (application-judgements-alist pjudgements))
 	   (push (application-judgements-alist pjudgements)
+		 *restore-objects-seen*)
+	   (push (expr-judgements-alist pjudgements)
 		 *restore-objects-seen*)
 	   (copy pjudgements
 	     'judgement-types-hash
@@ -1029,6 +1060,10 @@
 		 (restore-application-judgements-alist
 		  (application-judgements-alist judgements)
 		  (application-judgements-alist pjudgements)))
+	   (setf (expr-judgements-alist judgements)
+		 (restore-expr-judgements-alist
+		  (expr-judgements-alist judgements)
+		  (expr-judgements-alist pjudgements)))
 	   judgements))))
 
 (defun restore-number-judgements-alist (num-judgements pnum-judgements
@@ -1089,6 +1124,26 @@
 			papplj)
 		      (restore-object* (car appl-judgements)))
 		  appljs)))))
+
+(defun restore-expr-judgements-alist (expr-judgements pexpr-judgements
+				      &optional exprjs)
+  (cond ((null expr-judgements)
+	 (nreverse exprjs))
+	((eq (car expr-judgements) 'prelude-expr-judgements)
+	 (assert pexpr-judgements)
+	 (push pexpr-judgements *restore-objects-seen*)
+	 (nconc (nreverse exprjs) pexpr-judgements))
+	(t (restore-expr-judgements-alist
+	    (cdr expr-judgements)
+	    pexpr-judgements
+	    (cons (if (numberp (car expr-judgements))
+		      (let ((pexprj (nth (car expr-judgements)
+					 pexpr-judgements)))
+			(assert pexprj)
+			(push pexprj *restore-objects-seen*)
+			pexprj)
+		      (restore-object* (car expr-judgements)))
+		  exprjs)))))
 
 (defun restore-context-known-subtypes (known-subtypes &optional ksubtypes)
   (cond ((null known-subtypes)
@@ -1154,7 +1209,7 @@
 	      (let ((*restoring-declaration* obj)
 		    (*bound-variables* (apply #'append (formals obj))))
 		(call-next-method)
-		(when (and (eq *restoring-theory* (theory *current-context*))
+		(when (and (eq *restoring-theory* (current-theory))
 			   (not (typep obj 'adtdecl)))
 		  (put-decl obj))))
 	    (call-next-method))))
