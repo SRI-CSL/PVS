@@ -91,6 +91,10 @@ in util.lisp")
 
 (defparameter *binfile-version* 38)
 
+(defvar *pvsbin-string*
+  #+case-sensitive "pvsbin"
+  #-case-sensitive "PVSBIN")
+
 (defvar *pvs-build-time* (get-universal-time))
 
 (defparameter *context-name* ".pvscontext")
@@ -346,7 +350,7 @@ collected in *tccforms*")
 ;;; Normally the current-declaration is used, but, e.g., in generating
 ;;; datatype accessor declarations the formals are needed before the
 ;;; declaration is available.
-(defvar *decl-bound-parameters* nil)
+;;; (defvar *decl-bound-parameters* nil)
 (defvar *typecheck-args* nil)
 (defvar *tcc-conditions* nil)
 ;;; We need to have extra conditions on the recursive function calls, but
