@@ -70,21 +70,19 @@
   (remove-if-not #'formal-not-in-context? (free-params obj)))
 
 (defun fully-instantiated? (obj)
-  (when *decl-bound-parameters*
-    (break "Check *decl-bound-parameters*"))
   (not (some #'formal-not-in-context? (free-params obj))))
 
-(defun old-fully-instantiated? (obj)
-  (let ((frees (free-params obj)))
-    (declare (type list frees))
-    (or (null frees)
-	(let ((tformals (formals-sans-usings (current-theory)))
-	      (dformals (or *decl-bound-parameters*
-			    (when (current-declaration)
-			      (decl-formals (current-declaration))))))
-	  (declare (type list tformals dformals))
-	  (every #'(lambda (fp) (memq fp (append dformals tformals)))
-		 frees)))))
+;; (defun old-fully-instantiated? (obj)
+;;   (let ((frees (free-params obj)))
+;;     (declare (type list frees))
+;;     (or (null frees)
+;; 	(let ((tformals (formals-sans-usings (current-theory)))
+;; 	      (dformals (or *decl-bound-parameters*
+;; 			    (when (current-declaration)
+;; 			      (decl-formals (current-declaration))))))
+;; 	  (declare (type list tformals dformals))
+;; 	  (every #'(lambda (fp) (memq fp (append dformals tformals)))
+;; 		 frees)))))
 
 ;;; Theory
 
