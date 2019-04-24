@@ -131,7 +131,8 @@ print object produces an error, and won't allow inspection of the object.")
   (if *debugging-print-object*
       (call-next-method)
       (let ((*print-escape* nil))
-	(format stream "~@<#<context ~w.~w>~:>"
+	(format stream "~@<#<context ~w@~w.~w>~:>"
+	  *pvs-context-path*
 	  (when (theory ctx)
 	    (id (theory ctx)))
 	  (when (declaration ctx)
