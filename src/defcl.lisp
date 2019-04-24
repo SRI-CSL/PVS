@@ -65,6 +65,18 @@ unignored slots, saved-slots, and unsaved-slots.")
 
 
 (defmacro defcl (name classes &rest args)
+  "Used to define classes in PVS, with name, and superclasses classes.
+Automatically creates accessor forms for slots.
+Also used to generate pvs-methods.lisp (after all classes have been loaded).
+pvs-methods.lisp generates copy, store-object*, update-fetched, and restore-object*
+methods for each class.
+In addition to the usual, slots may have the following attributes:
+  :parse - not currently used.  Was intended for untypecheck.
+  :ignore - this slot will not be copied
+  :store-as - a function to call to get the object to store for this slot.
+  :fetch-as - the value to set the slot to in update-fetched
+  :restore-as - should be nil to have restore-object* method ignore this slot.
+"
   (setf args (mapcar #'(lambda (a) (if (consp a) a (list a))) args))
   `(progn ,@(mapcar #'(lambda (a)
 			#+(or allegro sbcl)
