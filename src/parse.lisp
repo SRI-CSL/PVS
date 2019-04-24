@@ -3331,7 +3331,8 @@
     (or (and (valid-pvs-id** idstr start dpos)
 	     (or (null dpos)
 		 (valid-pvs-id* sym (1+ dpos))))
-	(break "not valid?"))))
+	;;(break "not valid?")
+	)))
 
 (defun unialpha-char-p (char)
   (or (alpha-char-p char)
