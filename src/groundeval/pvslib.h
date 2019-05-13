@@ -66,6 +66,10 @@ static inline void release_mpq(mpq_ptr_t x){
 
 extern double get_cpu_time(void);
 
+static inline bool_t u_undef_quant_expr(void){
+  return false;
+};
+
 extern uint32_t mpz_hash(mpz_t x);
 extern uint32_t uint64_hash(uint64_t x);
 extern uint32_t uint32_hash(uint32_t x);
