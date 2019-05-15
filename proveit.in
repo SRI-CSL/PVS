@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # proveit.in
-# Release: ProofLite-6.0.10 (xx/xx/xx)
+# Release: ProofLite-7.0.0 (05/11/19)
 #
 # Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 # NASA Langley Research Center
@@ -16,7 +16,7 @@
 #  
 
 PVSPATH=@PVSPATH@
-VERSION="ProofLite-6.0.10 (xx/xx/xx)"
+VERSION="ProofLite-7.0.0 (05/11/19)"
 
 export PROVEITVERSION="proveit - $VERSION"
 
@@ -124,7 +124,6 @@ compile_infile_name() {
 		    echo "Error: File $FILENOTFOUND not found"
 		    exit;
 		fi;;
-	        
 	esac
     fi
   fi
@@ -184,12 +183,29 @@ append() {
 #
 cleanup() {
   if [ "$CLEAN" ]
-  then 
-    if [ -z "$QUIET" ]
-    then
-      echo "Removing $PVSCONTEXT/.pvscontext $PVSCONTEXT/$PVSBIN/ $OUTFILE $LOGFILE"
-    fi
-    rm -r -f $PVSCONTEXT/.pvscontext $PVSCONTEXT/$PVSBIN/*.* $OUTFILE $LOGFILE
+  then
+      if [ "$PVSCONTEXT" ]; then
+	  PVSCONTEXT_CTXT="$PVSCONTEXT/.pvscontext $PVSCONTEXT/$PVSBIN/*.*"
+      fi   
+      if [ "$LOGFILE" ]; then
+	  if [ "$OUTDIR" ]; then
+	      LOGFILE_RELATIVE_PATH="$OUTDIR/$LOGFILE"
+	  else 
+	      LOGFILE_RELATIVE_PATH="$LOGFILE"
+	  fi
+      fi
+      if [ "$OUTFILE" ]; then
+	  if [ "$OUTDIR" ]; then
+	      OUTFILE_RELATIVE_PATH="$OUTDIR/OUTFILE"
+	  else 
+	      OUTFILE_RELATIVE_PATH="$OUTFILE"
+	  fi
+      fi
+      if [ -z "$QUIET" ]
+      then
+	  echo "Removing $PVSCONTEXT_CTXT $OUTFILE_RELATIVE_PATH $LOGFILE_RELATIVE_PATH"
+      fi
+      rm -f $PVSCONTEXT_CTXT $OUTFILE_RELATIVE_PATH $LOGFILE_RELATIVE_PATH
   fi
 }
 
@@ -489,7 +505,7 @@ proveit() {
 	  exit 1
       fi
       
-      echo Processing $PVSCONTEXT/$PVSFILE.pvs. Writing output to file $OUTFILE
+      echo Processing $ARG. Writing output to file $OUTFILE
       if [ "$LOG" ]; then
 	  echo "Logging PVS information in $LOGFILE"
       fi
@@ -529,9 +545,14 @@ proveit() {
 	      echo "Generating LaTeX proof files in directory pvstex"
 	  fi
       fi
-      
+
+      export PROVEITARG="$ARG"
       export PROVEITPVSCONTEXT="$PVSCONTEXT"
-      export PROVEITPVSFILE="$PVSFILE"
+      if [ -f $PVSCONTEXT/$PVSFILE.pvs ]; then
+	  export PROVEITPVSFILE="$PVSFILE"
+      else
+ 	  export PROVEITPVSFILE=""
+      fi
       export PROVEITLISPIMPORT="$LISPIMPORT"
       export PROVEITLISPSCRIPTS="$LISPSCRIPTS"
       export PROVEITLISPTRACES="$LISPTRACES"
@@ -550,6 +571,7 @@ proveit() {
 	  echo "PROVEITVERSION: $PROVEITVERSION"
 	  echo "OUTFILE: $OUTFILE"
 	  echo "LOGFILE: $LOGFILE"
+	  echo "PROVEITARG: $PROVEITARG"
 	  echo "PROVEITPVSCONTEXT: $PROVEITPVSCONTEXT"
 	  echo "PROVEITPVSFILE: $PROVEITPVSFILE"
 	  echo "PROVEITLISPIMPORT: $PROVEITLISPIMPORT"
@@ -614,12 +636,14 @@ do
 	  fi
 	  shift;;
     -d|-dir|--dir)           
-	  if [ -d "$2" ]; then
-	      OUTDIR=$2
-          else
- 	      echo "Error: $2 is not a directory"
-	      exit 1
-	  fi
+      OUTDIR=$2
+      if [ ! -e "$OUTDIR" ]; then
+        mkdir $OUTDIR
+      fi
+      if [ ! -d "$OUTDIR" ]; then
+        echo "Error: $OUTDIR is not a directory"
+        exit 1
+      fi
 	  shift;;
     -t|-top|--top)           
 	  TOP=$2

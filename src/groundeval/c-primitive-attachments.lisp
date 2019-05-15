@@ -153,4 +153,48 @@
 (def-c-attach-primitive "ieee754_double" "sqrt" "double" '(x y) '(double)
   "{return (double_t)sqrt(x);}")
 
+(def-c-attach-primitive "ieee754_double" "to_double" "double" '(x) '(mpq)
+  "{return mpq_get_d(x);}")
+
+(def-c-attach-primitive "ieee754_double" "add_double" "double" '(x y) '(double double)
+  "{return (double_t)(x + y);}")
+
+(def-c-attach-primitive "ieee754_double" "sub_double" "double" '(x y) '(double double)
+  "{return (double_t)(x - y);}")
+
+(def-c-attach-primitive "ieee754_double" "mul_double" "double" '(x y) '(double double)
+  "{return (double_t)(x * y);}")
+
+(def-c-attach-primitive "ieee754_double" "div_double" "double" '(x y) '(double double)
+  "{return (double_t)(x / y);}")
+
+(def-c-attach-primitive "ieee754_double" "min_double" "double" '(x y) '(double double)
+  "{return (double_t)fmin(x, y);}")
+
+(def-c-attach-primitive "ieee754_double" "max_double" "double" '(x y) '(double double)
+  "{return (double_t)fmax(x, y);}")
+
+(def-c-attach-primitive "ieee754_double" "abs_double" "double" '(x) '(double)
+  "{return (double_t)fabs(x);}")
+
+(def-c-attach-primitive "ieee754_double" "sqrt_double" "double" '(x) '(double)
+  "{return (double_t)sqrt(x);}")
+
+(def-c-attach-primitive "ieee754_double" "le_double" "bool" '(x y) '(double double)
+  "{return (bool_t)(x <= y);}")
+
+(def-c-attach-primitive "ieee754_double" "ge_double" "bool" '(x y) '(double double)
+  "{return (bool_t)(x >= y);}")
+
+(def-c-attach-primitive "ieee754_double" "lt_double" "bool" '(x y) '(double double)
+  "{return (bool_t)(x < y);}")
+
+(def-c-attach-primitive "ieee754_double" "gt_double" "bool" '(x y) '(double double)
+  "{return (bool_t)(x > y);}")
+
+(def-c-attach-primitive "ieee754_double" "eq_double" "bool" '(x y) '(double double)
+  "{return (bool_t)(x == y);}")
+
+
+
 

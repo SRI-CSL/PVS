@@ -1,6 +1,6 @@
 ;;
 ;; extrategies.lisp
-;; Release: Extrategies-6.0.10 (xx/xx/xx)
+;; Release: Extrategies-7.0.0 (05/13/19)
 ;;
 ;; Contact: Cesar Munoz (cesar.a.munoz@nasa.gov)
 ;; NASA Langley Research Center
@@ -28,7 +28,7 @@
 %  TCCs: tccs-expression, tccs-formula, tccs-formula*, tccs-step, with-tccs
 %  Miscellaneous: splash, replaces, rewrites, rewrite*, suffices")
 
-(defparameter *extrategies-version* "Extrategies-6.0.10 (xx/xx/xx)")
+(defparameter *extrategies-version* "Extrategies-7.0.0 (05/13/19)")
 (defstruct (TrustedOracle (:conc-name get-))
   (name nil :read-only t)      ; Oracle name 
   (internal nil :read-only t)  ; Internal oracle
@@ -939,11 +939,11 @@ If HIDDEN? is t, LABL(s) are also removed from hidden formulas."
       (append (flatten-labels (car label))
 	      (flatten-labels (cdr label))))))
 
-(defhelper relabel__ (labl fnums)
+(defhelper relabel__ (labl fnums push?)
   (when labl
     (let ((labs   (flatten-labels labl))
 	  (qfnums (list 'quote fnums)))
-      (mapstep #'(lambda(x)`(label ,x ,qfnums :push? t)) labs)))
+      (mapstep #'(lambda(x)`(label ,x ,qfnums :push? push?)) labs)))
   "[Extrategies] Internal strategy." "")
 
 (defstep relabel (labl fnums &optional pairing? (push? t))
@@ -957,7 +957,7 @@ If HIDDEN? is t, LABL(s) are also removed from hidden formulas."
 		  (mapcar #'(lambda (x) (cons x lfs)) lbs))))
       (then
        (unless push? (unlabel* fnums))
-       (mapstep #'(lambda(x)`(relabel__ ,(car x) ,(cdr x))) lbfs))))
+       (mapstep #'(lambda(x)`(relabel__ ,(car x) ,(cdr x) push?)) lbfs))))
   "[Extrategies] Labels FNUMS as LABL(s), keeping the old ones. If PAIRING? is t and
 LABL is a list of the form (LAB1 ... LABn), each LABi is paired to the i-th formula in FNUM.
 If PUSH? is t, then the new labels are added to the existing ones. Otherwise, the new labels
@@ -1920,12 +1920,16 @@ names of the bounded variables."
        (try-branch
 	(discriminate (name-label* retexpr :fnums nil :dir rl :tcc-step tcc-step) !old)
 	((then (branch (discriminate (case casestr) !skd)
-		       ((if consq (then (replaces !old :hide? nil) (beta (!skl !skd)))
+		       ((if consq (then (replaces !old :hide? nil)
+					(beta (!skl !skd))
+					(finalize (assert (!skl !skd))))
 			  (then (when old (hide !old) (reveal !old))
 				(beta !skd :let-reduce? nil)))
 			(if consq (then (when old (hide !old) (reveal !old))
 					(beta !skd :let-reduce? nil))
-			  (then (replaces !old :hide? nil) (beta (!skl !skd))))
+			  (then (replaces !old :hide? nil)
+				(beta (!skl !skd))
+				(finalize (assert (!skl !skd)))))
 			(then (replaces !old :hide? nil) (finalize tcc-step))))
 	       (relabel flabels !skd)
 	       (if hide?
@@ -1998,12 +2002,14 @@ from previous versions. The option OLD? reproduces the old order."
 	       ((then
 		 (expand "id" !rdd :assert? none)
 		 (if (> fn 0)
-		    (beta (!rdl !rdd))
-		  (beta !rdd :let-reduce? nil)))
+		     (then (beta (!rdl !rdd))
+			   (finalize (assert (!rdl !rdd))))
+		   (beta !rdd :let-reduce? nil)))
 		(then
 		 (expand "id" !rdd :assert? none)
 		 (if (< fn 0)
-		     (beta (!rdl !rdd))
+		     (then (beta (!rdl !rdd))
+			   (finalize (assert (!rdl !rdd))))
 		   (beta !rdd :let-reduce? nil)))
 		(finalize tcc-step)))
        (relabel flabels !rdd)
